@@ -43,4 +43,7 @@ export interface AuditEvent {
   oauthAudience: string;
   /** Canonical capability scopes; empty when absent. */
   oauthScopes: string[];
+  /** The scopes a GrantOAuthAccessEvent's member granted the client its
+   *  resource names (w4/m454); empty on every other row. */
+  oauthGrantScopes: string[];
 }

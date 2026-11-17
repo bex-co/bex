@@ -11,6 +11,12 @@ interface Config {
   apiBaseUrl: string;
   ssrApiUrl: string;
   /**
+   * bex-api's REST base as the SSR server reaches it: `ssrApiUrl` with the
+   * `/graphql` suffix removed, as `apiBaseUrl` is for the browser. Server-only
+   * callers: the readiness probe and the consent and Connected agents reports.
+   */
+  ssrApiBaseUrl: string;
+  /**
    * Origin that serves the agent-session conversation stream
    * (`/v1/agent-sessions/{id}/stream`). In production this is the SAME origin as
    * `apiBaseUrl` (api.bex.co), where the edge path-routes the stream to the ssh
@@ -34,7 +40,9 @@ interface Config {
 
 const apiUrl = import.meta.env.VITE_API_URL;
 const ssrApiUrl = import.meta.env.VITE_SSR_API_URL || apiUrl;
-const apiBaseUrl = (apiUrl ?? "").replace(/\/graphql\/?$/, "");
+const withoutGraphQLPath = (url: string | undefined) =>
+  (url ?? "").replace(/\/graphql\/?$/, "");
+const apiBaseUrl = withoutGraphQLPath(apiUrl);
 const oauthIssuer = (
   import.meta.env.VITE_OAUTH_ISSUER || "https://oauth.bex.co"
 ).replace(/\/$/, "");
@@ -47,6 +55,7 @@ export const config: Config = {
   apiUrl,
   apiBaseUrl,
   ssrApiUrl,
+  ssrApiBaseUrl: withoutGraphQLPath(ssrApiUrl),
   agentStreamBaseUrl: import.meta.env.VITE_AGENT_STREAM_URL || apiBaseUrl,
   oauthIssuer,
   oauthTokenEndpoint: `${oauthIssuer}/oauth2/token`,

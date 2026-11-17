@@ -143,6 +143,7 @@ describe("AuditLogPanel", () => {
       oauthClientId: "",
       oauthAudience: "",
       oauthScopes: [],
+      oauthGrantScopes: [],
     }));
     auditState.hasMore = true;
     const ready = renderPanel();
@@ -244,6 +245,7 @@ describe("AuditLogPanel", () => {
         oauthClientId: "",
         oauthAudience: "",
         oauthScopes: [],
+        oauthGrantScopes: [],
       },
       {
         id: "ev-2",
@@ -268,6 +270,7 @@ describe("AuditLogPanel", () => {
         oauthClientId: "dcr-agent",
         oauthAudience: "https://api.bex.co/mcp",
         oauthScopes: ["bex.read"],
+        oauthGrantScopes: [],
       },
     ];
     auditState.hasMore = true;
@@ -325,6 +328,7 @@ describe("AuditLogPanel", () => {
         oauthClientId: "429024F5-agent",
         oauthAudience: "https://api.bex.co/mcp",
         oauthScopes: ["bex.read", "bex.write"],
+        oauthGrantScopes: [],
       },
     ];
     renderPanel();
@@ -373,6 +377,7 @@ describe("AuditLogPanel", () => {
         oauthClientId: "",
         oauthAudience: "",
         oauthScopes: [],
+        oauthGrantScopes: [],
       },
       {
         id: "ev-2",
@@ -397,6 +402,7 @@ describe("AuditLogPanel", () => {
         oauthClientId: "",
         oauthAudience: "",
         oauthScopes: [],
+        oauthGrantScopes: [],
       },
     ];
     renderPanel();
@@ -439,6 +445,7 @@ describe("AuditLogPanel", () => {
         oauthClientId: "",
         oauthAudience: "",
         oauthScopes: [],
+        oauthGrantScopes: [],
       },
     ];
     renderPanel();
@@ -446,6 +453,52 @@ describe("AuditLogPanel", () => {
     const cells = within(screen.getAllByRole("row")[1]!).getAllByRole("cell");
     expect(cells[3]).toHaveTextContent("UpdateEnvVarsEvent");
     expect(cells[5]).toHaveTextContent("Variables API_KEY, DB_URL");
+  });
+
+  // w4/m454: a member's grant to an agent names the client and what it may do,
+  // in the two lines every row keeps.
+  it("names an OAuth access grant's client and granted scopes", () => {
+    auditState.events = [
+      {
+        id: "ev-1",
+        timestamp: "2026-07-11T00:00:00Z",
+        actor: "user:alice",
+        actorMethod: "session",
+        actorId: "",
+        actorEmail: "",
+        sourceIp: "",
+        userAgent: "",
+        action: "GrantOAuthAccessEvent",
+        status: "success",
+        resource: "oauth-client:dcr-claude",
+        targetName: "Claude Code",
+        displayNameFrom: "",
+        displayNameTo: "",
+        domain: "",
+        envGroupId: "",
+        envGroupName: "",
+        envVarKeys: [],
+        relation: "",
+        oauthClientId: "",
+        oauthAudience: "",
+        oauthScopes: [],
+        oauthGrantScopes: ["openid", "offline_access", "bex.read"],
+      },
+    ];
+    renderPanel();
+
+    const [row] = screen.getAllByRole("row").slice(1);
+    const cells = within(row!).getAllByRole("cell");
+    const action = cells.find((cell) =>
+      cell.textContent?.includes("GrantOAuthAccessEvent"),
+    );
+    const resource = cells[cells.length - 1]!;
+    expect(action).toBeDefined();
+    expect(resource).toHaveTextContent("Claude Code");
+    expect(resource).toHaveTextContent(
+      "oauth-client:dcr-claude · Scopes openid offline_access bex.read",
+    );
+    expect(resource.querySelectorAll(".block").length).toBeLessThanOrEqual(1);
   });
 
   it("hides 'Load more' once the last page is exhausted", () => {
@@ -473,6 +526,7 @@ describe("AuditLogPanel", () => {
         oauthClientId: "",
         oauthAudience: "",
         oauthScopes: [],
+        oauthGrantScopes: [],
       },
     ];
     auditState.hasMore = false;

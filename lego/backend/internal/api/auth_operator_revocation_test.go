@@ -135,7 +135,7 @@ func runOperatorRevocation(t *testing.T, human, other, direct, cli, otherCLI str
 		t.Fatalf("audit rows = %+v, want exactly the revoked grant", rows)
 	}
 	ev := rows[0]
-	if ev.Verb != oauthgrant.AuditVerb || ev.Caller != oauthgrant.AuditCaller || ev.CallerMethod != oauthgrant.AuditCallerMethod ||
+	if ev.Verb != core.AuditVerbRevokeOAuthAccess || ev.Caller != oauthgrant.AuditCaller || ev.CallerMethod != oauthgrant.AuditCallerMethod ||
 		ev.Resource != core.WorkspaceObject(workspace) || ev.Target != "oauth-grant:"+cli || ev.TargetName != human ||
 		ev.Outcome != core.AuditAllowed {
 		t.Errorf("audit row = %+v", ev)

@@ -116,6 +116,10 @@ var auditLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return e.OAuthScopes
 		})},
+		// The scopes a GrantOAuthAccessEvent's member granted the client its
+		// resource names (w4/m454), REST's metadata.scopes; null on every
+		// other row.
+		"oauthGrantScopes": gqlutil.StrsField(func(e Event) any { return emptyListAsNil(e.OAuthGrantScopes) }),
 		"metadata": &graphql.Field{Type: auditMetadataGQLType, Resolve: gqlutil.Field(func(e Event) any {
 			if e.MaintenanceModeTo == nil && e.TwoFactorRequiredTo == nil && e.Verb != core.AuditVerbMaintenanceModeURIUpdated {
 				return nil
@@ -159,6 +163,13 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 		},
 	}
+}
+
+func emptyListAsNil(list []string) any {
+	if len(list) == 0 {
+		return nil
+	}
+	return list
 }
 
 func emptyAsNil(s string) any {

@@ -3,6 +3,7 @@ import type { OAuth2ConsentSession } from "@ory/client-fetch";
 import { fetchSession } from "@/common/server-fn/session";
 import { isSameOrigin } from "@/common/server-fn/same-origin";
 import { config } from "@/config/config";
+import { ssrForwardedHeaders } from "@/common/apollo/factory.server";
 import {
   boundedJsonErrorResponse,
   readBoundedJson,
@@ -151,13 +152,16 @@ export async function revokeConnectedAgent(
 
   try {
     await hydra.revokeOAuth2ConsentSessions({ subject, client: clientId });
-    const apiBase = (config.ssrApiUrl ?? "").replace(/\/graphql\/?$/, "");
-    const cookie = request.headers.get("cookie");
-    const marker = await fetch(`${apiBase}/v1/oauth/revocations`, {
+    // Advances every replica's revocation marker and records Render's
+    // RevokeOAuthAccessEvent in each of the member's workspaces (w4/m454),
+    // with the member's cookie and where they are, as an SSR query sends.
+    const marker = await fetch(`${config.ssrApiBaseUrl}/v1/oauth/revocations`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        ...(cookie ? { cookie } : {}),
+        ...ssrForwardedHeaders(
+          (name) => request.headers.get(name) ?? undefined,
+        ),
       },
       body: JSON.stringify({ clientId }),
     });

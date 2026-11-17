@@ -31,6 +31,7 @@ const event = (overrides: Partial<AuditEvent> = {}): AuditEvent => ({
   oauthClientId: "",
   oauthAudience: "",
   oauthScopes: [],
+  oauthGrantScopes: [],
   ...overrides,
 });
 
@@ -59,7 +60,10 @@ describe("auditEventsToCSV", () => {
   // w9/m449: an env var row names its variables, never their values.
   it("names an env var row's variables in the metadata", () => {
     const csv = auditEventsToCSV([
-      event({ action: "UpdateEnvVarsEvent", envVarKeys: ["API_KEY", "DB_URL"] }),
+      event({
+        action: "UpdateEnvVarsEvent",
+        envVarKeys: ["API_KEY", "DB_URL"],
+      }),
     ]);
     expect(csv.trimEnd().split("\r\n")[1]).toContain(
       '""envVarKeys"":""API_KEY,DB_URL""',
@@ -91,6 +95,23 @@ describe("auditEventsToCSV", () => {
     expect(deleted).toMatch(/^2026-11-10T09:00:00Z,usr-00000000000000000009,/);
     expect(deleted).not.toContain("source_ip");
     expect(system).toMatch(/^2026-11-10T09:00:00Z,,apps\.Suspend,/);
+  });
+
+  // w4/m454: an OAuth access grant carries its client and the scopes it gave.
+  it("carries an OAuth access grant's client and granted scopes", () => {
+    const csv = auditEventsToCSV([
+      event({
+        action: "GrantOAuthAccessEvent",
+        resource: "oauth-client:dcr-claude",
+        targetName: "Claude Code",
+        oauthGrantScopes: ["openid", "bex.read"],
+      }),
+    ]);
+    const [, grant] = csv.trimEnd().split("\r\n");
+    expect(grant).toContain(
+      '""resource"":""oauth-client:dcr-claude"",""targetName"":""Claude Code""',
+    );
+    expect(grant).toContain('""oauthGrantScopes"":[""openid"",""bex.read""]');
   });
 
   it("quotes commas, quotes and newlines", () => {

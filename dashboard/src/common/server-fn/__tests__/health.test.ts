@@ -2,7 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { readinessCheck, resetHealthLatchForTests } from "../health";
 
 vi.mock("@/config/config", () => ({
-  config: { ssrApiUrl: "http://bex-api.test:8090/graphql" },
+  config: {
+    ssrApiUrl: "http://bex-api.test:8090/graphql",
+    ssrApiBaseUrl: "http://bex-api.test:8090",
+  },
 }));
 
 beforeEach(() => {

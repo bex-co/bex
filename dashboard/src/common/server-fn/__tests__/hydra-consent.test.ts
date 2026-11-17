@@ -88,6 +88,10 @@ function mockUpstreams(opts: {
   claimsUnreachable?: boolean;
   /** Serves a raw (e.g. non-JSON) claims body instead of claimsBody. */
   claimsRaw?: string;
+  /** bex-api's grant report (w4/m454): its status (default 204). */
+  grantStatus?: number;
+  /** Simulates a network-level failure reaching the grant report. */
+  grantUnreachable?: boolean;
 }) {
   const calls: { url: string; init?: RequestInit }[] = [];
   vi.stubGlobal(
@@ -114,6 +118,10 @@ function mockUpstreams(opts: {
           status: opts.opsStatus ?? 200,
         });
       }
+      if (url.includes("/v1/oauth/grants")) {
+        if (opts.grantUnreachable) throw new TypeError("fetch failed");
+        return new Response(null, { status: opts.grantStatus ?? 204 });
+      }
       if (url.includes("/consent/accept")) {
         return new Response(
           JSON.stringify({ redirect_to: "https://oauth.bex.co/continue" }),
@@ -136,6 +144,8 @@ function mockUpstreams(opts: {
 
 const accepts = (calls: { url: string; init?: RequestInit }[]) =>
   calls.filter((c) => c.url.includes("/consent/accept"));
+const grantReports = (calls: { url: string; init?: RequestInit }[]) =>
+  calls.filter((c) => c.url.includes("/v1/oauth/grants"));
 const rejects = (calls: { url: string; init?: RequestInit }[]) =>
   calls.filter((c) => c.url.includes("/consent/reject"));
 
@@ -176,11 +186,16 @@ const req = (qs: string, cookie: string | null = "ory_session=live") =>
 /** The consent POST the page's form makes: same-origin, form-encoded decision. */
 const decisionReq = (
   fields: Record<string, string>,
-  opts: { origin?: string | null; cookie?: string | null } = {},
+  opts: {
+    origin?: string | null;
+    cookie?: string | null;
+    headers?: Record<string, string>;
+  } = {},
 ) => {
   const body = new URLSearchParams(fields);
   const headers: Record<string, string> = {
     "content-type": "application/x-www-form-urlencoded",
+    ...opts.headers,
   };
   const origin = opts.origin === undefined ? DASHBOARD : opts.origin;
   if (origin) headers.origin = origin;
@@ -796,6 +811,127 @@ describe("handleConsentDecision (POST)", () => {
 // RFC 7636 defines AS plain) reached consent acceptance. Both entry points must
 // refuse anything that is not exactly one S256 challenge — a downgrade here
 // removes the protection an intercepted authorization request relies on.
+// w4/m454: an accepted consent that grants a third-party client access is
+// reported to bex-api, which records Render's GrantOAuthAccessEvent in each of
+// the member's workspaces after checking Hydra itself.
+describe("grant report (GrantOAuthAccessEvent, w4/m454)", () => {
+  const approve = {
+    consent_challenge: CHALLENGE,
+    decision: "approve",
+    csrf_token: csrf(),
+  };
+
+  it("reports an approval with the member's cookie and the client id", async () => {
+    const calls = mockUpstreams({ lookupBody: consentRequest() });
+
+    const res = await handleConsentDecision(
+      decisionReq(approve, {
+        headers: {
+          "user-agent": "Mozilla/5.0 (member browser)",
+          "true-client-ip": "198.51.100.23",
+        },
+      }),
+    );
+
+    expect(res.status).toBe(303);
+    expect(res.headers.get("Location")).toBe("https://oauth.bex.co/continue");
+    const reports = grantReports(calls);
+    expect(reports).toHaveLength(1);
+    expect(reports[0].init?.method).toBe("POST");
+    // The cookie, and where the member is for the rows' source_ip and
+    // user_agent (w9/m450), as an SSR query forwards them.
+    const headers = new Headers(reports[0].init?.headers);
+    expect(headers.get("cookie")).toBe("ory_session=live");
+    expect(headers.get("user-agent")).toBe("Mozilla/5.0 (member browser)");
+    expect(headers.get("true-client-ip")).toBe("198.51.100.23");
+    expect(JSON.parse(reports[0].init?.body as string)).toEqual({
+      clientId: "some-client",
+    });
+    // Reported only once Hydra accepted: the report follows the accept.
+    expect(calls.indexOf(reports[0])).toBeGreaterThan(
+      calls.indexOf(accepts(calls)[0]),
+    );
+  });
+
+  it("reports nothing for a denial, a refused approval or a failed accept", async () => {
+    const denied = mockUpstreams({ lookupBody: consentRequest() });
+    await handleConsentDecision(decisionReq({ ...approve, decision: "deny" }));
+    expect(grantReports(denied)).toHaveLength(0);
+
+    const unverified = mockUpstreams({
+      lookupBody: consentRequest(),
+      claimsBody: { ...VERIFIED_CLAIMS, email_verified: false },
+    });
+    await handleConsentDecision(decisionReq(approve));
+    expect(rejects(unverified)).toHaveLength(1);
+    expect(grantReports(unverified)).toHaveLength(0);
+
+    const failed = mockUpstreams({
+      lookupBody: consentRequest(),
+      acceptOk: false,
+    });
+    const res = await handleConsentDecision(decisionReq(approve));
+    expect(res.status).toBe(303);
+    expect(
+      new URL(res.headers.get("location")!).searchParams.get("retry"),
+    ).toBe("1");
+    expect(grantReports(failed)).toHaveLength(0);
+  });
+
+  it("never changes the redirect when the report fails", async () => {
+    for (const opts of [{ grantStatus: 503 }, { grantUnreachable: true }]) {
+      const calls = mockUpstreams({ lookupBody: consentRequest(), ...opts });
+      const res = await handleConsentDecision(decisionReq(approve));
+      expect(res.status).toBe(303);
+      expect(res.headers.get("Location")).toBe("https://oauth.bex.co/continue");
+      expect(grantReports(calls)).toHaveLength(1);
+    }
+  });
+
+  it("reports nothing for a remembered consent or a platform client", async () => {
+    const remembered = mockUpstreams({
+      lookupBody: consentRequest({ skip: true }),
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect((res as Response).status).toBe(302);
+    expect(accepts(remembered)).toHaveLength(1);
+    expect(grantReports(remembered)).toHaveLength(0);
+
+    const platform = mockUpstreams({
+      lookupBody: consentRequest({
+        client: {
+          client_id: "429024F5E608930E2A65EF92591A25CC",
+          skip_consent: true,
+        },
+      }),
+    });
+    await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect(accepts(platform)).toHaveLength(1);
+    expect(grantReports(platform)).toHaveLength(0);
+  });
+
+  it("reports an operator-trusted third-party client's first headless grant", async () => {
+    process.env.OAUTH_TRUSTED_CLIENTS = "some-client";
+    const calls = mockUpstreams({ lookupBody: consentRequest() });
+
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+
+    expect((res as Response).status).toBe(302);
+    expect((res as Response).headers.get("Location")).toBe(
+      "https://oauth.bex.co/continue",
+    );
+    expect(grantReports(calls)).toHaveLength(1);
+  });
+
+  it("reports nothing without the member's cookie: bex-api records only a session", async () => {
+    process.env.OAUTH_TRUSTED_CLIENTS = "some-client";
+    const calls = mockUpstreams({ lookupBody: consentRequest() });
+    await handleConsent(req(`?consent_challenge=${CHALLENGE}`, null));
+    expect(accepts(calls)).toHaveLength(1);
+    expect(grantReports(calls)).toHaveLength(0);
+  });
+});
+
 describe("PKCE S256 enforcement (w1/m66 F8)", () => {
   const authorize = "https://oauth.bex.co/oauth2/auth?response_type=code";
   const approve = {

@@ -76,12 +76,17 @@ const req = (cookie: string | null = "ory_session=live") =>
 
 const postReq = (
   body: Record<string, unknown>,
-  opts: { origin?: string | null; cookie?: string | null } = {},
+  opts: {
+    origin?: string | null;
+    cookie?: string | null;
+    headers?: Record<string, string>;
+  } = {},
 ) => {
   const origin = opts.origin === undefined ? DASHBOARD : opts.origin;
   const cookie = opts.cookie === undefined ? "ory_session=live" : opts.cookie;
   const headers: Record<string, string> = {
     "content-type": "application/json",
+    ...opts.headers,
   };
   if (origin) headers.origin = origin;
   if (cookie) headers.cookie = cookie;
@@ -219,7 +224,15 @@ describe("revokeConnectedAgent", () => {
   it("revokes the subject's consent sessions for the given client", async () => {
     const calls = mockUpstreams({});
     const res = await revokeConnectedAgent(
-      postReq({ clientId: "some-client" }),
+      postReq(
+        { clientId: "some-client" },
+        {
+          headers: {
+            "user-agent": "Mozilla/5.0 (member browser)",
+            "true-client-ip": "198.51.100.23",
+          },
+        },
+      ),
     );
     expect(res.status).toBe(204);
     const revoke = calls.find(
@@ -231,10 +244,13 @@ describe("revokeConnectedAgent", () => {
     expect(revoke?.url).toContain("client=some-client");
     const marker = calls.find((c) => c.url.includes("/v1/oauth/revocations"));
     expect(marker?.init?.method).toBe("POST");
-    expect(marker?.init?.headers).toMatchObject({
-      "content-type": "application/json",
-      cookie: "ory_session=live",
-    });
+    // The member's cookie, and where they are for the revocation's audit
+    // rows (w4/m454 over w9/m450's source_ip and user_agent).
+    const headers = new Headers(marker?.init?.headers);
+    expect(headers.get("content-type")).toBe("application/json");
+    expect(headers.get("cookie")).toBe("ory_session=live");
+    expect(headers.get("user-agent")).toBe("Mozilla/5.0 (member browser)");
+    expect(headers.get("true-client-ip")).toBe("198.51.100.23");
     expect(marker?.init?.body).toBe(
       JSON.stringify({ clientId: "some-client" }),
     );

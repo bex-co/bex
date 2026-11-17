@@ -157,6 +157,11 @@ type AuditEvent struct {
 	OAuthClientID string
 	OAuthAudience string
 	OAuthScopes   []string
+	// OAuthGrantScopes are the scopes a member granted an OAuth client, as
+	// Hydra holds them, identity scopes included (GrantOAuthAccessEvent,
+	// w4/m454). They describe the grant the row is about, not the caller's own
+	// credential, which OAuthScopes describes. Nil for every other verb.
+	OAuthGrantScopes []string
 	// EnvGroupID/EnvGroupName name the group an env-group link or unlink
 	// attached or detached (w4/563): its evg- id and its name at the time.
 	// Empty for every other verb.
@@ -525,6 +530,15 @@ const (
 	// Allows are not written (volume). Target is the classified operation
 	// name, never a bearer or request body.
 	AuditVerbScopeClass = "api.ScopeClass"
+	// AuditVerbGrantOAuthAccess and AuditVerbRevokeOAuthAccess are a member
+	// approving an OAuth client (an MCP agent such as Claude Code) on the
+	// consent page and revoking it under Connected agents (w4/m454), Render's
+	// GrantOAuthAccessEvent and RevokeOAuthAccessEvent. One grant covers every
+	// workspace its member belongs to, so each is recorded once in each of
+	// them, by internal/oauthgrant. The operator's revoke-oauth-grant records
+	// AuditVerbRevokeOAuthAccess too, once, in the ops workspace.
+	AuditVerbGrantOAuthAccess  = "oauth.GrantAccess"
+	AuditVerbRevokeOAuthAccess = "oauth.RevokeAccess"
 )
 
 // EdgeCacheToggleVerbs are the verbs whose rows record which way they turned
@@ -679,6 +693,22 @@ func MemberTarget(subject string) string { return "member:" + subject }
 // InviteTarget is MemberTarget's sibling for a pending invite (revoke, resend,
 // acceptance). Invite ids are opaque inv-… identifiers.
 func InviteTarget(inviteID string) string { return "invite:" + inviteID }
+
+// OAuthClientTargetKind is the target kind of an OAuth access grant or
+// revocation (w4/m454): the client by its Hydra client_id, its client_name the
+// row's TargetName.
+const OAuthClientTargetKind = "oauth-client"
+
+// OAuthClientTarget is the audit target of a member's OAuth access decision.
+func OAuthClientTarget(clientID string) string { return OAuthClientTargetKind + ":" + clientID }
+
+// OAuthGrantTargetKind is the target kind of the operator's revocation of one
+// member's grant (revoke-oauth-grant): the client by its client_id, the member
+// whose grant it was the row's TargetName.
+const OAuthGrantTargetKind = "oauth-grant"
+
+// OAuthGrantTarget is the audit target of the operator's revocation.
+func OAuthGrantTarget(clientID string) string { return OAuthGrantTargetKind + ":" + clientID }
 
 // WebhookAttemptTarget identifies a manual delivery action in the workspace
 // audit trail. Endpoint and attempt IDs are opaque, non-secret identifiers;
@@ -1803,10 +1833,21 @@ func (b *Base) recordAudit(ctx context.Context, ev AuditEvent) {
 // recordAudits is recordAudit for rows that must land together: one RecordAll
 // on a batch sink, as bounded and fail-open as RecordAuditEvent.
 func (b *Base) recordAudits(ctx context.Context, evs ...AuditEvent) {
-	sink, ok := b.Audit.(AuditBatchSink)
+	RecordAuditEvents(ctx, b.Audit, evs...)
+}
+
+// RecordAuditEvents is RecordAuditEvent for rows that record one fact and must
+// land together: one RecordAll on a batch sink, one Record each otherwise,
+// bounded and fail-open the same way. An account-level fact told to each of its
+// member's workspaces (an OAuth grant, w4/m454) goes through it.
+func RecordAuditEvents(ctx context.Context, sink AuditSink, evs ...AuditEvent) {
+	if len(evs) == 0 {
+		return
+	}
+	batch, ok := sink.(AuditBatchSink)
 	if !ok {
 		for _, ev := range evs {
-			b.recordAudit(ctx, ev)
+			RecordAuditEvent(ctx, sink, ev)
 		}
 		return
 	}
@@ -1815,7 +1856,7 @@ func (b *Base) recordAudits(ctx context.Context, evs ...AuditEvent) {
 	}
 	recordCtx, cancel := context.WithTimeout(ctx, auditRecordTimeout)
 	defer cancel()
-	if err := sink.RecordAll(recordCtx, evs); err != nil {
+	if err := batch.RecordAll(recordCtx, evs); err != nil {
 		log.Printf("audit: record %d rows (%s %s first): %v", len(evs), evs[0].Verb, evs[0].Resource, err)
 	}
 }

@@ -62,6 +62,11 @@ func TestRenderEventVerbsExist(t *testing.T) {
 		core.AuditVerbSetEnvironmentProtection:  true,
 		core.AuditVerbSetEnvironmentIsolation:   true,
 		core.AuditVerbSetEnvironmentIPAllowList: true,
+		// A member's OAuth access decisions, recorded by internal/oauthgrant,
+		// and the operator verb they replaced (w4/m454).
+		core.AuditVerbGrantOAuthAccess:  true,
+		core.AuditVerbRevokeOAuthAccess: true,
+		legacyVerbOperatorRevokeGrant:   true,
 	}
 	methodsByPkg := map[string]map[string]bool{}
 	for verb := range renderEvents {

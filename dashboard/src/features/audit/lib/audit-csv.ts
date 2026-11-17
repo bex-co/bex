@@ -108,6 +108,7 @@ function metadata(event: AuditEvent): string {
     ["oauthClientId", event.oauthClientId],
     ["oauthAudience", event.oauthAudience],
     ["oauthScopes", event.oauthScopes],
+    ["oauthGrantScopes", event.oauthGrantScopes],
   ];
   return JSON.stringify(
     Object.fromEntries(entries.filter(([, value]) => value.length > 0)),

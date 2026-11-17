@@ -36,8 +36,14 @@ export function toAuditEvents(
       relation: e.relation ?? "",
       oauthClientId: e.oauthClientId ?? "",
       oauthAudience: e.oauthAudience ?? "",
-      oauthScopes: (e.oauthScopes ?? []).filter(
-        (scope): scope is string => typeof scope === "string" && scope !== "",
-      ),
+      oauthScopes: scopes(e.oauthScopes),
+      oauthGrantScopes: scopes(e.oauthGrantScopes),
     }));
+}
+
+/** A wire scope list without its null and empty entries. */
+function scopes(raw: (string | null)[] | null | undefined): string[] {
+  return (raw ?? []).filter(
+    (scope): scope is string => typeof scope === "string" && scope !== "",
+  );
 }

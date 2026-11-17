@@ -25,10 +25,8 @@ export function resetHealthLatchForTests() {
   latchedReady = false;
 }
 
-// bex-api's REST base on the same origin SSR queries use (VITE_SSR_API_URL
-// with its /graphql suffix removed — the same derivation config.apiBaseUrl
-// applies to the browser URL). Static config, derived once.
-const upstreamBase = (config.ssrApiUrl ?? "").replace(/\/graphql\/?$/, "");
+// bex-api's REST base on the same origin SSR queries use.
+const upstreamBase = config.ssrApiBaseUrl;
 
 async function upstreamReachable(fetchImpl: typeof fetch): Promise<boolean> {
   // No SSR upstream configured (local dev) — nothing to gate on.

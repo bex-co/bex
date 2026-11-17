@@ -823,6 +823,7 @@ export type AuditLog = {
   metadata: Maybe<AuditLogMetadata>;
   oauthAudience: Maybe<Scalars['String']['output']>;
   oauthClientId: Maybe<Scalars['String']['output']>;
+  oauthGrantScopes: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   oauthScopes: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   relation: Maybe<Scalars['String']['output']>;
   resource: Maybe<Scalars['String']['output']>;

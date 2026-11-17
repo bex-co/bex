@@ -152,7 +152,7 @@ func TestRevokeDeletesAtHydraBeforeTheMarkerThenAudits(t *testing.T) {
 		t.Fatalf("result = %+v", res)
 	}
 	ev := j.audit[0]
-	if ev.Verb != AuditVerb || ev.Caller != "operator" || ev.CallerMethod != "exec" || ev.Resource != "workspace:tea-ops" ||
+	if ev.Verb != core.AuditVerbRevokeOAuthAccess || ev.Caller != "operator" || ev.CallerMethod != "exec" || ev.Resource != "workspace:tea-ops" ||
 		ev.Target != "oauth-grant:cli" || ev.TargetName != "human-1" || ev.Outcome != core.AuditAllowed || ev.At.IsZero() {
 		t.Fatalf("audit event = %+v", ev)
 	}

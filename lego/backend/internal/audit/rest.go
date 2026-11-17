@@ -99,19 +99,39 @@ func renderStatus(e Event) string {
 // rather than null (the schema requires it).
 func renderMetadata(e Event) map[string]string {
 	md := map[string]string{}
+	targetNameKey := "targetName"
 	if kind, name, ok := core.SplitTarget(e.Target); ok {
-		// An object's target names its bucket and its key (w21/094): two keys, as
-		// the neighbouring kinds name theirs, not one "bucket/key" string a reader
-		// must cut. The key is already escaped and bounded (core.ObjectTarget).
-		if bucket, key, isObject := core.SplitObjectTarget(name); kind == "object" && isObject {
-			md["bucket"], md["key"] = bucket, key
-		} else {
-			md[kind] = name
+		md[kind] = name
+		switch kind {
+		case "object":
+			// An object's target names its bucket and its key (w21/094): two
+			// keys, as the neighbouring kinds name theirs, not one "bucket/key"
+			// string a reader must cut. The key is already escaped and bounded
+			// (core.ObjectTarget).
+			if bucket, key, isObject := core.SplitObjectTarget(name); isObject {
+				delete(md, kind)
+				md["bucket"], md["key"] = bucket, key
+			}
+		case core.OAuthClientTargetKind, core.OAuthGrantTargetKind:
+			// An OAuth access grant or revocation names its client as bex's
+			// client_id (w4/m454; Render's keys for these events were never
+			// captured), and the client's name, or for the operator's
+			// revocation the member whose grant it was.
+			delete(md, kind)
+			md["client_id"] = name
+			targetNameKey = "client_name"
+			if kind == core.OAuthGrantTargetKind {
+				targetNameKey = "subject"
+			}
 		}
 	}
 	// Target display name (generic across all target kinds).
 	if e.TargetName != "" {
-		md["targetName"] = e.TargetName
+		md[targetNameKey] = e.TargetName
+	}
+	// The scopes a GrantOAuthAccessEvent's member granted (w4/m454).
+	if len(e.OAuthGrantScopes) > 0 {
+		md["scopes"] = strings.Join(e.OAuthGrantScopes, " ")
 	}
 	if e.MaintenanceModeTo != nil {
 		md["to"] = strconv.FormatBool(*e.MaintenanceModeTo)

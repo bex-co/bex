@@ -191,6 +191,9 @@ type Server struct {
 	// control-plane Postgres. nil retains the DB-free direct-proxy path.
 	CLIRefreshes     cliauth.RefreshIdempotencyStore
 	OAuthRevocations RevocationStore
+	// OAuthAccess audits the dashboard's OAuth consent approvals and Connected
+	// agents revocations (w4/m454); nil records neither.
+	OAuthAccess cliauth.OAuthAccessRecorder
 
 	// TrustedProxies (BEX_TRUSTED_PROXY_CIDRS) are the edge proxies whose
 	// forwarding headers this process may believe. Set by the composition root
@@ -669,6 +672,9 @@ type Deps struct {
 	// tenant for a human identity on first login (w1/m9). nil => store off: no mint.
 	Onboard          Onboarding
 	OAuthRevocations RevocationStore
+	// OAuthAccess: see Server.OAuthAccess. Built with the control-plane store
+	// and Hydra's admin URL.
+	OAuthAccess cliauth.OAuthAccessRecorder
 	// Usage is the month-to-date usage verb (w8/m2), built with the
 	// control-plane store. nil => NewServer mounts it store-less, answering
 	// core.ErrUsageUnavailable (503).
@@ -1296,6 +1302,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		CLITelemetry:     telSvc,
 		Onboard:          d.Onboard,
 		OAuthRevocations: d.OAuthRevocations,
+		OAuthAccess:      d.OAuthAccess,
 		// main.go builds Usage and Audit only with the control-plane store.
 		// Without it they mount store-less and answer 503 (w5/113).
 		Usage:         cmp.Or(d.Usage, &usage.Service{Base: base}),
@@ -1555,6 +1562,7 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 	cliAuth.RateLimiter = s.DeviceRateLimiter
 	cliAuth.Refreshes = s.CLIRefreshes
 	cliAuth.Revocations = s.OAuthRevocations
+	cliAuth.Access = s.OAuthAccess
 	cliAuth.RegisterPublic(mux, bodyLimit)
 	// The git push webhook authenticates by HMAC signature, not the OAuth gate,
 	// so it mounts directly (ahead of the /v1/ wildcard — a more specific pattern

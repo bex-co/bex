@@ -100,6 +100,9 @@ type Event struct {
 	OAuthClientID string
 	OAuthAudience string
 	OAuthScopes   []string
+	// OAuthGrantScopes are the scopes of the grant a GrantOAuthAccessEvent
+	// records (w4/m454); nil for every other verb.
+	OAuthGrantScopes []string
 	// A rename's label on each side, a custom-domain verb's hostname and the
 	// env group a link changed (w5/183); empty for every other verb.
 	DisplayNameFrom string
@@ -143,6 +146,7 @@ func view(r store.AuditRow) Event {
 		OAuthClientID:     r.OAuthClientID,
 		OAuthAudience:     r.OAuthAudience,
 		OAuthScopes:       r.OAuthScopes,
+		OAuthGrantScopes:  r.OAuthGrantScopes,
 		DisplayNameFrom:   r.DisplayNameFrom,
 		DisplayNameTo:     r.DisplayNameTo,
 		Domain:            r.Domain,
@@ -262,6 +266,12 @@ var renderEvents = map[string]string{
 	core.AuditVerbSetEnvironmentProtection:  "ChangeEnvironmentProtectionEvent",
 	core.AuditVerbSetEnvironmentIsolation:   "UpdateEnvironmentIsolatedEvent",
 	core.AuditVerbSetEnvironmentIPAllowList: "UpdateIPAllowListEvent",
+	// A member approving or revoking an OAuth client's access (w4/m454). The
+	// rows the operator's revoke-oauth-grant wrote as oauth.RevokeGrant before
+	// it read as the same event until the retention sweep removes them.
+	core.AuditVerbGrantOAuthAccess:  "GrantOAuthAccessEvent",
+	core.AuditVerbRevokeOAuthAccess: "RevokeOAuthAccessEvent",
+	legacyVerbOperatorRevokeGrant:   "RevokeOAuthAccessEvent",
 }
 
 // docsOnlyEvents are Render events render.com/docs/audit-logs (read
@@ -275,6 +285,10 @@ var docsOnlyEvents = map[string]bool{
 	"DeleteCustomDomainEvent":        true,
 	"UpdateEnvironmentIsolatedEvent": true,
 }
+
+// legacyVerbOperatorRevokeGrant is the verb the operator's revoke-oauth-grant
+// recorded before w4/m454 gave it RevokeOAuthAccessEvent's own.
+const legacyVerbOperatorRevokeGrant = "oauth.RevokeGrant"
 
 func renderEvent(verb string) string {
 	if ev, ok := renderEvents[verb]; ok {

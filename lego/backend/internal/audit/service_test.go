@@ -19,6 +19,7 @@ package audit
 import (
 	"context"
 	"errors"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -615,6 +616,38 @@ func TestAuditMetadataNamesWhatChanged(t *testing.T) {
 	}
 	if bare := toRenderAuditLog(Event{Verb: core.AuditVerbSetDisplayName, Target: "service:srv-1"}); len(bare.Metadata) != 1 {
 		t.Errorf("a row recorded before the names = %v, want only the service", bare.Metadata)
+	}
+}
+
+// w4/m454: a member's OAuth access grant and revocation are Render's
+// GrantOAuthAccessEvent and RevokeOAuthAccessEvent, naming the client in bex's
+// client_id and client_name keys and the grant in scopes. The operator's rows
+// from before, verb oauth.RevokeGrant, read as the same revocation event.
+func TestOAuthAccessEventsNameTheClient(t *testing.T) {
+	client := core.OAuthClientTarget("dcr-claude")
+	grant := toRenderAuditLog(Event{Verb: core.AuditVerbGrantOAuthAccess, Caller: "human-1", CallerMethod: "session",
+		Target: client, TargetName: "Claude Code", OAuthGrantScopes: []string{"openid", "offline_access", "bex.read"},
+		Outcome: string(core.AuditAllowed)})
+	wantGrant := map[string]string{"client_id": "dcr-claude", "client_name": "Claude Code", "scopes": "openid offline_access bex.read"}
+	if grant.Event != "GrantOAuthAccessEvent" || grant.Status != "success" || grant.Actor.Type != "user" ||
+		!reflect.DeepEqual(grant.Metadata, wantGrant) {
+		t.Errorf("grant = %+v, want GrantOAuthAccessEvent by the member with %v", grant, wantGrant)
+	}
+	revoke := toRenderAuditLog(Event{Verb: core.AuditVerbRevokeOAuthAccess, Caller: "human-1", CallerMethod: "session",
+		Target: client, TargetName: "Claude Code", Outcome: string(core.AuditAllowed)})
+	if wantRevoke := map[string]string{"client_id": "dcr-claude", "client_name": "Claude Code"}; revoke.Event != "RevokeOAuthAccessEvent" ||
+		!reflect.DeepEqual(revoke.Metadata, wantRevoke) {
+		t.Errorf("revoke = %+v, want RevokeOAuthAccessEvent with %v", revoke, wantRevoke)
+	}
+	// The operator's revocation names the client and the member whose grant
+	// it cut off, under its verb and the one it wrote before.
+	for _, verb := range []string{core.AuditVerbRevokeOAuthAccess, legacyVerbOperatorRevokeGrant} {
+		operator := toRenderAuditLog(Event{Verb: verb, Caller: "operator", CallerMethod: "exec",
+			Target: core.OAuthGrantTarget("cli"), TargetName: "human-1", Outcome: string(core.AuditAllowed)})
+		if want := map[string]string{"client_id": "cli", "subject": "human-1"}; operator.Event != "RevokeOAuthAccessEvent" ||
+			operator.Actor.Type != "system" || !reflect.DeepEqual(operator.Metadata, want) {
+			t.Errorf("operator row (%s) = %+v, want RevokeOAuthAccessEvent by system with %v", verb, operator, want)
+		}
 	}
 }
 

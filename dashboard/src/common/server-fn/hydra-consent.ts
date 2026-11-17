@@ -14,6 +14,8 @@ import {
   hasGranularCapability,
 } from "@/common/lib/oauth-scopes";
 import { safeHttpHref } from "@/common/lib/external-url";
+import { config } from "@/config/config";
+import { ssrForwardedHeaders } from "@/common/apollo/factory.server";
 
 // OAuth2 consent (docs/ADR012-auth.md §7, w4/m9 + w4/m16). Hydra redirects the
 // browser here with a consent_challenge after login (which Kratos's native
@@ -296,10 +298,16 @@ function audienceScopeSatisfied(consent: OAuth2ConsentRequest): boolean {
   return hasGranularCapability(consent.requested_scope ?? []);
 }
 
+/** A consent Hydra remembered (`skip`), or one to a client the operator
+ * registered as the platform's own (`skip_consent`: the bex CLI, the desktop
+ * and mobile apps, the ops portals; a DCR registrant cannot set it). */
+function rememberedOrPlatform(consent: OAuth2ConsentRequest): boolean {
+  return consent.skip === true || consent.client?.skip_consent === true;
+}
+
 function isTrusted(consent: OAuth2ConsentRequest): boolean {
   return (
-    consent.skip === true ||
-    consent.client?.skip_consent === true ||
+    rememberedOrPlatform(consent) ||
     trustedClients().has(consent.client?.client_id ?? "")
   );
 }
@@ -534,6 +542,52 @@ async function acceptConsent(
   return redirect_to;
 }
 
+/** Bound the grant report, which runs on after the redirect is sent. */
+const GRANT_REPORT_TIMEOUT_MS = 3_000;
+
+/**
+ * Report an accepted consent to bex-api (`POST /v1/oauth/grants`, w4/m454),
+ * which records Render's GrantOAuthAccessEvent in each of the member's
+ * workspaces. Only a new grant to a client that is not the platform's own is
+ * reported: a remembered consent grants nothing new, and a platform client's
+ * consent is a sign-in, not an agent being given access. bex-api checks both
+ * against Hydra again, so the report is a hint, never the evidence. It forwards
+ * the member's cookie (bex-api accepts only a session) and where they are (the
+ * rows' source_ip and user_agent, w9/m450), as an SSR query does. Callers do
+ * not await it: the redirect never waits on the audit, and a failed report is
+ * logged.
+ */
+async function reportGrant(
+  request: Request,
+  consent: OAuth2ConsentRequest,
+): Promise<void> {
+  const clientId = consent.client?.client_id;
+  const cookie = request.headers.get("cookie");
+  if (!clientId || !cookie || rememberedOrPlatform(consent)) return;
+  try {
+    const res = await fetch(`${config.ssrApiBaseUrl}/v1/oauth/grants`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...ssrForwardedHeaders(
+          (name) => request.headers.get(name) ?? undefined,
+        ),
+      },
+      body: JSON.stringify({ clientId }),
+      signal: AbortSignal.timeout(GRANT_REPORT_TIMEOUT_MS),
+    });
+    // Release the connection: an unread undici body pins the socket until GC.
+    await res.body?.cancel();
+    if (!res.ok) {
+      console.warn(
+        `consent: grant report for ${clientId} answered ${res.status}`,
+      );
+    }
+  } catch (err) {
+    console.warn(`consent: grant report for ${clientId} failed`, err);
+  }
+}
+
 /** Hydra bounces the agent back to its redirect_uri with `error=access_denied`
  * and the given description (default: the human's own deny). */
 async function rejectConsent(
@@ -659,19 +713,21 @@ export async function handleConsent(
   }
 
   if (isTrusted(consent)) {
+    let redirectTo: string;
     try {
-      return Response.redirect(
-        await acceptConsent(
-          hydra,
-          consentChallenge,
-          consent,
-          acceptedIdToken(opsGate, subjectGate),
-        ),
-        302,
+      redirectTo = await acceptConsent(
+        hydra,
+        consentChallenge,
+        consent,
+        acceptedIdToken(opsGate, subjectGate),
       );
     } catch {
       return { errorCode: "headless_accept_failed" };
     }
+    // Only an operator-trusted third-party client's first grant is reported
+    // here: every other trusted consent is a remembered or a platform one.
+    void reportGrant(request, consent);
+    return Response.redirect(redirectTo, 302);
   }
 
   // A third party is asking — only the human whose login minted this challenge
@@ -823,24 +879,27 @@ export async function handleConsentDecision(
       ? await resolveOpsGate(consent)
       : { verdict: "ungated" };
 
+  const refused =
+    decision === "deny" ||
+    subjectGate.verdict !== "pass" ||
+    opsGate.verdict === "deny";
+  let redirectTo: string;
   try {
-    const redirectTo =
-      decision === "deny" ||
-      subjectGate.verdict !== "pass" ||
-      opsGate.verdict === "deny"
-        ? await rejectConsent(
-            hydra,
-            consentChallenge,
-            unverified ? UNVERIFIED_EMAIL_DESCRIPTION : undefined,
-          )
-        : await acceptConsent(
-            hydra,
-            consentChallenge,
-            consent,
-            acceptedIdToken(opsGate, subjectGate),
-          );
-    return Response.redirect(redirectTo, 303);
+    redirectTo = refused
+      ? await rejectConsent(
+          hydra,
+          consentChallenge,
+          unverified ? UNVERIFIED_EMAIL_DESCRIPTION : undefined,
+        )
+      : await acceptConsent(
+          hydra,
+          consentChallenge,
+          consent,
+          acceptedIdToken(opsGate, subjectGate),
+        );
   } catch {
     return retry();
   }
+  if (!refused) void reportGrant(request, consent);
+  return Response.redirect(redirectTo, 303);
 }

@@ -46,12 +46,6 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// AuditVerb is the audit-trail verb of one revoked grant. The row is not the
-// outcome of an authorized request (there is no caller identity in an
-// operator-run command), so it names itself rather than deriving a
-// "<feature>.<Action>" verb from a service method.
-const AuditVerb = "oauth.RevokeGrant"
-
 // AuditCaller and AuditCallerMethod name the actor of that row: the operator
 // holding cluster access, who has no bex identity. The row maps onto Render's
 // "system" actor type.
@@ -199,7 +193,7 @@ func validate(req Request) error {
 // else is written: a marker without the Hydra revocation only costs a refetch.
 func (r *Revoker) revoke(ctx context.Context, subject, client string) (Revocation, error) {
 	rev := Revocation{ClientID: client}
-	held, err := r.deleteConsentSessions(ctx, subject, client)
+	held, err := r.hydra().deleteConsentSessions(ctx, subject, client)
 	if err != nil {
 		return rev, err
 	}
@@ -235,36 +229,50 @@ func (r *Revoker) auditEvent(subject, client string) core.AuditEvent {
 	return core.AuditEvent{
 		Caller:       AuditCaller,
 		CallerMethod: AuditCallerMethod,
-		Verb:         AuditVerb,
-		Resource:     core.WorkspaceObject(workspace),
+		// Render's RevokeOAuthAccessEvent, the verb a member's own revocation
+		// records too (w4/m454). It names itself: an operator-run command has
+		// no service method for the verb to be derived from.
+		Verb:     core.AuditVerbRevokeOAuthAccess,
+		Resource: core.WorkspaceObject(workspace),
 		// The grant's client is the target; the subject it belongs to is the
 		// target's name, an opaque Kratos identity id and no secret.
-		Target:     "oauth-grant:" + client,
+		Target:     core.OAuthGrantTarget(client),
 		TargetName: subject,
 		Outcome:    core.AuditAllowed,
 		At:         now(),
 	}
 }
 
-func (r *Revoker) client() *http.Client {
-	if r.Client != nil {
-		return r.Client
+func (r *Revoker) hydra() hydraAdmin { return newHydraAdmin(r.HydraAdminURL, r.Client) }
+
+// hydraAdmin is the slice of Hydra's admin API this package calls: a subject's
+// consent sessions and a client's registration.
+type hydraAdmin struct {
+	url    string
+	client *http.Client
+}
+
+// newHydraAdmin is Hydra's admin API at adminURL; a nil client means one with
+// a 10 s timeout on the shared Ory transport.
+func newHydraAdmin(adminURL string, client *http.Client) hydraAdmin {
+	if client == nil {
+		client = &http.Client{Timeout: 10 * time.Second, Transport: core.OryTransport}
 	}
-	return &http.Client{Timeout: 10 * time.Second, Transport: core.OryTransport}
+	return hydraAdmin{url: strings.TrimSuffix(adminURL, "/"), client: client}
 }
 
 // consentSessionsURL is Hydra's admin consent-session endpoint for a subject.
-func (r *Revoker) consentSessionsURL(query url.Values) string {
-	return strings.TrimSuffix(r.HydraAdminURL, "/") + "/admin/oauth2/auth/sessions/consent?" + query.Encode()
+func (h hydraAdmin) consentSessionsURL(query url.Values) string {
+	return h.url + "/admin/oauth2/auth/sessions/consent?" + query.Encode()
 }
 
 // deleteConsentSessions revokes the (subject, client) consent sessions, which
 // Hydra answers by revoking every access and refresh token issued under them.
 // It reports false for a pair Hydra holds no session for (404); the marker is
 // still advanced.
-func (r *Revoker) deleteConsentSessions(ctx context.Context, subject, client string) (bool, error) {
-	err := core.DoJSON(ctx, r.client(), http.MethodDelete,
-		r.consentSessionsURL(url.Values{"subject": {subject}, "client": {client}}), "", nil, http.StatusNoContent, nil)
+func (h hydraAdmin) deleteConsentSessions(ctx context.Context, subject, client string) (bool, error) {
+	err := core.DoJSON(ctx, h.client, http.MethodDelete,
+		h.consentSessionsURL(url.Values{"subject": {subject}, "client": {client}}), "", nil, http.StatusNoContent, nil)
 	var status *core.HTTPStatusError
 	if errors.As(err, &status) && status.Code == http.StatusNotFound {
 		return false, nil
@@ -272,17 +280,37 @@ func (r *Revoker) deleteConsentSessions(ctx context.Context, subject, client str
 	return err == nil, err
 }
 
-// Grants lists the clients a subject has consented to, one entry per client
-// with the union of the scopes granted and the latest grant time. It refuses a
-// listing Hydra pages, so a revocation of "every client" never silently stops
-// at the first page.
-func (r *Revoker) Grants(ctx context.Context, subject string) ([]Grant, error) {
+// consentSession is one consent a subject gave a client, as Hydra lists it.
+// Hydra lists only the consents a human decided (or a trusted client was
+// auto-granted), never one it skipped because it remembered an earlier one.
+type consentSession struct {
+	GrantScope     []string   `json:"grant_scope"`
+	HandledAt      *time.Time `json:"handled_at"`
+	ConsentRequest struct {
+		Client struct {
+			ClientID   string `json:"client_id"`
+			ClientName string `json:"client_name"`
+			// SkipConsent marks one of the platform's own clients (the bex CLI,
+			// the desktop and mobile apps, the ops portals): only the operator's
+			// admin API can set it, never a self-registered agent.
+			SkipConsent bool `json:"skip_consent"`
+		} `json:"client"`
+	} `json:"consent_request"`
+}
+
+// errMoreThanOnePage refuses a consent-session listing Hydra pages.
+var errMoreThanOnePage = errors.New("hydra lists more consent sessions for this subject than one page")
+
+// consentSessions lists every consent session Hydra holds for subject. It
+// refuses a listing Hydra pages, so a caller never silently reads only the
+// first page.
+func (h hydraAdmin) consentSessions(ctx context.Context, subject string) ([]consentSession, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		r.consentSessionsURL(url.Values{"subject": {subject}, "page_size": {"500"}}), nil)
+		h.consentSessionsURL(url.Values{"subject": {subject}, "page_size": {"500"}}), nil)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := r.client().Do(req)
+	resp, err := h.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -291,19 +319,43 @@ func (r *Revoker) Grants(ctx context.Context, subject string) ([]Grant, error) {
 		return nil, fmt.Errorf("hydra list consent sessions returned %s", resp.Status)
 	}
 	if strings.Contains(resp.Header.Get("Link"), `rel="next"`) {
-		return nil, errors.New("hydra lists more consent sessions for this subject than one page; name the client instead of --all-clients")
+		return nil, errMoreThanOnePage
 	}
-	var sessions []struct {
-		GrantScope     []string   `json:"grant_scope"`
-		HandledAt      *time.Time `json:"handled_at"`
-		ConsentRequest struct {
-			Client struct {
-				ClientID string `json:"client_id"`
-			} `json:"client"`
-		} `json:"consent_request"`
-	}
+	var sessions []consentSession
 	if err := json.NewDecoder(resp.Body).Decode(&sessions); err != nil {
 		return nil, fmt.Errorf("hydra list consent sessions: %w", err)
+	}
+	return sessions, nil
+}
+
+// clientName is a client's registered client_name; known is false when Hydra
+// holds no such client.
+func (h hydraAdmin) clientName(ctx context.Context, clientID string) (name string, known bool, err error) {
+	var client struct {
+		ClientName string `json:"client_name"`
+	}
+	err = core.DoJSON(ctx, h.client, http.MethodGet, h.url+"/admin/clients/"+url.PathEscape(clientID), "", nil, http.StatusOK, &client)
+	var status *core.HTTPStatusError
+	if errors.As(err, &status) && status.Code == http.StatusNotFound {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return client.ClientName, true, nil
+}
+
+// Grants lists the clients a subject has consented to, one entry per client
+// with the union of the scopes granted and the latest grant time. It refuses a
+// listing Hydra pages, so a revocation of "every client" never silently stops
+// at the first page.
+func (r *Revoker) Grants(ctx context.Context, subject string) ([]Grant, error) {
+	sessions, err := r.hydra().consentSessions(ctx, subject)
+	if errors.Is(err, errMoreThanOnePage) {
+		return nil, fmt.Errorf("%w; name the client instead of --all-clients", err)
+	}
+	if err != nil {
+		return nil, err
 	}
 	index := map[string]int{} // client id -> position in grants
 	grants := []Grant{}

@@ -70,6 +70,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/notifications"
 	pushtransport "github.com/bex-co/bex/lego/backend/internal/notifications/push"
+	"github.com/bex-co/bex/lego/backend/internal/oauthgrant"
 	"github.com/bex-co/bex/lego/backend/internal/objectgw"
 	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
 	"github.com/bex-co/bex/lego/backend/internal/opsrole"
@@ -931,6 +932,12 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	deps.AppPlacements = st
 	deps.Store = st // single writer of intent: suspend/resume write the row first
 	deps.OAuthRevocations = st
+	// A member's OAuth consent approvals and Connected agents revocations,
+	// audited in each of their workspaces (w4/m454). Hydra is the evidence of
+	// a grant, so without its admin URL neither is recorded.
+	if cfg.HydraAdminURL != "" {
+		deps.OAuthAccess = &oauthgrant.Access{HydraAdminURL: cfg.HydraAdminURL, Workspaces: st, Audit: st}
+	}
 	deps.AccountStore = st
 	deps.RouterMembers = st
 	deps.SSHKeysStore = st // identity-scoped SSH public-key registry

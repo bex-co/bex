@@ -55,6 +55,11 @@ const koAudit: Record<string, TranslationEntry> = {
     description:
       "Audit log Resource cell: the environment variable names an env var row created, changed or deleted, never their values (w9/m449)",
   },
+  "audit.changeGrantScopes": {
+    message: "스코프 {scopes}",
+    description:
+      "Audit log Resource cell: the scopes a member granted an OAuth client (GrantOAuthAccessEvent, w4/m454)",
+  },
   "audit.statusAllowed": {
     message: "허용됨",
     description: "Audit Log status badge for a successful action",

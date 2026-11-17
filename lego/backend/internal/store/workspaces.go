@@ -339,6 +339,17 @@ func (s *PGStore) ListTenantsForSubject(ctx context.Context, subject string) ([]
 	return out, rows.Err()
 }
 
+// SubjectWorkspaceIDs returns the ids of the workspaces the subject belongs to,
+// in id order: where an account-level fact a member's workspaces are each told
+// about is recorded (an OAuth grant or revocation, w4/m454).
+func (s *PGStore) SubjectWorkspaceIDs(ctx context.Context, subject string) ([]string, error) {
+	rows, err := s.Pool.Query(ctx, `SELECT tenant_id FROM tenant_members WHERE subject = $1 ORDER BY tenant_id`, subject)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[string])
+}
+
 // CountWorkspacesForSubjectPlan counts how many workspaces of a given plan the
 // subject owns — the per-user plan cap check (Render's five-Hobby-workspace
 // limit). Membership, not just ownership, is the unit Render caps on.

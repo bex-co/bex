@@ -646,6 +646,7 @@ type AuditLog {
   metadata: AuditLogMetadata
   oauthAudience: String
   oauthClientId: String
+  oauthGrantScopes: [String]
   oauthScopes: [String]
   relation: String
   resource: String

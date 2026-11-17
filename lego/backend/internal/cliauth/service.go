@@ -24,6 +24,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -86,6 +87,19 @@ type OAuthRevocationStore interface {
 	BumpOAuthRevocation(context.Context, string, string) error
 }
 
+// OAuthAccessRecorder records a member's own decisions about an OAuth client's
+// access in the audit log (w4/m454). *oauthgrant.Access is the production
+// implementation; RecordGrant reports false when Hydra holds no fresh grant
+// for the pair to record.
+type OAuthAccessRecorder interface {
+	RecordGrant(ctx context.Context, subject, clientID string) (bool, error)
+	RecordRevoke(ctx context.Context, subject, clientID string) error
+}
+
+// errOAuthAccessUnavailable answers the grant report when bex-api has no
+// Hydra admin URL or no control-plane store to check and record it with.
+var errOAuthAccessUnavailable = core.Unavailable("oauth access audit unavailable")
+
 // Service owns the three public Render compatibility endpoints and the
 // authenticated logout endpoint.
 type Service struct {
@@ -102,6 +116,10 @@ type Service struct {
 	// Revocations receives the dashboard's post-Hydra consent-revoke marker so
 	// every bex-api replica invalidates its warm positive token cache.
 	Revocations OAuthRevocationStore
+	// Access audits the dashboard's consent approvals and Connected agents
+	// revocations (w4/m454). nil records neither: the grant report answers
+	// 503 and a revocation still advances its marker.
+	Access OAuthAccessRecorder
 	// RateLimiter guards the three public device-flow routes (w4/m31/t002).
 	// nil (the New default) disables limiting — set post-construction from
 	// the composition root once BEX_DEVICE_RATE_LIMIT is known, the same
@@ -155,36 +173,81 @@ func (s *Service) rateLimited(handler http.Handler) http.Handler {
 // RegisterREST contributes Render's authenticated POST /v1/oauth/revoke to the
 // single REST router (inside the auth gate + rate limiter like every other
 // /v1 resource route), so the composition root keeps one router and one
-// wrapping site.
+// wrapping site. The dashboard's two server-side reports, a consent approval
+// (grants) and a Connected agents revocation (revocations), mount beside it.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/oauth/revoke", s.revoke)
+	mux.HandleFunc("POST /v1/oauth/grants", s.recordGrant)
 	mux.HandleFunc("POST /v1/oauth/revocations", s.recordRevocation)
 }
 
-func (s *Service) recordRevocation(w http.ResponseWriter, r *http.Request) {
+// memberClientID admits only a member's own browser session (the dashboard
+// forwards the member's cookie) and reads the {clientId} body both reports
+// send. It has answered the request when ok is false.
+func memberClientID(w http.ResponseWriter, r *http.Request) (subject, clientID string, ok bool) {
 	id, ok := core.IdentityFrom(r.Context())
-	if !ok || !id.Human || id.Method != "session" {
+	if !ok || !id.Human || id.Method != core.MethodSession {
 		core.WriteErr(w, fmt.Errorf("%w: session authentication required", core.ErrForbidden))
+		return "", "", false
+	}
+	var in struct {
+		ClientID string `json:"clientId"`
+	}
+	if !decodeRenderJSON(w, r, &in) {
+		return "", "", false
+	}
+	in.ClientID = strings.TrimSpace(in.ClientID)
+	if in.ClientID == "" || len(in.ClientID) > 255 {
+		core.WriteErr(w, fmt.Errorf("%w: invalid clientId", core.ErrBadRequest))
+		return "", "", false
+	}
+	return id.Subject, in.ClientID, true
+}
+
+// recordGrant is the dashboard's report that the member just approved an
+// OAuth client on the consent page: Render's GrantOAuthAccessEvent in each of
+// the member's workspaces (w4/m454). Hydra, not the report, decides whether
+// there is a grant to record; 404 when it holds no fresh one for the pair.
+func (s *Service) recordGrant(w http.ResponseWriter, r *http.Request) {
+	subject, clientID, ok := memberClientID(w, r)
+	if !ok {
+		return
+	}
+	if s.Access == nil {
+		core.WriteErr(w, errOAuthAccessUnavailable)
+		return
+	}
+	recorded, err := s.Access.RecordGrant(r.Context(), subject, clientID)
+	switch {
+	case err != nil:
+		log.Printf("cliauth: record the OAuth grant to %s: %v", clientID, err)
+		core.WriteErr(w, errOAuthAccessUnavailable)
+	case !recorded:
+		core.WriteErr(w, core.NotFound("recent OAuth grant"))
+	default:
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func (s *Service) recordRevocation(w http.ResponseWriter, r *http.Request) {
+	subject, clientID, ok := memberClientID(w, r)
+	if !ok {
 		return
 	}
 	if s.Revocations == nil {
 		core.WriteErr(w, core.ErrLogoutUnavailable)
 		return
 	}
-	var in struct {
-		ClientID string `json:"clientId"`
-	}
-	if !decodeRenderJSON(w, r, &in) {
-		return
-	}
-	in.ClientID = strings.TrimSpace(in.ClientID)
-	if in.ClientID == "" || len(in.ClientID) > 255 {
-		core.WriteErr(w, fmt.Errorf("%w: invalid clientId", core.ErrBadRequest))
-		return
-	}
-	if err := s.Revocations.BumpOAuthRevocation(r.Context(), id.Subject, in.ClientID); err != nil {
+	if err := s.Revocations.BumpOAuthRevocation(r.Context(), subject, clientID); err != nil {
 		core.WriteErr(w, core.ErrLogoutUnavailable)
 		return
+	}
+	// Render's RevokeOAuthAccessEvent (w4/m454). The revocation already took
+	// effect at Hydra and on the marker, so a failed audit never fails it.
+	if s.Access != nil {
+		if err := s.Access.RecordRevoke(r.Context(), subject, clientID); err != nil {
+			log.Printf("cliauth: audit the OAuth revocation of %s: %v", clientID, err)
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

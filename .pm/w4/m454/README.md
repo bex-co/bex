@@ -1,18 +1,18 @@
 # w4 · m454 — Approving or revoking an AI agent's OAuth access is audited as GrantOAuthAccessEvent and RevokeOAuthAccessEvent
 
-**Worker:** worker4 **Goal:** a member who approves an OAuth client (an MCP agent such as Claude Code, Codex or Cursor) or revokes it under Connected agents leaves Render's `GrantOAuthAccessEvent` / `RevokeOAuthAccessEvent` row in the workspace audit log, on REST, GraphQL, the dashboard and the CSV export **Status:** todo
+**Worker:** worker4 **Goal:** a member who approves an OAuth client (an MCP agent such as Claude Code, Codex or Cursor) or revokes it under Connected agents leaves Render's `GrantOAuthAccessEvent` / `RevokeOAuthAccessEvent` row in the workspace audit log, on REST, GraphQL, the dashboard and the CSV export **Status:** todo (t001–t003, t005–t007 done; t004 and t008 wait for the production deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Approving an OAuth client records GrantOAuthAccessEvent | 1h | — |
-| [t002](t002.md) | Revoking a connected agent records RevokeOAuthAccessEvent | 45m | — |
-| [t003](t003.md) | REST, GraphQL, CSV, dashboard labels and docs for the OAuth access events | 30m | t001, t002 |
+| [t001](done/t001.md) | Approving an OAuth client records GrantOAuthAccessEvent — **DONE** | 1h | — |
+| [t002](done/t002.md) | Revoking a connected agent records RevokeOAuthAccessEvent — **DONE** | 45m | — |
+| [t003](done/t003.md) | REST, GraphQL, CSV, dashboard labels and docs for the OAuth access events — **DONE** | 30m | t001, t002 |
 | [t004](t004.md) | Production check: an MCP client approve then revoke leaves one row of each | 30m | t003 |
-| [t005](t005.md) | Render parity | 30m | t004 |
-| [t006](t006.md) | Simplify | 20m | t005 |
-| [t007](t007.md) | Test coverage | 30m | t005 |
+| [t005](done/t005.md) | Render parity — **DONE** | 30m | t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 20m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
 | [t008](t008.md) | Closeout | 15m | t006, t007 |
 
 ## Definition of done
