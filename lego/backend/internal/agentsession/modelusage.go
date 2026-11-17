@@ -193,7 +193,7 @@ func (r *ModelUsageRecorder) Record(ctx context.Context, rep ModelUsageReport) (
 		return ModelUsageResponse{}, fmt.Errorf("agent model usage unavailable")
 	}
 	if kind, ok := id.KindOf(rep.RequestID); !ok || kind != id.AgentModelRequest ||
-		rep.SessionID == "" || rep.Workspace == "" || !devModelIDPattern.MatchString(rep.Model) {
+		rep.SessionID == "" || rep.Workspace == "" || !modelIDPattern.MatchString(rep.Model) {
 		return ModelUsageResponse{}, fmt.Errorf("%w: malformed usage report", ErrInvalidRequest)
 	}
 	for _, n := range []int64{rep.InputTokens, rep.OutputTokens, rep.CacheReadTokens, rep.CacheWriteTokens} {

@@ -65,6 +65,7 @@ export async function tempConfig(
     profile: "test",
     model: "",
     sessionConfig: {},
+    nodeRuntime: "",
     cwd: workspace,
     prompt: "Make the requested change and commit it.",
     branch: "",

@@ -200,7 +200,11 @@ lines.on("line", async (line) => {
       if (process.env.ACP_FIXTURE_ENV_LOG) {
         writeFileSync(
           process.env.ACP_FIXTURE_ENV_LOG,
-          JSON.stringify({ CODEX_CONFIG: process.env.CODEX_CONFIG ?? null }),
+          JSON.stringify({
+            CODEX_CONFIG: process.env.CODEX_CONFIG ?? null,
+            argv: process.argv.slice(2),
+            cwd: process.cwd(),
+          }),
         );
       }
       result(message.id, {

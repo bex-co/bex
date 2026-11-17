@@ -42,3 +42,22 @@ func TestAllowedProviderOperationMetaIsResponsesOnly(t *testing.T) {
 		}
 	}
 }
+
+// DeepSeek Harness (ADR114) speaks Chat Completions to OpenRouter; the
+// operation is OpenRouter's alone and takes no query.
+func TestAllowedProviderOperationOpenRouterChatCompletions(t *testing.T) {
+	if !allowedProviderOperation("openrouter.ai", http.MethodPost, "/v1/chat/completions", "", "application/json") {
+		t.Fatal("DeepSeek Harness's inference call was refused")
+	}
+	for _, tc := range []struct{ host, method, path, query string }{
+		{"openrouter.ai", http.MethodPost, "/v1/chat/completions", "stream=true"},
+		{"openrouter.ai", http.MethodGet, "/v1/chat/completions", ""},
+		{"openrouter.ai", http.MethodPost, "/v1/completions", ""},
+		{"openrouter.ai", http.MethodPost, "/v1/keys", ""},
+		{"api.anthropic.com", http.MethodPost, "/v1/chat/completions", ""},
+	} {
+		if allowedProviderOperation(tc.host, tc.method, tc.path, tc.query, "application/json") {
+			t.Fatalf("%s %s%s?%s admitted", tc.method, tc.host, tc.path, tc.query)
+		}
+	}
+}

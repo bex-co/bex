@@ -69,6 +69,10 @@ type AgentProfile struct {
 	// SessionConfig is the ACP session config the driver sets after
 	// session/new and session/load (ADR108 D3).
 	SessionConfig map[string]string `json:"sessionConfig,omitempty"`
+	// NodeRuntime is the Node.js binary the driver runs the executable with,
+	// for an adapter whose engines exclude the image's own Node (ADR114 D2:
+	// DeepSeek Harness needs Node 24); the agent's shell keeps the image's.
+	NodeRuntime string `json:"nodeRuntime,omitempty"`
 }
 
 // NativeBinary pins a downloaded executable: its version, install path and,
@@ -98,16 +102,18 @@ var (
 	agentProfilesByID        map[string]AgentProfile
 	profileIDPattern         = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 	profileExecutablePattern = regexp.MustCompile(`^/usr/local/bin/[a-zA-Z0-9_-]+$`)
-	profilePackagePattern    = regexp.MustCompile(`^@[a-z0-9-]+/[a-z0-9-]+@[0-9]+\.[0-9]+\.[0-9]+$`)
-	profileStatePattern      = regexp.MustCompile(`^\.[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*$`)
-	profileEndpointPattern   = regexp.MustCompile(`^https://[a-z0-9]+(?:[.-][a-z0-9]+)*\.[a-z]+(?:/[a-zA-Z0-9_-]+)*$`)
-	profileSuffixPattern     = regexp.MustCompile(`^(?:/[a-zA-Z0-9_-]+)*$`)
-	envNamePattern           = regexp.MustCompile(`^[A-Z_][A-Z0-9_]*$`)
-	configTokenPattern       = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]*$`)
-	profileModelPattern      = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]*$`)
-	nativeURLPattern         = regexp.MustCompile(`^https://[a-z0-9]+(?:[.-][a-z0-9]+)*\.[a-z]+/[!#-~]*$`)
-	nativeVersionPattern     = regexp.MustCompile(`^[0-9A-Za-z][0-9A-Za-z.+-]*$`)
-	nativePathPattern        = regexp.MustCompile(`^/opt/[a-z0-9-]+/[a-z0-9-]+$`)
+	// An exact version, prerelease included: DeepSeek Harness publishes only
+	// release candidates (ADR114).
+	profilePackagePattern  = regexp.MustCompile(`^@[a-z0-9-]+/[a-z0-9-]+@[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?$`)
+	profileStatePattern    = regexp.MustCompile(`^\.[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*$`)
+	profileEndpointPattern = regexp.MustCompile(`^https://[a-z0-9]+(?:[.-][a-z0-9]+)*\.[a-z]+(?:/[a-zA-Z0-9_-]+)*$`)
+	profileSuffixPattern   = regexp.MustCompile(`^(?:/[a-zA-Z0-9_-]+)*$`)
+	envNamePattern         = regexp.MustCompile(`^[A-Z_][A-Z0-9_]*$`)
+	configTokenPattern     = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]*$`)
+	nativeURLPattern       = regexp.MustCompile(`^https://[a-z0-9]+(?:[.-][a-z0-9]+)*\.[a-z]+/[!#-~]*$`)
+	nativeVersionPattern   = regexp.MustCompile(`^[0-9A-Za-z][0-9A-Za-z.+-]*$`)
+	nativePathPattern      = regexp.MustCompile(`^/opt/[a-z0-9-]+/[a-z0-9-]+$`)
+	nodeRuntimePattern     = regexp.MustCompile(`^/opt/[a-z0-9-]+/bin/node$`)
 )
 
 func init() {
@@ -206,8 +212,13 @@ func validateOptionalProfileFields(profile AgentProfile) error {
 			}
 		}
 	}
-	if profile.Model != "" && !profileModelPattern.MatchString(profile.Model) {
+	// A model id as a route takes it: an OpenRouter one has a provider
+	// segment and may be a ~ alias (ADR114).
+	if profile.Model != "" && !modelIDPattern.MatchString(profile.Model) {
 		return fmt.Errorf("profile %q: invalid model", id)
+	}
+	if profile.NodeRuntime != "" && !nodeRuntimePattern.MatchString(profile.NodeRuntime) {
+		return fmt.Errorf("profile %q: invalid node runtime", id)
 	}
 	for key, value := range profile.SessionConfig {
 		if !configTokenPattern.MatchString(key) || !configTokenPattern.MatchString(value) {

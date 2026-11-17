@@ -134,6 +134,26 @@
     "value": "Muse Spark"
   },
   {
+    "name": "node runtime outside /opt",
+    "path": ["profiles", 4, "nodeRuntime"],
+    "value": "/usr/bin/node"
+  },
+  {
+    "name": "node runtime that is not node",
+    "path": ["profiles", 4, "nodeRuntime"],
+    "value": "/opt/node24/bin/sh"
+  },
+  {
+    "name": "prerelease package pin by tag",
+    "path": ["profiles", 4, "npmPackage"],
+    "value": "@deepseek-ai/dsh@next"
+  },
+  {
+    "name": "model with an uppercase letter",
+    "path": ["profiles", 4, "model"],
+    "value": "~DeepSeek/deepseek-flash-latest"
+  },
+  {
     "name": "session config value with spaces",
     "path": ["profiles", 3, "sessionConfig"],
     "value": {

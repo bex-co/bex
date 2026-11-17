@@ -75,6 +75,11 @@ COPY agent-image/fetch-native-binaries.mjs ./
 COPY --from=native-pins /build/native-pins.json ./
 RUN node fetch-native-binaries.mjs native-pins.json /native "${TARGETARCH}"
 
+# DeepSeek Harness needs Node 24 (ADR114 D2). Its profile's nodeRuntime runs
+# the adapter on this binary; /usr/local/bin/node, the agent's shell's Node,
+# stays the image's 22. Same Debian release, so the same glibc and libstdc++.
+FROM node:24.22.2-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9 AS node-24
+
 FROM node:22.23.4-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d
 
 ARG NPM_VERSION=11.19.0
@@ -111,6 +116,7 @@ RUN npm ci --omit=dev --ignore-scripts \
 COPY --from=driver-build /opt/bex-agent-driver/dist ./dist
 COPY backend/internal/agentsession/agent-profiles.json ./agent-profiles.json
 COPY --link --from=native-binaries /native/ /
+COPY --link --from=node-24 /usr/local/bin/node /opt/node24/bin/node
 RUN chmod 0755 dist/main.js \
     && ln -s /opt/bex-agent-driver/dist/main.js /usr/local/bin/bex-agent-driver \
     && node dist/install-profiles.js

@@ -237,6 +237,7 @@ const ZH_SAME_AS_EN = new Set<string>([
   "usage.categoryKeyValue",
   "usage.billingMode",
   "agentSessions.agent.muse",
+  "agentSessions.agent.deepseek",
   // Example commands in input placeholders.
   "services.buildCommandPlaceholder",
   "services.createFieldCommandPlaceholder",

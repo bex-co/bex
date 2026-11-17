@@ -198,7 +198,9 @@ func TestCapabilitiesReportModelReadinessPerAgent(t *testing.T) {
 
 // REST, GraphQL and MCP report the same per-agent model-key readiness (w10/m14
 // t008): with the platform route on and no key of its own, a workspace is
-// ready for claude only, and setting its key makes every profile ready.
+// ready only for claude and for deepseek, the platform-only profile that
+// route's key serves (ADR114 D4), and setting its key makes every profile
+// ready.
 func TestCapabilitiesModelReadinessIsTheSameOnEverySurface(t *testing.T) {
 	enablePlatformRoute(t)
 	svc, _, _, _ := fixture()
@@ -254,7 +256,7 @@ func TestCapabilitiesModelReadinessIsTheSameOnEverySurface(t *testing.T) {
 		}
 	}
 	a.svc.ModelKeys = &fakeModelKeys{data: map[string]map[string]string{}}
-	check("platform route, no own key", func(id string) bool { return id == "claude" })
+	check("platform route, no own key", func(id string) bool { return id == "claude" || id == "deepseek" })
 	a.svc.ModelKeys = fixtureModelKeys("tea-a")
 	check("own key", func(string) bool { return true })
 }

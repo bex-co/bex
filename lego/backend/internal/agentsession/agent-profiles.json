@@ -94,6 +94,29 @@
       },
       "authentication": "environment",
       "permissionPolicy": "sandbox-auto-approve"
+    },
+    {
+      "id": "deepseek",
+      "executable": "/usr/local/bin/dsh",
+      "args": ["--profile", "acp"],
+      "env": {
+        "DSH_PERMISSION_MODE": "danger-full-access",
+        "DSH_TELEMETRY_DISABLED": "1",
+        "SHELL": "/bin/bash"
+      },
+      "modelEndpoint": "https://openrouter.ai/api",
+      "modelProxy": {
+        "baseUrlEnv": "OPENROUTER_BASE_URL",
+        "baseUrlSuffix": "/v1",
+        "credentialEnv": "OPENROUTER_API_KEY"
+      },
+      "sessionState": [".dsh"],
+      "npmPackage": "@deepseek-ai/dsh@0.2.2-rc.3",
+      "nodeRuntime": "/opt/node24/bin/node",
+      "model": "~deepseek/deepseek-flash-latest",
+      "platformOnly": true,
+      "authentication": "environment",
+      "permissionPolicy": "sandbox-auto-approve"
     }
   ]
 }

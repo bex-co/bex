@@ -364,12 +364,17 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 		return ModelMintResponse{}, err
 	}
 	auditHost = host
-	// A platform-only profile (ADR108 D5) runs only on the Meta route's
-	// bex-owned key, pinned to its model and metered like the OpenRouter route below;
-	// it never runs on the workspace's own key, whatever the workspace stored.
+	pathPrefix := ""
+	if host == OpenRouterHost {
+		pathPrefix = openRouterPathPrefix
+	}
+	// A platform-only profile (ADR108 D5) runs only on its provider's
+	// bex-owned key, pinned to its model and metered like the OpenRouter route
+	// below; it never runs on the workspace's own key, whatever the workspace
+	// stored. Its host is its own registered endpoint's (no route moves it).
 	if profile, _ := LookupAgentProfile(agent); profile.PlatformOnly {
-		key := metaRouteKey(agent)
-		if key == "" || host != MetaModelHost {
+		key := platformKey(host)
+		if key == "" {
 			return ModelMintResponse{}, ErrForbidden
 		}
 		if status, err = m.platformStatus(ctx, req.Workspace); err != nil {
@@ -379,12 +384,9 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 			return ModelMintResponse{}, err
 		}
 		return ModelMintResponse{
-			Credential: key, EndpointHost: host, Scheme: AuthSchemeBearer, PinnedModel: profile.Model,
+			Credential: key, EndpointHost: host, Scheme: AuthSchemeBearer,
+			PathPrefix: pathPrefix, PinnedModel: profile.Model,
 		}, nil
-	}
-	pathPrefix := ""
-	if host == OpenRouterHost {
-		pathPrefix = openRouterPathPrefix
 	}
 	// The platform route (ADR090) injects its own key for a workspace
 	// without its own key: the workspace's BYO key is not read, and

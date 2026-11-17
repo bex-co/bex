@@ -201,3 +201,23 @@ func TestUsageMeterReadsResponsesUsage(t *testing.T) {
 		t.Fatalf("clamped tokens = %v ok=%v, want [0 1 3 0]", tokens, ok)
 	}
 }
+
+// A Chat Completions stream (OpenRouter, ADR114) carries "usage":null on its
+// content chunks and the exchange's usage and cost on its final chunk;
+// prompt_tokens includes the cached and cache-written tokens it details.
+func TestUsageMeterReadsChatCompletionsUsage(t *testing.T) {
+	m := newUsageMeter("text/event-stream")
+	_, _ = m.Write([]byte(`data: {"id":"gen-1","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"the word \"usage\""}}],"usage":null}` + "\n\n" +
+		": OPENROUTER PROCESSING\n\n" +
+		`data: {"id":"gen-1","object":"chat.completion.chunk","choices":[],"usage":{"prompt_tokens":1000,"completion_tokens":20,"total_tokens":1020,"cost":0.0001,"prompt_tokens_details":{"cached_tokens":600,"cache_write_tokens":100}}}` + "\n\n" +
+		"data: [DONE]\n\n"))
+	tokens, cost, ok, _ := m.result()
+	if !ok || tokens != [4]int64{300, 20, 600, 100} || cost == nil || *cost != 0.0001 {
+		t.Fatalf("tokens = %v cost = %v ok=%v", tokens, cost, ok)
+	}
+	n := newUsageMeter("application/json")
+	_, _ = n.Write([]byte(`{"id":"gen-2","object":"chat.completion","choices":[],"usage":{"prompt_tokens":50,"completion_tokens":5,"prompt_tokens_details":{"cached_tokens":80}}}`))
+	if tokens, _, ok, _ := n.result(); !ok || tokens != [4]int64{0, 5, 50, 0} {
+		t.Fatalf("JSON tokens = %v ok=%v, want the cached count clamped to the prompt", tokens, ok)
+	}
+}

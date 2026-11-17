@@ -458,3 +458,59 @@ func TestMetaRouteMetersAMuseResponsesExchange(t *testing.T) {
 		t.Fatalf("recorded usage = %+v", u)
 	}
 }
+
+// A deepseek exchange (ADR114) on the OpenRouter platform route goes to
+// OpenRouter's Chat Completions with the platform key, carries the platform
+// data policy, is refused for any model but the profile's own, and its usage
+// is recorded at OpenRouter's reported cost.
+func TestPlatformRouteMetersADeepSeekChatCompletionsExchange(t *testing.T) {
+	const model = "~deepseek/deepseek-flash-latest"
+	stream := `data: {"id":"gen-1","object":"chat.completion.chunk","model":"` + model + `","choices":[{"index":0,"delta":{"content":"done"}}]}` + "\n\n" +
+		`data: {"id":"gen-1","object":"chat.completion.chunk","model":"` + model + `","choices":[],"usage":{"prompt_tokens":1200,"completion_tokens":30,"cost":0.0002,"prompt_tokens_details":{"cached_tokens":800}}}` + "\n\n" +
+		"data: [DONE]\n\n"
+	upstream := &cannedTransport{contentType: "text/event-stream", body: stream}
+	proxy, st := platformHarness(t, upstream)
+	st.mu.Lock()
+	st.session.AgentConfig = json.RawMessage(`{"agent":"deepseek","modelEndpoint":"https://openrouter.ai/api"}`)
+	st.mu.Unlock()
+
+	post := func(body string) *http.Response {
+		t.Helper()
+		base, err := agentsession.ModelProxyURL(proxy.URL, "tea-a-sandbox", "ags-one")
+		if err != nil {
+			t.Fatal(err)
+		}
+		req, _ := http.NewRequest(http.MethodPost, base+"/v1/chat/completions", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+agentsession.ModelKeyPlaceholder("ags-one"))
+		resp, err := proxy.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return resp
+	}
+	if resp := post(`{"model":"` + agentsession.DefaultDevModel + `","messages":[],"stream":true}`); resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("the route's claude model status = %d, want 403", resp.StatusCode)
+	}
+	resp := post(`{"model":"` + model + `","messages":[{"role":"user","content":"hi"}],"stream":true,"stream_options":{"include_usage":true}}`)
+	relayed, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK || string(relayed) != stream {
+		t.Fatalf("status %d, relayed %q", resp.StatusCode, relayed)
+	}
+	upstream.mu.Lock()
+	last, body := upstream.last, string(upstream.lastBody)
+	upstream.mu.Unlock()
+	if last.URL.Host != "openrouter.ai" || last.URL.Path != "/api/v1/chat/completions" || last.Header.Get("Authorization") != "Bearer "+platformKey {
+		t.Fatalf("upstream = %s %s auth-is-platform-key=%v", last.URL.Host, last.URL.Path, last.Header.Get("Authorization") == "Bearer "+platformKey)
+	}
+	if !strings.HasSuffix(body, `,"provider":{"data_collection":"deny"}}`) {
+		t.Fatalf("the platform data policy is missing: %s", body)
+	}
+	eventually(t, func() bool { got, _ := st.snapshot(); return len(got) == 1 })
+	got, _ := st.snapshot()
+	if u := got[0]; u.Model != model || u.InputTokens != 400 || u.OutputTokens != 30 || u.CacheReadTokens != 800 ||
+		u.CostSource != store.AgentModelCostReported || u.UpstreamCostMicroUSD != 200 {
+		t.Fatalf("recorded usage = %+v", u)
+	}
+}

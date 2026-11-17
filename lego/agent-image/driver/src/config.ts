@@ -54,6 +54,9 @@ export interface AgentDriverConfig {
   // ACP session config options set after session/new and session/load
   // (ADR108 D3).
   sessionConfig: Record<string, string>;
+  // The Node.js binary that runs command, "" for the adapter's own shebang
+  // (ADR114 D2).
+  nodeRuntime: string;
   cwd: string;
   prompt: string;
   // Repo session (ADR090): the bound bex-agent/* branch the agent pushes, the
@@ -451,6 +454,7 @@ export function loadConfig(
     profile: profile.id,
     model: profile.model ?? "",
     sessionConfig: { ...profile.sessionConfig },
+    nodeRuntime: profile.nodeRuntime ?? "",
     ...driverPaths(env),
     prompt: env.BEX_AGENT_PROMPT || "",
     branch: env.BEX_AGENT_BRANCH || "",

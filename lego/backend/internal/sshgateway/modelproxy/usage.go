@@ -25,6 +25,8 @@ import (
 	"mime"
 	"time"
 
+	"k8s.io/utils/ptr"
+
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 )
 
@@ -33,7 +35,7 @@ import (
 // metered; workspace BYO keys are the tenant's own spend and are never read.
 
 // platformDataPolicy is the OpenRouter provider-routing object the gateway
-// merges into every platform-route Messages request: route only to providers
+// merges into every platform-route request: route only to providers
 // that do not store prompts non-transiently or train on them. Verified live
 // on 2026-10-27: https://openrouter.ai/api/v1/messages validates
 // provider.data_collection (a bad value is a 400 naming the field) and
@@ -103,10 +105,66 @@ func (u *responsesUsage) anthropic() *anthropicUsage {
 	return out
 }
 
+// chatUsage is the Chat Completions usage object (OpenRouter's
+// OpenAI-compatible API, which DeepSeek Harness speaks, ADR114):
+// prompt_tokens includes the cached and cache-written prompt tokens it
+// details, and cost is OpenRouter's USD cost of the exchange, on the final
+// chunk of a stream.
+type chatUsage struct {
+	PromptTokens        *int64 `json:"prompt_tokens"`
+	CompletionTokens    *int64 `json:"completion_tokens"`
+	PromptTokensDetails *struct {
+		CachedTokens     *int64 `json:"cached_tokens"`
+		CacheWriteTokens *int64 `json:"cache_write_tokens"`
+	} `json:"prompt_tokens_details"`
+	Cost *float64 `json:"cost"`
+}
+
+// anthropic maps a Chat Completions usage onto the meter's Messages shape:
+// uncached input, output, cache reads and cache writes.
+func (u *chatUsage) anthropic() *anthropicUsage {
+	if u == nil {
+		return nil
+	}
+	out := &anthropicUsage{InputTokens: u.PromptTokens, OutputTokens: u.CompletionTokens, Cost: u.Cost}
+	if d := u.PromptTokensDetails; d != nil && u.PromptTokens != nil {
+		prompt := *u.PromptTokens
+		read := min(max(ptr.Deref(d.CachedTokens, 0), 0), prompt)
+		write := min(max(ptr.Deref(d.CacheWriteTokens, 0), 0), prompt-read)
+		uncached := prompt - read - write
+		out.InputTokens, out.CacheReadInputTokens, out.CacheCreationInputTokens = &uncached, &read, &write
+	}
+	return out
+}
+
+// decodeUsage reads a raw usage object in the shape its response object
+// names: Responses, Chat Completions, or else Anthropic's Messages shape (a
+// message_delta event names none). Nil when it does not decode.
+func decodeUsage(object string, raw json.RawMessage) *anthropicUsage {
+	switch object {
+	case "response":
+		var usage *responsesUsage
+		if json.Unmarshal(raw, &usage) == nil {
+			return usage.anthropic()
+		}
+	case "chat.completion", "chat.completion.chunk":
+		var usage *chatUsage
+		if json.Unmarshal(raw, &usage) == nil {
+			return usage.anthropic()
+		}
+	default:
+		var usage *anthropicUsage
+		if json.Unmarshal(raw, &usage) == nil {
+			return usage
+		}
+	}
+	return nil
+}
+
 // usageMeter is the tee side of a relayed platform-route response: it reads
 // the bytes the client is being sent, never delays or alters them, and
-// extracts the Anthropic or Responses usage. Write never fails, so a parse problem can
-// never break the relay.
+// extracts the Anthropic, Responses or Chat Completions usage. Write never
+// fails, so a parse problem can never break the relay.
 type usageMeter struct {
 	sse      bool
 	jsonBuf  bytes.Buffer
@@ -174,10 +232,11 @@ func (m *usageMeter) sseLine(line []byte) {
 	}
 	var event struct {
 		Type    string `json:"type"`
+		Object  string `json:"object"`
 		Message struct {
 			Usage *anthropicUsage `json:"usage"`
 		} `json:"message"`
-		Usage    *anthropicUsage `json:"usage"`
+		Usage    json.RawMessage `json:"usage"`
 		Response struct {
 			Usage *responsesUsage `json:"usage"`
 		} `json:"response"`
@@ -185,17 +244,20 @@ func (m *usageMeter) sseLine(line []byte) {
 	if json.Unmarshal(bytes.TrimSpace(data), &event) != nil {
 		return
 	}
-	switch event.Type {
-	case "message_start":
+	switch {
+	case event.Type == "message_start":
 		m.merge(event.Message.Usage)
-	case "message_delta":
+	case event.Type == "message_delta":
 		// Anthropic's message_delta usage is cumulative for the message, so a
 		// present count replaces the message_start one.
-		m.merge(event.Usage)
-	case "response.completed", "response.incomplete", "response.failed":
+		m.merge(decodeUsage("", event.Usage))
+	case event.Type == "response.completed", event.Type == "response.incomplete", event.Type == "response.failed":
 		// A Responses stream reports the whole exchange's usage once, on its
 		// terminal event.
 		m.merge(event.Response.Usage.anthropic())
+	case event.Object == "chat.completion.chunk":
+		// A Chat Completions stream reports it once, on its final chunk.
+		m.merge(decodeUsage(event.Object, event.Usage))
 	}
 }
 
@@ -230,17 +292,7 @@ func (m *usageMeter) result() (tokens [4]int64, cost *float64, ok, unparsed bool
 		if json.Unmarshal(m.jsonBuf.Bytes(), &body) != nil {
 			return tokens, nil, false, true
 		}
-		if body.Object == "response" {
-			var usage *responsesUsage
-			if json.Unmarshal(body.Usage, &usage) == nil {
-				m.merge(usage.anthropic())
-			}
-		} else {
-			var usage *anthropicUsage
-			if json.Unmarshal(body.Usage, &usage) == nil {
-				m.merge(usage)
-			}
-		}
+		m.merge(decodeUsage(body.Object, body.Usage))
 	}
 	if !m.seen {
 		return tokens, nil, false, true

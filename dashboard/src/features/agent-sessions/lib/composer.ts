@@ -9,7 +9,13 @@ const BRANCH_PREFIX = "bex-agent/";
 
 const BRANCH_SLUG_MAX = 40;
 
-export const AGENT_OPTIONS = ["claude", "gemini", "codex", "muse"] as const;
+export const AGENT_OPTIONS = [
+  "claude",
+  "gemini",
+  "codex",
+  "muse",
+  "deepseek",
+] as const;
 export type AgentOption = (typeof AGENT_OPTIONS)[number];
 
 /**

@@ -62,6 +62,9 @@ export interface AgentProfile {
   // ACP session config options the driver sets after session/new and
   // session/load (ADR108 D3).
   sessionConfig?: Record<string, string>;
+  // The Node.js binary that runs the executable, for an adapter whose
+  // engines exclude the image's Node (ADR114 D2); its shell keeps the image's.
+  nodeRuntime?: string;
 }
 
 export interface AgentProfileManifest {
@@ -71,17 +74,27 @@ export interface AgentProfileManifest {
 
 const envNamePattern = /^[A-Z_][A-Z0-9_]*(?![\s\S])/;
 const configTokenPattern = /^[A-Za-z][A-Za-z0-9_-]*(?![\s\S])/;
-const modelIdPattern = /^[a-z0-9][a-z0-9._-]*(?![\s\S])/;
+// bex-api's modelIDPattern: an OpenRouter id has a provider segment and
+// may be a ~ alias (ADR114).
+const modelIdPattern = /^[a-z0-9~][a-z0-9._/:~-]{0,127}(?![\s\S])/;
 const nativeUrlPattern =
   /^https:\/\/[a-z0-9]+(?:[.-][a-z0-9]+)*\.[a-z]+\/[!#-~]*(?![\s\S])/;
 const nativePathPattern = /^\/opt\/[a-z0-9-]+\/[a-z0-9-]+(?![\s\S])/;
 const nativeVersionPattern = /^[0-9A-Za-z][0-9A-Za-z.+-]*(?![\s\S])/;
 const nativeSHA256Pattern = /^[0-9a-f]{64}(?![\s\S])/;
+const nodeRuntimePattern = /^\/opt\/[a-z0-9-]+\/bin\/node(?![\s\S])/;
+// An exact version, a prerelease included (ADR114 D1); never a dist-tag.
+const npmPackagePattern =
+  /^@[a-z0-9-]+\/[a-z0-9-]+@\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?(?![\s\S])/;
 
 // Profiles whose adapter the driver can pin to the manifest's model: Muse
-// Code reads it from its settings file (acp.ts writeMuseSettings). A model on any
+// Code reads it from its settings file (acp.ts writeMuseSettings), DeepSeek
+// Harness from a launch patch (acp.ts writeDeepSeekPatch). A model on any
 // other profile would be silently ignored, so it is refused.
-export const MODEL_SETTINGS_PROFILES: ReadonlySet<string> = new Set(["muse"]);
+export const MODEL_SETTINGS_PROFILES: ReadonlySet<string> = new Set([
+  "muse",
+  "deepseek",
+]);
 
 function validateOptionalFields(id: string, profile: AgentProfile): void {
   const native = profile.nativeBinary;
@@ -119,6 +132,12 @@ function validateOptionalFields(id: string, profile: AgentProfile): void {
       !MODEL_SETTINGS_PROFILES.has(id))
   )
     throw new Error(`profile ${id}: invalid model`);
+  if (
+    profile.nodeRuntime !== undefined &&
+    (typeof profile.nodeRuntime !== "string" ||
+      !nodeRuntimePattern.test(profile.nodeRuntime))
+  )
+    throw new Error(`profile ${id}: invalid node runtime`);
   for (const flag of [
     "platformOnly",
     "requiresDataUseAcknowledgement",
@@ -222,9 +241,7 @@ export function validateAgentProfiles(manifest: AgentProfileManifest): void {
     }
     if (
       typeof profile.npmPackage !== "string" ||
-      !/^@[a-z0-9-]+\/[a-z0-9-]+@\d+\.\d+\.\d+(?![\s\S])/.test(
-        profile.npmPackage,
-      )
+      !npmPackagePattern.test(profile.npmPackage)
     )
       throw new Error(`profile ${id}: exact npm package pin is required`);
     if (

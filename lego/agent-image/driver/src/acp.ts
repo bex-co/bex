@@ -20,7 +20,7 @@ import {
   type ChildProcess,
   type ChildProcessByStdio,
 } from "node:child_process";
-import { readFile, rm } from "node:fs/promises";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -371,6 +371,73 @@ export async function writeMuseSettings(
   });
 }
 
+// writeDeepSeekPatch pins DeepSeek Harness (ADR114 D3) to model on pi-ai's
+// OpenRouter route at the gateway model proxy (baseUrl), reading the
+// placeholder from credentialEnv, through a `--patch` overlay dsh applies
+// after its profile layer. It also turns off the web tools (search needs
+// DeepSeek's own API) and DeepSeek's session-log upload. It is rewritten on
+// every start, since the proxy URL is the sandbox's. It returns the overlay
+// and an empty launch directory: dsh loads its launch directory's .env, and a
+// repository's .env must neither change the agent's environment nor stop it.
+// The directory is emptied on every start, since ~/.dsh outlives a turn and
+// the agent could write a .env into it.
+export async function writeDeepSeekPatch(
+  env: Record<string, string | undefined>,
+  config: Pick<
+    AgentDriverConfig,
+    "model" | "modelBaseUrl" | "credentialEnvName"
+  >,
+): Promise<{ patch: string; cwd: string }> {
+  const { model, modelBaseUrl: baseUrl, credentialEnvName } = config;
+  const home = env.DSH_HOME || path.join(env.HOME || homedir(), ".dsh");
+  const patch = path.join(home, "bex-acp.patch.yml");
+  const cwd = path.join(home, "bex-launch");
+  await rm(cwd, { recursive: true, force: true });
+  await mkdir(cwd, { recursive: true });
+  // JSON is YAML: dsh reads the overlay with its YAML loader.
+  await writeJsonAtomic(patch, [
+    {
+      id: "llm-pi-ai",
+      config: {
+        providers: {
+          openrouter: {
+            apiKeyEnv: credentialEnvName,
+            baseURL: baseUrl,
+            api: "openai-completions",
+            reasoning: "high",
+            models: [{ id: model }],
+          },
+        },
+      },
+    },
+    { id: "acp", config: { provider: "openrouter", model } },
+    { id: "tool-web", disabled: true },
+    { id: "session-log-deepseek", config: { enabled: false } },
+  ]);
+  return { patch, cwd };
+}
+
+// adapterLaunch writes the settings the profile's adapter reads its model
+// from (ADR108 D4 and D8, ADR114 D3) and returns how to start the adapter:
+// under the profile's own Node runtime when it names one (ADR114 D2).
+async function adapterLaunch(
+  config: AgentDriverConfig,
+  env: Record<string, string | undefined>,
+): Promise<{ command: string; args: string[]; cwd: string }> {
+  const args = [...config.args];
+  let cwd = config.cwd;
+  if (config.model && config.profile === "deepseek") {
+    const launch = await writeDeepSeekPatch(env, config);
+    args.push("--patch", launch.patch);
+    cwd = launch.cwd;
+  } else if (config.profile === "muse") {
+    await writeMuseSettings(env, config.model);
+  }
+  return config.nodeRuntime
+    ? { command: config.nodeRuntime, args: [config.command, ...args], cwd }
+    : { command: config.command, args, cwd };
+}
+
 async function createSessionAttempt(
   config: AgentDriverConfig,
   agentEnv: Record<string, string>,
@@ -383,13 +450,12 @@ async function createSessionAttempt(
   const codexOverlay = overlay !== "" && config.profile === "codex";
   const childEnv = { ...process.env, ...agentEnv };
   if (config.profile === "codex") await removeStaleCodexRules(childEnv);
-  if (config.profile === "muse")
-    await writeMuseSettings(childEnv, config.model);
+  const launch = await adapterLaunch(config, childEnv);
   const spawnEnv = codexOverlay
     ? { ...childEnv, ...codexOverlayEnv(overlay, childEnv.CODEX_CONFIG) }
     : childEnv;
-  const child: ACPChildProcess = spawn(config.command, config.args, {
-    cwd: config.cwd,
+  const child: ACPChildProcess = spawn(launch.command, launch.args, {
+    cwd: launch.cwd,
     env: spawnEnv,
     stdio: ["pipe", "pipe", "pipe"],
     // ACP adapters may launch their provider CLI as a child. A distinct Unix

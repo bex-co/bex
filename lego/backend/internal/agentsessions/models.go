@@ -165,6 +165,7 @@ func agentProfiles() []AgentProfile {
 		{ID: "codex", Label: "Codex"},
 		{ID: "gemini", Label: "Gemini"},
 		{ID: "muse", Label: "Muse Code"},
+		{ID: "deepseek", Label: "DeepSeek Harness"},
 	}
 }
 

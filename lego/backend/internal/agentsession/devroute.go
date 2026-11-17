@@ -96,12 +96,11 @@ func (r *modelRoute) active() bool {
 var (
 	activeDevModelRoute      atomic.Pointer[modelRoute]
 	activePlatformModelRoute atomic.Pointer[modelRoute]
-	// activeMetaRoute serves the profiles on Meta's official API (ADR108 D5,
-	// muse) with a bex-owned key in every workspace. Unlike the
-	// OpenRouter route it never yields to a workspace's own key: those
-	// profiles are platform-only. Its model is each profile's own.
-	activeMetaRoute   atomic.Pointer[modelRoute]
-	devModelIDPattern = regexp.MustCompile(`^[a-z0-9~][a-z0-9._/:~-]{0,127}$`)
+	// activeMetaRoute serves the platform-only profiles on Meta's official
+	// API (ADR108 D5, muse) with a bex-owned key in every workspace. Its
+	// model is each profile's own.
+	activeMetaRoute atomic.Pointer[modelRoute]
+	modelIDPattern  = regexp.MustCompile(`^[a-z0-9~][a-z0-9._/:~-]{0,127}$`)
 )
 
 // EnableDevModelRoute installs (or, for an empty route, clears) the dev model
@@ -173,21 +172,41 @@ func EnablePlatformMetaRoute(key string) bool {
 	return true
 }
 
+// platformOnlyHost is the model host of agent when it is a platform-only
+// profile (ADR108 D5), else "".
+func platformOnlyHost(agent string) string {
+	profile, ok := LookupAgentProfile(agent)
+	if !ok || !profile.PlatformOnly {
+		return ""
+	}
+	host, err := sessionegress.ModelEndpointHost(profile.ModelEndpoint)
+	if err != nil {
+		return ""
+	}
+	return host
+}
+
 // OnMetaRoute reports whether agent is a platform-only profile whose model
 // is Meta's API: one the Meta route's single key serves.
 func OnMetaRoute(agent string) bool {
-	profile, ok := LookupAgentProfile(agent)
-	if !ok || !profile.PlatformOnly {
-		return false
-	}
-	host, err := sessionegress.ModelEndpointHost(profile.ModelEndpoint)
-	return err == nil && host == MetaModelHost
+	return platformOnlyHost(agent) == MetaModelHost
 }
 
-// metaRouteKey is the bex-owned Meta key that serves agent, or "" when none
-// does. Routes cover every workspace (w10/m14 t007).
-func metaRouteKey(agent string) string {
-	if route := activeMetaRoute.Load(); route.active() && OnMetaRoute(agent) {
+// platformKey is the bex-owned key that serves the platform-only profiles on
+// host, or "" when none does: the Meta route's on Meta's API (muse), the
+// OpenRouter platform route's on OpenRouter (ADR114, deepseek). Routes cover
+// every workspace (w10/m14 t007). Unlike the claude profile on the OpenRouter
+// route, a platform-only profile never yields to a workspace's own key, and
+// it runs its own model (AgentProfile.Model), not the route's.
+func platformKey(host string) string {
+	var route *modelRoute
+	switch host {
+	case MetaModelHost:
+		route = activeMetaRoute.Load()
+	case OpenRouterHost:
+		route = activePlatformModelRoute.Load()
+	}
+	if route.active() {
 		return route.platformKey
 	}
 	return ""
@@ -219,7 +238,7 @@ func routeModel(env, model string) (string, error) {
 	if model == "" {
 		model = DefaultDevModel
 	}
-	if !devModelIDPattern.MatchString(model) {
+	if !modelIDPattern.MatchString(model) {
 		return "", fmt.Errorf("%s %q is not a model id", env, model)
 	}
 	return model, nil
@@ -249,9 +268,9 @@ func platformRouteCovers(agent string) bool {
 }
 
 // PlatformRouteServes reports whether a bex-owned route supplies agent's
-// model credential when the workspace has no key of its own:
-// the OpenRouter route for the claude profile, the Meta route for a
-// platform-only one. Codex and Gemini need the workspace's key
+// model credential when the workspace has no key of its own: the OpenRouter
+// route for the claude profile, and for a platform-only one the route of its
+// provider (platformKey). Codex and Gemini need the workspace's key
 // (ModelKeySecretPath) to run at all.
 func PlatformRouteServes(agent string) bool {
 	return PlatformRouteMeters(agent, false)
@@ -260,10 +279,10 @@ func PlatformRouteServes(agent string) bool {
 // PlatformRouteMeters reports whether agent's sessions run on
 // a bex-owned key, and so are priced, spend-capped and counted toward the
 // trust tier: the claude profile on the OpenRouter route unless the workspace
-// set its own key (byoKey), and a platform-only profile wherever the Meta
-// route serves it.
+// set its own key (byoKey), and a platform-only profile wherever its route
+// serves it.
 func PlatformRouteMeters(agent string, byoKey bool) bool {
-	return metaRouteKey(agent) != "" || (!byoKey && platformRouteCovers(agent))
+	return platformKey(platformOnlyHost(agent)) != "" || (!byoKey && platformRouteCovers(agent))
 }
 
 // ProfileServed reports whether a workspace can run agent at all. A
@@ -276,8 +295,9 @@ func ProfileServed(agent string) bool {
 
 // PlatformModelKeyReady reports whether a workspace's model credential is the
 // platform route's key, so readiness need not (and must not) consult the
-// workspace's BYO key. The platform route only serves the claude profile, and
-// never a workspace with its own key (byoKey).
+// workspace's BYO key: for the claude profile, which the platform route
+// serves only for a workspace without its own key (byoKey). A platform-only
+// profile's readiness is ProfileServed's.
 func PlatformModelKeyReady(byoKey bool) bool {
 	return !byoKey && activePlatformModelRoute.Load().active()
 }

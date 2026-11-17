@@ -225,7 +225,7 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 	// A platform-route inference exchange is metered (w10/m14 t003) and, on
 	// OpenRouter, carries the platform data policy (t006). count_tokens
 	// generates nothing and is not billed by the provider.
-	metered := credential.PinnedModel != "" && meteredOperation[credential.EndpointHost] == upstreamPath
+	metered := credential.PinnedModel != "" && meteredOperation[credential.EndpointHost][upstreamPath]
 	if metered && credential.EndpointHost == agentsession.OpenRouterHost {
 		body = withPlatformDataPolicy(body)
 	}
@@ -581,11 +581,12 @@ var pathPrefixPattern = regexp.MustCompile(`^(?:/[A-Za-z0-9_-]+)*$`)
 
 var googleInferencePath = regexp.MustCompile(`^/v1beta/models/[A-Za-z0-9._:-]+:(generateContent|streamGenerateContent|countTokens)$`)
 
-// meteredOperation is each platform route's billed inference path: Messages
-// on OpenRouter, Responses on Meta (ADR108).
-var meteredOperation = map[string]string{
-	agentsession.OpenRouterHost: "/v1/messages",
-	agentsession.MetaModelHost:  "/v1/responses",
+// meteredOperation is each platform route's billed inference paths: on
+// OpenRouter Messages (Claude Code) and Chat Completions (DeepSeek Harness,
+// ADR114), on Meta Responses (ADR108).
+var meteredOperation = map[string]map[string]bool{
+	agentsession.OpenRouterHost: {"/v1/messages": true, "/v1/chat/completions": true},
+	agentsession.MetaModelHost:  {"/v1/responses": true},
 }
 
 // allowedProviderOperation is the confused-deputy boundary: the sandbox can
@@ -603,11 +604,17 @@ func allowedProviderOperation(host, method, path, rawQuery, contentType string) 
 	case agentsession.MetaModelHost:
 		return rawQuery == "" && path == "/v1/responses"
 	// OpenRouter is reachable only through a bex-api model route (the dev
-	// route, refused in production, or the workspace-allowlisted platform
-	// route, ADR090): the mint alone decides the host, and Claude Code speaks
-	// the same Anthropic Messages operations to it, which the gateway relays
-	// under OpenRouter's /api prefix.
-	case "api.anthropic.com", agentsession.OpenRouterHost:
+	// route, refused in production, or the platform route, ADR090): the mint
+	// alone decides the host. DeepSeek Harness (ADR114) speaks Chat
+	// Completions to it; Claude Code speaks the same Anthropic Messages
+	// operations as to Anthropic, which the gateway relays under OpenRouter's
+	// /api prefix.
+	case agentsession.OpenRouterHost:
+		if path == "/v1/chat/completions" {
+			return rawQuery == ""
+		}
+		fallthrough
+	case "api.anthropic.com":
 		if path != "/v1/messages" && path != "/v1/messages/count_tokens" {
 			return false
 		}

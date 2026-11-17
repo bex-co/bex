@@ -169,7 +169,7 @@ func exerciseEnvironmentRoundTrip(t *testing.T, svc *Service, ws string) {
 		t.Fatalf("Environment: %v", err)
 	}
 	want := Environment{OwnerID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}, ModelSource: ModelSourceNone, RegistryHosts: sessionegress.DefaultRegistryDomains(),
-		EnabledAgents: []string{"claude", "codex", "gemini"}, AgentDataUse: []AgentDataUse{{Agent: "muse"}}}
+		EnabledAgents: []string{"claude", "codex", "deepseek", "gemini"}, AgentDataUse: []AgentDataUse{{Agent: "muse"}}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("defaults = %+v, want %+v", got, want)
 	}
@@ -688,7 +688,7 @@ func TestEnvironmentAgentAvailability(t *testing.T) {
 
 	// An acknowledgement alone records it but turns nothing on.
 	got, err := svc.UpdateEnvironment(caller("admin"), "tea-a", EnvironmentInput{AcknowledgeAgentDataUse: []string{"muse"}})
-	if err != nil || !slices.Equal(got.EnabledAgents, []string{"claude", "codex", "gemini"}) || got.AgentDataUse[0].AcknowledgedAt == nil {
+	if err != nil || !slices.Equal(got.EnabledAgents, []string{"claude", "codex", "deepseek", "gemini"}) || got.AgentDataUse[0].AcknowledgedAt == nil {
 		t.Fatalf("acknowledgement alone = %+v / %+v, %v", got.EnabledAgents, got.AgentDataUse, err)
 	}
 	got, err = svc.UpdateEnvironment(caller("admin"), "tea-a", EnvironmentInput{
@@ -701,8 +701,8 @@ func TestEnvironmentAgentAvailability(t *testing.T) {
 		got.AgentDataUse[0].AcknowledgedAt == nil || *got.AgentDataUse[0].AcknowledgedBy != "admin" {
 		t.Fatalf("after enabling muse = %+v / %+v", got.EnabledAgents, got.AgentDataUse)
 	}
-	if row := envs.rows["tea-a"]; !slices.Equal(row.DisabledAgents, []string{"codex", "gemini"}) {
-		t.Fatalf("stored disabled agents = %v, want codex and gemini", row.DisabledAgents)
+	if row := envs.rows["tea-a"]; !slices.Equal(row.DisabledAgents, []string{"codex", "deepseek", "gemini"}) {
+		t.Fatalf("stored disabled agents = %v, want codex, deepseek and gemini", row.DisabledAgents)
 	}
 	// Turning muse off and on again needs no new acknowledgement, and the
 	// first one is kept.

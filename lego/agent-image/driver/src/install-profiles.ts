@@ -70,6 +70,23 @@ for (const profile of profiles) {
   }
   if (installed.version !== version)
     throw new Error(`incorrect installed version for ${name}`);
+  // A profile's own Node runtime (ADR114 D2) comes from the image's node-24
+  // stage: it must be root-owned and meet the adapter's engines floor, which
+  // the image's Node does not.
+  if (profile.nodeRuntime) {
+    assertRootOwned(profile.nodeRuntime, `node runtime for ${profile.id}`);
+    const engines = String(installed.engines?.node ?? "").trim();
+    const runtime = execFileSync(
+      profile.nodeRuntime,
+      ["-p", "process.versions.node"],
+      { encoding: "utf8" },
+    ).trim();
+    const floor = /^>=\s*(\d+)\.(\d+)\.(\d+)$/.exec(engines);
+    if (!floor || compareVersions(runtime, floor.slice(1).join(".")) < 0)
+      throw new Error(
+        `node runtime ${runtime} for ${profile.id} does not meet ${name}'s engines ${engines}`,
+      );
+  }
 }
 // Native binaries (ADR108 D2) arrive from the image's fetch stage: check the
 // installed file is the pinned one, root-owned and not writable by the
@@ -88,9 +105,7 @@ for (const profile of profiles) {
   const digest = hash.digest("hex");
   if (digest !== artifact.sha256)
     throw new Error(`native binary for ${profile.id} does not match its pin`);
-  const { uid, mode } = statSync(native.path);
-  if (uid !== 0 || (mode & 0o022) !== 0)
-    throw new Error(`native binary for ${profile.id} must be root-owned`);
+  assertRootOwned(native.path, `native binary for ${profile.id}`);
   // A throwaway HOME keeps whatever the CLI writes on start out of the image.
   const home = mkdtempSync(path.join(tmpdir(), "native-check-"));
   const version = execFileSync(native.path, ["--version"], {
@@ -102,3 +117,20 @@ for (const profile of profiles) {
     throw new Error(`native binary for ${profile.id} is not ${native.version}`);
 }
 execFileSync("npm", ["cache", "clean", "--force"], { stdio: "inherit" });
+
+// assertRootOwned refuses a file the sandbox user could replace: one not
+// owned by root, or writable by its group or others.
+function assertRootOwned(file: string, what: string): void {
+  const { uid, mode } = statSync(file);
+  if (uid !== 0 || (mode & 0o022) !== 0)
+    throw new Error(`${what} must be root-owned`);
+}
+
+function compareVersions(a: string, b: string): number {
+  const [x, y] = [a, b].map((v) => v.split(".").map(Number));
+  for (let i = 0; i < 3; i++) {
+    const diff = (x![i] ?? 0) - (y![i] ?? 0);
+    if (diff) return diff;
+  }
+  return 0;
+}

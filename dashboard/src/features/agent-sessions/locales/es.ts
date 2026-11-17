@@ -236,6 +236,11 @@ const esAgentSessions: Record<string, TranslationEntry> = {
     message: "Muse Code",
     description: "Composer — agent option: muse (Meta's Muse Code)",
   },
+  "agentSessions.agent.deepseek": {
+    message: "DeepSeek Harness",
+    description:
+      "Composer — agent option: deepseek (DeepSeek Harness, on DeepSeek Flash through OpenRouter)",
+  },
   "agentSessions.submit": {
     message: "Iniciar sesión de agente",
     description: "Composer — submit button label",
