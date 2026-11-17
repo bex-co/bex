@@ -18,8 +18,14 @@ package controller
 
 import (
 	"context"
+	"io"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -73,44 +79,152 @@ func detectFixture(t *testing.T, started time.Duration, scanner portscan.Scanner
 	return r, app, dep
 }
 
-// w8/177: a web service whose check keeps failing on the default port and whose
-// process listens on exactly one other port moves to that port once two scans
-// agree; the serving port then follows it.
-func TestDetectBoundPortAdoptsALoneListener(t *testing.T) {
-	scanner := &cannedScanner{open: []int{8000}}
-	r, app, dep := detectFixture(t, time.Minute, scanner, nil)
+// onLoopback points the detect fixture's pod at the test's own listeners.
+func onLoopback(_ *appv1alpha1.App, pod *corev1.Pod) { pod.Status.PodIP = "127.0.0.1" }
 
-	if hint := r.detectBoundPort(context.Background(), app, dep, 10000); app.Status.DetectedPort != 0 || !strings.Contains(hint, "8000") {
-		t.Fatalf("first scan: DetectedPort=%d hint=%q, want only a candidate", app.Status.DetectedPort, hint)
+// httpListenerPort is a loopback HTTP server's port, standing in for a
+// process's HTTP listener on the pod.
+func httpListenerPort(t *testing.T) int {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNotFound) }))
+	t.Cleanup(server.Close)
+	return server.Listener.Addr().(*net.TCPAddr).Port
+}
+
+// rawListenerPort is a loopback listener that hands each connection to handle
+// and then closes it: a listener that speaks some other protocol than HTTP.
+func rawListenerPort(t *testing.T, handle func(net.Conn)) int {
+	t.Helper()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var mu sync.Mutex
+	active := map[net.Conn]struct{}{}
+	var tasks sync.WaitGroup
+	tasks.Go(func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			mu.Lock()
+			active[conn] = struct{}{}
+			mu.Unlock()
+			tasks.Go(func() {
+				defer func() { _ = conn.Close(); mu.Lock(); delete(active, conn); mu.Unlock() }()
+				_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
+				handle(conn)
+			})
+		}
+	})
+	t.Cleanup(func() {
+		_ = listener.Close()
+		mu.Lock()
+		for conn := range active {
+			_ = conn.Close()
+		}
+		mu.Unlock()
+		tasks.Wait()
+	})
+	return listener.Addr().(*net.TCPAddr).Port
+}
+
+// epmdListenerPort behaves as Erlang's epmd does on a request it cannot read:
+// the first two bytes are a request length ("GE" is 18245, beyond its buffer),
+// so it closes the connection without a word.
+func epmdListenerPort(t *testing.T) int {
+	return rawListenerPort(t, func(conn net.Conn) { _, _ = io.ReadFull(conn, make([]byte, 2)) })
+}
+
+// distributionListenerPort behaves as an Erlang distribution listener does: it
+// waits for the handshake's 18245 bytes and answers nothing.
+func distributionListenerPort(t *testing.T) int {
+	return rawListenerPort(t, func(conn net.Conn) { _, _ = io.Copy(io.Discard, conn) })
+}
+
+// w8/177: a web service whose check keeps failing on the default port and whose
+// process serves HTTP on exactly one other port moves to that port once two
+// scans agree; the serving port then follows it. A listener beside it that
+// does not answer HTTP is not counted (w32/037).
+func TestDetectBoundPortAdoptsALoneListener(t *testing.T) {
+	web := httpListenerPort(t)
+	scanner := &cannedScanner{open: []int{epmdListenerPort(t), web}}
+	r, app, dep := detectFixture(t, time.Minute, scanner, onLoopback)
+
+	if hint := r.detectBoundPort(context.Background(), app, dep, 10000); app.Status.DetectedPort != 0 || hint != " The process is listening on port "+strconv.Itoa(web)+"." {
+		t.Fatalf("first scan: DetectedPort=%d hint=%q, want only the HTTP candidate %d", app.Status.DetectedPort, hint, web)
 	}
 	time.Sleep(time.Millisecond)
 	hint := r.detectBoundPort(context.Background(), app, dep, 10000)
-	if app.Status.DetectedPort != 8000 || !strings.Contains(hint, "now uses") {
-		t.Fatalf("second scan: DetectedPort=%d hint=%q, want 8000 adopted", app.Status.DetectedPort, hint)
+	if app.Status.DetectedPort != int32(web) || !strings.Contains(hint, "now uses") {
+		t.Fatalf("second scan: DetectedPort=%d hint=%q, want %d adopted", app.Status.DetectedPort, hint, web)
 	}
-	if got := detectedServingPort(app, 10000); got != 8000 {
-		t.Fatalf("serving port = %d, want the detected 8000", got)
+	if got := detectedServingPort(app, 10000); got != web {
+		t.Fatalf("serving port = %d, want the detected %d", got, web)
 	}
-	if got := app.ServingPort(); got != 8000 {
-		t.Fatalf("App.ServingPort = %d, want 8000", got)
+	if got := app.ServingPort(); got != int32(web) {
+		t.Fatalf("App.ServingPort = %d, want %d", got, web)
+	}
+}
+
+// w32/037: Render's phoenix_hello release starts Erlang distribution seconds
+// after its container does (epmd on 4369 and a distribution listener on a
+// random port), and Phoenix binds PORT about a minute later on a free
+// instance. Port detection adopted epmd, the TCP check passed on it, the
+// deploy went live and every request answered 502. Render routes a web
+// service to an HTTP port only and keeps scanning ("No open HTTP ports
+// detected on 0.0.0.0, continuing to scan"), and so does bex now; once
+// Phoenix binds PORT the scan stands down.
+func TestDetectBoundPortNeverAdoptsAListenerThatDoesNotAnswerHTTP(t *testing.T) {
+	t.Parallel()
+	epmd, distribution := epmdListenerPort(t), distributionListenerPort(t)
+	for name, open := range map[string][]int{
+		"epmd alone, as the scans that adopted it found": {epmd},
+		"epmd and the distribution listener":             {epmd, distribution},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			scanner := &cannedScanner{open: open}
+			r, app, dep := detectFixture(t, time.Minute, scanner, onLoopback)
+			for scan := range 2 {
+				hint := r.detectBoundPort(t.Context(), app, dep, 10000)
+				if app.Status.DetectedPort != 0 {
+					t.Fatalf("scan %d adopted port %d, which does not answer HTTP", scan+1, app.Status.DetectedPort)
+				}
+				if want := noOpenPortMessage(app, 10000); hint != want {
+					t.Fatalf("scan %d: hint = %q, want %q", scan+1, hint, want)
+				}
+				time.Sleep(time.Millisecond)
+			}
+			if got := app.ServingPort(); got != appv1alpha1.DefaultPort {
+				t.Fatalf("App.ServingPort = %d, want PORT's %d", got, appv1alpha1.DefaultPort)
+			}
+
+			scanner.open = slices.Concat(open, []int{10000})
+			if hint := r.detectBoundPort(t.Context(), app, dep, 10000); hint != "" || app.Status.DetectedPort != 0 {
+				t.Fatalf("with PORT bound: hint=%q DetectedPort=%d, want nothing to add", hint, app.Status.DetectedPort)
+			}
+		})
 	}
 }
 
 func TestDetectBoundPortLeavesAmbiguousOrConfiguredServicesAlone(t *testing.T) {
+	web, metrics := httpListenerPort(t), httpListenerPort(t)
 	for name, tc := range map[string]struct {
 		open    []int
 		mutate  func(*appv1alpha1.App, *corev1.Pod)
 		started time.Duration
 	}{
-		"two listeners are named, not chosen":          {open: []int{8000, 9090}, started: time.Minute},
+		"two HTTP listeners are named, not chosen":     {open: []int{web, metrics}, started: time.Minute, mutate: onLoopback},
 		"the configured port answers (a path problem)": {open: []int{10000, 8000}, started: time.Minute},
-		"nothing answers":                              {open: nil, started: time.Minute},
-		"an explicit port":                             {open: []int{8000}, started: time.Minute, mutate: func(a *appv1alpha1.App, _ *corev1.Pod) { a.Spec.Port = 3000 }},
-		"an explicit non-default port":                 {open: []int{8000}, started: time.Minute, mutate: func(a *appv1alpha1.App, _ *corev1.Pod) { a.Spec.Port = 8080 }},
-		"a default PORT variable":                      {open: []int{8000}, started: time.Minute, mutate: func(a *appv1alpha1.App, _ *corev1.Pod) { a.Status.EnvPort = appv1alpha1.DefaultPort }},
-		"a PORT variable":                              {open: []int{8000}, started: time.Minute, mutate: func(a *appv1alpha1.App, _ *corev1.Pod) { a.Status.EnvPort = 3000 }},
-		"a worker":                                     {open: []int{8000}, started: time.Minute, mutate: func(a *appv1alpha1.App, _ *corev1.Pod) { a.Spec.Type = appv1alpha1.TypeBackgroundWorker }},
-		"a booting pod":                                {open: []int{8000}, started: time.Second},
+		"nothing answers":              {open: nil, started: time.Minute},
+		"an explicit port":             {open: []int{8000}, started: time.Minute, mutate: func(a *appv1alpha1.App, _ *corev1.Pod) { a.Spec.Port = 3000 }},
+		"an explicit non-default port": {open: []int{8000}, started: time.Minute, mutate: func(a *appv1alpha1.App, _ *corev1.Pod) { a.Spec.Port = 8080 }},
+		"a default PORT variable":      {open: []int{8000}, started: time.Minute, mutate: func(a *appv1alpha1.App, _ *corev1.Pod) { a.Status.EnvPort = appv1alpha1.DefaultPort }},
+		"a PORT variable":              {open: []int{8000}, started: time.Minute, mutate: func(a *appv1alpha1.App, _ *corev1.Pod) { a.Status.EnvPort = 3000 }},
+		"a worker":                     {open: []int{8000}, started: time.Minute, mutate: func(a *appv1alpha1.App, _ *corev1.Pod) { a.Spec.Type = appv1alpha1.TypeBackgroundWorker }},
+		"a booting pod":                {open: []int{8000}, started: time.Second},
 		"a cached service": {open: []int{8000}, started: time.Minute, mutate: func(_ *appv1alpha1.App, p *corev1.Pod) {
 			p.Spec.Containers = append(p.Spec.Containers, corev1.Container{Name: edgeCacheContainerName})
 		}},
@@ -164,11 +278,15 @@ func TestDetectBoundPortNamesAnInstanceWithNoOpenPort(t *testing.T) {
 }
 
 func TestDetectBoundPortWithoutAPersistedDefault(t *testing.T) {
-	r, app, dep := detectFixture(t, time.Minute, &cannedScanner{open: []int{3000}}, func(a *appv1alpha1.App, _ *corev1.Pod) { a.Spec.Port = 0 })
+	web := httpListenerPort(t)
+	r, app, dep := detectFixture(t, time.Minute, &cannedScanner{open: []int{web}}, func(a *appv1alpha1.App, pod *corev1.Pod) {
+		a.Spec.Port = 0
+		onLoopback(a, pod)
+	})
 	r.detectBoundPort(t.Context(), app, dep, 10000)
 	r.detectBoundPort(t.Context(), app, dep, 10000)
-	if app.Status.DetectedPort != 3000 || app.ServingPort() != 3000 {
-		t.Fatalf("detected=%d serving=%d", app.Status.DetectedPort, app.ServingPort())
+	if app.Status.DetectedPort != int32(web) || app.ServingPort() != int32(web) {
+		t.Fatalf("detected=%d serving=%d, want %d", app.Status.DetectedPort, app.ServingPort(), web)
 	}
 }
 

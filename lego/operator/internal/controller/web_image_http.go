@@ -149,17 +149,7 @@ func (r *AppReconciler) selectWebImageHTTP(ctx context.Context, app *appv1alpha1
 			logf.FromContext(ctx).Info("HTTP port scan ran out of time; probing the ports found so far", "app", app.Name, "open", open)
 		}
 		if scanErr == nil || len(open) > 0 {
-			ports := make([]int32, 0, len(open))
-			for _, p := range open {
-				if p > 0 && p <= 65535 && !appv1alpha1.IsReservedImagePort(int32(p)) {
-					ports = append(ports, int32(p))
-				}
-			}
-			slices.Sort(ports)
-			if len(ports) > appv1alpha1.MaxImagePorts {
-				ports = ports[:appv1alpha1.MaxImagePorts]
-			}
-			found, err = httpport.Probe(ctx, ip, healthProbeHost(app, r.BaseDomain), ports)
+			found, err = httpport.Probe(ctx, ip, healthProbeHost(app, r.BaseDomain), httpCandidates(open))
 		} else {
 			err = scanErr
 		}
@@ -201,6 +191,22 @@ func (r *AppReconciler) selectWebImageHTTP(ctx context.Context, app *appv1alpha1
 	r.portScanned.Delete(key)
 	network.HTTPSelection = appv1alpha1.HTTPSelectionFallback
 	return true, appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortFallback, portParam(network.PrimaryPort))
+}
+
+// httpCandidates is a scan's open ports as httpport candidates: the lowest 75,
+// without the ports Render reserves.
+func httpCandidates(open []int) []int32 {
+	ports := make([]int32, 0, len(open))
+	for _, p := range open {
+		if p > 0 && p <= 65535 && !appv1alpha1.IsReservedImagePort(int32(p)) {
+			ports = append(ports, int32(p))
+		}
+	}
+	slices.Sort(ports)
+	if len(ports) > appv1alpha1.MaxImagePorts {
+		ports = ports[:appv1alpha1.MaxImagePorts]
+	}
+	return ports
 }
 
 // portParam is a port as a deploy reason's {port}.

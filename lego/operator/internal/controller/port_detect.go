@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/bex-co/bex/lego/operator/internal/httpport"
 	"github.com/bex-co/bex/lego/operator/internal/portscan"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -45,11 +46,16 @@ import (
 // While a web service with no explicit port is waiting on a health check that
 // keeps failing, the operator connects to the pod IP on every TCP port
 // (internal/portscan). A process bound only to loopback never answers on the
-// pod's address, which is Render's own "0.0.0.0" condition. When exactly one
-// port other than the configured one answers, it is recorded as
-// status.detectedPort and the next pass serves, routes and probes on it
-// (App.ServingPort); several ports are named in the stall message instead, and
-// the user picks one with PORT.
+// pod's address, which is Render's own "0.0.0.0" condition. Only a listener
+// that answers HTTP counts (internal/httpport): Render routes a web service to
+// one HTTP port and keeps scanning while none answers ("No open HTTP ports
+// detected on 0.0.0.0, continuing to scan"), so a binary listener a release
+// opens first, such as the Erlang epmd (4369) and distribution ports a Phoenix
+// release starts long before Phoenix binds PORT on a small CPU share, is never
+// the service (w32/037). When exactly one HTTP port other than the configured
+// one answers, it is recorded as status.detectedPort and the next pass serves,
+// routes and probes on it (App.ServingPort); several are named in the stall
+// message instead, and the user picks one with PORT.
 
 const (
 	// portDetectGrace is how long the container must have been running before
@@ -177,6 +183,7 @@ func (r *AppReconciler) scanForBoundPort(ctx context.Context, app *appv1alpha1.A
 		}
 		others = append(others, p)
 	}
+	others = r.httpListeners(ctx, app, ip, others)
 	switch len(others) {
 	case 0:
 		return noOpenPortMessage(app, port)
@@ -201,6 +208,21 @@ func (r *AppReconciler) scanForBoundPort(ctx context.Context, app *appv1alpha1.A
 		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintListeningPorts, portParam(int32(port)),
 			appv1alpha1.DeployReasonParam{Name: "ports", Value: strings.Join(list, ", ")})
 	}
+}
+
+// httpListeners is the ports among open that answer HTTP, lowest first. A
+// failed probe finds none, so the scan waits as it does for a closed port.
+func (r *AppReconciler) httpListeners(ctx context.Context, app *appv1alpha1.App, ip string, open []int) []int {
+	answering, err := httpport.Answering(ctx, ip, healthProbeHost(app, r.BaseDomain), httpCandidates(open))
+	if err != nil {
+		logf.FromContext(ctx).Info("port detection HTTP probe failed", "app", app.Name, "error", err.Error())
+		return nil
+	}
+	ports := make([]int, len(answering))
+	for i, p := range answering {
+		ports[i] = int(p)
+	}
+	return ports
 }
 
 // noOpenPortMessage is the stall text for an instance with nothing listening

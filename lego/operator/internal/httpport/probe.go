@@ -70,18 +70,59 @@ const (
 // It sends only GET /, Host and Connection: close directly to the numeric pod
 // IP: ambient HTTP proxies, credentials and platform HTTP clients are unused.
 func Probe(parent context.Context, ip, host string, ports []int32) (Result, error) {
-	if err := parent.Err(); err != nil {
+	ports, outcomes, err := probeAll(parent, ip, host, ports)
+	if err != nil {
 		return Result{}, err
 	}
+	// Ports are sorted, so the first decisive answer is the lowest HTTP port
+	// and any unknown port before it is the lowest still unanswered.
+	var result Result
+	for i, port := range ports {
+		switch outcomes[i] {
+		case speaksHTTP:
+			result.Port = port
+			return result, nil
+		case unknown:
+			if result.Unanswered == 0 {
+				result.Unanswered = port
+			}
+		}
+	}
+	return result, nil
+}
+
+// Answering is every candidate that answered an HTTP/1.x status line, lowest
+// first, under Probe's bounds. A listener that refused the request, answered
+// another protocol or stayed silent within its budget is left out: Render
+// routes a web service to an HTTP port only.
+func Answering(parent context.Context, ip, host string, ports []int32) ([]int32, error) {
+	ports, outcomes, err := probeAll(parent, ip, host, ports)
+	if err != nil {
+		return nil, err
+	}
+	var answering []int32
+	for i, port := range ports {
+		if outcomes[i] == speaksHTTP {
+			answering = append(answering, port)
+		}
+	}
+	return answering, nil
+}
+
+// probeAll probes every candidate and returns them sorted, each with its outcome.
+func probeAll(parent context.Context, ip, host string, ports []int32) ([]int32, []outcome, error) {
+	if err := parent.Err(); err != nil {
+		return nil, nil, err
+	}
 	if len(ports) == 0 {
-		return Result{}, nil
+		return nil, nil, nil
 	}
 	if len(ports) > maxPorts {
-		return Result{}, errors.New("httpport: too many candidate ports")
+		return nil, nil, errors.New("httpport: too many candidate ports")
 	}
 	address, err := netip.ParseAddr(ip)
 	if err != nil {
-		return Result{}, errors.New("httpport: a numeric pod IP is required")
+		return nil, nil, errors.New("httpport: a numeric pod IP is required")
 	}
 	if host == "" {
 		host = address.String()
@@ -90,16 +131,16 @@ func Probe(parent context.Context, ip, host string, ports []int32) (Result, erro
 		}
 	}
 	if len(host) > 1024 {
-		return Result{}, errors.New("httpport: invalid Host header")
+		return nil, nil, errors.New("httpport: invalid Host header")
 	}
 	for _, c := range host {
 		if c <= 0x20 || c >= 0x7f {
-			return Result{}, errors.New("httpport: invalid Host header")
+			return nil, nil, errors.New("httpport: invalid Host header")
 		}
 	}
 	for _, port := range ports {
 		if port < 1 || port > 65535 {
-			return Result{}, errors.New("httpport: candidate port is outside the TCP range")
+			return nil, nil, errors.New("httpport: candidate port is outside the TCP range")
 		}
 	}
 	ports = slices.Clone(ports)
@@ -127,23 +168,9 @@ feed:
 	close(jobs)
 	tasks.Wait()
 	if err := parent.Err(); err != nil {
-		return Result{}, err
+		return nil, nil, err
 	}
-	// Ports are sorted, so the first decisive answer is the lowest HTTP port
-	// and any unknown port before it is the lowest still unanswered.
-	var result Result
-	for i, port := range ports {
-		switch outcomes[i] {
-		case speaksHTTP:
-			result.Port = port
-			return result, nil
-		case unknown:
-			if result.Unanswered == 0 {
-				result.Unanswered = port
-			}
-		}
-	}
-	return result, nil
+	return ports, outcomes, nil
 }
 
 func probePort(scan context.Context, ip, host string, port int32) outcome {

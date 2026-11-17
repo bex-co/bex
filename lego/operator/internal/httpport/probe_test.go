@@ -175,6 +175,35 @@ func TestProbeBoundsSlowAndSilentPorts(t *testing.T) {
 	}
 }
 
+// w32/037: bound-port detection counts every listener that answers HTTP,
+// lowest first, and none that does not. A Phoenix release's Erlang epmd closes
+// on GET / (it reads "GE" as an 18245-byte request), its distribution listener
+// waits for a handshake, and a port can close between the scan and the probe.
+func TestAnsweringKeepsEveryHTTPListenerAndNothingElse(t *testing.T) {
+	first := httpEndpoint(t, "HTTP/1.1 404 Not Found\r\n")
+	second := httpEndpoint(t, "HTTP/1.1 200 OK\r\n")
+	epmd := endpoint(t, func(conn net.Conn) { _, _ = io.ReadFull(conn, make([]byte, 2)) })
+	distribution := endpoint(t, func(conn net.Conn) { _, _ = io.Copy(io.Discard, conn) })
+	binary := httpEndpoint(t, "\x00\x00epmd\r\n")
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	closed := int32(listener.Addr().(*net.TCPAddr).Port)
+	_ = listener.Close()
+
+	got, err := Answering(t.Context(), "127.0.0.1", "app.onbex.co", []int32{second, epmd, closed, distribution, binary, first})
+	if want := []int32{min(first, second), max(first, second)}; err != nil || !slices.Equal(got, want) {
+		t.Fatalf("answering=%v err=%v want %v", got, err, want)
+	}
+	if got, err := Answering(t.Context(), "127.0.0.1", "app.onbex.co", []int32{epmd, binary}); err != nil || got != nil {
+		t.Fatalf("no HTTP listener: answering=%v err=%v", got, err)
+	}
+	if got, err := Answering(t.Context(), "pod.internal", "app.onbex.co", []int32{first}); err == nil || got != nil {
+		t.Fatalf("invalid input: answering=%v err=%v", got, err)
+	}
+}
+
 // w8/m141 t007: RabbitMQ's management listener (15672) answered its cold
 // first GET / after the per-port budget while Prometheus (15692) returned a
 // fast 404. The slow lower port is reported unanswered rather than lost, and

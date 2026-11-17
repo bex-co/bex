@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"slices"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -75,8 +76,11 @@ func TestStallHintsAndQueuedCausesAreTemplated(t *testing.T) {
 		}
 		return out
 	}
-	lone := scan(&cannedScanner{open: []int{8000}}, nil, 10000, (*AppReconciler).detectBoundPort)
-	several := scan(&cannedScanner{open: []int{8000, 9090}}, nil, 10000, (*AppReconciler).detectBoundPort)
+	// A web service's listeners count only when they answer HTTP (w32/037).
+	listener, metrics := httpListenerPort(t), httpListenerPort(t)
+	low, high := min(listener, metrics), max(listener, metrics)
+	lone := scan(&cannedScanner{open: []int{listener}}, onLoopback, 10000, (*AppReconciler).detectBoundPort)
+	several := scan(&cannedScanner{open: []int{high, low}}, onLoopback, 10000, (*AppReconciler).detectBoundPort)
 	privateLone := scan(&cannedScanner{open: []int{8080}}, privateImageService(80, 80), 80, (*AppReconciler).detectPrivatePrimary)
 	privateErr := scan(&cannedScanner{err: portscan.ErrUnreachable}, privateImageService(80, 80), 80, (*AppReconciler).detectPrivatePrimary)
 
@@ -136,11 +140,11 @@ func TestStallHintsAndQueuedCausesAreTemplated(t *testing.T) {
 			want:  " No open port was detected on the instance: the server must bind host 0.0.0.0 on the port in PORT (10000); it listened on port 3000 before." + workerHint,
 			codes: []string{appv1alpha1.DeployReasonHintNoOpenPortBefore, appv1alpha1.DeployReasonHintBackgroundWorker},
 		},
-		"a lone listener":         {got: lone[0], want: " The process is listening on port 8000.", codes: []string{appv1alpha1.DeployReasonHintListening}},
-		"a lone listener adopted": {got: lone[1], want: " The process is listening on port 8000, which the service now uses.", codes: []string{appv1alpha1.DeployReasonHintListeningAdopted}},
+		"a lone listener":         {got: lone[0], want: " The process is listening on port " + strconv.Itoa(listener) + ".", codes: []string{appv1alpha1.DeployReasonHintListening}},
+		"a lone listener adopted": {got: lone[1], want: " The process is listening on port " + strconv.Itoa(listener) + ", which the service now uses.", codes: []string{appv1alpha1.DeployReasonHintListeningAdopted}},
 		"several listeners": {
 			got:   several[0],
-			want:  " The process is listening on ports 8000, 9090, not on port 10000; set the service's port (or its PORT variable) to the one that serves HTTP.",
+			want:  " The process is listening on ports " + strconv.Itoa(low) + ", " + strconv.Itoa(high) + ", not on port 10000; set the service's port (or its PORT variable) to the one that serves HTTP.",
 			codes: []string{appv1alpha1.DeployReasonHintListeningPorts},
 		},
 		"a private listener": {got: privateLone[0], want: " The process is listening on port 8080.", codes: []string{appv1alpha1.DeployReasonHintListening}},
