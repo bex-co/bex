@@ -860,7 +860,13 @@ func (s *Service) blueprintValidationWithSuffix(ctx context.Context, repo, branc
 			plan.Actions = actionPlan.Actions
 			plan.TotalActions = len(actionPlan.Actions)
 		}
-		return BlueprintValidation{Valid: true, Plan: &plan, EstimatedPricing: blueprintEstimatedPricing(st),
+		// Priced as the apply leaves it: an existing resource whose entry
+		// omits plan on the plan it keeps (w33/006).
+		kept, err := s.stackAtKeptPlans(ctx, st, snap)
+		if err != nil {
+			return BlueprintValidation{}, err
+		}
+		return BlueprintValidation{Valid: true, Plan: &plan, EstimatedPricing: blueprintEstimatedPricing(kept),
 			warnings: append(blueprintAliasWarnings(source), blueprintIgnoredGroupVars(source, ir, st)...)}, nil
 	}
 	// Per-resource refusals (a host another site serves is a 409, w8/055) are
@@ -1382,10 +1388,10 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	if parseErr != nil {
 		return BlueprintView{}, parseErr
 	}
-	if err := s.requireStackBilling(ctx, parsed); err != nil {
+	preflight := s.newWorkspaceSnapshot(ctx)
+	if err := s.requireStackBilling(ctx, parsed, preflight); err != nil {
 		return BlueprintView{}, err
 	}
-	preflight := s.newWorkspaceSnapshot(ctx)
 	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed, "", preflight); err != nil {
 		return BlueprintView{}, err
 	}
@@ -1657,7 +1663,7 @@ func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, ru
 	if err != nil {
 		return store.Blueprint{}, nil, err
 	}
-	if err := s.requireStackBilling(ctx, parsed); err != nil {
+	if err := s.requireStackBilling(ctx, parsed, snap); err != nil {
 		return store.Blueprint{}, nil, err
 	}
 	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed, "", snap); err != nil {

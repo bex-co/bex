@@ -17,6 +17,10 @@ limitations under the License.
 package apps
 
 import (
+	"cmp"
+	"context"
+	"slices"
+
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
@@ -32,6 +36,8 @@ import (
 // the paid default, omitted database plan ⇒ basic-256mb, omitted Key Value
 // plan ⇒ starter, omitted database storage ⇒ the plan's volume floor); the
 // parse has already written both datastore plan defaults into each spec.
+// Those are create defaults: callers pass stackAtKeptPlans, so an existing
+// resource whose entry omits plan is priced on the plan it keeps.
 // Static sites run no instance, so they carry no line; a persistent service
 // disk rides its service's line as a provisioned-storage figure (ADR082 D8).
 // Free tiers and runtime-dependent costs (cron, autoscaling, multi-instance)
@@ -94,4 +100,78 @@ func blueprintEstimatedPricing(st parsedStack) *pricing.MonthlyEstimate {
 	}
 	est := pricing.Default.MonthlyEstimate(resources)
 	return &est
+}
+
+// stackAtKeptPlans is st with each entry that names an existing resource and
+// omits plan on that resource's own plan (w33/006). The parse writes each
+// kind's create default into a plan-less entry, but a sync or adopt keeps an
+// existing resource's plan when the file omits it, as Render "retains the
+// current compute plan for an existing service" (the plan row of
+// BlueprintServiceFieldPolicies, ApplyBlueprintDatabaseSpec,
+// ApplyBlueprintKeyValueSpec). The default is what a create costs, not what
+// this apply leaves running, so the estimate and the paid-intent gate both
+// read this stack. Existence is the apply's own lookup: the snapshot's
+// services by manifest name, a datastore by its unique display name. Only a
+// kind with a plan-less entry is listed; without a cluster client nothing
+// exists. st itself is not changed: the apply writes from the parse.
+func (s *Service) stackAtKeptPlans(ctx context.Context, st parsedStack, snap *workspaceSnapshot) (parsedStack, error) {
+	if s.Client == nil {
+		return st, nil
+	}
+	omitsPlan := func(fields map[string]BlueprintField) bool {
+		_, declared := fields["plan"]
+		return !declared
+	}
+	// A service with no field record is re-applied whole, plan included
+	// (applyBlueprintServiceSpec), so only a recorded omission keeps its plan.
+	keepsServicePlan := func(svc parsedService) bool { return svc.fields != nil && omitsPlan(svc.fields) }
+	if slices.ContainsFunc(st.services, keepsServicePlan) {
+		services, err := snap.services(ctx)
+		if err != nil {
+			return parsedStack{}, err
+		}
+		st.services = slices.Clone(st.services)
+		for i := range st.services {
+			svc := &st.services[i]
+			if live := services[svc.req.Name]; live != nil && keepsServicePlan(*svc) {
+				// An untiered service runs on the catalog default, as
+				// normalizeTierOrPlan reads an empty plan.
+				svc.req.Plan = cmp.Or(live.Spec.Tier, tiers.Compute.Default().ID)
+			}
+		}
+	}
+	tenantID, scoped := s.Tenant(ctx)
+	if slices.ContainsFunc(st.databases, func(db parsedDatabase) bool { return omitsPlan(db.fields) }) {
+		databases, err := snap.databases(ctx)
+		if err != nil {
+			return parsedStack{}, err
+		}
+		st.databases = slices.Clone(st.databases)
+		for i := range st.databases {
+			db := &st.databases[i]
+			if !omitsPlan(db.fields) {
+				continue
+			}
+			if live, _ := uniqueDatabaseByDisplayName(databases.Items, scoped, tenantID, db.name); live != nil {
+				db.spec.Plan = cmp.Or(live.Spec.Plan, tiers.Postgres.Default().ID)
+			}
+		}
+	}
+	if slices.ContainsFunc(st.keyValues, func(kv parsedKeyValue) bool { return omitsPlan(kv.fields) }) {
+		keyValues, err := snap.keyValues(ctx)
+		if err != nil {
+			return parsedStack{}, err
+		}
+		st.keyValues = slices.Clone(st.keyValues)
+		for i := range st.keyValues {
+			kv := &st.keyValues[i]
+			if !omitsPlan(kv.fields) {
+				continue
+			}
+			if live, _ := uniqueKeyValueByDisplayName(keyValues.Items, scoped, tenantID, kv.name); live != nil {
+				kv.spec.Plan = cmp.Or(live.Spec.Plan, tiers.Valkey.Default().ID)
+			}
+		}
+	}
+	return st, nil
 }

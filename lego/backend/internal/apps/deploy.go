@@ -968,7 +968,7 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err := s.validateBlueprintBuildSources(ctx, st, snap); err != nil {
 		return StackResult{}, err
 	}
-	if err := s.requireStackBilling(ctx, st); err != nil {
+	if err := s.requireStackBilling(ctx, st, snap); err != nil {
 		return StackResult{}, err
 	}
 	dbRefs, kvCRNames, err := s.resolveExistingBlueprintReferences(ctx, st, snap)
@@ -1655,10 +1655,15 @@ func uniqueMatching[T any](items []T, match func(*T) bool) (found *T, duplicate 
 // under dunning enforcement. It derives only the stack's paid intent; the
 // policy is core's, so the Blueprint path cannot drift from the create paths.
 // Every stack apply (deployParsedStack) and preflight (Blueprint create/sync)
-// shares it.
-func (s *Service) requireStackBilling(ctx context.Context, st parsedStack) error {
+// shares it. An existing resource whose entry omits plan is judged on the plan
+// the apply keeps (stackAtKeptPlans, w33/006), read through snap.
+func (s *Service) requireStackBilling(ctx context.Context, st parsedStack, snap *workspaceSnapshot) error {
+	kept, err := s.stackAtKeptPlans(ctx, st, snap)
+	if err != nil {
+		return err
+	}
 	tenantID, _ := s.Tenant(ctx)
-	return s.RequireBillingFor(ctx, tenantID, stackHasPaidPlan(st))
+	return s.RequireBillingFor(ctx, tenantID, stackHasPaidPlan(kept))
 }
 
 func stackHasPaidPlan(st parsedStack) bool {
