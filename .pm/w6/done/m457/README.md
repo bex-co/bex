@@ -1,6 +1,6 @@
 # w6 · m457 — External Postgres and Key Value connections are admitted up to the datastore's own limit, not 64
 
-**Worker:** worker6 **Goal:** an allowlisted client outside the cluster can open as many connections to a database or Key Value as its plan allows, as on Render, and the one past the limit gets the server's own refusal instead of a dropped connection. **Status:** blocked: t001–t004, t008 and t009 done; t006's ADR and env-inventory records written. The production checks (t005) wait for the batched production deploy carrying this milestone's commit and w6/m456's `0eed45bcb` (see BLOCKED — 2026-11-17).
+**Worker:** worker6 **Goal:** an allowlisted client outside the cluster can open as many connections to a database or Key Value as its plan allows, as on Render, and the one past the limit gets the server's own refusal instead of a dropped connection. **Status:** done (2026-11-17: on production an external client gets its datastore's own limit and the server's refusal past it; see Closeout)
 
 ## Tasks (in order)
 
@@ -10,12 +10,12 @@
 | t002 | [Each external route carries its datastore's connection limit](done/t002.md) — **DONE** | 1h | t001, w6/m456/t001, w6/134 |
 | t003 | [pg-sni-proxy admits up to the route's limit](done/t003.md) — **DONE** | 1h | t002 |
 | t004 | [kv-sni-proxy admits up to the store's limit](done/t004.md) — **DONE** | 45m | t002 |
-| t005 | [Production check from an allowlisted client](t005.md) | 45m | t003, t004, w6/m456/t006 |
-| t006 | [ADR018 row and the proxies' env inventory](t006.md) | 20m | t005 |
-| t007 | [Render parity](t007.md) | 30m | t006 |
+| t005 | [Production check from an allowlisted client](done/t005.md) — **DONE** | 45m | t003, t004, w6/m456/t006 |
+| t006 | [ADR018 row and the proxies' env inventory](done/t006.md) — **DONE** | 20m | t005 |
+| t007 | [Render parity](done/t007.md) — **DONE** | 30m | t006 |
 | t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
 | t009 | [Test coverage](done/t009.md) — **DONE** | 30m | t007 |
-| t010 | [Closeout](t010.md) | 10m | t008, t009 |
+| t010 | [Closeout](done/t010.md) — **DONE** | 10m | t008, t009 |
 
 ## Definition of done
 
@@ -77,3 +77,21 @@ Production on 2026-11-17: 3 platform replicas per proxy, at most 41 MB used by a
   - t007 reads connection info on REST, GraphQL, MCP and the dashboard on production; none of them changed.
   - t010 closes.
 
+
+## UNBLOCKED — 2026-11-17: the production deploy carrying `e2e85ac52` and `0eed45bcb` landed
+
+- **Affected:** w6/m457 t005, t006, t007, t010. **Source:** verified evidence, read by the `/loopx w6` worker at 20:05Z.
+- **The pin.** `e36296ae8` ("pin platform images to e0a5ba20aac8", 18:33Z) is on `origin/main`, and `git merge-base --is-ancestor` holds for both this milestone's `e2e85ac52` and w6/m456's `0eed45bcb` against `e0a5ba20aac8`. Production's `bex-pg-sni-proxy` and `bex-kv-sni-proxy` DaemonSets run `bex-operator@sha256:f7b06e9c…`, the digest that pin wrote to `deploy/gitops/base/bex.yaml`, 3/3 ready each.
+- **The caps.** `kubectl -n bex-system get ds bex-pg-sni-proxy bex-kv-sni-proxy -o jsonpath='{..resources.limits.memory}'` reads `512Mi 512Mi`, and both carry `GOMEMLIMIT=400MiB`.
+- **Remaining gates:** none. **Next:** t005's production checks in `bex-canary` from an allowlisted host, t006's ADR018 ✅, t007, t010, as listed under BLOCKED — Then.
+
+## Closeout — 2026-11-17 (t005, t006, t007, t010)
+
+- **Production check** (t005, pin `e36296ae8`, `bex-canary`, from a host that was each probe's whole allowlist):
+  - Postgres `basic_256mb` (`dpg-dbub82pgrhqc73d1vuq0`, PostgreSQL 18.6, `max_connections` 100): 110 concurrent external `psql` sessions as the tenant role held 96, and the other 14 read `FATAL: remaining connection slots are reserved for roles with the SUPERUSER attribute` (SQLSTATE 53300). None read an EOF or an SSL error.
+  - Key Value `starter` (`red-dbub82o8vt4s73a1otl0`): 250 external TLS clients each read `+OK` and `+PONG`; with them held, the 251st read `-ERR max number of clients reached`, and the 250 still answered afterwards. Its certificate first stalled on Let's Encrypt's weekly limit for `bex.co` (w4/m357) and issued once the limit allowed, at 21:44Z.
+  - No `connections_rejected_total` series on either proxy, in Prometheus or on the six replicas.
+  - Both probes deleted by ID; each `GET` answers 404. Details: [t005](done/t005.md).
+- **Records** (t006): ADR018's row marks external admission ✅ with this evidence, and ADR009 and ADR021 § 9 carry their production checks. The env inventory already matched. Details: [t006](done/t006.md).
+- **Render parity** (t007): Render's per-plan limit and its servers' own refusals, with no separate external cap; connection info on REST, GraphQL, MCP and the dashboard agree and changed nowhere. No new drift. Details: [t007](done/t007.md).
+- **Definition of done.** Both production checks pass (the Postgres count under the amended bullet), no proxy refuses a route below its limit and the per-workspace cap is gone, and the ADRs and env inventory record it.
