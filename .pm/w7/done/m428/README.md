@@ -1,6 +1,6 @@
 # w7 · m428 — Auto-deploy decides as Render documents: all six skip phrases, and build filters that reach outside the Root Directory
 
-**Worker:** worker7 **Goal:** a git push deploys, or is ignored, by Render's documented rules: any of Render's six skip phrases skips it, and a build filter's included paths decide even when they lie outside the service's Root Directory. **Status:** blocked (t001, t002, t003, t006, t007 done and shipped in `e9fbffd2e`; t004 waits for the production pin to carry it)
+**Worker:** worker7 **Goal:** a git push deploys, or is ignored, by Render's documented rules: any of Render's six skip phrases skips it, and a build filter's included paths decide even when they lie outside the service's Root Directory. **Status:** done (2026-11-17: code shipped in `e9fbffd2e`; production walk passed on pin `db48cde2bae9`)
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | t001 | All six skip phrases skip an auto-deploy — **DONE** | 30m | — |
 | t002 | Render's rule for a root directory and build filters together, as a decision table — **DONE** | 30m | — |
 | t003 | Included paths decide when set, and may lie outside the Root Directory — **DONE** | 75m | t002 |
-| t004 | Live check on production: the six phrases and a shared-directory change | 30m | t001, t003 |
-| t005 | Render parity | 20m | t004 |
+| t004 | Live check on production: the six phrases and a shared-directory change — **DONE** | 30m | t001, t003 |
+| t005 | Render parity — **DONE** | 20m | t004 |
 | t006 | Simplify — **DONE** | 15m | t005 |
 | t007 | Test coverage — **DONE** | 30m | t005 |
-| t008 | Closeout | 10m | t006, t007 |
+| t008 | Closeout — **DONE** | 10m | t006, t007 |
 
 ## Definition of done
 
@@ -44,3 +44,39 @@ On production, in `bex-canary`, with an owned free web service on a monorepo fix
 
 - **Production count (t003 step 5, 2026-11-16T22:52Z, `kubectl get apps.app.bex.co -A` on the production app cluster).** 26 Git-backed Apps; 14 set a root directory; 6 set included paths, and all 6 also set a root directory. Each of the 6 includes only its own root (`<rootDir>/**`), so the new rule decides every push for them exactly as the old one did. 0 Apps set ignored paths, so none sits in the narrowed cell C. The kubeconfig was fetched through ADR019's recovery flow, as w7/m427 did: this machine's host-key pin was stale, `Verify production SSH trust` run 43877180814 reported the pinned ED25519 fingerprint, all three running control planes matched it on a fresh keyscan, and the fetch used a temporary pin built from those keys; `.env`, `~/.ssh/known_hosts` and the pin files were not changed.
 - **Parked 2026-11-16 (release gate, clears by itself).** The code shipped in `e9fbffd2e`. t004 starts once `git merge-base --is-ancestor e9fbffd2e <newest "pin platform images to" sha on main>` succeeds; then t005 and t008. The fixture is a temporary bex-co repository with `backend/` and `shared/`, as w1/m181 t006 used (`gh repo create`; deleting it needs the signed-in browser, since `gh` lacks `delete_repo`).
+
+## Unblock record (2026-11-17, `/pm unblock w7/m428`, verified evidence)
+
+- **Affected:** t004, t005, t008. **Source:** verified evidence, not a user decision.
+- **Gate cleared:** the newest production pin on `origin/main` is `fc4fbf28a` (`chore(deploy): pin platform images to db48cde2bae9`, 2026-11-17 12:08Z), and `git merge-base --is-ancestor e9fbffd2e db48cde2bae9` succeeds. Production serves it: both `bex-api` pods run `ghcr.io/bex-co/bex-operator@sha256:ced89914…`, the digest that pin wrote, and started at 12:12Z.
+- **Fixture:** the `bex-canary` workspace has no Git connection (`GET /v1/git/connections` answers `[]`), so a push could never reach a service there. The walk ran in workspace `bex` (`tea-d98210cbbpdc73dcrkvg`), which holds the bex-co installation `90623475`, as w1/m181 t006 did. `GH_TOKEN` carries `delete_repo`, so the fixture repository is deleted with `gh`, not the browser.
+- **Next:** t004's walk, t005, then t008.
+
+## Production walk (t004, 2026-11-17, pin `db48cde2bae9`): PASS
+
+**Fixture.** A temporary private repository `bex-co/w7-m428-autodeploy-probe` with a root `Dockerfile`, `backend/Dockerfile` (both a busybox `httpd` on port 10000), `backend/`, `shared/` and `docs/`. A Free Docker web service `qa-20261117-m428-filters` (`srv-dbu7geeggh5s73ememrg`) in workspace `bex`, created at 15:52:25Z with `autoDeploy: yes` (`autoDeployTrigger: commit`), no Root Directory and no build filter. Its first deploy `dep-dbu7geeggh5s73emems0` (`8775708`) went live at 15:53:24Z. Each push was one commit; "no deploy" means the deploy list did not change and the reason is the event's `reasonCode`. Each settings `PATCH` answered 200, recorded `root_directory_changed`/`build_filter_changed` and opened no deploy.
+
+| # | Settings | Push (commit, UTC) | Changed files | Result |
+| --- | --- | --- | --- | --- |
+| 1 | none | `fa09351f2` 15:54:00, `[skip render]` | `index.html` | no deploy, `commit_ignored` `skip_phrase` |
+| 2 | none | `3adf2da1e` 15:54:14, `[render skip]` | `index.html` | no deploy, `skip_phrase` |
+| 3 | none | `340f12013` 15:54:28, `[skip deploy]` | `index.html` | no deploy, `skip_phrase` |
+| 4 | none | `c919bf3e4` 15:54:42, `[deploy skip]` | `index.html` | no deploy, `skip_phrase` |
+| 5 | none | `0b37d7f5d` 15:54:56, `[skip cd]` | `index.html` | no deploy, `skip_phrase` |
+| 6 | none | `d9de76f76` 15:55:10, `[cd skip]` | `index.html` | no deploy, `skip_phrase` |
+| 7 | none | `353013d97` 15:55:46, ordinary | `index.html` | **deployed** `dep-dbu7i0uggh5s73ememt0` (`new_commit`), live 15:56:32 |
+| 8 | `rootDir: backend`, `paths: [shared/**]` (15:56:58) | `27153e7a2` 15:57:13 | `shared/lib.txt` | **deployed** `dep-dbu7imuggh5s73ememtg` (`new_commit`), live 15:58:00. Table row 6, cell B: the old AND rule never deployed this |
+| 9 | + `ignoredPaths: [shared/*.txt]` (15:58:06) | `6aed86602` 15:58:12 | `shared/lib.txt` | no deploy, `build_filter`: ignored wins (row 6) |
+| 10 | same | `68fe8ce1c` 15:58:45 | `backend/index.html`, `docs/notes.txt` | no deploy, `build_filter` (row 6, mixed cell A + outside, not included) |
+| 11 | same | `9556ea802` 15:58:56 | `backend/index.html` | no deploy, `build_filter` (row 6, cell A) |
+| 12 | same | `6f356effe` 15:59:04 | `docs/notes.txt` | no deploy, `build_filter` (row 6, outside root, not included) |
+| 13 | filter cleared, `rootDir: backend` (15:59:12) | `df98f9a02` 15:59:22 | `shared/lib.txt`, `docs/notes.txt` | no deploy, `root_directory` (row 4) |
+| 14 | same | `4f83efc3d` 15:59:31 | `backend/index.html` | **deployed** `dep-dbu7jpeggh5s73ememv0`, live 16:00:18 (row 4) |
+| 15 | `ignoredPaths: [backend/*.md]`, no included paths (16:00:26) | `075dbe755` 16:00:32 | `backend/README.md` | no deploy, `build_filter` (row 5, ignored under root) |
+| 16 | same | `68724e19a` 16:00:41 | `backend/README.md`, `docs/notes.txt` | no deploy, `build_filter` (row 5, cell C: the one narrowed cell) |
+| 17 | same | `3fb706beb` 16:00:50 | `backend/index.html` | **deployed** `dep-dbu7kdeggh5s73emen00`, live 16:01:44; `https://qa-20261117-m428-filters.onbex.co/` answered `200 backend v4` |
+
+- **Definition of done, items 1–4:** item 1 is rows 1–7, item 2 is row 8, item 3 is rows 9 and 13–14, and item 4 is rows 8–17. Together they cover table rows 4, 5 and 6, including cells A, B and C. Rows 1–3 have no Root Directory: row 7 is row 1, and the unit table covers rows 2 and 3.
+- **Event reads.** REST, GraphQL, MCP and the dashboard all read the same 13 `commit_ignored` events (6 `skip_phrase`, 6 `build_filter`, 1 `root_directory`): REST `GET /v1/services/{id}/events` and MCP `list_events` as `details {reasonCode, id, url}`, GraphQL `serviceEvents` as `details {reasonCode, commitId, commitUrl}`, and the Events tab as "Commit ignored" with the reason sentence and a commit link (t005).
+- **Cleanup.** At 16:04:12Z `DELETE /v1/services/srv-dbu7geeggh5s73ememrg` answered 204. By 16:04:17Z the by-id `GET` answered `404 not_found`, and the App CR was gone. `gh repo delete` removed the repository (`gh api repos/bex-co/w7-m428-autodeploy-probe` answers 404). The QA session was logged out (`qa-login.sh --logout`, then `GET /v1/owners` answered 401), and its jar, state file, local clone and kubeconfig were deleted.
+- **Production access.** The local host-key pin was stale again. A fresh `Verify production SSH trust` run (44119356513) reported the pinned ED25519 fingerprint `SHA256:W/o3ED3/xJrcoF0ONPn3Cb1S98X32ubnDcTeYtSVRyU`. A fresh keyscan of all three running control planes matched it, and the kubeconfig was fetched through a temporary pin built from those keys. `.env`, `~/.ssh/known_hosts` and the pin files were not changed.
