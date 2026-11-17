@@ -1,6 +1,6 @@
 # w4 · m363 — A service's or environment group's secret files hold Render's 1 MB combined, not 512 KiB
 
-**Worker:** worker4 **Goal:** a service or environment group accepts secret files up to Render's documented combined size ("The combined size of all secret files uploaded to any given service or environment group cannot exceed 1 MB"). The cap counts file contents, as Render's sentence and Kubernetes' Secret limit both do. The dashboard, REST, GraphQL and MCP all enforce that one bound, and a full-size set mounts at `/etc/secrets`. The environment-variable caps are unchanged. **Status:** blocked — release gate: t001–t007 and t009 are done and shipped. [t009](done/t009.md) (2026-11-17) keeps a map that a single OpenBao raft entry cannot hold in chunk entries. t008 replays the live DoD once a production pin carries t009's commit `bdf45a69e` (see § Unblock 2026-11-17).
+**Worker:** worker4 **Goal:** a service or environment group accepts secret files up to Render's documented combined size ("The combined size of all secret files uploaded to any given service or environment group cannot exceed 1 MB"). The cap counts file contents, as Render's sentence and Kubernetes' Secret limit both do. The dashboard, REST, GraphQL and MCP all enforce that one bound, and a full-size set mounts at `/etc/secrets`. The environment-variable caps are unchanged. **Status:** done — t001–t009 done. The live DoD 1–5 held on production pin `58ef086ab21d` on 2026-11-17 (see § Closeout replay).
 
 ## Tasks (in order)
 
@@ -14,7 +14,7 @@
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
 | [t009](done/t009.md) | A files map whose contents reach the promised 1 MiB answers 500 — OpenBao's raft entry cap stops the stored map about 254 bytes short (found by the round 393 replay) — **DONE** | 1h | — |
-| [t008](t008.md) | Closeout (live replay on production) | 20m | t006, t007, t009 |
+| [t008](done/t008.md) | Closeout (live replay on production) — **DONE** | 20m | t006, t007, t009 |
 
 ## Definition of done
 
@@ -82,7 +82,7 @@ Settled by t002 (2026-11-14): the apiserver refuses only `> MaxSecretSize`, so e
 
 ## Regression found after the deploy (`/qa-find-bugs-cli` sweep 27, 2026-11-15, pin `2d9bbae6bb8d`)
 
-Filed as [w32/027](../../../w32/027.md). This milestone's build change, the `projected` secret-files volume (`build.go:1369-1370`), is denied by `bex-build-job-shape`, which admits only `emptyDir` and `secret` volumes in `bex-build` (`deploy/gitops/base/operator-workload-admission.yaml:658-660`). Since this deploy, every repo-backed build with a secret file has ended `build_failed` with the platform-error sentence. A static site and a native Go web service both failed this way; their controls without the file built. t008's fixture is an image service with no build, so it would not see this. Close this milestone only after w32/027's acceptance holds, and add one repo-build fixture with a secret file to the replay.
+Filed as [w32/027](../../../w32/done/027.md). This milestone's build change, the `projected` secret-files volume (`build.go:1369-1370`), is denied by `bex-build-job-shape`, which admits only `emptyDir` and `secret` volumes in `bex-build` (`deploy/gitops/base/operator-workload-admission.yaml:658-660`). Since this deploy, every repo-backed build with a secret file has ended `build_failed` with the platform-error sentence. A static site and a native Go web service both failed this way; their controls without the file built. t008's fixture is an image service with no build, so it would not see this. Close this milestone only after w32/027's acceptance holds, and add one repo-build fixture with a secret file to the replay.
 
 ## Unblock 2026-11-17 (`/loopx w4`, verified evidence)
 
@@ -90,3 +90,29 @@ Filed as [w32/027](../../../w32/027.md). This milestone's build change, the `pro
 - **The release gate was not the last gate.** t009, the 500 at the bound found by round 393, was open code work. It was unblocked and done here; see [t009](done/t009.md).
 - **Remaining gate.** A production deploy whose pin carries t009's commit `bdf45a69e`. It clears by itself (deploys run at 19:00, 00:00 and 05:00 UTC); `git merge-base --is-ancestor bdf45a69e <pin>` proves it.
 - **Then.** t008 replays DoD 1–5 on production, including DoD 2 at exactly 1,048,576 bytes and at one byte over, with no bisection. It adds the repo-build fixture with a secret file that § Regression asks for.
+
+## Unblock 2026-11-17 (`/pm unblock`, verified evidence, 05:05 UTC)
+
+- **Affected:** w4/m363 t008. **Source:** verified evidence. No user decision was needed.
+- **Gate cleared.** Production runs platform pin `58ef086ab21d`, from pin commit `7a8203c3b` (2026-11-17 04:37Z). `git merge-base --is-ancestor bdf45a69e 58ef086ab21d` holds, so the pin carries t009. Read-only `kubectl -n bex-system get deploy` shows every bex-system deployment (bex-api, bex-controller-manager, bex-activator, bex-drain-guard, bex-objectgw, bex-ssh-gateway, bex-static-server) on `bex-operator@sha256:b1502d34…`, the digest that `7a8203c3b` pins. bex-api's ReplicaSet `8698bf4b9` is the only one scaled up (2/2 Running).
+- **Next:** t008 replays DoD 1–5 and the § Regression repo-build fixture. Recorded in § Closeout replay.
+
+## Closeout replay (t008, 2026-11-17 05:06–05:21 UTC, pin `58ef086ab21d`)
+
+QA user signed in through `scripts/qa-login.sh`, in workspace `bex-canary` (`tea-daif693dqjvc73e7as3g`). Requests ran from the signed-in page (`fetch(…, {credentials:'include'})`). The fixture is the DoD's Free `python:3.12-alpine` web service `qa-20261117-m363` (`srv-dbtu1i7ok1cs73a3msp0`), created over REST with the DoD's Docker Command.
+
+1. **Holds.** `PUT …/secret-files/qa-big1.txt` with 614,400 bytes → 201.
+2. **Holds, at exactly 1 MiB, with no bisection.**
+   - REST: `PUT …/secret-files/qa-fill.txt` with 434,176 bytes brings the total to exactly 1,048,576 → 201. `PUT …/qa-one.txt` with 1 byte → 400 `SECRET_FILE_LIMIT`, "the combined size of all secret files cannot exceed 1 MB (1048576 bytes)", `params.maxBytes` 1048576.
+   - GraphQL `patchServiceEnvironment` (`save_only`): `qa-fill.txt` replaced with a 434,176-byte PEM-like file (newlines, quotes, backslashes, tabs), still exactly 1,048,576 → 200 with data. One more 1-byte file → error with the same message, `extensions.code` `SECRET_FILE_LIMIT`, `maxBytes` 1048576.
+   - MCP `patch_service_environment`: `qa-fill.txt` at 434,177 bytes (1,048,577 total) → `isError` "SECRET_FILE_LIMIT: the combined size of all secret files cannot exceed 1 MB (1048576 bytes)". At 434,176 → success, `secretFileNames` `[qa-big1.txt, qa-fill.txt]`.
+   - Environment variables: five 122,880-byte values (614,400 bytes) through `PUT …/env-vars` → 400 `ENVIRONMENT_VARIABLE_LIMIT` "total environment variable size limit of 524288 bytes exceeded".
+   - The full set mounts: after a deploy, `curl …/s/qa-big1.txt | wc -c` → 614400. `…/s/qa-fill.txt` → 434176 bytes, and its sha256 `8f1e8195…` equals the PEM-like content's.
+3. **Holds.** Both files were deleted. Then Environment → Edit → Upload files → `cert600k.txt` (614,400 bytes) added a row with no `[invalid]` mark and no limit alert. "Save and deploy" was enabled. After Save and deploy, deploy `dep-dbtu2rnok1cs73a3mst0` went `live`. `curl -s https://qa-20261117-m363.onbex.co/s/cert600k.txt | wc -c` → 614400, byte-identical to the upload.
+4. **Holds.** `POST /v1/env-groups` `qa-20261117-m363-grp` (`evg-dbtu3afok1cs73a3mt00`) with a 614,400-byte `grp600k.txt` → 201. A 434,176-byte PEM-like `grp-fill.txt` (exactly 1,048,576) → 200. One more byte → 400 `SECRET_FILE_LIMIT`. Linked to the service and deployed: `/s/grp600k.txt` → 614400, `/s/grp-fill.txt` → 434176 (same sha256), and the service's own `cert600k.txt` is still 614400.
+5. **Holds.** `docs/ADR018-render-parity.md`'s Secret files row says "Quota (w4/m363, 2026-11-14; matches Render)". The 512 KiB cap appears only as history that w4/m363 removed. ADR066 #6 names the base64 rationale only as one that "did not hold".
+
+- **§ Regression repo-build fixture.** Static site `qa-20261117-m363-static` (`srv-dbtu3tfok1cs73a3mt40`): `bex-co/bex` `main`, `examples/static-site`, with a build command that writes `wc -c < /etc/secrets/qa-build.txt` to `out/check.txt`.
+  - With a 21-byte secret file, deploy `dep-dbtu5q7ok1cs73a3mtfg` built and went live, and `/check.txt` reads `21`. w32/027's acceptance holds.
+  - With a 614,400-byte file, the first deploy ended `build_failed`: `secret bex-file-0 too big. max size 500KiB`. BuildKit caps each `--secret` at 500 KiB, and none of DoD 1–5 covers builds. Filed as [w4/699](../../699.md) (shipped `b81cef240`).
+- **Cleanup.** Both services and the group were deleted (`DELETE` 204 each, then `GET` 404 each). The QA session was logged out (`--logout` → `ok logged-out`), and its jar and the upload fixture were removed.
