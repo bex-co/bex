@@ -1,0 +1,40 @@
+# StrandedNodeLocalImages. A pod in the shared default namespace that cannot
+# pull its image for 10m fires, including while the kubelet alternates between
+# ErrImagePull and ImagePullBackOff (every tenant container pulls Always). A
+# tenant namespace and a shorter wait must not fire.
+rule_files:
+  - alerting_rules.yml
+evaluation_interval: 1m
+tests:
+  - name: a default-namespace pod alternating ErrImagePull and ImagePullBackOff fires after the window
+    interval: 1m
+    input_series:
+      - series: 'kube_pod_container_status_waiting_reason{namespace="default", pod="whoami-1", container="whoami", reason="ErrImagePull"}'
+        values: "1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0"
+      - series: 'kube_pod_container_status_waiting_reason{namespace="default", pod="whoami-1", container="whoami", reason="ImagePullBackOff"}'
+        values: "0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1"
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: StrandedNodeLocalImages
+        exp_alerts: [] # 9m in: inside for: 10m
+      - eval_time: 12m
+        alertname: StrandedNodeLocalImages
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: default
+              pod: whoami-1
+              container: whoami
+            exp_annotations:
+              summary: "App pod default/whoami-1 can't pull its image"
+              description: "A pod in the default namespace has been ErrImagePull/ImagePullBackOff for >10m. bex-api never creates Apps here (ADR043), so this is an App applied by hand or left by the retired manual image-import runbook (ADR004); re-importing the image into a node no longer helps, because every tenant container pulls Always. Redeploy it as a service in its workspace, from Git or from a registry image, then delete the App from default. Debug: kubectl -n default describe pod whoami-1"
+
+  - name: a tenant-namespace pod is not this alert's population
+    interval: 1m
+    input_series:
+      - series: 'kube_pod_container_status_waiting_reason{namespace="tea-abc", pod="web-1", container="web", reason="ImagePullBackOff"}'
+        values: "1x20"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: StrandedNodeLocalImages
+        exp_alerts: []

@@ -2926,7 +2926,7 @@ dashboards:
              "id": 13,
              "type": "timeseries",
              "title": "Stranded node-local images",
-             "description": "App pods in the shared default namespace waiting on ImagePullBackOff/ErrImageNeverPull — the StrandedNodeLocalImages expression (fires at >0 for 10m; red line). A tenant-node replacement or scale-down strands node-local ctr imports (no registry to re-pull from); re-import via the /deploy-app-from-local runbook. Reads 0 only while kube-state-metrics is up.",
+             "description": "Pods in the shared default namespace waiting on ErrImagePull/ImagePullBackOff — the StrandedNodeLocalImages expression (fires at >0 for 10m; red line). bex-api creates every App in its workspace's namespace (ADR043), so a pod here is an App applied by hand or left by the retired manual image-import runbook (ADR004), and since every tenant container pulls Always its node-local image cannot start. Redeploy it as a service in its workspace, then delete it from default. Reads 0 only while kube-state-metrics is up.",
              "gridPos": { "h": 9, "w": 6, "x": 6, "y": 28 },
              "datasource": { "type": "prometheus", "uid": "prometheus" },
              "fieldConfig": {
@@ -2947,7 +2947,7 @@ dashboards:
              "targets": [
                 {
                  "refId": "A",
-                 "expr": "sum(max by (namespace, pod, container) (kube_pod_container_status_waiting_reason{reason=~\"ImagePullBackOff|ErrImageNeverPull\", namespace=\"default\"})) or (count(up{job=\"kube-state-metrics\"} == 1) * 0)",
+                 "expr": "sum(max by (namespace, pod, container) (kube_pod_container_status_waiting_reason{reason=~\"ImagePullBackOff|ErrImagePull\", namespace=\"default\"})) or (count(up{job=\"kube-state-metrics\"} == 1) * 0)",
                  "legendFormat": "stranded pods"
                 }
               ]

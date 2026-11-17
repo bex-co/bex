@@ -2039,19 +2039,23 @@ groups:
           summary: "Stripe Customer or Subscription provisioning is repeatedly failing"
           description: "Usage cannot export until the workspace's unique Customer and metered Subscription converge. Inspect catalog/key permissions and duplicate-object alerts. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
 
-      # Stranded node-local images: Apps deployed with the /deploy-app-from-local
-      # runbook run node-local ctr imports (no registry to re-pull from), so a
-      # tenant-node replacement or an autoscaler scale-down strands them and
-      # their pods sit in ImagePullBackOff/ErrImageNeverPull. Scoped to the
-      # shared `default` namespace. Git-built tenant images are NOT node-local:
-      # Zot serves them (imagePullPolicy Always, ADR022), and their pull
-      # failures are TenantRegistryImagePullFailing below. A PLATFORM defect of
-      # the node-local-image design, not tenant paging — hence severity warn.
+      # Stranded node-local images: an App pod in the shared `default`
+      # namespace that cannot pull its image. bex-api creates every App in its
+      # workspace's namespace (ADR043), so an App here was applied by hand or
+      # by the manual image-import runbook, retired on production 2026-11-16
+      # (ADR004). That runbook's images were node-local `ctr` imports, and
+      # since every tenant container pulls Always (w4/426) such an image cannot
+      # start at all: the first container restart strands it, not only a node
+      # replacement. Registry-served tenant images are
+      # TenantRegistryImagePullFailing below. The reason set is the one the
+      # kubelet alternates between under Always (ErrImagePull <->
+      # ImagePullBackOff); `max by` folds it into one series so `for` can
+      # elapse. A leftover to clean up, not tenant paging — hence warning.
       - alert: StrandedNodeLocalImages
         expr: |
           max by (namespace, pod, container) (
             kube_pod_container_status_waiting_reason{
-              reason=~"ImagePullBackOff|ErrImageNeverPull",
+              reason=~"ImagePullBackOff|ErrImagePull",
               namespace="default"
             }
           ) > 0
@@ -2059,8 +2063,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "App {{ $labels.namespace }}/{{ $labels.pod }} can't pull its node-local image"
-          description: "An App pod has been ImagePullBackOff/ErrImageNeverPull for >10m — a node-local image was stranded by node replacement or scale-down (no registry to re-pull from). Re-import: the /deploy-app-from-local runbook. Debug: kubectl -n {{ $labels.namespace }} describe pod {{ $labels.pod }}"
+          summary: "App pod {{ $labels.namespace }}/{{ $labels.pod }} can't pull its image"
+          description: "A pod in the default namespace has been ErrImagePull/ImagePullBackOff for >10m. bex-api never creates Apps here (ADR043), so this is an App applied by hand or left by the retired manual image-import runbook (ADR004); re-importing the image into a node no longer helps, because every tenant container pulls Always. Redeploy it as a service in its workspace, from Git or from a registry image, then delete the App from default. Debug: kubectl -n {{ $labels.namespace }} describe pod {{ $labels.pod }}"
 
       # The registry-served counterpart of StrandedNodeLocalImages, which only
       # sees namespace="default". A tenant namespace is the workspace id
