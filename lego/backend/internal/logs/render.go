@@ -65,13 +65,16 @@ type renderLabel struct {
 	Value string `json:"value"`
 }
 
-// renderLog is Render's public-API log object (id/message/timestamp/labels all
-// required by the spec).
+// renderLog is Render's public-API log object (id/labels/message/timestamp all
+// required by the spec). Fields of renderLog and renderLogList are in the order
+// of Render's generated client (render-mcp-server pkg/client, alphabetical),
+// the type Render's MCP list_logs marshals, so REST's body and the MCP text are
+// the same bytes (w4/m378 t007).
 type renderLog struct {
 	ID        string        `json:"id"`
+	Labels    []renderLabel `json:"labels"`
 	Message   string        `json:"message"`
 	Timestamp string        `json:"timestamp"`
-	Labels    []renderLabel `json:"labels"`
 }
 
 // renderLogList is the logs envelope; Render marks all four fields required.
@@ -81,9 +84,9 @@ type renderLog struct {
 // newest/oldest bounds.
 type renderLogList struct {
 	HasMore       bool        `json:"hasMore"`
-	NextStartTime string      `json:"nextStartTime"`
-	NextEndTime   string      `json:"nextEndTime"`
 	Logs          []renderLog `json:"logs"`
+	NextEndTime   string      `json:"nextEndTime"`
+	NextStartTime string      `json:"nextStartTime"`
 }
 
 // logID synthesizes a stable, unique id (Render ids are opaque; bex derives one

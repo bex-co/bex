@@ -81,6 +81,12 @@ func TestMCPListLogsIsRESTsBody(t *testing.T) {
 	if !reflect.DeepEqual(got, rest) {
 		t.Errorf("MCP list_logs = %+v,\nwant REST's %+v", got, rest)
 	}
+	// Byte for byte, not just value for value (w4/m378 t007): REST's body and
+	// the MCP text are one marshal of renderLogList, whose field order is
+	// Render's generated client's, the type Render's own server marshals.
+	if text, body := rendertest.MCPText(t, res), strings.TrimSuffix(rec.Body.String(), "\n"); text != body {
+		t.Errorf("MCP list_logs text =\n%s\nwant REST's bytes\n%s", text, body)
+	}
 	if text := rendertest.MCPText(t, res); strings.Contains(text, `"service"`) || strings.Contains(text, "container") || !strings.Contains(text, `{"name":"resource","value":"web"}`) {
 		t.Errorf("MCP list_logs text = %s, want Render's resource label and no service/container", text)
 	}
