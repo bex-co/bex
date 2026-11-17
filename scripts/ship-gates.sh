@@ -214,10 +214,18 @@ fi
 # golangci-lint config runs the formatters, so backend, types and cli files
 # drifted without any gate noticing (w21/060). A failing gofmt fails the gate
 # closed.
+# gofmt comes from the toolchain CI's go lint formats with, lego/cli/go.mod's go
+# line (go-lint.yml, and the Makefile's GO_LINT_TOOLCHAIN for fmt-check), never
+# from PATH: gofmt's output changes between Go releases, and an older PATH gofmt
+# refused main's own formatting (w7/066).
 if [ -n "$go_changed" ]; then
-  unformatted=$(xargs gofmt -l <<<"$go_changed")
+  gofmt_bin="$(GOTOOLCHAIN="go$(sed -n 's/^go //p' lego/cli/go.mod)" go env GOROOT)/bin/gofmt" || {
+    echo "ship-gates: cannot resolve the pinned toolchain's gofmt (lego/cli/go.mod)" >&2
+    exit 1
+  }
+  unformatted=$(xargs "$gofmt_bin" -l <<<"$go_changed")
   if [ -n "$unformatted" ]; then
-    echo "ship-gates: gofmt would change these files; run gofmt -w on them and amend:" >&2
+    echo "ship-gates: gofmt would change these files; run $gofmt_bin -w on them and amend:" >&2
     printf '%s\n' "$unformatted" >&2
     exit 1
   fi

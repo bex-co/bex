@@ -244,4 +244,39 @@ native_gate docs/b.md skipped
 native_gate lego/operator/go.mod.orig skipped
 native_gate .github/workflows/deploy.yml skipped
 
+# The gofmt check (w7/066) formats with the toolchain CI's go lint uses,
+# lego/cli/go.mod's, never the gofmt first on PATH: a PATH gofmt that rejects
+# every file stands in for an older Go, and a stubbed go answers GOROOT with a
+# gofmt that rejects only files marked UNFORMATTED.
+mkdir -p "$tmp/gostub" "$tmp/goroot/bin" "$repo/lego/cli"
+printf '#!/bin/sh\nprintf "%%s\\n" "$@"\n' >"$tmp/gofmt"
+cat >"$tmp/gostub/go" <<STUB
+#!/bin/sh
+echo "\$GOTOOLCHAIN \$*" >>"$tmp/go.log"
+[ ! -e "$tmp/noroot" ] || exit 1
+[ "\$*" = "env GOROOT" ] && echo "$tmp/goroot"
+STUB
+cat >"$tmp/goroot/bin/gofmt" <<'STUB'
+#!/bin/sh
+shift
+grep -l UNFORMATTED "$@" || true
+STUB
+chmod +x "$tmp/gofmt" "$tmp/gostub/go" "$tmp/goroot/bin/gofmt"
+fmt_gate() { PATH="$tmp/gostub:$PATH" gate "$@"; }
+printf 'module example.com/cli\n\ngo 1.27.3\n' >"$repo/lego/cli/go.mod"
+echo 'package x' >"$repo/lego/x.go"
+commit "a formatted go file"
+rm -f "$tmp/go.log"
+fmt_gate HEAD~1 || fail "a file the pinned gofmt accepts was refused: $(cat "$tmp/err")"
+grep -qx "go1.27.3 env GOROOT" "$tmp/go.log" || fail "gofmt was not taken from lego/cli/go.mod's toolchain: $(cat "$tmp/go.log" 2>/dev/null)"
+touch "$tmp/noroot"
+if fmt_gate HEAD~1; then fail "an unresolvable toolchain let a go change through"; fi
+grep -q "cannot resolve the pinned toolchain's gofmt" "$tmp/err" || fail "an unresolvable toolchain was not named: $(cat "$tmp/err")"
+rm "$tmp/noroot"
+echo '// UNFORMATTED' >>"$repo/lego/x.go"
+commit "an unformatted go file"
+if fmt_gate HEAD~1; then fail "a file the pinned gofmt rejects passed the gate"; fi
+grep -q "run $tmp/goroot/bin/gofmt -w on them" "$tmp/err" || fail "the refusal did not name the pinned gofmt: $(cat "$tmp/err")"
+grep -qx "lego/x.go" "$tmp/err" || fail "the refusal did not name the file: $(cat "$tmp/err")"
+
 echo "ship-gates.test: ok"

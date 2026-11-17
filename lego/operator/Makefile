@@ -129,10 +129,14 @@ lint: golangci-lint deadcode ## Run lint, formatting and reachability checks ove
 
 # Only the operator's golangci-lint config enables the gofmt and goimports
 # formatters, so backend, types and cli drifted (w21/060); gofmt itself checks all four.
+# gofmt is the lint toolchain's (GO_LINT_TOOLCHAIN), never PATH's: gofmt's output
+# changes between Go releases, and an older PATH gofmt refused files CI's go lint
+# had formatted (w7/066). scripts/ship-gates.sh takes it from the same go.mod.
 .PHONY: fmt-check
 fmt-check: ## Fail if gofmt would change any file in the four Go modules
-	@bad=$$(gofmt -l . ../backend ../types ../cli); \
-	if [ -n "$$bad" ]; then echo "gofmt would change these files (run gofmt -w on them):" >&2; echo "$$bad" >&2; exit 1; fi
+	@gofmt="$$(GOTOOLCHAIN=$(GO_LINT_TOOLCHAIN) go env GOROOT)/bin/gofmt" || exit 1; \
+	bad=$$("$$gofmt" -l . ../backend ../types ../cli) || exit 1; \
+	if [ -n "$$bad" ]; then echo "gofmt would change these files (run $$gofmt -w on them):" >&2; echo "$$bad" >&2; exit 1; fi
 
 .PHONY: lint-backend
 lint-backend: golangci-lint ## Run golangci-lint over the backend module only (enforces the id convention, docs/ADR020-identifiers.md)
@@ -312,25 +316,31 @@ $(GOLANGCI_LINT): $(LOCALBIN)
 		mv -f $(LOCALBIN)/golangci-lint-custom $(GOLANGCI_LINT); \
 	} || true
 
+# The analyzer type-checks the workspace against the standard library of the Go
+# that `go list` runs (lego/go.work's), and one built by an older Go refuses it
+# ("package requires newer Go version go1.27", w7/066). So it is built with the
+# lint toolchain and cached per toolchain: a binary an older Go built is never reused.
 .PHONY: deadcode
 deadcode: $(DEADCODE) ## Download the whole-program unreachable-code analyzer.
+$(DEADCODE): export GOTOOLCHAIN = $(GO_LINT_TOOLCHAIN)
 $(DEADCODE): $(LOCALBIN)
-	$(call go-install-tool,$(DEADCODE),golang.org/x/tools/cmd/deadcode,$(DEADCODE_VERSION))
+	$(call go-install-tool,$(DEADCODE),golang.org/x/tools/cmd/deadcode,$(DEADCODE_VERSION),-$(GO_LINT_TOOLCHAIN))
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary
 # $2 - package url which can be installed
 # $3 - specific version of package
+# $4 - optional suffix of the cached binary's name, for a build input other than the version
 define go-install-tool
-@[ -f "$(1)-$(3)" ] && [ "$$(readlink -- "$(1)" 2>/dev/null)" = "$(1)-$(3)" ] || { \
+@[ -f "$(1)-$(3)$(4)" ] && [ "$$(readlink -- "$(1)" 2>/dev/null)" = "$(1)-$(3)$(4)" ] || { \
 set -e; \
 package=$(2)@$(3) ;\
 echo "Downloading $${package}" ;\
 rm -f "$(1)" ;\
 GOBIN="$(LOCALBIN)" bash hack/go-install.sh "$${package}" ;\
-mv "$(LOCALBIN)/$$(basename "$(1)")" "$(1)-$(3)" ;\
+mv "$(LOCALBIN)/$$(basename "$(1)")" "$(1)-$(3)$(4)" ;\
 } ;\
-ln -sf "$$(realpath "$(1)-$(3)")" "$(1)"
+ln -sf "$$(realpath "$(1)-$(3)$(4)")" "$(1)"
 endef
 
 define gomodver
