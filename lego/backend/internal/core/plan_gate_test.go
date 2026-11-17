@@ -540,3 +540,30 @@ func TestWorkspaceLogPlanOf(t *testing.T) {
 		t.Fatal("a failed plan read must fail the read")
 	}
 }
+
+// w9/098: Render's audit history starts at the upgrade to Pro. A change into
+// a plan with audit logs from one without starts it at that moment; every
+// other change keeps what was there, so a downgrade then an upgrade moves it
+// forward and a workspace that was always on Pro has none.
+func TestAuditVisibleFromAfterPlanChange(t *testing.T) {
+	first := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	at := time.Date(2026, 11, 17, 9, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		old, next string
+		kept      time.Time
+		want      time.Time
+	}{
+		{"hobby", "pro", time.Time{}, at},
+		{"hobby", "scale", time.Time{}, at},
+		{"hobby", "enterprise", first, at},
+		{"pro", "scale", time.Time{}, time.Time{}},
+		{"pro", "scale", first, first},
+		{"scale", "hobby", first, first},
+		{"pro", "hobby", time.Time{}, time.Time{}},
+		{"hobby", "hobby", first, first},
+	} {
+		if got := AuditVisibleFromAfterPlanChange(tc.old, tc.next, tc.kept, at); !got.Equal(tc.want) {
+			t.Errorf("%s->%s keeping %s = %s, want %s", tc.old, tc.next, tc.kept, got, tc.want)
+		}
+	}
+}

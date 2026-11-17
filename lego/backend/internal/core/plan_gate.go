@@ -426,6 +426,20 @@ func LogsVisibleFromAfterPlanChange(oldPlan, newPlan string, visibleFrom, at tim
 	return logRetention.visibleFromAfterPlanChange(oldPlan, newPlan, visibleFrom, at)
 }
 
+// AuditVisibleFromAfterPlanChange is the instant a workspace's audit history
+// starts after its plan changes from oldPlan to newPlan at `at` (w9/098).
+// Render: "Retention starts only when you upgrade to Pro or higher. Earlier
+// data is unavailable." bex records on every plan, so a change from a plan
+// without FeatureAuditLogs to one with it starts the history at `at`; every
+// other change keeps visibleFrom, so a downgrade then an upgrade moves it
+// forward. Zero means no floor.
+func AuditVisibleFromAfterPlanChange(oldPlan, newPlan string, visibleFrom, at time.Time) time.Time {
+	if !PlanAllows(oldPlan, FeatureAuditLogs) && PlanAllows(newPlan, FeatureAuditLogs) {
+		return at
+	}
+	return visibleFrom
+}
+
 // WorkspaceLogPlanReader is a WorkspacePlanReader that also reads, in the
 // same read, the log floor the workspace's last plan change kept
 // (LogsVisibleFromAfterPlanChange; zero when none). The tenants store is one;
@@ -440,6 +454,13 @@ type WorkspaceLogPlanReader interface {
 // zero when none, w7/m453).
 type WorkspacePITRPlanReader interface {
 	WorkspacePITRPlan(ctx context.Context, workspaceID string) (plan string, visibleFrom time.Time, err error)
+}
+
+// WorkspaceAuditPlanReader is WorkspaceLogPlanReader for the instant the
+// workspace's audit history starts (AuditVisibleFromAfterPlanChange; zero
+// when none, w9/098).
+type WorkspaceAuditPlanReader interface {
+	WorkspaceAuditPlan(ctx context.Context, workspaceID string) (plan string, visibleFrom time.Time, err error)
 }
 
 // WorkspaceLogPlanOf is WorkspacePlanOf plus the log floor the workspace's
@@ -460,6 +481,16 @@ func (b *Base) WorkspacePITRPlanOf(ctx context.Context, workspaceID string) (pla
 	var read planFloorRead
 	if r, isBoth := b.planReader().(WorkspacePITRPlanReader); isBoth {
 		read = r.WorkspacePITRPlan
+	}
+	return b.workspacePlanFloorOf(ctx, workspaceID, read)
+}
+
+// WorkspaceAuditPlanOf is WorkspaceLogPlanOf for the instant the
+// workspace's audit history starts (WorkspaceAuditPlanReader).
+func (b *Base) WorkspaceAuditPlanOf(ctx context.Context, workspaceID string) (plan string, visibleFrom time.Time, ok bool, err error) {
+	var read planFloorRead
+	if r, isBoth := b.planReader().(WorkspaceAuditPlanReader); isBoth {
+		read = r.WorkspaceAuditPlan
 	}
 	return b.workspacePlanFloorOf(ctx, workspaceID, read)
 }

@@ -155,6 +155,46 @@ func TestListFollowsThePlan(t *testing.T) {
 	}
 }
 
+// auditPlans is the tenants store's shape for the audit read
+// (core.WorkspaceAuditPlanReader): the plan and the instant the workspace's
+// audit history starts.
+type auditPlans struct {
+	plan        string
+	visibleFrom time.Time
+}
+
+func (p auditPlans) WorkspacePlan(context.Context, string) (string, error) { return p.plan, nil }
+
+func (p auditPlans) WorkspaceAuditPlan(context.Context, string) (string, time.Time, error) {
+	return p.plan, p.visibleFrom, nil
+}
+
+// w9/098: a workspace upgraded to Pro lists nothing from before the upgrade.
+// The start floors an earlier or absent startTime and leaves a later one as
+// the caller sent it; a workspace with no start reads its whole history.
+func TestListStartsAtTheUpgradeToPro(t *testing.T) {
+	upgraded := time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC)
+	later := upgraded.Add(48 * time.Hour)
+	for _, tc := range []struct {
+		visibleFrom, since, want time.Time
+	}{
+		{upgraded, time.Time{}, upgraded},
+		{upgraded, upgraded.Add(-time.Hour), upgraded},
+		{upgraded, later, later},
+		{time.Time{}, time.Time{}, time.Time{}},
+	} {
+		fs := &fakeStore{}
+		svc := &Service{Base: &core.Base{Authz: fakeAllowChecker{}, Plans: auditPlans{plan: "pro", visibleFrom: tc.visibleFrom}}, Store: fs}
+		ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "admin-1", Method: "session"})
+		if _, err := svc.List(ctx, "tea-owner", Filter{Since: tc.since}); err != nil {
+			t.Fatal(err)
+		}
+		if !fs.gotFilter.Since.Equal(tc.want) {
+			t.Errorf("start %s, startTime %s: the store read from %s, want %s", tc.visibleFrom, tc.since, fs.gotFilter.Since, tc.want)
+		}
+	}
+}
+
 // TestListDirectionMapsToStoreOrdering proves the Render direction enum
 // (w4/013) reaches the store as its ordering flag: forward => oldest-first,
 // backward/empty => newest-first. Before this, direction was accepted and

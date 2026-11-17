@@ -382,9 +382,20 @@ func (s *Service) List(ctx context.Context, ownerID string, filter Filter) ([]Ev
 	if err != nil {
 		return nil, err
 	}
-	// Render: audit logs are a Pro-and-higher feature (w8/m138).
-	if err := s.RequirePlanFeature(ctx, ownerID, core.FeatureAuditLogs); err != nil {
+	// Render: audit logs are a Pro-and-higher feature (w8/m138), and their
+	// history starts at the upgrade to Pro: "Retention starts only when you
+	// upgrade to Pro or higher. Earlier data is unavailable." (w9/098). Events
+	// are still recorded on Hobby; only this read hides them, so REST, GraphQL
+	// and the dashboard's CSV export all start at the same instant.
+	plan, visibleFrom, gated, err := s.WorkspaceAuditPlanOf(ctx, ownerID)
+	if err != nil {
 		return nil, err
+	}
+	if gated && !core.PlanAllows(plan, core.FeatureAuditLogs) {
+		return nil, core.NewPlanFeatureError("", plan, core.FeatureAuditLogs)
+	}
+	if visibleFrom.After(filter.Since) {
+		filter.Since = visibleFrom
 	}
 	oldestFirst, err := core.ParseDirection(filter.Direction)
 	if err != nil {

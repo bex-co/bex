@@ -229,28 +229,31 @@ func (s *PGStore) SetTenantDisplayNameIfUnset(ctx context.Context, id, displayNa
 // constraint is the last-resort backstop, surfaced as ErrInvalid via classify.
 //
 // It is every plan change's one write, so it also keeps the workspace's log
-// floor (w9/m389 t004) and Postgres recovery floor (w7/m453) in step: an
-// upgrade stores the old plan's floor, so logs that had already aged out stay
-// hidden and the recovery window is not backfilled, and a downgrade drops a
-// kept floor its shorter window already covers
-// (core.LogsVisibleFromAfterPlanChange, core.PITRVisibleFromAfterPlanChange).
+// floor (w9/m389 t004), Postgres recovery floor (w7/m453) and audit history
+// start (w9/098) in step: an upgrade stores the old plan's floor, so logs that
+// had already aged out stay hidden and the recovery window is not backfilled,
+// a downgrade drops a kept floor its shorter window already covers, and an
+// upgrade into audit logs starts the audit history at that moment
+// (core.LogsVisibleFromAfterPlanChange, core.PITRVisibleFromAfterPlanChange,
+// core.AuditVisibleFromAfterPlanChange).
 // The row is locked first, so two changes at once cannot both read the old
 // plan.
 func (s *PGStore) UpdateTenantPlan(ctx context.Context, id, plan string) (Tenant, error) {
 	var t Tenant
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
 		var old string
-		var logsFrom, pitrFrom *time.Time
-		if err := tx.QueryRow(ctx, `SELECT plan, logs_visible_from, pitr_visible_from FROM tenants WHERE id = $1 FOR UPDATE`, id).Scan(&old, &logsFrom, &pitrFrom); err != nil {
+		var logsFrom, pitrFrom, auditFrom *time.Time
+		if err := tx.QueryRow(ctx, `SELECT plan, logs_visible_from, pitr_visible_from, audit_visible_from FROM tenants WHERE id = $1 FOR UPDATE`, id).Scan(&old, &logsFrom, &pitrFrom, &auditFrom); err != nil {
 			return err
 		}
 		now := time.Now()
 		keptLogs := nullTime(core.LogsVisibleFromAfterPlanChange(old, plan, timeOrZero(logsFrom), now))
 		keptPITR := nullTime(core.PITRVisibleFromAfterPlanChange(old, plan, timeOrZero(pitrFrom), now))
+		keptAudit := nullTime(core.AuditVisibleFromAfterPlanChange(old, plan, timeOrZero(auditFrom), now))
 		var err error
 		t, err = scanTenant(tx.QueryRow(ctx,
-			`UPDATE tenants SET plan = $2, logs_visible_from = $3, pitr_visible_from = $4, updated_at = now() WHERE id = $1
-			 RETURNING `+tenantColumns, id, plan, keptLogs, keptPITR))
+			`UPDATE tenants SET plan = $2, logs_visible_from = $3, pitr_visible_from = $4, audit_visible_from = $5, updated_at = now() WHERE id = $1
+			 RETURNING `+tenantColumns, id, plan, keptLogs, keptPITR, keptAudit))
 		return err
 	})
 	if err != nil {
@@ -286,6 +289,19 @@ func (s *PGStore) WorkspacePITRPlan(ctx context.Context, workspaceID string) (st
 	var plan string
 	var visibleFrom *time.Time
 	if err := s.Pool.QueryRow(ctx, `SELECT plan, pitr_visible_from FROM tenants WHERE id = $1`, workspaceID).Scan(&plan, &visibleFrom); err != nil {
+		return "", time.Time{}, classify("workspace", err)
+	}
+	return plan, timeOrZero(visibleFrom), nil
+}
+
+// WorkspaceAuditPlan is a workspace's plan and the instant its audit history
+// starts, in one read (core.WorkspaceAuditPlanReader, w9/098): zero when no
+// upgrade into audit logs set one. ErrNotFound when the workspace doesn't
+// exist.
+func (s *PGStore) WorkspaceAuditPlan(ctx context.Context, workspaceID string) (string, time.Time, error) {
+	var plan string
+	var visibleFrom *time.Time
+	if err := s.Pool.QueryRow(ctx, `SELECT plan, audit_visible_from FROM tenants WHERE id = $1`, workspaceID).Scan(&plan, &visibleFrom); err != nil {
 		return "", time.Time{}, classify("workspace", err)
 	}
 	return plan, timeOrZero(visibleFrom), nil

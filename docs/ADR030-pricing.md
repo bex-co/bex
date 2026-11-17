@@ -139,7 +139,7 @@ Render's [features-by-plan page](https://render.com/docs/platform-features-by-pl
 | Network-isolated environments | Pro | turning it on is refused; an isolated environment can turn it off |
 | Webhooks | Pro | one destination on Pro, up to 100 on Scale and Enterprise |
 | HTTP request logs | Pro | explicit `type=request` refused; all-types queries and label discovery drop request lines and request-only values |
-| Audit logs | Pro | events are still recorded on Hobby; reading them is refused |
+| Audit logs | Pro | events are still recorded on Hobby; reading them is refused, and after an upgrade the history starts at the upgrade (w9/098) |
 | Response latency metrics | Pro | `http_latency` refused; request counts and bandwidth stay open |
 | Autoscaling | Pro | turning it on is refused on every write path (w7/m429); a policy already on keeps running, re-sends unchanged and can be turned off |
 | Inbound IP rules on services, static sites and environments | Scale | Postgres and Key Value rules stay on every plan |
