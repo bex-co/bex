@@ -2614,6 +2614,27 @@ for required_agent_probe in \
     || { echo "FAIL: sandbox isolation verifier lost m37 probe: $required_agent_probe" >&2; fail=1; }
 done
 
+# The retention probe (ADR047 D12, w22/m413) rides the agent leg and is opt-in.
+for required_retention_probe in \
+  'BEX_VERIFY_AGENT_RETENTION' \
+  'verify_agent_retention "$fixture_dir/owner-a.curl" "$agent_session_id"' \
+  'verify_agent_retention_released "$namespace_a"'; do
+  grep -qF "$required_retention_probe" scripts/verify-sandbox-isolation.sh \
+    || { echo "FAIL: sandbox isolation verifier lost the retention probe: $required_retention_probe" >&2; fail=1; }
+done
+for required_retention_check in \
+  '/v1/agent-sessions/$session/interrupt' \
+  'the stopped turn'"'"'s disk was not kept' \
+  'did not start from the retained image' \
+  'the canceled session left images in the registry'; do
+  grep -qF "$required_retention_check" scripts/lib/verify-agent-retention.sh \
+    || { echo "FAIL: the retention probe lost a check: $required_retention_check" >&2; fail=1; }
+done
+grep -qF 'BEX_VERIFY_AGENT_RETENTION="${BEX_VERIFY_AGENT_RETENTION:-0}"' scripts/verify-sandbox-isolation-live.sh \
+  || { echo "FAIL: the live wrapper does not pass BEX_VERIFY_AGENT_RETENTION on" >&2; fail=1; }
+grep -qF "BEX_VERIFY_AGENT_RETENTION: \${{ inputs.verify_agent_retention && '1' || '0' }}" .github/workflows/isolation-matrix.yml \
+  || { echo "FAIL: isolation-matrix.yml lost the verify_agent_retention input" >&2; fail=1; }
+
 # Untrusted-execution boundary (w2/m59, ADR039 O-01/O-02). These assertions are
 # intentionally source-level as well as covered by kustomize rendering above:
 # they fail if an environment value, selector, or deny rule silently drifts.

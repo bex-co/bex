@@ -20,6 +20,13 @@ set -euo pipefail
 # driver refuses a standalone real-key launch: hosted agent sandboxes only ever
 # hold the model-proxy placeholder (ADR062, ADR090).
 #
+# Set BEX_VERIFY_AGENT_RETENTION=1 as well to end that leg with the retention
+# probe (ADR047 D12, w22/m413, scripts/lib/verify-agent-retention.sh): Stop turn
+# on the held turn keeps its disk, the next message's sandbox starts from the
+# retained image and holds a file written before the Stop, and after Cancel no
+# image of the session is left in the registry. It stores one image of the
+# agent sandbox's disk in the registry for the minutes the probe takes.
+#
 # Render's sandbox groups (w22/m311) are probed over REST with the same principals:
 # the first group made in workspace A is its default and a duplicate name is
 # refused; the group list and its sandboxGroupId filter place each sandbox in its
@@ -73,6 +80,12 @@ case "$verify_agent_driver" in
   0 | 1) ;;
   *) echo "error: BEX_VERIFY_AGENT_DRIVER must be 0 or 1" >&2; exit 2 ;;
 esac
+verify_agent_retention="${BEX_VERIFY_AGENT_RETENTION:-0}"
+case "$verify_agent_retention" in
+  0) ;;
+  1) [ "$verify_agent_driver" = 1 ] || { echo "error: BEX_VERIFY_AGENT_RETENTION=1 needs BEX_VERIFY_AGENT_DRIVER=1 (it probes that leg's session)" >&2; exit 2; } ;;
+  *) echo "error: BEX_VERIFY_AGENT_RETENTION must be 0 or 1" >&2; exit 2 ;;
+esac
 fixture_dir="$(mktemp -d)"
 hosting_pod="${run_id}-hosting"
 platform_pod="${run_id}-platform"
@@ -93,6 +106,7 @@ sandbox_d_id=""
 sandbox_e_id=""
 agent_session_id=""
 agent_key_set=false
+agent_retention_next_cr=""
 group_first_id=""
 group_limit_id=""
 group_default_id=""
@@ -168,6 +182,8 @@ cleanup() {
   [ -n "$cr_d" ] && kubectl -n "$namespace_a" delete batchsandbox "$cr_d" --ignore-not-found --wait=false >/dev/null 2>&1
   [ -n "$sandbox_d_id" ] && kubectl -n "$namespace_a" delete ciliumnetworkpolicy -l "bex.co/sandbox-id=$sandbox_d_id" --ignore-not-found >/dev/null 2>&1
   [ -n "$cr_agent" ] && kubectl -n "$namespace_a" delete batchsandbox "$cr_agent" --ignore-not-found --wait=false >/dev/null 2>&1
+  [ -n "$agent_retention_next_cr" ] && kubectl -n "$namespace_a" delete batchsandbox "$agent_retention_next_cr" --ignore-not-found --wait=false >/dev/null 2>&1
+  agent_retention_stop_forward
   rm -rf "$fixture_dir"
 }
 trap cleanup EXIT
@@ -177,6 +193,8 @@ fail() {
   exit 1
 }
 pass() { echo "PASS: $*"; }
+# shellcheck source=lib/verify-agent-retention.sh
+. "$(dirname "$0")/lib/verify-agent-retention.sh"
 
 preflight_cluster() {
   local resource namespace deployment image role_json sample_sandbox_node sample_cilium_pod
@@ -914,12 +932,21 @@ printf "%s" "$out" | grep -q "must be the session.s model-proxy placeholder" || 
     fail "muse profile runs in the agent sandbox with model traffic on the proxy only"
   fi
   pass "muse profile runs in the agent sandbox with model traffic on the proxy only"
+  if [ "$verify_agent_retention" = 1 ]; then
+    echo "==> a stopped turn keeps its disk and the next message continues from it (ADR047 D12)"
+    # The turn hold selects the session, so the follow-up message's turn is
+    # held too: no model request leaves the cluster for it either.
+    verify_agent_retention "$fixture_dir/owner-a.curl" "$agent_session_id" "$namespace_a" "$pod_agent" "$container_agent"
+  fi
   # The leg is done: end the session, then its turn hold. Left running, the
   # held turn's dropped retries crowd the attacker's drops out of the node's
   # Hubble buffer before the evidence check below reads them.
   expect_status 200 "$fixture_dir/owner-a.curl" POST "/v1/agent-sessions/$agent_session_id/cancel" "$fixture_dir/agent-session-cancel.json"
   agent_session_id=""
   kubectl -n "$namespace_a" delete ciliumnetworkpolicy -l "$hold_selector" --ignore-not-found >/dev/null
+  if [ "$verify_agent_retention" = 1 ]; then
+    verify_agent_retention_released "$namespace_a"
+  fi
 fi
 
 kubectl -n "$BEX_WORKSPACE_A" run "$hosting_pod" --image "$python_image" --restart Never \

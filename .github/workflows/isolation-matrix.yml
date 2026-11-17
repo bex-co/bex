@@ -32,6 +32,14 @@ on:
         description: "Also verify the agent image and driver leg"
         type: boolean
         default: false
+      verify_agent_retention:
+        # ADR047 D12 (w22/m413): Stop turn on the agent leg's held turn keeps
+        # its disk, the next message starts from it, and Cancel leaves no image
+        # in the registry. Needs the agent leg; it stores one image of the
+        # agent sandbox's disk for the minutes it runs, so it is opt-in too.
+        description: "Also verify that a stopped agent turn keeps its disk (needs the agent leg)"
+        type: boolean
+        default: false
   schedule:
     # Tuesday 03:41 UTC. Deliberately a different day from deploy-canary.yml:
     # these probes and that one both touch the production substrate, and a
@@ -167,7 +175,8 @@ jobs:
         if: always()
         env:
           BEX_LIVE_VERIFY: "1"
-          BEX_VERIFY_AGENT_DRIVER: ${{ inputs.verify_agent_driver && '1' || '0' }}
+          BEX_VERIFY_AGENT_DRIVER: ${{ (inputs.verify_agent_driver || inputs.verify_agent_retention) && '1' || '0' }}
+          BEX_VERIFY_AGENT_RETENTION: ${{ inputs.verify_agent_retention && '1' || '0' }}
         run: |
           code=0
           bash scripts/verify-sandbox-isolation-live.sh > sandbox-isolation.txt 2>&1 || code=$?

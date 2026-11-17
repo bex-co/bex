@@ -17,6 +17,8 @@ set -euo pipefail
 #
 # Optional after deploying w3/m37:
 #   BEX_VERIFY_AGENT_DRIVER=1
+#   BEX_VERIFY_AGENT_RETENTION=1   (with the line above: a stopped turn keeps
+#                                   its disk, ADR047 D12, w22/m413)
 #
 # Optional: run another probe against the same disposable fixtures instead of the
 # adversarial matrix (sandbox-measure.yml runs the measurement legs this way,
@@ -422,6 +424,7 @@ BEX_WS_A_MEMBER_TOKEN="$token_member_b" \
 BEX_WS_A_ADMIN_TOKEN="$token_admin_a" \
 BEX_WS_B_OWNER_TOKEN="$token_owner_b" \
 BEX_VERIFY_AGENT_DRIVER="${BEX_VERIFY_AGENT_DRIVER:-0}" \
+BEX_VERIFY_AGENT_RETENTION="${BEX_VERIFY_AGENT_RETENTION:-0}" \
   bash "${BEX_VERIFY_PROBE:-scripts/verify-sandbox-isolation.sh}"
 
 echo "PASS: disposable principals/workspaces provisioned, matrix passed, cleanup armed"
