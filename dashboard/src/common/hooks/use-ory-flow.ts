@@ -140,11 +140,12 @@ function createFlow<K extends keyof OryFlowMap>(
  *
  * - **The OAuth2 short-circuit (w4/m17).** A browser that already holds a session
  *   Kratos can accept the login challenge against gets no flow at all over AJAX:
- *   Kratos v1.3.1 answers `200` with a body of literally `null` — nothing to
- *   render, and an AJAX call cannot be redirected. Asked as a browser, the very
- *   same URL 303s straight to Hydra's continue URL and the authorization goes
- *   through with no login UI. Rendering the `null` instead is what used to strand
- *   an already-signed-in user on the login page's skeleton, forever.
+ *   Kratos v26.2.0, which production runs, answers `400 session_already_available`
+ *   (handled below), and v1.3.1 answered `200` with a body of literally `null` —
+ *   nothing to render, and an AJAX call cannot be redirected. Asked as a browser,
+ *   the very same URL 303s straight to Hydra's continue URL and the authorization
+ *   goes through with no login UI. Rendering the `null` instead is what used to
+ *   strand an already-signed-in user on the login page's skeleton, forever.
  * - **The escape hatch.** Any AJAX bootstrap we couldn't make sense of. Kratos
  *   303s back here with `?flow=` appended, which the hook adopts and scrubs.
  *
@@ -271,10 +272,11 @@ export function useOryFlow<K extends keyof OryFlowMap>(
           if (cancelled) return;
           if (id === "browser_location_change_required" && redirectBrowserTo) {
             // Kratos wants the browser elsewhere. Ory Elements' own submits are
-            // what usually provoke this; flow *creation* no longer does (v1.3.1
-            // answers the OAuth2 short-circuit with `200 null` instead — see
-            // bootstrapViaKratos). Honored anyway: if Kratos names a destination,
-            // going there is always right, and older versions do name one here.
+            // what usually provoke this; flow *creation* no longer does (v26.2.0
+            // answers the OAuth2 short-circuit with `session_already_available`
+            // and v1.3.1 with `200 null` instead — see bootstrapViaKratos).
+            // Honored anyway: if Kratos names a destination, going there is
+            // always right, and older versions do name one here.
             window.location.href = redirectBrowserTo;
             return;
           }

@@ -203,14 +203,14 @@ secrets:
   cookie: [e2e-only-cookie-secret-32-chars-xx]
   cipher: [e2e-only-cipher-secret-32-chars!]
 YAML
-# Still v1.3.1, not production's v26.2.0: there, a browser already holding a
-# session gets a refresh login flow for a login challenge instead of v1.3.1's
-# `null`, so leg 13's signed-in path asks for the password again (w7/073).
+# Production's Kratos, v26.2.0 (deploy/gitops/base/values/kratos.values.yaml,
+# chart 0.62.1). It answers leg 13's signed-in shortcut differently from
+# v1.3.1, the earlier pin (see kratos_login, w7/073).
 docker rm -f "$KRATOS" >/dev/null 2>&1 || true
 docker run -d --name "$KRATOS" --network "$NET" --network-alias kratos \
   -p 4433:4433 -p 4434:4434 \
   -v "$TMP:/etc/config/kratos" \
-  oryd/kratos:v1.3.1 serve -c /etc/config/kratos/kratos.yaml --dev --watch-courier=false >/dev/null
+  oryd/kratos:v26.2.0 serve -c /etc/config/kratos/kratos.yaml --dev --watch-courier=false >/dev/null
 wait_http "$KRATOS_PUB/health/ready"
 
 echo "-> 3/14 bex-api (issuer + resource configured)..."
@@ -352,37 +352,44 @@ follow() { # url jar -> final url on stdout
 # Success answers 422 browser_location_change_required -> Hydra's continue URL
 # (Kratos accepted the login challenge natively — the w4/m9 crux).
 #
-# A browser that already holds a Kratos session never sees a form: Kratos accepts
-# the challenge outright against that session — and answers this AJAX call with
-# HTTP 200 and a body of literally `null` (v1.3.1). No flow, no redirect, nothing
-# to render. The page must hand the challenge back to Kratos as a *browser*
-# request (no `Accept: application/json`), which 303s straight to Hydra's continue
-# URL; that is what `bootstrapViaKratos` in use-ory-flow.ts does, and what leg 13
+# A browser that already holds a Kratos session, and that Hydra remembers (Hydra's
+# login request says `skip`), never sees a form: Kratos accepts the challenge
+# outright against that session before it answers. v26.2.0 then answers this
+# AJAX call with HTTP 400 `session_already_available` (v1.3.1 answered 200 and a
+# body of literally `null`). No flow, no redirect, nothing to render. The page
+# must hand the challenge back to Kratos as a *browser* request (no `Accept:
+# application/json`), which 303s straight to Hydra's continue URL; that is what
+# use-ory-flow.ts does with both answers (`bootstrapViaKratos`), and what leg 13
 # exercises. Before w4/m17 the page rendered the null and sat on its skeleton
 # forever, so an already-signed-in user could not connect an agent at all.
 #
-# Records which of the three shapes Kratos answered with in $TMP/login_mode, so a
-# leg can assert the path it took rather than just its outcome.
+# Hydra remembers a browser from its first login challenge on: Kratos accepts
+# every challenge with `remember` for the session's lifespan. A session Hydra
+# does not remember yet gets a re-authentication form (`refresh`) instead.
+#
+# Records which shape Kratos answered with in $TMP/login_mode, so a leg can assert
+# the path it took rather than just its outcome.
 kratos_login() { # login_challenge jar -> continue url on stdout
-  local challenge="$1" jar="$2" flow action csrf submit cont url
+  local challenge="$1" jar="$2" flow mode action csrf submit cont url
   url="$KRATOS_PUB/self-service/login/browser?login_challenge=$challenge&return_to=$DASH/"
   flow="$(curl -s -c "$jar" -b "$jar" -H 'Accept: application/json' "$url")"
+  mode="$(echo "$flow" | python3 -c '
+import sys, json
+f = json.load(sys.stdin)
+if (f.get("error") or {}).get("id") == "session_already_available":
+    print("signed-in-shortcircuit")
+else:
+    print("reauth-form" if f.get("refresh") else "password-form")
+')"
+  echo "$mode" >"$TMP/login_mode"
 
-  if [ "$(echo "$flow" | tr -d '[:space:]')" = "null" ]; then
-    echo signed-in-shortcircuit >"$TMP/login_mode"
+  if [ "$mode" = signed-in-shortcircuit ]; then
     cont="$(curl -s -o /dev/null -D - -c "$jar" -b "$jar" "$url" \
       | grep -i '^location:' | tr -d '\r' | cut -d' ' -f2 | tail -1)"
     [ -n "$cont" ] || { echo "error: Kratos did not redirect the browser-shaped login: $url" >&2; return 1; }
     echo "$cont"; return 0
   fi
 
-  cont="$(echo "$flow" | python3 -c "
-import sys, json
-print((json.loads(sys.stdin.read() or 'null') or {}).get('redirect_browser_to', ''))
-")"
-  if [ -n "$cont" ]; then echo redirect-browser-to >"$TMP/login_mode"; echo "$cont"; return 0; fi
-
-  echo password-form >"$TMP/login_mode"
   action="$(echo "$flow" | python3 -c "import sys,json;print(json.load(sys.stdin)['ui']['action'])")"
   csrf="$(echo "$flow" | python3 -c "
 import sys, json
@@ -630,10 +637,10 @@ assert_bearer_works "$ACCESS"
 echo "  ✓ user-consented token passes bex-api introspection + audience check, exactly like a blessed client's"
 
 echo "-> 11/14 a second agent asks; the human denies -> access_denied, no code..."
-# A fresh browser (jar) per authorization, deliberately: Kratos accepts each Hydra
-# login challenge without asking Hydra to remember the login, so every authorize
-# re-runs login anyway — and driving each leg from a clean browser keeps the legs
-# independent (leg 12 proves the *consent* remember window on its own).
+# A fresh browser (jar) per authorization, deliberately: a clean browser holds no
+# Kratos session and no remembered Hydra login, so it signs in with the password,
+# and driving each leg from one keeps the legs independent (leg 12 proves the
+# *consent* remember window on its own).
 JAR_DENY="$TMP/deny.jar"
 final="$(authorize "$DENIED_CLIENT" "state-deny" "$JAR_DENY")"
 expect_at "$DASH/auth/consent" "$final" "the denied client did not reach the consent page"
@@ -657,10 +664,14 @@ echo "-> 13/14 SIGNED-IN browser (reused jar): authorize again with no re-login.
 # dashboard* when the agent asks. JAR_USER has held a live Kratos session since
 # leg 9, so this is the real thing, not a simulation of it.
 #
-# Hydra still re-runs the login redirect (Kratos accepts each challenge without
-# asking Hydra to remember the login), so the browser lands back on the login page
-# holding a session — the state that dead-ended before w4/m17. Assert the *path*,
-# not just the outcome: no password form may be submitted.
+# Hydra sends every authorization to the login page, even one it can skip, so the
+# browser lands back there holding a session — the state that dead-ended before
+# w4/m17. Leg 9's sign-in went through a login challenge, which Kratos accepted
+# with `remember`, so Hydra remembers this browser and Kratos accepts the new
+# challenge against the session. Assert the *path*, not just the outcome: no
+# password form may be submitted. (A browser signed in at the dashboard only, with
+# no agent connected yet, is asked to confirm its password once instead: Hydra
+# does not remember it yet, w7/079.)
 : >"$TMP/login_mode" # a stale marker from an earlier leg must not pass this
 final="$(authorize "$CONSENT_CLIENT" "state-signedin" "$JAR_USER")"
 mode="$(cat "$TMP/login_mode")"

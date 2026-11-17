@@ -231,9 +231,10 @@ describe("useOryFlow", () => {
   });
 
   it("hands the challenge back to Kratos when it refuses the flow outright", async () => {
-    // The same short-circuit, spelled as an error rather than a null body: a
-    // live session refuses a login flow. The challenge must ride along — bouncing
-    // to returnTo here would silently abandon the authorization.
+    // The same short-circuit, spelled as an error rather than a null body, as
+    // Kratos v26.2.0 (production's) answers it: a live session refuses a login
+    // flow. The challenge must ride along — bouncing to returnTo here would
+    // silently abandon the authorization (w7/073).
     mockApi.createBrowserLoginFlow.mockRejectedValue(sessionAlreadyAvailable());
 
     renderHook(() =>
