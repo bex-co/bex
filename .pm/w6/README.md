@@ -67,8 +67,22 @@ Materialized from all five proposals of `/pm-brainstorm` 2026-11-11 (w4/575, the
 
 **User action, not a board item:** raise the Hetzner project's dedicated-vCPU limit to at least 48 (Hetzner Console → Limits, or a support ticket). That releases `m310` (16), `w2/blocked/m250`'s Pro Ultra (32) and `114`'s four dedicated-size plans. The user declined it for now on 2026-11-16: CX machines are out of stock in fsn1, nbg1 and hel1, and no shared type has more than 32 GB (m310's 2026-11-16 record).
 
+## Approved queue (priority order, 2026-11-17)
+
+Materialized from all five proposals of `/pm-brainstorm one aspect of render parity for w6` 2026-11-17 (datastore connection limits follow the plan, as on Render: Key Value, Postgres, the external SNI proxies and PgBouncer), approved by the user's `/pm them to w6`. ADR018 had no row for connection limits. Scheduled items for worker6, not a workstream specialty.
+
+1. **[m456](m456/README.md)** — Key Value connections stop at the plan's limit, as on Render (free 50 … 50g 50,000); a paid store is held to 1,024 by its internal proxy today (10 tasks).
+2. **[134](134.md)** — Postgres `max_connections` follows Render's plan table, set explicitly (~45m); m457, m458 and m459 read it.
+3. **[m457](m457/README.md)** — external Postgres and Key Value connections are admitted up to the datastore's own limit, not the SNI proxies' 64 per resource (10 tasks); after m456 t001 and 134.
+4. **[m458](m458/README.md)** — managed PgBouncer runs with Render's settings (30,000 clients, a pool of `max_connections` − 10), and read replicas are pooled too (9 tasks); after 134.
+5. **[m459](m459/README.md)** — plan pickers and the Key Value instance card show each plan's connection limit (9 tasks); after m456 t001 and 134.
+
 ## Milestones
 
+- [ ] **m459** — [Plan pickers and the Key Value instance card show each plan's connection limit](m459/README.md) (9 tasks) ← from `/pm-brainstorm one aspect of render parity for w6` 2026-11-17, item 5, filed by `/pm them to w6`
+- [ ] **m458** — [Managed PgBouncer runs with Render's settings, and read replicas are pooled too](m458/README.md) (9 tasks) ← from `/pm-brainstorm one aspect of render parity for w6` 2026-11-17, item 4, filed by `/pm them to w6`
+- [ ] **m457** — [External Postgres and Key Value connections are admitted up to the datastore's own limit, not 64](m457/README.md) (10 tasks) ← from `/pm-brainstorm one aspect of render parity for w6` 2026-11-17, item 3, filed by `/pm them to w6`
+- [ ] **m456** — [Key Value connections stop at the plan's limit, as on Render (free 50 … 50g 50,000)](m456/README.md) (10 tasks) ← from `/pm-brainstorm one aspect of render parity for w6` 2026-11-17, item 1, filed by `/pm them to w6`
 - [ ] **m455** — [A new service's first bytes of egress are billed: a router series that starts inside the hour counts from zero](m455/README.md) (9 tasks) ← promoted from 123, 2026-11-16 (user `/unblock` D2: authorize the fix, verify before switching)
 - [ ] **m434** — **BLOCKED (the user's authorization to publish the fixed adapter: either `@bex-co/muse-code-acp@0.12.1` from adapter `main` through `publish.yml`, or deleting the unpublished `v0.12.0` tag and publishing 0.12.0 from the fixed `main`; the authorized 0.12.0 failed its own verify step on a flaw since fixed. `/unblock w6`)** — [A Muse turn waits for its background work: the adapter holds the prompt open, and Muse workflows come back on](blocked/m434/README.md) (11 tasks) ← promoted from 130, 2026-11-16 (split from w6/129); t001–t003 done on adapter `main`, t005/t006 ready in stash `loopx/w6/m434`
 - [x] **m422** — [bex-evidence and the reviewed-candidate path it fed are gone](done/m422/README.md) (9 tasks) ← user `/pmx the deletion, cleanup of references of bex-evidence to w6` 2026-11-16 — **done 2026-11-16**
@@ -259,6 +273,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
+- [ ] **134** — [Postgres `max_connections` follows Render's plan table, set explicitly](134.md) (~45m) ← from `/pm-brainstorm one aspect of render parity for w6` 2026-11-17, item 2, filed by `/pm them to w6`
 - [x] **132** — [A disk meter pass cut off mid-window leaves that window's remaining disks unmetered for good](done/132.md) (~1h) ← w6/m333 t008 production read, 2026-11-17 — **done 2026-11-17**: a window's disk rows commit whole; the four 2026-11-17 02:00Z holes (108,591 GB-seconds) were backfilled on production, and 2026-11-08 13:00Z stays an accepted undercount
 - [x] **131** — [The composer warns a credited workspace bex cannot charge on month-to-date, while the mint holds its tier ceiling against the unbilled spend](done/131.md) (~45m) ← w6/m400 t004, 2026-11-16 — **done 2026-11-16**
 - [x] **130** — [The Muse adapter answers the prompt while background work still runs, so Muse workflows stay off](done/130.md) ← split from w6/129, 2026-11-16: the adapter change that would let ADR108 D8 turn Muse workflows back on — promoted to [m434](blocked/m434/README.md)
