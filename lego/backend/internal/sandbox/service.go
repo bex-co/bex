@@ -37,6 +37,7 @@ import (
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -57,10 +58,13 @@ const (
 	metadataComputeWeight = "bex.co/compute-weight-milli"
 	// metadataMemoryMiB is the allocated memory the memory meter bills;
 	// a sandbox created before it was stamped falls back to its plan (memoryMiBOf).
-	metadataMemoryMiB     = "bex.co/memory-mib"
-	metadataTemplate      = "bex.co/template"
-	metadataRegime        = "app.bex.co/regime"
-	metadataSandboxRegime = "sandbox"
+	metadataMemoryMiB = "bex.co/memory-mib"
+	metadataTemplate  = "bex.co/template"
+	// metadataRegime and metadataSandboxRegime alias the canonical regime keys
+	// in lego/types (v1alpha1), which bex-api's NamespaceReconciler stamps and
+	// the operator also reads.
+	metadataRegime        = appv1alpha1.LabelRegime
+	metadataSandboxRegime = appv1alpha1.RegimeSandbox
 	// metadataPublicID carries the tenant-facing bex id (`sbx-<xid>`) of a
 	// sandbox the EA verbs minted. OpenSandbox mints its own opaque substrate id
 	// and accepts no client-supplied one, so the public identity rides the

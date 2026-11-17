@@ -30,11 +30,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/bex-co/bex/lego/operator/internal/registry"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // sandboxRegimeLabel marks the per-workspace `<ws>-sandbox` namespaces the
 // control plane provisions (ADR043; stamped by bex-api's NamespaceReconciler).
-const sandboxRegimeLabel = "app.bex.co/regime"
+// It aliases the canonical key in lego/types (v1alpha1), shared with bex-api.
+const sandboxRegimeLabel = appv1alpha1.LabelRegime
 
 // SandboxNamespaceRegistryReconciler provisions per-workspace snapshot
 // resume-pull credentials (w3/m42 t002): for every namespace labeled
@@ -91,7 +93,7 @@ func (r *SandboxNamespaceRegistryReconciler) Reconcile(ctx context.Context, req 
 // namespaces so unrelated namespace churn never reaches Reconcile.
 func (r *SandboxNamespaceRegistryReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	sandboxOnly := predicate.NewPredicateFuncs(func(object client.Object) bool {
-		return object.GetLabels()[sandboxRegimeLabel] == "sandbox"
+		return object.GetLabels()[sandboxRegimeLabel] == appv1alpha1.RegimeSandbox
 	})
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.Namespace{}, builder.WithPredicates(sandboxOnly)).
