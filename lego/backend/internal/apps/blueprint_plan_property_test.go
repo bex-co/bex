@@ -171,6 +171,30 @@ var blueprintPlanPropertyManifests = map[string]string{
     domains:
       - api.example.test
 `,
+	"service-domain-singular": `services:
+  - name: api
+    type: web
+    runtime: image
+    image: {url: nginx:1.27}
+    domain: api.example.test
+`,
+	"service-scaling-only": `services:
+  - name: api
+    type: web
+    runtime: image
+    image: {url: worker:1}
+    scaling:
+      minInstances: 2
+      maxInstances: 8
+      targetCPUPercent: 70
+`,
+	"service-hook-only": `services:
+  - name: api
+    type: web
+    runtime: image
+    image: {url: nginx:1.27}
+    initialDeployHook: npm run seed
+`,
 	"docker-context-without-root-dir": `services:
   - name: api
     type: web
