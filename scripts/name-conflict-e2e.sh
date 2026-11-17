@@ -144,7 +144,7 @@ docker rm -f "$HYDRA_CONTAINER" >/dev/null 2>&1 || true
 # device_authorization_grant_access_token_lifespan (only the refresh-token
 # one), so the assertion exits "hydra too old" and the bootstrap step fails
 # before any name-conflict assertion runs. v26.2.0 round-trips both and is the
-# production line — same pin and same reason as scripts/auth-obs-e2e.sh:150.
+# production line — same pin and same reason as scripts/auth-obs-e2e.sh's.
 # webhooks-verify.sh's v2.2.0 pin is unaffected: it does not run the bootstrap
 # script (auth-oauth21-e2e.sh moved to v26.2.0 for its own reason, w7/065).
 docker run -d --name "$HYDRA_CONTAINER" \
