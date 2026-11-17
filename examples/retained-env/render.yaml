@@ -1,0 +1,22 @@
+# render.yaml — the first of two manifests that show a variable a Blueprint
+# dropped (w21/103). It declares MESSAGE and KEEPME on one prebuilt-image
+# service. Create a Blueprint on this file, sync, then point the Blueprint at
+# dropped.yaml and sync again: MESSAGE stays on the service with its value, as
+# on Render ("Render preserves existing environment variables, even if you omit
+# them from the Blueprint file"), and edits and deletes as an ordinary variable.
+# Prefix the service name when you apply it (e.g. qa-<yyyymmdd>-) and delete the
+# service afterwards.
+services:
+  - name: retained-env
+    type: web
+    runtime: image
+    image:
+      url: traefik/whoami
+    plan: free
+    envVars:
+      - key: WHOAMI_PORT_NUMBER
+        value: "10000"
+      - key: MESSAGE
+        value: hello from the manifest
+      - key: KEEPME
+        value: "1"

@@ -18,6 +18,7 @@ package secrets
 
 import (
 	"context"
+	"maps"
 	"slices"
 	"strings"
 
@@ -34,7 +35,15 @@ import (
 // manifest", forever (w21/m421, production 2026-11-08 and 2026-11-16). The
 // Blueprint's sync records what it declares (core.AnnotationBlueprintEnv); a
 // literal outside that record is retained, listed as an ordinary variable, and
-// adopted into the mutable store when a write names it.
+// moved into the mutable store when a write names it.
+//
+// The environment patch (PatchEnvironment) makes that move inside its own
+// compare-and-set write: the store takes the literal with the patch's edit in
+// one revision, checked against the revision the caller listed, and the same
+// locked App patch removes the literal from spec.Env. A move in a write of its
+// own would advance the revision under a caller that checked one, and refuse
+// its first save as stale (w21/103). The single-variable verbs and the bulk
+// replace check no revision, so they adopt first (adoptRetainedKeys).
 
 // declaredBlueprintEnv is the set of names the App's Blueprint declared at its
 // last sync, and whether a sync has recorded one at all.
@@ -90,13 +99,49 @@ func dropSpecEnvNames(a *appv1alpha1.App, names map[string]string) {
 // adoptRetainedKeys moves the named retained literals into the mutable store
 // before a write decides them, so the write meets ordinary stored variables.
 func (s *Service) adoptRetainedKeys(ctx context.Context, a *appv1alpha1.App, service string, keys ...string) error {
+	return s.adoptRetained(ctx, a, service, retainedEnvNamed(a, keys...))
+}
+
+// retainedEnvNamed is retainedEnv narrowed to the named variables.
+func retainedEnvNamed(a *appv1alpha1.App, names ...string) map[string]string {
 	retained := retainedEnv(a)
 	for name := range retained {
-		if !slices.Contains(keys, name) {
+		if !slices.Contains(names, name) {
 			delete(retained, name)
 		}
 	}
-	return s.adoptRetained(ctx, a, service, retained)
+	return retained
+}
+
+// retainedForPatch is the retained literals an environment patch moves into the
+// store with its own write: the ones it names (a rename's source included), or
+// every one when it replaces the whole set.
+func retainedForPatch(a *appv1alpha1.App, patch EnvironmentPatch) map[string]string {
+	if patch.Replace {
+		return retainedEnv(a)
+	}
+	keys := patchEnvKeys(patch)
+	for i, key := range keys {
+		keys[i] = strings.TrimSpace(key)
+	}
+	return retainedEnvNamed(a, keys...)
+}
+
+// dropMovedRetained removes the literals a write moved into the store from
+// spec.Env, inside that write's locked App patch. The patch can run again on a
+// re-read App, so it first refuses a name a Blueprint sync has re-declared since
+// the write read the App: the manifest owns it again, its literal wins at
+// runtime, and a stored edit beside it would change nothing the process sees.
+// The refusal rolls the store write back with the rest of the save.
+func dropMovedRetained(a *appv1alpha1.App, moved map[string]string) error {
+	if len(moved) == 0 {
+		return nil
+	}
+	if err := refuseManifestKeys(a, slices.Collect(maps.Keys(moved))...); err != nil {
+		return err
+	}
+	dropSpecEnvNames(a, moved)
+	return nil
 }
 
 // adoptAllRetained is adoptRetainedKeys for a whole-set replace, which decides

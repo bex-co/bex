@@ -103,20 +103,7 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 	}
 	// A manifest-owned key refuses the whole patch before anything is written
 	// (w4/m120) — including the rename source, since a rename deletes it.
-	keys := make([]string, 0, len(patch.EnvVars)*2)
-	for _, v := range patch.EnvVars {
-		keys = append(keys, v.Key, v.FromKey)
-	}
-	if err := refuseManifestKeys(a, keys...); err != nil {
-		return EnvironmentPatchResult{}, err
-	}
-	// A retained literal the patch names, or every one when it replaces the
-	// whole set, joins the store before the write decides it.
-	if patch.Replace {
-		if err := s.adoptAllRetained(ctx, a, service); err != nil {
-			return EnvironmentPatchResult{}, err
-		}
-	} else if err := s.adoptRetainedKeys(ctx, a, service, keys...); err != nil {
+	if err := refuseManifestKeys(a, patchEnvKeys(patch)...); err != nil {
 		return EnvironmentPatchResult{}, err
 	}
 	rebuild := patch.SaveMode == SaveModeRebuild
@@ -190,6 +177,16 @@ func (s *Service) patchEnvironment(ctx context.Context, service string, a *appv1
 	return s.patchEnvironmentSparse(ctx, service, a, patch)
 }
 
+// patchEnvKeys is every variable name the patch's env operations touch, a
+// rename's source included, as sent.
+func patchEnvKeys(patch EnvironmentPatch) []string {
+	keys := make([]string, 0, len(patch.EnvVars)*2)
+	for _, v := range patch.EnvVars {
+		keys = append(keys, v.Key, v.FromKey)
+	}
+	return keys
+}
+
 // suspendedNow re-reads whether a is suspended, for a refusal that may have
 // raced a suspend. A service replaced since the read is not a.
 func (s *Service) suspendedNow(ctx context.Context, a *appv1alpha1.App) bool {
@@ -226,13 +223,15 @@ func (s *Service) servedArtifact(ctx context.Context, a *appv1alpha1.App) (strin
 // envPatchTxn carries what compensation needs to restore the state a failed
 // write already wrote: the App before its projection, each source map's write,
 // and — for a revision-aware patch (cas), whose env write always advances the
-// revision — the projection it claimed.
+// revision — the projection it claimed. moved is the retained literals (see
+// retained.go) the env write stored, which the App patch removes from spec.Env.
 type envPatchTxn struct {
 	service       string
 	originalApp   *appv1alpha1.App
 	env, files    mapWrite
 	cas           bool
 	casProjection casEnvProjection
+	moved         map[string]string
 }
 
 // patchEnvironmentCAS is the revision-aware protocol: exactly one ordinary
@@ -263,7 +262,14 @@ func (s *Service) patchEnvironmentCAS(ctx context.Context, service string, a *ap
 	if snapshot.Version != expectedVersion {
 		return EnvironmentPatchResult{}, envRevisionConflict()
 	}
-	if _, exists := oldEnv[casKey]; !exists {
+	// A variable a Blueprint dropped lists as an ordinary one, from spec.Env, at
+	// the revision of the store it is not in yet. This write moves it: the store
+	// takes it with the patch's value in the one compare-and-set below, checked
+	// against the revision the caller listed, and the same App patch removes the
+	// literal (finalizeEnvironmentPatch). Moving it in an earlier write would
+	// advance the revision under the caller (w21/103).
+	moved := retainedForPatch(a, patch)
+	if _, exists := oldEnv[casKey]; !exists && len(moved) == 0 {
 		return EnvironmentPatchResult{}, core.NewNotFoundError(
 			"ENVIRONMENT_VARIABLE_NOT_FOUND",
 			"environment variable was not found",
@@ -277,7 +283,9 @@ func (s *Service) patchEnvironmentCAS(ctx context.Context, service string, a *ap
 	if err := patchWithinQuota(oldEnv, env, envQuota); err != nil {
 		return EnvironmentPatchResult{}, err
 	}
-	envChanged := !maps.Equal(oldEnv, env)
+	// A moved literal is a change even when the store already held its value:
+	// the App loses an env entry.
+	envChanged := !maps.Equal(oldEnv, env) || len(moved) > 0
 	result := environmentPatchResult(env, nil, false)
 
 	newVersion, putErr := versionedStore.PutCAS(ctx, envPath(service), env, expectedVersion)
@@ -294,6 +302,7 @@ func (s *Service) patchEnvironmentCAS(ctx context.Context, service string, a *ap
 		originalApp: a.DeepCopy(),
 		env:         mapWrite{prior: oldEnv, version: newVersion, changed: envChanged},
 		cas:         true,
+		moved:       moved,
 	}
 	// A compare-and-set of an unchanged value still advances the opaque
 	// revision, which is what makes two submissions from one observed revision
@@ -326,11 +335,18 @@ func (s *Service) patchEnvironmentCAS(ctx context.Context, service string, a *ap
 // closing the lost-update race; only patchEnvironmentCAS exposes revisions.
 func (s *Service) patchEnvironmentSparse(ctx context.Context, service string, a *appv1alpha1.App, patch EnvironmentPatch) (EnvironmentPatchResult, error) {
 	var applyErr error
+	// A retained literal the patch names, or every one when it replaces the set,
+	// moves into the store inside this write (see retained.go).
+	moved := retainedForPatch(a, patch)
 
 	// Each mutate checks the quota on the map it is about to write, so the check
 	// re-runs against the latest committed map on every CAS retry (ADR066 #6).
 	// A refused map is not written: the mutate reports "unchanged".
 	env, envWrite, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
+		// The moved literals are what the service holds, so the patch decides
+		// them like any stored variable: edits, renames and deletes meet them,
+		// and the quota compares against them.
+		maps.Copy(current, moved)
 		before := core.CloneStringMap(current)
 		if patch.Replace {
 			clear(current)
@@ -343,7 +359,9 @@ func (s *Service) patchEnvironmentSparse(ctx context.Context, service string, a 
 			applyErr = err
 			return false
 		}
-		return !maps.Equal(before, current)
+		// A move is a change even when the stored map ends up as it was (a
+		// delete of the moved name): the App loses an env entry.
+		return len(moved) > 0 || !maps.Equal(before, current)
 	})
 	if err != nil {
 		return EnvironmentPatchResult{}, err
@@ -391,7 +409,7 @@ func (s *Service) patchEnvironmentSparse(ctx context.Context, service string, a 
 	if !envWrite.changed && !filesWrite.changed {
 		return result, nil
 	}
-	txn := envPatchTxn{service: service, originalApp: a.DeepCopy(), env: envWrite, files: filesWrite}
+	txn := envPatchTxn{service: service, originalApp: a.DeepCopy(), env: envWrite, files: filesWrite, moved: moved}
 	return s.finalizeEnvironmentPatch(ctx, a, txn, patch.SaveMode, env, files, result)
 }
 
@@ -426,8 +444,18 @@ func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.A
 		}
 	}
 	suspendedAtWrite := false
-	err := s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
+	appCtx := ctx
+	if saveMode == SaveModeOnly && len(txn.moved) > 0 {
+		// A moved literal leaves the pod template, which rolls a release. Save
+		// only keeps it for the next deploy, as every other save-only write
+		// that changes the template does (rollout.WithSaveOnly).
+		appCtx = rollout.WithSaveOnly(ctx)
+	}
+	err := s.rollApp(appCtx, a, func(a *appv1alpha1.App) error {
 		read := a.DeepCopy()
+		if err := dropMovedRetained(a, txn.moved); err != nil {
+			return err
+		}
 		if txn.env.changed {
 			a.Spec.EnvFromSecret = envSecretName(a.Name)
 		}

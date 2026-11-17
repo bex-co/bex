@@ -1,0 +1,15 @@
+# The second manifest of the pair (see render.yaml): the same service with
+# MESSAGE dropped. KEEPME and WHOAMI_PORT_NUMBER are still declared, so they stay
+# read-only in the Environment tab; MESSAGE is retained and editable.
+services:
+  - name: retained-env
+    type: web
+    runtime: image
+    image:
+      url: traefik/whoami
+    plan: free
+    envVars:
+      - key: WHOAMI_PORT_NUMBER
+        value: "10000"
+      - key: KEEPME
+        value: "1"
