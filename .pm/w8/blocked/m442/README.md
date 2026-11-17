@@ -1,6 +1,6 @@
 # w8 · m442 — Render contract round 8: logs take a `build` filter, an env group read omits the values a caller cannot see, and a sandbox build name cannot start with `sbb-`
 
-**Worker:** worker8 **Goal:** bex answers the three operations Render changed in its public API on or before 2026-11-16 as Render now does, and the pinned spec matches Render's again, so the daily drift check is green. **Status:** blocked (release gate: t001–t007 done and shipped in `9c58dd1ac`; t008 replays the definition of done on production once the platform image pin contains it, and the drift job also needs `w22/m444`)
+**Worker:** worker8 **Goal:** bex answers the three operations Render changed in its public API on or before 2026-11-16 as Render now does, and the pinned spec matches Render's again, so the daily drift check is green. **Status:** blocked (`w22/m444`: t001–t007 are done, shipped in `9c58dd1ac` and live since pin `55c120858af0`. The logs, sandbox-build and spec parts of the definition of done passed live on 2026-11-17 (decision record below). t008 waits for the drift job's CLI check, which needs `w22/m444`'s render-oss/cli v2.37.0 pin, and then the env-group viewer read)
 
 ## Tasks (in order)
 
@@ -68,3 +68,39 @@ GET /v1/logs/values?ownerId=<tea>&resource=<srv>&label=build             → 400
 - **Render's 400 code for an `sbb-` name:** none. Render's create documents a message only, so bex answers `SANDBOX_IMAGE_INVALID` with a message naming the prefix.
 - **Upstream moved again after filing:** a Workflows step-attempt read (`getFlowRunStepAttempt`), now an omission, and render-oss/cli v2.37.0. The CLI bump is `w22/m444`, and the drift job stays red on its CLI check until that lands.
 
+
+## Decision record — 2026-11-17: release gate cleared, live check passed except the drift job's CLI check
+
+- **Affected:** w8/m442 (t008); gate owner `w22/m444`.
+- **Source:** verified evidence, `/qa-find-bugs-cli` sweep `6451` (08:10–08:20 UTC). Production pin `55c120858af0` was rolled at 07:47 UTC by `9c79201b4`, and `git merge-base --is-ancestor 9c58dd1ac 55c120858af0…` holds. bex CLI v0.7.0, QA user, `bex-canary`.
+- **Logs (passed):** fixture static site `srv-dbu0nqlikg6s738lalgg` (deleted). Its two builds are D1 `dep-dbu0nqlikg6s738lalh0` and D2 `dep-dbu0pdec1l2s739d3mvg`, 9 build lines each.
+
+  ```text
+  GET /v1/logs?ownerId=<tea>&resource=<srv>&build=D1&limit=50                → 200, 9 lines, all build=D1
+  GET /v1/logs?…&build=D2&limit=50                                            → 200, 9 lines, all build=D2
+  GET /v1/logs?…&build=D1&build=D2&limit=50                                   → 200, 18 lines (9 + 9), = type=build
+  GET /v1/logs?…&build=dep-zzzzzzzzzzzzzzzzzzzz&limit=20                     → 200, 0 lines, hasMore false
+  GET /v1/logs/values?…&label=instance&build=D1                               → 200 ["srv-dbu0nqlikg6s738lalgg-6v83bsmf6gt6sqmh004j"]
+  GET /v1/logs/values?…&label=type&build=D1                                   → 200 ["build"]
+  GET /v1/logs/values?…&label=level&build=dep-zzzzzzzzzzzzzzzzzzzz           → 200 []
+  GET /v1/logs/values?…&label=build                                           → 400 "label must be one of instance|host|statusCode|method|level|type"
+  WS  /v1/logs/subscribe?…&build=D2, opened as D2 started (180 s)             → 101; 9 lines, all build=D2, the build-command marker among them
+  WS  /v1/logs/subscribe?…&build=D1, same window (D1 finished)                → 101; 0 lines
+  ```
+
+- **Sandbox builds (passed):** QA group `sbg-dbu0nulikg6s738lalig` (deleted with its builds).
+  - `bex sandbox-groups images import docker.io/library/busybox:1.37 --group <grp> --name sbb-qa6451` → exit 1 in 0.3 s: `received response code 400 (SANDBOX_IMAGE_INVALID): name can't start with "sbb-", the prefix reserved for build IDs`.
+  - `--name my-sbb-qa6451` and `--name SBB-qa6451` were accepted (`sbb-dbu0o1ec1l2s739d3m3g`, `sbb-dbu0nutikg6s738lalk0`).
+  - t008's count: builds named `sbb-…` in `bex-canary` = **0**, in the shared Default group `sbg-dbpugr7bq3ic73c0acmg` and the QA group alike. No wider production read is reachable from the QA user.
+- **Spec drift (passed for the spec):** `bash scripts/render-schema-drift.sh` at 08:19 UTC reports:
+  - the Blueprint schema matches pinned `6c6721a6…`;
+  - the 68-value webhook enum matches;
+  - all 264 REST operations match;
+  - the schemas of the 211 operations bex serves match.
+
+  It exits 1 only on `render-oss/cli v2.37.0 is newer than bex's pin v2.36.0`.
+- **Env groups (not verified live):** the QA user holds `can_view_sensitive`. A viewer, contributor or billing member's read (values omitted, nothing audited as revealed) needs such a member's credential, which this hunt does not have.
+- **Remaining gate:** `w22/m444` (render-oss/cli v2.37.0 pin, `todo` on 2026-11-17). Release condition: the scheduled `render-schema-drift.yml` run is green after m444 ships.
+- **Next steps for t008:**
+  1. Once `gh run list --workflow render-schema-drift.yml --limit 1` reads `success`, run the env-group viewer read with a workspace member who lacks `can_view_sensitive`: `GET /v1/env-groups/<id>` → 200 without `envVars`/`secretFiles`; an admin's read still lists them.
+  2. Then close the milestone.
