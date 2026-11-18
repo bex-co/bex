@@ -140,6 +140,7 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [ ] **118** — [Render's classic API keys act in every workspace their user belongs to; a bex key acts in one](118.md) ← from w9/m481 (API key roles) 2026-11-18
 - [x] **119** — [Production holds 16 leaked `m35-*` API keys and 8 fixture workspaces from `verify-sandbox-isolation-live.sh` runs on 2026-11-15](done/119.md) ← from w9/m481 t007 (security review, [ADR117](../../docs/ADR117-security-review-api-key-roles.md)) 2026-11-18
 - [x] **120** — [Deleting a workspace leaves its API keys live: their Hydra clients and OpenFGA tuples survive, and no list can show or revoke them](done/120.md) ← from w9/119 (production fixture cleanup) 2026-11-18 — **DONE** 2026-11-18
+- [ ] **121** — [A workspace delete that fails partway cannot be retried by its admin: the first attempt already revoked every member](121.md) ← from w9/120 2026-11-18
 
 ## Approved queue (priority order, 2026-09-08)
 
