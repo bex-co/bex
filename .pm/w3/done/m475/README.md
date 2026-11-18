@@ -1,6 +1,6 @@
 # w3 · m475 — The official Render CLI's log viewer can scroll back on bex: `GET /v1/logs` accepts its `limit=1000`
 
-**Worker:** worker3 **Goal:** scrolling up in `render logs`' interactive viewer loads older lines on bex, as it does on Render, instead of failing with `400 limit must be an integer between 1 and 100`. **Status:** todo (t001–t004, t006–t008 done; the fix `de181cfc4` is live in production pin `1ec5007be0fa`; t005's production check with the unmodified Render CLI binary, then t009)
+**Worker:** worker3 **Goal:** scrolling up in `render logs`' interactive viewer loads older lines on bex, as it does on Render, instead of failing with `400 limit must be an integer between 1 and 100`. **Status:** done (2026-11-18; t005 verified on production pin `1ec5007be0fa`)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | A page asked for more than 100 lines serves 100 with live cursors — **DONE** | 30m | t001 |
 | [t003](done/t003.md) | Contract test: the pinned Render CLI's paginated log request succeeds — **DONE** | 40m | t002 |
 | [t004](done/t004.md) | Docs: CLI checklist, ADR010 and ADR018 — **DONE** | 15m | t003 |
-| [t005](t005.md) | Production check with the unmodified Render CLI binary | 30m | t004 |
+| [t005](done/t005.md) | Production check with the unmodified Render CLI binary — **DONE** | 30m | t004 |
 | [t006](done/t006.md) | Render parity — **DONE** | 20m | t004 |
 | [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 30m | t007 |
-| [t009](t009.md) | Closeout | 10m | t005, t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t005, t008 |
 
 ## Blocked (2026-11-18)
 
@@ -28,6 +28,15 @@
 - **Finding:** the newest pin on origin/main, `c7f44bd87` (`chore(deploy): pin platform images to 1ec5007be0fa`, which also moves `lego/operator/config/api/deployment.yaml`), contains `de181cfc4`: `git merge-base --is-ancestor de181cfc4 1ec5007be0fa` holds. The release condition in § Blocked is met.
 - **Status:** pending verification. A deployed fix is not proof that the definition of done holds on production.
 - **Next:** run t005 against `https://api.bex.co` as the QA user in `bex-canary`: `render logs -r <qa service> --limit 1000 -o json` exits 0 with lines, and scrolling up in the interactive viewer loads an older page with no error. Then flip the checklist row (t005 step 5) and run t009.
+
+## Production check (2026-11-18, t005)
+
+- **Deployed:** both `bex-api` replicas ran the image digest pin `c7f44bd87` sets, so production carried `de181cfc4`.
+- **Binary and identity:** the unmodified Render CLI v2.36.0 darwin/arm64 release binary, checksum-verified. It ran against `https://api.bex.co/v1/` with a temporary API key minted as the QA user in `bex-canary`, revoked at the end.
+- **List read:** `render logs -r srv-dbkq3hdhhjfs73eiahe0 --limit 1000 -o json` (`hello-go`) exited 0 and printed 100 lines.
+- **Interactive viewer:** in a pty, scrolling up past the first page loaded older pages with no error. Through a loopback recorder, twelve `limit=1000` page requests in a row answered 200 with about 100 lines each, reaching an hour back.
+- **Bounds:** REST `limit=0` and `limit=1001` answered 400 naming 1 to 1000. `limit=abc` answered the gate's generic 400.
+- **Where it is recorded:** commands, times and cleanup are in [`done/t005.md`](done/t005.md). `docs/cli-compatibility-checklist.md`'s scroll row is now `[x]`.
 
 ## Definition of done
 
@@ -52,7 +61,7 @@
   - **Recommendation:** serve at most 100, Render's documented maximum and bex's existing clamp, with `hasMore` and cursors, so the CLI keeps paging.
   - **Basis:** ADR008 Render parity first. The official CLI must work, and parity work is never parked on an optional decision.
   - **Still open:** whether Render's server returns up to 1000 lines for such a request. It is unverified here, with no Render account in reach. If it does, record the page-size difference in ADR018 or file a follow-up that raises the clamp.
-- **Goal linkage:** Render CLI compatibility ([ADR018](../../../docs/ADR018-render-parity.md), `docs/cli-compatibility-checklist.md`, `DO_NOT_DO.md`'s "point Render's own CLI at bex-api"). `render logs` is one of the most-used CLI commands on the `bex-cli-usage` board (1.34K commands in 30 days, 11.5% failing).
+- **Goal linkage:** Render CLI compatibility ([ADR018](../../../../docs/ADR018-render-parity.md), `docs/cli-compatibility-checklist.md`, `DO_NOT_DO.md`'s "point Render's own CLI at bex-api"). `render logs` is one of the most-used CLI commands on the `bex-cli-usage` board (1.34K commands in 30 days, 11.5% failing).
 - **Expected outcome:** a customer reading logs in the official CLI's viewer can scroll back through history, as on Render.
 - **Why now:** it is a live, reproducible failure of the official CLI's default interactive log view. The fix is small and local to the gate.
 - **Render parity included:** the change alters a REST validation boundary that the CLI, the API docs and the MCP `list_logs` tool all describe.
