@@ -291,6 +291,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
+- [ ] **143** — [A `basic-4gb` Postgres with HA and two read replicas cannot be placed on production](143.md) (needs the user's capacity or cost decision) ← filed by w6/m467 t006 2026-11-18: four 2-CPU instances do not fit `bex-tenant-0` (`cx33`, max 8); the HA standby and replica `b` stayed Pending with `max node group size reached`
 - [ ] **142** — [A datastore proxy roll that does change the proxy's code still closes every connection at once](142.md) (~1h+, weigh against Render first) ← filed by w6/m469 t004 2026-11-18: draining on `SIGTERM`, with its limits (held clients still meet the close; internal auth must keep closing at once)
 - [x] **141** — [Every operator deploy closes every external Key Value and Postgres connection](done/141.md) ← filed by w6/m469 t004 2026-11-18: `bex-kv-sni-proxy` and `bex-pg-sni-proxy` take the operator's digest on every deploy and close every stream on `SIGTERM`; hold their digest in `deploy.yml` while the binary is byte-identical, or give them their own image — promoted to [m470](blocked/m470/README.md) 2026-11-18
 - [x] **140** — [Every operator deploy closes every tenant connection to every Key Value store](done/140.md) ← filed by w6/m463 t005 2026-11-18: `kv-internal-proxy` runs from the operator's image and closes its connections on `SIGTERM`, so each deploy (11 on 2026-11-17) rolls every store's proxy; the SNI proxies roll too — promoted to [m469](blocked/m469/README.md) 2026-11-18
