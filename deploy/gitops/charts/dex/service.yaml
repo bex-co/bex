@@ -1,0 +1,18 @@
+# Dex's web port: the browser reaches it through the auth.bex.co/dex Ingress,
+# and Kratos (same namespace) through that public issuer URL too, because the
+# issuer in Dex's discovery document and ID tokens must be the one the browser
+# uses.
+apiVersion: v1
+kind: Service
+metadata:
+  name: dex
+  namespace: auth
+  labels:
+    app.kubernetes.io/name: dex
+spec:
+  selector:
+    app.kubernetes.io/name: dex
+  ports:
+    - name: http
+      port: 5556
+      targetPort: http

@@ -104,14 +104,12 @@ export default function VerificationPage() {
             invalidateSessionCache();
             void navigate({
               to: "/",
-              href: peekPendingInvite()
-                ? "/invite"
-                : paymentSetupPath(next),
+              href: peekPendingInvite() ? "/invite" : paymentSetupPath(next),
             });
           }}
         />
       ) : (
-        <AuthWidgetSkeleton fields={2} />
+        <AuthWidgetSkeleton flow="verification" />
       )}
       {session ? (
         // Data-dependent (signed-in only), so the pending skeleton does not

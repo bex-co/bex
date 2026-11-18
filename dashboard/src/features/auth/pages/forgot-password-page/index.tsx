@@ -26,7 +26,7 @@ export default function ForgotPasswordPage() {
       {flow ? (
         <Recovery flow={flow} config={oryConfig} components={oryHideCardLogo} />
       ) : (
-        <AuthWidgetSkeleton fields={2} />
+        <AuthWidgetSkeleton flow="recovery" />
       )}
     </AuthPageShell>
   );

@@ -58,7 +58,8 @@ export function sessionEvent(
     !Number.isNaN(createdAt) && authenticatedAt - createdAt < SIGN_UP_WINDOW_MS;
   return {
     event: signedUp ? "sign_up" : "login",
-    // GitHub or Google rather than "oidc".
+    // The oidc provider's id (github, google, gitlab, bitbucket) rather than
+    // "oidc".
     method: telemetryLabel(first?.provider) ?? telemetryLabel(first?.method),
   };
 }

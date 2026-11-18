@@ -231,8 +231,48 @@ bash scripts/analytics-bootstrap.test.sh || { echo "FAIL: analytics reader Seale
 echo "==> onbex DNS-01 token installation safety gates"
 bash scripts/onbex-dns01-token-secret.test.sh || { echo "FAIL: onbex DNS-01 token installation safety gates" >&2; fail=1; }
 
-echo "==> Kratos oidc.yaml fragment: social providers and the Google-login settings guard (w7/m465)"
+echo "==> Kratos oidc.yaml fragment: social providers and the Google-login settings guard (w7/m465, w7/m468)"
 bash scripts/kratos-oidc-fragment.test.sh || { echo "FAIL: Kratos oidc.yaml fragment" >&2; fail=1; }
+
+# Dex, Bitbucket's OIDC bridge (w7/m468, docs/ADR012-auth.md §10): committed
+# off (auth-secrets.sh scales it only while a Bitbucket pair is set, so Argo
+# must ignore the count), one memory-backed replica replaced whole, pinned,
+# hardened, on the platform pool, its config only from the out-of-band Secret,
+# and published at the issuer the Kratos fragment defaults to.
+echo "==> Dex: Bitbucket's OIDC bridge is off in git, pinned, hardened and at the fragment's issuer"
+dex_render="$(kubectl kustomize deploy/gitops/charts/dex)"
+dex_shape="$(yq -N 'select(.kind == "Deployment" and .metadata.name == "dex") | [
+    .metadata.namespace, .spec.replicas, .spec.strategy.type,
+    .spec.template.spec.nodeSelector."bex.co/pool",
+    (.spec.template.spec.tolerations[] | select(.key == "bex.co/platform") | .effect),
+    .spec.template.spec.automountServiceAccountToken,
+    .spec.template.spec.containers[0].image,
+    (.spec.template.spec.containers[0].command | join(" ")),
+    .spec.template.spec.volumes[0].secret.secretName] | join("|")' <<<"$dex_render" | sed '/^$/d')"
+want_dex_shape='auth|0|Recreate|platform|NoSchedule|false|ghcr.io/dexidp/dex:v2.46.1@sha256:65b72ca0f4b0bf6d4ada84ec21da8851782563404ac7b8f926923d27ceced9ab|dex serve /etc/dex/config.yaml|dex'
+[ "$dex_shape" = "$want_dex_shape" ] \
+  || { echo "FAIL: Dex Deployment shape is '$dex_shape' (want '$want_dex_shape')" >&2; fail=1; }
+dex_unhardened="$(yq ea "$(cat scripts/lib/platform-pod-hardening-guard.yq)" - <<<"$dex_render" | sed '/^$/d')"
+[ -z "$dex_unhardened" ] || { echo "FAIL: Dex is below the platform securityContext baseline (w7/m58)" >&2; fail=1; }
+dex_app="$(kubectl kustomize deploy/gitops/overlays/prod | yq -N 'select(.kind == "Application" and .metadata.name == "dex") | [
+    .metadata.annotations."argocd.argoproj.io/sync-wave", .spec.project, .spec.destination.namespace, .spec.source.path,
+    (.spec.ignoreDifferences[] | select(.kind == "Deployment" and .name == "dex") | .jsonPointers | join(",")),
+    (.spec.syncPolicy.syncOptions | contains(["RespectIgnoreDifferences=true"]))] | join("|")' | sed '/^$/d')"
+[ "$dex_app" = '3|bex-platform|auth|deploy/gitops/charts/dex|/spec/replicas|true' ] \
+  || { echo "FAIL: the dex Application is '$dex_app' (want wave 3 in auth, ignoring and respecting Deployment/dex /spec/replicas)" >&2; fail=1; }
+dex_route="$(yq -N 'select(.kind == "Ingress" and .metadata.name == "dex") | .spec.rules[0] as $r | [
+    "https://" + $r.host + $r.http.paths[0].path, $r.http.paths[0].pathType,
+    $r.http.paths[0].backend.service.name, $r.http.paths[0].backend.service.port.name,
+    .spec.tls[0].secretName, (.metadata.annotations."cert-manager.io/cluster-issuer" // "none")] | join("|")' <<<"$dex_render" | sed '/^$/d')"
+dex_issuer="$(env -i PATH="$PATH" bash -c '. scripts/lib/kratos-oidc-fragment.sh; dex_issuer_url')"
+[ "$dex_route" = "$dex_issuer|Prefix|dex|http|kratos-public-tls|none" ] \
+  || { echo "FAIL: the dex Ingress is '$dex_route' (want the fragment's issuer $dex_issuer on Kratos's certificate, no issuer of its own)" >&2; fail=1; }
+dex_edge="$(yq -N 'select(.kind == "NetworkPolicy" and .metadata.name == "allow-dex-public-edge") | [
+    .metadata.namespace, .spec.podSelector.matchLabels."app.kubernetes.io/name",
+    (.spec.ingress[] | (.from[].namespaceSelector.matchLabels."kubernetes.io/metadata.name") + ":" + ([.ports[].port] | join(",")))] | join("|")' \
+  deploy/gitops/base/network-policies.yaml | sed '/^$/d')"
+[ "$dex_edge" = 'auth|dex|traefik:5556' ] \
+  || { echo "FAIL: allow-dex-public-edge is '$dex_edge' (want Traefik to Dex's web port 5556 only)" >&2; fail=1; }
 
 for dir in deploy/opensandbox deploy/gitops/base deploy/gitops/overlays/*/ deploy/gitops/charts/*/; do
   [ -f "$dir/kustomization.yaml" ] || continue # e.g. charts/opensandbox-controller is a Helm chart

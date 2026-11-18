@@ -1,0 +1,97 @@
+# Dex — Bitbucket's OpenID Connect bridge for Kratos (w7/m468,
+# docs/ADR012-auth.md §10). Bitbucket Cloud speaks OAuth 2.0 but not OIDC, and
+# Kratos has no bitbucket provider, so Kratos's `bitbucket` button is a generic
+# OIDC provider at Dex's issuer, and Dex's bitbucket-cloud connector talks to
+# Bitbucket.
+#
+# OFF until the installation sets a Bitbucket OAuth consumer: replicas is 0
+# here, and scripts/auth-secrets.sh (every deploy) scales it to 1 only while
+# BEX_BITBUCKET_OIDC_CLIENT_ID/_SECRET are set, after writing the whole Dex
+# config into the out-of-band `dex` Secret (the connector's secret and
+# Kratos's static client secret never live in git). The dex Application
+# ignores this replica count, so Argo never undoes that scale.
+#
+# One replica on memory storage, replaced with Recreate: two Dex pods would
+# each hold their own in-flight logins, so a browser sent to one by /auth and
+# to the other by /callback would fail. A restart costs only the logins in
+# flight.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dex
+  namespace: auth
+  labels:
+    app.kubernetes.io/name: dex
+    app.kubernetes.io/component: bitbucket-oidc-bridge
+spec:
+  replicas: 0
+  revisionHistoryLimit: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dex
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: dex
+        app.kubernetes.io/component: bitbucket-oidc-bridge
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      nodeSelector:
+        bex.co/pool: platform
+      tolerations:
+        - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: dex
+          image: ghcr.io/dexidp/dex:v2.46.1@sha256:65b72ca0f4b0bf6d4ada84ec21da8851782563404ac7b8f926923d27ceced9ab
+          # The binary itself, not the image's entrypoint (which renders the
+          # config through gomplate into a temporary file): the config holds
+          # no templates, and the root filesystem stays read-only.
+          command: ["dex", "serve", "/etc/dex/config.yaml"]
+          ports:
+            - name: http
+              containerPort: 5556
+            - name: telemetry
+              containerPort: 5558
+          readinessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: telemetry
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz/live
+              port: telemetry
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/dex
+              readOnly: true
+      volumes:
+        - name: config
+          secret:
+            secretName: dex
+            items:
+              - key: config.yaml
+                path: config.yaml

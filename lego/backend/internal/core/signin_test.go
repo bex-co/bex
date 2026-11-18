@@ -35,6 +35,8 @@ func TestParseSignInIsClosed(t *testing.T) {
 		"oidc:google ": SignInOther,
 		"google":       SignInOther,
 		"oidc:gitlab":  SignInOther,
+		// w7/m468: GitLab and Bitbucket are sign-ins, but never Google's.
+		"oidc:bitbucket": SignInOther,
 	} {
 		if got := ParseSignIn(in); got != want {
 			t.Errorf("ParseSignIn(%q) = %q, want %q", in, got, want)
@@ -57,6 +59,8 @@ func TestSignInFromKratosPrefersGoogleAndNeverLeavesASessionUnrecorded(t *testin
 		"github":                            {[]KratosAuthMethod{m("oidc", "github")}, SignInGitHub},
 		"github then password":              {[]KratosAuthMethod{m("oidc", "github"), m("password", "")}, SignInGitHub},
 		"another oidc provider":             {[]KratosAuthMethod{m("oidc", "gitlab")}, SignInOther},
+		"bitbucket, through Dex (w7/m468)":  {[]KratosAuthMethod{m("oidc", "bitbucket")}, SignInOther},
+		"gitlab, then google refreshed":     {[]KratosAuthMethod{m("oidc", "gitlab"), m("oidc", "google")}, SignInGoogle},
 		"a one-time code":                   {[]KratosAuthMethod{m("code", "")}, SignInOther},
 		"a provider named google, not oidc": {[]KratosAuthMethod{m("password", "google")}, SignInPassword},
 		"nothing recorded":                  {nil, SignInOther},

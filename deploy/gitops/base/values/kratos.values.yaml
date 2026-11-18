@@ -265,8 +265,9 @@ deployment:
   tolerations:
     - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
   # Social login (w4/003, docs/ADR012-auth.md § Social login): load a SECOND Kratos
-  # config file carrying the `oidc` method's providers (GitHub, and Google since
-  # w7/m465) and the Google-login settings guard's web_hooks. Their client
+  # config file carrying the `oidc` method's providers (GitHub, Google since
+  # w7/m465, GitLab and Bitbucket since w7/m468; Bitbucket through Dex,
+  # deploy/gitops/charts/dex) and the Google-login settings guard's web_hooks. Their client
   # secrets and the guard's bearer are secret material, so they can't live in
   # these git-committed values — instead scripts/auth-secrets.sh writes an
   # `oidc.yaml` fragment (scripts/lib/kratos-oidc-fragment.sh) into the

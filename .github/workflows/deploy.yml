@@ -1195,6 +1195,12 @@ jobs:
           # Sign in with Google (w7/m465): the same shape, its own pair.
           BEX_GOOGLE_OIDC_CLIENT_ID: ${{ secrets.BEX_GOOGLE_OIDC_CLIENT_ID }}
           BEX_GOOGLE_OIDC_CLIENT_SECRET: ${{ secrets.BEX_GOOGLE_OIDC_CLIENT_SECRET }}
+          # Sign in with GitLab and with Bitbucket (w7/m468): each on its own
+          # pair. Bitbucket's also brings up Dex, its OIDC bridge (auth/dex).
+          BEX_GITLAB_OIDC_CLIENT_ID: ${{ secrets.BEX_GITLAB_OIDC_CLIENT_ID }}
+          BEX_GITLAB_OIDC_CLIENT_SECRET: ${{ secrets.BEX_GITLAB_OIDC_CLIENT_SECRET }}
+          BEX_BITBUCKET_OIDC_CLIENT_ID: ${{ secrets.BEX_BITBUCKET_OIDC_CLIENT_ID }}
+          BEX_BITBUCKET_OIDC_CLIENT_SECRET: ${{ secrets.BEX_BITBUCKET_OIDC_CLIENT_SECRET }}
           # Shared SMTP relay (docs/ADR012-auth.md §11): the courier URI (required — the
           # courier is enabled) into the kratos Secret, and the bex-api invite
           # mailer's credentials into bex-system/bex-smtp.

@@ -8,6 +8,12 @@ import { Eye, EyeOff } from "lucide-react";
 import { oryHideCardLogo } from "@/common/lib/ory/config";
 import { OryMessageContent } from "@/common/lib/ory/ory-message-content";
 import { OryToast } from "@/common/lib/ory/ory-toast";
+import {
+  SettingsSsoAccounts,
+  SsoButtonRows,
+  SsoLinkButton,
+  SsoSignInButton,
+} from "@/common/lib/ory/sso-buttons";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils.ts";
 
@@ -284,7 +290,8 @@ function SettingsNodeInput(props: OryNodeInputProps) {
 }
 
 /**
- * The Settings flow's overrides: its inputs (above), and its messages.
+ * The Settings flow's overrides: its inputs (above), its connected accounts
+ * (`sso-buttons.tsx`), and its messages.
  * Ory renders a field's own messages through `Message.Content` (its default
  * label lists `node.messages` under the field: the settings guard's refusal of
  * an email change sits on `traits.email`) and the flow-level ones through
@@ -294,13 +301,16 @@ function SettingsNodeInput(props: OryNodeInputProps) {
  */
 // eslint-disable-next-line react-refresh/only-export-components -- Ory override map, not a component
 export const orySettingsFormOverrides: OryFlowComponentOverrides = {
-  Node: { Input: SettingsNodeInput },
+  Node: { Input: SettingsNodeInput, SsoButton: SsoLinkButton },
+  Form: { SsoSettings: SettingsSsoAccounts },
   Message: { Content: OryMessageContent, Toast: OryToast },
 };
 
 /**
  * Auth-flow component overrides: hide the redundant card logo, fix the
- * duplicate password id, and restore empty-submit browser validation.
+ * duplicate password id, restore empty-submit browser validation, and lay the
+ * social sign-in buttons out as Render does, each with its logo and name
+ * (w7/m468, `sso-buttons.tsx`).
  *
  * Intentionally avoids importing `@ory/elements-react/theme` (Vitest cannot
  * resolve its extensionless session-provider import; the app Vite config can).
@@ -310,9 +320,11 @@ export const oryAuthFormOverrides: OryFlowComponentOverrides = {
   ...oryHideCardLogo,
   Form: {
     Root: AuthFormRoot,
+    SsoRoot: SsoButtonRows,
   },
   Node: {
     Input: AuthNodeInput,
+    SsoButton: SsoSignInButton,
     // Elements routes `code`/`totp_code` nodes through Node.CodeInput, NOT
     // Node.Input (input-renderer's isPinCodeInput branch) — overriding Input
     // alone never sees the OTP field.

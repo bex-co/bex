@@ -61,6 +61,11 @@ import {
 } from "@/common/components/section-navigation";
 import { cn } from "@/common/lib/utils/utils";
 import {
+  arrangeSsoProviders,
+  rememberedSsoProviders,
+  ssoRowColumns,
+} from "@/common/lib/ory/sso-providers";
+import {
   PageFrame,
   PageHeader,
   PageScroll,
@@ -1618,27 +1623,156 @@ function AuthFeatureRailSkeleton() {
   );
 }
 
-export function AuthWidgetSkeleton({ fields = 2 }: { fields?: number }) {
+/**
+ * Ory's flow card while its flow loads, at the ready card's geometry under the
+ * dashboard's overrides (`style.css`): the header (the title, then the
+ * subtitle's lines), the card's parts 24 px apart, and the footer link when
+ * the card has one. Below `sm` Ory's card is square with only its bottom
+ * border.
+ */
+function OryCardSkeleton({
+  subtitleClassName,
+  footer = false,
+  children,
+}: {
+  subtitleClassName: string;
+  footer?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <Region
       name="auth-widget"
-      className="grid gap-6 rounded-xl border bg-card p-6 shadow-sm sm:p-8"
+      className="grid gap-6 border-b bg-card p-6 shadow-sm sm:rounded-xl sm:border sm:p-8"
     >
       <div className="space-y-2">
-        <Skeleton className="h-7 w-32" />
-        <Skeleton className="h-5 w-4/5" />
+        <Skeleton className="h-[27px] w-28" />
+        <Skeleton className={cn("w-4/5", subtitleClassName)} />
       </div>
-      <div className="grid gap-6">
-        {Array.from({ length: fields }, (_, index) => (
-          <div key={index} className="space-y-1.5">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-9 w-full" />
-          </div>
-        ))}
+      {children}
+      {footer ? <Skeleton className="h-6 w-3/5" /> : null}
+    </Region>
+  );
+}
+
+/** A labelled field: the label's 24 px line (with a link beside it, as login's
+ *  "Recover Account"), then the h-9 input. */
+function FieldSkeleton({
+  action = false,
+  inputClassName = "h-9",
+}: {
+  action?: boolean;
+  inputClassName?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-6 w-20" />
+        {action ? <Skeleton className="h-6 w-32" /> : null}
+      </div>
+      <Skeleton className={cn("w-full", inputClassName)} />
+    </div>
+  );
+}
+
+/** How many lines each flow's subtitle (Ory's copy, in English) wraps to. */
+const AUTH_WIDGET_SUBTITLE = {
+  // "Enter the identifier associated with your account to receive a
+  // one-time access code"
+  recovery: "h-[72px] sm:h-12",
+  // "Enter the email address associated with your account to verify it"
+  verification: "h-12",
+} as const;
+
+/** The recovery and verification cards: the e-mail field and "Continue", 32 px
+ *  apart, and no footer. */
+export function AuthWidgetSkeleton({
+  flow,
+}: {
+  flow: keyof typeof AUTH_WIDGET_SUBTITLE;
+}) {
+  return (
+    <OryCardSkeleton subtitleClassName={AUTH_WIDGET_SUBTITLE[flow]}>
+      <div className="grid gap-8">
+        <FieldSkeleton />
         <Skeleton className="h-9 w-full" />
       </div>
-      <Skeleton className="h-4 w-3/5" />
-    </Region>
+    </OryCardSkeleton>
+  );
+}
+
+/**
+ * The login or sign-up card: the installation's provider buttons as
+ * `sso-buttons.tsx` lays them out (Render's first row, then the "More options"
+ * line when it hides GitLab and Bitbucket) over a divider, the labelled fields
+ * and the submit button 32 px apart, and the footer link. The subtitle wraps
+ * to two lines below `sm` when the card names a social provider ("…or a social
+ * provider"). `ssoProviders` is `loadSsoProviders`' answer; null (not known)
+ * draws no providers.
+ */
+function OryAuthCardSkeleton({
+  ssoProviders,
+  children,
+}: {
+  ssoProviders: readonly string[] | null;
+  children: React.ReactNode;
+}) {
+  const providers = ssoProviders ?? [];
+  const { primary, more } = arrangeSsoProviders(providers);
+  const hasSso = providers.length > 0;
+  return (
+    <OryCardSkeleton subtitleClassName={hasSso ? "h-12 sm:h-6" : "h-6"} footer>
+      {hasSso ? (
+        <div data-skeleton-sso={primary.length} className="grid gap-3">
+          <div className={cn("grid gap-3", ssoRowColumns(primary.length))}>
+            {primary.map((provider) => (
+              <Skeleton key={provider} className="h-9 w-full" />
+            ))}
+          </div>
+          {more.length > 0 ? (
+            <Skeleton
+              data-skeleton-sso-more
+              className="h-5 w-24 justify-self-center"
+            />
+          ) : null}
+        </div>
+      ) : null}
+      <div className="grid gap-8">
+        {hasSso ? <div className="h-px w-full bg-border" /> : null}
+        {children}
+      </div>
+    </OryCardSkeleton>
+  );
+}
+
+/** Login: e-mail (with "Recover Account" beside its label), the password box
+ *  (38 px with its show/hide toggle), and "Sign in with password". */
+export function LoginWidgetSkeleton({
+  ssoProviders,
+}: {
+  ssoProviders: readonly string[] | null;
+}) {
+  return (
+    <OryAuthCardSkeleton ssoProviders={ssoProviders}>
+      <FieldSkeleton action />
+      <FieldSkeleton inputClassName="h-[38px]" />
+      <Skeleton className="h-9 w-full" />
+    </OryAuthCardSkeleton>
+  );
+}
+
+/** Sign-up's first step: e-mail and name, then "Sign up" (Kratos asks for the
+ *  password on the next one). */
+export function RegistrationWidgetSkeleton({
+  ssoProviders,
+}: {
+  ssoProviders: readonly string[] | null;
+}) {
+  return (
+    <OryAuthCardSkeleton ssoProviders={ssoProviders}>
+      <FieldSkeleton />
+      <FieldSkeleton />
+      <Skeleton className="h-9 w-full" />
+    </OryAuthCardSkeleton>
   );
 }
 
@@ -1659,7 +1793,9 @@ function AuthRouteSkeleton({
       <Region name="language-action" className="absolute right-4 top-4 z-10">
         <Skeleton className="h-9 w-24" />
       </Region>
-      <div className="flex flex-1 items-center justify-center px-6 py-12 lg:px-8">
+      {/* min-w-0: the page header bars must not widen the column past a
+          narrow viewport. */}
+      <div className="flex min-w-0 flex-1 items-center justify-center px-6 py-12 lg:px-8">
         <div className="w-full max-w-[30rem] space-y-8">
           <Region name="page-header" className="space-y-2">
             <Skeleton className="h-9 w-64 max-w-full" />
@@ -1673,10 +1809,12 @@ function AuthRouteSkeleton({
   );
 }
 
+// The route's pending frame has no loader data yet: it draws the providers
+// this browser last read from a login or sign-up flow.
 export function LoginRouteSkeleton() {
   return (
     <AuthRouteSkeleton route="auth-login" featureRail>
-      <AuthWidgetSkeleton fields={2} />
+      <LoginWidgetSkeleton ssoProviders={rememberedSsoProviders()} />
     </AuthRouteSkeleton>
   );
 }
@@ -1684,7 +1822,7 @@ export function LoginRouteSkeleton() {
 export function RegistrationRouteSkeleton() {
   return (
     <AuthRouteSkeleton route="auth-registration" featureRail>
-      <AuthWidgetSkeleton fields={3} />
+      <RegistrationWidgetSkeleton ssoProviders={rememberedSsoProviders()} />
     </AuthRouteSkeleton>
   );
 }
@@ -1692,7 +1830,7 @@ export function RegistrationRouteSkeleton() {
 export function RecoveryRouteSkeleton() {
   return (
     <AuthRouteSkeleton route="auth-recovery">
-      <AuthWidgetSkeleton fields={2} />
+      <AuthWidgetSkeleton flow="recovery" />
     </AuthRouteSkeleton>
   );
 }
@@ -1700,7 +1838,7 @@ export function RecoveryRouteSkeleton() {
 export function VerificationRouteSkeleton() {
   return (
     <AuthRouteSkeleton route="auth-verification">
-      <AuthWidgetSkeleton fields={2} />
+      <AuthWidgetSkeleton flow="verification" />
     </AuthRouteSkeleton>
   );
 }

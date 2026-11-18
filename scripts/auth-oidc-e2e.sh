@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # End-to-end social-login check (docs/ADR012-auth.md § Social login, w4/003,
-# w7/m465): drives "Sign in with Google" through the SAME machinery prod uses —
-# the Kratos `oidc` method, configured by a SECOND `--config` file merged over
-# the main config, written by the very function scripts/auth-secrets.sh calls
-# (scripts/lib/kratos-oidc-fragment.sh: both providers, the claims→traits
+# w7/m465, w7/m468): drives "Sign in with Google", "Sign in with GitLab" and
+# "Sign in with Bitbucket" through the SAME machinery prod uses — the Kratos
+# `oidc` method, configured by a SECOND `--config` file merged over the main
+# config, written by the very function scripts/auth-secrets.sh calls
+# (scripts/lib/kratos-oidc-fragment.sh: all four providers, the claims→traits
 # mappers inlined via `base64://`, and the workspace Google-login settings
 # guard), on the Kratos version production runs.
 #
@@ -13,12 +14,18 @@
 #   the mapped, verified email and the google sign-in -> the settings flow
 #   asks the guard before saving an email change or an unlink
 #
-# The Google provider is Dex (dexidp.io), a throwaway stand-in OIDC IdP
-# registered under the provider id `google` (KRATOS_OIDC_GOOGLE_ISSUER) —
-# Google can't redirect to localhost, and pinning the *mechanism* (not
-# Google's servers) is what a local check can prove. Kratos's built-in
-# `provider: google` differs only in where it fetches its endpoints. Every other
-# moving part is real here: the two-file config merge, both provider buttons,
+# The Google and GitLab providers are Dex (dexidp.io), a throwaway stand-in
+# OIDC IdP registered under the provider ids `google` and `gitlab`
+# (KRATOS_OIDC_GOOGLE_ISSUER, KRATOS_OIDC_GITLAB_ISSUER) — neither can redirect
+# to localhost, and pinning the *mechanism* (not their servers) is what a local
+# check can prove. Kratos's built-in `provider: google` and `provider: gitlab`
+# differ only in where they fetch their endpoints and claims. Bitbucket is
+# closer still: production's `bitbucket` IS a generic provider at Dex, so here
+# Dex runs production's own config (dex_bitbucket_config, the static client
+# Kratos signs in as and its callback) with only the bitbucket-cloud connector
+# swapped for Dex's password database, at the issuer DEX_ISSUER_URL names.
+# Each provider signs a different person up and back in. Every other
+# moving part is real here: the two-file config merge, every provider button,
 # the mapper marking a provider-verified email verified, the session's
 # `oidc`/`google` authentication method (what bex-api's gate reads), the linked
 # account's stored ID token (what the gate reads the Google email from), and
@@ -34,7 +41,7 @@
 # Kratos reaches the host's guard stub as host.docker.internal.
 #
 # Self-contained: Kratos and Dex run as throwaway Docker containers
-# (in-memory). Requires: docker, curl, python3.
+# (in-memory). Requires: docker, curl, python3, yq (mikefarah v4).
 #
 # Usage: scripts/auth-oidc-e2e.sh
 set -euo pipefail
@@ -47,10 +54,19 @@ KRATOS=bexoidc-e2e-kratos
 DEX=bexoidc-e2e-dex
 KRATOS_PUB=http://localhost:4433
 KRATOS_ADM=http://localhost:4434
+# Production's Dex, by the digest its manifest pins, from Docker Hub's copy
+# of the same image (ghcr.io/dexidp/dex and dexidp/dex publish one index).
+DEX_IMAGE="$(yq -r '.spec.template.spec.containers[0].image' deploy/gitops/charts/dex/deployment.yaml)"
+DEX_IMAGE="dexidp/dex:${DEX_IMAGE#ghcr.io/dexidp/dex:}"
 DEX_ISSUER=http://localhost:5556/dex
 CLIENT_ID=kratos-oidc-e2e
 CLIENT_SECRET=kratos-oidc-e2e-secret
+DEX_KRATOS_SECRET=kratos-dex-e2e-secret
+# One person per provider: a second provider signing the same email up would
+# be Kratos's duplicate-identifier linking flow, not a sign-up.
 USER_EMAIL=dev@bex.co
+GITLAB_EMAIL=gitlab-dev@bex.co
+BITBUCKET_EMAIL=bitbucket-dev@bex.co
 USER_PASS=password
 GUARD_PORT=4499
 GUARD_TOKEN=e2e-guard-token
@@ -73,7 +89,7 @@ wait_http() { # url [attempts]
   return 1
 }
 
-echo "-> 1/5 kratos (in-memory) — main config + the SECOND oidc config file auth-secrets.sh writes..."
+echo "-> 1/6 kratos (in-memory) — main config + the SECOND oidc config file auth-secrets.sh writes..."
 cat >"$TMP/identity.schema.json" <<'JSON'
 {
   "$id": "https://schemas.bex.co/e2e.schema.json",
@@ -141,13 +157,24 @@ secrets:
 YAML
 
 # The SECOND config file, written by the same function as scripts/auth-secrets.sh
-# with Dex standing in for Google and the guard pointed at the host stub. The
-# GitHub pair is set too, so the login flow must carry both provider buttons.
-BEX_GOOGLE_OIDC_CLIENT_ID="$CLIENT_ID" BEX_GOOGLE_OIDC_CLIENT_SECRET="$CLIENT_SECRET" \
-  BEX_GITHUB_OIDC_CLIENT_ID=github-unused BEX_GITHUB_OIDC_CLIENT_SECRET=github-unused \
-  KRATOS_OIDC_GOOGLE_ISSUER="$DEX_ISSUER" \
-  KRATOS_SETTINGS_GUARD_URL="http://host.docker.internal:$GUARD_PORT" KRATOS_SETTINGS_GUARD_TOKEN="$GUARD_TOKEN" \
-  kratos_oidc_fragment >"$TMP/oidc.yaml"
+# with Dex standing in for Google, GitLab and Bitbucket's Dex, and the guard
+# pointed at the host stub. The GitHub pair is set too, so the login flow must
+# carry all four provider buttons. The Bitbucket pair is Dex's (unused here:
+# its connector is swapped out below).
+fragment() { # extra NAME=value assignments... → the fragment on stdout
+  (
+    export BEX_GOOGLE_OIDC_CLIENT_ID="$CLIENT_ID" BEX_GOOGLE_OIDC_CLIENT_SECRET="$CLIENT_SECRET" \
+      BEX_GITHUB_OIDC_CLIENT_ID=github-unused BEX_GITHUB_OIDC_CLIENT_SECRET=github-unused \
+      KRATOS_OIDC_GOOGLE_ISSUER="$DEX_ISSUER" \
+      KRATOS_SETTINGS_GUARD_URL="http://host.docker.internal:$GUARD_PORT" KRATOS_SETTINGS_GUARD_TOKEN="$GUARD_TOKEN"
+    [ $# -eq 0 ] || export "$@"
+    kratos_oidc_fragment
+  )
+}
+BRIDGE=(BEX_BITBUCKET_OIDC_CLIENT_ID=bitbucket-unused BEX_BITBUCKET_OIDC_CLIENT_SECRET=bitbucket-unused
+  DEX_KRATOS_CLIENT_SECRET="$DEX_KRATOS_SECRET" DEX_ISSUER_URL="$DEX_ISSUER" KRATOS_PUBLIC_URL="$KRATOS_PUB")
+fragment BEX_GITLAB_OIDC_CLIENT_ID="$CLIENT_ID" BEX_GITLAB_OIDC_CLIENT_SECRET="$CLIENT_SECRET" \
+  KRATOS_OIDC_GITLAB_ISSUER="$DEX_ISSUER" "${BRIDGE[@]}" >"$TMP/oidc.yaml"
 
 docker rm -f "$KRATOS" >/dev/null 2>&1 || true
 # Kratos owns the shared netns and publishes its own ports AND Dex's :5556.
@@ -161,38 +188,37 @@ docker run -d --name "$KRATOS" \
 wait_http "$KRATOS_PUB/health/ready"
 echo "  ✓ kratos merged two --config files (oidc method enabled)"
 
-echo "-> 2/5 dex (stand-in Google, shares the kratos netns)..."
+echo "-> 2/6 dex (production's Bitbucket bridge config; stand-in Google and GitLab; shares the kratos netns)..."
 mkdir -p "$TMP/dex"
-cat >"$TMP/dex/config.yaml" <<YAML
-issuer: $DEX_ISSUER
-storage:
-  type: memory
-web:
-  http: 0.0.0.0:5556
-oauth2:
-  skipApprovalScreen: true
-staticClients:
-  - id: $CLIENT_ID
-    secret: $CLIENT_SECRET
-    name: Kratos (e2e)
-    redirectURIs:
-      - $KRATOS_PUB/self-service/methods/oidc/callback/google
-enablePasswordDB: true
-staticPasswords:
-  - email: "$USER_EMAIL"
-    # bcrypt("password"); test-only credential, never a secret.
-    hash: "\$2a\$10\$NEz7tWCzOz6fF3oboUCTsuH9OEy.fFH8mYmwUYibQorTiL6Qh.Owi"
-    username: "dev"
-    userID: "1c2f0e3a-4b5c-6d7e-8f90-abcdef012345"
-YAML
+# Production's Dex config (auth-secrets.sh writes the same function's output),
+# with the bitbucket-cloud connector swapped for a password database holding
+# one person per provider, and one more static client for the google and
+# gitlab stand-ins. bcrypt("password"); test-only credentials, never secrets.
+# shellcheck disable=SC2016 # the bcrypt hash's $ signs are literal
+(export "${BRIDGE[@]}"; dex_bitbucket_config) | \
+  CLIENT_ID="$CLIENT_ID" CLIENT_SECRET="$CLIENT_SECRET" KRATOS_PUB="$KRATOS_PUB" \
+  USER_EMAIL="$USER_EMAIL" GITLAB_EMAIL="$GITLAB_EMAIL" BITBUCKET_EMAIL="$BITBUCKET_EMAIL" \
+  yq '
+    .connectors = [] |
+    .enablePasswordDB = true |
+    .staticPasswords = [
+      {"email": strenv(USER_EMAIL), "username": "dev", "userID": "1c2f0e3a-4b5c-6d7e-8f90-abcdef012345"},
+      {"email": strenv(GITLAB_EMAIL), "username": "gitlab-dev", "userID": "2c2f0e3a-4b5c-6d7e-8f90-abcdef012345"},
+      {"email": strenv(BITBUCKET_EMAIL), "username": "bitbucket-dev", "userID": "3c2f0e3a-4b5c-6d7e-8f90-abcdef012345"}
+    ] |
+    .staticPasswords[].hash = "$2a$10$NEz7tWCzOz6fF3oboUCTsuH9OEy.fFH8mYmwUYibQorTiL6Qh.Owi" |
+    .staticClients += [{"id": strenv(CLIENT_ID), "secret": strenv(CLIENT_SECRET), "name": "Kratos (e2e stand-ins)",
+      "redirectURIs": [strenv(KRATOS_PUB) + "/self-service/methods/oidc/callback/google",
+                       strenv(KRATOS_PUB) + "/self-service/methods/oidc/callback/gitlab"]}]
+  ' >"$TMP/dex/config.yaml"
 docker rm -f "$DEX" >/dev/null 2>&1 || true
 docker run -d --name "$DEX" --network "container:$KRATOS" \
-  -v "$TMP/dex:/etc/dex" \
-  dexidp/dex:v2.41.1 dex serve /etc/dex/config.yaml >/dev/null
+  -v "$TMP/dex:/etc/dex" --read-only --entrypoint dex \
+  "$DEX_IMAGE" serve /etc/dex/config.yaml >/dev/null
 wait_http "$DEX_ISSUER/.well-known/openid-configuration"
 echo "  ✓ dex OIDC discovery is live at $DEX_ISSUER"
 
-echo "-> 3/5 settings guard stub (stands in for bex-api's /internal/kratos/settings-guard)..."
+echo "-> 3/6 settings guard stub (stands in for bex-api's /internal/kratos/settings-guard)..."
 # It answers what $TMP/guard-mode says ("refuse" or "allow") and logs each
 # call, so the flow below can assert what Kratos sent and what it did with
 # each answer.
@@ -227,27 +253,29 @@ GUARD_PID=$!
 sleep 1
 echo "  ✓ guard stub listening on :$GUARD_PORT"
 
-echo "-> 4/5 drive the whole browser flow (one cookie jar end-to-end)..."
+echo "-> 4/6 drive the whole browser flow (one cookie jar end-to-end)..."
 # The entire dance runs in ONE python process holding ONE cookie jar: Kratos's
 # csrf + continuity cookies (both HttpOnly) and Dex's session cookie must all
 # survive across the login-flow init, the oidc redirect, the provider login, and
 # the callback. Splitting this across curl invocations drops the HttpOnly
 # continuity cookie (curl's `#HttpOnly_` jar lines are comments to other
 # parsers) and Kratos rejects the callback — so keep it in-process.
-python3 - "$KRATOS_PUB" "$KRATOS_ADM" "$USER_EMAIL" "$USER_PASS" "$TMP" "$GUARD_TOKEN" "$GUARD_PID" <<'PY'
+python3 - "$KRATOS_PUB" "$KRATOS_ADM" "$USER_EMAIL" "$USER_PASS" "$TMP" "$GUARD_TOKEN" "$GUARD_PID" "$GITLAB_EMAIL" "$BITBUCKET_EMAIL" <<'PY'
 import sys, re, os, json, base64, signal, time, http.cookiejar, urllib.request, urllib.parse
-kratos_pub, kratos_adm, email, password, tmp, guard_token, guard_pid = sys.argv[1:8]
+kratos_pub, kratos_adm, email, password, tmp, guard_token, guard_pid, gitlab_email, bitbucket_email = sys.argv[1:10]
 
-jar = http.cookiejar.CookieJar()
-opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
-opener.addheaders = [('User-Agent', 'bex-oidc-e2e'), ('Accept', 'application/json')]
+def browser():
+    """A fresh browser: its own cookie jar."""
+    op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+    op.addheaders = [('User-Agent', 'bex-oidc-e2e'), ('Accept', 'application/json')]
+    return op
 
-def get_json(url, data=None, ctype=None):
+def get_json_with(op, url, data=None, ctype=None):
     req = urllib.request.Request(url, data=data)
     if ctype:
         req.add_header('Content-Type', ctype)
     try:
-        with opener.open(req) as r:
+        with op.open(req) as r:
             return r.status, json.loads(r.read().decode())
     except urllib.error.HTTPError as e:
         body = e.read().decode()
@@ -256,16 +284,21 @@ def get_json(url, data=None, ctype=None):
         except Exception:
             return e.code, body
 
+opener = browser()
+
+def get_json(url, data=None, ctype=None):
+    return get_json_with(opener, url, data, ctype)
+
 # (1) Init a browser login flow; assert it offers a button per provider.
 _, flow = get_json(f'{kratos_pub}/self-service/login/browser')
 nodes = flow['ui']['nodes']
 action = flow['ui']['action']
 csrf = next(n['attributes']['value'] for n in nodes if n['attributes'].get('name') == 'csrf_token')
 providers = sorted(n['attributes'].get('value') for n in nodes if n['attributes'].get('name') == 'provider')
-assert providers == ['github', 'google'], 'login flow provider nodes = %r, want github and google' % providers
+assert providers == ['bitbucket', 'github', 'gitlab', 'google'], 'login flow provider nodes = %r, want all four' % providers
 labels = sorted(n['meta']['label']['text'] for n in nodes if n['attributes'].get('name') == 'provider')
-assert labels == ['Sign in with GitHub', 'Sign in with Google'], 'provider button labels = %r' % labels
-print('  ✓ 4a login flow carries an oidc node per provider (github, google) — the buttons')
+assert labels == ['Sign in with Bitbucket', 'Sign in with GitHub', 'Sign in with GitLab', 'Sign in with Google'], 'provider button labels = %r' % labels
+print('  ✓ 4a login flow carries an oidc node per provider (bitbucket, github, gitlab, google) — the buttons')
 
 # (2) Submit method=oidc. Kratos answers 422 browser_location_change_required
 # whose redirect_browser_to is the stand-in Google's authorize endpoint.
@@ -323,38 +356,46 @@ assert claims.get('email') == email, 'stored ID token email = %r' % claims.get('
 print('  ✓ 4e the linked Google account stored its ID token, email', claims['email'])
 
 # (6) Sign back in from a fresh browser: the same identity, not a second one.
-def google_login(op):
+def provider_login(op, provider, who):
+    """Sign in (or up) through `provider` as the stand-in person `who`."""
     _, flow = get_json_with(op, f'{kratos_pub}/self-service/login/browser')
     csrf = next(n['attributes']['value'] for n in flow['ui']['nodes'] if n['attributes'].get('name') == 'csrf_token')
-    _, submit = get_json_with(op, flow['ui']['action'], data=json.dumps({'method': 'oidc', 'provider': 'google', 'csrf_token': csrf}).encode(), ctype='application/json')
+    _, submit = get_json_with(op, flow['ui']['action'], data=json.dumps({'method': 'oidc', 'provider': provider, 'csrf_token': csrf}).encode(), ctype='application/json')
     with op.open(submit['redirect_browser_to']) as r:
         login_url, html = r.geturl(), r.read().decode()
     form = urllib.parse.urljoin(login_url, re.search(r'action="([^"]+)"', html).group(1).replace('&amp;', '&'))
     try:
-        op.open(urllib.request.Request(form, data=urllib.parse.urlencode({'login': email, 'password': password}).encode())).close()
-    except urllib.error.HTTPError:
-        pass
+        op.open(urllib.request.Request(form, data=urllib.parse.urlencode({'login': who, 'password': password}).encode())).close()
+    except urllib.error.HTTPError as e:
+        if 'error-stub' in (e.url or ''):
+            eid = urllib.parse.parse_qs(urllib.parse.urlparse(e.url).query).get('id', [''])[0]
+            sys.exit(f'{provider}: flow ended on the Kratos error page: ' + json.dumps(get_json_with(op, f'{kratos_pub}/self-service/errors?id={eid}')[1])[:800])
     return get_json_with(op, f'{kratos_pub}/sessions/whoami')
 
-def get_json_with(op, url, data=None, ctype=None):
-    req = urllib.request.Request(url, data=data)
-    if ctype:
-        req.add_header('Content-Type', ctype)
-    try:
-        with op.open(req) as r:
-            return r.status, json.loads(r.read().decode())
-    except urllib.error.HTTPError as e:
-        body = e.read().decode()
-        try:
-            return e.code, json.loads(body)
-        except Exception:
-            return e.code, body
 
-fresh = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
-fresh.addheaders = [('User-Agent', 'bex-oidc-e2e'), ('Accept', 'application/json')]
-code, again = google_login(fresh)
+code, again = provider_login(browser(), 'google', email)
 assert code == 200 and again['identity']['id'] == ident, f'signing back in = {code}, identity {again.get("identity", {}).get("id")} want {ident}'
 print('  ✓ 4f a fresh browser signed back in with Google as the same identity')
+
+# (6b) GitLab and Bitbucket (w7/m468): each signs a new person up, the mapper
+# sets and verifies the email, the session says which provider, and a fresh
+# browser signs back in as the same identity. Bitbucket's leg runs through
+# production's own Dex config: Kratos's static client, its secret and its
+# callback.
+for provider, who in (('gitlab', gitlab_email), ('bitbucket', bitbucket_email)):
+    code, up = provider_login(browser(), provider, who)
+    assert code == 200 and up.get('active') is True, f'{provider} sign-up = {code} {json.dumps(up)[:400]}'
+    assert up['identity']['traits']['email'] == who, f'{provider}: email trait = %r' % up['identity']['traits']
+    assert up['identity']['id'] != ident, f'{provider} signed up as the Google identity'
+    methods = [(m.get('method'), m.get('provider')) for m in up.get('authentication_methods', [])]
+    assert ('oidc', provider) in methods, f'{provider}: session authentication_methods = %r' % methods
+    verified = [a for a in up['identity'].get('verifiable_addresses', []) if a['value'] == who and a['verified']]
+    assert verified, f'{provider}: the provider-verified email is not verified: ' + json.dumps(up['identity'].get('verifiable_addresses'))
+    linked = [p['provider'] for p in get_json(f'{kratos_adm}/admin/identities/{up["identity"]["id"]}?include_credential=oidc')[1]['credentials']['oidc']['config']['providers']]
+    assert linked == [provider], f'{provider}: linked oidc providers = %r' % linked
+    code, back = provider_login(browser(), provider, who)
+    assert code == 200 and back['identity']['id'] == up['identity']['id'], f'{provider}: signing back in = {code}, identity {back.get("identity", {}).get("id")}'
+    print(f'  ✓ 4g {provider}: signed {who} up (verified, oidc/{provider}) and a fresh browser back in as the same identity')
 
 # (7) The settings guard: Kratos asks it before saving a profile change or an
 # unlink; a refusal is shown and nothing changes; an allow saves; and a guard
@@ -388,17 +429,17 @@ assert [e['path'].split('method=')[1] for e in log] == ['profile', 'oidc', 'prof
 assert all(e['auth'] == 'Bearer ' + guard_token for e in log), 'the guard was not sent its bearer'
 first = log[0]['body']
 assert first['identity_id'] == ident and first['email'] == 'personal@gmail.example' and '/self-service/settings' in first['request_url'], first
-print('  ✓ 4g the settings guard refused an email change and an unlink, and let a name change through')
+print('  ✓ 4h the settings guard refused an email change and an unlink, and let a name change through')
 
 os.kill(int(guard_pid), signal.SIGTERM)
 time.sleep(1)
 code, _ = settings({'method': 'profile', 'traits': {'email': 'personal@gmail.example', 'name': 'Dev'}}, 'allow')
 assert code != 200 and current_email() == email, f'with the guard unreachable the change = {code}, email {current_email()}'
-print(f'  ✓ 4h with the guard unreachable, Kratos refused the change ({code}): fail closed')
+print(f'  ✓ 4i with the guard unreachable, Kratos refused the change ({code}): fail closed')
 PY
 GUARD_PID=""
 
-echo "-> 5/5 confirm the minted identity is federated (oidc credential)..."
+echo "-> 5/6 confirm the minted identity is federated (oidc credential)..."
 # A brand-new provider login registers the identity via the oidc strategy, so it
 # carries an `oidc` credential (not password) — proof it came in through Dex.
 ident="$(curl -sf "$KRATOS_ADM/admin/identities?credentials_identifier=$USER_EMAIL" || true)"
@@ -411,8 +452,24 @@ assert 'oidc' in methods, 'identity is missing the oidc credential: ' + json.dum
 print('  ✓ identity has an oidc (federated) credential:', methods)
 "
 
+echo "-> 6/6 without the GitLab and Bitbucket pairs, Kratos offers neither button..."
+# The same fragment with only GitHub's and Google's pairs, on a fresh start of
+# the same Kratos (memory DSN: nothing above survives, and Dex has lost its
+# network namespace, which nothing here needs any more).
+fragment >"$TMP/oidc.yaml"
+docker restart "$KRATOS" >/dev/null
+wait_http "$KRATOS_PUB/health/ready"
+curl -sf -H 'Accept: application/json' "$KRATOS_PUB/self-service/login/browser" | python3 -c "
+import sys, json
+nodes = json.load(sys.stdin)['ui']['nodes']
+providers = sorted(n['attributes'].get('value') for n in nodes if n['attributes'].get('name') == 'provider')
+assert providers == ['github', 'google'], 'login flow provider nodes = %r, want github and google only' % providers
+print('  ✓ the login flow offers github and google only')
+"
+
 echo
-echo "✓ w4/003 + w7/m465 end-to-end: the auth-secrets.sh fragment on Kratos v26.2.0"
-echo "  -> Sign in with Google (stand-in) -> verified first-party session signed in"
-echo "  with oidc/google -> the settings guard refuses an email change and an unlink,"
-echo "  and fails closed when unreachable (docs/ADR012-auth.md §9b, §10)."
+echo "✓ w4/003 + w7/m465 + w7/m468 end-to-end: the auth-secrets.sh fragment on Kratos v26.2.0"
+echo "  -> Sign in with Google, GitLab and Bitbucket (Dex on production's bridge config)"
+echo "  -> verified first-party sessions signed in with each provider, and back in"
+echo "  -> the settings guard refuses an email change and an unlink, and fails closed"
+echo "  when unreachable (docs/ADR012-auth.md §9b, §10)."

@@ -1,12 +1,18 @@
 import { useEffect } from "react";
-import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
+import {
+  useLoaderData,
+  useNavigate,
+  useRouter,
+  useSearch,
+} from "@tanstack/react-router";
 import { Login } from "@ory/elements-react/theme";
 import { useOryFlow, clearStoredOryFlow } from "@/common/hooks/use-ory-flow";
 import { useOryConfig } from "@/common/lib/ory/config";
 import { oryAuthFormOverrides } from "@/common/lib/ory/auth-form-overrides";
 import { safeNext } from "@/common/lib/safe-next";
 import { stashAuthNext, clearAuthNext } from "@/features/auth/lib/auth-next";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import { LoginWidgetSkeleton } from "@/common/components/route-skeletons";
+import { useRememberSsoProviders } from "@/features/auth/hooks/use-remember-sso-providers";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { invalidateSessionCache } from "@/common/server-fn/session";
 import { getClient } from "@/common/apollo/client";
@@ -17,6 +23,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const router = useRouter();
   const search = useSearch({ from: "/auth/login" });
+  const ssoProviders = useLoaderData({ from: "/auth/login" });
   // `next` is attacker-controllable (it's in the URL). Normalize it to a
   // same-origin relative path before it becomes the Ory return_to OR a
   // navigate href — otherwise it's an open redirect (safe-next.ts).
@@ -26,6 +33,7 @@ export default function LoginPage() {
     loginChallenge: search.login_challenge,
     aal: search.aal,
   });
+  useRememberSsoProviders(flow);
   const { t } = useTranslations();
   const authFeatures = useAuthFeatures();
   const oryConfig = useOryConfig();
@@ -71,54 +79,8 @@ export default function LoginPage() {
           }}
         />
       ) : (
-        <LoginWidgetSkeleton />
+        <LoginWidgetSkeleton ssoProviders={ssoProviders} />
       )}
     </AuthPageShell>
-  );
-}
-
-/**
- * Placeholder shown while the Kratos login flow is being fetched. It mirrors the
- * structure the Ory <Login> card renders once the flow arrives — bordered card,
- * header (title + subtitle), a social-provider button, a divider, labelled
- * e-mail + password fields, the submit button, and the sign-up footer — using
- * the same card chrome (rounded-xl border bg-card shadow-sm, p-6 sm:p-8) and the
- * same vertical rhythm (card gap-6, inner field gap-8, label gap-1). Matching
- * the real widget's box keeps the layout stable, so the form doesn't jump when
- * it swaps in. (Kept in sync by eye with the Ory card measured in the browser;
- * the card's own content-driven ~480px overflow width is left to the real card.)
- */
-function LoginWidgetSkeleton() {
-  return (
-    <div
-      aria-hidden
-      className="grid gap-6 rounded-xl border bg-card p-6 shadow-sm sm:p-8"
-    >
-      {/* header: title + subtitle */}
-      <div className="space-y-2">
-        <Skeleton className="h-7 w-28" />
-        <Skeleton className="h-6 w-4/5" />
-      </div>
-      {/* social provider button */}
-      <Skeleton className="h-9 w-full" />
-      {/* divider + e-mail/password fields + submit */}
-      <div className="grid gap-8">
-        <div className="h-px w-full bg-border" />
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-6 w-16" />
-            <Skeleton className="h-6 w-32" />
-          </div>
-          <Skeleton className="h-9 w-full" />
-        </div>
-        <div className="flex flex-col gap-1">
-          <Skeleton className="h-6 w-20" />
-          <Skeleton className="h-9 w-full" />
-        </div>
-        <Skeleton className="h-9 w-full" />
-      </div>
-      {/* sign-up footer */}
-      <Skeleton className="h-6 w-3/5" />
-    </div>
   );
 }

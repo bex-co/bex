@@ -1,0 +1,32 @@
+# Dex's public issuer, https://auth.bex.co/dex (scripts/lib/kratos-oidc-fragment.sh
+# dex_issuer_url): Kratos sends the browser to /dex/auth, Bitbucket sends it
+# back to /dex/callback, and Kratos fetches /dex/.well-known/openid-configuration,
+# /dex/token and /dex/keys. Traefik prefers the longer /dex rule over Kratos's
+# own `/` on the same host. The certificate is Kratos's: cert-manager issues
+# kratos-public-tls for the kratos Ingress, so this one carries no issuer
+# annotation of its own. Admitted from Traefik by allow-dex-public-edge
+# (network-policies.yaml). The Service has no endpoints while Dex is off.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dex
+  namespace: auth
+  labels:
+    app.kubernetes.io/name: dex
+spec:
+  ingressClassName: traefik
+  tls:
+    - secretName: kratos-public-tls
+      hosts:
+        - auth.bex.co
+  rules:
+    - host: auth.bex.co
+      http:
+        paths:
+          - path: /dex
+            pathType: Prefix
+            backend:
+              service:
+                name: dex
+                port:
+                  name: http

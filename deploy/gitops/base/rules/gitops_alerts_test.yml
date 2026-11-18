@@ -52,6 +52,9 @@ tests:
       - &healthy_cnpg_operator
         series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="cnpg-operator",sync_status="Synced",health_status="Healthy"}'
         values: "1x40"
+      - &healthy_dex
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="dex",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
       - &healthy_etcd_backup
         series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="etcd-backup",sync_status="Synced",health_status="Healthy"}'
         values: "1x40"
@@ -151,6 +154,7 @@ tests:
       - *healthy_cert_manager_issuers
       - *healthy_cluster_autoscaler
       - *healthy_cnpg_operator
+      - *healthy_dex
       - *healthy_etcd_backup
       - *healthy_etcd_metrics
       - *healthy_grafana
@@ -233,6 +237,7 @@ tests:
       - *healthy_cert_manager_issuers
       - *healthy_cluster_autoscaler
       - *healthy_cnpg_operator
+      - *healthy_dex
       - *healthy_etcd_backup
       - *healthy_etcd_metrics
       - *healthy_hydra
@@ -284,6 +289,7 @@ tests:
       - *healthy_cert_manager_issuers
       - *healthy_cluster_autoscaler
       - *healthy_cnpg_operator
+      - *healthy_dex
       - *healthy_etcd_backup
       - *healthy_etcd_metrics
       - *healthy_hydra
@@ -373,6 +379,7 @@ tests:
       - *healthy_cert_manager_issuers
       - *healthy_cluster_autoscaler
       - *healthy_cnpg_operator
+      - *healthy_dex
       - *healthy_etcd_backup
       - *healthy_etcd_metrics
       - *healthy_hydra

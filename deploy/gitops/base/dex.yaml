@@ -1,0 +1,30 @@
+# Dex — Bitbucket's OIDC bridge for Kratos (w7/m468, docs/ADR012-auth.md §10),
+# vendored in this repo (deploy/gitops/charts/dex). sync-wave 3 with kratos.
+# scripts/auth-secrets.sh owns the Deployment's replica count (zero unless a
+# Bitbucket pair is set; see its deployment.yaml), so Argo ignores it.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dex
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  project: bex-platform
+  source:
+    repoURL: git@github.com:bex-co/bex.git
+    targetRevision: main
+    path: deploy/gitops/charts/dex
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: auth
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: dex
+      namespace: auth
+      jsonPointers:
+        - /spec/replicas
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true, RespectIgnoreDifferences=true]

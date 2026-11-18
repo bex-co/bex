@@ -102,6 +102,30 @@ spec:
         - { protocol: TCP, port: 4444 }
 
 ---
+# allow-dex-public-edge (w7/m468, docs/ADR012-auth.md §10): Dex, Bitbucket's
+# OIDC bridge, answers its public issuer auth.bex.co/dex through Traefik on its
+# web port only; its telemetry port (health probes, metrics) gets no edge
+# traffic. Kratos reaches the same public URL, so nothing else is admitted.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dex-public-edge
+  namespace: auth
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: dex
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - { protocol: TCP, port: 5556 }
+
+---
 # allow-acme-solver-auth (ADR088 live diagnosis, 2026-09-08): cert-manager's
 # HTTP-01 solver pods spawn IN the certificate's namespace and must be
 # reachable from Traefik on :8089, but allow-auth-public-edge above admits

@@ -568,6 +568,11 @@ const ruAuth: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the password field toggle while the password is shown",
   },
+  "auth.ssoMoreOptions": {
+    message: "Другие варианты",
+    description:
+      "Login and sign-up: reveals the GitLab and Bitbucket sign-in buttons, as Render's More options does",
+  },
   "auth.settingsGuardEmailChangeRefused": {
     message:
       "Вы не можете изменить адрес электронной почты, пока состоите в рабочем пространстве, где требуется вход через Google. Сначала покиньте эти рабочие пространства: {workspaces}.",

@@ -64,3 +64,18 @@ What the pages do not say (each is a bex **inference**, recorded in ADR012 §9c)
 - **The confirmation's list.** SSO enforcement lists the members and keys that lose access. No page says the 2FA or Google confirmation does; bex's workspace confirmation lists nobody, and the org's follows it (a follow-up, `.pm/w7`, tracks listing them for both).
 - **Plan.** An org is always Scale or Enterprise, above the pricing table's Pro floor for "Enforce 2FA & Google login", so the org setting adds no plan row.
 - **Error codes, metadata.** Render documents no API refusal and no metadata keys for the two events. bex reuses its workspace codes and `metadata.to`.
+
+## Account providers (w7/m468)
+
+Read 2026-11-17 from [render.com/docs/login-settings](https://render.com/docs/login-settings) for `w7/m468` (sign in with GitLab and Bitbucket). bex's design is [ADR012 §10](../ADR012-auth.md#10-social-login-sign-in-with-github-google-gitlab-and-bitbucket-kratos-oidc-w4003-w7m465-w7m468).
+
+- The login methods, in this order: "Any of the following account providers:" Google, GitHub, GitLab, Bitbucket; then "Email and password"; then "SAML SSO (requires a Scale or Enterprise plan)".
+- In Account Settings, the Account Security section lets you "Add or remove connected login methods."
+- "Multiple Render accounts can't use the same provider account to log in."
+- "You can use a Git provider for deployment without using it for login (or vice versa)." "If you connect a Git provider for both login and deployment, you must use the same account for both."
+
+What the page does not say:
+
+- **Which GitLab and Bitbucket.** It names the providers, not self-managed GitLab or Bitbucket Data Center. bex offers gitlab.com and Bitbucket Cloud.
+- **The address a provider sign-up gets.** bex takes the provider's verified email: GitLab's `email_verified`, and Bitbucket's primary confirmed address (the only one Dex's connector accepts).
+- **The same account for login and deployment.** bex's Git connections are GitHub only (`.pm/DO_NOT_DO.md` rejects GitLab and Bitbucket Git connections), so the rule can only concern GitHub, which `w7/m468` does not change.

@@ -561,6 +561,11 @@ const enAuth: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the password field toggle while the password is shown",
   },
+  "auth.ssoMoreOptions": {
+    message: "More options",
+    description:
+      "Login and sign-up: reveals the GitLab and Bitbucket sign-in buttons, as Render's More options does",
+  },
   "auth.settingsGuardEmailChangeRefused": {
     message:
       "You can't change your email address while you belong to a workspace that requires Google login. Leave these workspaces first: {workspaces}.",

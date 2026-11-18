@@ -575,6 +575,11 @@ const deAuth: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the password field toggle while the password is shown",
   },
+  "auth.ssoMoreOptions": {
+    message: "Weitere Optionen",
+    description:
+      "Login and sign-up: reveals the GitLab and Bitbucket sign-in buttons, as Render's More options does",
+  },
   "auth.settingsGuardEmailChangeRefused": {
     message:
       "Du kannst deine E-Mail-Adresse nicht ändern, solange du zu einem Workspace gehörst, der die Google-Anmeldung erfordert. Verlasse zuerst diese Workspaces: {workspaces}.",

@@ -575,6 +575,11 @@ const esAuth: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the password field toggle while the password is shown",
   },
+  "auth.ssoMoreOptions": {
+    message: "Más opciones",
+    description:
+      "Login and sign-up: reveals the GitLab and Bitbucket sign-in buttons, as Render's More options does",
+  },
   "auth.settingsGuardEmailChangeRefused": {
     message:
       "No puedes cambiar tu dirección de correo electrónico mientras pertenezcas a un espacio de trabajo que exige iniciar sesión con Google. Sal primero de estos espacios de trabajo: {workspaces}.",

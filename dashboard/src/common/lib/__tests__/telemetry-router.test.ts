@@ -75,6 +75,36 @@ describe("sessionEvent", () => {
     ).toEqual({ event: "login", method: "github" });
   });
 
+  // w7/m468: Render's four providers. Kratos names the session's oidc method
+  // by the provider id (the `bitbucket` generic provider at Dex's issuer too).
+  it.each(["gitlab", "bitbucket", "google"])(
+    "names a %s sign-up and login by its provider, not oidc",
+    (provider) => {
+      expect(
+        sessionEvent(
+          session({
+            authenticatedAt: "2026-11-16T11:59:30Z",
+            createdAt: "2026-11-16T11:59:29Z",
+            method: "oidc",
+            provider,
+          }),
+          NOW,
+        ),
+      ).toEqual({ event: "sign_up", method: provider });
+      expect(
+        sessionEvent(
+          session({
+            authenticatedAt: "2026-11-16T11:59:30Z",
+            createdAt: "2026-10-01T08:00:00Z",
+            method: "oidc",
+            provider,
+          }),
+          NOW,
+        ),
+      ).toEqual({ event: "login", method: provider });
+    },
+  );
+
   it("is a login when the identity carries no creation time", () => {
     expect(
       sessionEvent(

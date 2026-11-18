@@ -999,6 +999,7 @@ spec:
                       or label_replace(vector(1), "name", "cert-manager-issuers", "", "")
                       or label_replace(vector(1), "name", "cluster-autoscaler", "", "")
                       or label_replace(vector(1), "name", "cnpg-operator", "", "")
+                      or label_replace(vector(1), "name", "dex", "", "")
                       or label_replace(vector(1), "name", "etcd-backup", "", "")
                       or label_replace(vector(1), "name", "etcd-metrics", "", "")
                       or label_replace(vector(1), "name", "grafana", "", "")

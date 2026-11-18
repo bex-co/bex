@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { oryThemeStyle } from "@/common/lib/ory/theme-styles";
+import { loadSsoProviders } from "@/common/lib/ory/sso-providers";
 import LoginPage from "@/features/auth/pages/login-page";
 import { LoginRouteSkeleton } from "@/common/components/route-skeletons";
 
@@ -29,6 +30,7 @@ export const Route = createFileRoute("/auth/login")({
   },
   component: LoginPage,
   pendingComponent: LoginRouteSkeleton,
+  loader: () => loadSsoProviders(),
   validateSearch: (search: Record<string, unknown>) => ({
     next: typeof search.next === "string" ? search.next : undefined,
     flow: typeof search.flow === "string" ? search.flow : undefined,

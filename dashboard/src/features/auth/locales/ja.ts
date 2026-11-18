@@ -570,6 +570,11 @@ const jaAuth: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the password field toggle while the password is shown",
   },
+  "auth.ssoMoreOptions": {
+    message: "その他のオプション",
+    description:
+      "Login and sign-up: reveals the GitLab and Bitbucket sign-in buttons, as Render's More options does",
+  },
   "auth.settingsGuardEmailChangeRefused": {
     message:
       "Google ログインが必須のワークスペースに所属している間は、メールアドレスを変更できません。先に次のワークスペースから退出してください: {workspaces}。",

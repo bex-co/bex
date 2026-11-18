@@ -1,20 +1,23 @@
-import { useSearch } from "@tanstack/react-router";
+import { useLoaderData, useSearch } from "@tanstack/react-router";
 import { Registration } from "@ory/elements-react/theme";
 import { useOryFlow, clearStoredOryFlow } from "@/common/hooks/use-ory-flow";
 import { useOryConfig } from "@/common/lib/ory/config";
 import { oryAuthFormOverrides } from "@/common/lib/ory/auth-form-overrides";
 import { stashAuthNext } from "@/features/auth/lib/auth-next";
-import { AuthWidgetSkeleton } from "@/common/components/route-skeletons";
+import { RegistrationWidgetSkeleton } from "@/common/components/route-skeletons";
+import { useRememberSsoProviders } from "@/features/auth/hooks/use-remember-sso-providers";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
 import { useAuthFeatures } from "@/features/auth/components/auth-page-shell/auth-features";
 
 export default function RegisterPage() {
   const search = useSearch({ from: "/auth/sign-up" });
+  const ssoProviders = useLoaderData({ from: "/auth/sign-up" });
   const flow = useOryFlow("registration", search.flow, {
     loginChallenge: search.login_challenge,
     returnTo: search.next,
   });
+  useRememberSsoProviders(flow);
   const { t } = useTranslations();
   const authFeatures = useAuthFeatures();
   const oryConfig = useOryConfig();
@@ -47,7 +50,7 @@ export default function RegisterPage() {
           }}
         />
       ) : (
-        <AuthWidgetSkeleton fields={3} />
+        <RegistrationWidgetSkeleton ssoProviders={ssoProviders} />
       )}
     </AuthPageShell>
   );

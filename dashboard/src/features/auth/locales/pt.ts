@@ -565,6 +565,11 @@ const ptAuth: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the password field toggle while the password is shown",
   },
+  "auth.ssoMoreOptions": {
+    message: "Mais opções",
+    description:
+      "Login and sign-up: reveals the GitLab and Bitbucket sign-in buttons, as Render's More options does",
+  },
   "auth.settingsGuardEmailChangeRefused": {
     message:
       "Você não pode alterar seu endereço de e-mail enquanto pertencer a um workspace que exige login com Google. Saia primeiro destes workspaces: {workspaces}.",

@@ -548,6 +548,11 @@ const zhAuth: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the password field toggle while the password is shown",
   },
+  "auth.ssoMoreOptions": {
+    message: "更多选项",
+    description:
+      "Login and sign-up: reveals the GitLab and Bitbucket sign-in buttons, as Render's More options does",
+  },
   "auth.settingsGuardEmailChangeRefused": {
     message:
       "你属于要求使用 Google 登录的工作区，因此无法更改邮箱地址。请先离开这些工作区：{workspaces}。",

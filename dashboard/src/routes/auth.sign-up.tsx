@@ -1,12 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { oryThemeStyle } from "@/common/lib/ory/theme-styles";
+import { loadSsoProviders } from "@/common/lib/ory/sso-providers";
 import RegisterPage from "@/features/auth/pages/register-page";
 import { RegistrationRouteSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/auth/sign-up")({
   component: RegisterPage,
   pendingComponent: RegistrationRouteSkeleton,
+  loader: () => loadSsoProviders(),
   validateSearch: (search: Record<string, unknown>) => ({
     // Deep-link continuity through the auth boundary (ADR075 D3, w6/m42):
     // sign-up honors the same guarded `next` as login, relayed across the

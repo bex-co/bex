@@ -29,6 +29,22 @@
 #   BEX_GITHUB_OIDC_CLIENT_SECRET GitHub OAuth app client secret
 #   BEX_GOOGLE_OIDC_CLIENT_ID     Google OAuth client id (w7/m465)
 #   BEX_GOOGLE_OIDC_CLIENT_SECRET Google OAuth client secret
+#   BEX_GITLAB_OIDC_CLIENT_ID     GitLab application id (w7/m468)
+#   BEX_GITLAB_OIDC_CLIENT_SECRET GitLab application secret
+#   BEX_BITBUCKET_OIDC_CLIENT_ID     Bitbucket OAuth consumer key (w7/m468)
+#   BEX_BITBUCKET_OIDC_CLIENT_SECRET Bitbucket OAuth consumer secret
+#
+# Bitbucket is not OpenID Connect, so Kratos reaches it through Dex (the `dex`
+# Application, deploy/gitops/charts/dex; docs/ADR012-auth.md §10). With the
+# Bitbucket pair set, this writes Dex's whole config into auth/dex (key
+# config.yaml: the bitbucket-cloud connector and Kratos's static client),
+# scales deploy/dex to one replica (restarting it when the config changed) and
+# waits for it before Kratos gets the `bitbucket` button. Kratos's Dex client
+# secret is minted once and kept in auth/dex (key kratosClientSecret; ROTATE=1
+# mints a new one). With the pair unset, deploy/dex is scaled to zero and
+# auth/dex deleted, so nothing of Bitbucket runs. DEX_ISSUER_URL (default
+# https://auth.bex.co/dex, the path the dex Ingress routes) and KRATOS_PUBLIC_URL
+# (default https://auth.bex.co) override where Dex and Kratos answer.
 #
 # The workspace Google-login settings guard (w7/m465, docs/ADR012-auth.md §9b):
 # the fragment also wires Kratos's settings flow to bex-api's internal settings
@@ -99,14 +115,21 @@ KRATOS_SETTINGS_GUARD_URL="${KRATOS_SETTINGS_GUARD_URL:-http://bex-api.bex-syste
 
 if [ "${DRY_RUN:-}" = "1" ]; then
   providers=""
-  [ -n "${BEX_GITHUB_OIDC_CLIENT_ID:-}" ] && [ -n "${BEX_GITHUB_OIDC_CLIENT_SECRET:-}" ] && providers="$providers github"
-  [ -n "${BEX_GOOGLE_OIDC_CLIENT_ID:-}" ] && [ -n "${BEX_GOOGLE_OIDC_CLIENT_SECRET:-}" ] && providers="$providers google"
+  for provider in github google gitlab bitbucket; do
+    kratos_oidc_pair "$(tr '[:lower:]' '[:upper:]' <<<"$provider")" && providers="$providers $provider"
+  done
   if [ -n "$providers" ]; then
     echo "would apply secret $NS/kratos oidc.yaml key: providers ENABLED:$providers"
   else
-    echo "would apply secret $NS/kratos oidc.yaml key: oidc disabled (BEX_GITHUB_OIDC_* and BEX_GOOGLE_OIDC_* unset)"
+    echo "would apply secret $NS/kratos oidc.yaml key: oidc disabled (no BEX_*_OIDC_* pair set)"
   fi
   echo "would apply secret $NS/kratos oidc.yaml key: settings guard -> $KRATOS_SETTINGS_GUARD_URL/internal/kratos/settings-guard"
+  if kratos_oidc_pair BITBUCKET; then
+    echo "would apply secret $NS/dex (keys: config.yaml kratosClientSecret): Bitbucket's bridge, issuer $(dex_issuer_url)"
+    echo "would scale $NS/deploy/dex to 1 replica (restarted when its config changed)"
+  else
+    echo "would scale $NS/deploy/dex to 0 replicas and delete secret $NS/dex (BEX_BITBUCKET_OIDC_* unset)"
+  fi
   echo "would ensure namespace $NS"
   echo "would apply secret $NS/kratos (keys: dsn secretsDefault secretsCookie secretsCipher smtpConnectionURI oidc.yaml)"
   echo "would apply secret bex-system/bex-kratos-settings-guard (keys: BEX_KRATOS_SETTINGS_GUARD_TOKEN)"
@@ -145,6 +168,47 @@ apply_secret bex-system bex-kratos-settings-guard Opaque \
   BEX_KRATOS_SETTINGS_GUARD_TOKEN "$KRATOS_SETTINGS_GUARD_TOKEN"
 export KRATOS_SETTINGS_GUARD_URL KRATOS_SETTINGS_GUARD_TOKEN
 
+# Bitbucket's bridge (docs/ADR012-auth.md §10): Dex comes up before Kratos
+# offers the button, and goes away after it. Argo ignores deploy/dex's replica
+# count (deploy/gitops/charts/dex/deployment.yaml), so this scale holds.
+dex_scale() { # REPLICAS
+  kubectl -n "$NS" scale deploy/dex --replicas="$1" >/dev/null
+}
+if kratos_oidc_pair BITBUCKET; then
+  # Kratos's client secret (kept unless ROTATE=1) and the config Dex runs.
+  { read -r DEX_KRATOS_CLIENT_SECRET || true; read -r dex_old || true; } < <(kubectl -n "$NS" get secret dex --ignore-not-found \
+    -o go-template='{{with .data.kratosClientSecret}}{{. | base64decode}}{{end}}{{"\n"}}{{index .data "config.yaml"}}{{"\n"}}' 2>/dev/null || true)
+  if [ "${ROTATE:-0}" = "1" ] || [ -z "${DEX_KRATOS_CLIENT_SECRET:-}" ]; then
+    command -v openssl >/dev/null || { echo "error: openssl is required to mint Kratos's Dex client secret" >&2; exit 1; }
+    DEX_KRATOS_CLIENT_SECRET="$(openssl rand -hex 32)"
+    echo "minted a new Dex client secret for Kratos"
+  fi
+  export DEX_KRATOS_CLIENT_SECRET
+  dex_config="$(dex_bitbucket_config)"
+  apply_secret "$NS" dex Opaque \
+    config.yaml "$dex_config" \
+    kratosClientSecret "$DEX_KRATOS_CLIENT_SECRET"
+  # A first install can run before Argo has synced the dex Application:
+  # give it about five minutes.
+  dex_replicas=""
+  for _ in $(seq 1 60); do
+    dex_replicas="$(kubectl -n "$NS" get deploy dex -o jsonpath='{.spec.replicas}' 2>/dev/null)" && break
+    sleep 5
+  done
+  [ -n "$dex_replicas" ] \
+    || { echo "error: deploy/dex never appeared in $NS — is the dex Argo Application synced? (kubectl -n argocd get application dex)" >&2; exit 1; }
+  if [ "$dex_replicas" = 0 ]; then
+    dex_scale 1
+  elif [ "${dex_old:-}" != "$(secret_b64 "$dex_config")" ]; then
+    kubectl -n "$NS" rollout restart deploy/dex >/dev/null # Dex reads its config only at start
+  fi
+  kubectl -n "$NS" rollout status deploy/dex --timeout=180s >/dev/null \
+    || { echo "error: deploy/dex did not become ready — kubectl -n $NS logs deploy/dex" >&2; exit 1; }
+  echo "Bitbucket's bridge is up: Dex at $(dex_issuer_url)"
+else
+  unset DEX_KRATOS_CLIENT_SECRET
+fi
+
 apply_secret "$NS" kratos Opaque \
   dsn "$(dsn kratos-db kratos)" \
   secretsDefault "$KRATOS_SECRETS_DEFAULT" \
@@ -152,6 +216,15 @@ apply_secret "$NS" kratos Opaque \
   secretsCipher "$KRATOS_SECRETS_CIPHER" \
   smtpConnectionURI "$KRATOS_COURIER_SMTP_URI" \
   oidc.yaml "$(kratos_oidc_fragment)"
+
+# Without the pair, Dex goes away once Kratos no longer offers the button.
+# One read on the usual deploy, where Dex is already off and its Secret gone.
+if ! kratos_oidc_pair BITBUCKET; then
+  dex_left="$(kubectl -n "$NS" get deploy/dex secret/dex --ignore-not-found \
+    -o jsonpath='{range .items[*]}{.kind}:{.spec.replicas}{"\n"}{end}')"
+  if grep -Eq '^Deployment:[1-9]' <<<"$dex_left"; then dex_scale 0; fi
+  if grep -q '^Secret:' <<<"$dex_left"; then kubectl -n "$NS" delete secret dex >/dev/null; fi
+fi
 
 apply_secret "$NS" hydra Opaque \
   dsn "$(dsn hydra-db hydra)" \

@@ -1,0 +1,9 @@
+# Dex, Bitbucket's OIDC bridge (docs/ADR012-auth.md §10): plain manifests for
+# the `dex` Application (../../base/dex.yaml). Why it runs at zero replicas
+# until a Bitbucket pair is set: deployment.yaml.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml

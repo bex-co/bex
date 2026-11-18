@@ -559,6 +559,11 @@ const koAuth: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the password field toggle while the password is shown",
   },
+  "auth.ssoMoreOptions": {
+    message: "더 많은 옵션",
+    description:
+      "Login and sign-up: reveals the GitLab and Bitbucket sign-in buttons, as Render's More options does",
+  },
   "auth.settingsGuardEmailChangeRefused": {
     message:
       "Google 로그인을 요구하는 워크스페이스에 속해 있는 동안에는 이메일 주소를 변경할 수 없습니다. 먼저 다음 워크스페이스에서 나가세요: {workspaces}.",

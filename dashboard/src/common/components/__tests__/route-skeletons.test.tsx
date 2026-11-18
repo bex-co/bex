@@ -515,14 +515,20 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
   );
 
   it("uses a full Ory-card silhouette for in-page flow loading", () => {
-    const { container } = render(<AuthWidgetSkeleton fields={3} />);
+    const { container } = render(<AuthWidgetSkeleton flow="recovery" />);
     const widget = container.querySelector(
       '[data-skeleton-region="auth-widget"]',
     );
-    expect(widget).toHaveClass("rounded-xl", "border", "p-6");
-    expect(
-      widget!.querySelectorAll('[data-slot="skeleton"]').length,
-    ).toBeGreaterThan(6);
+    // Ory's card: square with only its bottom border below `sm`.
+    expect(widget).toHaveClass(
+      "border-b",
+      "p-6",
+      "sm:rounded-xl",
+      "sm:border",
+      "sm:p-8",
+    );
+    // Title, subtitle, the e-mail field's label and input, and "Continue".
+    expect(widget!.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(5);
   });
 
   it("keeps static metrics free of the application-metrics region", () => {
