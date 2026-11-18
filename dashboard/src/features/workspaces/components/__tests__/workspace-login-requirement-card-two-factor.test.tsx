@@ -32,8 +32,11 @@ function WorkspaceTwoFactorCardSkeleton() {
 }
 
 const mutate = vi.hoisted(() => vi.fn());
+// The confirmation's read (w7/m471) answers nothing yet: its list is pinned
+// in workspace-login-requirement-confirm.test.tsx.
 vi.mock("@apollo/client/react", () => ({
   useMutation: () => [mutate, { loading: false }],
+  useQuery: () => ({ data: undefined, error: undefined }),
 }));
 
 const toastSuccess = vi.hoisted(() => vi.fn());
@@ -58,6 +61,12 @@ const WORKSPACE: WorkspaceView = {
   primary: false,
   privacy: null,
 };
+
+/** Turns the requirement on: the switch, then the confirmation (w7/m471). */
+async function turnOn(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("switch"));
+  await user.click(await screen.findByRole("button", { name: "Require" }));
+}
 
 /** The card links to account security, so it renders under a real router. */
 async function renderCard(ui: ReactElement) {
@@ -136,6 +145,9 @@ describe("WorkspaceTwoFactorCard — admin (w22/m402)", () => {
     });
     expect(toggle).not.toBeChecked();
     await user.click(toggle);
+    // It asks first, and writes nothing until confirmed.
+    expect(mutate).not.toHaveBeenCalled();
+    await user.click(await screen.findByRole("button", { name: "Require" }));
 
     expect(mutate).toHaveBeenCalledWith({
       variables: { workspaceId: "tea-acme", enabled: true },
@@ -184,7 +196,7 @@ describe("WorkspaceTwoFactorCard — admin (w22/m402)", () => {
       />,
     );
 
-    await user.click(screen.getByRole("switch"));
+    await turnOn(user);
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Couldn't change the two-factor setting");
@@ -210,7 +222,7 @@ describe("WorkspaceTwoFactorCard — admin (w22/m402)", () => {
       />,
     );
 
-    await user.click(screen.getByRole("switch"));
+    await turnOn(user);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Two-factor enforcement is unavailable on this installation, so it can't be turned on.",
@@ -230,7 +242,7 @@ describe("WorkspaceTwoFactorCard — admin (w22/m402)", () => {
       />,
     );
 
-    await user.click(screen.getByRole("switch"));
+    await turnOn(user);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Couldn't change the two-factor setting. Try again.",
@@ -249,9 +261,9 @@ describe("WorkspaceTwoFactorCard — admin (w22/m402)", () => {
       />,
     );
 
-    await user.click(screen.getByRole("switch"));
+    await turnOn(user);
     expect(await screen.findByRole("alert")).toBeInTheDocument();
-    await user.click(screen.getByRole("switch"));
+    await turnOn(user);
 
     await waitFor(() =>
       expect(screen.queryByRole("alert")).not.toBeInTheDocument(),
@@ -344,7 +356,7 @@ describe("WorkspaceTwoFactorCard — below Pro (w7/070)", () => {
       />,
     );
 
-    await user.click(screen.getByRole("switch"));
+    await turnOn(user);
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(PLAN_NOTICE);

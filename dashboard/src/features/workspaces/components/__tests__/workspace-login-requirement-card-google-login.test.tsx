@@ -25,6 +25,9 @@ vi.mock("@apollo/client/react", () => ({
     mutationDocuments.push(document);
     return [mutate, { loading: false }];
   },
+  // The confirmation's read (w7/m471), pinned in
+  // workspace-login-requirement-confirm.test.tsx.
+  useQuery: () => ({ data: undefined, error: undefined }),
 }));
 
 const startGoogleSignIn = vi.hoisted(() => vi.fn());
@@ -63,6 +66,12 @@ function GoogleLoginCard({ workspace }: { workspace: WorkspaceView }) {
       onChangePlan={changePlan}
     />
   );
+}
+
+/** Turns the requirement on: the switch, then the confirmation (w7/m471). */
+async function turnOn(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("switch"));
+  await user.click(await screen.findByRole("button", { name: "Require" }));
 }
 
 /** The card's 2FA fix is a router link, so it renders under a real router. */
@@ -138,6 +147,8 @@ describe("WorkspaceLoginRequirementCard — Google login, admin (w7/m465)", () =
     expect(toggle).toHaveAttribute("id", "workspace-google-login");
     expect(toggle).not.toBeChecked();
     await user.click(toggle);
+    expect(mutate).not.toHaveBeenCalled();
+    await user.click(await screen.findByRole("button", { name: "Require" }));
 
     expect(mutationDocuments.map(operationName)).toContain(
       "SetWorkspaceRequireGoogleLogin",
@@ -195,7 +206,7 @@ describe("WorkspaceLoginRequirementCard — Google login, admin (w7/m465)", () =
     const user = userEvent.setup();
     await renderCard(<GoogleLoginCard workspace={WORKSPACE} />);
 
-    await user.click(screen.getByRole("switch"));
+    await turnOn(user);
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Couldn't change the Google login setting");
@@ -223,7 +234,7 @@ describe("WorkspaceLoginRequirementCard — Google login, admin (w7/m465)", () =
     const user = userEvent.setup();
     await renderCard(<GoogleLoginCard workspace={WORKSPACE} />);
 
-    await user.click(screen.getByRole("switch"));
+    await turnOn(user);
     await user.click(
       await screen.findByRole("button", { name: "Sign in with Google" }),
     );
@@ -246,7 +257,7 @@ describe("WorkspaceLoginRequirementCard — Google login, admin (w7/m465)", () =
     const user = userEvent.setup();
     await renderCard(<GoogleLoginCard workspace={WORKSPACE} />);
 
-    await user.click(screen.getByRole("switch"));
+    await turnOn(user);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Google login enforcement is unavailable on this installation, so it can't be turned on.",
@@ -263,7 +274,7 @@ describe("WorkspaceLoginRequirementCard — Google login, admin (w7/m465)", () =
     const user = userEvent.setup();
     await renderCard(<GoogleLoginCard workspace={WORKSPACE} />);
 
-    await user.click(screen.getByRole("switch"));
+    await turnOn(user);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Couldn't change the Google login setting. Try again.",
@@ -326,7 +337,7 @@ describe("WorkspaceLoginRequirementCard — Google login below Pro (w7/m465)", (
     const user = userEvent.setup();
     await renderCard(<GoogleLoginCard workspace={WORKSPACE} />);
 
-    await user.click(screen.getByRole("switch"));
+    await turnOn(user);
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(PLAN_NOTICE);

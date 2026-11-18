@@ -60,6 +60,13 @@ interface LoginRequirementSetting extends LoginRequirementOutcomeCopy {
   blockedBodyKey: string;
   blockedOrganizationTitleKey: string;
   blockedOrganizationBodyKey: string;
+  /** The confirmation before an admin turns it on (w7/m471): its title,
+   *  naming the workspace, and what it does. */
+  confirmTitleKey: string;
+  confirmBodyKey: string;
+  /** The confirmation list's sentence above the members it would block, on a
+   *  workspace's card and the org Security card alike. */
+  impactMembersKey: string;
 }
 
 export const LOGIN_REQUIREMENT_SETTINGS: Readonly<
@@ -80,6 +87,9 @@ export const LOGIN_REQUIREMENT_SETTINGS: Readonly<
     blockedBodyKey: "workspaces.twoFactorBlockedBody",
     blockedOrganizationTitleKey: "workspaces.twoFactorBlockedOrganizationTitle",
     blockedOrganizationBodyKey: "workspaces.twoFactorBlockedOrganizationBody",
+    confirmTitleKey: "workspaces.requireTwoFactorConfirmTitle",
+    confirmBodyKey: "workspaces.requireTwoFactorConfirm",
+    impactMembersKey: "workspaces.loginImpactMembersTwoFactor",
     refusals: {
       WORKSPACE_2FA_ADMIN_NOT_ENROLLED: {
         messageKey: "workspaces.twoFactorErrorAdminNotEnrolled",
@@ -111,6 +121,9 @@ export const LOGIN_REQUIREMENT_SETTINGS: Readonly<
     blockedOrganizationTitleKey:
       "workspaces.googleLoginBlockedOrganizationTitle",
     blockedOrganizationBodyKey: "workspaces.googleLoginBlockedOrganizationBody",
+    confirmTitleKey: "workspaces.requireGoogleLoginConfirmTitle",
+    confirmBodyKey: "workspaces.requireGoogleLoginConfirm",
+    impactMembersKey: "workspaces.loginImpactMembersGoogleLogin",
     refusals: {
       WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN: {
         messageKey: "workspaces.googleLoginErrorAdminNotSignedIn",

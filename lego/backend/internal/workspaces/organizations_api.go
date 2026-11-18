@@ -136,6 +136,11 @@ func (s *Service) organizationGraphQLQuery() graphql.Fields {
 				return s.GetOrganization(p.Context, p.Args["id"].(string))
 			},
 		},
+		// organizationLoginRequirementImpact is the org Security card's
+		// confirmation list (w7/m471): Owner only.
+		"organizationLoginRequirementImpact": loginRequirementImpactField("organizationId",
+			"Who turning a login requirement on for an organization would block in any of its workspaces, with what the org already requires (Owner only).",
+			s.OrganizationLoginRequirementImpact),
 	}
 }
 

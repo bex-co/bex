@@ -3,6 +3,9 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ApolloProvider } from "@apollo/client/react";
 import { toast } from "sonner";
+import { ApolloLink } from "@apollo/client";
+import { GraphQLError } from "graphql";
+import { Observable } from "rxjs";
 import { WorkspacesDocument } from "@/graphql/definitions";
 import { OrganizationSecurityCard } from "@/features/organizations/components/organization-security-card";
 import { useOrganization } from "@/features/organizations/hooks/use-organization";
@@ -54,6 +57,14 @@ async function renderCard(
   const script = scriptedClient({
     Organization: () => ({
       organization: { ...organization(role), ...settings },
+    }),
+    // The confirmation's list (w7/m471): nobody, unless a test says.
+    OrganizationLoginRequirementImpact: () => ({
+      organizationLoginRequirementImpact: {
+        __typename: "LoginRequirementImpact",
+        members: [],
+        unattributedApiKeys: [],
+      },
     }),
     ...answers,
   });
@@ -296,5 +307,152 @@ describe("OrganizationSecurityCard — a Member (w7/m466)", () => {
       screen.getByText("Only Owners can change these settings."),
     ).toBeInTheDocument();
     expect(sent.map((op) => op.name)).toEqual(["Organization"]);
+  });
+});
+
+// The confirmation's list (w7/m471, docs/ADR012-auth.md 9c): who the org-wide
+// requirement would block in any org workspace, from bex-api's
+// organizationLoginRequirementImpact, each API key named with its workspace.
+describe("OrganizationSecurityCard — who it would block (w7/m471)", () => {
+  function impact(
+    members: Record<string, unknown>[],
+    unattributedApiKeys: Record<string, unknown>[] = [],
+  ) {
+    return () => ({
+      organizationLoginRequirementImpact: {
+        __typename: "LoginRequirementImpact",
+        members,
+        unattributedApiKeys,
+      },
+    });
+  }
+
+  async function openConfirm(
+    answer: () => Record<string, unknown> | GraphQLError,
+  ) {
+    const rendered = await renderCard(
+      "OWNER",
+      {},
+      {
+        OrganizationLoginRequirementImpact: answer,
+      },
+    );
+    await rendered.user.click(
+      screen.getByRole("switch", { name: "Require two-factor authentication" }),
+    );
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Require two-factor authentication in Acme?",
+    });
+    return { ...rendered, dialog };
+  }
+
+  it("lists a Guest with their key and its workspace, and keeps the org's sentence", async () => {
+    const { dialog, sent } = await openConfirm(
+      impact(
+        [
+          {
+            __typename: "LoginRequirementImpactMember",
+            userId: "own-guest",
+            email: "guest@acme.test",
+            name: "Guest",
+            losesAccess: true,
+            apiKeys: [
+              {
+                __typename: "LoginRequirementImpactApiKey",
+                id: "key-guest",
+                name: "guest key",
+                workspaceName: "acme-ml",
+              },
+            ],
+            sshKeys: [],
+          },
+        ],
+        [
+          {
+            __typename: "LoginRequirementImpactApiKey",
+            id: "key-old",
+            name: "legacy",
+            workspaceName: "acme-hq",
+          },
+        ],
+      ),
+    );
+
+    const list = await within(dialog).findByText("guest@acme.test");
+    const member = list.closest("li")!;
+    expect(member).toHaveTextContent("Guest");
+    expect(member).toHaveTextContent("Loses access");
+    expect(member).toHaveTextContent("API key guest key in acme-ml");
+    expect(dialog).toHaveTextContent("API key legacy in acme-hq");
+    expect(dialog).toHaveTextContent(
+      "Each workspace's own setting stays as it is.",
+    );
+    expect(sentVariables(sent, "OrganizationLoginRequirementImpact")).toEqual([
+      { organizationId: "org-1", requirement: "TWO_FACTOR" },
+    ]);
+  });
+
+  it("keeps confirm open while it checks, in the list's own box", async () => {
+    // A link ahead of the network that never answers the list.
+    const hold = new ApolloLink((operation, forward) =>
+      operation.operationName === "OrganizationLoginRequirementImpact"
+        ? new Observable(() => {})
+        : forward(operation),
+    );
+    const script = scriptedClient(
+      {
+        Organization: () => ({ organization: organization("OWNER") }),
+      },
+      [hold],
+    );
+    renderAtOrgRoute(
+      "settings",
+      <ApolloProvider client={script.client}>
+        <SecurityCard />
+      </ApolloProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("switch", {
+        name: "Require two-factor authentication",
+      }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    const list = within(dialog).getByRole("region", {
+      name: "Who would lose access",
+    });
+    expect(list).toHaveAttribute("aria-busy", "true");
+    expect(list.className).toContain("h-48");
+    expect(
+      within(dialog).getByRole("button", { name: "Require" }),
+    ).toBeEnabled();
+  });
+
+  it("says nobody would be blocked when every person meets it", async () => {
+    const { dialog } = await openConfirm(impact([]));
+
+    expect(
+      await within(dialog).findByText(
+        "Nobody would lose access: every member meets this requirement, and no API key or SSH key would stop working.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("says it could not check, and the Owner can still confirm", async () => {
+    const { dialog, user, sent } = await openConfirm(
+      () => new GraphQLError("authorization service unavailable"),
+    );
+
+    expect(
+      await within(dialog).findByText(
+        "Couldn't check who would lose access. You can still turn it on.",
+      ),
+    ).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Require" }));
+    await waitFor(() =>
+      expect(sentVariables(sent, "SetOrganizationRequireTwoFactor")).toEqual([
+        { organizationId: "org-1", enabled: true },
+      ]),
+    );
   });
 });

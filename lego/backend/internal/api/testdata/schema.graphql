@@ -1680,6 +1680,37 @@ type LogRetention {
   visibleFrom: String
 }
 
+enum LoginRequirement {
+  GOOGLE_LOGIN
+  TWO_FACTOR
+}
+
+type LoginRequirementImpact {
+  members: [LoginRequirementImpactMember!]!
+  unattributedApiKeys: [LoginRequirementImpactApiKey!]!
+}
+
+type LoginRequirementImpactApiKey {
+  id: String!
+  name: String!
+  workspaceName: String!
+}
+
+type LoginRequirementImpactMember {
+  apiKeys: [LoginRequirementImpactApiKey!]!
+  email: String!
+  losesAccess: Boolean!
+  name: String!
+  sshKeys: [LoginRequirementImpactSshKey!]!
+  userId: String!
+}
+
+type LoginRequirementImpactSshKey {
+  fingerprint: String!
+  id: String!
+  name: String!
+}
+
 type MaintenanceMode {
   enabled: Boolean!
   uri: String!
@@ -2373,6 +2404,7 @@ type Query {
   organizationAuditLogs(cursor: String, direction: String, endTime: String, limit: Int, organizationId: String!, startTime: String): [AuditLog]
   organizationInvitePreview(token: String!): OrganizationInvitePreview
   organizationInvites(organizationId: String!): [OrganizationInvite!]!
+  organizationLoginRequirementImpact(organizationId: String!, requirement: LoginRequirement!): LoginRequirementImpact!
   organizationMembers(organizationId: String!): [OrganizationMember!]!
   organizations: [Organization!]!
   ownerNotificationSettings(ownerId: String): OwnerNotificationSettings!
@@ -2427,6 +2459,7 @@ type Query {
   workspaceInvitePreview(token: String!): WorkspaceInvitePreview
   workspaceInvites(workspaceId: String!): [WorkspaceInvite]
   workspaceLimits(ownerId: String!): ResourceLimits
+  workspaceLoginRequirementImpact(requirement: LoginRequirement!, workspaceId: String!): LoginRequirementImpact!
   workspaceMembers(workspaceId: String!): [WorkspaceMember]
   workspaceSeatUsage(workspaceId: String!): WorkspaceSeatUsage
   workspaces: [Workspace]

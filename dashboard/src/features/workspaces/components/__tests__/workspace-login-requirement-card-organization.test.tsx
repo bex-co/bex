@@ -22,6 +22,7 @@ import type { WorkspaceView } from "@/features/workspaces/types";
 const mutate = vi.hoisted(() => vi.fn());
 vi.mock("@apollo/client/react", () => ({
   useMutation: () => [mutate, { loading: false }],
+  useQuery: () => ({ data: undefined, error: undefined }),
 }));
 
 // w7/m466: a workspace in an org that requires 2FA or Google login in all of

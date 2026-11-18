@@ -45,6 +45,8 @@ type OrganizationStore interface {
 	OrganizationRole(ctx context.Context, orgID, subject string) (store.Organization, string, error)
 	ListOrganizationMembers(ctx context.Context, orgID string) ([]store.OrganizationMember, error)
 	ListOrganizationWorkspaces(ctx context.Context, orgID string) ([]store.Tenant, error)
+	// ListMembersOfTenants lists the people of several workspaces in one read.
+	ListMembersOfTenants(ctx context.Context, tenantIDs []string) ([]store.TenantMember, error)
 	UpgradeToOrganization(ctx context.Context, workspaceID, plan string, owners []string) (store.Tenant, store.Organization, []store.OrganizationMember, error)
 	ChangeOrganizationPlan(ctx context.Context, orgID, plan string) ([]store.Tenant, error)
 	DissolveOrganization(ctx context.Context, orgID, plan string) (store.Tenant, error)

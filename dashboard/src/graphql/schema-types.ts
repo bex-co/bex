@@ -1968,6 +1968,43 @@ export type LogRetention = {
   visibleFrom: Maybe<Scalars['String']['output']>;
 };
 
+/** A login requirement a workspace or an organization can turn on: two-factor authentication, or signing in with Google. */
+export enum LoginRequirement {
+  GoogleLogin = 'GOOGLE_LOGIN',
+  TwoFactor = 'TWO_FACTOR'
+}
+
+/** Who turning a login requirement on would block, decided by the enforcement gate's own checks: members who would lose access or whose keys would stop working, and API keys no member created. Empty lists mean nobody would be blocked. */
+export type LoginRequirementImpact = {
+  __typename: 'LoginRequirementImpact';
+  members: Array<LoginRequirementImpactMember>;
+  unattributedApiKeys: Array<LoginRequirementImpactApiKey>;
+};
+
+export type LoginRequirementImpactApiKey = {
+  __typename: 'LoginRequirementImpactApiKey';
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  workspaceName: Scalars['String']['output'];
+};
+
+export type LoginRequirementImpactMember = {
+  __typename: 'LoginRequirementImpactMember';
+  apiKeys: Array<LoginRequirementImpactApiKey>;
+  email: Scalars['String']['output'];
+  losesAccess: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  sshKeys: Array<LoginRequirementImpactSshKey>;
+  userId: Scalars['String']['output'];
+};
+
+export type LoginRequirementImpactSshKey = {
+  __typename: 'LoginRequirementImpactSshKey';
+  fingerprint: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+};
+
 export type MaintenanceMode = {
   __typename: 'MaintenanceMode';
   enabled: Scalars['Boolean']['output'];
@@ -4437,6 +4474,8 @@ export type Query = {
   organizationAuditLogs: Maybe<Array<Maybe<AuditLog>>>;
   organizationInvitePreview: Maybe<OrganizationInvitePreview>;
   organizationInvites: Array<OrganizationInvite>;
+  /** Who turning a login requirement on for an organization would block in any of its workspaces, with what the org already requires (Owner only). */
+  organizationLoginRequirementImpact: LoginRequirementImpact;
   organizationMembers: Array<OrganizationMember>;
   organizations: Array<Organization>;
   ownerNotificationSettings: OwnerNotificationSettings;
@@ -4492,6 +4531,8 @@ export type Query = {
   workspaceInvitePreview: Maybe<WorkspaceInvitePreview>;
   workspaceInvites: Maybe<Array<Maybe<WorkspaceInvite>>>;
   workspaceLimits: Maybe<ResourceLimits>;
+  /** Who turning a login requirement on in a workspace would block, with what the workspace already requires (admin only). */
+  workspaceLoginRequirementImpact: LoginRequirementImpact;
   workspaceMembers: Maybe<Array<Maybe<WorkspaceMember>>>;
   workspaceSeatUsage: Maybe<WorkspaceSeatUsage>;
   workspaces: Maybe<Array<Maybe<Workspace>>>;
@@ -5135,6 +5176,12 @@ export type QueryOrganizationInvitesArgs = {
 };
 
 
+export type QueryOrganizationLoginRequirementImpactArgs = {
+  organizationId: Scalars['String']['input'];
+  requirement: LoginRequirement;
+};
+
+
 export type QueryOrganizationMembersArgs = {
   organizationId: Scalars['String']['input'];
 };
@@ -5434,6 +5481,12 @@ export type QueryWorkspaceInvitesArgs = {
 
 export type QueryWorkspaceLimitsArgs = {
   ownerId: Scalars['String']['input'];
+};
+
+
+export type QueryWorkspaceLoginRequirementImpactArgs = {
+  requirement: LoginRequirement;
+  workspaceId: Scalars['String']['input'];
 };
 
 

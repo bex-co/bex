@@ -217,7 +217,7 @@ func (g *Gate) Check(ctx context.Context, workspaceID string, id core.Identity) 
 	if err != nil {
 		return err
 	}
-	return g.check(ctx, scope{workspaceID: workspaceID, required: required}, id)
+	return g.check(ctx, scope{workspaceID: workspaceID, required: required, metrics: g.cfg.Metrics}, id)
 }
 
 // CheckOrganization implements core.OrganizationTwoFactorGate: an org's own
@@ -233,14 +233,17 @@ func (g *Gate) CheckOrganization(ctx context.Context, orgID string, id core.Iden
 	if err != nil {
 		return err
 	}
-	return g.check(ctx, scope{required: required}, id)
+	return g.check(ctx, scope{required: required, metrics: g.cfg.Metrics}, id)
 }
 
 // scope is what a check enforces: the workspace's id ("" on an org's own
-// objects) and what it requires.
+// objects) and what it requires, and where its refusals are counted. Only a
+// request's check counts them; an assessment or the lock-out guard leaves
+// metrics nil, because nobody was refused.
 type scope struct {
 	workspaceID string
 	required    core.LoginRequirements
+	metrics     *Metrics
 }
 
 func (g *Gate) check(ctx context.Context, sc scope, id core.Identity) error {
@@ -249,8 +252,14 @@ func (g *Gate) check(ctx context.Context, sc scope, id core.Identity) error {
 	}
 	p, err := g.principal(ctx, id)
 	if err != nil {
-		return g.unavailable("resolving principal", err)
+		return g.unavailable(sc, "resolving principal", err)
 	}
+	return g.decide(ctx, sc, id, p)
+}
+
+// decide is the rules of both requirements for a principal already resolved:
+// the Google-login refusal first, then 2FA.
+func (g *Gate) decide(ctx context.Context, sc scope, id core.Identity, p principal) error {
 	if sc.required.GoogleLogin {
 		if err := g.checkGoogle(ctx, sc, id, p); err != nil {
 			return err
@@ -265,13 +274,54 @@ func (g *Gate) check(ctx context.Context, sc scope, id core.Identity) error {
 // SignedInWithGoogle reports whether id would meet a Google-login requirement
 // right now: the lock-out guard of the setting's own mutation, so an admin
 // cannot turn on a requirement that refuses them. It is the same check Check
-// runs. An error means the answer could not be established.
+// runs, and like an assessment it counts no refusal. An error means the answer
+// could not be established.
 func (g *Gate) SignedInWithGoogle(ctx context.Context, id core.Identity) (bool, error) {
 	p, err := g.principal(ctx, id)
 	if err != nil {
 		return false, err
 	}
-	err = g.checkGoogle(ctx, scope{}, id, p)
+	return meets(g.checkGoogle(ctx, scope{}, id, p))
+}
+
+// AssessMember reports whether subject, a member who is not making a request,
+// would meet required: Check's rules for a principal with no sign-in of its
+// own (background work acting as the member), so their enrolled factor for
+// 2FA and, for Google login, a linked Google account matching their email. A
+// subject Kratos does not know is a platform principal and meets it. How the
+// member is signed in right now is not read: one signed in another way is
+// asked to sign in with Google at their next request. It counts no refusal
+// (docs/ADR012-auth.md §9c, "The enable confirmation", w7/m471). An error
+// means a lookup could not answer.
+func (g *Gate) AssessMember(ctx context.Context, required core.LoginRequirements, subject string) (bool, error) {
+	return g.assess(ctx, required, core.Identity{Subject: subject, Method: core.MethodSession}, principal{subject: subject})
+}
+
+// AssessAPIKey reports whether an API key created by creator in the sign-in
+// signIn would meet required, by Check's rules for a key: it borrows its
+// creator's factor, a key with no creator or one Kratos no longer knows is
+// refused, and for Google login an unstamped key is exempt while any other
+// stamp needs Google and a matching account. It counts no refusal.
+func (g *Gate) AssessAPIKey(ctx context.Context, required core.LoginRequirements, creator string, signIn core.SignIn) (bool, error) {
+	return g.assess(ctx, required, core.Identity{}, principal{subject: creator, viaKey: true, keySignIn: signIn})
+}
+
+// AssessSSHKey reports whether subject's native SSH key, stamped signIn when it
+// was added, would meet required, by Check's rules for the gateway's identity:
+// the owner's own factor for 2FA, the key's stamp and the owner's account for
+// Google login. It counts no refusal.
+func (g *Gate) AssessSSHKey(ctx context.Context, required core.LoginRequirements, subject string, signIn core.SignIn) (bool, error) {
+	id := core.Identity{Subject: subject, Method: core.MethodSSH, SignIn: signIn}
+	return g.assess(ctx, required, id, principal{subject: subject})
+}
+
+func (g *Gate) assess(ctx context.Context, required core.LoginRequirements, id core.Identity, p principal) (bool, error) {
+	return meets(g.decide(ctx, scope{required: required}, id, p))
+}
+
+// meets turns a decision into an answer: a refusal is false, an outage an
+// error.
+func meets(err error) (bool, error) {
 	switch {
 	case err == nil:
 		return true, nil
@@ -292,7 +342,7 @@ func (g *Gate) checkTwoFactor(ctx context.Context, sc scope, p principal) error 
 	}
 	e, err := g.enrollmentOf(ctx, p.subject)
 	if err != nil {
-		return g.unavailable("reading enrollment", err)
+		return g.unavailable(sc, "reading enrollment", err)
 	}
 	switch {
 	case e.enrolled:
@@ -307,7 +357,7 @@ func (g *Gate) checkTwoFactor(ctx context.Context, sc scope, p principal) error 
 		// to enroll, and blocking it would lock out the platform itself.
 		return nil
 	}
-	g.cfg.Metrics.refused(reasonNotEnrolled)
+	sc.metrics.refused(reasonNotEnrolled)
 	return core.NewLoginTwoFactorRequiredError(sc.workspaceID, sc.required)
 }
 
@@ -358,7 +408,7 @@ func (g *Gate) checkGoogle(ctx context.Context, sc scope, id core.Identity, p pr
 	a, err := g.googleAccountOf(ctx, p.subject)
 	switch {
 	case err != nil:
-		return g.unavailable("reading the Google account", err)
+		return g.unavailable(sc, "reading the Google account", err)
 	case !a.human && platformExempt:
 		return nil // Kratos does not know this subject: a platform principal
 	case !a.human || !a.matches:
@@ -368,26 +418,26 @@ func (g *Gate) checkGoogle(ctx context.Context, sc scope, id core.Identity, p pr
 }
 
 func (g *Gate) refuseMember(sc scope) error {
-	g.cfg.Metrics.refused(reasonNotGoogle)
+	sc.metrics.refused(reasonNotGoogle)
 	return core.NewLoginGoogleLoginRequiredError(sc.workspaceID, sc.required, false)
 }
 
 func (g *Gate) refuseKey(sc scope) error {
-	g.cfg.Metrics.refused(reasonKeyNotGoogle)
+	sc.metrics.refused(reasonKeyNotGoogle)
 	return core.NewLoginGoogleLoginRequiredError(sc.workspaceID, sc.required, true)
 }
 
 // unavailable fails closed: an answer that cannot be had is never an allow.
-func (g *Gate) unavailable(what string, err error) error {
+func (g *Gate) unavailable(sc scope, what string, err error) error {
 	log.Printf("twofactor: %s: %v", what, err)
-	g.cfg.Metrics.refused(reasonLookupUnavailable)
+	sc.metrics.refused(reasonLookupUnavailable)
 	return core.ErrAuthzUnavailable
 }
 
 // unattributed refuses an API key whose creator's second factor cannot be
 // checked. It would otherwise be a hole around the setting.
 func (g *Gate) unattributed(sc scope) error {
-	g.cfg.Metrics.refused(reasonUnattributedKey)
+	sc.metrics.refused(reasonUnattributedKey)
 	return core.NewLoginUnattributedKeyError(sc.workspaceID, sc.required)
 }
 

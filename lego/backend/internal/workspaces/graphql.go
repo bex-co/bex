@@ -17,6 +17,7 @@ limitations under the License.
 package workspaces
 
 import (
+	"context"
 	"maps"
 
 	"github.com/graphql-go/graphql"
@@ -178,6 +179,78 @@ var resourceLimitsGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// The enable confirmation's read (w7/m471, docs/ADR012-auth.md §9c): who a
+// login requirement would block, on a workspace and on an org alike.
+var loginRequirementGQLEnum = graphql.NewEnum(graphql.EnumConfig{
+	Name:        "LoginRequirement",
+	Description: "A login requirement a workspace or an organization can turn on: two-factor authentication, or signing in with Google.",
+	Values: graphql.EnumValueConfigMap{
+		"TWO_FACTOR":   &graphql.EnumValueConfig{Value: LoginRequirementTwoFactor},
+		"GOOGLE_LOGIN": &graphql.EnumValueConfig{Value: LoginRequirementGoogleLogin},
+	},
+})
+
+var loginImpactAPIKeyGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "LoginRequirementImpactApiKey",
+	Fields: graphql.Fields{
+		"id":   gqlutil.ReqStrField(func(k LoginImpactAPIKey) any { return k.ID }),
+		"name": gqlutil.ReqStrField(func(k LoginImpactAPIKey) any { return k.Name }),
+		// workspaceName is the workspace the key is bound to, on an org's
+		// read; empty on a workspace's.
+		"workspaceName": gqlutil.ReqStrField(func(k LoginImpactAPIKey) any { return k.WorkspaceName }),
+	},
+})
+
+var loginImpactSSHKeyGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "LoginRequirementImpactSshKey",
+	Fields: graphql.Fields{
+		"id":          gqlutil.ReqStrField(func(k LoginImpactSSHKey) any { return k.ID }),
+		"name":        gqlutil.ReqStrField(func(k LoginImpactSSHKey) any { return k.Name }),
+		"fingerprint": gqlutil.ReqStrField(func(k LoginImpactSSHKey) any { return k.Fingerprint }),
+	},
+})
+
+var loginImpactMemberGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "LoginRequirementImpactMember",
+	Fields: graphql.Fields{
+		"userId":      gqlutil.ReqStrField(func(m LoginImpactMember) any { return m.UserID }),
+		"email":       gqlutil.ReqStrField(func(m LoginImpactMember) any { return m.Email }),
+		"name":        gqlutil.ReqStrField(func(m LoginImpactMember) any { return m.Name }),
+		"losesAccess": gqlutil.ReqBoolField(func(m LoginImpactMember) any { return m.LosesAccess }),
+		"apiKeys": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(loginImpactAPIKeyGQLType))),
+			func(m LoginImpactMember) any { return m.APIKeys }),
+		"sshKeys": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(loginImpactSSHKeyGQLType))),
+			func(m LoginImpactMember) any { return m.SSHKeys }),
+	},
+})
+
+var loginRequirementImpactGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "LoginRequirementImpact",
+	Description: "Who turning a login requirement on would block, decided by the enforcement gate's own checks: members who would lose access or whose keys would stop working, and API keys no member created. Empty lists mean nobody would be blocked.",
+	Fields: graphql.Fields{
+		"members": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(loginImpactMemberGQLType))),
+			func(i LoginRequirementImpact) any { return i.Members }),
+		"unattributedApiKeys": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(loginImpactAPIKeyGQLType))),
+			func(i LoginRequirementImpact) any { return i.UnattributedAPIKeys }),
+	},
+})
+
+// loginRequirementImpactField is the read on one scope: the scope's id
+// argument and the requirement being turned on.
+func loginRequirementImpactField(scopeArg, description string, read func(ctx context.Context, id, requirement string) (LoginRequirementImpact, error)) *graphql.Field {
+	return &graphql.Field{
+		Type:        graphql.NewNonNull(loginRequirementImpactGQLType),
+		Description: description,
+		Args: graphql.FieldConfigArgument{
+			scopeArg:      gqlutil.ReqArg(graphql.String),
+			"requirement": gqlutil.ReqArg(loginRequirementGQLEnum),
+		},
+		Resolve: func(p graphql.ResolveParams) (any, error) {
+			return read(p.Context, p.Args[scopeArg].(string), p.Args["requirement"].(string))
+		},
+	}
+}
+
 // GraphQLQuery contributes the caller's workspace list and limits query to the
 // root Query.
 func (s *Service) GraphQLQuery() graphql.Fields {
@@ -237,6 +310,11 @@ func (s *Service) workspaceGraphQLQuery() graphql.Fields {
 				return s.ResourceLimits(p.Context, p.Args["ownerId"].(string))
 			},
 		},
+		// workspaceLoginRequirementImpact is the enable confirmation's list
+		// (w7/m471): admin only, GraphQL-only like the setters.
+		"workspaceLoginRequirementImpact": loginRequirementImpactField("workspaceId",
+			"Who turning a login requirement on in a workspace would block, with what the workspace already requires (admin only).",
+			s.LoginRequirementImpact),
 	}
 }
 

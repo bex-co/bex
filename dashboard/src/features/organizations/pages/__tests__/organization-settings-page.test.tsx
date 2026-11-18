@@ -42,6 +42,15 @@ vi.mock("@/features/organizations/hooks/use-rename-organization", () => ({
   useRenameOrganization: () => ({ rename, saving: false }),
 }));
 
+// The Security confirmation's list reads through Apollo (w7/m471); it is
+// exercised against a real client in organization-security-card.test.tsx.
+vi.mock(
+  "@/features/organizations/hooks/use-organization-login-requirement-impact",
+  () => ({
+    useOrganizationLoginRequirementImpact: () => ({ status: "loading" }),
+  }),
+);
+
 // The Security switches' mutations are exercised against a real client in
 // organization-security-card.test.tsx; here they only record the call.
 const setRequired = vi.fn(

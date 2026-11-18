@@ -1,20 +1,20 @@
 # w7 · m471 — Turning on a login requirement lists the members and keys it would block, as Render's SSO enforcement does
 
-**Worker:** worker7 **Goal:** before an admin turns on "Require two-factor authentication" or "Require Google login" in a workspace, or an Org Owner turns one on for an org, the confirmation lists each member who would lose access and each API key and SSH key that would stop working, decided by the same checks the gate enforces. **Status:** todo
+**Worker:** worker7 **Goal:** before an admin turns on "Require two-factor authentication" or "Require Google login" in a workspace, or an Org Owner turns one on for an org, the confirmation lists each member who would lose access and each API key and SSH key that would stop working, decided by the same checks the gate enforces. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Gate: assess a member and their keys against a requirement, outside a request](t001.md) | 45m | — |
-| t002 | [Workspace read on GraphQL: `workspaceLoginRequirementImpact`](t002.md) | 1h | t001 |
-| t003 | [Org read on GraphQL: `organizationLoginRequirementImpact`](t003.md) | 45m | t002 |
-| t004 | [Dashboard: the workspace card asks before turning a requirement on, and lists who it would block](t004.md) | 1h15m | t002 |
-| t005 | [Dashboard: the org Security card's confirmation lists who it would block](t005.md) | 45m | t003, t004 |
-| t006 | [Render parity](t006.md) | 30m | t005 |
-| t007 | [Simplify](t007.md) | 30m | t006 |
-| t008 | [Test coverage](t008.md) | 45m | t006 |
-| t009 | [Closeout](t009.md) | 10m | t007, t008 |
+| t001 | [Gate: assess a member and their keys against a requirement, outside a request](done/t001.md) — **DONE** | 45m | — |
+| t002 | [Workspace read on GraphQL: `workspaceLoginRequirementImpact`](done/t002.md) — **DONE** | 1h | t001 |
+| t003 | [Org read on GraphQL: `organizationLoginRequirementImpact`](done/t003.md) — **DONE** | 45m | t002 |
+| t004 | [Dashboard: the workspace card asks before turning a requirement on, and lists who it would block](done/t004.md) — **DONE** | 1h15m | t002 |
+| t005 | [Dashboard: the org Security card's confirmation lists who it would block](done/t005.md) — **DONE** | 45m | t003, t004 |
+| t006 | [Render parity](done/t006.md) — **DONE** | 30m | t005 |
+| t007 | [Simplify](done/t007.md) — **DONE** | 30m | t006 |
+| t008 | [Test coverage](done/t008.md) — **DONE** | 45m | t006 |
+| t009 | [Closeout](done/t009.md) — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 

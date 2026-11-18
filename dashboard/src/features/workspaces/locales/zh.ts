@@ -674,6 +674,100 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     message: "登录后你会回到此页面。",
     description: "Hint under the blocked page's Sign in with Google button",
   },
+  "workspaces.requireTwoFactorConfirmTitle": {
+    message: "要在 {workspace} 中要求两步验证吗？",
+    description:
+      "Title of the confirmation before an admin requires 2FA in the workspace (w7/m471)",
+  },
+  "workspaces.requireTwoFactorConfirm": {
+    message:
+      "未启用两步验证的成员将无法访问此工作区，直到他们启用为止，其 API 密钥和 SSH 密钥也将无法在其中使用。",
+    description:
+      "Body of the confirmation before an admin requires 2FA in the workspace (w7/m471)",
+  },
+  "workspaces.requireGoogleLoginConfirmTitle": {
+    message: "要在 {workspace} 中要求使用 Google 登录吗？",
+    description:
+      "Title of the confirmation before an admin requires Google login in the workspace (w7/m471)",
+  },
+  "workspaces.requireGoogleLoginConfirm": {
+    message:
+      "未使用其 bex 邮箱对应的 Google 账号登录的成员将无法访问此工作区，直到他们以这种方式登录为止；以其他方式登录时创建的 API 密钥和 SSH 密钥也将无法在其中使用。",
+    description:
+      "Body of the confirmation before an admin requires Google login in the workspace (w7/m471)",
+  },
+  "workspaces.requireConfirmAction": {
+    message: "要求",
+    description:
+      "Confirm button of the workspace's require-2FA and require-Google-login confirmations (w7/m471)",
+  },
+  "workspaces.loginImpactRegionLabel": {
+    message: "谁将失去访问权限",
+    description:
+      "Accessible name of the confirmation's list of members and keys a login requirement would block (w7/m471)",
+  },
+  "workspaces.loginImpactChecking": {
+    message: "正在检查谁将失去访问权限…",
+    description:
+      "Screen-reader text while the confirmation checks who a login requirement would block",
+  },
+  "workspaces.loginImpactError": {
+    message: "无法检查谁将失去访问权限。你仍然可以开启此设置。",
+    description:
+      "Shown in the confirmation when bex could not check who a login requirement would block; confirming stays possible",
+  },
+  "workspaces.loginImpactNobody": {
+    message:
+      "没有人会失去访问权限：每位成员都满足此要求，也没有 API 密钥或 SSH 密钥会停止工作。",
+    description:
+      "Shown in the confirmation when a login requirement would block nobody",
+  },
+  "workspaces.loginImpactMembersTwoFactor": {
+    message:
+      "列出的每位成员将失去访问权限，直到他们启用两步验证。列出的每个 API 密钥和 SSH 密钥将停止工作，直到其所有者启用为止。",
+    description:
+      "Sentence above the members and keys requiring 2FA would block, after Render's SSO enforcement list",
+  },
+  "workspaces.loginImpactMembersGoogleLogin": {
+    message:
+      "列出的每位成员将失去访问权限，直到他们使用其 bex 邮箱对应的 Google 账号登录。列出的每个 API 密钥和 SSH 密钥将停止工作；其所有者可以在使用 Google 登录后创建新的密钥。",
+    description:
+      "Sentence above the members and keys requiring Google login would block, after Render's SSO enforcement list",
+  },
+  "workspaces.loginImpactLosesAccess": {
+    message: "失去访问权限",
+    description: "Badge on a listed member who would lose access",
+  },
+  "workspaces.loginImpactKeepsAccess": {
+    message: "保留访问权限",
+    description:
+      "Badge on a listed member who keeps access while their listed keys stop working",
+  },
+  "workspaces.loginImpactApiKey": {
+    message: "API 密钥 {name}",
+    description:
+      "A listed API key that would stop working; {name} is the key's name",
+  },
+  "workspaces.loginImpactApiKeyInWorkspace": {
+    message: "{workspace} 中的 API 密钥 {name}",
+    description:
+      "A listed API key on an org's confirmation; {workspace} is the workspace it belongs to",
+  },
+  "workspaces.loginImpactSshKey": {
+    message: "SSH 密钥 {name}",
+    description:
+      "A listed SSH key that would stop working; {name} is the key's name",
+  },
+  "workspaces.loginImpactUnattributed": {
+    message: "没有记录创建者、或创建者已不再是成员的 API 密钥将停止工作：",
+    description:
+      "Heading of the API keys no current member created, which would stop working",
+  },
+  "workspaces.loginImpactGoogleSessions": {
+    message: "满足要求但当前以其他方式登录的成员将被要求使用 Google 登录。",
+    description:
+      "One line under the Google login confirmation's list: who the list cannot show",
+  },
   "workspaces.overlappingDeployPolicyTitle": {
     message: "重叠部署策略",
     description:

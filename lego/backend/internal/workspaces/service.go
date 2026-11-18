@@ -151,6 +151,12 @@ type Service struct {
 	// the deployment cannot look up Google accounts, which refuses turning the
 	// setting on (409 WORKSPACE_GOOGLE_LOGIN_UNAVAILABLE).
 	GoogleLogin GoogleLoginChecker
+	// LoginAssessor and LoginImpactKeys answer who turning a login
+	// requirement on would block (w7/m471): the gate's assessment of each
+	// member and key (*twofactor.Gate), and the API keys and SSH keys to
+	// assess. Either nil answers that read with core.ErrAuthzUnavailable.
+	LoginAssessor   LoginAssessor
+	LoginImpactKeys LoginImpactKeys
 }
 
 // GoogleLoginChecker is the Google-login gate's own check for one caller,

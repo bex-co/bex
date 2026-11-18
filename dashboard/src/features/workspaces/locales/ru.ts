@@ -692,6 +692,103 @@ const ruWorkspaces: Record<string, TranslationEntry> = {
     message: "После входа вы вернётесь на эту страницу.",
     description: "Hint under the blocked page's Sign in with Google button",
   },
+  "workspaces.requireTwoFactorConfirmTitle": {
+    message: "Требовать двухфакторную аутентификацию в {workspace}?",
+    description:
+      "Title of the confirmation before an admin requires 2FA in the workspace (w7/m471)",
+  },
+  "workspaces.requireTwoFactorConfirm": {
+    message:
+      "Участники без двухфакторной аутентификации потеряют доступ к этому рабочему пространству, пока не включат её, а их API-ключи и SSH-ключи перестанут в нём работать.",
+    description:
+      "Body of the confirmation before an admin requires 2FA in the workspace (w7/m471)",
+  },
+  "workspaces.requireGoogleLoginConfirmTitle": {
+    message: "Требовать вход через Google в {workspace}?",
+    description:
+      "Title of the confirmation before an admin requires Google login in the workspace (w7/m471)",
+  },
+  "workspaces.requireGoogleLoginConfirm": {
+    message:
+      "Участники, которые не вошли через аккаунт Google своего адреса электронной почты в bex, потеряют доступ к этому рабочему пространству, пока не войдут так, а API-ключи и SSH-ключи, созданные при входе другим способом, перестанут в нём работать.",
+    description:
+      "Body of the confirmation before an admin requires Google login in the workspace (w7/m471)",
+  },
+  "workspaces.requireConfirmAction": {
+    message: "Требовать",
+    description:
+      "Confirm button of the workspace's require-2FA and require-Google-login confirmations (w7/m471)",
+  },
+  "workspaces.loginImpactRegionLabel": {
+    message: "Кто потеряет доступ",
+    description:
+      "Accessible name of the confirmation's list of members and keys a login requirement would block (w7/m471)",
+  },
+  "workspaces.loginImpactChecking": {
+    message: "Проверяем, кто потеряет доступ…",
+    description:
+      "Screen-reader text while the confirmation checks who a login requirement would block",
+  },
+  "workspaces.loginImpactError": {
+    message:
+      "Не удалось проверить, кто потеряет доступ. Вы всё равно можете включить требование.",
+    description:
+      "Shown in the confirmation when bex could not check who a login requirement would block; confirming stays possible",
+  },
+  "workspaces.loginImpactNobody": {
+    message:
+      "Никто не потеряет доступ: все участники соответствуют требованию, и ни один API-ключ или SSH-ключ не перестанет работать.",
+    description:
+      "Shown in the confirmation when a login requirement would block nobody",
+  },
+  "workspaces.loginImpactMembersTwoFactor": {
+    message:
+      "Каждый участник из списка потеряет доступ, пока не включит двухфакторную аутентификацию. Каждый API-ключ и SSH-ключ из списка перестанет работать, пока его владелец её не включит.",
+    description:
+      "Sentence above the members and keys requiring 2FA would block, after Render's SSO enforcement list",
+  },
+  "workspaces.loginImpactMembersGoogleLogin": {
+    message:
+      "Каждый участник из списка потеряет доступ, пока не войдёт через аккаунт Google своего адреса электронной почты в bex. Каждый API-ключ и SSH-ключ из списка перестанет работать; владелец может создать новый после входа через Google.",
+    description:
+      "Sentence above the members and keys requiring Google login would block, after Render's SSO enforcement list",
+  },
+  "workspaces.loginImpactLosesAccess": {
+    message: "Теряет доступ",
+    description: "Badge on a listed member who would lose access",
+  },
+  "workspaces.loginImpactKeepsAccess": {
+    message: "Сохраняет доступ",
+    description:
+      "Badge on a listed member who keeps access while their listed keys stop working",
+  },
+  "workspaces.loginImpactApiKey": {
+    message: "API-ключ {name}",
+    description:
+      "A listed API key that would stop working; {name} is the key's name",
+  },
+  "workspaces.loginImpactApiKeyInWorkspace": {
+    message: "API-ключ {name} в {workspace}",
+    description:
+      "A listed API key on an org's confirmation; {workspace} is the workspace it belongs to",
+  },
+  "workspaces.loginImpactSshKey": {
+    message: "SSH-ключ {name}",
+    description:
+      "A listed SSH key that would stop working; {name} is the key's name",
+  },
+  "workspaces.loginImpactUnattributed": {
+    message:
+      "API-ключи без записанного создателя или с создателем, который больше не участник, перестанут работать:",
+    description:
+      "Heading of the API keys no current member created, which would stop working",
+  },
+  "workspaces.loginImpactGoogleSessions": {
+    message:
+      "Участников, которые соответствуют требованию, но сейчас вошли другим способом, попросят войти через Google.",
+    description:
+      "One line under the Google login confirmation's list: who the list cannot show",
+  },
   "workspaces.overlappingDeployPolicyTitle": {
     message: "Политика перекрывающихся деплоев",
     description:

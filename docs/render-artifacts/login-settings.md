@@ -61,7 +61,7 @@ What the pages do not say (each is a bex **inference**, recorded in ADR012 §9c)
 - **The org's Google choice.** No page lists the org's "allowed login methods" beyond SAML SSO. bex reads the org's set as the org form of the workspace settings: Google login (what `ChangeTeamAllowedLoginMethodsEvent` records on a workspace), with SAML SSO as one more choice bex does not build (`.pm/DO_NOT_DO.md`).
 - **Where org 2FA lives.** No page shows the org 2FA control. bex puts it beside "Require Login Method" in the org Settings page's Security section.
 - **Scope.** No page says whether org enforcement binds every workspace. SSO enforcement binds "access to the org", so bex makes org 2FA and Google login bind every org workspace, beside each workspace's own setting, and the org's own pages.
-- **The confirmation's list.** SSO enforcement lists the members and keys that lose access. No page says the 2FA or Google confirmation does; bex's workspace confirmation lists nobody, and the org's follows it (a follow-up, `.pm/w7`, tracks listing them for both).
+- **The confirmation's list.** SSO enforcement lists the members and keys that lose access. No page says the 2FA or Google confirmation does; bex lists them for both requirements, on a workspace and on an org (w7/m471), from the enforcement gate's own checks, with SSH keys as bex's addition because its gate blocks them too.
 - **Plan.** An org is always Scale or Enterprise, above the pricing table's Pro floor for "Enforce 2FA & Google login", so the org setting adds no plan row.
 - **Error codes, metadata.** Render documents no API refusal and no metadata keys for the two events. bex reuses its workspace codes and `metadata.to`.
 

@@ -939,6 +939,10 @@ func wireTwoFactor(deps *api.Deps, base *core.Base, st *store.PGStore, registere
 	gate := twofactor.New(cfg)
 	base.TwoFactor = gate
 	deps.TwoFactorChanged = gate.Invalidate
+	// The enable confirmation lists who a requirement would block by the
+	// gate's own assessment (w7/m471); a missing lookup answers "could not
+	// check" there.
+	deps.LoginAssessor = gate
 	if cfg.Google != nil {
 		deps.GoogleLogin = gate
 	}

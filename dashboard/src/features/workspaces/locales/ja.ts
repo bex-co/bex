@@ -690,6 +690,103 @@ const jaWorkspaces: Record<string, TranslationEntry> = {
     message: "ログインすると、このページに戻ります。",
     description: "Hint under the blocked page's Sign in with Google button",
   },
+  "workspaces.requireTwoFactorConfirmTitle": {
+    message: "{workspace} で二要素認証を必須にしますか？",
+    description:
+      "Title of the confirmation before an admin requires 2FA in the workspace (w7/m471)",
+  },
+  "workspaces.requireTwoFactorConfirm": {
+    message:
+      "二要素認証を使用していないメンバーは、有効にするまでこのワークスペースにアクセスできなくなり、API キーと SSH キーもこのワークスペースでは使用できなくなります。",
+    description:
+      "Body of the confirmation before an admin requires 2FA in the workspace (w7/m471)",
+  },
+  "workspaces.requireGoogleLoginConfirmTitle": {
+    message: "{workspace} で Google ログインを必須にしますか？",
+    description:
+      "Title of the confirmation before an admin requires Google login in the workspace (w7/m471)",
+  },
+  "workspaces.requireGoogleLoginConfirm": {
+    message:
+      "bex のメールアドレスの Google アカウントでログインしていないメンバーは、その方法でログインするまでこのワークスペースにアクセスできなくなり、ほかの方法でログインしているときに作成された API キーと SSH キーもこのワークスペースでは使用できなくなります。",
+    description:
+      "Body of the confirmation before an admin requires Google login in the workspace (w7/m471)",
+  },
+  "workspaces.requireConfirmAction": {
+    message: "必須にする",
+    description:
+      "Confirm button of the workspace's require-2FA and require-Google-login confirmations (w7/m471)",
+  },
+  "workspaces.loginImpactRegionLabel": {
+    message: "アクセスできなくなるユーザー",
+    description:
+      "Accessible name of the confirmation's list of members and keys a login requirement would block (w7/m471)",
+  },
+  "workspaces.loginImpactChecking": {
+    message: "アクセスできなくなるユーザーを確認しています…",
+    description:
+      "Screen-reader text while the confirmation checks who a login requirement would block",
+  },
+  "workspaces.loginImpactError": {
+    message:
+      "アクセスできなくなるユーザーを確認できませんでした。このまま有効にすることもできます。",
+    description:
+      "Shown in the confirmation when bex could not check who a login requirement would block; confirming stays possible",
+  },
+  "workspaces.loginImpactNobody": {
+    message:
+      "アクセスできなくなる人はいません。すべてのメンバーがこの要件を満たしており、使用できなくなる API キーや SSH キーもありません。",
+    description:
+      "Shown in the confirmation when a login requirement would block nobody",
+  },
+  "workspaces.loginImpactMembersTwoFactor": {
+    message:
+      "一覧の各メンバーは、二要素認証を有効にするまでアクセスできなくなります。一覧の各 API キーと SSH キーは、所有者が有効にするまで使用できなくなります。",
+    description:
+      "Sentence above the members and keys requiring 2FA would block, after Render's SSO enforcement list",
+  },
+  "workspaces.loginImpactMembersGoogleLogin": {
+    message:
+      "一覧の各メンバーは、bex のメールアドレスの Google アカウントでログインするまでアクセスできなくなります。一覧の各 API キーと SSH キーは使用できなくなります。所有者は Google でログインしてから新しいキーを作成できます。",
+    description:
+      "Sentence above the members and keys requiring Google login would block, after Render's SSO enforcement list",
+  },
+  "workspaces.loginImpactLosesAccess": {
+    message: "アクセス不可",
+    description: "Badge on a listed member who would lose access",
+  },
+  "workspaces.loginImpactKeepsAccess": {
+    message: "アクセス可",
+    description:
+      "Badge on a listed member who keeps access while their listed keys stop working",
+  },
+  "workspaces.loginImpactApiKey": {
+    message: "API キー {name}",
+    description:
+      "A listed API key that would stop working; {name} is the key's name",
+  },
+  "workspaces.loginImpactApiKeyInWorkspace": {
+    message: "{workspace} の API キー {name}",
+    description:
+      "A listed API key on an org's confirmation; {workspace} is the workspace it belongs to",
+  },
+  "workspaces.loginImpactSshKey": {
+    message: "SSH キー {name}",
+    description:
+      "A listed SSH key that would stop working; {name} is the key's name",
+  },
+  "workspaces.loginImpactUnattributed": {
+    message:
+      "作成者の記録がない API キー、または作成者がメンバーでなくなった API キーは使用できなくなります：",
+    description:
+      "Heading of the API keys no current member created, which would stop working",
+  },
+  "workspaces.loginImpactGoogleSessions": {
+    message:
+      "要件を満たしていても、現在ほかの方法でログインしているメンバーは、Google でログインするよう求められます。",
+    description:
+      "One line under the Google login confirmation's list: who the list cannot show",
+  },
   "workspaces.overlappingDeployPolicyTitle": {
     message: "重複デプロイポリシー",
     description:

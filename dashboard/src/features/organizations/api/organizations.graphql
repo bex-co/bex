@@ -96,6 +96,41 @@ mutation SetOrganizationRequireGoogleLogin(
   }
 }
 
+# The org Security card's confirmation (w7/m471): who an org-wide requirement
+# would block in any org workspace, each API key naming its workspace. Owner
+# only.
+query OrganizationLoginRequirementImpact(
+  $organizationId: String!
+  $requirement: LoginRequirement!
+) {
+  organizationLoginRequirementImpact(
+    organizationId: $organizationId
+    requirement: $requirement
+  ) {
+    members {
+      userId
+      email
+      name
+      losesAccess
+      apiKeys {
+        id
+        name
+        workspaceName
+      }
+      sshKeys {
+        id
+        name
+        fingerprint
+      }
+    }
+    unattributedApiKeys {
+      id
+      name
+      workspaceName
+    }
+  }
+}
+
 mutation JoinWorkspace($workspaceId: String!) {
   joinWorkspace(workspaceId: $workspaceId) {
     workspaceId

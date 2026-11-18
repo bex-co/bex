@@ -1044,6 +1044,28 @@ func (s *PGStore) BindClient(ctx context.Context, clientID, tenantID string) err
 	return nil
 }
 
+// ClientBindingsOfTenants answers which API keys are bound to tenantIDs: each
+// bound client id with its workspace, read from the machine rows BindClient
+// writes. The enable confirmation of a login requirement assesses these keys
+// (w7/m471).
+func (s *PGStore) ClientBindingsOfTenants(ctx context.Context, tenantIDs []string) (map[string]string, error) {
+	rows, err := s.Pool.Query(ctx,
+		`SELECT subject, tenant_id FROM tenant_members WHERE tenant_id = ANY($1) AND kind = 'machine'`, tenantIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var clientID, tenantID string
+		if err := rows.Scan(&clientID, &tenantID); err != nil {
+			return nil, err
+		}
+		out[clientID] = tenantID
+	}
+	return out, rows.Err()
+}
+
 // UnbindClient permanently revokes an API key and removes its tenant_members
 // rows atomically. The marker also rejects already-issued tokens on every API
 // replica. Keys are never reused, so an existing marker remains authoritative.

@@ -3,11 +3,13 @@ import { Card, CardContent } from "@/common/components/ui/card";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import type { WorkspaceLoginRequirement } from "@/common/apollo/auth-error-link";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { LoginRequirementImpactList } from "@/features/workspaces/components/login-requirement-impact-list";
 import { LoginRequirementRefusalAlert } from "@/features/workspaces/components/login-requirement-refusal-alert";
 import {
   LOGIN_REQUIREMENTS,
   LOGIN_REQUIREMENT_SETTINGS,
 } from "@/features/workspaces/lib/login-requirements";
+import { useOrganizationLoginRequirementImpact } from "@/features/organizations/hooks/use-organization-login-requirement-impact";
 import { useSetOrganizationLoginRequirement } from "@/features/organizations/hooks/use-set-organization-login-requirement";
 import { ORGANIZATION_LOGIN_REQUIREMENT_SETTINGS } from "@/features/organizations/lib/organization-login-requirements";
 import {
@@ -26,8 +28,9 @@ import type { Organization } from "@/features/organizations/types";
  *
  * Owners get the switches, everyone else the state and a line saying only
  * Owners change it. Turning one on asks first, since it can lock members and
- * their keys out at once; turning one off does not, as on the workspace
- * cards. The server's coded refusals show beside the switch: the lock-out
+ * their keys out at once, and the confirmation lists who it would block in
+ * any org workspace, each API key named with its workspace (w7/m471); turning
+ * one off does not ask, as on the workspace cards. The server's coded refusals show beside the switch: the lock-out
  * guard (the Owner does not meet it themselves) with the way to fix it on
  * their own account, and an installation that cannot enforce it.
  * `OrganizationSettingsSkeleton` previews this anatomy.
@@ -94,17 +97,56 @@ function OrganizationLoginRequirementSetting({
         />
       ) : null}
       {canChange ? (
-        <ConfirmDialog
+        <OrganizationLoginRequirementConfirm
+          requirement={requirement}
+          organization={organization}
           open={confirming}
           onOpenChange={setConfirming}
-          title={t(copy.confirmTitleKey, { organization: organization.name })}
-          description={t(copy.confirmBodyKey)}
-          confirmLabel={t("organizations.requireConfirmAction")}
-          cancelLabel={t("organizations.cancel")}
-          destructive={false}
           onConfirm={() => void setRequired(true)}
         />
       ) : null}
     </OrganizationLoginRequirementSection>
+  );
+}
+
+/** The confirmation before an Owner turns `requirement` on, with who it
+ *  would block across the org, read while it is open. */
+function OrganizationLoginRequirementConfirm({
+  requirement,
+  organization,
+  open,
+  onOpenChange,
+  onConfirm,
+}: {
+  requirement: WorkspaceLoginRequirement;
+  organization: Organization;
+  open: boolean;
+  onOpenChange: (next: boolean) => void;
+  onConfirm: () => void;
+}) {
+  const { t } = useTranslations();
+  const copy = ORGANIZATION_LOGIN_REQUIREMENT_SETTINGS[requirement];
+  const impact = useOrganizationLoginRequirementImpact(
+    organization.id,
+    requirement,
+    open,
+  );
+  return (
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={t(copy.confirmTitleKey, { organization: organization.name })}
+      description={t(copy.confirmBodyKey)}
+      confirmLabel={t("organizations.requireConfirmAction")}
+      cancelLabel={t("organizations.cancel")}
+      destructive={false}
+      onConfirm={onConfirm}
+    >
+      <LoginRequirementImpactList
+        requirement={requirement}
+        state={impact}
+        showWorkspace
+      />
+    </ConfirmDialog>
   );
 }

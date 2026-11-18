@@ -680,6 +680,103 @@ const koWorkspaces: Record<string, TranslationEntry> = {
     message: "로그인하면 이 페이지로 돌아옵니다.",
     description: "Hint under the blocked page's Sign in with Google button",
   },
+  "workspaces.requireTwoFactorConfirmTitle": {
+    message: "{workspace}에서 2단계 인증을 요구할까요?",
+    description:
+      "Title of the confirmation before an admin requires 2FA in the workspace (w7/m471)",
+  },
+  "workspaces.requireTwoFactorConfirm": {
+    message:
+      "2단계 인증을 사용하지 않는 멤버는 2단계 인증을 켜기 전까지 이 워크스페이스에 접근할 수 없게 되며, API 키와 SSH 키도 이 워크스페이스에서 더 이상 작동하지 않습니다.",
+    description:
+      "Body of the confirmation before an admin requires 2FA in the workspace (w7/m471)",
+  },
+  "workspaces.requireGoogleLoginConfirmTitle": {
+    message: "{workspace}에서 Google 로그인을 요구할까요?",
+    description:
+      "Title of the confirmation before an admin requires Google login in the workspace (w7/m471)",
+  },
+  "workspaces.requireGoogleLoginConfirm": {
+    message:
+      "bex 이메일 주소의 Google 계정으로 로그인하지 않은 멤버는 그렇게 로그인하기 전까지 이 워크스페이스에 접근할 수 없게 되며, 다른 방법으로 로그인한 상태에서 만든 API 키와 SSH 키도 이 워크스페이스에서 더 이상 작동하지 않습니다.",
+    description:
+      "Body of the confirmation before an admin requires Google login in the workspace (w7/m471)",
+  },
+  "workspaces.requireConfirmAction": {
+    message: "요구",
+    description:
+      "Confirm button of the workspace's require-2FA and require-Google-login confirmations (w7/m471)",
+  },
+  "workspaces.loginImpactRegionLabel": {
+    message: "접근 권한을 잃게 될 사용자",
+    description:
+      "Accessible name of the confirmation's list of members and keys a login requirement would block (w7/m471)",
+  },
+  "workspaces.loginImpactChecking": {
+    message: "접근 권한을 잃게 될 사용자를 확인하는 중…",
+    description:
+      "Screen-reader text while the confirmation checks who a login requirement would block",
+  },
+  "workspaces.loginImpactError": {
+    message:
+      "접근 권한을 잃게 될 사용자를 확인하지 못했습니다. 그래도 켤 수 있습니다.",
+    description:
+      "Shown in the confirmation when bex could not check who a login requirement would block; confirming stays possible",
+  },
+  "workspaces.loginImpactNobody": {
+    message:
+      "접근 권한을 잃는 사람이 없습니다. 모든 멤버가 이 요구 사항을 충족하며, 작동을 멈추는 API 키나 SSH 키도 없습니다.",
+    description:
+      "Shown in the confirmation when a login requirement would block nobody",
+  },
+  "workspaces.loginImpactMembersTwoFactor": {
+    message:
+      "목록의 각 멤버는 2단계 인증을 켤 때까지 접근 권한을 잃습니다. 목록의 각 API 키와 SSH 키는 소유자가 2단계 인증을 켤 때까지 작동하지 않습니다.",
+    description:
+      "Sentence above the members and keys requiring 2FA would block, after Render's SSO enforcement list",
+  },
+  "workspaces.loginImpactMembersGoogleLogin": {
+    message:
+      "목록의 각 멤버는 bex 이메일 주소의 Google 계정으로 로그인할 때까지 접근 권한을 잃습니다. 목록의 각 API 키와 SSH 키는 작동을 멈추며, 소유자는 Google로 로그인한 상태에서 새 키를 만들 수 있습니다.",
+    description:
+      "Sentence above the members and keys requiring Google login would block, after Render's SSO enforcement list",
+  },
+  "workspaces.loginImpactLosesAccess": {
+    message: "접근 권한 상실",
+    description: "Badge on a listed member who would lose access",
+  },
+  "workspaces.loginImpactKeepsAccess": {
+    message: "접근 권한 유지",
+    description:
+      "Badge on a listed member who keeps access while their listed keys stop working",
+  },
+  "workspaces.loginImpactApiKey": {
+    message: "API 키 {name}",
+    description:
+      "A listed API key that would stop working; {name} is the key's name",
+  },
+  "workspaces.loginImpactApiKeyInWorkspace": {
+    message: "{workspace}의 API 키 {name}",
+    description:
+      "A listed API key on an org's confirmation; {workspace} is the workspace it belongs to",
+  },
+  "workspaces.loginImpactSshKey": {
+    message: "SSH 키 {name}",
+    description:
+      "A listed SSH key that would stop working; {name} is the key's name",
+  },
+  "workspaces.loginImpactUnattributed": {
+    message:
+      "생성자 기록이 없거나 생성자가 더 이상 멤버가 아닌 API 키는 작동을 멈춥니다:",
+    description:
+      "Heading of the API keys no current member created, which would stop working",
+  },
+  "workspaces.loginImpactGoogleSessions": {
+    message:
+      "요구 사항을 충족하지만 현재 다른 방법으로 로그인한 멤버는 Google로 로그인하라는 요청을 받습니다.",
+    description:
+      "One line under the Google login confirmation's list: who the list cannot show",
+  },
   "workspaces.overlappingDeployPolicyTitle": {
     message: "중복 배포 정책",
     description:

@@ -99,6 +99,27 @@ func (s *PGStore) ListSSHKeys(ctx context.Context, subject string) ([]SSHKey, er
 	return keys, rows.Err()
 }
 
+// ListSSHKeysOfSubjects is ListSSHKeys for several identities in one query,
+// grouped by subject in stable creation order: the keys a login requirement's
+// enable confirmation assesses (w7/m471).
+func (s *PGStore) ListSSHKeysOfSubjects(ctx context.Context, subjects []string) ([]SSHKey, error) {
+	rows, err := s.Pool.Query(ctx, `SELECT `+sshKeyColumns+`
+		FROM ssh_keys WHERE subject = ANY($1) ORDER BY subject, created_at, id`, subjects)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	keys := make([]SSHKey, 0)
+	for rows.Next() {
+		key, err := scanSSHKey(rows)
+		if err != nil {
+			return nil, err
+		}
+		keys = append(keys, key)
+	}
+	return keys, rows.Err()
+}
+
 // DeleteSSHKey scopes deletion by subject so even a guessed id cannot revoke
 // another identity's access. Missing and foreign ids deliberately look alike.
 func (s *PGStore) DeleteSSHKey(ctx context.Context, subject, id string) error {

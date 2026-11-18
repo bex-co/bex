@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -6,6 +7,7 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import type { WorkspaceLoginRequirement } from "@/common/apollo/auth-error-link";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
@@ -13,7 +15,9 @@ import {
   LoginRequirementRow,
   OrganizationRequirementNote,
 } from "@/features/workspaces/components/login-requirement-row";
+import { LoginRequirementImpactList } from "@/features/workspaces/components/login-requirement-impact-list";
 import { LoginRequirementRefusalAlert } from "@/features/workspaces/components/login-requirement-refusal-alert";
+import { useWorkspaceLoginRequirementImpact } from "@/features/workspaces/hooks/use-login-requirement-impact";
 import { useSetWorkspaceLoginRequirement } from "@/features/workspaces/hooks/use-set-workspace-login-requirement";
 import {
   LOGIN_REQUIREMENT_SETTINGS,
@@ -55,6 +59,11 @@ import {
  * on and locked, whatever the workspace's own setting, and the card says
  * which org, with the way to its Settings page for the org's Owners. Turning
  * the org's setting off brings the workspace's own back as it was.
+ *
+ * Turning it on asks first (w7/m471): the confirmation lists each member who
+ * would lose access and each API key and SSH key that would stop working,
+ * from bex-api's read of the enforcement gate's own checks, as Render's SSO
+ * enforcement lists them. Turning it off writes at once.
  */
 export function WorkspaceLoginRequirementCard({
   requirement,
@@ -76,6 +85,7 @@ export function WorkspaceLoginRequirementCard({
   const lockedBy = requiringOrganization(requirement, workspace.organization);
   const belowPro = !proFeaturesPlan(workspace.plan);
   const required = lockedBy !== null || workspace[setting.field];
+  const [confirming, setConfirming] = useState(false);
 
   return (
     <Card>
@@ -93,7 +103,10 @@ export function WorkspaceLoginRequirementCard({
           control={isAdmin ? "switch" : roleLoading ? "pending" : "status"}
           required={required}
           disabled={busy || lockedBy !== null || (belowPro && !required)}
-          onCheckedChange={(next) => void setRequired(next)}
+          onCheckedChange={(next) => {
+            if (next) setConfirming(true);
+            else void setRequired(false);
+          }}
         />
         {lockedBy ? (
           <OrganizationRequirementNote organization={lockedBy} />
@@ -123,7 +136,53 @@ export function WorkspaceLoginRequirementCard({
             error={error}
           />
         ) : null}
+        {isAdmin ? (
+          <WorkspaceLoginRequirementConfirm
+            requirement={requirement}
+            workspace={workspace}
+            open={confirming}
+            onOpenChange={setConfirming}
+            onConfirm={() => void setRequired(true)}
+          />
+        ) : null}
       </CardContent>
     </Card>
+  );
+}
+
+/** The confirmation before an admin turns `requirement` on, with who it
+ *  would block, read while it is open. */
+function WorkspaceLoginRequirementConfirm({
+  requirement,
+  workspace,
+  open,
+  onOpenChange,
+  onConfirm,
+}: {
+  requirement: WorkspaceLoginRequirement;
+  workspace: WorkspaceView;
+  open: boolean;
+  onOpenChange: (next: boolean) => void;
+  onConfirm: () => void;
+}) {
+  const { t } = useTranslations();
+  const setting = LOGIN_REQUIREMENT_SETTINGS[requirement];
+  const impact = useWorkspaceLoginRequirementImpact(
+    workspace.id,
+    requirement,
+    open,
+  );
+  return (
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={t(setting.confirmTitleKey, { workspace: workspace.name })}
+      description={t(setting.confirmBodyKey)}
+      confirmLabel={t("workspaces.requireConfirmAction")}
+      destructive={false}
+      onConfirm={onConfirm}
+    >
+      <LoginRequirementImpactList requirement={requirement} state={impact} />
+    </ConfirmDialog>
   );
 }
