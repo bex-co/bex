@@ -1,6 +1,6 @@
 # w3 · m475 — The official Render CLI's log viewer can scroll back on bex: `GET /v1/logs` accepts its `limit=1000`
 
-**Worker:** worker3 **Goal:** scrolling up in `render logs`' interactive viewer loads older lines on bex, as it does on Render, instead of failing with `400 limit must be an integer between 1 and 100`. **Status:** todo (t001–t004, t006–t008 done; t005 waits for the production pin)
+**Worker:** worker3 **Goal:** scrolling up in `render logs`' interactive viewer loads older lines on bex, as it does on Render, instead of failing with `400 limit must be an integer between 1 and 100`. **Status:** blocked (t001–t004, t006–t008 done; t005 waits for a production pin carrying `de181cfc4`)
 
 ## Tasks (in order)
 
@@ -15,6 +15,12 @@
 | [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 30m | t007 |
 | [t009](t009.md) | Closeout | 10m | t005, t008 |
+
+## Blocked (2026-11-18)
+
+- **Gate (clears by itself, no user decision):** a production deploy carrying `de181cfc4` (the gate widening, its tests and docs). On 2026-11-18 the latest pin, `0070f86ab chore(deploy): pin platform images to 054f29128f64`, does not contain it.
+- **Check that proves the gate cleared:** the newest `chore(deploy): pin platform images to <sha>` commit on origin/main satisfies `git merge-base --is-ancestor de181cfc4 <sha>`. The w3 routine `pin-gated-recheck` runs this check and reopens the milestone.
+- **Then:** run t005 against `https://api.bex.co` as the QA user in `bex-canary`, flip the checklist row as t005 step 5 says, and run t009.
 
 ## Definition of done
 
@@ -39,7 +45,7 @@
   - **Recommendation:** serve at most 100, Render's documented maximum and bex's existing clamp, with `hasMore` and cursors, so the CLI keeps paging.
   - **Basis:** ADR008 Render parity first. The official CLI must work, and parity work is never parked on an optional decision.
   - **Still open:** whether Render's server returns up to 1000 lines for such a request. It is unverified here, with no Render account in reach. If it does, record the page-size difference in ADR018 or file a follow-up that raises the clamp.
-- **Goal linkage:** Render CLI compatibility ([ADR018](../../../docs/ADR018-render-parity.md), `docs/cli-compatibility-checklist.md`, `DO_NOT_DO.md`'s "point Render's own CLI at bex-api"). `render logs` is one of the most-used CLI commands on the `bex-cli-usage` board (1.34K commands in 30 days, 11.5% failing).
+- **Goal linkage:** Render CLI compatibility ([ADR018](../../../../docs/ADR018-render-parity.md), `docs/cli-compatibility-checklist.md`, `DO_NOT_DO.md`'s "point Render's own CLI at bex-api"). `render logs` is one of the most-used CLI commands on the `bex-cli-usage` board (1.34K commands in 30 days, 11.5% failing).
 - **Expected outcome:** a customer reading logs in the official CLI's viewer can scroll back through history, as on Render.
 - **Why now:** it is a live, reproducible failure of the official CLI's default interactive log view. The fix is small and local to the gate.
 - **Render parity included:** the change alters a REST validation boundary that the CLI, the API docs and the MCP `list_logs` tool all describe.
