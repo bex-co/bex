@@ -371,13 +371,17 @@ type bexEnvGroup struct {
 // Fields bex does not honor are parsed elsewhere or rejected with a clear error
 // (see docs/ADR018-render-parity.md's Blueprint row for the field-by-field map).
 type bexService struct {
-	Name    string    `json:"name"`
-	Type    string    `json:"type"`    // render.yaml short type: web|pserv|worker|cron (empty=web); runtime:static => static_site
-	Runtime string    `json:"runtime"` // render.yaml runtime; "static" selects static_site, "image" => prebuilt
-	Plan    string    `json:"plan"`    // render.yaml plan (Render spelling)
-	Repo    string    `json:"repo"`
-	Branch  string    `json:"branch"`
-	Image   *bexImage `json:"image,omitempty"` // render.yaml image: {url}
+	Name    string `json:"name"`
+	Type    string `json:"type"`    // render.yaml short type: web|pserv|worker|cron (empty=web); runtime:static => static_site
+	Runtime string `json:"runtime"` // render.yaml runtime; "static" selects static_site, "image" => prebuilt
+	Plan    string `json:"plan"`    // render.yaml plan (Render spelling)
+	// Region is the Render region the entry names: the schema enum has refused
+	// anything else, the resource is placed in BEX_REGION, and a new one reads
+	// the region back (resourcemeta.StampRegion; ADR049 D7, w9/105).
+	Region string    `json:"region"`
+	Repo   string    `json:"repo"`
+	Branch string    `json:"branch"`
+	Image  *bexImage `json:"image,omitempty"` // render.yaml image: {url}
 	// Builder is deliberately retained only to issue a migration error. New
 	// Blueprint build strategies live under x-bex.builder so an official Render
 	// field can never be mistaken for a bex extension.
@@ -483,9 +487,11 @@ type bexFromRegistryCreds struct {
 // highAvailability/storageAutoscalingEnabled/connectionPool plus the create-time
 // physical databaseName/user. Region is accepted and normalized to BEX_REGION
 // like every other surface (ADR049 D7, w8/152): the schema enum has already
-// refused anything that is not a Render region.
+// refused anything that is not a Render region, and a new database reads the
+// region back (resourcemeta.StampRegion, w9/105).
 type bexDatabase struct {
 	Name                      string                            `json:"name"`
+	Region                    string                            `json:"region"`
 	DatabaseName              string                            `json:"databaseName"`
 	User                      string                            `json:"user"`
 	Plan                      string                            `json:"plan"`
@@ -797,7 +803,9 @@ func (ref hostRef) env(target *appv1alpha1.App, baseDomain string) (appv1alpha1.
 }
 
 type parsedDatabase struct {
-	name      string
+	name string
+	// region is the entry's Render region, recorded on a new database only.
+	region    string
 	spec      appv1alpha1.DatabaseSpec
 	fields    map[string]BlueprintField
 	grouping  string
@@ -805,7 +813,9 @@ type parsedDatabase struct {
 }
 
 type parsedKeyValue struct {
-	name      string
+	name string
+	// region is the entry's Render region, recorded on a new store only.
+	region    string
 	spec      appv1alpha1.KeyValueSpec
 	fields    map[string]BlueprintField
 	grouping  string
@@ -3242,6 +3252,7 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 
 	return CreateRequest{
 		Name:                    a.Name,
+		Region:                  a.Region,
 		Type:                    svcType,
 		Schedule:                a.Schedule,
 		Repo:                    repo,
@@ -3565,7 +3576,7 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 		ReadReplicas:     d.ReadReplicas,
 		HighAvailability: ha,
 	}
-	return parsedDatabase{name: d.Name, spec: spec}, nil
+	return parsedDatabase{name: d.Name, region: d.Region, spec: spec}, nil
 }
 
 func parseKeyValue(k bexService) (parsedKeyValue, error) {
@@ -3619,7 +3630,7 @@ func parseKeyValue(k bexService) (parsedKeyValue, error) {
 	if k.PersistenceMode != "" && k.PersistenceMode != "journal-snapshot" && k.PersistenceMode != "snapshot" && k.PersistenceMode != "off" {
 		return parsedKeyValue{}, fmt.Errorf("%w: key-value %q persistenceMode %q is invalid", core.ErrBadRequest, k.Name, k.PersistenceMode)
 	}
-	return parsedKeyValue{name: k.Name, spec: appv1alpha1.KeyValueSpec{
+	return parsedKeyValue{name: k.Name, region: k.Region, spec: appv1alpha1.KeyValueSpec{
 		Name:            k.Name,
 		Plan:            k.Plan,
 		Public:          len(allow) > 0,
@@ -4765,6 +4776,7 @@ func (s *Service) planStackDatabase(ctx context.Context, db parsedDatabase, assi
 		return nil, err
 	}
 	d.Spec.WorkspaceIPAllowList = workspaceLayer
+	resourcemeta.StampRegion(d, db.region)
 	resourcemeta.Touch(d, s.Now())
 	return d, nil
 }
@@ -4787,6 +4799,7 @@ func (s *Service) planStackKeyValue(ctx context.Context, kv parsedKeyValue, assi
 		return nil, err
 	}
 	resource.Spec.WorkspaceIPAllowList = workspaceLayer
+	resourcemeta.StampRegion(resource, kv.region)
 	resourcemeta.Touch(resource, s.Now())
 	return resource, nil
 }

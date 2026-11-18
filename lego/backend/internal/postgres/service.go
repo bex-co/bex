@@ -310,11 +310,11 @@ type CreatePostgresRequest struct {
 	DatabaseUser string `json:"databaseUser,omitempty"`
 	Plan         string `json:"plan,omitempty"`
 	Version      string `json:"version,omitempty"`
-	// Region is accepted from Render clients as a placement hint. bex currently
-	// exposes one configured region per control plane, so the server-owned
-	// BEX_REGION remains authoritative instead of persisting this request field;
-	// a value that is neither a Render region nor BEX_REGION is refused
-	// (resourcemeta.CheckRequestedRegion, w8/152).
+	// Region is accepted from Render clients. bex runs one configured region
+	// per control plane, so the database is placed in BEX_REGION; a Render region
+	// is recorded (resourcemeta.StampRegion) and read back, as on Render, and a
+	// value that is neither a Render region nor BEX_REGION is refused
+	// (resourcemeta.CheckRequestedRegion, w8/152, w9/105).
 	Region     string `json:"region,omitempty"`
 	DiskSizeGB int32  `json:"diskSizeGB,omitempty"`
 	// Datadog fields are decoded so the Render CLI receives an explicit
@@ -680,12 +680,12 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 	}
 }
 
-// view wraps pgView and stamps the platform region and dashboard URL onto the
+// view wraps pgView and stamps the database's region and dashboard URL onto the
 // result, matching the apps.Service.view pattern so all external-facing verbs
 // return the enriched shape through GraphQL and MCP as well as REST.
 func (s *Service) view(d *appv1alpha1.Database) PostgresView {
 	v := pgView(d)
-	v.Region = resourcemeta.RenderRegion(s.Metadata.PlatformRegion())
+	v.Region = s.Metadata.ResourceRegion(d)
 	v.DashboardURL = s.Metadata.DashboardURL(resourcemeta.PostgresDashboardRoute, v.ID)
 	return v
 }
@@ -1007,6 +1007,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if d.Spec.WorkspaceIPAllowList, err = s.WorkspaceIPLayer(ctx, tenantID); err != nil {
 		return PostgresView{}, err
 	}
+	resourcemeta.StampRegion(d, req.Region)
 	resourcemeta.Touch(d, s.Now())
 	// Dry-run: the exact object the real create writes, through admission
 	// without persisting it (w5/m116), so the plan's count cap and the CRD's

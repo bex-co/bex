@@ -488,6 +488,9 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 		return PostgresView{}, err
 	}
 	newDB.Spec.WorkspaceIPAllowList = workspaceLayer
+	// It reads back its source's region, as it lives in the same placement
+	// (w9/105).
+	resourcemeta.StampRegion(newDB, src.Annotations[resourcemeta.AnnotRegion])
 	// The shared create invariants, before the billing gate as on create, so a
 	// plan too small for the source's data is refused here instead of failing
 	// mid-restore (w4/360). An inherited plan since retired from the catalog

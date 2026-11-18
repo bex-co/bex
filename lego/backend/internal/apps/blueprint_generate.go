@@ -40,7 +40,6 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
-	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
@@ -224,10 +223,9 @@ func (s *Service) GenerateBlueprint(ctx context.Context, req GenerateBlueprintRe
 			carriers[buildSourceName(carrier)] = carrier
 		}
 	}
-	region := resourcemeta.RenderRegion(s.Metadata.PlatformRegion())
 	for _, kv := range keyValues {
 		entry := generateKeyValueEntry(kv)
-		if region != "" {
+		if region := s.Metadata.ResourceRegion(kv); region != "" {
 			entry["region"] = region
 		}
 		services = append(services, entry)
@@ -274,7 +272,7 @@ func (s *Service) GenerateBlueprint(ctx context.Context, req GenerateBlueprintRe
 		var out []map[string]any
 		for _, d := range databases {
 			entry := generateDatabaseEntry(d)
-			if region != "" {
+			if region := s.Metadata.ResourceRegion(d); region != "" {
 				entry["region"] = region
 			}
 			out = append(out, entry)
@@ -391,7 +389,7 @@ func (s *Service) generateServiceEntry(ctx context.Context, a, carrier *appv1alp
 		"type": blueprintTypeSpelling[svcType],
 	}
 	static := svcType == appv1alpha1.TypeStaticSite
-	if region := resourcemeta.RenderRegion(s.Metadata.PlatformRegion()); !static && region != "" {
+	if region := s.Metadata.ResourceRegion(a); !static && region != "" {
 		entry["region"] = region
 	}
 

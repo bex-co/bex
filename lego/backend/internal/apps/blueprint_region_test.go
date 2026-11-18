@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -30,6 +31,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // w8/152 (user decision D1, 2026-10-29): every surface applies one region
@@ -218,10 +220,14 @@ func TestBlueprintRenderExportWithRegionsValidatesAndPlans(t *testing.T) {
 	}
 }
 
-// Apply honors the same policy: the declared Render regions are accepted and
-// every resource reads back with the public region alias. (Projects need the workspace store,
-// so apply runs the top-level half; validation covers the nested half above.)
-func TestBlueprintApplyWithRenderRegionReadsBackPublicAlias(t *testing.T) {
+// Apply honors the same policy: the declared Render regions are accepted, the
+// resources are placed in BEX_REGION, and each new resource reads back the
+// region its entry declared, as on Render (w9/105). Render's region is fixed
+// at creation, so a later sync that declares another region leaves it, and an
+// entry with no region reads back the platform's public alias. (Projects need
+// the workspace store, so apply runs the top-level half; validation covers
+// the nested half above.)
+func TestBlueprintApplyReadsBackTheDeclaredRegion(t *testing.T) {
 	svc, _ := newService(nil)
 	svc.Metadata = resourcemeta.Config{Region: "fsn1"}
 	ctx := context.Background()
@@ -233,23 +239,65 @@ func TestBlueprintApplyWithRenderRegionReadsBackPublicAlias(t *testing.T) {
 	if len(res.Databases) != 1 || len(res.KeyValues) != 1 {
 		t.Fatalf("applied databases=%+v keyValues=%+v, want 1 each", res.Databases, res.KeyValues)
 	}
-	for _, name := range []string{"web", "nightly"} {
-		v, err := svc.Get(ctx, name)
-		if err != nil {
-			t.Fatalf("Get(%s): %v", name, err)
+	regions := func() map[string]string {
+		got := map[string]string{}
+		for _, name := range []string{"web", "nightly"} {
+			v, err := svc.Get(ctx, name)
+			if err != nil {
+				t.Fatalf("Get(%s): %v", name, err)
+			}
+			got[name] = v.Region
 		}
-		if v.Region != "frankfurt" {
-			t.Errorf("%s region = %q, want public region frankfurt", name, v.Region)
+		var databases appv1alpha1.DatabaseList
+		var keyValues appv1alpha1.KeyValueList
+		if err := svc.Client.List(ctx, &databases); err != nil {
+			t.Fatal(err)
 		}
+		if err := svc.Client.List(ctx, &keyValues); err != nil {
+			t.Fatal(err)
+		}
+		for i := range databases.Items {
+			got[databases.Items[i].Spec.Name] = svc.Metadata.ResourceRegion(&databases.Items[i])
+		}
+		for i := range keyValues.Items {
+			got[keyValues.Items[i].Spec.Name] = svc.Metadata.ResourceRegion(&keyValues.Items[i])
+		}
+		return got
+	}
+	want := map[string]string{"web": "oregon", "nightly": "oregon", "data": "oregon", "cache": "oregon"}
+	if got := regions(); !maps.Equal(got, want) {
+		t.Fatalf("regions after create = %v, want %v", got, want)
+	}
+
+	resync, _, _ := strings.Cut(regionBlueprint("virginia"), "projects:")
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: resync}); err != nil {
+		t.Fatalf("DeployStack(region virginia): %v", err)
+	}
+	if got := regions(); !maps.Equal(got, want) {
+		t.Errorf("regions after a sync declaring virginia = %v, want the created %v", got, want)
+	}
+
+	fresh, _ := newService(nil)
+	fresh.Metadata = resourcemeta.Config{Region: "fsn1"}
+	bare, _, _ := strings.Cut(regionBlueprint(""), "projects:")
+	if _, err := fresh.DeployStack(ctx, DeployRequest{Manifest: bare}); err != nil {
+		t.Fatalf("DeployStack(no region): %v", err)
+	}
+	if v, err := fresh.Get(ctx, "web"); err != nil || v.Region != "frankfurt" {
+		t.Errorf("web with no region: region = %q (err %v), want the public alias frankfurt", v.Region, err)
 	}
 }
 
 // One policy on every create surface: a Render region (or BEX_REGION itself)
-// is accepted and normalized, an absent one is fine, anything else is a 400.
+// is accepted and placed in BEX_REGION, an absent one is fine, anything else
+// is a 400. The create's answer and every later read report the Render region
+// the service was created with, as Render's do, and the public alias for an
+// omitted region or BEX_REGION (w9/105).
 func TestCreateServiceRegionPolicyAcrossSurfaces(t *testing.T) {
 	type outcome struct {
-		ok  bool
-		err string
+		ok     bool
+		region string
+		err    string
 	}
 	surfaces := map[string]func(t *testing.T, svc *Service, name, region string) outcome{
 		"REST": func(t *testing.T, svc *Service, name, region string) outcome {
@@ -265,7 +313,17 @@ func TestCreateServiceRegionPolicyAcrossSurfaces(t *testing.T) {
 			if rec.Code != http.StatusCreated {
 				return outcome{err: fmt.Sprintf("%d %s", rec.Code, rec.Body.String())}
 			}
-			return outcome{ok: true}
+			var created struct { // Render's {service, deployId}
+				Service struct {
+					ServiceDetails struct {
+						Region string `json:"region"`
+					} `json:"serviceDetails"`
+				} `json:"service"`
+			}
+			if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+				t.Fatalf("create body: %v", err)
+			}
+			return outcome{ok: true, region: created.Service.ServiceDetails.Region}
 		},
 		"GraphQL": func(t *testing.T, svc *Service, name, region string) outcome {
 			arg := ""
@@ -277,7 +335,8 @@ func TestCreateServiceRegionPolicyAcrossSurfaces(t *testing.T) {
 			if len(res.Errors) > 0 {
 				return outcome{err: res.Errors[0].Message}
 			}
-			return outcome{ok: true}
+			answered, _ := res.Data.(map[string]any)["createService"].(map[string]any)["region"].(string)
+			return outcome{ok: true, region: answered}
 		},
 		"MCP": func(t *testing.T, svc *Service, name, region string) outcome {
 			args := map[string]any{"name": name, "image": "nginx:alpine", "runtime": "image"}
@@ -288,7 +347,16 @@ func TestCreateServiceRegionPolicyAcrossSurfaces(t *testing.T) {
 			if result.IsError {
 				return outcome{err: mcpResultText(result)}
 			}
-			return outcome{ok: true}
+			var created struct { // Render's {service, deployId}
+				Service struct {
+					ServiceDetails struct {
+						Region string `json:"region"`
+					} `json:"serviceDetails"`
+				} `json:"service"`
+			}
+			raw, _ := json.Marshal(result.StructuredContent)
+			_ = json.Unmarshal(raw, &created)
+			return outcome{ok: true, region: created.Service.ServiceDetails.Region}
 		},
 	}
 	for surface, create := range surfaces {
@@ -296,14 +364,15 @@ func TestCreateServiceRegionPolicyAcrossSurfaces(t *testing.T) {
 			for i, tc := range []struct {
 				region string
 				ok     bool
+				want   string
 			}{
-				{"oregon", true},
-				{"frankfurt", true},
-				{"virginia", true},
-				{"", true},
-				{"fsn1", true},
-				{"Vietnam", false},
-				{"us-east-1", false},
+				{"oregon", true, "oregon"},
+				{"frankfurt", true, "frankfurt"},
+				{"virginia", true, "virginia"},
+				{"", true, "frankfurt"},
+				{"fsn1", true, "frankfurt"},
+				{"Vietnam", false, ""},
+				{"us-east-1", false, ""},
 			} {
 				svc, _ := newService(nil)
 				svc.Metadata = resourcemeta.Config{Region: "fsn1"}
@@ -313,9 +382,12 @@ func TestCreateServiceRegionPolicyAcrossSurfaces(t *testing.T) {
 					continue
 				}
 				if tc.ok {
+					if got.region != tc.want {
+						t.Errorf("region %q: create answered region %q, want %q", tc.region, got.region, tc.want)
+					}
 					v, err := svc.Get(context.Background(), fmt.Sprintf("web-%d", i))
-					if err != nil || v.Region != "frankfurt" {
-						t.Errorf("region %q: readback region = %q (err %v), want public region frankfurt", tc.region, v.Region, err)
+					if err != nil || v.Region != tc.want {
+						t.Errorf("region %q: readback region = %q (err %v), want %q", tc.region, v.Region, err, tc.want)
 					}
 				}
 				if !tc.ok && !strings.Contains(got.err, "region must be one of: frankfurt, ohio, oregon, singapore, virginia") {

@@ -1277,7 +1277,7 @@ func (s *Service) view(a *appv1alpha1.App) AppView {
 		v.URL = s.pendingPublicURL(a)
 	}
 	v.DashboardURL = s.Metadata.DashboardURL(resourcemeta.ServiceDashboardRoute(v.Type), v.ID)
-	v.Region = resourcemeta.RenderRegion(s.Metadata.PlatformRegion())
+	v.Region = s.Metadata.ResourceRegion(a)
 	host := strings.ToLower(strings.TrimSpace(s.SSHHost))
 	if strings.Contains(host, ".") && len(validation.IsDNS1123Subdomain(host)) == 0 && sshEligible(v) {
 		if kind, ok := ids.KindOf(v.ID); ok && kind == ids.Service {
@@ -2046,10 +2046,12 @@ type CreateRequest struct {
 	// field (preserve current behavior on idempotent stack re-apply).
 	EnvironmentSpecified bool
 	// Region is the caller's Render region (REST serviceDetails.region, the
-	// GraphQL/MCP region argument). bex runs one region, so Create only checks
-	// it against the shared policy (resourcemeta.CheckRequestedRegion: a Render
-	// region or BEX_REGION) and never persists it; readback reports its public
-	// Render region alias (ADR049 D7, w8/218).
+	// GraphQL/MCP region argument, a Blueprint's region). bex runs one region,
+	// so Create checks it against the shared policy
+	// (resourcemeta.CheckRequestedRegion: a Render region or BEX_REGION) and
+	// places the service in BEX_REGION. A Render region is recorded on the App
+	// (resourcemeta.StampRegion) and read back, as on Render; an omitted one
+	// reads back the platform's public alias (ADR049 D7, w8/218, w9/105).
 	Region string
 	Name   string
 	// Type is the Render serviceType: web_service (default), private_service,
@@ -2432,6 +2434,7 @@ func (s *Service) createNamed(ctx context.Context, req CreateRequest, desired ap
 	}
 	a.Namespace = s.AppNamespace(tenantID)
 	a.Spec = *desired.DeepCopy()
+	resourcemeta.StampRegion(a, req.Region)
 	stampEnvironmentMembership(a, environment)
 	if err := s.stampWorkspaceLayer(ctx, a, tenantID); err != nil {
 		return AppView{}, err
@@ -2453,6 +2456,7 @@ func (s *Service) createNamed(ctx context.Context, req CreateRequest, desired ap
 		preview.Name = req.Name
 		preview.Namespace = s.AppNamespace(tenantID)
 		preview.Spec = desired
+		resourcemeta.StampRegion(preview, req.Region)
 		if tenantID != "" {
 			preview.Labels = map[string]string{core.LabelTenant: tenantID}
 		}
@@ -2730,6 +2734,7 @@ func (s *Service) planStackApp(ctx context.Context, req CreateRequest, desired a
 	a.Name = req.Name
 	a.Namespace = s.Namespace
 	a.Spec = desired
+	resourcemeta.StampRegion(a, req.Region)
 	// Resolve the caller's tenant; used both for the tenant label and the
 	// store row. Empty when the store is off or the caller is unbound.
 	tenantID := ""

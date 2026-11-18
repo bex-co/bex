@@ -140,13 +140,48 @@ func RenderRegion(region string) string {
 // and its Blueprint schema.
 var RenderRegions = []string{"frankfurt", "ohio", "oregon", "singapore", "virginia"}
 
+// AnnotRegion records the Render region a service, Postgres or Key Value was
+// created with. Placement stays BEX_REGION; the annotation is only what the
+// resource reads back, as Render reads back the region it was created in
+// (w9/105: Render's Terraform provider stores the response's region and
+// aborts an apply that reads back another).
+const AnnotRegion = "app.bex.co/region"
+
+// StampRegion records requested on a new resource when it is a Render region.
+// An omitted region, or BEX_REGION itself, records nothing, so the resource
+// reads back the platform's public alias. Render's region is fixed at
+// creation (render.com/docs/blueprint-spec: "You can't modify this value after
+// creation"), so only creates call this.
+func StampRegion(obj metav1.Object, requested string) {
+	if !slices.Contains(RenderRegions, requested) {
+		return
+	}
+	annotations := obj.GetAnnotations()
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+	annotations[AnnotRegion] = requested
+	obj.SetAnnotations(annotations)
+}
+
+// ResourceRegion is the region a resource reads back on every surface: the
+// Render region it was created with (StampRegion), else the public alias of
+// BEX_REGION (RenderRegion; user decision D7, w8/218), or "" when neither is
+// known.
+func (c Config) ResourceRegion(obj metav1.Object) string {
+	if region := obj.GetAnnotations()[AnnotRegion]; slices.Contains(RenderRegions, region) {
+		return region
+	}
+	return RenderRegion(c.PlatformRegion())
+}
+
 // CheckRequestedRegion is bex's one region policy for every create surface
 // (REST, GraphQL, MCP; Blueprints apply the same rule through the schema enum
 // and the capability registry). bex runs one region per control plane, so any
 // Render region, or BEX_REGION itself, is accepted and the resource is placed
-// in BEX_REGION; the request value is never persisted. Anything else is a 400,
-// worded like the pinned Render CLI's own check (ADR049 D7, user decision D1
-// 2026-10-29, w8/152).
+// in BEX_REGION; a Render region is recorded only so the resource reads it
+// back (StampRegion). Anything else is a 400, worded like the pinned Render
+// CLI's own check (ADR049 D7, user decision D1 2026-10-29, w8/152; w9/105).
 func (c Config) CheckRequestedRegion(region string) error {
 	platform := c.PlatformRegion()
 	if region == "" || slices.Contains(RenderRegions, region) || (platform != "" && region == platform) {

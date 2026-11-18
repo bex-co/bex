@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -651,5 +652,50 @@ func TestGenerateBlueprintExportsPublicRegionWhenConfigured(t *testing.T) {
 				t.Fatal("export mutated internal placement")
 			}
 		})
+	}
+}
+
+// A resource created in a Render region exports that region, so the exported
+// file declares what the resource reads back on every other surface (w9/105).
+func TestGenerateBlueprintExportsEachResourceRegion(t *testing.T) {
+	svc := generateFixtureService()
+	svc.Metadata = resourcemeta.Config{Region: "fsn1"}
+	ctx := context.Background()
+	for _, created := range []struct {
+		obj          client.Object
+		name, region string
+	}{
+		{&appv1alpha1.App{}, "web", "oregon"},
+		{&appv1alpha1.Database{}, "dpg-abc123", "ohio"},
+		{&appv1alpha1.KeyValue{}, "red-xyz789", "singapore"},
+	} {
+		if err := svc.Client.Get(ctx, client.ObjectKey{Namespace: "default", Name: created.name}, created.obj); err != nil {
+			t.Fatal(err)
+		}
+		resourcemeta.StampRegion(created.obj, created.region)
+		if err := svc.Client.Update(ctx, created.obj); err != nil {
+			t.Fatal(err)
+		}
+	}
+	out, err := svc.GenerateBlueprint(ctx, GenerateBlueprintRequest{
+		ServiceIDs: []string{"web"}, PostgresIDs: []string{"dpg-abc123"}, KeyValueIDs: []string{"red-xyz789"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest struct {
+		Services  []map[string]any `json:"services"`
+		Databases []map[string]any `json:"databases"`
+	}
+	if err := yaml.Unmarshal([]byte(out.Manifest), &manifest); err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]any{}
+	for _, entry := range append(manifest.Services, manifest.Databases...) {
+		got[fmt.Sprint(entry["name"])] = entry["region"]
+	}
+	want := map[string]any{"web": "oregon", "app-db": "ohio", "app-cache": "singapore"}
+	if !maps.Equal(got, want) {
+		t.Errorf("exported regions = %v, want %v", got, want)
 	}
 }

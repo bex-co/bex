@@ -399,9 +399,12 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		publicID = a.Name // hand-applied/store-less compatibility
 	}
 	svcType := effectiveType(a.Type) // defensive; view() already defaults this
-	region := metadata.PlatformRegion()
+	// The view's region is the service's own (resourcemeta.ResourceRegion:
+	// the Render region it was created with, else the platform alias, w9/105);
+	// a view built without metadata falls back to the platform's.
+	region := a.Region
 	if region == "" {
-		region = a.Region
+		region = metadata.PlatformRegion()
 	}
 	region = resourcemeta.RenderRegion(region)
 	dashboardURL := metadata.DashboardURL(resourcemeta.ServiceDashboardRoute(svcType), publicID)

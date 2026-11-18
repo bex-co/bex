@@ -188,11 +188,11 @@ type CreateKeyValueRequest struct {
 	Name          string `json:"name"`
 	Plan          string `json:"plan,omitempty"`
 	Version       string `json:"version,omitempty"`
-	// Region is accepted from Render clients as a placement hint. bex currently
-	// exposes one configured region per control plane, so the server-owned
-	// BEX_REGION remains authoritative instead of persisting this request field;
-	// a value that is neither a Render region nor BEX_REGION is refused
-	// (resourcemeta.CheckRequestedRegion, w8/152).
+	// Region is accepted from Render clients. bex runs one configured region
+	// per control plane, so the store is placed in BEX_REGION; a Render region
+	// is recorded (resourcemeta.StampRegion) and read back, as on Render, and a
+	// value that is neither a Render region nor BEX_REGION is refused
+	// (resourcemeta.CheckRequestedRegion, w8/152, w9/105).
 	Region    string `json:"region,omitempty"`
 	StorageGB int32  `json:"storageGB,omitempty"`
 	Public    bool   `json:"public,omitempty"`
@@ -356,11 +356,11 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 	}
 }
 
-// view wraps kvView and stamps the platform region and dashboard URL, matching
+// view wraps kvView and stamps the store's region and dashboard URL, matching
 // the apps.Service.view pattern so GraphQL and MCP return the enriched shape.
 func (s *Service) view(kv *appv1alpha1.KeyValue) KeyValueView {
 	v := kvView(kv)
-	v.Region = resourcemeta.RenderRegion(s.Metadata.PlatformRegion())
+	v.Region = s.Metadata.ResourceRegion(kv)
 	v.DashboardURL = s.Metadata.DashboardURL(resourcemeta.KeyValueDashboardRoute, v.ID)
 	return v
 }
@@ -685,6 +685,7 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if kv.Spec.WorkspaceIPAllowList, err = s.WorkspaceIPLayer(ctx, tenantID); err != nil {
 		return KeyValueView{}, err
 	}
+	resourcemeta.StampRegion(kv, req.Region)
 	resourcemeta.Touch(kv, s.Now())
 	// Dry-run: the exact object the real create writes, through admission
 	// without persisting it (w5/m116), so the plan's count cap and the CRD's

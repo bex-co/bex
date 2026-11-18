@@ -18,6 +18,7 @@ package resourcemeta
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -190,5 +191,38 @@ func TestRenderRegionPreservesPlacementAndProvidesCLICompatibleReadback(t *testi
 	}
 	if err := configured.CheckRequestedRegion("Vietnam"); err == nil {
 		t.Fatal("invalid region accepted")
+	}
+}
+
+// TestResourceRegionReadsBackTheCreatedRegion pins w9/105: a resource reads
+// back the Render region it was created with, as on Render, while one created
+// without a region (or with BEX_REGION itself) reads back the platform's
+// public alias (D7, w8/218).
+func TestResourceRegionReadsBackTheCreatedRegion(t *testing.T) {
+	for _, tc := range []struct {
+		platform, requested, want string
+	}{
+		{"fsn1", "oregon", "oregon"},
+		{"fsn1", "ohio", "ohio"},
+		{"fsn1", "frankfurt", "frankfurt"},
+		{"fsn1", "", "frankfurt"},
+		{"fsn1", "fsn1", "frankfurt"},
+		{"fsn1", "Vietnam", "frankfurt"},
+		{"", "singapore", "singapore"},
+		{"", "", ""},
+	} {
+		obj := &metav1.ObjectMeta{}
+		StampRegion(obj, tc.requested)
+		if got := (Config{Region: tc.platform}).ResourceRegion(obj); got != tc.want {
+			t.Errorf("platform %q, created with %q: region = %q, want %q", tc.platform, tc.requested, got, tc.want)
+		}
+		if _, stamped := obj.Annotations[AnnotRegion]; stamped != slices.Contains(RenderRegions, tc.requested) {
+			t.Errorf("created with %q: stamped = %v", tc.requested, stamped)
+		}
+	}
+	// A hand-edited annotation outside Render's enum is never echoed.
+	obj := &metav1.ObjectMeta{Annotations: map[string]string{AnnotRegion: "mars"}}
+	if got := (Config{Region: "fsn1"}).ResourceRegion(obj); got != "frankfurt" {
+		t.Errorf("annotation mars: region = %q, want frankfurt", got)
 	}
 }

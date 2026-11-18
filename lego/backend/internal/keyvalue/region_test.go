@@ -32,10 +32,14 @@ import (
 
 // TestCreateKeyValueRegionPolicyAcrossSurfaces pins w8/152's one region
 // policy on Key Value create: a Render region (or BEX_REGION itself) is
-// accepted and the store reads back in BEX_REGION; anything else is a 400
-// with the shared message, on REST, GraphQL and MCP alike.
+// accepted and the store is placed in BEX_REGION; anything else is a 400
+// with the shared message, on REST, GraphQL and MCP alike. The create's answer
+// and every later read report the Render region it was created with, as
+// Render's do, and the platform's public alias when it named none or
+// BEX_REGION itself (w9/105: Render's Terraform provider aborts an apply that
+// reads back another region).
 func TestCreateKeyValueRegionPolicyAcrossSurfaces(t *testing.T) {
-	type outcome struct{ id, err string }
+	type outcome struct{ id, region, err string }
 	surfaces := map[string]func(t *testing.T, svc *Service, name, region string) outcome{
 		"REST": func(t *testing.T, svc *Service, name, region string) outcome {
 			body := map[string]any{"name": name, "plan": "free"}
@@ -47,8 +51,10 @@ func TestCreateKeyValueRegionPolicyAcrossSurfaces(t *testing.T) {
 			if w.Code != http.StatusCreated {
 				return outcome{err: fmt.Sprintf("%d %s", w.Code, w.Body.String())}
 			}
-			id, _ := decodeMap(t, w.Body.Bytes())["id"].(string)
-			return outcome{id: id}
+			created := decodeMap(t, w.Body.Bytes())
+			id, _ := created["id"].(string)
+			answered, _ := created["region"].(string)
+			return outcome{id: id, region: answered}
 		},
 		"GraphQL": func(t *testing.T, svc *Service, name, region string) outcome {
 			schema, err := kvGQLSchema(svc)
@@ -64,7 +70,8 @@ func TestCreateKeyValueRegionPolicyAcrossSurfaces(t *testing.T) {
 			if len(res.Errors) > 0 {
 				return outcome{err: res.Errors[0].Message}
 			}
-			return outcome{id: res.Data.(map[string]any)["createKeyValue"].(map[string]any)["id"].(string)}
+			created := res.Data.(map[string]any)["createKeyValue"].(map[string]any)
+			return outcome{id: created["id"].(string), region: created["region"].(string)}
 		},
 		"MCP": func(t *testing.T, svc *Service, name, region string) outcome {
 			cs := kvMCPSession(t, svc)
@@ -87,11 +94,12 @@ func TestCreateKeyValueRegionPolicyAcrossSurfaces(t *testing.T) {
 				return outcome{err: b.String()}
 			}
 			var out struct {
-				ID string `json:"id"`
+				ID     string `json:"id"`
+				Region string `json:"region"`
 			}
 			raw, _ := json.Marshal(res.StructuredContent)
 			_ = json.Unmarshal(raw, &out)
-			return outcome{id: out.ID}
+			return outcome{id: out.ID, region: out.Region}
 		},
 	}
 	for surface, create := range surfaces {
@@ -99,13 +107,14 @@ func TestCreateKeyValueRegionPolicyAcrossSurfaces(t *testing.T) {
 			for i, tc := range []struct {
 				region string
 				ok     bool
+				want   string
 			}{
-				{"oregon", true},
-				{"frankfurt", true},
-				{"singapore", true},
-				{"", true},
-				{"fsn1", true},
-				{"Vietnam", false},
+				{"oregon", true, "oregon"},
+				{"frankfurt", true, "frankfurt"},
+				{"singapore", true, "singapore"},
+				{"", true, "frankfurt"},
+				{"fsn1", true, "frankfurt"},
+				{"Vietnam", false, ""},
 			} {
 				svc, _ := newService()
 				svc.Metadata = resourcemeta.Config{Region: "fsn1"}
@@ -120,9 +129,12 @@ func TestCreateKeyValueRegionPolicyAcrossSurfaces(t *testing.T) {
 					}
 					continue
 				}
+				if got.region != tc.want {
+					t.Errorf("region %q: create answered region %q, want %q", tc.region, got.region, tc.want)
+				}
 				v, err := svc.GetKeyValue(context.Background(), got.id)
-				if err != nil || v.Region != "frankfurt" {
-					t.Errorf("region %q: readback region = %q (err %v), want public region frankfurt", tc.region, v.Region, err)
+				if err != nil || v.Region != tc.want {
+					t.Errorf("region %q: readback region = %q (err %v), want %q", tc.region, v.Region, err, tc.want)
 				}
 			}
 		})
