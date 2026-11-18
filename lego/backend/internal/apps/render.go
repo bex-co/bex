@@ -110,7 +110,8 @@ func toSecretFiles(in []secretFileInput) []core.SecretFile {
 const renderWebService = appv1alpha1.TypeWebService
 
 // renderPrivateService is Render's serviceType for a private-network-only
-// service — the one type whose serviceDetails omits `url` (captured
+// service — the one type whose serviceDetails `url` is its internal
+// `<slug>:<port>`, not a public URL (Render's recorded responses,
 // docs/render-artifacts/service-addresses.md §3).
 const renderPrivateService = appv1alpha1.TypePrivateService
 
@@ -495,9 +496,9 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 		details["openPorts"] = open
 	}
 	for _, field := range []struct{ key, value string }{
-		// internalAddress is a documented bex extension (ADR041 D4): Render's REST
-		// has no internal-address field — its consumers derive `<slug>:<port>` from
-		// slug + port — but agents and scripts benefit from the explicit, additive key.
+		// internalAddress is a documented bex extension (ADR041 D4): Render has no
+		// such key — a private service's address is its `url`, and a web service's
+		// is derived from slug + port — so agents and scripts get it on both.
 		{"internalAddress", a.InternalAddress},
 		{"plan", a.Plan}, // webServiceDetails.plan (render-public-api-1.json)
 		{"sshAddress", a.SSHAddress},
@@ -520,12 +521,19 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 	if svcType == renderWebService || a.HealthCheckPath != "" {
 		details["healthCheckPath"] = a.HealthCheckPath
 	}
-	// Render's serviceDetails carries url for web_service/static_site but
-	// OMITS it for private_service (captured 2026-07-26,
-	// docs/render-artifacts/service-addresses.md §3) — bex used to leak the
-	// cluster-internal URL there; the address now travels in internalAddress.
-	if a.URL != "" && svcType != renderPrivateService {
-		details["url"] = a.URL // Render web_service exposes the live URL here
+	// Render's serviceDetails carries the public URL for web_service/static_site
+	// and, for private_service, the internal `<slug>:<port>` with no scheme
+	// (every private-service recording in Render's Terraform provider,
+	// docs/render-artifacts/service-addresses.md §3; its pinned
+	// privateServiceDetails requires it). The view's URL is public-only, so a
+	// private service reads its internal address; one whose port discovery is
+	// pending has none yet and omits it rather than inventing one.
+	if svcType == renderPrivateService {
+		if a.InternalAddress != "" {
+			details["url"] = a.InternalAddress
+		}
+	} else if a.URL != "" {
+		details["url"] = a.URL
 	}
 	if a.Runtime != "" {
 		details["runtime"] = a.Runtime
@@ -610,49 +618,23 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 }
 
 // envSpecificDetails mirrors Render's runtime-keyed envSpecificDetails: the
-// docker shape for a Dockerfile build, the buildpack shape for a native runtime.
-// Absent for a service with no build config to carry — a runtime-less legacy App
-// and a prebuilt "image" runtime, whose container is supplied whole via the
-// top-level imagePath rather than built from source (so it has no
-// build/start/dockerfile block to round-trip).
+// docker shape for a Dockerfile build and a prebuilt image, the buildpack shape
+// for a native runtime. Absent only for a runtime-less App, which names no
+// member to report.
+//
+// A prebuilt "image" runtime reads Render's docker shape with empty build
+// fields, as every image-backed service in Render's Terraform provider
+// recordings answers: dockerCommand ("" when none), dockerContext "",
+// dockerfilePath "", and preDeployCommand when set. The pinned CLI clones a
+// web/private/worker pre-deploy command only from this block (w2/042) and an
+// image service's Docker Command reads back here (w4/209); Render's own
+// Terraform provider reads an image service's start command through
+// AsDockerDetails and fails on a missing block.
 func envSpecificDetails(a AppView, svcType string) (map[string]any, bool) {
-	if a.Runtime == "" || a.Runtime == "image" {
-		// An image cron still has a command of its own, and the pinned client
-		// clones a cron's command only from envSpecificDetails.startCommand
-		// (pkg/service/clone.go:136-145,328-334) — so omitting the block made
-		// `create --from` clone an image cron that silently ran its image
-		// entrypoint instead (w1/m167). Only the command: an image service has
-		// no build settings to report, and an empty command stays absent so the
-		// entrypoint remains the intended default.
-		if a.Runtime == "image" && svcType == appv1alpha1.TypeCronJob && a.Command != "" {
-			return map[string]any{"startCommand": a.Command}, true
-		}
-		// The same client reads a web/private/worker pre-deploy command only
-		// from envSpecificDetails.preDeployCommand (pkg/service/clone.go:156-159,
-		// 335-346), never the sibling serviceDetails field, so an image clone
-		// silently dropped its migration step (w2/042). The Docker Command an
-		// image service's create accepts (dockerCommand, w4/188) reads back the
-		// same way, or `services get` hid it and `create --from` cloned the
-		// image's default entrypoint (w4/209). No invented build fields; each
-		// key is absent when empty, so the entrypoint stays the default.
-		if a.Runtime == "image" {
-			switch svcType {
-			case appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker:
-				details := map[string]any{}
-				if a.StartCommand != "" {
-					details["dockerCommand"] = a.StartCommand
-				}
-				if a.PreDeployCommand != "" {
-					details["preDeployCommand"] = a.PreDeployCommand
-				}
-				if len(details) > 0 {
-					return details, true
-				}
-			}
-		}
+	if a.Runtime == "" {
 		return nil, false
 	}
-	if a.Runtime == "docker" {
+	if a.Runtime == "docker" || a.Runtime == "image" {
 		// A cron stores its command in spec.Command, not spec.StartCommand
 		// (SetCommands folds it there), so projecting StartCommand reported an
 		// empty dockerCommand for every docker cron that had a perfectly good
@@ -663,10 +645,15 @@ func envSpecificDetails(a AppView, svcType string) (map[string]any, bool) {
 		if svcType == appv1alpha1.TypeCronJob {
 			dockerCommand = a.Command
 		}
-		docker := map[string]any{
-			"dockerCommand":  dockerCommand,
-			"dockerContext":  cmp.Or(a.DockerContext, "."),
-			"dockerfilePath": cmp.Or(a.DockerfilePath, "./Dockerfile"),
+		// An image has no build, so its build fields are Render's empty strings,
+		// and its credential is the top-level registryCredential.
+		docker := map[string]any{"dockerCommand": dockerCommand, "dockerContext": "", "dockerfilePath": ""}
+		if a.Runtime == "docker" {
+			docker["dockerContext"] = cmp.Or(a.DockerContext, ".")
+			docker["dockerfilePath"] = cmp.Or(a.DockerfilePath, "./Dockerfile")
+			if a.RegistryCredentialID != nil && *a.RegistryCredentialID != "" {
+				docker["registryCredentialId"] = *a.RegistryCredentialID
+			}
 		}
 		if svcType == appv1alpha1.TypeCronJob {
 			// A cron's command is canonically runtime-independent on the wire:
@@ -680,9 +667,6 @@ func envSpecificDetails(a AppView, svcType string) (map[string]any, bool) {
 			// runtime-keyed readers (dashboard, blueprint generation), and
 			// startCommand for the client that actually re-sends it (w9/m165).
 			docker["startCommand"] = dockerCommand
-		}
-		if a.RegistryCredentialID != nil && *a.RegistryCredentialID != "" {
-			docker["registryCredentialId"] = *a.RegistryCredentialID
 		}
 		if a.PreDeployCommand != "" {
 			docker["preDeployCommand"] = a.PreDeployCommand

@@ -34,6 +34,18 @@ import (
 // image-runtime service projected no envSpecificDetails — so `services create
 // --from` cloned an image service that deployed without its migration step.
 
+// renderImageDetails is the envSpecificDetails Render answers for an
+// image-backed service in its Terraform provider's recordings (w9/m473):
+// Render's docker member with empty build fields, dockerCommand "" when none,
+// and preDeployCommand only when set.
+func renderImageDetails(dockerCommand, preDeploy string) map[string]any {
+	d := map[string]any{"dockerCommand": dockerCommand, "dockerContext": "", "dockerfilePath": ""}
+	if preDeploy != "" {
+		d["preDeployCommand"] = preDeploy
+	}
+	return d
+}
+
 // imagePreDeployKinds are the service types that run a pre-deploy phase.
 var imagePreDeployKinds = []string{
 	appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker,
@@ -101,10 +113,10 @@ func TestImagePreDeployReadIsTheCloneContract(t *testing.T) {
 		if d.Runtime != "image" {
 			t.Errorf("%s: runtime = %q, want image", svcType, d.Runtime)
 		}
-		// Only the command is projected — nothing build-shaped is invented —
-		// and the existing sibling field stays for its current readers.
-		if want := map[string]any{"preDeployCommand": "echo QA_PREDEPLOY_MARKER"}; !reflect.DeepEqual(d.EnvSpecificDetails, want) {
-			t.Errorf("%s: envSpecificDetails = %v, want only %v", svcType, d.EnvSpecificDetails, want)
+		// Render's image shape: no build values are invented, and the existing
+		// sibling field stays for its current readers.
+		if want := renderImageDetails("", "echo QA_PREDEPLOY_MARKER"); !reflect.DeepEqual(d.EnvSpecificDetails, want) {
+			t.Errorf("%s: envSpecificDetails = %v, want %v", svcType, d.EnvSpecificDetails, want)
 		}
 		if d.PreDeployCommand != "echo QA_PREDEPLOY_MARKER" {
 			t.Errorf("%s: sibling serviceDetails.preDeployCommand = %q", svcType, d.PreDeployCommand)
@@ -112,18 +124,22 @@ func TestImagePreDeployReadIsTheCloneContract(t *testing.T) {
 	}
 }
 
-// With no pre-deploy command an image service still has nothing to carry.
-func TestImageServiceWithoutPreDeployProjectsNoEnvDetails(t *testing.T) {
+// With no command at all an image service still reads Render's docker shape,
+// all empty, as Render's recordings answer: Render's Terraform provider reads
+// an image service through AsDockerDetails, which fails on a missing block.
+func TestImageServiceWithoutCommandsReadsEmptyDockerDetails(t *testing.T) {
 	for _, svcType := range imagePreDeployKinds {
 		var read struct {
-			ServiceDetails map[string]any `json:"serviceDetails"`
+			ServiceDetails struct {
+				EnvSpecificDetails map[string]any `json:"envSpecificDetails"`
+			} `json:"serviceDetails"`
 		}
 		body := getServiceBody(t, imagePreDeployApp(svcType, ""))
 		if err := json.Unmarshal(body, &read); err != nil {
 			t.Fatal(err)
 		}
-		if _, ok := read.ServiceDetails["envSpecificDetails"]; ok {
-			t.Errorf("%s: envSpecificDetails present: %s", svcType, body)
+		if got, want := read.ServiceDetails.EnvSpecificDetails, renderImageDetails("", ""); !reflect.DeepEqual(got, want) {
+			t.Errorf("%s: envSpecificDetails = %v, want %v", svcType, got, want)
 		}
 	}
 }
@@ -157,7 +173,8 @@ func TestImagePreDeployListReadCarriesTheCommand(t *testing.T) {
 // w4/209: an image web/private/worker service's Docker Command (stored as
 // spec.startCommand; REST create spells it envSpecificDetails.dockerCommand,
 // w4/188) never read back on REST, so `services get` hid it. It now reads back
-// as dockerCommand beside the pre-deploy command, and alone without one.
+// as dockerCommand in Render's image shape, with or without a pre-deploy
+// command.
 func TestImageDockerCommandReadsBack(t *testing.T) {
 	for _, svcType := range imagePreDeployKinds {
 		for _, preDeploy := range []string{"", "bin/migrate"} {
@@ -171,10 +188,7 @@ func TestImageDockerCommandReadsBack(t *testing.T) {
 			if err := json.Unmarshal(getServiceBody(t, app), &read); err != nil {
 				t.Fatal(err)
 			}
-			want := map[string]any{"dockerCommand": "/whoami --port 8080"}
-			if preDeploy != "" {
-				want["preDeployCommand"] = preDeploy
-			}
+			want := renderImageDetails("/whoami --port 8080", preDeploy)
 			if got := read.ServiceDetails.EnvSpecificDetails; !reflect.DeepEqual(got, want) {
 				t.Errorf("%s (preDeploy %q): envSpecificDetails = %v, want %v", svcType, preDeploy, got, want)
 			}

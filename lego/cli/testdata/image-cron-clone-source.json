@@ -20,6 +20,9 @@
     "command": "echo QA_CLONE_MARKER",
     "env": "image",
     "envSpecificDetails": {
+      "dockerCommand": "echo QA_CLONE_MARKER",
+      "dockerContext": "",
+      "dockerfilePath": "",
       "startCommand": "echo QA_CLONE_MARKER"
     },
     "plan": "starter",

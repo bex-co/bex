@@ -1,6 +1,6 @@
 # w10 · m373 — Service and deploy reads match Render's schema both ways; the rendertest allowlist excuses only signed-off divergences
 
-**Worker:** worker10 **Goal:** a client generated from Render's pinned OpenAPI with required-field validation parses every bex service and deploy read, and `rendertest.Allowlist` no longer excuses omissions that exist only because the test fixtures run without production configuration. **Status:** blocked (t001–t009 done 2026-11-13/14; t010 waits on two gates: DoD 1 needs a Render capture or the user's sign-off for each open entry in § Findings, and DoD 3-4 need the production deploy that carries this milestone)
+**Worker:** worker10 **Goal:** a client generated from Render's pinned OpenAPI with required-field validation parses every bex service and deploy read, and `rendertest.Allowlist` no longer excuses omissions that exist only because the test fixtures run without production configuration. **Status:** blocked (t001–t009 done 2026-11-13/14; t010 waits on two gates: DoD 1 needs a Render capture or the user's sign-off for each entry still open in § Findings — since w9/m473 (2026-11-18) only a web service's `url` with no public URL, an image-port private service's `url` before port discovery, a runtime-less buildpack build's `runtime`/`env`/`envSpecificDetails` and Postgres `version` — and DoD 3-4 need the production deploy that carries this milestone)
 
 ## Tasks (in order)
 
@@ -59,3 +59,21 @@ Total: **10 tasks, about 6h10m**.
 - **Open: image service `envSpecificDetails`.** Without a command there is none; with one, the block carries only the commands the official CLI clones (`dockerCommand`, `preDeployCommand`, a cron's `startCommand`), so it matches neither `dockerDetails` (which requires `dockerContext` and `dockerfilePath`) nor `nativeEnvironmentDetails`. Render's shape for `runtime: image` is not in the contract.
 - **Open: `runtime`/`env`.** A build-source-linked service takes its runtime from the carrier App, and `view()` has no context to read it; the matching `envSpecificDetails` would also have to come from the carrier. A bex `buildpack` builder with no explicit runtime names no Render runtime; this is a bex extension.
 - **What closes them:** a Render capture of a private service, an image service and a build-source-linked service (needs a Render API key, w10/002's gate), or the user's sign-off on each row in ADR018.
+
+**2026-11-18 (`/loopx w9`, w9/m473): partial unblock from Render's recorded responses.**
+
+- **Affected:** this milestone's gate (1) and DoD 1; § Findings' "Open: private service `url`", "Open: image service `envSpecificDetails`" and "Postgres `project` (open)". Shipped in w9/m473.
+- **Source:** verified evidence, not a user decision. Render's official Terraform provider (`render-oss/terraform-provider-render`, tip `06af456`) replays go-vcr recordings of Render's API in its own acceptance tests: 46 recordings from Render's staging and testing hosts. Treating them as the "Render capture" gate (1) asks for is the w9/m473 proposal's recommendation. For private `url` and the image shape, the pinned schema agrees with them.
+- **Settled:**
+  - **Private service `url`:** all 7 private-service recordings (2025-05-14) answer `url` = `<slug>:10000`, on the create response too. bex now sends `<slug>:<port>` (`internalAddress`) as `url` on REST and MCP. GraphQL `url` stays public-only.
+  - **Image service `envSpecificDetails`:** every image-backed web service, private service, background worker and cron job answers `{"dockerCommand":…,"dockerContext":"","dockerfilePath":""}` plus `preDeployCommand` when set. bex sends that shape on every image service, and a cron keeps the `startCommand` the pinned CLI clones from. The 4 commands-only union entries and the 4 missing-`envSpecificDetails` entries are gone. A runtime-less buildpack build still has no block; its excuse moved onto the bare-apps-mux `retrieve-service` entry beside `runtime`/`env`.
+  - **Postgres `project`:** Render omits it too. None of the 79 Postgres objects in the 4 Postgres recordings (2024-11 to 2026-05, 21 with an `environmentId`) carries `project`. bex matches Render, so the 4 entries excuse a defect in the pinned schema and need no sign-off as a divergence.
+  - The allowlist is now 23 entries (30 before): `url` ×4, the bare apps mux's `env`/`runtime`/`envSpecificDetails` ×3, Postgres `version` ×3 and `project` ×4, 3 dry-run, 6 event details.
+- **Remaining gates:**
+  - **Gate (1), owner: the user** (a real `RENDER_API_KEY` for a capture, w10/002, or a sign-off in ADR018):
+    - `url` on a web service whose platform subdomain is off with no custom domain, and on a create in a server without `BEX_BASE_DOMAIN`;
+    - `url` on an image-port private service before its ports are discovered. Render's recorded create answers `<slug>:10000` here; filed as w9/104, which can retire it without the user;
+    - `runtime`/`env`/`envSpecificDetails` on a bex `buildpack` build with no explicit runtime;
+    - Postgres `version` on a database with an empty `spec.version`.
+  - **Gate (2):** unchanged.
+- **Next:** once gate (1)'s remaining entries are conformed or signed off, and gate (2) clears, a worker runs t010 against DoD 1-5. This milestone stays in `blocked/`.

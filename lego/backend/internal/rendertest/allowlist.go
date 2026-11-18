@@ -63,28 +63,27 @@ var Allowlist = map[string][]Divergence{
 	// union member the service's type selects. Owner, region, dashboard link
 	// and updatedAt are not entries: the fake API server stamps managedFields
 	// (Stamped), and a server lacking a metadata source is excused by its
-	// Source list (Wrap, Unallowed), not here.
-	"list-services": join(
-		details(SuiteAPI, "envSpecificDetails", "url"),
-		imageCommands(SuiteAPI),
-	),
+	// Source list (Wrap, Unallowed), not here. url is a web service or static
+	// site with no public URL, or a private service before its image's ports
+	// are discovered; a private service with an address reads it as url, and
+	// an image service reads Render's docker-shaped envSpecificDetails
+	// (w9/m473). env, runtime and envSpecificDetails are a bex buildpack
+	// build with no explicit runtime, which names no Render member.
+	"list-services": details(SuiteAPI, "url"),
 	"retrieve-service": join(
-		details(SuiteAPI, "envSpecificDetails", "url"),
-		imageCommands(SuiteAPI),
-		details(SuiteApps, "env", "runtime"),
+		details(SuiteAPI, "url"),
+		details(SuiteApps, "env", "runtime", "envSpecificDetails"),
 	),
 	"create-service": join(
-		details(SuiteAPI, "envSpecificDetails", "url"),
-		imageCommands(SuiteAPI),
+		details(SuiteAPI, "url"),
 		[]Divergence{{Contains: "status 200: not a documented response", ADR018: RowDryRun, Suite: SuiteApps}},
 	),
-	"update-service": join(
-		details(SuiteAPI, "envSpecificDetails", "url"),
-		imageCommands(SuiteApps),
-	),
+	"update-service": details(SuiteAPI, "url"),
 
-	// Postgres: version and project, open questions recorded in their
-	// RowMetadata row.
+	// Postgres: version is an open question recorded in the RowMetadata row.
+	// project is required by the pinned postgresDetail, which defines no such
+	// property, and Render's own responses omit it too: none of the Postgres
+	// objects in Render's Terraform provider recordings carries it (w9/m473).
 	"list-postgres":     missing(RowMetadata, SuiteAPI, "version"),
 	"retrieve-postgres": missing(RowMetadata, SuiteAPI, "version", "project"),
 	"create-postgres":   missing(RowMetadata, SuiteAPI, "project"),
@@ -147,13 +146,6 @@ func details(suite string, fields ...string) []Divergence {
 		prefixed[i] = "serviceDetails/" + field
 	}
 	return missing(RowServiceDetails, suite, prefixed...)
-}
-
-// imageCommands excuses an image service's envSpecificDetails, which carries
-// only the commands the official CLI clones from (w1/m167, w2/042) and so
-// matches neither the docker nor the native member.
-func imageCommands(suite string) []Divergence {
-	return []Divergence{{Contains: `/serviceDetails/envSpecificDetails: does not match the documented union`, ADR018: RowServiceDetails, Suite: suite}}
 }
 
 var (

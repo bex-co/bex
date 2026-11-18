@@ -20,6 +20,9 @@
     },
     "env": "image",
     "envSpecificDetails": {
+      "dockerCommand": "",
+      "dockerContext": "",
+      "dockerfilePath": "",
       "preDeployCommand": "echo QA_PREDEPLOY_MARKER"
     },
     "healthCheckPath": "",

@@ -17,6 +17,9 @@
     "buildPlan": "starter",
     "env": "image",
     "envSpecificDetails": {
+      "dockerCommand": "",
+      "dockerContext": "",
+      "dockerfilePath": "",
       "preDeployCommand": "echo QA_PREDEPLOY_MARKER"
     },
     "internalAddress": "qa-image-predeploy:10000",
@@ -31,7 +34,8 @@
     "plan": "starter",
     "port": 10000,
     "preDeployCommand": "echo QA_PREDEPLOY_MARKER",
-    "runtime": "image"
+    "runtime": "image",
+    "url": "qa-image-predeploy:10000"
   },
   "slug": "qa-image-predeploy",
   "suspended": "not_suspended",

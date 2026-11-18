@@ -103,7 +103,7 @@ func TestM124_InternalAddressIsNeverReportedAsThePublicURL(t *testing.T) {
 			}
 			gqlSvc := res.Data.(map[string]any)["service"].(map[string]any)
 			if got := gqlSvc["url"]; got != nil && got != "" {
-				t.Errorf("GraphQL url = %v, want null/empty (agrees with REST's omission)", got)
+				t.Errorf("GraphQL url = %v, want null/empty (GraphQL's url is the public URL only)", got)
 			}
 			if got := gqlSvc["internalAddress"]; tc.addressable && (got == nil || got == "") {
 				t.Errorf("GraphQL internalAddress = %v, want the address", got)
@@ -121,18 +121,24 @@ func TestM124_InternalAddressIsNeverReportedAsThePublicURL(t *testing.T) {
 				t.Errorf("REST leaked an http:// url: %s", rec.Body)
 			}
 			var restBody struct {
-				ServiceDetails map[string]json.RawMessage `json:"serviceDetails"`
+				ServiceDetails map[string]any `json:"serviceDetails"`
 			}
 			if err := json.Unmarshal(rec.Body.Bytes(), &restBody); err != nil {
 				t.Fatalf("decode REST body: %v", err)
 			}
-			if raw, ok := restBody.ServiceDetails["url"]; ok {
-				t.Errorf("REST serviceDetails.url = %s, want absent", raw)
+			// Render's private service url is its scheme-less internal address;
+			// every other type with no public host has no url (nil = absent).
+			var wantURL any
+			if tc.svcType == appv1alpha1.TypePrivateService {
+				wantURL = "svc:8080"
+			}
+			if got := restBody.ServiceDetails["url"]; got != wantURL {
+				t.Errorf("REST serviceDetails.url = %v, want %v", got, wantURL)
 			}
 
 			// MCP shares REST's rendering.
-			if rendered := toRenderService(view); rendered.ServiceDetails["url"] != nil {
-				t.Errorf("MCP serviceDetails.url = %v, want absent", rendered.ServiceDetails["url"])
+			if got := toRenderService(view).ServiceDetails["url"]; got != wantURL {
+				t.Errorf("MCP serviceDetails.url = %v, want %v", got, wantURL)
 			}
 		})
 	}
@@ -262,4 +268,80 @@ func TestM131_LatestDeployIDIsNullOnReads(t *testing.T) {
 	if got := latestDeployIDOf(view); got != "dep-1" {
 		t.Errorf("populated latestDeployId = %#v, want dep-1", got)
 	}
+}
+
+// w9/m473: a private service's serviceDetails.url is its scheme-less
+// <slug>:<port> on every operation that answers the service, as every
+// private-service response in Render's Terraform provider recordings carries
+// it. rendertest.Allowlist still excuses a missing url on these operations for
+// a web service with no public host, so the schema check alone would not catch
+// a private service losing it.
+func TestPrivateServiceURLIsItsInternalAddressOnEveryOperation(t *testing.T) {
+	svc, cl := newService(nil)
+	svc.BaseDomain = "onbex.co"
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	serve := func(method, path, body string, want int) []byte {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(method, path, strings.NewReader(body)))
+		if rec.Code != want {
+			t.Fatalf("%s %s = %d, want %d: %s", method, path, rec.Code, want, rec.Body)
+		}
+		return rec.Body.Bytes()
+	}
+	type read struct {
+		ID             string         `json:"id"`
+		Slug           string         `json:"slug"`
+		ServiceDetails map[string]any `json:"serviceDetails"`
+	}
+	check := func(op string, got read) {
+		t.Helper()
+		want := got.Slug + ":8080"
+		if got.Slug == "" || got.ServiceDetails["url"] != want || got.ServiceDetails["internalAddress"] != want {
+			t.Errorf("%s: url = %v, internalAddress = %v, want both %q", op, got.ServiceDetails["url"], got.ServiceDetails["internalAddress"], want)
+		}
+	}
+
+	var created struct {
+		Service read `json:"service"`
+	}
+	if err := json.Unmarshal(serve(http.MethodPost, "/v1/services",
+		`{"type":"private_service","name":"pserv","port":8080,"image":{"imagePath":"nginx:1"}}`, http.StatusCreated), &created); err != nil {
+		t.Fatal(err)
+	}
+	// A new private service names no port until the operator reads its
+	// image (ADR089 D3), so the create answers neither key yet (w9/104): the
+	// two never disagree.
+	if d := created.Service.ServiceDetails; d["url"] != d["internalAddress"] {
+		t.Errorf("create: url = %v, internalAddress = %v, want the same", d["url"], d["internalAddress"])
+	}
+	id := created.Service.ID
+
+	// The operator's image read publishes the configured port.
+	app := getApp(t, cl, "pserv")
+	app.Status.ServingNetwork = &appv1alpha1.ImageNetworkStatus{Image: "nginx:1", Revision: "r1", PrimaryPort: 8080, Ports: []int32{8080}}
+	if err := cl.Update(context.Background(), app); err != nil {
+		t.Fatal(err)
+	}
+
+	var got read
+	if err := json.Unmarshal(serve(http.MethodGet, "/v1/services/"+id, "", http.StatusOK), &got); err != nil {
+		t.Fatal(err)
+	}
+	check("retrieve", got)
+
+	var listed []struct {
+		Service read `json:"service"`
+	}
+	if err := json.Unmarshal(serve(http.MethodGet, "/v1/services", "", http.StatusOK), &listed); err != nil || len(listed) != 1 {
+		t.Fatalf("list: %v (%d rows)", err, len(listed))
+	}
+	check("list", listed[0].Service)
+
+	var updated read
+	if err := json.Unmarshal(serve(http.MethodPatch, "/v1/services/"+id, `{"name":"pserv-renamed"}`, http.StatusOK), &updated); err != nil {
+		t.Fatal(err)
+	}
+	check("update", updated)
 }

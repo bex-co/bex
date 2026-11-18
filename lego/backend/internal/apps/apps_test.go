@@ -152,11 +152,12 @@ func TestInternalAddressOnAllThreeSurfaces(t *testing.T) {
 		name        string
 		svcType     string
 		wantAddr    string // "" = internalAddress absent everywhere
-		wantRESTURL bool
+		wantRESTURL string // "" = serviceDetails.url absent
 	}{
-		{name: "web-service", svcType: appv1alpha1.TypeWebService, wantAddr: "web-a1b2:8080", wantRESTURL: true},
-		{name: "private-service", svcType: appv1alpha1.TypePrivateService, wantAddr: "web-a1b2:8080", wantRESTURL: false},
-		{name: "background-worker", svcType: appv1alpha1.TypeBackgroundWorker, wantAddr: "", wantRESTURL: false},
+		{name: "web-service", svcType: appv1alpha1.TypeWebService, wantAddr: "web-a1b2:8080", wantRESTURL: "https://web.onbex.co"},
+		// Render's private service url is its internal <slug>:<port>.
+		{name: "private-service", svcType: appv1alpha1.TypePrivateService, wantAddr: "web-a1b2:8080", wantRESTURL: "web-a1b2:8080"},
+		{name: "background-worker", svcType: appv1alpha1.TypeBackgroundWorker, wantAddr: "", wantRESTURL: ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			app := sampleApp("web")
@@ -190,9 +191,12 @@ func TestInternalAddressOnAllThreeSurfaces(t *testing.T) {
 			if tc.wantAddr != "" && gotAddr != tc.wantAddr {
 				t.Errorf("REST internalAddress = %v, want %q", gotAddr, tc.wantAddr)
 			}
-			_, urlPresent := restBody.ServiceDetails["url"]
-			if urlPresent != tc.wantRESTURL {
-				t.Errorf("REST serviceDetails.url present = %v, want %v (Render omits url for pserv/worker)", urlPresent, tc.wantRESTURL)
+			gotURL, urlPresent := restBody.ServiceDetails["url"]
+			if tc.wantRESTURL == "" && urlPresent {
+				t.Errorf("REST serviceDetails.url = %v, want absent (Render has none for a worker)", gotURL)
+			}
+			if tc.wantRESTURL != "" && gotURL != tc.wantRESTURL {
+				t.Errorf("REST serviceDetails.url = %v, want %q", gotURL, tc.wantRESTURL)
 			}
 
 			// GraphQL

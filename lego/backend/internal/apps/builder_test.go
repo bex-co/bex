@@ -22,6 +22,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -148,8 +149,9 @@ func TestRenderDockerDetailsMapToDockerfileBuild(t *testing.T) {
 // empty on purpose. env mirrors runtime — Render's deprecated response alias.
 //
 // w4/052 was a Dockerfile-via-builder web service reading back an empty runtime;
-// this matrix now also pins the prebuilt-image round-trip (runtime "image", no
-// envSpecificDetails — the container is supplied whole via imagePath).
+// this matrix now also pins the prebuilt-image round-trip (runtime "image",
+// Render's docker shape with empty build fields — the container is supplied
+// whole via imagePath, w9/m473).
 func TestServiceReadRoundTripCompleteness(t *testing.T) {
 	repo := func(mut func(*appv1alpha1.App)) *appv1alpha1.App {
 		a := repoApp("web", "https://github.com/x/web", "main")
@@ -169,7 +171,7 @@ func TestServiceReadRoundTripCompleteness(t *testing.T) {
 		name    string
 		app     *appv1alpha1.App
 		want    string // effective runtime; "" => runtime/env omitted entirely
-		wantESD string // envSpecificDetails shape: "docker" | "native" | "none"
+		wantESD string // envSpecificDetails shape: "docker" | "image" | "native" | "none"
 	}{
 		{"repo default builder derives docker", repo(nil), "docker", "docker"},
 		{"repo auto builder derives docker", repo(func(a *appv1alpha1.App) { a.Spec.Builder = "auto" }), "docker", "docker"},
@@ -177,8 +179,8 @@ func TestServiceReadRoundTripCompleteness(t *testing.T) {
 		{"explicit docker runtime", repo(func(a *appv1alpha1.App) { a.Spec.Runtime = "docker"; a.Spec.Builder = "dockerfile" }), "docker", "docker"},
 		{"explicit native go", repo(func(a *appv1alpha1.App) { a.Spec.Runtime = "go"; a.Spec.Builder = "native" }), "go", "native"},
 		{"explicit native node", repo(func(a *appv1alpha1.App) { a.Spec.Runtime = "node"; a.Spec.Builder = "native" }), "node", "native"},
-		{"prebuilt image derives image", image(nil), "image", "none"},
-		{"explicit image runtime", image(func(a *appv1alpha1.App) { a.Spec.Runtime = "image" }), "image", "none"},
+		{"prebuilt image derives image", image(nil), "image", "image"},
+		{"explicit image runtime", image(func(a *appv1alpha1.App) { a.Spec.Runtime = "image" }), "image", "image"},
 		{"buildpack stays empty (bex extension)", repo(func(a *appv1alpha1.App) { a.Spec.Builder = "buildpack" }), "", "none"},
 		{"static site stays empty", repo(func(a *appv1alpha1.App) { a.Spec.Type = appv1alpha1.TypeStaticSite; a.Spec.PublishPath = "dist" }), "", "none"},
 	}
@@ -207,11 +209,16 @@ func TestServiceReadRoundTripCompleteness(t *testing.T) {
 			}
 			// The envSpecificDetails shape must agree with the runtime so the CLI
 			// reads one coherent build block (docker keys, native keys, or none).
+			// An image reads the docker keys with nothing to build from.
 			esd, _ := out.ServiceDetails["envSpecificDetails"].(map[string]any)
 			switch tc.wantESD {
 			case "none":
 				if _, present := out.ServiceDetails["envSpecificDetails"]; present {
 					t.Fatalf("envSpecificDetails present = %v, want absent", out.ServiceDetails["envSpecificDetails"])
+				}
+			case "image":
+				if want := renderImageDetails("", ""); !reflect.DeepEqual(esd, want) {
+					t.Fatalf("envSpecificDetails = %v, want Render's image shape %v", esd, want)
 				}
 			case "docker":
 				if _, ok := esd["dockerfilePath"]; !ok {
@@ -333,7 +340,8 @@ func TestDockerfileServiceRuntimeIsConsistentAcrossSurfaces(t *testing.T) {
 // TestImageServiceRuntimeIsConsistentAcrossSurfaces is the w9/m93 parity check
 // for the prebuilt-image read change: a runtime-less image service reads back
 // runtime "image" identically on REST, GraphQL and MCP (all fed by the one
-// view() projection), with no envSpecificDetails, and without mutating the CR.
+// view() projection), with Render's empty docker shape as its envSpecificDetails
+// (w9/m473), and without mutating the CR.
 func TestImageServiceRuntimeIsConsistentAcrossSurfaces(t *testing.T) {
 	svc, cl := newService(nil, sampleApp("web")) // Image set, no Repo, no runtime
 	ctx := context.Background()
@@ -349,8 +357,8 @@ func TestImageServiceRuntimeIsConsistentAcrossSurfaces(t *testing.T) {
 	if out.ServiceDetails["runtime"] != "image" || out.ServiceDetails["env"] != "image" {
 		t.Fatalf("REST runtime=%v env=%v, want image", out.ServiceDetails["runtime"], out.ServiceDetails["env"])
 	}
-	if _, present := out.ServiceDetails["envSpecificDetails"]; present {
-		t.Fatalf("REST envSpecificDetails present = %v, want absent for a prebuilt image", out.ServiceDetails["envSpecificDetails"])
+	if got, want := out.ServiceDetails["envSpecificDetails"], any(renderImageDetails("", "")); !reflect.DeepEqual(got, want) {
+		t.Fatalf("REST envSpecificDetails = %v, want %v for a prebuilt image", got, want)
 	}
 
 	schema, err := graphql.NewSchema(graphql.SchemaConfig{
@@ -373,6 +381,9 @@ func TestImageServiceRuntimeIsConsistentAcrossSurfaces(t *testing.T) {
 	}
 	if mcpService.ServiceDetails["runtime"] != "image" {
 		t.Fatalf("MCP runtime = %v, want image", mcpService.ServiceDetails["runtime"])
+	}
+	if got, want := mcpService.ServiceDetails["envSpecificDetails"], any(renderImageDetails("", "")); !reflect.DeepEqual(got, want) {
+		t.Fatalf("MCP envSpecificDetails = %v, want %v", got, want)
 	}
 
 	if got := getApp(t, cl, "web").Spec.Runtime; got != "" {

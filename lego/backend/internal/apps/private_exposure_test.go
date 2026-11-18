@@ -336,7 +336,8 @@ func TestPrivateServiceURLNeverCarriesAPublicHost(t *testing.T) {
 		t.Error("the private-network address must still be reported, in internalAddress")
 	}
 
-	// REST + MCP share the Render projection, which omits url for this type.
+	// REST + MCP share the Render projection, whose url for this type is the
+	// scheme-less internal address, never a public host or the k8s URL.
 	rendered, err := json.Marshal(toRenderService(view))
 	if err != nil {
 		t.Fatalf("marshal render service: %v", err)

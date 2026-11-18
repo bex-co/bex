@@ -689,9 +689,9 @@ func TestLinkedServiceReadsItsBuildSourceRuntime(t *testing.T) {
 		{"dweb", "web_service", docker.ID, `"envSpecificDetails":{"dockerCommand":"./serve"}`, "docker",
 			map[string]any{"dockerCommand": "./serve", "dockerContext": dockerGit.DockerContext, "dockerfilePath": dockerGit.DockerfilePath}},
 		{"iweb", "web_service", image.ID, `"envSpecificDetails":{"dockerCommand":"httpd -f -p 10000"}`, "image",
-			map[string]any{"dockerCommand": "httpd -f -p 10000"}},
+			map[string]any{"dockerCommand": "httpd -f -p 10000", "dockerContext": "", "dockerfilePath": ""}},
 		{"ijob", "cron_job", image.ID, `"schedule":"0 3 * * *","envSpecificDetails":{"dockerCommand":"date"}`, "image",
-			map[string]any{"startCommand": "date"}},
+			map[string]any{"dockerCommand": "date", "dockerContext": "", "dockerfilePath": "", "startCommand": "date"}},
 	} {
 		var created struct {
 			Service service `json:"service"`

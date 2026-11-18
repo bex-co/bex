@@ -114,9 +114,9 @@ func TestImageCronReadIsTheCloneContract(t *testing.T) {
 	}
 }
 
-// The command is the only thing projected: runtime stays image, and nothing
-// build-shaped is invented for a service that has no build.
-func TestImageCronProjectsOnlyTheCommand(t *testing.T) {
+// An image cron reads Render's image shape (empty build fields, the command as
+// dockerCommand) plus the startCommand the pinned client clones it from.
+func TestImageCronReadsDockerDetailsWithItsCommand(t *testing.T) {
 	var read struct {
 		ServiceDetails struct {
 			Runtime            string         `json:"runtime"`
@@ -129,30 +129,40 @@ func TestImageCronProjectsOnlyTheCommand(t *testing.T) {
 	if read.ServiceDetails.Runtime != "image" {
 		t.Errorf("runtime = %q, want image", read.ServiceDetails.Runtime)
 	}
-	if want := map[string]any{"startCommand": "echo hi"}; !reflect.DeepEqual(read.ServiceDetails.EnvSpecificDetails, want) {
-		t.Errorf("envSpecificDetails = %v, want only %v", read.ServiceDetails.EnvSpecificDetails, want)
+	want := renderImageDetails("echo hi", "")
+	want["startCommand"] = "echo hi"
+	if !reflect.DeepEqual(read.ServiceDetails.EnvSpecificDetails, want) {
+		t.Errorf("envSpecificDetails = %v, want %v", read.ServiceDetails.EnvSpecificDetails, want)
 	}
 }
 
 // An image cron with no command runs its entrypoint on purpose, and an image
-// web service has no cron command: neither grows an envSpecificDetails block.
-func TestImageServicesWithoutACronCommandProjectNoEnvDetails(t *testing.T) {
+// web service has no cron command: both read Render's all-empty image shape,
+// with no command invented from the web service's spec.command.
+func TestImageServicesWithoutACommandReadEmptyDockerDetails(t *testing.T) {
 	web := sampleApp("qa-image-web")
 	web.Spec.Image = "docker.io/library/nginx:1"
 	web.Spec.Command = "nginx -g 'daemon off;'"
-	for name, app := range map[string]*appv1alpha1.App{
-		"entrypoint cron": imageCron("qa-image-cron", ""),
-		"image web":       web,
+	entrypoint := renderImageDetails("", "")
+	entrypoint["startCommand"] = ""
+	for name, tc := range map[string]struct {
+		app  *appv1alpha1.App
+		want map[string]any
+	}{
+		"entrypoint cron": {imageCron("qa-image-cron", ""), entrypoint},
+		"image web":       {web, renderImageDetails("", "")},
 	} {
 		var read struct {
-			ServiceDetails map[string]any `json:"serviceDetails"`
+			ServiceDetails struct {
+				EnvSpecificDetails map[string]any `json:"envSpecificDetails"`
+			} `json:"serviceDetails"`
 		}
-		body := getServiceBody(t, app)
+		body := getServiceBody(t, tc.app)
 		if err := json.Unmarshal(body, &read); err != nil {
 			t.Fatal(err)
 		}
-		if _, ok := read.ServiceDetails["envSpecificDetails"]; ok {
-			t.Errorf("%s: envSpecificDetails present: %s", name, body)
+		if got := read.ServiceDetails.EnvSpecificDetails; !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%s: envSpecificDetails = %v, want %v", name, got, tc.want)
 		}
 	}
 }

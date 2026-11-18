@@ -17,6 +17,9 @@
     "buildPlan": "starter",
     "env": "image",
     "envSpecificDetails": {
+      "dockerCommand": "",
+      "dockerContext": "",
+      "dockerfilePath": "",
       "preDeployCommand": "echo QA_PREDEPLOY_MARKER"
     },
     "maxShutdownDelaySeconds": 30,

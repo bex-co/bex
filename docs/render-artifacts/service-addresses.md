@@ -2,6 +2,8 @@
 
 **Captured:** 2026-07-26 · **Method:** docs-fallback (render.com/docs/private-network, /docs/private-services, api-docs.render.com/reference/service-fields) — no live Render account was available; anything below not confirmable from public docs is marked open. The design source for ADR041 D4 / w9/m58's field-shape decision.
 
+**Superseded in part (2026-11-18, w9/m473):** §3's REST shape for a private service was a docs reading. Render's own recorded responses show `serviceDetails.url` present on a private service, as its `<slug>:<port>`. See §3.
+
 ## 1. Internal address format
 
 > "The private service above has the internal address `elasticsearch-2j3e:9200`." — private-network doc
@@ -17,18 +19,21 @@
 - A **private service** additionally displays it as its **Service Address**.
 - The **deploy-detail header** shows an internal address ([deploy-detail-page.md](deploy-detail-page.md) recorded this and bex's deliberate scope-out).
 
-## 3. REST shape (api-docs service-fields table)
+## 3. REST shape
 
 | Field | web_service | private_service | background_worker | Evidence |
 | --- | --- | --- | --- | --- |
-| `serviceDetails.url` | ✅ present (public URL) | **❌ absent** | ❌ absent | service-fields table |
+| `serviceDetails.url` | ✅ present (public URL) | ✅ **present: `<slug>:<port>`**, no scheme (e.g. `private-service-tf:10000`) | ❌ absent | web/worker: service-fields table; private: Render's recorded responses (below) |
 | `slug` | ✅ | ✅ | ✅ | "Field is present" for slug on all five types |
-| any internal-address field | ✖ none documented | ✖ none | ✖ none | service-fields table |
+| `internalAddress` or a similar key | ✖ none | ✖ none (the address is `url`) | ✖ none | service-fields table, recordings |
+
+**Private service `url`, from Render's recorded responses (2026-11-18, w9/m473).** Render's official Terraform provider (`render-oss/terraform-provider-render`, tip `06af456`) replays go-vcr recordings of Render's API in its acceptance tests. All 7 private-service recordings (`internal/provider/privateservice/resource/testdata/*_cassette.yaml`, recorded 2025-05-14 against `api.testing.render.com`) answer `serviceDetails.url` = `<slug>:10000`, with the host equal to the response's `slug` (`private-service-tf:10000`, `env-var-test:10000`, `autoscaling-test:10000`, `some-name:10000`). That holds for image, Docker and Git-built private services, and on the create response itself. The provider stores it as the resource's `url` attribute (`internal/provider/privateservice/models.go`). Render's pinned `privateServiceDetails` has listed `url` as required since 2026-07-20. The docs reading above (the service-fields table had no `url` for a private service) was wrong.
 
 **Implications for bex:**
 
-- bex putting `http://<crName>.<ns>.svc:<port>` into a **pserv's** `serviceDetails.url` is a structural divergence (Render omits the field entirely), not just a value divergence — m58 t001 decides omit-vs-extend; w9/m57 t005 only fixes the _value_ the operator writes to `status.URL`.
-- Render's REST exposes **no** internal-address field at all — consumers derive `<slug>:<port>` from the `slug` field (present on every type) + their known port. bex already returns `slug` on the service object (`apps/service.go:278`, w4/m19). The dashboard-side Connect surface is where Render materializes the derived string.
+- bex putting `http://<crName>.<ns>.svc:<port>` into a **pserv's** `serviceDetails.url` was a value divergence. w9/m58 omitted the field on the docs reading. Since w9/m473, REST and MCP send the internal address there: `url` equals `internalAddress`. GraphQL `url` stays the public URL only (null for a private service).
+- A web service's internal address has no REST field on Render. Consumers derive `<slug>:<port>` from the `slug` field (present on every type) and their known port. bex returns `slug` on the service object (w4/m19) and adds `internalAddress` as an extension on web and private services. The dashboard-side Connect surface is where Render materializes the string.
+- An image-port private service whose ports are not discovered yet has no address on bex (ADR089 D3), so it reads no `url` until discovery. Render's create response for an `nginx` image already answers `<slug>:10000` with `openPorts` `[{"port":10000,"protocol":"TCP"}]`: Render's default `PORT`. That gap is follow-up w9/104.
 
 ## 4. Scope + addressability
 
@@ -47,4 +52,4 @@
 ## 6. Open questions (need a live account; docs don't answer)
 
 - Whether the Connect → Internal tab prints the protocol prefix or the bare `host:port` string (both appear in docs prose).
-- Whether `serviceDetails` for a pserv carries a port field the dashboard uses, or the dashboard reads the service's declared port from elsewhere.
+- ~~Whether `serviceDetails` for a pserv carries a port field the dashboard uses~~: it carries `url` = `<slug>:<port>` and `openPorts` (§3, recorded responses).
