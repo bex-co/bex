@@ -41,6 +41,11 @@ var organizationRefGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"id":                 gqlutil.ReqStrField(func(o store.Organization) any { return o.ID }),
 		"name":               gqlutil.ReqStrField(func(o store.Organization) any { return o.Name }),
 		"primaryWorkspaceId": gqlutil.ReqStrField(func(o store.Organization) any { return o.PrimaryWorkspaceID }),
+		// The org's login settings (w7/m466): while one is on, the workspace
+		// enforces it whatever its own setting is, and its own switch shows as
+		// required by the org.
+		"requireTwoFactor":   gqlutil.ReqBoolField(func(o store.Organization) any { return o.RequireTwoFactor }),
+		"requireGoogleLogin": gqlutil.ReqBoolField(func(o store.Organization) any { return o.RequireGoogleLogin }),
 	},
 })
 
@@ -67,6 +72,9 @@ var organizationGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"primaryWorkspaceId": gqlutil.ReqStrField(func(o OrganizationView) any { return o.PrimaryWorkspaceID }),
 		"viewerRole":         gqlutil.ReqStrField(func(o OrganizationView) any { return o.ViewerRole }),
 		"createdAt":          gqlutil.ReqStrField(func(o OrganizationView) any { return o.CreatedAt }),
+		// The org's login settings (w7/m466), every org member's to read.
+		"requireTwoFactor":   gqlutil.ReqBoolField(func(o OrganizationView) any { return o.RequireTwoFactor }),
+		"requireGoogleLogin": gqlutil.ReqBoolField(func(o OrganizationView) any { return o.RequireGoogleLogin }),
 		"workspaces": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(organizationWorkspaceGQLType))),
 			func(o OrganizationView) any { return o.Workspaces }),
 	},
@@ -158,6 +166,28 @@ func (s *Service) organizationGraphQLMutation() graphql.Fields {
 				return s.SetWorkspacePrivacy(p.Context, p.Args["workspaceId"].(string), p.Args["privacy"].(string))
 			},
 		},
+		"setOrganizationRequireTwoFactor": &graphql.Field{
+			Type:        organizationGQLType,
+			Description: "Require two-factor authentication in every workspace of an organization, and on the org itself, or stop requiring it (Owner only; Render's ChangeOrg2FAEnforcementEvent). Turning it on is refused while the acting Owner has no second factor (WORKSPACE_2FA_ADMIN_NOT_ENROLLED).",
+			Args: graphql.FieldConfigArgument{
+				"organizationId": gqlutil.ReqArg(graphql.String),
+				"enabled":        gqlutil.ReqArg(graphql.Boolean),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetOrganizationRequireTwoFactor(p.Context, p.Args["organizationId"].(string), p.Args["enabled"].(bool))
+			},
+		},
+		"setOrganizationRequireGoogleLogin": &graphql.Field{
+			Type:        organizationGQLType,
+			Description: "Require signing in with Google in every workspace of an organization, and on the org itself, or stop requiring it (Owner only; Render's ChangeOrgAllowedLoginMethodsEvent). Turning it on is refused while the acting Owner is not signed in with Google (WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN).",
+			Args: graphql.FieldConfigArgument{
+				"organizationId": gqlutil.ReqArg(graphql.String),
+				"enabled":        gqlutil.ReqArg(graphql.Boolean),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetOrganizationRequireGoogleLogin(p.Context, p.Args["organizationId"].(string), p.Args["enabled"].(bool))
+			},
+		},
 		"renameOrganization": &graphql.Field{
 			Type: organizationGQLType,
 			Args: graphql.FieldConfigArgument{
@@ -205,7 +235,7 @@ func (s *Service) registerOrganizationMCP(srv *mcp.Server) {
 	})
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_organization",
-		Description: "Get one organization the caller belongs to: its plan, primary workspace, the caller's role and the workspaces the caller may see. bex extension over Render's MCP.",
+		Description: "Get one organization the caller belongs to: its plan, primary workspace, the caller's role, whether it requires two-factor authentication or Google login in all of its workspaces (requireTwoFactor, requireGoogleLogin), and the workspaces the caller may see. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in organizationArgs) (*mcp.CallToolResult, OrganizationView, error) {
 		o, err := s.GetOrganization(ctx, in.OrganizationID)
 		return nil, o, err

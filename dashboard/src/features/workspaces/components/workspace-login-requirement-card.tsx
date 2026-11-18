@@ -1,5 +1,3 @@
-import { Link } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -7,22 +5,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/common/components/ui/alert";
-import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
-import { Label } from "@/common/components/ui/label";
-import { Skeleton } from "@/common/components/ui/skeleton";
-import { Switch } from "@/common/components/ui/switch";
 import type { WorkspaceLoginRequirement } from "@/common/apollo/auth-error-link";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useGoogleSignIn } from "@/features/auth/hooks/use-google-sign-in";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import {
+  LoginRequirementRow,
+  OrganizationRequirementNote,
+} from "@/features/workspaces/components/login-requirement-row";
+import { LoginRequirementRefusalAlert } from "@/features/workspaces/components/login-requirement-refusal-alert";
 import { useSetWorkspaceLoginRequirement } from "@/features/workspaces/hooks/use-set-workspace-login-requirement";
-import { LOGIN_REQUIREMENT_SETTINGS } from "@/features/workspaces/lib/login-requirements";
+import {
+  LOGIN_REQUIREMENT_SETTINGS,
+  requiringOrganization,
+} from "@/features/workspaces/lib/login-requirements";
 import {
   proFeaturesPlan,
   type WorkspaceView,
@@ -54,6 +50,11 @@ import {
  * (w7/070). Below Pro every member reads why, and an admin's switch cannot
  * turn it on; a workspace that already enforces it keeps it, and its admin
  * can turn it off.
+ *
+ * An org that requires it in all of its workspaces (w7/m466) holds the switch
+ * on and locked, whatever the workspace's own setting, and the card says
+ * which org, with the way to its Settings page for the org's Owners. Turning
+ * the org's setting off brings the workspace's own back as it was.
  */
 export function WorkspaceLoginRequirementCard({
   requirement,
@@ -72,9 +73,9 @@ export function WorkspaceLoginRequirementCard({
     workspace,
   );
   const { canManage: isAdmin, loading: roleLoading } = useCapabilities();
+  const lockedBy = requiringOrganization(requirement, workspace.organization);
   const belowPro = !proFeaturesPlan(workspace.plan);
-  const required = setting.required(workspace);
-  const controlId = `workspace-${setting.section}`;
+  const required = lockedBy !== null || workspace[setting.field];
 
   return (
     <Card>
@@ -85,32 +86,18 @@ export function WorkspaceLoginRequirementCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex min-h-6 flex-wrap items-center justify-between gap-3">
-          <Label htmlFor={isAdmin ? controlId : undefined}>
-            {t(setting.switchLabelKey)}
-          </Label>
-          {isAdmin ? (
-            <Switch
-              id={controlId}
-              checked={required}
-              disabled={busy || (belowPro && !required)}
-              onCheckedChange={(next) => void setRequired(next)}
-            />
-          ) : roleLoading ? (
-            <Skeleton
-              data-skeleton-region={`${setting.section}-control`}
-              className="h-5 w-9 shrink-0 rounded-full"
-            />
-          ) : (
-            <Badge variant={required ? "secondary" : "outline"}>
-              {t(
-                required
-                  ? "workspaces.loginRequirementStatusRequired"
-                  : "workspaces.loginRequirementStatusNotRequired",
-              )}
-            </Badge>
-          )}
-        </div>
+        <LoginRequirementRow
+          id={`workspace-${setting.section}`}
+          region={setting.section}
+          label={t(setting.switchLabelKey)}
+          control={isAdmin ? "switch" : roleLoading ? "pending" : "status"}
+          required={required}
+          disabled={busy || lockedBy !== null || (belowPro && !required)}
+          onCheckedChange={(next) => void setRequired(next)}
+        />
+        {lockedBy ? (
+          <OrganizationRequirementNote organization={lockedBy} />
+        ) : null}
         {belowPro ? (
           <p className="text-muted-foreground text-xs">
             {t(setting.proPlanOnlyKey)}
@@ -130,56 +117,13 @@ export function WorkspaceLoginRequirementCard({
           </p>
         ) : null}
         {error ? (
-          <Alert variant="destructive">
-            <AlertTitle>{t(setting.errorTitleKey)}</AlertTitle>
-            <AlertDescription>
-              <p>{error.text}</p>
-              {error.accountFix ? (
-                <AccountFix requirement={requirement} />
-              ) : null}
-            </AlertDescription>
-          </Alert>
+          <LoginRequirementRefusalAlert
+            requirement={requirement}
+            title={t(setting.errorTitleKey)}
+            error={error}
+          />
         ) : null}
       </CardContent>
     </Card>
-  );
-}
-
-/**
- * The lock-out guard's way out, on the admin's own account: enroll a second
- * factor in account security, or sign this session in with Google and come
- * back to this page.
- */
-function AccountFix({
-  requirement,
-}: {
-  requirement: WorkspaceLoginRequirement;
-}) {
-  const { t } = useTranslations();
-  if (requirement === "googleLogin") return <SignInWithGoogleLink />;
-  return (
-    <Link to="/settings" hash="security" className="underline">
-      {t("workspaces.twoFactorEnrollLink")}
-    </Link>
-  );
-}
-
-function SignInWithGoogleLink() {
-  const { t } = useTranslations();
-  const { start, busy, failed } = useGoogleSignIn();
-  return (
-    <>
-      <Button
-        type="button"
-        variant="link"
-        className="h-auto p-0 text-destructive underline"
-        disabled={busy}
-        onClick={() => void start()}
-      >
-        {busy ? <Loader2 className="animate-spin" /> : null}
-        {t("workspaces.googleLoginSignIn")}
-      </Button>
-      {failed ? <p>{t("workspaces.googleLoginSignInError")}</p> : null}
-    </>
   );
 }

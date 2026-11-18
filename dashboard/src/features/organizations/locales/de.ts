@@ -399,6 +399,100 @@ const deOrganizations: Record<string, TranslationEntry> = {
     message: "Wähle Öffentlich oder Nur auf Einladung.",
     description: "INVALID_PRIVACY refusal",
   },
+  "organizations.securityTitle": {
+    message: "Sicherheit",
+    description:
+      "Org Settings page: title of the login requirements card (Render's section name, where it puts Require Login Method; w7/m466)",
+  },
+  "organizations.securityDescription": {
+    message:
+      "Wie sich Mitglieder anmelden müssen, in jedem Workspace der Organisation und auf ihren eigenen Seiten, zusätzlich zu den Einstellungen jedes Workspace.",
+    description: "Org Settings page: what the Security card's settings do",
+  },
+  "organizations.securityOwnerOnly": {
+    message: "Nur Inhaber können diese Einstellungen ändern.",
+    description:
+      "Org Settings page: why the Security settings are read-only for a Member or Guest",
+  },
+  "organizations.requireTwoFactorLabel": {
+    message: "Zwei-Faktor-Authentifizierung verlangen",
+    description:
+      "Org Settings page: label of the switch that requires 2FA in every workspace of the org",
+  },
+  "organizations.requireTwoFactorDescription": {
+    message:
+      "Mitglieder ohne Zwei-Faktor-Authentifizierung (2FA) können nicht auf die Organisation oder ihre Workspaces zugreifen, bis sie sie aktivieren. Ihre API-Schlüssel und SSH-Schlüssel sind bis dahin ebenfalls gesperrt.",
+    description: "Org Settings page: what requiring 2FA does",
+  },
+  "organizations.requireGoogleLoginLabel": {
+    message: "Google-Anmeldung verlangen",
+    description:
+      "Org Settings page: label of the switch that requires signing in with Google in every workspace of the org",
+  },
+  "organizations.requireGoogleLoginDescription": {
+    message:
+      "Mitglieder, die sich nicht mit dem Google-Konto ihrer bex-E-Mail-Adresse anmelden, können nicht auf die Organisation oder ihre Workspaces zugreifen. API-Schlüssel und SSH-Schlüssel, die bei einer anderen Anmeldung erstellt wurden, sind ebenfalls gesperrt.",
+    description: "Org Settings page: what requiring Google login does",
+  },
+  "organizations.requireTwoFactorConfirmTitle": {
+    message: "Zwei-Faktor-Authentifizierung in {organization} verlangen?",
+    description:
+      "Title of the confirmation before an Owner requires 2FA in the org",
+  },
+  "organizations.requireTwoFactorConfirm": {
+    message:
+      "Mitglieder ohne Zwei-Faktor-Authentifizierung verlieren den Zugriff auf die Organisation und alle ihre Workspaces, bis sie sie aktivieren, und ihre API-Schlüssel und SSH-Schlüssel funktionieren dort nicht mehr. Die eigene Einstellung jedes Workspace bleibt, wie sie ist.",
+    description:
+      "Body of the confirmation before an Owner requires 2FA in the org",
+  },
+  "organizations.requireGoogleLoginConfirmTitle": {
+    message: "Google-Anmeldung in {organization} verlangen?",
+    description:
+      "Title of the confirmation before an Owner requires Google login in the org",
+  },
+  "organizations.requireGoogleLoginConfirm": {
+    message:
+      "Mitglieder, die nicht mit dem Google-Konto ihrer bex-E-Mail-Adresse angemeldet sind, verlieren den Zugriff auf die Organisation und alle ihre Workspaces, bis sie sich so anmelden, und API-Schlüssel und SSH-Schlüssel, die bei einer anderen Anmeldung erstellt wurden, funktionieren dort nicht mehr. Die eigene Einstellung jedes Workspace bleibt, wie sie ist.",
+    description:
+      "Body of the confirmation before an Owner requires Google login in the org",
+  },
+  "organizations.requireConfirmAction": {
+    message: "Verlangen",
+    description:
+      "Confirm button of the require-2FA and require-Google-login confirmations",
+  },
+  "organizations.requireTwoFactorEnabledToast": {
+    message:
+      "Zwei-Faktor-Authentifizierung ist jetzt in jedem Workspace von {name} erforderlich",
+    description: "Toast after an Owner turns the org's 2FA requirement on",
+  },
+  "organizations.requireTwoFactorDisabledToast": {
+    message: "{name} verlangt keine Zwei-Faktor-Authentifizierung mehr",
+    description: "Toast after an Owner turns the org's 2FA requirement off",
+  },
+  "organizations.requireGoogleLoginEnabledToast": {
+    message:
+      "Die Google-Anmeldung ist jetzt in jedem Workspace von {name} erforderlich",
+    description:
+      "Toast after an Owner turns the org's Google login requirement on",
+  },
+  "organizations.requireGoogleLoginDisabledToast": {
+    message: "{name} verlangt keine Google-Anmeldung mehr",
+    description:
+      "Toast after an Owner turns the org's Google login requirement off",
+  },
+  "organizations.requireTwoFactorErrorOwnerNotEnrolled": {
+    message:
+      "Aktiviere die Zwei-Faktor-Authentifizierung für dein eigenes Konto, bevor du sie in dieser Organisation verlangst, sonst sperrst du dich selbst aus.",
+    description:
+      "Refusal for code WORKSPACE_2FA_ADMIN_NOT_ENROLLED on the org setting: the acting Owner has no second factor",
+  },
+  "organizations.requireGoogleLoginErrorOwnerNotSignedIn": {
+    message:
+      "Melde dich mit dem Google-Konto deiner bex-E-Mail-Adresse an, bevor du die Google-Anmeldung in dieser Organisation verlangst, sonst sperrst du dich selbst aus.",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN on the org setting: the acting Owner is not signed in with Google",
+  },
 };
 
 export default deOrganizations;

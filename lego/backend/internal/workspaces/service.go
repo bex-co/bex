@@ -143,8 +143,9 @@ type Service struct {
 	// just changed, so the enforcement point (internal/twofactor) drops this
 	// replica's cached copy at once instead of within its TTL. Nil when nothing
 	// enforces. It is told about the Google-login setting too: the gate caches
-	// both settings as one.
-	TwoFactorChanged func(workspaceID string)
+	// both settings as one. An org's change (w7/m466) tells it the org's object,
+	// core.OrganizationObject(orgID), and each org workspace.
+	TwoFactorChanged func(key string)
 	// GoogleLogin answers the Google-login setting's lock-out guard: would the
 	// acting admin meet the requirement right now (*twofactor.Gate). Nil when
 	// the deployment cannot look up Google accounts, which refuses turning the
@@ -1241,34 +1242,57 @@ func (s *Service) SetRequireGoogleLogin(ctx context.Context, id string, enabled 
 	return s.setLoginRequirement(ctx, id, enabled, googleLoginSetting)
 }
 
-// loginSetting is one of a workspace's login requirements, as its mutation
-// sees it: the stored value, the plan feature that gates turning it on, the
-// refusals and lock-out guard of turning it on, the write and the audit row.
+// loginSetting is one login requirement as its mutations see it, on a
+// workspace and on an organization (w7/m466): the stored value, the plan
+// feature that gates turning it on, the refusals and lock-out guard of turning
+// it on, the write and the audit row.
 type loginSetting struct {
 	current          func(store.Tenant) bool
+	orgCurrent       func(store.Organization) bool
 	feature          core.PlanFeature
 	defaultWorkspace func() *core.CodedError
-	guard            func(*Service, context.Context) error
-	write            func(WorkspaceStore, context.Context, string, bool) (store.Tenant, bool, error)
-	record           func(*Service, context.Context, string, bool)
+	// actorMeets is the lock-out guard: whether the caller meets the
+	// requirement right now. adminNotMet and ownerNotMet are its refusal on a
+	// workspace and on an org.
+	actorMeets  func(*Service, context.Context) (bool, error)
+	adminNotMet func() *core.CodedError
+	ownerNotMet func(orgID string) *core.CodedError
+	write       func(WorkspaceStore, context.Context, string, bool) (store.Tenant, bool, error)
+	orgWrite    func(OrganizationStore, context.Context, string, bool) (bool, error)
+	record      func(*Service, context.Context, string, bool)
+	orgRecord   func(*Service, context.Context, string, bool)
 }
 
 var twoFactorSetting = loginSetting{
 	current:          func(t store.Tenant) bool { return t.RequireTwoFactor },
+	orgCurrent:       func(o store.Organization) bool { return o.RequireTwoFactor },
 	feature:          core.FeatureTwoFactorEnforcement,
 	defaultWorkspace: core.NewWorkspaceTwoFactorDefaultWorkspaceError,
-	guard:            (*Service).requireEnrolledActor,
+	actorMeets:       (*Service).actorEnrolled,
+	adminNotMet:      core.NewWorkspaceTwoFactorAdminNotEnrolledError,
+	ownerNotMet:      core.NewOrganizationTwoFactorOwnerNotEnrolledError,
 	write:            WorkspaceStore.SetTenantRequireTwoFactor,
+	orgWrite:         OrganizationStore.SetOrganizationRequireTwoFactor,
 	record:           func(s *Service, ctx context.Context, id string, on bool) { s.RecordTwoFactorEnforcement(ctx, id, on) },
+	orgRecord: func(s *Service, ctx context.Context, orgID string, on bool) {
+		s.RecordOrganizationTwoFactorEnforcement(ctx, orgID, on)
+	},
 }
 
 var googleLoginSetting = loginSetting{
 	current:          func(t store.Tenant) bool { return t.RequireGoogleLogin },
+	orgCurrent:       func(o store.Organization) bool { return o.RequireGoogleLogin },
 	feature:          core.FeatureGoogleLoginEnforcement,
 	defaultWorkspace: core.NewWorkspaceGoogleLoginDefaultWorkspaceError,
-	guard:            (*Service).requireGoogleSignedInActor,
+	actorMeets:       (*Service).actorSignedInWithGoogle,
+	adminNotMet:      core.NewWorkspaceGoogleLoginAdminNotSignedInError,
+	ownerNotMet:      core.NewOrganizationGoogleLoginOwnerNotSignedInError,
 	write:            WorkspaceStore.SetTenantRequireGoogleLogin,
+	orgWrite:         OrganizationStore.SetOrganizationRequireGoogleLogin,
 	record:           func(s *Service, ctx context.Context, id string, on bool) { s.RecordGoogleLoginEnforcement(ctx, id, on) },
+	orgRecord: func(s *Service, ctx context.Context, orgID string, on bool) {
+		s.RecordOrganizationGoogleLoginEnforcement(ctx, orgID, on)
+	},
 }
 
 // setLoginRequirement is the body both mutations share, once the caller is
@@ -1288,10 +1312,7 @@ func (s *Service) setLoginRequirement(ctx context.Context, id string, enabled bo
 		return view(t, "admin"), nil // already there — nothing to write
 	}
 	if enabled {
-		if !core.PlanAllows(t.Plan, setting.feature) {
-			return WorkspaceView{}, core.NewPlanFeatureError("", t.Plan, setting.feature)
-		}
-		if err := setting.guard(s, ctx); err != nil {
+		if err := s.guardLoginRequirement(ctx, t.Plan, setting, setting.adminNotMet()); err != nil {
 			return WorkspaceView{}, err
 		}
 	}
@@ -1309,13 +1330,30 @@ func (s *Service) setLoginRequirement(ctx context.Context, id string, enabled bo
 	return view(t, "admin"), nil
 }
 
-// requireEnrolledActor is the lock-out guard: the admin turning the setting on
-// must have a second factor of their own. An API key stands for the member who
-// created it; a caller that cannot enroll at all (a key with no recorded
-// creator, a platform principal) does not count as enrolled.
-func (s *Service) requireEnrolledActor(ctx context.Context) error {
+// guardLoginRequirement is what turning a requirement on asks on a workspace
+// and on an org alike: the plan (Pro and higher, ADR030 §9), then the
+// lock-out guard, refused with notMet.
+func (s *Service) guardLoginRequirement(ctx context.Context, plan string, setting loginSetting, notMet *core.CodedError) error {
+	if !core.PlanAllows(plan, setting.feature) {
+		return core.NewPlanFeatureError("", plan, setting.feature)
+	}
+	met, err := setting.actorMeets(s, ctx)
+	if err != nil {
+		return err
+	}
+	if !met {
+		return notMet
+	}
+	return nil
+}
+
+// actorEnrolled is the 2FA lock-out guard: the admin or Owner turning the
+// setting on must have a second factor of their own. An API key stands for
+// the member who created it; a caller that cannot enroll at all (a key with no
+// recorded creator, a platform principal) does not count as enrolled.
+func (s *Service) actorEnrolled(ctx context.Context) (bool, error) {
 	if s.Identities == nil {
-		return core.NewWorkspaceTwoFactorUnavailableError()
+		return false, core.NewWorkspaceTwoFactorUnavailableError()
 	}
 	id, _ := core.IdentityFrom(ctx)
 	subject := id.Subject
@@ -1326,39 +1364,33 @@ func (s *Service) requireEnrolledActor(ctx context.Context) error {
 		}
 	}
 	if subject == "" {
-		return core.NewWorkspaceTwoFactorAdminNotEnrolledError()
+		return false, nil
 	}
 	enrolled, human, err := s.Identities.MFAEnrolled(ctx, subject)
 	if err != nil {
 		log.Printf("workspaces: two-factor guard could not read the acting admin's enrollment: %v", err)
-		return core.ErrAuthzUnavailable
+		return false, core.ErrAuthzUnavailable
 	}
-	if !human || !enrolled {
-		return core.NewWorkspaceTwoFactorAdminNotEnrolledError()
-	}
-	return nil
+	return human && enrolled, nil
 }
 
-// requireGoogleSignedInActor is the Google-login setting's lock-out guard: the
-// admin turning it on must meet it right now, by the gate's own check. A
-// caller with no identity (a platform worker) never does.
-func (s *Service) requireGoogleSignedInActor(ctx context.Context) error {
+// actorSignedInWithGoogle is the Google-login setting's lock-out guard: the
+// admin or Owner turning it on must meet it right now, by the gate's own
+// check. A caller with no identity (a platform worker) never does.
+func (s *Service) actorSignedInWithGoogle(ctx context.Context) (bool, error) {
 	if s.GoogleLogin == nil {
-		return core.NewWorkspaceGoogleLoginUnavailableError()
+		return false, core.NewWorkspaceGoogleLoginUnavailableError()
 	}
 	id, ok := core.IdentityFrom(ctx)
 	if !ok {
-		return core.NewWorkspaceGoogleLoginAdminNotSignedInError()
+		return false, nil
 	}
 	signedIn, err := s.GoogleLogin.SignedInWithGoogle(ctx, id)
 	if err != nil {
 		log.Printf("workspaces: Google-login guard could not check the acting admin: %v", err)
-		return core.ErrAuthzUnavailable
+		return false, core.ErrAuthzUnavailable
 	}
-	if !signedIn {
-		return core.NewWorkspaceGoogleLoginAdminNotSignedInError()
-	}
-	return nil
+	return signedIn, nil
 }
 
 // ChangePlan upgrades or downgrades a workspace's plan (w6/m12,

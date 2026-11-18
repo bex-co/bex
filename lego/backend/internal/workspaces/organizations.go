@@ -52,6 +52,8 @@ type OrganizationStore interface {
 	AttachWorkspaceToOrganization(ctx context.Context, workspaceID, orgID string) (store.Tenant, []string, error)
 	SetWorkspacePrivacy(ctx context.Context, workspaceID, privacy string) (store.Tenant, bool, error)
 	RenameOrganization(ctx context.Context, orgID, name string) (store.Organization, error)
+	SetOrganizationRequireTwoFactor(ctx context.Context, orgID string, enabled bool) (changed bool, err error)
+	SetOrganizationRequireGoogleLogin(ctx context.Context, orgID string, enabled bool) (changed bool, err error)
 	ListWorkspaceEnvironments(ctx context.Context, tenantID string) ([]store.Environment, error)
 }
 
@@ -70,6 +72,11 @@ type OrganizationView struct {
 	// uppercase wire form workspace roles use).
 	ViewerRole string `json:"viewerRole"`
 	CreatedAt  string `json:"createdAt"`
+	// RequireTwoFactor and RequireGoogleLogin are the org's login settings
+	// (w7/m466): every org workspace enforces each beside its own. Every
+	// person in the org reads them; only Owners change them.
+	RequireTwoFactor   bool `json:"requireTwoFactor"`
+	RequireGoogleLogin bool `json:"requireGoogleLogin"`
 	// Workspaces are the org's workspaces, the primary first. A Guest sees
 	// only the one they belong to.
 	Workspaces []OrganizationWorkspaceView `json:"workspaces"`
@@ -104,6 +111,7 @@ func organizationView(o store.Organization, role string, workspaces []store.Tena
 	v := OrganizationView{
 		ID: o.ID, Name: o.Name, Plan: o.Plan, PrimaryWorkspaceID: o.PrimaryWorkspaceID,
 		ViewerRole: strings.ToUpper(role), CreatedAt: o.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+		RequireTwoFactor: o.RequireTwoFactor, RequireGoogleLogin: o.RequireGoogleLogin,
 		Workspaces: []OrganizationWorkspaceView{},
 	}
 	for _, t := range workspaces {
@@ -369,6 +377,73 @@ func (s *Service) RenameOrganization(ctx context.Context, orgID, name string) (O
 		s.RecordOrganizationEvent(ctx, core.AuditVerbOrgRenamed, orgID, core.OrganizationAudit{From: o.Name, To: name})
 	}
 	return s.GetOrganization(ctx, orgID)
+}
+
+// SetOrganizationRequireTwoFactor turns the org's "require two-factor
+// authentication" setting on or off (w7/m466, docs/ADR012-auth.md §9c;
+// Render's ChangeOrg2FAEnforcementEvent). Owner only. While it is on, every
+// workspace of the org requires 2FA beside its own setting, and so do the
+// org's own objects; turning it off leaves each workspace's own setting as it
+// was. It has the workspace setting's rules: the org's plan must allow it, a
+// no-op writes and records nothing, and turning it on is refused while the
+// acting Owner has no second factor (409 WORKSPACE_2FA_ADMIN_NOT_ENROLLED,
+// naming the org) or the deployment cannot look factors up (409
+// WORKSPACE_2FA_UNAVAILABLE).
+func (s *Service) SetOrganizationRequireTwoFactor(ctx context.Context, orgID string, enabled bool) (OrganizationView, error) {
+	return s.setOrganizationLoginRequirement(ctx, orgID, enabled, twoFactorSetting)
+}
+
+// SetOrganizationRequireGoogleLogin turns the org's "require Google login"
+// setting on or off (Render's ChangeOrgAllowedLoginMethodsEvent, the org's
+// allowed login methods without SAML SSO), with SetOrganizationRequireTwoFactor's
+// rules; its lock-out refusal is 409 WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN.
+func (s *Service) SetOrganizationRequireGoogleLogin(ctx context.Context, orgID string, enabled bool) (OrganizationView, error) {
+	return s.setOrganizationLoginRequirement(ctx, orgID, enabled, googleLoginSetting)
+}
+
+// setOrganizationLoginRequirement is the body both org mutations share: the
+// Owner's authorization on the org, setLoginRequirement's rules on the org's
+// plan, and a change drops this replica's cached setting of the org and of
+// each of its workspaces (other replicas within the gate's TTL).
+func (s *Service) setOrganizationLoginRequirement(ctx context.Context, orgID string, enabled bool, setting loginSetting) (OrganizationView, error) {
+	// Denials stay on the record; the allowed row waits for the write.
+	ctx = core.WithDeferredAllowedWriteAudit(ctx)
+	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.OrganizationObject(orgID)); err != nil {
+		return OrganizationView{}, err
+	}
+	orgs, ok := s.organizations()
+	if !ok {
+		return OrganizationView{}, core.ErrWorkspacesUnavailable
+	}
+	o, err := requireOwner(ctx, orgs, orgID)
+	if err != nil {
+		return OrganizationView{}, err
+	}
+	if setting.orgCurrent(o) == enabled {
+		return s.GetOrganization(ctx, orgID) // already there — nothing to write
+	}
+	if enabled {
+		if err := s.guardLoginRequirement(ctx, o.Plan, setting, setting.ownerNotMet(orgID)); err != nil {
+			return OrganizationView{}, err
+		}
+	}
+	changed, err := setting.orgWrite(orgs, ctx, orgID, enabled)
+	if err != nil {
+		return OrganizationView{}, mapStoreErr(err)
+	}
+	v, err := s.GetOrganization(ctx, orgID)
+	if err != nil || !changed {
+		return v, err // !changed: another Owner made this same change first
+	}
+	if s.TwoFactorChanged != nil {
+		// An Owner's view lists every org workspace.
+		s.TwoFactorChanged(core.OrganizationObject(orgID))
+		for _, w := range v.Workspaces {
+			s.TwoFactorChanged(w.ID)
+		}
+	}
+	setting.orgRecord(s, ctx, orgID, enabled)
+	return v, nil
 }
 
 // changeOrganizationPlan is ChangePlan for a workspace in an org (ADR115 D2,

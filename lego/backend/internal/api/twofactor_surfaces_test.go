@@ -43,11 +43,16 @@ import (
 
 const twoFactorCode = "WORKSPACE_2FA_REQUIRED"
 
-// surfaceSettings maps a workspace to its login requirements.
+// surfaceSettings maps a workspace to its login requirements, and an org's
+// object (org:<id>) to the org's own (w7/m466).
 type surfaceSettings map[string]core.LoginRequirements
 
 func (s surfaceSettings) LoginRequirements(_ context.Context, workspaceID string) (core.LoginRequirements, error) {
 	return s[workspaceID], nil
+}
+
+func (s surfaceSettings) OrganizationLoginRequirements(_ context.Context, orgID string) (core.LoginRequirements, error) {
+	return s[core.OrganizationObject(orgID)], nil
 }
 
 type surfaceEnrollment map[string]bool // subject -> enrolled; absent = not a Kratos identity

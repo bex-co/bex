@@ -80,6 +80,11 @@ type Organization struct {
 	Plan               string    `json:"plan"`
 	CreatedAt          time.Time `json:"createdAt"`
 	AuditVisibleFrom   time.Time `json:"auditVisibleFrom"`
+	// RequireTwoFactor and RequireGoogleLogin are the org's login settings
+	// (w7/m466, migration 0295): every org workspace enforces each beside its
+	// own, and so do the org's own objects.
+	RequireTwoFactor   bool `json:"requireTwoFactor"`
+	RequireGoogleLogin bool `json:"requireGoogleLogin"`
 }
 
 // OrganizationMember is a person's org role.
@@ -119,13 +124,13 @@ type OrganizationTuples struct {
 	Workspaces   []Tenant
 }
 
-const organizationColumns = `o.id, o.name, o.primary_workspace_id, p.plan, o.created_at, o.audit_visible_from`
+const organizationColumns = `o.id, o.name, o.primary_workspace_id, p.plan, o.created_at, o.audit_visible_from, o.require_two_factor, o.require_google_login`
 
 const organizationFrom = ` FROM organizations o JOIN tenants p ON p.id = o.primary_workspace_id`
 
 func scanOrganization(row pgx.Row, extra ...any) (Organization, error) {
 	var o Organization
-	dest := append([]any{&o.ID, &o.Name, &o.PrimaryWorkspaceID, &o.Plan, &o.CreatedAt, &o.AuditVisibleFrom}, extra...)
+	dest := append([]any{&o.ID, &o.Name, &o.PrimaryWorkspaceID, &o.Plan, &o.CreatedAt, &o.AuditVisibleFrom, &o.RequireTwoFactor, &o.RequireGoogleLogin}, extra...)
 	return o, row.Scan(dest...)
 }
 
@@ -526,6 +531,49 @@ func (s *PGStore) RenameOrganization(ctx context.Context, orgID, name string) (O
 		return Organization{}, fmt.Errorf("organization %s: %w", orgID, ErrNotFound)
 	}
 	return s.GetOrganization(ctx, orgID)
+}
+
+// SetOrganizationRequireTwoFactor sets the org's "require two-factor
+// authentication" setting (w7/m466). changed is false when it already held
+// that value (or the org does not exist: the caller has read it), so a no-op
+// writes and records nothing, as SetTenantRequireTwoFactor's conditional write
+// does for a workspace.
+func (s *PGStore) SetOrganizationRequireTwoFactor(ctx context.Context, orgID string, enabled bool) (changed bool, err error) {
+	return s.setOrganizationLoginRequirement(ctx, `UPDATE organizations SET require_two_factor = $2
+		 WHERE id = $1 AND require_two_factor <> $2`, orgID, enabled)
+}
+
+// SetOrganizationRequireGoogleLogin is SetOrganizationRequireTwoFactor for
+// the "require Google login" setting.
+func (s *PGStore) SetOrganizationRequireGoogleLogin(ctx context.Context, orgID string, enabled bool) (changed bool, err error) {
+	return s.setOrganizationLoginRequirement(ctx, `UPDATE organizations SET require_google_login = $2
+		 WHERE id = $1 AND require_google_login <> $2`, orgID, enabled)
+}
+
+func (s *PGStore) setOrganizationLoginRequirement(ctx context.Context, update, orgID string, enabled bool) (bool, error) {
+	tag, err := s.Pool.Exec(ctx, update, orgID, enabled)
+	if err != nil {
+		return false, classify("organization", err)
+	}
+	return tag.RowsAffected() > 0, nil // false: already there, or no such org
+}
+
+// OrganizationLoginRequirements reads only an org's own login settings: the
+// enforcement point's question for the org's own objects (org:<id>), asked
+// at most once a minute per org (internal/twofactor). An org that does not
+// exist requires nothing: the zero value, no error.
+func (s *PGStore) OrganizationLoginRequirements(ctx context.Context, orgID string) (core.LoginRequirements, error) {
+	var name string
+	var twoFactor, google bool
+	err := s.Pool.QueryRow(ctx, `SELECT name, require_two_factor, require_google_login FROM organizations WHERE id = $1`, orgID).
+		Scan(&name, &twoFactor, &google)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return core.LoginRequirements{}, nil
+	}
+	if err != nil {
+		return core.LoginRequirements{}, classify("organization", err)
+	}
+	return core.LoginRequirements{}.WithOrganization(orgID, name, twoFactor, google), nil
 }
 
 // SetOrganizationMemberRole changes subject's org role and returns the old

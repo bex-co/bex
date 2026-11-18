@@ -4,7 +4,8 @@ import { createApolloCsrClient } from "@/common/apollo/factory.client";
 import { apolloCacheConfig } from "@/common/apollo/cache";
 import { apolloDefaultOptions } from "@/common/apollo/default-options";
 import {
-  clearWorkspaceLoginBlocks,
+  clearLoginBlocks,
+  organizationLoginBlock,
   workspaceLoginBlock,
 } from "@/features/workspaces/lib/workspace-login-block";
 
@@ -48,7 +49,7 @@ async function query() {
 beforeEach(() => {
   vi.stubGlobal("fetch", mockFetch);
   mockFetch.mockReset();
-  clearWorkspaceLoginBlocks();
+  clearLoginBlocks();
   // The production transport and link chain, with a fresh cache and query
   // manager per test: the wiring under test is the real client's.
   client = new ApolloClient({
@@ -60,7 +61,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  clearWorkspaceLoginBlocks();
+  clearLoginBlocks();
 });
 
 // The ONE place the workspace login refusals are read (w22/m402, w7/m465): the
@@ -85,10 +86,41 @@ describe("the browser Apollo client and the workspace login refusals (w22/m402, 
 
       const result = await query();
 
-      expect(workspaceLoginBlock("tea-acme")).toBe(requirement);
+      expect(workspaceLoginBlock("tea-acme")).toEqual({
+        requirement,
+        organization: null,
+      });
       expect(result.error).toBeDefined();
     },
   );
+
+  // w7/m466: an org's own setting refuses its own objects with the same
+  // codes, naming only the org (no workspace).
+  it("records an org-only refusal against the org, naming it", async () => {
+    answer({
+      data: null,
+      errors: [
+        {
+          message: "the organization Acme requires two-factor authentication",
+          path: ["organizationMembers"],
+          extensions: {
+            code: "WORKSPACE_2FA_REQUIRED",
+            organizationId: "org-1",
+            organizationName: "Acme",
+          },
+        },
+      ],
+    });
+
+    const result = await query();
+
+    expect(organizationLoginBlock("org-1")).toEqual({
+      requirement: "twoFactor",
+      organization: { id: "org-1", name: "Acme" },
+    });
+    expect(workspaceLoginBlock("org-1")).toBeNull();
+    expect(result.error).toBeDefined();
+  });
 
   it("records nothing for any other refusal", async () => {
     answer({
@@ -121,5 +153,6 @@ describe("the browser Apollo client and the workspace login refusals (w22/m402, 
     answer({ data: { services: [{ __typename: "Service", id: "srv-1" }] } });
     await query();
     expect(workspaceLoginBlock("tea-acme")).toBeNull();
+    expect(organizationLoginBlock("org-1")).toBeNull();
   });
 });

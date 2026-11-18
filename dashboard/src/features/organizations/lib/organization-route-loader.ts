@@ -8,6 +8,7 @@ import { titleLoaderFetchPolicy } from "@/common/lib/document-head";
 import { prefetchInParallel } from "@/common/lib/prefetch";
 import type { RouterContext } from "@/common/types/router-context";
 import {
+  findOrganization,
   toOrganizationRole,
   type OrganizationSection,
 } from "@/features/organizations/types";
@@ -45,9 +46,10 @@ export function loadOrganizationRoute(
   if (section === "members") {
     const variables = { organizationId: orgId };
     const role = toOrganizationRole(
-      client
-        .readQuery({ query: OrganizationsDocument })
-        ?.organizations.find((org) => org.id === orgId)?.viewerRole,
+      findOrganization(
+        client.readQuery({ query: OrganizationsDocument })?.organizations,
+        orgId,
+      )?.viewerRole,
     );
     // A Guest is refused the list (FORBIDDEN), which the cache does not keep.
     if (role !== "GUEST") {

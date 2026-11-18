@@ -884,6 +884,40 @@ const esWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Fallback toast when a privacy save fails without a server reason (w7/m464)",
   },
+  "workspaces.loginRequirementRequiredByOrganization": {
+    message: "Lo exige {organization} en todos sus espacios de trabajo.",
+    description:
+      "Workspace Settings, under the 2FA or Google login switch: why it is on and locked, the workspace's organization requires it in all of its workspaces (w7/m466)",
+  },
+  "workspaces.loginRequirementOrganizationSettingsLink": {
+    message: "Cámbialo en la configuración de la organización",
+    description:
+      "Link for an org Owner after the required-by-organization note, to the organization's Settings page (w7/m466)",
+  },
+  "workspaces.twoFactorBlockedOrganizationTitle": {
+    message:
+      "{organization} requiere autenticación de dos factores en todos sus espacios de trabajo",
+    description:
+      "Heading of the 2FA blocked page when the organization's setting refuses the member, on a workspace or on the org's own pages (w7/m466)",
+  },
+  "workspaces.twoFactorBlockedOrganizationBody": {
+    message:
+      "Un propietario de esta organización exige que todos los miembros usen autenticación de dos factores (2FA) en la organización y en todos sus espacios de trabajo. Hasta que la actives, no puedes acceder a ellos, y tus claves de API y claves SSH no se pueden usar con ellos.",
+    description:
+      "Why the 2FA blocked page is shown when the organization's setting refuses the member (w7/m466)",
+  },
+  "workspaces.googleLoginBlockedOrganizationTitle": {
+    message:
+      "{organization} requiere iniciar sesión con Google en todos sus espacios de trabajo",
+    description:
+      "Heading of the Google login blocked page when the organization's setting refuses the member (w7/m466)",
+  },
+  "workspaces.googleLoginBlockedOrganizationBody": {
+    message:
+      "Un propietario de esta organización exige que todos los miembros inicien sesión con Google en la organización y en todos sus espacios de trabajo. Hasta que inicies sesión con la cuenta de Google de tu correo electrónico de bex, no puedes acceder a ellos, y las claves de API y claves SSH que creaste con otro inicio de sesión no se pueden usar con ellos.",
+    description:
+      "Why the Google login blocked page is shown when the organization's setting refuses the member (w7/m466)",
+  },
 };
 
 export default esWorkspaces;

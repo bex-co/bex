@@ -708,7 +708,7 @@ type Deps struct {
 	// workspace's "require two-factor" setting the moment an admin changes it
 	// (w22/m402). cmd/api wires it to twofactor.Gate.Invalidate; nil when
 	// nothing enforces.
-	TwoFactorChanged func(workspaceID string)
+	TwoFactorChanged func(key string)
 	// GoogleLogin is the Google-login setting's lock-out guard (w7/m465):
 	// twofactor.Gate's own check for the acting admin. Nil when the gate
 	// cannot look up Google accounts, which refuses turning the setting on.

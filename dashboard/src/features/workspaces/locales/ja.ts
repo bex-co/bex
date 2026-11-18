@@ -877,6 +877,39 @@ const jaWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Fallback toast when a privacy save fails without a server reason (w7/m464)",
   },
+  "workspaces.loginRequirementRequiredByOrganization": {
+    message: "{organization} のすべてのワークスペースで必須です。",
+    description:
+      "Workspace Settings, under the 2FA or Google login switch: why it is on and locked, the workspace's organization requires it in all of its workspaces (w7/m466)",
+  },
+  "workspaces.loginRequirementOrganizationSettingsLink": {
+    message: "組織の設定で変更する",
+    description:
+      "Link for an org Owner after the required-by-organization note, to the organization's Settings page (w7/m466)",
+  },
+  "workspaces.twoFactorBlockedOrganizationTitle": {
+    message: "{organization} ではすべてのワークスペースで二要素認証が必須です",
+    description:
+      "Heading of the 2FA blocked page when the organization's setting refuses the member, on a workspace or on the org's own pages (w7/m466)",
+  },
+  "workspaces.twoFactorBlockedOrganizationBody": {
+    message:
+      "この組織のオーナーが、組織とそのすべてのワークスペースで、すべてのメンバーに二要素認証（2FA）の使用を求めています。有効にするまで、これらにはアクセスできず、API キーと SSH キーも使用できません。",
+    description:
+      "Why the 2FA blocked page is shown when the organization's setting refuses the member (w7/m466)",
+  },
+  "workspaces.googleLoginBlockedOrganizationTitle": {
+    message:
+      "{organization} ではすべてのワークスペースで Google ログインが必須です",
+    description:
+      "Heading of the Google login blocked page when the organization's setting refuses the member (w7/m466)",
+  },
+  "workspaces.googleLoginBlockedOrganizationBody": {
+    message:
+      "この組織のオーナーが、組織とそのすべてのワークスペースで、すべてのメンバーに Google でのログインを求めています。bex のメールアドレスの Google アカウントでログインするまで、これらにはアクセスできず、ほかの方法でログインしているときに作成した API キーと SSH キーも使用できません。",
+    description:
+      "Why the Google login blocked page is shown when the organization's setting refuses the member (w7/m466)",
+  },
 };
 
 export default jaWorkspaces;

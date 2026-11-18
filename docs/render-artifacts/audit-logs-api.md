@@ -91,7 +91,8 @@ Every **organization** event [render.com/docs/audit-logs](https://render.com/doc
 | `RemoveOrgMemberEvent` | `members.RemoveFromOrganization` | recorded |
 | `JoinTeamEvent` | `members.JoinWorkspace`, `members.JoinWorkspaceAsAdmin` | recorded |
 | `ChangeOrgRoleEvent` | `members.ChangeOrganizationRole` | recorded |
-| `ChangeOrgAllowedLoginMethodsEvent`, `ChangeOrg2FAEnforcementEvent` | — | not yet: org-level login settings are a follow-up (w7/m464 t014) |
+| `ChangeOrgAllowedLoginMethodsEvent` | `workspaces.SetOrganizationRequireGoogleLogin` | recorded (w7/m466: the org's Google-login requirement, `metadata.to`) |
+| `ChangeOrg2FAEnforcementEvent` | `workspaces.SetOrganizationRequireTwoFactor` | recorded (w7/m466: the org's 2FA requirement, `metadata.to`) |
 | `CreateWorkspaceEvent` | `workspaces.CreateOrganizationWorkspace` | recorded |
 | `DeleteWorkspaceEvent` | `workspaces.Delete` | recorded (an org workspace's delete, in the org's log) |
 | `ChangeWorkspacePrivacyEvent` | `workspaces.SetWorkspacePrivacy` | recorded |

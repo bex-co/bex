@@ -5,7 +5,7 @@ import {
   createAuthErrorLink,
   isEmailVerificationRequiredError,
   isUnauthenticatedError,
-  workspaceLoginRefusals,
+  loginRefusals,
 } from "../auth-error-link";
 
 const QUERY = gql`
@@ -320,7 +320,11 @@ describe("createAuthErrorLink — workspace login requirements (w22/m402, w7/m46
       );
 
       expect(onLogin).toHaveBeenCalledTimes(1);
-      expect(onLogin).toHaveBeenCalledWith("tea-acme", requirement);
+      expect(onLogin).toHaveBeenCalledWith({
+        workspaceId: "tea-acme",
+        organization: null,
+        requirement,
+      });
       expect(result).toEqual({ data: null, errors });
       expect(onUnauthorized).not.toHaveBeenCalled();
       expect(onVerify).not.toHaveBeenCalled();
@@ -344,8 +348,14 @@ describe("createAuthErrorLink — workspace login requirements (w22/m402, w7/m46
       ]),
     );
     expect(onLogin.mock.calls).toEqual([
-      ["tea-a", "twoFactor"],
-      ["tea-b", "googleLogin"],
+      [{ workspaceId: "tea-a", organization: null, requirement: "twoFactor" }],
+      [
+        {
+          workspaceId: "tea-b",
+          organization: null,
+          requirement: "googleLogin",
+        },
+      ],
     ]);
   });
 
@@ -401,18 +411,89 @@ describe("createAuthErrorLink — workspace login requirements (w22/m402, w7/m46
     expect((await runLogin(terminalOk())).onLogin).not.toHaveBeenCalled();
   });
 
-  it("does not wall a workspace it cannot name", () => {
+  it("does not wall a workspace or org it cannot name", () => {
     for (const code of [
       "WORKSPACE_2FA_REQUIRED",
       "WORKSPACE_GOOGLE_LOGIN_REQUIRED",
     ]) {
-      for (const workspaceId of [undefined, "", 7, null, { id: "tea-a" }]) {
+      for (const unusable of [undefined, "", 7, null, { id: "tea-a" }]) {
         expect(
-          workspaceLoginRefusals({
-            errors: [{ extensions: { code, workspaceId } }],
+          loginRefusals({
+            errors: [
+              {
+                extensions: {
+                  code,
+                  workspaceId: unusable,
+                  organizationId: unusable,
+                  organizationName: "Acme",
+                },
+              },
+            ],
           }),
         ).toEqual([]);
       }
+    }
+  });
+
+  // w7/m466: when an org's own setting refuses, the same codes name the org;
+  // on the org's own objects (its members, invites, settings) there is no
+  // workspace at all, and the refusal is still reported, scoped to the org.
+  it("reports an org's refusal with the org, with or without a workspace", async () => {
+    const { onLogin } = await runLogin(
+      refused([
+        {
+          message: "in an org workspace",
+          extensions: {
+            code: "WORKSPACE_GOOGLE_LOGIN_REQUIRED",
+            workspaceId: "tea-a",
+            organizationId: "org-1",
+            organizationName: "Acme",
+          },
+        },
+        {
+          message: "on the org's own members list",
+          extensions: {
+            code: "WORKSPACE_2FA_REQUIRED",
+            organizationId: "org-1",
+            organizationName: "Acme",
+          },
+        },
+      ]),
+    );
+    const acme = { id: "org-1", name: "Acme" };
+    expect(onLogin.mock.calls).toEqual([
+      [
+        {
+          workspaceId: "tea-a",
+          organization: acme,
+          requirement: "googleLogin",
+        },
+      ],
+      [{ workspaceId: null, organization: acme, requirement: "twoFactor" }],
+    ]);
+  });
+
+  it("names an org by its id when the refusal carries no usable name", () => {
+    for (const organizationName of [undefined, "", 7]) {
+      expect(
+        loginRefusals({
+          errors: [
+            {
+              extensions: {
+                code: "WORKSPACE_2FA_REQUIRED",
+                organizationId: "org-1",
+                organizationName,
+              },
+            },
+          ],
+        }),
+      ).toEqual([
+        {
+          workspaceId: null,
+          organization: { id: "org-1", name: "org-1" },
+          requirement: "twoFactor",
+        },
+      ]);
     }
   });
 });

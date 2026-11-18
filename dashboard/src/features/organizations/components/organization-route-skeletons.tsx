@@ -45,11 +45,18 @@ import {
 import {
   NAME_ROW_CLASS,
   OrganizationAuditLogsCardHeader,
+  OrganizationLoginRequirementSection,
   OrganizationNameCardHeader,
+  OrganizationSecurityCardHeader,
+  OrganizationSecurityOwnerOnly,
 } from "@/features/organizations/components/organization-settings-frame";
+import { OrganizationLoginBlocked } from "@/features/organizations/components/organization-login-blocked";
+import { useOrganizationLoginBlock } from "@/features/workspaces/hooks/use-workspace-login-block";
+import { LOGIN_REQUIREMENTS } from "@/features/workspaces/lib/login-requirements";
 import {
   MEMBER_COLUMN_KEYS,
   WORKSPACE_COLUMN_KEYS,
+  findOrganization,
   toOrganizationRole,
   type OrganizationRole,
   type OrganizationSection,
@@ -84,7 +91,7 @@ function useCachedOrganization(organizationId: string): {
   workspaces: readonly SkeletonWorkspace[];
 } {
   const { organizations } = useOrganizations();
-  const organization = organizations.find((org) => org.id === organizationId);
+  const organization = findOrganization(organizations, organizationId);
   return {
     role: toOrganizationRole(organization?.viewerRole),
     workspaces: organization?.workspaces.length
@@ -241,8 +248,10 @@ export function OrganizationMembersCardSkeleton({
 
 /**
  * The Settings cards while the org loads: the name card (Save for an Owner,
- * the Owners-only note otherwise) and, for an Owner, Audit Logs with the
- * export row's frame.
+ * the Owners-only note otherwise), Security (w7/m466) with each setting's
+ * label and description as themselves and the control as the switch's box
+ * (the Owners-only note for a Member or Guest), and, for an Owner, Audit Logs
+ * with the export row's frame.
  */
 export function OrganizationSettingsSkeleton({
   organizationId,
@@ -276,6 +285,23 @@ export function OrganizationSettingsSkeleton({
           </CardContent>
         </Card>
       </Region>
+      <Region name="organization-security">
+        <Card aria-hidden="true" data-testid="organization-security-skeleton">
+          <OrganizationSecurityCardHeader />
+          <CardContent className="space-y-6">
+            {LOGIN_REQUIREMENTS.map((requirement) => (
+              <OrganizationLoginRequirementSection
+                key={requirement}
+                requirement={requirement}
+                control="pending"
+              />
+            ))}
+            {role && role !== "OWNER" ? (
+              <OrganizationSecurityOwnerOnly />
+            ) : null}
+          </CardContent>
+        </Card>
+      </Region>
       {role === "OWNER" ? (
         <Region name="audit-logs">
           <Card aria-hidden="true" data-testid="organization-audit-skeleton">
@@ -290,7 +316,11 @@ export function OrganizationSettingsSkeleton({
   );
 }
 
-/** An org route's pending frame: the page's header, then `children`. */
+/**
+ * An org route's pending frame: the page's header, then `children`; or, when
+ * the org's login requirement is already known to refuse the caller
+ * (w7/m466), the blocked card the page will show instead.
+ */
 function OrganizationRouteSkeleton({
   section,
   children,
@@ -300,6 +330,7 @@ function OrganizationRouteSkeleton({
 }) {
   const params: { orgId?: string } = useParams({ strict: false });
   const organizationId = params.orgId ?? "";
+  const block = useOrganizationLoginBlock(organizationId);
   return (
     <PageFrame
       pending={`organization-${section}`}
@@ -311,7 +342,11 @@ function OrganizationRouteSkeleton({
         />
       }
     >
-      {children(organizationId)}
+      {block ? (
+        <OrganizationLoginBlocked block={block} />
+      ) : (
+        children(organizationId)
+      )}
     </PageFrame>
   );
 }

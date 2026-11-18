@@ -57,7 +57,7 @@ type orgE2E struct {
 	stamp   string
 }
 
-func newOrgE2E(t *testing.T) *orgE2E {
+func newOrgE2E(t *testing.T, opts ...func(*core.Base, *Deps)) *orgE2E {
 	t.Helper()
 	dbURI, fgaURL := os.Getenv("BEX_TEST_DB_URI"), os.Getenv("BEX_TEST_OPENFGA_URL")
 	if dbURI == "" || fgaURL == "" {
@@ -78,7 +78,7 @@ func newOrgE2E(t *testing.T) *orgE2E {
 	tenants.Audit = st
 	tenants.OrgTuples = checker.(core.OrganizationTupleWriter)
 	base := &core.Base{Client: fakeClient(), Namespace: "default", Authz: checker, Workspace: tenants, Audit: st}
-	srv := NewServer(base, Deps{
+	deps := Deps{
 		WorkspaceStore:        st,
 		MembersStore:          st,
 		WorkspaceGranter:      checker.(workspaces.WorkspaceGranter),
@@ -89,7 +89,11 @@ func newOrgE2E(t *testing.T) *orgE2E {
 		EnterpriseEntitlement: allowEnterprise{},
 		Identities:            metadataIdentities{},
 		Audit:                 &audit.Service{Base: base, Store: st, UserIDs: st, Emails: metadataIdentities{}},
-	})
+	}
+	for _, opt := range opts {
+		opt(base, &deps)
+	}
+	srv := NewServer(base, deps)
 	schema, err := srv.newSchema()
 	if err != nil {
 		t.Fatalf("schema: %v", err)

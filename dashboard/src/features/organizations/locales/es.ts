@@ -402,6 +402,100 @@ const esOrganizations: Record<string, TranslationEntry> = {
     message: "Elige Público o Solo por invitación.",
     description: "INVALID_PRIVACY refusal",
   },
+  "organizations.securityTitle": {
+    message: "Seguridad",
+    description:
+      "Org Settings page: title of the login requirements card (Render's section name, where it puts Require Login Method; w7/m466)",
+  },
+  "organizations.securityDescription": {
+    message:
+      "Cómo deben iniciar sesión los miembros, en todos los espacios de trabajo de la organización y en sus propias páginas, además de la configuración de cada espacio de trabajo.",
+    description: "Org Settings page: what the Security card's settings do",
+  },
+  "organizations.securityOwnerOnly": {
+    message: "Solo los propietarios pueden cambiar esta configuración.",
+    description:
+      "Org Settings page: why the Security settings are read-only for a Member or Guest",
+  },
+  "organizations.requireTwoFactorLabel": {
+    message: "Exigir autenticación de dos factores",
+    description:
+      "Org Settings page: label of the switch that requires 2FA in every workspace of the org",
+  },
+  "organizations.requireTwoFactorDescription": {
+    message:
+      "Los miembros sin autenticación de dos factores (2FA) no pueden acceder a la organización ni a ninguno de sus espacios de trabajo hasta que la activen. Sus claves de API y claves SSH también quedan bloqueadas hasta entonces.",
+    description: "Org Settings page: what requiring 2FA does",
+  },
+  "organizations.requireGoogleLoginLabel": {
+    message: "Exigir inicio de sesión con Google",
+    description:
+      "Org Settings page: label of the switch that requires signing in with Google in every workspace of the org",
+  },
+  "organizations.requireGoogleLoginDescription": {
+    message:
+      "Los miembros que no inician sesión con la cuenta de Google de su correo electrónico de bex no pueden acceder a la organización ni a ninguno de sus espacios de trabajo. Las claves de API y claves SSH creadas con otro inicio de sesión también quedan bloqueadas.",
+    description: "Org Settings page: what requiring Google login does",
+  },
+  "organizations.requireTwoFactorConfirmTitle": {
+    message: "¿Exigir autenticación de dos factores en {organization}?",
+    description:
+      "Title of the confirmation before an Owner requires 2FA in the org",
+  },
+  "organizations.requireTwoFactorConfirm": {
+    message:
+      "Los miembros sin autenticación de dos factores pierden el acceso a la organización y a todos sus espacios de trabajo hasta que la activen, y sus claves de API y claves SSH dejan de funcionar con ellos. La configuración propia de cada espacio de trabajo se mantiene.",
+    description:
+      "Body of the confirmation before an Owner requires 2FA in the org",
+  },
+  "organizations.requireGoogleLoginConfirmTitle": {
+    message: "¿Exigir inicio de sesión con Google en {organization}?",
+    description:
+      "Title of the confirmation before an Owner requires Google login in the org",
+  },
+  "organizations.requireGoogleLoginConfirm": {
+    message:
+      "Los miembros que no hayan iniciado sesión con la cuenta de Google de su correo electrónico de bex pierden el acceso a la organización y a todos sus espacios de trabajo hasta que inicien sesión así, y las claves de API y claves SSH creadas con otro inicio de sesión dejan de funcionar con ellos. La configuración propia de cada espacio de trabajo se mantiene.",
+    description:
+      "Body of the confirmation before an Owner requires Google login in the org",
+  },
+  "organizations.requireConfirmAction": {
+    message: "Exigir",
+    description:
+      "Confirm button of the require-2FA and require-Google-login confirmations",
+  },
+  "organizations.requireTwoFactorEnabledToast": {
+    message:
+      "Ahora se exige autenticación de dos factores en todos los espacios de trabajo de {name}",
+    description: "Toast after an Owner turns the org's 2FA requirement on",
+  },
+  "organizations.requireTwoFactorDisabledToast": {
+    message: "{name} ya no exige autenticación de dos factores",
+    description: "Toast after an Owner turns the org's 2FA requirement off",
+  },
+  "organizations.requireGoogleLoginEnabledToast": {
+    message:
+      "Ahora se exige iniciar sesión con Google en todos los espacios de trabajo de {name}",
+    description:
+      "Toast after an Owner turns the org's Google login requirement on",
+  },
+  "organizations.requireGoogleLoginDisabledToast": {
+    message: "{name} ya no exige iniciar sesión con Google",
+    description:
+      "Toast after an Owner turns the org's Google login requirement off",
+  },
+  "organizations.requireTwoFactorErrorOwnerNotEnrolled": {
+    message:
+      "Activa la autenticación de dos factores en tu propia cuenta antes de exigirla en esta organización, o te quedarías fuera.",
+    description:
+      "Refusal for code WORKSPACE_2FA_ADMIN_NOT_ENROLLED on the org setting: the acting Owner has no second factor",
+  },
+  "organizations.requireGoogleLoginErrorOwnerNotSignedIn": {
+    message:
+      "Inicia sesión con la cuenta de Google de tu correo electrónico de bex antes de exigirlo en esta organización, o te quedarías fuera.",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN on the org setting: the acting Owner is not signed in with Google",
+  },
 };
 
 export default esOrganizations;

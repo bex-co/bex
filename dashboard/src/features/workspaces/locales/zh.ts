@@ -851,6 +851,38 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Fallback toast when a privacy save fails without a server reason (w7/m464)",
   },
+  "workspaces.loginRequirementRequiredByOrganization": {
+    message: "{organization} 要求其所有工作区启用此项。",
+    description:
+      "Workspace Settings, under the 2FA or Google login switch: why it is on and locked, the workspace's organization requires it in all of its workspaces (w7/m466)",
+  },
+  "workspaces.loginRequirementOrganizationSettingsLink": {
+    message: "在组织设置中更改",
+    description:
+      "Link for an org Owner after the required-by-organization note, to the organization's Settings page (w7/m466)",
+  },
+  "workspaces.twoFactorBlockedOrganizationTitle": {
+    message: "{organization} 要求在其所有工作区中使用两步验证",
+    description:
+      "Heading of the 2FA blocked page when the organization's setting refuses the member, on a workspace or on the org's own pages (w7/m466)",
+  },
+  "workspaces.twoFactorBlockedOrganizationBody": {
+    message:
+      "此组织的所有者要求每位成员在组织及其所有工作区中使用两步验证（2FA）。在你启用之前，你无法访问它们，你的 API 密钥和 SSH 密钥也无法在其中使用。",
+    description:
+      "Why the 2FA blocked page is shown when the organization's setting refuses the member (w7/m466)",
+  },
+  "workspaces.googleLoginBlockedOrganizationTitle": {
+    message: "{organization} 要求在其所有工作区中使用 Google 登录",
+    description:
+      "Heading of the Google login blocked page when the organization's setting refuses the member (w7/m466)",
+  },
+  "workspaces.googleLoginBlockedOrganizationBody": {
+    message:
+      "此组织的所有者要求每位成员在组织及其所有工作区中使用 Google 登录。在你使用 bex 邮箱对应的 Google 账号登录之前，你无法访问它们，你以其他方式登录时创建的 API 密钥和 SSH 密钥也无法在其中使用。",
+    description:
+      "Why the Google login blocked page is shown when the organization's setting refuses the member (w7/m466)",
+  },
 };
 
 export default zhWorkspaces;

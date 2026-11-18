@@ -25,7 +25,13 @@ const WORKSPACE: WorkspaceView = {
   createdAt: null,
   requireTwoFactor: false,
   requireGoogleLogin: false,
-  organization: { id: "org-1", name: "Acme", primaryWorkspaceId: "tea-hq" },
+  organization: {
+    id: "org-1",
+    name: "Acme",
+    primaryWorkspaceId: "tea-hq",
+    requireTwoFactor: false,
+    requireGoogleLogin: false,
+  },
   primary: false,
   privacy: "invite_only",
 };

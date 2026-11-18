@@ -15,7 +15,7 @@ import {
   handleEmailVerificationRequired,
   handleUnauthenticated,
 } from "./auth-redirect";
-import { reportWorkspaceLoginRequired } from "@/features/workspaces/lib/workspace-login-block";
+import { reportLoginRefusal } from "@/features/workspaces/lib/workspace-login-block";
 
 let clientInstance: ReturnType<typeof createApolloCsrClientImpl> | null = null;
 
@@ -58,13 +58,14 @@ function createApolloCsrClientImpl() {
       // say (w3/m80 t001): a 401 on an already-mounted page re-checks the
       // session and, if it's gone, redirects to login instead of leaving a
       // dead-end error card. It never retries — a 401 is an answer, not a blip.
-      // The same link reports a workspace's login requirement refusals
-      // (WORKSPACE_2FA_REQUIRED, WORKSPACE_GOOGLE_LOGIN_REQUIRED), which
-      // WorkspaceLoginGate turns into one blocked page.
+      // The same link reports the login requirement refusals
+      // (WORKSPACE_2FA_REQUIRED, WORKSPACE_GOOGLE_LOGIN_REQUIRED) of a
+      // workspace or an org, which WorkspaceLoginGate and the org pages'
+      // shell turn into one blocked page.
       createAuthErrorLink(
         () => void handleUnauthenticated(),
         handleEmailVerificationRequired,
-        reportWorkspaceLoginRequired,
+        reportLoginRefusal,
       ),
       // Retry transient read failures (w1/m52 t003) so a roll window's 502 or
       // connection reset self-heals instead of stranding an error state.

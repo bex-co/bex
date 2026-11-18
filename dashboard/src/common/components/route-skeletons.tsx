@@ -1436,12 +1436,14 @@ export function WorkspaceSettingsSkeletonSections({
         <WorkspaceLoginRequirementCardSkeleton
           requirement="twoFactor"
           belowPro={sections.belowPro}
+          organization={sections.organization}
         />
       </Region>
       <Region name="google-login">
         <WorkspaceLoginRequirementCardSkeleton
           requirement="googleLogin"
           belowPro={sections.belowPro}
+          organization={sections.organization}
         />
       </Region>
       <Region name="team">

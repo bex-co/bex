@@ -45,10 +45,11 @@ import (
 // invalidates this replica at once).
 const TTL = 60 * time.Second
 
-// Settings reads a workspace's login requirements. *store.PGStore satisfies
-// it.
+// Settings reads a workspace's login requirements (its own ORed with its
+// org's) and an org's own (w7/m466). *store.PGStore satisfies it.
 type Settings interface {
 	LoginRequirements(ctx context.Context, workspaceID string) (core.LoginRequirements, error)
+	OrganizationLoginRequirements(ctx context.Context, orgID string) (core.LoginRequirements, error)
 }
 
 // Enrollment reports whether a Kratos identity has an enrolled second factor
@@ -169,10 +170,12 @@ func New(cfg Config) *Gate {
 	return g
 }
 
-// Invalidate drops this replica's cached setting for workspaceID — called the
-// moment an admin changes it, so the change takes effect here at once and on
-// other replicas within TTL.
-func (g *Gate) Invalidate(workspaceID string) { g.settings.Delete(workspaceID) }
+// Invalidate drops this replica's cached setting under key — a workspace id,
+// or core.OrganizationObject(orgID) for an org's own setting — called the
+// moment an admin or Owner changes it, so the change takes effect here at once
+// and on other replicas within TTL. An org change invalidates the org and each
+// of its workspaces.
+func (g *Gate) Invalidate(key string) { g.settings.Delete(key) }
 
 // Required reports workspaceID's login requirements, through the same cache
 // Check reads. The SSH gateway's verb (agentsession.TwoFactorHandler) uses it
@@ -182,9 +185,23 @@ func (g *Gate) Required(ctx context.Context, workspaceID string) (core.LoginRequ
 	if workspaceID == "" || workspaceID == core.DefaultTenant {
 		return core.LoginRequirements{}, nil // the default workspace is the legacy/bootstrap tenant: it has no setting
 	}
-	required, err := g.required(ctx, workspaceID)
+	return g.load(ctx, workspaceID, func(ctx context.Context, s Settings) (core.LoginRequirements, error) {
+		return s.LoginRequirements(ctx, workspaceID)
+	})
+}
+
+// load reads the requirements cached under key (a workspace id or an org's
+// object) through read. No Settings wired requires nothing; an unreadable
+// setting is core.ErrAuthzUnavailable, never "not required", and not cached.
+func (g *Gate) load(ctx context.Context, key string, read func(context.Context, Settings) (core.LoginRequirements, error)) (core.LoginRequirements, error) {
+	if g.cfg.Settings == nil {
+		return core.LoginRequirements{}, nil
+	}
+	required, err := g.settings.Load(ctx, key, TTL, func(ctx context.Context) (core.LoginRequirements, error) {
+		return read(ctx, g.cfg.Settings)
+	})
 	if err != nil {
-		log.Printf("twofactor: reading workspace setting: %v", err)
+		log.Printf("twofactor: reading the login setting of %s: %v", key, err)
 		g.cfg.Metrics.refused(reasonLookupUnavailable)
 		return core.LoginRequirements{}, core.ErrAuthzUnavailable
 	}
@@ -197,20 +214,50 @@ func (g *Gate) Required(ctx context.Context, workspaceID string) (core.LoginRequ
 // that comes first (docs/ADR012-auth.md §9b).
 func (g *Gate) Check(ctx context.Context, workspaceID string, id core.Identity) error {
 	required, err := g.Required(ctx, workspaceID)
-	if err != nil || !required.Any() {
+	if err != nil {
 		return err
+	}
+	return g.check(ctx, scope{workspaceID: workspaceID, required: required}, id)
+}
+
+// CheckOrganization implements core.OrganizationTwoFactorGate: an org's own
+// objects are held to the org's own requirements (w7/m466, §9c), with Check's
+// rules and refusals, which name the org.
+func (g *Gate) CheckOrganization(ctx context.Context, orgID string, id core.Identity) error {
+	if orgID == "" {
+		return nil
+	}
+	required, err := g.load(ctx, core.OrganizationObject(orgID), func(ctx context.Context, s Settings) (core.LoginRequirements, error) {
+		return s.OrganizationLoginRequirements(ctx, orgID)
+	})
+	if err != nil {
+		return err
+	}
+	return g.check(ctx, scope{required: required}, id)
+}
+
+// scope is what a check enforces: the workspace's id ("" on an org's own
+// objects) and what it requires.
+type scope struct {
+	workspaceID string
+	required    core.LoginRequirements
+}
+
+func (g *Gate) check(ctx context.Context, sc scope, id core.Identity) error {
+	if !sc.required.Any() {
+		return nil
 	}
 	p, err := g.principal(ctx, id)
 	if err != nil {
 		return g.unavailable("resolving principal", err)
 	}
-	if required.GoogleLogin {
-		if err := g.checkGoogle(ctx, workspaceID, id, p); err != nil {
+	if sc.required.GoogleLogin {
+		if err := g.checkGoogle(ctx, sc, id, p); err != nil {
 			return err
 		}
 	}
-	if required.TwoFactor {
-		return g.checkTwoFactor(ctx, workspaceID, p)
+	if sc.required.TwoFactor {
+		return g.checkTwoFactor(ctx, sc, p)
 	}
 	return nil
 }
@@ -224,7 +271,7 @@ func (g *Gate) SignedInWithGoogle(ctx context.Context, id core.Identity) (bool, 
 	if err != nil {
 		return false, err
 	}
-	err = g.checkGoogle(ctx, "", id, p)
+	err = g.checkGoogle(ctx, scope{}, id, p)
 	switch {
 	case err == nil:
 		return true, nil
@@ -236,10 +283,10 @@ func (g *Gate) SignedInWithGoogle(ctx context.Context, id core.Identity) (bool, 
 
 // checkTwoFactor is the 2FA requirement (§9a): the principal's subject has an
 // enrolled second factor.
-func (g *Gate) checkTwoFactor(ctx context.Context, workspaceID string, p principal) error {
+func (g *Gate) checkTwoFactor(ctx context.Context, sc scope, p principal) error {
 	if p.subject == "" {
 		if p.viaKey {
-			return g.unattributed(workspaceID)
+			return g.unattributed(sc)
 		}
 		return nil // nobody to check: a platform principal
 	}
@@ -254,14 +301,14 @@ func (g *Gate) checkTwoFactor(ctx context.Context, workspaceID string, p princip
 		// The key's creator is no longer a Kratos identity (a deleted account),
 		// so no second factor can ever be shown for it. Exempting it would let an
 		// orphaned key bypass the setting; refuse it like a key with no creator.
-		return g.unattributed(workspaceID)
+		return g.unattributed(sc)
 	case !e.human:
 		// Kratos does not know this subject: a platform principal that has nothing
 		// to enroll, and blocking it would lock out the platform itself.
 		return nil
 	}
 	g.cfg.Metrics.refused(reasonNotEnrolled)
-	return core.NewWorkspaceTwoFactorRequiredError(workspaceID)
+	return core.NewLoginTwoFactorRequiredError(sc.workspaceID, sc.required)
 }
 
 // checkGoogle is the Google-login requirement (§9b). What decides depends on
@@ -282,7 +329,7 @@ func (g *Gate) checkTwoFactor(ctx context.Context, workspaceID string, p princip
 //     this check, so what is left to ask is the member's account: a linked
 //     Google account that matches their email. A subject Kratos does not know
 //     is a platform principal and is exempt.
-func (g *Gate) checkGoogle(ctx context.Context, workspaceID string, id core.Identity, p principal) error {
+func (g *Gate) checkGoogle(ctx context.Context, sc scope, id core.Identity, p principal) error {
 	refuse, platformExempt := g.refuseMember, false
 	switch {
 	case p.viaKey || id.Method == core.MethodSSH:
@@ -295,12 +342,12 @@ func (g *Gate) checkGoogle(ctx context.Context, workspaceID string, id core.Iden
 		}
 		refuse = g.refuseKey
 		if stamp != core.SignInGoogle || p.subject == "" {
-			return refuse(workspaceID)
+			return refuse(sc)
 		}
 	case id.Method == core.MethodSession && id.SignIn != core.SignInUnrecorded,
 		id.Method == core.MethodOAuth2 && id.Human:
 		if id.SignIn != core.SignInGoogle {
-			return refuse(workspaceID)
+			return refuse(sc)
 		}
 	default:
 		if p.subject == "" {
@@ -315,19 +362,19 @@ func (g *Gate) checkGoogle(ctx context.Context, workspaceID string, id core.Iden
 	case !a.human && platformExempt:
 		return nil // Kratos does not know this subject: a platform principal
 	case !a.human || !a.matches:
-		return refuse(workspaceID)
+		return refuse(sc)
 	}
 	return nil
 }
 
-func (g *Gate) refuseMember(workspaceID string) error {
+func (g *Gate) refuseMember(sc scope) error {
 	g.cfg.Metrics.refused(reasonNotGoogle)
-	return core.NewWorkspaceGoogleLoginRequiredError(workspaceID)
+	return core.NewLoginGoogleLoginRequiredError(sc.workspaceID, sc.required, false)
 }
 
-func (g *Gate) refuseKey(workspaceID string) error {
+func (g *Gate) refuseKey(sc scope) error {
 	g.cfg.Metrics.refused(reasonKeyNotGoogle)
-	return core.NewWorkspaceGoogleLoginKeyError(workspaceID)
+	return core.NewLoginGoogleLoginRequiredError(sc.workspaceID, sc.required, true)
 }
 
 // unavailable fails closed: an answer that cannot be had is never an allow.
@@ -339,11 +386,9 @@ func (g *Gate) unavailable(what string, err error) error {
 
 // unattributed refuses an API key whose creator's second factor cannot be
 // checked. It would otherwise be a hole around the setting.
-func (g *Gate) unattributed(workspaceID string) error {
+func (g *Gate) unattributed(sc scope) error {
 	g.cfg.Metrics.refused(reasonUnattributedKey)
-	return core.NewForbiddenError(core.CodeWorkspaceTwoFactorRequired,
-		"this workspace requires two-factor authentication and this API key has no recorded creator whose second factor could be checked; create a new API key",
-		map[string]any{"workspaceId": workspaceID})
+	return core.NewLoginUnattributedKeyError(sc.workspaceID, sc.required)
 }
 
 // ObjectWorkspace implements core.TwoFactorObjectResolver: an agent session's
@@ -367,15 +412,6 @@ func (g *Gate) ObjectWorkspace(ctx context.Context, object string) (string, erro
 			g.sessions.Put(sessionID, ws, g.now().Add(TTL))
 		}
 		return ws, err
-	})
-}
-
-func (g *Gate) required(ctx context.Context, workspaceID string) (core.LoginRequirements, error) {
-	if g.cfg.Settings == nil {
-		return core.LoginRequirements{}, nil
-	}
-	return g.settings.Load(ctx, workspaceID, TTL, func(ctx context.Context) (core.LoginRequirements, error) {
-		return g.cfg.Settings.LoginRequirements(ctx, workspaceID)
 	})
 }
 

@@ -1955,6 +1955,8 @@ type Mutation {
   setMaxShutdownDelay(id: String!, seconds: Int!): Service
   setNotificationsToSend(confirm: String, id: String!, value: String!): Service
   setNotifyOnFail(confirm: String, id: String!, value: String!): Service
+  setOrganizationRequireGoogleLogin(enabled: Boolean!, organizationId: String!): Organization
+  setOrganizationRequireTwoFactor(enabled: Boolean!, organizationId: String!): Organization
   setPipelineSpendLimit(spendLimitUsd: String, workspaceId: String!): PipelineSettings
   setPort(id: String!, port: Int!): Service
   setPreDeployCommand(command: String!, confirm: String, id: String!): Service
@@ -2055,6 +2057,8 @@ type Organization {
   name: String!
   plan: String!
   primaryWorkspaceId: String!
+  requireGoogleLogin: Boolean!
+  requireTwoFactor: Boolean!
   viewerRole: String!
   workspaces: [OrganizationWorkspace!]!
 }
@@ -3041,6 +3045,8 @@ type WorkspaceOrganization {
   id: String!
   name: String!
   primaryWorkspaceId: String!
+  requireGoogleLogin: Boolean!
+  requireTwoFactor: Boolean!
 }
 
 type WorkspaceSeatUsage {

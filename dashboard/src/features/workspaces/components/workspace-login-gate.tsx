@@ -5,7 +5,7 @@ import { WorkspaceTwoFactorBlockedPage } from "@/features/workspaces/components/
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useWorkspaceLoginBlock } from "@/features/workspaces/hooks/use-workspace-login-block";
 import {
-  clearWorkspaceLoginBlocks,
+  clearLoginBlocks,
   isLoginRequirementExemptPath,
 } from "@/features/workspaces/lib/workspace-login-block";
 
@@ -18,6 +18,8 @@ import {
  * the requirement in `workspace-login-block`; this gate compares that record
  * with the selection, so a refusal from another workspace walls nothing until
  * it is selected, and shows the page of the requirement the server named.
+ * When the workspace's org is what requires it (w7/m466, 9c), the refusal
+ * names the org and so does the page.
  *
  * Two exits keep it from becoming a trap. The account pages where a member
  * enrolls or connects Google (and the create-workspace page) are never walled,
@@ -35,22 +37,28 @@ export function WorkspaceLoginGate({
   children: React.ReactNode;
 }) {
   const { currentWorkspaceId } = useWorkspace();
-  const blocked = useWorkspaceLoginBlock(currentWorkspaceId);
+  const block = useWorkspaceLoginBlock(currentWorkspaceId);
   const exempt = useLocation({
     select: (location) => isLoginRequirementExemptPath(location.pathname),
   });
 
   useEffect(() => {
     if (!exempt) return;
-    return clearWorkspaceLoginBlocks;
+    return clearLoginBlocks;
   }, [exempt]);
 
-  if (blocked === null || exempt || currentWorkspaceId === null) {
+  if (block === null || exempt || currentWorkspaceId === null) {
     return children;
   }
-  return blocked === "googleLogin" ? (
-    <WorkspaceGoogleLoginBlockedPage workspaceId={currentWorkspaceId} />
+  return block.requirement === "googleLogin" ? (
+    <WorkspaceGoogleLoginBlockedPage
+      workspaceId={currentWorkspaceId}
+      organization={block.organization}
+    />
   ) : (
-    <WorkspaceTwoFactorBlockedPage workspaceId={currentWorkspaceId} />
+    <WorkspaceTwoFactorBlockedPage
+      workspaceId={currentWorkspaceId}
+      organization={block.organization}
+    />
   );
 }

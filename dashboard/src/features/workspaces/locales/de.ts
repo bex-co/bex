@@ -883,6 +883,41 @@ const deWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Fallback toast when a privacy save fails without a server reason (w7/m464)",
   },
+  "workspaces.loginRequirementRequiredByOrganization": {
+    message:
+      "Von {organization} in allen Workspaces der Organisation verlangt.",
+    description:
+      "Workspace Settings, under the 2FA or Google login switch: why it is on and locked, the workspace's organization requires it in all of its workspaces (w7/m466)",
+  },
+  "workspaces.loginRequirementOrganizationSettingsLink": {
+    message: "In den Einstellungen der Organisation ändern",
+    description:
+      "Link for an org Owner after the required-by-organization note, to the organization's Settings page (w7/m466)",
+  },
+  "workspaces.twoFactorBlockedOrganizationTitle": {
+    message:
+      "{organization} erfordert Zwei-Faktor-Authentifizierung in allen Workspaces",
+    description:
+      "Heading of the 2FA blocked page when the organization's setting refuses the member, on a workspace or on the org's own pages (w7/m466)",
+  },
+  "workspaces.twoFactorBlockedOrganizationBody": {
+    message:
+      "Ein Inhaber dieser Organisation verlangt von jedem Mitglied die Zwei-Faktor-Authentifizierung (2FA) in der Organisation und allen ihren Workspaces. Bis du sie aktivierst, kannst du nicht darauf zugreifen, und deine API-Schlüssel und SSH-Schlüssel können dafür nicht verwendet werden.",
+    description:
+      "Why the 2FA blocked page is shown when the organization's setting refuses the member (w7/m466)",
+  },
+  "workspaces.googleLoginBlockedOrganizationTitle": {
+    message:
+      "{organization} erfordert die Google-Anmeldung in allen Workspaces",
+    description:
+      "Heading of the Google login blocked page when the organization's setting refuses the member (w7/m466)",
+  },
+  "workspaces.googleLoginBlockedOrganizationBody": {
+    message:
+      "Ein Inhaber dieser Organisation verlangt von jedem Mitglied die Anmeldung mit Google in der Organisation und allen ihren Workspaces. Bis du dich mit dem Google-Konto deiner bex-E-Mail-Adresse anmeldest, kannst du nicht darauf zugreifen, und API-Schlüssel und SSH-Schlüssel, die du bei einer anderen Anmeldung erstellt hast, können dafür nicht verwendet werden.",
+    description:
+      "Why the Google login blocked page is shown when the organization's setting refuses the member (w7/m466)",
+  },
 };
 
 export default deWorkspaces;

@@ -64,8 +64,8 @@ Once they hold, the downgrade deletes the org, its members, its invites and its 
 
 - Org events are audit rows whose resource is `org:<org-id>`. `audit_events.workspace_id` is the id part of the resource, so an org row is keyed by the org id and never appears in a workspace log, and no workspace row appears in the org log.
 - `GET /v1/organizations/{orgId}/audit-logs` answers Render's `auditLogWithCursor` rows with the workspace log's parameters (`startTime`, `endTime`, `direction`, `cursor`, `limit` up to 1000, through `audit.FilterOf`). An Owner reads it (`can_manage` on the org); anyone else gets 403 and an unknown org 404. History is floored at the org's `audit_visible_from`. GraphQL `organizationAuditLogs(organizationId, …)` reads the same rows, and the org Settings page's **Export as CSV** pages the REST route, at most 90 days per export. Render's MCP has no audit-log tool, so bex adds none, as for workspaces.
-- Events bex records: `InviteToOrgEvent`, `AcceptOrgInviteEvent`, `AddOrgMemberEvent` (a person added other than by an org invite: a workspace invite that made them a Member, a support transfer), `RemoveOrgMemberEvent`, `JoinTeamEvent`, `ChangeOrgRoleEvent`, `ChangeOrgNameEvent`, `CreateWorkspaceEvent` and `DeleteWorkspaceEvent` (for workspaces created in or deleted from the org) and `ChangeWorkspacePrivacyEvent`. An org created by an upgrade records no Render event; the workspace's own plan change stays in its own log.
-- Non-goals: the IdP events (`CreateOrgDomainEvent` … `RevokeOrganizationSCIMToken`), because SSO and SCIM are out (`.pm/DO_NOT_DO.md`). Follow-ups: `ChangeOrgAllowedLoginMethodsEvent` and `ChangeOrg2FAEnforcementEvent`, which need org-level login settings (filed by t014).
+- Events bex records: `InviteToOrgEvent`, `AcceptOrgInviteEvent`, `AddOrgMemberEvent` (a person added other than by an org invite: a workspace invite that made them a Member, a support transfer), `RemoveOrgMemberEvent`, `JoinTeamEvent`, `ChangeOrgRoleEvent`, `ChangeOrgNameEvent`, `CreateWorkspaceEvent` and `DeleteWorkspaceEvent` (for workspaces created in or deleted from the org), `ChangeWorkspacePrivacyEvent`, and, since w7/m466 (D10), `ChangeOrg2FAEnforcementEvent` and `ChangeOrgAllowedLoginMethodsEvent` with `metadata.to`. An org created by an upgrade records no Render event; the workspace's own plan change stays in its own log.
+- Non-goals: the IdP events (`CreateOrgDomainEvent` … `RevokeOrganizationSCIMToken`), because SSO and SCIM are out (`.pm/DO_NOT_DO.md`). No other Render org event is left unrecorded (`renderOrganizationEvents`).
 
 ### D8 — Surfaces
 
@@ -78,8 +78,12 @@ Once they hold, the downgrade deletes the org, its members, its invites and its 
 
 Migration `0293_organizations` makes each existing Scale and Enterprise workspace the primary of its own org, named after it, with its current user admins as Owners and its other people as Members. bex never recorded who upgraded a workspace, and an admin already controls it. Two such workspaces held by one admin become two orgs; joining them is the support transfer, run only on that customer's request.
 
+### D10 — Org login settings
+
+An Org Owner can require two-factor authentication and Google login in every workspace of the org (w7/m466), Render's "**Require Login Method** under **Security**" without SAML SSO, and its org 2FA enforcement. While a setting is on, each org workspace enforces it beside its own setting (the OR of the two), and so do the org's own objects; turning it off leaves each workspace's own setting as it was. Owners change it on the org Settings page's Security card and GraphQL; every person in the org reads it. Refusals reuse the workspace codes with the org named; each change is one org audit row (D7). The full rule, with which parts are inferred from Render's pages, is [ADR012 §9c](ADR012-auth.md#9c-organization-enforced-two-factor-authentication-and-google-login-w7m466).
+
 ## Consequences
 
 - A Scale or Enterprise team runs unlimited workspaces under one org and one plan, with Render's org roles and audit log. The pricing table's `Workspaces`, `Organization user roles` and `Org-level audit logs` rows get a checked disposition (`plan_table_test.go`).
 - `admin from org` is gone from the model; no code ever wrote the tuple it read.
-- SSO, SCIM and domain capture stay out (`.pm/DO_NOT_DO.md`). Enterprise seat-based billing and org-level login settings are follow-ups.
+- SSO, SCIM and domain capture stay out (`.pm/DO_NOT_DO.md`). Enterprise seat-based billing is a follow-up; org-level login settings shipped as D10 (w7/m466).

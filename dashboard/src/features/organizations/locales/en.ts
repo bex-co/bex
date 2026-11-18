@@ -400,6 +400,99 @@ const enOrganizations: Record<string, TranslationEntry> = {
     message: "Choose Public or Invite-only.",
     description: "INVALID_PRIVACY refusal",
   },
+  "organizations.securityTitle": {
+    message: "Security",
+    description:
+      "Org Settings page: title of the login requirements card (Render's section name, where it puts Require Login Method; w7/m466)",
+  },
+  "organizations.securityDescription": {
+    message:
+      "How members must sign in, in every workspace of the organization and on its own pages, on top of each workspace's own settings.",
+    description: "Org Settings page: what the Security card's settings do",
+  },
+  "organizations.securityOwnerOnly": {
+    message: "Only Owners can change these settings.",
+    description:
+      "Org Settings page: why the Security settings are read-only for a Member or Guest",
+  },
+  "organizations.requireTwoFactorLabel": {
+    message: "Require two-factor authentication",
+    description:
+      "Org Settings page: label of the switch that requires 2FA in every workspace of the org",
+  },
+  "organizations.requireTwoFactorDescription": {
+    message:
+      "Members without two-factor authentication (2FA) can't access the organization or any of its workspaces until they enable it. Their API keys and SSH keys are blocked until then too.",
+    description: "Org Settings page: what requiring 2FA does",
+  },
+  "organizations.requireGoogleLoginLabel": {
+    message: "Require Google login",
+    description:
+      "Org Settings page: label of the switch that requires signing in with Google in every workspace of the org",
+  },
+  "organizations.requireGoogleLoginDescription": {
+    message:
+      "Members who don't sign in with the Google account of their bex email address can't access the organization or any of its workspaces. API keys and SSH keys created while signed in another way are blocked too.",
+    description: "Org Settings page: what requiring Google login does",
+  },
+  "organizations.requireTwoFactorConfirmTitle": {
+    message: "Require two-factor authentication in {organization}?",
+    description:
+      "Title of the confirmation before an Owner requires 2FA in the org",
+  },
+  "organizations.requireTwoFactorConfirm": {
+    message:
+      "Members without two-factor authentication lose access to the organization and all of its workspaces until they turn it on, and their API keys and SSH keys stop working with them. Each workspace's own setting stays as it is.",
+    description:
+      "Body of the confirmation before an Owner requires 2FA in the org",
+  },
+  "organizations.requireGoogleLoginConfirmTitle": {
+    message: "Require Google login in {organization}?",
+    description:
+      "Title of the confirmation before an Owner requires Google login in the org",
+  },
+  "organizations.requireGoogleLoginConfirm": {
+    message:
+      "Members who aren't signed in with the Google account of their bex email address lose access to the organization and all of its workspaces until they sign in that way, and API keys and SSH keys created while signed in another way stop working with them. Each workspace's own setting stays as it is.",
+    description:
+      "Body of the confirmation before an Owner requires Google login in the org",
+  },
+  "organizations.requireConfirmAction": {
+    message: "Require",
+    description:
+      "Confirm button of the require-2FA and require-Google-login confirmations",
+  },
+  "organizations.requireTwoFactorEnabledToast": {
+    message:
+      "Two-factor authentication is now required in every workspace of {name}",
+    description: "Toast after an Owner turns the org's 2FA requirement on",
+  },
+  "organizations.requireTwoFactorDisabledToast": {
+    message: "{name} no longer requires two-factor authentication",
+    description: "Toast after an Owner turns the org's 2FA requirement off",
+  },
+  "organizations.requireGoogleLoginEnabledToast": {
+    message: "Google login is now required in every workspace of {name}",
+    description:
+      "Toast after an Owner turns the org's Google login requirement on",
+  },
+  "organizations.requireGoogleLoginDisabledToast": {
+    message: "{name} no longer requires Google login",
+    description:
+      "Toast after an Owner turns the org's Google login requirement off",
+  },
+  "organizations.requireTwoFactorErrorOwnerNotEnrolled": {
+    message:
+      "Turn on two-factor authentication for your own account before requiring it in this organization, or you would lock yourself out.",
+    description:
+      "Refusal for code WORKSPACE_2FA_ADMIN_NOT_ENROLLED on the org setting: the acting Owner has no second factor",
+  },
+  "organizations.requireGoogleLoginErrorOwnerNotSignedIn": {
+    message:
+      "Sign in with the Google account of your bex email address before requiring Google login in this organization, or you would lock yourself out.",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN on the org setting: the acting Owner is not signed in with Google",
+  },
 };
 
 export default enOrganizations;

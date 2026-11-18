@@ -96,6 +96,9 @@ func organizationInviteView(inv store.OrganizationInvite) OrganizationInviteView
 // organizationNotFound is the one answer for an org that does not exist and
 // for one the caller is not in.
 func organizationNotFound(orgID string, err error) error {
+	if core.IsLoginRefusal(err) {
+		return err // a member the org's login setting refuses is told why (w7/m466)
+	}
 	if err == nil || errors.Is(err, core.ErrForbidden) || errors.Is(err, store.ErrNotFound) {
 		return core.NewOrganizationNotFoundError(orgID)
 	}

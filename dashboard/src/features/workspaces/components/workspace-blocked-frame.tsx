@@ -29,9 +29,41 @@ import { useLeaveWorkspace } from "@/features/team/hooks/use-leave-workspace";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 /**
- * The frame both blocked pages share (2FA, w22/m402; Google login, w7/m465):
- * one card naming the workspace and why, its first region the requirement's
- * own way back in, then `WorkspaceBlockedExits`.
+ * The card every login-requirement block shows (2FA, w22/m402; Google login,
+ * w7/m465; an org's requirement, w7/m466): the title naming what requires it
+ * and the explanation, then `children`, its first region the requirement's
+ * own way back in. `heading` is the title's level: the page's own heading on
+ * a workspace's blocked page, a section heading under an org page's header.
+ */
+export function LoginBlockedCard({
+  title,
+  description,
+  heading,
+  children,
+}: {
+  title: string;
+  description: string;
+  heading: "h1" | "h2";
+  children: ReactNode;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle as={heading} className="flex items-center gap-2">
+          <ShieldAlert className="size-5 shrink-0 text-destructive" />
+          {title}
+        </CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">{children}</CardContent>
+    </Card>
+  );
+}
+
+/**
+ * The frame both workspace blocked pages share: one card naming the workspace
+ * (or the org whose setting it is) and why, its first region the
+ * requirement's own way back in, then `WorkspaceBlockedExits`.
  * `WorkspaceBlockedFrameSkeleton` is its pending shape.
  */
 export function WorkspaceBlockedFrame({
@@ -48,16 +80,9 @@ export function WorkspaceBlockedFrame({
   return (
     <PageScroll data-testid={testId}>
       <div className="mx-auto w-full max-w-xl">
-        <Card>
-          <CardHeader>
-            <CardTitle as="h1" className="flex items-center gap-2">
-              <ShieldAlert className="size-5 shrink-0 text-destructive" />
-              {title}
-            </CardTitle>
-            <CardDescription>{description}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">{children}</CardContent>
-        </Card>
+        <LoginBlockedCard title={title} description={description} heading="h1">
+          {children}
+        </LoginBlockedCard>
       </div>
     </PageScroll>
   );

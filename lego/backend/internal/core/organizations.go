@@ -112,6 +112,10 @@ const (
 	AuditVerbOrgWorkspaceCreated     = "workspaces.CreateOrganizationWorkspace"
 	AuditVerbOrgWorkspaceDeleted     = "workspaces.Delete"
 	AuditVerbWorkspacePrivacyChanged = "workspaces.SetWorkspacePrivacy"
+	// The org's login settings (w7/m466): Render's
+	// ChangeOrg2FAEnforcementEvent and ChangeOrgAllowedLoginMethodsEvent.
+	AuditVerbOrgSetRequireTwoFactor   = "workspaces.SetOrganizationRequireTwoFactor"
+	AuditVerbOrgSetRequireGoogleLogin = "workspaces.SetOrganizationRequireGoogleLogin"
 )
 
 // OrganizationAudit is one org event's facts beyond its verb: the person or

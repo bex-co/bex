@@ -397,6 +397,98 @@ const koOrganizations: Record<string, TranslationEntry> = {
     message: "공개 또는 초대 전용을 선택하세요.",
     description: "INVALID_PRIVACY refusal",
   },
+  "organizations.securityTitle": {
+    message: "보안",
+    description:
+      "Org Settings page: title of the login requirements card (Render's section name, where it puts Require Login Method; w7/m466)",
+  },
+  "organizations.securityDescription": {
+    message:
+      "조직의 모든 워크스페이스와 조직 자체 페이지에서 멤버가 로그인해야 하는 방식입니다. 각 워크스페이스의 자체 설정에 더해 적용됩니다.",
+    description: "Org Settings page: what the Security card's settings do",
+  },
+  "organizations.securityOwnerOnly": {
+    message: "소유자만 이 설정을 변경할 수 있습니다.",
+    description:
+      "Org Settings page: why the Security settings are read-only for a Member or Guest",
+  },
+  "organizations.requireTwoFactorLabel": {
+    message: "2단계 인증 요구",
+    description:
+      "Org Settings page: label of the switch that requires 2FA in every workspace of the org",
+  },
+  "organizations.requireTwoFactorDescription": {
+    message:
+      "2단계 인증(2FA)을 사용하지 않는 멤버는 2단계 인증을 켜기 전까지 조직과 조직의 워크스페이스에 접근할 수 없습니다. 그때까지 API 키와 SSH 키도 차단됩니다.",
+    description: "Org Settings page: what requiring 2FA does",
+  },
+  "organizations.requireGoogleLoginLabel": {
+    message: "Google 로그인 요구",
+    description:
+      "Org Settings page: label of the switch that requires signing in with Google in every workspace of the org",
+  },
+  "organizations.requireGoogleLoginDescription": {
+    message:
+      "bex 이메일 주소의 Google 계정으로 로그인하지 않은 멤버는 조직과 조직의 워크스페이스에 접근할 수 없습니다. 다른 방법으로 로그인한 상태에서 만든 API 키와 SSH 키도 차단됩니다.",
+    description: "Org Settings page: what requiring Google login does",
+  },
+  "organizations.requireTwoFactorConfirmTitle": {
+    message: "{organization}에서 2단계 인증을 요구할까요?",
+    description:
+      "Title of the confirmation before an Owner requires 2FA in the org",
+  },
+  "organizations.requireTwoFactorConfirm": {
+    message:
+      "2단계 인증을 사용하지 않는 멤버는 2단계 인증을 켜기 전까지 조직과 모든 워크스페이스에 접근할 수 없게 되며, API 키와 SSH 키도 더 이상 작동하지 않습니다. 각 워크스페이스의 자체 설정은 그대로 유지됩니다.",
+    description:
+      "Body of the confirmation before an Owner requires 2FA in the org",
+  },
+  "organizations.requireGoogleLoginConfirmTitle": {
+    message: "{organization}에서 Google 로그인을 요구할까요?",
+    description:
+      "Title of the confirmation before an Owner requires Google login in the org",
+  },
+  "organizations.requireGoogleLoginConfirm": {
+    message:
+      "bex 이메일 주소의 Google 계정으로 로그인하지 않은 멤버는 그렇게 로그인하기 전까지 조직과 모든 워크스페이스에 접근할 수 없게 되며, 다른 방법으로 로그인한 상태에서 만든 API 키와 SSH 키도 더 이상 작동하지 않습니다. 각 워크스페이스의 자체 설정은 그대로 유지됩니다.",
+    description:
+      "Body of the confirmation before an Owner requires Google login in the org",
+  },
+  "organizations.requireConfirmAction": {
+    message: "요구",
+    description:
+      "Confirm button of the require-2FA and require-Google-login confirmations",
+  },
+  "organizations.requireTwoFactorEnabledToast": {
+    message: "이제 {name}의 모든 워크스페이스에서 2단계 인증이 필요합니다",
+    description: "Toast after an Owner turns the org's 2FA requirement on",
+  },
+  "organizations.requireTwoFactorDisabledToast": {
+    message: "{name}에서 더 이상 2단계 인증을 요구하지 않습니다",
+    description: "Toast after an Owner turns the org's 2FA requirement off",
+  },
+  "organizations.requireGoogleLoginEnabledToast": {
+    message: "이제 {name}의 모든 워크스페이스에서 Google 로그인이 필요합니다",
+    description:
+      "Toast after an Owner turns the org's Google login requirement on",
+  },
+  "organizations.requireGoogleLoginDisabledToast": {
+    message: "{name}에서 더 이상 Google 로그인을 요구하지 않습니다",
+    description:
+      "Toast after an Owner turns the org's Google login requirement off",
+  },
+  "organizations.requireTwoFactorErrorOwnerNotEnrolled": {
+    message:
+      "이 조직에서 2단계 인증을 요구하기 전에 먼저 본인 계정의 2단계 인증을 켜세요. 그렇지 않으면 본인이 접근할 수 없게 됩니다.",
+    description:
+      "Refusal for code WORKSPACE_2FA_ADMIN_NOT_ENROLLED on the org setting: the acting Owner has no second factor",
+  },
+  "organizations.requireGoogleLoginErrorOwnerNotSignedIn": {
+    message:
+      "이 조직에서 Google 로그인을 요구하기 전에 먼저 bex 이메일 주소의 Google 계정으로 로그인하세요. 그렇지 않으면 본인이 접근할 수 없게 됩니다.",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN on the org setting: the acting Owner is not signed in with Google",
+  },
 };
 
 export default koOrganizations;

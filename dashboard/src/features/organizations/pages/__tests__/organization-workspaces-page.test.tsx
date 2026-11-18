@@ -23,6 +23,12 @@ vi.mock("@/common/components/dashboard-layout", () => ({
   ),
 }));
 
+// The org's login check reads through Apollo (w7/m466); these pages' tests
+// stand for a caller the org does not refuse.
+vi.mock("@/features/organizations/hooks/use-organization-login-check", () => ({
+  useOrganizationLoginCheck: () => null,
+}));
+
 const setCurrentWorkspaceId = vi.fn();
 vi.mock("@/features/workspaces/context/hooks", () => ({
   useWorkspace: () => ({ setCurrentWorkspaceId }),

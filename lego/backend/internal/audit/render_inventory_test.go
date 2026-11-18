@@ -155,8 +155,8 @@ var renderOrganizationEvents = map[string]renderWorkspaceEvent{
 	"RemoveOrgMemberEvent":              {verbs: []string{core.AuditVerbOrgMemberRemoved}},
 	"JoinTeamEvent":                     {verbs: []string{core.AuditVerbJoinWorkspace, core.AuditVerbJoinWorkspaceAsAdmin}},
 	"ChangeOrgRoleEvent":                {verbs: []string{core.AuditVerbOrgRoleChanged}},
-	"ChangeOrgAllowedLoginMethodsEvent": {notYet: "org-level login settings, filed by w7/m464 t014"},
-	"ChangeOrg2FAEnforcementEvent":      {notYet: "org-level 2FA enforcement, filed by w7/m464 t014"},
+	"ChangeOrgAllowedLoginMethodsEvent": {verbs: []string{core.AuditVerbOrgSetRequireGoogleLogin}},
+	"ChangeOrg2FAEnforcementEvent":      {verbs: []string{core.AuditVerbOrgSetRequireTwoFactor}},
 	// Workspace management. workspaces.Create also reports CreateWorkspaceEvent
 	// in a standalone workspace's own log (w4/679), as workspaces.Delete does
 	// DeleteWorkspaceEvent.

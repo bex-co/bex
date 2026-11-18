@@ -219,6 +219,10 @@ var renderEvents = map[string]string{
 	core.AuditVerbOrgRenamed:              "ChangeOrgNameEvent",
 	core.AuditVerbOrgWorkspaceCreated:     "CreateWorkspaceEvent",
 	core.AuditVerbWorkspacePrivacyChanged: "ChangeWorkspacePrivacyEvent",
+	// The org's login settings (w7/m466); each entry carries the value it was
+	// set to, as the workspace settings' entries do.
+	core.AuditVerbOrgSetRequireTwoFactor:   "ChangeOrg2FAEnforcementEvent",
+	core.AuditVerbOrgSetRequireGoogleLogin: "ChangeOrgAllowedLoginMethodsEvent",
 	// Render's workspace "require two-factor authentication" enforcement
 	// (w22/m402); the entry carries the value it was set to.
 	core.AuditVerbSetRequireTwoFactor: "ChangeTeam2FAEnforcementEvent",

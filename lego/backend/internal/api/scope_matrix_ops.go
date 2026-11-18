@@ -218,6 +218,8 @@ var classifiedOps = map[string]string{
 	"GQL Mutation.setWorkspacePrivacy":                       core.OpClassWrite,
 	"GQL Mutation.setWorkspaceRequireTwoFactor":              core.OpClassWrite,
 	"GQL Mutation.setWorkspaceRequireGoogleLogin":            core.OpClassWrite,
+	"GQL Mutation.setOrganizationRequireTwoFactor":           core.OpClassWrite,
+	"GQL Mutation.setOrganizationRequireGoogleLogin":         core.OpClassWrite,
 	"GQL Mutation.steerAgentSession":                         core.OpClassWrite,
 	"GQL Mutation.suspendDatabase":                           core.OpClassWrite,
 	"GQL Mutation.suspendKeyValue":                           core.OpClassWrite,

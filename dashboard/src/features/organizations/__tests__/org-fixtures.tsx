@@ -46,6 +46,8 @@ export function organization(
     primaryWorkspaceId: "tea-hq",
     viewerRole: role,
     createdAt: "2026-11-01T00:00:00Z",
+    requireTwoFactor: false,
+    requireGoogleLogin: false,
     workspaces: workspaces ?? [
       orgWorkspace({ primary: true, viewerIsMember: role === "OWNER" }),
       orgWorkspace({
@@ -102,7 +104,10 @@ function visibleLabel(element: Element): string {
   return copy.textContent?.trim() ?? "";
 }
 
-/** Ready buttons, or the reserved boxes a skeleton draws in their place. */
+/**
+ * Ready buttons, or the reserved boxes a skeleton draws in their place. A
+ * login requirement's switch is read with its row (`loginRequirements`).
+ */
 function actionLabels(root: Element | null | undefined): string[] {
   if (!root) return [];
   const reserved = [
@@ -111,9 +116,14 @@ function actionLabels(root: Element | null | undefined): string[] {
       "span.relative.inline-flex.shrink-0 > span.invisible:not([data-slot])",
     ),
   ];
-  const buttons = [...root.querySelectorAll("button")];
+  const buttons = [...root.querySelectorAll("button:not([role=switch])")];
   return [...reserved, ...buttons].map(visibleLabel);
 }
+
+/** A login requirement row's control: the switch, the state, or (pending)
+ *  the switch's box, which a ready row of either kind settles into. */
+const LOGIN_REQUIREMENT_CONTROL =
+  '[role=switch], [data-slot=badge], [data-skeleton-region$="-control"]';
 
 /**
  * The geometry-bearing structure of an org page, read the same way from the
@@ -150,6 +160,18 @@ export function pageStructure(root: HTMLElement) {
       actions: actionLabels(row.lastElementChild),
     })),
     labels: texts("label"),
+    /** Each Security setting (w7/m466): its label, whether its control's
+     *  place is held, and what it requires. */
+    loginRequirements: [
+      ...root.querySelectorAll("[data-login-requirement]"),
+    ].map((section) => ({
+      name: section.getAttribute("data-login-requirement"),
+      label: section.querySelector("label")?.textContent,
+      control: section.querySelectorAll(LOGIN_REQUIREMENT_CONTROL).length,
+      description: section.querySelector(":scope > p")?.textContent,
+    })),
+    /** The cards' static notes (who may change a setting). */
+    notes: texts("[data-slot=card-content] > p.text-xs"),
     /** Every button on the page, in order (a skeleton's reserved boxes). */
     buttons: actionLabels(root.querySelector("[data-page-scroll]")),
   };
@@ -160,10 +182,12 @@ type Answer = Record<string, unknown> | GraphQLError;
 /**
  * A real Apollo client whose network answers each operation by name and
  * records what was sent, so a test reads a mutation's variables as bex-api
- * would receive them.
+ * would receive them. `before` links run ahead of the network, as the app's
+ * own (the auth error link) do.
  */
 export function scriptedClient(
   answers: Record<string, (variables: Record<string, unknown>) => Answer>,
+  before: ApolloLink[] = [],
 ) {
   const sent: { name: string; variables: Record<string, unknown> }[] = [];
   const link = new ApolloLink(
@@ -184,7 +208,10 @@ export function scriptedClient(
         observer.complete();
       }),
   );
-  const client = new ApolloClient({ link, cache: new InMemoryCache() });
+  const client = new ApolloClient({
+    link: ApolloLink.from([...before, link]),
+    cache: new InMemoryCache(),
+  });
   const wrapper = ({ children }: { children: ReactNode }) => (
     <ApolloProvider client={client}>{children}</ApolloProvider>
   );

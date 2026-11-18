@@ -203,17 +203,27 @@ func (s *PGStore) setTenantLoginRequirement(ctx context.Context, update, id stri
 }
 
 // LoginRequirements reads only the login settings — the enforcement point's
-// question, asked at most once a minute per workspace (internal/twofactor). A
-// workspace that does not exist requires nothing: the zero value, no error.
+// question, asked at most once a minute per workspace (internal/twofactor): the
+// workspace's own settings ORed with its organization's (w7/m466), naming the
+// org when it requires either. A workspace that does not exist requires
+// nothing: the zero value, no error.
 func (s *PGStore) LoginRequirements(ctx context.Context, id string) (core.LoginRequirements, error) {
 	var r core.LoginRequirements
-	err := s.Pool.QueryRow(ctx, `SELECT require_two_factor, require_google_login FROM tenants WHERE id = $1`, id).
-		Scan(&r.TwoFactor, &r.GoogleLogin)
+	var orgID, orgName *string
+	var orgTwoFactor, orgGoogle bool
+	err := s.Pool.QueryRow(ctx, `SELECT t.require_two_factor, t.require_google_login,
+		o.id, o.name, COALESCE(o.require_two_factor, false), COALESCE(o.require_google_login, false)
+		FROM tenants t LEFT JOIN organizations o ON o.id = t.organization_id
+		WHERE t.id = $1`, id).
+		Scan(&r.TwoFactor, &r.GoogleLogin, &orgID, &orgName, &orgTwoFactor, &orgGoogle)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return core.LoginRequirements{}, nil
 	}
 	if err != nil {
 		return core.LoginRequirements{}, classify("workspace", err)
+	}
+	if orgID != nil {
+		r = r.WithOrganization(*orgID, *orgName, orgTwoFactor, orgGoogle)
 	}
 	return r, nil
 }
@@ -221,12 +231,16 @@ func (s *PGStore) LoginRequirements(ctx context.Context, id string) (core.LoginR
 // GoogleLoginWorkspaces lists the workspaces subject belongs to that require
 // Google login, by name: the Kratos settings guard refuses an email change or
 // a Google unlink while it is non-empty, and names them so the member knows
-// which to leave (w7/m465).
+// which to leave (w7/m465). A workspace whose organization requires it
+// (w7/m466) is named "<org> / <workspace>", so the message names the org.
 func (s *PGStore) GoogleLoginWorkspaces(ctx context.Context, subject string) ([]string, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT COALESCE(NULLIF(t.display_name, ''), t.name)
+		`SELECT CASE WHEN COALESCE(o.require_google_login, false)
+		            THEN o.name || ' / ' || COALESCE(NULLIF(t.display_name, ''), t.name)
+		            ELSE COALESCE(NULLIF(t.display_name, ''), t.name) END
 		 FROM tenants t JOIN tenant_members m ON m.tenant_id = t.id
-		 WHERE m.subject = $1 AND m.kind = 'user' AND t.require_google_login
+		 LEFT JOIN organizations o ON o.id = t.organization_id
+		 WHERE m.subject = $1 AND m.kind = 'user' AND (t.require_google_login OR COALESCE(o.require_google_login, false))
 		 ORDER BY t.created_at, t.id`, subject)
 	if err != nil {
 		return nil, err

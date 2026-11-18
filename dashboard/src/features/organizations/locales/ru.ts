@@ -401,6 +401,100 @@ const ruOrganizations: Record<string, TranslationEntry> = {
     message: "Выберите «Публичное» или «Только по приглашению».",
     description: "INVALID_PRIVACY refusal",
   },
+  "organizations.securityTitle": {
+    message: "Безопасность",
+    description:
+      "Org Settings page: title of the login requirements card (Render's section name, where it puts Require Login Method; w7/m466)",
+  },
+  "organizations.securityDescription": {
+    message:
+      "Как участники должны входить: во всех рабочих пространствах организации и на её собственных страницах, в дополнение к настройкам каждого рабочего пространства.",
+    description: "Org Settings page: what the Security card's settings do",
+  },
+  "organizations.securityOwnerOnly": {
+    message: "Изменить эти настройки могут только владельцы.",
+    description:
+      "Org Settings page: why the Security settings are read-only for a Member or Guest",
+  },
+  "organizations.requireTwoFactorLabel": {
+    message: "Требовать двухфакторную аутентификацию",
+    description:
+      "Org Settings page: label of the switch that requires 2FA in every workspace of the org",
+  },
+  "organizations.requireTwoFactorDescription": {
+    message:
+      "Участники без двухфакторной аутентификации (2FA) не могут получить доступ к организации и её рабочим пространствам, пока не включат её. До тех пор их API-ключи и SSH-ключи тоже блокируются.",
+    description: "Org Settings page: what requiring 2FA does",
+  },
+  "organizations.requireGoogleLoginLabel": {
+    message: "Требовать вход через Google",
+    description:
+      "Org Settings page: label of the switch that requires signing in with Google in every workspace of the org",
+  },
+  "organizations.requireGoogleLoginDescription": {
+    message:
+      "Участники, которые не входят через аккаунт Google своего адреса электронной почты в bex, не могут получить доступ к организации и её рабочим пространствам. API-ключи и SSH-ключи, созданные при входе другим способом, тоже блокируются.",
+    description: "Org Settings page: what requiring Google login does",
+  },
+  "organizations.requireTwoFactorConfirmTitle": {
+    message: "Требовать двухфакторную аутентификацию в {organization}?",
+    description:
+      "Title of the confirmation before an Owner requires 2FA in the org",
+  },
+  "organizations.requireTwoFactorConfirm": {
+    message:
+      "Участники без двухфакторной аутентификации потеряют доступ к организации и всем её рабочим пространствам, пока не включат её, а их API-ключи и SSH-ключи перестанут с ними работать. Собственная настройка каждого рабочего пространства останется прежней.",
+    description:
+      "Body of the confirmation before an Owner requires 2FA in the org",
+  },
+  "organizations.requireGoogleLoginConfirmTitle": {
+    message: "Требовать вход через Google в {organization}?",
+    description:
+      "Title of the confirmation before an Owner requires Google login in the org",
+  },
+  "organizations.requireGoogleLoginConfirm": {
+    message:
+      "Участники, которые не вошли через аккаунт Google своего адреса электронной почты в bex, потеряют доступ к организации и всем её рабочим пространствам, пока не войдут так, а API-ключи и SSH-ключи, созданные при входе другим способом, перестанут с ними работать. Собственная настройка каждого рабочего пространства останется прежней.",
+    description:
+      "Body of the confirmation before an Owner requires Google login in the org",
+  },
+  "organizations.requireConfirmAction": {
+    message: "Требовать",
+    description:
+      "Confirm button of the require-2FA and require-Google-login confirmations",
+  },
+  "organizations.requireTwoFactorEnabledToast": {
+    message:
+      "Двухфакторная аутентификация теперь требуется во всех рабочих пространствах {name}",
+    description: "Toast after an Owner turns the org's 2FA requirement on",
+  },
+  "organizations.requireTwoFactorDisabledToast": {
+    message: "{name} больше не требует двухфакторную аутентификацию",
+    description: "Toast after an Owner turns the org's 2FA requirement off",
+  },
+  "organizations.requireGoogleLoginEnabledToast": {
+    message:
+      "Вход через Google теперь требуется во всех рабочих пространствах {name}",
+    description:
+      "Toast after an Owner turns the org's Google login requirement on",
+  },
+  "organizations.requireGoogleLoginDisabledToast": {
+    message: "{name} больше не требует вход через Google",
+    description:
+      "Toast after an Owner turns the org's Google login requirement off",
+  },
+  "organizations.requireTwoFactorErrorOwnerNotEnrolled": {
+    message:
+      "Включите двухфакторную аутентификацию для своей учётной записи, прежде чем требовать её в этой организации, иначе вы потеряете к ней доступ.",
+    description:
+      "Refusal for code WORKSPACE_2FA_ADMIN_NOT_ENROLLED on the org setting: the acting Owner has no second factor",
+  },
+  "organizations.requireGoogleLoginErrorOwnerNotSignedIn": {
+    message:
+      "Войдите через аккаунт Google своего адреса электронной почты в bex, прежде чем требовать вход через Google в этой организации, иначе вы потеряете к ней доступ.",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN on the org setting: the acting Owner is not signed in with Google",
+  },
 };
 
 export default ruOrganizations;

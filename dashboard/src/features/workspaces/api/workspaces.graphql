@@ -20,11 +20,14 @@ query Workspaces {
     requireGoogleLogin
     # The org the workspace belongs to (w7/m464, ADR115): null, false and
     # null for a standalone workspace. The switcher groups by it; plan
-    # surfaces read primary.
+    # surfaces read primary. The org's login settings (w7/m466) lock the
+    # workspace's own 2FA and Google login switches on while they are on.
     organization {
       id
       name
       primaryWorkspaceId
+      requireTwoFactor
+      requireGoogleLogin
     }
     primary
     privacy
@@ -45,6 +48,8 @@ mutation CreateWorkspace($name: String!, $plan: String) {
       id
       name
       primaryWorkspaceId
+      requireTwoFactor
+      requireGoogleLogin
     }
     primary
     privacy
@@ -111,6 +116,8 @@ mutation FinalizeWorkspaceCreation($attemptId: String!) {
       id
       name
       primaryWorkspaceId
+      requireTwoFactor
+      requireGoogleLogin
     }
     primary
     privacy

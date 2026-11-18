@@ -5,11 +5,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card";
-import { Label } from "@/common/components/ui/label";
-import { Skeleton } from "@/common/components/ui/skeleton";
 import type { WorkspaceLoginRequirement } from "@/common/apollo/auth-error-link";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { LOGIN_REQUIREMENT_SETTINGS } from "@/features/workspaces/lib/login-requirements";
+import {
+  LoginRequirementRow,
+  OrganizationRequirementNote,
+} from "@/features/workspaces/components/login-requirement-row";
+import {
+  LOGIN_REQUIREMENT_SETTINGS,
+  requiringOrganization,
+} from "@/features/workspaces/lib/login-requirements";
+import type { WorkspaceOrganizationRef } from "@/features/workspaces/types";
 
 /**
  * WorkspaceLoginRequirementCard's pending shape, for either requirement: its
@@ -22,17 +28,24 @@ import { LOGIN_REQUIREMENT_SETTINGS } from "@/features/workspaces/lib/login-requ
  *
  * A workspace already known to be below Pro (`belowPro`) settles to the card
  * with its plan notice, so the preview carries the notice too: static copy,
- * without the admin's "Change plan" link, which waits for the role.
+ * without the admin's "Change plan" link, which waits for the role. A
+ * workspace already known to be in an org that requires it (`organization`,
+ * the workspace's org; w7/m466) settles to the card with the org's note, so
+ * the preview reserves the note's footprint, the Owner's link included,
+ * without its text.
  */
 export function WorkspaceLoginRequirementCardSkeleton({
   requirement,
   belowPro = false,
+  organization = null,
 }: {
   requirement: WorkspaceLoginRequirement;
   belowPro?: boolean;
+  organization?: WorkspaceOrganizationRef | null;
 }) {
   const { t } = useTranslations();
   const setting = LOGIN_REQUIREMENT_SETTINGS[requirement];
+  const lockedBy = requiringOrganization(requirement, organization);
   return (
     <Card data-testid={`workspace-${setting.section}-skeleton`} aria-hidden>
       <CardHeader>
@@ -42,13 +55,15 @@ export function WorkspaceLoginRequirementCardSkeleton({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex min-h-6 flex-wrap items-center justify-between gap-3">
-          <Label>{t(setting.switchLabelKey)}</Label>
-          <Skeleton
-            data-skeleton-region={`${setting.section}-control`}
-            className="h-5 w-9 shrink-0 rounded-full"
-          />
-        </div>
+        <LoginRequirementRow
+          id={`workspace-${setting.section}`}
+          region={setting.section}
+          label={t(setting.switchLabelKey)}
+          control="pending"
+        />
+        {lockedBy ? (
+          <OrganizationRequirementNote organization={lockedBy} pending />
+        ) : null}
         {belowPro ? (
           <p className="text-muted-foreground text-xs">
             {t(setting.proPlanOnlyKey)}

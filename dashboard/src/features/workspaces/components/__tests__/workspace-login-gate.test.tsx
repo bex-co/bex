@@ -16,12 +16,25 @@ import { WorkspaceLoginGate } from "@/features/workspaces/components/workspace-l
 import { WorkspaceTwoFactorBlockedSkeleton } from "@/features/workspaces/components/workspace-two-factor-blocked-skeleton";
 import { WorkspaceGoogleLoginBlockedSkeleton } from "@/features/workspaces/components/workspace-google-login-blocked-skeleton";
 import { shape } from "@/test/card-shape";
+import type {
+  LoginRefusalOrganization,
+  WorkspaceLoginRequirement,
+} from "@/common/apollo/auth-error-link";
 import {
-  clearWorkspaceLoginBlocks,
-  reportWorkspaceLoginRequired,
+  clearLoginBlocks,
+  reportLoginRefusal,
   workspaceLoginBlock,
 } from "@/features/workspaces/lib/workspace-login-block";
 import type { WorkspaceView } from "@/features/workspaces/types";
+
+/** bex-api refused `workspaceId`: its own setting, or `organization`'s. */
+function reportWorkspaceLoginRequired(
+  workspaceId: string,
+  requirement: WorkspaceLoginRequirement,
+  organization: LoginRefusalOrganization | null = null,
+) {
+  reportLoginRefusal({ workspaceId, organization, requirement });
+}
 
 const leaveMutate = vi.hoisted(() => vi.fn());
 vi.mock("@apollo/client/react", () => ({
@@ -121,7 +134,7 @@ async function renderApp({
 }
 
 beforeEach(() => {
-  clearWorkspaceLoginBlocks();
+  clearLoginBlocks();
   startGoogleSignIn.mockReset();
   startGoogleSignIn.mockResolvedValue(true);
   leaveMutate.mockReset();
@@ -131,7 +144,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  clearWorkspaceLoginBlocks();
+  clearLoginBlocks();
 });
 
 describe("WorkspaceLoginGate — two-factor (w22/m402)", () => {
@@ -655,5 +668,62 @@ describe("WorkspaceGoogleLoginBlockedSkeleton matches the blocked page (w7/m465)
       expect(pendingPicker).toHaveClass(width);
       expect(readyPicker).toHaveClass(width);
     }
+  });
+});
+
+// w7/m466: when the workspace's org is what requires it, the refusal names the
+// org and the blocked page says so, keeping the workspace's own exits.
+describe("WorkspaceLoginGate — an organization's requirement (w7/m466)", () => {
+  const ORG = { id: "org-1", name: "Acme Corp" };
+
+  it.each([
+    [
+      "twoFactor",
+      "workspace-two-factor-blocked",
+      "Acme Corp requires two-factor authentication in all of its workspaces",
+      /every member to use two-factor authentication \(2FA\) in the organization and all of its workspaces/,
+    ],
+    [
+      "googleLogin",
+      "workspace-google-login-blocked",
+      "Acme Corp requires Google login in all of its workspaces",
+      /every member to sign in with Google in the organization and all of its workspaces/,
+    ],
+  ] as const)(
+    "names the org on the %s page, not the workspace",
+    async (requirement, testId, heading, body) => {
+      await renderApp();
+      await screen.findByText("Services page");
+
+      act(() => reportWorkspaceLoginRequired("tea-acme", requirement, ORG));
+
+      const page = await screen.findByTestId(testId);
+      expect(
+        within(page).getByRole("heading", { level: 1, name: heading }),
+      ).toBeInTheDocument();
+      expect(within(page).getByText(body)).toBeInTheDocument();
+      expect(
+        within(page).queryByText(/An admin of this workspace/),
+      ).not.toBeInTheDocument();
+      // The workspace's own exits stay: the org's setting holds this one too.
+      expect(
+        within(page).getByRole("button", { name: "Leave workspace" }),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("previews the org's explanation while the workspace list loads", async () => {
+    await renderApp({ initial: "tea-acme", list: [] });
+    await screen.findByText("Services page");
+    act(() => reportWorkspaceLoginRequired("tea-acme", "twoFactor", ORG));
+
+    const pending = await screen.findByTestId(
+      "workspace-two-factor-blocked-skeleton",
+    );
+    expect(
+      pending.querySelector('[data-slot="card-description"]'),
+    ).toHaveTextContent(
+      "An Owner of this organization requires every member to use two-factor authentication",
+    );
   });
 });

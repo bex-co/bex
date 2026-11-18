@@ -228,6 +228,8 @@ describe("WorkspaceDetailsCard — an organization's secondary (w7/m464)", () =>
       id: "org-1",
       name: "Acme",
       primaryWorkspaceId: "tea-primary",
+      requireTwoFactor: false,
+      requireGoogleLogin: false,
     },
     primary: false,
     privacy: "public",

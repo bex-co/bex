@@ -39,15 +39,32 @@ type fakeSettings struct {
 	on map[string]bool
 	// google holds the workspaces that require Google login (w7/m465).
 	google map[string]bool
-	err    error
-	calls  int
+	// orgs holds each org's own settings, and workspaceOrg the org a
+	// workspace belongs to (w7/m466): a workspace reads its own ORed with its
+	// org's, as store.LoginRequirements does.
+	orgs         map[string]core.LoginOrganization
+	workspaceOrg map[string]string
+	err          error
+	calls        int
 }
 
 func (f *fakeSettings) LoginRequirements(_ context.Context, workspaceID string) (core.LoginRequirements, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls++
-	return core.LoginRequirements{TwoFactor: f.on[workspaceID], GoogleLogin: f.google[workspaceID]}, f.err
+	r := core.LoginRequirements{TwoFactor: f.on[workspaceID], GoogleLogin: f.google[workspaceID]}
+	if o, ok := f.orgs[f.workspaceOrg[workspaceID]]; ok {
+		r = r.WithOrganization(o.ID, o.Name, o.TwoFactor, o.GoogleLogin)
+	}
+	return r, f.err
+}
+
+func (f *fakeSettings) OrganizationLoginRequirements(_ context.Context, orgID string) (core.LoginRequirements, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls++
+	o := f.orgs[orgID]
+	return core.LoginRequirements{}.WithOrganization(o.ID, o.Name, o.TwoFactor, o.GoogleLogin), f.err
 }
 
 func (f *fakeSettings) set(workspaceID string, on bool) {

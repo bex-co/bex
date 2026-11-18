@@ -392,6 +392,98 @@ const zhOrganizations: Record<string, TranslationEntry> = {
     message: "请选择公开或仅限邀请。",
     description: "INVALID_PRIVACY refusal",
   },
+  "organizations.securityTitle": {
+    message: "安全",
+    description:
+      "Org Settings page: title of the login requirements card (Render's section name, where it puts Require Login Method; w7/m466)",
+  },
+  "organizations.securityDescription": {
+    message:
+      "成员必须如何登录：适用于组织的所有工作区及组织自身的页面，并叠加在各工作区自己的设置之上。",
+    description: "Org Settings page: what the Security card's settings do",
+  },
+  "organizations.securityOwnerOnly": {
+    message: "只有所有者可以更改这些设置。",
+    description:
+      "Org Settings page: why the Security settings are read-only for a Member or Guest",
+  },
+  "organizations.requireTwoFactorLabel": {
+    message: "要求使用两步验证",
+    description:
+      "Org Settings page: label of the switch that requires 2FA in every workspace of the org",
+  },
+  "organizations.requireTwoFactorDescription": {
+    message:
+      "未启用两步验证（2FA）的成员在启用之前无法访问组织或其任何工作区，其 API 密钥和 SSH 密钥在此之前也会被阻止。",
+    description: "Org Settings page: what requiring 2FA does",
+  },
+  "organizations.requireGoogleLoginLabel": {
+    message: "要求使用 Google 登录",
+    description:
+      "Org Settings page: label of the switch that requires signing in with Google in every workspace of the org",
+  },
+  "organizations.requireGoogleLoginDescription": {
+    message:
+      "未使用其 bex 邮箱对应的 Google 账号登录的成员无法访问组织或其任何工作区。以其他方式登录时创建的 API 密钥和 SSH 密钥也会被阻止。",
+    description: "Org Settings page: what requiring Google login does",
+  },
+  "organizations.requireTwoFactorConfirmTitle": {
+    message: "要在 {organization} 中要求使用两步验证吗？",
+    description:
+      "Title of the confirmation before an Owner requires 2FA in the org",
+  },
+  "organizations.requireTwoFactorConfirm": {
+    message:
+      "未启用两步验证的成员将无法访问组织及其所有工作区，直到他们启用为止，其 API 密钥和 SSH 密钥也将无法在其中使用。各工作区自己的设置保持不变。",
+    description:
+      "Body of the confirmation before an Owner requires 2FA in the org",
+  },
+  "organizations.requireGoogleLoginConfirmTitle": {
+    message: "要在 {organization} 中要求使用 Google 登录吗？",
+    description:
+      "Title of the confirmation before an Owner requires Google login in the org",
+  },
+  "organizations.requireGoogleLoginConfirm": {
+    message:
+      "未使用其 bex 邮箱对应的 Google 账号登录的成员将无法访问组织及其所有工作区，直到他们以这种方式登录为止，以其他方式登录时创建的 API 密钥和 SSH 密钥也将无法在其中使用。各工作区自己的设置保持不变。",
+    description:
+      "Body of the confirmation before an Owner requires Google login in the org",
+  },
+  "organizations.requireConfirmAction": {
+    message: "要求",
+    description:
+      "Confirm button of the require-2FA and require-Google-login confirmations",
+  },
+  "organizations.requireTwoFactorEnabledToast": {
+    message: "现在 {name} 的每个工作区都要求使用两步验证",
+    description: "Toast after an Owner turns the org's 2FA requirement on",
+  },
+  "organizations.requireTwoFactorDisabledToast": {
+    message: "{name} 不再要求使用两步验证",
+    description: "Toast after an Owner turns the org's 2FA requirement off",
+  },
+  "organizations.requireGoogleLoginEnabledToast": {
+    message: "现在 {name} 的每个工作区都要求使用 Google 登录",
+    description:
+      "Toast after an Owner turns the org's Google login requirement on",
+  },
+  "organizations.requireGoogleLoginDisabledToast": {
+    message: "{name} 不再要求使用 Google 登录",
+    description:
+      "Toast after an Owner turns the org's Google login requirement off",
+  },
+  "organizations.requireTwoFactorErrorOwnerNotEnrolled": {
+    message:
+      "请先为你自己的账号启用两步验证，再在此组织中要求使用，否则你会把自己锁在门外。",
+    description:
+      "Refusal for code WORKSPACE_2FA_ADMIN_NOT_ENROLLED on the org setting: the acting Owner has no second factor",
+  },
+  "organizations.requireGoogleLoginErrorOwnerNotSignedIn": {
+    message:
+      "请先使用你的 bex 邮箱对应的 Google 账号登录，再在此组织中要求使用 Google 登录，否则你会把自己锁在门外。",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN on the org setting: the acting Owner is not signed in with Google",
+  },
 };
 
 export default zhOrganizations;

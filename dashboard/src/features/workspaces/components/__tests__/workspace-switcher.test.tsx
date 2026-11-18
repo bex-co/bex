@@ -206,7 +206,13 @@ describe("WorkspaceSwitcher", () => {
   // w7/m464: Render puts the org in this dropdown ("open the workspace
   // dropdown at the top of the left pane and select your org").
   describe("organizations", () => {
-    const acme = { id: "org-1", name: "Acme", primaryWorkspaceId: "tea-hq" };
+    const acme = {
+      id: "org-1",
+      name: "Acme",
+      primaryWorkspaceId: "tea-hq",
+      requireTwoFactor: false,
+      requireGoogleLogin: false,
+    };
     const orgWorkspace = (
       id: string,
       name: string,

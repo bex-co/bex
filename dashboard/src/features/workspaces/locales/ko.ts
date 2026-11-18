@@ -863,6 +863,39 @@ const koWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Fallback toast when a privacy save fails without a server reason (w7/m464)",
   },
+  "workspaces.loginRequirementRequiredByOrganization": {
+    message: "{organization}의 모든 워크스페이스에서 필수입니다.",
+    description:
+      "Workspace Settings, under the 2FA or Google login switch: why it is on and locked, the workspace's organization requires it in all of its workspaces (w7/m466)",
+  },
+  "workspaces.loginRequirementOrganizationSettingsLink": {
+    message: "조직 설정에서 변경하세요",
+    description:
+      "Link for an org Owner after the required-by-organization note, to the organization's Settings page (w7/m466)",
+  },
+  "workspaces.twoFactorBlockedOrganizationTitle": {
+    message: "{organization}에서 모든 워크스페이스에 2단계 인증을 요구합니다",
+    description:
+      "Heading of the 2FA blocked page when the organization's setting refuses the member, on a workspace or on the org's own pages (w7/m466)",
+  },
+  "workspaces.twoFactorBlockedOrganizationBody": {
+    message:
+      "이 조직의 소유자가 조직과 모든 워크스페이스에서 모든 멤버에게 2단계 인증(2FA) 사용을 요구합니다. 2단계 인증을 켜기 전에는 여기에 접근할 수 없으며, 본인의 API 키와 SSH 키도 사용할 수 없습니다.",
+    description:
+      "Why the 2FA blocked page is shown when the organization's setting refuses the member (w7/m466)",
+  },
+  "workspaces.googleLoginBlockedOrganizationTitle": {
+    message:
+      "{organization}에서 모든 워크스페이스에 Google 로그인을 요구합니다",
+    description:
+      "Heading of the Google login blocked page when the organization's setting refuses the member (w7/m466)",
+  },
+  "workspaces.googleLoginBlockedOrganizationBody": {
+    message:
+      "이 조직의 소유자가 조직과 모든 워크스페이스에서 모든 멤버에게 Google 로그인을 요구합니다. bex 이메일 주소의 Google 계정으로 로그인하기 전에는 여기에 접근할 수 없으며, 다른 방법으로 로그인한 상태에서 만든 API 키와 SSH 키도 사용할 수 없습니다.",
+    description:
+      "Why the Google login blocked page is shown when the organization's setting refuses the member (w7/m466)",
+  },
 };
 
 export default koWorkspaces;

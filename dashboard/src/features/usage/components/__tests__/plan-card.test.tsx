@@ -32,6 +32,8 @@ const PRIMARY: WorkspaceView = {
     id: "org-1",
     name: "Acme",
     primaryWorkspaceId: "tea-primary",
+    requireTwoFactor: false,
+    requireGoogleLogin: false,
   },
   primary: true,
   privacy: "invite_only",

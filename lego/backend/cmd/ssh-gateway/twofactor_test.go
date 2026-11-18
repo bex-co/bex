@@ -73,6 +73,10 @@ func (s settingFake) LoginRequirements(_ context.Context, workspaceID string) (c
 	return core.LoginRequirements{TwoFactor: s[workspaceID]}, nil
 }
 
+func (s settingFake) OrganizationLoginRequirements(context.Context, string) (core.LoginRequirements, error) {
+	return core.LoginRequirements{}, nil
+}
+
 type sessionRows map[string]store.AgentSession
 
 func (r sessionRows) GetAgentSession(_ context.Context, id string) (store.AgentSession, error) {

@@ -399,6 +399,99 @@ const jaOrganizations: Record<string, TranslationEntry> = {
     message: "公開か招待制のどちらかを選んでください。",
     description: "INVALID_PRIVACY refusal",
   },
+  "organizations.securityTitle": {
+    message: "セキュリティ",
+    description:
+      "Org Settings page: title of the login requirements card (Render's section name, where it puts Require Login Method; w7/m466)",
+  },
+  "organizations.securityDescription": {
+    message:
+      "組織のすべてのワークスペースと組織自体のページで、メンバーに求めるログイン方法です。各ワークスペース自身の設定に加えて適用されます。",
+    description: "Org Settings page: what the Security card's settings do",
+  },
+  "organizations.securityOwnerOnly": {
+    message: "これらの設定を変更できるのはオーナーだけです。",
+    description:
+      "Org Settings page: why the Security settings are read-only for a Member or Guest",
+  },
+  "organizations.requireTwoFactorLabel": {
+    message: "二要素認証を必須にする",
+    description:
+      "Org Settings page: label of the switch that requires 2FA in every workspace of the org",
+  },
+  "organizations.requireTwoFactorDescription": {
+    message:
+      "二要素認証（2FA）を使用していないメンバーは、有効にするまで組織とそのワークスペースにアクセスできません。それまでは API キーと SSH キーもブロックされます。",
+    description: "Org Settings page: what requiring 2FA does",
+  },
+  "organizations.requireGoogleLoginLabel": {
+    message: "Google ログインを必須にする",
+    description:
+      "Org Settings page: label of the switch that requires signing in with Google in every workspace of the org",
+  },
+  "organizations.requireGoogleLoginDescription": {
+    message:
+      "bex のメールアドレスの Google アカウントでログインしていないメンバーは、組織とそのワークスペースにアクセスできません。ほかの方法でログインしているときに作成された API キーと SSH キーもブロックされます。",
+    description: "Org Settings page: what requiring Google login does",
+  },
+  "organizations.requireTwoFactorConfirmTitle": {
+    message: "{organization} で二要素認証を必須にしますか？",
+    description:
+      "Title of the confirmation before an Owner requires 2FA in the org",
+  },
+  "organizations.requireTwoFactorConfirm": {
+    message:
+      "二要素認証を使用していないメンバーは、有効にするまで組織とそのすべてのワークスペースにアクセスできなくなり、API キーと SSH キーも使用できなくなります。各ワークスペース自身の設定はそのまま残ります。",
+    description:
+      "Body of the confirmation before an Owner requires 2FA in the org",
+  },
+  "organizations.requireGoogleLoginConfirmTitle": {
+    message: "{organization} で Google ログインを必須にしますか？",
+    description:
+      "Title of the confirmation before an Owner requires Google login in the org",
+  },
+  "organizations.requireGoogleLoginConfirm": {
+    message:
+      "bex のメールアドレスの Google アカウントでログインしていないメンバーは、その方法でログインするまで組織とそのすべてのワークスペースにアクセスできなくなり、ほかの方法でログインしているときに作成された API キーと SSH キーも使用できなくなります。各ワークスペース自身の設定はそのまま残ります。",
+    description:
+      "Body of the confirmation before an Owner requires Google login in the org",
+  },
+  "organizations.requireConfirmAction": {
+    message: "必須にする",
+    description:
+      "Confirm button of the require-2FA and require-Google-login confirmations",
+  },
+  "organizations.requireTwoFactorEnabledToast": {
+    message: "{name} のすべてのワークスペースで二要素認証が必須になりました",
+    description: "Toast after an Owner turns the org's 2FA requirement on",
+  },
+  "organizations.requireTwoFactorDisabledToast": {
+    message: "{name} で二要素認証が必須ではなくなりました",
+    description: "Toast after an Owner turns the org's 2FA requirement off",
+  },
+  "organizations.requireGoogleLoginEnabledToast": {
+    message:
+      "{name} のすべてのワークスペースで Google ログインが必須になりました",
+    description:
+      "Toast after an Owner turns the org's Google login requirement on",
+  },
+  "organizations.requireGoogleLoginDisabledToast": {
+    message: "{name} で Google ログインが必須ではなくなりました",
+    description:
+      "Toast after an Owner turns the org's Google login requirement off",
+  },
+  "organizations.requireTwoFactorErrorOwnerNotEnrolled": {
+    message:
+      "この組織で必須にする前に、ご自身のアカウントで二要素認証を有効にしてください。そうしないと、ご自身がアクセスできなくなります。",
+    description:
+      "Refusal for code WORKSPACE_2FA_ADMIN_NOT_ENROLLED on the org setting: the acting Owner has no second factor",
+  },
+  "organizations.requireGoogleLoginErrorOwnerNotSignedIn": {
+    message:
+      "この組織で Google ログインを必須にする前に、bex のメールアドレスの Google アカウントでログインしてください。そうしないと、ご自身がアクセスできなくなります。",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN on the org setting: the acting Owner is not signed in with Google",
+  },
 };
 
 export default jaOrganizations;

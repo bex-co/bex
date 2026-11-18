@@ -14,6 +14,7 @@ import {
 } from "@/features/organizations/__tests__/org-fixtures";
 import {
   toOrganizationRole,
+  type Organization,
   type OrganizationRole,
 } from "@/features/organizations/types";
 
@@ -21,6 +22,12 @@ vi.mock("@/common/components/dashboard-layout", () => ({
   DashboardLayout: ({ children }: { children: ReactNode }) => (
     <main>{children}</main>
   ),
+}));
+
+// The org's login check reads through Apollo (w7/m466); these pages' tests
+// stand for a caller the org does not refuse.
+vi.mock("@/features/organizations/hooks/use-organization-login-check", () => ({
+  useOrganizationLoginCheck: () => null,
 }));
 
 let orgState: UseOrganizationResult;
@@ -33,6 +40,22 @@ vi.mock("@/features/organizations/hooks/use-rename-organization", () => ({
   useRenameOrganization: () => ({ rename, saving: false }),
 }));
 
+// The Security switches' mutations are exercised against a real client in
+// organization-security-card.test.tsx; here they only record the call.
+const setRequired = vi.fn(
+  async (_requirement: string, _enabled: boolean) => {},
+);
+vi.mock(
+  "@/features/organizations/hooks/use-set-organization-login-requirement",
+  () => ({
+    useSetOrganizationLoginRequirement: (requirement: string) => ({
+      setRequired: (enabled: boolean) => setRequired(requirement, enabled),
+      busy: false,
+      error: null,
+    }),
+  }),
+);
+
 const createObjectURL = vi.fn(() => "blob:audit");
 const click = vi
   .spyOn(HTMLAnchorElement.prototype, "click")
@@ -40,6 +63,7 @@ const click = vi
 
 beforeEach(() => {
   rename.mockClear();
+  setRequired.mockClear();
   createObjectURL.mockClear();
   click.mockClear();
   URL.createObjectURL = createObjectURL;
@@ -53,8 +77,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function renderPage(role: OrganizationRole) {
-  const org = organization(role);
+async function renderPage(
+  role: OrganizationRole,
+  settings: Partial<Organization> = {},
+) {
+  const org = { ...organization(role), ...settings };
   orgState = {
     organization: org,
     role: toOrganizationRole(org.viewerRole),
@@ -158,9 +185,81 @@ describe("OrganizationSettingsPage (w7/m464)", () => {
     );
   });
 
+  // w7/m466: Org Settings -> Security, where Render puts "Require Login
+  // Method". Owners get both switches; turning one on asks first.
+  it("gives an Owner both Security switches, asking before turning one on", async () => {
+    await renderPage("OWNER", { requireGoogleLogin: true });
+    const user = userEvent.setup();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Security" }),
+    ).toBeInTheDocument();
+    const twoFactor = screen.getByRole("switch", {
+      name: "Require two-factor authentication",
+    });
+    const google = screen.getByRole("switch", { name: "Require Google login" });
+    expect(twoFactor).not.toBeChecked();
+    expect(google).toBeChecked();
+    expect(
+      screen.queryByText("Only Owners can change these settings."),
+    ).toBeNull();
+
+    await user.click(twoFactor);
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Require two-factor authentication in Acme?",
+    });
+    expect(dialog).toHaveTextContent(
+      "Members without two-factor authentication lose access to the organization and all of its workspaces",
+    );
+    expect(setRequired).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Require" }));
+    expect(setRequired).toHaveBeenCalledWith("twoFactor", true);
+
+    // Turning one off needs no confirmation, as on the workspace cards.
+    await user.click(google);
+    expect(setRequired).toHaveBeenLastCalledWith("googleLogin", false);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("sends nothing when the Owner cancels the confirmation", async () => {
+    await renderPage("OWNER");
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("switch", { name: "Require Google login" }),
+    );
+    await screen.findByRole("alertdialog", {
+      name: "Require Google login in Acme?",
+    });
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(setRequired).not.toHaveBeenCalled();
+  });
+
+  // Members and Guests read each setting's state; only Owners change it.
+  it.each(["MEMBER", "GUEST"] as const)(
+    "shows a %s the Security settings read-only",
+    async (role) => {
+      await renderPage(role, { requireTwoFactor: true });
+      expect(screen.queryByRole("switch")).toBeNull();
+      const rows = document.querySelectorAll("[data-login-requirement]");
+      expect(
+        [...rows].map((row) => [
+          row.querySelector("label")?.textContent,
+          row.querySelector("[data-slot=badge]")?.textContent,
+        ]),
+      ).toEqual([
+        ["Require two-factor authentication", "Required"],
+        ["Require Google login", "Not required"],
+      ]);
+      expect(
+        screen.getByText("Only Owners can change these settings."),
+      ).toBeInTheDocument();
+    },
+  );
+
   // The route's pending frame is the ready page's structure: the name card
-  // (Save for an Owner, the Owners-only note otherwise) and, for an Owner,
-  // Audit Logs with its export row.
+  // (Save for an Owner, the Owners-only note otherwise), Security (each
+  // setting's label, description and control box; the Owners-only note for
+  // a Member or Guest) and, for an Owner, Audit Logs with its export row.
   it.each(["OWNER", "MEMBER", "GUEST"] as const)(
     "previews the ready page for an %s",
     async (role) => {
@@ -183,7 +282,19 @@ describe("OrganizationSettingsPage (w7/m464)", () => {
         ).not.toBeNull(),
       );
       expect(pageStructure(pending.container)).toEqual(readyStructure);
-      expect(readyStructure.cards).toBe(role === "OWNER" ? 2 : 1);
+      expect(readyStructure.cards).toBe(role === "OWNER" ? 3 : 2);
+      expect(readyStructure.loginRequirements.map((row) => row.name)).toEqual([
+        "two-factor",
+        "google-login",
+      ]);
+      expect(readyStructure.notes).toEqual(
+        role === "OWNER"
+          ? []
+          : [
+              "Only Owners can rename the organization.",
+              "Only Owners can change these settings.",
+            ],
+      );
     },
   );
 });

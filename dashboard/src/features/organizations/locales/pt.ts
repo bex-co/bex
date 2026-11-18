@@ -400,6 +400,100 @@ const ptOrganizations: Record<string, TranslationEntry> = {
     message: "Escolha Público ou Só por convite.",
     description: "INVALID_PRIVACY refusal",
   },
+  "organizations.securityTitle": {
+    message: "Segurança",
+    description:
+      "Org Settings page: title of the login requirements card (Render's section name, where it puts Require Login Method; w7/m466)",
+  },
+  "organizations.securityDescription": {
+    message:
+      "Como os membros devem entrar, em todos os workspaces da organização e nas páginas dela, além das configurações de cada workspace.",
+    description: "Org Settings page: what the Security card's settings do",
+  },
+  "organizations.securityOwnerOnly": {
+    message: "Só proprietários podem alterar estas configurações.",
+    description:
+      "Org Settings page: why the Security settings are read-only for a Member or Guest",
+  },
+  "organizations.requireTwoFactorLabel": {
+    message: "Exigir autenticação em duas etapas",
+    description:
+      "Org Settings page: label of the switch that requires 2FA in every workspace of the org",
+  },
+  "organizations.requireTwoFactorDescription": {
+    message:
+      "Membros sem autenticação em duas etapas (2FA) não podem acessar a organização nem nenhum dos workspaces dela até ativá-la. As chaves de API e chaves SSH deles também ficam bloqueadas até lá.",
+    description: "Org Settings page: what requiring 2FA does",
+  },
+  "organizations.requireGoogleLoginLabel": {
+    message: "Exigir login com Google",
+    description:
+      "Org Settings page: label of the switch that requires signing in with Google in every workspace of the org",
+  },
+  "organizations.requireGoogleLoginDescription": {
+    message:
+      "Membros que não entram com a conta Google do seu e-mail do bex não podem acessar a organização nem nenhum dos workspaces dela. As chaves de API e as chaves SSH criadas com outro login também ficam bloqueadas.",
+    description: "Org Settings page: what requiring Google login does",
+  },
+  "organizations.requireTwoFactorConfirmTitle": {
+    message: "Exigir autenticação em duas etapas em {organization}?",
+    description:
+      "Title of the confirmation before an Owner requires 2FA in the org",
+  },
+  "organizations.requireTwoFactorConfirm": {
+    message:
+      "Membros sem autenticação em duas etapas perdem o acesso à organização e a todos os workspaces dela até ativá-la, e as chaves de API e chaves SSH deles deixam de funcionar com eles. A configuração própria de cada workspace continua como está.",
+    description:
+      "Body of the confirmation before an Owner requires 2FA in the org",
+  },
+  "organizations.requireGoogleLoginConfirmTitle": {
+    message: "Exigir login com Google em {organization}?",
+    description:
+      "Title of the confirmation before an Owner requires Google login in the org",
+  },
+  "organizations.requireGoogleLoginConfirm": {
+    message:
+      "Membros que não entraram com a conta Google do seu e-mail do bex perdem o acesso à organização e a todos os workspaces dela até entrarem assim, e as chaves de API e chaves SSH criadas com outro login deixam de funcionar com eles. A configuração própria de cada workspace continua como está.",
+    description:
+      "Body of the confirmation before an Owner requires Google login in the org",
+  },
+  "organizations.requireConfirmAction": {
+    message: "Exigir",
+    description:
+      "Confirm button of the require-2FA and require-Google-login confirmations",
+  },
+  "organizations.requireTwoFactorEnabledToast": {
+    message:
+      "A autenticação em duas etapas agora é exigida em todos os workspaces de {name}",
+    description: "Toast after an Owner turns the org's 2FA requirement on",
+  },
+  "organizations.requireTwoFactorDisabledToast": {
+    message: "{name} não exige mais autenticação em duas etapas",
+    description: "Toast after an Owner turns the org's 2FA requirement off",
+  },
+  "organizations.requireGoogleLoginEnabledToast": {
+    message:
+      "O login com Google agora é exigido em todos os workspaces de {name}",
+    description:
+      "Toast after an Owner turns the org's Google login requirement on",
+  },
+  "organizations.requireGoogleLoginDisabledToast": {
+    message: "{name} não exige mais login com Google",
+    description:
+      "Toast after an Owner turns the org's Google login requirement off",
+  },
+  "organizations.requireTwoFactorErrorOwnerNotEnrolled": {
+    message:
+      "Ative a autenticação em duas etapas na sua própria conta antes de exigi-la nesta organização, ou você ficaria sem acesso.",
+    description:
+      "Refusal for code WORKSPACE_2FA_ADMIN_NOT_ENROLLED on the org setting: the acting Owner has no second factor",
+  },
+  "organizations.requireGoogleLoginErrorOwnerNotSignedIn": {
+    message:
+      "Entre com a conta Google do seu e-mail do bex antes de exigir o login com Google nesta organização, ou você ficaria sem acesso.",
+    description:
+      "Refusal for code WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN on the org setting: the acting Owner is not signed in with Google",
+  },
 };
 
 export default ptOrganizations;

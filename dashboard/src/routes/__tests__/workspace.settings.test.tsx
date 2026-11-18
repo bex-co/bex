@@ -250,7 +250,13 @@ async function renderPage(WorkspaceSettingsPage = Route.options.component) {
 const orgWorkspace: WorkspaceView = {
   ...primaryWorkspace,
   plan: "scale",
-  organization: { id: "org-1", name: "Acme", primaryWorkspaceId: "tea-hq" },
+  organization: {
+    id: "org-1",
+    name: "Acme",
+    primaryWorkspaceId: "tea-hq",
+    requireTwoFactor: false,
+    requireGoogleLogin: false,
+  },
   primary: false,
   privacy: "invite_only",
 };

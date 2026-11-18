@@ -2,7 +2,8 @@
 # Enterprise workspace is the primary of an org that holds unlimited
 # workspaces under its plan. The switcher lists the caller's orgs; the org's
 # Workspaces, Members and Settings pages read and change it. Roles are
-# OWNER, MEMBER and GUEST; privacy is public or invite_only.
+# OWNER, MEMBER and GUEST; privacy is public or invite_only. The org's login
+# settings (w7/m466) bind every one of its workspaces and its own pages.
 
 fragment OrganizationFields on Organization {
   id
@@ -11,6 +12,8 @@ fragment OrganizationFields on Organization {
   primaryWorkspaceId
   viewerRole
   createdAt
+  requireTwoFactor
+  requireGoogleLogin
   workspaces {
     id
     name
@@ -61,6 +64,34 @@ mutation SetWorkspacePrivacy($workspaceId: String!, $privacy: String!) {
 
 mutation RenameOrganization($organizationId: String!, $name: String!) {
   renameOrganization(organizationId: $organizationId, name: $name) {
+    ...OrganizationFields
+  }
+}
+
+# Org Settings -> Security (w7/m466): Owner only. Turning one on is refused
+# while the Owner does not meet it (WORKSPACE_2FA_ADMIN_NOT_ENROLLED,
+# WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN) or the deployment cannot
+# enforce it (WORKSPACE_2FA_UNAVAILABLE, WORKSPACE_GOOGLE_LOGIN_UNAVAILABLE).
+mutation SetOrganizationRequireTwoFactor(
+  $organizationId: String!
+  $enabled: Boolean!
+) {
+  setOrganizationRequireTwoFactor(
+    organizationId: $organizationId
+    enabled: $enabled
+  ) {
+    ...OrganizationFields
+  }
+}
+
+mutation SetOrganizationRequireGoogleLogin(
+  $organizationId: String!
+  $enabled: Boolean!
+) {
+  setOrganizationRequireGoogleLogin(
+    organizationId: $organizationId
+    enabled: $enabled
+  ) {
     ...OrganizationFields
   }
 }

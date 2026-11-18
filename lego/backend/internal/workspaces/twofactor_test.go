@@ -517,6 +517,11 @@ func (s storeSettings) LoginRequirements(ctx context.Context, id string) (core.L
 	return core.LoginRequirements{TwoFactor: t.RequireTwoFactor, GoogleLogin: t.RequireGoogleLogin}, err
 }
 
+// OrganizationLoginRequirements: the fake store has no organizations.
+func (storeSettings) OrganizationLoginRequirements(context.Context, string) (core.LoginRequirements, error) {
+	return core.LoginRequirements{}, nil
+}
+
 // ADR012 §9a: an admin who removes their last second factor on an enforcing
 // workspace is blocked like any member, so cannot disable the setting until they
 // enroll again; the block shows up within the gate's TTL, and lifting it is

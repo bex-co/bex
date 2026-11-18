@@ -4,6 +4,7 @@ import {
   organizationPlanOwner,
   proFeaturesPlan,
   type OrganizationPlanOwner,
+  type WorkspaceView,
 } from "@/features/workspaces/types";
 
 /** The conditional sections a Workspace Settings pending frame draws. */
@@ -18,6 +19,9 @@ export interface WorkspaceSettingsPendingSections {
   /** The workspace is known to be below Pro, so the 2FA and Google login
    *  cards carry their plan notice (w7/070, w7/m465). */
   belowPro: boolean;
+  /** The workspace's org, once known: an org that requires 2FA or Google
+   *  login gives that card its "required by" note (w7/m466). */
+  organization: WorkspaceView["organization"];
 }
 
 /** Which of Workspace Settings' conditional sections a pending frame
@@ -45,5 +49,6 @@ export function useWorkspaceSettingsSkeletonSections(): WorkspaceSettingsPending
     workspaceName: currentWorkspace?.name,
     belowPro:
       currentWorkspace != null && !proFeaturesPlan(currentWorkspace.plan),
+    organization: currentWorkspace?.organization ?? null,
   };
 }

@@ -42,6 +42,12 @@ export interface WorkspaceOrganizationRef {
   id: string;
   name: string;
   primaryWorkspaceId: string;
+  /**
+   * The org's own login settings (w7/m466, docs/ADR012-auth.md 9c): while one
+   * is on, the workspace requires it whatever its own setting says.
+   */
+  requireTwoFactor: boolean;
+  requireGoogleLogin: boolean;
 }
 
 /** An org workspace's privacy setting (Render: Public or Invite-only). */

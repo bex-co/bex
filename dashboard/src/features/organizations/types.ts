@@ -55,6 +55,21 @@ export function toOrganizationRole(
   return ORGANIZATION_ROLES.find((role) => role === upper) ?? null;
 }
 
+/**
+ * `organizationId`'s entry in a list of the caller's orgs (the switcher's
+ * `organizations`, which the chrome has already loaded), if the list holds
+ * it: where the org pages' loader and skeletons, and a workspace's
+ * "required by" note, read the caller's org role before the org itself loads.
+ */
+export function findOrganization<T extends { id: string }>(
+  organizations: readonly T[] | undefined,
+  organizationId: string | null | undefined,
+): T | undefined {
+  return organizationId
+    ? organizations?.find((org) => org.id === organizationId)
+    : undefined;
+}
+
 export const ORGANIZATION_ROLE_LABEL_KEYS: Record<OrganizationRole, string> = {
   OWNER: "organizations.roleOwner",
   MEMBER: "organizations.roleMember",

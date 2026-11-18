@@ -1,20 +1,20 @@
 # w7 · m466 — An organization can require two-factor authentication and Google login in every one of its workspaces, as a Render org can
 
-**Worker:** worker7 **Goal:** an Org Owner turns on "Require two-factor authentication" and "Require Google login" on the org Settings page and on GraphQL. While a requirement is on, every workspace in the org enforces it beside the workspace's own setting, and so do the org's own pages. A member, an API key or an SSH key that does not meet it gets the coded 403 the workspace settings already give, on REST, GraphQL, MCP and the SSH gateway. Each change is recorded in the org audit log as Render's `ChangeOrg2FAEnforcementEvent` or `ChangeOrgAllowedLoginMethodsEvent`. **Status:** todo
+**Worker:** worker7 **Goal:** an Org Owner turns on "Require two-factor authentication" and "Require Google login" on the org Settings page and on GraphQL. While a requirement is on, every workspace in the org enforces it beside the workspace's own setting, and so do the org's own pages. A member, an API key or an SSH key that does not meet it gets the coded 403 the workspace settings already give, on REST, GraphQL, MCP and the SSH gateway. Each change is recorded in the org audit log as Render's `ChangeOrg2FAEnforcementEvent` or `ChangeOrgAllowedLoginMethodsEvent`. **Status:** blocked (t001–t005, t007–t009 done; t006 waits for a production pin carrying the milestone, then t010)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Capture Render's org login settings and record the design in ADR012, ADR115, ADR018 and ADR030](t001.md) | 45m | — |
-| t002 | [Store: the org's two settings, read by the gate for every org workspace](t002.md) | 1h | t001 |
-| t003 | [The org setting: Owner-only GraphQL mutations, plan gate, lock-out guards and the two org audit events](t003.md) | 1h30m | t002 |
-| t004 | [The gate: every org workspace and the org's own pages refuse a caller who does not meet the org's requirement](t004.md) | 1h30m | t002 |
-| t005 | [Dashboard: the org Settings Security card, the locked workspace switches and the blocked page naming the org](t005.md) | 1h30m | t003, t004 |
+| t001 | [Capture Render's org login settings and record the design in ADR012, ADR115, ADR018 and ADR030](done/t001.md) — **DONE** | 45m | — |
+| t002 | [Store: the org's two settings, read by the gate for every org workspace](done/t002.md) — **DONE** | 1h | t001 |
+| t003 | [The org setting: Owner-only GraphQL mutations, plan gate, lock-out guards and the two org audit events](done/t003.md) — **DONE** | 1h30m | t002 |
+| t004 | [The gate: every org workspace and the org's own pages refuse a caller who does not meet the org's requirement](done/t004.md) — **DONE** | 1h30m | t002 |
+| t005 | [Dashboard: the org Settings Security card, the locked workspace switches and the blocked page naming the org](done/t005.md) — **DONE** | 1h30m | t003, t004 |
 | t006 | [Production: org 2FA on a Scale fixture org](t006.md) | 1h | t005 |
-| t007 | [Render parity](t007.md) | 45m | t005 |
-| t008 | [Simplify](t008.md) | 30m | t007 |
-| t009 | [Test coverage](t009.md) | 1h | t007 |
+| t007 | [Render parity](done/t007.md) — **DONE** | 45m | t005 |
+| t008 | [Simplify](done/t008.md) — **DONE** | 30m | t007 |
+| t009 | [Test coverage](done/t009.md) — **DONE** | 1h | t007 |
 | t010 | [Closeout](t010.md) | 10m | t006, t008, t009 |
 
 ## Definition of done
@@ -29,7 +29,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** promoted from [w7/081](../done/081.md) on 2026-11-17. w7/m464 t014 found it, and ADR115 D7 lists both events as follow-ups.
+- **Source:** promoted from [w7/081](../../done/081.md) on 2026-11-17. w7/m464 t014 found it, and ADR115 D7 lists both events as follow-ups.
 - **Render's behavior** (read 2026-11-17; there is no Render account, `w10/blocked/002`, so only the docs were read):
   - [audit-logs](https://render.com/docs/audit-logs): "`ChangeOrgAllowedLoginMethodsEvent`: The org's set of allowed login methods was changed." "`ChangeOrg2FAEnforcementEvent`: Two-factor authentication enforcement was enabled or disabled for the org." These events appear "_only_ in audit logs exported from your org's **Settings** page", and org audit logs are "available on the Scale plan or higher".
   - [saml-sso](https://render.com/docs/saml-sso): the org setting lives at "**Settings** in the left pane … **Require Login Method** under **Security**". You "select SAML SSO as a required login method", and only an Org Owner can do it. When it is enforced, "Each listed member will lose access to the org until they log in via SSO" and "Each listed API key will be invalidated until its owner logs in via SSO".
@@ -46,9 +46,14 @@
   - The Kratos settings guard asks `GoogleLoginWorkspaces` (`internal/store/workspaces.go:225`), which reads the workspace setting alone.
   - The dashboard org pages are `dashboard/src/routes/org.$orgId.*.tsx` with `dashboard/src/features/organizations/`. The workspace cards are `dashboard/src/features/workspaces/components/workspace-login-requirement-card*`, and the blocked pages are `workspace-two-factor-blocked-page.tsx` and `workspace-google-login-blocked-page.tsx`.
 - **Premise check:** it holds. `render_inventory_test.go:158-159` lists both events as `notYet`, and nothing in `lego/` stores an org login setting.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)), organizations ([ADR115](../../../docs/ADR115-organizations.md)), workspace login settings ([ADR012 §9a](../../../docs/ADR012-auth.md#9a-workspace-enforced-two-factor-authentication-w22m402), [§9b](../../../docs/ADR012-auth.md#9b-workspace-enforced-google-login-w7m465)).
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)), organizations ([ADR115](../../../../docs/ADR115-organizations.md)), workspace login settings ([ADR012 §9a](../../../../docs/ADR012-auth.md#9a-workspace-enforced-two-factor-authentication-w22m402), [§9b](../../../../docs/ADR012-auth.md#9b-workspace-enforced-google-login-w7m465)).
 - **Expected outcome:** an org on Scale or Enterprise sets its members' login rules once for all of its workspaces, as on Render, instead of setting them workspace by workspace. The org log's two remaining non-IdP events get recorded.
 - **Why now:** m464 shipped organizations and m465 shipped the Google-login gate on 2026-11-17. The shared gate, its caches, the SSH verb and the org log are fresh, and these two events are the only org events left that are not IdP ones.
 - **No user decision gates the code.** Under Render parity first, building both settings is the parity choice. SAML SSO stays out of "Require Login Method" by `.pm/DO_NOT_DO.md` (Enterprise surfaces: SSO/SAML · SCIM). Production's walk needs a pin carrying m464 and this milestone. Its Google half also needs production's Google OAuth client, which is w7/m465's user gate.
 - **Out of scope:** SAML SSO, SCIM and domain capture (`DO_NOT_DO.md`). The org invite token (w7/083). Enterprise seat billing (w7/082).
 - **Render parity included:** the change touches GraphQL, the refusals on REST, GraphQL and MCP, the SSH gateway and the dashboard.
+
+## Park record (2026-11-17)
+
+- **Done and shipped:** t001–t005 and t007–t009. The org's two settings (migration 0295), the Owner-only GraphQL mutations with the plan check and lock-out 409s, the two org audit events, the gate holding every org workspace and the org's own objects to the org's setting (refusals naming the org on REST, GraphQL, MCP and the SSH verb), the settings guard naming the org, the dashboard's Security card, locked workspace switches and blocked states, and ADR012 §9c, ADR115 D10, ADR018's new row and the Render capture. Follow-up filed: [w7/086](../../086.md).
+- **Gate (clears by itself, no user action):** t006's walk needs a production pin that carries this milestone (and m464). Check `git merge-base --is-ancestor "$(git log -1 --format=%H --grep='w7/m466' origin/main)" <the sha in the newest "pin platform images to" commit on main>`. Then run t006 on a Scale fixture org: the 2FA half on production; the Google half on dev-7 (`bash scripts/dev-env.sh 7 up`) until production has Google sign-in (w7/m465 t008's user gate), recorded as the open check; include the org Settings page's pending-vs-ready look t005 owed (no Playwright server in this session). Close with t010.

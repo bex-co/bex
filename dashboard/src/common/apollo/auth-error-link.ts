@@ -75,7 +75,12 @@ export type WorkspaceLoginRequirement = "twoFactor" | "googleLogin";
  * with the Google account of their email (w7/m465). Raised by the
  * authorization funnel inside a resolver, so on `/graphql` it is a GraphQL
  * error whose `extensions` carry `{code, workspaceId}`, never a transport
- * status. When a member fails both, the server answers the Google one. */
+ * status. When a member fails both, the server answers the Google one.
+ *
+ * When an organization's own setting is what refuses (w7/m466,
+ * docs/ADR012-auth.md 9c), the same codes also carry `organizationId` and
+ * `organizationName`; on the org's own objects (its members, invites,
+ * settings, audit log) there is no `workspaceId`, only the org. */
 const WORKSPACE_LOGIN_REFUSALS: Readonly<
   Record<string, WorkspaceLoginRequirement>
 > = {
@@ -83,29 +88,56 @@ const WORKSPACE_LOGIN_REFUSALS: Readonly<
   WORKSPACE_GOOGLE_LOGIN_REQUIRED: "googleLogin",
 };
 
-export interface WorkspaceLoginRefusal {
-  workspaceId: string;
+/** The org whose own login setting refused the caller. */
+export interface LoginRefusalOrganization {
+  id: string;
+  name: string;
+}
+
+export interface LoginRefusal {
+  /** The refused workspace; null on an org's own objects. */
+  workspaceId: string | null;
+  /** The org whose setting refused; null when the workspace's own did. */
+  organization: LoginRefusalOrganization | null;
   requirement: WorkspaceLoginRequirement;
 }
 
+function nonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value !== "" ? value : null;
+}
+
+/** The refusing org named by an error's extensions, if it names one. The id
+ *  decides; a missing name reads as the id, so the page still says who. */
+function refusingOrganization(
+  extensions: Record<string, unknown>,
+): LoginRefusalOrganization | null {
+  const id = nonEmptyString(extensions["organizationId"]);
+  if (id === null) return null;
+  return { id, name: nonEmptyString(extensions["organizationName"]) ?? id };
+}
+
 /**
- * Every workspace login refusal in a GraphQL result, with the requirement it
- * names. Keyed on the stable code, never the message. An error without a
- * usable `workspaceId` is skipped: a block that names no workspace cannot be
- * scoped to the selected one, and wrongly walling another workspace is worse.
+ * Every login refusal in a GraphQL result, with the requirement it names and
+ * the workspace and org it scopes to. Keyed on the stable code, never the
+ * message. An error that names neither a usable `workspaceId` nor an
+ * `organizationId` is skipped: a block that names nothing cannot be scoped,
+ * and wrongly walling another workspace or org is worse.
  */
-export function workspaceLoginRefusals(result: {
+export function loginRefusals(result: {
   errors?: ReadonlyArray<{ extensions?: Record<string, unknown> }>;
-}): WorkspaceLoginRefusal[] {
+}): LoginRefusal[] {
   return (result.errors ?? []).flatMap((item) => {
-    const code = item.extensions?.["code"];
-    const workspaceId = item.extensions?.["workspaceId"];
+    const extensions = item.extensions ?? {};
+    const code = extensions["code"];
     const requirement =
       typeof code === "string" && Object.hasOwn(WORKSPACE_LOGIN_REFUSALS, code)
         ? WORKSPACE_LOGIN_REFUSALS[code]
         : undefined;
-    return requirement && typeof workspaceId === "string" && workspaceId !== ""
-      ? [{ workspaceId, requirement }]
+    if (!requirement) return [];
+    const workspaceId = nonEmptyString(extensions["workspaceId"]);
+    const organization = refusingOrganization(extensions);
+    return workspaceId !== null || organization !== null
+      ? [{ workspaceId, organization, requirement }]
       : [];
   });
 }
@@ -130,28 +162,24 @@ export function workspaceLoginRefusals(result: {
  * cannot see: a bare route's queries, or a session that turned unverified
  * after it was memoized. As with 401, the error still surfaces.
  *
- * It also reports each workspace login refusal (`WORKSPACE_2FA_REQUIRED`,
- * `WORKSPACE_GOOGLE_LOGIN_REQUIRED`) to `onWorkspaceLoginRequired`, with its
- * workspace and requirement: the one place those errors are read, so a page
- * whose queries all fail the same way raises one blocked page, not a toast per
- * query. The error still surfaces, and other 403s are not touched.
+ * It also reports each login refusal (`WORKSPACE_2FA_REQUIRED`,
+ * `WORKSPACE_GOOGLE_LOGIN_REQUIRED`) to `onLoginRequired`, with its
+ * requirement and the workspace or org it scopes to: the one place those
+ * errors are read, so a page whose queries all fail the same way raises one
+ * blocked page, not a toast per query. The error still surfaces, and other
+ * 403s are not touched.
  */
 export function createAuthErrorLink(
   onUnauthorized: () => void,
   onEmailVerificationRequired: () => void = () => {},
-  onWorkspaceLoginRequired: (
-    workspaceId: string,
-    requirement: WorkspaceLoginRequirement,
-  ) => void = () => {},
+  onLoginRequired: (refusal: LoginRefusal) => void = () => {},
 ): ApolloLink {
   return new ApolloLink((operation, forward) => {
     return new Observable((observer) => {
       const sub = forward(operation).subscribe({
         next: (result) => {
           if (resultHasVerificationCode(result)) onEmailVerificationRequired();
-          for (const refusal of workspaceLoginRefusals(result)) {
-            onWorkspaceLoginRequired(refusal.workspaceId, refusal.requirement);
-          }
+          for (const refusal of loginRefusals(result)) onLoginRequired(refusal);
           observer.next(result);
         },
         error: (error: ErrorLike) => {

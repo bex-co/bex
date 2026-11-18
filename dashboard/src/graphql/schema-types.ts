@@ -2280,6 +2280,10 @@ export type Mutation = {
   setMaxShutdownDelay: Maybe<Service>;
   setNotificationsToSend: Maybe<Service>;
   setNotifyOnFail: Maybe<Service>;
+  /** Require signing in with Google in every workspace of an organization, and on the org itself, or stop requiring it (Owner only; Render's ChangeOrgAllowedLoginMethodsEvent). Turning it on is refused while the acting Owner is not signed in with Google (WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN). */
+  setOrganizationRequireGoogleLogin: Maybe<Organization>;
+  /** Require two-factor authentication in every workspace of an organization, and on the org itself, or stop requiring it (Owner only; Render's ChangeOrg2FAEnforcementEvent). Turning it on is refused while the acting Owner has no second factor (WORKSPACE_2FA_ADMIN_NOT_ENROLLED). */
+  setOrganizationRequireTwoFactor: Maybe<Organization>;
   setPipelineSpendLimit: Maybe<PipelineSettings>;
   setPort: Maybe<Service>;
   setPreDeployCommand: Maybe<Service>;
@@ -3585,6 +3589,18 @@ export type MutationSetNotifyOnFailArgs = {
 };
 
 
+export type MutationSetOrganizationRequireGoogleLoginArgs = {
+  enabled: Scalars['Boolean']['input'];
+  organizationId: Scalars['String']['input'];
+};
+
+
+export type MutationSetOrganizationRequireTwoFactorArgs = {
+  enabled: Scalars['Boolean']['input'];
+  organizationId: Scalars['String']['input'];
+};
+
+
 export type MutationSetPipelineSpendLimitArgs = {
   spendLimitUsd?: InputMaybe<Scalars['String']['input']>;
   workspaceId: Scalars['String']['input'];
@@ -4063,6 +4079,10 @@ export type Organization = {
   name: Scalars['String']['output'];
   plan: Scalars['String']['output'];
   primaryWorkspaceId: Scalars['String']['output'];
+  /** Whether every workspace of the org, and the org itself, requires signing in with Google (w7/m466), beside each workspace's own setting. */
+  requireGoogleLogin: Scalars['Boolean']['output'];
+  /** Whether every workspace of the org, and the org itself, requires two-factor authentication (w7/m466), beside each workspace's own setting. */
+  requireTwoFactor: Scalars['Boolean']['output'];
   viewerRole: Scalars['String']['output'];
   workspaces: Array<OrganizationWorkspace>;
 };
@@ -6089,6 +6109,8 @@ export type WorkspaceOrganization = {
   id: Scalars['String']['output'];
   name: Scalars['String']['output'];
   primaryWorkspaceId: Scalars['String']['output'];
+  requireGoogleLogin: Scalars['Boolean']['output'];
+  requireTwoFactor: Scalars['Boolean']['output'];
 };
 
 export type WorkspaceSeatUsage = {
