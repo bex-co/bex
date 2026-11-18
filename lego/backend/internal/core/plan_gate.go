@@ -61,6 +61,13 @@ const (
 	// (render.com/docs/organizations), and "Org-level audit logs are
 	// available on the Scale plan or higher" (render.com/docs/audit-logs).
 	FeatureOrganizations PlanFeature = "organizations"
+	// FeatureManagedOIDC is a service's short-lived identity token for a
+	// cloud or model provider (docs/ADR116-managed-oidc.md, w2/m477): "With
+	// a Pro workspace or higher, you can configure your Render services to
+	// authenticate with … OIDC" (render.com/docs/oidc). It refuses no write:
+	// below Pro the trigger variable is an ordinary variable, no token is
+	// mounted, and the deploy log says why.
+	FeatureManagedOIDC PlanFeature = "Managed OIDC"
 )
 
 // planFeatures is the one table of each gated feature's lowest plan and its
@@ -86,6 +93,7 @@ var planFeatures = map[PlanFeature]struct {
 	FeatureTwoFactorEnforcement:   {minimum: planPro, key: "twoFactorEnforcement", singular: true},
 	FeatureGoogleLoginEnforcement: {minimum: planPro, key: "googleLoginEnforcement", singular: true},
 	FeatureOrganizations:          {minimum: planScale, key: "organizations"},
+	FeatureManagedOIDC:            {minimum: planPro, key: "managedOIDC", singular: true},
 }
 
 // Machine codes for the workspace-plan refusals (w8/m138 t013), on REST's
@@ -126,6 +134,13 @@ func PlanAllows(plan string, feature PlanFeature) bool {
 	}
 	have := slices.Index(planLadder, plan)
 	return have < 0 || have >= slices.Index(planLadder, gate.minimum)
+}
+
+// PlanIncludes is PlanAllows for a grant rather than a refusal: an unknown
+// plan includes nothing, so a feature that hands something out (a Managed
+// OIDC token) is never given on a plan bex does not know.
+func PlanIncludes(plan string, feature PlanFeature) bool {
+	return slices.Contains(planLadder, plan) && PlanAllows(plan, feature)
 }
 
 // PlanFeatureMessage is the one refusal sentence for a feature the workspace

@@ -63,6 +63,12 @@ import (
 // — the operator does the mechanism.
 type Service struct {
 	*core.Base
+	// ManagedOIDC reports that this bex-api runs the Managed OIDC issuer: a
+	// new App of a Pro-or-higher workspace is born with LabelManagedOIDC, so
+	// its first release already mounts the token its AWS_ROLE_ARN asks for
+	// (store.ManagedOIDCLabel; the projector keeps the label in step with the
+	// plan afterwards).
+	ManagedOIDC bool
 	// ImageCompatibilityWorkspaces gives new Docker/image services in these
 	// workspaces ("*" for every workspace) the render-v1 container policy,
 	// Render's measured capability set (ADR089 § Privilege slice decisions,
@@ -2870,6 +2876,7 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 		// finds this CR on its next pass (avoiding a duplicate create) and
 		// lifecycle verbs (suspend/scale/plan) have an app-id to write through.
 		stampAppIdentity(a, tenantID, row.ID, true)
+		s.stampManagedOIDC(ctx, a, tenantID)
 		// Build the commit the row records, as every later trigger does: a
 		// push landing before the build starts must not leave the row naming a
 		// commit that was never built (w5/138). An unresolved tip builds the
@@ -3115,6 +3122,26 @@ func stampAppIdentity(a *appv1alpha1.App, tenantID, appID string, managed bool) 
 		a.Labels[store.LabelWorkspace] = tenantID
 	}
 	a.Labels[core.LabelAppID] = appID
+}
+
+// stampManagedOIDC gives a new managed App the projector's Managed OIDC
+// label before its first release: the operator reads it once per release, so
+// waiting for the next projector pass would leave a Pro service created with
+// AWS_ROLE_ARN without its token until it deployed again. A failed plan read
+// is logged and leaves the label to that pass: the row already exists, and a
+// create is not refused over a token.
+func (s *Service) stampManagedOIDC(ctx context.Context, a *appv1alpha1.App, tenantID string) {
+	if !s.ManagedOIDC {
+		return
+	}
+	plan, ok, err := s.WorkspacePlanOf(ctx, tenantID)
+	if err != nil {
+		log.Printf("apps: Managed OIDC label for %s: %v (the projector stamps it)", a.Name, err)
+		return
+	}
+	if v := store.ManagedOIDCLabel(ok, plan); v != "" {
+		a.Labels[appv1alpha1.LabelManagedOIDC] = v
+	}
 }
 
 // errServiceNameInUse is the refusal of a name another service in the

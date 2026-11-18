@@ -261,6 +261,11 @@ type Reconciler struct {
 	// done so. Soft failure: a minting error is logged but the CR is still
 	// created (public repos don't need a secret).
 	CloneSecrets CloneSecreter
+	// ManagedOIDC reports that this bex-api runs the Managed OIDC issuer
+	// (BEX_OIDC_ISSUER_URL), so Apps of a Pro-or-higher workspace carry
+	// LabelManagedOIDC (stampLabels). Off, no App asks for a token nobody
+	// would mint.
+	ManagedOIDC bool
 
 	// DeployNotifier, when non-nil, is called every time recordDeploy closes a
 	// deploy as succeeded or failed — see DeployNotifier. nil => no emails
@@ -860,7 +865,7 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 			want.Image = cur.Spec.Image
 		}
 		specChanged := applyOwnedSpec(&cur.Spec, want)
-		labelsChanged := stampLabels(cur, d, r.identity())
+		labelsChanged := stampLabels(cur, d, r.identity(), r.ManagedOIDC)
 		if specChanged || labelsChanged {
 			if err := r.Client.Update(ctx, cur); err != nil {
 				errs = append(errs, fmt.Errorf("update App %s: %w", cur.Name, err))
@@ -2708,7 +2713,7 @@ func ManagedAppID(labels map[string]string) string {
 // next resync — and, for any App still on its pre-w4/m19 bare object name,
 // this is what backfills LabelServiceName without ever renaming the object
 // (core.GetApp's cross-workspace fallback needs the label to find it).
-func stampLabels(cur *appv1alpha1.App, d DesiredApp, identity string) bool {
+func stampLabels(cur *appv1alpha1.App, d DesiredApp, identity string, managedOIDC bool) bool {
 	if cur.Labels == nil {
 		cur.Labels = map[string]string{}
 	}
@@ -2752,7 +2757,20 @@ func stampLabels(cur *appv1alpha1.App, d DesiredApp, identity string) bool {
 		kept = strconv.Itoa(n)
 	}
 	setOptional(appv1alpha1.LabelKeptBuilds, kept)
+	setOptional(appv1alpha1.LabelManagedOIDC, ManagedOIDCLabel(managedOIDC, d.TenantPlan))
 	return changed
+}
+
+// ManagedOIDCLabel is appv1alpha1.LabelManagedOIDC's value for an App of a
+// workspace on plan (docs/ADR116-managed-oidc.md D9): enabled when this
+// bex-api runs an issuer and the plan includes Managed OIDC, else "" (no
+// label). The operator reads it once per release, so a plan change reaches a
+// service at its next deploy. An unknown plan gets none.
+func ManagedOIDCLabel(issuer bool, plan string) string {
+	if !issuer || !core.PlanIncludes(plan, core.FeatureManagedOIDC) {
+		return ""
+	}
+	return appv1alpha1.ManagedOIDCEnabled
 }
 
 // projectApp builds the App CR for a desired row. When r.CloneSecrets is set
@@ -2790,7 +2808,7 @@ func (r *Reconciler) projectApp(ctx context.Context, d DesiredApp) *appv1alpha1.
 		},
 		Spec: projectSpec(d),
 	}
-	stampLabels(a, d, r.identity())
+	stampLabels(a, d, r.identity(), r.ManagedOIDC)
 	if r.CloneSecrets != nil && d.Repo != "" {
 		if secretName, err := r.CloneSecrets.EnsureCloneSecret(ctx, ns, a.Name, d.TenantID, d.Repo); err != nil {
 			log.Printf("controlplane: clone secret for %s: %v (proceeding without)", a.Name, err)

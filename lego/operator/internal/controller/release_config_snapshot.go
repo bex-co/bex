@@ -726,12 +726,18 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 		if params.servingPortEnv, err = r.servingPortDefault(ctx, runtime); err != nil {
 			return err
 		}
+		// The release's own variables decide its token mounts, as above.
+		if params.managedOIDC, err = r.managedOIDC(ctx, app, runtime); err != nil {
+			return err
+		}
 		// Cached on app's status, which this pass persists; runtime is a view.
 		params.platform.gitCommit = r.imageCommit(ctx, app, params.image)
 		if r.edgeCaches(runtime) {
 			params.edgeCacheImage = r.BackupHelperImage
 		}
 		params.healthProbeImage = r.BackupHelperImage
+	} else {
+		recordManagedOIDCOf(app, *restore)
 	}
 	var prior *corev1.PodTemplateSpec
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, dep, func() error {

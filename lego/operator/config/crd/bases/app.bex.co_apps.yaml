@@ -1529,6 +1529,36 @@ spec:
                   eviction, so a cron_job's last success stays known through any number of
                   later failures (Render's cronJobDetails.lastSuccessfulRunAt, w3/m366).
                 type: string
+              managedOIDC:
+                description: |-
+                  ManagedOIDC is the Managed OIDC decision of the release the App runs
+                  (docs/ADR116-managed-oidc.md D9): the providers whose trigger variable
+                  the release sets, and whether the workspace plan let its pods mount
+                  their tokens. The operator records it when it first projects a release,
+                  before any of its pods exist; no providers means none was asked for.
+                  bex-api mints the tokens of Mounted() and narrates Refused() in the
+                  deploy log.
+                properties:
+                  generation:
+                    description: Generation is the release generation the decision
+                      belongs to.
+                    format: int64
+                    type: integer
+                  planAllowed:
+                    description: |-
+                      PlanAllowed records that the App carried LabelManagedOIDC when the
+                      release was decided, so a plan change takes effect at the next deploy.
+                    type: boolean
+                  providers:
+                    description: |-
+                      Providers are the providers whose trigger the release's environment
+                      sets, in ManagedOIDCProviders order.
+                    items:
+                      type: string
+                    type: array
+                required:
+                - generation
+                type: object
               manualRunHandledAt:
                 description: |-
                   ManualRunHandledAt is the exact spec.runAt token whose Job has been

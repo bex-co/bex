@@ -1,6 +1,6 @@
 # ADR116 — Managed OIDC: one issuer per workspace, Render's claims, an ES256 key set and its rotation
 
-**Status:** accepted (2026-11-18, w2/m476): the issuer, the signer, the key store, rotation and the public documents. Token delivery into services is w2/m477 (AWS), w2/m478 (Anthropic, OpenAI), w2/m479 (GCP) and w2/m480 (build time), which implement this record.
+**Status:** accepted (2026-11-18, w2/m476): the issuer, the signer, the key store, rotation and the public documents. Runtime delivery and AWS (D9) accepted 2026-11-18 with w2/m477. Anthropic and OpenAI (w2/m478), GCP (w2/m479) and build time (w2/m480) reuse D9.
 
 **Basis:** Render parity first ([ADR008](ADR008-vision.md#render-parity-first), user decisions 2026-10-17 and 2026-10-20). The user filed w2/m476–m480 with `/pm them all to w2` on 2026-11-17, reopening the 2026-08-23 deferral in `.pm/FUTURE-MAYBE.md`. The choices below that the brainstorm left open (D2 host, D5 custody) are the worker's, with the basis given; none is a user decision.
 
@@ -88,14 +88,41 @@ The operator-run commands, `kubectl -n bex-system exec deploy/bex-api -- /api oi
 
 ### D7 — Delivery
 
-Who asks for a token, how it reaches the container, its refresh and the plan gate (the brainstorm's D3 and D4) are w2/m477's design addendum. The signer's interface is `oidcissuer.Issuer.Mint(ctx, Subject, audience)`.
+Who asks for a token, how it reaches the container, its refresh and the plan gate (the brainstorm's D3 and D4) are D9, w2/m477's addendum. The signer's interface is `oidcissuer.Issuer.Mint(Subject, audience)`.
 
 ### D8 — No new surface
 
 bex adds no REST, GraphQL, MCP, dashboard, CLI or Blueprint field for OIDC, as Render has none. The public documents in D1 are the only tenant-facing surface this ADR adds.
+
+### D9 — Runtime delivery (w2/m477)
+
+Render, [render.com/docs/oidc](https://render.com/docs/oidc) (read 2026-11-18): add `AWS_ROLE_ARN` and redeploy; Render "automatically sets an additional environment variable named `AWS_WEB_IDENTITY_TOKEN_FILE`" to the token file's path, and says "Do not manually set" it. Render's [build write-up](https://render.com/blog/how-we-built-render-oidc): a daemon outside the container writes the tokens "before the service ever starts" and keeps them fresh, into a host directory in memory-backed `/dev/shm`, mounted with "a read-only bind mount" at `/var/lib/render/oidc/`. Neither names the file inside the directory, so bex's file name (`aws-token`) is **unverified** against Render's. Render's behavior below Pro is not documented.
+
+**Who decides.** Two halves, each where its input lives:
+
+- **The plan, bex-api.** An App of a workspace whose plan includes Managed OIDC (`core.FeatureManagedOIDC`, Pro and higher; `core.PlanIncludes`, so an unknown plan includes nothing) carries the label `app.bex.co/managed-oidc: enabled`, only while this bex-api runs an issuer. The projector keeps it in step with the plan (`store.ManagedOIDCLabel`, like the kept-builds label), and the create path stamps it on a new App, so a service created with `AWS_ROLE_ARN` mounts its token from its first deploy.
+- **The trigger, the operator.** When it projects a release's workloads, the operator reads `AWS_ROLE_ARN` from that release's own environment, as it reads `PORT` and `WEB_CONCURRENCY` (`configuredEnv`): a literal, the service's env Secret or a linked group's, or their per-release snapshots. A blank value is no trigger. The REST, GraphQL, MCP, dashboard, Blueprint and env-group surfaces all write those sources, so no surface needs its own field, as on Render.
+- **The decision is per release.** The operator decides when it first projects a release (its pre-deploy step, instances or cron template, whichever comes first; a rollback reads its selected release's environment), records it in `status.managedOIDC` (`generation`, `providers`, `planAllowed`) before any pod of the release exists, and keeps it for the life of the release. A variable or plan change reaches a service at its next deploy and never rolls a running one, and a pass reads no variable to keep the decision. A release already serving when an operator with Managed OIDC first sees it mounts nothing until its next deploy, so the upgrade rolls no pod. A cancel that restores a served release's recorded template records that template's mounts instead.
+
+**Who mints: bex-api** (the `cloneSecret` precedent; the operator holds no key and no database). `internal/managedoidc.Minter` lists the Apps carrying the label and, for each whose `status.managedOIDC` mounts a provider, writes the provider's token (D3's claims, `aud` `sts.amazonaws.com`) to the App's Secret `<app>-oidc`, key `aws-token`. One replica writes at a time (`store.PGStore.RunExclusive`, a session advisory lock). The Secret carries `app.bex.co/protected-from-tenant-mount`, so another service naming it in its env is refused: it would act as this service. The App owns it (not as controller), so deleting the service deletes its tokens.
+
+**Refresh.** A pass runs every minute, and at once when a release starts mounting a token (the App status watch bex-api already runs wakes it for that change alone), and replaces a token once it is 20 minutes old, a third of its life: a refresh failing for half an hour still leaves a valid file, and the kubelet's Secret sync (about a minute) never hands a container a token close to expiry. A service that moves environment gets a token for its new `sub` at the next pass. At most 100 writes per pass; a pass that hits the bound starts the next at once. `bex_managed_oidc_refresh_failures_total` and `bex_managed_oidc_oldest_token_age_seconds` meter it. A downgraded workspace, a release without the trigger and a refused release get no new tokens; the last one expires on its own.
+
+**How it reaches the container.** A release that mounts a provider gets a Secret volume of `<app>-oidc` listing `aws-token`, mounted read-only at `/var/lib/render/oidc` (the kubelet keeps Secret volumes in tmpfs, as Render's `/dev/shm`), and `AWS_WEB_IDENTITY_TOKEN_FILE=/var/lib/render/oidc/aws-token`. The volume is required, so a container does not start before its token exists; the decision is written before the pod and wakes the minter, so the token is usually there first. A value the service set itself for `AWS_WEB_IDENTITY_TOKEN_FILE` gives way to the platform's, as Render warns. A release without the trigger gets none of it: its pod template is the one it had before.
+
+**Which containers.** Every container bex runs for the service: instances (web, private, background worker), every cron run, the pre-deploy step and the initial deploy hook (which copies the instance's template). SSH and dashboard shell sessions exec into an instance and inherit the file and the variable. One-off jobs and ephemeral shells are refused on bex (`.pm/DO_NOT_DO.md`). Build time is w2/m480. OIDC does not authenticate private image pulls, on Render either.
+
+**Below Pro** (the brainstorm's D4; Render's behavior unverified). The variable is accepted and kept on every surface, no token is mounted, and the deploy's log says why: `==> Managed OIDC requires a Pro workspace or higher: AWS_ROLE_ARN is set, but no identity token is mounted` (from `status.managedOIDC`, so only the running release's deploy carries it).
+
+**Residuals.**
+
+- A token of at most 60 minutes sits in etcd and its backups. Memory-only delivery through a CSI driver is the stricter variant, in `.pm/FUTURE-MAYBE.md`.
+- A relying party that does not check `iss` accepts any workspace's token, because the key set is shared (D4). AWS, GCP, Anthropic and OpenAI bind a trust to one issuer URL; MinIO's STS does not check `iss` (observed 2026-11-18), so `scripts/oidc-aws-verify.sh` proves the exchange there and leaves workspace isolation to `scripts/oidc-issuer-verify.sh`.
+- While a newer release's pre-deploy step holds the rollout, the decision recorded is the newer release's. If it drops the trigger, the served instances get no refresh for the length of the step, and their token stays valid for at least 40 minutes after the last one.
 
 ## Consequences
 
 - ADR018's row "Managed OIDC for AI providers" names w2/m476–m480 as owners, and ADR030's open gap points at the same milestones. Both stay ✖ until delivery ships.
 - `BEX_OIDC_ISSUER_URL` is documented in `lego/backend/AGENTS.md`.
 - `scripts/oidc-issuer-verify.sh` checks production: a token minted for a workspace verifies through that workspace's discovery with go-oidc, fails against another workspace's issuer, and discovery has Render's keys.
+- `scripts/oidc-aws-verify.sh` checks a running service (D9): its token file and variable, an `AssumeRoleWithWebIdentity` exchange at an STS trusting its workspace's issuer, a refusal for another audience, and the same across one refresh.

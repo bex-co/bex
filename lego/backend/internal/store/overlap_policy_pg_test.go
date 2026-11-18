@@ -60,12 +60,12 @@ func TestPGOverridePolicyStartsTheNewDeployAtOnce(t *testing.T) {
 			continue
 		}
 		var app appv1alpha1.App
-		stampLabels(&app, d, "test")
+		stampLabels(&app, d, "test", false)
 		if app.Labels[appv1alpha1.LabelOverlappingDeployPolicy] != appv1alpha1.OverlappingDeployPolicyOverride {
 			t.Fatalf("Override App labels = %v, want the policy label", app.Labels)
 		}
 		d.OverlappingDeployPolicy = OverlapWait
-		if !stampLabels(&app, d, "test") || app.Labels[appv1alpha1.LabelOverlappingDeployPolicy] != "" {
+		if !stampLabels(&app, d, "test", false) || app.Labels[appv1alpha1.LabelOverlappingDeployPolicy] != "" {
 			t.Fatalf("back to Wait: labels = %v, want the policy label removed", app.Labels)
 		}
 	}

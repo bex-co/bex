@@ -20,6 +20,7 @@ import (
 	"context"
 	"net/http"
 	"reflect"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -223,6 +224,7 @@ func TestStatusFingerprintNamesEveryStatusField(t *testing.T) {
 		"PendingReleaseGeneration":   "the pending release's verdict arrives through the phase and conditions",
 		"SelectedReleaseGeneration":  "the selected release's verdict arrives through the phase and conditions",
 		"LastSuccessfulRunAt":        "moves when a run in Runs succeeds, which already kicks; read by service views",
+		"ManagedOIDC":                "the minter's own wake (ManagedOIDCKick), not a projector record",
 		"SandboxID":                  "sandbox runtime only",
 		"Endpoint":                   "sandbox runtime only",
 	}
@@ -407,5 +409,43 @@ func TestWatchKicksAreSpacedByThePassTheyCause(t *testing.T) {
 	s.fired()
 	if delay, _ = s.schedule(now); delay < time.Second {
 		t.Fatalf("delay = %v right after a short pass, want at least the 1 s floor", delay)
+	}
+}
+
+// TestStatusWatchWakesTheMinterOnlyWhenAReleaseStartsMountingTokens
+// (w2/m477): the Managed OIDC minter is woken when a release first mounts a
+// token, since its pods wait for it, and not by the phase changes the
+// projector cares about, nor by a refused release or the same decision again.
+func TestStatusWatchWakesTheMinterOnlyWhenAReleaseStartsMountingTokens(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	fw := watch.NewFakeWithChanSize(8, false)
+	sw := &scriptedWatch{watchers: []*watch.FakeWatcher{fw}, calls: make(chan int, 4)}
+	var kicks, minter atomic.Int32
+	w := &AppStatusWatch{Client: sw, Kick: func() { kicks.Add(1) }, ManagedOIDCKick: func() { minter.Add(1) }, Backoff: time.Millisecond}
+	go w.Run(ctx)
+	<-sw.calls
+
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", UID: "u1", ResourceVersion: "1"}}
+	next := func(change func(*appv1alpha1.App)) {
+		change(app)
+		app = app.DeepCopy()
+		rv, _ := strconv.Atoi(app.ResourceVersion)
+		app.ResourceVersion = strconv.Itoa(rv + 1)
+		fw.Modify(app.DeepCopy())
+	}
+	fw.Add(app.DeepCopy())
+	next(func(a *appv1alpha1.App) { a.Status.Phase = appv1alpha1.PhaseDeploying })
+	next(func(a *appv1alpha1.App) {
+		a.Status.ManagedOIDC = &appv1alpha1.ManagedOIDCStatus{Generation: 2, Providers: []string{"aws"}}
+	})
+	next(func(a *appv1alpha1.App) { a.Status.ManagedOIDC.PlanAllowed = true })
+	next(func(a *appv1alpha1.App) { a.Status.Phase = appv1alpha1.PhaseRunning })
+	next(func(a *appv1alpha1.App) { a.Status.ManagedOIDC.Generation = 3 })
+	waitFor(t, "the projector's kicks", func() bool { return kicks.Load() >= 2 })
+	waitFor(t, "the minter's kicks", func() bool { return minter.Load() >= 2 })
+	time.Sleep(50 * time.Millisecond)
+	if got := minter.Load(); got != 2 {
+		t.Fatalf("minter kicks = %d, want 2: one when release 2 starts mounting, one for release 3", got)
 	}
 }

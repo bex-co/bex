@@ -66,6 +66,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/mailer"
+	"github.com/bex-co/bex/lego/backend/internal/managedoidc"
 	"github.com/bex-co/bex/lego/backend/internal/members"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/notifications"
@@ -664,7 +665,7 @@ func main() {
 		go stripeLifecycleReconciler.Run(ctx)
 	}
 
-	wireReconcilers(ctx, srv, rec, st, cl, base, cfg)
+	wireReconcilers(ctx, srv, rec, st, cl, base, cfg, managedOIDCMinter(srv, st, cl, metricRegistry))
 	startDeliveryWorkers(ctx, cfg, srv, st, deps.Mailer, mobilePush, webPush, pushMetrics, webhookMetrics)
 	srv.CORSOrigin = cfg.CORSOrigin
 	srv.HydraAdminURL = hydraAdminURL
@@ -1808,7 +1809,21 @@ func wireAgentSessions(deps *api.Deps, cfg *Config) {
 	deps.MaxCustomDomainsPerWorkspace = cfg.MaxCustomDomainsPerWorkspace
 }
 
-func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler, st *store.PGStore, cl client.WithWatch, base *core.Base, cfg *Config) {
+// managedOIDCMinter is the Managed OIDC token worker
+// (docs/ADR116-managed-oidc.md D9), or nil when no issuer runs. It needs the
+// control-plane store for its single-writer lock and a cluster client to read
+// Apps and write their token Secrets.
+func managedOIDCMinter(srv *api.Server, st *store.PGStore, cl client.Client, reg prometheus.Registerer) *managedoidc.Minter {
+	if srv.OIDCIssuer == nil || st == nil || cl == nil {
+		return nil
+	}
+	m := managedoidc.NewMinter(cl, srv.OIDCIssuer)
+	m.Exclusive = st.RunExclusive
+	m.Metrics = managedoidc.NewMetrics(reg)
+	return m
+}
+
+func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler, st *store.PGStore, cl client.WithWatch, base *core.Base, cfg *Config, minter *managedoidc.Minter) {
 	// Wire the reconciler ↔ apps.Service now that both exist (w2/m11):
 	// - CloneSecrets: the projector mints clone Secrets for private-repo rows
 	//   created via the internal CP API (store/api.go POST /v1/apps).
@@ -1869,7 +1884,18 @@ func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler
 		// verdict reaches its row, events and webhooks within seconds instead of
 		// on the next resync. Every replica watches, as every replica projects;
 		// the store's transitions are idempotent across replicas.
-		go (&store.AppStatusWatch{Client: cl, Kick: rec.KickFromWatch, Metrics: rec.Metrics}).Run(ctx)
+		watch := &store.AppStatusWatch{Client: cl, Kick: rec.KickFromWatch, Metrics: rec.Metrics}
+		if minter != nil {
+			// Managed OIDC (ADR116 D9): Apps of a Pro-or-higher workspace carry
+			// the plan label, and the minter keeps their tokens fresh. A
+			// release that starts mounting one records it in status, so the
+			// same watch wakes the minter and the pod's token arrives in
+			// seconds rather than at the next minute's pass.
+			rec.ManagedOIDC = true
+			watch.ManagedOIDCKick = minter.Kick
+			go minter.Run(ctx)
+		}
+		go watch.Run(ctx)
 		go nsRec.Run(ctx)
 		go (&store.ProductInventoryCollector{Store: st, Client: cl, Identity: cpIdentity}).Run(ctx)
 	}

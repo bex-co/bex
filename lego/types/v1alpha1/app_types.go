@@ -2102,6 +2102,16 @@ type AppStatus struct {
 	// +optional
 	ReleaseStart *ReleaseStart `json:"releaseStart,omitempty"`
 
+	// ManagedOIDC is the Managed OIDC decision of the release the App runs
+	// (docs/ADR116-managed-oidc.md D9): the providers whose trigger variable
+	// the release sets, and whether the workspace plan let its pods mount
+	// their tokens. The operator records it when it first projects a release,
+	// before any of its pods exist; no providers means none was asked for.
+	// bex-api mints the tokens of Mounted() and narrates Refused() in the
+	// deploy log.
+	// +optional
+	ManagedOIDC *ManagedOIDCStatus `json:"managedOIDC,omitempty"`
+
 	// ConfigSnapshotGeneration is the release generation whose configuration
 	// sources have been copied into immutable per-release Secrets (0 = none, the
 	// pre-w1/m152 state and every App that has not dispatched a release since).

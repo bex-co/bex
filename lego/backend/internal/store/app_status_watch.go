@@ -55,10 +55,17 @@ type AppStatusWatch struct {
 	Metrics *ReconcilerMetrics
 	// Backoff is the wait before restarting a failed watch. Zero means 2 s.
 	Backoff time.Duration
+	// ManagedOIDCKick, when set, wakes the Managed OIDC minter when an App's
+	// release starts mounting tokens it did not mount before
+	// (status.managedOIDC, docs/ADR116-managed-oidc.md D9): its pods wait for
+	// them. Only that change kicks, so the minter does not run a pass for
+	// every phase change in the cluster.
+	ManagedOIDCKick func()
 
 	// seen is each watched App's last fingerprint hash; resourceVersion is
 	// where the next watch resumes ("" starts over with a fresh listing).
 	seen            map[types.UID]uint64
+	mounts          map[types.UID]string
 	resourceVersion string
 }
 
@@ -83,6 +90,7 @@ func (w *AppStatusWatch) watchOnce(ctx context.Context) error {
 			w.Kick()
 		}
 		w.seen = map[types.UID]uint64{}
+		w.mounts = map[types.UID]string{}
 	}
 	wi, err := w.Client.Watch(ctx, &appv1alpha1.AppList{},
 		client.MatchingLabels{LabelManagedBy: ManagedByValue},
@@ -118,12 +126,33 @@ func (w *AppStatusWatch) watchOnce(ctx context.Context) error {
 				if (known && before != fingerprint) || (!known && ev.Type == watch.Modified) {
 					w.Kick()
 				}
+				w.kickManagedOIDC(app)
 			case watch.Deleted:
 				delete(w.seen, app.UID)
+				delete(w.mounts, app.UID)
 			case watch.Bookmark:
 				// Only advances resourceVersion, above.
 			}
 		}
+	}
+}
+
+// kickManagedOIDC calls ManagedOIDCKick when app's release mounts tokens
+// for a generation or providers the watch has not seen it mount.
+func (w *AppStatusWatch) kickManagedOIDC(app *appv1alpha1.App) {
+	if w.ManagedOIDCKick == nil {
+		return
+	}
+	mounts := ""
+	if st := app.Status.ManagedOIDC; len(st.Mounted()) > 0 {
+		mounts = fmt.Sprintf("%d:%v", st.Generation, st.Mounted())
+	}
+	if mounts == w.mounts[app.UID] {
+		return
+	}
+	w.mounts[app.UID] = mounts
+	if mounts != "" {
+		w.ManagedOIDCKick()
 	}
 }
 

@@ -136,6 +136,11 @@ jobs:
       # malformed workspace id.
       - name: OIDC issuer verify self-test
         run: bash scripts/oidc-issuer-verify.test.sh
+      # w2/m477 (ADR116 D9): the in-cluster AWS token proof passes a healthy
+      # service and fails a writable token file, a claim off Render's
+      # template, an STS for another audience accepting it, or no refresh.
+      - name: OIDC AWS verify self-test
+        run: bash scripts/oidc-aws-verify.test.sh
       # w6/110 (#134): an activator-held wake is a wake, and stage 4 polls.
       - name: Tenant-view canary stage 4 self-test
         run: bash scripts/tenant-view-liveness.test.sh

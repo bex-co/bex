@@ -5323,9 +5323,16 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	var tmpl corev1.PodTemplateSpec
 	if restore != nil {
 		tmpl = *restore
+		recordManagedOIDCOf(app, tmpl)
 	} else {
 		tmpl = r.cronPodSpec(effectiveApp, image, port, labels, launch, r.imageCommit(ctx, app, image))
 		tmpl.Spec.ImagePullSecrets = r.withLinkedSourcePullSecret(ctx, effectiveApp, image, tmpl.Spec.ImagePullSecrets)
+		// Every run of this release reads its token files (managed_oidc.go).
+		oidc, err := r.managedOIDC(ctx, app, effectiveApp)
+		if err != nil {
+			return r.fail(ctx, app, "DeployFailed", err)
+		}
+		withManagedOIDCPod(&tmpl.Spec, effectiveApp, oidc)
 	}
 	res, err := r.applyServingCronJob(ctx, app, tmpl, restore != nil)
 	if err != nil {
@@ -7518,6 +7525,16 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		vols = []corev1.Volume{*vol}
 		mounts = []corev1.VolumeMount{*mount}
 	}
+	// The step reads the release's token files as its instances will
+	// (managed_oidc.go): a migration can reach AWS with the same role.
+	oidc, err := r.managedOIDC(ctx, app, release)
+	if err != nil {
+		return notStarted(err)
+	}
+	if vol, mount := managedOIDCVolume(app, oidc); vol != nil {
+		vols = append(vols, *vol)
+		mounts = append(mounts, *mount)
+	}
 	pullSecrets := r.withLinkedSourcePullSecret(ctx, app, image, r.imagePullSecrets(app, image))
 	if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
 		return notStarted(err)
@@ -7525,7 +7542,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	opts := r.stepJobOptions(app, gen)
 	opts.Image = image
 	opts.Command = preDeployArgv(app, image, command)
-	opts.Env = withPlatformEnv(appEnv(app, port), platformEnv(app, platformEnvInputs{baseDomain: r.BaseDomain, gitCommit: r.imageCommit(ctx, app, image)}))
+	opts.Env = withManagedOIDC(withPlatformEnv(appEnv(app, port), platformEnv(app, platformEnvInputs{baseDomain: r.BaseDomain, gitCommit: r.imageCommit(ctx, app, image)})), oidc)
 	opts.EnvFrom = envFromSources(release)
 	opts.ImagePullSecrets = pullSecrets
 	opts.SecurityContext = appSecCtx(app.Spec)

@@ -111,8 +111,42 @@ type progressContext struct {
 	serviceType string
 	wait        buildWait
 	hook        hookRun
+	oidc        oidcRefusal
 	namespace   string
 	name        string
+}
+
+// oidcRefusal is the release whose environment asked for Managed OIDC tokens
+// its workspace plan does not include (status.managedOIDC, w2/m477): the
+// triggers it set and its generation. The zero value is none.
+type oidcRefusal struct {
+	generation int64
+	triggers   []string
+}
+
+// appOIDCRefusal reads the App's current release decision. Only the running
+// release's is kept, so an older deploy's log stops carrying the line once a
+// newer release replaces the decision.
+func appOIDCRefusal(app *appv1alpha1.App) oidcRefusal {
+	st := app.Status.ManagedOIDC
+	var triggers []string
+	for _, p := range appv1alpha1.ManagedOIDCProvidersNamed(st.Refused()) {
+		triggers = append(triggers, p.Trigger)
+	}
+	if len(triggers) == 0 {
+		return oidcRefusal{}
+	}
+	return oidcRefusal{generation: st.Generation, triggers: triggers}
+}
+
+// oidcRefusalLine is the deploy log's explanation, in Render's own words for
+// the plan rule (render.com/docs/oidc: "With a Pro workspace or higher").
+func oidcRefusalLine(triggers []string) string {
+	verb := "is"
+	if len(triggers) > 1 {
+		verb = "are"
+	}
+	return "==> Managed OIDC requires a Pro workspace or higher: " + strings.Join(triggers, " and ") + " " + verb + " set, but no identity token is mounted"
 }
 
 // hookRun is the App's latest initialDeployHook run (status.initialDeployHook,
@@ -162,6 +196,7 @@ func newProgressContext(app *appv1alpha1.App) progressContext {
 		serviceType: app.Spec.Type,
 		wait:        appBuildWait(app),
 		hook:        appHookRun(app),
+		oidc:        appOIDCRefusal(app),
 		namespace:   app.Namespace,
 		name:        app.Name,
 	}
@@ -343,6 +378,11 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 			// Repo-backed, but no build ran and the row names no image: a
 			// rollout of the artifact already active. Narrate the rollout.
 			add(d.StartedAt, "==> Rolling out the current release")
+		}
+		// The operator decides a release's token mounts as it projects
+		// the release, after the deploy started.
+		if pc.oidc.generation > 0 && pc.oidc.generation == d.Generation {
+			add(d.StartedAt, oidcRefusalLine(pc.oidc.triggers))
 		}
 	}
 	if !d.FinishedAt.IsZero() {

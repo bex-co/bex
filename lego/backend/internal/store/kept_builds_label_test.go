@@ -87,7 +87,7 @@ func TestPGDesiredAppsCarryTheWorkspacePlan(t *testing.T) {
 		for _, d := range desired {
 			if d.ID == row.ID {
 				var app appv1alpha1.App
-				stampLabels(&app, d, "test")
+				stampLabels(&app, d, "test", false)
 				return app.Labels[appv1alpha1.LabelKeptBuilds]
 			}
 		}
