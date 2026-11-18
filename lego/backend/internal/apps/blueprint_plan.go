@@ -688,3 +688,20 @@ func ApplyBlueprintKeyValueSpec(dst *appv1alpha1.KeyValueSpec, want appv1alpha1.
 	}
 	return !reflect.DeepEqual(before, *dst)
 }
+
+// blueprintKeyValueGatePlan is the plan a sync's paused-tier gate judges: the
+// declared plan, or the store's own when the file omits plan (the sync keeps
+// it, w33/m436) — never the create default an omission carries. A create has
+// no store to keep (current is ""), so the default is the new selection there,
+// judged as declared. The plan judges the same value as probe.Plan; the apply
+// must judge it too, or pausing the default tier refuses every plan-less sync,
+// changed or not, that the plan reports as update or noop.
+func blueprintKeyValueGatePlan(kv parsedKeyValue, current string) string {
+	if _, declared := kv.fields["plan"]; declared {
+		return kv.spec.Plan
+	}
+	if current == "" {
+		return kv.spec.Plan
+	}
+	return current
+}

@@ -8,6 +8,9 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 
 ## Skipped
 
+- 2026-11-18 agreement/keyvalue plan-gate vs apply-gate (downgrade, external-access, noop) — audited, holds: both judge identical inputs with the same verdicts; only the paused-plan selection diverged, fixed this run
+- 2026-11-18 agreement/database+keyvalue probe-set completeness — audited, holds: parsed fields are the IR map by construction (deploy.go blueprintFieldsByResource), so ChangedFields probes every field the apply moves
+- 2026-11-18 agreement/service runtime gates (protected-env confirmation, maintenance/hosts/checks eligibility) — plan previews, validation preflight + apply enforce; authz and external-state dependent, not logic
 - 2026-11-18 billing/estimate-gate agreement incl. kept plans — audited, holds: the gate trips exactly when the estimate shows a priced line or variable entry on every valid stack, and both read stackAtKeptPlans (TestStackPaidPlanAgreesWithEstimate, kept-plan tests, pricing property tests all pass)
 - 2026-11-18 billing/nil-fields kept-plan asymmetry — services with no field record use the create default while datastores keep the live plan, mirroring the apply (re-apply whole vs apply declared fields only); consistent, not a bug
 - 2026-11-18 billing/KV estimate storage floor vs Valkey.EffectiveStorageGB — equivalent on valid stacks (a parsed spec carries no allocated high-water, unknown plans are rejected at parse); hand-rolled max() is duplication only
