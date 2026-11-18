@@ -21,6 +21,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -56,6 +58,11 @@ type TenantStore interface {
 	SetTenantDisplayNameIfUnset(ctx context.Context, id, displayName string) error
 	BindClient(ctx context.Context, clientID, tenantID string) error
 	UnbindClient(ctx context.Context, clientID string) error
+	// ClientBindingsOfTenants and BumpOAuthRevocation serve a deleted
+	// workspace's key teardown (w9/120): the keys bound there, and the marker
+	// that refuses a key's tokens on every replica while its row still exists.
+	ClientBindingsOfTenants(ctx context.Context, tenantIDs []string) (map[string]string, error)
+	BumpOAuthRevocation(ctx context.Context, subject, clientID string) error
 	// AcceptInvitesForEmail redeems every outstanding invite addressed to email
 	// into a tenant_members row for subject and returns them, so the caller can
 	// write the matching OpenFGA role tuples (w4/m12).
@@ -707,6 +714,31 @@ func (t *Service) UnbindKey(ctx context.Context, clientID string) error {
 		return err
 	}
 	return nil
+}
+
+// WorkspaceKeys implements apikeys.WorkspaceKeyBinding: the client ids of the
+// API keys bound to tenantID, sorted (w9/120).
+func (t *Service) WorkspaceKeys(ctx context.Context, tenantID string) ([]string, error) {
+	bound, err := t.store.ClientBindingsOfTenants(ctx, []string{tenantID})
+	if err != nil {
+		return nil, err
+	}
+	return slices.Sorted(maps.Keys(bound)), nil
+}
+
+// RevokeWorkspaceKey implements apikeys.WorkspaceKeyBinding: it takes every
+// role tuple the key holds in tenantID and refuses its tokens on every replica
+// (the permanent machine marker UnbindKey also writes), but keeps the key's
+// binding row (w9/120). A deleted workspace's teardown deletes the Hydra client
+// next and leaves the row to the tenant cascade, so a delete that fails in
+// between still finds the key on its retry. Idempotent.
+func (t *Service) RevokeWorkspaceKey(ctx context.Context, tenantID, clientID string) error {
+	if t.granter != nil {
+		if err := t.revokeKeyRoles(ctx, tenantID, "user:"+clientID); err != nil {
+			return fmt.Errorf("revoke key membership: %w", err)
+		}
+	}
+	return t.store.BumpOAuthRevocation(ctx, clientID, clientID)
 }
 
 // revokeKeyRoles removes every role tuple a key holds in tenantID, not only

@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -1309,6 +1310,128 @@ func TestCleanupSubjectStaysGlobal(t *testing.T) {
 	}
 	if _, live := ks.keys["key-alice"]; !live {
 		t.Error("another subject's key was deleted")
+	}
+}
+
+// --- w9/120: a deleted workspace's keys ------------------------------------
+
+// workspaceKeys is fakeBinder with the binding side of the workspace purger:
+// RevokeWorkspaceKey records the key as refused and keeps its binding, as
+// tenancy.Service does.
+type workspaceKeys struct {
+	*fakeBinder
+	refused    map[string]bool
+	failRevoke bool
+}
+
+func newWorkspaceKeys() *workspaceKeys {
+	return &workspaceKeys{fakeBinder: newFakeBinder(), refused: map[string]bool{}}
+}
+
+func (b *workspaceKeys) WorkspaceKeys(_ context.Context, tenantID string) ([]string, error) {
+	var out []string
+	for id, owner := range b.bound {
+		if owner == tenantID {
+			out = append(out, id)
+		}
+	}
+	slices.Sort(out)
+	return out, nil
+}
+
+func (b *workspaceKeys) RevokeWorkspaceKey(_ context.Context, tenantID, clientID string) error {
+	if b.failRevoke {
+		return errors.New("openfga revoke failed")
+	}
+	if b.bound[clientID] != tenantID {
+		return fmt.Errorf("%s is not bound to %s", clientID, tenantID)
+	}
+	b.refused[clientID] = true
+	return nil
+}
+
+// hydraDown fails the Hydra delete of one key.
+type hydraDown struct {
+	*fakeKeyStore
+	failing string
+}
+
+func (h *hydraDown) Delete(ctx context.Context, id string) error {
+	if id == h.failing {
+		return errors.New("hydra admin unavailable")
+	}
+	return h.fakeKeyStore.Delete(ctx, id)
+}
+
+// Deleting a workspace revokes every key bound there, whoever minted it, and
+// nothing else: a key bound elsewhere and an unbound key stay. A binding whose
+// Hydra client is already gone still has its authority taken.
+func TestWorkspacePurgerRevokesEveryKeyBoundThere(t *testing.T) {
+	ks := newFakeKeyStore()
+	b := newWorkspaceKeys()
+	seedBoundKey(t, ks, b.fakeBinder, "key-bob", "bob", "tea-1")
+	seedBoundKey(t, ks, b.fakeBinder, "key-alice", "alice", "tea-1")
+	seedBoundKey(t, ks, b.fakeBinder, "key-elsewhere", "bob", "tea-2")
+	seedBoundKey(t, ks, b.fakeBinder, "key-unbound", "bob", "")
+	b.bound["key-gone"] = "tea-1" // its Hydra client was deleted by hand
+
+	if err := (WorkspacePurger{Store: ks, Binding: b}).PurgeWorkspace(context.Background(), "tea-1"); err != nil {
+		t.Fatalf("purge: %v", err)
+	}
+	for _, id := range []string{"key-bob", "key-alice", "key-gone"} {
+		if !b.refused[id] {
+			t.Errorf("%s keeps its authority in the deleted workspace", id)
+		}
+		if _, live := ks.keys[id]; live {
+			t.Errorf("%s survived in Hydra", id)
+		}
+	}
+	for _, id := range []string{"key-elsewhere", "key-unbound"} {
+		if b.refused[id] {
+			t.Errorf("%s was revoked but is not bound to the deleted workspace", id)
+		}
+		if _, live := ks.keys[id]; !live {
+			t.Errorf("%s was deleted but is not bound to the deleted workspace", id)
+		}
+	}
+}
+
+// The authority goes before the Hydra client, and a failure at either step
+// fails the purge with the key still listed, so the retried delete finishes it.
+func TestWorkspacePurgerConvergesOnRetry(t *testing.T) {
+	ctx := context.Background()
+	ks := &hydraDown{fakeKeyStore: newFakeKeyStore()}
+	b := newWorkspaceKeys()
+	seedBoundKey(t, ks.fakeKeyStore, b.fakeBinder, "key-1", "bob", "tea-1")
+	seedBoundKey(t, ks.fakeKeyStore, b.fakeBinder, "key-2", "bob", "tea-1")
+	purger := WorkspacePurger{Store: ks, Binding: b}
+
+	b.failRevoke = true
+	if err := purger.PurgeWorkspace(ctx, "tea-1"); err == nil {
+		t.Fatal("purge reported success over a failed revoke")
+	}
+	if len(ks.keys) != 2 {
+		t.Fatalf("a Hydra client was deleted before its key lost its authority: %v", ks.keys)
+	}
+
+	b.failRevoke = false
+	ks.failing = "key-1"
+	if err := purger.PurgeWorkspace(ctx, "tea-1"); err == nil {
+		t.Fatal("purge reported success over a failed Hydra delete")
+	}
+	if !b.refused["key-1"] {
+		t.Error("key-1 kept its authority while its Hydra client survived")
+	}
+	if left, _ := b.WorkspaceKeys(ctx, "tea-1"); !slices.Contains(left, "key-1") {
+		t.Fatalf("key-1 is no longer listed in tea-1 (%v), so no retry can delete its Hydra client", left)
+	}
+
+	ks.failing = ""
+	if err := purger.PurgeWorkspace(ctx, "tea-1"); err != nil {
+		t.Fatalf("retry: %v", err)
+	}
+	if len(ks.keys) != 0 {
+		t.Errorf("Hydra still knows %v after the retry", ks.keys)
 	}
 }
 

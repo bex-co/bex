@@ -54,10 +54,10 @@ import (
 //	BEX_TEST_OPENFGA_URL=http://127.0.0.1:58085 \
 //	  go test ./internal/api/ -run 'E2E' -v
 
-// fgaRawWrite posts a /write body straight to OpenFGA, so a test can put the
-// store in a state the checker's own verbs would never produce (a tuple deleted
-// behind bex's back). It returns the status and body.
-func fgaRawWrite(t *testing.T, fgaURL, token, body string) (int, string) {
+// fgaStoreCall sends one request to the "bex" store of a real OpenFGA, at
+// path under /stores/<id>, so a test can read or write tuples behind bex's
+// back. It returns the status and body.
+func fgaStoreCall(t *testing.T, fgaURL, token, method, path string, payload []byte) (int, []byte) {
 	t.Helper()
 	do := func(method, path string, payload []byte) (int, []byte) {
 		req, err := http.NewRequest(method, fgaURL+path, bytes.NewReader(payload))
@@ -85,12 +85,20 @@ func fgaRawWrite(t *testing.T, fgaURL, token, body string) (int, string) {
 	}
 	for _, s := range stores.Stores {
 		if s.Name == "bex" {
-			code, out := do(http.MethodPost, "/stores/"+s.ID+"/write", []byte(body))
-			return code, string(out)
+			return do(method, "/stores/"+s.ID+path, payload)
 		}
 	}
 	t.Fatal(`openfga store "bex" not found`)
-	return 0, ""
+	return 0, nil
+}
+
+// fgaRawWrite posts a /write body straight to OpenFGA, so a test can put the
+// store in a state the checker's own verbs would never produce (a tuple deleted
+// behind bex's back). It returns the status and body.
+func fgaRawWrite(t *testing.T, fgaURL, token, body string) (int, string) {
+	t.Helper()
+	code, out := fgaStoreCall(t, fgaURL, token, http.MethodPost, "/write", []byte(body))
+	return code, string(out)
 }
 
 // A revoke of a tuple that is not there, a second revoke, and a grant of a

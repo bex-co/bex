@@ -85,9 +85,10 @@ type Service struct {
 	// => pruning waits for the resync.
 	Kick func()
 	// PreCascadePurgers tear down a deleted workspace's out-of-cascade resources
-	// BEFORE the tenant row (and its FK cascade) is dropped: OpenBao env-var
-	// secrets, env groups, managed Databases/KeyValues, its OpenSandbox
-	// sandboxes, and its Stripe subscription. Running before DeleteTenant is what
+	// BEFORE the tenant row (and its FK cascade) is dropped: the API keys bound
+	// there (w9/120), OpenBao env-var secrets, env groups, managed
+	// Databases/KeyValues, its OpenSandbox sandboxes, and its Stripe
+	// subscription. Running before DeleteTenant is what
 	// makes Delete retryable — a purger failure leaves the row (and the
 	// confirmation phrase GetTenant re-reads) intact, so re-issuing the identical
 	// Delete re-runs the whole teardown. Two of them also REQUIRE the pre-cascade
@@ -1620,8 +1621,9 @@ func DeleteConfirmation(name string) string { return "sudo delete workspace " + 
 
 // Delete tears a workspace down, in an order chosen so a transient failure is
 // recoverable: it revokes each member's OpenFGA tuple, runs the pre-cascade
-// purgers (OpenBao secrets, env groups, managed Databases/KeyValues, OpenSandbox
-// sandboxes, the Stripe subscription) while the tenant row still exists, deletes
+// purgers (the API keys bound there, OpenBao secrets, env groups, managed
+// Databases/KeyValues, OpenSandbox sandboxes, the Stripe subscription) while
+// the tenant row still exists, deletes
 // the tenant row (the FK cascade drops its apps, domains, memberships, sandbox
 // key, and billing rows in the same statement), nudges the projector to prune
 // the orphaned App CRs, then runs the post-cascade purger (the App CRs). Running

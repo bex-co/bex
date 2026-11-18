@@ -37,7 +37,6 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -1359,10 +1358,16 @@ func NewServer(base *core.Base, d Deps) *Server {
 	return srv
 }
 
-// preCascadePurgers is the workspace teardown's pre-cascade order: the Stripe
-// purger last, so nothing can fail after the Subscription is cancelled.
+// preCascadePurgers is the workspace teardown's pre-cascade order: the API
+// keys bound there first (w9/120), so no credential outlives a failed delete,
+// and the Stripe purger last, so nothing can fail after the Subscription is
+// cancelled.
 func preCascadePurgers(d Deps) []workspaces.WorkspacePurger {
-	purgers := slices.Clone(d.WorkspacePreCascadePurgers)
+	var purgers []workspaces.WorkspacePurger
+	if binding, ok := d.KeyBinder.(apikeys.WorkspaceKeyBinding); ok && d.APIKeys != nil {
+		purgers = append(purgers, apikeys.WorkspacePurger{Store: d.APIKeys, Binding: binding})
+	}
+	purgers = append(purgers, d.WorkspacePreCascadePurgers...)
 	if d.WorkspaceBillingPurger != nil {
 		purgers = append(purgers, d.WorkspaceBillingPurger)
 	}

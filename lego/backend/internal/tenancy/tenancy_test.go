@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -37,6 +38,8 @@ type fakeTenantStore struct {
 	mu       sync.Mutex
 	tenants  map[string]store.Tenant
 	members  map[string]string // subject (identity or client id) -> tenantID
+	clients  map[string]bool   // the subjects BindClient bound: API keys
+	markers  []string          // BumpOAuthRevocation's subjects, in order
 	ownerOf  map[string]string // identityID -> tenantID (mint gate)
 	invites  []store.Invite    // outstanding invites (seeded via invite())
 	n        int
@@ -60,6 +63,7 @@ func newFakeTenantStore() *fakeTenantStore {
 	return &fakeTenantStore{
 		tenants: map[string]store.Tenant{},
 		members: map[string]string{},
+		clients: map[string]bool{},
 		ownerOf: map[string]string{},
 	}
 }
@@ -136,6 +140,7 @@ func (f *fakeTenantStore) BindClient(_ context.Context, clientID, tenantID strin
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.members[clientID] = tenantID
+	f.clients[clientID] = true
 	return nil
 }
 
@@ -143,6 +148,26 @@ func (f *fakeTenantStore) UnbindClient(_ context.Context, clientID string) error
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	delete(f.members, clientID)
+	delete(f.clients, clientID)
+	return nil
+}
+
+func (f *fakeTenantStore) ClientBindingsOfTenants(_ context.Context, tenantIDs []string) (map[string]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := map[string]string{}
+	for clientID := range f.clients {
+		if slices.Contains(tenantIDs, f.members[clientID]) {
+			out[clientID] = f.members[clientID]
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeTenantStore) BumpOAuthRevocation(_ context.Context, subject, _ string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.markers = append(f.markers, subject)
 	return nil
 }
 
@@ -680,6 +705,65 @@ func TestUnbindKeyFailClosedLeavesBindingWhenRevokeFails(t *testing.T) {
 	}
 	if _, err := st.TenantForIdentity(ctx, "client-1"); !errors.Is(err, store.ErrNotFound) {
 		t.Errorf("binding row after successful retry: want ErrNotFound, got %v", err)
+	}
+}
+
+// A deleted workspace's key teardown (w9/120) lists only the workspace's keys,
+// takes every role tuple a key holds there, and refuses its tokens, but keeps
+// its binding row, so a delete that fails after it still finds the key. A
+// failed revoke writes no marker and surfaces.
+func TestRevokeWorkspaceKeyKeepsTheBindingForTheRetry(t *testing.T) {
+	st := newFakeTenantStore()
+	granter := newFakeGranter()
+	ts := NewTenantService(st, granter)
+	ctx := context.Background()
+	ten, err := st.CreateTenantWithMember(ctx, "identity-owner", store.PlanHobby)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ts.BindKey(ctx, "client-1", ten.ID, ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := ts.BindKey(ctx, "client-elsewhere", "tea-other", ""); err != nil {
+		t.Fatal(err)
+	}
+	// A role change still converging can leave a key a second tuple.
+	if err := granter.GrantWorkspaceRole(ctx, ten.ID, "user:client-1", "admin"); err != nil {
+		t.Fatal(err)
+	}
+
+	keys, err := ts.WorkspaceKeys(ctx, ten.ID)
+	if err != nil || !slices.Equal(keys, []string{"client-1"}) {
+		t.Fatalf("WorkspaceKeys = %v, %v; want [client-1]: the owner is a person, the other key is bound elsewhere", keys, err)
+	}
+
+	granter.failRevoke = true
+	if err := ts.RevokeWorkspaceKey(ctx, ten.ID, "client-1"); err == nil {
+		t.Fatal("RevokeWorkspaceKey reported success over a failed revoke")
+	}
+	if len(st.markers) != 0 {
+		t.Errorf("markers = %v, want none before the tuples are gone", st.markers)
+	}
+
+	granter.failRevoke = false
+	for range 2 { // idempotent: the retry of a delete that failed later
+		if err := ts.RevokeWorkspaceKey(ctx, ten.ID, "client-1"); err != nil {
+			t.Fatalf("RevokeWorkspaceKey: %v", err)
+		}
+	}
+	for _, role := range []string{"developer", "admin"} {
+		if granter.tuples[role+":"+ten.ID+":user:client-1"] {
+			t.Errorf("the key's %s tuple survived", role)
+		}
+	}
+	if !slices.Equal(st.markers, []string{"client-1", "client-1"}) {
+		t.Errorf("markers = %v, want client-1 refused on every replica", st.markers)
+	}
+	if keys, _ := ts.WorkspaceKeys(ctx, ten.ID); !slices.Equal(keys, []string{"client-1"}) {
+		t.Errorf("WorkspaceKeys after the revoke = %v; the binding row must stay for the retry", keys)
+	}
+	if !granter.tuples["developer:tea-other:user:client-elsewhere"] {
+		t.Error("the key bound to another workspace lost its tuple")
 	}
 }
 

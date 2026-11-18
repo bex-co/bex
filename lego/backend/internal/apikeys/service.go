@@ -197,6 +197,47 @@ func (a AccountTeardown) cleanup(ctx context.Context, subject, workspaceID strin
 	return revoked, nil
 }
 
+// WorkspaceKeyBinding is the binding side of a deleted workspace's key
+// teardown; *tenancy.Service implements it.
+type WorkspaceKeyBinding interface {
+	// WorkspaceKeys lists the client ids of the keys bound to tenantID.
+	WorkspaceKeys(ctx context.Context, tenantID string) ([]string, error)
+	// RevokeWorkspaceKey ends the key's authority in tenantID but keeps its
+	// binding row, which is how a retried delete finds the key again.
+	RevokeWorkspaceKey(ctx context.Context, tenantID, clientID string) error
+}
+
+// WorkspacePurger revokes every API key bound to a workspace being deleted,
+// whoever minted it (w9/120): a key acts in exactly the workspace it is bound
+// to, so with that workspace gone it has no basis left. It is a pre-cascade
+// purger. ListTenantMembers, which the delete revokes, lists people only, and
+// the cascade then drops the binding that RevokeAPIKey needs to find the key.
+//
+// Each key loses its tuples and is refused on every replica first, then its
+// Hydra client is deleted, and the tenant cascade drops its row. A failure at
+// any step leaves the row, so the retried delete finds the key and finishes.
+// A Hydra client that is already gone, or is not a bex key, counts as deleted.
+type WorkspacePurger struct {
+	Store   APIKeyStore
+	Binding WorkspaceKeyBinding
+}
+
+func (p WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) error {
+	keys, err := p.Binding.WorkspaceKeys(ctx, tenantID)
+	if err != nil {
+		return fmt.Errorf("list API keys: %w", err)
+	}
+	for _, id := range keys {
+		if err := p.Binding.RevokeWorkspaceKey(ctx, tenantID, id); err != nil {
+			return fmt.Errorf("revoke API key %s: %w", id, err)
+		}
+		if err := p.Store.Delete(ctx, id); err != nil && !errors.Is(err, core.ErrNotFound) {
+			return fmt.Errorf("delete API key %s: %w", id, err)
+		}
+	}
+	return nil
+}
+
 // Service manages machine credentials over the injected APIKeyStore.
 type Service struct {
 	*core.Base

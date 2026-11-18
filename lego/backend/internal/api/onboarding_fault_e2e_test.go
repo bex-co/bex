@@ -88,6 +88,12 @@ func (f *e2eTenantStore) BindClient(context.Context, string, string) error { ret
 
 func (f *e2eTenantStore) UnbindClient(context.Context, string) error { return nil }
 
+func (f *e2eTenantStore) ClientBindingsOfTenants(context.Context, []string) (map[string]string, error) {
+	return nil, nil
+}
+
+func (f *e2eTenantStore) BumpOAuthRevocation(context.Context, string, string) error { return nil }
+
 func (f *e2eTenantStore) AcceptInvitesForEmail(context.Context, string, string) ([]store.Invite, error) {
 	return nil, nil
 }
