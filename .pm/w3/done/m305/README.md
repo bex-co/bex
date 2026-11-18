@@ -128,7 +128,7 @@ The QA user ran the checks of § Blocked (2026-11-17) in `bex-canary` (Scale, ad
 
   The route frame is within 4 px everywhere. The inline frame is within 4 px in every region it draws.
   - **What the inline frame leaves out:** Workspace privacy and the Delete workspace card. Whether they appear depends on the workspace's organization and on the caller having another workspace. Those facts are the held data (the shell's workspace switcher is a skeleton in the same frame), so this falls under the criterion's data-dependent exception. The hook's standalone default for a cold load is w7/m464's choice.
-  - **Follow-up:** giving the cold frame a hint from the previous visit is filed as [w3/073](../../073.md).
+  - **Follow-up:** giving the cold frame a hint from the previous visit is filed as [w3/073](../073.md).
 - **(2) The CSV equals REST.**
   - **Export:** the range was 2026-11-11 → 2026-11-17 (UTC, closed). The file was `audit-logs-tea-daif693dqjvc73e7as3g-2026-11-11-2026-11-17.csv` (1.5 MB, header `timestamp,actor,event,status,metadata`, 9049 rows). It read `GET /v1/owners/{ownerId}/audit-logs` 10 times at `limit=1000` over `2026-11-11T00:00:00Z`–`2026-11-17T23:59:59.999999Z`.
   - **REST:** paged separately at `limit=250` (37 pages), it answered 9049 rows, newest first, all inside the range.
