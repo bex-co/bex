@@ -1,6 +1,7 @@
 import { createContext, useContext } from "react";
 import { SidebarProvider } from "@/common/components/ui/sidebar.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useOrganizations } from "@/features/organizations/hooks/use-organizations";
 import { DashboardSidebar } from "./dashboard-sidebar";
 import { DashboardHeader } from "./dashboard-header";
 
@@ -20,6 +21,17 @@ import { DashboardHeader } from "./dashboard-header";
 const MAIN_CONTENT_ID = "main-content";
 
 const InShellContext = createContext(false);
+
+/**
+ * Fetches the caller's `organizations` list (cache-first) at every width
+ * (w4/706). The workspace switcher reads it too, but below the sidebar
+ * breakpoint the sidebar is a closed Sheet, so the switcher is not mounted
+ * and the org pages' pending frames and loader would have no role to read.
+ */
+function OrganizationsPrefetch() {
+  useOrganizations();
+  return null;
+}
 
 /**
  * Dashboard layout — the ONE contextual sidebar + Render-style topbar wrapping
@@ -44,6 +56,7 @@ export function DashboardLayout({ children }: { children?: React.ReactNode }) {
   }
   return (
     <InShellContext.Provider value={true}>
+      <OrganizationsPrefetch />
       <SidebarProvider>
         {/* WCAG 2.4.1 bypass block (w4/460): the first Tab stop, visible on
             focus, jumps past the sidebar and header to the page content. */}

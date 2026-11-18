@@ -14,7 +14,9 @@ import type {
 import {
   orgWorkspace,
   organization,
+  KNOWN_FROM,
   pageStructure,
+  renderPendingAtOrgRoute,
   renderAtOrgRoute,
 } from "@/features/organizations/__tests__/org-fixtures";
 import {
@@ -259,10 +261,14 @@ describe("OrganizationMembersPage (w7/m464)", () => {
 
   // The route's pending frame is the ready page's structure: the header, the
   // navigation, the card and its Owner action, and the caller's own row (or
-  // a Guest's refusal), read from the switcher's cached org.
-  it.each(["OWNER", "MEMBER", "GUEST"] as const)(
-    "previews the ready page for an %s",
-    async (role) => {
+  // a Guest's refusal), read from the org the client already holds (w4/706).
+  it.each(
+    (["OWNER", "MEMBER", "GUEST"] as const).flatMap((role) =>
+      KNOWN_FROM.map((knownFrom) => [role, knownFrom] as const),
+    ),
+  )(
+    "previews the ready page for an %s known from the %s",
+    async (role, knownFrom) => {
       membersState =
         role === "GUEST"
           ? members({ forbidden: true })
@@ -274,12 +280,11 @@ describe("OrganizationMembersPage (w7/m464)", () => {
       )?.textContent;
       ready.unmount();
 
-      vi.mocked(useOrganizations).mockReturnValue({
-        organizations: [organization(role)],
-      });
-      const pending = renderAtOrgRoute(
+      const pending = renderPendingAtOrgRoute(
         "members",
         <OrganizationMembersRouteSkeleton />,
+        organization(role),
+        knownFrom,
       );
       await waitFor(() =>
         expect(

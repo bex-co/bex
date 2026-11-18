@@ -11,6 +11,9 @@ import { ApolloClient, ApolloLink, InMemoryCache } from "@apollo/client";
 import { ApolloProvider } from "@apollo/client/react";
 import { GraphQLError } from "graphql";
 import { Observable } from "rxjs";
+import { vi } from "vitest";
+import { OrganizationDocument } from "@/graphql/definitions";
+import { useOrganizations } from "@/features/organizations/hooks/use-organizations";
 import type {
   Organization,
   OrganizationRole,
@@ -95,6 +98,44 @@ export function renderAtOrgRoute(
     context: { client: {} as never, session: null },
   });
   return { ...render(<RouterProvider router={router} />), router };
+}
+
+/**
+ * Where the client already knows the caller's org from (w4/706): the
+ * caller's `organizations` list (the shell's fetch), or only the org's own
+ * `organization(id)` entry, which the previous org tab read.
+ */
+export const KNOWN_FROM = ["org list", "org entry"] as const;
+
+/**
+ * An org route's pending frame, with `org` cached only where `knownFrom`
+ * says: a real client whose cache holds the org entry or nothing, and the
+ * (globally mocked) list holding the org or nothing.
+ */
+export function renderPendingAtOrgRoute(
+  section: "workspaces" | "members" | "settings",
+  element: ReactNode,
+  org: Organization,
+  knownFrom: (typeof KNOWN_FROM)[number],
+) {
+  const client = new ApolloClient({
+    link: ApolloLink.empty(),
+    cache: new InMemoryCache(),
+  });
+  if (knownFrom === "org entry") {
+    client.writeQuery({
+      query: OrganizationDocument,
+      variables: { id: org.id },
+      data: { organization: org },
+    });
+  }
+  vi.mocked(useOrganizations).mockReturnValue({
+    organizations: knownFrom === "org list" ? [org] : [],
+  });
+  return renderAtOrgRoute(
+    section,
+    <ApolloProvider client={client}>{element}</ApolloProvider>,
+  );
 }
 
 /** A button's visible label: its text without the screen-reader suffix. */

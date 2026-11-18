@@ -18,8 +18,9 @@ export interface UseOrganizationsResult {
  * bex-api's `organizations`: every org the caller belongs to, as Owner, Member
  * or Guest (w7/m464). The workspace switcher lists them, so an Owner who is in
  * none of an org's workspaces still reaches the org; the org pages' skeletons
- * read the caller's role from it. The org page's own reads and mutations
- * update its cached entries.
+ * read the caller's role from it. The dashboard shell fetches it at every
+ * width (w4/706), since a phone's closed sidebar does not mount the
+ * switcher. The org page's own reads and mutations update its cached entries.
  */
 export function useOrganizations(): UseOrganizationsResult {
   const verified = useHasVerifiedSession();

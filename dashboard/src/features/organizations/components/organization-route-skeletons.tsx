@@ -27,7 +27,7 @@ import {
   WORKSPACE_PRIVACY_KEYS,
 } from "@/features/workspaces/types";
 import { AuditLogExportFrame } from "@/features/audit/components/audit-log-panel-skeleton";
-import { useOrganizations } from "@/features/organizations/hooks/use-organizations";
+import { useCachedOrganization } from "@/features/organizations/hooks/use-cached-organization";
 import { OrganizationPageHeader } from "@/features/organizations/components/organization-page-header";
 import {
   OrganizationWorkspacesCardHeader,
@@ -56,7 +56,6 @@ import { LOGIN_REQUIREMENTS } from "@/features/workspaces/lib/login-requirements
 import {
   MEMBER_COLUMN_KEYS,
   WORKSPACE_COLUMN_KEYS,
-  findOrganization,
   toOrganizationRole,
   type OrganizationRole,
   type OrganizationSection,
@@ -69,8 +68,9 @@ import {
  * the ready page's own frame: the header with the name and role as bars, the
  * static navigation and card headers, and the ready rows' boxes. What depends
  * on the caller's role (create, invite, rename, the audit log) is read from
- * the switcher's `organizations` list, which the chrome has already loaded;
- * with no entry for the org, the frame draws only what every role sees.
+ * the cache: the org's own entry, else the caller's `organizations` list the
+ * shell fetches at every width (w4/706); with neither, the frame draws only
+ * what every role sees.
  */
 
 const PLACEHOLDER_WORKSPACE = "workspace-name";
@@ -86,12 +86,11 @@ const DEFAULT_WORKSPACES: SkeletonWorkspace[] = [
   { primary: true, privacy: DEFAULT_WORKSPACE_PRIVACY, viewerIsMember: true },
 ];
 
-function useCachedOrganization(organizationId: string): {
+function useSkeletonOrganization(organizationId: string): {
   role: OrganizationRole | null;
   workspaces: readonly SkeletonWorkspace[];
 } {
-  const { organizations } = useOrganizations();
-  const organization = findOrganization(organizations, organizationId);
+  const organization = useCachedOrganization(organizationId);
   return {
     role: toOrganizationRole(organization?.viewerRole),
     workspaces: organization?.workspaces.length
@@ -125,7 +124,7 @@ export function OrganizationWorkspacesCardSkeleton({
   organizationId: string;
 }) {
   const { t } = useTranslations();
-  const { role, workspaces } = useCachedOrganization(organizationId);
+  const { role, workspaces } = useSkeletonOrganization(organizationId);
   return (
     <Card aria-hidden="true" data-testid="organization-workspaces-skeleton">
       <OrganizationWorkspacesCardHeader
@@ -220,7 +219,7 @@ export function OrganizationMembersCardSkeleton({
   organizationId: string;
 }) {
   const { t } = useTranslations();
-  const { role } = useCachedOrganization(organizationId);
+  const { role } = useSkeletonOrganization(organizationId);
   return (
     <Card aria-hidden="true" data-testid="organization-members-skeleton">
       <OrganizationMembersCardHeader
@@ -259,7 +258,7 @@ export function OrganizationSettingsSkeleton({
   organizationId: string;
 }) {
   const { t } = useTranslations();
-  const { role } = useCachedOrganization(organizationId);
+  const { role } = useSkeletonOrganization(organizationId);
   return (
     <>
       <Region name="organization-name">

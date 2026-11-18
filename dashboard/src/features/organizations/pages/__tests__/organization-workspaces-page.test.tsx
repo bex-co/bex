@@ -9,7 +9,9 @@ import type { UseOrganizationResult } from "@/features/organizations/hooks/use-o
 import {
   orgWorkspace,
   organization,
+  KNOWN_FROM,
   pageStructure,
+  renderPendingAtOrgRoute,
   renderAtOrgRoute,
 } from "@/features/organizations/__tests__/org-fixtures";
 import {
@@ -184,10 +186,14 @@ describe("OrganizationWorkspacesPage (w7/m464)", () => {
 
   // The route's pending frame is the ready page's structure: header, the
   // navigation, the card with the Owner's action, the columns, and each row
-  // with its badge and actions, read from the switcher's cached org.
-  it.each(["OWNER", "MEMBER", "GUEST"] as const)(
-    "previews the ready page for an %s",
-    async (role) => {
+  // with its badge and actions, read from the org the client already holds.
+  it.each(
+    (["OWNER", "MEMBER", "GUEST"] as const).flatMap((role) =>
+      KNOWN_FROM.map((knownFrom) => [role, knownFrom] as const),
+    ),
+  )(
+    "previews the ready page for an %s known from the %s",
+    async (role, knownFrom) => {
       const org =
         role === "GUEST"
           ? organization("GUEST", [
@@ -198,12 +204,11 @@ describe("OrganizationWorkspacesPage (w7/m464)", () => {
       const readyStructure = pageStructure(ready.container);
       ready.unmount();
 
-      vi.mocked(useOrganizations).mockReturnValue({
-        organizations: [org],
-      });
-      const pending = renderAtOrgRoute(
+      const pending = renderPendingAtOrgRoute(
         "workspaces",
         <OrganizationWorkspacesRouteSkeleton />,
+        org,
+        knownFrom,
       );
       await waitFor(() =>
         expect(

@@ -9,7 +9,9 @@ import { useOrganizations } from "@/features/organizations/hooks/use-organizatio
 import type { UseOrganizationResult } from "@/features/organizations/hooks/use-organization";
 import {
   organization,
+  KNOWN_FROM,
   pageStructure,
+  renderPendingAtOrgRoute,
   renderAtOrgRoute,
 } from "@/features/organizations/__tests__/org-fixtures";
 import {
@@ -260,19 +262,22 @@ describe("OrganizationSettingsPage (w7/m464)", () => {
   // (Save for an Owner, the Owners-only note otherwise), Security (each
   // setting's label, description and control box; the Owners-only note for
   // a Member or Guest) and, for an Owner, Audit Logs with its export row.
-  it.each(["OWNER", "MEMBER", "GUEST"] as const)(
-    "previews the ready page for an %s",
-    async (role) => {
+  it.each(
+    (["OWNER", "MEMBER", "GUEST"] as const).flatMap((role) =>
+      KNOWN_FROM.map((knownFrom) => [role, knownFrom] as const),
+    ),
+  )(
+    "previews the ready page for an %s known from the %s",
+    async (role, knownFrom) => {
       const ready = await renderPage(role);
       const readyStructure = pageStructure(ready.container);
       ready.unmount();
 
-      vi.mocked(useOrganizations).mockReturnValue({
-        organizations: [organization(role)],
-      });
-      const pending = renderAtOrgRoute(
+      const pending = renderPendingAtOrgRoute(
         "settings",
         <OrganizationSettingsRouteSkeleton />,
+        organization(role),
+        knownFrom,
       );
       await waitFor(() =>
         expect(
