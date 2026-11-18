@@ -66,17 +66,13 @@ assert "canonical tree passes" 0 "$(fixture green)"
 # ── RED: listeners ───────────────────────────────────────────────────────────
 # The pre-m150 production shape: Traefik sees every client as 10.10.0.7, and
 # because Traefik trusts 10.10.0.7, a client-written PROXY line is believed.
-for listener in http https; do
+# A plain ssh listener is the pre-w9/m451 shape: every native SSH session's
+# audit rows named the load balancer, not the client.
+for listener in http https ssh; do
   d="$(fixture "$listener-plain")"
   set_proxyprotocol "$d" "$listener" false
   assert "$listener listener without PROXY protocol" 1 "$d" "edge listener $listener must set proxyprotocol=true"
 done
-
-# ssh has its own PROXY chain (Traefik → ssh-gateway); a header from the LB
-# would land in the SSH version exchange.
-d="$(fixture ssh-proxy)"
-set_proxyprotocol "$d" ssh true
-assert "ssh listener with PROXY protocol" 1 "$d" "edge listener ssh must set proxyprotocol=false"
 
 d="$(fixture postgres-plain)"
 set_proxyprotocol "$d" postgres false

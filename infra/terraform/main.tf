@@ -180,6 +180,11 @@ resource "hcloud_load_balancer_target" "traefik_workers" {
   depends_on = [hcloud_load_balancer_network.traefik]
 }
 
+# The :22 listener sends PROXY protocol so Traefik's ssh entrypoint, which
+# trusts it only from 10.10.0.7/32, forwards the SSH client's address to the
+# ssh-gateway instead of the load balancer's (w9/m451 t010, ADR035). Traefik's
+# trust must be live before this flips: a header it does not expect lands in
+# the SSH version exchange.
 resource "hcloud_load_balancer_service" "ssh" {
   count = var.app_network_id == 0 ? 0 : 1
 
@@ -187,7 +192,7 @@ resource "hcloud_load_balancer_service" "ssh" {
   protocol         = "tcp"
   listen_port      = 22
   destination_port = 32207
-  proxyprotocol    = false
+  proxyprotocol    = true
 
   health_check {
     protocol = "tcp"

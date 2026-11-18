@@ -5,22 +5,23 @@
 #
 #   1. Each Terraform edge listener maps its port to the pinned NodePort (with a
 #      health check on the same port) and sets the proxyprotocol value in EDGE
-#      below. http/https/postgres/valkey send the LB's own header, so the
-#      backend sees the real client; ssh does not (its own PROXY chain runs
-#      Traefik → ssh-gateway, w4/m82, w6/m132).
+#      below. Every listener sends the LB's own header, so the backend sees
+#      the real client. For ssh that header reaches Traefik, whose own PROXY v2
+#      hop then carries the client on to the ssh-gateway (w4/m82, w6/m132,
+#      w9/m451 t010).
 #   2. Traefik's web, websecure and ssh entrypoints trust PROXY headers from
 #      exactly the load balancer's private address, 10.10.0.7/32 — never wider,
 #      never `insecure`. A wider trust set lets any peer in it assert a client
 #      address, which is what an inbound IP allow-list matches on and what the
-#      ssh-gateway records as a shell session's source_ip (w9/m451 t010). The
-#      ssh trust rolls out first; the ssh listener then sends the header.
+#      ssh-gateway records as a shell session's source_ip (w9/m451 t010).
 #
 # The two halves fail differently if they drift apart: a listener that sends a
-# header to an entrypoint that does not expect it breaks all HTTP(S); an
-# entrypoint that trusts headers while its listener sends none believes a
-# header the CLIENT writes (the LB is byte-transparent), so any client could
-# spoof its source past an allow-list — observed live on 2026-10-01 between the
-# m150 t001 and t002 rollouts.
+# header to an entrypoint that does not expect it breaks every connection on
+# that port (all HTTP(S), or every SSH session); an entrypoint that trusts
+# headers while its listener sends none believes a header the CLIENT writes
+# (the LB is byte-transparent), so any client could spoof its source past an
+# allow-list — observed live on 2026-10-01 between the m150 t001 and t002
+# rollouts.
 #
 # Called by scripts/gitops-validate.sh; scripts/edge-proxyprotocol-validate.test.sh
 # drives it against mutated copies via TERRAFORM_MAIN / TRAEFIK_PROD_VALUES.
@@ -34,7 +35,7 @@ LB_PRIVATE_CIDR=10.10.0.7/32
 
 # listener:listen_port:node_port:proxyprotocol
 EDGE=(
-  ssh:22:32207:false
+  ssh:22:32207:true
   http:80:31218:true
   https:443:31976:true
   postgres:5432:31056:true
