@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package api
+package tenancy
 
 import (
 	"context"
@@ -246,7 +246,7 @@ func (g *fakeGranter) Check(_ context.Context, subject, relation, object string)
 	return g.tuples[relation+":"+tenantID+":"+subject], nil
 }
 
-// --- Mint idempotency + race-safety (tenantService's own logic, above the store) ---
+// --- Mint idempotency + race-safety (Service's own logic, above the store) ---
 
 func TestEnsureTenantMintsOnceAndCaches(t *testing.T) {
 	st := newFakeTenantStore()

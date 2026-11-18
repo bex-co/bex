@@ -32,6 +32,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/tenancy"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
@@ -41,6 +42,59 @@ import (
 // followed by a grant the real OpenFGA accepts for an admin who already has
 // the tuple. Before w21/099 that grant was refused as a duplicate, and the
 // person got 503 tenant onboarding unavailable.
+
+// e2eTenantStore is the minimal tenancy.TenantStore for this file's OpenFGA
+// fault tests: mint-on-first-login plus the owner lookup the re-read after
+// the grant needs. (The full race-safe fake lives with the tenancy package's
+// own tests.)
+type e2eTenantStore struct {
+	tenants map[string]store.Tenant
+	ownerOf map[string]string
+}
+
+var _ tenancy.TenantStore = (*e2eTenantStore)(nil)
+
+func newE2ETenantStore() *e2eTenantStore {
+	return &e2eTenantStore{tenants: map[string]store.Tenant{}, ownerOf: map[string]string{}}
+}
+
+func (f *e2eTenantStore) TenantForIdentity(context.Context, string) (store.Tenant, error) {
+	return store.Tenant{}, store.ErrNotFound
+}
+
+func (f *e2eTenantStore) TenantForOwner(_ context.Context, identityID string) (store.Tenant, error) {
+	if tid, ok := f.ownerOf[identityID]; ok {
+		return f.tenants[tid], nil
+	}
+	return store.Tenant{}, store.ErrNotFound
+}
+
+func (f *e2eTenantStore) IsMember(context.Context, string, string) (bool, error) {
+	return false, nil
+}
+
+func (f *e2eTenantStore) CreateTenantWithMember(_ context.Context, identityID, plan string) (store.Tenant, error) {
+	t := store.Tenant{ID: "tea-e2e-fault", Name: "tea-e2e-fault", Plan: plan}
+	f.tenants[t.ID] = t
+	f.ownerOf[identityID] = t.ID
+	return t, nil
+}
+
+func (f *e2eTenantStore) SetTenantDisplayNameIfUnset(context.Context, string, string) error {
+	return nil
+}
+
+func (f *e2eTenantStore) BindClient(context.Context, string, string) error { return nil }
+
+func (f *e2eTenantStore) UnbindClient(context.Context, string) error { return nil }
+
+func (f *e2eTenantStore) AcceptInvitesForEmail(context.Context, string, string) ([]store.Invite, error) {
+	return nil, nil
+}
+
+// faultPerson is the login subject for this file's fault tests (mirrors the
+// tenancy package's own test fixture, which this package cannot import).
+const faultPerson = "identity-a"
 
 // erroringCheck is the production granter with every Check failing, as when
 // OpenFGA cannot answer a Check but still takes the write that follows.
@@ -70,12 +124,12 @@ func TestOnboardingServesAnAdminWhoseCheckErrorsE2E(t *testing.T) {
 	full := ids.New(ids.Workspace)
 	person := "onboard-fault-" + full[len(full)-8:]
 
-	tid, err := NewTenantService(st, granter).EnsureTenant(ctx, person, "", false)
+	tid, err := tenancy.NewTenantService(st, granter).EnsureTenant(ctx, person, "", false)
 	if err != nil {
 		t.Fatalf("first onboarding: %v", err)
 	}
 	// A new service, so neither cache can serve the person: the grant path must.
-	got, err := NewTenantService(st, erroringCheck{granter}).EnsureTenant(ctx, person, "", false)
+	got, err := tenancy.NewTenantService(st, erroringCheck{granter}).EnsureTenant(ctx, person, "", false)
 	if err != nil || got != tid {
 		t.Fatalf("existing admin with an erroring Check = %q %v, want %q served", got, err, tid)
 	}
@@ -112,7 +166,7 @@ func TestOnboardingSendsNoWriteWhenAResetCheckIsResent(t *testing.T) {
 		}
 	}))
 	t.Cleanup(fga.Close)
-	st := newFakeTenantStore()
+	st := newE2ETenantStore()
 	tenant, err := st.CreateTenantWithMember(context.Background(), faultPerson, store.PlanHobby)
 	if err != nil {
 		t.Fatal(err)
@@ -122,7 +176,7 @@ func TestOnboardingSendsNoWriteWhenAResetCheckIsResent(t *testing.T) {
 	// a cache; they share the pooled connection, as one replica's do.
 	for i := range 2 {
 		granter := authz.NewOpenFGAChecker(fga.URL, "").(store.MembershipGranter)
-		got, err := NewTenantService(st, granter).EnsureTenant(context.Background(), faultPerson, "", false)
+		got, err := tenancy.NewTenantService(st, granter).EnsureTenant(context.Background(), faultPerson, "", false)
 		if err != nil || got != tenant.ID {
 			t.Fatalf("onboarding %d = %q %v, want %q", i+1, got, err, tenant.ID)
 		}

@@ -32,6 +32,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/tenancy"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
@@ -132,7 +133,7 @@ func TestReadSideOwnerIDTargetingE2E(t *testing.T) {
 	// The REAL resolver, shared by Base.Workspace (auth) and apikeys' Binding
 	// (bind/list/revoke scoping) — same object, so a request's workspace
 	// resolution and its key-tenant resolution can never drift.
-	tenantSvc := NewTenantService(st, roles)
+	tenantSvc := tenancy.NewTenantService(st, roles)
 	base := &core.Base{
 		Client: fakeClient(), Namespace: "default",
 		Authz:     checker,

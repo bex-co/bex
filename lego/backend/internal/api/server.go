@@ -87,6 +87,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/signins"
 	"github.com/bex-co/bex/lego/backend/internal/sshkeys"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/tenancy"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
 	"github.com/bex-co/bex/lego/backend/internal/webhooks"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
@@ -314,7 +315,7 @@ type Server struct {
 
 	// Onboard, when set (the control-plane store is wired), mints a personal
 	// tenant for a human identity on first login. nil => store off: no mint.
-	Onboard Onboarding
+	Onboard tenancy.Onboarding
 
 	// OriginMetrics, when set, records bex-api's own request telemetry — the
 	// per-route HTTP histogram plus the GraphQL-operation and MCP-tool
@@ -685,7 +686,7 @@ type Deps struct {
 	KeyBinder apikeys.KeyBinder
 	// Onboard, when set (the control-plane store is wired), mints a personal
 	// tenant for a human identity on first login (w1/m9). nil => store off: no mint.
-	Onboard          Onboarding
+	Onboard          tenancy.Onboarding
 	OAuthRevocations RevocationStore
 	// OAuthAccess: see Server.OAuthAccess. Built with the control-plane store
 	// and Hydra's admin URL.

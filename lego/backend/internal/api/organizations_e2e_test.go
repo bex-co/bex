@@ -35,6 +35,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/members"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/tenancy"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
 )
@@ -52,7 +53,7 @@ type orgE2E struct {
 	t       *testing.T
 	srv     *Server
 	st      *store.PGStore
-	tenants *tenantService
+	tenants *tenancy.Service
 	fga     core.Checker
 	stamp   string
 }
@@ -74,7 +75,7 @@ func newOrgE2E(t *testing.T, opts ...func(*core.Base, *Deps)) *orgE2E {
 	t.Cleanup(pool.Close)
 	st := store.NewPGStore(pool)
 	checker := authz.NewOpenFGAChecker(fgaURL, os.Getenv("BEX_TEST_OPENFGA_TOKEN"))
-	tenants := NewTenantService(st, checker.(store.MembershipGranter))
+	tenants := tenancy.NewTenantService(st, checker.(store.MembershipGranter))
 	tenants.Audit = st
 	tenants.OrgTuples = checker.(core.OrganizationTupleWriter)
 	base := &core.Base{Client: fakeClient(), Namespace: "default", Authz: checker, Workspace: tenants, Audit: st}

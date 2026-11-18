@@ -34,6 +34,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/signins"
+	"github.com/bex-co/bex/lego/backend/internal/tenancy"
 )
 
 // auth.go is the shared auth gate every HTTP surface sits behind (docs/ADR012-auth.md):
@@ -137,7 +138,7 @@ type oryAuth struct {
 	// tenant for a human identity on first login. nil => store off: no mint, the
 	// legacy default-workspace behavior. Only session callers mint — machine
 	// callers resolve via their key's tenant binding, never mint.
-	onboard Onboarding
+	onboard tenancy.Onboarding
 
 	// requireVerifiedEmail (BEX_REQUIRE_VERIFIED_EMAIL, on unless 0) refuses
 	// every human caller whose trait email Kratos has not verified, before
@@ -250,7 +251,7 @@ func (a *oryAuth) clock() time.Time {
 	return time.Now()
 }
 
-func newOryAuth(hydraAdminURL, kratosURL, resource, issuer, resourceMetadataURL string, requireAudience bool, admission *AuthAdmission, onboard Onboarding, touch func(string), apiScope string) *oryAuth {
+func newOryAuth(hydraAdminURL, kratosURL, resource, issuer, resourceMetadataURL string, requireAudience bool, admission *AuthAdmission, onboard tenancy.Onboarding, touch func(string), apiScope string) *oryAuth {
 	challenge := "Bearer"
 	if resourceMetadataURL != "" {
 		challenge = `Bearer resource_metadata="` + resourceMetadataURL + `"`
@@ -436,7 +437,7 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 						return
 					}
 					logGateFailure(r, "tenant onboarding unavailable", id.Method, err)
-					core.WriteErrStatus(w, http.StatusServiceUnavailable, onboardingUnavailableMessage(err))
+					core.WriteErrStatus(w, http.StatusServiceUnavailable, tenancy.UnavailableMessage(err))
 					return
 				}
 			}

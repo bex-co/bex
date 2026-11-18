@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net"
 	"net/http"
@@ -29,6 +30,15 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/tenancy"
+)
+
+// transport-failure fixtures: the reset reads a dropped keep-alive connection
+// produces (w32/m446). They live here, with the gate tests that assert what
+// the 503 names, rather than with the tenancy package's own fault tests.
+var (
+	errStoreReset = errors.New("read tcp 10.244.0.9:41552->10.96.0.20:5432: read: connection reset by peer")
+	errFGAReset   = errors.New(`Post "http://openfga.auth.svc:8080/stores/s/check": read: connection reset by peer`)
 )
 
 // auth_onboarding_fault_test.go pins what the auth gate does with a failure it
@@ -65,7 +75,7 @@ func decodeErrBody(t *testing.T, w *httptest.ResponseRecorder) (id, message stri
 
 func TestGateNamesAndLogsAnOnboardingFault(t *testing.T) {
 	logged := captureLog(t)
-	cause := stepFailed(stepOwnerRead, depStore, errStoreReset)
+	cause := tenancy.StepFailed(tenancy.StepOwnerRead, tenancy.DepStore, errStoreReset)
 	s := &Server{HydraAdminURL: fakeHydraURL(t), KratosURL: fakeKratos(t).URL, Onboard: failingOnboard{cause}}
 	w := serveGate(t, s, func(r *http.Request) {
 		withSession(r)
@@ -188,7 +198,7 @@ func TestIntrospectionSurvivesAResetReusedConnection(t *testing.T) {
 func TestOnboardingFaultIsOneAnswerOnEverySurface(t *testing.T) {
 	_ = captureLog(t)
 	base := &core.Base{Client: fakeClient(), Namespace: "default"}
-	srv := NewServer(base, Deps{Onboard: failingOnboard{stepFailed(stepGrant, depAuthz, errFGAReset)}})
+	srv := NewServer(base, Deps{Onboard: failingOnboard{tenancy.StepFailed(tenancy.StepGrant, tenancy.DepAuthz, errFGAReset)}})
 	srv.HydraAdminURL, srv.KratosURL = fakeHumanHydra(t).URL, fakeKratos(t).URL
 	srv.OAuthPlatformClients = []string{"platform-cli"}
 	h := buildHandler(t, srv)

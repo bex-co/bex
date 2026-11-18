@@ -29,6 +29,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/members"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/tenancy"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
@@ -92,7 +93,7 @@ func TestLeaveWorkspaceE2E(t *testing.T) {
 		}
 	}
 
-	resolver := NewTenantService(st, roles)
+	resolver := tenancy.NewTenantService(st, roles)
 	base := &core.Base{
 		Client: fakeClient(), Namespace: "default",
 		Authz:     checker,

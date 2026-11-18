@@ -43,7 +43,6 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/agentsessions"
-	"github.com/bex-co/bex/lego/backend/internal/api"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/authz"
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -60,6 +59,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/sandboxsse"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/webshell"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/tenancy"
 	"github.com/bex-co/bex/lego/types/env"
 	"github.com/bex-co/bex/lego/types/netutil"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -141,7 +141,7 @@ func main() {
 		Authz: authz.NewOpenFGAChecker(fgaURL, os.Getenv("BEX_OPENFGA_TOKEN")),
 		Audit: st,
 	}
-	tenantSvc := api.NewTenantService(st, nil)
+	tenantSvc := tenancy.NewTenantService(st, nil)
 	base.Workspace = tenantSvc
 	appService := &apps.Service{Base: base}
 	// Compose the SSH target resolver (ADR054 D1): srv-… App instances stay on

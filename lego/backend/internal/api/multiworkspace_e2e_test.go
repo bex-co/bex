@@ -33,6 +33,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/tenancy"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -41,7 +42,7 @@ import (
 // multiworkspace_e2e_test.go is w6/m14's end-to-end proof (t007), against REAL
 // infrastructure — a live Postgres (the membership source of truth) and a live
 // OpenFGA (enforced, per-workspace roles) — driving the REAL REST surface
-// through the REAL store-backed workspace resolver (api.tenantService, not a
+// through the REAL store-backed workspace resolver (tenancy.Service, not a
 // fake): the whole chain the field bug ran through.
 //
 // It is the same harness TestWorkspaceLifecycleE2E uses, and skipped the same
@@ -135,7 +136,7 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 	base := &core.Base{
 		Client: cl, Namespace: "default",
 		Authz:     checker,
-		Workspace: NewTenantService(st, roles),
+		Workspace: tenancy.NewTenantService(st, roles),
 	}
 	// A fake HostedProvider so an AUTHORIZED billing verb returns a real 2xx, not
 	// the 503 a nil provider yields — making the w1/m60 billing allow-vs-deny below
