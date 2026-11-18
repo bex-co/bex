@@ -711,7 +711,7 @@ func TestManagedPostgresHistoryIsDatabaseScoped(t *testing.T) {
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("Postgres history = %+v, err=%v", entries, err)
 	}
-	if got := f.lastValues.Get("query"); got != `{namespace="default", database="`+postgresID+`"}` {
+	if got := f.lastValues.Get("query"); got != `{namespace="default", database=~"`+postgresID+`(-r-[0-9a-f]{10})?"}` {
 		t.Fatalf("Postgres selector = %q", got)
 	}
 	if entries[0].Labels["service"] != postgresID || entries[0].Labels[LabelType] != "postgres" {

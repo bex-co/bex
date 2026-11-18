@@ -751,7 +751,8 @@ func sandboxQuotaRoom(plan string) corev1.ResourceList {
 //
 //   - pods moved into the scoped compute quota (baseResourceQuotas) and now
 //     counts services, jobs and builds only. A datastore's Pods are bounded by
-//     its shape (at most 7 instances + a pooler) times its count cap.
+//     its shape (at most 7 instances and a pooler for each of its 6
+//     clusters, w6/m467) times its count cap.
 //   - PVCs, storage, ephemeral storage and count/jobs.batch cannot be scoped
 //     by PriorityClass, so each gets datastoreQuotaRoom on top of the plan
 //     budget: the count caps times the largest shape the operator builds

@@ -25,6 +25,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/egressquery"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // datastore_activity.go sources Render's database-activity and disk graphs
@@ -55,7 +56,7 @@ type DatastoreActivitySource func(ctx context.Context, req DatastoreActivityRequ
 // LockWaitsRequest asks for one Postgres instance's lock-delayed queries.
 type LockWaitsRequest struct {
 	Namespace  string
-	Database   string // the Database name == the CNPG cluster == the log stream's database label
+	Database   string // the Database name: its primary CNPG cluster's, which names its replica clusters and their log streams' database labels too
 	Start, End time.Time
 	Resolution time.Duration
 }
@@ -118,7 +119,7 @@ func NewPrometheusDatastoreActivitySource(base string, hc *http.Client) Datastor
 // step alone would find a single sample and answer nothing.
 func promDatastoreActivityQuery(req DatastoreActivityRequest) (string, string) {
 	step := stepSeconds(req.Resolution)
-	instances := fmt.Sprintf(`namespace=%q,pod=~%q`, req.Namespace, egressquery.RegexEscape(req.Resource)+`-[0-9]+`)
+	instances := fmt.Sprintf(`namespace=%q,pod=~%q`, req.Namespace, instancePods(req.Kind, req.Resource))
 	switch req.Metric {
 	case MetricNetworkActivity:
 		if req.Kind != DatastoreDatabase {
@@ -144,7 +145,7 @@ func promDatastoreActivityQuery(req DatastoreActivityRequest) (string, string) {
 		// rates would share a label set; the rollback half is labelled apart
 		// before the two are added up.
 		window := max(step, cnpgCounterLookback)
-		m := fmt.Sprintf(`namespace=%q,cnpg_io_cluster=%q,datname!~"(postgres|template[01])?"`, req.Namespace, req.Resource)
+		m := fmt.Sprintf(`namespace=%q,cnpg_io_cluster=~%q,datname!~"(postgres|template[01])?"`, req.Namespace, appv1alpha1.DatabaseClustersPattern(req.Resource))
 		return fmt.Sprintf(`sum by (pod) (rate(cnpg_pg_stat_database_xact_commit{%s}[%ds]) or label_replace(rate(cnpg_pg_stat_database_xact_rollback{%[1]s}[%[2]ds]), "xact", "rollback", "", "")) * %d`,
 			m, window, step), unitCount
 	case MetricDiskActivity, MetricDiskOperations:
@@ -216,7 +217,7 @@ func NewLokiLockWaitsSource(base string, hc *http.Client) LockWaitsSource {
 // dropped before counting, so each distinct wait does not become a series of
 // its own. Only the namespace and database id are interpolated, %q-escaped.
 func lokiLockWaitQuery(req LockWaitsRequest) string {
-	selector := fmt.Sprintf(`{namespace=%q, database=%q, type="postgres"}`, req.Namespace, req.Database)
+	selector := fmt.Sprintf(`{namespace=%q, database=~%q, type="postgres"}`, req.Namespace, appv1alpha1.DatabaseClustersPattern(req.Database))
 	pipeline := fmt.Sprintf("|~ `%s` | regexp `after (?P<lock_wait_ms>[0-9]+)\\.[0-9]+ ms` | __error__=\"\" | lock_wait_ms >= %d | drop lock_wait_ms",
 		lockWaitLine, lockWaitThresholdMillis)
 	return fmt.Sprintf("sum by (pod) (count_over_time(%s %s%s [%ds]))", selector, pipeline,

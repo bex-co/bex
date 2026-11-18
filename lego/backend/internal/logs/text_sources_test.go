@@ -155,6 +155,10 @@ func TestTextSourcesDatastoreHistoryKeepsScopedUnion(t *testing.T) {
 				}
 				assertTextSourceMessages(t, entries, []string{"qa_text_A", "qa_text_B"})
 				wantQuery := fmt.Sprintf(`{namespace="tea-logs", %s=%q}`, tc.selector, tc.resource)
+				if tc.selector == "database" {
+					// A Postgres's lines include each read replica cluster's (w6/m467).
+					wantQuery = `{namespace="tea-logs", database=~"` + postgresID + `(-r-[0-9a-f]{10})?"}`
+				}
 				if got := f.lastValues.Get("query"); got != wantQuery {
 					t.Fatalf("datastore history lost scope or delegated text matching to Loki: got %q, want %q", got, wantQuery)
 				}

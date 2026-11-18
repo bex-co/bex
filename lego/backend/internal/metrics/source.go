@@ -32,6 +32,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/egressquery"
 	"github.com/bex-co/bex/lego/types/podmetrics"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // source.go holds the production metrics backends — the domain depends only on
@@ -737,7 +738,7 @@ func NewPrometheusDatastoreResourceSource(base string, hc *http.Client) Datastor
 // pods (<cluster>-1-initdb-…) out.
 func promDatastoreResourceQuery(req DatastoreResourceRequest) string {
 	matchers := fmt.Sprintf(`namespace=%q,pod=~%q,container=%q`,
-		req.Namespace, egressquery.RegexEscape(req.Resource)+`-[0-9]+`, req.Container)
+		req.Namespace, instancePods(req.Kind, req.Resource), req.Container)
 	switch req.Metric {
 	case MetricCPULimit:
 		return resourceLimitQuery(matchers, "cpu")
@@ -789,8 +790,8 @@ func NewPrometheusDBConnectionsSource(base string, hc *http.Client) DBConnection
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req DBConnectionsRequest) ([]MetricSeries, error) {
-		q := fmt.Sprintf(`sum by (pod) (cnpg_backends_total{namespace=%q,cnpg_io_cluster=%q})`,
-			req.Namespace, egressquery.RegexEscape(req.Cluster))
+		q := fmt.Sprintf(`sum by (pod) (cnpg_backends_total{namespace=%q,cnpg_io_cluster=~%q})`,
+			req.Namespace, appv1alpha1.DatabaseClustersPattern(req.Cluster))
 		return promInstanceQuery(ctx, hc, base, q, req.Cluster, unitCount, req.Start, req.End, stepSeconds(req.Resolution))
 	}
 }
@@ -809,8 +810,8 @@ func NewPrometheusReplicationLagSource(base string, hc *http.Client) Replication
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req ReplicationLagRequest) ([]MetricSeries, error) {
-		q := fmt.Sprintf(`max by (pod) (cnpg_pg_replication_lag{namespace=%q,cnpg_io_cluster=%q})`,
-			req.Namespace, egressquery.RegexEscape(req.Cluster))
+		q := fmt.Sprintf(`max by (pod) (cnpg_pg_replication_lag{namespace=%q,cnpg_io_cluster=~%q})`,
+			req.Namespace, appv1alpha1.DatabaseClustersPattern(req.Cluster))
 		return promInstanceQuery(ctx, hc, base, q, req.Cluster, unitSeconds, req.Start, req.End, stepSeconds(req.Resolution))
 	}
 }

@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/egressquery"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -123,7 +124,7 @@ type DiskUsageSource func(ctx context.Context, req DiskUsageRequest) ([]MetricSe
 // managed Postgres instance.
 type DBConnectionsRequest struct {
 	Namespace  string
-	Cluster    string // the Database name == the CNPG cluster name
+	Cluster    string // the Database name: its primary CNPG cluster's, which names its replica clusters too
 	Start, End time.Time
 	Resolution time.Duration
 }
@@ -168,6 +169,7 @@ type KeyValueStatsSource func(ctx context.Context, req KeyValueStatsRequest) ([]
 // memory_limit), the series Render scopes to a Postgres or Key Value resource
 // (w1/m180). Pods are the datastore's numbered instances (<resource>-<n>).
 type DatastoreResourceRequest struct {
+	Kind       string // DatastoreDatabase | DatastoreKeyValue
 	Namespace  string
 	Resource   string
 	Container  string
@@ -238,8 +240,18 @@ func pvcPattern(kind, resource string) string {
 	case DatastoreService:
 		return `^` + regexp.QuoteMeta(appv1alpha1.DiskPVCName(resource)) + `$`
 	default:
-		return `^` + name + `-\d+$`
+		return `^` + appv1alpha1.DatabaseClustersPattern(resource) + `-\d+$`
 	}
+}
+
+// instancePods is a regexp for a datastore's numbered instance Pods,
+// "<cluster>-<n>": those of every CNPG cluster of a Postgres, its primary's
+// and each read replica's own (w6/m467), or a Key Value's StatefulSet's.
+func instancePods(kind, resource string) string {
+	if kind == DatastoreDatabase {
+		return appv1alpha1.DatabaseClustersPattern(resource) + `-[0-9]+`
+	}
+	return egressquery.RegexEscape(resource) + `-[0-9]+`
 }
 
 // bytesPerGiB converts a logical StorageGB — which the operator provisions as a
@@ -495,7 +507,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 			return nil, core.ErrMetricsUnavailable
 		}
 		series, err := s.DatastoreResource(ctx, DatastoreResourceRequest{
-			Namespace: namespace, Resource: resource, Container: container, Metric: q.Metric,
+			Kind: q.Kind, Namespace: namespace, Resource: resource, Container: container, Metric: q.Metric,
 			Start: q.Start, End: q.End, Resolution: q.Resolution,
 			CPUAggregation: cpuAggregationFor(q.Metric, q.CPUAggregation),
 		})

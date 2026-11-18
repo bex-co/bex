@@ -375,43 +375,47 @@ describe("AccessControlPanel connection pooling", () => {
     expect(screen.queryByText(/s3cretPw/)).not.toBeInTheDocument();
   });
 
-  // w6/m458: Render pools every read replica of a pooled database, so the
-  // reveal lists each replica's pooled strings beside the primary's, masked
-  // the same way.
+  // w6/m458, w6/m467: Render pools every read replica of a pooled database,
+  // each in its own pool, so the reveal lists each replica's own pooled
+  // strings beside the primary's, masked the same way.
   it("lists each read replica's pooled strings, masked until shown", async () => {
-    const replicaInternal =
-      "postgresql://app_user:s3cretPw@app-pooler-ro.ns.svc:6432/app";
-    const replicaExternal =
-      "postgresql://app_user:s3cretPw@app-pool-ro.db.bex.co:5432/app";
+    const replicaString = (name: string, host: string, port: number) =>
+      `postgresql://app_user:s3cretPw@app-rp-${name}.${host}:${port}/app`;
     pooled = {
       internal: "postgresql://app_user:s3cretPw@app-pooler.ns.svc:6432/app",
       external: "",
-      replicas: [
-        {
-          name: "analytics",
-          internal: replicaInternal,
-          external: replicaExternal,
-        },
-      ],
+      replicas: ["analytics", "reports"].map((name) => ({
+        name,
+        internal: replicaString(name, "ns.svc", 6432),
+        external: replicaString(name, "db.bex.co", 5432),
+      })),
     };
     renderPanel({ plan: "basic-1gb", poolerEnabled: true });
-    expect(
-      screen.getByText("Internal pooled connection, read replica analytics"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("External pooled connection, read replica analytics"),
-    ).toBeInTheDocument();
+    for (const name of ["analytics", "reports"]) {
+      expect(
+        screen.getByText(`Internal pooled connection, read replica ${name}`),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(`External pooled connection, read replica ${name}`),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          `postgresql://app_user:••••••••@app-rp-${name}.db.bex.co:5432/app`,
+        ),
+      ).toBeInTheDocument();
+    }
     expect(screen.queryByText(/s3cretPw/)).not.toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "postgresql://app_user:••••••••@app-pool-ro.db.bex.co:5432/app",
-      ),
-    ).toBeInTheDocument();
     await userEvent.click(
       screen.getByRole("button", { name: "Show password" }),
     );
-    expect(screen.getByText(replicaInternal)).toBeInTheDocument();
-    expect(screen.getByText(replicaExternal)).toBeInTheDocument();
+    for (const name of ["analytics", "reports"]) {
+      expect(
+        screen.getByText(replicaString(name, "ns.svc", 6432)),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(replicaString(name, "db.bex.co", 5432)),
+      ).toBeInTheDocument();
+    }
   });
 
   it("keeps existing pooled connections visible on an unsupported plan", () => {

@@ -127,8 +127,15 @@ func TestDatastoreDiskUsageForDatabaseAndKeyValue(t *testing.T) {
 }
 
 func TestDatastoreDiskUsagePVCPattern(t *testing.T) {
-	if got, want := pvcPattern(DatastoreDatabase, "pg"), `^pg-\d+$`; got != want {
-		t.Errorf("database pvc pattern = %q, want %q", got, want)
+	// A Postgres's PVCs include each read replica cluster's (w6/m467).
+	pattern := regexp.MustCompile(pvcPattern(DatastoreDatabase, "pg"))
+	for name, want := range map[string]bool{
+		"pg-1": true, "pg-12": true, appv1alpha1.ReadReplicaClusterName("pg", "a") + "-1": true,
+		"pg-pooler-1": false, "pgx-1": false, "pg-ro-a-1": false, "pg-r-1": false,
+	} {
+		if got := pattern.MatchString(name); got != want {
+			t.Errorf("database pvc pattern %s matches %q = %v, want %v", pattern, name, got, want)
+		}
 	}
 	if got, want := pvcPattern(DatastoreKeyValue, "kv"), `^data-kv-\d+$`; got != want {
 		t.Errorf("keyvalue pvc pattern = %q, want %q", got, want)

@@ -26,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
@@ -47,18 +48,20 @@ func TestInstanceSecondsQueryMeasuresRunningTime(t *testing.T) {
 
 // TestStatefulMatcherCountsEveryPostgresInstance: an HA Postgres's primary and
 // standby pods (<name>-1, <name>-2) both fall under the instance_seconds
-// matcher, so the standby is billed like the primary as on Render (w2/m171);
-// the pooler, a CNPG job pod and a sibling database never do. Prometheus
-// anchors =~ at both ends, so the Go check anchors too.
+// matcher, so the standby is billed like the primary as on Render (w2/m171),
+// and so does each read replica's own instance (w6/m467); the poolers, a CNPG
+// job pod and a sibling database never do. Prometheus anchors =~ at both
+// ends, so the Go check anchors too.
 func TestStatefulMatcherCountsEveryPostgresInstance(t *testing.T) {
-	m := regexp.MustCompile(`pod=~"([^"]+)"`).FindStringSubmatch(statefulInstanceMatchers("ws-a", "dpg-x"))
+	m := regexp.MustCompile(`pod=~"([^"]+)"`).FindStringSubmatch(statefulInstanceMatchers("ws-a", "dpg-x", store.ResourceKindPostgres))
 	if m == nil {
 		t.Fatal("no pod matcher")
 	}
 	re := regexp.MustCompile("^(?:" + m[1] + ")$")
 	for pod, want := range map[string]bool{
-		"dpg-x-1": true, "dpg-x-2": true, "dpg-x-3": true,
+		"dpg-x-1": true, "dpg-x-2": true, "dpg-x-3": true, "dpg-x-r-ca978112ca-1": true,
 		"dpg-x-pooler-7c9f-abcde": false, "dpg-x-1-initdb-abcde": false, "dpg-xy-1": false, "dpg-y-1": false,
+		"dpg-x-rp-a-7c9f-abcde": false, "dpg-x-r-ca978112ca-1-pgbasebackup-abcde": false,
 	} {
 		if got := re.MatchString(pod); got != want {
 			t.Errorf("pod %q metered = %v, want %v", pod, got, want)
@@ -98,12 +101,14 @@ func TestInstanceSecondsQueryOnPrometheus(t *testing.T) {
 		stateful  string // datastore name: query with the CNPG/Valkey ordinal-pod matcher
 	}{
 		// A high-availability Postgres: primary <name>-1 and standby <name>-2
-		// all hour bill two instances, like Render's standby (w2/m171); the
-		// PgBouncer pooler pod is not an instance.
+		// all hour bill two instances, like Render's standby (w2/m171), and its
+		// read replica's own instance a third (w6/m467); the PgBouncer pooler
+		// pods are not instances.
 		{namespace: "ha", series: map[string]string{
 			"dpg-x-1/postgres": presence(0, 241), "dpg-x-2/postgres": presence(0, 241),
-			"dpg-x-pooler-7c9f-abcde/pgbouncer": presence(0, 241),
-		}, want: 7200, stateful: "dpg-x"},
+			"dpg-x-r-ca978112ca-1/postgres":     presence(0, 241),
+			"dpg-x-pooler-7c9f-abcde/pgbouncer": presence(0, 241), "dpg-x-rp-a-7c9f-abcde/pgbouncer": presence(0, 241),
+		}, want: 10800, stateful: "dpg-x"},
 		// 5 minutes of life: its t=0 sample belongs to the prior hour, then 19
 		// steps plus the three its last sample stays live for (59 s).
 		{"short", map[string]string{"a-1/app": presence(0, 20)}, 330, ""},
@@ -138,7 +143,7 @@ func TestInstanceSecondsQueryOnPrometheus(t *testing.T) {
 	for _, c := range cases {
 		matchers := fmt.Sprintf(`namespace=%q,container!=""`, c.namespace)
 		if c.stateful != "" {
-			matchers = statefulInstanceMatchers(c.namespace, c.stateful)
+			matchers = statefulInstanceMatchers(c.namespace, c.stateful, store.ResourceKindPostgres)
 		}
 		expr := fmt.Sprintf("%s * %d", instanceSecondsQuery(matchers, 3600), instanceSampleStepSeconds)
 		fmt.Fprintf(&b, "      - expr: '%s'\n        eval_time: 1h\n        exp_samples:\n          - labels: '{}'\n            value: %d\n", expr, c.want)

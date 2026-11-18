@@ -1147,7 +1147,7 @@ func (s *Service) datastoreTarget(ctx context.Context, q *LogQuery, fromStore bo
 			namespace: database.Namespace, name: database.Name,
 			container: core.CNPGPostgresContainer, logType: datastorelogs.KindPostgres,
 			list: func(ctx context.Context) ([]corev1.Pod, error) {
-				return s.DatabasePods(ctx, database.Namespace, database.Name)
+				return s.DatabasePods(ctx, database)
 			},
 			revalidate: func(ctx context.Context) error {
 				var fresh appv1alpha1.Database

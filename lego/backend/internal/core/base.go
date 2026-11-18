@@ -2514,24 +2514,31 @@ func (b *Base) BuildPods(ctx context.Context, app, namespace string) ([]corev1.P
 	return pods.Items, nil
 }
 
-// DatabasePods lists the CNPG pods for a managed Postgres cluster — selected by
-// the cnpg.io/cluster=<clusterName> label that CNPG stamps on every pod it owns.
-// Used by the postgres logs feature (w3/m28); clusterName is the Database CR's
-// metadata.name, which is also the CNPG Cluster CR name.
+// DatabasePods lists the CNPG pods of a managed Postgres — selected by the
+// cnpg.io/cluster label CNPG stamps on every pod it owns: its primary
+// Cluster's, named after the Database CR, and each read replica's own
+// (appv1alpha1.ReadReplicaClusterName, w6/m467). Used by the postgres logs
+// feature (w3/m28).
 //
-// namespace is the Database CR's own namespace (ADR043 D8) — callers hold the
-// CR from AuthorizeDatabase, so they pass d.Namespace. Empty falls back to the
-// shared apps namespace, matching the pre-D8 placement. Hardcoding b.Namespace
-// here is what made datastore logs silently empty for a migrated workspace: a
-// pod list in the wrong namespace returns no error, just nothing.
-func (b *Base) DatabasePods(ctx context.Context, namespace, clusterName string) ([]corev1.Pod, error) {
-	if namespace == "" {
-		namespace = b.Namespace
+// The pods are listed in the Database CR's own namespace (ADR043 D8) — callers
+// hold the CR from AuthorizeDatabase. Empty falls back to the shared apps
+// namespace, matching the pre-D8 placement. Hardcoding b.Namespace here is
+// what made datastore logs silently empty for a migrated workspace: a pod
+// list in the wrong namespace returns no error, just nothing.
+func (b *Base) DatabasePods(ctx context.Context, d *appv1alpha1.Database) ([]corev1.Pod, error) {
+	namespace := cmp.Or(d.Namespace, b.Namespace)
+	clusters := []string{d.Name}
+	for _, replica := range d.Spec.ReadReplicas {
+		clusters = append(clusters, appv1alpha1.ReadReplicaClusterName(d.Name, replica.Name))
+	}
+	selector, err := labels.NewRequirement(PodLabelCNPGCluster, selection.In, clusters)
+	if err != nil {
+		return nil, err
 	}
 	var pods corev1.PodList
 	if err := b.Client.List(ctx, &pods,
 		client.InNamespace(namespace),
-		client.MatchingLabels{PodLabelCNPGCluster: clusterName}); err != nil {
+		client.MatchingLabelsSelector{Selector: labels.NewSelector().Add(*selector)}); err != nil {
 		return nil, err
 	}
 	return pods.Items, nil

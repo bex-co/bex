@@ -114,7 +114,7 @@ func TestManagedPostgresLokiLevels(t *testing.T) {
 			if err != nil || len(entries) != 1 || entries[0].Labels[LabelLevel] != "error" || !strings.Contains(entries[0].Message, "FATAL:") {
 				t.Fatalf("history = %+v, err=%v", entries, err)
 			}
-			if want, got := `{namespace="default", database="`+postgresID+`", `+tc.want+`}`, f.lastValues.Get("query"); got != want {
+			if want, got := `{namespace="default", database=~"`+postgresID+`(-r-[0-9a-f]{10})?", `+tc.want+`}`, f.lastValues.Get("query"); got != want {
 				t.Fatalf("Loki query = %q, want %q", got, want)
 			}
 		})
@@ -160,7 +160,7 @@ func TestManagedPostgresLevelValues(t *testing.T) {
 	if err != nil || !slices.Equal(values, []string{"error", "warning"}) {
 		t.Fatalf("level values = %v, err=%v", values, err)
 	}
-	if f.lastPath != "/loki/api/v1/label/level/values" || f.lastValues.Get("query") != `{namespace="default", database="`+postgresID+`", level=~"^(warning|warn|error)$"}` {
+	if f.lastPath != "/loki/api/v1/label/level/values" || f.lastValues.Get("query") != `{namespace="default", database=~"`+postgresID+`(-r-[0-9a-f]{10})?", level=~"^(warning|warn|error)$"}` {
 		t.Fatalf("label source = %s %v", f.lastPath, f.lastValues)
 	}
 	if _, err := svc.LogLabelValues(context.Background(), LabelMethod, LogQuery{App: postgresID}); !errors.Is(err, core.ErrBadRequest) {

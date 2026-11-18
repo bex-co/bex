@@ -95,12 +95,13 @@ func TestDatabaseServerAltDNSNames(t *testing.T) {
 			ReadReplicas: []appv1alpha1.DatabaseReadReplica{{Name: "analytics"}},
 		},
 	}
-	want := []string{"dpg-orders.db.example", "dpg-orders-pool.db.example", "dpg-orders-ro-analytics.db.example", "dpg-orders-pool-ro.db.example"}
+	// Each replica has its own direct and pooled names (w6/m467), and its
+	// replica cluster serves this same certificate on a public database.
+	want := []string{"dpg-orders.db.example", "dpg-orders-pool.db.example", "dpg-orders-ro-analytics.db.example", "dpg-orders-rp-analytics.db.example"}
 	if got := databaseServerAltDNSNames(db, "db.example"); !reflect.DeepEqual(got, want) {
 		t.Fatalf("server alt DNS names = %v, want %v", got, want)
 	}
-	// The read replicas' pooler has a name only while the database is pooled
-	// and has replicas (w6/m458).
+	// A replica's pooler has a name only while the database is pooled.
 	unpooled := db.DeepCopy()
 	unpooled.Spec.Pooler = false
 	if got, want := databaseServerAltDNSNames(unpooled, "db.example"), []string{"dpg-orders.db.example", "dpg-orders-ro-analytics.db.example"}; !reflect.DeepEqual(got, want) {
@@ -558,16 +559,19 @@ func TestVersionedBackupServerName(t *testing.T) {
 
 func TestPoolerSpec(t *testing.T) {
 	plan, _ := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "basic-1gb"})
-	p := poolerSpec("mydb", poolerTypePrimary, plan)
+	p := poolerSpec("mydb", plan)
 	if p["cluster"].(map[string]any)["name"] != "mydb" || p["type"] != "rw" {
 		t.Errorf("pooler = %v", p)
 	}
 	if p["pgbouncer"].(map[string]any)["poolMode"] != "transaction" {
 		t.Errorf("poolMode = %v", p["pgbouncer"])
 	}
-	if replicas := poolerSpec("mydb", poolerTypeReplicas, plan); replicas["type"] != "ro" ||
+	// A replica's pooler fronts its replica cluster's read-write Service, the
+	// designated primary, which is read only, with the primary's settings.
+	replica := appv1alpha1.ReadReplicaClusterName("mydb", "analytics")
+	if replicas := poolerSpec(replica, plan); replicas["type"] != "rw" || replicas["cluster"].(map[string]any)["name"] != replica ||
 		!reflect.DeepEqual(replicas["pgbouncer"], p["pgbouncer"]) {
-		t.Errorf("read replica pooler = %v, want type ro with the primary's settings", replicas)
+		t.Errorf("read replica pooler = %v, want type rw on %s with the primary's settings", replicas, replica)
 	}
 	// The extra port must not be named `pgbouncer`: CNPG would then drop its
 	// default 5432 port, and every pooled URI already handed out would stop
@@ -805,21 +809,30 @@ func TestDatabasePublicFrontDoorStatus(t *testing.T) {
 		},
 	}
 	r := &DatabaseReconciler{DBDomain: "db.example.test"}
-	r.updateExternalAddressStatus(db)
+	r.updateExternalAddressStatus(db, true)
 	if db.Status.ExternalHost != "orders.db.example.test" || db.Status.PoolerExternalHost != "orders-pool.db.example.test" {
 		t.Fatalf("public status hosts = %q / %q", db.Status.ExternalHost, db.Status.PoolerExternalHost)
 	}
+	// The replica's own instance and its own PgBouncer, inside and outside
+	// (w6/m467): never the primary Cluster's shared -ro Service.
 	wantReplica := appv1alpha1.DatabaseReadReplicaStatus{
-		Name: "analytics", InternalHost: "orders-ro.default.svc", ExternalHost: "orders-ro-analytics.db.example.test",
-		PoolerHost: "orders-pooler-ro.default.svc", PoolerExternalHost: "orders-pool-ro.db.example.test",
+		Name: "analytics", InternalHost: "orders-ro-analytics.default.svc", ExternalHost: "orders-ro-analytics.db.example.test",
+		PoolerHost: "orders-rp-analytics.default.svc", PoolerExternalHost: "orders-rp-analytics.db.example.test",
 	}
 	if got := db.Status.ReadReplicaStatuses; len(got) != 1 || got[0] != wantReplica {
 		t.Fatalf("read replica status = %#v, want %#v", got, wantReplica)
 	}
+	// A declaration outside replica eligibility keeps its name, with no host:
+	// nothing would answer one.
+	unprovisioned := db.DeepCopy()
+	r.updateExternalAddressStatus(unprovisioned, false)
+	if got := unprovisioned.Status.ReadReplicaStatuses; len(got) != 1 || got[0] != (appv1alpha1.DatabaseReadReplicaStatus{Name: "analytics"}) {
+		t.Fatalf("unprovisioned read replica status = %#v, want its name alone", got)
+	}
 	before := db.DeepCopy()
 	db.Spec.Public = false
 	db.Spec.IPAllowList = nil
-	r.updateExternalAddressStatus(db)
+	r.updateExternalAddressStatus(db, true)
 	if db.Status.ExternalHost != "" || db.Status.PoolerExternalHost != "" || db.Status.ReadReplicaStatuses[0].ExternalHost != "" ||
 		db.Status.ReadReplicaStatuses[0].PoolerExternalHost != "" {
 		t.Fatal("external disable retained a primary, pooler or replica hostname")
@@ -831,7 +844,7 @@ func TestDatabasePublicFrontDoorStatus(t *testing.T) {
 	}
 	// Turning pooling off withdraws the replicas' pooled hosts with the primary's.
 	db.Spec.Public, db.Spec.Pooler = true, false
-	r.updateExternalAddressStatus(db)
+	r.updateExternalAddressStatus(db, true)
 	if got := db.Status.ReadReplicaStatuses[0]; got.PoolerHost != "" || got.PoolerExternalHost != "" || got.ExternalHost == "" {
 		t.Fatalf("unpooled read replica status = %#v, want its direct hosts only", got)
 	}

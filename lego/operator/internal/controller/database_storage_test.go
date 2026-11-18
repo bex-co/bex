@@ -46,6 +46,7 @@ func databaseStorageFixture(t *testing.T, db *appv1alpha1.Database, clusterGB in
 		cnpgClusterGVK, cnpgScheduledBackupGVK, cnpgBackupGVK, cnpgPoolerGVK,
 	} {
 		scheme.AddKnownTypeWithName(gvk, &unstructured.Unstructured{})
+		scheme.AddKnownTypeWithName(gvk.GroupVersion().WithKind(gvk.Kind+"List"), &unstructured.UnstructuredList{})
 	}
 	cluster := &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": "postgresql.cnpg.io/v1", "kind": "Cluster",

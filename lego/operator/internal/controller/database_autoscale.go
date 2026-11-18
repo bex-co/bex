@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -62,7 +61,8 @@ const (
 )
 
 // DatabaseDiskUsage is the fullest CNPG instance PVC's current kubelet sample.
-// Readers and HA standbys each hold a full copy; the fullest drives growth.
+// HA standbys and read replicas, the latter in clusters of their own
+// (w6/m467), each hold a full copy; the fullest drives growth.
 type DatabaseDiskUsage struct {
 	PVC           string
 	UsedBytes     int64
@@ -89,7 +89,7 @@ func NewPrometheusDatabaseDiskUsageReader(base string, hc *http.Client) Database
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, namespace, database string) (DatabaseDiskUsage, error) {
-		pattern := "^" + regexp.QuoteMeta(database) + `-[0-9]+$`
+		pattern := "^" + appv1alpha1.DatabaseClustersPattern(database) + `-[0-9]+$`
 		selector := fmt.Sprintf(`{namespace=%s,persistentvolumeclaim=~%s}`, strconv.Quote(namespace), strconv.Quote(pattern))
 		used, err := promInstantQuery(ctx, hc, base, "kubelet_volume_stats_used_bytes"+selector)
 		if err != nil {
@@ -212,19 +212,29 @@ func (r *DatabaseReconciler) applyDiskAutoscaling(ctx context.Context, db *appv1
 	// the quota's headroom here turns that silent failure into an observable
 	// Database condition and backs off, instead of stranding spec.storageGB ahead
 	// of a PVC that cannot grow. CNPG grows one PVC per instance, so the aggregate
-	// delta scales with the cluster size. Crossing the replica storage minimum
-	// can also add readers, each of which needs a whole new PVC.
+	// delta scales with the instance count. Crossing the replica storage minimum
+	// can also add read replicas, each of which needs a whole new PVC.
 	cluster := &unstructured.Unstructured{}
 	cluster.SetGroupVersionKind(cnpgClusterGVK)
 	if err := r.Get(ctx, client.ObjectKeyFromObject(db), cluster); err != nil && !apierrors.IsNotFound(err) {
 		return databaseDiskAutoscaleInterval, fmt.Errorf("read cluster for disk growth: %w", err)
 	}
-	params := clusterParams{plan: plan, storageGB: nextGB, highAvailability: db.Spec.HighAvailability,
-		readReplicas: len(db.Spec.ReadReplicas), currentInstances: cnpgInstanceCount(cluster)}
-	// Declared scale-up may not have allocated its reader PVC yet. Subtract
-	// only observed capacity; the usage sample proves one PVC if status is absent.
-	currentInstances := max(int64(1), cnpgObservedInstanceCount(cluster))
-	nextInstances := max(databaseInstanceCount(params), currentInstances)
+	// Every instance has a PVC of the database's size: the primary Cluster's
+	// and each read replica cluster's. Declared scale-up may not have
+	// allocated its PVC yet, so subtract only observed capacity; the usage
+	// sample proves one PVC if status is absent.
+	primaryInstances := max(int64(1), cnpgObservedInstanceCount(cluster))
+	replicaClusters, err := r.listReadReplicaObjects(ctx, db, cnpgClusterGVK)
+	if err != nil {
+		return databaseDiskAutoscaleInterval, fmt.Errorf("read replicas for disk growth: %w", err)
+	}
+	currentReplicas := int64(len(replicaClusters))
+	nextReplicas := currentReplicas
+	if readReplicasProvisioned(plan, nextGB, len(db.Spec.ReadReplicas)) {
+		nextReplicas = max(nextReplicas, int64(len(db.Spec.ReadReplicas)))
+	}
+	currentInstances := primaryInstances + currentReplicas
+	nextInstances := max(databaseInstanceCount(plan, db.Spec.HighAvailability), primaryInstances) + nextReplicas
 	deltaGB := int64(nextGB)*nextInstances - int64(currentGB)*currentInstances
 	blocked, quotaDetail, quotaErr := r.diskGrowthQuotaBlocks(ctx, db.Namespace, deltaGB)
 	if quotaErr != nil {

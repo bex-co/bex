@@ -542,14 +542,16 @@ func TestDatabaseDiskAutoscaleBlockedByNamespaceQuota(t *testing.T) {
 func TestPrometheusDatabaseDiskUsageReaderChoosesFullestPVC(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		query := req.URL.Query().Get("query")
-		if !strings.Contains(query, `namespace="tenant"`) || !strings.Contains(query, `persistentvolumeclaim=~"^dpg-one-[0-9]+$"`) {
+		// Every CNPG cluster's PVCs: the primary's and each read replica's
+		// own (w6/m467).
+		if !strings.Contains(query, `namespace="tenant"`) || !strings.Contains(query, `persistentvolumeclaim=~"^dpg-one(-r-[0-9a-f]{10})?-[0-9]+$"`) {
 			t.Errorf("query selector = %q", query)
 		}
 		metric := "used"
-		values := `[{"metric":{"persistentvolumeclaim":"dpg-one-1"},"value":[1,"80"]},{"metric":{"persistentvolumeclaim":"dpg-one-2"},"value":[1,"95"]}]`
+		values := `[{"metric":{"persistentvolumeclaim":"dpg-one-1"},"value":[1,"80"]},{"metric":{"persistentvolumeclaim":"dpg-one-r-ca978112ca-1"},"value":[1,"95"]}]`
 		if strings.Contains(query, "capacity") {
 			metric = "capacity"
-			values = `[{"metric":{"persistentvolumeclaim":"dpg-one-1"},"value":[1,"100"]},{"metric":{"persistentvolumeclaim":"dpg-one-2"},"value":[1,"100"]}]`
+			values = `[{"metric":{"persistentvolumeclaim":"dpg-one-1"},"value":[1,"100"]},{"metric":{"persistentvolumeclaim":"dpg-one-r-ca978112ca-1"},"value":[1,"100"]}]`
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = fmt.Fprintf(w, `{"status":"success","data":{"resultType":"vector","result":%s},"metric":%q}`, values, metric)
@@ -560,7 +562,7 @@ func TestPrometheusDatabaseDiskUsageReaderChoosesFullestPVC(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if usage.PVC != "dpg-one-2" || usage.UsedBytes != 95 || usage.CapacityBytes != 100 {
+	if usage.PVC != "dpg-one-r-ca978112ca-1" || usage.UsedBytes != 95 || usage.CapacityBytes != 100 {
 		t.Fatalf("usage = %+v", usage)
 	}
 }

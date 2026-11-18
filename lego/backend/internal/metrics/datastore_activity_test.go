@@ -409,6 +409,9 @@ func TestActivityQueriesOnPrometheus(t *testing.T) {
 		// Postgres network, on the pod-level row.
 		{`container_network_receive_bytes_total{namespace="ns",pod="pg-1",container="",interface="eth0",id="p"}`, counter(300, 80)},
 		{`container_network_transmit_bytes_total{namespace="ns",pod="pg-1",container="",interface="eth0",id="p"}`, counter(600, 80)},
+		// A read replica of pg is a CNPG cluster of its own (w6/m467).
+		{`container_network_receive_bytes_total{namespace="ns",pod="pg-r-ca978112ca-1",container="",interface="eth0",id="r"}`, counter(30, 80)},
+		{`container_network_transmit_bytes_total{namespace="ns",pod="pg-r-ca978112ca-1",container="",interface="eth0",id="r"}`, counter(60, 80)},
 	}
 	cnpg := []in{
 		{`cnpg_pg_stat_database_xact_commit{namespace="ns",cnpg_io_cluster="pg",pod="pg-1",datname="pg_app"}`, counter(40, 20)},
@@ -416,6 +419,7 @@ func TestActivityQueriesOnPrometheus(t *testing.T) {
 		{`cnpg_pg_stat_database_xact_commit{namespace="ns",cnpg_io_cluster="pg",pod="pg-1",datname="postgres"}`, counter(500, 20)},
 		{`cnpg_pg_stat_database_xact_commit{namespace="ns",cnpg_io_cluster="pg",pod="pg-1",datname="template1"}`, counter(500, 20)},
 		{`cnpg_pg_stat_database_xact_commit{namespace="ns",cnpg_io_cluster="pg-extra",pod="pg-extra-1",datname="pg_app"}`, counter(999, 20)},
+		{`cnpg_pg_stat_database_xact_commit{namespace="ns",cnpg_io_cluster="pg-r-ca978112ca",pod="pg-r-ca978112ca-1",datname="pg_app"}`, counter(7, 20)},
 	}
 	q := func(kind, resource, metric string, step time.Duration) string {
 		query, _ := promDatastoreActivityQuery(DatastoreActivityRequest{Kind: kind, Namespace: "ns", Resource: resource, Metric: metric, Resolution: step})
@@ -438,11 +442,13 @@ func TestActivityQueriesOnPrometheus(t *testing.T) {
 		// A 5-minute bucket is increase() over it: 20 samples.
 		{q(DatastoreService, "web", MetricDiskActivity, 5*minute), "10m", []string{`{direction="write",pod="web-6b7f9c-x2k4p"} 800`}},
 		{q(DatastoreDatabase, "pg", MetricNetworkActivity, minute), "10m", []string{
-			`{direction="read",pod="pg-1"} 1200`, `{direction="write",pod="pg-1"} 2400`}},
+			`{direction="read",pod="pg-1"} 1200`, `{direction="write",pod="pg-1"} 2400`,
+			`{direction="read",pod="pg-r-ca978112ca-1"} 120`, `{direction="write",pod="pg-r-ca978112ca-1"} 240`}},
 		// 42 tenant transactions a minute; postgres and template1 excluded.
 		// A 60s step over a 60s scrape spreads the 240s rate over the bucket.
-		{q(DatastoreDatabase, "pg", MetricTransactionVolume, minute), "10m", []string{`{pod="pg-1"} 42`}},
-		{q(DatastoreDatabase, "pg", MetricTransactionVolume, 10*minute), "15m", []string{`{pod="pg-1"} 420`}},
+		// The read replica's own 7 are its own instance's.
+		{q(DatastoreDatabase, "pg", MetricTransactionVolume, minute), "10m", []string{`{pod="pg-1"} 42`, `{pod="pg-r-ca978112ca-1"} 7`}},
+		{q(DatastoreDatabase, "pg", MetricTransactionVolume, 10*minute), "15m", []string{`{pod="pg-1"} 420`, `{pod="pg-r-ca978112ca-1"} 70`}},
 	}
 	var b strings.Builder
 	b.WriteString("rule_files: []\nevaluation_interval: 15s\ntests:\n")

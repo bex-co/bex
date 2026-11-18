@@ -279,10 +279,12 @@ type DatabaseSpec struct {
 	// +optional
 	HighAvailability bool `json:"highAvailability,omitempty"`
 
-	// ReadReplicas declares named read-only replica endpoints backed by the CNPG
-	// read-only service. Each entry yields its own internal host and, when Public
-	// is true and BEX_DB_DOMAIN is set, its own external SNI hostname. Independent
-	// of the HA toggle — Render's readReplicas: [{name}] field.
+	// ReadReplicas declares named read replicas. Each is its own one-instance
+	// CNPG replica cluster streaming from the primary (ReadReplicaClusterName),
+	// with its own internal host, its own PgBouncer when Pooler is set, and,
+	// when Public is true and BEX_DB_DOMAIN is set, its own external SNI
+	// hostnames (w6/m467). Independent of the HA toggle, whose standby serves
+	// no replica — Render's readReplicas: [{name}] field.
 	// See docs/render-artifacts/postgres-ha.md.
 	// +optional
 	// +listType=map
@@ -316,12 +318,13 @@ type DatabaseSpec struct {
 	Parameters map[string]string `json:"parameters,omitempty"`
 }
 
-// DatabaseReadReplica declares one named read-only replica endpoint for a Database.
-// Each entry maps to a CNPG read-only service connection, addressable by its own
-// SNI hostname when the Database is Public. Render's readReplicas item shape.
+// DatabaseReadReplica declares one named read replica of a Database: its own
+// reader instance, addressable by its own SNI hostname when the Database is
+// Public. Render's readReplicas item shape.
 type DatabaseReadReplica struct {
-	// Name is the replica's label, used to build its external SNI hostname
-	// (<db>-<name>.<BEX_DB_DOMAIN>) and in the status readReplicaStatuses array.
+	// Name is the replica's label, used to build its hostnames
+	// (<db>-ro-<name>, ReadReplicaServiceName) and in the status
+	// readReplicaStatuses array.
 	// +required
 	Name string `json:"name"`
 }
@@ -832,23 +835,25 @@ type DatabaseReadReplicaStatus struct {
 	// Name matches the spec.readReplicas entry name.
 	// +required
 	Name string `json:"name"`
-	// InternalHost is the in-cluster read-only hostname (CNPG "<cluster>-ro" Service,
-	// load-balances across standbys). Shared across all named replicas of the same DB.
+	// InternalHost is the in-cluster hostname of this replica's own instance
+	// ("<db>-ro-<name>.<ns>.svc", ReadReplicaServiceName), never the primary
+	// or the HA standby (w6/m467). Empty while the replica cannot be
+	// provisioned (a plan or storage outside replica eligibility).
 	// +optional
 	InternalHost string `json:"internalHost,omitempty"`
 	// ExternalHost is the per-replica public SNI hostname
 	// ("<db>-ro-<name>.<BEX_DB_DOMAIN>") when the Database is Public.
 	// +optional
 	ExternalHost string `json:"externalHost,omitempty"`
-	// PoolerHost is the in-cluster host of the read replicas' PgBouncer
-	// ("<db>-pooler-ro.<ns>.svc", served on PoolerPort) when Pooler is set:
-	// Render pools every replica of a pooled database (w6/m458). Like
-	// InternalHost, it is shared across the named replicas.
+	// PoolerHost is the in-cluster host of this replica's own PgBouncer
+	// ("<db>-rp-<name>.<ns>.svc", ReadReplicaPoolerName, served on
+	// PoolerPort) when Pooler is set: Render gives each replica of a pooled
+	// database its own pool (w6/m458, w6/m467).
 	// +optional
 	PoolerHost string `json:"poolerHost,omitempty"`
-	// PoolerExternalHost is the public SNI hostname of the read replicas'
-	// PgBouncer ("<db>-pool-ro.<BEX_DB_DOMAIN>") when the Database is Public
-	// and pooled.
+	// PoolerExternalHost is the public SNI hostname of this replica's
+	// PgBouncer ("<db>-rp-<name>.<BEX_DB_DOMAIN>") when the Database is
+	// Public and pooled.
 	// +optional
 	PoolerExternalHost string `json:"poolerExternalHost,omitempty"`
 }

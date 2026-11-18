@@ -202,10 +202,15 @@ func TestRouterResolve(t *testing.T) {
 	}{
 		{"mydb.db.bex.co", "mydb-rw.tenant-ns.svc.cluster.local:5432", true},
 		{"mydb-pool.db.bex.co", "mydb-pooler.tenant-ns.svc.cluster.local:5432", true},
-		{"mydb-ro-east.db.bex.co", "mydb-ro.tenant-ns.svc.cluster.local:5432", true},
-		{"mydb-ro-reader-a.db.bex.co", "mydb-ro.tenant-ns.svc.cluster.local:5432", true},
-		// The read replicas' PgBouncer, one for every named replica (w6/m458).
-		{"mydb-pool-ro.db.bex.co", "mydb-pooler-ro.tenant-ns.svc.cluster.local:5432", true},
+		// Each replica's own instance and its own PgBouncer (w6/m467), never
+		// a Service it shares with another replica or the HA standby.
+		{"mydb-ro-east.db.bex.co", "mydb-ro-east.tenant-ns.svc.cluster.local:5432", true},
+		{"mydb-ro-reader-a.db.bex.co", "mydb-ro-reader-a.tenant-ns.svc.cluster.local:5432", true},
+		{"mydb-rp-east.db.bex.co", "mydb-rp-east.tenant-ns.svc.cluster.local:5432", true},
+		{"mydb-rp-reader-a.db.bex.co", "mydb-rp-reader-a.tenant-ns.svc.cluster.local:5432", true},
+		// The shared labels of w6/m458 are gone.
+		{"mydb-pool-ro.db.bex.co", "", false},
+		{"mydb-ro.db.bex.co", "", false},
 		{"unknown.db.bex.co", "", false},
 		{"mydb.wrong.domain", "", false},
 	}
@@ -509,15 +514,32 @@ func TestRouterHostnameIndexIsExact(t *testing.T) {
 	if _, ok := r.resolve("mydb-ro-east.db.bex.co", src); ok {
 		t.Error("-ro-<replica> label survived a re-set that dropped the replica")
 	}
-	if _, ok := r.resolve("mydb-pool-ro.db.bex.co", src); ok {
-		t.Error("-pool-ro label survived a re-set that disabled the pooler")
+	if _, ok := r.resolve("mydb-rp-east.db.bex.co", src); ok {
+		t.Error("-rp-<replica> label survived a re-set that disabled the pooler")
 	}
-	// Pooled without replicas: there is no reader PgBouncer to route to.
+	// Removing one replica leaves the other's labels: each is its own route.
+	if err := r.set(route("mydb", true, "east", "west")); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.set(route("mydb", true, "west")); err != nil {
+		t.Fatal(err)
+	}
+	for _, gone := range []string{"mydb-ro-east", "mydb-rp-east"} {
+		if _, ok := r.resolve(gone+".db.bex.co", src); ok {
+			t.Errorf("%s resolved after the replica was removed", gone)
+		}
+	}
+	for _, kept := range []string{"mydb-ro-west", "mydb-rp-west"} {
+		if got, ok := r.resolve(kept+".db.bex.co", src); !ok || got.Backend != kept+".ns-mydb.svc.cluster.local:5432" {
+			t.Errorf("%s = %+v, %v after the other replica was removed", kept, got, ok)
+		}
+	}
+	// Pooled without replicas: there is no replica PgBouncer to route to.
 	if err := r.set(route("mydb", true)); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := r.resolve("mydb-pool-ro.db.bex.co", src); ok {
-		t.Error("-pool-ro label resolved for a database without read replicas")
+	if _, ok := r.resolve("mydb-rp-west.db.bex.co", src); ok {
+		t.Error("-rp-<replica> label resolved for a database without read replicas")
 	}
 	if _, ok := r.resolve("mydb-pool.db.bex.co", src); !ok {
 		t.Error("-pool label missing for a pooled database")
@@ -594,8 +616,9 @@ func TestTrustedProxySourceRoutesDatabaseAllowlist(t *testing.T) {
 // hostname of a database is its own admission bucket, sized at twice the limit
 // of the server behind it. The primary and each replica take the plan's
 // max_connections (every plan, so a tier added later is admitted by its own
-// figure); either pooler takes PgBouncer's client limit. A plan change reaches the
-// route on the next watch event.
+// figure); every pooler, the primary's and each replica's own (w6/m467), takes
+// PgBouncer's client limit. A plan change reaches the route on the next watch
+// event.
 func TestRouterCarriesEachRoutesCapacityFromThePlan(t *testing.T) {
 	source := netip.MustParseAddr("203.0.113.9")
 	for _, plan := range append(tiers.Postgres.IDs(), "", "unknown-plan") {
@@ -612,11 +635,12 @@ func TestRouterCarriesEachRoutesCapacityFromThePlan(t *testing.T) {
 		}
 		server := sniproxy.RouteCapacity(tiers.Postgres.Resolve(plan).MaxConnections)
 		want := map[string]dbRoute{
-			"mydb":         {Route: "tenant-ns/mydb/mydb", Capacity: server},
-			"mydb-pool":    {Route: "tenant-ns/mydb/mydb-pool", Capacity: 60000},
-			"mydb-ro-r1":   {Route: "tenant-ns/mydb/mydb-ro-r1", Capacity: server},
-			"mydb-ro-r2":   {Route: "tenant-ns/mydb/mydb-ro-r2", Capacity: server},
-			"mydb-pool-ro": {Route: "tenant-ns/mydb/mydb-pool-ro", Capacity: 60000},
+			"mydb":       {Route: "tenant-ns/mydb/mydb", Capacity: server},
+			"mydb-pool":  {Route: "tenant-ns/mydb/mydb-pool", Capacity: 60000},
+			"mydb-ro-r1": {Route: "tenant-ns/mydb/mydb-ro-r1", Capacity: server},
+			"mydb-ro-r2": {Route: "tenant-ns/mydb/mydb-ro-r2", Capacity: server},
+			"mydb-rp-r1": {Route: "tenant-ns/mydb/mydb-rp-r1", Capacity: 60000},
+			"mydb-rp-r2": {Route: "tenant-ns/mydb/mydb-rp-r2", Capacity: 60000},
 		}
 		for label, w := range want {
 			route, ok := router.resolve(label+".db.bex.co", source)

@@ -1445,7 +1445,9 @@ func TestQueryStorageGBSecondsUsesPVCUsedBytes(t *testing.T) {
 	tests := []struct {
 		name, kind, wantPattern string
 	}{
-		{"postgres", store.ResourceKindPostgres, `^mydb-[0-9]+$`},
+		// Every CNPG cluster of the Postgres: its primary's and each read
+		// replica's own (w6/m467).
+		{"postgres", store.ResourceKindPostgres, `^mydb(-r-[0-9a-f]{10})?-[0-9]+$`},
 		{"key_value", store.ResourceKindKeyValue, `^data-mydb-[0-9]+$`},
 	}
 	for _, tt := range tests {

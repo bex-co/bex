@@ -22,30 +22,16 @@ import (
 	"github.com/bex-co/bex/lego/types/tiers"
 )
 
-// databaseInstanceCount keeps named readers separate from the HA standby.
-// Legacy declarations outside admission policy cannot add capacity, but their
-// existing Cluster capacity remains until the author removes the declarations.
-func databaseInstanceCount(p clusterParams) int64 {
-	base := max(int64(1), int64(p.plan.Instances))
-	if p.highAvailability {
+// databaseInstanceCount is the primary Cluster's instances: the plan's, and a
+// standby with HA. Read replicas are clusters of their own
+// (database_replicas.go), so the HA standby is the only standby CNPG can
+// promote and no replica URL ever reads it (w6/m467).
+func databaseInstanceCount(plan tiers.PostgresTier, highAvailability bool) int64 {
+	base := max(int64(1), int64(plan.Instances))
+	if highAvailability {
 		base = max(base, 2)
 	}
-	if p.readReplicas == 0 {
-		return base
-	}
-	if p.readReplicas <= p.plan.MaxReadReplicas() &&
-		p.storageGB >= tiers.PostgresReadReplicaMinStorageGB &&
-		p.storageGB <= tiers.Postgres.MaxStorageGB(p.plan.ID) {
-		return base + int64(p.readReplicas)
-	}
-	return max(base, p.currentInstances)
-}
-
-// Include both intent and observation: a scale-up or restart must not erase an
-// existing legacy reader merely because CNPG has not reported it ready yet.
-func cnpgInstanceCount(cluster *unstructured.Unstructured) int64 {
-	declared, _, _ := unstructured.NestedInt64(cluster.Object, "spec", "instances")
-	return max(declared, cnpgObservedInstanceCount(cluster))
+	return base
 }
 
 func cnpgObservedInstanceCount(cluster *unstructured.Unstructured) int64 {

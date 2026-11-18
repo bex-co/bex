@@ -106,7 +106,7 @@ type dbRouter struct {
 	domain string                    // BEX_DB_DOMAIN, e.g. "db.bex.co"
 	table  map[string]dbRoutingEntry // dbname → exact public routing intent
 	// hosts maps every public hostname VARIANT (rw, -pool, -ro-<replica>,
-	// -pool-ro) to the routes that can serve it, each with its backend
+	// -rp-<replica>) to the routes that can serve it, each with its backend
 	// precomputed. resolve() is then an O(1) map hit per unauthenticated
 	// handshake instead of an O(global database count) table scan under the
 	// read lock — an unknown-SNI flood used to pay the full scan before
@@ -186,31 +186,35 @@ func (r *dbRouter) set(db *appv1alpha1.Database) error {
 }
 
 // indexLocked (re)builds the hostname-variant index for one database. The
-// caller holds the write lock. Every replica label resolves to the one shared
-// -ro service, so all -ro-<replica> labels carry the same backend. Each label
-// is its own admission bucket, sized from the server behind it: the plan's
-// max_connections for the primary and each replica (Render limits each
-// replica like its primary), PgBouncer's client limit for either pooler.
+// caller holds the write lock. Each read replica is its own instance with its
+// own PgBouncer (w6/m467), and each public label is named after, and routes
+// to, the Service behind it: <db>-ro-<replica> to the replica's instance,
+// <db>-rp-<replica> to its pooler (appv1alpha1.ReadReplicaServiceName,
+// ReadReplicaPoolerName). Each label is its own admission bucket, sized from
+// the server behind it: the plan's max_connections for the primary and each
+// replica (Render limits each replica like its primary), PgBouncer's client
+// limit for every pooler.
 func (r *dbRouter) indexLocked(name string, entry dbRoutingEntry) {
 	r.dropIndexLocked(name)
 	add := func(label, service string, limit int32) {
 		r.hosts[label] = append(r.hosts[label], hostRoute{
 			db:       name,
-			backend:  fmt.Sprintf("%s-%s.%s.svc.cluster.local:5432", name, service, entry.namespace),
+			backend:  fmt.Sprintf("%s.%s.svc.cluster.local:5432", service, entry.namespace),
 			key:      entry.namespace + "/" + name + "/" + label,
 			capacity: sniproxy.RouteCapacity(limit),
 		})
 	}
-	add(name, "rw", entry.maxConnections)
+	add(name, name+"-rw", entry.maxConnections)
 	if entry.pooler {
-		add(name+"-pool", "pooler", tiers.PostgresPoolerMaxClientConn)
-		// The read replicas' PgBouncer, one for every named replica (w6/m458).
-		if len(entry.replicas) > 0 {
-			add(name+"-pool-ro", "pooler-ro", tiers.PostgresPoolerMaxClientConn)
-		}
+		add(name+"-pool", name+"-pooler", tiers.PostgresPoolerMaxClientConn)
 	}
 	for replica := range entry.replicas {
-		add(name+"-ro-"+replica, "ro", entry.maxConnections)
+		service := appv1alpha1.ReadReplicaServiceName(name, replica)
+		add(service, service, entry.maxConnections)
+		if entry.pooler {
+			pooler := appv1alpha1.ReadReplicaPoolerName(name, replica)
+			add(pooler, pooler, tiers.PostgresPoolerMaxClientConn)
+		}
 	}
 }
 
@@ -257,8 +261,8 @@ func (r *dbRouter) healthy() bool {
 // at the edge never matters, only the SNI):
 //   - <dbname>.<domain>           → <dbname>-rw.<ns>.svc.cluster.local:5432
 //   - <dbname>-pool.<domain>      → <dbname>-pooler.<ns>.svc.cluster.local:5432
-//   - <dbname>-ro-<rep>.<domain>  → <dbname>-ro.<ns>.svc.cluster.local:5432
-//   - <dbname>-pool-ro.<domain>   → <dbname>-pooler-ro.<ns>.svc.cluster.local:5432
+//   - <dbname>-ro-<rep>.<domain>  → <dbname>-ro-<rep>.<ns>.svc.cluster.local:5432
+//   - <dbname>-rp-<rep>.<domain>  → <dbname>-rp-<rep>.<ns>.svc.cluster.local:5432
 func (r *dbRouter) resolve(sni string, source netip.Addr) (dbRoute, bool) {
 	if r.domain == "" {
 		return dbRoute{}, false

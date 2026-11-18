@@ -55,8 +55,9 @@ describe("useAccessControl allowListPending", () => {
   });
 });
 
-// w6/m458: Render pools every read replica of a pooled database, so the
-// pooled reveal carries each replica whose pooler the operator published.
+// w6/m458, w6/m467: Render pools every read replica of a pooled database, each
+// in its own pool, so the pooled reveal carries each replica whose own pooler
+// the operator published.
 describe("useAccessControl revealPooled", () => {
   it("reads the primary's and each pooled replica's strings", async () => {
     clientQuery.mockResolvedValue({
@@ -68,9 +69,9 @@ describe("useAccessControl revealPooled", () => {
             {
               name: "analytics",
               internalConnectionPoolString:
-                "postgresql://u:p@db-pooler-ro:6432/d",
+                "postgresql://u:p@db-rp-analytics:6432/d",
               externalConnectionPoolString:
-                "postgresql://u:p@db-pool-ro.db.bex.co:5432/d",
+                "postgresql://u:p@db-rp-analytics.db.bex.co:5432/d",
             },
             // Not pooled yet: the operator has not published its pooler.
             {
@@ -93,8 +94,8 @@ describe("useAccessControl revealPooled", () => {
       replicas: [
         {
           name: "analytics",
-          internal: "postgresql://u:p@db-pooler-ro:6432/d",
-          external: "postgresql://u:p@db-pool-ro.db.bex.co:5432/d",
+          internal: "postgresql://u:p@db-rp-analytics:6432/d",
+          external: "postgresql://u:p@db-rp-analytics.db.bex.co:5432/d",
         },
       ],
     });

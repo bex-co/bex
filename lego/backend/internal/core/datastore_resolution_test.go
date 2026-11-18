@@ -19,8 +19,10 @@ package core
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -193,10 +195,10 @@ func TestDatabasePodsFollowTheCRNamespace(t *testing.T) {
 	// The contract under test is the parameter, not the result: an explicit
 	// namespace is honored, and an empty one falls back to the shared namespace
 	// so pre-D8 callers keep their behavior.
-	if _, err := b.DatabasePods(ctx, "tea-a", "dpg-x"); err != nil {
+	if _, err := b.DatabasePods(ctx, &appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Name: "dpg-x", Namespace: "tea-a"}}); err != nil {
 		t.Errorf("DatabasePods with an explicit namespace: %v", err)
 	}
-	if _, err := b.DatabasePods(ctx, "", "dpg-x"); err != nil {
+	if _, err := b.DatabasePods(ctx, &appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Name: "dpg-x"}}); err != nil {
 		t.Errorf("DatabasePods with the empty-namespace fallback: %v", err)
 	}
 	if _, err := b.KeyValuePods(ctx, "tea-a", "red-x"); err != nil {
@@ -204,5 +206,37 @@ func TestDatabasePodsFollowTheCRNamespace(t *testing.T) {
 	}
 	if _, err := b.KeyValuePods(ctx, "", "red-x"); err != nil {
 		t.Errorf("KeyValuePods with the empty-namespace fallback: %v", err)
+	}
+}
+
+// TestDatabasePodsIncludeEachReadReplica (w6/m467): a read replica is a CNPG
+// cluster of its own, so a Postgres's instances are its primary Cluster's
+// pods and each declared replica's, never another database's or a removed
+// replica's.
+func TestDatabasePodsIncludeEachReadReplica(t *testing.T) {
+	pod := func(name, cluster string) *corev1.Pod {
+		return &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "tea-a", Labels: map[string]string{PodLabelCNPGCluster: cluster}}}
+	}
+	replicaA := appv1alpha1.ReadReplicaClusterName("dpg-x", "a")
+	b := &Base{Client: fakeAppClient(
+		pod("dpg-x-1", "dpg-x"), pod("dpg-x-2", "dpg-x"),
+		pod(replicaA+"-1", replicaA),
+		pod("removed-1", appv1alpha1.ReadReplicaClusterName("dpg-x", "gone")),
+		pod("dpg-y-1", "dpg-y"),
+	), Namespace: "default"}
+	pods, err := b.DatabasePods(context.Background(), &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-x", Namespace: "tea-a"},
+		Spec:       appv1alpha1.DatabaseSpec{ReadReplicas: []appv1alpha1.DatabaseReadReplica{{Name: "a"}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, p := range pods {
+		names = append(names, p.Name)
+	}
+	slices.Sort(names)
+	if want := []string{"dpg-x-1", "dpg-x-2", replicaA + "-1"}; !slices.Equal(names, want) {
+		t.Fatalf("pods = %v, want %v", names, want)
 	}
 }

@@ -819,7 +819,7 @@ func (s *Service) processDatastoreMeterWindow(ctx context.Context, ds datastoreE
 	expectedFrom := usageExpectedFrom(ds.CreatedAt)
 	switch kind {
 	case store.UsageKindInstanceSeconds:
-		quantity, ok = s.queryInstanceSecondsStateful(ctx, ds.Name, ds.Namespace, window, end)
+		quantity, ok = s.queryInstanceSecondsStateful(ctx, ds, window, end)
 		health = oneSourceHealth(store.UsageSourceInstance, ok, expectedFrom)
 	case store.UsageKindStorageGBSeconds:
 		quantity, ok = s.queryStorageGBSeconds(ctx, ds, window, end)
@@ -1346,15 +1346,25 @@ func (s *Service) queryInstanceSeconds(ctx context.Context, crName, namespace st
 //
 // Every instance pod counts, so a high-availability Postgres (primary +
 // standby, <name>-1 and <name>-2) meters two instances — Render bills the
-// standby like the primary ("billed accordingly", w2/m171).
-func (s *Service) queryInstanceSecondsStateful(ctx context.Context, name, namespace string, start, end time.Time) (int64, bool) {
-	return s.queryInstanceSecondsByMatcher(ctx, statefulInstanceMatchers(namespace, name), start, end, name)
+// standby like the primary ("billed accordingly", w2/m171) — and each read
+// replica, a CNPG cluster of its own (<name>-r-<hash>-1, w6/m467), one more,
+// as Render bills each replica like its primary.
+func (s *Service) queryInstanceSecondsStateful(ctx context.Context, ds datastoreEntry, start, end time.Time) (int64, bool) {
+	return s.queryInstanceSecondsByMatcher(ctx, statefulInstanceMatchers(ds.Namespace, ds.Name, ds.Kind), start, end, ds.Name)
 }
 
-func statefulInstanceMatchers(namespace, name string) string {
-	return fmt.Sprintf(
-		`namespace=%q,pod=~"%s-[0-9]+",container!=""`,
-		namespace, egressquery.RegexEscape(name))
+func statefulInstanceMatchers(namespace, name, kind string) string {
+	return fmt.Sprintf(`namespace=%q,pod=~"%s-[0-9]+",container!=""`, namespace, datastoreClusters(name, kind))
+}
+
+// datastoreClusters is a regexp for the workloads whose numbered Pods and
+// PVCs are a datastore's instances: every CNPG cluster of a Postgres, its
+// primary's and each read replica's, or a Key Value's StatefulSet.
+func datastoreClusters(name, kind string) string {
+	if kind == store.ResourceKindPostgres {
+		return appv1alpha1.DatabaseClustersPattern(name)
+	}
+	return egressquery.RegexEscape(name)
 }
 
 const bytesPerDecimalGB = 1_000_000_000
@@ -1362,8 +1372,9 @@ const bytesPerDecimalGB = 1_000_000_000
 // queryStorageGBSeconds returns average used PVC bytes over [start,end),
 // converted to decimal GB and multiplied by window seconds. kubelet volume
 // stats are already scraped cluster-wide for datastore metrics. CNPG PVCs are
-// named <name>-<ordinal>; Valkey's volumeClaimTemplate produces
-// data-<name>-<ordinal>. The sum includes every CNPG instance/replica PVC.
+// named <cluster>-<ordinal>, for the primary's cluster and each read
+// replica's own; Valkey's volumeClaimTemplate produces data-<name>-<ordinal>.
+// The sum includes every CNPG instance and replica PVC.
 //
 // The bool distinguishes a successful zero (persist it) from an unavailable
 // Prometheus query (leave the row absent so catch-up can retry).
@@ -1371,7 +1382,7 @@ func (s *Service) queryStorageGBSeconds(ctx context.Context, ds datastoreEntry, 
 	if s.PromBase == "" {
 		return 0, false
 	}
-	pattern := fmt.Sprintf(`^%s-[0-9]+$`, egressquery.RegexEscape(ds.Name))
+	pattern := fmt.Sprintf(`^%s-[0-9]+$`, datastoreClusters(ds.Name, ds.Kind))
 	if ds.Kind == store.ResourceKindKeyValue {
 		pattern = fmt.Sprintf(`^data-%s-[0-9]+$`, egressquery.RegexEscape(ds.Name))
 	}

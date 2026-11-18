@@ -17,7 +17,6 @@ limitations under the License.
 package controller
 
 import (
-	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,13 +25,7 @@ import (
 	"strings"
 	"testing"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -52,125 +45,19 @@ func TestEveryPlansPoolerRunsRendersPgBouncerSettings(t *testing.T) {
 			"client_idle_timeout": "86400",
 			"server_login_retry":  "2",
 		}
-		for _, poolerType := range []string{poolerTypePrimary, poolerTypeReplicas} {
-			got, _, _ := unstructured.NestedMap(poolerSpec("db", poolerType, plan), "pgbouncer", "parameters")
+		// The primary's pooler and each replica's own (w6/m467).
+		for _, cluster := range []string{"db", appv1alpha1.ReadReplicaClusterName("db", "a")} {
+			got, _, _ := unstructured.NestedMap(poolerSpec(cluster, plan), "pgbouncer", "parameters")
 			if !reflect.DeepEqual(got, want) {
-				t.Errorf("plan %q %s pooler parameters = %v, want %v", id, poolerType, got, want)
+				t.Errorf("plan %q pooler of %s parameters = %v, want %v", id, cluster, got, want)
 			}
 		}
 	}
 	// The pool follows the plan's own figure: a Render 2c-8g database
 	// (max_connections 200, w6/m332) pools 190.
-	got, _, _ := unstructured.NestedString(poolerSpec("db", poolerTypePrimary, tiers.PostgresTier{MaxConnections: 200}), "pgbouncer", "parameters", "default_pool_size")
+	got, _, _ := unstructured.NestedString(poolerSpec("db", tiers.PostgresTier{MaxConnections: 200}), "pgbouncer", "parameters", "default_pool_size")
 	if got != "190" {
 		t.Errorf("a 200-connection plan pools %q, want 190", got)
-	}
-}
-
-// w6/m458: a pooled database's read replicas are pooled too, by one reader
-// PgBouncer that comes and goes with pooling and with the replicas; a plan
-// change rewrites the pool without rolling PgBouncer.
-func TestReadReplicasArePooledWithTheirDatabase(t *testing.T) {
-	ctx := context.Background()
-	scheme := runtime.NewScheme()
-	if err := clientgoscheme.AddToScheme(scheme); err != nil {
-		t.Fatal(err)
-	}
-	if err := appv1alpha1.AddToScheme(scheme); err != nil {
-		t.Fatal(err)
-	}
-	db := &appv1alpha1.Database{
-		ObjectMeta: metav1.ObjectMeta{Name: "dpg-a", Namespace: "tea-a", UID: "db-uid"},
-		Spec: appv1alpha1.DatabaseSpec{
-			Plan: "basic-1gb", Pooler: true,
-			ReadReplicas: []appv1alpha1.DatabaseReadReplica{{Name: "analytics"}, {Name: "reports"}},
-		},
-	}
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(db).Build()
-	r := &DatabaseReconciler{Client: cl, Scheme: scheme}
-	cluster := &unstructured.Unstructured{Object: map[string]any{"spec": map[string]any{}}}
-	cluster.SetGroupVersionKind(cnpgClusterGVK)
-	reconcile := func() {
-		t.Helper()
-		if _, err := r.reconcilePooler(ctx, db, cluster); err != nil {
-			t.Fatal(err)
-		}
-	}
-	pooler := func(name string) (*unstructured.Unstructured, bool) {
-		t.Helper()
-		live := &unstructured.Unstructured{}
-		live.SetGroupVersionKind(cnpgPoolerGVK)
-		err := cl.Get(ctx, client.ObjectKey{Namespace: db.Namespace, Name: name}, live)
-		if apierrors.IsNotFound(err) {
-			return nil, false
-		}
-		if err != nil {
-			t.Fatal(err)
-		}
-		return live, true
-	}
-
-	reconcile()
-	primary, ok := pooler("dpg-a-pooler")
-	if !ok {
-		t.Fatal("a pooled database has no primary Pooler")
-	}
-	readers, ok := pooler("dpg-a-pooler-ro")
-	if !ok {
-		t.Fatal("a pooled database's read replicas have no Pooler")
-	}
-	for name, live := range map[string]*unstructured.Unstructured{"rw": primary, "ro": readers} {
-		if got, _, _ := unstructured.NestedString(live.Object, "spec", "type"); got != name {
-			t.Errorf("%s Pooler type = %q", name, got)
-		}
-		if got, _, _ := unstructured.NestedString(live.Object, "spec", "pgbouncer", "parameters", "default_pool_size"); got != "90" {
-			t.Errorf("%s Pooler pool = %q, want basic-1gb's 100 - 10", name, got)
-		}
-		if owners := live.GetOwnerReferences(); len(owners) != 1 || owners[0].UID != db.UID {
-			t.Errorf("%s Pooler owners = %v, want the Database", name, owners)
-		}
-	}
-
-	// A plan with another connection limit (w6/m332's 2c-8g has 200) rewrites
-	// the pool, and only the parameters: the pod template, whose change would
-	// roll PgBouncer and drop its clients, stays as it was.
-	before, _, _ := unstructured.NestedMap(primary.Object, "spec", "template")
-	if err := r.upsertPooler(ctx, db, cluster, poolerTypePrimary, tiers.PostgresTier{MaxConnections: 200}, ""); err != nil {
-		t.Fatal(err)
-	}
-	primary, _ = pooler("dpg-a-pooler")
-	if got, _, _ := unstructured.NestedString(primary.Object, "spec", "pgbouncer", "parameters", "max_db_connections"); got != "190" {
-		t.Errorf("after the plan change the pool is %q, want 190", got)
-	}
-	if after, _, _ := unstructured.NestedMap(primary.Object, "spec", "template"); !reflect.DeepEqual(before, after) {
-		t.Errorf("a plan change rewrote the pod template %v → %v, which would roll PgBouncer", before, after)
-	}
-
-	// Removing the replicas removes their pooler, not the primary's.
-	db.Spec.ReadReplicas = nil
-	reconcile()
-	if _, ok := pooler("dpg-a-pooler-ro"); ok {
-		t.Error("a database without replicas kept the read replica Pooler")
-	}
-	if _, ok := pooler("dpg-a-pooler"); !ok {
-		t.Error("removing the replicas removed the primary's Pooler")
-	}
-
-	// Turning pooling off removes both.
-	db.Spec.ReadReplicas = []appv1alpha1.DatabaseReadReplica{{Name: "analytics"}}
-	reconcile()
-	if _, ok := pooler("dpg-a-pooler-ro"); !ok {
-		t.Fatal("re-adding a replica did not pool it")
-	}
-	db.Spec.Pooler = false
-	reconcile()
-	for _, name := range []string{"dpg-a-pooler", "dpg-a-pooler-ro"} {
-		if _, ok := pooler(name); ok {
-			t.Errorf("an unpooled database kept Pooler %s", name)
-		}
-	}
-	if db.Status.PoolerHost != "" {
-		t.Errorf("an unpooled database reports pooler host %q", db.Status.PoolerHost)
 	}
 }
 
@@ -181,14 +68,14 @@ func TestReadReplicasArePooledWithTheirDatabase(t *testing.T) {
 // to open more than 10 of its 90 server connections.
 func TestPgBouncerStartsWithTheHardFileLimit(t *testing.T) {
 	want := []any{"/bin/sh", "-c", pgbouncerRunCommand}
-	for _, poolerType := range []string{poolerTypePrimary, poolerTypeReplicas} {
-		containers, _, _ := unstructured.NestedSlice(poolerSpec("db", poolerType, tiers.PostgresTier{MaxConnections: 100}), "template", "spec", "containers")
+	for _, cluster := range []string{"db", appv1alpha1.ReadReplicaClusterName("db", "a")} {
+		containers, _, _ := unstructured.NestedSlice(poolerSpec(cluster, tiers.PostgresTier{MaxConnections: 100}), "template", "spec", "containers")
 		if len(containers) != 1 {
-			t.Fatalf("%s pooler template containers = %v, want only pgbouncer", poolerType, containers)
+			t.Fatalf("pooler of %s template containers = %v, want only pgbouncer", cluster, containers)
 		}
 		c, _ := containers[0].(map[string]any)
 		if c["name"] != "pgbouncer" || !reflect.DeepEqual(c["command"], want) {
-			t.Errorf("%s pooler pgbouncer container = %v, want command %v", poolerType, c, want)
+			t.Errorf("pooler of %s pgbouncer container = %v, want command %v", cluster, c, want)
 		}
 	}
 

@@ -53,7 +53,7 @@ func (s *Service) QueryDatabaseLogs(ctx context.Context, name string, q Database
 	if s.PodLogs == nil {
 		return nil, core.ErrLogsUnavailable
 	}
-	pods, err := s.DatabasePods(ctx, d.Namespace, d.Name)
+	pods, err := s.DatabasePods(ctx, d)
 	if err != nil {
 		return nil, err
 	}

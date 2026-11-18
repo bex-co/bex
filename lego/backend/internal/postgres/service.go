@@ -1194,7 +1194,8 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 			"postgresql://%s:%s@%s:5432/%s%s",
 			user, pass, d.Status.PoolerExternalHost, dbn, tlsQuery)
 	}
-	// Per-replica read-only connection strings (CNPG -ro service or external SNI).
+	// Per-replica read-only connection strings: each replica's own instance
+	// and PgBouncer (w6/m467), inside or through the external SNI.
 	if len(d.Status.ReadReplicaStatuses) > 0 {
 		rcs := make([]ReplicaConnectionStrings, 0, len(d.Status.ReadReplicaStatuses))
 		for _, rs := range d.Status.ReadReplicaStatuses {
@@ -1208,8 +1209,9 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 					"postgresql://%s:%s@%s:5432/%s%s",
 					user, pass, rs.ExternalHost, dbn, tlsQuery)
 			}
-			// The replicas' pooled strings take the primary's ports: 6432
-			// inside, 5432 at the edge, where the -pool-ro host selects them.
+			// A replica's pooled strings take the primary's ports: 6432
+			// inside, 5432 at the edge, where its -rp-<name> host selects
+			// its own PgBouncer.
 			if rs.PoolerHost != "" {
 				rc.InternalConnectionPoolString = fmt.Sprintf(
 					"postgresql://%s:%s@%s:%d/%s", user, pass, rs.PoolerHost, appv1alpha1.PoolerPort, dbn)
@@ -1585,7 +1587,7 @@ func (patch PostgresPatch) apply(d *appv1alpha1.Database) {
 	if patch.Public != nil {
 		d.Spec.Public = *patch.Public
 	}
-	// Names alias one shared reader pool, so a reordered set is no change.
+	// A replica is its name: a reordered set is the same replicas, no change.
 	if patch.ReadReplicas != nil && !sameReplicaNames(d.Spec.ReadReplicas, *patch.ReadReplicas) {
 		d.Spec.ReadReplicas = readReplicaSpecs(*patch.ReadReplicas)
 	}

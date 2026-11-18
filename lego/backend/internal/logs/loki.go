@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // loki.go is the durable-history backend: a LogHistorySource backed by Loki's
@@ -444,7 +445,10 @@ func lokiSelectorFor(namespace string, q LogQuery) string {
 	matchers := []string{fmt.Sprintf("namespace=%q", namespace)}
 	switch {
 	case q.Database != "":
-		matchers = append(matchers, fmt.Sprintf("database=%q", q.Database))
+		// The shipper labels a Postgres's lines with its CNPG cluster: the
+		// primary's, named after the Database, or a read replica's own
+		// (appv1alpha1.ReadReplicaClusterName, w6/m467).
+		matchers = append(matchers, fmt.Sprintf("database=~%q", appv1alpha1.DatabaseClustersPattern(q.Database)))
 	case q.KeyValue != "":
 		matchers = append(matchers, fmt.Sprintf("keyvalue=%q", q.KeyValue))
 	default:

@@ -48,19 +48,24 @@ const (
 	// postgresInstanceContainers: postgres plus the barman-cloud plugin
 	// sidecar CNPG injects when backups are on.
 	postgresInstanceContainers = 2
-	// postgresPoolerContainers: the single-instance PgBouncer Pooler
+	// postgresClusters: the primary's CNPG Cluster and each read replica's
+	// own one-instance replica cluster (w6/m467), so each pooled replica has
+	// its own PgBouncer and its own clone Job as well.
+	postgresClusters = 1 + tiers.PostgresMaxReadReplicas
+	// postgresPoolerContainers: one single-instance PgBouncer Pooler
 	// (poolerSpec), plus one RollingUpdate surge Pod of its Deployment.
 	postgresPoolerContainers = 2
-	// postgresCNPGJobContainers: the initdb/join Job CNPG runs while it
-	// creates an instance, one at a time per Cluster and deleted afterwards.
+	// postgresCNPGJobContainers: the initdb/join (or a replica's
+	// pg_basebackup) Job CNPG runs while it creates an instance, one at a time
+	// per Cluster.
 	postgresCNPGJobContainers = 1
 	// postgresExportJobs mirrors the operator's maxConcurrentExportsPerDB.
 	// Each export Pod's pg-dump init container and upload container charge
 	// max(init, sum) = one container's defaults.
 	postgresExportJobs = 3
 	// postgresJobs: the export Jobs, the expiry Job of each, the backup purge
-	// Job a deletion runs, and CNPG's initdb/join Job.
-	postgresJobs = 2*postgresExportJobs + 1 + 1
+	// Job a deletion runs, and each Cluster's CNPG initdb/join Job.
+	postgresJobs = 2*postgresExportJobs + 1 + postgresClusters
 
 	// keyValueContainers: the StatefulSet Pod's valkey + metrics exporter
 	// (its persistence init container charges max(init, sum), adding
@@ -78,12 +83,13 @@ const (
 )
 
 // postgresFootprint is a Postgres at its largest shape: a high-availability
-// pair plus every read replica, a pooler, a CNPG bootstrap Job and the
-// maximum concurrent exports, each instance at the largest plan floor.
+// pair plus every read replica, a pooler and a CNPG bootstrap Job for each
+// of its clusters, and the maximum concurrent exports, each instance at the
+// largest plan floor.
 func postgresFootprint() datastoreFootprint {
 	instances := int64(postgresHAInstances + tiers.PostgresMaxReadReplicas)
-	containers := instances*postgresInstanceContainers + postgresPoolerContainers +
-		postgresCNPGJobContainers + postgresExportJobs
+	containers := instances*postgresInstanceContainers + postgresClusters*(postgresPoolerContainers+postgresCNPGJobContainers) +
+		postgresExportJobs
 	return datastoreFootprint{
 		pvcs:                instances,
 		storageGi:           instances * postgresFloorGi(),

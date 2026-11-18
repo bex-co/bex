@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -144,6 +145,25 @@ func haPostgres() []quotaCharge {
 	return append(charges, repeatCharge(7, countCharge("count/jobs.batch"))...)
 }
 
+// replicatedPostgres is haPostgres with every read replica a pooled database
+// may have (w6/m467): each replica's own instance Pod (postgres alone, no
+// archiver) and data PVC, its own PgBouncer with a RollingUpdate surge Pod,
+// and the pg_basebackup Job that cloned it.
+func replicatedPostgres() []quotaCharge {
+	charges := haPostgres()
+	for range tiers.PostgresMaxReadReplicas {
+		charges = append(charges,
+			podCharge(appv1alpha1.DatastorePriorityClassName, "2", "4Gi", 1),
+			pvcCharge("10Gi"),
+			podCharge(appv1alpha1.DatastorePriorityClassName, "100m", "256Mi", 1),
+			podCharge(appv1alpha1.DatastorePriorityClassName, "100m", "256Mi", 1),
+			podCharge(appv1alpha1.DatastorePriorityClassName, "100m", "128Mi", 1),
+			countCharge("count/jobs.batch"),
+		)
+	}
+	return charges
+}
+
 // keyValue is one `standard` Key Value with backups: the CR, its Valkey Pod
 // (valkey + exporter) and internal proxy under the datastore class, one 5 GiB
 // PVC, and the 3 successful + 3 failed Jobs its backup CronJob keeps.
@@ -189,6 +209,25 @@ func TestHobbyDatastoreCountCapsBindFirst(t *testing.T) {
 	}
 }
 
+// TestHobbyAdmitsEveryPostgresWithEveryReplica (w6/m467): each read replica
+// is a cluster of its own with its own PgBouncer and clone Job, and the room
+// still admits the Postgres cap with every replica each database may have,
+// beside the Key Value cap and services at their budget.
+func TestHobbyAdmitsEveryPostgresWithEveryReplica(t *testing.T) {
+	quotas := hobbyQuotas(t)
+	caps := QuotaCapsForPlan(PlanHobby)
+	charges := hobbyServicesAtBudget()
+	for range caps.Postgres {
+		charges = append(charges, replicatedPostgres()...)
+	}
+	for range caps.KeyValues {
+		charges = append(charges, keyValue()...)
+	}
+	if refused := quotaRefusal(t, quotas, charges); refused != "" {
+		t.Fatalf("Hobby refused its replicated Postgres before the count cap: %s", refused)
+	}
+}
+
 // TestHobbyServicesStillBoundedBesideDatastores: making room for datastores
 // must not let services through. Beside 25 HA Postgres, a 26th App, a Pod past
 // the services' pod or CPU budget, and a disk past the storage ceiling are
@@ -219,10 +258,11 @@ func TestHobbyServicesStillBoundedBesideDatastores(t *testing.T) {
 
 // TestDatastoreQuotaRoomCoversLargestShape pins the derivation in
 // quotaForPlan's comment: each plan's tenant-quota is its own budget plus the
-// count caps times the largest datastore shape (an HA pair + 5 readers), and
-// the pod count lives only in the scoped compute quota.
+// count caps times the largest datastore shape (an HA pair + 5 read replicas,
+// each replica a cluster with its own pooler and clone Job, w6/m467), and the
+// pod count lives only in the scoped compute quota.
 func TestDatastoreQuotaRoomCoversLargestShape(t *testing.T) {
-	if got, want := postgresFootprint(), (datastoreFootprint{pvcs: 7, storageGi: 70, ephemeralRequestsGi: 20, ephemeralLimitsGi: 200, jobs: 8}); got != want {
+	if got, want := postgresFootprint(), (datastoreFootprint{pvcs: 7, storageGi: 70, ephemeralRequestsGi: 35, ephemeralLimitsGi: 350, jobs: 13}); got != want {
 		t.Errorf("Postgres footprint = %+v, want %+v", got, want)
 	}
 	// The 50g plan is the largest Key Value shape since w5/m266 (100Gi volume,
@@ -235,8 +275,8 @@ func TestDatastoreQuotaRoomCoversLargestShape(t *testing.T) {
 		pvcs, jobs                          int64
 		storage, ephemeralReq, ephemeralLim string
 	}{
-		{PlanHobby, 400, 400, "9370Gi", "7673Gi", "15121Gi"},
-		{PlanPro, 400, 625, "9370Gi", "7673Gi", "15121Gi"},
+		{PlanHobby, 400, 525, "9370Gi", "8048Gi", "18871Gi"},
+		{PlanPro, 400, 750, "9370Gi", "8048Gi", "18871Gi"},
 	} {
 		quota := quotaForPlan(tc.plan)
 		for key, want := range map[corev1.ResourceName]resource.Quantity{
