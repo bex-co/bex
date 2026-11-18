@@ -777,8 +777,13 @@ func buildSourcePatch(a *appv1alpha1.App, req UpdateBuildSourceRequest) (sourceP
 // DeleteBuildSource deletes a build source; one that services still link is
 // a conflict (unlink them first).
 func (s *Service) DeleteBuildSource(ctx context.Context, id string) error {
-	// The service delete's relation (Delete), re-checked by it below.
-	ctx, _, err := s.buildSourceApp(ctx, core.RelCanCreate, id)
+	// The service delete's relation (Delete), re-checked by it below. The
+	// allowed row waits for the delete and is this verb's alone: one
+	// DeleteBuildSourceEvent once the source is gone, none for its carrier
+	// App's own delete or for a delete refused below (w9/m449). A caller that
+	// deferred allowed rows (the undo of a create never recorded) records none.
+	record := !core.DefersAllowedWriteAudit(ctx)
+	ctx, a, err := s.buildSourceApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, id)
 	if err != nil {
 		return err
 	}
@@ -797,6 +802,10 @@ func (s *Service) DeleteBuildSource(ctx context.Context, id string) error {
 	}
 	if err := s.Delete(ctx, id); err != nil {
 		return err
+	}
+	if record {
+		s.RecordAllowedWrite(ctx, "apps.DeleteBuildSource", core.RelCanCreate,
+			cmp.Or(a.Labels[core.LabelTenant], core.DefaultTenant), core.ServiceTarget(core.AppPublicID(a)), buildSourceName(a))
 	}
 	if s.EnsureNamespaces != nil {
 		if tenantID, _ := s.Tenant(ctx); tenantID != "" {

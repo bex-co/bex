@@ -1,6 +1,6 @@
 # w9 · m449 — The audit log uses Render's event name for every workspace action Render's audit log names
 
-**Worker:** worker9 **Goal:** every workspace action that Render's audit-log reference names is recorded under Render's event name, and a guard test keeps that list complete **Status:** blocked (t001–t009 done; t010 waits on the production pin carrying the w9/m449 commit)
+**Worker:** worker9 **Goal:** every workspace action that Render's audit-log reference names is recorded under Render's event name, and a guard test keeps that list complete **Status:** blocked (t001–t009 and t011 done; t010 waits on a second sign-in identity for the member rows, and on the production pin carrying t011)
 
 ## Tasks (in order)
 
@@ -15,7 +15,8 @@
 | [t007](done/t007.md) | Render parity — **DONE** | 30m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 20m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 30m | t007 |
-| [t010](t010.md) | Closeout | 15m | t008, t009 |
+| [t011](done/t011.md) | A build source delete records one DeleteBuildSourceEvent and no DeleteServerEvent — **DONE** | 30m | t008, t009 |
+| [t010](t010.md) | Closeout | 15m | t008, t009, t011 |
 
 ## Definition of done
 
@@ -40,3 +41,36 @@
 ## Progress
 
 - 2026-11-16: t001–t009 shipped (code, migration 0285, docs, dashboard). Every row the DoD names now carries Render's event in unit and real-Postgres tests; t010 checks it live once the production pin carries the commit. Unconfirmed matches (a branch change, a build source unlink, env group variable writes) are filed as [w9/100](../../blocked/100.md).
+- 2026-11-18 (`/loopx w9`, `/pm unblock w9/m449`): **the release gate cleared.** The production pin `359aee37d` (`chore(deploy): pin platform images to 14eaa71b98e5`, deploy.yml run 44213541822, success) carries `093b0696c` (`git merge-base --is-ancestor 093b0696c 14eaa71b98e5`). t010's replay ran and every bullet but the member rows holds (below). It found one defect, now fixed as t011. The milestone stays parked on two remaining gates.
+
+## Production replay (2026-11-18, t010)
+
+As the QA user (`scripts/qa-login.sh`) in `bex-canary` (`tea-daif693dqjvc73e7as3g`, Scale plan, which includes Pro's audit logs), with fixtures named `m449-11180803-*`. Each action was read back on REST `GET /v1/owners/tea-daif693dqjvc73e7as3g/audit-logs?startTime=2026-11-18T08:03:24Z`, on GraphQL `auditLogs(ownerId, startTime)` `action`, and in the dashboard's Audit Log → Export as CSV for 2026-11-18. GraphQL agreed with REST on all 24 rows by id, and the CSV `event` column carried the same 24 names.
+
+| DoD action | Request | Row (all `success`, actor the QA user) |
+| --- | --- | --- |
+| Invite a member | `POST /v1/workspaces/{id}/members` (`m449-11180803@example.com`, developer) | `InviteToTeamEvent`, `metadata.invite` `inv-dbulnlo7ud6s739sdn7g`, `roleTo` developer |
+| Create and delete a cron job | `POST /v1/services` (`cron_job`, busybox image), `DELETE` | `CreateCronJobEvent`, `DeleteCronJobEvent` (`srv-dbulnn07ud6s739sdn9g`). The web service create beside it stayed `CreateServerEvent` |
+| Add and delete a custom domain | `POST`/`DELETE …/custom-domains` | `CreateCustomDomainEvent`, `DeleteCustomDomainEvent` (`metadata.domain` `m449-11180803.example.com`) |
+| Toggle auto-deploy | `PATCH` `autoDeploy` `no`, then `yes` | `UpdateAutoDeployEvent` ×2 |
+| Change the build filter | `PATCH` `buildFilter` | `UpdateAutoDeployTriggerEvent` |
+| Link and unlink an env group on a build source | `POST`/`DELETE /v1/build-sources/{bds}/env-groups/{evg}` | `LinkBuildSourceEnvGroupEvent`, `UnlinkBuildSourceEnvGroupEvent` (`envGroupId`, `envGroupName`, `service` `bds-dbulo7g7ud6s739sdnng`) |
+| Link a service to a build source | `PATCH /v1/services/{srv}` `buildSourceId` | `UpdateServiceBuildSourceEvent` |
+| Toggle an environment's protection and isolation | REST `PATCH /v1/environments/{evm}`, one field at a time, on then off | `ChangeEnvironmentProtectionEvent` ×2, `UpdateEnvironmentIsolatedEvent` ×2. Rows are per field: no IP list row, since the list did not change |
+| The same, on the dashboard's mutation | GraphQL `setEnvironmentACL` changing both fields, then the same save again | The first save wrote one row each for protection, isolation and the IP list: `setEnvironmentACL` is full-replace (ADR032), so omitting `ipAllowListEntries` replaced the default allow-all pair. The repeat save wrote nothing |
+| Env var patch adding one key and changing another | REST `PUT /v1/services/{srv}/env-vars` with `M449_K1` new and `M449_K2` changed | exactly one `CreateEnvVarsEvent` (`envVarKeys` `M449_K1`) and one `UpdateEnvVarsEvent` (`envVarKeys` `M449_K2`); no value in any row, REST, GraphQL or CSV |
+| A save that changes nothing | the same `PUT` again (08:04:27Z), and GraphQL `setEnvVars` with the same values (08:04:38Z) | no row at all |
+
+- **Not observed: accept, change role, remove and leave.** They need a second person in the workspace. The QA user is the only identity a worker can sign in as: `muse.env` has no QA pair, and the Gmail connector is not connected. No mailbox can receive an invite token or a verification code, and production requires a verified email for invite redemption at sign-in (`BEX_REQUIRE_VERIFIED_INVITE_EMAIL=1`). The production kubeconfig could make a throwaway identity verified, but `scripts/fetch-app-kubeconfig.sh` fails strict host-key checking: `178.105.18.185`'s key in `~/.ssh/known_hosts` changed, and `.env` pins no `BEX_SSH_KNOWN_HOSTS`. The worker did not bypass that warning. These four rows are covered by real-Postgres and unit tests (t001); they are not yet observed on production.
+- **Found and fixed (t011).** Deleting the build source wrote `DeleteBuildSourceEvent` and also a `DeleteServerEvent` naming `bds-dbulo7g7ud6s739sdnng` as a service. A delete refused with `BUILD_SOURCE_LINKED` would also have written a success row. The fix is in `DeleteBuildSource`, with a regression test. The production check is part of the next replay.
+- **Cleanup.** The invite was revoked (`members.RevokeInvite`). The web service, build source, env group, environment and project were deleted, each `GET` answers 404, and their delete rows read `DeleteServerEvent`, `DeleteBuildSourceEvent`, `DeleteEnvGroupEvent`, `DeleteEnvironmentEvent` and `DeleteProjectEvent`. The downloaded CSV was removed. `bex-canary` again holds only `hello-go` and the earlier `qa-20261025-b5p1-grp`.
+
+## Decision record (2026-11-18, `/pm unblock w9/m449`)
+
+- **Affected:** t010 (Closeout), t011 (new, done).
+- **Source:** verified evidence (the pin check and the replay above). No user decision was needed or taken.
+- **Chosen:** the release gate is cleared. The DoD stays as written: the member rows must be observed on production, not waived. The build-source defect the replay found is fixed inside this milestone (t011), since t002 introduced it.
+- **Remaining gates:**
+  1. A second sign-in identity, from the user. Either (a) the login of a second verified bex account that is not a member of `bex-canary`, added to `.env` as `QA2_EMAIL`/`QA2_PASSWORD` with the names in `.env.example`, or (b) the Gmail connector connected for `puncsky@gmail.com`, so a worker can register `puncsky+m449@gmail.com` and read its verification code and invite token. Re-pinning the control-plane host keys (`BEX_SSH_KNOWN_HOSTS` from the node console, `.env.example` § SSH) is a third route through the Kratos admin API.
+  2. The production pin carrying t011's commit. It clears by itself: check with `git merge-base --is-ancestor <t011 commit> <pinned sha>`.
+- **Next steps for the worker:** sign in as the second identity. As the QA user, invite it to `bex-canary` and read `InviteToTeamEvent`. Accept as the second identity, by token or at sign-in with the verified email, and read `AcceptTeamInviteEvent`. Change its role and read `ChangeTeamMemberRoleEvent`. Remove it and read `RemoveUserFromTeamEvent` (actor: the QA user). Invite and accept again, leave as the second identity (`DELETE /v1/workspaces/{id}/members/me`) and read `RemoveUserFromTeamEvent` (actor: the second identity). Check REST, GraphQL `action` and the CSV for each row. Then delete a fresh build source and read exactly one `DeleteBuildSourceEvent` with its name and no `DeleteServerEvent`. Then close out.

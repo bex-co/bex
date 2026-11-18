@@ -27,6 +27,7 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // A service create records one CreateServerEvent once the service exists,
@@ -191,6 +192,53 @@ func TestBuildSourceCreateRecordsOneNamedRowOnlyForASourceThatExists(t *testing.
 	}
 	if n := sink.countVerb("apps.CreateBuildSource"); n != 3 {
 		t.Fatalf("a denied create must still record its denial: %d rows, want 3", n)
+	}
+}
+
+// w9/m449 t010: a build source delete records one DeleteBuildSourceEvent once
+// the source is gone, naming it, and no DeleteServerEvent for its carrier App;
+// a delete refused because a service is still linked records none, and a
+// denied one its denial. Production's closing replay (2026-11-18) found both a
+// DeleteBuildSourceEvent and a DeleteServerEvent naming the bds- id.
+func TestBuildSourceDeleteRecordsOneNamedRowOnlyOnceItIsGone(t *testing.T) {
+	svc, st, ctx := newBuildSourceService(t)
+	created, err := svc.CreateBuildSource(ctx, monorepoSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	kept, err := svc.CreateBuildSource(ctx, CreateBuildSourceRequest{OwnerID: "tea-a", Name: "Kept", Git: monorepoSource.Git})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sink := &captureAuditSink{}
+	svc.Audit = sink
+
+	st.links[created.ID] = []store.App{{ID: "srv-web", Name: "web"}}
+	if err := svc.DeleteBuildSource(ctx, created.ID); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("delete with a linked service = %v, want a conflict", err)
+	}
+	if len(sink.events) != 0 {
+		t.Fatalf("a delete refused for its linked service recorded %+v", sink.events)
+	}
+	delete(st.links, created.ID)
+	if err := svc.DeleteBuildSource(ctx, created.ID); err != nil {
+		t.Fatal(err)
+	}
+	rows := allowedRows(sink, "apps.DeleteBuildSource")
+	if len(rows) != 1 || rows[0].Target != core.ServiceTarget(created.ID) || rows[0].TargetName != "Mono" ||
+		rows[0].Resource != core.WorkspaceObject("tea-a") {
+		t.Fatalf("delete rows = %+v, want one on workspace:tea-a naming %s Mono", rows, created.ID)
+	}
+	if len(sink.events) != 1 {
+		t.Fatalf("a build source delete recorded %d rows, want only its DeleteBuildSourceEvent: %+v", len(sink.events), sink.events)
+	}
+
+	svc.Authz = denyRelationChecker{deny: core.RelCanCreate}
+	if err := svc.DeleteBuildSource(ctx, kept.ID); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("denied delete: got %v, want ErrForbidden", err)
+	}
+	if n := sink.countVerb("apps.DeleteBuildSource"); n != 2 || len(allowedRows(sink, "apps.DeleteBuildSource")) != 1 {
+		t.Fatalf("a denied delete must record its denial and nothing else: %+v", sink.events)
 	}
 }
 
