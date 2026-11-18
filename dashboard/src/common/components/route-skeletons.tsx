@@ -103,6 +103,12 @@ import {
   type WorkspaceSettingsPendingSections,
 } from "@/features/workspaces/hooks/use-workspace-settings-skeleton-sections";
 import { AgentModelCardSkeleton } from "@/features/usage/components/agent-model-card-skeleton";
+import {
+  CreditBalanceCardSkeleton,
+  IncludedUsageSkeleton,
+  PaymentMethodCardSkeleton,
+  PlanCardSkeleton,
+} from "@/features/usage/components/billing-cards-skeleton";
 import { WorkspaceNotificationsCardSkeleton } from "@/features/notifications/components/workspace-notifications-card-skeleton";
 import { NotificationOverridesCardSkeleton } from "@/features/notifications/components/notification-overrides-card-skeleton";
 import { RegistryCredentialsPanelSkeleton } from "@/features/registry-credentials/components/registry-credentials-panel-skeleton";
@@ -609,6 +615,11 @@ export function OverviewPageSkeleton() {
   );
 }
 
+/**
+ * The Billing page's pending frame (w4/707): each region down to Charges keeps
+ * its ready card's structure and height for the current month at every width,
+ * read from the workspace the shell already holds.
+ */
 export function BillingPageSkeleton() {
   const { t } = useTranslations();
   return (
@@ -624,18 +635,16 @@ export function BillingPageSkeleton() {
       navigation={<UsageNavigation />}
     >
       <Region name="plan">
-        <CardSkeleton rows={3} />
+        <PlanCardSkeleton />
       </Region>
       <Region name="payment-method">
-        <CardSkeleton rows={3} />
+        <PaymentMethodCardSkeleton />
       </Region>
       <Region name="included-usage" className="space-y-6">
-        <CardSkeleton rows={4} />
-        {/* Pipeline minutes (w6/m308), below the Free instance hours. */}
-        <CardSkeleton rows={3} />
-        {/* Included bandwidth (w6/m319), below the pipeline minutes. */}
-        <CardSkeleton rows={3} />
+        <IncludedUsageSkeleton />
       </Region>
+      {/* The charge tree's categories and lines are the month's data: a
+          fixed frame, whose height the ready card does not keep. */}
       <Region name="charges">
         <CardSkeleton rows={7} />
       </Region>
@@ -643,7 +652,7 @@ export function BillingPageSkeleton() {
         <AgentModelCardSkeleton />
       </Region>
       <Region name="credit-balance">
-        <CardSkeleton rows={3} />
+        <CreditBalanceCardSkeleton />
       </Region>
       <Region name="invoice-history">
         <TableCardSkeleton rows={3} columns={3} description action={false} />
