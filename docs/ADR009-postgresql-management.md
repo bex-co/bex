@@ -126,7 +126,7 @@ The route's capacity is computed from the `Database` CR on every watch event, so
 **Residual exposure.**
 
 - **One source.** With no per-source cap, one address can hold as many connections as the routes that admit it allow, each route up to twice its limit. To fill a process it needs routes whose allowlists admit it, for example ones open to `0.0.0.0/0`, adding up to 4,096. `DatastoreProxyShedding` alerts on sustained `reason="global"`, and `BEX_PROXY_MAX_CONNS_PER_SOURCE` can be set during an incident.
-- **The edge.** The edge load balancer admits 10,000 connections across HTTP, HTTPS, SSH, PostgreSQL and Valkey together. That is less than a Key Value `pro_plus` or `pro_max` store's limit, or the pooler's 30,000. Raising it is a load-balancer type decision (`lb21` 20,000, `lb31` 40,000), filed as [w6/136](../.pm/w6/136.md).
+- **The edge.** The edge load balancer admits 10,000 connections across HTTP, HTTPS, SSH, PostgreSQL and Valkey together. That is less than a Key Value `pro_plus` or `pro_max` store's limit, or the pooler's 30,000. Raising it is a load-balancer type decision (`lb21` 20,000, `lb31` 40,000), filed as [w6/136](../.pm/w6/blocked/136.md).
 
 ### Managed PgBouncer settings (w6/m458, 2026-11-17)
 
