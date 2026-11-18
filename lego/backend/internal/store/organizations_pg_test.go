@@ -377,3 +377,75 @@ func TestOrganizationStorePG(t *testing.T) {
 		t.Fatalf("org after its primary was deleted = %v", err)
 	}
 }
+
+// w7/083: an org invite redeems by its emailed token for whoever holds it,
+// once, before it lapses; someone already in the org keeps their role.
+func TestOrganizationInviteByTokenPG(t *testing.T) {
+	ctx := context.Background()
+	st, pool := webhookPGStore(t, ctx)
+	defer pool.Close()
+	f := newOrgFixture(t, ctx, st, "orgtoken")
+	invite := func(email, role, token string, expiresAt time.Time) OrganizationInvite {
+		t.Helper()
+		inv, err := st.CreateOrganizationInvite(ctx, f.org.ID, email, role, token, f.owner, expiresAt)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return inv
+	}
+
+	// Someone signed in under another address redeems the invite by its token.
+	inv := invite("invited@example.test", OrgRoleOwner, "otok-a-"+f.owner, time.Now().Add(time.Hour))
+	if got, err := st.GetOrganizationInviteByToken(ctx, inv.Token); err != nil || got.ID != inv.ID || got.AcceptedAt != nil {
+		t.Fatalf("read by token = %+v %v", got, err)
+	}
+	other := "orgtoken-other-" + f.owner
+	got, joined, err := st.AcceptOrganizationInviteByToken(ctx, inv.Token, other)
+	if err != nil || !joined || got.ID != inv.ID || got.Role != OrgRoleOwner || got.OrganizationID != f.org.ID {
+		t.Fatalf("redemption = %+v joined=%v %v", got, joined, err)
+	}
+	if m, err := st.GetOrganizationMember(ctx, f.org.ID, other); err != nil || m.Role != OrgRoleOwner {
+		t.Fatalf("redeemer's org role = %+v %v", m, err)
+	}
+	// The link works once, for anyone, and stays readable for the preview.
+	for _, subject := range []string{other, "orgtoken-third-" + f.owner} {
+		if _, _, err := st.AcceptOrganizationInviteByToken(ctx, inv.Token, subject); !errors.Is(err, ErrInviteAlreadyAccepted) {
+			t.Fatalf("reused link as %s = %v, want ErrInviteAlreadyAccepted", subject, err)
+		}
+	}
+	if got, err := st.GetOrganizationInviteByToken(ctx, inv.Token); err != nil || got.AcceptedAt == nil {
+		t.Fatalf("used invite by token = %+v %v", got, err)
+	}
+	// It no longer redeems at the invitee's sign-in either.
+	if joined, err := st.AcceptOrganizationInvitesForEmail(ctx, "invited@example.test", "orgtoken-invitee-"+f.owner); err != nil || len(joined) != 0 {
+		t.Fatalf("sign-in after the link was used = %+v %v", joined, err)
+	}
+
+	// A lapsed invite and an unknown token are refused by name.
+	lapsed := invite("lapsed@example.test", OrgRoleMember, "otok-b-"+f.owner, time.Now().Add(-time.Minute))
+	if _, _, err := st.AcceptOrganizationInviteByToken(ctx, lapsed.Token, "orgtoken-late-"+f.owner); !errors.Is(err, ErrInviteExpired) {
+		t.Fatalf("lapsed invite = %v, want ErrInviteExpired", err)
+	}
+	if _, err := st.GetOrganizationMember(ctx, f.org.ID, "orgtoken-late-"+f.owner); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("a lapsed invite added its redeemer: %v", err)
+	}
+	if _, _, err := st.AcceptOrganizationInviteByToken(ctx, "no-such-token", other); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("unknown token = %v, want ErrNotFound", err)
+	}
+	if _, err := st.GetOrganizationInviteByToken(ctx, "no-such-token"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("unknown token read = %v, want ErrNotFound", err)
+	}
+
+	// A Member redeeming an Owner invite stays a Member, and the invite is used.
+	again := invite("again@example.test", OrgRoleOwner, "otok-c-"+f.owner, time.Now().Add(time.Hour))
+	got, joined, err = st.AcceptOrganizationInviteByToken(ctx, again.Token, f.member)
+	if err != nil || joined || got.Role != OrgRoleMember {
+		t.Fatalf("an existing member's redemption = %+v joined=%v %v, want their Member role kept", got, joined, err)
+	}
+	if m, _ := st.GetOrganizationMember(ctx, f.org.ID, f.member); m.Role != OrgRoleMember {
+		t.Fatalf("redemption changed an existing org role to %q", m.Role)
+	}
+	if pending, err := st.ListOrganizationInvites(ctx, f.org.ID); err != nil || len(pending) != 0 {
+		t.Fatalf("pending invites = %+v %v, want none", pending, err)
+	}
+}

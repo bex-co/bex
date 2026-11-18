@@ -108,6 +108,53 @@ const koInvites: Record<string, TranslationEntry> = {
     message: "다시 시도",
     description: "Invitation review: retry",
   },
+  "invites.orgTitle": {
+    message: "조직 초대",
+    description: "Invitation review: orgTitle",
+  },
+  "invites.orgAuthenticate": {
+    message: "조직 초대를 확인하려면 계정을 만들거나 로그인하세요.",
+    description: "Invitation review: orgAuthenticate",
+  },
+  "invites.orgJoinTitle": {
+    message: "{organization} 참여",
+    description: "Invitation review: orgJoinTitle",
+  },
+  "invites.orgMemberTitle": {
+    message: "{organization}의 구성원입니다",
+    description: "Invitation review: orgMemberTitle",
+  },
+  "invites.orgRole": {
+    message: "조직 역할은 {role}이(가) 됩니다.",
+    description: "Invitation review: orgRole",
+  },
+  "invites.orgJoin": {
+    message: "조직 참여",
+    description: "Invitation review: orgJoin",
+  },
+  "invites.orgOpen": {
+    message: "조직 열기",
+    description: "Invitation review: orgOpen",
+  },
+  "invites.orgInvalid": {
+    message:
+      "이 초대 링크는 유효하지 않거나 취소되었습니다. 조직 소유자에게 새 초대를 요청하세요.",
+    description: "Invitation review: orgInvalid",
+  },
+  "invites.orgExpired": {
+    message:
+      "이 초대는 만료되었습니다. 조직 소유자에게 다시 초대해 달라고 요청하세요.",
+    description: "Invitation review: orgExpired",
+  },
+  "invites.orgAccessPending": {
+    message:
+      "구성원 자격이 확인되었지만 조직에 아직 접근할 수 없습니다. 조직을 다시 열어 보세요.",
+    description: "Invitation review: orgAccessPending",
+  },
+  "invites.orgAccepted": {
+    message: "{organization}에 참여했습니다.",
+    description: "Invitation review: orgAccepted",
+  },
 };
 
 export default koInvites;

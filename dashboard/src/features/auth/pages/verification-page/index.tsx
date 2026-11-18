@@ -7,7 +7,7 @@ import { useRootContext } from "@/common/hooks/use-root-context";
 import { useOryConfig } from "@/common/lib/ory/config";
 import { oryAuthFormOverrides } from "@/common/lib/ory/auth-form-overrides";
 import { safeNext } from "@/common/lib/safe-next";
-import { peekPendingInviteToken } from "@/common/lib/invite-token";
+import { peekPendingInvite } from "@/common/lib/invite-token";
 import { invalidateSessionCache } from "@/common/server-fn/session";
 import { takeAuthNext } from "@/features/auth/lib/auth-next";
 import { withPrefilledEmail } from "@/features/auth/lib/verification-prefill";
@@ -104,7 +104,7 @@ export default function VerificationPage() {
             invalidateSessionCache();
             void navigate({
               to: "/",
-              href: peekPendingInviteToken()
+              href: peekPendingInvite()
                 ? "/invite"
                 : paymentSetupPath(next),
             });

@@ -109,6 +109,53 @@ const ptInvites: Record<string, TranslationEntry> = {
     message: "Tentar novamente",
     description: "Invitation review: retry",
   },
+  "invites.orgTitle": {
+    message: "Convite para a organização",
+    description: "Invitation review: orgTitle",
+  },
+  "invites.orgAuthenticate": {
+    message: "Crie uma conta ou entre para ver seu convite para a organização.",
+    description: "Invitation review: orgAuthenticate",
+  },
+  "invites.orgJoinTitle": {
+    message: "Participar de {organization}",
+    description: "Invitation review: orgJoinTitle",
+  },
+  "invites.orgMemberTitle": {
+    message: "Você faz parte de {organization}",
+    description: "Invitation review: orgMemberTitle",
+  },
+  "invites.orgRole": {
+    message: "Sua função na organização será {role}.",
+    description: "Invitation review: orgRole",
+  },
+  "invites.orgJoin": {
+    message: "Participar da organização",
+    description: "Invitation review: orgJoin",
+  },
+  "invites.orgOpen": {
+    message: "Abrir organização",
+    description: "Invitation review: orgOpen",
+  },
+  "invites.orgInvalid": {
+    message:
+      "Este link de convite é inválido ou foi revogado. Peça um novo convite a um Proprietário da organização.",
+    description: "Invitation review: orgInvalid",
+  },
+  "invites.orgExpired": {
+    message:
+      "Este convite expirou. Peça a um Proprietário da organização para convidar você novamente.",
+    description: "Invitation review: orgExpired",
+  },
+  "invites.orgAccessPending": {
+    message:
+      "Sua participação foi confirmada, mas o acesso à organização ainda não está pronto. Tente abrir a organização novamente.",
+    description: "Invitation review: orgAccessPending",
+  },
+  "invites.orgAccepted": {
+    message: "Você entrou em {organization}.",
+    description: "Invitation review: orgAccepted",
+  },
 };
 
 export default ptInvites;

@@ -9,6 +9,14 @@ export type Scalars = {
   Float: { input: number; output: number; }
 };
 
+export type AcceptedOrganizationInvite = {
+  __typename: 'AcceptedOrganizationInvite';
+  joined: Scalars['Boolean']['output'];
+  organizationId: Scalars['String']['output'];
+  organizationName: Maybe<Scalars['String']['output']>;
+  role: Scalars['String']['output'];
+};
+
 export type AcceptedWorkspaceInvite = {
   __typename: 'AcceptedWorkspaceInvite';
   authorizationPending: Maybe<Scalars['Boolean']['output']>;
@@ -2082,6 +2090,7 @@ export type MonthToDateBandwidth = {
 
 export type Mutation = {
   __typename: 'Mutation';
+  acceptOrganizationInvite: Maybe<AcceptedOrganizationInvite>;
   acceptWorkspaceInvite: Maybe<AcceptedWorkspaceInvite>;
   addCustomDomain: Maybe<CustomDomain>;
   addDisk: Maybe<Disk>;
@@ -2349,6 +2358,11 @@ export type Mutation = {
   updateServicePlan: Maybe<Service>;
   updateWebhookEndpoint: Maybe<WebhookEndpoint>;
   verifyCustomDomain: Maybe<CustomDomain>;
+};
+
+
+export type MutationAcceptOrganizationInviteArgs = {
+  token: Scalars['String']['input'];
 };
 
 
@@ -4096,6 +4110,15 @@ export type OrganizationInvite = {
   role: Scalars['String']['output'];
 };
 
+export type OrganizationInvitePreview = {
+  __typename: 'OrganizationInvitePreview';
+  alreadyMember: Scalars['Boolean']['output'];
+  inviterEmail: Maybe<Scalars['String']['output']>;
+  organizationId: Scalars['String']['output'];
+  organizationName: Scalars['String']['output'];
+  role: Scalars['String']['output'];
+};
+
 export type OrganizationMember = {
   __typename: 'OrganizationMember';
   createdAt: Maybe<Scalars['String']['output']>;
@@ -4412,6 +4435,7 @@ export type Query = {
   notificationWebPushSubscriptions: Maybe<Array<Maybe<NotificationWebPushSubscription>>>;
   organization: Maybe<Organization>;
   organizationAuditLogs: Maybe<Array<Maybe<AuditLog>>>;
+  organizationInvitePreview: Maybe<OrganizationInvitePreview>;
   organizationInvites: Array<OrganizationInvite>;
   organizationMembers: Array<OrganizationMember>;
   organizations: Array<Organization>;
@@ -5098,6 +5122,11 @@ export type QueryOrganizationAuditLogsArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
   organizationId: Scalars['String']['input'];
   startTime?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryOrganizationInvitePreviewArgs = {
+  token: Scalars['String']['input'];
 };
 
 

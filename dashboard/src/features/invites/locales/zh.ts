@@ -99,6 +99,50 @@ const zhInvites: Record<string, TranslationEntry> = {
     description: "Invitation review: storageUnavailable",
   },
   "invites.retry": { message: "重试", description: "Invitation review: retry" },
+  "invites.orgTitle": {
+    message: "组织邀请",
+    description: "Invitation review: orgTitle",
+  },
+  "invites.orgAuthenticate": {
+    message: "创建账户或登录以查看组织邀请。",
+    description: "Invitation review: orgAuthenticate",
+  },
+  "invites.orgJoinTitle": {
+    message: "加入 {organization}",
+    description: "Invitation review: orgJoinTitle",
+  },
+  "invites.orgMemberTitle": {
+    message: "你已加入 {organization}",
+    description: "Invitation review: orgMemberTitle",
+  },
+  "invites.orgRole": {
+    message: "你在组织中的角色将是 {role}。",
+    description: "Invitation review: orgRole",
+  },
+  "invites.orgJoin": {
+    message: "加入组织",
+    description: "Invitation review: orgJoin",
+  },
+  "invites.orgOpen": {
+    message: "打开组织",
+    description: "Invitation review: orgOpen",
+  },
+  "invites.orgInvalid": {
+    message: "此邀请链接无效或已被撤销。请向组织所有者索取新邀请。",
+    description: "Invitation review: orgInvalid",
+  },
+  "invites.orgExpired": {
+    message: "此邀请已过期。请让组织所有者重新邀请你。",
+    description: "Invitation review: orgExpired",
+  },
+  "invites.orgAccessPending": {
+    message: "你的成员资格已确认，但组织暂时无法打开。请重试打开组织。",
+    description: "Invitation review: orgAccessPending",
+  },
+  "invites.orgAccepted": {
+    message: "你已加入 {organization}。",
+    description: "Invitation review: orgAccepted",
+  },
 };
 
 export default zhInvites;

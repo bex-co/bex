@@ -48,7 +48,10 @@ type OrganizationStore interface {
 	OrganizationMemberWorkspaces(ctx context.Context, orgID string) (map[string][]string, error)
 	SetOrganizationMemberRole(ctx context.Context, orgID, subject, role string) (string, error)
 	RemoveOrganizationMember(ctx context.Context, orgID, subject string) error
+	GetOrganization(ctx context.Context, id string) (store.Organization, error)
 	CreateOrganizationInvite(ctx context.Context, orgID, email, role, token, invitedBy string, expiresAt time.Time) (store.OrganizationInvite, error)
+	GetOrganizationInviteByToken(ctx context.Context, token string) (store.OrganizationInvite, error)
+	AcceptOrganizationInviteByToken(ctx context.Context, token, subject string) (store.OrganizationInvite, bool, error)
 	ListOrganizationInvites(ctx context.Context, orgID string) ([]store.OrganizationInvite, error)
 	DeleteOrganizationInvite(ctx context.Context, orgID, id string) error
 	OrganizationBillingHolders(ctx context.Context, orgID string) (subjects, inviteEmails []string, err error)
@@ -80,6 +83,26 @@ type OrganizationInviteView struct {
 	Role      string `json:"role"`
 	ExpiresAt string `json:"expiresAt"`
 	CreatedAt string `json:"createdAt"`
+}
+
+// OrganizationInvitePreview is what an org invite's link shows before it is
+// accepted: the org, the role, who sent it, and whether the caller is already
+// in the org (their own role then). It carries no token and no invitee email.
+type OrganizationInvitePreview struct {
+	OrganizationID   string `json:"organizationId"`
+	OrganizationName string `json:"organizationName"`
+	Role             string `json:"role"`
+	InviterEmail     string `json:"inviterEmail,omitempty"`
+	AlreadyMember    bool   `json:"alreadyMember"`
+}
+
+// AcceptedOrganizationInviteView is the org membership an accepted invite
+// left: the role held, and whether the caller is new to the org.
+type AcceptedOrganizationInviteView struct {
+	OrganizationID   string `json:"organizationId"`
+	OrganizationName string `json:"organizationName"`
+	Role             string `json:"role"`
+	Joined           bool   `json:"joined"`
 }
 
 // JoinedWorkspaceView is the membership a join created.
@@ -205,7 +228,8 @@ func (s *Service) ListOrganizationMembers(ctx context.Context, orgID string) ([]
 // InviteToOrganization invites email to the org as an Owner or a Member
 // (Render's Org Owners "Invite or remove other org members (including other
 // Org Owners)"). bex has no SSO, so this and a workspace invite are how
-// people enter an org (ADR115 D4). The invite redeems on the invitee's next
+// people enter an org (ADR115 D4). The invite redeems by its emailed link for
+// whoever opens it (AcceptOrganizationInvite), or on the invitee's next
 // sign-in with that verified email.
 func (s *Service) InviteToOrganization(ctx context.Context, orgID, emailAddr, role string) (OrganizationInviteView, error) {
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
@@ -288,20 +312,119 @@ func (s *Service) sendOrganizationInvite(ctx context.Context, inv store.Organiza
 	if s.Mailer == nil {
 		return
 	}
+	m := s.organizationInviteMessage(inv, o)
+	if err := s.Mailer.Send(ctx, inv.Email, fmt.Sprintf("You've been invited to the %q organization on bex", o.Name), m.Text(), m.HTML()); err != nil {
+		log.Printf("members: sending organization invite %s to %s: %v", inv.ID, inv.Email, err)
+	}
+}
+
+// organizationInviteMessage is the org invite mail. Its link carries the token
+// in the fragment, as a workspace invite's does (inviteMessage), so it joins
+// the org for whoever opens it signed in, under any email (w7/083); signing in
+// with the invited email redeems it without the link.
+func (s *Service) organizationInviteMessage(inv store.OrganizationInvite, o store.Organization) email.Message {
 	m := email.Message{
 		Title: "Organization invitation",
 		Paragraphs: []string{
 			fmt.Sprintf("You've been invited to join the %q organization on bex as %s.", o.Name, strings.ToLower(wireRole(inv.Role))),
-			fmt.Sprintf("Signing in to bex with %s joins it.", inv.Email),
 		},
 		Footer: []string{fmt.Sprintf("This invitation expires on %s.", inv.ExpiresAt.UTC().Format("2006-01-02 15:04 UTC"))},
 	}
 	if base := strings.TrimSuffix(s.InviteBaseURL, "/"); base != "" {
-		m.CTA = &email.CTA{Lead: fmt.Sprintf("Sign up or log in with %s to accept", inv.Email), Label: "Open bex", URL: base}
+		m.CTA = &email.CTA{
+			Lead:  fmt.Sprintf("Sign up or log in with %s to accept", inv.Email),
+			Label: "Accept invitation",
+			URL:   fmt.Sprintf("%s/invite#org-invite=%s", base, inv.Token),
+		}
+	} else {
+		m.Paragraphs = append(m.Paragraphs, fmt.Sprintf("Sign up or log in with %s to accept the invitation.", inv.Email))
 	}
-	if err := s.Mailer.Send(ctx, inv.Email, fmt.Sprintf("You've been invited to the %q organization on bex", o.Name), m.Text(), m.HTML()); err != nil {
-		log.Printf("members: sending organization invite %s to %s: %v", inv.ID, inv.Email, err)
+	return m
+}
+
+// PreviewOrganizationInvite reads an org invite's link without accepting it:
+// the org, the role, the inviter, and whether the caller is already in the
+// org. A used or lapsed link is refused by name unless the caller is in the
+// org, who may reopen it.
+func (s *Service) PreviewOrganizationInvite(ctx context.Context, token string) (OrganizationInvitePreview, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return OrganizationInvitePreview{}, err
 	}
+	orgs, ok := s.organizations()
+	if !ok {
+		return OrganizationInvitePreview{}, ErrMembersUnavailable
+	}
+	id, ok := core.IdentityFrom(ctx)
+	if !ok {
+		return OrganizationInvitePreview{}, core.ErrForbidden
+	}
+	inv, err := orgs.GetOrganizationInviteByToken(ctx, token)
+	if err != nil {
+		return OrganizationInvitePreview{}, mapAcceptInviteErr(err)
+	}
+	o, err := orgs.GetOrganization(ctx, inv.OrganizationID)
+	if err != nil {
+		return OrganizationInvitePreview{}, mapAcceptInviteErr(err)
+	}
+	view := OrganizationInvitePreview{OrganizationID: o.ID, OrganizationName: o.Name, Role: wireRole(inv.Role)}
+	member, err := orgs.GetOrganizationMember(ctx, o.ID, id.Subject)
+	switch {
+	case err == nil:
+		view.AlreadyMember, view.Role = true, wireRole(member.Role)
+	case !errors.Is(err, store.ErrNotFound):
+		return OrganizationInvitePreview{}, err
+	case inv.AcceptedAt != nil:
+		return OrganizationInvitePreview{}, mapAcceptInviteErr(store.ErrInviteAlreadyAccepted)
+	case !inv.ExpiresAt.After(s.Now()):
+		return OrganizationInvitePreview{}, mapAcceptInviteErr(store.ErrInviteExpired)
+	}
+	if s.Identities != nil && inv.InvitedBy != "" {
+		emails, _ := s.Identities.LookupEmails(ctx, []string{inv.InvitedBy})
+		view.InviterEmail = emails[inv.InvitedBy]
+	}
+	return view, nil
+}
+
+// AcceptOrganizationInvite redeems an org invite by its emailed token for the
+// caller, whatever email they signed in with (w7/083), as AcceptInvite does a
+// workspace invite: the token is the capability, so the gate is only an
+// authenticated, onboarded caller. A used link answers
+// INVITE_ALREADY_ACCEPTED and a lapsed one INVITE_EXPIRED. Someone already in
+// the org keeps their role. The redemption is the org's AcceptOrgInviteEvent.
+func (s *Service) AcceptOrganizationInvite(ctx context.Context, token string) (AcceptedOrganizationInviteView, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return AcceptedOrganizationInviteView{}, err
+	}
+	orgs, ok := s.organizations()
+	if !ok {
+		return AcceptedOrganizationInviteView{}, ErrMembersUnavailable
+	}
+	if strings.TrimSpace(token) == "" {
+		return AcceptedOrganizationInviteView{}, core.NewBadRequestError(InviteErrorInvalid, "missing invite token", nil)
+	}
+	id, ok := core.IdentityFrom(ctx)
+	if !ok {
+		return AcceptedOrganizationInviteView{}, core.ErrForbidden
+	}
+	inv, joined, err := orgs.AcceptOrganizationInviteByToken(ctx, token, id.Subject)
+	if err != nil {
+		return AcceptedOrganizationInviteView{}, mapAcceptInviteErr(err)
+	}
+	if joined {
+		// The row is the source of truth and the reconcile rewrites the tuple,
+		// so a failed write here only delays access.
+		if err := s.writeOrgTuples(ctx, []core.Tuple{core.OrgRoleTuple(inv.OrganizationID, id.Subject, inv.Role)}, nil); err != nil {
+			log.Printf("members: writing %s's membership of organization %s: %v", id.Subject, inv.OrganizationID, err)
+		}
+	}
+	s.RecordOrganizationEvent(ctx, core.AuditVerbOrgInviteAccepted, inv.OrganizationID, core.OrganizationAudit{
+		Target: core.InviteTarget(inv.ID), TargetName: inv.Email, RoleTo: inv.Role,
+	})
+	view := AcceptedOrganizationInviteView{OrganizationID: inv.OrganizationID, Role: wireRole(inv.Role), Joined: joined}
+	if o, err := orgs.GetOrganization(ctx, inv.OrganizationID); err == nil {
+		view.OrganizationName = o.Name
+	}
+	return view, nil
 }
 
 // ListOrganizationInvites lists an org's pending invites. Owner only.

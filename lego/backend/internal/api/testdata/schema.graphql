@@ -3,6 +3,13 @@ schema {
   mutation: Mutation
 }
 
+type AcceptedOrganizationInvite {
+  joined: Boolean!
+  organizationId: String!
+  organizationName: String
+  role: String!
+}
+
 type AcceptedWorkspaceInvite {
   authorizationPending: Boolean
   role: String
@@ -1781,6 +1788,7 @@ type MonthToDateBandwidth {
 }
 
 type Mutation {
+  acceptOrganizationInvite(token: String!): AcceptedOrganizationInvite
   acceptWorkspaceInvite(token: String!): AcceptedWorkspaceInvite
   addCustomDomain(confirm: String, id: String!, name: String!): CustomDomain
   addDisk(mountPath: String!, name: String!, serviceId: String!, sizeGB: Int): Disk
@@ -2071,6 +2079,14 @@ type OrganizationInvite {
   role: String!
 }
 
+type OrganizationInvitePreview {
+  alreadyMember: Boolean!
+  inviterEmail: String
+  organizationId: String!
+  organizationName: String!
+  role: String!
+}
+
 type OrganizationMember {
   createdAt: String
   email: String
@@ -2355,6 +2371,7 @@ type Query {
   notificationWebPushSubscriptions: [NotificationWebPushSubscription]
   organization(id: String!): Organization
   organizationAuditLogs(cursor: String, direction: String, endTime: String, limit: Int, organizationId: String!, startTime: String): [AuditLog]
+  organizationInvitePreview(token: String!): OrganizationInvitePreview
   organizationInvites(organizationId: String!): [OrganizationInvite!]!
   organizationMembers(organizationId: String!): [OrganizationMember!]!
   organizations: [Organization!]!

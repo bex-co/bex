@@ -761,6 +761,62 @@ func (s *PGStore) DeleteOrganizationInvite(ctx context.Context, orgID, id string
 	return nil
 }
 
+// GetOrganizationInviteByToken reads an org invite by its emailed token
+// without redeeming it (ErrNotFound when no invite has it). Accepted rows stay
+// readable, so someone already in the org can reopen it from the link.
+func (s *PGStore) GetOrganizationInviteByToken(ctx context.Context, token string) (OrganizationInvite, error) {
+	inv, err := scanOrganizationInvite(s.Pool.QueryRow(ctx, `SELECT `+organizationInviteColumns+` FROM organization_invites
+		WHERE token_hash = $1`, hashInviteToken(token)))
+	if err != nil {
+		return OrganizationInvite{}, classify("organization invite", err)
+	}
+	return inv, nil
+}
+
+// AcceptOrganizationInviteByToken redeems one org invite by its emailed token
+// for subject, whatever email they signed in with (w7/083): the token is the
+// capability, as a workspace invite's is (AcceptInviteByToken). An unknown
+// token is ErrNotFound, a used one ErrInviteAlreadyAccepted, a lapsed one
+// ErrInviteExpired. Someone already in the org keeps their role; the returned
+// invite carries the role they hold, and joined says whether they are new.
+func (s *PGStore) AcceptOrganizationInviteByToken(ctx context.Context, token, subject string) (inv OrganizationInvite, joined bool, err error) {
+	err = s.withTx(ctx, func(tx pgx.Tx) error {
+		if err := lockSubjectMembership(ctx, tx, subject); err != nil {
+			return err
+		}
+		if err := refuseDeletingSubject(ctx, tx, subject); err != nil {
+			return err
+		}
+		if inv, err = scanOrganizationInvite(tx.QueryRow(ctx, `SELECT `+organizationInviteColumns+` FROM organization_invites
+			WHERE token_hash = $1 FOR UPDATE`, hashInviteToken(token))); err != nil {
+			return err
+		}
+		switch {
+		case inv.AcceptedAt != nil:
+			return ErrInviteAlreadyAccepted
+		case !inv.ExpiresAt.After(time.Now()):
+			return ErrInviteExpired
+		}
+		tag, err := tx.Exec(ctx, `INSERT INTO organization_members (organization_id, subject, role) VALUES ($1, $2, $3)
+			ON CONFLICT (organization_id, subject) DO NOTHING`, inv.OrganizationID, subject, inv.Role)
+		if err != nil {
+			return err
+		}
+		if joined = tag.RowsAffected() == 1; !joined {
+			if err := tx.QueryRow(ctx, `SELECT role FROM organization_members WHERE organization_id = $1 AND subject = $2`,
+				inv.OrganizationID, subject).Scan(&inv.Role); err != nil {
+				return err
+			}
+		}
+		_, err = tx.Exec(ctx, `UPDATE organization_invites SET accepted_at = now() WHERE id = $1`, inv.ID)
+		return err
+	})
+	if err != nil {
+		return OrganizationInvite{}, false, classify("organization invite", err)
+	}
+	return inv, joined, nil
+}
+
 // joinOrganizationOnRedeem is a workspace invite's org half, inside its
 // redemption transaction (ADR115 D4). Render without SSO: "workspace admins
 // can invite any Render user to any org-managed workspace. These users

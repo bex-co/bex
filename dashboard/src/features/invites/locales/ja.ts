@@ -109,6 +109,54 @@ const jaInvites: Record<string, TranslationEntry> = {
     message: "もう一度試す",
     description: "Invitation review: retry",
   },
+  "invites.orgTitle": {
+    message: "組織への招待",
+    description: "Invitation review: orgTitle",
+  },
+  "invites.orgAuthenticate": {
+    message:
+      "組織への招待を確認するには、アカウントを作成するかサインインしてください。",
+    description: "Invitation review: orgAuthenticate",
+  },
+  "invites.orgJoinTitle": {
+    message: "{organization} に参加",
+    description: "Invitation review: orgJoinTitle",
+  },
+  "invites.orgMemberTitle": {
+    message: "{organization} のメンバーです",
+    description: "Invitation review: orgMemberTitle",
+  },
+  "invites.orgRole": {
+    message: "組織でのロールは {role} になります。",
+    description: "Invitation review: orgRole",
+  },
+  "invites.orgJoin": {
+    message: "組織に参加",
+    description: "Invitation review: orgJoin",
+  },
+  "invites.orgOpen": {
+    message: "組織を開く",
+    description: "Invitation review: orgOpen",
+  },
+  "invites.orgInvalid": {
+    message:
+      "この招待リンクは無効か、取り消されています。組織のオーナーに新しい招待を依頼してください。",
+    description: "Invitation review: orgInvalid",
+  },
+  "invites.orgExpired": {
+    message:
+      "この招待は期限切れです。組織のオーナーにもう一度招待するよう依頼してください。",
+    description: "Invitation review: orgExpired",
+  },
+  "invites.orgAccessPending": {
+    message:
+      "メンバーシップは確認されましたが、組織へのアクセスはまだ準備できていません。もう一度組織を開いてください。",
+    description: "Invitation review: orgAccessPending",
+  },
+  "invites.orgAccepted": {
+    message: "{organization} に参加しました。",
+    description: "Invitation review: orgAccepted",
+  },
 };
 
 export default jaInvites;

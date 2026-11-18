@@ -109,6 +109,54 @@ const deInvites: Record<string, TranslationEntry> = {
     message: "Erneut versuchen",
     description: "Invitation review: retry",
   },
+  "invites.orgTitle": {
+    message: "Organisationseinladung",
+    description: "Invitation review: orgTitle",
+  },
+  "invites.orgAuthenticate": {
+    message:
+      "Erstelle ein Konto oder melde dich an, um deine Organisationseinladung anzusehen.",
+    description: "Invitation review: orgAuthenticate",
+  },
+  "invites.orgJoinTitle": {
+    message: "{organization} beitreten",
+    description: "Invitation review: orgJoinTitle",
+  },
+  "invites.orgMemberTitle": {
+    message: "Du bist Mitglied von {organization}",
+    description: "Invitation review: orgMemberTitle",
+  },
+  "invites.orgRole": {
+    message: "Deine Rolle in der Organisation wird {role}.",
+    description: "Invitation review: orgRole",
+  },
+  "invites.orgJoin": {
+    message: "Organisation beitreten",
+    description: "Invitation review: orgJoin",
+  },
+  "invites.orgOpen": {
+    message: "Organisation öffnen",
+    description: "Invitation review: orgOpen",
+  },
+  "invites.orgInvalid": {
+    message:
+      "Dieser Einladungslink ist ungültig oder wurde widerrufen. Bitte einen Inhaber der Organisation um eine neue Einladung.",
+    description: "Invitation review: orgInvalid",
+  },
+  "invites.orgExpired": {
+    message:
+      "Diese Einladung ist abgelaufen. Bitte einen Inhaber der Organisation, dich erneut einzuladen.",
+    description: "Invitation review: orgExpired",
+  },
+  "invites.orgAccessPending": {
+    message:
+      "Deine Mitgliedschaft ist bestätigt, aber der Zugriff auf die Organisation ist noch nicht bereit. Versuche, die Organisation erneut zu öffnen.",
+    description: "Invitation review: orgAccessPending",
+  },
+  "invites.orgAccepted": {
+    message: "Du bist {organization} beigetreten.",
+    description: "Invitation review: orgAccepted",
+  },
 };
 
 export default deInvites;

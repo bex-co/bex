@@ -8,9 +8,12 @@ import {
   ViewerCapabilitiesDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { takePendingInviteToken } from "@/common/lib/invite-token";
+import { takePendingInvite } from "@/common/lib/invite-token";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
-import { classifyInviteRedemptionError } from "./invite-redemption-error";
+import {
+  classifyInviteRedemptionError,
+  invitationErrorKey,
+} from "./invite-redemption-error";
 
 /** Token acceptance is always an explicit action. A committed acceptance is
  * never replayed if refreshing workspace access fails; retry only opens it. */
@@ -66,7 +69,7 @@ export function useInviteRedemption(token: string, onOpened: () => void) {
       return;
     opened.current = true;
     setCurrentWorkspaceId(readyToOpen);
-    takePendingInviteToken();
+    takePendingInvite();
     onOpened();
   }, [readyToOpen, workspaces, setCurrentWorkspaceId, onOpened]);
 
@@ -147,19 +150,4 @@ export function useInviteRedemption(token: string, onOpened: () => void) {
       void preview.refetch().catch(() => undefined);
     },
   };
-}
-
-function invitationErrorKey(error: unknown): string {
-  switch (classifyInviteRedemptionError(error)) {
-    case "already-accepted":
-      return "invites.used";
-    case "expired":
-      return "invites.expired";
-    case "plan-limit":
-      return "invites.planLimit";
-    case "terminal":
-      return "invites.invalid";
-    default:
-      return "invites.retryError";
-  }
 }

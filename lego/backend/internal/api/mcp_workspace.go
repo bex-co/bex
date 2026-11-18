@@ -55,12 +55,14 @@ const mcpWorkspaceIDDescription = "The ID of the bex workspace to use. Reuse the
 // caller-scoped made two of an account's three rows unreachable while all
 // three still decided whether it got mail.
 var mcpCallerScopedTools = map[string]struct{}{
-	"preview_workspace_invite": {},
-	"accept_workspace_invite":  {},
-	"add_ssh_key":              {},
-	"delete_ssh_key":           {},
-	"list_ssh_keys":            {},
-	"list_workspaces":          {},
+	"preview_workspace_invite":    {},
+	"accept_workspace_invite":     {},
+	"preview_organization_invite": {},
+	"accept_organization_invite":  {},
+	"add_ssh_key":                 {},
+	"delete_ssh_key":              {},
+	"list_ssh_keys":               {},
+	"list_workspaces":             {},
 }
 
 func mcpWorkspaceMiddleware(base *core.Base, checkScope func(context.Context, string) error) mcp.Middleware {

@@ -54,6 +54,27 @@ var organizationInviteGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var organizationInvitePreviewGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "OrganizationInvitePreview",
+	Fields: graphql.Fields{
+		"organizationId":   gqlutil.ReqStrField(func(v OrganizationInvitePreview) any { return v.OrganizationID }),
+		"organizationName": gqlutil.ReqStrField(func(v OrganizationInvitePreview) any { return v.OrganizationName }),
+		"role":             gqlutil.ReqStrField(func(v OrganizationInvitePreview) any { return v.Role }),
+		"inviterEmail":     gqlutil.StrField(func(v OrganizationInvitePreview) any { return v.InviterEmail }),
+		"alreadyMember":    gqlutil.ReqBoolField(func(v OrganizationInvitePreview) any { return v.AlreadyMember }),
+	},
+})
+
+var acceptedOrganizationInviteGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AcceptedOrganizationInvite",
+	Fields: graphql.Fields{
+		"organizationId":   gqlutil.ReqStrField(func(a AcceptedOrganizationInviteView) any { return a.OrganizationID }),
+		"organizationName": gqlutil.StrField(func(a AcceptedOrganizationInviteView) any { return a.OrganizationName }),
+		"role":             gqlutil.ReqStrField(func(a AcceptedOrganizationInviteView) any { return a.Role }),
+		"joined":           gqlutil.ReqBoolField(func(a AcceptedOrganizationInviteView) any { return a.Joined }),
+	},
+})
+
 var joinedWorkspaceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "JoinedWorkspace",
 	Fields: graphql.Fields{
@@ -77,6 +98,13 @@ func (s *Service) organizationGraphQLQuery() graphql.Fields {
 			Args: gqlutil.KeyArg("organizationId"),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.ListOrganizationInvites(p.Context, p.Args["organizationId"].(string))
+			},
+		},
+		"organizationInvitePreview": &graphql.Field{
+			Type: organizationInvitePreviewGQLType,
+			Args: graphql.FieldConfigArgument{"token": gqlutil.ReqArg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.PreviewOrganizationInvite(p.Context, p.Args["token"].(string))
 			},
 		},
 	}
@@ -109,6 +137,13 @@ func (s *Service) organizationGraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return ok(s.RevokeOrganizationInvite(p.Context, p.Args["organizationId"].(string), p.Args["inviteId"].(string)))
+			},
+		},
+		"acceptOrganizationInvite": &graphql.Field{
+			Type: acceptedOrganizationInviteGQLType,
+			Args: graphql.FieldConfigArgument{"token": gqlutil.ReqArg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.AcceptOrganizationInvite(p.Context, p.Args["token"].(string))
 			},
 		},
 		"changeOrganizationMemberRole": &graphql.Field{
@@ -204,10 +239,24 @@ func (s *Service) registerOrganizationMCP(srv *mcp.Server) {
 	})
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "invite_organization_member",
-		Description: "Invite someone to an organization by email as OWNER or MEMBER (Owner only); they join when they sign in with that email. bex extension over Render's MCP.",
+		Description: "Invite someone to an organization by email as OWNER or MEMBER (Owner only); the emailed link joins whoever opens it, and signing in with that email joins too. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in orgInviteArgs) (*mcp.CallToolResult, OrganizationInviteView, error) {
 		inv, err := s.InviteToOrganization(ctx, in.OrganizationID, in.Email, in.Role)
 		return nil, inv, err
+	})
+	mcputil.AddTool(srv, &mcp.Tool{
+		Name:        "preview_organization_invite",
+		Description: "Review an organization invitation's organization, role, inviter and your membership without accepting it. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in acceptInviteArgs) (*mcp.CallToolResult, OrganizationInvitePreview, error) {
+		preview, err := s.PreviewOrganizationInvite(ctx, in.Token)
+		return nil, preview, err
+	})
+	mcputil.AddTool(srv, &mcp.Tool{
+		Name:        "accept_organization_invite",
+		Description: "Redeem an organization invite token for the authenticated caller: joins the organization at the invited role even when the caller signed up under a different email. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in acceptInviteArgs) (*mcp.CallToolResult, AcceptedOrganizationInviteView, error) {
+		acc, err := s.AcceptOrganizationInvite(ctx, in.Token)
+		return nil, acc, err
 	})
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "revoke_organization_invite",

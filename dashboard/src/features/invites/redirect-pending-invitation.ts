@@ -1,5 +1,5 @@
 import {
-  peekPendingInviteToken,
+  peekPendingInvite,
   stashInviteTokenFromURL,
 } from "@/common/lib/invite-token";
 import { rememberInviteReturn } from "./invite-return";
@@ -20,7 +20,7 @@ export function pendingInvitationDestination({
   if (typeof window === "undefined" || !authenticated || !eligible || preload)
     return;
   stashInviteTokenFromURL();
-  if (!peekPendingInviteToken()) return;
+  if (!peekPendingInvite()) return;
   rememberInviteReturn(window.location.pathname + window.location.search);
   return "/invite" as const;
 }

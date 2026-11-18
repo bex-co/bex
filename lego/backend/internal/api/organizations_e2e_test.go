@@ -410,6 +410,115 @@ func TestOrganizationsE2E(t *testing.T) {
 	}
 }
 
+// orgInviteMailer keeps the org invite links it is asked to send.
+type orgInviteMailer struct{ links map[string]string }
+
+func (m *orgInviteMailer) Send(_ context.Context, to, _, text, _ string) error {
+	if _, after, ok := strings.Cut(text, "/invite#org-invite="); ok {
+		m.links[to], _, _ = strings.Cut(after, "\n")
+	}
+	return nil
+}
+
+// TestOrganizationInviteLinkE2E (w7/083): an org invite's emailed link joins
+// the org for a signed-in person whose email is not the invited one, on
+// GraphQL and MCP alike, and a link used once is refused by name for anyone
+// else. The redemption is the org's AcceptOrgInviteEvent.
+func TestOrganizationInviteLinkE2E(t *testing.T) {
+	mailer := &orgInviteMailer{links: map[string]string{}}
+	e := newOrgE2E(t, func(_ *core.Base, d *Deps) {
+		d.Mailer = mailer
+		d.InviteBaseURL = "https://dash.example"
+	})
+	ctx := context.Background()
+	alice, erin, frank := e.person("alice"), e.person("erin"), e.person("frank")
+	acme, err := e.st.CreateWorkspace(ctx, "acme-"+e.stamp, store.PlanPro, alice.Subject)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = e.st.DeleteTenant(context.Background(), acme.ID) })
+	if err := e.fga.(workspaces.WorkspaceGranter).GrantWorkspaceAdmin(ctx, acme.ID, "user:"+alice.Subject); err != nil {
+		t.Fatal(err)
+	}
+	upgraded := e.ok(alice, fmt.Sprintf(`mutation { changeWorkspacePlan(id: %q, plan: "scale") { organization { id name } } }`, acme.ID))
+	org := upgraded["changeWorkspacePlan"].(map[string]any)["organization"].(map[string]any)
+	orgID, orgName := org["id"].(string), org["name"].(string)
+
+	// alice invites an address erin does not sign in with; the mail's link
+	// carries the token.
+	invited := "erin-elsewhere-" + e.stamp + "@example.com"
+	e.ok(alice, fmt.Sprintf(`mutation { inviteOrganizationMember(organizationId: %q, email: %q, role: "MEMBER") { id } }`, orgID, invited))
+	token := mailer.links[invited]
+	if token == "" {
+		t.Fatalf("the org invite mail carries no token: %v", mailer.links)
+	}
+
+	// erin reviews it, then joins through it.
+	preview := e.ok(erin, fmt.Sprintf(`{ organizationInvitePreview(token: %q) { organizationId organizationName role inviterEmail alreadyMember } }`, token))["organizationInvitePreview"].(map[string]any)
+	if preview["organizationId"] != orgID || preview["organizationName"] != orgName || preview["role"] != "MEMBER" ||
+		preview["inviterEmail"] != alice.Subject+"@example.com" || preview["alreadyMember"] != false {
+		t.Fatalf("erin's preview = %v", preview)
+	}
+	accepted := e.ok(erin, fmt.Sprintf(`mutation { acceptOrganizationInvite(token: %q) { organizationId organizationName role joined } }`, token))["acceptOrganizationInvite"].(map[string]any)
+	if accepted["organizationId"] != orgID || accepted["organizationName"] != orgName || accepted["role"] != "MEMBER" || accepted["joined"] != true {
+		t.Fatalf("erin's acceptance = %v", accepted)
+	}
+	if role := e.ok(erin, fmt.Sprintf(`{ organization(id: %q) { viewerRole } }`, orgID))["organization"].(map[string]any)["viewerRole"]; role != "MEMBER" {
+		t.Fatalf("erin's org role after the link = %v", role)
+	}
+	// She may reopen her own link; nobody else may use it, on either surface.
+	again := e.ok(erin, fmt.Sprintf(`{ organizationInvitePreview(token: %q) { role alreadyMember } }`, token))["organizationInvitePreview"].(map[string]any)
+	if again["alreadyMember"] != true || again["role"] != "MEMBER" {
+		t.Fatalf("erin's preview after joining = %v", again)
+	}
+	e.refused(frank, fmt.Sprintf(`{ organizationInvitePreview(token: %q) { role } }`, token), members.InviteErrorAlreadyAccepted)
+	e.refused(frank, fmt.Sprintf(`mutation { acceptOrganizationInvite(token: %q) { role } }`, token), members.InviteErrorAlreadyAccepted)
+	e.mcpRefused(frank, "accept_organization_invite", map[string]any{"token": token}, members.InviteErrorAlreadyAccepted)
+	e.refused(frank, fmt.Sprintf(`mutation { acceptOrganizationInvite(token: %q) { role } }`, strings.Repeat("0", 32)), members.InviteErrorInvalid)
+	if _, err := e.st.GetOrganizationMember(ctx, orgID, frank.Subject); err == nil {
+		t.Fatal("a used link added a second person to the org")
+	}
+
+	// frank joins as an Owner through his own link on MCP.
+	invitedFrank := "frank-elsewhere-" + e.stamp + "@example.com"
+	e.ok(alice, fmt.Sprintf(`mutation { inviteOrganizationMember(organizationId: %q, email: %q, role: "OWNER") { id } }`, orgID, invitedFrank))
+	res := mcpCall(t, e.srv, frank, "accept_organization_invite", map[string]any{"token": mailer.links[invitedFrank]})
+	if res.IsError {
+		t.Fatalf("MCP accept_organization_invite: %s", mcpText(res))
+	}
+	var viaMCP members.AcceptedOrganizationInviteView
+	raw, _ := json.Marshal(res.StructuredContent)
+	if err := json.Unmarshal(raw, &viaMCP); err != nil || viaMCP.OrganizationID != orgID || viaMCP.Role != "OWNER" || !viaMCP.Joined {
+		t.Fatalf("MCP acceptance = %+v %v", viaMCP, err)
+	}
+	if role := e.ok(frank, fmt.Sprintf(`{ organization(id: %q) { viewerRole } }`, orgID))["organization"].(map[string]any)["viewerRole"]; role != "OWNER" {
+		t.Fatalf("frank's org role after the link = %v", role)
+	}
+
+	// Each redemption is one AcceptOrgInviteEvent in the org log, by its redeemer.
+	status, body := restRaw(t, e.srv, alice, http.MethodGet, "/v1/organizations/"+orgID+"/audit-logs?limit=100")
+	if status != http.StatusOK {
+		t.Fatalf("org audit log = %d %s", status, body)
+	}
+	var rows []struct {
+		AuditLog struct {
+			Event string `json:"event"`
+		} `json:"auditLog"`
+	}
+	if err := json.Unmarshal(body, &rows); err != nil {
+		t.Fatal(err)
+	}
+	accepts := 0
+	for _, r := range rows {
+		if r.AuditLog.Event == "AcceptOrgInviteEvent" {
+			accepts++
+		}
+	}
+	if accepts != 2 {
+		t.Fatalf("org log has %d AcceptOrgInviteEvent rows, want 2: %s", accepts, body)
+	}
+}
+
 // preconditionKinds reads the kinds of an ORGANIZATION_DOWNGRADE_BLOCKED
 // refusal's preconditions.
 func preconditionKinds(out map[string]any) []string {

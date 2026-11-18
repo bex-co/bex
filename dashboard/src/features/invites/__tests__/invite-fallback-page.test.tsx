@@ -23,6 +23,35 @@ const state = vi.hoisted(() => ({
 vi.mock("@/features/team/hooks/use-invite-redemption", () => ({
   useInviteRedemption: () => state,
 }));
+const orgState = vi.hoisted(() => ({
+  details: {
+    organizationId: "org-target",
+    organizationName: "Acme Org",
+    role: "OWNER",
+    inviterEmail: "alex@example.com",
+    alreadyMember: false,
+  },
+  loading: false,
+  errorKey: null as string | null,
+  busy: false,
+  joined: false,
+  retryable: true,
+  accept: vi.fn(),
+  retry: vi.fn(),
+  onOpened: null as ((organizationId: string) => void) | null,
+}));
+vi.mock(
+  "@/features/organizations/hooks/use-organization-invite-redemption",
+  () => ({
+    useOrganizationInviteRedemption: (
+      _token: string,
+      onOpened: (organizationId: string) => void,
+    ) => {
+      orgState.onOpened = onOpened;
+      return orgState;
+    },
+  }),
+);
 vi.mock("@tanstack/react-router", () => ({
   useLocation: () => ({
     href: window.location.pathname + window.location.search,
@@ -46,6 +75,8 @@ beforeEach(() => {
   state.busy = false;
   state.joined = false;
   state.errorKey = null;
+  orgState.joined = false;
+  orgState.onOpened = null;
   vi.clearAllMocks();
 });
 
@@ -120,5 +151,68 @@ describe("invitation page", () => {
     expect(
       screen.queryByRole("button", { name: "Join workspace" }),
     ).not.toBeInTheDocument();
+  });
+});
+
+// w7/083: an organization invite's link is reviewed and accepted here too.
+describe("organization invitation page", () => {
+  beforeEach(() => {
+    window.history.replaceState(null, "", `/invite#org-invite=${TOKEN}`);
+  });
+
+  it("asks a signed-out visitor to sign in and keeps the org invite", async () => {
+    render(<InviteFallbackPage authenticated={false} continueTo={vi.fn()} />);
+    expect(
+      await screen.findByRole("heading", { name: "Organization invitation" }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "Create an account or sign in to review your organization invitation.",
+      ),
+    ).toBeVisible();
+    expect(window.location.hash).toBe("");
+    expect(window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY)).toBe(
+      `org:${TOKEN}`,
+    );
+  });
+
+  it("shows the organization, role and inviter, then joins on request", async () => {
+    render(
+      <InviteFallbackPage
+        authenticated
+        email="different@example.com"
+        continueTo={vi.fn()}
+      />,
+    );
+    expect(
+      await screen.findByRole("heading", { name: "Join Acme Org" }),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Your organization role will be Owner."),
+    ).toBeVisible();
+    expect(screen.getByText("Invited by alex@example.com")).toBeVisible();
+    expect(
+      screen.getByText("Signed in as different@example.com"),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Join workspace" }),
+    ).not.toBeInTheDocument();
+    expect(orgState.accept).not.toHaveBeenCalled();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Join organization" }),
+    );
+    expect(orgState.accept).toHaveBeenCalledOnce();
+    expect(state.accept).not.toHaveBeenCalled();
+  });
+
+  it("opens the organization's Workspaces page once joined", async () => {
+    orgState.joined = true;
+    const navigate = vi.fn();
+    render(<InviteFallbackPage authenticated continueTo={navigate} />);
+    expect(
+      await screen.findByRole("button", { name: "Open organization" }),
+    ).toBeVisible();
+    orgState.onOpened?.("org-target");
+    expect(navigate).toHaveBeenCalledWith("/org/org-target/workspaces");
   });
 });

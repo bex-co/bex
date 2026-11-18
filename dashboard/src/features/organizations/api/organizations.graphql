@@ -178,3 +178,26 @@ mutation ChangeOrganizationMemberRole(
 mutation RemoveOrganizationMember($organizationId: String!, $subject: String!) {
   removeOrganizationMember(organizationId: $organizationId, subject: $subject)
 }
+
+# An org invite's emailed link (/invite#org-invite=<token>, w7/083): review it
+# without accepting, then redeem it for the signed-in caller, whatever email
+# they signed in with. A used link answers INVITE_ALREADY_ACCEPTED, a lapsed
+# one INVITE_EXPIRED, an unknown one INVITE_INVALID.
+query OrganizationInvitePreview($token: String!) {
+  organizationInvitePreview(token: $token) {
+    organizationId
+    organizationName
+    role
+    inviterEmail
+    alreadyMember
+  }
+}
+
+mutation AcceptOrganizationInvite($token: String!) {
+  acceptOrganizationInvite(token: $token) {
+    organizationId
+    organizationName
+    role
+    joined
+  }
+}

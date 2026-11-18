@@ -109,6 +109,54 @@ const ruInvites: Record<string, TranslationEntry> = {
     message: "Повторить",
     description: "Invitation review: retry",
   },
+  "invites.orgTitle": {
+    message: "Приглашение в организацию",
+    description: "Invitation review: orgTitle",
+  },
+  "invites.orgAuthenticate": {
+    message:
+      "Создайте аккаунт или войдите, чтобы посмотреть приглашение в организацию.",
+    description: "Invitation review: orgAuthenticate",
+  },
+  "invites.orgJoinTitle": {
+    message: "Присоединиться к {organization}",
+    description: "Invitation review: orgJoinTitle",
+  },
+  "invites.orgMemberTitle": {
+    message: "Вы состоите в {organization}",
+    description: "Invitation review: orgMemberTitle",
+  },
+  "invites.orgRole": {
+    message: "Ваша роль в организации: {role}.",
+    description: "Invitation review: orgRole",
+  },
+  "invites.orgJoin": {
+    message: "Присоединиться к организации",
+    description: "Invitation review: orgJoin",
+  },
+  "invites.orgOpen": {
+    message: "Открыть организацию",
+    description: "Invitation review: orgOpen",
+  },
+  "invites.orgInvalid": {
+    message:
+      "Ссылка-приглашение недействительна или отозвана. Попросите владельца организации прислать новое приглашение.",
+    description: "Invitation review: orgInvalid",
+  },
+  "invites.orgExpired": {
+    message:
+      "Срок действия приглашения истёк. Попросите владельца организации пригласить вас снова.",
+    description: "Invitation review: orgExpired",
+  },
+  "invites.orgAccessPending": {
+    message:
+      "Членство подтверждено, но доступ к организации ещё не готов. Попробуйте открыть организацию ещё раз.",
+    description: "Invitation review: orgAccessPending",
+  },
+  "invites.orgAccepted": {
+    message: "Вы присоединились к {organization}.",
+    description: "Invitation review: orgAccepted",
+  },
 };
 
 export default ruInvites;

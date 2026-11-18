@@ -109,6 +109,54 @@ const enInvites: Record<string, TranslationEntry> = {
     message: "Try again",
     description: "Invitation review: retry",
   },
+  "invites.orgTitle": {
+    message: "Organization invitation",
+    description: "Invitation review: orgTitle",
+  },
+  "invites.orgAuthenticate": {
+    message:
+      "Create an account or sign in to review your organization invitation.",
+    description: "Invitation review: orgAuthenticate",
+  },
+  "invites.orgJoinTitle": {
+    message: "Join {organization}",
+    description: "Invitation review: orgJoinTitle",
+  },
+  "invites.orgMemberTitle": {
+    message: "You’re in {organization}",
+    description: "Invitation review: orgMemberTitle",
+  },
+  "invites.orgRole": {
+    message: "Your organization role will be {role}.",
+    description: "Invitation review: orgRole",
+  },
+  "invites.orgJoin": {
+    message: "Join organization",
+    description: "Invitation review: orgJoin",
+  },
+  "invites.orgOpen": {
+    message: "Open organization",
+    description: "Invitation review: orgOpen",
+  },
+  "invites.orgInvalid": {
+    message:
+      "This invitation link is invalid or was revoked. Ask an organization Owner for a new invitation.",
+    description: "Invitation review: orgInvalid",
+  },
+  "invites.orgExpired": {
+    message:
+      "This invitation has expired. Ask an organization Owner to invite you again.",
+    description: "Invitation review: orgExpired",
+  },
+  "invites.orgAccessPending": {
+    message:
+      "Your membership is confirmed, but organization access isn’t ready yet. Try opening the organization again.",
+    description: "Invitation review: orgAccessPending",
+  },
+  "invites.orgAccepted": {
+    message: "You joined {organization}.",
+    description: "Invitation review: orgAccepted",
+  },
 };
 
 export default enInvites;

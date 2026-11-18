@@ -2,14 +2,20 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { LoaderCircle } from "lucide-react";
 import {
-  peekPendingInviteToken,
+  type PendingInvite,
+  peekPendingInvite,
   stashInviteTokenFromURL,
-  takePendingInviteToken,
+  takePendingInvite,
 } from "@/common/lib/invite-token";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Button } from "@/common/components/ui/button";
 import { InviteRouteSkeleton } from "@/common/components/route-skeletons";
 import { useInviteRedemption } from "@/features/team/hooks/use-invite-redemption";
+import { useOrganizationInviteRedemption } from "@/features/organizations/hooks/use-organization-invite-redemption";
+import {
+  ORGANIZATION_ROLE_LABEL_KEYS,
+  type OrganizationRole,
+} from "@/features/organizations/types";
 import { InvitationFrame } from "./invitation-frame";
 import { takeInviteReturn } from "./invite-return";
 
@@ -19,7 +25,9 @@ type InviteFallbackPageProps = {
   continueTo: (destination: string) => void;
 };
 
-/** Browser-owned handoff and review; tokens never enter auth return URLs. */
+/** Browser-owned handoff and review; tokens never enter auth return URLs. A
+ * link carries a workspace invite (`#invite=`) or an organization invite
+ * (`#org-invite=`, w7/083); both are reviewed here and accepted explicitly. */
 export function InviteFallbackPage({
   authenticated,
   email,
@@ -29,7 +37,7 @@ export function InviteFallbackPage({
   const { href } = useLocation();
   const [capture, setCapture] = useState<{
     href: string;
-    token: string | null;
+    invite: PendingInvite | null;
     unavailable: boolean;
   } | null>(null);
   useEffect(() => {
@@ -37,18 +45,19 @@ export function InviteFallbackPage({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Capture and scrub the bearer on the client before rendering any action.
     setCapture({
       href,
-      token: peekPendingInviteToken(),
+      invite: peekPendingInvite(),
       unavailable: result === "unavailable",
     });
   }, [href]);
 
   function leave() {
-    takePendingInviteToken();
+    takePendingInvite();
     continueTo(takeInviteReturn());
   }
   if (!capture || capture.href !== href)
     return <InviteRouteSkeleton authenticated={authenticated} />;
-  if (!capture.token)
+  const invite = capture.invite;
+  if (!invite)
     return (
       <InvitationFrame>
         <h1 className="text-2xl font-semibold">{t("invites.title")}</h1>
@@ -64,13 +73,18 @@ export function InviteFallbackPage({
         </Button>
       </InvitationFrame>
     );
+  const organization = invite.kind === "organization";
   if (!authenticated)
     return (
       <InvitationFrame>
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold">{t("invites.title")}</h1>
+          <h1 className="text-2xl font-semibold">
+            {t(organization ? "invites.orgTitle" : "invites.title")}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            {t("invites.authenticate")}
+            {t(
+              organization ? "invites.orgAuthenticate" : "invites.authenticate",
+            )}
           </p>
         </div>
         <div className="mt-auto flex flex-col gap-3">
@@ -105,10 +119,21 @@ export function InviteFallbackPage({
         </div>
       </InvitationFrame>
     );
-  return (
-    <InviteReview
-      key={capture.token}
-      token={capture.token}
+  return organization ? (
+    <OrganizationInviteReview
+      key={`organization:${invite.token}`}
+      token={invite.token}
+      email={email}
+      leave={leave}
+      opened={(organizationId) => {
+        takeInviteReturn();
+        continueTo(`/org/${organizationId}/workspaces`);
+      }}
+    />
+  ) : (
+    <WorkspaceInviteReview
+      key={`workspace:${invite.token}`}
+      token={invite.token}
       email={email}
       leave={leave}
       opened={() => {
@@ -119,7 +144,7 @@ export function InviteFallbackPage({
   );
 }
 
-function InviteReview({
+function WorkspaceInviteReview({
   token,
   email,
   leave,
@@ -132,29 +157,115 @@ function InviteReview({
 }) {
   const { t } = useTranslations();
   const state = useInviteRedemption(token, opened);
-  if (state.loading) return <InviteRouteSkeleton />;
   const details = state.details;
+  return (
+    <InviteDecision
+      state={state}
+      email={email}
+      leave={leave}
+      kicker={t("invites.title")}
+      heading={
+        details &&
+        t(state.joined ? "invites.memberTitle" : "invites.joinTitle", {
+          workspace: details.workspaceName ?? "",
+        })
+      }
+      roleLine={
+        details &&
+        t(state.joined ? "invites.memberRole" : "invites.role", {
+          role: t(`team.role.${details.role}`),
+        })
+      }
+      inviterEmail={details?.inviterEmail}
+      actionLabel={t(state.joined ? "invites.open" : "invites.join")}
+    />
+  );
+}
+
+function OrganizationInviteReview({
+  token,
+  email,
+  leave,
+  opened,
+}: {
+  token: string;
+  email?: string;
+  leave: () => void;
+  opened: (organizationId: string) => void;
+}) {
+  const { t } = useTranslations();
+  const state = useOrganizationInviteRedemption(token, opened);
+  const details = state.details;
+  const roleKey =
+    details && ORGANIZATION_ROLE_LABEL_KEYS[details.role as OrganizationRole];
+  return (
+    <InviteDecision
+      state={state}
+      email={email}
+      leave={leave}
+      kicker={t("invites.orgTitle")}
+      heading={
+        details &&
+        t(state.joined ? "invites.orgMemberTitle" : "invites.orgJoinTitle", {
+          organization: details.organizationName,
+        })
+      }
+      roleLine={
+        details &&
+        t(state.joined ? "invites.memberRole" : "invites.orgRole", {
+          role: roleKey ? t(roleKey) : details.role,
+        })
+      }
+      inviterEmail={details?.inviterEmail}
+      actionLabel={t(state.joined ? "invites.orgOpen" : "invites.orgJoin")}
+    />
+  );
+}
+
+/** One invitation decision: what it joins, as what, from whom, for which
+ * signed-in account, and the explicit Join (or Open) action. */
+function InviteDecision({
+  state,
+  email,
+  leave,
+  kicker,
+  heading,
+  roleLine,
+  inviterEmail,
+  actionLabel,
+}: {
+  state: {
+    loading: boolean;
+    errorKey: string | null;
+    retryable: boolean;
+    busy: boolean;
+    joined: boolean;
+    accept: () => Promise<void>;
+    retry: () => void;
+  };
+  email?: string;
+  leave: () => void;
+  kicker: string;
+  heading: string | null | undefined;
+  roleLine: string | null | undefined;
+  inviterEmail: string | null | undefined;
+  actionLabel: string;
+}) {
+  const { t } = useTranslations();
+  if (state.loading) return <InviteRouteSkeleton />;
   return (
     <InvitationFrame>
       <div className="space-y-3">
-        <p className="text-sm text-muted-foreground">{t("invites.title")}</p>
+        <p className="text-sm text-muted-foreground">{kicker}</p>
         <h1 className="break-words text-2xl font-semibold">
-          {details
-            ? t(state.joined ? "invites.memberTitle" : "invites.joinTitle", {
-                workspace: details.workspaceName ?? "",
-              })
-            : t("invites.unavailableTitle")}
+          {heading ?? t("invites.unavailableTitle")}
         </h1>
-        {details && (
-          <p className="text-sm text-muted-foreground">
-            {t(state.joined ? "invites.memberRole" : "invites.role", {
-              role: t(`team.role.${details.role}`),
-            })}
-          </p>
+        {roleLine && (
+          <p className="text-sm text-muted-foreground">{roleLine}</p>
         )}
-        {details?.inviterEmail && !state.joined && (
+        {heading && inviterEmail && !state.joined && (
           <p className="break-words text-sm text-muted-foreground">
-            {t("invites.inviter", { email: details.inviterEmail })}
+            {t("invites.inviter", { email: inviterEmail })}
           </p>
         )}
         {email && (
@@ -169,7 +280,7 @@ function InviteReview({
         </p>
       )}
       <div className="mt-auto flex flex-col gap-3">
-        {details ? (
+        {heading ? (
           <Button disabled={state.busy} onClick={() => void state.accept()}>
             {state.busy && (
               <LoaderCircle
@@ -177,15 +288,9 @@ function InviteReview({
                 aria-hidden="true"
               />
             )}
-            {t(
-              state.busy
-                ? state.joined
-                  ? "invites.opening"
-                  : "invites.joining"
-                : state.joined
-                  ? "invites.open"
-                  : "invites.join",
-            )}
+            {state.busy
+              ? t(state.joined ? "invites.opening" : "invites.joining")
+              : actionLabel}
           </Button>
         ) : (
           state.retryable && (

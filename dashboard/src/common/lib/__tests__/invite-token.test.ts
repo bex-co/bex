@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   INVITE_TOKEN_STORAGE_KEY,
+  peekPendingInvite,
   retainPendingInviteToken,
   stashInviteTokenFromURL,
-  takePendingInviteToken,
+  takePendingInvite,
   validInviteToken,
 } from "@/common/lib/invite-token";
 
@@ -108,7 +109,7 @@ describe("invite token consumption", () => {
       `/services?tab=events&invite=${TOKEN}#latest`,
     );
 
-    expect(takePendingInviteToken()).toBe(TOKEN);
+    expect(takePendingInvite()).toEqual({ kind: "workspace", token: TOKEN });
     expect(window.location.search).toBe("?tab=events");
     expect(window.location.hash).toBe("#latest");
     expect(window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY)).toBeNull();
@@ -122,7 +123,7 @@ describe("invite token consumption", () => {
     window.sessionStorage.setItem(INVITE_TOKEN_STORAGE_KEY, OLD_TOKEN);
     window.history.replaceState(null, "", `/services?${query}`);
 
-    expect(takePendingInviteToken()).toBeNull();
+    expect(takePendingInvite()).toBeNull();
     expect(window.location.href).not.toContain("invite=");
     expect(window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY)).toBeNull();
   });
@@ -130,8 +131,8 @@ describe("invite token consumption", () => {
   it("consumes an exact stored token only once", () => {
     window.sessionStorage.setItem(INVITE_TOKEN_STORAGE_KEY, TOKEN);
 
-    expect(takePendingInviteToken()).toBe(TOKEN);
-    expect(takePendingInviteToken()).toBeNull();
+    expect(takePendingInvite()).toEqual({ kind: "workspace", token: TOKEN });
+    expect(takePendingInvite()).toBeNull();
   });
 
   it("retains only exact tokens for an explicit retry", () => {
@@ -139,5 +140,60 @@ describe("invite token consumption", () => {
     expect(window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY)).toBe(TOKEN);
     expect(retainPendingInviteToken(`${TOKEN}0`)).toBe(false);
     expect(window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY)).toBeNull();
+  });
+});
+
+// w7/083: an organization invite's link carries `org-invite=`; it is captured,
+// stored and redeemed as an organization invite, never as a workspace one.
+describe("organization invite capture", () => {
+  beforeEach(() => {
+    window.sessionStorage.clear();
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("captures a fragment org invite and remembers its kind", () => {
+    window.history.replaceState(null, "", `/invite#org-invite=${TOKEN}`);
+
+    expect(stashInviteTokenFromURL({ scrubAll: true })).toBe("stored");
+    expect(window.location.href).not.toContain("invite=");
+    expect(window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY)).toBe(
+      `org:${TOKEN}`,
+    );
+    expect(peekPendingInvite()).toEqual({ kind: "organization", token: TOKEN });
+    expect(takePendingInvite()).toEqual({ kind: "organization", token: TOKEN });
+    expect(takePendingInvite()).toBeNull();
+  });
+
+  it("removes only the org invite from an auth page's URL", () => {
+    window.history.replaceState(
+      null,
+      "",
+      `/auth/login?flow=ory-flow&org-invite=${TOKEN}#safe`,
+    );
+
+    expect(stashInviteTokenFromURL()).toBe("stored");
+    expect(window.location.search).toBe("?flow=ory-flow");
+    expect(window.location.hash).toBe("#safe");
+    expect(peekPendingInvite()).toEqual({ kind: "organization", token: TOKEN });
+  });
+
+  it.each([
+    `invite=${TOKEN}&org-invite=${TOKEN}`,
+    `org-invite=${TOKEN}&org-invite=${OLD_TOKEN}`,
+    "org-invite=not-hex",
+  ])("rejects %s and clears the older pending invite", (fragment) => {
+    window.sessionStorage.setItem(INVITE_TOKEN_STORAGE_KEY, `org:${OLD_TOKEN}`);
+    window.history.replaceState(null, "", `/invite#${fragment}`);
+
+    expect(stashInviteTokenFromURL({ scrubAll: true })).toBe("invalid");
+    expect(window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY)).toBeNull();
+    expect(window.location.href).not.toContain("invite=");
+  });
+
+  it("never reads a malformed stored org invite as a workspace one", () => {
+    window.sessionStorage.setItem(INVITE_TOKEN_STORAGE_KEY, "org:not-hex");
+
+    expect(peekPendingInvite()).toBeNull();
+    expect(takePendingInvite()).toBeNull();
   });
 });

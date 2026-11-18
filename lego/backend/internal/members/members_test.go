@@ -408,6 +408,33 @@ func TestInviteMessageTextByteParity(t *testing.T) {
 	}
 }
 
+// TestOrganizationInviteMessageCarriesItsToken pins the org invite mail's link
+// (w7/083): its token rides the fragment, as a workspace invite's does, under
+// its own key so the dashboard redeems it as an org invite.
+func TestOrganizationInviteMessageCarriesItsToken(t *testing.T) {
+	exp := time.Date(2026, 1, 2, 15, 4, 0, 0, time.UTC)
+	inv := store.OrganizationInvite{Email: "new@example.com", Role: "owner", Token: "tok123", ExpiresAt: exp}
+	org := store.Organization{Name: "Acme"}
+
+	linked := &Service{InviteBaseURL: "https://dash.example/"}
+	wantLinked := "You've been invited to join the \"Acme\" organization on bex as owner.\n\n" +
+		"Sign up or log in with new@example.com to accept:\n" +
+		"https://dash.example/invite#org-invite=tok123\n\n" +
+		"This invitation expires on 2026-01-02 15:04 UTC.\n"
+	if got := linked.organizationInviteMessage(inv, org).Text(); got != wantLinked {
+		t.Errorf("linked org invite text:\n got %q\nwant %q", got, wantLinked)
+	}
+	if html := linked.organizationInviteMessage(inv, org).HTML(); !strings.Contains(html, "https://dash.example/invite#org-invite=tok123") {
+		t.Error("HTML org invite missing the redeemable link")
+	}
+	wantLinkless := "You've been invited to join the \"Acme\" organization on bex as owner.\n\n" +
+		"Sign up or log in with new@example.com to accept the invitation.\n\n" +
+		"This invitation expires on 2026-01-02 15:04 UTC.\n"
+	if got := (&Service{}).organizationInviteMessage(inv, org).Text(); got != wantLinkless {
+		t.Errorf("linkless org invite text:\n got %q\nwant %q", got, wantLinkless)
+	}
+}
+
 // denyChecker refuses every check — the non-admin caller.
 type denyChecker struct{}
 

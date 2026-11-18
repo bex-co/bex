@@ -86,7 +86,7 @@ Every **organization** event [render.com/docs/audit-logs](https://render.com/doc
 | Render event | bex verb(s) | Status |
 | --- | --- | --- |
 | `InviteToOrgEvent` | `members.InviteToOrganization` | recorded |
-| `AcceptOrgInviteEvent` | `members.AcceptOrganizationInvite` | recorded when the invite is redeemed at the invitee's sign-in |
+| `AcceptOrgInviteEvent` | `members.AcceptOrganizationInvite` | recorded when the invite is redeemed, by its emailed link (w7/083) or at the invitee's sign-in |
 | `AddOrgMemberEvent` | `members.AddToOrganization` | recorded: a workspace invite that made someone a Member, or a support transfer |
 | `RemoveOrgMemberEvent` | `members.RemoveFromOrganization` | recorded |
 | `JoinTeamEvent` | `members.JoinWorkspace`, `members.JoinWorkspaceAsAdmin` | recorded |

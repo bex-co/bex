@@ -109,6 +109,54 @@ const esInvites: Record<string, TranslationEntry> = {
     message: "Reintentar",
     description: "Invitation review: retry",
   },
+  "invites.orgTitle": {
+    message: "Invitación a la organización",
+    description: "Invitation review: orgTitle",
+  },
+  "invites.orgAuthenticate": {
+    message:
+      "Crea una cuenta o inicia sesión para revisar tu invitación a la organización.",
+    description: "Invitation review: orgAuthenticate",
+  },
+  "invites.orgJoinTitle": {
+    message: "Unirse a {organization}",
+    description: "Invitation review: orgJoinTitle",
+  },
+  "invites.orgMemberTitle": {
+    message: "Ya formas parte de {organization}",
+    description: "Invitation review: orgMemberTitle",
+  },
+  "invites.orgRole": {
+    message: "Tu rol en la organización será {role}.",
+    description: "Invitation review: orgRole",
+  },
+  "invites.orgJoin": {
+    message: "Unirse a la organización",
+    description: "Invitation review: orgJoin",
+  },
+  "invites.orgOpen": {
+    message: "Abrir organización",
+    description: "Invitation review: orgOpen",
+  },
+  "invites.orgInvalid": {
+    message:
+      "Este enlace de invitación no es válido o fue revocado. Pide una nueva invitación a un Propietario de la organización.",
+    description: "Invitation review: orgInvalid",
+  },
+  "invites.orgExpired": {
+    message:
+      "Esta invitación ha caducado. Pide a un Propietario de la organización que te invite de nuevo.",
+    description: "Invitation review: orgExpired",
+  },
+  "invites.orgAccessPending": {
+    message:
+      "Tu membresía está confirmada, pero el acceso a la organización aún no está listo. Intenta abrir la organización de nuevo.",
+    description: "Invitation review: orgAccessPending",
+  },
+  "invites.orgAccepted": {
+    message: "Te uniste a {organization}.",
+    description: "Invitation review: orgAccepted",
+  },
 };
 
 export default esInvites;

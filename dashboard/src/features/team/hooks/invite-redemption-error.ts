@@ -1,5 +1,6 @@
 import { CombinedGraphQLErrors, ServerError } from "@apollo/client/errors";
 import { graphQLErrorCodes } from "@/common/lib/graphql-error";
+import type { InviteKind } from "@/common/lib/invite-token";
 
 export type InviteRedemptionFailure =
   | "already-accepted"
@@ -43,4 +44,25 @@ export function classifyInviteRedemptionError(
   }
 
   return "ambiguous";
+}
+
+/** The message a failed preview or acceptance shows. An organization invite
+ * (w7/083) names who to ask for a new one: an Owner, not a workspace admin. */
+export function invitationErrorKey(
+  error: unknown,
+  kind: InviteKind = "workspace",
+): string {
+  const organization = kind === "organization";
+  switch (classifyInviteRedemptionError(error)) {
+    case "already-accepted":
+      return "invites.used";
+    case "expired":
+      return organization ? "invites.orgExpired" : "invites.expired";
+    case "plan-limit":
+      return "invites.planLimit";
+    case "terminal":
+      return organization ? "invites.orgInvalid" : "invites.invalid";
+    default:
+      return "invites.retryError";
+  }
 }
