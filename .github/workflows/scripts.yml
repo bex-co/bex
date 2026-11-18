@@ -223,6 +223,8 @@ jobs:
         run: bash scripts/rename-verify.test.sh
       - name: Deploy supersession detection unit tests
         run: bash scripts/deploy-superseded.test.sh
+      - name: Operator image pin write-back and SNI proxy wait unit tests
+        run: bash scripts/operator-pins.test.sh
       - name: Packer plugin pin/verify unit tests
         run: bash scripts/packer-plugin-install.test.sh
       - name: HashiCorp rootless installer unit tests

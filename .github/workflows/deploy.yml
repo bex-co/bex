@@ -787,6 +787,27 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # w6/m470: the write-back keeps each SNI proxy's pin while its binary is
+      # byte-identical in the new image, which lego/operator/cmd/proxy-pin reads
+      # out of GHCR for linux/amd64. Built from this run's commit, before the
+      # write-back rebases. A failure in either step only means both proxies
+      # move to the new digest, as every deploy did before, so neither can fail
+      # the deploy (scripts/operator-pins.sh treats a missing command as doubt).
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        continue-on-error: true
+        with:
+          go-version-file: lego/operator/go.mod
+          cache: false
+      - name: build the SNI proxy pin comparison
+        id: proxy_pin
+        continue-on-error: true
+        working-directory: lego/operator
+        env:
+          GOWORK: "off"
+        run: |
+          go build -o "$RUNNER_TEMP/proxy-pin" ./cmd/proxy-pin
+          echo "path=$RUNNER_TEMP/proxy-pin" >> "$GITHUB_OUTPUT"
+
       # --- 1g. GitOps write-back: pin deployed control-plane images ---
       # Argo syncs git, not image tags, so a mutable :latest override never rolls pods on
       # its own AND leaves the running Deployment pinned to a tag whose contents can change
@@ -794,8 +815,12 @@ jobs:
       # @sha256 digests docker just pushed, and commit them back to main. Argo then deploys
       # a content-addressed, immutable reference — no more :latest in the running spec.
       # `[skip ci]` keeps this commit from re-triggering deploy.yml (it touches deploy/gitops/**).
+      # The two SNI proxy pins in bex.yaml are held while their binary is unchanged
+      # (scripts/operator-pins.sh, w6/m470): a held image runs the same bytes, any
+      # doubt moves the pin, and the wait below expects whichever digest was pinned.
       - name: pin image digests in GitOps (write-back)
         env:
+          PROXY_PIN: ${{ steps.proxy_pin.outputs.path }}
           OP_DIGEST: ${{ needs.build.outputs.operator_digest }}
           DASH_DIGEST: ${{ needs.build.outputs.dashboard_digest }}
           OPENSANDBOX_DIGEST: ${{ needs.build.outputs.opensandbox_digest }}
@@ -809,11 +834,11 @@ jobs:
           # event to newer production MANIFESTS (what Argo CD syncs): the newer
           # queued run must build and pin its own digests. A preceding run can
           # legitimately finish its [skip ci] digest write-back after this event
-          # was created, so scripts/deploy-superseded.sh permits only the five
-          # generated image fields to differ. Newer image SOURCE alone (rc 3) is
-          # not a supersession: these images onto unchanged manifests are an
-          # ordinary deploy of this commit, and the queued run pins newer ones
-          # right after. Treating it as one starved production for 14+ hours
+          # was created, so scripts/deploy-superseded.sh permits only the seven
+          # generated image fields (in five files) to differ. Newer image SOURCE
+          # alone (rc 3) is not a supersession: these images onto unchanged
+          # manifests are an ordinary deploy of this commit, and the queued run
+          # pins newer ones right after. Treating it as one starved production for 14+ hours
           # under steady pushes (w1/116). Newer MANIFESTS (rc 4) pin too: Argo
           # already runs them on the previous pin's even older images, so
           # refusing never kept old images off new manifests; it starved
@@ -839,30 +864,40 @@ jobs:
           import sys
 
           revisions = sys.argv[1:]
+          # bex.yaml carries three generated digests (w6/m470): the operator's
+          # and the two SNI proxies' own pins, each matched exactly once.
           generated = {
-              "deploy/gitops/base/bex.yaml":
+              "deploy/gitops/base/bex.yaml": (
                   r"(?m)^(\s+- controller=[^@\n]+@sha256:)[0-9a-f]{64}$",
-              "deploy/gitops/base/dashboard.yaml":
+                  r"(?m)^(\s+- kv-sni-proxy=[^@\n]+@sha256:)[0-9a-f]{64}$",
+                  r"(?m)^(\s+- pg-sni-proxy=[^@\n]+@sha256:)[0-9a-f]{64}$",
+              ),
+              "deploy/gitops/base/dashboard.yaml": (
                   r"(?m)^(\s+- dashboard=[^@\n]+@sha256:)[0-9a-f]{64}$",
-              "deploy/opensandbox/kustomization.yaml":
+              ),
+              "deploy/opensandbox/kustomization.yaml": (
                   r"(?m)(^  - name: opensandbox-server\n    newName: [^\n]+\n    digest: sha256:)[0-9a-f]{64}$",
-              "deploy/gitops/base/values/opensandbox-controller.values.yaml":
+              ),
+              "deploy/gitops/base/values/opensandbox-controller.values.yaml": (
                   r"(?m)^(\s+tag: [^@\s]+@sha256:)[0-9a-f]{64}$",
-              "lego/operator/config/api/deployment.yaml":
+              ),
+              "lego/operator/config/api/deployment.yaml": (
                   r"(?m)^(\s+value: ghcr.io/bex-co/bex-agent-sandbox)(?::[^@\s]+|@sha256:[0-9a-f]{64})$",
+              ),
           }
 
-          def normalized(revision, path, pattern):
+          def normalized(revision, path, patterns):
               text = subprocess.check_output(
                   ["git", "show", f"{revision}:{path}"], text=True
               )
-              rendered, count = re.subn(pattern, r"\g<1><generated>", text)
-              if count != 1:
-                  raise SystemExit(f"expected exactly one generated digest field in {path}")
-              return rendered
+              for pattern in patterns:
+                  text, count = re.subn(pattern, r"\g<1><generated>", text)
+                  if count != 1:
+                      raise SystemExit(f"expected exactly one generated digest field per pattern in {path}")
+              return text
 
-          for path, pattern in generated.items():
-              if normalized(revisions[0], path, pattern) != normalized(revisions[1], path, pattern):
+          for path, patterns in generated.items():
+              if normalized(revisions[0], path, patterns) != normalized(revisions[1], path, patterns):
                   raise SystemExit(
                       f"production input {path} changed beyond its generated digest; "
                       "refusing stale digest write-back"
@@ -875,8 +910,9 @@ jobs:
               exit 1
             fi
           done
-          sed -Ei "s#(controller=${IMAGE})(:[^@[:space:]]+|@sha256:[a-f0-9]+)#\1@${OP_DIGEST}#" \
-            deploy/gitops/base/bex.yaml
+          # controller= moves to OP_DIGEST; each SNI proxy pin moves only when
+          # its binary changed, and records the image the wait step expects.
+          bash scripts/operator-pins.sh write deploy/gitops/base/bex.yaml "$IMAGE" "$OP_DIGEST"
           sed -Ei "s#(dashboard=${DASHBOARD_IMAGE})(:[^@[:space:]]+|@sha256:[a-f0-9]+)#\1@${DASH_DIGEST}#" \
             deploy/gitops/base/dashboard.yaml
           sed -Ei "s#(value: ${AGENT_SANDBOX_IMAGE})(:[^@[:space:]]+|@sha256:[a-f0-9]+)#\1@${AGENT_DIGEST}#" \
@@ -1348,30 +1384,16 @@ jobs:
 
       # The infra workflow may be waiting to enable PROXY protocol on the two
       # raw datastore listeners. Do not report this deploy successful until
-      # Argo has put the freshly built, header-capable digest on every proxy
-      # pod. Merely calling `rollout status` is insufficient: an old, already-
-      # Ready DaemonSet would return immediately before Argo observes the digest
-      # write-back above.
+      # Argo has put the digest the write-back pinned for each proxy on its
+      # pods: the new one, or a held one whose binary is byte-identical, so
+      # exactly as header-capable (w6/m470). Merely calling `rollout status` is
+      # insufficient: an old, already-Ready DaemonSet would return immediately
+      # before Argo observes the digest write-back above.
       - name: wait for PROXY-compatible datastore proxies
         if: ${{ always() && steps.app_kubeconfig.outcome == 'success' && needs.build.outputs.operator_digest != '' && env.SUPERSEDED != 'true' }}
         timeout-minutes: 12
-        env:
-          BEX_EXPECTED_PROXY_IMAGE: ${{ env.IMAGE }}@${{ needs.build.outputs.operator_digest }}
-        run: |
-          for daemonset in bex-pg-sni-proxy bex-kv-sni-proxy; do
-            deadline=$((SECONDS + 600))
-            actual=""
-            while ((SECONDS < deadline)); do
-              actual="$(kubectl -n bex-system get daemonset "${daemonset}" -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)"
-              [ "${actual}" = "${BEX_EXPECTED_PROXY_IMAGE}" ] && break
-              sleep 5
-            done
-            if [ "${actual}" != "${BEX_EXPECTED_PROXY_IMAGE}" ]; then
-              echo "${daemonset} image is ${actual:-missing}, want ${BEX_EXPECTED_PROXY_IMAGE}" >&2
-              exit 1
-            fi
-            kubectl -n bex-system rollout status "daemonset/${daemonset}" --timeout=300s
-          done
+        # KV_SNI_PROXY_IMAGE and PG_SNI_PROXY_IMAGE come from the write-back.
+        run: bash scripts/operator-pins.sh wait
 
       # --- 6. roll the dashboard onto the freshly-pushed image ---
       # Same mutable-:latest caveat as step 5 (deploy/gitops/base/dashboard.yaml).

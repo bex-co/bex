@@ -30,7 +30,11 @@ spec:
           effect: NoSchedule
       containers:
         - name: kv-sni-proxy
-          image: controller:latest
+          # The operator image under its own kustomize pin (w6/m470): deploy.yml
+          # keeps that pin while /kv-sni-proxy is byte-identical in a new
+          # operator image, so a deploy that leaves this code alone closes no
+          # connection. Never map it to `controller` in config/default.
+          image: kv-sni-proxy:latest
           command: ["/kv-sni-proxy"]
           ports:
             - name: valkey

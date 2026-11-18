@@ -1,19 +1,19 @@
 # w6 · m470 — An operator deploy that leaves the SNI proxies' code alone keeps every external datastore connection
 
-**Worker:** worker6 **Goal:** `bex-kv-sni-proxy` and `bex-pg-sni-proxy` roll only when their own binary (or their DaemonSet template) changes, not on every operator deploy, so external TLS clients of Key Value stores and Postgres databases survive the platform's routine releases, as on Render. **Status:** todo
+**Worker:** worker6 **Goal:** `bex-kv-sni-proxy` and `bex-pg-sni-proxy` roll only when their own binary (or their DaemonSet template) changes, not on every operator deploy, so external TLS clients of Key Value stores and Postgres databases survive the platform's routine releases, as on Render. **Status:** blocked (t001–t005, t007, t008 done; t006 waits for the production deploys after the commit, then t009)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [A command tells whether an image carries the same SNI proxy binary as another](t001.md) | 1h30m | — |
-| t002 | [Each SNI DaemonSet takes its own image pin, which renders today's image](t002.md) | 1h | — |
-| t003 | [deploy.yml keeps an SNI pin while its binary is byte-identical, and waits for the digest it pinned](t003.md) | 1h30m | t001, t002 |
-| t004 | [Prove it against GHCR and the rendered manifests](t004.md) | 45m | t003 |
-| t005 | [Record the rule in ADR021 and ADR009](t005.md) | 30m | t003 |
+| t001 | [A command tells whether an image carries the same SNI proxy binary as another](done/t001.md) — **DONE** | 1h30m | — |
+| t002 | [Each SNI DaemonSet takes its own image pin, which renders today's image](done/t002.md) — **DONE** | 1h | — |
+| t003 | [deploy.yml keeps an SNI pin while its binary is byte-identical, and waits for the digest it pinned](done/t003.md) — **DONE** | 1h30m | t001, t002 |
+| t004 | [Prove it against GHCR and the rendered manifests](done/t004.md) — **DONE** | 45m | t003 |
+| t005 | [Record the rule in ADR021 and ADR009](done/t005.md) — **DONE** | 30m | t003 |
 | t006 | [Ship and verify on production](t006.md) | 1h30m | t004, t005 |
-| t007 | [Simplify](t007.md) | 15m | t006 |
-| t008 | [Test coverage](t008.md) | 30m | t006 |
+| t007 | [Simplify](done/t007.md) — **DONE** | 15m | t006 |
+| t008 | [Test coverage](done/t008.md) — **DONE** | 30m | t006 |
 | t009 | [Closeout](t009.md) | 10m | t007, t008 |
 
 ## Definition of done
@@ -26,7 +26,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** promoted from inbox note [w6/141](../done/141.md) on 2026-11-18, filed by w6/m469 t004 as the external half of w6/140. The loopx dispatch picked it ahead of w6/138 as a live production defect.
+- **Source:** promoted from inbox note [w6/141](../../done/141.md) on 2026-11-18, filed by w6/m469 t004 as the external half of w6/140. The loopx dispatch picked it ahead of w6/138 as a live production defect.
 - **Goal linkage:** ADR008 § Render parity first. Render breaks a datastore's connections when the customer changes it (a plan change, a restart), not when Render ships its own platform ([Key Value](https://render.com/docs/key-value)). No ADR018 row signs off this divergence.
 - **Expected outcome:** a deploy that leaves the SNI binaries alone closes no external datastore connection. Over 2026-11-12 to 2026-11-18 at most 22 of 56 production pins touched a package the SNI binaries link (see Findings), so at least 34 of those deploys would have kept every external connection.
 - **Why now:** each production deploy (at most one per 6 h since block-eden-mono w1/m25) closes every external Key Value and Postgres connection at once. w6/m469 already holds the internal proxy, so the SNI DaemonSets are the remaining routine drop. Builds on w6/m469's `registry.ImageFileSHA256`.
@@ -56,3 +56,9 @@
 - **The first sync renders today's image.** The commit that introduces the two pins sets both to the `controller=` digest on `origin/main` at ship time, so Argo's first sync changes no DaemonSet. A pin that lands in between conflicts on the adjacent line during `/ship`'s rebase; re-read it then.
 - **An in-flight deploy refuses the change.** `deploy.yml`'s inline check (in the workflow file of the run that is already building) refuses a write-back when `bex.yaml` changed beyond its generated field. Ship when `gh run list --workflow deploy.yml` shows no run past `changes`, or record the one refused run.
 - The held digest can be weeks old. GHCR keeps every `bex-operator` version (w6/m469).
+
+## Progress — 2026-11-18 (parked on its production deploys)
+
+- **Shipped:** `registry.ImageFileSHA256` takes a platform and `cmd/proxy-pin` answers which digest to pin (t001); each SNI DaemonSet's own placeholder and `bex.yaml` pin, seeded at the live `controller=` digest so the first sync renders today's image (t002); `scripts/operator-pins.sh` holds or moves each pin in the write-back, `deploy.yml` builds `proxy-pin` and waits for each DaemonSet's own pin, and both generated-field checks know the three pins (t003); the GHCR proof, kept for `336b647b1` → `fc4fbf28a` and moved for `5e0fb5ad8` → `e36296ae8` on both proxies (t004); ADR021 § 10 and ADR009 (t005); `/simplify` (t007); and a red test for every reverted rule (t008).
+- **Expected on production:** the first deploy after this commit moves both pins once, because `936b61bab` (w6/m467) changed `lego/types/v1alpha1` after the running producer `14eaa71b9` (t006 § Progress). The deploy after that holds both while no commit touches the SNI binaries' packages.
+- **Gate (clears by itself):** two production pins whose producers contain this milestone's commit (`git log origin/main --grep "pin platform images"`, then `git merge-base --is-ancestor <commit> <producer>`): the first moves both pins (step 4), the second should keep both (steps 2 and 3, with a Key Value and a Postgres client held across it). Production deploys `main` once its pin is 6 h old. Then t006's record and t009.

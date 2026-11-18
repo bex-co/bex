@@ -28,7 +28,12 @@ seed() { # create a file at $1 with content $2, committing under a fresh dir tre
 # Base commit carries one file in a filtered path; push it as origin/main.
 seed lego/app/main.go "package app // v1" "base"
 seed lego/cli/main.go "package main // CLI v1" "base CLI"
-seed deploy/gitops/base/bex.yaml $'images:\n  - controller=ghcr.io/x@sha256:'"$(printf 'a%.0s' {1..64})" "base bex.yaml"
+# bex.yaml carries three generated pins (w6/m470): <controller> <kv> <pg> digit.
+bex_yaml() {
+  printf 'images:\n  - controller=ghcr.io/x@sha256:%s\n  - kv-sni-proxy=ghcr.io/x@sha256:%s\n  - pg-sni-proxy=ghcr.io/x@sha256:%s' \
+    "$(printf "$1%.0s" {1..64})" "$(printf "$2%.0s" {1..64})" "$(printf "$3%.0s" {1..64})"
+}
+seed deploy/gitops/base/bex.yaml "$(bex_yaml a a a)" "base bex.yaml"
 seed deploy/gitops/base/dashboard.yaml $'images:\n  - dashboard=ghcr.io/x@sha256:'"$(printf 'a%.0s' {1..64})" "base dashboard.yaml"
 seed deploy/opensandbox/kustomization.yaml \
   $'images:\n  - name: opensandbox-server\n    newName: ghcr.io/x\n    digest: sha256:'"$(printf 'a%.0s' {1..64})" \
@@ -114,10 +119,24 @@ run_case "newer manifests: gitops manifest change" 4 advance deploy/gitops/base/
 run_case "newer manifests: manifest plus source change" 4 advance_with_source deploy/opensandbox/extra.yaml "kind: ConfigMap"
 run_case "newer manifests: deploy.yml change" 4 advance .github/workflows/deploy.yml "name: deploy v2"
 # a preceding run's generated digest write-back (bex.yaml digest only) → exit 1
-run_case "generated digest only (excluded)" 1 advance deploy/gitops/base/bex.yaml \
-  $'images:\n  - controller=ghcr.io/x@sha256:'"$(printf 'b%.0s' {1..64})"
-run_case "CLI plus generated platform digest only (excluded)" 1 advance_with_cli deploy/gitops/base/bex.yaml \
-  $'images:\n  - controller=ghcr.io/x@sha256:'"$(printf 'b%.0s' {1..64})"
+run_case "generated digest only (excluded)" 1 advance deploy/gitops/base/bex.yaml "$(bex_yaml b b b)"
+run_case "CLI plus generated platform digest only (excluded)" 1 advance_with_cli deploy/gitops/base/bex.yaml "$(bex_yaml b b b)"
+# w6/m470: a write-back that moves controller= and holds both SNI proxy pins,
+# or moves one SNI pin alone, is still only digests.
+run_case "controller pin moved, SNI pins held (excluded)" 1 advance deploy/gitops/base/bex.yaml "$(bex_yaml b a a)"
+run_case "an SNI pin moved alone (excluded)" 1 advance deploy/gitops/base/bex.yaml "$(bex_yaml a b a)"
+# A renamed or missing SNI pin is a reshape: the write-back would target the wrong line.
+run_case "SNI pin renamed is a reshape" 0 advance deploy/gitops/base/bex.yaml \
+  "$(bex_yaml a a a | sed 's/kv-sni-proxy=/kv-proxy=/')"
+run_case "SNI pin removed is a reshape" 0 advance deploy/gitops/base/bex.yaml \
+  "$(bex_yaml a a a | grep -v pg-sni-proxy)"
+run_case "SNI pin repeated is a reshape" 0 advance deploy/gitops/base/bex.yaml \
+  "$(bex_yaml a a a; printf '\n  - pg-sni-proxy=ghcr.io/x@sha256:%s' "$(printf 'c%.0s' {1..64})")"
+run_case "SNI pin moved to another image is a reshape" 0 advance deploy/gitops/base/bex.yaml \
+  "$(bex_yaml a a a | sed 's#pg-sni-proxy=ghcr.io/x#pg-sni-proxy=ghcr.io/y#')"
+# Anything else in bex.yaml is an ordinary manifest change, pinned like one (w4/465).
+run_case "bex.yaml drift beyond its three digests" 4 advance deploy/gitops/base/bex.yaml \
+  "$(bex_yaml b a a; printf '\nsyncPolicy: {}')"
 # the patched controller's generated digest write-back is excluded too
 run_case "generated controller digest only (excluded)" 1 advance \
   deploy/gitops/base/values/opensandbox-controller.values.yaml \
@@ -141,7 +160,10 @@ run_case "non-triggering (docs)" 1 advance docs/notes.md "hello"
 
 pin() { # the write-back's commit pinning producer $1, on top of origin/main
   git fetch -q origin main && git reset -q --hard origin/main
-  printf 'images:\n  - controller=ghcr.io/x@sha256:%s\n' "$(printf '%s' "$1" | sha256sum | cut -c1-64)" >deploy/gitops/base/bex.yaml
+  local digest
+  digest="$(printf '%s' "$1" | sha256sum | cut -c1-64)"
+  printf 'images:\n  - controller=ghcr.io/x@sha256:%s\n  - kv-sni-proxy=ghcr.io/x@sha256:%s\n  - pg-sni-proxy=ghcr.io/x@sha256:%s\n' \
+    "$digest" "$digest" "$digest" >deploy/gitops/base/bex.yaml
   git add -A && git commit -qm "chore(deploy): pin platform images to ${1::12} [skip ci]"
   git push -q origin main
 }

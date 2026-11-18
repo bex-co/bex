@@ -32,7 +32,11 @@ spec:
           effect: NoSchedule
       containers:
         - name: pg-sni-proxy
-          image: controller:latest  # overridden by kustomize; same image as the manager
+          # The operator image under its own kustomize pin (w6/m470): deploy.yml
+          # keeps that pin while /pg-sni-proxy is byte-identical in a new
+          # operator image, so a deploy that leaves this code alone closes no
+          # connection. Never map it to `controller` in config/default.
+          image: pg-sni-proxy:latest
           command: ["/pg-sni-proxy"]
           ports:
             - containerPort: 5432

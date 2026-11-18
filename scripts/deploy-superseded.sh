@@ -8,8 +8,9 @@
 # codes below that mention "the pre-build check" describe that history.
 #
 # "Deploy-triggering" = any change under the production-input path filter,
-# EXCLUDING the five generated image-digest fields — a preceding run's [skip ci]
-# digest write-back is NOT a supersession. Match .github/deploy-paths,
+# EXCLUDING the seven generated image-digest fields (in five files; bex.yaml
+# carries the operator's and both SNI proxies' pins, w6/m470) — a preceding
+# run's [skip ci] digest write-back is NOT a supersession. Match .github/deploy-paths,
 # including its CLI exclusion: CLI-only commits are not deployable.
 #
 # Newer commits are split in two. MANIFESTS — what Argo CD syncs from main
@@ -78,9 +79,9 @@ superseders() {
   printf '%s' "${commits:-unknown, history too shallow; origin/main is $(git rev-parse --short origin/main)}"
 }
 
-# First compare every production input except the five files that contain one
-# generated digest each. The second pass below compares those files after
-# replacing only their generated field, so a real manifest change is never
+# First compare every production input except the five files that contain
+# generated digests. The second pass below compares those files after
+# replacing only their generated fields, so a real manifest change is never
 # hidden by a whole-file exclusion.
 git diff --quiet "$SHA" origin/main -- \
   deploy/opensandbox deploy/gitops .github/workflows/deploy.yml lego/operator/config \
@@ -109,33 +110,46 @@ import subprocess
 import sys
 
 revisions = sys.argv[1:]
+# Each file's generated fields, each matched exactly once. bex.yaml carries
+# three (w6/m470): the operator's pin and each SNI proxy's own.
 generated = {
-    "deploy/gitops/base/bex.yaml":
+    "deploy/gitops/base/bex.yaml": (
         r"(?m)^(\s+- controller=[^@\n]+@sha256:)[0-9a-f]{64}$",
-    "deploy/gitops/base/dashboard.yaml":
+        r"(?m)^(\s+- kv-sni-proxy=[^@\n]+@sha256:)[0-9a-f]{64}$",
+        r"(?m)^(\s+- pg-sni-proxy=[^@\n]+@sha256:)[0-9a-f]{64}$",
+    ),
+    "deploy/gitops/base/dashboard.yaml": (
         r"(?m)^(\s+- dashboard=[^@\n]+@sha256:)[0-9a-f]{64}$",
-    "deploy/opensandbox/kustomization.yaml":
+    ),
+    "deploy/opensandbox/kustomization.yaml": (
         r"(?m)(^  - name: opensandbox-server\n    newName: [^\n]+\n    digest: sha256:)[0-9a-f]{64}$",
-    "deploy/gitops/base/values/opensandbox-controller.values.yaml":
+    ),
+    "deploy/gitops/base/values/opensandbox-controller.values.yaml": (
         r"(?m)^(\s+tag: [^@\s]+@sha256:)[0-9a-f]{64}$",
-    "lego/operator/config/api/deployment.yaml":
+    ),
+    "lego/operator/config/api/deployment.yaml": (
         r"(?m)^(\s+value: ghcr.io/bex-co/bex-agent-sandbox)(?::[^@\s]+|@sha256:[0-9a-f]{64})$",
+    ),
 }
 
 
-def generated_field(revision, path, pattern):
-    """Return (prefix, rest): the field's captured prefix and the file with
-    only the digest replaced."""
+def generated_fields(revision, path, patterns):
+    """Return (prefixes, rest): each field's captured prefix, or None when a
+    field is gone or duplicated, and the file with only the digests replaced."""
     try:
         text = subprocess.check_output(
             ["git", "show", f"{revision}:{path}"], text=True, stderr=subprocess.DEVNULL
         )
     except subprocess.CalledProcessError as error:
         raise RuntimeError(f"could not read {path} at {revision}") from error
-    matches = list(re.finditer(pattern, text))
-    if len(matches) != 1:
-        return None, text  # the field is gone or duplicated: reshaped
-    return matches[0].group(1), re.sub(pattern, r"\g<1><generated>", text)
+    prefixes = []
+    for pattern in patterns:
+        matches = list(re.finditer(pattern, text))
+        if len(matches) != 1:
+            return None, text  # the field is gone or duplicated: reshaped
+        prefixes.append(matches[0].group(1))
+        text = re.sub(pattern, r"\g<1><generated>", text)
+    return prefixes, text
 
 
 # Exit codes: 0 = only digests differ; 1 = a generated field was reshaped (the
@@ -145,9 +159,9 @@ def generated_field(revision, path, pattern):
 reshaped = False
 moved = False
 try:
-    for path, pattern in generated.items():
-        old_prefix, old_rest = generated_field(revisions[0], path, pattern)
-        new_prefix, new_rest = generated_field(revisions[1], path, pattern)
+    for path, patterns in generated.items():
+        old_prefix, old_rest = generated_fields(revisions[0], path, patterns)
+        new_prefix, new_rest = generated_fields(revisions[1], path, patterns)
         if old_prefix is None or new_prefix is None or old_prefix != new_prefix:
             reshaped = True
         elif old_rest != new_rest:
@@ -160,7 +174,7 @@ raise SystemExit(1 if reshaped else 5 if moved else 0)
 PY
 generated_rc=$?
 case "$generated_rc" in
-  0) ;; # no manifest drift beyond the five generated digest fields
+  0) ;; # no manifest drift beyond the generated digest fields
   5) manifests_moved=true ;; # an ordinary edit elsewhere in a generated file: same as any manifest path
   1)
     echo "superseded by a generated-field reshape on origin/main (changed by: $(superseders "${MANIFEST_PATHS[@]}")); this run's images will not be built/pinned"

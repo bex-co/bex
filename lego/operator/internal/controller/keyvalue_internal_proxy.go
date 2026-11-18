@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"strconv"
 	"sync"
 
@@ -175,7 +176,10 @@ func InternalProxyBinaryFromRegistry() func(ctx context.Context, image string) (
 		if hit {
 			return sum, nil
 		}
-		sum, err := registry.ImageFileSHA256(ctx, nil, host, repo, digest, kvInternalProxyStep, "kv-internal-proxy")
+		// The manager compares the image with its own binary, built for its
+		// own architecture.
+		platform := registry.Platform{OS: "linux", Architecture: runtime.GOARCH}
+		sum, err := registry.ImageFileSHA256(ctx, nil, host, repo, digest, platform, kvInternalProxyStep, "kv-internal-proxy")
 		if err != nil {
 			return "", err
 		}

@@ -74,6 +74,13 @@ resources:
 # deploy already works: Argo CD's own `kustomize.images` override targets
 # this exact path (deploy/gitops/base/bex.yaml), so this bootstrap value only
 # matters locally.
+#
+# The two SNI proxy DaemonSets carry their own placeholders, kv-sni-proxy:latest
+# and pg-sni-proxy:latest, which deploy/gitops/base/bex.yaml pins separately so
+# deploy.yml can keep a proxy's image while its binary is unchanged (w6/m470).
+# Never map them here: this build runs first, so an entry here would rename
+# them before the outer `kustomize edit set image` (Argo's, or the Makefile's
+# on config/deploy) could match them, and they would follow `controller` again.
 images:
 - name: controller
   newName: controller

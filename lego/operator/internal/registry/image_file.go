@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"runtime"
 	"strings"
 	"time"
 )
@@ -41,18 +40,19 @@ const (
 )
 
 // ImageFileSHA256 returns the hex sha256 of file in the layer that the build
-// step step (an image config history "created_by") added to repo@digest, an
-// anonymous read of this process's own linux architecture (w6/m469: the
-// operator compares an image's /kv-internal-proxy with its own). The manifest,
-// config and layer are each checked against their digests, through the same
-// bounded reader as ReadImageConfig. Any doubt is an error: a reference that
-// is not a digest, a build step that is missing or repeated, a history that
-// disagrees with the layers, an unexpected layer type, or a size over its cap.
-func ImageFileSHA256(ctx context.Context, httpClient *http.Client, registryHost, repo, digest, step, file string) (string, error) {
+// step step (an image config history "created_by") added to repo@digest's
+// image for platform, read anonymously. The operator compares an image's
+// /kv-internal-proxy with its own for its own architecture (w6/m469);
+// deploy.yml compares two production images' SNI proxies for linux/amd64 from
+// an arm64 runner (w6/m470). The manifest, config and layer are each checked
+// against their digests, through the same bounded reader as ReadImageConfig.
+// Any doubt is an error: a reference that is not a digest, a build step that
+// is missing or repeated, a history that disagrees with the layers, an
+// unexpected layer type, or a size over its cap.
+func ImageFileSHA256(ctx context.Context, httpClient *http.Client, registryHost, repo, digest string, platform Platform, step, file string) (string, error) {
 	if !IsDigest(digest) {
 		return "", fmt.Errorf("image reference %q is not a digest", digest)
 	}
-	platform := Platform{OS: "linux", Architecture: runtime.GOARCH}
 	_, _, document, err := readImageConfigDocument(ctx, httpClient, registryHost, repo, digest, "", platform)
 	if err != nil {
 		return "", err

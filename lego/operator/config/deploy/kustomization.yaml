@@ -2,13 +2,21 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # Disposable local/build overlay. Make copies this file beside config/default,
-# sets controller to IMG in the copy, builds it, then removes the copy. Keeping
-# the image transform above default updates every binary in the shared image
-# without rewriting the checked-in default kustomization.
+# sets controller and both SNI proxy placeholders to IMG in the copy, builds
+# it, then removes the copy. Keeping the image transform above default updates
+# every binary in the shared image without rewriting the checked-in default
+# kustomization. Production pins the SNI proxies separately (w6/m470,
+# deploy/gitops/base/bex.yaml); a local deploy runs them on IMG like the rest.
 resources:
   - ../default
 
 images:
   - name: controller
+    newName: bex-operator
+    newTag: dev
+  - name: kv-sni-proxy
+    newName: bex-operator
+    newTag: dev
+  - name: pg-sni-proxy
     newName: bex-operator
     newTag: dev

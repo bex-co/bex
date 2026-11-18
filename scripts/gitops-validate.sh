@@ -187,7 +187,8 @@ bash scripts/edge-proxyprotocol-validate.sh || fail=1
 # Enabling PROXY protocol before header-capable proxy pods are Ready breaks both
 # datastore front doors. Terraform must apply a saved plan only after the same
 # commit's deploy workflow succeeds, and that workflow must wait for the exact
-# freshly built digest on both proxy DaemonSets.
+# digest its write-back pinned on each proxy DaemonSet: the freshly built one,
+# or a held one whose binary is byte-identical (w6/m470).
 echo "==> datastore PROXY protocol rollout ordering"
 for required in \
   'terraform plan -no-color -out=tfplan' \
@@ -200,11 +201,20 @@ for required in \
   }
 done
 for required in \
-  'BEX_EXPECTED_PROXY_IMAGE: ${{ env.IMAGE }}@${{ needs.build.outputs.operator_digest }}' \
-  'bex-pg-sni-proxy bex-kv-sni-proxy' \
-  'rollout status "daemonset/${daemonset}"'; do
+  'bash scripts/operator-pins.sh write deploy/gitops/base/bex.yaml "$IMAGE" "$OP_DIGEST"' \
+  'run: bash scripts/operator-pins.sh wait'; do
   grep -qF "$required" .github/workflows/deploy.yml || {
     echo "FAIL: deploy workflow lost datastore proxy digest gate: $required" >&2
+    fail=1
+  }
+done
+for required in \
+  'for proxy in pg-sni-proxy kv-sni-proxy; do' \
+  '>>"$GITHUB_ENV"' \
+  '[ "${actual}" = "${expected}" ] && break' \
+  'rollout status "daemonset/${daemonset}"'; do
+  grep -qF -- "$required" scripts/operator-pins.sh || {
+    echo "FAIL: scripts/operator-pins.sh lost datastore proxy digest gate: $required" >&2
     fail=1
   }
 done
@@ -1354,6 +1364,48 @@ for port in 5432 6379; do
     fail=1
   fi
 done
+
+# w6/m470: each SNI proxy DaemonSet takes its own operator pin, which
+# deploy.yml holds while the proxy's binary is unchanged. Render config/prod
+# under three distinct digests, applied above it as Argo applies bex.yaml's
+# `kustomize.images`, and check each lands on its own workloads. A placeholder
+# reverted to controller:latest, or a config/default entry that renames one
+# before the outer edit can match it, would make the DaemonSet follow
+# controller= again, and the deploy's wait for the held digest would time out.
+echo "==> each SNI proxy DaemonSet takes its own operator pin (w6/m470)"
+operator_pins="$(yq -N 'select(.kind == "Application" and .metadata.name == "bex-operator") | .spec.source.kustomize.images[] | sub("=.*"; "")' deploy/gitops/base/bex.yaml | paste -sd, -)"
+if [ "$operator_pins" != controller,kv-sni-proxy,pg-sni-proxy ]; then
+  echo "FAIL: deploy/gitops/base/bex.yaml pins '$operator_pins', want controller,kv-sni-proxy,pg-sni-proxy" >&2
+  fail=1
+fi
+mkdir -p "$tmp/sni-pins/overlay"
+cp -R lego/operator/config "$tmp/sni-pins/config"
+cat >"$tmp/sni-pins/overlay/kustomization.yaml" <<EOF
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../config/prod
+images:
+  - name: controller
+    newName: ghcr.io/bex-co/bex-operator
+    digest: sha256:$(printf 'a%.0s' {1..64})
+  - name: kv-sni-proxy
+    newName: ghcr.io/bex-co/bex-operator
+    digest: sha256:$(printf 'b%.0s' {1..64})
+  - name: pg-sni-proxy
+    newName: ghcr.io/bex-co/bex-operator
+    digest: sha256:$(printf 'c%.0s' {1..64})
+EOF
+sni_pin_images="$(kubectl kustomize "$tmp/sni-pins/overlay" | yq -N '
+  select(.kind == "Deployment" or .kind == "DaemonSet" or .kind == "StatefulSet") |
+  .metadata.name + "=" + ([(.spec.template.spec.initContainers // [])[], .spec.template.spec.containers[] |
+    .image | select(test("^ghcr.io/bex-co/bex-operator@sha256:")) |
+    sub("^ghcr.io/bex-co/bex-operator@sha256:"; "") | .[0:4]] | join(";"))' |
+  grep -E 'bbbb|cccc' | sort | paste -sd, -)"
+if [ "$sni_pin_images" != bex-kv-sni-proxy=bbbb,bex-pg-sni-proxy=cccc ]; then
+  echo "FAIL: the SNI proxy pins reach '$sni_pin_images', want exactly bex-kv-sni-proxy=bbbb,bex-pg-sni-proxy=cccc (w6/m470)" >&2
+  fail=1
+fi
 
 check_request_path_ha() {
   local label="$1" manifest="$2" deployment="$3" pdb_manifest="$4" pdb="$5"
@@ -2572,6 +2624,11 @@ controller_digest_pattern='r"(?m)^(\s+tag: [^@\s]+@sha256:)[0-9a-f]{64}$"'
 for path in .github/workflows/deploy.yml scripts/deploy-superseded.sh; do
   grep -qF "$controller_digest_pattern" "$path" \
     || { echo "FAIL: $path hard-codes or omits the generated controller digest matcher" >&2; fail=1; }
+  # w6/m470: both generated-field checks know bex.yaml's two SNI proxy pins.
+  for proxy in kv-sni-proxy pg-sni-proxy; do
+    grep -qF "r\"(?m)^(\\s+- ${proxy}=[^@\\n]+@sha256:)[0-9a-f]{64}\$\"" "$path" \
+      || { echo "FAIL: $path omits the generated ${proxy} digest matcher (w6/m470)" >&2; fail=1; }
+  done
 done
 if grep -qF 'git reset --soft HEAD~1' .github/workflows/deploy.yml; then
   echo "FAIL: deploy workflow restored the broken digest write-back retry" >&2

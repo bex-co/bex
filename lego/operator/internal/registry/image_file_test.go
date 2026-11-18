@@ -120,10 +120,7 @@ func newTestImage(t *testing.T, proxy []byte, history []map[string]any) *testIma
 			},
 		})
 	}
-	other := "arm64"
-	if runtime.GOARCH == "arm64" {
-		other = "amd64"
-	}
+	other := otherArch()
 	img.index = img.add(mediaOCIIndex, map[string]any{
 		"schemaVersion": 2, "mediaType": mediaOCIIndex,
 		"manifests": []map[string]any{
@@ -134,6 +131,14 @@ func newTestImage(t *testing.T, proxy []byte, history []map[string]any) *testIma
 		},
 	})
 	return img
+}
+
+// otherArch is the architecture of the decoy image beside this process's.
+func otherArch() string {
+	if runtime.GOARCH == "arm64" {
+		return "amd64"
+	}
+	return "arm64"
 }
 
 func (img *testImage) serve(t *testing.T) *httptest.Server {
@@ -178,7 +183,12 @@ func (img *testImage) serve(t *testing.T) *httptest.Server {
 }
 
 func (img *testImage) fileSHA256(srv *httptest.Server, digest string) (string, error) {
-	return ImageFileSHA256(context.Background(), srv.Client(), strings.TrimPrefix(srv.URL, "http://"), img.repo, digest, proxyStep, proxyFile)
+	return img.platformFileSHA256(srv, digest, runtime.GOARCH)
+}
+
+func (img *testImage) platformFileSHA256(srv *httptest.Server, digest, arch string) (string, error) {
+	return ImageFileSHA256(context.Background(), srv.Client(), strings.TrimPrefix(srv.URL, "http://"), img.repo, digest,
+		Platform{OS: "linux", Architecture: arch}, proxyStep, proxyFile)
 }
 
 // w6/m469: the operator compares the /kv-internal-proxy in a proxy's running
@@ -193,6 +203,30 @@ func TestImageFileSHA256ReadsTheFileOutOfItsLayer(t *testing.T) {
 	}
 	if want := strings.TrimPrefix(digestOf(proxy), "sha256:"); got != want {
 		t.Fatalf("hash %s, want %s", got, want)
+	}
+}
+
+// w6/m470: deploy.yml compares two production images' SNI proxies from an
+// arm64 runner, and production runs linux/amd64, so the read follows the
+// platform it is asked for, not the process's.
+func TestImageFileSHA256ReadsThePlatformItIsAskedFor(t *testing.T) {
+	proxy := []byte("kv-internal-proxy for " + runtime.GOARCH)
+	img := newTestImage(t, proxy, nil)
+	srv := img.serve(t)
+	for arch, file := range map[string][]byte{
+		runtime.GOARCH: proxy,
+		otherArch():    []byte("another architecture's binary"),
+	} {
+		got, err := img.platformFileSHA256(srv, img.index, arch)
+		if err != nil {
+			t.Fatalf("linux/%s: %v", arch, err)
+		}
+		if want := strings.TrimPrefix(digestOf(file), "sha256:"); got != want {
+			t.Fatalf("linux/%s: hash %s, want %s (the other platform's file)", arch, got, want)
+		}
+	}
+	if got, err := img.platformFileSHA256(srv, img.index, "s390x"); err == nil {
+		t.Fatalf("linux/s390x, which the index lacks: hash %s, want an error", got)
 	}
 }
 

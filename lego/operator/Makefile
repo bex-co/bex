@@ -194,7 +194,7 @@ build-installer: manifests generate kustomize ## Generate a consolidated YAML wi
 	mkdir -p dist
 	@tmp="$$(mktemp -d config/.deploy.XXXXXX)"; trap 'rm -rf "$$tmp"' EXIT; \
 		cp config/deploy/kustomization.yaml "$$tmp/kustomization.yaml"; \
-		( cd "$$tmp" && "$(KUSTOMIZE)" edit set image controller=${IMG} ); \
+		( cd "$$tmp" && "$(KUSTOMIZE)" edit set image controller=${IMG} kv-sni-proxy=${IMG} pg-sni-proxy=${IMG} ); \
 		"$(KUSTOMIZE)" build "$$tmp" > dist/install.yaml
 
 ##@ Deployment
@@ -217,7 +217,7 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	@tmp="$$(mktemp -d config/.deploy.XXXXXX)"; trap 'rm -rf "$$tmp"' EXIT; \
 		cp config/deploy/kustomization.yaml "$$tmp/kustomization.yaml"; \
-		( cd "$$tmp" && "$(KUSTOMIZE)" edit set image controller=${IMG} ); \
+		( cd "$$tmp" && "$(KUSTOMIZE)" edit set image controller=${IMG} kv-sni-proxy=${IMG} pg-sni-proxy=${IMG} ); \
 		"$(KUSTOMIZE)" build "$$tmp" | "$(KUBECTL)" apply -f -
 
 .PHONY: undeploy

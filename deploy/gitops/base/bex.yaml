@@ -11,6 +11,16 @@
 # workflow's rollout-restart is now just a fast-path belt-and-suspenders.
 # NOTE: if the GHCR package is private, add an imagePullSecret in bex-system (or make
 # the package public) so app-cluster nodes can pull it.
+#
+# SNI PROXY PINS (w6/m470, docs/ADR021-keyvalue-management.md § 10): the two public
+# datastore front doors, bex-kv-sni-proxy and bex-pg-sni-proxy, run the same operator
+# image under their own placeholders. The same write-back moves each of their pins to
+# the new digest only when that image's /kv-sni-proxy (or /pg-sni-proxy) differs from
+# the pinned one's, and keeps it otherwise, so a deploy that leaves the proxy's code
+# alone rolls no proxy pod and closes no external Key Value or Postgres connection.
+# A held digest runs byte-identical bytes, and any doubt moves the pin. Keep each pin
+# on one line in this exact `name=image@sha256:` shape: deploy.yml and
+# scripts/deploy-superseded.sh match all three generated fields here.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -27,6 +37,8 @@ spec:
     kustomize:
       images:
         - controller=ghcr.io/bex-co/bex-operator@sha256:b41046430f2e30d9d223b09c065611d3e2a5521442528b0a6e59e66bc875961e
+        - kv-sni-proxy=ghcr.io/bex-co/bex-operator@sha256:b41046430f2e30d9d223b09c065611d3e2a5521442528b0a6e59e66bc875961e
+        - pg-sni-proxy=ghcr.io/bex-co/bex-operator@sha256:b41046430f2e30d9d223b09c065611d3e2a5521442528b0a6e59e66bc875961e
   destination:
     server: https://kubernetes.default.svc
     namespace: bex-system
