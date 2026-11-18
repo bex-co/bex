@@ -1,6 +1,6 @@
 # w3 · m305 — Workspace Settings has Render's sections: audit-log CSV export, registry credentials and notification overrides
 
-**Worker:** worker3 **Goal:** workspace-scoped settings live in Workspace Settings where Render puts them, and a Pro admin can export audit logs as Render's CSV **Status:** todo — t001–t004, t006–t008 done; the 2026-11-17 fixes (`c740aafc0`, `d46562c81`) are live in production pin `054f29128f64`; t005's production re-check, then t009
+**Worker:** worker3 **Goal:** workspace-scoped settings live in Workspace Settings where Render puts them, and a Pro admin can export audit logs as Render's CSV **Status:** done — every task done; on production pin `054f29128f64` (2026-11-18) the Workspace Settings skeletons match the ready page at 1440 and 390 and the CSV export equals REST in every column
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | Export a date range of audit logs as CSV — **DONE** | 1.5h | t001 |
 | t003 | Container Registry Credentials section moves to Workspace Settings — **DONE** | 1h | — |
 | t004 | Notification Overrides lists the services that differ from the workspace default — **DONE** | 1h | — |
-| t005 | Pending skeletons match the new Workspace Settings layout | 45m | t001, t002, t003, t004 |
+| t005 | Pending skeletons match the new Workspace Settings layout — **DONE** | 45m | t001, t002, t003, t004 |
 | t006 | Render parity — **DONE** | 30m | t005 |
 | t007 | Simplify — **DONE** | 20m | t006 |
 | t008 | Test coverage — **DONE** | 40m | t006 |
-| t009 | Closeout | 10m | t007, t008 |
+| t009 | Closeout — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
@@ -47,7 +47,7 @@
 
 - **Affected:** t005, t009. **Source:** verified evidence.
 - **Finding:** the production pin `336b647b1` (`chore(deploy): pin platform images to 6984548a30f8`, dashboard `bex-dashboard@sha256:1eeffddef4b5…`) contains this milestone's commit `557f1cf90`: `git merge-base --is-ancestor 557f1cf90 6984548a30f8` holds. The release condition in § Blocked is met.
-- **Next:** as the QA user in `bex-canary` on `dashboard.bex.co`, run checks (1)–(3) of § Blocked at 1440 and 390, record them in t005 and this README, then t009. Later skeleton work on this page ([w4/684](../../w4/done/684.md), [w4/686](../../w4/done/686.md)) is in the pin too, so the comparison reads today's frames.
+- **Next:** as the QA user in `bex-canary` on `dashboard.bex.co`, run checks (1)–(3) of § Blocked at 1440 and 390, record them in t005 and this README, then t009. Later skeleton work on this page ([w4/684](../../../w4/done/684.md), [w4/686](../../../w4/done/686.md)) is in the pin too, so the comparison reads today's frames.
 
 ## Live checks (2026-11-17, loopx w3, pin `6984548a30f8`)
 
@@ -79,8 +79,8 @@ The QA user ran the three checks in `bex-canary` (Scale, admin, two workspaces).
 
 ## Decision record (2026-11-17, loopx w3)
 
-- **`/settings`' route skeleton is not m305's.** m305 removed the Registry Credentials and Audit Log cards from it; its regions and rail now match the ready page's five sections and card counts. Its heights come from the generic `CardSkeleton` frames of w5/m79 t011, which w4/686 left unaudited. Filed as [w3/067](../done/067.md). t005's account-page criterion is narrowed to the sections m305 moved. Basis: the mismatch predates this milestone, and another item now owns it.
-- **Loader-less routes never paint their route skeleton on a cold navigation** (the chunk finding above). Filed as [w3/066](../done/066.md); it does not change what m305 checks, because the inline skeleton and the forced-loader probe both paint this page's frame.
+- **`/settings`' route skeleton is not m305's.** m305 removed the Registry Credentials and Audit Log cards from it; its regions and rail now match the ready page's five sections and card counts. Its heights come from the generic `CardSkeleton` frames of w5/m79 t011, which w4/686 left unaudited. Filed as [w3/067](../067.md). t005's account-page criterion is narrowed to the sections m305 moved. Basis: the mismatch predates this milestone, and another item now owns it.
+- **Loader-less routes never paint their route skeleton on a cold navigation** (the chunk finding above). Filed as [w3/066](../066.md); it does not change what m305 checks, because the inline skeleton and the forced-loader probe both paint this page's frame.
 
 ## Blocked (2026-11-17, loopx w3)
 
@@ -97,3 +97,56 @@ The QA user ran the three checks in `bex-canary` (Scale, admin, two workspaces).
 - **Finding:** the release gate in § Blocked (2026-11-17) is met. The newest production pin on origin/main, `0070f86ab` "chore(deploy): pin platform images to 054f29128f64" (2026-11-18 08:13Z), contains both m305 commits from 2026-11-17: `git merge-base --is-ancestor c740aafc0 054f29128f64` and `git merge-base --is-ancestor d46562c81 054f29128f64` both succeed. That pin moves `deploy/gitops/base/dashboard.yaml` to `bex-dashboard@sha256:66eae953f1d7…`. The live checks have not run on this build yet, so the milestone reopens as pending verification.
 - **Next:** as the QA user in `bex-canary` on `dashboard.bex.co`, run steps 1–2 of § Blocked (2026-11-17) at 1440 and 390. These are the forced-loader route skeleton and the direct load with GraphQL held, then the CSV export of a closed past range against REST. Record the heights in t005 and this README, log out, then run t009.
 - **Acceptance:** every outermost `[data-skeleton-region]` is within 4 px of its ready section (data-dependent counts aside), and the pending rail lists the same sections. The CSV has REST's row count, and every column equals REST's, with `status` as `success|error` and `metadata` parsed as JSON.
+
+## Live checks (2026-11-18, loopx w3, pin `054f29128f64`)
+
+The QA user ran the checks of § Blocked (2026-11-17) in `bex-canary` (Scale, admin, an org workspace, three workspaces). Production served `bex-dashboard@sha256:66eae953f1d7…`, the digest `deploy/gitops/base/dashboard.yaml` pins (the pod's `imageID`). Both checks pass.
+
+- **(1) The skeletons match.**
+  - **Route frame:** from `/` with the route's chunk loaded, a pending `loader` was set through `window.__TSR_ROUTER__` before a client navigation.
+  - **Inline frame:** a direct load with `api.bex.co/graphql` held.
+  - **Rail:** the route frame's rail equals the ready rail at both widths (13 sections). The inline rail lacks Workspace privacy, the data-dependent case below.
+  - **Heights** are the outermost `[data-skeleton-region]` against the ready `#<id>`, pending → ready, with one number where the two are equal. Tops matched wherever the heights above them did.
+
+  | Region | Route 1440 | Route 390 | Inline 1440 | Inline 390 |
+  | --- | --- | --- | --- | --- |
+  | page-header | 56 | 76 | ready page's own | ready page's own |
+  | navigation | 532 | 49 | ready page's own | ready page's own |
+  | general | 233 | 409 | 233 | 409 |
+  | privacy | 278 | 330 | not drawn → 278 | not drawn → 330 |
+  | build-pipeline | 150 | 210 | 150 | 210 |
+  | overlapping-deploy-policy | 278 | 366 | 278 | 366 |
+  | inbound-ip-rules | 458 | 686 | 458 | 686 |
+  | two-factor | 142 | 202 | 142 | 202 |
+  | google-login | 162 | 222 | 162 | 222 |
+  | team | 272.5 | 356.5 | 272.5 | 356.5 |
+  | notifications | 717 | 811 | 717 | 811 |
+  | agents | 2480 | 3186 → 3182 | 2480 | 3186 → 3182 |
+  | registry-credentials | 306 | 426 | 306 | 426 |
+  | audit-logs | 1353.5 | 1523.5 | 1353.5 | 1523.5 |
+  | danger-zone | 434 | 534 | 154 → 434 | 194 → 534 |
+
+  The route frame is within 4 px everywhere. The inline frame is within 4 px in every region it draws.
+  - **What the inline frame leaves out:** Workspace privacy and the Delete workspace card. Whether they appear depends on the workspace's organization and on the caller having another workspace. Those facts are the held data (the shell's workspace switcher is a skeleton in the same frame), so this falls under the criterion's data-dependent exception. The hook's standalone default for a cold load is w7/m464's choice.
+  - **Follow-up:** giving the cold frame a hint from the previous visit is filed as [w3/073](../../073.md).
+- **(2) The CSV equals REST.**
+  - **Export:** the range was 2026-11-11 → 2026-11-17 (UTC, closed). The file was `audit-logs-tea-daif693dqjvc73e7as3g-2026-11-11-2026-11-17.csv` (1.5 MB, header `timestamp,actor,event,status,metadata`, 9049 rows). It read `GET /v1/owners/{ownerId}/audit-logs` 10 times at `limit=1000` over `2026-11-11T00:00:00Z`–`2026-11-17T23:59:59.999999Z`.
+  - **REST:** paged separately at `limit=250` (37 pages), it answered 9049 rows, newest first, all inside the range.
+  - **Comparison:** timestamp, actor, event, status and metadata (parsed as JSON, key order ignored) were compared row by row, with 0 mismatches in every column.
+  - **Status and metadata:** `status` is `success` 9037 and `error` 12, and the 12 rows with `metadata.outcome: "denied"` are all `error`. The metadata is REST's map (`service`, `source_ip`, `user_agent`, …).
+- **Re-read on this pin:**
+  - `/settings` has no `#registry-credentials` or `#audit-logs`; its rail is Account · Integrations · Access credentials · Security · Danger zone.
+  - Notification Overrides shows its empty state. REST `GET /v1/notification-settings/overrides?ownerId=…` lists the workspace's 2 services, both on `default`, so neither has an override.
+  - In `tian-personal` (Hobby, the QA user is admin), Audit Log shows "Audit logs require the Pro plan" with no Export button and no date inputs.
+- **Cleanup:** the run's Kratos session was revoked (`qa-login.sh --logout`: `ok logged-out`). The Playwright MCP server dropped during the CSV step, so the CSV and re-read checks ran in headless Chrome with the same session.
+
+## Closeout (2026-11-18, loopx w3)
+
+The definition of done holds. Its live checks ran on production per the 2026-11-10 decision record.
+
+- **CSV export:** a Pro (Scale) workspace admin's export equals REST for the range in Render's five columns (§ Live checks 2026-11-18 (2)). A Hobby admin sees the plan notice and no export (re-read above).
+  - **Non-admin:** there is no non-admin QA account. `audit-log-panel.test.tsx` ("renders nothing for a non-admin (forbidden) caller") and `workspace.settings.test.tsx` ("hides Audit Logs and its link from a non-admin, before any 403") cover it.
+- **Placement:** Audit Logs and Container Registry Credentials are Workspace Settings sections and are absent from `/settings` (§ Live checks 2026-11-17 (3), re-read 2026-11-18). In-app links point to the new anchors (t001, t003).
+- **Overrides:** the card equals REST's overrides for `bex-canary` (none today). `notification-overrides-card.test.tsx` covers a non-empty list (t004, t008).
+- **Strings and frames:** en/zh strings ship in `features/audit/locales/` and `features/notifications/locales/`. The pending skeletons match at 1440 and 390 (§ Live checks 2026-11-18 (1)).
+- **CI:** dashboard `yarn lint` and `yarn test` passed in `test-dashboard` of the `deploy.yml` run that built pin `054f29128f64` (run 44262293900). That run's `deploy` job then timed out in `operator-pins.sh wait`, an operator rollout unrelated to the dashboard, which had rolled out. Every later main run is green.
