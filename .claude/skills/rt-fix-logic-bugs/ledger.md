@@ -8,6 +8,7 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 
 ## Skipped
 
+- 2026-11-18 billing/cron-minimum settle — audited, holds: top-up is max(0, min − round(run)) (pinned by TestCronMinimumTopUp + the new complement/monotonicity property), month charged exactly at end+49h with cursor once-only and ON CONFLICT guards, suspended-all-month/default-tenant owe nothing and deleted-mid-month owes (pinned by TestPGCronMinimum)
 - 2026-11-18 blueprint-plan/moves+planEnvironments vs apply regroup+ACL write — audited, holds: both sides judge the same diffPlacement/controls on the same rows, including isolation-only service flips and the datastore label behavior (existing moves/environments tests pin it)
 - 2026-11-18 blueprint-plan/build-source implicitRepo leniency — not a split: the plan's blueprintReadSpec equals specFromCreate on the sync's parse (containing override fills the repo); validate-time leniency is documented unknown-repo behavior
 - 2026-11-18 blueprint-plan/no-grouping-store plan states — plan stays best-effort while the apply fails unavailable/not-resolved; store availability, not a logic disagreement

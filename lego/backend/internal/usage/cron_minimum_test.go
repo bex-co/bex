@@ -18,7 +18,9 @@ package usage
 
 import (
 	"context"
+	"math"
 	"math/big"
+	"slices"
 	"testing"
 	"time"
 
@@ -54,6 +56,67 @@ func TestCronMinimumTopUp(t *testing.T) {
 				t.Errorf("cronMinimumTopUp(700000, %s) = %d, want %d", tc.run.FloatString(1), got, tc.want)
 			}
 		})
+	}
+}
+
+// w9/m448 as properties: the top-up is the complement of the rounded run
+// cost to the minimum (so the month's estimate shows max(run, minimum)),
+// bounded by it, monotonic in the runs, and nothing is owed when no minimum
+// is configured. The expected rounding is exact integer arithmetic
+// (quotient/remainder, ties up), independent of the FloatString path the
+// implementation takes. Hand-rolled and deterministic, like the pricing
+// package's property tests.
+func TestCronMinimumTopUpComplement(t *testing.T) {
+	const minimum = 700_000
+	exact := func(micros int64) *big.Rat { return big.NewRat(micros, 1) }
+	rats := []*big.Rat{
+		exact(0), exact(1), exact(2), exact(100),
+		exact(400_000), exact(499_999), exact(500_000),
+		exact(699_998), exact(699_999), exact(minimum), exact(700_001),
+		exact(1_000_000), exact(3_000_000), exact(1_000_000_000_000),
+	}
+	ties := []int64{0, 1, 199_999, 200_000, 699_998, 699_999}
+	for _, m := range ties {
+		rats = append(rats, big.NewRat(2*m+1, 2)) // m + 1/2 micro-USD rounds up
+	}
+	rats = append(rats,
+		big.NewRat(1, 3), big.NewRat(2, 3),
+		big.NewRat(2_099_998, 3), // 699999.33 rounds down
+		big.NewRat(2_099_999, 3), // 699999.67 rounds up
+	)
+	huge, ok := new(big.Rat).SetString("1000000000000000000000000000000")
+	if !ok {
+		t.Fatal("bad huge run literal")
+	}
+	rats = append(rats, huge)
+	slices.SortFunc(rats, (*big.Rat).Cmp)
+
+	prev := int64(math.MaxInt64)
+	for _, run := range rats {
+		got := cronMinimumTopUp(minimum, run)
+		num, den := run.Num(), run.Denom()
+		q, r := new(big.Int).QuoRem(num, den, new(big.Int))
+		rounded := new(big.Int).Set(q)
+		if new(big.Int).Mul(r, big.NewInt(2)).Cmp(den) >= 0 {
+			rounded.Add(rounded, big.NewInt(1))
+		}
+		want := int64(0)
+		if rounded.Cmp(big.NewInt(minimum)) < 0 {
+			want = minimum - rounded.Int64()
+		}
+		if got != want {
+			t.Errorf("cronMinimumTopUp(%d, %s) = %d, want complement %d", minimum, run.FloatString(2), got, want)
+		}
+		if got < 0 || got > minimum {
+			t.Errorf("cronMinimumTopUp(%d, %s) = %d, want within [0, %d]", minimum, run.FloatString(2), got, minimum)
+		}
+		if got > prev {
+			t.Errorf("top-up rose to %d after %d as runs grew: not monotonic", got, prev)
+		}
+		prev = got
+		if z := cronMinimumTopUp(0, run); z != 0 {
+			t.Errorf("cronMinimumTopUp(0, %s) = %d, want 0: no minimum bills nothing", run.FloatString(2), z)
+		}
 	}
 }
 
