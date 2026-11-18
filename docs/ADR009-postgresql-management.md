@@ -525,6 +525,15 @@ Each replica was healthy about 65 s after it was created. On that setup:
 - **Plan change.** From `basic-4gb` to `pro-4gb`, both pools stayed at 90 and no PgBouncer Pod rolled. CNPG recreated the primary's two instances and the replica's one for the new CPU, as a plan change always has.
 - **Deletion.** Deleting the Database garbage-collected the replica clusters, their Poolers, Services and PVCs.
 
+**Production check (2026-11-18, pin `1db506777e17`, CNPG 1.30.1, PostgreSQL 18.6).** A `1c-2g` probe in `bex-canary` with HA, replicas `a` and `b`, 10 GB, pooling and an allowlist of the checking host, created with `POST /v1/postgres` as the QA user. A `basic-4gb` probe came first, but its four 2-CPU instances did not fit the tenant pool (`bex-tenant-0`, `cx33`, at its maximum of 8 nodes), so its HA standby and replica `b` stayed Pending (w6/143). `1c-2g` has the same `max_connections` (100) and pool (90).
+
+- **Settles.** Ready about 2.5 minutes after the create. Both replicas ran on a node away from the primary's.
+- **Two pools.** From two pods in the workspace's namespace, `pgbench -n -c 1000 -j 10 -T 60` with `SELECT pg_sleep(0.2)` ran through `<id>-rp-a:6432` and `<id>-rp-b:6432` at once. Three `SHOW POOLS` samples read `sv_active` 90 on each with 907–910 clients waiting. `pg_stat_activity` read 90 tenant backends on each replica's instance (plus 6–7 `cnpg_pooler_pgbouncer` lookups), none on the HA standby, and on the primary only its own pooler's one. The runs processed 24,696 and 24,491 transactions (434 per second each; the pool's ceiling at 0.2 s is 450), none failed. Each replica's PgBouncer read Render's settings and `kernel file descriptor limit: 524288`.
+- **Each URL reads its own instance.** `-ro-a:5432` and `-rp-a:6432` read `a`'s Pod with `pg_is_in_recovery()` true, and `b`'s read `b`'s. From the allowlisted host, `<id>-ro-a`, `<id>-rp-a`, `<id>-ro-b` and `<id>-rp-b` under `db.bex.co:5432` connected with `verify-full` against the publicly trusted certificate, which names every host, and each read its own instance. Neither the primary nor the HA standby served a replica URL.
+- **Failover.** `POST /v1/postgres/{id}/failover` (202) promoted the HA standby in about 12 s. Deleting the new primary's Pod then promoted the old one in about 14 s. After each, both replicas streamed from `<id>-rw`, every replica URL read its own instance and the row just written through `<id>-rw`, and the replicas' Pods kept their UIDs with no restart.
+- **Connection slots.** Right after the load, a direct connection to `<id>-ro-a` read `remaining connection slots are reserved for roles with the SUPERUSER attribute`: `a`'s pool still held 90 idle server connections and 7 lookups, all 97 tenant slots (§ Connection slots above). It connected once the lookups closed.
+- **Deletion.** `DELETE` 204, then `GET` 404. The replica instances, whose primary was already gone, stopped after CNPG's 180 s smart-shutdown timeout, and no object of the probe was left 4 minutes after the delete.
+
 **What each change restarts or replaces.**
 
 | change | what happens |

@@ -1,6 +1,6 @@
 # w6 · m467 — Each read replica has its own endpoint and connection pool, as on Render
 
-**Worker:** worker6 **Goal:** each named read replica is one reader of its own. Its internal and external URLs reach only its own instance, never the primary or the HA standby, and it stays the same instance across reconciles and failovers. With pooling on, each replica has its own PgBouncer with a pool of `max_connections` − 10, so two replicas hold 90 server connections each at once, as Render's do. **Status:** todo (t001–t005 and t007–t009 done; unblocked 2026-11-18: production runs a pin carrying this milestone, so t006's probe is next)
+**Worker:** worker6 **Goal:** each named read replica is one reader of its own. Its internal and external URLs reach only its own instance, never the primary or the HA standby, and it stays the same instance across reconciles and failovers. With pooling on, each replica has its own PgBouncer with a pool of `max_connections` − 10, so two replicas hold 90 server connections each at once, as Render's do. **Status:** done (t006 passed on production 2026-11-18; closed by t010)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | t003 | [Each pooled replica has its own PgBouncer, sized `max_connections` − 10](done/t003.md) — **DONE** | 1h30m | t002 |
 | t004 | [External hostnames reach each replica's own reader and pooler](done/t004.md) — **DONE** | 1h | t002, t003 |
 | t005 | [dev-6: two replicas hold 90 server connections each; ADR009 and ADR018](done/t005.md) — **DONE** | 1h | t004 |
-| t006 | [Production: the same on a probe in `bex-canary`](t006.md) | 45m | t005 |
+| t006 | [Production: the same on a probe in `bex-canary`](done/t006.md) — **DONE** | 45m | t005 |
 | t007 | [Render parity](done/t007.md) — **DONE** | 30m | t005 |
 | t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
 | t009 | [Test coverage](done/t009.md) — **DONE** | 45m | t007 |
-| t010 | [Closeout](t010.md) | 10m | t006, t008, t009 |
+| t010 | [Closeout](done/t010.md) — **DONE** | 10m | t006, t008, t009 |
 
 ## Definition of done
 
@@ -57,6 +57,16 @@
 - **Source:** verified evidence, the gate's own check. The production pins `1ec5007be0fa` (`c7f44bd87`, 2026-11-18 14:44Z) and `1db506777e17` (`e5ace7826`, 21:22Z) both contain this milestone's commit `936b61bab` (`git merge-base --is-ancestor`). Production's `bex-system` Deployments and DaemonSets (controller, bex-api, pg-sni-proxy, kv-sni-proxy) run `bex-operator@sha256:62e7ab56…`, the digest `deploy/gitops/base/bex.yaml` pins at `1db506777e17`, and `kubectl get crd databases.app.bex.co -o yaml | grep -c ReadReplicaServiceName` reads 2.
 - **Remaining gates:** none. Production access works through `scripts/fetch-app-kubeconfig.sh` with the control-plane host key pinned from `~/.ssh/bex_cp_host_ed25519.pub` (w3/m472).
 - **Next:** t006's probe in `bex-canary` as its steps say, record the evidence in ADR009 and ADR018, then t010.
+
+## Production — 2026-11-18 (t006, pin `1db506777e17`)
+
+- **Probe.** `dpg-dbv2kjaoonls73bi994g`, `1c-2g` with HA, replicas `a` and `b`, 10 GB, pooling and this host allowlisted, created in `bex-canary` with `POST /v1/postgres` as the QA user; Ready in about 2.5 minutes. **Deviation:** t006 named `basic-4gb`. That probe (`dpg-dbv2gbaoonls73bi9920`) could not be placed: four 2-CPU instances do not fit `bex-tenant-0` (`cx33`, at its maximum of 8), so its HA standby and replica `b` stayed Pending with `max node group size reached`. It was deleted by ID (204, then 404) and filed as [w6/143](../../143.md). `1c-2g` has the same `max_connections` and pool (100, 90).
+- **Two pools at once.** 1,000 `pgbench` clients (`SELECT pg_sleep(0.2)`, 60 s) through each of `<id>-rp-a:6432` and `<id>-rp-b:6432` from two pods in the workspace's namespace: `SHOW POOLS` read `sv_active` 90 on each in three samples (907–910 waiting); `pg_stat_activity` read 90 tenant backends on each replica's instance, none on the HA standby; 24,696 and 24,491 transactions, 0 failed.
+- **Each URL reads its own instance.** Internal `-ro-a:5432`/`-rp-a:6432` read `a`'s Pod in recovery and `b`'s read `b`'s; external `<id>-ro-a`, `-rp-a`, `-ro-b`, `-rp-b` `.db.bex.co:5432` with `verify-full` (Let's Encrypt, every host named) read the same. The primary and the HA standby served no replica URL.
+- **Failover.** `POST /v1/postgres/{id}/failover` (202) promoted the HA standby `-2`; deleting `-2`'s Pod then promoted `-1`. After each, both replicas streamed from `<id>-rw` with unchanged Pod UIDs and no restart, and every replica URL read its own instance and the newest row. REST `connection-info` and the view listed each replica's own four hosts.
+- **Seen, already recorded.** Right after the load, a direct connection to `-ro-a` read `remaining connection slots are reserved`, the pool's idle connections and lookups holding all 97 tenant slots (ADR009 § Per-replica readers and pools, Connection slots); it connected once the lookups closed.
+- **Cleanup.** Load pods deleted; probe `DELETE` 204 at 22:58Z, then `GET` 404; the replica instances stopped after CNPG's 180 s smart-shutdown timeout, and nothing of the probe was left by 23:03Z. The QA session was logged out.
+- **Recorded** in ADR009 § Per-replica readers and pools (Production check) and ADR018's HA row.
 
 ## Source + Goal linkage
 
