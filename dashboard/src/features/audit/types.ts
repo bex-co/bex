@@ -14,6 +14,9 @@ export interface AuditEvent {
   /** A person's current email (Render's actor.email); "" for an API key, the
    *  system and a deleted user. */
   actorEmail: string;
+  /** The person has deleted their account (REST's actorDeleted, w9/099):
+   *  the row names them by actorId as Render does, never the stored marker. */
+  actorDeleted: boolean;
   /** Where the actor acted from (Render's source_ip / user_agent metadata);
    *  "" on a row no request of the actor caused. */
   sourceIp: string;

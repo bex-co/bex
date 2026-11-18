@@ -114,14 +114,21 @@ function csvCell(value: string): string {
 }
 
 /**
- * Render's actor column: a person's email; a deleted user as Render names one,
- * `Deleted User ID#<id>` (w9/099); else the id REST answers (a person whose
- * email could not be read, an API key's client id); a system row has neither.
+ * How Render names a person who has deleted their account (w9/099): the
+ * export's actor column and the Audit Log table's actor cell (w9/101) alike.
+ */
+export function deletedUserLabel(id: string): string {
+  return `Deleted User ID#${id}`;
+}
+
+/**
+ * Render's actor column: a person's email; a deleted user as Render names one
+ * (deletedUserLabel); else the id REST answers (a person whose email could not
+ * be read, an API key's client id); a system row has neither.
  */
 function csvActor(log: RenderAuditLog): string {
   if (log.actor.email) return log.actor.email;
-  if (log.actorDeleted && log.actor.id)
-    return `Deleted User ID#${log.actor.id}`;
+  if (log.actorDeleted && log.actor.id) return deletedUserLabel(log.actor.id);
   return log.actor.id || "";
 }
 

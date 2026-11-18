@@ -5,6 +5,7 @@ import { useWorkspaceSubjectLabel } from "@/common/hooks/use-workspace-subject-l
 import { LocalDateTime } from "@/common/components/local-time";
 import type { AuditEvent } from "@/features/audit/types";
 import { shortUserAgent } from "@/features/audit/lib/short-user-agent";
+import { deletedUserLabel } from "@/features/audit/lib/audit-csv";
 
 export interface AuditEventRowProps {
   event: AuditEvent;
@@ -18,9 +19,18 @@ export interface AuditEventRowProps {
  *  AuditLogTableFrame reserves per placeholder row (w4/684). */
 export function AuditEventRow({ event }: AuditEventRowProps) {
   const { t } = useTranslations();
-  // The person's email from the row itself names them at first paint, and
-  // still does after they left the workspace's member list (w9/m450).
-  const actor = useWorkspaceSubjectLabel(event.actor ?? "", event.actorEmail);
+  // Named as the CSV export names them (w9/101), never by the stored subject:
+  // a deleted user's is an internal marker, and REST's actor.id (the usr- id)
+  // is what the roster and the export know a person by. The row's own email
+  // still wins from first paint, after they left the roster (w9/m450).
+  const subject = event.actorId || event.actor;
+  const actor = useWorkspaceSubjectLabel(
+    subject,
+    event.actorEmail ||
+      (event.actorDeleted && event.actorId
+        ? deletedUserLabel(event.actorId)
+        : null),
+  );
   const client = shortUserAgent(event.userAgent);
   // What a rename, a custom-domain verb, an env-group link (w5/183), an env
   // var row (w9/m449) or an OAuth access grant (w4/m454) changed, or the
@@ -42,7 +52,7 @@ export function AuditEventRow({ event }: AuditEventRowProps) {
               })
             : event.instance
               ? t("audit.changeInstance", { instance: event.instance })
-            : null;
+              : null;
   // How the actor authenticated, and for a third-party OAuth grant which
   // client and scopes, share one truncated second line (w4/684): every row
   // stays the two-line height the loading frame reserves.
@@ -67,7 +77,9 @@ export function AuditEventRow({ event }: AuditEventRowProps) {
         <LocalDateTime value={event.timestamp} fallback={null} />
       </TableCell>
       <TableCell className="max-w-[16rem] truncate text-sm">
-        {event.actor ? actor : t("audit.actorUnknown")}
+        {/* Inline, so the first line stays the cell's own (w4/684); the
+            title carries the whole label the cell may truncate. */}
+        {subject ? <span title={actor}>{actor}</span> : t("audit.actorUnknown")}
         {actorDetail ? (
           <span
             className="text-muted-foreground block truncate text-xs"

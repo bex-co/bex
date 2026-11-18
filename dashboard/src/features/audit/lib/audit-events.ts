@@ -19,6 +19,7 @@ export function toAuditEvents(
       actorMethod: e.actorMethod ?? "",
       actorId: e.actorId ?? "",
       actorEmail: e.actorEmail ?? "",
+      actorDeleted: e.actorDeleted === true,
       sourceIp: e.sourceIp ?? "",
       userAgent: e.userAgent ?? "",
       instance: e.instance ?? "",

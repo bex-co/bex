@@ -24,6 +24,9 @@ query AuditLogs(
     actorMethod
     actorId
     actorEmail
+    # REST's actorDeleted (w9/099): the row names the person as the export
+    # does, `Deleted User ID#<actorId>` (w9/101).
+    actorDeleted
     sourceIp
     userAgent
     instance

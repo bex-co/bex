@@ -81,6 +81,31 @@ describe("useAuditLog", () => {
     expect(result.current.error).toBeUndefined();
   });
 
+  it("carries whether the actor deleted their account, with their usr- id (w9/101)", () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        auditLogs: [
+          rawEvent("ev-deleted", {
+            actor: "deleted:own-dbum0qseoepc73dlkt9g",
+            actorId: "usr-dbum0qseoepc73dlkt9g",
+            actorDeleted: true,
+          }),
+          rawEvent("ev-live"),
+        ],
+      },
+      loading: false,
+      error: undefined,
+    });
+
+    const { result } = renderHook(() => useAuditLog());
+
+    expect(result.current.events[0]).toMatchObject({
+      actorId: "usr-dbum0qseoepc73dlkt9g",
+      actorDeleted: true,
+    });
+    expect(result.current.events[1]!.actorDeleted).toBe(false);
+  });
+
   it("loadMore appends the next page and dedupes any overlap at the boundary", async () => {
     // A full first page (20 = PAGE_SIZE) so hasMore starts true.
     mockUseQuery.mockReturnValue({
