@@ -1,4 +1,4 @@
-# w3 · m473 — The official Render CLI's log viewer can scroll back on bex: `GET /v1/logs` accepts its `limit=1000`
+# w3 · m475 — The official Render CLI's log viewer can scroll back on bex: `GET /v1/logs` accepts its `limit=1000`
 
 **Worker:** worker3 **Goal:** scrolling up in `render logs`' interactive viewer loads older lines on bex, as it does on Render, instead of failing with `400 limit must be an integer between 1 and 100`. **Status:** todo
 
@@ -25,6 +25,7 @@
 
 ## Source + Goal linkage
 
+- **Renumbered:** filed as `w3/m473` on 2026-11-18 (`3103fa87f`), renumbered to m475 the same day. w9 had filed m472–m474 four minutes earlier (`054f29128`), and milestone numbers are global. `w3/m472` keeps its number: it shipped first, and every reference to it is workstream-qualified.
 - **Source:** the `/loopx w3` drained report of 2026-11-17, finding 5. That finding came from the deleted first draft of ADR113, which traced the CLI's log path. `/pmx 1,2,3,5 to w3` filed it on 2026-11-18. Re-checked against `origin/main` `d41bbb9c2`.
 - **Evidence:**
   - The pinned CLI (`render-oss/cli@v1.1.3-0.20261106232710-4fd34231b637`, `pkg/tui/views/logview.go:196-203`) sets `paginatedInput.Limit = logs.PaginationLogLimit` for every scroll-to-load request, and `pkg/logs/constants.go:7` sets `PaginationLogLimit = 1000`.
