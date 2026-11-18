@@ -1,0 +1,4 @@
+interface:
+  display_name: "Loop to Meet Webby Award Bar"
+  short_description: "Review and polish pages until they meet the Webby bar"
+  default_prompt: "Use $loop-to-meet-webby-award-bar to review the given page(s) at every viewport size and redesign or polish them until they meet the Webby Awards bar."
