@@ -423,10 +423,18 @@ func (s *Service) buildSourceScope(ctx context.Context, carrier *appv1alpha1.App
 
 // planBlueprintBuildSource is a build source's plan action: a create, or an
 // update naming each git/image field whose declared value would change it.
+//
+// A build source's project cannot change (ADR097 §2), and the apply refuses
+// a carrier re-declared outside its own project before any write — so the
+// plan refuses it too, with the same wording, instead of reporting the quiet
+// no-op or update its spec probe computes.
 func (r *blueprintActionResolver) planBlueprintBuildSource(ctx context.Context, resource BlueprintResourceIR, action BlueprintPlanAction) (BlueprintPlanAction, error) {
 	b, ok := parsedBlueprintBuildSource(r.parsed, resource.Name)
 	if !ok {
 		return BlueprintPlanAction{}, fmt.Errorf("compiled build source is missing")
+	}
+	if err := r.refuseBlueprintBuildSourceMove(ctx, resource, b); err != nil {
+		return BlueprintPlanAction{}, err
 	}
 	current := r.buildSources[resource.Name]
 	want, err := blueprintReadSpec(ctx, b.svc.req)
@@ -457,6 +465,61 @@ func (r *blueprintActionResolver) planBlueprintBuildSource(ctx context.Context, 
 	}
 	sort.Slice(action.ChangedFields, func(i, j int) bool { return action.ChangedFields[i].Path < action.ChangedFields[j].Path })
 	return action, nil
+}
+
+// refuseBlueprintBuildSourceMove is the plan half of applyStackBuildSource's
+// project check (ADR097 §2: a build source's project cannot change). The
+// apply resolves the declared project to the id it creates or finds and
+// refuses a carrier scoped anywhere else, so the plan resolves the same name
+// against the same store rows and refuses the same declarations, in the same
+// words. The scope is read through buildSourceScope exactly as the apply
+// reads it, so the two agree even where the store cannot answer. A plan
+// without a resolver, or without a grouping store to resolve the declared
+// project against, cannot prove the mismatch; it plans as before, and the
+// apply fails that state its own way.
+func (r *blueprintActionResolver) refuseBlueprintBuildSourceMove(ctx context.Context, resource BlueprintResourceIR, b parsedBuildSource) error {
+	if r.service == nil {
+		return nil
+	}
+	current := r.buildSources[resource.Name]
+	if current == nil {
+		return nil
+	}
+	var projectID string
+	if b.project != "" {
+		if r.service.BlueprintGroups == nil {
+			return nil
+		}
+		placements, err := r.service.blueprintEnvironmentPlacements(ctx, r.snap, r.parsed.groupings)
+		if err != nil {
+			return err
+		}
+		var ok bool
+		if projectID, ok = placements.buildSourceProject(b.project); !ok {
+			return blueprintBuildSourceScopeRefusal(b)
+		}
+	}
+	scope, err := r.service.buildSourceScope(ctx, current)
+	if err != nil {
+		return err
+	}
+	if scope != projectID {
+		return blueprintBuildSourceScopeRefusal(b)
+	}
+	return nil
+}
+
+// blueprintBuildSourceScopeRefusal is applyStackBuildSource's project refusal
+// as a located plan error: a re-declaration outside the carrier's own
+// project, or at root for a project-scoped carrier.
+func blueprintBuildSourceScopeRefusal(b parsedBuildSource) error {
+	var err error
+	if b.project != "" {
+		err = fmt.Errorf("%w: build source %q is not scoped to project %q; a build source's project cannot change", core.ErrBadRequest, b.name, b.project)
+	} else {
+		err = fmt.Errorf("%w: build source %q is scoped to a project; declare it under that project's buildSources, since a build source's project cannot change", core.ErrBadRequest, b.name)
+	}
+	return blueprintResourceErrors{{kind: BlueprintResourceBuildSource, name: b.name, err: err}}
 }
 
 // blueprintServiceLink is the build source link an existing service's

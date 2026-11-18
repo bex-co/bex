@@ -497,6 +497,98 @@ func TestBuildSourceExportReadsEachProjectOnce(t *testing.T) {
 // its next build (Render gives the group "at build time"), so Spec carries no
 // ref yet. Export reads the links the owner asked for, staged ones included,
 // and keeps the fromGroup.
+// The plan refuses what the apply refuses: a build source's project cannot
+// change (ADR097 §2), so re-declaring an existing carrier anywhere but under
+// its own project is a refusal in both. Until this was pinned the plan probed
+// only spec fields, so a root declaration of a project-scoped source planned
+// a quiet no-op while the apply refused it.
+func TestBlueprintBuildSourcePlanRefusesScopeChange(t *testing.T) {
+	svc, st, ctx := newBuildSourceService(t)
+	svc.BlueprintGroups = &blueprintGroupingTestStore{recordingStore: st.recordingStore,
+		projects: []store.Project{
+			{ID: "prj-a", TenantID: "tea-a", Name: "p"},
+			{ID: "prj-b", TenantID: "tea-a", Name: "q"},
+		}}
+	ctx = core.WithWorkspace(ctx, "tea-a")
+	const scoped = `projects:
+  - name: p
+    buildSources:
+      - name: mono
+        image: {url: nginx:1}
+`
+	if _, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-a", Manifest: scoped}); err != nil {
+		t.Fatalf("DeployStack scoped: %v", err)
+	}
+	const unscoped = `buildSources:
+  - name: plain
+    image: {url: nginx:1}
+`
+	if _, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-a", Manifest: unscoped}); err != nil {
+		t.Fatalf("DeployStack unscoped: %v", err)
+	}
+	at := func(name, project string) string {
+		entry := "      - name: " + name + "\n        image: {url: nginx:1}\n"
+		if project == "" {
+			return "buildSources:\n" + entry
+		}
+		return "projects:\n  - name: " + project + "\n    buildSources:\n" + entry
+	}
+	plan := func(manifest string) (BlueprintPlan, error) {
+		t.Helper()
+		source, ir, problems := CompileBlueprintIR(manifest)
+		if len(problems) > 0 {
+			t.Fatalf("CompileBlueprintIR() problems = %+v", problems)
+		}
+		st, err := parseCompiledStack(blueprintParseOverrides{containing: true}, source, ir)
+		if err != nil {
+			t.Fatalf("parseCompiledStack: %v", err)
+		}
+		got, _, err := svc.blueprintActionPlan(ctx, ir, st, "", svc.newWorkspaceSnapshot(ctx))
+		return got, err
+	}
+	operation := func(t *testing.T, got BlueprintPlan, name string) BlueprintPlanOperation {
+		t.Helper()
+		for _, a := range got.Actions {
+			if a.Kind == BlueprintResourceBuildSource && a.Name == name {
+				return a.Operation
+			}
+		}
+		t.Fatalf("no build source action for %q in %+v", name, got.Actions)
+		return ""
+	}
+	for _, tc := range []struct {
+		name, manifest, wantErr string
+	}{
+		{name: "scoped carrier at root", manifest: at("mono", ""), wantErr: "is scoped to a project"},
+		{name: "scoped carrier under another project", manifest: at("mono", "q"), wantErr: `is not scoped to project "q"`},
+		{name: "unscoped carrier under a project", manifest: at("plain", "p"), wantErr: `is not scoped to project "p"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := func() error { _, err := plan(tc.manifest); return err }()
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("plan(%s) err = %v, want a refusal containing %q", tc.name, err, tc.wantErr)
+			}
+			if !errors.Is(err, core.ErrBadRequest) {
+				t.Fatalf("plan(%s) err = %v, want a bad request", tc.name, err)
+			}
+		})
+	}
+	for _, tc := range []struct{ name, carrier, manifest string }{
+		{name: "scoped carrier under its own project", carrier: "mono", manifest: at("mono", "p")},
+		{name: "unscoped carrier at root", carrier: "plain", manifest: at("plain", "")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := plan(tc.manifest)
+			if err != nil {
+				t.Fatalf("plan(%s) err = %v, want a quiet plan", tc.name, err)
+			}
+			if op := operation(t, got, tc.carrier); op != BlueprintPlanNoop {
+				t.Fatalf("plan(%s) = %s, want noop", tc.name, op)
+			}
+		})
+	}
+}
+
 func TestBuildSourceExportKeepsAStagedGroupLink(t *testing.T) {
 	svc, _, ctx := newBuildSourceService(t)
 	created, err := svc.CreateBuildSource(ctx, monorepoSource)
