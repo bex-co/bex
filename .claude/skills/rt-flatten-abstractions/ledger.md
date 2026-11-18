@@ -8,6 +8,9 @@ None yet.
 
 ## Skipped
 
+- 2026-11-18 `oidcissuer.KeyStore`/`RotationStore` — narrow PGStore seams letting rotation/keyset tests run without a database; external-dependency inversion like the backend entry below
+- 2026-11-18 `portsScanner`, `organizationAuditStore` — optional-capability assertions with a fallback path; flattening drops the degradation, not the indirection
+- 2026-11-18 `toWirePage`/`toWireList`, the `budgets()`/`limiter()` memoizer pairs, `PrepareSetup`/`PrepareBuild`/`TransitionToAgent`, `terminalFile` — thin named wrappers below the value bar: inlining moves code without removing a drift hazard
 - 2026-11-15 `agentsessions.QueueSessions` — the dispatcher test implements it (`countingSteer`); flattening forces a non-mechanical test rewrite
 - 2026-11-15 `types.DiskChildName`, `expandDest` — semantic naming
 - 2026-11-14 operator `sandboxMeterCredsMinter`, `datastoreLister`, `clusterBuilderGetter`, `staticserver.Origin`/`Resolver`, `migrate.Registry`/`Objects`, `portscan.Scanner` — documented fake-based test seams
