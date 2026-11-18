@@ -5332,7 +5332,7 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 		if err != nil {
 			return r.fail(ctx, app, "DeployFailed", err)
 		}
-		withManagedOIDCPod(&tmpl.Spec, effectiveApp, oidc)
+		withManagedOIDCPod(&tmpl, effectiveApp, oidc)
 	}
 	res, err := r.applyServingCronJob(ctx, app, tmpl, restore != nil)
 	if err != nil {
@@ -7531,7 +7531,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	if err != nil {
 		return notStarted(err)
 	}
-	if vol, mount := managedOIDCVolume(app, oidc); vol != nil {
+	if vol, mount := managedOIDCVolume(app, oidc.providers); vol != nil {
 		vols = append(vols, *vol)
 		mounts = append(mounts, *mount)
 	}
@@ -7542,7 +7542,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	opts := r.stepJobOptions(app, gen)
 	opts.Image = image
 	opts.Command = preDeployArgv(app, image, command)
-	opts.Env = withManagedOIDC(withPlatformEnv(appEnv(app, port), platformEnv(app, platformEnvInputs{baseDomain: r.BaseDomain, gitCommit: r.imageCommit(ctx, app, image)})), oidc)
+	opts.Env = withManagedOIDC(withPlatformEnv(appEnv(app, port), platformEnv(app, platformEnvInputs{baseDomain: r.BaseDomain, gitCommit: r.imageCommit(ctx, app, image)})), oidc.providers)
 	opts.EnvFrom = envFromSources(release)
 	opts.ImagePullSecrets = pullSecrets
 	opts.SecurityContext = appSecCtx(app.Spec)

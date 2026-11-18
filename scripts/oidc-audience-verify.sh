@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # oidc-audience-verify.sh — prove each Managed OIDC token a running service
 # holds is accepted only where its own provider's audience is expected
-# (docs/ADR116-managed-oidc.md D10, w2/m478 t003).
+# (docs/ADR116-managed-oidc.md D10, w2/m478 t003; GCP: D11, w2/m479).
 #
 #   KUBECONFIG=<app cluster kubeconfig> bash scripts/oidc-audience-verify.sh <tea-…> <srv-…>
 #
 # The service must set the triggers of at least two providers (AWS_ROLE_ARN,
-# ANTHROPIC_FEDERATION_RULE_ID, OPENAI_IDENTITY_PROVIDER_ID) in a Pro-or-higher
-# workspace, be deployed since, and run an image with sh and cat (as an SSH
-# session needs).
+# GCP_WORKLOAD_IDENTITY_PROVIDER, ANTHROPIC_FEDERATION_RULE_ID,
+# OPENAI_IDENTITY_PROVIDER_ID) in a Pro-or-higher workspace, be deployed
+# since, and run an image with sh and cat (as an SSH session needs).
 #
 # 1. In a running instance, for every provider: when its trigger is set, its
 #    file variable names /var/lib/render/oidc/<file>, the file cannot be
@@ -16,6 +16,9 @@
 #    audience (iss <issuer base>/<tea>, aud, sub
 #    workspace:<tea>:environment:…:service:<srv>, exp = iat + 3600); when it
 #    is not, the file variable is unset. Every token carries the same sub.
+#    GCP's variable names its credential configuration instead: an
+#    external_account file naming the token file and the provider's full
+#    resource name, whose https: form is the token's audience.
 # 2. For each mounted provider, a MinIO STS trusting <issuer base>/<tea> for
 #    that provider's audience (scripts/lib/oidc-sts.sh) issues credentials for
 #    that provider's token and refuses every other provider's, so a token
@@ -46,10 +49,13 @@ base=${base%/}
 issuer="$base/$workspace"
 namespace=${APP_NAMESPACE:-$workspace}
 
-# One line per provider: name, trigger, file variable, file, audience. The
-# same table as ManagedOIDCProviders in lego/types/v1alpha1/managed_oidc.go;
-# scripts/oidc-audience-verify.test.sh fails when the two drift.
+# One line per provider: name, trigger, file variable, token file, audience
+# (- when the credential configuration fixes it), credential configuration.
+# The same table as ManagedOIDCProviders in
+# lego/types/v1alpha1/managed_oidc.go; scripts/oidc-audience-verify.test.sh
+# fails when the two drift.
 providers="aws AWS_ROLE_ARN AWS_WEB_IDENTITY_TOKEN_FILE aws-token sts.amazonaws.com
+gcp GCP_WORKLOAD_IDENTITY_PROVIDER GOOGLE_APPLICATION_CREDENTIALS gcp-token - gcp-credentials.json
 anthropic ANTHROPIC_FEDERATION_RULE_ID ANTHROPIC_IDENTITY_TOKEN_FILE anthropic-token api.anthropic.com
 openai OPENAI_IDENTITY_PROVIDER_ID OPENAI_IDENTITY_TOKEN_FILE openai-token api.openai.com"
 
@@ -79,7 +85,8 @@ in_pod() { kubectl -n "$namespace" exec "$pod" -c app -- sh -c "$1" </dev/null; 
 
 want_sub_prefix="workspace:$workspace:environment:"
 : >"$tmp/mounted"
-while read -r name trigger file_env file audience <&3; do
+gcp_audience='^//iam\.googleapis\.com/projects/[0-9]+/locations/[a-z0-9-]+/workloadIdentityPools/[a-z0-9-]+/providers/[a-z0-9-]+$'
+while read -r name trigger file_env file audience config <&3; do
   set_to=$(in_pod "printf %s \"\${$trigger:-}\"")
   path=$(in_pod "printf %s \"\${$file_env:-}\"")
   if [ -z "${set_to//[[:space:]]/}" ]; then
@@ -90,7 +97,7 @@ while read -r name trigger file_env file audience <&3; do
     fi
     continue
   fi
-  want="/var/lib/render/oidc/$file"
+  want="/var/lib/render/oidc/${config:-$file}"
   if [ "$path" = "$want" ]; then
     pass "$name: $trigger is set and $file_env=$path"
   else
@@ -102,7 +109,20 @@ while read -r name trigger file_env file audience <&3; do
   else
     pass "$name: the token file is read-only"
   fi
-  token=$(in_pod "cat \"\$$file_env\"")
+  token_file="\$$file_env"
+  if [ -n "$config" ]; then
+    cfg=$(in_pod "cat \"\$$file_env\"")
+    if jq -e --arg file "/var/lib/render/oidc/$file" --arg aud "$gcp_audience" \
+      '.type == "external_account" and .credential_source.file == $file and (.audience | test($aud))' <<<"$cfg" >/dev/null 2>&1; then
+      audience="https:$(jq -r .audience <<<"$cfg")"
+      pass "$name: $file_env is an external_account configuration for /var/lib/render/oidc/$file"
+    else
+      fail "$name: $file_env is not an external_account configuration for /var/lib/render/oidc/$file: $(head -c 400 <<<"$cfg")"
+      continue
+    fi
+    token_file="/var/lib/render/oidc/$file"
+  fi
+  token=$(in_pod "cat \"$token_file\"")
   claims=$(oidc_claims "$token")
   if jq -e --arg iss "$issuer" --arg aud "$audience" --arg pre "$want_sub_prefix" --arg srv ":service:$service" \
     '.iss == $iss and .aud == $aud and (.sub | startswith($pre) and endswith($srv)) and .exp - .iat == 3600' \

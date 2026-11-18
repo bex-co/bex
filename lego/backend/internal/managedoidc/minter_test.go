@@ -24,6 +24,7 @@ import (
 	"os"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -263,6 +264,13 @@ func TestAServiceWithSeveralProvidersGetsOneTokenPerAudience(t *testing.T) {
 	cl := fake.NewClientBuilder().WithScheme(scheme(t)).WithObjects(app).WithStatusSubresource(app).Build()
 	m := NewMinter(cl, f.issuer)
 	m.Now = f.clock.Now
+	gcpInputs := appv1alpha1.ManagedOIDCGCP{WorkloadIdentityProvider: gcpProvider}
+	audienceOf := func(p appv1alpha1.ManagedOIDCProvider) string {
+		if p.Name == appv1alpha1.ManagedOIDCGCPName {
+			return gcpInputs.Audience()
+		}
+		return p.Audience
+	}
 	setProviders := func(names ...string) {
 		t.Helper()
 		var cur appv1alpha1.App
@@ -270,6 +278,7 @@ func TestAServiceWithSeveralProvidersGetsOneTokenPerAudience(t *testing.T) {
 			t.Fatal(err)
 		}
 		cur.Status.ManagedOIDC.Providers = names
+		cur.Status.ManagedOIDC.GCP = &gcpInputs
 		cur.Status.ManagedOIDC.Generation++
 		if err := cl.Status().Update(ctx, &cur); err != nil {
 			t.Fatal(err)
@@ -291,9 +300,9 @@ func TestAServiceWithSeveralProvidersGetsOneTokenPerAudience(t *testing.T) {
 	pass()
 	f.clock.advance(RefreshAfter / 2)
 	f.reload(t)
-	setProviders("aws", "anthropic", "openai")
+	setProviders("aws", "gcp", "anthropic", "openai")
 	s := pass()
-	if got, want := keysOf(s), []string{"anthropic-token", "aws-token", "openai-token"}; !slices.Equal(got, want) {
+	if got, want := keysOf(s), []string{"anthropic-token", "aws-token", "gcp-credentials.json", "gcp-token", "openai-token"}; !slices.Equal(got, want) {
 		t.Fatalf("a provider added at a deploy: Secret keys = %v, want %v at once", got, want)
 	}
 
@@ -307,9 +316,9 @@ func TestAServiceWithSeveralProvidersGetsOneTokenPerAudience(t *testing.T) {
 	wantSub := "workspace:" + wsA + ":environment:" + evmA + ":service:" + srvA
 	for _, own := range appv1alpha1.ManagedOIDCProviders {
 		tok := s.Data[own.File]
-		idt, err := verify(tok, own.Audience)
+		idt, err := verify(tok, audienceOf(own))
 		if err != nil {
-			t.Fatalf("the %s token does not verify for %s: %v", own.Name, own.Audience, err)
+			t.Fatalf("the %s token does not verify for %s: %v", own.Name, audienceOf(own), err)
 		}
 		if idt.Subject != wantSub || idt.Issuer != f.base+"/"+wsA {
 			t.Errorf("the %s token: iss %q sub %q, want the workspace's issuer and %q", own.Name, idt.Issuer, idt.Subject, wantSub)
@@ -318,8 +327,8 @@ func TestAServiceWithSeveralProvidersGetsOneTokenPerAudience(t *testing.T) {
 			if other.Name == own.Name {
 				continue
 			}
-			if _, err := verify(tok, other.Audience); err == nil {
-				t.Errorf("the %s token verifies where %s's audience %s is expected", own.Name, other.Name, other.Audience)
+			if _, err := verify(tok, audienceOf(other)); err == nil {
+				t.Errorf("the %s token verifies where %s's audience %s is expected", own.Name, other.Name, audienceOf(other))
 			}
 		}
 	}
@@ -334,6 +343,83 @@ func TestAServiceWithSeveralProvidersGetsOneTokenPerAudience(t *testing.T) {
 		if _, err := verify(s.Data[own.File], own.Audience); err != nil {
 			t.Errorf("the %s token left after dropping Anthropic does not verify: %v", name, err)
 		}
+	}
+}
+
+// TestAGCPReleaseGetsItsCredentialConfigurationBesideItsToken (w2/m479,
+// ADR116 D11): a release that mounts GCP gets its token for the provider's
+// default audience and, beside it, gcloud's credential configuration naming
+// that token file. A deploy that changes the provider or the service account
+// rewrites the configuration and re-mints the token for the new audience at
+// once; a release recorded without inputs gets nothing minted for an empty
+// audience, and the pass says so.
+func TestAGCPReleaseGetsItsCredentialConfigurationBesideItsToken(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	app := optedIn("web", srvA)
+	app.Status.ManagedOIDC.Providers = []string{"gcp"}
+	app.Status.ManagedOIDC.GCP = &appv1alpha1.ManagedOIDCGCP{WorkloadIdentityProvider: gcpProvider}
+	cl := fake.NewClientBuilder().WithScheme(scheme(t)).WithObjects(app).WithStatusSubresource(app).Build()
+	m := NewMinter(cl, f.issuer)
+	m.Now = f.clock.Now
+	p, err := oidc.NewProvider(ctx, f.base+"/"+wsA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expect := func(gcp appv1alpha1.ManagedOIDCGCP, golden string) {
+		t.Helper()
+		if err := m.Pass(ctx); err != nil {
+			t.Fatal(err)
+		}
+		s, ok := tokenSecret(t, cl, "web")
+		if !ok {
+			t.Fatal("no token Secret")
+		}
+		if got := slices.Sorted(maps.Keys(s.Data)); !slices.Equal(got, []string{"gcp-credentials.json", "gcp-token"}) {
+			t.Fatalf("Secret keys = %v, want the token and its credential configuration", got)
+		}
+		if golden != "" {
+			want, err := os.ReadFile("testdata/" + golden)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(s.Data["gcp-credentials.json"]) != string(want) {
+				t.Fatalf("credential configuration:\n%s\nwant gcloud's %s:\n%s", s.Data["gcp-credentials.json"], golden, want)
+			}
+		}
+		if _, err := p.Verifier(&oidc.Config{ClientID: gcp.Audience(), SupportedSigningAlgs: []string{oidc.ES256}, Now: f.clock.Now}).
+			Verify(ctx, string(s.Data["gcp-token"])); err != nil {
+			t.Fatalf("the GCP token does not verify for %s: %v", gcp.Audience(), err)
+		}
+	}
+	redeploy := func(gcp *appv1alpha1.ManagedOIDCGCP) {
+		t.Helper()
+		var cur appv1alpha1.App
+		if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &cur); err != nil {
+			t.Fatal(err)
+		}
+		cur.Status.ManagedOIDC.Generation++
+		cur.Status.ManagedOIDC.GCP = gcp
+		if err := cl.Status().Update(ctx, &cur); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	expect(appv1alpha1.ManagedOIDCGCP{WorkloadIdentityProvider: gcpProvider}, "gcloud-direct.json")
+	impersonate := appv1alpha1.ManagedOIDCGCP{WorkloadIdentityProvider: gcpProvider, ServiceAccountEmail: gcpAccount}
+	redeploy(&impersonate)
+	expect(impersonate, "gcloud-impersonate.json")
+	moved := appv1alpha1.ManagedOIDCGCP{WorkloadIdentityProvider: strings.Replace(gcpProvider, "bex-provider", "other-provider", 1)}
+	redeploy(&moved)
+	expect(moved, "")
+
+	redeploy(nil)
+	before, _ := tokenSecret(t, cl, "web")
+	if err := m.Pass(ctx); err == nil {
+		t.Fatal("a release that mounts GCP with no recorded inputs passed without an error")
+	}
+	if after, _ := tokenSecret(t, cl, "web"); string(after.Data["gcp-token"]) != string(before.Data["gcp-token"]) {
+		t.Fatal("a release without GCP inputs changed the token the service reads")
 	}
 }
 

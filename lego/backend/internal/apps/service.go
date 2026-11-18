@@ -66,7 +66,8 @@ type Service struct {
 	// ManagedOIDC reports that this bex-api runs the Managed OIDC issuer: a
 	// new App of a Pro-or-higher workspace is born with LabelManagedOIDC, so
 	// its first release already mounts the tokens its trigger variables
-	// (AWS_ROLE_ARN, ANTHROPIC_FEDERATION_RULE_ID, OPENAI_IDENTITY_PROVIDER_ID)
+	// (AWS_ROLE_ARN, GCP_WORKLOAD_IDENTITY_PROVIDER, ANTHROPIC_FEDERATION_RULE_ID,
+	// OPENAI_IDENTITY_PROVIDER_ID)
 	// ask for (store.ManagedOIDCLabel; the projector keeps the label in step with the
 	// plan afterwards).
 	ManagedOIDC bool

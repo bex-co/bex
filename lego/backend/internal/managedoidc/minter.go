@@ -19,10 +19,12 @@ limitations under the License.
 // release, which providers a service's pods mount (status.managedOIDC); this
 // worker mints those providers' tokens through the workspace's issuer and
 // writes them to the App's <app>-oidc Secret, replacing each before a third
-// of its life has passed. One bex-api replica writes at a time.
+// of its life has passed, with GCP's credential configuration beside its
+// token (D11, w2/m479). One bex-api replica writes at a time.
 package managedoidc
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -135,7 +137,7 @@ func (m *Minter) pass(ctx context.Context) error {
 			m.Kick()
 			break
 		}
-		age, wrote, err := m.ensure(ctx, app, providers, now)
+		age, wrote, err := m.ensure(ctx, app, grantsOf(app.Status.ManagedOIDC, providers), now)
 		if err != nil {
 			m.Metrics.failed()
 			errs = append(errs, fmt.Errorf("%s/%s: %w", app.Namespace, app.Name, err))
@@ -160,27 +162,55 @@ func subjectOf(app *appv1alpha1.App) oidcissuer.Subject {
 	}
 }
 
+// grant is one mounted provider's token audience and, for GCP, the
+// credential configuration written beside the token.
+type grant struct {
+	provider appv1alpha1.ManagedOIDCProvider
+	audience string
+	config   []byte
+}
+
+// grantsOf is what st's release needs written for providers. GCP's audience
+// and configuration come from the release's recorded inputs; a release that
+// mounts GCP without them (never decided so) gets an empty audience, which
+// the signer refuses, so the pass reports it instead of minting for nobody.
+func grantsOf(st *appv1alpha1.ManagedOIDCStatus, providers []appv1alpha1.ManagedOIDCProvider) []grant {
+	out := make([]grant, 0, len(providers))
+	for _, p := range providers {
+		g := grant{provider: p, audience: p.Audience}
+		if p.Config != "" && st.GCP != nil && st.GCP.WorkloadIdentityProvider != "" {
+			g.audience = st.GCP.Audience()
+			g.config = gcpCredentialConfiguration(*st.GCP, p.Path())
+		}
+		out = append(out, g)
+	}
+	return out
+}
+
 // ensure writes app's tokens when its Secret is missing, stale, for another
-// subject or for other providers; CreateOrUpdate writes nothing for tokens
-// that are still fresh. age is the age of the tokens the service reads after
-// the call; wrote reports a write.
-func (m *Minter) ensure(ctx context.Context, app *appv1alpha1.App, providers []appv1alpha1.ManagedOIDCProvider, now time.Time) (age time.Duration, wrote bool, err error) {
+// subject, for other providers or with another credential configuration;
+// CreateOrUpdate writes nothing for tokens that are still fresh. age is the
+// age of the tokens the service reads after the call; wrote reports a write.
+func (m *Minter) ensure(ctx context.Context, app *appv1alpha1.App, grants []grant, now time.Time) (age time.Duration, wrote bool, err error) {
 	sub := subjectOf(app)
 	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: app.Namespace, Name: appv1alpha1.ManagedOIDCSecretName(app.Name)}}
 	var held, issued time.Time // the tokens the service had, and the new ones
 	op, err := controllerutil.CreateOrUpdate(ctx, m.Client, secret, func() error {
 		var fresh bool
-		if held, fresh = freshAt(secret, sub, providers, now); fresh {
+		if held, fresh = freshAt(secret, sub, grants, now); fresh {
 			issued = held
 			return nil
 		}
-		data := make(map[string][]byte, len(providers))
-		for _, p := range providers {
-			tok, err := m.Issuer.Mint(sub, p.Audience)
+		data := make(map[string][]byte, len(grants))
+		for _, g := range grants {
+			tok, err := m.Issuer.Mint(sub, g.audience)
 			if err != nil {
-				return fmt.Errorf("mint %s token: %w", p.Name, err)
+				return fmt.Errorf("mint %s token: %w", g.provider.Name, err)
 			}
-			data[p.File] = []byte(tok.Raw)
+			data[g.provider.File] = []byte(tok.Raw)
+			if g.provider.Config != "" {
+				data[g.provider.Config] = g.config
+			}
 			issued = tok.IssuedAt
 		}
 		fill(secret, app, sub, issued, data)
@@ -196,19 +226,23 @@ func (m *Minter) ensure(ctx context.Context, app *appv1alpha1.App, providers []a
 }
 
 // freshAt reports secret's signing time when its tokens are the ones app
-// needs now: the same subject, exactly providers' keys, and younger than
-// RefreshAfter.
-func freshAt(secret *corev1.Secret, sub oidcissuer.Subject, providers []appv1alpha1.ManagedOIDCProvider, now time.Time) (time.Time, bool) {
+// needs now: the same subject, exactly the grants' keys, the credential
+// configurations they need (a new GCP audience changes its configuration,
+// so its token is replaced too), and younger than RefreshAfter.
+func freshAt(secret *corev1.Secret, sub oidcissuer.Subject, grants []grant, now time.Time) (time.Time, bool) {
 	issued, ok := issuedAt(secret)
 	if !ok || secret.Annotations[annotationSubject] != sub.String() || now.Sub(issued) >= RefreshAfter {
 		return issued, false
 	}
-	want := make([]string, 0, len(providers))
-	for _, p := range providers {
-		if len(secret.Data[p.File]) == 0 {
+	var want []string
+	for _, g := range grants {
+		if len(secret.Data[g.provider.File]) == 0 {
 			return issued, false
 		}
-		want = append(want, p.File)
+		if g.provider.Config != "" && !bytes.Equal(secret.Data[g.provider.Config], g.config) {
+			return issued, false
+		}
+		want = append(want, g.provider.Files()...)
 	}
 	return issued, slices.Equal(slices.Sorted(maps.Keys(secret.Data)), slices.Sorted(slices.Values(want)))
 }

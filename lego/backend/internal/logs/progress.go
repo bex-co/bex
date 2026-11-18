@@ -117,26 +117,34 @@ type progressContext struct {
 }
 
 // oidcRefusal is the release whose environment asked for Managed OIDC tokens
-// its workspace plan does not include (status.managedOIDC, w2/m477): the
-// triggers it set and its generation. The zero value is none.
+// it does not get (status.managedOIDC): its workspace plan does not include
+// them (w2/m477), or its GCP variables are not ones Google can take (w2/m479).
+// lines are the deploy log's explanations; the zero value is none.
 type oidcRefusal struct {
 	generation int64
-	triggers   []string
+	lines      []string
 }
 
 // appOIDCRefusal reads the App's current release decision. Only the running
-// release's is kept, so an older deploy's log stops carrying the line once a
+// release's is kept, so an older deploy's log stops carrying the lines once a
 // newer release replaces the decision.
 func appOIDCRefusal(app *appv1alpha1.App) oidcRefusal {
 	st := app.Status.ManagedOIDC
+	var lines []string
 	var triggers []string
 	for _, p := range appv1alpha1.ManagedOIDCProvidersNamed(st.Refused()) {
 		triggers = append(triggers, p.Trigger)
 	}
-	if len(triggers) == 0 {
+	if len(triggers) > 0 {
+		lines = append(lines, oidcRefusalLine(triggers))
+	}
+	if st != nil && st.GCP != nil && st.GCP.Refused != "" {
+		lines = append(lines, "==> "+st.GCP.Refused)
+	}
+	if len(lines) == 0 {
 		return oidcRefusal{}
 	}
-	return oidcRefusal{generation: st.Generation, triggers: triggers}
+	return oidcRefusal{generation: st.Generation, lines: lines}
 }
 
 // oidcRefusalLine is the deploy log's explanation, in Render's own words for
@@ -382,7 +390,9 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 		// The operator decides a release's token mounts as it projects
 		// the release, after the deploy started.
 		if pc.oidc.generation > 0 && pc.oidc.generation == d.Generation {
-			add(d.StartedAt, oidcRefusalLine(pc.oidc.triggers))
+			for _, line := range pc.oidc.lines {
+				add(d.StartedAt, line)
+			}
 		}
 	}
 	if !d.FinishedAt.IsZero() {

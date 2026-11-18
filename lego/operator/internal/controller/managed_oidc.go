@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"slices"
 	"strings"
 
@@ -28,20 +29,46 @@ import (
 )
 
 // Managed OIDC delivery (docs/ADR116-managed-oidc.md D9, w2/m477; D10,
-// w2/m478). A release whose environment sets a provider's trigger variable
-// (AWS_ROLE_ARN, ANTHROPIC_FEDERATION_RULE_ID, OPENAI_IDENTITY_PROVIDER_ID),
-// in a workspace whose plan includes Managed OIDC (LabelManagedOIDC), mounts
-// the App's token Secret read-only at /var/lib/render/oidc and gets each
-// provider's file variable (AWS_WEB_IDENTITY_TOKEN_FILE,
-// ANTHROPIC_IDENTITY_TOKEN_FILE, OPENAI_IDENTITY_TOKEN_FILE) in every container
-// bex runs for it: instances, cron runs, the pre-deploy step and the initial
-// deploy hook (which copies the instance's template). SSH and shell sessions
-// exec into an instance and inherit both. bex-api mints the Secret and keeps
-// it fresh; the operator never sees a token. A release that sets no trigger
-// gets a pod template without a trace of any of it.
+// w2/m478; D11, w2/m479). A release whose environment sets a provider's
+// trigger variable (AWS_ROLE_ARN, GCP_WORKLOAD_IDENTITY_PROVIDER,
+// ANTHROPIC_FEDERATION_RULE_ID, OPENAI_IDENTITY_PROVIDER_ID), in a workspace
+// whose plan includes Managed OIDC (LabelManagedOIDC), mounts the App's token
+// Secret read-only at /var/lib/render/oidc and gets each provider's file
+// variable (AWS_WEB_IDENTITY_TOKEN_FILE, GOOGLE_APPLICATION_CREDENTIALS,
+// ANTHROPIC_IDENTITY_TOKEN_FILE, OPENAI_IDENTITY_TOKEN_FILE) in every
+// container bex runs for it: instances, cron runs, the pre-deploy step and
+// the initial deploy hook (which copies the instance's template). SSH and
+// shell sessions exec into an instance and inherit both. bex-api mints the
+// Secret and keeps it fresh; the operator never sees a token. A release that
+// sets no trigger gets a pod template without a trace of any of it.
 
 // managedOIDCVolumeName names the token directory's volume.
 const managedOIDCVolumeName = "bex-oidc"
+
+// managedOIDCGCPAnnotation carries, on a pod template that mounts the GCP
+// credential configuration, the Google Cloud inputs it was decided with
+// (JSON ManagedOIDCGCP), so a cancel that restores the template verbatim
+// restores the configuration bex-api writes for it too.
+const managedOIDCGCPAnnotation = "app.bex.co/managed-oidc-gcp"
+
+// oidcMounts is a release's Managed OIDC mounts: the providers whose files
+// its pods read and, when GCP is one of them, the inputs its credential
+// configuration is made of. The zero value mounts nothing.
+type oidcMounts struct {
+	providers []appv1alpha1.ManagedOIDCProvider
+	gcp       *appv1alpha1.ManagedOIDCGCP
+}
+
+// mountsOf is the mounts st decides.
+func mountsOf(st *appv1alpha1.ManagedOIDCStatus) oidcMounts {
+	m := oidcMounts{providers: appv1alpha1.ManagedOIDCProvidersNamed(st.Mounted())}
+	if slices.ContainsFunc(m.providers, isGCP) {
+		m.gcp = st.GCP
+	}
+	return m
+}
+
+func isGCP(p appv1alpha1.ManagedOIDCProvider) bool { return p.Name == appv1alpha1.ManagedOIDCGCPName }
 
 // managedOIDC is the Managed OIDC mounts of the release app is projecting.
 // A release decides once, when the operator first projects it, from view
@@ -55,36 +82,53 @@ const managedOIDCVolumeName = "bex-oidc"
 // already serving when this operator first sees it was rolled out before
 // Managed OIDC and mounts nothing until the next deploy, so an upgrade rolls
 // no pod.
-func (r *AppReconciler) managedOIDC(ctx context.Context, app, view *appv1alpha1.App) ([]appv1alpha1.ManagedOIDCProvider, error) {
+//
+// GCP_WORKLOAD_IDENTITY_PROVIDER also needs a value Google can take: one that
+// is not a provider's resource name (a project id where the number belongs)
+// leaves gcp out and records why in status.managedOIDC.gcp.refused, which the
+// deploy log names.
+func (r *AppReconciler) managedOIDC(ctx context.Context, app, view *appv1alpha1.App) (oidcMounts, error) {
 	gen := releaseGeneration(app)
 	if st := app.Status.ManagedOIDC; st != nil && st.Generation == gen {
-		return appv1alpha1.ManagedOIDCProvidersNamed(st.Mounted()), nil
+		return mountsOf(st), nil
 	}
 	decision := &appv1alpha1.ManagedOIDCStatus{Generation: gen}
 	if app.Status.ActiveRevision != releaseRevision(app) { // not yet serving: a release to decide
 		if ref := app.ActiveReleaseConfig(); ref != nil && ref.SourceGeneration > 0 && !canceledOverServed(app) {
 			selected, err := r.selectedRuntimeApp(ctx, app)
 			if err != nil {
-				return nil, err
+				return oidcMounts{}, err
 			}
 			view = selected
 		}
 		for _, p := range appv1alpha1.ManagedOIDCProviders {
 			value, set, err := r.configuredEnv(ctx, view, p.Trigger)
 			if err != nil {
-				return nil, err
+				return oidcMounts{}, err
 			}
-			if set && strings.TrimSpace(value) != "" {
-				decision.Providers = append(decision.Providers, p.Name)
+			if !set || strings.TrimSpace(value) == "" {
+				continue
 			}
+			if isGCP(p) {
+				email, _, err := r.configuredEnv(ctx, view, appv1alpha1.GCPServiceAccountEmailEnv)
+				if err != nil {
+					return oidcMounts{}, err
+				}
+				gcp := appv1alpha1.NewManagedOIDCGCP(value, email)
+				decision.GCP = &gcp
+				if gcp.Refused != "" {
+					continue
+				}
+			}
+			decision.Providers = append(decision.Providers, p.Name)
 		}
 		decision.PlanAllowed = app.Labels[appv1alpha1.LabelManagedOIDC] == appv1alpha1.ManagedOIDCEnabled
 	}
 	app.Status.ManagedOIDC = decision
 	if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
-		return nil, err
+		return oidcMounts{}, err
 	}
-	return appv1alpha1.ManagedOIDCProvidersNamed(decision.Mounted()), nil
+	return mountsOf(decision), nil
 }
 
 // recordManagedOIDCOf records the decision a restored template carries: a
@@ -93,7 +137,14 @@ func (r *AppReconciler) managedOIDC(ctx context.Context, app, view *appv1alpha1.
 // what bex-api must keep minting for.
 func recordManagedOIDCOf(app *appv1alpha1.App, tmpl corev1.PodTemplateSpec) {
 	names := templateManagedOIDC(tmpl)
-	app.Status.ManagedOIDC = &appv1alpha1.ManagedOIDCStatus{Generation: releaseGeneration(app), Providers: names, PlanAllowed: len(names) > 0}
+	st := &appv1alpha1.ManagedOIDCStatus{Generation: releaseGeneration(app), Providers: names, PlanAllowed: len(names) > 0}
+	if slices.Contains(names, appv1alpha1.ManagedOIDCGCPName) {
+		var gcp appv1alpha1.ManagedOIDCGCP
+		if json.Unmarshal([]byte(tmpl.Annotations[managedOIDCGCPAnnotation]), &gcp) == nil && gcp.WorkloadIdentityProvider != "" {
+			st.GCP = &gcp
+		}
+	}
+	app.Status.ManagedOIDC = st
 }
 
 // templateManagedOIDC is the providers tmpl's app container reads a token
@@ -105,7 +156,7 @@ func templateManagedOIDC(tmpl corev1.PodTemplateSpec) []string {
 			continue
 		}
 		for _, p := range appv1alpha1.ManagedOIDCProviders {
-			if slices.ContainsFunc(c.Env, func(e corev1.EnvVar) bool { return e.Name == p.FileEnv && e.Value == p.Path() }) {
+			if slices.ContainsFunc(c.Env, func(e corev1.EnvVar) bool { return e.Name == p.FileEnv && e.Value == p.FileEnvPath() }) {
 				names = append(names, p.Name)
 			}
 		}
@@ -124,9 +175,11 @@ func managedOIDCVolume(app *appv1alpha1.App, providers []appv1alpha1.ManagedOIDC
 	if len(providers) == 0 {
 		return nil, nil
 	}
-	items := make([]corev1.KeyToPath, 0, len(providers))
+	var items []corev1.KeyToPath
 	for _, p := range providers {
-		items = append(items, corev1.KeyToPath{Key: p.File, Path: p.File})
+		for _, f := range p.Files() {
+			items = append(items, corev1.KeyToPath{Key: f, Path: f})
+		}
 	}
 	vol := corev1.Volume{
 		Name: managedOIDCVolumeName,
@@ -153,24 +206,35 @@ func withManagedOIDC(env []corev1.EnvVar, providers []appv1alpha1.ManagedOIDCPro
 	}
 	out := slices.DeleteFunc(slices.Clone(env[:len(env)-1]), owned)
 	for _, p := range providers {
-		out = append(out, corev1.EnvVar{Name: p.FileEnv, Value: p.Path()})
+		out = append(out, corev1.EnvVar{Name: p.FileEnv, Value: p.FileEnvPath()})
 	}
 	return append(out, env[len(env)-1])
 }
 
-// withManagedOIDCPod adds providers' token directory and file variables to
-// spec's app container: an instance's or a cron run's pod template.
-func withManagedOIDCPod(spec *corev1.PodSpec, app *appv1alpha1.App, providers []appv1alpha1.ManagedOIDCProvider) {
-	vol, mount := managedOIDCVolume(app, providers)
+// withManagedOIDCPod adds m's token directory and file variables to tmpl's
+// app container (an instance's or a cron run's pod template), and the GCP
+// inputs annotation when it mounts GCP's credential configuration; a
+// template without it carries no such annotation.
+func withManagedOIDCPod(tmpl *corev1.PodTemplateSpec, app *appv1alpha1.App, m oidcMounts) {
+	delete(tmpl.Annotations, managedOIDCGCPAnnotation)
+	vol, mount := managedOIDCVolume(app, m.providers)
 	if vol == nil {
 		return
 	}
+	spec := &tmpl.Spec
 	i := slices.IndexFunc(spec.Containers, func(c corev1.Container) bool { return c.Name == appContainerName })
 	if i < 0 {
 		return
 	}
 	c := &spec.Containers[i]
-	c.Env = withManagedOIDC(c.Env, providers)
+	c.Env = withManagedOIDC(c.Env, m.providers)
 	c.VolumeMounts = append(c.VolumeMounts, *mount)
 	spec.Volumes = append(spec.Volumes, *vol)
+	if m.gcp != nil {
+		inputs, _ := json.Marshal(m.gcp) // a struct of strings always encodes
+		if tmpl.Annotations == nil {
+			tmpl.Annotations = map[string]string{}
+		}
+		tmpl.Annotations[managedOIDCGCPAnnotation] = string(inputs)
+	}
 }

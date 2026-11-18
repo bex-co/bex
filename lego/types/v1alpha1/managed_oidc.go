@@ -56,12 +56,36 @@ type ManagedOIDCProvider struct {
 	FileEnv string
 	// File is the token's Secret key and its file name under the mount.
 	File string
-	// Audience is the token's aud claim.
+	// Audience is the token's aud claim; empty when each release fixes its
+	// own (GCP: ManagedOIDCGCP.Audience).
 	Audience string
+	// Config, when set, is the Secret key and file name of the credential
+	// configuration bex-api writes beside the token, which FileEnv names in
+	// place of the token: Google's libraries read the configuration, and it
+	// names the token file.
+	Config string
 }
 
 // Path is the token file's path in the container.
 func (p ManagedOIDCProvider) Path() string { return ManagedOIDCMountPath + "/" + p.File }
+
+// FileEnvPath is FileEnv's value: the credential configuration's path when
+// the provider has one, else the token's.
+func (p ManagedOIDCProvider) FileEnvPath() string {
+	if p.Config != "" {
+		return ManagedOIDCMountPath + "/" + p.Config
+	}
+	return p.Path()
+}
+
+// Files is the provider's Secret keys, each also its file name under the
+// mount: the token, then the credential configuration when there is one.
+func (p ManagedOIDCProvider) Files() []string {
+	if p.Config != "" {
+		return []string{p.File, p.Config}
+	}
+	return []string{p.File}
+}
 
 // ManagedOIDCProviders lists the providers in the order they are mounted.
 // Each has its own audience, so a service with several gets one token per
@@ -75,6 +99,11 @@ func (p ManagedOIDCProvider) Path() string { return ManagedOIDCMountPath + "/" +
 //   - AWS: "add the AWS_ROLE_ARN environment variable"; audience
 //     sts.amazonaws.com; Render "automatically sets an additional
 //     environment variable named AWS_WEB_IDENTITY_TOKEN_FILE".
+//   - GCP: "Render detects GCP_WORKLOAD_IDENTITY_PROVIDER and writes a
+//     credential configuration file for your service's OIDC token. Render
+//     then sets an additional environment variable,
+//     GOOGLE_APPLICATION_CREDENTIALS, to the path of the new file"; the
+//     audience is the provider's default audience (ManagedOIDCGCP).
 //   - Anthropic: "Render detects the ANTHROPIC_FEDERATION_RULE_ID
 //     environment variable and automatically sets an additional environment
 //     variable named ANTHROPIC_IDENTITY_TOKEN_FILE"; expected audience
@@ -82,8 +111,12 @@ func (p ManagedOIDCProvider) Path() string { return ManagedOIDCMountPath + "/" +
 //   - OpenAI: "Render detects the OPENAI_IDENTITY_PROVIDER_ID environment
 //     variable and automatically sets an additional environment variable
 //     named OPENAI_IDENTITY_TOKEN_FILE"; audience api.openai.com.
+//
+// The order is Render's ("AWS, GCP, Anthropic, OpenAI"). The entries are
+// literals: scripts/oidc-audience-verify.test.sh reads them.
 var ManagedOIDCProviders = []ManagedOIDCProvider{
 	{Name: "aws", Trigger: "AWS_ROLE_ARN", FileEnv: "AWS_WEB_IDENTITY_TOKEN_FILE", File: "aws-token", Audience: "sts.amazonaws.com"},
+	{Name: "gcp", Trigger: "GCP_WORKLOAD_IDENTITY_PROVIDER", FileEnv: "GOOGLE_APPLICATION_CREDENTIALS", File: "gcp-token", Config: "gcp-credentials.json"},
 	{Name: "anthropic", Trigger: "ANTHROPIC_FEDERATION_RULE_ID", FileEnv: "ANTHROPIC_IDENTITY_TOKEN_FILE", File: "anthropic-token", Audience: "api.anthropic.com"},
 	{Name: "openai", Trigger: "OPENAI_IDENTITY_PROVIDER_ID", FileEnv: "OPENAI_IDENTITY_TOKEN_FILE", File: "openai-token", Audience: "api.openai.com"},
 }
@@ -124,6 +157,12 @@ type ManagedOIDCStatus struct {
 	// release was decided, so a plan change takes effect at the next deploy.
 	// +optional
 	PlanAllowed bool `json:"planAllowed,omitempty"`
+	// GCP is the release's Google Cloud inputs, set when its environment sets
+	// GCP_WORKLOAD_IDENTITY_PROVIDER: what the credential configuration and
+	// the token's audience are made of, or why they cannot be (Refused, and
+	// then Providers leaves gcp out).
+	// +optional
+	GCP *ManagedOIDCGCP `json:"gcp,omitempty"`
 }
 
 // Mounted is the providers whose token files the release's pods read: none

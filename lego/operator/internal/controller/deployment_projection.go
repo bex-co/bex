@@ -201,9 +201,9 @@ type deploymentParams struct {
 	// grace period (livenessTerminationGracePeriodSeconds, w4/m353 t007);
 	// false keeps the pod's for a stored template without it.
 	livenessGrace bool
-	// managedOIDC is the providers whose token files the release mounts
-	// (managed_oidc.go); nil for none.
-	managedOIDC []appv1alpha1.ManagedOIDCProvider
+	// managedOIDC is the release's token mounts (managed_oidc.go); the zero
+	// value for none.
+	managedOIDC oidcMounts
 }
 
 // usesHealthProbeBinary reports whether the App's pods carry bex's
@@ -810,7 +810,7 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 	applyDiskProjection(dep, &container, app)
 	applyDrain(&dep.Spec.Template.Spec, &container, app.Spec.MaxShutdownDelaySeconds, drain, p.drainCheck && p.usesHealthProbeBinary(app), p.livenessGrace)
 	dep.Spec.Template.Spec.Containers = []corev1.Container{container}
-	withManagedOIDCPod(&dep.Spec.Template.Spec, app, p.managedOIDC)
+	withManagedOIDCPod(&dep.Spec.Template, app, p.managedOIDC)
 	dep.Spec.Template.Spec.InitContainers = nil
 	if p.usesHealthProbeBinary(app) {
 		dep.Spec.Template.Spec.Volumes = append(dep.Spec.Template.Spec.Volumes, healthProbeVolume())

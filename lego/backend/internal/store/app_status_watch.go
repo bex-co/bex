@@ -138,7 +138,8 @@ func (w *AppStatusWatch) watchOnce(ctx context.Context) error {
 }
 
 // kickManagedOIDC calls ManagedOIDCKick when app's release mounts tokens
-// for a generation or providers the watch has not seen it mount.
+// for a generation, providers or GCP inputs (a cancel restores a served
+// release's within the same generation) the watch has not seen it mount.
 func (w *AppStatusWatch) kickManagedOIDC(app *appv1alpha1.App) {
 	if w.ManagedOIDCKick == nil {
 		return
@@ -146,6 +147,9 @@ func (w *AppStatusWatch) kickManagedOIDC(app *appv1alpha1.App) {
 	mounts := ""
 	if st := app.Status.ManagedOIDC; len(st.Mounted()) > 0 {
 		mounts = fmt.Sprintf("%d:%v", st.Generation, st.Mounted())
+		if st.GCP != nil {
+			mounts += ":" + st.GCP.WorkloadIdentityProvider + ":" + st.GCP.ServiceAccountEmail
+		}
 	}
 	if mounts == w.mounts[app.UID] {
 		return

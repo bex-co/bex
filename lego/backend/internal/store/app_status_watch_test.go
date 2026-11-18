@@ -442,10 +442,20 @@ func TestStatusWatchWakesTheMinterOnlyWhenAReleaseStartsMountingTokens(t *testin
 	next(func(a *appv1alpha1.App) { a.Status.ManagedOIDC.PlanAllowed = true })
 	next(func(a *appv1alpha1.App) { a.Status.Phase = appv1alpha1.PhaseRunning })
 	next(func(a *appv1alpha1.App) { a.Status.ManagedOIDC.Generation = 3 })
+	// w2/m479: a cancel that restores a served template within the same
+	// generation changes the GCP inputs the minter writes the configuration
+	// from, and wakes it too.
+	next(func(a *appv1alpha1.App) {
+		a.Status.ManagedOIDC.Providers = []string{"aws", "gcp"}
+		a.Status.ManagedOIDC.GCP = &appv1alpha1.ManagedOIDCGCP{WorkloadIdentityProvider: "projects/1/locations/global/workloadIdentityPools/p/providers/canceled"}
+	})
+	next(func(a *appv1alpha1.App) {
+		a.Status.ManagedOIDC.GCP = &appv1alpha1.ManagedOIDCGCP{WorkloadIdentityProvider: "projects/1/locations/global/workloadIdentityPools/p/providers/served"}
+	})
 	waitFor(t, "the projector's kicks", func() bool { return kicks.Load() >= 2 })
-	waitFor(t, "the minter's kicks", func() bool { return minter.Load() >= 2 })
+	waitFor(t, "the minter's kicks", func() bool { return minter.Load() >= 4 })
 	time.Sleep(50 * time.Millisecond)
-	if got := minter.Load(); got != 2 {
-		t.Fatalf("minter kicks = %d, want 2: one when release 2 starts mounting, one for release 3", got)
+	if got := minter.Load(); got != 4 {
+		t.Fatalf("minter kicks = %d, want 4: release 2 starts mounting, release 3, GCP added, GCP inputs restored", got)
 	}
 }

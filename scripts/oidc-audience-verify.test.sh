@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Tests for scripts/oidc-audience-verify.sh with kubectl, docker and curl
-# stubbed: a service with two or three providers passes, and each failure the
-# script exists to catch (an STS taking another audience's token, a token
-# with another provider's audience, a file variable without its trigger, a
-# writable file, fewer than two providers) fails it. Its provider table must
-# be the operator's (ManagedOIDCProviders).
+# stubbed: a service with two or three providers passes, AWS beside GCP's
+# credential configuration included, and each failure the script exists to
+# catch (an STS taking another audience's token, a token with another
+# provider's audience, a file variable without its trigger, a writable file,
+# fewer than two providers, a GCP configuration naming another token file)
+# fails it. Its provider table must be the operator's (ManagedOIDCProviders).
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -32,7 +33,14 @@ cat >"$tmp/bin/kubectl" <<'EOF'
 #!/usr/bin/env bash
 # The triggers set: all three, or the mode's subset.
 set_triggers="AWS_ROLE_ARN ANTHROPIC_FEDERATION_RULE_ID OPENAI_IDENTITY_PROVIDER_ID"
-case "$TEST_MODE" in two | stray) set_triggers="AWS_ROLE_ARN ANTHROPIC_FEDERATION_RULE_ID" ;; one) set_triggers="AWS_ROLE_ARN" ;; esac
+case "$TEST_MODE" in
+  two | stray) set_triggers="AWS_ROLE_ARN ANTHROPIC_FEDERATION_RULE_ID" ;;
+  one) set_triggers="AWS_ROLE_ARN" ;;
+  gcp | gcpcfg) set_triggers="AWS_ROLE_ARN GCP_WORKLOAD_IDENTITY_PROVIDER" ;;
+esac
+gcp_resource=projects/123456789012/locations/global/workloadIdentityPools/bex-pool/providers/bex-provider
+gcp_token_file=/var/lib/render/oidc/gcp-token
+[ "$TEST_MODE" != gcpcfg ] || gcp_token_file=/var/lib/render/oidc/aws-token
 file_of() {
   case "$1" in
     AWS_WEB_IDENTITY_TOKEN_FILE) echo "AWS_ROLE_ARN aws-token sts.amazonaws.com" ;;
@@ -47,8 +55,14 @@ case "$*" in
   "-n $ws exec web-abc -c app -- sh -c "*)
     all="$*"
     snippet=${all#*sh -c }
-    var=$(grep -o '[A-Z_]*_\(ARN\|ID\|FILE\)' <<<"$snippet" | head -1)
+    var=$(grep -o '[A-Z_]*_\(ARN\|ID\|FILE\|PROVIDER\|CREDENTIALS\)' <<<"$snippet" | head -1)
     case "$snippet" in
+      'printf %s "${GOOGLE_APPLICATION_CREDENTIALS:-}"')
+        [[ " $set_triggers " != *" GCP_WORKLOAD_IDENTITY_PROVIDER "* ]] || printf %s /var/lib/render/oidc/gcp-credentials.json ;;
+      'cat "$GOOGLE_APPLICATION_CREDENTIALS"')
+        jq -n --arg aud "//iam.googleapis.com/$gcp_resource" --arg file "$gcp_token_file" \
+          '{universe_domain: "googleapis.com", type: "external_account", audience: $aud, subject_token_type: "urn:ietf:params:oauth:token-type:jwt", token_url: "https://sts.googleapis.com/v1/token", credential_source: {file: $file, format: {type: "text"}}, token_info_url: "https://sts.googleapis.com/v1/introspect"}' ;;
+      'cat "/var/lib/render/oidc/gcp-token"') jwt "https://iam.googleapis.com/$gcp_resource" ;;
       'printf %s "${'*'_FILE:-}"')
         read -r trigger file _ <<<"$(file_of "$var")"
         if [[ " $set_triggers " == *" $trigger "* ]] || { [ "$TEST_MODE" = stray ] && [ "$var" = OPENAI_IDENTITY_TOKEN_FILE ]; }; then
@@ -148,13 +162,23 @@ check "a token with another provider's audience fails" fails_with sameaud "anthr
 check "tokens for two environments fail" fails_with othersub "different subjects"
 check "a file variable without its trigger fails" fails_with stray "OPENAI_IDENTITY_PROVIDER_ID is not set, but OPENAI_IDENTITY_TOKEN_FILE"
 check "a writable token file fails" fails_with writable "can write its token file"
+gcp_rp="https://iam.googleapis.com/projects/123456789012/locations/global/workloadIdentityPools/bex-pool/providers/bex-provider"
+gcp_pass() {
+  run gcp && grep -q "PASS: gcp: GOOGLE_APPLICATION_CREDENTIALS is an external_account configuration for /var/lib/render/oidc/gcp-token" "$tmp/out" &&
+    grep -q "PASS: gcp: the token is Render's for aud $gcp_rp" "$tmp/out" &&
+    grep -q "STS for $gcp_rp refuses the aws token" "$tmp/out" && grep -q "STS for sts.amazonaws.com refuses the gcp token" "$tmp/out" &&
+    lines "$tmp/docker-runs" 2 && lines "$tmp/exchanges" 4
+}
+check "GCP's token beside AWS's passes, for the audience its credential configuration names" gcp_pass
+check "a GCP configuration naming another token file fails" fails_with gcpcfg "gcp: GOOGLE_APPLICATION_CREDENTIALS is not an external_account configuration for /var/lib/render/oidc/gcp-token"
 check "one provider is not enough" fails_with one "1 provider token(s) mounted"
 check "a malformed workspace id is a usage error" bash -c "! bash '$script' tea-abc '$srv' 2>/dev/null"
 
 # The script's provider table is the operator's: name, trigger, file
 # variable, file and audience, in ManagedOIDCProviders order.
 go_table=$(grep -o '{Name: "[^}]*}' "$repo_root/lego/types/v1alpha1/managed_oidc.go" |
-  sed -E 's/\{Name: "([^"]*)", Trigger: "([^"]*)", FileEnv: "([^"]*)", File: "([^"]*)", Audience: "([^"]*)"\}/\1 \2 \3 \4 \5/')
+  sed -E -e 's/\{Name: "([^"]*)", Trigger: "([^"]*)", FileEnv: "([^"]*)", File: "([^"]*)", Audience: "([^"]*)"\}/\1 \2 \3 \4 \5/' \
+    -e 's/\{Name: "([^"]*)", Trigger: "([^"]*)", FileEnv: "([^"]*)", File: "([^"]*)", Config: "([^"]*)"\}/\1 \2 \3 \4 - \5/')
 script_table=$(sed -n '/^providers="/,/"$/p' "$script" | sed -e 's/^providers="//' -e 's/"$//')
 same_table() { [ -n "$go_table" ] && [ "$go_table" = "$script_table" ]; }
 check "the provider table matches lego/types/v1alpha1/managed_oidc.go" same_table

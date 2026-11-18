@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -63,15 +64,52 @@ func TestWithManagedOIDCReplacesTheServicesOwnValueAndKeepsPortLast(t *testing.T
 func TestTemplateManagedOIDCReadsWhatTheProjectionWrote(t *testing.T) {
 	aws, _ := appv1alpha1.ManagedOIDCProviderNamed("aws")
 	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web"}}
-	var spec corev1.PodSpec
-	spec.Containers = []corev1.Container{{Name: appContainerName, Env: []corev1.EnvVar{{Name: portEnvName, Value: "10000"}}}}
-	withManagedOIDCPod(&spec, app, []appv1alpha1.ManagedOIDCProvider{aws})
-	if got := templateManagedOIDC(corev1.PodTemplateSpec{Spec: spec}); len(got) != 1 || got[0] != "aws" {
+	var tmpl corev1.PodTemplateSpec
+	tmpl.Spec.Containers = []corev1.Container{{Name: appContainerName, Env: []corev1.EnvVar{{Name: portEnvName, Value: "10000"}}}}
+	withManagedOIDCPod(&tmpl, app, oidcMounts{providers: []appv1alpha1.ManagedOIDCProvider{aws}})
+	if got := templateManagedOIDC(tmpl); len(got) != 1 || got[0] != "aws" {
 		t.Fatalf("providers read back = %v, want [aws]", got)
+	}
+	if _, ok := tmpl.Annotations[managedOIDCGCPAnnotation]; ok {
+		t.Fatalf("a template without GCP carries the GCP inputs annotation: %v", tmpl.Annotations)
 	}
 	user := corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: appContainerName, Env: []corev1.EnvVar{{Name: oidcFileEnv, Value: "/tmp/mine"}}}}}}
 	if got := templateManagedOIDC(user); len(got) != 0 {
 		t.Fatalf("a service's own %s is no mount: %v", oidcFileEnv, got)
+	}
+}
+
+// w2/m479: a cancel that restores a served release's template verbatim
+// records that template's GCP inputs, not the canceled release's, so bex-api
+// writes back the credential configuration the restored pods were decided
+// with. A template whose GCP is gone loses the annotation with it.
+func TestRecordManagedOIDCOfRestoresTheTemplatesGCPInputs(t *testing.T) {
+	aws, _ := appv1alpha1.ManagedOIDCProviderNamed("aws")
+	gcp, _ := appv1alpha1.ManagedOIDCProviderNamed("gcp")
+	served := appv1alpha1.ManagedOIDCGCP{WorkloadIdentityProvider: "projects/123/locations/global/workloadIdentityPools/p/providers/served", ServiceAccountEmail: "svc@p.iam.gserviceaccount.com"}
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web"}}
+	var tmpl corev1.PodTemplateSpec
+	tmpl.Spec.Containers = []corev1.Container{{Name: appContainerName, Env: []corev1.EnvVar{{Name: portEnvName, Value: "10000"}}}}
+	withManagedOIDCPod(&tmpl, app, oidcMounts{providers: []appv1alpha1.ManagedOIDCProvider{aws, gcp}, gcp: &served})
+
+	// The canceled release had moved to another provider.
+	app.Status.ManagedOIDC = &appv1alpha1.ManagedOIDCStatus{Generation: 3, Providers: []string{"gcp"}, PlanAllowed: true,
+		GCP: &appv1alpha1.ManagedOIDCGCP{WorkloadIdentityProvider: "projects/123/locations/global/workloadIdentityPools/p/providers/canceled"}}
+	recordManagedOIDCOf(app, tmpl)
+	st := app.Status.ManagedOIDC
+	if got := st.Mounted(); !slices.Equal(got, []string{"aws", "gcp"}) {
+		t.Fatalf("restored mounts = %v, want [aws gcp]", got)
+	}
+	if st.GCP == nil || *st.GCP != served {
+		t.Fatalf("restored GCP inputs = %+v, want the served template's %+v", st.GCP, served)
+	}
+
+	// The next release mounts AWS alone: the template sheds the GCP inputs.
+	tmpl.Spec.Containers[0].Env = []corev1.EnvVar{{Name: portEnvName, Value: "10000"}}
+	tmpl.Spec.Containers[0].VolumeMounts, tmpl.Spec.Volumes = nil, nil
+	withManagedOIDCPod(&tmpl, app, oidcMounts{providers: []appv1alpha1.ManagedOIDCProvider{aws}})
+	if _, ok := tmpl.Annotations[managedOIDCGCPAnnotation]; ok {
+		t.Fatalf("a template that no longer mounts GCP keeps its inputs annotation: %v", tmpl.Annotations)
 	}
 }
 
@@ -258,6 +296,90 @@ var _ = Describe("Managed OIDC token mounts (w2/m477)", func() {
 		Expect(envtestApp(nn).Status.ManagedOIDC.Mounted()).To(Equal([]string{"aws", "openai"}))
 		delete(all, "ANTHROPIC_IDENTITY_TOKEN_FILE")
 		expectMountedProviders(envtestDeployment(nn).Spec.Template.Spec, nn.Name, all)
+	})
+
+	// w2/m479, docs/ADR116-managed-oidc.md D11: GCP_WORKLOAD_IDENTITY_PROVIDER
+	// mounts the token beside a credential configuration, and
+	// GOOGLE_APPLICATION_CREDENTIALS names the configuration. Render's two
+	// spellings record the same resource name; a project id where the number
+	// belongs mounts nothing and is recorded by name for the deploy log.
+	It("mounts the GCP token and credential configuration, named by GOOGLE_APPLICATION_CREDENTIALS (w2/m479)", func() {
+		const provider = "projects/123456789012/locations/global/workloadIdentityPools/bex-pool/providers/bex-provider"
+		envSecret("oidc-gcp-env", map[string]string{
+			oidcTrigger:                      oidcRoleARN,
+			"GCP_WORKLOAD_IDENTITY_PROVIDER": "https://iam.googleapis.com/" + provider,
+			"GCP_SERVICE_ACCOUNT_EMAIL":      "svc@my-project.iam.gserviceaccount.com",
+		})
+		nn := create("oidc-gcp", true, func(a *appv1alpha1.App) {
+			a.Spec.EnvFromSecret = "oidc-gcp-env"
+			// Render: "Do not manually set the GOOGLE_APPLICATION_CREDENTIALS
+			// environment variable"; the platform's wins.
+			a.Spec.Env = []appv1alpha1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/tmp/key.json"}}
+		})
+		passN(nn)
+		tmpl := envtestDeployment(nn).Spec.Template
+		spec := tmpl.Spec
+		var vol *corev1.Volume
+		for i := range spec.Volumes {
+			if spec.Volumes[i].Name == managedOIDCVolumeName {
+				vol = &spec.Volumes[i]
+			}
+		}
+		Expect(vol).NotTo(BeNil(), "the token volume")
+		Expect(vol.Secret.Items).To(Equal([]corev1.KeyToPath{
+			{Key: "aws-token", Path: "aws-token"},
+			{Key: "gcp-token", Path: "gcp-token"},
+			{Key: "gcp-credentials.json", Path: "gcp-credentials.json"},
+		}))
+		c := appContainerOf(spec)
+		var named []corev1.EnvVar
+		for _, e := range c.Env {
+			if e.Name == "GOOGLE_APPLICATION_CREDENTIALS" || e.Name == oidcFileEnv {
+				named = append(named, e)
+			}
+		}
+		Expect(named).To(Equal([]corev1.EnvVar{
+			{Name: oidcFileEnv, Value: oidcFilePath},
+			{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/lib/render/oidc/gcp-credentials.json"},
+		}))
+		want := appv1alpha1.ManagedOIDCGCP{WorkloadIdentityProvider: provider, ServiceAccountEmail: "svc@my-project.iam.gserviceaccount.com"}
+		st := envtestApp(nn).Status.ManagedOIDC
+		Expect(st.Mounted()).To(Equal([]string{"aws", "gcp"}))
+		Expect(st.GCP).To(Equal(&want))
+		Expect(tmpl.Annotations).To(HaveKeyWithValue(managedOIDCGCPAnnotation,
+			`{"workloadIdentityProvider":"`+provider+`","serviceAccountEmail":"svc@my-project.iam.gserviceaccount.com"}`))
+		serveEnvtestRelease(nn, func() { passN(nn) })
+
+		// The next deploy names the project by its id: AWS stays, GCP goes,
+		// and the release records why. The service's own value is its own.
+		s := &corev1.Secret{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: "oidc-gcp-env", Namespace: nn.Namespace}, s)).To(Succeed())
+		s.Data["GCP_WORKLOAD_IDENTITY_PROVIDER"] = []byte("projects/my-project/locations/global/workloadIdentityPools/bex-pool/providers/bex-provider")
+		Expect(k8sClient.Update(ctx, s)).To(Succeed())
+		update(nn, func(a *appv1alpha1.App) {
+			a.Spec.RestartedAt = time.Now().UTC().Format(time.RFC3339Nano)
+			stampRelease(a)
+		})
+		passN(nn)
+		st = envtestApp(nn).Status.ManagedOIDC
+		Expect(st.Mounted()).To(Equal([]string{"aws"}))
+		Expect(st.GCP).NotTo(BeNil())
+		Expect(st.GCP.Refused).To(ContainSubstring(`names project "my-project" by its ID`))
+		Expect(st.GCP.WorkloadIdentityProvider).To(BeEmpty(), "nothing to mint for")
+		tmpl = envtestDeployment(nn).Spec.Template
+		for _, v := range tmpl.Spec.Volumes {
+			if v.Name == managedOIDCVolumeName {
+				Expect(v.Secret.Items).To(Equal([]corev1.KeyToPath{{Key: "aws-token", Path: "aws-token"}}))
+			}
+		}
+		named = nil
+		for _, e := range appContainerOf(tmpl.Spec).Env {
+			if e.Name == "GOOGLE_APPLICATION_CREDENTIALS" {
+				named = append(named, e)
+			}
+		}
+		Expect(named).To(Equal([]corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/tmp/key.json"}}))
+		Expect(tmpl.Annotations).NotTo(HaveKey(managedOIDCGCPAnnotation))
 	})
 
 	It("keeps AWS_ROLE_ARN but mounts nothing below Pro, and records the refusal for the deploy log", func() {

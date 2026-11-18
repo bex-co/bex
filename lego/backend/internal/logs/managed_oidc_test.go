@@ -73,4 +73,29 @@ func TestManagedOIDCRefusalIsALineInTheDeployThatAskedForIt(t *testing.T) {
 			t.Errorf("a refused release asking for %s: log %q\nwant the line %q", providers, got, want)
 		}
 	}
+
+	// w2/m479: a GCP_WORKLOAD_IDENTITY_PROVIDER naming the project by its id
+	// mints nothing, and the deploy says so by name, in a Pro workspace
+	// beside the providers it does mount and below Pro after the plan line.
+	gcp := appv1alpha1.NewManagedOIDCGCP("projects/my-project/locations/global/workloadIdentityPools/p/providers/x", "")
+	const projectID = `==> GCP_WORKLOAD_IDENTITY_PROVIDER names project "my-project" by its ID: Google Cloud expects the project number (IAM & Admin > Settings) in the provider's audience, so no Google Cloud credential configuration is mounted`
+	got = read(&appv1alpha1.ManagedOIDCStatus{Generation: 2, Providers: []string{"aws"}, PlanAllowed: true, GCP: &gcp}, "dep-second")
+	want = []string{"==> Deploy queued", "==> Rolling out the current release", projectID, "==> Your service is live 🎉"}
+	if !slices.Equal(got, want) {
+		t.Errorf("a Pro release with a project id: log %q\nwant %q", got, want)
+	}
+	got = read(&appv1alpha1.ManagedOIDCStatus{Generation: 2, Providers: []string{"aws"}, GCP: &gcp}, "dep-second")
+	want = []string{"==> Deploy queued", "==> Rolling out the current release", refused, projectID, "==> Your service is live 🎉"}
+	if !slices.Equal(got, want) {
+		t.Errorf("a Hobby release with a project id: log %q\nwant %q", got, want)
+	}
+	if got := read(&appv1alpha1.ManagedOIDCStatus{Generation: 2, Providers: []string{"aws"}, PlanAllowed: true, GCP: &gcp}, "dep-first"); slices.Contains(got, projectID) {
+		t.Errorf("an earlier deploy's log carries the GCP refusal: %q", got)
+	}
+	// A provider Google can take, mounted or refused by the plan, has no GCP line.
+	ok := appv1alpha1.NewManagedOIDCGCP("projects/123/locations/global/workloadIdentityPools/p/providers/x", "")
+	got = read(&appv1alpha1.ManagedOIDCStatus{Generation: 2, Providers: []string{"gcp"}, GCP: &ok}, "dep-second")
+	if want := "==> Managed OIDC requires a Pro workspace or higher: GCP_WORKLOAD_IDENTITY_PROVIDER is set, but no identity token is mounted"; !slices.Contains(got, want) {
+		t.Errorf("a Hobby release asking for GCP: log %q\nwant the line %q", got, want)
+	}
 }
