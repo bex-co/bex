@@ -1,6 +1,6 @@
 # w6 · m458 — Managed PgBouncer runs with Render's settings, and read replicas are pooled too
 
-**Worker:** worker6 **Goal:** a database with connection pooling accepts up to 30,000 clients on its pooled URL, keeps at most `max_connections` − 10 server connections, closes a client idle for a day and retries a failed server login after 2 s, as Render's managed PgBouncer does, and its read replicas are pooled as Render pools each replica. **Status:** blocked: t001–t004, t006–t008 and t010 done. t005's 1,000-client check failed on production on PgBouncer's open-file limit; t010 fixes it, and t005's re-run and closeout wait for the production deploy carrying that fix (see BLOCKED — 2026-11-17, second).
+**Worker:** worker6 **Goal:** a database with connection pooling accepts up to 30,000 clients on its pooled URL, keeps at most `max_connections` − 10 server connections, closes a client idle for a day and retries a failed server login after 2 s, as Render's managed PgBouncer does, and its read replicas are pooled as Render pools each replica. **Status:** done (2026-11-18): every task done; on production a `basic-1gb` pooled probe held 1,000 clients on 90 server connections with Render's settings (see Closeout — 2026-11-18).
 
 ## Tasks (in order)
 
@@ -10,12 +10,12 @@
 | t002 | [`poolerSpec` sets Render's PgBouncer settings](done/t002.md) — **DONE** | 1h | t001, w6/134 |
 | t003 | [The pooler pod can hold 30,000 clients](done/t003.md) — **DONE** | 45m | t002 |
 | t004 | [Read replicas are pooled, as Render pools each replica](done/t004.md) — **DONE** | 1h30m | t002 |
-| t005 | [Verify 1,000 pooled clients on production; ADR009 and ADR018](t005.md) | 45m | t003, t004 |
+| t005 | [Verify 1,000 pooled clients on production; ADR009 and ADR018](done/t005.md) — **DONE** | 45m | t003, t004 |
 | t006 | [Render parity](done/t006.md) — **DONE** | 30m | t005 |
 | t010 | [PgBouncer starts with the container's hard open-file limit](done/t010.md) — **DONE** | 30m | t003 |
 | t007 | [Simplify](done/t007.md) — **DONE** | 15m | t006 |
 | t008 | [Test coverage](done/t008.md) — **DONE** | 30m | t006 |
-| t009 | [Closeout](t009.md) | 10m | t007, t008, t010 |
+| t009 | [Closeout](done/t009.md) — **DONE** | 10m | t007, t008, t010 |
 
 ## Definition of done
 
@@ -51,7 +51,7 @@ All five are reloadable (`SHOW CONFIG` `changeable` yes). The allowlist is `Allo
 
 - **Pinned OpenAPI** (`render-public-api-1.json`): `postgresConnectionInfo` has `internalConnectionPoolString` and `externalConnectionPoolString`; `readReplica` is `{id, name}`, with no connection fields of its own.
 - **Docs** (read 2026-11-17): "Render automatically enables it for all of that database's read replicas"; "Each read replica has its own independent connection pool"; pooling cannot be toggled per replica; a replica is connected to "just like you do your primary instance, using its internal or external connection URL"; pooled URLs are the direct ones on port 6432. Render does not document a replica's pooled hostname.
-- **bex's form.** bex's named replicas share one reader Service (`<id>-ro`, ADR018's HA row), so one CNPG Pooler `type: ro`, `<id>-pooler-ro`, serves them all with the primary's settings and one replica's pool. Each replica's status, `connection-info` `readReplicaConnectionStrings[]` and view `connectionInfo` carry its pooled internal (`<id>-pooler-ro.<ns>.svc:6432`) and external (`<id>-pool-ro.<domain>:5432`, the primary's external pooled port) connection, on REST, GraphQL and MCP; the dashboard's pooled reveal lists them per replica. Per-replica pools, which need per-replica endpoints, are filed as [w6/137](../../done/137.md), promoted to [m467](../m467/README.md).
+- **bex's form.** bex's named replicas share one reader Service (`<id>-ro`, ADR018's HA row), so one CNPG Pooler `type: ro`, `<id>-pooler-ro`, serves them all with the primary's settings and one replica's pool. Each replica's status, `connection-info` `readReplicaConnectionStrings[]` and view `connectionInfo` carry its pooled internal (`<id>-pooler-ro.<ns>.svc:6432`) and external (`<id>-pool-ro.<domain>:5432`, the primary's external pooled port) connection, on REST, GraphQL and MCP; the dashboard's pooled reveal lists them per replica. Per-replica pools, which need per-replica endpoints, are filed as [w6/137](../137.md), promoted to [m467](../../blocked/m467/README.md).
 
 ## Progress — 2026-11-17 (t001–t004, t007, t008)
 
@@ -82,7 +82,7 @@ All five are reloadable (`SHOW CONFIG` `changeable` yes). The allowlist is `Allo
 
 ## Production check — 2026-11-17 (t005 in part, t006, t010)
 
-- **Settings and replicas hold on production.** A `basic_1gb` probe (`dpg-dbucp4g8vt4s73a1ougg`, pooled, replica `r1`) in `bex-canary`: both PgBouncers' `SHOW CONFIG` read Render's five settings; a client read the replica's data through `<id>-pooler-ro:6432` and was refused an `INSERT`; both external pooled names connected. Details: [t005](t005.md).
+- **Settings and replicas hold on production.** A `basic_1gb` probe (`dpg-dbucp4g8vt4s73a1ougg`, pooled, replica `r1`) in `bex-canary`: both PgBouncers' `SHOW CONFIG` read Render's five settings; a client read the replica's data through `<id>-pooler-ro:6432` and was refused an `INSERT`; both external pooled names connected. Details: [t005](done/t005.md).
 - **1,000 clients did not.** All 1,000 connected, but PgBouncer ran at the container's open-file soft limit of 1,024 (`kernel file descriptor limit: 1024 (hard: 524288)`), logged `accept() failed: Too many open files` and held 10 server connections of its 90 at 63 transactions per second. t003 had read the hard limit, and kind's soft limit (1,073,741,816) hid it on dev-6.
 - **Fixed** ([t010](done/t010.md)). `poolerTemplate` starts PgBouncer through `pgbouncerRunCommand`, which raises the soft limit to the hard one and `exec`s CNPG's manager. In production Poolers with that command PgBouncer ran at 524,288, and the same 1,000 clients held 87 server connections (the database's other 10 tenant slots were two poolers' `auth_query` sessions) with 913 waiting, at 412 transactions per second, 0 failed. ADR009 § Managed PgBouncer settings and ADR018 carry the correction and the evidence.
 - **Connection info on every surface** ([t006](done/t006.md)). REST, GraphQL, MCP and the dashboard show the same pooled strings and pool hosts for the primary and `r1`; no new drift.
@@ -97,3 +97,17 @@ All five are reloadable (`SHOW CONFIG` `changeable` yes). The allowlist is `Allo
   - t005's re-run in `bex-canary`: a new `basic-1gb` pooled probe; its PgBouncer logs `kernel file descriptor limit: 524288`; 1,000 concurrent clients on the internal pooled URL, with `SHOW POOLS` at most 90 server connections and no failed transaction; delete the probe by ID and confirm `GET` answers 404. ADR009's production-check bullet and ADR018's row drop "pending".
   - t009 closes.
 
+
+## UNBLOCKED — 2026-11-18: the production deploy carrying t010's fix landed
+
+- **Affected:** w6/m458 t005, t009. **Source:** verified evidence, read by the `/loopx w6` worker at 02:42Z.
+- **The pin.** `359aee37d` ("pin platform images to 14eaa71b98e5", 2026-11-18 01:28Z) is on `origin/main`. The commit adding `pgbouncerRunCommand` is `89d8ed7fd` (`git log origin/main -S pgbouncerRunCommand`), and `git merge-base --is-ancestor 89d8ed7fd 14eaa71b98e5` holds.
+- **Production.** `bex-controller-manager`, `bex-api` and `bex-pg-sni-proxy` run `bex-operator@sha256:b4104643…`, the digest that pin wrote to `deploy/gitops/base/bex.yaml`. Production ran no Pooler at 02:42Z, so the command is checked on t005's new probe's Pooler.
+- **Remaining gates:** none. **Next:** t005's re-run in `bex-canary` (BLOCKED — 2026-11-17, second, Then), then t009.
+
+## Closeout — 2026-11-18: 1,000 pooled clients on production
+
+- **t005's re-run** (pin `359aee37d`, carrying t010's `89d8ed7fd`). On a new `basic-1gb` pooled probe in `bex-canary` (`dpg-dbuh1mle7qgs73b34710`), the operator's own Pooler ran `pgbouncerRunCommand` and PgBouncer logged `kernel file descriptor limit: 524288 (hard: 524288)`. `SHOW CONFIG` read Render's five settings. 1,000 `pgbench` clients on the internal pooled URL all connected, and `SHOW POOLS` held exactly 90 server connections with 910 waiting for the whole minute, at 434 transactions per second, 0 failed, with no `Too many open files`. Details: [t005](done/t005.md).
+- **Cleanup.** The load pod `m458-pgbench-rerun` was deleted; the probe was deleted by ID (`DELETE` 204 at 02:49Z, then `GET` 404), and its Database, Pooler, Pod and volume claim were gone by 02:52Z. Production runs no Pooler.
+- **Docs.** ADR009's production-check bullet and ADR018's PgBouncer rows no longer read "pending".
+- **Definition of done.** Holds: 1,000 clients on at most 90 server connections with Render's settings (t005); a plan change reloads the pool without dropping a client (t002, t008); pooled replica connections on REST, GraphQL, MCP and the dashboard on production (t006); ADR009 and ADR018 record it. t009 closes the milestone.
