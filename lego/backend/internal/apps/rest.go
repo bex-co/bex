@@ -354,6 +354,46 @@ type envSpecificDetailsReq struct {
 	DockerContext        string          `json:"dockerContext"`
 	DockerfilePath       string          `json:"dockerfilePath"`
 	RegistryCredentialID json.RawMessage `json:"registryCredentialId"`
+	// RegistryCredential is the credential object Render's Terraform provider
+	// sends on every Docker or image cron job create, because it builds that
+	// request from Render's response type (DockerDetails). Render answers it
+	// 201 (w9/m472 t003). Only its id is read.
+	RegistryCredential *registryCredentialObject `json:"registryCredential"`
+}
+
+// registryCredentialObject is Render's registryCredential response object as
+// a create body carries it. With no credential configured the provider sends
+// it zero-valued: an empty id and updatedAt "0001-01-01T00:00:00Z". name,
+// registry, username and updatedAt describe the credential the id names, so
+// they are decoded (strict decoding refuses an undeclared key) and ignored.
+type registryCredentialObject struct {
+	ID        string          `json:"id"`
+	Name      json.RawMessage `json:"name"`
+	Registry  json.RawMessage `json:"registry"`
+	Username  json.RawMessage `json:"username"`
+	UpdatedAt json.RawMessage `json:"updatedAt"`
+}
+
+// registryCredentialID is the credential the create's envSpecificDetails
+// names, in registryCredentialId's raw form: that field, or a non-empty
+// registryCredential.id, which binds the same way. An empty object id binds
+// none. Both naming different credentials is refused by name.
+func (d envSpecificDetailsReq) registryCredentialID() (json.RawMessage, error) {
+	if d.RegistryCredential == nil {
+		return d.RegistryCredentialID, nil
+	}
+	id := strings.TrimSpace(d.RegistryCredential.ID)
+	if id == "" {
+		return d.RegistryCredentialID, nil
+	}
+	byID, err := decodeRegistryCredentialID(d.RegistryCredentialID)
+	if err != nil {
+		return nil, err
+	}
+	if byID != nil && *byID != id {
+		return nil, fmt.Errorf("%w: serviceDetails.envSpecificDetails.registryCredential.id conflicts with registryCredentialId", core.ErrBadRequest)
+	}
+	return json.Marshal(id)
 }
 
 // unsupportedField names an official-CLI field that the platform cannot yet
@@ -446,11 +486,18 @@ func unsupportedPreviewsField(previews, pullRequestPreviewsEnabled json.RawMessa
 	return ""
 }
 
-// previewsDisabled accepts only the no-op form of Render's preview object.
+// previewsDisabled accepts only the no-op form of Render's preview object:
+// generation "off", or no generation at all, which Render reads as off (its
+// API schema defaults generation to "off", and its Blueprint spec disables
+// previews when the field is omitted). Render's Terraform provider sends
+// `previews: {}` for every service with no previews block (w9/m472 t001).
 // Extra options remain refused rather than silently enabling unsupported behavior.
 func previewsDisabled(value any) bool {
 	object, ok := value.(map[string]any)
-	if !ok || object["generation"] != "off" {
+	if !ok {
+		return false
+	}
+	if generation, present := object["generation"]; present && generation != "off" {
 		return false
 	}
 	for field := range object {
@@ -602,7 +649,9 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 		}
 		if d := r.ServiceDetails.EnvSpecificDetails; d != nil {
 			buildCommand = d.BuildCommand
-			nestedRegistryCredentialID = d.RegistryCredentialID
+			if nestedRegistryCredentialID, err = d.registryCredentialID(); err != nil {
+				return CreateRequest{}, err
+			}
 			// Render's envSpecificDetails is docker-or-native details, read
 			// the same way for every service type. startCommand stays the
 			// command unless the build reads a dockerCommand: the pinned

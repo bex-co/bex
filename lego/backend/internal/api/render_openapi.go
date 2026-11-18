@@ -532,10 +532,28 @@ func applyRenderSchemaCompatibility(operationID string, schema *openapi3.Schema)
 	if operationID == "create-webhook" || operationID == "update-webhook" {
 		widenWebhookEventFilter(schema)
 	}
+	if operationID == "create-webhook" {
+		// Render's Terraform provider sends a render_webhook with no
+		// event_filter as "eventFilter": null (no omitempty), and Render
+		// answers 201 with an all-events webhook (w9/m472 t002).
+		nullableProperties(schema, "eventFilter")
+	}
+	if operationID == "create-postgres" || operationID == "update-postgres" {
+		// The provider sends a database with no read replicas as
+		// "readReplicas": null on both writes, and Render accepts it as
+		// omitted (w9/m472 t004).
+		nullableProperties(schema, "readReplicas")
+	}
 	if operationID != "create-service" && operationID != "update-service" {
 		return
 	}
 	nullableBuildFilterLists(schema)
+	if operationID == "create-service" {
+		// The provider sends a service with no environment variables or
+		// secret files as null lists, and Render accepts them as omitted
+		// (w9/m472 t004).
+		nullableProperties(schema, "envVars", "secretFiles")
+	}
 	details := schema.Properties["serviceDetails"]
 	if details == nil || details.Value == nil || len(details.Value.OneOf) == 0 {
 		return
@@ -546,6 +564,15 @@ func applyRenderSchemaCompatibility(operationID string, schema *openapi3.Schema)
 	// validation uses anyOf while all branch constraints remain active.
 	details.Value.AnyOf = append(details.Value.AnyOf, details.Value.OneOf...)
 	details.Value.OneOf = nil
+	if operationID == "create-service" {
+		// A static site with no routes is "serviceDetails.routes": null from
+		// the provider, which Render accepts as omitted (w9/m472 t004).
+		for i, branch := range details.Value.AnyOf {
+			if branch != nil && branch.Value != nil && branch.Value.Properties["routes"] != nil {
+				details.Value.AnyOf[i] = withNullableProperties(branch.Value, "routes")
+			}
+		}
+	}
 }
 
 // nullableBuildFilterLists lets either buildFilter list be JSON null on the
@@ -555,22 +582,35 @@ func applyRenderSchemaCompatibility(operationID string, schema *openapi3.Schema)
 // two arrays (w8/m54). The domain already reads null as empty. The component
 // is cloned because the service response shares it and must stay non-null.
 func nullableBuildFilterLists(schema *openapi3.Schema) {
-	ref := schema.Properties["buildFilter"]
-	if ref == nil || ref.Value == nil {
-		return
+	if ref := schema.Properties["buildFilter"]; ref != nil && ref.Value != nil {
+		schema.Properties["buildFilter"] = withNullableProperties(ref.Value, "paths", "ignoredPaths")
 	}
-	filter := *ref.Value
-	filter.Properties = maps.Clone(ref.Value.Properties)
-	for _, name := range []string{"paths", "ignoredPaths"} {
-		list := filter.Properties[name]
-		if list == nil || list.Value == nil {
+}
+
+// nullableProperties lets each named property of a request schema also be
+// JSON null, which the domain reads as omitted. Each property schema is
+// replaced by a nullable copy, never edited in place: a property is often a
+// $ref to a component that other requests and responses share (envVars is
+// PUT /env-vars' own body), and those must stay non-null.
+func nullableProperties(schema *openapi3.Schema, names ...string) {
+	for _, name := range names {
+		ref := schema.Properties[name]
+		if ref == nil || ref.Value == nil {
 			continue
 		}
-		nullable := *list.Value
+		nullable := *ref.Value
 		nullable.Nullable = true
-		filter.Properties[name] = &openapi3.SchemaRef{Value: &nullable}
+		schema.Properties[name] = &openapi3.SchemaRef{Value: &nullable}
 	}
-	schema.Properties["buildFilter"] = &openapi3.SchemaRef{Value: &filter}
+}
+
+// withNullableProperties is a copy of a shared object schema whose named
+// properties also accept JSON null (nullableProperties on a clone).
+func withNullableProperties(shared *openapi3.Schema, names ...string) *openapi3.SchemaRef {
+	clone := *shared
+	clone.Properties = maps.Clone(shared.Properties)
+	nullableProperties(&clone, names...)
+	return &openapi3.SchemaRef{Value: &clone}
 }
 
 // widenWebhookEventFilter accepts every subscribable bex event type in the

@@ -17,6 +17,7 @@ limitations under the License.
 package webhooks
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -119,12 +120,16 @@ func toWebhookEventList(views []DeliveryView) []webhookEventWithCursor {
 }
 
 // createEndpointRequest is POST /v1/webhooks' canonical Render body.
+// EventFilter stays raw so an omitted filter (refused, as Render's schema
+// requires the key) differs from an explicit null, which Render's Terraform
+// provider sends for a webhook with no event_filter and Render stores as the
+// all-events subscription [] gives (w9/m472 t002).
 type createEndpointRequest struct {
-	OwnerID     *string   `json:"ownerId"`
-	Name        string    `json:"name"`
-	URL         string    `json:"url"`
-	EventFilter *[]string `json:"eventFilter"`
-	Enabled     *bool     `json:"enabled"`
+	OwnerID     *string         `json:"ownerId"`
+	Name        string          `json:"name"`
+	URL         string          `json:"url"`
+	EventFilter json.RawMessage `json:"eventFilter"`
+	Enabled     *bool           `json:"enabled"`
 }
 
 // updateEndpointRequest is PATCH /v1/webhooks/{id}'s body — Render's full-body
@@ -168,15 +173,22 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, core.NewBadRequestError("WEBHOOK_OWNER_REQUIRED", "ownerId is required", map[string]any{"field": "ownerId"}))
 			return
 		}
-		if req.EventFilter == nil {
+		if len(req.EventFilter) == 0 {
 			core.WriteErr(w, core.NewBadRequestError("WEBHOOK_EVENT_FILTER_REQUIRED", "eventFilter is required", map[string]any{"field": "eventFilter"}))
+			return
+		}
+		// null leaves eventTypes nil, which Create stores as the same
+		// all-events subscription [] gives.
+		var eventTypes []string
+		if err := json.Unmarshal(req.EventFilter, &eventTypes); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
 		v, err := s.Create(r.Context(), CreateRequest{
 			OwnerID:    *req.OwnerID,
 			Name:       req.Name,
 			URL:        req.URL,
-			EventTypes: *req.EventFilter,
+			EventTypes: eventTypes,
 			Enabled:    *req.Enabled,
 		})
 		if err != nil {

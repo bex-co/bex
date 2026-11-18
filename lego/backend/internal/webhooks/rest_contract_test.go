@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -273,5 +274,61 @@ func TestRESTWebhookResendRequiresKeyAndIsIdempotent(t *testing.T) {
 	}
 	if one["requestBody"] != `{"type":"deploy_ended"}` || one["attemptNumber"] != float64(2) {
 		t.Fatalf("resend evidence = %v", one)
+	}
+}
+
+// Render's Terraform provider creates a render_webhook with no event_filter
+// as "eventFilter": null, which Render answers 201 and stores as the
+// all-events subscription (w9/m472 t002, the provider's
+// webhook/resource/testdata/webhooks_resource_cassette.yaml). bex stores it as
+// the same empty filter [] gives, which the worker delivers every event to,
+// and reads it back as []: the provider maps [] and null alike to an unset
+// event_filter, so the next plan is clean. An omitted filter keeps its 400.
+func TestRenderRESTCreateWithNullEventFilterSubscribesToEveryEvent(t *testing.T) {
+	svc, st := newTestService()
+	svc.Authz = manageChecker{admin: "id-admin"}
+	adminCtx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-admin", Method: "session"})
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	handler := rendertest.Wrap(t, mux, rendertest.Load(t).MuxMatcher(mux))
+	create := func(name, filter string) *httptest.ResponseRecorder {
+		t.Helper()
+		body := `{"enabled":true,` + filter + `"name":"` + name + `","ownerId":"default","url":"https://hooks.example.com/` + name + `"}`
+		req := httptest.NewRequestWithContext(core.WithStrictJSONDecoding(adminCtx), http.MethodPost, "/v1/webhooks", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+		return rr
+	}
+
+	byName := map[string]store.WebhookEndpoint{}
+	for _, tc := range []struct{ name, filter string }{
+		{"terraform", `"eventFilter":null,`},
+		{"explicit", `"eventFilter":[],`},
+	} {
+		rr := create(tc.name, tc.filter)
+		if rr.Code != http.StatusCreated {
+			t.Fatalf("create %s = %d %s", tc.filter, rr.Code, rr.Body.String())
+		}
+		created := decodeObject(t, rr)
+		if filter, ok := created["eventFilter"].([]any); !ok || len(filter) != 0 {
+			t.Fatalf("create %s eventFilter = %#v, want []", tc.filter, created["eventFilter"])
+		}
+		byName[tc.name] = st.rows[created["id"].(string)]
+	}
+	if got := byName["terraform"].EventTypes; got == nil || len(got) != 0 {
+		t.Errorf("null eventFilter stored %#v, want the empty all-events filter", got)
+	}
+	if !slices.Equal(byName["terraform"].EventTypes, byName["explicit"].EventTypes) {
+		t.Errorf("null stored %v, [] stored %v: want the same subscription", byName["terraform"].EventTypes, byName["explicit"].EventTypes)
+	}
+
+	for _, tc := range []struct{ filter, want string }{
+		{``, "WEBHOOK_EVENT_FILTER_REQUIRED"},
+		{`"eventFilter":"deploy_ended",`, "bad request"},
+	} {
+		if rr := create("refused", tc.filter); rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), tc.want) {
+			t.Errorf("create %q = %d %s, want 400 %s", tc.filter, rr.Code, rr.Body.String(), tc.want)
+		}
 	}
 }

@@ -188,6 +188,14 @@ var restCreateRules = map[string]wireRule{
 	"headers[].value":                           to("Headers"),
 	"renderSubdomainPolicy":                     to("SubdomainPolicy"),
 	"dryRun":                                    to("DryRun"),
+	// Render's Terraform provider sends the whole registryCredential response
+	// object on a Docker or image cron create (w9/m472 t003): its id binds the
+	// credential, and the fields describing that credential are not inputs.
+	"serviceDetails.envSpecificDetails.registryCredential.id":        to("RegistryCredentialID").given("rc-a", "rc-b"),
+	"serviceDetails.envSpecificDetails.registryCredential.name":      inert(registryCredentialDescription).given("", "ghcr"),
+	"serviceDetails.envSpecificDetails.registryCredential.registry":  inert(registryCredentialDescription).given("", "GITHUB"),
+	"serviceDetails.envSpecificDetails.registryCredential.username":  inert(registryCredentialDescription).given("", "octocat"),
+	"serviceDetails.envSpecificDetails.registryCredential.updatedAt": inert(registryCredentialDescription).given("0001-01-01T00:00:00Z", "2026-11-17T00:00:00Z"),
 }
 
 // restCronBridge is fields plus Command on a cron: REST stores a cron's start
@@ -440,6 +448,15 @@ type wireOutcome struct {
 func to(fields ...string) wireRule {
 	return wireRule{want: func(createShape) wireOutcome { return wireOutcome{fields: fields} }}
 }
+
+// inert is a field accepted on every shape that changes nothing, for why.
+func inert(why string) wireRule {
+	return wireRule{want: func(createShape) wireOutcome { return wireOutcome{inert: why} }}
+}
+
+// registryCredentialDescription is why the registryCredential object's fields
+// other than id change nothing.
+const registryCredentialDescription = "describes the credential its id names, as Render's response object does; only the id is an input"
 
 // refused is a field whose variants answer 400 on every shape.
 func refused(values ...any) wireRule {

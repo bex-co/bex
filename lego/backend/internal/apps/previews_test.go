@@ -35,9 +35,13 @@ func TestBlueprintPreviewOptOut(t *testing.T) {
 		accepted            bool
 	}{
 		{"root off", "previews: {generation: off}\n", "", true},
+		// Render's Blueprint spec: omitting generation disables previews.
+		{"root no generation", "previews: {}\n", "", true},
+		{"root expiry only", "previews: {expireAfterDays: 3}\n", "", true},
 		{"root off with expiry", "previews: {generation: off, expireAfterDays: 3}\n", "", true},
 		{"root false", "previewsEnabled: false\n", "", true},
 		{"service off", "", "previews: {generation: off}", true},
+		{"service no generation", "", "previews: {}", true},
 		{"service false", "", "pullRequestPreviewsEnabled: false", true},
 		{"root automatic", "previews: {generation: automatic}\n", "", false},
 		{"root manual", "previews: {generation: manual}\n", "", false},
@@ -73,6 +77,10 @@ func TestRESTPreviewOptOut(t *testing.T) {
 	}{
 		{`"previews":{"generation":"off"}`, true},
 		{`"previews":{"generation":"off","expireAfterDays":3}`, true},
+		// Render's schema defaults generation to "off"; Render's Terraform
+		// provider sends {} for every service with no previews block
+		// (w9/m472 t001).
+		{`"previews":{}`, true},
 		{`"pullRequestPreviewsEnabled":"no"`, true},
 		{`"previews":{"generation":"automatic"}`, false},
 		{`"previews":{"generation":"manual"}`, false},
@@ -81,6 +89,8 @@ func TestRESTPreviewOptOut(t *testing.T) {
 		{`"previews":"no"`, false},
 		{`"previews":{"generation":"off","numInstances":2}`, false},
 		{`"previews":{"generation":"off","expireAfterDays":0}`, false},
+		{`"previews":{"numInstances":2}`, false},
+		{`"previews":{"generation":null}`, false},
 	} {
 		for _, method := range []string{http.MethodPost, http.MethodPatch} {
 			t.Run(method+tc.details, func(t *testing.T) {
