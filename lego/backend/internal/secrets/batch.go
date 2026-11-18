@@ -194,30 +194,21 @@ func (s *Service) suspendedNow(ctx context.Context, a *appv1alpha1.App) bool {
 	return core.RereadApp(ctx, s.Client, live) == nil && live.Spec.Suspended
 }
 
-// servedArtifact is the image an environment "Save and deploy" reruns: deploy
-// means the current build with the new values, never a source build (w4/m180,
-// ADR013). Empty means nothing serving to rerun — a static site (environment
-// is build-time only, so deploy rebuilds), unknown history, or a prebuilt
-// image with no live release, which deploys its saved image (never the 409).
+// servedArtifact is the image an environment "Save and deploy" reruns
+// (rollout.Tracker.ServedArtifact). A source-built service with no live build
+// is refused: its deploy has nothing to rerun (w4/m180).
 func (s *Service) servedArtifact(ctx context.Context, a *appv1alpha1.App) (string, error) {
-	if a.Spec.Type == appv1alpha1.TypeStaticSite {
-		return "", nil
+	image, err := s.Rollout.ServedArtifact(ctx, a)
+	return image, needsLiveRelease(a, err)
+}
+
+// needsLiveRelease words rollout.ErrNoLiveBuild as the deploying save's 409.
+func needsLiveRelease(a *appv1alpha1.App, err error) error {
+	if !errors.Is(err, rollout.ErrNoLiveBuild) {
+		return err
 	}
-	live, err := s.Rollout.ServedRelease(ctx, a)
-	if errors.Is(err, rollout.ErrNoDeployHistory) {
-		return "", nil
-	}
-	if err != nil {
-		return "", err
-	}
-	if live == nil && a.Spec.Image == "" {
-		return "", core.NewConflictError("ENVIRONMENT_DEPLOY_NEEDS_LIVE_RELEASE",
-			fmt.Sprintf("service %q has no live build to deploy the new environment with; save only, or save, rebuild, and deploy", storeServiceName(a, a.Name)), nil)
-	}
-	if live == nil {
-		return "", nil
-	}
-	return live.ResolvedImage, nil
+	return core.NewConflictError("ENVIRONMENT_DEPLOY_NEEDS_LIVE_RELEASE",
+		fmt.Sprintf("service %q has no live build to deploy the new environment with; save only, or save, rebuild, and deploy", storeServiceName(a, a.Name)), nil)
 }
 
 // envPatchTxn carries what compensation needs to restore the state a failed
@@ -500,24 +491,13 @@ func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.A
 
 // selectServedBuild makes a's patch an environment "Save and deploy": the
 // staged configuration activates, and the release reruns the build serving now
-// (servedArtifact) with it instead of building. A prebuilt image reruns the
-// image it serves only when that is not its saved one (w4/m418); "Save,
-// rebuild, and deploy" does not come here, so it pulls the saved image, as
-// there is nothing to build.
+// with it instead of building (rollout.Tracker.SelectServedBuild). "Save,
+// rebuild, and deploy" does not come here, so a prebuilt image pulls its saved
+// image, as there is nothing to build.
 func (s *Service) selectServedBuild(ctx context.Context, a *appv1alpha1.App) error {
 	activatePendingProjectionReferences(a)
 	s.bumpRestart(a)
-	if a.Spec.Image != "" {
-		return s.Rollout.SelectServedImage(ctx, a)
-	}
-	image, err := s.servedArtifact(ctx, a)
-	if err != nil {
-		return err
-	}
-	if image != "" {
-		rollout.SelectReleaseImage(a, image)
-	}
-	return nil
+	return needsLiveRelease(a, s.Rollout.SelectServedBuild(ctx, a))
 }
 
 // deployDeferrer is the deploy store's waiting-deploy capability

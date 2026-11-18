@@ -54,6 +54,71 @@ func (t *Tracker) SelectServedImage(ctx context.Context, a *appv1alpha1.App) err
 	return nil
 }
 
+// ErrNoLiveBuild reports a source-built service with no live release: there is
+// no build for a configuration-only release to rerun.
+var ErrNoLiveBuild = errors.New("rollout: no live build to rerun")
+
+// ServedArtifact is the image a configuration-only "deploy" reruns: the current
+// build with the new values, never a source build (w4/m180, ADR013). Empty
+// means nothing serving to rerun: a static site (its environment is build-time
+// only, so its deploy rebuilds), unknown history, or a prebuilt image with no
+// live release, which deploys its saved image. A source-built service with no
+// live release answers ErrNoLiveBuild.
+func (t *Tracker) ServedArtifact(ctx context.Context, a *appv1alpha1.App) (string, error) {
+	if a.Spec.Type == appv1alpha1.TypeStaticSite {
+		return "", nil
+	}
+	live, err := t.ServedRelease(ctx, a)
+	if errors.Is(err, ErrNoDeployHistory) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	if live == nil && a.Spec.Image == "" {
+		return "", ErrNoLiveBuild
+	}
+	if live == nil {
+		return "", nil
+	}
+	return live.ResolvedImage, nil
+}
+
+// SelectServedBuild makes the configuration-only release a's locked patch
+// opens rerun the build a serves now (ServedArtifact) with the new
+// configuration instead of building: an environment "Save and deploy"
+// (w4/m180) and every environment-group write that deploys (w4/708). A
+// prebuilt image reruns the image it serves only when that is not its saved
+// one (SelectServedImage). A suspended service selects nothing: its change is
+// held for the next deploy, not stamped.
+func (t *Tracker) SelectServedBuild(ctx context.Context, a *appv1alpha1.App) error {
+	if a.Spec.Suspended {
+		return nil
+	}
+	if a.Spec.Image != "" {
+		return t.SelectServedImage(ctx, a)
+	}
+	image, err := t.ServedArtifact(ctx, a)
+	if err != nil || image == "" {
+		return err
+	}
+	SelectReleaseImage(a, image)
+	return nil
+}
+
+// DeployInFlight reports whether a deploy of a is executing or queued. A
+// release opened behind it runs after it, on whatever that deploy leaves
+// serving, so selecting the build serving now would roll the older build back
+// over it (w4/667). Unknown history reports none.
+func (t *Tracker) DeployInFlight(ctx context.Context, a *appv1alpha1.App) (bool, error) {
+	lister, appID := t.history(a)
+	if lister == nil {
+		return false, nil
+	}
+	rows, err := lister.ListDeploys(ctx, appID, store.DeployFilter{Statuses: store.OpenDeployStatuses(), Limit: 1})
+	return len(rows) > 0, err
+}
+
 // SelectReleaseImage selects image as the runtime image of the release a's
 // patch opens: bound to metadata.generation+1, the generation Stamp records,
 // so a later deploy expires it.

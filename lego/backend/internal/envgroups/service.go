@@ -1152,13 +1152,38 @@ func (s *Service) linkFetched(ctx context.Context, gid string, a *appv1alpha1.Ap
 // service's own files reference a secrets write just set. A write that loses
 // re-reads the App and applies mutate again.
 //
-// The release reruns the image a prebuilt-image service is serving, so a
-// group write never rolls an image override back to the saved tag (w4/m418).
+// The release reruns the build the service serves now (selectServedBuild).
 func (s *Service) rollLinkedService(ctx context.Context, a *appv1alpha1.App, trigger string, mutate func(*appv1alpha1.App)) error {
 	return s.Rollout.PatchLocked(ctx, s.Client, a, trigger, func(a *appv1alpha1.App) error {
 		mutate(a)
-		return s.Rollout.SelectServedImage(ctx, a)
+		return s.selectServedBuild(ctx, a)
 	})
+}
+
+// selectServedBuild makes a group write's release a deploy, not a rebuild:
+// like the service's own environment "Save and deploy" (ADR013 w4/m180), it
+// reruns the build the service serves with the new group values (w4/708), and
+// a prebuilt image never rolls an image override back to its saved tag
+// (w4/m418). Only the group's "Save, rebuild, and deploy" builds
+// (RebuildService). A static site still rebuilds, its environment being
+// build-time.
+//
+// A source-built service with no live build keeps building, since there is
+// nothing to rerun and one such service must not fail the whole group write.
+// So does one with a deploy in flight: the release waits for that deploy, and
+// rerunning the build serving now would roll its older code back over the
+// deploy's. Either build checks out the commit the release pins
+// (spec.buildCommit), so no other code ships.
+func (s *Service) selectServedBuild(ctx context.Context, a *appv1alpha1.App) error {
+	if a.Spec.Image == "" {
+		if busy, err := s.Rollout.DeployInFlight(ctx, a); err != nil || busy {
+			return err
+		}
+	}
+	if err := s.Rollout.SelectServedBuild(ctx, a); !errors.Is(err, rollout.ErrNoLiveBuild) {
+		return err
+	}
+	return nil
 }
 
 // autoDeployGated reports whether a group write must leave this linked

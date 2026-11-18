@@ -18,8 +18,11 @@ package envgroups
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
+
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/rollout"
@@ -211,6 +214,173 @@ func TestEnvGroupRollsKeepTheServedImage(t *testing.T) {
 			check("unlink")
 			if len(deploys.rows) != 4 {
 				t.Fatalf("rows = %d, want one release per write", len(deploys.rows))
+			}
+		})
+	}
+}
+
+// deployHistory answers both history reads by status, as the store does:
+// ServedRelease's live row and DeployInFlight's open ones.
+type deployHistory struct {
+	*recordingDeploys
+	rows []store.Deploy
+}
+
+func (h *deployHistory) ListDeploys(_ context.Context, _ string, filter store.DeployFilter) ([]store.Deploy, error) {
+	var out []store.Deploy
+	for _, d := range h.rows {
+		if len(filter.Statuses) == 0 || slices.Contains(filter.Statuses, d.Status) {
+			out = append(out, d)
+		}
+	}
+	return out, nil
+}
+
+var servedBuild = store.Deploy{ID: "dep-live", Status: store.DeployLive,
+	ResolvedImage: "zot.bex-registry.svc:5000/t/web:gen-2@sha256:4d8c", Commit: "936b61bab203", CommitMessage: "served build"}
+
+// sourceBuiltGroupService is a Git-backed service of serviceType, Auto-Deploy
+// on, whose deploy history answers rows.
+func sourceBuiltGroupService(serviceType string, rows ...store.Deploy) (*Service, *deployHistory) {
+	a := repoApp("web", true)
+	a.Labels = managedApp("web").Labels
+	a.Spec.Type = serviceType
+	history := &deployHistory{recordingDeploys: &recordingDeploys{prior: store.CommitInfo{Hash: "5d946be30"}}, rows: rows}
+	svc := newService(newFakeStore(), a)
+	svc.Rollout = &rollout.Tracker{Store: history}
+	return svc, history
+}
+
+// w4/708 (round 1152): a group link, a group value save in "Save and deploy"
+// mode, a secret-file write and an unlink each rebuilt a linked Git-backed
+// service from source (83–95 s of BuildKit per write), where the same save on
+// the service's own Environment tab reruns the serving build (w4/m180). Each
+// must open one release that reruns the served build with the new group
+// values, recorded with that build's image and commit.
+func TestEnvGroupDeploysRerunTheServedBuildOfAGitBackedService(t *testing.T) {
+	ctx := testCtx()
+	svc, history := sourceBuiltGroupService(appv1alpha1.TypeWebService, servedBuild)
+	g, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	check := func(step string, rows int) {
+		t.Helper()
+		if len(history.rows) != 1 {
+			t.Fatalf("history changed: %+v", history.rows)
+		}
+		if len(history.recordingDeploys.rows) != rows {
+			t.Fatalf("%s: %d deploy rows, want %d (one release per write)", step, len(history.recordingDeploys.rows), rows)
+		}
+		a := getApp(t, svc.Client, "web")
+		last := history.recordingDeploys.rows[rows-1]
+		ref := a.Spec.ReleaseConfig
+		if ref == nil || ref.Image != servedBuild.ResolvedImage || ref.SourceGeneration != 0 || ref.Generation != last.Generation {
+			t.Fatalf("%s: releaseConfig %+v, want the served build bound to the release opened (gen %d)", step, ref, last.Generation)
+		}
+		if last.Image != servedBuild.ResolvedImage || last.Commit != servedBuild.Commit || last.Trigger != store.TriggerConfigChange {
+			t.Fatalf("%s: row %+v, want a config_change of the served build %s at %s", step, last, servedBuild.ResolvedImage, servedBuild.Commit)
+		}
+	}
+	if err := svc.LinkService(ctx, g.ID, "web"); err != nil {
+		t.Fatal(err)
+	}
+	check("link", 1)
+	svc.Base.Clock = func() time.Time { return time.Unix(2_000_000, 0).UTC() }
+	res, err := svc.PatchEnvironment(ctx, g.ID, EnvironmentPatch{
+		EnvVars: []EnvVarPatch{{Key: "MESSAGE", Value: "qa-eg-3", ValueSet: true}}, SaveMode: SaveModeDeploy,
+	})
+	if err != nil || !res.RolledOut || len(res.FailedServiceIDs) != 0 || len(res.PendingServiceIDs) != 0 {
+		t.Fatalf("Save and deploy = %+v, %v", res, err)
+	}
+	check("Save and deploy", 2)
+	svc.Base.Clock = func() time.Time { return time.Unix(3_000_000, 0).UTC() }
+	if _, err := svc.SetEnvGroupVars(ctx, g.ID, []EnvVarView{{Key: "MESSAGE", Value: "qa-eg-4"}}); err != nil {
+		t.Fatal(err)
+	}
+	check("variable PUT", 3)
+	svc.Base.Clock = func() time.Time { return time.Unix(4_000_000, 0).UTC() }
+	if _, err := svc.SetEnvGroupFile(ctx, g.ID, "app.conf", "x=1"); err != nil {
+		t.Fatal(err)
+	}
+	check("secret file write", 4)
+	if err := svc.UnlinkService(ctx, g.ID, "web"); err != nil {
+		t.Fatal(err)
+	}
+	check("unlink", 5)
+}
+
+// The group's "Save, rebuild, and deploy" is the one mode that builds: it goes
+// through RebuildService and selects nothing.
+func TestEnvGroupRebuildStillBuildsAGitBackedService(t *testing.T) {
+	ctx := testCtx()
+	svc, history := sourceBuiltGroupService(appv1alpha1.TypeWebService, servedBuild)
+	g, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared", ServiceIDs: []string{"web"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	linked := getApp(t, svc.Client, "web")
+	var rebuilt []string
+	svc.RebuildService = func(_ context.Context, serviceID string) error {
+		rebuilt = append(rebuilt, serviceID)
+		return nil
+	}
+	res, err := svc.PatchEnvironment(ctx, g.ID, EnvironmentPatch{
+		EnvVars: []EnvVarPatch{{Key: "MESSAGE", Value: "v2", ValueSet: true}}, SaveMode: SaveModeRebuild,
+	})
+	if err != nil || !res.RolledOut || !slices.Equal(rebuilt, []string{"srv-web"}) {
+		t.Fatalf("rebuild = %+v, %v, rebuilt %v; want one rebuild of web", res, err, rebuilt)
+	}
+	if a := getApp(t, svc.Client, "web"); !apiequality.Semantic.DeepEqual(a.Spec, linked.Spec) || len(history.recordingDeploys.rows) != 1 {
+		t.Fatalf("rebuild mode patched the App itself (releaseConfig %+v) or opened %d rows; want only RebuildService's deploy",
+			a.Spec.ReleaseConfig, len(history.recordingDeploys.rows)-1)
+	}
+}
+
+// What keeps building on a group deploy: a static site (its environment is
+// build-time only), a Git-backed service with no live build (nothing to rerun,
+// and the group write must still succeed), and one with a deploy in flight (the
+// release waits for it, and rerunning the build serving now would roll that
+// deploy's code back).
+func TestEnvGroupDeploysStillBuildWithNothingToRerun(t *testing.T) {
+	inFlight := store.Deploy{ID: "dep-building", Status: store.DeployBuildInProgress, Commit: "5d946be30"}
+	for _, tc := range []struct {
+		name        string
+		serviceType string
+		rows        []store.Deploy
+	}{
+		{name: "a static site", serviceType: appv1alpha1.TypeStaticSite, rows: []store.Deploy{servedBuild}},
+		{name: "no live build", serviceType: appv1alpha1.TypeWebService},
+		{name: "a deploy in flight", serviceType: appv1alpha1.TypeWebService, rows: []store.Deploy{servedBuild, inFlight}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := testCtx()
+			svc, history := sourceBuiltGroupService(tc.serviceType, tc.rows...)
+			g, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := svc.LinkService(ctx, g.ID, "web"); err != nil {
+				t.Fatalf("link: %v", err)
+			}
+			svc.Base.Clock = func() time.Time { return time.Unix(2_000_000, 0).UTC() }
+			res, err := svc.PatchEnvironment(ctx, g.ID, EnvironmentPatch{
+				EnvVars: []EnvVarPatch{{Key: "MESSAGE", Value: "v2", ValueSet: true}}, SaveMode: SaveModeDeploy,
+			})
+			if err != nil || !res.RolledOut || len(res.FailedServiceIDs) != 0 {
+				t.Fatalf("Save and deploy = %+v, %v", res, err)
+			}
+			a := getApp(t, svc.Client, "web")
+			if a.Spec.ReleaseConfig != nil || a.Spec.RestartedAt == "" {
+				t.Fatalf("selected %+v (restartedAt %q); want a plain build", a.Spec.ReleaseConfig, a.Spec.RestartedAt)
+			}
+			for _, row := range history.recordingDeploys.rows {
+				if row.Image != "" {
+					t.Fatalf("row %+v records an image; a build records none", row)
+				}
+			}
+			if len(history.recordingDeploys.rows) != 2 {
+				t.Fatalf("rows = %d, want the link and the save", len(history.recordingDeploys.rows))
 			}
 		})
 	}

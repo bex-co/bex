@@ -19,6 +19,7 @@ package rollout
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,15 +28,22 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// liveStore answers ServedRelease's live-row read.
+// liveStore answers the deploy-history reads by status, as the store does:
+// ServedRelease's live row and DeployInFlight's open ones.
 type liveStore struct {
 	fakeDeployStore
 	live []store.Deploy
 	err  error
 }
 
-func (l *liveStore) ListDeploys(_ context.Context, _ string, _ store.DeployFilter) ([]store.Deploy, error) {
-	return l.live, l.err
+func (l *liveStore) ListDeploys(_ context.Context, _ string, filter store.DeployFilter) ([]store.Deploy, error) {
+	var rows []store.Deploy
+	for _, d := range l.live {
+		if len(filter.Statuses) == 0 || slices.Contains(filter.Statuses, d.Status) {
+			rows = append(rows, d)
+		}
+	}
+	return rows, l.err
 }
 
 const (
@@ -114,6 +122,93 @@ func TestSelectServedImageReportsAFailedRead(t *testing.T) {
 	boom := errors.New("db down")
 	tr := &Tracker{Store: &liveStore{err: boom}}
 	if err := tr.SelectServedImage(context.Background(), imageApp()); !errors.Is(err, boom) {
+		t.Fatalf("err = %v, want %v", err, boom)
+	}
+}
+
+const servedBuild = "zot.bex-registry.svc:5000/t/web:gen-2@sha256:4d8c"
+
+func sourceApp() *appv1alpha1.App {
+	a := imageApp()
+	a.Spec.Image, a.Spec.Repo = "", "https://github.com/bex-co/bex"
+	return a
+}
+
+// w4/m180, w4/708: a configuration-only release reruns the build a
+// source-built service serves; a prebuilt image keeps SelectServedImage's
+// rule. A static site, unknown history and a held (suspended) change select
+// nothing, and a source-built service with no live build has nothing to rerun.
+func TestSelectServedBuild(t *testing.T) {
+	built := store.Deploy{Status: store.DeployLive, ResolvedImage: servedBuild, Commit: "936b61bab203"}
+	overrideRow := store.Deploy{Status: store.DeployLive, Image: overrideTag, ResolvedImage: overrideDgst}
+	for _, tc := range []struct {
+		name    string
+		app     func() *appv1alpha1.App
+		live    []store.Deploy
+		noHist  bool
+		tweak   func(*appv1alpha1.App)
+		want    string
+		wantErr error
+	}{
+		{name: "a source-built service reruns its served build", app: sourceApp, live: []store.Deploy{built}, want: servedBuild},
+		{name: "a source-built service with no live build", app: sourceApp, wantErr: ErrNoLiveBuild},
+		{name: "a static site rebuilds", app: sourceApp, live: []store.Deploy{built}, tweak: func(a *appv1alpha1.App) { a.Spec.Type = appv1alpha1.TypeStaticSite }},
+		{name: "a suspended source-built service", app: sourceApp, live: []store.Deploy{built}, tweak: func(a *appv1alpha1.App) { a.Spec.Suspended = true }},
+		{name: "unknown history", app: sourceApp, noHist: true},
+		{name: "an image service reruns its override", app: imageApp, live: []store.Deploy{overrideRow}, want: overrideDgst},
+		{name: "an image service with no live release deploys its saved tag", app: imageApp},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			a := tc.app()
+			if tc.tweak != nil {
+				tc.tweak(a)
+			}
+			tr := &Tracker{Store: &liveStore{live: tc.live}}
+			if tc.noHist {
+				tr = &Tracker{Store: &fakeDeployStore{}}
+			}
+			if err := tr.SelectServedBuild(context.Background(), a); !errors.Is(err, tc.wantErr) {
+				t.Fatalf("err = %v, want %v", err, tc.wantErr)
+			}
+			if tc.want == "" {
+				if a.Spec.ReleaseConfig != nil {
+					t.Fatalf("selected %+v, want nothing", a.Spec.ReleaseConfig)
+				}
+				return
+			}
+			want := appv1alpha1.ReleaseConfigReference{Generation: 6, Image: tc.want}
+			if a.Spec.ReleaseConfig == nil || *a.Spec.ReleaseConfig != want {
+				t.Fatalf("selected %+v, want %+v", a.Spec.ReleaseConfig, want)
+			}
+		})
+	}
+}
+
+// A deploy executing or queued is in flight; a live or finished one is not,
+// and with no history nothing is known to be.
+func TestDeployInFlight(t *testing.T) {
+	live := store.Deploy{Status: store.DeployLive, ResolvedImage: servedBuild}
+	for _, tc := range []struct {
+		name string
+		rows []store.Deploy
+		want bool
+	}{
+		{name: "only a live deploy", rows: []store.Deploy{live, {Status: store.DeployCanceled}}},
+		{name: "a build in progress", rows: []store.Deploy{live, {Status: store.DeployBuildInProgress}}, want: true},
+		{name: "a queued deploy", rows: []store.Deploy{live, {Status: store.DeployQueued}}, want: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tr := &Tracker{Store: &liveStore{live: tc.rows}}
+			if got, err := tr.DeployInFlight(context.Background(), sourceApp()); err != nil || got != tc.want {
+				t.Fatalf("DeployInFlight = %v, %v; want %v", got, err, tc.want)
+			}
+		})
+	}
+	if got, err := (&Tracker{Store: &fakeDeployStore{}}).DeployInFlight(context.Background(), sourceApp()); err != nil || got {
+		t.Fatalf("no history: DeployInFlight = %v, %v; want false", got, err)
+	}
+	boom := errors.New("db down")
+	if _, err := (&Tracker{Store: &liveStore{err: boom}}).DeployInFlight(context.Background(), sourceApp()); !errors.Is(err, boom) {
 		t.Fatalf("err = %v, want %v", err, boom)
 	}
 }

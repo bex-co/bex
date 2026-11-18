@@ -74,15 +74,8 @@ var ErrNoDeployHistory = errors.New("rollout: no deploy history")
 // image the operator served — the immutable artifact a no-build release reuses.
 // nil means the App has no live build.
 func (t *Tracker) ServedRelease(ctx context.Context, a *appv1alpha1.App) (*store.Deploy, error) {
-	appID := ""
-	if a != nil {
-		appID = store.ManagedAppID(a.Labels)
-	}
-	var lister liveDeployStore
-	if t != nil {
-		lister, _ = t.Store.(liveDeployStore)
-	}
-	if lister == nil || appID == "" {
+	lister, appID := t.history(a)
+	if lister == nil {
 		return nil, ErrNoDeployHistory
 	}
 	rows, err := lister.ListDeploys(ctx, appID, store.DeployFilter{Statuses: []string{store.DeployLive}, Limit: 1})
@@ -90,6 +83,20 @@ func (t *Tracker) ServedRelease(ctx context.Context, a *appv1alpha1.App) (*store
 		return nil, err
 	}
 	return &rows[0], nil
+}
+
+// history is the reader of a's deploy history and its row id, or nil when
+// this Tracker cannot read it.
+func (t *Tracker) history(a *appv1alpha1.App) (liveDeployStore, string) {
+	if t == nil || a == nil {
+		return nil, ""
+	}
+	lister, _ := t.Store.(liveDeployStore)
+	appID := store.ManagedAppID(a.Labels)
+	if lister == nil || appID == "" {
+		return nil, ""
+	}
+	return lister, appID
 }
 
 // Tracker opens deploy-history rows for spec patches that roll a release. A nil
