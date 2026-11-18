@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 # Self-test for fetch-app-kubeconfig.sh, with curl/ssh/kubectl stubbed on PATH.
 # No network, no cluster, no real credentials: every token below is a dummy.
-#   * the mid-roll retry (w6/m153);
-#   * the repository-root .env fallback for HCLOUD_TOKEN (w21/097).
+#   * the mid-roll retry (w6/m153), and no retry under trust-on-first-use,
+#     where a stale ~/.ssh/known_hosts entry never heals (w3/m472);
+#   * the repository-root .env fallback for HCLOUD_TOKEN (w21/097) and the pin
+#     inputs, the stable control-plane key included (w3/m472);
+#   * HCLOUD_TOKEN reaching curl on stdin, never in its argv, here and in
+#     verify-substrate.sh (w3/m472).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -10,13 +14,21 @@ work=$(mktemp -d)
 trap 'rm -rf -- "$work"' EXIT
 bin="$work/bin"
 mkdir -p "$bin"
+# The stable control-plane key has a default path under $HOME: a maintainer's
+# real ~/.ssh/bex_cp_host_ed25519 must never decide a case here. Temp pins land
+# in $TMPDIR, so a case can prove none survives.
+home="$work/home"
+mkdir -p "$home/.ssh" "$work/tmpdir"
+export HOME="$home" TMPDIR="$work/tmpdir"
 
 # Each stub appends what it was called with to $CURL_LOG / $SSH_LOG and the
-# environment it saw to $ENV_LOG (all unset => /dev/null).
+# environment it saw to $ENV_LOG (all unset => /dev/null); curl also appends
+# its stdin to $CURL_STDIN.
 # Two running control planes; the Hetzner API is the only curl call.
 cat > "$bin/curl" <<'STUB'
 #!/usr/bin/env bash
 echo "$*" >> "${CURL_LOG:-/dev/null}"
+cat >> "${CURL_STDIN:-/dev/null}"
 env >> "${ENV_LOG:-/dev/null}"
 echo '{"servers":[
  {"name":"bex-control-plane-a","status":"running","created":"2026-10-24T06:00:00Z","public_net":{"ipv4":{"ip":"10.0.0.1"}}},
@@ -85,7 +97,7 @@ fake="$work/repo"
 elsewhere="$work/elsewhere"
 mkdir -p "$fake/scripts/lib" "$elsewhere"
 cp scripts/fetch-app-kubeconfig.sh "$fake/scripts/"
-cp scripts/lib/env-file.sh scripts/lib/ssh-hostkey.sh "$fake/scripts/lib/"
+cp scripts/lib/env-file.sh scripts/lib/ssh-hostkey.sh scripts/lib/curl-auth.sh "$fake/scripts/lib/"
 printf 'HCLOUD_TOKEN=%s\n' "$other" > "$elsewhere/.env"
 chmod 600 "$elsewhere/.env"
 envkey="$work/env-key"
@@ -101,22 +113,28 @@ write_env() {
 # run_env [NAME=value ...]: the caller's environment never has a token or SSH
 # setting of its own unless the case passes it.
 run_env() {
-  : > "$work/count"; : > "$work/curl.log"; : > "$work/ssh.log"; : > "$work/env.log"
+  : > "$work/count"; : > "$work/curl.log"; : > "$work/curl.stdin"; : > "$work/ssh.log"; : > "$work/env.log"
   rm -f "$work/out.kubeconfig"
   ( cd "$elsewhere" && env -u HCLOUD_TOKEN -u BEX_SSH_KEY_PATH -u BEX_SSH_PRIVATE_KEY_FILE \
-      -u BEX_SSH_KNOWN_HOSTS_FILE -u BEX_SSH_REQUIRE_KNOWN_HOSTS \
-      PATH="$bin:$PATH" SSH_COUNT="$work/count" CURL_LOG="$work/curl.log" \
+      -u BEX_SSH_KNOWN_HOSTS_FILE -u BEX_SSH_KNOWN_HOSTS -u BEX_CP_SSH_HOST_KEY_FILE \
+      -u BEX_SSH_REQUIRE_KNOWN_HOSTS -u BEX_KUBECONFIG_FETCH_ATTEMPTS -u BEX_KUBECONFIG_FETCH_RETRY_SECONDS \
+      PATH="$bin:$PATH" SSH_COUNT="$work/count" CURL_LOG="$work/curl.log" CURL_STDIN="$work/curl.stdin" \
       SSH_LOG="$work/ssh.log" ENV_LOG="$work/env.log" "$@" \
       bash "$fake/scripts/fetch-app-kubeconfig.sh" "$work/out.kubeconfig" ) > "$work/stdout" 2> "$work/stderr"
 }
 # No run may print a token, whether it succeeded or not (checked without
-# echoing the output, so a failure here cannot leak it either).
+# echoing the output, so a failure here cannot leak it either), nor put one on
+# curl's command line, where `ps` shows it to every local user (w3/m472).
 no_leak() {
   if grep -qF -e "$token" -e "$other" "$work/stdout" "$work/stderr"; then
     echo "FAIL: $1 — the token reached stdout/stderr"; exit 1
   fi
+  if grep -qF -e "$token" -e "$other" "$work/curl.log"; then
+    echo "FAIL: $1 — the token reached curl's argv"; exit 1
+  fi
 }
-used_token() { grep -qF "Bearer $1" "$work/curl.log"; }
+used_token() { grep -qF "Bearer $1" "$work/curl.stdin"; }
+no_temp_pins() { [ -z "$(ls -A "$TMPDIR")" ]; }
 
 # Unset + .env: the token is loaded and sent to the Hetzner API, nothing else
 # in the file reaches the children, and the token itself is not exported.
@@ -186,4 +204,73 @@ grep -qF -e "-i $work/exported-key" "$work/ssh.log" || fail "an exported BEX_SSH
 no_leak "ssh inputs from .env"
 echo "ok: .env supplies the SSH key and known-hosts file only when they are not already set"
 
-echo "PASS: fetch-app-kubeconfig retries only mid-roll host-key failures and loads HCLOUD_TOKEN from the repository-root .env without touching an exported one"
+# --- the host-key pin tiers (w3/m472) ---------------------------------------
+ssh-keygen -q -t ed25519 -N '' -C bex-control-plane -f "$work/cp_host" > /dev/null
+read -r cp_type cp_blob _ < "$work/cp_host.pub"
+pin_file() { sed -n 's/.*UserKnownHostsFile=\([^ ]*\).*/\1/p' "$work/ssh.log" | head -n 1; }
+
+# .env names the stable key: the pin is derived from it, fails closed, and the
+# temp pin is gone once the script exits.
+write_env 600 "HCLOUD_TOKEN=$token" "BEX_CP_SSH_HOST_KEY_FILE=$work/cp_host"
+run_env || fail ".env's BEX_CP_SSH_HOST_KEY_FILE should pin the fetch"
+no_leak "stable key from .env"
+grep -q "StrictHostKeyChecking=yes" "$work/ssh.log" || fail "the derived pin did not fail closed"
+grep -q "GlobalKnownHostsFile=/dev/null" "$work/ssh.log" || fail "the derived pin read the global known-hosts file"
+case "$(pin_file)" in "$TMPDIR"/bex-known-hosts.*) ;; *) fail "the derived pin is not a temp file: $(pin_file)" ;; esac
+[ ! -e "$(pin_file)" ] || fail "the derived temp pin survived the run"
+no_temp_pins || fail "a temp pin survived the run"
+grep -q "derived from BEX_CP_SSH_HOST_KEY_FILE" "$work/stderr" || fail "the derived tier was not reported"
+grep -qF "$cp_blob" "$work/stdout" "$work/stderr" && fail "key material reached the output"
+
+# .env carries the pin's content, as the workflows do: a temp pin too.
+write_env 600 "HCLOUD_TOKEN=$token" "BEX_SSH_KNOWN_HOSTS='* $cp_type $cp_blob'"
+run_env || fail ".env's BEX_SSH_KNOWN_HOSTS should pin the fetch"
+case "$(pin_file)" in "$TMPDIR"/bex-known-hosts.*) ;; *) fail "BEX_SSH_KNOWN_HOSTS was not pinned from a temp file" ;; esac
+no_temp_pins || fail "the BEX_SSH_KNOWN_HOSTS temp pin survived the run"
+
+# Nothing configured, but the documented ~/.ssh/bex_cp_host_ed25519 exists: the
+# zero-config pin a maintainer's machine gets. An exported token skips .env.
+rm -f "$fake/.env"
+cp "$work/cp_host.pub" "$home/.ssh/bex_cp_host_ed25519.pub"
+run_env HCLOUD_TOKEN="$token" || fail "the default stable key should pin the fetch"
+grep -q "derived from BEX_CP_SSH_HOST_KEY_FILE ($home/.ssh/bex_cp_host_ed25519)" "$work/stderr" \
+  || fail "the default stable key was not used"
+grep -q "StrictHostKeyChecking=accept-new" "$work/ssh.log" && fail "the default stable key fell back to trust on first use"
+no_temp_pins || fail "the default-key temp pin survived the run"
+rm -f "$home/.ssh/bex_cp_host_ed25519.pub"
+echo "ok: the stable control-plane key, from .env or its default path, pins the fetch and leaves no temp pin"
+
+# Trust on first use (no pin at all) with a stale ~/.ssh/known_hosts entry:
+# one pass, no sleep at the default 60 s retry, and a remedy naming both pin
+# inputs and ADR019's recovery path.
+start=$SECONDS
+if run_env HCLOUD_TOKEN="$token" SSH_OK_AFTER=99; then fail "a trust-on-first-use host-key failure must fail"; fi
+elapsed=$((SECONDS - start))
+no_leak "trust on first use"
+[ "$elapsed" -lt 5 ] || fail "a trust-on-first-use failure took ${elapsed}s; it must not wait to retry"
+[ "$(cat "$work/count")" = 2 ] || fail "want one pass of 2 ssh calls under trust on first use, got $(cat "$work/count")"
+grep -q "retrying in" "$work/stderr" && fail "retried a stale ~/.ssh/known_hosts entry"
+grep -q "StrictHostKeyChecking=accept-new" "$work/ssh.log" || fail "the no-pin case did not run under trust on first use"
+for want in BEX_SSH_KNOWN_HOSTS_FILE BEX_CP_SSH_HOST_KEY_FILE ADR019 "Verify production SSH trust" "10.0.0.2 10.0.0.1"; do
+  grep -qF "$want" "$work/stderr" || fail "the trust-on-first-use failure does not name $want"
+done
+grep -q "ssh-keygen -R" "$work/stderr" && fail "the remedy suggests removing the entry and trusting the next key"
+grep -q "still do not match the pinned" "$work/stderr" && fail "blamed a pin that does not exist"
+echo "ok: under trust on first use a host-key failure stops after one pass and names the pin inputs"
+
+# --- verify-substrate.sh's Hetzner calls (w3/m472) ---------------------------
+# Its checks need a live cluster, so run its hc() definition as shipped, with
+# the stub curl, and prove the token goes to stdin, never to argv.
+hc_def="$(grep '^hc() ' scripts/verify-substrate.sh)" || fail "verify-substrate.sh defines no hc()"
+: > "$work/curl.log"; : > "$work/curl.stdin"
+( export PATH="$bin:$PATH" CURL_LOG="$work/curl.log" CURL_STDIN="$work/curl.stdin"
+  # shellcheck source=scripts/lib/curl-auth.sh
+  source scripts/lib/curl-auth.sh
+  eval "$hc_def"
+  HCLOUD_TOKEN="$token" hc /servers > /dev/null ) || fail "verify-substrate.sh's hc() failed"
+grep -qF "https://api.hetzner.cloud/v1/servers" "$work/curl.log" || fail "hc() did not call the Hetzner API"
+used_token "$token" || fail "hc() did not send the token"
+grep -qF "$token" "$work/curl.log" && fail "hc() put the token in curl's argv"
+echo "ok: HCLOUD_TOKEN reaches curl on stdin, never argv (fetch-app-kubeconfig.sh and verify-substrate.sh)"
+
+echo "PASS: fetch-app-kubeconfig retries only pinned mid-roll host-key failures, pins the stable control-plane key, keeps HCLOUD_TOKEN off argv and loads its inputs from the repository-root .env without touching exported ones"

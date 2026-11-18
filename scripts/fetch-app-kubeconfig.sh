@@ -14,18 +14,28 @@
 #                             one command.
 #         BEX_SSH_KEY_PATH    SSH private key override (otherwise
 #                             BEX_SSH_PRIVATE_KEY_FILE or ~/.ssh/bex)
-#         BEX_SSH_KNOWN_HOSTS_FILE  authoritative known-hosts file. Set => the
-#                                  host key is AUTHENTICATED and an unknown or
-#                                  changed key fails closed before admin.conf is
-#                                  read (w1/m66 F7). Unset => trust-on-first-use,
-#                                  as before, with a notice on stderr.
+#         The control-plane host key is pinned by scripts/lib/ssh-hostkey.sh,
+#         first match wins, and an unknown or changed key fails closed before
+#         admin.conf is read (w1/m66 F7):
+#         BEX_SSH_KNOWN_HOSTS_FILE  authoritative known-hosts file
+#         BEX_SSH_KNOWN_HOSTS       its content (as the workflows hold it)
+#         BEX_CP_SSH_HOST_KEY_FILE  the stable control-plane host key (w6/m153
+#                                   t008), default ~/.ssh/bex_cp_host_ed25519;
+#                                   its public half becomes the one-line pin
+#                                   `* ssh-ed25519 <key>` (w3/m472). The `.pub`
+#                                   half alone is enough.
+#         None of them => trust-on-first-use against ~/.ssh/known_hosts, with
+#         a notice; a host-key failure then stops after one pass, since a stale
+#         local entry never heals by retrying.
 #         CLUSTER_NAME        cluster name (default bex)
 # When it loads .env, only this script's own inputs come from it (HCLOUD_TOKEN,
-# BEX_SSH_PRIVATE_KEY_FILE, BEX_SSH_KNOWN_HOSTS_FILE), each only when the caller
-# has not set it. The file is read in a subshell and the values are assigned,
-# not exported, so the rest of it (S3 keys, proxy or KUBECONFIG settings, ...)
-# never reaches the curl/ssh/kubectl children. A group- or other-readable .env
-# is refused by scripts/lib/env-file.sh. The token is never printed.
+# BEX_SSH_PRIVATE_KEY_FILE and the three pin inputs above), each only when the
+# caller has not set it. The file is read in a subshell and the values are
+# assigned, not exported, so the rest of it (S3 keys, proxy or KUBECONFIG
+# settings, ...) never reaches the curl/ssh/kubectl children. A group- or
+# other-readable .env is refused by scripts/lib/env-file.sh. The token is never
+# printed, and never on a command line: curl reads it from stdin
+# (scripts/lib/curl-auth.sh), so `ps` cannot show it (w3/m472).
 # Callers: .github/workflows/app-cluster.yml, .github/workflows/deploy.yml
 #          and local operators.
 set -euo pipefail
@@ -45,7 +55,7 @@ bex_fetch_env_inputs() {
   # shellcheck source=scripts/lib/env-file.sh
   source "$SCRIPT_DIR/lib/env-file.sh"
   bex_env_file_guard "$env_file" || return 1 # once here, so a refusal prints once, not per name
-  for name in HCLOUD_TOKEN BEX_SSH_PRIVATE_KEY_FILE BEX_SSH_KNOWN_HOSTS_FILE; do
+  for name in HCLOUD_TOKEN BEX_SSH_PRIVATE_KEY_FILE BEX_SSH_KNOWN_HOSTS_FILE BEX_SSH_KNOWN_HOSTS BEX_CP_SSH_HOST_KEY_FILE; do
     [ -z "${!name:-}" ] || continue
     value="$(bex_load_env "$env_file" > /dev/null && printf '%s' "${!name:-}")" || {
       echo "error: could not load $env_file" >&2
@@ -61,6 +71,17 @@ KEY="${BEX_SSH_KEY_PATH:-${BEX_SSH_PRIVATE_KEY_FILE:-$HOME/.ssh/bex}}"
 CLUSTER="${CLUSTER_NAME:-bex}"
 # shellcheck source=scripts/lib/ssh-hostkey.sh
 source "$SCRIPT_DIR/lib/ssh-hostkey.sh"
+# shellcheck source=scripts/lib/curl-auth.sh
+source "$SCRIPT_DIR/lib/curl-auth.sh"
+
+TMP=""
+SSH_ERR=""
+cleanup() {
+  [ -z "$TMP" ] || rm -f -- "$TMP"
+  [ -z "$SSH_ERR" ] || rm -f -- "$SSH_ERR"
+  bex_ssh_hostkey_cleanup
+}
+trap cleanup EXIT
 bex_ssh_hostkey_args
 
 # A control-plane roll replaces nodes (new IPs, new host keys) one at a time,
@@ -68,13 +89,16 @@ bex_ssh_hostkey_args
 # though the pinned keys are still current for the nodes that will remain
 # (w6/m153: a deploy and a drill failed mid-roll on 2026-10-24, then fetched
 # fine once it settled). Rediscover the nodes and retry for a bounded time
-# when — and only when — host-key verification is what failed. Strict checking
-# is never relaxed.
+# when — and only when — host-key verification is what failed against a pin.
+# Under trust-on-first-use the failure is a stale ~/.ssh/known_hosts entry,
+# which no amount of waiting heals, so that stops after one pass (w3/m472).
+# Strict checking is never relaxed.
 ATTEMPTS="${BEX_KUBECONFIG_FETCH_ATTEMPTS:-6}"
+[ "$BEX_SSH_HOSTKEY_TIER" != tofu ] || ATTEMPTS=1
 RETRY_SECONDS="${BEX_KUBECONFIG_FETCH_RETRY_SECONDS:-60}"
 
 discover() {
-  curl -sf -H "Authorization: Bearer $HCLOUD_TOKEN" \
+  bex_curl_bearer HCLOUD_TOKEN -sf \
     "https://api.hetzner.cloud/v1/servers?label_selector=caph-cluster-${CLUSTER}" \
     | jq -r --arg p "${CLUSTER}-control-plane" '
         [.servers[]
@@ -86,17 +110,12 @@ discover() {
 
 TMP=$(mktemp "${OUT}.tmp.XXXXXX")
 SSH_ERR=$(mktemp "${OUT}.ssherr.XXXXXX")
-cleanup() {
-  [ -z "${TMP:-}" ] || rm -f -- "$TMP"
-  rm -f -- "$SSH_ERR"
-}
-trap cleanup EXIT
 
 attempt=1
 while :; do
   CP_IPS=$(discover)
   [ -n "$CP_IPS" ] || { echo "no running control-plane servers found for $CLUSTER" >&2; exit 1; }
-  hostkey_failures=0
+  hostkey_failed_ips=""
   while IFS= read -r CP_IP; do
     if ssh -o BatchMode=yes -o ConnectTimeout=8 \
         "${BEX_SSH_HOSTKEY_ARGS[@]}" -i "$KEY" "root@${CP_IP}" \
@@ -110,12 +129,12 @@ while :; do
     fi
     cat "$SSH_ERR" >&2
     if grep -q "Host key verification failed" "$SSH_ERR"; then
-      hostkey_failures=$((hostkey_failures + 1))
+      hostkey_failed_ips="${hostkey_failed_ips:+$hostkey_failed_ips }$CP_IP"
     fi
     echo "control-plane $CP_IP unavailable; trying the next candidate" >&2
   done <<< "$CP_IPS"
 
-  if [ "$hostkey_failures" -eq 0 ] || [ "$attempt" -ge "$ATTEMPTS" ]; then
+  if [ -z "$hostkey_failed_ips" ] || [ "$attempt" -ge "$ATTEMPTS" ]; then
     break
   fi
   echo "every reachable control plane failed host-key verification (attempt $attempt/$ATTEMPTS) — a roll may be in progress; retrying in ${RETRY_SECONDS}s" >&2
@@ -123,7 +142,17 @@ while :; do
   sleep "$RETRY_SECONDS"
 done
 
-if [ "$hostkey_failures" -gt 0 ]; then
+if [ -n "$hostkey_failed_ips" ] && [ "$BEX_SSH_HOSTKEY_TIER" = tofu ]; then
+  echo "error: the host key of $hostkey_failed_ips does not match its entry in your local ~/.ssh/known_hosts" >&2
+  echo "       (trust on first use, no pin). Control-plane IPs are reused across rolls, so the entry" >&2
+  echo "       is stale, and retrying never heals it. Pin the authenticated key instead:" >&2
+  echo "         BEX_CP_SSH_HOST_KEY_FILE  the stable control-plane host key (default" >&2
+  echo "                                   ~/.ssh/bex_cp_host_ed25519; its .pub half is enough), or" >&2
+  echo "         BEX_SSH_KNOWN_HOSTS_FILE  a known-hosts file holding the verified pin." >&2
+  echo "       Without either, recover the pin with the 'Verify production SSH trust' workflow" >&2
+  echo "       (docs/ADR019-infra-credentials.md, Local access recovery). Do not delete the entry" >&2
+  echo "       and accept the next key: that is trust on first use again." >&2
+elif [ -n "$hostkey_failed_ips" ]; then
   echo "error: control-plane host keys still do not match the pinned BEX_SSH_KNOWN_HOSTS after $attempt attempt(s)." >&2
   echo "       Either a control-plane roll is still running, or the pin is stale: re-pin the" >&2
   echo "       current control-plane host keys (BEX_SSH_KNOWN_HOSTS secret + .env) from an" >&2

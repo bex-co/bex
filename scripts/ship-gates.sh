@@ -50,6 +50,10 @@
 #      already past that number, production included, skips it for good while
 #      every fresh CI database applies it (0283 landed below a live 0284, and
 #      the audit log answered 500 until a repair migration, w4/701).
+#  11. A tracked shell script at HEAD passes a production credential in a
+#      curl header or user argument (scripts/secret-argv-validate.sh), where
+#      `ps` shows it to every local user. Blocks: pass it on stdin through
+#      scripts/lib/curl-auth.sh instead (w3/m472).
 #
 # Gates 2, 3, 5 and 6 and the gofmt check run in a detached worktree at HEAD,
 # never in the working tree: a gate run beside an edit in progress tested the
@@ -137,6 +141,7 @@ if [ "$red_main" = 1 ]; then
 fi
 
 bash scripts/repo-artifact-guard.sh "$base"
+bash scripts/secret-argv-validate.sh HEAD
 
 leak_rc=0
 bash scripts/gitleaks.sh "$base..HEAD" || leak_rc=$?

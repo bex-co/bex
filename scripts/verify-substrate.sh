@@ -20,14 +20,18 @@
 #
 # Env: HCLOUD_TOKEN (required; sourced from ./.env if unset)
 #      BEX_SSH_KEY_PATH   SSH key for the CP fetch (default ~/.ssh/bex)
-#      BEX_SSH_KNOWN_HOSTS_FILE  authoritative known-hosts file, forwarded to the
-#                         CP fetch and remote firewall scan. Set => host keys are
-#                         authenticated and fail closed (w1/m66 F7); unset =>
-#                         trust-on-first-use with a notice
+#      BEX_SSH_KNOWN_HOSTS_FILE, BEX_SSH_KNOWN_HOSTS, BEX_CP_SSH_HOST_KEY_FILE
+#                         the control-plane host-key pin, forwarded to the CP
+#                         fetch and used by the remote firewall scan
+#                         (scripts/lib/ssh-hostkey.sh: the first one set wins and
+#                         fails closed, w1/m66 F7 and w3/m472; the stable key
+#                         defaults to ~/.ssh/bex_cp_host_ed25519; none =>
+#                         trust-on-first-use with a notice)
 #      WL_KUBECONFIG      skip the fetch and use this kubeconfig (check 1 still
 #                         runs unless SKIP_FETCH=1)
 # Exit 0 on full pass; non-zero naming the failed check. Requires kubectl, jq,
-# curl, and SSH access to a control-plane node.
+# curl, and SSH access to a control-plane node. HCLOUD_TOKEN reaches curl on
+# stdin, never in its argv (scripts/lib/curl-auth.sh, w3/m472).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -37,7 +41,11 @@ fi
 : "${HCLOUD_TOKEN:?HCLOUD_TOKEN required (env or .env)}"
 export BEX_SSH_KEY_PATH="${BEX_SSH_KEY_PATH:-$HOME/.ssh/bex}"
 # shellcheck source=scripts/lib/ssh-hostkey.sh
-source "$(dirname "${BASH_SOURCE[0]}")/lib/ssh-hostkey.sh"
+source scripts/lib/ssh-hostkey.sh
+# shellcheck source=scripts/lib/curl-auth.sh
+source scripts/lib/curl-auth.sh
+TMP=""
+trap '[ -z "$TMP" ] || rm -f -- "$TMP"; bex_ssh_hostkey_cleanup' EXIT
 bex_ssh_hostkey_args
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
@@ -47,7 +55,6 @@ pass() { echo "PASS: $*"; }
 KUBECONFIG_FILE="${WL_KUBECONFIG:-}"
 if [ "${SKIP_FETCH:-0}" != "1" ]; then
   TMP=$(mktemp)
-  trap 'rm -f "$TMP"' EXIT
   bash scripts/fetch-app-kubeconfig.sh "$TMP" >/dev/null \
     || fail "access: fetch-app-kubeconfig.sh could not reach a CP node"
   KUBECONFIG_FILE="$TMP"
@@ -175,7 +182,7 @@ done
 pass "csr: no CSRValidationFailed in the three controller-manager 24h log windows"
 
 # --- 8. NETWORK: CAPH network, private LB targets, public node firewall --------
-hc() { curl --fail --silent --show-error -H "Authorization: Bearer $HCLOUD_TOKEN" "https://api.hetzner.cloud/v1$1"; }
+hc() { bex_curl_bearer HCLOUD_TOKEN --fail --silent --show-error "https://api.hetzner.cloud/v1$1"; }
 NETWORKS_JSON=$(hc '/networks?name=bex')
 NETWORK_COUNT=$(jq '.networks | length' <<<"$NETWORKS_JSON")
 NETWORK_ID=$(jq -r '.networks[0].id // 0' <<<"$NETWORKS_JSON")

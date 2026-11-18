@@ -103,7 +103,9 @@ jobs:
       # w6/m153: the admin.conf fetch retries only mid-roll host-key failures.
       # w21/097: it loads HCLOUD_TOKEN from the repository-root .env only when
       # the caller has not exported one.
-      - name: Kubeconfig fetch self-test (mid-roll retry, .env fallback)
+      # w3/m472: the stable control-plane key pins the fetch, trust-on-first-use
+      # never retries, and HCLOUD_TOKEN stays off curl's argv.
+      - name: Kubeconfig fetch self-test (mid-roll retry, .env fallback, pin tiers, token off argv)
         run: bash scripts/fetch-app-kubeconfig.test.sh
       # w21: a worker Machine Hetzner refused a server for (a stock-out) is retried
       # by the fleet-rollout wait instead of wedging the app-cluster workflow.
@@ -179,6 +181,12 @@ jobs:
         run: bash scripts/tracking-issue.test.sh
       - name: Repo artifact guard self-test
         run: bash scripts/repo-artifact-guard.test.sh
+      # w3/m472: no production credential in a curl command line, where ps
+      # shows it to every local user; HCLOUD_TOKEN goes to curl on stdin.
+      - name: Production credential argv guard + self-test
+        run: |
+          bash scripts/secret-argv-validate.sh
+          bash scripts/secret-argv-validate.test.sh
       # w3/042. Its sibling for a probe that is green but late. Two things are
       # proven on every push rather than only when the daily job runs: every
       # scheduled workflow declares a drift window (a new probe without one
@@ -270,6 +278,8 @@ jobs:
           scripts/dev-env.sh scripts/dev-env.test.sh
           scripts/sandbox-docker-spike.sh scripts/sandbox-docker-spike.test.sh
           scripts/fetch-app-kubeconfig.test.sh
+          scripts/lib/ssh-hostkey.sh scripts/lib/curl-auth.sh scripts/ssh-hostkey.test.sh
+          scripts/secret-argv-validate.sh scripts/secret-argv-validate.test.sh
           scripts/wait-capi-rollout.sh scripts/wait-capi-rollout.test.sh
           scripts/stale-key-name-validate.sh scripts/stale-key-name-validate.test.sh
           scripts/mock-cluster.sh scripts/mock-cluster.test.sh scripts/lib/helm-isolated.sh
