@@ -583,9 +583,9 @@ const jaAuth: Record<string, TranslationEntry> = {
   },
   "auth.settingsGuardUnlinkRefused": {
     message:
-      "Google ログインが必須のワークスペースに所属している間は、ログイン方法の連携を解除できません。先に次のワークスペースから退出してください: {workspaces}。",
+      "Google ログインが必須のワークスペースに所属している間は、Google アカウントの連携を解除できません。先に次のワークスペースから退出してください: {workspaces}。",
     description:
-      "Account settings refusal of disconnecting a sign-in provider (Kratos message 4100002) while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465)",
+      "Account settings refusal of disconnecting the Google account, or an unlink that does not name its provider (Kratos message 4100002), while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465, w7/085)",
   },
 };
 

@@ -153,8 +153,8 @@ for name in guarded guard_only; do
     check "$name: $method's hook interrupts the flow and sends the bearer" \
       test "$(q "${!name}" "($hook.config.response.parse | tostring) + \" \" + $hook.config.auth.type + \" \" + $hook.config.auth.config.name + \" \" + $hook.config.auth.config.value + \" \" + $hook.config.auth.config.in")" \
       = "true api_key Authorization Bearer guard-token header"
-    check "$name: $method sends the identity, its email and the request URL" \
-      grep -q "identity_id: ctx.identity.id, email: .*request_url: ctx.request_url" \
+    check "$name: $method sends the identity, its email, the request URL and the unlink the client names" \
+      grep -q "identity_id: ctx.identity.id, email: .*request_url: ctx.request_url, unlink: .*ctx.flow.transient_payload.unlink else ''" \
       <<<"$(q "${!name}" "$hook.config.body" | sed 's|^base64://||' | base64 --decode)"
   done
   check "$name: the password method is not guarded" test "$(q "${!name}" '.selfservice.flows.settings.after.password')" = "null"

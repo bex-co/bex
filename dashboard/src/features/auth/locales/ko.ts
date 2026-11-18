@@ -572,9 +572,9 @@ const koAuth: Record<string, TranslationEntry> = {
   },
   "auth.settingsGuardUnlinkRefused": {
     message:
-      "Google 로그인을 요구하는 워크스페이스에 속해 있는 동안에는 로그인 수단의 연결을 해제할 수 없습니다. 먼저 다음 워크스페이스에서 나가세요: {workspaces}.",
+      "Google 로그인을 요구하는 워크스페이스에 속해 있는 동안에는 Google 계정의 연결을 해제할 수 없습니다. 먼저 다음 워크스페이스에서 나가세요: {workspaces}.",
     description:
-      "Account settings refusal of disconnecting a sign-in provider (Kratos message 4100002) while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465)",
+      "Account settings refusal of disconnecting the Google account, or an unlink that does not name its provider (Kratos message 4100002), while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465, w7/085)",
   },
 };
 

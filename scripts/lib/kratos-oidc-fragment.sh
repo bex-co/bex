@@ -200,13 +200,16 @@ YAML
 }
 
 # kratos_settings_guard_hook METHOD — the settings guard's web_hook for one
-# settings method. The Jsonnet body sends the identity as it would be saved
-# and the URL of the request changing it (an oidc link runs on the provider
-# callback, an unlink on the settings POST).
+# settings method. The Jsonnet body sends the identity as it would be saved,
+# the URL of the request changing it (an oidc link runs on the provider
+# callback, an unlink on the settings POST), and the provider the client says
+# an unlink removes: the flow's transient_payload.unlink, which the dashboard
+# sets because Kratos gives the hook neither the request body nor the
+# credentials (w7/085). Empty when the client named none.
 kratos_settings_guard_hook() {
-  local q="'" body
+  local q="'" body tp="ctx.flow.transient_payload"
   body="$(printf '%s' \
-    "function(ctx) { identity_id: ctx.identity.id, email: if std.objectHas(ctx.identity.traits, ${q}email${q}) then ctx.identity.traits.email else ${q}${q}, request_url: ctx.request_url }" \
+    "function(ctx) { identity_id: ctx.identity.id, email: if std.objectHas(ctx.identity.traits, ${q}email${q}) then ctx.identity.traits.email else ${q}${q}, request_url: ctx.request_url, unlink: if std.objectHas(ctx.flow, ${q}transient_payload${q}) && std.isObject(${tp}) && std.objectHas(${tp}, ${q}unlink${q}) && std.isString(${tp}.unlink) then ${tp}.unlink else ${q}${q} }" \
     | base64 | tr -d '\n')"
   cat <<YAML
         $1:

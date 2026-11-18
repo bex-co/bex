@@ -12,7 +12,8 @@
 #   provider login -> callback -> Kratos exchanges the code, runs the mapper,
 #   creates the identity + a first-party session -> /sessions/whoami returns
 #   the mapped, verified email and the google sign-in -> the settings flow
-#   asks the guard before saving an email change or an unlink
+#   asks the guard before saving an email change, a link or an unlink, and
+#   hands it the provider an unlink names in its transient_payload
 #
 # The Google and GitLab providers are Dex (dexidp.io), a throwaway stand-in
 # OIDC IdP registered under the provider ids `google` and `gitlab`
@@ -29,8 +30,9 @@
 # the mapper marking a provider-verified email verified, the session's
 # `oidc`/`google` authentication method (what bex-api's gate reads), the linked
 # account's stored ID token (what the gate reads the Google email from), and
-# the settings guard interrupting a profile change and an unlink, letting
-# other changes through, and failing the flow closed when unreachable. The
+# the settings guard interrupting a profile change and Google's unlink, letting
+# a GitLab link and unlink and other changes through, and failing the flow
+# closed when unreachable. The
 # guard is a stub on the host standing in for bex-api's
 # /internal/kratos/settings-guard (whose own decisions internal/settingsguard's
 # tests pin).
@@ -219,19 +221,26 @@ wait_http "$DEX_ISSUER/.well-known/openid-configuration"
 echo "  ✓ dex OIDC discovery is live at $DEX_ISSUER"
 
 echo "-> 3/6 settings guard stub (stands in for bex-api's /internal/kratos/settings-guard)..."
-# It answers what $TMP/guard-mode says ("refuse" or "allow") and logs each
-# call, so the flow below can assert what Kratos sent and what it did with
-# each answer.
+# It answers what $TMP/guard-mode says ("refuse", "allow", or "enforce": an
+# oidc hook answered as bex-api's guard answers a member of an enforcing
+# workspace with Google linked, w7/085: a link, or an unlink that names a
+# provider other than Google, passes; any other oidc change and every profile
+# change is refused) and logs each call, so the flow below can assert what
+# Kratos sent and what it did with each answer.
 cat >"$TMP/guard.py" <<'GUARD'
 import http.server, json, os, sys
 port, tmp = int(sys.argv[1]), sys.argv[2]
 class Guard(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
-        body = self.rfile.read(int(self.headers.get('Content-Length', 0)))
+        body = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))))
         with open(os.path.join(tmp, 'guard.log'), 'a') as log:
-            log.write(json.dumps({'path': self.path, 'auth': self.headers.get('Authorization'), 'body': json.loads(body)}) + '\n')
-        if open(os.path.join(tmp, 'guard-mode')).read().strip() == 'refuse':
-            profile = 'method=profile' in self.path
+            log.write(json.dumps({'path': self.path, 'auth': self.headers.get('Authorization'), 'body': body}) + '\n')
+        mode = open(os.path.join(tmp, 'guard-mode')).read().strip()
+        profile = 'method=profile' in self.path
+        if mode == 'enforce':
+            passes = not profile and ('/self-service/methods/oidc/callback/' in body['request_url'] or body.get('unlink', '') not in ('', 'google'))
+            mode = 'allow' if passes else 'refuse'
+        if mode == 'refuse':
             out = json.dumps({'messages': [{'instance_ptr': '#/traits/email' if profile else '#/', 'messages': [
                 {'id': 4100001 if profile else 4100002, 'text': 'refused by the e2e guard', 'type': 'error',
                  'context': {'workspaces': ['Acme']}}]}]}).encode()
@@ -356,20 +365,27 @@ assert claims.get('email') == email, 'stored ID token email = %r' % claims.get('
 print('  ✓ 4e the linked Google account stored its ID token, email', claims['email'])
 
 # (6) Sign back in from a fresh browser: the same identity, not a second one.
+def stand_in_login(op, url, who):
+    """Follow `url` to the stand-in provider's login form and sign in as
+    `who`; return where the browser lands back on Kratos."""
+    with op.open(url) as r:
+        login_url, html = r.geturl(), r.read().decode()
+    form = urllib.parse.urljoin(login_url, re.search(r'action="([^"]+)"', html).group(1).replace('&amp;', '&'))
+    try:
+        with op.open(urllib.request.Request(form, data=urllib.parse.urlencode({'login': who, 'password': password}).encode())) as r:
+            return r.geturl()
+    except urllib.error.HTTPError as e:
+        return e.url or ''
+
 def provider_login(op, provider, who):
     """Sign in (or up) through `provider` as the stand-in person `who`."""
     _, flow = get_json_with(op, f'{kratos_pub}/self-service/login/browser')
     csrf = next(n['attributes']['value'] for n in flow['ui']['nodes'] if n['attributes'].get('name') == 'csrf_token')
     _, submit = get_json_with(op, flow['ui']['action'], data=json.dumps({'method': 'oidc', 'provider': provider, 'csrf_token': csrf}).encode(), ctype='application/json')
-    with op.open(submit['redirect_browser_to']) as r:
-        login_url, html = r.geturl(), r.read().decode()
-    form = urllib.parse.urljoin(login_url, re.search(r'action="([^"]+)"', html).group(1).replace('&amp;', '&'))
-    try:
-        op.open(urllib.request.Request(form, data=urllib.parse.urlencode({'login': who, 'password': password}).encode())).close()
-    except urllib.error.HTTPError as e:
-        if 'error-stub' in (e.url or ''):
-            eid = urllib.parse.parse_qs(urllib.parse.urlparse(e.url).query).get('id', [''])[0]
-            sys.exit(f'{provider}: flow ended on the Kratos error page: ' + json.dumps(get_json_with(op, f'{kratos_pub}/self-service/errors?id={eid}')[1])[:800])
+    landed = stand_in_login(op, submit['redirect_browser_to'], who)
+    if 'error-stub' in landed:
+        eid = urllib.parse.parse_qs(urllib.parse.urlparse(landed).query).get('id', [''])[0]
+        sys.exit(f'{provider}: flow ended on the Kratos error page: ' + json.dumps(get_json_with(op, f'{kratos_pub}/self-service/errors?id={eid}')[1])[:800])
     return get_json_with(op, f'{kratos_pub}/sessions/whoami')
 
 
@@ -414,22 +430,52 @@ def settings(body, mode):
 def current_email():
     return get_json(f'{kratos_pub}/sessions/whoami')[1]['identity']['traits']['email']
 
+def linked():
+    """The providers linked to the Google identity, from Kratos's admin API."""
+    _, adm = get_json(f'{kratos_adm}/admin/identities/{ident}?include_credential=oidc')
+    return sorted(p['provider'] for p in adm['credentials']['oidc']['config']['providers'])
+
+def link(provider, mode):
+    """Link `provider` from the settings flow, as the dashboard's Link button
+    does, signing in at the stand-in as the same person; return where the
+    browser lands."""
+    open(os.path.join(tmp, 'guard-mode'), 'w').write(mode)
+    _, sf = get_json(f'{kratos_pub}/self-service/settings/browser')
+    csrf = next(n['attributes']['value'] for n in sf['ui']['nodes'] if n['attributes'].get('name') == 'csrf_token')
+    _, out = get_json(sf['ui']['action'], data=json.dumps({'method': 'oidc', 'link': provider, 'csrf_token': csrf}).encode(), ctype='application/json')
+    assert isinstance(out, dict) and out.get('redirect_browser_to'), f'link {provider}: ' + json.dumps(out)[:400]
+    return stand_in_login(opener, out['redirect_browser_to'], email)
+
 code, ids = settings({'method': 'profile', 'traits': {'email': 'personal@gmail.example'}}, 'refuse')
 assert code == 400 and 4100001 in ids and current_email() == email, f'refused email change: {code} {ids} {current_email()}'
 # Kratos itself never unlinks an identity's only credential, so give it a
 # password first (the password method is not guarded).
 code, _ = settings({'method': 'password', 'password': 'a-long-e2e-only-passphrase-42'}, 'allow')
 assert code == 200, f'setting a password = {code}'
-code, ids = settings({'method': 'oidc', 'unlink': 'google'}, 'refuse')
-assert code == 400 and 4100002 in ids, f'refused unlink: {code} {ids}'
+# A member of an enforcing workspace (w7/085): linking another provider and
+# unlinking it again pass, as on Render; Google's unlink is refused. The
+# dashboard names the provider an unlink removes in the flow's
+# transient_payload, the one place Kratos hands the hook from the request.
+landed = link('gitlab', 'enforce')
+assert 'error-stub' not in landed and linked() == ['gitlab', 'google'], f'linking GitLab landed on {landed}, linked {linked()}'
+code, ids = settings({'method': 'oidc', 'unlink': 'gitlab', 'transient_payload': {'unlink': 'gitlab'}}, 'enforce')
+assert code == 200 and linked() == ['google'], f'unlinking GitLab: {code} {ids}, linked {linked()}'
+code, ids = settings({'method': 'oidc', 'unlink': 'google', 'transient_payload': {'unlink': 'google'}}, 'enforce')
+assert code == 400 and 4100002 in ids and linked() == ['google'], f'refused Google unlink: {code} {ids}, linked {linked()}'
+code, ids = settings({'method': 'oidc', 'unlink': 'google'}, 'enforce')
+assert code == 400 and 4100002 in ids and linked() == ['google'], f'refused unlink naming no provider: {code} {ids}, linked {linked()}'
 code, _ = settings({'method': 'profile', 'traits': {'email': email, 'name': 'Dev'}}, 'allow')
 assert code == 200, f'an allowed profile change = {code}'
 log = [json.loads(line) for line in open(os.path.join(tmp, 'guard.log'))]
-assert [e['path'].split('method=')[1] for e in log] == ['profile', 'oidc', 'profile'], [e['path'] for e in log]
+assert [e['path'].split('method=')[1] for e in log] == ['profile', 'oidc', 'oidc', 'oidc', 'oidc', 'profile'], [e['path'] for e in log]
 assert all(e['auth'] == 'Bearer ' + guard_token for e in log), 'the guard was not sent its bearer'
 first = log[0]['body']
 assert first['identity_id'] == ident and first['email'] == 'personal@gmail.example' and '/self-service/settings' in first['request_url'], first
-print('  ✓ 4h the settings guard refused an email change and an unlink, and let a name change through')
+oidc = [e['body'] for e in log if 'method=oidc' in e['path']]
+assert '/self-service/methods/oidc/callback/gitlab' in oidc[0]['request_url'] and oidc[0]['unlink'] == '', oidc[0]
+assert [b['unlink'] for b in oidc[1:]] == ['gitlab', 'google', ''], 'the hook did not get the unlink the client named: %r' % oidc
+assert all('/self-service/settings' in b['request_url'] for b in oidc[1:]), oidc
+print('  ✓ 4h the settings guard refused an email change, let GitLab link and unlink, refused Google\'s unlink named or not, and let a name change through')
 
 os.kill(int(guard_pid), signal.SIGTERM)
 time.sleep(1)
@@ -471,5 +517,6 @@ echo
 echo "✓ w4/003 + w7/m465 + w7/m468 end-to-end: the auth-secrets.sh fragment on Kratos v26.2.0"
 echo "  -> Sign in with Google, GitLab and Bitbucket (Dex on production's bridge config)"
 echo "  -> verified first-party sessions signed in with each provider, and back in"
-echo "  -> the settings guard refuses an email change and an unlink, and fails closed"
-echo "  when unreachable (docs/ADR012-auth.md §9b, §10)."
+echo "  -> the settings guard refuses an email change and Google's unlink, lets another"
+echo "  provider's unlink through, and fails closed when unreachable"
+echo "  (docs/ADR012-auth.md §9b, §10)."

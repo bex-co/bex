@@ -574,9 +574,9 @@ const enAuth: Record<string, TranslationEntry> = {
   },
   "auth.settingsGuardUnlinkRefused": {
     message:
-      "You can't disconnect a sign-in provider while you belong to a workspace that requires Google login. Leave these workspaces first: {workspaces}.",
+      "You can't disconnect your Google account while you belong to a workspace that requires Google login. Leave these workspaces first: {workspaces}.",
     description:
-      "Account settings refusal of disconnecting a sign-in provider (Kratos message 4100002) while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465)",
+      "Account settings refusal of disconnecting the Google account, or an unlink that does not name its provider (Kratos message 4100002), while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465, w7/085)",
   },
 };
 

@@ -588,9 +588,9 @@ const esAuth: Record<string, TranslationEntry> = {
   },
   "auth.settingsGuardUnlinkRefused": {
     message:
-      "No puedes desconectar un proveedor de inicio de sesión mientras pertenezcas a un espacio de trabajo que exige iniciar sesión con Google. Sal primero de estos espacios de trabajo: {workspaces}.",
+      "No puedes desconectar tu cuenta de Google mientras pertenezcas a un espacio de trabajo que exige iniciar sesión con Google. Sal primero de estos espacios de trabajo: {workspaces}.",
     description:
-      "Account settings refusal of disconnecting a sign-in provider (Kratos message 4100002) while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465)",
+      "Account settings refusal of disconnecting the Google account, or an unlink that does not name its provider (Kratos message 4100002), while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465, w7/085)",
   },
 };
 

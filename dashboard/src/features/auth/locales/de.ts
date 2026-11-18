@@ -588,9 +588,9 @@ const deAuth: Record<string, TranslationEntry> = {
   },
   "auth.settingsGuardUnlinkRefused": {
     message:
-      "Du kannst keinen Anmeldeanbieter trennen, solange du zu einem Workspace gehörst, der die Google-Anmeldung erfordert. Verlasse zuerst diese Workspaces: {workspaces}.",
+      "Du kannst dein Google-Konto nicht trennen, solange du zu einem Workspace gehörst, der die Google-Anmeldung erfordert. Verlasse zuerst diese Workspaces: {workspaces}.",
     description:
-      "Account settings refusal of disconnecting a sign-in provider (Kratos message 4100002) while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465)",
+      "Account settings refusal of disconnecting the Google account, or an unlink that does not name its provider (Kratos message 4100002), while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465, w7/085)",
   },
 };
 

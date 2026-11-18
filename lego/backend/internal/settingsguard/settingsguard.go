@@ -19,6 +19,7 @@ limitations under the License.
 // a member belongs to a workspace that enforces Google login, they "can't
 // change their Render account's associated email address" and "can't
 // disconnect" their Google account; "First, leave any such workspaces."
+// Disconnecting any other provider stays allowed (w7/085).
 //
 // The change happens in Kratos's own settings flow, which any client can call,
 // so hiding a control in the dashboard is not enough. Kratos runs a
@@ -27,6 +28,16 @@ limitations under the License.
 // change through, a 403 with Kratos's message shape refuses it and Kratos
 // shows the message. Kratos treats an unreachable hook as a failed flow, so
 // the guard fails closed.
+//
+// Kratos gives the hook neither the request body nor the identity's
+// credentials, so it cannot see which provider an unlink removes. The
+// dashboard names it in the settings flow's transient_payload ({"unlink":
+// "github"}), which Kratos hands the hook as ctx.flow.transient_payload. An
+// unlink that names a provider other than Google is let through; one that
+// names Google, or none, is refused. A client that names another provider
+// while unlinking Google only disconnects its own Google account, and the
+// workspace gate then refuses that member, because no linked Google account
+// matches their email.
 //
 // Like the identity-claims verb it is mounted only on bex-api's
 // cluster-internal listener and authenticated by a static bearer
@@ -62,6 +73,10 @@ const (
 // settings flow's own POST, so a hook request from anywhere else is an unlink.
 const oidcCallbackPath = "/self-service/methods/oidc/callback/"
 
+// googleProvider is the Kratos oidc provider id of Google
+// (scripts/lib/kratos-oidc-fragment.sh).
+const googleProvider = "google"
+
 // Workspaces names the workspaces a Kratos identity belongs to that require
 // Google login (*store.PGStore).
 type Workspaces interface {
@@ -96,14 +111,17 @@ func Register(mux *http.ServeMux, h *Handler) {
 
 // request is the hook body the Kratos Jsonnet template sends
 // (scripts/lib/kratos-oidc-fragment.sh): the identity as it would be saved,
-// and the URL of the request that is changing it.
+// the URL of the request that is changing it, and the provider the client
+// says an unlink removes (the flow's transient_payload.unlink; empty when the
+// client named none).
 type request struct {
 	IdentityID string `json:"identity_id"`
 	Email      string `json:"email"`
 	RequestURL string `json:"request_url"`
+	Unlink     string `json:"unlink"`
 }
 
-// maxBody bounds the hook body: three short strings.
+// maxBody bounds the hook body: four short strings.
 const maxBody = 16 << 10
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -134,8 +152,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // decide returns the refusal for this change, or nil to let it through.
 func (h *Handler) decide(ctx context.Context, method string, req request) (*kratosMessages, error) {
-	if method == "oidc" && isLink(req.RequestURL) {
-		return nil, nil // linking another account removes nothing
+	if method == "oidc" && (isLink(req.RequestURL) || (req.Unlink != "" && req.Unlink != googleProvider)) {
+		// Linking an account, or unlinking one that is not Google, leaves the
+		// Google account the requirement reads.
+		return nil, nil
 	}
 	names, err := h.Workspaces.GoogleLoginWorkspaces(ctx, req.IdentityID)
 	if err != nil || len(names) == 0 {
@@ -150,10 +170,10 @@ func (h *Handler) decide(ctx context.Context, method string, req request) (*krat
 		return refuse("#/traits/email", MessageEmailChangeRefused,
 			"You can't change your email address while you belong to a workspace that requires Google login. Leave these workspaces first: "+strings.Join(names, ", ")+".", names), nil
 	case method == "oidc" && googleLinked:
-		// Kratos does not say which provider an unlink removes, so while
-		// Google is linked every unlink is refused (ADR012 §9b).
+		// An unlink of Google, or one that does not say which provider it
+		// removes and so may be Google's (ADR012 §9b).
 		return refuse("#/", MessageUnlinkRefused,
-			"You can't disconnect a sign-in provider while you belong to a workspace that requires Google login. Leave these workspaces first: "+strings.Join(names, ", ")+".", names), nil
+			"You can't disconnect your Google account while you belong to a workspace that requires Google login. Leave these workspaces first: "+strings.Join(names, ", ")+".", names), nil
 	}
 	return nil, nil
 }

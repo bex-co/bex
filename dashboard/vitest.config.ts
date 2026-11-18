@@ -35,6 +35,10 @@ export default defineConfig({
     // The sweep hydration-probes every page-level test's first render
     // (src/test/route-hydration-sweep.ts, w21/m337).
     setupFiles: ["./src/test/setup.ts", "./src/test/route-hydration-sweep.ts"],
+    // Ory Elements' entries ship extensionless relative imports that only a
+    // bundler resolves, as vite.config.ts's `ssr.noExternal` says; inlined, a
+    // test can render its real flow components (w7/085).
+    server: { deps: { inline: ["@ory/elements-react"] } },
     coverage: {
       provider: "v8",
       reporter: ["text-summary"],

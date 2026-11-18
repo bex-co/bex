@@ -90,21 +90,27 @@ func hook(t *testing.T, h http.Handler, method string, body any, bearer string) 
 
 // Render: a member of a workspace that enforces Google login "can't change
 // their Render account's associated email address" and "can't disconnect"
-// Google; a member of none changes both freely.
+// Google; any other provider they disconnect freely (w7/085), and a member of
+// none changes all of it freely.
 func TestTheGuardRefusesOnlyWhatRenderRefuses(t *testing.T) {
 	for name, tc := range map[string]struct {
 		method string
 		body   request
 		want   int // 0 = allowed; else the refusal's message id
 	}{
-		"email change in an enforcing workspace":          {method: "profile", body: request{IdentityID: enforcedMember, Email: "personal@gmail.com", RequestURL: settingsPost}, want: MessageEmailChangeRefused},
-		"email change differing only in case":             {method: "profile", body: request{IdentityID: enforcedMember, Email: "Person@Acme.example", RequestURL: settingsPost}},
-		"a name change keeps the email":                   {method: "profile", body: request{IdentityID: enforcedMember, Email: "person@acme.example", RequestURL: settingsPost}},
-		"an unlink in an enforcing workspace":             {method: "oidc", body: request{IdentityID: enforcedMember, Email: "person@acme.example", RequestURL: settingsPost}, want: MessageUnlinkRefused},
-		"a link in an enforcing workspace":                {method: "oidc", body: request{IdentityID: enforcedMember, Email: "person@acme.example", RequestURL: githubCallback}},
-		"email change in no enforcing workspace":          {method: "profile", body: request{IdentityID: freeMember, Email: "else@acme.example", RequestURL: settingsPost}},
-		"an unlink in no enforcing workspace":             {method: "oidc", body: request{IdentityID: freeMember, Email: "free@acme.example", RequestURL: settingsPost}},
-		"an identity Kratos does not know is not blocked": {method: "profile", body: request{IdentityID: "unknown", Email: "x@acme.example", RequestURL: settingsPost}},
+		"email change in an enforcing workspace":                    {method: "profile", body: request{IdentityID: enforcedMember, Email: "personal@gmail.com", RequestURL: settingsPost}, want: MessageEmailChangeRefused},
+		"email change differing only in case":                       {method: "profile", body: request{IdentityID: enforcedMember, Email: "Person@Acme.example", RequestURL: settingsPost}},
+		"a name change keeps the email":                             {method: "profile", body: request{IdentityID: enforcedMember, Email: "person@acme.example", RequestURL: settingsPost}},
+		"an email change naming an unlink is still an email change": {method: "profile", body: request{IdentityID: enforcedMember, Email: "personal@gmail.com", RequestURL: settingsPost, Unlink: "github"}, want: MessageEmailChangeRefused},
+		"a Google unlink in an enforcing workspace":                 {method: "oidc", body: request{IdentityID: enforcedMember, Email: "person@acme.example", RequestURL: settingsPost, Unlink: "google"}, want: MessageUnlinkRefused},
+		"an unlink naming no provider in an enforcing workspace":    {method: "oidc", body: request{IdentityID: enforcedMember, Email: "person@acme.example", RequestURL: settingsPost}, want: MessageUnlinkRefused},
+		"a GitHub unlink in an enforcing workspace":                 {method: "oidc", body: request{IdentityID: enforcedMember, Email: "person@acme.example", RequestURL: settingsPost, Unlink: "github"}},
+		"a GitLab unlink in an enforcing workspace":                 {method: "oidc", body: request{IdentityID: enforcedMember, Email: "person@acme.example", RequestURL: settingsPost, Unlink: "gitlab"}},
+		"a link in an enforcing workspace":                          {method: "oidc", body: request{IdentityID: enforcedMember, Email: "person@acme.example", RequestURL: githubCallback}},
+		"email change in no enforcing workspace":                    {method: "profile", body: request{IdentityID: freeMember, Email: "else@acme.example", RequestURL: settingsPost}},
+		"a Google unlink in no enforcing workspace":                 {method: "oidc", body: request{IdentityID: freeMember, Email: "free@acme.example", RequestURL: settingsPost, Unlink: "google"}},
+		"an unlink naming no provider in no enforcing workspace":    {method: "oidc", body: request{IdentityID: freeMember, Email: "free@acme.example", RequestURL: settingsPost}},
+		"an identity Kratos does not know is not blocked":           {method: "profile", body: request{IdentityID: "unknown", Email: "x@acme.example", RequestURL: settingsPost}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			h := newHandler()

@@ -581,9 +581,9 @@ const ruAuth: Record<string, TranslationEntry> = {
   },
   "auth.settingsGuardUnlinkRefused": {
     message:
-      "Вы не можете отключить способ входа, пока состоите в рабочем пространстве, где требуется вход через Google. Сначала покиньте эти рабочие пространства: {workspaces}.",
+      "Вы не можете отключить аккаунт Google, пока состоите в рабочем пространстве, где требуется вход через Google. Сначала покиньте эти рабочие пространства: {workspaces}.",
     description:
-      "Account settings refusal of disconnecting a sign-in provider (Kratos message 4100002) while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465)",
+      "Account settings refusal of disconnecting the Google account, or an unlink that does not name its provider (Kratos message 4100002), while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465, w7/085)",
   },
 };
 

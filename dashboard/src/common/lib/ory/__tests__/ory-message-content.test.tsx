@@ -26,7 +26,7 @@ const EMAIL_REFUSED: UiText = {
 const UNLINK_REFUSED: UiText = {
   id: 4100002,
   type: "error",
-  text: "You can't disconnect a sign-in provider while you belong to a workspace that requires Google login. Leave these workspaces first: Acme.",
+  text: "You can't disconnect your Google account while you belong to a workspace that requires Google login. Leave these workspaces first: Acme.",
   context: { workspaces: ["Acme"] },
 };
 
@@ -78,7 +78,7 @@ describe("the settings guard's refusals in account settings (w7/m465)", () => {
     const toast = screen.getByTestId("ory/message/4100002");
     expect(toast).toHaveTextContent("Could not update settings");
     expect(toast).toHaveTextContent(
-      "You can't disconnect a sign-in provider while you belong to a workspace that requires Google login. Leave these workspaces first: Acme.",
+      "You can't disconnect your Google account while you belong to a workspace that requires Google login. Leave these workspaces first: Acme.",
     );
   });
 
@@ -94,7 +94,7 @@ describe("the settings guard's refusals in account settings (w7/m465)", () => {
     await i18n.changeLanguage("zh");
     inOry(<Toast id="t1" message={UNLINK_REFUSED} />, "zh");
     expect(screen.getByTestId("ory/message/4100002")).toHaveTextContent(
-      "你属于要求使用 Google 登录的工作区，因此无法断开登录方式。请先离开这些工作区：Acme。",
+      "你属于要求使用 Google 登录的工作区，因此无法断开你的 Google 账号。请先离开这些工作区：Acme。",
     );
   });
 

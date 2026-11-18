@@ -561,9 +561,9 @@ const zhAuth: Record<string, TranslationEntry> = {
   },
   "auth.settingsGuardUnlinkRefused": {
     message:
-      "你属于要求使用 Google 登录的工作区，因此无法断开登录方式。请先离开这些工作区：{workspaces}。",
+      "你属于要求使用 Google 登录的工作区，因此无法断开你的 Google 账号。请先离开这些工作区：{workspaces}。",
     description:
-      "Account settings refusal of disconnecting a sign-in provider (Kratos message 4100002) while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465)",
+      "Account settings refusal of disconnecting the Google account, or an unlink that does not name its provider (Kratos message 4100002), while the member belongs to a workspace that requires Google login; {workspaces} is the list of those workspaces (w7/m465, w7/085)",
   },
 };
 

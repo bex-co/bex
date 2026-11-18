@@ -1,19 +1,11 @@
 import { getRouteApi } from "@tanstack/react-router";
-import { Settings } from "@ory/elements-react/theme";
-import { SessionProvider } from "@ory/elements-react/client";
-import type { OryFlowComponentOverrides } from "@ory/elements-react";
 import { useOryFlow } from "@/common/hooks/use-ory-flow";
-import {
-  KRATOS_PUBLIC_URL,
-  useOryConfig,
-  oryHideSettingsPageHeader,
-} from "@/common/lib/ory/config";
-import { orySettingsFormOverrides } from "@/common/lib/ory/auth-form-overrides";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ApiKeysPanel } from "@/features/api-keys/components/api-keys-panel";
 import { SecurityComplianceSection } from "@/features/auth/pages/settings-page/security-compliance-section";
 import { AccountDeletionCard } from "@/features/auth/pages/settings-page/account-deletion-card";
+import { AccountSettingsFlow } from "@/features/auth/pages/settings-page/account-settings-flow";
 import { AccountSettingsFlowSkeleton } from "@/features/auth/pages/settings-page/account-settings-flow-skeleton";
 import { PageFrame, PageHeader } from "@/common/components/page-frame";
 import { SettingsNavigation } from "@/features/auth/pages/settings-page/settings-navigation";
@@ -22,11 +14,6 @@ import { ConnectGithubCard } from "@/features/git/components/connect-github-card
 import { SSHKeysPanel } from "@/features/ssh-keys/components/ssh-keys-panel";
 
 const settingsRoute = getRouteApi("/settings");
-
-const settingsComponents: OryFlowComponentOverrides = {
-  ...oryHideSettingsPageHeader,
-  ...orySettingsFormOverrides,
-};
 
 /**
  * Account settings — Kratos's settings flow (profile + password). This is
@@ -38,7 +25,6 @@ export default function SettingsPage() {
   const search = settingsRoute.useSearch();
   const flow = useOryFlow("settings", search.flow);
   const { t } = useTranslations();
-  const oryConfig = useOryConfig();
 
   return (
     <DashboardLayout>
@@ -58,17 +44,7 @@ export default function SettingsPage() {
             description={t("auth.accountSectionSubtitle")}
           >
             {flow ? (
-              // Without baseUrl, SessionProvider guesses the Ory SDK URL as this
-              // app's own origin — but Kratos lives on its own host, so its
-              // whoami would 404/500 against the dashboard itself.
-              <SessionProvider baseUrl={KRATOS_PUBLIC_URL}>
-                <Settings
-                  className="account-settings-flow"
-                  flow={flow}
-                  config={oryConfig}
-                  components={settingsComponents}
-                />
-              </SessionProvider>
+              <AccountSettingsFlow flow={flow} />
             ) : (
               <AccountSettingsFlowSkeleton />
             )}
