@@ -275,6 +275,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
+- [ ] **140** — [Every operator deploy closes every tenant connection to every Key Value store](140.md) (likely milestone-sized) ← filed by w6/m463 t005 2026-11-18: `kv-internal-proxy` runs from the operator's image and closes its connections on `SIGTERM`, so each deploy (11 on 2026-11-17) rolls every store's proxy; the SNI proxies roll too
 - [x] **139** — [A Key Value backup pod becomes an endpoint of its store's backend Service](done/139.md) (~1h; done 2026-11-17: backup and purge pods carry `app.bex.co/keyvalue-job`, selected by the parent-UID label, and restart no store) ← filed by w6/m463 t003 2026-11-17: while a paid store's nightly backup uploads, about half of its new connections through the proxy are reset
 - [ ] **138** — [Render's Postgres Active Connections chart: does it read the plan's limit?](138.md) (~45m, needs a live Render dashboard session to capture the chart) ← filed by w6/m459 t006 2026-11-17: Render's Key Value chart reads "Limit 250", and no capture shows the Postgres one
 - [x] **137** — [Each read replica has its own endpoint and connection pool, as on Render](done/137.md) (milestone-sized) ← filed by w6/m458 t004 2026-11-17: bex's named replicas share one reader Service, so pooled replicas share one pool of `max_connections` − 10 — promoted to [m467](blocked/m467/README.md) under Render parity first
