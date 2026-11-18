@@ -1,6 +1,6 @@
 # w2 · m476 — Each workspace has its own OIDC issuer, as on Render: signing key, discovery and JWKS
 
-**Worker:** worker2 **Goal:** bex publishes a per-workspace OpenID Connect issuer at `https://oidc.bex.co/{tea-…}` whose discovery document and JWKS match Render's `oidc.render.com` field for field, backed by an ES256 signer with key rotation, so AWS, GCP, Anthropic and OpenAI can trust bex as an identity provider. **Status:** blocked (t001–t004, t008, t009 done; t005–t007 wait for a production pin carrying `68b45459b`)
+**Worker:** worker2 **Goal:** bex publishes a per-workspace OpenID Connect issuer at `https://oidc.bex.co/{tea-…}` whose discovery document and JWKS match Render's `oidc.render.com` field for field, backed by an ES256 signer with key rotation, so AWS, GCP, Anthropic and OpenAI can trust bex as an identity provider. **Status:** done
 
 ## Tasks (in order)
 
@@ -10,12 +10,12 @@
 | t002 | Signer package: load the key set, mint ES256 tokens with Render's claims — **DONE** | 60m | t001 |
 | t003 | Key bootstrap and rotation with an overlap window — **DONE** | 45m | t002 |
 | t004 | Public discovery and JWKS endpoints with Render's exact field set — **DONE** | 45m | t002 |
-| t005 | Issuer host `oidc.bex.co`: DNS, TLS and routing to bex-api | 45m | t004 |
-| t006 | Production check: independent verification through discovery, and Render's shape | 30m | t003, t005 |
-| t007 | Render parity | 20m | t006 |
+| t005 | Issuer host `oidc.bex.co`: DNS, TLS and routing to bex-api — **DONE** | 45m | t004 |
+| t006 | Production check: independent verification through discovery, and Render's shape — **DONE** | 30m | t003, t005 |
+| t007 | Render parity — **DONE** | 20m | t006 |
 | t008 | Simplify — **DONE** | 15m | t007 |
 | t009 | Test coverage — **DONE** | 30m | t007 |
-| t010 | Closeout | 10m | t008, t009 |
+| t010 | Closeout — **DONE** | 10m | t008, t009 |
 
 ## Definition of done
 
@@ -40,3 +40,27 @@
 - **Done:** t001–t004, t008, t009. The definition of done's dev-2 rotation held (t003's table): a token signed before the rotation verified until it expired, a token signed with the old key just before the switch verified after it, and tokens after the switch carry the new `kid`. ADR018 and ADR030 name w2/m476–m480.
 - **Gate (clears by itself):** a production pin carrying `68b45459b`. The deploy batches commits until the production pin is at least 6 hours old (`scripts/deploy_latency.py --changed --min-pin-age-hours 6`); at 09:35Z the pin was 1.4 h old, so the hourly deploy at about 2026-11-18T14:17Z should carry it. Check: `curl -sS https://oidc.bex.co/tea-daif693dqjvc73e7as3g/.well-known/openid-configuration` answers 200 with `"issuer":"https://oidc.bex.co/tea-daif693dqjvc73e7as3g"`.
 - **Then:** t005's curl and certificate, t006's command (in `t006.md`) with its result recorded here, t007's production comparison, t010.
+
+## Unblock 2026-11-18
+
+- **Affected:** w2/m476 t005, t006, t007, t010.
+- **Source:** verified evidence. No user decision was needed: the gate cleared by itself.
+- **Finding:** the newest production pin on origin/main, `chore(deploy): pin platform images to 1ec5007be0fa` (`c7f44bd87`, 14:44Z), carries `68b45459b` (`git merge-base --is-ancestor 68b45459b 1ec5007be0fa` succeeds). Production bex-api runs that pin's digest. `https://oidc.bex.co/tea-daif693dqjvc73e7as3g/.well-known/openid-configuration` answered 200 at 15:24Z with `"issuer":"https://oidc.bex.co/tea-daif693dqjvc73e7as3g"`.
+- **Remaining gates:** none. t005–t007 went back to work, then t010 closed the milestone.
+
+## Production check 2026-11-18 (pin `1ec5007be0fa`)
+
+- **t005:** the discovery document answers 200 through a valid public certificate (Cloudflare's `*.bex.co` edge certificate from Google Trust Services WE1). The origin Certificate `bex-oidc-tls` is Ready. `scripts/gitops-validate.sh` passes.
+- **t006:** `KUBECONFIG=<production app kubeconfig> bash scripts/oidc-issuer-verify.sh tea-daif693dqjvc73e7as3g srv-dbkq3hdhhjfs73eiahe0` exited 0 with all nine checks passing:
+  - a token minted for `bex-canary`'s `hello-go` verified with go-oidc given only its workspace's issuer URL;
+  - `tea-c0000000000000000000`'s issuer refused the same token;
+  - discovery, JWKS and headers match Render's live documents;
+  - malformed ids and the root answer 404.
+
+  `oidc_signing_keys` holds one key, the published `kid`.
+- **t007:** bex and Render matched side by side on production: documents, 404s, 405s with `Allow: GET`, content types and certificate CA. No new surface. The one shape change is an uncleaned path: production's edge cleans it, so it gets the document instead of bex-api's 307. It is recorded in ADR116 D1, and no relying party sends one.
+- **Definition of done:** holds.
+  - On production, discovery answers Render's five fields, the JWKS publishes the ES256 P-256 key with its RFC 7638 `kid`, and a malformed id answers 404.
+  - A minted token (`sub` `workspace:tea-daif693dqjvc73e7as3g:environment:default:service:srv-dbkq3hdhhjfs73eiahe0`, `exp` = `iat` + 3600) verifies independently and fails another workspace's issuer.
+  - t003's rotation on dev-2 had no verification gap.
+  - ADR116 is merged, and ADR018 and ADR030 name w2/m476–m480.
