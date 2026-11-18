@@ -31,7 +31,7 @@
 
 ## State (2026-11-17)
 
-Every item but the production ones holds in code, tests and on dev-7 (t001–t007, t009–t011). Open: Google sign-up and sign-in on production, and t008's walk there, need production's Google OAuth client, which only someone with access to bex's Google Cloud project can create ([t008](t008.md#gate-2026-11-17)), and a production pin carrying the milestone. Follow-ups: [w7/084](../../084.md) (GitLab and Bitbucket sign-in), [w7/085](../../085.md) (a GitHub unlink is refused too while Google is linked).
+Every item but the production ones holds in code, tests and on dev-7 (t001–t007, t009–t011). Open: Google sign-up and sign-in on production, and t008's walk there, need production's Google OAuth client, which only someone with access to bex's Google Cloud project can create ([t008](t008.md#gate-2026-11-17)), and a production pin carrying the milestone. Follow-ups: [w7/084](../../done/084.md) (GitLab and Bitbucket sign-in), [w7/085](../../085.md) (a GitHub unlink is refused too while Google is linked).
 
 ## Source + Goal linkage
 
