@@ -5,7 +5,7 @@ Docs live here — one file per topic. Root [AGENTS.md](../AGENTS.md) points her
 ## How to use
 
 - Each `ADR*.md` is self-contained; read the ADR directly for design + status.
-- Render-parity ledgers ([ADR018](ADR018-render-parity.md), [cli-compatibility-checklist.md](cli-compatibility-checklist.md)) are evidence-backed.
+- Render-parity ledgers ([ADR018](ADR018-render-parity.md), [cli-compatibility-checklist.md](cli-compatibility-checklist.md), [terraform-compatibility-checklist.md](terraform-compatibility-checklist.md)) are evidence-backed.
 - Security reviews form a chain ADR028 → ADR085 → ADR107 → ADR110, plus the focused ADR103 (see § Security lineage); read the latest for current residual.
 
 ## Catalog — by topic
@@ -27,6 +27,7 @@ Docs live here — one file per topic. Root [AGENTS.md](../AGENTS.md) points her
 - [ADR006-bex-api.md](ADR006-bex-api.md) — REST/GraphQL/MCP: one core, thin adapters, Render compat
 - [ADR018-render-parity.md](ADR018-render-parity.md) — parity ledger (capability × surface)
 - [cli-compatibility-checklist.md](cli-compatibility-checklist.md) — Render CLI compat matrix
+- [terraform-compatibility-checklist.md](terraform-compatibility-checklist.md) — Render Terraform provider compat, graded by its own acceptance suite re-recorded against bex (`scripts/terraform-provider-verify.sh`, w9/m474)
 - [ADR049-render-yaml-parity.md](ADR049-render-yaml-parity.md) — `render.yaml` canonical Blueprint contract
 - [ADR089-render-container-compatibility.md](ADR089-render-container-compatibility.md) — accepted (2026-10-20) unchanged Render Docker example deployment: legacy aliases, the `render-v1` container policy (Render's measured capability set), and multiple private TCP ports
 - [ADR020-identifiers.md](ADR020-identifiers.md) — typed ids `<prefix>-<xid>` (`tea-/srv-/cdm-`)
