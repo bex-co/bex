@@ -75,7 +75,9 @@ def ask_claude():
             output_config={"effort": "low"},
             messages=[{"role": "user", "content": "Reply with one short sentence greeting a service on bex."}],
         )
-    except anthropic.APIError as err:
+    # AnthropicError, not APIError: a refused token exchange raises the
+    # SDK's WorkloadIdentityError, which is not an API error.
+    except anthropic.AnthropicError as err:
         return jsonify({"provider": "anthropic", "error": f"{type(err).__name__}: {err}"}), 502
     if message.stop_reason == "refusal":
         return jsonify({"provider": "anthropic", "error": "the model declined the request", "stop_reason": "refusal"}), 502
