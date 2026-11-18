@@ -7,8 +7,9 @@ const jaApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "スクリプトやエージェント向けのマシン認証情報です。ワークスペース全体で共有され、キーを管理できるメンバーは、自分のキーだけでなくすべてのキーを確認できます。",
-    description: "Settings API Keys section card description",
+      "スクリプトやエージェント向けのマシン認証情報です。各キーは、作成したメンバーの現在のロールで、このワークスペースでのみ動作します。ワークスペース全体で共有され、キーを管理できるメンバーは、自分のキーだけでなくすべてのキーを確認できます。",
+    description:
+      "Settings API Keys section card description: what a key is, that it acts with its creator's current role in this workspace, and that the list is shared",
   },
   "apiKeys.cliGuide": {
     message: "CLI をセットアップする。",
@@ -111,9 +112,9 @@ const jaApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.keyHelp": {
     message:
-      "すべてのリクエストで Authorization: Bearer として送信してください。このキーは、接続文字列を含め、このワークスペースで完全な権限を持つため、パスワードと同様に扱ってください。",
+      "すべてのリクエストで Authorization: Bearer として送信してください。このキーはこのワークスペースでのあなたの現在のメンバーロールで動作し、ロールが変わるとそれに従うため、パスワードと同様に扱ってください。",
     description:
-      "Mint dialog copy under the key: how to send it, and that it carries full authority in the workspace",
+      "Mint dialog copy under the key: how to send it, and that it acts with the creator's current member role in this workspace and follows it",
   },
   "apiKeys.curlTitle": {
     message: "リクエスト例",

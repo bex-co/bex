@@ -605,16 +605,39 @@ func (t *Service) InvalidateMembership(subject, tenantID string) {
 	t.members.Delete(cacheKey(methodOAuth2, subject) + ":" + tenantID)
 }
 
+// creatorKeyBinder seats a key at its creator's role (w9/m481).
+// *store.PGStore implements it; a store without it binds every key as a
+// Developer, the binding before.
+type creatorKeyBinder interface {
+	BindClientForCreator(ctx context.Context, clientID, tenantID, creator string) (string, error)
+}
+
 // BindKey implements apikeys.KeyBinder: records the client's tenant_members
-// row (role "developer") + writes the key's FGA developer membership. A failed
-// FGA write rolls the binding back so no half-bound key lingers (the api-keys
-// service separately deletes the Hydra client — no orphaned credential).
-func (t *Service) BindKey(ctx context.Context, clientID, tenantID string) error {
-	if err := t.store.BindClient(ctx, clientID, tenantID); err != nil {
+// row at its creator's current role in tenantID (w9/m481, docs/ADR024-members.md
+// § An API key acts with its creator's role) and writes the key's matching FGA
+// role tuple. With no recorded creator (the store-off and authz-off mints) the
+// key is bound as a Developer and never moves from there (invariant I3). A
+// failed FGA write rolls the binding back so no half-bound key lingers (the
+// api-keys service separately deletes the Hydra client — no orphaned
+// credential).
+func (t *Service) BindKey(ctx context.Context, clientID, tenantID, createdBy string) error {
+	role := "developer"
+	if binder, ok := t.store.(creatorKeyBinder); ok && createdBy != "" {
+		seated, err := binder.BindClientForCreator(ctx, clientID, tenantID, createdBy)
+		switch {
+		case errors.Is(err, store.ErrRoleUnsettled):
+			return fmt.Errorf("%w: your workspace role change is still being applied; retry shortly", core.ErrForbidden)
+		case errors.Is(err, store.ErrNotFound):
+			return fmt.Errorf("%w: you no longer hold a role that may create API keys in this workspace", core.ErrForbidden)
+		case err != nil:
+			return err
+		}
+		role = seated
+	} else if err := t.store.BindClient(ctx, clientID, tenantID); err != nil {
 		return err
 	}
 	if t.granter != nil {
-		if err := t.granter.GrantWorkspaceMember(ctx, tenantID, "user:"+clientID); err != nil {
+		if err := t.granter.GrantWorkspaceRole(ctx, tenantID, "user:"+clientID, role); err != nil {
 			// Roll back the mapping row; the caller deletes the Hydra client too.
 			_ = t.store.UnbindClient(ctx, clientID)
 			return fmt.Errorf("grant key membership: %w", err)
@@ -644,8 +667,9 @@ func (t *Service) TenantForKey(ctx context.Context, clientID string) (string, bo
 	return t.Tenant(ctx, core.Identity{Subject: clientID, Method: methodOAuth2})
 }
 
-// UnbindKey implements apikeys.KeyBinder: removes the client's FGA developer
-// membership and its tenant_members row.
+// UnbindKey implements apikeys.KeyBinder: removes every FGA role tuple the
+// client may hold in its workspace (a key follows its creator's role since
+// w9/m481, so it is not always a Developer) and its tenant_members row.
 //
 // SECURITY: the OpenFGA tuple is revoked BEFORE the local binding is deleted,
 // and neither its failure nor a failed tenant lookup is discarded. The tuple is
@@ -666,7 +690,7 @@ func (t *Service) UnbindKey(ctx context.Context, clientID string) error {
 	switch {
 	case foundErr == nil:
 		if t.granter != nil {
-			if err := t.granter.RevokeWorkspaceMember(ctx, tenant.ID, "user:"+clientID, "developer"); err != nil {
+			if err := t.revokeKeyRoles(ctx, tenant.ID, "user:"+clientID); err != nil {
 				return fmt.Errorf("revoke key membership: %w", err)
 			}
 		}
@@ -681,6 +705,23 @@ func (t *Service) UnbindKey(ctx context.Context, clientID string) error {
 	}
 	if err := t.store.UnbindClient(ctx, clientID); err != nil {
 		return err
+	}
+	return nil
+}
+
+// revokeKeyRoles removes every role tuple a key holds in tenantID, not only
+// the one its row names: a role change still converging can leave it a tuple
+// the row no longer names (w9/m481). Check-before-revoke, as
+// revokeOtherRoles does, so no revoke asks OpenFGA to delete a tuple that is
+// not there; a granter that cannot check revokes every role blindly.
+func (t *Service) revokeKeyRoles(ctx context.Context, tenantID, subject string) error {
+	if checker, ok := t.granter.(core.Checker); ok {
+		return t.revokeOtherRoles(ctx, checker, tenantID, subject, "")
+	}
+	for _, role := range members.Roles {
+		if err := t.granter.RevokeWorkspaceMember(ctx, tenantID, subject, role); err != nil {
+			return err
+		}
 	}
 	return nil
 }

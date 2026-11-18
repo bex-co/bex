@@ -7,8 +7,9 @@ const ptApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "Credenciais de máquina para scripts e agentes. Compartilhadas em todo o workspace — quem pode gerenciar chaves vê todas as chaves aqui, não apenas as próprias.",
-    description: "Settings API Keys section card description",
+      "Credenciais de máquina para scripts e agentes. Cada chave atua com o papel de membro atual de quem a criou, apenas neste workspace. Compartilhadas em todo o workspace — quem pode gerenciar chaves vê todas as chaves aqui, não apenas as próprias.",
+    description:
+      "Settings API Keys section card description: what a key is, that it acts with its creator's current role in this workspace, and that the list is shared",
   },
   "apiKeys.cliGuide": {
     message: "Configure a CLI.",
@@ -112,9 +113,9 @@ const ptApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.keyHelp": {
     message:
-      "Envie-a como Authorization: Bearer em cada requisição. A chave atua com autoridade total neste workspace, inclusive sobre strings de conexão, então trate-a como uma senha.",
+      "Envie-a como Authorization: Bearer em cada requisição. A chave atua com o seu papel de membro atual neste workspace e o acompanha se o seu papel mudar, então trate-a como uma senha.",
     description:
-      "Mint dialog copy under the key: how to send it, and that it carries full authority in the workspace",
+      "Mint dialog copy under the key: how to send it, and that it acts with the creator's current member role in this workspace and follows it",
   },
   "apiKeys.curlTitle": {
     message: "Exemplo de requisição",

@@ -222,9 +222,12 @@ func TestRevokeAPIKeyWhoseTupleIsGoneE2E(t *testing.T) {
 		return decodeJSON[apikeys.APIKey](t, resp).ID
 	}
 	fresh := checker.(core.FreshChecker)
+	// dana is an Admin, so her keys are seated as Admins (w9/m481: a key acts
+	// with its creator's role).
+	const keyRole = "admin"
 	holdsTuple := func(keyID string) bool {
 		t.Helper()
-		ok, err := fresh.CheckFresh(ctx, "user:"+keyID, "developer", "workspace:"+ws.ID)
+		ok, err := fresh.CheckFresh(ctx, "user:"+keyID, keyRole, "workspace:"+ws.ID)
 		if err != nil {
 			t.Fatalf("check %s: %v", keyID, err)
 		}
@@ -262,10 +265,10 @@ func TestRevokeAPIKeyWhoseTupleIsGoneE2E(t *testing.T) {
 	t.Run("tuple already gone", func(t *testing.T) {
 		keyID := mint("tuple-gone")
 		if !holdsTuple(keyID) || !hydraHas(keyID) || !bound(keyID) {
-			t.Fatal("a fresh key must hold its developer tuple, its client and its binding")
+			t.Fatal("a fresh key must hold its creator's role tuple, its client and its binding")
 		}
 		// An earlier revoke removed the tuple and failed before the rest.
-		code, body := fgaRawWrite(t, fgaURL, fgaToken, `{"deletes":{"tuple_keys":[{"user":"user:`+keyID+`","relation":"developer","object":"workspace:`+ws.ID+`"}]}}`)
+		code, body := fgaRawWrite(t, fgaURL, fgaToken, `{"deletes":{"tuple_keys":[{"user":"user:`+keyID+`","relation":"`+keyRole+`","object":"workspace:`+ws.ID+`"}]}}`)
 		if code != http.StatusOK {
 			t.Fatalf("raw delete of the tuple: %d %s", code, body)
 		}

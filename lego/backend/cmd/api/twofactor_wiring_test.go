@@ -83,3 +83,14 @@ func TestWireTwoFactorIsQuietForTheProductionAPIKeyStore(t *testing.T) {
 		t.Fatalf("startup log = %q, want nothing without an API key store", logged.String())
 	}
 }
+
+// w9/m481: the request-time key ceiling reads its creators through the gate's
+// cached lookup. A bex-api whose Base lost it would let every key act on its
+// own tuple alone.
+func TestWireTwoFactorCapsAPIKeysAtTheirCreator(t *testing.T) {
+	base := &core.Base{}
+	gate := wireTwoFactor(&api.Deps{APIKeys: apikeys.NewHydraAPIKeys("http://hydra.invalid")}, base, nil, prometheus.NewRegistry())
+	if base.KeyCreators == nil || base.KeyCreators != core.KeyCreatorResolver(gate) {
+		t.Fatalf("Base.KeyCreators = %v, want the two-factor gate's cached lookup", base.KeyCreators)
+	}
+}

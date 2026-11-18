@@ -1,22 +1,22 @@
 # w9 · m481 — An API key acts with its creator's current member role in its workspace, as on Render, so Terraform manages webhooks, registry credentials, owner notification settings and protected environments
 
-**Worker:** worker9 **Goal:** a bex API key acts with exactly its creator's current role in the workspace it was minted in, following that role up and down, never more, as Render's keys do; an Admin's key passes the four Admin-only writes Render's Terraform provider makes, and a Developer's key still cannot. **Status:** todo
+**Worker:** worker9 **Goal:** a bex API key acts with exactly its creator's current role in the workspace it was minted in, following that role up and down, never more, as Render's keys do; an Admin's key passes the four Admin-only writes Render's Terraform provider makes, and a Developer's key still cannot. **Status:** in progress (t001–t007 and t009–t011 done; t008 done on dev-9, its production step waits for a pin that carries this milestone)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Design: a key acts with its creator's current role in its own workspace; ADR024, ADR012 §8e and ADR018 amended | 45m | — |
-| [t002](t002.md) | Mint: a new key is seated at its creator's current workspace role, not `developer` | 45m | t001 |
-| [t003](t003.md) | Follow: every change to a creator's workspace role re-seats their keys through the durable role outbox | 1h30m | t002 |
-| [t004](t004.md) | Fail closed: a key's decision never exceeds its creator's, under partial failure, pending reconciliation, another workspace or no recorded creator | 1h15m | t003 |
-| [t005](t005.md) | Webhooks: an API key with a recorded human creator passes webhook create and repoint; every other mint verb stays human-only | 45m | t001 |
-| [t006](t006.md) | Dashboard: the API keys page says a key acts with your role in this workspace and follows it | 30m | t002 |
-| [t007](t007.md) | Security review of the key-role boundary, recorded in the security lineage | 45m | t004, t005 |
+| [t001](done/t001.md) | Design: a key acts with its creator's current role in its own workspace; ADR024, ADR012 §8e and ADR018 amended — **DONE** | 45m | — |
+| [t002](done/t002.md) | Mint: a new key is seated at its creator's current workspace role, not `developer` — **DONE** | 45m | t001 |
+| [t003](done/t003.md) | Follow: every change to a creator's workspace role re-seats their keys through the durable role outbox — **DONE** | 1h30m | t002 |
+| [t004](done/t004.md) | Fail closed: a key's decision never exceeds its creator's, under partial failure, pending reconciliation, another workspace or no recorded creator — **DONE** | 1h15m | t003 |
+| [t005](done/t005.md) | Webhooks: an API key with a recorded human creator passes webhook create and repoint; every other mint verb stays human-only — **DONE** | 45m | t001 |
+| [t006](done/t006.md) | Dashboard: the API keys page says a key acts with your role in this workspace and follows it — **DONE** | 30m | t002 |
+| [t007](done/t007.md) | Security review of the key-role boundary, recorded in the security lineage — **DONE** | 45m | t004, t005 |
 | [t008](t008.md) | Live check on dev-9 and production; Render's Terraform provider tests rerun; checklist class 3 closed | 1h30m | t006, t007 |
-| [t009](t009.md) | Render parity | 30m | t008 |
-| [t010](t010.md) | Simplify | 15m | t009 |
-| [t011](t011.md) | Test coverage | 45m | t009, t010 |
+| [t009](done/t009.md) | Render parity — **DONE** | 30m | t008 |
+| [t010](done/t010.md) | Simplify — **DONE** | 15m | t009 |
+| [t011](done/t011.md) | Test coverage — **DONE** | 45m | t009, t010 |
 | [t012](t012.md) | Closeout | 10m | t011 |
 
 Total: **12 tasks, about 9h45m**.

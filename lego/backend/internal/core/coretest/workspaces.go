@@ -52,6 +52,16 @@ func (w Workspaces) IsMember(_ context.Context, _ core.Identity, workspaceID str
 	return slices.Contains(w, workspaceID), nil
 }
 
+// KeyCreators is a core.KeyCreatorResolver from a fixed map: a client id in it
+// is a bex API key minted by the mapped subject ("" for a key with no stamp);
+// any other id is not a key.
+type KeyCreators map[string]string
+
+func (k KeyCreators) APIKeyCreator(_ context.Context, clientID string) (string, bool, error) {
+	creator, ok := k[clientID]
+	return creator, ok, nil
+}
+
 // PlatformClients is a core.PlatformClientResolver from a fixed set of client
 // ids, for the AuthorizeMintClass tests.
 type PlatformClients map[string]bool

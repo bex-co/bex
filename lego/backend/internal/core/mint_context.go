@@ -14,6 +14,14 @@ func WithFreshBearerValidator(ctx context.Context, validate FreshBearerValidator
 	return context.WithValue(ctx, freshBearerValidatorCtxKey{}, validate)
 }
 
+// revalidateBearer runs the request's FreshBearerValidator, if it has one.
+func revalidateBearer(ctx context.Context) error {
+	if validate, ok := FreshBearerValidatorFrom(ctx); ok {
+		return validate(ctx)
+	}
+	return nil
+}
+
 func FreshBearerValidatorFrom(ctx context.Context) (FreshBearerValidator, bool) {
 	if ctx == nil {
 		return nil, false

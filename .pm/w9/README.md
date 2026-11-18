@@ -133,6 +133,12 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [ ] **111** — [A disabled autoscaling criterion reads back percentage 0, where Render keeps the percentage that was sent](111.md) ← from w9/m474 t004 (Render's Terraform provider acceptance suite, [checklist](../../docs/terraform-compatibility-checklist.md)) 2026-11-18
 - [ ] **112** — [A service notification override with `previewNotificationsEnabled: "false"` answers 400, where Render stores it](112.md) ← from w9/m474 t004 (Render's Terraform provider acceptance suite, [checklist](../../docs/terraform-compatibility-checklist.md)) 2026-11-18
 - [ ] **113** — [A `PATCH` of an image service that carries `rootDir: ""` answers 400 "has no repo to build", where Render accepts it](113.md) ← from w9/m474 t004 (Render's Terraform provider acceptance suite, [checklist](../../docs/terraform-compatibility-checklist.md)) 2026-11-18
+- [ ] **114** — [Render's scoped API keys: a per-permission picker under the creator's role](114.md) ← from w9/m481 (API key roles) 2026-11-18
+- [ ] **115** — [A Viewer, Contributor or Billing member cannot mint an API key, where Render lets them mint one capped at their role](115.md) ← from w9/m481 (API key roles) 2026-11-18
+- [ ] **116** — [An Admin's API key cannot change a member's role, where Render's key can](116.md) ← from w9/m481 (API key roles) 2026-11-18
+- [ ] **117** — [An API key cannot create a Postgres credential, where Render's key can](117.md) ← from w9/m481 (API key roles) 2026-11-18
+- [ ] **118** — [Render's classic API keys act in every workspace their user belongs to; a bex key acts in one](118.md) ← from w9/m481 (API key roles) 2026-11-18
+- [ ] **119** — [Production holds 16 leaked `m35-*` API keys and 8 fixture workspaces from `verify-sandbox-isolation-live.sh` runs on 2026-11-15](119.md) ← from w9/m481 t007 (security review, [ADR117](../../docs/ADR117-security-review-api-key-roles.md)) 2026-11-18
 
 ## Approved queue (priority order, 2026-09-08)
 

@@ -138,8 +138,12 @@ token_for() {
 # (codex round-7 F3), and this wrapper's bootstrap is exactly that class.
 # relation is the OpenFGA workspace relation / tenant_members.role
 # (developer for ordinary members, admin for the elevated principal).
+# creator, when given, is stamped as the key's bex.co/created-by: since w9/m481
+# an API key is never allowed what its creator is not, and a key with no creator
+# never acts above a Developer, so the elevated principal names the bootstrap
+# client, an admin of every disposable workspace, as the person behind it.
 create_bound_principal() {
-  local workspace="$1" name="$2" relation="$3" output="$4"
+  local workspace="$1" name="$2" relation="$3" output="$4" creator="${5:-}"
   local client_id client_secret client_body code
   case "$relation" in developer | admin) ;; *)
     fail "create_bound_principal: relation must be developer or admin, got $relation"
@@ -148,10 +152,10 @@ create_bound_principal() {
   client_id="m35-$(openssl rand -hex 10)"
   client_secret="$(openssl rand -hex 32)"
   client_body="$fixture_dir/hydra-$client_id.json"
-  jq -nc --arg id "$client_id" --arg secret "$client_secret" --arg name "$name" \
+  jq -nc --arg id "$client_id" --arg secret "$client_secret" --arg name "$name" --arg creator "$creator" \
     '{client_id:$id,client_name:$name,client_secret:$secret,
       grant_types:["client_credentials"],token_endpoint_auth_method:"client_secret_post",
-      metadata:{"bex.co/api-key":true}}' >"$client_body"
+      metadata:({"bex.co/api-key":true} + (if $creator == "" then {} else {"bex.co/created-by":$creator} end))}' >"$client_body"
   code="$(curl --silent --show-error --output "$fixture_dir/hydra-create-$client_id.json" \
     --write-out '%{http_code}' --request POST --header 'Content-Type: application/json' \
     --data-binary "@$client_body" "$hydra_admin/admin/clients")"
@@ -379,7 +383,7 @@ secret_owner_a="$(jq -er '.secret' "$fixture_dir/key-owner-a.json")"
 create_bound_principal "$workspace_a" "m35-member-b-$run_id" developer "$fixture_dir/key-member-b.json"
 key_member_b="$(jq -er '.id' "$fixture_dir/key-member-b.json")"
 secret_member_b="$(jq -er '.secret' "$fixture_dir/key-member-b.json")"
-create_bound_principal "$workspace_a" "m35-admin-a-$run_id" admin "$fixture_dir/key-admin-a.json"
+create_bound_principal "$workspace_a" "m35-admin-a-$run_id" admin "$fixture_dir/key-admin-a.json" "$bootstrap_client"
 key_admin_a="$(jq -er '.id' "$fixture_dir/key-admin-a.json")"
 secret_admin_a="$(jq -er '.secret' "$fixture_dir/key-admin-a.json")"
 create_bound_principal "$workspace_b" "m35-owner-b-$run_id" developer "$fixture_dir/key-owner-b.json"

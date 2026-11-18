@@ -7,8 +7,9 @@ const enApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "Machine credentials for scripts and agents. Shared across the workspace — anyone who can manage keys sees every key here, not just their own.",
-    description: "Settings API Keys section card description",
+      "Machine credentials for scripts and agents. Each key acts with the current member role of whoever created it, in this workspace only. Shared across the workspace — anyone who can manage keys sees every key here, not just their own.",
+    description:
+      "Settings API Keys section card description: what a key is, that it acts with its creator's current role in this workspace, and that the list is shared",
   },
   "apiKeys.cliGuide": {
     message: "Set up the CLI.",
@@ -111,9 +112,9 @@ const enApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.keyHelp": {
     message:
-      "Send it as Authorization: Bearer on every request. The key acts with full authority in this workspace, including connection strings, so treat it like a password.",
+      "Send it as Authorization: Bearer on every request. The key acts with your current member role in this workspace and follows it if your role changes, so treat it like a password.",
     description:
-      "Mint dialog copy under the key: how to send it, and that it carries full authority in the workspace",
+      "Mint dialog copy under the key: how to send it, and that it acts with the creator's current member role in this workspace and follows it",
   },
   "apiKeys.curlTitle": {
     message: "Example request",

@@ -5,8 +5,9 @@
 #   1. Two Kratos identities sign up (API registration flow) → each's first
 #      authenticated call mints a personal tenant (tenant_members row +
 #      user:<id> admin workspace:tea-<id> grant).
-#   2. Each mints an API key → bound to its tenant (tenant_members row +
-#      user:<client_id> developer workspace:tea-<id> grant).
+#   2. Each mints an API key → bound to its tenant at its creator's role
+#      (tenant_members row + user:<client_id> admin workspace:tea-<id> grant,
+#      since w9/m481 a key acts with its creator's role).
 #   3. Each key lists ONLY its own services; a cross-tenant Get is 403; an
 #      unauthenticated call is 401.
 #

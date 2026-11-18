@@ -109,18 +109,22 @@ type fakeBinder struct {
 	failNext      int
 	failUnbind    bool
 	bound         map[string]string // clientID -> tenantID
+	creators      map[string]string // clientID -> the createdBy BindKey was given
 	unbound       []string
 	deletionReads []bool
 }
 
-func newFakeBinder() *fakeBinder { return &fakeBinder{bound: map[string]string{}} }
+func newFakeBinder() *fakeBinder {
+	return &fakeBinder{bound: map[string]string{}, creators: map[string]string{}}
+}
 
-func (b *fakeBinder) BindKey(_ context.Context, clientID, tenantID string) error {
+func (b *fakeBinder) BindKey(_ context.Context, clientID, tenantID, createdBy string) error {
 	if b.failNext > 0 {
 		b.failNext--
 		return errors.New("fga write failed")
 	}
 	b.bound[clientID] = tenantID
+	b.creators[clientID] = createdBy
 	return nil
 }
 
@@ -205,6 +209,11 @@ func TestCreateAPIKeyBindsToCallerTenant(t *testing.T) {
 	}
 	if binder.bound[created.ID] != "tea-a" {
 		t.Errorf("bound[%s] = %q, want tea-a", created.ID, binder.bound[created.ID])
+	}
+	// The binder seats the key at its creator's role (w9/m481), so it must be
+	// told who that is: the caller, the same subject Hydra's stamp names.
+	if binder.creators[created.ID] != "identity-a" || created.CreatedBy != "identity-a" {
+		t.Errorf("bound for creator %q (stamped %q), want identity-a", binder.creators[created.ID], created.CreatedBy)
 	}
 }
 
@@ -1188,7 +1197,7 @@ func seedBoundKey(t *testing.T, ks *fakeKeyStore, b *fakeBinder, id, createdBy, 
 	t.Helper()
 	ks.keys[id] = APIKey{ID: id, Name: id, CreatedBy: createdBy}
 	if tenantID != "" {
-		if err := b.BindKey(context.Background(), id, tenantID); err != nil {
+		if err := b.BindKey(context.Background(), id, tenantID, createdBy); err != nil {
 			t.Fatalf("bind %s: %v", id, err)
 		}
 	}

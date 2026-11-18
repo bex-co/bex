@@ -115,7 +115,7 @@ func (k *keyWorkspaces) Check(_ context.Context, subject, _, object string) (boo
 	return ok && object == core.WorkspaceObject(ws), nil
 }
 
-func (k *keyWorkspaces) BindKey(_ context.Context, clientID, tenantID string) error {
+func (k *keyWorkspaces) BindKey(_ context.Context, clientID, tenantID, _ string) error {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	k.of[clientID] = tenantID
@@ -301,7 +301,7 @@ func TestAPIKeyBearerLogoutRevokesTheKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_ = workspaces.BindKey(context.Background(), minted.ID, "tea-a")
+	_ = workspaces.BindKey(context.Background(), minted.ID, "tea-a", "identity-1")
 	key := apikeys.BearerKey(minted.ID, minted.Secret)
 
 	base := &core.Base{Client: fakeClient(), Namespace: "default", Authz: workspaces, Workspace: workspaces}

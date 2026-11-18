@@ -218,6 +218,16 @@ type RoleReconciliationStore interface {
 	HasPendingRoleReconciliation(ctx context.Context, tenantID, subject string) (bool, error)
 }
 
+// KeyBindingStore lists the API keys a person minted in a workspace: their
+// machine rows, which follow that person's role there (w9/m481). The store
+// re-seats them and queues their intents in the role change's own
+// transaction; the service then converges them before the person's own
+// tuples. *store.PGStore implements it; a store without it has no keys that
+// follow anyone.
+type KeyBindingStore interface {
+	CreatorKeyBindings(ctx context.Context, tenantID, creator string) ([]store.TenantMember, error)
+}
+
 // IdentityAttrs is the slice of identity-provider state a member row is
 // enriched with: the email (w6/m10) plus the MFA-enrollment flag (w1/m33 —
 // Render's Team Members query carries user.otpEnabled; bex spells it
@@ -992,6 +1002,9 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 		// told from a present one. No audit row — nothing changed.
 		_, queued := s.Store.(RoleReconciliationStore)
 		if queued || (s.Base != nil && s.Base.Authz != nil) {
+			// The member's keys first, as below: a retried change converges
+			// a key whose re-seat failed the first time (w9/m481).
+			s.reconcileCreatorKeys(ctx, workspaceID, subject)
 			if _, err := s.reconcileQueuedRole(ctx, workspaceID, subject, role); err != nil {
 				return MemberView{}, err
 			}
@@ -1020,6 +1033,10 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 		// A demoted creator's binding ended with the row (w5/m372).
 		s.invalidateResolution(subject, workspaceID)
 	}
+	// The member's API keys took the new role in the same transaction
+	// (w9/m481). Converge them BEFORE the member's own tuples, so on a
+	// demotion no key keeps the old role longer than its creator does.
+	s.reconcileCreatorKeys(ctx, workspaceID, subject)
 	// The row update and durable reconciliation intent committed together. Apply
 	// the known old->new transition synchronously (this also works in the legacy
 	// granter-without-checker mode), but retain the outbox row on either failure.
@@ -1062,6 +1079,29 @@ func (s *Service) reconcileQueuedRole(ctx context.Context, tenantID, subject, ro
 		return true, err
 	}
 	return false, nil
+}
+
+// reconcileCreatorKeys converges each API key creator minted in tenantID to
+// the role its row now holds: the exact-role reconcile a member gets, with the
+// same outbox acknowledgement. A failure is logged, never returned: the
+// committed intent stays queued for RunRoleReconciler, and until it converges
+// core's request-time key ceiling holds the key to its creator's own decision
+// (w9/m481), so the member's role change itself has landed.
+func (s *Service) reconcileCreatorKeys(ctx context.Context, tenantID, creator string) {
+	keys, ok := s.Store.(KeyBindingStore)
+	if !ok {
+		return
+	}
+	bound, err := keys.CreatorKeyBindings(ctx, tenantID, creator)
+	if err != nil {
+		log.Printf("members: list %s's API keys in %s: %v (left to the role reconciler)", creator, tenantID, err)
+		return
+	}
+	for _, key := range bound {
+		if _, err := s.reconcileQueuedRole(ctx, tenantID, key.Subject, key.Role); err != nil {
+			log.Printf("members: re-seat API key %s at %s in %s: %v (left to the role reconciler)", key.Subject, key.Role, tenantID, err)
+		}
+	}
 }
 
 func (s *Service) completeQueuedRole(ctx context.Context, tenantID, subject, role string) error {

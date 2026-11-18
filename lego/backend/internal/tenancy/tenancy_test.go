@@ -505,7 +505,7 @@ func TestBindKeyGrantsMembership(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := ts.BindKey(ctx, "client-1", ten.ID); err != nil {
+	if err := ts.BindKey(ctx, "client-1", ten.ID, ""); err != nil {
 		t.Fatalf("BindKey: %v", err)
 	}
 	if tid, err := st.TenantForIdentity(ctx, "client-1"); err != nil || tid.ID != ten.ID {
@@ -527,13 +527,69 @@ func TestBindKeyFGAFailureRollsBackBinding(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := ts.BindKey(ctx, "client-1", ten.ID); err == nil {
+	if err := ts.BindKey(ctx, "client-1", ten.ID, ""); err == nil {
 		t.Fatal("FGA grant failure must surface as an error")
 	}
 	// No orphaned binding: the mapping row must not survive a failed grant, or
 	// the key would authorize against a tenant OpenFGA never heard about.
 	if _, err := st.TenantForIdentity(ctx, "client-1"); !errors.Is(err, store.ErrNotFound) {
 		t.Errorf("binding row after rollback: want ErrNotFound, got %v", err)
+	}
+}
+
+// creatorBindingStore is the fake store with the Postgres store's
+// BindClientForCreator: the key is seated at role, or refused with err.
+type creatorBindingStore struct {
+	*fakeTenantStore
+	role string
+	err  error
+}
+
+func (s creatorBindingStore) BindClientForCreator(ctx context.Context, clientID, tenantID, _ string) (string, error) {
+	if s.err != nil {
+		return "", s.err
+	}
+	return s.role, s.BindClient(ctx, clientID, tenantID)
+}
+
+// w9/m481: a key is seated at its creator's role, in the row and the tuple;
+// a creator whose role is unsettled, or who no longer mints keys here, binds
+// nothing and is told why with a 403.
+func TestBindKeySeatsTheKeyAtItsCreatorsRole(t *testing.T) {
+	ctx := context.Background()
+	st := newFakeTenantStore()
+	ten, err := st.CreateTenantWithMember(ctx, "identity-owner", store.PlanHobby)
+	if err != nil {
+		t.Fatal(err)
+	}
+	granter := newFakeGranter()
+	ts := NewTenantService(creatorBindingStore{fakeTenantStore: st, role: "admin"}, granter)
+	if err := ts.BindKey(ctx, "client-admin", ten.ID, "identity-owner"); err != nil {
+		t.Fatalf("BindKey: %v", err)
+	}
+	if want := "admin:" + ten.ID + ":user:client-admin"; len(granter.granted) != 1 || granter.granted[0] != want {
+		t.Fatalf("granted = %v, want [%s]", granter.granted, want)
+	}
+
+	for _, refusal := range []error{store.ErrRoleUnsettled, fmt.Errorf("key creator: %w", store.ErrNotFound)} {
+		granter := newFakeGranter()
+		ts := NewTenantService(creatorBindingStore{fakeTenantStore: st, err: refusal}, granter)
+		err := ts.BindKey(ctx, "client-refused", ten.ID, "identity-owner")
+		if !errors.Is(err, core.ErrForbidden) {
+			t.Errorf("BindKey refused by %v = %v, want ErrForbidden", refusal, err)
+		}
+		if len(granter.granted) != 0 {
+			t.Errorf("a refused bind granted %v", granter.granted)
+		}
+	}
+
+	// A failed grant still rolls the creator-seated row back.
+	ts = NewTenantService(creatorBindingStore{fakeTenantStore: st, role: "developer"}, fgWithFail(1))
+	if err := ts.BindKey(ctx, "client-rollback", ten.ID, "identity-owner"); err == nil {
+		t.Fatal("a failed grant must surface")
+	}
+	if _, err := st.TenantForIdentity(ctx, "client-rollback"); !errors.Is(err, store.ErrNotFound) {
+		t.Errorf("binding row after a failed grant: %v, want ErrNotFound", err)
 	}
 }
 
@@ -547,8 +603,14 @@ func TestUnbindKeyRemovesBindingAndRevokesMembership(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := ts.BindKey(ctx, "client-1", ten.ID); err != nil {
+	if err := ts.BindKey(ctx, "client-1", ten.ID, ""); err != nil {
 		t.Fatalf("bind: %v", err)
+	}
+	// A key follows its creator's role (w9/m481), and a role change still
+	// converging can leave it a tuple its row no longer names: revoke must
+	// remove whatever role the key holds, not only developer.
+	if err := granter.GrantWorkspaceRole(ctx, ten.ID, "user:client-1", "admin"); err != nil {
+		t.Fatal(err)
 	}
 	if err := ts.UnbindKey(ctx, "client-1"); err != nil {
 		t.Fatalf("UnbindKey: %v", err)
@@ -556,9 +618,10 @@ func TestUnbindKeyRemovesBindingAndRevokesMembership(t *testing.T) {
 	if _, err := st.TenantForIdentity(ctx, "client-1"); !errors.Is(err, store.ErrNotFound) {
 		t.Errorf("binding row after unbind: want ErrNotFound, got %v", err)
 	}
-	want := "developer:" + ten.ID + ":user:client-1"
-	if len(granter.revoked) != 1 || granter.revoked[0] != want {
-		t.Fatalf("revoked = %v, want [%s]", granter.revoked, want)
+	for tuple, live := range granter.tuples {
+		if live && strings.HasSuffix(tuple, ":user:client-1") {
+			t.Errorf("tuple %s survived the unbind", tuple)
+		}
 	}
 }
 
@@ -589,7 +652,7 @@ func TestUnbindKeyFailClosedLeavesBindingWhenRevokeFails(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := ts.BindKey(ctx, "client-1", ten.ID); err != nil {
+	if err := ts.BindKey(ctx, "client-1", ten.ID, ""); err != nil {
 		t.Fatalf("bind: %v", err)
 	}
 	tuple := "developer:" + ten.ID + ":user:client-1"

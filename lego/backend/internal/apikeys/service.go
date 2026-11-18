@@ -80,7 +80,9 @@ type APIKeyStore interface {
 // lets it authorize there (replacing the legacy workspace:default). nil Binding
 // (the store off) => keys mint unbound, as before tenant onboarding (w1/m9).
 type KeyBinder interface {
-	BindKey(ctx context.Context, clientID, tenantID string) error
+	// BindKey seats the key at createdBy's current role in tenantID (w9/m481),
+	// so it acts with its creator's role; "" binds it as a Developer.
+	BindKey(ctx context.Context, clientID, tenantID, createdBy string) error
 	UnbindKey(ctx context.Context, clientID string) error
 	// TenantForKey resolves the workspace a bound key belongs to (ok=false for
 	// an unbound/unknown key) — the read side of BindKey, used to scope
@@ -347,7 +349,7 @@ func (s *Service) createBoundAPIKey(ctx context.Context, tenantID, name, created
 	if err != nil {
 		return APIKey{}, err
 	}
-	if err := s.Binding.BindKey(ctx, key.ID, tenantID); err != nil {
+	if err := s.Binding.BindKey(ctx, key.ID, tenantID, createdBy); err != nil {
 		// No orphaned credentials: the Hydra client is live but unbound — delete
 		// it so a half-minted key can't authenticate (its tuple was never written).
 		_ = s.APIKeys.Delete(ctx, key.ID)

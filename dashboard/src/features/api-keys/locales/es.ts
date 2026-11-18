@@ -7,8 +7,9 @@ const esApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "Credenciales de máquina para scripts y agentes. Se comparten en todo el espacio de trabajo: quien pueda administrar claves ve todas las claves aquí, no solo las suyas.",
-    description: "Settings API Keys section card description",
+      "Credenciales de máquina para scripts y agentes. Cada clave actúa con el rol de miembro actual de quien la creó, solo en este espacio de trabajo. Se comparten en todo el espacio de trabajo: quien pueda administrar claves ve todas las claves aquí, no solo las suyas.",
+    description:
+      "Settings API Keys section card description: what a key is, that it acts with its creator's current role in this workspace, and that the list is shared",
   },
   "apiKeys.cliGuide": {
     message: "Configura la CLI.",
@@ -112,9 +113,9 @@ const esApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.keyHelp": {
     message:
-      "Envíala como Authorization: Bearer en cada solicitud. La clave actúa con plena autoridad en este espacio de trabajo, incluidas las cadenas de conexión, así que trátala como una contraseña.",
+      "Envíala como Authorization: Bearer en cada solicitud. La clave actúa con tu rol de miembro actual en este espacio de trabajo y lo sigue si tu rol cambia, así que trátala como una contraseña.",
     description:
-      "Mint dialog copy under the key: how to send it, and that it carries full authority in the workspace",
+      "Mint dialog copy under the key: how to send it, and that it acts with the creator's current member role in this workspace and follows it",
   },
   "apiKeys.curlTitle": {
     message: "Solicitud de ejemplo",

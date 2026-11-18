@@ -1044,6 +1044,60 @@ func (s *PGStore) BindClient(ctx context.Context, clientID, tenantID string) err
 	return nil
 }
 
+// ErrRoleUnsettled refuses an API key mint while its creator's own role change
+// in the workspace has not converged into OpenFGA yet (w9/m481): the key would
+// be seated from a role whose tuples are still moving.
+var ErrRoleUnsettled = errors.New("the creator's workspace role change is still being applied")
+
+// BindClientForCreator binds an API key to tenantID at its creator's current
+// role there and records the creator on the key's row (w9/m481), returning the
+// role it seated. The creator must be a person in the workspace at a role that
+// mints keys (admin or developer): anyone else is ErrNotFound. A creator whose
+// own role intent is still queued is ErrRoleUnsettled.
+//
+// The mint calls it under the workspace advisory lock UpdateMemberRole also
+// takes (apikeys.KeyQuotaLocker), so a role change and a mint in one workspace
+// never interleave: either the key is seated at the new role, or the change
+// re-seats the key it finds bound (enqueueRoleReconciliation).
+func (s *PGStore) BindClientForCreator(ctx context.Context, clientID, tenantID, creator string) (string, error) {
+	var role string
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		err := tx.QueryRow(ctx, `
+			SELECT role FROM tenant_members
+			WHERE tenant_id = $1 AND subject = $2 AND kind = 'user' AND role IN ('admin', 'developer')
+			FOR SHARE`, tenantID, creator).Scan(&role)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("key creator %s: %w", creator, ErrNotFound)
+		}
+		if err != nil {
+			return err
+		}
+		var pending bool
+		if err := tx.QueryRow(ctx,
+			`SELECT EXISTS (SELECT 1 FROM membership_role_reconciliations WHERE tenant_id = $1 AND subject = $2)`,
+			tenantID, creator).Scan(&pending); err != nil {
+			return err
+		}
+		if pending {
+			return ErrRoleUnsettled
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM tenant_members WHERE subject = $1`, clientID); err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `
+			INSERT INTO tenant_members (tenant_id, subject, role, kind, created_by)
+			VALUES ($1, $2, $3, 'machine', $4)`, tenantID, clientID, role, creator)
+		return err
+	})
+	if err != nil {
+		if errors.Is(err, ErrNotFound) || errors.Is(err, ErrRoleUnsettled) {
+			return "", err
+		}
+		return "", classify("tenant_member", err)
+	}
+	return role, nil
+}
+
 // ClientBindingsOfTenants answers which API keys are bound to tenantIDs: each
 // bound client id with its workspace, read from the machine rows BindClient
 // writes. The enable confirmation of a login requirement assesses these keys

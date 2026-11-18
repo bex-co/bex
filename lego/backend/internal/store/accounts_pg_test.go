@@ -315,6 +315,7 @@ var accountDeletionDispositions = map[string]string{
 	"tenant_invites.email":                      "anonymize: cleanupAccountEmail deletes pending invitations and anonymizes accepted history",
 	"tenant_invites.invited_by":                 "anonymize: CleanupAccountSubject replaces inviter provenance",
 	"tenant_members.subject":                    "delete: account workspace disposition removes memberships and dependent state",
+	"tenant_members.created_by":                 "delete: account credential cleanup revokes every API key the subject created (apikeys.AccountTeardown unbinds each), deleting the machine rows that name them (w9/m481)",
 	"organization_members.subject":              "delete: CleanupAccountSubject removes the account from every organization (w7/m464)",
 	"organization_invites.email":                "anonymize: cleanupAccountEmail deletes pending org invitations and anonymizes accepted history",
 	"organization_invites.invited_by":           "anonymize: CleanupAccountSubject replaces inviter provenance",

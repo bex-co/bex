@@ -955,11 +955,15 @@ func wireTwoFactor(deps *api.Deps, base *core.Base, st *store.PGStore, registere
 	if keys, ok := deps.APIKeys.(twofactor.KeyCreators); ok {
 		cfg.Keys = keys
 	} else if deps.APIKeys != nil {
-		// Without it every API-key call on a workspace that requires 2FA is a 503.
-		log.Printf("WARNING: the API key store (%T) has no KeyCreator, so API keys cannot be checked against a workspace's two-factor requirement and fail closed there", deps.APIKeys)
+		// Without it every API-key call is a 503: no key can be held to its
+		// creator's role (w9/m481) or to a workspace's two-factor requirement.
+		log.Printf("WARNING: the API key store (%T) has no KeyCreator, so API keys cannot be checked against their creator's role or a workspace's two-factor requirement and fail closed", deps.APIKeys)
 	}
 	gate := twofactor.New(cfg)
 	base.TwoFactor = gate
+	// The same cached creator lookup caps every API key at its creator's
+	// current decision (w9/m481); without Keys it fails every key closed.
+	base.KeyCreators = gate
 	deps.TwoFactorChanged = gate.Invalidate
 	// The enable confirmation lists who a requirement would block by the
 	// gate's own assessment (w7/m471); a missing lookup answers "could not
@@ -2138,7 +2142,8 @@ func nonceStoreOrNil(st *store.PGStore) sshgateway.NonceStore {
 // backfillMachineMemberships reclassifies the tenant_members rows of existing
 // API keys as kind='machine' — the one-time reconcile w5/m103's migration
 // cannot do in SQL, because Hydra is the only registry that knows which
-// subjects are client ids.
+// subjects are client ids — and then records each key's creator on its row
+// (w9/m481), for the same reason.
 //
 // Best-effort by design: without it a pre-existing key keeps appearing on the
 // Team surface and holding a seat, which is precisely the pre-m103 behavior, so
@@ -2158,8 +2163,10 @@ func backfillMachineMemberships(ctx context.Context, st *store.PGStore, keys api
 		return
 	}
 	ids := make([]string, 0, len(list))
+	creators := make(map[string]string, len(list))
 	for _, k := range list {
 		ids = append(ids, k.ID)
+		creators[k.ID] = k.CreatedBy
 	}
 	n, err := st.MarkMachineMemberships(ctx, ids)
 	if err != nil {
@@ -2168,6 +2175,17 @@ func backfillMachineMemberships(ctx context.Context, st *store.PGStore, keys api
 	}
 	if n > 0 {
 		log.Printf("bex-api: machine-membership backfill: reclassified %d API-key binding(s) as machine", n)
+	}
+	// Then each key's creator (w9/m481): a key bound before
+	// tenant_members.created_by existed takes its creator's current role, as
+	// a newly minted one does. Until this runs such a key keeps its Developer
+	// binding, still capped by its creator at request time.
+	seated, err := st.RecordKeyCreators(ctx, creators)
+	if err != nil {
+		log.Printf("bex-api: API key creator backfill: %v (retrying next start)", err)
+	}
+	if seated > 0 {
+		log.Printf("bex-api: API key creator backfill: seated %d API key(s) at their creator's role", seated)
 	}
 }
 

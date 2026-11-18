@@ -7,8 +7,9 @@ const ruApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "Машинные учётные данные для скриптов и агентов. Общие для всего рабочего пространства — любой, кто может управлять ключами, видит здесь все ключи, а не только свои.",
-    description: "Settings API Keys section card description",
+      "Машинные учётные данные для скриптов и агентов. Каждый ключ действует с текущей ролью участника, который его создал, и только в этом рабочем пространстве. Общие для всего рабочего пространства — любой, кто может управлять ключами, видит здесь все ключи, а не только свои.",
+    description:
+      "Settings API Keys section card description: what a key is, that it acts with its creator's current role in this workspace, and that the list is shared",
   },
   "apiKeys.cliGuide": {
     message: "Настройте CLI.",
@@ -112,9 +113,9 @@ const ruApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.keyHelp": {
     message:
-      "Передавайте его в каждом запросе как Authorization: Bearer. Ключ действует с полными правами в этом рабочем пространстве, включая строки подключения, поэтому обращайтесь с ним как с паролем.",
+      "Передавайте его в каждом запросе как Authorization: Bearer. Ключ действует с вашей текущей ролью участника в этом рабочем пространстве и меняется вместе с ней, поэтому обращайтесь с ним как с паролем.",
     description:
-      "Mint dialog copy under the key: how to send it, and that it carries full authority in the workspace",
+      "Mint dialog copy under the key: how to send it, and that it acts with the creator's current member role in this workspace and follows it",
   },
   "apiKeys.curlTitle": {
     message: "Пример запроса",

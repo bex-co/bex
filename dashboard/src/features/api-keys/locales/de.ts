@@ -7,8 +7,9 @@ const deApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "Maschinen-Zugangsdaten für Skripte und Agents. Gilt für den gesamten Workspace — wer Schlüssel verwalten kann, sieht hier jeden Schlüssel, nicht nur die eigenen.",
-    description: "Settings API Keys section card description",
+      "Maschinen-Zugangsdaten für Skripte und Agents. Jeder Schlüssel handelt mit der aktuellen Mitgliedsrolle der Person, die ihn erstellt hat, und nur in diesem Workspace. Gilt für den gesamten Workspace — wer Schlüssel verwalten kann, sieht hier jeden Schlüssel, nicht nur die eigenen.",
+    description:
+      "Settings API Keys section card description: what a key is, that it acts with its creator's current role in this workspace, and that the list is shared",
   },
   "apiKeys.cliGuide": {
     message: "Die CLI einrichten.",
@@ -115,9 +116,9 @@ const deApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.keyHelp": {
     message:
-      "Sende ihn bei jeder Anfrage als Authorization: Bearer. Der Schlüssel handelt mit voller Berechtigung in diesem Workspace, einschließlich Verbindungs-Strings, behandle ihn also wie ein Passwort.",
+      "Sende ihn bei jeder Anfrage als Authorization: Bearer. Der Schlüssel handelt mit deiner aktuellen Mitgliedsrolle in diesem Workspace und folgt ihr, wenn sich deine Rolle ändert, behandle ihn also wie ein Passwort.",
     description:
-      "Mint dialog copy under the key: how to send it, and that it carries full authority in the workspace",
+      "Mint dialog copy under the key: how to send it, and that it acts with the creator's current member role in this workspace and follows it",
   },
   "apiKeys.curlTitle": {
     message: "Beispielanfrage",

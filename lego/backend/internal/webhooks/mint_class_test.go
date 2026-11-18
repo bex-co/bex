@@ -19,6 +19,7 @@ package webhooks
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -123,5 +124,75 @@ func TestRepointAndSecretReadRequireMintCredentialClass(t *testing.T) {
 	}
 	if s.mayManageWorkspace(thirdParty, "tea-1") {
 		t.Fatal("a delegated third-party token is treated as a manager, so it reads the signing secret")
+	}
+}
+
+// adminsChecker grants can_manage to every subject in admins and can_view to
+// everyone, so the key ceiling (a key is allowed only what its creator is)
+// has a creator to consult.
+type adminsChecker map[string]bool
+
+func (c adminsChecker) Check(_ context.Context, subject, relation, _ string) (bool, error) {
+	if relation == core.RelCanView {
+		return true, nil
+	}
+	return relation == core.RelCanManage && c[strings.TrimPrefix(subject, "user:")], nil
+}
+
+// w9/m481: Render's API keys "Create, update, and delete webhooks". An
+// Admin's bex API key creates an endpoint (and gets its secret), repoints it
+// and reads it unredacted; a Developer's key is refused by the role, and a key
+// with no recorded creator or any other machine client by the credential
+// class, as before.
+func TestAnAdminsAPIKeyManagesWebhooksAsTheAdminDoes(t *testing.T) {
+	st := newFakeEndpointStore()
+	s := &Service{
+		Base: &core.Base{
+			Namespace: "default",
+			// key-dev's own tuple says admin (a revoke that failed after its
+			// creator's demotion), so only the ceiling refuses it.
+			Authz: adminsChecker{"user-a": true, "key-admin": true, "key-dev": true, "key-old": true, "svc": true},
+			KeyCreators: coretest.KeyCreators{
+				"key-admin": "user-a", "key-dev": "user-d", "key-old": "",
+			},
+		},
+		Store: st,
+	}
+	keyCtx := func(id string) context.Context {
+		return core.WithIdentity(context.Background(), core.Identity{Subject: id, ClientID: id, Method: core.MethodOAuth2})
+	}
+	create := func(ctx context.Context, name string) (EndpointView, error) {
+		return s.Create(ctx, CreateRequest{Name: name, URL: "https://example.com/h", EventTypes: []string{TypeDeployEnded}, Enabled: true})
+	}
+
+	created, err := create(keyCtx("key-admin"), "hook")
+	if err != nil {
+		t.Fatalf("an Admin's key Create => %v, want success", err)
+	}
+	if created.Secret == "" {
+		t.Fatal("an Admin's key got no signing secret back")
+	}
+	elsewhere := "https://example.com/elsewhere"
+	if _, err := s.Update(keyCtx("key-admin"), "", created.ID, UpdateRequest{URL: &elsewhere}); err != nil {
+		t.Fatalf("an Admin's key repoint => %v, want success", err)
+	}
+	if !s.mayManageWorkspace(keyCtx("key-admin"), "tea-1") {
+		t.Fatal("an Admin's key reads the endpoint redacted, so Terraform loses its secret")
+	}
+
+	for _, refused := range []string{"key-dev", "key-old", "svc"} {
+		if _, err := create(keyCtx(refused), "hook-"+refused); !errors.Is(err, core.ErrForbidden) {
+			t.Errorf("%s Create => %v, want ErrForbidden", refused, err)
+		}
+		away := "https://attacker.example/" + refused
+		if _, err := s.Update(keyCtx(refused), "", created.ID, UpdateRequest{URL: &away}); !errors.Is(err, core.ErrForbidden) {
+			t.Errorf("%s repoint => %v, want ErrForbidden", refused, err)
+		}
+		if s.mayManageWorkspace(keyCtx(refused), "tea-1") {
+			t.Errorf("%s reads the signing secret", refused)
+		}
+	}
+	if len(st.rows) != 1 {
+		t.Fatalf("refused callers created endpoints: %d rows", len(st.rows))
 	}
 }

@@ -7,8 +7,9 @@ const zhApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "供脚本和智能体使用的机器凭证。整个工作区共享——任何有密钥管理权限的人都能看到这里的所有密钥，而不仅仅是自己创建的。",
-    description: "Settings API Keys section card description",
+      "供脚本和智能体使用的机器凭证。每个密钥以其创建者当前的成员角色行事，且仅在此工作区内有效。整个工作区共享——任何有密钥管理权限的人都能看到这里的所有密钥，而不仅仅是自己创建的。",
+    description:
+      "Settings API Keys section card description: what a key is, that it acts with its creator's current role in this workspace, and that the list is shared",
   },
   "apiKeys.cliGuide": {
     message: "设置 CLI。",
@@ -111,9 +112,9 @@ const zhApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.keyHelp": {
     message:
-      "在每个请求中将它作为 Authorization: Bearer 发送。此密钥在该工作区内拥有完整权限（包括连接字符串），请像密码一样保管。",
+      "在每个请求中将它作为 Authorization: Bearer 发送。此密钥以你在该工作区当前的成员角色行事，并会随你的角色变化而变化，请像密码一样保管。",
     description:
-      "Mint dialog copy under the key: how to send it, and that it carries full authority in the workspace",
+      "Mint dialog copy under the key: how to send it, and that it acts with the creator's current member role in this workspace and follows it",
   },
   "apiKeys.curlTitle": {
     message: "示例请求",

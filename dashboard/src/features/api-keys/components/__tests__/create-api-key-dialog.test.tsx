@@ -73,7 +73,7 @@ describe("CreateApiKeyDialog — one bearer key, shown once (w4/m8/t003, w7/m426
     expect(copy).toHaveBeenCalledWith(KEY);
   });
 
-  it("says in the primary area that the key is shown once and carries full authority", async () => {
+  it("says in the primary area that the key is shown once and acts with your role", async () => {
     create.mockResolvedValue(CREATED);
     const user = userEvent.setup();
     render(<CreateApiKeyDialog onCreated={vi.fn()} />);
@@ -82,8 +82,10 @@ describe("CreateApiKeyDialog — one bearer key, shown once (w4/m8/t003, w7/m426
     const once = within(dialog).getByText(
       "Copy the key now. You won't be able to see it again.",
     );
+    // w9/m481: a key acts with its creator's current member role in this
+    // workspace and follows it, as on Render; it never had "full authority".
     const authority = within(dialog).getByText(
-      /full authority in this workspace, including connection strings/,
+      /acts with your current member role in this workspace and follows it if your role changes/,
     );
     expect(authority).toHaveTextContent(/treat it like a password/);
     expect(authority).toHaveTextContent(/Authorization: Bearer/);

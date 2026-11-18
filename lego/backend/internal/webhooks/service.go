@@ -514,10 +514,12 @@ type CreateRequest struct {
 
 // Create registers a new endpoint and returns it WITH its freshly minted
 // signing secret, which later manager reads return too (w3/m282). Admin-only
-// (RelCanManage) plus AuthorizeMintClass: an endpoint exports the workspace's
+// (RelCanManage) plus AuthorizeExportClass: an endpoint exports the workspace's
 // whole activity stream to an external URL under a durable signing secret, so
-// a delegated OAuth bex.write token cannot create one (w4/079). Sessions and
-// platform clients still pass.
+// a delegated OAuth bex.write token cannot create one (w4/079). Sessions,
+// platform clients and a bex API key a person minted pass (w9/m481: Render's
+// keys "Create, update, and delete webhooks"); the key acts with its creator's
+// role, so only an Admin's key gets past RelCanManage.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (EndpointView, error) {
 	ctx = core.WithWorkspace(ctx, req.OwnerID)
 	// The one CreateWebhookEvent is written once the endpoint exists, naming
@@ -525,10 +527,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (EndpointView, 
 	if err := s.Authorize(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanManage); err != nil {
 		return EndpointView{}, err
 	}
-	// Durable signing secret — same durable-credential gate as API-key
-	// mint so a delegated (OAuth) bex.write token cannot create webhook
-	// endpoints (w4/079). Sessions and platform clients still pass.
-	if err := s.AuthorizeMintClass(ctx); err != nil {
+	// Durable signing secret: a delegated (OAuth) bex.write token cannot
+	// create webhook endpoints (w4/079). Sessions, platform clients and an
+	// attributed bex API key pass (w9/m481).
+	if err := s.AuthorizeExportClass(ctx); err != nil {
 		return EndpointView{}, err
 	}
 	if s.Store == nil {
@@ -933,7 +935,7 @@ func (s *Service) Update(ctx context.Context, ownerID, id string, req UpdateRequ
 		// new destination under its durable secret, as Create does: the same
 		// credential-class gate (round 24, hardening of H-1's class).
 		if dest != cur.URL {
-			if err := s.AuthorizeMintClass(ctx); err != nil {
+			if err := s.AuthorizeExportClass(ctx); err != nil {
 				return EndpointView{}, err
 			}
 		}
@@ -1039,7 +1041,7 @@ func scrubDeliveryEvidence(text, destURL string) string {
 // revealed, so a just-demoted admin must not ride a cached positive. It also
 // composes the relation's mapped OAuth capability (Identity.RequireCapability):
 // a third-party human token carrying only bex.read is treated as NOT privileged
-// even when OpenFGA grants the delegated admin's can_manage. Raw checker, not
+// even when OpenFGA grants the delegated admin's can_manage. Audit-silent, not
 // Authorize: the read verbs' gate stays can_view (audited there), and a
 // per-viewer denial audit row on every list would be noise, not signal (the
 // sandbox isWorkspaceAdmin precedent).
@@ -1056,15 +1058,16 @@ func (s *Service) mayManageWorkspace(ctx context.Context, tenantID string) bool 
 	}
 	// The signing secret and full URL are the durable export Create gates on
 	// the credential class; a delegated third-party token reads them redacted
-	// (round 24, hardening of H-1's class).
+	// (round 24, hardening of H-1's class). An Admin's API key reads them as
+	// the Admin does, as on Render (w9/m481).
 	if !id.MintClass() {
-		return false
+		if attributed, err := s.AttributedAPIKey(ctx); err != nil || !attributed {
+			return false
+		}
 	}
-	check := s.Authz.Check
-	if fresh, ok := s.Authz.(core.FreshChecker); ok {
-		check = fresh.CheckFresh
-	}
-	allowed, err := check(ctx, "user:"+id.Subject, core.RelCanManage, core.WorkspaceObject(tenantID))
+	// HoldsFresh, not the raw checker: an API key's answer is capped by its
+	// creator's (w9/m481).
+	allowed, err := s.HoldsFresh(ctx, core.RelCanManage, core.WorkspaceObject(tenantID))
 	return err == nil && allowed
 }
 

@@ -504,6 +504,17 @@ func (g *Gate) principal(ctx context.Context, id core.Identity) (principal, erro
 	return principal{subject: k.creator, viaKey: true, keySignIn: k.signIn}, nil
 }
 
+// APIKeyCreator implements core.KeyCreatorResolver over the same cached lookup
+// the login requirements read, so the request-time key ceiling (w9/m481) costs
+// no Hydra call beyond the first per key and TTL. A key's creator stamp never
+// changes, so the cache cannot go stale; a revoked key loses its own tuple.
+func (g *Gate) APIKeyCreator(ctx context.Context, clientID string) (creator string, isKey bool, err error) {
+	k, err := g.keyCreatorOf(ctx, clientID)
+	return k.creator, k.isKey, err
+}
+
+var _ core.KeyCreatorResolver = (*Gate)(nil)
+
 func (g *Gate) keyCreatorOf(ctx context.Context, clientID string) (keyCreator, error) {
 	return g.keys.Load(ctx, clientID, TTL, func(ctx context.Context) (keyCreator, error) {
 		if g.cfg.Keys == nil {

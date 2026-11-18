@@ -548,7 +548,33 @@ func redeemInvite(ctx context.Context, tx pgx.Tx, inv Invite, subject string) (e
 	return effective, joinedOrg, nil
 }
 
+// enqueueRoleReconciliation records subject's desired role in tenantID in the
+// outbox, in the transaction that committed the row. Every path that sets a
+// person's role in a workspace goes through it (UpdateMemberRole, invite
+// redemption, an org workspace join), so it is also where the API keys that
+// person minted there follow them (w9/m481): their rows take the same role and
+// each gets the same intent, in the same transaction, which the members
+// service and the reconciler converge exactly as they converge the person.
+// One level only: a key's own intent re-seats nothing.
 func enqueueRoleReconciliation(ctx context.Context, tx pgx.Tx, tenantID, subject, role string) error {
+	if err := upsertRoleIntent(ctx, tx, tenantID, subject, role); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `
+		WITH keys AS (
+			UPDATE tenant_members SET role = $3
+			WHERE tenant_id = $1 AND created_by = $2 AND kind = 'machine'
+			RETURNING subject
+		)
+		INSERT INTO membership_role_reconciliations (tenant_id, subject, role)
+		SELECT $1, subject, $3 FROM keys
+		ON CONFLICT (tenant_id, subject) DO UPDATE
+		SET role = EXCLUDED.role, attempts = 0, next_attempt_at = now(), last_error = NULL, updated_at = now()`,
+		tenantID, subject, role)
+	return err
+}
+
+func upsertRoleIntent(ctx context.Context, tx pgx.Tx, tenantID, subject, role string) error {
 	_, err := tx.Exec(ctx, `
 		INSERT INTO membership_role_reconciliations (tenant_id, subject, role)
 		VALUES ($1, $2, $3)
@@ -556,6 +582,91 @@ func enqueueRoleReconciliation(ctx context.Context, tx pgx.Tx, tenantID, subject
 		SET role = EXCLUDED.role, attempts = 0, next_attempt_at = now(), last_error = NULL, updated_at = now()`,
 		tenantID, subject, role)
 	return err
+}
+
+// CreatorKeyBindings lists the API keys creator minted in tenantID: their
+// machine rows, each at the role it is seated at (w9/m481). A role change
+// converges them right after its own commit, before the creator's own tuples.
+func (s *PGStore) CreatorKeyBindings(ctx context.Context, tenantID, creator string) ([]TenantMember, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT tenant_id, subject, role, created_at, kind FROM tenant_members
+		WHERE tenant_id = $1 AND created_by = $2 AND kind = 'machine'
+		ORDER BY subject`, tenantID, creator)
+	if err != nil {
+		return nil, classify("tenant_member", err)
+	}
+	out, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (TenantMember, error) {
+		var m TenantMember
+		err := row.Scan(&m.TenantID, &m.Subject, &m.Role, &m.CreatedAt, &m.Kind)
+		return m, err
+	})
+	if err != nil {
+		return nil, classify("tenant_member", err)
+	}
+	return out, nil
+}
+
+// RecordKeyCreators is the one-time reconcile for API keys bound before
+// tenant_members.created_by existed (w9/m481): creators maps each key's client
+// id to the creator its Hydra stamp names. A machine row with no creator yet
+// takes that creator, and, when the creator is a person in the key's workspace,
+// that person's role there plus the matching outbox intent, so the key acts
+// with its creator's role from then on. bex-api runs it at startup against the
+// live key list. Idempotent: a row that already names a creator is left alone.
+// Returns how many rows it seated at their creator's role.
+func (s *PGStore) RecordKeyCreators(ctx context.Context, creators map[string]string) (int64, error) {
+	var seated int64
+	for clientID, creator := range creators {
+		if creator == "" {
+			continue
+		}
+		err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+			var tenantID string
+			err := tx.QueryRow(ctx, `
+				SELECT tenant_id FROM tenant_members
+				WHERE subject = $1 AND kind = 'machine' AND created_by IS NULL`, clientID).Scan(&tenantID)
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			// The lock UpdateMemberRole and the mint take: a role change
+			// either sees this key's creator or has already committed the role
+			// read below.
+			if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, tenantID); err != nil {
+				return err
+			}
+			tag, err := tx.Exec(ctx, `
+				UPDATE tenant_members SET created_by = $3
+				WHERE tenant_id = $1 AND subject = $2 AND kind = 'machine' AND created_by IS NULL`,
+				tenantID, clientID, creator)
+			if err != nil || tag.RowsAffected() == 0 {
+				return err
+			}
+			var role string
+			err = tx.QueryRow(ctx, `
+				UPDATE tenant_members k SET role = m.role
+				FROM tenant_members m
+				WHERE k.tenant_id = $1 AND k.subject = $2
+				  AND m.tenant_id = k.tenant_id AND m.subject = $3 AND m.kind = 'user'
+				RETURNING k.role`, tenantID, clientID, creator).Scan(&role)
+			if errors.Is(err, pgx.ErrNoRows) {
+				// The creator is not a person here any more: the key stays as
+				// it was, and the request-time ceiling refuses it everything.
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			seated++
+			return upsertRoleIntent(ctx, tx, tenantID, clientID, role)
+		})
+		if err != nil {
+			return seated, classify("tenant_member", err)
+		}
+	}
+	return seated, nil
 }
 
 // AcceptInviteByToken redeems ONE invite by its emailed token for subject —

@@ -7,8 +7,9 @@ const koApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "스크립트와 에이전트를 위한 머신 자격 증명입니다. 워크스페이스 전체에서 공유되며, 키를 관리할 수 있는 사람은 본인 키뿐 아니라 모든 키를 볼 수 있습니다.",
-    description: "Settings API Keys section card description",
+      "스크립트와 에이전트를 위한 머신 자격 증명입니다. 각 키는 만든 사람의 현재 멤버 역할로, 이 워크스페이스에서만 동작합니다. 워크스페이스 전체에서 공유되며, 키를 관리할 수 있는 사람은 본인 키뿐 아니라 모든 키를 볼 수 있습니다.",
+    description:
+      "Settings API Keys section card description: what a key is, that it acts with its creator's current role in this workspace, and that the list is shared",
   },
   "apiKeys.cliGuide": {
     message: "CLI 설정하기.",
@@ -111,9 +112,9 @@ const koApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.keyHelp": {
     message:
-      "모든 요청에 Authorization: Bearer로 보내세요. 이 키는 연결 문자열을 포함해 이 워크스페이스에서 모든 권한을 가지므로 비밀번호처럼 다루세요.",
+      "모든 요청에 Authorization: Bearer로 보내세요. 이 키는 이 워크스페이스에서 회원님의 현재 멤버 역할로 동작하고 역할이 바뀌면 그에 따르므로 비밀번호처럼 다루세요.",
     description:
-      "Mint dialog copy under the key: how to send it, and that it carries full authority in the workspace",
+      "Mint dialog copy under the key: how to send it, and that it acts with the creator's current member role in this workspace and follows it",
   },
   "apiKeys.curlTitle": {
     message: "요청 예시",

@@ -352,7 +352,7 @@ func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Ti
 // positive cached on another replica. It also composes the relation's mapped
 // OAuth capability (Identity.RequireCapability): a third-party human token
 // carrying only bex.read is treated as NOT privileged even when OpenFGA grants
-// the delegated billing/admin relation. It deliberately uses the raw checker,
+// the delegated billing/admin relation. It deliberately uses HoldsFresh,
 // not Authorize: the verb's gate stays can_view (audited there), and this is a
 // field-level projection decision — a denial must not emit a denial audit row
 // for every ordinary viewer usage read (the isWorkspaceAdmin precedent).
@@ -368,11 +368,9 @@ func (s *Service) mayManageBilling(ctx context.Context, tenantID string) bool {
 	if err := id.RequireCapability(core.RelCanManageBilling); err != nil {
 		return false
 	}
-	check := s.Authz.Check
-	if fresh, ok := s.Authz.(core.FreshChecker); ok {
-		check = fresh.CheckFresh
-	}
-	allowed, err := check(ctx, "user:"+id.Subject, core.RelCanManageBilling, core.WorkspaceObject(tenantID))
+	// HoldsFresh, not the raw checker: an API key's answer is capped by its
+	// creator's (w9/m481).
+	allowed, err := s.HoldsFresh(ctx, core.RelCanManageBilling, core.WorkspaceObject(tenantID))
 	return err == nil && allowed
 }
 

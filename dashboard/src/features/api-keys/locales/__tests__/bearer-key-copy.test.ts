@@ -52,6 +52,20 @@ describe("api-keys copy: the key is a bearer token", () => {
       );
     });
 
+    it("no message says a key has full authority: it acts with its creator's role", () => {
+      // w9/m481 (docs/ADR024-members.md): a key acts with its creator's
+      // current member role in its workspace, as on Render. "Full authority"
+      // was never true (keys were Developers) and is not true now.
+      const overclaiming = Object.entries(catalog)
+        .filter(([, entry]) =>
+          /full authority|voller Berechtigung|plena autoridad|完全な権限|모든 권한|autoridade total|полными правами|完整权限/i.test(
+            entry.message,
+          ),
+        )
+        .map(([key]) => key);
+      expect(overclaiming).toEqual([]);
+    });
+
     it("the primary copy names the header the key is sent in", () => {
       // The one instruction a user needs is stated outside the OAuth detail,
       // and the header name is the same in every language.

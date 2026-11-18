@@ -607,11 +607,9 @@ func (s *Service) isWorkspaceAdmin(ctx context.Context, workspace string) (bool,
 	if err := id.RequireCapability(core.RelCanManage); err != nil {
 		return false, nil
 	}
-	check := s.Authz.Check
-	if fresh, ok := s.Authz.(core.FreshChecker); ok {
-		check = fresh.CheckFresh
-	}
-	allowed, err := check(ctx, "user:"+id.Subject, core.RelCanManage, core.WorkspaceObject(workspace))
+	// HoldsFresh, not the raw checker: an API key's answer is capped by its
+	// creator's (w9/m481).
+	allowed, err := s.HoldsFresh(ctx, core.RelCanManage, core.WorkspaceObject(workspace))
 	if err != nil {
 		log.Printf("sandbox: workspace authorization unavailable: %v", err)
 		return false, core.ErrAuthzUnavailable

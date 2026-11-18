@@ -490,6 +490,12 @@ type Base struct {
 	// nil => no workspace can enforce 2FA (the store-off mode). The SSH gateway
 	// wires a gate that asks bex-api over an HMAC verb.
 	TwoFactor TwoFactorGate
+	// KeyCreators names the person who minted a bex API key, so an API key
+	// caller is never allowed what its creator is not (keyrole.go, w9/m481).
+	// nil => API keys are decided by their own role tuple alone: the store-off
+	// mode, where keys are unbound and hold no tuple, and the SSH gateway,
+	// which never authenticates an API key.
+	KeyCreators KeyCreatorResolver
 }
 
 // NamespaceEnsurer provisions one workspace's per-tenant namespaces
@@ -1034,7 +1040,8 @@ func (b *Base) checkAuthz(ctx context.Context, relation, object string) error {
 	if !allowed {
 		return ErrForbidden
 	}
-	return nil
+	// An API key is never allowed what its creator is not (keyrole.go).
+	return b.keyCeiling(ctx, id, relation, object, b.Authz.Check)
 }
 
 // checkAuthzFresh is checkAuthz that bypasses the positive-check cache when the
@@ -1068,7 +1075,8 @@ func (b *Base) checkAuthzFresh(ctx context.Context, relation, object string) err
 	if !allowed {
 		return ErrForbidden
 	}
-	return nil
+	// The creator is re-checked as uncached as the key was (keyrole.go).
+	return b.keyCeiling(ctx, id, relation, object, fresh.CheckFresh)
 }
 
 // AuthorizeFreshOn re-checks relation against a specific object with an
@@ -1168,10 +1176,8 @@ func (id Identity) MintClass() bool {
 }
 
 func (b *Base) AuthorizeMintClass(ctx context.Context) error {
-	if validate, ok := FreshBearerValidatorFrom(ctx); ok {
-		if err := validate(ctx); err != nil {
-			return err
-		}
+	if err := revalidateBearer(ctx); err != nil {
+		return err
 	}
 	id, ok := IdentityFrom(ctx)
 	if !ok {
