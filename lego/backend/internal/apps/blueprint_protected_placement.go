@@ -159,10 +159,13 @@ func placedIn(labels map[string]string) placementOf {
 // placement check and the plan need them: protection by id, and each declared
 // grouping's target (its environment and project ids, each "" while the apply
 // has yet to create it), protection, network isolation and the settings of
-// its own the apply changes.
+// its own the apply changes. projects names every project the store lists,
+// for the build-source scope check: a declared project resolves to the same
+// id the apply creates or finds.
 type blueprintPlacements struct {
 	protected map[string]bool
 	targets   map[string]groupingTarget
+	projects  map[string]string
 }
 
 type groupingTarget struct {
@@ -263,11 +266,24 @@ func (p blueprintPlacements) moves(grouping string, ungrouped, isolation bool, l
 	return paths
 }
 
+// buildSourceProject is the id of the project a build source entry is
+// declared under, "" for a root entry; ok reports whether the store named
+// it. It mirrors buildSourceProjectID: the apply creates a project it has
+// yet to see, whose fresh id no existing carrier already carries, so an
+// unknown name is a scope mismatch there, never a pass.
+func (p blueprintPlacements) buildSourceProject(project string) (id string, ok bool) {
+	if project == "" {
+		return "", true
+	}
+	id, ok = p.projects[project]
+	return id, ok
+}
+
 // blueprintEnvironmentPlacements resolves each grouping the manifest declares
 // against the environments in snap's workspace, as applyBlueprintGroupingsWith
 // will.
 func (s *Service) blueprintEnvironmentPlacements(ctx context.Context, snap *workspaceSnapshot, groupings []parsedGrouping) (blueprintPlacements, error) {
-	out := blueprintPlacements{protected: map[string]bool{}, targets: map[string]groupingTarget{}}
+	out := blueprintPlacements{protected: map[string]bool{}, targets: map[string]groupingTarget{}, projects: map[string]string{}}
 	rows, err := snap.groupings(ctx)
 	if err != nil {
 		return out, err
@@ -279,6 +295,7 @@ func (s *Service) blueprintEnvironmentPlacements(ctx context.Context, snap *work
 	for _, project := range projects {
 		projectName[project.ID] = project.Name
 		projectID[project.Name] = project.ID
+		out.projects[project.Name] = project.ID
 		byName[project.Name] = map[string]store.Environment{}
 	}
 	for _, e := range environments {
