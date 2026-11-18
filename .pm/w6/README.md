@@ -77,7 +77,21 @@ Materialized from all five proposals of `/pm-brainstorm one aspect of render par
 4. **[m458](done/m458/README.md)** — **done** — managed PgBouncer runs with Render's settings (30,000 clients, a pool of `max_connections` − 10), and read replicas are pooled too (10 tasks; verified on production 2026-11-18); after 134.
 5. **[m459](done/m459/README.md)** — **done** — plan pickers and the Key Value instance card show each plan's connection limit (9 tasks; verified on production 2026-11-17).
 
+## Approved queue (priority order, 2026-11-18)
+
+Materialized from `/pm-brainstorm for w6` 2026-11-17 after its verification pass, approved by the user's `/pmx them all to w6` 2026-11-18. Items 1, 3 and 4 continue m469/m470 (a platform release keeps tenant connections) on the SSH and HTTP paths; item 2 is Render's 2026-08-26 dashboard change. The proposal's fifth item (a native build's `render-env` secret over BuildKit's 500 KiB) was not filed: verification found no Render reference behavior (Render documents no environment size limit) and no realistic way to reach it. Scheduled items for worker6, not a workstream specialty.
+
+1. **[m482](m482/README.md)** — an ssh-gateway release gives open SSH and Shell sessions an hour, as Render's SSH maintenance does (10 tasks).
+2. **[m483](m483/README.md)** — a service's Compute page holds its plan, manual scaling and autoscaling, with Render's "compute plan" wording and plan IDs (10 tasks).
+3. **[m484](m484/README.md)** — a platform release keeps every edge-cached service's instances and its cache (8 tasks).
+4. **[m485](m485/README.md)** — a platform release drops no request the activator is holding through a cold start (8 tasks).
+
 ## Milestones
+
+- [ ] **m482** — [An ssh-gateway release gives open SSH and Shell sessions an hour, as Render's SSH maintenance does](m482/README.md) (10 tasks) ← from `/pm-brainstorm for w6` 2026-11-17
+- [ ] **m483** — [A service's Compute page holds its plan, manual scaling and autoscaling, with Render's "compute plan" wording and plan IDs](m483/README.md) (10 tasks) ← from `/pm-brainstorm for w6` 2026-11-17
+- [ ] **m484** — [A platform release keeps every edge-cached service's instances and its cache](m484/README.md) (8 tasks) ← from `/pm-brainstorm for w6` 2026-11-17
+- [ ] **m485** — [A platform release drops no request the activator is holding through a cold start](m485/README.md) (8 tasks) ← from `/pm-brainstorm for w6` 2026-11-17
 
 - [ ] **m470** — **BLOCKED (time, clears by itself: the two production deploys after the `w6/m470` commit, the first moving both SNI pins for w6/m467's CRD change and the second holding them; t001–t005, t007, t008 done)** — [An operator deploy that leaves the SNI proxies' code alone keeps every external datastore connection](blocked/m470/README.md) (9 tasks; each SNI DaemonSet has its own `bex.yaml` pin, and `deploy.yml`'s write-back keeps it while `cmd/proxy-pin` finds `/kv-sni-proxy` or `/pg-sni-proxy` byte-identical in the new `linux/amd64` image, proven against GHCR; t006's production record and held clients, then t009, remain) ← promoted from 141, 2026-11-18 (filed by w6/m469 t004)
 - [ ] **m469** — **BLOCKED (time, clears by itself: the production deploy carrying the `w6/m469` commit; t001–t004, t006, t007 done)** — [An operator deploy that leaves the Key Value proxy's code alone keeps every tenant connection](blocked/m469/README.md) (8 tasks; the operator now keeps a proxy's image while its `/kv-internal-proxy` is byte-identical and adopts today's proxies by reading the binary from GHCR, verified on the local cluster; t005's production check and t008 remain) ← promoted from 140, 2026-11-18 (filed by w6/m463 t005)
