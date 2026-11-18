@@ -141,7 +141,7 @@ Release condition: the user authorizes the live Stripe run (or runs it), and the
 - **Test mode first:** the full script refuses in test mode because 11 legacy non-Postgres test Prices carry an older rounding (unrelated drift; live has none). Rehearsed the five Postgres dimensions with the script's own `ensure_meter`/`ensure_price`: first run created them, second run all `exists`.
 - **Two runbook gaps found and fixed in `docs/runbooks/stripe-billing-setup.md`:** Stripe refuses to archive a Price that is its Product's `default_price`, and an archived Price still holds its lookup key (create then fails with "already uses this lookup_key"). Retiring now clears the default, then archives and releases the key in one call.
 - **Live:** retired `price_1U50Y7EqsEqs2tLVLiOmfb2A` (`basic-256mb`) and `price_1U50Y8EqsEqs2tLVFgYkkzl2` (`basic-1gb`). `scripts/stripe-billing-setup.py --live` created `basic-256mb` 0.000159817352¢/s ($4.20), `basic-1gb` 0.00050608828 ($13.30), `1c-2g` 0.001065449011 ($28.00), `pro-4gb` 0.00146499239 ($38.50), `basic-4gb` 0.001997716895 ($52.50); a second run reported all 18 dimensions `exists exists` (exit 0), and an independent drift scan matched 18/18.
-- **Existing subscriptions:** 9 live Subscriptions (18 items) carry the retired Prices, all with period end 2026-11-16. Their swap at the boundary is filed as [`w2/058`](../../blocked/058.md) (date-gated). t012's acceptance counts them as scheduled; the swap itself is 058's DoD.
+- **Existing subscriptions:** 9 live Subscriptions (18 items) carry the retired Prices, all with period end 2026-11-16. Their swap at the boundary is filed as [`w2/058`](../058.md) (date-gated). t012's acceptance counts them as scheduled; the swap itself is 058's DoD.
 
 ## t011 — production DoD walk, 2026-10-31 (PASS); closed
 
@@ -155,4 +155,4 @@ Production `25b99d8a3` (contains every m171 commit), workspace `bex` (Scale). QA
 
 Found (not a DoD failure, filed as [`w2/059`](../059.md)): the create response and the first reads report `highAvailabilityEnabled: false` until the operator observes the standby, because the view projects `Database.status` (`lego/backend/internal/postgres/service.go:582`), a recorded ADR009 choice; whether Render differs is unverified and is 059's first step.
 
-Cleanup: both databases (404 after delete), the webhook, the CLI session (`bex logout`) and the extra Kratos session were removed. Remaining work outside this milestone: [`w2/058`](../../blocked/058.md) (swap the 9 subscriptions after 2026-11-16).
+Cleanup: both databases (404 after delete), the webhook, the CLI session (`bex logout`) and the extra Kratos session were removed. Remaining work outside this milestone: [`w2/058`](../058.md) (swap the 9 subscriptions after 2026-11-16).
