@@ -1400,7 +1400,7 @@ sni_pin_images="$(kubectl kustomize "$tmp/sni-pins/overlay" | yq -N '
   select(.kind == "Deployment" or .kind == "DaemonSet" or .kind == "StatefulSet") |
   .metadata.name + "=" + ([(.spec.template.spec.initContainers // [])[], .spec.template.spec.containers[] |
     .image | select(test("^ghcr.io/bex-co/bex-operator@sha256:")) |
-    sub("^ghcr.io/bex-co/bex-operator@sha256:"; "") | .[0:4]] | join(";"))' |
+    sub("^ghcr.io/bex-co/bex-operator@sha256:(....).*$"; "${1}")] | join(";"))' |
   grep -E 'bbbb|cccc' | sort | paste -sd, -)"
 if [ "$sni_pin_images" != bex-kv-sni-proxy=bbbb,bex-pg-sni-proxy=cccc ]; then
   echo "FAIL: the SNI proxy pins reach '$sni_pin_images', want exactly bex-kv-sni-proxy=bbbb,bex-pg-sni-proxy=cccc (w6/m470)" >&2
