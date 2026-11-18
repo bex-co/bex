@@ -34,7 +34,9 @@ import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
 import {
   getPersistedWorkspaceId,
+  getPersistedWorkspaceShape,
   WORKSPACE_SELECTION_KEY,
+  WORKSPACE_SHAPE_KEY,
 } from "@/features/workspaces/lib/selection";
 
 const WORKSPACES = [
@@ -54,23 +56,23 @@ const WORKSPACES = [
   },
 ];
 
-let persistedCookie: string | undefined;
+const cookies = new Map<string, string>();
 
 beforeEach(() => {
   mockUseWorkspaces.mockReset();
   mockNavigate.mockReset();
   vi.mocked(localStorage.getItem).mockReset();
   vi.mocked(localStorage.setItem).mockReset();
-  persistedCookie = undefined;
+  cookies.clear();
   cookieFns.get.mockReset();
-  cookieFns.get.mockImplementation(() => persistedCookie);
+  cookieFns.get.mockImplementation((key: string) => cookies.get(key));
   cookieFns.set.mockReset();
-  cookieFns.set.mockImplementation((_key: string, value: string) => {
-    persistedCookie = value;
+  cookieFns.set.mockImplementation((key: string, value: string) => {
+    cookies.set(key, value);
   });
   cookieFns.remove.mockReset();
-  cookieFns.remove.mockImplementation(() => {
-    persistedCookie = undefined;
+  cookieFns.remove.mockImplementation((key: string) => {
+    cookies.delete(key);
   });
 });
 
@@ -159,7 +161,7 @@ describe("WorkspaceProvider", () => {
 
   it("still moves an existing cookie for another workspace to the adopted one", async () => {
     mockReady();
-    persistedCookie = "tea-1";
+    cookies.set(WORKSPACE_SELECTION_KEY, "tea-1");
     function Adopter() {
       useAdoptResourceWorkspace("srv-1", "tea-2");
       return null;
@@ -239,7 +241,8 @@ describe("WorkspaceProvider", () => {
     mockReady([], {});
     rerender();
     await waitFor(() => expect(result.current.currentWorkspaceId).toBeNull());
-    expect(cookieFns.remove).toHaveBeenCalled();
+    expect(cookies.has(WORKSPACE_SELECTION_KEY)).toBe(false);
+    expect(cookies.has(WORKSPACE_SHAPE_KEY)).toBe(false);
     expect(mockNavigate).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "/new/workspace",
@@ -316,5 +319,73 @@ describe("WorkspaceProvider", () => {
     await waitFor(() =>
       expect(reloaded.result.current.currentWorkspaceId).toBe("tea-2"),
     );
+  });
+  // w3/073: a direct load's pending frames have only the selection cookie
+  // until the list arrives, so the provider stores the selected workspace's
+  // shape beside it whenever the list is known.
+  it("stores the selected workspace's shape beside the selection, and follows a switch", async () => {
+    const org = {
+      id: "org-1",
+      name: "Acme",
+      primaryWorkspaceId: "tea-1",
+      requireTwoFactor: false,
+      requireGoogleLogin: true,
+    };
+    const listed = [
+      { ...WORKSPACES[0], plan: "scale", organization: org, primary: true },
+      { ...WORKSPACES[1], organization: null, primary: false },
+    ];
+    mockReady(listed);
+    const { result } = renderHook(() => useWorkspace(), {
+      wrapper: WorkspaceProvider,
+    });
+
+    await waitFor(() =>
+      expect(getPersistedWorkspaceShape("tea-1")).toEqual({
+        role: "admin",
+        plan: "scale",
+        organization: org,
+        planOwner: null,
+        otherWorkspaces: true,
+      }),
+    );
+    expect(cookieFns.set).toHaveBeenCalledWith(
+      WORKSPACE_SHAPE_KEY,
+      expect.any(String),
+      expect.objectContaining({ path: "/", sameSite: "lax" }),
+    );
+
+    act(() => result.current.setCurrentWorkspaceId("tea-2"));
+
+    await waitFor(() =>
+      expect(getPersistedWorkspaceShape("tea-2")).toEqual({
+        role: "admin",
+        plan: "pro",
+        organization: null,
+        planOwner: null,
+        otherWorkspaces: true,
+      }),
+    );
+    expect(getPersistedWorkspaceShape("tea-1")).toBeNull();
+  });
+
+  it("stores no shape while the list is unconfirmed", () => {
+    mockUseWorkspaces.mockReturnValue({
+      workspaces: WORKSPACES,
+      loading: false,
+      error: new Error("network"),
+      ready: false,
+      verified: true,
+      refetch: vi.fn(),
+    });
+    renderHook(() => useWorkspace(), {
+      wrapper: ({ children }: { children: React.ReactNode }) => (
+        <WorkspaceProvider initialWorkspaceId="tea-1">
+          {children}
+        </WorkspaceProvider>
+      ),
+    });
+
+    expect(cookies.has(WORKSPACE_SHAPE_KEY)).toBe(false);
   });
 });

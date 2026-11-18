@@ -5,6 +5,8 @@ import { useWorkspaces } from "@/features/workspaces/hooks/use-workspaces";
 import {
   clearPersistedWorkspaceId,
   persistWorkspaceId,
+  persistWorkspaceShape,
+  workspaceShape,
 } from "@/features/workspaces/lib/selection";
 import { bumpAccessGeneration } from "@/features/capabilities/lib/access-generation";
 
@@ -111,6 +113,17 @@ export function WorkspaceProvider({
     () => workspaces.find((w) => w.id === selectedId) ?? null,
     [workspaces, selectedId],
   );
+
+  // The selected workspace's shape, stored beside the selection so the next
+  // direct load's pending frames draw its sections before the list arrives
+  // (w3/073).
+  useEffect(() => {
+    if (!ready || !currentWorkspace) return;
+    persistWorkspaceShape(
+      currentWorkspace.id,
+      workspaceShape(currentWorkspace, workspaces),
+    );
+  }, [ready, currentWorkspace, workspaces]);
 
   const value = useMemo(
     () => ({

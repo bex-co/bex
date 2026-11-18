@@ -1,7 +1,10 @@
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
-  organizationPlanOwner,
+  getPersistedWorkspaceShape,
+  workspaceShape,
+} from "@/features/workspaces/lib/selection";
+import {
   proFeaturesPlan,
   type OrganizationPlanOwner,
   type WorkspaceView,
@@ -34,21 +37,30 @@ export interface WorkspaceSettingsPendingSections {
  *  workspace, so they wait for the workspace itself: most workspaces are
  *  standalone, and keeping them while it loads would draw for nearly everyone
  *  a card the ready page then drops. Once the workspace is known, privacy is
- *  kept until the admin grant loads, as Build Pipeline is. */
+ *  kept until the admin grant loads, as Build Pipeline is.
+ *
+ *  Before the list arrives (a direct load), the workspace is what the last
+ *  visit stored beside the selection cookie (w3/073), so an org admin's frame
+ *  draws privacy and the Delete card too. A first visit has nothing stored
+ *  and keeps the standalone default. */
 export function useWorkspaceSettingsSkeletonSections(): WorkspaceSettingsPendingSections {
-  const { currentWorkspace, workspaces } = useWorkspace();
+  const { currentWorkspace, currentWorkspaceId, workspaces } = useWorkspace();
   const capabilities = useCapabilities();
+  const shape = currentWorkspace
+    ? workspaceShape(currentWorkspace, workspaces)
+    : workspaces.length === 0
+      ? getPersistedWorkspaceShape(currentWorkspaceId)
+      : null;
   return {
     buildPipeline: capabilities.canManageBilling || capabilities.loading,
-    auditLogs: !currentWorkspace || currentWorkspace.role === "admin",
-    deleteWorkspace: workspaces.length > 1,
+    auditLogs: !shape || shape.role === "admin",
+    deleteWorkspace: shape?.otherWorkspaces ?? workspaces.length > 1,
     privacy:
-      currentWorkspace?.organization != null &&
+      shape?.organization != null &&
       (capabilities.canManage || capabilities.loading),
-    planOwner: organizationPlanOwner(currentWorkspace, workspaces),
+    planOwner: shape?.planOwner ?? null,
     workspaceName: currentWorkspace?.name,
-    belowPro:
-      currentWorkspace != null && !proFeaturesPlan(currentWorkspace.plan),
-    organization: currentWorkspace?.organization ?? null,
+    belowPro: shape != null && !proFeaturesPlan(shape.plan),
+    organization: shape?.organization ?? null,
   };
 }

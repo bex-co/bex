@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, renderHook, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -10,15 +10,24 @@ import {
 } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Route } from "../workspace.settings";
+import Cookies from "js-cookie";
 import { WorkspaceSettingsPageSkeleton } from "@/common/components/route-skeletons";
+import {
+  persistWorkspaceShape,
+  workspaceShape,
+  WORKSPACE_SHAPE_KEY,
+} from "@/features/workspaces/lib/selection";
+import { useWorkspaceSettingsSkeletonSections } from "@/features/workspaces/hooks/use-workspace-settings-skeleton-sections";
 import type { WorkspaceView } from "@/features/workspaces/types";
 
 const workspaceState: {
   currentWorkspace: WorkspaceView | null;
+  currentWorkspaceId: string | null;
   workspaces: WorkspaceView[];
   loading: boolean;
 } = {
   currentWorkspace: null,
+  currentWorkspaceId: null,
   workspaces: [],
   loading: false,
 };
@@ -266,8 +275,10 @@ beforeEach(() => {
   capabilityState.canManage = true;
   auditState.forbidden = false;
   workspaceState.currentWorkspace = primaryWorkspace;
+  workspaceState.currentWorkspaceId = primaryWorkspace.id;
   workspaceState.workspaces = [primaryWorkspace];
   workspaceState.loading = false;
+  Cookies.remove(WORKSPACE_SHAPE_KEY, { path: "/" });
 });
 
 describe("WorkspaceSettingsPage", () => {
@@ -645,5 +656,125 @@ describe("WorkspaceSettingsPage", () => {
     expect(railSections(container)).toEqual(
       expect.arrayContaining(["build-pipeline", "audit-logs"]),
     );
+  });
+});
+
+/** Every region a pending frame draws, nested ones included, in order. */
+function allRegions(container: HTMLElement): string[] {
+  return [
+    ...container.querySelectorAll<HTMLElement>("[data-skeleton-region]"),
+  ].map((region) => region.dataset.skeletonRegion!);
+}
+
+// w3/073: on a direct load the frame is drawn before the workspace list
+// arrives. The production check (w3/m305) found an org admin's frame without
+// Workspace privacy and the Delete card, which the list would have drawn.
+describe("a direct load's pending frame (w3/073)", () => {
+  const other: WorkspaceView = {
+    ...primaryWorkspace,
+    id: "tea-secondary",
+    name: "secondary",
+  };
+
+  /** The frames once the list is known: the route's and its rail. */
+  async function warmFrame(workspace: WorkspaceView, list: WorkspaceView[]) {
+    workspaceState.currentWorkspace = workspace;
+    workspaceState.currentWorkspaceId = workspace.id;
+    workspaceState.workspaces = list;
+    const warm = await renderPage(WorkspaceSettingsPageSkeleton);
+    const frame = {
+      regions: allRegions(warm.container),
+      sections: frameSections(warm.container),
+      rail: railSections(warm.container),
+      drawn: drawnSections(),
+    };
+    warm.unmount();
+    return frame;
+  }
+
+  /** Everything the frames draw from, but the name they print once known. */
+  function drawnSections() {
+    const { result, unmount } = renderHook(() =>
+      useWorkspaceSettingsSkeletonSections(),
+    );
+    unmount();
+    return { ...result.current, workspaceName: undefined };
+  }
+
+  /** The shell before the list arrives: the selection cookie's id only. */
+  function coldLoad(selectedId: string) {
+    workspaceState.currentWorkspace = null;
+    workspaceState.currentWorkspaceId = selectedId;
+    workspaceState.workspaces = [];
+    workspaceState.loading = true;
+  }
+
+  it("draws what the last visit saw for an org admin with another workspace", async () => {
+    const list = [orgWorkspace, other];
+    const warm = await warmFrame(orgWorkspace, list);
+    expect(warm.sections).toContain("privacy");
+    // What the provider stored on that visit, beside the selection.
+    persistWorkspaceShape(orgWorkspace.id, workspaceShape(orgWorkspace, list));
+    coldLoad(orgWorkspace.id);
+
+    expect(drawnSections()).toEqual(warm.drawn);
+    const route = await renderPage(WorkspaceSettingsPageSkeleton);
+    expect(allRegions(route.container)).toEqual(warm.regions);
+    expect(railSections(route.container)).toEqual(warm.rail);
+    route.unmount();
+
+    const inline = await renderPage();
+    expect(frameSections(inline.container)).toEqual(warm.sections);
+    expect(railSections(inline.container)).toEqual(warm.rail);
+    expect(
+      screen.getByRole("link", { name: "Workspace privacy" }),
+    ).toHaveAttribute("href", "#privacy");
+    expect(
+      screen.getByTestId("workspace-privacy-skeleton"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("delete-workspace-skeleton")).toBeInTheDocument();
+  });
+
+  it("keeps the standalone default on a first visit", async () => {
+    coldLoad(orgWorkspace.id);
+    const { container } = await renderPage();
+
+    expect(frameSections(container)).not.toContain("privacy");
+    expect(railSections(container)).not.toContain("privacy");
+    expect(
+      screen.queryByTestId("delete-workspace-skeleton"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("ignores a shape stored for another workspace", async () => {
+    persistWorkspaceShape(
+      other.id,
+      workspaceShape({ ...orgWorkspace, id: other.id }, [orgWorkspace, other]),
+    );
+    coldLoad(orgWorkspace.id);
+    const { container } = await renderPage();
+
+    expect(frameSections(container)).not.toContain("privacy");
+    expect(
+      screen.queryByTestId("delete-workspace-skeleton"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("draws a standalone workspace's frame from its stored shape too", async () => {
+    const list = [primaryWorkspace, other];
+    const warm = await warmFrame(primaryWorkspace, list);
+    persistWorkspaceShape(
+      primaryWorkspace.id,
+      workspaceShape(primaryWorkspace, list),
+    );
+    coldLoad(primaryWorkspace.id);
+
+    // Hobby: the 2FA and Google login cards carry their plan notice.
+    expect(warm.drawn).toMatchObject({ belowPro: true, deleteWorkspace: true });
+    expect(drawnSections()).toEqual(warm.drawn);
+    const route = await renderPage(WorkspaceSettingsPageSkeleton);
+    expect(allRegions(route.container)).toEqual(warm.regions);
+    expect(railSections(route.container)).toEqual(warm.rail);
+    expect(screen.getByTestId("delete-workspace-skeleton")).toBeInTheDocument();
   });
 });
