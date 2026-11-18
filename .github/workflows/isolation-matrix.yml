@@ -214,6 +214,23 @@ jobs:
           kubectl get ns -o name | grep -E 'probe|m35-[ab]-' || echo "  none"
           echo "verify-iso Apps still present:"
           kubectl get apps.app.bex.co -A -o name | grep -E 'verify-iso|egress-probe' || echo "  none"
+          # A sandbox-leg workspace's namespaces carry its tea- id, not its
+          # m35- name, so the namespace grep above never saw the 2026-11-15
+          # leak (w9/119); read the fixture rows themselves. The next run's
+          # sweep removes those older than six hours.
+          echo "m35 fixture workspaces and principals still present:"
+          primary="$(kubectl -n bex-system get clusters.postgresql.cnpg.io bex-db -o jsonpath='{.status.currentPrimary}')" || primary=""
+          leftovers="$(kubectl -n bex-system exec -i "$primary" -c postgres -- \
+            psql -X -q -At -U postgres -d bex -c \
+            "SELECT 'workspace ' || id || ' ' || name || ' ' || created_at FROM tenants WHERE name ~ '^m35-[ab]-'
+             UNION ALL SELECT 'principal ' || subject || ' in ' || tenant_id FROM tenant_members WHERE subject LIKE 'm35-%'")" \
+            || leftovers="(could not read bex-db)"
+          if [ -n "$leftovers" ]; then
+            printf '%s\n' "$leftovers"
+            echo "::warning::m35 fixtures outlived their run; the next run's sweep removes those older than six hours"
+          else
+            echo "  none"
+          fi
       - name: Fail the run when an isolation invariant regressed
         if: always() && (steps.tenant.outputs.down == 'true' || steps.sandbox.outputs.down == 'true')
         run: |

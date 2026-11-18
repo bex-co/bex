@@ -111,6 +111,11 @@ jobs:
       # by the fleet-rollout wait instead of wedging the app-cluster workflow.
       - name: CAPI fleet wait server-create retry self-test
         run: bash scripts/wait-capi-rollout.test.sh
+      # w9/119: the sandbox isolation wrapper's cleanup survives an expired
+      # bootstrap token and a refused workspace delete, and its sweep removes an
+      # earlier run's m35 fixtures and nothing else.
+      - name: Sandbox isolation fixture cleanup self-test
+        run: bash scripts/verify-sandbox-isolation-live.test.sh
       # w21/089: the QA login helper (curl replaced by a scripted mock) decodes the
       # percent-encoded login challenge Hydra's redirect carries before it encodes it.
       - name: QA login helper self-test
@@ -300,6 +305,7 @@ jobs:
           scripts/lib/ssh-hostkey.sh scripts/lib/curl-auth.sh scripts/ssh-hostkey.test.sh
           scripts/secret-argv-validate.sh scripts/secret-argv-validate.test.sh
           scripts/wait-capi-rollout.sh scripts/wait-capi-rollout.test.sh
+          scripts/verify-sandbox-isolation-live.sh scripts/verify-sandbox-isolation-live.test.sh
           scripts/stale-key-name-validate.sh scripts/stale-key-name-validate.test.sh
           scripts/mock-cluster.sh scripts/mock-cluster.test.sh scripts/lib/helm-isolated.sh
           scripts/build-toolchain-freshness.sh scripts/build-toolchain-freshness.test.sh
