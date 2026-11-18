@@ -919,7 +919,7 @@ func (s *Service) recordAccepted(ctx context.Context, inv store.Invite, id core.
 		return
 	}
 	core.RecordInviteAccepted(ctx, s.Base.Audit, s.Now(),
-		inv.TenantID, inv.ID, inv.Email, inv.Role, id.Subject, id.Method)
+		inv.TenantID, inv.ID, inv.Email, inv.Role, id.Subject, id.CallerMethod())
 }
 
 // ChangeRole changes an existing member's role. Admin-only. Refuses demoting the

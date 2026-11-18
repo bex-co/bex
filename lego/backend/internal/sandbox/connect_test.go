@@ -26,6 +26,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -503,6 +504,41 @@ func TestBufferExecReadsPinnedAndTransitionalShapes(t *testing.T) {
 			}
 			if tc.wantMsg != "" && !strings.Contains(err.Error(), tc.wantMsg) {
 				t.Fatalf("err=%q lost the gateway message %q", err, tc.wantMsg)
+			}
+		})
+	}
+}
+
+// w9/102: a command redeemed with a run connect token is audited as the
+// credential that minted the token, as that credential's other rows are: an
+// API key's command reads Render's rest_api actor with the key's id, and a
+// session's reads user. The redeem re-entered as "sandbox-connect", which the
+// audit log reads as the platform's own (system), so a reader who filtered
+// out system rows missed every command a key ran.
+func TestConnectStreamIsAuditedAsTheTokensMinter(t *testing.T) {
+	c := loadExecContract(t)
+	for name, minter := range map[string]core.Identity{
+		"API key": {Subject: "key-1", ClientID: "key-1", Method: core.MethodOAuth2},
+		"session": {Subject: "id-a", Method: core.MethodSession},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newConnectFixture(t, minter.Subject, nil)
+			f.svc.Workspace.(fakeWorkspace)[minter.Subject] = "tea-a"
+			spy := &auditSpy{}
+			f.svc.Audit = spy
+			run, err := f.svc.ConnectRun(core.WithIdentity(context.Background(), minter), ConnectRequest{OwnerID: "tea-a", SandboxID: "os-1", Operation: ConnectOperationStream, Command: c.Command}, f.api.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if resp, body := f.redeem(t, run.URI, run.Token, c.Command); resp.StatusCode != c.Stream.Status {
+				t.Fatalf("redeem = %d %s", resp.StatusCode, body)
+			}
+			want := []auditCaller{
+				{"sandbox.ConnectRun", minter.Subject, minter.Method},
+				{"sandbox.StreamExec", minter.Subject, minter.Method},
+			}
+			if got := spy.callers(); !slices.Equal(got, want) {
+				t.Fatalf("audit rows (verb, caller, method) = %v, want %v", got, want)
 			}
 		})
 	}

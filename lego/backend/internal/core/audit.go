@@ -1580,7 +1580,7 @@ func (b *Base) keyValueAuditEvent(ctx context.Context, kv *appv1alpha1.KeyValue,
 func (b *Base) verbAuditEvent(ctx context.Context, verb, resource, target string) AuditEvent {
 	ev := AuditEvent{Verb: verb, Resource: resource, Target: target, Outcome: AuditAllowed, At: b.Now()}
 	if id, ok := IdentityFrom(ctx); ok {
-		ev.Caller, ev.CallerMethod = id.Subject, id.Method
+		ev.Caller, ev.CallerMethod = id.Subject, id.CallerMethod()
 		id.AttachOAuthProvenance(&ev)
 	}
 	return ev

@@ -123,7 +123,7 @@ func (s *Server) recordScopeClassDenial(ctx context.Context, op, class string) {
 		At:       base.Now(),
 	}
 	if id, ok := core.IdentityFrom(ctx); ok {
-		ev.Caller, ev.CallerMethod = id.Subject, id.Method
+		ev.Caller, ev.CallerMethod = id.Subject, id.CallerMethod()
 		id.AttachOAuthProvenance(&ev)
 	}
 	core.RecordAuditEvent(ctx, base.Audit, ev)

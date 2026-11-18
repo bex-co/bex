@@ -78,10 +78,14 @@ type connectClaims struct {
 	Command     string `json:"cmd"`
 	// Unbound marks a token minted with no command (Render's round-7 mint,
 	// w3/065): it authorizes one stream of the command its redeem names.
-	Unbound   bool   `json:"ub,omitempty"`
-	IssuedAt  int64  `json:"iat"`
-	ExpiresAt int64  `json:"exp"`
-	Nonce     string `json:"nonce"`
+	Unbound bool `json:"ub,omitempty"`
+	// MinterMethod is the minting credential's audit method, which the
+	// redeem's rows record (core.Identity.AuditMethod, w9/102): an API key's
+	// command is the key's, not the platform's.
+	MinterMethod string `json:"mth,omitempty"`
+	IssuedAt     int64  `json:"iat"`
+	ExpiresAt    int64  `json:"exp"`
+	Nonce        string `json:"nonce"`
 }
 
 // ConnectRequest is the mint input: OwnerID binds the workspace (Render's
@@ -160,15 +164,16 @@ func (s *Service) ConnectRun(ctx context.Context, req ConnectRequest, baseURL st
 	now := s.Now()
 	ttl := s.Exec.connectTTL()
 	claims := connectClaims{
-		Subject:     idn.Subject,
-		Workspace:   ws,
-		SandboxID:   sandboxID,
-		ExecutionID: id.New(id.SandboxExecution),
-		Operation:   req.Operation,
-		Command:     req.Command,
-		Unbound:     req.Command == "",
-		IssuedAt:    now.Unix(),
-		ExpiresAt:   now.Add(ttl).Unix(),
+		Subject:      idn.Subject,
+		Workspace:    ws,
+		SandboxID:    sandboxID,
+		ExecutionID:  id.New(id.SandboxExecution),
+		Operation:    req.Operation,
+		Command:      req.Command,
+		Unbound:      req.Command == "",
+		MinterMethod: idn.CallerMethod(),
+		IssuedAt:     now.Unix(),
+		ExpiresAt:    now.Add(ttl).Unix(),
 	}
 	if err := hmacticket.EnsureNonce(&claims.Nonce); err != nil {
 		return ConnectResponse{}, err
@@ -283,7 +288,7 @@ func (s *Service) ConnectStreamHandler() http.Handler {
 			core.WriteErr(w, err)
 			return
 		}
-		ctx := core.WithIdentity(r.Context(), core.Identity{Subject: claims.Subject, Method: "sandbox-connect"})
+		ctx := core.WithIdentity(r.Context(), core.Identity{Subject: claims.Subject, Method: core.MethodSandboxConnect, AuditMethod: claims.MinterMethod})
 		if claims.Unbound {
 			s.recordExecutionCommand(ctx, claims.Workspace, claims.ExecutionID, claims.Command)
 		}

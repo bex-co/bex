@@ -407,7 +407,7 @@ func deviceSubscriptionView(row store.DevicePushSubscription) DeviceSubscription
 func (s *Service) recordDeviceAudit(ctx context.Context, tenantID, verb, deviceID string) {
 	id, _ := core.IdentityFrom(ctx)
 	core.RecordAuditEvent(ctx, s.Base.Audit, core.AuditEvent{
-		Caller: id.Subject, CallerMethod: id.Method,
+		Caller: id.Subject, CallerMethod: id.CallerMethod(),
 		Verb: verb, Resource: core.WorkspaceObject(tenantID),
 		Target:  "notification-device:" + deviceID,
 		Outcome: core.AuditAllowed, At: s.Now(),

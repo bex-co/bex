@@ -62,9 +62,11 @@ type fileConnectClaims struct {
 	ExecutionID string `json:"exe"`
 	Operation   string `json:"op"`
 	Path        string `json:"path"`
-	IssuedAt    int64  `json:"iat"`
-	ExpiresAt   int64  `json:"exp"`
-	Nonce       string `json:"nonce"`
+	// MinterMethod is connectClaims.MinterMethod for a file transfer.
+	MinterMethod string `json:"mth,omitempty"`
+	IssuedAt     int64  `json:"iat"`
+	ExpiresAt    int64  `json:"exp"`
+	Nonce        string `json:"nonce"`
 }
 
 func (c *ExecConfig) fileConnectKey() []byte {
@@ -181,7 +183,8 @@ func (s *Service) ConnectFile(ctx context.Context, req FileConnectRequest, baseU
 	claims := fileConnectClaims{
 		Subject: identity.Subject, Workspace: ws, SandboxID: canonicalID(raw),
 		ExecutionID: id.New(id.SandboxExecution), Operation: req.Operation, Path: req.Path,
-		IssuedAt: now.Unix(), ExpiresAt: now.Add(s.Exec.connectTTL()).Unix(),
+		MinterMethod: identity.CallerMethod(),
+		IssuedAt:     now.Unix(), ExpiresAt: now.Add(s.Exec.connectTTL()).Unix(),
 	}
 	if err := hmacticket.EnsureNonce(&claims.Nonce); err != nil {
 		return ConnectResponse{}, err
@@ -246,7 +249,7 @@ func (s *Service) ConnectFileHandler() http.Handler {
 			}
 			return
 		}
-		ctx := core.WithIdentity(r.Context(), core.Identity{Subject: claims.Subject, Method: "sandbox-file-connect"})
+		ctx := core.WithIdentity(r.Context(), core.Identity{Subject: claims.Subject, Method: core.MethodSandboxFileConnect, AuditMethod: claims.MinterMethod})
 		// A transfer reports no exit code; its record ends with the request,
 		// whether the transfer or a later reauthorization ended it.
 		defer s.stopExecution(ctx, claims.Workspace, claims.ExecutionID, nil)

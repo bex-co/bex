@@ -38,6 +38,11 @@ const (
 	MethodShell       = "shell"
 	MethodAgentAttach = "agent-attach"
 	MethodSandboxExec = "sandbox-exec"
+	// A sandbox run or file connect token redeemed outside the OAuth gate
+	// (internal/sandbox): the Subject is the token's minter, whose method is
+	// the identity's AuditMethod.
+	MethodSandboxConnect     = "sandbox-connect"
+	MethodSandboxFileConnect = "sandbox-file-connect"
 )
 
 // Identity is the authenticated caller: an OAuth2 client (API key) validated by
@@ -108,7 +113,20 @@ type Identity struct {
 	// and stamped on the keys this caller creates; never an authorization
 	// input anywhere else.
 	SignIn SignIn
+	// AuditMethod, when set, is the method of the credential this identity
+	// acts for, which its audit rows record in place of Method
+	// (CallerMethod). A sandbox connect token's redeem re-enters as
+	// MethodSandboxConnect or MethodSandboxFileConnect, so no gate takes it
+	// for the bearer that minted the token, while its rows name that bearer
+	// as the bearer's other rows do: oauth2 for an API key or an OAuth token
+	// (Render's rest_api actor), session for a dashboard session (user)
+	// (w9/102). Never an authorization input.
+	AuditMethod string
 }
+
+// CallerMethod is the method an audit row records for this identity:
+// AuditMethod when it acts for another credential, else Method.
+func (i Identity) CallerMethod() string { return cmp.Or(i.AuditMethod, i.Method) }
 
 // IsAPIKey reports whether the caller is a machine API key: an OAuth2 token
 // with no end user behind it. Its Subject is not a person, so anything that

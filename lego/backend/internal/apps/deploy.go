@@ -2051,7 +2051,7 @@ func (s *Service) emitGroupingAudits(ctx context.Context, tenantID string, audit
 			name = entry.environment
 		}
 		core.RecordAuditEvent(ctx, s.Audit, core.AuditEvent{
-			Caller: identity.Subject, CallerMethod: identity.Method,
+			Caller: identity.Subject, CallerMethod: identity.CallerMethod(),
 			Verb:     "apps.BlueprintGrouping." + entry.action,
 			Resource: core.WorkspaceObject(tenantID),
 			Target:   target, TargetName: name,

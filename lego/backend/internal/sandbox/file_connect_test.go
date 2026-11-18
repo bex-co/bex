@@ -183,6 +183,19 @@ func (a *auditSpy) verbs() []string {
 	return out
 }
 
+// auditCaller is a recorded row's verb and who it names as acting.
+type auditCaller struct{ verb, caller, method string }
+
+func (a *auditSpy) callers() []auditCaller {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	out := make([]auditCaller, 0, len(a.events))
+	for _, ev := range a.events {
+		out = append(out, auditCaller{ev.Verb, ev.Caller, ev.CallerMethod})
+	}
+	return out
+}
+
 // TestFileConnectAuditNamesTheMintAndTheTransfer: the redemption authorizes in
 // the transfer route's handler closure, so a derived verb recorded the closure
 // ("api.composedMuxes.ConnectFileHandler.func9", 214 production rows, w21/087).
@@ -202,6 +215,31 @@ func TestFileConnectAuditNamesTheMintAndTheTransfer(t *testing.T) {
 	want := []string{AuditVerbConnectFile, AuditVerbTransferFile}
 	if got := spy.verbs(); !slices.Equal(got, want) {
 		t.Fatalf("audit verbs = %v, want %v", got, want)
+	}
+}
+
+// w9/102: a transfer redeemed with a file connect token is audited as the
+// API key that minted the token (Render's rest_api actor), as the key's mint
+// row is, not as the platform.
+func TestFileConnectTransferIsAuditedAsTheTokensMinter(t *testing.T) {
+	key := core.Identity{Subject: "key-1", ClientID: "key-1", Method: core.MethodOAuth2}
+	f := newFileConnectFixture(t, key.Subject, nil, nil)
+	f.svc.Workspace.(fakeWorkspace)[key.Subject] = "tea-a"
+	spy := &auditSpy{}
+	f.svc.Audit = spy
+	token, err := f.svc.ConnectFile(core.WithIdentity(context.Background(), key), FileConnectRequest{OwnerID: "tea-a", SandboxID: "os-1", Operation: "upload", Path: "/workspace/out.txt"}, f.api.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := redeemFile(t, token, strings.NewReader("x")).StatusCode; got != http.StatusNoContent {
+		t.Fatalf("upload status %d", got)
+	}
+	want := []auditCaller{
+		{AuditVerbConnectFile, key.Subject, core.MethodOAuth2},
+		{AuditVerbTransferFile, key.Subject, core.MethodOAuth2},
+	}
+	if got := spy.callers(); !slices.Equal(got, want) {
+		t.Fatalf("audit rows (verb, caller, method) = %v, want %v", got, want)
 	}
 }
 

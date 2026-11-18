@@ -302,6 +302,29 @@ func TestRenderAuditLogShape(t *testing.T) {
 	}
 }
 
+// w9/102: a sandbox command or file transfer redeemed with a connect token is
+// the minting credential's row on Render's log, as its mint row is: rest_api
+// with an API key's id, user for a session. The command probe bex-api runs
+// itself to read a sandbox's command registry is the platform's own work and
+// stays system.
+func TestSandboxConnectRowsNameTheTokensMinter(t *testing.T) {
+	const probe = "system:sandbox-command-probe:tea-a"
+	for name, tc := range map[string]struct {
+		id   core.Identity
+		want renderAuditActor
+	}{
+		"exec by an API key":          {core.Identity{Subject: "key-1", Method: core.MethodSandboxConnect, AuditMethod: core.MethodOAuth2}, renderAuditActor{Type: "rest_api", ID: "key-1"}},
+		"transfer by an API key":      {core.Identity{Subject: "key-1", Method: core.MethodSandboxFileConnect, AuditMethod: core.MethodOAuth2}, renderAuditActor{Type: "rest_api", ID: "key-1"}},
+		"exec by a dashboard session": {core.Identity{Subject: "kratos-a", Method: core.MethodSandboxConnect, AuditMethod: core.MethodSession}, renderAuditActor{Type: "user", ID: "kratos-a"}},
+		"the command probe":           {core.Identity{Subject: probe, Method: "sandbox-command-probe"}, renderAuditActor{Type: "system", ID: probe}},
+	} {
+		row := toRenderAuditLog(Event{Verb: "sandbox.StreamExec", Caller: tc.id.Subject, CallerMethod: tc.id.CallerMethod(), Outcome: "allowed"})
+		if row.Actor != tc.want {
+			t.Errorf("%s: actor = %+v, want %+v", name, row.Actor, tc.want)
+		}
+	}
+}
+
 func TestRenderOAuthAuditProvenanceIsAdditive(t *testing.T) {
 	oauth := toRenderAuditLog(Event{
 		ID: "aud-oauth", Caller: "user-1", CallerMethod: "oauth2",

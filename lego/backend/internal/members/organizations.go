@@ -770,5 +770,5 @@ func (s *Service) joinedOrganization(ctx context.Context, inv store.Invite, id c
 	if inv.JoinedOrganizationID == "" || s.Base == nil {
 		return
 	}
-	core.JoinedOrganization(ctx, s.OrgTuples, s.Base.Audit, s.Now(), inv.JoinedOrganizationID, id.Subject, id.Method)
+	core.JoinedOrganization(ctx, s.OrgTuples, s.Base.Audit, s.Now(), inv.JoinedOrganizationID, id.Subject, id.CallerMethod())
 }
