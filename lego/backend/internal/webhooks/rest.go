@@ -18,6 +18,7 @@ package webhooks
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -155,7 +156,7 @@ func decodeEventFilter(raw json.RawMessage) (*[]string, error) {
 	}
 	var eventTypes []string
 	if err := json.Unmarshal(raw, &eventTypes); err != nil {
-		return nil, core.ErrBadRequest
+		return nil, fmt.Errorf("%w: eventFilter: must be a list of event types", core.ErrBadRequest)
 	}
 	return &eventTypes, nil
 }

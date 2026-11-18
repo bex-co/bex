@@ -387,7 +387,7 @@ func TestRenderRESTPatchWithNullEventFilterSubscribesToEveryEvent(t *testing.T) 
 	patch(`{"eventFilter":["deploy_started"]}`, "renamed", []string{"deploy_started"})
 	patch(`{"name":"renamed-again","eventFilter":null}`, "renamed-again", []string{})
 
-	if rr := send(http.MethodPatch, "/v1/webhooks/"+id, `{"eventFilter":"deploy_ended"}`); rr.Code != http.StatusBadRequest {
-		t.Errorf("patch with a string eventFilter = %d %s, want 400", rr.Code, rr.Body.String())
+	if rr := send(http.MethodPatch, "/v1/webhooks/"+id, `{"eventFilter":"deploy_ended"}`); rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), "eventFilter") {
+		t.Errorf("patch with a string eventFilter = %d %s, want 400 naming eventFilter", rr.Code, rr.Body.String())
 	}
 }
