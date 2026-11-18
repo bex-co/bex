@@ -1,6 +1,6 @@
 # w7 · m464 — Scale and Enterprise workspaces belong to an organization, as on Render: unlimited workspaces under one plan, Owner, Member and Guest roles, and an org audit log
 
-**Worker:** worker7 **Goal:** a Scale or Enterprise workspace is the primary workspace of an organization. Its Owners add workspaces at no additional plan fee, invite Members and Guests, and read an org audit log, on GraphQL, MCP, the dashboard and Render's `GET /v1/organizations/{orgId}/audit-logs`. Downgrading the primary below Scale dissolves the org, as on Render. **Status:** blocked: every task but t013 (the production walk) and t017 (closeout) is done; t013 waits for a production pin that carries the milestone
+**Worker:** worker7 **Goal:** a Scale or Enterprise workspace is the primary workspace of an organization. Its Owners add workspaces at no additional plan fee, invite Members and Guests, and read an org audit log, on GraphQL, MCP, the dashboard and Render's `GET /v1/organizations/{orgId}/audit-logs`. Downgrading the primary below Scale dissolves the org, as on Render. **Status:** done (2026-11-17: t013's production walk passed on pin `14eaa71b98e5`; follow-ups w7/087, w7/088, w7/089)
 
 ## Tasks (in order)
 
@@ -18,11 +18,11 @@
 | t010 | [Dashboard: the org's Members page and its Settings with the Audit Logs CSV export](done/t010.md) — **DONE** | 1h30m | t007, t008 |
 | t011 | [Dashboard: the plan picker, the change-plan dialog and a workspace's privacy follow the org](done/t011.md) — **DONE** | 1h | t005, t006 |
 | t012 | [ADRs and the plan-table guard state the shipped rule](done/t012.md) — **DONE** | 30m | t008 |
-| t013 | [Production: an org's lifecycle on a fixture workspace](t013.md) | 1h | t009, t010, t011, t012 |
+| t013 | [Production: an org's lifecycle on a fixture workspace](done/t013.md) — **DONE** | 1h | t009, t010, t011, t012 |
 | t014 | [Render parity](done/t014.md) — **DONE** | 45m | t009, t010, t011, t012 |
 | t015 | [Simplify](done/t015.md) — **DONE** | 30m | t014 |
 | t016 | [Test coverage](done/t016.md) — **DONE** | 1h | t014 |
-| t017 | [Closeout](t017.md) | 10m | t013, t016 |
+| t017 | [Closeout](done/t017.md) — **DONE** | 10m | t013, t016 |
 
 ## Definition of done
 
@@ -53,3 +53,11 @@
 - **Why now:** w7/m429 and w7/070 gave every other plan-table row a disposition, so these are the open ones. On 2026-11-17, production had 3 Scale workspaces and 1 Enterprise workspace, and one admin held two or more of them. That admin would sit in one org on Render.
 - **Render parity included:** the change is visible on REST (the org audit-log route), GraphQL, MCP and the dashboard.
 - **Out of scope, filed by t014 as their own items:** org-level 2FA enforcement and allowed login methods (`ChangeOrg2FAEnforcementEvent`, `ChangeOrgAllowedLoginMethodsEvent`; the Google-login half is w7/078), and Enterprise seat-based billing (custom terms). Attaching the licensed plan-fee SKU to Stripe Subscriptions is not filed anywhere yet; this milestone only states the rule it must follow.
+
+## Unblock record (2026-11-17)
+
+- **Affects:** t013, t017.
+- **Source:** verified evidence, no user decision needed (the gate was written to clear by itself).
+- **Finding:** the newest production pin on `origin/main` is `359aee37d` (`chore(deploy): pin platform images to 14eaa71b98e5`). It carries `45147b896`, the milestone's last commit (`git merge-base --is-ancestor 45147b896 14eaa71b98e5` exits 0), and with it `aa37bb1ba` and `e1bf536c0`.
+- **Remaining gates:** none. Production runs the milestone, so t013's walk can run.
+- **Next steps:** run t013 on a Scale fixture as written (the QA user via `scripts/qa-login.sh`, read-only database checks through `scripts/fetch-app-kubeconfig.sh`), including the pending-vs-ready look at the org pages. Then close with t017. The acceptance checks are t013's and the definition of done above.
