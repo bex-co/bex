@@ -182,3 +182,17 @@ Create a Cloudflare API token, **Zone → DNS → Edit** and **Zone → Zone →
   - an empty `externalConnectionString`.
 - **Control:** `qa-20261110-81b5-kv` (`red-dbpf5q5me2kc73f2l0og`, created 2026-11-10, before the limit was hit) reads `externalCertificate: "publiclyTrusted"` on REST, GraphQL and MCP `get_key_value`. So only stores created after the limit are affected.
 - The same state as round 508, about 16 h earlier. Every public datastore created since then has no external URL. The gate above (t002's DNS-01 wildcard, which needs the user's Cloudflare token) is unchanged.
+
+## Round 1197 — Postgres still on the private CA (2026-11-18 03:27–03:33 UTC, pin `14eaa71b98e5`)
+
+- **Fixture:** a Free Postgres `qa-20261118-r1197-pg` (`dpg-dbuhmcle7qgs73b349bg`), created over REST (`plan: "free"`, version 16, default allow list `0.0.0.0/0` and `::/0`). It read `available` after 1 min 57 s, with `expiresAt` 30 days out. It was deleted afterwards (`204`, then `404`).
+- `GET /v1/postgres/<id>/connection-info`:
+  - answered `externalCertificate: "failed"` and `externalCertificateReason: "The certificate authority's issuance rate limit was reached. Issuance is retried automatically."`;
+  - gave an `externalConnectionString` of `postgresql://…@<id>.db.bex.co:5432/<db>?sslmode=verify-full`, plus a 688-byte `serverCaCertificate`.
+- `openssl s_client -starttls postgres` showed `issuer=OU=tea-daif693dqjvc73e7as3g, CN=dpg-dbuhmcle7qgs73b349bg`.
+- With psql 18.6 and no `~/.postgresql/root.crt`:
+  - the copied URL fails with `root certificate file "/Users/…/.postgresql/root.crt" does not exist` (DoD 3 is still open);
+  - `&sslrootcert=system` fails with `certificate verify failed`;
+  - `sslmode=require` connects, and so does `&sslrootcert=<the served serverCaCertificate>`, which also completed a create / insert / select `42` / drop round trip.
+- **DoD 4 holds:** after "Reveal connection info", the Connections card reads "Publicly trusted certificate not issued yet. Issuing this database's publicly trusted certificate failed, and bex retries it automatically. The CA path works meanwhile: connect with the CA below or sslmode=require." It also offers "Download CA certificate" with a `PGSSLROOTCERT="/path/to/<id>-ca.pem"` hint.
+- So the state is unchanged since round 573, now for Postgres as well as Key Value, about 25 h later. The gate above (t002's DNS-01 wildcard, which needs the user's Cloudflare token) is still what clears it.
