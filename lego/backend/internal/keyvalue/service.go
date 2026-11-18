@@ -42,6 +42,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -415,6 +416,9 @@ func (s *Service) loadSecret(ctx context.Context, relation, name string) (*appv1
 	if err != nil {
 		return nil, nil, err
 	}
+	if err := s.awaitFirstReconcile(ctx, kv); err != nil {
+		return nil, nil, err
+	}
 	secretName := kv.Status.CredentialSecretName
 	if secretName == "" {
 		secretName = kv.Status.SecretName
@@ -432,6 +436,37 @@ func (s *Service) loadSecret(ctx context.Context, relation, name string) (*appv1
 		return nil, nil, err
 	}
 	return kv, &sec, nil
+}
+
+// firstReconcileWait bounds how long a connection-info read of a store the
+// operator has not reconciled yet waits for that first pass, which writes the
+// credential Secret and records the host within tens of milliseconds of the
+// create. Render's Terraform provider reads connection info straight after the
+// create (w9/108). A variable so tests can shorten it.
+var firstReconcileWait = 5 * time.Second
+
+const firstReconcilePoll = 50 * time.Millisecond
+
+// awaitFirstReconcile re-reads kv until the operator has written its status
+// (every pass records a phase) or firstReconcileWait passes. A store still
+// unreconciled then is answered as it is.
+func (s *Service) awaitFirstReconcile(ctx context.Context, kv *appv1alpha1.KeyValue) error {
+	if kv.Status.Phase != "" {
+		return nil
+	}
+	err := wait.PollUntilContextTimeout(ctx, firstReconcilePoll, firstReconcileWait, false, func(ctx context.Context) (bool, error) {
+		if err := s.Client.Get(ctx, client.ObjectKeyFromObject(kv), kv); err != nil {
+			return false, err
+		}
+		return kv.Status.Phase != "", nil
+	})
+	switch {
+	case apierrors.IsNotFound(err):
+		return core.ErrNotFound
+	case err != nil && (!wait.Interrupted(err) || ctx.Err() != nil):
+		return err
+	}
+	return core.NotFoundIfDeleting(kv)
 }
 
 // ListKeyValues returns every managed key-value store in the namespace,
@@ -1395,10 +1430,12 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 	external := string(sec.Data["externalUri"]) // legacy connection Secret (public only)
 	if kv.Status.CredentialSecretName != "" {
 		password := sec.Data["password"]
-		// The operator records the revision only once the pods serve it (or
-		// while suspended), and the password never changes, so a match is
-		// enough: a restart keeps the recorded revision (w8/305).
-		if kv.Status.CredentialRevision == "" ||
+		// The password is chosen once and never changes (w2/m61), so it is
+		// served from the first reconcile, as Render answers a store that is
+		// still creating (w9/108). Only a revision the pods recorded that
+		// differs from it is a split, and that one is refused. A restart keeps
+		// the recorded revision (w8/305).
+		if kv.Status.CredentialRevision != "" &&
 			kv.Status.CredentialRevision != appv1alpha1.KeyValueCredentialRevision(password) {
 			return KeyValueConnectionInfo{}, fmt.Errorf("%w: key value credentials are still converging", core.ErrConflict)
 		}
