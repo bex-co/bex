@@ -2811,6 +2811,7 @@ dashboards:
                "defaults": {
                  "unit": "percentunit",
                  "min": 0,
+                 "max": 1,
                  "custom": { "thresholdsStyle": { "mode": "line" } },
                  "thresholds": {
                    "mode": "absolute",
@@ -3160,6 +3161,7 @@ dashboards:
                "defaults": {
                  "unit": "percentunit",
                  "min": 0,
+                 "max": 1,
                  "custom": { "thresholdsStyle": { "mode": "line" } },
                  "thresholds": {
                    "mode": "absolute",
@@ -9075,6 +9077,7 @@ dashboards:
              "fieldConfig": {
                "defaults": {
                  "unit": "percentunit",
+                 "max": 1,
                  "noValue": "No observations",
                  "color": {
                    "mode": "palette-classic"
@@ -9763,7 +9766,8 @@ dashboards:
              "fieldConfig": {
                "defaults": {
                  "unit": "percentunit",
-                 "min": 0
+                 "min": 0,
+                 "max": 1
                 },
                "overrides": []
               },
@@ -9919,7 +9923,8 @@ dashboards:
                    "matcher": { "id": "byFrameRefID", "options": "B" },
                    "properties": [
                       { "id": "custom.axisPlacement", "value": "right" },
-                      { "id": "unit", "value": "percentunit" }
+                      { "id": "unit", "value": "percentunit" },
+                      { "id": "custom.axisSoftMax", "value": 1 }
                     ]
                   },
                   {
@@ -9927,6 +9932,7 @@ dashboards:
                    "properties": [
                       { "id": "custom.axisPlacement", "value": "right" },
                       { "id": "unit", "value": "percentunit" },
+                      { "id": "custom.axisSoftMax", "value": 1 },
                       { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } },
                       { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } }
                     ]
@@ -10247,6 +10253,7 @@ dashboards:
              "fieldConfig": {
                "defaults": {
                  "unit": "percentunit",
+                 "max": 1,
                  "noValue": "No observations",
                  "color": {
                    "mode": "palette-classic"

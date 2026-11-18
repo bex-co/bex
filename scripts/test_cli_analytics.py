@@ -575,5 +575,50 @@ class CLIAnalyticsTest(unittest.TestCase):
                 self.assertFalse(overlap, (panel["title"], other["title"]))
 
 
+# Ratio axes that pass 100% by design: requests and usage over allocatable
+# overcommit a node, so a cap at 1 would clip exactly the excursion they exist
+# to show.
+MAY_EXCEED_FULL = {
+    ("bex-cluster-capacity", "CPU commitment by node (requests / allocatable)"),
+    ("bex-cluster-capacity", "Saturation vs allocatable by node"),
+}
+
+
+class RatioAxisTest(unittest.TestCase):
+    """Every board, not just cli-usage, and no database needed (w3/072)."""
+
+    def test_every_ratio_axis_has_a_top(self):
+        # When every point of a percentunit series is 0, Grafana's degenerate
+        # range fallback is 0-100 raw, which percentunit draws as 0-10000%: a
+        # quiet ratio reads as a broken one. A hard "max" or a soft
+        # custom.axisSoftMax pins the top; overrides count, since a series that
+        # takes percentunit from one gets its own axis.
+        values = (ROOT / "deploy/gitops/base/values/grafana.values.yaml").read_text()
+        boards = [json.loads(m.group(1)) for m in
+                  re.finditer(r"^      json: \|\n((?:        .*\n|\n)+)", values, re.M)]
+        self.assertEqual(len(boards), values.count("json: |"))
+
+        def walk(panels):
+            for panel in panels:
+                yield panel
+                yield from walk(panel.get("panels", []))
+
+        unbounded = set()
+        for board in boards:
+            for panel in walk(board["panels"]):
+                if panel["type"] != "timeseries":
+                    continue
+                config = panel.get("fieldConfig", {})
+                defaults = config.get("defaults", {})
+                base = {"unit": defaults.get("unit"), "max": defaults.get("max"),
+                        "custom.axisSoftMax": defaults.get("custom", {}).get("axisSoftMax")}
+                fields = [base] + [{**base, **{p["id"]: p["value"] for p in o["properties"]}}
+                                   for o in config.get("overrides", [])]
+                if any(f["unit"] == "percentunit" and f["max"] is None
+                       and f["custom.axisSoftMax"] is None for f in fields):
+                    unbounded.add((board["uid"], panel["title"]))
+        self.assertEqual(unbounded, MAY_EXCEED_FULL)
+
+
 if __name__ == "__main__":
     unittest.main()
