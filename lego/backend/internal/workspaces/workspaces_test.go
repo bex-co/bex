@@ -891,7 +891,7 @@ func TestDelete_PurgerPhaseOrdering(t *testing.T) {
 
 // fakeInvalidatingResolver wraps fakeResolver and records every subject
 // InvalidateTenant is called with — lets a test assert Delete evicts the
-// right subjects' cached resolutions without a real api.tenantService.
+// right subjects' cached resolutions without a real tenancy.Service.
 type fakeInvalidatingResolver struct {
 	fakeResolver
 	invalidated []string

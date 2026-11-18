@@ -244,7 +244,7 @@ func TestRefusedLeaveEvictsNothing(t *testing.T) {
 }
 
 // recordingResolver is a core.WorkspaceResolver that records the invalidation
-// calls the leave path makes, matching tenantService's two seams.
+// calls the leave path makes, matching tenancy.Service's two seams.
 type recordingResolver struct {
 	invalidatedTenants     []string
 	invalidatedMemberships []string

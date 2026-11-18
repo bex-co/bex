@@ -29,6 +29,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/tenancy"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
 )
@@ -110,7 +111,7 @@ func TestW6013_InvitedViewerRestartsOwnWorkspaceServiceE2E(t *testing.T) {
 	base := &core.Base{
 		Client: cl, Namespace: "default",
 		Authz:     checker,
-		Workspace: NewTenantService(st, roles),
+		Workspace: tenancy.NewTenantService(st, roles),
 	}
 	srv := NewServer(base, Deps{Store: st, WorkspaceStore: st, WorkspaceGranter: granter})
 	mux := srv.restHandler()

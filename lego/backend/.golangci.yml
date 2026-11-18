@@ -66,6 +66,16 @@ linters:
           deny:
             - pkg: github.com/rs/xid
               desc: mint ids via internal/id (id.New); only internal/id may import xid — see docs/ADR020-identifiers.md
+        # cmd/ssh-gateway resolves tenants through internal/tenancy, never the
+        # bex-api HTTP surface: importing internal/api would link the whole
+        # server package (handlers, GraphQL, MCP) into the gateway binary and
+        # re-couple doors that deploy, scale and fail independently.
+        gateway-stays-lean:
+          files:
+            - "**/cmd/ssh-gateway/**"
+          deny:
+            - pkg: github.com/bex-co/bex/lego/backend/internal/api
+              desc: "ssh-gateway must not import the bex-api HTTP surface; resolve tenancy through internal/tenancy"
         # internal/rendertest validates responses against the pinned Render
         # spec for tests (w3/m272). It fails a testing.TB, so production code
         # importing it is always a mistake.

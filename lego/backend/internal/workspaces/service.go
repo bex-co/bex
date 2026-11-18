@@ -275,7 +275,7 @@ type EnterpriseEntitlement interface {
 }
 
 // TenantResolutionInvalidator evicts a subject's cached "current workspace"
-// resolution (the api.tenantService cache behind core.Base's WorkspaceResolver)
+// resolution (the tenancy.Service cache behind core.Base's WorkspaceResolver)
 // — optional and type-asserted from Base.Workspace, structurally like
 // WorkspaceGranter/WorkspaceRevoker, since a store-off Base has no such cache to
 // invalidate. Delete calls it for every member it revokes so a request racing

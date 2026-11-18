@@ -88,6 +88,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/signins"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/tenancy"
 	"github.com/bex-co/bex/lego/backend/internal/twofactor"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
 	"github.com/bex-co/bex/lego/backend/internal/webhooks"
@@ -1112,7 +1113,7 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 		deps.MembersRevoker = rv
 	}
 
-	// Tenant onboarding + workspace scoping (w1/m9): one tenantService is the
+	// Tenant onboarding + workspace scoping (w1/m9): one tenancy.Service is the
 	// store-backed resolver (core.Base.Workspace, every verb's Authorize
 	// targets workspace:tea-<id>), the onboarding seam (mints a personal
 	// tenant on a human's first login), and the key-binder (ties minted keys
@@ -1124,7 +1125,7 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	if g, ok := authzChecker.(store.MembershipGranter); ok {
 		granter = g
 	}
-	tenantSvc := api.NewTenantService(st, granter)
+	tenantSvc := tenancy.NewTenantService(st, granter)
 	// A login-time redemption that makes someone an org Member writes their
 	// org tuple (w7/m464, ADR115 D4).
 	tenantSvc.OrgTuples = deps.OrgTuples

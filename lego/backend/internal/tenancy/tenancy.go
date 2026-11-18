@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package api
+package tenancy
 
 import (
 	"context"
@@ -29,14 +29,16 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// tenancy.go is the store-backed bridge between the auth gate and core.Base's
-// workspace resolver (w1/m9). The auth gate mints a personal tenant on a human's
-// first login (Onboarding); core.Base.Authorize resolves every caller to its
-// workspace (core.WorkspaceResolver); the api-keys service binds a minted key to
-// its tenant (apikeys.KeyBinder). One tenantService implements all three — it
-// sits here, in the composition root, rather than a feature package, so core
-// stays free of the store dependency; one TTL cache deduplicates the
-// identity→tenant lookups a single request fans out (Authorize + List/Get).
+// Package tenancy is the store-backed bridge between the auth gate and
+// core.Base's workspace resolver (w1/m9). The auth gate mints a personal tenant
+// on a human's first login (Onboarding); core.Base.Authorize resolves every
+// caller to its workspace (core.WorkspaceResolver); the api-keys service binds
+// a minted key to its tenant (apikeys.KeyBinder). One Service implements all
+// three — it sits here, in its own feature package, rather than the api
+// composition root, so the ssh-gateway (which needs only tenant resolution,
+// never the HTTP surface) does not import internal/api; one TTL cache
+// deduplicates the identity→tenant lookups a single request fans out
+// (Authorize + List/Get).
 
 // TenantStore is the slice of the source of truth the resolver + onboarding +
 // key-binder read/write. *store.PGStore (and the in-memory fake) satisfy it.
@@ -75,20 +77,20 @@ type accountDeletionReader interface {
 // AccountDeletionTombstoned implements apikeys.AccountDeletionReader over the
 // same durable tombstone used by onboarding. Stores predating account deletion
 // preserve their legacy behavior.
-func (t *tenantService) AccountDeletionTombstoned(ctx context.Context, subject string) (bool, error) {
+func (t *Service) AccountDeletionTombstoned(ctx context.Context, subject string) (bool, error) {
 	if deletions, ok := t.store.(accountDeletionReader); ok {
 		return deletions.AccountDeletionTombstoned(ctx, subject)
 	}
 	return false, nil
 }
 
-// tenantService implements both core.WorkspaceResolver (the read path
+// Service implements both core.WorkspaceResolver (the read path
 // Authorize/List/Get use) and Onboarding (the mint the auth gate drives), over
 // one store + one TTL cache. The granter is nil when OpenFGA is off (store on,
 // authz off): tenants are still minted and keys still bound, just without the
 // FGA membership tuples — a correct intermediate where the store isolates
 // tenants by filtering and authz isn't yet enforcing roles.
-type tenantService struct {
+type Service struct {
 	store   TenantStore
 	granter store.MembershipGranter // nil => skip FGA tuple writes
 	cache   *core.TTLCache[string]
@@ -122,11 +124,11 @@ type tenantService struct {
 // NewTenantService wires the store-backed resolver + onboarding mint. granter
 // may be nil (authz off). Returns nil when the store is nil (store off — no
 // resolver, no mint, the legacy default-workspace mode).
-func NewTenantService(s TenantStore, granter store.MembershipGranter) *tenantService {
+func NewTenantService(s TenantStore, granter store.MembershipGranter) *Service {
 	if s == nil {
 		return nil
 	}
-	return &tenantService{store: s, granter: granter, cache: core.NewTTLCache[string](), members: core.NewTTLCache[string](), recent: core.NewTTLCache[string]()}
+	return &Service{store: s, granter: granter, cache: core.NewTTLCache[string](), members: core.NewTTLCache[string](), recent: core.NewTTLCache[string]()}
 }
 
 // recentTenantTTL bounds how long after a successful onboarding a person's
@@ -136,24 +138,26 @@ const recentTenantTTL = 10 * time.Minute
 // The kinds of dependency an onboarding step reads or writes, named in the 503
 // a caller gets when the step fails.
 const (
-	depStore = "workspace store"
-	depAuthz = "authorization service"
+	DepStore = "workspace store"
+	DepAuthz = "authorization service"
 )
 
 // The onboarding steps that can fail a request. Each names what it was doing,
-// in the log line and in the 503 body.
+// in the log line and in the 503 body. Exported: the steps and dependencies
+// are the user-visible 503 contract (see UnavailableMessage), pinned by the api
+// gate tests, so they are spelled once here.
 const (
-	stepTombstone = "account deletion check"
-	stepOwnerRead = "personal workspace lookup"
-	stepCreate    = "personal workspace creation"
-	stepGrant     = "workspace admin grant"
-	stepReread    = "personal workspace re-read"
-	stepRevoke    = "admin revoke after the workspace binding ended"
+	StepTombstone = "account deletion check"
+	StepOwnerRead = "personal workspace lookup"
+	StepCreate    = "personal workspace creation"
+	StepGrant     = "workspace admin grant"
+	StepReread    = "personal workspace re-read"
+	StepRevoke    = "admin revoke after the workspace binding ended"
 )
 
 // onboardingStepError is an EnsureTenant failure that names its step and the
 // dependency behind it (w32/m446). The auth gate logs the whole error and
-// answers onboardingUnavailableMessage, which carries the step and dependency
+// answers UnavailableMessage, which carries the step and dependency
 // but never the cause's own text: a store error can carry SQL or a connection
 // string.
 type onboardingStepError struct {
@@ -167,9 +171,9 @@ func (e *onboardingStepError) Error() string {
 
 func (e *onboardingStepError) Unwrap() error { return e.err }
 
-// stepFailed tags err with the step that produced it. A coded refusal (account
+// StepFailed tags err with the step that produced it. A coded refusal (account
 // deletion pending) is a public answer of its own and passes through as is.
-func stepFailed(step, dependency string, err error) error {
+func StepFailed(step, dependency string, err error) error {
 	var coded *core.CodedError
 	if err == nil || errors.As(err, &coded) {
 		return err
@@ -177,10 +181,10 @@ func stepFailed(step, dependency string, err error) error {
 	return &onboardingStepError{step: step, dependency: dependency, err: err}
 }
 
-// onboardingUnavailableMessage is the 503 body for an onboarding failure that is
+// UnavailableMessage is the 503 body for an onboarding failure that is
 // not a coded refusal: which step failed against which dependency, when the
 // error says.
-func onboardingUnavailableMessage(err error) string {
+func UnavailableMessage(err error) string {
 	const msg = "tenant onboarding unavailable"
 	var step *onboardingStepError
 	if errors.As(err, &step) {
@@ -222,7 +226,7 @@ const (
 // resolution keeps the admin grant pinned to the workspace the caller actually
 // owns. A returning caller costs one owner-keyed SELECT (TenantForOwner); only a
 // first login falls to the idempotent CreateTenantWithMember upsert.
-func (t *tenantService) EnsureTenant(ctx context.Context, identityID, email string, emailVerified bool) (string, error) {
+func (t *Service) EnsureTenant(ctx context.Context, identityID, email string, emailVerified bool) (string, error) {
 	// ADR086: the tombstone wins over even a positive tenant cache entry. It is
 	// checked before invite redemption and tenant creation so cleanup can never
 	// race a request into reminting the personal workspace.
@@ -234,7 +238,7 @@ func (t *tenantService) EnsureTenant(ctx context.Context, identityID, email stri
 	if deletions, ok := t.store.(accountDeletionReader); ok {
 		pending, err := deletions.AccountDeletionTombstoned(ctx, identityID)
 		if err != nil {
-			return "", stepFailed(stepTombstone, depStore, err)
+			return "", StepFailed(StepTombstone, DepStore, err)
 		}
 		if pending {
 			t.cache.Delete(key)
@@ -279,14 +283,14 @@ func (t *tenantService) EnsureTenant(ctx context.Context, identityID, email stri
 // does a failure after a grant this request wrote (the re-read that decides
 // whether to take the grant back), a creation (the old binding is gone) or a
 // tombstone read, which runs before this.
-func (t *tenantService) servedThroughFault(identityID string, tenant store.Tenant, err error) (string, error) {
+func (t *Service) servedThroughFault(identityID string, tenant store.Tenant, err error) (string, error) {
 	var step *onboardingStepError
 	if !errors.As(err, &step) {
 		return "", err
 	}
 	key := cacheKey(methodSession, identityID)
 	recent, ok := t.recent.Get(key)
-	if !ok || !(step.step == stepOwnerRead || step.step == stepGrant && tenant.ID == recent) {
+	if !ok || !(step.step == StepOwnerRead || step.step == StepGrant && tenant.ID == recent) {
 		return "", err
 	}
 	log.Printf("tenancy: serving %s its personal workspace %s, resolved within %s, through a failed onboarding: %v",
@@ -315,7 +319,7 @@ var errOwnerBindingEnded = errors.New("personal workspace binding ended during o
 // The revoke cannot tell a creator removed or demoted from one demoted and then
 // promoted back to admin in the same instant; that member is left with no
 // admin tuple (fail closed) until their role is set again.
-func (t *tenantService) personalTenant(ctx context.Context, identityID string) (store.Tenant, error) {
+func (t *Service) personalTenant(ctx context.Context, identityID string) (store.Tenant, error) {
 	tenant, err := t.store.TenantForOwner(ctx, identityID)
 	switch {
 	case err == nil:
@@ -329,24 +333,24 @@ func (t *tenantService) personalTenant(ctx context.Context, identityID string) (
 			return store.Tenant{}, core.NewAccountDeletionPendingError()
 		}
 		if err != nil {
-			return store.Tenant{}, stepFailed(stepCreate, depStore, err)
+			return store.Tenant{}, StepFailed(StepCreate, DepStore, err)
 		}
 	default:
-		return store.Tenant{}, stepFailed(stepOwnerRead, depStore, err)
+		return store.Tenant{}, StepFailed(StepOwnerRead, DepStore, err)
 	}
 	granted, err := t.ensureGranted(ctx, tenant.ID, identityID)
 	if err != nil || !granted {
-		return tenant, stepFailed(stepGrant, depAuthz, err)
+		return tenant, StepFailed(StepGrant, DepAuthz, err)
 	}
 	again, err := t.store.TenantForOwner(ctx, identityID)
 	switch {
 	case err == nil && again.ID == tenant.ID:
 		return tenant, nil
 	case err != nil && !errors.Is(err, store.ErrNotFound):
-		return store.Tenant{}, stepFailed(stepReread, depStore, err)
+		return store.Tenant{}, StepFailed(StepReread, DepStore, err)
 	}
 	if err := t.granter.RevokeWorkspaceMember(ctx, tenant.ID, "user:"+identityID, "admin"); err != nil {
-		return store.Tenant{}, stepFailed(stepRevoke, depAuthz, err)
+		return store.Tenant{}, StepFailed(StepRevoke, DepAuthz, err)
 	}
 	return store.Tenant{}, errOwnerBindingEnded
 }
@@ -359,7 +363,7 @@ func (t *tenantService) personalTenant(ctx context.Context, identityID string) (
 // worker instead of being silently stranded after accepted_at becomes terminal.
 // No email (a machine caller, or an identity without the trait) means nothing to
 // redeem.
-func (t *tenantService) acceptInvites(ctx context.Context, identityID, email string, emailVerified bool) {
+func (t *Service) acceptInvites(ctx context.Context, identityID, email string, emailVerified bool) {
 	if email == "" {
 		return
 	}
@@ -414,7 +418,7 @@ func (t *tenantService) acceptInvites(ctx context.Context, identityID, email str
 	// (single-tenant resolution), not this feature's.
 }
 
-func (t *tenantService) completeInviteRoleReconciliation(ctx context.Context, inv store.Invite, subject string) {
+func (t *Service) completeInviteRoleReconciliation(ctx context.Context, inv store.Invite, subject string) {
 	if queue, ok := t.store.(members.RoleReconciliationStore); ok {
 		if err := queue.CompleteRoleReconciliation(ctx, inv.TenantID, subject, inv.Role); err != nil {
 			log.Printf("tenancy: acknowledging role reconciliation for %s/%s: %v", inv.TenantID, subject, err)
@@ -422,7 +426,7 @@ func (t *tenantService) completeInviteRoleReconciliation(ctx context.Context, in
 	}
 }
 
-func (t *tenantService) failInviteRoleReconciliation(ctx context.Context, inv store.Invite, subject string, reconcileErr error) {
+func (t *Service) failInviteRoleReconciliation(ctx context.Context, inv store.Invite, subject string, reconcileErr error) {
 	if queue, ok := t.store.(members.RoleReconciliationStore); ok {
 		if err := queue.FailRoleReconciliation(ctx, inv.TenantID, subject, inv.Role, reconcileErr.Error()); err != nil {
 			log.Printf("tenancy: retaining failed role reconciliation for %s/%s: %v", inv.TenantID, subject, err)
@@ -439,7 +443,7 @@ func (t *tenantService) failInviteRoleReconciliation(ctx context.Context, inv st
 // role-reconciliation outbox) instead of riding a union of old+new. Best-effort
 // like the grant it replaces; check-before-revoke skips absent tuples, and with
 // no checker it degrades to grant-only (prior behavior).
-func (t *tenantService) reconcileInviteRole(ctx context.Context, tenantID, subject, role string) error {
+func (t *Service) reconcileInviteRole(ctx context.Context, tenantID, subject, role string) error {
 	if t.granter == nil {
 		return nil
 	}
@@ -453,7 +457,7 @@ func (t *tenantService) reconcileInviteRole(ctx context.Context, tenantID, subje
 }
 
 // revokeOtherRoles removes every role tuple except `role`, check-before-revoke.
-func (t *tenantService) revokeOtherRoles(ctx context.Context, checker core.Checker, tenantID, subject, role string) error {
+func (t *Service) revokeOtherRoles(ctx context.Context, checker core.Checker, tenantID, subject, role string) error {
 	for _, other := range members.Roles {
 		if other == role {
 			continue
@@ -494,7 +498,7 @@ func (t *tenantService) revokeOtherRoles(ctx context.Context, checker core.Check
 // The Check gets no retry of its own (w32/m446 t002): the transport already
 // resends one that lands on a dropped keep-alive connection (w4/695), and the
 // grant answers for any other Check error.
-func (t *tenantService) ensureGranted(ctx context.Context, tenantID, identityID string) (granted bool, err error) {
+func (t *Service) ensureGranted(ctx context.Context, tenantID, identityID string) (granted bool, err error) {
 	if t.granter == nil {
 		return false, nil
 	}
@@ -521,7 +525,7 @@ func (t *tenantService) ensureGranted(ctx context.Context, tenantID, identityID 
 // caller on the default workspace; Authorize then 403s a tuple-less subject and
 // admits the seeded bootstrap. Negatives are never cached so a fresh binding or
 // grant takes effect immediately (mirroring the authz checker's contract).
-func (t *tenantService) Tenant(ctx context.Context, id core.Identity) (string, bool) {
+func (t *Service) Tenant(ctx context.Context, id core.Identity) (string, bool) {
 	key := cacheKey(id.Method, id.Subject)
 	if tid, ok := t.cache.Get(key); ok {
 		return tid, true
@@ -548,7 +552,7 @@ func (t *tenantService) Tenant(ctx context.Context, id core.Identity) (string, b
 // request closed (ErrAuthzUnavailable) rather than mistaking an outage for a
 // refusal — and, critically, rather than silently falling back to the caller's
 // own workspace, which would land a write in the wrong one.
-func (t *tenantService) IsMember(ctx context.Context, id core.Identity, tenantID string) (bool, error) {
+func (t *Service) IsMember(ctx context.Context, id core.Identity, tenantID string) (bool, error) {
 	key := cacheKey(id.Method, id.Subject) + ":" + tenantID
 	if _, ok := t.members.Get(key); ok {
 		return true, nil
@@ -580,7 +584,7 @@ func (t *tenantService) IsMember(ctx context.Context, id core.Identity, tenantID
 //
 // It also forgets the person's recently resolved workspace, so a store fault
 // right after the membership changed never serves the workspace they just left.
-func (t *tenantService) InvalidateTenant(subject string) {
+func (t *Service) InvalidateTenant(subject string) {
 	t.cache.Delete(cacheKey(methodSession, subject))
 	t.cache.Delete(cacheKey(methodOAuth2, subject))
 	t.recent.Delete(cacheKey(methodSession, subject))
@@ -596,7 +600,7 @@ func (t *tenantService) InvalidateTenant(subject string) {
 // caller no longer belongs to produces exactly the m13 class of symptom, so the
 // leave path evicts it. Both methods, for the same reason InvalidateTenant
 // evicts both.
-func (t *tenantService) InvalidateMembership(subject, tenantID string) {
+func (t *Service) InvalidateMembership(subject, tenantID string) {
 	t.members.Delete(cacheKey(methodSession, subject) + ":" + tenantID)
 	t.members.Delete(cacheKey(methodOAuth2, subject) + ":" + tenantID)
 }
@@ -605,7 +609,7 @@ func (t *tenantService) InvalidateMembership(subject, tenantID string) {
 // row (role "developer") + writes the key's FGA developer membership. A failed
 // FGA write rolls the binding back so no half-bound key lingers (the api-keys
 // service separately deletes the Hydra client — no orphaned credential).
-func (t *tenantService) BindKey(ctx context.Context, clientID, tenantID string) error {
+func (t *Service) BindKey(ctx context.Context, clientID, tenantID string) error {
 	if err := t.store.BindClient(ctx, clientID, tenantID); err != nil {
 		return err
 	}
@@ -622,7 +626,7 @@ func (t *tenantService) BindKey(ctx context.Context, clientID, tenantID string) 
 // WithTenantAdvisoryLock implements apikeys.KeyQuotaLocker. Production's
 // *store.PGStore holds the lock across the API-key count→Hydra-create→bind
 // sequence; non-Postgres stores preserve the legacy in-process behavior.
-func (t *tenantService) WithTenantAdvisoryLock(ctx context.Context, tenantID string, fn func() error) error {
+func (t *Service) WithTenantAdvisoryLock(ctx context.Context, tenantID string, fn func() error) error {
 	if locker, ok := t.store.(interface {
 		WithTenantAdvisoryLock(context.Context, string, func() error) error
 	}); ok {
@@ -636,7 +640,7 @@ func (t *tenantService) WithTenantAdvisoryLock(ctx context.Context, tenantID str
 // tenant is as stable as any caller's, w6/m18) — keyed under methodOAuth2 so
 // it can never collide with a human identity's cached resolution even if the
 // two ids ever coincided.
-func (t *tenantService) TenantForKey(ctx context.Context, clientID string) (string, bool) {
+func (t *Service) TenantForKey(ctx context.Context, clientID string) (string, bool) {
 	return t.Tenant(ctx, core.Identity{Subject: clientID, Method: methodOAuth2})
 }
 
@@ -655,7 +659,7 @@ func (t *tenantService) TenantForKey(ctx context.Context, clientID string) (stri
 // Hydra delete and a retry re-resolves the tenant and completes. Revoke is
 // idempotent (authz.writeTuple), so once the tuple is gone the subsequent local
 // delete — or its retry — converges cleanly with no orphaned authority.
-func (t *tenantService) UnbindKey(ctx context.Context, clientID string) error {
+func (t *Service) UnbindKey(ctx context.Context, clientID string) error {
 	// Resolve the tenant while its binding still exists, then revoke the FGA
 	// tuple, then drop the local row.
 	tenant, foundErr := t.store.TenantForIdentity(ctx, clientID)
@@ -685,7 +689,7 @@ func (t *tenantService) UnbindKey(ctx context.Context, clientID string) error {
 // "<Name>'s Workspace", as Render does (w3/m246). The person's name is only
 // known here, so workspaces created before display names are named on the
 // owner's next sign-in. Best effort: a failure never blocks the caller.
-func (t *tenantService) nameSignupWorkspace(ctx context.Context, tenant store.Tenant, email string) {
+func (t *Service) nameSignupWorkspace(ctx context.Context, tenant store.Tenant, email string) {
 	if tenant.DisplayName != "" || tenant.Name != tenant.ID {
 		return
 	}
@@ -725,7 +729,7 @@ type organizationInviteStore interface {
 // acceptOrganizationInvites redeems the org invites addressed to the caller's
 // verified email on sign-in (w7/m464, ADR115 D4), as workspace invites are:
 // the new member's org tuple and Render's AcceptOrgInviteEvent.
-func (t *tenantService) acceptOrganizationInvites(ctx context.Context, email, identityID string) {
+func (t *Service) acceptOrganizationInvites(ctx context.Context, email, identityID string) {
 	invites, ok := t.store.(organizationInviteStore)
 	if !ok {
 		return

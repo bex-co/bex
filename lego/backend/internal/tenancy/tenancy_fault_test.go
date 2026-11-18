@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package api
+package tenancy
 
 import (
 	"context"
@@ -40,7 +40,7 @@ const faultPerson = "identity-a"
 // onboardThenExpire resolves faultPerson's personal workspace on ts and drops
 // the 30 s cache entry, as its expiry would, so the next call takes the
 // cache-miss path with the workspace still recently known.
-func onboardThenExpire(t *testing.T, ts *tenantService) string {
+func onboardThenExpire(t *testing.T, ts *Service) string {
 	t.Helper()
 	tid, err := ts.EnsureTenant(context.Background(), faultPerson, "", false)
 	if err != nil || tid == "" {
@@ -96,10 +96,10 @@ func TestEnsureTenantCheckAndGrantBothFailingFailsClosed(t *testing.T) {
 	if err == nil {
 		t.Fatal("a Check and a grant that both fail served the request; want an error, never a silent skip")
 	}
-	if failedStep(err) != stepGrant {
-		t.Errorf("error %v names step %q, want %q", err, failedStep(err), stepGrant)
+	if failedStep(err) != StepGrant {
+		t.Errorf("error %v names step %q, want %q", err, failedStep(err), StepGrant)
 	}
-	if got, want := onboardingUnavailableMessage(err), "tenant onboarding unavailable: workspace admin grant failed (authorization service)"; got != want {
+	if got, want := UnavailableMessage(err), "tenant onboarding unavailable: workspace admin grant failed (authorization service)"; got != want {
 		t.Errorf("503 message = %q, want %q", got, want)
 	}
 	if len(granter.revoked) != 0 {
@@ -133,13 +133,13 @@ func TestEnsureTenantServesARecentWorkspaceThroughAStoreFault(t *testing.T) {
 
 	st.ownerFail = func() error { return errStoreReset }
 	_, err = NewTenantService(st, newFakeGranter()).EnsureTenant(context.Background(), faultPerson, "", false)
-	if failedStep(err) != stepOwnerRead {
-		t.Fatalf("caller with no recent workspace = %v, want a %q failure", err, stepOwnerRead)
+	if failedStep(err) != StepOwnerRead {
+		t.Fatalf("caller with no recent workspace = %v, want a %q failure", err, StepOwnerRead)
 	}
-	if got, want := onboardingUnavailableMessage(err), "tenant onboarding unavailable: personal workspace lookup failed (workspace store)"; got != want {
+	if got, want := UnavailableMessage(err), "tenant onboarding unavailable: personal workspace lookup failed (workspace store)"; got != want {
 		t.Errorf("503 message = %q, want %q", got, want)
 	}
-	if strings.Contains(onboardingUnavailableMessage(err), "10.96.0.20") {
+	if strings.Contains(UnavailableMessage(err), "10.96.0.20") {
 		t.Error("the 503 message carries the store error's own text")
 	}
 }
@@ -180,8 +180,8 @@ func TestEnsureTenantDoesNotServeARecentWorkspaceThroughEveryFault(t *testing.T)
 			return nil
 		}
 		_, err := ts.EnsureTenant(context.Background(), faultPerson, "", false)
-		if failedStep(err) != stepReread {
-			t.Fatalf("a failed re-read after a written grant = %v, want a %q failure", err, stepReread)
+		if failedStep(err) != StepReread {
+			t.Fatalf("a failed re-read after a written grant = %v, want a %q failure", err, StepReread)
 		}
 	})
 
@@ -193,10 +193,10 @@ func TestEnsureTenantDoesNotServeARecentWorkspaceThroughEveryFault(t *testing.T)
 		}
 		st.tombstoneErr = errStoreReset
 		_, err := ts.EnsureTenant(context.Background(), faultPerson, "", false)
-		if failedStep(err) != stepTombstone {
-			t.Fatalf("unreadable tombstone = %v, want a %q failure (ADR086: fail closed)", err, stepTombstone)
+		if failedStep(err) != StepTombstone {
+			t.Fatalf("unreadable tombstone = %v, want a %q failure (ADR086: fail closed)", err, StepTombstone)
 		}
-		if got, want := onboardingUnavailableMessage(err), "tenant onboarding unavailable: account deletion check failed (workspace store)"; got != want {
+		if got, want := UnavailableMessage(err), "tenant onboarding unavailable: account deletion check failed (workspace store)"; got != want {
 			t.Errorf("503 message = %q, want %q", got, want)
 		}
 	})
@@ -207,7 +207,7 @@ func TestEnsureTenantDoesNotServeARecentWorkspaceThroughEveryFault(t *testing.T)
 		onboardThenExpire(t, ts)
 		ts.InvalidateTenant(faultPerson) // a removal or workspace delete here
 		st.ownerFail = func() error { return errStoreReset }
-		if _, err := ts.EnsureTenant(context.Background(), faultPerson, "", false); failedStep(err) != stepOwnerRead {
+		if _, err := ts.EnsureTenant(context.Background(), faultPerson, "", false); failedStep(err) != StepOwnerRead {
 			t.Fatalf("after InvalidateTenant = %v, want the store fault, not the forgotten workspace", err)
 		}
 	})
@@ -232,8 +232,8 @@ func TestEnsureTenantDoesNotServeARecentWorkspaceThroughEveryFault(t *testing.T)
 			t.Fatalf("rebind minted %q, want a workspace other than the recent one", recent)
 		}
 		granter.failNext = 1
-		if _, err := ts.EnsureTenant(context.Background(), faultPerson, "", false); failedStep(err) != stepGrant {
-			t.Fatalf("grant on %q with recent %q = %v, want a %q failure, never the old workspace", minted.ID, recent, err, stepGrant)
+		if _, err := ts.EnsureTenant(context.Background(), faultPerson, "", false); failedStep(err) != StepGrant {
+			t.Fatalf("grant on %q with recent %q = %v, want a %q failure, never the old workspace", minted.ID, recent, err, StepGrant)
 		}
 	})
 
@@ -249,8 +249,8 @@ func TestEnsureTenantDoesNotServeARecentWorkspaceThroughEveryFault(t *testing.T)
 		delete(st.members, faultPerson)
 		st.mu.Unlock()
 		st.createFail = func() error { return errStoreReset }
-		if _, err := ts.EnsureTenant(context.Background(), faultPerson, "", false); failedStep(err) != stepCreate {
-			t.Fatalf("failed creation = %v, want a %q failure", err, stepCreate)
+		if _, err := ts.EnsureTenant(context.Background(), faultPerson, "", false); failedStep(err) != StepCreate {
+			t.Fatalf("failed creation = %v, want a %q failure", err, StepCreate)
 		}
 	})
 
@@ -273,8 +273,8 @@ func TestEnsureTenantDoesNotServeARecentWorkspaceThroughEveryFault(t *testing.T)
 			}
 			return nil
 		}
-		if _, err := ts.EnsureTenant(context.Background(), faultPerson, "", false); failedStep(err) != stepRevoke {
-			t.Fatalf("a failed revoke after a written grant = %v, want a %q failure", err, stepRevoke)
+		if _, err := ts.EnsureTenant(context.Background(), faultPerson, "", false); failedStep(err) != StepRevoke {
+			t.Fatalf("a failed revoke after a written grant = %v, want a %q failure", err, StepRevoke)
 		}
 	})
 }
@@ -298,17 +298,17 @@ func TestEnsureTenantTombstoneWinsOverARecentWorkspace(t *testing.T) {
 	}
 }
 
-// A coded refusal is a public answer of its own: stepFailed leaves it as is, so
+// A coded refusal is a public answer of its own: StepFailed leaves it as is, so
 // the gate writes its code, not a 503.
 func TestStepFailedKeepsCodedRefusals(t *testing.T) {
 	pending := core.NewAccountDeletionPendingError()
-	if got := stepFailed(stepCreate, depStore, pending); got != pending {
-		t.Fatalf("stepFailed wrapped a coded refusal: %v", got)
+	if got := StepFailed(StepCreate, DepStore, pending); got != pending {
+		t.Fatalf("StepFailed wrapped a coded refusal: %v", got)
 	}
-	if stepFailed(stepCreate, depStore, nil) != nil {
-		t.Fatal("stepFailed turned nil into an error")
+	if StepFailed(StepCreate, DepStore, nil) != nil {
+		t.Fatal("StepFailed turned nil into an error")
 	}
-	if got := onboardingUnavailableMessage(errors.New("bare")); got != "tenant onboarding unavailable" {
+	if got := UnavailableMessage(errors.New("bare")); got != "tenant onboarding unavailable" {
 		t.Fatalf("message for an untagged error = %q", got)
 	}
 }

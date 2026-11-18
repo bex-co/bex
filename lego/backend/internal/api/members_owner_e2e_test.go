@@ -30,6 +30,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/members"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/tenancy"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
@@ -92,7 +93,7 @@ func TestMembershipInvariantsE2E(t *testing.T) {
 	base := &core.Base{
 		Client: fakeClient(), Namespace: "default",
 		Authz:     checker,
-		Workspace: NewTenantService(st, roles),
+		Workspace: tenancy.NewTenantService(st, roles),
 	}
 	srv := NewServer(base, Deps{
 		Store: st, WorkspaceStore: st, MembersStore: st,

@@ -30,6 +30,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/tenancy"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
 )
@@ -88,7 +89,7 @@ func TestEnvGroupReadSideOwnerIDTargetingE2E(t *testing.T) {
 		}
 	}
 
-	tenantSvc := NewTenantService(st, roles)
+	tenantSvc := tenancy.NewTenantService(st, roles)
 	base := &core.Base{
 		Client: fakeClient(), Namespace: "default",
 		Authz:     checker,

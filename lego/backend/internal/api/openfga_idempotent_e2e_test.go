@@ -34,6 +34,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/tenancy"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
@@ -201,7 +202,7 @@ func TestRevokeAPIKeyWhoseTupleIsGoneE2E(t *testing.T) {
 		t.Fatalf("grant admin: %v", err)
 	}
 
-	tenantSvc := NewTenantService(st, roles)
+	tenantSvc := tenancy.NewTenantService(st, roles)
 	base := &core.Base{Client: fakeClient(), Namespace: "default", Authz: checker, Workspace: tenantSvc}
 	keyStore := newFakeKeyStore()
 	// The fake store counts ids from 1 and the revocation marker is permanent

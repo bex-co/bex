@@ -29,13 +29,14 @@ import (
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/members"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/tenancy"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
 // members_owner_pg_test.go proves, against REAL Postgres, the workspace
 // creator's removal and demotion (w5/m372, after w5/m101) over the REAL chain:
 // members.Service over PGStore, then the onboarding path
-// (tenantService.EnsureTenant) the auth gate runs on every session request
+// (tenancy.Service.EnsureTenant) the auth gate runs on every session request
 // (internal/api/auth.go).
 //
 // Onboarding resolves the personal workspace by tenants.owner_identity_id and
@@ -87,7 +88,7 @@ func TestRemovingTheCreatorNeitherRestoresAdminNorStrandsTheAccount(t *testing.T
 	//    so every request reads the store rather than a cached answer.
 	var landed string
 	for i := range 3 {
-		got, err := NewTenantService(st, granter).EnsureTenant(ctx, owner, "", false)
+		got, err := tenancy.NewTenantService(st, granter).EnsureTenant(ctx, owner, "", false)
 		if err != nil {
 			t.Fatalf("session %d: EnsureTenant for the removed creator: %v", i+1, err)
 		}
