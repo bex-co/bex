@@ -41,6 +41,32 @@ func TestImageRepositoryNormalizesDockerHubAndDropsVersion(t *testing.T) {
 	}
 }
 
+func TestRenderImagePathQualifiesLikeRender(t *testing.T) {
+	digest := "sha256:" + strings.Repeat("a", 64)
+	for in, want := range map[string]string{
+		// Render's own recordings: a create naming `nginx` reads back
+		// `docker.io/library/nginx:latest`, and a qualified tag is kept.
+		"nginx":                               "docker.io/library/nginx:latest",
+		"docker.io/library/nginx:stable-perl": "docker.io/library/nginx:stable-perl",
+		"nginx:1.27":                          "docker.io/library/nginx:1.27",
+		"traefik/whoami":                      "docker.io/traefik/whoami:latest",
+		"index.docker.io/library/redis":       "docker.io/library/redis:latest",
+		"ghcr.io/o/i":                         "ghcr.io/o/i:latest",
+		"ghcr.io/o/i@" + digest:               "ghcr.io/o/i@" + digest,
+		"ghcr.io/o/i:v1@" + digest:            "ghcr.io/o/i:v1@" + digest,
+		"nginx@" + digest:                     "docker.io/library/nginx@" + digest,
+		"myreg.example.com:5000/team/app":     "myreg.example.com:5000/team/app:latest",
+		// Nothing to qualify: an image-less service, and a value the grammar
+		// refuses, read back as stored.
+		"":        "",
+		"Bad Ref": "Bad Ref",
+	} {
+		if got := RenderImagePath(in); got != want {
+			t.Errorf("RenderImagePath(%q) = %q; want %q", in, got, want)
+		}
+	}
+}
+
 func TestPublicImageRefStripsOnlyClusterInternalHosts(t *testing.T) {
 	digest := "sha256:" + strings.Repeat("a", 64)
 	for in, want := range map[string]string{

@@ -532,7 +532,9 @@ type AppView struct {
 	// SourceImage is the configured prebuilt image. Image above is observed
 	// deployment state (status.image), which can be empty until the operator has
 	// reconciled; Render's imagePath is configuration and must be available
-	// immediately so clients can clone an image-backed service.
+	// immediately so clients can clone an image-backed service. It reads in
+	// Render's qualified form (store.RenderImagePath: `nginx` is
+	// `docker.io/library/nginx:latest`); spec.image keeps the value as written.
 	SourceImage string `json:"sourceImage,omitempty"`
 	// RegistryCredentialID is the durable explicit private-registry binding.
 	// nil means legacy host auto-resolution; pointer-to-empty means explicitly
@@ -1203,7 +1205,7 @@ func view(a *appv1alpha1.App) AppView {
 		ImagePorts:           a.Spec.HasImagePorts(),
 		URLs:                 urls,
 		Image:                store.PublicImageRef(a.Status.Image),
-		SourceImage:          a.Spec.Image,
+		SourceImage:          store.RenderImagePath(a.Spec.Image),
 		RegistryCredentialID: clonePtr(a.Spec.RegistryCredentialID),
 		Runtime:              core.EffectiveRuntime(a.Spec, svcType),
 		BuildCommand:         a.Spec.BuildCommand,

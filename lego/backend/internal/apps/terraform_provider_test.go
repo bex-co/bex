@@ -115,3 +115,68 @@ func TestRESTCreateRefusesConflictingTerraformRegistryCredential(t *testing.T) {
 		})
 	}
 }
+
+// terraformImageWorker is the image background worker create Render's
+// Terraform provider sent in its own recording, which Render answered 201 with
+// `imagePath: "docker.io/library/nginx:latest"`
+// (internal/provider/backgroundworker/resource/testdata/env_var_cassette.yaml
+// at 06af456). The provider reads image_url and the tag out of that form only.
+const terraformImageWorker = `{"envVars":null,"image":{"imagePath":"nginx","ownerId":""},"name":"env-var-test","ownerId":"some-owner-id","rootDir":"","secretFiles":null,"serviceDetails":{"envSpecificDetails":{},"numInstances":1,"plan":"starter","previews":{},"pullRequestPreviewsEnabled":"no","region":"oregon","runtime":"image"},"type":"background_worker"}`
+
+// TestImagePathReadsBackInRendersQualifiedForm pins w9/110: every read
+// surface answers imagePath the way Render does, while the App keeps (and
+// runs) the image as written.
+func TestImagePathReadsBackInRendersQualifiedForm(t *testing.T) {
+	digested := "ghcr.io/o/i@sha256:" + strings.Repeat("a", 64)
+	for _, tc := range []struct{ image, want string }{
+		{"nginx", "docker.io/library/nginx:latest"},
+		{"docker.io/library/nginx:stable-perl", "docker.io/library/nginx:stable-perl"},
+		{digested, digested},
+	} {
+		t.Run(tc.image, func(t *testing.T) {
+			svc, cl := newService(nil)
+			body := strings.Replace(terraformImageWorker, `"imagePath":"nginx"`, `"imagePath":"`+tc.image+`"`, 1)
+			rec := strictCreate(t, svc, body)
+			if rec.Code != http.StatusCreated {
+				t.Fatalf("POST = %d: %s", rec.Code, rec.Body.String())
+			}
+			var created serviceAndDeploy
+			if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+				t.Fatal(err)
+			}
+			if created.Service.ImagePath != tc.want {
+				t.Errorf("create response imagePath = %q, want %q", created.Service.ImagePath, tc.want)
+			}
+			if got := getApp(t, cl, created.Service.Name).Spec.Image; got != tc.image {
+				t.Errorf("stored spec.image = %q, want %q as written", got, tc.image)
+			}
+			id := created.Service.ID
+
+			mux := http.NewServeMux()
+			svc.RegisterREST(mux)
+			rec = httptest.NewRecorder()
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/"+id, nil))
+			var read renderService
+			if err := json.Unmarshal(rec.Body.Bytes(), &read); err != nil || rec.Code != http.StatusOK {
+				t.Fatalf("GET = %d %v: %s", rec.Code, err, rec.Body.String())
+			}
+			if read.ImagePath != tc.want {
+				t.Errorf("REST GET imagePath = %q, want %q", read.ImagePath, tc.want)
+			}
+
+			data := gqlDo(t, gqlSchema(t, svc), `{ service(id: "`+id+`") { imagePath } }`)
+			if got := data["service"].(map[string]any)["imagePath"]; got != tc.want {
+				t.Errorf("GraphQL imagePath = %v, want %q", got, tc.want)
+			}
+
+			res := callMCPTool(t, svc, "get_service", map[string]any{"serviceId": id})
+			var mcpRead renderService
+			if err := json.Unmarshal([]byte(mcpResultText(res)), &mcpRead); err != nil || res.IsError {
+				t.Fatalf("MCP get_service: %v: %s", err, mcpResultText(res))
+			}
+			if mcpRead.ImagePath != tc.want {
+				t.Errorf("MCP get_service imagePath = %q, want %q", mcpRead.ImagePath, tc.want)
+			}
+		})
+	}
+}

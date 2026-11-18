@@ -92,6 +92,23 @@ func ImageRepository(v string) (string, error) {
 	return strings.ToLower(reference.Domain(named)) + "/" + reference.Path(named), nil
 }
 
+// RenderImagePath returns the fully qualified form Render reads a service's
+// imagePath back in (w9/110): Docker Hub's short forms expand
+// (`nginx` → `docker.io/library/nginx`) and a reference with neither tag nor
+// digest gains the default `latest` tag, so `nginx` reads back as
+// `docker.io/library/nginx:latest`. An explicit tag or digest is kept. Render's
+// Terraform provider takes image_url and tag out of this form, and only when
+// it holds a `:` or `@`. The stored value, and so the image a service runs, is
+// never rewritten: this runs at the read projection. A value the reference
+// grammar refuses is returned as is.
+func RenderImagePath(v string) string {
+	named, err := reference.ParseNormalizedNamed(v)
+	if err != nil {
+		return v
+	}
+	return reference.TagNameOnly(named).String()
+}
+
 // PublicImageRef returns the tenant-facing form of a stored deploy image
 // reference (w4/m236). A reference whose registry host is cluster-internal
 // (the platform's own zot build registry, any *.svc or *.cluster.local host)

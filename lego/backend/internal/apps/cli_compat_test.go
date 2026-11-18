@@ -62,8 +62,8 @@ func TestRenderServiceSupportsOfficialCLICloneAndRename(t *testing.T) {
 	if got.ID != "immutable-id" || got.Name != "Friendly API" {
 		t.Fatalf("identity/name = %q/%q, want immutable-id/Friendly API", got.ID, got.Name)
 	}
-	if got.ImagePath != "nginx:alpine" {
-		t.Fatalf("imagePath = %q, want configured image", got.ImagePath)
+	if got.ImagePath != "docker.io/library/nginx:alpine" {
+		t.Fatalf("imagePath = %q, want the configured image in Render's qualified form", got.ImagePath)
 	}
 	if got.CreatedAt == "" || got.UpdatedAt == "" {
 		t.Fatalf("CLI-required timestamps missing: created=%q updated=%q", got.CreatedAt, got.UpdatedAt)
