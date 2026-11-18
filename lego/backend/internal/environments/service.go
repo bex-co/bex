@@ -264,6 +264,19 @@ func (r CreateEnvironmentRequest) hasACL() bool {
 	return r.ProtectedStatus != "" || r.NetworkIsolationEnabled || r.IPAllowList != nil
 }
 
+// relation is the create's one gate. round-5 finding 12: the
+// protected-environment ACL is admin-classified (model.fga: admin — "protected
+// envs"), so a create that restricts access needs can_manage. A create that
+// states the defaults (unprotected, not isolated, an allow list that admits
+// everyone), as Render's Terraform provider does for every environment, stays
+// can_create (w9/106).
+func (r CreateEnvironmentRequest) relation() string {
+	if core.EnvironmentACLBearing(r.ProtectedStatus, r.NetworkIsolationEnabled, core.EnvironmentAllowListOrSeed(r.IPAllowList)) {
+		return core.RelCanManage
+	}
+	return core.RelCanCreate
+}
+
 // EnvironmentPatch is the neutral partial-update input shared by REST PATCH,
 // GraphQL updateEnvironment, and MCP update_environment (w4/m30) — pointer
 // fields distinguish "absent" (nil, leave unchanged) from a zero value
@@ -647,10 +660,7 @@ func (s *Service) Create(ctx context.Context, projectID, name string) (Environme
 // Create is. Validation happens before the row is written, so malformed
 // status/CIDR input cannot leave an orphan environment.
 func (s *Service) CreateWithACL(ctx context.Context, req CreateEnvironmentRequest) (EnvironmentView, error) {
-	relation := core.RelCanCreate
-	if req.hasACL() {
-		relation = core.RelCanManage
-	}
+	relation := req.relation()
 	// One CreateEnvironmentEvent, once the environment exists: a create
 	// refused by validation, the quota or a name conflict records only a
 	// denial, if any (w4/m321).
@@ -667,17 +677,10 @@ func (s *Service) createWithACL(ctx context.Context, req CreateEnvironmentReques
 	if err != nil {
 		return EnvironmentView{}, "", err
 	}
-	// round-5 finding 12: the protected-environment ACL (protectedStatus,
-	// networkIsolationEnabled, ipAllowList) is an admin-classified control
-	// (model.fga: admin — "protected envs"), so a create that ALSO arms an ACL
-	// requires can_manage, not just the can_create a plain environment create
-	// takes. It is the verb's one gate, so a denied developer leaves no
+	// The verb's one gate (req.relation), so a denied developer leaves no
 	// environment behind.
 	hasACL := req.hasACL()
-	relation := core.RelCanCreate
-	if hasACL {
-		relation = core.RelCanManage
-	}
+	relation := req.relation()
 	if err := s.Authorize(ctx, relation); err != nil {
 		return EnvironmentView{}, "", err
 	}
@@ -719,11 +722,7 @@ func (s *Service) createWithACL(ctx context.Context, req CreateEnvironmentReques
 	// An ACL without a list keeps the seeded allow-all rules: applyACL turns a
 	// nil list into an explicit deny-all, which an isolation-only create never
 	// asked for (and which would also dodge the Scale-plan rule gate above).
-	allowList := req.IPAllowList
-	if allowList == nil {
-		allowList = core.DefaultEnvironmentAllowList()
-	}
-	v, err := s.applyACL(ctx, e, req.ProtectedStatus, req.NetworkIsolationEnabled, allowList)
+	v, err := s.applyACL(ctx, e, req.ProtectedStatus, req.NetworkIsolationEnabled, core.EnvironmentAllowListOrSeed(req.IPAllowList))
 	return v, p.TenantID, err
 }
 
@@ -824,7 +823,7 @@ func (s *Service) Rename(ctx context.Context, id, name string) (EnvironmentView,
 
 // Update applies a partial update (Render's PATCH /environments/{id}
 // semantics — only fields set in patch change; everything else is left
-// alone) in one authorize + one fetch, replacing the REST adapter's former
+// alone) in one fetch, replacing the REST adapter's former
 // sequence of independently-authorized Rename/Get/SetACL calls. A rename and
 // an ACL merge in the same patch apply together against the one fetched row;
 // the ACL half reuses applyACL (SetACL's post-authorization body) so the
@@ -835,19 +834,11 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	// round-5 finding 12: an ACL-bearing patch mutates admin-only
-	// protected-environment controls, so it takes can_manage; a rename-only
-	// patch stays can_create. One gate, before the rename, so a refused patch
-	// changes nothing.
 	hasACL := patch.hasACL()
-	relation := core.RelCanCreate
-	if hasACL {
-		relation = core.RelCanManage
-	}
 	// The allowed rows wait for the writes: a rename's own, and one per access
 	// setting the patch changed (w9/m449). A refusal records at once.
 	authCtx := core.WithDeferredAllowedWriteAudit(ctx)
-	if err := s.Authorize(authCtx, relation); err != nil {
+	if err := s.Authorize(authCtx, core.RelCanCreate); err != nil {
 		return EnvironmentView{}, err
 	}
 	if patch.Name == nil && !hasACL {
@@ -861,9 +852,28 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 		}
 		name = trimmed
 	}
-	e, err := s.requireEnvironment(authCtx, relation, id)
+	e, err := s.requireEnvironment(authCtx, core.RelCanCreate, id)
 	if err != nil {
 		return EnvironmentView{}, err
+	}
+	status, isolated, allowList := mergeACL(e, patch)
+	// round-5 finding 12: the access settings are an administrator's, so a
+	// patch that names them takes can_manage when the environment restricts
+	// access before or after it. Re-sending the defaults to a default
+	// environment, as Render's Terraform provider does on every update, stays
+	// can_create (w9/106); a rename-only patch always does. Every check runs
+	// before the rename, so a refused patch changes nothing.
+	relation := core.RelCanCreate
+	if hasACL {
+		if aclBearing(e) || core.EnvironmentACLBearing(status, isolated, allowList) {
+			relation = core.RelCanManage
+			if err := s.Authorize(authCtx, relation); err != nil {
+				return EnvironmentView{}, err
+			}
+		}
+		if err := validateACL(status, allowList); err != nil {
+			return EnvironmentView{}, err
+		}
 	}
 	if patch.IPAllowList != nil {
 		if err := s.RequireInboundIPRules(ctx, e.TenantID, *patch.IPAllowList, e.IPAllowList); err != nil {
@@ -885,10 +895,14 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 	if !hasACL {
 		return s.toFullView(ctx, e)
 	}
-	status, isolated, allowList := e.ProtectedStatus, e.NetworkIsolationEnabled, e.IPAllowList
-	if status == "" { // pre-ACL-migration rows surface as empty
-		status = ProtectedStatusUnprotected
-	}
+	return s.applyACLRecorded(ctx, relation, e, status, isolated, allowList)
+}
+
+// mergeACL is e's access settings with patch's present fields applied: the
+// full triple Update saves. A pre-ACL-migration row's empty status reads as
+// unprotected.
+func mergeACL(e store.Environment, patch EnvironmentPatch) (status string, isolated bool, allowList []core.IPAllowListEntry) {
+	status, isolated, allowList = cmp.Or(e.ProtectedStatus, ProtectedStatusUnprotected), e.NetworkIsolationEnabled, e.IPAllowList
 	if patch.ProtectedStatus != nil {
 		status = *patch.ProtectedStatus
 	}
@@ -898,10 +912,7 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 	if patch.IPAllowList != nil {
 		allowList = *patch.IPAllowList
 	}
-	if err := validateACL(status, allowList); err != nil {
-		return EnvironmentView{}, err
-	}
-	return s.applyACLRecorded(ctx, e, status, isolated, allowList)
+	return status, isolated, allowList
 }
 
 // ProjectMemberClearer adapts Service to the projects feature's
@@ -1114,26 +1125,10 @@ func (s *Service) DeleteIfEmpty(ctx context.Context, id string) error {
 }
 
 // aclBearing reports whether an environment carries protected-environment ACL
-// state whose removal is an administrator action (codex round-9 #5): an armed
-// protectedStatus, network isolation, or an inbound IP allow-list that
-// restricts something. The seeded allow-all default (Render's 0.0.0.0/0, bex's
-// ::/0 twin) restricts nothing, and an explicitly emptied list is deny-all, a
-// real restriction (w4/355).
+// state whose removal is an administrator action (codex round-9 #5), by
+// core.EnvironmentACLBearing's definition (w4/355).
 func aclBearing(e store.Environment) bool {
-	return e.ProtectedStatus == ProtectedStatusProtected ||
-		e.NetworkIsolationEnabled ||
-		restrictsInbound(e.IPAllowList)
-}
-
-// restrictsInbound reports whether an allow-list keeps any source out: true
-// unless some entry admits every address.
-func restrictsInbound(list []core.IPAllowListEntry) bool {
-	for _, entry := range list {
-		if entry.CIDRBlock == "0.0.0.0/0" || entry.CIDRBlock == "::/0" {
-			return false
-		}
-	}
-	return true
+	return core.EnvironmentACLBearing(e.ProtectedStatus, e.NetworkIsolationEnabled, e.IPAllowList)
 }
 
 // clearEnvironmentMembers clears environment membership and projected rules
@@ -1534,15 +1529,15 @@ func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networ
 	if err := s.RequireNetworkIsolation(ctx, e.TenantID, networkIsolationEnabled, e.NetworkIsolationEnabled); err != nil {
 		return EnvironmentView{}, err
 	}
-	return s.applyACLRecorded(ctx, e, protectedStatus, networkIsolationEnabled, ipAllowList)
+	return s.applyACLRecorded(ctx, core.RelCanManage, e, protectedStatus, networkIsolationEnabled, ipAllowList)
 }
 
 // applyACLRecorded is applyACL for a change to an existing environment
 // (SetACL, Update): once the settings are saved it records one row per setting
 // that changed, Render's ChangeEnvironmentProtectionEvent,
-// UpdateEnvironmentIsolatedEvent and UpdateIPAllowListEvent (w9/m449). A save
-// that changed nothing records none.
-func (s *Service) applyACLRecorded(ctx context.Context, e store.Environment, protectedStatus string, networkIsolationEnabled bool, ipAllowList []core.IPAllowListEntry) (EnvironmentView, error) {
+// UpdateEnvironmentIsolatedEvent and UpdateIPAllowListEvent (w9/m449), under
+// the relation the verb checked. A save that changed nothing records none.
+func (s *Service) applyACLRecorded(ctx context.Context, relation string, e store.Environment, protectedStatus string, networkIsolationEnabled bool, ipAllowList []core.IPAllowListEntry) (EnvironmentView, error) {
 	v, err := s.applyACL(ctx, e, protectedStatus, networkIsolationEnabled, ipAllowList)
 	if err != nil {
 		return v, err
@@ -1556,7 +1551,7 @@ func (s *Service) applyACLRecorded(ctx context.Context, e store.Environment, pro
 		{core.AuditVerbSetEnvironmentIPAllowList, !slices.Equal(e.IPAllowList, ipAllowList)},
 	} {
 		if changed.is {
-			s.RecordAllowedWrite(ctx, changed.verb, core.RelCanManage, e.TenantID, environmentTarget(e), e.Name)
+			s.RecordAllowedWrite(ctx, changed.verb, relation, e.TenantID, environmentTarget(e), e.Name)
 		}
 	}
 	return v, nil

@@ -330,6 +330,32 @@ func DefaultEnvironmentAllowList() []IPAllowListEntry {
 	}
 }
 
+// EnvironmentAllowListOrSeed is the rule set an environment create stores: the
+// one it carried, or the seeded allow-all pair when it carried none (nil). An
+// explicitly empty list stays deny-all.
+func EnvironmentAllowListOrSeed(entries []IPAllowListEntry) []IPAllowListEntry {
+	if entries == nil {
+		return DefaultEnvironmentAllowList()
+	}
+	return entries
+}
+
+// EnvironmentACLBearing reports whether an environment's access settings are
+// an administrator's to set or clear (w4/355): protected, network-isolated, or
+// an inbound allow list that keeps some source out. The settings a new
+// environment starts with (unprotected, not isolated, the seeded allow-all
+// rules) restrict nothing, so a member who may create an environment may also
+// state them, as Render's Terraform provider does on every create and update
+// (w9/106). An empty list is deny-all and restricts most of all.
+func EnvironmentACLBearing(protectedStatus string, networkIsolationEnabled bool, allowList []IPAllowListEntry) bool {
+	return protectedStatus == ProtectedStatusProtected || networkIsolationEnabled || !slices.ContainsFunc(allowList, admitsEverySource)
+}
+
+// admitsEverySource reports whether e is one of the allow-all rules.
+func admitsEverySource(e IPAllowListEntry) bool {
+	return e.CIDRBlock == "0.0.0.0/0" || e.CIDRBlock == "::/0"
+}
+
 // EnvironmentLayerCIDRs projects an environment's rule entries onto the flat
 // CIDR list member CRs carry (spec.environmentIPAllowList, w4/m28): CIDRs
 // only — descriptions stay on the environment row — with an explicitly empty

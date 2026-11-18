@@ -582,9 +582,7 @@ func RestrictsInbound(entries []IPAllowListEntry) bool {
 	if len(entries) == 0 {
 		return true
 	}
-	return slices.ContainsFunc(entries, func(e IPAllowListEntry) bool {
-		return e.CIDRBlock != "0.0.0.0/0" && e.CIDRBlock != "::/0"
-	})
+	return slices.ContainsFunc(entries, func(e IPAllowListEntry) bool { return !admitsEverySource(e) })
 }
 
 // RestrictsServiceInbound is RestrictsInbound for a web service or static

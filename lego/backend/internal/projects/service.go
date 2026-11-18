@@ -466,8 +466,13 @@ func (s *Service) createWithEnvironments(ctx context.Context, workspaceID, name 
 			return ProjectView{}, "", fmt.Errorf("%w: invalid request body at /environments/%d/name", core.ErrBadRequest, i)
 		}
 		if e.ProtectedStatus != "" || e.NetworkIsolationEnabled || e.IPAllowList != nil {
-			if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID)); err != nil {
-				return ProjectView{}, "", err
+			// The standalone environment create's gate: restricting access
+			// takes can_manage; stating the defaults, as Render's Terraform
+			// provider does for every environment, does not (w9/106).
+			if core.EnvironmentACLBearing(e.ProtectedStatus, e.NetworkIsolationEnabled, core.EnvironmentAllowListOrSeed(e.IPAllowList)) {
+				if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID)); err != nil {
+					return ProjectView{}, "", err
+				}
 			}
 			if e.ProtectedStatus != "" && e.ProtectedStatus != core.ProtectedStatusProtected && e.ProtectedStatus != core.ProtectedStatusUnprotected {
 				return ProjectView{}, "", fmt.Errorf("%w: invalid request body at /environments/%d/protectedStatus", core.ErrBadRequest, i)
@@ -526,11 +531,7 @@ func (s *Service) createWithEnvironments(ctx context.Context, workspaceID, name 
 				}
 				// No list keeps the seeded allow-all rules; a nil list would be stored
 				// as deny-all.
-				allowList := input.IPAllowList
-				if allowList == nil {
-					allowList = core.DefaultEnvironmentAllowList()
-				}
-				if err := g.SetEnvironmentACL(ctx, e.ID, status, input.NetworkIsolationEnabled, allowList); err != nil {
+				if err := g.SetEnvironmentACL(ctx, e.ID, status, input.NetworkIsolationEnabled, core.EnvironmentAllowListOrSeed(input.IPAllowList)); err != nil {
 					return err
 				}
 			}
