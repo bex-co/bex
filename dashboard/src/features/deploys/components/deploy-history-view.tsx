@@ -44,9 +44,11 @@ export function DeployHistoryView({
       }
     />
   );
-  if (!autoDeployOff(service)) return list;
+  // `service-wide-layout` opts the tab into the layout's wide measure.
+  if (!autoDeployOff(service))
+    return <div className="service-wide-layout">{list}</div>;
   return (
-    <div className="space-y-4">
+    <div className="service-wide-layout space-y-4">
       <AutoDeployOffBanner
         serviceId={serviceId}
         branch={service?.branch ?? null}

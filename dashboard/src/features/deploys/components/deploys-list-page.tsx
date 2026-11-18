@@ -1,14 +1,28 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Search } from "lucide-react";
+import {
+  AlertCircle,
+  CircleCheck,
+  CircleDashed,
+  CircleSlash,
+  CircleX,
+  LoaderCircle,
+  Search,
+} from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { useNow } from "@/common/hooks/use-now";
 import { useUrlEcho } from "@/common/hooks/use-url-echo";
 import { formatTimeAgo } from "@/common/lib/format";
+import {
+  DeploysCountSlot,
+  DeploysListFrame,
+  DeploysTableFrame,
+  DeploysTableHeader,
+  deployRowGrid,
+} from "./deploys-list-frame";
 import { cn } from "@/common/lib/utils/utils";
-import { EmptyState } from "@/common/components/empty-state";
 import { InstantTooltip } from "@/common/components/instant-tooltip";
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
@@ -50,12 +64,6 @@ import {
 } from "../lib/deploy-presentation";
 import { DeployActions } from "./deploy-actions";
 import { DeployFailureReason } from "./deploy-failure-reason";
-import {
-  DeploysCountSlot,
-  DeploysListCard,
-  DeploysTableFrame,
-  DeploysTableHeader,
-} from "./deploys-list-frame";
 
 // Radix Select can't hold "" — the log-filter-bar's "all" sentinel idiom.
 const ALL = "all";
@@ -91,6 +99,43 @@ function durationLabel(d: DeployRow, t: Translate): string {
   if (d.startedAt && !isTerminalDeployStatus(d.status))
     return t("deploys.durationActive");
   return t("deploys.notYet");
+}
+
+/**
+ * A row's status as Render draws it: one icon, filled for the deploy that is
+ * live now. The status's own name is the icon's accessible name.
+ */
+function DeployStatusIcon({
+  status,
+  label,
+}: {
+  status: string;
+  label: string;
+}) {
+  let Icon = CircleDashed;
+  let tone = "text-muted-foreground";
+  if (status === "live") {
+    Icon = CircleCheck;
+    tone = "fill-primary text-primary-foreground";
+  } else if (status === "deactivated" || status === "succeeded") {
+    Icon = CircleCheck;
+    tone = "text-primary";
+  } else if (deployStatusVariant(status) === "destructive") {
+    Icon = CircleX;
+    tone = "text-destructive";
+  } else if (status === "canceled") {
+    Icon = CircleSlash;
+  } else if (status.endsWith("_in_progress")) {
+    Icon = LoaderCircle;
+    tone = "animate-spin text-foreground motion-reduce:animate-none";
+  }
+  return (
+    <Icon
+      role="img"
+      aria-label={label}
+      className={cn("mt-px size-[18px] shrink-0", tone)}
+    />
+  );
 }
 
 /**
@@ -136,7 +181,7 @@ export function DeploysListPage({
     setLocalFilters(next);
     onFiltersChange?.(next);
   };
-  const { deploys, loading, loadingMore, error, hasMore, loadMore } =
+  const { deploys, loading, loadingMore, error, hasMore, loadMore, retry } =
     useDeploys(serviceId, status ? [status] : []);
   const visibleDeploys = useMemo(
     () => deploys.filter((deploy) => deployMatchesSearch(deploy, search)),
@@ -157,37 +202,80 @@ export function DeploysListPage({
   // the numeric `count` param passed at the render site.
   const countKey = hasMore ? "deploys.listCountLoaded" : "deploys.listCount";
 
+  const searching = search.trim() !== "";
+  const failed = Boolean(error) && deploys.length === 0;
+
+  const noMatch =
+    !failed && !loading && deploys.length > 0 && visibleDeploys.length === 0;
+  const loadMoreButton = (
+    <Button
+      variant="outline"
+      size="sm"
+      className="max-lg:h-11"
+      disabled={loadingMore}
+      onClick={loadMore}
+    >
+      {t("deploys.listLoadMore")}
+    </Button>
+  );
+
   let body;
-  if (error && deploys.length === 0) {
+  if (failed) {
     body = (
-      <EmptyState
+      <div
         role="alert"
-        iconName="AlertCircle"
-        title={t(titleKey)}
-        description={mutationErrorMessage(error, t("common.loadErrorRetry"))}
-      />
+        className="flex flex-col items-center gap-1 rounded-lg border border-dashed px-4 py-10 text-center"
+      >
+        <AlertCircle
+          aria-hidden="true"
+          className="mb-2 size-6 text-muted-foreground"
+        />
+        <p className="font-medium">{t("deploys.listLoadErrorTitle")}</p>
+        <p className="max-w-sm text-sm text-balance text-muted-foreground">
+          {mutationErrorMessage(error, t("deploys.listLoadErrorBody"))}
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3 max-lg:h-11"
+          onClick={retry}
+        >
+          {t("common.tryAgain")}
+        </Button>
+      </div>
     );
   } else if (loading) {
-    // The ready table's frame (w4/702); an image-backed service's deploys
-    // carry no commit line.
     body = <DeploysTableFrame commits={!service || Boolean(repo)} />;
   } else if (deploys.length === 0) {
     body = (
-      <p className="text-sm text-muted-foreground">
+      <p className="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
         {status ? t("deploys.listEmptyFiltered") : t("deploys.listEmpty")}
       </p>
     );
-  } else if (visibleDeploys.length === 0) {
+  } else if (noMatch) {
     body = (
-      <p className="text-sm text-muted-foreground">
-        {t("deploys.listEmptySearch")}
-      </p>
+      <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed px-4 py-10 text-center">
+        <p className="text-sm text-muted-foreground">
+          {t("deploys.listEmptySearch")}
+        </p>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="max-lg:h-11"
+            onClick={() => changeFilters({ search: "" })}
+          >
+            {t("deploys.listClearSearch")}
+          </Button>
+          {hasMore ? loadMoreButton : null}
+        </div>
+      </div>
     );
   } else {
     body = (
-      <Table>
+      <Table role="table" className="block">
         <DeploysTableHeader />
-        <TableBody>
+        <TableBody role="rowgroup" className="block">
           {visibleDeploys.map((d) => {
             const preDeploy = preDeployStatusKey(d.preDeployStatus);
             // Verb + instant follow the deploy's terminal state (w6/051): a
@@ -207,50 +295,170 @@ export function DeploysListPage({
             const hasListAction =
               isCancelableDeployStatus(d.status) ||
               (d.status === "deactivated" && d.buildAvailable !== false);
+            const isLive = d.status === "live";
+            const statusLabel = t(
+              deployStatusKey(d.status) as Parameters<typeof t>[0],
+            );
+            const subject = d.commitMessage
+              ? d.commitMessage.split("\n")[0].trim()
+              : "";
+            // The icon and the row's verb ("Deployed", "Failed", "Canceled")
+            // say how a finished deploy ended. A deploy still under way has
+            // no such verb, and a failure with no stored reason has nothing
+            // else naming which step failed, so those rows spell the status.
+            const spellStatus =
+              !isTerminalDeployStatus(d.status) ||
+              (deployStatusVariant(d.status) === "destructive" &&
+                !d.failureReason);
+            // Below the table the row's action sits on its last line.
+            const reasonClass = cn(
+              "col-start-2 line-clamp-2 break-words text-pretty",
+              hasListAction && "@max-3xl/deploys:pr-28",
+            );
             return (
-              <TableRow key={d.id}>
-                <TableCell className="min-w-0 align-top">
-                  {/* The detail link wraps only the identity line: the commit
-                      SHA below is its own link (to the diff) and the timestamp
-                      is a tooltip trigger, and neither may nest in an anchor.
-                      Each line of the cell is one line tall at any width, so
-                      the loading frame's rows match (w4/702). Its lines are
-                      grids whose last-to-give track is minmax(0, auto): that
-                      text truncates instead of wrapping, and it never widens
-                      the column past what its other content needs. */}
+              <TableRow
+                key={d.id}
+                role="row"
+                className={cn(
+                  deployRowGrid,
+                  "group/row relative active:bg-muted/60",
+                )}
+              >
+                <TableCell
+                  role="cell"
+                  className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 px-2 py-3 whitespace-normal"
+                >
+                  <DeployStatusIcon status={d.status} label={statusLabel} />
+                  {/* Render's row: the commit subject is the headline and
+                      opens the deploy. The link wraps only that line: the
+                      commit SHA below is its own link (to the diff) and the
+                      timestamp is a tooltip trigger, and neither may nest in
+                      an anchor. Its ::after covers the row, so the whole row
+                      opens the deploy; the other controls sit above it. */}
                   <Link
                     to="/services/$serviceId/deploys/$deployId"
                     params={{ serviceId, deployId: d.id }}
-                    className="flex w-fit max-w-full rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    title={d.id}
+                    className="col-start-2 min-w-0 after:absolute after:inset-0 after:rounded-md after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
                   >
-                    <div className="grid grid-cols-[auto_minmax(0,auto)] items-center gap-2">
-                      <Badge variant={deployStatusVariant(d.status)}>
-                        {t(
-                          deployStatusKey(d.status) as Parameters<typeof t>[0],
-                        )}
-                      </Badge>
-                      <span
-                        className="max-w-[12rem] truncate font-mono text-xs text-muted-foreground"
-                        title={d.id}
-                      >
+                    {subject ? (
+                      <>
+                        <span className="line-clamp-2 text-sm font-medium break-words text-pretty text-foreground underline-offset-2 group-hover/row:underline @3xl/deploys:line-clamp-1">
+                          {subject}
+                        </span>
+                        {/* The deploy's own id names the link for assistive
+                            tech and stays searchable; the row shows the
+                            commit, as Render's does. */}
+                        <span className="sr-only">{d.id}</span>
+                      </>
+                    ) : (
+                      // No commit subject (an image-backed deploy): the
+                      // deploy's id is the only name it has.
+                      <span className="block truncate font-mono text-sm text-foreground underline-offset-2 group-hover/row:underline">
                         {d.id}
                       </span>
-                    </div>
+                    )}
                   </Link>
+                  {/* Meta line, then trigger and duration: stacked on a
+                      phone, one line once the list has room for it, and the
+                      table's own columns from there up. */}
+                  <div className="col-start-2 flex min-w-0 flex-col gap-y-1 @2xl/deploys:flex-row @2xl/deploys:items-center @2xl/deploys:gap-x-1.5">
+                    <div
+                      className={cn(
+                        "flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs whitespace-nowrap text-muted-foreground @2xl/deploys:shrink-0",
+                        // One dot between neighbours, whichever are present.
+                        "[&>*:not(:first-child)]:before:mr-1.5 [&>*:not(:first-child)]:before:inline-block [&>*:not(:first-child)]:before:text-muted-foreground [&>*:not(:first-child)]:before:content-['·']",
+                      )}
+                    >
+                      {/* Render's list links the short SHA to the commit's
+                        diff on the forge; with no browsable repo (an
+                        image-backed service) it stays plain text. */}
+                      {d.commitId && commitUrl ? (
+                        <a
+                          href={commitUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="relative z-10 font-mono text-foreground/80 underline decoration-muted-foreground/60 underline-offset-2 hover:text-foreground hover:decoration-foreground max-md:after:absolute max-md:after:-inset-x-2 max-md:after:-inset-y-3.5 max-md:after:content-['']"
+                          title={d.commitId}
+                        >
+                          {d.commitId.slice(0, 7)}
+                        </a>
+                      ) : d.commitId ? (
+                        <span className="font-mono" title={d.commitId}>
+                          {d.commitId.slice(0, 7)}
+                        </span>
+                      ) : null}
+                      {spellStatus ? (
+                        <span
+                          className={
+                            deployStatusVariant(d.status) === "destructive"
+                              ? "text-destructive"
+                              : "font-medium text-foreground"
+                          }
+                        >
+                          {statusLabel}
+                        </span>
+                      ) : null}
+                      {rowStamp.iso && ago ? (
+                        <InstantTooltip
+                          value={rowStamp.iso}
+                          // Hover and keyboard reveal the exact instant; a touch
+                          // has neither, so a tap falls through to the row.
+                          className="relative z-10 no-underline hover:underline pointer-coarse:pointer-events-none"
+                        >
+                          {t(rowStamp.key as Parameters<typeof t>[0], {
+                            timestamp: ago,
+                          })}
+                        </InstantTooltip>
+                      ) : null}
+                      {preDeploy ? (
+                        <span
+                          className={
+                            d.preDeployStatus === "failed"
+                              ? "text-destructive"
+                              : undefined
+                          }
+                        >
+                          {t(preDeploy as Parameters<typeof t>[0])}
+                        </span>
+                      ) : null}
+                    </div>
+                    {/* Until the list is wide enough for the full table,
+                      Trigger/Duration fold into a line of their own, which
+                      keeps clear of the row's action on a phone. */}
+                    <div
+                      className={cn(
+                        "flex min-w-0 text-xs whitespace-nowrap text-muted-foreground @2xl/deploys:before:mr-1.5 @2xl/deploys:before:content-['·'] @3xl/deploys:hidden",
+                        hasListAction || isLive ? "pr-28" : null,
+                      )}
+                    >
+                      <span className="truncate" title={triggerLabel}>
+                        {triggerLabel}
+                      </span>
+                      {/* A deploy that never ran has no duration to fold in;
+                        the table's Duration column still shows its dash.
+                        Only the trigger gives way: a clipped duration reads
+                        as a different number. */}
+                      {d.startedAt ? (
+                        <span className="shrink-0 tabular-nums before:mx-1.5 before:content-['·']">
+                          {durationLabel(d, t)}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
                   {/* Absent on non-failed / non-superseded rows, so their
-                      height is unchanged. */}
+                      height is unchanged. A reason wraps to two lines; the
+                      deploy's own page has all of it. */}
                   <DeployFailureReason
                     reason={d.failureReason}
                     template={d.failureReasonTemplate}
-                    truncate
-                    className="mt-1 max-w-[16rem] sm:max-w-md lg:max-w-lg"
+                    className={reasonClass}
                   />
                   <DeployFailureReason
                     reason={d.cancelReason}
                     template={d.cancelReasonTemplate}
                     tone="neutral"
-                    truncate
-                    className="mt-1 max-w-[16rem] sm:max-w-md lg:max-w-lg"
+                    className={reasonClass}
                   />
                   {/* w4/m112: an open deploy's stall cause, cleared server-side
                       the moment it goes terminal — so a settled row is
@@ -259,90 +467,50 @@ export function DeploysListPage({
                     reason={d.stallReason}
                     template={d.stallReasonTemplate}
                     tone="neutral"
-                    truncate
-                    className="mt-1 max-w-[16rem] sm:max-w-md lg:max-w-lg"
+                    className={reasonClass}
                   />
-                  {d.commitId ? (
-                    <p className="mt-1 max-w-[16rem] truncate text-sm text-foreground sm:max-w-md lg:max-w-lg">
-                      {/* Render's list links the short SHA to the commit's
-                          diff on the forge; with no browsable repo (an
-                          image-backed service) it stays plain text. */}
-                      {commitUrl ? (
-                        <a
-                          href={commitUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="font-mono text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                          title={d.commitId}
-                        >
-                          {d.commitId.slice(0, 7)}
-                        </a>
-                      ) : (
-                        <span
-                          className="font-mono text-xs text-muted-foreground"
-                          title={d.commitId}
-                        >
-                          {d.commitId.slice(0, 7)}
-                        </span>
-                      )}
-                      {d.commitMessage ? (
-                        <> {d.commitMessage.split("\n")[0]}</>
-                      ) : null}
-                    </p>
-                  ) : null}
-                  <div className="mt-1 grid grid-cols-[auto_minmax(0,auto)] justify-start gap-x-3 whitespace-nowrap text-xs text-muted-foreground">
-                    {rowStamp.iso && ago ? (
-                      <InstantTooltip value={rowStamp.iso}>
-                        {t(rowStamp.key as Parameters<typeof t>[0], {
-                          timestamp: ago,
-                        })}
-                      </InstantTooltip>
-                    ) : null}
-                    {preDeploy ? (
-                      <span
-                        className={cn(
-                          "truncate",
-                          d.preDeployStatus === "failed" && "text-destructive",
-                        )}
-                      >
-                        {t(preDeploy as Parameters<typeof t>[0])}
-                      </span>
-                    ) : null}
-                  </div>
-                  {/* Until the card is wide enough for the full table, fold
-                      Trigger/Duration under the deploy identity instead. */}
-                  <div className="mt-2 grid grid-cols-[minmax(0,auto)_auto_auto] items-center justify-start gap-x-2 whitespace-nowrap text-xs text-muted-foreground @3xl/deploys:hidden">
-                    <span className="truncate" title={triggerLabel}>
-                      {triggerLabel}
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    <span className="tabular-nums">{durationLabel(d, t)}</span>
-                  </div>
                 </TableCell>
-                <TableCell className="hidden whitespace-nowrap align-top text-sm text-muted-foreground @3xl/deploys:table-cell">
+                <TableCell
+                  role="cell"
+                  title={triggerLabel}
+                  className="hidden truncate px-2 text-sm text-muted-foreground @3xl/deploys:block"
+                >
                   {triggerLabel}
                 </TableCell>
-                <TableCell className="hidden whitespace-nowrap align-top tabular-nums text-sm text-muted-foreground @3xl/deploys:table-cell">
+                <TableCell
+                  role="cell"
+                  className="hidden px-2 text-sm whitespace-nowrap tabular-nums text-muted-foreground @3xl/deploys:block"
+                >
                   {durationLabel(d, t)}
                 </TableCell>
-                <TableCell className="w-0 whitespace-nowrap align-top text-right">
+                {/* The row's right edge says what the deploy is to the
+                    service now: the live one is marked, a previous one can
+                    be rolled back to, an open one canceled. Below the full
+                    table it is placed over the row at touch height: beside the
+                    trigger line. */}
+                <TableCell
+                  role="cell"
+                  className="absolute right-0 -bottom-0.5 z-10 flex h-11 items-center p-0 px-2 empty:hidden [&_button]:min-h-11 [&_button:enabled]:text-foreground/80 [&_button:enabled:hover]:text-foreground @3xl/deploys:static @3xl/deploys:h-auto @3xl/deploys:justify-self-end @3xl/deploys:empty:block @3xl/deploys:[&_button]:min-h-8"
+                >
                   {hasListAction ? (
-                    <div className="flex justify-end">
-                      <DeployActions
-                        projection={projection}
-                        serviceId={serviceId}
-                        deployId={d.id}
-                        status={d.status}
-                        commitId={d.commitId}
-                        commitMessage={d.commitMessage}
-                        image={d.image}
-                        trigger={d.trigger}
-                        buildAvailable={d.buildAvailable}
-                        autoDeployOn={
-                          service ? service.autoDeploy === true : undefined
-                        }
-                      />
-                    </div>
+                    <DeployActions
+                      projection={projection}
+                      serviceId={serviceId}
+                      deployId={d.id}
+                      status={d.status}
+                      commitId={d.commitId}
+                      image={d.image}
+                      commitMessage={d.commitMessage}
+                      trigger={d.trigger}
+                      buildAvailable={d.buildAvailable}
+                      autoDeployOn={
+                        service ? service.autoDeploy === true : undefined
+                      }
+                    />
+                  ) : isLive ? (
+                    <Badge className="pointer-events-none mr-2">
+                      {statusLabel}
+                    </Badge>
                   ) : null}
                 </TableCell>
               </TableRow>
@@ -353,19 +521,30 @@ export function DeploysListPage({
     );
   }
 
+  let count: string | null = null;
+  if (!loading && !failed) {
+    count = searching
+      ? t("deploys.listMatchCount", {
+          matched: visibleDeploys.length,
+          total: deploys.length,
+        })
+      : t(countKey, { count: visibleDeploys.length });
+  }
+
   return (
-    <DeploysListCard
+    <DeploysListFrame
       title={t(titleKey)}
       count={
-        loading ? (
-          <DeploysCountSlot />
-        ) : (
-          <p className="text-xs text-muted-foreground" aria-live="polite">
-            {t(countKey, {
-              count: visibleDeploys.length,
-            })}
+        count !== null ? (
+          <p
+            className="text-xs tabular-nums text-muted-foreground"
+            aria-live="polite"
+          >
+            {count}
           </p>
-        )
+        ) : loading ? (
+          <DeploysCountSlot />
+        ) : null
       }
       controls={
         <>
@@ -375,30 +554,39 @@ export function DeploysListPage({
               value={search}
               // Uneditable until handlers attach: a query typed into the
               // server HTML is wiped by hydration (w4/m219).
-              disabled={!hydrated}
+              disabled={!hydrated || failed}
               onChange={(event) =>
                 changeFilters({ search: event.target.value })
               }
               placeholder={t("deploys.listSearchPlaceholder")}
               aria-label={t("deploys.listSearchLabel")}
-              className="pl-9"
+              className="truncate pl-9 max-lg:h-11 pointer-coarse:h-11"
             />
           </div>
           <Select
+            disabled={failed}
             value={status === "" ? ALL : status}
             onValueChange={(v) => changeFilters({ status: v === ALL ? "" : v })}
           >
             <SelectTrigger
               size="sm"
-              className="w-full sm:w-44"
+              className="w-32 shrink-0 max-lg:data-[size=sm]:h-11 pointer-coarse:data-[size=sm]:h-11 @2xl/deploys:w-44"
               aria-label={t("deploys.listStatusFilterLabel")}
             >
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>{t("deploys.listStatusAll")}</SelectItem>
+            <SelectContent
+              // Always under its trigger: flipping upward on a phone covered
+              // the service header and the top bar.
+              side="bottom"
+              align="end"
+              avoidCollisions={false}
+            >
+              <SelectItem value={ALL} className="max-lg:min-h-11">
+                {t("deploys.listStatusAll")}
+              </SelectItem>
               {DEPLOY_STATUS_FILTERS.map((s) => (
-                <SelectItem key={s} value={s}>
+                <SelectItem key={s} value={s} className="max-lg:min-h-11">
                   {t(deployStatusKey(s) as Parameters<typeof t>[0])}
                 </SelectItem>
               ))}
@@ -408,18 +596,9 @@ export function DeploysListPage({
       }
     >
       {body}
-      {hasMore && deploys.length > 0 && (
-        <div className="mt-4 flex justify-center">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={loadingMore}
-            onClick={loadMore}
-          >
-            {t("deploys.listLoadMore")}
-          </Button>
-        </div>
-      )}
-    </DeploysListCard>
+      {hasMore && deploys.length > 0 && !noMatch ? (
+        <div className="mt-4 flex justify-center">{loadMoreButton}</div>
+      ) : null}
+    </DeploysListFrame>
   );
 }

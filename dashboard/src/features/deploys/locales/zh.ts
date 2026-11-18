@@ -339,13 +339,33 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description: "Deploys tab: status filter option matching every deploy",
   },
   "deploys.listSearchPlaceholder": {
-    message: "搜索已加载的部署和提交…",
+    message: "搜索…",
     description:
       "Deploys tab: placeholder for client-side deploy-history search",
   },
   "deploys.listSearchLabel": {
     message: "搜索已加载的部署和提交",
     description: "Deploys tab: accessible label for deploy-history search",
+  },
+  "deploys.listClearSearch": {
+    message: "清除搜索",
+    description:
+      "Deploys tab: button under the no-match message that empties the search box",
+  },
+  "deploys.listMatchCount": {
+    message: "已加载 {total} 条，匹配 {matched} 条",
+    description:
+      "Deploys tab: count shown while a search is typed; matched = loaded deploys that match, total = loaded deploys",
+  },
+  "deploys.listLoadErrorTitle": {
+    message: "无法加载部署记录",
+    description:
+      "Deploys tab: heading of the error state when the deploy history could not be read; a Try again button follows",
+  },
+  "deploys.listLoadErrorBody": {
+    message: "你的部署不受影响。请检查网络连接后重试。",
+    description:
+      "Deploys tab: body of the error state when the deploy history could not be read and the server gave no message; a Try again button follows",
   },
   "deploys.listEmptySearch": {
     message: "已加载的部署中没有匹配项。",

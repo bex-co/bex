@@ -118,7 +118,7 @@ import { WorkspaceNotificationsCardSkeleton } from "@/features/notifications/com
 import { NotificationOverridesCardSkeleton } from "@/features/notifications/components/notification-overrides-card-skeleton";
 import { RegistryCredentialsPanelSkeleton } from "@/features/registry-credentials/components/registry-credentials-panel-skeleton";
 import { AuditLogPanelSkeleton } from "@/features/audit/components/audit-log-panel-skeleton";
-import { DeploysListCardSkeleton } from "@/features/deploys/components/deploys-list-frame";
+import { DeploysListFrameSkeleton } from "@/features/deploys/components/deploys-list-frame";
 import { CHART_FRAME_STYLE } from "@/features/metrics/components/chart-layout";
 import { InstanceTypePickerCardSkeleton } from "@/features/services/components/instance-type-groups";
 import {
@@ -2117,11 +2117,13 @@ export function DeploysListSkeleton({
   commits?: boolean;
 } = {}) {
   return (
-    <PendingFrame route="deploys-list" className="space-y-4">
+    <PendingFrame
+      route="deploys-list"
+      className="service-wide-layout space-y-4"
+    >
       {banner ? <Region name="auto-deploy-off-banner">{banner}</Region> : null}
       <Region name="deploys-table">
-        {/* The page's own card and loading frame (w4/702). */}
-        <DeploysListCardSkeleton titleKey={titleKey} commits={commits} />
+        <DeploysListFrameSkeleton titleKey={titleKey} commits={commits} />
       </Region>
     </PendingFrame>
   );

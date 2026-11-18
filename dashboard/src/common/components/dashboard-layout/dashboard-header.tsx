@@ -13,6 +13,7 @@ import {
 } from "@/common/components/ui/dropdown-menu";
 import { SidebarTrigger, useSidebar } from "@/common/components/ui/sidebar.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { cn } from "@/common/lib/utils/utils";
 import { DashboardBreadcrumbs } from "./dashboard-breadcrumbs";
 import { GlobalSearch } from "./global-search";
 import { NewResourceMenu } from "./new-resource-menu";
@@ -44,7 +45,14 @@ export function DashboardHeader() {
 
   return (
     <header className="sticky top-0 z-50 h-12 shrink-0 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-      <div className="flex h-full min-w-0 items-center justify-between gap-2 px-3 sm:px-4">
+      <div
+        className={cn(
+          "flex h-full min-w-0 items-center justify-between gap-2 px-3 sm:px-4",
+          // Phones: every top-bar control gets a 44px hit area without
+          // changing how it looks.
+          "max-md:[&_button]:relative max-md:[&_button]:min-w-10 max-md:[&_button]:after:absolute max-md:[&_button]:after:-inset-x-[3px] max-md:[&_button]:after:-inset-y-2 max-md:[&_button]:after:content-['']",
+        )}
+      >
         <div className="flex min-w-0 items-center gap-1">
           {showTrigger ? <SidebarTrigger className="mr-1 -ml-1" /> : null}
           <DashboardBreadcrumbs />

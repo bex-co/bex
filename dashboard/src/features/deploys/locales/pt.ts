@@ -345,13 +345,34 @@ const ptDeploys: Record<string, TranslationEntry> = {
     description: "Deploys tab: status filter option matching every deploy",
   },
   "deploys.listSearchPlaceholder": {
-    message: "Pesquisar deploys e commits carregados…",
+    message: "Pesquisar…",
     description:
       "Deploys tab: placeholder for client-side deploy-history search",
   },
   "deploys.listSearchLabel": {
     message: "Pesquisar deploys e commits carregados",
     description: "Deploys tab: accessible label for deploy-history search",
+  },
+  "deploys.listClearSearch": {
+    message: "Limpar busca",
+    description:
+      "Deploys tab: button under the no-match message that empties the search box",
+  },
+  "deploys.listMatchCount": {
+    message: "Correspondências: {matched} de {total} carregados",
+    description:
+      "Deploys tab: count shown while a search is typed; matched = loaded deploys that match, total = loaded deploys",
+  },
+  "deploys.listLoadErrorTitle": {
+    message: "Não foi possível carregar os deploys",
+    description:
+      "Deploys tab: heading of the error state when the deploy history could not be read; a Try again button follows",
+  },
+  "deploys.listLoadErrorBody": {
+    message:
+      "Seus deploys não foram afetados. Verifique sua conexão e tente novamente.",
+    description:
+      "Deploys tab: body of the error state when the deploy history could not be read and the server gave no message; a Try again button follows",
   },
   "deploys.listEmptySearch": {
     message: "Nenhum deploy carregado corresponde à sua pesquisa.",

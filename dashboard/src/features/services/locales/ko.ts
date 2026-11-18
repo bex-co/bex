@@ -520,6 +520,11 @@ const koServices: Record<string, TranslationEntry> = {
     message: "런타임",
     description: "Service-detail header label for the selected runtime",
   },
+  "services.headerMoreFacts": {
+    message: "상세 정보",
+    description:
+      "Service-detail header toggle, phones only, that shows or hides the slug, instances, revision and age line",
+  },
   "services.headerSchedule": {
     message: "스케줄:",
     description:

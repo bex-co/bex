@@ -27,6 +27,8 @@ export function CopyButton({
     <Button
       variant="ghost"
       size="icon-sm"
+      // The ::after widens the hit area to 44px without moving anything.
+      className="relative after:absolute after:-inset-1.5 after:content-['']"
       onClick={() => void copy(value)}
       aria-label={label}
     >

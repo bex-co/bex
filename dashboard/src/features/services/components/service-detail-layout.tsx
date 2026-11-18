@@ -58,7 +58,8 @@ export function ServiceDetailLayout({
   const { service, loading, error, refetch, ownerId } = useServer(serviceId);
   // Judge this page's permissions in the service's own workspace (w6/091).
   useAdoptResourceWorkspace(serviceId, routePending ? null : ownerId);
-  const { deploy: latestDeploy } = useLatestDeploy(serviceId);
+  const { deploy: latestDeploy, loading: latestDeployLoading } =
+    useLatestDeploy(serviceId);
   const { pending, run } = useServiceLifecycle({ refetch });
   const { t } = useTranslations();
   const signInAgain = useSignInAgain();
@@ -159,6 +160,7 @@ export function ServiceDetailLayout({
             <ServiceDetailHeader
               service={shownService}
               latestDeploy={latestDeploy}
+              latestDeployLoading={latestDeployLoading && !latestDeploy}
               pending={pending?.id === shownService.id ? pending.action : null}
               onRun={run}
             />
@@ -168,10 +170,10 @@ export function ServiceDetailLayout({
           {/* The page container the section layout's queries measure. The
               scroller has no top padding (the service header scrolls away
               above), so a sticky bar needs no offset. */}
-          <div className="@container/page p-4 sm:p-6">
+          <div className="@container/page p-4 max-sm:has-[.service-wide-layout]:pt-3 sm:p-6">
             <div
               data-skeleton-region={!shownService ? "active-tab" : undefined}
-              className="mx-auto w-full max-w-5xl space-y-6"
+              className="mx-auto w-full max-w-5xl space-y-6 has-[>.service-wide-layout]:mx-0 has-[>.service-wide-layout]:max-w-7xl"
             >
               {shownService ? (
                 <Outlet />

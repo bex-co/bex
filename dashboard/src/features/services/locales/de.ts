@@ -527,6 +527,11 @@ const deServices: Record<string, TranslationEntry> = {
     message: "Runtime",
     description: "Service-detail header label for the selected runtime",
   },
+  "services.headerMoreFacts": {
+    message: "Einzelheiten",
+    description:
+      "Service-detail header toggle, phones only, that shows or hides the slug, instances, revision and age line",
+  },
   "services.headerSchedule": {
     message: "Zeitplan:",
     description:

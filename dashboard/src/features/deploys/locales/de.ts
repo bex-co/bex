@@ -345,13 +345,34 @@ const deDeploys: Record<string, TranslationEntry> = {
     description: "Deploys tab: status filter option matching every deploy",
   },
   "deploys.listSearchPlaceholder": {
-    message: "Geladene Deployments und Commits durchsuchen…",
+    message: "Suchen…",
     description:
       "Deploys tab: placeholder for client-side deploy-history search",
   },
   "deploys.listSearchLabel": {
     message: "Geladene Deployments und Commits durchsuchen",
     description: "Deploys tab: accessible label for deploy-history search",
+  },
+  "deploys.listClearSearch": {
+    message: "Suche löschen",
+    description:
+      "Deploys tab: button under the no-match message that empties the search box",
+  },
+  "deploys.listMatchCount": {
+    message: "Treffer: {matched} von {total} geladenen",
+    description:
+      "Deploys tab: count shown while a search is typed; matched = loaded deploys that match, total = loaded deploys",
+  },
+  "deploys.listLoadErrorTitle": {
+    message: "Deploys konnten nicht geladen werden",
+    description:
+      "Deploys tab: heading of the error state when the deploy history could not be read; a Try again button follows",
+  },
+  "deploys.listLoadErrorBody": {
+    message:
+      "Deine Deploys sind nicht betroffen. Prüfe deine Verbindung und versuche es erneut.",
+    description:
+      "Deploys tab: body of the error state when the deploy history could not be read and the server gave no message; a Try again button follows",
   },
   "deploys.listEmptySearch": {
     message: "Keine geladenen Deployments entsprechen deiner Suche.",

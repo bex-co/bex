@@ -345,13 +345,34 @@ const jaDeploys: Record<string, TranslationEntry> = {
     description: "Deploys tab: status filter option matching every deploy",
   },
   "deploys.listSearchPlaceholder": {
-    message: "読み込み済みのデプロイとコミットを検索…",
+    message: "検索…",
     description:
       "Deploys tab: placeholder for client-side deploy-history search",
   },
   "deploys.listSearchLabel": {
     message: "読み込み済みのデプロイとコミットを検索",
     description: "Deploys tab: accessible label for deploy-history search",
+  },
+  "deploys.listClearSearch": {
+    message: "検索をクリア",
+    description:
+      "Deploys tab: button under the no-match message that empties the search box",
+  },
+  "deploys.listMatchCount": {
+    message: "読み込み済み {total} 件中 {matched} 件が一致",
+    description:
+      "Deploys tab: count shown while a search is typed; matched = loaded deploys that match, total = loaded deploys",
+  },
+  "deploys.listLoadErrorTitle": {
+    message: "デプロイを読み込めませんでした",
+    description:
+      "Deploys tab: heading of the error state when the deploy history could not be read; a Try again button follows",
+  },
+  "deploys.listLoadErrorBody": {
+    message:
+      "デプロイ自体に影響はありません。接続を確認して、もう一度お試しください。",
+    description:
+      "Deploys tab: body of the error state when the deploy history could not be read and the server gave no message; a Try again button follows",
   },
   "deploys.listEmptySearch": {
     message: "検索に一致する読み込み済みのデプロイはありません。",

@@ -96,7 +96,7 @@ export function GlobalSearch() {
         aria-keyshortcuts={isMac ? "Meta+K" : "Control+K"}
       >
         <Search />
-        <span className="hidden md:inline">{t("common.topbarSearch")}</span>
+        <span className="hidden lg:inline">{t("common.topbarSearch")}</span>
         <kbd
           aria-hidden="true"
           className="hidden rounded border bg-muted px-1.5 py-0.5 font-sans text-[10px] font-medium lg:inline"

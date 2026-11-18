@@ -344,13 +344,33 @@ const koDeploys: Record<string, TranslationEntry> = {
     description: "Deploys tab: status filter option matching every deploy",
   },
   "deploys.listSearchPlaceholder": {
-    message: "불러온 배포와 커밋 검색…",
+    message: "검색…",
     description:
       "Deploys tab: placeholder for client-side deploy-history search",
   },
   "deploys.listSearchLabel": {
     message: "불러온 배포와 커밋 검색",
     description: "Deploys tab: accessible label for deploy-history search",
+  },
+  "deploys.listClearSearch": {
+    message: "검색 지우기",
+    description:
+      "Deploys tab: button under the no-match message that empties the search box",
+  },
+  "deploys.listMatchCount": {
+    message: "불러온 {total}개 중 {matched}개 일치",
+    description:
+      "Deploys tab: count shown while a search is typed; matched = loaded deploys that match, total = loaded deploys",
+  },
+  "deploys.listLoadErrorTitle": {
+    message: "배포를 불러오지 못했습니다",
+    description:
+      "Deploys tab: heading of the error state when the deploy history could not be read; a Try again button follows",
+  },
+  "deploys.listLoadErrorBody": {
+    message: "배포에는 영향이 없습니다. 연결을 확인한 뒤 다시 시도하세요.",
+    description:
+      "Deploys tab: body of the error state when the deploy history could not be read and the server gave no message; a Try again button follows",
   },
   "deploys.listEmptySearch": {
     message: "검색과 일치하는 불러온 배포가 없습니다.",

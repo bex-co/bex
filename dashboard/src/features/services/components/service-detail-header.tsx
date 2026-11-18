@@ -77,6 +77,9 @@ export interface ServiceDetailHeaderProps {
   service: ServiceView;
   /** Newest control-plane deploy, named separately from operator/App phase. */
   latestDeploy?: LatestDeploySummary | null;
+  /** The first read of it is still out: its place is held, so nothing below
+   *  moves when it lands. */
+  latestDeployLoading?: boolean;
   /** The lifecycle action in flight for this service, or null. */
   pending: LifecycleAction | null;
   /** Runs a lifecycle action; the header offers Resume while suspended. */
@@ -105,11 +108,12 @@ export interface ServiceDetailHeaderProps {
 export function ServiceDetailHeader({
   service,
   latestDeploy,
+  latestDeployLoading = false,
   pending,
   onRun,
 }: ServiceDetailHeaderProps) {
   const { t } = useTranslations();
-  const { byID } = useInstanceTypes();
+  const { byID, loading: instanceTypesLoading } = useInstanceTypes();
   const typeKey = deriveServiceType(service.type);
   const TypeIcon = SERVICE_TYPE_ICON[typeKey];
   // Header links point at the service's canonical base (a static_site lives
@@ -129,230 +133,330 @@ export function ServiceDetailHeader({
   // transient/stale render.
   const safeServiceUrl = isDeleting(service) ? null : safeHttpHref(service.url);
   const openPorts = openPortsDisplay(service);
+  // Below the desktop layout the Service ID and the bex-native facts
+  // (runtime, slug, instances, revision, age) start folded behind "Details",
+  // and on a phone the source repository does too, so the tab's own content
+  // is not pushed below the fold. From `lg` up everything always shows and
+  // there is no toggle.
+  const [factsOpen, setFactsOpen] = useState(false);
+  const factsId = useId();
+  const serviceIdRowId = useId();
+  const repoRowId = useId();
 
   return (
-    <div className="space-y-2 border-b px-4 py-3 sm:px-6">
-      <div className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase">
-        <TypeIcon className="size-3.5" />
-        {t(SERVICE_TYPE_LABEL[typeKey])}
-      </div>
+    <div className="border-b px-4 py-3 max-sm:pb-2 sm:px-6">
+      {/* The band is full-bleed; its content ends on the same right edge as
+          the widest tab's content, so the actions sit above what they act
+          on instead of in a far corner of a wide screen. */}
+      <div className="max-w-7xl space-y-2 max-sm:space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase">
+            <TypeIcon className="size-3.5" />
+            {t(SERVICE_TYPE_LABEL[typeKey])}
+          </div>
+        </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <h1 className="truncate text-xl font-semibold">{service.name}</h1>
-          <span className="text-xs font-medium text-muted-foreground">
-            {t("services.headerServicePhase")}
-          </span>
-          <ServiceStatusBadge service={service} />
-          {latestDeploy ? (
-            <Link
-              to={`${base}/$serviceId/deploys/$deployId`}
-              params={{ serviceId: service.id, deployId: latestDeploy.id }}
-              aria-label={`${t("services.headerLatestDeploy")}: ${t(
-                deployStatusKey(latestDeploy.status) as Parameters<typeof t>[0],
-              )}`}
-              className="flex items-center gap-1.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
+        {/* Tablet widths: the name and the actions share the first row and the
+          status items take the second, rather than the actions a third. */}
+        <div className="flex flex-wrap items-center justify-between gap-3 md:max-lg:grid md:max-lg:grid-cols-[minmax(0,1fr)_auto] md:max-lg:gap-y-2 lg:flex-nowrap lg:items-start">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 md:max-lg:contents">
+            <h1 className="truncate text-xl font-semibold">{service.name}</h1>
+            {/* From `sm` the status items wrap under the name as one group
+              rather than one at a time; a phone has no room for the group
+              and lets each wrap on its own. */}
+            <div className="contents sm:flex sm:min-w-0 sm:flex-wrap sm:items-center sm:gap-2 md:max-lg:col-span-2 md:max-lg:row-start-2">
               <span className="text-xs font-medium text-muted-foreground">
-                {t("services.headerLatestDeploy")}
+                {t("services.headerServicePhase")}
               </span>
-              <Badge variant={deployStatusVariant(latestDeploy.status)}>
-                {t(
-                  deployStatusKey(latestDeploy.status) as Parameters<
-                    typeof t
-                  >[0],
-                )}
-              </Badge>
-            </Link>
-          ) : null}
-          {instanceType && !isStaticSite(service) ? (
-            <Link
-              to="/services/$serviceId/plan"
-              params={{ serviceId: service.id }}
-            >
-              <Badge variant="outline" className="hover:bg-accent">
-                {instanceType.name}
-              </Badge>
-            </Link>
-          ) : null}
-          {service.runtime?.trim() ? (
-            <Badge variant="secondary" className="gap-1">
-              <span className="text-muted-foreground">
-                {t("services.headerRuntime")}
-              </span>
-              <span className="capitalize">{service.runtime.trim()}</span>
-            </Badge>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {/* A static_site has no running instance to SSH into — Render's
-              static header carries only Manual Deploy (w5/m48/t001). */}
-          {!isStaticSite(service) && (
-            <ServiceConnectButton service={service} openPorts={openPorts} />
-          )}
-          {service.suspended && onRun ? (
-            <ResumeServiceButton
-              service={service}
-              pending={pending}
-              onRun={onRun}
-              size="sm"
-            />
-          ) : null}
-          <ManualDeployButton service={service} pending={pending !== null} />
-        </div>
-      </div>
-
-      <div className="space-y-0.5 text-sm">
-        <div className="text-muted-foreground flex items-center gap-1.5">
-          <span>{t("services.headerServiceId")}</span>
-          <span className="text-foreground font-mono text-xs">
-            {service.id}
-          </span>
-          <CopyButton
-            value={service.id}
-            label={t("services.headerCopyServiceId")}
-            successText={t("services.headerCopied")}
-            errorText={t("services.headerCopyError")}
-          />
-        </div>
-
-        {service.repo ? (
-          <div className="text-muted-foreground flex min-w-0 items-center gap-1.5">
-            <GithubIcon className="size-3.5 shrink-0" />
-            {repoUrl ? (
-              <a
-                href={repoUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-foreground truncate hover:underline"
-              >
-                {formatRepoLabel(service.repo)}
-              </a>
-            ) : (
-              <span className="text-foreground truncate">
-                {formatRepoLabel(service.repo)}
-              </span>
-            )}
-            {service.branch ? (
-              <Badge variant="secondary" className="font-mono text-xs">
-                {service.branch}
-              </Badge>
-            ) : null}
-          </div>
-        ) : null}
-
-        {service.registryCredentialId ? (
-          <RegistryCredentialFact id={service.registryCredentialId} />
-        ) : null}
-
-        {isCron(service) ? (
-          <>
-            <div className="text-muted-foreground flex items-center gap-1.5">
-              <span>{t("services.headerSchedule")}</span>
-              <span className="text-foreground font-mono text-xs">
-                {service.schedule || "—"}
-              </span>
+              <ServiceStatusBadge service={service} />
+              {latestDeploy ? (
+                <Link
+                  to={`${base}/$serviceId/deploys/$deployId`}
+                  params={{ serviceId: service.id, deployId: latestDeploy.id }}
+                  aria-label={`${t("services.headerLatestDeploy")}: ${t(
+                    deployStatusKey(latestDeploy.status) as Parameters<
+                      typeof t
+                    >[0],
+                  )}`}
+                  className="relative flex items-center gap-1.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-3 max-md:after:content-['']"
+                >
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {t("services.headerLatestDeploy")}
+                  </span>
+                  <Badge variant={deployStatusVariant(latestDeploy.status)}>
+                    {t(
+                      deployStatusKey(latestDeploy.status) as Parameters<
+                        typeof t
+                      >[0],
+                    )}
+                  </Badge>
+                </Link>
+              ) : latestDeployLoading ? (
+                <span aria-hidden="true" className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {t("services.headerLatestDeploy")}
+                  </span>
+                  <Skeleton className="h-[22px] w-10 rounded-full" />
+                </span>
+              ) : null}
+              {isStaticSite(service) ? null : instanceType ? (
+                <Link
+                  to="/services/$serviceId/plan"
+                  params={{ serviceId: service.id }}
+                  className="relative flex after:absolute after:-inset-x-1 after:-inset-y-3 after:content-['']"
+                >
+                  <Badge variant="outline" className="hover:bg-accent">
+                    {instanceType.name}
+                  </Badge>
+                </Link>
+              ) : instanceTypesLoading && service.plan ? (
+                <Skeleton
+                  aria-hidden="true"
+                  className="h-[22px] w-14 rounded-full"
+                />
+              ) : null}
             </div>
-            {service.lastSuccessfulRunAt ? (
-              <div className="text-muted-foreground flex items-center gap-1.5">
-                <span>{t("services.headerLastRun")}</span>
-                <RelativeAge
-                  value={service.lastSuccessfulRunAt}
-                  className="text-foreground text-xs"
-                />
-              </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2 max-md:[&_button]:min-h-11 md:max-lg:col-start-2 md:max-lg:row-start-1">
+            {/* A static_site has no running instance to SSH into — Render's
+              static header carries only Manual Deploy (w5/m48/t001). */}
+            {!isStaticSite(service) && (
+              <ServiceConnectButton service={service} openPorts={openPorts} />
+            )}
+            {service.suspended && onRun ? (
+              <ResumeServiceButton
+                service={service}
+                pending={pending}
+                onRun={onRun}
+                size="sm"
+              />
             ) : null}
-            {service.nextRunAt ? (
-              <div className="text-muted-foreground flex items-center gap-1.5">
-                <span>{t("services.headerNextRun")}</span>
-                <RelativeUntil
-                  value={service.nextRunAt}
-                  className="text-foreground text-xs"
-                />
-              </div>
-            ) : null}
-          </>
-        ) : isPrivateService(service) && service.internalAddress ? (
-          // A private service has no public URL — Render's header shows its
-          // Service Address (the private-network `<slug>:<port>`) as copyable
-          // text, never a link (the old cluster-internal href was dead from a
-          // browser). ADR041 D4, w9/m58. An image-port service also lists the
-          // other TCP ports its hostname serves (w6/m148).
-          <ServiceAddressFact
-            address={service.internalAddress}
-            openPorts={openPorts}
-          />
-        ) : safeServiceUrl ? (
-          <div className="flex min-w-0 items-center gap-1.5">
-            <a
-              href={safeServiceUrl}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="text-primary truncate hover:underline"
+            <ManualDeployButton service={service} pending={pending !== null} />
+          </div>
+        </div>
+
+        {/* Service ID / source repo / live URL: stacked on a phone, where the
+          links get touch-height rows and the "Details" toggle sits beside
+          the first of them, and one wrapping row from `sm`. */}
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 text-sm max-sm:pt-1.5 max-sm:[&>*]:col-start-1 sm:flex sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-0.5">
+          <div
+            id={serviceIdRowId}
+            className={cn(
+              "text-muted-foreground flex items-center gap-1.5",
+              !factsOpen && "max-lg:hidden",
+            )}
+          >
+            <span>{t("services.headerServiceId")}</span>
+            <span className="text-foreground font-mono text-xs">
+              {service.id}
+            </span>
+            <CopyButton
+              value={service.id}
+              label={t("services.headerCopyServiceId")}
+              successText={t("services.headerCopied")}
+              errorText={t("services.headerCopyError")}
+            />
+          </div>
+
+          {service.repo ? (
+            <div
+              id={repoRowId}
+              className={cn(
+                "text-muted-foreground flex min-w-0 items-center gap-1.5",
+                // A phone keeps the name, the statuses, the actions and the
+                // live URL in view; the source is one tap away, right here.
+                !factsOpen && "max-sm:hidden",
+              )}
             >
-              {service.url}
-            </a>
-            <CopyButton
-              value={service.url ?? ""}
-              label={t("services.headerCopyUrl")}
-              successText={t("services.headerCopied")}
-              errorText={t("services.headerCopyError")}
+              <GithubIcon className="size-3.5 shrink-0" />
+              {repoUrl ? (
+                <a
+                  href={repoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={headerLinkClass("text-foreground", "up")}
+                >
+                  <span className="truncate">
+                    <RepoLabel repo={service.repo} />
+                  </span>
+                </a>
+              ) : (
+                <span className="text-foreground truncate">
+                  <RepoLabel repo={service.repo} />
+                </span>
+              )}
+              {service.branch ? (
+                <Badge variant="secondary" className="font-mono text-xs">
+                  {service.branch}
+                </Badge>
+              ) : null}
+            </div>
+          ) : null}
+
+          {service.registryCredentialId ? (
+            <RegistryCredentialFact id={service.registryCredentialId} />
+          ) : null}
+
+          {isCron(service) ? (
+            <>
+              <div className="text-muted-foreground flex items-center gap-1.5">
+                <span>{t("services.headerSchedule")}</span>
+                <span className="text-foreground font-mono text-xs">
+                  {service.schedule || "—"}
+                </span>
+              </div>
+              {service.lastSuccessfulRunAt ? (
+                <div className="text-muted-foreground flex items-center gap-1.5">
+                  <span>{t("services.headerLastRun")}</span>
+                  <RelativeAge
+                    value={service.lastSuccessfulRunAt}
+                    className="text-foreground text-xs"
+                  />
+                </div>
+              ) : null}
+              {service.nextRunAt ? (
+                <div className="text-muted-foreground flex items-center gap-1.5">
+                  <span>{t("services.headerNextRun")}</span>
+                  <RelativeUntil
+                    value={service.nextRunAt}
+                    className="text-foreground text-xs"
+                  />
+                </div>
+              ) : null}
+            </>
+          ) : isPrivateService(service) && service.internalAddress ? (
+            // A private service has no public URL — Render's header shows its
+            // Service Address (the private-network `<slug>:<port>`) as copyable
+            // text, never a link (the old cluster-internal href was dead from a
+            // browser). ADR041 D4, w9/m58. An image-port service also lists the
+            // other TCP ports its hostname serves (w6/m148).
+            <ServiceAddressFact
+              address={service.internalAddress}
+              openPorts={openPorts}
             />
-          </div>
-        ) : service.url ? (
-          // URL present but not a safe http(s) scheme: show it as inert,
-          // copyable text rather than a live link (codex-security target #4).
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span className="text-foreground truncate">{service.url}</span>
-            <CopyButton
-              value={service.url}
-              label={t("services.headerCopyUrl")}
-              successText={t("services.headerCopied")}
-              errorText={t("services.headerCopyError")}
+          ) : safeServiceUrl ? (
+            <div className="flex min-w-0 items-center gap-1.5">
+              <a
+                href={safeServiceUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+                className={headerLinkClass("text-primary", "down")}
+              >
+                <span className="truncate">{service.url}</span>
+              </a>
+              <CopyButton
+                value={service.url ?? ""}
+                label={t("services.headerCopyUrl")}
+                successText={t("services.headerCopied")}
+                errorText={t("services.headerCopyError")}
+              />
+            </div>
+          ) : service.url ? (
+            // URL present but not a safe http(s) scheme: show it as inert,
+            // copyable text rather than a live link (codex-security target #4).
+            <div className="flex min-w-0 items-center gap-1.5">
+              <span className="text-foreground truncate">{service.url}</span>
+              <CopyButton
+                value={service.url}
+                label={t("services.headerCopyUrl")}
+                successText={t("services.headerCopied")}
+                errorText={t("services.headerCopyError")}
+              />
+            </div>
+          ) : service.publicRoutingNotice ? (
+            // No url, and the platform knows why (w7/m79). This slot used to
+            // render nothing at all, which is how a service that would never be
+            // publicly reachable looked identical to one still starting up.
+            // The text is the operator's own diagnosis, rendered raw like a
+            // deploy's failureReason — it names the missing piece and the fix.
+            <p className="text-muted-foreground text-xs">
+              {service.publicRoutingNotice}
+            </p>
+          ) : null}
+          {/* Beside the block it opens, and what it opens appears in and
+              under that block. */}
+          <button
+            type="button"
+            aria-expanded={factsOpen}
+            aria-controls={`${serviceIdRowId} ${repoRowId} ${factsId}`}
+            onClick={() => setFactsOpen((open) => !open)}
+            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring relative row-start-1 flex items-center gap-1 self-center rounded-sm text-xs font-medium after:absolute after:-inset-y-3.5 after:-right-3 after:-left-1 after:content-[''] focus-visible:ring-2 focus-visible:outline-none max-sm:col-start-2! sm:ml-auto lg:hidden"
+          >
+            {t("services.headerMoreFacts")}
+            <ChevronDown
+              aria-hidden="true"
+              className={cn(
+                "size-3.5 transition-transform",
+                factsOpen && "rotate-180",
+              )}
             />
-          </div>
-        ) : service.publicRoutingNotice ? (
-          // No url, and the platform knows why (w7/m79). This slot used to
-          // render nothing at all, which is how a service that would never be
-          // publicly reachable looked identical to one still starting up.
-          // The text is the operator's own diagnosis, rendered raw like a
-          // deploy's failureReason — it names the missing piece and the fix.
-          <p className="text-muted-foreground text-xs">
-            {service.publicRoutingNotice}
+          </button>
+        </div>
+
+        <HeaderFacts service={service} id={factsId} open={factsOpen} />
+
+        {service.undeployedChanges ? (
+          // Save only, cancellation and rollback can leave saved settings different
+          // from the runtime. Restart preserves it. Read the operator's distinction
+          // instead of inferring it from the most recent deploy's status.
+          <p className="text-muted-foreground text-sm" role="status">
+            {t(undeployedChangesHintKey(service), {
+              running: service.servingImage ?? "",
+              saved: service.imagePath ?? "",
+            })}
           </p>
         ) : null}
+
+        {isSleeping(service) ? (
+          <p className="text-muted-foreground text-sm">
+            {t("services.statusSleepingHint")}
+          </p>
+        ) : null}
+
+        {service.maintenanceMode?.enabled ? (
+          <Alert variant="destructive">
+            <AlertTriangle />
+            <AlertTitle>{t("services.maintenanceModeBannerTitle")}</AlertTitle>
+            <AlertDescription>
+              {t("services.maintenanceModeBannerBody")}
+            </AlertDescription>
+          </Alert>
+        ) : null}
       </div>
-
-      <HeaderFacts service={service} />
-
-      {service.undeployedChanges ? (
-        // Save only, cancellation and rollback can leave saved settings different
-        // from the runtime. Restart preserves it. Read the operator's distinction
-        // instead of inferring it from the most recent deploy's status.
-        <p className="text-muted-foreground text-sm" role="status">
-          {t(undeployedChangesHintKey(service), {
-            running: service.servingImage ?? "",
-            saved: service.imagePath ?? "",
-          })}
-        </p>
-      ) : null}
-
-      {isSleeping(service) ? (
-        <p className="text-muted-foreground text-sm">
-          {t("services.statusSleepingHint")}
-        </p>
-      ) : null}
-
-      {service.maintenanceMode?.enabled ? (
-        <Alert variant="destructive">
-          <AlertTriangle />
-          <AlertTitle>{t("services.maintenanceModeBannerTitle")}</AlertTitle>
-          <AlertDescription>
-            {t("services.maintenanceModeBannerBody")}
-          </AlertDescription>
-        </Alert>
-      ) : null}
     </div>
+  );
+}
+
+/**
+ * A header fact that is a link. On a phone the rows stay close together and
+ * the link's touch area reaches past its text instead (the truncation lives
+ * on the inner span, since `overflow: hidden` would clip that area).
+ */
+function headerLinkClass(tone: string, reach: "up" | "down") {
+  return cn(
+    tone,
+    "relative flex min-w-0 hover:underline max-sm:py-1.5 max-sm:after:absolute max-sm:after:inset-x-0 max-sm:after:content-['']",
+    // The repository and URL rows touch, so one area reaches up and the
+    // other down, and neither takes from the other.
+    reach === "up"
+      ? "max-sm:after:-top-3 max-sm:after:bottom-0"
+      : "max-sm:after:top-0 max-sm:after:-bottom-3",
+  );
+}
+
+/**
+ * `host · owner / repo`. A phone drops the host, which the forge icon beside
+ * it already says, so the repository's own name is what survives truncation.
+ */
+function RepoLabel({ repo }: { repo: string }) {
+  const label = formatRepoLabel(repo);
+  const split = label.indexOf(" · ");
+  if (split < 0) return <>{label}</>;
+  return (
+    <>
+      <span className="max-sm:hidden">{label.slice(0, split + 2)}</span>
+      {label.slice(split + 2)}
+    </>
   );
 }
 
@@ -668,10 +772,29 @@ function instancesFact(service: ServiceView, t: Translate): string {
  * a cron job, which runs nothing between runs: its schedule and runs describe
  * it, and Render's cron job has no instance count (w4/606).
  */
-function HeaderFacts({ service }: { service: ServiceView }) {
+function HeaderFacts({
+  service,
+  id,
+  open,
+}: {
+  service: ServiceView;
+  id: string;
+  /** Below `lg` the list is folded until asked for. */
+  open: boolean;
+}) {
   const { t } = useTranslations();
 
   const facts: { label: string; value: ReactNode }[] = [
+    // The runtime is a fact about the service, not a status: it reads here
+    // with the others instead of as a third chip beside the name.
+    ...(service.runtime?.trim()
+      ? [
+          {
+            label: t("services.headerRuntime"),
+            value: <span className="capitalize">{service.runtime.trim()}</span>,
+          },
+        ]
+      : []),
     { label: t("services.colSlug"), value: service.slug || "—" },
     ...(service.immutableName && service.immutableName !== service.name
       ? [
@@ -709,12 +832,23 @@ function HeaderFacts({ service }: { service: ServiceView }) {
   ];
 
   return (
-    <dl className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-      {facts.map((fact, i) => (
-        <div key={fact.label} className="flex items-center gap-1.5">
-          {i > 0 ? <span aria-hidden="true">·</span> : null}
+    <dl
+      id={id}
+      className={cn(
+        "text-muted-foreground flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:max-xl:gap-x-3 lg:flex",
+        // Opened on a phone: labels in one column, values in the next.
+        open
+          ? "max-sm:grid max-sm:grid-cols-[auto_minmax(0,1fr)] max-sm:gap-y-1.5 max-sm:pt-1 sm:flex"
+          : "hidden",
+      )}
+    >
+      {facts.map((fact) => (
+        <div
+          key={fact.label}
+          className="flex items-center gap-1.5 max-sm:contents"
+        >
           <dt>{fact.label}</dt>
-          <dd className="text-foreground font-medium tabular-nums">
+          <dd className="text-foreground font-medium tabular-nums [&_code]:font-sans">
             {fact.value}
           </dd>
         </div>
@@ -728,40 +862,45 @@ export function ServiceDetailHeaderSkeleton() {
   return (
     <div
       aria-hidden="true"
-      className="space-y-2 border-b px-4 py-3 sm:px-6"
+      className="border-b px-4 py-3 max-sm:pb-2 sm:px-6"
       data-skeleton-region="service-header"
     >
-      <Skeleton className="h-4 w-24" />
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <Skeleton className="h-6 w-48 max-w-[50vw]" />
-          <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-5 w-16 rounded-full" />
-          <Skeleton className="h-5 w-20 rounded-full" />
-        </div>
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-8 w-24" />
-          <Skeleton className="h-8 w-28" />
-        </div>
-      </div>
-      <div className="space-y-0.5">
-        <div className="flex h-7 items-center gap-1.5">
-          <Skeleton className="h-4 w-64" />
-          <Skeleton className="size-7" />
-        </div>
-        <div className="flex h-7 items-center gap-1.5">
-          <Skeleton className="h-4 w-48" />
-          <Skeleton className="h-5 w-20 rounded-full" />
-        </div>
-        <div className="flex h-7 items-center gap-1.5">
-          <Skeleton className="h-4 w-56" />
-          <Skeleton className="size-7" />
-        </div>
-      </div>
-      <div className="flex h-9 flex-wrap gap-x-4 gap-y-1 sm:h-4">
-        <Skeleton className="h-4 w-20" />
+      <div className="max-w-7xl space-y-2 max-sm:space-y-1.5">
         <Skeleton className="h-4 w-24" />
-        <Skeleton className="h-4 w-16" />
+        <div className="flex flex-wrap items-center justify-between gap-3 md:max-lg:grid md:max-lg:grid-cols-[minmax(0,1fr)_auto] md:max-lg:gap-y-2 lg:flex-nowrap lg:items-start">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 md:max-lg:contents">
+            <Skeleton className="h-6 w-48 max-w-[50vw]" />
+            <div className="contents sm:flex sm:items-center sm:gap-2 md:max-lg:col-span-2 md:max-lg:row-start-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-5 w-16 rounded-full" />
+              <Skeleton className="h-5 w-20 rounded-full" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 md:max-lg:col-start-2 md:max-lg:row-start-1">
+            <Skeleton className="h-8 w-24 max-md:h-11" />
+            <Skeleton className="h-8 w-28 max-md:h-11" />
+          </div>
+        </div>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 max-sm:pt-1.5 sm:flex sm:flex-wrap sm:gap-x-6 sm:gap-y-0.5">
+          <div className="flex h-7 items-center gap-1.5 max-lg:hidden">
+            <Skeleton className="h-4 w-64" />
+            <Skeleton className="size-7" />
+          </div>
+          <div className="flex h-7 items-center gap-1.5 max-sm:hidden">
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-5 w-20 rounded-full" />
+          </div>
+          <div className="flex h-7 items-center gap-1.5 max-sm:h-8">
+            <Skeleton className="h-4 w-56" />
+            <Skeleton className="size-7" />
+          </div>
+          <Skeleton className="h-4 w-14 sm:ml-auto lg:hidden" />
+        </div>
+        <div className="hidden h-4 flex-wrap gap-x-4 gap-y-1 lg:flex">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-16" />
+        </div>
       </div>
     </div>
   );

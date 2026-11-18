@@ -519,6 +519,11 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Runtime",
     description: "Service-detail header label for the selected runtime",
   },
+  "services.headerMoreFacts": {
+    message: "Details",
+    description:
+      "Service-detail header toggle, below the desktop layout, that shows or hides the slug, instances, revision and age line",
+  },
   "services.headerSchedule": {
     message: "Schedule:",
     description:

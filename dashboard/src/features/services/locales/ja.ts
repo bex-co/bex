@@ -524,6 +524,11 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "ランタイム",
     description: "Service-detail header label for the selected runtime",
   },
+  "services.headerMoreFacts": {
+    message: "詳細情報",
+    description:
+      "Service-detail header toggle, phones only, that shows or hides the slug, instances, revision and age line",
+  },
   "services.headerSchedule": {
     message: "スケジュール:",
     description:

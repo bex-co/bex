@@ -93,6 +93,8 @@ export interface UseDeploysResult {
   error: Error | undefined;
   hasMore: boolean;
   loadMore: () => void;
+  /** Reads the first page again after it failed. */
+  retry: () => void;
 }
 
 /**
@@ -123,7 +125,7 @@ export function useDeploys(
   const status = statuses.length > 0 ? statuses : undefined;
   const filterKey = `${serviceId}${FILTER_SEP}${statuses.join(",")}`;
 
-  const { data, loading, error, startPolling, stopPolling } = useQuery(
+  const { data, loading, error, startPolling, stopPolling, refetch } = useQuery(
     DeploysDocument,
     {
       variables: { serviceId, status, limit: DEPLOYS_PAGE_SIZE },
@@ -193,5 +195,8 @@ export function useDeploys(
     error,
     hasMore,
     loadMore: () => void loadMore(),
+    // The error stays in `error` (errorPolicy "all"), so a failed retry needs
+    // no handling here.
+    retry: () => void refetch().catch(() => undefined),
   };
 }

@@ -28,6 +28,7 @@ const state: UseDeploysResult = {
   error: undefined,
   hasMore: false,
   loadMore: vi.fn(),
+  retry: vi.fn(),
 };
 const statusCalls: string[][] = [];
 
@@ -125,27 +126,6 @@ function headers(root: ParentNode) {
   ]);
 }
 
-/**
- * A deploy cell's lines, top to bottom: each line's top margin, its height
- * and whether only the narrow card draws it. A ready line's height comes from
- * its status badge (22 px) or its type (text-sm 20 px, text-xs 16 px); a
- * placeholder's from its bar, so the two compare directly.
- */
-function lineShape(cell: Element) {
-  return [...cell.children].map((line) => {
-    const classes = line.getAttribute("class") ?? "";
-    let height: number | null = null;
-    if (line.querySelector("[data-slot='badge'], .h-\\[22px\\]")) height = 22;
-    else if (/\b(text-sm|h-5)\b/.test(classes)) height = 20;
-    else if (/\b(text-xs|h-4)\b/.test(classes)) height = 16;
-    return {
-      margin: classes.match(/\bmt-\d\b/)?.[0] ?? null,
-      height,
-      narrowOnly: line.classList.contains("@3xl/deploys:hidden"),
-    };
-  });
-}
-
 // Row times are elapsed ("Deployed 3 hours ago"), so every test pins the
 // clock: the row() defaults finish at 00:01:30, three hours before NOW.
 const NOW = Date.parse("2026-07-16T03:00:00Z");
@@ -159,6 +139,7 @@ beforeEach(() => {
   state.error = undefined;
   state.hasMore = false;
   state.loadMore = vi.fn();
+  state.retry = vi.fn();
   statusCalls.length = 0;
 });
 
@@ -500,13 +481,47 @@ describe("DeploysListPage", () => {
     });
     await user.type(search, "BROKEN");
 
-    expect(screen.getByText("1 deploy")).toBeInTheDocument();
+    // While a search is typed the count says how many loaded deploys match.
+    expect(screen.getByText("1 of 2 loaded deploys match")).toBeInTheDocument();
     expect(screen.getByText("dep-failed")).toBeInTheDocument();
     expect(screen.queryByText("dep-live")).not.toBeInTheDocument();
 
     await user.clear(search);
     await user.type(search, "def5678");
     expect(screen.getByText("dep-live")).toBeInTheDocument();
+  });
+
+  it("offers a way out of a search with no match", async () => {
+    state.deploys = [row()];
+    const user = userEvent.setup();
+
+    renderPage();
+    const search = await screen.findByRole<HTMLInputElement>("textbox", {
+      name: "Search loaded deploys and commits",
+    });
+    await user.type(search, "no-such-deploy");
+
+    expect(screen.getByText("0 of 1 loaded deploys match")).toBeInTheDocument();
+    expect(
+      screen.getByText("No loaded deploys match your search."),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Clear search" }));
+
+    expect(search.value).toBe("");
+    expect(screen.getByText("dep-live")).toBeInTheDocument();
+  });
+
+  it("names a failed load, offers a retry, and claims no count", async () => {
+    state.error = new Error("network down");
+    const user = userEvent.setup();
+
+    renderPage();
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Couldn't load deploys");
+    expect(screen.queryByText("0 deploys")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(state.retry).toHaveBeenCalledTimes(1);
   });
 
   it("combines the client search with the server status filter", async () => {
@@ -549,13 +564,12 @@ describe("DeploysListPage", () => {
     await screen.findByText("20 deploys loaded");
     const readyHeaders = headers(ready.container);
     expect(ready.container.querySelectorAll("tbody tr")).toHaveLength(20);
-    const readyLines = lineShape(ready.container.querySelector("tbody td")!);
-    expect(readyLines).toEqual([
-      { margin: null, height: 22, narrowOnly: false },
-      { margin: "mt-1", height: 20, narrowOnly: false },
-      { margin: "mt-1", height: 16, narrowOnly: false },
-      { margin: "mt-2", height: 16, narrowOnly: true },
-    ]);
+    const readyRow = ready.container.querySelector("tbody tr")!;
+    const responsiveColumns = [...readyRow.classList].filter((name) =>
+      name.includes("grid-cols-"),
+    );
+    expect(responsiveColumns.length).toBeGreaterThan(1);
+    const cellClasses = readyRow.querySelector("td")!.className;
     const readyLoadMore = screen.getByRole("button", { name: "Load more" });
     expect(readyLoadMore.parentElement).toHaveClass("mt-4");
     ready.unmount();
@@ -577,7 +591,9 @@ describe("DeploysListPage", () => {
     );
     expect(placeholders).toHaveLength(20);
     for (const placeholder of placeholders) {
-      expect(lineShape(placeholder.querySelector("td")!)).toEqual(readyLines);
+      expect(placeholder).toHaveClass(...responsiveColumns);
+      expect(placeholder.querySelector("td")!.className).toBe(cellClasses);
+      expect(placeholder.children).toHaveLength(4);
     }
     // The Load more slot sits where the ready button does, at its size.
     const loadMoreSlot = frame.lastElementChild!;
@@ -604,9 +620,7 @@ describe("DeploysListPage", () => {
     expect(
       skeleton.container.querySelector("[data-testid='deploys-count-slot']"),
     ).not.toBeNull();
-    expect(
-      skeleton.container.querySelector("[data-slot='card-title']"),
-    ).toHaveTextContent("Deploys");
+    expect(skeleton.container.querySelector("h2")).toHaveTextContent("Deploys");
   });
 
   it("frames an image-backed service's rows without a commit line (w4/702)", async () => {
@@ -620,14 +634,13 @@ describe("DeploysListPage", () => {
       expect(found).not.toBeNull();
       return found!;
     });
-    expect(lineShape(placeholder).map((line) => line.height)).toEqual([
-      22, 16, 16,
-    ]);
+    // Image-backed rows reserve a single headline for the deploy ID at all widths.
+    expect(placeholder.children[1]).toHaveClass("min-h-5");
+    expect(placeholder.children[1]).not.toHaveClass("@max-md/deploys:min-h-10");
+    expect(placeholder.children[1].children).toHaveLength(1);
   });
 
-  it("keeps every line of a row to one line, so the frame's row height holds at any width (w4/702)", async () => {
-    // A long rollback trigger and a pre-deploy status: the lines that wrapped
-    // at phone width.
+  it("keeps a long rollback trigger from crowding out its duration on narrow screens", async () => {
     state.deploys = [
       row({
         id: "dep-d4fk2l0gjchc73a1b2c0",
@@ -639,26 +652,16 @@ describe("DeploysListPage", () => {
     renderPage();
     const id = await screen.findByTitle("dep-d4fk2l0gjchc73a1b2c0");
     const cell = id.closest("td")!;
-    expect(cell.querySelector(".flex-wrap")).toBeNull();
-    // Each line is a no-wrap grid whose giving track is minmax(0, auto): the
-    // id truncates beside the badge, the pre-deploy status beside the time,
-    // and the rollback trigger before its duration, instead of wrapping.
-    const lines = [id.parentElement!, ...cell.querySelectorAll(":scope > div")];
-    expect(lines).toHaveLength(3);
-    for (const line of lines) {
-      expect(line).toHaveClass("grid");
-      expect(line.className).toMatch(/grid-cols-\[[^\]]*minmax\(0,auto\)/);
-    }
-    for (const line of lines.slice(1)) {
-      expect(line).toHaveClass("whitespace-nowrap");
-    }
-    for (const giving of [
-      id,
+    const trigger = within(cell).getByText(
+      "Rollback to dep-d4fk2l0gjchc73a1b2c9",
+    );
+    expect(trigger).toHaveClass("truncate");
+    expect(trigger).toHaveAttribute("title", trigger.textContent);
+    expect(trigger.parentElement).toHaveClass("min-w-0", "whitespace-nowrap");
+    expect(within(cell).getByText("1m 30s")).toHaveClass("shrink-0");
+    expect(
       within(cell).getByText("Pre-deploy command failed"),
-      within(cell).getByText("Rollback to dep-d4fk2l0gjchc73a1b2c9"),
-    ]) {
-      expect(giving).toHaveClass("truncate");
-    }
+    ).toBeInTheDocument();
   });
 
   it("uses a complete count only after pagination is exhausted", async () => {
