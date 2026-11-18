@@ -313,6 +313,100 @@ func TestRevokeDeletesTheTupleGrantWrote(t *testing.T) {
 	}
 }
 
+// The model these org-tuple tests pin, restated from authz.go's
+// WriteOrganizationTuples (w7/m464, ADR115 D5): a delete evicts every cached
+// positive it could have fed — the deleted tuple's subject (exact,
+// "\x00"-separated, so user:owen never evicts user:owen2) OR any decision on
+// the deleted tuple's object (exact, so workspace:tea-org never evicts
+// workspace:tea-org2: an org-link delete feeds every member's derivation
+// through that workspace, and a role-tuple delete feeds its subject's
+// decisions everywhere). A writes-only call evicts nothing, and an answer
+// computed while a delete was in flight is never cached after it (the same
+// revocation epoch the revoke path bumps).
+
+// TestOrganizationDeletesEvictEveryDecisionTheyCouldHaveFed warms positives
+// across the subject and object axes of three org-tuple shapes (a role tuple,
+// a workspace-org link, a public link), deletes them together, and requires
+// exactly the fed decisions to go upstream again.
+func TestOrganizationDeletesEvictEveryDecisionTheyCouldHaveFed(t *testing.T) {
+	stub := &fgaStub{answer: allowAll}
+	chk := newStubChecker(t, stub)
+	ctx := context.Background()
+
+	org := core.OrganizationObject("org-acme")
+	ws := core.WorkspaceObject("tea-org")
+
+	evicted := [][2]string{
+		{"user:owen", org}, // revoked subject, on the role tuple's object
+		{"user:owen", ws},  // revoked subject, on the links' object
+		{"user:owen", core.WorkspaceObject("tea-other")}, // revoked subject elsewhere
+		{"user:owen2", org}, // prefix-sharing subject: evicted by the OBJECT half, not the subject half
+		{"user:mia", org},   // another subject on a deleted object
+		{"user:mia", ws},    // another subject on a deleted link object
+	}
+	kept := [][2]string{
+		{"user:mia", core.WorkspaceObject("tea-other")},    // unrelated on both axes
+		{"user:owen2", core.WorkspaceObject("tea-other")},  // unrelated on both axes
+		{"user:mia", core.WorkspaceObject("tea-org2")},     // object only shares a string prefix
+		{"user:mia", core.OrganizationObject("org-acme2")}, // object only shares a string prefix
+	}
+	for _, p := range append(append([][2]string{}, evicted...), kept...) {
+		if ok, err := chk.Check(ctx, p[0], core.RelCanView, p[1]); err != nil || !ok {
+			t.Fatalf("warm %s/%s = %v/%v", p[0], p[1], ok, err)
+		}
+	}
+	if got := stub.checkCount(); got != len(evicted)+len(kept) {
+		t.Fatalf("warm upstream checks = %d, want %d", got, len(evicted)+len(kept))
+	}
+
+	deletes := []core.Tuple{
+		{User: "user:owen", Relation: "owner", Object: org},
+		{User: org, Relation: "org", Object: ws},
+		{User: org, Relation: "public_org", Object: ws},
+	}
+	if err := chk.WriteOrganizationTuples(ctx, nil, deletes); err != nil {
+		t.Fatalf("deletes: %v", err)
+	}
+	for _, p := range append(append([][2]string{}, evicted...), kept...) {
+		if ok, err := chk.Check(ctx, p[0], core.RelCanView, p[1]); err != nil || !ok {
+			t.Fatalf("post-delete %s/%s = %v/%v", p[0], p[1], ok, err)
+		}
+	}
+	// Every fed decision went upstream again; every kept one stayed cached.
+	if got := stub.checkCount(); got != len(evicted)+len(kept)+len(evicted) {
+		t.Fatalf("upstream checks = %d, want %d: deletes must evict exactly the fed decisions",
+			got, len(evicted)+len(kept)+len(evicted))
+	}
+}
+
+// TestOrganizationWritesEvictNothing pins that grants never invalidate a
+// cached positive: only positives are cached, and a grant cannot turn one
+// stale.
+func TestOrganizationWritesEvictNothing(t *testing.T) {
+	stub := &fgaStub{answer: allowAll}
+	chk := newStubChecker(t, stub)
+	ctx := context.Background()
+
+	org := core.OrganizationObject("org-acme")
+	subject, object := "user:mia", core.WorkspaceObject("tea-org")
+	if ok, err := chk.Check(ctx, subject, core.RelCanView, object); err != nil || !ok {
+		t.Fatalf("warm check = %v/%v", ok, err)
+	}
+	writes := []core.Tuple{
+		{User: subject, Relation: "member", Object: org},
+		{User: org, Relation: "org", Object: object},
+	}
+	if err := chk.WriteOrganizationTuples(ctx, writes, nil); err != nil {
+		t.Fatalf("writes: %v", err)
+	}
+	if ok, err := chk.Check(ctx, subject, core.RelCanView, object); err != nil || !ok {
+		t.Fatalf("post-write check = %v/%v", ok, err)
+	}
+	if got := stub.checkCount(); got != 1 {
+		t.Fatalf("upstream checks = %d, want 1: a writes-only call must not evict", got)
+	}
+}
+
 func TestRevokeWriteFailureDoesNotEvict(t *testing.T) {
 	// Eviction is only correct once the tuple is actually gone: if OpenFGA
 	// rejects the delete, the warm positive must keep serving (fail back to the
