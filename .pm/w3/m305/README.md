@@ -1,6 +1,6 @@
 # w3 · m305 — Workspace Settings has Render's sections: audit-log CSV export, registry credentials and notification overrides
 
-**Worker:** worker3 **Goal:** workspace-scoped settings live in Workspace Settings where Render puts them, and a Pro admin can export audit logs as Render's CSV **Status:** blocked — t001–t004, t006–t008 done; the 2026-11-17 live checks found the CSV's status/metadata and the Workspace Settings skeletons off, fixed on main; t005's re-check and t009 wait on the production deploy of the fix
+**Worker:** worker3 **Goal:** workspace-scoped settings live in Workspace Settings where Render puts them, and a Pro admin can export audit logs as Render's CSV **Status:** todo — t001–t004, t006–t008 done; the 2026-11-17 fixes (`c740aafc0`, `d46562c81`) are live in production pin `054f29128f64`; t005's production re-check, then t009
 
 ## Tasks (in order)
 
@@ -47,7 +47,7 @@
 
 - **Affected:** t005, t009. **Source:** verified evidence.
 - **Finding:** the production pin `336b647b1` (`chore(deploy): pin platform images to 6984548a30f8`, dashboard `bex-dashboard@sha256:1eeffddef4b5…`) contains this milestone's commit `557f1cf90`: `git merge-base --is-ancestor 557f1cf90 6984548a30f8` holds. The release condition in § Blocked is met.
-- **Next:** as the QA user in `bex-canary` on `dashboard.bex.co`, run checks (1)–(3) of § Blocked at 1440 and 390, record them in t005 and this README, then t009. Later skeleton work on this page ([w4/684](../../../w4/done/684.md), [w4/686](../../../w4/done/686.md)) is in the pin too, so the comparison reads today's frames.
+- **Next:** as the QA user in `bex-canary` on `dashboard.bex.co`, run checks (1)–(3) of § Blocked at 1440 and 390, record them in t005 and this README, then t009. Later skeleton work on this page ([w4/684](../../w4/done/684.md), [w4/686](../../w4/done/686.md)) is in the pin too, so the comparison reads today's frames.
 
 ## Live checks (2026-11-17, loopx w3, pin `6984548a30f8`)
 
@@ -79,8 +79,8 @@ The QA user ran the three checks in `bex-canary` (Scale, admin, two workspaces).
 
 ## Decision record (2026-11-17, loopx w3)
 
-- **`/settings`' route skeleton is not m305's.** m305 removed the Registry Credentials and Audit Log cards from it; its regions and rail now match the ready page's five sections and card counts. Its heights come from the generic `CardSkeleton` frames of w5/m79 t011, which w4/686 left unaudited. Filed as [w3/067](../../done/067.md). t005's account-page criterion is narrowed to the sections m305 moved. Basis: the mismatch predates this milestone, and another item now owns it.
-- **Loader-less routes never paint their route skeleton on a cold navigation** (the chunk finding above). Filed as [w3/066](../../done/066.md); it does not change what m305 checks, because the inline skeleton and the forced-loader probe both paint this page's frame.
+- **`/settings`' route skeleton is not m305's.** m305 removed the Registry Credentials and Audit Log cards from it; its regions and rail now match the ready page's five sections and card counts. Its heights come from the generic `CardSkeleton` frames of w5/m79 t011, which w4/686 left unaudited. Filed as [w3/067](../done/067.md). t005's account-page criterion is narrowed to the sections m305 moved. Basis: the mismatch predates this milestone, and another item now owns it.
+- **Loader-less routes never paint their route skeleton on a cold navigation** (the chunk finding above). Filed as [w3/066](../done/066.md); it does not change what m305 checks, because the inline skeleton and the forced-loader probe both paint this page's frame.
 
 ## Blocked (2026-11-17, loopx w3)
 
@@ -90,3 +90,10 @@ The QA user ran the three checks in `bex-canary` (Scale, admin, two workspaces).
   2. Export a closed past range and compare it with REST for the same range: same row count and every column equal (`status`, and `metadata` parsed as JSON).
   3. Log out, then run t009.
 - No user decision needed.
+
+## Unblocked (2026-11-18, loopx w3 routine `pin-gated-recheck`)
+
+- **Affected:** t005, t009. **Source:** verified evidence, no user decision involved.
+- **Finding:** the release gate in § Blocked (2026-11-17) is met. The newest production pin on origin/main, `0070f86ab` "chore(deploy): pin platform images to 054f29128f64" (2026-11-18 08:13Z), contains both m305 commits from 2026-11-17: `git merge-base --is-ancestor c740aafc0 054f29128f64` and `git merge-base --is-ancestor d46562c81 054f29128f64` both succeed. That pin moves `deploy/gitops/base/dashboard.yaml` to `bex-dashboard@sha256:66eae953f1d7…`. The live checks have not run on this build yet, so the milestone reopens as pending verification.
+- **Next:** as the QA user in `bex-canary` on `dashboard.bex.co`, run steps 1–2 of § Blocked (2026-11-17) at 1440 and 390. These are the forced-loader route skeleton and the direct load with GraphQL held, then the CSV export of a closed past range against REST. Record the heights in t005 and this README, log out, then run t009.
+- **Acceptance:** every outermost `[data-skeleton-region]` is within 4 px of its ready section (data-dependent counts aside), and the pending rail lists the same sections. The CSV has REST's row count, and every column equals REST's, with `status` as `success|error` and `metadata` parsed as JSON.
