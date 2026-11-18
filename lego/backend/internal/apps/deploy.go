@@ -4677,7 +4677,9 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 	if existing != nil {
 		current = existing.Spec.Plan
 	}
-	if err := keyvalue.ErrPausedPlan(kv.spec.Plan, current); err != nil {
+	// Judge the plan the sync leaves the store on, as the plan does — never
+	// the create default a plan-less file carries (blueprintKeyValueGatePlan).
+	if err := keyvalue.ErrPausedPlan(blueprintKeyValueGatePlan(kv, current), current); err != nil {
 		return StackKeyValueView{}, err
 	}
 	if existing != nil {
