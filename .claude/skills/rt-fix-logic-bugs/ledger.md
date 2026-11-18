@@ -8,6 +8,7 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 
 ## Skipped
 
+- 2026-11-18 authz/org-tuple eviction — audited, holds: WriteOrganizationTuples deletes evict subject-prefix OR object-suffix exactly, writes evict nothing, in-flight epoch shared with the revoke path; pinned by TestOrganizationDeletesEvictEveryDecisionTheyCouldHaveFed/TestOrganizationWritesEvictNothing
 - 2026-11-18 agreement/keyvalue plan-gate vs apply-gate (downgrade, external-access, noop) — audited, holds: both judge identical inputs with the same verdicts; only the paused-plan selection diverged, fixed this run
 - 2026-11-18 agreement/database+keyvalue probe-set completeness — audited, holds: parsed fields are the IR map by construction (deploy.go blueprintFieldsByResource), so ChangedFields probes every field the apply moves
 - 2026-11-18 agreement/service runtime gates (protected-env confirmation, maintenance/hosts/checks eligibility) — plan previews, validation preflight + apply enforce; authz and external-state dependent, not logic
