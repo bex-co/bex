@@ -101,34 +101,47 @@ func (r *AppReconciler) managedOIDC(ctx context.Context, app, view *appv1alpha1.
 			}
 			view = selected
 		}
-		for _, p := range appv1alpha1.ManagedOIDCProviders {
-			value, set, err := r.configuredEnv(ctx, view, p.Trigger)
-			if err != nil {
-				return oidcMounts{}, err
-			}
-			if !set || strings.TrimSpace(value) == "" {
-				continue
-			}
-			if isGCP(p) {
-				email, _, err := r.configuredEnv(ctx, view, appv1alpha1.GCPServiceAccountEmailEnv)
-				if err != nil {
-					return oidcMounts{}, err
-				}
-				gcp := appv1alpha1.NewManagedOIDCGCP(value, email)
-				decision.GCP = &gcp
-				if gcp.Refused != "" {
-					continue
-				}
-			}
-			decision.Providers = append(decision.Providers, p.Name)
+		var err error
+		if decision, err = r.decideManagedOIDC(ctx, app, view, gen); err != nil {
+			return oidcMounts{}, err
 		}
-		decision.PlanAllowed = app.Labels[appv1alpha1.LabelManagedOIDC] == appv1alpha1.ManagedOIDCEnabled
 	}
 	app.Status.ManagedOIDC = decision
 	if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
 		return oidcMounts{}, err
 	}
 	return mountsOf(decision), nil
+}
+
+// decideManagedOIDC is the decision of app's release gen from view, the
+// environment its workloads (or its native build) see: each provider whose
+// trigger view sets to a non-blank value, GCP's inputs, and whether the plan
+// label lets them be mounted.
+func (r *AppReconciler) decideManagedOIDC(ctx context.Context, app, view *appv1alpha1.App, gen int64) (*appv1alpha1.ManagedOIDCStatus, error) {
+	decision := &appv1alpha1.ManagedOIDCStatus{Generation: gen}
+	for _, p := range appv1alpha1.ManagedOIDCProviders {
+		value, set, err := r.configuredEnv(ctx, view, p.Trigger)
+		if err != nil {
+			return nil, err
+		}
+		if !set || strings.TrimSpace(value) == "" {
+			continue
+		}
+		if isGCP(p) {
+			email, _, err := r.configuredEnv(ctx, view, appv1alpha1.GCPServiceAccountEmailEnv)
+			if err != nil {
+				return nil, err
+			}
+			gcp := appv1alpha1.NewManagedOIDCGCP(value, email)
+			decision.GCP = &gcp
+			if gcp.Refused != "" {
+				continue
+			}
+		}
+		decision.Providers = append(decision.Providers, p.Name)
+	}
+	decision.PlanAllowed = app.Labels[appv1alpha1.LabelManagedOIDC] == appv1alpha1.ManagedOIDCEnabled
+	return decision, nil
 }
 
 // recordManagedOIDCOf records the decision a restored template carries: a

@@ -607,3 +607,139 @@ func TestTwoReplicasNeverBothWrite(t *testing.T) {
 		t.Fatalf("writes after replica B's pass over fresh tokens = %d, want 2", got)
 	}
 }
+
+// TestANativeBuildGetsItsOwnTokensWhileItBuilds (w2/m480, ADR116 D12): a
+// native build's decision is minted into <app>-oidc-build, stamped with the
+// build's release generation, beside and apart from the running release's
+// <app>-oidc; a newer build is minted afresh whatever the age of the last
+// one's tokens, the tokens are refreshed while the App builds, and once it
+// stops building (the build ended, or was canceled and left its decision)
+// they are no longer minted.
+func TestANativeBuildGetsItsOwnTokensWhileItBuilds(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	app := optedIn("web", srvA)
+	app.Status.Phase = appv1alpha1.PhaseBuilding
+	gcpInputs := appv1alpha1.ManagedOIDCGCP{WorkloadIdentityProvider: gcpProvider}
+	app.Status.BuildManagedOIDC = &appv1alpha1.ManagedOIDCStatus{Generation: 4, Providers: []string{"aws", "gcp"}, PlanAllowed: true, GCP: &gcpInputs}
+	cl := fake.NewClientBuilder().WithScheme(scheme(t)).WithObjects(app).WithStatusSubresource(app).Build()
+	m := NewMinter(cl, f.issuer)
+	m.Now = f.clock.Now
+	buildSecret := func() (*corev1.Secret, bool) {
+		t.Helper()
+		var s corev1.Secret
+		err := cl.Get(ctx, client.ObjectKey{Namespace: wsA, Name: appv1alpha1.ManagedOIDCBuildSecretName("web")}, &s)
+		if apierrors.IsNotFound(err) {
+			return nil, false
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		return &s, true
+	}
+	pass := func() {
+		t.Helper()
+		f.reload(t)
+		if err := m.Pass(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	setStatus := func(mutate func(*appv1alpha1.AppStatus)) {
+		t.Helper()
+		var cur appv1alpha1.App
+		if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &cur); err != nil {
+			t.Fatal(err)
+		}
+		mutate(&cur.Status)
+		if err := cl.Status().Update(ctx, &cur); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	pass()
+	s, ok := buildSecret()
+	if !ok {
+		t.Fatal("no build token Secret while the App builds")
+	}
+	if got, want := slices.Sorted(maps.Keys(s.Data)), []string{"aws-token", "gcp-credentials.json", "gcp-token"}; !slices.Equal(got, want) {
+		t.Fatalf("build Secret keys = %v, want %v", got, want)
+	}
+	if s.Annotations[appv1alpha1.AnnotationManagedOIDCGeneration] != "4" {
+		t.Fatalf("build Secret generation = %q, want the build's release 4", s.Annotations[appv1alpha1.AnnotationManagedOIDCGeneration])
+	}
+	if s.Labels[appv1alpha1.LabelProtectedFromTenantMount] != appv1alpha1.ProtectedFromTenantMount || len(s.OwnerReferences) != 1 || s.OwnerReferences[0].UID != "uid-web" {
+		t.Fatalf("build Secret labels %v owners %+v: want protected and owned by the App", s.Labels, s.OwnerReferences)
+	}
+	runtime, ok := tokenSecret(t, cl, "web")
+	if !ok || len(runtime.Data) != 1 || len(runtime.Data["aws-token"]) == 0 {
+		t.Fatalf("the running release's Secret = %v; want its own aws-token alone, untouched by the build", runtime)
+	}
+	if _, has := runtime.Annotations[appv1alpha1.AnnotationManagedOIDCGeneration]; has {
+		t.Fatal("the running release's Secret carries a build generation")
+	}
+	p, err := oidc.NewProvider(ctx, f.base+"/"+wsA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for file, audience := range map[string]string{"aws-token": "sts.amazonaws.com", "gcp-token": gcpInputs.Audience()} {
+		idt, err := p.Verifier(&oidc.Config{ClientID: audience, SupportedSigningAlgs: []string{oidc.ES256}, Now: f.clock.Now}).Verify(ctx, string(s.Data[file]))
+		if err != nil || idt.Subject != "workspace:"+wsA+":environment:"+evmA+":service:"+srvA {
+			t.Fatalf("the build's %s: %v (sub %v); want it verified for %s with the service's sub", file, err, idt, audience)
+		}
+	}
+	if string(s.Data["gcp-credentials.json"]) != string(gcpCredentialConfiguration(gcpInputs, "/var/lib/render/oidc/gcp-token")) {
+		t.Fatalf("the build's credential configuration = %s", s.Data["gcp-credentials.json"])
+	}
+	first := issued(t, s)
+
+	// A newer build takes nothing of the last one's tokens, however young.
+	f.clock.advance(time.Minute)
+	setStatus(func(st *appv1alpha1.AppStatus) { st.BuildManagedOIDC.Generation = 5 })
+	pass()
+	if s, _ = buildSecret(); s.Annotations[appv1alpha1.AnnotationManagedOIDCGeneration] != "5" || issued(t, s) == first {
+		t.Fatalf("a newer build reused the last build's tokens: generation %q issued %d", s.Annotations[appv1alpha1.AnnotationManagedOIDCGeneration], issued(t, s))
+	}
+	second := issued(t, s)
+
+	// Refreshed while the build waits or runs.
+	f.clock.advance(RefreshAfter)
+	pass()
+	if s, _ = buildSecret(); issued(t, s) == second {
+		t.Fatal("a building App's build tokens were not refreshed at RefreshAfter")
+	}
+	third := issued(t, s)
+
+	// The App no longer builds: the decision it left is minted no more.
+	setStatus(func(st *appv1alpha1.AppStatus) { st.Phase = appv1alpha1.PhaseRunning })
+	f.clock.advance(RefreshAfter)
+	pass()
+	if s, _ = buildSecret(); issued(t, s) != third {
+		t.Fatal("a decision left once the App stopped building was refreshed")
+	}
+
+	// A Dockerfile build, or a native one without a trigger, records no
+	// decision that mounts anything: nothing is written for it.
+	other := optedIn("dock", srvB)
+	other.Status.ManagedOIDC = nil
+	other.Status.Phase = appv1alpha1.PhaseBuilding
+	other.Status.BuildManagedOIDC = &appv1alpha1.ManagedOIDCStatus{Generation: 2, PlanAllowed: true}
+	if err := cl.Create(ctx, other); err != nil {
+		t.Fatal(err)
+	}
+	hobby := optedIn("hobby", srvB)
+	hobby.Status.ManagedOIDC = nil
+	hobby.Status.Phase = appv1alpha1.PhaseBuilding
+	hobby.Status.BuildManagedOIDC = &appv1alpha1.ManagedOIDCStatus{Generation: 2, Providers: []string{"aws"}}
+	if err := cl.Create(ctx, hobby); err != nil {
+		t.Fatal(err)
+	}
+	pass()
+	for _, name := range []string{"dock", "hobby"} {
+		var s corev1.Secret
+		for _, secret := range []string{appv1alpha1.ManagedOIDCBuildSecretName(name), appv1alpha1.ManagedOIDCSecretName(name)} {
+			if err := cl.Get(ctx, client.ObjectKey{Namespace: wsA, Name: secret}, &s); !apierrors.IsNotFound(err) {
+				t.Fatalf("%s: %s exists (%v); want no token for a build that mounts none", name, secret, err)
+			}
+		}
+	}
+}

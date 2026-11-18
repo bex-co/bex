@@ -127,28 +127,54 @@ func (m *Minter) pass(ctx context.Context) error {
 	now := m.now()
 	var errs []error
 	minted, oldest := 0, time.Duration(0)
+apps:
 	for i := range apps.Items {
 		app := &apps.Items[i]
-		providers := appv1alpha1.ManagedOIDCProvidersNamed(app.Status.ManagedOIDC.Mounted())
-		if len(providers) == 0 || app.DeletionTimestamp != nil {
+		if app.DeletionTimestamp != nil {
 			continue
 		}
-		if minted >= MaxMintsPerPass {
-			m.Kick()
-			break
+		for _, t := range targetsOf(app) {
+			if minted >= MaxMintsPerPass {
+				m.Kick()
+				break apps
+			}
+			age, wrote, err := m.ensure(ctx, app, t, now)
+			if err != nil {
+				m.Metrics.failed()
+				errs = append(errs, fmt.Errorf("%s/%s: %w", app.Namespace, t.secret, err))
+			}
+			if wrote {
+				minted++
+			}
+			oldest = max(oldest, age)
 		}
-		age, wrote, err := m.ensure(ctx, app, grantsOf(app.Status.ManagedOIDC, providers), now)
-		if err != nil {
-			m.Metrics.failed()
-			errs = append(errs, fmt.Errorf("%s/%s: %w", app.Namespace, app.Name, err))
-		}
-		if wrote {
-			minted++
-		}
-		oldest = max(oldest, age)
 	}
 	m.Metrics.observe(oldest)
 	return errors.Join(errs...)
+}
+
+// target is one Secret of an App's tokens: the running release's, or the
+// native build's, whose generation is the release it builds, so a new build
+// never takes an earlier build's tokens.
+type target struct {
+	secret     string
+	generation int64
+	grants     []grant
+}
+
+// targetsOf is the Secrets app needs tokens in now: the running release's
+// mounts (status.managedOIDC) and, while the App builds, its native build's
+// (status.buildManagedOIDC, docs/ADR116-managed-oidc.md D12, w2/m480).
+func targetsOf(app *appv1alpha1.App) []target {
+	var out []target
+	if providers := appv1alpha1.ManagedOIDCProvidersNamed(app.Status.ManagedOIDC.Mounted()); len(providers) > 0 {
+		out = append(out, target{secret: appv1alpha1.ManagedOIDCSecretName(app.Name), grants: grantsOf(app.Status.ManagedOIDC, providers)})
+	}
+	if b := app.Status.BuildingManagedOIDC(); b != nil {
+		providers := appv1alpha1.ManagedOIDCProvidersNamed(b.Mounted())
+		out = append(out, target{secret: appv1alpha1.ManagedOIDCBuildSecretName(app.Name), generation: b.Generation, grants: grantsOf(b, providers)})
+	}
+	return out
 }
 
 // subjectOf is the sub claim of app's tokens, from the labels bex-api
@@ -187,22 +213,23 @@ func grantsOf(st *appv1alpha1.ManagedOIDCStatus, providers []appv1alpha1.Managed
 	return out
 }
 
-// ensure writes app's tokens when its Secret is missing, stale, for another
-// subject, for other providers or with another credential configuration;
-// CreateOrUpdate writes nothing for tokens that are still fresh. age is the
-// age of the tokens the service reads after the call; wrote reports a write.
-func (m *Minter) ensure(ctx context.Context, app *appv1alpha1.App, grants []grant, now time.Time) (age time.Duration, wrote bool, err error) {
+// ensure writes t's tokens when its Secret is missing, stale, for another
+// subject, for other providers, with another credential configuration or
+// for another build; CreateOrUpdate writes nothing for tokens that are still
+// fresh. age is the age of the tokens the service reads after the call;
+// wrote reports a write.
+func (m *Minter) ensure(ctx context.Context, app *appv1alpha1.App, t target, now time.Time) (age time.Duration, wrote bool, err error) {
 	sub := subjectOf(app)
-	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: app.Namespace, Name: appv1alpha1.ManagedOIDCSecretName(app.Name)}}
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: app.Namespace, Name: t.secret}}
 	var held, issued time.Time // the tokens the service had, and the new ones
 	op, err := controllerutil.CreateOrUpdate(ctx, m.Client, secret, func() error {
 		var fresh bool
-		if held, fresh = freshAt(secret, sub, grants, now); fresh {
+		if held, fresh = freshAt(secret, sub, t, now); fresh {
 			issued = held
 			return nil
 		}
-		data := make(map[string][]byte, len(grants))
-		for _, g := range grants {
+		data := make(map[string][]byte, len(t.grants))
+		for _, g := range t.grants {
 			tok, err := m.Issuer.Mint(sub, g.audience)
 			if err != nil {
 				return fmt.Errorf("mint %s token: %w", g.provider.Name, err)
@@ -214,6 +241,9 @@ func (m *Minter) ensure(ctx context.Context, app *appv1alpha1.App, grants []gran
 			issued = tok.IssuedAt
 		}
 		fill(secret, app, sub, issued, data)
+		if gen := generationOf(t); gen != "" {
+			secret.Annotations[appv1alpha1.AnnotationManagedOIDCGeneration] = gen
+		}
 		return nil
 	})
 	if err != nil {
@@ -225,17 +255,19 @@ func (m *Minter) ensure(ctx context.Context, app *appv1alpha1.App, grants []gran
 	return now.Sub(issued), op != controllerutil.OperationResultNone, nil
 }
 
-// freshAt reports secret's signing time when its tokens are the ones app
-// needs now: the same subject, exactly the grants' keys, the credential
-// configurations they need (a new GCP audience changes its configuration,
-// so its token is replaced too), and younger than RefreshAfter.
-func freshAt(secret *corev1.Secret, sub oidcissuer.Subject, grants []grant, now time.Time) (time.Time, bool) {
+// freshAt reports secret's signing time when its tokens are the ones t
+// needs now: the same subject, the same build, exactly the grants' keys, the
+// credential configurations they need (a new GCP audience changes its
+// configuration, so its token is replaced too), and younger than
+// RefreshAfter.
+func freshAt(secret *corev1.Secret, sub oidcissuer.Subject, t target, now time.Time) (time.Time, bool) {
 	issued, ok := issuedAt(secret)
-	if !ok || secret.Annotations[annotationSubject] != sub.String() || now.Sub(issued) >= RefreshAfter {
+	if !ok || secret.Annotations[annotationSubject] != sub.String() || now.Sub(issued) >= RefreshAfter ||
+		secret.Annotations[appv1alpha1.AnnotationManagedOIDCGeneration] != generationOf(t) {
 		return issued, false
 	}
 	var want []string
-	for _, g := range grants {
+	for _, g := range t.grants {
 		if len(secret.Data[g.provider.File]) == 0 {
 			return issued, false
 		}
@@ -245,6 +277,15 @@ func freshAt(secret *corev1.Secret, sub oidcissuer.Subject, grants []grant, now 
 		want = append(want, g.provider.Files()...)
 	}
 	return issued, slices.Equal(slices.Sorted(maps.Keys(secret.Data)), slices.Sorted(slices.Values(want)))
+}
+
+// generationOf is t's AnnotationManagedOIDCGeneration value: the build's
+// release, or none for the running release's Secret.
+func generationOf(t target) string {
+	if t.generation == 0 {
+		return ""
+	}
+	return strconv.FormatInt(t.generation, 10)
 }
 
 func issuedAt(secret *corev1.Secret) (time.Time, bool) {

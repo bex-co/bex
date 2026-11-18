@@ -104,3 +104,25 @@ func TestManagedOIDCProvidersNeverShareATokenOrAFile(t *testing.T) {
 		t.Errorf("ManagedOIDCProvidersNamed = %v, want [openai aws]", names)
 	}
 }
+
+// A native build's decision needs tokens only while the App builds and only
+// when it mounts a provider (w2/m480): a decision a canceled build left, a
+// refused one and one with no trigger need none.
+func TestBuildingManagedOIDCIsTheBuildsDecisionWhileItBuilds(t *testing.T) {
+	mounts := &ManagedOIDCStatus{Generation: 4, Providers: []string{"aws"}, PlanAllowed: true}
+	for name, tc := range map[string]struct {
+		status AppStatus
+		want   *ManagedOIDCStatus
+	}{
+		"building, mounting":         {AppStatus{Phase: PhaseBuilding, BuildManagedOIDC: mounts}, mounts},
+		"building, no decision":      {AppStatus{Phase: PhaseBuilding}, nil},
+		"building, refused":          {AppStatus{Phase: PhaseBuilding, BuildManagedOIDC: &ManagedOIDCStatus{Generation: 4, Providers: []string{"aws"}}}, nil},
+		"building, no trigger":       {AppStatus{Phase: PhaseBuilding, BuildManagedOIDC: &ManagedOIDCStatus{Generation: 4, PlanAllowed: true}}, nil},
+		"deploying, left a decision": {AppStatus{Phase: PhaseDeploying, BuildManagedOIDC: mounts}, nil},
+		"running, left a decision":   {AppStatus{Phase: PhaseRunning, BuildManagedOIDC: mounts}, nil},
+	} {
+		if got := tc.status.BuildingManagedOIDC(); got != tc.want {
+			t.Errorf("%s: BuildingManagedOIDC() = %+v, want %+v", name, got, tc.want)
+		}
+	}
+}

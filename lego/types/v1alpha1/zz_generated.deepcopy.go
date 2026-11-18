@@ -310,6 +310,11 @@ func (in *AppStatus) DeepCopyInto(out *AppStatus) {
 		*out = new(ManagedOIDCStatus)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.BuildManagedOIDC != nil {
+		in, out := &in.BuildManagedOIDC, &out.BuildManagedOIDC
+		*out = new(ManagedOIDCStatus)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
 		*out = make([]v1.Condition, len(*in))

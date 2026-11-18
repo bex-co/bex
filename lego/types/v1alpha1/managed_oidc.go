@@ -45,6 +45,17 @@ const ManagedOIDCMountPath = "/var/lib/render/oidc"
 // reaches every running instance.
 func ManagedOIDCSecretName(app string) string { return app + "-oidc" }
 
+// ManagedOIDCBuildSecretName is the Secret bex-api keeps a native build's
+// tokens in while it builds (AppStatus.BuildManagedOIDC, w2/m480), apart from
+// the running release's: a build must not change the files its served
+// release's pods read.
+func ManagedOIDCBuildSecretName(app string) string { return app + "-oidc-build" }
+
+// AnnotationManagedOIDCGeneration, on a build token Secret, is the release
+// generation whose build decision its tokens were minted for: the operator
+// hands a build only the tokens minted for it.
+const AnnotationManagedOIDCGeneration = "app.bex.co/oidc-generation"
+
 // ManagedOIDCProvider is one provider Render's Managed OIDC delivers a token
 // for, keyed by the variable that turns it on.
 type ManagedOIDCProvider struct {
@@ -172,6 +183,16 @@ func (s *ManagedOIDCStatus) Mounted() []string {
 		return nil
 	}
 	return s.Providers
+}
+
+// BuildingManagedOIDC is the native build decision whose tokens the App
+// needs now: one that mounts a provider while the App builds. A decision a
+// canceled build left behind needs none.
+func (s *AppStatus) BuildingManagedOIDC() *ManagedOIDCStatus {
+	if s.Phase != PhaseBuilding || len(s.BuildManagedOIDC.Mounted()) == 0 {
+		return nil
+	}
+	return s.BuildManagedOIDC
 }
 
 // Refused is the providers the release asked for that its workspace plan did

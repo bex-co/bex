@@ -2112,6 +2112,15 @@ type AppStatus struct {
 	// +optional
 	ManagedOIDC *ManagedOIDCStatus `json:"managedOIDC,omitempty"`
 
+	// BuildManagedOIDC is the Managed OIDC decision of the native build in
+	// flight (docs/ADR116-managed-oidc.md D12, w2/m480): its generation is
+	// the release being built. The operator records it before the build Job
+	// exists and clears it when the build ends; bex-api mints the tokens of
+	// Mounted() into ManagedOIDCBuildSecretName while the App builds.
+	// Dockerfile and buildpack builds never get one, as on Render.
+	// +optional
+	BuildManagedOIDC *ManagedOIDCStatus `json:"buildManagedOIDC,omitempty"`
+
 	// ConfigSnapshotGeneration is the release generation whose configuration
 	// sources have been copied into immutable per-release Secrets (0 = none, the
 	// pre-w1/m152 state and every App that has not dispatched a release since).

@@ -1318,6 +1318,8 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		NativeFilesSecrets: inputs.filesSecrets,
 		NativeFiles:        inputs.files,
 		NativeFileSizes:    inputs.fileSizes,
+		ManagedOIDCSecret:  inputs.oidcSecret,
+		ManagedOIDC:        inputs.oidc,
 		// bex's own image runs the version resolver (w8/m51); unresolved, the
 		// build keeps its runtime's default line.
 		NativeResolverImage:  r.BackupHelperImage,
@@ -1361,6 +1363,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	// branch below writes status, the waiting ones told explicitly.
 	holdEnded := endBuildHold(app, time.Now())
 	r.endBuildDatastoreReach(ctx, app, buildNs, obs.Phase)
+	r.endBuildManagedOIDC(ctx, app, buildNs, obs.Phase)
 	switch obs.Phase {
 	case build.PhaseSucceeded:
 		return r.storeBuiltArtifact(ctx, app, obs, buildNs, artifact)
@@ -1857,6 +1860,11 @@ func (r *AppReconciler) prepareSourceBuildEnv(ctx context.Context, app *appv1alp
 	if err != nil {
 		return nil, buildInputs{}, "", err
 	}
+	if builder == build.BuilderNative {
+		if inputs.oidcSecret, inputs.oidc, err = r.projectBuildManagedOIDC(ctx, app, buildNs); err != nil {
+			return nil, buildInputs{}, "", err
+		}
+	}
 	// The build may reach its own workspace's datastores and nothing else
 	// (docs/ADR022-tenant-isolation.md § Build reach); revoked at the build's
 	// terminal observation in buildFromSource.
@@ -1888,6 +1896,10 @@ type buildInputs struct {
 	envSecret, revision string
 	filesSecrets, files []string
 	fileSizes           map[string]int
+	// oidcSecret and oidc are a native build's Managed OIDC tokens
+	// (projectBuildManagedOIDC); a Dockerfile build gets none, as on Render.
+	oidcSecret string
+	oidc       []appv1alpha1.ManagedOIDCProvider
 }
 
 // projectBuildInputs projects the in-flight release's secret files and
@@ -8552,6 +8564,7 @@ func (r *AppReconciler) knownBuildSecretNames(app *appv1alpha1.App) []string {
 		runtimeEnvSecret(app),
 		nativeEnvSecretName(app.Name),
 		nativeFilesSecretName(app.Name),
+		buildManagedOIDCSecretName(app.Name),
 		app.Spec.ExternalRegistryPullSecret,
 		id.PullSecretName(),
 		id.LegacyPullSecretName(),

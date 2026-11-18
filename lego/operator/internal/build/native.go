@@ -302,6 +302,9 @@ func validateNativeOptions(o Options) error {
 	if rev := strings.TrimSpace(o.NativeEnvRevision); rev != "" && !nativeEnvRevisionPattern.MatchString(rev) {
 		return fmt.Errorf("build: native env revision %q is not opaque cache metadata", rev)
 	}
+	if err := validateNativeManagedOIDC(o); err != nil {
+		return err
+	}
 	return validateSecretFiles(o)
 }
 
@@ -418,7 +421,7 @@ while IFS= read -r record; do
   value="$(printf '%s' "$encoded" | bex_decode 2>/dev/null && printf '.')" || exit 1
   case $key in ''|[0-9]*|*[!A-Za-z0-9_]*) continue ;; esac # a dotted name reaches the container, not the shell
   export "$key=${value%.}"
-done < ` + nativeEnvSecretPath + "\n"
+done < ` + nativeEnvSecretPath + "\n" + nativeOIDCExports(o)
 	installLines, installStep := nativeStaticInstall(o)
 	run := shellJSON(nativeEnvLoaderPrefix + installStep + nativePublishCheckStep(o) + o.BuildCommand)
 	hugo := nativeStaticTools(o)
@@ -431,7 +434,7 @@ COPY <<'%s' %s
 %sARG RENDER_GIT_COMMIT
 %s%s %s
 `, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools+hugo+nativeBuildDefaults(o), nativeWorkdir, nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
-		installLines, nativeEnvRunMount, fileMounts, run)
+		installLines, nativeEnvRunMount, fileMounts+nativeOIDCMounts(o), run)
 	if o.StaticSite {
 		// No PORT/CMD: the image only carries the built site for the publish
 		// Job's extract initContainer (ADR029) and never runs as a workload.
@@ -688,7 +691,7 @@ func nativeBuildPreparer(o Options) corev1.Container {
 	if len(o.NativeFilesSecrets) > 0 {
 		mounts = append(mounts, corev1.VolumeMount{Name: secretFilesVolume, MountPath: "/native-files", ReadOnly: true})
 	}
-	return corev1.Container{
+	prep := corev1.Container{
 		Name:    "prepare-native-build",
 		Image:   nativePreparerImage,
 		Command: []string{"sh", "-eu", "-c"},
@@ -755,4 +758,6 @@ done`},
 			},
 		},
 	}
+	withNativeOIDCPreparer(&prep, o)
+	return prep
 }

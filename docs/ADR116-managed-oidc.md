@@ -1,6 +1,6 @@
 # ADR116 — Managed OIDC: one issuer per workspace, Render's claims, an ES256 key set and its rotation
 
-**Status:** accepted (2026-11-18, w2/m476): the issuer, the signer, the key store, rotation and the public documents. Runtime delivery and AWS (D9) accepted 2026-11-18 with w2/m477. Anthropic and OpenAI (D10) accepted 2026-11-18 with w2/m478. GCP (D11) accepted 2026-11-18 with w2/m479. Build time (w2/m480) reuses D9.
+**Status:** accepted (2026-11-18, w2/m476): the issuer, the signer, the key store, rotation and the public documents. Runtime delivery and AWS (D9) accepted 2026-11-18 with w2/m477. Anthropic and OpenAI (D10) accepted 2026-11-18 with w2/m478. GCP (D11) accepted 2026-11-18 with w2/m479. Build time (D12) accepted 2026-11-18 with w2/m480.
 
 **Basis:** Render parity first ([ADR008](ADR008-vision.md#render-parity-first), user decisions 2026-10-17 and 2026-10-20). The user filed w2/m476–m480 with `/pm them all to w2` on 2026-11-17, reopening the 2026-08-23 deferral in `.pm/FUTURE-MAYBE.md`. The choices below that the brainstorm left open (D2 host, D5 custody) are the worker's, with the basis given; none is a user decision.
 
@@ -110,7 +110,7 @@ Render, [render.com/docs/oidc](https://render.com/docs/oidc) (read 2026-11-18): 
 
 **How it reaches the container.** A release that mounts a provider gets a Secret volume of `<app>-oidc` listing `aws-token`, mounted read-only at `/var/lib/render/oidc` (the kubelet keeps Secret volumes in tmpfs, as Render's `/dev/shm`), and `AWS_WEB_IDENTITY_TOKEN_FILE=/var/lib/render/oidc/aws-token`. The volume is required, so a container does not start before its token exists; the decision is written before the pod and wakes the minter, so the token is usually there first. A value the service set itself for `AWS_WEB_IDENTITY_TOKEN_FILE` gives way to the platform's, as Render warns. A release without the trigger gets none of it: its pod template is the one it had before.
 
-**Which containers.** Every container bex runs for the service: instances (web, private, background worker), every cron run, the pre-deploy step and the initial deploy hook (which copies the instance's template). SSH and dashboard shell sessions exec into an instance and inherit the file and the variable. One-off jobs and ephemeral shells are refused on bex (`.pm/DO_NOT_DO.md`). Build time is w2/m480. OIDC does not authenticate private image pulls, on Render either.
+**Which containers.** Every container bex runs for the service: instances (web, private, background worker), every cron run, the pre-deploy step and the initial deploy hook (which copies the instance's template). SSH and dashboard shell sessions exec into an instance and inherit the file and the variable. One-off jobs and ephemeral shells are refused on bex (`.pm/DO_NOT_DO.md`). Build time is D12. OIDC does not authenticate private image pulls, on Render either.
 
 **Below Pro** (the brainstorm's D4; Render's behavior unverified). The variable is accepted and kept on every surface, no token is mounted, and the deploy's log says why: `==> Managed OIDC requires a Pro workspace or higher: AWS_ROLE_ARN is set, but no identity token is mounted` (from `status.managedOIDC`, so only the running release's deploy carries it).
 
@@ -159,10 +159,44 @@ Render, [render.com/docs/oidc](https://render.com/docs/oidc) (read 2026-11-18): 
 
 **Residual.** The configuration sits in the same Secret as the tokens, so D10's residual applies: a deploy that changes the provider rewrites the file the old release's pods read for the rest of the rollout.
 
+### D12 — Build time (w2/m480)
+
+Render, [render.com/docs/oidc](https://render.com/docs/oidc) § Limitations (read 2026-11-18): "OIDC _is_ available at build time for services on any native runtime." "Currently, OIDC auth is not available at build time for services that build from a Dockerfile." The page says nothing of how a build reads the token, so bex gives the build what an instance gets.
+
+**Which builds.**
+
+| Builder | Build-time token | Basis |
+| --- | --- | --- |
+| Native (`runtime` `node`, `python`, `ruby`, `go`, `rust` or `elixir`; a static site's build command, which runs in the native Node environment; a native build source) | yes | Render's first sentence. A static site is a Render service whose build runs natively; Render does not single it out, so it is treated as native. |
+| Dockerfile (`runtime: docker`, `builder: dockerfile`, and `auto`, which builds the repository's Dockerfile) | no | Render's second sentence. The service's own variables still reach it as build args (w1/m178), `AWS_ROLE_ARN` included, but no token, no file and no platform-set file variable. |
+| `builder: buildpack` (kpack, a bex-only builder no Render surface selects) | no | kpack refuses `secretKeyRef` in build env (`.pm/w1/done/121.md`), so a token could only travel as a plaintext field of the Image CR. Its build already gets only `BP_*`/`BPE_*` variables. |
+
+**The decision.** At a native build's dispatch the operator decides with D9's rules (a non-blank trigger, D11's GCP input check, the plan label) from the in-flight release's environment, which is the one the build command sees. It records the decision in `status.buildManagedOIDC`, whose generation is the release being built, before the build Job exists, and keeps it for the life of the build. A variable saved after dispatch reaches the next deploy, as it does at runtime. Below Pro the build gets nothing; the release's deploy log already says why (D9).
+
+**Minting.** bex-api's minter writes the build's tokens, with the same subject, audiences and GCP configuration a release gets, to `<app>-oidc-build`. The Secret carries `app.bex.co/oidc-generation`, the build's release, so a new build never takes an earlier build's tokens, however young. It is refreshed like a release's while the App is `building`, and no longer once it is not, so a decision a canceled build leaves behind is not minted. The status watch wakes the minter when a build starts needing tokens. The served release's `<app>-oidc` is never touched: a build cannot change the files running instances read, nor drop a key their volume lists.
+
+**Delivery.** The operator holds no key. It copies the minted files next to the build Job as `bld-<app>-oidc`, only once they carry the build's generation, and rewrites the copy on every pass while the build waits, so a queued build's Pod starts with a recent token. Until then it removes a copy an earlier build left. The Job lists every file in a required Secret volume, so the build does not start before its tokens exist (Render writes runtime tokens "before the service ever starts"). The files then take the secret-file path (w4/m163):
+
+- Only the preparer mounts the Secret. It copies the files into the build's scratch directory, one snapshot per build.
+- buildctl hands each file to BuildKit as a secret (`bex-oidc-<file>`).
+- The authored build `RUN` alone mounts each file at its runtime path, `/var/lib/render/oidc/<file>`, `required=true`.
+- The env loader exports each provider's file variable (`AWS_WEB_IDENTITY_TOKEN_FILE`, `GOOGLE_APPLICATION_CREDENTIALS`, `ANTHROPIC_IDENTITY_TOKEN_FILE`, `OPENAI_IDENTITY_TOKEN_FILE`) after the service's own values, so a value the service set itself gives way, as at runtime.
+
+Nothing travels as a build arg, an `ENV`, a `COPY` or a file in the build context. No layer, image config or build log holds a token, and the image's environment names no token file, so an instance of a release without the trigger finds no dangling variable. `TestNativeManagedOIDCPinnedBuildKit` (`BEX_BUILDKIT_INTEGRATION=1`) checks this against the pinned BuildKit: the build command reads and checks every token, a Dockerfile build of the same options sees neither variable nor file, and no blob of the image carries a token. The same test fails when a token is passed as a build arg or copied into the image. BuildKit's cache key ignores secret contents. The provider set is in the loader, so a change to it reruns the build command; a new token alone does not.
+
+**End.** When the operator observes the build succeed or fail, it clears the decision and deletes both Secrets. A copy in the build namespace is in the finalizer's inventory; the App owns `<app>-oidc-build`.
+
+**Residuals.**
+
+- A build reads a snapshot. A token is signed at most 20 minutes before the build Pod starts and lives 60 minutes, so a build command that runs for more than about 40 minutes may read an expired token. A build cannot refresh it. Render documents neither its build-time token's lifetime nor a refresh.
+- A minter pass in flight when the build ends can write `<app>-oidc-build` once more. That token is no longer refreshed and expires within the hour, and the next build's end or the App's deletion removes it, as D9's "the last one expires on its own".
+- A build waits for bex-api: with the minter down, a native build that sets a trigger sits with its Pod waiting on the copy until the build times out.
+
 ## Consequences
 
 - ADR018's row "Managed OIDC for AI providers" names w2/m476–m480 as owners, and ADR030's open gap points at the same milestones. Both stay ✖ until delivery ships.
 - `BEX_OIDC_ISSUER_URL` is documented in `lego/backend/AGENTS.md`.
 - `scripts/oidc-issuer-verify.sh` checks production: a token minted for a workspace verifies through that workspace's discovery with go-oidc, fails against another workspace's issuer, and discovery has Render's keys.
 - `scripts/oidc-aws-verify.sh` checks a running service (D9): its token file and variable, an `AssumeRoleWithWebIdentity` exchange at an STS trusting its workspace's issuer, a refusal for another audience, and the same across one refresh.
+- A native build with a trigger reads its tokens (D12); `TestNativeManagedOIDCPinnedBuildKit` checks the transport against the pinned BuildKit.
 - `scripts/oidc-audience-verify.sh` checks a running service with several providers (D10): each token is accepted only where its own audience is expected. For GCP it also checks that `GOOGLE_APPLICATION_CREDENTIALS` is an `external_account` file naming the token, and takes the audience from it (D11). Both scripts share `scripts/lib/oidc-sts.sh`.

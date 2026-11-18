@@ -225,6 +225,7 @@ func TestStatusFingerprintNamesEveryStatusField(t *testing.T) {
 		"SelectedReleaseGeneration":  "the selected release's verdict arrives through the phase and conditions",
 		"LastSuccessfulRunAt":        "moves when a run in Runs succeeds, which already kicks; read by service views",
 		"ManagedOIDC":                "the minter's own wake (ManagedOIDCKick), not a projector record",
+		"BuildManagedOIDC":           "the minter's own wake (ManagedOIDCKick), not a projector record",
 		"SandboxID":                  "sandbox runtime only",
 		"Endpoint":                   "sandbox runtime only",
 	}
@@ -409,6 +410,47 @@ func TestWatchKicksAreSpacedByThePassTheyCause(t *testing.T) {
 	s.fired()
 	if delay, _ = s.schedule(now); delay < time.Second {
 		t.Fatalf("delay = %v right after a short pass, want at least the 1 s floor", delay)
+	}
+}
+
+// TestStatusWatchWakesTheMinterWhenANativeBuildNeedsTokens (w2/m480, ADR116
+// D12): a native build's preparer waits for its tokens, so the minter is
+// woken when the App builds with a decision that mounts a provider, whichever
+// of the two the operator writes first, and when a newer build needs its own;
+// not by a build decision that mounts nothing, nor by the build ending.
+func TestStatusWatchWakesTheMinterWhenANativeBuildNeedsTokens(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	fw := watch.NewFakeWithChanSize(8, false)
+	sw := &scriptedWatch{watchers: []*watch.FakeWatcher{fw}, calls: make(chan int, 4)}
+	var minter atomic.Int32
+	w := &AppStatusWatch{Client: sw, Kick: func() {}, ManagedOIDCKick: func() { minter.Add(1) }, Backoff: time.Millisecond}
+	go w.Run(ctx)
+	<-sw.calls
+
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", UID: "u1", ResourceVersion: "1"}}
+	next := func(change func(*appv1alpha1.App)) {
+		change(app)
+		app = app.DeepCopy()
+		rv, _ := strconv.Atoi(app.ResourceVersion)
+		app.ResourceVersion = strconv.Itoa(rv + 1)
+		fw.Modify(app.DeepCopy())
+	}
+	fw.Add(app.DeepCopy())
+	next(func(a *appv1alpha1.App) {
+		a.Status.BuildManagedOIDC = &appv1alpha1.ManagedOIDCStatus{Generation: 2, PlanAllowed: true}
+	})
+	next(func(a *appv1alpha1.App) { a.Status.Phase = appv1alpha1.PhaseBuilding })
+	next(func(a *appv1alpha1.App) { a.Status.BuildManagedOIDC.Providers = []string{"aws"} }) // 1: the build mounts AWS
+	next(func(a *appv1alpha1.App) { a.Status.Phase = appv1alpha1.PhaseDeploying; a.Status.BuildManagedOIDC = nil })
+	next(func(a *appv1alpha1.App) {
+		a.Status.BuildManagedOIDC = &appv1alpha1.ManagedOIDCStatus{Generation: 3, Providers: []string{"aws"}, PlanAllowed: true}
+	})
+	next(func(a *appv1alpha1.App) { a.Status.Phase = appv1alpha1.PhaseBuilding }) // 2: a newer build, once it builds
+	waitFor(t, "the minter's kicks", func() bool { return minter.Load() >= 2 })
+	time.Sleep(50 * time.Millisecond)
+	if got := minter.Load(); got != 2 {
+		t.Fatalf("minter kicks = %d, want 2: each build that mounts a provider, once it builds", got)
 	}
 }
 

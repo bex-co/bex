@@ -1154,6 +1154,61 @@ spec:
                 - generation
                 - since
                 type: object
+              buildManagedOIDC:
+                description: |-
+                  BuildManagedOIDC is the Managed OIDC decision of the native build in
+                  flight (docs/ADR116-managed-oidc.md D12, w2/m480): its generation is
+                  the release being built. The operator records it before the build Job
+                  exists and clears it when the build ends; bex-api mints the tokens of
+                  Mounted() into ManagedOIDCBuildSecretName while the App builds.
+                  Dockerfile and buildpack builds never get one, as on Render.
+                properties:
+                  gcp:
+                    description: |-
+                      GCP is the release's Google Cloud inputs, set when its environment sets
+                      GCP_WORKLOAD_IDENTITY_PROVIDER: what the credential configuration and
+                      the token's audience are made of, or why they cannot be (Refused, and
+                      then Providers leaves gcp out).
+                    properties:
+                      refused:
+                        description: |-
+                          Refused is why the variables cannot be used, as the deploy log says
+                          it. The release then mounts no Google Cloud credential, so nothing is
+                          minted for an audience Google would refuse.
+                        type: string
+                      serviceAccountEmail:
+                        description: |-
+                          ServiceAccountEmail is the service account to impersonate; empty for
+                          direct access.
+                        type: string
+                      workloadIdentityProvider:
+                        description: |-
+                          WorkloadIdentityProvider is the workload identity pool provider's
+                          resource name, projects/<project number>/locations/<location>/
+                          workloadIdentityPools/<pool>/providers/<provider>, whichever of
+                          Render's two spellings the service set.
+                        type: string
+                    type: object
+                  generation:
+                    description: Generation is the release generation the decision
+                      belongs to.
+                    format: int64
+                    type: integer
+                  planAllowed:
+                    description: |-
+                      PlanAllowed records that the App carried LabelManagedOIDC when the
+                      release was decided, so a plan change takes effect at the next deploy.
+                    type: boolean
+                  providers:
+                    description: |-
+                      Providers are the providers whose trigger the release's environment
+                      sets, in ManagedOIDCProviders order.
+                    items:
+                      type: string
+                    type: array
+                required:
+                - generation
+                type: object
               buildRun:
                 description: |-
                   BuildRun is the execution window of the most recent terminal source

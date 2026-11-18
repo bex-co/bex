@@ -532,6 +532,15 @@ type Options struct {
 	// as a build secret at all (dockerBuildSecretArgs, w4/699). An absent name
 	// counts as small.
 	NativeFileSizes map[string]int
+	// ManagedOIDCSecret names the build-namespace Secret holding a native
+	// build's Managed OIDC files, and ManagedOIDC the providers whose files
+	// it holds (docs/ADR116-managed-oidc.md D12, w2/m480). The authored build
+	// command reads each at its runtime path, /var/lib/render/oidc/<file>,
+	// through a transient BuildKit secret mount, with each provider's file
+	// variable set, as on Render, where native builds get the token and
+	// Dockerfile builds do not: every other builder ignores both. Empty = none.
+	ManagedOIDCSecret string
+	ManagedOIDC       []appv1alpha1.ManagedOIDCProvider
 	// NativeResolverImage is bex's own image, whose /native-resolve picks the
 	// toolchain line a native build asked for (w8/m51). Empty skips the phase:
 	// the build runs on its runtime's default line, as before the resolver.
@@ -1262,6 +1271,7 @@ func buildctlRecipeArgs(o Options, dockerfileDir string) []string {
 			args = append(args, "--secret", fmt.Sprintf("id=%s,src=%s/%s/%d", id, nativeFilePartsDir, name, p))
 		}
 	}
+	args = append(args, nativeOIDCSecretArgs(o)...)
 	if nativeServingInit(o) {
 		args = append(args,
 			"--local", nativeInitContext+"="+nativeInitDir,
@@ -1375,6 +1385,9 @@ fi
 	}
 	if o.Builder == BuilderNative {
 		volumes = append(volumes, emptyDirVolume("native-build"))
+		if vol := nativeOIDCVolume(o); vol != nil {
+			volumes = append(volumes, *vol)
+		}
 	}
 	if o.RuntimeEnvSecret != "" {
 		volumes = append(volumes, secretVolume(runtimeEnvVolume, o.RuntimeEnvSecret))

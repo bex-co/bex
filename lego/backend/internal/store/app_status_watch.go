@@ -139,17 +139,16 @@ func (w *AppStatusWatch) watchOnce(ctx context.Context) error {
 
 // kickManagedOIDC calls ManagedOIDCKick when app's release mounts tokens
 // for a generation, providers or GCP inputs (a cancel restores a served
-// release's within the same generation) the watch has not seen it mount.
+// release's within the same generation) the watch has not seen it mount, or
+// when its native build starts needing tokens (docs/ADR116-managed-oidc.md
+// D12): the build's preparer waits for them.
 func (w *AppStatusWatch) kickManagedOIDC(app *appv1alpha1.App) {
 	if w.ManagedOIDCKick == nil {
 		return
 	}
-	mounts := ""
-	if st := app.Status.ManagedOIDC; len(st.Mounted()) > 0 {
-		mounts = fmt.Sprintf("%d:%v", st.Generation, st.Mounted())
-		if st.GCP != nil {
-			mounts += ":" + st.GCP.WorkloadIdentityProvider + ":" + st.GCP.ServiceAccountEmail
-		}
+	mounts := mountsKey(app.Status.ManagedOIDC)
+	if build := mountsKey(app.Status.BuildingManagedOIDC()); build != "" {
+		mounts += "|build " + build
 	}
 	if mounts == w.mounts[app.UID] {
 		return
@@ -158,6 +157,20 @@ func (w *AppStatusWatch) kickManagedOIDC(app *appv1alpha1.App) {
 	if mounts != "" {
 		w.ManagedOIDCKick()
 	}
+}
+
+// mountsKey identifies the tokens a decision mounts: none, or its
+// generation, providers and GCP inputs.
+func mountsKey(st *appv1alpha1.ManagedOIDCStatus) string {
+	mounted := st.Mounted()
+	if len(mounted) == 0 {
+		return ""
+	}
+	key := fmt.Sprintf("%d:%v", st.Generation, mounted)
+	if st.GCP != nil {
+		key += ":" + st.GCP.WorkloadIdentityProvider + ":" + st.GCP.ServiceAccountEmail
+	}
+	return key
 }
 
 // failed counts a failed watch and returns its error. An expired resource
