@@ -441,6 +441,12 @@ var representativeVerbRelations = map[string]string{
 	"*apps.Service.ResolveSSHSession":  core.RelCanViewSensitive,
 	// can_manage_keys — developer and up (workspace API keys).
 	"*apikeys.Service.CreateAPIKey": core.RelCanManageKeys,
+	// can_join / can_join_as_admin — org-derived, never role-granted (ADR115
+	// D5): a Member joins a Public workspace, an Owner joins any as admin.
+	// Pinned semantically so a re-gated self-join (e.g. on can_view) turns
+	// red instead of staying consistent with the derived matrix.
+	"*members.Service.JoinWorkspace":        core.RelCanJoin,
+	"*members.Service.JoinWorkspaceAsAdmin": core.RelCanJoinAsAdmin,
 	// can_manage — admin only (workspace/members/git settings).
 	"*audit.Service.List":          core.RelCanManage,
 	"*members.Service.Invite":      core.RelCanManage,
