@@ -61,6 +61,8 @@ spec:
               value: ":8090"
             - name: BEX_API_PUBLIC_URL # public origin used in copy-ready deploy-hook URLs
               value: https://api.bex.co
+            - name: BEX_OIDC_ISSUER_URL # Managed OIDC issuer origin (docs/ADR116-managed-oidc.md); its host is config/api/ingress-oidc.yaml
+              value: https://oidc.bex.co
             - name: BEX_SSH_HOST # Render-compatible serviceDetails.sshAddress host
               valueFrom:
                 configMapKeyRef:

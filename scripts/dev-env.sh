@@ -653,6 +653,11 @@ start_api() {
     # calls to refuse unverified subjects (ADR075 D8 revision, w2/m168). A
     # fixed local-only bearer; the printed dashboard command passes the same.
     BEX_OPS_ROLE_TOKEN="dev-$N-internal"
+    # The Managed OIDC issuer (ADR116), routed by host on bex-api's own port:
+    # http://oidc.localhost:<port>/<tea-…>/.well-known/openid-configuration.
+    # *.localhost resolves to loopback, and the API keeps answering on
+    # localhost.
+    BEX_OIDC_ISSUER_URL="http://oidc.localhost:$BEX_API_PORT"
   )
   # Prometheus-backed readers, the disk-usage sweeper among them, start only
   # with BEX_PROM_URL; set it only when ensure_prometheus ran, because a set

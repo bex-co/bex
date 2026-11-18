@@ -181,6 +181,31 @@ func TestWellFormedAndKindOfRejectJunk(t *testing.T) {
 	}
 }
 
+// TestIsDecodesTheXid pins the strict check Render's OIDC issuer applies to a
+// workspace id (ADR116 D1, probed 2026-11-17): the shape alone is not enough,
+// the 20 characters must decode as an xid, and the kind must be the one asked.
+func TestIsDecodesTheXid(t *testing.T) {
+	for _, s := range []string{New(Workspace), "tea-c0000000000000000000", "tea-d98210cbbpdc73dcrkvg"} {
+		if !Is(Workspace, s) {
+			t.Errorf("Is(Workspace, %q) = false, want true", s)
+		}
+	}
+	for _, s := range []string{
+		"tea-d0000000000000000001", // the shape, but the last character carries bits no xid has
+		"tea-abc",
+		"TEA-c0000000000000000000",
+		New(Service), // a real id of another kind
+		"",
+	} {
+		if Is(Workspace, s) {
+			t.Errorf("Is(Workspace, %q) = true, want false", s)
+		}
+	}
+	if !Is(Service, New(Service)) || Is(Service, "srv-d0000000000000000001") {
+		t.Error("Is(Service, …) must accept a minted srv- id and refuse an undecodable one")
+	}
+}
+
 func TestRekindKeepsTheXidAndRoundTrips(t *testing.T) {
 	dep := New(Deploy)
 	bld, ok := Rekind(Build, dep)

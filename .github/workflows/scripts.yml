@@ -131,6 +131,11 @@ jobs:
       # w3/m365: secret scanning, push protection and main's history rules.
       - name: GitHub repository security drift self-test
         run: bash scripts/github-repo-security-drift.test.sh
+      # w2/m476 (ADR116): the Managed OIDC production check passes a healthy
+      # issuer and fails a cross-workspace accept, Render drift or a 200 for a
+      # malformed workspace id.
+      - name: OIDC issuer verify self-test
+        run: bash scripts/oidc-issuer-verify.test.sh
       # w6/110 (#134): an activator-held wake is a wake, and stage 4 polls.
       - name: Tenant-view canary stage 4 self-test
         run: bash scripts/tenant-view-liveness.test.sh

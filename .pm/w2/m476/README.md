@@ -1,15 +1,15 @@
 # w2 · m476 — Each workspace has its own OIDC issuer, as on Render: signing key, discovery and JWKS
 
-**Worker:** worker2 **Goal:** bex publishes a per-workspace OpenID Connect issuer at `https://oidc.bex.co/{tea-…}` whose discovery document and JWKS match Render's `oidc.render.com` field for field, backed by an ES256 signer with key rotation, so AWS, GCP, Anthropic and OpenAI can trust bex as an identity provider. **Status:** todo
+**Worker:** worker2 **Goal:** bex publishes a per-workspace OpenID Connect issuer at `https://oidc.bex.co/{tea-…}` whose discovery document and JWKS match Render's `oidc.render.com` field for field, backed by an ES256 signer with key rotation, so AWS, GCP, Anthropic and OpenAI can trust bex as an identity provider. **Status:** in progress (t001, t002, t004 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Design record: Managed OIDC issuer, claims, signing key and rotation; ADR018/ADR030 rows | 45m | — |
-| t002 | Signer package: load the key set, mint ES256 tokens with Render's claims | 60m | t001 |
+| t001 | Design record: Managed OIDC issuer, claims, signing key and rotation; ADR018/ADR030 rows — **DONE** | 45m | — |
+| t002 | Signer package: load the key set, mint ES256 tokens with Render's claims — **DONE** | 60m | t001 |
 | t003 | Key bootstrap and rotation with an overlap window | 45m | t002 |
-| t004 | Public discovery and JWKS endpoints with Render's exact field set | 45m | t002 |
+| t004 | Public discovery and JWKS endpoints with Render's exact field set — **DONE** | 45m | t002 |
 | t005 | Issuer host `oidc.bex.co`: DNS, TLS and routing to bex-api | 45m | t004 |
 | t006 | Production check: independent verification through discovery, and Render's shape | 30m | t003, t005 |
 | t007 | Render parity | 20m | t006 |

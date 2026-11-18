@@ -900,3 +900,26 @@ func TestLoadConfigObjectGatewayToken(t *testing.T) {
 		t.Errorf("a token alone = %+v, %v", cfg.ObjectStorage, err)
 	}
 }
+
+// TestLoadConfigOIDCIssuer: BEX_OIDC_ISSUER_URL turns the Managed OIDC issuer
+// on only as an origin, only with the store that holds its keys, and never on
+// the API's own host (the issuer answers every request to its host; ADR116
+// D2). Unset leaves it off.
+func TestLoadConfigOIDCIssuer(t *testing.T) {
+	cfg, _, err := loadFor(t, cpEnv(map[string]string{"BEX_OIDC_ISSUER_URL": "https://oidc.bex.co/", "BEX_API_PUBLIC_URL": "https://api.bex.co"}))
+	if err != nil || cfg.OIDCIssuerURL != "https://oidc.bex.co" {
+		t.Fatalf("configured issuer = %q, %v; want https://oidc.bex.co", cfg.OIDCIssuerURL, err)
+	}
+	if cfg, _, err := loadFor(t, cpEnv(nil)); err != nil || cfg.OIDCIssuerURL != "" {
+		t.Fatalf("unset issuer = %q, %v; want off", cfg.OIDCIssuerURL, err)
+	}
+	for name, env := range map[string]map[string]string{
+		"a path":         cpEnv(map[string]string{"BEX_OIDC_ISSUER_URL": "https://bex.co/oidc"}),
+		"no store":       {"BEX_OIDC_ISSUER_URL": "https://oidc.bex.co"},
+		"the API's host": cpEnv(map[string]string{"BEX_OIDC_ISSUER_URL": "https://API.bex.co:8443", "BEX_API_PUBLIC_URL": "https://api.bex.co"}),
+	} {
+		if _, _, err := loadFor(t, env); err == nil || !strings.Contains(err.Error(), "BEX_OIDC_ISSUER_URL") {
+			t.Errorf("%s: err = %v, want a BEX_OIDC_ISSUER_URL refusal", name, err)
+		}
+	}
+}

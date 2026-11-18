@@ -329,7 +329,7 @@ var planDispositions = map[string]planDisposition{
 	"pricing: Organization user roles":    {kind: "limit", ref: "core.OrganizationRoles, store.OrgRoles (ADR115 D4)", check: checkOrganizationRoles},
 	"pricing: SAML SSO":                   nonGoal("DO_NOT_DO: SSO/SAML · SCIM; ADR018 SSO / SAML · SCIM"),
 	"pricing: SCIM":                       nonGoal("DO_NOT_DO: SSO/SAML · SCIM; ADR018 SSO / SAML · SCIM"),
-	"pricing: OIDC authentication":        gap("ADR018 Managed OIDC for AI providers"),
+	"pricing: OIDC authentication":        gap("ADR018 Managed OIDC for AI providers, w2/m476–m480"),
 	"pricing: Audit logs":                 gate(core.FeatureAuditLogs),
 	// Compliance
 	"pricing: GDPR DPA":                  commercial("a contract term"),
@@ -371,7 +371,7 @@ var planDispositions = map[string]planDisposition{
 	}},
 	"features: Compliance documentation": commercial("documents shared under NDA"),
 	"features: Audit logs":               minimumGate(core.FeatureAuditLogs),
-	"features: OIDC":                     gap("ADR018 Managed OIDC for AI providers"),
+	"features: OIDC":                     gap("ADR018 Managed OIDC for AI providers, w2/m476–m480"),
 	"features: SAML SSO and SCIM":        nonGoal("DO_NOT_DO: SSO/SAML · SCIM"),
 	"features: Org-level audit logs":     minimumGate(core.FeatureOrganizations),
 	"features: Additional member roles": {kind: "limit", ref: "store.LimitsFor AllowedRoles", check: func(t reporter, row planRow) {

@@ -7,6 +7,8 @@ resources:
   - deployment.yaml
   - service.yaml
   - ingress.yaml
+  # oidc.<root domain>: the Managed OIDC issuer host (docs/ADR116-managed-oidc.md).
+  - ingress-oidc.yaml
   # objects.<base domain>: the direct, DNS-only host of the Cloudflare-shaped
   # object storage routes, because Cloudflare's proxy in front of api.<base
   # domain> refuses a body over 100 MiB while wrangler puts up to 300 MiB

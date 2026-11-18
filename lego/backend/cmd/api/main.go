@@ -73,6 +73,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/oauthgrant"
 	"github.com/bex-co/bex/lego/backend/internal/objectgw"
 	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
+	"github.com/bex-co/bex/lego/backend/internal/oidcissuer"
 	"github.com/bex-co/bex/lego/backend/internal/opsrole"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
@@ -199,6 +200,12 @@ func main() {
 	}
 	if len(os.Args) > 1 && os.Args[1] == revokeOAuthGrantCommand {
 		os.Exit(runRevokeOAuthGrant(ctx, cfg, os.Args[2:], os.Stdout, os.Stderr))
+	}
+	if len(os.Args) > 1 && os.Args[1] == oidcRotateKeyCommand {
+		os.Exit(runOIDCRotateKey(ctx, cfg, os.Args[2:], os.Stdout, os.Stderr))
+	}
+	if len(os.Args) > 1 && os.Args[1] == oidcTestTokenCommand {
+		os.Exit(runOIDCTestToken(ctx, cfg, os.Args[2:], os.Stdout, os.Stderr))
 	}
 	if len(os.Args) > 1 && os.Args[1] == moveWorkspaceToOrganizationCommand {
 		os.Exit(runMoveWorkspaceToOrganization(ctx, cfg, os.Args[2:], os.Stdout, os.Stderr))
@@ -485,6 +492,19 @@ func main() {
 	deps.DashboardURL = dashboardURL
 	deps.DeployHookBaseURL = cfg.APIPublicURL
 	deps.SSHHost = cfg.SSHHost
+	// The Managed OIDC issuer (docs/ADR116-managed-oidc.md): its key set lives
+	// in the control-plane store, so it runs only with one. Run reloads the set
+	// every minute and inserts the first key when there is none.
+	if cfg.OIDCIssuerURL != "" && st != nil {
+		keys := &oidcissuer.KeySet{Store: st}
+		issuer, err := oidcissuer.New(cfg.OIDCIssuerURL, keys)
+		if err != nil {
+			log.Fatalf("bex-api: %v", err)
+		}
+		go keys.Run(ctx)
+		deps.OIDCIssuer = issuer
+		log.Printf("bex-api: Managed OIDC issuer on %s", cfg.OIDCIssuerURL)
+	}
 	// ADR062/ADR064 model proxy: the internal gateway origin agent model traffic is
 	// routed through so the BYO key never enters the sandbox. Unset keeps session
 	// mutation unavailable. Set before wireSandboxes so session egress derives its

@@ -74,6 +74,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/notifications"
 	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
+	"github.com/bex-co/bex/lego/backend/internal/oidcissuer"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/projects"
@@ -180,6 +181,10 @@ type Server struct {
 	// StripeWebhook is the signature-verifying public billing callback. It is
 	// nil unless BEX_STRIPE_WEBHOOK_SECRET is configured.
 	StripeWebhook http.Handler
+	// OIDCIssuer answers every request whose Host is the Managed OIDC issuer
+	// host (docs/ADR116-managed-oidc.md D1, D2). nil unless BEX_OIDC_ISSUER_URL
+	// and the control-plane store are configured.
+	OIDCIssuer *oidcissuer.Issuer
 	// DeviceRateLimiter guards the official Render CLI's three
 	// credential-less device-flow routes (w4/m31/t002) — nil disables
 	// limiting. Set by the composition root once BEX_DEVICE_RATE_LIMIT is
@@ -724,6 +729,8 @@ type Deps struct {
 	// StripeWebhook mounts outside OAuth because Stripe authenticates with its
 	// webhook signature. The handler itself must fail closed on a bad signature.
 	StripeWebhook http.Handler
+	// OIDCIssuer is the Managed OIDC issuer (ADR116); nil leaves it unmounted.
+	OIDCIssuer *oidcissuer.Issuer
 	// GitHub App integration (docs/ADR026-github-integration.md). GitHubClient is the
 	// GitHub REST client (nil when BEX_GITHUB_APP_* unset); GitHubStore is the
 	// git_connections store (nil when BEX_CP_DB_URI unset). Either nil => the
@@ -1333,6 +1340,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Usage:         cmp.Or(d.Usage, &usage.Service{Base: base}),
 		Audit:         cmp.Or(d.Audit, &audit.Service{Base: base}),
 		StripeWebhook: d.StripeWebhook,
+		OIDCIssuer:    d.OIDCIssuer,
 	}
 	// Request-time deploy-start notifications use the same feature service as
 	// the reconciler's close-time success/failure fan-out, but are wired at the
@@ -1620,6 +1628,14 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 	// decoding or acting on any event; the limiter sheds a flood ahead of that.
 	if s.StripeWebhook != nil {
 		mux.Handle("POST /v1/webhooks/stripe", webhookLimit(bodyLimit(s.StripeWebhook)))
+	}
+	// The Managed OIDC issuer (ADR116 D1, D2) owns its whole host: a host
+	// pattern wins over every host-less one, so on oidc.<root domain> only the
+	// issuer's documents answer, and the issuer answers nowhere else. Its
+	// documents are public by design (a provider fetches them with no
+	// credential); the shared limiter keys them on the client address.
+	if s.OIDCIssuer != nil {
+		mux.Handle(s.OIDCIssuer.Host()+"/", s.rateLimitMiddleware()(s.OIDCIssuer))
 	}
 	// Deploy hooks authenticate with the unguessable URL token itself. Mount the
 	// whole prefix outside OAuth so malformed credentials containing an extra

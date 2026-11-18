@@ -11,9 +11,11 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.6
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.113.4
 	github.com/bmatcuk/doublestar/v4 v4.10.2
+	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/creack/pty v1.1.24
 	github.com/distribution/reference v0.6.0
 	github.com/getkin/kin-openapi v0.149.0
+	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/go-containerregistry v0.22.1
 	github.com/google/jsonschema-go v0.4.3

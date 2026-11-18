@@ -1,0 +1,35 @@
+# The Managed OIDC issuer host (docs/ADR116-managed-oidc.md D2, w2/m476):
+# https://oidc.bex.co/<tea-…>/.well-known/{openid-configuration,jwks.json},
+# the documents AWS, GCP, Anthropic and OpenAI fetch to trust a workspace's
+# tokens. DNS: the proxied *.bex.co wildcard already sends oidc.bex.co through
+# Cloudflare to Traefik, as it does api.bex.co, so no record is added.
+#
+# bex-api routes by Host: on this host only the issuer answers (every other
+# path is a 404), and the issuer does not answer on api.bex.co. The issuer
+# origin is BEX_OIDC_ISSUER_URL in config/api/deployment.yaml; keep the two
+# in sync. Its own certificate, so a failed issuance here never touches
+# api.bex.co's.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-oidc
+  namespace: system
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - oidc.bex.co
+      secretName: bex-oidc-tls
+  rules:
+    - host: oidc.bex.co
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api # kustomize rewrites to bex-api (namePrefix)
+                port:
+                  number: 80

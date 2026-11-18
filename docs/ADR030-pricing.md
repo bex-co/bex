@@ -204,7 +204,7 @@ Besides the gates in the table above, two limits follow the plan since w7/m429: 
 | Non-goal | Metrics streaming (features by plan), Log stream overrides (features by plan) | DO_NOT_DO: external log/metric drains |
 | Non-goal | SAML SSO and SCIM (features by plan) | DO_NOT_DO: SSO/SAML · SCIM |
 | Open gap | Performance build pipeline (pricing), Performance build pipeline (features by plan) | ADR018 Performance pipeline tier, w6/m310 |
-| Open gap | OIDC authentication (pricing), OIDC (features by plan) | ADR018 Managed OIDC for AI providers |
+| Open gap | OIDC authentication (pricing), OIDC (features by plan) | ADR018 Managed OIDC for AI providers, w2/m476–m480 |
 | Not applied yet: filed | AWS private links (pricing), Private link outbound bandwidth (pricing), HIPAA BAA (pricing), Private links (features by plan), HIPAA-enabled workspaces (features by plan) | w7/071 (HIPAA-enabled workspaces and AWS private links have no recorded disposition) |
 | Commercial term, not a product surface | GDPR DPA (pricing), SOC 2 Type II (pricing), ISO 27001 (pricing), SOC 2 & ISO documentation (pricing), Email (pricing), Chat (pricing), Premium support (pricing), Private Slack channel (pricing), Dedicated technical account team (pricing), Support response SLAs (pricing), Migration assistance & architecture review (pricing), Compliance documentation (features by plan) | per row in `plan_table_test.go` |
 

@@ -295,6 +295,19 @@ func KindOf(s string) (Kind, bool) {
 	return kindForPrefix(prefix)
 }
 
+// Is reports whether s is an id of kind k whose xid decodes. That is stricter
+// than KindOf: the last of an xid's 20 characters carries a single bit, so
+// "tea-d0000000000000000001" has the shape but is no xid. Render's OIDC issuer
+// answers exactly the workspace ids this accepts (docs/ADR116-managed-oidc.md
+// D1).
+func Is(k Kind, s string) bool {
+	if got, ok := KindOf(s); !ok || got != k {
+		return false
+	}
+	_, err := xid.FromString(s[len(s)-xidLen:])
+	return err == nil
+}
+
 func kindForPrefix(prefix string) (Kind, bool) {
 	for _, k := range kinds {
 		if k.prefix == prefix {

@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/oidcissuer"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 )
 
@@ -125,7 +126,12 @@ var alwaysPublicInventory = map[string]string{
 	sandbox.ConnectStreamPattern:                                 "sandbox run connect token (HMAC, single-use, ≤60s, bound to workspace+sandbox+execution+command; minted by the gated runs/{operation}/token route); IP-keyed pre-lookup limiter shared with deploy hooks, sheds pre-verify (w7/m147)",
 	sandbox.ConnectFileUploadPattern:                             "sandbox file connect token (HMAC, single-use, ≤60s, bound to caller+workspace+sandbox+operation+path); IP-keyed pre-verify limiter, gateway streaming byte/time bounds",
 	sandbox.ConnectFileDownloadPattern:                           "sandbox file connect token (HMAC, single-use, ≤60s, bound to caller+workspace+sandbox+operation+path); IP-keyed pre-verify limiter, gateway streaming byte/time bounds",
+	oidcIssuerHost + "/":                                         "Managed OIDC issuer host (ADR116): every workspace's discovery document and JWKS, public by design (providers fetch them with no credential); no workspace lookup; shared limiter keyed on the client address",
 }
+
+// oidcIssuerHost is the issuer host the census mounts (BEX_OIDC_ISSUER_URL's
+// host in production, oidc.bex.co).
+const oidcIssuerHost = "oidc.example"
 
 // gatedWildcards are the three surfaces behind the OAuth gate + identity-keyed
 // RateLimiter. They are present on rootMux but are NOT always-public, so the
@@ -159,6 +165,7 @@ func fullyMountedRootMux(t *testing.T) *http.ServeMux {
 		// The sandbox feature mounts the run connect-token redeem route outside
 		// the gate (w7/m147); the client URL is never dialed by the census.
 		SandboxClient: sandbox.NewClient("http://127.0.0.1:1"),
+		OIDCIssuer:    censusOIDCIssuer(t),
 	})
 	srv.HydraAdminURL = fakeHydraURL(t)
 	// Enables the RFC 9728 discovery mount (resourceMetadataURL != "").
@@ -169,6 +176,15 @@ func fullyMountedRootMux(t *testing.T) *http.ServeMux {
 		t.Fatalf("rootMux: %v", err)
 	}
 	return mux
+}
+
+func censusOIDCIssuer(t *testing.T) *oidcissuer.Issuer {
+	t.Helper()
+	iss, err := oidcissuer.New("https://"+oidcIssuerHost, &oidcissuer.KeySet{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return iss
 }
 
 // TestComposedMuxAlwaysPublicInventory is w7/m60 t002 (the w7/012 fix): every

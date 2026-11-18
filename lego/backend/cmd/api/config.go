@@ -36,6 +36,7 @@ import (
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
+	"github.com/bex-co/bex/lego/backend/internal/oidcissuer"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
@@ -92,7 +93,12 @@ type Config struct {
 	// metadata. Empty is honestly omitted.
 	Region       string
 	APIPublicURL string // BEX_API_PUBLIC_URL (deploy-hook base URL)
-	SSHHost      string
+	// OIDCIssuerURL (BEX_OIDC_ISSUER_URL) is the Managed OIDC issuer origin,
+	// https://oidc.bex.co in production (docs/ADR116-managed-oidc.md D2): each
+	// workspace's issuer is <origin>/<tea-…>. It needs the control-plane store,
+	// which holds the signing key set. Unset leaves the issuer off.
+	OIDCIssuerURL string
+	SSHHost       string
 	// ADR047 D2 / m33: the gateway-shared HMAC secret for sandbox exec and the
 	// internal mint verbs.
 	SandboxExecSecret string
@@ -431,6 +437,20 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	}
 	cfg.Region = getenv("BEX_REGION")
 	cfg.APIPublicURL = getenv("BEX_API_PUBLIC_URL")
+	if raw := getenv("BEX_OIDC_ISSUER_URL"); raw != "" && !cfg.MCPStdio {
+		base, host, err := oidcissuer.ParseBaseURL(raw)
+		apiURL, _ := url.Parse(cfg.APIPublicURL)
+		switch {
+		case err != nil:
+			p.errorf("invalid BEX_OIDC_ISSUER_URL: %v", err)
+		case cfg.CPDBURI == "":
+			p.errorf("BEX_OIDC_ISSUER_URL needs BEX_CP_DB_URI: the OIDC signing key set lives in the control-plane database")
+		case apiURL != nil && strings.EqualFold(apiURL.Hostname(), host):
+			p.errorf("BEX_OIDC_ISSUER_URL's host %s is BEX_API_PUBLIC_URL's: the issuer answers every request to its host, so it needs its own", host)
+		default:
+			cfg.OIDCIssuerURL = base
+		}
+	}
 	cfg.SSHHost = getenv("BEX_SSH_HOST")
 	cfg.SandboxExecSecret = getenv("BEX_SANDBOX_EXEC_SECRET")
 	cfg.RequireVerifiedInviteEmail = defaultOnFlag(getenv("BEX_REQUIRE_VERIFIED_INVITE_EMAIL"))
