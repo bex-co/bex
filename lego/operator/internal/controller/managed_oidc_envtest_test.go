@@ -145,8 +145,10 @@ var _ = Describe("Managed OIDC token mounts (w2/m477)", func() {
 		Fail("no app container")
 		return corev1.Container{}
 	}
-	// expectMounted checks the token directory and its variable on spec.
-	expectMounted := func(spec corev1.PodSpec, app string) {
+	// expectMountedProviders checks the token directory on spec lists
+	// exactly files, one per provider, and the app container names each with
+	// its provider's variable.
+	expectMountedProviders := func(spec corev1.PodSpec, app string, files map[string]string) {
 		GinkgoHelper()
 		var vol *corev1.Volume
 		for i := range spec.Volumes {
@@ -158,11 +160,36 @@ var _ = Describe("Managed OIDC token mounts (w2/m477)", func() {
 		Expect(vol.Secret).NotTo(BeNil())
 		Expect(vol.Secret.SecretName).To(Equal(app + "-oidc"))
 		Expect(vol.Secret.Optional).To(BeNil(), "required: the container waits for its token")
-		Expect(vol.Secret.Items).To(Equal([]corev1.KeyToPath{{Key: "aws-token", Path: "aws-token"}}))
+		items := make([]corev1.KeyToPath, 0, len(files))
+		for _, file := range files {
+			items = append(items, corev1.KeyToPath{Key: file, Path: file})
+		}
+		Expect(vol.Secret.Items).To(ConsistOf(items))
 		c := appContainerOf(spec)
 		Expect(c.VolumeMounts).To(ContainElement(corev1.VolumeMount{Name: managedOIDCVolumeName, MountPath: "/var/lib/render/oidc", ReadOnly: true}))
-		Expect(c.Env).To(ContainElement(corev1.EnvVar{Name: oidcFileEnv, Value: oidcFilePath}))
+		for fileEnv, file := range files {
+			var named []corev1.EnvVar
+			for _, e := range c.Env {
+				if e.Name == fileEnv {
+					named = append(named, e)
+				}
+			}
+			Expect(named).To(Equal([]corev1.EnvVar{{Name: fileEnv, Value: "/var/lib/render/oidc/" + file}}),
+				"exactly the platform's entry: a value the service set gives way")
+		}
+		for _, p := range appv1alpha1.ManagedOIDCProviders {
+			if _, mounted := files[p.FileEnv]; !mounted {
+				for _, e := range c.Env {
+					Expect(e.Name).NotTo(Equal(p.FileEnv), "a provider the release does not mount")
+				}
+			}
+		}
 		Expect(c.Env[len(c.Env)-1].Name).To(Equal(portEnvName), "PORT stays last")
+	}
+	// expectMounted checks the AWS token directory and its variable on spec.
+	expectMounted := func(spec corev1.PodSpec, app string) {
+		GinkgoHelper()
+		expectMountedProviders(spec, app, map[string]string{oidcFileEnv: "aws-token"})
 	}
 	expectNotMounted := func(spec corev1.PodSpec) {
 		GinkgoHelper()
@@ -194,6 +221,43 @@ var _ = Describe("Managed OIDC token mounts (w2/m477)", func() {
 			Expect(st.PlanAllowed).To(BeTrue(), name)
 			Expect(st.Generation).To(Equal(envtestApp(nn).Status.ReleaseGeneration), name)
 		}
+	})
+
+	It("mounts one token file per provider when a release sets several triggers, and a later release drops only the one it no longer sets (w2/m478)", func() {
+		envSecret("oidc-multi-env", map[string]string{
+			oidcTrigger:                    oidcRoleARN,
+			"ANTHROPIC_FEDERATION_RULE_ID": "fdrl_01",
+			"ANTHROPIC_ORGANIZATION_ID":    "org-1",
+			"OPENAI_IDENTITY_PROVIDER_ID":  "idp_1",
+		})
+		nn := create("oidc-multi", true, func(a *appv1alpha1.App) {
+			a.Spec.EnvFromSecret = "oidc-multi-env"
+			// Render: "Do not manually set" the file variables; the platform's win.
+			a.Spec.Env = []appv1alpha1.EnvVar{{Name: "OPENAI_IDENTITY_TOKEN_FILE", Value: "/tmp/mine"}}
+		})
+		passN(nn)
+		all := map[string]string{
+			oidcFileEnv:                     "aws-token",
+			"ANTHROPIC_IDENTITY_TOKEN_FILE": "anthropic-token",
+			"OPENAI_IDENTITY_TOKEN_FILE":    "openai-token",
+		}
+		expectMountedProviders(envtestDeployment(nn).Spec.Template.Spec, nn.Name, all)
+		Expect(envtestApp(nn).Status.ManagedOIDC.Mounted()).To(Equal([]string{"aws", "anthropic", "openai"}))
+		serveEnvtestRelease(nn, func() { passN(nn) })
+
+		// The next deploy no longer sets the Anthropic trigger: only its file goes.
+		s := &corev1.Secret{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: "oidc-multi-env", Namespace: nn.Namespace}, s)).To(Succeed())
+		delete(s.Data, "ANTHROPIC_FEDERATION_RULE_ID")
+		Expect(k8sClient.Update(ctx, s)).To(Succeed())
+		update(nn, func(a *appv1alpha1.App) {
+			a.Spec.RestartedAt = time.Now().UTC().Format(time.RFC3339Nano)
+			stampRelease(a)
+		})
+		passN(nn)
+		Expect(envtestApp(nn).Status.ManagedOIDC.Mounted()).To(Equal([]string{"aws", "openai"}))
+		delete(all, "ANTHROPIC_IDENTITY_TOKEN_FILE")
+		expectMountedProviders(envtestDeployment(nn).Spec.Template.Spec, nn.Name, all)
 	})
 
 	It("keeps AWS_ROLE_ARN but mounts nothing below Pro, and records the refusal for the deploy log", func() {

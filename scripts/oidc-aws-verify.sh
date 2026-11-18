@@ -27,12 +27,13 @@
 #                         http://oidc.localhost:<bex-api port>, reached from the
 #                         container through the docker host)
 #   APP_NAMESPACE         the service's namespace (default: the workspace id)
-#   OIDC_STS_IMAGE        the MinIO image (default: the one the local cluster
-#                         pins, scripts/mock-cluster.sh)
+#   OIDC_STS_IMAGE        the MinIO image (scripts/lib/oidc-sts.sh)
 #   OIDC_WAIT_REFRESH     1 waits for a refresh (default), 0 skips step 3
 #   OIDC_REFRESH_TIMEOUT  seconds to wait for it (default 1800)
 #   OIDC_POLL_SECONDS     how often to look (default 30)
 set -euo pipefail
+# shellcheck source=scripts/lib/oidc-sts.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/oidc-sts.sh"
 
 usage() {
   echo "usage: KUBECONFIG=<kubeconfig> bash scripts/oidc-aws-verify.sh <tea-…> <srv-…>" >&2
@@ -48,7 +49,6 @@ base=${OIDC_ISSUER_BASE:-https://oidc.bex.co}
 base=${base%/}
 issuer="$base/$workspace"
 namespace=${APP_NAMESPACE:-$workspace}
-image=${OIDC_STS_IMAGE:-docker.io/bitnamilegacy/minio:2025.7.23-debian-12-r5@sha256:6dabb4a2088c9a79908de3bc05f4586c23ad2182c8908e7e3acbf61c1467fb20}
 wait_refresh=${OIDC_WAIT_REFRESH:-1}
 refresh_timeout=${OIDC_REFRESH_TIMEOUT:-1800}
 poll=${OIDC_POLL_SECONDS:-30}
@@ -63,29 +63,15 @@ fail() {
 }
 
 tmp=$(mktemp -d)
-containers=()
+oidc_sts_init "$base" "$tmp"
 cleanup() {
-  for c in "${containers[@]+"${containers[@]}"}"; do
-    docker rm -f "$c" >/dev/null 2>&1 || true
-  done
+  oidc_sts_cleanup
   rm -rf "$tmp"
 }
 trap cleanup EXIT
 
-# claims <token> prints the token's payload as JSON (no signature check:
-# the relying party below is the verifier).
-claims() {
-  local payload
-  payload=$(cut -d. -f2 <<<"$1" | tr '_-' '/+')
-  while [ $((${#payload} % 4)) -ne 0 ]; do payload="$payload="; done
-  base64 -d <<<"$payload" 2>/dev/null
-}
-
 # 1. The instance.
-# A running instance that is not on its way out: a rollout's old pod still
-# reads Running while it terminates, with the previous release's mounts.
-pod=$(kubectl -n "$namespace" get pods -l "bex.co/app-id=$service" -o json 2>/dev/null |
-  jq -r '[.items[] | select(.status.phase == "Running" and .metadata.deletionTimestamp == null)][0].metadata.name // empty' || true)
+pod=$(oidc_running_pod "$namespace" "$service")
 [ -n "$pod" ] || {
   echo "FAIL: no running instance of $service in $namespace" >&2
   exit 1
@@ -107,7 +93,7 @@ else
   pass "the token file is read-only"
 fi
 token=$(read_token)
-first=$(claims "$token")
+first=$(oidc_claims "$token")
 want_sub_prefix="workspace:$workspace:environment:"
 if jq -e --arg iss "$issuer" --arg aud "$audience" --arg pre "$want_sub_prefix" --arg srv ":service:$service" \
   '.iss == $iss and .aud == $aud and (.sub | startswith($pre) and endswith($srv)) and .exp - .iat == 3600' \
@@ -117,56 +103,16 @@ else
   fail "the token's claims are not Render's: $first"
 fi
 
-# 2. The relying party.
-sts_args=()
-host=${base#*://}
-host=${host%%:*}
-# A dev-N issuer is bex-api on this machine: the container reaches it
-# through the docker host under the issuer's own name.
-case "$host" in localhost | *.localhost) sts_args+=(--add-host "$host:host-gateway") ;; esac
-
-# start_sts <audience> starts a MinIO trusting $issuer for audience and sets
-# sts_port and sts_arn. It runs in this shell, so cleanup removes it.
-start_sts() {
-  local name="bex-oidc-sts-$$-${#containers[@]}" port arn=""
-  containers+=("$name")
-  docker run -d --name "$name" "${sts_args[@]+"${sts_args[@]}"}" -p 127.0.0.1::9000 --entrypoint minio \
-    -e MINIO_ROOT_USER=oidcverify -e "MINIO_ROOT_PASSWORD=$(openssl rand -hex 16)" \
-    -e "MINIO_IDENTITY_OPENID_CONFIG_URL=$issuer/.well-known/openid-configuration" \
-    -e "MINIO_IDENTITY_OPENID_CLIENT_ID=$1" -e MINIO_IDENTITY_OPENID_ROLE_POLICY=readonly \
-    "$image" server /tmp/data >/dev/null
-  for _ in $(seq 1 60); do
-    arn=$(docker logs "$name" 2>&1 | grep -o 'arn:minio:iam:::role/[A-Za-z0-9_-]*' | head -1 || true)
-    [ -z "$arn" ] || break
-    sleep 1
-  done
-  port=$(docker port "$name" 9000 | head -1 | sed 's/.*://')
-  [ -n "$arn" ] && [ -n "$port" ] || {
-    echo "FAIL: the MinIO STS did not load $issuer: $(docker logs "$name" 2>&1 | tail -3)" >&2
-    exit 1
-  }
-  sts_port=$port sts_arn=$arn
-}
-
-# exchange <port> <role arn> <token> prints the STS response body and
-# returns non-zero unless it carries credentials.
-exchange() {
-  printf %s "$3" >"$tmp/token"
-  curl -sS -X POST "http://127.0.0.1:$1/" -d Action=AssumeRoleWithWebIdentity -d Version=2011-06-15 \
-    -d DurationSeconds=900 --data-urlencode "RoleArn=$2" --data-urlencode "WebIdentityToken@$tmp/token" >"$tmp/sts.xml" || true
-  sed -E 's#<(SecretAccessKey|SessionToken)>[^<]*#<\1>REDACTED#g' "$tmp/sts.xml"
-  grep -q '<AccessKeyId>[A-Z0-9]' "$tmp/sts.xml"
-}
-
-start_sts "$audience"
+# 2. The relying party (scripts/lib/oidc-sts.sh).
+oidc_start_sts "$issuer" "$audience"
 port=$sts_port arn=$sts_arn
-if exchange "$port" "$arn" "$token" >"$tmp/first.xml"; then
+if oidc_exchange "$port" "$arn" "$token" >"$tmp/first.xml"; then
   pass "an STS trusting $issuer for $audience issued credentials for the token (subject $(grep -o '<SubjectFromWebIdentityToken>[^<]*' "$tmp/first.xml" | sed 's/.*>//'))"
 else
   fail "the STS refused the token: $(head -c 400 "$tmp/first.xml")"
 fi
-start_sts api.openai.com
-if exchange "$sts_port" "$sts_arn" "$token" >"$tmp/other.xml"; then
+oidc_start_sts "$issuer" api.openai.com
+if oidc_exchange "$sts_port" "$sts_arn" "$token" >"$tmp/other.xml"; then
   fail "an STS trusting $issuer for another audience accepted the token"
 else
   pass "an STS for another audience refuses it ($(grep -o '<Message>[^<]*' "$tmp/other.xml" | sed 's/.*>//' | head -1))"
@@ -181,7 +127,7 @@ if [ "$wait_refresh" = 1 ]; then
     sleep "$poll"
     next=$(read_token 2>/dev/null || true)
     [ -n "$next" ] || continue
-    next_iat=$(claims "$next" | jq -r '.iat // empty' 2>/dev/null || true)
+    next_iat=$(oidc_claims "$next" | jq -r '.iat // empty' 2>/dev/null || true)
     if [ -n "$next_iat" ] && [ "$next_iat" -gt "$iat" ]; then
       refreshed=$next
       break
@@ -191,7 +137,7 @@ if [ "$wait_refresh" = 1 ]; then
     fail "the token file still holds iat $iat after ${refresh_timeout}s"
   else
     pass "the token file was replaced: iat $iat -> $next_iat ($((next_iat - iat))s later)"
-    if exchange "$port" "$arn" "$refreshed" >"$tmp/second.xml"; then
+    if oidc_exchange "$port" "$arn" "$refreshed" >"$tmp/second.xml"; then
       pass "the STS issued credentials for the refreshed token"
     else
       fail "the STS refused the refreshed token: $(head -c 400 "$tmp/second.xml")"

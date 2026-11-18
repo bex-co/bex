@@ -18,9 +18,11 @@ package managedoidc
 
 import (
 	"context"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -245,6 +247,93 @@ func TestAPassWritesTheTokenAWSAcceptsAndReplacesItBeforeThirtyMinutes(t *testin
 	s, _ = tokenSecret(t, cl, "web")
 	if got := issued(t, s); got-first != int64(RefreshAfter/time.Second) || RefreshAfter >= 30*time.Minute {
 		t.Fatalf("refreshed at +%ds; want +%ds, under 30 minutes", got-first, int64(RefreshAfter/time.Second))
+	}
+}
+
+// TestAServiceWithSeveralProvidersGetsOneTokenPerAudience (w2/m478, ADR116
+// D10): a release that mounts AWS and then also Anthropic and OpenAI gets a
+// token per provider, each verifying for its own audience only, all for the
+// same workspace issuer and subject; a provider added at a deploy is minted
+// at once whatever the age of the others, and one dropped at a deploy loses
+// only its own file.
+func TestAServiceWithSeveralProvidersGetsOneTokenPerAudience(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	app := optedIn("web", srvA)
+	cl := fake.NewClientBuilder().WithScheme(scheme(t)).WithObjects(app).WithStatusSubresource(app).Build()
+	m := NewMinter(cl, f.issuer)
+	m.Now = f.clock.Now
+	setProviders := func(names ...string) {
+		t.Helper()
+		var cur appv1alpha1.App
+		if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &cur); err != nil {
+			t.Fatal(err)
+		}
+		cur.Status.ManagedOIDC.Providers = names
+		cur.Status.ManagedOIDC.Generation++
+		if err := cl.Status().Update(ctx, &cur); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pass := func() *corev1.Secret {
+		t.Helper()
+		if err := m.Pass(ctx); err != nil {
+			t.Fatal(err)
+		}
+		s, ok := tokenSecret(t, cl, "web")
+		if !ok {
+			t.Fatal("no token Secret")
+		}
+		return s
+	}
+	keysOf := func(s *corev1.Secret) []string { return slices.Sorted(maps.Keys(s.Data)) }
+
+	pass()
+	f.clock.advance(RefreshAfter / 2)
+	f.reload(t)
+	setProviders("aws", "anthropic", "openai")
+	s := pass()
+	if got, want := keysOf(s), []string{"anthropic-token", "aws-token", "openai-token"}; !slices.Equal(got, want) {
+		t.Fatalf("a provider added at a deploy: Secret keys = %v, want %v at once", got, want)
+	}
+
+	p, err := oidc.NewProvider(ctx, f.base+"/"+wsA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verify := func(raw []byte, audience string) (*oidc.IDToken, error) {
+		return p.Verifier(&oidc.Config{ClientID: audience, SupportedSigningAlgs: []string{oidc.ES256}, Now: f.clock.Now}).Verify(ctx, string(raw))
+	}
+	wantSub := "workspace:" + wsA + ":environment:" + evmA + ":service:" + srvA
+	for _, own := range appv1alpha1.ManagedOIDCProviders {
+		tok := s.Data[own.File]
+		idt, err := verify(tok, own.Audience)
+		if err != nil {
+			t.Fatalf("the %s token does not verify for %s: %v", own.Name, own.Audience, err)
+		}
+		if idt.Subject != wantSub || idt.Issuer != f.base+"/"+wsA {
+			t.Errorf("the %s token: iss %q sub %q, want the workspace's issuer and %q", own.Name, idt.Issuer, idt.Subject, wantSub)
+		}
+		for _, other := range appv1alpha1.ManagedOIDCProviders {
+			if other.Name == own.Name {
+				continue
+			}
+			if _, err := verify(tok, other.Audience); err == nil {
+				t.Errorf("the %s token verifies where %s's audience %s is expected", own.Name, other.Name, other.Audience)
+			}
+		}
+	}
+
+	setProviders("aws", "openai")
+	s = pass()
+	if got, want := keysOf(s), []string{"aws-token", "openai-token"}; !slices.Equal(got, want) {
+		t.Fatalf("a provider dropped at a deploy: Secret keys = %v, want %v", got, want)
+	}
+	for _, name := range []string{"aws", "openai"} {
+		own, _ := appv1alpha1.ManagedOIDCProviderNamed(name)
+		if _, err := verify(s.Data[own.File], own.Audience); err != nil {
+			t.Errorf("the %s token left after dropping Anthropic does not verify: %v", name, err)
+		}
 	}
 }
 

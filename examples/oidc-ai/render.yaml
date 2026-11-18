@@ -1,0 +1,34 @@
+# render.yaml — a Python web service that calls Anthropic and OpenAI through
+# Managed OIDC, with no model API key (README.md). Needs a Pro workspace or
+# higher. Replace repo/rootDir with your own checkout. The dashboard asks for
+# each sync: false value when the Blueprint is created; fill in the ids from
+# your Claude Console and OpenAI organization. A provider whose values you
+# leave empty answers 503 "not configured" until you set them and redeploy.
+services:
+  - name: oidc-ai
+    type: web
+    runtime: python
+    repo: https://github.com/bex-co/bex # replace with your fork/checkout
+    rootDir: examples/oidc-ai
+    branch: main
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    healthCheckPath: /healthz
+    envVars:
+      # Anthropic: setting ANTHROPIC_FEDERATION_RULE_ID makes the platform
+      # mount the token and set ANTHROPIC_IDENTITY_TOKEN_FILE.
+      - key: ANTHROPIC_FEDERATION_RULE_ID
+        sync: false
+      - key: ANTHROPIC_ORGANIZATION_ID
+        sync: false
+      - key: ANTHROPIC_SERVICE_ACCOUNT_ID
+        sync: false
+      - key: ANTHROPIC_WORKSPACE_ID
+        sync: false
+      # OpenAI: setting OPENAI_IDENTITY_PROVIDER_ID makes the platform mount
+      # the token and set OPENAI_IDENTITY_TOKEN_FILE.
+      - key: OPENAI_IDENTITY_PROVIDER_ID
+        sync: false
+      - key: OPENAI_SERVICE_ACCOUNT_ID
+        sync: false

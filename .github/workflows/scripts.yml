@@ -141,6 +141,13 @@ jobs:
       # template, an STS for another audience accepting it, or no refresh.
       - name: OIDC AWS verify self-test
         run: bash scripts/oidc-aws-verify.test.sh
+      # w2/m478 (ADR116 D10): the cross-audience check passes a service with
+      # two or three providers and fails an STS taking another audience's
+      # token, a token with another provider's audience, a file variable
+      # without its trigger, and a provider table that drifted from the
+      # operator's.
+      - name: OIDC audience verify self-test
+        run: bash scripts/oidc-audience-verify.test.sh
       # w6/110 (#134): an activator-held wake is a wake, and stage 4 polls.
       - name: Tenant-view canary stage 4 self-test
         run: bash scripts/tenant-view-liveness.test.sh

@@ -65,8 +65,9 @@ type Service struct {
 	*core.Base
 	// ManagedOIDC reports that this bex-api runs the Managed OIDC issuer: a
 	// new App of a Pro-or-higher workspace is born with LabelManagedOIDC, so
-	// its first release already mounts the token its AWS_ROLE_ARN asks for
-	// (store.ManagedOIDCLabel; the projector keeps the label in step with the
+	// its first release already mounts the tokens its trigger variables
+	// (AWS_ROLE_ARN, ANTHROPIC_FEDERATION_RULE_ID, OPENAI_IDENTITY_PROVIDER_ID)
+	// ask for (store.ManagedOIDCLabel; the projector keeps the label in step with the
 	// plan afterwards).
 	ManagedOIDC bool
 	// ImageCompatibilityWorkspaces gives new Docker/image services in these
@@ -3127,7 +3128,7 @@ func stampAppIdentity(a *appv1alpha1.App, tenantID, appID string, managed bool) 
 // stampManagedOIDC gives a new managed App the projector's Managed OIDC
 // label before its first release: the operator reads it once per release, so
 // waiting for the next projector pass would leave a Pro service created with
-// AWS_ROLE_ARN without its token until it deployed again. A failed plan read
+// a provider's trigger variable without its token until it deployed again. A failed plan read
 // is logged and leaves the label to that pass: the row already exists, and a
 // create is not refused over a token.
 func (s *Service) stampManagedOIDC(ctx context.Context, a *appv1alpha1.App, tenantID string) {

@@ -27,11 +27,13 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// Managed OIDC delivery (docs/ADR116-managed-oidc.md D9, w2/m477). A release
-// whose environment sets a provider's trigger variable (AWS_ROLE_ARN), in a
-// workspace whose plan includes Managed OIDC (LabelManagedOIDC), mounts the
-// App's token Secret read-only at /var/lib/render/oidc and gets the
-// provider's file variable (AWS_WEB_IDENTITY_TOKEN_FILE) in every container
+// Managed OIDC delivery (docs/ADR116-managed-oidc.md D9, w2/m477; D10,
+// w2/m478). A release whose environment sets a provider's trigger variable
+// (AWS_ROLE_ARN, ANTHROPIC_FEDERATION_RULE_ID, OPENAI_IDENTITY_PROVIDER_ID),
+// in a workspace whose plan includes Managed OIDC (LabelManagedOIDC), mounts
+// the App's token Secret read-only at /var/lib/render/oidc and gets each
+// provider's file variable (AWS_WEB_IDENTITY_TOKEN_FILE,
+// ANTHROPIC_IDENTITY_TOKEN_FILE, OPENAI_IDENTITY_TOKEN_FILE) in every container
 // bex runs for it: instances, cron runs, the pre-deploy step and the initial
 // deploy hook (which copies the instance's template). SSH and shell sessions
 // exec into an instance and inherit both. bex-api mints the Secret and keeps

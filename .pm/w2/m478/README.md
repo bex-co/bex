@@ -1,18 +1,18 @@
 # w2 · m478 — Services reach Anthropic and OpenAI without API keys through Managed OIDC, as on Render
 
-**Worker:** worker2 **Goal:** A Pro-or-higher service that sets Render's Anthropic or OpenAI federation variables gets an audience-bound token at `ANTHROPIC_IDENTITY_TOKEN_FILE` / `OPENAI_IDENTITY_TOKEN_FILE`, so it calls the model APIs with no stored API key. **Status:** todo
+**Worker:** worker2 **Goal:** A Pro-or-higher service that sets Render's Anthropic or OpenAI federation variables gets an audience-bound token at `ANTHROPIC_IDENTITY_TOKEN_FILE` / `OPENAI_IDENTITY_TOKEN_FILE`, so it calls the model APIs with no stored API key. **Status:** todo (t001, t002, t006, t007 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Add the Anthropic and OpenAI providers: triggers, audiences, file variables; several providers per service | 45m | w2/m477/t004 |
-| t002 | Pin which variables trigger each provider, and what the official SDKs read | 45m | t001 |
+| t001 | Add the Anthropic and OpenAI providers: triggers, audiences, file variables; several providers per service — **DONE** | 45m | w2/m477/t004 |
+| t002 | Pin which variables trigger each provider, and what the official SDKs read — **DONE** | 45m | t001 |
 | t003 | Example app and audience-binding check | 60m | t002 |
 | t004 | Production acceptance (user gate: Claude Console and OpenAI organization setup) | 45m | t003 |
 | t005 | Render parity | 20m | t004 |
-| t006 | Simplify | 15m | t005 |
-| t007 | Test coverage | 30m | t005 |
+| t006 | Simplify — **DONE** | 15m | t005 |
+| t007 | Test coverage — **DONE** | 30m | t005 |
 | t008 | Closeout | 10m | t006, t007 |
 
 ## Definition of done

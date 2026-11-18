@@ -142,11 +142,11 @@ func appOIDCRefusal(app *appv1alpha1.App) oidcRefusal {
 // oidcRefusalLine is the deploy log's explanation, in Render's own words for
 // the plan rule (render.com/docs/oidc: "With a Pro workspace or higher").
 func oidcRefusalLine(triggers []string) string {
-	verb := "is"
-	if len(triggers) > 1 {
-		verb = "are"
+	named, verb := triggers[0], "is"
+	if n := len(triggers); n > 1 {
+		named, verb = strings.Join(triggers[:n-1], ", ")+" and "+triggers[n-1], "are"
 	}
-	return "==> Managed OIDC requires a Pro workspace or higher: " + strings.Join(triggers, " and ") + " " + verb + " set, but no identity token is mounted"
+	return "==> Managed OIDC requires a Pro workspace or higher: " + named + " " + verb + " set, but no identity token is mounted"
 }
 
 // hookRun is the App's latest initialDeployHook run (status.initialDeployHook,

@@ -64,11 +64,28 @@ type ManagedOIDCProvider struct {
 func (p ManagedOIDCProvider) Path() string { return ManagedOIDCMountPath + "/" + p.File }
 
 // ManagedOIDCProviders lists the providers in the order they are mounted.
-// AWS: render.com/docs/oidc ("add the AWS_ROLE_ARN environment variable";
-// audience sts.amazonaws.com; Render "automatically sets an additional
-// environment variable named AWS_WEB_IDENTITY_TOKEN_FILE").
+// Each has its own audience, so a service with several gets one token per
+// provider and a token one provider accepts is refused by the others. The
+// trigger is the one variable render.com/docs/oidc says Render detects for
+// the provider; its companions (the Anthropic organization, service account
+// and workspace ids, the OpenAI service account id) are read by the SDK, not
+// by the platform (docs/ADR116-managed-oidc.md D10). Render names no file in
+// its directory, so the file names are bex's.
+//
+//   - AWS: "add the AWS_ROLE_ARN environment variable"; audience
+//     sts.amazonaws.com; Render "automatically sets an additional
+//     environment variable named AWS_WEB_IDENTITY_TOKEN_FILE".
+//   - Anthropic: "Render detects the ANTHROPIC_FEDERATION_RULE_ID
+//     environment variable and automatically sets an additional environment
+//     variable named ANTHROPIC_IDENTITY_TOKEN_FILE"; expected audience
+//     api.anthropic.com.
+//   - OpenAI: "Render detects the OPENAI_IDENTITY_PROVIDER_ID environment
+//     variable and automatically sets an additional environment variable
+//     named OPENAI_IDENTITY_TOKEN_FILE"; audience api.openai.com.
 var ManagedOIDCProviders = []ManagedOIDCProvider{
 	{Name: "aws", Trigger: "AWS_ROLE_ARN", FileEnv: "AWS_WEB_IDENTITY_TOKEN_FILE", File: "aws-token", Audience: "sts.amazonaws.com"},
+	{Name: "anthropic", Trigger: "ANTHROPIC_FEDERATION_RULE_ID", FileEnv: "ANTHROPIC_IDENTITY_TOKEN_FILE", File: "anthropic-token", Audience: "api.anthropic.com"},
+	{Name: "openai", Trigger: "OPENAI_IDENTITY_PROVIDER_ID", FileEnv: "OPENAI_IDENTITY_TOKEN_FILE", File: "openai-token", Audience: "api.openai.com"},
 }
 
 // ManagedOIDCProviderNamed returns the provider called name.

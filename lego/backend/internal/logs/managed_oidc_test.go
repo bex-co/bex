@@ -19,6 +19,7 @@ package logs
 import (
 	"context"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -57,6 +58,19 @@ func TestManagedOIDCRefusalIsALineInTheDeployThatAskedForIt(t *testing.T) {
 	} {
 		if slices.Contains(read(c.st, c.deploy), refused) {
 			t.Errorf("%s: the log carries the refusal; it belongs only to the refused release's deploy", name)
+		}
+	}
+
+	// w2/m478: a release that asks for several providers names every trigger
+	// in one line, in the order the providers mount.
+	for providers, want := range map[string]string{
+		"anthropic":            "==> Managed OIDC requires a Pro workspace or higher: ANTHROPIC_FEDERATION_RULE_ID is set, but no identity token is mounted",
+		"aws openai":           "==> Managed OIDC requires a Pro workspace or higher: AWS_ROLE_ARN and OPENAI_IDENTITY_PROVIDER_ID are set, but no identity token is mounted",
+		"aws anthropic openai": "==> Managed OIDC requires a Pro workspace or higher: AWS_ROLE_ARN, ANTHROPIC_FEDERATION_RULE_ID and OPENAI_IDENTITY_PROVIDER_ID are set, but no identity token is mounted",
+	} {
+		got := read(&appv1alpha1.ManagedOIDCStatus{Generation: 2, Providers: strings.Fields(providers)}, "dep-second")
+		if !slices.Contains(got, want) {
+			t.Errorf("a refused release asking for %s: log %q\nwant the line %q", providers, got, want)
 		}
 	}
 }
