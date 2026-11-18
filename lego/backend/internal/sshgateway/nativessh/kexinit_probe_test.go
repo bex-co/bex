@@ -17,8 +17,10 @@ limitations under the License.
 package nativessh
 
 import (
+	"bufio"
 	"net"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -72,6 +74,32 @@ func TestProbeKEXINITDetectsWrongFirstPacket(t *testing.T) {
 
 	if err := ProbeKEXINIT(addr, 400*time.Millisecond); err == nil {
 		t.Fatal("ProbeKEXINIT passed on a non-KEXINIT first packet; it must check the message type")
+	}
+}
+
+// TestProbeKEXINITSpeaksFirstToAnEdgeThatWaits is the w9/m451 t010 edge: a
+// Traefik entrypoint that trusts PROXY headers from the load balancer peeks at
+// the first bytes before it connects the backend, so when the load balancer
+// sent no header the server's banner arrives only after the client has spoken.
+// OpenSSH sends its identification at once and connects; a probe that waited
+// for the banner first would time out against a live edge.
+func TestProbeKEXINITSpeaksFirstToAnEdgeThatWaits(t *testing.T) {
+	addr, stop := fakeSSHListener(t, func(conn net.Conn, hold <-chan struct{}) {
+		_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+		line, err := bufio.NewReader(conn).ReadString('\n')
+		if err != nil || !strings.HasPrefix(line, "SSH-2.0-") {
+			return // the client never spoke: the banner is never released
+		}
+		_, _ = conn.Write([]byte("SSH-2.0-bex\r\n"))
+		// A minimal unencrypted KEXINIT packet: length=6, pad_len=4, type=20,
+		// then 4 padding bytes.
+		_, _ = conn.Write([]byte{0, 0, 0, 6, 4, sshMsgKexInit, 0, 0, 0, 0})
+		<-hold
+	})
+	defer stop()
+
+	if err := ProbeKEXINIT(addr, 400*time.Millisecond); err != nil {
+		t.Fatalf("ProbeKEXINIT against an edge that releases the banner once the client speaks: %v", err)
 	}
 }
 

@@ -87,7 +87,7 @@ sed -i.bak 's/destination_port = 31218/destination_port = 31219/' "$d/main.tf"
 assert "http listener on the wrong NodePort" 1 "$d" "edge listener http must map :80 to NodePort 31218"
 
 # ── RED: Traefik entrypoints ─────────────────────────────────────────────────
-for ep in web websecure; do
+for ep in web websecure ssh; do
   d="$(fixture "$ep-missing")"
   yq -i "del(.ports.$ep.proxyProtocol)" "$d/traefik.values.yaml"
   assert "$ep without proxyProtocol" 1 "$d" "Traefik entrypoint $ep proxyProtocol"

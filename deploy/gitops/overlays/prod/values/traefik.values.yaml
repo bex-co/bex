@@ -71,6 +71,15 @@ ports:
     expose:
       default: true
     protocol: TCP
+    # w9/m451 t010: the same contract as web, so the client address Traefik
+    # forwards to the ssh-gateway (its own PROXY v2 hop, w4/m82) is the SSH
+    # client's, not 10.10.0.7. This trust rolls out before the Terraform :22
+    # listener sends a header. A trusted peer with no header is still served,
+    # but Traefik then holds the server's banner until the client speaks, which
+    # every SSH client does at once (RFC 4253 §4.2).
+    proxyProtocol:
+      trustedIPs:
+        - 10.10.0.7/32
   # postgres entrypoint removed (w1/m29): the bex-pg-sni-proxy DaemonSet now
   # owns :5432 through a dedicated NodePort behind the Terraform listener (see
   # pg-sni-proxy-lb.yaml below).

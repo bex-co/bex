@@ -8,10 +8,12 @@
 #      below. http/https/postgres/valkey send the LB's own header, so the
 #      backend sees the real client; ssh does not (its own PROXY chain runs
 #      Traefik → ssh-gateway, w4/m82, w6/m132).
-#   2. Traefik's web and websecure entrypoints trust PROXY headers from exactly
-#      the load balancer's private address, 10.10.0.7/32 — never wider, never
-#      `insecure`. A wider trust set lets any peer in it assert a client address,
-#      which is what an inbound IP allow-list matches on.
+#   2. Traefik's web, websecure and ssh entrypoints trust PROXY headers from
+#      exactly the load balancer's private address, 10.10.0.7/32 — never wider,
+#      never `insecure`. A wider trust set lets any peer in it assert a client
+#      address, which is what an inbound IP allow-list matches on and what the
+#      ssh-gateway records as a shell session's source_ip (w9/m451 t010). The
+#      ssh trust rolls out first; the ssh listener then sends the header.
 #
 # The two halves fail differently if they drift apart: a listener that sends a
 # header to an entrypoint that does not expect it breaks all HTTP(S); an
@@ -61,7 +63,7 @@ for edge in "${EDGE[@]}"; do
   fi
 done
 
-for entrypoint in web websecure; do
+for entrypoint in web websecure ssh; do
   trust="$(yq -N -o=json -I=0 ".ports.${entrypoint}.proxyProtocol" "$TRAEFIK_PROD_VALUES")"
   if [ "$trust" != "{\"trustedIPs\":[\"$LB_PRIVATE_CIDR\"]}" ]; then
     echo "FAIL: Traefik entrypoint $entrypoint proxyProtocol is '$trust', want trustedIPs exactly [$LB_PRIVATE_CIDR] and nothing else" >&2

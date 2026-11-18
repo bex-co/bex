@@ -57,16 +57,19 @@ func ProbeKEXINIT(address string, timeout time.Duration) error {
 	if err := conn.SetDeadline(time.Now().Add(timeout)); err != nil {
 		return err
 	}
+	// Send the client identification first, as OpenSSH does (RFC 4253 §4.2:
+	// both sides send it once connected). A server that waits for it (Go's
+	// ssh.NewServerConn does) then advances to the key exchange, and so does an
+	// edge that holds the server's banner until the client speaks: Traefik's
+	// PROXY-trusting :22 entrypoint does whenever its peer sent no header
+	// (w9/m451 t010). Its content is irrelevant to the check.
+	if _, err := conn.Write([]byte("SSH-2.0-bex_kexinit_probe\r\n")); err != nil {
+		return fmt.Errorf("write client identification: %w", err)
+	}
 	reader := bufio.NewReader(conn)
 	banner, err := readIdentification(reader)
 	if err != nil {
 		return fmt.Errorf("read server identification: %w", err)
-	}
-	// Send a client identification string so a server that waits for it (Go's
-	// ssh.NewServerConn does) advances to the key exchange. Its content is
-	// irrelevant to the check; RFC 4253 §4.2.
-	if _, err := conn.Write([]byte("SSH-2.0-bex_kexinit_probe\r\n")); err != nil {
-		return fmt.Errorf("write client identification: %w", err)
 	}
 	msgType, err := readFirstPacketType(reader)
 	if err != nil {
