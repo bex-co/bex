@@ -1,6 +1,6 @@
 # w9 · m449 — The audit log uses Render's event name for every workspace action Render's audit log names
 
-**Worker:** worker9 **Goal:** every workspace action that Render's audit-log reference names is recorded under Render's event name, and a guard test keeps that list complete **Status:** blocked (t001–t009 and t011 done; t010 waits on a second sign-in identity for the member rows, and on the production pin carrying t011)
+**Worker:** worker9 **Goal:** every workspace action that Render's audit-log reference names is recorded under Render's event name, and a guard test keeps that list complete **Status:** done (2026-11-18: every DoD action observed on production; see § Production replay)
 
 ## Tasks (in order)
 
@@ -16,7 +16,7 @@
 | [t008](done/t008.md) | Simplify — **DONE** | 20m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 30m | t007 |
 | [t011](done/t011.md) | A build source delete records one DeleteBuildSourceEvent and no DeleteServerEvent — **DONE** | 30m | t008, t009 |
-| [t010](t010.md) | Closeout | 15m | t008, t009, t011 |
+| [t010](done/t010.md) | Closeout — **DONE** | 15m | t008, t009, t011 |
 
 ## Definition of done
 
@@ -61,8 +61,8 @@ As the QA user (`scripts/qa-login.sh`) in `bex-canary` (`tea-daif693dqjvc73e7as3
 | Env var patch adding one key and changing another | REST `PUT /v1/services/{srv}/env-vars` with `M449_K1` new and `M449_K2` changed | exactly one `CreateEnvVarsEvent` (`envVarKeys` `M449_K1`) and one `UpdateEnvVarsEvent` (`envVarKeys` `M449_K2`); no value in any row, REST, GraphQL or CSV |
 | A save that changes nothing | the same `PUT` again (08:04:27Z), and GraphQL `setEnvVars` with the same values (08:04:38Z) | no row at all |
 
-- **Not observed: accept, change role, remove and leave.** They need a second person in the workspace. The QA user is the only identity a worker can sign in as: `muse.env` has no QA pair, and the Gmail connector is not connected. No mailbox can receive an invite token or a verification code, and production requires a verified email for invite redemption at sign-in (`BEX_REQUIRE_VERIFIED_INVITE_EMAIL=1`). The production kubeconfig could make a throwaway identity verified, but `scripts/fetch-app-kubeconfig.sh` fails strict host-key checking: `178.105.18.185`'s key in `~/.ssh/known_hosts` changed, and `.env` pins no `BEX_SSH_KNOWN_HOSTS`. The worker did not bypass that warning. These four rows are covered by real-Postgres and unit tests (t001); they are not yet observed on production.
-- **Found and fixed (t011).** Deleting the build source wrote `DeleteBuildSourceEvent` and also a `DeleteServerEvent` naming `bds-dbulo7g7ud6s739sdnng` as a service. A delete refused with `BUILD_SOURCE_LINKED` would also have written a success row. The fix is in `DeleteBuildSource`, with a regression test. The production check is part of the next replay.
+- **Members, observed later the same run.** At first these rows looked unreachable: the QA user is the only identity a worker can sign in as, and the production kubeconfig fetch failed on a stale `~/.ssh/known_hosts` entry. w3/m472 (`db8200471`, landed during this run) made the fetch pin the stable control-plane host key, and it then succeeded. Through the Kratos admin API (`kratos-admin.auth`), the worker created a throwaway identity, `m449-qa2-11180822@example.com`, with its email marked verified. The QA user invited it as developer, and its first sign-in redeemed the invite (production redeems verified-email invites at sign-in). The QA user changed its role to viewer and removed it. It was invited again, accepted again within the 30 s tenant cache, and left with `DELETE /v1/workspaces/{id}/members/me`. REST and GraphQL `action` agreed on every row: `InviteToTeamEvent` (`inv-dbum0nceoepc73dlkt8g`, `roleTo` developer), `AcceptTeamInviteEvent` (actor the invitee), `ChangeTeamMemberRoleEvent` (`roleFrom` developer, `roleTo` viewer), `RemoveUserFromTeamEvent` (actor the QA user), `InviteToTeamEvent` (`inv-dbum0u4eoepc73dlkta0`), `AcceptTeamInviteEvent`, and `RemoveUserFromTeamEvent` (actor the invitee, the leave). The export's own query (`startTime`/`endTime` for 2026-11-18, `limit=1000`, which the dashboard's `auditLogsToCSV` copies into its `event` column) returned the same seven names. The dashboard export itself was not rerun for these rows, because the Playwright browser crashed. The identity then deleted its own account (`deleteAccount`), which removed its personal workspace and its Kratos identity (admin `GET` 404). Its rows now name it `Deleted User ID#usr-dbum0qseoepc73dlkt9g`, with `targetName` `deleted:own-…` (ADR086).
+- **Found and fixed (t011).** Deleting the build source wrote `DeleteBuildSourceEvent` and also a `DeleteServerEvent` naming `bds-dbulo7g7ud6s739sdnng` as a service. A delete refused with `BUILD_SOURCE_LINKED` would also have written a success row. The fix is in `DeleteBuildSource` (`6fb748320`), with a regression test. Production shows it once a pin carries that commit; the DoD does not list this action.
 - **Cleanup.** The invite was revoked (`members.RevokeInvite`). The web service, build source, env group, environment and project were deleted, each `GET` answers 404, and their delete rows read `DeleteServerEvent`, `DeleteBuildSourceEvent`, `DeleteEnvGroupEvent`, `DeleteEnvironmentEvent` and `DeleteProjectEvent`. The downloaded CSV was removed. `bex-canary` again holds only `hello-go` and the earlier `qa-20261025-b5p1-grp`.
 
 ## Decision record (2026-11-18, `/pm unblock w9/m449`)
@@ -74,3 +74,12 @@ As the QA user (`scripts/qa-login.sh`) in `bex-canary` (`tea-daif693dqjvc73e7as3
   1. A second sign-in identity, from the user. Either (a) the login of a second verified bex account that is not a member of `bex-canary`, added to `.env` as `QA2_EMAIL`/`QA2_PASSWORD` with the names in `.env.example`, or (b) the Gmail connector connected for `puncsky@gmail.com`, so a worker can register `puncsky+m449@gmail.com` and read its verification code and invite token. Re-pinning the control-plane host keys (`BEX_SSH_KNOWN_HOSTS` from the node console, `.env.example` § SSH) is a third route through the Kratos admin API.
   2. The production pin carrying t011's commit. It clears by itself: check with `git merge-base --is-ancestor <t011 commit> <pinned sha>`.
 - **Next steps for the worker:** sign in as the second identity. As the QA user, invite it to `bex-canary` and read `InviteToTeamEvent`. Accept as the second identity, by token or at sign-in with the verified email, and read `AcceptTeamInviteEvent`. Change its role and read `ChangeTeamMemberRoleEvent`. Remove it and read `RemoveUserFromTeamEvent` (actor: the QA user). Invite and accept again, leave as the second identity (`DELETE /v1/workspaces/{id}/members/me`) and read `RemoveUserFromTeamEvent` (actor: the second identity). Check REST, GraphQL `action` and the CSV for each row. Then delete a fresh build source and read exactly one `DeleteBuildSourceEvent` with its name and no `DeleteServerEvent`. Then close out.
+
+## Closure (2026-11-18)
+
+Gate 1 cleared without the user, through the route the decision record listed third: production cluster access (w3/m472) and a verified throwaway identity created through the Kratos admin API. Gate 2 was this worker's own recheck of t011 and is not a DoD item. All four DoD bullets hold:
+
+1. Every listed action records Render's name on production REST, GraphQL and the export (§ Production replay).
+2. The env var patch records exactly one `CreateEnvVarsEvent` and one `UpdateEnvVarsEvent`, keys only, and a no-op save records nothing.
+3. `docs/render-artifacts/audit-logs-api.md` § Workspace event inventory and `TestRenderWorkspaceEventsAreRecorded` exist and pass.
+4. ADR018's Audit logs row no longer says env var writes keep `secrets.*` names. That sentence had survived t006/t007 and was rewritten at closeout to describe the shipped mappings.
