@@ -76,7 +76,7 @@ Shipped design, with where it deviates from the task text:
 - **The backup snapshot dials `<id>-backend`**, so it uses the reserve instead of a tenant connection.
 - **The proxy's memory limit scales with the plan** (32 Mi + 48 KiB per connection, at least 128 Mi). 5,000 idle connections measured 195.7 MB in its cgroup, so the old fixed 128 Mi would OOM a `pro` store's proxy at about 3,300 connections.
 - **A server started without the flag can be lowered, not raised.** Valkey sets its open-files limit to `maxclients` + 32 at start (10,032 on every production store). The template keeps its flagless args only when the plan's value is at most 10,000; a pre-m456 `pro_plus` or larger store rolls once. Production has none.
-- **Stores with `internalAuth` bypass the proxy**, so they are bounded at limit + 10. Filed as [w6/135](../../done/135.md), promoted to [w6/m463](../../blocked/m463/README.md); no production store has it.
+- **Stores with `internalAuth` bypass the proxy**, so they are bounded at limit + 10. Filed as [w6/135](../../done/135.md), promoted to [w6/m463](../m463/README.md); no production store has it.
 
 Verified locally:
 - `go test` for tiers, `internal/controller` (envtest and `BEX_TEST_VALKEY=1`, Valkey 7 and 8), `internal/kvinternalauth` (`-race`) and `cmd/kv-internal-proxy`.

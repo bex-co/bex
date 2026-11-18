@@ -261,6 +261,12 @@ Every store accepts exactly the client connections its plan allows on Render ([c
 - Enabling internal authentication rolls only the proxy (§ 2).
 - A store that enabled it before w6/m463 adopts the proxy like any other store at the w8/204 cutover: `<id>` keeps selecting Valkey until its proxy is ready, so it never loses its endpoint.
 
+Verified on production on 2026-11-18 (pin `359aee37d`), on free probes in `bex-canary`:
+
+- Enabling internal authentication closed a held unauthenticated client 4 s later, and new unauthenticated clients read `-NOAUTH`. Valkey's `run_id`, restart counts and StatefulSet revision did not change.
+- 50 authenticated clients were admitted on the internal URL and on the external TLS URL (from an allowlisted host). The 51st read `-ERR max number of clients reached` on both, inside TLS on the external one.
+- While a tenant held the 50, the store stayed Ready, Prometheus kept scraping `redis_up` 1, a snapshot over `<id>-backend` transferred the RDB, and a maxmemory-policy change applied within seconds.
+
 **Where the limit is shown (w6/m459).** As on Render's dashboard ([render-artifacts/key-value.md](render-artifacts/key-value.md#where-render-shows-the-connection-limit-w6m459-t001-2026-11-17), read 2026-11-17), every plan card on the create page and in the detail page's plan picker states its limit on a line under the RAM ("50 connections"), the Details card has a Connection limit row beside Instance type (Render's Key Value Instance card), and the Metrics tab's Active Connections chart reads "Limit N" beside its title, the title Render gives it. Each reads `connectionLimit` from GraphQL `keyValueInstanceTypes`, never a frontend table. The catalog stays a GraphQL-only bex extension: Render has no plan-catalog endpoint, so REST and MCP carry none. Render's Postgres plan cards show no connection limit, so bex's do not either ([render-artifacts/postgres-connection-limit.md](render-artifacts/postgres-connection-limit.md)). Verified on production 2026-11-17 (pin `e36296ae8`): the create page's cards read Free "50 connections" through 50 GB "50,000 connections", and a Starter store's Details card, plan picker and chart read 250.
 
 ## MVP scope

@@ -1,6 +1,6 @@
 # w6 · m463 — Key Value stores with internal authentication stop at exactly their plan's connection limit
 
-**Worker:** worker6 **Goal:** a store with `spec.internalAuth` (w5/m268) holds its tenants to exactly the plan's connection limit, as every other store has since w6/m456, so a tenant at the limit reads Valkey's `ERR max number of clients reached` and the platform's reserve of 10 stays free for the readiness probe, exporter, operator and backups. **Status:** blocked (2026-11-17): t001–t004, t007 and t008 done; t005, t006 and t009 wait for the production deploy carrying this milestone's commit
+**Worker:** worker6 **Goal:** a store with `spec.internalAuth` (w5/m268) holds its tenants to exactly the plan's connection limit, as every other store has since w6/m456, so a tenant at the limit reads Valkey's `ERR max number of clients reached` and the platform's reserve of 10 stays free for the readiness probe, exporter, operator and backups. **Status:** done (2026-11-18): every task done, and the definition of done holds on production (see Closeout)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | [The operator keeps the proxy in front of a store with internal authentication](done/t002.md) — **DONE** | 1h30m | t001 |
 | t003 | [Prove the limit and the reserve on a real store with internal authentication](done/t003.md) — **DONE** | 45m | t002 |
 | t004 | [Record it in ADR021 and ADR018](done/t004.md) — **DONE** | 20m | t002 |
-| t005 | [Ship and verify on production](t005.md) | 45m | t003, t004 |
-| t006 | [Render parity](t006.md) | 30m | t005 |
+| t005 | [Ship and verify on production](done/t005.md) — **DONE** | 45m | t003, t004 |
+| t006 | [Render parity](done/t006.md) — **DONE** | 30m | t005 |
 | t007 | [Simplify](done/t007.md) — **DONE** | 15m | t006 |
 | t008 | [Test coverage](done/t008.md) — **DONE** | 30m | t006 |
-| t009 | [Closeout](t009.md) | 10m | t007, t008 |
+| t009 | [Closeout](done/t009.md) — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
@@ -26,7 +26,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** promoted from inbox note `w6/135` on 2026-11-17, filed by w6/m456 t005 ([m456 Progress](../../done/m456/README.md)) and recorded in [ADR021 § 9](../../../../docs/ADR021-keyvalue-management.md#9-connection-limits-w6m456-2026-11-17) ("Not yet exact: stores with internal authentication") and ADR018's gap backlog. Render: [compute plans § Render Key Value plans](https://render.com/docs/compute-plans#render-key-value-plans) (free 50 … `50g` 50,000) and [Key Value](https://render.com/docs/key-value) ("Any existing connections that use your unauthenticated URL will break").
+- **Source:** promoted from inbox note `w6/135` on 2026-11-17, filed by w6/m456 t005 ([m456 Progress](../m456/README.md)) and recorded in [ADR021 § 9](../../../../docs/ADR021-keyvalue-management.md#9-connection-limits-w6m456-2026-11-17) ("Not yet exact: stores with internal authentication") and ADR018's gap backlog. Render: [compute plans § Render Key Value plans](https://render.com/docs/compute-plans#render-key-value-plans) (free 50 … `50g` 50,000) and [Key Value](https://render.com/docs/key-value) ("Any existing connections that use your unauthenticated URL will break").
 - **bex today:** `reconcileKeyValueInternalRoute` (`lego/operator/internal/controller/keyvalue_internal_proxy.go`) retires `kv-internal-proxy` when `spec.internalAuth` is set, and `reconcileKeyValueService` (`keyvalue_controller.go`) points `<id>` straight at the Valkey pods. Tenants then meet only `--maxclients` (the limit + the reserve of 10) on both ports, and can hold the reserve, locking the probe, exporter and operator out. At its own limit Valkey drops a TLS client before the handshake with no error (`acceptCommonHandler`, reproduced on the pinned Valkey 8 image in m456). The backup snapshot dials `<id>` for these stores (`keyValueBackupHost`, `keyvalue_backup.go`), so it would take a tenant connection once `<id>` is counted.
 - **Builds on m456 (`0eed45bcb`).** Reuse its shared `kvinternalauth.Budget`, the TLS refusal written inside the store's own certificate, the scaled proxy memory limit, `--maxclients` limit + 10 and the backend Service; do not redo them. m456 is closed and live on production since pin `e36296ae8` (producer `e0a5ba20aac8`): the proxy holds the tenant's exact limit, `valkey-server` keeps the reserve of 10, and `cba5b9b5a` fixed the rollout holds, so a limit change restarts no existing store. This milestone's production check (t005) waits only on a deploy carrying its own commit.
 - **Goal linkage:** ADR008 § Render parity first. Render holds every Key Value instance to its plan's limit, internal authentication or not; this divergence has no ADR018 sign-off.
@@ -43,7 +43,7 @@ Shipped in the commit `git log origin/main --grep 'w6/m463'` names (the `fix(dat
 - **Routing.** `<id>` routes through the proxy for every store once it is ready and stays there. A store that enabled internal auth before this change keeps `<id>` on Valkey until its new proxy is ready. Readiness waits on the proxy for every store. The backup snapshot dials `<id>-backend` for every proxied store.
 - **Enabling internal auth rolls only the proxy.** On the local cluster (t003) the old proxy pod served until 2.8 s after the patch, then closed the unauthenticated client it held. The store read `Provisioning` for about a second, and Valkey's `run_id`, restart counts and StatefulSet revision did not change.
 - **Verified locally** (t003): 50 authenticated clients admitted and the 51st refused on `<id>:6379`. While they were held, the store stayed Ready, the exporter scraped `redis_up 1`, a snapshot over `<id>-backend` transferred the RDB, and a maxmemory-policy change applied by `CONFIG SET` within a second. The TLS repeat needs a public store, which the local cluster cannot issue a certificate for, so it moves to t005.
-- **Found:** a ready backup pod is an endpoint of `<id>-backend`, so a nightly upload resets about half of a store's new connections. Filed as [w6/139](../../done/139.md); this milestone does not cause it.
+- **Found:** a ready backup pod is an endpoint of `<id>-backend`, so a nightly upload resets about half of a store's new connections. Filed as [w6/139](../139.md); this milestone does not cause it.
 - **Simplify and Test coverage** (t007, t008) ran before t005/t006, as in m456: the code is final before the deploy, and t006 reads only surfaces this milestone does not change.
 
 ## BLOCKED — 2026-11-17: the production deploy carrying this milestone's commit
@@ -60,3 +60,23 @@ Shipped in the commit `git log origin/main --grep 'w6/m463'` names (the `fix(dat
     - delete the probes.
   - t006 reads REST, GraphQL, MCP and the dashboard confirmation on production.
   - t009 closes.
+
+## Unblocked — 2026-11-18: the production deploy carries the commit
+
+- **Affected:** w6/m463 t005, t006, t009.
+- **Source:** verified evidence (the gate was time, clearing by itself; no user decision was needed).
+- **Finding.** The production pin `359aee37d` ("pin platform images to 14eaa71b98e5", 2026-11-18 01:28Z) has producer `14eaa71b98e5`, and `git merge-base --is-ancestor` holds for this milestone's `ef091b640` and for w6/139's `49df201b9` (backup and purge pods are never an endpoint of their store). At 02:56Z `bex-system`'s `bex-controller-manager` ran `bex-operator@sha256:b4104643…961e`, the digest that pin wrote to `deploy/gitops/base/bex.yaml`, in a pod started about 87 minutes earlier.
+- **Remaining gates.** None.
+- **Next (worker).** t005 in `bex-canary`, including the external TLS repeat the local cluster could not do; t006 on production; t009. Each probe is deleted by ID and `GET` answers 404. Let's Encrypt's weekly limit for bex.co (w4/m357) may refuse a probe certificate: use the private CA where the check allows, and do not force reissues.
+
+## Closeout — 2026-11-18 (t005, t006, t009)
+
+Run on production at pin `359aee37d` in `bex-canary`. Both probes were deleted by ID, and `GET` answered 404. Details: [t005](done/t005.md), [t006](done/t006.md).
+
+- **The limit, on both URLs.** A free store with internal authentication admitted 50 authenticated clients on its internal URL. The 51st read `-ERR max number of clients reached`, with or without `AUTH`. On its external TLS URL, from this allowlisted host, a second free probe admitted 50 TLS clients that verified the Let's Encrypt chain, and the 51st completed the handshake and read the same refusal inside TLS. The first probe's certificate hit Let's Encrypt's weekly `bex.co` limit. Nothing was forced: that probe was deleted once its other checks were done, and the second probe was created after Let's Encrypt's retry-after time, so the run used one certificate.
+- **The reserve.** While a tenant held all 50, the store stayed Ready with no failed readiness probe, Prometheus scraped `redis_up` 1 and `redis_connected_clients` 51 every 30 s, a snapshot over `<id>-backend` transferred the RDB, and a maxmemory-policy change reached the running server within 9 s.
+- **Enabling internal authentication.** The held unauthenticated client was closed 4 s after the REST call, and new unauthenticated clients read `-NOAUTH`. The Valkey pod, its restart counts, `run_id` and StatefulSet revision did not change.
+- **Tests.** `TestKeyValueInternalAuthKeepsTheProxyRoute` and `TestKeyValueInternalAuthStoreAdoptsTheProxyOnceReady` fail if `<id>` selects the Valkey pods. `TestPlainPassthroughForwardsTheClientsOwnAuth` and `TestValkeyBehindAPlainPassthroughProxy` fail if the proxy injects `AUTH` (t008).
+- **ADRs.** ADR021 § 9 and ADR018's "Datastore connection limits by plan" row and gap-backlog row record the production verification, and none lists these stores as open.
+- **Render parity** (t006): the figure, the refusal and what enabling breaks match Render's, and REST, GraphQL, MCP and the deployed dashboard say nothing contrary.
+- **Found:** every operator deploy rolls every store's `kv-internal-proxy`, whose image is the operator's, and closes every tenant connection through it. The SNI proxies roll on every deploy too. The existing stores' proxies rolled for this deploy only for that reason, and no Valkey pod restarted. Filed as [w6/140](../../140.md).
