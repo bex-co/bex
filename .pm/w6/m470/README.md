@@ -1,0 +1,58 @@
+# w6 · m470 — An operator deploy that leaves the SNI proxies' code alone keeps every external datastore connection
+
+**Worker:** worker6 **Goal:** `bex-kv-sni-proxy` and `bex-pg-sni-proxy` roll only when their own binary (or their DaemonSet template) changes, not on every operator deploy, so external TLS clients of Key Value stores and Postgres databases survive the platform's routine releases, as on Render. **Status:** todo
+
+## Tasks (in order)
+
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | [A command tells whether an image carries the same SNI proxy binary as another](t001.md) | 1h30m | — |
+| t002 | [Each SNI DaemonSet takes its own image pin, which renders today's image](t002.md) | 1h | — |
+| t003 | [deploy.yml keeps an SNI pin while its binary is byte-identical, and waits for the digest it pinned](t003.md) | 1h30m | t001, t002 |
+| t004 | [Prove it against GHCR and the rendered manifests](t004.md) | 45m | t003 |
+| t005 | [Record the rule in ADR021 and ADR009](t005.md) | 30m | t003 |
+| t006 | [Ship and verify on production](t006.md) | 1h30m | t004, t005 |
+| t007 | [Simplify](t007.md) | 15m | t006 |
+| t008 | [Test coverage](t008.md) | 30m | t006 |
+| t009 | [Closeout](t009.md) | 10m | t007, t008 |
+
+## Definition of done
+
+- The production deploy that ships this milestone leaves both SNI DaemonSets on their image, revision and pods, unless the producer's `/kv-sni-proxy` or `/pg-sni-proxy` differs from the running one. Then t006 names the commit that changed it and says why that roll could not be avoided.
+- On production, one external TLS client held to a Key Value store (`PING`, same `CLIENT ID`) and one held to a Postgres database (`SELECT 1`, same `pg_backend_pid()`) still answer on the same connection after a later operator deploy whose SNI binaries are byte-identical, and each DaemonSet keeps its pods and its revision.
+- A deploy whose SNI binary changed still moves that DaemonSet to the new digest, and `deploy.yml` waits for it to roll out. Any doubt (a registry error, a missing build step) also moves it.
+- A test fails if the pin step moves a pin whose binary is byte-identical, and one fails if it keeps a pin whose binary changed.
+- ADR021 § 10 and ADR009 § SNI proxy record the rule. w6/142 (draining) stays its own item.
+
+## Source + Goal linkage
+
+- **Source:** promoted from inbox note [w6/141](../done/141.md) on 2026-11-18, filed by w6/m469 t004 as the external half of w6/140. The loopx dispatch picked it ahead of w6/138 as a live production defect.
+- **Goal linkage:** ADR008 § Render parity first. Render breaks a datastore's connections when the customer changes it (a plan change, a restart), not when Render ships its own platform ([Key Value](https://render.com/docs/key-value)). No ADR018 row signs off this divergence.
+- **Expected outcome:** a deploy that leaves the SNI binaries alone closes no external datastore connection. Over 2026-11-12 to 2026-11-18 at most 22 of 56 production pins touched a package the SNI binaries link (see Findings), so at least 34 of those deploys would have kept every external connection.
+- **Why now:** each production deploy (at most one per 6 h since block-eden-mono w1/m25) closes every external Key Value and Postgres connection at once. w6/m469 already holds the internal proxy, so the SNI DaemonSets are the remaining routine drop. Builds on w6/m469's `registry.ImageFileSHA256`.
+- **Render parity task omitted:** the change is platform-internal (a `deploy.yml` pin and two DaemonSet image references). No REST, GraphQL, MCP or dashboard field or message changes. The tenant-visible effect, an external connection surviving a platform deploy, is checked on production in t006.
+
+## Findings at promotion (2026-11-18, production read-only and git)
+
+- **Only the image moves.** On production both DaemonSets run `bex-operator@sha256:b4104643…` (the `controller=` pin, producer `14eaa71b9`), `RollingUpdate` with `maxSurge: 0`, `maxUnavailable: 1`, a 30 s grace period. `bex-kv-sni-proxy` is at revision 809 (generation 808), `bex-pg-sni-proxy` at 892. The last two ControllerRevisions of each (2026-11-17 18:37Z and 2026-11-18 01:31Z) differ only in `image` (`f7b06e9c…` → `b4104643…`). So holding the image stops the roll; nothing else in the template changes per deploy.
+- **What the SNI binaries link.** `go list -deps ./cmd/kv-sni-proxy` (and `pg-sni-proxy`): the first-party packages `lego/types/{v1alpha1,netutil,proxyproto,k8sname,env,tiers}` and `lego/operator/internal/sniproxy`, plus `k8s.io` and controller-runtime from `lego/operator/go.mod`. They do not link `internal/registry`, so changing `ImageFileSHA256` leaves them byte-identical. They do link the whole CRD scheme (`v1alpha1`), so any CRD types edit rolls them.
+- **How often they change.** Over the 56 pins from 2026-11-12 to 2026-11-18, 22 had a commit touching one of those paths since the previous producer. That is an upper bound: `fc4fbf28a` touched `lego/types/tiers` (0eed45bcb) yet carried the same bytes as `336b647b1` (w6/141's GHCR hashes), because test files and unlinked code do not change the binary.
+- **The next deploy rolls them once anyway.** `936b61bab` (w6/m467) changed `lego/types/v1alpha1/database_types.go` after the running producer `14eaa71b9`. The next pin (due once the 01:28Z pin is 6 h old, carrying w6/m469 and w6/m467) changes both SNI binaries, whatever this milestone does. t006 must compare against the pin that is live when this milestone ships.
+- **Where the image comes from.** Argo deploys `lego/operator/config/prod` with `kustomize.images: controller=ghcr.io/bex-co/bex-operator@sha256:…` (`deploy/gitops/base/bex.yaml`). Both DaemonSets use the placeholder `controller:latest`, as do the manager, bex-api, activator and the rest, so today only a separate placeholder can give them their own pin. `deploy.yml`'s "pin image digests in GitOps (write-back)" seds that one line, and "wait for PROXY-compatible datastore proxies" requires `${IMAGE}@${operator_digest}` on both DaemonSets.
+- **Kustomize trap.** `config/prod` builds `../default` first. If `config/default` mapped a new placeholder to `controller`, the inner build would rename it before Argo's outer `kustomize edit set image` could match it, and the DaemonSets would follow `controller=` again. The new placeholders must reach `config/prod` untouched. Local `make deploy` (`config/deploy` + `kustomize edit set image controller=${IMG}`) must set all three.
+- **Platform.** `ImageFileSHA256` reads `runtime.GOARCH`, as the operator compares an image with itself. The deploy job runs on `ubuntu-24.04-arm` and the operator image is `linux/amd64` only (`platforms: linux/amd64`), so the comparison needs an explicit platform.
+- **Guards that pin today's shape:**
+  - `scripts/gitops-validate.sh` greps `deploy.yml` for `BEX_EXPECTED_PROXY_IMAGE: ${{ env.IMAGE }}@${{ needs.build.outputs.operator_digest }}`, which must change in step.
+  - `scripts/deploy-superseded.sh` (with its `.test.sh`) and `deploy.yml`'s inline write-back check each expect exactly one generated digest field in `deploy/gitops/base/bex.yaml`.
+  - `scripts/image-pin-validate.sh` exempts each DaemonSet's `controller:latest` by file and reference.
+- **Rejected direction: a content-addressed image per proxy.** It needs two new GHCR packages with signing, SBOM and the CVE gate, a reproducible image config (timestamps), and it would still roll on every distroless base bump. The pin hold reuses w6/m469's digest-verified reader and the existing pin write-back.
+- **Not covered: w6/142.** A deploy that does change an SNI binary still replaces each pod (`hostPort`, no surge) and closes its streams at once. This milestone does not change that.
+
+## Design constraints
+
+- **Do not change the SNI binaries in this milestone.** Leave `lego/types/{v1alpha1,netutil,proxyproto,k8sname,env,tiers}`, `lego/types/go.mod`, `lego/operator/internal/sniproxy`, `lego/operator/cmd/{kv,pg}-sni-proxy`, `lego/operator/go.mod`/`go.sum`, and `lego/Dockerfile`'s builder image and SNI build lines alone. The new command adds no module dependency. If a change there becomes unavoidable, t006 and the result say so plainly.
+- **Hold the image, not the template.** An env, probe or resource change in a DaemonSet manifest still rolls it, now on the held image, which runs a byte-identical binary.
+- **Any doubt rolls.** When the comparison cannot prove the binaries identical (a registry error, a tag, a missing build step, a layer digest mismatch), the pin step pins the new digest, which is today's behavior. It never fails the deploy for it.
+- **The first sync renders today's image.** The commit that introduces the two pins sets both to the `controller=` digest on `origin/main` at ship time, so Argo's first sync changes no DaemonSet. A pin that lands in between conflicts on the adjacent line during `/ship`'s rebase; re-read it then.
+- **An in-flight deploy refuses the change.** `deploy.yml`'s inline check (in the workflow file of the run that is already building) refuses a write-back when `bex.yaml` changed beyond its generated field. Ship when `gh run list --workflow deploy.yml` shows no run past `changes`, or record the one refused run.
+- The held digest can be weeks old. GHCR keeps every `bex-operator` version (w6/m469).

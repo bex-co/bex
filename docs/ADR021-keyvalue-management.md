@@ -285,7 +285,7 @@ Verified on production on 2026-11-18 (pin `359aee37d`), on free probes in `bex-c
 
 **Adopting a proxy with no record.** A Deployment written before w6/m469 records no hash. For it the operator reads `/kv-internal-proxy` out of the Deployment's current image in its registry (`registry.ImageFileSHA256`). It reads the image index, this architecture's manifest and its config through the same bounded, digest-verified reader as an image's ports (`ReadImageConfig`), with an anonymous pull token. Then it downloads the one layer added by the history entry `COPY /workspace/kv-internal-proxy /kv-internal-proxy # buildkit`, at most 64 MiB within 30 s, and checks it against its digest too. Each image is read once per manager process. Only a digest reference whose binary is byte-identical keeps its image. The hash is then recorded, so the registry is never asked about that Deployment again. Any doubt rolls the proxy as before: a tag, a missing build step, a registry error or a different binary. Recording the hash bumps the Deployment's generation, because the API server copies a Deployment's annotations to its ReplicaSet, but it creates no new ReplicaSet and replaces no pod.
 
-**Not covered.** The SNI proxies (`bex-kv-sni-proxy`, `bex-pg-sni-proxy`) still roll on every deploy and close their external streams ([w6/141](../.pm/w6/141.md)). A deploy that does change the proxy's code still closes its connections at once ([w6/142](../.pm/w6/142.md), draining).
+**Not covered.** The SNI proxies (`bex-kv-sni-proxy`, `bex-pg-sni-proxy`) still roll on every deploy and close their external streams ([w6/141](../.pm/w6/done/141.md)). A deploy that does change the proxy's code still closes its connections at once ([w6/142](../.pm/w6/142.md), draining).
 
 ## MVP scope
 
