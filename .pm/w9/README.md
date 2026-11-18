@@ -142,6 +142,7 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [x] **120** — [Deleting a workspace leaves its API keys live: their Hydra clients and OpenFGA tuples survive, and no list can show or revoke them](done/120.md) ← from w9/119 (production fixture cleanup) 2026-11-18 — **DONE** 2026-11-18
 - [ ] **121** — [A workspace delete that fails partway cannot be retried by its admin: the first attempt already revoked every member](121.md) ← from w9/120 2026-11-18
 - [ ] **122** — [A new Key Value's connection strings are not shaped like Render's: the external one is empty, the internal one carries the password, and the CLI command is `redis-cli -u`](122.md) ← from w9/108's Terraform recheck ([checklist](../../docs/terraform-compatibility-checklist.md), class 10) 2026-11-18
+- [ ] **123** — [After `DELETE …/autoscaling`, a service read still carries `serviceDetails.autoscaling`, where Render omits it, so Terraform cannot remove autoscaling](123.md) ← from w9/111's Terraform recheck ([checklist](../../docs/terraform-compatibility-checklist.md)) 2026-11-18
 
 ## Approved queue (priority order, 2026-09-08)
 
