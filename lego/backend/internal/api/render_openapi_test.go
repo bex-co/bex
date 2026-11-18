@@ -761,11 +761,11 @@ func TestRenderRequestValidatorNamesParameterConstraints(t *testing.T) {
 	}{
 		{
 			path: "/v1/logs?resource=srv-x&limit=0",
-			want: []string{"limit", "1", "100"},
+			want: []string{"limit must be an integer between 1 and 1000"},
 		},
 		{
-			path: "/v1/logs?resource=srv-x&limit=150",
-			want: []string{"limit", "1", "100"},
+			path: "/v1/logs?resource=srv-x&limit=1001",
+			want: []string{"limit must be an integer between 1 and 1000"},
 		},
 		{
 			path: "/v1/logs?resource=srv-x&direction=sideways",
@@ -798,12 +798,12 @@ func TestRenderRequestValidatorNamesParameterConstraints(t *testing.T) {
 
 	// Distinct violations of opposite bounds must not collapse to one opaque string.
 	lo := requestOpenAPITest(t, h, http.MethodGet, "/v1/logs?resource=srv-x&limit=0", "", "")
-	hi := requestOpenAPITest(t, h, http.MethodGet, "/v1/logs?resource=srv-x&limit=150", "", "")
+	hi := requestOpenAPITest(t, h, http.MethodGet, "/v1/logs?resource=srv-x&limit=1001", "", "")
 	if lo.Body.String() == hi.Body.String() {
-		// Both may still say "between 1 and 100" — that's fine and distinct from
+		// Both may still say "between 1 and 1000" — that's fine and distinct from
 		// the old bare message. Require at least that they name the constraint.
 		if !strings.Contains(lo.Body.String(), "between") {
-			t.Fatalf("limit=0 and limit=150 both opaque: %s", lo.Body.String())
+			t.Fatalf("limit=0 and limit=1001 both opaque: %s", lo.Body.String())
 		}
 	}
 

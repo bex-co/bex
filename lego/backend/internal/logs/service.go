@@ -128,6 +128,13 @@ var DiscoverableLabels = []string{LabelHost, LabelInstance, LabelLevel, LabelMet
 // Render defaults the logs `limit` to 20 and caps it at 100; bex matches so a
 // Render client sees identical paging. defaultLogTail caps the MCP list_logs
 // read when the caller gives no limit.
+//
+// REST's list-logs admits up to 1000, the page the pinned Render CLI's viewer
+// asks for on every scroll (internal/api renderQueryMaximumCompatibility), and
+// still serves at most maxLogLimit lines with hasMore and cursors, so the
+// viewer keeps paging. Whether Render's server fills such a page past 100 is
+// unverified; serving 100 is w3/m475's recorded recommendation, not a user
+// sign-off (docs/ADR018-render-parity.md, Application logs).
 const (
 	defaultLogLimit = 20
 	maxLogLimit     = 100

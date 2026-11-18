@@ -159,6 +159,21 @@ var renderPathParameterPatternCompatibility = map[string]map[string]string{
 	"remove-workspace-member": {"userId": renderUserIDPattern},
 }
 
+// renderQueryMaximumCompatibility raises a query parameter's declared maximum
+// for one operation, keyed operationId → parameter name → new maximum. Like the
+// maps above it may only widen: every entry must raise the pinned maximum
+// (TestRenderQueryMaximumsOnlyWiden).
+//
+// list-logs: the pinned Render CLI's log viewer asks for
+// logs.PaginationLogLimit (1000) lines on every scroll-to-load request
+// (render-oss/cli pkg/tui/views/logview.go), against Render's own API, while
+// the pinned spec declares `limit` at most 100. The gate admits the CLI's
+// 1000; the logs service still serves at most 100 lines a page, with hasMore
+// and cursors to page on (logs.maxLogLimit, w3/m475).
+var renderQueryMaximumCompatibility = map[string]map[string]float64{
+	"list-logs": {"limit": 1000},
+}
+
 // renderUserIDPattern accepts bex's own- user ids alongside Render's usr-.
 const renderUserIDPattern = `^(?:usr|own)-[0-9a-v]{20}$`
 
@@ -409,15 +424,21 @@ func applyRenderCompatibility(doc *openapi3.T) {
 			optional := renderOptionalParameterCompatibility[operationID]
 			patterns := renderPathParameterPatternCompatibility[operationID]
 			commaLists := renderCommaListQueryCompatibility[operationID]
+			maxima := renderQueryMaximumCompatibility[operationID]
 			for _, parameters := range []openapi3.Parameters{item.Parameters, operation.Parameters} {
 				for i, ref := range parameters {
 					if ref == nil || ref.Value == nil {
 						continue
 					}
+					// Each rewrite below takes a fresh ref, not an edit through
+					// the shared one: the pinned parameter is a component other
+					// operations reuse.
 					if ref.Value.In == openapi3.ParameterInQuery && slices.Contains(commaLists, ref.Value.Name) {
-						// A fresh ref, not an edit through the shared one: the
-						// pinned parameter is a component other operations reuse.
 						ref = &openapi3.ParameterRef{Value: commaListParameter(ref.Value)}
+						parameters[i] = ref
+					}
+					if maximum, ok := maxima[ref.Value.Name]; ok && ref.Value.In == openapi3.ParameterInQuery {
+						ref = &openapi3.ParameterRef{Value: withMaximum(ref.Value, maximum)}
 						parameters[i] = ref
 					}
 					if slices.Contains(optional, ref.Value.Name) {
@@ -482,6 +503,19 @@ func commaListParameter(p *openapi3.Parameter) *openapi3.Parameter {
 	list.Explode = &explode
 	list.Schema = openapi3.NewSchemaRef("", openapi3.NewArraySchema().WithItems(item.Value))
 	return &list
+}
+
+// withMaximum re-declares a numeric parameter with a raised maximum, on copies
+// of the parameter and its schema.
+func withMaximum(p *openapi3.Parameter, maximum float64) *openapi3.Parameter {
+	if p.Schema == nil || p.Schema.Value == nil {
+		return p
+	}
+	schema := *p.Schema.Value
+	schema.Max = &maximum
+	widened := *p
+	widened.Schema = &openapi3.SchemaRef{Value: &schema}
+	return &widened
 }
 
 func applyRenderSchemaCompatibility(operationID string, schema *openapi3.Schema) {

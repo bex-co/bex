@@ -1,0 +1,5 @@
+{
+  "paginationLogLimit": 1000,
+  "path": "/v1/logs",
+  "query": "ownerId=tea-d4scrollcontract0000&startTime=2026-11-18T09%3A00%3A00Z&endTime=2026-11-18T09%3A41%3A07.123456788Z&direction=backward&resource=srv-d4scrollcontract0000&limit=1000"
+}

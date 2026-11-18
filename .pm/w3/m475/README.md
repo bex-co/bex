@@ -1,19 +1,19 @@
 # w3 · m475 — The official Render CLI's log viewer can scroll back on bex: `GET /v1/logs` accepts its `limit=1000`
 
-**Worker:** worker3 **Goal:** scrolling up in `render logs`' interactive viewer loads older lines on bex, as it does on Render, instead of failing with `400 limit must be an integer between 1 and 100`. **Status:** todo
+**Worker:** worker3 **Goal:** scrolling up in `render logs`' interactive viewer loads older lines on bex, as it does on Render, instead of failing with `400 limit must be an integer between 1 and 100`. **Status:** todo (t001–t004, t006–t008 done; t005 waits for the production pin)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | The Render contract gate accepts `limit` up to 1000 on `GET /v1/logs` | 45m | — |
-| [t002](t002.md) | A page asked for more than 100 lines serves 100 with live cursors | 30m | t001 |
-| [t003](t003.md) | Contract test: the pinned Render CLI's paginated log request succeeds | 40m | t002 |
-| [t004](t004.md) | Docs: CLI checklist, ADR010 and ADR018 | 15m | t003 |
+| [t001](done/t001.md) | The Render contract gate accepts `limit` up to 1000 on `GET /v1/logs` — **DONE** | 45m | — |
+| [t002](done/t002.md) | A page asked for more than 100 lines serves 100 with live cursors — **DONE** | 30m | t001 |
+| [t003](done/t003.md) | Contract test: the pinned Render CLI's paginated log request succeeds — **DONE** | 40m | t002 |
+| [t004](done/t004.md) | Docs: CLI checklist, ADR010 and ADR018 — **DONE** | 15m | t003 |
 | [t005](t005.md) | Production check with the unmodified Render CLI binary | 30m | t004 |
-| [t006](t006.md) | Render parity | 20m | t004 |
-| [t007](t007.md) | Simplify | 15m | t006 |
-| [t008](t008.md) | Test coverage | 30m | t007 |
+| [t006](done/t006.md) | Render parity — **DONE** | 20m | t004 |
+| [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 30m | t007 |
 | [t009](t009.md) | Closeout | 10m | t005, t008 |
 
 ## Definition of done
@@ -43,3 +43,23 @@
 - **Expected outcome:** a customer reading logs in the official CLI's viewer can scroll back through history, as on Render.
 - **Why now:** it is a live, reproducible failure of the official CLI's default interactive log view. The fix is small and local to the gate.
 - **Render parity included:** the change alters a REST validation boundary that the CLI, the API docs and the MCP `list_logs` tool all describe.
+
+## Render parity (t006, 2026-11-18)
+
+| Surface | `limit` accepted | Page served | `hasMore` and cursors | Out of range |
+| --- | --- | --- | --- | --- |
+| REST `GET /v1/logs` | 1 to 1000 (this milestone) | at most 100 | yes, `queryLogPage` | 400 `limit must be an integer between 1 and 1000`; a non-integer gets the gate's generic 400 `invalid query parameter "limit"` |
+| REST `/v1/logs/subscribe`, `/v1/logs/values` | 1 to 100 (pinned spec) | a tail; a values list cut at `limit` | — | 400 `limit must be an integer between 1 and 100` |
+| GraphQL `logs(limit:)` | any Int, 0 or less means 20 | at most 100 | yes, the same `queryLogPage` | clamped, no error (a bex-native surface, no Render counterpart) |
+| MCP `list_logs` | any number ("max 100", as Render's `list_logs` says; Render's pinned tool types it `number` with no bound) | at most 100 | yes, the same envelope | clamped, no error |
+| Dashboard | sends at most 100 through GraphQL | at most 100 | follows the cursors | — |
+| Render API docs | 1 to 100 | — | yes | — |
+| Render CLI (pinned) | sends 100 for the first page and 1000 (`logs.PaginationLogLimit`) for every older page; `--limit` passes through to a list and to a tail | — | follows the cursors | — |
+| Render's server for `limit=1000` | admits it, since the CLI's scroll works on Render | **unverified**, no Render account in reach | — | — |
+
+Differences and where each one stands:
+
+- **The page size Render serves for `limit=1000` is unverified.** It is recorded in ADR018's Application logs row as a recommendation without the user's sign-off. It was not filed, because it was not found to exceed 100.
+- **A user's own `render logs --tail --limit` above 100** still gets the pinned 400 from `/logs/subscribe`. Whether Render's subscribe admits it is unverified too. The CLI's own code never sends more than 100 there unless asked to, so it stays as pinned (t001 step 3).
+- **GraphQL and MCP clamp an out-of-range limit instead of refusing it.** This predates the milestone and is unchanged (t002). Render has no GraphQL, and its MCP tool takes an unbounded `number`.
+

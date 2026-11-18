@@ -221,6 +221,71 @@ func TestLogPagesSayExactlyWhetherMoreRemain(t *testing.T) {
 	}
 }
 
+// The pinned Render CLI's viewer asks for limit=1000 on every scroll (w3/m475).
+// A page still holds at most maxLogLimit lines, and hasMore compares against
+// that clamp, not the 1000 asked for, so the walk goes on page by page: 250
+// lines come back as 100, 100 and 50, each line once, the last page saying
+// there is no more.
+func TestOversizeLimitServesClampedPagesThatKeepPaging(t *testing.T) {
+	base := time.Date(2026, 7, 5, 0, 0, 0, 0, time.UTC)
+	const start, end = "2026-07-05T00:00:00Z", "2026-07-05T01:00:00Z"
+	const total = 250
+	var lines []LogEntry
+	for i := range total {
+		lines = append(lines, lineAt(base.Add(time.Duration(i+1)*time.Second), fmt.Sprintf("l%03d", i)))
+	}
+	svc := storedService(lines...)
+
+	for direction, ends := range map[string][2]string{
+		DirectionBackward: {"l249", "l000"},
+		DirectionForward:  {"l000", "l249"},
+	} {
+		pages := walkLogPages(t, svc, "resource=web", start, end, 1000, direction)
+		var sizes []int
+		seen := map[string]bool{}
+		for _, page := range pages {
+			sizes = append(sizes, len(page.Logs))
+			for _, line := range page.Logs {
+				if seen[line.Message] {
+					t.Errorf("%s: %s served twice", direction, line.Message)
+				}
+				seen[line.Message] = true
+			}
+		}
+		if fmt.Sprint(sizes) != "[100 100 50]" || len(seen) != total {
+			t.Fatalf("%s limit=1000 over %d lines = pages %v (%d distinct lines), want [100 100 50]", direction, total, sizes, len(seen))
+		}
+		if first, last := pages[0].Logs[0].Message, pages[2].Logs[49].Message; first != ends[0] || last != ends[1] {
+			t.Errorf("%s walk runs %s..%s, want %s..%s", direction, first, last, ends[0], ends[1])
+		}
+	}
+
+	// GraphQL and MCP take the same oversize limit to the same clamped page.
+	schema, err := gqlSchema(svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := json.Marshal(runQuery(t, schema, `{ logs(resource:"web", startTime:"`+start+`", endTime:"`+end+`", limit:1000) { hasMore logs { message } } }`)["logs"])
+	var viaGraphQL wirePage
+	if err := json.Unmarshal(raw, &viaGraphQL); err != nil {
+		t.Fatal(err)
+	}
+	result, err := mcpLogsClient(t, svc).CallTool(context.Background(), &mcp.CallToolParams{Name: "list_logs", Arguments: map[string]any{
+		"resource": []string{"web"}, "startTime": start, "endTime": end, "limit": 1000}})
+	if err != nil || result.IsError {
+		t.Fatalf("MCP list_logs = %+v, %v", result, err)
+	}
+	var viaMCP wirePage
+	if err := json.Unmarshal([]byte(result.Content[0].(*mcp.TextContent).Text), &viaMCP); err != nil {
+		t.Fatal(err)
+	}
+	for surface, page := range map[string]wirePage{"GraphQL": viaGraphQL, "MCP": viaMCP} {
+		if len(page.Logs) != maxLogLimit || !page.HasMore {
+			t.Errorf("%s limit=1000 = %d lines hasMore=%v, want %d and more", surface, len(page.Logs), page.HasMore, maxLogLimit)
+		}
+	}
+}
+
 // A page the scan edge empties resumes at the edge: its own cursors would name
 // the window just read, and a client would re-read it forever.
 func TestLogPageEmptiedByTheScanEdgeResumesAtTheEdge(t *testing.T) {
