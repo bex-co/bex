@@ -1,6 +1,6 @@
 # w6 · m467 — Each read replica has its own endpoint and connection pool, as on Render
 
-**Worker:** worker6 **Goal:** each named read replica is one reader of its own. Its internal and external URLs reach only its own instance, never the primary or the HA standby, and it stays the same instance across reconciles and failovers. With pooling on, each replica has its own PgBouncer with a pool of `max_connections` − 10, so two replicas hold 90 server connections each at once, as Render's do. **Status:** blocked: t001–t005 and t007–t009 done; t006, the production check, waits for the deploy carrying this milestone (see BLOCKED — 2026-11-18)
+**Worker:** worker6 **Goal:** each named read replica is one reader of its own. Its internal and external URLs reach only its own instance, never the primary or the HA standby, and it stays the same instance across reconciles and failovers. With pooling on, each replica has its own PgBouncer with a pool of `max_connections` − 10, so two replicas hold 90 server connections each at once, as Render's do. **Status:** todo (t001–t005 and t007–t009 done; unblocked 2026-11-18: production runs a pin carrying this milestone, so t006's probe is next)
 
 ## Tasks (in order)
 
@@ -50,6 +50,13 @@
 - **Then.**
   - t006: a `basic-4gb` probe in `bex-canary` with HA, replicas `a` and `b`, 10 GB and pooling; from a probe pod, 1,000 clients through each replica's pooled URL at once with 90 server connections on each (`SHOW POOLS`, `pg_stat_activity`) and no failed transaction; each replica URL reads only its instance and the HA standby serves none; a planned failover (`POST /v1/postgres/{id}/failover`) promotes the HA standby; the external direct and pooled URLs of `a` and `b` (`<id>-ro-<name>`, `<id>-rp-<name>`) connect with `verify-full` from an allowlisted host and read their own instance; delete the probe by ID (`GET` 404) and the load pod; record the evidence in ADR009 and ADR018.
   - t010 closes.
+
+## Unblocked — 2026-11-18: production runs a pin carrying this milestone
+
+- **Affected:** w6/m467 t006, then t010.
+- **Source:** verified evidence, the gate's own check. The production pins `1ec5007be0fa` (`c7f44bd87`, 2026-11-18 14:44Z) and `1db506777e17` (`e5ace7826`, 21:22Z) both contain this milestone's commit `936b61bab` (`git merge-base --is-ancestor`). Production's `bex-system` Deployments and DaemonSets (controller, bex-api, pg-sni-proxy, kv-sni-proxy) run `bex-operator@sha256:62e7ab56…`, the digest `deploy/gitops/base/bex.yaml` pins at `1db506777e17`, and `kubectl get crd databases.app.bex.co -o yaml | grep -c ReadReplicaServiceName` reads 2.
+- **Remaining gates:** none. Production access works through `scripts/fetch-app-kubeconfig.sh` with the control-plane host key pinned from `~/.ssh/bex_cp_host_ed25519.pub` (w3/m472).
+- **Next:** t006's probe in `bex-canary` as its steps say, record the evidence in ADR009 and ADR018, then t010.
 
 ## Source + Goal linkage
 
