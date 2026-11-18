@@ -291,3 +291,41 @@ func TestParseBaseURLTakesAnOriginOnly(t *testing.T) {
 		}
 	}
 }
+
+// TestAnEmergencyRotationCutsTheOldKeyAtOnce: after `oidc-rotate-key
+// --emergency --apply` and a reload, the old key is gone from the JWKS, a
+// verifier that fetches it refuses a token the old key signed, and new tokens
+// are signed with the new key straight away.
+func TestAnEmergencyRotationCutsTheOldKeyAtOnce(t *testing.T) {
+	f, base := serve(t, time.Now())
+	ctx := context.Background()
+	sub := oidcissuer.Subject{Workspace: wsA, Service: srvA}
+	old, err := f.issuer.Mint(sub, "api.openai.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := oidcissuer.Rotate(ctx, f.store, f.clock.Now(), true, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.keys.Load(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if got := publishedKids(t, base); len(got) != 1 || got[0] != report.NewKey.KID {
+		t.Fatalf("JWKS after an emergency rotation = %v, want only %s", got, report.NewKey.KID)
+	}
+	v := verifier(t, base+"/"+wsA, "api.openai.com", nil)
+	if _, err := v.Verify(ctx, old.Raw); err == nil {
+		t.Fatal("a token signed with the replaced key still verifies")
+	}
+	fresh, err := f.issuer.Mint(sub, "api.openai.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fresh.KeyID != report.NewKey.KID {
+		t.Fatalf("after an emergency rotation tokens carry %s, want %s", fresh.KeyID, report.NewKey.KID)
+	}
+	if _, err := v.Verify(ctx, fresh.Raw); err != nil {
+		t.Fatalf("a token signed with the new key fails: %v", err)
+	}
+}
