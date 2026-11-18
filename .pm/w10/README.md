@@ -44,6 +44,16 @@ Develop against `.pm/w10/dev-10/`, this worker's own isolated stack on the share
 
 ## Inbox
 
+- [ ] **013** — [An agent session's unpushed commits and working tree vanish when its next turn starts on a fresh sandbox (major)](013.md) ← agent-automation runs 2026-11-15..18
+- [ ] **014** — [An agent session cannot push a branch created from an older commit: the GitHub App lacks `workflows` permission (major)](014.md) ← agent-automation runs 2026-11-15..18
+- [ ] **015** — [Agent sessions fail with `SANDBOX_START_FAILED` when several start within a minute or two](015.md) ← agent-automation runs 2026-11-15..18
+- [ ] **016** — [A turn is killed after 30 minutes without agent output even while a tool command is still running (major with 013)](016.md) ← agent-automation runs 2026-11-15..18
+- [ ] **017** — [`bex agent run` cannot choose the sandbox size, and its sessions run out of memory where automations do not](017.md) ← agent-automation runs 2026-11-15..18
+- [ ] **018** — [The agent sandbox template lacks Python 3.12, `uv`, `gitleaks` and `gh`](018.md) ← agent-automation runs 2026-11-15..18
+- [ ] **019** — [The workspace model pin silently runs every agent on one model; no session or automation can choose another](019.md) ← agent-automation runs 2026-11-15..18
+- [ ] **020** — [`bex agent automations apply` refuses `overlapPolicy`, which `list` returns (minor)](020.md) ← agent-automation runs 2026-11-15..18
+- [ ] **021** — [The bex CLI session expires within hours and long-running scripts fail with 401 (minor)](021.md) ← agent-automation runs 2026-11-15..18
+
 - [ ] **012** — moved to **w21/m336** (2026-11-11): Billing lifecycle worker fails every tick with "no rows in result set" (11 workspaces stuck `enforcing`) → [`../w21/done/m336/`](../w21/done/m336/README.md)
 
 - [x] **008** — Sandbox pod-ready timeout misreported as capacity; informer-staleness root cause (incident 2026-10-29/30) → [`done/008.md`](done/008.md) — closed 2026-11-05 (message fixed by `b99972a25`, incident mitigated by `58112a7f0`; informer stays off)
