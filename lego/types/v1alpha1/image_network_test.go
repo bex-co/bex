@@ -27,8 +27,9 @@ import (
 
 // OpenPorts, ServicePort and InternalAddress are one derivation read three
 // ways: the published set, its primary, and the `<slug>:<primary>` address.
-// They follow the serving release during a replacement and never invent a
-// port while discovery is pending (w6/m148).
+// They follow the serving release during a replacement (w6/m148). While
+// discovery is pending they name the service's own port, else Render's
+// default 10000, as Render's create answers for an image that binds 80 (w9/104).
 func TestOpenPortsFollowTheServingNetwork(t *testing.T) {
 	candidate := &ImageNetworkStatus{Image: "new", Revision: "r2", PrimaryPort: 9000, Ports: []int32{9000, 9100}}
 	serving := &ImageNetworkStatus{Image: "old", Revision: "r1", PrimaryPort: 8123, Ports: []int32{8123, 9000, 9009}}
@@ -41,7 +42,10 @@ func TestOpenPortsFollowTheServingNetwork(t *testing.T) {
 	}{
 		{"configured web", App{ObjectMeta: metav1.ObjectMeta{Name: "web"}, Spec: AppSpec{Type: TypeWebService, Port: 8080}}, []int32{8080}, 8080, "web:8080"},
 		{"configured default", App{ObjectMeta: metav1.ObjectMeta{Name: "pserv"}, Spec: AppSpec{Type: TypePrivateService}}, []int32{DefaultPort}, DefaultPort, "pserv:10000"},
-		{"image pending", App{ObjectMeta: metav1.ObjectMeta{Name: "ch"}, Spec: AppSpec{Type: TypePrivateService, PortMode: PortModeImageV1}}, []int32{}, 0, ""},
+		{"image pending", App{ObjectMeta: metav1.ObjectMeta{Name: "ch"}, Spec: AppSpec{Type: TypePrivateService, PortMode: PortModeImageV1}}, []int32{DefaultPort}, DefaultPort, "ch:10000"},
+		{"image pending with a configured port", App{ObjectMeta: metav1.ObjectMeta{Name: "ch"}, Spec: AppSpec{Type: TypePrivateService, PortMode: PortModeImageConfiguredV1, Port: 5432}},
+			[]int32{5432}, 5432, "ch:5432"},
+		{"web image pending", App{ObjectMeta: metav1.ObjectMeta{Name: "web"}, Spec: AppSpec{Type: TypeWebService, PortMode: PortModeWebImageV1}}, []int32{DefaultPort}, DefaultPort, "web:10000"},
 		{"image first candidate", App{ObjectMeta: metav1.ObjectMeta{Name: "ch"}, Spec: AppSpec{Type: TypePrivateService, PortMode: PortModeImageV1},
 			Status: AppStatus{ImageNetwork: candidate}}, []int32{9000, 9100}, 9000, "ch:9000"},
 		{"image replacement keeps serving", App{ObjectMeta: metav1.ObjectMeta{Name: "ch"}, Spec: AppSpec{Type: TypePrivateService, PortMode: PortModeImageV1},
@@ -65,6 +69,46 @@ func TestOpenPortsFollowTheServingNetwork(t *testing.T) {
 	app.OpenPorts()[0] = 1
 	if serving.Ports[0] != 8123 {
 		t.Fatal("OpenPorts aliased the serving network")
+	}
+}
+
+// ResolvedServicePort is false only while an image that chooses the port is
+// unread: ServicePort's 10000 then is Render's default, which the image may
+// replace, so a Blueprint reference waits for it (ADR089 D4, w9/104).
+func TestResolvedServicePort(t *testing.T) {
+	private := func(mode string, port int32) App {
+		return App{Spec: AppSpec{Type: TypePrivateService, PortMode: mode, Port: port}}
+	}
+	withPORT := private(PortModeImageV1, 0)
+	withPORT.Status.EnvPort = 8080
+	read := private(PortModeImageV1, 0)
+	read.Status.ImageNetwork = &ImageNetworkStatus{Revision: "r1", PrimaryPort: 80, Ports: []int32{80}}
+	for _, tc := range []struct {
+		name string
+		app  App
+		port int32
+		ok   bool
+	}{
+		{"image pending", private(PortModeImageV1, 0), 0, false},
+		{"web image pending", App{Spec: AppSpec{Type: TypeWebService, PortMode: PortModeWebImageV1}}, 0, false},
+		{"image pending with PORT", withPORT, 8080, true},
+		{"image pending with a configured port", private(PortModeImageConfiguredV1, 5432), 5432, true},
+		{"image read", read, 80, true},
+		{"configured", private("", 0), DefaultPort, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			port, ok := tc.app.ResolvedServicePort()
+			if port != tc.port || ok != tc.ok {
+				t.Fatalf("ResolvedServicePort = %d, %v; want %d, %v", port, ok, tc.port, tc.ok)
+			}
+			want := tc.port
+			if !ok {
+				want = DefaultPort
+			}
+			if tc.app.ServicePort() != want {
+				t.Fatalf("ServicePort = %d, want %d", tc.app.ServicePort(), want)
+			}
+		})
 	}
 }
 
@@ -164,7 +208,8 @@ func TestDetectedPortOverridesTheDefaultAcrossReaders(t *testing.T) {
 // A web or private service's openPorts adds the listeners its instances bind,
 // retained ones included, without reserved ports and within Render's 75
 // (w3/m273, w3/m276); a web service's 10000 stays a route to its primary, not
-// a listener, and a pending image network stays [].
+// a listener, and a pending image network, which no instance has served, lists
+// its default port alone (w9/104).
 func TestOpenPortsAddRuntimeListeners(t *testing.T) {
 	found := &RuntimePortsStatus{Revision: "rev-2", Ports: []int32{5432, 9187, 18012}, Retained: []int32{7000}}
 	webFound := &RuntimePortsStatus{Revision: "rev-2", Ports: []int32{8080, 9000, 10000, 19099}}
@@ -176,7 +221,7 @@ func TestOpenPortsAddRuntimeListeners(t *testing.T) {
 		{"configured private", App{Spec: AppSpec{Type: TypePrivateService, Port: 5432}, Status: AppStatus{RuntimePorts: found}}, []int32{5432, 7000, 9187}},
 		{"image private", App{Spec: AppSpec{Type: TypePrivateService, PortMode: PortModeImageV1},
 			Status: AppStatus{RuntimePorts: found, ServingNetwork: &ImageNetworkStatus{Revision: "rev-1", PrimaryPort: 8123, Ports: []int32{8123, 9000}}}}, []int32{5432, 7000, 8123, 9000, 9187}},
-		{"image pending", App{Spec: AppSpec{Type: TypePrivateService, PortMode: PortModeImageV1}, Status: AppStatus{RuntimePorts: found}}, []int32{}},
+		{"image pending", App{Spec: AppSpec{Type: TypePrivateService, PortMode: PortModeImageV1}, Status: AppStatus{RuntimePorts: found}}, []int32{DefaultPort}},
 		{"web", App{Spec: AppSpec{Type: TypeWebService, Port: 8080}, Status: AppStatus{RuntimePorts: webFound}}, []int32{8080, 9000}},
 		{"web on 10000", App{Spec: AppSpec{Type: TypeWebService}, Status: AppStatus{RuntimePorts: webFound}}, []int32{8080, 9000, 10000}},
 		{"untyped web", App{Spec: AppSpec{Port: 3000}, Status: AppStatus{RuntimePorts: webFound}}, []int32{3000, 8080, 9000}},

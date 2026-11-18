@@ -72,7 +72,7 @@ Total: **10 tasks, about 6h10m**.
 - **Remaining gates:**
   - **Gate (1), owner: the user** (a real `RENDER_API_KEY` for a capture, w10/002, or a sign-off in ADR018):
     - `url` on a web service whose platform subdomain is off with no custom domain, and on a create in a server without `BEX_BASE_DOMAIN`;
-    - `url` on an image-port private service before its ports are discovered. Render's recorded create answers `<slug>:10000` here; filed as w9/104, which can retire it without the user;
+    - ~~`url` on an image-port private service before its ports are discovered~~: retired by w9/104 (2026-11-18), which answers Render's recorded `<slug>:10000` before the image is read;
     - `runtime`/`env`/`envSpecificDetails` on a bex `buildpack` build with no explicit runtime;
     - Postgres `version` on a database with an empty `spec.version`.
   - **Gate (2):** unchanged.

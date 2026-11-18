@@ -599,8 +599,9 @@ type AppView struct {
 	Port int32 `json:"port,omitempty"`
 	// OpenPorts is Render's serviceDetails.openPorts (`serverPort[]`, required
 	// on web and private services): the TCP ports the stable hostnames serve.
-	// nil for types without a network address; empty, never an invented 3000,
-	// while an image-port private service's discovery is pending (w6/m148).
+	// nil for types without a network address; while an image-port service's
+	// discovery is pending, its ServicePort alone: Render's default 10000
+	// unless it names a port of its own (w6/m148, w9/104).
 	OpenPorts []ServerPortView `json:"openPorts,omitempty"`
 	// ImagePorts reports a service whose port set comes from its image
 	// (spec.HasImagePorts: an image-port private service, or a web service
@@ -5522,7 +5523,7 @@ type ServerPortView struct {
 }
 
 // serverPorts renders App.OpenPorts in Render's shape, keeping nil (no network
-// address) distinct from empty (discovery pending).
+// address) nil.
 func serverPorts(ports []int32) []ServerPortView {
 	if ports == nil {
 		return nil

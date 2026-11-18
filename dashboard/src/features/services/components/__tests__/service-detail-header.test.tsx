@@ -951,12 +951,10 @@ it("omits the extra Blueprint name when it is already the display label", async 
 
 // w6/m148: an image-port private service publishes every TCP port its image
 // declares. The header lists them beside the Service Address with the primary
-// (the `<slug>:<port>` suffix) marked, and says when none is known yet.
+// (the `<slug>:<port>` suffix) marked.
 describe("open ports beside the Service Address (w6/m148)", () => {
   const tcp = (...ports: number[]) =>
     ports.map((port) => ({ port, protocol: "TCP" }));
-  const pendingNote =
-    "Ports are detected from the image after the first build.";
   const clickhouse = {
     type: "private_service",
     url: null,
@@ -1001,30 +999,29 @@ describe("open ports beside the Service Address (w6/m148)", () => {
     expectPorts(within(menu).getByRole("list", { name: "Open ports" }));
   });
 
-  it("says the ports are not known yet before the first build", async () => {
+  // w9/104: before its image is read, bex-api reads the service on Render's
+  // default port, as Render's create does, so the address is copyable at once.
+  it("shows an unread image's default address with nothing beside it", async () => {
     const user = userEvent.setup();
     renderHeader(
       svc({
         type: "private_service",
         url: null,
-        internalAddress: null,
-        port: null,
-        openPorts: [],
+        internalAddress: "p-x1y2:10000",
+        port: 10000,
+        openPorts: tcp(10000),
       }),
     );
 
-    expect(await screen.findByText("Service Address")).toBeInTheDocument();
-    expect(screen.getByText(pendingNote)).toBeInTheDocument();
-    // No address exists yet, so there is nothing to copy and no port to list.
+    expect(await screen.findByText("p-x1y2:10000")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Copy internal address" }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: "Copy internal address" }),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Open ports")).not.toBeInTheDocument();
 
     await user.click(await screen.findByRole("button", { name: "Connect" }));
     const menu = screen.getByRole("dialog", { name: "Connect" });
-    expect(within(menu).getByText("Internal")).toBeInTheDocument();
-    expect(within(menu).getByText(pendingNote)).toBeInTheDocument();
+    expect(within(menu).getByText("p-x1y2:10000")).toBeInTheDocument();
   });
 
   it("keeps a single-port private service's Service Address as it was", async () => {
@@ -1041,7 +1038,6 @@ describe("open ports beside the Service Address (w6/m148)", () => {
     expect(await screen.findByText("app-x1y2:8080")).toBeInTheDocument();
     expect(screen.queryByText("Open ports")).not.toBeInTheDocument();
     expect(screen.queryByText("primary")).not.toBeInTheDocument();
-    expect(screen.queryByText(pendingNote)).not.toBeInTheDocument();
   });
 
   it.each([
@@ -1070,7 +1066,6 @@ describe("open ports beside the Service Address (w6/m148)", () => {
 
       await user.click(await screen.findByRole("button", { name: "Connect" }));
       expect(screen.queryByText("Open ports")).not.toBeInTheDocument();
-      expect(screen.queryByText(pendingNote)).not.toBeInTheDocument();
     },
   );
 });

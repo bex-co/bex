@@ -33,7 +33,7 @@
 
 - bex putting `http://<crName>.<ns>.svc:<port>` into a **pserv's** `serviceDetails.url` was a value divergence. w9/m58 omitted the field on the docs reading. Since w9/m473, REST and MCP send the internal address there: `url` equals `internalAddress`. GraphQL `url` stays the public URL only (null for a private service).
 - A web service's internal address has no REST field on Render. Consumers derive `<slug>:<port>` from the `slug` field (present on every type) and their known port. bex returns `slug` on the service object (w4/m19) and adds `internalAddress` as an extension on web and private services. The dashboard-side Connect surface is where Render materializes the string.
-- An image-port private service whose ports are not discovered yet has no address on bex (ADR089 D3), so it reads no `url` until discovery. Render's create response for an `nginx` image already answers `<slug>:10000` with `openPorts` `[{"port":10000,"protocol":"TCP"}]`: Render's default `PORT`. That gap is follow-up w9/104.
+- Render's create response for an `nginx` image with no port already answers `<slug>:10000` with `openPorts` `[{"port":10000,"protocol":"TCP"}]`, Render's default `PORT`, before it has run anything; `nginx` listens on 80. Since w9/104 (2026-11-18) bex answers the same before the operator reads an image-port service's image: its own port if it names one, else `<slug>:10000` ([ADR089](../ADR089-render-container-compatibility.md) § Port slice decisions, item 6). Discovery then publishes the image's own ports.
 
 ## 4. Scope + addressability
 

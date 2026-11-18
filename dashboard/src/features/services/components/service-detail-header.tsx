@@ -272,14 +272,12 @@ export function ServiceDetailHeader({
               </div>
             ) : null}
           </>
-        ) : isPrivateService(service) &&
-          (service.internalAddress || openPorts.kind === "pending") ? (
+        ) : isPrivateService(service) && service.internalAddress ? (
           // A private service has no public URL — Render's header shows its
           // Service Address (the private-network `<slug>:<port>`) as copyable
           // text, never a link (the old cluster-internal href was dead from a
           // browser). ADR041 D4, w9/m58. An image-port service also lists the
-          // other TCP ports its hostname serves, or says they are not known
-          // yet (w6/m148).
+          // other TCP ports its hostname serves (w6/m148).
           <ServiceAddressFact
             address={service.internalAddress}
             openPorts={openPorts}
@@ -411,7 +409,7 @@ function ServiceConnectButton({
           if ((e.target as Element).closest("a[href]")) setOpen(false);
         }}
       >
-        {service.internalAddress || openPorts.kind === "pending" ? (
+        {service.internalAddress ? (
           // Render's Connect → Internal tab: the private-network
           // `<slug>:<port>` sibling services dial (ADR041 D4, w9/m58), plus
           // an image-port service's other open ports (w6/m148).
@@ -420,15 +418,13 @@ function ServiceConnectButton({
               <Network className="size-4" />
               {t("services.connectInternal")}
             </div>
-            {service.internalAddress ? (
-              <ConnectCodeRow
-                className="mb-2"
-                value={service.internalAddress}
-                copyLabel={t("services.internalCopy")}
-                copiedText={t("services.internalCopied")}
-                errorText={t("services.internalCopyError")}
-              />
-            ) : null}
+            <ConnectCodeRow
+              className="mb-2"
+              value={service.internalAddress}
+              copyLabel={t("services.internalCopy")}
+              copiedText={t("services.internalCopied")}
+              errorText={t("services.internalCopyError")}
+            />
             <OpenPortsFact className="mb-2" openPorts={openPorts} />
             {/* Render's Free plan does not support receiving private network
                 traffic, and the platform drops tenant traffic to a free
@@ -523,15 +519,14 @@ function SshUnavailable({ service }: { service: ServiceView }) {
 /**
  * A private service's Service Address fact: the copyable `<slug>:<port>`, and
  * for an image-port service its open ports beside it (wrapping under it on a
- * narrow screen), or — before the first build has read the image — why there
- * is no address yet. The row keeps the copy button's height in every state so
- * it lines up with the header skeleton's address row.
+ * narrow screen). The row keeps the copy button's height in every state so it
+ * lines up with the header skeleton's address row.
  */
 function ServiceAddressFact({
   address,
   openPorts,
 }: {
-  address: string | null;
+  address: string;
   openPorts: OpenPortsDisplay;
 }) {
   const { t } = useTranslations();
@@ -541,19 +536,15 @@ function ServiceAddressFact({
         <span className="text-muted-foreground">
           {t("services.headerServiceAddress")}
         </span>
-        {address ? (
-          <>
-            <span className="text-foreground truncate font-mono text-xs">
-              {address}
-            </span>
-            <CopyButton
-              value={address}
-              label={t("services.internalCopy")}
-              successText={t("services.internalCopied")}
-              errorText={t("services.internalCopyError")}
-            />
-          </>
-        ) : null}
+        <span className="text-foreground truncate font-mono text-xs">
+          {address}
+        </span>
+        <CopyButton
+          value={address}
+          label={t("services.internalCopy")}
+          successText={t("services.internalCopied")}
+          errorText={t("services.internalCopyError")}
+        />
       </div>
       <OpenPortsFact openPorts={openPorts} />
     </div>
@@ -561,8 +552,8 @@ function ServiceAddressFact({
 }
 
 /**
- * The open-ports line beside a Service Address: the port list, or why there is
- * none yet (image-port discovery pending); nothing for a single-port service.
+ * The open-ports line beside a Service Address: the port list; nothing for a
+ * single-port service.
  */
 function OpenPortsFact({
   openPorts,
@@ -571,16 +562,8 @@ function OpenPortsFact({
   openPorts: OpenPortsDisplay;
   className?: string;
 }) {
-  const { t } = useTranslations();
   if (openPorts.kind === "list") {
     return <OpenPortsList className={className} ports={openPorts.ports} />;
-  }
-  if (openPorts.kind === "pending") {
-    return (
-      <p className={cn("text-muted-foreground text-xs", className)}>
-        {t("services.openPortsPending")}
-      </p>
-    );
   }
   return null;
 }

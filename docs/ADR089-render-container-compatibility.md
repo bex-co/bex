@@ -251,16 +251,19 @@ These decisions split D3/D4 (ports and references) from D2 (capabilities). They 
 4. **References: backend-resolved literals, propagated by bex-api.**
    - A Blueprint `fromService` `port`/`hostport` stays a literal environment value, so it remains visible in the Environment view (w4/m120) and goes through the normal release machinery.
    - At apply, its value comes from the target's current serving port (`App.ServicePort()`, which follows `ServingNetwork` during a replacement), never from a parse-time default.
-   - For a target whose port is not yet known (an image-port service before its first metadata read), the variable is **omitted**: never written as 3000.
+   - For a target whose port is not yet known (an image-port service that names no port of its own, before its first metadata read), the variable is **omitted**: never written as 3000, nor as the default 10000 its read surfaces show until then (item 6), which the image may still replace.
    - The consumer records each such reference in the `app.bex.co/service-refs` annotation.
    - A bex-api loop compares each recorded reference with its target's serving port. On a difference it rewrites the literal through the tracked patch path, so the change opens a `config_change` deploy with normal history. That covers a later `SetPort`, a promotion that moves the primary, and the first discovery.
    - Suspended consumers are left until they resume.
    - An operator-resolved `valueFrom` reference was rejected: release identity is a pure function of the spec and is tied to backend-opened deploys, so an operator-only re-roll would bypass deploy history.
 5. **Cycles need no special rule.** A service's own port never depends on its consumers' environment, so mutual `hostport` references converge independently.
 6. **Read surfaces.** REST and MCP `serviceDetails.openPorts` (Render's required `serverPort[]`) and GraphQL `Service.openPorts` report the serving set:
+
    - the effective port for configured web and private services;
-   - `[]` while discovery is pending;
+   - while discovery is pending, the service's own port, else Render's default 10000 (amended below; it was `[]`);
    - absent for workers, cron jobs and static sites.
+
+   **Amended 2026-11-18 (w9/104, Render parity):** before the operator reads an image-port service's image, `port`, `openPorts`, `internalAddress` and a private service's `url` name the service's own port (an effective `PORT`, or a configured primary, which the read keeps), else Render's default 10000 (`App.ServicePort`). Render's create of a private service from `nginx` with no port answers `url` `private-service-tf:10000` and `openPorts` `[{"port":10000,"protocol":"TCP"}]`, and so does every read in the 26 seconds that recording covers (`render-oss/terraform-provider-render` `06af456`, `private_service_cassette.yaml`; every private-service and image web-service recording agrees). `nginx` listens on 80, so that is Render's default `PORT`, reported before Render has run anything. Nothing listens or routes on bex at that point either: the operator creates no workload and no Service until the image is read (`dispatchRuntime` runs only after `resolveImageNetwork` succeeds, and `privateServiceProjection` refuses an unresolved network). Discovery then publishes the image's own ports, 10000 again for an image that declares none. A Blueprint reference to such a target stays omitted until then (item 4, `App.ResolvedServicePort`), and the Settings port stays blank. The dashboard no longer says "Ports are detected from the image after the first build": the Service Address shows the address at once.
 
 ## Privilege slice decisions — 2026-10-19 (w6/m149)
 

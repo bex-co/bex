@@ -64,10 +64,10 @@ var Allowlist = map[string][]Divergence{
 	// and updatedAt are not entries: the fake API server stamps managedFields
 	// (Stamped), and a server lacking a metadata source is excused by its
 	// Source list (Wrap, Unallowed), not here. url is a web service or static
-	// site with no public URL, or a private service before its image's ports
-	// are discovered; a private service with an address reads it as url, and
-	// an image service reads Render's docker-shaped envSpecificDetails
-	// (w9/m473). env, runtime and envSpecificDetails are a bex buildpack
+	// site with no public URL; a private service reads its address as url,
+	// `<slug>:10000` before its image is read (w9/104), and an image service
+	// reads Render's docker-shaped envSpecificDetails (w9/m473). env, runtime
+	// and envSpecificDetails are a bex buildpack
 	// build with no explicit runtime, which names no Render member.
 	"list-services": details(SuiteAPI, "url"),
 	"retrieve-service": join(

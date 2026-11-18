@@ -34,9 +34,8 @@ export function parsePort(draft: string): number | null {
  *
  * - `none` — nothing to add: not a private service, the ports were not read, or
  *   the one open port IS the primary (a configured-port service keeps its
- *   familiar `<slug>:<port>` look);
- * - `pending` — an image-port private service whose image has not been read
- *   yet (`openPorts: []`), so no port is known and none is invented;
+ *   familiar `<slug>:<port>` look, and so does an image-port service whose
+ *   image is unread, which bex-api reports on Render's default 10000, w9/104);
  * - `list` — the TCP ports the hostname serves in bex-api's order (the
  *   image's declared ports plus the listeners found on its instances, w3/m273),
  *   the primary (`port`, the `<slug>:<port>` suffix) flagged.
@@ -46,12 +45,10 @@ export type PortFacts = Pick<ServiceView, "type" | "port" | "openPorts">;
 
 export type OpenPortsDisplay =
   | { kind: "none" }
-  | { kind: "pending" }
   | { kind: "list"; ports: { port: number; primary: boolean }[] };
 
 export function openPortsDisplay(s: PortFacts): OpenPortsDisplay {
-  if (!isPrivateService(s) || s.openPorts == null) return { kind: "none" };
-  if (s.openPorts.length === 0) return { kind: "pending" };
+  if (!isPrivateService(s) || !s.openPorts?.length) return { kind: "none" };
   const ports = s.openPorts.map(({ port }) => ({
     port,
     primary: port === s.port,

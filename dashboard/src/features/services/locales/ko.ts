@@ -54,11 +54,6 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "Marker on the open port that is the service's primary port — the <slug>:<port> suffix of its Service Address (w6/m148)",
   },
-  "services.openPortsPending": {
-    message: "포트는 첫 빌드 후 이미지에서 감지됩니다.",
-    description:
-      "Shown instead of a Service Address while an image-port private service has not built yet, so no port is known (openPorts is empty, w6/m148)",
-  },
   "services.internalCopy": {
     message: "내부 주소 복사",
     description: "Copy service internal address button",

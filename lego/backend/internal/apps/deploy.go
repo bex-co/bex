@@ -779,8 +779,11 @@ func (ref hostRef) env(target *appv1alpha1.App, baseDomain string) (appv1alpha1.
 		value, ok := renderenv.Value(target, name, baseDomain)
 		return appv1alpha1.EnvVar{Name: ref.key, Value: value}, ok
 	}
-	slug, port := target.Spec.PlatformSubdomain(target.Name), target.ServicePort()
-	if ref.carriesPort() && port <= 0 {
+	// A pending target's ServicePort is Render's default, which its image may
+	// still replace.
+	slug := target.Spec.PlatformSubdomain(target.Name)
+	port, resolved := target.ResolvedServicePort()
+	if ref.carriesPort() && !resolved {
 		return appv1alpha1.EnvVar{}, false
 	}
 	value := slug

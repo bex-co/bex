@@ -53,11 +53,6 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Marker on the open port that is the service's primary port — the <slug>:<port> suffix of its Service Address (w6/m148)",
   },
-  "services.openPortsPending": {
-    message: "首次构建后将从镜像中检测端口。",
-    description:
-      "Shown instead of a Service Address while an image-port private service has not built yet, so no port is known (openPorts is empty, w6/m148)",
-  },
   "services.internalCopy": {
     message: "复制内部地址",
     description: "Copy service internal address button",

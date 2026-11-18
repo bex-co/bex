@@ -54,12 +54,6 @@ const ptServices: Record<string, TranslationEntry> = {
     description:
       "Marker on the open port that is the service's primary port — the <slug>:<port> suffix of its Service Address (w6/m148)",
   },
-  "services.openPortsPending": {
-    message:
-      "As portas são detectadas a partir da imagem após o primeiro build.",
-    description:
-      "Shown instead of a Service Address while an image-port private service has not built yet, so no port is known (openPorts is empty, w6/m148)",
-  },
   "services.internalCopy": {
     message: "Copiar endereço interno",
     description: "Copy service internal address button",

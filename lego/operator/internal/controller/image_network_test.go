@@ -218,8 +218,10 @@ func TestImageNetworkLeavesLegacyServicesUnchanged(t *testing.T) {
 	app.Spec.Type = appv1alpha1.TypePrivateService
 	app.Spec.PortMode = appv1alpha1.PortModeImageV1
 	app.Status.ImageNetwork = nil
-	if app.InternalAddress() != "" {
-		t.Fatal("unresolved service invented an address")
+	// Before the image is read the address names Render's default port, as
+	// Render's create does (w9/104), while nothing routes it yet.
+	if _, resolved := app.ResolvedServicePort(); resolved || !strings.HasSuffix(app.InternalAddress(), ":10000") {
+		t.Fatalf("unresolved service: address %q, resolved %v; want Render's default, unresolved", app.InternalAddress(), resolved)
 	}
 	if _, _, err := privateServiceProjection(app, 3000); err == nil {
 		t.Fatal("unresolved discovery silently used port 3000")

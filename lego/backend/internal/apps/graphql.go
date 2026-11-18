@@ -341,8 +341,8 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"configuredPort": gqlutil.IntField(func(a AppView) any { return a.ConfiguredPort }),
 		"portConfigured": gqlutil.BoolField(func(a AppView) any { return a.PortConfigured }),
 		// openPorts is every TCP port the stable hostnames serve (Render's
-		// serviceDetails.openPorts): null for types without a network address,
-		// [] while an image-port service's discovery is pending (w6/m148).
+		// serviceDetails.openPorts): null for types without a network address
+		// (w6/m148).
 		"openPorts": gqlutil.Typed(graphql.NewList(graphql.NewNonNull(serverPortGQLType)), func(a AppView) any {
 			if a.OpenPorts == nil {
 				return nil // an untyped nil, or graphql-go renders the typed nil slice as []

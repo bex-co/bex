@@ -16,8 +16,8 @@ const privateService = (facts: Partial<PortFacts>): PortFacts => ({
 });
 
 // w6/m148: bex-api's Service.openPorts is null (no network address), [port]
-// (configured port), the image's declared TCP ports, or [] while an image-port
-// private service has not been read yet.
+// (configured port), or the image's declared TCP ports; an image-port private
+// service whose image is unread reads Render's default [10000] (w9/104).
 describe("openPortsDisplay", () => {
   it("lists an image's ports in order, marking only the primary", () => {
     expect(
@@ -34,9 +34,14 @@ describe("openPortsDisplay", () => {
     });
   });
 
-  it("reports pending discovery rather than inventing a port", () => {
-    expect(openPortsDisplay(privateService({ openPorts: [] }))).toEqual({
-      kind: "pending",
+  it("adds nothing beside an unread image's default address", () => {
+    expect(
+      openPortsDisplay(privateService({ port: 10000, openPorts: tcp(10000) })),
+    ).toEqual({ kind: "none" });
+    expect(
+      openPortsDisplay(privateService({ port: 10000, openPorts: [] })),
+    ).toEqual({
+      kind: "none",
     });
   });
 

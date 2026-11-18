@@ -142,8 +142,8 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
 
 /**
  * Project the detail query's `openPorts` onto ServerPortView[], keeping null
- * (no network address) distinct from `[]` (image-port discovery pending). A
- * hole or a 0 is dropped rather than shown as a port nothing listens on.
+ * (no network address) distinct from a list. A hole or a 0 is dropped rather
+ * than shown as a port nothing listens on.
  */
 function toOpenPorts(
   ports: ServerNode["openPorts"] | undefined,

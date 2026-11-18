@@ -160,8 +160,8 @@ func TestBlueprintPortReferencesToAnImagePortTargetNeverGuess(t *testing.T) {
 		t.Fatal(err)
 	}
 	api := getApp(t, client, "api")
-	if api.Spec.PortMode != appv1alpha1.PortModeImageV1 || api.ServicePort() != 0 {
-		t.Fatalf("target is not a pending image-port service: mode=%q port=%d", api.Spec.PortMode, api.ServicePort())
+	if _, resolved := api.ResolvedServicePort(); api.Spec.PortMode != appv1alpha1.PortModeImageV1 || resolved {
+		t.Fatalf("target is not a pending image-port service: mode=%q resolved=%v", api.Spec.PortMode, resolved)
 	}
 	web := getApp(t, client, "web")
 	if got, _ := envValue(web, "API_HOST"); got != api.Spec.PlatformSubdomain(api.Name) {

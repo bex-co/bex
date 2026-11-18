@@ -109,7 +109,8 @@ func TestImagePortViewFollowsServingRelease(t *testing.T) {
 		candidate, serving *appv1alpha1.ImageNetworkStatus
 		want               int32
 	}{
-		{name: "unresolved"},
+		// Before the image is read: Render's default, as its create answers (w9/104).
+		{name: "unresolved", want: appv1alpha1.DefaultPort},
 		{name: "first discovery", candidate: &appv1alpha1.ImageNetworkStatus{PrimaryPort: 8123}, want: 8123},
 		{name: "pending replacement", candidate: &appv1alpha1.ImageNetworkStatus{PrimaryPort: 9000}, serving: &appv1alpha1.ImageNetworkStatus{PrimaryPort: 8123}, want: 8123},
 	} {
@@ -125,7 +126,7 @@ func TestImagePortViewFollowsServingRelease(t *testing.T) {
 			if view.Port != tc.want {
 				t.Fatalf("port = %d, want %d", view.Port, tc.want)
 			}
-			if tc.want == 0 && view.InternalAddress != "" || tc.want != 0 && !strings.HasSuffix(view.InternalAddress, fmt.Sprintf(":%d", tc.want)) {
+			if !strings.HasSuffix(view.InternalAddress, fmt.Sprintf(":%d", tc.want)) {
 				t.Fatalf("address %q disagrees with port %d", view.InternalAddress, tc.want)
 			}
 		})
@@ -333,10 +334,12 @@ func TestCreateResponseReportsLiteralPortEnv(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Without PORT, a new Docker web service's port is discovery-pending
-	// (w4/m243): 0 until the operator resolves the image's exposed port,
-	// never an invented default.
-	if plain.Port != 0 || len(plain.OpenPorts) != 0 {
-		t.Fatalf("create without PORT reports %d %+v, want pending 0", plain.Port, plain.OpenPorts)
+	// (w4/m243): until the operator reads the image it reads Render's default
+	// 10000, as Render's create of an nginx web service answers openPorts
+	// [10000] (render-oss/terraform-provider-render 06af456,
+	// web_service_image_cassette.yaml; w9/104).
+	if plain.Port != appv1alpha1.DefaultPort || len(plain.OpenPorts) != 1 || plain.OpenPorts[0].Port != appv1alpha1.DefaultPort {
+		t.Fatalf("create without PORT reports %d %+v, want Render's default 10000", plain.Port, plain.OpenPorts)
 	}
 }
 

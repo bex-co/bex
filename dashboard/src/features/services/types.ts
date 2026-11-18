@@ -244,7 +244,8 @@ export interface ServiceView {
    * `serviceDetails.openPorts`, w6/m148). null for the types without a network
    * address (and when not selected); `[port]` for a configured-port service;
    * the image's declared TCP ports for an image-port private service, where
-   * `port` is the primary — and `[]` while that discovery is still pending.
+   * `port` is the primary — and Render's default `[10000]` (or the service's
+   * own port) until its image is read (w9/104).
    * Optional like `port`: fixtures that predate the field read as unknown.
    */
   openPorts?: ServerPortView[] | null;

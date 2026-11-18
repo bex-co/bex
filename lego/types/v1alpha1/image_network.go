@@ -253,15 +253,16 @@ func (a *App) configuredImagePort(spec AppSpec) (port int32, ok bool) {
 // SavedPort is the port the saved settings name, which the Settings row reads
 // back: ConfiguredImagePort and ServingPort read through the saved spec rather
 // than the running release's, else the published primary (ServicePort) of an
-// image-port service whose image still chooses. A save-only port change reads
-// back at once while a Restart or rollback keeps serving the release's own
-// port (w4/433, w4/m433).
+// image-port service whose image still chooses, zero before that image is
+// read. A save-only port change reads back at once while a Restart or rollback
+// keeps serving the release's own port (w4/433, w4/m433).
 func (a *App) SavedPort() int32 {
 	if port, ok := a.configuredImagePort(a.Spec); ok && port > 0 {
 		return port
 	}
 	if a.Spec.HasImagePorts() {
-		return a.ServicePort()
+		port, _ := a.ResolvedServicePort()
+		return port
 	}
 	return a.servingPort(a.Spec)
 }
@@ -299,25 +300,47 @@ func (s AppSpec) hasExplicitPort() bool {
 	return s.Port > 0 && s.Port != DefaultPort
 }
 
-// ServicePort is the published primary port; zero means discovery is pending.
+// ServicePort is the published primary port. Before the image of an
+// image-port service that names no port of its own is read, it is Render's
+// default PORT, 10000, which Render's own create answers before it has run
+// anything (w9/104): nothing listens or routes yet on either platform, since
+// the operator dispatches no workload and no Service until the image is read.
+// Discovery then publishes the image's own ports, 10000 again for an image
+// that declares none.
 func (a *App) ServicePort() int32 {
+	if port, ok := a.ResolvedServicePort(); ok {
+		return port
+	}
+	return DefaultPort
+}
+
+// ResolvedServicePort is ServicePort once the service has settled it. ok is
+// false only while an image-port service that names no port of its own waits
+// for its image to be read, when ServicePort answers Render's default and a
+// Blueprint reference to the port is omitted (ADR089 D4).
+func (a *App) ResolvedServicePort() (port int32, ok bool) {
 	if !a.Spec.HasImagePorts() {
-		return a.ServingPort()
+		return a.ServingPort(), true
 	}
 	// The serving network already carries a PORT env's choice; a candidate's
 	// PORT is published only once it is promoted (w4/m243 t007).
 	if network := a.ActiveImageNetwork(); network != nil {
-		return network.PrimaryPort
+		return network.PrimaryPort, true
 	}
-	// Before discovery the service's PORT env is the only answer.
-	return a.Status.EnvPort
+	// Before discovery a configured primary is already the answer: the image
+	// read keeps it as the primary.
+	if port, ok := a.ConfiguredImagePort(); ok && port > 0 {
+		return port, true
+	}
+	return 0, false
 }
 
 // OpenPorts is the TCP port set the stable hostnames serve: Render's
 // serviceDetails.openPorts (w6/m148). It is nil for types without a network
 // address, the effective port for a configured service, and the serving (else
 // first candidate) image network's ports for an image-port service. While that
-// service's discovery is pending it is empty, never an invented 3000. A web or
+// service's discovery is pending, no instance has run, and it is its
+// ServicePort alone, as Render's create answers [10000] (w9/104). A web or
 // private service adds the undeclared listeners found on its instances
 // (w3/m273, w3/m276), and once its release has been scanned an image-declared
 // port nothing listens on is left out (the Services still route it while the
@@ -325,7 +348,7 @@ func (a *App) ServicePort() int32 {
 // alias is a route, not a listener, and is not listed.
 func (a *App) OpenPorts() []int32 {
 	ports := a.ownPorts()
-	if len(ports) == 0 {
+	if len(ports) == 0 || a.Spec.HasImagePorts() && a.ActiveImageNetwork() == nil {
 		return ports
 	}
 	extra := a.RuntimeOnlyPorts(ports)
@@ -351,10 +374,7 @@ func (a *App) ownPorts() []int32 {
 	}
 	network := a.ActiveImageNetwork()
 	if network == nil {
-		if a.Status.EnvPort > 0 {
-			return []int32{a.Status.EnvPort}
-		}
-		return []int32{}
+		return []int32{a.ServicePort()}
 	}
 	// A web service's PORT names the one port it serves; the serving network
 	// already carries it as primary. A private service's PORT names only its
@@ -372,11 +392,10 @@ func (a *App) ownPorts() []int32 {
 // (docs/ADR041-service-addresses.md): the operator's slug-named Service answers
 // exactly this hostname, and bex-api surfaces exactly this string. It follows
 // the serving release rather than a pending image's port choice, and before
-// initial discovery no invented hostname:3000 is returned.
+// initial discovery it names ServicePort's default, as Render's create does.
 func (a *App) InternalAddress() string {
-	port := a.ServicePort()
-	if !a.Spec.InternallyAddressable() || port == 0 {
+	if !a.Spec.InternallyAddressable() {
 		return ""
 	}
-	return fmt.Sprintf("%s:%d", a.Spec.PlatformSubdomain(a.Name), port)
+	return fmt.Sprintf("%s:%d", a.Spec.PlatformSubdomain(a.Name), a.ServicePort())
 }

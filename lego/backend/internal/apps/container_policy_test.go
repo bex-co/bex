@@ -261,8 +261,10 @@ func TestClickHouseBlueprintCreatesDurablePrivateImagePolicy(t *testing.T) {
 	if len(st.appCreates) != 1 || st.appCreates[0].ContainerPolicy != app.Spec.ContainerPolicy || st.appCreates[0].PortMode != app.Spec.PortMode {
 		t.Fatalf("policies missing from durable creation: %+v", st.appCreates)
 	}
-	if app.InternalAddress() != "" {
-		t.Fatal("unresolved image returned an invented address")
+	// Before the image is read the address is Render's default, which a
+	// Blueprint reference never copies (w9/104).
+	if _, resolved := app.ResolvedServicePort(); resolved || app.InternalAddress() != app.Spec.PlatformSubdomain(app.Name)+":10000" {
+		t.Fatalf("unresolved image: address %q, resolved %v; want Render's default port, unresolved", app.InternalAddress(), resolved)
 	}
 	// An unchanged sync, including after rollback of the creation flag, must
 	// keep both persisted policies and avoid starting another release.

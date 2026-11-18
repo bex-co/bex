@@ -486,8 +486,7 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 		details["port"] = int(a.Port)
 	}
 	// openPorts is required on Render's webServiceDetails and
-	// privateServiceDetails, and absent on every other type. An image-port
-	// service whose discovery is pending reports [] rather than a guess (w6/m148).
+	// privateServiceDetails, and absent on every other type (w6/m148).
 	if svcType == appv1alpha1.TypeWebService || svcType == renderPrivateService {
 		open := make([]any, 0, len(a.OpenPorts))
 		for _, p := range a.OpenPorts {
@@ -526,8 +525,8 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 	// (every private-service recording in Render's Terraform provider,
 	// docs/render-artifacts/service-addresses.md §3; its pinned
 	// privateServiceDetails requires it). The view's URL is public-only, so a
-	// private service reads its internal address; one whose port discovery is
-	// pending has none yet and omits it rather than inventing one.
+	// private service reads its internal address, `<slug>:10000` before its
+	// image's ports are discovered, as Render's create answers (w9/104).
 	if svcType == renderPrivateService {
 		if a.InternalAddress != "" {
 			details["url"] = a.InternalAddress

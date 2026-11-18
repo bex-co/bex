@@ -64,8 +64,9 @@ func renderServerPortSchema(t *testing.T) (required []string, protocols []string
 
 // serviceDetails.openPorts is Render's required serverPort[] on web and private
 // services and absent elsewhere (w6/m148). An image-port service reports the
-// serving set — [] while discovery is pending, never a guessed 3000 — and REST,
-// MCP (the same renderServiceDetails) and GraphQL (AppView.OpenPorts) agree.
+// serving set, and Render's default [10000] while discovery is pending (w9/104),
+// and REST, MCP (the same renderServiceDetails) and GraphQL (AppView.OpenPorts)
+// agree.
 func TestRenderServiceDetailsOpenPorts(t *testing.T) {
 	required, protocols, typesRequiring := renderServerPortSchema(t)
 	if !reflect.DeepEqual(typesRequiring, []string{"privateServiceDetails", "webServiceDetails"}) {
@@ -113,7 +114,10 @@ func TestRenderServiceDetailsOpenPorts(t *testing.T) {
 			a.Status.RuntimePorts = &appv1alpha1.RuntimePortsStatus{Revision: "r1", Ports: []int32{8080, 9000, 10000}}
 			return a
 		}(), []any{8080, 9000}},
-		{"image pending", image(nil), []any{}},
+		{"image pending", image(nil), []any{10000}},
+		{"image pending with a configured port", image(func(a *appv1alpha1.App) {
+			a.Spec.PortMode, a.Spec.Port = appv1alpha1.PortModeImageConfiguredV1, 5432
+		}), []any{5432}},
 		{"image serving", image(func(a *appv1alpha1.App) { a.Status.ServingNetwork = serving }), []any{8123, 9000, 9009}},
 		{"image replacing keeps the serving set", image(func(a *appv1alpha1.App) {
 			a.Status.ServingNetwork = serving
@@ -159,25 +163,23 @@ func TestRenderServiceDetailsOpenPorts(t *testing.T) {
 			if len(tc.want) > 0 && view.Port != int32(tc.want[0].(int)) && tc.app.Spec.UsesImagePorts() {
 				t.Fatalf("port %d is not the serving primary %v", view.Port, tc.want[0])
 			}
-			// ADR041's address follows the same primary on every surface, and a
-			// pending image-port service has none rather than a guessed :3000.
+			// ADR041's address, and a private service's url, follow the same
+			// primary on every surface.
 			if tc.app.Spec.UsesImagePorts() {
-				want := ""
-				if len(tc.want) > 0 { // want[0] is the primary
-					want = tc.app.Spec.PlatformSubdomain(tc.app.Name) + ":" + strconv.Itoa(tc.want[0].(int))
-				}
+				want := tc.app.Spec.PlatformSubdomain(tc.app.Name) + ":" + strconv.Itoa(tc.want[0].(int)) // want[0] is the primary
 				got, _ := details["internalAddress"].(string)
-				if got != want || view.InternalAddress != want {
-					t.Fatalf("internalAddress REST %q / GraphQL %q, want %q", got, view.InternalAddress, want)
+				if got != want || view.InternalAddress != want || details["url"] != want {
+					t.Fatalf("internalAddress REST %q / GraphQL %q, url %v, want %q", got, view.InternalAddress, details["url"], want)
 				}
 			}
 		})
 	}
 }
 
-// GraphQL keeps null (no network address) distinct from [] (image-port
-// discovery pending): graphql-go renders a typed nil slice as [], so the
-// resolver must hand it an untyped nil (w6/m148).
+// GraphQL answers null for a type with no network address: graphql-go renders
+// a typed nil slice as [], so the resolver must hand it an untyped nil
+// (w6/m148). An image-port service whose discovery is pending reads Render's
+// default [10000] (w9/104).
 func TestGraphQLOpenPortsNullVersusPending(t *testing.T) {
 	worker := sampleApp("worker")
 	worker.Spec.Type = appv1alpha1.TypeBackgroundWorker
@@ -198,7 +200,7 @@ func TestGraphQLOpenPortsNullVersusPending(t *testing.T) {
 	}
 	for name, want := range map[string]string{
 		"worker": `null`,
-		"ch":     `[]`,
+		"ch":     `[{"port":10000,"protocol":"TCP"}]`,
 		"multi":  `[{"port":8123,"protocol":"TCP"},{"port":9000,"protocol":"TCP"}]`,
 		"native": `[{"port":5432,"protocol":"TCP"},{"port":9187,"protocol":"TCP"}]`,
 	} {

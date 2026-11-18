@@ -299,20 +299,48 @@ func TestRESTCreateService(t *testing.T) {
 }
 
 // TestRESTCreatePrivateService maps Render's type:private_service to in-cluster
-// only (no platform-hostname expose).
+// only (no platform-hostname expose). Before the operator reads the image, the
+// create answers Render's default port, as Render's own create of an nginx
+// private service with no port does: `url` "private-service-tf:10000" and
+// openPorts [{10000 TCP}] (render-oss/terraform-provider-render 06af456,
+// private_service_cassette.yaml; w9/104).
 func TestRESTCreatePrivateService(t *testing.T) {
 	svc, cl := newService(nil)
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
-	body := `{"type":"private_service","name":"worker","image":{"imagePath":"nginx:1"}}`
+	body := `{"type":"private_service","name":"p","image":{"imagePath":"nginx:1"}}`
 	rec := httptest.NewRecorder()
 	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create => 201, got %d: %s", rec.Code, rec.Body)
 	}
-	if getApp(t, cl, "worker").Spec.Expose {
+	app := getApp(t, cl, "p")
+	if app.Spec.Expose {
 		t.Error("a private_service must not be exposed at the platform hostname")
+	}
+	if !app.Spec.UsesImagePorts() || app.Status.ImageNetwork != nil {
+		t.Fatalf("the create must leave an image-port service whose image is unread: mode %q", app.Spec.PortMode)
+	}
+	var created struct {
+		Service struct {
+			Slug           string `json:"slug"`
+			ServiceDetails struct {
+				URL             string           `json:"url"`
+				InternalAddress string           `json:"internalAddress"`
+				OpenPorts       []map[string]any `json:"openPorts"`
+			} `json:"serviceDetails"`
+		} `json:"service"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	details, want := created.Service.ServiceDetails, created.Service.Slug+":10000"
+	if created.Service.Slug == "" || details.URL != want || details.InternalAddress != want {
+		t.Errorf("url = %q, internalAddress = %q, want both %q", details.URL, details.InternalAddress, want)
+	}
+	if len(details.OpenPorts) != 1 || details.OpenPorts[0]["port"] != float64(10000) || details.OpenPorts[0]["protocol"] != "TCP" {
+		t.Errorf("openPorts = %v, want [{10000 TCP}]", details.OpenPorts)
 	}
 }
 

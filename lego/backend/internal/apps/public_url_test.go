@@ -310,12 +310,9 @@ func TestPrivateServiceURLIsItsInternalAddressOnEveryOperation(t *testing.T) {
 		`{"type":"private_service","name":"pserv","port":8080,"image":{"imagePath":"nginx:1"}}`, http.StatusCreated), &created); err != nil {
 		t.Fatal(err)
 	}
-	// A new private service names no port until the operator reads its
-	// image (ADR089 D3), so the create answers neither key yet (w9/104): the
-	// two never disagree.
-	if d := created.Service.ServiceDetails; d["url"] != d["internalAddress"] {
-		t.Errorf("create: url = %v, internalAddress = %v, want the same", d["url"], d["internalAddress"])
-	}
+	// Before the operator reads its image, the configured port is already
+	// the primary that read keeps (w9/104).
+	check("create", created.Service)
 	id := created.Service.ID
 
 	// The operator's image read publishes the configured port.
