@@ -531,11 +531,11 @@ func applyRenderSchemaCompatibility(operationID string, schema *openapi3.Schema)
 	}
 	if operationID == "create-webhook" || operationID == "update-webhook" {
 		widenWebhookEventFilter(schema)
-	}
-	if operationID == "create-webhook" {
 		// Render's Terraform provider sends a render_webhook with no
-		// event_filter as "eventFilter": null (no omitempty), and Render
-		// answers 201 with an all-events webhook (w9/m472 t002).
+		// event_filter as "eventFilter": null on create (no omitempty), which
+		// Render answers 201 with an all-events webhook (w9/m472 t002), and on
+		// every update (a pointer to that nil list), which bex reads as the
+		// same all-events subscription (w9/103).
 		nullableProperties(schema, "eventFilter")
 	}
 	if operationID == "create-postgres" || operationID == "update-postgres" {

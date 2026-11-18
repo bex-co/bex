@@ -120,10 +120,8 @@ func toWebhookEventList(views []DeliveryView) []webhookEventWithCursor {
 }
 
 // createEndpointRequest is POST /v1/webhooks' canonical Render body.
-// EventFilter stays raw so an omitted filter (refused, as Render's schema
-// requires the key) differs from an explicit null, which Render's Terraform
-// provider sends for a webhook with no event_filter and Render stores as the
-// all-events subscription [] gives (w9/m472 t002).
+// EventFilter stays raw: see decodeEventFilter. An omitted filter is refused,
+// as Render's schema requires the key.
 type createEndpointRequest struct {
 	OwnerID     *string         `json:"ownerId"`
 	Name        string          `json:"name"`
@@ -134,12 +132,32 @@ type createEndpointRequest struct {
 
 // updateEndpointRequest is PATCH /v1/webhooks/{id}'s body — Render's full-body
 // PATCH: any combination of name/url/enabled/eventFilter may be supplied;
-// omitted fields keep their current values.
+// omitted fields keep their current values. EventFilter stays raw: see
+// decodeEventFilter.
 type updateEndpointRequest struct {
-	Name        *string   `json:"name"`
-	URL         *string   `json:"url"`
-	Enabled     *bool     `json:"enabled"`
-	EventFilter *[]string `json:"eventFilter"`
+	Name        *string         `json:"name"`
+	URL         *string         `json:"url"`
+	Enabled     *bool           `json:"enabled"`
+	EventFilter json.RawMessage `json:"eventFilter"`
+}
+
+// decodeEventFilter reads a raw eventFilter: nil when the key was omitted, so
+// a caller can tell omission from an explicit null. Render's Terraform provider
+// sends null for a render_webhook with no event_filter (or an empty one), on
+// create, which Render answers 201 with an all-events webhook (w9/m472 t002),
+// and on every update. null decodes to the nil list, which Create and Update
+// store as the all-events subscription [] gives: on update that is the
+// provider's own meaning, since it stores the response as its state and only
+// every event lets dropping event_filter converge on a clean plan (w9/103).
+func decodeEventFilter(raw json.RawMessage) (*[]string, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	var eventTypes []string
+	if err := json.Unmarshal(raw, &eventTypes); err != nil {
+		return nil, core.ErrBadRequest
+	}
+	return &eventTypes, nil
 }
 
 // RegisterREST mounts Render's webhook CRUD + delivery-history route family.
@@ -173,22 +191,20 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, core.NewBadRequestError("WEBHOOK_OWNER_REQUIRED", "ownerId is required", map[string]any{"field": "ownerId"}))
 			return
 		}
-		if len(req.EventFilter) == 0 {
-			core.WriteErr(w, core.NewBadRequestError("WEBHOOK_EVENT_FILTER_REQUIRED", "eventFilter is required", map[string]any{"field": "eventFilter"}))
+		eventTypes, err := decodeEventFilter(req.EventFilter)
+		if err != nil {
+			core.WriteErr(w, err)
 			return
 		}
-		// null leaves eventTypes nil, which Create stores as the same
-		// all-events subscription [] gives.
-		var eventTypes []string
-		if err := json.Unmarshal(req.EventFilter, &eventTypes); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
+		if eventTypes == nil {
+			core.WriteErr(w, core.NewBadRequestError("WEBHOOK_EVENT_FILTER_REQUIRED", "eventFilter is required", map[string]any{"field": "eventFilter"}))
 			return
 		}
 		v, err := s.Create(r.Context(), CreateRequest{
 			OwnerID:    *req.OwnerID,
 			Name:       req.Name,
 			URL:        req.URL,
-			EventTypes: eventTypes,
+			EventTypes: *eventTypes,
 			Enabled:    *req.Enabled,
 		})
 		if err != nil {
@@ -250,11 +266,16 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
+		eventTypes, err := decodeEventFilter(req.EventFilter)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
 		v, err := s.Update(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("id"), UpdateRequest{
 			Name:       req.Name,
 			URL:        req.URL,
 			Enabled:    req.Enabled,
-			EventTypes: req.EventFilter,
+			EventTypes: eventTypes,
 		})
 		if err != nil {
 			core.WriteErr(w, err)

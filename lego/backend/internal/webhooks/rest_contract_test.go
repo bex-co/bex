@@ -332,3 +332,62 @@ func TestRenderRESTCreateWithNullEventFilterSubscribesToEveryEvent(t *testing.T)
 		}
 	}
 }
+
+// Render's Terraform provider sends every update of a render_webhook as
+// "eventFilter": null when its configuration has no event_filter or an empty
+// one (webhookUpdate always sends a pointer to the list), then stores the
+// response as its state. No recording shows Render's answer, so bex reads null
+// as every event, the provider's own meaning: dropping event_filter from a
+// filtered webhook converges, and a rename of an all-events webhook stays one
+// (w9/103). An omitted filter keeps the current one, as Render's PATCH does.
+func TestRenderRESTPatchWithNullEventFilterSubscribesToEveryEvent(t *testing.T) {
+	svc, st := newTestService()
+	svc.Authz = manageChecker{admin: "id-admin"}
+	adminCtx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-admin", Method: "session"})
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	handler := rendertest.Wrap(t, mux, rendertest.Load(t).MuxMatcher(mux))
+	send := func(method, target, body string) *httptest.ResponseRecorder {
+		t.Helper()
+		req := httptest.NewRequestWithContext(core.WithStrictJSONDecoding(adminCtx), method, target, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+		return rr
+	}
+	createdRR := send(http.MethodPost, "/v1/webhooks",
+		`{"enabled":true,"eventFilter":["deploy_ended"],"name":"filtered","ownerId":"default","url":"https://hooks.example.com/filtered"}`)
+	if createdRR.Code != http.StatusCreated {
+		t.Fatalf("create = %d %s", createdRR.Code, createdRR.Body.String())
+	}
+	id := decodeObject(t, createdRR)["id"].(string)
+	patch := func(body string, wantName string, wantFilter []string) {
+		t.Helper()
+		rr := send(http.MethodPatch, "/v1/webhooks/"+id, body)
+		if rr.Code != http.StatusOK {
+			t.Fatalf("patch %s = %d %s", body, rr.Code, rr.Body.String())
+		}
+		patched := decodeObject(t, rr)
+		filter, ok := patched["eventFilter"].([]any)
+		if !ok || patched["name"] != wantName || len(filter) != len(wantFilter) {
+			t.Fatalf("patch %s = %v, want name %q and eventFilter %v", body, patched, wantName, wantFilter)
+		}
+		for i, want := range wantFilter {
+			if filter[i] != want {
+				t.Fatalf("patch %s eventFilter = %v, want %v", body, filter, wantFilter)
+			}
+		}
+		if stored := st.rows[id].EventTypes; stored == nil || !slices.Equal(stored, wantFilter) {
+			t.Fatalf("patch %s stored %#v, want %v", body, stored, wantFilter)
+		}
+	}
+
+	patch(`{"name":"kept"}`, "kept", []string{"deploy_ended"})
+	patch(`{"enabled":true,"eventFilter":null,"name":"renamed","url":"https://hooks.example.com/filtered"}`, "renamed", []string{})
+	patch(`{"eventFilter":["deploy_started"]}`, "renamed", []string{"deploy_started"})
+	patch(`{"name":"renamed-again","eventFilter":null}`, "renamed-again", []string{})
+
+	if rr := send(http.MethodPatch, "/v1/webhooks/"+id, `{"eventFilter":"deploy_ended"}`); rr.Code != http.StatusBadRequest {
+		t.Errorf("patch with a string eventFilter = %d %s, want 400", rr.Code, rr.Body.String())
+	}
+}
