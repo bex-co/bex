@@ -21,7 +21,7 @@ spec:
     path: dashboard/deploy
     kustomize:
       images:
-        - dashboard=ghcr.io/bex-co/bex-dashboard@sha256:66eae953f1d722c0d544b34ce1b0d951cf18364fad02d54c5e5424c557cc9429
+        - dashboard=ghcr.io/bex-co/bex-dashboard@sha256:da5907b8b8994389cd184f1f6ec9fc449cf085efb7a648b8629641a198ac3b57
   destination:
     server: https://kubernetes.default.svc
     namespace: dashboard
