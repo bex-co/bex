@@ -311,6 +311,14 @@ var renderBodyPropertyExtensions = map[string]map[string]*openapi3.SchemaRef{
 	"create-sandbox-group": {"environmentId": {Value: openapi3.NewStringSchema().WithNullable()}},
 }
 
+// renderNullableBodyOperations take a JSON null body as the empty list. Render's
+// Terraform provider clears a service's environment variables or secret files
+// with a null replace-all PUT, and Render's recordings answer each 200 []
+// (w9/109). The handlers already decode null as a nil list. The body schema is
+// replaced by a nullable copy: create-service's envVars and the build-source
+// PUT share it by $ref and keep their own contracts.
+var renderNullableBodyOperations = []string{"update-env-vars-for-service", "update-secret-files-for-service"}
+
 // renderRequestBodyExtensions declares an optional JSON body on an operation
 // whose pinned Render schema declares none, for a client that still sends one.
 // Render's 2026-11-13 contract (round 7, w3/m367) dropped connect-sandbox-run's
@@ -475,6 +483,9 @@ func applyRenderCompatibility(doc *openapi3.T) {
 			if media == nil || media.Schema == nil || media.Schema.Value == nil {
 				continue
 			}
+			if slices.Contains(renderNullableBodyOperations, operationID) {
+				media.Schema = nullableCopy(media.Schema)
+			}
 			maps.Copy(media.Schema.Value.Properties, renderBodyPropertyExtensions[operationID])
 			if len(remove) > 0 {
 				media.Schema.Value.Required = slices.DeleteFunc(media.Schema.Value.Required, func(name string) bool {
@@ -591,17 +602,24 @@ func nullableBuildFilterLists(schema *openapi3.Schema) {
 // JSON null, which the domain reads as omitted. Each property schema is
 // replaced by a nullable copy, never edited in place: a property is often a
 // $ref to a component that other requests and responses share (envVars is
-// PUT /env-vars' own body), and those must stay non-null.
+// PUT /env-vars' body, which the build-source PUT also uses), and those keep
+// their own contracts.
 func nullableProperties(schema *openapi3.Schema, names ...string) {
 	for _, name := range names {
 		ref := schema.Properties[name]
 		if ref == nil || ref.Value == nil {
 			continue
 		}
-		nullable := *ref.Value
-		nullable.Nullable = true
-		schema.Properties[name] = &openapi3.SchemaRef{Value: &nullable}
+		schema.Properties[name] = nullableCopy(ref)
 	}
+}
+
+// nullableCopy is a copy of ref's schema that also accepts JSON null; the
+// shared original is left as it is.
+func nullableCopy(ref *openapi3.SchemaRef) *openapi3.SchemaRef {
+	nullable := *ref.Value
+	nullable.Nullable = true
+	return &openapi3.SchemaRef{Value: &nullable}
 }
 
 // withNullableProperties is a copy of a shared object schema whose named

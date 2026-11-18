@@ -250,6 +250,37 @@ func TestEnvVars_RESTAndGraphQLDashboardShape(t *testing.T) {
 	}
 }
 
+// Render's Terraform provider clears a service's environment by sending the
+// replace-all PUTs a JSON null body (a nil list, no omitempty), and Render's
+// recordings answer each one 200 [] (w9/109; 66 such requests in the
+// provider's cassettes at 06af456, e.g. backgroundworker's
+// docker_cassette.yaml). Driven through the composed server, so the Render
+// request gate is in the path; a body of the wrong type keeps its 400.
+func TestEnvVars_NullReplaceAllClearsTheList(t *testing.T) {
+	store := newMemSecretStore()
+	store.seed(envKey("web"), map[string]string{"KEEP": "opaque-secret"})
+	store.seed("services/web/files", map[string]string{"keep.pem": "opaque-file"})
+	base := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default",
+		Clock: func() time.Time { return time.Unix(1_000_000, 0).UTC() }}
+	h, _ := serverWith(t, base, Deps{Secrets: store})
+
+	for _, path := range []string{"/v1/services/web/env-vars", "/v1/services/web/secret-files"} {
+		if rec := do(t, h, "PUT", path, testToken, `{}`); rec.Code != 400 {
+			t.Fatalf("PUT %s {} => %d, want 400: %s", path, rec.Code, rec.Body.String())
+		}
+		rec := do(t, h, "PUT", path, testToken, `null`)
+		if rec.Code != 200 || strings.TrimSpace(rec.Body.String()) != "[]" {
+			t.Fatalf("PUT %s null => %d %s, want 200 []", path, rec.Code, rec.Body.String())
+		}
+		if rec := do(t, h, "GET", path, testToken, ""); rec.Code != 200 || strings.TrimSpace(rec.Body.String()) != "[]" {
+			t.Fatalf("GET %s after null => %d %s, want 200 []", path, rec.Code, rec.Body.String())
+		}
+	}
+	if len(store.data(envKey("web"))) != 0 || len(store.data("services/web/files")) != 0 {
+		t.Fatalf("null PUTs left env=%v files=%v", store.data(envKey("web")), store.data("services/web/files"))
+	}
+}
+
 // TestEnvVars_UnconfiguredIs503 confirms that with no secret store wired the
 // env-vars REST routes 503 while the rest of the API is unaffected.
 func TestEnvVars_UnconfiguredIs503(t *testing.T) {
