@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/graphql-go/graphql"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/twofactor"
@@ -342,5 +344,71 @@ func TestOrganizationGoogleLoginBindsEveryOrgWorkspaceAndTheOrg(t *testing.T) {
 	}
 	if err := f.gate.Check(ctx, f.standalone, password); err != nil {
 		t.Fatalf("the standalone workspace = %v, want untouched", err)
+	}
+}
+
+// The workspaces list is exempt from the org's requirement, as from a
+// workspace's own, but a workspace's configuration on it is not: a Member the
+// org blocks gets no inbound IP rules from the owners list or MCP's
+// list_workspaces (ListOwners), and the GraphQL ipAllowList and
+// overlappingDeployPolicy fields refuse them, in an org workspace whose own
+// setting is off as in one whose own is on. Their standalone workspace reads
+// as before, and so does every workspace once the org turns it off. Found by
+// t006's production walk: the list read only each workspace's own setting.
+func TestAMemberTheOrgBlocksDoesNotReadItsWorkspacesConfiguration(t *testing.T) {
+	f := newOrgLoginFixture(t)
+	if _, _, err := f.pg.SetTenantRequireTwoFactor(context.Background(), f.primary, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.SetOrganizationRequireTwoFactor(asGoogle(f.owner), f.org.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	member := asGoogle(f.member)
+	rules := func() map[string][]core.IPAllowListEntry {
+		t.Helper()
+		owners, err := f.svc.ListOwners(member, OwnerFilter{})
+		if err != nil {
+			t.Fatalf("the exempt owners list = %v", err)
+		}
+		out := map[string][]core.IPAllowListEntry{}
+		for _, o := range owners {
+			out[o.ID] = o.IPAllowList
+		}
+		return out
+	}
+	listed, err := f.svc.List(member)
+	if err != nil {
+		t.Fatalf("the exempt workspaces list = %v", err)
+	}
+	views := map[string]WorkspaceView{}
+	for _, w := range listed {
+		views[w.ID] = w
+	}
+
+	got := rules()
+	for _, ws := range []string{f.primary, f.secondary} {
+		if got[ws] != nil {
+			t.Errorf("a Member the org blocks reads %s's inbound IP rules %v, want none", ws, got[ws])
+		}
+		for _, field := range []string{"ipAllowList", "overlappingDeployPolicy"} {
+			resolve := f.svc.workspaceType().Fields()[field].Resolve
+			if _, err := resolve(graphql.ResolveParams{Source: views[ws], Context: member}); !isCoded(err, core.ErrForbidden, core.CodeWorkspaceTwoFactorRequired) {
+				t.Errorf("%s of %s for a Member the org blocks = %v, want the coded 403", field, ws, err)
+			}
+		}
+	}
+	if got[f.standalone] == nil {
+		t.Errorf("the Member's standalone workspace lost its inbound IP rules")
+	}
+
+	if _, err := f.svc.SetOrganizationRequireTwoFactor(asGoogle(f.owner), f.org.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	got = rules()
+	if got[f.secondary] == nil {
+		t.Errorf("after the org turned it off the secondary's rules are still withheld")
+	}
+	if got[f.primary] != nil {
+		t.Errorf("the primary's own requirement still blocks the Member, yet its rules were read: %v", got[f.primary])
 	}
 }

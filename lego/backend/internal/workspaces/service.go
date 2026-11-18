@@ -397,9 +397,19 @@ type WorkspaceView struct {
 	Organization *store.Organization `json:"-"`
 }
 
-// requiresLogin reports whether the workspace has any login requirement, so a
-// read of its configuration must ask the gate whether the caller may see it.
-func (w WorkspaceView) requiresLogin() bool { return w.RequireTwoFactor || w.RequireGoogleLogin }
+// requiresLogin reports whether the workspace may have a login requirement, so
+// a read of its configuration must ask the gate whether the caller may see it.
+// The workspace's own settings are not the whole answer: its org's bind it too
+// (w7/m466), and when the org was not read with the view the gate decides.
+func (w WorkspaceView) requiresLogin() bool {
+	if w.RequireTwoFactor || w.RequireGoogleLogin {
+		return true
+	}
+	if w.OrganizationID == "" {
+		return false
+	}
+	return w.Organization == nil || w.Organization.RequireTwoFactor || w.Organization.RequireGoogleLogin
+}
 
 func view(t store.Tenant, role string) WorkspaceView {
 	created := ""

@@ -656,3 +656,31 @@ func TestAWorkspacesIPRulesAreNotReadByABlockedMember(t *testing.T) {
 		t.Errorf("a compliant member: rules %v, err %v; want the rules", ok[0].IPAllowList, err)
 	}
 }
+
+// A workspace's own settings are not all that binds it: its org's do too
+// (w7/m466). A workspace in an org that requires a login method, or whose org
+// was not read with the view, asks the gate before its configuration is read;
+// one whose org requires nothing does not.
+func TestAnOrgWorkspacesConfigurationAsksTheGateWhenItsOrgMayRequireALogin(t *testing.T) {
+	f := newTwoFactorFixture(t)
+	f.svc.Base.TwoFactor = refusingGate{}
+	ctx := ctxAs("viewer-1")
+	for _, tc := range []struct {
+		name    string
+		org     *store.Organization
+		blocked bool
+	}{
+		{"org requires 2FA", &store.Organization{RequireTwoFactor: true}, true},
+		{"org requires Google login", &store.Organization{RequireGoogleLogin: true}, true},
+		{"org not read with the view", nil, true},
+		{"org requires nothing", &store.Organization{}, false},
+	} {
+		got, err := f.svc.withIPAllowLists(ctx, []WorkspaceView{{ID: f.workspace, OrganizationID: "org-1", Organization: tc.org}})
+		if err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		if (got[0].IPAllowList == nil) != tc.blocked {
+			t.Errorf("%s: rules %v, want withheld=%v", tc.name, got[0].IPAllowList, tc.blocked)
+		}
+	}
+}
