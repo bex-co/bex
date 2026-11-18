@@ -27,7 +27,7 @@ Replace `<tea-…>` with your workspace id (the top of its Settings page). The i
 
 ## Deploy
 
-Deploy `render.yaml` as a Blueprint, or create a Python web service with build command `pip install -r requirements.txt` and start command `python main.py`. Set these variables, then redeploy:
+Deploy `render.yaml` as a Blueprint, or create a Python web service with build command `pip install -r requirements.txt` and start command `python main.py`. A Docker web service builds from the `Dockerfile` here. Set these variables, then redeploy:
 
 | Variable | Value |
 | --- | --- |
