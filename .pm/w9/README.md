@@ -116,6 +116,9 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [x] **098** — [Audit history starts at the upgrade to Pro, as Render's retention does](done/098.md) ← from `/pm-brainstorm one aspect of render parity to w9` 2026-11-16 — **DONE** 2026-11-17
 - [x] **099** — [A deleted user's audit export row reads `Deleted User ID#<id>`, as Render's does](done/099.md) ← from w9/m450 t005 (Render parity) 2026-11-16
 - [ ] **100** — **BLOCKED (needs a real render.com `RENDER_API_KEY` on a Pro reference workspace in `.env`, w10/002's gate, to capture Render's rows)** — [Three audit-log actions Render may name that bex still records under its own verbs](blocked/100.md) ← from w9/m449 t007 (Render parity) 2026-11-16
+- [ ] **m472** — [`terraform apply` with Render's provider creates services, cron jobs and webhooks on bex, as on Render](m472/README.md) (9 tasks) ← from `/pm-brainstorm more for w9, preferrably one aspect of render parity` 2026-11-17 (Render's Terraform provider), filed by `/pmx 1,2,3 to w9`
+- [ ] **m473** — [A private service reads Render's `serviceDetails.url` and an image service Render's docker-shaped `envSpecificDetails`, as Render's recorded responses show](m473/README.md) (8 tasks) ← from `/pm-brainstorm more for w9, preferrably one aspect of render parity` 2026-11-17 (Render's Terraform provider), filed by `/pmx 1,2,3 to w9`; carved out of w10/m373
+- [ ] **m474** — [Render's Terraform provider compatibility: its own acceptance suite re-recorded against bex, each resource graded](m474/README.md) (7 tasks) ← from `/pm-brainstorm more for w9, preferrably one aspect of render parity` 2026-11-17 (Render's Terraform provider), filed by `/pmx 1,2,3 to w9`; starts after m472/t004
 
 ## Approved queue (priority order, 2026-09-08)
 
