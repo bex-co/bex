@@ -1,18 +1,18 @@
 # w6 · m469 — An operator deploy that leaves the Key Value proxy's code alone keeps every tenant connection
 
-**Worker:** worker6 **Goal:** a store's `kv-internal-proxy` rolls only when its own binary changes, not on every operator deploy, so tenant connections through a store's internal (and external TLS) URL survive the platform's routine releases, as on Render. **Status:** todo
+**Worker:** worker6 **Goal:** a store's `kv-internal-proxy` rolls only when its own binary changes, not on every operator deploy, so tenant connections through a store's internal (and external TLS) URL survive the platform's routine releases, as on Render. **Status:** blocked (t001–t004, t006, t007 done; t005 waits for the production deploy carrying the commit, then t008)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [The operator keeps a proxy's image while the proxy binary is unchanged](t001.md) | 1h30m | — |
-| t002 | [A proxy the operator has no record for keeps its image when that image carries the same binary](t002.md) | 1h30m | t001 |
-| t003 | [Prove it on the local cluster](t003.md) | 45m | t002 |
-| t004 | [Record it in ADR021 and file the SNI-proxy half](t004.md) | 30m | t002 |
+| t001 | [The operator keeps a proxy's image while the proxy binary is unchanged](done/t001.md) — **DONE** | 1h30m | — |
+| t002 | [A proxy the operator has no record for keeps its image when that image carries the same binary](done/t002.md) — **DONE** | 1h30m | t001 |
+| t003 | [Prove it on the local cluster](done/t003.md) — **DONE** | 45m | t002 |
+| t004 | [Record it in ADR021 and file the SNI-proxy half](done/t004.md) — **DONE** | 30m | t002 |
 | t005 | [Ship and verify on production](t005.md) | 1h | t003, t004 |
-| t006 | [Simplify](t006.md) | 15m | t005 |
-| t007 | [Test coverage](t007.md) | 30m | t005 |
+| t006 | [Simplify](done/t006.md) — **DONE** | 15m | t005 |
+| t007 | [Test coverage](done/t007.md) — **DONE** | 30m | t005 |
 | t008 | [Closeout](t008.md) | 10m | t006, t007 |
 
 ## Definition of done
@@ -26,7 +26,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** promoted from inbox note [w6/140](../done/140.md) on 2026-11-18. w6/m463 t005 filed it after it saw every store's proxy roll on the 01:32Z deploy with only `image` changed. The loopx dispatch picked it ahead of w6/138 as a live production defect.
+- **Source:** promoted from inbox note [w6/140](../../done/140.md) on 2026-11-18. w6/m463 t005 filed it after it saw every store's proxy roll on the 01:32Z deploy with only `image` changed. The loopx dispatch picked it ahead of w6/138 as a live production defect.
 - **Goal linkage:** ADR008 § Render parity first. Render breaks a Key Value store's connections when the customer changes the store (a plan change, enabling internal authentication: "Render restarts your Key Value instance", [Key Value](https://render.com/docs/key-value)), not when Render ships its own platform. No ADR018 row signs off this divergence.
 - **Expected outcome:** of the 11 production deploys on 2026-11-17, at most the 2 that changed the proxy binary would have rolled the proxies (see Findings). Long-lived Redis clients (pub/sub, blocking commands, pools) stop seeing in-flight commands fail on every release.
 - **Why now:** production deploys several times a day (11 on 2026-11-17). Each deploy closes every tenant connection to every store, including the Discourse service `beancount-forum` (`srv-d9nqg9dcavls73fp8m2g`, namespace `tea-d98210cbbpdc73dcrkvg`) on `red-d9p49kdrtmes73c34ovg:6379`. Builds on w6/m456 (the proxy fronts every store), w6/m463 (it stays in front of internal-auth stores) and w6/139 (backup pods are never an endpoint), all closed.
@@ -44,3 +44,9 @@
 - **Hold the image, not the template.** Env, annotation and resource changes (internal auth, credential revision, plan limit) still roll the proxy, now with the held image, which runs a byte-identical binary.
 - **Record the hash on the Deployment's own `metadata.annotations`, never on the pod template.** A template annotation would roll every proxy once when this ships.
 - The held digest can be weeks old. GHCR keeps every `bex-operator` version (no workflow in `.github/workflows` deletes package versions).
+
+## Progress — 2026-11-18 (parked on its production deploy)
+
+- **Shipped:** the hold (t001), registry adoption (t002), the local proof (t003: an unrelated operator build kept the proxy's pod and a held client's `CLIENT ID`, a proxy code change rolled it once, and internal auth rolled it on the held image), ADR021 § 10 with follow-ups [w6/141](../../141.md) and [w6/142](../../142.md) (t004), `/simplify` (t006) and the reverted-rule tests (t007).
+- **Expected on production:** the running proxies' image `bex-operator@sha256:b4104643…` carries `/kv-internal-proxy` `d1a7d7d0e8ecc328…` (read by `registry.ImageFileSHA256` from GHCR), and this tree builds the same bytes for linux/amd64 in the pinned builder. So the shipping deploy should record the hash on all three stores' `<id>-internal` Deployments and create no ReplicaSet. Recording the hash bumps each Deployment's generation, which is not a roll.
+- **Gate (clears by itself):** a production pin whose producer contains this milestone's commit (`git log origin/main --grep "pin platform images"`, then `git merge-base --is-ancestor <commit> <producer>`). Production deploys `main` once its pin is 6 h old. Then t005: the before/after record, a held client across a later deploy, and t008.

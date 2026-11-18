@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"sync"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -28,8 +29,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
+	"github.com/bex-co/bex/lego/operator/internal/registry"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -119,7 +122,7 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context,
 		}
 		dep.Spec.Template.Spec.Volumes = volumes
 		dep.Spec.Template.Spec.Containers = []corev1.Container{{
-			Name: "internal-proxy", Image: r.InternalProxyImage,
+			Name: kvInternalProxyContainer, Image: r.keyValueInternalProxyImage(ctx, dep, before),
 			Command: []string{"/kv-internal-proxy"}, Env: env, Ports: ports, VolumeMounts: mounts,
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("25m"), corev1.ResourceMemory: resource.MustParse("16Mi")},
@@ -141,6 +144,93 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context,
 		return false, err
 	}
 	return keyValueInternalDeploymentReady(dep), nil
+}
+
+const (
+	kvInternalProxyContainer = "internal-proxy"
+	// kvInternalProxyBinaryAnnotation records, on a proxy Deployment's own
+	// metadata, the sha256 of the /kv-internal-proxy its pod template's image
+	// carries (w6/m469). Never on the pod template: adding it there would roll
+	// every proxy once.
+	kvInternalProxyBinaryAnnotation = "app.bex.co/kv-internal-proxy-sha256"
+	// kvInternalProxyStep is the image config history entry lego/Dockerfile's
+	// COPY of the proxy binary leaves.
+	kvInternalProxyStep = "COPY /workspace/kv-internal-proxy /kv-internal-proxy # buildkit"
+)
+
+// InternalProxyBinaryFromRegistry is the manager's InternalProxyBinaryOf: it
+// reads /kv-internal-proxy out of a digest-pinned image's registry, once per
+// digest, since every proxy written before w6/m469 runs the same image.
+func InternalProxyBinaryFromRegistry() func(ctx context.Context, image string) (string, error) {
+	var mu sync.Mutex
+	known := map[string]string{}
+	return func(ctx context.Context, image string) (string, error) {
+		host, repo, _, digest, ok := parseExternalImageReference(image)
+		if !ok || !registry.IsDigest(digest) {
+			return "", fmt.Errorf("image %q is not pinned by digest", image)
+		}
+		mu.Lock()
+		sum, hit := known[digest]
+		mu.Unlock()
+		if hit {
+			return sum, nil
+		}
+		sum, err := registry.ImageFileSHA256(ctx, nil, host, repo, digest, kvInternalProxyStep, "kv-internal-proxy")
+		if err != nil {
+			return "", err
+		}
+		mu.Lock()
+		known[digest] = sum
+		mu.Unlock()
+		return sum, nil
+	}
+}
+
+// keyValueInternalProxyImage picks a proxy's image (w6/m469): the one it runs
+// while that image carries the manager's own /kv-internal-proxy, so an
+// operator deploy that leaves the proxy's code alone changes nothing in its
+// pod template and closes none of its connections. Otherwise the proxy rolls
+// onto the manager's image, as before. Every other template field is rendered
+// as always, so an env, annotation or resource change still rolls the proxy,
+// on the held image. before is the Deployment's template as read.
+func (r *KeyValueReconciler) keyValueInternalProxyImage(ctx context.Context, dep *appsv1.Deployment, before *corev1.PodTemplateSpec) string {
+	if r.InternalProxyBinary == "" {
+		delete(dep.Annotations, kvInternalProxyBinaryAnnotation)
+		return r.InternalProxyImage
+	}
+	running := ""
+	for _, c := range before.Spec.Containers {
+		if c.Name == kvInternalProxyContainer {
+			running = c.Image
+		}
+	}
+	if running != "" && running != r.InternalProxyImage && r.carriesInternalProxyBinary(ctx, dep, running) {
+		return running
+	}
+	metav1.SetMetaDataAnnotation(&dep.ObjectMeta, kvInternalProxyBinaryAnnotation, r.InternalProxyBinary)
+	return r.InternalProxyImage
+}
+
+// carriesInternalProxyBinary reports whether a proxy's running image carries
+// the manager's /kv-internal-proxy: by the hash its Deployment records, or,
+// for a Deployment that records none (one the operator wrote before w6/m469),
+// by the binary read out of the image's registry, which it then records. A
+// failed lookup answers false, and the proxy rolls as it always did.
+func (r *KeyValueReconciler) carriesInternalProxyBinary(ctx context.Context, dep *appsv1.Deployment, image string) bool {
+	if recorded := dep.Annotations[kvInternalProxyBinaryAnnotation]; recorded != "" || r.InternalProxyBinaryOf == nil {
+		return recorded == r.InternalProxyBinary
+	}
+	sum, err := r.InternalProxyBinaryOf(ctx, image)
+	if err != nil {
+		logf.FromContext(ctx).Info("rolling the Key Value proxy onto the operator's image: its own image's binary is unknown",
+			"deployment", dep.Name, "image", image, "reason", err.Error())
+		return false
+	}
+	if sum != r.InternalProxyBinary {
+		return false
+	}
+	metav1.SetMetaDataAnnotation(&dep.ObjectMeta, kvInternalProxyBinaryAnnotation, sum)
+	return true
 }
 
 // kvInternalProxyMemoryLimit lets the proxy hold its plan's connections: 32Mi

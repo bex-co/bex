@@ -214,13 +214,22 @@ type imageConfigDocument struct {
 	OS           string `json:"os"`
 	Architecture string `json:"architecture"`
 	History      []struct {
-		CreatedBy string `json:"created_by"`
+		CreatedBy  string `json:"created_by"`
+		EmptyLayer bool   `json:"empty_layer"`
 	} `json:"history"`
 	Config struct {
 		Env          []string                   `json:"Env"`
 		ExposedPorts map[string]json.RawMessage `json:"ExposedPorts"`
 		Labels       map[string]string          `json:"Labels"`
 	} `json:"config"`
+	// layers are the platform manifest's, in order (not part of the config).
+	layers []layerDescriptor
+}
+
+type layerDescriptor struct {
+	MediaType string `json:"mediaType"`
+	Digest    string `json:"digest"`
+	Size      int64  `json:"size"`
 }
 
 func fetchOnce(ctx context.Context, client *http.Client, target, authorization, bearer string) ([]byte, int, http.Header, error) {
@@ -425,6 +434,7 @@ func readImageConfigDocument(ctx context.Context, httpClient *http.Client, regis
 			Config        struct {
 				Digest string `json:"digest"`
 			} `json:"config"`
+			Layers    []layerDescriptor `json:"layers"`
 			Manifests []struct {
 				Digest   string `json:"digest"`
 				Platform struct {
@@ -473,6 +483,7 @@ func readImageConfigDocument(ctx context.Context, httpClient *http.Client, regis
 		if document.OS != platform.OS || document.Architecture != platform.Architecture {
 			return "", "", imageConfigDocument{}, fmt.Errorf("image config is not %s", platform)
 		}
+		document.layers = manifest.Layers
 		return requestedDigest, digest, document, nil
 	}
 	return "", "", imageConfigDocument{}, fmt.Errorf("image index nesting exceeds the supported limit")

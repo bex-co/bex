@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"slices"
 	"strconv"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -525,6 +526,18 @@ func TestEnablingInternalAuthRollsOnlyTheProxy(t *testing.T) {
 			if c.Name == "snapshot" && e.Name == "VALKEY_HOST" && e.Value != keyValueInternalBackendName(kv) {
 				t.Fatalf("the snapshot of an internal-auth store dials %q, a tenant connection", e.Value)
 			}
+		}
+	}
+}
+
+// w6/m469: only a digest names the bytes a proxy runs. A tag (the local
+// cluster's bex-operator:dev) is refused before any registry call, so the
+// proxy rolls as it always did.
+func TestInternalProxyBinaryFromRegistryNeedsADigest(t *testing.T) {
+	binaryOf := InternalProxyBinaryFromRegistry()
+	for _, image := range []string{"bex-operator:dev", "ghcr.io/bex-co/bex-operator:latest", "ghcr.io/bex-co/bex-operator@sha256:short"} {
+		if sum, err := binaryOf(context.Background(), image); err == nil || !strings.Contains(err.Error(), "not pinned by digest") {
+			t.Errorf("%s: %q, %v; want a refusal without a registry call", image, sum, err)
 		}
 	}
 }

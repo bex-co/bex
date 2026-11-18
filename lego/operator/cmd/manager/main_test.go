@@ -19,6 +19,7 @@ package main
 import (
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -26,6 +27,21 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
 )
+
+// w6/m469: the manager hashes the proxy binary its image carries; one it
+// cannot read holds no proxy's image, rather than a hash of nothing.
+func TestFileSHA256(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "kv-internal-proxy")
+	if err := os.WriteFile(path, []byte("abc"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := fileSHA256(path), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"; got != want {
+		t.Fatalf("fileSHA256 = %q, want %q", got, want)
+	}
+	if got := fileSHA256(filepath.Join(t.TempDir(), "missing")); got != "" {
+		t.Fatalf("a missing binary hashed to %q", got)
+	}
+}
 
 func TestPositiveEnvInt(t *testing.T) {
 	const key = "BEX_TEST_POSITIVE_ENV_INT"
