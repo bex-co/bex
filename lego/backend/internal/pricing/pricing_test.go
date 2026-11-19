@@ -574,6 +574,45 @@ func TestEstimateTotalIsSumOfAggregatedRows(t *testing.T) {
 	}
 }
 
+// A resource's CostUSD is the sum of its displayed charge lines, to the
+// cent: the bill's arithmetic is checkable by eye (ChargeLine), so the
+// resource figure must sum the rounded charges, not round the raw float sum.
+// (The workspace TotalUSD intentionally still counts sub-cent meters the
+// breakdown omits; only the per-resource figure must add up.)
+func TestEstimateResourceCostEqualsSumOfCharges(t *testing.T) {
+	kinds := []struct {
+		kind, tier, rk string
+		unit           int64
+	}{
+		{store.UsageKindInstanceSeconds, "starter", store.ResourceKindService, MonthSeconds},
+		{store.UsageKindDiskGBSeconds, "", store.ResourceKindService, MonthSeconds},
+		{store.UsageKindInstanceSeconds, "basic-256mb", store.ResourceKindPostgres, MonthSeconds},
+		{store.UsageKindStorageGBSeconds, "basic-256mb", store.ResourceKindPostgres, MonthSeconds},
+		{store.UsageKindInstanceSeconds, "starter", store.ResourceKindKeyValue, MonthSeconds},
+		{store.UsageKindBuildSeconds, "", store.ResourceKindService, 60},
+		{store.UsageKindEgressBytes, "", store.ResourceKindService, BytesPerGiB},
+	}
+	for i := int64(0); i < 60; i++ {
+		var rows []store.UsageSummaryRow
+		for j, k := range kinds {
+			q := (i*37 + int64(j)*101 + k.unit/7) % (k.unit * 3)
+			rows = append(rows, store.UsageSummaryRow{
+				ServiceID: "s1", ResourceKind: k.rk, Kind: k.kind, Tier: k.tier, Total: q,
+			})
+		}
+		for _, r := range Default.Estimate(rows).Resources {
+			var sum int64
+			for _, c := range r.Charges {
+				sum += monthlyCents(t, c.CostUSD)
+			}
+			if cost := monthlyCents(t, r.CostUSD); cost != sum {
+				t.Errorf("rows %d: resource cost %s != sum of charges (%d cents vs %d): %+v",
+					i, r.CostUSD, cost, sum, r.Charges)
+			}
+		}
+	}
+}
+
 func TestEstimateMixedResourceKinds(t *testing.T) {
 	// Service compute + postgres + keyvalue at their entry paid rates
 	rows := []store.UsageSummaryRow{

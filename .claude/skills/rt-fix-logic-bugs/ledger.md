@@ -8,6 +8,7 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 
 ## Skipped
 
+- 2026-11-19 billing/estimate totals-vs-lines — the total rounded the raw float sum while lines round individually (1c drift on multi-line stacks); fixed this run to sum rounded line cents in MonthlyEstimate and ResourceEstimate.CostUSD; EstimatedCost.TotalUSD still counts sub-cent meters by design, untouched
 - 2026-11-19 billing/spend-cap mint-vs-view agreement — audited, holds: Reached exceeds RefusesAtCap exactly in the serve-and-charge cell by design, lock pins T0 on both sides, tree/non-tree ceiling boundaries agree; the post-charge balance-due gap was a bug, fixed this run
 - 2026-11-19 billing/held-meter charger gap — skipped: with the agent-model meter held there is no ThresholdCharger while a subscription can keep ChargeDue true, so the mint refuses where the view says it will charge; the held-meter $10 stop is intentional (ADR091 D3) and the window is transient
 - 2026-11-19 billing/estimate-gate cross-product — audited, holds: every valid stack trips the payment-method gate exactly when the estimate shows paid content; free cap/autoscaling/disk, static plan-less, paused/unknown-plan refusals all agree on both sides; generative property added in blueprint_pricing_agreement_test.go

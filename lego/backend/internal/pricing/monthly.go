@@ -164,9 +164,11 @@ type VariableCost struct {
 // MonthlyEstimate projects declared resources to an always-on monthly cost.
 // Free and unknown tiers produce no line (rateFor's $0 policy); cron and
 // autoscaled/multi-instance resources surface in Variable instead of (or, for
-// scaling, alongside) their base line.
+// scaling, alongside) their base line. The total sums the displayed lines'
+// rounded cents, so the panel always adds up: rounding the raw float sum can
+// drift a cent from what the lines show.
 func (s *Sheet) MonthlyEstimate(resources []MonthlyResource) MonthlyEstimate {
-	var total float64
+	var totalCents int64
 	lines := make([]MonthlyLine, 0, len(resources))
 	variable := make([]VariableCost, 0)
 	for _, r := range resources {
@@ -205,7 +207,9 @@ func (s *Sheet) MonthlyEstimate(resources []MonthlyResource) MonthlyEstimate {
 			label = r.Tier
 		}
 		addLine := func(name string) {
-			total += lineUSD
+			// One entry per displayed line: the total is the sum of what
+			// the lines show, to the cent.
+			totalCents += int64(math.Round(lineUSD * 100))
 			line := MonthlyLine{
 				Name:         name,
 				ResourceKind: r.ResourceKind,
@@ -229,7 +233,7 @@ func (s *Sheet) MonthlyEstimate(resources []MonthlyResource) MonthlyEstimate {
 		}
 	}
 	return MonthlyEstimate{
-		TotalUSD: FormatUSD(total),
+		TotalUSD: FormatUSD(float64(totalCents) / 100),
 		Lines:    lines,
 		Variable: variable,
 	}
