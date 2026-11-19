@@ -214,3 +214,53 @@ func TestAutomationNotificationsAcrossSurfaces(t *testing.T) {
 		t.Fatalf("MCP unknown value = %q", text)
 	}
 }
+
+// The overlap policy (ADR101 D6) is part of the writable definition on REST,
+// GraphQL and MCP, so an automation read back can be written back unchanged
+// (w10/020): skip by default, accepted when sent, kept by an update that omits
+// it, and any other policy is the named 400 on overlapPolicy.
+func TestAutomationOverlapPolicyAcrossSurfaces(t *testing.T) {
+	a := newAutomationAdapters(t)
+	body := automationBody("nightly")
+	body["overlapPolicy"] = "skip"
+	status, created := a.rest(http.MethodPost, "/v1/agent-automations?ownerId=tea-a", body, "dev")
+	if status != http.StatusCreated || created["overlapPolicy"] != "skip" {
+		t.Fatalf("REST create with overlapPolicy skip = %d %v", status, created)
+	}
+	id := created["id"].(string)
+	if status, got := a.rest(http.MethodPatch, "/v1/agent-automations/"+id+"?ownerId=tea-a", map[string]any{"overlapPolicy": "skip"}, "dev"); status != http.StatusOK || got["overlapPolicy"] != "skip" {
+		t.Fatalf("REST update with overlapPolicy skip = %d %v", status, got)
+	}
+	if status, got := a.rest(http.MethodPatch, "/v1/agent-automations/"+id+"?ownerId=tea-a", map[string]any{"name": "nightly-two"}, "dev"); status != http.StatusOK || got["overlapPolicy"] != "skip" {
+		t.Fatalf("an update without overlapPolicy changed it: %d %v", status, got)
+	}
+	data, code := a.gql(fmt.Sprintf(`mutation { updateAgentAutomation(ownerId: "tea-a", id: %q, input: {overlapPolicy: "skip"}) { overlapPolicy } }`, id), "dev")
+	if code != "" || data["updateAgentAutomation"].(map[string]any)["overlapPolicy"] != "skip" {
+		t.Fatalf("GraphQL update = %v %q", data, code)
+	}
+	created2, text := a.mcp("create_agent_automation", withOwner(map[string]any{
+		"name": "skip-explicit", "triggers": automationBody("x")["triggers"], "template": automationBody("x")["template"],
+		"overlapPolicy": "skip"}), "dev")
+	if text != "" || created2["overlapPolicy"] != "skip" {
+		t.Fatalf("MCP create with skip = %v %q", created2, text)
+	}
+
+	for _, policy := range []string{"queue", "allow", ""} {
+		bad := map[string]any{"overlapPolicy": policy}
+		if status, got := a.rest(http.MethodPatch, "/v1/agent-automations/"+id+"?ownerId=tea-a", bad, "dev"); status != http.StatusBadRequest ||
+			got["code"] != CodeAutomationInvalid || !strings.Contains(fmt.Sprint(got), "overlapPolicy") {
+			t.Fatalf("REST overlapPolicy %q = %d %v", policy, status, got)
+		}
+	}
+	created3 := automationBody("queued")
+	created3["overlapPolicy"] = "queue"
+	if status, got := a.rest(http.MethodPost, "/v1/agent-automations?ownerId=tea-a", created3, "dev"); status != http.StatusBadRequest || got["code"] != CodeAutomationInvalid {
+		t.Fatalf("REST create with overlapPolicy queue = %d %v", status, got)
+	}
+	if _, code := a.gql(fmt.Sprintf(`mutation { updateAgentAutomation(ownerId: "tea-a", id: %q, input: {overlapPolicy: "queue"}) { id } }`, id), "dev"); code != CodeAutomationInvalid {
+		t.Fatalf("GraphQL overlapPolicy queue code = %q", code)
+	}
+	if _, text := a.mcp("update_agent_automation", map[string]any{"ownerId": "tea-a", "automation": id, "overlapPolicy": "queue"}, "dev"); !strings.Contains(text, CodeAutomationInvalid) {
+		t.Fatalf("MCP overlapPolicy queue = %q", text)
+	}
+}

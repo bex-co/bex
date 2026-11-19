@@ -85,6 +85,14 @@
     "runs": [],
     "nextCursor": "2026-11-11T09:00:00.000000000Z"
   },
+  "definitionKeys": [
+    "name",
+    "enabled",
+    "triggers",
+    "template",
+    "overlapPolicy",
+    "notifications"
+  ],
   "outcomes": [
     "claimed",
     "started",

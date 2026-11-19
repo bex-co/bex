@@ -2007,6 +2007,13 @@
             "object"
           ]
         },
+        "overlapPolicy": {
+          "description": "skip (the default and the only policy so far): a fire while the previous run's session is still active is recorded skipped_overlap and starts nothing",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
         "ownerId": {
           "type": "string"
         },
@@ -14524,6 +14531,13 @@
           "type": [
             "null",
             "object"
+          ]
+        },
+        "overlapPolicy": {
+          "description": "skip (the default and the only policy so far): a fire while the previous run's session is still active is recorded skipped_overlap and starts nothing",
+          "type": [
+            "null",
+            "string"
           ]
         },
         "ownerId": {

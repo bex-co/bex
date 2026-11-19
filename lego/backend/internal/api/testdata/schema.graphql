@@ -104,6 +104,7 @@ input AgentAutomationInput {
   ifVersion: Int
   name: String
   notifications: AgentAutomationNotificationsInput
+  overlapPolicy: String
   template: AgentAutomationTemplateInput
   triggers: [AgentAutomationTriggerInput!]
 }

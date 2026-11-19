@@ -270,6 +270,8 @@ var agentAutomationGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 		"enabled":  &graphql.InputObjectFieldConfig{Type: graphql.Boolean},
 		"triggers": &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(automationTriggerGQLInput)), Description: "Exactly one trigger, of type schedule."},
 		"template": &graphql.InputObjectFieldConfig{Type: automationTemplateGQLInput},
+		"overlapPolicy": &graphql.InputObjectFieldConfig{Type: graphql.String,
+			Description: "skip (the default and the only policy so far): a fire while the previous run's session is still active is recorded skipped_overlap."},
 		"notifications": &graphql.InputObjectFieldConfig{Type: automationNotificationsGQLInput,
 			Description: "Which run outcomes email the creator; on create the default is {email: on_failure}."},
 		"ifVersion": &graphql.InputObjectFieldConfig{Type: graphql.Int, Description: "Update only: refuse unless the automation is still at this version."},

@@ -203,7 +203,7 @@ The command group maps one-to-one onto ADR101 D8 and adds two client-side verbs,
   - With `--wait` or `--follow`, the CLI then waits on the run's session and exits by its state.
   - A run that started nothing (`skipped_overlap`, `denied` or `failed_create`) exits **6**, and stderr names the outcome and the recorded error.
 - **`apply -f FILE|DIR|-`** is declarative.
-  - Documents use the REST request body exactly (`name`, `enabled`, `triggers`, `template`, `notifications`), in YAML or JSON. A file may hold several YAML documents. There is no CLI-only schema.
+  - Documents use the REST request body exactly (`name`, `enabled`, `triggers`, `template`, `overlapPolicy`, `notifications`), in YAML or JSON. A file may hold several YAML documents. There is no CLI-only schema: the backend twin of the D9 fixture checks that these keys are exactly the writable fields of a create or update. `overlapPolicy` joined in w10/020, when the API started accepting it (`skip` only, ADR101 D6), so a value copied from `list -o json` applies.
   - Only the fields a document sets are compared and sent. A document without `notifications` therefore keeps the stored email setting: the plan shows no change for it and the write does not send it.
   - Each document is matched by `name`. A missing one is created, a changed one is updated with `ifVersion`, and an unchanged one is skipped.
   - `--dry-run` prints the plan and a field-level diff and changes nothing.
@@ -437,6 +437,7 @@ template:
   maxSpendUSD: 5
   secretNames: [NPM_TOKEN]
   tags: [deps]
+overlapPolicy: skip # the only policy so far (ADR101 D6)
 notifications:
   email: on_failure # always | on_failure | on_success | never; left out, the stored setting stays
 ---

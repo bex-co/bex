@@ -156,6 +156,10 @@ type AgentAutomationInput struct {
 	Enabled  *bool               `json:"enabled,omitempty" jsonschema:"default true on create; resume a paused automation with resume, not enabled"`
 	Triggers []AutomationTrigger `json:"triggers,omitempty" jsonschema:"exactly one trigger, of type schedule"`
 	Template *AutomationTemplate `json:"template,omitempty" jsonschema:"the session each fire starts"`
+	// OverlapPolicy is what a fire does while the previous run's session is
+	// still active (ADR101 D6). skip is the default and, until queue and allow
+	// ship, the only policy; on update an omitted value keeps the stored one.
+	OverlapPolicy *string `json:"overlapPolicy,omitempty" jsonschema:"skip (the default and the only policy so far): a fire while the previous run's session is still active is recorded skipped_overlap and starts nothing"`
 	// Notifications on create defaults to email on_failure; on update an
 	// omitted value keeps the stored one.
 	Notifications *AutomationNotifications `json:"notifications,omitempty" jsonschema:"which run outcomes email the creator; default {email: on_failure}"`
@@ -221,6 +225,20 @@ func applyAutomationNotifications(row *store.AgentAutomation, n *AutomationNotif
 		return automationInvalid("notifications.email", "notifications.email must be one of "+strings.Join(store.AutomationNotifyEmails, ", "))
 	}
 	row.NotifyEmail = n.Email
+	return nil
+}
+
+// applyAutomationOverlap sets the overlap policy an input names. Only skip
+// exists so far (ADR101 D6), so any other value is the named 400 rather than
+// a policy the scheduler would ignore.
+func applyAutomationOverlap(row *store.AgentAutomation, policy *string) error {
+	if policy == nil {
+		return nil
+	}
+	if *policy != automationOverlapSkip {
+		return automationInvalid("overlapPolicy", "overlapPolicy must be skip: a fire while the previous run's session is still active is skipped (queue and allow are not available yet)")
+	}
+	row.OverlapPolicy = *policy
 	return nil
 }
 
@@ -322,6 +340,9 @@ func (s *Service) CreateAgentAutomation(ctx context.Context, ownerID string, in 
 	if err := applyAutomationNotifications(&row, in.Notifications); err != nil {
 		return AgentAutomation{}, err
 	}
+	if err := applyAutomationOverlap(&row, in.OverlapPolicy); err != nil {
+		return AgentAutomation{}, err
+	}
 	if err := s.applyAutomationDefinition(ctx, workspaceID, &row, in.Triggers, in.Template); err != nil {
 		return AgentAutomation{}, err
 	}
@@ -376,6 +397,9 @@ func (s *Service) UpdateAgentAutomation(ctx context.Context, ownerID, ref string
 		row.Enabled = *in.Enabled
 	}
 	if err := applyAutomationNotifications(&row, in.Notifications); err != nil {
+		return AgentAutomation{}, err
+	}
+	if err := applyAutomationOverlap(&row, in.OverlapPolicy); err != nil {
 		return AgentAutomation{}, err
 	}
 	if in.Triggers != nil || in.Template != nil {

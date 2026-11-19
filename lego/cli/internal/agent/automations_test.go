@@ -126,6 +126,12 @@ func (f *fakeAutomations) serve(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	// The API holds one overlap policy so far (ADR101 D6) and refuses any
+	// other with the named 400, on a create and an update alike.
+	if policy, ok := body["overlapPolicy"]; ok && policy != "skip" {
+		writeAPIError(w, http.StatusBadRequest, "AGENT_AUTOMATION_INVALID", "overlapPolicy must be skip")
+		return
+	}
 	if r.URL.Query().Get("ownerId") != "tea-ws" {
 		f.t.Errorf("%s %s without ownerId=tea-ws: %q", r.Method, r.URL.Path, r.URL.RawQuery)
 	}
@@ -140,7 +146,7 @@ func (f *fakeAutomations) serve(w http.ResponseWriter, r *http.Request) {
 		f.next++
 		id := fmt.Sprintf("aut-%020d", f.next)
 		a := map[string]any{"id": id, "ownerId": "tea-ws", "enabled": true, "createdBy": "usr-me", "version": float64(1),
-			"notifications": map[string]any{"email": "on_failure"}} // the API's default
+			"overlapPolicy": "skip", "notifications": map[string]any{"email": "on_failure"}} // the API's defaults
 		for k, v := range body {
 			a[k] = v
 		}
@@ -794,6 +800,43 @@ func TestApplyChangedNotificationsDiffsAndSendsThem(t *testing.T) {
 	}
 }
 
+// The overlap policy `list` and `get` show is part of a definition (w10/020):
+// a file copied from `list -o json` that keeps it applies, an unchanged value
+// writes nothing, a new automation sends it, and a policy the API does not
+// offer comes back as the API's refusal rather than a CLI one.
+func TestApplyAcceptsOverlapPolicy(t *testing.T) {
+	f := newFakeAutomations(t)
+	f.seed("triage", daily(), tpl("Triage"))
+	dir := t.TempDir()
+	file := filepath.Join(dir, "a.json")
+	writeFile(t, file, `{"name": "triage", "overlapPolicy": "skip", "template": {"task": "Triage", "agentConfig": {"agent": "claude"}}}`)
+	stdout, stderr, code := run(t, f.deps(), "-o", "text", "automations", "apply", "-f", file, "--dry-run")
+	if code != 0 || !strings.Contains(stdout, "unchanged triage") {
+		t.Fatalf("a definition keeping overlapPolicy: exit %d:\n%s%s", code, stdout, stderr)
+	}
+
+	writeFile(t, file, `{"name": "fresh", "overlapPolicy": "skip", "triggers": [{"type": "schedule", "schedule": {"frequency": "day", "at": "09:00", "timezone": "UTC"}}], "template": {"task": "T", "agentConfig": {"agent": "claude"}}}`)
+	if _, stderr, code := run(t, f.deps(), "-o", "text", "automations", "apply", "-f", file, "--confirm"); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if posts := f.calls(http.MethodPost); len(posts) != 1 || posts[0].body["overlapPolicy"] != "skip" {
+		t.Fatalf("POSTs %v: want fresh created with the file's overlapPolicy", posts)
+	}
+
+	writeFile(t, file, `{"name": "triage", "overlapPolicy": "queue"}`)
+	stdout, _, code = run(t, f.deps(), "-o", "text", "automations", "apply", "-f", file, "--dry-run")
+	if code != 0 || !strings.Contains(stdout, `overlapPolicy: "skip" → "queue"`) {
+		t.Fatalf("plan (exit %d) lacks the overlapPolicy diff:\n%s", code, stdout)
+	}
+	stdout, stderr, code = run(t, f.deps(), "-o", "text", "automations", "apply", "-f", file, "--confirm")
+	if code != 1 || !strings.Contains(stdout, "overlapPolicy must be skip") {
+		t.Fatalf("an unoffered policy: exit %d, want the API's refusal:\n%s%s", code, stdout, stderr)
+	}
+	if patches := f.calls(http.MethodPatch); len(patches) != 1 || patches[0].body["overlapPolicy"] != "queue" || patches[0].body["template"] != nil {
+		t.Fatalf("PATCHes %v: want one carrying only the changed overlapPolicy", patches)
+	}
+}
+
 func TestExportRoundTripsThroughApply(t *testing.T) {
 	f := newFakeAutomations(t)
 	template := tpl("Triage")
@@ -811,6 +854,9 @@ func TestExportRoundTripsThroughApply(t *testing.T) {
 	}
 	if strings.Count(exported, "notifications:\n  email: on_failure") != 2 {
 		t.Fatalf("export dropped the email setting:\n%s", exported)
+	}
+	if strings.Count(exported, "\noverlapPolicy: skip\n") != 2 {
+		t.Fatalf("export dropped the overlap policy:\n%s", exported)
 	}
 	d := f.deps()
 	d.stdin = strings.NewReader(exported)
@@ -858,6 +904,7 @@ func TestAutomationContractFixtureDecodes(t *testing.T) {
 		AutomationList automationList    `json:"automationList"`
 		Run            automationRun     `json:"run"`
 		RunList        automationRunList `json:"runList"`
+		DefinitionKeys []string          `json:"definitionKeys"`
 		Outcomes       []string          `json:"outcomes"`
 		ErrorCodes     map[string]string `json:"errorCodes"`
 	}
@@ -876,6 +923,9 @@ func TestAutomationContractFixtureDecodes(t *testing.T) {
 	}
 	if r := golden.Run; r.Outcome == "" || r.MissedTicks != 2 || r.Error == "" || r.FireAt.IsZero() {
 		t.Fatalf("run fields lost: %+v", r)
+	}
+	if !slices.Equal(golden.DefinitionKeys, definitionKeys) {
+		t.Fatalf("apply reads %v; the fixture the backend checks against its writable fields says %v", definitionKeys, golden.DefinitionKeys)
 	}
 	if !slices.Contains(golden.Outcomes, runStarted) {
 		t.Fatalf("outcomes %v lack %q", golden.Outcomes, runStarted)

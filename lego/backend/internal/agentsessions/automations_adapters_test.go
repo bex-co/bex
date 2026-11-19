@@ -462,6 +462,20 @@ func TestAutomationGraphQLTypesMirrorTheJSONViews(t *testing.T) {
 			t.Errorf("%s: GraphQL fields %v, JSON fields %v", tc.gql.Name(), got, want)
 		}
 	}
+	// The inputs too: a field REST and MCP accept but GraphQL lacks (or the
+	// reverse) would make one surface unable to write it back.
+	for _, tc := range []struct {
+		input any
+		gql   *graphql.InputObject
+	}{
+		{AgentAutomationInput{}, agentAutomationGQLInput},
+		{AutomationTemplate{}, automationTemplateGQLInput},
+		{AutomationNotifications{}, automationNotificationsGQLInput},
+	} {
+		if got, want := slices.Sorted(maps.Keys(tc.gql.Fields())), jsonKeys(tc.input); !slices.Equal(got, want) {
+			t.Errorf("%s: GraphQL input fields %v, JSON fields %v", tc.gql.Name(), got, want)
+		}
+	}
 }
 
 func TestAutomationMCPToolContract(t *testing.T) {

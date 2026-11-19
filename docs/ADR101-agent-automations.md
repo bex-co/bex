@@ -34,7 +34,7 @@ An automation belongs to a workspace and holds:
 - `name`, `enabled`;
 - `triggers`: an array. **Phase 1 accepts exactly one trigger, of type `schedule`.** The array shape is the public contract from day one, so adding Webhook or GitHub triggers later is additive and needs no API break;
 - `template`: the session to start (D5);
-- `overlapPolicy`: `skip` in phase 1 (D6);
+- `overlapPolicy`: `skip` in phase 1 (D6). It is writable on create and update like the other fields, as Devin's `concurrency` is, and any other value is `400 AGENT_AUTOMATION_INVALID` on `overlapPolicy`; omitted, a create gets `skip` and an update keeps the stored value. _Before w10/020 (2026-11-19) the API returned it but refused it in a request, so an automation read back could not be written back unchanged._
 - `notifications`: `{email: always | on_failure | on_success | never}`, default `on_failure` (D7, w9/m343);
 - read-only: `createdBy`, `nextFireAt`, `lastRun`, `pausedReason`, `createdAt`, `updatedAt`.
 

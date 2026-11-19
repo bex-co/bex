@@ -127,6 +127,8 @@ export type AgentAutomationInput = {
   name?: InputMaybe<Scalars['String']['input']>;
   /** Which run outcomes email the creator; on create the default is {email: on_failure}. */
   notifications?: InputMaybe<AgentAutomationNotificationsInput>;
+  /** skip (the default and the only policy so far): a fire while the previous run's session is still active is recorded skipped_overlap. */
+  overlapPolicy?: InputMaybe<Scalars['String']['input']>;
   template?: InputMaybe<AgentAutomationTemplateInput>;
   /** Exactly one trigger, of type schedule. */
   triggers?: InputMaybe<Array<AgentAutomationTriggerInput>>;

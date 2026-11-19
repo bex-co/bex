@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -82,8 +83,10 @@ func TestShapesMatchCLIAgentContract(t *testing.T) {
 // TestShapesMatchCLIAutomationContract is the backend twin of the
 // `bex agent automations` fixture (lego/cli/testdata/
 // agent-automation-cli-contract.json, ADR106 D9): every key the CLI reads must
-// still be a JSON field of the type that serves it, and the run outcomes and
-// error codes it branches on must still be the ones the service emits.
+// still be a JSON field of the type that serves it, the definition keys
+// `apply` accepts and `export` prints must be exactly the writable fields of a
+// create or update, and the run outcomes and error codes it branches on must
+// still be the ones the service emits.
 func TestShapesMatchCLIAutomationContract(t *testing.T) {
 	golden := loadCLIFixture(t, "agent-automation-cli-contract.json")
 	assertSections(t, golden, map[string]reflect.Type{
@@ -92,6 +95,20 @@ func TestShapesMatchCLIAutomationContract(t *testing.T) {
 		"run":            reflect.TypeFor[AgentAutomationRun](),
 		"runList":        reflect.TypeFor[AgentAutomationRunList](),
 	})
+	var writable []string
+	input := reflect.TypeFor[AgentAutomationInput]()
+	for i := range input.NumField() {
+		if name, _, _ := strings.Cut(input.Field(i).Tag.Get("json"), ","); name != "ifVersion" {
+			writable = append(writable, name)
+		}
+	}
+	var definitionKeys []string
+	for _, key := range golden["definitionKeys"].([]any) {
+		definitionKeys = append(definitionKeys, key.(string))
+	}
+	if !slices.Equal(slices.Sorted(slices.Values(definitionKeys)), slices.Sorted(slices.Values(writable))) {
+		t.Errorf("the CLI's definition keys are %v, but a create or update writes %v", definitionKeys, writable)
+	}
 	outcomes := []any{store.AutomationRunClaimed, store.AutomationRunStarted, store.AutomationRunSkippedOverlap,
 		store.AutomationRunFailedCreate, store.AutomationRunDenied}
 	if !reflect.DeepEqual(golden["outcomes"], outcomes) {
