@@ -287,6 +287,47 @@ func TestAutoscaleDesiredBothMetrics(t *testing.T) {
 	}
 }
 
+// Turning on edge caching never scales a service out (w3/m487). The edge-cache
+// sidecar shares the service's pods, but Render's cache runs on its CDN,
+// outside the instance, so the autoscaler must reach the same count from
+// metrics-server's payload with the sidecar as from the app container alone.
+// Here the sidecar's 150Mi would lift each instance from 300Mi to 450Mi, past
+// starter's 80% memory target (409.6Mi), and buy a third instance.
+func TestAutoscalingLeavesTheEdgeCacheSidecarOut(t *testing.T) {
+	as := &appv1alpha1.AutoscalingSpec{
+		Enabled:             true,
+		MinReplicas:         1,
+		MaxReplicas:         5,
+		TargetCPUPercent:    new(int32(80)),
+		TargetMemoryPercent: new(int32(80)),
+	}
+	payload := func(sidecar string) []byte {
+		pod := func(name string) string {
+			return `{"metadata":{"name":"` + name + `"},"containers":[{"name":"app","usage":{"cpu":"300m","memory":"300Mi"}}` + sidecar + `]}`
+		}
+		return []byte(`{"items":[` + pod("web-6d5896f9c9-aaaaa") + `,` + pod("web-6d5896f9c9-bbbbb") + `]}`)
+	}
+	desired := func(raw []byte) int32 {
+		t.Helper()
+		usage, err := podmetrics.Parse(raw)
+		if err != nil {
+			t.Fatalf("podmetrics.Parse: %v", err)
+		}
+		got, skip := autoscaleDesired(as, usage, "starter")
+		if skip {
+			t.Fatal("should not skip")
+		}
+		return got
+	}
+	alone := desired(payload(""))
+	if alone != 2 {
+		t.Fatalf("app container alone: desired = %d, want 2", alone)
+	}
+	if got := desired(payload(`,{"name":"edge-cache","usage":{"cpu":"80m","memory":"150Mi"}}`)); got != alone {
+		t.Errorf("with the edge-cache sidecar: desired = %d, want %d, the same as the app container alone", got, alone)
+	}
+}
+
 // TestApplyAutoscalingWritesAnnotationNotSpec is a regression test for the
 // 2026-07-12 incident where applyAutoscaling patched spec.replicas, bumping
 // metadata.generation on every autoscaler tick and causing git-backed Apps

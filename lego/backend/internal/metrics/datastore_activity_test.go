@@ -26,7 +26,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"reflect"
 	"slices"
 	"strconv"
@@ -474,13 +473,7 @@ func TestActivityQueriesOnPrometheus(t *testing.T) {
 			}
 		}
 	}
-	path := filepath.Join(t.TempDir(), "activity.yml")
-	if err := os.WriteFile(path, []byte(b.String()), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if out, err := exec.Command(promtool, "test", "rules", path).CombinedOutput(); err != nil {
-		t.Fatalf("promtool: %v\n%s\n%s", err, out, b.String())
-	}
+	runPromtoolTests(t, promtool, b.String())
 }
 
 // TestPrometheusActivitySourceShapesSeries: the source keeps resource,

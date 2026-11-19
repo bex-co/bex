@@ -54,6 +54,12 @@ const (
 	CacheProfileAll    = "origin-controlled-all"
 )
 
+// EdgeCacheContainer names the edge-cache sidecar the operator adds to the
+// pods of an App that ServesEdgeCache. Its CPU and memory are the platform's:
+// Render's cache runs on its CDN, outside the instance, so a service's usage,
+// limits and autoscaling leave the sidecar out (w3/m487).
+const EdgeCacheContainer = "edge-cache"
+
 // EdgeCaching reports whether the App caches at the edge: a web service with
 // a caching profile.
 func (s AppSpec) EdgeCaching() bool {

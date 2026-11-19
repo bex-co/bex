@@ -25,7 +25,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -302,13 +301,7 @@ func TestCPUAggregationQueryOnPrometheus(t *testing.T) {
 	for _, ck := range checks {
 		fmt.Fprintf(&b, "      - expr: '%s'\n        eval_time: %s\n        exp_samples:\n          - labels: '{pod=\"web-1\"}'\n            value: %g\n", ck.expr, ck.at, ck.value)
 	}
-	path := filepath.Join(t.TempDir(), "cpu_aggregation.yml")
-	if err := os.WriteFile(path, []byte(b.String()), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if out, err := exec.Command(promtool, "test", "rules", path).CombinedOutput(); err != nil {
-		t.Fatalf("promtool: %v\n%s\n%s", err, out, b.String())
-	}
+	runPromtoolTests(t, promtool, b.String())
 }
 
 // TestLokiHostBreakdownOnLoki runs the per-host request count in the pinned

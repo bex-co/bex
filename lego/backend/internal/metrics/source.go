@@ -267,12 +267,13 @@ func bucketWindow(res time.Duration) int64 {
 const podCreatedLookback = "10m"
 
 func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
-	matchers := egressquery.PodNameMatcher(req.Namespace, req.App)
+	containers := serviceContainers(req.Namespace, req.App)
 	own := func(perPod string) string { return excludePodsBefore(perPod, req.Namespace, req.NotBefore) }
 	switch req.Metric {
 	case MetricMemory, MetricCPU:
-		return own(resourceUsageQuery(req.Metric, matchers, req.Resolution, req.CPUAggregation))
+		return own(resourceUsageQuery(req.Metric, containers, req.Resolution, req.CPUAggregation))
 	case MetricInstanceCount:
+		matchers := egressquery.PodNameMatcher(req.Namespace, req.App)
 		// The inner `sum by (pod)` already reduces a pod's (possibly duplicated)
 		// container series to one series per pod, so counting pods is unaffected
 		// by the restart double-count below — no per-container max needed here.
@@ -298,7 +299,17 @@ func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 		}
 		return live
 	}
-	return own(resourceUsageQuery(MetricCPU, matchers, req.Resolution, req.CPUAggregation))
+	return own(resourceUsageQuery(MetricCPU, containers, req.Resolution, req.CPUAggregation))
+}
+
+// serviceContainers selects a service's own containers: its pods
+// (egressquery.PodNameMatcher) without the platform's edge-cache sidecar,
+// whose usage and limits are never the service's, as on Render, where the
+// cache runs on the CDN (w3/m487). podmetrics.Parse and podResourceLimits
+// leave it out alike. Total Instances counts pods, not containers, so it keeps
+// PodNameMatcher, which the usage meter bills instance-seconds by.
+func serviceContainers(namespace, app string) string {
+	return egressquery.PodNameMatcher(namespace, app) + fmt.Sprintf(`,container!=%q`, appv1alpha1.EdgeCacheContainer)
 }
 
 // excludePodsBefore drops from a per-pod expression the pods created before
@@ -435,11 +446,11 @@ func NewPrometheusResourceLimitSource(base string, hc *http.Client) ResourceLimi
 }
 
 // promLimitQueryFor builds the PromQL range query for one App's per-pod limit
-// history: the per-container kube-state-metrics limit series summed by pod, so
-// multi-container pods report the same total the pod-spec reader
-// (podResourceLimits) sums. resource="cpu" reports cores, resource="memory"
-// bytes — matching the usage series' absolute units, so the service divides
-// without conversion. Non cpu/memory metrics have no limit denominator and
+// history: the kube-state-metrics limit series of the service's own containers
+// (serviceContainers) summed by pod, so multi-container pods report the same
+// total the pod-spec reader (podResourceLimits) sums. resource="cpu" reports
+// cores, resource="memory" bytes — matching the usage series' absolute units,
+// so the service divides without conversion. Non cpu/memory metrics have no limit denominator and
 // yield no query.
 func promLimitQueryFor(req ResourceLimitRangeRequest) string {
 	var resource string
@@ -451,7 +462,7 @@ func promLimitQueryFor(req ResourceLimitRangeRequest) string {
 	default:
 		return ""
 	}
-	return resourceLimitQuery(egressquery.PodNameMatcher(req.Namespace, req.App), resource)
+	return resourceLimitQuery(serviceContainers(req.Namespace, req.App), resource)
 }
 
 // resourceLimitQuery is the per-pod configured limit (kube-state-metrics) of

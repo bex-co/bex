@@ -173,16 +173,19 @@ func TestPromResourceQueryFor(t *testing.T) {
 	// (w6/m110). 59 = 63 - len("web") - 1, the exact length a truncated pod
 	// name always has.
 	matchers := `namespace="default",pod=~"web-[a-z0-9]+-[a-z0-9]{5}|web-[a-z0-9]{59}",container!=""`
+	// CPU and memory read the service's own containers: never the platform's
+	// edge-cache sidecar (w3/m487).
+	own := matchers + `,container!="edge-cache"`
 
 	// Memory and CPU dedupe cAdvisor's duplicate per-container series across a
 	// restart (`max by (pod, container)` before the sum) so an OOM-restarting
 	// container never double-counts above the pod's real usage (w4/050).
 	req.Metric = MetricCPU
-	if got, want := promResourceQueryFor(req), `sum by (pod) (max by (pod, container) (rate(container_cpu_usage_seconds_total{`+matchers+`}[60s])))`; got != want {
+	if got, want := promResourceQueryFor(req), `sum by (pod) (max by (pod, container) (rate(container_cpu_usage_seconds_total{`+own+`}[60s])))`; got != want {
 		t.Errorf("cpu query:\n got %q\nwant %q", got, want)
 	}
 	req.Metric = MetricMemory
-	if got, want := promResourceQueryFor(req), `sum by (pod) (max by (pod, container) (last_over_time(container_memory_working_set_bytes{`+matchers+`}[90s])))`; got != want {
+	if got, want := promResourceQueryFor(req), `sum by (pod) (max by (pod, container) (last_over_time(container_memory_working_set_bytes{`+own+`}[90s])))`; got != want {
 		t.Errorf("memory query:\n got %q\nwant %q", got, want)
 	}
 	// Instance count keeps the inner `sum by (pod)` (which already collapses a
@@ -252,7 +255,7 @@ func TestCoarseStepReadsTheWholeStep(t *testing.T) {
 		{time.Hour, `[3600s]`, `max_over_time((` + gated + `)[3600s:15s])`},
 	} {
 		req := ResourceMetricsRangeRequest{Namespace: "default", App: "web", Resolution: tc.res, Metric: MetricMemory}
-		want := `sum by (pod) (max by (pod, container) (last_over_time(container_memory_working_set_bytes{` + matchers + `}` + tc.memory + `)))`
+		want := `sum by (pod) (max by (pod, container) (last_over_time(container_memory_working_set_bytes{` + matchers + `,container!="edge-cache"}` + tc.memory + `)))`
 		if got := promResourceQueryFor(req); got != want {
 			t.Errorf("memory at %s:\n got %q\nwant %q", tc.res, got, want)
 		}

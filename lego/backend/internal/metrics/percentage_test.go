@@ -287,7 +287,9 @@ func TestLimitSourceErrorSurfaces(t *testing.T) {
 
 func TestPromLimitQueryFor(t *testing.T) {
 	req := ResourceLimitRangeRequest{Namespace: "default", App: "web", Resolution: 60 * time.Second}
-	matchers := `namespace="default",pod=~"web-[a-z0-9]+-[a-z0-9]{5}|web-[a-z0-9]{59}",container!=""`
+	// The service's own containers, as podResourceLimits sums: never the
+	// platform's edge-cache sidecar (w3/m487).
+	matchers := `namespace="default",pod=~"web-[a-z0-9]+-[a-z0-9]{5}|web-[a-z0-9]{59}",container!="",container!="edge-cache"`
 	req.Metric = MetricCPU
 	if got, want := promLimitQueryFor(req), `sum by (pod) (kube_pod_container_resource_limits{`+matchers+`,resource="cpu"})`; got != want {
 		t.Errorf("cpu limit query:\n got %q\nwant %q", got, want)

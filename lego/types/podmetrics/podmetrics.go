@@ -28,6 +28,8 @@ import (
 	"sort"
 
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // Usage is one pod's current resource consumption, as reported by
@@ -40,8 +42,10 @@ type Usage struct {
 }
 
 // Parse decodes a metrics-server PodMetricsList and sums each pod's container
-// usage into cores + bytes. Unparseable quantities are treated as zero. The
-// result is ordered by pod name so both callers see a stable sequence.
+// usage into cores + bytes, leaving out the platform's edge-cache sidecar
+// (appv1alpha1.EdgeCacheContainer), whose usage is never the service's.
+// Unparseable quantities are treated as zero. The result is ordered by pod
+// name so both callers see a stable sequence.
 func Parse(raw []byte) ([]Usage, error) {
 	var list podMetricsList
 	if err := json.Unmarshal(raw, &list); err != nil {
@@ -51,6 +55,9 @@ func Parse(raw []byte) ([]Usage, error) {
 	for _, it := range list.Items {
 		u := Usage{Pod: it.Metadata.Name, Timestamp: it.Timestamp}
 		for _, ctr := range it.Containers {
+			if ctr.Name == appv1alpha1.EdgeCacheContainer {
+				continue
+			}
 			if q, err := resource.ParseQuantity(ctr.Usage.CPU); err == nil {
 				u.CPUCores += q.AsApproximateFloat64()
 			}
@@ -72,6 +79,7 @@ type podMetricsList struct {
 		} `json:"metadata"`
 		Timestamp  string `json:"timestamp"`
 		Containers []struct {
+			Name  string `json:"name"`
 			Usage struct {
 				CPU    string `json:"cpu"`
 				Memory string `json:"memory"`

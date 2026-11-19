@@ -23,6 +23,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -956,6 +959,20 @@ func TestGraphQLAggregateByMapsToGroupBy(t *testing.T) {
 	ask(`"instance"`)
 	if got.GroupBy != "" {
 		t.Errorf("instance-flavored aggregateBy should stay ignored, got %q", got.GroupBy)
+	}
+}
+
+// runPromtoolTests evaluates a `promtool test rules` file, so a PromQL builder
+// is checked in Prometheus' own engine; a failed expectation fails t with
+// promtool's report and the file.
+func runPromtoolTests(t *testing.T, promtool, tests string) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "tests.yml")
+	if err := os.WriteFile(path, []byte(tests), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command(promtool, "test", "rules", path).CombinedOutput(); err != nil {
+		t.Fatalf("promtool: %v\n%s\n%s", err, out, tests)
 	}
 }
 

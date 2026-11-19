@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	"github.com/bex-co/bex/lego/backend/internal/egressquery"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -155,7 +154,7 @@ func promDatastoreActivityQuery(req DatastoreActivityRequest) (string, string) {
 		}
 		m := instances + `,container!=""`
 		if req.Kind == DatastoreService {
-			m = egressquery.PodNameMatcher(req.Namespace, req.Resource)
+			m = serviceContainers(req.Namespace, req.Resource)
 		}
 		m += fmt.Sprintf(`,device!=%q`, nodeRootDisk)
 		// Per container the max over devices: a LUKS volume's I/O is charged

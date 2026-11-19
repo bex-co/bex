@@ -46,7 +46,7 @@ import (
 // its image network's primary (docs/ADR004 § Edge caching covers discovery and
 // port changes).
 const (
-	edgeCacheContainerName = "edge-cache"
+	edgeCacheContainerName = appv1alpha1.EdgeCacheContainer
 	edgeCachePortName      = "edge-cache"
 	edgeCacheUpstreamEnv   = "BEX_EDGE_CACHE_UPSTREAM"
 	// edgeCacheProfileEnv is the profile the proxy starts with; a pod's
