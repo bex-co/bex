@@ -1,6 +1,6 @@
 # w8 · m96 — Supply GNU gettext for native message compilation
 
-**Worker:** worker8 **Goal:** ordinary native internationalized apps can compile and use their message catalogs without installing promised system tools in tenant code. **Status:** blocked — m91 gate cleared; the unblock worker did not reach a verified outcome (leftovers in stash `loopx/w8/m96`); original hosted acceptance remains open
+**Worker:** worker8 **Goal:** ordinary native internationalized apps can compile and use their message catalogs without installing promised system tools in tenant code. **Status:** blocked — m91 gate cleared; two unblock workers hung before a verified outcome (leftovers in stashes `loopx/w8/m96-2` and `loopx/w8/m96`); original hosted acceptance remains open
 
 ## Tasks (in order)
 
@@ -59,3 +59,9 @@ When it stopped, it was mutation-checking a 12-line `utility-check.py` addition 
 - a half-done board move to `done/` that left every task `status: blocked`.
 
 They are kept in the named stash `loopx/w8/m96`. **Gate:** `worker did not reach a verified outcome: no LOOPX-RESULT, leftovers uncommitted; needs a fresh worker to restore stash loopx/w8/m96, finish the mutation checks and the original two-client hosted acceptance, then ship or park`.
+
+## Drain disposition — 2026-11-19
+
+A second unblock worker restored stash `loopx/w8/m96` and recorded t001–t004 as done in the reopened milestone. It ran both clients' builds and app runs in bex-canary; its notes and raw logs are in the orchestrator's scratch `m96c/`, which is not committed. It then hung like the first worker: its 12:58 UTC Kratos logout call finished at the OS level, but the result never reached the worker. The orchestrator revoked its three QA sessions (rc 0), confirmed that no m96 fixture is live in bex-canary, stopped the worker, and parked the item again.
+
+**Gate:** `worker did not reach a verified outcome: hung at its final logout, t005–t006 open, nothing committed; needs a fresh worker to restore stash loopx/w8/m96-2 (it supersedes loopx/w8/m96: same source edits plus the t001–t004 records), finish t005–t006, ship or park, then drop both stashes`.
