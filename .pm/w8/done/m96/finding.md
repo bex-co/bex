@@ -2,7 +2,7 @@
 
 Why: ordinary internationalized Django services fail their build even though their Python dependencies install correctly.
 
-**Severity:** major. **Attribution:** operator native-image utility assembly. **Estimate:**195m across6 tasks. Functional CLI sweep416,2026-10-17. Published Bex0.3.2/a6350da0 and unchanged Render2.27.0/a764810a7682, isolated human-QA bex-canary/tea-daif693dqjvc73e7as3g, noninteractive JSON, api.bex.co/v1. Source8f80d74efaffc23342cccad2f275051a1501396f; serving revision unknown. [Complete evidence](evidence/cli-sweep416/README.md).
+**Severity:** major. **Attribution:** operator native-image utility assembly. **Estimate:**195m across6 tasks. Functional CLI sweep416,2026-10-17. Published Bex0.3.2/a6350da0 and unchanged Render2.27.0/a764810a7682, isolated human-QA bex-canary/tea-daif693dqjvc73e7as3g, noninteractive JSON, api.bex.co/v1. Source8f80d74efaffc23342cccad2f275051a1501396f; serving revision unknown. Complete evidence (sweep 416, purged 2026-11-04).
 
 ## Exact functional reproduction
 
@@ -10,7 +10,7 @@ Both clients create fresh explicit Free Python3.13 web services through unchange
 
 Both original first children become build_failed with Django's missing-msgfmt CommandError. The language dependency is installed; source and PO checks pass; msgfmt/msgmerge/msguniq/xgettext locators are all absent. Both original URLs404. Each client changes only one build line installing GNU gettext. Both native updates0 and replacement children Live. The same Django command now compiles a real461-byte GNU MO catalog and returns correct Unicode/format/French0/1/2/5 plural translations. Six HTTP200 calls perform fresh external msgfmt compilations and actual Django plus independent standard-library translations. Two binary catalog downloads independently parse and translate on the host. Six native events and12 REST/GraphQL/MCP plus4 explicit-env reads agree. All exact parents/four children/URLs/local resources are removed, baseline/current inventory/quota checks pass.
 
-[Render](https://render.com/docs/native-runtimes) includes GNU gettext during build and runtime. [Django](https://docs.djangoproject.com/en/5.2/topics/i18n/translation/) documents msgfmt and its sibling tools as dependencies for message compilation/extraction; minimum0.19. The [observed pinned package](evidence/cli-sweep416/official-pinned-Django-package-reference.json) is Django5.2.18. The selected-base control observes gettext0.21/Debian0.21-12 arm64. Exact Render version and a Render-hosted comparative run remain unverified.
+[Render](https://render.com/docs/native-runtimes) includes GNU gettext during build and runtime. [Django](https://docs.djangoproject.com/en/5.2/topics/i18n/translation/) documents msgfmt and its sibling tools as dependencies for message compilation/extraction; minimum0.19. The observed pinned package (sweep 416 evidence, purged 2026-11-04) is Django5.2.18. The selected-base control observes gettext0.21/Debian0.21-12 arm64. Exact Render version and a Render-hosted comparative run remain unverified.
 
 An earlier oversized authored-command setup correctly returned400/4096-byte limit, no ID. Two exact-name native inventory/quota reconciliations verify absence. The fresh valid cohort uses a bounded compressed source transport preserving exact app/settings/PO/reference bytes and matching the local program hash. This setup rejection is excluded, fully retained and not a finding. The only valid original/control change remains the single install line.
 

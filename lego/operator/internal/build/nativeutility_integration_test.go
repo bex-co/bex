@@ -194,6 +194,7 @@ func nativeUtilityCases() []nativeUtilityCase {
 		{"pandoc", "93", "pandoc: command not found", nativeNodeRuntime},
 		{"sqlite3", "94", "sqlite3: command not found", nativePythonRuntime},
 		{"libvips", "95", "cannot load library 'libvips.so.42'", nativePythonRuntime},
+		{"gettext", "96", "Can't find msgfmt. Make sure you have GNU gettext tools 0.19 or newer installed.", nativePythonRuntime},
 		{"ghostscript", "97", "gs: command not found", nativePythonRuntime},
 		{"typescript", "99", "tsc: command not found", nativeNodeRuntime},
 		{"swig", "100", "swig: command not found", nativePythonRuntime},
@@ -325,6 +326,11 @@ func nativeUtilityRemovalLayer(removed, name string) string {
 		// Only the shared library goes; the tools' packages, headers and
 		// pkg-config stay, so PyVips fails on the missing libvips.so.42 alone.
 		command = `vips --version && rm $(dpkg -L libvips42 | grep '/libvips\.so\.42') && ldconfig && ! ldconfig -p | grep -q 'libvips\.so\.42' && /usr/bin/python3 -c 'import ctypes.util; assert ctypes.util.find_library("vips") is None' && test -f /usr/include/vips/vips.h && pkg-config --exists vips`
+	case "gettext":
+		// The four programs the original probe locates go; their libraries,
+		// msgunfmt, gettext-base and the ITS data stay, so Django's
+		// compilemessages fails on the missing msgfmt alone.
+		command = "msgfmt --version && rm /usr/bin/msgfmt /usr/bin/msgmerge /usr/bin/msguniq /usr/bin/xgettext && hash -r && ! command -v msgfmt && ! command -v msgmerge && ! command -v msguniq && ! command -v xgettext && msgunfmt --version && envsubst --version && test -f /usr/share/gettext-0.21/its/metainfo.its"
 	case "ghostscript":
 		// Only the program goes; libgs, its init resources and the URW fonts
 		// stay, so the original render fails on the missing gs alone.
