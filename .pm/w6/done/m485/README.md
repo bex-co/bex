@@ -1,19 +1,19 @@
 # w6 · m485 — A platform release drops no request the activator is holding through a cold start
 
-**Worker:** worker6 **Goal:** when a deploy replaces an activator pod, every request it is holding for a waking free service, or proxying to one, gets the service's answer, and requests routed to it while its endpoint is withdrawn are still served; Render's promise that a request to a spun-down free service "loses nothing" (w8/178) holds through bex's own releases. **Status:** todo
+**Worker:** worker6 **Goal:** when a deploy replaces an activator pod, every request it is holding for a waking free service, or proxying to one, gets the service's answer, and requests routed to it while its endpoint is withdrawn are still served; Render's promise that a request to a spun-down free service "loses nothing" (w8/178) holds through bex's own releases. **Status:** done 2026-11-19 — the activator drains on SIGTERM (10 s window, 120 s bound, grace 150, surge before drain); a held non-HTML request answered `200` across an activator rollout on the local cluster against a `502` control on the old image (t005); the tenant listener no longer serves the activator's pprof and expvar paths (t001).
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [The activator drains on SIGTERM](t001.md) | 1h | — |
-| t002 | [The activator Deployment gives a draining pod its bound](t002.md) | 30m | t001 |
-| t003 | [Tests: a request held at SIGTERM is answered; the process exits once idle](t003.md) | 45m | t001 |
-| t004 | [Record the rule in ADR007](t004.md) | 15m | t002 |
-| t005 | [Ship and verify](t005.md) | 45m | t002, t003, t004 |
-| t006 | [Simplify](t006.md) | 15m | t005 |
-| t007 | [Test coverage](t007.md) | 30m | t005 |
-| t008 | [Closeout](t008.md) | 10m | t006, t007 |
+| t001 | [The activator drains on SIGTERM](done/t001.md) — **DONE** | 1h | — |
+| t002 | [The activator Deployment gives a draining pod its bound](done/t002.md) — **DONE** | 30m | t001 |
+| t003 | [Tests: a request held at SIGTERM is answered; the process exits once idle](done/t003.md) — **DONE** | 45m | t001 |
+| t004 | [Record the rule in ADR007](done/t004.md) — **DONE** | 15m | t002 |
+| t005 | [Ship and verify](done/t005.md) — **DONE** | 45m | t002, t003, t004 |
+| t006 | [Simplify](done/t006.md) — **DONE** | 15m | t005 |
+| t007 | [Test coverage](done/t007.md) — **DONE** | 30m | t005 |
+| t008 | [Closeout](done/t008.md) — **DONE** | 10m | t006, t007 |
 
 ## Definition of done
 

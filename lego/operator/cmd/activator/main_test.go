@@ -988,6 +988,35 @@ func TestHealthPathsOnMaintenanceAndUnknownHosts(t *testing.T) {
 	}
 }
 
+// The tenant listener reserves no debug path (w6/m485): pprof and expvar,
+// which the activator links, register on http.DefaultServeMux, which it served
+// until then, so any host routed here answered with the activator's profiles.
+func TestTenantListenerServesNoDebugPath(t *testing.T) {
+	app, dep := sleepingApp()
+	app.Status.Phase = appv1alpha1.PhaseHibernated
+	cache, base := primedHostCache(t, app, dep)
+	handler := tenantMux(newHandler(base, cache, logr.Discard()))
+	paths := []string{"/debug/pprof/", "/debug/pprof/cmdline", "/debug/pprof/goroutine?debug=2", "/debug/vars"}
+	for _, path := range paths {
+		t.Run("unknown host "+path, func(t *testing.T) {
+			rr := httptest.NewRecorder()
+			handler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "https://nobody.onbex.co"+path, nil))
+			if rr.Code != http.StatusNotFound || rr.Body.String() != unknownHostText {
+				t.Fatalf("response = %d %.80q, want the unknown-host 404", rr.Code, rr.Body.String())
+			}
+		})
+		t.Run("sleeping app "+path, func(t *testing.T) {
+			rr := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "https://sleeping.onbex.co"+path, nil)
+			req.Header.Set("Accept", "application/json")
+			handler.ServeHTTP(rr, req)
+			if rr.Code != http.StatusServiceUnavailable || rr.Header().Get(routingHeader) != routingWake {
+				t.Fatalf("response = %d %.80q, want the wake answer", rr.Code, rr.Body.String())
+			}
+		})
+	}
+}
+
 // TestAwakeUnreadyServiceIsNotReportedAsHibernated is w4/211: the readiness
 // hold routes an awake Free service whose health check fails to the activator,
 // which answered JSON clients "service hibernated" about a running instance.

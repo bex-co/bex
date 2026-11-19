@@ -7,6 +7,13 @@ spec:
   # Two replicas behind a PodDisruptionBudget so a node drain, a roll or one
   # crash never takes this platform-wide path down (w3/m175).
   replicas: 2
+  # w6/m485: a release brings a replacement up before an old pod drains, so
+  # one replica always accepts while the other finishes the requests it holds.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app.bex.co/component: activator
@@ -16,6 +23,11 @@ spec:
         app.bex.co/component: activator
     spec:
       serviceAccountName: activator
+      # w6/m485: on SIGTERM the activator keeps accepting for its 10 s drain
+      # window, then answers what it still holds or proxies for up to 120 s
+      # (the 90 s hold bound plus 30 s, cmd/activator/drain.go). The grace
+      # covers both before the kubelet kills it.
+      terminationGracePeriodSeconds: 150
       # Preferred, not required: on three platform nodes a required rule
       # strands the rollout surge pod (the w2/029 bex-api lesson).
       affinity:

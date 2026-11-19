@@ -130,6 +130,11 @@ func main() {
 	if v := os.Getenv("BEX_ACTIVATOR_ADDR"); v != "" {
 		addr = v
 	}
+	drainWindow, err := drainWindowFromEnv()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "activator: %v\n", err)
+		os.Exit(1)
+	}
 
 	// Build + prime the host→App index once (background-refreshed) so a request
 	// flood resolves from memory instead of a cluster-wide App List + linear scan
@@ -141,21 +146,22 @@ func main() {
 	hold := newHolder(c)
 	hold.static = staticServerURL(
 		os.Getenv("BEX_STATIC_SERVER_SERVICE"), os.Getenv("POD_NAMESPACE"), os.Getenv("BEX_STATIC_SERVER_PORT"))
-	http.Handle("/", newHoldingHandler(c, cache, log, hold))
-
-	log.Info("listening", "addr", addr)
-	srv := &http.Server{
-		Addr:              addr,
-		ReadHeaderTimeout: readHeaderTimeout,
-		ReadTimeout:       readTimeout,
-		WriteTimeout:      writeTimeout,
-		IdleTimeout:       idleTimeout,
-		MaxHeaderBytes:    maxHeaderBytes,
-	}
-	if err := srv.ListenAndServe(); err != nil {
+	if err := listenAndDrain(log, addr, tenantMux(newHoldingHandler(c, cache, log, hold)), drainWindow); err != nil {
 		fmt.Fprintf(os.Stderr, "activator: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// tenantMux routes every path on the public listener to handler. It is its own
+// ServeMux, never http.DefaultServeMux: net/http/pprof and expvar, which the
+// activator links through controller-runtime and the Prometheus client,
+// register /debug/pprof/ and /debug/vars there, so until w6/m485 every
+// sleeping, suspended, maintenance or unclaimed host answered them with the
+// activator's own profiles and memory statistics.
+func tenantMux(handler http.Handler) http.Handler {
+	mux := http.NewServeMux()
+	mux.Handle("/", handler)
+	return mux
 }
 
 // newHoldingHandler holds a non-browser request that triggers or joins a wake
