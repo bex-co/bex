@@ -1,6 +1,6 @@
 # w3 · m505 — A project's Application Logs and Request Logs show every resource in one view, as on Render
 
-**Worker:** worker3 **Goal:** a project gets Render's Observability group: Application Logs and Request Logs views, each a saved search, that read every service, cron job, Postgres and Key Value of the project (or one environment) in one time-ordered stream, each line naming its resource. **Status:** in progress (t001–t007 and t009–t012 done; t008 verified on dev-3, its production walk waits for a production pin carrying the change)
+**Worker:** worker3 **Goal:** a project gets Render's Observability group: Application Logs and Request Logs views, each a saved search, that read every service, cron job, Postgres and Key Value of the project (or one environment) in one time-ordered stream, each line naming its resource. **Status:** blocked — t001–t007 and t009–t012 done and shipped in `405547eb5`; t008 is verified on dev-3, and its production walk waits for a production pin carrying `405547eb5` (§ Gate)
 
 ## Tasks (in order)
 
@@ -49,6 +49,8 @@ A fresh dev-3 identity's workspace `tea-dbvbid1jg4r3h8hu6e7g` (Hobby) with proje
 - `logs(project, type: "request")` and the request tail answered `PLAN_FEATURE_REQUIRED` on Hobby.
 - The strict REST gate first refused `project` on `subscribe-logs` ("unsupported query parameter"); `project` and `filterDocument` are now declared Bex extensions there, and `resource` is optional on that operation only.
 
+- The migration shipped as `0308_saved_searches` (renumbered while shipping, above the 0305–0307 that landed on main meanwhile). dev-3's control-plane database had run it as 0305, so its saved-search objects were dropped and its version set back to 304; `dev-env.sh 3 up` then migrated it to 308 cleanly. The dev-3 fixture project was deleted (every by-id `GET` answers 404).
+
 ### dev-3 (2026-11-19, dashboard)
 
 Signed in as that identity on a local dashboard against dev-3:
@@ -62,7 +64,7 @@ Signed in as that identity on a local dashboard against dev-3:
 
 ## Render parity (t010)
 
-Compared 2026-11-19 against the capture ([project-observability.md](../../../docs/render-artifacts/project-observability.md)), [render.com/docs/projects](https://render.com/docs/projects) § Observability and [render.com/docs/logging](https://render.com/docs/logging). Render has no public REST or MCP operation for saved searches or project logs (the pinned `render-public-api-1.json`), so bex's REST and MCP stay as they are: `GET /v1/logs` and `list_logs` keep taking explicit `resource` values, and `GET /v1/logs?project=` is refused by the strict gate.
+Compared 2026-11-19 against the capture ([project-observability.md](../../../../docs/render-artifacts/project-observability.md)), [render.com/docs/projects](https://render.com/docs/projects) § Observability and [render.com/docs/logging](https://render.com/docs/logging). Render has no public REST or MCP operation for saved searches or project logs (the pinned `render-public-api-1.json`), so bex's REST and MCP stay as they are: `GET /v1/logs` and `list_logs` keep taking explicit `resource` values, and `GET /v1/logs?project=` is refused by the strict gate.
 
 | Surface | Render | bex | Verdict |
 | --- | --- | --- | --- |
@@ -96,3 +98,9 @@ Each test fails without the change (the feature is new); `TestPageReadsItsResour
 ## Simplify (t011)
 
 `/simplify` ran three reviews (reuse, quality, efficiency) over the diff. Applied: a project read authorizes its resources eight at a time, and a tail's re-resolution skips the resources it already follows (each follower re-checks its own access); a follower that ends has its context released; the tail ends quietly when its own context does; the resource-only and project tails share one live-producer check (`checkLiveSubscribable`) and one serialized writer (`serializedWriters`); per-resource reads use `errgroup` with a limit; the store reuses `appDisplayLabel` and scans through one helper; the scope rule uses the `v1alpha1` service type constants; the dashboard reuses `blueprintResourceHref` for a resource's page, `STRUCTURED_LABEL_KEYS` and `COMMIT_DELAY_MS`, returns the page's `resources` as read, and keys a view's scope on the view alone. Not taken: a shared state ladder for the service and project explorers and one route options factory for the two view routes (a larger refactor of `log-viewer.tsx` than this milestone's scope), one subscription slot per resource for a project tail (it would refuse any project above the five-per-caller default; ADR010 records the one-slot bound), and label-filtered datastore listing (the workspace-wide listing is the projects feature's existing read).
+
+## Gate (2026-11-19)
+
+**Clears by itself; no decision needed.** t008's production half needs a production deploy carrying `405547eb5`. `deploy.yml` deploys a push only when the production pin is at least 6 hours old, and the newest pin (`19faf35f3 chore(deploy): pin platform images to 4b2cebd0bd03`) landed at 09:13Z, so the next deploy runs after about 15:13Z. Check: the newest `chore(deploy): pin platform images to <sha>` on `main` passes `git merge-base --is-ancestor 405547eb5 <sha>`, and production's `bex-api` runs that digest.
+
+**Next (t008 step 2, then t013):** sign in as the QA user (`bash scripts/qa-login.sh`), and in `bex-canary` use or create a project with a web service, a cron job and a Postgres (one in a second environment). Check `savedSearches(projectId)` returns the three defaults; walk `/project/<prj>/observability/logs/application?savedSearchId=<svs>` and `/request` at 1440 and 390, pending and ready, with and without an `ENVIRONMENT` document (GraphQL `logs(project, filterDocument)`), and the live tail; confirm Postgres lines appear (production Loki ships them, dev-3's did not). Record the evidence here, delete any fixture with by-id `GET` 404 evidence, log out, and close the milestone.
