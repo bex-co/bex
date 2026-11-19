@@ -774,6 +774,8 @@ func TestObservedDatastoreFactsProjectToTheAdvertisedVocabulary(t *testing.T) {
 		store.DatastoreFactPostgresUpgradeFailed:    TypePostgresUpgradeFailed,
 		// w2/m171: a promoted standby is subscribable and delivers.
 		store.DatastoreFactPostgresClusterLeaderChanged: TypePostgresClusterLeaderChanged,
+		// w4/m511: a stale read replica is subscribable and delivers.
+		store.DatastoreFactPostgresReadReplicaStale: TypePostgresReadReplicaStale,
 	} {
 		if got := factEvents[string(factType)]; got != want {
 			t.Errorf("factEvents[%q] = %q, want %q", factType, got, want)

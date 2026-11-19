@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -78,6 +79,12 @@ type readReplicaState struct {
 	// ready: every declared replica that should have an instance has a ready
 	// one (true when none should).
 	ready bool
+	// sync holds the evaluated replication state per replica name when
+	// ReadReplicaSyncReader is wired.
+	sync map[string]readReplicaSyncState
+	// requeue is the soonest re-probe interval needed for read-replica sync
+	// monitoring; zero when no probing is scheduled.
+	requeue time.Duration
 }
 
 // readReplicaSource is what a replica cluster copies from its primary.
@@ -212,6 +219,13 @@ func (r *DatabaseReconciler) reconcileReadReplicas(ctx context.Context, db *appv
 	clusters, poolers := map[string]bool{}, map[string]bool{}
 	if state.provisioned {
 		src := readReplicaSourceOf(db, primary)
+		previousByName := make(map[string]*appv1alpha1.DatabaseReadReplicaStatus, len(db.Status.ReadReplicaStatuses))
+		for i := range db.Status.ReadReplicaStatuses {
+			previousByName[db.Status.ReadReplicaStatuses[i].Name] = &db.Status.ReadReplicaStatuses[i]
+		}
+		if r.ReadReplicaSyncReader != nil {
+			state.sync = make(map[string]readReplicaSyncState, len(db.Spec.ReadReplicas))
+		}
 		// A public database's replicas serve the primary's one certificate.
 		digests := map[string]string{}
 		for _, replica := range db.Spec.ReadReplicas {
@@ -221,6 +235,19 @@ func (r *DatabaseReconciler) reconcileReadReplicas(ctx context.Context, db *appv
 			}
 			clusters[cluster.GetName()] = true
 			state.ready = state.ready && ready
+			if r.ReadReplicaSyncReader != nil {
+				syncState, req := evaluateReadReplicaSync(
+					ctx, db.Name, replica.Name,
+					previousByName[replica.Name],
+					db.Spec.Suspended, src.settled, ready,
+					r.databaseNow(), r.readReplicaStaleThreshold(),
+					func() (ReadReplicaSyncSample, error) {
+						return r.ReadReplicaSyncReader(ctx, db, replica.Name, cluster)
+					},
+				)
+				state.sync[replica.Name] = syncState
+				state.requeue = soonerRequeue(state.requeue, req)
+			}
 			if !db.Spec.Pooler {
 				continue
 			}

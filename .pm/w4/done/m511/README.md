@@ -1,21 +1,21 @@
 # w4 · m511 — A read replica that stops syncing with its primary records Render's `postgres_read_replica_stale`
 
-**Worker:** worker4 **Goal:** a named read replica whose streaming from its primary stops records one `postgres_read_replica_stale` per episode on REST, GraphQL, MCP, webhooks and the dashboard, as Render records it. **Status:** todo
+**Worker:** worker4 **Goal:** a named read replica whose streaming from its primary stops records one `postgres_read_replica_stale` per episode on REST, GraphQL, MCP, webhooks and the dashboard, as Render records it. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Choose and prove the stale-replica signal on dev-4 | 50m | — |
-| t002 | The operator reports a stale read replica on its status | 60m | t001 |
-| t003 | Record each stale episode as a datastore fact and serve it | 50m | t002 |
-| t004 | Show the event in the dashboard | 25m | t003 |
-| t005 | Correct the docs that say the event has no producer | 20m | t003 |
-| t006 | Verify a stale replica on dev-4 | 40m | t004, t005 |
-| t007 | Render parity | 20m | t006 |
-| t008 | Simplify | 15m | t007 |
-| t009 | Test coverage | 30m | t007 |
-| t010 | Closeout | 10m | t008, t009 |
+| t001 | Choose and prove the stale-replica signal on dev-4 — **DONE** | 50m | — |
+| t002 | The operator reports a stale read replica on its status — **DONE** | 60m | t001 |
+| t003 | Record each stale episode as a datastore fact and serve it — **DONE** | 50m | t002 |
+| t004 | Show the event in the dashboard — **DONE** | 25m | t003 |
+| t005 | Correct the docs that say the event has no producer — **DONE** | 20m | t003 |
+| t006 | Verify a stale replica on dev-4 — **DONE** | 40m | t004, t005 |
+| t007 | Render parity — **DONE** | 20m | t006 |
+| t008 | Simplify — **DONE** | 15m | t007 |
+| t009 | Test coverage — **DONE** | 30m | t007 |
+| t010 | Closeout — **DONE** | 10m | t008, t009 |
 
 ## Definition of done
 

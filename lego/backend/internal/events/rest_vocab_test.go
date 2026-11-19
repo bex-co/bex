@@ -38,7 +38,7 @@ func restEmittedTypes() []string {
 		TypePostgresUnavailable, TypePostgresAvailable, TypeKeyValueUnhealthy, TypeKeyValueAvailable,
 		TypePostgresBackupCompleted, TypePostgresBackupFailed, TypePostgresRestoreSucceeded,
 		TypePostgresRestoreFailed, TypePostgresUpgradeStarted, TypePostgresUpgradeSucceeded,
-		TypePostgresUpgradeFailed, TypePostgresClusterLeaderChanged,
+		TypePostgresUpgradeFailed, TypePostgresClusterLeaderChanged, TypePostgresReadReplicaStale,
 	)
 	slices.Sort(types)
 	return slices.Compact(types)
@@ -113,6 +113,7 @@ func TestRESTEventTypesAreRenderOrDeclaredExtensions(t *testing.T) {
 		TypePostgresDiskAutoscalingEnabledChanged: datastore,
 		TypeKeyValueConfigRestart:                 datastore,
 		TypePostgresClusterLeaderChanged:          datastore,
+		TypePostgresReadReplicaStale:              datastore,
 		TypeEdgeCacheEnabled:                      objectOnly,
 		TypeEdgeCacheDisabled:                     objectOnly,
 		TypeEdgeCachePurged:                       objectOnly,

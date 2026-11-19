@@ -699,6 +699,10 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "Postgres 只读副本变更",
     description: "Event label — postgres_read_replicas_changed",
   },
+  "webhooks.event.postgres_read_replica_stale": {
+    message: "Postgres 只读副本同步停滞",
+    description: "Event label — postgres_read_replica_stale",
+  },
   "webhooks.event.postgres_backup_completed": {
     message: "Postgres 备份完成",
     description: "Event label — postgres_backup_completed",

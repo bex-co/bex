@@ -819,6 +819,13 @@ type DatabaseReconciler struct {
 	// failing, which CNPG still reports as ContinuousArchiving=True (w5/175).
 	// Nil mirrors CNPG's condition alone.
 	WALArchiveStallReader WALArchiveStallReader
+	// ReadReplicaSyncReader probes each ready read replica's CNPG instance
+	// manager (/pg/status) to detect stopped streaming (w4/m511). Nil skips
+	// sync probing in unit tests that do not run a status server.
+	ReadReplicaSyncReader ReadReplicaSyncReader
+	// ReadReplicaStaleAfter overrides readReplicaStaleAfter (2 minutes) in
+	// tests. Zero uses the package default.
+	ReadReplicaStaleAfter time.Duration
 	// DBDomain is the wildcard base for external endpoints, e.g. "db.bex.co".
 	// Empty => Public databases get no external route.
 	DBDomain string
@@ -1045,6 +1052,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	// --- external SNI endpoint status (rw + pooler + read replicas) ---
 	r.updateExternalAddressStatus(&db, replicas.provisioned)
+	applyReadReplicaSyncStatus(&db, replicas.sync)
 
 	if db.Spec.Suspended {
 		return r.settleSuspended(ctx, &db, soonerRequeue(exportRequeue, tlsRequeue))
@@ -1055,7 +1063,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// instance is in replicas.ready.
 	desiredInstances, _, _ := unstructured.NestedInt64(cluster.Object, "spec", "instances")
 
-	requeue := soonerRequeue(soonerRequeue(soonerRequeue(exportRequeue, diskRequeue), tlsRequeue), r.walArchiveStallRequeue(backups.enabled))
+	requeue := soonerRequeue(exportRequeue, diskRequeue, tlsRequeue, r.walArchiveStallRequeue(backups.enabled), replicas.requeue)
 	if connectionSecret == "" {
 		// Nothing watches Secrets: poll for the rotation's source Secrets.
 		requeue = soonerRequeue(requeue, defaultCredentialRequeue)
@@ -1870,11 +1878,14 @@ func sameQuantities(have, want corev1.ResourceList) bool {
 	return true
 }
 
-func soonerRequeue(current, candidate time.Duration) time.Duration {
-	if candidate <= 0 || (current > 0 && current <= candidate) {
-		return current
+func soonerRequeue(candidates ...time.Duration) time.Duration {
+	var best time.Duration
+	for _, d := range candidates {
+		if d > 0 && (best == 0 || d < best) {
+			best = d
+		}
 	}
-	return candidate
+	return best
 }
 
 // setLifecycleAnnotations maps the Database lifecycle intent onto CNPG's cluster

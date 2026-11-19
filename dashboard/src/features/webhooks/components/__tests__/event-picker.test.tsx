@@ -76,6 +76,7 @@ describe("catalogEntries (w1/m49/t002)", () => {
       "postgres_cluster_leader_changed",
       "postgres_connection_pool_enabled_changed",
       "postgres_disk_size_changed",
+      "postgres_read_replica_stale",
       "postgres_backup_completed",
       "postgres_backup_failed",
       "postgres_pitr_checkpoint_started",

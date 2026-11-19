@@ -76,6 +76,13 @@ const (
 // nothing. Render's details carry the new primary as leaderId.
 const TypePostgresClusterLeaderChanged = "postgres_cluster_leader_changed"
 
+// TypePostgresReadReplicaStale is Render's "a read replica has stopped syncing
+// with its primary instance" event (w4/m511). Observed from
+// Database.status.readReplicaStatuses[] once a replica's syncing flag flips to
+// false after the operator's 2-minute hysteresis threshold. Render's details
+// member is empty ({}) and Render defines no recovery event.
+const TypePostgresReadReplicaStale = "postgres_read_replica_stale"
+
 // Configuration-change names (w3/m82 t003). Audit-derived like the block at the
 // top of the file, but field-level rather than lifecycle: each is produced by a
 // successful PATCH that changed exactly that setting, and the audit row carries

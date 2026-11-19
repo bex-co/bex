@@ -720,6 +720,10 @@ const ruWebhooks: Record<string, TranslationEntry> = {
     message: "Реплики Postgres для чтения изменены",
     description: "Event label — postgres_read_replicas_changed",
   },
+  "webhooks.event.postgres_read_replica_stale": {
+    message: "Реплика Postgres для чтения устарела",
+    description: "Event label — postgres_read_replica_stale",
+  },
   "webhooks.event.postgres_backup_completed": {
     message: "Резервное копирование Postgres завершено",
     description: "Event label — postgres_backup_completed",

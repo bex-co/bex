@@ -17,7 +17,9 @@ limitations under the License.
 package store
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -43,6 +45,7 @@ func observedDatastoreLifecycleFacts(obs ObservedDatastoreState, previous datast
 	facts = append(facts, restoreFacts(obs, previous, &next)...)
 	facts = append(facts, upgradeFacts(obs, previous, &next)...)
 	facts = append(facts, leaderFacts(obs, previous, &next)...)
+	facts = append(facts, readReplicaStaleFacts(obs, previous, &next)...)
 	return facts, next
 }
 
@@ -90,6 +93,87 @@ func leaderFacts(obs ObservedDatastoreState, previous datastoreCheckpointExtras,
 		At:          at,
 		LeaderID:    obs.CurrentPrimary,
 	}}
+}
+
+const staleReplicaUnknownStamp = "unknown"
+
+func staleReplicaEpisodeStamp(stoppedAt time.Time) string {
+	if stoppedAt.IsZero() {
+		return staleReplicaUnknownStamp
+	}
+	return stoppedAt.UTC().Format(time.RFC3339)
+}
+
+func staleReplicaLatchMap(replicas []ObservedStaleReadReplica) map[string]string {
+	if len(replicas) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(replicas))
+	for _, rep := range replicas {
+		if rep.Name == "" {
+			continue
+		}
+		out[rep.Name] = staleReplicaEpisodeStamp(rep.StoppedAt)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// readReplicaStaleFacts reports each named read replica whose syncing flag
+// flipped to false — Render's postgres_read_replica_stale (w4/m511) — once per
+// (replica, syncStoppedAt) episode. Recovery removes the replica from the
+// latch without emitting an event (Render has no recovery event) and re-arms
+// it so a later break records a second event. An older SyncStoppedAt committed
+// late by another bex-api replica neither emits nor moves the latch backwards.
+func readReplicaStaleFacts(obs ObservedDatastoreState, previous datastoreCheckpointExtras, next *datastoreCheckpointExtras) []DatastoreEventFact {
+	if obs.Suspended || len(obs.StaleReadReplicas) == 0 {
+		next.StaleReplicas = nil
+		return nil
+	}
+	sorted := slices.Clone(obs.StaleReadReplicas)
+	slices.SortFunc(sorted, func(a, b ObservedStaleReadReplica) int {
+		return cmp.Compare(a.Name, b.Name)
+	})
+	nextMap := make(map[string]string, len(sorted))
+	var facts []DatastoreEventFact
+	for _, rep := range sorted {
+		if rep.Name == "" {
+			continue
+		}
+		stamp := staleReplicaEpisodeStamp(rep.StoppedAt)
+		prevStamp, existed := previous.StaleReplicas[rep.Name]
+		if existed {
+			if prevStamp == stamp {
+				nextMap[rep.Name] = prevStamp
+				continue
+			}
+			if prevTime, err := time.Parse(time.RFC3339, prevStamp); err == nil && !rep.StoppedAt.IsZero() && !rep.StoppedAt.After(prevTime) {
+				nextMap[rep.Name] = prevStamp
+				continue
+			}
+		}
+		nextMap[rep.Name] = stamp
+		keyAt := rep.StoppedAt
+		if keyAt.IsZero() {
+			keyAt = obs.At
+		}
+		facts = append(facts, DatastoreEventFact{
+			SourceKey:   fmt.Sprintf("%s:replica_stale:%s:%d", obs.DatastoreID, rep.Name, keyAt.UTC().UnixNano()),
+			WorkspaceID: obs.WorkspaceID,
+			DatastoreID: obs.DatastoreID,
+			Kind:        obs.Kind,
+			Type:        DatastoreFactPostgresReadReplicaStale,
+			At:          obs.At,
+		})
+	}
+	if len(nextMap) == 0 {
+		next.StaleReplicas = nil
+	} else {
+		next.StaleReplicas = nextMap
+	}
+	return facts
 }
 
 // checkpointStartedFacts reports a CNPG base backup starting — Render's
@@ -395,6 +479,21 @@ func stampPrimaryObservation(obs *ObservedDatastoreState, status *appv1alpha1.Da
 	obs.CurrentPrimary = status.CurrentPrimary
 	if parsed, err := time.Parse(time.RFC3339, status.CurrentPrimaryTimestamp); err == nil {
 		obs.CurrentPrimarySince = parsed.UTC().Truncate(time.Microsecond)
+	}
+}
+
+// stampReadReplicaSyncObservation copies each read replica currently reporting
+// Syncing=false onto the observed snapshot (w4/m511).
+func stampReadReplicaSyncObservation(obs *ObservedDatastoreState, status *appv1alpha1.DatabaseStatus) {
+	for _, rep := range status.ReadReplicaStatuses {
+		if rep.Name == "" || rep.Syncing == nil || *rep.Syncing {
+			continue
+		}
+		entry := ObservedStaleReadReplica{Name: rep.Name}
+		if parsed, err := time.Parse(time.RFC3339, rep.SyncStoppedAt); err == nil {
+			entry.StoppedAt = parsed.UTC()
+		}
+		obs.StaleReadReplicas = append(obs.StaleReadReplicas, entry)
 	}
 }
 

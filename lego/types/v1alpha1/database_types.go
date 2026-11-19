@@ -856,6 +856,22 @@ type DatabaseReadReplicaStatus struct {
 	// Public and pooled.
 	// +optional
 	PoolerExternalHost string `json:"poolerExternalHost,omitempty"`
+	// Syncing reports whether this read replica is actively streaming and
+	// replaying WAL from its primary (w4/m511, ADR009 § Stale read-replica
+	// detection). True while streaming (and during the hysteresis window before
+	// a break counts as stale); false once non-syncing has persisted for at
+	// least the stale threshold (2 minutes). Nil while the replica is not yet
+	// ready/observed or while the database is suspended.
+	// +optional
+	Syncing *bool `json:"syncing,omitempty"`
+	// SyncStoppedAt is the RFC3339 timestamp when the current non-syncing
+	// streak began, cleared when syncing resumes. While now - SyncStoppedAt is
+	// below the stale threshold Syncing remains true (hysteresis); once it
+	// crosses the threshold Syncing becomes false and SyncStoppedAt stays
+	// pinned for the episode so the control plane keys one
+	// postgres_read_replica_stale event per episode.
+	// +optional
+	SyncStoppedAt string `json:"syncStoppedAt,omitempty"`
 }
 
 // +kubebuilder:object:root=true

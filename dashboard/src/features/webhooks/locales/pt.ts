@@ -719,6 +719,10 @@ const ptWebhooks: Record<string, TranslationEntry> = {
     message: "Réplicas de leitura do Postgres alteradas",
     description: "Event label — postgres_read_replicas_changed",
   },
+  "webhooks.event.postgres_read_replica_stale": {
+    message: "Réplica de leitura do Postgres desatualizada",
+    description: "Event label — postgres_read_replica_stale",
+  },
   "webhooks.event.postgres_backup_completed": {
     message: "Backup do Postgres concluído",
     description: "Event label — postgres_backup_completed",

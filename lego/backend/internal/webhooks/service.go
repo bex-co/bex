@@ -152,6 +152,9 @@ const (
 	// the standby. The thin payload names the database; the new primary is
 	// leaderId on the hydrated event.
 	TypePostgresClusterLeaderChanged = eventvocab.TypePostgresClusterLeaderChanged
+	// A read replica stopped syncing with its primary (w4/m511): thin payload
+	// names the database, and the hydrated event carries Render's empty details.
+	TypePostgresReadReplicaStale = eventvocab.TypePostgresReadReplicaStale
 	// Persistent-disk lifecycle (ADR082; w8/m34). Render's webhook enum spells
 	// these disk_created/disk_updated/disk_deleted — the earlier bex-only
 	// disk_attached/disk_detached filters are rewritten by migration 0106.
@@ -298,6 +301,7 @@ var factEvents = map[string]string{
 	string(store.DatastoreFactPostgresPITRCheckpointFailed):    TypePostgresPITRCheckpointFailed,
 	string(store.DatastoreFactPostgresWALArchiveFailed):        TypePostgresWALArchiveFailed,
 	string(store.DatastoreFactPostgresClusterLeaderChanged):    TypePostgresClusterLeaderChanged,
+	string(store.DatastoreFactPostgresReadReplicaStale):        TypePostgresReadReplicaStale,
 }
 
 // auditVerbs is verbEvents' key set — the dispatcher's push-down filter,

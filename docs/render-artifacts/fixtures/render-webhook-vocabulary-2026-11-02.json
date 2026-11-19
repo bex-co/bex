@@ -203,6 +203,7 @@
     "postgres_pitr_checkpoint_completed",
     "postgres_pitr_checkpoint_failed",
     "postgres_pitr_checkpoint_started",
+    "postgres_read_replica_stale",
     "postgres_read_replicas_changed",
     "postgres_restarted",
     "postgres_restore_failed",
@@ -247,7 +248,6 @@
     "maintenance_started"
   ],
   "sourceBoundUnsupported": [
-    "postgres_connection_pool_changed",
-    "postgres_read_replica_stale"
+    "postgres_connection_pool_changed"
   ]
 }

@@ -4,7 +4,13 @@ import {
   eventLabelKey,
   pickerEventTypes,
 } from "../event-catalog";
+import deWebhooks from "../locales/de";
 import enWebhooks from "../locales/en";
+import esWebhooks from "../locales/es";
+import jaWebhooks from "../locales/ja";
+import koWebhooks from "../locales/ko";
+import ptWebhooks from "../locales/pt";
+import ruWebhooks from "../locales/ru";
 import zhWebhooks from "../locales/zh";
 import { readFileSync } from "node:fs";
 
@@ -20,12 +26,28 @@ const fixture = JSON.parse(
 ) as { bexSupported: string[]; renderDashboard: string[] };
 
 describe("webhook event vocabulary", () => {
-  it("labels every served type in the picker catalog, en and zh", () => {
+  it("labels every served type in the picker catalog across every locale", () => {
+    const locales = {
+      de: deWebhooks,
+      en: enWebhooks,
+      es: esWebhooks,
+      ja: jaWebhooks,
+      ko: koWebhooks,
+      pt: ptWebhooks,
+      ru: ruWebhooks,
+      zh: zhWebhooks,
+    };
     const missing: string[] = [];
     for (const type of fixture.bexSupported) {
       const key = eventLabelKey(type);
-      if (!key || !(key in enWebhooks) || !(key in zhWebhooks)) {
-        missing.push(type);
+      if (!key) {
+        missing.push(`${type}:no-key`);
+        continue;
+      }
+      for (const [locale, messages] of Object.entries(locales)) {
+        if (!(key in messages)) {
+          missing.push(`${type}:${locale}`);
+        }
       }
     }
     expect(missing).toEqual([]);

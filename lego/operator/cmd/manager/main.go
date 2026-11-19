@@ -672,6 +672,7 @@ func setupDatastoreReconcilers(mgr ctrl.Manager, uncachedClient client.Client, a
 			S3Secret:        env.Or("BEX_DB_BACKUP_S3_SECRET", ""),
 		},
 	}
+	databaseReconciler.ReadReplicaSyncReader = databaseReconciler.ProbeReadReplicaSync
 	if promURL := os.Getenv("BEX_PROM_URL"); promURL != "" {
 		databaseReconciler.DiskUsageReader = controller.NewPrometheusDatabaseDiskUsageReader(promURL, nil)
 		databaseReconciler.WALArchiveStallReader = controller.NewPrometheusWALArchiveStallReader(promURL, nil)

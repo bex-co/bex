@@ -110,6 +110,7 @@ func TestRenderEventDetailsMatchTheirMember(t *testing.T) {
 		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypePostgresUpgradeStarted, VersionFrom: "16", VersionTo: "17"}},
 		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypePostgresUpgradeSucceeded, VersionFrom: "16", VersionTo: "17"}},
 		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypePostgresUpgradeFailed, VersionFrom: "16", VersionTo: "17"}},
+		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypePostgresReadReplicaStale}},
 		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: core.AuditVerbKeyValueConfigChanged, PersistenceMode: new("off")}},
 	} {
 		tc.row.Key, tc.row.At = cmp.Or(tc.row.Key, fmt.Sprintf("k:%s:%s:%s", tc.row.Source, tc.row.FactType, tc.row.Verb)), at

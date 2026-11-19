@@ -707,6 +707,10 @@ const koWebhooks: Record<string, TranslationEntry> = {
     message: "Postgres 읽기 복제본 변경됨",
     description: "Event label — postgres_read_replicas_changed",
   },
+  "webhooks.event.postgres_read_replica_stale": {
+    message: "Postgres 읽기 복제본 동기화 지연",
+    description: "Event label — postgres_read_replica_stale",
+  },
   "webhooks.event.postgres_backup_completed": {
     message: "Postgres 백업 완료됨",
     description: "Event label — postgres_backup_completed",

@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -55,6 +56,7 @@ const (
 	DatastoreFactPostgresWALArchiveFailed        DatastoreEventFactType = eventvocab.TypePostgresWALArchiveFailed
 
 	DatastoreFactPostgresClusterLeaderChanged DatastoreEventFactType = eventvocab.TypePostgresClusterLeaderChanged
+	DatastoreFactPostgresReadReplicaStale     DatastoreEventFactType = eventvocab.TypePostgresReadReplicaStale
 )
 
 // DatastoreKind separates the two managed datastore products. It is the CHECK
@@ -159,10 +161,21 @@ type ObservedDatastoreState struct {
 	CurrentPrimary      string
 	CurrentPrimarySince time.Time
 
+	// StaleReadReplicas are Database.status.readReplicaStatuses[] entries that
+	// currently report Syncing == false (w4/m511). Empty while all replicas
+	// are syncing, unobserved, or the database is suspended.
+	StaleReadReplicas []ObservedStaleReadReplica
+
 	// Checkpoint-only extras round-tripped by the memStore (PG keeps them in
 	// dedicated columns). Producers leave them empty; RecordObserved* fills them.
 	RestoreOutcome string
 	UpgradeKey     string
+}
+
+// ObservedStaleReadReplica is one read replica currently reporting Syncing=false.
+type ObservedStaleReadReplica struct {
+	Name      string
+	StoppedAt time.Time
 }
 
 // ObservedDatastoreExport is one terminal logical export.
@@ -196,6 +209,11 @@ type datastoreCheckpointExtras struct {
 	// one backwards (w2/m171).
 	CurrentPrimary      string
 	CurrentPrimarySince time.Time
+	// StaleReplicas maps each currently stale replica name to its episode's
+	// SyncStoppedAt stamp (RFC3339 or "unknown"), so each stale episode records
+	// one postgres_read_replica_stale fact and recovery re-arms it silently
+	// (w4/m511).
+	StaleReplicas map[string]string
 }
 
 // datastoreFactTypeFor names the availability edge for one datastore kind.
@@ -321,9 +339,10 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		selectCheckpoint := `SELECT phase, availability, suspended,
 			last_backup_name, last_backup_phase, restore_outcome, upgrade_key,
-			started_backup, wal_archiving, exports_since, current_primary, current_primary_since, updated_at
+			started_backup, wal_archiving, exports_since, current_primary, current_primary_since, stale_replicas, updated_at
 			FROM datastore_observed_checkpoints WHERE datastore_id = $1 FOR UPDATE`
 		var exportsSince, primarySince *time.Time
+		var staleReplicasRaw []byte
 		var previousPhase, previousAvailability string
 		var previousSuspended bool
 		var previousChangedAt time.Time
@@ -333,7 +352,7 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 				&previousExtras.LastBackupName, &previousExtras.LastBackupPhase,
 				&previousExtras.RestoreOutcome, &previousExtras.UpgradeKey,
 				&previousExtras.StartedBackup, &previousExtras.WALArchiving, &exportsSince,
-				&previousExtras.CurrentPrimary, &primarySince, &previousChangedAt)
+				&previousExtras.CurrentPrimary, &primarySince, &staleReplicasRaw, &previousChangedAt)
 		if errors.Is(err, pgx.ErrNoRows) {
 			// The baseline latches through the same arming rule as every later
 			// pass, so a first-ever observation caught mid-provisioning records
@@ -343,18 +362,22 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 			// until it actually reaches Ready after the checkpoint exists.
 			baseline := nextDatastoreAvailability("", obs.Availability)
 			baselineExtras := datastoreBaselineExtras(obs)
+			baselineStale, marshalErr := marshalStaleReplicas(baselineExtras.StaleReplicas)
+			if marshalErr != nil {
+				return marshalErr
+			}
 			tag, insertErr := tx.Exec(ctx,
 				`INSERT INTO datastore_observed_checkpoints
 				     (datastore_id, workspace_id, kind, phase, availability, suspended, updated_at, healthy_transition_at,
 				      last_backup_name, last_backup_phase, restore_outcome, upgrade_key,
-				      started_backup, wal_archiving, exports_since, current_primary, current_primary_since)
-				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+				      started_backup, wal_archiving, exports_since, current_primary, current_primary_since, stale_replicas)
+				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 				 ON CONFLICT (datastore_id) DO NOTHING`,
 				obs.DatastoreID, obs.WorkspaceID, obs.Kind, obs.Phase, baseline, obs.Suspended, obs.At, healthyTransition,
 				baselineExtras.LastBackupName, baselineExtras.LastBackupPhase,
 				baselineExtras.RestoreOutcome, baselineExtras.UpgradeKey,
 				baselineExtras.StartedBackup, baselineExtras.WALArchiving, nullTime(baselineExtras.ExportsSince),
-				baselineExtras.CurrentPrimary, nullTime(baselineExtras.CurrentPrimarySince))
+				baselineExtras.CurrentPrimary, nullTime(baselineExtras.CurrentPrimarySince), baselineStale)
 			if insertErr != nil {
 				return insertErr
 			}
@@ -366,7 +389,7 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 					&previousExtras.LastBackupName, &previousExtras.LastBackupPhase,
 					&previousExtras.RestoreOutcome, &previousExtras.UpgradeKey,
 					&previousExtras.StartedBackup, &previousExtras.WALArchiving, &exportsSince,
-					&previousExtras.CurrentPrimary, &primarySince, &previousChangedAt)
+					&previousExtras.CurrentPrimary, &primarySince, &staleReplicasRaw, &previousChangedAt)
 		}
 		if err != nil {
 			return err
@@ -376,6 +399,11 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 		}
 		if primarySince != nil {
 			previousExtras.CurrentPrimarySince = primarySince.UTC()
+		}
+		if stale, parseErr := unmarshalStaleReplicas(staleReplicasRaw); parseErr != nil {
+			return parseErr
+		} else {
+			previousExtras.StaleReplicas = stale
 		}
 
 		availability := previousAvailability
@@ -395,6 +423,10 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 				inserted = append(inserted, fact)
 			}
 		}
+		nextStale, err := marshalStaleReplicas(nextExtras.StaleReplicas)
+		if err != nil {
+			return err
+		}
 		// IS DISTINCT FROM makes the steady state a no-op instead of a row
 		// write: the reconciler observes every datastore on every resync and
 		// almost none of them changed. Same guard the App checkpoint uses.
@@ -411,17 +443,17 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 			     last_backup_name = $8, last_backup_phase = $9,
 			     restore_outcome = $10, upgrade_key = $11,
 			     started_backup = $13, wal_archiving = $14, exports_since = $15,
-			     current_primary = $16, current_primary_since = $17
+			     current_primary = $16, current_primary_since = $17, stale_replicas = $18
 			 WHERE datastore_id = $1
 			   AND (workspace_id, phase, availability, suspended,
 			        last_backup_name, last_backup_phase, restore_outcome, upgrade_key,
-			        started_backup, wal_archiving, exports_since, current_primary, current_primary_since)
-			       IS DISTINCT FROM ($2, $3, $4, $5, $8, $9, $10, $11, $13, $14, $15, $16, $17)`,
+			        started_backup, wal_archiving, exports_since, current_primary, current_primary_since, stale_replicas)
+			       IS DISTINCT FROM ($2, $3, $4, $5, $8, $9, $10, $11, $13, $14, $15, $16, $17, $18)`,
 			obs.DatastoreID, obs.WorkspaceID, obs.Phase, availability, obs.Suspended, obs.At, healthyTransition,
 			nextExtras.LastBackupName, nextExtras.LastBackupPhase,
 			nextExtras.RestoreOutcome, nextExtras.UpgradeKey, obs.AvailabilitySuppressed,
 			nextExtras.StartedBackup, nextExtras.WALArchiving, nullTime(nextExtras.ExportsSince),
-			nextExtras.CurrentPrimary, nullTime(nextExtras.CurrentPrimarySince))
+			nextExtras.CurrentPrimary, nullTime(nextExtras.CurrentPrimarySince), nextStale)
 		return err
 	})
 	if err != nil {
@@ -450,6 +482,7 @@ func datastoreBaselineExtras(obs ObservedDatastoreState) datastoreCheckpointExtr
 		// change: Render records no leader change at create.
 		CurrentPrimary:      obs.CurrentPrimary,
 		CurrentPrimarySince: obs.CurrentPrimarySince,
+		StaleReplicas:       staleReplicaLatchMap(obs.StaleReadReplicas),
 	}
 	if obs.Recovering && obs.AvailabilityObserved && obs.Availability == "healthy" {
 		extras.RestoreOutcome = "succeeded"
@@ -465,6 +498,27 @@ func datastoreBaselineExtras(obs ObservedDatastoreState) datastoreCheckpointExtr
 
 // insertDatastoreEventFactTx reports whether the row was new: a fact already
 // recorded under its source key (an export seen on an earlier pass) is not.
+func marshalStaleReplicas(m map[string]string) ([]byte, error) {
+	if len(m) == 0 {
+		return []byte("{}"), nil
+	}
+	return json.Marshal(m)
+}
+
+func unmarshalStaleReplicas(raw []byte) (map[string]string, error) {
+	if len(raw) == 0 || string(raw) == "{}" {
+		return nil, nil
+	}
+	var m map[string]string
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil, fmt.Errorf("unmarshal stale_replicas: %w", err)
+	}
+	if len(m) == 0 {
+		return nil, nil
+	}
+	return m, nil
+}
+
 func insertDatastoreEventFactTx(ctx context.Context, tx pgx.Tx, fact DatastoreEventFact) (bool, error) {
 	tag, err := tx.Exec(ctx, insertDatastoreEventFactSQL,
 		fact.SourceKey, fact.WorkspaceID, fact.DatastoreID, fact.Kind, fact.Type, fact.At,

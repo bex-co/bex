@@ -273,6 +273,9 @@ const (
 	// The primary moved (w2/m171), observed like its siblings; details carry
 	// the new primary as leaderId.
 	TypePostgresClusterLeaderChanged = eventvocab.TypePostgresClusterLeaderChanged
+	// A read replica stopped syncing with its primary (w4/m511), observed like
+	// its siblings; Render's member carries empty details ({}).
+	TypePostgresReadReplicaStale = eventvocab.TypePostgresReadReplicaStale
 	// Edge caching (w9/m345): apps.SetCacheProfile turning the cache on or
 	// off, and apps.PurgeCache. details.trigger is Render's {manual, user,
 	// system}.
