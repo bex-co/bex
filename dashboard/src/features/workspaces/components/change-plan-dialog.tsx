@@ -44,10 +44,12 @@ const PRECONDITION_LABELS: Record<DowngradePrecondition["kind"], string> = {
   secondary_workspaces: "workspaces.orgDowngradeSecondaryWorkspaces",
   member_roles: "workspaces.orgDowngradeMemberRoles",
   invite_roles: "workspaces.orgDowngradeInviteRoles",
+  member_limit: "workspaces.orgDowngradeMemberLimit",
   inbound_ip_rules: "workspaces.orgDowngradeInboundIpRules",
 };
 
-/** A "subject:role" or "email:role" pair as "who (Role)". */
+/** An "email:role" pair (a member's sign-in id when no email resolves) as
+ *  "who (Role)". */
 function personWithRole(item: string, t: Translate): string {
   const at = item.lastIndexOf(":");
   if (at <= 0) return item;
@@ -86,6 +88,7 @@ function preconditionLine(
     switch (precondition.kind) {
       case "member_roles":
       case "invite_roles":
+      case "member_limit":
         return personWithRole(item, t);
       case "inbound_ip_rules":
         return ipRuleHolder(item, t);
@@ -159,7 +162,10 @@ export function ChangePlanDialog({
             <TriangleAlert />
             <AlertTitle>{t("workspaces.orgDowngradeWarningTitle")}</AlertTitle>
             <AlertDescription>
-              {t("workspaces.orgDowngradeWarning")}
+              <p>{t("workspaces.orgDowngradeWarning")}</p>
+              {plan === "hobby" ? (
+                <p>{t("workspaces.orgDowngradeWarningHobby")}</p>
+              ) : null}
             </AlertDescription>
           </Alert>
         ) : null}

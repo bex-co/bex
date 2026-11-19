@@ -856,6 +856,12 @@ const ptWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Change-plan dialog on an org's primary: what a downgrade below Scale does and Render's preconditions (render.com/docs/organizations, w7/m464)",
   },
+  "workspaces.orgDowngradeWarningHobby": {
+    message:
+      "O Hobby tem um único membro, então remova também os outros membros deste workspace e revogue os convites pendentes.",
+    description:
+      "Change-plan dialog on an org's primary with Hobby selected: the extra step a one-member plan needs, below the downgrade warning (w7/087)",
+  },
   "workspaces.orgDowngradeBlocked": {
     message:
       "A organização ainda não pode ser excluída. Antes de fazer downgrade para abaixo do Scale:",
@@ -878,6 +884,12 @@ const ptWorkspaces: Record<string, TranslationEntry> = {
       "Altere a função destes convites pendentes para Desenvolvedor ou Administrador",
     description:
       "Unmet downgrade precondition invite_roles; the invited emails and roles follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeMemberLimit": {
+    message:
+      "Remova estes membros e convites pendentes (o Hobby tem um único membro)",
+    description:
+      "Unmet downgrade precondition member_limit on a Hobby target: the members and pending invites beyond its one seat follow (w7/087)",
   },
   "workspaces.orgDowngradeInboundIpRules": {
     message: "Exclua as regras de IP de entrada",

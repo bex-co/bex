@@ -83,6 +83,16 @@ describe("ChangePlanDialog on an organization's primary (w7/m464)", () => {
     expect(warning).toHaveTextContent(
       "this workspace continues as a standalone workspace",
     );
+    // Only Hobby seats one member, so only Hobby says to remove the others
+    // (w7/087).
+    expect(warning).not.toHaveTextContent("Hobby has one member");
+
+    await user.click(screen.getByRole("radio", { name: /Hobby/ }));
+    expect(
+      screen.getByTestId("organization-downgrade-warning"),
+    ).toHaveTextContent(
+      "Hobby has one member, so also remove this workspace's other members and revoke its pending invites.",
+    );
   });
 
   it("never warns about an organization on a standalone workspace", async () => {
@@ -102,7 +112,7 @@ describe("ChangePlanDialog on an organization's primary (w7/m464)", () => {
         plan: "pro",
         preconditions: [
           { kind: "secondary_workspaces", items: ["staging", "data"] },
-          { kind: "member_roles", items: ["kratos-id-1:billing"] },
+          { kind: "member_roles", items: ["bill@example.com:billing"] },
           { kind: "invite_roles", items: ["ann@example.com:viewer"] },
           {
             kind: "inbound_ip_rules",
@@ -132,9 +142,45 @@ describe("ChangePlanDialog on an organization's primary (w7/m464)", () => {
       .map((item) => item.textContent);
     expect(lines).toEqual([
       "Delete the organization's other workspaces: staging and data",
-      "Change these members' roles to Developer or Admin: kratos-id-1 (Billing)",
+      "Change these members' roles to Developer or Admin: bill@example.com (Billing)",
       "Change these pending invites' roles to Developer or Admin: ann@example.com (Viewer)",
       "Delete inbound IP rules: this workspace, environment production, and service api",
+    ]);
+  });
+
+  it("on a Hobby target names a Viewer under its role and everyone past the one seat under remove (w7/087)", async () => {
+    mutate.mockRejectedValue(
+      codedGraphQLError("ORGANIZATION_DOWNGRADE_BLOCKED", {
+        organizationId: "org-1",
+        plan: "hobby",
+        preconditions: [
+          { kind: "member_roles", items: ["vic@example.com:viewer"] },
+          {
+            kind: "member_limit",
+            items: [
+              "vic@example.com:viewer",
+              "dev@example.com:developer",
+              "ann@example.com:developer",
+            ],
+          },
+        ],
+      }),
+    );
+    const user = userEvent.setup();
+    renderDialog(PRIMARY);
+
+    await user.click(screen.getByRole("radio", { name: /Hobby/ }));
+    await user.click(screen.getByRole("button", { name: "Change Plan" }));
+
+    expect(mutate).toHaveBeenCalledWith({
+      variables: { id: "tea-primary", plan: "hobby" },
+    });
+    const lines = within(await refusal())
+      .getAllByRole("listitem")
+      .map((item) => item.textContent);
+    expect(lines).toEqual([
+      "Change these members' roles to Developer or Admin: vic@example.com (Viewer)",
+      "Remove these members and pending invites (Hobby has one member): vic@example.com (Viewer), dev@example.com (Developer), and ann@example.com (Developer)",
     ]);
   });
 

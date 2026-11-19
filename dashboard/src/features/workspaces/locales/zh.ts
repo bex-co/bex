@@ -830,6 +830,12 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Change-plan dialog on an org's primary: what a downgrade below Scale does and Render's preconditions (render.com/docs/organizations, w7/m464)",
   },
+  "workspaces.orgDowngradeWarningHobby": {
+    message:
+      "Hobby 只有一名成员，因此还需移除此工作区的其他成员并撤销其待处理邀请。",
+    description:
+      "Change-plan dialog on an org's primary with Hobby selected: the extra step a one-member plan needs, below the downgrade warning (w7/087)",
+  },
   "workspaces.orgDowngradeBlocked": {
     message: "组织暂时无法删除。降级到 Scale 以下之前，请先完成以下事项：",
     description:
@@ -849,6 +855,11 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     message: "将这些待处理邀请的角色改为开发者或管理员",
     description:
       "Unmet downgrade precondition invite_roles; the invited emails and roles follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeMemberLimit": {
+    message: "移除这些成员和待处理邀请（Hobby 只有一名成员）",
+    description:
+      "Unmet downgrade precondition member_limit on a Hobby target: the members and pending invites beyond its one seat follow (w7/087)",
   },
   "workspaces.orgDowngradeInboundIpRules": {
     message: "删除入站 IP 规则",

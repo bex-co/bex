@@ -515,9 +515,12 @@ func (s *Service) changeOrganizationPlan(ctx context.Context, orgs OrganizationS
 // downgradePreconditions lists Render's preconditions for downgrading the
 // org's primary below Scale that do not hold (ADR115 D6, render.com/docs/
 // organizations): the secondary workspaces; Billing, Viewer and Contributor
-// members and pending invites (roles the target plan cannot seat); and
-// inbound IP rules on the workspace, its environments and its web services
-// and static sites. Rules on Postgres and Key Value are not affected.
+// members and pending invites (the roles only an org offers, judged against
+// Pro whatever the target, so a Hobby target does not list a Developer
+// under them); and inbound IP rules on the workspace, its environments and
+// its web services and static sites. Rules on Postgres and Key Value are not
+// affected. A target with a member cap (Hobby seats one) also names everyone
+// beyond it. People are named by email (w7/087).
 func (s *Service) downgradePreconditions(ctx context.Context, orgs OrganizationStore, o store.Organization, workspaces []store.Tenant, plan string) ([]core.DowngradePrecondition, error) {
 	var unmet []core.DowngradePrecondition
 	var secondaries []string
@@ -533,15 +536,22 @@ func (s *Service) downgradePreconditions(ctx context.Context, orgs OrganizationS
 	if err != nil {
 		return nil, err
 	}
-	if blocked := rolesOutsidePlan(members, plan); len(blocked) > 0 {
-		unmet = append(unmet, core.DowngradePrecondition{Kind: core.PreconditionMemberRoles, Items: blocked})
+	if blocked := rolesOutsidePlan(members, store.PlanPro); len(blocked) > 0 {
+		unmet = append(unmet, core.DowngradePrecondition{Kind: core.PreconditionMemberRoles, Items: s.memberRoles(ctx, blocked)})
 	}
 	invites, err := s.Store.ListInvites(ctx, o.PrimaryWorkspaceID)
 	if err != nil {
 		return nil, err
 	}
-	if blocked := invitedRolesOutsidePlan(invites, plan); len(blocked) > 0 {
-		unmet = append(unmet, core.DowngradePrecondition{Kind: core.PreconditionInviteRoles, Items: blocked})
+	if blocked := invitesOutsidePlan(invites, store.PlanPro); len(blocked) > 0 {
+		unmet = append(unmet, core.DowngradePrecondition{Kind: core.PreconditionInviteRoles, Items: invitedRoles(blocked)})
+	}
+	if limit := store.LimitsFor(plan).MaxMembers; limit > 0 {
+		caller, _ := core.IdentityFrom(ctx)
+		over, overInvites := unseated(members, invites, limit, caller.Subject)
+		if items := append(s.memberRoles(ctx, over), invitedRoles(overInvites)...); len(items) > 0 {
+			unmet = append(unmet, core.DowngradePrecondition{Kind: core.PreconditionMemberLimit, Items: items})
+		}
 	}
 	rules, err := s.inboundIPRules(ctx, orgs, o.PrimaryWorkspaceID)
 	if err != nil {
@@ -551,6 +561,40 @@ func (s *Service) downgradePreconditions(ctx context.Context, orgs OrganizationS
 		unmet = append(unmet, core.DowngradePrecondition{Kind: core.PreconditionInboundIPRules, Items: rules})
 	}
 	return unmet, nil
+}
+
+// unseated returns, in the order they joined, the members and pending
+// invites a plan seating limit people cannot keep (w7/087; Hobby seats one).
+// The caller, who manages the workspace and so is its admin, keeps their seat
+// first, then the other admins and the rest by when they joined; pending
+// invites take the seats left over.
+func unseated(members []store.TenantMember, invites []store.Invite, limit int, caller string) ([]store.TenantMember, []store.Invite) {
+	if len(members) < limit {
+		if seats := limit - len(members); len(invites) > seats {
+			return nil, invites[seats:]
+		}
+		return nil, nil
+	}
+	rank := func(m store.TenantMember) int {
+		switch {
+		case m.Subject == caller:
+			return 0
+		case m.Role == "admin":
+			return 1
+		default:
+			return 2
+		}
+	}
+	seated := slices.Clone(members)
+	slices.SortStableFunc(seated, func(a, b store.TenantMember) int { return rank(a) - rank(b) })
+	seated = seated[:limit]
+	var over []store.TenantMember
+	for _, m := range members {
+		if !slices.ContainsFunc(seated, func(k store.TenantMember) bool { return k.Subject == m.Subject }) {
+			over = append(over, m)
+		}
+	}
+	return over, invites
 }
 
 // inboundIPRules names the restricting inbound IP rules a workspace holds

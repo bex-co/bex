@@ -55,8 +55,11 @@ bex had no organization. `deploy/gitops/authz/model.fga` declared an `org` type 
 Changing the primary below Scale is refused with one `400 ORGANIZATION_DOWNGRADE_BLOCKED` listing every unmet precondition in `params.preconditions`, each with its kind and what to clear:
 
 - `secondary_workspaces`: the org still has workspaces besides the primary;
-- `member_roles` and `invite_roles`: people or pending invites in the primary with the Billing, Viewer or Contributor role (Pro and Hobby offer neither, which bex's existing plan-capacity check already refused);
+- `member_roles` and `invite_roles`: people or pending invites in the primary with the Billing, Viewer or Contributor role (Pro and Hobby offer neither, which bex's existing plan-capacity check already refused). Both keep Render's meaning on either target, so a Developer is never listed here;
+- `member_limit`, on a Hobby target only: Hobby seats one member, so every other member and every pending invite is listed, to remove. The Owner making the change keeps the seat (w7/087);
 - `inbound_ip_rules`: restricting inbound IP rules on the workspace, its environments or its web services and static sites. Rules on Postgres and Key Value are not affected, as on Render.
+
+Each person is an `email:role` item, the email they are listed by on the Members page; a member whose email cannot be read is named by their sign-in id (w7/087).
 
 Once they hold, the downgrade deletes the org, its members, its invites and its tuples in the same transaction as the plan write, and the primary carries on as a standalone workspace with its own members unchanged. The org's audit rows age out with the retention sweep.
 

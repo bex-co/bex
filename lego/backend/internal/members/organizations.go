@@ -519,7 +519,21 @@ func (s *Service) ChangeOrganizationRole(ctx context.Context, orgID, subject, ro
 	if err != nil {
 		return OrganizationMemberView{}, err
 	}
-	return OrganizationMemberView{Subject: subject, Role: wireRole(role), CreatedAt: rfc3339(m.CreatedAt), Workspaces: append([]string{}, workspaces...)}, nil
+	// The member reads back as ListOrganizationMembers lists them, with their
+	// email and user id (w7/087).
+	ownIDs, err := s.Store.OwnerIDsForSubjects(ctx, []string{subject})
+	if err != nil {
+		return OrganizationMemberView{}, err
+	}
+	var email string
+	if s.Identities != nil {
+		emails, _ := s.Identities.LookupEmails(ctx, []string{subject})
+		email = emails[subject]
+	}
+	return OrganizationMemberView{
+		Subject: subject, UserID: ids.UserPublicID(ownIDs[subject]), Email: email,
+		Role: wireRole(role), CreatedAt: rfc3339(m.CreatedAt), Workspaces: append([]string{}, workspaces...),
+	}, nil
 }
 
 // mapOrganizationErr names the store's org refusals.

@@ -853,6 +853,12 @@ const jaWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Change-plan dialog on an org's primary: what a downgrade below Scale does and Render's preconditions (render.com/docs/organizations, w7/m464)",
   },
+  "workspaces.orgDowngradeWarningHobby": {
+    message:
+      "Hobby のメンバーは 1 人のため、このワークスペースのほかのメンバーも削除し、保留中の招待を取り消してください。",
+    description:
+      "Change-plan dialog on an org's primary with Hobby selected: the extra step a one-member plan needs, below the downgrade warning (w7/087)",
+  },
   "workspaces.orgDowngradeBlocked": {
     message:
       "組織はまだ削除できません。Scale 未満にダウングレードする前に、次の対応が必要です。",
@@ -873,6 +879,12 @@ const jaWorkspaces: Record<string, TranslationEntry> = {
     message: "これらの保留中の招待のロールを開発者または管理者に変更する",
     description:
       "Unmet downgrade precondition invite_roles; the invited emails and roles follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeMemberLimit": {
+    message:
+      "これらのメンバーと保留中の招待を削除する（Hobby のメンバーは 1 人です）",
+    description:
+      "Unmet downgrade precondition member_limit on a Hobby target: the members and pending invites beyond its one seat follow (w7/087)",
   },
   "workspaces.orgDowngradeInboundIpRules": {
     message: "インバウンド IP ルールを削除する",

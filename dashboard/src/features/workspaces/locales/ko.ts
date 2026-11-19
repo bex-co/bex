@@ -841,6 +841,12 @@ const koWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Change-plan dialog on an org's primary: what a downgrade below Scale does and Render's preconditions (render.com/docs/organizations, w7/m464)",
   },
+  "workspaces.orgDowngradeWarningHobby": {
+    message:
+      "Hobby는 멤버가 1명이므로 이 워크스페이스의 다른 멤버도 제거하고 대기 중인 초대를 취소하세요.",
+    description:
+      "Change-plan dialog on an org's primary with Hobby selected: the extra step a one-member plan needs, below the downgrade warning (w7/087)",
+  },
   "workspaces.orgDowngradeBlocked": {
     message:
       "아직 조직을 삭제할 수 없습니다. Scale 미만으로 다운그레이드하기 전에 다음을 완료하세요.",
@@ -861,6 +867,11 @@ const koWorkspaces: Record<string, TranslationEntry> = {
     message: "대기 중인 이 초대들의 역할을 개발자 또는 관리자로 변경",
     description:
       "Unmet downgrade precondition invite_roles; the invited emails and roles follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeMemberLimit": {
+    message: "이 멤버들과 대기 중인 초대를 제거 (Hobby는 멤버가 1명입니다)",
+    description:
+      "Unmet downgrade precondition member_limit on a Hobby target: the members and pending invites beyond its one seat follow (w7/087)",
   },
   "workspaces.orgDowngradeInboundIpRules": {
     message: "인바운드 IP 규칙 삭제",

@@ -241,14 +241,18 @@ const (
 	PreconditionMemberRoles         = "member_roles"
 	PreconditionInviteRoles         = "invite_roles"
 	PreconditionInboundIPRules      = "inbound_ip_rules"
+	// PreconditionMemberLimit names, on a target plan with a member cap
+	// (Hobby seats one), every member and pending invite beyond it.
+	PreconditionMemberLimit = "member_limit"
 )
 
 // DowngradePrecondition is one of Render's preconditions for downgrading an
 // org's primary below Scale that does not hold yet (ADR115 D6).
 type DowngradePrecondition struct {
 	Kind string `json:"kind"`
-	// Items name what to clear: workspace names, "email:role" or
-	// "subject:role" pairs, or the resources with inbound IP rules.
+	// Items name what to clear: workspace names, "email:role" pairs (a
+	// member's sign-in subject only when no email resolves), or the
+	// resources with inbound IP rules.
 	Items []string `json:"items"`
 }
 

@@ -15,6 +15,7 @@ const DOWNGRADE_PRECONDITION_KINDS = [
   "member_roles",
   "invite_roles",
   "inbound_ip_rules",
+  "member_limit",
 ] as const;
 export type DowngradePreconditionKind =
   (typeof DOWNGRADE_PRECONDITION_KINDS)[number];
@@ -26,8 +27,9 @@ export type DowngradePreconditionKind =
  */
 export interface DowngradePrecondition {
   kind: DowngradePreconditionKind;
-  /** Workspace names, "subject:role" / "email:role" pairs, or "workspace",
-   *  "environment:<name>" and "service:<name>". */
+  /** Workspace names, "email:role" pairs (a member's sign-in id when no
+   *  email resolves), or "workspace", "environment:<name>" and
+   *  "service:<name>". */
   items: string[];
 }
 

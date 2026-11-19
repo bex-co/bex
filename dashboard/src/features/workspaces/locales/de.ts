@@ -857,6 +857,12 @@ const deWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Change-plan dialog on an org's primary: what a downgrade below Scale does and Render's preconditions (render.com/docs/organizations, w7/m464)",
   },
+  "workspaces.orgDowngradeWarningHobby": {
+    message:
+      "Hobby hat ein Mitglied: Entferne also auch die anderen Mitglieder dieses Workspace und widerrufe seine ausstehenden Einladungen.",
+    description:
+      "Change-plan dialog on an org's primary with Hobby selected: the extra step a one-member plan needs, below the downgrade warning (w7/087)",
+  },
   "workspaces.orgDowngradeBlocked": {
     message:
       "Die Organisation kann noch nicht gelöscht werden. Bevor du unter Scale downgradest:",
@@ -878,6 +884,12 @@ const deWorkspaces: Record<string, TranslationEntry> = {
       "Ändere die Rolle dieser ausstehenden Einladungen zu Entwickler oder Admin",
     description:
       "Unmet downgrade precondition invite_roles; the invited emails and roles follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeMemberLimit": {
+    message:
+      "Entferne diese Mitglieder und ausstehenden Einladungen (Hobby hat ein Mitglied)",
+    description:
+      "Unmet downgrade precondition member_limit on a Hobby target: the members and pending invites beyond its one seat follow (w7/087)",
   },
   "workspaces.orgDowngradeInboundIpRules": {
     message: "Lösche die eingehenden IP-Regeln",

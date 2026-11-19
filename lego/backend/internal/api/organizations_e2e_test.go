@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -281,7 +282,17 @@ func TestOrganizationsE2E(t *testing.T) {
 	if m, err := e.st.GetOrganizationMember(ctx, orgID, carol.Subject); err != nil || m.Role != store.OrgRoleMember {
 		t.Fatalf("carol's org role after redemption = %+v %v", m, err)
 	}
-	e.ok(alice, fmt.Sprintf(`mutation { changeOrganizationMemberRole(organizationId: %q, subject: %q, role: "GUEST") { role } }`, orgID, carol.Subject))
+	// The changed member reads back with their email and user id, as the
+	// members list names them (w7/087), on GraphQL and MCP.
+	changed := e.ok(alice, fmt.Sprintf(`mutation { changeOrganizationMemberRole(organizationId: %q, subject: %q, role: "GUEST") { role email userId } }`, orgID, carol.Subject))["changeOrganizationMemberRole"].(map[string]any)
+	if changed["role"] != "GUEST" || changed["email"] != carol.Subject+"@example.com" || !strings.HasPrefix(fmt.Sprint(changed["userId"]), "usr-") {
+		t.Fatalf("changeOrganizationMemberRole = %v, want carol's email and user id", changed)
+	}
+	var mcpChanged members.OrganizationMemberView
+	raw, _ = json.Marshal(mcpCall(t, e.srv, alice, "change_organization_member_role", map[string]any{"organizationId": orgID, "subject": carol.Subject, "role": "GUEST"}).StructuredContent)
+	if err := json.Unmarshal(raw, &mcpChanged); err != nil || mcpChanged.Email != changed["email"] || mcpChanged.UserID != changed["userId"] {
+		t.Fatalf("MCP change_organization_member_role = %+v %v, want %v", mcpChanged, err, changed)
+	}
 	guestView := e.ok(carol, fmt.Sprintf(`{ organization(id: %q) { viewerRole workspaces { id } } }`, orgID))["organization"].(map[string]any)
 	if ws := guestView["workspaces"].([]any); guestView["viewerRole"] != "GUEST" || len(ws) != 1 || ws[0].(map[string]any)["id"] != pubID {
 		t.Fatalf("carol's view as a Guest = %v", guestView)
@@ -627,5 +638,90 @@ func TestOrganizationDowngradePreconditionsE2E(t *testing.T) {
 	}
 	if _, err := e.st.GetOrganization(ctx, orgID); err == nil {
 		t.Fatal("the org survived its downgrade")
+	}
+}
+
+// preconditionItems reads an ORGANIZATION_DOWNGRADE_BLOCKED refusal's
+// preconditions as kind → items.
+func preconditionItems(out map[string]any) map[string][]string {
+	errs, _ := out["errors"].([]any)
+	if len(errs) == 0 {
+		return nil
+	}
+	ext, _ := errs[0].(map[string]any)["extensions"].(map[string]any)
+	pre, _ := ext["preconditions"].([]any)
+	got := map[string][]string{}
+	for _, p := range pre {
+		entry := p.(map[string]any)
+		items := []string{}
+		for _, item := range entry["items"].([]any) {
+			items = append(items, item.(string))
+		}
+		got[entry["kind"].(string)] = items
+	}
+	return got
+}
+
+// TestOrganizationDowngradeNamesPeopleE2E (w7/087): a blocked downgrade names
+// each person by email, as the Members page does. member_roles keeps Render's
+// meaning, the Billing, Viewer and Contributor roles, whatever the target; a
+// Hobby target, which seats one member, also names everyone beyond the
+// Owner, pending invites included. Once they are gone the downgrade goes
+// through.
+func TestOrganizationDowngradeNamesPeopleE2E(t *testing.T) {
+	e := newOrgE2E(t)
+	ctx := context.Background()
+	alice, vic, dev := e.person("alice"), e.person("vic"), e.person("dev")
+	acme, err := e.st.CreateWorkspace(ctx, "names-"+e.stamp, store.PlanPro, alice.Subject)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = e.st.DeleteTenant(context.Background(), acme.ID) })
+	if err := e.fga.(workspaces.WorkspaceGranter).GrantWorkspaceAdmin(ctx, acme.ID, "user:"+alice.Subject); err != nil {
+		t.Fatal(err)
+	}
+	e.ok(alice, fmt.Sprintf(`mutation { changeWorkspacePlan(id: %q, plan: "scale") { id } }`, acme.ID))
+	org, err := e.st.ListOrganizationsForSubject(ctx, alice.Subject)
+	if err != nil || len(org) != 1 {
+		t.Fatalf("orgs = %+v %v", org, err)
+	}
+	for _, m := range []struct{ subject, role string }{{vic.Subject, "viewer"}, {dev.Subject, "developer"}} {
+		if _, err := e.st.Pool.Exec(ctx, `INSERT INTO tenant_members (tenant_id, subject, role) VALUES ($1, $2, $3)`, acme.ID, m.subject, m.role); err != nil {
+			t.Fatal(err)
+		}
+	}
+	invitee := "later-" + e.stamp + "@example.com"
+	e.ok(alice, fmt.Sprintf(`mutation { inviteWorkspaceMember(workspaceId: %q, email: %q, role: "DEVELOPER") { id } }`, acme.ID, invitee))
+	vicItem, devItem := vic.Subject+"@example.com:viewer", dev.Subject+"@example.com:developer"
+
+	refusal := func(plan string) map[string][]string {
+		t.Helper()
+		out := e.gql(alice, fmt.Sprintf(`mutation { changeWorkspacePlan(id: %q, plan: %q) { plan } }`, acme.ID, plan))
+		if graphqlCode(out) != core.CodeOrganizationDowngradeBlocked {
+			t.Fatalf("downgrade to %s = %v, want %s", plan, out, core.CodeOrganizationDowngradeBlocked)
+		}
+		return preconditionItems(out)
+	}
+	if got, want := refusal("pro"), map[string][]string{core.PreconditionMemberRoles: {vicItem}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("Pro downgrade preconditions = %v, want %v", got, want)
+	}
+	if got, want := refusal("hobby"), map[string][]string{
+		core.PreconditionMemberRoles: {vicItem},
+		core.PreconditionMemberLimit: {vicItem, devItem, invitee + ":developer"},
+	}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("Hobby downgrade preconditions = %v, want %v", got, want)
+	}
+
+	if _, err := e.st.Pool.Exec(ctx, `DELETE FROM tenant_members WHERE tenant_id = $1 AND subject = ANY($2)`, acme.ID, []string{vic.Subject, dev.Subject}); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := refusal("hobby"), map[string][]string{core.PreconditionMemberLimit: {invitee + ":developer"}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("Hobby downgrade with the invite left = %v, want %v", got, want)
+	}
+	if _, err := e.st.Pool.Exec(ctx, `DELETE FROM tenant_invites WHERE tenant_id = $1`, acme.ID); err != nil {
+		t.Fatal(err)
+	}
+	if plan := e.ok(alice, fmt.Sprintf(`mutation { changeWorkspacePlan(id: %q, plan: "hobby") { plan } }`, acme.ID))["changeWorkspacePlan"].(map[string]any)["plan"]; plan != "hobby" {
+		t.Fatalf("Hobby downgrade with the Owner alone = %v", plan)
 	}
 }

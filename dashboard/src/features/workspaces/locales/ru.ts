@@ -855,6 +855,12 @@ const ruWorkspaces: Record<string, TranslationEntry> = {
     description:
       "Change-plan dialog on an org's primary: what a downgrade below Scale does and Render's preconditions (render.com/docs/organizations, w7/m464)",
   },
+  "workspaces.orgDowngradeWarningHobby": {
+    message:
+      "В Hobby один участник, поэтому также удалите остальных участников этого рабочего пространства и отзовите его ожидающие приглашения.",
+    description:
+      "Change-plan dialog on an org's primary with Hobby selected: the extra step a one-member plan needs, below the downgrade warning (w7/087)",
+  },
   "workspaces.orgDowngradeBlocked": {
     message:
       "Организацию пока нельзя удалить. Перед переходом на тариф ниже Scale:",
@@ -877,6 +883,12 @@ const ruWorkspaces: Record<string, TranslationEntry> = {
       "Смените роль этих ожидающих приглашений на «Разработчик» или «Администратор»",
     description:
       "Unmet downgrade precondition invite_roles; the invited emails and roles follow (w7/m464)",
+  },
+  "workspaces.orgDowngradeMemberLimit": {
+    message:
+      "Удалите этих участников и ожидающие приглашения (в Hobby один участник)",
+    description:
+      "Unmet downgrade precondition member_limit on a Hobby target: the members and pending invites beyond its one seat follow (w7/087)",
   },
   "workspaces.orgDowngradeInboundIpRules": {
     message: "Удалите правила входящих IP",

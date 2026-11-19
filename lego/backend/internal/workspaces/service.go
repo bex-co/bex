@@ -1523,11 +1523,11 @@ func (s *Service) guardPlanCapacity(ctx context.Context, id, plan string) error 
 	}
 	if blocked := rolesOutsidePlan(members, plan); len(blocked) > 0 {
 		return fmt.Errorf("%w: workspace has members with roles not allowed on %s (%s); downgrade first",
-			core.ErrBadRequest, plan, strings.Join(blocked, ", "))
+			core.ErrBadRequest, plan, strings.Join(s.memberRoles(ctx, blocked), ", "))
 	}
-	if blocked := invitedRolesOutsidePlan(invites, plan); len(blocked) > 0 {
+	if blocked := invitesOutsidePlan(invites, plan); len(blocked) > 0 {
 		return fmt.Errorf("%w: workspace has pending invites with roles not allowed on %s (%s); revoke them first",
-			core.ErrBadRequest, plan, strings.Join(blocked, ", "))
+			core.ErrBadRequest, plan, strings.Join(invitedRoles(blocked), ", "))
 	}
 	return nil
 }
@@ -1553,33 +1553,65 @@ func (s *Service) requirePlanEntitlement(ctx context.Context, subject, workspace
 	return s.EnterpriseEntitlement.CheckEnterpriseEntitlement(ctx, subject, workspaceID)
 }
 
-// rolesOutsidePlan returns the "subject:role" pairs that wouldn't be
-// assignable on plan — ChangePlan's role-downgrade guard (t004): a downgrade
-// must not leave a member holding a role the new plan no longer offers.
-func rolesOutsidePlan(members []store.TenantMember, plan string) []string {
-	var blocked []string
+// rolesOutsidePlan returns the members whose role wouldn't be assignable on
+// plan — ChangePlan's role-downgrade guard (t004): a downgrade must not leave
+// a member holding a role the new plan no longer offers.
+func rolesOutsidePlan(members []store.TenantMember, plan string) []store.TenantMember {
+	var blocked []store.TenantMember
 	for _, m := range members {
 		if !store.RoleAllowedOnPlan(plan, m.Role) {
-			blocked = append(blocked, m.Subject+":"+m.Role)
+			blocked = append(blocked, m)
 		}
 	}
 	return blocked
 }
 
-// invitedRolesOutsidePlan is rolesOutsidePlan for the seats not taken yet
-// (w6/m15/t003): the "email:role" pairs of pending invites whose role the
-// target plan doesn't offer. Such an invite would be refused at accept time by
+// memberRoles names members as "email:role" pairs, the identity an admin
+// finds them by on the Members page (w7/087). A member whose email does not
+// resolve (no IdP wired, an unread identity) is named by their subject.
+func (s *Service) memberRoles(ctx context.Context, members []store.TenantMember) []string {
+	var emails map[string]string
+	if s.Identities != nil && len(members) > 0 {
+		subjects := make([]string, 0, len(members))
+		for _, m := range members {
+			subjects = append(subjects, m.Subject)
+		}
+		emails, _ = s.Identities.LookupEmails(ctx, subjects)
+	}
+	out := make([]string, 0, len(members))
+	for _, m := range members {
+		name := emails[m.Subject]
+		if name == "" {
+			name = m.Subject
+		}
+		out = append(out, name+":"+m.Role)
+	}
+	return out
+}
+
+// invitesOutsidePlan is rolesOutsidePlan for the seats not taken yet
+// (w6/m15/t003): the pending invites whose role the target plan doesn't
+// offer. Such an invite would be refused at accept time by
 // store.AcceptInvitesForEmail's own plan check, so the downgrade would quietly
 // strand it — name it here instead. Invites are keyed by email (they have no
 // subject until redeemed), which is also the identity the admin revokes by.
-func invitedRolesOutsidePlan(invites []store.Invite, plan string) []string {
-	var blocked []string
+func invitesOutsidePlan(invites []store.Invite, plan string) []store.Invite {
+	var blocked []store.Invite
 	for _, inv := range invites {
 		if !store.RoleAllowedOnPlan(plan, inv.Role) {
-			blocked = append(blocked, inv.Email+":"+inv.Role)
+			blocked = append(blocked, inv)
 		}
 	}
 	return blocked
+}
+
+// invitedRoles names pending invites as "email:role" pairs.
+func invitedRoles(invites []store.Invite) []string {
+	out := make([]string, 0, len(invites))
+	for _, inv := range invites {
+		out = append(out, inv.Email+":"+inv.Role)
+	}
+	return out
 }
 
 // inviteEmails names the invitees a refusal is about — the identity an admin
