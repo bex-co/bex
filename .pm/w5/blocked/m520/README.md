@@ -1,6 +1,6 @@
 # w5 · m520 — A text search over a day of a busy service answers in a few seconds: Loki drops the lines that cannot match before bex-api reads them
 
-**Worker:** worker5 **Goal:** a `text` search over a day of the busiest service answers in a few seconds with its whole answer, instead of reading every raw line of the window into bex-api and stopping at the 18 s scan budget with a partial page. **Status:** todo (t001 to t007 done; t008 reads 24 h of production after the pin carries the fix)
+**Worker:** worker5 **Goal:** a `text` search over a day of the busiest service answers in a few seconds with its whole answer, instead of reading every raw line of the window into bex-api and stopping at the 18 s scan budget with a partial page. **Status:** blocked (t001 to t007 done and shipped in `c3d4c075e`; t008 reads 24 h of production text searches once bex-api runs it)
 
 ## Tasks (in order)
 
@@ -27,9 +27,9 @@ Total: **8 tasks, about 6h**.
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w5/198](../done/198.md), promoted 2026-11-19 by `/loopx w5`. It came from w5/m503 t002's Findings ([m503](../blocked/m503/README.md), cause 3): after m503 a `text` search reads every raw line once, about 0.4 to 0.5 s of Loki time and 12 to 14 MB to decode per hour of the busiest service (about 20,000 request lines an hour), so a day's or a week's search covers about four hours before the budget and answers a partial page with `hasMore`.
+- **Source:** inbox note [w5/198](../../done/198.md), promoted 2026-11-19 by `/loopx w5`. It came from w5/m503 t002's Findings ([m503](../m503/README.md), cause 3): after m503 a `text` search reads every raw line once, about 0.4 to 0.5 s of Loki time and 12 to 14 MB to decode per hour of the busiest service (about 20,000 request lines an hour), so a day's or a week's search covers about four hours before the budget and answers a partial page with `hasMore`.
 - **Code:** `lego/backend/internal/logs/loki.go` (`NewLokiSource`, `lokiPipelineFor`, `scanLokiWindow`, `textScanPage`, `parseLokiStreams`, `requestLine`), `service.go` (`localTextSearch`, `matchesText`, `normalizeLogText`, `capLogMessage`), `filterpattern.go` (`textMatcher`), `display.go` (`displayText`); timing harness `loki_timing_test.go` (build tag `lokitiming`, targets from the environment, never committed).
-- **Goal linkage:** hosting observability on Render's API ([ADR018](../../../docs/ADR018-render-parity.md) Logs rows, [ADR010](../../../docs/ADR010-observability.md)): Render's `text` filter answers a search over the window the caller names.
+- **Goal linkage:** hosting observability on Render's API ([ADR018](../../../../docs/ADR018-render-parity.md) Logs rows, [ADR010](../../../../docs/ADR010-observability.md)): Render's `text` filter answers a search over the window the caller names.
 - **Expected outcome:** a search for a term over a day of a busy service comes back whole in a few seconds on REST, GraphQL, MCP, the CLI and the dashboard, instead of an 18 s partial page the caller has to page through.
 - **Why now:** it is the shape m503 left above 5 s, and m503's 24 h reading (t007) names it. Since w5/197 (`e0dc599d3`) a search with no `startTime` covers one hour (about 1 s), so the slow reads are the ones that name a day or more.
 - **Why the match stays in Go:** Loki's case-insensitive regexp simplifier is not a safe Unicode superset of the API's literal match (w4/m189, w8/m58), a request line's message is rendered from its stored JSON, and display mode matches text with ANSI escapes removed. A prefilter only drops lines that provably cannot match; Go's matcher still decides every line Loki returns.
