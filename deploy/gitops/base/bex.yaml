@@ -37,9 +37,9 @@ spec:
     path: lego/operator/config/default
     kustomize:
       images:
-        - controller=ghcr.io/bex-co/bex-operator@sha256:e770521dacba7e90708c01e213eee4254adea2f0858335a416451d92490ef3ea
-        - kv-sni-proxy=ghcr.io/bex-co/bex-operator@sha256:697fe9c095d758d08c5ac7ee48a2de7d9c356582dcc415e9d30f3a600b3c03d2
-        - pg-sni-proxy=ghcr.io/bex-co/bex-operator@sha256:697fe9c095d758d08c5ac7ee48a2de7d9c356582dcc415e9d30f3a600b3c03d2
+        - controller=ghcr.io/bex-co/bex-operator@sha256:1ec4a7c2d5610b78bfd444b5934db8890b1d7e681de8bd9b1ca476cec633c768
+        - kv-sni-proxy=ghcr.io/bex-co/bex-operator@sha256:1ec4a7c2d5610b78bfd444b5934db8890b1d7e681de8bd9b1ca476cec633c768
+        - pg-sni-proxy=ghcr.io/bex-co/bex-operator@sha256:1ec4a7c2d5610b78bfd444b5934db8890b1d7e681de8bd9b1ca476cec633c768
   destination:
     server: https://kubernetes.default.svc
     namespace: bex-system
