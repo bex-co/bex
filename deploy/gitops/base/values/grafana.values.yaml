@@ -5680,7 +5680,7 @@ dashboards:
              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 179 },
              "datasource": { "type": "prometheus", "uid": "prometheus" },
              "fieldConfig": {
-               "defaults": { "unit": "percentunit", "min": 0 },
+               "defaults": { "unit": "percentunit", "min": 0, "custom": { "axisSoftMax": 0.1 } },
                "overrides": [
                   {
                    "matcher": { "id": "byName", "options": "alert threshold" },
@@ -5735,7 +5735,8 @@ dashboards:
                    "matcher": { "id": "byFrameRefID", "options": "B" },
                    "properties": [
                       { "id": "unit", "value": "percentunit" },
-                      { "id": "custom.axisPlacement", "value": "right" }
+                      { "id": "custom.axisPlacement", "value": "right" },
+                      { "id": "custom.axisSoftMax", "value": 0.1 }
                     ]
                   }
                 ]
