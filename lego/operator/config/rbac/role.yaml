@@ -78,6 +78,24 @@ rules:
   - update
 - apiGroups:
   - apps
+  resourceNames:
+  - bex-kv-sni-proxy
+  - bex-pg-sni-proxy
+  resources:
+  - daemonsets
+  verbs:
+  - patch
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets
+  - replicasets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps
   resources:
   - deployments
   - statefulsets
@@ -88,14 +106,6 @@ rules:
   - list
   - patch
   - update
-  - watch
-- apiGroups:
-  - apps
-  resources:
-  - replicasets
-  verbs:
-  - get
-  - list
   - watch
 - apiGroups:
   - barmancloud.cnpg.io

@@ -150,44 +150,110 @@ refuse "a missing controller pin" "$(manifest "@$OLD" "$OLD" "$OLD" | grep -v co
 refuse "an invalid build digest" "$(manifest "@$OLD" "$OLD" "$OLD")" "sha256:abc"
 
 # --- wait --------------------------------------------------------------------
-# A fake kubectl: each DaemonSet's template image is the content of
-# $FAKE_K8S/<name>, which <name>.next replaces after $FAKE_K8S/<name>.polls
-# reads; rollout status is recorded.
+# A fake kubectl over $FAKE_K8S:
+#   - get daemonset <name> -o jsonpath=…: the template image, <name>
+#   - get daemonset <name> -o json: <name>.json
+#   - get pods -l app.bex.co/component=<proxy> -o json: <proxy>.pods
+#   - rollout status daemonset/<name>: what kubectl decides from <name>.json's
+#     status, so a wait that falls back to it fails the cases it should
+# Each file is replaced by its .next after .after reads, and every read is
+# logged to $FAKE_K8S/reads.
 mkdir -p "$tmp/bin" "$tmp/k8s"
-cat >"$tmp/bin/kubectl" <<'EOF'
+cat >"$tmp/bin/kubectl" <<'FAKE'
 #!/usr/bin/env bash
+serve() {
+  local file="$FAKE_K8S/$1" polls
+  if [ -f "$file.next" ]; then
+    polls=$(($(cat "$file.polls" 2>/dev/null || echo 0) + 1))
+    echo "$polls" >"$file.polls"
+    [ "$polls" -le "$(cat "$file.after")" ] || mv "$file.next" "$file"
+  fi
+  cat "$file" 2>/dev/null || exit 1
+}
 args="$*"
 case "$args" in
-  "-n bex-system get daemonset "*)
-    name="$5"
-    if [ -f "$FAKE_K8S/$name.next" ]; then
-      polls=$(($(cat "$FAKE_K8S/$name.polls" 2>/dev/null || echo 0) + 1))
-      echo "$polls" >"$FAKE_K8S/$name.polls"
-      [ "$polls" -le "$(cat "$FAKE_K8S/$name.after")" ] || mv "$FAKE_K8S/$name.next" "$FAKE_K8S/$name"
-    fi
-    cat "$FAKE_K8S/$name" 2>/dev/null || exit 1
+  "-n bex-system get daemonset "*" -o jsonpath="*) serve "$5" ;;
+  "-n bex-system get daemonset "*" -o json")
+    echo "daemonset $5" >>"$FAKE_K8S/reads"
+    serve "$5.json"
     ;;
-  "-n bex-system rollout status "*)
-    echo "$5" >>"$FAKE_K8S/rollouts"
+  "-n bex-system get pods -l "*" -o json")
+    echo "pods $6" >>"$FAKE_K8S/reads"
+    serve "${6#*=}.pods"
+    ;;
+  "-n bex-system rollout status daemonset/"*)
+    echo "rollout status $5" >>"$FAKE_K8S/reads"
+    jq -e '.metadata.generation <= .status.observedGeneration
+      and .status.updatedNumberScheduled >= .status.desiredNumberScheduled
+      and .status.numberAvailable >= .status.desiredNumberScheduled' \
+      "$FAKE_K8S/${5#daemonset/}.json" >/dev/null || { echo "error: timed out waiting for the condition" >&2; exit 1; }
     ;;
   *) echo "unexpected kubectl $args" >&2; exit 2 ;;
 esac
-EOF
+FAKE
 chmod +x "$tmp/bin/kubectl"
 
-# wait_case <label> <want rc> <kv pinned> <pg pinned> <kv running> <pg running> [kv after N polls]
-wait_case() {
-  local label="$1" want="$2" kv="$3" pg="$4" kv_running="$5" pg_running="$6" kv_next="${7:-}"
+# ds_json <proxy> <generation> <observedGeneration> <template generation> <desired> <updated> <available>
+# The DaemonSet's status is what the controller computes from each node's
+# oldest pod, as on a real cluster.
+ds_json() {
+  jq -n --arg proxy "$1" --argjson gen "$2" --argjson observed "$3" --arg template "$4" \
+    --argjson desired "$5" --argjson updated "$6" --argjson available "$7" '{
+      metadata: {name: "bex-\($proxy)", uid: "uid-bex-\($proxy)", generation: $gen,
+        annotations: {"deprecated.daemonset.template.generation": $template}},
+      spec: {selector: {matchLabels: {"app.bex.co/component": $proxy}}},
+      status: {observedGeneration: $observed, desiredNumberScheduled: $desired,
+        updatedNumberScheduled: $updated, numberAvailable: $available}}'
+}
+
+# pod_json <proxy> <node> <template generation> <Ready: True|False> [terminating] [owner=<uid>] [name=<name>]
+pod_json() {
+  local proxy="$1" node="node-$2" template="$3" ready="$4" terminating=false owner="uid-bex-$1" name=""
+  shift 4
+  for flag in "$@"; do
+    case "$flag" in
+      terminating) terminating=true ;;
+      owner=*) owner="${flag#owner=}" ;;
+      name=*) name="${flag#name=}" ;;
+    esac
+  done
+  jq -n --arg proxy "$proxy" --arg node "$node" --arg template "$template" --arg ready "$ready" \
+    --argjson terminating "$terminating" --arg owner "$owner" --arg name "${name:-bex-$proxy-$node-g$template}" '{
+      metadata: ({name: $name,
+        labels: {"app.bex.co/component": $proxy, "pod-template-generation": $template},
+        ownerReferences: [{apiVersion: "apps/v1", kind: "DaemonSet", name: "bex-\($proxy)", uid: $owner, controller: true}]}
+        + (if $terminating then {deletionTimestamp: "2026-11-19T12:00:00Z"} else {} end)),
+      spec: {nodeName: $node},
+      status: {conditions: [{type: "Ready", status: $ready}]}}'
+}
+
+pods_json() { jq -s '{items: .}'; }
+
+# wait_setup <kv pinned> <pg pinned> <kv running> <pg running> [kv after N polls]
+# A fresh fake cluster: each DaemonSet's template image, and two nodes that
+# each run one Ready pod of the current template.
+wait_setup() {
   rm -rf "$tmp/k8s" && mkdir "$tmp/k8s"
-  printf '%s' "$kv_running" >"$tmp/k8s/bex-kv-sni-proxy"
-  printf '%s' "$pg_running" >"$tmp/k8s/bex-pg-sni-proxy"
-  if [ -n "$kv_next" ]; then
-    printf '%s' "$kv" >"$tmp/k8s/bex-kv-sni-proxy.next"
-    echo "$kv_next" >"$tmp/k8s/bex-kv-sni-proxy.after"
+  printf '%s' "$3" >"$tmp/k8s/bex-kv-sni-proxy"
+  printf '%s' "$4" >"$tmp/k8s/bex-pg-sni-proxy"
+  if [ -n "${5:-}" ]; then
+    printf '%s' "$1" >"$tmp/k8s/bex-kv-sni-proxy.next"
+    echo "$5" >"$tmp/k8s/bex-kv-sni-proxy.after"
   fi
-  local got=0
-  PATH="$tmp/bin:$PATH" FAKE_K8S="$tmp/k8s" SNI_PROXY_WAIT_SECONDS=2 SNI_PROXY_POLL_SECONDS=0.1 \
-    KV_SNI_PROXY_IMAGE="$kv" PG_SNI_PROXY_IMAGE="$pg" "$SCRIPT" wait >"$tmp/out" 2>&1 || got=$?
+  wait_pins=("$1" "$2")
+  local proxy
+  for proxy in kv-sni-proxy pg-sni-proxy; do
+    ds_json "$proxy" 7 7 7 2 2 2 >"$tmp/k8s/bex-$proxy.json"
+    { pod_json "$proxy" a 7 True && pod_json "$proxy" b 7 True; } | pods_json >"$tmp/k8s/$proxy.pods"
+  done
+}
+
+# wait_run <label> <want rc>
+wait_run() {
+  local label="$1" want="$2" got=0
+  PATH="$tmp/bin:$PATH" FAKE_K8S="$tmp/k8s" SNI_PROXY_WAIT_SECONDS=2 SNI_PROXY_ROLLOUT_SECONDS=2 \
+    SNI_PROXY_POLL_SECONDS=0.1 KV_SNI_PROXY_IMAGE="${wait_pins[0]}" PG_SNI_PROXY_IMAGE="${wait_pins[1]}" \
+    "$SCRIPT" wait >"$tmp/out" 2>&1 || got=$?
   if [ "$got" -ne "$want" ]; then
     fail "$label: exit $got, want $want: $(cat "$tmp/out")"
     return 1
@@ -195,12 +261,18 @@ wait_case() {
   echo "ok: $label (exit $got)"
 }
 
+# wait_case <label> <want rc> <kv pinned> <pg pinned> <kv running> <pg running> [kv after N polls]
+wait_case() {
+  wait_setup "$3" "$4" "$5" "$6" "${7:-}"
+  wait_run "$1" "$2"
+}
+
 held="${IMAGE}@${OLD}" moved="${IMAGE}@${NEW}"
 if wait_case "a held DaemonSet already runs its pin" 0 "$held" "$moved" "$held" "$moved" &&
-  [ "$(cat "$tmp/k8s/rollouts")" = "$(printf 'daemonset/bex-pg-sni-proxy\ndaemonset/bex-kv-sni-proxy')" ]; then
-  echo "ok: each DaemonSet's rollout is awaited once its pin is in the template"
+  [ "$(grep '^pods ' "$tmp/k8s/reads")" = "$(printf 'pods app.bex.co/component=pg-sni-proxy\npods app.bex.co/component=kv-sni-proxy')" ]; then
+  echo "ok: each DaemonSet's pods are read once its pin is in the template"
 else
-  fail "the wait did not await both rollouts: $(cat "$tmp/k8s/rollouts" 2>/dev/null)"
+  fail "the wait did not read both DaemonSets' pods: $(cat "$tmp/k8s/reads" 2>/dev/null)"
 fi
 wait_case "a moved DaemonSet reaches its pin after Argo syncs" 0 "$moved" "$moved" "$held" "$moved" 3 || true
 wait_case "a held DaemonSet that Argo moved to the new digest times out" 1 "$held" "$held" "$moved" "$held" || true
@@ -213,6 +285,69 @@ if wait_case "a moved DaemonSet that never gets its pin times out" 1 "$moved" "$
 fi
 wait_case "a missing DaemonSet times out" 1 "$moved" "$moved" "" "$moved" || true
 wait_case "no pin recorded for a DaemonSet fails at once" 1 "" "$moved" "$moved" "$moved" || true
+
+# The pod wait (w6/m518): bex-kv-sni-proxy rolls from template generation 7 to
+# 8 on nodes a and b; bex-pg-sni-proxy stays settled.
+kv_state() { # <ds_json args after the proxy> -- <pod_json lines as "node gen ready [flags]">...
+  local ds=() pod
+  while [ "$1" != -- ]; do ds+=("$1") && shift; done
+  shift
+  ds_json kv-sni-proxy "${ds[@]}" >"$tmp/k8s/bex-kv-sni-proxy.json"
+  for pod in "$@"; do
+    # shellcheck disable=SC2086
+    pod_json kv-sni-proxy $pod
+  done | pods_json >"$tmp/k8s/kv-sni-proxy.pods"
+}
+pods_case() { # <label> <want rc>; the fake cluster is already staged
+  wait_run "$1" "$2"
+}
+
+wait_setup "$moved" "$moved" "$moved" "$moved"
+# Node a's old pod drains beside its Ready new pod; it is a's oldest pod, so
+# the controller counts 1 of 2 updated and `rollout status` would wait it out.
+kv_state 8 8 8 2 1 2 -- "a 7 True terminating" "a 8 True" "b 8 True"
+pods_case "an old pod that drains beside its node's Ready new pod does not hold the wait" 0 || true
+
+wait_setup "$moved" "$moved" "$moved" "$moved"
+kv_state 8 8 8 2 1 2 -- "a 7 True" "a 8 False" "b 8 True"
+if pods_case "a new pod that never becomes Ready fails at the bound" 1; then
+  if grep -qF "bex-kv-sni-proxy: 1 of 2 nodes run a Ready pod of template generation 8; other pods: bex-kv-sni-proxy-node-a-g7 on node-a (template generation 7), bex-kv-sni-proxy-node-a-g8 on node-a (not Ready) after 2s" "$tmp/out"; then
+    echo "ok: a timed-out pod wait names the DaemonSet, the count and each pod it did not count"
+  else
+    fail "a timed-out pod wait does not say what is missing: $(cat "$tmp/out")"
+  fi
+fi
+
+wait_setup "$moved" "$moved" "$moved" "$moved"
+# A spec change the controller has not observed: the pods still look complete.
+kv_state 9 8 8 2 2 2 -- "a 8 True" "b 8 True"
+if pods_case "a stale observedGeneration waits" 1; then
+  grep -qF "bex-kv-sni-proxy: generation 9 is not observed yet (observedGeneration 8)" "$tmp/out" ||
+    fail "a stale observedGeneration is not named: $(cat "$tmp/out")"
+fi
+ds_json kv-sni-proxy 9 9 8 2 2 2 >"$tmp/k8s/bex-kv-sni-proxy.json.next" && echo 1 >"$tmp/k8s/bex-kv-sni-proxy.json.after"
+kv_state 9 8 8 2 2 2 -- "a 8 True" "b 8 True"
+pods_case "a stale observedGeneration passes once the controller observes it" 0 || true
+
+wait_setup "$moved" "$moved" "$moved" "$moved"
+kv_state 8 8 8 2 1 2 -- "a 8 True" "b 7 True"
+pods_case "a node that still runs only its old pod waits" 1 || true
+{ pod_json kv-sni-proxy a 8 True && pod_json kv-sni-proxy b 7 True terminating && pod_json kv-sni-proxy b 8 True; } |
+  pods_json >"$tmp/k8s/kv-sni-proxy.pods.next" && echo 1 >"$tmp/k8s/kv-sni-proxy.pods.after"
+pods_case "that node passes once its new pod is Ready" 0 || true
+
+wait_setup "$moved" "$moved" "$moved" "$moved"
+# Node a's current pod is being deleted and its replacement is not up yet.
+kv_state 8 8 8 2 2 2 -- "a 8 True terminating" "b 8 True"
+pods_case "a node whose only current pod is terminating waits" 1 || true
+
+wait_setup "$moved" "$moved" "$moved" "$moved"
+kv_state 8 8 8 2 1 2 -- "a 8 True owner=uid-other" "b 8 True"
+pods_case "a pod the DaemonSet does not own does not count" 1 || true
+
+wait_setup "$moved" "$moved" "$moved" "$moved"
+kv_state 8 8 8 2 1 2 -- "a 8 True name=first" "a 8 True name=second"
+pods_case "two Ready pods on one node count as one node" 1 || true
 
 if [ "$fails" -eq 0 ]; then
   echo "PASS: operator-pins.sh"

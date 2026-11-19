@@ -1081,6 +1081,16 @@ jobs:
             kubectl -n argocd patch deployment "$d" --type strategic -p "$SCHED"
           done
           kubectl -n argocd patch statefulset argocd-application-controller --type strategic -p "$SCHED"
+          # w6/m518: an old SNI proxy pod keeps relaying its clients after the
+          # node's new pod is Ready, and Argo's built-in DaemonSet check reads
+          # that as a roll in progress, so bex-operator would stay Progressing.
+          # This check replaces the built-in one for every DaemonSet: the same
+          # rule, plus the bex operator's app.bex.co/new-pods-ready annotation
+          # (scripts/argocd-daemonset-health.test.sh). Argo reloads argocd-cm
+          # without a restart.
+          kubectl -n argocd patch configmap argocd-cm --type merge -p "$(jq -n \
+            --rawfile lua deploy/argocd/daemonset-health.lua \
+            '{data: {"resource.customizations.health.apps_DaemonSet": $lua}}')"
           # w6/100: every main commit invalidates the manifest cache of ~30
           # git-sourced apps at once, and comparisons queued on the single
           # repo-server hit the stock 60 s timeout (git_ms 60002), leaving apps
@@ -1392,7 +1402,9 @@ jobs:
       # pods: the new one, or a held one whose binary is byte-identical, so
       # exactly as header-capable (w6/m470). Merely calling `rollout status` is
       # insufficient: an old, already-Ready DaemonSet would return immediately
-      # before Argo observes the digest write-back above.
+      # before Argo observes the digest write-back above. Once the template
+      # carries the pin, the step waits for each node's Ready pod of it, not
+      # for `rollout status`, which also waits out every old pod's drain (w6/m518).
       - name: wait for PROXY-compatible datastore proxies
         if: ${{ always() && steps.app_kubeconfig.outcome == 'success' && needs.build.outputs.operator_digest != '' && env.SUPERSEDED != 'true' }}
         timeout-minutes: 12

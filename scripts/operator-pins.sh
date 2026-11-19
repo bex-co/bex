@@ -18,11 +18,15 @@
 #   operator-pins.sh wait
 #       Waits until each SNI proxy DaemonSet's template carries the image the
 #       write-back pinned for it ($KV_SNI_PROXY_IMAGE, $PG_SNI_PROXY_IMAGE),
-#       then for its rollout. Calling `rollout status` alone is not enough: an
-#       old, already-Ready DaemonSet returns at once, before Argo has synced
-#       the write-back. A held image runs the same bytes, so it is exactly as
-#       PROXY-protocol capable as the new one (infra.yml waits for this).
-#       SNI_PROXY_WAIT_SECONDS (default 600) bounds each image wait.
+#       then until every node it should run on runs a Ready pod of that
+#       template that is not terminating. The image wait comes first because
+#       an old, already-Ready DaemonSet looks rolled out before Argo has synced
+#       the write-back. The pod wait reads the pods, not `rollout status`:
+#       the DaemonSet's status counts each node's oldest pod, so it would wait
+#       out every old pod's drain (w6/m518). A held image runs the same bytes,
+#       so it is exactly as PROXY-protocol capable as the new one (infra.yml
+#       waits for this). SNI_PROXY_WAIT_SECONDS (default 600) bounds each image
+#       wait, SNI_PROXY_ROLLOUT_SECONDS (default 300) each pod wait.
 set -euo pipefail
 
 proxies=(kv-sni-proxy pg-sni-proxy)
@@ -100,6 +104,63 @@ write() {
   done
 }
 
+# Reads a DaemonSet and the pods its selector matches, as two JSON documents on
+# stdin, and prints "ready" once the DaemonSet controller has observed its
+# generation and each node it should run on (desiredNumberScheduled) has a
+# Ready pod of the current template that is not terminating. Otherwise it
+# prints what is missing. Old pods that still drain do not count either way.
+new_pods_verdict() {
+  jq -rs '
+    .[0] as $ds | .[1].items as $pods
+    | ($ds.metadata.annotations["deprecated.daemonset.template.generation"] // "") as $template
+    | ($ds.status.observedGeneration // 0) as $observed
+    | ($ds.status.desiredNumberScheduled // 0) as $desired
+    | [$pods[] | select(any(.metadata.ownerReferences[]?; .controller == true and .uid == $ds.metadata.uid))] as $owned
+    | def counted:
+        .metadata.deletionTimestamp == null
+        and .metadata.labels["pod-template-generation"] == $template
+        and any(.status.conditions[]?; .type == "Ready" and .status == "True");
+      def why:
+        if .metadata.deletionTimestamp != null then "terminating"
+        elif .metadata.labels["pod-template-generation"] != $template then
+          "template generation \(.metadata.labels["pod-template-generation"] // "none")"
+        else "not Ready" end;
+      ([$owned[] | select(counted) | .spec.nodeName] | unique | length) as $ready
+    | if $observed < $ds.metadata.generation then
+        "generation \($ds.metadata.generation) is not observed yet (observedGeneration \($observed))"
+      elif $template == "" then "it has no deprecated.daemonset.template.generation annotation"
+      elif $ready >= $desired then "ready"
+      else
+        "\($ready) of \($desired) nodes run a Ready pod of template generation \($template); other pods: "
+        + ([$owned[] | select(counted | not) | "\(.metadata.name) on \(.spec.nodeName // "no node") (\(why))"]
+          | if length == 0 then "none" else join(", ") end)
+      end'
+}
+
+# Waits until new_pods_verdict reads "ready" for <daemonset>, for at most
+# SNI_PROXY_ROLLOUT_SECONDS (300, the bound `rollout status` had).
+wait_for_new_pods() {
+  local daemonset="$1" bound="${SNI_PROXY_ROLLOUT_SECONDS:-300}"
+  local deadline=$((SECONDS + bound)) ds selector pods verdict
+  while :; do
+    verdict="the DaemonSet or its pods could not be read"
+    if ds="$(kubectl -n bex-system get daemonset "${daemonset}" -o json 2>/dev/null)" &&
+      selector="$(jq -r '.spec.selector.matchLabels // {} | to_entries | map("\(.key)=\(.value)") | join(",")' <<<"${ds}")" &&
+      [ -n "${selector}" ] &&
+      pods="$(kubectl -n bex-system get pods -l "${selector}" -o json 2>/dev/null)"; then
+      verdict="$(printf '%s\n%s\n' "${ds}" "${pods}" | new_pods_verdict)" || verdict="the DaemonSet or its pods could not be parsed"
+    fi
+    if [ "${verdict}" = ready ]; then
+      echo "${daemonset}: every node runs a Ready pod of the current template"
+      return 0
+    fi
+    ((SECONDS < deadline)) || break
+    sleep "${SNI_PROXY_POLL_SECONDS:-5}"
+  done
+  echo "${daemonset}: ${verdict} after ${bound}s" >&2
+  exit 1
+}
+
 wait_for_proxies() {
   local wait_seconds="${SNI_PROXY_WAIT_SECONDS:-600}"
   local proxy daemonset var expected actual deadline
@@ -120,7 +181,7 @@ wait_for_proxies() {
       echo "${daemonset} image is ${actual:-missing}, want ${expected}" >&2
       exit 1
     fi
-    kubectl -n bex-system rollout status "daemonset/${daemonset}" --timeout=300s
+    wait_for_new_pods "${daemonset}"
   done
 }
 

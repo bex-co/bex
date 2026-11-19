@@ -342,6 +342,15 @@ func main() {
 	controller.RegisterAppPlacementMetrics(uncachedClient)
 
 	setupDatastoreReconcilers(mgr, uncachedClient, appsNamespace)
+	// Argo CD reads each SNI proxy DaemonSet Healthy once every node runs a
+	// Ready new pod, while the old ones still drain (w6/m518).
+	if err := (&controller.SNIProxyRolloutReconciler{
+		Client:    mgr.GetClient(),
+		Namespace: env.Or("POD_NAMESPACE", "bex-system"),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "Failed to create controller", "controller", "sniproxyrollout")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	// RENDER_INSTANCE_ID: stamp each tenant pod's public instance id at

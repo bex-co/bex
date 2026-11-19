@@ -208,11 +208,22 @@ for required in \
     fail=1
   }
 done
+# w6/m518: Argo CD reads the SNI proxy DaemonSets through the bex health check,
+# so an old pod that still drains does not hold bex-operator Progressing.
+for required in \
+  '--rawfile lua deploy/argocd/daemonset-health.lua' \
+  '{data: {"resource.customizations.health.apps_DaemonSet": $lua}}'; do
+  grep -qF -- "$required" .github/workflows/deploy.yml || {
+    echo "FAIL: deploy workflow no longer installs the Argo CD DaemonSet health check: $required" >&2
+    fail=1
+  }
+done
 for required in \
   'for proxy in pg-sni-proxy kv-sni-proxy; do' \
   '>>"$GITHUB_ENV"' \
   '[ "${actual}" = "${expected}" ] && break' \
-  'rollout status "daemonset/${daemonset}"'; do
+  'wait_for_new_pods "${daemonset}"' \
+  '.metadata.deletionTimestamp == null'; do
   grep -qF -- "$required" scripts/operator-pins.sh || {
     echo "FAIL: scripts/operator-pins.sh lost datastore proxy digest gate: $required" >&2
     fail=1
