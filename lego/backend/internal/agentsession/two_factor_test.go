@@ -108,8 +108,8 @@ func TestTwoFactorRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Ask: %v", err)
 			}
-			if required != tc.wantRequired || refusal != tc.wantRefusal {
-				t.Fatalf("Ask = (required %v, refusal %q), want (%v, %q)", required, refusal, tc.wantRequired, tc.wantRefusal)
+			if required != tc.wantRequired || refusal != (core.LoginRefusal{Code: tc.wantRefusal}) {
+				t.Fatalf("Ask = (required %v, refusal %+v), want (%v, %q)", required, refusal, tc.wantRequired, tc.wantRefusal)
 			}
 			if got := len(policy.identities()); got != tc.wantChecks {
 				t.Fatalf("policy.Check ran %d times, want %d", got, tc.wantChecks)
@@ -119,7 +119,7 @@ func TestTwoFactorRoundTrip(t *testing.T) {
 	t.Run("a gate that cannot decide is an error, never an allow", func(t *testing.T) {
 		policy.reset()
 		if required, refusal, err := client.Ask(context.Background(), "tea-on", "kratos-out", "ssh", ""); err == nil {
-			t.Fatalf("Ask = (%v, %q, %v), want an error", required, refusal, err)
+			t.Fatalf("Ask = (%v, %+v, %v), want an error", required, refusal, err)
 		}
 	})
 	t.Run("an unreadable setting is an error, never an allow", func(t *testing.T) {
@@ -128,7 +128,7 @@ func TestTwoFactorRoundTrip(t *testing.T) {
 		t.Cleanup(srv.Close)
 		client := &TwoFactorClient{URL: srv.URL, Secret: []byte("exec-secret")}
 		if required, refusal, err := client.Ask(context.Background(), "tea-on", "enrolled", "ssh", ""); err == nil {
-			t.Fatalf("Ask = (%v, %q, %v), want an error", required, refusal, err)
+			t.Fatalf("Ask = (%v, %+v, %v), want an error", required, refusal, err)
 		}
 	})
 }
@@ -147,8 +147,8 @@ func TestTwoFactorVerbCarriesTheSignInAndTheRefusalCode(t *testing.T) {
 	t.Cleanup(srv.Close)
 	client := &TwoFactorClient{URL: srv.URL, Secret: []byte("exec-secret")}
 	required, refusal, err := client.Ask(context.Background(), "tea-google", "password-key-owner", "ssh", core.SignInPassword)
-	if err != nil || !required || refusal != core.CodeWorkspaceGoogleLoginRequired {
-		t.Fatalf("Ask = (%v, %q, %v), want the Google-login refusal", required, refusal, err)
+	if err != nil || !required || refusal != (core.LoginRefusal{Code: core.CodeWorkspaceGoogleLoginRequired}) {
+		t.Fatalf("Ask = (%v, %+v, %v), want the Google-login refusal", required, refusal, err)
 	}
 	got := policy.identities()
 	if len(got) != 1 || got[0] != (core.Identity{Subject: "password-key-owner", Method: "ssh", SignIn: core.SignInPassword}) {
@@ -163,8 +163,8 @@ func TestTwoFactorVerbCarriesTheSignInAndTheRefusalCode(t *testing.T) {
 	}))
 	t.Cleanup(old.Close)
 	oldClient := &TwoFactorClient{URL: old.URL, Secret: []byte("exec-secret")}
-	if _, refusal, err := oldClient.Ask(context.Background(), "tea-on", "member", "ssh", ""); err != nil || refusal != core.CodeWorkspaceTwoFactorRequired {
-		t.Fatalf("an older bex-api's refusal = (%q, %v), want the 2FA code", refusal, err)
+	if _, refusal, err := oldClient.Ask(context.Background(), "tea-on", "member", "ssh", ""); err != nil || refusal != (core.LoginRefusal{Code: core.CodeWorkspaceTwoFactorRequired}) {
+		t.Fatalf("an older bex-api's refusal = (%+v, %v), want the 2FA code", refusal, err)
 	}
 }
 
@@ -206,7 +206,7 @@ func TestTwoFactorVerbFailsClosed(t *testing.T) {
 			t.Cleanup(srv.Close)
 			client := &TwoFactorClient{URL: srv.URL, Secret: []byte(tc.clientSecret)}
 			if _, refusal, err := client.Ask(context.Background(), "tea-on", "member", "ssh", ""); err == nil {
-				t.Fatalf("Ask = (refusal %q, err %v) without a trustworthy answer", refusal, err)
+				t.Fatalf("Ask = (refusal %+v, err %v) without a trustworthy answer", refusal, err)
 			}
 		})
 	}
@@ -216,7 +216,7 @@ func TestTwoFactorVerbFailsClosed(t *testing.T) {
 		srv.Close()
 		client := &TwoFactorClient{URL: url, Secret: []byte("exec-secret")}
 		if _, refusal, err := client.Ask(context.Background(), "tea-on", "member", "ssh", ""); err == nil {
-			t.Fatalf("Ask = (refusal %q, err %v) against an unreachable bex-api", refusal, err)
+			t.Fatalf("Ask = (refusal %+v, err %v) against an unreachable bex-api", refusal, err)
 		}
 	})
 }
@@ -357,7 +357,7 @@ func TestTwoFactorClientRejectsAnswersThatDoNotMatchTheQuestion(t *testing.T) {
 			t.Cleanup(srv.Close)
 			client := &TwoFactorClient{URL: srv.URL, Secret: []byte("exec-secret")}
 			if _, refusal, err := client.Ask(context.Background(), "tea-on", "member", "ssh", ""); err == nil {
-				t.Fatalf("Ask = (refusal %q, err %v), want an error for a mismatched answer", refusal, err)
+				t.Fatalf("Ask = (refusal %+v, err %v), want an error for a mismatched answer", refusal, err)
 			}
 		})
 	}

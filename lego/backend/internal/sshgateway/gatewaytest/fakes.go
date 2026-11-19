@@ -231,13 +231,16 @@ func (e *EchoExecutor) Execute(ctx context.Context, _ apps.SSHInstanceTarget, _ 
 // (agentsession.TwoFactorHandler over the real twofactor.Gate) for the
 // gateway's TwoFactorGate: workspaces that Require 2FA admit only Enrolled
 // subjects, and workspaces that RequireGoogle admit only questions carrying
-// the Google sign-in (a native SSH key added while signed in with Google). It
-// counts every question and remembers each one's method and sign-in. Safe to
-// flip while server goroutines run.
+// the Google sign-in (a native SSH key added while signed in with Google). A
+// workspace whose org RequireByOrganization adds the org's requirements, and
+// a refusal they decide names the org (w7/090). It counts every question and
+// remembers each one's method and sign-in. Safe to flip while server
+// goroutines run.
 type FakeTwoFactor struct {
 	mu       sync.Mutex
 	required map[string]bool
 	google   map[string]bool
+	orgs     map[string]core.LoginOrganization
 	enrolled map[string]bool
 	err      error
 	asked    int
@@ -253,6 +256,17 @@ func (f *FakeTwoFactor) RequireGoogle(workspaceID string, on bool) {
 		f.google = map[string]bool{}
 	}
 	f.google[workspaceID] = on
+}
+
+// RequireByOrganization sets the org a workspace belongs to and what the org's
+// own settings require in it (w7/m466, w7/090).
+func (f *FakeTwoFactor) RequireByOrganization(workspaceID string, org core.LoginOrganization) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.orgs == nil {
+		f.orgs = map[string]core.LoginOrganization{}
+	}
+	f.orgs[workspaceID] = org
 }
 
 // SignIns returns the sign-in of every question, in order.
@@ -289,26 +303,35 @@ func (f *FakeTwoFactor) Fail(err error) {
 	f.err = err
 }
 
-// Ask answers like the verb: not required => (false, ""), else the Google
-// refusal first, then the subject's enrollment.
-func (f *FakeTwoFactor) Ask(_ context.Context, workspaceID, subject, method string, signIn core.SignIn) (required bool, refusal string, err error) {
+// Ask answers like the verb: not required => (false, no refusal), else the
+// Google refusal first, then the subject's enrollment, each naming the org
+// when its setting requires what was refused.
+func (f *FakeTwoFactor) Ask(_ context.Context, workspaceID, subject, method string, signIn core.SignIn) (required bool, refusal core.LoginRefusal, err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.asked++
 	f.methods = append(f.methods, method)
 	f.signIns = append(f.signIns, signIn)
 	if f.err != nil {
-		return false, "", f.err
+		return false, core.LoginRefusal{}, f.err
+	}
+	org := f.orgs[workspaceID]
+	twoFactor, google := f.required[workspaceID] || org.TwoFactor, f.google[workspaceID] || org.GoogleLogin
+	refuse := func(code string, byOrg bool) core.LoginRefusal {
+		if !byOrg {
+			return core.LoginRefusal{Code: code}
+		}
+		return core.LoginRefusal{Code: code, OrganizationID: org.ID, OrganizationName: org.Name}
 	}
 	switch {
-	case !f.required[workspaceID] && !f.google[workspaceID]:
-		return false, "", nil
-	case f.google[workspaceID] && signIn != core.SignInGoogle:
-		return true, core.CodeWorkspaceGoogleLoginRequired, nil
-	case f.required[workspaceID] && !f.enrolled[subject]:
-		return true, core.CodeWorkspaceTwoFactorRequired, nil
+	case !twoFactor && !google:
+		return false, core.LoginRefusal{}, nil
+	case google && signIn != core.SignInGoogle:
+		return true, refuse(core.CodeWorkspaceGoogleLoginRequired, org.GoogleLogin), nil
+	case twoFactor && !f.enrolled[subject]:
+		return true, refuse(core.CodeWorkspaceTwoFactorRequired, org.TwoFactor), nil
 	}
-	return true, "", nil
+	return true, core.LoginRefusal{}, nil
 }
 
 // Questions is how many times the gateway asked.

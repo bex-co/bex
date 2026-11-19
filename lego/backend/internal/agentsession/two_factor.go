@@ -68,13 +68,18 @@ type TwoFactorRequest struct {
 // error, so the gateway can tell "this member has no second factor" from "the
 // answer could not be had" (which it must fail closed on). Code names the
 // refusal (core.CodeWorkspaceTwoFactorRequired or
-// core.CodeWorkspaceGoogleLoginRequired) when Allowed is false.
+// core.CodeWorkspaceGoogleLoginRequired) when Allowed is false, and
+// OrganizationID and OrganizationName name the org when its own setting
+// decided the refusal (w7/090), as the refusal's details do on every other
+// surface.
 type TwoFactorResponse struct {
-	WorkspaceID string `json:"workspaceId"`
-	Subject     string `json:"subject"`
-	Required    bool   `json:"required"`
-	Allowed     bool   `json:"allowed"`
-	Code        string `json:"code,omitempty"`
+	WorkspaceID      string `json:"workspaceId"`
+	Subject          string `json:"subject"`
+	Required         bool   `json:"required"`
+	Allowed          bool   `json:"allowed"`
+	Code             string `json:"code,omitempty"`
+	OrganizationID   string `json:"organizationId,omitempty"`
+	OrganizationName string `json:"organizationName,omitempty"`
 }
 
 // TwoFactorPolicy is the decision the verb serves: *twofactor.Gate. Required
@@ -119,8 +124,8 @@ func (h *TwoFactorHandler) answer(ctx context.Context, req TwoFactorRequest) (Tw
 	case err == nil:
 	case errors.Is(err, core.ErrForbidden):
 		out.Allowed, out.Code = false, core.CodeWorkspaceTwoFactorRequired
-		if coded := (*core.CodedError)(nil); errors.As(err, &coded) {
-			out.Code = coded.Code
+		if r, ok := core.LoginRefusalOf(err); ok {
+			out.Code, out.OrganizationID, out.OrganizationName = r.Code, r.OrganizationID, r.OrganizationName
 		}
 	default:
 		return TwoFactorResponse{}, err
@@ -138,26 +143,27 @@ type TwoFactorClient struct {
 
 // Ask returns the verb's answer for subject, authenticated by the gateway as
 // method (signIn is a native SSH key's creation stamp, "" otherwise): whether
-// the workspace requires anything, and, when it refuses, the refusal's code
-// ("" when allowed). Any error means the answer could not be obtained, and
-// callers refuse on it: a transport failure, a non-200, a bad signature and a
-// malformed or mismatched body are all the same "cannot tell".
-func (c *TwoFactorClient) Ask(ctx context.Context, workspaceID, subject, method string, signIn core.SignIn) (required bool, refusal string, err error) {
+// the workspace requires anything, and, when it refuses, the refusal: its code
+// and the org whose setting decided it (the zero value when allowed). Any
+// error means the answer could not be obtained, and callers refuse on it: a
+// transport failure, a non-200, a bad signature and a malformed or mismatched
+// body are all the same "cannot tell".
+func (c *TwoFactorClient) Ask(ctx context.Context, workspaceID, subject, method string, signIn core.SignIn) (required bool, refusal core.LoginRefusal, err error) {
 	req := TwoFactorRequest{WorkspaceID: workspaceID, Subject: subject, Method: method, SignIn: string(signIn), Nonce: newNonce()}
 	out, err := postSignedMint(ctx, c.URL, c.Secret, c.now(), c.HTTP, req, func(out TwoFactorResponse) bool {
 		// Not required implies allowed: a body saying otherwise is not an answer.
 		return out.WorkspaceID == workspaceID && out.Subject == subject && (out.Required || out.Allowed)
 	})
 	if err != nil {
-		return false, "", err
+		return false, core.LoginRefusal{}, err
 	}
 	if out.Allowed {
-		return out.Required, "", nil
+		return out.Required, core.LoginRefusal{}, nil
 	}
 	if out.Code != core.CodeWorkspaceGoogleLoginRequired {
 		out.Code = core.CodeWorkspaceTwoFactorRequired // an older bex-api names no code: its only refusal is 2FA
 	}
-	return out.Required, out.Code, nil
+	return out.Required, core.LoginRefusal{Code: out.Code, OrganizationID: out.OrganizationID, OrganizationName: out.OrganizationName}, nil
 }
 
 func (h *TwoFactorHandler) now() time.Time {

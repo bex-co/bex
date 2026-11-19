@@ -155,28 +155,29 @@ var errUnverifiedOwner = errors.New("public key rejected: verify your bex accoun
 // The Google-login refusal (w7/m465, §9b) is told the same way: a key that was
 // not added while its owner was signed in with Google, or an owner whose
 // Google account no longer matches their email, gets its own banner.
-const (
-	twoFactorBanner          = "bex: this workspace requires two-factor authentication. Enable it in your account settings, then connect again.\n"
-	twoFactorChannelReason   = "this workspace requires two-factor authentication"
-	googleLoginBanner        = "bex: this workspace requires signing in with Google. Sign in to bex with Google, add this SSH key again, then connect again.\n"
-	googleLoginChannelReason = "this workspace requires signing in with Google"
-	reauthorizeFailed        = "authorization no longer valid"
-)
+//
+// When the workspace's org's own setting decided the refusal (§9c), both name
+// the org, as its refusal does on every other surface (w7/090), so the member
+// looks for the setting on the org's page, not the workspace's.
+const reauthorizeFailed = "authorization no longer valid"
 
 // loginRefusal is how the client is told about a workspace login-requirement
 // refusal, however a resolver wrapped it. ok is false for every other error.
 func loginRefusal(err error) (r refusal, ok bool) {
-	var coded *core.CodedError
-	if !errors.As(err, &coded) {
+	lr, ok := core.LoginRefusalOf(err)
+	if !ok {
 		return refusal{}, false
 	}
-	switch coded.Code {
-	case core.CodeWorkspaceTwoFactorRequired:
-		return refusal{banner: twoFactorBanner, reason: twoFactorChannelReason, metric: "rejected_two_factor"}, true
-	case core.CodeWorkspaceGoogleLoginRequired:
-		return refusal{banner: googleLoginBanner, reason: googleLoginChannelReason, metric: "rejected_google_login"}, true
+	who, scope := "this workspace", ""
+	if lr.OrganizationName != "" {
+		who, scope = "the organization "+lr.OrganizationName, " in all of its workspaces"
 	}
-	return refusal{}, false
+	requirement, fix, metric := "two-factor authentication", "Enable it in your account settings, then connect again.", "rejected_two_factor"
+	if lr.Code == core.CodeWorkspaceGoogleLoginRequired {
+		requirement, fix, metric = "signing in with Google", "Sign in to bex with Google, add this SSH key again, then connect again.", "rejected_google_login"
+	}
+	reason := who + " requires " + requirement + scope
+	return refusal{banner: "bex: " + reason + ". " + fix + "\n", reason: reason, metric: metric}, true
 }
 
 // refusal is one login-requirement refusal as the SSH client sees it: the

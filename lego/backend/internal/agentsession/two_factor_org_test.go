@@ -57,17 +57,21 @@ func (g orgGoogle) GoogleAccountMatches(_ context.Context, subject string) (bool
 // w7/m466: the SSH gateway's verb answers an org workspace whose own setting
 // is off with the org's requirement, through the real gate: an unenrolled
 // member is refused with the 2FA code, an SSH key not created in a Google
-// sign-in with the Google code, and a member who meets it is allowed.
+// sign-in with the Google code, and a member who meets it is allowed. Since
+// w7/090 a refusal names the org, so the gateway's banner can.
 func TestTwoFactorVerbAnswersAnOrganizationsRequirement(t *testing.T) {
+	acme := func(code string) core.LoginRefusal {
+		return core.LoginRefusal{Code: code, OrganizationID: "org-1", OrganizationName: "Acme"}
+	}
 	for name, tc := range map[string]struct {
 		org         core.LoginOrganization
 		subject     string
 		signIn      core.SignIn
-		wantRefusal string
+		wantRefusal core.LoginRefusal
 	}{
-		"org 2FA, unenrolled":         {org: core.LoginOrganization{ID: "org-1", Name: "Acme", TwoFactor: true}, subject: "unenrolled", wantRefusal: core.CodeWorkspaceTwoFactorRequired},
+		"org 2FA, unenrolled":         {org: core.LoginOrganization{ID: "org-1", Name: "Acme", TwoFactor: true}, subject: "unenrolled", wantRefusal: acme(core.CodeWorkspaceTwoFactorRequired)},
 		"org 2FA, enrolled":           {org: core.LoginOrganization{ID: "org-1", Name: "Acme", TwoFactor: true}, subject: "enrolled"},
-		"org Google, password key":    {org: core.LoginOrganization{ID: "org-1", Name: "Acme", GoogleLogin: true}, subject: "enrolled", signIn: core.SignInPassword, wantRefusal: core.CodeWorkspaceGoogleLoginRequired},
+		"org Google, password key":    {org: core.LoginOrganization{ID: "org-1", Name: "Acme", GoogleLogin: true}, subject: "enrolled", signIn: core.SignInPassword, wantRefusal: acme(core.CodeWorkspaceGoogleLoginRequired)},
 		"org Google, Google-made key": {org: core.LoginOrganization{ID: "org-1", Name: "Acme", GoogleLogin: true}, subject: "enrolled", signIn: core.SignInGoogle},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -81,10 +85,10 @@ func TestTwoFactorVerbAnswersAnOrganizationsRequirement(t *testing.T) {
 			client := &TwoFactorClient{URL: srv.URL, Secret: []byte("exec-secret")}
 			required, refusal, err := client.Ask(context.Background(), "tea-org", tc.subject, "ssh", tc.signIn)
 			if err != nil || !required || refusal != tc.wantRefusal {
-				t.Fatalf("Ask = (required %v, refusal %q, %v), want (true, %q)", required, refusal, err, tc.wantRefusal)
+				t.Fatalf("Ask = (required %v, refusal %+v, %v), want (true, %+v)", required, refusal, err, tc.wantRefusal)
 			}
-			if required, refusal, err := client.Ask(context.Background(), "tea-alone", tc.subject, "ssh", tc.signIn); err != nil || required || refusal != "" {
-				t.Fatalf("a standalone workspace = (%v, %q, %v), want nothing required", required, refusal, err)
+			if required, refusal, err := client.Ask(context.Background(), "tea-alone", tc.subject, "ssh", tc.signIn); err != nil || required || refusal != (core.LoginRefusal{}) {
+				t.Fatalf("a standalone workspace = (%v, %+v, %v), want nothing required", required, refusal, err)
 			}
 		})
 	}

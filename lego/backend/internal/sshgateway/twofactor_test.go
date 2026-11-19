@@ -265,10 +265,10 @@ type holdingAsker struct {
 	asked   atomic.Int32
 }
 
-func (a *holdingAsker) Ask(context.Context, string, string, string, core.SignIn) (bool, string, error) {
+func (a *holdingAsker) Ask(context.Context, string, string, string, core.SignIn) (bool, core.LoginRefusal, error) {
 	a.asked.Add(1)
 	<-a.release
-	return true, "", nil
+	return true, core.LoginRefusal{}, nil
 }
 
 // Concurrent checks of one member on one workspace put one question to bex-api,
@@ -348,5 +348,38 @@ func TestTwoFactorGateAnswersGoogleLoginPerKeySignIn(t *testing.T) {
 	}
 	if got := gatewaytest.MetricValue(t, f.reg, "bex_ssh_gateway_two_factor_refusals_total", map[string]string{"result": "not_google"}); got != 2 {
 		t.Fatalf("not_google refusals = %v, want 2 (the fresh one and the cached one)", got)
+	}
+}
+
+// w7/090: a refusal the workspace's org decided comes back as bex-api's coded
+// 403 naming the org, from the question and from the cache alike, and a
+// workspace's own refusal still names no org.
+func TestTwoFactorGateNamesTheOrganizationThatDecided(t *testing.T) {
+	f := newTwoFactorFixture()
+	f.asker.RequireByOrganization("tea-org-2fa", core.LoginOrganization{ID: "org-1", Name: "Acme", TwoFactor: true})
+	f.asker.RequireByOrganization("tea-org-google", core.LoginOrganization{ID: "org-1", Name: "Acme", GoogleLogin: true})
+	ctx := context.Background()
+	for _, tc := range []struct {
+		workspace, code string
+		id              core.Identity
+		wantOrg         bool
+	}{
+		{workspace: "tea-org-2fa", code: core.CodeWorkspaceTwoFactorRequired, id: sshIdentity("unenrolled"), wantOrg: true},
+		{workspace: "tea-org-google", code: core.CodeWorkspaceGoogleLoginRequired, id: core.Identity{Subject: "enrolled", Method: "ssh", SignIn: core.SignInPassword}, wantOrg: true},
+		{workspace: "tea-on", code: core.CodeWorkspaceTwoFactorRequired, id: sshIdentity("unenrolled")},
+	} {
+		for _, pass := range []string{"asked", "cached"} {
+			err := f.gate.Check(ctx, tc.workspace, tc.id)
+			var coded *core.CodedError
+			if !errors.Is(err, core.ErrForbidden) || !errors.As(err, &coded) || coded.Code != tc.code || coded.Params["workspaceId"] != tc.workspace {
+				t.Fatalf("%s %s: Check = %v, want the coded %s 403", tc.workspace, pass, err, tc.code)
+			}
+			if named := coded.Params["organizationId"] == "org-1" && coded.Params["organizationName"] == "Acme"; named != tc.wantOrg {
+				t.Fatalf("%s %s: params = %v, want the org named: %v", tc.workspace, pass, coded.Params, tc.wantOrg)
+			}
+		}
+	}
+	if got := f.asker.Questions(); got != 3 {
+		t.Fatalf("questions = %d, want one per workspace, then the cache", got)
 	}
 }

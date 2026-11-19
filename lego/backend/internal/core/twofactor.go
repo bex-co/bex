@@ -268,8 +268,51 @@ func NewWorkspaceGoogleLoginDefaultWorkspaceError() *CodedError {
 // lets it through: the gate runs only after a positive decision, so the
 // refusal reaches members alone and reveals nothing to anyone else.
 func IsLoginRefusal(err error) bool {
+	_, ok := LoginRefusalOf(err)
+	return ok
+}
+
+// LoginRefusal is the login gate's refusal reduced to what crosses from
+// bex-api to the SSH gateway (agentsession.InternalTwoFactorPath): its code
+// and, when the workspace's org's own setting decided it, that org (w7/090),
+// so the gateway's refusals name the org as bex-api's do. The zero value
+// allows.
+type LoginRefusal struct {
+	Code             string
+	OrganizationID   string
+	OrganizationName string
+}
+
+// LoginRefusalOf reads the login gate's refusal out of err, however it was
+// wrapped: its code and the org its details name. ok is false for any other
+// error.
+func LoginRefusalOf(err error) (r LoginRefusal, ok bool) {
 	var coded *CodedError
-	return errors.As(err, &coded) && (coded.Code == CodeWorkspaceTwoFactorRequired || coded.Code == CodeWorkspaceGoogleLoginRequired)
+	if !errors.As(err, &coded) || (coded.Code != CodeWorkspaceTwoFactorRequired && coded.Code != CodeWorkspaceGoogleLoginRequired) {
+		return LoginRefusal{}, false
+	}
+	r.Code = coded.Code
+	r.OrganizationID, _ = coded.Params["organizationId"].(string)
+	r.OrganizationName, _ = coded.Params["organizationName"].(string)
+	return r, true
+}
+
+// Err is the coded 403 r stands for in workspaceID, the one bex-api answers
+// (the member's form of the Google refusal): nil when r allows, the Google
+// refusal for its code, the 2FA refusal for any other. Each names the org
+// when r carries one.
+func (r LoginRefusal) Err(workspaceID string) error {
+	org := LoginOrganization{ID: r.OrganizationID, Name: r.OrganizationName}
+	byOrg := org.ID != "" && org.Name != ""
+	switch r.Code {
+	case "":
+		return nil
+	case CodeWorkspaceGoogleLoginRequired:
+		org.GoogleLogin = byOrg
+		return NewLoginGoogleLoginRequiredError(workspaceID, LoginRequirements{GoogleLogin: true, Organization: org}, false)
+	}
+	org.TwoFactor = byOrg
+	return NewLoginTwoFactorRequiredError(workspaceID, LoginRequirements{TwoFactor: true, Organization: org})
 }
 
 type twoFactorExemptKey struct{}

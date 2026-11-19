@@ -92,3 +92,40 @@ func TestTheLoginRefusalsNameTheOrgOnlyWhenItRequiresIt(t *testing.T) {
 		t.Fatalf("an org requiring nothing changed the requirements: %+v", r)
 	}
 }
+
+// w7/090: a login refusal survives the trip to the SSH gateway as a
+// LoginRefusal. Read back into an error it is the refusal bex-api answered,
+// naming the org exactly when the original did; anything else is no refusal.
+func TestALoginRefusalRoundTripsThroughLoginRefusal(t *testing.T) {
+	org := LoginRequirements{}.WithOrganization("org-1", "Acme", true, true)
+	for name, original := range map[string]*CodedError{
+		"workspace 2FA":    NewWorkspaceTwoFactorRequiredError("tea-1"),
+		"workspace Google": NewWorkspaceGoogleLoginRequiredError("tea-1"),
+		"org 2FA":          NewLoginTwoFactorRequiredError("tea-1", org),
+		"org Google":       NewLoginGoogleLoginRequiredError("tea-1", org, false),
+	} {
+		t.Run(name, func(t *testing.T) {
+			r, ok := LoginRefusalOf(errors.Join(errors.New("resolve"), original))
+			if !ok || r.Code != original.Code {
+				t.Fatalf("LoginRefusalOf = (%+v, %v), want the code %s", r, ok, original.Code)
+			}
+			var back *CodedError
+			if err := r.Err("tea-1"); !errors.Is(err, ErrForbidden) || !errors.As(err, &back) {
+				t.Fatalf("Err = %v, want a coded 403", err)
+			}
+			if back.Code != original.Code || back.Error() != original.Error() ||
+				back.Params["organizationId"] != original.Params["organizationId"] || back.Params["organizationName"] != original.Params["organizationName"] ||
+				back.Params["workspaceId"] != "tea-1" {
+				t.Fatalf("Err = %v %v, want %v %v", back, back.Params, original, original.Params)
+			}
+		})
+	}
+	for _, err := range []error{ErrForbidden, NewEmailVerificationRequiredError(), errors.New(CodeWorkspaceTwoFactorRequired)} {
+		if r, ok := LoginRefusalOf(err); ok || r != (LoginRefusal{}) {
+			t.Fatalf("LoginRefusalOf(%v) = (%+v, %v), want no refusal", err, r, ok)
+		}
+	}
+	if err := (LoginRefusal{}).Err("tea-1"); err != nil {
+		t.Fatalf("the zero LoginRefusal = %v, want allowed", err)
+	}
+}

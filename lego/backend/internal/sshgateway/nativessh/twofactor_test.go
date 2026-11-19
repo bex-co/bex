@@ -267,14 +267,22 @@ func TestOnlyTheLoginRequirementCodesGetTheirMessage(t *testing.T) {
 		err  error
 		want string // the channel reason; "" = not a login-requirement refusal
 	}{
-		"the coded 2FA refusal":    {core.NewWorkspaceTwoFactorRequiredError("tea-x"), twoFactorChannelReason},
-		"wrapped":                  {errors.Join(errors.New("resolve"), core.NewWorkspaceTwoFactorRequiredError("tea-x")), twoFactorChannelReason},
-		"the coded Google refusal": {core.NewWorkspaceGoogleLoginKeyError("tea-x"), googleLoginChannelReason},
-		"plain forbidden":          {core.ErrForbidden, ""},
-		"another coded 403":        {core.NewEmailVerificationRequiredError(), ""},
-		"outage":                   {core.ErrAuthzUnavailable, ""},
-		"not found":                {store.ErrNotFound, ""},
-		"unrelated plain text":     {errors.New(core.CodeWorkspaceTwoFactorRequired), ""},
+		"the coded 2FA refusal":    {core.NewWorkspaceTwoFactorRequiredError("tea-x"), "this workspace requires two-factor authentication"},
+		"wrapped":                  {errors.Join(errors.New("resolve"), core.NewWorkspaceTwoFactorRequiredError("tea-x")), "this workspace requires two-factor authentication"},
+		"the coded Google refusal": {core.NewWorkspaceGoogleLoginKeyError("tea-x"), "this workspace requires signing in with Google"},
+		"the org's 2FA refusal": {
+			core.NewLoginTwoFactorRequiredError("tea-x", core.LoginRequirements{}.WithOrganization("org-1", "Acme", true, false)),
+			"the organization Acme requires two-factor authentication in all of its workspaces",
+		},
+		"the org's Google refusal": {
+			core.NewLoginGoogleLoginRequiredError("tea-x", core.LoginRequirements{}.WithOrganization("org-1", "Acme", false, true), true),
+			"the organization Acme requires signing in with Google in all of its workspaces",
+		},
+		"plain forbidden":      {core.ErrForbidden, ""},
+		"another coded 403":    {core.NewEmailVerificationRequiredError(), ""},
+		"outage":               {core.ErrAuthzUnavailable, ""},
+		"not found":            {store.ErrNotFound, ""},
+		"unrelated plain text": {errors.New(core.CodeWorkspaceTwoFactorRequired), ""},
 	} {
 		t.Run(name, func(t *testing.T) {
 			r, ok := loginRefusal(tc.err)
@@ -325,6 +333,52 @@ func TestAKeyNotAddedInAGoogleSignInIsRefusedWhereGoogleLoginIsRequired(t *testi
 			signIns := h.asker.SignIns()
 			if len(signIns) == 0 || signIns[0] != tc.stamp {
 				t.Fatalf("the gateway asked with sign-ins %v, want the key's stamp %q", signIns, tc.stamp)
+			}
+		})
+	}
+}
+
+// w7/090: when the workspace's org's own setting refused the key's owner, the
+// banner names the org, as the refusal does on REST, GraphQL and MCP, so the
+// member looks for the setting on the org's page; a workspace's own refusal
+// keeps "this workspace".
+func TestTheBannerNamesTheOrganizationWhoseSettingRefused(t *testing.T) {
+	for name, tc := range map[string]struct {
+		org        core.LoginOrganization
+		own        bool
+		wantBanner string
+		wantMetric string
+	}{
+		"org 2FA": {
+			org:        core.LoginOrganization{ID: "org-1", Name: "Acme", TwoFactor: true},
+			wantBanner: "bex: the organization Acme requires two-factor authentication in all of its workspaces. Enable it in your account settings, then connect again.\n",
+			wantMetric: "rejected_two_factor",
+		},
+		"org Google login": {
+			org:        core.LoginOrganization{ID: "org-1", Name: "Acme", GoogleLogin: true},
+			wantBanner: "bex: the organization Acme requires signing in with Google in all of its workspaces. Sign in to bex with Google, add this SSH key again, then connect again.\n",
+			wantMetric: "rejected_google_login",
+		},
+		"the workspace's own 2FA": {
+			own:        true,
+			wantBanner: "bex: this workspace requires two-factor authentication. Enable it in your account settings, then connect again.\n",
+			wantMetric: "rejected_two_factor",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			h := startTwoFactorGateway(t, tc.own, false, nil)
+			h.asker.RequireByOrganization(twoFactorWorkspace, tc.org)
+			h.store.Key.CreatedSignIn = core.SignInPassword
+			client, banner, err := dialWithBanner(h.addr, "srv-abcdeabcdeabcdeabcde", h.signer)
+			if err == nil {
+				client.Close()
+				t.Fatal("a member the login requirement refuses authenticated")
+			}
+			if banner != tc.wantBanner {
+				t.Fatalf("banner = %q, want %q", banner, tc.wantBanner)
+			}
+			if got := h.metric("bex_ssh_gateway_authentications_total", map[string]string{"result": tc.wantMetric}, t); got != 1 {
+				t.Fatalf("%s authentications = %v, want 1", tc.wantMetric, got)
 			}
 		})
 	}
