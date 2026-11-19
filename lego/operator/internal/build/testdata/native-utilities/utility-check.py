@@ -156,9 +156,38 @@ def extra_cases():
   # Real noninteractive bundling and unresolved module failure.
   (d/'domain.mjs').write_text("export function value(){return {n:21,label:'雪'};}\n");(d/'entry.mjs').write_text("import {value} from './domain.mjs';console.log(JSON.stringify(value()));\n");stats=run(['webpack','./entry.mjs','--mode','production','--target','node','--output-path',str(d/'bundle'),'--output-filename','app.cjs','--json'],cwd=d);assert json.loads(stats)['errors']==[];assert json.loads(run(['node','bundle/app.cjs'],cwd=d))=={'n':21,'label':'雪'}
   (d/'broken.mjs').write_text("import './does-not-exist.mjs';\n");bad=run(['webpack','./broken.mjs','--mode','production','--target','node','--output-path',str(d/'bad-bundle'),'--json'],cwd=d,fails=True);assert json.loads(bad)['errors'];results.append('Webpack real two-module runtime production bundle + unresolved-module nonzero statistics')
-  # SWIG language/typemap data and actual runtime wrapper compilation/import.
-  (d/'runtime_bind.i').write_text('%module runtime_bind\n%inline %{\nint weighted(int a,int b){return 7*a+3*b;}\n%}\n');run(['swig','-python','runtime_bind.i'],cwd=d);includes=shlex.split(run(['python3-config','--includes']).decode());suffix=run(['python3-config','--extension-suffix']).decode().strip();run(['gcc','-shared','-fPIC',*includes,'runtime_bind_wrap.c','-o','_runtime_bind'+suffix],cwd=d);run(['python3','-c','import runtime_bind; assert [runtime_bind.weighted(17,-4),runtime_bind.weighted(-9,7)]==[107,-42]'],cwd=d)
-  (d/'bad.i').write_text('%module bad\n%inline %{\nint broken( ;\n%}\n');run(['swig','-python','bad.i'],cwd=d,fails=True);results.append('SWIG runtime typemap/wrapper/C import + invalid interface failure')
+  # SWIG beyond the original build: m100's own interface through its original argv, the frozen generated sources, the packaged library (typemaps, exceptions, arrays, C++ std::string), authored include paths and SWIG_LIB, and its exit statuses.
+  m100=next(x for x in json.loads((ROOT/'original-cases.json').read_text()) if x['mid']==100);sref=m100['validation_reference'];sw=d/'swig-app';(sw/'inc').mkdir(parents=True);(sw/'gen').mkdir()
+  (sw/'qa_swig.i').write_text(json.loads(gzip.decompress(base64.b64decode(m100['commands']['initial']['build'].split("b64decode('",1)[1].split("'",1)[0])))['qa_swig.i'],encoding='utf-8')
+  def swig(*a,env=None):r=subprocess.run(['swig',*a],cwd=sw,capture_output=True,env=env,timeout=90);return r.returncode,r.stderr.decode()
+  assert sha((sw/'qa_swig.i').read_bytes())==sref['interface_sha256'] and 'SWIG_LIB' not in os.environ and run(['swig','-swiglib'])==b'/usr/share/swig4.0\n' and swig('-python','qa_swig.i')==(0,'')
+  # 4.1.0 generates these bytes on linux/amd64 (production, w8/m100) and linux/arm64.
+  assert sha((sw/'qa_swig_wrap.c').read_bytes())=='a5594a40f2a89b3ae243a88d48bbe67605dffc1662ef84770cafe7cad0a15ce1' and sha((sw/'qa_swig.py').read_bytes())=='25875c839be1bab0b992b2be6ae69cd96df39791bdcfee0a868021ccb6f306b9'
+  includes=shlex.split(run(['python3-config','--includes']).decode());suffix=run(['python3-config','--extension-suffix']).decode().strip()
+  def extension(module,wrapper,compiler='gcc'):run([compiler,'-shared','-fPIC',*includes,wrapper,'-o','_'+module+suffix],cwd=sw)
+  extension('qa_swig','qa_swig_wrap.c');expected=[{'a':a,'b':b,'value':2*a+3*b} for a,b in sref['pairs']]
+  got=json.loads(run(['python3','-c','import json,sys,qa_swig;print(json.dumps({"result":[{"a":a,"b":b,"value":qa_swig.weighted_sum(a,b)} for a,b in json.loads(sys.argv[1])],"unicode":qa_swig.dessert()}))',json.dumps(sref['pairs'])],cwd=sw))
+  assert expected==sref['expected'] and got=={'result':expected,'unicode':'Crème brûlée & 李'} and sref['unicode']==got['unicode']
+  # The packaged library: OUTPUT typemaps, an exception.i ValueError and carrays; C truncates toward zero, unlike Python's divmod(-17,5).
+  (sw/'lib.i').write_text('%module lib_bind\n%include "typemaps.i"\n%include "exception.i"\n%include "carrays.i"\n%array_functions(int, intArray);\n%apply int *OUTPUT { int *quotient, int *remainder };\n%exception divide {\n  $action\n  if (result != 0) SWIG_exception(SWIG_ValueError, "bex: divisor must be positive");\n}\n%inline %{\nint divide(int a, int b, int *quotient, int *remainder) { if (b <= 0) return -1; *quotient = a / b; *remainder = a % b; return 0; }\nint sum_array(int *values, int n) { int s = 0; for (int i = 0; i < n; i++) s += values[i]; return s; }\n%}\n')
+  assert swig('-python','lib.i')==(0,'');extension('lib_bind','lib_wrap.c')
+  probe='import json,lib_bind\ntry:lib_bind.divide(1,0);refused=None\nexcept ValueError as e:refused=str(e)\na=lib_bind.new_intArray(4)\nfor i,v in enumerate([5,-2,40,0]):lib_bind.intArray_setitem(a,i,v)\nprint(json.dumps([lib_bind.divide(17,5),lib_bind.divide(-17,5),refused,lib_bind.sum_array(a,4),lib_bind.intArray_getitem(a,2)]))\nlib_bind.delete_intArray(a)\n'
+  assert json.loads(run(['python3','-c',probe],cwd=sw))==[[0,3,2],[0,-3,-2],'bex: divisor must be positive',43,40]
+  # Those files come from the data tree: an authored SWIG_LIB elsewhere is honored, and the same interface then finds none of them.
+  code,diag=swig('-python','lib.i',env=dict(os.environ,SWIG_LIB=str(d/'no-swig-lib')));assert code==1 and "Unable to find 'swig.swg'" in diag and "lib.i:2: Error: Unable to find 'typemaps.i'" in diag
+  # C++ through std_string.i: UTF-8 crosses std::string intact and only ASCII letters change.
+  (sw/'cpp.i').write_text('%module cpp_bind\n%include "std_string.i"\n%{\n#include <string>\n%}\n%inline %{\nstd::string shout(const std::string &s) { std::string r(s); for (auto &c : r) if (c >= \'a\' && c <= \'z\') c -= 32; return r + "!"; }\n%}\n')
+  assert swig('-c++','-python','cpp.i')==(0,'');extension('cpp_bind','cpp_wrap.cxx','g++');text='crème brûlée & 李 two words'
+  assert run(['python3','-c','import sys,cpp_bind;sys.stdout.buffer.write(cpp_bind.shout(sys.argv[1]).encode())',text],cwd=sw).decode()==''.join(c.upper() if 'a'<=c<='z' else c for c in text)+'!'
+  # An authored include directory is searched only when named; -o and -outdir place the wrapper and the proxy.
+  (sw/'inc'/'custom.i').write_text('%inline %{\nint triple(int x) { return 3*x; }\n%}\n');(sw/'inc_bind.i').write_text('%module inc_bind\n%include "custom.i"\n')
+  code,diag=swig('-python','inc_bind.i');assert code==1 and "inc_bind.i:2: Error: Unable to find 'custom.i'" in diag and not (sw/'inc_bind_wrap.c').exists()
+  assert swig('-python','-Iinc','-o','gen/inc_wrap.c','-outdir','inc','inc_bind.i')==(0,'') and (sw/'inc'/'inc_bind.py').is_file() and not (sw/'gen'/'inc_bind.py').exists();extension('inc_bind','gen/inc_wrap.c')
+  assert run(['python3','-c','import sys;sys.path[1:1]=["inc"];import inc_bind;print(inc_bind.triple(-14))'],cwd=sw)==b'-42\n'
+  # Exit 1 for a syntax error, writing nothing, and for an unknown option.
+  (sw/'bad.i').write_text('%module bad\n%inline %{\nint broken( ;\n%}\n');code,diag=swig('-python','bad.i');assert code==1 and 'bad.i:3: Error: Syntax error in input(1).' in diag and not (sw/'bad_wrap.c').exists() and not (sw/'bad.py').exists()
+  code,diag=swig('-python','-bex-unknown-option','qa_swig.i');assert code==1 and 'Unrecognized option -bex-unknown-option' in diag
+  results.append('SWIG: m100 original interface via its own argv, frozen 4.1.0 wrapper and proxy, independent C result and Unicode; OUTPUT typemaps, exception.i ValueError and carrays from the packaged library, which an authored SWIG_LIB replaces; C++ std::string via std_string.i; authored -I include path with -o/-outdir; exit 1 for a syntax error with no output and for an unknown option')
   # Independent ZIP names/bytes/CRC/method checks; no unzip-as-oracle shortcut.
   zipdir=d/'zip';zipdir.mkdir();members={'empty.txt':b'','greeting.txt':('Crème brûlée & 李\n'*100).encode(),'two words.bin':bytes(range(256))*64}
   for n,b in members.items():(zipdir/n).write_bytes(b)

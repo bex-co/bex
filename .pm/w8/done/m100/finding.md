@@ -2,7 +2,7 @@
 
 Why: an ordinary supported binding build cannot generate its Python extension because the documented native environment omits swig.
 
-**Severity:** major. **Ownership:** operator shared native-image tool assembly. Ordinary functional CLI sweep421,2026-10-17. Published Bex0.3.2/a6350da0 and unchanged Render2.27.0/a764810a7682, isolated human-QA bex-canary/tea-daif693dqjvc73e7as3g, noninteractive JSON, api.bex.co/v1. Source7fa064b894d6f75e7f44f5bc65d10c5d0dd4d8c5; serving revision unknown. [Complete evidence](evidence/cli-sweep421/README.md).
+**Severity:** major. **Ownership:** operator shared native-image tool assembly. Ordinary functional CLI sweep421,2026-10-17. Published Bex0.3.2/a6350da0 and unchanged Render2.27.0/a764810a7682, isolated human-QA bex-canary/tea-daif693dqjvc73e7as3g, noninteractive JSON, api.bex.co/v1. Source7fa064b894d6f75e7f44f5bc65d10c5d0dd4d8c5; serving revision unknown. Complete evidence (sweep 421, purged 2026-11-04).
 
 ## Reproduce and isolate
 

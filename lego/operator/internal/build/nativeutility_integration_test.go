@@ -196,6 +196,7 @@ func nativeUtilityCases() []nativeUtilityCase {
 		{"libvips", "95", "cannot load library 'libvips.so.42'", nativePythonRuntime},
 		{"ghostscript", "97", "gs: command not found", nativePythonRuntime},
 		{"typescript", "99", "tsc: command not found", nativeNodeRuntime},
+		{"swig", "100", "swig: command not found", nativePythonRuntime},
 		{"python-metadata", "103", "No module named 'setuptools'", nativeNodeRuntime},
 		{"python-pip", "103", "No module named pip", nativeNodeRuntime},
 		{"python-headers", "103", "Python.h: No such file or directory", nativeNodeRuntime},
@@ -331,6 +332,10 @@ func nativeUtilityRemovalLayer(removed, name string) string {
 		// package and its platform binary with the standard library stay, so
 		// the original build fails at its tsc step, after the before proof.
 		command = `tsc --version && rm /usr/bin/tsc && test ! -e /usr/bin/tsc && hash -r && ! command -v tsc && /opt/bex/native-node-tools/node /opt/bex/native-node-tools/node_modules/typescript/bin/tsc --version && test -f /opt/bex/native-node-tools/node_modules/@typescript/typescript-linux-*/lib/lib.es2022.d.ts`
+	case "swig":
+		// Only the /usr/bin/swig link goes; swig4.0, its library and gcc stay,
+		// so the original build fails at its swig step, after the before proof.
+		command = `swig -version && rm /usr/bin/swig && test ! -e /usr/bin/swig && hash -r && ! command -v swig && swig4.0 -version | grep -q 'SWIG Version 4\.1\.0' && test -f "$(swig4.0 -swiglib)/python/python.swg" && gcc --version`
 	case "python-metadata":
 		command = pythonControls + " && rm -r /usr/lib/python3/dist-packages/setuptools && test ! -e /usr/lib/python3/dist-packages/setuptools && /usr/bin/python3 -m pip --version && test -f /usr/include/python3.11/Python.h"
 	case "python-pip":
