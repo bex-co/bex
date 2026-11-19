@@ -1,6 +1,6 @@
 # w9 · m472 — `terraform apply` with Render's provider creates services, cron jobs and webhooks on bex, as on Render
 
-**Worker:** worker9 **Goal:** the request bodies Render's official Terraform provider sends, which Render accepts, are accepted by bex, so a minimal Terraform configuration applies, re-plans clean and destroys on bex **Status:** blocked (t001–t004 and t006–t008 done; t005 waits for the production pin to carry this code, then t009)
+**Worker:** worker9 **Goal:** the request bodies Render's official Terraform provider sends, which Render accepts, are accepted by bex, so a minimal Terraform configuration applies, re-plans clean and destroys on bex **Status:** done (2026-11-19: t005 verified the definition of done on production pin `4b2cebd0bd03` in `bex-canary`)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | A webhook created with `eventFilter: null` subscribes to every event, as Render stores it — **DONE** | 45m | — |
 | [t003](done/t003.md) | A Docker or image cron job created with `envSpecificDetails.registryCredential` binds its `id`, as Render's provider sends it — **DONE** | 45m | — |
 | [t004](done/t004.md) | Optional request lists Render accepts as JSON null (`secretFiles`, `envVars`, `readReplicas`, `routes`) are accepted as omitted — **DONE** | 45m | — |
-| [t005](t005.md) | Production: `terraform apply`, a clean second plan and `destroy` with Render's provider in bex-canary | 1h | t001, t002, t003, t004 |
+| [t005](done/t005.md) | Production: `terraform apply`, a clean second plan and `destroy` with Render's provider in bex-canary — **DONE** | 1h | t001, t002, t003, t004 |
 | [t006](done/t006.md) | Render parity — **DONE** | 30m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 30m | t006 |
-| [t009](t009.md) | Closeout | 15m | t007, t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 15m | t007, t008 |
 
 ## Definition of done
 
@@ -43,3 +43,22 @@
 - **Parity (t006):** ADR018 rows updated. GraphQL and MCP already agree. Drift filed: w9/103 (`PATCH` webhook `eventFilter: null`).
 - **Simplify (t007) and tests (t008):** done. Each fix fails its tests when reverted.
 - **Gate (t005):** clears by itself once production runs this code; the check and expected timing are in [t005](t005.md). Deploys batch on a 6-hour pin age, and no deploy was dispatched to skip it. Then run t005's prepared Terraform apply, plan and destroy as the QA user in bex-canary, then t009.
+
+## Unblock (2026-11-19)
+
+- **Affected:** t005, then t009.
+- **Source:** verified evidence, no user decision. t005's gate cleared by itself, as written.
+  - The newest pin on `origin/main` is `chore(deploy): pin platform images to 4b2cebd0bd03` (`19faf35f3`, 09:13Z).
+  - `git merge-base --is-ancestor 5a387b8a7 4b2cebd0bd03` succeeds. `5a387b8a7` is the commit that shipped t001–t004 and parked this milestone.
+  - w9/m492 and w9/m493 closed on that pin's live rollout the same morning.
+- **Next:** t005's prepared run as the QA user in `bex-canary`: apply, a second plan, destroy. Then t009. Nothing else gates it.
+
+## Definition of done, verified (2026-11-19)
+
+Each bullet, checked on production pin `4b2cebd0bd03` as the QA user in `bex-canary` ([t005](done/t005.md) has the record):
+
+- **Terraform.** Terraform 1.17.2 and `render-oss/render` v1.9.1 applied all three resources (`3 added`): a native `render_web_service` with no `previews` block, a Docker `render_cron_job` with no registry credential, and a `render_webhook` with no `event_filter`. `terraform plan -detailed-exitcode` exited 0 right after the apply, and again once the web service was live and answering 200. `terraform destroy` removed all three, and each answered `GET` 404.
+- **Previews.** The provider's create sent `serviceDetails.previews: {}` and got 201. `{"generation":"automatic"}` still answers `400 services previews is not supported by this platform`.
+- **Webhook.** The create sent `eventFilter: null`, got 201, and read back `eventFilter: []`, every event.
+- **Cron.** The create sent the provider's `envSpecificDetails.registryCredential` object, with an empty `id` and every other field empty. It got 201, with no credential bound. A non-empty `id` binding is covered by t003's tests. Production had no registry credential to bind, and this run made none.
+- **Follow-up.** An explicit `previews = { generation = "off" }` still aborts after create, because bex's service read has no `serviceDetails.previews`. That is filed as [w9/129](../../129.md) and is outside this definition of done.
