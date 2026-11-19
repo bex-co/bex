@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bex-co/bex/lego/operator/internal/edgecache"
 	"github.com/bex-co/bex/lego/operator/internal/registry"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
@@ -179,6 +180,63 @@ var _ = Describe("Operator pod label admission", func() {
 			"reload stamp on another pod":   stamp(pod, registry.ZotReloadAnnotation, "2026-11-16T21:40:00Z"),
 			"zot image":                     operator.Patch(ctx, zot, client.RawPatch(types.StrategicMergePatchType, []byte(`{"spec":{"containers":[{"name":"zot","image":"evil/zot:1"}]}}`))),
 			"reload stamp removed from zot": operator.Patch(ctx, zot, client.RawPatch(types.MergePatchType, []byte(`{"metadata":{"annotations":{"`+registry.ZotReloadAnnotation+`":null}}}`))),
+		} {
+			Expect(err).To(HaveOccurred(), name)
+			Expect(err.Error()).To(ContainSubstring("bex-operator-pod-labels"), name)
+		}
+	})
+
+	// w3/m486: a purge and a profile switch reach a running edge-cache proxy
+	// through two annotations the operator patches on its pod
+	// (annotateEdgeCachePods). The policy let the operator change no pod
+	// annotation, so on production every pass of a caching service whose pods
+	// read their control file would have been refused, and its reconcile with
+	// it, before any deploy step ran.
+	It("admits the edge-cache control annotations on a pod running the proxy, and nothing more", func() {
+		admin, operator := startOperatorPodAdmission()
+
+		// Purges after the pods were created: a pod born after one is not
+		// handed it.
+		purge := func(after time.Duration) string { return time.Now().Add(after).UTC().Format(time.RFC3339Nano) }
+		app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "srv-podlabelcache", Namespace: "default",
+			Annotations: map[string]string{appv1alpha1.CachePurgedAtAnnotation: purge(time.Minute)}},
+			Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Tier: "starter", CacheProfile: appv1alpha1.CacheProfileStatic}}
+		spec := corev1.PodSpec{Containers: []corev1.Container{
+			{Name: appContainerName, Image: "registry.example/app:1"},
+			edgeCacheContainer("registry.example/bex:1", appv1alpha1.CacheProfileStatic, 10000, 0),
+		}}
+		withEdgeCacheControl(&spec, &spec.Containers[1])
+		pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: app.Name + "-abc", Namespace: app.Namespace,
+			Labels: map[string]string{labelApp: app.Name}}, Spec: spec}
+		Expect(admin.Create(ctx, pod)).To(Succeed())
+		plain := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "srv-podlabelplain-abc", Namespace: app.Namespace,
+			Labels: map[string]string{labelApp: "srv-podlabelplain"}},
+			Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: appContainerName, Image: "registry.example/app:1"}}}}
+		Expect(admin.Create(ctx, plain)).To(Succeed())
+		awaitOperatorPodAdmission(operator, pod)
+
+		r := &AppReconciler{Client: operator, Scheme: admin.Scheme()}
+		Expect(r.annotateEdgeCachePods(ctx, app)).To(Succeed(), "a purge")
+		app.Spec.CacheProfile = appv1alpha1.CacheProfileAll
+		second := purge(2 * time.Minute)
+		app.Annotations[appv1alpha1.CachePurgedAtAnnotation] = second
+		Expect(r.annotateEdgeCachePods(ctx, app)).To(Succeed(), "a switch and a second purge")
+		got := &corev1.Pod{}
+		Expect(admin.Get(ctx, client.ObjectKeyFromObject(pod), got)).To(Succeed())
+		Expect(got.Annotations).To(HaveKeyWithValue(edgecache.PurgedAtAnnotation, second))
+		Expect(got.Annotations).To(HaveKeyWithValue(edgecache.ProfileAnnotation, appv1alpha1.CacheProfileAll))
+
+		stamp := func(target *corev1.Pod, patch string) error {
+			return operator.Patch(ctx, &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: target.Name, Namespace: target.Namespace}},
+				client.RawPatch(types.MergePatchType, []byte(patch)))
+		}
+		for name, err := range map[string]error{
+			"other annotation on a caching pod": stamp(pod, `{"metadata":{"annotations":{"x":"y"}}}`),
+			"purge stamp removed":               stamp(pod, `{"metadata":{"annotations":{"`+edgecache.PurgedAtAnnotation+`":null}}}`),
+			"purge stamp on a pod without the proxy": stamp(plain,
+				`{"metadata":{"annotations":{"`+edgecache.PurgedAtAnnotation+`":"`+second+`"}}}`),
+			"proxy image": operator.Patch(ctx, pod, client.RawPatch(types.StrategicMergePatchType,
+				[]byte(`{"spec":{"containers":[{"name":"edge-cache","image":"evil/bex:1"}]}}`))),
 		} {
 			Expect(err).To(HaveOccurred(), name)
 			Expect(err.Error()).To(ContainSubstring("bex-operator-pod-labels"), name)
