@@ -40,7 +40,7 @@ import type { AgentSkillInput } from "@/graphql/definitions";
  */
 export function AgentSkillsCard({ ownerId }: { ownerId: string }) {
   const { t } = useTranslations();
-  const { canManage } = useCapabilities();
+  const { canManage, loaded } = useCapabilities();
   const {
     skills,
     loading,
@@ -57,7 +57,9 @@ export function AgentSkillsCard({ ownerId }: { ownerId: string }) {
   const [deleting, setDeleting] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
-  if (loading) return <AgentSkillsCardSkeleton />;
+  if (loading) {
+    return <AgentSkillsCardSkeleton canManage={loaded ? canManage : null} />;
+  }
 
   async function open(skill: AgentSkillSummary) {
     setErrorKey(null);
@@ -274,7 +276,7 @@ export function AgentSkillsCard({ ownerId }: { ownerId: string }) {
               ref={fileInput}
               type="file"
               accept=".md,text/markdown,text/plain"
-              className="hidden"
+              hidden
               data-testid="agent-skill-import"
               onChange={(e) => {
                 const file = e.target.files?.[0];

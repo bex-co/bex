@@ -78,6 +78,23 @@ describe("WorkspaceNotificationsCard", () => {
     expect(skeleton.querySelector('[data-slot="card-footer"]')).not.toBeNull();
   });
 
+  // w7/094: a member's card opens with the Admin-only note, so the skeleton
+  // holds its line once the caller is known not to manage the workspace.
+  it.each([
+    ["a member", false, 1],
+    ["an admin", true, 0],
+  ])("holds the read-only note's line for %s", (_, canManage, notes) => {
+    vi.mocked(useCapabilities).mockReturnValue(mockCapabilities({ canManage }));
+    setup(null, true);
+    const skeleton = screen.getByTestId("workspace-notifications-skeleton");
+    const note = "Only workspace admins can change these defaults.";
+    expect(
+      [...skeleton.querySelectorAll("p")].filter(
+        (line) => line.textContent === note,
+      ),
+    ).toHaveLength(notes);
+  });
+
   it("puts the email row and options on the same frames as the skeleton", () => {
     setup();
     expect(emailSwitch().parentElement).toHaveClass(

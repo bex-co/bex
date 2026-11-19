@@ -181,7 +181,11 @@ vi.mock("@/features/team/components/leave-workspace-card", () => ({
 
 // Build Pipeline (w6/m309) holds billing settings: billing managers only.
 // Workspace privacy (w7/m464) is an admin's (`can_manage`).
-const capabilityState = { canManageBilling: true, canManage: true };
+const capabilityState = {
+  canManageBilling: true,
+  canManage: true,
+  loading: false,
+};
 vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
   useCapabilities: () => capabilityState,
 }));
@@ -414,6 +418,22 @@ describe("WorkspaceSettingsPage", () => {
       screen.queryByRole("link", { name: "Audit Log" }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("Registry credentials panel")).toBeInTheDocument();
+  });
+
+  // w7/094: the list says "admin" for every member, so capabilities decide.
+  it("hides Audit Logs and its link once capabilities say the caller is not an admin", async () => {
+    capabilityState.canManage = false;
+    const { unmount } = await renderPage();
+
+    expect(screen.queryByText("Audit log panel")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Audit Log" }),
+    ).not.toBeInTheDocument();
+    unmount();
+
+    const pending = await renderPage(WorkspaceSettingsPageSkeleton);
+    expect(frameSections(pending.container)).not.toContain("audit-logs");
+    expect(railSections(pending.container)).not.toContain("audit-logs");
   });
 
   it("shows Build Pipeline to billing managers only (w6/m309)", async () => {

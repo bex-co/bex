@@ -81,4 +81,17 @@ describe("OverlappingDeployPolicyCard", () => {
     ).toBeInTheDocument();
     expect(screen.getAllByRole("radio")).toHaveLength(2);
   });
+
+  // w7/094: a member's note is held as its own text, so it wraps where the
+  // ready one does instead of as a fixed-width bar.
+  it("holds a member's Admin-only note as its own text while loading", () => {
+    apollo.loading = true;
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ canManage: false }),
+    );
+    render(<OverlappingDeployPolicyCard workspaceId="tea-a" />);
+    expect(
+      screen.getByTestId("overlapping-deploy-policy-skeleton"),
+    ).toHaveTextContent("Only workspace Admins can change this policy.");
+  });
 });

@@ -77,10 +77,15 @@ function policyPatch(
  */
 export function WorkspaceNotificationsCard({ ownerId }: { ownerId: string }) {
   const { t } = useTranslations();
+  const { denied } = useCapabilities();
   const { settings, loading, refetch, update, saving } =
     useOwnerNotificationSettings(ownerId);
 
-  if (loading) return <WorkspaceNotificationsCardSkeleton />;
+  if (loading) {
+    return (
+      <WorkspaceNotificationsCardSkeleton readOnly={denied("can_manage")} />
+    );
+  }
   if (!settings) {
     return (
       <Card>

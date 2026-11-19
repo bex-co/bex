@@ -67,11 +67,16 @@ function WorkspaceSettingsPage() {
   const navigate = Route.useNavigate();
   const hasMultipleWorkspaces = workspaces.length > 1;
   const audit = useAuditLog();
-  // Audit logs are admin-only: the role is known before the query's 403, so a
-  // non-admin never sees the section, its link or its skeleton flash.
-  const showAuditLogs = currentWorkspace?.role === "admin" && !audit.forbidden;
-  // Build Pipeline (w6/m309) holds billing settings: billing managers only.
   const capabilities = useCapabilities();
+  // Audit logs are admin-only (`can_manage`). The list's role is "admin" for
+  // every member, so capabilities decide once they answer: before the query's
+  // 403, a non-admin never sees the section, its link or its skeleton flash,
+  // and the pending frame drops it too (w7/094).
+  const showAuditLogs =
+    currentWorkspace?.role === "admin" &&
+    !audit.forbidden &&
+    (capabilities.canManage || capabilities.loading);
+  // Build Pipeline (w6/m309) holds billing settings: billing managers only.
   const showBuildPipeline = capabilities.canManageBilling;
   // Workspace privacy (w7/m464) is an org workspace's, and its admins'
   // (`can_manage`; the workspace list's role says "admin" for everyone).

@@ -21,6 +21,8 @@ import { Input } from "@/common/components/ui/input";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { TableActionsHead } from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { ROLES, type Role } from "@/features/team/types";
 
 // Placeholder text with the shapes a member row renders: an email and a Kratos
 // identity id. Rendered transparent in the same classes as MemberRow, so the
@@ -28,6 +30,12 @@ import { useTranslations } from "@/common/hooks/use-translations";
 // bars this replaced drew a 174px card that loaded at 379px, 741px on mobile).
 const PLACEHOLDER_EMAIL = "member@example.com";
 const PLACEHOLDER_SUBJECT = "00000000-0000-0000-0000-000000000000";
+
+/** The caller's own role, as their row names it, from the capabilities'
+ *  role once it is one of the team's roles. */
+function ownRole(role: string | null): Role {
+  return ROLES.find((known) => known === role) ?? "ADMIN";
+}
 
 /**
  * The Team card's content while its members load: the search box, the table
@@ -38,6 +46,7 @@ const PLACEHOLDER_SUBJECT = "00000000-0000-0000-0000-000000000000";
  */
 export function TeamMembersSkeleton({ canManage }: { canManage: boolean }) {
   const { t } = useTranslations();
+  const { role } = useCapabilities();
   return (
     <div className="space-y-6" aria-hidden data-testid="team-members-skeleton">
       <div className="relative max-w-sm">
@@ -60,16 +69,19 @@ export function TeamMembersSkeleton({ canManage }: { canManage: boolean }) {
         </TableHeader>
         <TableBody>
           <TableRow data-skeleton-region="member-row">
-            <TableCell>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="min-w-0 text-transparent">
+            {/* MemberRow's cells (w7/094): the member column takes what the
+                role and action columns leave, the identity wraps its badge
+                with MemberIdentity's gaps, and the id line truncates. */}
+            <TableCell className="w-full max-w-0">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="min-w-0 max-w-full break-words text-transparent">
                   {PLACEHOLDER_EMAIL}
                 </span>
                 <Badge variant="secondary" className="shrink-0">
                   <span className="text-transparent">{t("team.you")}</span>
                 </Badge>
               </div>
-              <div className="font-mono text-xs text-transparent">
+              <div className="truncate font-mono text-xs text-transparent">
                 {PLACEHOLDER_SUBJECT}
               </div>
             </TableCell>
@@ -77,13 +89,16 @@ export function TeamMembersSkeleton({ canManage }: { canManage: boolean }) {
               {/* The caller can't change their own role or remove themselves,
                   so MemberRow wraps both controls in PermissionTooltip's
                   inline-flex span, whose line box is ~4px taller than the
-                  control alone: the skeleton wraps them the same way. */}
+                  control alone: the skeleton wraps them the same way. A
+                  member reads their own role as text. */}
               {canManage ? (
                 <span className="inline-flex">
-                  <Skeleton className="h-8 w-[150px]" />
+                  <Skeleton className="h-8 w-[7.5rem] @md:w-[150px]" />
                 </span>
               ) : (
-                <span className="text-transparent">{t("team.role.ADMIN")}</span>
+                <span className="text-transparent">
+                  {t(`team.role.${ownRole(role)}`)}
+                </span>
               )}
             </TableCell>
             <TableCell className="text-right">
@@ -105,9 +120,15 @@ export function TeamMembersSkeleton({ canManage }: { canManage: boolean }) {
 /**
  * The whole Team card before the workspace is known (the route and settings
  * skeletons): TeamPanel's static header — title, description and the Invite
- * button an admin sees — over TeamMembersSkeleton.
+ * button an admin sees — over TeamMembersSkeleton. A caller known not to
+ * manage the workspace gets neither Invite nor the row's controls, as on the
+ * ready card, whose description then takes the header's full width (w7/094).
  */
-export function TeamPanelSkeleton() {
+export function TeamPanelSkeleton({
+  canManage = true,
+}: {
+  canManage?: boolean;
+}) {
   const { t } = useTranslations();
   return (
     <Card data-testid="team-panel-skeleton">
@@ -116,14 +137,16 @@ export function TeamPanelSkeleton() {
           {t("team.title")}
         </CardTitle>
         <CardDescription>{t("team.description")}</CardDescription>
-        <CardAction aria-hidden>
-          <Button variant="outline" size="sm" disabled tabIndex={-1}>
-            <UserPlus /> {t("team.invite")}
-          </Button>
-        </CardAction>
+        {canManage ? (
+          <CardAction aria-hidden>
+            <Button variant="outline" size="sm" disabled tabIndex={-1}>
+              <UserPlus /> {t("team.invite")}
+            </Button>
+          </CardAction>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-6">
-        <TeamMembersSkeleton canManage />
+        <TeamMembersSkeleton canManage={canManage} />
       </CardContent>
     </Card>
   );

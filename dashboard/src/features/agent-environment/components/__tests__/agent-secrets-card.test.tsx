@@ -29,6 +29,11 @@ vi.mock("@/features/services/hooks/use-repos", () => ({
   }),
 }));
 
+const HELP =
+  "Saving an existing name replaces its value. Sessions pick up changes from their next turn.";
+const READ_ONLY =
+  "Only workspace admins can add, change or delete agent secrets.";
+
 const STRIPE_KEY: AgentSecretView = {
   name: "STRIPE_KEY",
   scope: "explicit",
@@ -107,8 +112,12 @@ describe("AgentSecretsCard (ADR098)", () => {
   });
 
   // The help line wraps on narrow screens: the skeleton reserves it as real
-  // text, both variants in one cell, so the loaded card doesn't grow.
+  // text, both variants in one cell while the role is unknown, so the loaded
+  // card doesn't grow.
   it("reserves the help line as text at its taller variant", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ loading: true, loaded: false, canManage: false }),
+    );
     setup([], true);
     const help = screen.getByTestId("secrets-help-skeleton");
     expect(help).toHaveClass("grid", "text-xs");
@@ -116,9 +125,30 @@ describe("AgentSecretsCard (ADR098)", () => {
     const [admin, member] = Array.from(help.children);
     expect(admin).toHaveClass("col-start-1", "row-start-1");
     expect(member).toHaveClass("invisible", "col-start-1", "row-start-1");
-    expect(admin.textContent).not.toBe("");
-    expect(member.textContent).not.toBe("");
+    expect(admin).toHaveTextContent(HELP);
+    expect(member).toHaveTextContent(READ_ONLY);
   });
+
+  // w7/094: once the role is known, only the line the card will show.
+  it.each([
+    ["an admin", true, HELP],
+    ["a member", false, READ_ONLY],
+  ])(
+    "reserves only %s's help line once the role is known",
+    (_, canManage, line) => {
+      vi.mocked(useCapabilities).mockReturnValue(
+        mockCapabilities({ canManage }),
+      );
+      setup([], true);
+      const help = screen.getByTestId("secrets-help-skeleton");
+      expect(help.children).toHaveLength(1);
+      expect(help).toHaveTextContent(line);
+      cleanup();
+
+      setup([]);
+      expect(screen.getByText(line)).toBeInTheDocument();
+    },
+  );
 
   it("lists names only and saves a masked value, then empties the field", async () => {
     const { user, set } = setup();

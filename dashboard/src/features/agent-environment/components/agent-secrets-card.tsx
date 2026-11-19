@@ -60,7 +60,7 @@ interface ScopeDraft {
  */
 export function AgentSecretsCard({ ownerId }: { ownerId: string }) {
   const { t } = useTranslations();
-  const { canManage } = useCapabilities();
+  const { canManage, loaded } = useCapabilities();
   const { secrets, loading, error, refetch, set, remove, saving } =
     useAgentSecrets(ownerId);
   const [name, setName] = useState("");
@@ -70,7 +70,9 @@ export function AgentSecretsCard({ ownerId }: { ownerId: string }) {
   const [deleting, setDeleting] = useState<string | null>(null);
   const scopeTrigger = useRef<HTMLButtonElement>(null);
 
-  if (loading) return <AgentSecretsCardSkeleton />;
+  if (loading) {
+    return <AgentSecretsCardSkeleton canManage={loaded ? canManage : null} />;
+  }
 
   const trimmed = name.trim();
   // Typing an existing name edits that secret: its scope shows until the

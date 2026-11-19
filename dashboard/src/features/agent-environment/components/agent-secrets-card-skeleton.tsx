@@ -7,6 +7,7 @@ import {
 } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { AgentHelpLineSkeleton } from "@/features/agent-environment/components/agent-help-line-skeleton";
 
 /**
  * The Settings → Agent secrets card while its secrets load: the static header,
@@ -15,7 +16,12 @@ import { useTranslations } from "@/common/hooks/use-translations";
  * rule). Further secret rows are data-dependent and omitted, as is the
  * repository field the ready card shows only once the repo scope is picked.
  */
-export function AgentSecretsCardSkeleton() {
+export function AgentSecretsCardSkeleton({
+  canManage,
+}: {
+  /** Whether the caller manages the workspace; unknown holds both help lines. */
+  canManage?: boolean | null;
+}) {
   const { t } = useTranslations();
   return (
     <Card data-testid="agent-secrets-skeleton">
@@ -41,21 +47,12 @@ export function AgentSecretsCardSkeleton() {
             />
             <Skeleton className="h-9 w-16" />
           </div>
-          {/* The help line is real text (it wraps on narrow screens): both the
-              admin and read-only variants share one cell, so the reserved
-              height is the taller one's. */}
-          <div
-            className="text-muted-foreground grid text-xs"
-            data-testid="secrets-help-skeleton"
-            aria-hidden
-          >
-            <p className="col-start-1 row-start-1 text-transparent">
-              {t("agentEnvironment.secrets.help")}
-            </p>
-            <p className="invisible col-start-1 row-start-1">
-              {t("agentEnvironment.secrets.readOnly")}
-            </p>
-          </div>
+          <AgentHelpLineSkeleton
+            help={t("agentEnvironment.secrets.help")}
+            readOnly={t("agentEnvironment.secrets.readOnly")}
+            canManage={canManage}
+            testId="secrets-help-skeleton"
+          />
         </div>
       </CardContent>
     </Card>

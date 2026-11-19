@@ -48,7 +48,7 @@ import {
  */
 export function AgentRepoEnvironmentsCard({ ownerId }: { ownerId: string }) {
   const { t } = useTranslations();
-  const { canManage } = useCapabilities();
+  const { canManage, loaded } = useCapabilities();
   const { environments, loading, error, refetch, set, remove, saving } =
     useAgentRepoEnvironments(ownerId);
   const [dialog, setDialog] = useState<RepoEnvironmentDialogTarget | null>(
@@ -62,7 +62,9 @@ export function AgentRepoEnvironmentsCard({ ownerId }: { ownerId: string }) {
   const buildsEnvironment =
     environments.find((env) => env.repo === buildsRepo) ?? null;
 
-  if (loading) return <AgentRepoEnvironmentsCardSkeleton />;
+  if (loading) {
+    return <AgentRepoEnvironmentsCardSkeleton canManage={loaded ? canManage : null} />;
+  }
 
   async function save(repo: string, environment: RepoEnvironmentInput) {
     await set(repo, environment);

@@ -1454,6 +1454,10 @@ export function WorkspaceSettingsSkeletonSections({
 }: {
   sections: WorkspaceSettingsPendingSections;
 }) {
+  // A known non-admin's cards are drawn as the ready page draws them for
+  // that caller (w7/094); an admin and an unknown role keep the Admin's.
+  const canManage = sections.canManage ?? true;
+  const readOnly = sections.canManage === false;
   return (
     <>
       <Region name="general">
@@ -1471,11 +1475,14 @@ export function WorkspaceSettingsSkeletonSections({
       ) : null}
       {/* Overlapping Deploy Policy (w4/653): every member reads it. */}
       <Region name="overlapping-deploy-policy">
-        <OverlappingDeployPolicyCardSkeleton />
+        <OverlappingDeployPolicyCardSkeleton canManage={canManage} />
       </Region>
       {/* Inbound IP Rules (w9/m388): every member reads them. */}
       <Region name="inbound-ip-rules">
-        <WorkspaceIPRulesCardSkeleton />
+        <WorkspaceIPRulesCardSkeleton
+          belowScale={sections.belowScale}
+          canManage={canManage}
+        />
       </Region>
       {/* Two-factor authentication (w22/m402) and Google login (w7/m465):
           every member sees both cards. */}
@@ -1496,17 +1503,17 @@ export function WorkspaceSettingsSkeletonSections({
         />
       </Region>
       <Region name="team">
-        <TeamPanelSkeleton />
+        <TeamPanelSkeleton canManage={canManage} />
       </Region>
       <Region name="notifications" className="space-y-6">
-        <WorkspaceNotificationsCardSkeleton />
+        <WorkspaceNotificationsCardSkeleton readOnly={readOnly} />
         <NotificationOverridesCardSkeleton />
       </Region>
       <Region name="agents" className="space-y-6">
-        <AgentEnvironmentCardSkeleton />
-        <AgentSecretsCardSkeleton />
-        <AgentRepoEnvironmentsCardSkeleton />
-        <AgentSkillsCardSkeleton />
+        <AgentEnvironmentCardSkeleton readOnly={readOnly} />
+        <AgentSecretsCardSkeleton canManage={sections.canManage} />
+        <AgentRepoEnvironmentsCardSkeleton canManage={sections.canManage} />
+        <AgentSkillsCardSkeleton canManage={sections.canManage} />
       </Region>
       <Region name="registry-credentials">
         <RegistryCredentialsPanelSkeleton />

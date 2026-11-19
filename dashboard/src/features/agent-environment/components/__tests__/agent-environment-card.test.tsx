@@ -96,6 +96,21 @@ describe("AgentEnvironmentCard", () => {
     expect(skeleton.queryAllByRole("textbox")).toHaveLength(0);
   });
 
+  // w7/094: a member's card opens with the Admin-only note.
+  it.each([
+    ["a member", false, true],
+    ["an admin", true, false],
+  ])("holds the read-only note for %s", (_, canManage, shown) => {
+    vi.mocked(useCapabilities).mockReturnValue(mockCapabilities({ canManage }));
+    setup(null, true);
+    const skeleton = screen.getByTestId("agent-environment-skeleton");
+    expect(
+      skeleton.textContent?.includes(
+        "Only workspace admins can change agent settings.",
+      ),
+    ).toBe(shown);
+  });
+
   it("holds wrapping data lines at their longest variant, hidden from assistive tech", () => {
     setup(null, true);
     // The default-model help is the platform-pinned variant when a route pins

@@ -113,10 +113,15 @@ const longest = (...texts: string[]) =>
  * button labels — renders as real text through the same pieces the ready card
  * uses, so it wraps identically. Only data-dependent values are skeletons, and
  * a value that can wrap holds its longest variant's line count. The Custom
- * hostname list, the read-only note and Remove key are data-dependent and
- * omitted; every action is disabled until the data arrives.
+ * hostname list and Remove key are data-dependent and omitted; every action is
+ * disabled until the data arrives. `readOnly` is a caller known not to manage
+ * the workspace, whose card opens with the Admin-only note (w7/094).
  */
-export function AgentEnvironmentCardSkeleton() {
+export function AgentEnvironmentCardSkeleton({
+  readOnly = false,
+}: {
+  readOnly?: boolean;
+}) {
   const { t } = useTranslations();
   return (
     <Card data-testid="agent-environment-skeleton">
@@ -125,6 +130,11 @@ export function AgentEnvironmentCardSkeleton() {
         <CardDescription>{t("agentEnvironment.description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {readOnly ? (
+          <p className="text-sm">
+            <SkeletonText>{t("agentEnvironment.readOnlyNote")}</SkeletonText>
+          </p>
+        ) : null}
         <div className="space-y-3">
           <AgentSectionHeading
             title={t("agentEnvironment.networkTitle")}

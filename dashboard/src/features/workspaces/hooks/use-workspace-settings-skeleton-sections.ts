@@ -7,6 +7,7 @@ import {
   workspaceShape,
 } from "@/features/workspaces/lib/selection";
 import {
+  inboundIpRulesPlan,
   proFeaturesPlan,
   type OrganizationPlanOwner,
   type WorkspaceView,
@@ -24,6 +25,15 @@ export interface WorkspaceSettingsPendingSections {
   /** The workspace is known to be below Pro, so the 2FA and Google login
    *  cards carry their plan notice (w7/070, w7/m465). */
   belowPro: boolean;
+  /** The workspace is known to be below Scale, so Inbound IP Rules is the
+   *  read-only view with its plan notice, not the editor (w7/094). */
+  belowScale: boolean;
+  /** Whether the caller manages the selected workspace (`can_manage`), as
+   *  the ready cards read it, or null while capabilities are checking. A
+   *  non-admin's cards draw the Admin-only notes in place of the Admin's
+   *  editors, Save buttons and Invite, and no Audit Logs (w7/094); an
+   *  unknown role keeps the Admin's frame. */
+  canManage: boolean | null;
   /** The workspace's org, once known: an org that requires 2FA or Google
    *  login gives that card its "required by" note (w7/m466). */
   organization: WorkspaceView["organization"];
@@ -61,19 +71,22 @@ export function useWorkspaceSettingsSkeletonSections(): WorkspaceSettingsPending
     : workspaces.length === 0
       ? getPersistedWorkspaceShape(currentWorkspaceId)
       : null;
+  const canManage = capabilities.loading ? null : capabilities.canManage;
   return {
     buildPipeline: capabilities.canManageBilling || capabilities.loading,
-    auditLogs: !shape || shape.role === "admin",
+    // Audit logs are `can_manage`'s; the list's role is "admin" for every
+    // member, so it decides only until capabilities do (w7/094).
+    auditLogs: canManage !== false && (!shape || shape.role === "admin"),
     deleteWorkspace: shape?.otherWorkspaces ?? workspaces.length > 1,
-    privacy:
-      shape?.organization != null &&
-      (capabilities.canManage || capabilities.loading),
+    privacy: shape?.organization != null && canManage !== false,
     planOwner: shape?.planOwner ?? null,
     workspaceName: currentWorkspace?.name,
     belowPro: shape != null && !proFeaturesPlan(shape.plan),
+    belowScale: shape != null && !inboundIpRulesPlan(shape.plan),
+    canManage,
     organization: shape?.organization ?? null,
     loginRequirementStatus:
-      currentWorkspace && !capabilities.loading && !capabilities.canManage
+      currentWorkspace && canManage === false
         ? {
             twoFactor: workspaceRequires("twoFactor", currentWorkspace),
             googleLogin: workspaceRequires("googleLogin", currentWorkspace),

@@ -57,10 +57,13 @@ const TIER_VALUES = TIERS.map(({ tier }) => tier);
  */
 export function AgentEnvironmentCard({ ownerId }: { ownerId: string }) {
   const { t } = useTranslations();
+  const { denied } = useCapabilities();
   const { environment, loading, refetch, update, saving } =
     useAgentEnvironment(ownerId);
 
-  if (loading) return <AgentEnvironmentCardSkeleton />;
+  if (loading) {
+    return <AgentEnvironmentCardSkeleton readOnly={denied("can_manage")} />;
+  }
   if (!environment) {
     return (
       <Card>

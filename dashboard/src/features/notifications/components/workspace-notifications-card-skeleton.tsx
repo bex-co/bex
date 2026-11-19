@@ -5,6 +5,8 @@ import {
   CardHeader,
 } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { ReservedText } from "@/common/components/reserved-skeleton";
+import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils";
 
 /** The email switch row's frame, shared by the ready card and this skeleton. */
@@ -29,8 +31,15 @@ function TextLine({ className }: { className?: string }) {
  * switch row, the three level options and the Save footer, at the ready
  * card's geometry (dashboard/AGENTS.md skeleton rule). Copy that wraps to a
  * second line on a narrow screen gets a second line below `sm` only.
+ * `readOnly` is a caller known not to manage the workspace: their card opens
+ * with the Admin-only note, held as its own text (w7/094).
  */
-export function WorkspaceNotificationsCardSkeleton() {
+export function WorkspaceNotificationsCardSkeleton({
+  readOnly = false,
+}: {
+  readOnly?: boolean;
+}) {
+  const { t } = useTranslations();
   return (
     <Card data-testid="workspace-notifications-skeleton">
       <CardHeader>
@@ -41,6 +50,11 @@ export function WorkspaceNotificationsCardSkeleton() {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {readOnly ? (
+          <p className="relative w-fit text-sm" aria-hidden>
+            <ReservedText>{t("notifications.workspaceReadOnly")}</ReservedText>
+          </p>
+        ) : null}
         <div className={EMAIL_ROW_CLASS}>
           <div className="w-full space-y-0.5">
             <Skeleton className="h-3.5 w-36" />

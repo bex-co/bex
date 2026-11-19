@@ -7,6 +7,7 @@ import {
 } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { AgentHelpLineSkeleton } from "@/features/agent-environment/components/agent-help-line-skeleton";
 
 /**
  * The Settings → Repository environments card while its list loads: the
@@ -14,7 +15,12 @@ import { useTranslations } from "@/common/hooks/use-translations";
  * its help line, at the ready card's geometry (dashboard/AGENTS.md skeleton
  * rule). Further repository rows are data-dependent and omitted.
  */
-export function AgentRepoEnvironmentsCardSkeleton() {
+export function AgentRepoEnvironmentsCardSkeleton({
+  canManage,
+}: {
+  /** Whether the caller manages the workspace; unknown holds both help lines. */
+  canManage?: boolean | null;
+}) {
   const { t } = useTranslations();
   return (
     <Card data-testid="agent-repo-environments-skeleton">
@@ -46,21 +52,12 @@ export function AgentRepoEnvironmentsCardSkeleton() {
               </span>
             </Skeleton>
           </div>
-          {/* The help line is real text (it wraps on narrow screens): both the
-              admin and read-only variants share one cell, so the reserved
-              height is the taller one's. */}
-          <div
-            className="text-muted-foreground grid text-xs"
-            data-testid="repo-envs-help-skeleton"
-            aria-hidden
-          >
-            <p className="col-start-1 row-start-1 text-transparent">
-              {t("agentEnvironment.repoEnvs.help")}
-            </p>
-            <p className="invisible col-start-1 row-start-1">
-              {t("agentEnvironment.repoEnvs.readOnly")}
-            </p>
-          </div>
+          <AgentHelpLineSkeleton
+            help={t("agentEnvironment.repoEnvs.help")}
+            readOnly={t("agentEnvironment.repoEnvs.readOnly")}
+            canManage={canManage}
+            testId="repo-envs-help-skeleton"
+          />
         </div>
       </CardContent>
     </Card>

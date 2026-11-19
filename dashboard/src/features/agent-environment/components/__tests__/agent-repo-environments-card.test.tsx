@@ -146,6 +146,9 @@ describe("AgentRepoEnvironmentsCard (ADR109)", () => {
   // repository row (the empty line has the same height), then the Add button
   // and the help line reserved at its taller variant (dashboard/AGENTS.md).
   it("draws the ready card's regions at their heights", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ loading: true, loaded: false, canManage: false }),
+    );
     setup([], { loading: true });
     const skeleton = screen.getByTestId("agent-repo-environments-skeleton");
     const [skeletonRow, skeletonActions] = Array.from(

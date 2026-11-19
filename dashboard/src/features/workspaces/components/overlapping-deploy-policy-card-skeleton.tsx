@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { ReservedText } from "@/common/components/reserved-skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { SettingRadioOption } from "@/features/workspaces/components/setting-radio-option";
 import {
@@ -61,14 +62,16 @@ export function OverlappingDeployPolicyOption({
 
 /**
  * OverlappingDeployPolicyCard's pending shape (w4/653): the static header, both
- * policy options, and the Save button an Admin sees (size sm), or the one-line
- * Admin-only note a member reads in its place.
+ * policy options, and the Save button an Admin sees (size sm), or the
+ * Admin-only note a member reads in its place, as its own text so it wraps as
+ * the ready one does (w7/094).
  */
 export function OverlappingDeployPolicyCardSkeleton({
   canManage = true,
 }: {
   canManage?: boolean;
 }) {
+  const { t } = useTranslations();
   return (
     <Card data-testid="overlapping-deploy-policy-skeleton">
       <OverlappingDeployPolicyCardHeader />
@@ -88,7 +91,11 @@ export function OverlappingDeployPolicyCardSkeleton({
         {canManage ? (
           <Skeleton className="h-8 w-16" />
         ) : (
-          <Skeleton className="h-5 w-56" />
+          <p className="relative w-fit text-sm" aria-hidden>
+            <ReservedText>
+              {t("workspaces.overlappingDeployPolicyAdminOnly")}
+            </ReservedText>
+          </p>
         )}
       </CardContent>
     </Card>
