@@ -447,6 +447,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **342** — [w3/m506 t006's production read must discount the cli-qa routine's deliberate log flood of 2026-11-19 20:08–20:12 UTC](342.md) (~10m, record) ← `/loopx w8` cli-qa routine follow-up, 2026-11-19
 - [ ] **341** — [A live tail opened while a service floods its log shows up to 6,000 lines that history drops: each tail starts its per-instance bucket full, where Render says dropped lines appear in no view](341.md) (~1h, minor) ← `/qa-find-bugs-cli w8` routine sweep 617d 2026-11-19: a 40 s `bex logs --tail` 100 s into a 190-lines-a-second flood showed 7,660 lines; history for the same window keeps 4,048.
 
 - [ ] **340** — [A native build's log stops after 2 MiB of build-command output, and loses output written faster than 200 KiB/s: BuildKit's default step-log limits clip it, where Render caps no build log](340.md) (~45m, minor) ← `/qa-find-bugs-cli w8` routine sweep 617d 2026-11-19: a successful build printing 3.4 MB kept the first 32,264 of 52,500 lines and none of the later `pip install` output.
