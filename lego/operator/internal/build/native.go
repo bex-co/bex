@@ -18,6 +18,7 @@ package build
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -302,6 +303,9 @@ func validateNativeOptions(o Options) error {
 	if rev := strings.TrimSpace(o.NativeEnvRevision); rev != "" && !nativeEnvRevisionPattern.MatchString(rev) {
 		return fmt.Errorf("build: native env revision %q is not opaque cache metadata", rev)
 	}
+	if !nativeEnvRevisionPattern.MatchString(nativeReleaseRevision(o)) {
+		return fmt.Errorf("build: release revision %q is not opaque cache metadata", o.Revision)
+	}
 	if err := validateNativeManagedOIDC(o); err != nil {
 		return err
 	}
@@ -367,6 +371,17 @@ func nativeEnvRevision(o Options) string {
 	return rev
 }
 
+// nativeReleaseRevision is the release's build revision (gen-<release
+// generation>) the env loader carries beside the env revision, so every
+// release runs its build command, as Render does "with each deploy" (w32/046):
+// a redeploy of an unchanged commit and environment (Deploy latest commit, a
+// deploy hook rebuilding a site for new CMS content) would otherwise be served
+// from the layer cache and keep the previous build's output. A retry of the
+// same release keeps its key.
+func nativeReleaseRevision(o Options) string {
+	return cmp.Or(o.Revision, defaultRevision)
+}
+
 // nativeDockerfile translates Render's native runtime contract into a
 // reproducible OCI build: select the language toolchain, run the caller's exact
 // build command with service env available, and retain the exact start command
@@ -377,7 +392,11 @@ func nativeEnvRevision(o Options) string {
 // (https://docs.docker.com/build/cache/invalidation/#build-secrets). The opaque
 // NativeEnvRevision is therefore written into the env loader the RUN sources,
 // so a changed effective environment cannot reuse a layer baked under
-// different values (w7/m87). The revision carries no secret material.
+// different values (w7/m87). The revision carries no secret material. The
+// release's own revision rides beside it (nativeReleaseRevision), so the layer
+// cache serves the toolchain and tool layers before the command, never the
+// command itself; the command reads the build caches ($XDG_CACHE_HOME, the
+// dependency directories) instead, as on Render.
 //
 // Each secret file rides its own transient secret mount at
 // /etc/secrets/<name> (w4/m163): BuildKit mounts it only for this RUN and never
@@ -413,7 +432,7 @@ func nativeDockerfile(o Options) string {
 	// decoded variable cannot overwrite: a decoded PATH is exported mid-loop
 	// and must reach the command exactly, not stop the next decode (w8/m61).
 	depsMount, depsSeed, depsSave := nativeDepsRecipe(o.depsCache())
-	loader := fmt.Sprintf(": bex-native-env-rev=%s\n", nativeEnvRevision(o)) + depsSeed + assembleFiles + `decoder="$(command -v base64)" || exit 1
+	loader := fmt.Sprintf(": bex-native-env-rev=%s\n: bex-native-release=%s\n", nativeEnvRevision(o), nativeReleaseRevision(o)) + depsSeed + assembleFiles + `decoder="$(command -v base64)" || exit 1
 eval "bex_decode() { '$decoder' -d; }"
 while IFS= read -r record; do
   [ -n "$record" ] || continue

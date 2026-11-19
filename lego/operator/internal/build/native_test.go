@@ -92,6 +92,59 @@ func TestNativeDockerfileEnvRevisionBustsCacheKey(t *testing.T) {
 	}
 }
 
+// Render runs the build command "with each deploy", so a redeploy of an
+// unchanged commit and environment (Deploy latest commit, a deploy hook
+// rebuilding a static site for new CMS content) must run it again rather than
+// take the step from the layer cache (w32/046). The release's revision is the
+// one input that tells two such releases apart; a retry of one release keeps
+// its key.
+func TestNativeDockerfileReleaseRevisionBustsCommandStep(t *testing.T) {
+	for name, mod := range map[string]func(*Options){
+		"web service":  func(*Options) {},
+		"static site":  func(o *Options) { o.StaticSite, o.Runtime, o.StartCommand, o.StaticPublishPath = true, "", "", "dist" },
+		"build source": func(o *Options) { o.BuildOnly, o.StartCommand = true, "" },
+	} {
+		release := func(rev string) Options {
+			o := nativeOptions()
+			mod(&o)
+			o.Revision = rev
+			o.NativeEnvRevision = "7"
+			o.BuildEnv = []corev1.EnvVar{{Name: "MESSAGE", Value: "secret-literal"}}
+			return o
+		}
+		first, second := release("gen-11"), release("gen-12")
+		for _, o := range []Options{first, second} {
+			if err := validateNativeOptions(o); err != nil {
+				t.Fatalf("%s: %v", name, err)
+			}
+		}
+		df1, df2 := nativeDockerfile(first), nativeDockerfile(second)
+		if loaderOf(t, df1) == loaderOf(t, df2) {
+			t.Errorf("%s: two releases of one commit and environment share the build command's cache key:\n%s", name, df1)
+		}
+		// Only the loader's release line differs: the toolchain and tool layers
+		// before it still come from the layer cache.
+		if !strings.Contains(loaderOf(t, df2), "\n: bex-native-release=gen-12\n") {
+			t.Errorf("%s: the loader does not carry the release revision:\n%s", name, loaderOf(t, df2))
+		}
+		if strings.Replace(df1, ": bex-native-release=gen-11\n", ": bex-native-release=gen-12\n", 1) != df2 {
+			t.Errorf("%s: the release revision reaches more than the loader's release line", name)
+		}
+		if df1 != nativeDockerfile(release("gen-11")) {
+			t.Errorf("%s: a retry of the same release changes its Dockerfile", name)
+		}
+		if strings.Contains(df2, "MESSAGE") || strings.Contains(df2, "secret-literal") {
+			t.Errorf("%s: a literal env value reached the Dockerfile:\n%s", name, df2)
+		}
+	}
+	// Spliced into a heredoc, the revision is opaque metadata, never shell.
+	bad := nativeOptions()
+	bad.Revision = "gen-1\nBEX_LOAD_ENV"
+	if err := validateNativeOptions(bad); err == nil {
+		t.Fatal("a release revision that could end the loader's heredoc was accepted")
+	}
+}
+
 // A login shell sources /etc/profile, which on Debian unconditionally rewrites
 // PATH to the fixed system default — discarding the toolchain PATH the runtime
 // images set via ENV (golang's /usr/local/go/bin, rust's /usr/local/cargo/bin).
