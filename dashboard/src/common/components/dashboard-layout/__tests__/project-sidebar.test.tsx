@@ -88,16 +88,17 @@ function renderAt(pathname: string) {
       </SidebarProvider>
     ),
   });
-  const viewRoutes = ["application", "request"].map((kind) =>
-    createRoute({
-      getParentRoute: () => rootRoute,
-      path: `/project/$projectId/observability/logs/${kind}`,
-      component: () => (
-        <SidebarProvider>
-          <ProjectSidebar projectId="prj-1" />
-        </SidebarProvider>
-      ),
-    }),
+  const viewRoutes = ["logs/application", "logs/request", "metrics"].map(
+    (page) =>
+      createRoute({
+        getParentRoute: () => rootRoute,
+        path: `/project/$projectId/observability/${page}`,
+        component: () => (
+          <SidebarProvider>
+            <ProjectSidebar projectId="prj-1" />
+          </SidebarProvider>
+        ),
+      }),
   );
   const router = createRouter({
     routeTree: rootRoute.addChildren([
@@ -161,7 +162,7 @@ describe("ProjectSidebar", () => {
     );
   });
 
-  it("lists the project's log views between Overview and Manage, without Service Metrics (w3/m505)", async () => {
+  it("lists the project's views between Overview and Manage, Service Metrics too (w3/m505, w3/m508)", async () => {
     renderAt("/project/prj-1");
 
     expect(await screen.findByText("Observability")).toBeInTheDocument();
@@ -176,8 +177,14 @@ describe("ProjectSidebar", () => {
       "href",
       "/project/prj-1/observability/logs/request?savedSearchId=svs-req",
     );
-    // Render keeps the METRICS view but does not list it.
-    expect(screen.queryByText("Service Metrics")).not.toBeInTheDocument();
+    // Render's docs list Service Metrics among the default views; its
+    // reference workspace hid it on 2026-11-19 (w3/m508).
+    expect(
+      screen.getByRole("link", { name: "Service Metrics" }),
+    ).toHaveAttribute(
+      "href",
+      "/project/prj-1/observability/metrics?savedSearchId=svs-metrics",
+    );
     const labels = screen
       .getAllByText(/^(Observability|Manage)$/)
       .map((el) => el.textContent);
@@ -205,7 +212,7 @@ describe("ProjectSidebar", () => {
     );
   });
 
-  it("reserves the two default views while the list loads", async () => {
+  it("reserves the three default views while the list loads", async () => {
     savedSearchesState.loading = true;
     savedSearchesState.views = [];
     const { container } = renderAt("/project/prj-1");
@@ -213,7 +220,7 @@ describe("ProjectSidebar", () => {
     expect(await screen.findByText("Observability")).toBeInTheDocument();
     expect(
       container.querySelectorAll('[data-sidebar="menu-skeleton"]'),
-    ).toHaveLength(2);
+    ).toHaveLength(3);
     expect(
       screen.queryByRole("link", { name: "Application Logs" }),
     ).not.toBeInTheDocument();
@@ -230,13 +237,23 @@ describe("ProjectSidebar", () => {
       within(menu)
         .getAllByRole("menuitem")
         .map((item) => item.textContent),
-    ).toEqual(["Application Logs", "Request Logs"]);
+    ).toEqual(["Application Logs", "Request Logs", "Service Metrics"]);
     await user.click(
       within(menu).getByRole("menuitem", { name: "Application Logs" }),
     );
     // The project already has "Application Logs": the new one is numbered.
     expect(screen.getByRole("dialog")).toHaveTextContent(
       "create APPLICATION_LOGS named Application Logs 2",
+    );
+    // Service Metrics is a type too (w3/m508).
+    await user.click(screen.getByRole("button", { name: "New View" }));
+    await user.click(
+      within(screen.getByRole("menu")).getByRole("menuitem", {
+        name: "Service Metrics",
+      }),
+    );
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "create METRICS named Service Metrics 2",
     );
   });
 

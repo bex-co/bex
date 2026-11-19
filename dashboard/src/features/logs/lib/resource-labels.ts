@@ -28,6 +28,15 @@ export const RESOURCE_DOT_CLASSES = [
 ] as const;
 
 /**
+ * The same hues as chart strokes, for the lines a project's Service Metrics
+ * view draws (w3/m508): a resource in position i takes RESOURCE_DOT_CLASSES[i]'s
+ * hue in both views. Each `bg-*` class above keeps its color variable in the
+ * stylesheet.
+ */
+export const RESOURCE_STROKE_COLORS: readonly string[] =
+  RESOURCE_DOT_CLASSES.map((dot) => `var(--color-${dot.slice("bg-".length)})`);
+
+/**
  * The labels of the resources a page read, keyed by id. Colors follow the
  * server's resource order (services by name, then datastores), which is the
  * same on every page and the tail, so a resource keeps its color while the

@@ -9,7 +9,7 @@ import { mockCapabilities } from "@/test/mocks/capabilities";
 
 // A view's header buttons (w3/m507): Edit view, Duplicate and the trash
 // button, on every view, the defaults too. Duplicate opens the copy; Delete
-// confirms with Render's sudo phrase and lands on the first remaining log
+// confirms with Render's sudo phrase and lands on the first remaining
 // view, or the overview. A member who may not edit sees them disabled.
 
 const mutations = {
@@ -93,7 +93,7 @@ describe("ObservabilityViewActions", () => {
     await waitFor(() => expect(opened).toEqual([copy]));
   });
 
-  it("deletes the view behind Render's typed confirmation, then opens the first log view left", async () => {
+  it("deletes the view behind Render's typed confirmation, then opens the first view left", async () => {
     const user = userEvent.setup();
     const metrics = view("svs-met", "Service Metrics", SavedSearchType.Metrics);
     const requests = view(
@@ -124,12 +124,12 @@ describe("ObservabilityViewActions", () => {
     // The page steps aside once bex-api has deleted the view, then takes
     // the next view's state back.
     expect(onLeaving.mock.calls[0]).toEqual(["svs-app"]);
-    // Service Metrics has no page yet: the first remaining log view opens.
-    await waitFor(() => expect(opened).toEqual([requests]));
+    // The first remaining view opens, Service Metrics too (w3/m508).
+    await waitFor(() => expect(opened).toEqual([metrics]));
     await waitFor(() => expect(onLeaving).toHaveBeenLastCalledWith(null));
   });
 
-  it("lands on the project's overview when no log view is left", async () => {
+  it("lands on the project's overview when no view is left", async () => {
     const user = userEvent.setup();
     mutations.remove.mockResolvedValue([]);
     renderActions();

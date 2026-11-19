@@ -629,6 +629,67 @@ const enMetrics: Record<string, TranslationEntry> = {
     description:
       "Response Times section on a Hobby workspace (PLAN_FEATURE_REQUIRED, w8/m138)",
   },
+  "metrics.serviceMetricsTitle": {
+    message: "Service Metrics",
+    description:
+      "A project's Service Metrics view type: New View's menu, a new view's name and its page title (w3/m508)",
+  },
+  "metrics.projectApplicationDescription": {
+    message: "One line per resource, its instances added up",
+    description:
+      "Subtitle of a project Service Metrics view's Application Metrics card (w3/m508)",
+  },
+  "metrics.projectNetworkDescription": {
+    message: "Each resource's requests, response times and outbound traffic",
+    description:
+      "Subtitle of a project Service Metrics view's Network Metrics card (w3/m508)",
+  },
+  "metrics.groupByResource": {
+    message: "Resource",
+    description:
+      "Total Requests Group by option on a project Service Metrics view: one line per resource (Render's RESOURCE, w3/m508)",
+  },
+  "metrics.projectLegendLabel": {
+    message: "Resources in this view",
+    description:
+      "Accessible name of the legend whose buttons show or hide each resource on every chart (w3/m508)",
+  },
+  "metrics.projectChartFailed": {
+    message: "Couldn't load {names}; this chart leaves them out.",
+    description:
+      "Under a project chart: resources whose read failed and which the chart leaves out; names is a comma list (w3/m508)",
+  },
+  "metrics.projectChartNotCharted": {
+    message: "Not charted for {names}: this chart has no data for their type.",
+    description:
+      "Under a project chart: resources of a type the chart has no data for (a static site's CPU, a worker's requests); names is a comma list (w3/m508)",
+  },
+  "metrics.projectChartNoData": {
+    message: "No data in this range for {names}.",
+    description:
+      "Under a project chart: resources read with nothing in the range; names is a comma list (w3/m508)",
+  },
+  "metrics.projectViewTooLargeTitle": {
+    message: "This view holds too many resources to chart",
+    description:
+      "Project Service Metrics view whose filters keep more resources than one view charts (PROJECT_VIEW_TOO_LARGE, w3/m508)",
+  },
+  "metrics.projectViewTooLargeBody": {
+    message:
+      "It holds {resources} resources, and a view charts at most {limit}. Edit the view to narrow it with an Environment, Resource or Resource Type filter.",
+    description:
+      "Body of the too-many-resources state; resources is how many the view keeps, limit how many it may chart (w3/m508)",
+  },
+  "metrics.projectScopeEmptyTitle": {
+    message: "Nothing to chart in this view yet",
+    description:
+      "Project Service Metrics view with no resource in it (w3/m508)",
+  },
+  "metrics.projectScopeEmptyBody": {
+    message:
+      "This view charts the project's services, cron jobs, Postgres databases and Key Value instances, and there are none in it yet.",
+    description: "Body of the empty project Service Metrics view (w3/m508)",
+  },
 };
 
 export default enMetrics;

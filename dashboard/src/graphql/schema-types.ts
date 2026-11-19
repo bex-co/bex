@@ -4469,6 +4469,34 @@ export type ProjectEnvironmentInput = {
   name: Scalars['String']['input'];
 };
 
+export type ProjectMetricResource = {
+  __typename: 'ProjectMetricResource';
+  environmentId: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  status: Scalars['String']['output'];
+  type: Scalars['String']['output'];
+};
+
+export type ProjectMetrics = {
+  __typename: 'ProjectMetrics';
+  resources: Array<ProjectMetricResource>;
+  series: Array<MetricSeries>;
+};
+
+export type ProjectMetricsQueryInput = {
+  end?: InputMaybe<Scalars['String']['input']>;
+  filterDocument?: InputMaybe<Scalars['JSONObject']['input']>;
+  /** Render's metrics-view group-by: RESOURCE (default; one series per resource), STATUS_CODE (HTTP_REQUESTS only) or NONE (one series for the view; not HTTP_LATENCY). */
+  groupBy?: InputMaybe<Scalars['String']['input']>;
+  /** CPU, MEMORY, INSTANCES, HTTP_REQUESTS, HTTP_LATENCY or BANDWIDTH. */
+  name: Scalars['String']['input'];
+  parameters?: InputMaybe<Array<InputMaybe<MetricsParameterInput>>>;
+  project: Scalars['String']['input'];
+  resolution?: InputMaybe<Scalars['Int']['input']>;
+  start?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type PushEventUrgency = {
   __typename: 'PushEventUrgency';
   event: PushNotificationEvent;
@@ -4708,6 +4736,7 @@ export type Query = {
   ownerNotificationSettings: OwnerNotificationSettings;
   pipelineSettings: Maybe<PipelineSettings>;
   project: Maybe<Project>;
+  projectMetrics: Maybe<ProjectMetrics>;
   projects: Maybe<Array<Maybe<Project>>>;
   pushEventUrgencies: Array<PushEventUrgency>;
   pushNotificationSettings: Maybe<PushNotificationSettings>;
@@ -5449,6 +5478,11 @@ export type QueryProjectArgs = {
 };
 
 
+export type QueryProjectMetricsArgs = {
+  query: ProjectMetricsQueryInput;
+};
+
+
 export type QueryProjectsArgs = {
   cursor?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
@@ -6168,6 +6202,7 @@ export type ServiceEventDetails = {
   commitMessage: Maybe<Scalars['String']['output']>;
   commitUrl: Maybe<Scalars['String']['output']>;
   cronJobRunId: Maybe<Scalars['String']['output']>;
+  deployCommandExecutionId: Maybe<Scalars['String']['output']>;
   deployId: Maybe<Scalars['String']['output']>;
   deployStatus: Maybe<Scalars['String']['output']>;
   diskId: Maybe<Scalars['String']['output']>;

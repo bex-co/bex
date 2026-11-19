@@ -595,6 +595,68 @@ const koMetrics: Record<string, TranslationEntry> = {
     description:
       "Response Times section on a Hobby workspace (PLAN_FEATURE_REQUIRED, w8/m138)",
   },
+  "metrics.serviceMetricsTitle": {
+    message: "서비스 메트릭",
+    description:
+      "A project's Service Metrics view type: New View's menu, a new view's name and its page title (w3/m508)",
+  },
+  "metrics.projectApplicationDescription": {
+    message: "리소스마다 한 줄, 인스턴스는 합산",
+    description:
+      "Subtitle of a project Service Metrics view's Application Metrics card (w3/m508)",
+  },
+  "metrics.projectNetworkDescription": {
+    message: "각 리소스의 요청, 응답 시간, 아웃바운드 트래픽",
+    description:
+      "Subtitle of a project Service Metrics view's Network Metrics card (w3/m508)",
+  },
+  "metrics.groupByResource": {
+    message: "리소스",
+    description:
+      "Total Requests Group by option on a project Service Metrics view: one line per resource (Render's RESOURCE, w3/m508)",
+  },
+  "metrics.projectLegendLabel": {
+    message: "이 뷰의 리소스",
+    description:
+      "Accessible name of the legend whose buttons show or hide each resource on every chart (w3/m508)",
+  },
+  "metrics.projectChartFailed": {
+    message: "{names}을(를) 불러오지 못했습니다. 이 차트에서는 제외됩니다.",
+    description:
+      "Under a project chart: resources whose read failed and which the chart leaves out; names is a comma list (w3/m508)",
+  },
+  "metrics.projectChartNotCharted": {
+    message:
+      "{names}은(는) 표시되지 않습니다: 이 차트에는 해당 유형의 데이터가 없습니다.",
+    description:
+      "Under a project chart: resources of a type the chart has no data for (a static site's CPU, a worker's requests); names is a comma list (w3/m508)",
+  },
+  "metrics.projectChartNoData": {
+    message: "{names}은(는) 이 기간에 데이터가 없습니다.",
+    description:
+      "Under a project chart: resources read with nothing in the range; names is a comma list (w3/m508)",
+  },
+  "metrics.projectViewTooLargeTitle": {
+    message: "이 뷰에는 차트로 표시하기에 리소스가 너무 많습니다",
+    description:
+      "Project Service Metrics view whose filters keep more resources than one view charts (PROJECT_VIEW_TOO_LARGE, w3/m508)",
+  },
+  "metrics.projectViewTooLargeBody": {
+    message:
+      "이 뷰에는 리소스가 {resources}개 있으며, 한 뷰는 최대 {limit}개까지 차트로 표시합니다. 뷰를 편집해 환경, 리소스 또는 리소스 유형 필터로 범위를 좁히세요.",
+    description:
+      "Body of the too-many-resources state; resources is how many the view keeps, limit how many it may chart (w3/m508)",
+  },
+  "metrics.projectScopeEmptyTitle": {
+    message: "이 뷰에는 아직 차트로 표시할 것이 없습니다",
+    description:
+      "Project Service Metrics view with no resource in it (w3/m508)",
+  },
+  "metrics.projectScopeEmptyBody": {
+    message:
+      "이 뷰는 프로젝트의 서비스, 크론 작업, Postgres 데이터베이스, Key Value 인스턴스를 차트로 표시하지만 아직 아무것도 없습니다.",
+    description: "Body of the empty project Service Metrics view (w3/m508)",
+  },
 };
 
 export default koMetrics;

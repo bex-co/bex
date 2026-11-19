@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { useRefetchOnFocus } from "@/common/hooks/use-refetch-on-focus";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -19,7 +19,8 @@ const DAY_SECONDS = 24 * 60 * 60;
  * clock, `boundFloorMs`), so it is read once and again when the tab regains
  * focus, which is how an upgrade made elsewhere reaches an open page.
  * Undefined until it arrives, on an error, and where no plan applies (local
- * dev, no store): the picker is then unbounded, as the server is.
+ * dev, no store): the picker is then unbounded, as the server is. An empty
+ * resource (a project view before its first chart names one) reads nothing.
  */
 export function useMetricsRetentionBound(
   resource: string,
@@ -27,9 +28,12 @@ export function useMetricsRetentionBound(
   const { t } = useTranslations();
   const { data, refetch } = useQuery(MetricsRetentionDocument, {
     variables: { resource },
+    skip: !resource,
     errorPolicy: "all",
   });
-  useRefetchOnFocus(refetch);
+  useRefetchOnFocus(
+    useCallback(() => (resource ? refetch() : undefined), [resource, refetch]),
+  );
 
   const retention = data?.metricsRetention;
   return useMemo(() => {

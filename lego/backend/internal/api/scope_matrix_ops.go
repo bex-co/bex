@@ -377,6 +377,7 @@ var classifiedOps = map[string]string{
 	"GQL Query.ownerNotificationSettings":                             core.OpClassRead,
 	"GQL Query.pipelineSettings":                                      core.OpClassRead,
 	"GQL Query.project":                                               core.OpClassRead,
+	"GQL Query.projectMetrics":                                        core.OpClassRead,
 	"GQL Query.projects":                                              core.OpClassRead,
 	"GQL Query.pushEventUrgencies":                                    core.OpClassRead,
 	"GQL Query.pushNotificationSettings":                              core.OpClassRead,

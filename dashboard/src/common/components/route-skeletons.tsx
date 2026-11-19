@@ -1364,6 +1364,8 @@ export function ProjectRouteSkeleton() {
     routeId === "/project/$projectId/observability/logs/request"
   ) {
     child = <ProjectLogViewPageSkeleton />;
+  } else if (routeId === "/project/$projectId/observability/metrics") {
+    child = <ProjectMetricsViewPageSkeleton />;
   } else {
     child = <ProjectOverviewPageSkeleton />;
   }
@@ -1420,6 +1422,97 @@ export function ProjectLogViewPageSkeleton() {
         <Region name="log-panel">
           <LogPanelSkeleton fillViewport />
         </Region>
+      </div>
+    </PageFrame>
+  );
+}
+
+/**
+ * A project's Service Metrics view (w3/m508) while its route or its saved
+ * search loads: the view header with its buttons disabled, the range
+ * picker, the legend row, and the Application and Network cards with their
+ * real titles, each chart's title row (with the Group by and Percentile
+ * selects where the ready charts have them) over a frame at the chart's own
+ * ratio, as the ready sections draw while their reads are in flight.
+ */
+export function ProjectMetricsViewPageSkeleton() {
+  const { t } = useTranslations();
+  const cards = [
+    {
+      region: "application-metrics",
+      title: t("metrics.applicationTitle"),
+      description: t("metrics.projectApplicationDescription"),
+      charts: [
+        { title: t("metrics.cpu") },
+        { title: t("metrics.memory") },
+        { title: t("metrics.totalInstances") },
+      ],
+    },
+    {
+      region: "network-metrics",
+      title: t("metrics.networkTitle"),
+      description: t("metrics.projectNetworkDescription"),
+      charts: [
+        { title: t("metrics.totalRequests"), control: "w-44" },
+        { title: t("metrics.responseTimes"), control: "w-36" },
+        { title: t("metrics.outboundBandwidth") },
+      ],
+    },
+  ];
+  return (
+    <PageFrame
+      pending="project-metrics-view"
+      width="wide"
+      header={
+        <ObservabilityViewHeader
+          name={<Skeleton className="h-6 w-44" />}
+          actions={<ViewActionButtons disabled />}
+        />
+      }
+    >
+      <div className="space-y-6">
+        <Region
+          name="metrics-toolbar"
+          className="flex flex-wrap items-center gap-3"
+        >
+          <Skeleton className="h-8 w-40" />
+        </Region>
+        <Region
+          name="metrics-legend"
+          className="flex min-h-7 flex-wrap items-center gap-2"
+        >
+          {["w-24", "w-20", "w-28"].map((width) => (
+            <Skeleton key={width} className={`h-7 ${width}`} />
+          ))}
+        </Region>
+        {cards.map((card) => (
+          <Region key={card.region} name={card.region}>
+            <Card>
+              <CardHeader>
+                <CardTitle>{card.title}</CardTitle>
+                <CardDescription>{card.description}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {card.charts.map((chart) => (
+                  <div key={chart.title}>
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                      <div className="text-sm font-medium text-foreground">
+                        {chart.title}
+                      </div>
+                      {chart.control ? (
+                        <Skeleton className={`h-8 ${chart.control}`} />
+                      ) : null}
+                    </div>
+                    <Skeleton
+                      className="w-full rounded-md"
+                      style={CHART_FRAME_STYLE}
+                    />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </Region>
+        ))}
       </div>
     </PageFrame>
   );

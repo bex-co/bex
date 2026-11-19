@@ -84,7 +84,8 @@ var resourceTypes = []string{ResourceTypeService, ResourceTypeCronJob, ResourceT
 var timeRanges = []string{"30m", "1h", "4h", "12h", "24h", "2d", "7d", "14d", "30d"}
 
 // fieldsByType is which fields each view type's editor offers (the capture's
-// table). A metrics view narrows only its resources; w3/m508 owns the rest.
+// table). A metrics view narrows only its resources and its range (w3/m508):
+// its charts have no line to filter.
 var fieldsByType = map[string][]string{
 	TypeApplicationLogs: {FieldEnvironment, FieldResource, FieldResourceType, FieldLevel, FieldInstance, FieldText, FieldTimeRange},
 	TypeRequestLogs:     {FieldEnvironment, FieldResource, FieldResourceType, FieldLevel, FieldInstance, FieldMethod, FieldStatusCode, FieldHost, FieldPath, FieldTimeRange},
@@ -253,8 +254,9 @@ const (
 	KindKeyValue = "key_value"
 )
 
-// ResourceType is r's Render Resource Type, "" for a resource no view reads
-// (a static site, which has no application log).
+// ResourceType is r's Render Resource Type, "" for a resource no log view
+// reads (a static site, which has no application log; a metrics view reads it
+// as a Service, see Scope).
 func (r Resource) ResourceType() string {
 	switch r.Type {
 	case KindPostgres:
@@ -277,7 +279,8 @@ func (r Resource) servesRequests() bool {
 
 // Scope narrows a project's resources to the ones a view of viewType reads:
 // every service, cron job, Postgres and Key Value (Request Logs: every web
-// service), then the document's ENVIRONMENT, RESOURCE and RESOURCE_TYPE
+// service; Service Metrics: static sites too, as Services, for their requests
+// and bandwidth), then the document's ENVIRONMENT, RESOURCE and RESOURCE_TYPE
 // filters. The order of resources is kept.
 func (d Document) Scope(viewType string, resources []Resource) []Resource {
 	env, _ := d.Values(FieldEnvironment)
@@ -286,6 +289,9 @@ func (d Document) Scope(viewType string, resources []Resource) []Resource {
 	out := []Resource{}
 	for _, r := range resources {
 		kind := r.ResourceType()
+		if viewType == TypeMetrics && r.Type == appv1alpha1.TypeStaticSite {
+			kind = ResourceTypeService
+		}
 		switch {
 		case kind == "":
 		case viewType == TypeRequestLogs && !r.servesRequests():

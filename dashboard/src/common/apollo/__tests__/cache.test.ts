@@ -138,3 +138,47 @@ describe("Workspace.ipAllowList cache merge", () => {
     }
   });
 });
+
+// A project chart's resource (w3/m508) carries what that chart did with it.
+// Normalized by id, the CPU read's CHARTED overwrote the request chart's
+// NOT_CHARTED for the same resource, so a cron job read as "no data" on
+// Total Requests instead of "not charted".
+describe("ProjectMetricResource", () => {
+  const projectMetrics = gql`
+    query ProjectMetrics($query: ProjectMetricsQueryInput!) {
+      projectMetrics(query: $query) {
+        resources {
+          id
+          status
+        }
+      }
+    }
+  `;
+  const answer = (name: string, status: string) => ({
+    variables: { query: { project: "prj-1", name } },
+    data: {
+      projectMetrics: {
+        __typename: "ProjectMetrics",
+        resources: [
+          { __typename: "ProjectMetricResource", id: "srv-cron", status },
+        ],
+      },
+    },
+  });
+
+  it("keeps each chart's own status for the same resource", () => {
+    const cache = new InMemoryCache(apolloCacheConfig);
+    cache.writeQuery({
+      query: projectMetrics,
+      ...answer("HTTP_REQUESTS", "NOT_CHARTED"),
+    });
+    cache.writeQuery({ query: projectMetrics, ...answer("CPU", "CHARTED") });
+    const read = (name: string) =>
+      cache.readQuery<{
+        projectMetrics: { resources: { status: string }[] };
+      }>({ query: projectMetrics, variables: answer(name, "").variables })
+        ?.projectMetrics.resources[0].status;
+    expect(read("HTTP_REQUESTS")).toBe("NOT_CHARTED");
+    expect(read("CPU")).toBe("CHARTED");
+  });
+});

@@ -12,6 +12,10 @@ export const apolloCacheConfig: InMemoryCacheConfig = {
     // not a cache identity: entries stay embedded in their query's result, as
     // they were before the id was selected.
     LogEntry: { keyFields: false },
+    // A project chart's resource (w3/m508) carries what that one chart did
+    // with it (CHARTED, NOT_CHARTED, FAILED): normalized by id, the CPU
+    // read's status overwrote the request chart's for the same resource.
+    ProjectMetricResource: { keyFields: false },
     // The API key permission catalog (w9/m496) says, per level, whether the
     // viewer may grant it, which differs by workspace. Kept inline under each
     // workspace's `apiKeyPermissionCatalog(ownerId)` instead of normalized by

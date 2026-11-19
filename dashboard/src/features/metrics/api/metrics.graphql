@@ -37,6 +37,38 @@ query MonthToDateBandwidth($resourceId: String!) {
   }
 }
 
+# One chart of a project's Service Metrics view (w3/m508, a Bex extension):
+# every resource the view's filter document keeps, read in one request. Series
+# carry `resource` (groupBy RESOURCE, the default), `statusCode` (STATUS_CODE)
+# or no label (NONE). `resources` is every resource of the view the caller may
+# read, in the project's order, each CHARTED, NOT_CHARTED (the chart has no
+# series for its type) or FAILED (its read failed; it adds nothing).
+query ProjectMetrics($query: ProjectMetricsQueryInput!) {
+  projectMetrics(query: $query) {
+    series {
+      unit
+      labels {
+        field
+        value
+      }
+      values {
+        time
+        value
+      }
+      parameters {
+        quantile
+      }
+    }
+    resources {
+      id
+      name
+      type
+      environmentId
+      status
+    }
+  }
+}
+
 # Populates the Status Code filter dropdown from real observed label values
 # (Prometheus label-value discovery) rather than a fixed list. Host/Path still
 # report no values here — Prometheus has no host/path axis. Since w5/m58 those

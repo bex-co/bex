@@ -390,6 +390,9 @@ type Service struct {
 	// lived in the REST adapter alone, letting GraphQL/MCP scan the backends
 	// unbounded). 0 = unlimited.
 	MaxQueryHours int
+	// Projects lists a project's resources for its Service Metrics view
+	// (w3/m508); nil => a project read reports ErrProjectMetricsUnavailable.
+	Projects ProjectResources
 }
 
 // Fan-out budgets (codex r7 #13 / w4/029 #14): one API request multiplies

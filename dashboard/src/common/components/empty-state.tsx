@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   AlertCircle,
+  ChartNoAxesCombined,
   Database,
   DatabaseZap,
   FileSpreadsheet,
@@ -16,6 +17,7 @@ import { Card, CardContent } from "@/common/components/ui/card";
 // Adding a new `iconName` value means adding its named import here.
 const ICONS: Record<string, LucideIcon> = {
   AlertCircle,
+  ChartNoAxesCombined,
   Database,
   DatabaseZap,
   LockKeyhole,

@@ -154,6 +154,12 @@ func TestScopeSelectsWhatAViewReads(t *testing.T) {
 			{Field: FieldResourceType, Operator: OpIs, Values: []string{ResourceTypeService, ResourceTypeCronJob}},
 		}}, "srv-web,srv-private,srv-cron"},
 		{"request logs keep their own rule under a filter", TypeRequestLogs, filter(FieldResourceType, OpIs, ResourceTypeService), "srv-web,srv-legacy"},
+		{"service metrics read every resource, a static site as a Service", TypeMetrics, Default(),
+			"srv-web,srv-legacy,srv-private,srv-worker,srv-cron,srv-docs,dpg-db,red-kv"},
+		{"a metrics view's Services include its static sites", TypeMetrics, filter(FieldResourceType, OpIs, ResourceTypeService),
+			"srv-web,srv-legacy,srv-private,srv-worker,srv-docs"},
+		{"a metrics view narrows to an environment", TypeMetrics, filter(FieldEnvironment, OpIs, env),
+			"srv-web,srv-private,srv-cron,srv-docs,dpg-db"},
 	} {
 		if got := scopeIDs(tc.doc.Scope(tc.viewType, projectResources)); got != tc.want {
 			t.Errorf("%s: scope = %s, want %s", tc.name, got, tc.want)

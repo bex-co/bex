@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import { EditViewDialog, type EditViewTarget } from "../edit-view-dialog";
@@ -281,6 +281,55 @@ describe("EditViewDialog", () => {
         .getAllByRole("menuitemcheckbox")
         .map((item) => item.textContent),
     ).toEqual(["storefront"]);
+  });
+
+  it("creates a Service Metrics view with its own fields, its static sites among the resources (w3/m508)", async () => {
+    const user = userEvent.setup();
+    mutations.create.mockResolvedValueOnce({
+      ...view(),
+      id: "svs-met",
+      name: "Service Metrics 2",
+      type: SavedSearchType.Metrics,
+    });
+    const { dialog, onSaved } = open({
+      kind: "create",
+      type: SavedSearchType.Metrics,
+      name: "Service Metrics 2",
+    });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Add filter" }),
+    );
+    // A metrics view narrows its resources and its range, and has no line
+    // to filter.
+    await user.click(within(dialog).getByRole("combobox", { name: "Field" }));
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual(["Environment", "Resource", "Resource Type", "Time Range"]);
+    await user.click(screen.getByRole("option", { name: "Resource" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Values for Resource" }),
+    );
+    expect(
+      within(screen.getByRole("menu"))
+        .getAllByRole("menuitemcheckbox")
+        .map((item) => item.textContent),
+    ).toEqual(["storefront", "nightly", "docs", "orders-db"]);
+    await user.click(
+      within(screen.getByRole("menu")).getByRole("menuitemcheckbox", {
+        name: "docs",
+      }),
+    );
+    await user.keyboard("{Escape}");
+    await user.click(within(dialog).getByRole("button", { name: "Done" }));
+    expect(mutations.create).toHaveBeenCalledWith(
+      SavedSearchType.Metrics,
+      "Service Metrics 2",
+      {
+        filters: [{ field: "RESOURCE", operator: "IS", values: ["srv-site"] }],
+        version: 1,
+      },
+    );
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
   });
 
   it("refuses a blank name before writing", async () => {

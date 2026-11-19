@@ -1,6 +1,7 @@
-import { useState, type ComponentProps } from "react";
+import { useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+  ChartNoAxesCombined,
   ChevronLeft,
   FolderKanban,
   Globe,
@@ -34,19 +35,15 @@ import {
   EditViewDialog,
   type EditViewTarget,
 } from "@/features/logs/components/edit-view-dialog";
+import { ProjectViewLink } from "@/features/logs/components/project-view-link";
 import { useOpenView } from "@/features/logs/hooks/use-open-view";
 import {
-  PROJECT_LOG_VIEW_TITLE_KEYS,
-  PROJECT_LOG_VIEW_TYPES,
-  isProjectLogView,
-  type ProjectLogViewType,
+  PROJECT_VIEW_TITLE_KEYS,
+  PROJECT_VIEW_TYPES,
 } from "@/features/logs/lib/project-log-views";
 import { freeViewName } from "@/features/logs/lib/view-filters";
 import { useProjects } from "@/features/projects/hooks/use-projects";
-import {
-  useSavedSearches,
-  type SavedSearch,
-} from "@/features/projects/hooks/use-saved-searches";
+import { useSavedSearches } from "@/features/projects/hooks/use-saved-searches";
 import { SavedSearchType } from "@/graphql/definitions";
 import { SidebarBrand } from "./sidebar-brand";
 
@@ -66,11 +63,12 @@ export interface ProjectSidebarProps {
  * Overview ("Dashboard").
  *
  * Between Overview and Manage sits Render's OBSERVABILITY group (w3/m505):
- * one link per log view the project keeps (its saved searches of type
- * Application Logs and Request Logs). The Service Metrics view exists but is
- * not listed, as Render does not list it. Below them Render's **+ New View**
- * opens its TYPE menu (w3/m507): picking a type opens the Edit view modal
- * with that type's name, and the view is created on Done, then opened.
+ * one link per view the project keeps (its saved searches of type
+ * Application Logs, Request Logs and Service Metrics, w3/m508; Render's
+ * reference workspace hid Service Metrics on 2026-11-19 while its docs list it
+ * among the default views). Below them Render's **+ New View** opens its TYPE
+ * menu (w3/m507): picking a type opens the Edit view modal with that type's
+ * name, and the view is created on Done, then opened.
  */
 export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -91,7 +89,6 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
     },
   });
   const { views, loading: viewsLoading } = useSavedSearches(projectId);
-  const logViews = views.filter(isProjectLogView);
 
   return (
     <Sidebar collapsible="icon">
@@ -145,10 +142,10 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
           <SidebarGroupContent>
             <SidebarMenu>
               {viewsLoading
-                ? // Render's two default views, reserved while the list loads
-                  // (fixed widths: the menu skeleton's random one differs
-                  // between the server and the client).
-                  ["w-28", "w-24"].map((width) => (
+                ? // Render's three default views, reserved while the list
+                  // loads (fixed widths: the menu skeleton's random one
+                  // differs between the server and the client).
+                  ["w-28", "w-24", "w-26"].map((width) => (
                     <SidebarMenuItem key={width}>
                       <div
                         data-sidebar="menu-skeleton"
@@ -159,14 +156,17 @@ export function ProjectSidebar({ projectId }: ProjectSidebarProps) {
                       </div>
                     </SidebarMenuItem>
                   ))
-                : logViews.map((view) => (
+                : views.map((view) => (
                     <SidebarMenuItem key={view.id}>
                       <SidebarMenuButton
                         asChild
                         isActive={onObservability && savedSearchId === view.id}
                         tooltip={view.name}
                       >
-                        <LogViewLink projectId={projectId} view={view} />
+                        <ProjectViewLink projectId={projectId} view={view}>
+                          <ViewTypeIcon type={view.type} />
+                          <span>{view.name}</span>
+                        </ProjectViewLink>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
@@ -256,7 +256,7 @@ function NewViewItem({
           <DropdownMenuLabel className="text-xs tracking-wider text-muted-foreground uppercase">
             {t("logs.newViewTypeHeading")}
           </DropdownMenuLabel>
-          {PROJECT_LOG_VIEW_TYPES.map((type) => (
+          {PROJECT_VIEW_TYPES.map((type) => (
             <DropdownMenuItem
               key={type}
               onSelect={() =>
@@ -264,14 +264,14 @@ function NewViewItem({
                   kind: "create",
                   type,
                   name: freeViewName(
-                    t(PROJECT_LOG_VIEW_TITLE_KEYS[type]),
+                    t(PROJECT_VIEW_TITLE_KEYS[type]),
                     takenNames,
                   ),
                 })
               }
             >
               <ViewTypeIcon type={type} />
-              {t(PROJECT_LOG_VIEW_TITLE_KEYS[type])}
+              {t(PROJECT_VIEW_TITLE_KEYS[type])}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
@@ -288,43 +288,13 @@ function NewViewItem({
   );
 }
 
-function ViewTypeIcon({ type }: { type: ProjectLogViewType }) {
-  return type === SavedSearchType.RequestLogs ? <Globe /> : <ScrollText />;
-}
-
-// One view's sidebar link, Render's: the view page by `savedSearchId`. The
-// menu button's Slot hands its class and state attributes through `props`.
-function LogViewLink({
-  projectId,
-  view,
-  ...props
-}: {
-  projectId: string;
-  view: SavedSearch & { type: ProjectLogViewType };
-} & Omit<ComponentProps<"a">, "href" | "children">) {
-  const content = (
-    <>
-      <ViewTypeIcon type={view.type} />
-      <span>{view.name}</span>
-    </>
-  );
-  return view.type === SavedSearchType.RequestLogs ? (
-    <Link
-      {...props}
-      to="/project/$projectId/observability/logs/request"
-      params={{ projectId }}
-      search={{ savedSearchId: view.id }}
-    >
-      {content}
-    </Link>
-  ) : (
-    <Link
-      {...props}
-      to="/project/$projectId/observability/logs/application"
-      params={{ projectId }}
-      search={{ savedSearchId: view.id }}
-    >
-      {content}
-    </Link>
-  );
+function ViewTypeIcon({ type }: { type: SavedSearchType }) {
+  switch (type) {
+    case SavedSearchType.RequestLogs:
+      return <Globe />;
+    case SavedSearchType.Metrics:
+      return <ChartNoAxesCombined />;
+    default:
+      return <ScrollText />;
+  }
 }

@@ -86,6 +86,15 @@ A modal titled **Edit view**: a **Name** field, a **Filters** list with an add (
 - `Environment` takes the operator `is` and one environment.
 - `Resource Type` takes `is one of` / `is not one of` over **Services, Cron jobs, Postgres, Key Value**. Key Value and Postgres logs belong to the project's Application Logs.
 
+## Service Metrics (re-checked 2026-11-19, w3/m508)
+
+Render's own page could not be looked at again: the capture above is the last read of the reference workspace, and it hid the view (no sidebar entry, no New View option, `/project/{prj}/observability/metrics?savedSearchId=…` redirecting to `/`). Everything below comes from Render's docs and its dashboard bundle, read 2026-11-19.
+
+- **Docs.** [render.com/docs/projects](https://render.com/docs/projects) § View logs, metrics, and task runs lists **Service Metrics** among the default views, under **Observability** in the left pane of a project or environment: "View and aggregate service metrics". [render.com/docs/service-metrics](https://render.com/docs/service-metrics) § Metrics across a project or environment: "Projects and environments display metrics for all of their services on the Service Metrics page." Services must be in the same region to appear. Neither page names the page's charts, its group-by or a plan gate for the page itself.
+- **Charts.** The docs name the service metrics only per service: CPU and memory (every service but static sites), HTTP requests and response times (web services; response times on Pro and higher), outbound bandwidth (every service type), and database activity for Postgres and Key Value. Render's per-service Metrics page draws CPU, Memory, Total Instances, Total Requests, Response Times and Outbound Bandwidth ([metrics-page.md](metrics-page.md)).
+- **Group-by.** The bundle's metrics-view group-by is `NONE | RESOURCE | STATUS_CODE`. A view's filter document is the same `{filters, version}` as a log view's, and the default `METRICS` view's is empty.
+- **What bex builds from it (w3/m508).** One page per `METRICS` view at Render's route, listed in the sidebar and offered by New View: CPU, Memory and Total Instances (one line per resource, its instances added up), Total Requests (group by resource, status code or none), Response Times (one line per resource, Pro and higher) and Outbound Bandwidth, every resource the view's filters keep in one read. Which chart reads which resource type, and every choice the docs leave open, is recorded in [ADR010 § Project views](../ADR010-observability.md) and the [ADR018](../ADR018-render-parity.md) Projects row. Unverified until Render shows the page: its chart set, where its group-by sits, and whether Postgres and Key Value appear on it.
+
 ## The log query
 
 The page asks Render's private GraphQL for the whole project in one query, not one per service:
@@ -131,6 +140,6 @@ query logs($query: LogQueryInput!) {
 - Each line's labels are a subset of `SERVICE`, `DEPLOY`, `INSTANCE`, `LEVEL` and `LOG_TYPE`, in that order. A cron run's own `==> Cron job run started` line has only `SERVICE` and `LOG_TYPE`.
 - 50 lines a page; `hasMore` with `nextStartTime`/`nextEndTime` for the next page.
 
-## What bex has (2026-11-19)
+## What bex had before w3/m505 (2026-11-19)
 
 Per-service Logs and Metrics pages, and datastore Logs and Metrics tabs. The project sidebar (`dashboard/src/common/components/dashboard-layout/project-sidebar.tsx`) has only Overview and Settings, and the project routes are only `project.$projectId.index.tsx` and `project.$projectId.settings.tsx`. REST `GET /v1/logs` and `/v1/logs/subscribe` already take up to 20 `resource` values (`maxLogResources`); GraphQL `logs` takes one `resource`; GraphQL `metrics` already fans out over several `RESOURCE` values (`checkFanOut`).

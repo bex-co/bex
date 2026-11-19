@@ -670,6 +670,70 @@ const ptMetrics: Record<string, TranslationEntry> = {
     description:
       "Response Times section on a Hobby workspace (PLAN_FEATURE_REQUIRED, w8/m138)",
   },
+  "metrics.serviceMetricsTitle": {
+    message: "Métricas de serviços",
+    description:
+      "A project's Service Metrics view type: New View's menu, a new view's name and its page title (w3/m508)",
+  },
+  "metrics.projectApplicationDescription": {
+    message: "Uma linha por recurso, com as instâncias somadas",
+    description:
+      "Subtitle of a project Service Metrics view's Application Metrics card (w3/m508)",
+  },
+  "metrics.projectNetworkDescription": {
+    message:
+      "Solicitações, tempos de resposta e tráfego de saída de cada recurso",
+    description:
+      "Subtitle of a project Service Metrics view's Network Metrics card (w3/m508)",
+  },
+  "metrics.groupByResource": {
+    message: "Recurso",
+    description:
+      "Total Requests Group by option on a project Service Metrics view: one line per resource (Render's RESOURCE, w3/m508)",
+  },
+  "metrics.projectLegendLabel": {
+    message: "Recursos desta visualização",
+    description:
+      "Accessible name of the legend whose buttons show or hide each resource on every chart (w3/m508)",
+  },
+  "metrics.projectChartFailed": {
+    message:
+      "Não foi possível carregar {names}; este gráfico os deixa de fora.",
+    description:
+      "Under a project chart: resources whose read failed and which the chart leaves out; names is a comma list (w3/m508)",
+  },
+  "metrics.projectChartNotCharted": {
+    message:
+      "Sem gráfico para {names}: este gráfico não tem dados para o tipo deles.",
+    description:
+      "Under a project chart: resources of a type the chart has no data for (a static site's CPU, a worker's requests); names is a comma list (w3/m508)",
+  },
+  "metrics.projectChartNoData": {
+    message: "Sem dados neste intervalo para {names}.",
+    description:
+      "Under a project chart: resources read with nothing in the range; names is a comma list (w3/m508)",
+  },
+  "metrics.projectViewTooLargeTitle": {
+    message: "Esta visualização tem recursos demais para exibir em gráficos",
+    description:
+      "Project Service Metrics view whose filters keep more resources than one view charts (PROJECT_VIEW_TOO_LARGE, w3/m508)",
+  },
+  "metrics.projectViewTooLargeBody": {
+    message:
+      "Ela tem {resources} recursos, e uma visualização exibe no máximo {limit}. Edite a visualização para restringi-la com um filtro de ambiente, recurso ou tipo de recurso.",
+    description:
+      "Body of the too-many-resources state; resources is how many the view keeps, limit how many it may chart (w3/m508)",
+  },
+  "metrics.projectScopeEmptyTitle": {
+    message: "Ainda não há nada para exibir nesta visualização",
+    description:
+      "Project Service Metrics view with no resource in it (w3/m508)",
+  },
+  "metrics.projectScopeEmptyBody": {
+    message:
+      "Esta visualização exibe os serviços, cron jobs, bancos de dados Postgres e instâncias Key Value do projeto, e ainda não há nenhum.",
+    description: "Body of the empty project Service Metrics view (w3/m508)",
+  },
 };
 
 export default ptMetrics;

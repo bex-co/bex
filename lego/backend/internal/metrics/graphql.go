@@ -326,6 +326,69 @@ func retentionDaysField[T any](window func(T) time.Duration) *graphql.Field {
 	})
 }
 
+// projectMetricsQueryInputType is one chart of a project's Service Metrics
+// view (w3/m508, a Bex extension: Render's own query for the view was never
+// captured, its page being gated). It names the project and the view's filter
+// document, as Render's project logs query does, in place of RESOURCE filters;
+// name, the window and parameters are MetricsQueryInput's.
+var projectMetricsQueryInputType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "ProjectMetricsQueryInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"project":        &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"filterDocument": &graphql.InputObjectFieldConfig{Type: gqlutil.JSONObject},
+		"name": &graphql.InputObjectFieldConfig{
+			Type:        graphql.NewNonNull(graphql.String),
+			Description: "CPU, MEMORY, INSTANCES, HTTP_REQUESTS, HTTP_LATENCY or BANDWIDTH.",
+		},
+		"start":      &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"end":        &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"resolution": &graphql.InputObjectFieldConfig{Type: graphql.Int},
+		"parameters": &graphql.InputObjectFieldConfig{Type: graphql.NewList(metricsParameterInputType)},
+		"groupBy": &graphql.InputObjectFieldConfig{
+			Type:        graphql.String,
+			Description: "Render's metrics-view group-by: RESOURCE (default; one series per resource), STATUS_CODE (HTTP_REQUESTS only) or NONE (one series for the view; not HTTP_LATENCY).",
+		},
+	},
+})
+
+// projectMetricResourceGQLType is one readable resource of the view and what
+// the read did with it: CHARTED, NOT_CHARTED (the metric has no series for its
+// type) or FAILED (its read failed and it adds nothing to the series).
+var projectMetricResourceGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "ProjectMetricResource",
+	Fields: graphql.Fields{
+		"id":            gqlutil.ReqStrField(func(r ProjectMetricResource) any { return r.ID }),
+		"name":          gqlutil.ReqStrField(func(r ProjectMetricResource) any { return r.Name }),
+		"type":          gqlutil.ReqStrField(func(r ProjectMetricResource) any { return r.Type }),
+		"environmentId": gqlutil.OptionalStrField(func(r ProjectMetricResource) any { return r.EnvironmentID }),
+		"status":        gqlutil.ReqStrField(func(r ProjectMetricResource) any { return r.Status }),
+	},
+})
+
+var projectMetricsGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "ProjectMetrics",
+	Fields: graphql.Fields{
+		// series carry `resource` (RESOURCE), `statusCode` (STATUS_CODE) or no
+		// label (NONE), and `quantile` beside `resource` for several percentiles.
+		"series": gqlutil.Typed(
+			graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(metricSeriesGQLType))),
+			func(m ProjectMetrics) any {
+				out := make([]metricSeriesResult, 0, len(m.Series))
+				for _, r := range m.Series {
+					out = append(out, metricSeriesResult{MetricSeries: r.MetricSeries, Quantile: r.Quantile, HasQuantile: r.HasQuantile})
+				}
+				return out
+			},
+		),
+		// resources is every resource of the view the caller may read, in the
+		// project's order (services, then datastores).
+		"resources": gqlutil.Typed(
+			graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(projectMetricResourceGQLType))),
+			func(m ProjectMetrics) any { return m.Resources },
+		),
+	},
+})
+
 // GraphQLQuery returns the metrics dashboard queries for the composition root.
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
@@ -357,6 +420,20 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 					}
 				}
 				return out, nil
+			},
+		},
+		// One chart of a project's Service Metrics view (w3/m508).
+		"projectMetrics": &graphql.Field{
+			Type: projectMetricsGQLType,
+			Args: graphql.FieldConfigArgument{
+				"query": gqlutil.ReqArg(projectMetricsQueryInputType),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				q, err := projectMetricsQueryFromArgs(p.Args["query"])
+				if err != nil {
+					return nil, err
+				}
+				return s.projectMetrics(p.Context, q)
 			},
 		},
 		"datastoreMetrics": &graphql.Field{
@@ -458,18 +535,7 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 	if q.Start, q.End, q.Resolution, err = windowFromInput(input); err != nil {
 		return nil, MetricQuery{}, err
 	}
-	// Render's `parameters` is a list; each entry names a quantile. A single entry
-	// is the ordinary percentile pick, several entries are the percentile "All"
-	// overlay (w5/m56) — collect them all and let MetricsWithQuantiles fan out.
-	if params, ok := input["parameters"].([]any); ok {
-		for _, pr := range params {
-			if m, ok := pr.(map[string]any); ok {
-				if ql, ok := m["quantile"].(float64); ok {
-					q.Quantiles = append(q.Quantiles, ql)
-				}
-			}
-		}
-	}
+	q.Quantiles = parameterQuantiles(input)
 	if method, _ := input["aggregateAllMethod"].(string); method != "" {
 		replica, aggMax, parseErr := parseReplicaAggregate(method)
 		if parseErr != nil {
@@ -505,6 +571,29 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 	return resources, q, nil
 }
 
+// projectMetricsQueryFromArgs maps projectMetrics' input onto a
+// ProjectMetricQuery.
+func projectMetricsQueryFromArgs(raw any) (ProjectMetricQuery, error) {
+	input, ok := raw.(map[string]any)
+	if !ok {
+		return ProjectMetricQuery{}, fmt.Errorf("%w: query is required", core.ErrBadRequest)
+	}
+	name, _ := input["name"].(string)
+	metric, ok := renderMetricNames[name]
+	if !ok {
+		return ProjectMetricQuery{}, fmt.Errorf("%w: unknown metrics name %q", core.ErrBadRequest, name)
+	}
+	q := ProjectMetricQuery{FilterDocument: input["filterDocument"], Metric: metric}
+	q.Project, _ = input["project"].(string)
+	q.GroupBy, _ = input["groupBy"].(string)
+	var err error
+	if q.Start, q.End, q.Resolution, err = windowFromInput(input); err != nil {
+		return ProjectMetricQuery{}, err
+	}
+	q.Quantiles = parameterQuantiles(input)
+	return q, nil
+}
+
 // datastoreMetricsQueryInputFromArgs maps datastoreMetrics' input onto a
 // DatastoreMetricQuery — the sibling of metricsQueryInputFromArgs.
 func datastoreMetricsQueryInputFromArgs(raw any) (DatastoreMetricQuery, error) {
@@ -535,6 +624,23 @@ func datastoreMetricsQueryInputFromArgs(raw any) (DatastoreMetricQuery, error) {
 	}
 
 	return q, nil
+}
+
+// parameterQuantiles reads Render's `parameters` list: each entry names a
+// quantile. A single entry is the ordinary percentile pick, several entries
+// are the percentile "All" overlay (w5/m56) — collect them all and let
+// MetricsWithQuantiles fan out.
+func parameterQuantiles(input map[string]any) []float64 {
+	var out []float64
+	params, _ := input["parameters"].([]any)
+	for _, pr := range params {
+		if m, ok := pr.(map[string]any); ok {
+			if ql, ok := m["quantile"].(float64); ok {
+				out = append(out, ql)
+			}
+		}
+	}
+	return out
 }
 
 // metricsFilterValues indexes Render's `filters: [{field, values}]` array by

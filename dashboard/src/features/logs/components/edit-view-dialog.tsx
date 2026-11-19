@@ -290,9 +290,15 @@ function useValueChoices(
       ...(project?.keyValueIds ?? []),
     ]);
     const requestsOnly = type === SavedSearchType.RequestLogs;
+    // A static site has no application log, but Service Metrics charts its
+    // requests and bandwidth (w3/m508).
+    const staticSites = type === SavedSearchType.Metrics;
     const resources: ValueChoice[] = [
       ...services
-        .filter((s) => members.has(s.id) && !isStaticSiteType(s.type))
+        .filter(
+          (s) =>
+            members.has(s.id) && (staticSites || !isStaticSiteType(s.type)),
+        )
         .filter((s) => !requestsOnly || isWebServiceType(s.type))
         .map((s) => ({ value: s.id, label: s.name })),
       ...(requestsOnly

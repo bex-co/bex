@@ -4,9 +4,8 @@ import { SavedSearchType } from "@/graphql/definitions";
 
 /**
  * Opens a project view's page (w3/m507): a new, duplicated or remaining view
- * by its type's route and `savedSearchId`. A view with no page of its own yet
- * (Service Metrics, w3/m508), or none at all, lands on the project's
- * overview.
+ * by its type's route and `savedSearchId`, Service Metrics too (w3/m508).
+ * No view at all lands on the project's overview.
  */
 export function useOpenView(projectId: string) {
   const navigate = useNavigate();
@@ -15,6 +14,13 @@ export function useOpenView(projectId: string) {
       if (view?.type === SavedSearchType.RequestLogs) {
         return navigate({
           to: "/project/$projectId/observability/logs/request",
+          params: { projectId },
+          search: { savedSearchId: view.id },
+        });
+      }
+      if (view?.type === SavedSearchType.Metrics) {
+        return navigate({
+          to: "/project/$projectId/observability/metrics",
           params: { projectId },
           search: { savedSearchId: view.id },
         });

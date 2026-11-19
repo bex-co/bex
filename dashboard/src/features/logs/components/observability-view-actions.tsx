@@ -8,7 +8,6 @@ import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities"
 import type { SavedSearch } from "@/features/projects/hooks/use-saved-searches";
 import { useSavedSearchMutations } from "@/features/projects/hooks/use-saved-search-mutations";
 import { useOpenView } from "../hooks/use-open-view";
-import { isProjectLogView } from "../lib/project-log-views";
 import { EditViewDialog } from "./edit-view-dialog";
 import { ViewActionButtons } from "./observability-view-header";
 
@@ -16,8 +15,8 @@ import { ViewActionButtons } from "./observability-view-header";
  * A view's header buttons (w3/m507), Render's three, which every view has,
  * the defaults too: **Edit view** opens the modal, **Duplicate** copies the
  * view and opens the copy, and the trash button deletes the view after a
- * typed confirmation and lands on the project's first remaining log view, or
- * its overview when none is left. A member who may not edit the project sees
+ * typed confirmation and lands on the project's first remaining view, or its
+ * overview when none is left. A member who may not edit the project sees
  * them disabled with the reason (ADR018 § Role-aware dashboard controls);
  * bex-api refuses them too.
  */
@@ -60,7 +59,7 @@ export function ObservabilityViewActions({
     }
     toast.success(t("logs.viewDeleted", { name: view.name }));
     try {
-      await openView(left.find(isProjectLogView));
+      await openView(left[0] ?? null);
     } finally {
       onLeaving(null);
     }

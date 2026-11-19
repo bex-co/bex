@@ -8,10 +8,14 @@
 # (BEX_PROM_URL=http://localhost:$PROM_PORT). Not per-N: nothing here may carry
 # a per-N value, since every `up` re-applies the same objects.
 #
-# Two jobs:
+# Three jobs:
 #   - kubernetes-kubelet: production's job verbatim (apiserver node proxy). It
 #     yields nothing for local-path volumes — hostPath PVs have no kubelet
 #     volume stats — but it keeps the production scrape path exercised.
+#   - kubernetes-cadvisor: production's cAdvisor job (the same node proxy),
+#     keeping only the two container series bex-api's CPU, Memory and Total
+#     Instances charts read, so a service's Metrics page and a project's
+#     Service Metrics view (w3/m508) draw on every dev-N.
 #   - local-path-volume-usage: the volume-usage DaemonSet below, which publishes
 #     the same series from `du` of each claim's directory (why: volume-usage.sh).
 apiVersion: v1
@@ -74,6 +78,33 @@ data:
           - source_labels: [__name__]
             regex: kubelet_volume_stats_(used|capacity|available)_bytes
             action: keep
+      - job_name: kubernetes-cadvisor
+        scrape_interval: 15s
+        scheme: https
+        kubernetes_sd_configs:
+          - role: node
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        authorization:
+          credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+          - source_labels: [__meta_kubernetes_node_name]
+            target_label: node
+        metric_relabel_configs:
+          - source_labels: [__name__]
+            regex: container_cpu_usage_seconds_total|container_memory_working_set_bytes
+            action: keep
+          # Real containers only, as production keeps them: the pod-level row
+          # (container="") would double-count a sum by pod.
+          - source_labels: [container]
+            regex: ""
+            action: drop
       - job_name: local-path-volume-usage
         # busybox httpd serves the exposition without a text/plain type.
         fallback_scrape_protocol: PrometheusText0.0.4

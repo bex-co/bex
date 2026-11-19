@@ -1,21 +1,21 @@
 # w3 · m508 — A project's Service Metrics view charts every service together, as Render documents
 
-**Worker:** worker3 **Goal:** the project's Service Metrics view (the `METRICS` saved search w3/m505 creates) charts CPU, memory, instances, HTTP requests, response time and bandwidth for every service of the project or environment, one series per service, grouped as Render's bundle allows. **Status:** todo
+**Worker:** worker3 **Goal:** the project's Service Metrics view (the `METRICS` saved search w3/m505 creates) charts CPU, memory, instances, HTTP requests, response time and bandwidth for every service of the project or environment, one series per service, grouped as Render's bundle allows. **Status:** in progress — t001–t005 and t007–t010 done; t006 verified on dev-3, its production walk waits for a deploy carrying the code
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Re-check Render's Service Metrics view and record what it shows | 30m | — |
-| [t002](t002.md) | Metrics for a project scope with a group-by | 1h30m | t001, w3/m505/t003 |
-| [t003](t003.md) | Dashboard: the Service Metrics view page | 2h | t002, w3/m505/t006 |
-| [t004](t004.md) | Partial reads, resources without data, the fan-out bound and Hobby | 45m | t003 |
-| [t005](t005.md) | Service Metrics in New View and Edit view | 30m | t004, w3/m507/t003 |
+| [t001](done/t001.md) | Re-check Render's Service Metrics view and record what it shows — **DONE** | 30m | — |
+| [t002](done/t002.md) | Metrics for a project scope with a group-by — **DONE** | 1h30m | t001, w3/m505/t003 |
+| [t003](done/t003.md) | Dashboard: the Service Metrics view page — **DONE** | 2h | t002, w3/m505/t006 |
+| [t004](done/t004.md) | Partial reads, resources without data, the fan-out bound and Hobby — **DONE** | 45m | t003 |
+| [t005](done/t005.md) | Service Metrics in New View and Edit view — **DONE** | 30m | t004, w3/m507/t003 |
 | [t006](t006.md) | Verify on dev-3 and on production | 30m | t005 |
-| [t007](t007.md) | ADR010 and ADR018 | 20m | t006 |
-| [t008](t008.md) | Render parity | 20m | t007 |
-| [t009](t009.md) | Simplify | 15m | t008 |
-| [t010](t010.md) | Test coverage | 30m | t008 |
+| [t007](done/t007.md) | ADR010 and ADR018 — **DONE** | 20m | t006 |
+| [t008](done/t008.md) | Render parity — **DONE** | 20m | t007 |
+| [t009](done/t009.md) | Simplify — **DONE** | 15m | t008 |
+| [t010](done/t010.md) | Test coverage — **DONE** | 30m | t008 |
 | [t011](t011.md) | Closeout | 10m | t009, t010 |
 
 ## Definition of done
@@ -33,3 +33,59 @@
 - **Expected outcome:** a project's resource use can be compared across its services on one page.
 - **Why now:** w3/m505 creates the `METRICS` default view, and the backend already fans out over several resources, so the remaining work is mostly the page.
 - **Render parity included:** GraphQL and dashboard changes.
+
+## Verification record
+
+### dev-3 (2026-11-19)
+
+A fresh dev-3 identity's Hobby workspace `tea-dbvmh9pjg4r6oemv01eg` with project `prj-dbvmhapjg4r6oemv01f0` ("observed"): environments production and staging, busybox web services `storefront` and `api` (production) and `admin` (staging), and a cron job `nightly-report` (staging, every minute). dev-N's shared Prometheus scraped no cAdvisor series, so every CPU, Memory and Total Instances chart on dev-N, a service's own included, was empty; it now keeps cAdvisor's two container series (`scripts/dev-env/prometheus/prometheus.yaml`). dev-N ships no request lines to its log store, so Total Requests and Response Times stay empty there (production reads them).
+
+- GraphQL `projectMetrics`: CPU, Memory and Total Instances answered one series per resource labeled `resource` (three web services and the cron job); `resources` listed all four `CHARTED`. Total Requests listed `nightly-report` as `NOT_CHARTED`. An `ENVIRONMENT IS staging` document narrowed the read to `admin` and `nightly-report`. `groupBy: NONE` answered one unlabeled Memory series; `STATUS_CODE` on CPU was refused by name. Response Times answered `PLAN_FEATURE_REQUIRED` on Hobby.
+- Dashboard, 1440: the sidebar listed Application Logs, Request Logs and Service Metrics; `/observability/metrics` without a view redirected to the project's Service Metrics view. At Last hour, CPU, Memory and Total Instances each drew four lines in the legend's four hues; the legend's `api` toggle hid its line on all four drawn charts and showed it back. Total Requests' Group by offered Resource, Status code and All requests, and its note read "Not charted for nightly-report". Response Times showed the Pro notice. At 390 the page fits with no horizontal scroll.
+- New View → Service Metrics opened "New view" named "Service Metrics 2"; Environment = staging and Resource = admin saved and opened the view, its legend `admin` only. Edit view (rename "Staging without admin", Resource `is not one of`) left `nightly-report`; Duplicate opened "Staging without admin (copy)" on the metrics page, and deleting it landed on the project's first remaining view.
+- Pending and ready (the saved-search read held back in the browser): at 1440 and 390 the header, Edit view, range picker, legend row, both card tops and every chart title have the same boxes in both states, up to Total Requests. Below it the ready page adds the data-dependent "Not charted" note (20 px at 1440, 36 px at 390), which no skeleton can know.
+- Found and fixed on the way: Apollo normalized `ProjectMetricResource` by id, so the CPU read's `CHARTED` overwrote the Total Requests read's `NOT_CHARTED` for the cron job (`keyFields: false`, with a cache test).
+
+### Production
+
+Waits for a production pin carrying this milestone's code: then a worker walks a `bex-canary` project as the QA user at 1440 and 390, with and without an environment filter, records it here and closes t006 and t011.
+
+## Render parity (t008)
+
+Compared 2026-11-19 against [render.com/docs/projects](https://render.com/docs/projects) § Observability, [render.com/docs/service-metrics](https://render.com/docs/service-metrics) and the capture ([project-observability.md § Service Metrics](../../../docs/render-artifacts/project-observability.md#service-metrics-re-checked-2026-11-19-w3m508)). Render's page was hidden in its reference workspace, so nothing below is matched against a live page.
+
+| Surface | Render | bex | Verdict |
+| --- | --- | --- | --- |
+| Route | `/project/{prj}/observability/metrics` (bundle) | the same, `?savedSearchId=…&r=…` | route matched; the page itself unverified |
+| Sidebar, New View | docs: a default view under Observability; the reference workspace hid it | listed and offered | follows the docs (ADR018) |
+| Charts | docs: CPU, memory, HTTP requests, response times, bandwidth per service | CPU, Memory, Total Instances, Total Requests, Response Times, Outbound Bandwidth | unverified chart set |
+| Scope | views filter by Environment, Resource, Resource Type | the same document; a static site counts as a Service; Postgres and Key Value chart CPU and memory | unverified for metrics views |
+| Group-by | bundle enum `NONE`, `RESOURCE`, `STATUS_CODE` | the same values on GraphQL; the page offers them on Total Requests | values matched; placement unverified |
+| Response times plan | Pro and higher | the Pro refusal on Hobby, read once | matched |
+| Retention | per plan | per resource through the Metrics verb | matched |
+| GraphQL read | private, not captured | `projectMetrics`, a Bex extension | recorded in ADR018 |
+| REST, MCP | no project metrics operation | unchanged, explicit resources | matched |
+
+Across bex's surfaces: `projectMetrics` reads each resource through the verb GraphQL `metrics`, REST and MCP read, so units, retention, creation floors and the latency gate agree. One drift found: a status-code series is `statusCode` on REST, MCP and `projectMetrics` but `code` on GraphQL `metrics`; filed as [w3/080](../080.md).
+
+## Test coverage (t010)
+
+| Behavior | Test |
+| --- | --- |
+| A three-service project returns three CPU series labeled by resource, instances added up | `TestProjectMetricsChartEveryResource` (`lego/backend/internal/metrics/project_test.go`) |
+| The view's document narrows the scope; a log field in it is refused | `TestProjectMetricsFollowTheViewDocument`; `TestScopeSelectsWhatAViewReads` (static sites as Services) |
+| Group-by NONE, STATUS_CODE and their refusals | `TestProjectMetricsGroupBy` |
+| Hobby gets the response-time refusal before any read | `TestProjectMetricsLatencyFollowsThePlan` |
+| A failed resource is FAILED and adds nothing; all failed answers the error | `TestProjectMetricsPartialAndFailedReads` |
+| The 20-resource bound, coded; no store; an unreadable project | `TestProjectMetricsRefusals` |
+| GraphQL shape | `TestGraphQLProjectMetrics`, the schema golden |
+| Lines, legend toggle, group-by, notes, too large, empty, Hobby, loading | `project-metrics-view.test.tsx`, `project-metrics.test.ts` |
+| The page: scope, 12-hour default, not found, skeleton | `project-metrics-view-page.test.tsx` |
+| Sidebar lists and offers Service Metrics | `project-sidebar.test.tsx` |
+| A metrics view's Edit view fields and static sites | `edit-view-dialog.test.tsx` |
+| Each chart keeps its own resource status in the cache | `cache.test.ts` |
+
+## Simplify (t009)
+
+`/simplify` folded the two view pages' shared frame (loading, not found, failed read, header and range) into `ProjectViewPage`, and the three per-type view links (sidebar, not-found states) into `ProjectViewLink`; the GraphQL `parameters` parsing is one helper for `metrics` and `projectMetrics`.
+

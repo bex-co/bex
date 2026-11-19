@@ -410,6 +410,7 @@ var keyPermissionOps = map[string][]core.KeyAction{
 	"GQL Query.ownerNotificationSettings":                             {core.KeyWorkspaceNotifications},
 	"GQL Query.pipelineSettings":                                      {core.KeyWorkspaceSettings},
 	"GQL Query.project":                                               {core.KeyProjectsView},
+	"GQL Query.projectMetrics":                                        {core.KeyMonitoringMetrics},
 	"GQL Query.projects":                                              {core.KeyProjectsView},
 	"GQL Query.savedSearch":                                           {core.KeyProjectsView},
 	"GQL Query.savedSearches":                                         {core.KeyProjectsView},

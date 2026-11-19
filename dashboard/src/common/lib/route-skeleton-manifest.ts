@@ -511,6 +511,18 @@ export const ROUTE_SKELETON_MANIFEST = {
     shape: "project-log-view",
     regions: ["page-header", "log-toolbar", "log-panel"],
   },
+  "/project/$projectId/observability/metrics": {
+    kind: "render",
+    owner: "routes/project.$projectId.observability.metrics.tsx",
+    shape: "project-metrics-view",
+    regions: [
+      "page-header",
+      "metrics-toolbar",
+      "metrics-legend",
+      "application-metrics",
+      "network-metrics",
+    ],
+  },
   "/project/$projectId/settings": {
     kind: "render",
     owner: "routes/project.$projectId.settings.tsx",

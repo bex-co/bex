@@ -7,30 +7,21 @@ import { SavedSearchesDocument, SavedSearchType } from "@/graphql/definitions";
 export type ProjectLogViewType =
   SavedSearchType.ApplicationLogs | SavedSearchType.RequestLogs;
 
-/** Those types in Render's order: the sidebar's list and New View's TYPE
- *  menu (w3/m507). Service Metrics joins with its page (w3/m508). */
-export const PROJECT_LOG_VIEW_TYPES: readonly ProjectLogViewType[] = [
+/** Every view type, in the order Render's docs list the default views: New
+ *  View's TYPE menu (w3/m507; Service Metrics with its page, w3/m508). */
+export const PROJECT_VIEW_TYPES: readonly SavedSearchType[] = [
   SavedSearchType.ApplicationLogs,
   SavedSearchType.RequestLogs,
+  SavedSearchType.Metrics,
 ];
 
-/** Each log view type's own name: a new view's, and a page's without one. */
-export const PROJECT_LOG_VIEW_TITLE_KEYS: Record<
-  ProjectLogViewType,
-  keyof typeof en
-> = {
-  [SavedSearchType.ApplicationLogs]: "logs.applicationLogsTitle",
-  [SavedSearchType.RequestLogs]: "logs.requestLogsTitle",
-};
-
-/** Whether a view has a log page (Service Metrics has none yet). */
-export function isProjectLogView<T extends { type: SavedSearchType }>(
-  view: T,
-): view is T & { type: ProjectLogViewType } {
-  return (PROJECT_LOG_VIEW_TYPES as readonly SavedSearchType[]).includes(
-    view.type,
-  );
-}
+/** Each view type's own name: a new view's, and a page's without one. */
+export const PROJECT_VIEW_TITLE_KEYS: Record<SavedSearchType, keyof typeof en> =
+  {
+    [SavedSearchType.ApplicationLogs]: "logs.applicationLogsTitle",
+    [SavedSearchType.RequestLogs]: "logs.requestLogsTitle",
+    [SavedSearchType.Metrics]: "metrics.serviceMetricsTitle",
+  };
 
 /**
  * The route loader's half of a view page: reads the project's views (warming
@@ -42,7 +33,7 @@ export function isProjectLogView<T extends { type: SavedSearchType }>(
 export async function defaultSavedSearchId(
   client: RouterContext["client"],
   projectId: string,
-  type: ProjectLogViewType,
+  type: SavedSearchType,
   cause: "preload" | "enter" | "stay",
 ): Promise<string | undefined> {
   const result = await client

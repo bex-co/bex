@@ -2330,6 +2330,30 @@ input ProjectEnvironmentInput {
   name: String!
 }
 
+type ProjectMetricResource {
+  environmentId: String
+  id: String!
+  name: String!
+  status: String!
+  type: String!
+}
+
+type ProjectMetrics {
+  resources: [ProjectMetricResource!]!
+  series: [MetricSeries!]!
+}
+
+input ProjectMetricsQueryInput {
+  end: String
+  filterDocument: JSONObject
+  groupBy: String
+  name: String!
+  parameters: [MetricsParameterInput]
+  project: String!
+  resolution: Int
+  start: String
+}
+
 type PushEventUrgency {
   event: PushNotificationEvent!
   sent: Boolean!
@@ -2547,6 +2571,7 @@ type Query {
   ownerNotificationSettings(ownerId: String): OwnerNotificationSettings!
   pipelineSettings(workspaceId: String!): PipelineSettings
   project(id: String!): Project
+  projectMetrics(query: ProjectMetricsQueryInput!): ProjectMetrics
   projects(cursor: String, limit: Int, ownerId: String!): [Project]
   pushEventUrgencies: [PushEventUrgency!]!
   pushNotificationSettings: PushNotificationSettings
