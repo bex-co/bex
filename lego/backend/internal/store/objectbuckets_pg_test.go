@@ -486,3 +486,58 @@ func TestObjectBucketDeleteShutsOutAPutUntilItDecides(t *testing.T) {
 		t.Fatalf("writing a deleted bucket = %v, want ErrNotFound", err)
 	}
 }
+
+// ADR112 D3: the location hint a Cloudflare-shaped bucket create asked for was
+// the only content of object_buckets.location_hint (w21/m500). Migration 0309
+// drops it once no replica reads it; its down migration restores the column for
+// a rollback to a binary that still does.
+func TestObjectBucketsLocationHintColumnIsDroppedAndComesBackOnADown(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	hasColumn := func() bool {
+		var n int
+		if err := tx.QueryRow(ctx, `SELECT count(*) FROM information_schema.columns
+			WHERE table_schema = current_schema() AND table_name = 'object_buckets' AND column_name = 'location_hint'`).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n == 1
+	}
+	read := func(name string) string {
+		raw, err := migrationsFS.ReadFile("migrations/" + name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(raw)
+	}
+	if hasColumn() {
+		t.Fatal("object_buckets.location_hint still exists after 0309")
+	}
+	if _, err := tx.Exec(ctx, read("0309_object_buckets_drop_location_hint.down.sql")); err != nil {
+		t.Fatal(err)
+	}
+	if !hasColumn() {
+		t.Fatal("the down migration did not restore object_buckets.location_hint")
+	}
+	if _, err := tx.Exec(ctx, read("0309_object_buckets_drop_location_hint.up.sql")); err != nil {
+		t.Fatal(err)
+	}
+	if hasColumn() {
+		t.Fatal("the up migration did not drop object_buckets.location_hint again")
+	}
+}

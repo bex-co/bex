@@ -1,6 +1,6 @@
 # w21 · m500 — S3 walked on production, then Contract B removed
 
-**Worker:** worker21 **Goal:** the S3 surface is proven on production with the stock clients, and the Cloudflare-shaped routes, the wrangler fixtures, the weekly wrangler job and their docs are gone. **Status:** in progress
+**Worker:** worker21 **Goal:** the S3 surface is proven on production with the stock clients, and the Cloudflare-shaped routes, the wrangler fixtures, the weekly wrangler job and their docs are gone. **Status:** done
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | [t005](done/t005.md) | Render parity | 30m | t004 — **DONE** |
 | [t006](done/t006.md) | Simplify | 20m | t005 — **DONE** |
 | [t007](done/t007.md) | Test coverage | 45m | t005, t006 — **DONE** |
-| [t008](t008.md) | Closeout | 10m | t007 |
+| [t008](done/t008.md) | Closeout | 10m | t007 — **DONE** |
 
 ## Definition of done
 
@@ -23,7 +23,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** [ADR112](../../../docs/ADR112-object-storage.md) (amended 2026-11-19: Contract B replaced by an S3-compatible API and `bex s3`), filed by `/pmx adr 112 to w21` on 2026-11-19; the S3 amendment's tasks t101 to t114 (§ Tasks), reorganized into three milestones.
+- **Source:** [ADR112](../../../../docs/ADR112-object-storage.md) (amended 2026-11-19: Contract B replaced by an S3-compatible API and `bex s3`), filed by `/pmx adr 112 to w21` on 2026-11-19; the S3 amendment's tasks t101 to t114 (§ Tasks), reorganized into three milestones.
 - **Goal linkage:** The user's 2026-11-19 decision to remove the R2 CLI approach entirely, and the repo rule that a divergence or surface stands only while something records it.
 - **Expected outcome:** `objects.onbex.co` serves only S3; no code, CI job or document describes wrangler as a way to use bex.
 - **Why now:** Contract B shipped on 2026-11-15 and the user rejected it on 2026-11-19; it stays until the S3 surface has been walked on production, so there is never a time without a way to list or manage a bucket. Removing it ends a second internet-facing surface that nobody should have to secure or test.
