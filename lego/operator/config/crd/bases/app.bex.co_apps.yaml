@@ -774,6 +774,17 @@ spec:
                   running container). See docs/ADR004-app-deployment.md.
                 maxLength: 4096
                 type: string
+              previewNotificationsEnabled:
+                description: |-
+                  PreviewNotificationsEnabled is the other half of Render's per-service
+                  notification override: whether the service's preview environments
+                  notify. bex has no previews, so nothing reads it; it is kept so the
+                  override reads back what it was sent (w9/112). Empty is "default";
+                  "true" is refused before it is written.
+                enum:
+                - default
+                - "false"
+                type: string
               publishPath:
                 description: |-
                   PublishPath is the built output directory a static_site serves as its

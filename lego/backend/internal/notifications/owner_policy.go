@@ -125,9 +125,7 @@ func (s *Service) UpdateOwnerSettings(ctx context.Context, ownerID string, input
 		return OwnerSettingsView{}, core.ErrNotificationsUnavailable
 	}
 	if input.PreviewNotificationsEnabled != nil && *input.PreviewNotificationsEnabled {
-		return OwnerSettingsView{}, core.NewBadRequestError("NOTIFICATION_PREVIEWS_UNSUPPORTED",
-			"previewNotificationsEnabled cannot be true: bex has no preview environments",
-			map[string]any{"field": "previewNotificationsEnabled"})
+		return OwnerSettingsView{}, core.NewPreviewNotificationsUnsupportedError()
 	}
 	if input.NotificationsToSend != nil && !ownerLevel(*input.NotificationsToSend) {
 		return OwnerSettingsView{}, core.NewBadRequestError("NOTIFICATION_LEVEL_INVALID",

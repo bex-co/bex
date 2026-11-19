@@ -49,9 +49,11 @@ import (
 //
 //   - ImageOwnerID — REST-only because it validates Render's nested image
 //     owner object; MCP's request-scoped workspace already supplies the owner.
-//   - NotificationsToSend, Autoscaling — MCP-only convenience folds; REST
-//     keeps Render's dedicated routes (PATCH …/notification-settings/
-//     overrides/services/{id} and PUT …/autoscaling).
+//   - NotificationsToSend, PreviewNotificationsEnabled, Autoscaling —
+//     MCP-only convenience folds; REST keeps Render's dedicated routes
+//     (PATCH …/notification-settings/overrides/services/{id}, which applies
+//     the two notification fields through this same table, and PUT
+//     …/autoscaling).
 //
 // MaintenanceBeforeFreeDowngrade is armed on BOTH fills: a simultaneous
 // disable-maintenance + free downgrade must apply maintenance first, or
@@ -104,9 +106,11 @@ type ServicePatch struct {
 	// service port instead" — named a setting no caller could reach.
 	Port         *int32
 	NotifyOnFail *string
-	// NotificationsToSend: MCP-only today (divergence — see type comment).
-	NotificationsToSend   *string
-	RenderSubdomainPolicy *string
+	// NotificationsToSend and PreviewNotificationsEnabled: MCP-only on the
+	// service patch (divergence — see type comment).
+	NotificationsToSend         *string
+	PreviewNotificationsEnabled *string
+	RenderSubdomainPolicy       *string
 	// IPAllowList: nil = not provided (leave unchanged); non-nil = replace,
 	// including the empty list (clear).
 	IPAllowList *[]core.IPAllowListEntry
@@ -558,6 +562,19 @@ var servicePatchTable = []servicePatchOp{
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetNotificationsToSend(ctx, id, *p.NotificationsToSend)
+		},
+	},
+	{
+		fields:   []string{"PreviewNotificationsEnabled"},
+		present:  func(p ServicePatch) bool { return p.PreviewNotificationsEnabled != nil },
+		relation: canOperate,
+		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
+			normalized, err := normalizePreviewNotificationsEnabled(*p.PreviewNotificationsEnabled)
+			probe.Spec.PreviewNotificationsEnabled = normalized
+			return err
+		},
+		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
+			return s.SetPreviewNotificationsEnabled(ctx, id, *p.PreviewNotificationsEnabled)
 		},
 	},
 	{

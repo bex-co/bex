@@ -68,6 +68,8 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		"jobs.CreateEphemeralShell":     "always refuses with 410 EPHEMERAL_SHELLS_UNSUPPORTED after authorization (w8/304): no shell is ever created, so nothing happens to record",
 		"deploys.TriggerBuild":          "a build is its build source carrier's deploy row; carriers have no service feed (ADR097)",
 		"deploys.TriggerManual":         "the dashboard twin of deploys.Trigger: the deploys row it opens IS the deploy_started event — mapping the verb too would double-count",
+		// w9/112: a value kept only so Render's override reads it back.
+		"apps.SetPreviewNotificationsEnabled": "bex has no previews, so the flag changes nothing it sends, and Render records no event for an override change",
 		// w4/m118: the same argument for cron runs. These three are INTENT;
 		// the run itself is recorded by the reconciler as a fact for scheduled
 		// and manual runs alike, and only the ended fact carries the terminal

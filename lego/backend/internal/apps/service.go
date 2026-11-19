@@ -731,6 +731,9 @@ type AppView struct {
 	// NotificationsToSend is Render's richer service notification policy:
 	// default | none | failure | all.
 	NotificationsToSend string `json:"notificationsToSend"`
+	// PreviewNotificationsEnabled is the rest of Render's per-service
+	// notification override: default | false (w9/112).
+	PreviewNotificationsEnabled string `json:"previewNotificationsEnabled"`
 	// RenderSubdomainPolicy is Render's renderSubdomainPolicy field
 	// (enabled|disabled): whether the platform subdomain under BEX_BASE_DOMAIN is
 	// active for this service. "enabled" (default) keeps it; "disabled" drops
@@ -1258,12 +1261,13 @@ func view(a *appv1alpha1.App) AppView {
 		LinkedEnvGroupIDs: linkedEnvGroupIDs(a),
 		// Like Branch: an image service stored with auto-deploy on (writable
 		// before w4/418) has no repository to watch, and create refuses it.
-		AutoDeploy:            imageBackedAutoDeploy(a.Spec),
-		AutoDeployTrigger:     renderAutoDeployTrigger(a.Spec),
-		NotifyOnFail:          notifyOnFail,
-		NotificationsToSend:   policy,
-		RenderSubdomainPolicy: subdomainPolicy,
-		HealthCheckPath:       a.Spec.HealthCheckPath,
+		AutoDeploy:                  imageBackedAutoDeploy(a.Spec),
+		AutoDeployTrigger:           renderAutoDeployTrigger(a.Spec),
+		NotifyOnFail:                notifyOnFail,
+		NotificationsToSend:         policy,
+		PreviewNotificationsEnabled: previewNotificationsEnabled(a.Spec),
+		RenderSubdomainPolicy:       subdomainPolicy,
+		HealthCheckPath:             a.Spec.HealthCheckPath,
 		MaxShutdownDelaySeconds: effectiveMaxShutdownDelaySeconds(
 			svcType, a.Spec.MaxShutdownDelaySeconds,
 		),
@@ -5715,6 +5719,19 @@ func (s *Service) SetNotificationsToSend(ctx context.Context, name, value string
 	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
 		a.Spec.NotificationsToSend = normalized
 		a.Spec.NotifyOnFail = appv1alpha1.NotifyOnFailForNotificationsToSend(normalized)
+	})
+}
+
+// SetPreviewNotificationsEnabled changes the other half of Render's service
+// notification override (w9/112): default or false. bex has no preview
+// environments, so the value is only kept and read back; true is refused.
+func (s *Service) SetPreviewNotificationsEnabled(ctx context.Context, name, value string) (AppView, error) {
+	normalized, err := normalizePreviewNotificationsEnabled(value)
+	if err != nil {
+		return AppView{}, err
+	}
+	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
+		a.Spec.PreviewNotificationsEnabled = normalized
 	})
 }
 

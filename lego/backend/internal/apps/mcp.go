@@ -114,6 +114,10 @@ type updateServiceArgs struct {
 	IPAllowListCidrs        *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
 	Autoscaling             *autoscalingArg          `json:"autoscaling,omitempty" jsonschema:"enable or update autoscaling: the operator holds the target utilization by moving replicas within [minInstances, maxInstances]. Needs a paid instance type and a Pro workspace plan or higher (PLAN_FEATURE_REQUIRED below Pro). Use disable_autoscaling to turn it off"`
 	Confirm                 string                   `json:"confirm,omitempty" jsonschema:"accepted for compatibility and ignored: a protected environment restricts this to workspace Admins (w8/187) and needs no phrase"`
+
+	// PreviewNotificationsEnabled is the rest of Render's per-service
+	// notification override (w9/112), beside notificationsToSend.
+	PreviewNotificationsEnabled *string `json:"previewNotificationsEnabled,omitempty" jsonschema:"whether the service's preview environments notify: default or false. bex has no preview environments, so the value is only kept and read back; true is refused"`
 }
 
 // autoscalingArg is the autoscaling object update_service accepts. It is the
@@ -874,7 +878,7 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_service",
-		Description: "Update a service's settings in one call. Pass only the settings you want to change: an omitted argument is left exactly as it is, and a present argument is written to exactly the value given — including the empty value, which is how you clear a command, a path, or a list. Covers source (repo, image, branch, registryCredentialId), build (rootDir, buildCommand, startCommand, dockerfilePath, buildFilter), runtime (startCommand, healthCheckPath, preDeployCommand, maxShutdownDelaySeconds, maintenanceMode, autoscaling), delivery (autoDeploy), naming (displayName), networking (renderSubdomainPolicy, ipAllowList), and notifications (notifyOnFail, notificationsToSend). Changes are saved without deploying, as Render's Update Service: the service reports undeployedChanges until you call trigger_deploy, which applies every saved change together (repo or image switches the source kind; rootDir and dockerfilePath take effect as a fresh build). A plan change is the exception and applies at once. Static sites also take publishPath here; cron jobs take schedule and command. A plan change is billable — pass dryRun:true to check any update and preview its result without writes. Verbs REST keeps behind their own routes keep their own tools: scale_service (instance count), update_static_routes / update_static_headers (edge rules), disable_autoscaling. This tool replaces the retired set_* setters (w1/m71) plus update_service_plan / update_idle_timeout / update_publish_path / update_cron_job (w1/m74). bex extension over Render's MCP.",
+		Description: "Update a service's settings in one call. Pass only the settings you want to change: an omitted argument is left exactly as it is, and a present argument is written to exactly the value given — including the empty value, which is how you clear a command, a path, or a list. Covers source (repo, image, branch, registryCredentialId), build (rootDir, buildCommand, startCommand, dockerfilePath, buildFilter), runtime (startCommand, healthCheckPath, preDeployCommand, maxShutdownDelaySeconds, maintenanceMode, autoscaling), delivery (autoDeploy), naming (displayName), networking (renderSubdomainPolicy, ipAllowList), and notifications (notifyOnFail, notificationsToSend, previewNotificationsEnabled). Changes are saved without deploying, as Render's Update Service: the service reports undeployedChanges until you call trigger_deploy, which applies every saved change together (repo or image switches the source kind; rootDir and dockerfilePath take effect as a fresh build). A plan change is the exception and applies at once. Static sites also take publishPath here; cron jobs take schedule and command. A plan change is billable — pass dryRun:true to check any update and preview its result without writes. Verbs REST keeps behind their own routes keep their own tools: scale_service (instance count), update_static_routes / update_static_headers (edge rules), disable_autoscaling. This tool replaces the retired set_* setters (w1/m71) plus update_service_plan / update_idle_timeout / update_publish_path / update_cron_job (w1/m74). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateServiceArgs) (*mcp.CallToolResult, renderService, error) {
 		return s.renderServiceResult(ctx)(s.applyServicePatch(core.WithConfirm(ctx, in.Confirm), in))
 	})
@@ -929,12 +933,13 @@ func (s *Service) applyServicePatch(ctx context.Context, in updateServiceArgs) (
 		DockerContext:                  in.DockerContext,
 		Port:                           in.Port,
 		NotifyOnFail:                   in.NotifyOnFail,
-		// MCP-only (divergence): notificationsToSend is an update_service
-		// argument Render's PATCH body has no spelling for; REST's
-		// toServicePatch leaves it nil.
-		NotificationsToSend:   in.NotificationsToSend,
-		RenderSubdomainPolicy: in.RenderSubdomainPolicy,
-		IPAllowList:           allowList,
+		// MCP-only (divergence): notificationsToSend and
+		// previewNotificationsEnabled are update_service arguments Render's
+		// PATCH body has no spelling for; REST's toServicePatch leaves them nil.
+		NotificationsToSend:         in.NotificationsToSend,
+		PreviewNotificationsEnabled: in.PreviewNotificationsEnabled,
+		RenderSubdomainPolicy:       in.RenderSubdomainPolicy,
+		IPAllowList:                 allowList,
 	}
 	// MCP-only (divergence): autoscaling is an update_service argument REST
 	// keeps behind its own PUT /v1/services/{id}/autoscaling route, so REST's

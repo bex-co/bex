@@ -78,9 +78,10 @@ var MCPResultExtensions = map[string][]string{
 	"PostgresDetail": {"backupsEnabled", "blueprintId", "externalHost", "ownerId", "poolerEnabled", "projectId", "public",
 		"statusReason", "statusReasonCode"},
 	"Service": {"autoscaling", "blueprintId", "command", "displayName", "healthCheckPath", "idleTTLSeconds", "immutableName",
-		"lastSuccessfulRunAt", "linkedEnvGroupIds", "nextRunAt", "notificationsToSend", "phase", "projectId",
-		"publicRoutingNotice", "pushDeliveryMethod", "registryCredentialId", "replicas", "revision", "runs", "schedule",
-		"servingImage", "undeployedChanges", "undeployedChangesApplying", "undeployedChangesReason", "urls"},
+		"lastSuccessfulRunAt", "linkedEnvGroupIds", "nextRunAt", "notificationsToSend", "phase",
+		"previewNotificationsEnabled", "projectId", "publicRoutingNotice", "pushDeliveryMethod", "registryCredentialId",
+		"replicas", "revision", "runs", "schedule", "servingImage", "undeployedChanges", "undeployedChangesApplying",
+		"undeployedChangesReason", "urls"},
 }
 
 var (

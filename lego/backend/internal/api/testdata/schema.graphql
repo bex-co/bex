@@ -2003,6 +2003,7 @@ type Mutation {
   setPipelineSpendLimit(spendLimitUsd: String, workspaceId: String!): PipelineSettings
   setPort(id: String!, port: Int!): Service
   setPreDeployCommand(command: String!, confirm: String, id: String!): Service
+  setPreviewNotificationsEnabled(confirm: String, id: String!, value: String!): Service
   setProjectDatabases(databaseIds: [String!]!, id: String!): Project
   setProjectKeyValues(id: String!, keyValueIds: [String!]!): Project
   setProjectServices(id: String!, serviceIds: [String!]!): Project
@@ -2754,6 +2755,7 @@ type Service {
   port: Int
   portConfigured: Boolean
   preDeployCommand: String
+  previewNotificationsEnabled: String
   projectId: String
   publicRoutingNotice: String
   publishPath: String

@@ -35,8 +35,8 @@ bex now implements Render's service-level `notificationsToSend` policy and exact
 | Decision | bex |
 | --- | --- |
 | Authoritative field | `App.spec.notificationsToSend`, values `default` \| `none` \| `failure` \| `all` |
-| Render REST | `GET`/`PATCH /v1/notification-settings/overrides/services/{serviceId}`; PATCH accepts `notificationsToSend`. `previewNotificationsEnabled` is returned as `default`; non-default writes are rejected rather than ignored. |
-| Other surfaces | GraphQL `setNotificationsToSend`, MCP `update_service(notificationsToSend:)` (w1/m71 folded `set_notifications_to_send` into it), and the Service Settings selector all use the same four-state policy. |
+| Render REST | `GET`/`PATCH /v1/notification-settings/overrides/services/{serviceId}`; PATCH accepts `notificationsToSend` and `previewNotificationsEnabled`. `previewNotificationsEnabled` keeps `default` or `false` (`App.spec.previewNotificationsEnabled`) and reads it back, as Render does (w9/112); `true` answers `400 NOTIFICATION_PREVIEWS_UNSUPPORTED`. Both fields are checked before either is written. |
+| Other surfaces | GraphQL `setNotificationsToSend`, MCP `update_service(notificationsToSend:)` (w1/m71 folded `set_notifications_to_send` into it), and the Service Settings selector all use the same four-state policy. The preview flag is GraphQL `setPreviewNotificationsEnabled` and `Service.previewNotificationsEnabled`, and MCP `update_service(previewNotificationsEnabled:)`, read back on `get_service` (omitted at `default`); the dashboard does not show it, as Render shows it only for services with previews. |
 | `default` | Defers to each member's deploy-started/succeeded/failed preferences. A missing member-settings row defaults to failure-only. |
 | `none` | Suppresses every deploy lifecycle email for the service. |
 | `failure` | Sends only failed-deploy email to every resolvable workspace member. |
@@ -79,7 +79,7 @@ The per-service notification override **is already wired in the dashboard** — 
 ## Divergences from Render, stated
 
 - Workspace defaults remain member-scoped instead of Render's owner-wide email/Slack configuration.
-- Slack and preview-environment notification behavior are not implemented. The service endpoint exposes `previewNotificationsEnabled: default` only.
+- Slack and preview-environment notification behavior are not implemented. A service override keeps `previewNotificationsEnabled` `default` or `false` and reads it back; nothing reads it, because bex has no previews, and `true` is refused (w9/112).
 - bex includes deploy-started email in `all`; Render's public enum does not enumerate individual event types.
 - Email is **plain-text** (the shared `mailer.SMTP` relay), where Render's is HTML; the "View Logs" target is bex's own deploy-detail route. The service name is quoted (`"backend-v2"`) where Render's prose is unquoted — cosmetic.
 

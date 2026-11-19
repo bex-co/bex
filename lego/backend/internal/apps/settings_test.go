@@ -62,7 +62,8 @@ func TestServicePatchTableOrderIsRESTApplicationOrder(t *testing.T) {
 		{"DockerContext"}, // w8/m128 — after RootDir, so it resolves against the new root
 		{"Port"},          // w4/m121 — the port stopped being create-only
 		{"NotifyOnFail"},
-		{"NotificationsToSend"}, // MCP-only fill
+		{"NotificationsToSend"},         // MCP-only fill
+		{"PreviewNotificationsEnabled"}, // MCP-only fill (w9/112)
 		{"RenderSubdomainPolicy"},
 		{"IPAllowList"},
 		{"MaintenanceMode"}, // the normal (late) maintenance position

@@ -244,6 +244,10 @@ type renderService struct {
 	// service object (never omitted) — docs/render-artifacts/notify-on-fail.md.
 	NotifyOnFail        string `json:"notifyOnFail"`
 	NotificationsToSend string `json:"notificationsToSend"`
+	// PreviewNotificationsEnabled is a bex extension, like NotificationsToSend:
+	// the rest of the service's notification override (w9/112). Omitted at
+	// its default, so only a service whose override says "false" carries it.
+	PreviewNotificationsEnabled string `json:"previewNotificationsEnabled,omitempty"`
 	// HealthCheckPath is the HTTP path the ReadinessProbe pings (w1/m23/t001);
 	// empty means the default "/". Render's healthCheckPath field.
 	HealthCheckPath string `json:"healthCheckPath,omitempty"`
@@ -475,6 +479,8 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		NotifyOnFail:              a.NotifyOnFail,
 		NotificationsToSend:       a.NotificationsToSend,
 		HealthCheckPath:           a.HealthCheckPath,
+
+		PreviewNotificationsEnabled: previewNotificationsOverride(a.PreviewNotificationsEnabled),
 	}
 }
 

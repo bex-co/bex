@@ -1218,8 +1218,9 @@ func (s *Service) patchService(w http.ResponseWriter, r *http.Request) {
 // rather than resolved:
 //   - Repo/Image/ImageOwnerID are REST-only — filled here, never by
 //     update_service's fill (mcp.go applyServicePatch).
-//   - NotificationsToSend and Autoscaling are MCP-only — Render's PATCH body
-//     has no spelling for them, so they stay nil here.
+//   - NotificationsToSend, PreviewNotificationsEnabled and Autoscaling are
+//     MCP-only — Render's PATCH body has no spelling for them, so they stay
+//     nil here.
 //
 // MaintenanceBeforeFreeDowngrade is armed here AND in applyServicePatch.
 func (req patchServiceRequest) toServicePatch(f patchFields, maintenanceMode *MaintenanceModeView) ServicePatch {
@@ -1259,9 +1260,10 @@ func (req patchServiceRequest) toServicePatch(f patchFields, maintenanceMode *Ma
 		IPAllowList:                    f.ipAllowList,
 		CacheProfile:                   f.cacheProfile,
 		Runtime:                        f.runtime,
-		// MCP-only (divergence): NotificationsToSend and Autoscaling stay
-		// nil — Render's PATCH body has no spelling for either; only
-		// update_service fills them (mcp.go applyServicePatch).
+		// MCP-only (divergence): NotificationsToSend,
+		// PreviewNotificationsEnabled and Autoscaling stay nil — Render's
+		// PATCH body has no spelling for them; only update_service fills them
+		// (mcp.go applyServicePatch).
 	}
 	if f.plan != "" {
 		p.Plan = &f.plan
@@ -1847,7 +1849,7 @@ func toNotificationOverride(app AppView) notificationOverrideResponse {
 	return notificationOverrideResponse{
 		ServiceID:                   app.ID,
 		NotificationsToSend:         app.NotificationsToSend,
-		PreviewNotificationsEnabled: "default",
+		PreviewNotificationsEnabled: app.PreviewNotificationsEnabled,
 	}
 }
 
@@ -1886,12 +1888,13 @@ func (s *Service) listOverrideApps(ctx context.Context, ownerID string) ([]AppVi
 }
 
 // registerNotificationOverrideRoutes mounts the per-service notification
-// override pair — read the effective override, and PATCH notificationsToSend —
-// plus Render's workspace-wide list (w2/m100 t002), which bex answered with a
-// bare 404 while ADR018 claimed notifications parity on every surface.
+// override pair — read the effective override, and PATCH notificationsToSend
+// and previewNotificationsEnabled — plus Render's workspace-wide list (w2/m100
+// t002), which bex answered with a bare 404 while ADR018 claimed
+// notifications parity on every surface.
 //
-// The list is a read-only projection of the same `App.spec.notificationsToSend`
-// the per-service GET reads; there is no second source of truth.
+// The list is a read-only projection of the same `App.spec` fields the
+// per-service GET reads; there is no second source of truth.
 func (s *Service) registerNotificationOverrideRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/notification-settings/overrides", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
@@ -1951,17 +1954,14 @@ func (s *Service) registerNotificationOverrideRoutes(mux *http.ServeMux) {
 		if err := core.DecodeJSON(r, &body); err != nil {
 			return nil, fmt.Errorf("%w: invalid notification override body", core.ErrBadRequest)
 		}
-		if body.PreviewNotificationsEnabled != nil && *body.PreviewNotificationsEnabled != "default" {
-			return nil, fmt.Errorf("%w: previewNotificationsEnabled is not supported; use default", core.ErrBadRequest)
-		}
-		if body.NotificationsToSend == nil {
-			app, err := s.Get(r.Context(), r.PathValue("id"))
-			if err != nil {
-				return nil, err
-			}
-			return toNotificationOverride(app), nil
-		}
-		app, err := s.SetNotificationsToSend(r.Context(), r.PathValue("id"), *body.NotificationsToSend)
+		// The service patch's own rows: both fields are checked before either
+		// is written, and a body naming neither reads the override back.
+		// previewNotificationsEnabled "false" is kept so it reads back, as on
+		// Render; "true" is refused by name (w9/112).
+		app, err := s.ApplyServicePatch(r.Context(), r.PathValue("id"), ServicePatch{
+			NotificationsToSend:         body.NotificationsToSend,
+			PreviewNotificationsEnabled: body.PreviewNotificationsEnabled,
+		})
 		if err != nil {
 			return nil, err
 		}

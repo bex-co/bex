@@ -266,3 +266,133 @@ func TestNotificationOverrideSingleObjectCarriesServiceID(t *testing.T) {
 		}
 	}
 }
+
+// TestNotificationOverrideKeepsPreviewNotificationsDisabled pins w9/112:
+// Render's Terraform provider sends every web service's notification override
+// as {"notificationsToSend":"failure","previewNotificationsEnabled":"false"},
+// Render answers 200 and reads "false" back, and the provider stores the
+// answer. bex answered 400 "use default", so render_web_service could not be
+// created. "false" is now kept and read back on every surface; "true" stays
+// refused by name, because preview notifications belong to PR previews.
+func TestNotificationOverrideKeepsPreviewNotificationsDisabled(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web"), sampleApp("worker"))
+	view, err := svc.Get(context.Background(), "web")
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := view.ID
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	do := func(method, path, body string) *httptest.ResponseRecorder {
+		t.Helper()
+		req := httptest.NewRequest(method, path, strings.NewReader(body))
+		req = req.WithContext(core.WithStrictJSONDecoding(req.Context()))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		validated(t, mux).ServeHTTP(rec, req)
+		return rec
+	}
+	override := func(rec *httptest.ResponseRecorder) notificationOverrideResponse {
+		t.Helper()
+		var got notificationOverrideResponse
+		if rec.Code != http.StatusOK {
+			t.Fatalf("override = %d: %s", rec.Code, rec.Body)
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	serviceField := func(raw []byte) any {
+		t.Helper()
+		var got map[string]any
+		if err := json.Unmarshal(raw, &got); err != nil {
+			t.Fatalf("decode service %s: %v", raw, err)
+		}
+		return got["previewNotificationsEnabled"]
+	}
+	path := "/v1/notification-settings/overrides/services/" + id
+
+	// The provider's recorded PATCH, answered as Render answers it.
+	want := notificationOverrideResponse{ServiceID: id, NotificationsToSend: "failure", PreviewNotificationsEnabled: "false"}
+	if got := override(do(http.MethodPatch, path, `{"notificationsToSend":"failure","previewNotificationsEnabled":"false"}`)); got != want {
+		t.Fatalf("PATCH = %+v, want %+v", got, want)
+	}
+	if spec := getApp(t, cl, "web").Spec; spec.PreviewNotificationsEnabled != "false" || spec.NotificationsToSend != "failure" {
+		t.Fatalf("spec = (%q, %q), want (failure, false)", spec.NotificationsToSend, spec.PreviewNotificationsEnabled)
+	}
+	if got := override(do(http.MethodGet, path, "")); got != want {
+		t.Errorf("GET = %+v, want %+v", got, want)
+	}
+	var list []notificationOverrideEntry
+	if err := json.Unmarshal(do(http.MethodGet, "/v1/notification-settings/overrides", "").Body.Bytes(), &list); err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range list {
+		wantPreview := "default"
+		if e.Override.ServiceID == id {
+			wantPreview = "false"
+		}
+		if e.Override.PreviewNotificationsEnabled != wantPreview {
+			t.Errorf("list %s previewNotificationsEnabled = %q, want %q", e.Override.ServiceID, e.Override.PreviewNotificationsEnabled, wantPreview)
+		}
+	}
+	if got := serviceField(do(http.MethodGet, "/v1/services/"+id, "").Body.Bytes()); got != "false" {
+		t.Errorf("REST service previewNotificationsEnabled = %v, want false", got)
+	}
+	res := callMCPTool(t, svc, "get_service", map[string]any{"serviceId": id})
+	if res.IsError {
+		t.Fatalf("MCP get_service: %s", mcpResultText(res))
+	}
+	if got := serviceField([]byte(mcpResultText(res))); got != "false" {
+		t.Errorf("MCP get_service previewNotificationsEnabled = %v, want false", got)
+	}
+	schema := gqlSchema(t, svc)
+	readGQL := func() any {
+		t.Helper()
+		return gqlDo(t, schema, `{ service(id: "`+id+`") { previewNotificationsEnabled } }`)["service"].(map[string]any)["previewNotificationsEnabled"]
+	}
+	if got := readGQL(); got != "false" {
+		t.Errorf("GraphQL previewNotificationsEnabled = %v, want false", got)
+	}
+
+	// "true" is refused by name on every surface, and a refused PATCH writes
+	// neither field: both are checked before either is written.
+	rec := do(http.MethodPatch, path, `{"notificationsToSend":"all","previewNotificationsEnabled":"true"}`)
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "NOTIFICATION_PREVIEWS_UNSUPPORTED") ||
+		!strings.Contains(rec.Body.String(), "previewNotificationsEnabled cannot be true") {
+		t.Errorf("PATCH true = %d %s, want 400 NOTIFICATION_PREVIEWS_UNSUPPORTED naming the field", rec.Code, rec.Body)
+	}
+	if spec := getApp(t, cl, "web").Spec; spec.PreviewNotificationsEnabled != "false" || spec.NotificationsToSend != "failure" {
+		t.Errorf("after a refused PATCH spec = (%q, %q), want it unchanged (failure, false)", spec.NotificationsToSend, spec.PreviewNotificationsEnabled)
+	}
+	gqlRes := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `mutation { setPreviewNotificationsEnabled(id: "` + id + `", value: "true") { id } }`})
+	if len(gqlRes.Errors) == 0 || !strings.Contains(gqlRes.Errors[0].Message, "previewNotificationsEnabled cannot be true") {
+		t.Errorf("GraphQL true = %v, want the refusal", gqlRes.Errors)
+	}
+	if res := callMCPTool(t, svc, "update_service", map[string]any{"serviceId": id, "previewNotificationsEnabled": "true"}); !res.IsError ||
+		!strings.Contains(mcpResultText(res), "previewNotificationsEnabled cannot be true") {
+		t.Errorf("MCP true = %s, want the refusal", mcpResultText(res))
+	}
+	if _, err := svc.SetPreviewNotificationsEnabled(context.Background(), "web", "maybe"); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("an unknown value = %v, want a 400", err)
+	}
+
+	// Back to default: the override reads "default" and the service object
+	// drops its extension again.
+	gqlDo(t, schema, `mutation { setPreviewNotificationsEnabled(id: "`+id+`", value: "default") { id } }`)
+	if got := readGQL(); got != "default" {
+		t.Errorf("GraphQL after default = %v, want default", got)
+	}
+	if got := serviceField(do(http.MethodGet, "/v1/services/"+id, "").Body.Bytes()); got != nil {
+		t.Errorf("REST service at default carries previewNotificationsEnabled %v, want it omitted", got)
+	}
+	if res := callMCPTool(t, svc, "update_service", map[string]any{"serviceId": id, "previewNotificationsEnabled": "false"}); res.IsError ||
+		serviceField([]byte(mcpResultText(res))) != "false" {
+		t.Errorf("MCP update_service false = %s, want it read back", mcpResultText(res))
+	}
+	if got := override(do(http.MethodGet, path, "")); got != want {
+		t.Errorf("GET after MCP = %+v, want %+v", got, want)
+	}
+}

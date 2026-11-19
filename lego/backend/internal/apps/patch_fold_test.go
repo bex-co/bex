@@ -84,6 +84,7 @@ func TestServicePatchFoldsMatchTheirVerbs(t *testing.T) {
 		{"port", repo, ServicePatch{Port: i32(9090)}},
 		{"notify on fail", repo, ServicePatch{NotifyOnFail: str("ignore")}},
 		{"notifications to send", repo, ServicePatch{NotificationsToSend: str("none")}},
+		{"preview notifications", repo, ServicePatch{PreviewNotificationsEnabled: str("false")}},
 		{"subdomain policy", repo, ServicePatch{RenderSubdomainPolicy: str("enabled")}},
 		{"ip allow list", repo, ServicePatch{IPAllowList: &[]core.IPAllowListEntry{{CIDRBlock: "10.0.0.0/8"}}}},
 		{"maintenance mode", repo, ServicePatch{MaintenanceMode: &MaintenanceModeView{Enabled: true}}},

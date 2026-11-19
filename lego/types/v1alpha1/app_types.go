@@ -905,6 +905,15 @@ type AppSpec struct {
 	// +kubebuilder:validation:Enum=default;none;failure;all
 	NotificationsToSend string `json:"notificationsToSend,omitempty"`
 
+	// PreviewNotificationsEnabled is the other half of Render's per-service
+	// notification override: whether the service's preview environments
+	// notify. bex has no previews, so nothing reads it; it is kept so the
+	// override reads back what it was sent (w9/112). Empty is "default";
+	// "true" is refused before it is written.
+	// +optional
+	// +kubebuilder:validation:Enum=default;"false"
+	PreviewNotificationsEnabled string `json:"previewNotificationsEnabled,omitempty"`
+
 	// PreDeployCommand is a command run to completion against the new revision's
 	// image before that revision serves traffic (Render's Pre-Deploy Command —
 	// typically a database migration or other one-off setup step). The operator

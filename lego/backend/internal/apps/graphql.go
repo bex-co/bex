@@ -506,6 +506,9 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// writes it via setNotifyOnFail.
 		"notifyOnFail":        gqlutil.StrField(func(a AppView) any { return a.NotifyOnFail }),
 		"notificationsToSend": gqlutil.StrField(func(a AppView) any { return a.NotificationsToSend }),
+		// previewNotificationsEnabled is the override's other half, default or
+		// false (w9/112); bex has no previews, so it only reads back.
+		"previewNotificationsEnabled": gqlutil.StrField(func(a AppView) any { return a.PreviewNotificationsEnabled }),
 		// renderSubdomainPolicy is Render's field controlling whether the platform
 		// subdomain <slug>.onbex.co is active (enabled|disabled, w7/m31). The
 		// Settings → Custom Domains section reads it and writes it via
@@ -1925,6 +1928,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// name/enum. Unrecognized value ⇒ core.ErrBadRequest.
 		"setNotifyOnFail":        gqlutil.ArgMutation(serviceGQLType, "value", s.SetNotifyOnFail),
 		"setNotificationsToSend": gqlutil.ArgMutation(serviceGQLType, "value", s.SetNotificationsToSend),
+		// setPreviewNotificationsEnabled: default | false; true is refused by
+		// name, as on REST's override PATCH (w9/112).
+		"setPreviewNotificationsEnabled": gqlutil.ArgMutation(serviceGQLType, "value", s.SetPreviewNotificationsEnabled),
 		// setSubdomainPolicy: the Settings → Custom Domains platform-subdomain
 		// toggle (w7/m31). Changes spec.subdomainPolicy — enabled | disabled,
 		// Render's exact renderSubdomainPolicy enum. "disabled" without a custom

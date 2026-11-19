@@ -359,6 +359,16 @@ func NewBadRequestError(code, msg string, params map[string]any) *CodedError {
 	return &CodedError{Code: code, Params: params, sentinel: ErrBadRequest, msg: msg}
 }
 
+// NewPreviewNotificationsUnsupportedError is the one refusal of
+// previewNotificationsEnabled true, on the workspace policy and on a service's
+// override alike: preview notifications belong to PR previews, which bex does
+// not build (.pm/DO_NOT_DO.md).
+func NewPreviewNotificationsUnsupportedError() *CodedError {
+	return NewBadRequestError("NOTIFICATION_PREVIEWS_UNSUPPORTED",
+		"previewNotificationsEnabled cannot be true: bex has no preview environments",
+		map[string]any{"field": "previewNotificationsEnabled"})
+}
+
 // ResourceNameRule is the one wording of what a service, Postgres, Key Value
 // or workspace may be named (appv1alpha1.ValidResourceName).
 // FreePrivateTrafficMessage is the one sentence every surface uses for a free

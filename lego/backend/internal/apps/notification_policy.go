@@ -35,3 +35,44 @@ func normalizeNotificationsToSend(value string) (string, error) {
 		return "", fmt.Errorf("%w: notificationsToSend must be one of default|none|failure|all", core.ErrBadRequest)
 	}
 }
+
+// Render's previewNotificationsEnabled override values bex keeps (w9/112).
+// The default is stored as empty.
+const (
+	previewNotificationsDefault  = "default"
+	previewNotificationsDisabled = "false"
+)
+
+// normalizePreviewNotificationsEnabled validates Render's override enum
+// default|false|true for storage. "true" is refused by name: preview
+// notifications belong to PR previews, which bex does not build.
+func normalizePreviewNotificationsEnabled(value string) (string, error) {
+	switch value {
+	case "", previewNotificationsDefault:
+		return "", nil
+	case previewNotificationsDisabled:
+		return value, nil
+	case "true":
+		return "", core.NewPreviewNotificationsUnsupportedError()
+	default:
+		return "", fmt.Errorf("%w: previewNotificationsEnabled must be one of default|false", core.ErrBadRequest)
+	}
+}
+
+// previewNotificationsEnabled reads the stored override back in Render's
+// spelling: empty is "default".
+func previewNotificationsEnabled(spec appv1alpha1.AppSpec) string {
+	if spec.PreviewNotificationsEnabled == "" {
+		return previewNotificationsDefault
+	}
+	return spec.PreviewNotificationsEnabled
+}
+
+// previewNotificationsOverride is the Render service object's extension
+// field: empty, so omitted, at the default.
+func previewNotificationsOverride(value string) string {
+	if value == previewNotificationsDefault {
+		return ""
+	}
+	return value
+}

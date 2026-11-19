@@ -57,6 +57,7 @@ func populatedService(t *testing.T) (*Service, *appv1alpha1.App) {
 	a.Spec.BuildFilter = &appv1alpha1.BuildFilterSpec{Paths: []string{"services/**"}}
 	a.Spec.NotifyOnFail = "notify"
 	a.Spec.NotificationsToSend = "failure"
+	a.Spec.PreviewNotificationsEnabled = "false"
 	a.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: false, URI: "https://status.example.com/original"}
 	a.Spec.Hosts = []string{"api.example.com"} // lets subdomainPolicy=disabled validate
 	a.Spec.SubdomainPolicy = appv1alpha1.SubdomainPolicyEnabled
@@ -100,6 +101,9 @@ func TestUpdateServiceReachesEveryFoldedField(t *testing.T) {
 		}},
 		{"notifyOnFail", "notifyOnFail", "ignore", func(s appv1alpha1.AppSpec) bool { return s.NotifyOnFail == "ignore" }},
 		{"notificationsToSend", "notificationsToSend", "all", func(s appv1alpha1.AppSpec) bool { return s.NotificationsToSend == "all" }},
+		{"previewNotificationsEnabled", "previewNotificationsEnabled", "false", func(s appv1alpha1.AppSpec) bool {
+			return s.PreviewNotificationsEnabled == "false"
+		}},
 		{"maintenanceMode", "maintenanceMode", map[string]any{"enabled": true, "uri": "https://status.example.com/down"}, func(s appv1alpha1.AppSpec) bool {
 			return s.MaintenanceMode != nil && s.MaintenanceMode.Enabled && s.MaintenanceMode.URI == "https://status.example.com/down"
 		}},
@@ -161,6 +165,7 @@ func TestUpdateServiceLeavesOmittedFieldsAlone(t *testing.T) {
 		{"buildFilter", after.BuildFilter != nil && len(after.BuildFilter.Paths) == 1},
 		{"notifyOnFail", after.NotifyOnFail == "notify"},
 		{"notificationsToSend", after.NotificationsToSend == "failure"},
+		{"previewNotificationsEnabled", after.PreviewNotificationsEnabled == "false"},
 		{"maintenanceMode", after.MaintenanceMode != nil && after.MaintenanceMode.URI == "https://status.example.com/original"},
 		{"subdomainPolicy", after.SubdomainPolicy == appv1alpha1.SubdomainPolicyEnabled},
 		{"ipAllowListEntries", len(after.IPAllowListEntries) == 1 && after.IPAllowListEntries[0].Description == "office"},
