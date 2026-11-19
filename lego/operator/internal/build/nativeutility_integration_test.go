@@ -197,6 +197,7 @@ func nativeUtilityCases() []nativeUtilityCase {
 		{"ghostscript", "97", "gs: command not found", nativePythonRuntime},
 		{"typescript", "99", "tsc: command not found", nativeNodeRuntime},
 		{"swig", "100", "swig: command not found", nativePythonRuntime},
+		{"webpack", "101", "webpack: command not found", nativeNodeRuntime},
 		{"python-metadata", "103", "No module named 'setuptools'", nativeNodeRuntime},
 		{"python-pip", "103", "No module named pip", nativeNodeRuntime},
 		{"python-headers", "103", "Python.h: No such file or directory", nativeNodeRuntime},
@@ -336,6 +337,11 @@ func nativeUtilityRemovalLayer(removed, name string) string {
 		// Only the /usr/bin/swig link goes; swig4.0, its library and gcc stay,
 		// so the original build fails at its swig step, after the before proof.
 		command = `swig -version && rm /usr/bin/swig && test ! -e /usr/bin/swig && hash -r && ! command -v swig && swig4.0 -version | grep -q 'SWIG Version 4\.1\.0' && test -f "$(swig4.0 -swiglib)/python/python.swg" && gcc --version`
+	case "webpack":
+		// Only the /usr/bin/webpack wrapper goes; the private Node, webpack and
+		// its CLI stay, so the original build fails at its webpack step, after
+		// the before proof.
+		command = `webpack --version && rm /usr/bin/webpack && test ! -e /usr/bin/webpack && hash -r && ! command -v webpack && /opt/bex/native-node-tools/node /opt/bex/native-node-tools/node_modules/webpack/bin/webpack.js --version && test -f /opt/bex/native-node-tools/node_modules/webpack-cli/bin/cli.js`
 	case "python-metadata":
 		command = pythonControls + " && rm -r /usr/lib/python3/dist-packages/setuptools && test ! -e /usr/lib/python3/dist-packages/setuptools && /usr/bin/python3 -m pip --version && test -f /usr/include/python3.11/Python.h"
 	case "python-pip":

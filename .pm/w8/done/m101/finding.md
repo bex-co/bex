@@ -2,7 +2,7 @@
 
 Why: an ordinary documented native build command cannot produce the JavaScript bundle that starts the service.
 
-**Severity:** major. **Ownership:** operator shared native-image tool assembly. Ordinary functional CLI sweep422, 2026-10-17. Published Bex 0.3.2/a6350da0 and unchanged Render 2.27.0/a764810a7682, isolated human-QA bex-canary/tea-daif693dqjvc73e7as3g, noninteractive JSON, api.bex.co/v1. Source 7fa064b894d6f75e7f44f5bc65d10c5d0dd4d8c5; serving revision unknown. [Complete evidence](evidence/cli-sweep422/README.md).
+**Severity:** major. **Ownership:** operator shared native-image tool assembly. Ordinary functional CLI sweep422, 2026-10-17. Published Bex 0.3.2/a6350da0 and unchanged Render 2.27.0/a764810a7682, isolated human-QA bex-canary/tea-daif693dqjvc73e7as3g, noninteractive JSON, api.bex.co/v1. Source 7fa064b894d6f75e7f44f5bc65d10c5d0dd4d8c5; serving revision unknown. Complete evidence (sweep 422, purged 2026-11-04).
 
 ## Reproduce and isolate
 
