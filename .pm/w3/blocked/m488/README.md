@@ -1,6 +1,6 @@
 # w3 · m488 — An edge-cached response answers conditional requests with 304 and carries its Age
 
-**Worker:** worker3 **Goal:** turning on edge caching no longer turns an app's 304s into full 200s: a conditional request whose validator matches the cached response gets `304 Not Modified`, on a hit and on the fill alike, and every response answered from the cache carries `Age`. **Status:** todo (t001–t003, t005, t006 done)
+**Worker:** worker3 **Goal:** turning on edge caching no longer turns an app's 304s into full 200s: a conditional request whose validator matches the cached response gets `304 Not Modified`, on a hit and on the fill alike, and every response answered from the cache carries `Age`. **Status:** blocked (t001–t003, t005 and t006 done, shipped in `f718f80d1`; t004's production check waits for a production deploy carrying it, then t007 closes out)
 
 ## Tasks (in order)
 
