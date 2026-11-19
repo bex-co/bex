@@ -67,6 +67,20 @@ spec:
               app.kubernetes.io/name: bex-ssh-gateway
       ports:
         - { protocol: TCP, port: 8080 }
+    # bex-s3 (docs/ADR112-object-storage.md D3) authorizes an S3 request as its
+    # access key's creator: OpenFGA's check (8080) and, for a workspace that
+    # requires two-factor or Google login, Kratos' admin read (4434). It has no
+    # path to Hydra, Kratos public or anything else here.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: bex-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: bex-s3
+      ports:
+        - { protocol: TCP, port: 4434 }
+        - { protocol: TCP, port: 8080 }
     # Dashboard SSR talks to Kratos public; its OAuth consent/device routes talk
     # to Hydra admin. It has no path to either product's admin sibling.
     - from:

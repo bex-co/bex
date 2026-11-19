@@ -61,6 +61,16 @@ const (
 	AuditVerbListCustomDomains  = "objectstorage.ListCustomDomains"
 	AuditVerbNotOffered         = "objectstorage.NotOffered"
 
+	// The S3 operations Render's routes have no counterpart for (ADR112 D6).
+	// DeleteObjects records one row naming the bucket, the count and the first
+	// key; UploadPart and ListParts write none of their own.
+	AuditVerbDeleteObjects           = "objectstorage.DeleteObjects"
+	AuditVerbCopyObject              = "objectstorage.CopyObject"
+	AuditVerbCreateMultipartUpload   = "objectstorage.CreateMultipartUpload"
+	AuditVerbCompleteMultipartUpload = "objectstorage.CompleteMultipartUpload"
+	AuditVerbAbortMultipartUpload    = "objectstorage.AbortMultipartUpload"
+	AuditVerbListMultipartUploads    = "objectstorage.ListMultipartUploads"
+
 	// S3 access keys (ADR112 D3). Creating and revoking one are write verbs; a
 	// listing is a read, so only a refusal of it is recorded.
 	AuditVerbCreateAccessKey = "objectstorage.CreateAccessKey"

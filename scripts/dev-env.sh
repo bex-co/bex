@@ -1648,7 +1648,7 @@ path "tenants/*" {
 }
 EOF' >/dev/null
   agent_bao bao write auth/kubernetes/role/bex-api \
-    bound_service_account_names=bex-api \
+    bound_service_account_names=bex-api,bex-s3gw \
     bound_service_account_namespaces=bex-system \
     policies=tenants-rw ttl=1h >/dev/null
 }

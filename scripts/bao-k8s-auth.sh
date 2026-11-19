@@ -36,7 +36,11 @@ cd "$here/.."
 # shellcheck disable=SC1091 — defines bao_resolve_endpoints / bao_cleanup_forwards
 source "$here/bao-endpoints.sh"
 
-SA_NAME=bex-api
+# The role the code logs in with is bex-api (internal/secrets/store.go). It is bound
+# to bex-api's ServiceAccount and to bex-s3's (config/s3gw, kustomize-prefixed
+# bex-s3gw), which reads the S3 access keys' secrets at object-storage/keys/<id>
+# (ADR112 D3); each pod authenticates with its own token.
+SA_NAME=bex-api,bex-s3gw
 SA_NAMESPACE=bex-system
 POLICY_NAME=tenants-rw
 ROLE_NAME=bex-api

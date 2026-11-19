@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: s3gw
+  namespace: bex-system
+spec:
+  # A voluntary eviction waits until the other replica serves. An uploading
+  # client survives its pod's termination only because the pod finishes its
+  # streams (terminationGracePeriodSeconds in deployment.yaml).
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.bex.co/component: s3gw

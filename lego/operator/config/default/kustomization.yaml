@@ -39,6 +39,12 @@ resources:
 # starts degraded (503, still Ready) until bex-system/bex-object-storage-read
 # exists, so a local cluster needs no credential.
 - ../objectgw
+# bex-s3, the S3-compatible API (w21/m498, docs/ADR112-object-storage.md D3):
+# the bex-api image's /s3gw entrypoint as a Deployment of its own, because a
+# stream of up to 5 GiB does not belong on the pods that serve REST. It answers
+# 503 (still Ready) until the control plane's database and the
+# bex-system/bex-object-storage Secret exist.
+- ../s3gw
 # The Postgres SNI front-door (w1/m29): handles the PostgreSQL SSLRequest preamble
 # so standard preamble-mode clients can connect to external managed databases.
 - ../pg-sni-proxy

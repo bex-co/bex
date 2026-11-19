@@ -2,10 +2,10 @@
 # lego/). One image, several entrypoints — the manager (operator module,
 # mechanism), the wake activator, the static-site origin server, the Postgres
 # SNI proxy (operator module too), bex-api, the isolated SSH gateway, and the
-# read-only public object-storage gateway (backend module, business logic),
+# read-only public object-storage gateway and the S3 API (backend module, business logic),
 # all sharing the types module (the CRD contract). Each non-default Deployment
 # overrides command (/api, /activator, /staticserver, /pg-sni-proxy,
-# /ssh-gateway, /objectgw), and the Key Value backup CronJob's encrypt stage runs
+# /ssh-gateway, /objectgw, /s3gw), and the Key Value backup CronJob's encrypt stage runs
 # /backup-encrypt out of this same image (w7/m85 — it used to download the age
 # release into an alpine container standing next to the plaintext RDB).
 # The builder runs on the build host's own platform and cross-compiles: every
@@ -63,6 +63,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0
 RUN --mount=type=cache,target=/root/.cache/go-build cd backend  && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/bexapi ./cmd/api
 RUN --mount=type=cache,target=/root/.cache/go-build cd backend  && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/ssh-gateway ./cmd/ssh-gateway
 RUN --mount=type=cache,target=/root/.cache/go-build cd backend  && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/objectgw ./cmd/objectgw
+RUN --mount=type=cache,target=/root/.cache/go-build cd backend  && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/s3gw ./cmd/s3gw
 
 # Use distroless as minimal base image to package the binaries
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
@@ -85,6 +86,7 @@ COPY --from=builder /workspace/disk-snapshot /disk-snapshot
 COPY --from=builder /workspace/drain-guard /drain-guard
 COPY --from=builder /workspace/ssh-gateway /ssh-gateway
 COPY --from=builder /workspace/objectgw /objectgw
+COPY --from=builder /workspace/s3gw /s3gw
 USER 65532:65532
 
 # Default entrypoint is the operator; the api Deployment sets command: ["/api"].
