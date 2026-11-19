@@ -1,6 +1,6 @@
 # w8 · m461 — A service switched from a native runtime to a prebuilt image runs the image, and reads as an image service
 
-**Worker:** worker8 **Goal:** `bex services update <native service> --image <ref>` leaves a service that deploys the image with its own entrypoint, reads `runtime: image` on every surface, and clones with the pinned CLI, the way an image-created service does. **Status:** todo (t001–t006 done 2026-11-17; production pin `dff52c596d13` carries the fix `0d5ef6256`; t007's production replay next)
+**Worker:** worker8 **Goal:** `bex services update <native service> --image <ref>` leaves a service that deploys the image with its own entrypoint, reads `runtime: image` on every surface, and clones with the pinned CLI, the way an image-created service does. **Status:** done (t001–t006 2026-11-17; t007's production replay passed on pin `dff52c596d13` 2026-11-19)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity — **DONE** | 20m | t003       |
 | t005 | Simplify — **DONE** | 15m | t004       |
 | t006 | Test coverage — **DONE** | 30m | t004       |
-| t007 | Closeout                                                                                                               | 15m | t006       |
+| t007 | Closeout — **DONE**                                                                                                               | 15m | t006       |
 
 ## Definition of done
 
@@ -30,7 +30,7 @@ Verified on production after a roll that carries the change, with bex CLI v0.7.0
 
 ## Results (2026-11-17)
 
-The fix: `core.EffectiveRuntime` reads an image with no repo as runtime `image` whatever runtime it keeps (t001), and the one source writer, `sourceFields.applyTo` → `settleSourceSwitch`, drops the build command and a start command the build baked into its image on a switch to a prebuilt image (t002). [ADR004](../../../docs/ADR004-app-deployment.md) § w8/m461 records the rule: a command that already was a Docker Command carries over, a same-PATCH command runs, and the dropped commands are not restored by a switch back.
+The fix: `core.EffectiveRuntime` reads an image with no repo as runtime `image` whatever runtime it keeps (t001), and the one source writer, `sourceFields.applyTo` → `settleSourceSwitch`, drops the build command and a start command the build baked into its image on a switch to a prebuilt image (t002). [ADR004](../../../../docs/ADR004-app-deployment.md) § w8/m461 records the rule: a command that already was a Docker Command carries over, a same-PATCH command runs, and the dropped commands are not restored by a switch back.
 
 ### Blast radius (t003)
 
@@ -61,7 +61,7 @@ Pinned by `TestSourceSwitchToImageAcrossCallersTypesAndSources` (75 cases: every
 
 - `TestSwitchedServiceReadsAsAnImageCreatedOne` creates a native Node service and an image service through REST, switches the first, and diffs the reads without identity and history. Every field matches except the port: an image-created web service serves on its image's exposed port (`portMode: web-image-v1`, stamped at create only, w4/m243), while a switched one keeps its configured port 10000. Filed as w8/337. The definition of done's step 3 already relies on the kept port.
 - GraphQL `service { runtime startCommand buildCommand }` reads `image`, `""`, `""`; MCP `get_service` reads runtime `image` with Render's image `envSpecificDetails` (an empty `dockerCommand`, no build or start command, w9/m473); the dashboard reads the same GraphQL fields (Source and Deploy sections, no Runtime or Build section without a repo).
-- [ADR018](../../../docs/ADR018-render-parity.md)'s runtime row records the switch as an extension and its Render basis: Render's docs don't say whether a Git-backed service can switch to an image, and an image-backed service reads `runtime: image` with an optional Docker Command.
+- [ADR018](../../../../docs/ADR018-render-parity.md)'s runtime row records the switch as an extension and its Render basis: Render's docs don't say whether a Git-backed service can switch to an image, and an image-backed service reads `runtime: image` with an optional Docker Command.
 
 ### What t007 replays
 
@@ -74,6 +74,22 @@ The definition of done above on production, after the roll that carries this cha
 - **w8/m504 on the same pin:** the pin also carries `cf5f56884`, which builds on this milestone (a switched service goes live on the port its image binds). echo-server listens on `$PORT`, so step 3's expectations do not change; m504's own replay stays with its own t007.
 - **Status:** pending verification. A deployed bex-api is not proof that the definition of done holds on production.
 - **Next:** t007 replays the definition of done in `bex-canary` with bex CLI v0.7.0, records the commands and answers here, deletes every fixture by ID, and closes the milestone.
+
+## Production replay (t007, 2026-11-19 11:48–11:58 UTC)
+
+Production pin `dff52c596d13`, `https://api.bex.co/v1/`, bex CLI v0.7.0 (Render CLI v2.36.0, release checksum verified), QA user by device OAuth in an isolated config, workspace `bex-canary` (`tea-daif693dqjvc73e7as3g`). Every mutation ran with `--confirm </dev/null`. All steps pass.
+
+1. **Create.** `bex services create --name qa-20261119-m461-a … --runtime node --plan free --build-command yarn --start-command 'node app.js' --confirm -o json` exited 0 with `srv-dbve3te014qc73acu7f0`. Its first deploy went `live` at 11:52:38 and the URL answered 200 with `<title>Hello from Render!`.
+2. **Switch.** `bex services update srv-dbve3te014qc73acu7f0 --image docker.io/jmalloc/echo-server:v0.3.7 --confirm -o json` exited 0. `GET /v1/services/<id>` then read `imagePath: docker.io/jmalloc/echo-server:v0.3.7`, no `repo` or `branch`, `serviceDetails.runtime: image`, `env: image`, and `envSpecificDetails: {dockerCommand: "", dockerContext: "", dockerfilePath: ""}`, the same as the image-created control below (no `buildCommand` or `startCommand`, an empty `dockerCommand`). GraphQL `service(id:)` read `runtime: "image"`, `startCommand: ""`, `buildCommand: ""`. (Before the fix: `runtime: node`, `yarn`, `node app.js`.)
+3. **Deploy.** `bex deploys create srv-dbve3te014qc73acu7f0 --wait --confirm -o json` exited 0 after 25 s: `dep-dbve6a6014qc73acu7kg` `live`, trigger `api`, image `docker.io/jmalloc/echo-server:v0.3.7` (`sha256:c87f80de8dbb…`). The URL answered 200 with `Request served by srv-dbve3te014qc73acu7f0-…` on the kept port 10000. (Before the fix: `update_failed`, `the startup program "node" does not exist in this image`.)
+4. **Clone.** `bex services create --from srv-dbve3te014qc73acu7f0 --name qa-20261119-m461-clone --plan free --region frankfurt --confirm -o json` exited 0 with `srv-dbve6he014qc73acu7lg`: `imagePath` echo-server v0.3.7, `runtime: image`, the same empty image `envSpecificDetails`. Its deploy went `live` and its URL answered 200 with `Request served by srv-dbve6he014qc73acu7lg-…`. (Before the fix: rc 1, `--build-command and --start-command are only supported for native runtimes`.)
+5. **Controls.**
+   - A second fresh native service, `srv-dbve3ve014qc73acu7h0`, went live on `Hello from Render!`. `bex services update <id> --image docker.io/library/busybox:1.36.1 --start-command 'mkdir -p /tmp/w && echo m461-control-docker-command > /tmp/w/index.html && exec httpd -f -p $PORT -h /tmp/w' --confirm` exited 0. REST read `runtime: image` with that command as `dockerCommand`, and GraphQL `startCommand` the same. Its deploy `dep-dbve6oo1ks2s73a6pf60` went `live` and the URL answered 200 with `m461-control-docker-command`, so a same-call Docker Command still runs (w4/m202).
+   - An image-created echo-server service, `srv-dbve3vg1ks2s73a6pf3g` (`--image docker.io/jmalloc/echo-server:v0.3.7 --plan free --region frankfurt`), went `live` in about 40 s, answered 200 with `Request served by …`, and read `runtime: image`, `env: image`, `envSpecificDetails: {dockerCommand: "", dockerContext: "", dockerfilePath: ""}`, `port: 10000`. GraphQL read `runtime: "image"` with empty commands.
+   - Switching back: `--repo https://github.com/render-examples/express-hello-world --branch main` exited 0 and read `runtime: node`, `env: node` with empty `buildCommand` and `startCommand`. The switch dropped them and the switch back does not restore them, as ADR004 records. A second call, `--build-command yarn --start-command 'node app.js'`, exited 0 and read both on REST and GraphQL. `bex deploys create … --wait` exited 0: `dep-dbve72g1ks2s73a6pf70` `live` on commit `039c34770852`, and the URL answered 200 with `<title>Hello from Render!`.
+6. **Cleanup.** `bex services delete <id> --confirm` exited 0 for all four fixtures. `GET /v1/services/<id>` answered 404 for each, and each `https://qa-20261119-m461-{a,b,img,clone}.onbex.co/` answered 404. `hello-go` and the other runs' services in `bex-canary` were not touched. The QA dashboard sessions were logged out with `qa-login.sh --logout`, and the isolated CLI config holding the device token was deleted (the grant was not revoked, since that ends every QA CLI session).
+
+GraphQL `builder` still reads `native` on the switched service (`auto` on the image-created one). ADR004 keeps the builder, like the runtime, for a later switch back, and no read of an image service uses it.
 
 ## Finding
 
