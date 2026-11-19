@@ -38,6 +38,9 @@ const (
 	operatorImageA = "ghcr.io/bex-co/bex-operator@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	operatorImageB = "ghcr.io/bex-co/bex-operator@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 	upgradeBinary  = "1111111111111111111111111111111111111111111111111111111111111111"
+	// operatorImageC is a later release whose Key Value proxy binary differs.
+	operatorImageC = "ghcr.io/bex-co/bex-operator@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+	changedBinary  = "2222222222222222222222222222222222222222222222222222222222222222"
 )
 
 // Render restarts a service's instances, and empties its edge cache, on the
@@ -113,9 +116,9 @@ func TestANewOperatorImageChangesNoLongLivedTenantPodTemplate(t *testing.T) {
 		}
 		cl := fake.NewClientBuilder().WithScheme(wakeScheme()).WithObjects(kv).
 			WithStatusSubresource(&appv1alpha1.KeyValue{}).Build()
-		release := func(image string) map[string]corev1.PodTemplateSpec {
+		release := func(image, binary string) map[string]corev1.PodTemplateSpec {
 			t.Helper()
-			r := &KeyValueReconciler{Client: cl, Scheme: cl.Scheme(), InternalProxyImage: image, InternalProxyBinary: upgradeBinary, BackupHelperImage: image}
+			r := &KeyValueReconciler{Client: cl, Scheme: cl.Scheme(), InternalProxyImage: image, InternalProxyBinary: binary, BackupHelperImage: image}
 			for range 3 {
 				if _, err := r.Reconcile(t.Context(), reconcile.Request{NamespacedName: client.ObjectKeyFromObject(kv)}); err != nil {
 					t.Fatalf("reconcile: %v", err)
@@ -123,7 +126,7 @@ func TestANewOperatorImageChangesNoLongLivedTenantPodTemplate(t *testing.T) {
 			}
 			return tenantPodTemplates(t, cl, kv.Namespace)
 		}
-		before := release(operatorImageA)
+		before := release(operatorImageA, upgradeBinary)
 		if _, ok := before["StatefulSet "+kv.Name]; !ok {
 			t.Fatalf("setup: no StatefulSet for the store among %v", slices.Collect(maps.Keys(before)))
 		}
@@ -131,7 +134,23 @@ func TestANewOperatorImageChangesNoLongLivedTenantPodTemplate(t *testing.T) {
 		if got := containersRunningPerWorkload(before, operatorImageA); !maps.EqualFunc(got, want, slices.Equal) {
 			t.Fatalf("setup: the containers running the operator's image are %v, want %v", got, want)
 		}
-		assertNoTemplateMoved(t, before, release(operatorImageB))
+		assertNoTemplateMoved(t, before, release(operatorImageB, upgradeBinary))
+
+		// A release that changes the proxy's code and adds a field to its
+		// rendering moves no template either: the proxy keeps the one it runs
+		// until the store's own change rolls it (w6/m517). The stored template
+		// stands for the older rendering, without the field.
+		proxy := &appsv1.Deployment{}
+		if err := cl.Get(t.Context(), client.ObjectKey{Name: keyValueInternalProxyName(kv), Namespace: kv.Namespace}, proxy); err != nil {
+			t.Fatal(err)
+		}
+		c := &proxy.Spec.Template.Spec.Containers[0]
+		c.Env = slices.DeleteFunc(c.Env, func(e corev1.EnvVar) bool { return e.Name == "BEX_KV_DRAIN_SECONDS" })
+		if err := cl.Update(t.Context(), proxy); err != nil {
+			t.Fatal(err)
+		}
+		before = tenantPodTemplates(t, cl, kv.Namespace)
+		assertNoTemplateMoved(t, before, release(operatorImageC, changedBinary))
 	})
 }
 

@@ -18,6 +18,9 @@ package controller
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"reflect"
 	"slices"
 	"strconv"
@@ -624,5 +627,60 @@ func TestKeyValueCutsOnlyATerminatingProxyOfTheOldMode(t *testing.T) {
 	// Its events reach the store's reconcile.
 	if got := keyValuePodRequests(ctx, serving); len(got) != 1 || got[0].Name != enabled.Name {
 		t.Errorf("a proxy pod's event enqueued %v", got)
+	}
+}
+
+// w6/m517: a store's proxy keeps the template it runs until the store's own
+// change rolls it, so a change to what the operator renders reaches a store
+// only then. The rendering is pinned, so that every change to it is a
+// decision: let it wait for each store's next change, or bump
+// kvInternalProxyRollRevision. The roll inputs' digest is pinned too, because
+// changing how it is computed rolls every proxy at once.
+func TestKeyValueInternalProxyRenderingIsPinned(t *testing.T) {
+	type pin struct{ template, inputs string }
+	pinned := map[string]pin{
+		"plain":                    {"789e2112310f655a28e1ed052af24b6d02acd1ced1f5b2693c301af597f21a25", "0fca5894756134f2066a3f319f0944c6ba5d79ecadf1403d15022605ed3234cf"},
+		"plain with internal auth": {"fbe431a3092e00fdb3f33c60ed2bab2b98c63897a3f2b8e0721efc975f077bad", "a5ed0a396b6923205712277b8ac65e333d31ff6e4fc6759c444f28b53018f65d"},
+		"tls":                      {"84784e05fd395382739e6be9314d1195ddc5d052bb84f9dccf87fa4995cbba7d", "2a6015ddfc05d2562a2d9f1b05f340859fc5d7b7113e73e8a84e09af63043ff4"},
+		"tls with internal auth":   {"2038b61d533defa1f22227b5638205efbdbdf05eb33482bfb96b7a7e2e929d38", "1cbe9908277765efd6ea6497ef7aac33d969590ea3a8f61d1ec1994fbf1c8417"},
+	}
+	scheme := keyValueBackupTestScheme(t)
+	for name, want := range pinned {
+		t.Run(name, func(t *testing.T) {
+			kv := &appv1alpha1.KeyValue{
+				ObjectMeta: metav1.ObjectMeta{Name: "red-pin", Namespace: "tea-pin", UID: "pin", Labels: map[string]string{labelWorkspace: "tea-pin"}},
+				Spec:       appv1alpha1.KeyValueSpec{Plan: "starter", InternalAuth: strings.HasSuffix(name, "internal auth")},
+			}
+			plan, _ := resolveKVPlan(kv.Spec)
+			intent := keyValueIntent{
+				plan: plan, authSecretName: "red-pin-auth", credentialRevision: "rev-1",
+				tlsRuntime: strings.HasPrefix(name, "tls"), tlsSecretName: keyValueTLSName(kv),
+				labels: map[string]string{labelKeyValue: kv.Name},
+			}
+			cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+			r := &KeyValueReconciler{Client: cl, Scheme: scheme, InternalProxyImage: "ghcr.io/bex-co/bex-operator@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+			if _, err := r.reconcileKeyValueInternalProxy(context.Background(), kv, intent); err != nil {
+				t.Fatal(err)
+			}
+			dep, _ := proxyEnv(t, cl, kv)
+			rendered, err := json.Marshal(dep.Spec.Template)
+			if err != nil {
+				t.Fatal(err)
+			}
+			sum := sha256.Sum256(rendered)
+			if got := hex.EncodeToString(sum[:]); got != want.template {
+				t.Errorf("the proxy's rendered pod template changed: %s now pins %q.\n"+
+					"A store's proxy keeps the template it runs until the store's own change rolls it (w6/m517, ADR021 § 10), "+
+					"so this change reaches each store only at its next plan change, internal-auth change, credential rotation or resume.\n"+
+					"If that is not acceptable (a security fix, or a held template that can no longer work), bump kvInternalProxyRollRevision, "+
+					"which rolls every store's proxy once on the next pass.\n"+
+					"Either way, update the pin here.\nThe rendering: %s", name, got, rendered)
+			}
+			if got := dep.Annotations[kvInternalProxyInputsAnnotation]; got != want.inputs {
+				t.Errorf("the proxy's roll inputs digest changed: %s now pins %q.\n"+
+					"Every Deployment's recorded digest now differs, so the next pass rolls every store's proxy at once, as a bump of kvInternalProxyRollRevision does. "+
+					"Make sure that is intended, then update the pin here.", name, got)
+			}
+		})
 	}
 }

@@ -382,10 +382,10 @@ type KeyValueReconciler struct {
 	// the internal-auth proxy; an empty value preserves legacy embedded controllers.
 	InternalProxyImage string
 	// InternalProxyBinary is the hex sha256 of the /kv-internal-proxy that
-	// InternalProxyImage carries. A store's proxy keeps its image while that
-	// image carries the same binary, so an operator deploy that leaves the
-	// proxy's code alone rolls no proxy (w6/m469). Empty holds nothing: the
-	// proxy follows InternalProxyImage.
+	// InternalProxyImage carries. A proxy Deployment that records no roll
+	// inputs yet keeps its image while that image carries the same binary
+	// (w6/m469), so adopting it into the template hold (w6/m517) rolls nothing.
+	// Empty keeps no image: such a proxy is adopted onto InternalProxyImage.
 	InternalProxyBinary string
 	// InternalProxyBinaryOf hashes the /kv-internal-proxy a digest-pinned image
 	// carries, from its registry. It lets a proxy whose Deployment records no
