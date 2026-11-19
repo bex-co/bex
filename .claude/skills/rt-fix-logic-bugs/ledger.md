@@ -8,6 +8,7 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 
 ## Skipped
 
+- 2026-11-19 billing/estimate-gate cross-product — audited, holds: every valid stack trips the payment-method gate exactly when the estimate shows paid content; free cap/autoscaling/disk, static plan-less, paused/unknown-plan refusals all agree on both sides; generative property added in blueprint_pricing_agreement_test.go
 - 2026-11-19 billing/static-site+disk estimate/apply agreement — audited, holds: an explicit plan on a static site is schema-rejected (no plan property, additionalProperties false) so no valid stack splits the gate from the estimate; an omitted/zero disk sizes to 10 on both sides (validateDisk, blueprintDiskSizeGB); cron/static disks are refused at validate
 - 2026-11-19 agreement/database plan-vs-apply admission (identity, grow-only, step, duplicates, preview/apply creates) — audited, holds; the HA-enablement cell diverged and was fixed this run
 - 2026-11-19 billing/startup gates (stripe epoch default/parse/UTC, dunning modes, payment-method fail-closed matrix, publishable-key mode match) — audited, holds: pinned by billing_config_test.go, all pass
