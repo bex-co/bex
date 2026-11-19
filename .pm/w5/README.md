@@ -72,7 +72,7 @@ User decision 2026-11-05: all five items of the sixth `/pm-brainstorm w5` propos
 - [x] **m268** — [Key Value "Enable Internal Authentication", as on Render](done/m268/README.md) (9 tasks; 6h45m total) ← round 6 item 4; w8/204 follow-up — **DONE 2026-11-05**: live on production (probe PONG → NOAUTH, internal URL carries the password)
 - [x] **178** — [`BUN_VERSION=canary` builds, as on Render](done/178.md) (~1h, may promote) ← round 6 item 5; Render changelog 2026-10-16
 - [x] **179** — [Render user ids are `usr-`; bex answers `own-`](done/179.md) ← found by w5/m267 — promoted to m277
-- [ ] **180** — [Remove the retired per-tier Key Value items from live Subscriptions after 2026-11-16](blocked/180.md) ← w5/m266 D5 — **BLOCKED (date gate: the 2026-11-16 invoices finalize; then a worker removes the items per the note — no user action)**
+- [ ] **180** — [Remove the retired per-tier Key Value items from live Subscriptions after 2026-11-16](blocked/180.md) ← w5/m266 D5 — **BLOCKED (test mode only: the account owner installs the Stripe CLI on the `/loopx` host and runs `stripe login` for the test-mode account; then a worker repeats steps 1–2 in test mode)**. Live is done 2026-11-19: the date gate held, the 10 live Subscriptions dropped both retired items, both Prices are archived, and their meters are inactive.
 - [x] **m277** — [One `usr-` user id on every surface, as on Render](done/m277/README.md) (8 tasks; 5h15m total) ← promoted from w5/179 — **DONE 2026-11-05**: members, whoami, audit-log and events user ids answer `usr-`; mutations accept both spellings
 
 ## Approved queue — 2026-10-20 (brainstorm round 5, parity-first)

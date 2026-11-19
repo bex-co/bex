@@ -61,6 +61,8 @@ Run log (2026-10-31): live retired `price_1U50Y7…` (`basic-256mb`) and `price_
 
 Run log (2026-11-18, `w2/058`): the nine Subscriptions swapped to the catalog Prices in one update each, with `proration_behavior=none` and no invoice issued. A fresh live scan found no item on either retired Price and one item per lookup key on every Subscription. One Subscription had 18 h of small-tier usage before the swap (about $0.47 at the old rates), which went unbilled.
 
+Run log (2026-11-19, `w5/180`): live only. Ten Subscriptions carried the retired `instance_seconds.key_value.{starter,standard}` items. Each one's 2026-11-16 cycle invoice was finalized, and neither meter had usage after the boundary. Each Subscription lost both items in one update with `proration_behavior=none`, and the update added `key_value_cost_microusd` where an item for it was missing. No invoice was issued. Both Prices are archived with their lookup keys released, and both meters are inactive. Test mode is still pending a test-mode Stripe CLI login.
+
 Workspace plan fees (`pricing.yaml` `workspace.usdPerMonth`: Hobby $0, Pro $17.50, Scale $349.30) are licensed monthly SKUs, not usage meters. This script does not create Stripe Prices for them; the dashboard reads the same YAML via the Go sheet / locale lockstep. Attaching those SKUs to a Customer Subscription is a billing follow-up.
 
 ### Optional Stripe Tax gate
