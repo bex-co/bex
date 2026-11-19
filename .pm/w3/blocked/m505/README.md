@@ -1,6 +1,6 @@
 # w3 · m505 — A project's Application Logs and Request Logs show every resource in one view, as on Render
 
-**Worker:** worker3 **Goal:** a project gets Render's Observability group: Application Logs and Request Logs views, each a saved search, that read every service, cron job, Postgres and Key Value of the project (or one environment) in one time-ordered stream, each line naming its resource. **Status:** blocked — t001–t007 and t009–t012 done and shipped in `405547eb5`; t008 is verified on dev-3, and its production walk waits for a production pin carrying `405547eb5` (§ Gate)
+**Worker:** worker3 **Goal:** a project gets Render's Observability group: Application Logs and Request Logs views, each a saved search, that read every service, cron job, Postgres and Key Value of the project (or one environment) in one time-ordered stream, each line naming its resource. **Status:** blocked — t001–t007 and t009–t012 done and shipped in `405547eb5`; t008 is verified on dev-3, and its production walk on pin `1c63b6fe0a34` held except pending and ready at 390, fixed in `2e5281afb`; the 390 re-check waits for a production pin carrying `2e5281afb` (§ Gate (2026-11-19, after the production walk))
 
 ## Tasks (in order)
 
@@ -104,3 +104,36 @@ Each test fails without the change (the feature is new); `TestPageReadsItsResour
 **Clears by itself; no decision needed.** t008's production half needs a production deploy carrying `405547eb5`. `deploy.yml` deploys a push only when the production pin is at least 6 hours old, and the newest pin (`19faf35f3 chore(deploy): pin platform images to 4b2cebd0bd03`) landed at 09:13Z, so the next deploy runs after about 15:13Z. Check: the newest `chore(deploy): pin platform images to <sha>` on `main` passes `git merge-base --is-ancestor 405547eb5 <sha>`, and production's `bex-api` runs that digest.
 
 **Next (t008 step 2, then t013):** sign in as the QA user (`bash scripts/qa-login.sh`), and in `bex-canary` use or create a project with a web service, a cron job and a Postgres (one in a second environment). Check `savedSearches(projectId)` returns the three defaults; walk `/project/<prj>/observability/logs/application?savedSearchId=<svs>` and `/request` at 1440 and 390, pending and ready, with and without an `ENVIRONMENT` document (GraphQL `logs(project, filterDocument)`), and the live tail; confirm Postgres lines appear (production Loki ships them, dev-3's did not). Record the evidence here, delete any fixture with by-id `GET` 404 evidence, log out, and close the milestone.
+
+## Unblock (2026-11-19)
+
+- **Affected:** t008's production walk, then t013.
+- **Source:** verified evidence. The newest production pin on `origin/main`, `d38508f70` (`chore(deploy): pin platform images to 1c63b6fe0a34`, 19:49Z), carries `405547eb5`: `git merge-base --is-ancestor 405547eb5 1c63b6fe0a34` succeeds (the earlier pin `c81d2d447bd8`, `aefb144dc` at 18:04Z, already did). Production's `bex-api` runs `bex-operator@sha256:092e0a87…` and the `dashboard` Deployment `bex-dashboard@sha256:7b48d556…`, the digests that pin names. w3/m507's `bb151b367` is not on that pin, so its view-management controls are not part of this walk.
+- **Remaining gates:** none. t008's remaining steps are those in § Gate (2026-11-19) above.
+
+## Production walk (t008, 2026-11-19)
+
+Pin `1c63b6fe0a34`, as the QA user in `bex-canary` (Scale). The fixture project `qa-20261119-m505` (`prj-dbvlh339f6kc73d4ac90`) had environments production (`evm-dbvlh339f6kc73d4ac9g`) and staging (`evm-dbvlh339f6kc73d4aca0`). In it, created over REST: a busybox web service `qa-20261119-m505-web` (production, `srv-dbvlh6p0rfcc73dnr63g`, a line every 7 s and `httpd` on `$PORT`), a cron job `qa-20261119-m505-cron` (staging, `srv-dbvlh6p0rfcc73dnr65g`, every minute) and a Postgres 17 `qa-20261119-m505-pg` (production, `dpg-dbvlh510rfcc73dnr61g`, `basic-256mb`).
+
+| check | production | result |
+| --- | --- | --- |
+| `savedSearches(projectId)` | Application Logs, Request Logs and Service Metrics, each `{"filters": [], "version": 1}`; `type: REQUEST_LOGS` narrows to one; `savedSearch(id)` answers the same fields; `svs-nope` answers `NOT_FOUND` | holds |
+| `logs(project, type: "app")`, last hour | 30 lines, web 21, Postgres 7 (CNPG start-up, `database system is ready to accept connections`) and cron 2, interleaved in time, each with its `resource` and `instance`; `resources` named all three with type and environment | holds; Postgres lines appear (dev-3 had none) |
+| `ENVIRONMENT IS staging` document | the cron job's 3 lines only; `resources` the cron job alone | holds |
+| `ENVIRONMENT IS production` document | web 23 and Postgres 8; `resources` the web service and Postgres | holds |
+| `logs(project, type: "request")` | 10 lines, all the web service's: `GET`, `200` on `/` and `404` on `/missing-m505`, with host and path; `resources` the web service alone. With the staging document, no lines and no resources | holds |
+| Live tail (`/v1/logs/subscribe?project=…&type=app`, SSE, 70 s) | web 10, Postgres 1 (a checkpoint line) and cron 1, each labeled; with the staging document, the cron line only | holds |
+| Application Logs page at 1440 and 390 | the URL took `?savedSearchId=svs-…`; the title read "qa-20261119-m505 / Application Logs"; the sidebar showed Overview, Observability (Application Logs, Request Logs) and Manage → Settings. Web, cron and Postgres lines interleaved, each with its own dot color, a `[name]` link (`/services/srv-…`, `/databases/dpg-…`) and its short instance; Live appended new lines | holds |
+| Request Logs page at 1440 and 390, Live on | `GET` with status chips (`200`, `404` tinted), host and path; six requests sent after the page loaded appeared within 20 s | holds |
+| Pending and ready at 1440 (the saved-search read slowed 5 s, client-side navigation) | header, toolbar, note line, and the panel's top (232) and bottom (843) the same for both views | holds |
+| Pending and ready at 390 | the toolbar was 76 px tall pending and 88 px ready. The pending Live row was 20 px; the ready Live control is a 44 px touch target below lg since `d95ae8c94`, which landed after the dev-3 check. The note line and the panel moved 12 px down (232 → 244, 280 → 292) as the view loaded | **failed** |
+
+The Hobby refusal was not walked on production: the QA user's Hobby workspace has no project, and the walk does not create resources outside `bex-canary`. It stands on dev-3 (above) and `TestProjectRequestLogsFollowThePlan`. The environment filter has no dashboard control before w3/m507's Edit view (not on this pin), so it was walked through GraphQL and the tail, as § Gate planned.
+
+**Cleanup.** The web service, the cron job and the Postgres were deleted (`DELETE` 204 each), then the project (`deleteProject`). By-id `GET` answered 404 for all three, the project and both environments, and `savedSearch` for the project's Application Logs view answered `NOT_FOUND`. The canary namespace kept no App, Deployment or CNPG cluster of them. The QA session was logged out (its cookie then answered 401), and the session jar and the fetched kubeconfig were deleted.
+
+**The fix (`2e5281afb`).** The pending frame's Live row uses the control's own `LIVE_TOGGLE_CLASS`. Every state without lines (an empty view, the Pro refusal, a missing log store, a failed or timed-out read, a quiet range) is now drawn in the log panel's screen-filling box instead of a short card, as the service Logs tab has done since `d95ae8c94`, so an empty project's view keeps the loading shape too. On dev-3 (a fresh Hobby identity with an empty project, the local dashboard on the tree), pending and ready measured the same at 390 and 1440 for both views: the toolbar (184–272 at 390, 148–184 at 1440), the note line, and the panel (336–788 at 390, 232–844 at 1440). `project-log-viewer.test.tsx` covers both: "reserves the ready Live control's height in the pending frame at every width", and "draws … in the loading panel's own box" for each of the six states. Each fails with its fix reverted. The dev-3 project was deleted (`GET` 404).
+
+## Gate (2026-11-19, after the production walk)
+
+**Clears by itself; no decision needed.** The 390 check repeats once production runs `2e5281afb`. Check: the newest `chore(deploy): pin platform images to <sha>` on `main` passes `git merge-base --is-ancestor 2e5281afb <sha>`. Then, as the QA user in `bex-canary`, create a project with a web service that logs (as above; the cron job and the Postgres are not needed for this check). Compare pending (slow the `SavedSearches` read) and ready for Application Logs and Request Logs at 390 and 1440: the toolbar, the note line, and the panel's top and bottom must match. If w3/m507 is on that pin by then, its header actions show in both states. Delete the fixture by id, log out, record it here, and run t013. Every other definition-of-done item already holds on production (above).
