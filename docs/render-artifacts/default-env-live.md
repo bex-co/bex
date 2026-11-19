@@ -114,7 +114,7 @@ Render's page does not list this one, but its native environment sets it, and th
 
 | Runtime | Variable | Render's value | Build | Runtime | Observed |
 | --- | --- | --- | --- | --- | --- |
-| every native runtime, static builds included | `XDG_CACHE_HOME` | `/opt/render/.cache`, at build and at runtime; the directory persists between builds only | pending | pending | not yet read on production: w9/m493 sets it from its commit on, and its t004 reads it, with a marker file written in one build, read in the next, absent from the running service and gone after a clear-cache deploy |
+| every native runtime, static builds included | `XDG_CACHE_HOME` | `/opt/render/.cache`, at build and at runtime; the directory persists between builds only | ✅ | ✅ | `/opt/render/.cache` at build and at runtime, read on native Python on pin `4b2cebd0bd03` (w9/m493 t004, 2026-11-19): a marker written in one build was read in the next, the running service found the directory empty, and a clear-cache deploy started it empty |
 
 Render's value comes from a Render staff answer on community.render.com ("XDG_CACHE_HOME is writable, but is only persisted between builds") and a printed Render runtime environment (`XDG_CACHE_HOME: '/opt/render/.cache'`). The Docker fixture declares it as an `ARG`, so its build line shows whether a Docker build receives it; Render's Docker builds are not documented to.
 

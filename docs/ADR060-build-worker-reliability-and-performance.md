@@ -281,7 +281,16 @@ Render gives every native build `XDG_CACHE_HOME=/opt/render/.cache`, keeps what 
 | 9, the build empties the directory | export leaves `skipped`; save deletes the object; build 10 restores `xdg miss` |
 | 11, the build command fails | exit 90 (tenant), `error: build command 'sh build.sh' exited with code 3`; nothing exported |
 
-The seed and save steps were also run on the production common base (`bex-cnb-run`, Ubuntu with GNU tar 1.34 and findutils 4.8, `USER root` in its amd64 config). The production proof (cross-deploy persistence, absence from the running container, clear-cache reset, fixture deletion) is w9/m493 t004, once the production pin carries the commit.
+The seed and save steps were also run on the production common base (`bex-cnb-run`, Ubuntu with GNU tar 1.34 and findutils 4.8, `USER root` in its amd64 config). The production proof (cross-deploy persistence, absence from the running container, clear-cache reset, fixture deletion) is w9/m493 t004.
+
+**On production (2026-11-19, pin `4b2cebd0bd03`, w9/m493 t004).** The fixture was a native Python web service whose build command lists `$XDG_CACHE_HOME`, prints the marker it holds, appends the time to that marker and runs `pip download`.
+
+- **Cold build:** `xdg miss`, then `xdg saved` at 62 KB (the marker and pip's cache).
+- **Next build:** `xdg hit`, then `==> Downloading cache...` and `==> Transferred 62KB in 9s. Extraction took 0s.`. The build listed `m493` and `pip` and read the first build's time.
+- **Clear-cache release:** `xdg purged`, and its build found the directory empty. The build after it read only the clear build's time.
+- **Corrupt archive:** random bytes stored as the archive gave `bex: no usable build cache; building clean`, an empty directory, a live deploy and a fresh archive.
+- **Runtime:** every release's running service found `/opt/render/.cache` empty and writable.
+- **Deletion:** deleting the service emptied its prefix through the finalizer's purge Job.
 
 #### D3 amendment (w9/m494) — native dependency directories across builds
 
