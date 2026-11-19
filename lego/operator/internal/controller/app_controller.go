@@ -6428,7 +6428,9 @@ func clampReplicas(app *appv1alpha1.App, n int32) int32 {
 
 // rolloutStallDiagnosis is stuckPodMessage plus, for an image-port private
 // service whose TCP check never connects, the ports bex expected the process to
-// listen on (w6/m148) — Render's "no open ports detected", in bex's terms.
+// listen on (w6/m148) — Render's "no open ports detected", in bex's terms — and
+// what the port scan of a failing check found: a web or private service's own
+// listener (w8/177, w8/m504) or a private image's primary (w3/m273 t010).
 func (r *AppReconciler) rolloutStallDiagnosis(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) (string, string) {
 	reason, msg := r.stuckPodMessage(ctx, dep, crashHintPort(app, port))
 	if reason == reasonHealthCheckFailing {

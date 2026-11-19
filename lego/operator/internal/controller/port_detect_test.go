@@ -399,3 +399,192 @@ func TestNoOpenPortTextNamesThePortTheProcessReceives(t *testing.T) {
 		t.Errorf("stall text for an undetected port = %q", got)
 	}
 }
+
+// privateService makes the detect fixture's App a private service that names
+// no port: no PORT, no image port mode, the stored default 10000.
+func privateService(a *appv1alpha1.App, _ *corev1.Pod) { a.Spec.Type = appv1alpha1.TypePrivateService }
+
+// w8/m504: a private service that names no port is probed on 10000 only, so a
+// process bound elsewhere never went Ready and failed at the 15-minute start
+// limit: a service switched from a native build to redis:7-alpine, or a native
+// one that binds 6379. Render serves a private service on any port it binds,
+// so its listener is adopted as a web service's is, once two scans agree, and
+// without asking it to answer HTTP. PORT stays the default (w8/267).
+func TestDetectBoundPortAdoptsAPrivateServicesListener(t *testing.T) {
+	r, app, dep := detectFixture(t, time.Minute, &cannedScanner{open: []int{6379}}, privateService)
+
+	if hint := r.detectBoundPort(t.Context(), app, dep, 10000); app.Status.DetectedPort != 0 || hint != " The process is listening on port 6379." {
+		t.Fatalf("first scan: DetectedPort=%d hint=%q, want only the candidate 6379", app.Status.DetectedPort, hint)
+	}
+	time.Sleep(time.Millisecond)
+	hint := r.detectBoundPort(t.Context(), app, dep, 10000)
+	if app.Status.DetectedPort != 6379 || !strings.Contains(hint, "now uses") {
+		t.Fatalf("second scan: DetectedPort=%d hint=%q, want 6379 adopted", app.Status.DetectedPort, hint)
+	}
+	if got := detectedServingPort(app, 10000); got != 6379 {
+		t.Fatalf("serving port = %d, want the detected 6379", got)
+	}
+	if got := app.ServingPort(); got != 6379 {
+		t.Fatalf("App.ServingPort = %d, want 6379", got)
+	}
+	if got := app.OpenPorts(); !slices.Equal(got, []int32{6379}) {
+		t.Fatalf("App.OpenPorts = %v, want [6379]", got)
+	}
+	if got := processPort(app, 6379); got != appv1alpha1.DefaultPort {
+		t.Fatalf("PORT = %d, want the default %d", got, appv1alpha1.DefaultPort)
+	}
+}
+
+// A private service that binds several ports is served on the one an
+// image-port private service's primary would be: 3000 when open, else the
+// lowest, never a reserved port (preferredPort, w3/m273 t010).
+func TestDetectBoundPortChoosesAPrivateServicesListener(t *testing.T) {
+	for name, tc := range map[string]struct {
+		open []int
+		want int32
+	}{
+		"3000 when it is open":  {open: []int{2000, 3000, 9090}, want: 3000},
+		"else the lowest":       {open: []int{9187, 6379}, want: 6379},
+		"never a reserved port": {open: []int{18012, 6379}, want: 6379},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r, app, dep := detectFixture(t, time.Minute, &cannedScanner{open: tc.open}, privateService)
+			for range 2 {
+				r.detectBoundPort(t.Context(), app, dep, 10000)
+				time.Sleep(time.Millisecond)
+			}
+			if app.Status.DetectedPort != tc.want {
+				t.Fatalf("DetectedPort = %d, want %d", app.Status.DetectedPort, tc.want)
+			}
+		})
+	}
+}
+
+// A private service whose own configuration names its port keeps waiting on
+// it, one whose port answers has nothing to detect, and an image-port private
+// service is left to detectPrivatePrimary.
+func TestDetectBoundPortLeavesConfiguredPrivateServicesAlone(t *testing.T) {
+	for name, tc := range map[string]struct {
+		open   []int
+		mutate func(*appv1alpha1.App)
+	}{
+		"an explicit port":            {[]int{6379}, func(a *appv1alpha1.App) { a.Spec.Port = 6380 }},
+		"a PORT variable":             {[]int{6379}, func(a *appv1alpha1.App) { a.Status.EnvPort = 7000 }},
+		"a default PORT variable":     {[]int{6379}, func(a *appv1alpha1.App) { a.Status.EnvPort = appv1alpha1.DefaultPort }},
+		"an image port mode":          {[]int{6379}, func(a *appv1alpha1.App) { a.Spec.PortMode, a.Spec.Port = appv1alpha1.PortModeImageV1, 0 }},
+		"a configured image port":     {[]int{6379}, func(a *appv1alpha1.App) { a.Spec.PortMode, a.Spec.Port = appv1alpha1.PortModeImageConfiguredV1, 6380 }},
+		"the configured port answers": {[]int{6379, 10000}, func(*appv1alpha1.App) {}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r, app, dep := detectFixture(t, time.Minute, &cannedScanner{open: tc.open}, func(a *appv1alpha1.App, p *corev1.Pod) {
+				privateService(a, p)
+				tc.mutate(a)
+			})
+			for range 3 {
+				if hint := r.detectBoundPort(t.Context(), app, dep, 10000); hint != "" {
+					t.Fatalf("hint = %q, want nothing to add", hint)
+				}
+				time.Sleep(time.Millisecond)
+			}
+			if app.Status.DetectedPort != 0 {
+				t.Fatalf("DetectedPort = %d, want none", app.Status.DetectedPort)
+			}
+		})
+	}
+}
+
+// A private service whose server binds only 127.0.0.1 never answers on the
+// pod address, so the scan finds nothing, or nothing at all answers: no port
+// is adopted, and the stall says what to bind, in Render's terms.
+func TestDetectBoundPortNamesAPrivateServiceWithNoOpenPort(t *testing.T) {
+	for name, scanner := range map[string]*cannedScanner{
+		"a loopback-only listener": {},
+		"an unreachable instance":  {err: portscan.ErrUnreachable},
+		"only a reserved port":     {open: []int{18012}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r, app, dep := detectFixture(t, time.Minute, scanner, privateService)
+			for range 2 {
+				hint := r.detectBoundPort(t.Context(), app, dep, 10000)
+				for _, want := range []string{"No open port was detected", "0.0.0.0", "PORT (10000)", "background worker"} {
+					if !strings.Contains(hint, want) {
+						t.Fatalf("stall text = %q, want %q in it", hint, want)
+					}
+				}
+				time.Sleep(time.Millisecond)
+			}
+			if app.Status.DetectedPort != 0 {
+				t.Fatalf("DetectedPort = %d, want none", app.Status.DetectedPort)
+			}
+		})
+	}
+}
+
+// A metrics port a private service opens before its server is never adopted
+// from one scan: the choice moves to the server's port once it binds, and that
+// port is adopted only when the next scan agrees.
+func TestDetectBoundPortWaitsOutAPrivateServicesEarlyMetricsPort(t *testing.T) {
+	scanner := &cannedScanner{open: []int{9090}}
+	r, app, dep := detectFixture(t, time.Minute, scanner, privateService)
+	for scan, open := range [][]int{{9090}, {6379, 9090}} {
+		scanner.open = open
+		if hint := r.detectBoundPort(t.Context(), app, dep, 10000); app.Status.DetectedPort != 0 || !strings.Contains(hint, "is listening on port") {
+			t.Fatalf("scan %d of %v: DetectedPort=%d hint=%q, want a candidate only", scan+1, open, app.Status.DetectedPort, hint)
+		}
+		time.Sleep(time.Millisecond)
+	}
+	r.detectBoundPort(t.Context(), app, dep, 10000)
+	if app.Status.DetectedPort != 6379 {
+		t.Fatalf("DetectedPort = %d, want the server's 6379 once two scans agree", app.Status.DetectedPort)
+	}
+}
+
+// A private service switched back from an image to a native build that names
+// its port, with spec.port or PORT, serves that port, and the detection left
+// from the image is cleared, as on a web service.
+func TestAPrivateServicesExplicitPortClearsADetectedOne(t *testing.T) {
+	for name, tc := range map[string]struct {
+		mutate func(*appv1alpha1.App)
+		want   int
+	}{
+		"an explicit port": {func(a *appv1alpha1.App) { a.Spec.Port = 8080 }, 8080},
+		"a PORT variable":  {func(a *appv1alpha1.App) { a.Status.EnvPort = 7000 }, 7000},
+	} {
+		app := &appv1alpha1.App{
+			Spec:   appv1alpha1.AppSpec{Type: appv1alpha1.TypePrivateService, Port: appv1alpha1.DefaultPort},
+			Status: appv1alpha1.AppStatus{DetectedPort: 6379},
+		}
+		tc.mutate(app)
+		if got := detectedServingPort(app, tc.want); got != tc.want || app.Status.DetectedPort != 0 {
+			t.Errorf("%s: serving port %d, DetectedPort %d; want %d and cleared", name, got, app.Status.DetectedPort, tc.want)
+		}
+		if got := app.ServingPort(); got != int32(tc.want) {
+			t.Errorf("%s: App.ServingPort = %d, want %d", name, got, tc.want)
+		}
+	}
+}
+
+// A private service switched to redis, which serves 6379, and rolled back to
+// its native release, which binds PORT 10000, is probed on the detected 6379
+// at first; the scan of its unready instance finds 10000 and the service serves
+// it again.
+func TestARolledBackPrivateServiceServesItsNativePortAgain(t *testing.T) {
+	r, app, dep := detectFixture(t, time.Minute, &cannedScanner{open: []int{10000}}, func(a *appv1alpha1.App, p *corev1.Pod) {
+		privateService(a, p)
+		a.Status.DetectedPort = 6379
+	})
+	port := detectedServingPort(app, appv1alpha1.DefaultPort)
+	if port != 6379 {
+		t.Fatalf("serving port before the scan = %d, want the detected 6379", port)
+	}
+	for range 2 {
+		r.detectBoundPort(t.Context(), app, dep, port)
+		time.Sleep(time.Millisecond)
+	}
+	if app.ServingPort() != appv1alpha1.DefaultPort || !slices.Equal(app.OpenPorts(), []int32{appv1alpha1.DefaultPort}) {
+		t.Fatalf("serving %d, openPorts %v; want the native release's 10000", app.ServingPort(), app.OpenPorts())
+	}
+	if got := processPort(app, int(app.ServingPort())); got != appv1alpha1.DefaultPort {
+		t.Fatalf("PORT = %d, want 10000", got)
+	}
+}

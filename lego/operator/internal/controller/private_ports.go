@@ -379,20 +379,13 @@ func (r *AppReconciler) scanForPrivatePrimary(ctx context.Context, app *appv1alp
 	if len(found) == 0 || slices.Contains(found, network.PrimaryPort) {
 		return "" // nothing to choose, or the primary answers now and the check will pass
 	}
-	chosen := found[0]
-	if slices.Contains(found, imagePortPreferred) {
-		chosen = imagePortPreferred
-	}
+	chosen := preferredPort(found)
 	if !slices.Contains(network.Ports, chosen) && len(network.Ports) >= appv1alpha1.MaxImagePorts {
 		return ""
 	}
-	// The same listener in two scans: a port opened early while the declared
-	// primary is still booting is not mistaken for it.
-	if prev, ok := r.portCandidate.Load(key); !ok || prev.(int) != int(chosen) {
-		r.portCandidate.Store(key, int(chosen))
+	if !r.candidateConfirmed(key, int(chosen)) {
 		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintListening, portParam(chosen))
 	}
-	r.portCandidate.Delete(key)
 	logf.FromContext(ctx).Info("selected the port the process listens on as the private primary", "app", app.Name,
 		"port", chosen, "was", network.PrimaryPort)
 	network.PrimaryPort = chosen

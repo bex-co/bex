@@ -228,6 +228,26 @@ func TestBlueprintGitToImageDropsABakedStartCommand(t *testing.T) {
 	}
 }
 
+// A sync that moves a native entry to a prebuilt image writes no port mode,
+// as the source writer does not (w8/m504, ADR089 § Port slice decisions item
+// 7): the service keeps its configured-port mode and stored port, and its
+// first deploy finds the port its image binds by bound-port detection, a web
+// service's HTTP listener or a private service's any listener.
+func TestBlueprintGitToImageKeepsTheConfiguredPortMode(t *testing.T) {
+	for _, tc := range []struct{ svcType, entryType, plan string }{
+		{appv1alpha1.TypeWebService, "web", "free"},
+		{appv1alpha1.TypePrivateService, "pserv", "starter"},
+	} {
+		native := gitBornSpec()
+		native.Type, native.Tier, native.Port = tc.svcType, tc.plan, appv1alpha1.DefaultPort
+		got, _ := switchSource(t, native, "services:\n- {name: own-source, type: "+tc.entryType+", runtime: image, image: {url: '"+switchImage+"'}, plan: "+tc.plan+"}\n")
+		if got.Image != switchImage || got.Repo != "" || got.PortMode != "" || got.Port != appv1alpha1.DefaultPort {
+			t.Errorf("%s native->image: image %q repo %q portMode %q port %d, want the image with the configured-port mode and 10000 kept",
+				tc.svcType, got.Image, got.Repo, got.PortMode, got.Port)
+		}
+	}
+}
+
 // The plan attributes the switch to exactly the fields the apply changes, so
 // preview and apply agree: the equal plan and the match key stay off the list
 // (w4/m229).

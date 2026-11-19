@@ -76,6 +76,17 @@ func (r *AppReconciler) platformRepoReference(image string) (repo, reference str
 // imagePortPreferred is the declared image port chosen as primary when present.
 const imagePortPreferred int32 = 3000
 
+// preferredPort is the port a service is served on when it has a set to
+// choose from, its image's declared ports or the listeners a scan found: 3000
+// when present (ADR089: the services that rely on it predate the Render PORT
+// default), else the first, the lowest of a sorted set.
+func preferredPort(ports []int32) int32 {
+	if slices.Contains(ports, imagePortPreferred) {
+		return imagePortPreferred
+	}
+	return ports[0]
+}
+
 // parseExternalImageReference splits a prebuilt image reference into the
 // registry API host, repository and reference for its metadata read
 // (w4/m243). No platform credential is ever attached to it.
@@ -290,12 +301,7 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 			ports = []int32{configuredPrimary}
 		}
 	}
-	primary := ports[0]
-	// A declared 3000 stays the preferred primary (ADR089): the services that
-	// rely on it predate the Render PORT default.
-	if slices.Contains(ports, imagePortPreferred) {
-		primary = imagePortPreferred
-	}
+	primary := preferredPort(ports)
 	if configured {
 		primary = configuredPrimary
 		if primary < 1 || primary > 65535 || appv1alpha1.IsReservedImagePort(primary) {

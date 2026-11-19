@@ -29,6 +29,7 @@ import (
 
 	"github.com/graphql-go/graphql"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -302,10 +303,8 @@ func TestSwitchedImageReadIsTheCloneContract(t *testing.T) {
 // which a switched service and an image-created one cannot share.
 var m461Identity = []string{"id", "name", "slug", "immutableName", "createdAt", "updatedAt", "dashboardUrl"}
 
-// m461ComparableRead is name's REST read without its identity and history.
-func m461ComparableRead(t *testing.T, svc *Service, name string) map[string]any {
-	t.Helper()
-	_, read := m461REST(t, svc, http.MethodGet, "/v1/services/"+name, "")
+// m461WithoutIdentity is read without its identity and history.
+func m461WithoutIdentity(read map[string]any) map[string]any {
 	for _, field := range m461Identity {
 		delete(read, field)
 	}
@@ -316,34 +315,113 @@ func m461ComparableRead(t *testing.T, svc *Service, name string) map[string]any 
 	return read
 }
 
-// A switched service reads exactly as one created on the same image, apart
-// from its identity and history (t004).
-func TestSwitchedServiceReadsAsAnImageCreatedOne(t *testing.T) {
-	svc, _ := newService(nil)
-	for _, create := range []string{
-		`{"name":"switched","type":"web_service","repo":"` + m461Repo + `","branch":"main","autoDeploy":"no","serviceDetails":{"runtime":"node","plan":"free",` +
-			`"envSpecificDetails":{"buildCommand":"yarn","startCommand":"node app.js"}}}`,
-		`{"name":"born","type":"web_service","image":{"imagePath":"` + m461Image + `","ownerId":""},"serviceDetails":{"runtime":"image","plan":"free"}}`,
-	} {
-		if rec := m461Do(t, svc, http.MethodPost, "/v1/services", create); rec.Code != http.StatusCreated {
-			t.Fatalf("POST = %d: %s", rec.Code, rec.Body.String())
+// m461ComparableRead is name's REST read without its identity and history.
+func m461ComparableRead(t *testing.T, svc *Service, name string) map[string]any {
+	t.Helper()
+	_, read := m461REST(t, svc, http.MethodGet, "/v1/services/"+name, "")
+	return m461WithoutIdentity(read)
+}
+
+// m504Serve stands in for the operator: name's release serves on port. A
+// switched service keeps its configured-port mode, so the port its process
+// binds is found by bound-port detection (status.detectedPort: w8/177 for a
+// web service, w8/m504 for a private one); an image-created one serves its
+// image network. port 0 is a native release, which binds PORT.
+func m504Serve(t *testing.T, cl client.Client, name string, port int32) {
+	t.Helper()
+	app := getApp(t, cl, name)
+	app.Status.Phase, app.Status.ActiveRevision = appv1alpha1.PhaseRunning, "rev-1"
+	if app.Spec.HasImagePorts() {
+		network := &appv1alpha1.ImageNetworkStatus{
+			Image: m461Image + "@sha256:0", Revision: "rev-1", PrimaryPort: port, Ports: []int32{port}, ConfiguredPort: new(int32(0)),
 		}
+		app.Status.ImageNetwork, app.Status.ServingNetwork = network, network.DeepCopy()
+	} else {
+		app.Status.DetectedPort = port
 	}
-	m461Switch(t, svc, "switched", "")
-	switched, born := m461ComparableRead(t, svc, "switched"), m461ComparableRead(t, svc, "born")
-	// An image-created web service serves on its image's exposed port
-	// (portMode web-image-v1, stamped at create only, w4/m243); a switched
-	// one keeps its configured port 10000. Follow-up w8/337.
-	if port := switched["serviceDetails"].(map[string]any)["port"]; port != float64(10000) {
-		t.Errorf("switched port = %v, want the configured 10000 kept", port)
+	if err := cl.Update(context.Background(), app); err != nil {
+		t.Fatalf("serve %s: %v", name, err)
 	}
-	for _, read := range []map[string]any{switched, born} {
-		delete(read["serviceDetails"].(map[string]any), "port")
-		delete(read["serviceDetails"].(map[string]any), "openPorts")
-	}
-	if !reflect.DeepEqual(switched, born) {
-		a, _ := json.Marshal(switched)
-		b, _ := json.Marshal(born)
-		t.Errorf("the switched read differs from an image-created one\nswitched: %s\n    born: %s", a, b)
+}
+
+// m504Ports is a read's serviceDetails port and openPorts.
+func m504Ports(read map[string]any) (port any, openPorts any) {
+	details, _ := read["serviceDetails"].(map[string]any)
+	return details["port"], details["openPorts"]
+}
+
+// A switched service reads exactly as one created on the same image, apart
+// from its identity and history (w8/m461 t004), port and openPorts included
+// (w8/m504). Before the switched source is deployed, the native release still
+// serves PORT 10000, and the read says so, as Render's openPorts reports the
+// running instance. Once the deploy has found the port the image binds, the
+// reads match on REST, MCP and GraphQL, and in the dashboard's Settings port
+// row (configuredPort, App.SavedPort).
+func TestSwitchedServiceReadsAsAnImageCreatedOne(t *testing.T) {
+	for _, tc := range []struct {
+		svcType, plan string
+		port          int32
+	}{
+		{"web_service", "free", 80},
+		// Private services are paid-only, as on Render; redis binds 6379.
+		{"private_service", "starter", 6379},
+	} {
+		t.Run(tc.svcType, func(t *testing.T) {
+			svc, cl := newService(nil)
+			for _, create := range []string{
+				`{"name":"switched","type":"` + tc.svcType + `","repo":"` + m461Repo + `","branch":"main","autoDeploy":"no","serviceDetails":{"runtime":"node","plan":"` + tc.plan + `",` +
+					`"envSpecificDetails":{"buildCommand":"yarn","startCommand":"node app.js"}}}`,
+				`{"name":"born","type":"` + tc.svcType + `","image":{"imagePath":"` + m461Image + `","ownerId":""},"serviceDetails":{"runtime":"image","plan":"` + tc.plan + `"}}`,
+			} {
+				if rec := m461Do(t, svc, http.MethodPost, "/v1/services", create); rec.Code != http.StatusCreated {
+					t.Fatalf("POST = %d: %s", rec.Code, rec.Body.String())
+				}
+			}
+			m504Serve(t, cl, "switched", 0)
+			m504Serve(t, cl, "born", tc.port)
+			m461Switch(t, svc, "switched", "")
+
+			wantPorts := func(port int32) []any {
+				return []any{map[string]any{"port": float64(port), "protocol": "TCP"}}
+			}
+			if port, open := m504Ports(m461ComparableRead(t, svc, "switched")); port != float64(10000) || !reflect.DeepEqual(open, wantPorts(10000)) {
+				t.Errorf("before the deploy: port %v openPorts %v, want the native release's 10000", port, open)
+			}
+
+			m504Serve(t, cl, "switched", tc.port)
+			switched, born := m461ComparableRead(t, svc, "switched"), m461ComparableRead(t, svc, "born")
+			if port, open := m504Ports(switched); port != float64(tc.port) || !reflect.DeepEqual(open, wantPorts(tc.port)) {
+				t.Errorf("after the deploy: port %v openPorts %v, want the image's %d", port, open, tc.port)
+			}
+			if !reflect.DeepEqual(switched, born) {
+				a, _ := json.Marshal(switched)
+				b, _ := json.Marshal(born)
+				t.Errorf("REST: the switched read differs from an image-created one\nswitched: %s\n    born: %s", a, b)
+			}
+
+			call, cleanup := appsMCPClient(t, svc)
+			defer cleanup()
+			mcpSwitched := m461WithoutIdentity(call("get_service", map[string]any{"serviceId": "switched"}))
+			if mcpBorn := m461WithoutIdentity(call("get_service", map[string]any{"serviceId": "born"})); !reflect.DeepEqual(mcpSwitched, mcpBorn) {
+				t.Errorf("MCP get_service: the switched read differs from an image-created one\nswitched: %v\n    born: %v", mcpSwitched, mcpBorn)
+			}
+
+			gql := func(name string) any {
+				res := graphql.Do(graphql.Params{Schema: sourceSwapSchema(t, svc), Context: context.Background(),
+					RequestString: `{ service(id: "` + name + `") { port configuredPort openPorts { port protocol } } }`})
+				if len(res.Errors) > 0 {
+					t.Fatal(res.Errors)
+				}
+				return res.Data.(map[string]any)["service"]
+			}
+			want := map[string]any{"port": int(tc.port), "configuredPort": int(tc.port),
+				"openPorts": []any{map[string]any{"port": int(tc.port), "protocol": "TCP"}}}
+			if got := gql("switched"); !reflect.DeepEqual(got, want) {
+				t.Errorf("GraphQL switched = %v, want %v", got, want)
+			}
+			if got := gql("born"); !reflect.DeepEqual(got, want) {
+				t.Errorf("GraphQL born = %v, want %v", got, want)
+			}
+		})
 	}
 }

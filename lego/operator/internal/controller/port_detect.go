@@ -56,6 +56,15 @@ import (
 // one answers, it is recorded as status.detectedPort and the next pass serves,
 // routes and probes on it (App.ServingPort); several are named in the stall
 // message instead, and the user picks one with PORT.
+//
+// A private service is detected the same way (w8/m504), except that its
+// listener may speak any protocol: Render serves a private service on any
+// port it binds (render.com/docs/private-services), so no HTTP check filters
+// it, and when it binds several it is served on the one an image-port private
+// service's primary would be (preferredPort). That covers a service switched
+// from a native build to a prebuilt image, which keeps its configured-port
+// mode (ADR089 § Port slice decisions), and a native one that binds another
+// port than PORT.
 
 const (
 	// portDetectGrace is how long the container must have been running before
@@ -147,13 +156,13 @@ func (r *AppReconciler) dueUnreadyScan(ctx context.Context, app *appv1alpha1.App
 	return key, pod
 }
 
-// detectBoundPort scans the rollout's unready pod when the App qualifies, sets
-// status.detectedPort when exactly one other port answers, and returns text to
-// append to the stall message (empty when there is nothing to add). Between
-// scans it returns the last scan's text.
+// detectBoundPort scans the rollout's unready pod when the App qualifies, a
+// web or private service that names no port of its own, sets
+// status.detectedPort when the scan finds the one other port it serves, and
+// returns text to append to the stall message (empty when there is nothing to
+// add). Between scans it returns the last scan's text.
 func (r *AppReconciler) detectBoundPort(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) string {
-	if r.PortScanner == nil || explicitServingPort(app) ||
-		(app.Spec.Type != "" && app.Spec.Type != appv1alpha1.TypeWebService) {
+	if r.PortScanner == nil || explicitServingPort(app) || !app.Spec.InternallyAddressable() {
 		return ""
 	}
 	key, pod := r.dueUnreadyScan(ctx, app, dep)
@@ -167,7 +176,7 @@ func (r *AppReconciler) detectBoundPort(ctx context.Context, app *appv1alpha1.Ap
 func (r *AppReconciler) scanForBoundPort(ctx context.Context, app *appv1alpha1.App, key, ip string, port int) string {
 	scanCtx, cancel := context.WithTimeout(ctx, portDetectTimeout)
 	defer cancel()
-	open, err := scanBoundPort(scanCtx, r.PortScanner, ip)
+	open, err := scanBoundPort(scanCtx, r.PortScanner, ip, port)
 	if err != nil {
 		// A scan that found nothing and one that failed read the same from
 		// outside: a closed port on a tenant pod drops the connect instead of
@@ -177,30 +186,22 @@ func (r *AppReconciler) scanForBoundPort(ctx context.Context, app *appv1alpha1.A
 		logf.FromContext(ctx).Info("port detection scan failed", "app", app.Name, "error", err.Error())
 		return noOpenPortMessage(app, port)
 	}
-	var others []int
-	for _, p := range open {
-		if p == port {
-			return "" // the configured port answers: the failing check is about the path, not the listener
-		}
-		others = append(others, p)
+	if slices.Contains(open, port) {
+		return "" // the configured port answers: the failing check is about the path, not the listener
 	}
-	others = r.httpListeners(ctx, app, ip, others)
+	if app.Spec.Type == appv1alpha1.TypePrivateService {
+		found := listenerSet(open)
+		if len(found) == 0 {
+			return noOpenPortMessage(app, port)
+		}
+		return r.adoptListener(ctx, app, key, port, int(preferredPort(found)))
+	}
+	others := r.httpListeners(ctx, app, ip, open)
 	switch len(others) {
 	case 0:
 		return noOpenPortMessage(app, port)
 	case 1:
-		if app.Status.DetectedPort == int32(others[0]) {
-			return ""
-		}
-		// The same lone port in two scans: a metrics port opened early while
-		// the HTTP server is still booting is not mistaken for the service.
-		if prev, ok := r.portCandidate.Load(key); !ok || prev.(int) != others[0] {
-			r.portCandidate.Store(key, others[0])
-			return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintListening, portParam(int32(others[0])))
-		}
-		logf.FromContext(ctx).Info("detected the port the process listens on", "app", app.Name, "port", others[0], "was", port)
-		app.Status.DetectedPort = int32(others[0])
-		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintListeningAdopted, portParam(int32(others[0])))
+		return r.adoptListener(ctx, app, key, port, others[0])
 	default:
 		list := make([]string, len(others))
 		for i, p := range others {
@@ -209,6 +210,33 @@ func (r *AppReconciler) scanForBoundPort(ctx context.Context, app *appv1alpha1.A
 		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintListeningPorts, portParam(int32(port)),
 			appv1alpha1.DeployReasonParam{Name: "ports", Value: strings.Join(list, ", ")})
 	}
+}
+
+// adoptListener makes candidate, the listener a scan chose, the App's detected
+// port once the scan before it chose the same one.
+func (r *AppReconciler) adoptListener(ctx context.Context, app *appv1alpha1.App, key string, port, candidate int) string {
+	if app.Status.DetectedPort == int32(candidate) {
+		return ""
+	}
+	if !r.candidateConfirmed(key, candidate) {
+		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintListening, portParam(int32(candidate)))
+	}
+	logf.FromContext(ctx).Info("detected the port the process listens on", "app", app.Name, "port", candidate, "was", port)
+	app.Status.DetectedPort = int32(candidate)
+	return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintListeningAdopted, portParam(int32(candidate)))
+}
+
+// candidateConfirmed records candidate as the listener key's scan chose and
+// reports whether the scan before it chose the same one, which then clears the
+// record. A port opened early while the server is still booting, such as a
+// metrics port, is never taken from a single scan.
+func (r *AppReconciler) candidateConfirmed(key string, candidate int) bool {
+	if prev, ok := r.portCandidate.Load(key); ok && prev.(int) == candidate {
+		r.portCandidate.Delete(key)
+		return true
+	}
+	r.portCandidate.Store(key, candidate)
+	return false
 }
 
 // httpListeners is the ports among open that answer HTTP, lowest first. A

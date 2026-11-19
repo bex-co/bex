@@ -74,7 +74,7 @@ func readyEnvtestPod(nn types.NamespacedName, name, ip string) {
 
 // unreadyEnvtestPod stands in for the kubelet: a pod of the Deployment's
 // current template, Running at ip for a minute, whose check keeps failing.
-func unreadyEnvtestPod(nn types.NamespacedName, name, ip string) *corev1.Pod {
+func unreadyEnvtestPod(nn types.NamespacedName, name, ip string) {
 	GinkgoHelper()
 	tmpl := envtestDeployment(nn).Spec.Template
 	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: nn.Namespace, Labels: tmpl.Labels}, Spec: tmpl.Spec}
@@ -89,7 +89,6 @@ func unreadyEnvtestPod(nn types.NamespacedName, name, ip string) *corev1.Pod {
 	}
 	Expect(k8sClient.Status().Update(ctx, pod)).To(Succeed())
 	DeferCleanup(func() { _ = k8sClient.Delete(ctx, pod, client.GracePeriodSeconds(0)) })
-	return pod
 }
 
 // servicePortTargets maps a Service's published ports to their targets.
@@ -357,6 +356,58 @@ var _ = Describe("Private network ports (w3/m273)", func() {
 		Expect(app.OpenPorts()).To(Equal([]int32{8080}), "the declared 80 nothing binds is not listed")
 		Expect(app.InternalAddress()).To(HaveSuffix(":8080"))
 		assertImagePortService(nn, 8080)
+	})
+
+	It("serves a private service that names no port on the port its process binds (w8/m504)", func() {
+		// A native private service switched to redis:7-alpine keeps its
+		// configured-port mode and the stored default 10000: redis binds 6379
+		// alone, and Render serves a private service on any port it binds.
+		nn := types.NamespacedName{Name: "private-configured-detect", Namespace: "default"}
+		scanner := &ipScanner{open: map[string][]int{}}
+		r := &AppReconciler{
+			Client: k8sClient, Scheme: k8sClient.Scheme(), Mode: ModeKubernetes,
+			PortScanner: scanner, portDetectEvery: time.Nanosecond,
+		}
+		run := func() (ctrl.Result, error) { return r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}) }
+		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
+			Spec: appv1alpha1.AppSpec{
+				Image: "docker.io/library/redis:7-alpine", Type: appv1alpha1.TypePrivateService,
+				Port: appv1alpha1.DefaultPort, Replicas: 1,
+			},
+		})).To(Succeed())
+		DeferCleanup(func() { deleteOwner(ctx, envtestApp(nn), run) })
+		reconcileToFixedPoint(run)
+		assertImagePortRuntime(nn, appv1alpha1.DefaultPort)
+
+		By("scanning the unready instance while its check of 10000 keeps failing")
+		scanner.set("10.7.0.1", 6379)
+		unreadyEnvtestPod(nn, nn.Name+"-a", "10.7.0.1")
+		reconcileToFixedPoint(run)
+		app := envtestApp(nn)
+		Expect(app.Status.DetectedPort).To(Equal(int32(6379)))
+		c := envtestDeployment(nn).Spec.Template.Spec.Containers[0]
+		for _, probe := range probesOf(c) {
+			Expect(probe.TCPSocket.Port.IntVal).To(Equal(int32(6379)))
+		}
+		Expect(c.Ports).To(ContainElement(And(HaveField("Name", servingPortName), HaveField("ContainerPort", int32(6379)))))
+		Expect(c.Env).To(ContainElement(corev1.EnvVar{Name: "PORT", Value: "10000"}), "PORT stays the default (w8/267)")
+
+		By("going live on 6379 once the new instance is Ready")
+		readyEnvtestPod(nn, nn.Name+"-b", "10.7.0.2")
+		scanner.set("10.7.0.2", 6379)
+		Expect(k8sClient.Delete(ctx, &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: nn.Name + "-a", Namespace: nn.Namespace}},
+			client.GracePeriodSeconds(0))).To(Succeed())
+		markEnvtestDeploymentReady(nn)
+		reconcileToFixedPoint(run)
+		app = envtestApp(nn)
+		Expect(meta.IsStatusConditionTrue(app.Status.Conditions, appv1alpha1.ConditionReady)).To(BeTrue(), "%+v", app.Status.Conditions)
+		Expect(app.ServicePort()).To(Equal(int32(6379)))
+		Expect(app.OpenPorts()).To(Equal([]int32{6379}))
+		Expect(app.InternalAddress()).To(HaveSuffix(":6379"))
+		for _, name := range []string{nn.Name, app.Spec.PlatformSubdomain(nn.Name)} {
+			Expect(servicePortTargets(name)).To(Equal(map[int32]intstr.IntOrString{6379: intstr.FromString(servingPortName)}), name)
+		}
 	})
 
 	It("answers a web service's private port 10000 with its primary listener", func() {
