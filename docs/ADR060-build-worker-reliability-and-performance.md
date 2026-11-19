@@ -342,6 +342,7 @@ Render runs the build command "with each deploy" ([render.com/docs/deploys](http
 - What the cache is for is unchanged. The toolchain and tool layers before the loader still come from the layer cache, and the command reads w9/m493's `$XDG_CACHE_HOME` and w9/m494's dependency directories. That is Render's model: the build cache makes the command fast, and the command still runs. The dependency key (`BEX_DEPS_KEY`) hashes the generated Dockerfile only up to `COPY . .`, so it does not move.
 - Dockerfile builds keep BuildKit's own layer semantics, as Render documents Docker layer caching; kpack builds and image-backed deploys are unaffected. A clear-cache release already ran the command, since it imports nothing.
 - A static site rollback with no retained publication rebuilds its target commit (ADR018 `Rollback` row) and now runs that command again. Render serves the retained artifact there and runs no build, so neither behavior is closer to Render's; it is left as it is.
+- Verified on production pin `def3eb4883de` (2026-11-19, w32/046): a same-commit second deploy of a native static site and a native Node web service imported the layer cache (`hit`) and still ran the command, the Node build restored `$XDG_CACHE_HOME`, and a Dockerfile service's second build kept its steps `CACHED`.
 
 ### D4 — Registry hardening for the build path
 
