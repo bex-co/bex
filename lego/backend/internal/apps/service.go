@@ -3170,7 +3170,7 @@ func stampAppIdentity(a *appv1alpha1.App, tenantID, appID string, managed bool) 
 // is logged and leaves the label to that pass: the row already exists, and a
 // create is not refused over a token.
 func (s *Service) stampManagedOIDC(ctx context.Context, a *appv1alpha1.App, tenantID string) {
-	if !s.ManagedOIDC {
+	if !s.ManagedOIDC || core.IsBuildSource(a) {
 		return
 	}
 	plan, ok, err := s.WorkspacePlanOf(ctx, tenantID)

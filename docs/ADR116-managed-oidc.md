@@ -167,7 +167,8 @@ Render, [render.com/docs/oidc](https://render.com/docs/oidc) § Limitations (rea
 
 | Builder | Build-time token | Basis |
 | --- | --- | --- |
-| Native (`runtime` `node`, `python`, `ruby`, `go`, `rust` or `elixir`; a static site's build command, which runs in the native Node environment; a native build source) | yes | Render's first sentence. A static site is a Render service whose build runs natively; Render does not single it out, so it is treated as native. |
+| Native (`runtime` `node`, `python`, `ruby`, `go`, `rust` or `elixir`; a static site's build command, which runs in the native Node environment) | yes | Render's first sentence. A static site is a Render service whose build runs natively; Render does not single it out, so it is treated as native. |
+| Build Source (`build_source`, `bds-…`) | no | Render's `sub` claim names a single `srv-…` service and documents no Build Source subject. Build source carriers never carry `app.bex.co/managed-oidc` and their native builds do not decide OIDC, so a carrier carrying a trigger variable builds normally instead of waiting on an unmintable token. |
 | Dockerfile (`runtime: docker`, `builder: dockerfile`, and `auto`, which builds the repository's Dockerfile) | no | Render's second sentence. The service's own variables still reach it as build args (w1/m178), `AWS_ROLE_ARN` included, but no token, no file and no platform-set file variable. |
 | `builder: buildpack` (kpack, a bex-only builder no Render surface selects) | no | kpack refuses `secretKeyRef` in build env (`.pm/w1/done/121.md`), so a token could only travel as a plaintext field of the Image CR. Its build already gets only `BP_*`/`BPE_*` variables. |
 

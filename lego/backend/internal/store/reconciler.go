@@ -2869,7 +2869,11 @@ func stampLabels(cur *appv1alpha1.App, d DesiredApp, identity string, managedOID
 		kept = strconv.Itoa(n)
 	}
 	setOptional(appv1alpha1.LabelKeptBuilds, kept)
-	setOptional(appv1alpha1.LabelManagedOIDC, ManagedOIDCLabel(managedOIDC, d.TenantPlan))
+	oidcLabel := ""
+	if d.Type != TypeBuildSource {
+		oidcLabel = ManagedOIDCLabel(managedOIDC, d.TenantPlan)
+	}
+	setOptional(appv1alpha1.LabelManagedOIDC, oidcLabel)
 	// The repository's GitHub id the push webhook matches by (w10/m490). An
 	// annotation, so stamping it bumps no generation.
 	if core.SetGitHubRepoID(cur, d.GitHubRepoID) {

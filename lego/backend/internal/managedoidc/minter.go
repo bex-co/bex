@@ -127,9 +127,10 @@ func (m *Minter) pass(ctx context.Context) error {
 	now := m.now()
 	var errs []error
 	minted, oldest := 0, time.Duration(0)
+	services := core.ServiceApps(apps.Items)
 apps:
-	for i := range apps.Items {
-		app := &apps.Items[i]
+	for i := range services {
+		app := &services[i]
 		if app.DeletionTimestamp != nil {
 			continue
 		}

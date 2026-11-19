@@ -185,7 +185,7 @@ var _ = Describe("Managed OIDC at build time (w2/m480)", func() {
 		Expect(string(raw)).NotTo(ContainSubstring("aws-jwt"), "a token must never enter the Job spec")
 	})
 
-	It("gives a Dockerfile build and a Hobby native build nothing", func() {
+	It("gives a Dockerfile build, a Hobby native build and a native Build Source nothing", func() {
 		nn, _ := create("oidc-docker-build", build.BuilderDockerfile, true)
 		passN(nn)
 		Expect(envtestApp(nn).Status.BuildManagedOIDC).To(BeNil(), "a Dockerfile build decides nothing")
@@ -201,5 +201,39 @@ var _ = Describe("Managed OIDC at build time (w2/m480)", func() {
 		Expect(st.Refused()).To(Equal([]string{"aws", "gcp"}))
 		Expect(st.Mounted()).To(BeEmpty())
 		Expect(tokenVolume(jobOf(hobby.Name))).To(BeNil())
+
+		// A Build Source carrier has a bds- id and no single srv- service
+		// subject; even if labeled, its native build must not wait on OIDC.
+		bsName := "oidc-bds-build"
+		bsEnv := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: bsName + "-env", Namespace: ns}, StringData: map[string]string{
+			"AWS_ROLE_ARN": "arn:aws:iam::123456789012:role/build",
+		}}
+		Expect(k8sClient.Create(ctx, bsEnv)).To(Succeed())
+		bsApp := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      bsName,
+				Namespace: ns,
+				Labels:    map[string]string{appv1alpha1.LabelManagedOIDC: appv1alpha1.ManagedOIDCEnabled},
+			},
+			Spec: appv1alpha1.AppSpec{
+				Type: appv1alpha1.TypeBuildSource, Repo: "https://github.com/bex-co/hello", Branch: "main",
+				Port: 3000, Builder: build.BuilderNative, Runtime: "node", BuildCommand: "npm ci", StartCommand: "node server.js",
+				EnvFromSecret: bsEnv.Name,
+			},
+		}
+		Expect(k8sClient.Create(ctx, bsApp)).To(Succeed())
+		bsNN := types.NamespacedName{Name: bsName, Namespace: ns}
+		DeferCleanup(func() {
+			if a := (&appv1alpha1.App{}); k8sClient.Get(ctx, bsNN, a) == nil {
+				Expect(k8sClient.Delete(ctx, a)).To(Succeed())
+				r.Registry = ""
+				passN(bsNN)
+			}
+			_ = k8sClient.Delete(ctx, bsEnv)
+			_ = k8sClient.Delete(ctx, &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: build.JobName(bsName, "gen-1"), Namespace: buildNS}})
+		})
+		passN(bsNN)
+		Expect(envtestApp(bsNN).Status.BuildManagedOIDC).To(BeNil(), "a Build Source carrier decides no build OIDC")
+		Expect(tokenVolume(jobOf(bsName))).To(BeNil())
 	})
 })

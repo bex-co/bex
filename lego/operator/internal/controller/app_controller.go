@@ -1882,7 +1882,11 @@ func (r *AppReconciler) prepareSourceBuildEnv(ctx context.Context, app *appv1alp
 	if err != nil {
 		return nil, buildInputs{}, "", err
 	}
-	if builder == build.BuilderNative {
+	// Build Sources (TypeBuildSource) are shared bds- carriers with no single
+	// srv- service identity for Render's OIDC sub claim; exclude them so a
+	// native build source carrying an OIDC trigger env var builds normally
+	// instead of waiting on an unmintable token (ADR116 D12, w2/m480).
+	if builder == build.BuilderNative && app.Spec.Type != appv1alpha1.TypeBuildSource {
 		if inputs.oidcSecret, inputs.oidc, err = r.projectBuildManagedOIDC(ctx, app, buildNs); err != nil {
 			return nil, buildInputs{}, "", err
 		}

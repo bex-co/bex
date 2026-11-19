@@ -56,6 +56,7 @@ const (
 	evmA = "evm-d4ahtvtpdjhs73eclsm0"
 	srvA = "srv-d4ahtvtpdjhs73eclsmg"
 	srvB = "srv-d4ahtvtpdjhs73eclsn0"
+	bdsA = "bds-d4ahtvtpdjhs73eclsn0"
 )
 
 // keys is an in-memory key store: the issuer's key set, without a database.
@@ -733,8 +734,18 @@ func TestANativeBuildGetsItsOwnTokensWhileItBuilds(t *testing.T) {
 	if err := cl.Create(ctx, hobby); err != nil {
 		t.Fatal(err)
 	}
+	// A Build Source carrier has a bds- id (not a service id); even if
+	// labeled with a build decision, Pass skips it without failing or minting.
+	carrier := optedIn("carrier", bdsA)
+	carrier.Spec.Type = appv1alpha1.TypeBuildSource
+	carrier.Status.ManagedOIDC = nil
+	carrier.Status.Phase = appv1alpha1.PhaseBuilding
+	carrier.Status.BuildManagedOIDC = &appv1alpha1.ManagedOIDCStatus{Generation: 2, Providers: []string{"aws"}, PlanAllowed: true}
+	if err := cl.Create(ctx, carrier); err != nil {
+		t.Fatal(err)
+	}
 	pass()
-	for _, name := range []string{"dock", "hobby"} {
+	for _, name := range []string{"dock", "hobby", "carrier"} {
 		var s corev1.Secret
 		for _, secret := range []string{appv1alpha1.ManagedOIDCBuildSecretName(name), appv1alpha1.ManagedOIDCSecretName(name)} {
 			if err := cl.Get(ctx, client.ObjectKey{Namespace: wsA, Name: secret}, &s); !apierrors.IsNotFound(err) {

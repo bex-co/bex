@@ -64,7 +64,6 @@ var appEnumerationsThatMayIncludeBuildSources = map[string]string{
 	"store/reconciler.go:ReconcileOnce":                         "every App CR, carriers included, is projected",
 	"store/app_status_watch.go:watchOnce":                       "a carrier's status changes kick the projector that closes its build's rows",
 	"store/product_inventory.go:listResources":                  "product inventory counts build sources as their own type",
-	"managedoidc/minter.go:pass":                                "a carrier runs no instance, so its status never mounts a token",
 }
 
 func TestEveryAppEnumerationDeclaresBuildSources(t *testing.T) {

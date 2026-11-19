@@ -915,3 +915,36 @@ func TestLinkedServiceMCPReadsMatchREST(t *testing.T) {
 	call("link_service_to_build_source", map[string]any{"serviceId": "solo", "buildSourceId": mono, "startCommand": "node solo.js"}, &linked)
 	same("link_service_to_build_source", linked)
 }
+
+// w2/m480 t005 (ADR116 D12): a Build Source carrier has a bds- id, not a
+// service subject, so even in a Pro workspace with ManagedOIDC enabled it must
+// not be stamped with LabelManagedOIDC.
+func TestCreateBuildSourceDoesNotStampManagedOIDC(t *testing.T) {
+	svc, _, ctx := newBuildSourceService(t)
+	svc.ManagedOIDC = true
+	svc.Plans = core.WorkspacePlanFunc(func(context.Context, string) (string, error) { return store.PlanPro, nil })
+	if _, err := svc.CreateBuildSource(ctx, monorepoSource); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Create(ctx, CreateRequest{
+		OwnerID: "tea-a", Name: "web", Repo: "https://github.com/acme/web",
+		Runtime: "go", BuildCommand: "go build .", StartCommand: "./web",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var crs appv1alpha1.AppList
+	if err := svc.Client.List(ctx, &crs); err != nil || len(crs.Items) != 2 {
+		t.Fatalf("CRs = %d (err %v), want 2", len(crs.Items), err)
+	}
+	for i := range crs.Items {
+		a := &crs.Items[i]
+		got := a.Labels[appv1alpha1.LabelManagedOIDC]
+		if core.IsBuildSource(a) {
+			if got != "" {
+				t.Fatalf("build source carrier got %s=%q; want unset", appv1alpha1.LabelManagedOIDC, got)
+			}
+		} else if got != appv1alpha1.ManagedOIDCEnabled {
+			t.Fatalf("service %s got %s=%q; want %q", a.Name, appv1alpha1.LabelManagedOIDC, got, appv1alpha1.ManagedOIDCEnabled)
+		}
+	}
+}

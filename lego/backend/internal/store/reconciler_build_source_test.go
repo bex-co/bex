@@ -186,3 +186,33 @@ func TestResyncFinishesAnInterruptedFanoutOnce(t *testing.T) {
 		t.Fatalf("fan-out calls = %v, want the failed run then exactly one re-run of %s", fanout.calls, want)
 	}
 }
+
+// Build source carriers carry bds- ids, never a service subject, so even in a
+// Pro workspace the projector must not stamp app.bex.co/managed-oidc on them
+// (ADR116 D12, w2/m480).
+func TestReconcilerDoesNotLabelBuildSourceForManagedOIDC(t *testing.T) {
+	ctx := context.Background()
+	rec, st, cl := newTestReconciler(t)
+	rec.ManagedOIDC = true
+	ten, _ := st.CreateTenant(ctx, "pro-ws", "pro")
+	_, _ = st.CreateApp(ctx, App{TenantID: ten.ID, Name: "bds-1", Type: TypeBuildSource, Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	_, _ = st.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	var list appv1alpha1.AppList
+	if err := cl.List(ctx, &list); err != nil || len(list.Items) != 2 {
+		t.Fatalf("apps = %d, %v; want 2", len(list.Items), err)
+	}
+	for i := range list.Items {
+		a := &list.Items[i]
+		got := a.Labels[appv1alpha1.LabelManagedOIDC]
+		if a.Spec.Type == appv1alpha1.TypeBuildSource {
+			if got != "" {
+				t.Fatalf("build source carrier got %s=%q; want unset", appv1alpha1.LabelManagedOIDC, got)
+			}
+		} else if got != appv1alpha1.ManagedOIDCEnabled {
+			t.Fatalf("service %s got %s=%q; want %q", a.Name, appv1alpha1.LabelManagedOIDC, got, appv1alpha1.ManagedOIDCEnabled)
+		}
+	}
+}
