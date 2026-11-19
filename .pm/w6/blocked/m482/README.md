@@ -1,6 +1,6 @@
 # w6 · m482 — An ssh-gateway release gives open SSH and Shell sessions an hour, as Render's SSH maintenance does
 
-**Worker:** worker6 **Goal:** a production deploy that restarts `bex-ssh-gateway` leaves every open SSH and dashboard Shell session working until the user ends it, its instance stops, its access is revoked, or an hour has passed since the gateway began draining; new connections reach only the new pods. **Status:** blocked (t001–t005, t007–t009 done and shipped; t006 waits for the second production pin after the shipping commit, the first deploy whose old gateway pods drain; then t010)
+**Worker:** worker6 **Goal:** a production deploy that restarts `bex-ssh-gateway` leaves every open SSH and dashboard Shell session working until the user ends it, its instance stops, its access is revoked, or an hour has passed since the gateway began draining; new connections reach only the new pods. **Status:** blocked (t001–t005, t007–t009 done and shipped; the drain is live on production since pin `826d32e42`, and t006's probes hold an SSH and a Web Shell session on a `bex-canary` fixture since 2026-11-19 14:15Z; t006 reads them across the next deploy that restarts the gateway, then t010)
 
 ## Tasks (in order)
 
@@ -35,3 +35,11 @@
 - **Expected outcome:** a user's SSH or Shell session no longer drops several times a day for platform releases; agent model, git and egress streams drain instead of being cut after 5 s.
 - **Why now:** every production deploy cuts every open session today, and deploys run several times a day. This continues w6/m469 and w6/m470 (platform releases keep datastore connections) on the SSH path. This is not Render's `/maintenance` scheduling API, which `.pm/DO_NOT_DO.md` lists as a non-goal; it is the session behavior Render documents for its own infrastructure work.
 - **Render parity task included:** SSH and the dashboard Shell are tenant-facing surfaces (REST `shell-ticket`, GraphQL `createShellSession`, the Shell page's end reasons).
+
+## Unblock record (2026-11-19, verified evidence)
+
+- **Affected:** t006, then t010. **Source:** verified evidence, no new decision; scope and definition of done unchanged.
+- **The release gate cleared.** Production pins `826d32e42` (`7af50a28168d`, 03:48Z), `19faf35f3` (`4b2cebd0bd03`, 09:13Z) and `a91e9aeb3` (`dff52c596d13`, 11:30Z) all contain `97c2ac2f5`. The first rolled the gateway onto the drain; the other two were the first drain-capable deploys.
+- **What production already shows (read-only, 14:05Z).** `bex-ssh-gateway` reads `maxUnavailable 0`, `maxSurge 1`, `terminationGracePeriodSeconds 3660`. `deploy.yml`'s gateway step returned 11 s after `rollout restart` on 09:18:37Z and 6 s after it on 11:36:03Z, each while "1 old replicas are pending termination" (deploy jobs 135456050272 and 135529544614). kube-state-metrics shows the drain-capable old pods gone about a minute after deletion, so an idle gateway exits at once. No session was held across either deploy, so that still proves nothing about a held session.
+- **Remaining gate:** none needs a person. The sessions must be open before a deploy, and the next one cannot start before 17:30Z (`deploy.yml` waits 6 h after the 11:30Z pin), so t006 armed self-recording probes instead of holding a terminal (t006 § Progress 2026-11-19). The next deploy writes its pin back about five minutes before it restarts the gateway, so the workstream line's pin gate on `a91e9aeb3` (the first pin after it) clears with it.
+- **Next (the worker after that pin):** read both probe pods' logs across the gateway restart, as t006 lists, and check them against the first two definition-of-done items; then delete the fixture, the probes and both keys, and close with t010.
