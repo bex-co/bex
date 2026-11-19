@@ -15,7 +15,6 @@ export const SECURITY_HEADER_NAMES: ReadonlySet<string> = new Set([
   "x-content-type-options",
   "x-frame-options",
   "content-security-policy",
-  "content-security-policy-report-only",
   "strict-transport-security",
 ]);
 
@@ -33,7 +32,7 @@ export interface ConnectURLs {
   agentStreamURL?: string;
   shellWsURL?: string;
   /** GA4 is configured (VITE_GA_MEASUREMENT_ID): Google's documented GA4 CSP
-   * origins join script-src, img-src and the narrowed connect-src. */
+   * origins join script-src, img-src and connect-src. */
   googleAnalytics?: boolean;
 }
 
@@ -46,15 +45,19 @@ function originOf(url: string | undefined): string | undefined {
   }
 }
 
-/** The connect-src a browser needs, as far as the code reaches: the page itself,
- * Kratos, bex-api (GraphQL, REST, the agent stream and the live-log SSE), the Web
- * Shell WebSocket, the attachments bucket (presigned uploads), Stripe.js's API
- * (https://docs.stripe.com/security/guide, read 2026-11-14) and Cloudflare's
- * beacon. Undefined without an API origin: a build that cannot name it would
- * report every call, so it reports nothing. */
+/** The production connect-src: the page itself, Kratos, bex-api (GraphQL, REST,
+ * the attachment upload, the agent stream and the live-log SSE), the Web Shell
+ * WebSocket, Stripe.js's API (https://docs.stripe.com/security/guide, read
+ * 2026-11-14) and Cloudflare's beacon. The attachments bucket is absent on
+ * purpose: the browser uploads through bex-api, downloads by navigating to the
+ * presigned URL and shows thumbnails as images, so the bucket is img-src only.
+ * Link is absent too: the account's Payment Element offered cards only when a
+ * QA sweep of every flow ran against the real origins (w21/083); if Link is
+ * ever enabled in Stripe, add `https://link.com https://*.link.com` here.
+ * Undefined without an API origin to name (a build with a relative or no
+ * VITE_API_URL): the caller keeps the wide list. */
 function narrowedConnectSources(
   kratosPublicURL: string,
-  attachmentsOrigin: string,
   connect: ConnectURLs,
 ): string | undefined {
   const api = originOf(connect.apiURL);
@@ -64,7 +67,6 @@ function narrowedConnectSources(
     kratosPublicURL,
     connect.agentStreamURL,
     connect.shellWsURL || DEFAULT_SHELL_WS_URL,
-    attachmentsOrigin,
   ]) {
     const origin = originOf(url);
     if (origin) origins.add(origin);
@@ -104,15 +106,26 @@ export function buildSecurityHeaders(
     imgOrigins.push("https://*.google-analytics.com", GOOGLE_TAG_MANAGER);
   }
 
-  // TanStack Start SSR injects inline hydration scripts; inline styles come from
-  // Tailwind and shadcn/Radix. Outside production, connect-src also allows
-  // plain-http localhost: `yarn dev:local` (dashboard/AGENTS.md's fast frontend
-  // loop) points VITE_API_URL straight at local-bex.mjs's wide-open-CORS stub on
-  // a different port (:8099) rather than through apiDevProxy's same-origin
-  // tunnel — without this the CSP silently blocks that fetch and every page
-  // hangs on "Select a workspace".
-  const policy = (connectSrc: string) =>
-    [
+  const production = process.env.NODE_ENV === "production";
+  // Production names the origins the app reaches. A build that cannot name its
+  // API origin keeps the wide https:/wss: list rather than refuse the API.
+  // Outside production, connect-src also allows plain-http localhost:
+  // `yarn dev:local` (dashboard/AGENTS.md's fast frontend loop) points
+  // VITE_API_URL straight at local-bex.mjs's wide-open-CORS stub on a different
+  // port (:8099) rather than through apiDevProxy's same-origin tunnel — without
+  // this the CSP silently blocks that fetch and every page hangs on "Select a
+  // workspace".
+  const connectSrc = production
+    ? (narrowedConnectSources(kratosPublicURL, connect) ??
+      "connect-src 'self' https: wss:")
+    : "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*";
+
+  const headers: Record<string, string> = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    // TanStack Start SSR injects inline hydration scripts; inline styles come
+    // from Tailwind and shadcn/Radix.
+    "Content-Security-Policy": [
       "default-src 'self'",
       `script-src 'self' 'unsafe-inline' https://js.stripe.com ${[...scriptOrigins].join(" ")}`,
       "style-src 'self' 'unsafe-inline'",
@@ -129,34 +142,10 @@ export function buildSecurityHeaders(
       // decisions redirect to an OAuth client's own callback (dashboard/AGENTS.md,
       // Content-Security-Policy).
       "base-uri 'self'",
-    ].join("; ");
-
-  // Standard hardening headers for every SSR response. HSTS only in production
-  // (NODE_ENV=production) — the dashboard runs over plain HTTP in dev, so setting
-  // HSTS there would break the dev server.
-  const production = process.env.NODE_ENV === "production";
-  const headers: Record<string, string> = {
-    "X-Content-Type-Options": "nosniff",
-    "X-Frame-Options": "DENY",
-    // connect-src https:/wss: still covers the API, auth, Stripe and Browser Web
-    // Shell origins without listing them; the narrowed list below reports
-    // against it until a sweep shows nothing it would refuse (w21/081).
-    "Content-Security-Policy": policy(
-      production
-        ? "connect-src 'self' https: wss:"
-        : "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*",
-    ),
+    ].join("; "),
   };
-  if (production) {
-    const narrowed = narrowedConnectSources(
-      kratosPublicURL,
-      attachmentsOrigin,
-      connect,
-    );
-    if (narrowed) {
-      headers["Content-Security-Policy-Report-Only"] = policy(narrowed);
-    }
-  }
+  // HSTS only in production (NODE_ENV=production) — the dashboard runs over
+  // plain HTTP in dev, so setting HSTS there would break the dev server.
   if (production) {
     headers["Strict-Transport-Security"] =
       "max-age=63072000; includeSubDomains";

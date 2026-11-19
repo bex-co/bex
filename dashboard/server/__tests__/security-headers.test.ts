@@ -153,90 +153,139 @@ describe("buildRouteRules", () => {
   });
 });
 
-// The enforced policy still lets the page connect to any https or wss origin.
-// Next to it, production reports what a connect-src narrowed to the origins the
-// code reaches would refuse (w21/081), so a flow it would break shows up as a
-// "[Report Only]" console violation before anything is enforced.
-describe("the report-only narrowed connect-src", () => {
-  const build = (connect = { apiURL: "https://api.bex.co/graphql" }) =>
+// Production enforces a connect-src that names the origins the app reaches
+// (w21/083, after a QA sweep of every flow against the real origins showed no
+// refusal); every other environment, and a build that cannot name its API
+// origin, keeps the wide list.
+describe("the enforced connect-src", () => {
+  const build = (
+    connect: Parameters<typeof buildSecurityHeaders>[3] = {
+      apiURL: "https://api.bex.co/graphql",
+    },
+    attachmentsOrigin?: string,
+  ) =>
     buildSecurityHeaders(
       "https://auth.bex.co",
       "https://auth.bex.co",
-      undefined,
+      attachmentsOrigin,
       connect,
     );
-  const reportOnly = (headers: Record<string, string>) =>
-    headers["Content-Security-Policy-Report-Only"] ?? "";
-
-  it("names the first-party, Stripe, Cloudflare and attachments origins in production", () => {
+  const production = <T>(run: () => T): T => {
     vi.stubEnv("NODE_ENV", "production");
-    const headers = build({
-      apiURL: "https://api.bex.co/graphql",
-      agentStreamURL: "https://ssh.bex.co/agent",
-      shellWsURL: "",
-    } as never);
-    vi.unstubAllEnvs();
-    const connectSrc = (
-      reportOnly(headers)
-        .split("; ")
-        .find((d) => d.startsWith("connect-src ")) ?? ""
-    )
-      .split(" ")
-      .slice(1)
-      .sort();
-    expect(connectSrc).toEqual(
+    try {
+      return run();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  };
+  const origins = (headers: Record<string, string>) =>
+    directive(headers, "connect-src").split(" ").slice(1).sort();
+
+  it("names the first-party, Stripe and Cloudflare origins in production", () => {
+    const headers = production(() =>
+      build({
+        apiURL: "https://api.bex.co/graphql",
+        agentStreamURL: "https://ssh.bex.co/agent",
+      }),
+    );
+    expect(origins(headers)).toEqual(
       [
         "'self'",
         "https://api.bex.co",
         "https://auth.bex.co",
         "https://ssh.bex.co",
         "wss://ssh.bex.co",
-        "https://s3.eu-central-2.wasabisys.com",
         "https://api.stripe.com",
         "https://cloudflareinsights.com",
       ].sort(),
     );
+    // The scheme-wide sources are what narrowing removed.
+    expect(directive(headers, "connect-src")).not.toMatch(/ (https|wss):( |$)/);
   });
 
-  it("is the enforced policy with only connect-src narrowed", () => {
-    vi.stubEnv("NODE_ENV", "production");
-    const headers = build();
-    vi.unstubAllEnvs();
-    const other = (policy: string) =>
-      policy.split("; ").filter((d) => !d.startsWith("connect-src "));
-    expect(other(reportOnly(headers))).toEqual(
-      other(headers["Content-Security-Policy"]),
+  it("sends no report-only policy any more", () => {
+    expect(production(() => build())).not.toHaveProperty(
+      "Content-Security-Policy-Report-Only",
     );
-    expect(directive(headers, "connect-src")).toBe(
-      "connect-src 'self' https: wss:",
+  });
+
+  // The browser uploads an attachment through bex-api, downloads by navigating
+  // to the presigned URL and shows a thumbnail as an image, so the bucket is
+  // an img-src origin only, whatever it is called.
+  it("keeps the attachments bucket out of connect-src and in img-src", () => {
+    const headers = production(() =>
+      build(
+        { apiURL: "https://api.bex.co/graphql" },
+        "https://store.example.com",
+      ),
     );
-    expect(reportOnly(headers)).not.toMatch(
-      /connect-src[^;]* (https|wss):(;| |$)/,
+    expect(directive(headers, "connect-src")).not.toContain(
+      "store.example.com",
     );
+    expect(directive(headers, "connect-src")).not.toContain("wasabisys");
+    expect(directive(headers, "img-src")).toContain(
+      " https://store.example.com",
+    );
+  });
+
+  it("changes only connect-src against the policy production sent before", () => {
+    const headers = production(() => build());
+    expect(
+      headers["Content-Security-Policy"]
+        .split("; ")
+        .filter((d) => !d.startsWith("connect-src ")),
+    ).toEqual([
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' https://js.stripe.com https://auth.bex.co https://static.cloudflareinsights.com",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https://*.stripe.com https://s3.eu-central-2.wasabisys.com",
+      "font-src 'self'",
+      "frame-src https://js.stripe.com https://hooks.stripe.com",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+    ]);
+  });
+
+  it("names the Web Shell WebSocket from its override", () => {
+    const headers = production(() =>
+      build({
+        apiURL: "https://api.bex.co/graphql",
+        shellWsURL: "wss://shell.example.com/shell",
+      }),
+    );
+    expect(origins(headers)).toContain("wss://shell.example.com");
+    expect(origins(headers)).not.toContain("wss://ssh.bex.co");
   });
 
   it("names GA4's collect origins when GA is configured", () => {
-    vi.stubEnv("NODE_ENV", "production");
-    const headers = build({
-      apiURL: "https://api.bex.co/graphql",
-      googleAnalytics: true,
-    } as never);
-    vi.unstubAllEnvs();
-    expect(reportOnly(headers)).toContain(
+    const on = production(() =>
+      build({ apiURL: "https://api.bex.co/graphql", googleAnalytics: true }),
+    );
+    expect(directive(on, "connect-src")).toContain(
       " https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com",
     );
-    expect(reportOnly(build())).not.toContain("google");
+    expect(
+      directive(
+        production(() => build()),
+        "connect-src",
+      ),
+    ).not.toContain("google");
   });
 
-  it("is absent without an API origin to name, and outside production", () => {
-    vi.stubEnv("NODE_ENV", "production");
-    expect(build({} as never)).not.toHaveProperty(
-      "Content-Security-Policy-Report-Only",
+  it("keeps the wide list when the build cannot name its API origin", () => {
+    for (const connect of [{}, { apiURL: "/graphql" }]) {
+      expect(
+        directive(
+          production(() => build(connect)),
+          "connect-src",
+        ),
+      ).toBe("connect-src 'self' https: wss:");
+    }
+  });
+
+  it("keeps the wide list, plus localhost, outside production", () => {
+    expect(directive(build(), "connect-src")).toBe(
+      "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*",
     );
-    expect(build({ apiURL: "/graphql" })).not.toHaveProperty(
-      "Content-Security-Policy-Report-Only",
-    );
-    vi.unstubAllEnvs();
-    expect(build()).not.toHaveProperty("Content-Security-Policy-Report-Only");
   });
 });
