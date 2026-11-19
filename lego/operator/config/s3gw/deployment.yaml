@@ -65,14 +65,20 @@ spec:
         - name: s3gw
           image: controller:latest # overridden by kustomize; same image as the manager, different entrypoint
           command: ["/s3gw"]
-          # Sizing is a first guess to be refined by the production walk
-          # (w21/m500): 16 streams a workspace and 64 a replica, each a few
-          # buffers of a 32 KiB copy, plus the Go runtime and the S3 SDK.
-          # Contract B measured a 300 MiB stream at 67 to 74 MiB of memory in
-          # bex-api. GOMEMLIMIT ramps the GC before the cgroup OOM killer fires.
+          # Sized from the production walk of 2026-11-19 (w21/m500 t001,
+          # ADR112 § Not verified): memory is flat in the number and length of
+          # streams (16 concurrent 256 MiB puts, 40 slow ones and a real
+          # 5 GiB put peaked at 33 MiB against 16 to 19 MiB idle), so 768Mi is
+          # headroom for the 64-stream replica cap and a Go runtime spike, not a
+          # need; CPU is the figure that scales, about 25 millicores for each
+          # MiB/s of aws-cli's default CRC64NVME-trailered upload (408m at the
+          # 16 MiB/s pace of one workspace), so one replica's limit of 1 CPU
+          # holds about 40 MiB/s before it throttles, and a request of 250m
+          # covers one workspace at full pace. GOMEMLIMIT ramps the GC before
+          # the cgroup OOM killer fires.
           resources:
             requests:
-              cpu: 100m
+              cpu: 250m
               memory: 192Mi
             limits:
               cpu: "1"

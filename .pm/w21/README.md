@@ -138,3 +138,4 @@
 - [ ] **111** — An env-group variable or secret-file `PUT` that stores nothing new still rolls every linked service → [`111.md`](111.md) (~1h) ← from w21/110, 2026-11-17
 - [ ] **112** — `bex_s3gw_requests_total` counts a copy as `PutObject` and a part copy as `UploadPart` → [`112.md`](112.md) (~1h) ← from w21/m498 t019, 2026-11-19
 - [ ] **113** — S3 object metadata names come back capitalised (`X-Amz-Meta-K`), so boto3 and aws-cli read `{'K': 'v'}` where S3 returns `{'k': 'v'}` → [`113.md`](113.md) (~1h) ← from w21/m498 t019, 2026-11-19
+- [ ] **114** — One S3 upload stream to `oregon` runs at about 1 MiB/s, so a single `PutObject` over about 1.7 GiB cannot finish inside the 30-minute stream deadline → [`114.md`](114.md) (~1h) ← from w21/m500 t001, 2026-11-19

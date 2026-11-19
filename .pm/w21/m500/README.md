@@ -6,7 +6,7 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | The production walk of the S3 surface | 90m | w21/m498/t019, w21/m499/t009 |
+| [t001](done/t001.md) | The production walk of the S3 surface | 90m | w21/m498/t019, w21/m499/t009 — **DONE** |
 | [t002](t002.md) | The removal gate and the removal of Contract B's routes and code | 60m | t001 |
 | [t003](t003.md) | Remove the wrangler CI, scripts and docs, and finish the dead-code pass | 40m | t002 |
 | [t004](t004.md) | ADR112: record the walk and the removal | 30m | t003 |
