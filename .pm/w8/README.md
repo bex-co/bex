@@ -447,6 +447,10 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **341** — [A live tail opened while a service floods its log shows up to 6,000 lines that history drops: each tail starts its per-instance bucket full, where Render says dropped lines appear in no view](341.md) (~1h, minor) ← `/qa-find-bugs-cli w8` routine sweep 617d 2026-11-19: a 40 s `bex logs --tail` 100 s into a 190-lines-a-second flood showed 7,660 lines; history for the same window keeps 4,048.
+
+- [ ] **340** — [A native build's log stops after 2 MiB of build-command output, and loses output written faster than 200 KiB/s: BuildKit's default step-log limits clip it, where Render caps no build log](340.md) (~45m, minor) ← `/qa-find-bugs-cli w8` routine sweep 617d 2026-11-19: a successful build printing 3.4 MB kept the first 32,264 of 52,500 lines and none of the later `pip install` output.
+
 - [x] **339** — [A static site whose root directory is set and then cleared reads "saved changes aren't live yet", though nothing it serves differs](done/339.md) (~1–2h, minor) — **DONE 2026-11-19:** on production pin `c81d2d447bd8` (carries `05dbc4a35`), a root-directory set-and-clear during a static site's first build and during a later build, and a publish-directory `out` → `out2` → `out` revert, each settled `Running` with `undeployedChanges: false`; a publish-directory save that stayed saved read `saved` until the next deploy published `out2`. ← w8/m460 t008's production replay, 2026-11-19, pin `4b2cebd0bd03`. `SetRootDir` and `SetPublishPath` bump `spec.restartedAt`, and m460's `staticSaveWaits` compares the full release identity, so a net-zero save never matches again. A web service given the same save reads `false`.
 
 - [x] **338** — [Settings → Port shows a detected port as if it were configured, and says bex injects it as `$PORT`, which stays 10000](done/338.md) (~1h, minor) — **DONE 2026-11-19:** GraphQL `portDetected`; the row is blank with a `Detected: <port>` placeholder and says `PORT` stays 10000 ← follow-up from w8/m504 t004, 2026-11-19. An image-created service on the same image shows the row blank ("From the image").
