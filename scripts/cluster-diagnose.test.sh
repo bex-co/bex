@@ -21,6 +21,12 @@ fails=0
 fail() { echo "FAIL: $*" >&2; fails=$((fails + 1)); }
 ok() { echo "ok: $*"; }
 
+# A fixture that .gitignore matches (*.log was one) is on the author's disk and
+# missing from every checkout: the test passes there and fails in CI.
+for fx in "$fixtures"/*; do
+  ! git check-ignore -q -- "$fx" || fail "fixture ${fx#"$PWD"/} is gitignored, so CI would not have it"
+done
+
 # The stub answers by the arguments' shape, most specific first, and logs
 # every call so the test can prove what was (not) read.
 cat >"$work/bin/kubectl" <<'STUB'
@@ -45,7 +51,7 @@ case "$*" in
   # The selector matches by label; the stub also answers with a tenant pod
   # whose name says autoscaler, which must never be read.
   "get pods -A -l app.kubernetes.io/instance=cluster-autoscaler"*"-o json") cat "$f/autoscaler-pods.json" ;;
-  "logs -n bex-capi cluster-autoscaler-clusterapi-6c7d8-qwert"*) cat "$f/autoscaler.log" ;;
+  "logs -n bex-capi cluster-autoscaler-clusterapi-6c7d8-qwert"*) cat "$f/autoscaler-log.txt" ;;
   "logs -n "*) echo "TENANT-LOG-LINE error scale up from the tenant's own autoscaler" ;;
   # The local (full-detail) reads.
   "get pods -A -l bex.co/app-id="*"-o wide") jq -r '.items[] | "\(.metadata.namespace) \(.metadata.name) \(.status.phase) \(.spec.nodeName // "<none>") \(.status.podIP // "<none>")"' "$f/service-pods.json" ;;

@@ -1,0 +1,10 @@
+I1118 11:00:00.100000       1 static_autoscaler.go:274] Starting main loop
+I1118 11:00:01.200000       1 klogx.go:87] Pod tea-c0ffee00000000000001/tea-c0ffee00000000000001-secret-shop-5d8f7c9b4-pend1 is unschedulable
+I1118 11:00:01.210000       1 klogx.go:87] Pod bex-system/bex-api-6d5f8c7b9-xyz12 is unschedulable
+I1118 11:00:01.300000       1 filter_out_schedulable.go:63] Filtering out schedulables
+I1118 11:00:02.400000       1 orchestrator.go:466] Final scale-up plan: [{MachineDeployment/bex-capi/bex-tenant-0 6->7 (max: 10)}]
+I1118 11:00:02.500000       1 executor.go:147] Scale-up: setting group MachineDeployment/bex-capi/bex-tenant-0 size to 7
+I1118 11:00:03.600000       1 scale_down.go:312] Scale-down: skipping bex-tenant-0-abcde-fghij: node group min size reached (current: 1, min: 1)
+E1118 11:00:04.700000       1 clusterapi_controller.go:608] error: no node for providerID hcloud://123456789 (bex-tenant-0-abcde-fghij)
+I1118 11:00:05.800000       1 scale_up.go:288] Pod bex-system/bex-api-6d5f8c7b9-xyz12 can't be scheduled: 0/3 nodes are available: 3 Insufficient cpu/memory. predicate checking skipped
+I1118 11:00:06.900000       1 static_autoscaler.go:420] Main loop done
