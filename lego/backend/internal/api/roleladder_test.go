@@ -246,9 +246,9 @@ func TestRoleLadderDenyMatrix(t *testing.T) {
 	// gate so "allowed iff the role holds every checked relation" reasons about
 	// the gate, not the reported set — otherwise the projection reads as
 	// requiring admin. It is still swept (never excused from the matrix).
-	for verb := range capabilityProjectionVerbs {
+	for verb, gate := range capabilityProjectionVerbs {
 		if _, ok := verbRelations[verb]; ok {
-			verbRelations[verb] = []string{core.RelCanView}
+			verbRelations[verb] = []string{gate}
 		}
 	}
 
@@ -307,19 +307,25 @@ func grantsAll(grants map[string]bool, relations []string) bool {
 }
 
 // capabilityProjectionVerbs report per-relation booleans by probing every
-// relation with core.Base.Can (w9/m84) instead of gating on them; their sole
-// gate is can_view. TestRoleLadderDenyMatrix pins their matrix relation to
-// can_view so the "allowed iff role holds every checked relation" invariant
+// relation with core.Base.Can (w9/m84) instead of gating on them, mapped to
+// their sole gate. TestRoleLadderDenyMatrix pins their matrix relation to that
+// gate so the "allowed iff role holds every checked relation" invariant
 // reasons about the gate, not the probed set.
-var capabilityProjectionVerbs = map[string]bool{
-	"*members.Service.Capabilities": true,
+var capabilityProjectionVerbs = map[string]string{
+	"*members.Service.Capabilities": core.RelCanView,
 	// The per-resource action projections (ADR087, w6/m136) follow the same
 	// shape: can_view is the gate, the operate/create relations are probed to
 	// REPORT decisions, never to gate the projection itself.
-	"*apps.Service.ActionCapabilities":     true,
-	"*deploys.Service.ActionCapabilities":  true,
-	"*postgres.Service.ActionCapabilities": true,
-	"*keyvalue.Service.ActionCapabilities": true,
+	"*apps.Service.ActionCapabilities":     core.RelCanView,
+	"*deploys.Service.ActionCapabilities":  core.RelCanView,
+	"*postgres.Service.ActionCapabilities": core.RelCanView,
+	"*keyvalue.Service.ActionCapabilities": core.RelCanView,
+	// Every member lists and mints their own API keys (w9/m514): the list
+	// probes can_manage_keys to choose the workspace-wide view over the
+	// caller's own keys, and the permission catalog probes each level's
+	// relations to mark what the caller may grant.
+	"*apikeys.Service.ListAPIKeys":       core.RelCanManageSSHKeys,
+	"*apikeys.Service.PermissionCatalog": core.RelCanManageSSHKeys,
 }
 
 // representativeVerbRelations pins the gating relation of one verb per relation
@@ -439,8 +445,9 @@ var representativeVerbRelations = map[string]string{
 	// the relation belongs to the sink, not the transport.
 	"*apps.Service.CreateShellSession": core.RelCanViewSensitive,
 	"*apps.Service.ResolveSSHSession":  core.RelCanViewSensitive,
-	// can_manage_keys — developer and up (workspace API keys).
-	"*apikeys.Service.CreateAPIKey": core.RelCanManageKeys,
+	// can_manage_ssh_keys — every member role mints their own API keys, as
+	// on Render (w9/m514); the key acts with no more than its creator's role.
+	"*apikeys.Service.CreateAPIKey": core.RelCanManageSSHKeys,
 	// can_join / can_join_as_admin — org-derived, never role-granted (ADR115
 	// D5): a Member joins a Public workspace, an Owner joins any as admin.
 	// Pinned semantically so a re-gated self-join (e.g. on can_view) turns

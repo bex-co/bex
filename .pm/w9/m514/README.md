@@ -1,20 +1,20 @@
 # w9 · m514 — A Viewer, Contributor or Billing member mints an API key capped at their role, and manages their own keys, as on Render
 
-**Worker:** worker9 **Goal:** every member role can mint an API key in its workspace, as on Render; the key acts with exactly its creator's current role and chosen grant (never more than their intersection, m481 and m496 unchanged); and a member below Developer lists, edits and revokes the keys they minted there, on REST, GraphQL, MCP and the dashboard. **Status:** todo
+**Worker:** worker9 **Goal:** every member role can mint an API key in its workspace, as on Render; the key acts with exactly its creator's current role and chosen grant (never more than their intersection, m481 and m496 unchanged); and a member below Developer lists, edits and revokes the keys they minted there, on REST, GraphQL, MCP and the dashboard. **Status:** todo (t001–t005, t007–t009 done; t006 done on dev-9, its production step waits for a pin carrying this milestone)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Design: who mints, who lists, edits and revokes, what Billing may grant; ADR024, ADR012 §8e and ADR018 amended | 45m | — |
-| [t002](t002.md) | Mint and seat: every member role mints a key at its own role, and reads the permission catalog marked for that role | 1h | t001 |
-| [t003](t003.md) | Own keys: a member below Developer lists, edits and revokes the keys they minted in the workspace, and no other | 1h | t002 |
-| [t004](t004.md) | Dashboard: the API keys panel works for every member role | 1h30m | t003 |
-| [t005](t005.md) | Security review of the widened mint boundary, recorded in the security lineage | 45m | t003 |
+| [t001](done/t001.md) | Design: who mints, who lists, edits and revokes, what Billing may grant; ADR024, ADR012 §8e and ADR018 amended — **DONE** | 45m | — |
+| [t002](done/t002.md) | Mint and seat: every member role mints a key at its own role, and reads the permission catalog marked for that role — **DONE** | 1h | t001 |
+| [t003](done/t003.md) | Own keys: a member below Developer lists, edits and revokes the keys they minted in the workspace, and no other — **DONE** | 1h | t002 |
+| [t004](done/t004.md) | Dashboard: the API keys panel works for every member role — **DONE** | 1h30m | t003 |
+| [t005](done/t005.md) | Security review of the widened mint boundary, recorded in the security lineage — **DONE** | 45m | t003 |
 | [t006](t006.md) | Live check on dev-9 and production | 1h30m | t004, t005 |
-| [t007](t007.md) | Render parity | 30m | t006 |
-| [t008](t008.md) | Simplify | 15m | t007 |
-| [t009](t009.md) | Test coverage | 45m | t007, t008 |
+| [t007](done/t007.md) | Render parity — **DONE** | 30m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
 | [t010](t010.md) | Closeout | 10m | t009 |
 
 Total: **10 tasks, about 8h**.

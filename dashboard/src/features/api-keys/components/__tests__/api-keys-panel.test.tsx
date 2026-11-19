@@ -79,6 +79,44 @@ describe("ApiKeysPanel", () => {
     expect(screen.getByText("key-2")).toBeInTheDocument();
   });
 
+  it("tells every role who sees which keys, in the panel and in its skeleton alike (w9/m514)", () => {
+    const description =
+      "Every member sees and manages the keys they created; Developers and Admins see every key in the workspace.";
+    const ready = render(<ApiKeysPanel />);
+    expect(ready.container).toHaveTextContent(description);
+    ready.unmount();
+    const { container } = render(<ApiKeysPanelSkeleton />);
+    expect(container).toHaveTextContent(description);
+  });
+
+  it("lists the keys a member below Developer minted, each with its gear and revoke (w9/m514)", () => {
+    // bex-api answers a Viewer with their own keys only; the panel shows them
+    // as it shows a Developer's workspace-wide list, with no forbidden state.
+    apiKeysState.keys = [
+      {
+        id: "key-mine",
+        name: "status-page",
+        createdAt: null,
+        createdBy: "viewer-1",
+        lastUsedAt: null,
+        permissions: {
+          all: false,
+          grants: [{ permission: "services", level: "read" }],
+        },
+      },
+    ];
+    render(<ApiKeysPanel />);
+
+    expect(screen.queryByText("Not authorized")).not.toBeInTheDocument();
+    expect(screen.getByText("status-page")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Change permissions for status-page" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Revoke API key status-page" }),
+    ).toBeInTheDocument();
+  });
+
   it("shows an empty state with no keys", () => {
     render(<ApiKeysPanel />);
     expect(screen.getByText("No API keys")).toBeInTheDocument();

@@ -7,9 +7,9 @@ const deApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "Maschinen-Zugangsdaten für Skripte und Agents. Jeder Schlüssel darf nur die für ihn gewählten Berechtigungen nutzen, nie mehr, als die aktuelle Mitgliedsrolle der Person erlaubt, die ihn erstellt hat, und nur in diesem Workspace. Gilt für den gesamten Workspace — wer Schlüssel verwalten kann, sieht hier jeden Schlüssel, nicht nur die eigenen.",
+      "Maschinen-Zugangsdaten für Skripte und Agents. Jeder Schlüssel darf nur die für ihn gewählten Berechtigungen nutzen, nie mehr, als die aktuelle Mitgliedsrolle der Person erlaubt, die ihn erstellt hat, und nur in diesem Workspace. Jedes Mitglied sieht und verwaltet die Schlüssel, die es erstellt hat; Developer und Admins sehen jeden Schlüssel im Workspace.",
     description:
-      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and that the list is shared",
+      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, Developers and Admins every key (w9/m514)",
   },
   "apiKeys.cliGuide": {
     message: "Die CLI einrichten.",

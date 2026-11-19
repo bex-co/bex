@@ -133,3 +133,20 @@ export const READ_ONLY_LEVELS: Record<string, PermissionLevel> = {
   services_env: "read",
   git: "read",
 };
+
+/**
+ * CATALOG as a Viewer sees it (w9/m514): every member role mints keys, and a
+ * Viewer may grant only the levels a Viewer holds, so every level that needs
+ * a higher role is marked not grantable. bex-api decides this
+ * (apikeys.PermissionCatalog); the picker only reads it.
+ */
+export const VIEWER_CATALOG: PermissionAreaView[] = CATALOG.map((area) => ({
+  ...area,
+  permissions: area.permissions.map((permission) => ({
+    ...permission,
+    levels: permission.levels.map((l) => ({
+      ...l,
+      grantable: l.requiredRole === "viewer",
+    })),
+  })),
+}));

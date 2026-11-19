@@ -894,8 +894,8 @@ func TestAPIKeys_SessionCaller(t *testing.T) {
 		if code != 200 || created["secret"] != "s3cret" {
 			t.Fatalf("session mint: code %d body %s", code, body)
 		}
-		if chk.lastSubject != "user:identity-1" || chk.lastRelation != core.RelCanManageKeys {
-			t.Errorf("mint checked subject=%q relation=%q, want user:identity-1 / can_manage_keys", chk.lastSubject, chk.lastRelation)
+		if chk.lastSubject != "user:identity-1" || chk.lastRelation != core.RelCanManageSSHKeys {
+			t.Errorf("mint checked subject=%q relation=%q, want user:identity-1 / can_manage_ssh_keys (w9/m514: every member mints)", chk.lastSubject, chk.lastRelation)
 		}
 
 		code, data, body = gqlSession(t, h, sessionCookie, `{ apiKeys { id name secret } }`)

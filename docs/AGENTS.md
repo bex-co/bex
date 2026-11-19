@@ -6,7 +6,7 @@ Docs live here — one file per topic. Root [AGENTS.md](../AGENTS.md) points her
 
 - Each `ADR*.md` is self-contained; read the ADR directly for design + status.
 - Render-parity ledgers ([ADR018](ADR018-render-parity.md), [cli-compatibility-checklist.md](cli-compatibility-checklist.md), [terraform-compatibility-checklist.md](terraform-compatibility-checklist.md)) are evidence-backed.
-- Security reviews form a chain ADR028 → ADR085 → ADR107 → ADR110, plus the focused ADR103, ADR117 and ADR118 (see § Security lineage); read the latest for current residual.
+- Security reviews form a chain ADR028 → ADR085 → ADR107 → ADR110, plus the focused ADR103, ADR117, ADR118 and ADR119 (see § Security lineage); read the latest for current residual.
 
 ## Catalog — by topic
 
@@ -169,6 +169,7 @@ Each entry is a codex-security triage; earlier rounds' residuals are re-confirme
 - [ADR110-security-review-round25.md](ADR110-security-review-round25.md) — round 25 (2026-11-14, w21/m394): the operator's tenant-facing daemons and the dashboard's server routes; 10 findings (1 medium, 9 low) and 3 hardening items, all fixed; R25-12 accepted with ADR066 amended (its "edge/LB rate limiting" premise is false); hardening filed as w21/067–074
 - [ADR117-security-review-api-key-roles.md](ADR117-security-review-api-key-roles.md) — focused review (2026-11-18, w9/m481): an API key acting with its creator's role; 14 attack paths blocked or not a gap, 2 fixed in the change (projections asking OpenFGA directly, revoke of a non-Developer tuple); residuals: 30 s cached reads (as for people), 16 leaked `m35-*` production fixture keys (filed), Render's other key forms (filed)
 - [ADR118-security-review-scoped-api-keys.md](ADR118-security-review-scoped-api-keys.md) — focused review (2026-11-18, w9/m496): a scoped API key's grant (Render's per-area permissions under its creator's role); 19 attack paths blocked or not a gap, 2 of them fixed in the change (projections revealing environment-group values, a webhook's secret, billing figures and a Blueprint manifest to a key without the matching permission; a live log tail outliving a narrowing); accepted by design: writes that run code imply their environment, as on Render; residual: an open gateway stream outlives a narrowing until its session cap (w9/125).
+- [ADR119-security-review-member-api-keys.md](ADR119-security-review-member-api-keys.md) — focused review (2026-11-19, w9/m514): every member role mints an API key and manages the keys they minted; 13 attack paths blocked, allowed as for the creator or not a gap (a below-Developer key gets exactly its creator's answers; another member's key stays `can_manage_keys`); accepted by design: a key is as strong as its creator at every role; residual: the per-workspace key quota and mint rate are shared by every member (owner: the workspace Admin).
 - [ADR111 § D11](ADR111-agent-repo-environment-snapshots.md#d11--security-review-of-the-build-path) — focused review (2026-11-14, w9/m407): repository environment builds add an environment save and a daily schedule as triggers of the node-root commit Job; ADR104 D4's constraints applied (nothing caller-chosen, per-repository and per-workspace rate limits, size and time bounds, no privileged Pod left behind)
 
 Other docs: [PRFAQ001-bex-v1-hosting.md](PRFAQ001-bex-v1-hosting.md), [assets/](assets/) media.

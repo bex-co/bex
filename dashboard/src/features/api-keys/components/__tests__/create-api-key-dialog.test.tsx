@@ -3,7 +3,10 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CreateApiKeyDialog } from "@/features/api-keys/components/create-api-key-dialog";
 import type { UseApiKeyPermissionCatalogResult } from "@/features/api-keys/hooks/use-api-key-permission-catalog";
-import { CATALOG } from "@/features/api-keys/__tests__/catalog-fixtures";
+import {
+  CATALOG,
+  VIEWER_CATALOG,
+} from "@/features/api-keys/__tests__/catalog-fixtures";
 
 const create = vi.fn();
 let busy = false;
@@ -403,5 +406,65 @@ describe("CreateApiKeyDialog — the key's permissions (w9/m496)", () => {
     dialog = await openNamed(user);
     await user.click(within(dialog).getByRole("button", { name: "Create" }));
     expect(create).toHaveBeenLastCalledWith("deploy-agent", { all: true });
+  });
+});
+
+describe("CreateApiKeyDialog — a Viewer mints a key capped at their role (w9/m514)", () => {
+  beforeEach(() => {
+    catalog = { areas: VIEWER_CATALOG, error: undefined, refetch: vi.fn() };
+  });
+
+  it("creates an All key, which acts with no more than the Viewer's role", async () => {
+    create.mockResolvedValue(CREATED);
+    const user = userEvent.setup();
+    render(<CreateApiKeyDialog onCreated={vi.fn()} />);
+    const dialog = await openNamed(user);
+
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    expect(create).toHaveBeenCalledWith("deploy-agent", { all: true });
+  });
+
+  it("Read only selects only the Read levels a Viewer may grant", async () => {
+    create.mockResolvedValue(CREATED);
+    const user = userEvent.setup();
+    render(<CreateApiKeyDialog onCreated={vi.fn()} />);
+    const dialog = await openNamed(user);
+
+    await user.click(within(dialog).getByRole("button", { name: "Read only" }));
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+
+    // Environment variables at Read needs a Developer: it stays None.
+    expect(create).toHaveBeenCalledWith("deploy-agent", {
+      grants: [
+        { permission: "services", level: "read" },
+        { permission: "git", level: "read" },
+      ],
+    });
+  });
+
+  it("disables every level above Viewer and names the role it needs", async () => {
+    const user = userEvent.setup();
+    render(<CreateApiKeyDialog onCreated={vi.fn()} />);
+    const dialog = await openNamed(user);
+
+    const services = within(
+      within(dialog).getByRole("radiogroup", {
+        name: "Web and private services, static sites, background workers, and cron jobs",
+      }),
+    );
+    expect(services.getByRole("radio", { name: "Read" })).toBeEnabled();
+    const readWrite = services.getByRole("radio", { name: "Read & write" });
+    expect(readWrite).toBeDisabled();
+    expect(readWrite).toHaveAccessibleDescription(
+      "Read & write requires the Developer role.",
+    );
+    const env = within(
+      within(dialog).getByRole("radiogroup", {
+        name: "Environment variables and secret files",
+      }),
+    );
+    for (const name of ["Read", "Write", "Read & write"]) {
+      expect(env.getByRole("radio", { name })).toBeDisabled();
+    }
   });
 });

@@ -1057,9 +1057,10 @@ var ErrRoleUnsettled = errors.New("the creator's workspace role change is still 
 
 // BindClientForCreator binds an API key to tenantID at its creator's current
 // role there and records the creator on the key's row (w9/m481), returning the
-// role it seated. The creator must be a person in the workspace at a role that
-// mints keys (admin or developer): anyone else is ErrNotFound. A creator whose
-// own role intent is still queued is ErrRoleUnsettled.
+// role it seated. The creator must be a person in the workspace, at any of the
+// five member roles, since every member mints keys as on Render (w9/m514):
+// anyone else is ErrNotFound. A creator whose own role intent is still queued
+// is ErrRoleUnsettled.
 //
 // The mint calls it under the workspace advisory lock UpdateMemberRole also
 // takes (apikeys.KeyQuotaLocker), so a role change and a mint in one workspace
@@ -1070,7 +1071,8 @@ func (s *PGStore) BindClientForCreator(ctx context.Context, clientID, tenantID, 
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		err := tx.QueryRow(ctx, `
 			SELECT role FROM tenant_members
-			WHERE tenant_id = $1 AND subject = $2 AND kind = 'user' AND role IN ('admin', 'developer')
+			WHERE tenant_id = $1 AND subject = $2 AND kind = 'user'
+			  AND role IN ('admin', 'developer', 'contributor', 'viewer', 'billing')
 			FOR SHARE`, tenantID, creator).Scan(&role)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("key creator %s: %w", creator, ErrNotFound)

@@ -7,9 +7,9 @@ const zhApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "供脚本和智能体使用的机器凭证。每个密钥只能使用为它选择的权限，绝不超出其创建者当前成员角色允许的范围，且仅在此工作区内有效。整个工作区共享——任何有密钥管理权限的人都能看到这里的所有密钥，而不仅仅是自己创建的。",
+      "供脚本和智能体使用的机器凭证。每个密钥只能使用为它选择的权限，绝不超出其创建者当前成员角色允许的范围，且仅在此工作区内有效。每位成员都能查看和管理自己创建的密钥；Developer 和 Admin 能看到工作区中的所有密钥。",
     description:
-      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and that the list is shared",
+      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, Developers and Admins every key (w9/m514)",
   },
   "apiKeys.cliGuide": {
     message: "设置 CLI。",

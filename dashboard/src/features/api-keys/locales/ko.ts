@@ -7,9 +7,9 @@ const koApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "스크립트와 에이전트를 위한 머신 자격 증명입니다. 각 키는 선택된 권한만 사용할 수 있으며, 만든 사람의 현재 멤버 역할이 허용하는 범위를 넘지 않고, 이 워크스페이스에서만 동작합니다. 워크스페이스 전체에서 공유되며, 키를 관리할 수 있는 사람은 본인 키뿐 아니라 모든 키를 볼 수 있습니다.",
+      "스크립트와 에이전트를 위한 머신 자격 증명입니다. 각 키는 선택된 권한만 사용할 수 있으며, 만든 사람의 현재 멤버 역할이 허용하는 범위를 넘지 않고, 이 워크스페이스에서만 동작합니다. 모든 멤버는 자신이 만든 키를 보고 관리할 수 있으며, Developer와 Admin은 워크스페이스의 모든 키를 볼 수 있습니다.",
     description:
-      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and that the list is shared",
+      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, Developers and Admins every key (w9/m514)",
   },
   "apiKeys.cliGuide": {
     message: "CLI 설정하기.",

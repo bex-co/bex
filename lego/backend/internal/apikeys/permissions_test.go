@@ -68,7 +68,10 @@ func (b *grantBinder) APIKeyGrantsOfTenant(_ context.Context, tenantID string) (
 type roleChecker map[string]string
 
 var roleRelations = map[string][]string{
-	"developer": {core.RelCanView, core.RelCanViewLogs, core.RelCanOperate, core.RelCanCreate, core.RelCanViewSensitive, core.RelCanManageKeys, core.RelCanManageSSHKeys},
+	"viewer":      {core.RelCanView, core.RelCanManageSSHKeys},
+	"contributor": {core.RelCanView, core.RelCanViewLogs, core.RelCanOperate, core.RelCanManageSSHKeys},
+	"billing":     {core.RelCanView, core.RelCanManageSSHKeys, core.RelCanManageBilling},
+	"developer":   {core.RelCanView, core.RelCanViewLogs, core.RelCanOperate, core.RelCanCreate, core.RelCanViewSensitive, core.RelCanManageKeys, core.RelCanManageSSHKeys},
 	"admin": {core.RelCanView, core.RelCanViewLogs, core.RelCanOperate, core.RelCanCreate, core.RelCanViewSensitive, core.RelCanManageKeys,
 		core.RelCanManageSSHKeys, core.RelCanManage, core.RelCanManageBilling},
 }

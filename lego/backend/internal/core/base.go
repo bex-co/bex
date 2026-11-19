@@ -147,7 +147,7 @@ const (
 	RelCanCreate        = "can_create"          // developer and up: create/delete resources
 	RelCanViewSensitive = "can_view_sensitive"  // developer and up: connection strings
 	RelCanManageKeys    = "can_manage_keys"     // developer and up: workspace API keys
-	RelCanManageSSHKeys = "can_manage_ssh_keys" // any workspace member: their own SSH public keys
+	RelCanManageSSHKeys = "can_manage_ssh_keys" // any workspace member: their own SSH public keys and API keys (w9/m514)
 	RelCanManage        = "can_manage"          // admin only: manage the workspace itself (rename/delete)
 	RelCanManageBilling = "can_manage_billing"  // billing or admin: customer-billing setup/portal (Render's BILLING role)
 	// The org workspace joins (w7/m464, ADR115 D5): a Member adding themselves

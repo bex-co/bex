@@ -7,9 +7,9 @@ const ptApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "Credenciais de máquina para scripts e agentes. Cada chave só pode usar as permissões escolhidas para ela, nunca mais do que o papel de membro atual de quem a criou permite, e apenas neste workspace. Compartilhadas em todo o workspace — quem pode gerenciar chaves vê todas as chaves aqui, não apenas as próprias.",
+      "Credenciais de máquina para scripts e agentes. Cada chave só pode usar as permissões escolhidas para ela, nunca mais do que o papel de membro atual de quem a criou permite, e apenas neste workspace. Cada membro vê e gerencia as chaves que criou; Developers e Admins veem todas as chaves do workspace.",
     description:
-      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and that the list is shared",
+      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, Developers and Admins every key (w9/m514)",
   },
   "apiKeys.cliGuide": {
     message: "Configure a CLI.",

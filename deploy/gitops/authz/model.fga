@@ -34,8 +34,8 @@
 #   can_operate         restart/suspend/resume services   contributor and up
 #   can_create          create/delete resources           developer and up
 #   can_view_sensitive  connection strings, env vars      developer and up
-#   can_manage_keys     workspace API keys                developer and up
-#   can_manage_ssh_keys own SSH public keys               every member role
+#   can_manage_keys     every member's API keys           developer and up
+#   can_manage_ssh_keys own SSH and API keys (w9/m514)    every member role
 #   can_manage          workspace settings/members        admin
 #   can_manage_billing  billing settings                  billing or admin
 #

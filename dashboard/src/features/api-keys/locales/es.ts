@@ -7,9 +7,9 @@ const esApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "Credenciales de máquina para scripts y agentes. Cada clave solo puede usar los permisos elegidos para ella, nunca más de lo que permite el rol de miembro actual de quien la creó, y solo en este espacio de trabajo. Se comparten en todo el espacio de trabajo: quien pueda administrar claves ve todas las claves aquí, no solo las suyas.",
+      "Credenciales de máquina para scripts y agentes. Cada clave solo puede usar los permisos elegidos para ella, nunca más de lo que permite el rol de miembro actual de quien la creó, y solo en este espacio de trabajo. Cada miembro ve y administra las claves que creó; los Developers y Admins ven todas las claves del espacio de trabajo.",
     description:
-      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and that the list is shared",
+      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, Developers and Admins every key (w9/m514)",
   },
   "apiKeys.cliGuide": {
     message: "Configura la CLI.",

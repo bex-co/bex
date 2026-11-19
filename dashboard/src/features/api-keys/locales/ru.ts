@@ -7,9 +7,9 @@ const ruApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "Машинные учётные данные для скриптов и агентов. Каждый ключ может использовать только выбранные для него разрешения, не больше, чем допускает текущая роль участника, который его создал, и только в этом рабочем пространстве. Общие для всего рабочего пространства — любой, кто может управлять ключами, видит здесь все ключи, а не только свои.",
+      "Машинные учётные данные для скриптов и агентов. Каждый ключ может использовать только выбранные для него разрешения, не больше, чем допускает текущая роль участника, который его создал, и только в этом рабочем пространстве. Каждый участник видит созданные им ключи и управляет ими; Developer и Admin видят все ключи рабочего пространства.",
     description:
-      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and that the list is shared",
+      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, Developers and Admins every key (w9/m514)",
   },
   "apiKeys.cliGuide": {
     message: "Настройте CLI.",

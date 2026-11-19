@@ -635,7 +635,7 @@ func (t *Service) BindKey(ctx context.Context, clientID, tenantID, createdBy str
 		case errors.Is(err, store.ErrRoleUnsettled):
 			return fmt.Errorf("%w: your workspace role change is still being applied; retry shortly", core.ErrForbidden)
 		case errors.Is(err, store.ErrNotFound):
-			return fmt.Errorf("%w: you no longer hold a role that may create API keys in this workspace", core.ErrForbidden)
+			return fmt.Errorf("%w: you are no longer a member of this workspace", core.ErrForbidden)
 		case err != nil:
 			return err
 		}

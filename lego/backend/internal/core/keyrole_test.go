@@ -318,19 +318,28 @@ func TestAuthorizeExportClassAdmitsOnlyAttributedKeysBeyondTheMintClass(t *testi
 // changes, failed or partial tuple writes and re-seats happens, a key's
 // allowed relations on every workspace are a subset of its creator's at that
 // moment, and empty outside the workspace it was minted in. I3 rides along:
-// the unattributed key never holds more than a Developer.
+// the unattributed key never holds more than a Developer. Every creator
+// starts at any of the five roles, each key seated at its creator's, since
+// every member mints keys (w9/m514, I9).
 func TestKeyNeverExceedsItsCreatorOverRandomHistories(t *testing.T) {
 	roles := []string{"admin", "developer", "contributor", "viewer", "billing"}
 	workspaces := []string{"tea-a", "tea-b"}
 	rng := rand.New(rand.NewPCG(481, 1))
-	for history := range 200 {
+	started := map[string]bool{}
+	for history := range 500 {
 		m := newRoleModel()
 		creators := keyCreators{creators: map[string]string{"key-a1": "person-a", "key-a2": "person-a", "key-b": "person-b", "key-old": ""}}
 		home := map[string]string{"key-a1": "tea-a", "key-a2": "tea-a", "key-b": "tea-a", "key-old": "tea-a"}
 		b := &Base{Authz: m, Workspace: fakeWorkspace(home), KeyCreators: creators}
-		m.grant("person-a", "tea-a", "admin")
-		m.grant("person-a", "tea-b", "admin")
-		m.grant("person-b", "tea-a", "developer")
+		roleA, roleB := roles[rng.IntN(len(roles))], roles[rng.IntN(len(roles))]
+		started[roleA], started[roleB] = true, true
+		m.grant("person-a", "tea-a", roleA)
+		m.grant("person-a", "tea-b", roles[rng.IntN(len(roles))])
+		m.grant("person-b", "tea-a", roleB)
+		// Mint seats each key at its creator's role (store.BindClientForCreator).
+		m.grant("key-a1", "tea-a", roleA)
+		m.grant("key-a2", "tea-a", roleA)
+		m.grant("key-b", "tea-a", roleB)
 		m.grant("key-old", "tea-a", roles[rng.IntN(len(roles))])
 		for step := range 30 {
 			subject := []string{"person-a", "person-b", "key-a1", "key-a2", "key-b"}[rng.IntN(5)]
@@ -371,6 +380,11 @@ func TestKeyNeverExceedsItsCreatorOverRandomHistories(t *testing.T) {
 					}
 				}
 			}
+		}
+	}
+	for _, role := range roles {
+		if !started[role] {
+			t.Errorf("no history started a creator as %s", role)
 		}
 	}
 }

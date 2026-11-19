@@ -7,9 +7,9 @@ const enApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "Machine credentials for scripts and agents. Each key can use only the permissions chosen for it, never more than its creator's current member role allows, and only in this workspace. Shared across the workspace — anyone who can manage keys sees every key here, not just their own.",
+      "Machine credentials for scripts and agents. Each key can use only the permissions chosen for it, never more than its creator's current member role allows, and only in this workspace. Every member sees and manages the keys they created; Developers and Admins see every key in the workspace.",
     description:
-      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and that the list is shared",
+      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and who sees which keys: every member their own, Developers and Admins every key (w9/m514)",
   },
   "apiKeys.cliGuide": {
     message: "Set up the CLI.",

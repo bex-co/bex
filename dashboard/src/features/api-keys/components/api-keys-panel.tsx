@@ -23,10 +23,13 @@ import { apiKeysColumns } from "@/features/api-keys/lib/api-keys-columns";
 
 /**
  * Settings → API Keys (w4/m8): lists the workspace's bex-minted machine
- * credentials and lets a permitted session mint or revoke them — the m3
- * lifecycle's human-facing surface, so handing an agent a credential no longer
- * requires `curl`. Keys are workspace-shared (no per-user owner), so this list
- * is not "my keys" — it's every key any `can_manage_keys` caller minted.
+ * credentials and lets the caller mint or revoke them — the m3 lifecycle's
+ * human-facing surface, so handing an agent a credential no longer requires
+ * `curl`. Every member role mints keys here, as on Render's Account Settings
+ * (w9/m514). bex-api decides what the list holds: every key in the workspace
+ * for a Developer or an Admin (`can_manage_keys`), the keys the caller minted
+ * for any other member. The panel renders whichever it gets, so it is the
+ * same for every role, and its skeleton with it.
  */
 export function ApiKeysPanel() {
   const { t } = useTranslations();

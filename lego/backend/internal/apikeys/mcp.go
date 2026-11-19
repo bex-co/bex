@@ -70,7 +70,7 @@ type revokeAPIKeyResult struct {
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_api_key",
-		Description: "Create an API key for the platform API. `key` is returned once — store it and send it as `Authorization: Bearer`. `id` and `secret` are the same credential as an OAuth2 client, for a client_credentials exchange. bex extension over Render's MCP.",
+		Description: "Create an API key for the platform API; every member role may, and the key never does more than your role allows. `key` is returned once — store it and send it as `Authorization: Bearer`. `id` and `secret` are the same credential as an OAuth2 client, for a client_credentials exchange. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createAPIKeyArgs) (*mcp.CallToolResult, APIKey, error) {
 		var grant *core.KeyGrant
 		if in.Permissions != nil {
@@ -99,7 +99,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_api_keys",
-		Description: "List the platform API's machine credentials (secrets never included). bex extension over Render's MCP.",
+		Description: "List the platform API's machine credentials (secrets never included): every key in the workspace for a Developer or Admin, the keys you created for any other member. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listAPIKeysResult, error) {
 		keys, err := s.ListAPIKeys(ctx, core.NamedWorkspace(ctx))
 		return nil, listAPIKeysResult{APIKeys: keys}, err
@@ -107,7 +107,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "revoke_api_key",
-		Description: "Revoke a machine credential by keyId; its tokens stop working. bex extension over Render's MCP.",
+		Description: "Revoke a machine credential by keyId; its tokens stop working. Any member revokes the keys they created; a Developer or Admin revokes any key in the workspace. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in revokeAPIKeyArgs) (*mcp.CallToolResult, revokeAPIKeyResult, error) {
 		err := s.RevokeAPIKey(ctx, core.NamedWorkspace(ctx), in.KeyID)
 		return nil, revokeAPIKeyResult{Revoked: err == nil}, err

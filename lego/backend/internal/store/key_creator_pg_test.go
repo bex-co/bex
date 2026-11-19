@@ -81,18 +81,25 @@ func TestBindClientForCreatorSeatsTheCreatorsRole(t *testing.T) {
 	st := keyCreatorStore(t)
 	ctx := context.Background()
 	run := uniqueMachineRun()
-	admin, dev, viewer := "admin-"+run, "dev-"+run, "viewer-"+run
-	ws, err := st.CreateWorkspace(ctx, "keyrole-"+run, PlanPro, admin)
+	admin, dev := "admin-"+run, "dev-"+run
+	ws, err := st.CreateWorkspace(ctx, "keyrole-"+run, PlanScale, admin)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for subject, role := range map[string]string{dev: "developer", viewer: "viewer"} {
+	// Every member role mints a key, seated at that role (w9/m514).
+	seated := map[string]string{admin: "admin", dev: "developer"}
+	for _, role := range []string{"developer", "contributor", "viewer", "billing"} {
+		subject := role + "-" + run
+		if role == "developer" {
+			subject = dev
+		}
 		if err := st.AddMember(ctx, subject, ws.ID, role); err != nil {
 			t.Fatal(err)
 		}
+		seated[subject] = role
 	}
 
-	for creator, want := range map[string]string{admin: "admin", dev: "developer"} {
+	for creator, want := range seated {
 		key := "key-" + creator
 		got, err := st.BindClientForCreator(ctx, key, ws.ID, creator)
 		if err != nil || got != want {
@@ -103,9 +110,9 @@ func TestBindClientForCreatorSeatsTheCreatorsRole(t *testing.T) {
 		}
 	}
 
-	// A Viewer cannot mint, a stranger is not a member, and another key is not
-	// a person: none of them binds anything.
-	for _, creator := range []string{viewer, "stranger-" + run, "key-" + admin} {
+	// A stranger is not a member, and another key is not a person: neither
+	// binds anything.
+	for _, creator := range []string{"stranger-" + run, "key-" + admin} {
 		key := "refused-key-" + creator
 		if _, err := st.BindClientForCreator(ctx, key, ws.ID, creator); !errors.Is(err, ErrNotFound) {
 			t.Errorf("BindClientForCreator(%s) = %v, want ErrNotFound", creator, err)
