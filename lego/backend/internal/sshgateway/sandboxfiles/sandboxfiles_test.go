@@ -32,6 +32,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -262,6 +263,9 @@ func TestRawUploadLengthAndSizeRefusals(t *testing.T) {
 	}
 }
 
+// positional is shell command cmd's $n.
+func positional(cmd []string, n int) string { return cmd[3+n] }
+
 func TestChunkedEmptyRawUploadMatchesPinnedCLI(t *testing.T) {
 	published := false
 	s := serverFor(func(_ context.Context, cmd []string, input io.Reader, _ io.Writer) (int, error) {
@@ -269,12 +273,12 @@ func TestChunkedEmptyRawUploadMatchesPinnedCLI(t *testing.T) {
 			if n, err := io.Copy(io.Discard, input); n != 0 || err != nil {
 				t.Errorf("empty body = %d bytes, %v", n, err)
 			}
-			if cmd[len(cmd)-1] != "0" {
-				t.Errorf("staged length = %q", cmd[len(cmd)-1])
-			}
 		}
 		if cmd[2] == publishScript {
 			published = true
+			if size := positional(cmd, 6); size != "0" {
+				t.Errorf("published length = %q", size)
+			}
 		}
 		return 0, nil
 	})
@@ -331,6 +335,124 @@ func TestAnUploadInAnotherContentTypeIsRefusedWithTheDocumentedForms(t *testing.
 				t.Fatalf("a refused upload ran %d sandbox commands", n)
 			}
 		})
+	}
+}
+
+// w32/045: Render's contract gzips a single file as it does an archive
+// (connect-sandbox-files: "For gzip compression, also set Content-Encoding:
+// gzip"). The file is stored with its decoded bytes, and it publishes as that
+// many, with or without a Content-Length: the gzip trailer proves it whole.
+func TestAGzippedFileIsStoredDecoded(t *testing.T) {
+	data := []byte("decoded \x00\xff bytes\n")
+	for _, chunked := range []bool{false, true} {
+		t.Run(fmt.Sprintf("chunked=%t", chunked), func(t *testing.T) {
+			var staged bytes.Buffer
+			var size string
+			s := serverFor(func(_ context.Context, cmd []string, input io.Reader, _ io.Writer) (int, error) {
+				switch {
+				case input != nil:
+					_, _ = io.Copy(&staged, input)
+				case cmd[2] == publishScript:
+					size = positional(cmd, 6)
+				}
+				return 0, nil
+			})
+			r := requestFor(t, http.MethodPut, gzipBytes(t, data))
+			r.Header.Set("Content-Encoding", "gzip")
+			if chunked {
+				r.ContentLength = -1
+			}
+			w := httptest.NewRecorder()
+			s.Handler().ServeHTTP(w, r)
+			if w.Code != http.StatusNoContent || !bytes.Equal(staged.Bytes(), data) || size != strconv.Itoa(len(data)) {
+				t.Fatalf("answered %d %s, staged %q, published as %q bytes; want 204, %q as %d bytes", w.Code, w.Body, staged.Bytes(), size, data, len(data))
+			}
+		})
+	}
+}
+
+// w32/045: a gzipped file that does not decode whole, or decodes past the
+// 256 MiB bound, is refused, and nothing is published. A stage it began is
+// removed.
+func TestABadGzippedFileIsRefusedAndNotPublished(t *testing.T) {
+	data := []byte("binary\x00data")
+	truncated := gzipBytes(t, data)
+	truncated = truncated[:len(truncated)-4]
+	// The trailer is the CRC-32 of the decoded bytes, then their length.
+	badChecksum := gzipBytes(t, data)
+	badChecksum[len(badChecksum)-8] ^= 0xff
+	badLength := gzipBytes(t, data)
+	badLength[len(badLength)-1] ^= 0xff
+	// 257 gzip members of 1 MiB each: one stream to gunzip, past the bound.
+	oversized := bytes.Repeat(gzipBytes(t, make([]byte, 1<<20)), 257)
+	for _, tc := range []struct {
+		name   string
+		body   []byte
+		status int
+	}{
+		{"truncated trailer", truncated, http.StatusBadRequest},
+		{"corrupt checksum", badChecksum, http.StatusBadRequest},
+		{"wrong length", badLength, http.StatusBadRequest},
+		{"not gzip", data, http.StatusBadRequest},
+		{"empty", nil, http.StatusBadRequest},
+		{"over the bound once decoded", oversized, http.StatusRequestEntityTooLarge},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var staged, published, cleaned atomic.Bool
+			s := serverFor(func(_ context.Context, cmd []string, input io.Reader, _ io.Writer) (int, error) {
+				switch {
+				case input != nil:
+					// As tar or cat would: a cut stream can look like a clean EOF.
+					staged.Store(true)
+					_, _ = io.Copy(io.Discard, input)
+				case cmd[2] == publishScript:
+					published.Store(true)
+				case cmd[2] != checkScript:
+					cleaned.Store(true)
+				}
+				return 0, nil
+			})
+			s.TransferTimeout = time.Minute
+			r := requestFor(t, http.MethodPut, tc.body)
+			r.Header.Set("Content-Encoding", "gzip")
+			w := httptest.NewRecorder()
+			s.Handler().ServeHTTP(w, r)
+			if w.Code != tc.status || published.Load() || staged.Load() != cleaned.Load() {
+				t.Fatalf("answered %d %s (published %v, staged %v, stage removed %v), want %d and nothing published",
+					w.Code, w.Body, published.Load(), staged.Load(), cleaned.Load(), tc.status)
+			}
+			if tc.status == http.StatusBadRequest && !strings.Contains(w.Body.String(), errBadGzip.Error()) {
+				t.Fatalf("answered %s, want it to say %q", w.Body, errBadGzip)
+			}
+		})
+	}
+}
+
+// w32/045: gzip is the one encoding Render documents, for either type. Any
+// other is refused before the sandbox is touched.
+func TestAnUploadInAnotherEncodingIsRefused(t *testing.T) {
+	for _, media := range []string{"application/octet-stream", "application/x-tar"} {
+		for _, encoding := range []string{"br", "deflate", "zstd"} {
+			t.Run(media+"/"+encoding, func(t *testing.T) {
+				var execs atomic.Int32
+				s := serverFor(func(context.Context, []string, io.Reader, io.Writer) (int, error) {
+					execs.Add(1)
+					return 0, nil
+				})
+				r := requestFor(t, http.MethodPut, []byte("data"))
+				r.Header.Set("Content-Type", media)
+				r.Header.Set("Content-Encoding", encoding)
+				w := httptest.NewRecorder()
+				s.Handler().ServeHTTP(w, r)
+				var body struct{ Message string }
+				if w.Code != http.StatusUnsupportedMediaType || json.Unmarshal(w.Body.Bytes(), &body) != nil || body.Message != errUploadEncoding.message {
+					t.Fatalf("answered %d %q, want 415 %q", w.Code, w.Body, errUploadEncoding.message)
+				}
+				if n := execs.Load(); n != 0 {
+					t.Fatalf("a refused upload ran %d sandbox commands", n)
+				}
+			})
+		}
 	}
 }
 
@@ -1123,7 +1245,7 @@ func TestUploadPublishesWithTheChosenMode(t *testing.T) {
 				if input != nil {
 					_, _ = io.Copy(io.Discard, input)
 				} else if cmd[2] == publishScript {
-					mode = cmd[len(cmd)-1]
+					mode = positional(cmd, 5)
 				}
 				return 0, nil
 			})

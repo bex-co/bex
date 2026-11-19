@@ -179,6 +179,7 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 var (
 	errTooLarge   = errors.New("sandbox transfer exceeds 256 MiB")
 	errBadArchive = errors.New("invalid or unsupported sandbox archive")
+	errBadGzip    = errors.New("invalid gzip upload")
 	errMissingEnd = errors.New("archive has no complete end marker")
 )
 
@@ -211,7 +212,11 @@ var (
 	// still lists from before Render moved compression into Content-Encoding
 	// (w32/041).
 	errUploadContentType = &statusError{status: http.StatusUnsupportedMediaType,
-		message: "unsupported upload Content-Type: send a file as application/octet-stream, or a directory as an application/x-tar archive (with Content-Encoding: gzip when it is gzipped)"}
+		message: "unsupported upload Content-Type: send a file as application/octet-stream or a directory as an application/x-tar archive, with Content-Encoding: gzip when either is gzipped"}
+	// errUploadEncoding answers an upload in an encoding other than gzip, the
+	// one Render documents for both types (w32/045).
+	errUploadEncoding = &statusError{status: http.StatusUnsupportedMediaType,
+		message: "unsupported upload Content-Encoding: send the upload gzipped with Content-Encoding: gzip, or with no Content-Encoding"}
 	// errGatewayBusy is a directory transfer past archiveIndexMemory, and
 	// errWorkspaceBusy one past its workspace's share of it.
 	errGatewayBusy   = &statusError{status: http.StatusServiceUnavailable, message: "the sandbox file gateway is at capacity; retry the transfer"}
@@ -238,7 +243,7 @@ func writeError(w http.ResponseWriter, sandbox string, err error) {
 		status = se.status
 	case errors.Is(err, errTooLarge):
 		status = http.StatusRequestEntityTooLarge
-	case errors.Is(err, errBadArchive), errors.Is(err, errMissingEnd), errors.Is(err, io.ErrUnexpectedEOF):
+	case errors.Is(err, errBadArchive), errors.Is(err, errBadGzip), errors.Is(err, errMissingEnd), errors.Is(err, io.ErrUnexpectedEOF):
 		status = http.StatusBadRequest
 	case errors.Is(err, sshgateway.ErrTargetTerminated):
 		status = http.StatusNotFound
@@ -268,13 +273,26 @@ func writeJSONError(w http.ResponseWriter, status int, err error) {
 // is not the archive's fault, and its text, a network error, must not reach
 // the client inside one (w5/131).
 func archiveError(err error) error {
-	var corrupt flate.CorruptInputError
-	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, errMissingEnd) ||
-		errors.Is(err, gzip.ErrHeader) || errors.Is(err, gzip.ErrChecksum) || errors.As(err, &corrupt) ||
-		errors.Is(err, tar.ErrHeader) {
+	if malformed(err) || errors.Is(err, errMissingEnd) || errors.Is(err, tar.ErrHeader) {
 		return fmt.Errorf("%w: %w", errBadArchive, err)
 	}
 	return err
+}
+
+// gzipError does the same for a gzipped single file (w32/045).
+func gzipError(err error) error {
+	if malformed(err) {
+		return fmt.Errorf("%w: %w", errBadGzip, err)
+	}
+	return err
+}
+
+// malformed reports a stream that ends early or whose gzip header, data or
+// trailer (its CRC-32 and length) does not check out.
+func malformed(err error) bool {
+	var corrupt flate.CorruptInputError
+	return errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) ||
+		errors.Is(err, gzip.ErrHeader) || errors.Is(err, gzip.ErrChecksum) || errors.As(err, &corrupt)
 }
 
 func executionError(code int, err error) error {
@@ -366,7 +384,7 @@ destination_free || exit 73
 const stageScript = cdParent + destinationFree + `set -eu
 trap 'cat >/dev/null || :' EXIT
 cd_parent "$1"
-name=$2 stage=$3 kind=$4 size=$5
+name=$2 stage=$3 kind=$4
 destination_free || exit 73
 umask 077
 mkdir "$stage" || exit 73
@@ -378,22 +396,26 @@ if [ "$kind" = directory ]; then
   tar -xf - -C "$stage/tree"
 else
   cat > "$stage/data"
-  [ "$(wc -c < "$stage/data" | tr -d ' ')" = "$size" ] || exit 65
 fi
 complete=1
 `
 
 // publishScript's $5 is the published entry's octal mode, chosen by the
 // gateway (the archive root's, or plainFileMode): staging runs under umask 077.
+// $6 is how many bytes the gateway sent a file's stage, after decoding: the
+// file publishes only if its stage holds exactly those, so a stream the exec
+// cut short is never installed. The stage cannot check it: a gzipped file's
+// length is known only once its trailer has been read (w32/045).
 const publishScript = cdParent + destinationFree + `set -eu
 cd_parent "$1"
-name=$2 stage=$3 kind=$4 mode=$5
+name=$2 stage=$3 kind=$4 mode=$5 size=$6
 [ -d "$stage" ] && [ ! -L "$stage" ] || exit 73
 destination_free || exit 73
 if [ "$kind" = directory ]; then
   chmod -- "$mode" "$stage/tree"
   mv -T -- "$stage/tree" "$name"
 else
+  [ "$(wc -c < "$stage/data" | tr -d ' ')" = "$size" ] || exit 65
   chmod -- "$mode" "$stage/data"
   mv -T -- "$stage/data" "$name"
 fi
@@ -410,33 +432,35 @@ func (s *Server) upload(ctx context.Context, target apps.SSHInstanceTarget, dest
 		return errUploadContentType
 	}
 	kind := "file"
-	encoding := r.Header.Get("Content-Encoding")
-	expectedSize := r.ContentLength
 	switch mediaType {
 	case "application/octet-stream":
-		if encoding != "" && encoding != "identity" {
-			return &statusError{status: http.StatusUnsupportedMediaType, message: "raw uploads do not accept Content-Encoding"}
-		}
-		if expectedSize < 0 {
-			// The pinned CLI passes an open os.File even for an empty upload.
-			// Go encodes that zero ContentLength as chunked. Admit its empty
-			// stream, while nonempty raw bodies still need an exact length.
-			var first [1]byte
-			if _, err := io.ReadFull(r.Body, first[:]); !errors.Is(err, io.EOF) {
-				if err != nil {
-					return err
-				}
-				return &statusError{status: http.StatusLengthRequired, message: "nonempty raw uploads require Content-Length"}
-			}
-			expectedSize = 0
-		}
 	case "application/x-tar":
 		kind = "directory"
-		if encoding != "" && encoding != "identity" && encoding != "gzip" {
-			return &statusError{status: http.StatusUnsupportedMediaType, message: "unsupported archive Content-Encoding"}
-		}
 	default:
 		return errUploadContentType
+	}
+	// Render's contract gzips either type the same way (w32/045).
+	encoding := r.Header.Get("Content-Encoding")
+	gzipped := encoding == "gzip"
+	if !gzipped && encoding != "" && encoding != "identity" {
+		return errUploadEncoding
+	}
+	// A plain file's Content-Length proves it arrived whole. A gzipped file's
+	// trailer and an archive's end marker prove theirs, so either may be sent
+	// chunked.
+	expectedSize := r.ContentLength
+	if kind == "file" && !gzipped && expectedSize < 0 {
+		// The pinned CLI passes an open os.File even for an empty upload.
+		// Go encodes that zero ContentLength as chunked. Admit its empty
+		// stream, while nonempty plain files still need an exact length.
+		var first [1]byte
+		if _, err := io.ReadFull(r.Body, first[:]); !errors.Is(err, io.EOF) {
+			if err != nil {
+				return err
+			}
+			return &statusError{status: http.StatusLengthRequired, message: "a nonempty file sent without Content-Encoding: gzip requires Content-Length"}
+		}
+		expectedSize = 0
 	}
 	if r.ContentLength > files.MaxTransferBytes {
 		return errTooLarge
@@ -446,9 +470,12 @@ func (s *Server) upload(ctx context.Context, target apps.SSHInstanceTarget, dest
 		return err
 	}
 	input := io.Reader(&boundedReader{reader: r.Body, remaining: files.MaxTransferBytes})
-	if encoding == "gzip" {
+	if gzipped {
 		gz, err := gzip.NewReader(input)
 		if err != nil {
+			if kind == "file" {
+				return gzipError(err)
+			}
 			return archiveError(err)
 		}
 		defer gz.Close()
@@ -482,21 +509,25 @@ func (s *Server) upload(ctx context.Context, target apps.SSHInstanceTarget, dest
 	defer stopPipe()
 	validated := make(chan error, 1)
 	mode := int64(plainFileMode)
+	var sent int64 // a file's bytes, decoded
 	go func() {
 		var err error
 		if kind == "directory" {
 			mode, err = copyArchive(writer, input, target.OwnerID)
 		} else {
-			var n int64
-			n, err = io.Copy(writer, input)
-			if err == nil && n != expectedSize {
+			// Reading a gzipped file through EOF checks its trailer's CRC-32
+			// and length.
+			sent, err = io.Copy(writer, input)
+			if gzipped {
+				err = gzipError(err)
+			} else if err == nil && sent != expectedSize {
 				err = io.ErrUnexpectedEOF
 			}
 		}
 		_ = writer.CloseWithError(err)
 		validated <- err
 	}()
-	err = s.execute(ctx, target, shell(stageScript, parent, name, stage, kind, strconv.FormatInt(expectedSize, 10)), reader, io.Discard)
+	err = s.execute(ctx, target, shell(stageScript, parent, name, stage, kind), reader, io.Discard)
 	_ = reader.CloseWithError(err)
 	// An executor can refuse before reading any input. Close the request body
 	// too so a stalled uploader cannot retain the validation goroutine.
@@ -514,7 +545,7 @@ func (s *Server) upload(ctx context.Context, target apps.SSHInstanceTarget, dest
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	err = s.execute(ctx, target, shell(publishScript, parent, name, stage, kind, strconv.FormatInt(mode, 8)), nil, io.Discard)
+	err = s.execute(ctx, target, shell(publishScript, parent, name, stage, kind, strconv.FormatInt(mode, 8), strconv.FormatInt(sent, 10)), nil, io.Discard)
 	published = err == nil
 	return err
 }

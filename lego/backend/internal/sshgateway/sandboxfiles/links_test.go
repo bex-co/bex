@@ -293,8 +293,8 @@ func TestUploadedLinksArriveAsLinks(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, command := range [][]string{
-		shell(stageScript, root, "up", ".bex-copy-links", "directory", "0"),
-		shell(publishScript, root, "up", ".bex-copy-links", "directory", strconv.FormatInt(mode, 8)),
+		shell(stageScript, root, "up", ".bex-copy-links", "directory"),
+		shell(publishScript, root, "up", ".bex-copy-links", "directory", strconv.FormatInt(mode, 8), "0"),
 	} {
 		cmd := exec.Command(command[0], command[1:]...)
 		cmd.Env = []string{"HOME=" + root, "PATH=" + os.Getenv("PATH")}

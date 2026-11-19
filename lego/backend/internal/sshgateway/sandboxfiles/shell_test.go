@@ -81,9 +81,9 @@ func TestShellRejectsExistingSymlinkAncestorsAndTargets(t *testing.T) {
 		code    int
 	}{
 		{shell(checkScript, alias, "new-file", "file"), 74},
-		{shell(stageScript, alias, "new-file", ".bex-copy-test", "file", "0"), 74},
+		{shell(stageScript, alias, "new-file", ".bex-copy-test", "file"), 74},
 		{shell(checkScript, root, "alias", "directory"), 73},
-		{shell(stageScript, root, "alias", ".bex-copy-test", "directory", "0"), 73},
+		{shell(stageScript, root, "alias", ".bex-copy-test", "directory"), 73},
 	} {
 		for _, env := range [][]string{nil, {"follow=1", "HOME=" + root}} {
 			if code, out := runCode(t, tc.command, env...); code != tc.code || len(out) != 0 {
@@ -148,7 +148,7 @@ func TestStageUsesLiteralArgumentsAndNeverPublishes(t *testing.T) {
 		t.Fatal(err)
 	}
 	name := "quotes' $(touch injected); file"
-	command := shell(stageScript, root, name, ".bex-copy-test", "file", "3")
+	command := shell(stageScript, root, name, ".bex-copy-test", "file")
 	cmd := exec.Command(command[0], command[1:]...)
 	cmd.Stdin = bytes.NewReader([]byte{0, 255, 1})
 	if output, err := cmd.CombinedOutput(); err != nil {
@@ -183,20 +183,18 @@ func TestARefusingStageDrainsTheUpload(t *testing.T) {
 		t.Fatal(err)
 	}
 	upload := bytes.Repeat([]byte("x"), 3<<20)
-	size := strconv.Itoa(len(upload))
 	for _, tc := range []struct {
-		name, parent, entry, kind, size, path string
-		code                                  int
+		name, parent, entry, kind, path string
+		code                            int
 	}{
-		{"file onto a directory", root, "dir", "file", size, "", 73},
-		{"directory onto an existing one", root, "dir", "directory", "0", "", 73},
-		{"missing parent", filepath.Join(root, "missing"), "f", "file", size, "", 66},
-		{"short upload", root, "short", "file", strconv.Itoa(len(upload) + 1), "", 65},
-		{"tar fails midway", root, "new", "directory", "0", failingTar + ":", 2},
+		{"file onto a directory", root, "dir", "file", "", 73},
+		{"directory onto an existing one", root, "dir", "directory", "", 73},
+		{"missing parent", filepath.Join(root, "missing"), "f", "file", "", 66},
+		{"tar fails midway", root, "new", "directory", failingTar + ":", 2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			stdin := bytes.NewReader(upload)
-			command := shell(stageScript, tc.parent, tc.entry, ".bex-copy-test", tc.kind, tc.size)
+			command := shell(stageScript, tc.parent, tc.entry, ".bex-copy-test", tc.kind)
 			cmd := exec.Command(command[0], command[1:]...)
 			cmd.Env = []string{"PATH=" + tc.path + os.Getenv("PATH")}
 			cmd.Stdin = stdin
@@ -212,6 +210,31 @@ func TestARefusingStageDrainsTheUpload(t *testing.T) {
 				t.Fatal("a refused stage left its staging directory")
 			}
 		})
+	}
+}
+
+// w32/045: a file publishes only when its stage holds every byte the gateway
+// sent it, after decoding, so a stream the exec cut short is never installed.
+// The stage cannot check this itself: a gzipped file's length is known only
+// once its trailer is read.
+func TestPublishRefusesAFileItsStageDoesNotHoldWhole(t *testing.T) {
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := shell(stageScript, root, "f", ".bex-copy-test", "file")
+	stage := exec.Command(command[0], command[1:]...)
+	stage.Stdin = bytes.NewReader([]byte("abc"))
+	if out, err := stage.CombinedOutput(); err != nil {
+		t.Fatalf("stage: %v %s", err, out)
+	}
+	for _, size := range []string{"4", "2", ""} {
+		if code, out := runCode(t, shell(publishScript, root, "f", ".bex-copy-test", "file", "644", size)); code != 65 {
+			t.Fatalf("publish of a 3-byte stage as %q bytes = exit %d %q, want 65", size, code, out)
+		}
+	}
+	if _, err := os.Lstat(filepath.Join(root, "f")); !os.IsNotExist(err) {
+		t.Fatalf("a short stage was published: %v", err)
 	}
 }
 
@@ -278,10 +301,10 @@ func TestShellResolvesRelativePathsUnderHome(t *testing.T) {
 		return cmd.Output()
 	}
 	for _, parent := range []string{"rel", "."} {
-		if out, err := run([]byte("abc"), shell(stageScript, parent, "f.txt", ".bex-copy-test", "file", "3")); err != nil {
+		if out, err := run([]byte("abc"), shell(stageScript, parent, "f.txt", ".bex-copy-test", "file")); err != nil {
 			t.Fatalf("stage under %q: %v %s", parent, err, out)
 		}
-		if out, err := run(nil, shell(publishScript, parent, "f.txt", ".bex-copy-test", "file", "644")); err != nil {
+		if out, err := run(nil, shell(publishScript, parent, "f.txt", ".bex-copy-test", "file", "644", "3")); err != nil {
 			t.Fatalf("publish under %q: %v %s", parent, err, out)
 		}
 		want := filepath.Join(home, parent, "f.txt")
@@ -314,7 +337,7 @@ func TestShellResolvesRelativePathsUnderHome(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(root, "elsewhere"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := run([]byte("x"), shell(stageScript, "sneaky", "f.txt", ".bex-copy-test", "file", "1")); err == nil {
+	if _, err := run([]byte("x"), shell(stageScript, "sneaky", "f.txt", ".bex-copy-test", "file")); err == nil {
 		t.Fatal("a symlinked directory under home was entered")
 	}
 	if _, err := run(nil, shell(downloadScript, "missing", "f.txt")); err == nil {
@@ -356,8 +379,8 @@ func TestUploadKeepsModTimesAndPublishesPlainModes(t *testing.T) {
 	if err != nil || mode != 0o750 {
 		t.Fatalf("copyArchive = %o, %v; want the root's 750", mode, err)
 	}
-	run(clean.Bytes(), shell(stageScript, root, "m", ".bex-copy-dir", "directory", "0"))
-	run(nil, shell(publishScript, root, "m", ".bex-copy-dir", "directory", strconv.FormatInt(mode, 8)))
+	run(clean.Bytes(), shell(stageScript, root, "m", ".bex-copy-dir", "directory"))
+	run(nil, shell(publishScript, root, "m", ".bex-copy-dir", "directory", strconv.FormatInt(mode, 8), "0"))
 	if info, err := os.Stat(filepath.Join(root, "m")); err != nil || info.Mode().Perm() != 0o750 {
 		t.Fatalf("published root = %v, %v; want the archive root's 0750", info, err)
 	}
@@ -367,8 +390,8 @@ func TestUploadKeepsModTimesAndPublishesPlainModes(t *testing.T) {
 		}
 	}
 
-	run([]byte("abc"), shell(stageScript, root, "single.sh", ".bex-copy-file", "file", "3"))
-	run(nil, shell(publishScript, root, "single.sh", ".bex-copy-file", "file", strconv.FormatInt(plainFileMode, 8)))
+	run([]byte("abc"), shell(stageScript, root, "single.sh", ".bex-copy-file", "file"))
+	run(nil, shell(publishScript, root, "single.sh", ".bex-copy-file", "file", strconv.FormatInt(plainFileMode, 8), "3"))
 	if info, err := os.Stat(filepath.Join(root, "single.sh")); err != nil || info.Mode().Perm() != 0o644 {
 		t.Fatalf("published file = %v, %v; want 0644", info, err)
 	}

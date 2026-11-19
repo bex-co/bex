@@ -18,6 +18,7 @@ package sandbox
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -247,6 +248,52 @@ func TestFileGatewayHTTPRoundtrip(t *testing.T) {
 			got, err := io.ReadAll(download.Body)
 			if err != nil || download.StatusCode != http.StatusOK || !bytes.Equal(got, data) {
 				t.Fatalf("download status=%d got %d bytes err=%v", download.StatusCode, len(got), err)
+			}
+		})
+	}
+}
+
+// w32/045: a single file gzipped as Render's contract allows ("For gzip
+// compression, also set Content-Encoding: gzip") passes through bex-api's
+// connect route to the gateway, which stores it decoded, whether it was sent
+// with a Content-Length or chunked.
+func TestAGzippedFileUploadIsStoredDecoded(t *testing.T) {
+	f := newFileRoundtripFixture(t)
+	data := bytes.Repeat([]byte("bounded streaming data\n"), 10000)
+	var compressed bytes.Buffer
+	gz := gzip.NewWriter(&compressed)
+	if _, err := gz.Write(data); err != nil {
+		t.Fatal(err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatal(err)
+	}
+	for _, chunked := range []bool{false, true} {
+		t.Run(fmt.Sprintf("chunked=%t", chunked), func(t *testing.T) {
+			remote := filepath.Join(fileRoundtripTempDir(t), "remote.txt")
+			ticket := f.mint(t, "upload", remote)
+			var body io.Reader = bytes.NewReader(compressed.Bytes())
+			if chunked {
+				body = io.MultiReader(body) // a body of unknown length is sent chunked
+			}
+			req, err := http.NewRequest(ticket.Method, ticket.URI, body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req.Header.Set("Authorization", "Bearer "+ticket.Token)
+			req.Header.Set("Content-Type", "application/octet-stream")
+			req.Header.Set("Content-Encoding", "gzip")
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			answer, _ := io.ReadAll(resp.Body)
+			_ = resp.Body.Close()
+			if resp.StatusCode != http.StatusNoContent {
+				t.Fatalf("upload answered %d %s", resp.StatusCode, answer)
+			}
+			if onDisk, err := os.ReadFile(remote); err != nil || !bytes.Equal(onDisk, data) {
+				t.Fatalf("stored %d bytes (%v), want the %d decoded ones", len(onDisk), err, len(data))
 			}
 		})
 	}
