@@ -1,6 +1,6 @@
 # w6 · m483 — A service's Compute page holds its plan, manual scaling and autoscaling, with Render's "compute plan" wording and plan IDs
 
-**Worker:** worker6 **Goal:** as on Render since 2026-08-26, a service's dashboard has one **Compute** page with its compute plan, Manual Scaling and Autoscaling; plans are called "compute plans", not "instance types", and plan cards show Render's spec-based plan IDs beside the legacy names. **Status:** blocked (t001–t006, t008, t009 done and shipped; t007 waits for the first production pin carrying the shipping commit, then its production walk; then t010)
+**Worker:** worker6 **Goal:** as on Render since 2026-08-26, a service's dashboard has one **Compute** page with its compute plan, Manual Scaling and Autoscaling; plans are called "compute plans", not "instance types", and plan cards show Render's spec-based plan IDs beside the legacy names. **Status:** done (2026-11-19; checked on production pin `dff52c596d13` on a Starter fixture in `bex-canary`, t007)
 
 ## Tasks (in order)
 
@@ -12,10 +12,10 @@
 | t004 | [Plan cards show Render's plan ID beside the legacy name](done/t004.md) — **DONE** | 45m | t001 |
 | t005 | ["Compute plan" replaces "instance type" in the dashboard and bex-api's messages](done/t005.md) — **DONE** | 1h | t001 |
 | t006 | [Links that opened Plan or Scaling open Compute](done/t006.md) — **DONE** | 30m | t002 |
-| t007 | [Render parity](t007.md) | 20m | t003, t004, t005, t006 |
+| t007 | [Render parity](done/t007.md) — **DONE** | 20m | t003, t004, t005, t006 |
 | t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
 | t009 | [Test coverage](done/t009.md) — **DONE** | 30m | t007 |
-| t010 | [Closeout](t010.md) | 10m | t008, t009 |
+| t010 | [Closeout](done/t010.md) — **DONE** | 10m | t008, t009 |
 
 ## Definition of done
 
@@ -37,3 +37,11 @@
 - **Why now:** the change is three months old and every service page shows the old layout; the plan-ID half for Blueprints and larger plans is already owned (w1/m170, `w6/blocked/114`, `w6/blocked/m332`), the dashboard half is not.
 - **Open point (not a user decision):** Render's live dashboard was not captured (no Render login in `.env`); the layout follows Render's docs. t001 records what the docs cannot settle, and the tasks implement the docs' reading by default under ADR008.
 - **Render parity task included:** dashboard UI and bex-api error text change.
+
+## Unblocked (2026-11-19, `/loopx w6` worker)
+
+- **Affected:** t007, then t010. **Source:** verified evidence, no user decision.
+- **Finding:** the newest pin on `origin/main`, `a91e9aeb3` (`chore(deploy): pin platform images to dff52c596d13`, 2026-11-19 11:30Z), carries both of this milestone's commits: `git merge-base --is-ancestor` holds for `e1c7d08cc` (the Compute page) and `e9890d5ad` (the pending Edit slot's touch height) against `dff52c596d13`. The two pins before it, `7af50a28168d` (`826d32e42`) and `4b2cebd0bd03` (`19faf35f3`), already carried them.
+- **Status:** pending verification. A deployed dashboard is not proof that the definition of done holds on production.
+- **Next:** t007 walks the Compute page on production on a Starter fixture in `bex-canary` (the plan row, Edit, Autoscaling, Manual Scaling, Recent Metrics; the `/plan` and `/scaling` redirects; the Compute sidebar entry; pending vs ready at 1440 and 390 px; a REST refusal saying "paid compute plan"), deletes the fixture by id, and t010 closes the milestone.
+- **Verified (14:30Z):** t007's production walk passed with no drift ([done/t007.md](done/t007.md)); the fixture is deleted, and t010 closed the milestone.
