@@ -191,7 +191,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_env_group_vars",
-		Description: "Replace an environment group's whole env-var set (replace semantics); every linked service rolls.",
+		Description: "Replace an environment group's whole env-var set (replace semantics); every linked service rolls when the set changes, and a set the group already holds rolls none.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvGroupVarsArgs) (*mcp.CallToolResult, okResult, error) {
 		_, err := s.SetEnvGroupVars(ctx, in.ID, in.EnvVars)
 		return nil, okResult{OK: err == nil}, err
@@ -217,7 +217,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "set_env_group_var",
-		Description: "Add, update, or generate one environment variable without replacing the group's other variables; linked services roll.",
+		Description: "Add, update, or generate one environment variable without replacing the group's other variables; linked services roll when the group changes, and a value it already holds rolls none.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvGroupVarArgs) (*mcp.CallToolResult, EnvVarView, error) {
 		value := ""
 		if in.Value != nil {
@@ -237,7 +237,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "set_env_group_secret_file",
-		Description: "Add or update one secret file in an environment group (mounted at /etc/secrets/<name> on linked services); linked services roll.",
+		Description: "Add or update one secret file in an environment group (mounted at /etc/secrets/<name> on linked services); linked services roll when the group changes, and content it already holds rolls none.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvGroupFileArgs) (*mcp.CallToolResult, SecretFileView, error) {
 		f, err := s.SetEnvGroupFile(ctx, in.ID, in.Name, in.Content)
 		return nil, f, err

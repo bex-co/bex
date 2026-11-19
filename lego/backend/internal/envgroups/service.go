@@ -864,7 +864,7 @@ func (s *Service) DeleteEnvGroup(ctx context.Context, gid string) error {
 // --- group contents (env vars) ------------------------------------------------
 
 // SetEnvGroupVars replaces the group's whole env set, re-materializes the group's
-// env Secret, and rolls every linked service. Manage scope.
+// env Secret, and rolls every linked service when the set changed. Manage scope.
 func (s *Service) SetEnvGroupVars(ctx context.Context, gid string, vars []EnvVarView) ([]EnvVarView, error) {
 	g, err := s.authorizeGroup(ctx, core.RelCanCreate, gid)
 	if err != nil {
@@ -901,7 +901,8 @@ func (s *Service) SetEnvGroupVars(ctx context.Context, gid string, vars []EnvVar
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.rollGroupPatch(ctx, g.ID, SaveModeDeploy, result, store.TriggerConfigChange); err != nil {
+	// A replace that stores what the group already holds rolls nobody (w21/111).
+	if err := s.rollIfStored(ctx, g.ID, SaveModeDeploy, result); err != nil {
 		return nil, err
 	}
 	return envKeyViewsFromKeys(result.EnvVarKeys), nil
@@ -937,9 +938,10 @@ func (s *Service) GetEnvGroupVar(ctx context.Context, gid, key string) (EnvVarVi
 }
 
 // SetEnvGroupVar adds or updates one variable while preserving every other key,
-// then re-materializes the group's env Secret and rolls linked services. Manage
-// scope. This is Render's per-key PUT semantics and means clients never need to
-// reveal and resubmit the group's other values.
+// then re-materializes the group's env Secret and rolls linked services when the
+// write changed the group (a value it already holds rolls nobody, w21/111).
+// Manage scope. This is Render's per-key PUT semantics and means clients never
+// need to reveal and resubmit the group's other values.
 func (s *Service) SetEnvGroupVar(ctx context.Context, gid, key, value string) (EnvVarView, error) {
 	return s.SetEnvGroupVarInput(ctx, gid, EnvVarView{Key: key, Value: value, ValueSet: true})
 }
@@ -956,7 +958,7 @@ func (s *Service) SetEnvGroupVarInput(ctx context.Context, gid string, input Env
 	if err := core.CheckEnvKey(key); err != nil {
 		return EnvVarView{}, err
 	}
-	_, err = s.patchEnvironmentAuthorized(ctx, g, EnvironmentPatch{
+	err = s.putEnvironmentAuthorized(ctx, g, EnvironmentPatch{
 		EnvVars:  []EnvVarPatch{{Key: key, Value: input.Value, ValueSet: input.ValueSet, GenerateValue: input.GenerateValue}},
 		SaveMode: SaveModeDeploy,
 	})
@@ -976,16 +978,16 @@ func (s *Service) DeleteEnvGroupVar(ctx context.Context, gid, key string) error 
 	if !slices.Contains(g.EnvKeys, key) {
 		return core.ErrNotFound
 	}
-	_, err = s.patchEnvironmentAuthorized(ctx, g, EnvironmentPatch{
+	return s.putEnvironmentAuthorized(ctx, g, EnvironmentPatch{
 		EnvVars: []EnvVarPatch{{Key: key, Delete: true}}, SaveMode: SaveModeDeploy,
 	})
-	return err
 }
 
 // --- group contents (secret files) --------------------------------------------
 
 // SetEnvGroupFile adds or updates one group secret file (merged), re-materializes
-// the group's files Secret, and rolls every linked service. Manage scope.
+// the group's files Secret, and rolls every linked service when the file
+// changed. Manage scope.
 func (s *Service) SetEnvGroupFile(ctx context.Context, gid, name, content string) (SecretFileView, error) {
 	g, err := s.authorizeGroup(ctx, core.RelCanCreate, gid)
 	if err != nil {
@@ -995,7 +997,7 @@ func (s *Service) SetEnvGroupFile(ctx context.Context, gid, name, content string
 	if err := core.CheckSecretFileName(name); err != nil {
 		return SecretFileView{}, err
 	}
-	_, err = s.patchEnvironmentAuthorized(ctx, g, EnvironmentPatch{
+	err = s.putEnvironmentAuthorized(ctx, g, EnvironmentPatch{
 		SecretFiles: []SecretFilePatch{{Name: name, Content: content}}, SaveMode: SaveModeDeploy,
 	})
 	if err != nil {
@@ -1014,10 +1016,9 @@ func (s *Service) DeleteEnvGroupFile(ctx context.Context, gid, name string) erro
 	if !slices.Contains(g.FileNames, name) {
 		return core.ErrNotFound
 	}
-	_, err = s.patchEnvironmentAuthorized(ctx, g, EnvironmentPatch{
+	return s.putEnvironmentAuthorized(ctx, g, EnvironmentPatch{
 		SecretFiles: []SecretFilePatch{{Name: name, Delete: true}}, SaveMode: SaveModeDeploy,
 	})
-	return err
 }
 
 // GetEnvGroupFile reveals one file's content (sensitive read).

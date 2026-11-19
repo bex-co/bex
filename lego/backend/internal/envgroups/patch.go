@@ -68,6 +68,12 @@ type EnvironmentPatchResult struct {
 	// FailedServiceIDs it must not be retried, so RolledOut stays true.
 	PendingServiceIDs []string `json:"pendingServiceIds,omitempty"`
 	RolledOut         bool     `json:"rolledOut"`
+
+	// stored is whether the save wrote a map (never serialized). A save that
+	// stored nothing still rolls when it is PatchEnvironment's, the request that
+	// retries a failed rollout; the single-item verbs roll only a write that
+	// stored something (rollIfStored).
+	stored bool
 }
 
 func envGroupRevisionConflict() error {
@@ -122,25 +128,56 @@ type coreSecret struct{ object *corev1.Secret }
 // OpenBao maps and their two Kubernetes projections across API replicas: a save
 // claims the row's content version busy, writes, and releases it with the next
 // generation, so a file-only update takes part in the same revision protocol.
+//
+// A save that changes nothing still rolls the linked services in deploy and
+// rebuild modes: the empty patch is how a failed rollout is retried. The
+// single-item verbs roll only a write that changed the group (putEnvironmentAuthorized).
 func (s *Service) PatchEnvironment(ctx context.Context, gid string, patch EnvironmentPatch) (EnvironmentPatchResult, error) {
 	g, err := s.authorizeGroup(ctx, core.RelCanCreate, gid)
 	if err != nil {
 		return EnvironmentPatchResult{}, err
 	}
-	return s.patchEnvironmentAuthorized(ctx, g, patch)
+	result, err := s.commitEnvironment(ctx, g, patch)
+	if err != nil {
+		return EnvironmentPatchResult{}, err
+	}
+	return s.rollGroupPatch(ctx, g.ID, patch.SaveMode, result, store.TriggerConfigChange)
 }
 
-func (s *Service) patchEnvironmentAuthorized(ctx context.Context, g store.EnvGroup, patch EnvironmentPatch) (EnvironmentPatchResult, error) {
+// putEnvironmentAuthorized is the save of the single-item verbs (a variable or
+// a file written or deleted). Unlike PatchEnvironment it rolls the linked
+// services only when the write stored something new (w21/111): Render's
+// trigger is a change to the group, and a write of what the group already
+// holds is none. The retry of a failed rollout is PatchEnvironment's empty patch.
+func (s *Service) putEnvironmentAuthorized(ctx context.Context, g store.EnvGroup, patch EnvironmentPatch) error {
+	result, err := s.commitEnvironment(ctx, g, patch)
+	if err != nil {
+		return err
+	}
+	return s.rollIfStored(ctx, g.ID, patch.SaveMode, result)
+}
+
+// rollIfStored rolls the linked services of a write that owes a rollout only
+// when it changed the group: a save that stored nothing opens no deploy on any
+// of them.
+func (s *Service) rollIfStored(ctx context.Context, gid string, mode SaveMode, result EnvironmentPatchResult) error {
+	if !result.stored {
+		return nil
+	}
+	_, err := s.rollGroupPatch(ctx, gid, mode, result, store.TriggerConfigChange)
+	return err
+}
+
+// commitEnvironment writes one patch under the group's content lock, before any
+// service is rolled.
+func (s *Service) commitEnvironment(ctx context.Context, g store.EnvGroup, patch EnvironmentPatch) (EnvironmentPatchResult, error) {
 	var result EnvironmentPatchResult
 	err := s.withGroupContent(ctx, g.ID, func(ctx context.Context, fresh store.EnvGroup) error {
 		var err error
 		result, err = s.patchContents(ctx, fresh, patch)
 		return err
 	})
-	if err != nil {
-		return EnvironmentPatchResult{}, err
-	}
-	return s.rollGroupPatch(ctx, g.ID, patch.SaveMode, result, store.TriggerConfigChange)
+	return result, err
 }
 
 // patchContents runs with the group's session lock held; unrelated rollout SQL
@@ -210,6 +247,7 @@ func (s *Service) patchContentsFromSnapshot(ctx context.Context, g store.EnvGrou
 		SecretFileNames:    slices.Sorted(maps.Keys(next.files)),
 		Revision:           encodeEnvGroupRevision(generation),
 		AffectedServiceIDs: slices.Clone(g.ServiceLinks),
+		stored:             op.EnvChanged || op.FilesChanged,
 	}
 	return result, nil
 }
