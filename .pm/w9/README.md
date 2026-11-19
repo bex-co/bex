@@ -145,6 +145,11 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [ ] **121** — [A workspace delete that fails partway cannot be retried by its admin: the first attempt already revoked every member](121.md) ← from w9/120 2026-11-18
 - [ ] **122** — [A new Key Value's connection strings are not shaped like Render's: the external one is empty, the internal one carries the password, and the CLI command is `redis-cli -u`](122.md) ← from w9/108's Terraform recheck ([checklist](../../docs/terraform-compatibility-checklist.md), class 10) 2026-11-18
 - [ ] **123** — [After `DELETE …/autoscaling`, a service read still carries `serviceDetails.autoscaling`, where Render omits it, so Terraform cannot remove autoscaling](123.md) ← from w9/111's Terraform recheck ([checklist](../../docs/terraform-compatibility-checklist.md)) 2026-11-18
+- [ ] **m492** — [Object-storage BuildKit layer cache (`BEX_BUILD_CACHE=s3`), enabled permanently in production](m492/README.md) (9 tasks) ← from `/pm-brainstorm for one aspect of render parity` (Build Caching & Build Environment Parity, 2026-11-18, item 1)
+- [ ] **m493** — [Persistent `$XDG_CACHE_HOME` (`/opt/render/.cache`) across native builds, reset on `clearCache: "clear"`](m493/README.md) (8 tasks) ← from `/pm-brainstorm for one aspect of render parity` (Build Caching & Build Environment Parity, 2026-11-18, item 2); depends on m492
+- [ ] **m494** — [Persistent native runtime dependency caches across source-only rebuilds (Ruby `.gems`, Rust `.cargo`, Go `GOPATH`, Elixir `deps`/`_build`)](m494/README.md) (8 tasks) ← from `/pm-brainstorm for one aspect of render parity` (Build Caching & Build Environment Parity, 2026-11-18, item 3); depends on m492, m493
+- [ ] **m495** — [Build-time private network reach to workspace web & private services (`fromService` `host`/`hostport`)](m495/README.md) (7 tasks) ← from `/pm-brainstorm for one aspect of render parity` (Build Caching & Build Environment Parity, 2026-11-18, item 4)
+- [ ] **124** — [Revoke per-build NetworkPolicies immediately when a build is canceled](124.md) ← from `/pm-brainstorm for one aspect of render parity` (Build Caching & Build Environment Parity, 2026-11-18, item 5)
 
 ## Approved queue (priority order, 2026-09-08)
 
