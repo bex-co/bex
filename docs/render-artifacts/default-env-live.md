@@ -108,6 +108,16 @@ Each runtime's web fixture. Every one of these names was unset on every other ru
 
 `GUNICORN_CMD_ARGS`, `GEM_PATH` and `PASSENGER_PORT` were read on pin `6984548a30f8`, as the header says. There too, `py` read `PASSENGER_PORT` and `GEM_PATH` unset, and `rb` read `GUNICORN_CMD_ARGS` unset. No other fixture was re-read on that pin: `f1cdd052b` puts the three in the native Python and Ruby images only, and the operator sets its serving-port value of `GUNICORN_CMD_ARGS` only on native Python and of `PASSENGER_PORT` only on native Ruby (`NativeServingPortEnv`, `lego/operator/internal/build/native.go`), so none of them reaches the other fixtures.
 
+## Beyond the page
+
+Render's page does not list this one, but its native environment sets it, and the probe prints it since w9/m493.
+
+| Runtime | Variable | Render's value | Build | Runtime | Observed |
+| --- | --- | --- | --- | --- | --- |
+| every native runtime, static builds included | `XDG_CACHE_HOME` | `/opt/render/.cache`, at build and at runtime; the directory persists between builds only | pending | pending | not yet read on production: w9/m493 sets it from its commit on, and its t004 reads it, with a marker file written in one build, read in the next, absent from the running service and gone after a clear-cache deploy |
+
+Render's value comes from a Render staff answer on community.render.com ("XDG_CACHE_HOME is writable, but is only persisted between builds") and a printed Render runtime environment (`XDG_CACHE_HOME: '/opt/render/.cache'`). The Docker fixture declares it as an `ARG`, so its build line shows whether a Docker build receives it; Render's Docker builds are not documented to.
+
 ## Acceptance checks owed elsewhere
 
 - **w8/272 (Elixir long node name): passes.** With no clustering configuration, `bin/phoenix_hello rpc 'IO.puts(node())'` in the instance printed `phoenix_hello@srv-dbu1q3ec1l2s739d46tg-u39333opr9djbj8gvt12.nodes.tea-daif693dqjvc73e7as3g.svc.cluster.local`. After the service set `RELEASE_DISTRIBUTION=sname` and redeployed (`dep-dbu1vbec1l2s739d481g`, live 09:40:14), it printed `phoenix_hello@srv-dbu1q3ec1l2s739d46tg-miso1bl374a6oni9dpda`, and the node ran with `-sname phoenix_hello`.

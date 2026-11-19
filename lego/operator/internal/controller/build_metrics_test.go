@@ -80,31 +80,47 @@ func TestBuildFailureMappingsAreTotalAndDistinct(t *testing.T) {
 
 // w9/m492: each S3 cache phase's own outcome reaches the fleet, which is the
 // only place a store outage shows (every phase exits 0), and a size is
-// recorded only where there was a layout to measure.
+// recorded only where there was a layout to measure. w9/m493: a native
+// build's $XDG_CACHE_HOME archive lands on series of its own kind, so an
+// archive's hit never reads as the layer cache's.
 func TestRecordBuildSignalsMetersEachCachePhase(t *testing.T) {
-	restoreHit := buildCachePhaseSeconds.WithLabelValues("cache-restore", build.CacheHit)
-	saveError := buildCachePhaseSeconds.WithLabelValues("cache-save", build.CacheError)
-	restoreBytes := buildCacheBytes.WithLabelValues("cache-restore")
-	saveBytes := buildCacheBytes.WithLabelValues("cache-save")
+	layer, xdg := build.CacheKindLayer, build.CacheKindXDG
+	restoreHit := buildCachePhaseSeconds.WithLabelValues("cache-restore", layer, build.CacheHit)
+	saveError := buildCachePhaseSeconds.WithLabelValues("cache-save", layer, build.CacheError)
+	xdgRestoreHit := buildCachePhaseSeconds.WithLabelValues("cache-restore", xdg, build.CacheHit)
+	xdgSaveSaved := buildCachePhaseSeconds.WithLabelValues("cache-save", xdg, build.CacheSaved)
+	restoreBytes := buildCacheBytes.WithLabelValues("cache-restore", layer)
+	saveBytes := buildCacheBytes.WithLabelValues("cache-save", layer)
+	xdgRestoreBytes := buildCacheBytes.WithLabelValues("cache-restore", xdg)
 	hits, errs := histogramCount(t, restoreHit), histogramCount(t, saveError)
-	restored, saved := histogramCount(t, restoreBytes), histogramCount(t, saveBytes)
+	xdgHits, xdgSaves := histogramCount(t, xdgRestoreHit), histogramCount(t, xdgSaveSaved)
+	restored, saved, xdgRestored := histogramCount(t, restoreBytes), histogramCount(t, saveBytes), histogramCount(t, xdgRestoreBytes)
 
 	recordBuildSignals(build.Signals{CachePhases: []build.CachePhaseSignal{
-		{Phase: "cache-restore", Outcome: build.CacheHit, Seconds: 3, Bytes: 1 << 20},
-		{Phase: "cache-save", Outcome: build.CacheError, Seconds: 1},
+		{Phase: "cache-restore", Kind: layer, Outcome: build.CacheHit, Seconds: 3, Bytes: 1 << 20},
+		{Phase: "cache-restore", Kind: xdg, Outcome: build.CacheHit, Seconds: 2, Bytes: 4 << 20},
+		{Phase: "cache-save", Kind: layer, Outcome: build.CacheError, Seconds: 1},
+		{Phase: "cache-save", Kind: xdg, Outcome: build.CacheSaved, Seconds: 1, Bytes: 5 << 20},
 	}})
 
-	if got := histogramCount(t, restoreHit); got != hits+1 {
-		t.Errorf("restore hit count = %d, want %d", got, hits+1)
-	}
-	if got := histogramCount(t, saveError); got != errs+1 {
-		t.Errorf("save error count = %d, want %d", got, errs+1)
-	}
-	if got := histogramCount(t, restoreBytes); got != restored+1 {
-		t.Errorf("restored bytes count = %d, want %d", got, restored+1)
-	}
-	if got := histogramCount(t, saveBytes); got != saved {
-		t.Errorf("a failed save recorded a size (%d → %d)", saved, got)
+	for _, c := range []struct {
+		name   string
+		o      prometheus.Observer
+		before uint64
+		want   uint64
+	}{
+		{"layer restore hit", restoreHit, hits, 1},
+		{"layer save error", saveError, errs, 1},
+		{"xdg restore hit", xdgRestoreHit, xdgHits, 1},
+		{"xdg save saved", xdgSaveSaved, xdgSaves, 1},
+		{"layer restored bytes", restoreBytes, restored, 1},
+		{"xdg restored bytes", xdgRestoreBytes, xdgRestored, 1},
+		// A failed save recorded no size.
+		{"layer saved bytes", saveBytes, saved, 0},
+	} {
+		if got := histogramCount(t, c.o); got != c.before+c.want {
+			t.Errorf("%s count = %d, want %d", c.name, got, c.before+c.want)
+		}
 	}
 }
 

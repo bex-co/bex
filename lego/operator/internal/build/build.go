@@ -1339,6 +1339,11 @@ fi
 ` + buildkitScript
 		}
 	}
+	// A native build keeps $XDG_CACHE_HOME through solves of its own around
+	// the image's (xdgcache.go).
+	if o.xdgCache() {
+		buildkitScript = xdgBuildkitSetup + buildkitScript
+	}
 
 	// A Dockerfile build's env vars and secret files are assembled in the
 	// container itself so no Secret-backed value enters the Job spec (w1/m178).
@@ -1475,6 +1480,7 @@ fi
 		)
 	}
 	mountRegistryCred(&buildkit, "pull-registry-cred", o.PullSecret)
+	volumes = withXDGBuildkit(o, &buildkit, volumes)
 
 	pusher := corev1.Container{
 		Name:    pushContainer,

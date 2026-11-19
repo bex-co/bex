@@ -93,11 +93,17 @@ func (o Options) cacheBackend() cacheBackend {
 	}
 }
 
+// buildCacheRoot is this App lifetime's root in the store,
+// "<workspace>/<app-uid>/", which App deletion removes whole; "" without an
+// App UID.
+func (o Options) buildCacheRoot() string {
+	return identity.ForApp(o.Name, o.Workspace).BuildCacheRoot(o.AppUID)
+}
+
 // layerCachePrefix is the object-key prefix this App lifetime's BuildKit layer
-// cache occupies: "<workspace>/<app-uid>/layer-cache/". It sits under the
-// App's BuildCacheRoot, which App deletion removes whole.
+// cache occupies: "<workspace>/<app-uid>/layer-cache/".
 func (o Options) layerCachePrefix() string {
-	root := identity.ForApp(o.Name, o.Workspace).BuildCacheRoot(o.AppUID)
+	root := o.buildCacheRoot()
 	if root == "" {
 		return ""
 	}
@@ -140,17 +146,19 @@ const (
 // third-party CLI's error text is the wrong thing to stream into a tenant's
 // build log, and nothing it prints is needed to decide the outcome. Every call
 // shares one phase-wide deadline, so the phase as a whole is bounded no matter
-// how many transfers it makes (cacheCommandTimeout).
+// how many transfers it makes (cacheCommandTimeout). bex_outcome appends one
+// line per cache kind the phase carries: the layer cache's "<outcome>
+// [bytes]", and on a native build an xdg line beside it (xdgCacheOutcome).
 const s3CachePrelude = `bex_deadline=$(( $(date +%s) + $BEX_CACHE_BUDGET_SECONDS ))
 bex_s3() {
   bex_left=$(( bex_deadline - $(date +%s) ))
   [ "$bex_left" -gt 0 ] || return 124
   timeout "$bex_left" aws --endpoint-url "$BEX_CACHE_ENDPOINT" s3 "$@" --only-show-errors >/dev/null 2>&1
 }
-bex_outcome() { printf '%s\n' "$*" > ` + terminationLog + `; }
+bex_outcome() { printf '%s\n' "$*" >> ` + terminationLog + `; }
 `
 
-// s3CacheRestore downloads the App's layout into /cache-in. The layout arrives
+// s3CacheRestoreLayer downloads the App's layout into /cache-in. The layout arrives
 // exactly as BuildKit exported it, index.json included, so its
 // org.opencontainers.image.ref.name=latest annotation survives the round trip
 // without the re-tagging the registry backend needs (cacheLayoutTag).
@@ -163,7 +171,7 @@ bex_outcome() { printf '%s\n' "$*" > ` + terminationLog + `; }
 // layout BuildKit writes: index.json names the cache manifest, which names the
 // cache config and every layer. Only "digest" fields count: each layer also
 // carries its uncompressed diff ID, a sha256 that is never a blob.
-const s3CacheRestore = s3CachePrelude + `bex_clear() { rm -rf ` + cacheInMount + `/* ` + cacheInMount + `/.[!.]*; }
+const s3CacheRestoreLayer = `bex_clear() { rm -rf ` + cacheInMount + `/* ` + cacheInMount + `/.[!.]*; }
 bex_cold() {
   bex_clear
   bex_outcome "$1"
@@ -186,11 +194,11 @@ done
 bex_outcome ` + CacheHit + ` "$(du -sb ` + cacheInMount + ` | cut -f1)"
 `
 
-// s3CachePurge deletes the App's layer cache before a clear-cache rebuild,
+// s3CachePurgeLayer deletes the App's layer cache before a clear-cache rebuild,
 // which then neither restores nor imports (w7/m88). Best-effort for the same
 // reason the registry purge is: the rebuild already skips the import, and its
 // own cache-save replaces whatever a failed purge left.
-const s3CachePurge = s3CachePrelude + `if bex_s3 rm "$BEX_CACHE_URI" --recursive; then
+const s3CachePurgeLayer = `if bex_s3 rm "$BEX_CACHE_URI" --recursive; then
   bex_outcome ` + CachePurged + `
 else
   bex_outcome ` + CacheError + `
@@ -198,7 +206,7 @@ else
 fi
 `
 
-// s3CacheSave stores the layout BuildKit exported to /cache-out.
+// s3CacheSaveLayer stores the layout BuildKit exported to /cache-out.
 //
 // Everything in /cache-out was written by the container that runs tenant
 // code, so nothing in it is trusted to be what it claims. --no-follow-symlinks
@@ -211,7 +219,7 @@ fi
 // dependency layer is never uploaded again. The index follows, so a reader
 // never sees an index ahead of its blobs, and blobs no index names any more are
 // pruned last, when a failure costs only dead weight.
-const s3CacheSave = s3CachePrelude + `if [ ! -f ` + cacheOutMount + `/index.json ] || [ -L ` + cacheOutMount + `/index.json ] || [ -L ` + cacheOutMount + `/blobs ] || [ -L ` + cacheOutMount + `/blobs/sha256 ]; then
+const s3CacheSaveLayer = `if [ ! -f ` + cacheOutMount + `/index.json ] || [ -L ` + cacheOutMount + `/index.json ] || [ -L ` + cacheOutMount + `/blobs ] || [ -L ` + cacheOutMount + `/blobs/sha256 ]; then
   bex_outcome ` + CacheSkipped + `
   echo "bex: the build exported no cache; nothing saved" >&2
   exit 0
@@ -234,23 +242,27 @@ bex_blobs --delete || true
 bex_outcome ` + CacheSaved + ` "$bex_bytes"
 `
 
-// s3CacheRestoreContainer is the S3 twin of cacheRestoreContainer.
+// s3CacheRestoreContainer is the S3 twin of cacheRestoreContainer. A native
+// build's also fetches its $XDG_CACHE_HOME archive, beside the layout.
 func s3CacheRestoreContainer(o Options) corev1.Container {
-	return s3CachePhase(o, cacheRestorePhase, s3CacheRestore,
+	c := s3CachePhase(o, cacheRestorePhase, s3CacheScript(o, s3CacheRestoreLayer, xdgCacheRestore),
 		corev1.VolumeMount{Name: cacheInVolume, MountPath: cacheInMount})
+	return withXDGCache(c, o, corev1.VolumeMount{Name: xdgInVolume, MountPath: xdgInMount})
 }
 
-// s3CachePurgeContainer is the S3 twin of cachePurgeContainer.
+// s3CachePurgeContainer is the S3 twin of cachePurgeContainer. A native
+// build's also deletes its $XDG_CACHE_HOME archive.
 func s3CachePurgeContainer(o Options) corev1.Container {
-	return s3CachePhase(o, cachePurgePhase, s3CachePurge)
+	return withXDGCache(s3CachePhase(o, cachePurgePhase, s3CacheScript(o, s3CachePurgeLayer, xdgCachePurge)), o)
 }
 
-// s3CacheSaveContainer is the S3 twin of cacheSaveContainer.
+// s3CacheSaveContainer is the S3 twin of cacheSaveContainer. A native build's
+// also stores its $XDG_CACHE_HOME archive, beside the layout.
 func s3CacheSaveContainer(o Options) corev1.Container {
-	c := s3CachePhase(o, cacheSavePhase, s3CacheSave,
+	c := s3CachePhase(o, cacheSavePhase, s3CacheScript(o, s3CacheSaveLayer, xdgCacheSave),
 		corev1.VolumeMount{Name: cacheOutVolume, MountPath: cacheOutMount, ReadOnly: true})
 	c.Env = append(c.Env, corev1.EnvVar{Name: "BEX_CACHE_MAX_BYTES", Value: strconv.FormatInt(cacheMaxBytes, 10)})
-	return c
+	return withXDGCache(c, o, corev1.VolumeMount{Name: xdgOutVolume, MountPath: xdgOutMount, ReadOnly: true})
 }
 
 // s3CachePhase is the shape every S3 cache phase shares: aws-cli holding the

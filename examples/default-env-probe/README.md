@@ -1,6 +1,6 @@
 # default-env-probe
 
-The fixture behind [default-env-live.md](../../docs/render-artifacts/default-env-live.md), w32/m425's production capture: it prints, at build and at runtime, every environment variable Render documents as a platform default ([render.com/docs/environment-variables](https://render.com/docs/environment-variables)), plus `PORT`. `probe.sh` prints those names only, one line each (`DEFAULT_ENV <phase> NAME=value` or `DEFAULT_ENV <phase> NAME unset`), never the rest of the environment.
+The fixture behind [default-env-live.md](../../docs/render-artifacts/default-env-live.md), w32/m425's production capture: it prints, at build and at runtime, every environment variable Render documents as a platform default ([render.com/docs/environment-variables](https://render.com/docs/environment-variables)), plus `PORT` and `XDG_CACHE_HOME`, Render's build cache directory, which that page does not list (w9/m493). `probe.sh` prints those names only, one line each (`DEFAULT_ENV <phase> NAME=value` or `DEFAULT_ENV <phase> NAME unset`), never the rest of the environment.
 
 Every service below uses the repository `https://github.com/bex-co/bex`, branch `main` and root directory `examples/default-env-probe`, except the Elixir one, and none sets its own variables. Read the lines back with `GET /v1/logs?ownerId=<workspace>&resource=<service id>&type=build` (or `type=app`) and `text=DEFAULT_ENV`.
 

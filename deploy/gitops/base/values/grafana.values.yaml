@@ -5975,13 +5975,13 @@ dashboards:
                 },
                 {
                  "refId": "C",
-                 "expr": "sum by (phase, outcome) (increase(bex_build_cache_phase_seconds_count[1h]))",
-                 "legendFormat": "{{phase}} {{outcome}} /h"
+                 "expr": "sum by (phase, kind, outcome) (increase(bex_build_cache_phase_seconds_count[1h]))",
+                 "legendFormat": "{{phase}} {{kind}} {{outcome}} /h"
                 },
                 {
                  "refId": "D",
-                 "expr": "histogram_quantile(0.95, sum by (le, phase) (rate(bex_build_cache_phase_seconds_bucket{outcome=~\"hit|saved\"}[1h])))",
-                 "legendFormat": "{{phase}} p95 s"
+                 "expr": "histogram_quantile(0.95, sum by (le, phase, kind) (rate(bex_build_cache_phase_seconds_bucket{outcome=~\"hit|saved\"}[1h])))",
+                 "legendFormat": "{{phase}} {{kind}} p95 s"
                 }
               ]
             },

@@ -108,7 +108,7 @@ func TestNativeDockerfileKeepsToolchainPATH(t *testing.T) {
 			t.Errorf("%s: login shell resets PATH to %s, dropping the toolchain PATH:\n%s", runtime, profileDefault, dockerfile)
 		}
 		for _, want := range []string{
-			`RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",`,
+			`RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env` + nativeXDGCacheMount + ` ["/bin/bash","-c",`,
 			`CMD ["/bin/bash","-c",`,
 		} {
 			if !strings.Contains(dockerfile, want) {
@@ -380,12 +380,13 @@ func TestNativeSecretFilesTransport(t *testing.T) {
 	dockerfile := nativeDockerfile(o)
 	want := "RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env" +
 		" --mount=type=secret,id=bex-file-0,target=/etc/secrets/.npmrc,required=true" +
-		" --mount=type=secret,id=bex-file-1,target=/etc/secrets/qa-r59.txt,required=true ["
+		" --mount=type=secret,id=bex-file-1,target=/etc/secrets/qa-r59.txt,required=true" + nativeXDGCacheMount + " ["
 	if !strings.Contains(dockerfile, want) {
 		t.Fatalf("Dockerfile missing file mounts %q:\n%s", want, dockerfile)
 	}
 	// The one ARG is Render's public RENDER_GIT_COMMIT (w5/m148), never a file.
 	unexempt := strings.Replace(dockerfile, "ARG RENDER_GIT_COMMIT\n", "", 1)
+	unexempt = strings.Replace(unexempt, "ARG UV_LINK_MODE=copy\n", "", 1) // w9/m493, never a file
 	for _, reject := range []string{"COPY /native", "ARG ", "ENV QA", "/native/files"} {
 		if strings.Contains(unexempt, reject) {
 			t.Fatalf("file transport must not use %q:\n%s", reject, dockerfile)

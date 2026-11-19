@@ -67,7 +67,7 @@ func TestNativeBuildMountsManagedOIDCFilesForTheBuildCommandOnly(t *testing.T) {
 	df := nativeDockerfile(o)
 	want := " --mount=type=secret,id=bex-oidc-aws-token,target=/var/lib/render/oidc/aws-token,required=true" +
 		" --mount=type=secret,id=bex-oidc-gcp-token,target=/var/lib/render/oidc/gcp-token,required=true" +
-		" --mount=type=secret,id=bex-oidc-gcp-credentials.json,target=/var/lib/render/oidc/gcp-credentials.json,required=true ["
+		" --mount=type=secret,id=bex-oidc-gcp-credentials.json,target=/var/lib/render/oidc/gcp-credentials.json,required=true" + nativeXDGCacheMount + " ["
 	if !strings.Contains(df, nativeEnvRunMount+want) {
 		t.Fatalf("authored RUN missing the token mounts %q:\n%s", want, df)
 	}

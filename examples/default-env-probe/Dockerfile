@@ -48,6 +48,7 @@ ARG CARGO_HOME
 ARG ROCKET_ENV
 ARG ROCKET_PORT
 ARG RUSTUP_HOME
+ARG XDG_CACHE_HOME
 COPY probe.sh /probe.sh
 RUN sh /probe.sh build && mkdir -p /www && echo ok > /www/index.html
 CMD ["sh", "-c", "sh /probe.sh runtime && exec httpd -f -p \"${PORT:-10000}\" -h /www"]

@@ -969,7 +969,7 @@ groups:
           severity: warning
         annotations:
           summary: "{{ $value | humanize }} S3 build-cache transfers failed in 30 minutes (builds are running uncached)"
-          description: "cache-restore, cache-purge or cache-save could not reach the bex-build-cache bucket, so builds fell back to building clean. Nothing has failed for tenants; their builds are only slower. Check that the bex-build/bex-build-cache-s3 Secret exists, then run scripts/build-cache-s3-credentials.sh verify against the cluster, then Wasabi's status. bex_build_cache_phase_seconds_count by phase shows which direction is failing. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D3."
+          description: "cache-restore, cache-purge or cache-save could not reach the bex-build-cache bucket, so builds fell back to building clean. Nothing has failed for tenants; their builds are only slower. Check that the bex-build/bex-build-cache-s3 Secret exists, then run scripts/build-cache-s3-credentials.sh verify against the cluster, then Wasabi's status. bex_build_cache_phase_seconds_count by phase and kind shows which direction, and which cache (the layer cache or a native build's $XDG_CACHE_HOME archive), is failing. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D3."
 
       # Build-toolchain freshness (docs/ADR060 D7, w4/m86). Readiness
       # and age are distinct: a Ready builder can still be a stale

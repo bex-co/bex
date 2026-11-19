@@ -433,8 +433,8 @@ COPY <<'%s' %s
 %s%s
 %sARG RENDER_GIT_COMMIT
 %s%s %s
-`, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools+hugo+nativeBuildDefaults(o), nativeWorkdir, nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
-		installLines, nativeEnvRunMount, fileMounts+nativeOIDCMounts(o), run)
+`, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools+hugo+nativeBuildDefaults(o)+nativeXDGCacheDir, nativeWorkdir, nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
+		installLines, nativeEnvRunMount, fileMounts+nativeOIDCMounts(o)+nativeXDGCacheMount, run)
 	if o.StaticSite {
 		// No PORT/CMD: the image only carries the built site for the publish
 		// Job's extract initContainer (ADR029) and never runs as a workload.
@@ -471,6 +471,38 @@ func nativeSecretFileLinks(o Options) string {
 	return fmt.Sprintf("RUN set -e; for name in %s; do [ -d \"./$name\" ] && [ ! -L \"./$name\" ] || ln -sfn \"%s/$name\" \"./$name\"; done\n",
 		strings.Join(o.NativeFiles, " "), nativeSecretFilesDir)
 }
+
+// nativeXDGCacheHome is Render's build cache directory, $XDG_CACHE_HOME on
+// every native runtime (w9/m493): what a build leaves there is there for the
+// service's next build, a "Clear build cache & deploy" empties it, and the
+// running service never carries it. pip, uv, Poetry, Go's build cache,
+// Corepack, node-gyp and Playwright keep their caches under it by default.
+const nativeXDGCacheHome = "/opt/render/.cache"
+
+// nativeXDGCacheID names the BuildKit cache mount the build command writes
+// $XDG_CACHE_HOME into. The id is the mount's identity across the solves of
+// one build pod's daemon (xdgcache.go), and that daemon is the pod's own, so
+// no two builds ever share it.
+const nativeXDGCacheID = "bex-xdg-cache"
+
+// nativeXDGCacheDir sets $XDG_CACHE_HOME for the build and the running
+// service alike, as on Render, and makes the directory, so the service finds
+// it writable and empty (Render keeps nothing written there at runtime).
+//
+// UV_LINK_MODE=copy is for the build alone (an ARG, which the image does not
+// keep, and which a service's own value replaces). The cache mount is a
+// filesystem of its own, so uv cannot hardlink a package from its cache into
+// the virtualenv: it copies instead, as it would be told to here, but first
+// prints a three-line warning into every uv build's log, which Render's
+// single-disk build never shows.
+const nativeXDGCacheDir = "ENV XDG_CACHE_HOME=" + nativeXDGCacheHome + "\n" +
+	"ARG UV_LINK_MODE=copy\n" +
+	"RUN mkdir -p " + nativeXDGCacheHome + "\n"
+
+// nativeXDGCacheMount is the build command's mount of $XDG_CACHE_HOME: a cache
+// mount, so the files it holds never reach a layer of the image, which is a
+// single stage with no runtime stage to leave them out of.
+const nativeXDGCacheMount = " --mount=type=cache,id=" + nativeXDGCacheID + ",target=" + nativeXDGCacheHome + ",sharing=locked"
 
 // nativePythonVenv is where Render keeps a Python service's virtualenv
 // (VENV_ROOT, render.com/docs/environment-variables).

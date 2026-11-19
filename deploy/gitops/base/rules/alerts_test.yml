@@ -2208,11 +2208,13 @@ tests:
   - name: BuildCacheStoreErrors fires on a burst of store errors, not on misses
     interval: 1m
     input_series:
-      - series: 'bex_build_cache_phase_seconds_count{phase="cache-restore",outcome="miss"}'
+      - series: 'bex_build_cache_phase_seconds_count{phase="cache-restore",kind="layer",outcome="miss"}'
         values: "0+1x60"
-      - series: 'bex_build_cache_phase_seconds_count{phase="cache-restore",outcome="error"}'
+      - series: 'bex_build_cache_phase_seconds_count{phase="cache-restore",kind="xdg",outcome="miss"}'
+        values: "0+1x60"
+      - series: 'bex_build_cache_phase_seconds_count{phase="cache-restore",kind="layer",outcome="error"}'
         values: "0x20 1x10 1+1x30"
-      - series: 'bex_build_cache_phase_seconds_count{phase="cache-save",outcome="error"}'
+      - series: 'bex_build_cache_phase_seconds_count{phase="cache-save",kind="xdg",outcome="error"}'
         values: "0x60"
     alert_rule_test:
       - eval_time: 15m
@@ -2228,7 +2230,7 @@ tests:
               severity: warning
             exp_annotations:
               summary: "14 S3 build-cache transfers failed in 30 minutes (builds are running uncached)"
-              description: "cache-restore, cache-purge or cache-save could not reach the bex-build-cache bucket, so builds fell back to building clean. Nothing has failed for tenants; their builds are only slower. Check that the bex-build/bex-build-cache-s3 Secret exists, then run scripts/build-cache-s3-credentials.sh verify against the cluster, then Wasabi's status. bex_build_cache_phase_seconds_count by phase shows which direction is failing. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D3."
+              description: "cache-restore, cache-purge or cache-save could not reach the bex-build-cache bucket, so builds fell back to building clean. Nothing has failed for tenants; their builds are only slower. Check that the bex-build/bex-build-cache-s3 Secret exists, then run scripts/build-cache-s3-credentials.sh verify against the cluster, then Wasabi's status. bex_build_cache_phase_seconds_count by phase and kind shows which direction, and which cache (the layer cache or a native build's $XDG_CACHE_HOME archive), is failing. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D3."
 
   # A dropped Stripe webhook is invisible without these: checkout.session.completed
   # is the only writer of payment_method_bound_at, so losing one locks a paying

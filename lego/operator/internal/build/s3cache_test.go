@@ -142,7 +142,9 @@ func TestS3BuildCacheAddsOnlyWhatItClaimsToAdd(t *testing.T) {
 	// The S3 backend changes only the phases that carry the layout: with them,
 	// their volumes, the buildkit mounts and the export flag stripped, the Job is
 	// the gate-off Job exactly. The BuildKit half is shared with the registry
-	// backend, so the same strip must work for both.
+	// backend, so the same strip must work for both. A native build also
+	// carries $XDG_CACHE_HOME (w9/m493): its two volumes, their buildkit
+	// mounts and the env pointing buildctl-daemonless.sh at the wrapper.
 	for _, tc := range []struct {
 		name string
 		o    Options
@@ -165,7 +167,7 @@ func TestS3BuildCacheAddsOnlyWhatItClaimsToAdd(t *testing.T) {
 			spec.InitContainers = withoutCachePhases(spec.InitContainers)
 			spec.Containers = withoutCachePhases(spec.Containers)
 			spec.Volumes = slices.DeleteFunc(spec.Volumes, func(v corev1.Volume) bool {
-				return v.Name == cacheInVolume || v.Name == cacheOutVolume
+				return v.Name == cacheInVolume || v.Name == cacheOutVolume || v.Name == xdgInVolume || v.Name == xdgOutVolume
 			})
 			for i := range spec.InitContainers {
 				c := &spec.InitContainers[i]
@@ -173,8 +175,9 @@ func TestS3BuildCacheAddsOnlyWhatItClaimsToAdd(t *testing.T) {
 					continue
 				}
 				c.VolumeMounts = slices.DeleteFunc(c.VolumeMounts, func(m corev1.VolumeMount) bool {
-					return m.MountPath == cacheInMount || m.MountPath == cacheOutMount
+					return m.MountPath == cacheInMount || m.MountPath == cacheOutMount || m.MountPath == xdgInMount || m.MountPath == xdgOutMount
 				})
+				c.Env = slices.DeleteFunc(c.Env, func(e corev1.EnvVar) bool { return e.Name == "BUILDCTL" || e.Name == "BUILDKITD_FLAGS" })
 				script := revisionStamp + `bex_run buildctl-daemonless.sh "$@"`
 				if tc.o.Builder == BuilderNative {
 					script = nativeLogDisplay + script
@@ -337,11 +340,32 @@ func TestCachePhaseSignalsReadOnlyOurOwnOutcomes(t *testing.T) {
 	}}
 	got := cachePhaseSignals(pod)
 	want := []CachePhaseSignal{
-		{Phase: cacheRestorePhase, Outcome: CacheHit, Seconds: 4, Bytes: 1 << 20},
-		{Phase: cacheSavePhase, Outcome: CacheSaved, Seconds: 9, Bytes: 2 << 20},
+		{Phase: cacheRestorePhase, Kind: CacheKindLayer, Outcome: CacheHit, Seconds: 4, Bytes: 1 << 20},
+		{Phase: cacheSavePhase, Kind: CacheKindLayer, Outcome: CacheSaved, Seconds: 9, Bytes: 2 << 20},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("cachePhaseSignals = %+v, want %+v", got, want)
+	}
+	// A native build's phase reports its $XDG_CACHE_HOME archive on a line of
+	// its own, in either order, with the archive's own seconds: the layer
+	// line keeps the phase's, since the two transfers run side by side.
+	native := &corev1.Pod{Status: corev1.PodStatus{
+		InitContainerStatuses: []corev1.ContainerStatus{
+			term(cacheRestorePhase, "xdg hit 3145728 2\nmiss\n", 5),
+		},
+		ContainerStatuses: []corev1.ContainerStatus{
+			term(cacheSavePhase, "saved 10\nxdg skipped 0 0\n", 3),
+		},
+	}}
+	got = cachePhaseSignals(native)
+	want = []CachePhaseSignal{
+		{Phase: cacheRestorePhase, Kind: CacheKindXDG, Outcome: CacheHit, Seconds: 2, Bytes: 3 << 20},
+		{Phase: cacheRestorePhase, Kind: CacheKindLayer, Outcome: CacheMiss, Seconds: 5},
+		{Phase: cacheSavePhase, Kind: CacheKindLayer, Outcome: CacheSaved, Seconds: 3, Bytes: 10},
+		{Phase: cacheSavePhase, Kind: CacheKindXDG, Outcome: CacheSkipped},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("native cachePhaseSignals = %+v, want %+v", got, want)
 	}
 	// Each phase may report only its own outcomes, and a registry-backend
 	// phase, which writes nothing, reports none.
@@ -351,11 +375,28 @@ func TestCachePhaseSignalsReadOnlyOurOwnOutcomes(t *testing.T) {
 		term(cachePurgePhase, "purged everything now", 1),
 		term(cacheRestorePhase, "", 1),
 		term(cacheRestorePhase, "pwned 1", 1),
+		// The archive's lines carry exactly their four fields, its own
+		// outcomes (a layer restore's "incomplete" is no archive's), and a
+		// whole number of seconds.
+		term(cacheRestorePhase, "xdg hit 10", 1),
+		term(cacheRestorePhase, "xdg incomplete 0 1", 1),
+		term(cachePurgePhase, "xdg hit 0 1", 1),
+		term(cacheSavePhase, "xdg saved 10 -1", 1),
+		term(cacheSavePhase, "xdg saved 10 1 extra", 1),
+		term(cacheSavePhase, "layer saved 10", 1),
 	} {
 		p := &corev1.Pod{Status: corev1.PodStatus{InitContainerStatuses: []corev1.ContainerStatus{status}}}
 		if got := cachePhaseSignals(p); len(got) != 0 {
 			t.Errorf("%s %q was read as %+v", status.Name, status.State.Terminated.Message, got)
 		}
+	}
+	// One outcome per kind: a second line of a kind already read is not a
+	// second observation.
+	twice := &corev1.Pod{Status: corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{
+		term(cacheSavePhase, "saved 1\nsaved 2\nxdg saved 3 1\nxdg error 0 1", 1),
+	}}}
+	if got := cachePhaseSignals(twice); len(got) != 2 || got[0].Bytes != 1 || got[1].Bytes != 3 {
+		t.Errorf("repeated lines read as %+v", got)
 	}
 }
 
@@ -365,7 +406,9 @@ func TestCachePhaseSignalsReadOnlyOurOwnOutcomes(t *testing.T) {
 // It honours exactly the flags the phases rely on and nothing more:
 // --no-follow-symlinks (without it, symlinks are followed, so a dropped flag
 // leaks), the blobs include filter, and --delete. Every call is logged, and
-// FAKE_S3_FAIL=<subcommand> makes that subcommand fail.
+// FAKE_S3_FAIL=<subcommand> makes that subcommand fail, with exit status
+// FAKE_S3_FAIL_RC (default 1). ls answers as aws-cli does: one line per
+// matching key, and exit 1 when none matches.
 const fakeAWS = `#!/bin/sh
 shift 2 # --endpoint-url <url>
 [ "$1" = s3 ] || exit 64
@@ -373,15 +416,28 @@ shift
 cmd=$1
 shift
 echo "$cmd $*" >> "$FAKE_S3_LOG"
-[ "$FAKE_S3_FAIL" = "$cmd" ] && exit 1
+[ "$FAKE_S3_FAIL" = "$cmd" ] && exit "${FAKE_S3_FAIL_RC:-1}"
 local_of() { printf '%s/%s' "$FAKE_S3" "${1#s3://}"; }
 case "$cmd" in
 rm)
   rm -rf "$(local_of "$1")"
   ;;
+ls)
+  f=$(local_of "$1")
+  [ -f "$f" ] || exit 1
+  printf '2026-11-18 10:00:00 %10s %s\n' "$(wc -c < "$f" | tr -d ' ')" "$(basename "$f")"
+  ;;
 cp)
-  mkdir -p "$(dirname "$(local_of "$2")")"
-  cp "$1" "$(local_of "$2")"
+  case "$1" in
+  s3://*)
+    [ -f "$(local_of "$1")" ] || exit 1
+    cp "$(local_of "$1")" "$2"
+    ;;
+  *)
+    mkdir -p "$(dirname "$(local_of "$2")")"
+    cp "$1" "$(local_of "$2")"
+    ;;
+  esac
   ;;
 sync)
   src=$1 dst=$2
@@ -417,6 +473,7 @@ type cacheScriptRig struct {
 	t                *testing.T
 	dir, store, logf string
 	in, out, outcome string
+	xin, xout        string
 	bin              string
 }
 
@@ -427,8 +484,9 @@ func newCacheScriptRig(t *testing.T) *cacheScriptRig {
 	}
 	dir := t.TempDir()
 	r := &cacheScriptRig{t: t, dir: dir, store: filepath.Join(dir, "store"), logf: filepath.Join(dir, "calls"),
-		in: filepath.Join(dir, "in"), out: filepath.Join(dir, "out"), outcome: filepath.Join(dir, "outcome"), bin: filepath.Join(dir, "bin")}
-	for _, d := range []string{r.store, r.in, r.out, r.bin} {
+		in: filepath.Join(dir, "in"), out: filepath.Join(dir, "out"), outcome: filepath.Join(dir, "outcome"), bin: filepath.Join(dir, "bin"),
+		xin: filepath.Join(dir, "xdg-in"), xout: filepath.Join(dir, "xdg-out")}
+	for _, d := range []string{r.store, r.in, r.out, r.xin, r.xout, r.bin} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -454,6 +512,8 @@ func (r *cacheScriptRig) run(phase *corev1.Container, extraEnv ...string) (strin
 	script := scriptOf(r.t, phase)
 	script = strings.ReplaceAll(script, cacheInMount, r.in)
 	script = strings.ReplaceAll(script, cacheOutMount, r.out)
+	script = strings.ReplaceAll(script, xdgInMount, r.xin)
+	script = strings.ReplaceAll(script, xdgOutMount, r.xout)
 	script = strings.ReplaceAll(script, terminationLog, r.outcome)
 	_ = os.Remove(r.outcome)
 	_ = os.Remove(r.logf)

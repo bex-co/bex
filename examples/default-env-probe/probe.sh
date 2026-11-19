@@ -1,6 +1,8 @@
 #!/bin/sh
 # Prints every environment variable Render documents as a platform default
-# (render.com/docs/environment-variables), plus PORT, one line per name:
+# (render.com/docs/environment-variables), plus PORT and XDG_CACHE_HOME, Render's
+# build cache directory, which that page does not list (w9/m493), one line per
+# name:
 #
 #   DEFAULT_ENV <phase> NAME=value
 #   DEFAULT_ENV <phase> NAME unset
@@ -23,7 +25,8 @@ for name in \
   BUNDLE_APP_CONFIG BUNDLE_BIN BUNDLE_DEPLOYMENT BUNDLE_PATH GEM_PATH \
   MALLOC_ARENA_MAX PASSENGER_ENGINE PASSENGER_ENVIRONMENT PASSENGER_PORT \
   PIDFILE RAILS_ENV RAILS_SERVE_STATIC_FILES RAILS_LOG_TO_STDOUT \
-  CARGO_HOME ROCKET_ENV ROCKET_PORT RUSTUP_HOME; do
+  CARGO_HOME ROCKET_ENV ROCKET_PORT RUSTUP_HOME \
+  XDG_CACHE_HOME; do
   if eval "[ -n \"\${$name+set}\" ]"; then
     eval "value=\$$name"
     printf 'DEFAULT_ENV %s %s=%s\n' "$phase" "$name" "$value"

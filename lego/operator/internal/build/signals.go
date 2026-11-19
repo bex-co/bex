@@ -107,14 +107,25 @@ type Signals struct {
 type CachePhaseSignal struct {
 	// Phase is the container: cache-restore, cache-purge or cache-save.
 	Phase string
+	// Kind is the cache the outcome is about: CacheKindLayer, BuildKit's layer
+	// cache, or CacheKindXDG, a native build's $XDG_CACHE_HOME (w9/m493).
+	Kind string
 	// Outcome is one of the closed Cache* outcomes.
 	Outcome string
-	// Seconds is the phase's own terminated duration.
+	// Seconds is the layer cache's phase's own terminated duration, and the
+	// XDG archive's own transfer time, which runs beside it.
 	Seconds float64
-	// Bytes is the layout's size for a hit, a save or an oversize skip; 0
-	// otherwise.
+	// Bytes is the layout's or the archive's size for a hit, a save or an
+	// oversize skip; 0 otherwise.
 	Bytes int64
 }
+
+// The cache kinds a phase reports on, a CLOSED set because each is a
+// Prometheus label.
+const (
+	CacheKindLayer = "layer"
+	CacheKindXDG   = xdgCacheKind
+)
 
 // ReadSignals derives a finished build's queue/push/retry facts from its Job and
 // pods. Errors are returned rather than swallowed so the caller can log them;
@@ -200,17 +211,28 @@ func signalsFrom(job *batchv1.Job, pods []corev1.Pod) Signals {
 	return sig
 }
 
-// cacheOutcomes is the closed outcome set each phase may report. A message
-// outside it, which only a phase that is not ours could write, is dropped
-// rather than minted as a label.
-var cacheOutcomes = map[string][]string{
-	cacheRestorePhase: {CacheHit, CacheMiss, CacheIncomplete, CacheError},
-	cachePurgePhase:   {CachePurged, CacheError},
-	cacheSavePhase:    {CacheSaved, CacheSkipped, CacheError},
+// cacheOutcomes is the closed outcome set each phase may report on each kind.
+// A message outside it, which only a phase that is not ours could write, is
+// dropped rather than minted as a label.
+var cacheOutcomes = map[string]map[string][]string{
+	cacheRestorePhase: {
+		CacheKindLayer: {CacheHit, CacheMiss, CacheIncomplete, CacheError},
+		CacheKindXDG:   {CacheHit, CacheMiss, CacheSkipped, CacheError},
+	},
+	cachePurgePhase: {
+		CacheKindLayer: {CachePurged, CacheError},
+		CacheKindXDG:   {CachePurged, CacheError},
+	},
+	cacheSavePhase: {
+		CacheKindLayer: {CacheSaved, CacheSkipped, CacheError},
+		CacheKindXDG:   {CacheSaved, CacheSkipped, CacheError},
+	},
 }
 
-// cachePhaseSignals reads each terminated cache phase's "<outcome> [bytes]"
-// termination message on pod.
+// cachePhaseSignals reads each terminated cache phase's termination message
+// on pod: one line per kind, the layer cache's "<outcome> [bytes]" and a
+// native build's "xdg <outcome> <bytes> <seconds>" (xdgCacheOutcome), at most
+// one of each.
 func cachePhaseSignals(pod *corev1.Pod) []CachePhaseSignal {
 	var out []CachePhaseSignal
 	for _, cs := range containerStatuses(pod) {
@@ -219,23 +241,48 @@ func cachePhaseSignals(pod *corev1.Pod) []CachePhaseSignal {
 		if !isCache || term == nil {
 			continue
 		}
-		fields := strings.Fields(term.Message)
-		if len(fields) == 0 || len(fields) > 2 || !slices.Contains(allowed, fields[0]) {
-			continue
-		}
-		signal := CachePhaseSignal{
-			Phase:   cs.Name,
-			Outcome: fields[0],
-			Seconds: max(term.FinishedAt.Sub(term.StartedAt.Time).Seconds(), 0),
-		}
-		if len(fields) == 2 {
-			if n, err := strconv.ParseInt(fields[1], 10, 64); err == nil && n >= 0 {
-				signal.Bytes = n
+		seen := map[string]bool{}
+		for line := range strings.SplitSeq(term.Message, "\n") {
+			signal, ok := cacheLineSignal(strings.Fields(line), allowed)
+			if !ok || seen[signal.Kind] {
+				continue
 			}
+			seen[signal.Kind] = true
+			signal.Phase = cs.Name
+			if signal.Kind == CacheKindLayer {
+				signal.Seconds = max(term.FinishedAt.Sub(term.StartedAt.Time).Seconds(), 0)
+			}
+			out = append(out, signal)
 		}
-		out = append(out, signal)
 	}
 	return out
+}
+
+// cacheLineSignal reads one outcome line against the outcomes allowed for its
+// kind; ok is false for anything else.
+func cacheLineSignal(fields []string, allowed map[string][]string) (signal CachePhaseSignal, ok bool) {
+	signal.Kind = CacheKindLayer
+	if len(fields) > 0 && fields[0] == CacheKindXDG {
+		if len(fields) != 4 {
+			return signal, false
+		}
+		signal.Kind, fields = CacheKindXDG, fields[1:]
+		secs, err := strconv.ParseInt(fields[2], 10, 64)
+		if err != nil || secs < 0 {
+			return signal, false
+		}
+		signal.Seconds, fields = float64(secs), fields[:2]
+	}
+	if len(fields) == 0 || len(fields) > 2 || !slices.Contains(allowed[signal.Kind], fields[0]) {
+		return signal, false
+	}
+	signal.Outcome = fields[0]
+	if len(fields) == 2 {
+		if n, err := strconv.ParseInt(fields[1], 10, 64); err == nil && n >= 0 {
+			signal.Bytes = n
+		}
+	}
+	return signal, true
 }
 
 // scheduledAt is when the scheduler bound pod to a node. The PodScheduled
