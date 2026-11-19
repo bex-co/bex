@@ -114,6 +114,22 @@ func (id Identity) LegacyCacheRepo() string { return id.LegacyRepo() + "_cache" 
 // image repository.
 func (id Identity) LegacyPriorCacheRepo() string { return id.LegacyRepo() + "-cache" }
 
+// BuildCacheRoot is the object-key prefix, with its trailing slash, that every
+// BEX_BUILD_CACHE=s3 cache of one App lifetime lives under (w9/m492):
+// "<workspace>/<app-uid>/", or "<app-uid>/" for an unlabeled App. It is keyed
+// by the App's UID rather than its name, so an App recreated under the same
+// name starts cold instead of inheriting a deleted App's layers, and deleting
+// the App removes exactly this prefix. Empty when the UID is.
+func (id Identity) BuildCacheRoot(appUID string) string {
+	if appUID == "" {
+		return ""
+	}
+	if !id.Scoped() {
+		return appUID + "/"
+	}
+	return id.Workspace + "/" + appUID + "/"
+}
+
 // LegacyZotUsername is the pre-m75 htpasswd user.
 func (id Identity) LegacyZotUsername() string { return "app-" + id.Name }
 

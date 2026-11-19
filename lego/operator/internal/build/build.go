@@ -603,6 +603,11 @@ type Options struct {
 	// carry the cache in and out. The container that runs tenant-authored
 	// Dockerfile RUN steps still holds nothing that can write to the registry.
 	BuildCache bool
+	// CacheStore moves the layer cache BuildCache turns on from the registry to
+	// an object store (BEX_BUILD_CACHE=s3, w9/m492): unset keeps the registry
+	// backend. The BuildKit side of the Job is the same for both; only the
+	// phases that carry the layout in and out change.
+	CacheStore CacheStore
 	// SkipCacheImport is the clear-cache rebuild contract (w7/m88): when BuildCache
 	// is on, the Job still exports and saves a fresh cache, but it does not
 	// restore or import prior layers. Empty/false keeps the normal warm path.
@@ -1314,7 +1319,8 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	// release runs, and the build sees it as Render's build-time variable
 	// (w5/m148). It is a git object id, passed positionally.
 	buildkitScript := revisionStamp + `bex_run buildctl-daemonless.sh "$@"`
-	if o.BuildCache {
+	cache := o.cacheBackend()
+	if cache != cacheOff {
 		args = append(args, "--export-cache",
 			"type=local,dest="+cacheOutMount+",mode=max,image-manifest=true,compression=zstd,ignore-error=true")
 		// Clear-cache rebuilds still export a fresh cache but must not import
@@ -1371,7 +1377,7 @@ fi
 	ttl := int32(3600) // reap the finished Job after an hour
 
 	volumes := []corev1.Volume{emptyDirVolume(sourceVolume), emptyDirVolume("output")}
-	if o.BuildCache {
+	if cache != cacheOff {
 		volumes = append(volumes, boundedEmptyDirVolume(cacheOutVolume, cacheEmptyDirSizeLimit))
 		if !o.SkipCacheImport {
 			volumes = append(volumes, boundedEmptyDirVolume(cacheInVolume, cacheEmptyDirSizeLimit))
@@ -1458,7 +1464,7 @@ fi
 			)
 		}
 	}
-	if o.BuildCache {
+	if cache != cacheOff {
 		if !o.SkipCacheImport {
 			buildkit.VolumeMounts = append(buildkit.VolumeMounts,
 				corev1.VolumeMount{Name: "cache-in", MountPath: cacheInMount, ReadOnly: true},
@@ -1497,17 +1503,11 @@ fi
 		},
 		Containers: []corev1.Container{pusher},
 	}
-	if o.BuildCache {
-		// After the clone, so a build that fails on tenant input (a bad ref)
-		// does not first spend time pulling a cache it will never use. A clear
-		// rebuild skips restore/import and instead best-effort deletes the
-		// prior cache tag so later normal deploys cannot accidentally warm from
-		// layers this rebuild was asked to discard (w7/m88).
-		if o.SkipCacheImport {
-			podSpec.InitContainers = append(podSpec.InitContainers, cachePurgeContainer(o, pushImage))
-		} else {
-			podSpec.InitContainers = append(podSpec.InitContainers, cacheRestoreContainer(o, pushImage))
-		}
+	// After the clone, so a build that fails on tenant input (a bad ref) does
+	// not first spend time pulling a cache it will never use.
+	cacheIn, cacheSave := cachePhases(o, cache, pushImage)
+	if cacheIn != nil {
+		podSpec.InitContainers = append(podSpec.InitContainers, *cacheIn)
 	}
 	if o.Builder == BuilderNative {
 		podSpec.InitContainers = append(podSpec.InitContainers, nativeBuildPreparer(o))
@@ -1578,8 +1578,8 @@ fi
 	// regular container exits, so a cache larger than the image (the normal case
 	// under mode=max) is what the deploy waits on. Measured at 1.5s against the
 	// image push's 0.8s, i.e. ~0.7s added; serializing it would have cost 2.3s.
-	if o.BuildCache {
-		podSpec.Containers = append(podSpec.Containers, cacheSaveContainer(o, pushImage))
+	if cacheSave != nil {
+		podSpec.Containers = append(podSpec.Containers, *cacheSave)
 	}
 	// Must run AFTER the signing block above, which moves the push phase into
 	// InitContainers and replaces Containers wholesale — applying it any earlier
@@ -1607,6 +1607,24 @@ fi
 			},
 		},
 	}
+}
+
+// cachePhases are the backend's two cache phases: the one ahead of BuildKit
+// and the save beside the push, or neither with the cache off. A clear rebuild
+// swaps the restore for a best-effort purge of the prior cache, so later
+// normal deploys cannot warm from layers it was asked to discard (w7/m88).
+func cachePhases(o Options, cache cacheBackend, pushImage string) (in, save *corev1.Container) {
+	switch {
+	case cache == cacheS3 && o.SkipCacheImport:
+		return new(s3CachePurgeContainer(o)), new(s3CacheSaveContainer(o))
+	case cache == cacheS3:
+		return new(s3CacheRestoreContainer(o)), new(s3CacheSaveContainer(o))
+	case cache == cacheRegistry && o.SkipCacheImport:
+		return new(cachePurgeContainer(o, pushImage)), new(cacheSaveContainer(o, pushImage))
+	case cache == cacheRegistry:
+		return new(cacheRestoreContainer(o, pushImage)), new(cacheSaveContainer(o, pushImage))
+	}
+	return nil, nil
 }
 
 // cacheBestEffort wraps a cache phase so it can never fail the build. ADR060
@@ -1742,30 +1760,9 @@ func cacheSaveContainer(o Options, image string) corev1.Container {
 // invocation holding the same output-repository credential the image push holds
 // and nothing else. Optional mounts are for restore/save only (purge needs none).
 func cachePhase(o Options, name, image, script string, args []string, mounts ...corev1.VolumeMount) corev1.Container {
-	c := corev1.Container{
-		Name:    name,
-		Image:   image,
-		Command: []string{"sh", "-c", script, name},
-		// The timeout is a skopeo GLOBAL flag, so it precedes the subcommand.
-		Args:            append([]string{"--command-timeout", cacheCommandTimeout}, args...),
-		VolumeMounts:    mounts,
-		SecurityContext: execution.RestrictedContainerSecurityContext(),
-		// NOT pushPhaseResources: see cacheEphemeralLimit. The pod's ceiling is
-		// the sum of its regular containers' limits, so reusing the push phase's
-		// 16G here would double the disk a build can fill before eviction.
-		Resources: corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:              resource.MustParse("100m"),
-				corev1.ResourceMemory:           resource.MustParse("128Mi"),
-				corev1.ResourceEphemeralStorage: resource.MustParse(cacheEphemeralRequest),
-			},
-			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:              resource.MustParse("1"),
-				corev1.ResourceMemory:           resource.MustParse("512Mi"),
-				corev1.ResourceEphemeralStorage: resource.MustParse(cacheEphemeralLimit),
-			},
-		},
-	}
+	c := cachePhaseShape(name, image, script, mounts)
+	// The timeout is a skopeo GLOBAL flag, so it precedes the subcommand.
+	c.Args = append([]string{"--command-timeout", cacheCommandTimeout}, args...)
 	mountRegistryCred(&c, "push-registry-cred", o.PushSecret)
 	return c
 }

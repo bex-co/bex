@@ -258,8 +258,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// CreateDeployJSONBodyClearCache) — NOT a bool; the official CLI always
 	// sends it explicitly (defaulting to "do_not_clear" absent --clear-cache),
 	// so a bool-typed field here 400s every deploys-create call the CLI makes.
-	// With BEX_BUILD_CACHE=registry, "clear" stamps a release-scoped rebuild that
-	// skips registry cache import (w7/m88); with the gate off both values remain
+	// With the operator's build cache on (BEX_BUILD_CACHE=s3 in production,
+	// w9/m492), "clear" stamps a release-scoped rebuild that purges the App's
+	// cache and skips its import (w7/m88); with the gate off both values remain
 	// behavioral no-ops (ephemeral Jobs start empty). Enum validation lives in
 	// shared validateTrigger so REST/GraphQL/MCP reject typos identically.
 	mux.HandleFunc("POST "+base+"/{id}/deploys", func(w http.ResponseWriter, r *http.Request) {

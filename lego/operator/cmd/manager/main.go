@@ -23,9 +23,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -44,6 +47,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
+	"github.com/bex-co/bex/lego/operator/internal/build"
 	"github.com/bex-co/bex/lego/operator/internal/controller"
 	"github.com/bex-co/bex/lego/operator/internal/hostingdomain"
 	"github.com/bex-co/bex/lego/operator/internal/portscan"
@@ -361,6 +365,40 @@ func main() {
 	}
 }
 
+// buildCacheStore reads BEX_BUILD_CACHE=s3's object store (w9/m492). Any other
+// mode needs none. An s3 mode missing a coordinate is an error rather than an
+// uncached fleet: every build would quietly lose its cache and nothing but this
+// process's log would say why. So is one with no separate build namespace, the
+// only place the store's bucket-wide credential may live: co-located builds
+// would need it copied into every tenant namespace.
+func buildCacheStore(mode, buildNamespace string) (build.CacheStore, error) {
+	if mode != "s3" {
+		return build.CacheStore{}, nil
+	}
+	store := build.CacheStore{
+		Endpoint: os.Getenv("BEX_BUILD_CACHE_S3_ENDPOINT"),
+		Bucket:   os.Getenv("BEX_BUILD_CACHE_S3_BUCKET"),
+		Region:   os.Getenv("BEX_BUILD_CACHE_S3_REGION"),
+		Secret:   os.Getenv("BEX_BUILD_CACHE_S3_SECRET"),
+	}
+	var missing []string
+	for name, value := range map[string]string{
+		"BEX_BUILD_CACHE_S3_ENDPOINT": store.Endpoint,
+		"BEX_BUILD_CACHE_S3_BUCKET":   store.Bucket,
+		"BEX_BUILD_CACHE_S3_SECRET":   store.Secret,
+		"BEX_BUILD_NAMESPACE":         buildNamespace,
+	} {
+		if value == "" {
+			missing = append(missing, name)
+		}
+	}
+	if len(missing) > 0 {
+		slices.Sort(missing)
+		return build.CacheStore{}, fmt.Errorf("BEX_BUILD_CACHE=s3 needs %s", strings.Join(missing, ", "))
+	}
+	return store, nil
+}
+
 // setupAppReconciler constructs and registers the App reconciler (and, when
 // per-App registry credentials are active, the sandbox-namespace registry
 // reconciler).
@@ -368,6 +406,12 @@ func setupAppReconciler(
 	mgr ctrl.Manager, uncachedClient client.Client, cs *kubernetes.Clientset, appsNamespace, baseDomain string,
 ) {
 	activatorPort := envInt("BEX_ACTIVATOR_PORT", 8888)
+	cacheMode := os.Getenv("BEX_BUILD_CACHE")
+	cacheStore, err := buildCacheStore(cacheMode, os.Getenv("BEX_BUILD_NAMESPACE"))
+	if err != nil {
+		setupLog.Error(err, "refusing to start with an incomplete S3 build cache")
+		os.Exit(1)
+	}
 	appReconciler := &controller.AppReconciler{
 		PortScanner:           portscan.Dialer{},
 		Client:                mgr.GetClient(),
@@ -429,13 +473,14 @@ func setupAppReconciler(
 		RegistryPushSecret:      os.Getenv("BEX_REGISTRY_PUSH_SECRET"),
 		RegistryPullSecret:      os.Getenv("BEX_REGISTRY_PULL_SECRET"),
 		RegistryBuildPullSecret: os.Getenv("BEX_REGISTRY_BUILD_PULL_SECRET"),
-		// Per-App registry layer cache (docs/ADR060 D3). The variable takes a
-		// backend NAME rather than a truthy flag so that the escalation ADR060
-		// already names — per-workspace persistent cache volumes — arrives as
-		// another value here instead of a second variable. Anything else
-		// (including unset) leaves the build Job byte-identical to before the
-		// feature existed.
-		BuildCache: os.Getenv("BEX_BUILD_CACHE") == "registry",
+		// Per-App layer cache (docs/ADR060 D3). The variable takes a backend
+		// NAME rather than a truthy flag, so the object-store backend (w9/m492)
+		// arrived as another value instead of a second variable: "registry"
+		// keeps caches in Zot, "s3" in BEX_BUILD_CACHE_S3_*'s bucket. Anything
+		// else (including unset) leaves the build Job byte-identical to before
+		// the feature existed.
+		BuildCache:      cacheMode == "registry" || cacheMode == "s3",
+		BuildCacheStore: cacheStore,
 		// w6/m151: run render-v1 runtime pods in a pod user namespace, per
 		// workspace: comma-separated tea- ids, or "on"/"*" for every workspace.
 		// Unset leaves every pod template byte-identical; the bex workspace is
@@ -457,8 +502,13 @@ func setupAppReconciler(
 	// cannot restart the 72-hour clock — three restarts under a duration would
 	// silently run the trial for nine days. Unset leaves only the push-latency
 	// and push-failure stop rules armed, which is the correct shape after a
-	// retain decision has made the cache permanent.
-	if appReconciler.BuildCache {
+	// retain decision has made the cache permanent. The breaker guards Zot,
+	// which an S3 cache never touches, so it arms for the registry backend only.
+	if cacheMode == "s3" {
+		setupLog.Info("S3 build cache enabled", "endpoint", cacheStore.Endpoint,
+			"bucket", cacheStore.Bucket, "secret", cacheStore.Secret)
+	}
+	if cacheMode == "registry" {
 		var deadline time.Time
 		if raw := os.Getenv("BEX_BUILD_CACHE_TRIAL_DEADLINE"); raw != "" {
 			parsed, err := time.Parse(time.RFC3339, raw)

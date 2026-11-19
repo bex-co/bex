@@ -121,3 +121,47 @@ func TestManagerCPULimitLeavesRoomForBursts(t *testing.T) {
 			got, minManagerCPUMilli)
 	}
 }
+
+// w9/m492: an s3 build cache missing a coordinate refuses to start rather than
+// running every build uncached, and any other mode needs no store at all.
+func TestBuildCacheStoreRefusesAnIncompleteS3Store(t *testing.T) {
+	full := map[string]string{
+		"BEX_BUILD_CACHE_S3_ENDPOINT": "https://s3.example",
+		"BEX_BUILD_CACHE_S3_BUCKET":   "bex-build-cache",
+		"BEX_BUILD_CACHE_S3_REGION":   "eu-central-2",
+		"BEX_BUILD_CACHE_S3_SECRET":   "bex-build-cache-s3",
+	}
+	set := func(t *testing.T, without string) {
+		for k, v := range full {
+			if k == without {
+				v = ""
+			}
+			t.Setenv(k, v)
+		}
+	}
+	set(t, "")
+	store, err := buildCacheStore("s3", "bex-build")
+	if err != nil || store.Bucket != "bex-build-cache" || store.Region != "eu-central-2" || !store.Configured() {
+		t.Fatalf("complete s3 store = %+v, %v", store, err)
+	}
+	// Region is optional; the rest, and a separate build namespace, are not.
+	required := []string{"BEX_BUILD_CACHE_S3_ENDPOINT", "BEX_BUILD_CACHE_S3_BUCKET", "BEX_BUILD_CACHE_S3_SECRET"}
+	for _, missing := range required {
+		set(t, missing)
+		if _, err := buildCacheStore("s3", "bex-build"); err == nil || !strings.Contains(err.Error(), missing) {
+			t.Errorf("s3 store without %s: err = %v", missing, err)
+		}
+	}
+	set(t, "BEX_BUILD_CACHE_S3_REGION")
+	if _, err := buildCacheStore("s3", "bex-build"); err != nil {
+		t.Errorf("an s3 store without a region was refused: %v", err)
+	}
+	if _, err := buildCacheStore("s3", ""); err == nil || !strings.Contains(err.Error(), "BEX_BUILD_NAMESPACE") {
+		t.Errorf("an s3 store with co-located builds: err = %v", err)
+	}
+	for _, mode := range []string{"", "registry", "off"} {
+		if store, err := buildCacheStore(mode, ""); err != nil || store.Configured() {
+			t.Errorf("mode %q = %+v, %v; want no store", mode, store, err)
+		}
+	}
+}

@@ -18,6 +18,9 @@ package controller
 import (
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
+
 	"github.com/bex-co/bex/lego/operator/internal/build"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -73,4 +76,43 @@ func TestBuildFailureMappingsAreTotalAndDistinct(t *testing.T) {
 	if appv1alpha1.IsBuildFailureReason("IngressFailed") {
 		t.Error("IsBuildFailureReason must not be over-broad")
 	}
+}
+
+// w9/m492: each S3 cache phase's own outcome reaches the fleet, which is the
+// only place a store outage shows (every phase exits 0), and a size is
+// recorded only where there was a layout to measure.
+func TestRecordBuildSignalsMetersEachCachePhase(t *testing.T) {
+	restoreHit := buildCachePhaseSeconds.WithLabelValues("cache-restore", build.CacheHit)
+	saveError := buildCachePhaseSeconds.WithLabelValues("cache-save", build.CacheError)
+	restoreBytes := buildCacheBytes.WithLabelValues("cache-restore")
+	saveBytes := buildCacheBytes.WithLabelValues("cache-save")
+	hits, errs := histogramCount(t, restoreHit), histogramCount(t, saveError)
+	restored, saved := histogramCount(t, restoreBytes), histogramCount(t, saveBytes)
+
+	recordBuildSignals(build.Signals{CachePhases: []build.CachePhaseSignal{
+		{Phase: "cache-restore", Outcome: build.CacheHit, Seconds: 3, Bytes: 1 << 20},
+		{Phase: "cache-save", Outcome: build.CacheError, Seconds: 1},
+	}})
+
+	if got := histogramCount(t, restoreHit); got != hits+1 {
+		t.Errorf("restore hit count = %d, want %d", got, hits+1)
+	}
+	if got := histogramCount(t, saveError); got != errs+1 {
+		t.Errorf("save error count = %d, want %d", got, errs+1)
+	}
+	if got := histogramCount(t, restoreBytes); got != restored+1 {
+		t.Errorf("restored bytes count = %d, want %d", got, restored+1)
+	}
+	if got := histogramCount(t, saveBytes); got != saved {
+		t.Errorf("a failed save recorded a size (%d → %d)", saved, got)
+	}
+}
+
+func histogramCount(t *testing.T, o prometheus.Observer) uint64 {
+	t.Helper()
+	var m dto.Metric
+	if err := o.(prometheus.Metric).Write(&m); err != nil {
+		t.Fatal(err)
+	}
+	return m.GetHistogram().GetSampleCount()
 }

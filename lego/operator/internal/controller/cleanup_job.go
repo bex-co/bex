@@ -39,6 +39,11 @@ const (
 	kvPurgeJobPrefix = "purge-kv-"
 )
 
+// buildCachePurgeJobPrefix names an App's S3 build-cache purge Job (w9/m492).
+// Distinct from the static purge's "purge-" so an App named cache-<x> can
+// never share a Job name with App <x>'s cache purge.
+const buildCachePurgeJobPrefix = "cache-purge-"
+
 // cleanupJobName derives a stable DNS-label name for a parent's terminal Job.
 // Long resource names use a wider UID hash while remaining within Kubernetes'
 // 63-byte Job-name limit.

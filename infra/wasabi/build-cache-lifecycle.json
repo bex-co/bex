@@ -1,0 +1,17 @@
+{
+  "Rules": [
+    {
+      "ID": "bex-build-cache-30d",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": ""
+      },
+      "Expiration": {
+        "Days": 30
+      },
+      "AbortIncompleteMultipartUpload": {
+        "DaysAfterInitiation": 1
+      }
+    }
+  ]
+}

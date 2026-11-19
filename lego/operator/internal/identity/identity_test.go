@@ -169,3 +169,22 @@ func TestCacheRepoIsNeverAnAppsImageRepository(t *testing.T) {
 		}
 	}
 }
+
+// w9/m492: an App lifetime's S3 build caches live under one root keyed by its
+// UID, in its workspace's column, so recreation starts cold and deletion
+// removes exactly that root.
+func TestBuildCacheRootIsOneAppLifetime(t *testing.T) {
+	if got := ForApp("web", "tea-x").BuildCacheRoot("uid-1"); got != "tea-x/uid-1/" {
+		t.Errorf("scoped root = %q", got)
+	}
+	if got := ForApp("web", "").BuildCacheRoot("uid-1"); got != "uid-1/" {
+		t.Errorf("legacy root = %q", got)
+	}
+	if ForApp("web", "tea-x").BuildCacheRoot("uid-1") == ForApp("web", "tea-x").BuildCacheRoot("uid-2") {
+		t.Error("a recreated App shares its predecessor's cache root")
+	}
+	// An empty UID would make the root the workspace, or the whole bucket.
+	if got := ForApp("web", "tea-x").BuildCacheRoot(""); got != "" {
+		t.Errorf("empty UID root = %q, want none", got)
+	}
+}

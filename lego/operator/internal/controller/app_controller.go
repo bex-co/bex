@@ -312,6 +312,10 @@ const maxTLSSecretHistoryEntries = 500
 
 const annotStaticPurgeComplete = "app.bex.co/static-purge-complete"
 
+// annotBuildCachePurgeComplete records, with the App's UID, that the App's S3
+// build caches were deleted (w9/m492), the cache-purge Job's persisted phase.
+const annotBuildCachePurgeComplete = "app.bex.co/build-cache-purge-complete"
+
 // annotStaticPublishDispatched is stamped (value: the App UID) before the
 // first publish Job is dispatched, so deletion knows content may exist in the
 // object store even after the Job is reaped (w2/076).
@@ -481,10 +485,14 @@ type AppReconciler struct {
 	// build-ns credential (scripts/registry-secrets.sh's bex-registry-pull,
 	// bex-builder with wildcard read). Empty => anonymous pull (dev default).
 	RegistryBuildPullSecret string
-	// BuildCache turns on the per-App registry layer cache for source builds
-	// (BEX_BUILD_CACHE=registry, docs/ADR060 D3). False => the build Job spec is
-	// byte-identical to before the feature existed.
+	// BuildCache turns on the per-App layer cache for source builds
+	// (BEX_BUILD_CACHE=registry or s3, docs/ADR060 D3). False => the build Job
+	// spec is byte-identical to before the feature existed.
 	BuildCache bool
+	// BuildCacheStore is BEX_BUILD_CACHE=s3's object store (w9/m492). Unset
+	// keeps the cache in the registry. When set, deleting a source-built App
+	// also deletes its <workspace>/<app-uid>/ prefix there.
+	BuildCacheStore build.CacheStore
 	// cacheTrial bounds BuildCache for a production trial: a hard deadline plus
 	// push-latency and push-failure stop rules the operator enforces itself
 	// (.pm/w7/047). Nil means unbounded, which is what every test and every
@@ -1347,6 +1355,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		PullSecret:           buildRegistryPullSecret,
 		RegistryConfig:       usesBuildRegistryConfig(app, builder),
 		BuildCache:           r.buildCacheAllowed(),
+		CacheStore:           r.BuildCacheStore,
 		SkipCacheImport:      skipCacheImport,
 		KpackCacheGeneration: app.Status.BuildCacheGeneration,
 		Client:               buildClient,
@@ -8452,6 +8461,11 @@ func (r *AppReconciler) reclaimAppExternalArtifacts(ctx context.Context, app *ap
 			}
 		}
 	}
+	cacheDone, cacheErr := r.reclaimBuildCache(ctx, app, namespace, cl)
+	pending = pending || !cacheDone
+	if cacheErr != nil {
+		errs = append(errs, fmt.Errorf("purge build cache: %w", cacheErr))
+	}
 	if r.Registry != "" && r.appNeedsRegistryCred(app) && app.Annotations[annotRegistryPurgeComplete] != registryCredentialRotateTrue {
 		done, registryErr := r.deleteRegistryRepo(ctx, app)
 		pending = pending || !done
@@ -8466,6 +8480,30 @@ func (r *AppReconciler) reclaimAppExternalArtifacts(ctx context.Context, app *ap
 		}
 	}
 	return pending, errors.Join(errs...)
+}
+
+// reclaimBuildCache deletes the App lifetime's S3 build caches (w9/m492) once
+// the App is gone, through a durable cleanup Job in the build namespace, the
+// only namespace that holds the cache store's credential. Only a source-built
+// App can have a cache; every other App, and every App under the registry
+// backend (whose cache repository leaves with the App's image repository), is
+// done at once. A missing credential fails closed, as the static purge does:
+// the App's layers would otherwise outlive it, and nothing else would say so.
+func (r *AppReconciler) reclaimBuildCache(ctx context.Context, app *appv1alpha1.App, namespace string, cl client.Client) (bool, error) {
+	if !r.BuildCache || !r.BuildCacheStore.Configured() || app.Spec.Repo == "" {
+		return true, nil
+	}
+	if app.Annotations[annotBuildCachePurgeComplete] != string(app.UID) {
+		if err := validateAWSCredentialSecret(ctx, cl, namespace, r.BuildCacheStore.Secret); err != nil {
+			return false, fmt.Errorf("build cache store %w", err)
+		}
+	}
+	job, err := build.CachePurgeJob(app.Name, string(app.UID), app.Labels[labelWorkspace], app.Namespace,
+		r.BuildCacheStore, namespace, cleanupJobName(buildCachePurgeJobPrefix, app.Name, app.UID))
+	if err != nil {
+		return false, err
+	}
+	return reconcileCleanupJob(ctx, cl, app, job, annotBuildCachePurgeComplete)
 }
 
 // validateAWSCredentialSecret fails before a Pod is dispatched, so a missing

@@ -36,8 +36,40 @@ patches:
         value:
           name: BEX_RENDER_V1_USER_NAMESPACES
           value: "*"
-      # Registry cache remains opt-in after the expired w7/047 trial. A repeat
-      # trial needs fresh admission measurements and an absolute deadline.
+      # w9/m492: every workspace's Dockerfile and native builds reuse BuildKit
+      # layers across deploys through the bex-build-cache Wasabi bucket (30-day
+      # expiry), off Zot's single PVC that the w7/047 registry trial would have
+      # grown by ~0.5 GB per App (docs/ADR060 D3 S3 amendment). Render caches
+      # every workspace's builds, so there is no allowlist. The credential is
+      # bex-build/bex-build-cache-s3, installed out of band by
+      # scripts/build-cache-s3-credentials.sh provision; BuildKit never sees it.
+      # A missing Secret costs builds their cache, never the build. Rollback:
+      # remove these five; caches age out of the bucket on their own.
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BEX_BUILD_CACHE
+          value: s3
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BEX_BUILD_CACHE_S3_ENDPOINT
+          value: https://s3.eu-central-2.wasabisys.com
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BEX_BUILD_CACHE_S3_BUCKET
+          value: bex-build-cache
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BEX_BUILD_CACHE_S3_REGION
+          value: eu-central-2
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BEX_BUILD_CACHE_S3_SECRET
+          value: bex-build-cache-s3
       - op: add
         path: /spec/template/spec/containers/0/env/-
         value:

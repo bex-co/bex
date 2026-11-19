@@ -166,7 +166,7 @@ var (
 	// to debug from Git alone.
 	buildCacheEnabled = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "bex_build_cache_enabled",
-		Help: "1 when builds dispatched now carry registry cache phases, 0 when the gate is off or the trial breaker has withdrawn it.",
+		Help: "1 when builds dispatched now carry cache phases (registry or S3 backend), 0 when the gate is off or the trial breaker has withdrawn it.",
 	})
 	// Labelled by a CLOSED reason set (deadline, push_latency, push_errors) so
 	// cardinality is fixed. A counter rather than a gauge because the reason a
@@ -176,6 +176,26 @@ var (
 		Name: "bex_build_cache_withdrawals_total",
 		Help: "Times the build-cache trial breaker withdrew the cache, by stop rule.",
 	}, []string{"reason"})
+
+	// What each S3 cache phase did and how long it took (w9/m492). The phases
+	// always exit 0, so without this a store outage is indistinguishable from a
+	// fleet of first builds: both just build uncached. Both labels are closed
+	// sets (the three phases; build.CacheHit and its siblings).
+	buildCachePhaseSeconds = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name: "bex_build_cache_phase_seconds",
+		Help: "Seconds an S3 build-cache phase (cache-restore, cache-purge, cache-save) ran, by its reported outcome (hit, miss, incomplete, saved, skipped, purged, error).",
+		// A miss or a purge is sub-second; a cold multi-GB save takes minutes,
+		// and 300 is the phase's own budget (cacheCommandTimeout).
+		Buckets: []float64{0.5, 1, 2, 5, 10, 30, 60, 120, 300},
+	}, []string{"phase", "outcome"})
+	// The size of the layout a restore brought in or a save stored, which is
+	// what the store's capacity and each warm build's transfer cost follow.
+	buildCacheBytes = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name: "bex_build_cache_bytes",
+		Help: "Bytes of the BuildKit layer-cache layout an S3 cache-restore restored (hit) or a cache-save stored (saved) or refused as over the 8 GB bound (skipped).",
+		// 1 MiB to the 8 GB volume bound, a factor of four apart.
+		Buckets: prometheus.ExponentialBuckets(1<<20, 4, 8),
+	}, []string{"phase"})
 )
 
 // The closed reason set for buildCacheWithdrawalsTotal, and for the log line
@@ -193,6 +213,7 @@ func init() {
 		buildHoldSeconds, buildsHeld, buildHoldOldestSeconds,
 		buildPushSeconds, buildPushErrorsTotal, buildRetriesTotal,
 		buildCacheEnabled, buildCacheWithdrawalsTotal,
+		buildCachePhaseSeconds, buildCacheBytes,
 	)
 }
 
@@ -255,6 +276,12 @@ func recordBuildSignals(sig build.Signals) {
 	}
 	for _, reason := range sig.Retries {
 		buildRetriesTotal.WithLabelValues(reason).Inc()
+	}
+	for _, phase := range sig.CachePhases {
+		buildCachePhaseSeconds.WithLabelValues(phase.Phase, phase.Outcome).Observe(phase.Seconds)
+		if phase.Bytes > 0 {
+			buildCacheBytes.WithLabelValues(phase.Phase).Observe(float64(phase.Bytes))
+		}
 	}
 }
 

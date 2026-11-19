@@ -20,7 +20,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -91,6 +94,26 @@ type Signals struct {
 	// that was superseded by a later one. len(Retries) is the number of retries,
 	// never the number of attempts.
 	Retries []string
+	// CachePhases are the S3 cache phases the final attempt ran (w9/m492), in
+	// execution order. A registry-backend phase reports no outcome and is left
+	// out: its skopeo wrapper writes nothing to the termination log.
+	CachePhases []CachePhaseSignal
+}
+
+// CachePhaseSignal is one cache phase's own account of what it did. The phases
+// always exit 0 (the cache affects speed, never results), so an outcome read
+// back from the termination log is the only way to tell a hit from a miss or a
+// store outage.
+type CachePhaseSignal struct {
+	// Phase is the container: cache-restore, cache-purge or cache-save.
+	Phase string
+	// Outcome is one of the closed Cache* outcomes.
+	Outcome string
+	// Seconds is the phase's own terminated duration.
+	Seconds float64
+	// Bytes is the layout's size for a hit, a save or an oversize skip; 0
+	// otherwise.
+	Bytes int64
 }
 
 // ReadSignals derives a finished build's queue/push/retry facts from its Job and
@@ -173,7 +196,46 @@ func signalsFrom(job *batchv1.Job, pods []corev1.Pod) Signals {
 	if secs, failed, ok := phaseDuration(last, pushContainer); ok {
 		sig.PushSeconds, sig.PushFailed = secs, failed
 	}
+	sig.CachePhases = cachePhaseSignals(last)
 	return sig
+}
+
+// cacheOutcomes is the closed outcome set each phase may report. A message
+// outside it, which only a phase that is not ours could write, is dropped
+// rather than minted as a label.
+var cacheOutcomes = map[string][]string{
+	cacheRestorePhase: {CacheHit, CacheMiss, CacheIncomplete, CacheError},
+	cachePurgePhase:   {CachePurged, CacheError},
+	cacheSavePhase:    {CacheSaved, CacheSkipped, CacheError},
+}
+
+// cachePhaseSignals reads each terminated cache phase's "<outcome> [bytes]"
+// termination message on pod.
+func cachePhaseSignals(pod *corev1.Pod) []CachePhaseSignal {
+	var out []CachePhaseSignal
+	for _, cs := range containerStatuses(pod) {
+		allowed, isCache := cacheOutcomes[cs.Name]
+		term := cs.State.Terminated
+		if !isCache || term == nil {
+			continue
+		}
+		fields := strings.Fields(term.Message)
+		if len(fields) == 0 || len(fields) > 2 || !slices.Contains(allowed, fields[0]) {
+			continue
+		}
+		signal := CachePhaseSignal{
+			Phase:   cs.Name,
+			Outcome: fields[0],
+			Seconds: max(term.FinishedAt.Sub(term.StartedAt.Time).Seconds(), 0),
+		}
+		if len(fields) == 2 {
+			if n, err := strconv.ParseInt(fields[1], 10, 64); err == nil && n >= 0 {
+				signal.Bytes = n
+			}
+		}
+		out = append(out, signal)
+	}
+	return out
 }
 
 // scheduledAt is when the scheduler bound pod to a node. The PodScheduled

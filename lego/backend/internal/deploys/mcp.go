@@ -68,7 +68,7 @@ type triggerDeployArgs struct {
 	BuildID    string `json:"buildId,omitempty" jsonschema:"services linked to a build source only: deploy this build (a bld- id from the build source's builds) instead of the source's current build; cannot be combined with imageUrl, commitId or deployMode"`
 	// ClearCache is a boolean on Render's MCP server (w5/m145); bex also keeps
 	// accepting its REST clear|do_not_clear spelling.
-	ClearCache any    `json:"clearCache,omitempty" jsonschema:"true clears the build cache (Render's MCP boolean); the REST strings clear and do_not_clear are also accepted. With BEX_BUILD_CACHE=registry, clearing rebuilds without importing prior layers and still exports a fresh cache; with the gate off it is a no-op."`
+	ClearCache any    `json:"clearCache,omitempty" jsonschema:"true clears the build cache (Render's MCP boolean); the REST strings clear and do_not_clear are also accepted. With the build cache on, as it is in every bex workspace, clearing deletes the service's cached build layers, rebuilds without them, and caches the fresh build for later deploys."`
 	Confirm    string `json:"confirm,omitempty" jsonschema:"accepted for compatibility and ignored: a protected environment restricts this to workspace Admins (w8/187) and needs no phrase"`
 }
 

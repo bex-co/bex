@@ -30,9 +30,10 @@ export interface TriggerOptions {
   deployMode?: string;
   /**
    * Render's "clear" | "do_not_clear" enum ("Clear build cache and deploy").
-   * With BEX_BUILD_CACHE=registry, "clear" rebuilds without importing prior
-   * layers and still exports a fresh cache (w7/m88). With the gate off both
-   * values are no-ops (ephemeral Jobs start empty).
+   * With the operator's build cache on (BEX_BUILD_CACHE=s3 in production,
+   * w9/m492), "clear" purges the service's cached layers, rebuilds without
+   * them and caches the fresh build (w7/m88). With the gate off both values
+   * are no-ops (ephemeral Jobs start empty).
    */
   clearCache?: string;
   /**

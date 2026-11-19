@@ -955,6 +955,22 @@ groups:
           summary: "The build-cache trial withdrew itself ({{ $labels.reason }})"
           description: "The operator's trial breaker stopped dispatching registry cache phases. reason=deadline is the 72h hard stop firing as designed — record the retain-or-rollback decision and remove BEX_BUILD_CACHE_TRIAL_DEADLINE or the gate itself. reason=push_latency or push_errors means a stop rule tripped: the cache is already off, so investigate rather than scramble. The gate stays withdrawn until the manager is redeployed, which is deliberate — re-enabling is a decision a person makes. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D3."
 
+      # The S3 build cache failing to reach its store (w9/m492,
+      # docs/ADR060 D3 S3 amendment). Every cache phase exits 0 by
+      # design (the cache affects speed, never results), so a revoked
+      # credential, a missing bex-build-cache-s3 Secret or a Wasabi
+      # outage shows up only as builds quietly getting slower. Three
+      # errors in 30 minutes is a burst no first build explains: a miss
+      # is its own outcome, not an error.
+      - alert: BuildCacheStoreErrors
+        expr: |
+          sum(increase(bex_build_cache_phase_seconds_count{outcome="error"}[30m])) >= 3
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value | humanize }} S3 build-cache transfers failed in 30 minutes (builds are running uncached)"
+          description: "cache-restore, cache-purge or cache-save could not reach the bex-build-cache bucket, so builds fell back to building clean. Nothing has failed for tenants; their builds are only slower. Check that the bex-build/bex-build-cache-s3 Secret exists, then run scripts/build-cache-s3-credentials.sh verify against the cluster, then Wasabi's status. bex_build_cache_phase_seconds_count by phase shows which direction is failing. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D3."
+
       # Build-toolchain freshness (docs/ADR060 D7, w4/m86). Readiness
       # and age are distinct: a Ready builder can still be a stale
       # pin, and a recently reviewed pin can still be unready.

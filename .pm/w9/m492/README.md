@@ -1,19 +1,19 @@
 # w9 · m492 — Object-storage BuildKit layer cache (`BEX_BUILD_CACHE=s3`), enabled permanently in production
 
-**Worker:** worker9 **Goal:** Docker and native builds reuse cached BuildKit layers across deploys in production via off-Zot Wasabi S3 storage, and `clearCache: "clear"` ("Clear build cache & deploy") clears and rebuilds cold on every workspace with zero Zot PVC growth. **Status:** todo
+**Worker:** worker9 **Goal:** Docker and native builds reuse cached BuildKit layers across deploys in production via off-Zot Wasabi S3 storage, and `clearCache: "clear"` ("Clear build cache & deploy") clears and rebuilds cold on every workspace with zero Zot PVC growth. **Status:** in progress (t001–t004 and t006–t008 done; t005 needs a production pin carrying this milestone; then t009)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Provision Wasabi build-cache bucket, scoped IAM policy, and 30-day lifecycle rule; amend ADR060 D3 & ADR019 | 45m | — |
-| [t002](t002.md) | Implement `BEX_BUILD_CACHE=s3` in `lego/operator/internal/build/` (`cache-restore`, `cache-purge`, `cache-save` syncing local OCI layout to `<tea-id>/<app-uid>/layer-cache/`) | 1h30m | t001 |
-| [t003](t003.md) | Wire S3 build-cache config, per-App cleanup in App finalizer, and `clearCache` purge across services and Build Source carriers | 1h | t002 |
-| [t004](t004.md) | Enable `BEX_BUILD_CACHE=s3` + sealed credential in production overlays and add `bex_build_cache_*` metrics/alerts | 45m | t003 |
+| [t001](done/t001.md) | Provision Wasabi build-cache bucket, scoped IAM policy, and 30-day lifecycle rule; amend ADR060 D3 & ADR019 — **DONE** | 45m | — |
+| [t002](done/t002.md) | Implement `BEX_BUILD_CACHE=s3` in `lego/operator/internal/build/` (`cache-restore`, `cache-purge`, `cache-save` syncing local OCI layout to `<tea-id>/<app-uid>/layer-cache/`) — **DONE** | 1h30m | t001 |
+| [t003](done/t003.md) | Wire S3 build-cache config, per-App cleanup in App finalizer, and `clearCache` purge across services and Build Source carriers — **DONE** | 1h | t002 |
+| [t004](done/t004.md) | Enable `BEX_BUILD_CACHE=s3` + sealed credential in production overlays and add `bex_build_cache_*` metrics/alerts — **DONE** | 45m | t003 |
 | [t005](t005.md) | Production verification: cold→warm Dockerfile & native rebuild speedup, `clearCache: "clear"`, Build Source clear-cache, and zero Zot PVC growth | 1h | t004 |
-| [t006](t006.md) | Render parity | 30m | t005 |
-| [t007](t007.md) | Simplify | 20m | t006 |
-| [t008](t008.md) | Test coverage | 45m | t006, t007 |
+| [t006](done/t006.md) | Render parity — **DONE** | 30m | t005 |
+| [t007](done/t007.md) | Simplify — **DONE** | 20m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 45m | t006, t007 |
 | [t009](t009.md) | Closeout | 10m | t008 |
 
 ## Definition of done

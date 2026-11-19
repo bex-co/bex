@@ -2203,6 +2203,33 @@ tests:
         alertname: BuildCacheTrialWithdrawn
         exp_alerts: []
 
+  # BuildCacheStoreErrors (w9/m492): a burst of S3 cache-phase errors fires,
+  # while ordinary first-build misses and an isolated error stay silent.
+  - name: BuildCacheStoreErrors fires on a burst of store errors, not on misses
+    interval: 1m
+    input_series:
+      - series: 'bex_build_cache_phase_seconds_count{phase="cache-restore",outcome="miss"}'
+        values: "0+1x60"
+      - series: 'bex_build_cache_phase_seconds_count{phase="cache-restore",outcome="error"}'
+        values: "0x20 1x10 1+1x30"
+      - series: 'bex_build_cache_phase_seconds_count{phase="cache-save",outcome="error"}'
+        values: "0x60"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: BuildCacheStoreErrors
+        exp_alerts: [] # sixty misses an hour are first builds, not an outage
+      - eval_time: 30m
+        alertname: BuildCacheStoreErrors
+        exp_alerts: [] # one error is a blip
+      - eval_time: 45m
+        alertname: BuildCacheStoreErrors
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "14 S3 build-cache transfers failed in 30 minutes (builds are running uncached)"
+              description: "cache-restore, cache-purge or cache-save could not reach the bex-build-cache bucket, so builds fell back to building clean. Nothing has failed for tenants; their builds are only slower. Check that the bex-build/bex-build-cache-s3 Secret exists, then run scripts/build-cache-s3-credentials.sh verify against the cluster, then Wasabi's status. bex_build_cache_phase_seconds_count by phase shows which direction is failing. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D3."
+
   # A dropped Stripe webhook is invisible without these: checkout.session.completed
   # is the only writer of payment_method_bound_at, so losing one locks a paying
   # customer out of the product with nothing in the logs (w3/m162).

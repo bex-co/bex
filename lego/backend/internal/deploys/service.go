@@ -566,10 +566,11 @@ type TriggerParams struct {
 	// digest changes (Render's contract, w8/042).
 	ImageURL string
 	// ClearCache is Render's "clear" | "do_not_clear" string enum (its
-	// dashboard's "Clear build cache and deploy"). When per-App registry
-	// caching is enabled (BEX_BUILD_CACHE=registry), "clear" stamps a
-	// release-scoped reset on the App so that generation rebuilds without
-	// importing prior layers and still exports a fresh cache (w7/m88). With
+	// dashboard's "Clear build cache and deploy"). When the operator's per-App
+	// layer cache is enabled (BEX_BUILD_CACHE=s3 in production, w9/m492, or
+	// registry), "clear" stamps a release-scoped reset on the App so that
+	// generation purges and rebuilds without importing prior layers and still
+	// exports a fresh cache (w7/m88). With
 	// the gate off, both values remain behavioral no-ops (ephemeral BuildKit
 	// Jobs already start empty). Empty = omitted = do_not_clear.
 	ClearCache string

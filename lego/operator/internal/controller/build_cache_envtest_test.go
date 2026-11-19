@@ -45,13 +45,18 @@ var _ = Describe("build cache dispatch", func() {
 	// in the shared namespace is refused since codex-security 2026-08 F11).
 	const ns = "tea-w1"
 
-	dispatch := func(name string, cache bool, clearCache bool) *batchv1.Job {
+	type dispatchOpts struct {
+		cache, clearCache bool
+		store             build.CacheStore
+		buildSource       bool
+	}
+	dispatchWith := func(name string, o dispatchOpts) *batchv1.Job {
 		ctx := context.Background()
 		_ = k8sClient.Create(ctx, &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{Name: ns},
 		}) // AlreadyExists is fine across specs
 		anns := map[string]string{}
-		if clearCache {
+		if o.clearCache {
 			anns[appv1alpha1.AnnotationClearCacheReleaseGeneration] = "1"
 		}
 		app := &appv1alpha1.App{
@@ -65,12 +70,16 @@ var _ = Describe("build cache dispatch", func() {
 				Builder: "dockerfile", Port: 3000,
 			},
 		}
+		if o.buildSource {
+			app.Spec.Type = appv1alpha1.TypeBuildSource
+			app.Spec.Port = 0
+		}
 		Expect(k8sClient.Create(ctx, app)).To(Succeed())
 		DeferCleanup(func() { _ = k8sClient.Delete(ctx, app) })
 
 		r := &AppReconciler{
 			Client: k8sClient, Scheme: k8sClient.Scheme(), Mode: ModeKubernetes,
-			Registry: "zot.test:5000", BuildCache: cache,
+			Registry: "zot.test:5000", BuildCache: o.cache, BuildCacheStore: o.store,
 		}
 		nn := types.NamespacedName{Name: name, Namespace: ns}
 		// Several passes: the build is only dispatched once the App has settled
@@ -91,6 +100,30 @@ var _ = Describe("build cache dispatch", func() {
 			"the reconcile never dispatched a build Job; last reconcile error: %v", lastErr)
 		DeferCleanup(func() { _ = k8sClient.Delete(ctx, &job) })
 		return &job
+	}
+	dispatch := func(name string, cache bool, clearCache bool) *batchv1.Job {
+		return dispatchWith(name, dispatchOpts{cache: cache, clearCache: clearCache})
+	}
+	s3Store := build.CacheStore{
+		Endpoint: "https://s3.example", Bucket: "bex-build-cache", Region: "eu-central-2", Secret: "bex-build-cache-s3",
+	}
+	phase := func(spec corev1.PodSpec, name string) *corev1.Container {
+		for _, cs := range [][]corev1.Container{spec.InitContainers, spec.Containers} {
+			for i := range cs {
+				if cs[i].Name == name {
+					return &cs[i]
+				}
+			}
+		}
+		return nil
+	}
+	envOf := func(c *corev1.Container, name string) string {
+		for _, e := range c.Env {
+			if e.Name == name {
+				return e.Value
+			}
+		}
+		return ""
 	}
 
 	names := func(cs []corev1.Container) []string {
@@ -148,5 +181,38 @@ var _ = Describe("build cache dispatch", func() {
 		for _, v := range spec.Volumes {
 			Expect(v.Name).NotTo(Or(Equal("cache-in"), Equal("cache-out")))
 		}
+	})
+
+	It("dispatches S3 cache phases under BEX_BUILD_CACHE=s3, and the API server keeps their optional credential", func() {
+		job := dispatchWith("cache-s3-app", dispatchOpts{cache: true, store: s3Store})
+		spec := job.Spec.Template.Spec
+		restore, save := phase(spec, "cache-restore"), phase(spec, "cache-save")
+		Expect(restore).NotTo(BeNil())
+		Expect(save).NotTo(BeNil())
+		var app appv1alpha1.App
+		Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: "cache-s3-app", Namespace: ns}, &app)).To(Succeed())
+		// The App lifetime's own prefix, in its workspace's column.
+		Expect(envOf(restore, "BEX_CACHE_URI")).To(Equal("s3://bex-build-cache/tea-w1/" + string(app.UID) + "/layer-cache/"))
+		for _, c := range []*corev1.Container{restore, save} {
+			Expect(c.EnvFrom).To(HaveLen(1))
+			Expect(c.EnvFrom[0].SecretRef.Name).To(Equal("bex-build-cache-s3"))
+			Expect(c.EnvFrom[0].SecretRef.Optional).NotTo(BeNil())
+			Expect(*c.EnvFrom[0].SecretRef.Optional).To(BeTrue())
+		}
+		Expect(phase(spec, "buildkit").EnvFrom).To(BeEmpty())
+	})
+
+	It("gives a Build Source carrier the same S3 phases and purges them on a clear-cache release", func() {
+		warm := dispatchWith("cache-s3-src", dispatchOpts{cache: true, store: s3Store, buildSource: true})
+		Expect(phase(warm.Spec.Template.Spec, "cache-restore")).NotTo(BeNil())
+		Expect(phase(warm.Spec.Template.Spec, "cache-save")).NotTo(BeNil())
+
+		clear := dispatchWith("cache-s3-src-clear", dispatchOpts{cache: true, clearCache: true, store: s3Store, buildSource: true})
+		spec := clear.Spec.Template.Spec
+		Expect(phase(spec, "cache-restore")).To(BeNil())
+		purge := phase(spec, "cache-purge")
+		Expect(purge).NotTo(BeNil())
+		Expect(envOf(purge, "BEX_CACHE_URI")).To(HaveSuffix("/layer-cache/"))
+		Expect(phase(spec, "cache-save")).NotTo(BeNil())
 	})
 })
