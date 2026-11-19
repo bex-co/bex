@@ -1,4 +1,5 @@
 import { SkeletonSpan } from "@/common/components/ui/skeleton";
+import { Badge } from "@/common/components/ui/badge";
 import { buttonVariants } from "@/common/components/ui/button";
 import { cn } from "@/common/lib/utils/utils";
 
@@ -33,6 +34,30 @@ export function ReservedButton({
       <span className={cn(buttonVariants({ variant, size }), "invisible")}>
         {children}
       </span>
+      <SkeletonSpan />
+    </span>
+  );
+}
+
+/** A ready Badge's exact box — same variant and text — as a bar. `region`
+ *  names the box for the pending-frame tests (`data-skeleton-region`). */
+export function ReservedBadge({
+  variant,
+  region,
+  children,
+}: {
+  variant: "secondary" | "outline";
+  region?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <span
+      className="relative inline-flex shrink-0"
+      data-skeleton-region={region}
+    >
+      <Badge variant={variant} className="invisible">
+        {children}
+      </Badge>
       <SkeletonSpan />
     </span>
   );

@@ -3,25 +3,37 @@ import { Badge } from "@/common/components/ui/badge";
 import { Label } from "@/common/components/ui/label";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { Switch } from "@/common/components/ui/switch";
-import { ReservedText } from "@/common/components/reserved-skeleton";
+import {
+  ReservedBadge,
+  ReservedText,
+} from "@/common/components/reserved-skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useOrganizationRole } from "@/features/organizations/hooks/use-organization-role";
 import type { WorkspaceOrganizationRef } from "@/features/workspaces/types";
 
 /**
  * How a login-requirement row shows its state: the switch, for whoever may
- * change it; the state as a badge, for everyone else; the switch's own box
- * while who may is still unknown (a skeleton, or a role still loading).
+ * change it; the state as a badge, for everyone else. While it loads, the
+ * row holds the box of the one it will draw: the badge's (`pendingStatus`)
+ * once the caller is known not to change it, else the switch's (`pending`:
+ * who may is still unknown, or is known to be someone who may).
  */
-export type LoginRequirementControl = "switch" | "status" | "pending";
+export type LoginRequirementControl =
+  | "switch"
+  | "status"
+  | "pending"
+  | "pendingStatus";
 
 /**
  * The row every login-requirement setting draws: Workspace Settings' 2FA and
  * Google login cards (w22/m402, w7/m465) and each setting of Org Settings ->
  * Security (w7/m466). Its label, then the control. The row keeps `min-h-6`
- * whichever control it holds, and the placeholder is the switch's own box
- * (h-5 w-9), so a role that loads after the page shifts nothing at any width.
- * No control is enabled before its deciding data exists.
+ * whichever control it holds, and wraps the control under the label when
+ * both do not fit. A badge is wider than the switch, so it wraps at widths
+ * where the switch does not (w7/089): a skeleton that knows the caller reads
+ * the state holds the badge's own box (`pendingStatus`, with `required`), and
+ * one that does not holds the switch's (h-5 w-9). No control is enabled
+ * before its deciding data exists.
  */
 export function LoginRequirementRow({
   id,
@@ -43,6 +55,12 @@ export function LoginRequirementRow({
   onCheckedChange?: (next: boolean) => void;
 }) {
   const { t } = useTranslations();
+  const badgeVariant = required ? "secondary" : "outline";
+  const status = t(
+    required
+      ? "workspaces.loginRequirementStatusRequired"
+      : "workspaces.loginRequirementStatusNotRequired",
+  );
   return (
     <div className="flex min-h-6 flex-wrap items-center justify-between gap-3">
       <Label htmlFor={control === "switch" ? id : undefined}>{label}</Label>
@@ -58,14 +76,12 @@ export function LoginRequirementRow({
           data-skeleton-region={`${region}-control`}
           className="h-5 w-9 shrink-0 rounded-full"
         />
+      ) : control === "pendingStatus" ? (
+        <ReservedBadge variant={badgeVariant} region={`${region}-control`}>
+          {status}
+        </ReservedBadge>
       ) : (
-        <Badge variant={required ? "secondary" : "outline"}>
-          {t(
-            required
-              ? "workspaces.loginRequirementStatusRequired"
-              : "workspaces.loginRequirementStatusNotRequired",
-          )}
-        </Badge>
+        <Badge variant={badgeVariant}>{status}</Badge>
       )}
     </div>
   );

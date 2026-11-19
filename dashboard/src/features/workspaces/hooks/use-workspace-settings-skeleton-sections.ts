@@ -1,5 +1,7 @@
+import type { WorkspaceLoginRequirement } from "@/common/apollo/auth-error-link";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { workspaceRequires } from "@/features/workspaces/lib/login-requirements";
 import {
   getPersistedWorkspaceShape,
   workspaceShape,
@@ -25,6 +27,14 @@ export interface WorkspaceSettingsPendingSections {
   /** The workspace's org, once known: an org that requires 2FA or Google
    *  login gives that card its "required by" note (w7/m466). */
   organization: WorkspaceView["organization"];
+  /** Whether the workspace requires 2FA and Google login, once the caller is
+   *  known not to be an admin of a workspace already loaded: those cards then
+   *  show the state as a badge, not a switch, so they hold the badge's box
+   *  (w7/089). Null while the caller may be an admin or the workspace is
+   *  not loaded. */
+  loginRequirementStatus: Readonly<
+    Record<WorkspaceLoginRequirement, boolean>
+  > | null;
 }
 
 /** Which of Workspace Settings' conditional sections a pending frame
@@ -62,5 +72,12 @@ export function useWorkspaceSettingsSkeletonSections(): WorkspaceSettingsPending
     workspaceName: currentWorkspace?.name,
     belowPro: shape != null && !proFeaturesPlan(shape.plan),
     organization: shape?.organization ?? null,
+    loginRequirementStatus:
+      currentWorkspace && !capabilities.loading && !capabilities.canManage
+        ? {
+            twoFactor: workspaceRequires("twoFactor", currentWorkspace),
+            googleLogin: workspaceRequires("googleLogin", currentWorkspace),
+          }
+        : null,
   };
 }

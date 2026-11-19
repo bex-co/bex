@@ -469,4 +469,38 @@ describe("WorkspaceTwoFactorCardSkeleton matches the card (w22/m402)", () => {
     }
     expect(container.querySelector("button, [role='switch'], a")).toBeNull();
   });
+
+  // w7/089: a non-admin's card shows the state badge, which is wider than the
+  // switch and at phone width can wrap under the label, so a frame that knows
+  // the caller is not an admin holds that badge's own box.
+  it.each([false, true])(
+    "holds a non-admin's state badge's box (required: %s)",
+    async (required) => {
+      asRole("developer");
+      const { container } = render(
+        <WorkspaceLoginRequirementCardSkeleton
+          requirement="twoFactor"
+          status={required}
+        />,
+      );
+      const placeholder = container.querySelector<HTMLElement>(
+        '[data-skeleton-region="two-factor-control"]',
+      )!;
+      const reserved = placeholder.querySelector('[data-slot="badge"]')!;
+      const ready = await renderReady({
+        ...WORKSPACE,
+        requireTwoFactor: required,
+      });
+      const badge = ready.querySelector('[data-slot="badge"]')!;
+
+      expect(badge).toHaveTextContent(required ? "Required" : "Not required");
+      expect(reserved.textContent).toBe(badge.textContent);
+      expect(reserved.className).toBe(`${badge.className} invisible`);
+      expect(placeholder.lastElementChild).toHaveAttribute(
+        "data-slot",
+        "skeleton",
+      );
+      expect(container.querySelector("button, [role='switch'], a")).toBeNull();
+    },
+  );
 });

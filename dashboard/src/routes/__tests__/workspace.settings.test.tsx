@@ -735,6 +735,48 @@ describe("a direct load's pending frame (w3/073)", () => {
     expect(screen.getByTestId("delete-workspace-skeleton")).toBeInTheDocument();
   });
 
+  // w7/089: a non-admin's 2FA and Google login cards show the state as a
+  // badge, wider than the switch, so a frame that knows the caller is not an
+  // admin holds each badge's box, with the state it will show (here 2FA is
+  // the workspace's own, Google login its org's); an admin's holds the
+  // switch's.
+  it.each([
+    ["an admin", true, ["switch", "switch"]],
+    ["a non-admin", false, ["Required", "Required"]],
+  ] as const)(
+    "holds the login requirement controls %s will see",
+    async (_who, canManage, controls) => {
+      capabilityState.canManage = canManage;
+      capabilityState.canManageBilling = canManage;
+      const workspace: WorkspaceView = {
+        ...orgWorkspace,
+        requireTwoFactor: true,
+        organization: {
+          ...orgWorkspace.organization!,
+          requireGoogleLogin: true,
+        },
+      };
+      workspaceState.currentWorkspace = workspace;
+      workspaceState.currentWorkspaceId = workspace.id;
+      workspaceState.workspaces = [workspace];
+      const { container } = await renderPage(WorkspaceSettingsPageSkeleton);
+
+      const held = ["two-factor", "google-login"].map((section) => {
+        const control = container.querySelector(
+          `[data-skeleton-region="${section}-control"]`,
+        )!;
+        const badge = control.querySelector('[data-slot="badge"]');
+        if (!badge) {
+          expect(control).toHaveClass("h-5", "w-9");
+          return "switch";
+        }
+        expect(badge).toHaveClass("invisible");
+        return badge.textContent;
+      });
+      expect(held).toEqual(controls);
+    },
+  );
+
   it("keeps the standalone default on a first visit", async () => {
     coldLoad(orgWorkspace.id);
     const { container } = await renderPage();

@@ -3,7 +3,10 @@ import type {
   WorkspaceLoginRequirement,
 } from "@/common/apollo/auth-error-link";
 import type { Translate } from "@/common/hooks/use-translations";
-import type { WorkspaceOrganizationRef } from "@/features/workspaces/types";
+import type {
+  WorkspaceOrganizationRef,
+  WorkspaceView,
+} from "@/features/workspaces/types";
 
 /**
  * One coded refusal of a login requirement's mutation, with the locale string
@@ -159,6 +162,21 @@ export function requiringOrganization(
   return organization?.[LOGIN_REQUIREMENT_SETTINGS[requirement].field]
     ? organization
     : null;
+}
+
+/**
+ * Whether `workspace` requires `requirement` of its members: its own
+ * setting, or its org's (w7/m466). What the card's switch or state badge
+ * shows, and what its skeleton reserves the badge's box for (w7/089).
+ */
+export function workspaceRequires(
+  requirement: WorkspaceLoginRequirement,
+  workspace: Pick<WorkspaceView, LoginRequirementField | "organization">,
+): boolean {
+  return (
+    requiringOrganization(requirement, workspace.organization) !== null ||
+    workspace[LOGIN_REQUIREMENT_SETTINGS[requirement].field]
+  );
 }
 
 /**

@@ -3,10 +3,9 @@ import { useParams } from "@tanstack/react-router";
 import { Plus, UserPlus } from "lucide-react";
 import { PageFrame } from "@/common/components/page-frame";
 import { Region } from "@/common/components/route-skeletons";
-import { Badge } from "@/common/components/ui/badge";
 import { Card, CardContent } from "@/common/components/ui/card";
 import { Label } from "@/common/components/ui/label";
-import { Skeleton, SkeletonSpan } from "@/common/components/ui/skeleton";
+import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -18,6 +17,7 @@ import {
   PanelTableHeader,
 } from "@/common/components/panel-states";
 import {
+  ReservedBadge,
   ReservedButton,
   ReservedText,
 } from "@/common/components/reserved-skeleton";
@@ -52,11 +52,15 @@ import {
 } from "@/features/organizations/components/organization-settings-frame";
 import { OrganizationLoginBlocked } from "@/features/organizations/components/organization-login-blocked";
 import { useOrganizationLoginBlock } from "@/features/workspaces/hooks/use-workspace-login-block";
-import { LOGIN_REQUIREMENTS } from "@/features/workspaces/lib/login-requirements";
+import {
+  LOGIN_REQUIREMENTS,
+  LOGIN_REQUIREMENT_SETTINGS,
+} from "@/features/workspaces/lib/login-requirements";
 import {
   MEMBER_COLUMN_KEYS,
   WORKSPACE_COLUMN_KEYS,
   toOrganizationRole,
+  type Organization,
   type OrganizationRole,
   type OrganizationSection,
   type OrganizationWorkspace,
@@ -87,34 +91,18 @@ const DEFAULT_WORKSPACES: SkeletonWorkspace[] = [
 ];
 
 function useSkeletonOrganization(organizationId: string): {
+  organization: Organization | undefined;
   role: OrganizationRole | null;
   workspaces: readonly SkeletonWorkspace[];
 } {
   const organization = useCachedOrganization(organizationId);
   return {
+    organization,
     role: toOrganizationRole(organization?.viewerRole),
     workspaces: organization?.workspaces.length
       ? organization.workspaces
       : DEFAULT_WORKSPACES,
   };
-}
-
-/** A Badge's exact box, as a bar. */
-function ReservedBadge({
-  variant,
-  children,
-}: {
-  variant: "secondary" | "outline";
-  children: ReactNode;
-}) {
-  return (
-    <span className="relative inline-flex shrink-0">
-      <Badge variant={variant} className="invisible">
-        {children}
-      </Badge>
-      <SkeletonSpan />
-    </span>
-  );
 }
 
 /** The Workspaces card while the org loads: its rows' boxes and actions. */
@@ -248,9 +236,12 @@ export function OrganizationMembersCardSkeleton({
 /**
  * The Settings cards while the org loads: the name card (Save for an Owner,
  * the Owners-only note otherwise), Security (w7/m466) with each setting's
- * label and description as themselves and the control as the switch's box
- * (the Owners-only note for a Member or Guest), and, for an Owner, Audit Logs
- * with the export row's frame.
+ * label and description as themselves and the control's box, and, for an
+ * Owner, Audit Logs with the export row's frame. The control is the switch's
+ * box for an Owner or a role not yet known; for a Member or Guest it is the
+ * state badge's ("Required" or "Not required", from the cached org), which
+ * is wider than a switch and at phone width wraps under the label (w7/089).
+ * A Member or Guest also gets the Owners-only note.
  */
 export function OrganizationSettingsSkeleton({
   organizationId,
@@ -258,7 +249,8 @@ export function OrganizationSettingsSkeleton({
   organizationId: string;
 }) {
   const { t } = useTranslations();
-  const { role } = useSkeletonOrganization(organizationId);
+  const { organization, role } = useSkeletonOrganization(organizationId);
+  const readOnly = role !== null && role !== "OWNER";
   return (
     <>
       <Region name="organization-name">
@@ -276,7 +268,7 @@ export function OrganizationSettingsSkeleton({
                 </ReservedButton>
               ) : null}
             </div>
-            {role && role !== "OWNER" ? (
+            {readOnly ? (
               <p className="text-xs text-muted-foreground">
                 {t("organizations.nameOwnerOnly")}
               </p>
@@ -292,12 +284,13 @@ export function OrganizationSettingsSkeleton({
               <OrganizationLoginRequirementSection
                 key={requirement}
                 requirement={requirement}
-                control="pending"
+                control={readOnly ? "pendingStatus" : "pending"}
+                required={
+                  organization?.[LOGIN_REQUIREMENT_SETTINGS[requirement].field]
+                }
               />
             ))}
-            {role && role !== "OWNER" ? (
-              <OrganizationSecurityOwnerOnly />
-            ) : null}
+            {readOnly ? <OrganizationSecurityOwnerOnly /> : null}
           </CardContent>
         </Card>
       </Region>

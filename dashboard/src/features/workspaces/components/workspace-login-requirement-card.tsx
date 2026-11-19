@@ -22,6 +22,7 @@ import { useSetWorkspaceLoginRequirement } from "@/features/workspaces/hooks/use
 import {
   LOGIN_REQUIREMENT_SETTINGS,
   requiringOrganization,
+  workspaceRequires,
 } from "@/features/workspaces/lib/login-requirements";
 import {
   proFeaturesPlan,
@@ -35,9 +36,10 @@ import {
  * sign-in that was not Google with the Google account of their email) cannot
  * use the workspace's resources or settings, and their API keys and SSH keys
  * are blocked (docs/ADR012-auth.md 9a, 9b). Admins get the switch; every
- * other member sees the state without a control. The card is the same size
- * either way, so a role that loads a moment after the page never shifts it
- * (`WorkspaceLoginRequirementCardSkeleton` previews this anatomy).
+ * other member sees the state without a control. The state badge is wider
+ * than the switch, so at phone width it can wrap under the label where the
+ * switch does not; the skeleton holds whichever box the card will draw once
+ * the role is known (`WorkspaceLoginRequirementCardSkeleton`, w7/089).
  *
  * The enforcement itself is server-side: this switch only writes the setting,
  * and the server's coded 409 refusals (the lock-out guard: the admin does not
@@ -84,7 +86,7 @@ export function WorkspaceLoginRequirementCard({
   const { canManage: isAdmin, loading: roleLoading } = useCapabilities();
   const lockedBy = requiringOrganization(requirement, workspace.organization);
   const belowPro = !proFeaturesPlan(workspace.plan);
-  const required = lockedBy !== null || workspace[setting.field];
+  const required = workspaceRequires(requirement, workspace);
   const [confirming, setConfirming] = useState(false);
 
   return (

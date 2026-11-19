@@ -161,10 +161,27 @@ function actionLabels(root: Element | null | undefined): string[] {
   return [...reserved, ...buttons].map(visibleLabel);
 }
 
-/** A login requirement row's control: the switch, the state, or (pending)
- *  the switch's box, which a ready row of either kind settles into. */
-const LOGIN_REQUIREMENT_CONTROL =
-  '[role=switch], [data-slot=badge], [data-skeleton-region$="-control"]';
+/**
+ * A login requirement row's control, as the box it takes: "switch" for the
+ * switch or (pending) the switch's box; the badge's variant and text for the
+ * state or (pending, w7/089) the badge's box, which a skeleton lays out with
+ * the ready badge's own classes and text, invisibly.
+ */
+function loginRequirementControl(section: Element): string | null {
+  const badge = section.querySelector("[data-slot=badge]");
+  if (badge) {
+    const classes = badge.className
+      .split(/\s+/)
+      .filter((name) => name && name !== "invisible")
+      .join(" ");
+    return `badge "${badge.textContent}" ${classes}`;
+  }
+  return section.querySelector(
+    '[role=switch], [data-skeleton-region$="-control"]',
+  )
+    ? "switch"
+    : null;
+}
 
 /**
  * The geometry-bearing structure of an org page, read the same way from the
@@ -201,14 +218,14 @@ export function pageStructure(root: HTMLElement) {
       actions: actionLabels(row.lastElementChild),
     })),
     labels: texts("label"),
-    /** Each Security setting (w7/m466): its label, whether its control's
-     *  place is held, and what it requires. */
+    /** Each Security setting (w7/m466): its label, its control's box (the
+     *  switch's, or the state badge's; w7/089), and what it requires. */
     loginRequirements: [
       ...root.querySelectorAll("[data-login-requirement]"),
     ].map((section) => ({
       name: section.getAttribute("data-login-requirement"),
       label: section.querySelector("label")?.textContent,
-      control: section.querySelectorAll(LOGIN_REQUIREMENT_CONTROL).length,
+      control: loginRequirementControl(section),
       description: section.querySelector(":scope > p")?.textContent,
     })),
     /** The cards' static notes (who may change a setting). */

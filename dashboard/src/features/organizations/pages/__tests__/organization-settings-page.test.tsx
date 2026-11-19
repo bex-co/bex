@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { ApolloClient, ApolloLink, InMemoryCache } from "@apollo/client";
+import { ApolloProvider } from "@apollo/client/react";
 import userEvent from "@testing-library/user-event";
 import { config } from "@/config/config";
 import { OrganizationSettingsPage } from "@/features/organizations/pages/organization-settings-page";
@@ -14,6 +16,16 @@ import {
   renderPendingAtOrgRoute,
   renderAtOrgRoute,
 } from "@/features/organizations/__tests__/org-fixtures";
+
+/** The org Settings route's pending frame, once it has drawn. */
+async function settingsFrame(container: HTMLElement) {
+  await waitFor(() =>
+    expect(
+      container.querySelector('[data-route-skeleton="organization-settings"]'),
+    ).not.toBeNull(),
+  );
+  return pageStructure(container);
+}
 import {
   toOrganizationRole,
   type Organization,
@@ -311,4 +323,70 @@ describe("OrganizationSettingsPage (w7/m464)", () => {
       );
     },
   );
+
+  // w7/089: a Member's or Guest's settings settle to the state badge, which
+  // is wider than a switch and at phone width wraps under the label, so their
+  // frame holds that badge's box ("Required" or "Not required", from the
+  // cached org); an Owner's holds the switch's.
+  it.each(
+    (["OWNER", "MEMBER", "GUEST"] as const).flatMap((role) =>
+      KNOWN_FROM.map((knownFrom) => [role, knownFrom] as const),
+    ),
+  )(
+    "holds each Security control's own box for an %s known from the %s",
+    async (role, knownFrom) => {
+      const ready = await renderPage(role, { requireTwoFactor: true });
+      const readyRows = pageStructure(ready.container).loginRequirements;
+      ready.unmount();
+
+      const pending = renderPendingAtOrgRoute(
+        "settings",
+        <OrganizationSettingsRouteSkeleton />,
+        { ...organization(role), requireTwoFactor: true },
+        knownFrom,
+      );
+      const rows = (await settingsFrame(pending.container)).loginRequirements;
+      expect(rows).toEqual(readyRows);
+      expect(rows.map((row) => row.control)).toEqual(
+        role === "OWNER"
+          ? ["switch", "switch"]
+          : [
+              expect.stringMatching(/^badge "Required" .*\bbg-secondary\b/),
+              expect.stringMatching(/^badge "Not required" /),
+            ],
+      );
+      // Boxes only: the frame shows no state and offers no switch.
+      const badges = pending.container.querySelectorAll(
+        "[data-login-requirement] [data-slot=badge]",
+      );
+      expect(badges).toHaveLength(role === "OWNER" ? 0 : 2);
+      for (const badge of badges) {
+        expect(badge).toHaveClass("invisible");
+        expect(badge.nextElementSibling).toHaveAttribute(
+          "data-slot",
+          "skeleton",
+        );
+      }
+      expect(pending.container.querySelector("[role=switch]")).toBeNull();
+    },
+  );
+
+  it("holds the switch's box while nothing says who the caller is", async () => {
+    const client = new ApolloClient({
+      link: ApolloLink.empty(),
+      cache: new InMemoryCache(),
+    });
+    const pending = renderAtOrgRoute(
+      "settings",
+      <ApolloProvider client={client}>
+        <OrganizationSettingsRouteSkeleton />
+      </ApolloProvider>,
+    );
+    const frame = await settingsFrame(pending.container);
+    expect(frame.loginRequirements.map((row) => row.control)).toEqual([
+      "switch",
+      "switch",
+    ]);
+    expect(frame.notes).toEqual([]);
+  });
 });
