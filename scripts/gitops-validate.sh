@@ -1379,6 +1379,31 @@ for proxy in pg-sni-proxy kv-sni-proxy; do
     fail=1
   fi
 done
+# w6/m515: each node's new SNI pod is Ready before the old one gets SIGTERM,
+# the old one keeps accepting for a preStop pause while its endpoint leaves the
+# nodes' service rules, and then drains within its grace period. A hostPort
+# would keep the new pod off the node until the old one had gone, and a grace
+# period at or below the pause plus the drain would SIGKILL the streams it is
+# meant to finish.
+echo "==> SNI proxy DaemonSets surge and drain within their grace period (w6/m515)"
+for proxy_drain in pg-sni-proxy:BEX_PROXY_DRAIN_SECONDS kv-sni-proxy:BEX_KV_PROXY_DRAIN_SECONDS; do
+  proxy="${proxy_drain%%:*}" drain_var="${proxy_drain#*:}"
+  daemonset="select(.kind == \"DaemonSet\" and .metadata.name == \"bex-$proxy\")"
+  surge="$(yq -N "$daemonset | .spec.updateStrategy | [.type, .rollingUpdate.maxSurge, .rollingUpdate.maxUnavailable] | join(\",\")" "$tmp/bex-operator-prod.yaml" | tr -d '\n')"
+  host_ports="$(yq -N "$daemonset | .spec.template.spec.containers[].ports[] | select(.hostPort != null) | .hostPort" "$tmp/bex-operator-prod.yaml" | paste -sd, -)"
+  drain="$(yq -N "$daemonset | .spec.template.spec.containers[] | select(.name == \"$proxy\") | .env[] | select(.name == \"$drain_var\") | .value" "$tmp/bex-operator-prod.yaml" | tr -d '\n')"
+  grace="$(yq -N "$daemonset | .spec.template.spec.terminationGracePeriodSeconds" "$tmp/bex-operator-prod.yaml" | tr -d '\n')"
+  pause="$(yq -N "$daemonset | .spec.template.spec.containers[] | select(.name == \"$proxy\") | .lifecycle.preStop.sleep.seconds" "$tmp/bex-operator-prod.yaml" | tr -d '\n')"
+  if [ "$surge" != RollingUpdate,1,0 ] || [ -n "$host_ports" ]; then
+    echo "FAIL: bex-$proxy must roll with maxSurge 1, maxUnavailable 0 and no hostPort (got strategy=$surge hostPort=$host_ports)" >&2
+    fail=1
+  fi
+  if ! [[ "$drain" =~ ^[1-9][0-9]*$ && "$pause" =~ ^[1-9][0-9]*$ && "$grace" =~ ^[0-9]+$ ]] ||
+    [ "$grace" -le $((pause + drain)) ]; then
+    echo "FAIL: bex-$proxy must pause in preStop and set $drain_var, both positive and together below terminationGracePeriodSeconds (got pause=$pause $drain_var=$drain grace=$grace)" >&2
+    fail=1
+  fi
+done
 for port in 5432 6379; do
   admitted="$(yq -N "select(.kind == \"NetworkPolicy\" and .metadata.name == \"allow-production-edge-proxies\") | .spec.ingress[] | select(.from == null) | .ports[] | select(.protocol == \"TCP\" and .port == $port) | .port" "$tmp/bex-operator-prod.yaml" | tr -d '\n')"
   if [ "$admitted" != "$port" ]; then

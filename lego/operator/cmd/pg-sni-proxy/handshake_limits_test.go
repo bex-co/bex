@@ -161,7 +161,7 @@ func TestStalledHandshakesFromOneNetworkAreShedAtItsShare(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(func() { cancel(); _ = ln.Close() })
-	go sniproxy.Serve(ctx, ln, limiter, meter, func(conn net.Conn) {
+	go sniproxy.Serve(ctx, ln, limiter, meter, sniproxy.Drain{}, func(conn net.Conn) {
 		handleConn(conn, router, meter, trusted, limiter, 0, 0, testLogger{})
 	}, nil)
 

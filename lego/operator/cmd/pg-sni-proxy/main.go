@@ -86,6 +86,10 @@ const (
 	defaultMaxHandshakesPerNetwork = 128       // BEX_PROXY_MAX_HANDSHAKES_PER_NETWORK
 	defaultIdleTimeout             = time.Hour // BEX_PROXY_IDLE_TIMEOUT
 	defaultMaxLifetime             = 24 * time.Hour
+
+	// drainSecondsEnv bounds the drain a release's SIGTERM starts, in whole
+	// seconds; unset or 0 closes every stream at once (w6/m515).
+	drainSecondsEnv = "BEX_PROXY_DRAIN_SECONDS"
 )
 
 // backendSSLReplyTimeout bounds the wait for the backend's one-byte answer to
@@ -340,6 +344,11 @@ func main() {
 	)
 	idleTimeout := sniproxy.EnvDuration(log, "BEX_PROXY_IDLE_TIMEOUT", defaultIdleTimeout)
 	maxLifetime := sniproxy.EnvDuration(log, "BEX_PROXY_MAX_LIFETIME", defaultMaxLifetime)
+	drainTimeout, err := sniproxy.DrainSeconds(drainSecondsEnv)
+	if err != nil {
+		log.Error(err, "invalid drain bound")
+		os.Exit(1)
+	}
 
 	router := newRouter(domain)
 	registry := prometheus.NewRegistry()
@@ -363,16 +372,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctx, cancel := context.WithCancel(ctrl.SetupSignalHandler())
+	// The first SIGTERM or SIGINT ends stopping: the manager stops, which
+	// freezes the routing table, and the listener drains (w6/m515).
+	// controller-runtime exits at once on a second signal. ctx is the hard
+	// stop, for a manager or metrics listener that fails on its own.
+	stopping := ctrl.SetupSignalHandler()
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Start the manager (and its cache) in the background.
 	mgrErrCh := make(chan error, 1)
-	go func() { mgrErrCh <- mgr.Start(ctx) }()
+	go func() { mgrErrCh <- mgr.Start(stopping) }()
 
 	// Wait for the cache to sync before accepting connections, so the first
 	// connection doesn't race with the initial list.
-	if !mgr.GetCache().WaitForCacheSync(ctx) {
+	if !mgr.GetCache().WaitForCacheSync(stopping) {
 		log.Error(fmt.Errorf("cache sync timed out"), "failed to sync Database cache")
 		os.Exit(1)
 	}
@@ -396,23 +410,22 @@ func main() {
 		log.Error(err, "failed to listen", "addr", addr)
 		os.Exit(1)
 	}
-	defer func() { _ = ln.Close() }()
-
 	go func() {
-		select {
-		case <-ctx.Done():
-		case err := <-mgrErrCh:
-			if err != nil {
-				log.Error(err, "manager exited")
-			}
-			cancel() // stop Serve cleanly when the manager exits without a signal
+		err := <-mgrErrCh
+		if stopping.Err() != nil {
+			return // stopped by the signal, which drains
 		}
-		_ = ln.Close()
+		if err != nil {
+			log.Error(err, "manager exited")
+		}
+		cancel() // a manager that exits on its own stops Serve at once
 	}()
 
 	// Serve admits each connection through the global cap BEFORE dispatching a
-	// handler goroutine, shedding overload at accept time (finding 6).
-	sniproxy.Serve(ctx, ln, limiter, meter, func(conn net.Conn) {
+	// handler goroutine, shedding overload at accept time (finding 6), and
+	// returns once a drain's last stream has ended.
+	drain := sniproxy.Drain{Start: stopping.Done(), Timeout: drainTimeout}
+	sniproxy.Serve(ctx, ln, limiter, meter, drain, func(conn net.Conn) {
 		handleConn(conn, router, meter, trustedProxyCIDRs, limiter, idleTimeout, maxLifetime, log)
 	}, func(err error) {
 		log.Error(err, "accept error")

@@ -68,11 +68,13 @@ The SNI proxy routes each external connection by its TLS server name and relays 
 
 ### Postgres SNI proxy — deployment (w1/m29)
 
-The proxy binary (`/pg-sni-proxy`) lives in the same image as the operator. A `DaemonSet` (`bex-pg-sni-proxy`) runs on platform nodes with `hostPort: 5432`, watching `Database` CRs cluster-wide to maintain its routing table. It needs a `ClusterRole` to `list/watch` databases.
+The proxy binary (`/pg-sni-proxy`) lives in the same image as the operator. A `DaemonSet` (`bex-pg-sni-proxy`) runs on platform nodes, listening on container port 5432, and watches `Database` CRs cluster-wide to maintain its routing table. It needs a `ClusterRole` to `list/watch` databases.
 
 **When it rolls (w6/m470).** The DaemonSet takes the operator image under its own kustomize pin, and `deploy.yml` keeps that pin while the new image's `/pg-sni-proxy` is byte-identical to the pinned one's. A platform deploy that leaves the proxy's code alone therefore replaces no proxy pod and closes no external connection, as on Render; a code or DaemonSet template change still rolls it. The rule, shared with `bex-kv-sni-proxy`, is [ADR021 § 10](ADR021-keyvalue-management.md#10-a-platform-deploy-rolls-no-stores-proxy-w6m469-w6m470-2026-11-18).
 
-**Dev (single-node, hostNetwork edge):** the DaemonSet's `hostPort: 5432` binds `:5432` directly on the node. `*.db.bex.co` is a DNS A record to the node IP.
+**A roll that changes it drains (w6/m515).** The DaemonSet asks for no `hostPort` and rolls with `maxSurge: 1`, `maxUnavailable: 0`, so each node's new pod is the Local NodePort's endpoint, Ready, before the old pod is told to stop. The old pod keeps accepting through a 5 s `preStop` pause while its endpoint leaves the nodes' service rules. On `SIGTERM` it stops accepting, and a query in flight gets its result: open streams relay until they end or `BEX_PROXY_DRAIN_SECONDS` (30 s, Render's default shutdown delay) passes, within a 40 s grace period. A held session is still closed at the bound on each deploy that changes the binary, the gap ADR021 § 10 records with the rule, the rejected directions and the local measurement.
+
+**Dev:** the proxy has no host port. A local client reaches it through a NodePort (`config/prod`'s, applied by hand) or `kubectl port-forward` (`scripts/psql-compat-verify.sh`). The `hostPort: 5432` dev edge was removed in w6/m515: it kept the surge pod off the node, and PodSecurity `baseline` refused it.
 
 **Prod (Hetzner LoadBalancer):** port `5432` is absent from Traefik's Service. The prod kustomization creates a fixed NodePort selecting the proxy DaemonSet; Terraform owns the shared edge LB's `5432 → 31056` listener and TCP health check:
 

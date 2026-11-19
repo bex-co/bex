@@ -146,7 +146,7 @@ func TestAStoreAtItsLimitAnswersTheNextExternalClientWithValkeysRefusal(t *testi
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = ln.Close() })
-	go sniproxy.Serve(ctx, ln, limiter, meter, func(conn net.Conn) {
+	go sniproxy.Serve(ctx, ln, limiter, meter, sniproxy.Drain{}, func(conn net.Conn) {
 		handleConn(conn, router, meter, nil, limiter, 0, 0, discardLogger{})
 	}, nil)
 

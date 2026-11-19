@@ -17,6 +17,8 @@ limitations under the License.
 package sniproxy
 
 import (
+	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"time"
@@ -52,4 +54,21 @@ func EnvDuration(log logr.Logger, name string, def time.Duration) time.Duration 
 		return def
 	}
 	return d
+}
+
+// DrainSeconds reads a proxy's drain bound from the env var name (w6/m515): a
+// whole number of seconds, zero included. Unset is zero, which closes every
+// stream at once on SIGTERM, as before. Unlike the tuning knobs above, a
+// malformed value is an error, so the proxy refuses to start rather than roll
+// on with a bound nobody chose.
+func DrainSeconds(name string) (time.Duration, error) {
+	raw := os.Getenv(name)
+	if raw == "" {
+		return 0, nil
+	}
+	n, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || n < 0 || n > math.MaxInt64/int64(time.Second) {
+		return 0, fmt.Errorf("%s must be a whole number of seconds, got %q", name, raw)
+	}
+	return time.Duration(n) * time.Second, nil
 }

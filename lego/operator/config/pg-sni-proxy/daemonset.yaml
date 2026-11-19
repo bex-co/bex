@@ -7,6 +7,15 @@ spec:
   selector:
     matchLabels:
       app.bex.co/component: pg-sni-proxy
+  # A roll starts each node's new pod and waits for it to be Ready before the
+  # old one gets SIGTERM, so the node keeps a local endpoint for the edge LB's
+  # Local NodePort throughout (w6/m515). The pods ask for no hostPort, which
+  # would keep the new pod off the node until the old one had gone.
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
@@ -14,17 +23,19 @@ spec:
     spec:
       serviceAccountName: pg-sni-proxy
       # Platform-pod hardening parity (w7/m58): runAsNonRoot + seccompProfile
-      # match kv-sni-proxy and the other platform pods. hostPort binding is
-      # kubelet-side and does not need the container to run as root, so the proxy
-      # runs as the non-root uid 65532 (below), same as kv-sni-proxy.
+      # match kv-sni-proxy and the other platform pods. The proxy runs as the
+      # non-root uid 65532 (below), same as kv-sni-proxy.
       securityContext:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
-      # Run on platform nodes alongside Traefik so the proxy binds :5432 on the
-      # same host that Traefik exposes :80/:443 (docs/ADR009-postgresql-management.md).
+      # Run on platform nodes alongside Traefik. Production's edge LB reaches
+      # the proxy through the Local NodePort bex-pg-sni-proxy-public
+      # (config/prod, docs/ADR009-postgresql-management.md).
       nodeSelector:
         bex.co/pool: platform
+      # Covers the preStop pause, the drain below and a SIGKILL margin.
+      terminationGracePeriodSeconds: 40
       tolerations:
         - key: bex.co/platform
           operator: Equal
@@ -38,9 +49,16 @@ spec:
           # connection. Never map it to `controller` in config/default.
           image: pg-sni-proxy:latest
           command: ["/pg-sni-proxy"]
+          lifecycle:
+            # A terminating pod's endpoint takes a moment to leave every node's
+            # service rules, so the old pod keeps accepting for 5 s before
+            # SIGTERM starts its drain, and a client routed to it meanwhile is
+            # served rather than refused (w6/m515).
+            preStop:
+              sleep:
+                seconds: 5
           ports:
             - containerPort: 5432
-              hostPort: 5432  # bind the node's :5432 directly (dev hostNetwork edge)
               protocol: TCP
             - name: metrics
               containerPort: 9092
@@ -61,6 +79,11 @@ spec:
             # free is the connections themselves (w6/m457).
             - name: GOMEMLIMIT
               value: 400MiB
+            # The old pod stops accepting on SIGTERM and relays its open streams
+            # for up to this many seconds, so a command in flight at a roll gets
+            # its reply (w6/m515). Whatever is still open then closes.
+            - name: BEX_PROXY_DRAIN_SECONDS
+              value: "30"
           readinessProbe:
             httpGet:
               path: /metrics

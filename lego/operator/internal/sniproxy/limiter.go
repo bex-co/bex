@@ -17,8 +17,6 @@ limitations under the License.
 package sniproxy
 
 import (
-	"context"
-	"net"
 	"net/netip"
 	"sync"
 	"sync/atomic"
@@ -215,46 +213,4 @@ func decrementKey[K comparable](counts map[K]int, key K) {
 		return
 	}
 	counts[key]--
-}
-
-// Serve is the shared accept loop for the SNI proxies. It admits each accepted
-// connection through limiter's global cap BEFORE dispatching a handler goroutine,
-// so an overload flood is shed at accept time (the connection is closed, no
-// goroutine and no backend dial) instead of growing the process unboundedly
-// (finding 6). handle owns the connection and must close it; the global slot is
-// released when handle returns. onAcceptErr, if non-nil, is called for a
-// non-shutdown Accept error. Serve returns when ctx is cancelled (and the
-// listener is closed by the caller).
-func Serve(
-	ctx context.Context,
-	ln net.Listener,
-	limiter *Limiter,
-	meter *ByteMeter,
-	handle func(net.Conn),
-	onAcceptErr func(error),
-) {
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			if ctx.Err() != nil {
-				return
-			}
-			if onAcceptErr != nil {
-				onAcceptErr(err)
-			}
-			continue
-		}
-		release, ok := limiter.AcquireGlobal()
-		if !ok {
-			if meter != nil {
-				meter.Reject("global")
-			}
-			_ = conn.Close()
-			continue
-		}
-		go func() {
-			defer release()
-			handle(conn)
-		}()
-	}
 }

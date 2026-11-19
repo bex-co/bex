@@ -200,7 +200,7 @@ func TestServeShedsBeyondGlobalCapWithoutDispatch(t *testing.T) {
 	var handled atomic.Int64
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	go Serve(ctx, ln, limiter, meter, func(c net.Conn) {
+	go Serve(ctx, ln, limiter, meter, Drain{}, func(c net.Conn) {
 		handled.Add(1)
 		started <- struct{}{}
 		<-release
