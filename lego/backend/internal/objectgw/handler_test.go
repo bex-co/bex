@@ -66,15 +66,20 @@ func TestAPublicObjectIsServedByteIdentical(t *testing.T) {
 	}
 }
 
-// TestObjectKeysAreServedAsStored: S3 keys are opaque, so a doubled slash and
-// unicode reach the object that was stored under exactly that key.
+// TestObjectKeysAreServedAsStored: S3 keys are opaque, so unicode and a trailing
+// slash reach the object that was stored under exactly that key. A doubled slash is
+// no key bex stores (ADR112 D7: Traefik would clean it before bex saw it), so it
+// answers 404 whatever sits beside it.
 func TestObjectKeysAreServedAsStored(t *testing.T) {
 	e := newGW(t)
-	e.put("a//b", []byte("double"), objectstorage.ObjectHeaders{})
+	e.put("a/b", []byte("single"), objectstorage.ObjectHeaders{})
 	e.put("héllo wörld.txt", []byte("unicode"), objectstorage.ObjectHeaders{})
 	e.put("trailing/", []byte("dir"), objectstorage.ObjectHeaders{})
+	if rec := e.do(http.MethodGet, "/a//b"); rec.Code != http.StatusNotFound {
+		t.Errorf("GET /a//b = %d, want 404: a doubled slash is not a key", rec.Code)
+	}
 	for target, want := range map[string]string{
-		"/a//b": "double", "/h%C3%A9llo%20w%C3%B6rld.txt": "unicode", "/trailing/": "dir",
+		"/a/b": "single", "/h%C3%A9llo%20w%C3%B6rld.txt": "unicode", "/trailing/": "dir",
 	} {
 		if rec := e.do(http.MethodGet, target); rec.Code != http.StatusOK || rec.Body.String() != want {
 			t.Errorf("GET %s = %d %q, want %q", target, rec.Code, rec.Body, want)

@@ -1,0 +1,41 @@
+# objects.<base domain>: the S3-compatible API (docs/ADR112-object-storage.md D3,
+# w21/m498). Every path of the host that is not Contract B's goes to bex-s3.
+#
+# The host is the DNS-only one, not api.<base domain>: api.bex.co is behind
+# Cloudflare's proxy, which refuses a request body over 100 MiB with its own HTML
+# 413 (measured 2026-11-15), and an S3 object goes to 5 GiB. *.onbex.co is DNS-only
+# and resolves straight to Traefik. The wildcard certificate covers one label, so
+# only path-style requests (objects.onbex.co/<bucket>/<key>) are served; a
+# virtual-hosted request to <bucket>.objects.onbex.co has no certificate or route
+# (ADR112 D10).
+#
+# Precedence: Contract B's route (config/api/ingressroute-objects.yaml) matches
+# `PathPrefix(/cloudflare/client/v4/)` at priority 10000 and goes to bex-api until
+# it is removed with the production walk's removal task (w21/m500); this route is
+# below it and above every App route. While both exist, a key under client/v4/ of a
+# bucket named cloudflare would reach the old route, so the S3 surface refuses that
+# bucket name (objectstorage.ValidateBucketName).
+#
+# No plain-HTTP route: an access key's id travels in every request, so http://
+# meets the platform-host fallback. Nothing in front of bex-s3 may read the body, so
+# there is no middleware here; Traefik cleans request paths by default, so a key with
+# a doubled slash or a dot segment is refused by the surface (ADR112 D7).
+#
+# The suffix is "." + BEX_BASE_DOMAIN; scripts/gitops-validate.sh checks it names the
+# prod suffix and that both routes of the host are pinned.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: s3gw-objects
+  namespace: system
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      priority: 9000
+      match: Host(`objects.onbex.co`)
+      services:
+        - name: s3gw # kustomize rewrites to bex-s3gw (namePrefix)
+          port: 8080
+  tls: {}

@@ -238,6 +238,9 @@ func permitted(permission, relation string) bool {
 // authorizes on anything the request names: the workspace is the key's row's.
 func (rq *request) authorize(relation, verb, target string) *Error {
 	if !permitted(rq.key.Permission, relation) {
+		// The key's own ceiling refuses before OpenFGA is asked, and the refusal is
+		// still a denied row, deduped like any other (ADR112 D6).
+		rq.g.recordCeilingDenial(rq, relation, verb, target)
 		return errAccessDenied("Access Denied: this access key is not permitted to do that")
 	}
 	_, err := rq.g.cfg.Base.AuthorizeWorkspaceTargetAs(rq.ctx, verb, relation, rq.workspaceID, target)

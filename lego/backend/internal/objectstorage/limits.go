@@ -40,8 +40,10 @@ const (
 	MaxObjectBytesStreamed int64 = 300 << 20
 
 	// MaxConcurrentStreamsPerWorkspace bounds the uploads and downloads one
-	// workspace may have in flight through bex-api.
-	MaxConcurrentStreamsPerWorkspace = 8
+	// workspace may have in flight through one bex replica. Contract B's cap was 8,
+	// sized for wrangler's one stream; `aws s3 cp` runs 10 requests at a time, so S3
+	// takes 16 (ADR112 D3, D8; bex's own, unverified).
+	MaxConcurrentStreamsPerWorkspace = 16
 	// MaxConcurrentStreamsPerReplica bounds all workspaces together on one
 	// bex-api replica, so a crowd of workspaces cannot exhaust its connections
 	// and memory. ADR112 gives no value; this is bex's own.
@@ -80,6 +82,32 @@ const (
 	RetiredKeyRetention = 7 * 24 * time.Hour
 	// KeyTouchEvery is the most often a replica writes a key's last_used_at.
 	KeyTouchEvery = 5 * time.Minute
+
+	// MaxFailedAuthsPerMinute is how many failed authentications one client address
+	// (an IPv6 address by its /64) may make in a minute before its failing requests
+	// are refused from the in-memory caches alone (ADR112 D3, D8). Bex's own.
+	MaxFailedAuthsPerMinute = 20
+
+	// The S3 surface's pacing and rates (ADR112 D3, D8; bex's own, unverified, per
+	// replica). Reads are paced, not charged as debt: response bodies leave through a
+	// rate-limited writer at S3ReadBytesPerSecond per workspace, uploads are taken at
+	// S3WriteBytesPerSecond, and requests are capped per workspace and per access key.
+	// A refusal is 503 SlowDown, which S3 clients retry, never 429.
+	S3ReadBytesPerSecond            = 8 << 20
+	S3WriteBytesPerSecond           = 16 << 20
+	S3RequestsPerSecondPerWorkspace = 100
+	S3RequestBurstPerWorkspace      = 200
+	S3RequestsPerSecondPerKey       = 50
+	S3RequestBurstPerKey            = 100
+	// ListingsPerSecondPerWorkspace caps listings, which Wasabi counts as egress.
+	ListingsPerSecondPerWorkspace = 5
+	// MaxOpenMultipartUploads is the most unfinished multipart uploads one workspace
+	// may hold.
+	MaxOpenMultipartUploads = 100
+	// S3EgressBudgetFloor is the smallest monthly S3 egress budget: a workspace's
+	// budget is the larger of the bytes it stores and this (Wasabi's own rule is
+	// egress at or below storage), after which S3 reads answer 403 QuotaExceeded.
+	S3EgressBudgetFloor int64 = 5 << 30
 
 	// MaxKeyBytes is the longest object key.
 	MaxKeyBytes = 1024

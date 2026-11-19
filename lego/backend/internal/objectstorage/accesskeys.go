@@ -368,6 +368,56 @@ func (a *AccessKeys) Authenticate(ctx context.Context, keyID string) (Credential
 	return Credential{Key: look.key, Secret: secret}, nil
 }
 
+// Resolve is the live key a key id names, from the row cache, without its secret.
+// A CORS preflight carries no signature, so it can only be routed by the key id of
+// a presigned URL; the answer is a hint that routes it, never an authentication.
+// An unknown, revoked or expired key is ErrInvalidAccessKey.
+func (a *AccessKeys) Resolve(ctx context.Context, keyID string) (store.ObjectAccessKey, error) {
+	if !a.Enabled() || !KeyShape(keyID) {
+		return store.ObjectAccessKey{}, ErrInvalidAccessKey
+	}
+	look, err := a.rows.Load(ctx, keyID, AccessKeyRowCacheTTL, func(ctx context.Context) (keyLookup, error) {
+		k, err := a.repo.GetObjectAccessKey(ctx, keyID)
+		if errors.Is(err, store.ErrNotFound) {
+			return keyLookup{}, nil
+		}
+		return keyLookup{key: k, found: err == nil}, err
+	})
+	if err != nil {
+		return store.ObjectAccessKey{}, err
+	}
+	if !look.found || !look.key.Live(a.now()) {
+		return store.ObjectAccessKey{}, ErrInvalidAccessKey
+	}
+	return look.key, nil
+}
+
+// ErrNotCached is a key that AuthenticateCached could not answer from memory.
+var ErrNotCached = errors.New("the access key is not in this replica's caches")
+
+// AuthenticateCached is Authenticate from this replica's caches alone: it never
+// reads the database or OpenBao. The S3 surface uses it for a client address that
+// has failed too often, so a flood of unknown key ids from one address stops
+// reaching either, while a key it is already serving keeps working. A key id the
+// caches do not hold is ErrNotCached.
+func (a *AccessKeys) AuthenticateCached(keyID string) (Credential, error) {
+	if !a.Enabled() || !KeyShape(keyID) {
+		return Credential{}, ErrInvalidAccessKey
+	}
+	look, ok := a.rows.Get(keyID)
+	if !ok {
+		return Credential{}, ErrNotCached
+	}
+	if !look.found || !look.key.Live(a.now()) {
+		return Credential{}, ErrInvalidAccessKey
+	}
+	secret, ok := a.secret.Get(keyID)
+	if !ok || secret == "" {
+		return Credential{}, ErrNotCached
+	}
+	return Credential{Key: look.key, Secret: secret}, nil
+}
+
 // touch records the key's last use, at most once per KeyTouchEvery on a replica.
 func (a *AccessKeys) touch(ctx context.Context, k store.ObjectAccessKey) {
 	now := a.now()

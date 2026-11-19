@@ -125,6 +125,11 @@ func (s *PGStore) FinishObjectStoragePurge(ctx context.Context, workspaceID stri
 			`DELETE FROM object_buckets WHERE workspace_id = $1 AND deleted_at IS NOT NULL`, workspaceID); err != nil {
 			return err
 		}
+		if _, err := tx.Exec(ctx, `
+			DELETE FROM object_storage_writes w WHERE w.workspace_id = $1
+			AND NOT EXISTS (SELECT 1 FROM object_buckets b WHERE b.workspace_id = w.workspace_id)`, workspaceID); err != nil {
+			return err
+		}
 		_, err := tx.Exec(ctx, `
 			DELETE FROM object_storage_usage u WHERE u.workspace_id = $1
 			AND NOT EXISTS (SELECT 1 FROM object_buckets b WHERE b.workspace_id = u.workspace_id)`, workspaceID)
@@ -157,6 +162,10 @@ func (s *PGStore) RecordObjectStorageObservation(ctx context.Context, workspaceI
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		prior, err := lockObjectStorageUsage(ctx, tx, workspaceID, region)
 		if err != nil {
+			return err
+		}
+		// What bex wrote before this listing started is in it (ADR112 D8).
+		if _, err := tx.Exec(ctx, `DELETE FROM object_storage_writes WHERE workspace_id = $1 AND region = $2 AND updated_at <= $3`, workspaceID, region, at); err != nil {
 			return err
 		}
 		accrued := map[time.Time]int64{}
@@ -304,5 +313,39 @@ func (s *PGStore) ObjectStorageEgressSince(ctx context.Context, since time.Time)
 		SELECT COALESCE(sum(quantity), 0)::bigint FROM usage_hourly
 		WHERE resource_kind = $1 AND kind = $2 AND window_start >= $3`,
 		ResourceKindObjectStorage, UsageKindObjectStorageEgressBytes, since.UTC().Truncate(time.Hour)).Scan(&total)
+	return total, err
+}
+
+// AddObjectStorageWrite counts a completed write (a put, a copy or a multipart
+// completion) of bytes and objects into a workspace's region, for the quota gate to
+// add to the sweep's last observation (ADR112 D8).
+func (s *PGStore) AddObjectStorageWrite(ctx context.Context, workspaceID, region string, bytes, objects int64) error {
+	_, err := s.Pool.Exec(ctx, `
+		INSERT INTO object_storage_writes (workspace_id, region, bytes, objects, updated_at)
+		VALUES ($1, $2, $3, $4, now())
+		ON CONFLICT (workspace_id, region)
+		DO UPDATE SET bytes = object_storage_writes.bytes + EXCLUDED.bytes,
+		              objects = object_storage_writes.objects + EXCLUDED.objects, updated_at = now()`,
+		workspaceID, region, max(bytes, 0), max(objects, 0))
+	return err
+}
+
+// ObjectStorageWriteTotals is what bex has written into a workspace's region since the
+// sweep's last observation of it.
+func (s *PGStore) ObjectStorageWriteTotals(ctx context.Context, workspaceID, region string) (bytes, objects int64, err error) {
+	err = s.Pool.QueryRow(ctx, `
+		SELECT COALESCE(sum(bytes), 0)::bigint, COALESCE(sum(objects), 0)::bigint
+		FROM object_storage_writes WHERE workspace_id = $1 AND region = $2`, workspaceID, region).Scan(&bytes, &objects)
+	return bytes, objects, err
+}
+
+// ObjectStorageWorkspaceEgressSince is the bytes a workspace read out of object storage
+// since the start of the given hour: the S3 surface's monthly egress budget reads it.
+func (s *PGStore) ObjectStorageWorkspaceEgressSince(ctx context.Context, workspaceID string, since time.Time) (int64, error) {
+	var total int64
+	err := s.Pool.QueryRow(ctx, `
+		SELECT COALESCE(sum(quantity), 0)::bigint FROM usage_hourly
+		WHERE resource_kind = $1 AND kind = $2 AND service_id = $3 AND window_start >= $4`,
+		ResourceKindObjectStorage, UsageKindObjectStorageEgressBytes, workspaceID, since.UTC().Truncate(time.Hour)).Scan(&total)
 	return total, err
 }

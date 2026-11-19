@@ -14,47 +14,45 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package objectgw
+package objectstorage
 
 import (
 	"net/http"
 	"slices"
 	"strconv"
 	"strings"
-
-	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
 )
 
-// The bucket's CORS rules, applied by the gateway (ADR112 D4): Wasabi's own CORS
-// stays off, so a browser at a customer's origin can read a public bucket only
-// as far as the rules the customer stored say. The first rule that matches the
-// request wins, as in S3. Credentials are never allowed: the gateway answers
-// without Access-Control-Allow-Credentials, so a cross-origin read carries no
-// cookies.
+// A bucket's CORS rules, applied where bex serves it to browsers: the public gateway
+// (ADR112 D4) and the S3 host's preflight (D3). Wasabi's own CORS stays off, so a browser
+// at a customer's origin can read a public bucket only as far as the rules the customer
+// stored say. The first rule that matches the request wins, as in S3. Credentials are
+// never allowed: the gateway answers without Access-Control-Allow-Credentials, so a
+// cross-origin read carries no cookies.
 
-// matchedRule is the rule a cross-origin request matched.
-type matchedRule struct {
-	rule objectstorage.CORSRule
+// CORSMatch is the rule a cross-origin request matched.
+type CORSMatch struct {
+	rule CORSRule
 	// wildcard is true when the rule allows every origin, so the answer can say
 	// "*" instead of echoing the caller's.
 	wildcard bool
 }
 
-// matchCORS finds the first rule that allows origin to make a request with the
+// MatchCORS finds the first rule that allows origin to make a request with the
 // given method and, for a preflight, the given request headers. ok is false when
 // no rule does, which is a response without any CORS header.
-func matchCORS(rules []objectstorage.CORSRule, origin, method string, requestHeaders []string) (m matchedRule, ok bool) {
+func MatchCORS(rules []CORSRule, origin, method string, requestHeaders []string) (m CORSMatch, ok bool) {
 	if origin == "" {
-		return matchedRule{}, false
+		return CORSMatch{}, false
 	}
 	for _, rule := range rules {
 		wildcard, allowedOrigin := originAllowed(rule.Allowed.Origins, origin)
 		if !allowedOrigin || !slices.Contains(rule.Allowed.Methods, method) || !headersAllowed(rule.Allowed.Headers, requestHeaders) {
 			continue
 		}
-		return matchedRule{rule: rule, wildcard: wildcard}, true
+		return CORSMatch{rule: rule, wildcard: wildcard}, true
 	}
-	return matchedRule{}, false
+	return CORSMatch{}, false
 }
 
 // originAllowed reports whether any of the rule's origins admits origin, and
@@ -92,9 +90,9 @@ func headersAllowed(allowed, requested []string) bool {
 	return true
 }
 
-// splitHeaderList reads a comma-separated header such as
+// SplitHeaderList reads a comma-separated header such as
 // Access-Control-Request-Headers into its trimmed, non-empty names.
-func splitHeaderList(value string) []string {
+func SplitHeaderList(value string) []string {
 	var out []string
 	for _, part := range strings.Split(value, ",") {
 		if part = strings.TrimSpace(part); part != "" {
@@ -104,17 +102,17 @@ func splitHeaderList(value string) []string {
 	return out
 }
 
-// setActual adds the headers an actual (non-preflight) cross-origin response
+// SetActual adds the headers an actual (non-preflight) cross-origin response
 // carries.
-func (m matchedRule) setActual(h http.Header, origin string) {
+func (m CORSMatch) SetActual(h http.Header, origin string) {
 	h.Set("Access-Control-Allow-Origin", m.allowOrigin(origin))
 	if len(m.rule.ExposeHeaders) > 0 {
 		h.Set("Access-Control-Expose-Headers", strings.Join(m.rule.ExposeHeaders, ", "))
 	}
 }
 
-// setPreflight adds the headers a successful preflight answer carries.
-func (m matchedRule) setPreflight(h http.Header, origin string, requestHeaders []string) {
+// SetPreflight adds the headers a successful preflight answer carries.
+func (m CORSMatch) SetPreflight(h http.Header, origin string, requestHeaders []string) {
 	h.Set("Access-Control-Allow-Origin", m.allowOrigin(origin))
 	h.Set("Access-Control-Allow-Methods", strings.Join(m.rule.Allowed.Methods, ", "))
 	switch {
@@ -132,7 +130,7 @@ func (m matchedRule) setPreflight(h http.Header, origin string, requestHeaders [
 	}
 }
 
-func (m matchedRule) allowOrigin(origin string) string {
+func (m CORSMatch) allowOrigin(origin string) string {
 	if m.wildcard {
 		return "*"
 	}

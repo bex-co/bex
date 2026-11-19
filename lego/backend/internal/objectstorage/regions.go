@@ -128,3 +128,19 @@ func RegionFromHint(hint, jurisdiction string) (Region, error) {
 	}
 	return "", &RegionNotOfferedError{Value: jurisdiction}
 }
+
+// RegionFromLocationConstraint is the region an S3 CreateBucket's LocationConstraint
+// names (ADR112 D1): oregon, us-west-1 and us-west-2 are Oregon, frankfurt,
+// eu-central-1 and eu-central-2 are Frankfurt, and an absent one is DefaultRegion.
+// Anything else, Render's other regions included, is a RegionNotOfferedError.
+func RegionFromLocationConstraint(value string) (Region, error) {
+	switch value {
+	case "":
+		return DefaultRegion, nil
+	case "oregon", "us-west-1", "us-west-2":
+		return Oregon, nil
+	case "frankfurt", "eu-central-1", "eu-central-2":
+		return Frankfurt, nil
+	}
+	return "", &RegionNotOfferedError{Value: value}
+}

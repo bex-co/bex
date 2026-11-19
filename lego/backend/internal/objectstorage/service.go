@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -71,6 +72,14 @@ type Service struct {
 	// meter sums the transfer shadow meters until RunMeter flushes them; nil
 	// (the default) records nothing. SetUsageSink installs it.
 	meter *transferMeter
+	// readPace and writePace pace the S3 surface's downloads and uploads per workspace
+	// (pacing.go); gateMu, inflight and egressCache are its quota accounting (quota_s3.go).
+	readPace, writePace *pacer
+	gateMu              [gateShards]sync.Mutex
+	inflight            *inflight
+	egressCache         *core.TTLCache[int64]
+	// nowFunc is the clock the egress budget reads; tests replace it.
+	nowFunc func() time.Time
 }
 
 // NewService returns the service. A nil or empty stores map leaves it disabled:
@@ -84,6 +93,8 @@ func NewService(repo Repository, stores map[Region]Store) *Service {
 		// A Wasabi that stays connected and stops answering must not hold a
 		// stream slot.
 		streamDeadline: StreamDeadline,
+		readPace:       newPacer(S3ReadBytesPerSecond), writePace: newPacer(S3WriteBytesPerSecond),
+		inflight: newInflight(), egressCache: core.NewTTLCache[int64](), nowFunc: time.Now,
 	}
 }
 

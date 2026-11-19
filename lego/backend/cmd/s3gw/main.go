@@ -150,7 +150,7 @@ func build(ctx context.Context, cfg *config, registry *prometheus.Registry) (*s3
 	svc.SetUsageSink(st)
 	go svc.RunMeter(ctx, objectstorage.TransferFlushInterval)
 	keys := objectstorage.NewAccessKeys(st, secrets.NewOpenBaoStore(cfg.OpenBaoURL, cfg.OpenBaoJWTPath))
-	return s3gw.New(s3gw.Config{Service: svc, Keys: keys, Base: base}), pool.Close
+	return s3gw.New(s3gw.Config{Service: svc, Keys: keys, Base: base, TrustedProxies: cfg.TrustedProxies}), pool.Close
 }
 
 // probeServer serves /healthz (liveness, always 200 once the process is up),

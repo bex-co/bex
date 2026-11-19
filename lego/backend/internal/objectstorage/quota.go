@@ -67,6 +67,12 @@ func (s *Service) Gate(ctx context.Context, workspaceID string, region Region, a
 	if err != nil {
 		return fmt.Errorf("read object storage usage: %w", err)
 	}
+	// What bex has itself written since that observation, and what is in flight.
+	pb, po, err := s.pendingUsage(ctx, workspaceID, region)
+	if err != nil {
+		return err
+	}
+	bytes, objects = bytes+pb, objects+po
 	if bytes+addBytes > MaxWorkspaceBytes {
 		return &QuotaError{Resource: QuotaBytes, Limit: MaxWorkspaceBytes}
 	}

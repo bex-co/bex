@@ -63,11 +63,18 @@ func errRequestTimeTooSkewed() *Error {
 func errNotImplemented(msg string) *Error {
 	return newError(http.StatusNotImplemented, "NotImplemented", msg)
 }
+func errSlowDown(msg string) *Error { return newError(http.StatusServiceUnavailable, "SlowDown", msg) }
 func errServiceUnavailable(msg string) *Error {
 	return newError(http.StatusServiceUnavailable, "ServiceUnavailable", msg)
 }
 func errInvalidArgument(msg string) *Error {
 	return newError(http.StatusBadRequest, "InvalidArgument", msg)
+}
+func errMalformedXML(msg string) *Error {
+	return newError(http.StatusBadRequest, "MalformedXML", msg)
+}
+func errInvalidRequest(msg string) *Error {
+	return newError(http.StatusBadRequest, "InvalidRequest", msg)
 }
 func errAuthorizationHeaderMalformed(msg string) *Error {
 	return newError(http.StatusBadRequest, "AuthorizationHeaderMalformed", msg)

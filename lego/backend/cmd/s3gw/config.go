@@ -18,8 +18,10 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
 )
 
@@ -39,6 +41,11 @@ type config struct {
 	// KratosAdminURL reads a member's second factor and Google account for a
 	// workspace's login requirements.
 	KratosAdminURL string
+	// TrustedProxies are the edge proxies (BEX_TRUSTED_PROXY_CIDRS, as bex-api reads
+	// it) whose forwarding headers name the client a failed-authentication budget is
+	// kept for. Unset trusts nobody: every request is keyed by its TCP peer, which
+	// behind Traefik is one shared budget, so production sets it.
+	TrustedProxies core.TrustedProxies
 	// Namespace is bex-system, where the Base's own objects live.
 	Namespace string
 	// ObjectStorage is the read-write Wasabi pair.
@@ -66,6 +73,11 @@ func loadConfig(getenv func(string) string) (*config, error) {
 	if cfg.Namespace == "" {
 		cfg.Namespace = "bex-system"
 	}
+	proxies, err := core.ParseTrustedProxies(get("BEX_TRUSTED_PROXY_CIDRS"))
+	if err != nil {
+		return nil, fmt.Errorf("BEX_TRUSTED_PROXY_CIDRS: %w", err)
+	}
+	cfg.TrustedProxies = proxies
 	if missing := cfg.ObjectStorage.Missing(); len(missing) > 0 {
 		return nil, errors.New(strings.Join(missing, ", ") + " is set without its pair")
 	}

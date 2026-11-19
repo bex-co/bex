@@ -72,8 +72,52 @@ type rig struct {
 	now     time.Time
 }
 
+var (
+	snapshotOnce sync.Once
+	realHandlers map[string]handler
+)
+
+// useStubHandlers replaces every operation's handler with one that answers 200 and
+// does nothing, for a test of authentication, authorization and routing alone, which
+// installs spies where it needs to see a handler run. The real ones come back with
+// the test (useRealHandlers puts them back for a test of them).
+func useStubHandlers(t *testing.T) {
+	t.Helper()
+	snapshotOnce.Do(func() {
+		realHandlers = map[string]handler{}
+		for op, h := range handlers {
+			realHandlers[op] = h
+		}
+	})
+	for _, rt := range routes {
+		handlers[rt.op] = func(*request) *Error { return nil }
+	}
+	t.Cleanup(func() {
+		for op, h := range realHandlers {
+			handlers[op] = h
+		}
+		for _, rt := range routes {
+			if _, ok := realHandlers[rt.op]; !ok {
+				delete(handlers, rt.op)
+			}
+		}
+	})
+}
+
+func useRealHandlers(t *testing.T) {
+	t.Helper()
+	for _, rt := range routes {
+		if h, ok := realHandlers[rt.op]; ok {
+			handlers[rt.op] = h
+		} else {
+			delete(handlers, rt.op) // not implemented yet: 501, as in production
+		}
+	}
+}
+
 func newRig(t *testing.T) *rig {
 	t.Helper()
+	useStubHandlers(t)
 	g := &rig{t: t, repo: fakekeys.NewRepo(), kv: fakekeys.NewKV(), ws: "tea-" + strings.Repeat("a", 20), creator: "usr-alice", now: testNow}
 	g.keys = objectstorage.NewAccessKeys(g.repo, g.kv)
 	g.keys.Now = func() time.Time { return g.now }

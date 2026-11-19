@@ -45,6 +45,8 @@ type ObjectItem struct {
 	SizeBytes    int64
 	LastModified time.Time
 	Cursor       string
+	// ETag is the object's entity tag, which the S3 listings show.
+	ETag string
 }
 
 // ObjectPage is one page of a listing. NextCursor is set only when HasNext is.

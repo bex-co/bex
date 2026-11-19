@@ -29,24 +29,35 @@ var ErrInvalidKey = errors.New("invalid object key")
 
 // ValidateKey checks a key as the caller gave it, after the HTTP layer has
 // decoded it. It rejects an empty key, one over MaxKeyBytes, one that is not
-// UTF-8, one that starts with "/", one with a "." or ".." segment, and one
-// with a backslash or a control character.
+// UTF-8, one that starts with "/", one with a "." or ".." segment or a doubled
+// slash, and one with a backslash or a control character.
 //
 // The "." and ".." rule is the one that matters for isolation: Wasabi's
 // handling of ".." in a key is unproven on a live deployment, and a ".."
 // segment is the one input that could step out of <workspace>/<bucket>/. Keys
-// are otherwise opaque: "a//b" and a trailing "/" are valid S3 keys and stay
-// valid here (http.ServeMux cleans such paths before a handler sees them).
+// are otherwise opaque: a trailing "/" is a valid S3 key and stays valid. A
+// doubled slash is refused on every route (ADR112 D7): Traefik cleans request
+// paths by default, so "a//b" reaches bex as "a/b", which breaks a SigV4 signature
+// over the original path, and http.ServeMux cleans it for Render's routes.
 func ValidateKey(key string) error {
-	if key == "" || len(key) > MaxKeyBytes || !utf8.ValidString(key) || key[0] == '/' {
+	if key == "" || strings.Contains(key, "//") {
 		return ErrInvalidKey
 	}
-	for _, r := range key {
+	return validateName(key)
+}
+
+// validateName is what a key and a listing prefix share: bounded, UTF-8, no leading
+// slash, no control character or backslash, no . or .. segment.
+func validateName(name string) error {
+	if len(name) > MaxKeyBytes || !utf8.ValidString(name) || strings.HasPrefix(name, "/") {
+		return ErrInvalidKey
+	}
+	for _, r := range name {
 		if r < 0x20 || r == 0x7f || r == '\\' {
 			return ErrInvalidKey
 		}
 	}
-	for _, segment := range strings.Split(key, "/") {
+	for _, segment := range strings.Split(name, "/") {
 		if segment == "." || segment == ".." {
 			return ErrInvalidKey
 		}

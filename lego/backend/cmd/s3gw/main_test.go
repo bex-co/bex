@@ -43,6 +43,16 @@ func TestHalfAWasabiPairIsAStartupError(t *testing.T) {
 	}
 }
 
+func TestATrustedProxyListIsParsedAndABadOneIsAStartupError(t *testing.T) {
+	cfg, err := loadConfig(env(map[string]string{"BEX_TRUSTED_PROXY_CIDRS": "10.244.0.0/16, 10.1.0.0/24"}))
+	if err != nil || len(cfg.TrustedProxies) != 2 {
+		t.Fatalf("loadConfig = %+v, %v, want two trusted prefixes", cfg, err)
+	}
+	if _, err := loadConfig(env(map[string]string{"BEX_TRUSTED_PROXY_CIDRS": "10.244.0.0/16,nonsense"})); err == nil || !strings.Contains(err.Error(), "BEX_TRUSTED_PROXY_CIDRS") {
+		t.Errorf("a malformed CIDR = %v, want a startup error", err)
+	}
+}
+
 func TestADatabaseWithNoOpenFGAIsRefusedBecauseItWouldAuthorizeNothing(t *testing.T) {
 	_, err := loadConfig(env(map[string]string{
 		"BEX_OBJECT_STORAGE_ACCESS_KEY": "a", "BEX_OBJECT_STORAGE_SECRET_KEY": "s", "BEX_CP_DB_URI": "postgres://x", "BEX_OPENBAO_URL": "http://bao",

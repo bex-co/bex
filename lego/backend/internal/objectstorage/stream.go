@@ -141,6 +141,17 @@ func (s *Service) locate(workspaceID string, b store.ObjectBucket, key string) (
 // the bucket's row once the object is in Wasabi: a bucket deleted while the
 // bytes moved loses the object again and answers ErrBucketNotFound.
 func (s *Service) PutStream(ctx context.Context, workspaceID string, b store.ObjectBucket, key string, size int64, body io.Reader, headers ObjectHeaders) (etag string, err error) {
+	return s.putStream(ctx, workspaceID, b, key, size, body, headers, MaxObjectBytesStreamed)
+}
+
+// PutObject is PutStream for the S3 surface: an object of up to 5 GiB, the S3
+// single-PUT ceiling (ADR112 D3), where the Cloudflare-shaped routes stop at
+// wrangler's 300 MiB.
+func (s *Service) PutObject(ctx context.Context, workspaceID string, b store.ObjectBucket, key string, size int64, body io.Reader, headers ObjectHeaders) (etag string, err error) {
+	return s.putStream(ctx, workspaceID, b, key, size, body, headers, MaxObjectBytesPresigned)
+}
+
+func (s *Service) putStream(ctx context.Context, workspaceID string, b store.ObjectBucket, key string, size int64, body io.Reader, headers ObjectHeaders, maxBytes int64) (etag string, err error) {
 	st, wasabiKey, err := s.locate(workspaceID, b, key)
 	if err != nil {
 		return "", err
@@ -148,12 +159,14 @@ func (s *Service) PutStream(ctx context.Context, workspaceID string, b store.Obj
 	if size < 0 {
 		return "", ErrMissingContentLength
 	}
-	if err := CheckObjectSize(size, MaxObjectBytesStreamed); err != nil {
+	if err := CheckObjectSize(size, maxBytes); err != nil {
 		return "", err
 	}
-	if err := s.Gate(ctx, workspaceID, Region(b.Region), size); err != nil {
+	releaseGate, err := s.GateAndReserve(ctx, workspaceID, Region(b.Region), size)
+	if err != nil {
 		return "", err
 	}
+	defer releaseGate()
 	if err := s.repo.CheckObjectBucketWritable(ctx, workspaceID, b.ID); err != nil {
 		return "", bucketWriteError(err)
 	}
@@ -176,21 +189,28 @@ func (s *Service) PutStream(ctx context.Context, workspaceID string, b store.Obj
 		return "", err
 	}
 	s.RecordIngress(ctx, workspaceID, size)
-	// The confirmation outlives a caller that hung up: its bytes are stored.
-	// Only a row that is gone loses them; any other failure keeps the object,
-	// which may have overwritten one the customer still owns.
-	if err := s.repo.ConfirmObjectBucketLive(context.WithoutCancel(ctx), workspaceID, b.ID); err != nil {
-		if !errors.Is(err, store.ErrNotFound) {
-			return "", err
-		}
-		rmCtx, rmCancel := context.WithTimeout(context.WithoutCancel(ctx), orphanRemoveTimeout)
-		defer rmCancel()
-		if rmErr := st.Delete(rmCtx, wasabiKey); rmErr != nil {
-			return "", fmt.Errorf("remove %s from a bucket deleted during the put: %w (after %w)", key, rmErr, ErrBucketNotFound)
-		}
-		return "", ErrBucketNotFound
+	s.RecordWrite(ctx, workspaceID, Region(b.Region), size)
+	if err := s.confirmOrDiscard(ctx, workspaceID, b, st, wasabiKey, key, "put"); err != nil {
+		return "", err
 	}
 	return etag, nil
+}
+
+// confirmOrDiscard confirms a bucket's row once an object is in Wasabi under its prefix.
+// The confirmation outlives a caller that hung up: the bytes are stored. Only a row that
+// is gone loses them again; any other failure keeps the object, which may have overwritten
+// one the customer still owns.
+func (s *Service) confirmOrDiscard(ctx context.Context, workspaceID string, b store.ObjectBucket, st Store, wasabiKey, key, op string) error {
+	err := s.repo.ConfirmObjectBucketLive(context.WithoutCancel(ctx), workspaceID, b.ID)
+	if err == nil || !errors.Is(err, store.ErrNotFound) {
+		return err
+	}
+	rmCtx, rmCancel := context.WithTimeout(context.WithoutCancel(ctx), orphanRemoveTimeout)
+	defer rmCancel()
+	if rmErr := st.Delete(rmCtx, wasabiKey); rmErr != nil {
+		return fmt.Errorf("remove %s from a bucket deleted during the %s: %w (after %w)", key, op, rmErr, ErrBucketNotFound)
+	}
+	return ErrBucketNotFound
 }
 
 // bucketWriteError is the service error for a store answer about a put's bucket.

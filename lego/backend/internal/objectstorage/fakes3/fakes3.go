@@ -69,6 +69,18 @@ type Server struct {
 	buckets  map[string]map[string]*Object
 	requests []Request
 	down     bool
+	// rangeQuirk makes a Range past the end answer 200 with the whole object, as
+	// Wasabi does on a presigned GET (ADR112 § Not verified, 2026-11-16), instead of
+	// S3's 416.
+	rangeQuirk bool
+}
+
+// SetRangeQuirk makes a Range past an object's end answer 200 with the whole object
+// (Wasabi's measured behavior) instead of 416.
+func (s *Server) SetRangeQuirk(on bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.rangeQuirk = on
 }
 
 // New starts a server holding the named, empty buckets.
@@ -104,6 +116,13 @@ func (s *Server) put(bucket, key string, body []byte, header http.Header) {
 		Body: append([]byte(nil), body...), Header: header, ETag: `"` + hex.EncodeToString(sum[:]) + `"`,
 		LastModified: time.Now().UTC().Truncate(time.Second),
 	}
+}
+
+// Delete removes an object, as a lifecycle rule or a test cleanup would.
+func (s *Server) Delete(bucket, key string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.buckets[bucket], key)
 }
 
 // SetLastModified sets a stored object's last-modified time, so a lifecycle
@@ -181,6 +200,8 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		s.deleteMany(w, r, objects)
 	case key == "":
 		s.fail(w, r, http.StatusNotImplemented, "NotImplemented", "the fake serves list-type=2 and delete only")
+	case r.Method == http.MethodPut && r.Header.Get("X-Amz-Copy-Source") != "":
+		s.copyObject(w, r, bucket, key)
 	case r.Method == http.MethodPut:
 		s.putObject(w, r, bucket, key, body, bodyErr)
 	case r.Method == http.MethodGet || r.Method == http.MethodHead:
@@ -208,15 +229,52 @@ func (s *Server) putObject(w http.ResponseWriter, r *http.Request, bucket, key s
 		s.fail(w, r, http.StatusBadRequest, "IncompleteBody", bodyErr.Error())
 		return
 	}
+	s.put(bucket, key, body, entityHeaders(r.Header))
+	w.Header().Set("ETag", s.buckets[bucket][key].ETag)
+	w.WriteHeader(http.StatusOK)
+}
+
+// entityHeaders are the headers an object keeps: the entity headers and the user
+// metadata (x-amz-meta-*), which a GET and a HEAD return.
+func entityHeaders(from http.Header) http.Header {
 	header := http.Header{}
 	for _, name := range []string{"Content-Type", "Cache-Control", "Content-Disposition", "Content-Encoding", "Content-Language", "Expires"} {
-		if v := r.Header.Get(name); v != "" {
+		if v := from.Get(name); v != "" {
 			header.Set(name, v)
 		}
 	}
-	s.put(bucket, key, body, header)
-	w.Header().Set("ETag", s.buckets[bucket][key].ETag)
-	w.WriteHeader(http.StatusOK)
+	for name, values := range from {
+		if strings.HasPrefix(strings.ToLower(name), "x-amz-meta-") {
+			header[name] = append([]string(nil), values...)
+		}
+	}
+	return header
+}
+
+// copyObject serves CopyObject: the source is "<bucket>/<key>" in x-amz-copy-source,
+// and the metadata directive says whether the destination keeps the source's headers
+// (COPY, the default) or takes the request's (REPLACE). A missing source is 404.
+func (s *Server) copyObject(w http.ResponseWriter, r *http.Request, bucket, key string) {
+	raw, err := url.PathUnescape(r.Header.Get("X-Amz-Copy-Source"))
+	if err != nil {
+		s.fail(w, r, http.StatusBadRequest, "InvalidArgument", "x-amz-copy-source")
+		return
+	}
+	srcBucket, srcKey, _ := strings.Cut(strings.TrimPrefix(raw, "/"), "/")
+	src, ok := s.buckets[srcBucket][srcKey]
+	if !ok {
+		s.fail(w, r, http.StatusNotFound, "NoSuchKey", "the copy source does not exist")
+		return
+	}
+	header := src.Header.Clone()
+	if strings.EqualFold(r.Header.Get("X-Amz-Metadata-Directive"), "REPLACE") {
+		header = entityHeaders(r.Header)
+	}
+	s.put(bucket, key, src.Body, header)
+	dst := s.buckets[bucket][key]
+	w.Header().Set("Content-Type", "application/xml")
+	_, _ = fmt.Fprintf(w, `<?xml version="1.0" encoding="UTF-8"?><CopyObjectResult><ETag>%s</ETag><LastModified>%s</LastModified></CopyObjectResult>`,
+		strings.ReplaceAll(dst.ETag, `"`, "&quot;"), dst.LastModified.Format("2006-01-02T15:04:05.000Z"))
 }
 
 // chunkedRefusal reports a PUT with no Content-Length against a URL that signs one.
@@ -257,14 +315,19 @@ func (s *Server) getObject(w http.ResponseWriter, r *http.Request, objects map[s
 	}
 	body := o.Body
 	status := http.StatusOK
-	if rng := r.Header.Get("Range"); rng != "" {
+	// S3 serves one byte range and ignores a header that asks for several.
+	if rng := r.Header.Get("Range"); rng != "" && !strings.Contains(rng, ",") {
 		start, end, ok := parseRange(rng, int64(len(body)))
-		if !ok {
+		switch {
+		case ok:
+			w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, len(body)))
+			body, status = body[start:end+1], http.StatusPartialContent
+		case s.rangeQuirk:
+			// Wasabi answers a Range past the end with the whole object and a 200.
+		default:
 			s.fail(w, r, http.StatusRequestedRangeNotSatisfiable, "InvalidRange", rng)
 			return
 		}
-		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, len(body)))
-		body, status = body[start:end+1], http.StatusPartialContent
 	}
 	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	w.WriteHeader(status)
@@ -341,6 +404,12 @@ type listResult struct {
 	MaxKeys     int            `xml:"MaxKeys"`
 	IsTruncated bool           `xml:"IsTruncated"`
 	Contents    []listContents `xml:"Contents"`
+	// CommonPrefixes are the keys folded by a delimiter.
+	CommonPrefixes []listPrefix `xml:"CommonPrefixes"`
+}
+
+type listPrefix struct {
+	Prefix string `xml:"Prefix"`
 }
 
 type listContents struct {
@@ -352,7 +421,7 @@ type listContents struct {
 }
 
 func (s *Server) list(w http.ResponseWriter, bucket string, objects map[string]*Object, q url.Values) {
-	prefix, after := q.Get("prefix"), q.Get("start-after")
+	prefix, after, delimiter := q.Get("prefix"), q.Get("start-after"), q.Get("delimiter")
 	maxKeys := 1000
 	if v, err := strconv.Atoi(q.Get("max-keys")); err == nil && v > 0 {
 		maxKeys = min(v, 1000)
@@ -365,16 +434,38 @@ func (s *Server) list(w http.ResponseWriter, bucket string, objects map[string]*
 	}
 	sort.Strings(keys)
 	res := listResult{Name: bucket, Prefix: prefix, MaxKeys: maxKeys}
-	if len(keys) > maxKeys {
-		keys, res.IsTruncated = keys[:maxKeys], true
-	}
+	// One entry is a key or, with a delimiter, the common prefix that folds every key
+	// under it; the page ends after maxKeys entries.
+	seenPrefix := map[string]bool{}
+	entries := 0
 	for _, k := range keys {
+		if delimiter != "" {
+			if at := strings.Index(k[len(prefix):], delimiter); at >= 0 {
+				common := k[:len(prefix)+at+len(delimiter)]
+				if seenPrefix[common] {
+					continue
+				}
+				if entries == maxKeys {
+					res.IsTruncated = true
+					break
+				}
+				seenPrefix[common] = true
+				res.CommonPrefixes = append(res.CommonPrefixes, listPrefix{Prefix: common})
+				entries++
+				continue
+			}
+		}
+		if entries == maxKeys {
+			res.IsTruncated = true
+			break
+		}
 		o := objects[k]
 		res.Contents = append(res.Contents, listContents{
 			Key: k, LastModified: o.LastModified.Format("2006-01-02T15:04:05.000Z"), ETag: o.ETag, Size: len(o.Body), StorageClass: "STANDARD",
 		})
+		entries++
 	}
-	res.KeyCount = len(res.Contents)
+	res.KeyCount = entries
 	w.Header().Set("Content-Type", "application/xml")
 	_, _ = io.WriteString(w, xml.Header)
 	_ = xml.NewEncoder(w).Encode(res)

@@ -142,7 +142,7 @@ func parseAuth(r *http.Request, form authForm, now time.Time) (*parsedAuth, *Err
 		}
 		p.payloadHash = r.Header.Get("X-Amz-Content-Sha256")
 		if p.payloadHash == "" {
-			return nil, newError(http.StatusBadRequest, "InvalidRequest", "Missing required header for this request: x-amz-content-sha256")
+			return nil, errInvalidRequest("Missing required header for this request: x-amz-content-sha256")
 		}
 	}
 	parts := strings.Split(credential, "/")

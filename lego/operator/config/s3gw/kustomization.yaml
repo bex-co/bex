@@ -5,3 +5,7 @@ resources:
   - service.yaml
   - deployment.yaml
   - pdb.yaml
+  - ingressroute.yaml
+
+configurations:
+  - kustomizeconfig.yaml

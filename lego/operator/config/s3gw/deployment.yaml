@@ -116,6 +116,12 @@ spec:
               value: http://openbao-active.secrets.svc:8200
             - name: BEX_KRATOS_ADMIN_URL
               value: http://kratos-admin.auth.svc:80
+            # The Traefik pods whose forwarding headers name the real client, as
+            # bex-api trusts them: the failed-authentication budget is kept per
+            # client address, and without this it is one shared budget for the
+            # edge (docs/ADR112-object-storage.md D3).
+            - name: BEX_TRUSTED_PROXY_CIDRS
+              value: 10.244.0.0/16
           # The out-of-band bex-object-storage Secret installed by
           # scripts/object-storage-s3-credentials.sh: the read-write Wasabi pair
           # (BEX_OBJECT_STORAGE_ACCESS_KEY / _SECRET_KEY, the same Secret bex-api

@@ -1,6 +1,6 @@
 # w21 · m498 — S3 core: SigV4, access keys, buckets, objects, listing and multipart on a `bex-s3` Deployment
 
-**Worker:** worker21 **Goal:** any S3 client (aws-cli, rclone, boto3) with a bex access key and `https://objects.onbex.co` as its endpoint lists, uploads (single and in parts), copies, downloads and deletes objects in the workspace's buckets, with quota, metering, audit and limits in bex's path. **Status:** todo (t001, t002, t003, t004, t005 done)
+**Worker:** worker21 **Goal:** any S3 client (aws-cli, rclone, boto3) with a bex access key and `https://objects.onbex.co` as its endpoint lists, uploads (single and in parts), copies, downloads and deletes objects in the workspace's buckets, with quota, metering, audit and limits in bex's path. **Status:** todo (t001, t002, t003, t004, t005, t006, t007, t008, t009, t010, t011, t012 done)
 
 ## Tasks (in order)
 
@@ -11,13 +11,13 @@
 | [t003](done/t003.md) | Key disposal, the 2FA and sign-in gates, the REST and GraphQL adapters, the bucket route and the publish route — **DONE** | 60m | t002 |
 | [t004](done/t004.md) | `bex-s3`: the entry point and the Deployment — **DONE** | 60m | t002 |
 | [t005](done/t005.md) | The SigV4 verifier and the router — **DONE** | 60m | t002, t004 |
-| [t006](t006.md) | Payload modes: `aws-chunked`, the length rule and integrity before the commit | 60m | t005 |
-| [t007](t007.md) | The `objects.` IngressRoute, the validation pins and the failed-authentication limit | 45m | t004, t005 |
-| [t008](t008.md) | Bucket operations and configuration | 60m | t005 |
-| [t009](t009.md) | Object operations: put, get, head, delete, delete-many, copy and tagging | 60m | t006, t008 |
-| [t010](t010.md) | The quota gate and the limits: write-through counter, pacing, rates and the egress budget | 60m | t009 |
-| [t011](t011.md) | Audit rows for S3 | 40m | t009 |
-| [t012](t012.md) | Listing: `ListObjectsV2` and `ListObjects` | 45m | t008 |
+| [t006](done/t006.md) | Payload modes: `aws-chunked`, the length rule and integrity before the commit — **DONE** | 60m | t005 |
+| [t007](done/t007.md) | The `objects.` IngressRoute, the validation pins and the failed-authentication limit — **DONE** | 45m | t004, t005 |
+| [t008](done/t008.md) | Bucket operations and configuration — **DONE** | 60m | t005 |
+| [t009](done/t009.md) | Object operations: put, get, head, delete, delete-many, copy and tagging — **DONE** | 60m | t006, t008 |
+| [t010](done/t010.md) | The quota gate and the limits: write-through counter, pacing, rates and the egress budget — **DONE** | 60m | t009 |
+| [t011](done/t011.md) | Audit rows for S3 — **DONE** | 40m | t009 |
+| [t012](done/t012.md) | Listing: `ListObjectsV2` and `ListObjects` — **DONE** | 45m | t008 |
 | [t013](t013.md) | Multipart upload, `UploadPartCopy` and the sweep's cleanup | 75m | t009, t010 |
 | [t014](t014.md) | Observability, the kill switch and the S3 runbook | 50m | t007, t010 |
 | [t015](t015.md) | The Go suite on the AWS SDK for Go v2 and the isolation tests | 60m | t012, t013 |

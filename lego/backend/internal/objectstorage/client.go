@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 
@@ -57,6 +58,11 @@ type ObjectHeaders struct {
 	ContentEncoding    string
 	ContentLanguage    string
 	Expires            string
+	// Metadata is the object's user metadata, the x-amz-meta-* headers without the
+	// prefix and in lower case, as S3 returns them. rclone keeps an object's
+	// modification time in x-amz-meta-mtime, and without it every sync copies
+	// everything again (ADR112 D3).
+	Metadata map[string]string
 }
 
 // ObjectBody is an object being read: its metadata and a stream of its bytes,
@@ -64,6 +70,33 @@ type ObjectHeaders struct {
 type ObjectBody struct {
 	ObjectInfo
 	Body io.ReadCloser
+	// ContentRange is the Content-Range of a partial answer ("bytes 0-9/100"),
+	// empty when the whole object is being read.
+	ContentRange string
+}
+
+// GetOptions are the range and conditions of a read, passed to the store as the
+// caller sent them (ADR112 D3).
+type GetOptions struct {
+	Range                              string
+	IfMatch, IfNoneMatch               string
+	IfModifiedSince, IfUnmodifiedSince time.Time
+}
+
+// What a read can answer other than an object.
+var (
+	// ErrNotModified is a read whose If-None-Match or If-Modified-Since matched.
+	ErrNotModified = errors.New("not modified")
+	// ErrPreconditionFailed is a read whose If-Match or If-Unmodified-Since did not.
+	ErrPreconditionFailed = errors.New("precondition failed")
+	// ErrRangeNotSatisfiable is a Range the object cannot satisfy.
+	ErrRangeNotSatisfiable = errors.New("range not satisfiable")
+)
+
+// CopyResult is what a server-side copy produced.
+type CopyResult struct {
+	ETag         string
+	LastModified time.Time
 }
 
 // ListPage is one page of a prefix listing. Next is the key to pass as
@@ -71,6 +104,16 @@ type ObjectBody struct {
 type ListPage struct {
 	Objects []ObjectInfo
 	Next    string
+}
+
+// DelimitedPage is one page of a listing with a delimiter.
+type DelimitedPage struct {
+	Objects        []ObjectInfo
+	CommonPrefixes []string
+	Truncated      bool
+	// Last is the greatest key or common prefix on the page: where the next page starts
+	// after, once the caller has turned a common prefix into the first key past it.
+	Last string
 }
 
 // Store is one region's shared Wasabi bucket. Every key it takes is a full
@@ -95,9 +138,24 @@ type Store interface {
 	// GetObject opens key for reading, or returns ErrObjectNotFound. Its headers
 	// are the stored ones, and the body is never decompressed.
 	GetObject(ctx context.Context, key string) (ObjectBody, error)
+	// GetObjectWith opens key with a range and conditions. A condition that
+	// holds back the object is ErrNotModified or ErrPreconditionFailed, and a
+	// range past its end ErrRangeNotSatisfiable (Wasabi answers a presigned one
+	// with the whole object, which is detected from the answer, ADR112 § Not
+	// verified).
+	GetObjectWith(ctx context.Context, key string, opts GetOptions) (ObjectBody, error)
+	// Copy copies one object to another key of the same bucket inside Wasabi. A
+	// nil headers keeps the source's entity headers and metadata (the COPY
+	// directive); otherwise they are replaced (REPLACE).
+	Copy(ctx context.Context, srcKey, dstKey string, headers *ObjectHeaders) (CopyResult, error)
 	// List returns up to limit objects under prefix whose keys sort after
 	// startAfter.
 	List(ctx context.Context, prefix, startAfter string, limit int) (ListPage, error)
+	// ListDelimited is List with a delimiter: keys whose name after prefix holds the
+	// delimiter are folded into the common prefix that ends at its first occurrence.
+	// Truncated reports whether more entries follow, and Last is the key or common
+	// prefix the page ended on (the last of either, in key order).
+	ListDelimited(ctx context.Context, prefix, delimiter, startAfter string, limit int) (DelimitedPage, error)
 	// DeleteKeys removes up to ListMaxLimit keys in one request (S3's
 	// multi-object delete), which lifecycle rules need to finish inside the
 	// hour. It returns the keys it could not delete and an error when there were
@@ -185,6 +243,7 @@ func (w *wasabiStore) Head(ctx context.Context, key string) (ObjectInfo, error) 
 			ContentType: aws.ToString(out.ContentType), CacheControl: aws.ToString(out.CacheControl),
 			ContentDisposition: aws.ToString(out.ContentDisposition), ContentEncoding: aws.ToString(out.ContentEncoding),
 			ContentLanguage: aws.ToString(out.ContentLanguage), Expires: expiresText(out.ExpiresString, out.Expires),
+			Metadata: out.Metadata,
 		},
 	}, nil
 }
@@ -205,7 +264,11 @@ func (w *wasabiStore) PutStream(ctx context.Context, key string, size int64, bod
 	if size < 0 {
 		return "", fmt.Errorf("put stream: negative size %d", size)
 	}
-	signed, err := w.PresignPut(ctx, key, size, PresignTTL)
+	// The presigned URL signs the length and the user metadata, so what is stored
+	// is what the caller sent and no more; the entity headers travel unsigned.
+	signed, err := w.presigner.PresignPutObject(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(w.bucket), Key: aws.String(key), ContentLength: aws.Int64(size), Metadata: h.Metadata,
+	}, func(p *s3.PresignOptions) { p.Expires = PresignTTL })
 	if err != nil {
 		return "", fmt.Errorf("presign put: %w", err)
 	}
@@ -214,13 +277,17 @@ func (w *wasabiStore) PutStream(ctx context.Context, key string, size int64, bod
 	if size == 0 {
 		body = http.NoBody
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, signed, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, signed.URL, body)
 	if err != nil {
 		return "", err
 	}
 	req.ContentLength = size
-	// Entity headers travel unsigned: the presigned URL signs only the length,
-	// so the writer's own headers are stored as sent.
+	for name, values := range signed.SignedHeader {
+		if strings.EqualFold(name, "host") || strings.EqualFold(name, "content-length") {
+			continue
+		}
+		req.Header[http.CanonicalHeaderKey(name)] = values
+	}
 	for name, value := range map[string]string{
 		"Content-Type": h.ContentType, "Cache-Control": h.CacheControl, "Content-Disposition": h.ContentDisposition,
 		"Content-Encoding": h.ContentEncoding, "Content-Language": h.ContentLanguage, "Expires": h.Expires,
@@ -249,24 +316,94 @@ func (w *wasabiStore) PutStream(ctx context.Context, key string, size int64, bod
 }
 
 func (w *wasabiStore) GetObject(ctx context.Context, key string) (ObjectBody, error) {
-	out, err := w.client.GetObject(ctx, &s3.GetObjectInput{Bucket: aws.String(w.bucket), Key: aws.String(key)})
+	return w.GetObjectWith(ctx, key, GetOptions{})
+}
+
+func (w *wasabiStore) GetObjectWith(ctx context.Context, key string, opts GetOptions) (ObjectBody, error) {
+	in := &s3.GetObjectInput{Bucket: aws.String(w.bucket), Key: aws.String(key)}
+	if opts.Range != "" {
+		in.Range = aws.String(opts.Range)
+	}
+	if opts.IfMatch != "" {
+		in.IfMatch = aws.String(opts.IfMatch)
+	}
+	if opts.IfNoneMatch != "" {
+		in.IfNoneMatch = aws.String(opts.IfNoneMatch)
+	}
+	if !opts.IfModifiedSince.IsZero() {
+		in.IfModifiedSince = aws.Time(opts.IfModifiedSince)
+	}
+	if !opts.IfUnmodifiedSince.IsZero() {
+		in.IfUnmodifiedSince = aws.Time(opts.IfUnmodifiedSince)
+	}
+	out, err := w.client.GetObject(ctx, in)
 	if err != nil {
+		var re *awshttp.ResponseError
+		if errors.As(err, &re) {
+			switch re.HTTPStatusCode() {
+			case http.StatusNotModified:
+				return ObjectBody{}, ErrNotModified
+			case http.StatusPreconditionFailed:
+				return ObjectBody{}, ErrPreconditionFailed
+			case http.StatusRequestedRangeNotSatisfiable:
+				return ObjectBody{}, ErrRangeNotSatisfiable
+			}
+		}
 		if isNotFound(err) {
 			return ObjectBody{}, ErrObjectNotFound
 		}
 		return ObjectBody{}, err
 	}
-	return ObjectBody{
+	body := ObjectBody{
 		ObjectInfo: ObjectInfo{
 			Key: key, Size: aws.ToInt64(out.ContentLength), ETag: aws.ToString(out.ETag), LastModified: aws.ToTime(out.LastModified),
 			Headers: ObjectHeaders{
 				ContentType: aws.ToString(out.ContentType), CacheControl: aws.ToString(out.CacheControl),
 				ContentDisposition: aws.ToString(out.ContentDisposition), ContentEncoding: aws.ToString(out.ContentEncoding),
 				ContentLanguage: aws.ToString(out.ContentLanguage), Expires: expiresText(out.ExpiresString, out.Expires),
+				Metadata: out.Metadata,
 			},
 		},
-		Body: out.Body,
-	}, nil
+		Body: out.Body, ContentRange: aws.ToString(out.ContentRange),
+	}
+	return body, nil
+}
+
+func (w *wasabiStore) Copy(ctx context.Context, srcKey, dstKey string, h *ObjectHeaders) (CopyResult, error) {
+	in := &s3.CopyObjectInput{
+		Bucket: aws.String(w.bucket), Key: aws.String(dstKey),
+		CopySource: aws.String(w.bucket + "/" + url.PathEscape(srcKey)),
+	}
+	if h != nil {
+		in.MetadataDirective = types.MetadataDirectiveReplace
+		in.Metadata = h.Metadata
+		in.ContentType, in.CacheControl = nonEmpty(h.ContentType), nonEmpty(h.CacheControl)
+		in.ContentDisposition, in.ContentEncoding, in.ContentLanguage = nonEmpty(h.ContentDisposition), nonEmpty(h.ContentEncoding), nonEmpty(h.ContentLanguage)
+		if h.Expires != "" {
+			if t, err := http.ParseTime(h.Expires); err == nil {
+				in.Expires = aws.Time(t)
+			}
+		}
+	}
+	out, err := w.client.CopyObject(ctx, in)
+	if err != nil {
+		if isNotFound(err) {
+			return CopyResult{}, ErrObjectNotFound
+		}
+		return CopyResult{}, err
+	}
+	res := CopyResult{}
+	if out.CopyObjectResult != nil {
+		res.ETag, res.LastModified = aws.ToString(out.CopyObjectResult.ETag), aws.ToTime(out.CopyObjectResult.LastModified)
+	}
+	return res, nil
+}
+
+func nonEmpty(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }
 
 func (w *wasabiStore) Delete(ctx context.Context, key string) error {
@@ -297,6 +434,38 @@ func (w *wasabiStore) List(ctx context.Context, prefix, startAfter string, limit
 	}
 	if aws.ToBool(out.IsTruncated) && len(page.Objects) > 0 {
 		page.Next = page.Objects[len(page.Objects)-1].Key
+	}
+	return page, nil
+}
+
+func (w *wasabiStore) ListDelimited(ctx context.Context, prefix, delimiter, startAfter string, limit int) (DelimitedPage, error) {
+	if limit < 0 || limit > ListMaxLimit {
+		return DelimitedPage{}, fmt.Errorf("list limit %d is outside 0..%d", limit, ListMaxLimit)
+	}
+	if limit == 0 {
+		return DelimitedPage{}, nil
+	}
+	in := &s3.ListObjectsV2Input{Bucket: aws.String(w.bucket), Prefix: aws.String(prefix), MaxKeys: aws.Int32(int32(limit))}
+	if delimiter != "" {
+		in.Delimiter = aws.String(delimiter)
+	}
+	if startAfter != "" {
+		in.StartAfter = aws.String(startAfter)
+	}
+	out, err := w.client.ListObjectsV2(ctx, in)
+	if err != nil {
+		return DelimitedPage{}, err
+	}
+	page := DelimitedPage{Truncated: aws.ToBool(out.IsTruncated), Objects: make([]ObjectInfo, 0, len(out.Contents))}
+	for _, o := range out.Contents {
+		key := aws.ToString(o.Key)
+		page.Objects = append(page.Objects, ObjectInfo{Key: key, Size: aws.ToInt64(o.Size), ETag: aws.ToString(o.ETag), LastModified: aws.ToTime(o.LastModified)})
+		page.Last = max(page.Last, key)
+	}
+	for _, p := range out.CommonPrefixes {
+		pre := aws.ToString(p.Prefix)
+		page.CommonPrefixes = append(page.CommonPrefixes, pre)
+		page.Last = max(page.Last, pre)
 	}
 	return page, nil
 }

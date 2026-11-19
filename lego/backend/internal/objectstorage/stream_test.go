@@ -25,6 +25,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -173,7 +174,7 @@ func TestPutStreamStoresTheBytesAndHeadersWithTheRealLength(t *testing.T) {
 		ContentType: "text/plain", CacheControl: "no-cache", ContentDisposition: "attachment; filename=o", ContentEncoding: "gzip",
 		ContentLanguage: "en", Expires: "Wed, 21 Oct 2037 07:28:00 GMT",
 	}
-	if obj.Info.Headers != want || obj.Info.Size != 5<<20 || obj.Info.Key != "dir/o" {
+	if !reflect.DeepEqual(obj.Info.Headers, want) || obj.Info.Size != 5<<20 || obj.Info.Key != "dir/o" {
 		t.Fatalf("object info = %+v, want headers %+v and 5 MiB", obj.Info, want)
 	}
 	if n, _ := io.Copy(io.Discard, obj); n != 5<<20 {

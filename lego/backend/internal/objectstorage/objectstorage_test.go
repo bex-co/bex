@@ -129,7 +129,7 @@ func TestValidateBucketName(t *testing.T) {
 
 func TestValidateKey(t *testing.T) {
 	valid := []string{
-		"a", "cat.jpg", "dir/cat.jpg", "a/b/c/d", "with space", "ünï/çödé", "日本語/キー", "a//b",
+		"a", "cat.jpg", "dir/cat.jpg", "a/b/c/d", "with space", "ünï/çödé", "日本語/キー",
 		"trailing/", "dots.in.name", ".hidden", "..hidden", "name..", "a/.../b", "100%", "%2e%2e", "%252e%252e/x",
 		"a?b#c", "a;b", strings.Repeat("k", MaxKeyBytes),
 		// Look-alikes of ".." are ordinary names: S3 keys are opaque.
@@ -155,6 +155,9 @@ func TestValidateKey(t *testing.T) {
 		"leading dot segment":   "./a",
 		"trailing dot segment":  "a/.",
 		"doubled slash then ..": "a//../b",
+		"doubled slash":         "a//b",
+		"doubled slash at end":  "a//",
+		"doubled slash inside":  "dir//file.txt",
 		"backslash":             `a\b`,
 		"backslash dot dot":     `..\a`,
 		"nul":                   "a\x00b",
@@ -230,7 +233,7 @@ func TestCapsAreCodeConstantsNotConfiguration(t *testing.T) {
 	if MaxWorkspaceBytes != 100_000_000_000 || MaxWorkspaceObjects != 1_000_000 || MaxUserBuckets != 1000 {
 		t.Error("workspace caps differ from ADR112 D8")
 	}
-	if MaxObjectBytesPresigned != 5<<30 || MaxObjectBytesStreamed != 300<<20 || MaxConcurrentStreamsPerWorkspace != 8 {
+	if MaxObjectBytesPresigned != 5<<30 || MaxObjectBytesStreamed != 300<<20 || MaxConcurrentStreamsPerWorkspace != 16 {
 		t.Error("object and stream caps differ from ADR112 D8")
 	}
 	if ListDefaultLimit != 20 || ListMaxLimit != 1000 || MaxKeyBytes != 1024 {

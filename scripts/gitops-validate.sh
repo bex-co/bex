@@ -3340,6 +3340,35 @@ for render in "$tmp/bex-operator-prod.yaml" "$tmp/bex-operator-default.yaml"; do
     echo "      objects.<BEX_BASE_DOMAIN> is DNS-only so a 300 MiB wrangler upload is not stopped by Cloudflare's 100 MiB proxy limit on api.<BEX_BASE_DOMAIN>; keep lego/operator/config/api/ingressroute-objects.yaml in sync" >&2
     fail=1
   }
+  # The S3-compatible API's route on the same host (ADR112 D3): exactly one, for the
+  # rest of the host, below Contract B's priority-10000 route (which must keep winning
+  # for /cloudflare/client/v4/ until it is removed) and above every App route, the
+  # default wildcard certificate, no plain-HTTP twin and bex-s3gw:8080 behind it, never
+  # bex-api and never :8091.
+  s3_objects="$(yq -N -o=json -I=0 '.' "$render" | jq -cS '
+    select(.kind == "IngressRoute" and (.metadata.name | test("^bex-s3gw-objects"))) |
+    {"name": .metadata.name, "entryPoints": .spec.entryPoints, "routes": (.spec.routes | length),
+     "match": .spec.routes[0].match, "priorityBelowContractB": (.spec.routes[0].priority < 10000),
+     "priorityAboveApps": (.spec.routes[0].priority >= 1000),
+     "services": [.spec.routes[0].services[] | .name + ":" + (.port | tostring)],
+     "middlewares": [.spec.routes[0].middlewares[]?.name], "tls": .spec.tls}' | sort | tr '\n' ' ')"
+  want_s3_match="Host(\`objects.${objectgw_domain}\`)"
+  want_s3="$(jq -cnS --arg m "$want_s3_match" '{"name":"bex-s3gw-objects","entryPoints":["websecure"],"routes":1,"match":$m,"priorityBelowContractB":true,"priorityAboveApps":true,"services":["bex-s3gw:8080"],"middlewares":[],"tls":{}}')"
+  [ "$s3_objects" = "$want_s3 " ] || {
+    echo "FAIL: the S3 API route in $render_name is $s3_objects, want exactly $want_s3" >&2
+    echo "      objects.<BEX_BASE_DOMAIN> serves S3 from bex-s3 below Contract B's route (priority 10000); keep lego/operator/config/s3gw/ingressroute.yaml in sync" >&2
+    fail=1
+  }
+  s3_count="$(yq -N 'select(.kind == "Deployment" and .metadata.name == "bex-s3gw") | .metadata.name' "$render" | grep -c . || true)"
+  [ "$s3_count" = "1" ] || {
+    echo "FAIL: $render_name has $s3_count bex-s3gw Deployments, want exactly 1" >&2
+    fail=1
+  }
+  s3_bindings="$(yq -N 'select(.kind == "RoleBinding" or .kind == "ClusterRoleBinding") | .subjects[]? | select(.kind == "ServiceAccount" and .name == "bex-s3gw") | .name' "$render" | grep -c . || true)"
+  [ "$s3_bindings" = "0" ] || {
+    echo "FAIL: bex-s3gw ServiceAccount is bound to a Role in $render_name; it needs no Kubernetes API access" >&2
+    fail=1
+  }
 done
 # The scrape is one target per pod (pod discovery in bex-system, the objectgw
 # component's pod IP on :9090, a pod label), never the Service: the counters

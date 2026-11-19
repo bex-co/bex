@@ -1,0 +1,14 @@
+# Teach Kustomize that Traefik's IngressRoute names a Service and a Middleware.
+# Without it the default overlay prefixes both objects (bex-s3gw,
+# bex-platform-host-fallback-https) and silently leaves the route pointing at
+# the unprefixed names, which do not exist.
+nameReference:
+  - kind: Service
+    fieldSpecs:
+      - kind: IngressRoute
+        path: spec/routes/services/name
+  - kind: Middleware
+    group: traefik.io
+    fieldSpecs:
+      - kind: IngressRoute
+        path: spec/routes/middlewares/name

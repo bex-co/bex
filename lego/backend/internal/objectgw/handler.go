@@ -256,8 +256,8 @@ func addCORS(w http.ResponseWriter, r *http.Request, b Bucket) {
 	}
 	w.Header().Add("Vary", "Origin")
 	origin := r.Header.Get("Origin")
-	if m, ok := matchCORS(b.CORS, origin, r.Method, nil); ok {
-		m.setActual(w.Header(), origin)
+	if m, ok := objectstorage.MatchCORS(b.CORS, origin, r.Method, nil); ok {
+		m.SetActual(w.Header(), origin)
 	}
 }
 
@@ -270,17 +270,17 @@ func preflight(w *countingWriter, r *http.Request, b Bucket, st *reqState) {
 		methodNotAllowed(w, st)
 		return
 	}
-	requested := splitHeaderList(r.Header.Get("Access-Control-Request-Headers"))
+	requested := objectstorage.SplitHeaderList(r.Header.Get("Access-Control-Request-Headers"))
 	hdr := w.Header()
 	hdr.Add("Vary", "Origin")
 	hdr.Add("Vary", "Access-Control-Request-Method")
 	hdr.Add("Vary", "Access-Control-Request-Headers")
-	m, ok := matchCORS(b.CORS, origin, method, requested)
+	m, ok := objectstorage.MatchCORS(b.CORS, origin, method, requested)
 	if !ok {
 		plain(w, st, http.StatusForbidden, resultPreflight, "this origin, method or header is not allowed by the bucket's CORS rules")
 		return
 	}
-	m.setPreflight(hdr, origin, requested)
+	m.SetPreflight(hdr, origin, requested)
 	st.result = resultPreflight
 	w.WriteHeader(http.StatusNoContent)
 }

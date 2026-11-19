@@ -32,6 +32,14 @@ import (
 type Repo struct {
 	mu   sync.Mutex
 	Keys map[string]store.ObjectAccessKey
+	gets int
+}
+
+// Gets is how many times a key was read by id: the lookups an authentication costs.
+func (m *Repo) Gets() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.gets
 }
 
 // NewRepo returns an empty table.
@@ -48,6 +56,7 @@ func (m *Repo) CreateObjectAccessKey(_ context.Context, in store.ObjectAccessKey
 func (m *Repo) GetObjectAccessKey(_ context.Context, id string) (store.ObjectAccessKey, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	m.gets++
 	if k, ok := m.Keys[id]; ok {
 		return k, nil
 	}
