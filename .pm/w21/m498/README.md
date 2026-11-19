@@ -1,12 +1,12 @@
 # w21 · m498 — S3 core: SigV4, access keys, buckets, objects, listing and multipart on a `bex-s3` Deployment
 
-**Worker:** worker21 **Goal:** any S3 client (aws-cli, rclone, boto3) with a bex access key and `https://objects.onbex.co` as its endpoint lists, uploads (single and in parts), copies, downloads and deletes objects in the workspace's buckets, with quota, metering, audit and limits in bex's path. **Status:** todo
+**Worker:** worker21 **Goal:** any S3 client (aws-cli, rclone, boto3) with a bex access key and `https://objects.onbex.co` as its endpoint lists, uploads (single and in parts), copies, downloads and deletes objects in the workspace's buckets, with quota, metering, audit and limits in bex's path. **Status:** todo (t001 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | The Wasabi policy gains the multipart actions, and `verify` proves them | 30m | — |
+| [t001](done/t001.md) | The Wasabi policy gains the multipart actions, and `verify` proves them — **DONE** | 30m | — |
 | [t002](t002.md) | Access keys: tables, the `s3k` id kind, the core service and the OpenBao secret | 60m | — |
 | [t003](t003.md) | Key disposal, the 2FA and sign-in gates, the REST and GraphQL adapters, the bucket route and the publish route | 60m | t002 |
 | [t004](t004.md) | `bex-s3`: the entry point and the Deployment | 60m | t002 |

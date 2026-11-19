@@ -90,14 +90,14 @@ fi
 # exactly what the two identities exist to prevent, and no Go test would see it.
 rw_policy=infra/wasabi/object-storage-s3-policy.json
 ro_policy=infra/wasabi/object-storage-read-s3-policy.json
-for verb in s3:PutObject s3:DeleteObject s3:AbortMultipartUpload s3:PutBucketPolicy s3:DeleteBucket; do
+for verb in s3:PutObject s3:DeleteObject s3:AbortMultipartUpload s3:ListMultipartUploadParts s3:ListBucketMultipartUploads s3:PutBucketPolicy s3:DeleteBucket; do
   if jq -e --arg v "$verb" '[.Statement[].Action[]] | index($v)' "$ro_policy" >/dev/null 2>&1; then
     fail "read-only policy grants $verb; objectgw must never write or delete"
   else
     pass "read-only policy withholds $verb"
   fi
 done
-for verb in s3:GetObject s3:PutObject s3:DeleteObject s3:ListBucket; do
+for verb in s3:GetObject s3:PutObject s3:DeleteObject s3:ListBucket s3:AbortMultipartUpload s3:ListMultipartUploadParts s3:ListBucketMultipartUploads; do
   if jq -e --arg v "$verb" '[.Statement[].Action[]] | index($v)' "$rw_policy" >/dev/null 2>&1; then
     pass "read-write policy grants $verb"
   else

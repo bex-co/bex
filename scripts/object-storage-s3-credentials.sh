@@ -261,6 +261,34 @@ require_credentials() {
   done
 }
 
+# verify_multipart <region-spec> <bucket> <key>: a real multipart upload on the
+# read-write identity, from the first request to the abort. Its one part is the
+# smallest committed file (a part that is the last one may be under 5 MiB), and
+# the upload is aborted whether or not a later step fails, so Wasabi never bills
+# a part the probe left behind.
+verify_multipart() {
+  local r="$1" bucket="$2" key="$3-mpu" upload_id="" out ok=0
+  upload_id="$(rw_s3 "$r" s3api create-multipart-upload --bucket "$bucket" --key "$key" | jq -r '.UploadId')"
+  [ -n "$upload_id" ] && [ "$upload_id" != "null" ] || { echo "error: create-multipart-upload on $bucket answered no UploadId" >&2; exit 1; }
+  if rw_s3 "$r" s3api upload-part --bucket "$bucket" --key "$key" --upload-id "$upload_id" --part-number 1 \
+      --body /policies/object-storage-s3-policy.json >/dev/null \
+    && out="$(rw_s3 "$r" s3api list-parts --bucket "$bucket" --key "$key" --upload-id "$upload_id")" \
+    && jq -e '[.Parts[]?.PartNumber] == [1]' <<<"$out" >/dev/null \
+    && out="$(rw_s3 "$r" s3api list-multipart-uploads --bucket "$bucket" --prefix verify/)" \
+    && jq -e --arg id "$upload_id" '[.Uploads[]?.UploadId] | index($id) != null' <<<"$out" >/dev/null; then
+    ok=1
+  fi
+  rw_s3 "$r" s3api abort-multipart-upload --bucket "$bucket" --key "$key" --upload-id "$upload_id" >/dev/null \
+    || { echo "error: abort-multipart-upload on $bucket failed; abort upload $upload_id by hand" >&2; exit 1; }
+  [ "$ok" = 1 ] || { echo "error: a multipart probe on $bucket failed before its abort (upload-part, list-parts or list-multipart-uploads)" >&2; exit 1; }
+  out="$(rw_s3 "$r" s3api list-multipart-uploads --bucket "$bucket" --prefix verify/)"
+  if jq -e --arg id "$upload_id" '[.Uploads[]?.UploadId] | index($id) != null' <<<"$out" >/dev/null; then
+    echo "error: the aborted upload $upload_id is still listed on $bucket" >&2
+    exit 1
+  fi
+  echo "verified read-write multipart create/upload-part/list-parts/list-uploads/abort on $bucket"
+}
+
 verify() {
   require_credentials
   local r bucket key other
@@ -272,12 +300,16 @@ verify() {
     rw_s3 "$r" s3 cp "s3://$bucket/$key" - >/dev/null
     rw_s3 "$r" s3 ls "s3://$bucket/verify/" >/dev/null
     echo "verified read-write put/get/list on $bucket"
+    # multipart (ADR112 D3, D9): the S3 surface and the sweep's 7-day abort need
+    # create, upload-part, list-parts, list-uploads and abort on a real upload.
+    verify_multipart "$r" "$bucket" "$key"
     # read-only: get and list work, put and delete do not
     ro_s3 "$r" s3 cp "s3://$bucket/$key" - >/dev/null
     ro_s3 "$r" s3 ls "s3://$bucket/verify/" >/dev/null
     echo "verified read-only get/list on $bucket"
     denied "the read-only user writing to $bucket" ro_put_probe "$r" "$bucket"
     denied "the read-only user deleting from $bucket" ro_s3 "$r" s3 rm "s3://$bucket/$key"
+    denied "the read-only user starting a multipart upload in $bucket" ro_s3 "$r" s3api create-multipart-upload --bucket "$bucket" --key "$key-mpu"
     rw_s3 "$r" s3 rm "s3://$bucket/$key" >/dev/null
   done
   # Neither identity may reach the platform's own buckets on this shared

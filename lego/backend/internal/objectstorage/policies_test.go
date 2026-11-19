@@ -35,7 +35,10 @@ const (
 	roPolicyPath     = "../../../../infra/wasabi/object-storage-read-s3-policy.json"
 	provisionerPath  = "../../../../scripts/object-storage-s3-credentials.sh"
 	arnPrefix        = "arn:aws:s3:::"
-	wantRWActionsObj = "s3:GetObject s3:PutObject s3:DeleteObject"
+	wantRWActionsObj = "s3:GetObject s3:PutObject s3:DeleteObject s3:AbortMultipartUpload s3:ListMultipartUploadParts"
+	// wantRWActionsBucket are the bucket-level actions: the S3 surface lists a
+	// bucket's open multipart uploads (ADR112 D3, D9).
+	wantRWActionsBucket = "s3:GetBucketLocation s3:ListBucket s3:ListBucketMultipartUploads"
 )
 
 type policyDoc struct {
@@ -104,7 +107,7 @@ func TestReadOnlyPolicyCannotWriteAndReadWritePolicyCan(t *testing.T) {
 			t.Errorf("objectgw serves the internet; its policy must not grant %s", a)
 		}
 	}
-	for _, a := range strings.Fields(wantRWActionsObj) {
+	for _, a := range strings.Fields(wantRWActionsObj + " " + wantRWActionsBucket) {
 		if !slices.Contains(rw, a) {
 			t.Errorf("bex-api's policy lacks %s", a)
 		}
