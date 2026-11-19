@@ -4,7 +4,9 @@ name: s3 contract
 # are other people's software and change their defaults in releases (checksum
 # algorithm, payload framing, addressing), so this runs the pinned aws-cli v2,
 # rclone and boto3 of scripts/s3-contract.sh against bex's own gateway, over TLS,
-# on real Postgres and a fake Wasabi, every week and when anything that decides what
+# behind the edge's Traefik with the S3 route's plugin (w21/113: the clients read
+# user metadata names in lowercase, as S3 gives them), on real Postgres and a fake
+# Wasabi, every week and when anything that decides what
 # it runs changes (the script and its pins, the gateway, the store). It is not on
 # every PR: the Go suite on the AWS SDK for Go v2 already runs with the backend
 # tests. A failure here means a client moved or the gateway drifted from what the
@@ -21,6 +23,8 @@ on:
       - "scripts/s3-contract.sh"
       - "scripts/s3-contract-boto3.py"
       - "scripts/ci-fetch-verified.sh"
+      - "deploy/gitops/charts/traefik-plugins/s3metadatacase/**"
+      - "deploy/gitops/base/values/traefik.values.yaml"
       - ".github/workflows/s3-contract.yml"
 
 permissions:

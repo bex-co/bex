@@ -33,6 +33,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -48,6 +49,8 @@ import (
 // the key to use, logs what each client sent and what bex answered, and when the script is
 // done it checks that no client was answered with a 5xx and writes the report of the
 // defaults the clients used and of what bex answered 501. It is skipped without BEX_S3_CONTRACT_DIR.
+// With BEX_S3_CONTRACT_EDGE_PORT the clients' endpoint is that port, where the script runs the edge's
+// Traefik in front of this gateway, and the test also writes the certificate's key for it.
 
 const (
 	contractRegion = "oregon"
@@ -287,13 +290,33 @@ func TestS3ContractServer(t *testing.T) {
 	if addrs, err := net.LookupHost("probe.objects.localhost"); err == nil && len(addrs) > 0 {
 		host = "objects.localhost"
 	}
-	endpointHost := fmt.Sprintf("%s:%d", host, port)
+	// scripts/s3-contract.sh puts Traefik, with the plugin of the S3 route, in front of the
+	// gateway as the edge does in production (w21/113): the clients then talk to its port.
+	// The gateway's own port stays the endpoint when the variable is unset.
+	clientPort := port
+	var edgeKey []byte
+	if edge := os.Getenv("BEX_S3_CONTRACT_EDGE_PORT"); edge != "" {
+		if clientPort, err = strconv.Atoi(edge); err != nil {
+			t.Fatalf("BEX_S3_CONTRACT_EDGE_PORT = %q: %v", edge, err)
+		}
+		if edgeKey, err = x509.MarshalPKCS8PrivateKey(cert.PrivateKey); err != nil {
+			t.Fatal(err)
+		}
+	}
+	endpointHost := fmt.Sprintf("%s:%d", host, clientPort)
 
 	k := p.newKey(objectstorage.KeyPermissionReadWrite, 0)
 	if err := os.WriteFile(filepath.Join(dir, "ca.pem"), caPEM, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	env := fmt.Sprintf("S3_ENDPOINT=https://%s\nS3_ACCESS_KEY_ID=%s\nS3_SECRET_ACCESS_KEY=%s\nS3_REGION=%s\n", endpointHost, k.id, k.secret, contractRegion)
+	if edgeKey != nil {
+		// The edge serves the same certificate, which names the same hosts, and forwards to the gateway.
+		keyPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: edgeKey})
+		if err := os.WriteFile(filepath.Join(dir, "edge.key"), keyPEM, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	env := fmt.Sprintf("S3_ENDPOINT=https://%s\nS3_GATEWAY_PORT=%d\nS3_ACCESS_KEY_ID=%s\nS3_SECRET_ACCESS_KEY=%s\nS3_REGION=%s\n", endpointHost, port, k.id, k.secret, contractRegion)
 	// The environment file appears last: the script waits for it.
 	if err := os.WriteFile(filepath.Join(dir, "server.env"), []byte(env), 0o600); err != nil {
 		t.Fatal(err)

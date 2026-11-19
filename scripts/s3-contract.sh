@@ -17,6 +17,13 @@
 #   boto3        create_bucket, upload_file and download_file of 20 MiB, copy,
 #                listing, a presigned-URL upload, CORS and lifecycle
 #
+# They reach the gateway the way a customer's do, through the edge: Traefik, the
+# release the cluster runs, with the plugin of the S3 route (bexS3MetadataCase,
+# deploy/gitops/charts/traefik-plugins/s3metadatacase), forwards to the gateway.
+# S3 names user metadata in lowercase and botocore, so boto3 and aws-cli, returns the
+# name as it came: the clients read it back exactly as S3 would, which only the edge
+# can arrange (w21/113).
+#
 # Each runs with its own defaults and no tuning of checksums, payload signing or
 # part sizes. The gateway logs what every client sent and answered; the report
 # at the end is the defaults each client actually used (addressing style,
@@ -36,6 +43,8 @@ AWSCLI_VERSION=2.39.5
 RCLONE_VERSION=1.75.2
 # botocore is pinned to boto3's own release; the libraries they pull in float.
 BOTO3_VERSION=1.43.125
+# The edge's Traefik: the tag deploy/gitops/base/values/traefik.values.yaml pins, checked below.
+TRAEFIK_VERSION=3.7.17
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 
@@ -50,30 +59,39 @@ done
 
 aws_base="https://awscli.amazonaws.com"
 rclone_base="https://downloads.rclone.org/v$RCLONE_VERSION"
+traefik_base="https://github.com/traefik/traefik/releases/download/v$TRAEFIK_VERSION"
 case "$(uname -s)_$(uname -m)" in
   Linux_x86_64)
     aws_file="awscli-exe-linux-x86_64-$AWSCLI_VERSION.zip"
     aws_sha=fe0553306b3d001d162bc193d3b040027aab3466b9f910b50e702c122c0f3ff9
     rclone_file="rclone-v$RCLONE_VERSION-linux-amd64.zip"
     rclone_sha=349ac8fba6ff65d6247043f1750cdcb518ec5d500ef91463a10d37c0ccdf3702
+    traefik_file="traefik_v${TRAEFIK_VERSION}_linux_amd64.tar.gz"
+    traefik_sha=a564abd5fc8ee97d838270f188bb94cb3172cc113f4b51aa5e7dd6117eedb393
     ;;
   Linux_aarch64 | Linux_arm64)
     aws_file="awscli-exe-linux-aarch64-$AWSCLI_VERSION.zip"
     aws_sha=ce7b03ebceed1dc6a0a8f27134a41a9a3b5671f09c57ab2e7fc6d43710dbaef3
     rclone_file="rclone-v$RCLONE_VERSION-linux-arm64.zip"
     rclone_sha=7e1e8d69654941b7b7df84ee74c5f7fb09cce7d5496947fb7bf16b55ff427d10
+    traefik_file="traefik_v${TRAEFIK_VERSION}_linux_arm64.tar.gz"
+    traefik_sha=b06dad2f66ac3481c5695591b7cd3a3eed5e6dbec739889bb01e69cf8e45a0fc
     ;;
   Darwin_arm64)
     aws_file="AWSCLIV2-$AWSCLI_VERSION.pkg"
     aws_sha=f89c9288dbd9bd0579914ea3a72acc14bca1ae3d3112e92bcb29ff5a48b88131
     rclone_file="rclone-v$RCLONE_VERSION-osx-arm64.zip"
     rclone_sha=610ab7d48615135dfc60b763858b11a426a0d3d1160c1bb76fb0ae6011b02edd
+    traefik_file="traefik_v${TRAEFIK_VERSION}_darwin_arm64.tar.gz"
+    traefik_sha=fd489802a4c1684c5726bc263a44c585c6ff0591809b064831da91c7bb33ccad
     ;;
   Darwin_x86_64)
     aws_file="AWSCLIV2-$AWSCLI_VERSION.pkg"
     aws_sha=f89c9288dbd9bd0579914ea3a72acc14bca1ae3d3112e92bcb29ff5a48b88131
     rclone_file="rclone-v$RCLONE_VERSION-osx-amd64.zip"
     rclone_sha=574e1f31cf1c464e5fb0325cb66fcbdeaf1efa1802bd9b17f13c256fd74b6561
+    traefik_file="traefik_v${TRAEFIK_VERSION}_darwin_amd64.tar.gz"
+    traefik_sha=c562c73dc5132dc79a4668db2a5ed2f69f630e2493e6e8fe987233a6d025b3ec
     ;;
   *) die "no pinned client builds for $(uname -sm)" ;;
 esac
@@ -81,7 +99,9 @@ esac
 work=$(mktemp -d)
 pg_name=""
 server_pid=""
+edge_pid=""
 cleanup() {
+  [ -z "$edge_pid" ] || kill "$edge_pid" 2>/dev/null || true
   [ -z "$server_pid" ] || kill "$server_pid" 2>/dev/null || true
   [ -z "$pg_name" ] || docker rm -f -v "$pg_name" >/dev/null 2>&1 || true
   rm -rf "$work"
@@ -97,7 +117,9 @@ fetch() { # <url> <sha256> <file>
 }
 
 # --- the clients ---------------------------------------------------------------
-echo "s3-contract: installing aws-cli $AWSCLI_VERSION, rclone v$RCLONE_VERSION and boto3 $BOTO3_VERSION"
+echo "s3-contract: installing aws-cli $AWSCLI_VERSION, rclone v$RCLONE_VERSION, boto3 $BOTO3_VERSION and Traefik v$TRAEFIK_VERSION"
+grep -qE "^\s+tag: v$TRAEFIK_VERSION@sha256:" "$root/deploy/gitops/base/values/traefik.values.yaml" ||
+  die "Traefik v$TRAEFIK_VERSION is not the release deploy/gitops/base/values/traefik.values.yaml pins: move the pins together"
 mkdir -p "$work/dl" "$work/bin"
 fetch "$aws_base/$aws_file" "$aws_sha" "$work/dl/$aws_file"
 case "$aws_file" in
@@ -113,6 +135,8 @@ esac
 fetch "$rclone_base/$rclone_file" "$rclone_sha" "$work/dl/$rclone_file"
 unzip -q -j "$work/dl/$rclone_file" '*/rclone' -d "$work/bin"
 chmod +x "$work/bin/rclone"
+fetch "$traefik_base/$traefik_file" "$traefik_sha" "$work/dl/$traefik_file"
+tar -xzf "$work/dl/$traefik_file" -C "$work/bin" traefik
 
 python=""
 for candidate in python3.13 python3.12 python3.11 python3.10 python3; do
@@ -136,6 +160,7 @@ fi
 PATH="$work/bin:$PATH"
 aws --version
 rclone version | head -1
+traefik version | sed -n 1p
 "$work/venv/bin/python" -c 'import boto3; print("boto3", boto3.__version__)'
 
 # --- the gateway ---------------------------------------------------------------
@@ -156,11 +181,12 @@ fi
 state="$work/state"
 mkdir -p "$state"
 echo setup >"$state/phase"
+edge_port=$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')
 (cd "$root/lego/backend" && GOWORK=off go test -c -o "$work/s3gw.test" ./internal/s3gw)
 (
   cd "$root/lego/backend/internal/s3gw"
   # exec: the background job is the test binary itself, so the cleanup's kill reaches it.
-  BEX_S3_CONTRACT_DIR="$state" BEX_TEST_REQUIRE_DEPS=1 exec "$work/s3gw.test" -test.run '^TestS3ContractServer$' -test.v -test.timeout 30m
+  BEX_S3_CONTRACT_DIR="$state" BEX_S3_CONTRACT_EDGE_PORT="$edge_port" BEX_TEST_REQUIRE_DEPS=1 exec "$work/s3gw.test" -test.run '^TestS3ContractServer$' -test.v -test.timeout 30m
 ) >"$work/server.log" 2>&1 &
 server_pid=$!
 for _ in $(seq 1 120); do
@@ -174,7 +200,75 @@ done
 [ -f "$state/server.env" ] || die "the gateway did not start in two minutes"
 # shellcheck disable=SC1091
 . "$state/server.env"
-echo "s3-contract: the gateway is at $S3_ENDPOINT (a client that picked virtual-hosted style would send <bucket>.${S3_ENDPOINT#https://})"
+
+# --- the edge ------------------------------------------------------------------
+# What fronts the gateway in production (lego/operator/config/s3gw/ingressroute.yaml):
+# Traefik, loading the S3 route's plugin from the directory the cluster mounts, which
+# writes user-metadata names in lowercase. It serves the certificate the clients
+# already trust and forwards the request unchanged (Host included: SigV4 signs it) to
+# the gateway.
+edge="$work/edge"
+plugin_src="$root/deploy/gitops/charts/traefik-plugins/s3metadatacase"
+plugin_dir="$edge/plugins-local/src/github.com/bex-co/bex-s3-metadata-case"
+mkdir -p "$plugin_dir"
+cp "$plugin_src/.traefik.yml" "$plugin_src/go.mod" "$plugin_src/s3metadatacase.go" "$plugin_dir/"
+cat >"$edge/static.yml" <<EOT
+entryPoints:
+  websecure:
+    address: "127.0.0.1:$edge_port"
+providers:
+  file:
+    filename: "$edge/dynamic.yml"
+experimental:
+  abortOnPluginFailure: true
+  localPlugins:
+    bexS3MetadataCase:
+      moduleName: github.com/bex-co/bex-s3-metadata-case
+log:
+  level: ERROR
+EOT
+cat >"$edge/dynamic.yml" <<EOT
+tls:
+  certificates:
+    - certFile: "$state/ca.pem"
+      keyFile: "$state/edge.key"
+http:
+  middlewares:
+    s3-metadata-case:
+      plugin:
+        bexS3MetadataCase: {}
+  routers:
+    s3:
+      rule: "PathPrefix(\`/\`)"
+      entryPoints: [websecure]
+      middlewares: [s3-metadata-case]
+      service: gateway
+      tls: {}
+  serversTransports:
+    gateway:
+      insecureSkipVerify: true
+  services:
+    gateway:
+      loadBalancer:
+        serversTransport: gateway
+        servers:
+          - url: "https://127.0.0.1:$S3_GATEWAY_PORT"
+EOT
+(cd "$edge" && exec traefik --configFile="$edge/static.yml") >"$work/edge.log" 2>&1 &
+edge_pid=$!
+for _ in $(seq 1 60); do
+  [ "$(curl -s --cacert "$state/ca.pem" -o /dev/null -w '%{http_code}' "https://localhost:$edge_port/" 2>/dev/null)" = 403 ] && break
+  kill -0 "$edge_pid" 2>/dev/null || {
+    cat "$work/edge.log" >&2
+    die "Traefik did not start"
+  }
+  sleep 1
+done
+[ "$(curl -s --cacert "$state/ca.pem" -o /dev/null -w '%{http_code}' "https://localhost:$edge_port/" 2>/dev/null)" = 403 ] || {
+  cat "$work/edge.log" >&2
+  die "the gateway did not answer through Traefik in a minute"
+}
+echo "s3-contract: the edge is at $S3_ENDPOINT, in front of the gateway on port $S3_GATEWAY_PORT (a client that picked virtual-hosted style would send <bucket>.${S3_ENDPOINT#https://})"
 
 phase() { echo "$1" >"$state/phase"; }
 step() { echo "s3-contract: $*"; }
@@ -280,6 +374,22 @@ aws_ s3api list-parts --bucket "$bucket" --key mp/explicit --upload-id "$upload"
 aws_ s3api list-multipart-uploads --bucket "$bucket" --query 'length(Uploads)' --output text | grep 1 >/dev/null || die "aws: list-multipart-uploads"
 aws_ s3api abort-multipart-upload --bucket "$bucket" --key mp/explicit --upload-id "$upload"
 aws_ s3api delete-objects --bucket "$bucket" --delete '{"Objects":[{"Key":"up/zero"},{"Key":"up/one"}]}' >/dev/null
+
+# User metadata comes back as S3 names it: lowercase, whatever case it was sent in. The AWS
+# CLI prints botocore's parse, which keeps the case it received, so this fails when the
+# edge's plugin does not run, and a curl of the same object shows the head's own bytes
+# (net/http's client would canonicalise them) over HTTP/1.1 (w21/113).
+aws_ s3api put-object --bucket "$bucket" --key meta/one --body "$data/one" --metadata mtime=aws,MixedCase=Aws >/dev/null
+for pair in mtime=aws mixedcase=Aws; do
+  [ "$(aws_ s3api head-object --bucket "$bucket" --key meta/one --query "Metadata.${pair%%=*}" --output text)" = "${pair#*=}" ] ||
+    die "aws: head-object does not read Metadata.${pair%%=*} as ${pair#*=}: user metadata names are not lowercase (w21/113)"
+done
+aws_ s3api copy-object --bucket "$bucket" --key meta/copy --copy-source "$bucket/meta/one" --metadata k=v --metadata-directive REPLACE >/dev/null
+[ "$(aws_ s3api head-object --bucket "$bucket" --key meta/copy --query 'Metadata.k' --output text)" = v ] ||
+  die "aws: a copy with REPLACE does not read back Metadata.k"
+wire=$(curl -sS --http1.1 --cacert "$state/ca.pem" -D - -o /dev/null "$(aws_ s3 presign "s3://$bucket/meta/one" --expires-in 300)" | tr -d '\r')
+grep -qx 'x-amz-meta-mtime: aws' <<<"$wire" && grep -qx 'x-amz-meta-mixedcase: Aws' <<<"$wire" ||
+  die "the head of an HTTP/1.1 response does not name its user metadata in lowercase: $(grep -i '^x-amz-meta' <<<"$wire" | tr '\n' ' ')"
 
 step "aws-cli: what bex refuses, and says so"
 phase refused

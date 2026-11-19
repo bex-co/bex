@@ -77,17 +77,18 @@ def main():
     big = os.path.join(work, "big")
     with open(big, "wb") as f:
         f.write(os.urandom(20 * MIB))
-    s3.upload_file(big, bucket, "dir/big", ExtraArgs={"ContentType": "application/x-contract", "Metadata": {"mtime": "42"}})
+    s3.upload_file(big, bucket, "dir/big", ExtraArgs={"ContentType": "application/x-contract", "Metadata": {"mtime": "42", "MixedCase": "x"}})
     head = s3.head_object(Bucket=bucket, Key="dir/big")
     assert head["ContentLength"] == 20 * MIB and head["ContentType"] == "application/x-contract", head
-    # S3 lowercases user metadata names, so a boto3 client reads {"mtime": "42"}. bex returns
-    # {"Mtime": "42"} (w21/113: Go canonicalises header names, and Traefik does it again), which
-    # is a known difference and not this suite's finding: it is reported, and the value is
-    # checked either way. Make this exact once w21/113 is fixed.
-    metadata = {k.lower(): v for k, v in head["Metadata"].items()}
-    assert metadata.get("mtime") == "42", head["Metadata"]
-    if "mtime" not in head["Metadata"]:
-        print("boto3 contract: known difference: user metadata names come back capitalised (w21/113):", head["Metadata"])
+    # S3 lowercases user metadata names, and botocore returns the name as it arrived, so a boto3
+    # client reads {"mtime": "42", "mixedcase": "x"}. Traefik canonicalises every header name it
+    # relays, so the edge's plugin writes them in lowercase again (w21/113); the script runs
+    # the gateway behind that edge, and this is exact.
+    assert head["Metadata"] == {"mtime": "42", "mixedcase": "x"}, head["Metadata"]
+    s3.copy_object(Bucket=bucket, Key="dir/replaced", CopySource={"Bucket": bucket, "Key": "dir/big"},
+                   Metadata={"K": "v"}, MetadataDirective="REPLACE")
+    assert s3.head_object(Bucket=bucket, Key="dir/replaced")["Metadata"] == {"k": "v"}
+    s3.delete_object(Bucket=bucket, Key="dir/replaced")
     down = os.path.join(work, "down")
     s3.download_file(bucket, "dir/big", down)
     assert sha256(down) == sha256(big), "the 20 MiB object came back different"
