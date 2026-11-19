@@ -1,6 +1,6 @@
 # w6 · m484 — A platform release keeps every edge-cached service's instances and its cache
 
-**Worker:** worker6 **Goal:** an operator deploy that changes only bex's own image leaves every edge-cached web service's pods and edge cache alone, as it already leaves every other service's; the cache empties only on a successful deploy or a manual purge, as on Render. **Status:** blocked (t001–t004, t006, t007 done; t001/t002 were met by w3/m489 while in flight; t005 recorded the count and the fixture, and waits for the second production deploy carrying w3/m489, then t008)
+**Worker:** worker6 **Goal:** an operator deploy that changes only bex's own image leaves every edge-cached web service's pods and edge cache alone, as it already leaves every other service's; the cache empties only on a successful deploy or a manual purge, as on Render. **Status:** blocked (t001–t004, t006, t007 done; t001/t002 were met by w3/m489 while in flight; t005 recorded the count and that the second deploy carrying w3/m489 kept every pod, and waits for the next production deploy for its cache check, then t008)
 
 ## Tasks (in order)
 
@@ -40,3 +40,13 @@
 - **Shipped:** the fleet guard (t003), `TestANewOperatorImageChangesNoLongLivedTenantPodTemplate`, which drives web, private, worker and Key Value workloads through their reconcilers under two operator images and fails when any Deployment or StatefulSet in the namespace changes, the tier included. It is red with each image hold reverted and on `e9890d5ad` (t007). Also ADR004's guard sentence (t004) and `/simplify` (t006).
 - **Production at 03:31Z:** 0 of 31 Apps cache. t005's fixture `m484-t005-cache` (`srv-dbv6rrioonls73bi9kog`, `bex-canary`) answered `/m484.css` with `HIT`. Details: [t005 § Progress](t005.md#progress--2026-11-19-0350z-steps-12-done-step-3-waits-for-two-deploys).
 - **Gate (clears by itself, then worker):** the second production deploy whose pin's producer contains `a6b1658fb`, the first operator release the tier lives through. The first creates the tier, which starts empty once. Then t005's "Next" and t008.
+
+## Unblock record — 2026-11-19 14:45Z (the gate cleared; the cache check moves to the next deploy)
+
+- **Affected:** t005, then t008.
+- **Source:** verified evidence (`/loopx w6` dispatch). `a6b1658fb` is in producers `4b2cebd0bd03` (pin `19faf35f3`, 09:13Z) and `dff52c596d13` (pin `a91e9aeb3`, 11:30Z), so the second production deploy carrying w3/m489 has happened.
+- **What held across it (read from production at 14:31Z).** The manager moved from `4407341b…` to `9850d357…` at 11:35:30Z. The fixture's App pod and both cache-tier pods kept their UIDs, their ReplicaSets and 0 restarts. The tier stayed on `4407341b…`, and its logs show no purge after its own start at 09:18Z. DoD bullet 3's pod half holds for that deploy. Details: [t005 § Progress 14:45Z](t005.md#progress--2026-11-19-1445z-deploy-3-kept-every-pod-the-cache-check-moves-to-the-next-deploy).
+- **What could not be checked.** The tier started empty at 09:17:51Z. Loki's request log shows no fetch of the fixture between 05:01Z and 14:37Z, so the cache held no entry at that release, and no `HIT` across it can be reconstructed. The plan had two flaws: whoami's 120-minute default TTL, and a pin-gated worker that always arrives after the rollout.
+- **Changed:** the fixture now runs `caddy respond`, which answers `/m484.css` with `Cache-Control: public, max-age=604800`. Its entry was filled at 14:40:06Z and stays fresh for 7 days, so a worker that arrives after the next deploy can still read whether the release kept it. The DoD is unchanged.
+- **Remaining gate (clears by itself):** the next production deploy, so pin must carry `a91e9aeb3`. Then t005 § Progress 14:45Z "Next": compare the pods with the state recorded there, fetch `/m484.css` once (`HIT` with an `age` dating it to 14:40:06Z), delete the fixture, and run t008.
+
