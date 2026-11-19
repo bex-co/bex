@@ -1,6 +1,6 @@
 # w9 · m495 — Build-time private network reach to workspace web & private services (`fromService` `host`/`hostport`)
 
-**Worker:** worker9 **Goal:** a build in a workspace's canonical namespace can reach its own workspace's eligible `web_service` and `private_service` pods (honoring environment network isolation), closing the open gap recorded in ADR018 `Pre-Deploy Command` and w8/m129. **Status:** in progress (t001–t003, t005, t006 done; t004's production check waits for a pin that carries this milestone's commit; then t007)
+**Worker:** worker9 **Goal:** a build in a workspace's canonical namespace can reach its own workspace's eligible `web_service` and `private_service` pods (honoring environment network isolation), closing the open gap recorded in ADR018 `Pre-Deploy Command` and w8/m129. **Status:** blocked (t001–t003, t005, t006 done and shipped in `6a8bc81a0`; t004's production check waits for a production pin that carries `6a8bc81a0`; then t007)
 
 ## Tasks (in order)
 
@@ -22,8 +22,8 @@
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm for one aspect of render parity` (Build Caching & Build Environment Parity, 2026-11-18, item 4); [ADR018](../../../docs/ADR018-render-parity.md) (`Pre-Deploy Command` open gap), [w8/done/m129/README.md](../../w8/done/m129/README.md), `lego/operator/internal/controller/build_datastore_reach.go:132-139`.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)) — closes an explicitly recorded, unsigned-off open gap from `w8/m129` so `fromService` (`host`/`hostport`) works during builds as well as pre-deploy and runtime.
+- **Source:** `/pm-brainstorm for one aspect of render parity` (Build Caching & Build Environment Parity, 2026-11-18, item 4); [ADR018](../../../../docs/ADR018-render-parity.md) (`Pre-Deploy Command` open gap), [w8/done/m129/README.md](../../../w8/done/m129/README.md), `lego/operator/internal/controller/build_datastore_reach.go:132-139`.
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)) — closes an explicitly recorded, unsigned-off open gap from `w8/m129` so `fromService` (`host`/`hostport`) works during builds as well as pre-deploy and runtime.
 - **Expected outcome:** Blueprints and SSG/SSR services (e.g., Next.js, Astro, Gatsby) whose builds query a sibling internal CMS or private API via `fromService` succeed without public-internet workarounds.
 - **Why now:** Independent of the S3 cache milestones (w9/m492–m494) and directly closes a documented open follow-up from `w8/m129`.
 - **Render parity:** omitted — pure operator NetworkPolicy/isolation mechanism with no REST, GraphQL, MCP, CLI, or dashboard schema/UI change; ADR018 and ADR022 updates are included in t004.
@@ -37,10 +37,10 @@
 **What shipped (operator only; no REST/GraphQL/MCP/dashboard change):**
 
 - `reconcileBuildReach` adds to the datastore grant a rule and a `<ws>/<app>-build-service-ingress` policy. They reach the serving pods (`app.bex.co/app In [paid web/private services]` AND `app.bex.co/app-id Exists`) of the build's own workspace, in its isolation scope, on any TCP port. Workers, cron jobs, static sites and free web services are never targets, and a static site's own build gets no service reach. All three policies are removed at the build's terminal observation.
-- Docs: [ADR022 § Build reach to the owning workspace's services](../../../docs/ADR022-tenant-isolation.md#build-reach-to-the-owning-workspaces-services-w9m495-2026-11-19) (threat review and invariants), ADR018 Pre-Deploy row (gap closed; kpack remains, w1/121), ADR041 D2, ADR043, ADR060, `build-boundary.yaml`, `lego/operator/AGENTS.md`.
+- Docs: [ADR022 § Build reach to the owning workspace's services](../../../../docs/ADR022-tenant-isolation.md#build-reach-to-the-owning-workspaces-services-w9m495-2026-11-19) (threat review and invariants), ADR018 Pre-Deploy row (gap closed; kpack remains, w1/121), ADR041 D2, ADR043, ADR060, `build-boundary.yaml`, `lego/operator/AGENTS.md`.
 - Tests: see [t003](done/t003.md). Six mutations each failed the suite.
 
-**t004 must check on production once the pin carries this milestone's commit** (`git merge-base --is-ancestor <commit> <pin>`, and `bex-system` runs that operator image):
+**t004 must check on production once the pin carries `6a8bc81a0`** (`git merge-base --is-ancestor 6a8bc81a0 <pin>` for the newest `chore(deploy): pin platform images to <pin>` on origin/main, and `bex-system` runs that operator image). At parking, the newest pin `dff52c596d13` (2026-11-19 11:30Z) does not carry it:
 
 - In `bex-canary`, create a paid `private_service` fixture that serves a marker on `$PORT`. Then create a web service (Blueprint, or an `envVars` literal equal to the fixture's `<slug>:<port>`) whose `buildCommand` runs `curl -fsS http://$CMS_HOSTPORT/` and fails without the marker. The build passes, and the service goes live.
 - While it builds: `bex-build/bld-<srv>-datastore-egress` has two rules, and `<srv>-build-ingress` and `<srv>-build-service-ingress` exist in `bex-canary`'s namespace. The build Job's pod has `dnsConfig.searches: [<ns>.svc.cluster.local]`. All three policies are gone after the build.
