@@ -3553,7 +3553,12 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 		}
 	}
 	ha := d.HighAvailability != nil && d.HighAvailability.Enabled
-	if ha {
+	// Judge a declared plan only: a sync that omits plan keeps the live plan,
+	// so the create default cannot judge an update — enabling HA on a capable
+	// kept plan must not be refused in the default's name. Creates judge the
+	// default at their own admission (CheckNewDatabase); updates judge the
+	// kept plan in ApplyBlueprintDatabaseSpec.
+	if ha && d.Plan != "" {
 		if err := postgres.CheckHighAvailabilityPlan(plan); err != nil {
 			return parsedDatabase{}, fmt.Errorf("%w: database %q highAvailability: %s", core.ErrBadRequest, d.Name, err.Error())
 		}

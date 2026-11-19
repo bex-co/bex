@@ -85,6 +85,40 @@ func TestDatabaseAdmissionCreateCapacity(t *testing.T) {
 	}
 }
 
+// TestCheckNewDatabaseRefusesHAOnSubCPUPlan: creating with high availability
+// on a sub-1-CPU plan is refused, the same refusal the create API runs — the
+// Blueprint create path shares this admission, so a manifest that enables HA
+// without naming a capable plan cannot provision a standby on the incapable
+// default (w8/m43; ADR030 §6: a $0 plan never runs a second instance).
+func TestCheckNewDatabaseRefusesHAOnSubCPUPlan(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		spec appv1alpha1.DatabaseSpec
+		code string
+	}{
+		{"no HA on the default", appv1alpha1.DatabaseSpec{}, ""},
+		{"HA on the default", appv1alpha1.DatabaseSpec{HighAvailability: true}, "POSTGRES_HA_PLAN_UNSUPPORTED"},
+		{"HA on free", appv1alpha1.DatabaseSpec{Plan: "free", HighAvailability: true}, "POSTGRES_HA_PLAN_UNSUPPORTED"},
+		{"HA on basic-1gb", appv1alpha1.DatabaseSpec{Plan: "basic-1gb", HighAvailability: true}, "POSTGRES_HA_PLAN_UNSUPPORTED"},
+		{"HA on basic-4gb", appv1alpha1.DatabaseSpec{Plan: "basic-4gb", HighAvailability: true}, ""},
+		{"HA on 1c-2g", appv1alpha1.DatabaseSpec{Plan: "1c-2g", HighAvailability: true}, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := CheckNewDatabase(tc.spec)
+			if tc.code == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			var coded *core.CodedError
+			if !errors.Is(err, core.ErrBadRequest) || !errors.As(err, &coded) || coded.Code != tc.code {
+				t.Fatalf("CheckNewDatabase = %v, want coded %s", err, tc.code)
+			}
+		})
+	}
+}
+
 func TestDatabaseAdmissionPreservesLegacyStateAndStorageHighWater(t *testing.T) {
 	legacy := &appv1alpha1.Database{
 		Spec:   appv1alpha1.DatabaseSpec{Plan: "free", StorageGB: 15, DiskAutoscaling: true, Pooler: true, ReadReplicas: admissionReplicas(1)},

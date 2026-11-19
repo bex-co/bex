@@ -8,6 +8,8 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 
 ## Skipped
 
+- 2026-11-19 agreement/database plan-vs-apply admission (identity, grow-only, step, duplicates, preview/apply creates) — audited, holds; the HA-enablement cell diverged and was fixed this run
+- 2026-11-19 billing/startup gates (stripe epoch default/parse/UTC, dunning modes, payment-method fail-closed matrix, publishable-key mode match) — audited, holds: pinned by billing_config_test.go, all pass
 - 2026-11-18 authz/org-join verbs vs model relations — audited, holds: JoinWorkspace gates on exactly can_join and JoinWorkspaceAsAdmin on exactly can_join_as_admin (pinned semantically in representativeVerbRelations); FGA check + row re-check (privacy, org role) is a fail-closed conjunction, tuple writers are deletes-first with reconcile-from-rows backstop
 - 2026-11-18 billing/cron-minimum settle — audited, holds: top-up is max(0, min − round(run)) (pinned by TestCronMinimumTopUp + the new complement/monotonicity property), month charged exactly at end+49h with cursor once-only and ON CONFLICT guards, suspended-all-month/default-tenant owe nothing and deleted-mid-month owes (pinned by TestPGCronMinimum)
 - 2026-11-18 blueprint-plan/moves+planEnvironments vs apply regroup+ACL write — audited, holds: both sides judge the same diffPlacement/controls on the same rows, including isolation-only service flips and the datastore label behavior (existing moves/environments tests pin it)

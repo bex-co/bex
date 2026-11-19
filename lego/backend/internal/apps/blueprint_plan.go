@@ -602,11 +602,22 @@ func ApplyBlueprintDatabaseSpec(db *appv1alpha1.Database, want appv1alpha1.Datab
 	if present("highAvailability") {
 		dst.HighAvailability = want.HighAvailability
 	}
-	// A plan change must not strand high availability on a plan that cannot
-	// run it (w8/m43); the author disables it in the same sync instead.
-	if dst.HighAvailability && dst.Plan != before.Plan {
+	// High availability is judged on the plan the sync leaves the database on:
+	// a plan change must not strand it on a plan that cannot run it (w8/m43),
+	// and enabling it must not switch it on where it cannot run — the same
+	// presence-aware gate the API patch runs (checkHighAvailabilityPatch), so
+	// the plan refuses exactly what the apply refuses and the API refuses.
+	// Re-declaring running HA, and unrelated edits to grandfathered HA, stay
+	// allowed. Only a plan change under running HA names the remedy of
+	// disabling it in the same sync: an enable is refused as the API refuses it.
+	enabling := present("highAvailability") && !before.HighAvailability
+	if dst.HighAvailability && (dst.Plan != before.Plan || enabling) {
 		if err := postgres.CheckHighAvailabilityPlan(dst.Plan); err != nil {
-			return false, &BlueprintFieldConflictError{Path: "plan", Message: err.Error() + "; disable high availability first"}
+			message := err.Error()
+			if !enabling {
+				message += "; disable high availability first"
+			}
+			return false, &BlueprintFieldConflictError{Path: "plan", Message: message}
 		}
 	}
 	highWater := postgres.DatabaseStorageHighWater(db)
