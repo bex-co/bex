@@ -2,7 +2,7 @@
 
 Why: ordinary PDF-thumbnail and document-conversion services fail their builds or runtime conversions despite using a tool documented as supplied by the native environment.
 
-**Severity:** major. **Attribution:** operator shared native-image utility assembly. **Estimate:**215m across6 tasks. Functional CLI sweep418,2026-10-17. Published Bex0.3.2/a6350da0 and unchanged Render2.27.0/a764810a7682, isolated human-QA bex-canary/tea-daif693dqjvc73e7as3g, noninteractive JSON, api.bex.co/v1. Source1845a897afb1ef1e50becd8ed54c97e10c771953; actual serving revision unknown. [Complete evidence](evidence/cli-sweep418/README.md).
+**Severity:** major. **Attribution:** operator shared native-image utility assembly. **Estimate:**215m across6 tasks. Functional CLI sweep418,2026-10-17. Published Bex0.3.2/a6350da0 and unchanged Render2.27.0/a764810a7682, isolated human-QA bex-canary/tea-daif693dqjvc73e7as3g, noninteractive JSON, api.bex.co/v1. Source1845a897afb1ef1e50becd8ed54c97e10c771953; actual serving revision unknown. Complete evidence (sweep 418, purged 2026-11-04).
 
 ## Exact reproduction and counterfactual
 

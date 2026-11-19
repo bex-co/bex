@@ -194,6 +194,7 @@ func nativeUtilityCases() []nativeUtilityCase {
 		{"pandoc", "93", "pandoc: command not found", nativeNodeRuntime},
 		{"sqlite3", "94", "sqlite3: command not found", nativePythonRuntime},
 		{"libvips", "95", "cannot load library 'libvips.so.42'", nativePythonRuntime},
+		{"ghostscript", "97", "gs: command not found", nativePythonRuntime},
 		{"python-metadata", "103", "No module named 'setuptools'", nativeNodeRuntime},
 		{"python-pip", "103", "No module named pip", nativeNodeRuntime},
 		{"python-headers", "103", "Python.h: No such file or directory", nativeNodeRuntime},
@@ -286,6 +287,16 @@ func TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout(t *testing.T) {
 	}
 }
 
+// The cohort only runs on CI's published image, so an omission named in the
+// table but missing from the removal switch would first panic there.
+func TestNativeUtilityOmissionsHaveRemovalLayers(t *testing.T) {
+	for _, tc := range nativeUtilityCases() {
+		if tc.removal != "" {
+			nativeUtilityRemovalLayer(tc.removal, tc.name)
+		}
+	}
+}
+
 func nativeUtilityRemovalLayer(removed, name string) string {
 	const pythonControls = `/usr/bin/python3 -c 'import setuptools' && /usr/bin/python3 -m pip --version && /usr/bin/python3-config --includes && test -f /usr/include/python3.11/Python.h`
 	var command string
@@ -306,6 +317,10 @@ func nativeUtilityRemovalLayer(removed, name string) string {
 		// Only the shared library goes; the tools' packages, headers and
 		// pkg-config stay, so PyVips fails on the missing libvips.so.42 alone.
 		command = `vips --version && rm $(dpkg -L libvips42 | grep '/libvips\.so\.42') && ldconfig && ! ldconfig -p | grep -q 'libvips\.so\.42' && /usr/bin/python3 -c 'import ctypes.util; assert ctypes.util.find_library("vips") is None' && test -f /usr/include/vips/vips.h && pkg-config --exists vips`
+	case "ghostscript":
+		// Only the program goes; libgs, its init resources and the URW fonts
+		// stay, so the original render fails on the missing gs alone.
+		command = `gs --version && rm /usr/bin/gs && test ! -e /usr/bin/gs && hash -r && ! command -v gs && ldconfig -p | grep -q 'libgs\.so\.10' && test -f "$(dpkg -L libgs10-common | grep '/Resource/Init/gs_init\.ps$')" && test -f /usr/share/fonts/type1/urw-base35/NimbusSans-Regular.t1`
 	case "python-metadata":
 		command = pythonControls + " && rm -r /usr/lib/python3/dist-packages/setuptools && test ! -e /usr/lib/python3/dist-packages/setuptools && /usr/bin/python3 -m pip --version && test -f /usr/include/python3.11/Python.h"
 	case "python-pip":

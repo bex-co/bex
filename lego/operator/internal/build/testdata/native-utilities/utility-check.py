@@ -77,6 +77,22 @@ def extra_cases():
   run(['gs','-q','-dSAFER','-dBATCH','-dNOPAUSE','-sDEVICE=png16m','-r72','-sOutputFile=font-color.png','font-color.pdf'],cwd=d)
   png=decode((d/'font-color.png').read_bytes());assert (png['width'],png['height'])==(64,48);pixels=bytes.fromhex(png['pixels_hex']);pixel=lambda x,y:pixels[(y*64+x)*3:(y*64+x+1)*3];assert pixel(8,36)==b'\xff\0\0' and pixel(48,36)==b'\0\xff\0' and pixel(60,5)==b'\xff\xff\xff';assert sum(pixel(x,y)==b'\0\0\0' for y in range(1,23) for x in range(2,25))>10
   (d/'bad.pdf').write_bytes(b'not a PDF');run(['gs','-q','-dSAFER','-dBATCH','-dNOPAUSE','-sDEVICE=png16m','-sOutputFile=bad.png','bad.pdf'],cwd=d,fails=True);results.append('original owned PDF + Helvetica/color PDF exact independent RGB and render failure')
+  # Ghostscript beyond the original render: m97's own PDF through its original argv, ps2pdf embedding the packaged URW font, text extraction, page selection, an authored GS_LIB, and refused programs.
+  gref=next(x for x in json.loads((ROOT/'original-cases.json').read_text()) if x['mid']==97)['validation_reference']['input'];(d/'qa-gs.pdf').write_bytes(base64.b64decode(gref['base64']))
+  gs=['gs','-q','-dBATCH','-dNOPAUSE','-sDEVICE=png16m','-r72'];page=lambda name:decode((d/name).read_bytes())
+  run(gs+['-dFirstPage=1','-dLastPage=1','-sOutputFile=qa-gs.png','qa-gs.pdf'],cwd=d);original=page('qa-gs.png');assert (original['width'],original['pixels_hex'])==(2,gref['expected_RGB_hex'])
+  (d/'two.ps').write_text('%!PS\n<< /PageSize [64 48] >> setpagedevice\n1 0 0 setrgbcolor 0 0 32 24 rectfill 0 0 1 setrgbcolor 32 0 32 24 rectfill 0 setgray /Helvetica findfont 14 scalefont setfont 4 32 moveto (Hi) show showpage\n0 1 0 setrgbcolor 0 0 64 48 rectfill showpage\n')
+  run(['ps2pdf','-dPDFSETTINGS=/prepress','two.ps','two.pdf'],cwd=d);two=(d/'two.pdf').read_bytes();assert two[:8]==b'%PDF-1.4' and b'/Count 2' in two and b'+Helvetica' in two and b'/FontFile3 ' in two
+  assert run(['gs','-q','-dBATCH','-dNOPAUSE','-sDEVICE=txtwrite','-dFirstPage=1','-dLastPage=1','-sOutputFile=-','two.pdf'],cwd=d).strip()==b'Hi'
+  run(gs+['-sOutputFile=all%d.png','two.pdf'],cwd=d);run(gs+['-dFirstPage=2','-dLastPage=2','-sOutputFile=second%d.png','two.pdf'],cwd=d)
+  assert sorted(p.name for p in d.glob('second*.png'))==['second1.png'] and page('second1.png')['pixels_hex']==page('all2.png')['pixels_hex']=='00ff00'*64*48
+  def gs_error(args,needle):
+   # Ghostscript prints the PostScript error on stdout and only its summary on stderr.
+   r=subprocess.run(args,cwd=d,capture_output=True,timeout=90);assert r.returncode==1 and needle in r.stdout and b'Unrecoverable error' in r.stderr,(args,r.returncode,r.stdout[-500:],r.stderr[-300:])
+  lib=d/'gslib';lib.mkdir();(lib/'qa-lib.ps').write_text('/qa-answer 6 7 mul def\n');probe=['gs','-q','-dNODISPLAY','-dBATCH','-dNOPAUSE','-c']
+  assert run(probe+['(qa-lib.ps) runlibfile qa-answer =='],cwd=d,env={**os.environ,'GS_LIB':str(lib)}).strip()==b'42';gs_error(probe+['(qa-lib.ps) runlibfile qa-answer =='],b'/undefinedfilename in (qa-lib.ps)')
+  gs_error(probe+['(/etc/passwd) (r) file'],b'/invalidfileaccess');gs_error(probe+['qa_undefined_op'],b'/undefined in qa_undefined_op')
+  results.append('Ghostscript: m97 original PDF via its own argv, ps2pdf embedding the packaged URW Helvetica, txtwrite text, page selection, authored GS_LIB lookup, SAFER file refusal and a failing program exit 1')
   # Manifest/copy bytes, Unicode and space names, exclude and stale removal.
   source=d/'assets';source.mkdir();expected={'two words.bin':bytes(range(256))*8,'naïve.txt':'Crème 雪'.encode()};
   for n,b in expected.items():(source/n).write_bytes(b)
