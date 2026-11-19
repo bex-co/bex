@@ -105,14 +105,21 @@ func TestGenerateBlueprintAfterGitToImageSourceSwitch(t *testing.T) {
 					t.Errorf("image entry declares %s:\n%s", gitOnly, manifest)
 				}
 			}
-			if entry["dockerCommand"] != "npm start" {
-				t.Errorf("dockerCommand = %v, want the saved command kept", entry["dockerCommand"])
+			// The Node build baked `npm start` into its own image; the
+			// prebuilt image runs its entrypoint instead (w8/m461).
+			if command, declared := entry["dockerCommand"]; declared {
+				t.Errorf("dockerCommand = %v, want the native start command dropped", command)
 			}
 
-			// Back on Git, the kept settings export again.
+			// Back on Git, the kept settings export again, once the commands
+			// the switch dropped are saved again.
 			repo := "https://github.com/bex-co/bex"
 			if _, err := svc.SetSourceAndRegistryCredential(ctx, "svc", sourcePatch{Repo: &repo}); err != nil {
 				t.Fatalf("switch back to Git: %v", err)
+			}
+			build, start := "npm install", "npm start"
+			if _, err := svc.SetCommands(ctx, "svc", &build, &start); err != nil {
+				t.Fatalf("save the native commands again: %v", err)
 			}
 			entry, manifest = generatedService(t, svc, "srv-svc")
 			if entry["rootDir"] != "examples/hello-node" || entry["buildFilter"] == nil || entry["runtime"] != "node" {

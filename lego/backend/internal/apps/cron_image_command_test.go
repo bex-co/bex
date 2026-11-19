@@ -84,18 +84,22 @@ func withoutClock(t *testing.T, raw []byte) []byte {
 	return out
 }
 
-func TestImageCronReadIsTheCloneContract(t *testing.T) {
-	body := withoutClock(t, getServiceBody(t, imageCron("qa-image-cron", "echo QA_CLONE_MARKER")))
+// matchCloneGolden fails unless body, a service read, equals the shared golden
+// at path that a lego/cli contract test drives the pinned client's clone path
+// against. BEX_UPDATE_GOLDEN=1 rewrites the golden first, for a read shape that
+// moved on purpose.
+func matchCloneGolden(t *testing.T, path string, body []byte) {
+	t.Helper()
 	if os.Getenv("BEX_UPDATE_GOLDEN") == "1" {
 		var pretty bytes.Buffer
 		if err := json.Indent(&pretty, body, "", "  "); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(imageCronCloneSource, append(pretty.Bytes(), '\n'), 0o644); err != nil {
+		if err := os.WriteFile(path, append(pretty.Bytes(), '\n'), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
-	raw, err := os.ReadFile(imageCronCloneSource)
+	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read the shared golden: %v", err)
 	}
@@ -107,8 +111,13 @@ func TestImageCronReadIsTheCloneContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("the image cron read drifted from the clone contract the pinned CLI is tested against\n got: %s\nwant: %s", body, raw)
+		t.Fatalf("the read drifted from %s, the clone contract the pinned CLI is tested against\n got: %s\nwant: %s", path, body, raw)
 	}
+}
+
+func TestImageCronReadIsTheCloneContract(t *testing.T) {
+	body := withoutClock(t, getServiceBody(t, imageCron("qa-image-cron", "echo QA_CLONE_MARKER")))
+	matchCloneGolden(t, imageCronCloneSource, body)
 	if start := nativeStartCommandFromRead(t, body); start != "echo QA_CLONE_MARKER" {
 		t.Fatalf("envSpecificDetails.startCommand = %q, want the cron's command", start)
 	}

@@ -17,11 +17,9 @@ limitations under the License.
 package apps
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -74,30 +72,7 @@ func imagePreDeployApp(svcType, preDeploy string) *appv1alpha1.App {
 func TestImagePreDeployReadIsTheCloneContract(t *testing.T) {
 	for _, svcType := range imagePreDeployKinds {
 		body := withoutClock(t, getServiceBody(t, imagePreDeployApp(svcType, "echo QA_PREDEPLOY_MARKER")))
-		golden := imagePreDeployCloneSource(svcType)
-		if os.Getenv("BEX_UPDATE_GOLDEN") == "1" {
-			var pretty bytes.Buffer
-			if err := json.Indent(&pretty, body, "", "  "); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.WriteFile(golden, append(pretty.Bytes(), '\n'), 0o644); err != nil {
-				t.Fatal(err)
-			}
-		}
-		raw, err := os.ReadFile(golden)
-		if err != nil {
-			t.Fatalf("%s: read the shared golden: %v", svcType, err)
-		}
-		var got, want any
-		if err := json.Unmarshal(body, &got); err != nil {
-			t.Fatal(err)
-		}
-		if err := json.Unmarshal(raw, &want); err != nil {
-			t.Fatal(err)
-		}
-		if !reflect.DeepEqual(got, want) {
-			t.Fatalf("%s: the image read drifted from the clone contract the pinned CLI is tested against\n got: %s\nwant: %s", svcType, body, raw)
-		}
+		matchCloneGolden(t, imagePreDeployCloneSource(svcType), body)
 
 		var read struct {
 			ServiceDetails struct {

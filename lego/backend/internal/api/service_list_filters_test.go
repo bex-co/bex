@@ -29,6 +29,11 @@ import (
 
 func TestServiceListFiltersThroughComposedServer(t *testing.T) {
 	node, docker, suspended, static := sampleApp("node"), sampleApp("docker"), sampleApp("suspended"), sampleApp("static")
+	// Built from a repo: an image with no repo reads as runtime image whatever
+	// runtime it keeps for a switch back (w8/m461).
+	for _, built := range []*appv1alpha1.App{node, docker, suspended} {
+		built.Spec.Repo, built.Spec.Image = "https://github.com/bex-co/example", ""
+	}
 	node.Spec.Runtime = "node"
 	docker.Spec.Runtime = "docker"
 	suspended.Spec.Runtime = "docker"

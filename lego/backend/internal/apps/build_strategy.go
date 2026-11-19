@@ -110,6 +110,36 @@ func staleImageRuntime(spec appv1alpha1.AppSpec) bool {
 	return strings.EqualFold(strings.TrimSpace(spec.Runtime), buildImage) && spec.Repo != "" && spec.Image == ""
 }
 
+// settleSourceSwitch drops what a source switch from before left on spec that
+// no longer describes its build. A Git repo replacing an image leaves a stale
+// runtime "image" (w8/088). A prebuilt image replacing a build leaves the build
+// command, which an image service refuses (w4/418), and a start command the
+// build baked into its image, which the image would otherwise run as its
+// Docker Command (w8/m461): a native or buildpack build's, or a native build
+// source's (nativeLink). A Dockerfile build's, an image's or a Docker build
+// source's command already is a Docker Command and stays. The runtime, builder
+// and root directory stay for a switch back (w4/m202); a command saved with the
+// switch is written after it.
+func settleSourceSwitch(before appv1alpha1.AppSpec, spec *appv1alpha1.AppSpec, nativeLink bool) {
+	if staleImageRuntime(*spec) {
+		spec.Runtime = ""
+	}
+	if !prebuiltImageSource(*spec) || prebuiltImageSource(before) {
+		return
+	}
+	spec.BuildCommand = ""
+	if before.BuildSource != nil {
+		if nativeLink {
+			// A linked cron keeps its command here (LinkBuildSource).
+			spec.StartCommand, spec.Command = "", ""
+		}
+		return
+	}
+	if !readsDockerCommand(buildStrategy(before)) {
+		spec.StartCommand = ""
+	}
+}
+
 // dockerDetails are Render's docker command and build context as a create
 // sends them, beside the inputs that decide whether its build reads them.
 // REST's envSpecificDetails and MCP's flat arguments resolve through it, so

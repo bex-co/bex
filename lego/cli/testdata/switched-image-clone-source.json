@@ -1,0 +1,56 @@
+{
+  "autoDeploy": "no",
+  "autoDeployTrigger": "off",
+  "displayName": "",
+  "id": "srv-qa-switched-image",
+  "idleTTLSeconds": 0,
+  "imagePath": "docker.io/jmalloc/echo-server:v0.3.7",
+  "immutableName": "qa-switched-image",
+  "name": "qa-switched-image",
+  "notificationsToSend": "default",
+  "notifyOnFail": "default",
+  "pushDeliveryMethod": "none",
+  "replicas": 1,
+  "rootDir": "",
+  "serviceDetails": {
+    "buildPlan": "starter",
+    "cache": {
+      "profile": "no-cache"
+    },
+    "env": "image",
+    "envSpecificDetails": {
+      "dockerCommand": "",
+      "dockerContext": "",
+      "dockerfilePath": ""
+    },
+    "healthCheckPath": "",
+    "internalAddress": "qa-switched-image:10000",
+    "ipAllowList": [
+      {
+        "cidrBlock": "0.0.0.0/0",
+        "description": "everywhere"
+      }
+    ],
+    "maintenanceMode": {
+      "enabled": false,
+      "uri": ""
+    },
+    "maxShutdownDelaySeconds": 30,
+    "numInstances": 1,
+    "openPorts": [
+      {
+        "port": 10000,
+        "protocol": "TCP"
+      }
+    ],
+    "plan": "free",
+    "port": 10000,
+    "renderSubdomainPolicy": "enabled",
+    "runtime": "image"
+  },
+  "slug": "qa-switched-image",
+  "suspended": "not_suspended",
+  "suspenders": [],
+  "type": "web_service",
+  "updatedAt": "2026-11-17T06:57:00Z"
+}

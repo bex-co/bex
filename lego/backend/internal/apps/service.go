@@ -5272,6 +5272,10 @@ type sourceFields struct {
 	// repo: a new repo starts at 0 and checkSourcePatch's repository check
 	// supplies it.
 	githubRepoID int64
+	// nativeLink reports that the service leaves a native build source, whose
+	// start command the build baked into its image (settleSourceSwitch).
+	// checkSourcePatch reads it from the carrier.
+	nativeLink bool
 }
 
 // applyTo writes the resolved source onto a's spec. One writer for all three
@@ -5295,6 +5299,7 @@ func (f sourceFields) applySourceChange(a *appv1alpha1.App) {
 }
 
 func (f sourceFields) applyTo(a *appv1alpha1.App) {
+	before := a.Spec
 	// A service given its own repo or image no longer builds from a build
 	// source (w2/m254 t005).
 	if f.repo != "" || f.image != "" {
@@ -5305,9 +5310,7 @@ func (f sourceFields) applyTo(a *appv1alpha1.App) {
 	a.Spec.Branch = f.branch
 	a.Spec.RegistryCredentialID = clonePtr(f.registryCredentialID)
 	core.SetGitHubRepoID(a, f.githubRepoID)
-	if staleImageRuntime(a.Spec) {
-		a.Spec.Runtime = ""
-	}
+	settleSourceSwitch(before, &a.Spec, f.nativeLink)
 }
 
 // resolveSourcePatch folds a sourcePatch onto the App's current source,

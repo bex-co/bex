@@ -34,6 +34,18 @@ import (
 // cron that silently runs its image entrypoint instead of the command it was
 // given is worse than one that refuses.
 
+// dockerCronApp is a cron built from its repository's Dockerfile, running
+// command. sampleApp's image with no repo is a prebuilt image source, which
+// reads as runtime image whatever runtime it retains (w8/m461).
+func dockerCronApp(command string) *appv1alpha1.App {
+	app := sampleApp("nightly")
+	app.Spec.Type = appv1alpha1.TypeCronJob
+	app.Spec.Repo, app.Spec.Image, app.Spec.Runtime = "https://github.com/bex-co/example", "", "docker"
+	app.Spec.Schedule = "*/10 * * * *"
+	app.Spec.Command = command
+	return app
+}
+
 // cronCommandFromRead pulls the docker projection's dockerCommand out of a
 // service read, which is exactly where the pinned client looks for it
 // (pkg/service/clone.go startCommandFromEnvDetails).
@@ -154,11 +166,7 @@ func TestRESTCreateDockerWebServiceKeepsItsStartCommand(t *testing.T) {
 // `services update --cron-command` cannot report a no-op it did not perform
 // and `create --from` cannot clone an empty command.
 func TestReadProjectsStoredDockerCronCommand(t *testing.T) {
-	app := sampleApp("nightly")
-	app.Spec.Type = appv1alpha1.TypeCronJob
-	app.Spec.Runtime = "docker"
-	app.Spec.Schedule = "*/10 * * * *"
-	app.Spec.Command = "echo stored"
+	app := dockerCronApp("echo stored")
 	svc, _ := newService(nil, app)
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
@@ -180,10 +188,7 @@ func TestReadProjectsStoredDockerCronCommand(t *testing.T) {
 // The update round trip end to end, which is the journey the sweep saw lie:
 // PATCH the docker spelling, read it back in the same place.
 func TestUpdateDockerCronCommandRoundTripsThroughTheRead(t *testing.T) {
-	app := sampleApp("nightly")
-	app.Spec.Type = appv1alpha1.TypeCronJob
-	app.Spec.Runtime = "docker"
-	app.Spec.Schedule = "*/10 * * * *"
+	app := dockerCronApp("")
 	svc, cl := newService(nil, app)
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
@@ -227,11 +232,7 @@ func TestNativeCronCommandUnchanged(t *testing.T) {
 // MCP and GraphQL must report the same value as REST — one stored fact, one
 // reading, on every surface (t005).
 func TestDockerCronCommandAgreesAcrossRESTAndGraphQL(t *testing.T) {
-	app := sampleApp("nightly")
-	app.Spec.Type = appv1alpha1.TypeCronJob
-	app.Spec.Runtime = "docker"
-	app.Spec.Schedule = "*/10 * * * *"
-	app.Spec.Command = "echo stored"
+	app := dockerCronApp("echo stored")
 	svc, _ := newService(nil, app)
 
 	view, err := svc.Get(context.Background(), "nightly")
@@ -256,11 +257,7 @@ func TestDockerCronCommandAgreesAcrossRESTAndGraphQL(t *testing.T) {
 // must carry the command in both spellings or `create --from` clones an empty
 // one (w9/m165, caught live on dev-9 after the first two fixes).
 func TestDockerCronProjectsCommandInBothSpellings(t *testing.T) {
-	app := sampleApp("nightly")
-	app.Spec.Type = appv1alpha1.TypeCronJob
-	app.Spec.Runtime = "docker"
-	app.Spec.Schedule = "*/10 * * * *"
-	app.Spec.Command = "echo stored"
+	app := dockerCronApp("echo stored")
 	svc, _ := newService(nil, app)
 	view, err := svc.Get(context.Background(), "nightly")
 	if err != nil {

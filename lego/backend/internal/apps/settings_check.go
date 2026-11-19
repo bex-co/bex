@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"fmt"
+	"log"
 	"slices"
 	"strings"
 
@@ -546,6 +547,23 @@ func probedSource(ctx context.Context, next sourceFields) (sourceFields, bool) {
 	return probed, same
 }
 
+// linksNativeBuildSource reports whether a deploys a native build source's
+// builds, whose start command the build bakes into its image; a Docker or image
+// source's is a Docker Command (w3/069). A carrier that cannot be read counts
+// as native, so a source switch drops the command rather than run it on an
+// image it was not written for.
+func (s *Service) linksNativeBuildSource(ctx context.Context, a *appv1alpha1.App) bool {
+	if a.Spec.BuildSource == nil {
+		return false
+	}
+	carrier, err := s.linkedCarrier(ctx, a)
+	if err != nil {
+		log.Printf("apps: %v; treating its command as a native one", err)
+		return true
+	}
+	return buildSourceNative(carrier.Spec)
+}
+
 // checkSourcePatch folds patch onto a's current source and runs every gate
 // SetSourceAndRegistryCredential owes before its first write: the owner match,
 // the protected-environment guard, per-field validation, and — only when the
@@ -578,7 +596,9 @@ func (s *Service) checkSourcePatch(ctx context.Context, a *appv1alpha1.App, patc
 		sameStringPtr(next.registryCredentialID, a.Spec.RegistryCredentialID) {
 		return next, false, nil
 	}
+	next.nativeLink = s.linksNativeBuildSource(ctx, a)
 	if probed, ok := probedSource(ctx, next); ok {
+		probed.nativeLink = next.nativeLink
 		return probed, true, nil
 	}
 	probe := a.DeepCopy()

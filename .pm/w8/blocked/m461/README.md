@@ -1,17 +1,17 @@
 # w8 · m461 — A service switched from a native runtime to a prebuilt image runs the image, and reads as an image service
 
-**Worker:** worker8 **Goal:** `bex services update <native service> --image <ref>` leaves a service that deploys the image with its own entrypoint, reads `runtime: image` on every surface, and clones with the pinned CLI, the way an image-created service does. **Status:** todo
+**Worker:** worker8 **Goal:** `bex services update <native service> --image <ref>` leaves a service that deploys the image with its own entrypoint, reads `runtime: image` on every surface, and clones with the pinned CLI, the way an image-created service does. **Status:** blocked (t001–t006 done 2026-11-17; t007 waits for the production roll that carries the fix)
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                  | est | depends_on |
 | ---- | ---------------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Report an image-only source as runtime `image`, whatever native runtime the service retains for a switch back          | 30m | —          |
-| t002 | A switch from a native runtime to an image stops carrying the native start and build commands into the image's command | 45m | t001       |
-| t003 | Blast radius: every source-switch caller, service type and source kind                                                 | 30m | t002       |
-| t004 | Render parity                                                                                                          | 20m | t003       |
-| t005 | Simplify                                                                                                               | 15m | t004       |
-| t006 | Test coverage                                                                                                          | 30m | t004       |
+| t001 | Report an image-only source as runtime `image`, whatever native runtime the service retains for a switch back — **DONE** | 30m | —          |
+| t002 | A switch from a native runtime to an image stops carrying the native start and build commands into the image's command — **DONE** | 45m | t001       |
+| t003 | Blast radius: every source-switch caller, service type and source kind — **DONE** | 30m | t002       |
+| t004 | Render parity — **DONE** | 20m | t003       |
+| t005 | Simplify — **DONE** | 15m | t004       |
+| t006 | Test coverage — **DONE** | 30m | t004       |
 | t007 | Closeout                                                                                                               | 15m | t006       |
 
 ## Definition of done
@@ -27,6 +27,45 @@ Verified on production after a roll that carries the change, with bex CLI v0.7.0
    - An image-created echo-server service still deploys and reads as before.
    - Switching back with `--repo … --branch main` (plus `--start-command 'node app.js'` if t002 clears the native command) reads `runtime: node`, and its deploy serves `Hello from Render!`.
 6. Delete every fixture by ID and confirm 404s.
+
+## Results (2026-11-17)
+
+The fix: `core.EffectiveRuntime` reads an image with no repo as runtime `image` whatever runtime it keeps (t001), and the one source writer, `sourceFields.applyTo` → `settleSourceSwitch`, drops the build command and a start command the build baked into its image on a switch to a prebuilt image (t002). [ADR004](../../../../docs/ADR004-app-deployment.md) § w8/m461 records the rule: a command that already was a Docker Command carries over, a same-PATCH command runs, and the dropped commands are not restored by a switch back.
+
+### Blast radius (t003)
+
+| Caller | Writes the source through | Result |
+| --- | --- | --- |
+| REST `PATCH /v1/services/{id}` `image` | `servicePatchTable` source row → `SetSourceAndRegistryCredential` → `applySourceChange` → `applyTo` (the preflight probe too) | rule holds; a same-PATCH `startCommand` or `dockerCommand` row runs after it and wins |
+| GraphQL `setImage` (dashboard Settings → Source → Existing Image) | `SetSourceAndRegistryCredential` | rule holds |
+| MCP `update_service` `image` | the same patch table as REST | rule holds |
+| Blueprint sync to `runtime: image` | its own appliers (`probeBlueprintServiceSpec`); `runtime: image` is declared, since render.yaml requires a runtime | the same rule for a service that builds itself (w8/m70); a declared command wins. A sync does not read a linked service's carrier, so it keeps a linked command |
+| Build source link → image | `applyTo` clears `spec.buildSource`; `checkSourcePatch` reads the carrier (`linksNativeBuildSource`) | a native source's start command (and a linked cron's `command`) is dropped; a Docker or image source's `dockerCommand` (w3/069) carries over |
+
+| Source left | web, private, worker | cron |
+| --- | --- | --- |
+| native runtime | build + start dropped, runtime kept | the same; its native start command is dropped |
+| buildpack | start dropped | start dropped |
+| Dockerfile (`runtime: docker`) | start (the Docker Command) kept | `command` kept |
+| native cron with an explicit `command` override | — | override kept (it already ran through the shell) |
+| native build source link | start dropped | `command` dropped |
+| Docker build source link | `dockerCommand` kept | `command` kept |
+| another image | Docker Command kept | `command` kept |
+| image → Git (w8/088) | unchanged: reads its Docker build | unchanged |
+
+Pinned by `TestSourceSwitchToImageAcrossCallersTypesAndSources` (75 cases: every caller × type × source). Dashboard: Settings → Source → Existing Image sends only `setImage(id, image, registryCredentialId)`. Its Deploy card shows `startCommand` as the Docker Command, which read `node app.js` before the fix and is now empty. No dashboard change was needed.
+
+**Production count: not read.** `scripts/fetch-app-kubeconfig.sh` refuses to run because this checkout's `.env` is mode 664 (it holds production credentials; the fix is `chmod 600 .env`, ADR079 finding 1), and this host has no `kubectl`. Changing the user's credential file was out of scope. A service switched before the fix keeps running its former native start command as a Docker Command. It now reads that way (`dockerCommand` on REST, the Docker Command field in the dashboard), so its owner can see and clear it. No one-off migration was made.
+
+### Render parity (t004)
+
+- `TestSwitchedServiceReadsAsAnImageCreatedOne` creates a native Node service and an image service through REST, switches the first, and diffs the reads without identity and history. Every field matches except the port: an image-created web service serves on its image's exposed port (`portMode: web-image-v1`, stamped at create only, w4/m243), while a switched one keeps its configured port 10000. Filed as w8/337. The definition of done's step 3 already relies on the kept port.
+- GraphQL `service { runtime startCommand buildCommand }` reads `image`, `""`, `""`; MCP `get_service` reads runtime `image` with Render's image `envSpecificDetails` (an empty `dockerCommand`, no build or start command, w9/m473); the dashboard reads the same GraphQL fields (Source and Deploy sections, no Runtime or Build section without a repo).
+- [ADR018](../../../../docs/ADR018-render-parity.md)'s runtime row records the switch as an extension and its Render basis: Render's docs don't say whether a Git-backed service can switch to an image, and an image-backed service reads `runtime: image` with an optional Docker Command.
+
+### What t007 replays
+
+The definition of done above on production, after the roll that carries this change. With the pinned CLI, switch back in two calls: an image service refuses `--start-command` client-side (`pkg/service/update.go`), so first send `--repo … --branch main`, then `--build-command yarn --start-command 'node app.js'`.
 
 ## Finding
 
