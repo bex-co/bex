@@ -1806,6 +1806,17 @@ func (s *Service) followPods(ctx context.Context, q LogQuery, selectors []string
 	ch := make(chan LogEntry, 64)
 	ended := make(chan followEnd, 8)
 	follows := make(map[string]*podFollow, len(pods))
+	// An App container's follow opens capWarmUp before the tail's bound. Its
+	// earlier lines pass the line cap below and then fail q.keep's bound, so
+	// a tail opened mid-flood starts with the shipper's bucket, not a full one
+	// (w8/341). The kubelet serves a follow from the container's current log
+	// file, which bounds the replay. A follow from offset 0 replays the whole
+	// file anyway.
+	openFrom := q.readFrom()
+	warming := target.logType == LogTypeApp && !openFrom.IsZero()
+	if warming {
+		openFrom = openFrom.Add(-capWarmUp)
+	}
 
 	attach := func(pods []corev1.Pod) {
 		for i := range pods {
@@ -1828,7 +1839,7 @@ func (s *Service) followPods(ctx context.Context, q LogQuery, selectors []string
 			follows[key] = &podFollow{active: true, restarts: restarts}
 			go func(name, key string) {
 				var opened atomic.Bool
-				s.streamContainerLogs(ctx, target.namespace, target.name, name, target.container, target.logType, q.readFrom(), ch, &opened)
+				s.streamContainerLogs(ctx, target.namespace, target.name, name, target.container, target.logType, openFrom, warming, ch, &opened)
 				select {
 				case ended <- followEnd{key: key, opened: opened.Load()}:
 				case <-ctx.Done():
@@ -2127,7 +2138,7 @@ func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			s.streamContainerLogs(ctx, ns, q.App, pod.Name, container, LogTypeBuild, q.readFrom(), ch, &opened)
+			s.streamContainerLogs(ctx, ns, q.App, pod.Name, container, LogTypeBuild, q.readFrom(), false, ch, &opened)
 		}()
 	}
 	// Phases are attached in the pod's own order: those that ended (after
@@ -2143,7 +2154,7 @@ func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, 
 		go func() {
 			defer wg.Done()
 			for _, container := range ended {
-				s.streamContainerLogs(ctx, ns, q.App, pod.Name, container, LogTypeBuild, q.readFrom(), ch, &opened)
+				s.streamContainerLogs(ctx, ns, q.App, pod.Name, container, LogTypeBuild, q.readFrom(), false, ch, &opened)
 			}
 			for _, container := range running {
 				startStream(container)
@@ -2532,11 +2543,27 @@ func (s *Service) appPodNames(ctx context.Context, namespace string, q LogQuery)
 
 // readPodLogs is the store-less history read of one App pod. It keeps the
 // shipper's per-instance line cap (linecap.go), so a deployment without Loki
-// shows what one with it stores.
+// shows what one with it stores. A read of the last tail lines asks for
+// capWarmUpLines more (w8/341). When the kubelet sends them all, more log lies
+// before them, so they only count: a flood that began before the last tail
+// lines has emptied the bucket, as it emptied the shipper's. A shorter answer
+// is the container's whole log, whose bucket starts at its first line, as the
+// shipper's did, so every line it holds counts and shows.
 func (s *Service) readPodLogs(ctx context.Context, namespace, service, pod string, tail int64) ([]LogEntry, error) {
-	entries, err := s.readContainerLogs(ctx, namespace, service, pod, core.AppContainer, LogTypeApp, tail)
+	read := tail
+	if tail > 0 {
+		read += capWarmUpLines
+	}
+	entries, err := s.readContainerLogs(ctx, namespace, service, pod, core.AppContainer, LogTypeApp, read)
+	warm := 0
+	if tail > 0 && len(entries) >= int(read) {
+		warm = len(entries) - int(tail)
+	}
 	capped := lineCap{}
-	return slices.DeleteFunc(entries, func(e LogEntry) bool { return !capped.admit(e) }), err
+	for _, e := range entries[:warm] {
+		capped.admit(e)
+	}
+	return slices.DeleteFunc(entries[warm:], func(e LogEntry) bool { return !capped.admit(e) }), err
 }
 
 // readContainerLogs reads up to tail lines from one pod's container, tagged with
@@ -2628,7 +2655,10 @@ func (s *Service) collectPreDeployLogs(ctx context.Context, appNS, resource stri
 	return q.capToLimit(q.filter(out)), nil
 }
 
-func (s *Service) streamContainerLogs(ctx context.Context, namespace, service, pod, container, logType string, since time.Time, ch chan<- LogEntry, opened *atomic.Bool) {
+// streamContainerLogs follows one container's log from since onto ch. warming
+// says the follow opens capWarmUp before the tail's own bound (followPods), so
+// its first line can be older than anything the tail shows.
+func (s *Service) streamContainerLogs(ctx context.Context, namespace, service, pod, container, logType string, since time.Time, warming bool, ch chan<- LogEntry, opened *atomic.Bool) {
 	rc, err := s.PodLogsFollow(ctx, namespace, pod, container, since)
 	if err != nil {
 		return
@@ -2649,7 +2679,8 @@ func (s *Service) streamContainerLogs(ctx context.Context, namespace, service, p
 	// A follow starts at its since second, and the kubelet stamps nothing on
 	// the rest of a split line whose first chunk it skipped as older. So an
 	// unstamped first line is held: the kubelet's own answer when the stream
-	// ends there, the tenant's text when more output follows.
+	// ends there, the tenant's text when more output follows. A warming
+	// follow drops that text: its line began before the warm-up did.
 	sc := bufio.NewScanner(rc)
 	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	// A datastore follow drops what its historical read drops, the kubelet's
@@ -2671,7 +2702,7 @@ func (s *Service) streamContainerLogs(ctx context.Context, namespace, service, p
 			continue
 		}
 		if held != nil {
-			if !send(tenantLogEntry(service, pod, container, logType, "", *held)) {
+			if !warming && !send(tenantLogEntry(service, pod, container, logType, "", *held)) {
 				return
 			}
 			held = nil

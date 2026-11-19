@@ -441,8 +441,10 @@ func TestTheLiveTailStartsNoEarlierThanThePlansWindow(t *testing.T) {
 			if len(stream.sinces) == 0 {
 				t.Fatal("the tail never followed the pod")
 			}
+			// An App tail opens the line cap's warm-up early (w8/341); the
+			// ages above show it emits none of those lines.
 			for _, since := range stream.sinces {
-				if floor := now.Add(-14 * day); since.Before(floor.Add(-time.Minute)) {
+				if floor := now.Add(-14 * day); since.Before(floor.Add(-capWarmUp - time.Minute)) {
 					t.Errorf("kubelet asked from %s, before the floor %s", since.UTC(), floor.UTC())
 				}
 			}

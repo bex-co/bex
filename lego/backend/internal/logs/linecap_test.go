@@ -19,9 +19,11 @@ package logs
 import (
 	"context"
 	"fmt"
+	"io"
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -155,6 +157,58 @@ func TestLineCapLeavesPlatformGeneratedLinesUncapped(t *testing.T) {
 	}
 }
 
+// settledTail runs a tail of q on svc until the lines it emits stop growing,
+// then closes it and returns them. A scripted pod log is read once and ends.
+// A non-nil read reports whether every pod's log has been read to its end: a
+// follow replaying its warm-up emits nothing for a while.
+func settledTail(t *testing.T, svc *Service, q LogQuery, read func() bool) []LogEntry {
+	t.Helper()
+	var mu sync.Mutex
+	var got []LogEntry
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		done <- svc.followLogs(ctx, q, func(e LogEntry) error {
+			mu.Lock()
+			defer mu.Unlock()
+			got = append(got, e)
+			return nil
+		}, nil)
+	}()
+	deadline := time.Now().Add(30 * time.Second)
+	for last, settled := -1, 0; settled < 5; {
+		if time.Now().After(deadline) {
+			t.Fatalf("the tail never settled: %d lines", last)
+		}
+		time.Sleep(20 * time.Millisecond)
+		mu.Lock()
+		n := len(got)
+		mu.Unlock()
+		if n == last && n > 0 && (read == nil || read()) {
+			settled++
+		} else {
+			last, settled = n, 0
+		}
+	}
+	cancel()
+	<-done
+	mu.Lock()
+	defer mu.Unlock()
+	return slices.Clone(got)
+}
+
+// byPod groups emitted lines by the pod that wrote them: a tail names an
+// instance by its public id, and the fixture's lines start with their pod's
+// name.
+func byPod(entries []LogEntry) map[string][]LogEntry {
+	out := map[string][]LogEntry{}
+	for _, e := range entries {
+		pod, _, _ := strings.Cut(e.Message, " ")
+		out[pod] = append(out[pod], e)
+	}
+	return out
+}
+
 // The cap applies on the tail path itself: a follow of an instance printing
 // 20,000 lines a minute passes at most the cap and its neighbor everything,
 // and a text filter selects among the capped lines, as a history read does.
@@ -166,7 +220,7 @@ func TestAppTailDropsAnInstancesExcessAsHistoryDoes(t *testing.T) {
 		}
 		return b.String()
 	}
-	tail := func(q LogQuery) map[string][]string {
+	tail := func(q LogQuery) map[string][]LogEntry {
 		logs := newScriptedStream(map[string][]string{
 			"web-1": {stream(floodLines("web-1", 40000, 2*time.Minute))},
 			"web-2": {stream(floodLines("web-2", 120, 2*time.Minute))},
@@ -174,46 +228,9 @@ func TestAppTailDropsAnInstancesExcessAsHistoryDoes(t *testing.T) {
 		svc := tailService(logs.follow, sampleApp("web"),
 			appPodIn("web", "web-1", corev1.PodRunning, containerRunning, 0),
 			appPodIn("web", "web-2", corev1.PodRunning, containerRunning, 0))
-		var mu sync.Mutex
-		got := map[string][]string{}
-		var stamps []LogEntry
-		ctx, cancel := context.WithCancel(context.Background())
-		done := make(chan error, 1)
-		go func() {
-			done <- svc.followLogs(ctx, q, func(e LogEntry) error {
-				mu.Lock()
-				defer mu.Unlock()
-				// The tail names an instance by its public id; the fixture's
-				// lines carry their pod's name.
-				pod, _, _ := strings.Cut(e.Message, " ")
-				got[pod] = append(got[pod], e.Message)
-				if pod == "web-1" {
-					stamps = append(stamps, e)
-				}
-				return nil
-			}, nil)
-		}()
-		// Each scripted log is read once and ends: wait until the emitted
-		// count stops growing.
-		deadline := time.Now().Add(30 * time.Second)
-		for last, settled := -1, 0; settled < 5; {
-			if time.Now().After(deadline) {
-				t.Fatalf("the tail never settled: %d lines of web-1, %d of web-2", len(got["web-1"]), len(got["web-2"]))
-			}
-			time.Sleep(20 * time.Millisecond)
-			mu.Lock()
-			n := len(got["web-1"]) + len(got["web-2"])
-			mu.Unlock()
-			if n == last && n > 0 {
-				settled++
-			} else {
-				last, settled = n, 0
-			}
-		}
-		cancel()
-		<-done
+		got := byPod(settledTail(t, svc, q, nil))
 		if q.Search == nil {
-			for minute, n := range perMinute(t, stamps) {
+			for minute, n := range perMinute(t, got["web-1"]) {
 				if minute == 0 && n > appLineBurst+60*appLineRate || minute > 0 && n > 6001 {
 					t.Errorf("minute %d of the flood passed %d lines", minute, n)
 				}
@@ -232,38 +249,159 @@ func TestAppTailDropsAnInstancesExcessAsHistoryDoes(t *testing.T) {
 	}
 	// A filter narrows the capped lines; it never brings back a dropped one.
 	var want []string
-	for _, m := range all["web-1"] {
+	for _, m := range messages(all["web-1"]) {
 		if strings.Contains(m, "web-1 line 1") {
 			want = append(want, m)
 		}
 	}
-	if got := tail(LogQuery{App: "web", Search: []string{"web-1 line 1"}})["web-1"]; !slices.Equal(got, want) {
+	if got := messages(tail(LogQuery{App: "web", Search: []string{"web-1 line 1"}})["web-1"]); !slices.Equal(got, want) {
 		t.Errorf("a text filter kept %d lines, want the %d capped lines that match", len(got), len(want))
 	}
 }
 
+// sinceStream serves each pod's lines from since on, as the kubelet's
+// SinceTime does. read reports whether every pod's log has been read to its
+// end.
+func sinceStream(lines map[string][]LogEntry) (stream PodLogStream, read func() bool) {
+	var ended atomic.Int32
+	stream = func(_ context.Context, _, pod, _ string, since time.Time) (io.ReadCloser, error) {
+		var b strings.Builder
+		for _, e := range lines[pod] {
+			if at, _ := time.Parse(time.RFC3339Nano, e.Timestamp); !at.Before(since) {
+				fmt.Fprintf(&b, "%s %s\n", e.Timestamp, e.Message)
+			}
+		}
+		return io.NopCloser(&endReader{Reader: strings.NewReader(b.String()), ended: &ended}), nil
+	}
+	return stream, func() bool { return int(ended.Load()) >= len(lines) }
+}
+
+// endReader counts itself in ended once it has been read to its end.
+type endReader struct {
+	io.Reader
+	ended *atomic.Int32
+	once  sync.Once
+}
+
+func (r *endReader) Read(p []byte) (int, error) {
+	n, err := r.Reader.Read(p)
+	if err == io.EOF {
+		r.once.Do(func() { r.ended.Add(1) })
+	}
+	return n, err
+}
+
+// keptFrom is what the shipper keeps of one instance's whole log, from its
+// first line, stamped at or after from.
+func keptFrom(lines []LogEntry, from time.Time) int {
+	c, kept := lineCap{}, 0
+	for _, e := range lines {
+		if at, _ := time.Parse(time.RFC3339Nano, e.Timestamp); c.admit(e) && !at.Before(from) {
+			kept++
+		}
+	}
+	return kept
+}
+
+// w8/341: a tail opened while an instance floods starts with the bucket the
+// shipper has for it, not a full one. A pod that has printed 200 lines a
+// second for five minutes passes the 100 a second history keeps from the
+// moment the tail opens; it used to pass a fresh 6,000-line burst on top. A
+// quiet pod still passes its whole burst, and nothing written before the
+// tail's bound is shown.
+func TestATailOpenedMidFloodShowsWhatHistoryKeeps(t *testing.T) {
+	opened := capEpoch.Add(5 * time.Minute)
+	flood := floodLines("web-1", 72000, 6*time.Minute) // 200 a second
+	quiet := floodLines("web-2", 300, 5*time.Minute)   // one a second
+	for i := range 20000 {
+		quiet = append(quiet, appLine("web-2", opened, fmt.Sprintf("web-2 burst %d", i)))
+	}
+	stream, read := sinceStream(map[string][]LogEntry{"web-1": flood, "web-2": quiet})
+	svc := tailService(stream, sampleApp("web"),
+		appPodIn("web", "web-1", corev1.PodRunning, containerRunning, 0),
+		appPodIn("web", "web-2", corev1.PodRunning, containerRunning, 0))
+	got := byPod(settledTail(t, svc, LogQuery{App: "web", Since: opened}, read))
+
+	for pod, lines := range got {
+		for _, e := range lines {
+			if at, err := time.Parse(time.RFC3339Nano, e.Timestamp); err != nil || at.Before(opened) {
+				t.Fatalf("%s: the tail showed %q stamped %s, before it opened", pod, e.Message, e.Timestamp)
+			}
+		}
+	}
+	// History keeps about 6,000 of the flood's last 12,000 lines; the line
+	// cap's phase can differ by one.
+	if want, n := keptFrom(flood, opened), len(got["web-1"]); n < want-2 || n > want+2 {
+		t.Errorf("the flooding instance's tail passed %d lines, want the %d history keeps", n, want)
+	}
+	if n := len(got["web-2"]); n != appLineBurst {
+		t.Errorf("the quiet instance's tail passed %d of its 20,000-line burst, want the %d-line burst", n, appLineBurst)
+	}
+}
+
 // A deployment without the durable store reads history from the pods. It keeps
-// the same cap, so it shows what the store would hold.
+// the same cap, so it shows what the store would hold: of 20,000 lines written
+// at once the store keeps the first 6,000, so the last 100 are gone, while a
+// neighbor keeps every line.
 func TestStorelessHistoryKeepsTheCap(t *testing.T) {
-	var flood, quiet []string
-	for _, e := range floodLines("web-1", 20000, 0) {
-		flood = append(flood, e.Timestamp+" "+e.Message)
+	svc := &Service{
+		Base: &core.Base{Client: fakeClientWith(sampleApp("web"), podFor("web", "web-1"), podFor("web", "web-2")), Namespace: "default"},
+		PodLogs: tailedLogs(map[string][]LogEntry{
+			"web-1": floodLines("web-1", 20000, 0),
+			"web-2": floodLines("web-2", 30, 0),
+		}),
 	}
-	for _, e := range floodLines("web-2", 30, 0) {
-		quiet = append(quiet, e.Timestamp+" "+e.Message)
-	}
-	svc := newService(map[string][]string{"web-1": flood, "web-2": quiet},
-		sampleApp("web"), podFor("web", "web-1"), podFor("web", "web-2"))
-	entries, err := svc.QueryLogs(context.Background(), LogQuery{App: "web", Limit: 100000})
+	entries, err := svc.QueryLogs(context.Background(), LogQuery{App: "web", Limit: 100})
 	if err != nil {
 		t.Fatalf("QueryLogs: %v", err)
 	}
 	got := map[string]int{}
-	for _, e := range entries {
-		pod, _, _ := strings.Cut(e.Message, " ")
-		got[pod]++
+	for pod, lines := range byPod(entries) {
+		got[pod] = len(lines)
 	}
-	if got["web-1"] != appLineBurst || got["web-2"] != 30 {
-		t.Fatalf("store-less history kept %v, want the flood's %d-line burst and every neighbor line", got, appLineBurst)
+	if got["web-1"] != 0 || got["web-2"] != 30 {
+		t.Fatalf("store-less history kept %v, want none of the flood's last lines and every neighbor line", got)
+	}
+}
+
+// tailedLogs serves each pod's last tail lines, as the kubelet's TailLines
+// does; tail <= 0 serves them all.
+func tailedLogs(lines map[string][]LogEntry) PodLogSource {
+	return func(_ context.Context, _, pod, _ string, tail int64) (io.ReadCloser, error) {
+		from := 0
+		if n := len(lines[pod]); tail > 0 && int(tail) < n {
+			from = n - int(tail)
+		}
+		var b strings.Builder
+		for _, e := range lines[pod][from:] {
+			fmt.Fprintf(&b, "%s %s\n", e.Timestamp, e.Message)
+		}
+		return io.NopCloser(strings.NewReader(b.String())), nil
+	}
+}
+
+// w8/341: the store-less history read asks the kubelet for an instance's last
+// lines, and those lines' bucket is the one the flood before them emptied. Of
+// the last 100 lines of a pod printing 200 a second, it keeps the half the
+// store would hold; it used to keep all 100.
+func TestStorelessHistoryCountsTheFloodBeforeItsLines(t *testing.T) {
+	flood := floodLines("web-1", 60000, 5*time.Minute) // 200 a second
+	svc := &Service{
+		Base:    &core.Base{Client: fakeClientWith(sampleApp("web"), podFor("web", "web-1")), Namespace: "default"},
+		PodLogs: tailedLogs(map[string][]LogEntry{"web-1": flood}),
+	}
+	entries, err := svc.QueryLogs(context.Background(), LogQuery{App: "web", Limit: 100})
+	if err != nil {
+		t.Fatalf("QueryLogs: %v", err)
+	}
+	last100 := flood[len(flood)-100:]
+	first, _ := time.Parse(time.RFC3339Nano, last100[0].Timestamp)
+	if want := keptFrom(flood, first); len(entries) < want-1 || len(entries) > want+1 {
+		t.Fatalf("store-less history kept %d of the last 100 lines, want the %d the store holds", len(entries), want)
+	}
+	for _, e := range entries {
+		if at, _ := time.Parse(time.RFC3339Nano, e.Timestamp); at.Before(first) {
+			t.Fatalf("store-less history showed %q from the warm-up", e.Message)
+		}
 	}
 }

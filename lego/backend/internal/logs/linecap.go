@@ -31,7 +31,21 @@ const (
 	appLineBurst = 6000 // lines
 )
 
-// lineCap is one tail's buckets, by instance. A bucket starts full and is
+// A read that starts mid-log first replays an instance's earlier lines through
+// its bucket without showing them, so the bucket holds what the shipper's does
+// (w8/341). Before, a tail opened during a flood started full and showed up to
+// 6,000 lines history had dropped. The warm-up is two refills long: a pod that
+// wrote 150 lines a second or more through it (capWarmUpLines in capWarmUp)
+// has emptied its bucket, as the shipper's is, and a quiet one starts full. A
+// tail warms by time; the store-less read, which asks the kubelet for lines by
+// count, warms by count.
+const (
+	capWarmUpSeconds = 2 * appLineBurst / appLineRate
+	capWarmUp        = capWarmUpSeconds * time.Second
+	capWarmUpLines   = appLineBurst + capWarmUpSeconds*appLineRate
+)
+
+// lineCap is one read's buckets, by instance. A bucket starts full and is
 // advanced by each line's own timestamp, not by the clock: the shipper counts
 // a line moments after it is written, while a tail may replay its start
 // bound's backlog or drain late behind a slow viewer.

@@ -1788,8 +1788,9 @@ func TestSubscribeResumesFromLastEventID(t *testing.T) {
 	req.Header.Set("Last-Event-ID", "2026-07-05T00:00:02Z")
 	serveSubscribe(mux, rec, req)
 
-	if len(since) != 1 || !since[0].Equal(time.Date(2026, 7, 5, 0, 0, 2, 0, time.UTC)) {
-		t.Fatalf("follow opened with since=%v, want the Last-Event-ID bound", since)
+	// The follow opens the line cap's warm-up before the bound (w8/341).
+	if len(since) != 1 || !since[0].Equal(time.Date(2026, 7, 5, 0, 0, 2, 0, time.UTC).Add(-capWarmUp)) {
+		t.Fatalf("follow opened with since=%v, want the Last-Event-ID bound less the cap's warm-up", since)
 	}
 	body := rec.Body.String()
 	if strings.Contains(body, "live one") {
@@ -1842,8 +1843,8 @@ func TestATailWithNoStartTimeBeginsWhenItOpens(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if len(since) == 0 || !since[0].Equal(opened.Add(-time.Second)) {
-		t.Fatalf("follow opened with since=%v, want one second before the tail opened", since)
+	if len(since) == 0 || !since[0].Equal(opened.Add(-time.Second-capWarmUp)) {
+		t.Fatalf("follow opened with since=%v, want one second and the cap's warm-up before the tail opened", since)
 	}
 }
 
@@ -1896,9 +1897,9 @@ func TestExplicitStartTimeWinsOverLastEventID(t *testing.T) {
 	req.Header.Set("Last-Event-ID", "2026-07-05T00:00:02Z")
 	serveSubscribe(mux, rec, req)
 
-	want := time.Date(2026, 7, 5, 0, 0, 5, 0, time.UTC)
+	want := time.Date(2026, 7, 5, 0, 0, 5, 0, time.UTC).Add(-capWarmUp)
 	if len(since) != 1 || !since[0].Equal(want) {
-		t.Fatalf("follow opened with since=%v, want the explicit startTime %v", since, want)
+		t.Fatalf("follow opened with since=%v, want the explicit startTime less the cap's warm-up, %v", since, want)
 	}
 }
 
@@ -1926,9 +1927,9 @@ func TestReconnectAdvancesPastStartTime(t *testing.T) {
 	req.Header.Set("Last-Event-ID", "2026-07-05T00:00:08Z")
 	serveSubscribe(mux, rec, req)
 
-	want := time.Date(2026, 7, 5, 0, 0, 8, 0, time.UTC)
+	want := time.Date(2026, 7, 5, 0, 0, 8, 0, time.UTC).Add(-capWarmUp)
 	if len(since) != 1 || !since[0].Equal(want) {
-		t.Fatalf("follow opened with since=%v, want the later Last-Event-ID %v (the window is a floor, not a re-read)", since, want)
+		t.Fatalf("follow opened with since=%v, want the later Last-Event-ID less the cap's warm-up, %v (the window is a floor, not a re-read)", since, want)
 	}
 }
 
@@ -2207,10 +2208,13 @@ func TestTheKubeletsOwnAnswerIsAPlatformLine(t *testing.T) {
 // w5/m122: a follow starts at its since second, and the kubelet stamps nothing
 // on the rest of a split line whose first chunk it skipped as older. An
 // unstamped first line is therefore the tenant's text when more output
-// follows, and the kubelet's own answer when the stream ends there.
+// follows, and the kubelet's own answer when the stream ends there. A follow
+// opened early to warm the line cap (w8/341) drops the text: its line began
+// before the warm-up, long before anything the tail shows.
 func TestFollowHoldsAnUnstampedFirstLine(t *testing.T) {
 	for name, tc := range map[string]struct {
 		stream     []string
+		warming    bool
 		messages   []string
 		containers []string
 	}{
@@ -2224,10 +2228,22 @@ func TestFollowHoldsAnUnstampedFirstLine(t *testing.T) {
 			messages:   []string{logsGoneMessage},
 			containers: []string{progressContainer},
 		},
+		"split line before the warm-up": {
+			stream:     []string{"…the tail of a long line", "2026-10-05T01:00:00Z next"},
+			warming:    true,
+			messages:   []string{"next"},
+			containers: []string{"app"},
+		},
+		"the kubelet's answer to a warming follow": {
+			stream:     []string{"unable to retrieve container logs for containerd://4336b7cbe0f1"},
+			warming:    true,
+			messages:   []string{logsGoneMessage},
+			containers: []string{progressContainer},
+		},
 	} {
 		svc := &Service{PodLogsFollow: staticLogStream(map[string][]string{"web-1": tc.stream})}
 		ch := make(chan LogEntry, len(tc.stream)+1)
-		svc.streamContainerLogs(context.Background(), "default", "web", "web-1", "app", LogTypeApp, time.Time{}, ch, nil)
+		svc.streamContainerLogs(context.Background(), "default", "web", "web-1", "app", LogTypeApp, time.Time{}, tc.warming, ch, nil)
 		close(ch)
 		var messages, containers []string
 		for e := range ch {
@@ -2296,7 +2312,7 @@ func TestPodReadersKeepInterleavedRecordsWhole(t *testing.T) {
 
 	follow := &Service{PodLogsFollow: staticLogStream(map[string][]string{webInst: stream})}
 	ch := make(chan LogEntry, len(stream)+1)
-	follow.streamContainerLogs(context.Background(), "default", "web", webInst, "app", LogTypeApp, time.Time{}, ch, nil)
+	follow.streamContainerLogs(context.Background(), "default", "web", webInst, "app", LogTypeApp, time.Time{}, false, ch, nil)
 	close(ch)
 	got = got[:0]
 	for e := range ch {
