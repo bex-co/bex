@@ -362,6 +362,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
                 // and must keep the configured-port copy.
                 imagePorts={service?.imagePorts === true}
                 portConfigured={service?.portConfigured === true}
+                portDetected={service?.portDetected === true}
               />
             </CardContent>
           </Card>

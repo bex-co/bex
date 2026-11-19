@@ -268,6 +268,12 @@ export interface ServiceView {
    */
   portConfigured?: boolean;
   /**
+   * `configuredPort` is the listener bex detected, not a saved port: the
+   * service names no port and sets no PORT, which stays 10000 (w8/338).
+   * Optional: not every query selects it.
+   */
+  portDetected?: boolean;
+  /**
    * Seconds Kubernetes waits after SIGTERM before SIGKILL (1-300; default 30).
    * Only web/private/background-worker services expose this setting.
    */

@@ -9,5 +9,6 @@ mutation SetPort($id: String!, $port: Int!) {
     port
     configuredPort
     portConfigured
+    portDetected
   }
 }

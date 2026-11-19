@@ -344,6 +344,8 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// See AppView.ConfiguredPort.
 		"configuredPort": gqlutil.IntField(func(a AppView) any { return a.ConfiguredPort }),
 		"portConfigured": gqlutil.BoolField(func(a AppView) any { return a.PortConfigured }),
+		// See AppView.PortDetected.
+		"portDetected": gqlutil.BoolField(func(a AppView) any { return a.PortDetected }),
 		// openPorts is every TCP port the stable hostnames serve (Render's
 		// serviceDetails.openPorts): null for types without a network address
 		// (w6/m148).

@@ -1441,6 +1441,17 @@ const jaServices: Record<string, TranslationEntry> = {
       "コンテナが待ち受けるポートです（デフォルトは {port}）。bex はこのポートにトラフィックをルーティングし、$PORT として渡します。Render と同様に、サービスの PORT 環境変数がある場合はそちらが優先されます。保存すると新しいデプロイが開始され、インスタンスが再起動されます。",
     description: "Settings tab: service port row hint text",
   },
+  "services.settingsPortDetected": {
+    message: "検出: {port}",
+    description:
+      "Settings tab: port placeholder for a service whose serving port bex detected from the listener its process binds, while it names no port of its own (w8/338)",
+  },
+  "services.settingsPortDetectedHint": {
+    message:
+      "bex はサービスがポート {port} で待ち受けていることを検出し、そのポートにトラフィックをルーティングしています。Render と同様に、$PORT は {defaultPort} のままです。ポートを入力すると、そのポートを設定できます。bex はそのポートにトラフィックをルーティングし、$PORT として渡します。保存すると新しいデプロイが開始され、インスタンスが再起動されます。",
+    description:
+      "Settings tab: service port row hint for a service serving on a detected port; PORT stays the default (w8/177, w8/267, w8/338)",
+  },
   "services.settingsPortImageHint": {
     message:
       "このサービスは、イメージの EXPOSE 命令からポートを取得します。ここでポートを設定すると、bex がルーティング、ヘルスチェック、$PORT として渡す対象のプライマリリスナーを選択します。イメージで宣言されている他の TCP ポートは引き続き公開されます。クリアすると、再びイメージのポートを使用します。保存すると新しいデプロイが開始され、インスタンスが再起動されます。",

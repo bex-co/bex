@@ -447,7 +447,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **338** — [Settings → Port shows a detected port as if it were configured, and says bex injects it as `$PORT`, which stays 10000](338.md) (~1h, minor) ← follow-up from w8/m504 t004, 2026-11-19. An image-created service on the same image shows the row blank ("From the image").
+- [x] **338** — [Settings → Port shows a detected port as if it were configured, and says bex injects it as `$PORT`, which stays 10000](done/338.md) (~1h, minor) — **DONE 2026-11-19:** GraphQL `portDetected`; the row is blank with a `Detected: <port>` placeholder and says `PORT` stays 10000 ← follow-up from w8/m504 t004, 2026-11-19. An image-created service on the same image shows the row blank ("From the image").
 
 - [x] **337** — [A web service switched to a prebuilt image keeps its configured port 10000, where an image-created one serves on its image's exposed port](done/337.md) (~1h, minor) ← follow-up from w8/m461 t004, 2026-11-17. `portMode: web-image-v1` is stamped at create only (w4/m243), so a switched service is the image-created one in every read field but `port`/`openPorts`, and an image that ignores `$PORT` (nginx) fails its health check after a switch. — promoted to **m504** 2026-11-19 (the web half is already served by bound-port detection, w8/177; a configured-port private service has no detector)
 

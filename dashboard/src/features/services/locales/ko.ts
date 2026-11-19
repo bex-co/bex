@@ -1429,6 +1429,17 @@ const koServices: Record<string, TranslationEntry> = {
       "컨테이너가 수신 대기하는 포트입니다(기본값 {port}). bex가 이 포트로 트래픽을 라우팅하고 $PORT로 주입합니다. Render와 마찬가지로 서비스의 PORT 환경 변수가 이 값을 재정의합니다. 저장하면 새 배포가 시작되고 인스턴스가 다시 시작됩니다.",
     description: "Settings tab: service port row hint text",
   },
+  "services.settingsPortDetected": {
+    message: "감지됨: {port}",
+    description:
+      "Settings tab: port placeholder for a service whose serving port bex detected from the listener its process binds, while it names no port of its own (w8/338)",
+  },
+  "services.settingsPortDetectedHint": {
+    message:
+      "bex가 서비스가 포트 {port}에서 수신 대기하는 것을 감지하여 이 포트로 트래픽을 라우팅합니다. Render와 마찬가지로 $PORT는 {defaultPort}(으)로 유지됩니다. 포트를 입력하면 그 포트를 설정할 수 있으며, bex가 그 포트로 트래픽을 라우팅하고 $PORT로 주입합니다. 저장하면 새 배포가 시작되고 인스턴스가 다시 시작됩니다.",
+    description:
+      "Settings tab: service port row hint for a service serving on a detected port; PORT stays the default (w8/177, w8/267, w8/338)",
+  },
   "services.settingsPortImageHint": {
     message:
       "이 서비스는 이미지의 EXPOSE 명령에서 포트를 가져옵니다. 여기서 포트를 지정하면 기본 리스너(bex가 트래픽을 라우팅하고, 헬스 체크를 수행하고, $PORT로 주입하는 포트)가 선택되며, 이미지에 선언된 나머지 TCP 포트는 계속 게시됩니다. 비우면 다시 이미지의 포트를 사용합니다. 저장하면 새 배포가 시작되고 인스턴스가 다시 시작됩니다.",

@@ -65,6 +65,7 @@ function service(undeployedChanges: boolean): ServerQuery["server"] {
     port: 3000,
     configuredPort: 3000,
     portConfigured: false,
+    portDetected: false,
     openPorts: null,
     imagePorts: false,
     maxShutdownDelaySeconds: null,

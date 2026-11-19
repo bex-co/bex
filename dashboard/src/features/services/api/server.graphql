@@ -151,6 +151,9 @@ query Server($id: String!) {
     # portConfigured: an image-port service's port is set (a configured mode),
     # so Settings can clear it to use the image's port (w4/m323).
     portConfigured
+    # portDetected: configuredPort is the listener bex detected, not a saved
+    # port; PORT stays 10000 (w8/338).
+    portDetected
     # healthCheckPath is the HTTP path the ReadinessProbe pings (w1/m23/t001);
     # empty means the default "/". Only applies to web_service/private_service.
     healthCheckPath

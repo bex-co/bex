@@ -189,4 +189,64 @@ describe("ServicePortRow", () => {
     ).toBeDisabled();
     expect(setPort).not.toHaveBeenCalled();
   });
+
+  // w8/338: a service that names no port serves on the listener bex detected,
+  // and PORT stays 10000. The row must not present that port as a saved value
+  // or say bex injects it as $PORT.
+  it("shows a detected port as detected, not as a saved one", () => {
+    render(<ServicePortRow serviceId="web" port={80} portDetected />);
+
+    const input = screen.getByRole("spinbutton", { name: "Port" });
+    expect(input).toHaveValue(null);
+    expect(input).toHaveAttribute("placeholder", "Detected: 80");
+    expect(
+      screen.getByText(/detected your service listening on port 80/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/\$PORT stays 10000/)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/The port your container listens on/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("saves nothing for a detected port until another port is entered", async () => {
+    const user = userEvent.setup();
+    render(<ServicePortRow serviceId="web" port={80} portDetected />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Port" }));
+    const input = screen.getByRole("spinbutton", { name: "Port" });
+    const save = screen.getByRole("button", { name: /save changes/i });
+    // The blank draft keeps the detection: no error, nothing to save.
+    expect(screen.queryByText(/Enter a port between/)).toBeNull();
+    expect(save).toBeDisabled();
+    // The default never outranks the detection, so it changes nothing.
+    await user.type(input, "10000");
+    expect(save).toBeDisabled();
+
+    await user.clear(input);
+    await user.type(input, "80");
+    await user.click(save);
+    expect(setPort).toHaveBeenCalledWith("web", 80);
+  });
+
+  it("shows a configured port as saved, with the configured-port hint", () => {
+    render(<ServicePortRow serviceId="web" port={8080} portDetected={false} />);
+
+    const input = screen.getByRole("spinbutton", { name: "Port" });
+    expect(input).toHaveValue(8080);
+    expect(input).toHaveAttribute("placeholder", "10000");
+    expect(
+      screen.getByText(/bex routes traffic to it and injects it as \$PORT/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Detected/)).toBeNull();
+  });
+
+  it("leaves an image-port service's row to its image even when a port is detected", () => {
+    render(
+      <ServicePortRow serviceId="pserv" port={80} imagePorts portDetected />,
+    );
+
+    const input = screen.getByRole("spinbutton", { name: "Port" });
+    expect(input).toHaveAttribute("placeholder", "From the image");
+    expect(screen.queryByText(/detected your service/)).toBeNull();
+  });
 });

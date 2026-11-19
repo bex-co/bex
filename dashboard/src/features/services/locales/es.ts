@@ -1446,6 +1446,17 @@ const esServices: Record<string, TranslationEntry> = {
       "El puerto en el que escucha tu contenedor (por defecto {port}). bex dirige el tráfico hacia él y lo inyecta como $PORT. Una variable de entorno PORT en el servicio lo anula, como en Render. Guardar inicia un nuevo despliegue y reinicia las instancias.",
     description: "Settings tab: service port row hint text",
   },
+  "services.settingsPortDetected": {
+    message: "Detectado: {port}",
+    description:
+      "Settings tab: port placeholder for a service whose serving port bex detected from the listener its process binds, while it names no port of its own (w8/338)",
+  },
+  "services.settingsPortDetectedHint": {
+    message:
+      "bex detectó que tu servicio escucha en el puerto {port} y dirige el tráfico hacia él. $PORT sigue siendo {defaultPort}, como en Render. Introduce un puerto para fijarlo: bex dirigirá el tráfico hacia él y lo inyectará como $PORT. Guardar inicia un nuevo despliegue y reinicia las instancias.",
+    description:
+      "Settings tab: service port row hint for a service serving on a detected port; PORT stays the default (w8/177, w8/267, w8/338)",
+  },
   "services.settingsPortImageHint": {
     message:
       "Este servicio toma sus puertos de las instrucciones EXPOSE de su imagen. Definir un puerto aquí selecciona el listener principal (el puerto al que bex dirige el tráfico, comprueba el estado e inyecta como $PORT), mientras que los demás puertos TCP declarados por la imagen siguen publicados. Bórralo para volver a usar el puerto de la imagen. Guardar inicia un nuevo despliegue y reinicia las instancias.",

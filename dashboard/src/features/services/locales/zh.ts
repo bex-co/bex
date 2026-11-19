@@ -1397,6 +1397,17 @@ const zhServices: Record<string, TranslationEntry> = {
       "容器监听的端口（默认 {port}）。bex 将流量路由到该端口并以 $PORT 注入。服务上的 PORT 环境变量会覆盖此设置，与 Render 一致。保存会触发一次新的部署并重启实例。",
     description: "Settings tab: service port row hint text",
   },
+  "services.settingsPortDetected": {
+    message: "检测到：{port}",
+    description:
+      "Settings tab: port placeholder for a service whose serving port bex detected from the listener its process binds, while it names no port of its own (w8/338)",
+  },
+  "services.settingsPortDetectedHint": {
+    message:
+      "bex 检测到服务在端口 {port} 上监听，并将流量路由到该端口。$PORT 保持为 {defaultPort}，与 Render 一致。输入一个端口即可改为指定该端口：bex 会将流量路由到它并以 $PORT 注入。保存会触发一次新的部署并重启实例。",
+    description:
+      "Settings tab: service port row hint for a service serving on a detected port; PORT stays the default (w8/177, w8/267, w8/338)",
+  },
   "services.settingsPortImageHint": {
     message:
       "该服务的端口来自其镜像的 EXPOSE 声明。在此设置端口即选择主监听端口——bex 路由、健康检查并以 $PORT 注入的端口——镜像声明的其他 TCP 端口仍保持发布。清空即重新使用镜像的端口。保存会触发一次新的部署并重启实例。",

@@ -24,6 +24,13 @@ export interface ServicePortRowProps {
    * blank draft clears it. Without one the row is blank: the image chooses.
    */
   portConfigured?: boolean;
+  /**
+   * `port` is the listener bex detected, not a saved port (bex-api's
+   * portDetected, w8/338): the service names no port and sets no PORT, which
+   * stays the default. The row is blank with the detected port as its
+   * placeholder, so saving it unchanged cannot pin the detection.
+   */
+  portDetected?: boolean;
 }
 
 /**
@@ -40,13 +47,18 @@ export function ServicePortRow({
   port,
   imagePorts = false,
   portConfigured = false,
+  portDetected = false,
 }: ServicePortRowProps) {
   const { t } = useTranslations();
   const { setPort, busy } = usePort();
+  const detected = !imagePorts && portDetected && port != null;
   // An image-port service with no port set shows none: its image chooses the
   // port, and a resolved port shown here would read as a setting (w4/m323).
+  // Nor does a service serving on a detected port: PORT stays 10000 (w8/338).
   const current =
-    (imagePorts && !portConfigured) || port == null ? "" : String(port);
+    (imagePorts && !portConfigured) || detected || port == null
+      ? ""
+      : String(port);
 
   return (
     <EditableFieldRow
@@ -54,9 +66,14 @@ export function ServicePortRow({
       hint={
         imagePorts
           ? t("services.settingsPortImageHint")
-          : t("services.settingsPortHint", {
-              port: String(DEFAULT_SERVICE_PORT),
-            })
+          : detected
+            ? t("services.settingsPortDetectedHint", {
+                port: String(port),
+                defaultPort: String(DEFAULT_SERVICE_PORT),
+              })
+            : t("services.settingsPortHint", {
+                port: String(DEFAULT_SERVICE_PORT),
+              })
       }
       value={current}
       // An image-port service's primary comes from the image, so a blank
@@ -64,7 +81,9 @@ export function ServicePortRow({
       placeholder={
         imagePorts
           ? t("services.createFieldPortFromImage")
-          : String(DEFAULT_SERVICE_PORT)
+          : detected
+            ? t("services.settingsPortDetected", { port: String(port) })
+            : String(DEFAULT_SERVICE_PORT)
       }
       editLabel={t("services.settingsPortEdit")}
       type="number"
@@ -78,10 +97,15 @@ export function ServicePortRow({
       dirty={(draft) => {
         if (imagePorts && draft.trim() === "") return portConfigured;
         const parsed = parsePort(draft);
+        // Nothing is saved while a port is detected, and the default never
+        // outranks the detection, so only another port is a change (w8/338).
+        if (detected) return parsed !== null && parsed !== DEFAULT_SERVICE_PORT;
         return parsed !== null && parsed !== port;
       }}
+      // A blank draft keeps the image's port or the detected one (w8/338).
       validate={(draft) =>
-        (imagePorts && draft.trim() === "") || parsePort(draft) !== null
+        ((imagePorts || detected) && draft.trim() === "") ||
+        parsePort(draft) !== null
           ? null
           : t("services.portRangeError", {
               min: String(MIN_SERVICE_PORT),

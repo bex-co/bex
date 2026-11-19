@@ -460,3 +460,37 @@ func TestSettingsPortReadsTheSaveWhileASelectionRunsTheRecordedPort(t *testing.T
 		t.Fatalf("image port: port=%d configuredPort=%d, want the running 3000 and the saved 3001", view.Port, view.ConfiguredPort)
 	}
 }
+
+// w8/338: a service that names no port and serves on the listener bex
+// detected reads that port in Settings as detected, not as a saved port, since
+// PORT stays 10000; one that names a port, or sets PORT, reads it as saved.
+func TestSettingsPortReportsADetectedPortAsDetected(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		typ          string
+		port         int32
+		envPort      int32
+		wantPort     int32
+		wantDetected bool
+	}{
+		{name: "private service, no port", typ: appv1alpha1.TypePrivateService, port: appv1alpha1.DefaultPort, wantPort: 80, wantDetected: true},
+		{name: "web service, unset port", typ: appv1alpha1.TypeWebService, wantPort: 80, wantDetected: true},
+		{name: "explicit port", typ: appv1alpha1.TypeWebService, port: 8080, wantPort: 8080},
+		{name: "PORT variable", typ: appv1alpha1.TypeWebService, port: appv1alpha1.DefaultPort, envPort: 3000, wantPort: 3000},
+	} {
+		app := portApp("svc", tc.typ, tc.port)
+		app.Status.DetectedPort, app.Status.EnvPort = 80, tc.envPort
+		svc, _ := newService(nil, app)
+		view := svc.view(app)
+		if view.ConfiguredPort != tc.wantPort || view.PortDetected != tc.wantDetected {
+			t.Errorf("%s: configuredPort=%d portDetected=%v, want %d and %v", tc.name, view.ConfiguredPort, view.PortDetected, tc.wantPort, tc.wantDetected)
+		}
+	}
+	// A type with no port has nothing detected to show.
+	worker := portApp("worker", appv1alpha1.TypeBackgroundWorker, 0)
+	worker.Status.DetectedPort = 80
+	svc, _ := newService(nil, worker)
+	if view := svc.view(worker); view.PortDetected || view.ConfiguredPort != 0 {
+		t.Errorf("worker: configuredPort=%d portDetected=%v, want none", view.ConfiguredPort, view.PortDetected)
+	}
+}

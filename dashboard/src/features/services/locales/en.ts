@@ -1431,6 +1431,17 @@ const enServices: Record<string, TranslationEntry> = {
       "The port your container listens on (default {port}). bex routes traffic to it and injects it as $PORT. A PORT environment variable on the service overrides it, as on Render. Saving starts a new deploy and restarts the instances.",
     description: "Settings tab: service port row hint text",
   },
+  "services.settingsPortDetected": {
+    message: "Detected: {port}",
+    description:
+      "Settings tab: port placeholder for a service whose serving port bex detected from the listener its process binds, while it names no port of its own (w8/338)",
+  },
+  "services.settingsPortDetectedHint": {
+    message:
+      "bex detected your service listening on port {port} and routes traffic to it. $PORT stays {defaultPort}, as on Render. Enter a port to set one instead: bex then routes traffic to it and injects it as $PORT. Saving starts a new deploy and restarts the instances.",
+    description:
+      "Settings tab: service port row hint for a service serving on a detected port; PORT stays the default (w8/177, w8/267, w8/338)",
+  },
   "services.settingsPortImageHint": {
     message:
       "This service takes its ports from its image's EXPOSE instructions. Setting a port here selects the primary listener — the port bex routes to, health-checks and injects as $PORT — while the image's other declared TCP ports stay published. Clear it to use the image's port again. Saving starts a new deploy and restarts the instances.",

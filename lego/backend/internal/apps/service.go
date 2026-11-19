@@ -620,9 +620,14 @@ type AppView struct {
 	// *-configured-v1 mode), which Settings can clear to use the image's port
 	// again (w4/m323). ConfiguredPort alone cannot say so: it falls back to
 	// the resolved port. GraphQL only.
-	PortConfigured bool   `json:"-"`
-	CreatedAt      string `json:"createdAt"`
-	UpdatedAt      string `json:"updatedAt,omitempty"`
+	PortConfigured bool `json:"-"`
+	// PortDetected reports that ConfiguredPort is the listener bex detected
+	// (App.SavedPortDetected), not a saved port: PORT stays 10000, so Settings
+	// shows it as detected rather than as a value to keep (w8/338). GraphQL
+	// only.
+	PortDetected bool   `json:"-"`
+	CreatedAt    string `json:"createdAt"`
+	UpdatedAt    string `json:"updatedAt,omitempty"`
 	// DashboardURL is the control-plane detail route, in Render's
 	// `/{web|worker|pserv|static|cron}/{id}` shape (docs/render-artifacts/
 	// dashboard-routes.md). URL above remains the hosted data-plane endpoint;
@@ -1212,6 +1217,7 @@ func view(a *appv1alpha1.App) AppView {
 		Port:                 addressablePort(a),
 		ConfiguredPort:       settingsPort(a),
 		PortConfigured:       appv1alpha1.IsConfiguredPortMode(a.Spec.PortMode),
+		PortDetected:         a.Spec.InternallyAddressable() && a.SavedPortDetected(),
 		OpenPorts:            serverPorts(a.OpenPorts()),
 		ImagePorts:           a.Spec.HasImagePorts(),
 		URLs:                 urls,

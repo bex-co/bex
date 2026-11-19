@@ -147,6 +147,7 @@ function server(overrides: Partial<ServerNode> = {}): ServerNode {
     port: 3000,
     configuredPort: 3000,
     portConfigured: false,
+    portDetected: false,
     openPorts: null,
     imagePorts: false,
     maxShutdownDelaySeconds: null,
@@ -462,6 +463,17 @@ describe("toServiceView", () => {
         }),
       ).openPorts,
     ).toEqual([{ port: 9000, protocol: "TCP" }]);
+  });
+
+  // w8/338: Settings tells a detected port from a saved one.
+  it("carries a detected port's flag only from the detail query", () => {
+    const detected = toServiceView(
+      server({ port: 80, configuredPort: 80, portDetected: true }),
+    );
+    expect(detected.portDetected).toBe(true);
+    expect(detected.configuredPort).toBe(80);
+    expect(toServiceView(server()).portDetected).toBe(false);
+    expect(toServiceView(node()).portDetected).toBeUndefined();
   });
 
   it("leaves slug null for a list node (not selected by the services query)", () => {

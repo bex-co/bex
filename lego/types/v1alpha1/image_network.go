@@ -287,10 +287,23 @@ func (a *App) servingPort(spec AppSpec) int32 {
 	if a.Status.EnvPort > 0 {
 		return a.Status.EnvPort
 	}
-	if a.Status.DetectedPort > 0 && !spec.hasExplicitPort() {
+	if a.portDetected(spec) {
 		return a.Status.DetectedPort
 	}
 	return spec.EffectivePort()
+}
+
+// SavedPortDetected reports that SavedPort is the listener the operator
+// detected (w8/177, w8/m504), not a port the saved settings name: a
+// configured-port service with no explicit spec.port and no PORT variable.
+// The process's PORT then stays the default 10000 (w8/267), so Settings must
+// not present the detected port as a saved value (w8/338).
+func (a *App) SavedPortDetected() bool {
+	return a.portDetected(a.Spec)
+}
+
+func (a *App) portDetected(spec AppSpec) bool {
+	return !spec.HasImagePorts() && a.Status.EnvPort == 0 && a.Status.DetectedPort > 0 && !spec.hasExplicitPort()
 }
 
 // hasExplicitPort reports whether spec.port names a port itself rather than

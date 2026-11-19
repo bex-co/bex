@@ -1445,6 +1445,17 @@ const ptServices: Record<string, TranslationEntry> = {
       "A porta em que o seu contêiner escuta (padrão {port}). O bex encaminha o tráfego para ela e a injeta como $PORT. Uma variável de ambiente PORT no serviço a substitui, como no Render. Salvar inicia um novo deploy e reinicia as instâncias.",
     description: "Settings tab: service port row hint text",
   },
+  "services.settingsPortDetected": {
+    message: "Detectada: {port}",
+    description:
+      "Settings tab: port placeholder for a service whose serving port bex detected from the listener its process binds, while it names no port of its own (w8/338)",
+  },
+  "services.settingsPortDetectedHint": {
+    message:
+      "O bex detectou que o seu serviço escuta na porta {port} e encaminha o tráfego para ela. $PORT continua {defaultPort}, como no Render. Informe uma porta para defini-la: o bex passa a encaminhar o tráfego para ela e a injeta como $PORT. Salvar inicia um novo deploy e reinicia as instâncias.",
+    description:
+      "Settings tab: service port row hint for a service serving on a detected port; PORT stays the default (w8/177, w8/267, w8/338)",
+  },
   "services.settingsPortImageHint": {
     message:
       "Este serviço obtém suas portas das instruções EXPOSE da imagem. Definir uma porta aqui seleciona o listener primário — a porta para a qual o bex encaminha o tráfego, faz health checks e injeta como $PORT — enquanto as outras portas TCP declaradas pela imagem continuam publicadas. Limpe o campo para voltar a usar a porta da imagem. Salvar inicia um novo deploy e reinicia as instâncias.",

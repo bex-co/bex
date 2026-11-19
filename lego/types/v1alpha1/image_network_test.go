@@ -205,6 +205,34 @@ func TestDetectedPortOverridesTheDefaultAcrossReaders(t *testing.T) {
 	}
 }
 
+// Settings reads a detected port as detected, never as a saved one: only a
+// service whose saved settings name no port serves on its detected listener
+// (w8/338).
+func TestSavedPortDetectedOnlyWhileTheSettingsNameNoPort(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		spec     AppSpec
+		envPort  int32
+		detected int32
+		want     bool
+	}{
+		{name: "unset port", spec: AppSpec{Type: TypePrivateService}, detected: 80, want: true},
+		{name: "stored default", spec: AppSpec{Type: TypeWebService, Port: DefaultPort}, detected: 80, want: true},
+		{name: "explicit port", spec: AppSpec{Type: TypeWebService, Port: 8080}, detected: 80},
+		{name: "PORT variable", spec: AppSpec{Type: TypeWebService, Port: DefaultPort}, envPort: 3000, detected: 80},
+		{name: "nothing detected", spec: AppSpec{Type: TypeWebService, Port: DefaultPort}},
+		{name: "image ports", spec: AppSpec{Type: TypeWebService, Port: DefaultPort, PortMode: PortModeWebImageV1}, detected: 80},
+	} {
+		app := App{Spec: tc.spec, Status: AppStatus{EnvPort: tc.envPort, DetectedPort: tc.detected}}
+		if got := app.SavedPortDetected(); got != tc.want {
+			t.Errorf("%s: SavedPortDetected = %v, want %v", tc.name, got, tc.want)
+		}
+		if tc.want && app.SavedPort() != tc.detected {
+			t.Errorf("%s: SavedPort = %d, want the detected %d", tc.name, app.SavedPort(), tc.detected)
+		}
+	}
+}
+
 // A web or private service's openPorts adds the listeners its instances bind,
 // retained ones included, without reserved ports and within Render's 75
 // (w3/m273, w3/m276); a web service's 10000 stays a route to its primary, not

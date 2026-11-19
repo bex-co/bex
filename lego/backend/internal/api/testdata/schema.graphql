@@ -2865,6 +2865,7 @@ type Service {
   plan: String
   port: Int
   portConfigured: Boolean
+  portDetected: Boolean
   preDeployCommand: String
   previewNotificationsEnabled: String
   projectId: String

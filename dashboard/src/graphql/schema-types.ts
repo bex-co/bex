@@ -5920,6 +5920,7 @@ export type Service = {
   plan: Maybe<Scalars['String']['output']>;
   port: Maybe<Scalars['Int']['output']>;
   portConfigured: Maybe<Scalars['Boolean']['output']>;
+  portDetected: Maybe<Scalars['Boolean']['output']>;
   preDeployCommand: Maybe<Scalars['String']['output']>;
   previewNotificationsEnabled: Maybe<Scalars['String']['output']>;
   projectId: Maybe<Scalars['String']['output']>;

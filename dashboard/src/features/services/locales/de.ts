@@ -1454,6 +1454,17 @@ const deServices: Record<string, TranslationEntry> = {
       "Der Port, auf dem dein Container lauscht (Standard {port}). bex leitet Traffic dorthin und übergibt ihn als $PORT. Eine Umgebungsvariable PORT am Service überschreibt ihn, wie bei Render. Durch das Speichern wird ein neues Deployment gestartet und die Instanzen werden neu gestartet.",
     description: "Settings tab: service port row hint text",
   },
+  "services.settingsPortDetected": {
+    message: "Erkannt: {port}",
+    description:
+      "Settings tab: port placeholder for a service whose serving port bex detected from the listener its process binds, while it names no port of its own (w8/338)",
+  },
+  "services.settingsPortDetectedHint": {
+    message:
+      "bex hat erkannt, dass dein Service auf Port {port} lauscht, und leitet Traffic dorthin. $PORT bleibt {defaultPort}, wie bei Render. Gib einen Port ein, um ihn stattdessen festzulegen: bex leitet dann Traffic dorthin und übergibt ihn als $PORT. Durch das Speichern wird ein neues Deployment gestartet und die Instanzen werden neu gestartet.",
+    description:
+      "Settings tab: service port row hint for a service serving on a detected port; PORT stays the default (w8/177, w8/267, w8/338)",
+  },
   "services.settingsPortImageHint": {
     message:
       "Dieser Service übernimmt seine Ports aus den EXPOSE-Anweisungen seines Images. Ein hier festgelegter Port bestimmt den primären Listener — den Port, an den bex Traffic leitet, den es per Health Check prüft und als $PORT übergibt —, während die übrigen im Image deklarierten TCP-Ports veröffentlicht bleiben. Leere das Feld, um wieder den Port des Images zu verwenden. Durch das Speichern wird ein neues Deployment gestartet und die Instanzen werden neu gestartet.",

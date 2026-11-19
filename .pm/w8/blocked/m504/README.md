@@ -44,7 +44,7 @@ Total: **7 tasks, about 3h55m**.
 | REST `GET /v1/services/{id}` `port` / `openPorts` | 10000 / `[{10000, TCP}]`, the native release | the image's port, as an image-created service reads | ✅ `TestSwitchedServiceReadsAsAnImageCreatedOne` (web and private) |
 | MCP `get_service` | same as REST | equal to an image-created service's full read | ✅ same test |
 | GraphQL `port`, `openPorts` | 10000 | the image's port | ✅ same test |
-| Dashboard Settings → Port (`configuredPort`, `App.SavedPort`) | 10000 | the image's port | ✅ same value. The row shows a detected port as if configured: follow-up [w8/338](../../338.md) |
+| Dashboard Settings → Port (`configuredPort`, `App.SavedPort`) | 10000 | the image's port | ✅ same value. The row shows a detected port as if configured: follow-up [w8/338](../../done/338.md) (done 2026-11-19) |
 | Blueprint sync, native entry → `runtime: image` | — | no port mode written; the port is detected as after any other switch | ✅ `TestBlueprintGitToImageKeepsTheConfiguredPortMode` (web and private); `ApplyBlueprintServiceSpec` has no port-mode applier |
 | Operator, private service | probed on 10000 only, so it failed at 15 minutes | listener adopted after two scans | ✅ t001 |
 

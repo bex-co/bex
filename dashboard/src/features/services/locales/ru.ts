@@ -1437,6 +1437,17 @@ const ruServices: Record<string, TranslationEntry> = {
       "Порт, который слушает ваш контейнер (по умолчанию {port}). bex направляет на него трафик и передаёт его как $PORT. Переменная окружения PORT у сервиса переопределяет его, как и на Render. Сохранение запускает новый деплой и перезапускает инстансы.",
     description: "Settings tab: service port row hint text",
   },
+  "services.settingsPortDetected": {
+    message: "Обнаружен: {port}",
+    description:
+      "Settings tab: port placeholder for a service whose serving port bex detected from the listener its process binds, while it names no port of its own (w8/338)",
+  },
+  "services.settingsPortDetectedHint": {
+    message:
+      "bex обнаружил, что ваш сервис слушает порт {port}, и направляет на него трафик. $PORT остаётся {defaultPort}, как и на Render. Введите порт, чтобы задать его явно: bex будет направлять на него трафик и передавать его как $PORT. Сохранение запускает новый деплой и перезапускает инстансы.",
+    description:
+      "Settings tab: service port row hint for a service serving on a detected port; PORT stays the default (w8/177, w8/267, w8/338)",
+  },
   "services.settingsPortImageHint": {
     message:
       "Этот сервис берёт порты из инструкций EXPOSE своего образа. Порт, заданный здесь, выбирает основной слушатель — порт, на который bex направляет трафик, проверяет его работоспособность и передаёт как $PORT, — а остальные объявленные в образе TCP-порты остаются опубликованными. Очистите поле, чтобы снова использовать порт образа. Сохранение запускает новый деплой и перезапускает инстансы.",
