@@ -78,7 +78,9 @@ describe("LanguageSwitcher", () => {
     await user.click(screen.getByRole("button", { name: "Change language" }));
     await user.click(screen.getByRole("menuitem", { name: "Deutsch" }));
 
-    await waitFor(() => expect(i18n.language).toBe("de"));
+    // Dynamic import of resources-de transforms ~35 locale modules on first
+    // load, which exceeds Testing Library's 1000ms default under parallel runs.
+    await waitFor(() => expect(i18n.language).toBe("de"), { timeout: 5_000 });
     expect(i18n.hasResourceBundle("de", "translation")).toBe(true);
     expect(i18n.t("common.cancel")).toBe("Abbrechen");
     expect(persistLanguage).toHaveBeenCalledWith("de");
