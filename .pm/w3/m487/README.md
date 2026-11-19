@@ -1,6 +1,6 @@
 # w3 · m487 — Turning on edge caching changes neither a service's Metrics charts nor its autoscaling, as on Render
 
-**Worker:** worker3 **Goal:** an edge-cached service's CPU and memory usage, its limit line and its autoscaling decisions count only its own container, as on Render, where the cache is not inside the instance. **Status:** blocked (t001–t003 and t005–t007 done; t004's production check waits for a production deploy carrying `8a37b982f`, then t008 closes out)
+**Worker:** worker3 **Goal:** an edge-cached service's CPU and memory usage, its limit line and its autoscaling decisions count only its own container, as on Render, where the cache is not inside the instance. **Status:** todo (t001–t003 and t005–t007 done; `8a37b982f` is in production pin `7af50a28168d`; t004's production check, then t008 closes out)
 
 ## Tasks (in order)
 
@@ -53,10 +53,17 @@ Render: the cache is "powered by the same global CDN as Render static sites", an
 | Dashboard Metrics page | the instance's own usage | reads GraphQL `metrics`, no client-side change | matched (inferred) |
 | Autoscaling | scales on the instances' CPU and memory | `autoscaleDesired` reads the service's own containers | matched (inferred) |
 
-Recorded in [ADR018](../../../../docs/ADR018-render-parity.md)'s Edge caching row, [ADR004](../../../../docs/ADR004-app-deployment.md) § Edge caching and [ADR010](../../../../docs/ADR010-observability.md) § Metrics. No drift to file.
+Recorded in [ADR018](../../../docs/ADR018-render-parity.md)'s Edge caching row, [ADR004](../../../docs/ADR004-app-deployment.md) § Edge caching and [ADR010](../../../docs/ADR010-observability.md) § Metrics. No drift to file.
 
 ## Gate (2026-11-18)
 
 - **Gate (clears by itself):** a production deploy carrying `8a37b982f` (the implementation). `deploy.yml` deploys at most every 6 hours; the last pin, `e5ace7826` (2026-11-18 21:22Z), makes the earliest one about 2026-11-19 03:30Z plus its tests and build. The check: the newest `chore(deploy): pin platform images to <sha>` commit on `origin/main` with `git merge-base --is-ancestor 8a37b982f <sha>`. No user action is needed.
 - **Then (t004 steps 2–3):** production had no App with a caching profile on 2026-11-18, so create an edge-cached fixture (a paid web service with `origin-controlled`) in `bex-canary` as the QA user, or reuse `w3/m486`'s t006 fixture if it is still up. Compare REST `GET /v1/metrics/memory` and `/cpu` with Prometheus `container_memory_working_set_bytes{container="app"}` and the app container's CPU rate for the same pods, and `/memory-limit` and `/cpu-limit` with the plan's; record it here, then t008 closes out.
 
+## Unblocked (2026-11-19, `/loopx w3` routine `pin-gated-recheck`)
+
+- **Affected:** t004, t008. **Source:** verified evidence, no user decision.
+- **Finding:** the newest pin on origin/main, `826d32e42` (`chore(deploy): pin platform images to 7af50a28168d`, which moves the `bex-operator` image), contains `8a37b982f`: `git merge-base --is-ancestor 8a37b982f 7af50a28168d` holds. The release condition in § Gate is met.
+- **Before measuring:** The pin was pushed by `deploy.yml` run 44451653443, whose `deploy` job was still running at 2026-11-19 03:50Z: confirm that run finished green and that `bex-system`'s images match the pin before measuring. The pin does not carry `a6b1658fb` (`w3/m489`'s per-service tier), so production still runs the per-pod edge-cache sidecar this milestone changed; the deploy that carries `a6b1658fb` moves caching services to the tier. The comparison is meaningful on this pin because the sidecar is still inside each instance.
+- **Status:** pending verification. A deployed fix is not proof that the definition of done holds on production.
+- **Next:** t004 steps 2–3 as written in § Gate (reuse `w3/m486`'s t006 fixture if it is up), record the comparison here, then t008.

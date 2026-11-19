@@ -1,6 +1,6 @@
 # w3 · m486 — Purging a service's edge cache, or switching between its two caching profiles, restarts no instance, as on Render
 
-**Worker:** worker3 **Goal:** a manual purge and a switch between `origin-controlled` and `origin-controlled-all` empty or re-scope the edge cache while every instance keeps running, as on Render, where the cache lives on its CDN; a disk-bearing caching service no longer goes down on a purge. **Status:** blocked (t001–t005 and t007–t009 done; t006 waits for a production deploy carrying `c6bab1b92`)
+**Worker:** worker3 **Goal:** a manual purge and a switch between `origin-controlled` and `origin-controlled-all` empty or re-scope the edge cache while every instance keeps running, as on Render, where the cache lives on its CDN; a disk-bearing caching service no longer goes down on a purge. **Status:** todo (t001–t005 and t007–t009 done; `c6bab1b92` is in production pin `7af50a28168d`; t006's production check, then t010)
 
 ## Tasks (in order)
 
@@ -71,3 +71,11 @@ No new drift to file: the one divergence is `w3/m489`'s, and ADR018's Edge cachi
 - **Gate (clears by itself):** a production deploy carrying `c6bab1b92` (the implementation). `deploy.yml` deploys at most every 6 hours; the last pin, `e5ace7826` (2026-11-18 21:22Z), makes the earliest one about 2026-11-19 03:30Z plus its tests and build. The check: the newest `chore(deploy): pin platform images to <sha>` commit on `origin/main` with `git merge-base --is-ancestor c6bab1b92 <sha>`. No user action is needed.
 - **Then:** run t006 as written (a caching fixture in `bex-canary`; pod UIDs and `restartCount` across a REST purge and a dashboard profile switch; time from purge to `MISS` and back to `HIT`; the count of caching services and of those with a disk), write the record here, then t010.
 - **Expect on that deploy:** `w6/m484` has not landed, so the operator image the deploy moves still rolls every caching service once, onto the controlled shape. Purges after that roll none; measure on the fixture after the deploy settles. The sidecar logs `edge-cache: purged (app.bex.co/cache-purged-at=…)` for each purge it applies.
+
+## Unblocked (2026-11-19, `/loopx w3` routine `pin-gated-recheck`)
+
+- **Affected:** t006, t010. **Source:** verified evidence, no user decision.
+- **Finding:** the newest pin on origin/main, `826d32e42` (`chore(deploy): pin platform images to 7af50a28168d`, which moves the `bex-operator` image), contains `c6bab1b92`: `git merge-base --is-ancestor c6bab1b92 7af50a28168d` holds. It also contains the admission-policy fix `6d428736b`, without which production would refuse the pod annotation patches. The release condition in § Blocked is met.
+- **Before measuring:** The pin was pushed by `deploy.yml` run 44451653443, whose `deploy` job was still running at 2026-11-19 03:50Z: confirm that run finished green and that `bex-system`'s images match the pin before measuring. The pin does not carry `a6b1658fb` (`w3/m489`'s per-service tier), so production still runs the per-pod edge-cache sidecar this milestone changed; the deploy that carries `a6b1658fb` moves caching services to the tier.
+- **Status:** pending verification. A deployed fix is not proof that the definition of done holds on production.
+- **Next:** run t006 as written in § Blocked (its "Then" and "Expect" lines still hold), write the record here, then t010.

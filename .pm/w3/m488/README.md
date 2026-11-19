@@ -1,6 +1,6 @@
 # w3 · m488 — An edge-cached response answers conditional requests with 304 and carries its Age
 
-**Worker:** worker3 **Goal:** turning on edge caching no longer turns an app's 304s into full 200s: a conditional request whose validator matches the cached response gets `304 Not Modified`, on a hit and on the fill alike, and every response answered from the cache carries `Age`. **Status:** blocked (t001–t003, t005 and t006 done, shipped in `f718f80d1`; t004's production check waits for a production deploy carrying it, then t007 closes out)
+**Worker:** worker3 **Goal:** turning on edge caching no longer turns an app's 304s into full 200s: a conditional request whose validator matches the cached response gets `304 Not Modified`, on a hit and on the fill alike, and every response answered from the cache carries `Age`. **Status:** todo (t001–t003, t005 and t006 done, shipped in `f718f80d1`, which production pin `7af50a28168d` contains; t004's production check, then t007 closes out)
 
 ## Tasks (in order)
 
@@ -30,3 +30,11 @@
 - **Why now:** bandwidth above the plan's included amount is billed since w6/m319, and every caching service pays for the lost 304s today.
 - **Render parity omitted:** no REST, GraphQL, MCP or dashboard field, value or message changes; only the tenant HTTP responses the edge cache serves. t004 records the behavior against Render's documented cache.
 - **Not filed (considered in the brainstorm):** serving `Range` requests from a stored object, and `stale-while-revalidate`/`stale-if-error`. Neither is documented for Render's edge cache, and Range has little effect under today's 6 MiB object cap; revisit with `w3/m489`.
+
+## Unblocked (2026-11-19, `/loopx w3` routine `pin-gated-recheck`)
+
+- **Affected:** t004, t007. **Source:** verified evidence, no user decision.
+- **Finding:** the newest pin on origin/main, `826d32e42` (`chore(deploy): pin platform images to 7af50a28168d`, which moves the `bex-operator` image that carries the edge cache), contains `f718f80d1`: `git merge-base --is-ancestor f718f80d1 7af50a28168d` holds. The release condition in t004's progress note is met.
+- **Before measuring:** The pin was pushed by `deploy.yml` run 44451653443, whose `deploy` job was still running at 2026-11-19 03:50Z: confirm that run finished green and that `bex-system`'s images match the pin before measuring. The pin does not carry `a6b1658fb` (`w3/m489`'s per-service tier), so production still runs the per-pod edge-cache sidecar this milestone changed; the deploy that carries `a6b1658fb` moves caching services to the tier.
+- **Status:** pending verification. A deployed fix is not proof that the definition of done holds on production.
+- **Next:** t004 steps 2–3 as its progress note says (an edge-cached fixture on a paid web service in `bex-canary`, or `w3/m486`'s if it is up): fetch a cacheable path twice, then once with `If-None-Match: <its ETag>`; record the statuses, `CF-Cache-Status`, `Age` and bytes here, then t007.
