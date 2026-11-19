@@ -1,6 +1,6 @@
 # w5 · m502 — A parked item wakes when production's pin carries the commit its gate names
 
-**Worker:** worker5 **Goal:** work whose only remaining gate is a production deploy (or a date) resumes as soon as the gate clears, in every workstream, without a per-workstream routine or a person re-running `/loopx`. **Status:** todo (t001–t007 done; t008 closeout checks DoD 5 on the live board)
+**Worker:** worker5 **Goal:** work whose only remaining gate is a production deploy (or a date) resumes as soon as the gate clears, in every workstream, without a per-workstream routine or a person re-running `/loopx`. **Status:** done
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | [t005](done/t005.md) | Narrow w3's `pin-gated-recheck` routine to gates the guard cannot read — **DONE** | 15m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t006 |
-| [t008](t008.md) | Closeout | 15m | t007 |
+| [t008](done/t008.md) | Closeout — **DONE** | 15m | t007 |
 
 Total: **8 tasks, about 5h45m**.
 
@@ -26,6 +26,10 @@ Total: **8 tasks, about 5h45m**.
 - **Simplify (t006).** The parked-item list reuses `classify` for its names and pick order; one repeated scan and an unused constant removed.
 - **Tests (t007).** DoD 1: `GateTest.test_a_release_gate_is_ready_exactly_when_the_pin_carries_its_commit`, `test_every_named_commit_must_be_carried`, `test_an_unknown_commit_never_clears_and_is_reported`, `test_a_docs_commit_quoting_a_pin_subject_in_its_body_is_not_a_pin`. DoD 2: `test_a_date_gate_is_ready_only_once_its_date_has_passed`, `test_a_gate_with_a_pin_and_a_date_needs_both`. DoD 3: `next` is `w2/m3` before the ready `m4` in the first test, `test_wait_wakes_when_a_pin_clears_a_gate`, `test_wait_does_not_wake_for_a_gate_still_closed`, `test_a_dispatched_item_is_not_offered_again_until_its_gate_line_changes` (`scripts/test_loopx_guard.py`). DoD 4: `test_a_release_gate_that_names_no_commit_fails`, `test_a_release_gate_in_the_checkable_form_passes`, `test_a_pin_gate_naming_no_commit_here_fails`, `test_a_date_gate_needs_its_form_and_a_real_date`, `test_gates_that_need_a_person_and_closed_lines_are_free_text`, `test_head_reads_gates_from_the_committed_tree`, `test_the_repositorys_own_board_passes` (`scripts/test_pm_board_validate.py`). Every new test but the negative wait case fails against the pre-milestone scripts; removing `hand_over` fails the dispatch test, and counting a non-ancestor as carried fails both pin tests.
 - **On the working tree before the ship (pin `dff52c596d13`):** 14 parked items in 10 workstreams are `blocked.ready`: w2/m480, w3/m489, w3/075, w5/m370, w6/m470, w6/m482, w6/m483, w6/m484, w9/m494, w10/m490, w21/083, w22/m314, w22/020, w32/044. Still gated: w3/063, w6/m512, w7/095, w7/m427, w7/m453 (pin holds, date 2026-11-21T19:00Z not), w8/339, w8/m504, w9/m448, w9/m495, w21/091, w21/107.
+
+## Closeout (2026-11-19, t008)
+
+Shipped in `8427d913a`. On `origin/main` at that commit, with production's pin `dff52c596d13` (pin commit `a91e9aeb3`), the guard's gate facts read from `origin/main` list w5 `m370`; w3 `m489`, `075.md`; w6 `m482`, `m483`, `m484`; w22 `m314`, `020.md`. An independent check (each line's ``pin must carry`` commits through `git merge-base --is-ancestor <sha> dff52c596d13`) gives the same set and excludes exactly w6/m512 (`d6d29f9a7` not carried) and w6/m470, which a teammate re-parked during the ship on the first pin after `a91e9aeb3`; w3/063 waits on its date gate (2026-12-11). Every DoD item holds: 1–3 by the tests in the record above, 4 by `pm-board-validate: ok` in the ship gates on the migrated board, 5 by this check.
 
 ## Definition of done
 
