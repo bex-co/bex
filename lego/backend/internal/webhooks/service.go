@@ -455,14 +455,17 @@ type DeliveryView struct {
 // workspaceID is the store key for the caller's endpoints: the caller's
 // tenant when resolvable, else the single-workspace default (mirrors
 // registrycreds.Service.workspaceID).
-// toView projects a stored endpoint for a caller. manager is true only for
-// the admin-gated verbs (Create/Update/SetEnabled) and for read callers that
-// hold can_manage on the endpoint's workspace. They see the exact destination
-// and the signing secret, as Render returns `secret` on create, list, get and
-// patch (w3/m282). The destination URL carries the integration capability and
-// the secret forges deliveries, so ordinary member reads get the redacted
-// origin (round-13 #7) and no secret. The secret adds nothing a manager lacks:
-// a manager may already repoint the destination.
+// toView projects a stored endpoint for a caller. manager is true for Create
+// (whose caller passed the credential-class gate) and for any caller passing
+// the reveal predicate (can_manage plus the credential class, grant, and
+// fresh authority — mayManageWorkspace, which Get/List/Update/SetEnabled all
+// share). They see the exact destination and the signing secret, as Render
+// returns `secret` on create, list, get and patch (w3/m282). The destination
+// URL carries the integration capability and the secret forges deliveries, so
+// every other caller gets the redacted origin (round-13 #7) and no secret —
+// including a delegated caller whose rename/disable the verbs permit but
+// whose repoint the class gate refuses. The secret adds nothing a manager
+// lacks: a manager may already repoint the destination.
 func toView(e store.WebhookEndpoint, manager bool) EndpointView {
 	v := EndpointView{
 		ID:                 e.ID,
@@ -793,7 +796,11 @@ func (s *Service) SetEnabled(ctx context.Context, ownerID, id string, enabled bo
 	if err != nil {
 		return EndpointView{}, mapStoreErr(err)
 	}
-	return toView(e, true), nil // admin-gated verb: echo the exact destination
+	// The echo agrees with Get/List: only a caller passing the reveal
+	// predicate sees the exact destination and the signing secret, so a
+	// disable round-trip by a delegated caller cannot disclose the durable
+	// secret the read verbs withhold.
+	return toView(e, s.mayManageWorkspace(ctx, e.TenantID)), nil
 }
 
 // Delete removes an endpoint and (by cascade) its delivery history.
@@ -1005,7 +1012,12 @@ func (s *Service) Update(ctx context.Context, ownerID, id string, req UpdateRequ
 		}
 		return EndpointView{}, mapStoreErr(err)
 	}
-	return toView(e, true), nil // admin-gated verb: echo the exact destination
+	// The echo agrees with Get/List: only a caller passing the reveal
+	// predicate sees the exact destination and the signing secret, so a
+	// non-repoint Update by a delegated caller cannot disclose the durable
+	// secret the read verbs withhold. A repoint already passed
+	// AuthorizeExportClass above, so its echo is unchanged.
+	return toView(e, s.mayManageWorkspace(ctx, e.TenantID)), nil
 }
 
 // parseDestination validates a destination URL: absolute HTTPS, with a host
