@@ -25,6 +25,8 @@ Read it in full: a milestone's `README.md` plus every task file `tNNN.md` not al
 
 Items restored by [`/unblock`](../unblock/SKILL.md) carry dated decisions and next actions on the board. Read and apply those decisions; verify their factual prerequisites without asking the user to decide the same thing again. A genuinely new blocker still gets its own precise gate.
 
+A parked item the orchestrator dispatched because `board` listed it under `blocked.ready` has a gate that cleared by itself: production's pin now carries every commit its `pin must carry` names, and its `date gate` has passed. Confirm that with the commands the dispatch names, record it with `/pm unblock <wN/id> <the finding>`, then do what the gate said comes next (usually the live check) and land the outcome.
+
 Pick exactly one verdict, and write it down with its evidence in a few lines before acting on it:
 
 | Verdict | When | Action | Result `outcome` |
@@ -94,7 +96,7 @@ Every item ends in exactly one of these on-disk states, applied as soon as the v
 **blocked**: implementable work finished, a named gate remains.
 
 - `mv` the milestone directory → `wN/blocked/mN/` (or the note → `wN/blocked/NNN.md`).
-- Leave the workstream README line unchecked (`- [ ]`) and rewrite it as `**BLOCKED (<exactly what you need from whom>)**` with the path updated to `blocked/…`, plus which tasks are already done. See `.pm/w11/README.md` for the shape. A gate that clears by itself (a production deploy carrying your commit) says so, with the check that proves it.
+- Leave the workstream README line unchecked (`- [ ]`) and rewrite it as `**BLOCKED (<exactly what you need from whom>)**` with the path updated to `blocked/…`, plus which tasks are already done. See `.pm/w11/README.md` for the shape. A gate that clears by itself uses its checkable form (the `/pm` skill, **A gate that clears by itself has one checkable form**): ``pin must carry `<sha>` `` for a production deploy carrying your commits, `date gate: YYYY-MM-DD[THH:MMZ]` for a time. `/loopx` resumes the item when it clears, with nobody touching the board, and `pm-board-validate.py` refuses other wording for those gates. When you park again an item that was dispatched because its gate cleared, write the gate that is left: never leave a form that already holds in place.
 - Preserve partial code that cannot ship: push nothing half-done, and keep it in a named stash (`git stash push -u -m "loopx/<wN>/<id>" -- <your paths>`). Name the stash in `notes`.
 - Point to `/unblock <wN>` when the gate needs the user.
 

@@ -30,6 +30,11 @@ matches their path after re-homings. Repairing that history is churn, and the
      workable.
   2. An open or blocked task (outside `done/`) carries `id: wN/mN/tNNN`, the
      same as its path.
+  3. A BLOCKED summary on a workstream line (`- [ ] … **BLOCKED (…)**`) that
+     waits for a production pin, deploy or roll names its commits as
+     ``pin must carry `<sha>`[, `<sha>`…]``, each a commit in this repository,
+     and one that names a date gate says `date gate: YYYY-MM-DD[THH:MMZ]`
+     (scripts/pm_gates.py; `loopx-guard.py board` reads both forms).
 
   python3 scripts/pm-board-validate.py [--root DIR] [--base REV] [--head REV]
 
@@ -54,10 +59,13 @@ import re
 import subprocess
 import sys
 
+import pm_gates
+
 MILESTONE_DIR = re.compile(r"^\.pm/(w\d+)/(?:(?:done|blocked)/)?(m\d+)/")
 # An open or blocked task: directly under wN/mN/ or wN/blocked/mN/, never under done/.
 OPEN_TASK = re.compile(r"^\.pm/(w\d+)/(?:blocked/)?(m\d+)/(t\d+)\.md$")
 ID_LINE = re.compile(r"""^id:\s*["']?([^\s"'#]+)["']?\s*(?:#.*)?$""")
+WORKSTREAM_README = re.compile(r"^\.pm/w\d+/README\.md$")
 
 Milestone = tuple[str, str, str]  # (number, workstream, directory)
 
@@ -198,6 +206,50 @@ def check_task_ids(root: str, tree: list[str], head: str | None = None) -> list[
     return problems
 
 
+def unknown_commits(root: str, shas: set[str]) -> set[str]:
+    """The SHAS that name no commit here, in one cat-file call; none in a shallow clone."""
+    if not shas or git(root, "rev-parse", "--is-shallow-repository").strip() == "true":
+        return set()
+    ordered = sorted(shas)
+    done = subprocess.run(
+        ["git", "-C", root, "cat-file", "--batch-check"],
+        input="".join(f"{sha}^{{commit}}\n" for sha in ordered),
+        capture_output=True,
+        text=True,
+    )
+    if done.returncode != 0:
+        raise RuntimeError(f"git cat-file --batch-check: {done.stderr.strip()}")
+    answers = done.stdout.splitlines()
+    return {sha for sha, answer in zip(ordered, answers) if answer.split()[1:2] != ["commit"]}
+
+
+def check_gates(root: str, tree: list[str], head: str | None = None) -> list[str]:
+    readmes = [path for path in tree if WORKSTREAM_README.match(path)]
+    if head:
+        texts = git_read_blobs(root, head, readmes)
+    else:
+        texts = {}
+        for path in readmes:
+            with open(os.path.join(root, path), encoding="utf-8-sig") as handle:
+                texts[path] = handle.read()
+    problems = []
+    named: dict[str, list[str]] = {}
+    for path in readmes:
+        for number, line in enumerate(texts[path].splitlines(), 1):
+            if not line.lstrip().startswith("- [ ]"):
+                continue
+            gate = pm_gates.gate_text(line)
+            if gate is None:
+                continue
+            where = f"{path}:{number}"
+            problems += [f"{where}: the BLOCKED summary {problem}" for problem in pm_gates.problems(gate)]
+            for sha in pm_gates.parse(gate).commits:
+                named.setdefault(sha, []).append(where)
+    for sha in sorted(unknown_commits(root, set(named))):
+        problems += [f"{where}: `{sha}` in its pin gate is not a commit in this repository" for where in named[sha]]
+    return problems
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--root", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
@@ -225,10 +277,11 @@ def main() -> int:
     try:
         duplicates, notes = check_duplicates(root, args.base, tree, head=args.head)
         task_problems = check_task_ids(root, tree, head=args.head)
+        gate_problems = check_gates(root, tree, head=args.head)
     except RuntimeError as err:
         print(f"pm-board-validate: {err}", file=sys.stderr)
         return 2
-    problems = duplicates + task_problems
+    problems = duplicates + task_problems + gate_problems
     for note in notes:
         print(f"note: {note}", file=sys.stderr)
     for problem in problems:

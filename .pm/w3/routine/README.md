@@ -4,6 +4,7 @@ Routines `/loopx w3` runs on schedule whenever the queue is drained; new board i
 
 Budget: 4 runs/day
 
+The `pin-gated-recheck` row was removed on 2026-11-19 (w5/m502): `python3 scripts/loopx-guard.py board w3` now lists a parked item whose ``pin must carry `<sha>` `` or `date gate:` cleared under `blocked.ready`, and `/loopx w3` takes it first, so no w3 gate is left for the routine to read.
+
 | name | command | every | when | paths |
 | --- | --- | --- | --- | --- |
-| pin-gated-recheck | For each item under `.pm/w3/blocked/` whose only remaining gate is a production deploy carrying a named commit, check whether the latest `chore(deploy): pin platform images to <sha>` commit on origin/main contains it (`git merge-base --is-ancestor <commit> <sha>`). For each that does, run `/pm unblock` on it with that finding and ship the board move, so the loop's next pick sends it to its own worker. Leave items gated on a user decision, a date or an outside event alone, and do not run the live checks yourself. | 6h | always |  |

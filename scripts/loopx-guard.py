@@ -36,12 +36,22 @@ caller's `CLAUDE_CODE_SESSION_ID`, and the Stop hook consults only the mark of
 the session that is stopping. Several sessions can therefore share one
 checkout, each running its own loop or none, without blocking each other.
 
+A parked item whose gate is checkable is *ready* once that gate clears, with
+no board change: its workstream line says ``pin must carry `<sha>` `` and the
+newest `chore(deploy): pin platform images to <sha>` commit on origin/main
+pins a commit that contains every named one, or it says `date gate: <date>`
+and that instant has passed, or both (`scripts/pm_gates.py`). `board` lists
+such items under `blocked.ready` and makes the first one `next`, after an own
+CI failure and before ready board items. Once one is dispatched, the gate it
+was dispatched with is remembered: an item its worker parks again with the
+same line is not offered again until the line changes.
+
 A drained loop listens by default: `wait` polls `origin/main` with `git fetch`
 and exponential backoff, costs no model tokens, and exits when the workstream
-gains actionable work, a routine falls due, one of the loop's own pushes
-turned CI red, the idle limit passes, or fetch has failed for two hours
-straight. Sessions share this checkout, so it also wakes for an item a
-teammate filed here and has not pushed yet. One listener runs per workstream;
+gains actionable work or a ready parked item, a routine falls due, one of the
+loop's own pushes turned CI red, the idle limit passes, or fetch has failed
+for two hours straight. Sessions share this checkout, so it also wakes for an
+item a teammate filed here and has not pushed yet. One listener runs per workstream;
 a second `wait` exits at once. While a listener is alive the Stop hook lets
 the turn end and keeps the mark; a drained loop that is *not* listening is
 held until it starts one. With `--no-listen`, drained means done.
@@ -88,9 +98,10 @@ Modes:
                                 arm a loop for the calling Claude Code session
     loopx-guard.py end          disarm the calling session's loop (a genuine Exit)
     loopx-guard.py board <wN>   the facts for the next pick (JSON): own CI
-                                failures, ready and waiting items, blocked
-                                items changed since they were last listed,
-                                the due routine, and the default next step
+                                failures, ready and waiting items, parked
+                                items whose gate cleared, blocked items
+                                changed since they were last listed, the due
+                                routine, and the default next step
     loopx-guard.py dispatch <label>
                                 mark the calling session's loop as waiting on
                                 a background worker (Stop hook lets turns end)
@@ -110,7 +121,8 @@ Modes:
                      [--fetch-give-up S]
                                 block until origin/main (or an unpushed filing
                                 in this checkout) gives <wN> something to
-                                do; exit 0 board work, 5 routine due, 6 own CI
+                                do, or a parked item's gate clears; exit 0
+                                board work, 5 routine due, 6 own CI
                                 failure, 3 idle limit, 4 fetch failing,
                                 10 chunk elapsed (call again), 11 another
                                 listener is already running
@@ -126,6 +138,7 @@ apply.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import pathlib
@@ -135,6 +148,8 @@ import shutil
 import subprocess
 import sys
 import time
+
+import pm_gates
 
 # A stop attempt that makes no progress may repeat; bound it rather than spin.
 MAX_BLOCKS_WITHOUT_PROGRESS = 25
@@ -218,7 +233,6 @@ def state_dir() -> pathlib.Path:
     if git.is_dir():
         return git / "loopx"
     # Worktrees and odd checkouts: fall back to a per-repo temp directory.
-    import hashlib
     import tempfile
 
     key = hashlib.sha256(str(project_dir()).encode()).hexdigest()[:16]
@@ -240,6 +254,11 @@ def wait_path(workstream: str) -> pathlib.Path:
 def board_state_path(workstream: str) -> pathlib.Path:
     """Which blocked items `board` has already listed, by content hash."""
     return state_dir() / f"board-{workstream}.state"
+
+
+def handed_path(workstream: str) -> pathlib.Path:
+    """The gate line each parked item had when a worker was last dispatched for it."""
+    return state_dir() / f"handed-{workstream}.state"
 
 
 def ci_state_path(workstream: str) -> pathlib.Path:
@@ -498,10 +517,101 @@ def actionable(workstream: str) -> tuple[list[str], list[str]]:
         return classify([(p.name, p.is_dir()) for p in root.iterdir()])
 
 
-def actionable_at(ref: str, workstream: str) -> dict | None:
-    """`board` facts at REF, or None when git cannot read it."""
-    tree = Tree(ref)
-    return board(tree, workstream) if tree.ok else None
+def digest(line: str) -> str:
+    return hashlib.sha256(line.encode()).hexdigest()[:16]
+
+
+def parked_gates(tree: Tree, workstream: str) -> dict[str, tuple[pm_gates.Gate, str]]:
+    """Each parked item with a checkable gate, in pick order: the gate and a digest of its line."""
+    root = f".pm/{workstream}"
+    milestones, notes = classify(tree.children(f"{root}/blocked"))
+    if not milestones and not notes:
+        return {}
+    lines = pm_gates.parked_lines(tree.read_many([f"{root}/README.md"]).get(f"{root}/README.md", ""))
+    gates = {}
+    for name in [*milestones, *notes]:
+        text = pm_gates.gate_text(lines[name]) if name in lines else None
+        gate = pm_gates.parse(text) if text else None
+        if gate and (gate.commits or gate.after is not None):
+            gates[name] = (gate, digest(lines[name]))
+    return gates
+
+
+def production_pin(ref: str = REMOTE_REF) -> str | None:
+    """The commit the newest `chore(deploy): pin platform images to <sha>` on REF names."""
+    listed = git("log", "-n", "20", "-E", f"--grep={pm_gates.PIN_GREP}", "--format=%s", ref, "--")
+    if listed.returncode == 0:
+        for subject in listed.stdout.splitlines():
+            found = pm_gates.PIN_SUBJECT.match(subject)  # the grep also matches body lines
+            if found:
+                return found.group(1)
+    return None
+
+
+def gate_facts(tree: Tree, workstream: str, ref: str = REMOTE_REF) -> dict:
+    """Parked items whose checkable gate holds now, in pick order.
+
+    `ready`: every commit the gate names is an ancestor of the production pin
+    on REF and its date gate (if any) has passed, and no worker was already
+    dispatched with this exact line. `next_in`: seconds until the soonest
+    date gate still ahead. `problems`: commits that cannot clear.
+    """
+    gates = parked_gates(tree, workstream)
+    named = any(gate.commits for gate, _ in gates.values())
+    pin = production_pin(ref) if named else None
+    handed = read_json(handed_path(workstream)).get("handed")
+    handed = handed if isinstance(handed, dict) else {}
+    carried: dict[str, int] = {}
+    ready, problems, next_in = [], [], None
+    now = time.time()
+    if named and pin is None:
+        problems.append(f"no `chore(deploy): pin platform images to <sha>` commit on {ref}")
+    for name, (gate, line) in gates.items():
+        holds = True
+        if gate.after is not None and now < gate.after:
+            next_in = gate.after - now if next_in is None else min(next_in, gate.after - now)
+            holds = False
+        for sha in gate.commits if pin else ():
+            if sha not in carried:
+                carried[sha] = git("merge-base", "--is-ancestor", sha, pin).returncode
+                if carried[sha] not in (0, 1):
+                    problems.append(f"{workstream}/{name}: `{sha}` is not a commit on {ref}")
+        if gate.commits and (pin is None or any(carried[sha] != 0 for sha in gate.commits)):
+            holds = False
+        if holds and handed.get(name) != line:
+            ready.append(name)
+    facts: dict = {"ready": ready, "next_in": next_in}
+    if pin:
+        facts["pin"] = pin
+    if problems:
+        facts["problems"] = problems
+    return facts
+
+
+def hand_over(workstream: str, item: str) -> None:
+    """Remember the gate line of a parked ITEM a worker is dispatched for.
+
+    `board` does not offer it again while its line is unchanged: a worker that
+    parks it again must write the gate that is left, and one that forgot to
+    would otherwise be dispatched for the same gate on every pick.
+    """
+    blocked = project_dir() / ".pm" / workstream / "blocked"
+    stem = item.removesuffix(".md")
+    name = stem if (blocked / stem).is_dir() else f"{stem}.md"
+    if not (blocked / name).exists():
+        return  # an open item: nothing parked to remember
+    try:
+        readme = (project_dir() / ".pm" / workstream / "README.md").read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return
+    line = pm_gates.parked_lines(readme).get(name)
+    if line is None:
+        return
+    path = handed_path(workstream)
+    handed = read_json(path).get("handed")
+    handed = {k: v for k, v in (handed if isinstance(handed, dict) else {}).items() if (blocked / k).exists()}
+    handed[name] = digest(line)
+    write_json(path, {"handed": handed})
 
 
 def next_pick(workstream: str, milestones: list[str], notes: list[str]) -> str:
@@ -931,8 +1041,11 @@ def own_ci(workstream: str, mark: bool = False) -> dict:
     }
 
 
-def blocked_review(workstream: str) -> tuple[list[str], int]:
-    """Blocked items whose content changed since `board` last listed them, and the count of the rest."""
+def blocked_review(workstream: str, ready: list[str] | tuple = ()) -> tuple[list[str], int]:
+    """Blocked items whose content changed since `board` last listed them, and the count of the rest.
+
+    An item in READY is listed there instead, and counted in neither.
+    """
     listed = git("ls-tree", "HEAD", "--", f".pm/{workstream}/blocked/")
     current: dict[str, str] = {}
     if listed.returncode == 0:
@@ -944,9 +1057,9 @@ def blocked_review(workstream: str) -> tuple[list[str], int]:
     path = board_state_path(workstream)
     seen = read_json(path).get("blocked")
     seen = seen if isinstance(seen, dict) else {}
-    review = sorted((name for name, sha in current.items() if seen.get(name) != sha), key=natural)
+    review = sorted((name for name, sha in current.items() if seen.get(name) != sha and name not in ready), key=natural)
     write_json(path, {"blocked": current})
-    return review, len(current) - len(review)
+    return review, sum(1 for name in current if name not in ready) - len(review)
 
 
 def allow(path: pathlib.Path | None = None) -> None:
@@ -1054,6 +1167,8 @@ def cmd_dispatch(label: str) -> None:
     }
     if not again:
         state["baseline"] = {"label": label, "dirty": sorted(dirty_paths() or [])}
+    if found:
+        hand_over(*found.groups())
     state["blocks"] = 0
     write_json(path, state)
     print(f"loopx guard: {label} in flight; launch its worker, then end the turn")
@@ -1177,7 +1292,9 @@ def cmd_wait(workstream: str, options: dict[str, float]) -> None:
     while True:
         routine_in = None
         watch_ci = False
-        facts = actionable_at(REMOTE_REF, workstream) if git("fetch", "-q", "origin", "main").returncode == 0 else None
+        gate_in = None
+        tree = Tree(REMOTE_REF) if git("fetch", "-q", "origin", "main").returncode == 0 else None
+        facts = board(tree, workstream) if tree is not None and tree.ok else None
         if facts is None:
             # Offline: keep backing off, and do not pace on a stale routine schedule.
             failing_since = failing_since or time.time()
@@ -1201,6 +1318,16 @@ def cmd_wait(workstream: str, options: dict[str, float]) -> None:
                 )
             watch_ci = ci["watch"]
             wake_for_items(f"on {REMOTE_REF}", facts["milestones"], facts["notes"])
+            gates = gate_facts(tree, workstream)
+            if gates["ready"]:
+                first = f"{workstream}/{gates['ready'][0]}"
+                finish(
+                    EXIT_WORK,
+                    f"loopx wait: the gate of parked item {first} cleared on {REMOTE_REF}"
+                    + (f" (production pin {gates['pin']})" if gates.get("pin") else "")
+                    + f". Run `{PULL}`, then `board {workstream}` and dispatch it.",
+                )
+            gate_in = gates["next_in"]
         # Sessions share this checkout: an item a teammate filed here and has
         # not pushed is board work too, online or not.
         wake_for_items(f"in this checkout that {REMOTE_REF} does not list", *actionable(workstream))
@@ -1241,6 +1368,8 @@ def cmd_wait(workstream: str, options: dict[str, float]) -> None:
             pause = min(pause, give_up - idle)
         else:
             pause = min(pause, fetch_give_up - (now - failing_since))
+        if gate_in is not None:
+            pause = min(pause, gate_in + 1.0)  # a date gate clears then
         if watch_ci:
             pause = min(pause, CI_WATCH_PAUSE)  # a pushed commit's CI is still running
         if chunk > 0:
@@ -1315,14 +1444,18 @@ def cmd_outcome(workstream: str, item: str, shas: list[str]) -> None:
 
 def cmd_board(workstream: str) -> None:
     check_workstream(workstream)
-    facts = board(Tree(), workstream)
+    tree = Tree()
+    facts = board(tree, workstream)
     ci = own_ci(workstream, mark=True)
-    review, unchanged = blocked_review(workstream)
+    gates = gate_facts(tree, workstream)
+    review, unchanged = blocked_review(workstream, gates["ready"])
     schedule = due_routine(workstream)
     due = schedule["due"]
 
     if ci["own_failures"]:
         nxt = ci["own_failures"][0]["label"]
+    elif gates["ready"]:
+        nxt = f"{workstream}/{gates['ready'][0]}"
     elif facts["milestones"] or facts["notes"]:
         nxt = next_pick(workstream, facts["milestones"], facts["notes"])
     elif due:
@@ -1341,7 +1474,9 @@ def cmd_board(workstream: str) -> None:
                 | ({"reason": ci["reason"]} if "reason" in ci else {}),
                 "ready": [*facts["milestones"], *facts["notes"]],
                 "waiting": facts["waiting"],
-                "blocked": {"review": review, "unchanged": unchanged},
+                "blocked": {"ready": gates["ready"]}
+                | {k: gates[k] for k in ("pin", "problems") if k in gates}
+                | {"review": review, "unchanged": unchanged},
                 "routine": routine,
             }
         )

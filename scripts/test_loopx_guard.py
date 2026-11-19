@@ -1212,12 +1212,12 @@ class BoardTest(RemoteFixture):
         self.assertEqual(facts["ci"]["checked"], False)  # nothing pushed by this loop yet
 
     def test_blocked_items_are_listed_once_then_only_when_they_change(self) -> None:
-        self.assertEqual(self.board()["blocked"], {"review": ["113.md", "m3"], "unchanged": 0})
-        self.assertEqual(self.board()["blocked"], {"review": [], "unchanged": 2})
+        self.assertEqual(self.board()["blocked"], {"ready": [], "review": ["113.md", "m3"], "unchanged": 0})
+        self.assertEqual(self.board()["blocked"], {"ready": [], "review": [], "unchanged": 2})
         self.write(".pm/w2/blocked/113.md", "blocked: the release shipped, unblock condition holds\n")
         self.push("the owner updates a blocker")
         self.pull()
-        self.assertEqual(self.board()["blocked"], {"review": ["113.md"], "unchanged": 1})
+        self.assertEqual(self.board()["blocked"], {"ready": [], "review": ["113.md"], "unchanged": 1})
         self.run_guard("start", "w2")  # a new run reviews every blocked item once
         self.assertEqual(self.board()["blocked"]["review"], ["113.md", "m3"])
 
@@ -1443,6 +1443,148 @@ class CITest(RemoteFixture):
         self.assertEqual(len(self.ci()["own_failures"]), 1)  # board reports it
         idle = self.run_guard("wait", "w2", *FAST, "--chunk", "0.2")
         self.assertEqual(idle.returncode, 10, idle.stdout + idle.stderr)
+
+
+class GateTest(RemoteFixture):
+    """A parked item whose checkable gate cleared is `blocked.ready`, with no board change (w5/m502)."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.before = self.head()  # a commit every fixture pin below may name
+        self.write("lego/fix.go", "package fix\n")
+        self.push("fix: the change m3 waits for")
+        self.fix = self.head()
+        self.write("lego/other.go", "package other\n")
+        self.push("fix: the change 115 also waits for")
+        self.other_fix = self.head()
+        self.write(".pm/w2/m4/README.md", "an open milestone\n")
+        self.park("m3", f"clears by itself: production's pin must carry `{self.fix[:9]}`; then replay the check")
+        self.park("m8", "user decision: which plan")
+        self.push("park items")
+        self.pull()
+
+    def head(self) -> str:
+        return self.git(self.other, "rev-parse", "HEAD").strip()
+
+    def park(self, name: str, gate: str) -> None:
+        """Park NAME under blocked/ with GATE on its workstream line."""
+        readme = self.other / ".pm" / "w2" / "README.md"
+        target = f"blocked/{name}/README.md" if name.startswith("m") else f"blocked/{name}"
+        self.write(f".pm/w2/{target}", "parked\n")
+        lines = [line for line in readme.read_text().splitlines() if f"](blocked/{name}" not in line]
+        lines.append(f"- [ ] **{name}** — **BLOCKED ({gate})** — [{name}]({target})")
+        readme.write_text("\n".join(lines) + "\n")
+
+    def pin(self, sha: str) -> None:
+        """Production deploys SHA: deploy.yml writes its pin back to main."""
+        self.git(self.other, "commit", "-q", "--allow-empty", "-m", f"chore(deploy): pin platform images to {sha[:12]} [skip ci]")
+        self.git(self.other, "push", "-q", "origin", "HEAD:main")
+        self.pull()
+
+    def board(self) -> dict:
+        result = self.run_guard("board", "w2")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout)
+
+    def test_a_release_gate_is_ready_exactly_when_the_pin_carries_its_commit(self) -> None:
+        self.assertEqual(self.board()["blocked"]["ready"], [])  # no pin at all yet
+        self.pin(self.before)
+        facts = self.board()
+        self.assertEqual(facts["blocked"]["ready"], [], "a pin behind the commit cleared its gate")
+        self.assertEqual(facts["blocked"]["pin"], self.before[:12])
+        self.assertEqual(facts["next"], "w2/m4")
+        self.pin(self.fix)
+        facts = self.board()
+        self.assertEqual(facts["blocked"]["ready"], ["m3"])
+        # Taken before ready board items, and not repeated under review.
+        self.assertEqual(facts["next"], "w2/m3")
+        self.assertNotIn("m3", facts["blocked"]["review"])
+        self.assertEqual(facts["ready"], ["m4"])
+
+    def test_every_named_commit_must_be_carried(self) -> None:
+        self.park("115.md", f"pin must carry `{self.fix[:9]}`, `{self.other_fix[:9]}` and then a QA walk")
+        self.push("park 115")
+        self.pull()
+        self.pin(self.fix)
+        self.assertEqual(self.board()["blocked"]["ready"], ["m3"])
+        self.pin(self.other_fix)
+        self.assertEqual(self.board()["blocked"]["ready"], ["m3", "115.md"])
+
+    def test_a_docs_commit_quoting_a_pin_subject_in_its_body_is_not_a_pin(self) -> None:
+        self.pin(self.before)
+        self.git(self.other, "commit", "-q", "--allow-empty", "-m", "docs(pm): park m3",
+                 "-m", f"chore(deploy): pin platform images to {self.fix[:12]}")
+        self.git(self.other, "push", "-q", "origin", "HEAD:main")
+        self.pull()
+        facts = self.board()
+        self.assertEqual(facts["blocked"]["pin"], self.before[:12])
+        self.assertEqual(facts["blocked"]["ready"], [])
+
+    def test_an_unknown_commit_never_clears_and_is_reported(self) -> None:
+        self.park("116.md", "pin must carry `deadbeef12345`")
+        self.push("park 116 on a typo")
+        self.pull()
+        self.pin(self.fix)
+        facts = self.board()
+        self.assertEqual(facts["blocked"]["ready"], ["m3"])
+        self.assertEqual(facts["blocked"]["problems"], ["w2/116.md: `deadbeef12345` is not a commit on origin/main"])
+
+    def test_a_date_gate_is_ready_only_once_its_date_has_passed(self) -> None:
+        self.park("117.md", "waits for a week of production, a date and nothing else: date gate: 2000-01-01")
+        self.park("118.md", "date gate: 2999-01-01T00:00Z, then read the counters")
+        self.push("park two items on dates")
+        self.pull()
+        self.assertEqual(self.board()["blocked"]["ready"], ["117.md"])
+
+    def test_a_gate_with_a_pin_and_a_date_needs_both(self) -> None:
+        self.park("119.md", f"pin must carry `{self.fix[:9]}`; date gate: 2999-01-01")
+        self.park("120.md", f"pin must carry `{self.fix[:9]}`; date gate: 2000-01-01T12:00Z")
+        self.push("park two items on a pin and a date")
+        self.pull()
+        self.assertEqual(self.board()["blocked"]["ready"], [])
+        self.pin(self.fix)
+        self.assertEqual(self.board()["blocked"]["ready"], ["m3", "120.md"])
+
+    def test_a_dispatched_item_is_not_offered_again_until_its_gate_line_changes(self) -> None:
+        self.pin(self.fix)
+        self.run_guard("start", "w2", session=A)
+        self.run_guard("dispatch", "w2/m3", session=A)
+        # Its worker parked it again without rewriting the gate: not ready again.
+        facts = self.board()
+        self.assertEqual(facts["blocked"]["ready"], [])
+        self.assertEqual(facts["next"], "w2/m4")
+        # A rewritten gate is a new claim, offered once more.
+        self.park("m3", f"pin must carry `{self.fix[:9]}`; the replay found the image still old, check again")
+        self.push("the worker rewrites m3's gate")
+        self.pull()
+        self.assertEqual(self.board()["blocked"]["ready"], ["m3"])
+
+    def test_wait_wakes_when_a_pin_clears_a_gate(self) -> None:
+        self.git(self.other, "rm", "-q", "-r", ".pm/w2/m4")
+        self.push("drain the board")
+        self.pull()
+        self.pin(self.before)
+        proc = subprocess.Popen(
+            [sys.executable, str(GUARD), "wait", "w2", *FAST, "--give-up", "20"],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=self.guard_env(),
+        )
+        self.addCleanup(lambda: proc.poll() is None and reap(proc))
+        time.sleep(0.5)
+        self.assertIsNone(proc.poll(), "wait exited before the pin landed")
+        self.git(self.other, "commit", "-q", "--allow-empty", "-m", f"chore(deploy): pin platform images to {self.fix[:12]}")
+        self.git(self.other, "push", "-q", "origin", "HEAD:main")
+        out, err = proc.communicate(timeout=20)
+        self.assertEqual(proc.returncode, 0, err)
+        self.assertIn("the gate of parked item w2/m3 cleared", out)
+
+    def test_wait_does_not_wake_for_a_gate_still_closed(self) -> None:
+        self.git(self.other, "rm", "-q", "-r", ".pm/w2/m4")
+        self.park("118.md", "date gate: 2999-01-01")
+        self.push("drain the board, park one more on a date")
+        self.pull()
+        self.pin(self.before)
+        result = self.run_guard("wait", "w2", *FAST, "--chunk", "0.3")
+        self.assertEqual(result.returncode, 10, result.stdout + result.stderr)
 
 
 if __name__ == "__main__":

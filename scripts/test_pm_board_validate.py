@@ -210,6 +210,70 @@ class BoardValidateTest(unittest.TestCase):
         self.assertEqual(code, 2, out)
         self.assertIn("does not resolve", out)
 
+    def gate(self, board: Board, gate: str, checked: str = " ") -> None:
+        """Give w2's parked m7 the BLOCKED summary GATE on its workstream line."""
+        board.write({".pm/w2/README.md": f"# w2\n\n- [{checked}] **m7** — **BLOCKED ({gate})** — [m7](blocked/m7/README.md)\n"})
+
+    def test_a_release_gate_that_names_no_commit_fails(self):
+        for gate in (
+            "clears by itself: the next production deploy carries this work",
+            "a production pin containing the fix commit",
+            "waits for a production roll that carries the fix",
+            "production's pin must carry the commit that adds depscache.go",
+        ):
+            with self.subTest(gate):
+                board = self.board()
+                self.gate(board, gate)
+                self.assertRed(board, ".pm/w2/README.md:3: the BLOCKED summary waits for a production pin")
+
+    def test_a_release_gate_in_the_checkable_form_passes(self):
+        board = self.board()
+        sha = board.git("rev-parse", "HEAD").strip()
+        self.gate(board, f"clears by itself: production's pin must carry `{sha[:9]}` and `{sha[:12]}`; then a QA walk")
+        self.assertGreen(board)
+
+    def test_a_pin_gate_naming_no_commit_here_fails(self):
+        board = self.board()
+        self.gate(board, "pin must carry `deadbeef12345`")
+        self.assertRed(board, ".pm/w2/README.md:3: `deadbeef12345` in its pin gate is not a commit in this repository")
+
+    def test_a_date_gate_needs_its_form_and_a_real_date(self):
+        for gate, needle in (
+            ("waits for a week, a date and nothing else: read on or after 2026-11-23 13:20 UTC", "names a date gate"),
+            ("the date gate: after the retention passes", "names a date gate"),
+            ("date gate: 2026-02-30", "`date gate: 2026-02-30` is not a real date"),
+        ):
+            with self.subTest(gate):
+                board = self.board()
+                self.gate(board, gate)
+                self.assertRed(board, needle)
+        for gate in ("date gate: 2026-11-23", "read on or after 2026-11-23 13:20 UTC (date gate: 2026-11-23T13:20Z)"):
+            with self.subTest(gate):
+                board = self.board()
+                self.gate(board, gate)
+                self.assertGreen(board)
+
+    def test_gates_that_need_a_person_and_closed_lines_are_free_text(self):
+        for gate, checked in (
+            ("user decision: which plan; upstream merge/release, then a Bex pin review and a CLI release", " "),
+            ("the next production deploy carries this", "x"),
+        ):
+            with self.subTest(gate):
+                board = self.board()
+                self.gate(board, gate, checked)
+                self.assertGreen(board)
+
+    def test_head_reads_gates_from_the_committed_tree(self):
+        board = self.board()
+        self.gate(board, "the next production deploy carries this")
+        code, out = board.run(head="HEAD")
+        self.assertEqual(code, 0, out)  # uncommitted: not this push's
+        board.git("add", "-A")
+        board.git("commit", "-q", "-m", "park m7 on a deploy")
+        code, out = board.run(head="HEAD")
+        self.assertEqual(code, 1, out)
+        self.assertIn(".pm/w2/README.md:3: the BLOCKED summary waits for a production pin", out)
+
     def test_the_repositorys_own_board_passes(self):
         done = subprocess.run(
             [sys.executable, str(SCRIPT), "--root", str(REPO), "--head", "HEAD"],

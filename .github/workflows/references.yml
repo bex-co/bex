@@ -5,7 +5,8 @@ name: references (docs links, .pm board)
 # see each other's checkouts. This runs the two cheap checks that keep both
 # honest: scripts/docs-links-validate.sh (no relative Markdown link points at a
 # file that is gone) and scripts/pm-board-validate.py (no newly added duplicate
-# milestone number, open tasks carry the id their path names). It also runs
+# milestone number, open tasks carry the id their path names, a release or
+# date gate on a BLOCKED line is in the form scripts/pm_gates.py reads). It also runs
 # scripts/stale-key-name-validate.sh, which keeps the retired production SSH key
 # name out of runbooks, skills and open notes (w21/089).
 #
@@ -24,6 +25,7 @@ on:
       - "scripts/docs-links-validate.sh"
       - "scripts/docs-links-validate.test.sh"
       - "scripts/pm-board-validate.py"
+      - "scripts/pm_gates.py"
       - "scripts/test_pm_board_validate.py"
       - "scripts/stale-key-name-validate.sh"
       - "scripts/stale-key-name-validate.test.sh"
@@ -54,7 +56,7 @@ jobs:
         run: bash scripts/docs-links-validate.sh
       - name: Docs link gate self-test
         run: bash scripts/docs-links-validate.test.sh
-      - name: Board numbering and task ids
+      - name: Board numbering, task ids and gate forms
         env:
           # A PR is measured against its base branch; a push against what the
           # branch held before it (an unresolvable value, a new branch, checks
