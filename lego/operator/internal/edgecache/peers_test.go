@@ -105,12 +105,12 @@ func request(method, path string) *http.Request {
 	return r
 }
 
-// ownedBy is a path of the given extension whose key rep owns.
+// ownedBy is a path of the given extension whose resource rep owns.
 func ownedBy(t *testing.T, rep, other *replica, ext string, skip ...string) string {
 	t.Helper()
 	for i := range 1000 {
 		path := fmt.Sprintf("/k%d%s", i, ext)
-		key := cacheKey(request("GET", path))
+		key := resourceKey(request("GET", path))
 		if other.h.owner(key) == rep.addr && rep.h.owner(key) == "" && !slices.Contains(skip, path) {
 			return path
 		}

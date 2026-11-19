@@ -21,10 +21,14 @@ limitations under the License.
 //
 //   - Profiles: ProfileStatic caches Render's "common static files" list,
 //     ProfileAll caches every eligible response.
-//   - Eligibility: a GET (a HEAD is answered from a stored GET) with no
-//     Authorization, Range or Upgrade; a response without Set-Cookie, with a
-//     Vary of at most Accept-Encoding, not an event stream, and a status
-//     Render caches (200, 206, 301, 302, 303, 404, 410).
+//   - Eligibility: a GET or HEAD with no Authorization, Range or Upgrade; a
+//     response without Set-Cookie, with a Vary of at most Accept-Encoding,
+//     not an event stream, and a status Render caches (200, 206, 301, 302,
+//     303, 404, 410).
+//   - HEAD (w3/075): a HEAD is answered from a stored GET, of its own encoding
+//     preference or, when that page is not encoded, of the other one; a miss
+//     is filled with a GET whose header fields alone the client gets, as
+//     Cloudflare, Render's CDN, fills one.
 //   - TTL: CDN-Cache-Control beats Cache-Control, s-maxage beats max-age;
 //     no-store, private and no-cache disable caching, and without a directive
 //     the status's default applies (200/206/301: 120 minutes, 302/303: 20
@@ -204,6 +208,8 @@ type fill struct {
 	// client is the leader's own request header, validators and all; the
 	// upstream sees none, so the body it sends suits every client.
 	client http.Header
+	// head marks a HEAD leader, which is sent the GET's header fields alone.
+	head   bool
 	keep   bool
 	ttl    time.Duration
 	status int
@@ -416,7 +422,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	key := cacheKey(r)
 	if !hop {
-		if owner := h.owner(key); owner != "" {
+		if owner := h.owner(resourceKey(r)); owner != "" {
 			h.forward(w, r, key, owner)
 			return
 		}
@@ -428,14 +434,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // on a miss.
 func (h *Handler) serve(w http.ResponseWriter, r *http.Request, key string) {
 	e, body, expired := h.lookup(key)
+	if e == nil && r.Method == http.MethodHead {
+		e, body = h.unencodedVariant(r)
+	}
 	if e != nil {
 		h.writeEntry(w, r, e, body)
-		return
-	}
-	if r.Method != http.MethodGet {
-		// Only a GET fills: a HEAD response has no body to store.
-		w.Header().Set(StatusHeader, statusMiss)
-		h.proxy.ServeHTTP(w, r)
 		return
 	}
 	fetched := statusMiss
@@ -532,8 +535,51 @@ func acceptsGzip(header string) bool {
 	return false
 }
 
+// resourceKey names what r asks for, whatever encodings it takes. The tier
+// routes by it (peers.go), so both of a resource's pages live on its owner.
+func resourceKey(r *http.Request) string {
+	return r.Host + "\x00" + r.URL.RequestURI()
+}
+
+// cacheKey is the key r's page is stored under: its resource, and whether its
+// client takes gzip.
 func cacheKey(r *http.Request) string {
-	return r.Host + "\x00" + r.URL.RequestURI() + "\x00" + strconv.FormatBool(acceptsGzip(r.Header.Get("Accept-Encoding")))
+	return variantKey(resourceKey(r), acceptsGzip(r.Header.Get("Accept-Encoding")))
+}
+
+func variantKey(resource string, gzip bool) string {
+	return resource + "\x00" + strconv.FormatBool(gzip)
+}
+
+// unencodedVariant answers a HEAD that missed its own key from the page stored
+// for the same resource under the other encoding preference, when that page
+// is not encoded: its header fields are then the ones a GET of r's own
+// preference would carry (RFC 9110 §9.3.2), and it states no encoding r did
+// not accept. The edge needs it (w3/075): Traefik adds Accept-Encoding: gzip
+// to a GET that came without one but passes a HEAD as it came, so a client's
+// bare GET fills the gzip key and its bare HEAD asks for the other. It returns
+// nil when there is no such page.
+func (h *Handler) unencodedVariant(r *http.Request) (*entry, *os.File) {
+	e, body, _ := h.lookup(variantKey(resourceKey(r), !acceptsGzip(r.Header.Get("Accept-Encoding"))))
+	if e == nil || unencoded(e.header) {
+		return e, body
+	}
+	if body != nil {
+		_ = body.Close()
+	}
+	return nil, nil
+}
+
+// unencoded reports a header that names no content coding beyond identity.
+func unencoded(header http.Header) bool {
+	for _, v := range header.Values("Content-Encoding") {
+		for coding := range strings.SplitSeq(v, ",") {
+			if c := strings.TrimSpace(coding); c != "" && !strings.EqualFold(c, "identity") {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // lookup is the live entry for key, its body file open when it has one, or
@@ -619,7 +665,7 @@ func (h *Handler) fetch(w http.ResponseWriter, r *http.Request, key, fetched str
 	generation := h.generation.Load()
 	h.mu.Unlock()
 	st := &fill{
-		key: key, fetched: fetched, flight: f, client: r.Header,
+		key: key, fetched: fetched, flight: f, client: r.Header, head: r.Method == http.MethodHead,
 		dir: h.cfg.Dir, maxBody: h.cfg.MaxObjectBytes, generation: generation, purges: &h.generation,
 	}
 	defer func() {
@@ -637,9 +683,13 @@ func (h *Handler) fetch(w http.ResponseWriter, r *http.Request, key, fetched str
 
 	// The stored body must suit every client the key covers, so the upstream
 	// sees one canonical encoding preference and no validators (a 304 is not
-	// a page); decide answers the leader's own validators.
+	// a page); decide answers the leader's own validators. A HEAD is filled
+	// with a GET, as Cloudflare fills one
+	// (developers.cloudflare.com/cache/concepts/cache-behavior): the page is
+	// stored, and decide sends the leader its header fields alone.
 	out := r.Clone(context.WithValue(r.Context(), fillKey{}, nil))
 	out = out.WithContext(context.WithValue(out.Context(), fillKey{}, st))
+	out.Method = http.MethodGet
 	out.Header.Del("If-None-Match")
 	out.Header.Del("If-Modified-Since")
 	if acceptsGzip(r.Header.Get("Accept-Encoding")) {
@@ -657,8 +707,9 @@ func (h *Handler) fetch(w http.ResponseWriter, r *http.Request, key, fetched str
 // decides whether to keep the response, and releases waiters at once when
 // not, so a stream or an uncacheable page never holds them up. A leader whose
 // own validators match the response gets a 304, as the app would have sent
-// it, and a kept body is read into the store here, since the leader is sent
-// none of it.
+// it, and a HEAD leader the header fields alone; either way a kept body is
+// read into the store here, since the leader is sent none of it, and one not
+// kept is not read at all.
 func (h *Handler) decide(resp *http.Response) error {
 	st, _ := resp.Request.Context().Value(fillKey{}).(*fill)
 	if st == nil {
@@ -675,7 +726,8 @@ func (h *Handler) decide(resp *http.Response) error {
 		st.flight.settle(nil)
 	}
 	resp.Header.Set(StatusHeader, status)
-	if !notModified(st.client, resp.StatusCode, resp.Header) {
+	unmodified := notModified(st.client, resp.StatusCode, resp.Header)
+	if !unmodified && !st.head {
 		return nil
 	}
 	if st.keep {
@@ -685,8 +737,11 @@ func (h *Handler) decide(resp *http.Response) error {
 		}
 	}
 	_ = resp.Body.Close()
-	resp.StatusCode, resp.Body, resp.ContentLength = http.StatusNotModified, http.NoBody, 0
-	notModifiedHeader(resp.Header)
+	resp.Body = http.NoBody
+	if unmodified {
+		resp.StatusCode, resp.ContentLength = http.StatusNotModified, 0
+		notModifiedHeader(resp.Header)
+	}
 	return nil
 }
 

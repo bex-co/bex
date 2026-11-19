@@ -29,11 +29,13 @@ import (
 )
 
 // The replicas of a service's cache tier (w3/m489) share one cache by key
-// affinity: every cache-eligible key has one owner among them, chosen by
+// affinity: every cache-eligible resource has one owner among them, chosen by
 // rendezvous hashing so that every replica that knows the same peers picks the
 // same one, and a replica that is not the owner forwards the request there. A
 // key is then filled once for the whole service and stored once, and losing a
-// replica moves only the keys it owned. A forward that fails before any answer
+// replica moves only the keys it owned. The owner is the resource's, not the
+// key's (resourceKey): both encodings of one resource live on one replica, so
+// a HEAD finds the page a GET of the other encoding stored (w3/075). A forward that fails before any answer
 // is served here instead, so a replica that is gone costs nothing but the
 // cache.
 
