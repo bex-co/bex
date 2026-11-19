@@ -158,14 +158,19 @@ func applyProbeServerDefaults(p *corev1.Probe) {
 }
 
 // applyVolumeServerDefaults fills in the file-mode defaults of the volume
-// sources whose whole defaulting surface is that one field.
-//
-// downwardAPI is deliberately absent: the API server also defaults
-// fieldRef.apiVersion on each of its items, so filling only the mode would leave
-// the projection divergent anyway. Nothing here emits one; a projection that
-// starts to must extend this function, and the convergence invariant is what
-// says so.
+// sources, and a downwardAPI volume's fieldRef.apiVersion on each item: the
+// edge-cache sidecar's control file is one (w3/m486).
 func applyVolumeServerDefaults(v *corev1.Volume) {
+	if d := v.DownwardAPI; d != nil {
+		if d.DefaultMode == nil {
+			d.DefaultMode = ptr.To(corev1.DownwardAPIVolumeSourceDefaultMode)
+		}
+		for i := range d.Items {
+			if ref := d.Items[i].FieldRef; ref != nil && ref.APIVersion == "" {
+				ref.APIVersion = corev1.SchemeGroupVersion.Version
+			}
+		}
+	}
 	switch {
 	case v.Secret != nil && v.Secret.DefaultMode == nil:
 		v.Secret.DefaultMode = ptr.To(corev1.SecretVolumeSourceDefaultMode)

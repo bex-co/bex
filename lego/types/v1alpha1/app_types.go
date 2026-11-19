@@ -34,8 +34,10 @@ const (
 )
 
 // CachePurgedAtAnnotation records the last manual edge-cache purge (Render's
-// POST /services/{id}/cache/purge; w5/m151). The operator stamps it on the
-// pod template, so a purge restarts the cache with the pods, as a deploy does.
+// POST /services/{id}/cache/purge; w5/m151). The operator copies it onto each
+// live pod, whose edge-cache proxy empties its cache when the value changes, so
+// a purge restarts no instance, as on Render's CDN (w3/m486). A pod template
+// stored before w3/m486 carries it instead, and such pods still roll.
 const CachePurgedAtAnnotation = "app.bex.co/cache-purged-at"
 
 // AnnotationLastActive records when the App last served (or received) traffic.
@@ -530,7 +532,9 @@ type AppSpec struct {
 	// caches Render's common static file types and "origin-controlled-all"
 	// every eligible response, each under the response's Cache-Control. Only
 	// a web_service on a paid plan caches; the operator puts a caching proxy
-	// in front of the app container (internal/edgecache).
+	// in front of the app container (internal/edgecache). Like Render's CDN
+	// setting, it is operational: a switch opens no deploy, and the running
+	// proxies take it without a restart (w3/m486).
 	// +optional
 	// +kubebuilder:validation:Enum=no-cache;origin-controlled;origin-controlled-all
 	CacheProfile string `json:"cacheProfile,omitempty"`

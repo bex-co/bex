@@ -36,7 +36,9 @@ limitations under the License.
 // Every request, cached or not, goes upstream through one
 // httputil.ReverseProxy, so the app sees the same headers either way. The
 // cache lives in the pod's memory, so every deploy starts empty: Render purges
-// a service's cache on each deploy, and so does this.
+// a service's cache on each deploy, and so does this. A manual purge and a
+// profile switch reach a running proxy through its control file (control.go,
+// w3/m486), so neither restarts the instance, as on Render's CDN.
 package edgecache
 
 import (
@@ -52,6 +54,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -98,6 +101,7 @@ func defaultTTL(status int) time.Duration {
 
 // Config bounds one cache.
 type Config struct {
+	// Profile is the profile the proxy starts with (SetProfile replaces it).
 	Profile string
 	// MaxBytes bounds the whole cache; MaxObjectBytes one response body;
 	// MaxFills how many responses may be buffered for storing at once.
@@ -109,15 +113,19 @@ type Config struct {
 
 // Handler is the caching proxy in front of upstream.
 type Handler struct {
-	cfg   Config
-	proxy *httputil.ReverseProxy
-	fills chan struct{}
+	cfg     Config
+	proxy   *httputil.ReverseProxy
+	fills   chan struct{}
+	profile atomic.Pointer[string]
 
 	mu      sync.Mutex
 	entries map[string]*list.Element
 	lru     *list.List
 	size    int64
 	flights map[string]*flight
+	// generation counts purges: a fill started under an older one is not
+	// stored, so a purge empties the cache of responses fetched before it.
+	generation uint64
 }
 
 type entry struct {
@@ -168,6 +176,7 @@ func New(upstream *url.URL, cfg Config) *Handler {
 		cfg: cfg, fills: make(chan struct{}, cfg.MaxFills),
 		entries: map[string]*list.Element{}, lru: list.New(), flights: map[string]*flight{},
 	}
+	h.profile.Store(&cfg.Profile)
 	h.proxy = &httputil.ReverseProxy{
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			pr.SetURL(upstream)
@@ -218,9 +227,38 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.fetch(w, r, key, fetched)
 }
 
+// Profile is the profile the proxy caches by.
+func (h *Handler) Profile() string { return *h.profile.Load() }
+
+// SetProfile replaces the profile from the next request on, and purges the
+// entries stored under the old one, as a switch did when it rolled the pods.
+// Any other value than ProfileStatic or ProfileAll passes every request
+// through (DYNAMIC): caching turned off before the next deploy removes the
+// proxy. It reports whether the profile changed.
+func (h *Handler) SetProfile(profile string) bool {
+	if h.Profile() == profile {
+		return false
+	}
+	h.profile.Store(&profile)
+	h.Purge()
+	return true
+}
+
+// Purge empties the cache: every stored entry leaves, and a fill already in
+// flight is served to its own client but not stored.
+func (h *Handler) Purge() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	clear(h.entries)
+	h.lru.Init()
+	h.size = 0
+	h.generation++
+}
+
 // requestEligible is the request half of Render's rules.
 func (h *Handler) requestEligible(r *http.Request) bool {
-	if h.cfg.Profile != ProfileStatic && h.cfg.Profile != ProfileAll {
+	profile := h.Profile()
+	if profile != ProfileStatic && profile != ProfileAll {
 		return false
 	}
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
@@ -229,7 +267,7 @@ func (h *Handler) requestEligible(r *http.Request) bool {
 	if r.Header.Get("Authorization") != "" || r.Header.Get("Upgrade") != "" || r.Header.Get("Range") != "" {
 		return false
 	}
-	if h.cfg.Profile == ProfileStatic {
+	if profile == ProfileStatic {
 		ext := strings.TrimPrefix(strings.ToLower(path.Ext(r.URL.Path)), ".")
 		return staticExtensions[ext]
 	}
@@ -303,6 +341,7 @@ func (h *Handler) fetch(w http.ResponseWriter, r *http.Request, key, fetched str
 	}
 	f := &flight{done: make(chan struct{})}
 	h.flights[key] = f
+	generation := h.generation
 	h.mu.Unlock()
 	defer func() {
 		<-h.fills
@@ -329,8 +368,9 @@ func (h *Handler) fetch(w http.ResponseWriter, r *http.Request, key, fetched str
 	h.proxy.ServeHTTP(tee, out)
 	if st.keep && !tee.overflow {
 		e := &entry{key: key, status: st.status, header: st.header, body: tee.buf.Bytes(), expires: h.cfg.Now().Add(st.ttl)}
-		h.store(e)
-		f.settle(e)
+		if h.store(e, generation) {
+			f.settle(e)
+		}
 	}
 }
 
@@ -432,15 +472,21 @@ func (t *teeWriter) Flush() {
 
 func (t *teeWriter) Unwrap() http.ResponseWriter { return t.ResponseWriter }
 
-func (h *Handler) store(e *entry) {
+// store keeps e, fetched under generation, unless it is larger than the whole
+// cache. current is false, and nothing is kept, when a purge came after the
+// fetch began: e is then no answer for the requests waiting on it either.
+func (h *Handler) store(e *entry, generation uint64) (current bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if generation != h.generation {
+		return false
+	}
 	if old, ok := h.entries[e.key]; ok {
 		h.removeLocked(old)
 	}
 	cost := entryCost(e)
 	if cost > h.cfg.MaxBytes {
-		return
+		return true
 	}
 	// Expired entries leave first, from the cold end, whether or not their key
 	// is ever asked for again; then the least recently used make room.
@@ -453,6 +499,7 @@ func (h *Handler) store(e *entry) {
 	}
 	h.entries[e.key] = h.lru.PushFront(e)
 	h.size += cost
+	return true
 }
 
 func (h *Handler) removeLocked(el *list.Element) {

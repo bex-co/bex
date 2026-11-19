@@ -175,6 +175,57 @@ func TestOperationalVerbsOpenNoDeploy(t *testing.T) {
 	}
 }
 
+// TestEdgeCacheSavesOpenNoDeploy: Render's edge-cache profile is a CDN setting
+// and its purge touches no instance, so neither opens a deploy row nor holds a
+// pending save, on the dashboard's GraphQL verbs or REST's PATCH (w3/m486).
+func TestEdgeCacheSavesOpenNoDeploy(t *testing.T) {
+	ctx := context.Background()
+	str := func(v string) *string { return &v }
+	cases := []struct {
+		name    string
+		profile string
+		verb    func(svc *Service) error
+	}{
+		{"turning caching on", "", func(svc *Service) error {
+			_, err := svc.SetCacheProfile(ctx, "web", appv1alpha1.CacheProfileStatic)
+			return err
+		}},
+		{"a profile switch", appv1alpha1.CacheProfileStatic, func(svc *Service) error {
+			_, err := svc.SetCacheProfile(ctx, "web", appv1alpha1.CacheProfileAll)
+			return err
+		}},
+		{"turning caching off", appv1alpha1.CacheProfileAll, func(svc *Service) error {
+			_, err := svc.SetCacheProfile(ctx, "web", appv1alpha1.CacheProfileNone)
+			return err
+		}},
+		{"a REST PATCH of the profile", appv1alpha1.CacheProfileStatic, func(svc *Service) error {
+			_, err := svc.ApplyServicePatch(ctx, "web", ServicePatch{CacheProfile: str(appv1alpha1.CacheProfileAll)})
+			return err
+		}},
+		{"a purge", appv1alpha1.CacheProfileStatic, func(svc *Service) error {
+			_, err := svc.PurgeCache(ctx, "web")
+			return err
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			st := &recordingStore{}
+			a := managedRepoApp("web")
+			a.Spec.CacheProfile = tc.profile
+			svc, cl := newService(st, a)
+			if err := tc.verb(svc); err != nil {
+				t.Fatalf("%s: %v", tc.name, err)
+			}
+			if len(st.deployCalls) != 0 {
+				t.Fatalf("deploy rows = %d, want none for an edge-cache change", len(st.deployCalls))
+			}
+			if got := getApp(t, cl, "web"); got.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] != "" {
+				t.Fatalf("the change is held for a deploy (pending source generation %q)", got.Annotations[appv1alpha1.AnnotationPendingSourceGeneration])
+			}
+		})
+	}
+}
+
 // TestSourceUpdateDefersDeploy covers the exceptional release-field contract:
 // Update Source changes future release intent but does not itself deploy. The
 // pending marker lets the operator preserve the active release until a deploy

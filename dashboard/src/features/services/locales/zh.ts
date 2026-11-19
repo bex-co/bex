@@ -2150,7 +2150,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Confirm-dialog body for purging the edge cache",
   },
   "services.edgeCachingPurged": {
-    message: "缓存已清除，它会随服务实例一起重新启动。",
+    message: "缓存清除已开始。",
     description: "Toast on successful purgeServiceCache mutation",
   },
   "services.edgeCachingPurgeError": {

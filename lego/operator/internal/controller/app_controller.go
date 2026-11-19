@@ -182,8 +182,13 @@ func (p generationOrDeletionPredicate) Update(e event.UpdateEvent) bool {
 	// carries the new count into the registry's retention.
 	keptBuildsChanged := e.ObjectNew != nil && e.ObjectOld != nil &&
 		e.ObjectNew.GetLabels()[appv1alpha1.LabelKeptBuilds] != e.ObjectOld.GetLabels()[appv1alpha1.LabelKeptBuilds]
+	// A manual edge-cache purge is a stamp too: the pass hands it to the
+	// running proxies (annotateEdgeCachePods, w3/m486) instead of waiting out
+	// the 30 s steady-state requeue.
+	cachePurged := e.ObjectNew != nil && e.ObjectOld != nil &&
+		e.ObjectNew.GetAnnotations()[appv1alpha1.CachePurgedAtAnnotation] != e.ObjectOld.GetAnnotations()[appv1alpha1.CachePurgedAtAnnotation]
 	return p.generationDeletionOrFinalizerPredicate.Update(e) ||
-		rotationRequested || scaledSelection || isolationChanged || cancelStamped || keptBuildsChanged
+		rotationRequested || scaledSelection || isolationChanged || cancelStamped || keptBuildsChanged || cachePurged
 }
 
 // labelApp marks the workloads bex creates for an App. It aliases the
@@ -340,6 +345,10 @@ type AppReconciler struct {
 	registryReadGate  *registryReadGate
 
 	portScanned sync.Map // "<ns>/<name>" -> time.Time of the last scan
+	// cacheProfileRecordChecked is the status fingerprint each App's release
+	// record was last checked against (adoptCacheProfileReleaseIdentity), so
+	// a save held for a deploy reads the record once, not every pass.
+	cacheProfileRecordChecked sync.Map // App UID -> fingerprint
 	// metricsFailureLogged rate-limits the autoscaler's failed-read log line
 	// (w4/m364).
 	metricsFailureLogged sync.Map // "<ns>/<name>" -> time.Time of the last log
@@ -699,8 +708,10 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	// The running pods' environment labels are operational, not part of a
 	// release: every pass moves them, ahead of any build, hold or gate, so a
 	// toggle or a move reaches a pod within the pass its event (or the pod's
-	// own creation) triggers (w4/m342).
-	if err := r.relabelAppPods(ctx, &app); err != nil {
+	// own creation) triggers (w4/m342). A manual purge and the edge-cache
+	// profile reach the running proxies the same way, through each pod's
+	// annotations (w3/m486).
+	if err := r.updateAppPodsInPlace(ctx, &app); err != nil {
 		return ctrl.Result{}, err
 	}
 	// A running initial deploy hook gates nothing, so no later step of the
@@ -713,7 +724,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	// generation or a rejected redeploy remains queued until its timeout. This is
 	// still only an in-memory status mutation on the success path — the normal
 	// runtime/status write persists it later in the reconcile.
-	if err := r.adoptLegacyReleaseIdentity(ctx, &app); err != nil {
+	if err := r.adoptOlderReleaseIdentity(ctx, &app); err != nil {
 		return ctrl.Result{}, err
 	}
 	view, err := r.heldReleaseView(ctx, &app)

@@ -18,8 +18,11 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
+	"maps"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -34,8 +37,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/bex-co/bex/lego/operator/internal/edgecache"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -79,31 +85,66 @@ var _ = Describe("Edge caching (w5/m151)", func() {
 		Expect(cs).To(HaveLen(2))
 		Expect(cs[1].Name).To(Equal(edgeCacheContainerName))
 		Expect(envMap(cs[1].Env)).To(HaveKeyWithValue(edgeCacheUpstreamEnv, "http://127.0.0.1:3000"))
-		Expect(envMap(cs[1].Env)).To(HaveKeyWithValue("BEX_EDGE_CACHE_PROFILE", "origin-controlled"))
+		Expect(envMap(cs[1].Env)).To(HaveKeyWithValue(edgeCacheProfileEnv, "origin-controlled"))
 		svc := &corev1.Service{}
 		Expect(k8sClient.Get(ctx, nn, svc)).To(Succeed())
 		Expect(svc.Spec.Ports[0].TargetPort.StrVal).To(Equal(edgeCachePortName))
 		Expect(cs[0].ReadinessProbe).NotTo(BeNil(), "the app keeps its own health check")
 
-		By("a manual purge rolls the pods, emptying the cache")
-		app := &appv1alpha1.App{}
-		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
-		app.Annotations = map[string]string{appv1alpha1.CachePurgedAtAnnotation: "2026-10-21T00:00:00Z"}
+		By("a manual purge reaches the running pod's proxy, and rolls nothing")
+		serveEnvtestRelease(nn, func() { reconcileN(nn) })
+		pod := simulateTemplatePod(nn, "cached", true)
+		template := envtestDeployment(nn).Spec.Template
+		generation := envtestApp(nn).Status.ReleaseGeneration
+		app := envtestApp(nn)
+		stamp := time.Now().Add(time.Second).UTC().Format(time.RFC3339Nano) // after the pod was created
+		metav1.SetMetaDataAnnotation(&app.ObjectMeta, appv1alpha1.CachePurgedAtAnnotation, stamp)
 		Expect(k8sClient.Update(ctx, app)).To(Succeed())
 		reconcileN(nn)
-		dep := &appsv1.Deployment{}
-		Expect(k8sClient.Get(ctx, nn, dep)).To(Succeed())
-		Expect(dep.Spec.Template.Annotations).To(HaveKeyWithValue(appv1alpha1.CachePurgedAtAnnotation, "2026-10-21T00:00:00Z"))
+		Expect(envtestDeployment(nn).Spec.Template).To(Equal(template), "a purge must not roll the pods")
+		Expect(envtestPod(pod).Annotations).To(And(
+			HaveKeyWithValue(appv1alpha1.CachePurgedAtAnnotation, stamp),
+			HaveKeyWithValue(edgecache.ProfileAnnotation, appv1alpha1.CacheProfileStatic)))
 
-		By("turning caching off removes the proxy and targets the app again")
-		serveEnvtestRelease(nn, func() { reconcileN(nn) })
-		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		By("a profile switch reaches the proxy the same way, with no release")
+		switchProfile := func(profile string) {
+			GinkgoHelper()
+			app := envtestApp(nn)
+			app.Spec.CacheProfile = profile
+			Expect(k8sClient.Update(ctx, app)).To(Succeed())
+			reconcileN(nn)
+			Expect(envtestDeployment(nn).Spec.Template).To(Equal(template), "a switch to %q must not roll the pods", profile)
+			Expect(envtestApp(nn).Status.ReleaseGeneration).To(Equal(generation), "a switch to %q must open no release", profile)
+		}
+		switchProfile(appv1alpha1.CacheProfileAll)
+		Expect(envtestPod(pod).Annotations).To(HaveKeyWithValue(edgecache.ProfileAnnotation, appv1alpha1.CacheProfileAll))
+		Expect(k8sClient.Get(ctx, nn, svc)).To(Succeed())
+		Expect(svc.Spec.Ports[0].TargetPort.StrVal).To(Equal(edgeCachePortName))
+
+		By("turning caching off keeps the proxy as a pass-through until the next deploy, and targets the app again")
+		switchProfile(appv1alpha1.CacheProfileNone)
+		Expect(containers(nn)).To(HaveLen(2))
+		Expect(envtestPod(pod).Annotations).To(HaveKeyWithValue(edgecache.ProfileAnnotation, appv1alpha1.CacheProfileNone))
+		Expect(k8sClient.Get(ctx, nn, svc)).To(Succeed())
+		Expect(svc.Spec.Ports[0].TargetPort.StrVal).To(Equal(servingPortName))
+
+		By("turning it back on while the proxy is still there rolls nothing either")
+		switchProfile(appv1alpha1.CacheProfileStatic)
+		Expect(envtestPod(pod).Annotations).To(HaveKeyWithValue(edgecache.ProfileAnnotation, appv1alpha1.CacheProfileStatic))
+		Expect(k8sClient.Get(ctx, nn, svc)).To(Succeed())
+		Expect(svc.Spec.Ports[0].TargetPort.StrVal).To(Equal(edgeCachePortName))
+
+		By("the next deploy drops a proxy whose caching is off")
+		Expect(k8sClient.Delete(ctx, pod)).To(Succeed())
+		app = envtestApp(nn)
 		app.Spec.CacheProfile = appv1alpha1.CacheProfileNone
 		Expect(k8sClient.Update(ctx, app)).To(Succeed())
 		reconcileN(nn)
+		app = envtestApp(nn)
+		app.Spec.RestartedAt = "2026-10-21T01:00:00Z"
+		Expect(k8sClient.Update(ctx, app)).To(Succeed())
+		reconcileN(nn)
 		Expect(containers(nn)).To(HaveLen(1))
-		Expect(k8sClient.Get(ctx, nn, svc)).To(Succeed())
-		Expect(svc.Spec.Ports[0].TargetPort.StrVal).To(Equal(servingPortName))
 	})
 
 	It("never caches a free web service, as on Render", func() {
@@ -158,22 +199,31 @@ var _ = Describe("Edge caching (w5/m151)", func() {
 		Expect(envtestApp(nn).Status.ServingNetwork).NotTo(BeNil(), "the release must have served")
 		Expect(servicePortTargets(nn.Name)).To(Equal(map[int32]intstr.IntOrString{80: intstr.FromInt32(80), 8080: cache, 10000: cache}))
 
-		By("a manual purge rolls the pods, emptying the cache")
+		By("a manual purge keeps the pod template")
+		template := envtestDeployment(nn).Spec.Template
 		app = envtestApp(nn)
-		app.Annotations = map[string]string{appv1alpha1.CachePurgedAtAnnotation: "2026-11-12T00:00:00Z"}
+		metav1.SetMetaDataAnnotation(&app.ObjectMeta, appv1alpha1.CachePurgedAtAnnotation, "2026-11-12T00:00:00Z")
 		Expect(k8sClient.Update(ctx, app)).To(Succeed())
 		reconcileToFixedPoint(run)
-		Expect(envtestDeployment(nn).Spec.Template.Annotations).To(HaveKeyWithValue(appv1alpha1.CachePurgedAtAnnotation, "2026-11-12T00:00:00Z"))
+		Expect(envtestDeployment(nn).Spec.Template).To(Equal(template), "a purge must not roll the pods")
 
-		By("turning caching off removes the sidecar and targets the app again")
+		By("turning caching off keeps the sidecar as a pass-through and targets the app again")
 		app = envtestApp(nn)
 		app.Spec.CacheProfile = appv1alpha1.CacheProfileNone
 		Expect(k8sClient.Update(ctx, app)).To(Succeed())
 		reconcileToFixedPoint(run)
-		Expect(containers(nn)).To(HaveLen(1))
+		Expect(envtestDeployment(nn).Spec.Template).To(Equal(template), "turning caching off must not roll the pods")
 		Expect(servicePortTargets(nn.Name)).To(Equal(map[int32]intstr.IntOrString{80: intstr.FromInt32(80), 8080: intstr.FromInt32(8080), 10000: intstr.FromInt32(8080)}))
 	})
 })
+
+// envtestPod re-reads p.
+func envtestPod(p *corev1.Pod) *corev1.Pod {
+	GinkgoHelper()
+	got := &corev1.Pod{}
+	Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(p), got)).To(Succeed())
+	return got
+}
 
 // Render documents three reserved ports and refuses nothing else, so a service
 // may bind any other. The sidecar has to sit on one of those three: a fourth,
@@ -224,7 +274,9 @@ func edgeCacheTestPod(app *appv1alpha1.App, name, revision string, cached int, a
 		Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: appContainerName, Ports: appPorts}}},
 	}
 	if cached > 0 {
-		p.Spec.Containers = append(p.Spec.Containers, edgeCacheContainer(app, "ghcr.io/bex-co/bex:test", cached, drainSeconds))
+		sidecar := edgeCacheContainer("ghcr.io/bex-co/bex:test", app.Spec.CacheProfile, cached, drainSeconds)
+		withEdgeCacheControl(&p.Spec, &sidecar)
+		p.Spec.Containers = append(p.Spec.Containers, sidecar)
 	}
 	for _, m := range mutate {
 		m(p)
@@ -350,5 +402,454 @@ func TestImagePortServiceTargetsTheEdgeCacheOnItsPrimary(t *testing.T) {
 				t.Fatalf("Service targets = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+// edgeCachedApp is a paid web service whose edge cache runs.
+func edgeCachedApp(mutate ...func(*appv1alpha1.App)) *appv1alpha1.App {
+	return projectionApp(append([]func(*appv1alpha1.App){func(a *appv1alpha1.App) {
+		a.Spec.Tier, a.Spec.Port, a.Spec.CacheProfile = "pro", 8080, appv1alpha1.CacheProfileStatic
+	}}, mutate...)...)
+}
+
+// edgeCacheParams are app's projection parameters as applyServingDeployment
+// sets them for the edge cache.
+func edgeCacheParams(app *appv1alpha1.App) deploymentParams {
+	p := execParams()
+	p.edgeCacheImage = probeTestImage
+	if app.Spec.ServesEdgeCache() {
+		p.edgeCacheProfile = app.Spec.CacheProfile
+	}
+	return p
+}
+
+// podTemplateDiff names what moved between two pod templates in the terms an
+// edge-cache change can move: template annotations, the sidecar's
+// environment, its mounts and the pod's volumes, then anything else.
+func podTemplateDiff(before, after corev1.PodTemplateSpec) string {
+	var diffs []string
+	for k := range mergedKeys(before.Annotations, after.Annotations) {
+		if before.Annotations[k] != after.Annotations[k] {
+			diffs = append(diffs, "template annotation "+k+": "+strconv.Quote(before.Annotations[k])+" -> "+strconv.Quote(after.Annotations[k]))
+		}
+	}
+	b, a := edgeCacheSidecar(before.Spec), edgeCacheSidecar(after.Spec)
+	switch {
+	case (b == nil) != (a == nil):
+		diffs = append(diffs, "edge-cache sidecar present: "+strconv.FormatBool(b != nil)+" -> "+strconv.FormatBool(a != nil))
+	case b != nil:
+		be, ae := envMap(b.Env), envMap(a.Env)
+		for k := range mergedKeys(be, ae) {
+			if be[k] != ae[k] {
+				diffs = append(diffs, "sidecar env "+k+": "+strconv.Quote(be[k])+" -> "+strconv.Quote(ae[k]))
+			}
+		}
+		if !reflect.DeepEqual(b.VolumeMounts, a.VolumeMounts) {
+			diffs = append(diffs, "sidecar volume mounts moved")
+		}
+	}
+	if !reflect.DeepEqual(before.Spec.Volumes, after.Spec.Volumes) {
+		diffs = append(diffs, "pod volumes moved")
+	}
+	if len(diffs) == 0 && !equalPodTemplate(before, after) {
+		diffs = append(diffs, "the pod template moved outside the edge cache")
+	}
+	return strings.Join(diffs, "; ")
+}
+
+func mergedKeys(a, b map[string]string) map[string]bool {
+	keys := map[string]bool{}
+	for k := range a {
+		keys[k] = true
+	}
+	for k := range b {
+		keys[k] = true
+	}
+	return keys
+}
+
+// Render's edge cache lives on its CDN, so neither a manual purge nor a switch
+// between its two caching profiles touches an instance
+// (render.com/docs/web-service-caching). Each must leave the projected pod
+// template alone: a template change rolls every instance, and a disk-bearing
+// service, which rolls by Recreate, goes down while it does (w3/m486).
+func TestAPurgeOrAProfileSwitchKeepsTheEdgeCachedPodTemplate(t *testing.T) {
+	disk := func(a *appv1alpha1.App) {
+		a.Spec.Disk = &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 10}
+	}
+	purged := func(stamp string) func(*appv1alpha1.App) {
+		return func(a *appv1alpha1.App) {
+			a.Annotations = map[string]string{appv1alpha1.CachePurgedAtAnnotation: stamp}
+		}
+	}
+	profile := func(p string) func(*appv1alpha1.App) {
+		return func(a *appv1alpha1.App) { a.Spec.CacheProfile = p }
+	}
+	for name, tc := range map[string]struct {
+		before, after []func(*appv1alpha1.App)
+	}{
+		"a first purge":                         {nil, []func(*appv1alpha1.App){purged("2026-11-18T10:00:00Z")}},
+		"a later purge":                         {[]func(*appv1alpha1.App){purged("2026-11-18T10:00:00Z")}, []func(*appv1alpha1.App){purged("2026-11-18T11:00:00Z")}},
+		"static to all":                         {nil, []func(*appv1alpha1.App){profile(appv1alpha1.CacheProfileAll)}},
+		"all to static":                         {[]func(*appv1alpha1.App){profile(appv1alpha1.CacheProfileAll)}, []func(*appv1alpha1.App){profile(appv1alpha1.CacheProfileStatic)}},
+		"a purge on a disk-bearing service":     {[]func(*appv1alpha1.App){disk}, []func(*appv1alpha1.App){disk, purged("2026-11-18T10:00:00Z")}},
+		"a switch on a disk-bearing service":    {[]func(*appv1alpha1.App){disk}, []func(*appv1alpha1.App){disk, profile(appv1alpha1.CacheProfileAll)}},
+		"turning caching off":                   {nil, []func(*appv1alpha1.App){profile(appv1alpha1.CacheProfileNone)}},
+		"turning caching off on a disk service": {[]func(*appv1alpha1.App){disk}, []func(*appv1alpha1.App){disk, profile("")}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			before := edgeCachedApp(tc.before...)
+			stored := project(before, edgeCacheParams(before))
+			if got := len(stored.Spec.Template.Spec.Containers); got != 2 {
+				t.Fatalf("the stored template runs %d containers, want the app and the edge cache", got)
+			}
+			after := edgeCachedApp(tc.after...)
+			if after.Spec.Disk != nil && stored.Spec.Strategy.Type != appsv1.RecreateDeploymentStrategyType {
+				t.Fatalf("a disk-bearing service's strategy = %q, want Recreate", stored.Spec.Strategy.Type)
+			}
+			next := stored.DeepCopy()
+			applyDeploymentSpec(next, after, edgeCacheParams(after))
+			if diff := podTemplateDiff(stored.Spec.Template, next.Spec.Template); diff != "" {
+				t.Fatalf("the pod template moved, rolling every instance: %s", diff)
+			}
+		})
+	}
+}
+
+// A caching profile is a CDN setting on Render: saving one starts or stops
+// caching without a deploy. So a switch is no new release (no deploy row, no
+// release generation, no revision label to roll the pods on), in either
+// direction and on either side of the API (w3/m486).
+func TestACacheProfileSwitchIsNoNewRelease(t *testing.T) {
+	profiles := []string{"", appv1alpha1.CacheProfileStatic, appv1alpha1.CacheProfileAll}
+	for _, from := range profiles {
+		for _, to := range profiles {
+			before := appv1alpha1.AppSpec{Image: "docker.io/example/web:v1", Tier: "pro", Port: 8080, CacheProfile: from}
+			after := before
+			after.CacheProfile = to
+			if desiredAppReleaseIdentity(before).release != desiredAppReleaseIdentity(after).release {
+				t.Errorf("%q -> %q changed the release fingerprint", from, to)
+			}
+			if appv1alpha1.SpecRollsRelease(before, after) {
+				t.Errorf("%q -> %q rolls a release on bex-api's side", from, to)
+			}
+		}
+	}
+}
+
+// legacyEdgeCacheDeployment is what an operator before w3/m486 stored for app:
+// the sidecar with no control file, and the App's purge stamp on the template.
+func legacyEdgeCacheDeployment(app *appv1alpha1.App, p deploymentParams) *appsv1.Deployment {
+	dep := project(app, p)
+	tmpl := &dep.Spec.Template
+	sidecar := edgeCacheSidecar(tmpl.Spec)
+	sidecar.Env = slices.DeleteFunc(sidecar.Env, func(e corev1.EnvVar) bool { return e.Name == edgeCacheControlEnv })
+	sidecar.VolumeMounts = nil
+	if tmpl.Spec.Volumes = slices.DeleteFunc(tmpl.Spec.Volumes, func(v corev1.Volume) bool { return v.Name == edgeCacheControlVolumeName }); len(tmpl.Spec.Volumes) == 0 {
+		tmpl.Spec.Volumes = nil
+	}
+	if stamp := app.Annotations[appv1alpha1.CachePurgedAtAnnotation]; stamp != "" {
+		metav1.SetMetaDataAnnotation(&tmpl.ObjectMeta, appv1alpha1.CachePurgedAtAnnotation, stamp)
+	}
+	return dep
+}
+
+func controlled(t *testing.T, tmpl corev1.PodTemplateSpec) bool {
+	t.Helper()
+	sidecar := edgeCacheSidecar(tmpl.Spec)
+	if sidecar == nil {
+		t.Fatal("the template has no edge-cache sidecar")
+	}
+	_, env := containerEnv(sidecar, edgeCacheControlEnv)
+	volume := slices.ContainsFunc(tmpl.Spec.Volumes, func(v corev1.Volume) bool { return v.Name == edgeCacheControlVolumeName })
+	if env != volume || env != (len(sidecar.VolumeMounts) == 1) {
+		t.Fatalf("a half-controlled sidecar: env %v, volume %v, mounts %v", env, volume, sidecar.VolumeMounts)
+	}
+	return env
+}
+
+// The operator release that ships the control file rolls no caching service:
+// a template stored before it keeps its sidecar, profile and purge stamp. Its
+// pods cannot read a purge or a switch at run time, so either still rolls
+// them, onto the controlled shape; so does any other change, and turning
+// caching off removes the sidecar it cannot hand a pass-through to.
+func TestAnUpgradeKeepsAnEdgeCacheTemplateFromBeforeItsControlFile(t *testing.T) {
+	stamped := func(a *appv1alpha1.App) {
+		a.Annotations = map[string]string{appv1alpha1.CachePurgedAtAnnotation: "2026-11-01T00:00:00Z"}
+	}
+	for name, app := range map[string]*appv1alpha1.App{"never purged": edgeCachedApp(), "purged before": edgeCachedApp(stamped)} {
+		t.Run(name, func(t *testing.T) {
+			legacy := legacyEdgeCacheDeployment(app, edgeCacheParams(app))
+			upgraded := legacy.DeepCopy()
+			applyDeploymentSpec(upgraded, app, edgeCacheParams(app))
+			if diff := podTemplateDiff(legacy.Spec.Template, upgraded.Spec.Template); diff != "" {
+				t.Fatalf("the upgrade rolled the service: %s", diff)
+			}
+
+			for change, mutate := range map[string]func(*appv1alpha1.App){
+				"a purge": func(a *appv1alpha1.App) {
+					metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.CachePurgedAtAnnotation, "2026-11-18T00:00:00Z")
+				},
+				"a switch":    func(a *appv1alpha1.App) { a.Spec.CacheProfile = appv1alpha1.CacheProfileAll },
+				"a restart":   func(a *appv1alpha1.App) { a.Spec.RestartedAt = "2026-11-18T00:00:00Z" },
+				"caching off": func(a *appv1alpha1.App) { a.Spec.CacheProfile = "" },
+			} {
+				next := app.DeepCopy()
+				mutate(next)
+				rolled := legacy.DeepCopy()
+				applyDeploymentSpec(rolled, next, edgeCacheParams(next))
+				if equalPodTemplate(rolled.Spec.Template, legacy.Spec.Template) {
+					t.Fatalf("%s left the legacy template, so its pods never see it", change)
+				}
+				if !next.Spec.ServesEdgeCache() {
+					if edgeCacheSidecar(rolled.Spec.Template.Spec) != nil {
+						t.Fatalf("%s: a legacy sidecar was kept", change)
+					}
+					continue
+				}
+				if _, stamp := rolled.Spec.Template.Annotations[appv1alpha1.CachePurgedAtAnnotation]; stamp {
+					t.Fatalf("%s: the rolled template still carries the purge stamp", change)
+				}
+				if !controlled(t, rolled.Spec.Template) {
+					t.Fatalf("%s rolled onto another legacy sidecar", change)
+				}
+				if got, _ := containerEnv(edgeCacheSidecar(rolled.Spec.Template.Spec), edgeCacheProfileEnv); got != next.Spec.CacheProfile {
+					t.Fatalf("%s: the rolled sidecar starts on %q, want %q", change, got, next.Spec.CacheProfile)
+				}
+			}
+		})
+	}
+}
+
+// A sidecar with its control file keeps the profile it started with alongside
+// every other value a stored template keeps (applyDeploymentSpec): a switch
+// together with an operator upgrade that moved the health-probe image rolls
+// nothing, and any real change adopts both the current image and the current
+// profile.
+func TestAKeptCacheProfileComposesWithTheOtherKeptValues(t *testing.T) {
+	app := edgeCachedApp(func(a *appv1alpha1.App) { a.Spec.HealthCheckPath = "/healthz" })
+	stored := project(app, edgeCacheParams(app))
+	switched := app.DeepCopy()
+	switched.Spec.CacheProfile = appv1alpha1.CacheProfileAll
+	upgraded := edgeCacheParams(switched)
+	upgraded.healthProbeImage = "ghcr.io/bex-co/bex@sha256:2222"
+	kept := stored.DeepCopy()
+	applyDeploymentSpec(kept, switched, upgraded)
+	if diff := podTemplateDiff(stored.Spec.Template, kept.Spec.Template); diff != "" {
+		t.Fatalf("a switch over a new helper image rolled the pods: %s", diff)
+	}
+	restarted := switched.DeepCopy()
+	restarted.Spec.RestartedAt = "2026-11-18T00:00:00Z"
+	rolled := stored.DeepCopy()
+	applyDeploymentSpec(rolled, restarted, upgraded)
+	if got, _ := containerEnv(edgeCacheSidecar(rolled.Spec.Template.Spec), edgeCacheProfileEnv); got != appv1alpha1.CacheProfileAll {
+		t.Fatalf("the next roll starts the sidecar on %q, want the saved %q", got, appv1alpha1.CacheProfileAll)
+	}
+	if got := storedHealthProbeImage(rolled.Spec.Template.Spec); got != upgraded.healthProbeImage {
+		t.Fatalf("the next roll installs the probe from %q, want %q", got, upgraded.healthProbeImage)
+	}
+}
+
+// The live purge stamp and profile reach every running pod whose sidecar reads
+// its control file, and nothing else: not a legacy sidecar (its template rolls
+// instead), a leaving pod, a pod without the cache, or another App's.
+func TestAnnotateEdgeCachePodsHandsTheProxiesThePurgeAndProfile(t *testing.T) {
+	named := []corev1.ContainerPort{{Name: servingPortName, ContainerPort: 8080}}
+	legacy := func(p *corev1.Pod) {
+		c := edgeCacheSidecar(p.Spec)
+		c.Env = slices.DeleteFunc(c.Env, func(e corev1.EnvVar) bool { return e.Name == edgeCacheControlEnv })
+	}
+	annotated := func(annotations map[string]string) func(*corev1.Pod) {
+		return func(p *corev1.Pod) { p.Annotations = annotations }
+	}
+	for name, tc := range map[string]struct {
+		app         *appv1alpha1.App
+		wantProfile string
+	}{
+		"a purge and a switch": {edgeCachedApp(func(a *appv1alpha1.App) {
+			a.Namespace, a.Spec.CacheProfile = "tea-a", appv1alpha1.CacheProfileAll
+			a.Annotations = map[string]string{appv1alpha1.CachePurgedAtAnnotation: "2026-11-18T10:00:00Z"}
+		}), appv1alpha1.CacheProfileAll},
+		"caching turned off": {edgeCachedApp(func(a *appv1alpha1.App) {
+			a.Namespace, a.Spec.CacheProfile = "tea-a", ""
+			a.Annotations = map[string]string{appv1alpha1.CachePurgedAtAnnotation: "2026-11-18T10:00:00Z"}
+		}), appv1alpha1.CacheProfileNone},
+	} {
+		t.Run(name, func(t *testing.T) {
+			static := tc.app.DeepCopy()
+			static.Spec.CacheProfile = appv1alpha1.CacheProfileStatic
+			current := map[string]string{edgecache.ProfileAnnotation: tc.wantProfile, appv1alpha1.CachePurgedAtAnnotation: "2026-11-18T10:00:00Z"}
+			other := edgeCachedApp(func(a *appv1alpha1.App) { a.Name, a.Namespace = "other", "tea-a" })
+			pods := []client.Object{
+				edgeCacheTestPod(static, "fresh", "rev-1", 8080, named),
+				edgeCacheTestPod(static, "current", "rev-1", 8080, named, annotated(current)),
+				edgeCacheTestPod(static, "legacy", "rev-1", 8080, named, legacy),
+				edgeCacheTestPod(static, "leaving", "rev-1", 8080, named, terminatingPod),
+				edgeCacheTestPod(static, "plain", "rev-1", 0, named),
+				edgeCacheTestPod(other, "other", "rev-1", 8080, named),
+			}
+			cl := fake.NewClientBuilder().WithScheme(wakeScheme()).WithObjects(pods...).Build()
+			before := map[string]string{}
+			for _, p := range pods {
+				before[p.GetName()] = p.GetResourceVersion()
+			}
+			if err := (&AppReconciler{Client: cl}).annotateEdgeCachePods(t.Context(), tc.app); err != nil {
+				t.Fatal(err)
+			}
+			for _, p := range pods {
+				got := &corev1.Pod{}
+				if err := cl.Get(t.Context(), client.ObjectKeyFromObject(p), got); err != nil {
+					t.Fatal(err)
+				}
+				patched := got.ResourceVersion != p.GetResourceVersion()
+				if want := p.GetName() == "fresh"; patched != want {
+					t.Errorf("pod %s patched = %v, want %v (annotations %v)", p.GetName(), patched, want, got.Annotations)
+				}
+				if p.GetName() == "fresh" && !maps.Equal(got.Annotations, current) {
+					t.Errorf("fresh pod annotations = %v, want %v", got.Annotations, current)
+				}
+			}
+		})
+	}
+}
+
+// A pod whose proxy already caches by the App's profile, from its template,
+// needs no patch when the App was never purged or was purged before the pod
+// was created, which started it empty: a new pod costs no write and no second
+// purge.
+func TestAnnotateEdgeCachePodsWritesNothingForAPodAlreadyCurrent(t *testing.T) {
+	created := metav1.NewTime(time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC))
+	for name, purged := range map[string]string{"never purged": "", "purged before the pod": "2026-11-18T11:59:59.5Z"} {
+		t.Run(name, func(t *testing.T) {
+			app := edgeCachedApp(func(a *appv1alpha1.App) {
+				a.Namespace = "tea-a"
+				if purged != "" {
+					a.Annotations = map[string]string{appv1alpha1.CachePurgedAtAnnotation: purged}
+				}
+			})
+			pod := edgeCacheTestPod(app, "fresh", "rev-1", 8080, nil, func(p *corev1.Pod) { p.CreationTimestamp = created })
+			cl := fake.NewClientBuilder().WithScheme(wakeScheme()).WithObjects(pod).Build()
+			if err := (&AppReconciler{Client: cl}).annotateEdgeCachePods(t.Context(), app); err != nil {
+				t.Fatal(err)
+			}
+			got := &corev1.Pod{}
+			if err := cl.Get(t.Context(), client.ObjectKeyFromObject(pod), got); err != nil {
+				t.Fatal(err)
+			}
+			if got.ResourceVersion != pod.GetResourceVersion() || len(got.Annotations) != 0 {
+				t.Fatalf("a current pod was patched: %v", got.Annotations)
+			}
+		})
+	}
+}
+
+// A purge stamps only an annotation, which bumps no generation, so the App
+// watch must pass it, or the purge would wait out the steady-state requeue.
+func TestAPurgeStampWakesTheReconciler(t *testing.T) {
+	old := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Generation: 4}}
+	purged := old.DeepCopy()
+	metav1.SetMetaDataAnnotation(&purged.ObjectMeta, appv1alpha1.CachePurgedAtAnnotation, "2026-11-18T10:00:00Z")
+	if !(generationOrDeletionPredicate{}).Update(event.UpdateEvent{ObjectOld: old, ObjectNew: purged}) {
+		t.Fatal("a purge stamp did not wake the reconciler")
+	}
+	touched := old.DeepCopy()
+	metav1.SetMetaDataAnnotation(&touched.ObjectMeta, "app.bex.co/updated-at", "2026-11-18T10:00:00Z")
+	if (generationOrDeletionPredicate{}).Update(event.UpdateEvent{ObjectOld: old, ObjectNew: touched}) {
+		t.Fatal("an unrelated annotation woke the reconciler")
+	}
+}
+
+// The edge-cache proxy reads the stamp under its own name; the two must not
+// drift.
+func TestTheProxyReadsTheAppsPurgeAnnotation(t *testing.T) {
+	if edgecache.PurgedAtAnnotation != appv1alpha1.CachePurgedAtAnnotation {
+		t.Fatalf("the proxy reads %q, the API stamps %q", edgecache.PurgedAtAnnotation, appv1alpha1.CachePurgedAtAnnotation)
+	}
+}
+
+// A release fingerprinted with the edge-cache profile in it, as operators
+// before w3/m486 stored every caching service's, is the same release today:
+// it is adopted, whether or not a profile was saved since, and through its
+// recorded spec while another setting waits for a deploy, so the upgrade opens
+// no release. A real difference is still one.
+func TestAReleaseFingerprintedWithItsCacheProfileIsAdopted(t *testing.T) {
+	spec := appv1alpha1.AppSpec{Image: "docker.io/example/web:v1", Tier: "pro", Port: 8080, CacheProfile: appv1alpha1.CacheProfileStatic}
+	legacy := releaseIdentityWith(spec, releaseIdentityVersion, appv1alpha1.CacheProfileStatic).release
+	if legacy == desiredAppReleaseIdentity(spec).release {
+		t.Fatal("the test needs a fingerprint the profile moved")
+	}
+	app := func(mutate func(*appv1alpha1.AppSpec)) *appv1alpha1.App {
+		a := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a"}, Spec: spec}
+		mutate(&a.Spec)
+		a.Status.ReleaseGeneration, a.Status.ReleaseFingerprint = 3, legacy
+		return a
+	}
+	recorded, err := json.Marshal(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.ReleaseRecordName("web", 3), Namespace: "tea-a"},
+		Data:       map[string][]byte{releaseRecordAdoptedSpecKey: recorded},
+	}
+	for name, tc := range map[string]struct {
+		mutate  func(*appv1alpha1.AppSpec)
+		record  bool
+		adopted bool
+	}{
+		"the release as saved":                 {func(*appv1alpha1.AppSpec) {}, false, true},
+		"a profile saved since":                {func(s *appv1alpha1.AppSpec) { s.CacheProfile = appv1alpha1.CacheProfileAll }, false, true},
+		"caching turned off since":             {func(s *appv1alpha1.AppSpec) { s.CacheProfile = "" }, false, true},
+		"a held save, with the release record": {func(s *appv1alpha1.AppSpec) { s.HealthCheckPath = "/healthz" }, true, true},
+		"a held save, with no record":          {func(s *appv1alpha1.AppSpec) { s.HealthCheckPath = "/healthz" }, false, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			builder := fake.NewClientBuilder().WithScheme(wakeScheme())
+			if tc.record {
+				builder = builder.WithObjects(record.DeepCopy())
+			}
+			a := app(tc.mutate)
+			if err := (&AppReconciler{Client: builder.Build()}).adoptCacheProfileReleaseIdentity(t.Context(), a); err != nil {
+				t.Fatal(err)
+			}
+			want := legacy
+			if tc.adopted {
+				want = desiredAppReleaseIdentity(spec).release
+			}
+			if a.Status.ReleaseFingerprint != want {
+				t.Fatalf("fingerprint = %s, want %s", a.Status.ReleaseFingerprint, want)
+			}
+		})
+	}
+
+	// A held save keeps the fingerprint apart from the saved spec's until it
+	// deploys, so the record would be read on every pass: it is read once.
+	reads := 0
+	counted := fake.NewClientBuilder().WithScheme(wakeScheme()).WithObjects(record.DeepCopy()).WithInterceptorFuncs(interceptor.Funcs{
+		Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+			reads++
+			return c.Get(ctx, key, obj, opts...)
+		},
+	}).Build()
+	held := app(func(s *appv1alpha1.AppSpec) { s.HealthCheckPath = "/healthz" })
+	r := &AppReconciler{Client: counted}
+	for range 3 {
+		if err := r.adoptCacheProfileReleaseIdentity(t.Context(), held); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if reads != 1 || held.Status.ReleaseFingerprint != desiredAppReleaseIdentity(spec).release {
+		t.Fatalf("record reads = %d, fingerprint adopted = %v; want one read and the adoption", reads, held.Status.ReleaseFingerprint == desiredAppReleaseIdentity(spec).release)
+	}
+
+	other := app(func(s *appv1alpha1.AppSpec) { s.Image = "docker.io/example/web:v2" })
+	if err := (&AppReconciler{Client: fake.NewClientBuilder().WithScheme(wakeScheme()).Build()}).adoptCacheProfileReleaseIdentity(t.Context(), other); err != nil {
+		t.Fatal(err)
+	}
+	if other.Status.ReleaseFingerprint != legacy {
+		t.Fatal("a new image was adopted into the running release")
+	}
+	if !recordedSettingsMatch(appv1alpha1.ReleaseRecordSpec{SettingsFingerprint: releaseIdentityWith(spec, releaseIdentityVersion, appv1alpha1.CacheProfileStatic).release}, app(func(s *appv1alpha1.AppSpec) { s.CacheProfile = appv1alpha1.CacheProfileAll }).Spec) {
+		t.Fatal("a release record from before w3/m486 reads as unsaved settings after a profile save")
 	}
 }

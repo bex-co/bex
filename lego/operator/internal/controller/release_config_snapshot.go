@@ -732,8 +732,9 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 		}
 		// Cached on app's status, which this pass persists; runtime is a view.
 		params.platform.gitCommit = r.imageCommit(ctx, app, params.image)
+		params.edgeCacheImage = r.BackupHelperImage
 		if r.edgeCaches(runtime) {
-			params.edgeCacheImage = r.BackupHelperImage
+			params.edgeCacheProfile = runtime.Spec.CacheProfile
 		}
 		params.healthProbeImage = r.BackupHelperImage
 	} else {

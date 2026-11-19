@@ -42,6 +42,10 @@ import (
 const (
 	readHeaderTimeout = 10 * time.Second
 	idleTimeout       = 120 * time.Second
+	// controlPollInterval is how often the proxy re-reads its control file
+	// (BEX_EDGE_CACHE_CONTROL); the kubelet's refresh of the file after the
+	// operator patches the pod dominates how soon a purge lands.
+	controlPollInterval = 2 * time.Second
 )
 
 func newServer(addr string, handler http.Handler) *http.Server {
@@ -70,6 +74,14 @@ func main() {
 		MaxBytes:       maxBytes,
 		MaxObjectBytes: maxBytes / 8,
 	})
+	// A pod projected since w3/m486 names its downward-API annotations file:
+	// a manual purge and a profile switch arrive there, with no restart. A pod
+	// from an older template has none and is rolled for either instead.
+	if path := os.Getenv("BEX_EDGE_CACHE_CONTROL"); path != "" {
+		control := edgecache.NewController(handler, path)
+		control.Logf = log.Printf
+		go control.Run(ctx, controlPollInterval)
+	}
 	server := newServer(os.Getenv("BEX_EDGE_CACHE_LISTEN"), handler)
 	drain, _ := strconv.Atoi(os.Getenv("BEX_EDGE_CACHE_DRAIN_SECONDS"))
 	go func() {

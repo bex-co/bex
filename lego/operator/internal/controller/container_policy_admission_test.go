@@ -430,8 +430,7 @@ var _ = Describe("Application container policy admission", func() {
 					// the tenant image alone, so its app loses the policy.
 					bad := workload.DeepCopyObject().(client.Object)
 					pod := admissionPodTemplate(bad)
-					cached := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{CacheProfile: appv1alpha1.CacheProfileStatic}}
-					pod.Spec.Containers = append(pod.Spec.Containers, edgeCacheContainer(cached, "ghcr.io/bex-co/bex:test", 8080, 0))
+					pod.Spec.Containers = append(pod.Spec.Containers, edgeCacheContainer("ghcr.io/bex-co/bex:test", appv1alpha1.CacheProfileStatic, 8080, 0))
 					label := scenario + "/edge-cache-sidecar"
 					expectDenied(operator.Create(ctx, admissionFreshWorkload(bad), client.DryRunAll), label+" create")
 					if _, job := bad.(*batchv1.Job); job {

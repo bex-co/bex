@@ -304,11 +304,7 @@ func (r *AppReconciler) unreadyPod(ctx context.Context, dep *appsv1.Deployment) 
 		if p.Status.Phase != corev1.PodRunning || p.Status.PodIP == "" || !rolloutPodUnready(p, dep) {
 			continue
 		}
-		cached := false
-		for _, c := range p.Spec.Containers {
-			cached = cached || c.Name == edgeCacheContainerName
-		}
-		if cached {
+		if edgeCacheSidecar(p.Spec) != nil {
 			continue
 		}
 		for _, cs := range p.Status.ContainerStatuses {

@@ -112,8 +112,10 @@ func TestFirstWebImageReleaseChecksAnyOpenPort(t *testing.T) {
 			a.Status.ActiveRevision = "rev-0"
 			a.Status.ImageNetwork.HTTPSelection = appv1alpha1.HTTPSelectionRetained
 		},
-		"a Health Check Path":    func(a *appv1alpha1.App, _ *deploymentParams) { a.Spec.HealthCheckPath = "/health" },
-		"an edge cache":          func(_ *appv1alpha1.App, p *deploymentParams) { p.edgeCacheImage = probeTestImage },
+		"a Health Check Path": func(a *appv1alpha1.App, _ *deploymentParams) { a.Spec.HealthCheckPath = "/health" },
+		"an edge cache": func(_ *appv1alpha1.App, p *deploymentParams) {
+			p.edgeCacheImage, p.edgeCacheProfile = probeTestImage, appv1alpha1.CacheProfileStatic
+		},
 		"no helper image":        func(_ *appv1alpha1.App, p *deploymentParams) { p.healthProbeImage = "" },
 		"the service's own PORT": func(a *appv1alpha1.App, _ *deploymentParams) { a.Status.EnvPort = 8080 },
 	} {

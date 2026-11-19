@@ -2217,8 +2217,7 @@ const jaServices: Record<string, TranslationEntry> = {
     description: "Confirm-dialog body for purging the edge cache",
   },
   "services.edgeCachingPurged": {
-    message:
-      "キャッシュを消去しました。サービスのインスタンスとともに再開されます。",
+    message: "キャッシュの消去を開始しました。",
     description: "Toast on successful purgeServiceCache mutation",
   },
   "services.edgeCachingPurgeError": {

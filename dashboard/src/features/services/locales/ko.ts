@@ -2198,7 +2198,7 @@ const koServices: Record<string, TranslationEntry> = {
     description: "Confirm-dialog body for purging the edge cache",
   },
   "services.edgeCachingPurged": {
-    message: "캐시를 비웠습니다. 서비스 인스턴스와 함께 다시 시작됩니다.",
+    message: "캐시 비우기를 시작했습니다.",
     description: "Toast on successful purgeServiceCache mutation",
   },
   "services.edgeCachingPurgeError": {

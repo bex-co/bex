@@ -140,6 +140,13 @@ func legacyReleaseFingerprint(spec appv1alpha1.AppSpec) string {
 }
 
 func appReleaseIdentityOf(spec appv1alpha1.AppSpec, version string) appReleaseIdentity {
+	return releaseIdentityWith(spec, version, "")
+}
+
+// releaseIdentityWith is appReleaseIdentityOf with cacheProfile among the
+// release inputs, as operators from w5/m151 to w3/m486 fingerprinted the
+// edge-cache profile; "" leaves it out, as today.
+func releaseIdentityWith(spec appv1alpha1.AppSpec, version, cacheProfile string) appReleaseIdentity {
 	builder := effectiveBuilder(spec)
 	branch := spec.Branch
 	if spec.Repo != "" && branch == "" {
@@ -216,7 +223,7 @@ func appReleaseIdentityOf(spec appv1alpha1.AppSpec, version string) appReleaseId
 		FilesFromSecrets:           spec.FilesFromSecrets,
 		HealthCheckPath:            spec.HealthCheckPath,
 		MaxShutdownDelaySeconds:    spec.MaxShutdownDelaySeconds,
-		CacheProfile:               spec.CacheProfile,
+		CacheProfile:               cacheProfile,
 		PreDeployCommand:           spec.PreDeployCommand,
 		InitialDeployHook:          spec.InitialDeployHook,
 		RestartedAt:                spec.RestartedAt,
@@ -249,7 +256,7 @@ func settingsIdentitySpec(spec appv1alpha1.AppSpec) appv1alpha1.AppSpec {
 // a fingerprint cannot prove equality.
 func recordedSettingsMatch(rec appv1alpha1.ReleaseRecordSpec, spec appv1alpha1.AppSpec) bool {
 	fp := rec.SettingsFingerprint
-	if fp == releaseSettingsFingerprint(spec) {
+	if fp == releaseSettingsFingerprint(spec) || cacheProfileFingerprint(fp, settingsIdentitySpec(spec)) {
 		return true
 	}
 	return rec.HealthCheckPath != nil && *rec.HealthCheckPath == spec.HealthCheckPath &&
@@ -270,6 +277,71 @@ func identityFingerprint(version string, value any) string {
 	}
 	sum := sha256.Sum256(b)
 	return version + ":" + hex.EncodeToString(sum[:])
+}
+
+// adoptOlderReleaseIdentity rebases a status fingerprint an older operator
+// computed onto today's, in memory: a release-v1 one
+// (adoptLegacyReleaseIdentity), then one with the edge-cache profile in it
+// (adoptCacheProfileReleaseIdentity).
+func (r *AppReconciler) adoptOlderReleaseIdentity(ctx context.Context, app *appv1alpha1.App) error {
+	if err := r.adoptLegacyReleaseIdentity(ctx, app); err != nil {
+		return err
+	}
+	return r.adoptCacheProfileReleaseIdentity(ctx, app)
+}
+
+// cacheProfileFingerprint reports whether fp is the release-v2 fingerprint an
+// operator before w3/m486 computed for spec's release inputs under some
+// edge-cache profile. That profile was release identity from w5/m151 until
+// w3/m486 made it operational, so such a fingerprint names the same release as
+// spec's own, whatever profile spec saves now. An empty profile was never in
+// the input, so only the CRD's three values are tried.
+func cacheProfileFingerprint(fp string, spec appv1alpha1.AppSpec) bool {
+	for _, profile := range []string{appv1alpha1.CacheProfileNone, appv1alpha1.CacheProfileStatic, appv1alpha1.CacheProfileAll} {
+		if fp == releaseIdentityWith(spec, releaseIdentityVersion, profile).release {
+			return true
+		}
+	}
+	return false
+}
+
+// adoptCacheProfileReleaseIdentity rebases a status fingerprint an operator
+// before w3/m486 computed with the edge-cache profile in it
+// (cacheProfileFingerprint) onto today's, in memory like
+// adoptLegacyReleaseIdentity, so the operator release that drops the profile
+// from the fingerprint opens no release and rolls no caching service. The
+// fingerprint is matched against the saved spec, which covers a profile saved
+// since, and else against the spec its release was adopted with, which covers
+// a release-relevant save still waiting for a deploy (pendingReleaseView) or a
+// release held through its rollout. Only a saved caching profile can have had
+// one in its release, short of a profile save held with another change, so
+// only such an App reads the record, and once per fingerprint. Anything that
+// matches neither is left to normal classification.
+func (r *AppReconciler) adoptCacheProfileReleaseIdentity(ctx context.Context, app *appv1alpha1.App) error {
+	fp := app.Status.ReleaseFingerprint
+	desired := desiredAppReleaseIdentity(app.Spec).release
+	if !strings.HasPrefix(fp, releaseIdentityVersion+":") || fp == desired {
+		return nil
+	}
+	if cacheProfileFingerprint(fp, app.Spec) {
+		app.Status.ReleaseFingerprint = desired
+		return nil
+	}
+	if app.Spec.CacheProfile == "" || app.Status.ReleaseGeneration <= 0 {
+		return nil
+	}
+	if checked, ok := r.cacheProfileRecordChecked.Load(app.UID); ok && checked == fp {
+		return nil
+	}
+	adopted, err := r.adoptedReleaseSpec(ctx, app, app.Status.ReleaseGeneration)
+	if err != nil {
+		return err
+	}
+	if adopted != nil && cacheProfileFingerprint(fp, *adopted) {
+		app.Status.ReleaseFingerprint = desiredAppReleaseIdentity(*adopted).release
+	}
+	r.cacheProfileRecordChecked.Store(app.UID, app.Status.ReleaseFingerprint)
+	return nil
 }
 
 // adoptLegacyReleaseIdentity rebases a release-v1 status fingerprint onto

@@ -182,8 +182,17 @@ type deploymentParams struct {
 	// platform carries the Render default variables' inputs that do not come
 	// from the App (platform_env.go).
 	platform platformEnvInputs
-	// edgeCacheImage runs the edge-cache sidecar; "" for none (edge_cache.go).
-	edgeCacheImage string
+	// edgeCacheImage is the image the edge-cache sidecar runs from, "" on an
+	// operator that does not know its own (edge_cache.go). edgeCacheProfile is
+	// the profile the sidecar starts with, "" for no sidecar; it is kept from
+	// a stored template whose sidecar takes the live profile from its pod's
+	// annotations (keptEdgeCache). edgeCacheLegacy, which only keptEdgeCache
+	// sets from a stored template, projects the sidecar a template stored
+	// before w3/m486 runs: no control file, and the purge stamp on the
+	// template.
+	edgeCacheImage   string
+	edgeCacheProfile string
+	edgeCacheLegacy  bool
 	// healthProbeImage is the image the no-redirect health probe is installed
 	// from; "" probes with the kubelet's HTTP check instead (health_probe.go).
 	healthProbeImage string
@@ -204,6 +213,11 @@ type deploymentParams struct {
 	// managedOIDC is the release's token mounts (managed_oidc.go); the zero
 	// value for none.
 	managedOIDC oidcMounts
+}
+
+// edgeCaches reports whether the pod runs the edge-cache sidecar.
+func (p deploymentParams) edgeCaches() bool {
+	return p.edgeCacheImage != "" && p.edgeCacheProfile != ""
 }
 
 // usesHealthProbeBinary reports whether the App's pods carry bex's
@@ -236,7 +250,7 @@ func (p deploymentParams) usesOpenPortCheck(app *appv1alpha1.App) bool {
 // keep the TCP probe on it. An edge-cached service keeps its sidecar on the
 // primary, which discovery moves, so it is left out.
 func checksAnyOpenPort(stored corev1.PodTemplateSpec, app *appv1alpha1.App, p deploymentParams) bool {
-	if p.worker || p.healthProbeImage == "" || p.edgeCacheImage != "" || app.Spec.HealthCheckPath != "" ||
+	if p.worker || p.healthProbeImage == "" || p.edgeCaches() || app.Spec.HealthCheckPath != "" ||
 		!discoversWebImagePort(app) {
 		return false
 	}
@@ -714,7 +728,11 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 		// installed from, until its template changes for another reason, so
 		// an operator upgrade never rolls the fleet.
 		probeStale := !p.worker && (app.Spec.HealthCheckPath != "" || p.openPortCheck || p.drainCheck) && keptProbeImage != p.healthProbeImage
-		if drainStale || periodStale || probeStale {
+		// The edge cache's profile, and the shape of a sidecar from before
+		// its control file, are kept the same way (keptEdgeCache, w3/m486).
+		keptCacheProfile, keptCacheLegacy := keptEdgeCache(stored.Spec, p)
+		cacheStale := keptCacheProfile != p.edgeCacheProfile || keptCacheLegacy != p.edgeCacheLegacy
+		if drainStale || periodStale || probeStale || cacheStale {
 			// Keep whatever the stored template carries when nothing else
 			// about it changes; any other change adopts the current values.
 			unchanged := dep.DeepCopy()
@@ -723,6 +741,7 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 			kept.healthProbeImage = keptProbeImage
 			kept.drainCheck = keptDrainCheck
 			kept.livenessGrace = keptLivenessGrace
+			kept.edgeCacheProfile, kept.edgeCacheLegacy = keptCacheProfile, keptCacheLegacy
 			keptDrainFor := drain
 			if drainStale {
 				keptDrainFor = keptDrain
@@ -816,14 +835,8 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 		dep.Spec.Template.Spec.Volumes = append(dep.Spec.Template.Spec.Volumes, healthProbeVolume())
 		dep.Spec.Template.Spec.InitContainers = []corev1.Container{healthProbeInstallContainer(p.healthProbeImage)}
 	}
-	if p.edgeCacheImage != "" {
-		dep.Spec.Template.Spec.Containers = append(dep.Spec.Template.Spec.Containers, edgeCacheContainer(app, p.edgeCacheImage, p.port, drain))
-		if purged := app.Annotations[appv1alpha1.CachePurgedAtAnnotation]; purged != "" {
-			if dep.Spec.Template.Annotations == nil {
-				dep.Spec.Template.Annotations = map[string]string{}
-			}
-			dep.Spec.Template.Annotations[appv1alpha1.CachePurgedAtAnnotation] = purged
-		}
+	if p.edgeCaches() {
+		projectEdgeCache(dep, app, p, drain)
 	}
 	dep.Spec.Template.Spec.ImagePullSecrets = p.pullSecrets
 	dep.Spec.Template.Spec.AutomountServiceAccountToken = new(false)

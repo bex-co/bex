@@ -82,6 +82,14 @@ func stripServerPodDefaults(spec *corev1.PodSpec) {
 		if spec.Volumes[i].Projected != nil {
 			spec.Volumes[i].Projected.DefaultMode = nil
 		}
+		if d := spec.Volumes[i].DownwardAPI; d != nil {
+			d.DefaultMode = nil
+			for j := range d.Items {
+				if ref := d.Items[j].FieldRef; ref != nil {
+					ref.APIVersion = ""
+				}
+			}
+		}
 	}
 }
 
@@ -111,8 +119,9 @@ var _ = Describe("Server pod-template defaults (w7/m84)", func() {
 						// One volume per source applyVolumeServerDefaults knows
 						// about, so no branch of it is speculative: projected is
 						// the App's secret files, secret is the public KeyValue's
-						// TLS material, and configMap is covered before a
-						// projection reaches for it.
+						// TLS material, configMap is covered before a projection
+						// reaches for it, and downwardAPI is the edge-cache
+						// sidecar's control file (w3/m486).
 						Volumes: []corev1.Volume{{
 							Name: "projected-files",
 							VolumeSource: corev1.VolumeSource{
@@ -134,7 +143,7 @@ var _ = Describe("Server pod-template defaults (w7/m84)", func() {
 									LocalObjectReference: corev1.LocalObjectReference{Name: "conf"},
 								},
 							},
-						}},
+						}, edgeCacheControlVolume()},
 					},
 				},
 			},
@@ -176,6 +185,8 @@ var _ = Describe("Server pod-template defaults (w7/m84)", func() {
 		Expect(stored.Volumes[0].Projected.DefaultMode).To(HaveValue(Equal(corev1.ProjectedVolumeSourceDefaultMode)))
 		Expect(stored.Volumes[1].Secret.DefaultMode).To(HaveValue(Equal(corev1.SecretVolumeSourceDefaultMode)))
 		Expect(stored.Volumes[2].ConfigMap.DefaultMode).To(HaveValue(Equal(corev1.ConfigMapVolumeSourceDefaultMode)))
+		Expect(stored.Volumes[3].DownwardAPI.DefaultMode).To(HaveValue(Equal(corev1.DownwardAPIVolumeSourceDefaultMode)))
+		Expect(stored.Volumes[3].DownwardAPI.Items[0].FieldRef.APIVersion).To(Equal("v1"))
 
 		// …and the whole spec, so a default this helper does NOT know about is
 		// caught the first time a projection starts emitting the field.

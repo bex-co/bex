@@ -434,11 +434,10 @@ var _ = Describe("Settings over a refused image release (w32/m419)", func() {
 		Expect(backend(f)).To(Equal(name + ":80"))
 		held()
 
-		By("an edge-cache profile is a release, not an operational setting: it deploys the saved tag")
+		By("an edge-cache profile acts without a deploy, as Render's CDN setting does (w3/m486)")
 		update(f, func(app *appv1alpha1.App) { app.Spec.CacheProfile = appv1alpha1.CacheProfileStatic })
-		app := envtestApp(f.nn)
-		Expect(app.Status.ReleaseGeneration).To(BeNumerically(">", gen))
-		goLive(f)
+		Expect(envtestApp(f.nn).Status.ReleaseGeneration).To(Equal(gen))
+		held()
 	})
 
 	It("sleeps and wakes a free service", func() {

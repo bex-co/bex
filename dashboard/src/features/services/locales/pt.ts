@@ -2225,8 +2225,7 @@ const ptServices: Record<string, TranslationEntry> = {
     description: "Confirm-dialog body for purging the edge cache",
   },
   "services.edgeCachingPurged": {
-    message:
-      "Cache limpo. Ele reinicia junto com as instâncias do seu serviço.",
+    message: "Limpeza do cache iniciada.",
     description: "Toast on successful purgeServiceCache mutation",
   },
   "services.edgeCachingPurgeError": {

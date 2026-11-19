@@ -69,7 +69,7 @@ describe("useEdgeCache", () => {
     );
   });
 
-  it("purges and notes the cache restarts with the service's instances", async () => {
+  it("purges without promising a restart, as Render's CDN purge needs none", async () => {
     const mutate = vi.fn().mockResolvedValue({});
     mockUseMutation.mockReturnValue([mutate]);
     const { result } = renderHook(() => useEdgeCache());
@@ -79,8 +79,6 @@ describe("useEdgeCache", () => {
     });
 
     expect(mutate).toHaveBeenCalledWith({ variables: { id: "srv-web" } });
-    expect(toastSuccess).toHaveBeenCalledWith(
-      "Cache purged. It restarts with your service's instances.",
-    );
+    expect(toastSuccess).toHaveBeenCalledWith("Cache purge started.");
   });
 });

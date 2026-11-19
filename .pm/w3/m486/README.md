@@ -1,20 +1,20 @@
 # w3 · m486 — Purging a service's edge cache, or switching between its two caching profiles, restarts no instance, as on Render
 
-**Worker:** worker3 **Goal:** a manual purge and a switch between `origin-controlled` and `origin-controlled-all` empty or re-scope the edge cache while every instance keeps running, as on Render, where the cache lives on its CDN; a disk-bearing caching service no longer goes down on a purge. **Status:** todo
+**Worker:** worker3 **Goal:** a manual purge and a switch between `origin-controlled` and `origin-controlled-all` empty or re-scope the edge cache while every instance keeps running, as on Render, where the cache lives on its CDN; a disk-bearing caching service no longer goes down on a purge. **Status:** in progress (t001–t005 and t007–t009 done; t006 waits for a production deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Failing tests: a purge and a caching-profile switch change the pod template today | 30m | — |
-| [t002](t002.md) | The edge-cache sidecar takes its purge generation and profile from a file it re-reads while running | 1h | t001 |
-| [t003](t003.md) | The operator patches live pods on a purge or profile switch, and rolls no existing template | 1h | t002 |
-| [t004](t004.md) | The dashboard's purge copy stops promising a restart (en/zh) | 30m | t003 |
-| [t005](t005.md) | Record the rule in ADR004 § Edge caching and ADR018 | 20m | t003 |
+| [t001](done/t001.md) | Failing tests: a purge and a caching-profile switch change the pod template today — **DONE** | 30m | — |
+| [t002](done/t002.md) | The edge-cache sidecar takes its purge generation and profile from a file it re-reads while running — **DONE** | 1h | t001 |
+| [t003](done/t003.md) | The operator patches live pods on a purge or profile switch, and rolls no existing template — **DONE** | 1h | t002 |
+| [t004](done/t004.md) | The dashboard's purge copy stops promising a restart (en/zh) — **DONE** | 30m | t003 |
+| [t005](done/t005.md) | Record the rule in ADR004 § Edge caching and ADR018 — **DONE** | 20m | t003 |
 | [t006](t006.md) | Ship and verify on production | 45m | t004, t005 |
-| [t007](t007.md) | Render parity | 20m | t006 |
-| [t008](t008.md) | Simplify | 15m | t007 |
-| [t009](t009.md) | Test coverage | 30m | t007 |
+| [t007](done/t007.md) | Render parity — **DONE** | 20m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 30m | t007 |
 | [t010](t010.md) | Closeout | 10m | t008, t009 |
 
 ## Definition of done
@@ -40,3 +40,28 @@
 - **Sequencing:** `w6/m484` (todo) edits the same projection block to keep a stored template's sidecar image; t003 rebases onto it or keeps its rule.
 - **Residual, owned by `w3/m489`:** turning caching on from `no-cache` still adds the sidecar, so it rolls once.
 - **Render parity included:** the purge's observable behavior and the dashboard's edge-caching copy change.
+
+## Implementation record (2026-11-18)
+
+- **Deviation, the profile was release identity.** Besides the env var the brainstorm found, `spec.cacheProfile` was `IdentityRelease` in `AppSpecIdentityClasses`, so a dashboard save opened a deploy row and minted a release generation (a new revision label, so a roll whatever the sidecar did), and a REST `PATCH` waited for the next deploy. Render's caching profile is a CDN setting that opens no deploy, so it is `IdentityOperational` now. The operator drops it from the release fingerprint, and `adoptCacheProfileReleaseIdentity` adopts every fingerprint an older operator computed with it (against the saved spec under each profile, else the release record's adopted spec), so the upgrade opens no release. `TestEdgeCacheSavesOpenNoDeploy` (backend) covers the dashboard verbs, REST `PATCH` and the purge.
+- **Mechanism.** The sidecar reads its pod's `metadata.annotations` from a downward-API file every 2 s (`BEX_EDGE_CACHE_CONTROL`); the operator patches `app.bex.co/cache-purged-at` and `app.bex.co/cache-profile` on each live pod on every pass (`annotateEdgeCachePods`), and the App watch passes a purge stamp change at once. A switch empties the cache too (Render documents nothing either way). Turning caching off keeps the sidecar as a `no-cache` pass-through, with the Service direct to the app, until the next deploy.
+- **Older templates.** A template stored before this release keeps its shape on the upgrade (`keptEdgeCache`), and its next purge, switch or other change rolls it onto the controlled shape. On production the operator image still moves every edge-cached service's sidecar image on each deploy until `w6/m484` lands, so the release that ships this rolls them once for that reason.
+- **Copy.** The purge toast reads "Cache purge started." in all eight dashboard locales, not only en and zh.
+
+## Render parity (t007, 2026-11-18)
+
+Checked against the shipped code and its tests; the production behavior is t006's record. Reference: [render.com/docs/web-service-caching](https://render.com/docs/web-service-caching), fetched 2026-11-18.
+
+| Surface | Render | bex after this milestone | Verdict |
+| --- | --- | --- | --- |
+| REST `POST /v1/services/{id}/cache/purge` | `202`, no body; purges the CDN, touches no instance | `202`, no body; the stamp reaches each running sidecar, no restart, no deploy row | matched |
+| GraphQL `purgeServiceCache`, dashboard **Purge cache** | Settings page purge | same verb; toast "Cache purge started." in all eight locales | matched (Render's toast wording unverified) |
+| REST `PATCH /v1/services/{id}` `serviceDetails.cache.profile` | no deploy documented | applies at once, no deploy row, no restart (was held for the next deploy) | matched |
+| GraphQL `setCacheProfile`, dashboard **Save edge caching** | "Save changes", then "Render begins caching" | no deploy row, no restart (was a deploy row and a roll) | matched |
+| Turning caching off | serves every response from the service | sidecar passes through until the next deploy, Service direct to the app, no restart | matched |
+| Turning caching on for a service without the sidecar | no restart | adds the sidecar, one roll | divergence, owned by `w3/m489` and recorded in ADR018 |
+| A switch empties the cache | not documented | empties it, as the roll it replaces did | unverified against Render |
+| MCP | no cache tool | none | matched |
+| `edge_cache_enabled` / `edge_cache_disabled` / `edge_cache_purged` | events | unchanged | matched (w9/m345) |
+
+No new drift to file: the one divergence is `w3/m489`'s, and ADR018's Edge caching row records it with this date.

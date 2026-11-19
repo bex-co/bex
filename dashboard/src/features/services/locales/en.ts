@@ -2198,7 +2198,7 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Confirm-dialog body for purging the edge cache",
   },
   "services.edgeCachingPurged": {
-    message: "Cache purged. It restarts with your service's instances.",
+    message: "Cache purge started.",
     description: "Toast on successful purgeServiceCache mutation",
   },
   "services.edgeCachingPurgeError": {

@@ -2212,8 +2212,7 @@ const ruServices: Record<string, TranslationEntry> = {
     description: "Confirm-dialog body for purging the edge cache",
   },
   "services.edgeCachingPurged": {
-    message:
-      "Кеш очищен. Он начинается заново вместе с инстансами вашего сервиса.",
+    message: "Очистка кеша запущена.",
     description: "Toast on successful purgeServiceCache mutation",
   },
   "services.edgeCachingPurgeError": {
