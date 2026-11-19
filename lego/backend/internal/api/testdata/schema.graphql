@@ -2968,6 +2968,7 @@ type ServiceEventDetails {
   commitMessage: String
   commitUrl: String
   cronJobRunId: String
+  deployCommandExecutionId: String
   deployId: String
   deployStatus: String
   diskId: String

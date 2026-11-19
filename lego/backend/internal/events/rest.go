@@ -50,9 +50,9 @@ import (
 //     build_ended or pre_deploy_ended; deployStatus / buildStatus /
 //     preDeployStatus, its replacements, are.
 //   - Required fields bex does not record are omitted, never invented: an
-//     actor's email, build and pre-deploy execution ids, a deleted branch's
-//     successor, autoscaling criteria, and the disk, maintenance-mode and
-//     auto-deploy facts of a row recorded before w3/m317 kept them (w3/m302).
+//     actor's email, a deleted branch's successor, autoscaling criteria of
+//     pre-w4/m335 rows, and the disk, maintenance-mode and auto-deploy facts
+//     of a row recorded before w3/m317 kept them (w3/m302).
 //   - Rejecting a malformed cursor with 400 (Render's behavior here is unspecified).
 //
 // Mounted under /v1/services, like every other apps-adjacent
@@ -99,9 +99,16 @@ type renderDetails struct {
 	Status string `json:"status,omitempty"`
 	// BuildStatus is build_ended's succeeded|failed|canceled (w7/m66).
 	BuildStatus string `json:"buildStatus,omitempty"`
-	// BuildID is pipeline_minutes_exhausted's buildId (w9/m345): the refused
-	// deploy, bex's build being its deploy's own.
+	// BuildID is Render's buildId (w9/m345, w4/m510, w4/710): for
+	// build_started, build_ended and pipeline_minutes_exhausted, the deploy's
+	// dep- id (or bld- id for a build-source carrier); for deploy_started and
+	// deploy_ended, the build-source bld- id when the deploy shipped one; for
+	// artifact_fetch_failed, the build-source bld- id that could not be fetched.
 	BuildID string `json:"buildId,omitempty"`
+	// DeployCommandExecutionID is pre_deploy_started / pre_deploy_ended's
+	// execution id (w4/710): the deploy id, since bex's pre-deploy run is its
+	// deploy's own.
+	DeployCommandExecutionID string `json:"deployCommandExecutionId,omitempty"`
 	// Trigger is a deploy's *renderTrigger (deploy_started,
 	// pipeline_minutes_exhausted), an edge-cache event's
 	// *renderEdgeCacheTrigger, or zero_downtime_redeploy_started's trigger
@@ -368,25 +375,27 @@ func renderCronRunStatus(status string) string {
 
 func toRenderEvent(e Event) renderEvent {
 	d := renderDetails{
-		DeployID:         e.Details.DeployID,
-		DeployStatus:     e.Details.DeployStatus,
-		PreDeployStatus:  e.Details.PreDeployStatus,
-		FullDeployStatus: e.Details.FullDeployStatus,
-		FailureReason:    e.Details.FailureReason,
-		CancelReason:     e.Details.CancelReason,
-		StallReason:      e.Details.StallReason,
-		Image:            e.Details.Image,
-		CommitID:         e.Details.CommitID,
-		CommitMessage:    e.Details.CommitMessage,
-		StartedAt:        formatTime(e.Details.StartedAt),
-		FinishedAt:       formatTime(e.Details.FinishedAt),
-		Actor:            e.Details.Actor,
-		SuspendedByUser:  toRenderUser(e.Details.SuspendedByUser),
-		ResumedByUser:    toRenderUser(e.Details.ResumedByUser),
-		TriggeredByUser:  e.Details.TriggeredByUser,
-		User:             toRenderUser(e.Details.User),
-		ReasonCode:       e.Details.ReasonCode,
-		InstanceID:       e.Details.InstanceID,
+		DeployID:                 e.Details.DeployID,
+		DeployStatus:             e.Details.DeployStatus,
+		PreDeployStatus:          e.Details.PreDeployStatus,
+		FullDeployStatus:         e.Details.FullDeployStatus,
+		FailureReason:            e.Details.FailureReason,
+		CancelReason:             e.Details.CancelReason,
+		StallReason:              e.Details.StallReason,
+		BuildID:                  e.Details.BuildID,
+		DeployCommandExecutionID: e.Details.DeployCommandExecutionID,
+		Image:                    e.Details.Image,
+		CommitID:                 e.Details.CommitID,
+		CommitMessage:            e.Details.CommitMessage,
+		StartedAt:                formatTime(e.Details.StartedAt),
+		FinishedAt:               formatTime(e.Details.FinishedAt),
+		Actor:                    e.Details.Actor,
+		SuspendedByUser:          toRenderUser(e.Details.SuspendedByUser),
+		ResumedByUser:            toRenderUser(e.Details.ResumedByUser),
+		TriggeredByUser:          e.Details.TriggeredByUser,
+		User:                     toRenderUser(e.Details.User),
+		ReasonCode:               e.Details.ReasonCode,
+		InstanceID:               e.Details.InstanceID,
 	}
 	if t := e.Details.Trigger; t != nil {
 		d.Trigger = &renderTrigger{
@@ -482,7 +491,7 @@ func toRenderEvent(e Event) renderEvent {
 			d.Reason = e.Details.EndReason
 		}
 	case TypePipelineMinutesExhausted:
-		d.BuildID = e.Details.DeployID
+		d.BuildID = cmp.Or(e.Details.BuildID, e.Details.DeployID)
 	case TypePostgresClusterLeaderChanged:
 		d.LeaderID = e.Details.LeaderID
 	case TypePostgresConnectionPoolEnabledChanged:

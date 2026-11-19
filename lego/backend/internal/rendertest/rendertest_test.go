@@ -44,8 +44,9 @@ import (
 // create stores its default major, w4/m378 t013), then to 30 (a service
 // linked to a build source reads the source's runtime, w3/070), then to 23 (an
 // image service reads Render's docker-shaped envSpecificDetails, so only a
-// runtime-less buildpack build lacks the block, w9/m473).
-const allowlistSize = 23
+// runtime-less buildpack build lacks the block, w9/m473), then to 22
+// (build_ended carries Render's required buildId, w4/710).
+const allowlistSize = 22
 
 func TestAllowlistOnlyShrinks(t *testing.T) {
 	n := 0

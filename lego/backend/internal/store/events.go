@@ -115,6 +115,10 @@ type ServiceEventRow struct {
 	// End is the structured cause of a failed rollout (w8/m146); the ended
 	// phase of a deploy row only, attached after the page is read.
 	End DeployEnd
+	// DeployBuildID is the build source build (bld-...) this deploy shipped
+	// (deploys.build_id, w2/m254, w4/710); attached with End by attachDeployEnds
+	// for deploy rows, empty for deploys not from a build source.
+	DeployBuildID string
 	// DiskUsage is a disk-usage fact's details (w2/m255), attached after the
 	// page is read; nil on every other row.
 	DiskUsage *DiskUsageDetails
@@ -740,12 +744,13 @@ func (s *PGStore) attachAuditChanges(ctx context.Context, rows []ServiceEventRow
 	return found.Err()
 }
 
-// attachDeployEnds fills End on a page's ended deploy rows from their deploy
-// rows in one read (w8/m146), so the feed's UNION projection stays as it is.
+// attachDeployEnds fills End (on ended deploy rows, w8/m146) and DeployBuildID
+// (on deploy rows that shipped a build-source build, w4/710) from their deploy
+// rows in one read, so the feed's UNION projection stays as it is.
 func (s *PGStore) attachDeployEnds(ctx context.Context, rows []ServiceEventRow) error {
 	at := map[string][]int{}
 	for i, r := range rows {
-		if r.Source == EventSourceDeploy && r.Phase == EventPhaseEnded && r.DeployID != "" {
+		if r.Source == EventSourceDeploy && r.DeployID != "" {
 			at[r.DeployID] = append(at[r.DeployID], i)
 		}
 	}
@@ -757,19 +762,22 @@ func (s *PGStore) attachDeployEnds(ctx context.Context, rows []ServiceEventRow) 
 		ids = append(ids, id)
 	}
 	found, err := s.Pool.Query(ctx,
-		`SELECT id, end_exit_code, end_oom_killed, end_timed_out_seconds FROM deploys WHERE id = ANY($1)`, ids)
+		`SELECT id, end_exit_code, end_oom_killed, end_timed_out_seconds, COALESCE(build_id, '') FROM deploys WHERE id = ANY($1)`, ids)
 	if err != nil {
 		return fmt.Errorf("read deploy end reasons: %w", err)
 	}
 	defer found.Close()
 	for found.Next() {
-		var id string
+		var id, buildID string
 		var end DeployEnd
-		if err := found.Scan(&id, &end.ExitCode, &end.OOMKilled, &end.TimedOutSeconds); err != nil {
+		if err := found.Scan(&id, &end.ExitCode, &end.OOMKilled, &end.TimedOutSeconds, &buildID); err != nil {
 			return fmt.Errorf("read deploy end reasons: %w", err)
 		}
 		for _, i := range at[id] {
-			rows[i].End = end
+			if rows[i].Phase == EventPhaseEnded {
+				rows[i].End = end
+			}
+			rows[i].DeployBuildID = buildID
 		}
 	}
 	return found.Err()

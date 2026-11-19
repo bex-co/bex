@@ -771,12 +771,26 @@ func deployEndReason(r store.ServiceEventRow) *EndReason {
 	return &EndReason{}
 }
 
+// buildIDForEvent returns Render's buildId for a build event on service: the
+// deploy's dep- id for a service build (the id GET /v1/logs?build= takes,
+// w8/m442), or the carrier deploy's bld- id for a build-source build
+// (w2/m254, w4/710).
+func buildIDForEvent(service, deployID string) string {
+	if k, ok := ids.KindOf(service); ok && k == ids.BuildSource {
+		if bld, ok := ids.Rekind(ids.Build, deployID); ok {
+			return bld
+		}
+	}
+	return deployID
+}
+
 // buildEndReason is build_ended's reason: a build a newer deploy superseded
-// names that deploy's build, which in bex is the deploy itself.
-func buildEndReason(r store.ServiceEventRow) *EndReason {
+// names that deploy's build, which in bex is the deploy itself (or its bld- id
+// for a build-source build).
+func buildEndReason(r store.ServiceEventRow, service string) *EndReason {
 	if r.FactStatus == store.EventStatusCanceled {
 		if id := store.SupersedingDeployID(r.CancelReason); id != "" {
-			return &EndReason{NewBuild: &EndReasonID{ID: id}}
+			return &EndReason{NewBuild: &EndReasonID{ID: buildIDForEvent(service, id)}}
 		}
 	}
 	return &EndReason{}
@@ -975,10 +989,18 @@ type Details struct {
 	// source bds- ids; empty on the absent side (attach or detach).
 	FromBuildSourceID string
 	ToBuildSourceID   string
-	// artifact_fetch_failed (w4/m510): the build source build id (bld-...) that
-	// could not be fetched and the pull failure message.
+	// BuildID is Render's buildId (w4/m510, w4/710): for build_started,
+	// build_ended and pipeline_minutes_exhausted, the deploy's dep- id (or
+	// bld- id for a build-source carrier's build); for deploy_started and
+	// deploy_ended, the build-source bld- id when the deploy shipped a linked
+	// build source's build (empty otherwise); for artifact_fetch_failed, the
+	// build-source bld- id that could not be fetched.
 	BuildID string
-	Message string
+	// DeployCommandExecutionID is pre_deploy_started / pre_deploy_ended's
+	// execution id (w4/710): the deploy id, since bex's pre-deploy run is its
+	// deploy's own.
+	DeployCommandExecutionID string
+	Message                  string
 	// render is the Render details REST and MCP send for the event's type. Only
 	// the copy GraphQL's ServiceEventDetails resolves over carries it, so the
 	// members REST derives per type read the same values there (w4/655).
@@ -1346,6 +1368,7 @@ func view(r store.ServiceEventRow, service string) Event {
 	switch r.Source {
 	case store.EventSourceDeploy:
 		ev.Details.DeployID = r.DeployID
+		ev.Details.BuildID = r.DeployBuildID
 		// Enrich with deploy details for dashboard display (w1/m47)
 		ev.Details.Image = store.PublicImageRef(r.Image)
 		ev.Details.CommitID = r.CommitID
@@ -1529,17 +1552,27 @@ func view(r store.ServiceEventRow, service string) Event {
 			ev.Details.UsagePercent, ev.Details.ThresholdPercent = &usage, &threshold
 		}
 		switch ev.Type {
+		case TypeBuildStarted:
+			// w4/710: build_started sends Render's required buildId (the
+			// deploy's dep- id, or bld- for a build-source carrier) and its
+			// deploy's trigger (w4/639).
+			ev.Details.BuildID = buildIDForEvent(service, r.DeployID)
+			ev.Details.Trigger = deployTrigger(r)
 		case TypeBuildEnded:
-			ev.Details.EndReason = buildEndReason(r)
+			ev.Details.BuildID = buildIDForEvent(service, r.DeployID)
+			ev.Details.EndReason = buildEndReason(r, service)
+		case TypePreDeployStarted:
+			ev.Details.DeployCommandExecutionID = r.DeployID
 		case TypePreDeployEnded:
+			ev.Details.DeployCommandExecutionID = r.DeployID
 			// Render requires the end reason; a pre-deploy step records no
 			// superseding build or deploy, so it is the empty reason a plain
 			// success or failure carries on deploy_ended.
 			ev.Details.EndReason = &EndReason{}
-		case TypePipelineMinutesExhausted, TypeBuildStarted:
-			// The trigger of the deploy whose build was refused (w9/m345) or
-			// started (w4/639, Render's required Build Started trigger); the
-			// store joins that deploy's row.
+		case TypePipelineMinutesExhausted:
+			// The build and trigger of the deploy whose build was refused
+			// (w9/m345); the store joins that deploy's row.
+			ev.Details.BuildID = buildIDForEvent(service, r.DeployID)
 			ev.Details.Trigger = deployTrigger(r)
 		case TypeZeroDowntimeRedeployStarted:
 			ev.Details.RedeployTrigger = r.ReasonCode

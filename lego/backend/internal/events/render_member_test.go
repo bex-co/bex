@@ -51,13 +51,17 @@ func TestRenderEventDetailsMatchTheirMember(t *testing.T) {
 		missing []string
 	}{
 		{row: store.ServiceEventRow{Source: store.EventSourceDeploy, Phase: store.EventPhaseStarted, DeployID: "dep-1", Trigger: store.TriggerManual, Caller: "usr-1"}, missing: []string{"trigger/user/email"}},
+		{row: store.ServiceEventRow{Key: "dep-bs:started", Source: store.EventSourceDeploy, Phase: store.EventPhaseStarted, DeployID: "dep-bs", DeployBuildID: "bld-0123456789abcdefghij", Trigger: store.TriggerAPI}},
 		{row: store.ServiceEventRow{Source: store.EventSourceDeploy, Phase: "ended", DeployID: "dep-1", Status: "live"}, missing: []string{"status"}},
-		// w4/639: Build Started carries its deploy's trigger; buildId stays
-		// unrecorded (w3/m302 t002).
-		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeBuildStarted, DeployID: "dep-1"}, missing: []string{"buildId"}},
-		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeBuildEnded, DeployID: "dep-1", FactStatus: store.EventStatusSucceeded}, missing: []string{"buildId", "status"}},
-		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypePreDeployStarted, DeployID: "dep-1"}, missing: []string{"deployCommandExecutionId"}},
-		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypePreDeployEnded, DeployID: "dep-1", FactStatus: store.EventStatusFailed}, missing: []string{"deployCommandExecutionId", "status"}},
+		{row: store.ServiceEventRow{Key: "dep-bs:ended", Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-bs", DeployBuildID: "bld-0123456789abcdefghij", Status: "live"}, missing: []string{"status"}},
+		// w4/639 + w4/710: Build Started/Ended carry buildId (and trigger /
+		// buildStatus / reason); Pre Deploy Started/Ended carry
+		// deployCommandExecutionId. Only the deprecated integer status stays
+		// omitted on the ended members.
+		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeBuildStarted, DeployID: "dep-1"}},
+		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeBuildEnded, DeployID: "dep-1", FactStatus: store.EventStatusSucceeded}, missing: []string{"status"}},
+		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypePreDeployStarted, DeployID: "dep-1"}},
+		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypePreDeployEnded, DeployID: "dep-1", FactStatus: store.EventStatusFailed}, missing: []string{"status"}},
 		{row: store.ServiceEventRow{Key: "job:job-0123456789abcdefghij:run_ended", Source: store.EventSourceFact, FactType: TypeJobRunEnded, FactStatus: store.EventStatusSucceeded}},
 		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeCronJobRunStarted, FactRunID: "crn-0123456789abcdefghij"}},
 		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeCronJobRunEnded, FactRunID: "crn-0123456789abcdefghij", FactStatus: store.EventStatusFailed, ReasonCode: store.EventReasonEvicted}},

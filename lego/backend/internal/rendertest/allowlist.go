@@ -99,7 +99,7 @@ var Allowlist = map[string][]Divergence{
 	"list-events": join(
 		[]Divergence{{Contains: `event/type: "`, ADR018: RowEvents, Suite: SuiteAPI}},
 		eventDetails(SuiteAPI, "deploy_ended", "status"),
-		eventDetails(SuiteAPI, "build_ended", "status", "buildId"),
+		eventDetails(SuiteAPI, "build_ended", "status"),
 		eventDetails(SuiteAPI, "suspender_added", "suspendedByUser/email"),
 		eventDetails(SuiteAPI, "disk_snapshot_restored", "diskId"),
 	),

@@ -259,6 +259,43 @@ func TestPGArtifactEventsRoundTrip(t *testing.T) {
 		t.Errorf("LiveDeployBuildID(gen 2) = %q, %v; want %q", gotID, err, bsDep.BuildID)
 	}
 
+	// w4/710: deploy_started and deploy_ended carry DeployBuildID for
+	// build-source deploys on both ListServiceEvents and GetServiceEvent, and
+	// leave it empty for non-build-source deploys.
+	deployRows, err := st.ListServiceEvents(ctx, app.ID, tenant.ID, ServiceEventFilter{Phases: []string{EventPhaseStarted, EventPhaseEnded}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantByKey := map[string]string{
+		bsDep.ID + ":" + EventPhaseStarted:  bsDep.BuildID,
+		bsDep.ID + ":" + EventPhaseEnded:    bsDep.BuildID,
+		bsDep2.ID + ":" + EventPhaseStarted: bsDep2.BuildID,
+		bsDep2.ID + ":" + EventPhaseEnded:   bsDep2.BuildID,
+		imgDep.ID + ":" + EventPhaseStarted: "",
+		imgDep.ID + ":" + EventPhaseEnded:   "",
+	}
+	seenKeys := map[string]bool{}
+	for _, r := range deployRows {
+		want, ok := wantByKey[r.Key]
+		if !ok {
+			continue
+		}
+		seenKeys[r.Key] = true
+		if r.DeployBuildID != want {
+			t.Errorf("ListServiceEvents %s DeployBuildID = %q, want %q", r.Key, r.DeployBuildID, want)
+		}
+		gotByID, err := st.GetServiceEvent(ctx, tenant.ID, ids.Derive(ids.Event, r.Key))
+		if err != nil {
+			t.Fatalf("GetServiceEvent(%s): %v", r.Key, err)
+		}
+		if gotByID.Event.DeployBuildID != want {
+			t.Errorf("GetServiceEvent %s DeployBuildID = %q, want %q", r.Key, gotByID.Event.DeployBuildID, want)
+		}
+	}
+	if len(seenKeys) != len(wantByKey) {
+		t.Errorf("saw %d deploy event rows (%v), want %d", len(seenKeys), seenKeys, len(wantByKey))
+	}
+
 	// ListWebhookEvents sees the 3 new LinkBuildSource rows (not the legacy one) and both artifact_fetch_failed facts.
 	hooks, err := st.ListWebhookEvents(ctx, time.Time{}, "", time.Now().UTC().Add(time.Hour), []string{core.AuditVerbLinkBuildSource}, []string{tenant.ID}, 100)
 	if err != nil {
