@@ -17,7 +17,7 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 User selection 2026-11-18: all five items of the tenth `/pm-brainstorm for w5` proposal (`/pmx them all to w5`), followed by `/loopx w5`, plus the proposal's hand-off action recording m383's production volume check. Item 5's deletion of `hello-static` is the proposal's recommendation, not a user decision.
 
-- [ ] **m501** — [Production diagnostics stop printing tenant data into public Actions logs](m501/README.md) (9 tasks; 5h45m total) ← round 10 item 1; the deleted run 44033022163 and 8 earlier Cluster diagnose runs in this public repository
+- [x] **m501** — [Production diagnostics stop printing tenant data into public Actions logs](done/m501/README.md) (9 tasks; 5h45m total) ← round 10 item 1; the deleted run 44033022163 and 8 earlier Cluster diagnose runs in this public repository — **DONE 2026-11-19**: Cluster diagnose and every production job print keyed hashes, not tenant names or node addresses; check 11 guards it; 9 runs deleted and 369 runs' logs
 - [ ] **m502** — [A parked item wakes when production's pin carries the commit its gate names](m502/README.md) (8 tasks; 5h45m total) ← round 10 item 2; 12 parked items in 8 workstreams whose gate commits pin `7af50a28168d` already carries
 - [ ] **m503** — [GET /v1/logs answers in a few seconds, not 10–30 s for one read in four](m503/README.md) (7 tasks; 5h45m total) ← round 10 item 3; production latency 2026-11-12 to 2026-11-19
 - [ ] **194** — [The disk meter never re-meters an hour behind its newest row, so a single disk's missed hour is skipped for good](194.md) (~1h) ← round 10 item 4; `UsageHourNearlyUnmeterable` (disk), 2026-11-17 06:00Z

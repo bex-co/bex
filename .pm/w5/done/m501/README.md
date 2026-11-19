@@ -1,6 +1,6 @@
 # w5 · m501 — Production diagnostics stop printing tenant data into public Actions logs
 
-**Worker:** worker5 **Goal:** the CI path an operator uses during an incident keeps working, and no production job publishes which tenants run what on bex: tenant identifiers, node addresses and tenant event text stay out of this public repository's Actions logs. **Status:** in progress (t001–t008 done; t009 closeout checks the live runs)
+**Worker:** worker5 **Goal:** the CI path an operator uses during an incident keeps working, and no production job publishes which tenants run what on bex: tenant identifiers, node addresses and tenant event text stay out of this public repository's Actions logs. **Status:** done (2026-11-19)
 
 ## Tasks (in order)
 
@@ -14,7 +14,7 @@
 | [t006](done/t006.md) | ADR019 states what a production job may print in this public repository — **DONE** | 30m | t004 |
 | [t007](done/t007.md) | Simplify — **DONE** | 15m | t003, t004, t005, t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 30m | t007 |
-| [t009](t009.md) | Closeout | 15m | t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 15m | t008 |
 
 Total: **9 tasks, about 5h45m**.
 
@@ -72,8 +72,8 @@ Not changed: the two kubectl wrappers have different contracts (silent text vs. 
 
 - **Source:** `/pm-brainstorm for w5`, round 10 item 1 (2026-11-18), selected with `/pmx them all to w5`.
 - **Evidence:** run 44033022163 (2026-11-17, dispatched with a placeholder service id to read production) printed a tenant workspace id, one of its service names inside a build pod's name, every node's name with its internal and public IP, the Machine objects and the cluster autoscaler's status. It was deleted on 2026-11-18. Cluster diagnose has 9 runs since 2026-10-24 (`gh run list --workflow cluster-diagnose.yml`), and the repository is public (`gh repo view --json visibility`), so their logs are readable by anyone. `.github/workflows/cluster-diagnose.yml` prints 12 `kubectl` reads; `app-cluster.yml` prints 2. Nothing in `docs/` or `scripts/github-actions-validate.sh` covers what a public log may contain.
-- **Not exposed:** tenant environment values. They reach pods through `spec.envFromSecret` ([ADR006 § Env vars](../../../docs/ADR006-bex-api.md)), which `kubectl describe pod` names by Secret only.
-- **Goal linkage:** tenant isolation ([ADR043](../../../docs/ADR043-tenant-namespace-isolation.md)), infrastructure credentials and CI posture ([ADR019](../../../docs/ADR019-infra-credentials.md) §Decision 5), the security-review lineage.
+- **Not exposed:** tenant environment values. They reach pods through `spec.envFromSecret` ([ADR006 § Env vars](../../../../docs/ADR006-bex-api.md)), which `kubectl describe pod` names by Secret only.
+- **Goal linkage:** tenant isolation ([ADR043](../../../../docs/ADR043-tenant-namespace-isolation.md)), infrastructure credentials and CI posture ([ADR019](../../../../docs/ADR019-infra-credentials.md) §Decision 5), the security-review lineage.
 - **Expected outcome:** the incident tool stays usable from CI, and tenant detail is one local command away (`~/.ssh/bex` and `HCLOUD_TOKEN` reach production from an operator's checkout), never in a public log.
 - **Why now:** this workflow is the documented incident tool, so every incident adds another public log, and local production access now works, so the CI copy no longer needs full detail.
 - **Render parity:** omitted. This is internal tooling with no tenant-facing surface.
