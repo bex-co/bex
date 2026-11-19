@@ -26,6 +26,8 @@ import { CardSkeleton } from "@/common/components/detail-skeletons";
 import { RecoveryPanelSkeleton } from "@/features/databases/components/recovery-panel-skeleton";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useDatabase } from "@/features/databases/hooks/use-database";
+import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
+import type { DatabaseDetailView } from "@/features/databases/types";
 import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
 import { useDatabaseLifecycle } from "@/features/databases/hooks/use-database-lifecycle";
 import { deriveStatus, sqlConsoleBlock } from "@/features/databases/lib/status";
@@ -325,19 +327,10 @@ function DatabaseDetailPage() {
                 >
                   <DeferredMount hashId="metrics" minHeight={320}>
                     <Suspense fallback={<CardSkeleton rows={4} />}>
-                      <DatastoreMetricsPanel
-                        kind="database"
-                        resource={database.id}
+                      <DatabaseMetrics
+                        database={database}
                         {...metricsRange}
-                        highAvailabilityEnabled={
-                          database.highAvailabilityEnabled
-                        }
-                        diskHeaderExtra={
-                          <DatabaseDiskAutoscalingControl
-                            database={database}
-                            onChanged={() => void refetch()}
-                          />
-                        }
+                        onChanged={() => void refetch()}
                       />
                     </Suspense>
                   </DeferredMount>
@@ -425,5 +418,42 @@ function DatabaseDetailPage() {
         </PageScroll>
       </div>
     </DashboardLayout>
+  );
+}
+
+/**
+ * The Metrics section. Render's Active Connections chart reads the plan's
+ * connection limit beside its title (w6/138), as the Key Value one does, from
+ * the same cache-first catalog the Details card reads.
+ */
+function DatabaseMetrics({
+  database,
+  range,
+  onRangeChange,
+  onChanged,
+}: {
+  database: DatabaseDetailView;
+  range: RangeSelection;
+  onRangeChange: (range: RangeSelection) => void;
+  onChanged: () => void;
+}) {
+  const { instanceTypes } = useDatabaseInstanceTypes();
+  return (
+    <DatastoreMetricsPanel
+      kind="database"
+      resource={database.id}
+      range={range}
+      onRangeChange={onRangeChange}
+      highAvailabilityEnabled={database.highAvailabilityEnabled}
+      connectionLimit={
+        instanceTypes.find((it) => it.id === database.plan)?.maxConnections
+      }
+      diskHeaderExtra={
+        <DatabaseDiskAutoscalingControl
+          database={database}
+          onChanged={onChanged}
+        />
+      }
+    />
   );
 }

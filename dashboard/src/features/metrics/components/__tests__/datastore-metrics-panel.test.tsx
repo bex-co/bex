@@ -674,8 +674,9 @@ describe("DatastoreMetricsPanel", () => {
   );
 });
 
-// w6/m459: Render's Key Value Active Connections chart reads the plan's
-// connection limit beside its title ("Limit 250"), the whole number.
+// w6/m459, w6/138: Render's Active Connections chart reads the plan's
+// connection limit beside its title ("Limit 250"), the whole number, for Key
+// Value and Postgres alike (its DatabaseMetrics chunk, read 2026-11-18).
 describe("DatastoreMetricsPanel connection limit", () => {
   const titleRow = (title: string) =>
     screen.getByText(title, { selector: ".text-sm.font-medium" })
@@ -695,11 +696,28 @@ describe("DatastoreMetricsPanel connection limit", () => {
     );
   });
 
-  it("reads no limit until the plan catalog says it", () => {
+  it("reads the Postgres plan's limit beside Active Connections", () => {
     mockUseDatastoreMetrics.mockReturnValue(emptyResult());
-    render(<DatastoreMetricsPanel kind="keyvalue" resource="red-x" />);
+    render(
+      <DatastoreMetricsPanel
+        kind="database"
+        resource="dpg-x"
+        connectionLimit={100}
+      />,
+    );
     expect(titleRow("Active Connections")).toHaveTextContent(
-      /^Active Connections$/,
+      /^Active ConnectionsLimit 100$/,
     );
   });
+
+  it.each(["keyvalue", "database"] as const)(
+    "reads no %s limit until the plan catalog says it",
+    (kind) => {
+      mockUseDatastoreMetrics.mockReturnValue(emptyResult());
+      render(<DatastoreMetricsPanel kind={kind} resource="x" />);
+      expect(titleRow("Active Connections")).toHaveTextContent(
+        /^Active Connections$/,
+      );
+    },
+  );
 });

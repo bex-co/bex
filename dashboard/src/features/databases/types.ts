@@ -129,6 +129,12 @@ export interface DatabaseInstanceTypeView {
   supportsHighAvailability: boolean;
   /** Always-on monthly price ("14.00"), "" when the sheet lists none (w4/156). */
   monthlyUsd: string;
+  /**
+   * The plan's connection limit, the "Limit" Render's Active Connections
+   * chart reads beside its title (w6/138); undefined when the catalog has
+   * none.
+   */
+  maxConnections?: number;
 }
 
 /** A resolved status key (i18n label) + the badge variant it renders as. */

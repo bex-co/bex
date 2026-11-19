@@ -35,7 +35,7 @@
 
 - **Where Render shows the limit** ([key-value.md](../../../../docs/render-artifacts/key-value.md#where-render-shows-the-connection-limit-w6m459-t001-2026-11-17), [postgres-connection-limit.md](../../../../docs/render-artifacts/postgres-connection-limit.md), Render's docs and screenshots read 2026-11-17): every Key Value plan card ("50 Connections"), the Key Value Instance card, and "Limit 250" beside the Key Value Active Connections chart. Render's Postgres plan cards show name, RAM, price and CPU only, so the Postgres pickers stay as they are (t004) and `DatabaseInstanceType` gets no `maxConnections`.
 - **Shipped:** GraphQL `KeyValueInstanceType.connectionLimit` (`Int!`, from `tiers.Valkey`); "N connections" on its own line on each Key Value plan card (create page, plan picker), a Connection limit row in the Details card, and on the Metrics tab Render's title "Active Connections" with "Limit N" beside it (a drift t006 fixed in place). The loading slots carry the extra line; the create page's in-page loading grid has one slot per plan instead of three. REST and MCP still carry no plan catalog, as Render has none. ADR021 § 9 records it.
-- **Filed:** [w6/138](../../138.md), whether Render's Postgres Active Connections chart reads a limit (needs a live Render capture).
+- **Filed:** [w6/138](../138.md), whether Render's Postgres Active Connections chart reads a limit (needs a live Render capture).
 
 ## BLOCKED — 2026-11-17: the production deploy carrying this milestone's commit
 

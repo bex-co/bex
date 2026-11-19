@@ -1456,6 +1456,7 @@ export type DatabaseInstanceType = {
   __typename: 'DatabaseInstanceType';
   cpu: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
+  maxConnections: Scalars['Int']['output'];
   maxReadReplicas: Maybe<Scalars['Int']['output']>;
   maxStorageGB: Maybe<Scalars['Int']['output']>;
   memory: Maybe<Scalars['String']['output']>;

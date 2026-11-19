@@ -95,9 +95,9 @@ interface DatastoreMetricsPanelProps {
   /** Database-only control rendered beside the disk chart heading. */
   diskHeaderExtra?: ReactNode;
   /**
-   * Key Value only: the plan's connection limit, the "Limit" Render's Active
-   * Connections chart reads beside its title (w6/m459). Omitted until the
-   * plan catalog says it.
+   * The plan's connection limit, the "Limit" Render's Active Connections
+   * chart reads beside its title for Key Value (w6/m459) and Postgres
+   * (w6/138). Omitted until the plan catalog says it.
    */
   connectionLimit?: number;
   /**
@@ -125,7 +125,7 @@ interface DatastoreMetricsPanelProps {
  * their limits for both (w1/m180; Key Value memory is its used memory, w5/011),
  * active-connections and replication-lag for Postgres only, and
  * connected-clients for Key Value only, under the title Render gives both,
- * with the plan's connection limit beside it for Key Value (w6/m459).
+ * with the plan's connection limit beside it (w6/m459, w6/138).
  *
  * Render's database-activity and disk graphs (w7/m430) sit where Render puts
  * them: Disk Activity under disk usage for all three kinds, Disk Operations for
@@ -266,6 +266,13 @@ export function DatastoreMetricsPanel({
     ) : null;
   const limitLabel = (unit: string, value: number | null) =>
     limitText(value != null ? formatMetricValue(unit, value, t) : null);
+  // The whole number, as Render's "Limit 1,000"; the chart's own count format
+  // would round it to "1.0K".
+  const connectionLimitLabel = limitText(
+    connectionLimit
+      ? new Intl.NumberFormat(i18n.language).format(connectionLimit)
+      : null,
+  );
 
   const kvConnectionSeries = useMemo(
     () => toLineSeries(kvConnections.series),
@@ -415,6 +422,7 @@ export function DatastoreMetricsPanel({
             <MetricSection
               title={t("metrics.connectionsTitle")}
               result={connections}
+              headerExtra={connectionLimitLabel}
             >
               <SvgLineChart
                 unit={connections.series[0]?.unit ?? "count"}
@@ -484,13 +492,7 @@ export function DatastoreMetricsPanel({
           <MetricSection
             title={t("metrics.connectionsTitle")}
             result={kvConnections}
-            // The whole number, as Render's "Limit 1,000"; the chart's own
-            // count format would round it to "1.0K".
-            headerExtra={limitText(
-              connectionLimit
-                ? new Intl.NumberFormat(i18n.language).format(connectionLimit)
-                : null,
-            )}
+            headerExtra={connectionLimitLabel}
           >
             <SvgLineChart
               unit={kvConnections.series[0]?.unit ?? "count"}

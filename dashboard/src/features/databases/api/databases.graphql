@@ -322,6 +322,9 @@ query DatabaseInstanceTypes {
     supportsHighAvailability
     # The price from bex-api's one price sheet (w4/156).
     monthlyUsd
+    # The plan's connection limit, the "Limit" beside the Metrics tab's
+    # Active Connections chart, as Render's reads (w6/138).
+    maxConnections
   }
 }
 

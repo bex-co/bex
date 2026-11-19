@@ -27,20 +27,24 @@ const CUSTOM = {
 };
 
 vi.mock("@/features/metrics/components/datastore-metrics-panel", async () => {
-  const { RANGE_PRESETS, makeCustomRange } = await import(
-    "@/features/metrics/lib/range"
-  );
+  const { RANGE_PRESETS, makeCustomRange } =
+    await import("@/features/metrics/lib/range");
   return {
     DatastoreMetricsPanel: ({
       kind,
       range,
       onRangeChange,
+      connectionLimit,
     }: {
       kind: string;
       range?: RangeSelection;
       onRangeChange?: (range: RangeSelection) => void;
+      connectionLimit?: number;
     }) => (
       <div>
+        <p data-testid="metrics-connection-limit">
+          {connectionLimit ?? "none"}
+        </p>
         <p data-testid="metrics-range">
           {kind}:
           {range == null
@@ -85,13 +89,25 @@ vi.mock("@/features/databases/hooks/use-database", () => ({
       id: "dpg-main",
       name: "primary-db",
       status: "available",
-      plan: "free",
+      plan: "basic-1gb",
       suspended: false,
       highAvailabilityEnabled: false,
     },
     loading: false,
     error: undefined,
     refetch: vi.fn(),
+  }),
+}));
+// The catalog the Metrics section reads its plan's connection limit from
+// (w6/138); another plan's limit beside it proves the lookup is by plan.
+vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
+  useDatabaseInstanceTypes: () => ({
+    instanceTypes: [
+      { id: "free", maxConnections: 97 },
+      { id: "basic-1gb", maxConnections: 100 },
+    ],
+    loading: false,
+    error: undefined,
   }),
 }));
 vi.mock("@/features/databases/hooks/use-database-lifecycle", () => ({
@@ -303,4 +319,13 @@ describe.each(MOUNTS)("$name range URL state (w4/703)", (mount) => {
     await renderAt(mount, presetHref);
     expect(await shownRange()).toHaveTextContent(`${mount.kind}:4h`);
   });
+});
+
+// w6/138: Render's Postgres Active Connections chart reads the database's plan
+// limit beside its title, as the Key Value one does (w6/m459).
+it("hands the Postgres metrics panel its plan's connection limit", async () => {
+  await renderAt(MOUNTS[1], MOUNTS[1].base);
+  expect(
+    await screen.findByTestId("metrics-connection-limit"),
+  ).toHaveTextContent(/^100$/);
 });
