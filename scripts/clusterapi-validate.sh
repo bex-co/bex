@@ -283,6 +283,41 @@ if [ "$burst_labels" != "bex.co/pool=tenant" ]; then
   fail=1
 fi
 
+echo "==> $OVERLAY spread placement groups stay within Hetzner's 10-server cap"
+# Hetzner refuses an 11th server in a spread group
+# (placement_group_member_limit_reached). CAPH retries that Machine forever and
+# the autoscaler counts it as capacity it added, so a ceiling the group cannot
+# hold fails silently: on 2026-11-18 bex-tenant-0 stopped at seven of its eight
+# nodes because the burst and lg build pools shared its group, and a database's
+# instances stayed Pending (w6/143). Each pool counts at its ceiling (autoscaler
+# max-size, else replicas), and each group keeps room for one rollout surge.
+SPREAD_CAP=10
+declared_pgs="$(yq -N ea '[select(.kind=="HetznerCluster") | .spec.hcloudPlacementGroups[] | select(.type=="spread") | .name] | .[]' "$OVERLAY")"
+pg_rows="$(
+  yq -N 'select(.kind=="MachineDeployment") | .metadata.name + " " + .spec.template.spec.infrastructureRef.name + " " + ((.metadata.annotations."cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size" // .spec.replicas // 1) | tostring)' "$OVERLAY" "$SANDBOX_OVERLAY"
+  yq -N 'select(.kind=="KubeadmControlPlane") | .metadata.name + " " + .spec.machineTemplate.infrastructureRef.name + " " + ((.spec.replicas // 1) | tostring)' "$OVERLAY"
+)"
+declare -A pg_total=() pg_members=()
+while read -r pool infra ceiling; do
+  [ -n "$pool" ] || continue
+  pg="$(yq -N ea "[select(.kind==\"HCloudMachineTemplate\" and .metadata.name==\"$infra\") | .spec.template.spec.placementGroupName] | .[0] // \"\"" "$OVERLAY" "$SANDBOX_OVERLAY")"
+  [ -n "$pg" ] || continue
+  if ! printf '%s\n' "$declared_pgs" | grep -qx "$pg"; then
+    echo "FAIL: $pool ($infra) uses placement group '$pg', which the HetznerCluster does not declare as a spread group" >&2
+    fail=1
+    continue
+  fi
+  pg_total[$pg]=$((${pg_total[$pg]:-0} + ceiling))
+  pg_members[$pg]="${pg_members[$pg]:-}${pg_members[$pg]:+, }$pool $ceiling"
+done <<<"$pg_rows"
+for pg in $(printf '%s\n' "${!pg_total[@]}" | sort); do
+  echo "    $pg: ${pg_total[$pg]} + 1 surge of $SPREAD_CAP [${pg_members[$pg]}]"
+  if ((pg_total[$pg] + 1 > SPREAD_CAP)); then
+    echo "FAIL: placement group $pg needs ${pg_total[$pg]} servers at its pools' ceilings plus one rollout surge ($((pg_total[$pg] + 1))), above Hetzner's $SPREAD_CAP-server spread cap [${pg_members[$pg]}] — move a pool to its own group" >&2
+    fail=1
+  fi
+done
+
 # ── Build-pool scheduling floor (w7/m83, docs/ADR060 D5/D8) ──────────────────
 # Two invariants that both fail SILENTLY in production, which is why they are
 # guarded here rather than trusted:
@@ -704,14 +739,11 @@ for pool in $serving_pools; do
   fi
   infra="$(md_field "$md" .spec.template.spec.infrastructureRef.name)"
   type="$(overlay_one HCloudMachineTemplate "$infra" .spec.template.spec.type)"
-  # Own spread group: Hetzner caps one at 10 servers, and tenant-0's pools
-  # alone can already reach 11 (w2/m250).
+  # Own spread group: tenant-0 has no room left under Hetzner's 10-server cap
+  # (w2/m250; the spread-group guard above checks the group is declared).
   pg="$(overlay_one HCloudMachineTemplate "$infra" .spec.template.spec.placementGroupName)"
   if [ "$pg" != "tenant-large" ]; then
     echo "FAIL: serving pool $md ($infra) uses placement group '$pg' (want tenant-large: a shared spread group would pass Hetzner's 10-server cap)" >&2
-    fail=1
-  elif ! yq -e -N 'select(.kind=="HetznerCluster") | .spec.hcloudPlacementGroups[] | select(.name=="tenant-large" and .type=="spread")' "$OVERLAY" >/dev/null 2>&1; then
-    echo "FAIL: HetznerCluster does not declare the tenant-large spread placement group that $md uses" >&2
     fail=1
   fi
   mem_hint="$(md_hint "$md" capacity.cluster-autoscaler.kubernetes.io/memory)"

@@ -150,7 +150,7 @@ assert "CA hint above measured allocatable" 1 "$d" "EXCEEDS measured allocatable
 
 # ── RED (t004): an unmeasured server type may not become a build pool ────────
 d="$(fixture unmeasured-type)"
-yq -i '(select(.kind == "HCloudMachineTemplate" and .metadata.name == "bex-tenant-burst-k134-cx33")
+yq -i '(select(.kind == "HCloudMachineTemplate" and .metadata.name == "bex-tenant-burst-k134-cx33-build")
         | .spec.template.spec.type) = "cax31"' "$d/cluster.yaml"
 assert "build pool on an unmeasured server type" 1 "$d" "unmeasured server type"
 
@@ -218,6 +218,26 @@ assert "xl pool CA memory hint above its allocatable" 1 "$d" "bex-tenant-xl (cx5
 d="$(fixture serving-no-disk-hint)"
 yq -i '(select(.kind == "MachineDeployment" and .metadata.name == "bex-tenant-xxl") | .metadata.annotations) |= with_entries(select(.key != "capacity.cluster-autoscaler.kubernetes.io/ephemeral-disk"))' "$d/cluster.yaml"
 assert "xxl pool without an ephemeral-disk hint" 1 "$d" "tier pro-ultra requests 32Gi ephemeral-storage"
+
+# ── RED (w6/143): Hetzner's 10-server spread placement group cap ─────────────
+# The 11th server in a spread group is refused at Hetzner while the autoscaler
+# counts its Machine as capacity, so a pool ceiling the group cannot hold is
+# silent. Production hit exactly the first case on 2026-11-18.
+d="$(fixture burst-back-in-tenant-0)"
+yq -i '(select(.kind == "MachineDeployment" and .metadata.name == "bex-tenant-burst") | .spec.template.spec.infrastructureRef.name) = "bex-tenant-burst-k134-cx33"' "$d/cluster.yaml"
+assert "burst pool shares tenant-0 with bex-tenant-0 and lg" 1 "$d" "placement group tenant-0 needs 11 servers"
+
+d="$(fixture tenant-0-past-its-group)"
+yq -i '(select(.kind == "MachineDeployment" and .metadata.name == "bex-tenant-0") | .metadata.annotations."cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size") = "9"' "$d/cluster.yaml"
+assert "bex-tenant-0 max 9 beside lg leaves no rollout surge" 1 "$d" "placement group tenant-0 needs 10 servers"
+
+d="$(fixture sandbox-counts-by-replicas)"
+yq -i '(select(.kind == "MachineDeployment" and .metadata.name == "bex-sandbox") | .spec.replicas) = 4' "$d/sandbox-pool.yaml"
+assert "sandbox replicas fill tenant-large" 1 "$d" "placement group tenant-large needs 10 servers"
+
+d="$(fixture undeclared-group)"
+yq -i 'del(select(.kind == "HetznerCluster") | .spec.hcloudPlacementGroups[] | select(.name == "tenant-build"))' "$d/cluster.yaml"
+assert "a pool in a placement group the cluster does not declare" 1 "$d" "uses placement group 'tenant-build', which the HetznerCluster does not declare"
 
 # ── RED (codex-security round 18, CWE-494): the gVisor trust anchor ──────────
 # runsc is the kernel boundary for hostile tenant sandboxes. These cases prove

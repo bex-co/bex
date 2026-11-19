@@ -81,6 +81,22 @@ Every serving node is a cx33 (4 vCPU / ~7.47 GiB allocatable), so the compute ti
 - **Guards:** `clusterapi-validate.sh` fails when a tier no longer fits its pool (or `bex-tenant-0`), a pool loses its taint, label, min 0, max or placement group, or its bootstrap template drifts from `bex-tenant-0`. The cx53/ccx43 allocatable values in it are estimates until the first nodes join.
 - **Status (2026-11-02/03):** the autoscaler scales each pool from 0 on a pending pod, but Hetzner refuses both servers: **cx53 has no stock in fsn1** (`resource_unavailable`, as on 2026-08-11 above; cpx62 at €152.99 was creatable, the user chose to wait for cx53) and **ccx43 exceeds the project's dedicated-vCPU limit** (`resource_limit_exceeded`). Until the limit is raised to at least 32, `pro-ultra` is paused at create (ADR018). Until cx53 returns, pro-plus/pro-max services wait with the stall reason "no node currently has room…".
 
+## Spread placement groups (2026-11-19, w6/143)
+
+Hetzner holds at most 10 servers in a spread placement group and refuses the 11th with `placement_group_member_limit_reached`. CAPH then retries that Machine, while the cluster autoscaler counts it as capacity it already added, so a pool ceiling its group cannot hold fails silently. That happened on 2026-11-18: `tenant-0` held seven `bex-tenant-0` nodes, the two `bex-tenant-burst` nodes and the `bex-tenant-lg` node, so the eighth `bex-tenant-0` node, which the user approved on 2026-10-29 (ADR060), was never created. A `basic-4gb` database's instances stayed Pending (w6/143).
+
+| group | pools at their ceilings | servers + one surge |
+| --- | --- | --- |
+| `control-plane` | control plane 3 | 4 |
+| `platform` | `bex-platform` 3 | 4 |
+| `tenant-0` | `bex-tenant-0` 8, `bex-tenant-lg` 1 | 10 |
+| `tenant-build` | `bex-tenant-burst` 2 | 3 |
+| `tenant-large` | `bex-tenant-xl` 4, `bex-tenant-xxl` 2, `bex-sandbox` 1 | 8 |
+
+- **Move:** `bex-tenant-burst` boots from `bex-tenant-burst-k134-cx33-build` in its own group, `tenant-build`. The repoint rolls its two nodes once, and builds ride out the eviction (ADR060). `bex-tenant-lg` stays in `tenant-0`, because rolling it needs cx43 stock in fsn1, which stalled its 2026-11-12 roll.
+- **Guard:** `clusterapi-validate.sh` adds up every pool in each spread group at its ceiling (the autoscaler max-size, otherwise replicas), plus one machine for a rolling replacement. It fails above 10, and it fails when a template names a group the `HetznerCluster` does not declare.
+- **Raising `bex-tenant-0` above 8** therefore also needs room in a group: `tenant-0` has none left. Two ways to get it are moving `bex-tenant-lg` out, or adding a second cx33 serving pool in its own group.
+
 ## Fallback (fsn1 cx stock-out)
 
 If cx33 becomes uncreatable in fsn1 again:

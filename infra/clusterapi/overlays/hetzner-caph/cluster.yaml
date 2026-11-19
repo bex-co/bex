@@ -299,7 +299,7 @@ spec:
             tls-cipher-suites: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256
       # runc, containerd, and kubelet/kubeadm/kubectl are baked into the worker
       # snapshot this pool boots (HCloudMachineTemplate
-      # bex-tenant-burst-k134-cx33); imageName is selected by
+      # bex-tenant-burst-k134-cx33-build); imageName is selected by
       # infra/packer/release.conf and baked by infra/packer/bex-worker.pkr.hcl
       # (w1/m36 t001).
       # That took the ~350MB of github.com/pkgs.k8s.io downloads (runc+containerd
@@ -775,6 +775,10 @@ metadata:
     # and the largest pair (2c-4g, 2 CPU each) needs two nodes with 2 CPU
     # free — at most ~1.9 CPU was free on any of the 4 running nodes, so two
     # new nodes plus rollout surge and room for more than one HA customer.
+    # The eighth node needs room in the tenant-0 spread group, which Hetzner
+    # caps at 10 servers: until 2026-11-19 the burst pool shared it, so the
+    # pool stopped at seven (w6/143); tenant-0 now holds this pool and
+    # bex-tenant-lg only.
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "1"
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "8"
     # Capacity hints (kept for DR bring-up / if min ever returns to 0):
@@ -860,7 +864,8 @@ spec:
       infrastructureRef:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: HCloudMachineTemplate
-        name: bex-tenant-burst-k134-cx33
+        # Own spread group tenant-build (w6/143; see the template).
+        name: bex-tenant-burst-k134-cx33-build
       version: v1.34.9
   rolloutAfter: "2026-11-12T09:29:32Z" # CVE-2026-98432: roll every machine onto the kernel-6.8.0-149 snapshot (w1/144)
 ---
@@ -1721,6 +1726,23 @@ spec:
       type: cx33
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: HCloudMachineTemplate
+metadata:
+  # The burst build pool in its own spread group (w6/143). In tenant-0 its two
+  # nodes and bex-tenant-lg's one filled Hetzner's 10-server cap at seven
+  # bex-tenant-0 nodes, so the eighth the autoscaler may add failed with
+  # placement_group_member_limit_reached. Otherwise identical to
+  # bex-tenant-burst-k134-cx33.
+  name: bex-tenant-burst-k134-cx33-build
+  namespace: bex-capi
+spec:
+  template:
+    spec:
+      imageName: bex-worker-k8s-1-34
+      placementGroupName: tenant-build
+      type: cx33
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudRemediationTemplate
 metadata:
   name: control-plane-remediation-request
@@ -1776,14 +1798,22 @@ spec:
     subnetCidrBlock: "10.10.0.0/24"
     networkZone: eu-central
   hcloudPlacementGroups:
+    # Hetzner holds at most 10 servers in a spread group and refuses the 11th
+    # (placement_group_member_limit_reached); scripts/clusterapi-validate.sh
+    # keeps every group's pool ceilings plus one rollout surge within that.
     - name: control-plane
       type: spread
+    # bex-tenant-0 (max 8) + bex-tenant-lg (1).
     - name: tenant-0
       type: spread
     - name: platform
       type: spread
-    # bex-tenant-xl (max 4) + bex-tenant-xxl (max 2), w2/m250.
+    # bex-tenant-xl (max 4) + bex-tenant-xxl (max 2), w2/m250, + bex-sandbox (1).
     - name: tenant-large
+      type: spread
+    # bex-tenant-burst (2), w6/143: in tenant-0 it took the room bex-tenant-0
+    # needs for its eighth node.
+    - name: tenant-build
       type: spread
   hetznerSecretRef:
     key:
