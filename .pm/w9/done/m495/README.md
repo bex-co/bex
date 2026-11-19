@@ -1,6 +1,6 @@
 # w9 · m495 — Build-time private network reach to workspace web & private services (`fromService` `host`/`hostport`)
 
-**Worker:** worker9 **Goal:** a build in a workspace's canonical namespace can reach its own workspace's eligible `web_service` and `private_service` pods (honoring environment network isolation), closing the open gap recorded in ADR018 `Pre-Deploy Command` and w8/m129. **Status:** blocked (t001–t003, t005, t006 done and shipped in `6a8bc81a0`; t004's production check waits for a production pin that carries `6a8bc81a0`; then t007)
+**Worker:** worker9 **Goal:** a build in a workspace's canonical namespace can reach its own workspace's eligible `web_service` and `private_service` pods (honoring environment network isolation), closing the open gap recorded in ADR018 `Pre-Deploy Command` and w8/m129. **Status:** done (t001–t003, t005, t006 shipped in `6a8bc81a0`; t004 checked on production pin `c81d2d447bd8` on 2026-11-19; t007 closed it)
 
 ## Tasks (in order)
 
@@ -9,10 +9,10 @@
 | [t001](done/t001.md) | Threat review & ADR022 addendum: extending per-build NetworkPolicies to own-workspace web/private service pods — **DONE** | 30m | — |
 | [t002](done/t002.md) | Extend `build_datastore_reach.go` to admit TCP traffic from this App's build pods to eligible `web_service`/`private_service` pods in its canonical workspace namespace — **DONE** | 1h | t001 |
 | [t003](done/t003.md) | Operator unit & envtest coverage: own-workspace reach allowed; isolated-environment, cross-workspace, and platform-namespace probes denied — **DONE** | 45m | t002 |
-| [t004](t004.md) | Production verification (build querying a sibling private service via `fromService` `hostport` + cross-workspace negative control) and update ADR018 & ADR022 | 45m | t003 |
+| [t004](done/t004.md) | Production verification (build querying a sibling private service via `fromService` `hostport` + cross-workspace negative control) and update ADR018 & ADR022 — **DONE** | 45m | t003 |
 | [t005](done/t005.md) | Simplify — **DONE** | 20m | t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 30m | t004, t005 |
-| [t007](t007.md) | Closeout | 10m | t006 |
+| [t007](done/t007.md) | Closeout — **DONE** | 10m | t006 |
 
 ## Definition of done
 
@@ -46,3 +46,10 @@
 - While it builds: `bex-build/bld-<srv>-datastore-egress` has two rules, and `<srv>-build-ingress` and `<srv>-build-service-ingress` exist in `bex-canary`'s namespace. The build Job's pod has `dnsConfig.searches: [<ns>.svc.cluster.local]`. All three policies are gone after the build.
 - Negative control: a build in another workspace (e.g. `bex`) probing the fixture by `<slug>.<ns>.svc.cluster.local:<port>` and by pod IP times out.
 - Delete every fixture by id (`GET` → 404) and log the QA session out.
+
+## Unblocked (2026-11-19, `/loopx w9` worker)
+
+- **Affected:** t004, t007. **Source:** verified evidence, no user decision.
+- **Finding:** the pin `aefb144dc` (`chore(deploy): pin platform images to c81d2d447bd8`, 2026-11-19 18:04Z) carries this milestone's commit: `git merge-base --is-ancestor 6a8bc81a0 c81d2d447bd8` holds. Production's `bex-system/bex-controller-manager` runs the pinned `bex-operator@sha256:697fe9c095d7…` (1/1 ready).
+- **Status:** pending verification. A deployed operator is not proof that a build reaches a sibling on production.
+- **Next:** t004's live check in `bex-canary` as the QA user, with fixtures created for it and deleted afterwards, then t007.
