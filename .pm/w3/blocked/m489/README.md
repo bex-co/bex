@@ -1,6 +1,6 @@
 # w3 · m489 — A service's edge cache outlives its instances: restarts, scaling and crashes keep it, and every instance shares it, as Render's CDN does
 
-**Worker:** worker3 **Goal:** each caching web service's edge cache lives in a per-service tier outside its instances, so it empties only on a successful deploy or a manual purge, as on Render; a Restart, a scale change, an instance crash or a node drain keeps it, all instances share one fill per key, and turning caching on rolls no instance. **Status:** todo (t001–t006 and t008–t010 done, shipped in `a6b1658fb`; t007's production check ran on pin `dff52c596d13` on 2026-11-19 and every case held but a deploy after a Restart, whose fix ships with that record; t007 re-checks that case on a pin carrying the fix, then t011 closes out)
+**Worker:** worker3 **Goal:** each caching web service's edge cache lives in a per-service tier outside its instances, so it empties only on a successful deploy or a manual purge, as on Render; a Restart, a scale change, an instance crash or a node drain keeps it, all instances share one fill per key, and turning caching on rolls no instance. **Status:** blocked (t001–t006 and t008–t010 done, shipped in `a6b1658fb`; t007's production check ran on pin `dff52c596d13` on 2026-11-19 and every case held but a deploy after a Restart, fixed in `395ba2eb3`; t007 re-checks that case once a production pin carries it, then t011 closes out)
 
 ## Tasks (in order)
 
@@ -97,3 +97,7 @@ Production ran pin `a91e9aeb3` (`dff52c596d13`): every `bex-system` Deployment o
 **Observed, not a definition-of-done item.** A new tier's replicas resolved their peers only 30 s after they started. Their first lookup ran before the headless Service had a Ready endpoint, and the empty answer was cached (`no such host` at 13:58:43, peers at 13:59:13). Meanwhile the route had moved to the tier, so the first key, `/m489-a.css`, was filled once per replica. From then on, every key filled once.
 
 **Cleanup.** The fixture was deleted by id (`DELETE` answered 204, then `GET` 404, and its App, tier, Services and Ingress were gone). The QA session was logged out, after which its cookie answered 401, and the session files and the fetched kubeconfig were deleted.
+
+## Gate (2026-11-19, after t007's first run)
+
+The fix for a deploy after a Restart shipped in `395ba2eb3`, and production has to run it before t007 can re-check that case. The gate clears by itself once the newest `chore(deploy): pin platform images to <sha>` commit carries it (`git merge-base --is-ancestor 395ba2eb3 <sha>`). Then, as the QA user in `bex-canary`, create a fresh `origin-controlled-all` fixture as in the production check above. Warm a path and Restart. A deploy of a missing image tag then keeps the path at `HIT`, with no new `purged` line in either tier pod. Restart again and deploy successfully: the path reads `MISS` exactly once, after the rollout, with one `purged (app.bex.co/cache-revision=…)` line per tier pod. Delete the fixture by id, then run t011.
