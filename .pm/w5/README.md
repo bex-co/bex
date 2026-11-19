@@ -45,7 +45,7 @@ User selection 2026-11-12: items 1–4 of the ninth `/pm-brainstorm for w5` prop
 
 ## Approved queue — 2026-11-12 (brainstorm round 8, residuals)
 
-- [ ] **m356** — [In the zh dashboard, a deploy's port hints and a build's queued cause stay English, and the hint comes and goes between passes](blocked/m356/README.md) (9 tasks; 4h20m total) ← round 8 item 1; w4/m336 residuals — **BLOCKED (release gate: the next production deploy pins this fix, then a worker replays the live DoD (t005) — no user action)** (t001–t004, t006–t008 done; code shipped; t005 and t009 pending)
+- [x] **m356** — [In the zh dashboard, a deploy's port hints and a build's queued cause stay English, and the hint comes and goes between passes](done/m356/README.md) (9 tasks; 4h20m total) ← round 8 item 1; w4/m336 residuals — **DONE 2026-11-19**: on pin `4b2cebd0bd03` a 127.0.0.1-bound image's stall reads entirely in Chinese, hints included, and holds between reads; a never-started build's datastore wait reads in Chinese on the header, Deploys list and Events; REST and MCP keep the English byte for byte
 - [x] **182** — [A header rule that changes a static file's Content-Type leaves its ETag unchanged, so a browser that revalidates keeps the old type](done/182.md) (~30m) ← round 8 item 2; w4/581 residual — **DONE 2026-11-12**
 - [x] **183** — [The workspace audit log names neither a rename's names, a custom domain, nor the env group a link changed](done/183.md) (~45m–1h) ← round 8 item 3; w4/m337, w4/m328 residual — **DONE 2026-11-12**
 - [x] **184** — [Top queries still lists Insights' own statements on a database that ran Insights before w4/557](done/184.md) (~30m) ← round 8 item 4; w4/557 residual — **DONE 2026-11-12**
