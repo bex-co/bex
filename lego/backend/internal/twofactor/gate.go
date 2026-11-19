@@ -382,7 +382,7 @@ func (g *Gate) checkTwoFactor(ctx context.Context, sc scope, p principal) error 
 func (g *Gate) checkGoogle(ctx context.Context, sc scope, id core.Identity, p principal) error {
 	refuse, platformExempt := g.refuseMember, false
 	switch {
-	case p.viaKey || id.Method == core.MethodSSH:
+	case p.viaKey || id.Method == core.MethodSSH || id.Method == core.MethodS3Key:
 		stamp := p.keySignIn
 		if !p.viaKey {
 			stamp = id.SignIn

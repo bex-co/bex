@@ -180,7 +180,8 @@ type Server struct {
 	Webhooks        *webhooks.Service
 	Jobs            *jobs.Service
 	RenderObjects   *renderObjects
-	CloudflareR2    *cloudflareR2 // ADR112 D3: wrangler's routes, mounted on the root mux, not under /v1
+	ObjectAdmin     *objectStorageAdmin // ADR112 D3, D4: access keys, a bucket's facts and publishing
+	CloudflareR2    *cloudflareR2       // ADR112 D3: wrangler's routes, mounted on the root mux, not under /v1
 	CLITelemetry    *clitelemetry.Service
 	// StripeWebhook is the signature-verifying public billing callback. It is
 	// nil unless BEX_STRIPE_WEBHOOK_SECRET is configured.
@@ -831,6 +832,9 @@ type Deps struct {
 	// routes. nil, or a service with no stores, answers the named "not offered"
 	// 404 until the Wasabi credential is installed.
 	ObjectStorage *objectstorage.Service
+	// ObjectAccessKeys holds the S3 access keys (ADR112 D3). Nil, with no OpenBao, leaves
+	// the key routes answering 503 and the disposal of a person's keys a no-op.
+	ObjectAccessKeys *objectstorage.AccessKeys
 }
 
 // hostOf extracts the bare hostname (no scheme/port) from a URL like
@@ -1188,8 +1192,11 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Revoker: d.MembersRevoker, Mailer: d.Mailer, InviteBaseURL: d.InviteBaseURL,
 		Identities: identityEmailLookup{d.Identities}, OrgTuples: d.OrgTuples,
 	}
-	if keyTeardown != nil {
-		membersSvc.Keys = keyTeardown
+	// The S3 access keys a person made are disposed of with their API keys
+	// (ADR112 D3): one teardown, so neither can outlive the membership.
+	keyDisposal := newCredentialDisposal(keyTeardown, d.ObjectAccessKeys)
+	if keyDisposal != nil {
+		membersSvc.Keys = keyDisposal
 	}
 	workspaceSvc.Members = memberMutator{membersSvc}
 	var workspaceResolver core.WorkspaceResolver
@@ -1197,8 +1204,8 @@ func NewServer(base *core.Base, d Deps) *Server {
 		workspaceResolver = base.Workspace
 	}
 	var accountKeys accounts.MachineCredentials
-	if keyTeardown != nil {
-		accountKeys = *keyTeardown
+	if keyDisposal != nil {
+		accountKeys = keyDisposal
 	}
 	accountSvc := &accounts.Service{
 		Base: base, Store: d.AccountStore,
@@ -1336,6 +1343,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Webhooks:         &webhooks.Service{Base: base, Store: d.WebhookStore, Metrics: d.WebhookMetrics},
 		Jobs:             &jobs.Service{Base: base, Store: d.JobStore, EventFacts: d.EventFacts},
 		RenderObjects:    &renderObjects{base: base, svc: d.ObjectStorage},
+		ObjectAdmin:      newObjectStorageAdmin(base, d.ObjectStorage, d.ObjectAccessKeys, d.BaseDomain),
 		CloudflareR2:     newCloudflareR2(base, d.ObjectStorage, d.BaseDomain),
 		CLITelemetry:     telSvc,
 		Onboard:          d.Onboard,
@@ -1512,6 +1520,7 @@ func (s *Server) features() []any {
 	out = appendFeature(out, s.Webhooks)
 	out = appendFeature(out, s.Jobs)
 	out = appendFeature(out, s.RenderObjects)
+	out = appendFeature(out, s.ObjectAdmin)
 	out = appendFeature(out, s.SignIns)
 	return out
 }

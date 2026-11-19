@@ -1033,6 +1033,11 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	// ADR112 D8: the transfer shadow meters sum in memory and flush to usage_hourly
 	// (RunMeter, started in main).
 	deps.ObjectStorage.SetUsageSink(st)
+	// ADR112 D3: S3 access keys, whose secrets live in OpenBao. Without it the
+	// key routes answer 503 and there is no key to dispose of.
+	if deps.Secrets != nil {
+		deps.ObjectAccessKeys = objectstorage.NewAccessKeys(st, deps.Secrets)
+	}
 	// w10/m17: the per-workspace agent environment (network tier, hosts, model).
 	deps.AgentEnvironmentStore = st
 	// ADR091 D5, D10.1: agent-model spend caps + trust tiers.
@@ -1105,6 +1110,8 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 		// retired its bucket rows, so this runs after the cascade and never fails
 		// the deletion: a Wasabi outage leaves the retired rows for the sweep.
 		&objectstorage.WorkspacePurger{Service: deps.ObjectStorage, Repo: st},
+		// ADR112 D3: the workspace's S3 access keys and their OpenBao secrets.
+		deps.ObjectAccessKeys,
 	}
 
 	// Workspace members & roles (w4/m12): the team surface writes through the

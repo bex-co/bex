@@ -81,6 +81,7 @@ var byIDResolutions = map[string]byIDResolution{
 	"owners":                             {"", "", "the path id is the workspace", nil},
 	"ssh-keys":                           {"", "", "user-scoped: a caller's own public keys", nil},
 	"objects":                            {"", "", "reads nothing: every operation answers not offered (ADR018, w6/097)", nil},
+	"object-storage":                     {"", "", "no resource is addressed by an id that names its workspace: every route carries ownerId and is authorized on it; a key is revoked within the workspace the route names, and a bucket by name inside it (ADR112 D3)", nil},
 	"sandbox-groups":                     {"sandbox", "ScopeByVisibleID", "sandbox_groups workspace routing read, visible-only so a foreign group reads not-found (w22/m311)", []string{"scopeGroup"}},
 	"build-sources":                      {"apps", "AuthorizeApp", "a build source is a carrier App, resolved under core.WithBuildSources (ADR097)", nil},
 	"notification-device-subscriptions":  {"notifications", "ScopeByID", "the caller's own device, in the workspace it was registered in (w5/m115)", []string{"scopeDevice"}},
@@ -279,6 +280,7 @@ var idKindRouting = map[string]struct{ family, why string }{
 	ids.AgentRepoEnvironmentBuild.Prefix(): {"agent-repo-environment-builds", ""},
 	ids.Organization.Prefix():              {"organizations", "the org itself, authorized on its own org object, never a workspace's (ADR115)"},
 	ids.AgentRetainedImage.Prefix():        {"", "a stopped turn's retained disk, internal to its session; no API addresses it by id"},
+	ids.ObjectAccessKey.Prefix():           {"object-storage", "an S3 access key is revoked through a route that names its workspace (ownerId); the S3 surface resolves it from the signed request's key id and acts only in the workspace the key's row names (ADR112 D3)"},
 	ids.ObjectBucket.Prefix():              {"", "a bucket is addressed by workspace and name on every route; its id is only the second segment of its objects' Wasabi keys and the pub- host, which objectgw resolves through its own lookup (ADR112)"},
 }
 

@@ -43,6 +43,10 @@ const (
 	// the identity's AuditMethod.
 	MethodSandboxConnect     = "sandbox-connect"
 	MethodSandboxFileConnect = "sandbox-file-connect"
+	// MethodS3Key is a request SigV4-signed with an S3 access key (ADR112 D3).
+	// Its Subject is the key's creator, so every decision is the creator's on
+	// the key's own workspace; its AuditSubject is the key's id.
+	MethodS3Key = "s3-key"
 )
 
 // Identity is the authenticated caller: an OAuth2 client (API key) validated by
@@ -122,11 +126,21 @@ type Identity struct {
 	// (Render's rest_api actor), session for a dashboard session (user)
 	// (w9/102). Never an authorization input.
 	AuditMethod string
+	// AuditSubject, when set, is the actor audit rows record in place of Subject:
+	// an S3 request acts as its key's creator (Subject, what OpenFGA and the
+	// workspace's login requirements see) and its rows name the key, so the
+	// holder of a presigned URL is told from its creator (ADR112 D3). Never an
+	// authorization input.
+	AuditSubject string
 }
 
 // CallerMethod is the method an audit row records for this identity:
 // AuditMethod when it acts for another credential, else Method.
 func (i Identity) CallerMethod() string { return cmp.Or(i.AuditMethod, i.Method) }
+
+// AuditActor is the subject an audit row records: AuditSubject when the
+// identity acts for a credential of its own, else Subject.
+func (i Identity) AuditActor() string { return cmp.Or(i.AuditSubject, i.Subject) }
 
 // IsAPIKey reports whether the caller is a machine API key: an OAuth2 token
 // with no end user behind it. Its Subject is not a person, so anything that

@@ -256,7 +256,7 @@ func attachRequestOrigin(ctx context.Context, ev *AuditEvent) {
 	if !ok {
 		return
 	}
-	if id, ok := IdentityFrom(ctx); !ok || id.Subject != ev.Caller {
+	if id, ok := IdentityFrom(ctx); !ok || id.AuditActor() != ev.Caller {
 		return
 	}
 	ev.SourceIP, ev.UserAgent = origin.SourceIP, AuditUserAgent(origin.UserAgent)
@@ -1622,7 +1622,7 @@ func (b *Base) keyValueAuditEvent(ctx context.Context, kv *appv1alpha1.KeyValue,
 func (b *Base) verbAuditEvent(ctx context.Context, verb, resource, target string) AuditEvent {
 	ev := AuditEvent{Verb: verb, Resource: resource, Target: target, Outcome: AuditAllowed, At: b.Now()}
 	if id, ok := IdentityFrom(ctx); ok {
-		ev.Caller, ev.CallerMethod = id.Subject, id.CallerMethod()
+		ev.Caller, ev.CallerMethod = id.AuditActor(), id.CallerMethod()
 		id.AttachOAuthProvenance(&ev)
 	}
 	return ev

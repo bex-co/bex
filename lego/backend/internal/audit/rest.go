@@ -80,7 +80,7 @@ func actorType(method string) string {
 	switch method {
 	case core.MethodSession, core.MethodSSH, core.MethodShell, core.MethodAgentAttach, core.MethodSandboxExec:
 		return "user"
-	case core.MethodOAuth2:
+	case core.MethodOAuth2, core.MethodS3Key:
 		return "rest_api"
 	default:
 		return "system"

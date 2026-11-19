@@ -154,6 +154,10 @@ var (
 	// ObjectBucket is a bucket of bex object storage (ADR112). Its id, not its
 	// name, is the second segment of every object key in Wasabi.
 	ObjectBucket = Kind{prefix: "obk", desc: "object storage bucket"}
+	// ObjectAccessKey is an S3 access key of bex object storage (ADR112 D3): the
+	// id is the access key id a client signs with. Its prefix is the one that
+	// carries a digit, so a client that sees the id knows it speaks S3.
+	ObjectAccessKey = Kind{prefix: "s3k", desc: "object storage S3 access key"}
 	// BuildSource is a Render Build Source (w2/m254, ADR097); Render's contract
 	// names no prefix, and bsr is the Blueprint sync run's.
 	BuildSource = Kind{prefix: "bds", desc: "build source"}
@@ -183,7 +187,7 @@ var (
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader, AgentModelRequest, AgentAttachment, ObjectBucket, BuildSource, Build, AgentSkill, AgentAutomation, SandboxGroup, SandboxBuild, SandboxSnapshot, AgentQueuedMessage, AgentRepoEnvironmentBuild, AgentRetainedImage, Organization}
+var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader, AgentModelRequest, AgentAttachment, ObjectBucket, ObjectAccessKey, BuildSource, Build, AgentSkill, AgentAutomation, SandboxGroup, SandboxBuild, SandboxSnapshot, AgentQueuedMessage, AgentRepoEnvironmentBuild, AgentRetainedImage, Organization}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }
@@ -193,7 +197,7 @@ const xidLen = 20
 
 // wellFormed matches the canonical shape: a 2-4 char lowercase prefix, a hyphen,
 // then the 20-char xid. Kept in one regex so WellFormed and the guard test agree.
-var wellFormed = regexp.MustCompile(`^[a-z]{2,4}-[0-9a-v]{20}$`)
+var wellFormed = regexp.MustCompile(`^[a-z][a-z0-9]{1,3}-[0-9a-v]{20}$`)
 
 // New mints a fresh id for a kind: "<prefix>-<xid>". The only mint path — do not
 // concatenate a prefix by hand (that bypasses the format the guard test pins).

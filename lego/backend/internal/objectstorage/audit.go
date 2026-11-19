@@ -60,4 +60,10 @@ const (
 	AuditVerbSetBucketPublic    = "objectstorage.SetBucketPublic"
 	AuditVerbListCustomDomains  = "objectstorage.ListCustomDomains"
 	AuditVerbNotOffered         = "objectstorage.NotOffered"
+
+	// S3 access keys (ADR112 D3). Creating and revoking one are write verbs; a
+	// listing is a read, so only a refusal of it is recorded.
+	AuditVerbCreateAccessKey = "objectstorage.CreateAccessKey"
+	AuditVerbListAccessKeys  = "objectstorage.ListAccessKeys"
+	AuditVerbRevokeAccessKey = "objectstorage.RevokeAccessKey"
 )

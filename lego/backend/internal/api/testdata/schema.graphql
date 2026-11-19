@@ -1107,6 +1107,17 @@ type ChargeLine {
   unit: String
 }
 
+type CreatedObjectAccessKey {
+  createdAt: String!
+  createdBy: String!
+  expiresAt: String
+  id: String!
+  name: String!
+  permission: String!
+  secret: String!
+  status: String!
+}
+
 type CronRun {
   canceledBy: String
   finishedAt: String
@@ -1922,6 +1933,7 @@ type Mutation {
   createEnvironment(ipAllowList: [IPAllowListEntryInput!], name: String!, networkIsolationEnabled: Boolean, projectId: String!, protectedStatus: String): Environment
   createJob(planId: String, serviceId: String!, startCommand: String!): Job
   createKeyValue(dryRun: Boolean, environmentId: String, ipAllowList: [String], ipAllowListEntries: [IPAllowListEntryInput!], maxmemoryPolicy: String, name: String!, ownerId: String, persistenceMode: String, plan: String, public: Boolean, region: String, storageGB: Int, version: String): KeyValue
+  createObjectAccessKey(expiresInSeconds: Int, name: String!, ownerId: String, permission: String!): CreatedObjectAccessKey
   createOrganizationWorkspace(name: String!, organizationId: String!, privacy: String): Workspace
   createPlannedBlueprint(autoSync: Boolean, branch: String, existingResources: String, name: String!, ownerId: String, path: String, repo: String!): BlueprintPlanResult
   createProject(environments: [ProjectEnvironmentInput!], name: String!, ownerId: String!): Project
@@ -2017,6 +2029,7 @@ type Mutation {
   resumeService(id: String!): Service
   revokeApiKey(id: String!, ownerId: String): Boolean
   revokeNotificationDeviceSubscriptions(ownerId: String): Int
+  revokeObjectAccessKey(id: String!, ownerId: String): Boolean!
   revokeOrganizationInvite(inviteId: String!, organizationId: String!): Boolean
   revokeWorkspaceInvite(inviteId: String!, workspaceId: String!): String
   rollbackService(confirm: String, deployId: String!, disableAutoDeploy: Boolean = false, serviceId: String!): Deploy
@@ -2062,6 +2075,7 @@ type Mutation {
   setMaxShutdownDelay(id: String!, seconds: Int!): Service
   setNotificationsToSend(confirm: String, id: String!, value: String!): Service
   setNotifyOnFail(confirm: String, id: String!, value: String!): Service
+  setObjectBucketPublic(enabled: Boolean!, name: String!, ownerId: String): ObjectBucketPublic
   setOrganizationRequireGoogleLogin(enabled: Boolean!, organizationId: String!): Organization
   setOrganizationRequireTwoFactor(enabled: Boolean!, organizationId: String!): Organization
   setPipelineSpendLimit(spendLimitUsd: String, workspaceId: String!): PipelineSettings
@@ -2154,6 +2168,35 @@ type NotificationWebPushSubscription {
   createdAt: String
   lastRegisteredAt: String
   updatedAt: String
+}
+
+type ObjectAccessKey {
+  createdAt: String!
+  createdBy: String!
+  expiresAt: String
+  id: String!
+  lastUsedAt: String
+  name: String!
+  permission: String!
+  status: String!
+}
+
+type ObjectBucket {
+  bytes: Float!
+  createdAt: String!
+  id: String!
+  name: String!
+  objects: Float!
+  observedAt: String
+  public: Boolean!
+  publicHost: String
+  region: String!
+  system: Boolean!
+}
+
+type ObjectBucketPublic {
+  host: String!
+  public: Boolean!
 }
 
 type OomKilled {
@@ -2471,6 +2514,8 @@ type Query {
   notificationInbox(limit: Int = 50, ownerId: String): [PushNotification!]!
   notificationSettings(ownerId: String): NotificationSettings
   notificationWebPushSubscriptions: [NotificationWebPushSubscription]
+  objectAccessKeys(ownerId: String): [ObjectAccessKey]
+  objectBucket(name: String!, ownerId: String): ObjectBucket
   organization(id: String!): Organization
   organizationAuditLogs(cursor: String, direction: String, endTime: String, limit: Int, organizationId: String!, startTime: String): [AuditLog]
   organizationInvitePreview(token: String!): OrganizationInvitePreview

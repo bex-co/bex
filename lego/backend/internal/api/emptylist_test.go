@@ -146,6 +146,7 @@ var neverEmptyArrayRoutes = map[string]string{
 var unreachableArrayRoutes = map[string]string{
 	"GET /v1/organizations/{orgId}/audit-logs":           "needs an organization row (BEX_CP_DB_URI, w7/m464); the same toAuditLogList make as the owner route (audit/rest.go), asserted empty by the org audit log's real-DB test",
 	"GET /v1/objects/{ownerId}/{region}":                 "Wasabi's listing of the workspace's render-<region> bucket; items is make([]objectWithCursorWire, 0, …) (objects_render.go), asserted empty by TestRenderObjectsListAnEmptyBucketIsAnEmptyArray",
+	"GET /v1/object-storage/{ownerId}/access-keys":       "the object_access_keys table (objectstorage.AccessKeys); out is make([]accessKeyWire, 0, …) (object_storage_admin.go ListAccessKeys), asserted empty by TestObjectAdminListsNoKeysAsAnEmptyArray",
 	"GET /v1/agent-automations":                          "the agent_automations table (Service.Automations); make([]AgentAutomation, 0, …) (agentsessions/automations.go AgentAutomations)",
 	"GET /v1/agent-automations/{id}/runs":                "the agent_automation_runs table (Service.Automations); the runs page is made non-nil (agentsessions/automation_run.go AgentAutomationRuns)",
 	"GET /v1/agent-skills/{ref}/versions":                "the agent_skill_versions table (Service.Skills); make([]AgentSkillVersion, 0, …) (agentsessions/skills_versions.go AgentSkillVersions)",
@@ -212,6 +213,8 @@ var unreachableArrayRoutes = map[string]string{
 // scalarRoutes are the GETs whose 200 body contains no JSON array at all.
 var scalarRoutes = map[string]bool{
 	"GET /v1/objects/{ownerId}/{region}/{key...}":                    true, // a presigned URL and its expiry
+	"GET /v1/object-storage/{ownerId}/buckets/{bucket}":              true, // one bucket's facts
+	"GET /v1/object-storage/{ownerId}/buckets/{bucket}/public":       true, // whether it is public and its host
 	"GET /v1/agent-skills/{ref}":                                     true,
 	"GET /v1/agent-skills/{ref}/versions/{version}":                  true,
 	"GET /v1/agent-automations/{id}":                                 true, // triggers always holds the one stored trigger

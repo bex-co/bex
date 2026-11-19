@@ -226,6 +226,12 @@ func heuristicRequiredClass(op string) (want string, ok bool) {
 	case op == "REST GET /v1/objects/{ownerId}/{region}/{key...}" ||
 		op == "REST GET /cloudflare/client/v4/accounts/{accountId}/r2/buckets/{bucket}/objects/{key...}":
 		return core.OpClassSensitive, true
+	// An S3 access key is a durable credential: creating or revoking one is
+	// human-only (ADR112 D3, ADR012 § 7).
+	case strings.Contains(op, "/object-storage/") && strings.Contains(op, "/access-keys") &&
+		(strings.HasPrefix(op, "REST POST ") || strings.HasPrefix(op, "REST DELETE ")) ||
+		op == "GQL Mutation.createObjectAccessKey" || op == "GQL Mutation.revokeObjectAccessKey":
+		return core.OpClassMint, true
 	case strings.Contains(op, "shell-ticket") || strings.Contains(op, "createShellSession") ||
 		strings.Contains(op, "create_shell_session"):
 		return core.OpClassSensitive, true

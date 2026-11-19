@@ -31,11 +31,11 @@ var dns1123Label = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
 // short lowercase tag, unique across kinds. A new Kind that breaks this (mixed
 // case, collision, wrong length) fails here the moment it's added.
 func TestRegistryContract(t *testing.T) {
-	prefixRE := regexp.MustCompile(`^[a-z]{2,4}$`)
+	prefixRE := regexp.MustCompile(`^[a-z][a-z0-9]{1,3}$`)
 	seen := map[string]Kind{}
 	for _, k := range Kinds() {
 		if !prefixRE.MatchString(k.Prefix()) {
-			t.Errorf("kind %q: prefix %q must be 2-4 lowercase letters", k.Desc(), k.Prefix())
+			t.Errorf("kind %q: prefix %q must be 2-4 lowercase letters or digits, starting with a letter", k.Desc(), k.Prefix())
 		}
 		if prev, dup := seen[k.Prefix()]; dup {
 			t.Errorf("prefix %q is used by both %q and %q — prefixes must be unique", k.Prefix(), prev.Desc(), k.Desc())

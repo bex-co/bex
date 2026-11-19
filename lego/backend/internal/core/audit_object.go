@@ -104,6 +104,15 @@ func BucketTarget(name string) string {
 	return "bucket:" + auditText(name, auditBucketMaxBytes, true)
 }
 
+// AccessKeyTarget is the target of a verb acting on one S3 access key: its id,
+// which is a typed s3k- id and carries no secret.
+func AccessKeyTarget(id string) string {
+	if id == "" {
+		return ""
+	}
+	return "access_key:" + auditText(id, auditBucketMaxBytes, true)
+}
+
 // ObjectTarget is the target of a verb acting on one object of a bucket. It names
 // the bucket alone when key is empty. A key is a name the caller chose, so it is
 // bounded to AuditKeyMaxBytes and its control characters are escaped; a signed

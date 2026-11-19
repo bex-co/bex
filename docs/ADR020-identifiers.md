@@ -8,7 +8,7 @@
 srv-c185th5c2rvvnhbfiltg
 └┬┘ └────────┬─────────┘
  │           └ 20-char xid: k-sortable (time-ordered), non-guessable, lowercase base32-hex (0-9a-v)
- └ 2-4 char type prefix, Render-style
+ └ 2-4 char type prefix (a letter, then letters or digits), Render-style
 ```
 
 Registered prefixes (the `id.Kind` registry — Render's public-API spellings, so bex ids are drop-in for Render-shaped clients):

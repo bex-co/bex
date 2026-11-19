@@ -61,6 +61,26 @@ const (
 	MaxCORSBytes      = 64 << 10
 	MaxLifecycleRules = 1000
 
+	// The S3 access key limits (ADR112 D3, bex's own, unverified): live persistent
+	// keys per workspace and live ephemeral keys per creator (`bex s3` reuses its
+	// cached key, so one person on a few machines stays under it).
+	MaxPersistentAccessKeys = 100
+	MaxEphemeralAccessKeys  = 20
+	// MaxEphemeralKeyLife is the longest an ephemeral key lives; `bex s3` mints
+	// twelve-hour keys.
+	MaxEphemeralKeyLife = 12 * time.Hour
+	// AccessKeyRowCacheTTL is how long a replica trusts its read of a key's row,
+	// misses included: a revoke reaches every replica within it. A secret never
+	// changes, so a replica keeps it for AccessKeySecretCacheTTL and reads it from
+	// OpenBao at most that often whatever is sent.
+	AccessKeyRowCacheTTL    = 30 * time.Second
+	AccessKeySecretCacheTTL = 15 * time.Minute
+	// RetiredKeyRetention is how long a revoked or expired key stays listed before
+	// the sweep deletes it with its secret.
+	RetiredKeyRetention = 7 * 24 * time.Hour
+	// KeyTouchEvery is the most often a replica writes a key's last_used_at.
+	KeyTouchEvery = 5 * time.Minute
+
 	// MaxKeyBytes is the longest object key.
 	MaxKeyBytes = 1024
 
