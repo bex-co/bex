@@ -1,6 +1,6 @@
 # w6 · m517 — A store's proxy keeps its held clients until the store's own change rolls it
 
-**Worker:** worker6 **Goal:** a platform deploy that changes `/kv-internal-proxy`, or the proxy pod template the operator renders, rolls no store's proxy. Each store's proxy keeps the template it runs until the store's own change rolls it: a plan change, enabling internal authentication, a credential rotation or a resume. That roll takes the current image and template at once. A code-reviewed override rolls every proxy at once for a security fix. **Status:** blocked (t001–t004 shipped as `b24a19161` and t007 done; t005 waits for the first production pin that carries `b24a19161`. See § Park record (2026-11-19 20:50Z).)
+**Worker:** worker6 **Goal:** a platform deploy that changes `/kv-internal-proxy`, or the proxy pod template the operator renders, rolls no store's proxy. Each store's proxy keeps the template it runs until the store's own change rolls it: a plan change, enabling internal authentication, a credential rotation or a resume. That roll takes the current image and template at once. A code-reviewed override rolls every proxy at once for a security fix. **Status:** done (2026-11-19; see § Closeout record (2026-11-19 22:25Z).)
 
 ## Tasks (in order)
 
@@ -10,10 +10,10 @@
 | t002 | [A security override rolls every proxy at once, and a guard makes each rendering change a decision](done/t002.md) — **DONE** | 45m | t001 |
 | t003 | [Prove it on the local cluster](done/t003.md) — **DONE** | 1h30m | t002 |
 | t004 | [Record it in ADR021 § 10 and the operator guide](done/t004.md) — **DONE** | 30m | t002 |
-| t005 | [Ship and verify on production](t005.md) | 1h30m | t003, t004, w6/m512 t007 |
-| t006 | [Simplify](t006.md) | 30m | t005 |
+| t005 | [Ship and verify on production](done/t005.md) — **DONE** | 1h30m | t003, t004, w6/m512 t007 |
+| t006 | [Simplify](done/t006.md) — **DONE** | 30m | t005 |
 | t007 | [Test coverage](done/t007.md) — **DONE** | 30m | t005 |
-| t008 | [Closeout](t008.md) | 10m | t006, t007 |
+| t008 | [Closeout](done/t008.md) — **DONE** | 10m | t006, t007 |
 
 ## Definition of done
 
@@ -110,4 +110,19 @@
   2. Steps 4–6 on a `bex-canary` probe. Step 5 needs one more pin after that, so the item may park again on that pin's commit.
   3. t006 steps 2–3 once every proxy Deployment carries its records.
   4. t008.
+
+## Unblock record (2026-11-19 21:46Z)
+
+- **Source:** verified evidence (`/pm unblock`, `/loopx w6`); no user decision was needed.
+- **The gate holds.** The newest pin, `812806436` (producer `def3eb4883de`, 21:11Z), carries `b24a19161` (`git merge-base --is-ancestor`), and production's manager ran its `e770521d…` from 21:15:27Z. No commit between the previous producer `1c63b6fe0a34` and `def3eb4883de` touches `internal/kvinternalauth` or `cmd/kv-internal-proxy`, so the manager's `/kv-internal-proxy` still hashed `5615a21b…`.
+- **Next:** t005 steps 3–7, then t006 steps 2–3 and t008.
+
+## Closeout record (2026-11-19 22:25Z)
+
+- **Production ([t005](done/t005.md)).**
+  - The shipping deploy (pin `812806436`) recorded all three stores' proxies at 21:15Z, with no new ReplicaSet and the same pods.
+  - A `bex-canary` probe whose proxy ran the pre-w6/m512 image `b4104643…` kept a held client's `CLIENT ID` 41 across the next deploy, pin `c8c774658` (manager roll at 22:00:43Z). The `workflow_dispatch` in flight at the time served as step 5's later deploy, so the item did not need to park again.
+  - Enabling internal authentication then rolled the probe once onto the manager's image. The old pod stopped 5 s after the call, closing the held client, and new clients read `-NOAUTH`. The probe is deleted.
+- **The image hold is gone ([t006](done/t006.md)).** Once production carried every record, the image hold's code and the manager's binary hashing were deleted. `make test` and `make lint` pass, and ADR021 § 10 is updated.
+- **Every DoD bullet holds** ([t008](done/t008.md)).
 

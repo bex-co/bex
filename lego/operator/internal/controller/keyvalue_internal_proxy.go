@@ -21,7 +21,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -37,7 +36,6 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
-	"github.com/bex-co/bex/lego/operator/internal/registry"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -56,7 +54,7 @@ func keyValueInternalBackendName(kv *appv1alpha1.KeyValue) string { return kv.Na
 // Every store has one: it holds the plan's connection limit (w6/m456), and it
 // authenticates internal clients unless the store requires them to
 // authenticate themselves (spec.internalAuth, w6/m463). Its pod template moves
-// only when the store's own change rolls it (keyValueInternalProxyRoll,
+// only when the store's own change rolls it (keyValueInternalProxyHolds,
 // w6/m517); replicas, strategy and selector are rendered on every pass.
 func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context, kv *appv1alpha1.KeyValue, intent keyValueIntent) (bool, error) {
 	if r.InternalProxyImage == "" {
@@ -87,7 +85,7 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context,
 		if kv.Spec.Suspended {
 			replicas = 0
 		}
-		roll := keyValueInternalProxyRoll(dep, ran && replicas > 0, inputs)
+		held := keyValueInternalProxyHolds(dep, ran && replicas > 0, inputs)
 		dep.Spec.Replicas = &replicas
 		dep.Spec.Selector = &metav1.LabelSelector{MatchLabels: map[string]string{labelKeyValueInternalProxy: kv.Name}}
 		dep.Spec.Strategy = appsv1.DeploymentStrategy{
@@ -132,18 +130,9 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context,
 				SecretName: intent.tlsSecretName, Optional: new(true),
 			}}}}
 		}
-		image := r.InternalProxyImage
-		switch roll {
-		case kvProxyAdopt:
-			image = r.keyValueInternalProxyImage(ctx, dep, before)
-		case kvProxyRender:
-			r.recordInternalProxyBinary(dep)
-		case kvProxyHold:
-			// The held template keeps its image and its binary's record.
-		}
 		dep.Spec.Template.Spec.Volumes = volumes
 		dep.Spec.Template.Spec.Containers = []corev1.Container{{
-			Name: kvInternalProxyContainer, Image: image,
+			Name: kvInternalProxyContainer, Image: r.InternalProxyImage,
 			Command: []string{"/kv-internal-proxy"}, Env: env, Ports: ports, VolumeMounts: mounts,
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("25m"), corev1.ResourceMemory: resource.MustParse("16Mi")},
@@ -161,7 +150,7 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context,
 		// An isolation toggle alone must not roll the one proxy replica: its pods
 		// are relabelled in place (syncKeyValuePodIsolation, w8/220).
 		holdIsolationLabel(&dep.Spec.Template, !dep.CreationTimestamp.IsZero(), before, kv.Labels)
-		if roll == kvProxyHold {
+		if held {
 			holdKeyValueInternalProxyTemplate(ctx, kv, dep, before)
 		}
 		recordKeyValueInternalProxyInputs(dep, inputs)
@@ -184,15 +173,10 @@ const (
 	// kvInternalProxyGraceSeconds lets the process close what the drain leaves
 	// itself, before the kubelet's SIGKILL.
 	kvInternalProxyGraceSeconds = kvInternalProxyDrainSeconds + 5
-	// kvInternalProxyBinaryAnnotation records, on a proxy Deployment's own
-	// metadata, the sha256 of the /kv-internal-proxy its pod template's image
-	// carries (w6/m469). Never on the pod template: adding it there would roll
-	// every proxy once.
-	kvInternalProxyBinaryAnnotation = "app.bex.co/kv-internal-proxy-sha256"
 	// kvInternalProxyInputsAnnotation records, on a proxy Deployment's own
 	// metadata, the digest of the store's roll inputs its pod template was
 	// written for (keyValueInternalProxyInputs, w6/m517). Never on the pod
-	// template, for the same reason as the binary's hash.
+	// template: adding it there would roll every proxy once.
 	kvInternalProxyInputsAnnotation = "app.bex.co/kv-internal-proxy-inputs"
 	// kvInternalProxyRollRevisionAnnotation records the
 	// kvInternalProxyRollRevision its pod template was written under.
@@ -209,53 +193,31 @@ const (
 	// TestKeyValueInternalProxyRenderingIsPinned makes every rendering change
 	// decide.
 	kvInternalProxyRollRevision = 1
-	// kvInternalProxyStep is the image config history entry lego/Dockerfile's
-	// COPY of the proxy binary leaves.
-	kvInternalProxyStep = "COPY /workspace/kv-internal-proxy /kv-internal-proxy # buildkit"
 )
 
-// kvProxyRoll is what a pass does with a proxy Deployment's pod template.
-type kvProxyRoll int
-
-const (
-	// kvProxyHold keeps the template the proxy runs.
-	kvProxyHold kvProxyRoll = iota
-	// kvProxyRender writes the current rendering, on the manager's image.
-	kvProxyRender
-	// kvProxyAdopt renders as before w6/m517, w6/m469's image hold included,
-	// for a Deployment that records no inputs yet.
-	kvProxyAdopt
-)
-
-// keyValueInternalProxyRoll decides whether a proxy's pod template moves on
-// this pass (w6/m517). Replacing the proxy's pod closes every client it
-// relays, after the w6/m512 drain. Render breaks a store's connections when
-// the customer changes the store, not when Render ships its own platform
-// (ADR021 § 10). So the template stays exactly as it runs, whatever the
-// manager's image, binary or rendering, until one of these moves it onto the
-// manager's image and the full current rendering, in one write:
+// keyValueInternalProxyHolds reports whether a proxy's pod template stays as
+// it runs on this pass (w6/m517). Replacing the proxy's pod closes every
+// client it relays, after the w6/m512 drain. Render breaks a store's
+// connections when the customer changes the store, not when Render ships its
+// own platform (ADR021 § 10). So the template stays exactly as it runs,
+// whatever the manager's image, binary or rendering, until one of these moves
+// it onto the manager's image and the full current rendering, in one write:
 //
 //   - the Deployment is new;
 //   - it runs no pod before or after this pass (a suspension or a resume);
+//   - it records no roll inputs (written before w6/m517): a template already
+//     equal to the rendering stays as it is, and any other rolls once;
 //   - the store's roll inputs (keyValueInternalProxyInputs) changed since the
 //     template was written;
-//   - its recorded override revision is below kvInternalProxyRollRevision.
+//   - its recorded override revision is below kvInternalProxyRollRevision,
+//     or unreadable.
 //
-// A Deployment that records no inputs (written before w6/m517) is adopted:
-// it takes the rendering as before, which keeps a template already equal to
-// it and rolls any other once. running is whether the proxy runs a pod both
-// before and after this pass.
-func keyValueInternalProxyRoll(dep *appsv1.Deployment, running bool, inputs string) kvProxyRoll {
-	recorded, adopted := dep.Annotations[kvInternalProxyInputsAnnotation]
-	switch {
-	case dep.ResourceVersion == "" || !running:
-		return kvProxyRender
-	case !adopted:
-		return kvProxyAdopt
-	case recorded != inputs || keyValueInternalProxyRollRevision(dep) < kvInternalProxyRollRevision:
-		return kvProxyRender
-	}
-	return kvProxyHold
+// running is whether the proxy runs a pod both before and after this pass.
+func keyValueInternalProxyHolds(dep *appsv1.Deployment, running bool, inputs string) bool {
+	revision, err := strconv.Atoi(dep.Annotations[kvInternalProxyRollRevisionAnnotation])
+	return dep.ResourceVersion != "" && running &&
+		dep.Annotations[kvInternalProxyInputsAnnotation] == inputs &&
+		err == nil && revision >= kvInternalProxyRollRevision
 }
 
 // keyValueInternalProxyInputs digests what a store's own changes write into
@@ -290,21 +252,6 @@ func keyValueInternalProxyInputs(kv *appv1alpha1.KeyValue, intent keyValueIntent
 	return hex.EncodeToString(sum[:])
 }
 
-// keyValueInternalProxyRollRevision is the override revision a proxy
-// Deployment records. One that records none (written before w6/m517) is
-// adopted at the current revision, without a roll; an unreadable record rolls.
-func keyValueInternalProxyRollRevision(dep *appsv1.Deployment) int {
-	recorded, ok := dep.Annotations[kvInternalProxyRollRevisionAnnotation]
-	if !ok {
-		return kvInternalProxyRollRevision
-	}
-	revision, err := strconv.Atoi(recorded)
-	if err != nil {
-		return 0
-	}
-	return revision
-}
-
 // recordKeyValueInternalProxyInputs records the inputs and the override
 // revision the Deployment's pod template now stands for. A higher revision,
 // left by a newer operator before a rollback, stays, so moving forward again
@@ -332,89 +279,6 @@ func holdKeyValueInternalProxyTemplate(ctx context.Context, kv *appv1alpha1.KeyV
 		}
 	}
 	dep.Spec.Template = *before
-}
-
-// InternalProxyBinaryFromRegistry is the manager's InternalProxyBinaryOf: it
-// reads /kv-internal-proxy out of a digest-pinned image's registry, once per
-// digest, since every proxy written before w6/m469 runs the same image.
-func InternalProxyBinaryFromRegistry() func(ctx context.Context, image string) (string, error) {
-	var mu sync.Mutex
-	known := map[string]string{}
-	return func(ctx context.Context, image string) (string, error) {
-		host, repo, _, digest, ok := parseExternalImageReference(image)
-		if !ok || !registry.IsDigest(digest) {
-			return "", fmt.Errorf("image %q is not pinned by digest", image)
-		}
-		mu.Lock()
-		sum, hit := known[digest]
-		mu.Unlock()
-		if hit {
-			return sum, nil
-		}
-		// The manager compares the image with its own binary, built for its
-		// own architecture.
-		platform := registry.Platform{OS: "linux", Architecture: runtime.GOARCH}
-		sum, err := registry.ImageFileSHA256(ctx, nil, host, repo, digest, platform, kvInternalProxyStep, "kv-internal-proxy")
-		if err != nil {
-			return "", err
-		}
-		mu.Lock()
-		known[digest] = sum
-		mu.Unlock()
-		return sum, nil
-	}
-}
-
-// keyValueInternalProxyImage picks the image of a proxy Deployment that w6/m517
-// adopts (w6/m469): the one it runs while that image carries the manager's own
-// /kv-internal-proxy, so adopting a proxy whose template is otherwise current
-// changes nothing in it. Otherwise the proxy takes the manager's image.
-// before is the Deployment's template as read.
-func (r *KeyValueReconciler) keyValueInternalProxyImage(ctx context.Context, dep *appsv1.Deployment, before *corev1.PodTemplateSpec) string {
-	running := ""
-	for _, c := range before.Spec.Containers {
-		if c.Name == kvInternalProxyContainer {
-			running = c.Image
-		}
-	}
-	if r.InternalProxyBinary != "" && running != "" && running != r.InternalProxyImage && r.carriesInternalProxyBinary(ctx, dep, running) {
-		return running
-	}
-	r.recordInternalProxyBinary(dep)
-	return r.InternalProxyImage
-}
-
-// recordInternalProxyBinary records, for a template that takes the manager's
-// image, the hash of the binary it carries; a manager that has none removes
-// the record, which would otherwise name another image's binary.
-func (r *KeyValueReconciler) recordInternalProxyBinary(dep *appsv1.Deployment) {
-	if r.InternalProxyBinary == "" {
-		delete(dep.Annotations, kvInternalProxyBinaryAnnotation)
-		return
-	}
-	metav1.SetMetaDataAnnotation(&dep.ObjectMeta, kvInternalProxyBinaryAnnotation, r.InternalProxyBinary)
-}
-
-// carriesInternalProxyBinary reports whether a proxy's running image carries
-// the manager's /kv-internal-proxy: by the hash its Deployment records, or,
-// for a Deployment that records none (one the operator wrote before w6/m469),
-// by the binary read out of the image's registry, which it then records. A
-// failed lookup answers false, and the proxy rolls as it always did.
-func (r *KeyValueReconciler) carriesInternalProxyBinary(ctx context.Context, dep *appsv1.Deployment, image string) bool {
-	if recorded := dep.Annotations[kvInternalProxyBinaryAnnotation]; recorded != "" || r.InternalProxyBinaryOf == nil {
-		return recorded == r.InternalProxyBinary
-	}
-	sum, err := r.InternalProxyBinaryOf(ctx, image)
-	if err != nil {
-		logf.FromContext(ctx).Info("rolling the Key Value proxy onto the operator's image: its own image's binary is unknown",
-			"deployment", dep.Name, "image", image, "reason", err.Error())
-		return false
-	}
-	if sum != r.InternalProxyBinary {
-		return false
-	}
-	metav1.SetMetaDataAnnotation(&dep.ObjectMeta, kvInternalProxyBinaryAnnotation, sum)
-	return true
 }
 
 // kvInternalProxyMemoryLimit lets the proxy hold its plan's connections: 32Mi

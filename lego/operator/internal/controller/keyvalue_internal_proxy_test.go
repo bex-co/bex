@@ -558,18 +558,6 @@ func TestEnablingInternalAuthRollsOnlyTheProxy(t *testing.T) {
 	}
 }
 
-// w6/m469: only a digest names the bytes a proxy runs. A tag (the local
-// cluster's bex-operator:dev) is refused before any registry call, so the
-// proxy rolls as it always did.
-func TestInternalProxyBinaryFromRegistryNeedsADigest(t *testing.T) {
-	binaryOf := InternalProxyBinaryFromRegistry()
-	for _, image := range []string{"bex-operator:dev", "ghcr.io/bex-co/bex-operator:latest", "ghcr.io/bex-co/bex-operator@sha256:short"} {
-		if sum, err := binaryOf(context.Background(), image); err == nil || !strings.Contains(err.Error(), "not pinned by digest") {
-			t.Errorf("%s: %q, %v; want a refusal without a registry call", image, sum, err)
-		}
-	}
-}
-
 // w6/m512: once internal authentication is enabled, the operator closes the
 // connections of the old, authenticating proxy pod as soon as it terminates,
 // so its drain does not keep them, and only that pod's. A roll that keeps the

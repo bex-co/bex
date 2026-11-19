@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"slices"
 
@@ -42,11 +41,9 @@ import (
 // bump, exactly what the Deployment controller acts on.
 var _ = Describe("Key Value proxy template across operator deploys", func() {
 	const (
-		imageA  = "ghcr.io/bex-co/bex-operator@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-		imageB  = "ghcr.io/bex-co/bex-operator@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-		imageC  = "ghcr.io/bex-co/bex-operator@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-		binary1 = "1111111111111111111111111111111111111111111111111111111111111111"
-		binary2 = "2222222222222222222222222222222222222222222222222222222222222222"
+		imageA = "ghcr.io/bex-co/bex-operator@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+		imageB = "ghcr.io/bex-co/bex-operator@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+		imageC = "ghcr.io/bex-co/bex-operator@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
 	)
 	var (
 		kv     *appv1alpha1.KeyValue
@@ -73,8 +70,8 @@ var _ = Describe("Key Value proxy template across operator deploys", func() {
 		})
 	})
 
-	operator := func(image, binary string) *KeyValueReconciler {
-		return &KeyValueReconciler{Client: k8sClient, Scheme: k8sClient.Scheme(), InternalProxyImage: image, InternalProxyBinary: binary}
+	operator := func(image string) *KeyValueReconciler {
+		return &KeyValueReconciler{Client: k8sClient, Scheme: k8sClient.Scheme(), InternalProxyImage: image}
 	}
 	get := func() *appsv1.Deployment {
 		GinkgoHelper()
@@ -87,7 +84,7 @@ var _ = Describe("Key Value proxy template across operator deploys", func() {
 		_, err := r.reconcileKeyValueInternalProxy(ctx, kv, intent)
 		Expect(err).NotTo(HaveOccurred())
 		dep := get()
-		for _, key := range []string{kvInternalProxyBinaryAnnotation, kvInternalProxyInputsAnnotation, kvInternalProxyRollRevisionAnnotation} {
+		for _, key := range []string{kvInternalProxyInputsAnnotation, kvInternalProxyRollRevisionAnnotation} {
 			Expect(dep.Spec.Template.Annotations).NotTo(HaveKey(key), "a record on the pod template would roll every proxy once")
 		}
 		Expect(dep.Annotations).To(HaveKeyWithValue(kvInternalProxyInputsAnnotation, keyValueInternalProxyInputs(kv, intent)))
@@ -133,29 +130,28 @@ var _ = Describe("Key Value proxy template across operator deploys", func() {
 		Expect(image(dep)).To(Equal(r.InternalProxyImage))
 		Expect(env(dep)).To(HaveKeyWithValue("BEX_KV_DRAIN_SECONDS", fmt.Sprint(kvInternalProxyDrainSeconds)))
 		Expect(dep.Spec.Template.Spec.TerminationGracePeriodSeconds).To(HaveValue(BeEquivalentTo(kvInternalProxyGraceSeconds)))
-		Expect(dep.Annotations).To(HaveKeyWithValue(kvInternalProxyBinaryAnnotation, r.InternalProxyBinary))
 	}
 
 	It("keeps the template through deploys that change the image, the binary and the rendering", func() {
-		first := reconcile(operator(imageA, binary1))
+		first := reconcile(operator(imageA))
 		Expect(image(first)).To(Equal(imageA))
 		Expect(first.Annotations).To(HaveKeyWithValue(kvInternalProxyRollRevisionAnnotation, fmt.Sprint(kvInternalProxyRollRevision)))
-		expectHeld(reconcile(operator(imageB, binary1)), first)
-		expectHeld(reconcile(operator(imageB, binary2)), first)
+		expectHeld(reconcile(operator(imageB)), first)
+		expectHeld(reconcile(operator(imageC)), first)
 
 		// A template an older rendering wrote: the current one adds a field.
 		older := edit(olderRendering)
 		for range 2 {
-			expectHeld(reconcile(operator(imageC, binary2)), older)
+			expectHeld(reconcile(operator(imageC)), older)
 		}
 		Expect(image(older)).To(Equal(imageA))
 	})
 
 	DescribeTable("rolls once onto the manager's image and the whole rendering when the store's own change rolls it",
 		func(change func()) {
-			reconcile(operator(imageA, binary1))
+			reconcile(operator(imageA))
 			held := edit(olderRendering)
-			r := operator(imageB, binary2)
+			r := operator(imageB)
 			expectHeld(reconcile(r), held)
 
 			change()
@@ -171,8 +167,8 @@ var _ = Describe("Key Value proxy template across operator deploys", func() {
 	)
 
 	It("carries what each change writes into the rolled template", func() {
-		reconcile(operator(imageA, binary1))
-		r := operator(imageB, binary2)
+		reconcile(operator(imageA))
+		r := operator(imageB)
 		kv.Spec.InternalAuth = true
 		intent.tlsListener = true
 		dep := reconcile(r)
@@ -183,122 +179,89 @@ var _ = Describe("Key Value proxy template across operator deploys", func() {
 	})
 
 	It("takes the current rendering on resume", func() {
-		reconcile(operator(imageA, binary1))
+		reconcile(operator(imageA))
 		held := edit(olderRendering)
 
 		kv.Spec.Suspended = true
-		suspended := reconcile(operator(imageB, binary2))
+		suspended := reconcile(operator(imageB))
 		Expect(suspended.Spec.Replicas).To(HaveValue(BeEquivalentTo(0)))
 
 		kv.Spec.Suspended = false
-		r := operator(imageC, binary2)
+		r := operator(imageC)
 		resumed := reconcile(r)
 		Expect(resumed.Spec.Replicas).To(HaveValue(BeEquivalentTo(1)))
 		Expect(resumed.Generation).To(BeNumerically(">", held.Generation))
 		expectCurrent(resumed, r)
-		expectHeld(reconcile(operator(imageA, binary1)), resumed)
+		expectHeld(reconcile(operator(imageA)), resumed)
 	})
 
 	It("rolls every held proxy once when the override revision is above the recorded one", func() {
-		reconcile(operator(imageA, binary1))
+		reconcile(operator(imageA))
 		// What a bump of kvInternalProxyRollRevision leaves: a lower record.
 		held := edit(func(dep *appsv1.Deployment) {
 			dep.Annotations[kvInternalProxyRollRevisionAnnotation] = fmt.Sprint(kvInternalProxyRollRevision - 1)
 		})
-		r := operator(imageB, binary2)
+		r := operator(imageB)
 		rolled := reconcile(r)
 		Expect(rolled.Generation).To(BeNumerically(">", held.Generation))
 		expectCurrent(rolled, r)
 		Expect(rolled.Annotations).To(HaveKeyWithValue(kvInternalProxyRollRevisionAnnotation, fmt.Sprint(kvInternalProxyRollRevision)))
-		expectHeld(reconcile(operator(imageC, binary1)), rolled)
+		expectHeld(reconcile(operator(imageC)), rolled)
 
 		// A record a newer operator left, before a rollback, stays and holds.
 		newer := edit(func(dep *appsv1.Deployment) {
 			dep.Annotations[kvInternalProxyRollRevisionAnnotation] = fmt.Sprint(kvInternalProxyRollRevision + 1)
 		})
-		kept := reconcile(operator(imageA, binary1))
+		kept := reconcile(operator(imageA))
 		expectHeld(kept, newer)
 		Expect(kept.Annotations).To(HaveKeyWithValue(kvInternalProxyRollRevisionAnnotation, fmt.Sprint(kvInternalProxyRollRevision+1)))
 	})
 
+	It("rolls a held proxy whose override record is missing or unreadable", func() {
+		for _, record := range []string{"", "one"} {
+			reconcile(operator(imageA))
+			held := edit(func(dep *appsv1.Deployment) {
+				olderRendering(dep)
+				dep.Annotations[kvInternalProxyRollRevisionAnnotation] = record
+				if record == "" {
+					delete(dep.Annotations, kvInternalProxyRollRevisionAnnotation)
+				}
+			})
+			r := operator(imageB)
+			rolled := reconcile(r)
+			Expect(rolled.Generation).To(BeNumerically(">", held.Generation))
+			expectCurrent(rolled, r)
+			Expect(rolled.Annotations).To(HaveKeyWithValue(kvInternalProxyRollRevisionAnnotation, fmt.Sprint(kvInternalProxyRollRevision)))
+		}
+	})
+
 	It("adopts a Deployment written before the hold without a roll when its template is current", func() {
-		reconcile(operator(imageA, binary1))
+		reconcile(operator(imageA))
 		before := edit(beforeM517)
 		Expect(before.Annotations).NotTo(HaveKey(kvInternalProxyInputsAnnotation))
 
-		// w6/m469's image hold is part of the comparison: imageA carries binary1.
-		adopted := reconcile(operator(imageB, binary1))
+		adopted := reconcile(operator(imageA))
 		// Recording bumps the generation (the API server copies a Deployment's
 		// annotations to its ReplicaSet), but only a template change makes a
 		// new ReplicaSet and replaces the pod.
 		Expect(equality.Semantic.DeepEqual(adopted.Spec.Template, before.Spec.Template)).To(BeTrue(),
 			"the pod template changed: %v", adopted.Spec.Template)
 		Expect(adopted.Annotations).To(HaveKeyWithValue(kvInternalProxyRollRevisionAnnotation, fmt.Sprint(kvInternalProxyRollRevision)))
-		expectHeld(reconcile(operator(imageC, binary2)), adopted)
+		expectHeld(reconcile(operator(imageC)), adopted)
 	})
 
-	It("rolls a Deployment written before the hold once when its template predates w6/m512, then holds it", func() {
-		reconcile(operator(imageA, binary1))
-		preM512 := edit(func(dep *appsv1.Deployment) { olderRendering(dep); beforeM517(dep) })
-		Expect(env(preM512)).NotTo(HaveKey("BEX_KV_DRAIN_SECONDS"))
+	DescribeTable("rolls a Deployment written before the hold once onto the manager's image and rendering, then holds it",
+		func(older func(*appsv1.Deployment)) {
+			reconcile(operator(imageA))
+			before := edit(func(dep *appsv1.Deployment) { older(dep); beforeM517(dep) })
 
-		r := operator(imageB, binary1)
-		rolled := reconcile(r)
-		Expect(rolled.Generation).To(BeNumerically(">", preM512.Generation))
-		Expect(env(rolled)).To(HaveKeyWithValue("BEX_KV_DRAIN_SECONDS", fmt.Sprint(kvInternalProxyDrainSeconds)))
-		Expect(rolled.Spec.Template.Spec.TerminationGracePeriodSeconds).To(HaveValue(BeEquivalentTo(kvInternalProxyGraceSeconds)))
-		// The adoption kept imageA (same binary) and rolled only the rendering.
-		Expect(image(rolled)).To(Equal(imageA))
-		expectHeld(reconcile(operator(imageC, binary2)), rolled)
-	})
-
-	It("adopts onto the operator's image when the operator has no hash of its binary", func() {
-		reconcile(operator(imageA, binary1))
-		edit(beforeM517)
-		dep := reconcile(operator(imageB, ""))
-		Expect(image(dep)).To(Equal(imageB))
-		Expect(dep.Annotations).NotTo(HaveKey(kvInternalProxyBinaryAnnotation),
-			"a hash left behind would claim imageB carries binary1")
-		expectHeld(reconcile(operator(imageA, "")), dep)
-	})
-
-	It("adopts a proxy written before the hash existed when its image's registry shows the same binary", func() {
-		reconcile(operator(imageA, "")) // production's proxies before w6/m469
-		before := edit(beforeM517)
-		Expect(before.Annotations).NotTo(HaveKey(kvInternalProxyBinaryAnnotation))
-
-		var asked []string
-		r := operator(imageB, binary1)
-		r.InternalProxyBinaryOf = func(_ context.Context, image string) (string, error) {
-			asked = append(asked, image)
-			return binary1, nil
-		}
-		adopted := reconcile(r)
-		Expect(asked).To(Equal([]string{imageA}))
-		Expect(equality.Semantic.DeepEqual(adopted.Spec.Template, before.Spec.Template)).To(BeTrue(),
-			"the pod template changed: %v", adopted.Spec.Template)
-		Expect(adopted.Annotations).To(HaveKeyWithValue(kvInternalProxyBinaryAnnotation, binary1))
-
-		reconcile(r)
-		Expect(asked).To(HaveLen(1), "a held proxy asked the registry again")
-	})
-
-	It("rolls a proxy written before the hash existed when its image's binary differs or is unknown", func() {
-		for _, answer := range []struct {
-			sum string
-			err error
-		}{{sum: binary2}, {err: errors.New("registry unreachable")}} {
-			reconcile(operator(imageA, ""))
-			before := edit(beforeM517)
-			r := operator(imageB, binary1)
-			r.InternalProxyBinaryOf = func(context.Context, string) (string, error) { return answer.sum, answer.err }
+			r := operator(imageB)
 			rolled := reconcile(r)
 			Expect(rolled.Generation).To(BeNumerically(">", before.Generation))
-			Expect(image(rolled)).To(Equal(imageB))
-			Expect(rolled.Annotations).To(HaveKeyWithValue(kvInternalProxyBinaryAnnotation, binary1))
-			// Back to a proxy written before w6/m469 for the next answer.
-			edit(beforeM517)
-			reconcile(operator(imageA, ""))
-		}
-	})
+			expectCurrent(rolled, r)
+			expectHeld(reconcile(operator(imageC)), rolled)
+		},
+		Entry("when it runs another image", func(*appsv1.Deployment) {}),
+		Entry("when its template predates w6/m512", olderRendering),
+	)
 })

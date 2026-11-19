@@ -381,17 +381,6 @@ type KeyValueReconciler struct {
 	// InternalProxyImage is the operator's own image. Manager requires it for
 	// the internal-auth proxy; an empty value preserves legacy embedded controllers.
 	InternalProxyImage string
-	// InternalProxyBinary is the hex sha256 of the /kv-internal-proxy that
-	// InternalProxyImage carries. A proxy Deployment that records no roll
-	// inputs yet keeps its image while that image carries the same binary
-	// (w6/m469), so adopting it into the template hold (w6/m517) rolls nothing.
-	// Empty keeps no image: such a proxy is adopted onto InternalProxyImage.
-	InternalProxyBinary string
-	// InternalProxyBinaryOf hashes the /kv-internal-proxy a digest-pinned image
-	// carries, from its registry. It lets a proxy whose Deployment records no
-	// hash keep its image; nil, or an error, rolls the proxy onto
-	// InternalProxyImage instead.
-	InternalProxyBinaryOf func(ctx context.Context, image string) (string, error)
 	// FinalizerOverrunAfter overrides finalizerOverrunAfter — the window past
 	// which a still-running KeyValue finalization is surfaced as DeletionStalled
 	// (w8/012). Zero uses the package default; tests set a tiny duration.

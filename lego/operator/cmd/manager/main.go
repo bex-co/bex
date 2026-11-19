@@ -18,13 +18,10 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"crypto/tls"
-	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"slices"
 	"strconv"
@@ -649,25 +646,6 @@ func backupHelperImage(c client.Client) string {
 	return image
 }
 
-// kvInternalProxyPath is where lego/Dockerfile puts the Key Value proxy binary.
-const kvInternalProxyPath = "/kv-internal-proxy"
-
-// fileSHA256 returns the hex sha256 of a file, or "" when it cannot be read
-// (`make run`, a test binary): then every operator deploy rolls each Key Value
-// proxy, as it did before w6/m469.
-func fileSHA256(path string) string {
-	f, err := os.Open(path)
-	if err == nil {
-		defer f.Close() //nolint:errcheck
-		sum := sha256.New()
-		if _, err = io.Copy(sum, f); err == nil {
-			return hex.EncodeToString(sum.Sum(nil))
-		}
-	}
-	setupLog.Info("Key Value proxy binary unreadable; each operator deploy rolls every proxy", "reason", err.Error())
-	return ""
-}
-
 func setupDatastoreReconcilers(mgr ctrl.Manager, uncachedClient client.Client, appsNamespace string) {
 	databaseReconciler := &controller.DatabaseReconciler{
 		Client: mgr.GetClient(),
@@ -726,12 +704,6 @@ func setupDatastoreReconcilers(mgr ctrl.Manager, uncachedClient client.Client, a
 			"Key Value internal proxy requires POD_NAME/POD_NAMESPACE or BEX_BACKUP_HELPER_IMAGE")
 		os.Exit(1)
 	}
-	// The manager's own /kv-internal-proxy is the one internalProxyImage
-	// carries, unless an override names another image (w6/m469).
-	internalProxyBinary := ""
-	if env.Or("BEX_BACKUP_HELPER_IMAGE", "") == "" {
-		internalProxyBinary = fileSHA256(kvInternalProxyPath)
-	}
 	if err := (&controller.KeyValueReconciler{
 		APIReader:             mgr.GetAPIReader(),
 		Client:                mgr.GetClient(),
@@ -739,8 +711,6 @@ func setupDatastoreReconcilers(mgr ctrl.Manager, uncachedClient client.Client, a
 		SecretClient:          uncachedClient, // see DatabaseReconciler above
 		BackupSourceNamespace: appsNamespace,
 		InternalProxyImage:    internalProxyImage,
-		InternalProxyBinary:   internalProxyBinary,
-		InternalProxyBinaryOf: controller.InternalProxyBinaryFromRegistry(),
 		BackupHelperImage:     internalProxyImage,
 		KvDomain:              env.Or("BEX_KV_DOMAIN", ""),
 		ClusterIssuer:         env.Or("BEX_CLUSTER_ISSUER", ""),
