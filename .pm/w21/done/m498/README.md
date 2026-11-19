@@ -1,6 +1,6 @@
 # w21 · m498 — S3 core: SigV4, access keys, buckets, objects, listing and multipart on a `bex-s3` Deployment
 
-**Worker:** worker21 **Goal:** any S3 client (aws-cli, rclone, boto3) with a bex access key and `https://objects.onbex.co` as its endpoint lists, uploads (single and in parts), copies, downloads and deletes objects in the workspace's buckets, with quota, metering, audit and limits in bex's path. **Status:** todo (t001, t002, t003, t004, t005, t006, t007, t008, t009, t010, t011, t012, t013, t014, t015, t016, t017, t018 done; t019 waits for the production deploy and live verification, see its hand-off)
+**Worker:** worker21 **Goal:** any S3 client (aws-cli, rclone, boto3) with a bex access key and `https://objects.onbex.co` as its endpoint lists, uploads (single and in parts), copies, downloads and deletes objects in the workspace's buckets, with quota, metering, audit and limits in bex's path. **Status:** done (t001 to t019 done; the definition of done was walked on production on 2026-11-19, see t019 and ADR112 § Not verified)
 
 ## Tasks (in order)
 
@@ -24,7 +24,7 @@
 | [t016](done/t016.md) | Render parity — **DONE** | 30m | t015 |
 | [t017](done/t017.md) | Simplify — **DONE** | 20m | t016 |
 | [t018](done/t018.md) | Test coverage — **DONE** | 45m | t016, t017 |
-| [t019](t019.md) | Closeout | 10m | t018 |
+| [t019](done/t019.md) | Closeout — **DONE** | 10m | t018 |
 
 ## Definition of done
 
@@ -37,7 +37,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** [ADR112](../../../docs/ADR112-object-storage.md) (amended 2026-11-19: Contract B replaced by an S3-compatible API and `bex s3`), filed by `/pmx adr 112 to w21` on 2026-11-19; the S3 amendment's tasks t101 to t114 (§ Tasks), reorganized into three milestones.
+- **Source:** [ADR112](../../../../docs/ADR112-object-storage.md) (amended 2026-11-19: Contract B replaced by an S3-compatible API and `bex s3`), filed by `/pmx adr 112 to w21` on 2026-11-19; the S3 amendment's tasks t101 to t114 (§ Tasks), reorganized into three milestones.
 - **Goal linkage:** ADR008 Render parity first (the S3 API is an `Extension`, not a parity break, and Contract A keeps its contract) and the user's 2026-11-14 goal of serving customers' object needs, restated on 2026-11-19 as S3 compatibility.
 - **Expected outcome:** A customer points any S3 client at `objects.onbex.co` with a bex access key and manages buckets and objects, including listing a named bucket, which no CLI could do before.
 - **Why now:** The user chose S3 on 2026-11-19 because `wrangler r2` cannot list, copy or sync, and Contract B shipped on 2026-11-15; this is the server half of the replacement. It ships first because `bex s3` (m499), the production walk and the removal of Contract B (m500) all need a live S3 surface, and the new route must exist before Contract B's route can go.
