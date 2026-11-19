@@ -67,6 +67,8 @@ type Server struct {
 
 	mu       sync.Mutex
 	buckets  map[string]map[string]*Object
+	uploads  map[string]*upload
+	nextID   int
 	requests []Request
 	down     bool
 	// rangeQuirk makes a Range past the end answer 200 with the whole object, as
@@ -85,7 +87,7 @@ func (s *Server) SetRangeQuirk(on bool) {
 
 // New starts a server holding the named, empty buckets.
 func New(buckets ...string) *Server {
-	s := &Server{buckets: map[string]map[string]*Object{}}
+	s := &Server{buckets: map[string]map[string]*Object{}, uploads: map[string]*upload{}}
 	for _, b := range buckets {
 		s.buckets[b] = map[string]*Object{}
 	}
@@ -178,7 +180,7 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	// fake serving everything else, which is what real streaming tests need.
 	var body []byte
 	var bodyErr error
-	if r.Method == http.MethodPut && !chunkedRefusal(r) {
+	if (r.Method == http.MethodPut || r.Method == http.MethodPost) && !chunkedRefusal(r) {
 		body, bodyErr = io.ReadAll(r.Body)
 	}
 	s.mu.Lock()
@@ -197,9 +199,17 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	case key == "" && r.Method == http.MethodGet && q.Get("list-type") == "2":
 		s.list(w, bucket, objects, q)
 	case key == "" && r.Method == http.MethodPost && q.Has("delete"):
-		s.deleteMany(w, r, objects)
+		s.deleteMany(w, r, objects, body)
 	case key == "":
 		s.fail(w, r, http.StatusNotImplemented, "NotImplemented", "the fake serves list-type=2 and delete only")
+	case r.Method == http.MethodPost && q.Has("uploads"):
+		s.createUpload(w, r, bucket, key)
+	case r.Method == http.MethodPut && q.Has("partNumber") && q.Has("uploadId"):
+		s.uploadPart(w, r, bucket, key, body, bodyErr)
+	case r.Method == http.MethodPost && q.Has("uploadId"):
+		s.completeUpload(w, r, bucket, key, body)
+	case r.Method == http.MethodDelete && q.Has("uploadId"):
+		s.abortUpload(w, r, bucket, key)
 	case r.Method == http.MethodPut && r.Header.Get("X-Amz-Copy-Source") != "":
 		s.copyObject(w, r, bucket, key)
 	case r.Method == http.MethodPut:
@@ -471,13 +481,13 @@ func (s *Server) list(w http.ResponseWriter, bucket string, objects map[string]*
 	_ = xml.NewEncoder(w).Encode(res)
 }
 
-func (s *Server) deleteMany(w http.ResponseWriter, r *http.Request, objects map[string]*Object) {
+func (s *Server) deleteMany(w http.ResponseWriter, r *http.Request, objects map[string]*Object, body []byte) {
 	var in struct {
 		Objects []struct {
 			Key string `xml:"Key"`
 		} `xml:"Object"`
 	}
-	if err := xml.NewDecoder(r.Body).Decode(&in); err != nil {
+	if err := xml.Unmarshal(body, &in); err != nil {
 		s.fail(w, r, http.StatusBadRequest, "MalformedXML", err.Error())
 		return
 	}
@@ -498,4 +508,165 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, status int, code, 
 	w.Header().Set("Content-Type", "application/xml")
 	w.WriteHeader(status)
 	_, _ = fmt.Fprintf(w, `%s<Error><Code>%s</Code><Message>%s</Message></Error>`, xml.Header, code, msg.String())
+}
+
+// upload is one open multipart upload.
+type upload struct {
+	bucket, key string
+	header      http.Header
+	parts       map[int]*part
+}
+
+type part struct {
+	body []byte
+	etag string
+}
+
+// OpenUploads is the number of multipart uploads started and neither completed nor
+// aborted.
+func (s *Server) OpenUploads() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.uploads)
+}
+
+// UploadParts is the part numbers an open upload holds, in order, or nil for one that is
+// not open.
+func (s *Server) UploadParts(uploadID string) []int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	u, ok := s.uploads[uploadID]
+	if !ok {
+		return nil
+	}
+	var numbers []int
+	for n := range u.parts {
+		numbers = append(numbers, n)
+	}
+	sort.Ints(numbers)
+	return numbers
+}
+
+func (s *Server) createUpload(w http.ResponseWriter, r *http.Request, bucket, key string) {
+	s.nextID++
+	id := fmt.Sprintf("fake-upload-%d", s.nextID)
+	s.uploads[id] = &upload{bucket: bucket, key: key, header: entityHeaders(r.Header), parts: map[int]*part{}}
+	w.Header().Set("Content-Type", "application/xml")
+	_, _ = fmt.Fprintf(w, `<?xml version="1.0" encoding="UTF-8"?><InitiateMultipartUploadResult><Bucket>%s</Bucket><Key>%s</Key><UploadId>%s</UploadId></InitiateMultipartUploadResult>`, bucket, key, id)
+}
+
+func (s *Server) openUpload(w http.ResponseWriter, r *http.Request, bucket, key string) (*upload, bool) {
+	u, ok := s.uploads[r.URL.Query().Get("uploadId")]
+	if !ok || u.bucket != bucket || u.key != key {
+		s.fail(w, r, http.StatusNotFound, "NoSuchUpload", "the upload does not exist")
+		return nil, false
+	}
+	return u, true
+}
+
+func partETag(body []byte) string {
+	sum := md5.Sum(body) //nolint:gosec
+	return `"` + hex.EncodeToString(sum[:]) + `"`
+}
+
+func (s *Server) uploadPart(w http.ResponseWriter, r *http.Request, bucket, key string, body []byte, bodyErr error) {
+	u, ok := s.openUpload(w, r, bucket, key)
+	if !ok {
+		return
+	}
+	n, err := strconv.Atoi(r.URL.Query().Get("partNumber"))
+	if err != nil || n < 1 || n > 10000 {
+		s.fail(w, r, http.StatusBadRequest, "InvalidArgument", "part number")
+		return
+	}
+	if r.Header.Get("X-Amz-Copy-Source") != "" {
+		s.uploadPartCopy(w, r, u, n)
+		return
+	}
+	if chunkedRefusal(r) {
+		s.fail(w, r, http.StatusForbidden, "SignatureDoesNotMatch", "a chunked body does not match the signed Content-Length")
+		return
+	}
+	if bodyErr != nil {
+		s.fail(w, r, http.StatusBadRequest, "IncompleteBody", bodyErr.Error())
+		return
+	}
+	u.parts[n] = &part{body: append([]byte(nil), body...), etag: partETag(body)}
+	w.Header().Set("ETag", u.parts[n].etag)
+	w.WriteHeader(http.StatusOK)
+}
+
+// uploadPartCopy serves UploadPartCopy: the whole source, or the bytes of its
+// x-amz-copy-source-range.
+func (s *Server) uploadPartCopy(w http.ResponseWriter, r *http.Request, u *upload, n int) {
+	raw, err := url.PathUnescape(r.Header.Get("X-Amz-Copy-Source"))
+	if err != nil {
+		s.fail(w, r, http.StatusBadRequest, "InvalidArgument", "x-amz-copy-source")
+		return
+	}
+	srcBucket, srcKey, _ := strings.Cut(strings.TrimPrefix(raw, "/"), "/")
+	src, ok := s.buckets[srcBucket][srcKey]
+	if !ok {
+		s.fail(w, r, http.StatusNotFound, "NoSuchKey", "the copy source does not exist")
+		return
+	}
+	body := src.Body
+	if rng := r.Header.Get("X-Amz-Copy-Source-Range"); rng != "" {
+		start, end, ok := parseRange(rng, int64(len(body)))
+		if !ok {
+			s.fail(w, r, http.StatusRequestedRangeNotSatisfiable, "InvalidRange", rng)
+			return
+		}
+		body = body[start : end+1]
+	}
+	u.parts[n] = &part{body: append([]byte(nil), body...), etag: partETag(body)}
+	w.Header().Set("Content-Type", "application/xml")
+	_, _ = fmt.Fprintf(w, `<?xml version="1.0" encoding="UTF-8"?><CopyPartResult><ETag>%s</ETag><LastModified>%s</LastModified></CopyPartResult>`,
+		strings.ReplaceAll(u.parts[n].etag, `"`, "&quot;"), time.Now().UTC().Format("2006-01-02T15:04:05.000Z"))
+}
+
+// completeUpload assembles the object from the parts the request lists, in the order it
+// lists them. A part it names that the upload lacks, or whose ETag differs, is InvalidPart.
+func (s *Server) completeUpload(w http.ResponseWriter, r *http.Request, bucket, key string, body []byte) {
+	u, ok := s.openUpload(w, r, bucket, key)
+	if !ok {
+		return
+	}
+	var in struct {
+		Parts []struct {
+			PartNumber int    `xml:"PartNumber"`
+			ETag       string `xml:"ETag"`
+		} `xml:"Part"`
+	}
+	if err := xml.Unmarshal(body, &in); err != nil || len(in.Parts) == 0 {
+		s.fail(w, r, http.StatusBadRequest, "MalformedXML", "the part list")
+		return
+	}
+	var whole []byte
+	var sums []byte
+	for _, p := range in.Parts {
+		have, ok := u.parts[p.PartNumber]
+		if !ok || strings.Trim(p.ETag, `"`) != strings.Trim(have.etag, `"`) {
+			s.fail(w, r, http.StatusBadRequest, "InvalidPart", fmt.Sprintf("part %d", p.PartNumber))
+			return
+		}
+		whole = append(whole, have.body...)
+		raw, _ := hex.DecodeString(strings.Trim(have.etag, `"`))
+		sums = append(sums, raw...)
+	}
+	s.put(bucket, key, whole, u.header)
+	final := md5.Sum(sums) //nolint:gosec
+	s.buckets[bucket][key].ETag = fmt.Sprintf(`"%s-%d"`, hex.EncodeToString(final[:]), len(in.Parts))
+	delete(s.uploads, r.URL.Query().Get("uploadId"))
+	w.Header().Set("Content-Type", "application/xml")
+	_, _ = fmt.Fprintf(w, `<?xml version="1.0" encoding="UTF-8"?><CompleteMultipartUploadResult><Bucket>%s</Bucket><Key>%s</Key><ETag>%s</ETag></CompleteMultipartUploadResult>`,
+		bucket, key, strings.ReplaceAll(s.buckets[bucket][key].ETag, `"`, "&quot;"))
+}
+
+func (s *Server) abortUpload(w http.ResponseWriter, r *http.Request, bucket, key string) {
+	if _, ok := s.openUpload(w, r, bucket, key); !ok {
+		return
+	}
+	delete(s.uploads, r.URL.Query().Get("uploadId"))
+	w.WriteHeader(http.StatusNoContent)
 }

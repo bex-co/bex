@@ -325,6 +325,19 @@ func TestCopyObjectRunsInsideTheStoreKeepsOrReplacesMetadataAndNeedsTheSourceRea
 	if rec, doc := copyTo("/dst/x", "/src/missing"); rec.Code != 404 || doc.Code != "NoSuchKey" {
 		t.Errorf("a missing source = %d %q, want 404 NoSuchKey", rec.Code, doc.Code)
 	}
+	if rec, doc := copyTo("/dst/cond-ok", "/src/a/o.bin", func(r *http.Request) {
+		r.Header.Set("x-amz-copy-source-if-match", head.Header().Get("ETag"))
+	}); rec.Code != 200 {
+		t.Errorf("a copy whose source meets If-Match = %d %q, want 200", rec.Code, doc.Code)
+	}
+	if rec, doc := copyTo("/dst/cond-no", "/src/a/o.bin", func(r *http.Request) {
+		r.Header.Set("x-amz-copy-source-if-match", `"00000000000000000000000000000000"`)
+	}); rec.Code != 412 || doc.Code != "PreconditionFailed" {
+		t.Errorf("a copy whose source fails If-Match = %d %q, want 412 PreconditionFailed", rec.Code, doc.Code)
+	}
+	if _, ok := p.stored(objectstorage.Oregon, dst, "cond-no"); ok {
+		t.Error("a copy that failed its condition stored an object")
+	}
 	if rec, doc := copyTo("/dst/x", "/nope/a"); rec.Code != 404 || doc.Code != "NoSuchBucket" {
 		t.Errorf("a missing source bucket = %d %q", rec.Code, doc.Code)
 	}

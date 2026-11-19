@@ -138,6 +138,11 @@ type Sweeper struct {
 
 	// Exclusive keeps Run's pass on one replica. Nil runs every tick.
 	Exclusive Exclusive
+	// Keys deletes the S3 access keys revoked or expired long enough ago, with their
+	// OpenBao secrets, once a pass. Nil leaves them.
+	Keys interface {
+		SweepEnded(ctx context.Context) (int, error)
+	}
 	// LifecycleCap is the most objects one rule deletes in one pass.
 	LifecycleCap int
 	// MinGap is how recent a region's usage must be for a pass to leave it alone,
@@ -226,6 +231,7 @@ func (sw *Sweeper) Pass(ctx context.Context) error {
 		return fmt.Errorf("list workspaces: %w", err)
 	}
 	sweepOrder(workspaces)
+	sw.sweepUnfinished(ctx)
 
 	// Each worker writes its own element; the zero value is "not reached".
 	outcomes := make([]workspaceOutcome, len(workspaces))
@@ -263,6 +269,26 @@ func (sw *Sweeper) Pass(ctx context.Context) error {
 		return fmt.Errorf("%d of %d workspaces failed", tally.failed, len(workspaces))
 	}
 	return nil
+}
+
+// sweepUnfinished does what the pass does once for every workspace: it aborts the multipart
+// uploads with no part for MultipartAbortAfter, whose parts Wasabi bills and no listing shows,
+// and deletes the access keys that ended long enough ago. A failure is logged and the pass
+// goes on: the next one tries again.
+func (sw *Sweeper) sweepUnfinished(ctx context.Context) {
+	if n, err := sw.svc.AbortStaleUploads(ctx, sw.Now()); err != nil {
+		sw.Logf("object storage sweep: aborting stale multipart uploads: %v", err)
+	} else if n > 0 {
+		sw.Logf("object storage sweep: aborted %d multipart uploads with no part for %s", n, MultipartAbortAfter)
+	}
+	if sw.Keys == nil {
+		return
+	}
+	if n, err := sw.Keys.SweepEnded(ctx); err != nil {
+		sw.Logf("object storage sweep: deleting ended access keys: %v", err)
+	} else if n > 0 {
+		sw.Logf("object storage sweep: deleted %d access keys that ended more than %s ago", n, RetiredKeyRetention)
+	}
 }
 
 // sweepOrder puts deleted workspaces first, in the order the store lists them
@@ -369,6 +395,15 @@ func (sw *Sweeper) SweepWorkspace(ctx context.Context, workspaceID string) (list
 	buckets, err := sw.repo.ListObjectBuckets(ctx, workspaceID)
 	if err != nil {
 		return false, fmt.Errorf("list buckets: %w", err)
+	}
+	// A multipart abort rule is database work and Wasabi aborts, not a listing, so it runs
+	// every pass whatever the regions' gaps say.
+	for _, b := range buckets {
+		if n, err := sw.svc.AbortBucketUploads(ctx, b, sw.Now(), sw.Logf); err != nil {
+			sw.Logf("object storage sweep: bucket %s: aborting its incomplete multipart uploads: %v", b.ID, err)
+		} else if n > 0 {
+			sw.Logf("object storage sweep: bucket %s: aborted %d incomplete multipart uploads by its lifecycle rule", b.ID, n)
+		}
 	}
 	usage, err := sw.repo.ListObjectStorageUsage(ctx, workspaceID)
 	if err != nil {

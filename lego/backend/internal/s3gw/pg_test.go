@@ -94,7 +94,8 @@ func newPGRig(t *testing.T) *pgRig {
 		bg := context.Background()
 		for _, q := range []string{
 			`DELETE FROM object_storage_usage WHERE workspace_id=$1`, `DELETE FROM object_buckets WHERE workspace_id=$1`,
-			`DELETE FROM object_access_keys WHERE workspace_id=$1`, `DELETE FROM tenants WHERE id=$1`,
+			`DELETE FROM object_access_keys WHERE workspace_id=$1`, `DELETE FROM object_multipart_uploads WHERE workspace_id=$1`,
+			`DELETE FROM object_storage_writes WHERE workspace_id=$1`, `DELETE FROM tenants WHERE id=$1`,
 		} {
 			_, _ = pool.Exec(bg, q, tenant.ID)
 		}
@@ -135,6 +136,7 @@ func bucketNames(t *testing.T, body string) []string {
 func (p *pgRig) otherWorkspace() string {
 	id := ids.New(ids.Workspace)
 	p.t.Cleanup(func() {
+		_, _ = p.Pool.Exec(context.Background(), `DELETE FROM object_multipart_uploads WHERE workspace_id=$1`, id)
 		_, _ = p.Pool.Exec(context.Background(), `DELETE FROM object_buckets WHERE workspace_id=$1`, id)
 	})
 	return id

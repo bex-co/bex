@@ -83,6 +83,24 @@ func serviceError(w http.ResponseWriter, err error) *Error {
 		return newError(http.StatusNotFound, "NoSuchKey", "The specified key does not exist.")
 	case errors.As(err, &quota):
 		return newError(http.StatusForbidden, "QuotaExceeded", quota.Error())
+	case errors.Is(err, objectstorage.ErrNoSuchUpload):
+		return newError(http.StatusNotFound, "NoSuchUpload", "The specified upload does not exist. The upload ID may be invalid, or the upload may have been aborted or completed.")
+	case errors.Is(err, objectstorage.ErrTooManyUploads):
+		return newError(http.StatusForbidden, "QuotaExceeded", fmt.Sprintf("This workspace has %d unfinished multipart uploads, the most bex allows; complete or abort some.", objectstorage.MaxOpenMultipartUploads))
+	case errors.Is(err, objectstorage.ErrInvalidPartNumber):
+		return errInvalidArgument(fmt.Sprintf("Part number must be an integer between 1 and %d, inclusive.", objectstorage.MaxParts))
+	case errors.Is(err, objectstorage.ErrInvalidPart):
+		return newError(http.StatusBadRequest, "InvalidPart", "One or more of the specified parts could not be found. The part may not have been uploaded, or the specified entity tag may not match the part's entity tag.")
+	case errors.Is(err, objectstorage.ErrInvalidPartOrder):
+		return newError(http.StatusBadRequest, "InvalidPartOrder", "The list of parts was not in ascending order. The parts list must be specified in order by part number.")
+	case errors.Is(err, objectstorage.ErrEntityTooSmall):
+		return newError(http.StatusBadRequest, "EntityTooSmall", "Your proposed upload is smaller than the minimum allowed size: every part but the last must be at least 5 MiB.")
+	case errors.Is(err, objectstorage.ErrNoParts):
+		return errMalformedXML("The XML you provided was not well-formed or did not validate against our published schema: a CompleteMultipartUpload lists at least one part.")
+	case errors.Is(err, objectstorage.ErrPreconditionFailed):
+		return newError(http.StatusPreconditionFailed, "PreconditionFailed", "At least one of the pre-conditions you specified did not hold")
+	case errors.Is(err, objectstorage.ErrRangeNotSatisfiable):
+		return newError(http.StatusRequestedRangeNotSatisfiable, "InvalidRange", "The requested range is not satisfiable")
 	case errors.Is(err, objectstorage.ErrObjectTooLarge):
 		return newError(http.StatusBadRequest, "EntityTooLarge", "Your proposed upload exceeds the maximum allowed object size.")
 	case errors.Is(err, objectstorage.ErrCORSOverCap), errors.Is(err, objectstorage.ErrInvalidCORS),

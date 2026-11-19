@@ -96,9 +96,9 @@ func (p *pgRig) putKeys(k testKey, bucket string, keys ...string) {
 	}
 }
 
-// newListRig is a rig whose request and listing rates are out of the way of a test that
-// pages through a tree one key at a time.
-func newListRig(t *testing.T) *pgRig {
+// newWideRig is a rig whose request and listing rates are out of the way of a test that
+// makes hundreds of requests.
+func newWideRig(t *testing.T) *pgRig {
 	p := newPGRig(t)
 	wide := func() *core.KeyedRateLimiter[string] {
 		return core.NewKeyedRateLimiter[string](6_000_000, 100_000, time.Minute, time.Minute)
@@ -108,7 +108,7 @@ func newListRig(t *testing.T) *pgRig {
 }
 
 func TestAListingPagesATreeWithoutRepeatsOrGapsForEveryDelimiterCase(t *testing.T) {
-	p := newListRig(t)
+	p := newWideRig(t)
 	k := p.newKey(objectstorage.KeyPermissionReadWrite, 0)
 	p.bucket("tree", objectstorage.Oregon)
 	keys := []string{"a.txt", "dir/a", "dir/b", "dir/sub/c", "dir/sub/d", "dir0", "dir2/x", "z", "é/ü", "é0", "x/", "x/y"}
@@ -176,7 +176,7 @@ func sortedKeys(keys []string) []string {
 }
 
 func TestAForgedTokenOrAPrefixCannotLeaveTheBucket(t *testing.T) {
-	p := newListRig(t)
+	p := newWideRig(t)
 	k := p.newKey(objectstorage.KeyPermissionReadWrite, 0)
 	p.bucket("mine", objectstorage.Oregon)
 	p.bucket("yours", objectstorage.Oregon)
@@ -214,7 +214,7 @@ func TestAForgedTokenOrAPrefixCannotLeaveTheBucket(t *testing.T) {
 }
 
 func TestListingParametersAreValidatedAndEncodedAsS3DoesIt(t *testing.T) {
-	p := newListRig(t)
+	p := newWideRig(t)
 	k := p.newKey(objectstorage.KeyPermissionRead, 0)
 	rw := p.newKey(objectstorage.KeyPermissionReadWrite, 0)
 	p.bucket("params", objectstorage.Oregon)

@@ -130,6 +130,11 @@ func (s *PGStore) FinishObjectStoragePurge(ctx context.Context, workspaceID stri
 			AND NOT EXISTS (SELECT 1 FROM object_buckets b WHERE b.workspace_id = w.workspace_id)`, workspaceID); err != nil {
 			return err
 		}
+		if _, err := tx.Exec(ctx, `
+			DELETE FROM object_multipart_uploads m WHERE m.workspace_id = $1
+			AND NOT EXISTS (SELECT 1 FROM object_buckets b WHERE b.workspace_id = m.workspace_id)`, workspaceID); err != nil {
+			return err
+		}
 		_, err := tx.Exec(ctx, `
 			DELETE FROM object_storage_usage u WHERE u.workspace_id = $1
 			AND NOT EXISTS (SELECT 1 FROM object_buckets b WHERE b.workspace_id = u.workspace_id)`, workspaceID)

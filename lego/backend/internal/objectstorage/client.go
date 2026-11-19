@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
@@ -36,6 +37,17 @@ import (
 
 // ErrObjectNotFound is a key that is not in the bucket.
 var ErrObjectNotFound = errors.New("object not found")
+
+// ErrNoSuchUpload is a multipart upload that Wasabi does not hold, or that is not the
+// workspace's, bucket's or key's.
+var ErrNoSuchUpload = errors.New("no such multipart upload")
+
+// CompletedPart is one part of a CompleteMultipart: its number and the ETag its upload
+// answered with.
+type CompletedPart struct {
+	Number int
+	ETag   string
+}
 
 // ObjectInfo is what a HEAD or a listing says about one object.
 type ObjectInfo struct {
@@ -156,6 +168,21 @@ type Store interface {
 	// Truncated reports whether more entries follow, and Last is the key or common
 	// prefix the page ended on (the last of either, in key order).
 	ListDelimited(ctx context.Context, prefix, delimiter, startAfter string, limit int) (DelimitedPage, error)
+	// CreateMultipart starts a multipart upload of key with the object's headers and
+	// returns Wasabi's upload id.
+	CreateMultipart(ctx context.Context, key string, headers ObjectHeaders) (uploadID string, err error)
+	// UploadPartStream streams size bytes from body as part number of the upload through a
+	// presigned UploadPart URL that signs the length, and returns the part's ETag.
+	UploadPartStream(ctx context.Context, key, uploadID string, part int, size int64, body io.Reader) (etag string, err error)
+	// UploadPartCopy copies srcKey, or the byte range of it ("bytes=a-b", "" for all),
+	// into a part of the upload.
+	UploadPartCopy(ctx context.Context, srcKey, dstKey, uploadID string, part int, byteRange string) (CopyResult, error)
+	// CompleteMultipart assembles the upload from the listed parts and returns the
+	// object's ETag. ErrNoSuchUpload is an upload Wasabi no longer holds.
+	CompleteMultipart(ctx context.Context, key, uploadID string, parts []CompletedPart) (etag string, err error)
+	// AbortMultipart discards an upload and its parts; one Wasabi no longer holds is
+	// ErrNoSuchUpload.
+	AbortMultipart(ctx context.Context, key, uploadID string) error
 	// DeleteKeys removes up to ListMaxLimit keys in one request (S3's
 	// multi-object delete), which lifecycle rules need to finish inside the
 	// hour. It returns the keys it could not delete and an error when there were
@@ -272,8 +299,14 @@ func (w *wasabiStore) PutStream(ctx context.Context, key string, size int64, bod
 	if err != nil {
 		return "", fmt.Errorf("presign put: %w", err)
 	}
-	// A zero length needs http.NoBody: net/http sends any other body with an
-	// unknown length chunked, which Wasabi refuses.
+	return putSigned(ctx, signed, size, body, &h, "put "+key)
+}
+
+// putSigned sends size bytes of body to a presigned URL that signs the length. A zero
+// length needs http.NoBody: net/http sends any other body with an unknown length
+// chunked, which Wasabi refuses. The entity headers h carries (nil for none) travel
+// unsigned.
+func putSigned(ctx context.Context, signed *v4.PresignedHTTPRequest, size int64, body io.Reader, h *ObjectHeaders, what string) (string, error) {
 	if size == 0 {
 		body = http.NoBody
 	}
@@ -288,12 +321,14 @@ func (w *wasabiStore) PutStream(ctx context.Context, key string, size int64, bod
 		}
 		req.Header[http.CanonicalHeaderKey(name)] = values
 	}
-	for name, value := range map[string]string{
-		"Content-Type": h.ContentType, "Cache-Control": h.CacheControl, "Content-Disposition": h.ContentDisposition,
-		"Content-Encoding": h.ContentEncoding, "Content-Language": h.ContentLanguage, "Expires": h.Expires,
-	} {
-		if value != "" {
-			req.Header.Set(name, value)
+	if h != nil {
+		for name, value := range map[string]string{
+			"Content-Type": h.ContentType, "Cache-Control": h.CacheControl, "Content-Disposition": h.ContentDisposition,
+			"Content-Encoding": h.ContentEncoding, "Content-Language": h.ContentLanguage, "Expires": h.Expires,
+		} {
+			if value != "" {
+				req.Header.Set(name, value)
+			}
 		}
 	}
 	resp, err := putClient.Do(req)
@@ -304,15 +339,100 @@ func (w *wasabiStore) PutStream(ctx context.Context, key string, size int64, bod
 		if errors.As(err, &urlErr) {
 			err = urlErr.Err
 		}
-		return "", fmt.Errorf("put %s: %w", key, err)
+		return "", fmt.Errorf("%s: %w", what, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode/100 != 2 {
 		detail, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return "", fmt.Errorf("put %s: wasabi answered %s: %s", key, resp.Status, strings.TrimSpace(string(detail)))
+		return "", fmt.Errorf("%s: wasabi answered %s: %s", what, resp.Status, strings.TrimSpace(string(detail)))
 	}
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
 	return resp.Header.Get("ETag"), nil
+}
+
+func (w *wasabiStore) CreateMultipart(ctx context.Context, key string, h ObjectHeaders) (string, error) {
+	in := &s3.CreateMultipartUploadInput{
+		Bucket: aws.String(w.bucket), Key: aws.String(key), Metadata: h.Metadata,
+		ContentType: nonEmpty(h.ContentType), CacheControl: nonEmpty(h.CacheControl), ContentDisposition: nonEmpty(h.ContentDisposition),
+		ContentEncoding: nonEmpty(h.ContentEncoding), ContentLanguage: nonEmpty(h.ContentLanguage),
+	}
+	if h.Expires != "" {
+		if t, err := http.ParseTime(h.Expires); err == nil {
+			in.Expires = aws.Time(t)
+		}
+	}
+	out, err := w.client.CreateMultipartUpload(ctx, in)
+	if err != nil {
+		return "", err
+	}
+	return aws.ToString(out.UploadId), nil
+}
+
+func (w *wasabiStore) UploadPartStream(ctx context.Context, key, uploadID string, part int, size int64, body io.Reader) (string, error) {
+	if size < 0 {
+		return "", fmt.Errorf("upload part: negative size %d", size)
+	}
+	signed, err := w.presigner.PresignUploadPart(ctx, &s3.UploadPartInput{
+		Bucket: aws.String(w.bucket), Key: aws.String(key), UploadId: aws.String(uploadID),
+		PartNumber: aws.Int32(int32(part)), ContentLength: aws.Int64(size),
+	}, func(p *s3.PresignOptions) { p.Expires = PresignTTL })
+	if err != nil {
+		return "", fmt.Errorf("presign upload part: %w", err)
+	}
+	etag, err := putSigned(ctx, signed, size, body, nil, fmt.Sprintf("upload part %d of %s", part, key))
+	if err != nil && strings.Contains(err.Error(), "NoSuchUpload") {
+		return "", ErrNoSuchUpload
+	}
+	return etag, err
+}
+
+func (w *wasabiStore) UploadPartCopy(ctx context.Context, srcKey, dstKey, uploadID string, part int, byteRange string) (CopyResult, error) {
+	in := &s3.UploadPartCopyInput{
+		Bucket: aws.String(w.bucket), Key: aws.String(dstKey), UploadId: aws.String(uploadID), PartNumber: aws.Int32(int32(part)),
+		CopySource: aws.String(w.bucket + "/" + url.PathEscape(srcKey)), CopySourceRange: nonEmpty(byteRange),
+	}
+	out, err := w.client.UploadPartCopy(ctx, in)
+	switch {
+	case isNoSuchUpload(err):
+		return CopyResult{}, ErrNoSuchUpload
+	case isNotFound(err):
+		return CopyResult{}, ErrObjectNotFound
+	case err != nil:
+		return CopyResult{}, err
+	}
+	res := CopyResult{}
+	if out.CopyPartResult != nil {
+		res.ETag, res.LastModified = aws.ToString(out.CopyPartResult.ETag), aws.ToTime(out.CopyPartResult.LastModified)
+	}
+	return res, nil
+}
+
+func (w *wasabiStore) CompleteMultipart(ctx context.Context, key, uploadID string, parts []CompletedPart) (string, error) {
+	completed := make([]types.CompletedPart, 0, len(parts))
+	for _, p := range parts {
+		completed = append(completed, types.CompletedPart{PartNumber: aws.Int32(int32(p.Number)), ETag: aws.String(p.ETag)})
+	}
+	out, err := w.client.CompleteMultipartUpload(ctx, &s3.CompleteMultipartUploadInput{
+		Bucket: aws.String(w.bucket), Key: aws.String(key), UploadId: aws.String(uploadID),
+		MultipartUpload: &types.CompletedMultipartUpload{Parts: completed},
+	})
+	switch {
+	case isNoSuchUpload(err):
+		return "", ErrNoSuchUpload
+	case err != nil:
+		return "", err
+	}
+	return aws.ToString(out.ETag), nil
+}
+
+func (w *wasabiStore) AbortMultipart(ctx context.Context, key, uploadID string) error {
+	_, err := w.client.AbortMultipartUpload(ctx, &s3.AbortMultipartUploadInput{
+		Bucket: aws.String(w.bucket), Key: aws.String(key), UploadId: aws.String(uploadID),
+	})
+	if isNoSuchUpload(err) {
+		return ErrNoSuchUpload
+	}
+	return err
 }
 
 func (w *wasabiStore) GetObject(ctx context.Context, key string) (ObjectBody, error) {
@@ -494,6 +614,15 @@ func (w *wasabiStore) DeletePrefix(ctx context.Context, prefix string) (int, err
 
 // isNotFound recognises S3's missing-key and missing-object answers, which a
 // HEAD reports with no body as a bare 404.
+func isNoSuchUpload(err error) bool {
+	var nsu *types.NoSuchUpload
+	if errors.As(err, &nsu) {
+		return true
+	}
+	var apiErr interface{ ErrorCode() string }
+	return errors.As(err, &apiErr) && apiErr.ErrorCode() == "NoSuchUpload"
+}
+
 func isNotFound(err error) bool {
 	var nf *types.NotFound
 	if errors.As(err, &nf) {

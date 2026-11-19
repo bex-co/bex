@@ -154,8 +154,6 @@ func TestAWriteWithAnUnimplementedHeaderIsRefusedAndNeverIgnored(t *testing.T) {
 		{"PUT", "/b/k", "If-None-Match", "*"}, // Terraform's state lock
 		{"PUT", "/b/k", "If-Match", `"etag"`},
 		{"PUT", "/b/k", "x-amz-tagging", "a=b"},
-		{"PUT", "/b/k", "x-amz-copy-source-if-match", `"e"`},
-		{"PUT", "/b/k", "x-amz-copy-source-if-modified-since", "Sat, 01 Jan 2000 00:00:00 GMT"},
 		{"PUT", "/b/k", "x-amz-storage-class", "GLACIER"},
 		{"PUT", "/b/k", "x-amz-server-side-encryption", "AES256"},
 		{"PUT", "/b/k", "x-amz-server-side-encryption-aws-kms-key-id", "k"},

@@ -23,6 +23,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -103,6 +104,7 @@ func newSweepEnv(t *testing.T, name string, wrap ...func(objectstorage.Region, o
 	t.Cleanup(func() {
 		bg := context.Background()
 		_, _ = pool.Exec(bg, `DELETE FROM object_storage_usage WHERE workspace_id=$1`, tenant.ID)
+		_, _ = pool.Exec(bg, `DELETE FROM object_multipart_uploads WHERE workspace_id=$1`, tenant.ID)
 		_, _ = pool.Exec(bg, `DELETE FROM object_buckets WHERE workspace_id=$1`, tenant.ID)
 		_, _ = pool.Exec(bg, `DELETE FROM tenants WHERE id=$1`, tenant.ID)
 	})
@@ -547,5 +549,59 @@ func (e *sweepEnv) setLifecycle(b store.ObjectBucket, rules string) {
 	e.t.Helper()
 	if err := e.PG.SetObjectBucketLifecycle(context.Background(), e.WS, b.ID, json.RawMessage(rules)); err != nil {
 		e.t.Fatal(err)
+	}
+}
+
+// keysSpy counts the sweeps of ended access keys.
+type keysSpy struct{ calls atomic.Int32 }
+
+func (k *keysSpy) SweepEnded(context.Context) (int, error) { k.calls.Add(1); return 0, nil }
+
+func TestPassAbortsStaleUploadsRunsAbortRulesAndSweepsEndedKeysOncePerPass(t *testing.T) {
+	e := newSweepEnv(t, "sweep-mp")
+	keys := &keysSpy{}
+	e.Sweeper.Keys = keys
+	ctx := context.Background()
+	stale, ruled := e.bucket("stale", objectstorage.Oregon), e.bucket("ruled", objectstorage.Oregon)
+	start := func(b store.ObjectBucket, key string) string {
+		id, err := e.Svc.CreateMultipartUpload(ctx, e.WS, b, key, "s3k-test", objectstorage.ObjectHeaders{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	idle, fresh := start(stale, "idle"), start(stale, "fresh")
+	tmp, keep := start(ruled, "tmp/x"), start(ruled, "keep/y")
+	rules := `[{"id":"r","enabled":true,"conditions":{"prefix":"tmp/"},"abortMultipartUploadsTransition":{"condition":{"type":"Age","maxAge":172800}}}]`
+	if err := e.PG.SetObjectBucketLifecycle(ctx, e.WS, ruled.ID, json.RawMessage(rules)); err != nil {
+		t.Fatal(err)
+	}
+	age := func(id, column, interval string) {
+		if _, err := e.Pool.Exec(ctx, `UPDATE object_multipart_uploads SET `+column+` = now() - $2::interval WHERE id = $1`, id, interval); err != nil {
+			t.Fatal(err)
+		}
+	}
+	age(idle, "last_part_at", "8 days")
+	age(tmp, "created_at", "3 days")
+	age(keep, "created_at", "3 days")
+	e.Now = time.Now()
+	if err := e.Sweeper.Pass(ctx); err != nil {
+		t.Fatalf("pass: %v", err)
+	}
+	open := func(id string) bool { _, err := e.PG.GetObjectMultipartUpload(ctx, e.WS, id); return err == nil }
+	if open(idle) || open(tmp) {
+		t.Errorf("an upload with no part for 8 days (open: %v) or one older than its rule (open: %v) survived the pass", open(idle), open(tmp))
+	}
+	if !open(fresh) || !open(keep) {
+		t.Errorf("a fresh upload (open: %v) or one outside every rule (open: %v) was aborted", open(fresh), open(keep))
+	}
+	if n := e.Fakes[objectstorage.Oregon].OpenUploads(); n != 2 {
+		t.Errorf("Wasabi holds %d uploads after the pass, want the 2 that stay", n)
+	}
+	if n := keys.calls.Load(); n != 1 {
+		t.Errorf("the pass swept ended keys %d times, want once", n)
+	}
+	if err := e.Sweeper.Pass(ctx); err != nil || keys.calls.Load() != 2 {
+		t.Errorf("the next pass: %v, %d sweeps of keys, want 2", err, keys.calls.Load())
 	}
 }

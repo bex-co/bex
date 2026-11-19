@@ -40,8 +40,6 @@ func refuseUnimplementedHeaders(r *http.Request, rt *route) *Error {
 			return errNotImplemented("Conditional writes (" + name + ") are not implemented")
 		case lower == "x-amz-tagging", lower == "x-amz-tagging-directive":
 			return errNotImplemented("Object tags are not implemented")
-		case strings.HasPrefix(lower, "x-amz-copy-source-if-"):
-			return errNotImplemented("Conditional copies (" + name + ") are not implemented")
 		case strings.HasPrefix(lower, "x-amz-server-side-encryption"):
 			return errNotImplemented("Server-side encryption settings are not implemented; objects are encrypted at rest by the store")
 		case strings.HasPrefix(lower, "x-amz-grant-"):

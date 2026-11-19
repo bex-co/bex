@@ -309,6 +309,7 @@ var accountDeletionDispositions = map[string]string{
 	"push_notifications.subject":                "cascade: membership deletion removes personal notification state",
 	"registry_credentials.created_by":           "anonymize: CleanupAccountSubject replaces creator on surviving workspace resources",
 	"ssh_keys.subject":                          "delete: account credential cleanup removes SSH access before identity deletion",
+	"object_multipart_uploads.created_by":       "retain: the access key id (s3k-) that started an unfinished upload, a credential id and not a person; the upload is aborted with its workspace or after 7 days without a part, and the key itself is disposed of with its creator (ADR112 D3)",
 	"object_access_keys.created_by":             "delete: account credential cleanup deletes every S3 access key the subject made, with its OpenBao secret (objectstorage.AccessKeys.Dispose through the accounts MachineCredentials), and CleanupAccountSubject deletes any row left (ADR112 D3)",
 	"sandbox_executions.subject":                "anonymize: CleanupAccountSubject replaces the caller in sandbox execution history (w32/m298)",
 	"sandbox_snapshots.requested_by":            "anonymize: CleanupAccountSubject replaces who asked for a snapshot capture, which only its per-user rate limit reads (w32/m285)",

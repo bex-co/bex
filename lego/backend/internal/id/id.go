@@ -158,6 +158,9 @@ var (
 	// id is the access key id a client signs with. Its prefix is the one that
 	// carries a digit, so a client that sees the id knows it speaks S3.
 	ObjectAccessKey = Kind{prefix: "s3k", desc: "object storage S3 access key"}
+	// ObjectMultipartUpload is an unfinished S3 multipart upload (ADR112 D3): the upload
+	// id bex hands a client is this id, never Wasabi's own, which stays in the row.
+	ObjectMultipartUpload = Kind{prefix: "mpu", desc: "object storage multipart upload"}
 	// BuildSource is a Render Build Source (w2/m254, ADR097); Render's contract
 	// names no prefix, and bsr is the Blueprint sync run's.
 	BuildSource = Kind{prefix: "bds", desc: "build source"}
@@ -187,7 +190,7 @@ var (
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader, AgentModelRequest, AgentAttachment, ObjectBucket, ObjectAccessKey, BuildSource, Build, AgentSkill, AgentAutomation, SandboxGroup, SandboxBuild, SandboxSnapshot, AgentQueuedMessage, AgentRepoEnvironmentBuild, AgentRetainedImage, Organization}
+var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader, AgentModelRequest, AgentAttachment, ObjectBucket, ObjectAccessKey, ObjectMultipartUpload, BuildSource, Build, AgentSkill, AgentAutomation, SandboxGroup, SandboxBuild, SandboxSnapshot, AgentQueuedMessage, AgentRepoEnvironmentBuild, AgentRetainedImage, Organization}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

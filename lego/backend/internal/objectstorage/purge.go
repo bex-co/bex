@@ -90,6 +90,11 @@ func purgeWorkspace(ctx context.Context, svc *Service, repo PurgeRepository, wor
 		return 0, fmt.Errorf("stamp purge attempt: %w", err)
 	}
 	var errs []error
+	// The parts of an unfinished upload are in no listing of the prefix: abort them first,
+	// so none can complete into it after it is emptied.
+	if err := svc.abortWorkspaceUploads(ctx, workspaceID); err != nil {
+		errs = append(errs, fmt.Errorf("abort multipart uploads: %w", err))
+	}
 	for _, region := range Regions {
 		st, ok := svc.stores[region]
 		if !ok {

@@ -624,6 +624,7 @@ func main() {
 	if st != nil && deps.ObjectStorage.Enabled() {
 		objectSweeper := objectstorage.NewSweeper(deps.ObjectStorage, st)
 		objectSweeper.Exclusive = st
+		objectSweeper.Keys = deps.ObjectAccessKeys
 		objectSweeper.Metrics = objectstorage.NewSweepMetrics(metricRegistry)
 		go objectSweeper.Run(ctx, objectstorage.SweepInterval)
 		go deps.ObjectStorage.RunMeter(ctx, objectstorage.TransferFlushInterval)

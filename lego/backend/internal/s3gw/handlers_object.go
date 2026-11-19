@@ -29,6 +29,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // The object operations (ADR112 D3): put, get, head, delete, batch delete, copy and the
@@ -43,6 +44,9 @@ func init() {
 	handlers["DeleteObjects"] = (*request).deleteObjects
 	handlers["GetObjectTagging"] = (*request).getObjectTagging
 }
+
+// copySourceHeaderPrefix starts the headers a copy sends about its source.
+const copySourceHeaderPrefix = "X-Amz-Copy-Source-"
 
 const (
 	// maxMetadataBytes is S3's limit on the user metadata of an object (2 KiB).
@@ -141,11 +145,8 @@ func (rq *request) getObject() *Error {
 	if e != nil {
 		return e
 	}
-	opts := objectstorage.GetOptions{
-		Range: rq.r.Header.Get("Range"), IfMatch: rq.r.Header.Get("If-Match"), IfNoneMatch: rq.r.Header.Get("If-None-Match"),
-	}
-	opts.IfModifiedSince, _ = httpTime(rq.r.Header.Get("If-Modified-Since"))
-	opts.IfUnmodifiedSince, _ = httpTime(rq.r.Header.Get("If-Unmodified-Since"))
+	opts := conditionsFrom(rq.r.Header, "")
+	opts.Range = rq.r.Header.Get("Range")
 	rd, open, err := rq.g.cfg.Service.OpenObjectWith(rq.ctx, rq.workspaceID, b, rq.objectKey, opts)
 	switch {
 	case errors.Is(err, objectstorage.ErrNotModified):
@@ -226,7 +227,7 @@ func (rq *request) headObject() *Error {
 	}
 	rq.objectHeaders(info)
 	rq.addCORS(b)
-	switch conditionStatus(rq.r, info) {
+	switch conditionsFrom(rq.r.Header, "").ConditionStatus(info.ETag, info.LastModified) {
 	case http.StatusPreconditionFailed:
 		return newError(http.StatusPreconditionFailed, "PreconditionFailed", "At least one of the pre-conditions you specified did not hold")
 	case http.StatusNotModified:
@@ -238,34 +239,14 @@ func (rq *request) headObject() *Error {
 	return nil
 }
 
-// conditionStatus evaluates the four conditional headers as S3 does, in RFC 7232's order:
-// 412 when If-Match or If-Unmodified-Since fails, 304 when If-None-Match matches or,
-// without it, If-Modified-Since says the object is unchanged, 0 otherwise.
-func conditionStatus(r *http.Request, info objectstorage.ObjectInfo) int {
-	etagIn := func(list string) bool {
-		for _, tag := range strings.Split(list, ",") {
-			if tag = strings.TrimSpace(tag); tag == "*" || tag == info.ETag {
-				return true
-			}
-		}
-		return false
-	}
-	if m := r.Header.Get("If-Match"); m != "" && !etagIn(m) {
-		return http.StatusPreconditionFailed
-	}
-	if t, ok := httpTime(r.Header.Get("If-Unmodified-Since")); ok && info.LastModified.After(t) {
-		return http.StatusPreconditionFailed
-	}
-	if n := r.Header.Get("If-None-Match"); n != "" {
-		if etagIn(n) {
-			return http.StatusNotModified
-		}
-		return 0
-	}
-	if t, ok := httpTime(r.Header.Get("If-Modified-Since")); ok && !info.LastModified.After(t) {
-		return http.StatusNotModified
-	}
-	return 0
+// conditionsFrom reads the four conditional headers a read sends, or, with prefix
+// "X-Amz-Copy-Source-", the ones a copy sends about its source. A header that is not a
+// valid HTTP date is ignored, as S3 does.
+func conditionsFrom(h http.Header, prefix string) objectstorage.GetOptions {
+	o := objectstorage.GetOptions{IfMatch: h.Get(prefix + "If-Match"), IfNoneMatch: h.Get(prefix + "If-None-Match")}
+	o.IfModifiedSince, _ = httpTime(h.Get(prefix + "If-Modified-Since"))
+	o.IfUnmodifiedSince, _ = httpTime(h.Get(prefix + "If-Unmodified-Since"))
+	return o
 }
 
 func httpTime(v string) (time.Time, bool) {
@@ -402,30 +383,41 @@ func parseCopySource(raw string) (bucket, key string, e *Error) {
 	return bucket, key, nil
 }
 
+// copySource is the source of a copy or a part copy: x-amz-copy-source names a bex bucket of
+// the key's workspace and a valid key, and reading it needs the creator's can_view_sensitive
+// whatever the destination needs.
+func (rq *request) copySource() (store.ObjectBucket, string, *Error) {
+	srcName, srcKey, e := parseCopySource(rq.r.Header.Get("X-Amz-Copy-Source"))
+	if e != nil {
+		return store.ObjectBucket{}, "", e
+	}
+	if srcName == objectstorage.ContractBBucketName {
+		return store.ObjectBucket{}, "", newError(http.StatusBadRequest, "InvalidBucketName", "The specified bucket name is reserved.")
+	}
+	if err := objectstorage.ValidateKey(srcKey); err != nil {
+		return store.ObjectBucket{}, "", errInvalidArgument("The copy source key is not valid.")
+	}
+	src, err := rq.g.cfg.Service.ResolveBucket(rq.ctx, rq.workspaceID, srcName)
+	if err != nil {
+		return store.ObjectBucket{}, "", rq.fail(err)
+	}
+	if e := rq.authorize(core.RelCanViewSensitive, objectstorage.AuditVerbCopyObject, core.ObjectTarget(src.Name, srcKey)); e != nil {
+		return store.ObjectBucket{}, "", e
+	}
+	return src, srcKey, nil
+}
+
 // copyObject copies inside the key's workspace and region (ADR112 D3). It needs the
 // read of the source, which is the creator's can_view_sensitive, and the write of the
 // destination, which the route already authorized; across regions or workspaces it is
 // 501. It never reads or writes a byte through bex.
 func (rq *request) copyObject() *Error {
-	srcName, srcKey, e := parseCopySource(rq.r.Header.Get("X-Amz-Copy-Source"))
-	if e != nil {
-		return e
-	}
-	if srcName == objectstorage.ContractBBucketName {
-		return newError(http.StatusBadRequest, "InvalidBucketName", "The specified bucket name is reserved.")
-	}
-	if err := objectstorage.ValidateKey(srcKey); err != nil {
-		return errInvalidArgument("The copy source key is not valid.")
-	}
 	dst, e := rq.bucketRow()
 	if e != nil {
 		return e
 	}
-	src, err := rq.g.cfg.Service.ResolveBucket(rq.ctx, rq.workspaceID, srcName)
-	if err != nil {
-		return rq.fail(err)
-	}
-	if e := rq.authorize(core.RelCanViewSensitive, objectstorage.AuditVerbCopyObject, core.ObjectTarget(src.Name, srcKey)); e != nil {
+	src, srcKey, e := rq.copySource()
+	if e != nil {
 		return e
 	}
 	var replace *objectstorage.ObjectHeaders
@@ -447,7 +439,7 @@ func (rq *request) copyObject() *Error {
 		return errInvalidArgument("A copy request has no body.")
 	}
 	rq.extendDeadlines()
-	res, err := rq.g.cfg.Service.CopyObject(rq.ctx, rq.workspaceID, src, srcKey, dst, rq.objectKey, replace)
+	res, err := rq.g.cfg.Service.CopyObject(rq.ctx, rq.workspaceID, src, srcKey, dst, rq.objectKey, replace, conditionsFrom(rq.r.Header, copySourceHeaderPrefix))
 	switch {
 	case errors.Is(err, objectstorage.ErrCopyAcrossRegions):
 		return errNotImplemented("Copying between regions is not implemented")

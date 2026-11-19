@@ -110,8 +110,10 @@ func RangeSatisfiable(header string, size int64) bool {
 // CopyObject copies an object to another key, inside Wasabi (ADR112 D3): both buckets
 // are bex buckets of the workspace in one region and the source is at most 5 GiB. It
 // reads the source's size with a HEAD, gates the write by it, and copies with the
-// source's headers kept (replace nil) or replaced. It returns the source's metadata.
-func (s *Service) CopyObject(ctx context.Context, workspaceID string, src store.ObjectBucket, srcKey string, dst store.ObjectBucket, dstKey string, replace *ObjectHeaders) (CopyResult, error) {
+// source's headers kept (replace nil) or replaced, if the source meets cond (the
+// x-amz-copy-source-if-* conditions, which `aws s3 cp` sends to be sure the source did not
+// change under a multipart copy). It returns the source's metadata.
+func (s *Service) CopyObject(ctx context.Context, workspaceID string, src store.ObjectBucket, srcKey string, dst store.ObjectBucket, dstKey string, replace *ObjectHeaders, cond GetOptions) (CopyResult, error) {
 	if src.Region != dst.Region {
 		return CopyResult{}, ErrCopyAcrossRegions
 	}
@@ -126,6 +128,9 @@ func (s *Service) CopyObject(ctx context.Context, workspaceID string, src store.
 	info, err := st.Head(ctx, srcWasabi)
 	if err != nil {
 		return CopyResult{}, err
+	}
+	if cond.ConditionStatus(info.ETag, info.LastModified) != 0 {
+		return CopyResult{}, ErrPreconditionFailed
 	}
 	if err := CheckObjectSize(info.Size, MaxObjectBytesPresigned); err != nil {
 		return CopyResult{}, err

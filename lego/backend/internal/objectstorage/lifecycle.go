@@ -28,10 +28,8 @@ import (
 
 // A bucket's lifecycle rules are stored in object_buckets.lifecycle in the shape
 // wrangler and Cloudflare use (ADR112 D3, D5), and the hourly sweep executes the
-// ones that delete objects. Only deleteObjectsTransition does anything:
-// storageClassTransitions are refused at the route (bex has one storage class)
-// and abortMultipartUploadsTransition is stored and does nothing (v1 has no
-// multipart upload).
+// ones that delete objects and abort incomplete multipart uploads.
+// storageClassTransitions are refused at the route (bex has one storage class).
 
 // Lifecycle condition types of deleteObjectsTransition.
 const (
@@ -98,8 +96,7 @@ const maxLifecycleIDBytes = 255
 
 // ValidateLifecycle checks a rule set before it is stored: at most
 // MaxLifecycleRules, each with a unique id of 1 to 255 bytes, a prefix without
-// control characters, and an expiry or an abort of incomplete multipart uploads
-// (which is stored and does nothing, as v1 has no multipart). A storage class
+// control characters, and an expiry or an abort of incomplete multipart uploads. A storage class
 // transition is ErrLifecycleStorageClass and a set over the cap is
 // ErrLifecycleOverCap; anything else is an ErrInvalidLifecycle naming the rule.
 // An expiry is judged by Validate, the check the sweep makes before it runs a
@@ -165,6 +162,40 @@ func abortTransition(rule LifecycleRule) (*LifecycleDelete, error) {
 		return nil, err
 	}
 	return &t, nil
+}
+
+// abortRule is an enabled AbortIncompleteMultipartUpload rule of a bucket: the uploads under
+// prefix that were started more than maxAge ago are aborted.
+type abortRule struct {
+	prefix string
+	maxAge time.Duration
+}
+
+// abortRules reads a bucket's stored rules for the sweep: the enabled ones with an age
+// condition. A rule that does not parse, or whose abort carries no age, is skipped and
+// logged, as for the deleting rules.
+func abortRules(bucketID string, raw json.RawMessage, logf func(string, ...any)) []abortRule {
+	parsed, _, err := parseRules(raw)
+	if err != nil {
+		logf("object storage sweep: bucket %s: skipping its lifecycle rules: %v", bucketID, err)
+		return nil
+	}
+	var out []abortRule
+	for _, r := range parsed {
+		if !r.Enabled {
+			continue
+		}
+		t, err := abortTransition(r)
+		if err != nil || t == nil || t.Condition.Type != LifecycleAge || t.Condition.MaxAge == nil ||
+			*t.Condition.MaxAge < 0 || *t.Condition.MaxAge > MaxLifecycleAgeSeconds {
+			if t != nil || err != nil {
+				logf("object storage sweep: bucket %s: skipping the abort rule %q: it needs an age in seconds", bucketID, r.ID)
+			}
+			continue
+		}
+		out = append(out, abortRule{prefix: r.Conditions.Prefix, maxAge: time.Duration(*t.Condition.MaxAge) * time.Second})
+	}
+	return out
 }
 
 // ParseLifecycle reads a bucket's stored lifecycle JSON, an array of rules.

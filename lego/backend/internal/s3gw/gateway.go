@@ -212,6 +212,14 @@ func (g *Gateway) dispatch(rq *request) *Error {
 		// copy happened (copyObject); a denial of it is still recorded at once.
 		verb = objectstorage.AuditVerbCopyObject
 		rq.ctx = core.WithDeferredAllowedWriteAudit(rq.ctx)
+	case rt.op == "UploadPart":
+		// A part writes no allowed row, however many a large upload has (a 1 GiB `aws s3
+		// cp` is 128); the upload's create and complete rows are its record, and a denied
+		// part is still recorded at once, once per window. A part copy is a copy.
+		if rq.r.Header.Get("X-Amz-Copy-Source") != "" {
+			verb = objectstorage.AuditVerbCopyObject
+		}
+		rq.ctx = core.WithDeferredAllowedWriteAudit(rq.ctx)
 	case rt.op == "DeleteObjects":
 		// One row for the batch, once it ran, with its count and first key.
 		rq.ctx = core.WithDeferredAllowedWriteAudit(rq.ctx)

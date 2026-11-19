@@ -104,6 +104,17 @@ const (
 	// MaxOpenMultipartUploads is the most unfinished multipart uploads one workspace
 	// may hold.
 	MaxOpenMultipartUploads = 100
+	// MinPartBytes, MaxPartBytes and MaxParts are S3's published multipart limits, which
+	// Wasabi's own are not verified against: every part but the last is at least 5 MiB, a
+	// part is at most 5 GiB and an upload has at most 10,000 of them. The total is capped
+	// at MaxObjectBytesPresigned.
+	MinPartBytes = 5 << 20
+	MaxPartBytes = int64(5 << 30)
+	MaxParts     = 10000
+	// MultipartAbortAfter is how long an upload may go without a part before the sweep
+	// aborts it: Wasabi bills the parts it holds, and no object listing bex can read
+	// shows them. A lifecycle AbortIncompleteMultipartUpload rule can shorten it.
+	MultipartAbortAfter = 7 * 24 * time.Hour
 	// S3EgressBudgetFloor is the smallest monthly S3 egress budget: a workspace's
 	// budget is the larger of the bytes it stores and this (Wasabi's own rule is
 	// egress at or below storage), after which S3 reads answer 403 QuotaExceeded.
