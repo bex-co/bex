@@ -52,7 +52,7 @@ func (b *Broker) serveResult(w http.ResponseWriter, r *http.Request) {
 		fail(agentsession.ResultInvalidRequest, "this is not a result URL")
 		return
 	}
-	admitted, ok := b.admit(r, namespace, authorizeSession(sessionID), func(refusal admissionRefusal) {
+	admitted, ok := b.admit(r, namespace, authorizeSession(sessionID), b.gitBudget(), func(refusal admissionRefusal) {
 		switch refusal {
 		case refusedSource:
 			fail(agentsession.ResultForbidden, "unidentified source")

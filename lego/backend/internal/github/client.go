@@ -257,6 +257,25 @@ func (c *Client) MintRepositoryReadToken(ctx context.Context, installationID int
 	return c.mintRepositoryToken(ctx, installationID, repository, map[string]string{"contents": "read"})
 }
 
+// MintRepositoryAPIReadToken mints the read-only GitHub API credential of a
+// session's `gh` route (ADR090 D4 amendment w10/m513): one repository and
+// read permissions only (Actions runs and logs, check runs, commit statuses,
+// pull requests, contents), so whatever the gateway lets through, the token
+// can neither write nor reach another private repository. An installation
+// that has not granted Actions or Commit statuses (an App from the older
+// manifest) refuses that set with 422, so the mint retries with what that
+// manifest holds; `gh run` then gets GitHub's own 403.
+func (c *Client) MintRepositoryAPIReadToken(ctx context.Context, installationID int64, repository string) (InstallationToken, error) {
+	token, err := c.mintRepositoryToken(ctx, installationID, repository, map[string]string{
+		"actions": "read", "checks": "read", "contents": "read", "pull_requests": "read", "statuses": "read",
+	})
+	var apiErr *APIError
+	if errors.As(err, &apiErr) && apiErr.Status == http.StatusUnprocessableEntity {
+		return c.mintRepositoryToken(ctx, installationID, repository, map[string]string{"checks": "read", "contents": "read", "pull_requests": "read"})
+	}
+	return token, err
+}
+
 // mintRepositoryWriteToken mints contents:write plus workflows:write for one
 // repository, as Devin's App holds both (w10/014). GitHub refuses any ref
 // update that changes a file under .github/workflows/ without workflows:write,

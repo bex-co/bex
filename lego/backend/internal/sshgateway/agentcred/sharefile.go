@@ -53,7 +53,7 @@ func (b *Broker) serveShareFile(w http.ResponseWriter, r *http.Request) {
 		agentsession.WriteShareFileError(w, invalid)
 		return
 	}
-	admitted, ok := b.admit(r, namespace, authorizeSession(sessionID), func(refusal admissionRefusal) {
+	admitted, ok := b.admit(r, namespace, authorizeSession(sessionID), b.gitBudget(), func(refusal admissionRefusal) {
 		switch refusal {
 		case refusedSource:
 			fail(agentsession.ShareFileForbidden, "unidentified source")

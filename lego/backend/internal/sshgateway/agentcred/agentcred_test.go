@@ -55,7 +55,12 @@ func (credentialSessions) RecordAgentSessionPullRequest(context.Context, string,
 	return nil
 }
 
-type credentialGitHub struct{ calls int }
+type credentialGitHub struct{ calls, apiCalls int }
+
+func (g *credentialGitHub) MintRepositoryAPIReadToken(context.Context, int64, string) (github.InstallationToken, error) {
+	g.apiCalls++
+	return github.InstallationToken{Token: "ghs_gateway_api_read", ExpiresAt: time.Now().Add(time.Hour)}, nil
+}
 
 func (g *credentialGitHub) MintRepositoryReadToken(context.Context, int64, string) (github.InstallationToken, error) {
 	g.calls++

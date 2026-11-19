@@ -154,6 +154,10 @@ spec:
             # `pull-request/comment` tail of the same URL).
             - name: BEX_AGENT_PULL_REQUEST_COMMENT_API_URL
               value: http://__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/agent-session-pull-request-comments
+            # w10/m513: the read-only credential of the sandbox gh's
+            # `github-api` route (the same URL's tail).
+            - name: BEX_AGENT_GITHUB_READ_API_URL
+              value: http://__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/agent-session-github-read-credentials
             - name: BEX_AGENT_MODEL_PROXY_ADDR
               value: ":8084"
             - name: BEX_AGENT_MODEL_CREDENTIAL_API_URL

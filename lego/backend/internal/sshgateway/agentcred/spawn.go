@@ -85,7 +85,7 @@ func (b *Broker) serveSpawn(w http.ResponseWriter, r *http.Request) {
 		fail(agentsession.SpawnInvalidRequest, "POST a JSON object to start a child; GET, POST or DELETE a child's id to read, message or cancel it; POST …/wait to wait")
 		return
 	}
-	admitted, ok := b.admit(r, namespace, authorizeSession(sessionID), func(refusal admissionRefusal) {
+	admitted, ok := b.admit(r, namespace, authorizeSession(sessionID), b.gitBudget(), func(refusal admissionRefusal) {
 		switch refusal {
 		case refusedSource:
 			fail(agentsession.SpawnForbidden, "unidentified source")

@@ -1,20 +1,20 @@
 # w10 · m513 — An agent session has Python 3.12, `uv`, `gitleaks` and a working `gh`, and a repository environment can install other versions, as on Devin
 
-**Worker:** worker10 **Goal:** an agent session on either template (`agent`, `agent-4c-8g`) can run the checks common repositories ask for without network installs: Python 3.12 next to the image's 3.11, `uv`/`uvx` and `gitleaks`. `gh` reads the session repository's CI history and pull requests with no GitHub token in the sandbox. A repository environment's setup step can download a GitHub release asset, so a workspace can add a tool or version the image lacks. **Status:** todo
+**Worker:** worker10 **Goal:** an agent session on either template (`agent`, `agent-4c-8g`) can run the checks common repositories ask for without network installs: Python 3.12 next to the image's 3.11, `uv`/`uvx` and `gitleaks`. `gh` reads the session repository's CI history and pull requests with no GitHub token in the sandbox. A repository environment's setup step can download a GitHub release asset, so a workspace can add a tool or version the image lacks. **Status:** todo (t001–t005 and t007–t009 done 2026-11-19; t006 and t010 wait on the production deploy that carries this commit)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Bake Python 3.12, `uv`/`uvx` and `gitleaks` into the agent image, pinned and checked at build | 1h15m | — |
-| [t002](t002.md) | GitHub's release-asset host joins every session's GitHub baseline, so a setup step can install another version | 30m | — |
-| [t003](t003.md) | Design: `gh` reads the session repository's GitHub API with no token in the sandbox; ADR090 and ADR047 amended | 45m | — |
-| [t004](t004.md) | Gateway: a read-only GitHub API route for the session's repository, the token injected on the upstream hop | 2h | t003 |
-| [t005](t005.md) | `gh` in the image, wired to that route; the overlay says what it reads and that pull requests stay with the `bex` tools | 1h | t001, t004 |
+| [t001](done/t001.md) | Bake Python 3.12, `uv`/`uvx` and `gitleaks` into the agent image, pinned and checked at build — **DONE** | 1h15m | — |
+| [t002](done/t002.md) | GitHub's release-asset host joins every session's GitHub baseline, so a setup step can install another version — **DONE** | 30m | — |
+| [t003](done/t003.md) | Design: `gh` reads the session repository's GitHub API with no token in the sandbox; ADR090 and ADR047 amended — **DONE** | 45m | — |
+| [t004](done/t004.md) | Gateway: a read-only GitHub API route for the session's repository, the token injected on the upstream hop — **DONE** | 2h | t003 |
+| [t005](done/t005.md) | `gh` in the image, wired to that route; the overlay says what it reads and that pull requests stay with the `bex` tools — **DONE** | 1h | t001, t004 |
 | [t006](t006.md) | Live check: a production session runs the tools, a setup step fetches a release asset, `gh` reads CI | 45m | t002, t005 |
-| [t007](t007.md) | Render parity (Devin) | 30m | t006 |
-| [t008](t008.md) | Simplify | 20m | t007 |
-| [t009](t009.md) | Test coverage | 45m | t007, t008 |
+| [t007](done/t007.md) | Render parity (Devin) — **DONE** | 30m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 20m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
 | [t010](t010.md) | Closeout | 10m | t009 |
 
 Total: **10 tasks, about 8h**.

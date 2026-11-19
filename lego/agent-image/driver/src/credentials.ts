@@ -15,12 +15,14 @@
  */
 
 import type { AgentDriverConfig } from "./config.js";
+import { githubCliEnvironment, type GitHubCliConfig } from "./github-cli.js";
 
 // agentEnvironment builds the ACP child's environment (ADR062). The model
 // credential is the session-bound placeholder the gateway model proxy swaps on
 // its upstream hop. BEX_AGENT_MODEL_API_KEY and the adapter's credential name
 // are removed from the driver's own inherited env, so only the child sees the
-// placeholder, under the one name its adapter reads.
+// placeholder, under the one name its adapter reads. A repo session's gh
+// settings (w10/m513) carry a placeholder too: the gateway injects the token.
 export function agentEnvironment(
   config: Pick<
     AgentDriverConfig,
@@ -29,13 +31,15 @@ export function agentEnvironment(
     | "modelCredential"
     | "modelBaseUrl"
     | "modelBaseUrlEnvName"
-  >,
+  > &
+    GitHubCliConfig,
   env: NodeJS.ProcessEnv = process.env,
 ): Record<string, string> {
   delete env.BEX_AGENT_MODEL_API_KEY;
   delete env[config.credentialEnvName];
   return {
     ...config.agentEnv,
+    ...githubCliEnvironment(config),
     [config.modelBaseUrlEnvName]: config.modelBaseUrl,
     [config.credentialEnvName]: config.modelCredential,
   };

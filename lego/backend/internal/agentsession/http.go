@@ -253,6 +253,19 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	serveSignedMint(w, r, h.Secret, h.now(), h.Nonce, func(req MintRequest) string { return req.Nonce }, mint)
 }
 
+// GitHubReadHandler is bex-api's internal mint verb for the gateway's
+// read-only GitHub API route (w10/m513): Handler's envelope on its own path,
+// minting MintGitHubRead's read-only token instead of the Git credential.
+type GitHubReadHandler Handler
+
+func (h *GitHubReadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var mint func(context.Context, MintRequest) (MintResponse, error)
+	if h.Minter != nil {
+		mint = h.Minter.MintGitHubRead
+	}
+	serveSignedMint(w, r, h.Secret, (*Handler)(h).now(), h.Nonce, func(req MintRequest) string { return req.Nonce }, mint)
+}
+
 func (h *Handler) now() time.Time {
 	if h.Now != nil {
 		return h.Now()

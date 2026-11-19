@@ -1342,9 +1342,17 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 	// sandbox-exec HMAC secret is reused with protocol domain separation; the
 	// route is not mounted on :8090 and never enters the public surface.
 	if cfg.SandboxExecSecret != "" {
+		minter := &agentsession.Minter{GitHub: ghClient, Connections: st, Sessions: st, Builds: st, Audit: st}
 		internalRoot.Handle(agentsession.InternalMintPath, &agentsession.Handler{
 			Secret: []byte(cfg.SandboxExecSecret),
-			Minter: &agentsession.Minter{GitHub: ghClient, Connections: st, Sessions: st, Builds: st, Audit: st},
+			Minter: minter,
+			Nonce:  st,
+		})
+		// w10/m513: the read-only credential of the gateway's `gh` route, on
+		// its own path: the same checks, a token that can only read.
+		internalRoot.Handle(agentsession.InternalGitHubReadMintPath, &agentsession.GitHubReadHandler{
+			Secret: []byte(cfg.SandboxExecSecret),
+			Minter: minter,
 			Nonce:  st,
 		})
 		// ADR090: the agent's own draft-PR verb. Same gateway-only HMAC and

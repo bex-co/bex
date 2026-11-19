@@ -22,6 +22,11 @@ import { waitForAttachments } from "./attachments.js";
 import { installSkills } from "./skills.js";
 import { ensureRepo } from "./git-setup.js";
 import { describeError } from "./errors.js";
+import {
+  githubCliEnabled,
+  startGitHubCliProxy,
+  type GitHubCliProxy,
+} from "./github-cli.js";
 import { markTurnFailed, runHeadlessTurn } from "./session.js";
 import { startDriverServer } from "./server.js";
 import { UIMessageStreamHub } from "./stream-hub.js";
@@ -31,6 +36,7 @@ async function main(): Promise<void> {
   // Parsed into config; the agent and its tools have no use for the raw value.
   delete process.env.BEX_REPO_ENVIRONMENT;
   const agentEnv = agentEnvironment(config);
+  let githubCli: GitHubCliProxy | undefined;
   const hub = new UIMessageStreamHub();
   let terminalized = false;
   let activeAbort: AbortController | undefined;
@@ -42,6 +48,13 @@ async function main(): Promise<void> {
   // Clone and configure the session checkout before a tenant process can run.
   // Live POST /turn calls await the same setup promise.
   const setup = (async () => {
+    // gh is a convenience: a socket that fails to start leaves gh failing
+    // with its own connection error, never the session.
+    if (githubCliEnabled(config))
+      githubCli = await startGitHubCliProxy(config).catch((error) => {
+        console.error(`gh setup failed: ${describeError(error)}`);
+        return undefined;
+      });
     if (config.deliver)
       config.setupBaked = (await ensureRepo(config)).setupBaked;
     // bex-api copies the session's attachments in while the sandbox starts;
@@ -111,7 +124,7 @@ async function main(): Promise<void> {
     try {
       await terminalize();
     } finally {
-      await listener.close();
+      await Promise.all([listener.close(), githubCli?.close()]);
     }
   };
   const signalShutdown = () =>

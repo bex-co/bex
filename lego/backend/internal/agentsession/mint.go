@@ -32,6 +32,21 @@ import (
 const (
 	AuditVerbMintCredential  = "agentsessions.MintCredential"
 	AuditVerbProxyCredential = "agentsessions.ProxyCredential"
+	// AuditVerbMintGitHubReadCredential records each read-only GitHub API
+	// credential the gateway's `gh` route asks for (w10/m513).
+	AuditVerbMintGitHubReadCredential = "agentsessions.MintGitHubReadCredential"
+)
+
+const (
+	// GitHubAPIProxySegment is the fifth path segment that turns a Git proxy
+	// URL (ProxyRepositoryURL) into the session's read-only GitHub API route:
+	// <repo URL>/github-api/<GitHub REST path> or /github-api/graphql. The
+	// in-sandbox `gh` reaches it through the driver's local socket (w10/m513).
+	GitHubAPIProxySegment = "github-api"
+	// InternalGitHubReadMintPath lives only on bex-api's cluster-internal
+	// :8091 listener, beside InternalMintPath, under the same gateway-only HMAC
+	// and domain-separated from it by path, as the model mint is.
+	InternalGitHubReadMintPath = "/v1/agent-session-github-read-credentials"
 )
 
 type GitHubClient interface {
@@ -39,6 +54,10 @@ type GitHubClient interface {
 	// MintRepositoryReadToken is a repository environment build's clone
 	// credential (ADR111): contents read-only.
 	MintRepositoryReadToken(context.Context, int64, string) (github.InstallationToken, error)
+	// MintRepositoryAPIReadToken is a session's `gh` route credential
+	// (w10/m513): read-only Actions, checks, statuses, pull requests and
+	// contents of the one repository.
+	MintRepositoryAPIReadToken(context.Context, int64, string) (github.InstallationToken, error)
 }
 
 type ConnectionStore interface {
@@ -96,7 +115,23 @@ type Minter struct {
 	Now    func() time.Time
 }
 
-func (m *Minter) Mint(ctx context.Context, req MintRequest) (response MintResponse, err error) {
+func (m *Minter) Mint(ctx context.Context, req MintRequest) (MintResponse, error) {
+	return m.mint(ctx, req, false)
+}
+
+// MintGitHubRead is the credential of a repo session's read-only GitHub API
+// route (w10/m513): the same Pod, lifecycle and branch checks as Mint, then a
+// token that can only read the session's one repository. A repository
+// environment build has no `gh` route and gets none.
+func (m *Minter) MintGitHubRead(ctx context.Context, req MintRequest) (MintResponse, error) {
+	return m.mint(ctx, req, true)
+}
+
+func (m *Minter) mint(ctx context.Context, req MintRequest, apiRead bool) (response MintResponse, err error) {
+	verb := AuditVerbMintCredential
+	if apiRead {
+		verb = AuditVerbMintGitHubReadCredential
+	}
 	// Record both successful issuance and a refused mint. The event schema has no
 	// arbitrary payload: target is the session id and targetName is the verified
 	// non-secret repository identity; malformed input records an empty targetName
@@ -112,7 +147,7 @@ func (m *Minter) Mint(ctx context.Context, req MintRequest) (response MintRespon
 			log.Printf("agent-session credential mint denied (session=%s repo=%s): %v", req.SessionID, auditRepository, err)
 		}
 		core.RecordAuditEvent(ctx, m.Audit, core.AuditEvent{
-			Caller: req.PodName, CallerMethod: "sandbox", Verb: AuditVerbMintCredential,
+			Caller: req.PodName, CallerMethod: "sandbox", Verb: verb,
 			Resource: core.WorkspaceObject(req.Workspace), Target: principalTarget(req.SessionID),
 			TargetName: auditRepository, Outcome: outcome, At: m.now(),
 		})
@@ -131,6 +166,9 @@ func (m *Minter) Mint(ctx context.Context, req MintRequest) (response MintRespon
 		return MintResponse{}, fmt.Errorf("%w: incomplete verified identity", ErrInvalidRequest)
 	}
 	if IsBuildPrincipal(req.SessionID) {
+		if apiRead {
+			return MintResponse{}, ErrForbidden
+		}
 		return m.mintBuild(ctx, req)
 	}
 	// Bind the mint to the session's CURRENT lifecycle, not just the requesting
@@ -154,6 +192,9 @@ func (m *Minter) Mint(ctx context.Context, req MintRequest) (response MintRespon
 	}
 	if err := ValidateBranch(req.Branch); err != nil {
 		return MintResponse{}, err
+	}
+	if apiRead {
+		return m.installationToken(ctx, req.Workspace, repository, m.GitHub.MintRepositoryAPIReadToken)
 	}
 	return m.installationToken(ctx, req.Workspace, repository, m.GitHub.MintSessionInstallationToken)
 }

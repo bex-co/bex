@@ -585,12 +585,19 @@ func uniqueSorted(in []string) []string {
 	return slices.Compact(in)
 }
 
+// githubDomains is every session's GitHub baseline. GitHub answers a release
+// download (github.com/<owner>/<repo>/releases/download/…) with a redirect to
+// release-assets.githubusercontent.com, which serves only public release
+// assets, as objects.githubusercontent.com does. Without it a repository
+// environment's setup step could not install a tool or runtime version the
+// image lacks, as a Devin blueprint's initialize step does (w10/m513).
 var githubDomains = []string{
 	"api.github.com",
 	"codeload.github.com",
 	"github.com",
 	"objects.githubusercontent.com",
 	"raw.githubusercontent.com",
+	"release-assets.githubusercontent.com",
 	"uploads.github.com",
 }
 

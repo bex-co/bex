@@ -58,6 +58,10 @@ Develop against `.pm/w10/dev-10/`, this worker's own isolated stack on the share
 - [ ] **021** — [The bex CLI session expires within hours and long-running scripts fail with 401 (minor)](021.md) ← agent-automation runs 2026-11-15..18
 - [ ] **022** — [A session waiting for a sandbox machine loses its wait when its bex-api replica restarts](022.md) ← w10/m497 (its one stated limit), 2026-11-18
 - [ ] **023** — [The dashboard composer cannot choose the sandbox size, and a workspace cannot set a default one](023.md) ← w10/017 (its stated gap), 2026-11-18
+- [ ] **024** — [The agent image lacks the runtimes Devin's base image preinstalls: JDK 17, Rust and Cargo, the AWS CLI, nvm and direnv](024.md) ← w10/m513 t007 (Devin comparison), 2026-11-19
+- [ ] **025** — [`gh` cannot write in a session, while Devin's `gh` token can](025.md) ← w10/m513 t007 (Devin comparison), 2026-11-19
+- [ ] **026** — [A workspace cannot turn off its sessions' `gh` API access, as a Devin security profile can](026.md) ← w10/m513 t007 (Devin comparison), 2026-11-19
+- [ ] **027** — [`gh` works for the agent but not in the session's web shell or SSH terminal](027.md) ← w10/m513 t007 (Devin comparison), 2026-11-19
 
 - [ ] **012** — moved to **w21/m336** (2026-11-11): Billing lifecycle worker fails every tick with "no rows in result set" (11 workspaces stuck `enforcing`) → [`../w21/done/m336/`](../w21/done/m336/README.md)
 

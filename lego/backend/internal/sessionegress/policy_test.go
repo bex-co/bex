@@ -199,6 +199,40 @@ func TestAgentPolicyWithNoWideningIsExactlyTheBaseline(t *testing.T) {
 	}
 }
 
+// w10/m513: GitHub redirects every release download to
+// release-assets.githubusercontent.com, so a setup step installing a pinned
+// tool or `uv python install` needs it. It is part of the GitHub baseline in
+// every allowlist posture and phase, a builder's included, and therefore never
+// a workspace widening.
+func TestReleaseAssetHostIsInEveryAllowlistBaseline(t *testing.T) {
+	const host = "release-assets.githubusercontent.com"
+	m := &Manager{}
+	for _, tc := range []struct {
+		phase  Phase
+		model  string
+		egress Egress
+	}{
+		{PhaseSetup, "https://models.example.com/v1", Egress{}},
+		{PhaseAgent, "https://models.example.com/v1", Egress{}},
+		{PhaseAgent, "https://models.example.com/v1", Egress{Hosts: []string{"docs.example.com"}}},
+		{PhaseBuild, "", Egress{}},
+	} {
+		policy, err := m.policy("tea-test-sandbox", "ags-test", tc.phase, tc.model, tc.egress)
+		if err != nil {
+			t.Fatalf("%s policy: %v", tc.phase, err)
+		}
+		if !slices.Contains(fqdnNames(t, policy), host) || !slices.Contains(dnsNames(t, policy), host) {
+			t.Errorf("%s policy (hosts %v) does not admit %s", tc.phase, tc.egress.Hosts, host)
+		}
+	}
+	if !BaselineDestination(host) {
+		t.Errorf("BaselineDestination(%q) = false", host)
+	}
+	if _, err := m.policy("tea-test-sandbox", "ags-test", PhaseAgent, "https://models.example.com/v1", Egress{Hosts: []string{host}}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("widening naming %s error = %v, want named bad request", host, err)
+	}
+}
+
 func TestConfigurableRegistryCatalogAndPerSessionModelEndpoint(t *testing.T) {
 	m, err := NewManager(fakePolicyClient(t), Config{SetupRegistryDomains: RegistryConfig("packages.example.com")})
 	if err != nil {

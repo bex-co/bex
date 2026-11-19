@@ -136,6 +136,18 @@ A collaborator with write access asked for this work with a \`/bex\` comment on 
 Later messages in this session, including comments and reviews on the pull request, continue on the same branch. Push new commits to \`${branch}\`, call \`${toolName}\` again, and reply on the pull request.`;
 }
 
+// githubCliLine says what the session's gh can do (w10/m513): it reads the
+// repository through bex, and only the bex tools change its pull request.
+// The driver configures gh only when it knows the repository.
+function githubCliLine(context: OverlayContext): string {
+  const tools = `\`${toolName}\` and \`${replyOnPullRequestToolName}\` tools of the \`bex\` MCP server`;
+  if (!context.repository)
+    return `- There is no GitHub token in the sandbox and the \`gh\` CLI is not authenticated. Pull requests go through the ${tools}.
+`;
+  return `- There is no GitHub token in the sandbox, but \`gh\` reads \`${context.repository}\` through bex: CI runs and their logs (\`gh run list\`, \`gh run view --log-failed\`), checks (\`gh pr checks\`), pull requests and their comments, and GET calls with \`gh api repos/{owner}/{repo}/...\`. It cannot write and reaches no other repository, so pull requests are still opened, updated and answered with the ${tools}.
+`;
+}
+
 function repoOverlay(context: OverlayContext): string {
   const branch = context.branch;
   const base =
@@ -158,8 +170,7 @@ function repoOverlay(context: OverlayContext): string {
 
 - ${repository} is checked out at \`${context.cwd}\` on branch \`${branch}\`. Your work is compared against ${baseRef}.
 - \`origin\` is a bex Git proxy that holds no credentials. It accepts pushes to \`${branch}\` only. Pushes to other branches, tags and branch deletions are rejected by design, so treat that kind of rejection as final rather than looking for a way around it.
-- There is no GitHub token in the sandbox and the \`gh\` CLI is not authenticated. Pull requests go through the \`${toolName}\` tool of the \`bex\` MCP server.
-${prBranch ? "" : existingPrLine(context)}${networkLine(context)}- Model and Git credentials are injected outside the sandbox. There is no secret here for you to protect, rotate or print.
+${githubCliLine(context)}${prBranch ? "" : existingPrLine(context)}${networkLine(context)}- Model and Git credentials are injected outside the sandbox. There is no secret here for you to protect, rotate or print.
 ${oauthLine()}`;
   if (prBranch)
     return `${environment}

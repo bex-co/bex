@@ -320,6 +320,15 @@ func main() {
 		credentials.MaxRequestsPerSession = intEnv("BEX_AGENT_GIT_MAX_REQUESTS_PER_SESSION", 1000)
 		credentials.MaxRequestsPerWorkspace = intEnv("BEX_AGENT_GIT_MAX_REQUESTS_PER_WORKSPACE", 5000)
 		credentials.MaxResponseBytes = int64(intEnv("BEX_AGENT_GIT_MAX_RESPONSE_BYTES", 4<<30))
+		// w10/m513: the read-only GitHub API route `gh` uses, under the
+		// `github-api` tail of the same URL. bex-api mints a read-only token
+		// of the session's repository per call; the route has its own budget.
+		credentials.GitHubRead = &agentsession.Client{
+			URL:    env.Or("BEX_AGENT_GITHUB_READ_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalGitHubReadMintPath),
+			Secret: []byte(secret),
+		}
+		credentials.MaxGitHubAPIRequestsPerSession = intEnv("BEX_AGENT_GITHUB_API_MAX_REQUESTS_PER_SESSION", 1000)
+		credentials.MaxGitHubAPIRequestsPerWorkspace = intEnv("BEX_AGENT_GITHUB_API_MAX_REQUESTS_PER_WORKSPACE", 10000)
 		// ADR090: the agent opens/updates its own draft PR through the fifth
 		// `pull-request` segment of its Git proxy URL; bex-api resolves every
 		// target from the durable session and holds the GitHub token.

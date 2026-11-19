@@ -101,7 +101,7 @@ func (b *Broker) admitPullRequestVerb(w http.ResponseWriter, r *http.Request, na
 		fail(agentsession.PullRequestInvalidRequest, "POST a JSON object to this URL")
 		return admission{}, nil, false
 	}
-	admitted, ok := b.admit(r, namespace, authorizeBranch(claimed), func(refusal admissionRefusal) {
+	admitted, ok := b.admit(r, namespace, authorizeBranch(claimed), b.gitBudget(), func(refusal admissionRefusal) {
 		switch refusal {
 		case refusedSource:
 			fail(agentsession.PullRequestForbidden, "unidentified source")

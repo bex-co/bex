@@ -120,6 +120,20 @@ type Broker struct {
 	// MaxResponseBytes bounds one streamed upstream response body; 0 means
 	// defaultMaxResponseBodyBytes. Exceeding it aborts the exchange loudly.
 	MaxResponseBytes int64
+	// GitHubRead mints the read-only credential of the github-api route
+	// (w10/m513) through bex-api's InternalGitHubReadMintPath. nil answers that
+	// route 503.
+	GitHubRead *agentsession.Client
+	// GitHubAPIOrigin is a test seam; production leaves it empty, which fixes
+	// every github-api request to https://api.github.com.
+	GitHubAPIOrigin string
+	// MaxGitHubAPIRequestsPerSession and MaxGitHubAPIRequestsPerWorkspace
+	// budget the github-api route on its own, so gh reads can never spend the
+	// Git exchanges a session needs to deliver; <= 0 disables a dimension.
+	MaxGitHubAPIRequestsPerSession   int
+	MaxGitHubAPIRequestsPerWorkspace int
+	// redirectAllowed replaces the storage-host redirect rule in tests.
+	redirectAllowed func(*url.URL) bool
 
 	// clientOnce/client memoize the default upstream client so its connection
 	// pool is reused across requests (see httpClient).
@@ -131,6 +145,9 @@ type Broker struct {
 	limits     *sshgateway.SessionLimiter
 	budgetOnce sync.Once
 	budget     *sshgateway.ExchangeBudget
+
+	githubAPIBudgetOnce sync.Once
+	githubAPIBudget     *sshgateway.ExchangeBudget
 }
 
 // limiter returns the admission limiter, memoizing the default so acquire and
@@ -205,10 +222,11 @@ func authorizeSession(sessionID string) podAuthorizer {
 // and the share route): admission before any stateful work (codex round-9 #4)
 // — the concurrency slot is held across the Pod lookup and everything after
 // it, under one timeout — then the source-IP Pod binding, authorize, and the
-// per-session/workspace budgets. On refusal it records the metric, calls
-// refuse, and reports false. The budget metric labels keep their git_ names
-// for dashboard continuity although every route on this listener charges them.
-func (b *Broker) admit(r *http.Request, namespace string, authorize podAuthorizer, refuse func(admissionRefusal)) (admission, bool) {
+// per-session/workspace caps of the route's budget. On refusal it records the
+// metric, calls refuse, and reports false. Every route but github-api charges
+// the Git budget, whose git_ metric labels keep their name for dashboard
+// continuity.
+func (b *Broker) admit(r *http.Request, namespace string, authorize podAuthorizer, budget routeBudget, refuse func(admissionRefusal)) (admission, bool) {
 	sourceIP, err := sshgateway.RemoteIP(r.RemoteAddr)
 	if err != nil {
 		refuse(refusedSource)
@@ -241,14 +259,14 @@ func (b *Broker) admit(r *http.Request, namespace string, authorize podAuthorize
 		release()
 		return admission{}, false
 	}
-	if !b.budgets().ChargeSession(namespace, verified.SessionID) {
-		b.Metrics.LimitRejected("git_session_budget")
+	if !budget.ChargeSession(namespace, verified.SessionID) {
+		b.Metrics.LimitRejected(budget.label + "_session_budget")
 		refuse(refusedSessionBudget)
 		release()
 		return admission{}, false
 	}
-	if !b.budgets().ChargeWorkspace(verified.Workspace) {
-		b.Metrics.LimitRejected("git_workspace_budget")
+	if !budget.ChargeWorkspace(verified.Workspace) {
+		b.Metrics.LimitRejected(budget.label + "_workspace_budget")
 		refuse(refusedWorkspaceBudget)
 		release()
 		return admission{}, false
@@ -277,11 +295,15 @@ func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 		b.servePullRequestComment(w, r, namespace, mintRequest)
 		return
 	}
+	if err == nil && service == agentsession.GitHubAPIProxySegment {
+		b.serveGitHubAPI(w, r, namespace, mintRequest)
+		return
+	}
 	if err != nil || !validGitRequest(r, service) {
 		http.Error(w, "invalid git request", http.StatusBadRequest)
 		return
 	}
-	admitted, ok := b.admit(r, namespace, authorizeBranch(mintRequest), func(refusal admissionRefusal) {
+	admitted, ok := b.admit(r, namespace, authorizeBranch(mintRequest), b.gitBudget(), func(refusal admissionRefusal) {
 		switch refusal {
 		case refusedConcurrency:
 			http.Error(w, "too many concurrent git requests from this sandbox", http.StatusTooManyRequests)
@@ -392,21 +414,31 @@ func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.WriteHeader(http.StatusOK)
-	if deadline, ok := r.Context().Deadline(); ok {
-		_ = http.NewResponseController(w).SetWriteDeadline(deadline)
-	}
-	// The response streams through — never buffered — under a byte budget. Both
-	// failure shapes abort the connection mid-stream (the 200 is already on the
-	// wire, so aborting is the only honest signal left) AND are logged/counted:
-	// a budget overflow or a broken stream must never fall through to the
-	// "accepted" metric + allowed audit below, which is exactly how the 512 MiB
-	// truncation hid for ten days (w5/m82 follow-on).
-	budget := b.maxResponseBytes()
 	relay := io.Copy
 	if service == "git-receive-pack" {
 		relay = relayReceivePackReport
 	}
-	copied, copyErr := relay(w, io.LimitReader(response.Body, budget+1))
+	b.relayCapped(w, r, response.Body, b.maxResponseBytes(), service, verified, relay)
+	b.Metrics.Authentication("accepted")
+	core.RecordAuditEvent(r.Context(), b.Audit, core.AuditEvent{
+		Caller: pod.Name, CallerMethod: "sandbox", Verb: agentsession.AuditVerbProxyCredential,
+		Resource: core.WorkspaceObject(verified.Workspace), Target: "agent-session:" + verified.SessionID,
+		TargetName: verified.Repository, Outcome: core.AuditAllowed, At: b.now(),
+	})
+}
+
+// relayCapped streams an upstream body to the sandbox — never buffered —
+// under a byte budget, once the status is written. Both failure shapes abort
+// the connection mid-stream (the status is already on the wire, so aborting
+// is the only honest signal left) AND are logged/counted: a budget overflow
+// or a broken stream must never fall through to the caller's "accepted"
+// metric and allowed audit, which is exactly how the 512 MiB truncation hid
+// for ten days (w5/m82 follow-on).
+func (b *Broker) relayCapped(w http.ResponseWriter, r *http.Request, body io.Reader, budget int64, service string, verified agentsession.MintRequest, relay func(io.Writer, io.Reader) (int64, error)) {
+	if deadline, ok := r.Context().Deadline(); ok {
+		_ = http.NewResponseController(w).SetWriteDeadline(deadline)
+	}
+	copied, copyErr := relay(w, io.LimitReader(body, budget+1))
 	if copied > budget {
 		b.failUpstream("response_cap", service, verified, fmt.Errorf("upstream response exceeded the %d-byte budget", budget))
 		panic(http.ErrAbortHandler)
@@ -415,12 +447,6 @@ func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 		b.failUpstream("stream", service, verified, copyErr)
 		panic(http.ErrAbortHandler)
 	}
-	b.Metrics.Authentication("accepted")
-	core.RecordAuditEvent(r.Context(), b.Audit, core.AuditEvent{
-		Caller: pod.Name, CallerMethod: "sandbox", Verb: agentsession.AuditVerbProxyCredential,
-		Resource: core.WorkspaceObject(verified.Workspace), Target: "agent-session:" + verified.SessionID,
-		TargetName: verified.Repository, Outcome: core.AuditAllowed, At: b.now(),
-	})
 }
 
 // failUpstream names the gateway-side cause of a 502 that the sandbox will
@@ -434,12 +460,22 @@ func (b *Broker) failUpstream(cause, service string, verified agentsession.MintR
 	log.Printf("agent git proxy: %s failure (service=%s session=%s repo=%s): %v", cause, service, verified.SessionID, verified.Repository, err)
 }
 
+// routeBudget is the exchange budget a route charges and the prefix of its
+// limit metric's labels.
+type routeBudget struct {
+	*sshgateway.ExchangeBudget
+	label string
+}
+
 func (b *Broker) budgets() *sshgateway.ExchangeBudget {
 	b.budgetOnce.Do(func() {
 		b.budget = sshgateway.NewExchangeBudget(b.MaxRequestsPerSession, b.MaxRequestsPerWorkspace)
 	})
 	return b.budget
 }
+
+// gitBudget is the budget every route but github-api charges.
+func (b *Broker) gitBudget() routeBudget { return routeBudget{b.budgets(), "git"} }
 
 func (b *Broker) maxDuration() time.Duration {
 	if b.MaxDuration > 0 {
@@ -490,6 +526,12 @@ func parseProxyPath(path string) (string, agentsession.MintRequest, string, erro
 	case "git-upload-pack", "git-receive-pack", agentsession.PullRequestProxySegment, agentsession.PullRequestCommentProxySegment:
 		service = parts[4]
 	default:
+		// The github-api route (w10/m513) carries a GitHub API path after its
+		// segment; serveGitHubAPI reads it from the escaped URL path.
+		if strings.HasPrefix(parts[4], agentsession.GitHubAPIProxySegment+"/") {
+			service = agentsession.GitHubAPIProxySegment
+			break
+		}
 		return "", agentsession.MintRequest{}, "", agentsession.ErrInvalidRequest
 	}
 	return namespace, agentsession.MintRequest{SessionID: sessionID, Repository: repository, Branch: branch}, service, nil

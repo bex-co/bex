@@ -264,6 +264,65 @@ func TestMintRepositoryReadTokenIsReadOnly(t *testing.T) {
 	}
 }
 
+// w10/m513: a session's gh route reads Actions, checks, statuses, pull
+// requests and contents of its one repository, never anything writable. An
+// installation without Actions or Commit statuses refuses that set with 422,
+// so the mint falls back to the older manifest's read set; another 422 stays
+// an error.
+func TestMintRepositoryAPIReadTokenIsReadOnlyWithFallback(t *testing.T) {
+	keyPEM, _ := testKeyPEM(t)
+	var requested []string
+	granted := map[string]bool{"actions": true, "checks": true, "contents": true, "pull_requests": true, "statuses": true, "metadata": true}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Repositories []string          `json:"repositories"`
+			Permissions  map[string]string `json:"permissions"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if len(body.Repositories) != 1 || body.Repositories[0] != "repo" {
+			t.Fatalf("repositories = %v", body.Repositories)
+		}
+		for name, level := range body.Permissions {
+			if level != "read" {
+				t.Fatalf("permission %s=%s, want read only", name, level)
+			}
+		}
+		perms, _ := json.Marshal(body.Permissions)
+		requested = append(requested, string(perms))
+		for name := range body.Permissions {
+			if !granted[name] {
+				http.Error(w, `{"message":"The permissions requested are not granted to this installation."}`, http.StatusUnprocessableEntity)
+				return
+			}
+		}
+		w.WriteHeader(http.StatusCreated)
+		fmt.Fprint(w, `{"token":"ghs_api_read","expires_at":"2026-08-01T13:00:00Z"}`)
+	}))
+	defer server.Close()
+	client, _ := NewClient(Config{AppID: "1", PrivateKey: keyPEM, Slug: "bex"})
+	client.baseURL = server.URL
+
+	full := `{"actions":"read","checks":"read","contents":"read","metadata":"read","pull_requests":"read","statuses":"read"}`
+	narrow := `{"checks":"read","contents":"read","metadata":"read","pull_requests":"read"}`
+	if token, err := client.MintRepositoryAPIReadToken(context.Background(), 42, "repo"); err != nil || token.Token != "ghs_api_read" || !slices.Equal(requested, []string{full}) {
+		t.Fatalf("full mint = %+v %v, requested %v", token, err, requested)
+	}
+	requested, granted["actions"], granted["statuses"] = nil, false, false
+	if token, err := client.MintRepositoryAPIReadToken(context.Background(), 42, "repo"); err != nil || token.Token != "ghs_api_read" || !slices.Equal(requested, []string{full, narrow}) {
+		t.Fatalf("fallback mint = %+v %v, requested %v", token, err, requested)
+	}
+	requested, granted["pull_requests"] = nil, false
+	var apiErr *APIError
+	if _, err := client.MintRepositoryAPIReadToken(context.Background(), 42, "repo"); !errors.As(err, &apiErr) || apiErr.Status != http.StatusUnprocessableEntity || len(requested) != 2 {
+		t.Fatalf("an installation without the narrow set = %v after %v, want the 422", err, requested)
+	}
+	if _, err := client.MintRepositoryAPIReadToken(context.Background(), 42, "owner/repo"); err == nil {
+		t.Fatal("an owner/name reached GitHub's name-only narrowing field")
+	}
+}
+
 func TestListRepoTreeFetchesNestedDirectoryAtRef(t *testing.T) {
 	keyPEM, _ := testKeyPEM(t)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
