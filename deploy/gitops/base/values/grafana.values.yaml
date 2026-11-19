@@ -5634,6 +5634,87 @@ dashboards:
                  "legendFormat": "wait p95 ({{outcome}})"
                 }
               ]
+            },
+            {
+             "id": 41,
+             "type": "timeseries",
+             "title": "GET /v1/logs: reads over 5s + p95/p99",
+             "description": "The share of GET /v1/logs reads that took over 5s, counted from the 5s bucket, against the red 5% line BexApiLogsReadSlow evaluates (warns after 15m above it with at least 20 reads in 30m), beside the route's p95 and p99 on the right axis. The 15, 20 and 25s buckets (w5/m503) put the tail where it really is: an 18s line is a text search spending its whole scan budget, a 28s one a read cut by the REST request budget. The panel beside it says which query shape the slow reads are.",
+             "gridPos": { "h": 9, "w": 12, "x": 0, "y": 179 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "percentunit", "min": 0 },
+               "overrides": [
+                  {
+                   "matcher": { "id": "byName", "options": "alert threshold" },
+                   "properties": [
+                      { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } },
+                      { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } }
+                    ]
+                  },
+                  {
+                   "matcher": { "id": "byFrameRefID", "options": "C" },
+                   "properties": [
+                      { "id": "unit", "value": "s" },
+                      { "id": "custom.axisPlacement", "value": "right" }
+                    ]
+                  }
+                ]
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "(sum(rate(bex_api_http_request_duration_seconds_count{route=\"GET /v1/logs\"}[30m])) - sum(rate(bex_api_http_request_duration_seconds_bucket{route=\"GET /v1/logs\", le=\"5\"}[30m]))) / sum(rate(bex_api_http_request_duration_seconds_count{route=\"GET /v1/logs\"}[30m]))",
+                 "legendFormat": "reads over 5s"
+                },
+                {
+                 "refId": "B",
+                 "expr": "vector(0.05)",
+                 "legendFormat": "alert threshold"
+                },
+                {
+                 "refId": "C",
+                 "expr": "histogram_quantile(0.95, sum by (le) (rate(bex_api_http_request_duration_seconds_bucket{route=\"GET /v1/logs\"}[30m])))",
+                 "legendFormat": "p95"
+                },
+                {
+                 "refId": "D",
+                 "expr": "histogram_quantile(0.99, sum by (le) (rate(bex_api_http_request_duration_seconds_bucket{route=\"GET /v1/logs\"}[30m])))",
+                 "legendFormat": "p99"
+                }
+              ]
+            },
+            {
+             "id": 42,
+             "type": "timeseries",
+             "title": "Logs pages: p95 by query shape + partial pages",
+             "description": "Every logs history page (REST GET /v1/logs, GraphQL logs, MCP list_logs, project views) by the shape of its query: window is the span read (1h, 1d, 7d, 30d, up to), type the log type asked for, filter the costliest filter (text is matched in bex-api over every raw line; line is path or host, applied by Loki; label is a stream label), and direction. The ten slowest shapes' p95 on the left; on the right, the share of pages a scan budget cut short (result=partial: hasMore with the cursor at the scan's edge). Time a slow shape against Loki with lego/backend/internal/logs/loki_timing_test.go (w5/m503).",
+             "gridPos": { "h": 9, "w": 12, "x": 12, "y": 179 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "s", "min": 0 },
+               "overrides": [
+                  {
+                   "matcher": { "id": "byFrameRefID", "options": "B" },
+                   "properties": [
+                      { "id": "unit", "value": "percentunit" },
+                      { "id": "custom.axisPlacement", "value": "right" }
+                    ]
+                  }
+                ]
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "topk(10, histogram_quantile(0.95, sum by (le, window, type, filter, direction) (rate(bex_api_logs_page_duration_seconds_bucket[30m]))))",
+                 "legendFormat": "{{window}} {{type}} {{filter}} {{direction}}"
+                },
+                {
+                 "refId": "B",
+                 "expr": "sum(rate(bex_api_logs_page_duration_seconds_count{result=\"partial\"}[30m])) / sum(rate(bex_api_logs_page_duration_seconds_count[30m]))",
+                 "legendFormat": "partial pages"
+                }
+              ]
             }
           ]
         }

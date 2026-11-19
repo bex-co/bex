@@ -205,7 +205,9 @@ type logPage struct {
 // instead of a week-long search dying at the HTTP write deadline (w4/m140).
 // Across several resources, the least-covered one bounds the page, and lines
 // beyond that edge are dropped so the next page does not repeat them.
-func (s *Service) queryLogPage(ctx context.Context, resources []string, q LogQuery) (logPage, error) {
+func (s *Service) queryLogPage(ctx context.Context, resources []string, q LogQuery) (_ logPage, err error) {
+	started, partial := time.Now(), false
+	defer func() { s.Metrics.observePage(q, partial, err, time.Since(started)) }()
 	// The resources' workspace plans are read once for the whole page, the
 	// line-beyond probe included.
 	ctx = core.WithRequestMemo(ctx)
@@ -235,6 +237,7 @@ func (s *Service) queryLogPage(ctx context.Context, resources []string, q LogQue
 		filled = filled || int64(len(entries)) > n.Limit
 		all = append(all, entries...)
 	}
+	partial = edge != nil
 	if edge != nil {
 		all = slices.DeleteFunc(all, func(e LogEntry) bool {
 			t, err := time.Parse(time.RFC3339Nano, e.Timestamp)

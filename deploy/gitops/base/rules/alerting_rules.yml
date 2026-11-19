@@ -1481,6 +1481,29 @@ groups:
           summary: "bex-api {{ $labels.surface }} p95 is {{ $value | humanizeDuration }}"
           description: "The 95th percentile of bex-api's own request duration on the {{ $labels.surface }} surface has been above 2.5s for >10m with meaningful traffic. Callers (dashboard, CLI, agents) are seeing timeouts even where the status is 200. Use the bex-api-gateways dashboard's slowest-routes panel to find which route pattern moved, then check the dependency it fans out to: Kubernetes API latency, control-plane Postgres, OpenFGA, Hydra introspection. Runbook: docs/ADR088-platform-observability-ui.md"
 
+      # w5/m503. One route, read by the counted 5 s bucket rather than an
+      # interpolated quantile: more than 5% of GET /v1/logs reads over 5 s is
+      # its p95 above 5 s. A week to 2026-11-19 had one read in four between
+      # 10 and 30 s, most of them text searches spending their 18 s scan
+      # budget re-reading every raw page once per stream. The floor of 20
+      # reads in the window keeps one slow read at low traffic quiet.
+      - alert: BexApiLogsReadSlow
+        expr: |
+          (
+            sum(rate(bex_api_http_request_duration_seconds_count{route="GET /v1/logs"}[30m]))
+            - sum(rate(bex_api_http_request_duration_seconds_bucket{route="GET /v1/logs", le="5"}[30m]))
+          )
+          / sum(rate(bex_api_http_request_duration_seconds_count{route="GET /v1/logs"}[30m]))
+          > 0.05
+          and on()
+          sum(increase(bex_api_http_request_duration_seconds_count{route="GET /v1/logs"}[30m])) >= 20
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value | humanizePercentage }} of GET /v1/logs reads take over 5s"
+          description: "More than 5% of bex-api's GET /v1/logs reads took over 5s for 15m (its p95 is above 5s), with at least 20 reads in 30m. The bex-api-gateways dashboard's logs panel splits the reads by shape (bex_api_logs_page_duration_seconds: window, type, filter, direction, result); a text or line filter over a long window of a busy service is the known slow shape, and result=partial means its 18s scan budget cut it. Time the shape against Loki with lego/backend/internal/logs/loki_timing_test.go (w5/m503). Runbook: docs/ADR010-observability.md"
+
       # w3/m438 (ADR113 D8). CLI telemetry ingest. A CLI answered 503 stops
       # sending for 30 minutes (429: 5 minutes, 404: an hour; upstream
       # pkg/analytics/backoff.go), so a short outage loses far more than its own

@@ -138,11 +138,6 @@ const (
 	mcpOutcomeDenied = "denied"
 )
 
-// originDurationBuckets is API-shaped: dense where a REST/GraphQL call should
-// live (5ms–1s), thinning to the 30s GraphQL execution bound so a pathological
-// document still lands in a real bucket rather than +Inf.
-var originDurationBuckets = []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30}
-
 // registeredMethods is the closed method axis (every method bex-api registers a
 // route for).
 var registeredMethods = map[string]struct{}{
@@ -159,7 +154,7 @@ func NewOriginMetrics(reg prometheus.Registerer) *OriginMetrics {
 		duration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: "bex", Subsystem: "api", Name: "http_request_duration_seconds",
 			Help:    "bex-api origin request duration by surface, registered route pattern, method, and status. Streaming responses are excluded (counted in bex_api_http_requests_total).",
-			Buckets: originDurationBuckets,
+			Buckets: core.RequestDurationBuckets,
 		}, []string{"surface", "route", "method", "status"}),
 		requests: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "bex", Subsystem: "api", Name: "http_requests_total",
@@ -172,12 +167,12 @@ func NewOriginMetrics(reg prometheus.Registerer) *OriginMetrics {
 		graphql: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: "bex", Subsystem: "api", Name: "graphql_operation_duration_seconds",
 			Help:    "GraphQL document handling duration by schema operation, operation type, and outcome class.",
-			Buckets: originDurationBuckets,
+			Buckets: core.RequestDurationBuckets,
 		}, []string{"operation", "type", "outcome"}),
 		mcpTools: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: "bex", Subsystem: "api", Name: "mcp_tool_duration_seconds",
 			Help:    "MCP tool call duration by registered tool name and outcome (ok/error/denied).",
-			Buckets: originDurationBuckets,
+			Buckets: core.RequestDurationBuckets,
 		}, []string{"tool", "outcome"}),
 		// Stored CLI telemetry events only (w5/m92) — rejections stay on
 		// http_requests_total's status axis instead. Every label is a closed

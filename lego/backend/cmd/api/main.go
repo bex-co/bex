@@ -733,6 +733,9 @@ func main() {
 	// can_view_logs check on this interval so a revocation ends the stream
 	// within one interval, not at the next admission. Negative disables.
 	srv.Logs.RevalidateInterval = cfg.LogStreamRevalidateInterval
+	// w5/m503: each logs history page's duration by query shape, beside the
+	// route's own histogram, so the slow shape is visible.
+	srv.Logs.Metrics = logs.NewMetrics(metricRegistry)
 	srv.Metrics.MaxQueryHours = maxQueryHours
 	srv.Events.MaxQueryHours = maxQueryHours
 

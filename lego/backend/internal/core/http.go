@@ -632,6 +632,15 @@ const (
 	MaxUpstreamResponseBytes = 64 << 20
 )
 
+// RequestDurationBuckets are bex-api's request-duration histogram buckets
+// (seconds): dense where a REST/GraphQL call should live (5ms–1s), thinning to
+// the 30s GraphQL execution bound so a pathological document still lands in a
+// real bucket rather than +Inf. 15, 20 and 25 s split the tail where the logs
+// scan budget (18 s) and the REST RequestBudget (28 s) cut a request, so its
+// quantiles there are counted rather than interpolated across 10–30 s
+// (w5/m503).
+var RequestDurationBuckets = []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 15, 20, 25, 30}
+
 // ErrUpstreamResponseTooLarge reports a bounded upstream decode that exceeded
 // MaxUpstreamResponseBytes — rejected before the large allocation, never a
 // silent truncation.

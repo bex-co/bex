@@ -154,3 +154,101 @@ func mustParseCursor(t *testing.T, s string) time.Time {
 	}
 	return at
 }
+
+// TestLokiBusyTextSearchAcrossASplitBoundaryFindsEveryMatch runs a text search
+// on the pinned Loki over a window busier than one raw page, across a split
+// cut, with two instance streams. The scan reads its full raw pages again in
+// exact parts and then stays inside one bucket at a time (w5/m503), listing no
+// stream, and must still find every match in both directions: a read inside
+// one bucket is exact on the real engine, not only on the fake.
+// A dense instance logs the six minutes around the cut and a sparse one the
+// whole window: a merge that deals the page out one line per stream fills it
+// with every sparse line and stops short of the dense lines it owes, so a scan
+// that trusts that page moves its coverage past dense matches it never read.
+func TestLokiBusyTextSearchAcrossASplitBoundaryFindsEveryMatch(t *testing.T) {
+	base := os.Getenv("BEX_TEST_LOKI_URL")
+	if base == "" {
+		testenv.Skip(t, "BEX_TEST_LOKI_URL not set")
+	}
+	base = strings.TrimRight(base, "/")
+	boundary := time.Now().UTC().Truncate(time.Hour)
+	if time.Since(boundary) < 15*time.Minute {
+		boundary = boundary.Add(-time.Hour)
+	}
+	start, end := boundary.Add(-10*time.Minute), boundary.Add(10*time.Minute)
+
+	type instance struct {
+		pod         string
+		first, last time.Duration // from start
+		lines       int
+	}
+	for _, layout := range []struct {
+		name      string
+		instances []instance
+	}{
+		{"a dense instance beside a sparse one", []instance{{"web-dense", 7 * time.Minute, 13 * time.Minute, 1500}, {"web-sparse", 0, 20 * time.Minute, 300}}},
+	} {
+		ns := fmt.Sprintf("m503-%d", time.Now().UnixNano())
+		var want []string
+		var streams []map[string]any
+		for _, in := range layout.instances {
+			var values [][2]string
+			step := (in.last - in.first) / time.Duration(in.lines)
+			for n := range in.lines {
+				at := start.Add(in.first + time.Duration(n)*step)
+				msg := fmt.Sprintf("noise pod=%s n=%d", in.pod, n)
+				if n%50 == 7 {
+					msg = fmt.Sprintf("needle pod=%s n=%d", in.pod, n)
+					want = append(want, msg)
+				}
+				values = append(values, [2]string{strconv.FormatInt(at.UnixNano(), 10), msg})
+			}
+			streams = append(streams, map[string]any{
+				"stream": map[string]string{"namespace": ns, "app": "web", "container": "app", "pod": in.pod},
+				"values": values,
+			})
+		}
+		body, _ := json.Marshal(map[string]any{"streams": streams})
+		resp, err := http.Post(base+"/loki/api/v1/push", "application/json", bytes.NewReader(body))
+		if err != nil {
+			t.Fatalf("push: %v", err)
+		}
+		_ = resp.Body.Close()
+		if resp.StatusCode/100 != 2 {
+			t.Fatalf("push: HTTP %d", resp.StatusCode)
+		}
+		slices.Sort(want)
+
+		for _, direction := range []string{DirectionBackward, DirectionForward} {
+			t.Run(layout.name+", "+direction, func(t *testing.T) {
+				listings := 0
+				counting := &http.Client{Timeout: 30 * time.Second, Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+					if strings.HasSuffix(r.URL.Path, "/series") {
+						listings++
+					}
+					return http.DefaultTransport.RoundTrip(r)
+				})}
+				q := LogQuery{App: "web", Search: []string{"needle"}, Direction: direction, Limit: 100, Since: start, End: end}.normalized()
+				got, err := NewLokiSource(base, counting)(context.Background(), ns, q)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var msgs []string
+				for _, e := range got {
+					msgs = append(msgs, e.Message)
+				}
+				slices.Sort(msgs)
+				if !slices.Equal(msgs, want) {
+					t.Fatalf("%s search found %d of %d matches", direction, len(msgs), len(want))
+				}
+				if listings != 0 {
+					t.Fatalf("%d stream listings, want none", listings)
+				}
+			})
+		}
+	}
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }

@@ -199,6 +199,9 @@ type Service struct {
 	// History, when wired (BEX_LOKI_URL), backs QueryLogs/Logs with durable
 	// history that survives pod restarts; nil => those verbs read live pod logs.
 	History LogHistorySource
+	// Metrics times each history page by query shape (w5/m503); nil records
+	// nothing.
+	Metrics *Metrics
 	// LabelValues, when wired (BEX_LOKI_URL), backs LogLabelValues — filter-value
 	// discovery over the store's labels; nil => only the `host` label (answered
 	// from the App itself) resolves, the rest report ErrLogStoreUnavailable.

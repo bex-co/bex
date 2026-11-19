@@ -1,0 +1,83 @@
+# w5/m503: BexApiLogsReadSlow warns when more than 5% of GET /v1/logs reads
+# take over 5s (the route's p95 above 5s) for a quarter hour, with at least 20
+# reads in the half hour it measures.
+# Run: promtool test rules logs_read_alerts_test.yml (alerting_rules.yml alongside).
+rule_files:
+  - alerting_rules.yml
+
+evaluation_interval: 1m
+
+tests:
+  # Two replicas each serve a read a minute. From minute 30 on, one read in
+  # ten on each takes 18s (a text search spending its scan budget): a tenth of
+  # the reads are over 5s, double the threshold, and it holds.
+  - name: one read in ten over 5s warns
+    interval: 1m
+    input_series:
+      - series: 'bex_api_http_request_duration_seconds_bucket{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/logs",method="GET",status="200",le="5"}'
+        values: "0+10x30 300+9x60"
+      - series: 'bex_api_http_request_duration_seconds_count{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/logs",method="GET",status="200"}'
+        values: "0+10x90"
+      - series: 'bex_api_http_request_duration_seconds_bucket{job="bex-api",pod="bex-api-b",surface="rest",route="GET /v1/logs",method="GET",status="200",le="5"}'
+        values: "0+10x30 300+9x60"
+      - series: 'bex_api_http_request_duration_seconds_count{job="bex-api",pod="bex-api-b",surface="rest",route="GET /v1/logs",method="GET",status="200"}'
+        values: "0+10x90"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: BexApiLogsReadSlow
+        exp_alerts: []
+      # Over the threshold from about minute 32, not yet for 15 minutes.
+      - eval_time: 40m
+        alertname: BexApiLogsReadSlow
+        exp_alerts: []
+      - eval_time: 80m
+        alertname: BexApiLogsReadSlow
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "10% of GET /v1/logs reads take over 5s"
+              description: "More than 5% of bex-api's GET /v1/logs reads took over 5s for 15m (its p95 is above 5s), with at least 20 reads in 30m. The bex-api-gateways dashboard's logs panel splits the reads by shape (bex_api_logs_page_duration_seconds: window, type, filter, direction, result); a text or line filter over a long window of a busy service is the known slow shape, and result=partial means its 18s scan budget cut it. Time the shape against Loki with lego/backend/internal/logs/loki_timing_test.go (w5/m503). Runbook: docs/ADR010-observability.md"
+
+  # Under the threshold: one read in twenty-five over 5s leaves the p95 under 5s.
+  - name: one read in twenty-five over 5s stays quiet
+    interval: 1m
+    input_series:
+      - series: 'bex_api_http_request_duration_seconds_bucket{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/logs",method="GET",status="200",le="5"}'
+        values: "0+24x90"
+      - series: 'bex_api_http_request_duration_seconds_count{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/logs",method="GET",status="200"}'
+        values: "0+25x90"
+    alert_rule_test:
+      - eval_time: 80m
+        alertname: BexApiLogsReadSlow
+        exp_alerts: []
+
+  # Every read is slow, but there are only a dozen in the half hour: one
+  # client's few searches do not page.
+  - name: slow reads below the traffic floor stay quiet
+    interval: 1m
+    input_series:
+      - series: 'bex_api_http_request_duration_seconds_bucket{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/logs",method="GET",status="200",le="5"}'
+        values: "0x90"
+      - series: 'bex_api_http_request_duration_seconds_count{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/logs",method="GET",status="200"}'
+        values: "0+0.4x90"
+    alert_rule_test:
+      - eval_time: 80m
+        alertname: BexApiLogsReadSlow
+        exp_alerts: []
+
+  # Another route's slow reads are not the logs route's.
+  - name: another route's slow reads stay quiet
+    interval: 1m
+    input_series:
+      - series: 'bex_api_http_request_duration_seconds_bucket{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/metrics/cpu",method="GET",status="200",le="5"}'
+        values: "0x90"
+      - series: 'bex_api_http_request_duration_seconds_count{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/metrics/cpu",method="GET",status="200"}'
+        values: "0+10x90"
+      - series: 'bex_api_http_request_duration_seconds_bucket{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/logs",method="GET",status="200",le="5"}'
+        values: "0+10x90"
+      - series: 'bex_api_http_request_duration_seconds_count{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/logs",method="GET",status="200"}'
+        values: "0+10x90"
+    alert_rule_test:
+      - eval_time: 80m
+        alertname: BexApiLogsReadSlow
+        exp_alerts: []

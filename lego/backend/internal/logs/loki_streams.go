@@ -19,40 +19,19 @@ package logs
 import (
 	"context"
 	"fmt"
-	"maps"
 	"net/http"
 	"net/url"
-	"slices"
 	"strconv"
-	"strings"
 	"time"
-
-	"golang.org/x/sync/errgroup"
-
-	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-const (
-	// lokiMaxStreamReads bounds the one-per-stream reads a full page may cost.
-	// The shipper's cardinality budget keeps a window to a few dozen streams
-	// (deploy/gitops/base/log-shipper.yaml); a window past this is refused rather
-	// than read inexactly, and the caller narrows it.
-	lokiMaxStreamReads = 256
-	// lokiStreamReadParallelism is how many of one page's stream reads run at once.
-	lokiStreamReadParallelism = 8
-	// lokiStreamReadsInFlight is how many run at once across every request, so
-	// concurrent readers and long scans cannot multiply the load on Loki.
-	lokiStreamReadsInFlight = 32
-)
-
-// lokiStreamReads holds one token per stream read in flight, process-wide.
-var lokiStreamReads = make(chan struct{}, lokiStreamReadsInFlight)
-
-// errLogStreamFanOut is the answer when a full page's window holds more streams
-// than lokiMaxStreamReads: reading them all would outlast any request, and a
-// page cut from fewer would be the inexact one this exists to avoid.
-var errLogStreamFanOut = core.NewUnavailableError(core.CodeQueryTimeout,
-	fmt.Sprintf("the log time range holds more than %d log streams to read exactly; narrow the time range", lokiMaxStreamReads), nil)
+// lokiSplitBucket is a span Loki never cuts a read inside. Its query frontend
+// cuts a read at the multiples of its split interval counted from the Unix
+// epoch (pkg/util.ForInterval in the pinned 3.6.7), and a read it does not cut
+// goes to the querier whole, past the merge that loses lines. The chart bex
+// deploys splits at 15 minutes and Loki's own default at an hour; both are
+// multiples of this, so a window inside one bucket is one piece under either.
+const lokiSplitBucket = 15 * time.Minute
 
 // lokiReader reads windows of one query from Loki.
 //
@@ -65,13 +44,13 @@ var errLogStreamFanOut = core.NewUnavailableError(core.CodeQueryTimeout,
 // what was dropped (w21/063; docs/ADR010-observability.md).
 //
 // Two answers are exact: a page of fewer than `limit` lines (no piece was cut,
-// so the merge hands every piece back whole), and a read of a single stream (the
-// merge has nothing to interleave). A full page is therefore suspect, and fetch
-// reads it again one stream at a time. The suspect page's `limit` lines are
-// real, so the lines the page should hold lie no later (forward) or no earlier
-// (backward) than its far end; that bounds the window whose streams are listed.
-// Each stream's own `limit` lines, merged and cut to `limit`, are the window's:
-// the window's page is a subset of the union of its streams' pages.
+// so the merge hands every piece back whole), and a read of a window inside one
+// split bucket (nothing is cut, so nothing is merged). A full page of a window
+// that crosses a cut is suspect, and exact reads the window again in parts
+// that are each exact (w5/m503). The suspect page's `limit` lines are real, so
+// the lines the page should hold lie no later (forward) or no earlier
+// (backward) than its far end, which narrows the window; the parts then grow
+// from the end the direction keeps, a bucket first, until they hold a page.
 type lokiReader struct {
 	hc   *http.Client
 	base string
@@ -83,13 +62,71 @@ type lokiReader struct {
 	pageQ LogQuery
 }
 
-// read is one query_range over [from, to) for selector plus the query's pipeline,
-// as raw candidates.
-func (r lokiReader) read(ctx context.Context, selector string, from, to time.Time) ([]LogEntry, error) {
+// fetch is one slice's raw page: exactly the newest (backward) or oldest
+// (forward) lines of [from, to) that fit the page; to is the query's inclusive
+// End when it is the caller's (lokiEnd).
+func (r lokiReader) fetch(ctx context.Context, from, to time.Time) ([]LogEntry, error) {
+	return r.exact(ctx, from, lokiEnd(r.pageQ, to))
+}
+
+// exact is the exact page of [from, end), end exclusive as Loki is sent it.
+func (r lokiReader) exact(ctx context.Context, from, end time.Time) ([]LogEntry, error) {
+	page, err := r.read(ctx, from, end)
+	if err != nil || int64(len(page)) < r.pageQ.Limit || oneBucket(from, end) {
+		return page, err
+	}
+	from, end = r.narrowWindow(page, from, end)
+	return r.outward(ctx, from, end)
+}
+
+// outward reads [from, end) in parts from the end the direction keeps, one
+// split bucket and then twice the last part's buckets each time, until the
+// parts read hold a page, and answers that page. Every line of a part lies
+// nearer that end than the lines of the parts after it, so the first parts'
+// `limit` lines are the window's. A part short of a page or inside one bucket
+// is exact as read; a full part across a cut holds the rest of the page and is
+// read the same way, narrowed to its own far line. A busy service's page is a
+// bucket or two; a quiet one's spans many buckets in a few parts: a window of
+// B buckets costs a few times log2(B) reads, never one a bucket.
+func (r lokiReader) outward(ctx context.Context, from, end time.Time) ([]LogEntry, error) {
+	forward := lokiDirection(r.pageQ) == DirectionForward
+	var lines []LogEntry
+	for buckets := 1; from.Before(end) && int64(len(lines)) < r.pageQ.Limit; buckets *= 2 {
+		lo, hi := from, end
+		if forward {
+			hi = earlier(end, splitBucketStart(from).Add(time.Duration(buckets)*lokiSplitBucket))
+		} else {
+			lo = later(from, splitBucketStart(end.Add(-time.Nanosecond)).Add(-time.Duration(buckets-1)*lokiSplitBucket))
+		}
+		part, err := r.read(ctx, lo, hi)
+		if err != nil {
+			return nil, err
+		}
+		if int64(len(part)) >= r.pageQ.Limit && !oneBucket(lo, hi) {
+			lo, hi = r.narrowWindow(part, lo, hi)
+			if part, err = r.outward(ctx, lo, hi); err != nil {
+				return nil, err
+			}
+			lines = append(lines, part...)
+			break
+		}
+		lines = append(lines, part...)
+		if forward {
+			from = hi
+		} else {
+			end = lo
+		}
+	}
+	return r.pageQ.capToLimit(sortedEntries(lines)), nil
+}
+
+// read is one query_range over [from, end) for the query's selector and
+// pipeline, as raw candidates; end is exclusive and sent as it is.
+func (r lokiReader) read(ctx context.Context, from, end time.Time) ([]LogEntry, error) {
 	u := fmt.Sprintf("%s/loki/api/v1/query_range?%s", r.base, url.Values{
-		"query": {selector + r.pipeline},
+		"query": {r.selector + r.pipeline},
 		"start": {strconv.FormatInt(from.UnixNano(), 10)},
-		"end":   {lokiEndParam(r.pageQ, to)},
+		"end":   {strconv.FormatInt(end.UnixNano(), 10)},
 		"limit": {strconv.FormatInt(r.pageQ.Limit, 10)},
 		// Render's direction decides which end of the window `limit` keeps:
 		// backward (default) the newest lines, forward the oldest.
@@ -104,126 +141,30 @@ func (r lokiReader) read(ctx context.Context, selector string, from, to time.Tim
 	return parseLokiStreams(lr, r.pageQ)
 }
 
-// fetch is one slice's raw page: exactly the newest (backward) or oldest
-// (forward) lines of [from, to) that fit the page.
-func (r lokiReader) fetch(ctx context.Context, from, to time.Time) ([]LogEntry, error) {
-	page, err := r.read(ctx, r.selector, from, to)
-	if err != nil || int64(len(page)) < r.pageQ.Limit {
-		return page, err
-	}
-	return r.readByStream(ctx, page, from, to)
-}
-
-// readByStream replaces a full page by the same page read stream by stream.
-func (r lokiReader) readByStream(ctx context.Context, page []LogEntry, from, to time.Time) ([]LogEntry, error) {
-	// page is oldest-first and parseLokiStreams formatted its stamps, so a stamp
-	// that does not parse is not expected; the window then stays as asked, which
-	// only lists more streams.
+// narrowWindow bounds [from, end) by a full page's far line: the page's lines
+// are real, so the window's page lies no earlier (backward) or no later
+// (forward). page is oldest-first and parseLokiStreams formatted its stamps, so
+// a stamp that does not parse is not expected; the window then stays as asked,
+// which only costs more reads.
+func (r lokiReader) narrowWindow(page []LogEntry, from, end time.Time) (time.Time, time.Time) {
 	if lokiDirection(r.pageQ) == DirectionForward {
-		if far, err := time.Parse(time.RFC3339Nano, page[len(page)-1].Timestamp); err == nil && far.Before(to) {
-			to = far.Add(time.Nanosecond)
+		if far, err := time.Parse(time.RFC3339Nano, page[len(page)-1].Timestamp); err == nil && far.Before(end) {
+			end = far.Add(time.Nanosecond)
 		}
 	} else if far, err := time.Parse(time.RFC3339Nano, page[0].Timestamp); err == nil && far.After(from) {
 		from = far
 	}
-	streams, err := r.streams(ctx, from, to)
-	if err != nil {
-		return nil, err
-	}
-	// With no second stream in the narrowed window every line of the page is
-	// that one stream's, and the merge deals a stream's lines in order, so the
-	// page is its own oldest (newest) lines. No listed stream at all leaves
-	// nothing to read by stream.
-	if len(streams) <= 1 {
-		return page, nil
-	}
-	selectors, err := r.streamSelectors(streams)
-	if err != nil {
-		return nil, err
-	}
-	if len(selectors) > lokiMaxStreamReads {
-		return nil, errLogStreamFanOut
-	}
-	pages := make([][]LogEntry, len(selectors))
-	g, gctx := errgroup.WithContext(ctx)
-	g.SetLimit(lokiStreamReadParallelism)
-	for i, selector := range selectors {
-		if gctx.Err() != nil { // a read already failed, or the caller left
-			break
-		}
-		g.Go(func() (err error) {
-			select {
-			case lokiStreamReads <- struct{}{}:
-				defer func() { <-lokiStreamReads }()
-			case <-gctx.Done():
-				return gctx.Err()
-			}
-			pages[i], err = r.read(gctx, selector, from, to)
-			return err
-		})
-	}
-	if err := g.Wait(); err != nil {
-		return nil, err
-	}
-	if err := ctx.Err(); err != nil { // the loop stopped on the caller leaving, with no read failed
-		return nil, err
-	}
-	return r.pageQ.capToLimit(sortedEntries(slices.Concat(pages...))), nil
+	return from, end
 }
 
-// streams lists the label sets of the streams with lines in [from, to) that the
-// query's selector matches.
-func (r lokiReader) streams(ctx context.Context, from, to time.Time) ([]map[string]string, error) {
-	u := fmt.Sprintf("%s/loki/api/v1/series?%s", r.base, url.Values{
-		"match[]": {r.selector},
-		"start":   {strconv.FormatInt(from.UnixNano(), 10)},
-		"end":     {lokiEndParam(r.pageQ, to)},
-	}.Encode())
-	var resp struct {
-		Status string              `json:"status"`
-		Data   []map[string]string `json:"data"`
-	}
-	if err := lokiGet(ctx, r.hc, u, &resp); err != nil {
-		return nil, err
-	}
-	if resp.Status != "" && resp.Status != "success" {
-		return nil, fmt.Errorf("loki status %q", resp.Status)
-	}
-	return resp.Data, nil
+// oneBucket reports whether Loki reads [from, end) as one piece: the window
+// lies inside one split bucket.
+func oneBucket(from, end time.Time) bool {
+	return !end.After(splitBucketStart(from).Add(lokiSplitBucket))
 }
 
-// streamSelectors narrows the query's selector to each listed stream, one
-// selector per distinct stream. A stream is pinned by an equality matcher for
-// every label any listed stream carries, an empty value where it has none, so a
-// stream that carries an extra label is not matched along with it. The query's
-// own matchers stay in front: its restrictions (app id, excluded jobs) still
-// apply to every read.
-func (r lokiReader) streamSelectors(streams []map[string]string) ([]string, error) {
-	head, ok := strings.CutSuffix(r.selector, "}")
-	if !ok {
-		return nil, fmt.Errorf("loki selector %q is not a stream selector", r.selector)
-	}
-	names := map[string]struct{}{}
-	for _, labels := range streams {
-		for name := range labels {
-			if !strings.HasPrefix(name, "__") { // Loki's internal labels (stream shards) are not stream identity
-				names[name] = struct{}{}
-			}
-		}
-	}
-	sorted := slices.Sorted(maps.Keys(names))
-	seen := map[string]struct{}{}
-	var out []string
-	for _, labels := range streams {
-		pins := make([]string, len(sorted))
-		for i, name := range sorted {
-			pins[i] = fmt.Sprintf("%s=%q", name, labels[name])
-		}
-		selector := head + ", " + strings.Join(pins, ", ") + "}"
-		if _, dup := seen[selector]; !dup { // shards of one stream differ only in internal labels
-			seen[selector] = struct{}{}
-			out = append(out, selector)
-		}
-	}
-	return out, nil
+// splitBucketStart is the start of the split bucket that holds t.
+func splitBucketStart(t time.Time) time.Time {
+	ns := t.UnixNano()
+	return time.Unix(0, ns-ns%int64(lokiSplitBucket)).UTC()
 }

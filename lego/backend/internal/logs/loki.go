@@ -174,10 +174,21 @@ func scanLokiWindow(
 	if !sliced {
 		slice = end.Sub(start)
 	}
+	// busy: the scan is in lines too dense for a slice to fit a raw page, so it
+	// reads one split bucket at a time, which Loki answers exactly in one
+	// request. A slice across a cut there would come back full and be read
+	// again (w5/m503). It starts at a full raw page and ends at a whole bucket
+	// that held under half a raw page, where slices grow again.
+	busy := false
 	for {
 		from, to := covered.Add(-slice), covered
 		if forward {
 			from, to = covered, covered.Add(slice)
+		}
+		if busy && forward {
+			to = earlier(to, splitBucketStart(from).Add(lokiSplitBucket))
+		} else if busy {
+			from = later(from, splitBucketStart(to.Add(-time.Nanosecond)))
 		}
 		if from.Before(start) {
 			from = start
@@ -185,6 +196,7 @@ func scanLokiWindow(
 		if to.After(end) {
 			to = end
 		}
+		wholeBucket := busy && to.Sub(from) == lokiSplitBucket
 		page, err := fetch(scanCtx, from, to)
 		if err != nil {
 			if ctx.Err() != nil || scanCtx.Err() == nil {
@@ -197,7 +209,7 @@ func scanLokiWindow(
 			}
 			return nil, &ScanIncompleteError{Entries: q.capToLimit(sortedEntries(out)), ScannedTo: covered}
 		}
-		next, saturated := from, false
+		next, raw, saturated := from, len(page), false
 		if forward {
 			next = to
 		}
@@ -222,7 +234,8 @@ func scanLokiWindow(
 		if scanCtx.Err() != nil {
 			return nil, &ScanIncompleteError{Entries: q.capToLimit(sortedEntries(out)), ScannedTo: covered}
 		}
-		if !saturated { // a full raw page already bounds the next read
+		busy = saturated || (busy && !(wholeBucket && 2*raw <= lokiTextScanPage))
+		if !busy {
 			slice *= 2
 		}
 	}
@@ -405,10 +418,15 @@ func later(a, b time.Time) time.Time {
 // are, and the paging cursors already sit strictly before their boundary
 // (pageCursors), so pages still neither repeat nor skip a line.
 func lokiEndParam(q LogQuery, to time.Time) string {
+	return strconv.FormatInt(lokiEnd(q, to).UnixNano(), 10)
+}
+
+// lokiEnd is the exclusive end lokiEndParam sends, as an instant.
+func lokiEnd(q LogQuery, to time.Time) time.Time {
 	if !q.End.IsZero() && to.Equal(q.End) {
-		to = to.Add(time.Nanosecond)
+		return to.Add(time.Nanosecond)
 	}
-	return strconv.FormatInt(to.UnixNano(), 10)
+	return to
 }
 
 // lokiLimit is the query_range line cap. q.Limit is already clamped to Render's
