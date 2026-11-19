@@ -2474,6 +2474,17 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "未配置",
     description: "Source card fallback when no source value is available",
   },
+  "services.sourceRepoAccessLostTitle": {
+    message: "bex 的 GitHub 应用无法读取此仓库",
+    description:
+      "Settings → Source warning title: the GitHub App connected this service's repository and can no longer read it (repoAccessLost, w10/m490)",
+  },
+  "services.sourceRepoAccessLostBody": {
+    message:
+      "推送不会再部署此服务。如果仓库已转移到另一个 GitHub 账号，请在该账号上安装 GitHub 应用；否则请重新授予该应用访问此仓库的权限。",
+    description:
+      "Settings → Source warning body: pushes stop reaching bex once the GitHub App loses the repository (moved to an account without the app, or the grant was revoked); what to do (w10/m490)",
+  },
   "services.sourceEdit": {
     message: "编辑",
     description: "Button opening the Update Source dialog",

@@ -209,6 +209,13 @@ export interface ServiceView {
    */
   pushDeliveryMethod?: string | null;
   /**
+   * bex's GitHub app connected this service's repository and can no longer
+   * read it: the repository moved to an account the app is not installed on,
+   * or its grant was revoked, so no push reaches bex (w10/m490). Settings →
+   * Source warns on it. null on the list query and on an older API.
+   */
+  repoAccessLost?: boolean | null;
+  /**
    * Deploy-failure notification override (`spec.notifyOnFail`, w4/m21, Render's
    * exact field name/enum — docs/render-artifacts/notify-on-fail.md):
    * "default" | "notify" | "ignore". null when not selected (list query);
@@ -408,7 +415,12 @@ export type LifecycleAction = "suspend" | "resume" | "restart";
 
 /** A resolved service-type key (i18n label) + the badge variant it renders as. */
 export type ServiceTypeKey =
-  "web" | "private" | "worker" | "cron" | "static" | "unknown";
+  | "web"
+  | "private"
+  | "worker"
+  | "cron"
+  | "static"
+  | "unknown";
 
 /**
  * One env-var key on a sensitive-config list. Values are fetched individually
@@ -549,7 +561,10 @@ export type ServiceStatusKey =
   | "unknown";
 
 export type ServiceBadgeVariant =
-  "default" | "secondary" | "outline" | "destructive";
+  | "default"
+  | "secondary"
+  | "outline"
+  | "destructive";
 
 export interface ServiceStatus {
   key: ServiceStatusKey;

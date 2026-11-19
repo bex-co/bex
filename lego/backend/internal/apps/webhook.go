@@ -219,6 +219,10 @@ func (h *GitWebhook) scopesFor(ctx context.Context, key verifiedKey, installatio
 // gitRepository is the repository block every git event carries; urls lists
 // its addresses, any of which an App's spec.repo may name.
 type gitRepository struct {
+	// ID is GitHub's numeric repository id, which survives a rename or a
+	// transfer (w10/m490). Gitea sends its own ids here, so only a GitHub
+	// App-signed delivery's id is matched (tracks).
+	ID       int64  `json:"id"`
 	CloneURL string `json:"clone_url"`
 	SSHURL   string `json:"ssh_url"`
 	HTMLURL  string `json:"html_url"`
@@ -226,6 +230,20 @@ type gitRepository struct {
 }
 
 func (r gitRepository) urls() []string { return []string{r.CloneURL, r.SSHURL, r.HTMLURL, r.URL} }
+
+// tracks reports whether a service or Blueprint that stores storedRepo, and
+// storedID as GitHub's id for it (0 when unknown), builds from this
+// repository. byID is true for a GitHub App-signed delivery, whose repository
+// id GitHub signed: a row that knows its id then matches by the id alone,
+// whatever URL it stored, so a renamed or transferred repository keeps
+// deploying, and a new repository created under an old name does not
+// (w10/m490). Every other row, and a manual or Gitea delivery, matches by URL.
+func (r gitRepository) tracks(storedRepo string, storedID int64, byID bool) bool {
+	if byID && r.ID != 0 && storedID != 0 {
+		return storedID == r.ID
+	}
+	return repoURLsMatch(storedRepo, r.urls()...)
+}
 
 type pushEvent struct {
 	Ref         string `json:"ref"` // e.g. refs/heads/main
@@ -530,7 +548,8 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		core.WriteJSON(w, http.StatusOK, map[string]any{"redeployed": []string{}})
 		return
 	}
-	urls := ev.Repository.urls()
+	// Only GitHub signs the repository id it sends (w10/m490).
+	byID := key == keyGitHubApp
 	// Branch-delete carries no commit — Apps only (disable auto-deploy). Skip
 	// Blueprint discovery/enqueue entirely (w8/m38).
 	branchDeleted := ev.Deleted || isZeroSHA(ev.After)
@@ -540,7 +559,7 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	anyFresh, anyWork := false, false
 
 	for _, scope := range scopes {
-		candidates, err := h.repoCandidates(r.Context(), urls, scope)
+		candidates, err := h.repoCandidates(r.Context(), ev.Repository, byID, scope)
 		trace.mark("candidates")
 		if err != nil {
 			claims.release(r.Context())
@@ -552,7 +571,7 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if branchDeleted {
 			candidates = branchCandidates(candidates, branch)
 		} else {
-			blueprintTargets, err = h.blueprintAutoSyncTargets(r.Context(), branch, scope, urls, ev.changedPaths())
+			blueprintTargets, err = h.blueprintAutoSyncTargets(r.Context(), branch, scope, ev.Repository, byID, ev.changedPaths())
 			trace.mark("blueprintTargets")
 			if err != nil {
 				claims.release(r.Context())
@@ -583,6 +602,13 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		anyFresh = true
+		// Learn the repository id of rows that matched by URL, and move rows
+		// that matched by id to the repository's current URL, before anything
+		// below reads their repo (w10/m490).
+		if byID {
+			h.followRepository(r.Context(), ev.Repository, candidates, blueprintTargets)
+			trace.mark("followRepository")
+		}
 
 		if branchDeleted {
 			deleted = append(deleted, h.recordBranchDeletedCandidates(r.Context(), candidates, branch, ev.DeliveryKey)...)
@@ -661,12 +687,11 @@ func (h *GitWebhook) serveDelete(w http.ResponseWriter, r *http.Request, body []
 		core.WriteJSON(w, http.StatusOK, map[string]any{"branchDeleted": []string{}})
 		return
 	}
-	urls := ev.Repository.urls()
 	claims := &deliveryClaims{h: h}
 	deleted := []string{}
 	anyFresh, anyWork := false, false
 	for _, scope := range scopes {
-		candidates, err := h.repoCandidates(r.Context(), urls, scope)
+		candidates, err := h.repoCandidates(r.Context(), ev.Repository, key == keyGitHubApp, scope)
 		if err != nil {
 			claims.release(r.Context())
 			core.WriteErr(w, err)
@@ -858,11 +883,11 @@ func isPushShapedBody(ev *pushEvent) bool {
 // branch it built from is gone, so Render (and bex) stop auto-deploying it. It
 // reads/writes through the raw client like redeployMatching: the HMAC signature
 // already authorized this call. Returns the affected service names.
-func (h *GitWebhook) recordBranchDeleted(ctx context.Context, urls []string, branch, deliveryKey, scope string) ([]string, error) {
+func (h *GitWebhook) recordBranchDeleted(ctx context.Context, repo gitRepository, branch, deliveryKey, scope string) ([]string, error) {
 	if branch == "" {
 		return []string{}, nil
 	}
-	candidates, err := h.repoCandidates(ctx, urls, scope)
+	candidates, err := h.repoCandidates(ctx, repo, false, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -870,9 +895,9 @@ func (h *GitWebhook) recordBranchDeleted(ctx context.Context, urls []string, bra
 }
 
 // blueprintAutoSyncTargets discovers connected Blueprints independently of
-// App candidates (w8/m38): auto_sync + branch + installation scope, then
-// canonical repo URL match, then path gate against changedPaths.
-func (h *GitWebhook) blueprintAutoSyncTargets(ctx context.Context, branch, scope string, urls, changed []string) ([]store.Blueprint, error) {
+// App candidates (w8/m38): auto_sync + branch + installation scope, then the
+// repository match (gitRepository.tracks), then path gate against changedPaths.
+func (h *GitWebhook) blueprintAutoSyncTargets(ctx context.Context, branch, scope string, repo gitRepository, byID bool, changed []string) ([]store.Blueprint, error) {
 	if h.Svc == nil || h.Svc.Blueprints == nil {
 		return nil, nil
 	}
@@ -882,7 +907,7 @@ func (h *GitWebhook) blueprintAutoSyncTargets(ctx context.Context, branch, scope
 	}
 	out := make([]store.Blueprint, 0, len(listed))
 	for _, b := range listed {
-		if !repoURLsMatch(b.Repo, urls...) {
+		if !repo.tracks(b.Repo, b.GitHubRepoID, byID) {
 			continue
 		}
 		if !blueprintManifestPathChanged(b.Path, changed) {
@@ -942,7 +967,9 @@ func (h *GitWebhook) enqueueBlueprintAutoSyncIntents(ctx context.Context, key ve
 // repoCandidates resolves the non-mutating repository/workspace match before a
 // replay claim is allocated. This keeps unrelated valid pushes out of the
 // durable ledger and supplies a stable candidate snapshot to the mutation pass.
-func (h *GitWebhook) repoCandidates(ctx context.Context, urls []string, scope string) ([]appv1alpha1.App, error) {
+// byID matches by GitHub's repository id where the App carries one
+// (gitRepository.tracks).
+func (h *GitWebhook) repoCandidates(ctx context.Context, repo gitRepository, byID bool, scope string) ([]appv1alpha1.App, error) {
 	var list appv1alpha1.AppList
 	if err := h.Svc.Client.List(ctx, &list); err != nil {
 		return nil, err
@@ -955,7 +982,7 @@ func (h *GitWebhook) repoCandidates(ctx context.Context, urls []string, scope st
 		if scope != "" && a.Labels[core.LabelTenant] != scope {
 			continue
 		}
-		if a.Spec.Repo == "" || !repoURLsMatch(a.Spec.Repo, urls...) {
+		if a.Spec.Repo == "" || !repo.tracks(a.Spec.Repo, core.GitHubRepoID(a), byID) {
 			continue
 		}
 		candidates = append(candidates, *a)
@@ -1025,8 +1052,7 @@ func (h *GitWebhook) disableAutoDeploy(ctx context.Context, app *appv1alpha1.App
 // signature already authorized this call. It also returns a set of tenant IDs
 // whose Apps share this repo (used for blueprint auto-sync post-response).
 func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch, scope string) (redeployed []string, tenants map[string]struct{}, err error) {
-	urls := ev.Repository.urls()
-	candidates, err := h.repoCandidates(ctx, urls, scope)
+	candidates, err := h.repoCandidates(ctx, ev.Repository, false, scope)
 	if err != nil {
 		return nil, nil, err
 	}

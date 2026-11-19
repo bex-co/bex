@@ -1,5 +1,10 @@
 import { useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, TriangleAlert } from "lucide-react";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/common/components/ui/alert";
 import { Button } from "@/common/components/ui/button";
 import {
   Card,
@@ -58,6 +63,11 @@ export interface ServiceSourceCardProps {
   buildSourceId: string | null;
   /** The service's start command, kept when it links a native source. */
   startCommand: string | null;
+  /**
+   * bex's GitHub app connected the repository and can no longer read it, so
+   * no push reaches bex (w10/m490): the card says so and what to do.
+   */
+  repoAccessLost?: boolean;
 }
 
 /**
@@ -140,6 +150,15 @@ export function ServiceSourceCard(props: ServiceSourceCardProps) {
             </div>
           )}
         </dl>
+        {props.repo && props.repoAccessLost && (
+          <Alert className="mt-4" data-testid="source-repo-access-lost">
+            <TriangleAlert />
+            <AlertTitle>{t("services.sourceRepoAccessLostTitle")}</AlertTitle>
+            <AlertDescription>
+              <p>{t("services.sourceRepoAccessLostBody")}</p>
+            </AlertDescription>
+          </Alert>
+        )}
         {reason && (
           <p className="mt-4 text-sm text-muted-foreground">{reason}</p>
         )}

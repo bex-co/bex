@@ -496,6 +496,10 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// signal the autoDeploy setting alone cannot express (w6/m99). Populated
 		// on server(id)/service(id), empty on the list — see pushdelivery.go.
 		"pushDeliveryMethod": gqlutil.StrField(func(a AppView) any { return a.PushDeliveryMethod }),
+		// repoAccessLost: bex's GitHub App connected this service's repository
+		// and can no longer read it, so no push reaches bex (w10/m490). A bex
+		// extension for Settings → Source; populated like pushDeliveryMethod.
+		"repoAccessLost": gqlutil.BoolField(func(a AppView) any { return a.RepoAccessLost }),
 		// notifyOnFail is Render's per-service deploy-failure notification
 		// override (default | notify | ignore, docs/render-artifacts/
 		// notify-on-fail.md); the Settings → Notifications section reads it and

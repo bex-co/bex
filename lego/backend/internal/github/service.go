@@ -1147,30 +1147,44 @@ func (t tokenSource) RepoGranted(ctx context.Context, workspaceID, repoURL strin
 // GitHub repo is usable only when GitHub serves it anonymously. "" with a nil
 // error means no opinion (GitHub unconfigured, or not a github.com
 // repository): other Git hosts retain the create flow's public-Git behavior.
-func (t tokenSource) ValidateRepo(ctx context.Context, workspaceID, repoURL string) (string, error) {
+//
+// repoID is GitHub's numeric id for the repository when the workspace's GitHub
+// App installation grants it (w10/m490): the id its pushes are matched by.
+// 0 for a repository read anonymously, whose pushes never reach bex signed.
+func (t tokenSource) ValidateRepo(ctx context.Context, workspaceID, repoURL string) (defaultBranch string, repoID int64, err error) {
 	owner, repo, ok := githubOwnerRepo(repoURL)
 	if !ok || !t.s.configured() {
-		return "", nil
+		return "", 0, nil
 	}
 	_, meta, granted, err := t.s.grantedRepo(ctx, workspaceID, repoURL)
 	if err != nil {
 		var coded *core.CodedError
 		if errors.As(err, &coded) {
-			return "", coded
+			return "", 0, coded
 		}
-		return "", fmt.Errorf("checking repository access: %w", err)
+		return "", 0, fmt.Errorf("checking repository access: %w", err)
 	}
-	if !granted {
-		var public bool
-		meta, public, err = t.s.GitHub.LookupRepo(ctx, "", owner, repo)
-		if err != nil {
-			return "", classifyRepoCheckError(err, false)
-		}
-		if !public {
-			return "", fmt.Errorf("%w: repository is not accessible through this workspace's GitHub connections or as public Git; connect its owner and grant repository access, or use a public repository", core.ErrBadRequest)
-		}
+	if granted {
+		return meta.DefaultBranch, meta.ID, nil
 	}
-	return meta.DefaultBranch, nil
+	meta, public, err := t.s.GitHub.LookupRepo(ctx, "", owner, repo)
+	if err != nil {
+		return "", 0, classifyRepoCheckError(err, false)
+	}
+	if !public {
+		return "", 0, fmt.Errorf("%w: repository is not accessible through this workspace's GitHub connections or as public Git; connect its owner and grant repository access, or use a public repository", core.ErrBadRequest)
+	}
+	return meta.DefaultBranch, 0, nil
+}
+
+// GrantedRepo reads repoURL through the workspace's GitHub App installation
+// for its owner, as a deploy's clone token does (grantedRepo), and returns the
+// repository GitHub answered: its id and its current full name, which differ
+// from the URL's after a rename because GitHub follows the old name
+// (w10/m490). ok=false when no connection grants it.
+func (t tokenSource) GrantedRepo(ctx context.Context, workspaceID, repoURL string) (Repo, bool, error) {
+	_, meta, granted, err := t.s.grantedRepo(ctx, workspaceID, repoURL)
+	return meta, granted, err
 }
 
 // DeployTokenSource returns the deploy path's clone-token seam (wired onto

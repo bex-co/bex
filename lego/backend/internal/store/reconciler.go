@@ -2708,7 +2708,8 @@ func ManagedAppID(labels map[string]string) string {
 }
 
 // stampLabels ensures cur carries the projection's labels (managed-by, app-id,
-// tenant-id, public name), returning whether any changed. Called on both
+// tenant-id, public name) and its GitHub repository id annotation, returning
+// whether any changed. Called on both
 // Create and Update so a LabelTenant value change (name → id) converges on the
 // next resync — and, for any App still on its pre-w4/m19 bare object name,
 // this is what backfills LabelServiceName without ever renaming the object
@@ -2758,6 +2759,11 @@ func stampLabels(cur *appv1alpha1.App, d DesiredApp, identity string, managedOID
 	}
 	setOptional(appv1alpha1.LabelKeptBuilds, kept)
 	setOptional(appv1alpha1.LabelManagedOIDC, ManagedOIDCLabel(managedOIDC, d.TenantPlan))
+	// The repository's GitHub id the push webhook matches by (w10/m490). An
+	// annotation, so stamping it bumps no generation.
+	if core.SetGitHubRepoID(cur, d.GitHubRepoID) {
+		changed = true
+	}
 	return changed
 }
 

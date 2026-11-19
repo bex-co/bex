@@ -162,6 +162,46 @@ describe("ServiceSourceCard", () => {
     expect(setImage).not.toHaveBeenCalled();
   });
 
+  // w10/m490: a repository the GitHub app connected and can no longer read
+  // (moved to an account without the app, or its grant revoked) gets no
+  // pushes, and the card says so instead of looking connected.
+  it("warns when the GitHub app can no longer read the repository, and only then", () => {
+    const props = {
+      serviceId: "srv-1",
+      repo: "https://github.com/acme/api",
+      branch: "main",
+      imagePath: null,
+      registryCredentialId: null,
+      buildSourceId: null,
+      startCommand: null,
+    };
+    const { rerender } = render(
+      <ServiceSourceCard {...props} repoAccessLost />,
+    );
+    const warning = screen.getByTestId("source-repo-access-lost");
+    expect(warning).toHaveTextContent(
+      "bex's GitHub app can't read this repository",
+    );
+    expect(warning).toHaveTextContent("install the GitHub app on that account");
+
+    rerender(<ServiceSourceCard {...props} repoAccessLost={false} />);
+    expect(
+      screen.queryByTestId("source-repo-access-lost"),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <ServiceSourceCard
+        {...props}
+        repo={null}
+        imagePath="ghcr.io/acme/api:1"
+        repoAccessLost
+      />,
+    );
+    expect(
+      screen.queryByTestId("source-repo-access-lost"),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows a repo and branch, then atomically repoints both from the grouped picker", async () => {
     const user = userEvent.setup();
     render(

@@ -836,6 +836,8 @@ export type AuditLog = {
   oauthGrantScopes: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   oauthScopes: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   relation: Maybe<Scalars['String']['output']>;
+  repoFrom: Maybe<Scalars['String']['output']>;
+  repoTo: Maybe<Scalars['String']['output']>;
   resource: Maybe<Scalars['String']['output']>;
   sourceIp: Maybe<Scalars['String']['output']>;
   status: Maybe<Scalars['String']['output']>;
@@ -5821,6 +5823,7 @@ export type Service = {
   renderSubdomainPolicy: Maybe<Scalars['String']['output']>;
   replicas: Maybe<Scalars['Int']['output']>;
   repo: Maybe<Scalars['String']['output']>;
+  repoAccessLost: Maybe<Scalars['Boolean']['output']>;
   revision: Maybe<Scalars['String']['output']>;
   rootDir: Maybe<Scalars['String']['output']>;
   routes: Maybe<Array<Maybe<StaticRoute>>>;

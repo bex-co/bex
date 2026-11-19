@@ -271,7 +271,7 @@ func (h *GitWebhook) serveCheckSuite(w http.ResponseWriter, r *http.Request, bod
 	awaiting := make([]appv1alpha1.App, 0)
 	for i := range list.Items {
 		a := &list.Items[i]
-		if checksGated(a.Spec) && a.Annotations[annotChecksPendingCommit] == sha && repoURLsMatch(a.Spec.Repo, ev.Repository.urls()...) {
+		if checksGated(a.Spec) && a.Annotations[annotChecksPendingCommit] == sha && ev.Repository.tracks(a.Spec.Repo, core.GitHubRepoID(a), true) {
 			awaiting = append(awaiting, *a)
 		}
 	}

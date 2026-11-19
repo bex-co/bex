@@ -57,6 +57,7 @@ function service(undeployedChanges: boolean): ServerQuery["server"] {
     environmentId: null,
     linkedEnvGroupIds: null,
     pushDeliveryMethod: null,
+    repoAccessLost: null,
     notifyOnFail: null,
     notificationsToSend: null,
     renderSubdomainPolicy: null,

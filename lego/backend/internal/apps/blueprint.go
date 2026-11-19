@@ -696,7 +696,7 @@ const (
 	AuditVerbPreviewBlueprint  = "apps.PreviewBlueprint"
 	// AuditVerbUpdateBlueprint is the verb of MCP's update_blueprint edit check,
 	// the one UpdateBlueprint derives for the write itself.
-	AuditVerbUpdateBlueprint = "apps.UpdateBlueprint"
+	AuditVerbUpdateBlueprint = core.AuditVerbUpdateBlueprint
 )
 
 // blueprintRequestScope authorizes a validate/preview under verb: on behalf of an
@@ -2679,7 +2679,7 @@ func (s *Service) blueprintBranch(ctx context.Context, tenantID, repo, branch st
 		return branch, nil
 	}
 	if s.GitHub != nil {
-		defaultBranch, err := s.GitHub.ValidateRepo(ctx, tenantID, repo)
+		defaultBranch, _, err := s.GitHub.ValidateRepo(ctx, tenantID, repo)
 		if err != nil {
 			return "", err
 		}

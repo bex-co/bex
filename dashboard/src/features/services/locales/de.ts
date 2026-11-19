@@ -2570,6 +2570,17 @@ const deServices: Record<string, TranslationEntry> = {
     message: "Nicht konfiguriert",
     description: "Source card fallback when no source value is available",
   },
+  "services.sourceRepoAccessLostTitle": {
+    message: "Die GitHub-App von bex kann dieses Repository nicht lesen",
+    description:
+      "Settings → Source warning title: the GitHub App connected this service's repository and can no longer read it (repoAccessLost, w10/m490)",
+  },
+  "services.sourceRepoAccessLostBody": {
+    message:
+      "Pushes deployen diesen Service nicht mehr. Wurde das Repository in ein anderes GitHub-Konto verschoben, installiere die GitHub-App in diesem Konto; andernfalls gib der App wieder Zugriff auf das Repository.",
+    description:
+      "Settings → Source warning body: pushes stop reaching bex once the GitHub App loses the repository (moved to an account without the app, or the grant was revoked); what to do (w10/m490)",
+  },
   "services.sourceEdit": {
     message: "Bearbeiten",
     description: "Button opening the Update Source dialog",

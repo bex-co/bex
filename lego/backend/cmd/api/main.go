@@ -660,6 +660,9 @@ func main() {
 	// once its traffic DNS propagates. No-op store-less.
 	go srv.DomainVerification.Run(ctx)
 	go srv.ServiceRefs.Run(ctx)
+	// GitHub repository ids (w10/m490): a push matches a service or Blueprint
+	// by the id, which survives a rename. No-op store-less or GitHub-less.
+	go srv.RepoIdentities.Run(ctx)
 	if stripeLifecycleWorker != nil {
 		stripeLifecycleWorker.Notifier = notifications.BillingNotifier{Service: srv.Notifications}
 		go stripeLifecycleWorker.Run(ctx)

@@ -232,6 +232,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
             startCommand={
               (cron ? service.command : service.startCommand) ?? null
             }
+            repoAccessLost={service.repoAccessLost ?? false}
           />
         );
       case "runtime":

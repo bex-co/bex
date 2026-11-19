@@ -117,7 +117,7 @@ func TestWebhookBranchDelete_TenantNamespaceMode(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}}
 	h := &GitWebhook{Svc: svc, Secret: "shh"}
 
-	affected, err := h.recordBranchDeleted(context.Background(), []string{repo}, "main", "delivery-1", "")
+	affected, err := h.recordBranchDeleted(context.Background(), gitRepository{CloneURL: repo}, "main", "delivery-1", "")
 	if err != nil {
 		t.Fatalf("recordBranchDeleted: %v", err)
 	}

@@ -715,6 +715,14 @@ type AppView struct {
 	// views mutations and previews return): absent means "not computed on this
 	// projection", never "no" — read the service by id for the answer.
 	PushDeliveryMethod string `json:"pushDeliveryMethod,omitempty"`
+	// RepoAccessLost is true when bex's GitHub App connected this service's
+	// repository (it carries the repository's GitHub id) and the workspace's
+	// installation can no longer read it, by the same live grant check as
+	// PushDeliveryMethod: the repository moved to an account the App is not
+	// installed on, or its grant was revoked, so GitHub sends bex none of its
+	// pushes (w10/m490). Computed by Get only, like PushDeliveryMethod. A bex
+	// extension read by the dashboard's Settings → Source: GraphQL only.
+	RepoAccessLost bool `json:"-"`
 	// NotifyOnFail is Render's per-service deploy-failure notification override
 	// (spec.notifyOnFail): default | notify | ignore (docs/render-artifacts/
 	// notify-on-fail.md). Empty is reported as "default". The Settings →
@@ -1670,6 +1678,7 @@ func (s *Service) Get(ctx context.Context, name string) (AppView, error) {
 	// mutations and previews return, which the field is no part of the contract
 	// for, keep paying nothing for a lookup that costs GitHub round-trips.
 	v.PushDeliveryMethod = s.pushDeliveryMethod(ctx, a)
+	v.RepoAccessLost = repoAccessLost(a, v.PushDeliveryMethod)
 	v.IPAllowListProxiedDomains = s.allowListProxiedDomains(ctx, a)
 	// A cron job's nested runs name their actors here too (w4/631), so
 	// GraphQL service(id).runs agrees with cronJobRuns; List leaves them out.
@@ -2006,6 +2015,10 @@ type CreateRequest struct {
 	// startCommand. Only a build source link reads it: a Docker or image
 	// source takes that spelling and a native one refuses it (w3/069).
 	startIsDockerCommand bool
+	// githubRepoID is GitHub's id for Repo when the workspace's installation
+	// grants it, read by Create's repository check (w10/m490): the row and the
+	// App carry it from the start, so the first push already matches by it.
+	githubRepoID int64
 	// Blueprint-only group names; never decoded from public create input.
 	initialEnvGroups []string
 	// initialSeedEnv is a new Blueprint service's env-store content, written
@@ -2395,10 +2408,11 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	// all read desired.Branch. With no opinion (GitHub off, a non-github.com
 	// host) the legacy DefaultBranch from specFromCreate stays.
 	if desired.Repo != "" && s.GitHub != nil {
-		defaultBranch, err := s.GitHub.ValidateRepo(ctx, tenantID, desired.Repo)
+		defaultBranch, repoID, err := s.GitHub.ValidateRepo(ctx, tenantID, desired.Repo)
 		if err != nil {
 			return AppView{}, err
 		}
+		req.githubRepoID = repoID
 		if req.Branch == "" {
 			if err := useRepositoryDefaultBranch(&desired, defaultBranch); err != nil {
 				return AppView{}, err
@@ -2857,6 +2871,7 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 			PortMode:             a.Spec.PortMode,
 			InitialDisk:          a.Spec.Disk.DeepCopy(),
 			Repo:                 req.Repo,
+			GitHubRepoID:         req.githubRepoID,
 			Image:                req.Image,
 			RegistryCredentialID: clonePtr(a.Spec.RegistryCredentialID),
 			Branch:               a.Spec.Branch,
@@ -2886,6 +2901,7 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 		// finds this CR on its next pass (avoiding a duplicate create) and
 		// lifecycle verbs (suspend/scale/plan) have an app-id to write through.
 		stampAppIdentity(a, tenantID, row.ID, true)
+		core.SetGitHubRepoID(a, row.GitHubRepoID)
 		s.stampManagedOIDC(ctx, a, tenantID)
 		// Build the commit the row records, as every later trigger does: a
 		// push landing before the build starts must not leave the row naming a
@@ -5176,6 +5192,7 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 			if _, err := s.Store.SetAppSource(ctx, id, next.repo, next.image, next.branch, clonePtr(next.registryCredentialID)); err != nil {
 				return AppView{}, fmt.Errorf("update source of truth: %w", err)
 			}
+			s.recordGitHubRepoID(ctx, id, next)
 		}
 	}
 	previousBranch := a.Spec.Branch
@@ -5238,6 +5255,11 @@ type sourceFields struct {
 	image                string
 	branch               string
 	registryCredentialID *string
+	// githubRepoID is GitHub's id for repo when the workspace's installation
+	// grants it (w10/m490): the id a push matches the service by. It follows
+	// repo: a new repo starts at 0 and checkSourcePatch's repository check
+	// supplies it.
+	githubRepoID int64
 }
 
 // applyTo writes the resolved source onto a's spec. One writer for all three
@@ -5270,6 +5292,7 @@ func (f sourceFields) applyTo(a *appv1alpha1.App) {
 	a.Spec.Image = f.image
 	a.Spec.Branch = f.branch
 	a.Spec.RegistryCredentialID = clonePtr(f.registryCredentialID)
+	core.SetGitHubRepoID(a, f.githubRepoID)
 	if staleImageRuntime(a.Spec) {
 		a.Spec.Runtime = ""
 	}
@@ -5284,6 +5307,7 @@ func resolveSourcePatch(a *appv1alpha1.App, patch sourcePatch) (sourceFields, er
 		image:                a.Spec.Image,
 		branch:               a.Spec.Branch,
 		registryCredentialID: clonePtr(a.Spec.RegistryCredentialID),
+		githubRepoID:         core.GitHubRepoID(a),
 	}
 	if patch.Repo != nil {
 		next.repo = strings.TrimSpace(*patch.Repo)
@@ -5328,6 +5352,10 @@ func resolveSourcePatch(a *appv1alpha1.App, patch sourcePatch) (sourceFields, er
 		// omission-as-preserve for ordinary PATCHes, but an explicit repo switch
 		// cannot retain image-only authentication intent.
 		next.registryCredentialID = nil
+	}
+	// The id names the repository it was read for; any other forgets it.
+	if next.repo != a.Spec.Repo {
+		next.githubRepoID = 0
 	}
 	return next, nil
 }

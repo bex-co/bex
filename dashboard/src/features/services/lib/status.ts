@@ -101,6 +101,7 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
         : null,
     pushDeliveryMethod:
       "pushDeliveryMethod" in s ? (s.pushDeliveryMethod ?? null) : null,
+    repoAccessLost: "repoAccessLost" in s ? (s.repoAccessLost ?? null) : null,
     notifyOnFail: "notifyOnFail" in s ? (s.notifyOnFail ?? null) : null,
     notificationsToSend:
       "notificationsToSend" in s ? (s.notificationsToSend ?? null) : null,

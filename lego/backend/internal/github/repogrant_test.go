@@ -148,7 +148,7 @@ func TestValidateRepoSourceAccess(t *testing.T) {
 			st := newFakeStore()
 			st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
 			svc := &Service{Base: &core.Base{Namespace: "default"}, Store: st, GitHub: &tc.client}
-			_, err := svc.DeployTokenSource().ValidateRepo(context.Background(), tc.workspace, tc.repo)
+			_, _, err := svc.DeployTokenSource().ValidateRepo(context.Background(), tc.workspace, tc.repo)
 			if errors.Is(err, core.ErrBadRequest) != tc.wantBadRequest || (err != nil) != (tc.wantBadRequest || tc.wantError) {
 				t.Fatalf("validation error = %v", err)
 			}
@@ -188,7 +188,7 @@ func TestValidateRepoReportsTheRepositoryDefaultBranch(t *testing.T) {
 			st := newFakeStore()
 			st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
 			svc := &Service{Base: &core.Base{Namespace: "default"}, Store: st, GitHub: &tc.client}
-			got, err := svc.DeployTokenSource().ValidateRepo(context.Background(), "default", tc.repo)
+			got, _, err := svc.DeployTokenSource().ValidateRepo(context.Background(), "default", tc.repo)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("ValidateRepo error = %v, wantErr %v", err, tc.wantErr)
 			}
@@ -203,7 +203,7 @@ func TestValidateRepoReportsTheRepositoryDefaultBranch(t *testing.T) {
 
 	t.Run("github unconfigured has no opinion", func(t *testing.T) {
 		svc := &Service{Base: &core.Base{Namespace: "default"}}
-		got, err := svc.DeployTokenSource().ValidateRepo(context.Background(), "default", "https://github.com/octo/app")
+		got, _, err := svc.DeployTokenSource().ValidateRepo(context.Background(), "default", "https://github.com/octo/app")
 		if err != nil || got != "" {
 			t.Fatalf("ValidateRepo with GitHub off = %q, %v; want \"\", nil", got, err)
 		}
@@ -235,7 +235,7 @@ func TestValidateRepoClassifiesGitHubRefusals(t *testing.T) {
 			st := newFakeStore()
 			st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
 			svc := &Service{Base: &core.Base{Namespace: "default"}, Store: st, GitHub: &tc.client}
-			_, err := svc.DeployTokenSource().ValidateRepo(context.Background(), "default", tc.repo)
+			_, _, err := svc.DeployTokenSource().ValidateRepo(context.Background(), "default", tc.repo)
 			rec := httptest.NewRecorder()
 			core.WriteErr(rec, err)
 			body := rec.Body.String()
@@ -275,5 +275,42 @@ func TestNewAPIErrorReadsRateLimitHeaders(t *testing.T) {
 		if e.RateLimited != tc.limited || (e.RetryAfter > 0) != tc.wait {
 			t.Errorf("%s: %+v, want limited=%v wait=%v", tc.name, e, tc.limited, tc.wait)
 		}
+	}
+}
+
+// TestRepositoryIDComesOnlyFromTheInstallation is w10/m490's source of ids:
+// ValidateRepo reports GitHub's repository id when the workspace's
+// installation grants the repository, the id its signed pushes carry, and
+// none for a repository read anonymously, whose pushes never reach bex
+// signed. GrantedRepo answers a renamed repository's stale name with the
+// repository GitHub followed it to.
+func TestRepositoryIDComesOnlyFromTheInstallation(t *testing.T) {
+	renamed := Repo{ID: 42, FullName: "octo/new-name", HTMLURL: "https://github.com/octo/new-name"}
+	newService := func(client *fakeClient) *Service {
+		st := newFakeStore()
+		st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
+		return &Service{Base: &core.Base{Namespace: "default"}, Store: st, GitHub: client}
+	}
+	ctx := context.Background()
+
+	granted := newService(&fakeClient{token: "installation", repoOK: true, lookedUp: renamed})
+	if _, id, err := granted.DeployTokenSource().ValidateRepo(ctx, "default", "https://github.com/octo/old-name"); err != nil || id != 42 {
+		t.Errorf("granted ValidateRepo id = %d, %v; want 42", id, err)
+	}
+	public := newService(&fakeClient{publicRepoOK: true, lookedUp: Repo{ID: 99}})
+	if _, id, err := public.DeployTokenSource().ValidateRepo(ctx, "default", "https://github.com/stranger/app"); err != nil || id != 0 {
+		t.Errorf("anonymous ValidateRepo id = %d, %v; want 0", id, err)
+	}
+
+	got, ok, err := granted.DeployTokenSource().GrantedRepo(ctx, "default", "https://github.com/octo/old-name")
+	if err != nil || !ok || got.ID != 42 || got.FullName != "octo/new-name" {
+		t.Errorf("GrantedRepo(stale name) = %+v, %v, %v; want the renamed repository", got, ok, err)
+	}
+	if _, ok, err := granted.DeployTokenSource().GrantedRepo(ctx, "other", "https://github.com/octo/old-name"); err != nil || ok {
+		t.Errorf("GrantedRepo from a workspace with no connection = %v, %v; want not granted", ok, err)
+	}
+	ungranted := newService(&fakeClient{token: "installation", lookedUp: renamed})
+	if _, ok, err := ungranted.DeployTokenSource().GrantedRepo(ctx, "default", "https://github.com/octo/old-name"); err != nil || ok {
+		t.Errorf("GrantedRepo outside the grant = %v, %v; want not granted", ok, err)
 	}
 }

@@ -105,6 +105,7 @@ function serverData(id: string) {
     environmentId: null,
     linkedEnvGroupIds: [...server.linked],
     pushDeliveryMethod: "none",
+    repoAccessLost: false,
     notifyOnFail: "default",
     notificationsToSend: "default",
     renderSubdomainPolicy: null,

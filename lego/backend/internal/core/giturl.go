@@ -17,10 +17,56 @@ limitations under the License.
 package core
 
 import (
+	"strconv"
 	"strings"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
+
+// AnnotationGitHubRepoID carries, on a store-managed App, GitHub's numeric id
+// for the repository spec.repo names (w10/m490). The id survives a rename or a
+// transfer, so the push webhook matches the App by it instead of by URL. The
+// projector stamps it from the apps row (github_repo_id), which is its source
+// of truth. An annotation, not a spec field: writing it bumps no generation,
+// so stamping it never reads as a new release, and the operator never reads it.
+const AnnotationGitHubRepoID = "app.bex.co/github-repo-id"
+
+// GitHubRepoID is the GitHub repository id the App carries, 0 when it carries
+// none or an unreadable one.
+func GitHubRepoID(meta metav1.Object) int64 {
+	id, err := strconv.ParseInt(meta.GetAnnotations()[AnnotationGitHubRepoID], 10, 64)
+	if err != nil || id < 0 {
+		return 0
+	}
+	return id
+}
+
+// SetGitHubRepoID stamps id on meta, or removes the annotation for 0, and
+// reports whether that changed it.
+func SetGitHubRepoID(meta metav1.Object, id int64) bool {
+	annotations := meta.GetAnnotations()
+	current, has := annotations[AnnotationGitHubRepoID]
+	if id <= 0 {
+		if !has {
+			return false
+		}
+		delete(annotations, AnnotationGitHubRepoID)
+		meta.SetAnnotations(annotations)
+		return true
+	}
+	want := strconv.FormatInt(id, 10)
+	if has && current == want {
+		return false
+	}
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+	annotations[AnnotationGitHubRepoID] = want
+	meta.SetAnnotations(annotations)
+	return true
+}
 
 // CanonicalRepo normalizes a git URL to a comparable key "host/owner/repo":
 // lowercased, scheme (https/http/ssh/git) and any "user@" stripped, scp-style

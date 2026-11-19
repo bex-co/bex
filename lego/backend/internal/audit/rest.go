@@ -187,6 +187,7 @@ func renderMetadata(e Event) map[string]string {
 	for key, value := range map[string]string{
 		"from": e.DisplayNameFrom, "to": e.DisplayNameTo, "domain": e.Domain,
 		"envGroupId": e.EnvGroupID, "envGroupName": e.EnvGroupName,
+		"repoFrom": e.RepoFrom, "repoTo": e.RepoTo,
 	} {
 		if value != "" {
 			md[key] = value

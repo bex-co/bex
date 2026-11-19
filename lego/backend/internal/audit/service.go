@@ -110,6 +110,11 @@ type Event struct {
 	Domain          string
 	EnvGroupID      string
 	EnvGroupName    string
+	// RepoFrom/RepoTo are the repository URL a signed push moved a service or
+	// Blueprint from and to, following GitHub's rename or transfer (w10/m490);
+	// empty for every other row.
+	RepoFrom string
+	RepoTo   string
 	// TwoFactorRequiredTo is the value a workspace admin set the two-factor
 	// requirement TO (w22/m402, migration 0261); nil for every other verb.
 	TwoFactorRequiredTo *bool
@@ -159,6 +164,8 @@ func view(r store.AuditRow) Event {
 		Domain:            r.Domain,
 		EnvGroupID:        r.EnvGroupID,
 		EnvGroupName:      r.EnvGroupName,
+		RepoFrom:          r.RepoFrom,
+		RepoTo:            r.RepoTo,
 
 		TwoFactorRequiredTo:   r.TwoFactorRequiredTo,
 		GoogleLoginRequiredTo: r.GoogleLoginRequiredTo,

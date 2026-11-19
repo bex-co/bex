@@ -2528,6 +2528,17 @@ const koServices: Record<string, TranslationEntry> = {
     message: "구성되지 않음",
     description: "Source card fallback when no source value is available",
   },
+  "services.sourceRepoAccessLostTitle": {
+    message: "bex의 GitHub 앱이 이 저장소를 읽을 수 없습니다",
+    description:
+      "Settings → Source warning title: the GitHub App connected this service's repository and can no longer read it (repoAccessLost, w10/m490)",
+  },
+  "services.sourceRepoAccessLostBody": {
+    message:
+      "푸시가 더 이상 이 서비스를 배포하지 않습니다. 저장소가 다른 GitHub 계정으로 옮겨졌다면 그 계정에 GitHub 앱을 설치하세요. 그렇지 않다면 앱에 저장소 접근 권한을 다시 부여하세요.",
+    description:
+      "Settings → Source warning body: pushes stop reaching bex once the GitHub App loses the repository (moved to an account without the app, or the grant was revoked); what to do (w10/m490)",
+  },
   "services.sourceEdit": {
     message: "편집",
     description: "Button opening the Update Source dialog",

@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -49,6 +50,10 @@ type fakeCloneTokens struct {
 	// defaultBranch is the repository default ValidateRepo reports ("" = no
 	// opinion, like a non-github.com host).
 	defaultBranch string
+	// repoID is the GitHub repository id ValidateRepo reports for a granted
+	// repository (w10/m490); granted is what GrantedRepo answers.
+	repoID  int64
+	granted github.Repo
 }
 
 func (f *fakeCloneTokens) CloneToken(_ context.Context, workspaceID, repo string) (string, bool, error) {
@@ -63,14 +68,20 @@ func (f *fakeCloneTokens) RepoGranted(_ context.Context, _, _ string) (bool, err
 	return f.ok, f.err
 }
 
-func (f *fakeCloneTokens) ValidateRepo(_ context.Context, workspaceID, repo string) (string, error) {
+func (f *fakeCloneTokens) ValidateRepo(_ context.Context, workspaceID, repo string) (string, int64, error) {
 	f.validateCalls++
 	f.lastWorkspace = workspaceID
 	f.lastRepo = repo
 	if f.validateErr != nil {
-		return "", f.validateErr
+		return "", 0, f.validateErr
 	}
-	return f.defaultBranch, nil
+	return f.defaultBranch, f.repoID, nil
+}
+
+func (f *fakeCloneTokens) GrantedRepo(_ context.Context, workspaceID, repo string) (github.Repo, bool, error) {
+	f.lastWorkspace = workspaceID
+	f.lastRepo = repo
+	return f.granted, f.granted.ID != 0, f.err
 }
 
 func ghService(gh CloneTokenSource, apps ...*appv1alpha1.App) (*Service, client.Client) {

@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/bex-co/bex/lego/backend/internal/github"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -51,7 +52,13 @@ type CloneTokenSource interface {
 	// branch an omitted-branch create builds, per Render's Create service
 	// contract (w8/m76) — or "" when it has no opinion about the repository
 	// (GitHub off, or not a github.com repo). The value is unvalidated.
-	ValidateRepo(ctx context.Context, workspaceID, repoURL string) (defaultBranch string, err error)
+	// repoID is GitHub's id for a repository the workspace's installation
+	// grants, the id pushes match by (w10/m490); 0 otherwise.
+	ValidateRepo(ctx context.Context, workspaceID, repoURL string) (defaultBranch string, repoID int64, err error)
+	// GrantedRepo reads repoURL through the workspace's installation: the
+	// repository's id and current name, ok=false when no connection grants
+	// it. The repository-identity backfill's lookup (w10/m490).
+	GrantedRepo(ctx context.Context, workspaceID, repoURL string) (repo github.Repo, ok bool, err error)
 }
 
 // deployWorkspace resolves the workspace whose GitHub connection owns this App's

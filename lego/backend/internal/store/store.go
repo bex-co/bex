@@ -160,9 +160,15 @@ type App struct {
 	// whole life, so it is recorded once at create. Empty is a pre-w6/m46 row
 	// and reads as web_service, exactly as the CRD contract defines the empty
 	// type; the projector backfills the real value from the live CR on resync.
-	Type  string `json:"type,omitempty"`
-	Repo  string `json:"repo,omitempty"`
-	Image string `json:"image,omitempty"`
+	Type string `json:"type,omitempty"`
+	Repo string `json:"repo,omitempty"`
+	// GitHubRepoID is GitHub's numeric id for Repo, which survives a rename or
+	// a transfer (w10/m490): a push matches the service by it rather than by
+	// the URL. 0 when unknown: another host, a repository the workspace's
+	// GitHub App installation does not grant, or a row not yet backfilled.
+	// Internal, never on a tenant-facing read.
+	GitHubRepoID int64  `json:"-"`
+	Image        string `json:"image,omitempty"`
 	// RegistryCredentialID preserves Render's tri-state image credential
 	// binding: nil is legacy host auto-resolution, pointer-to-empty explicitly
 	// selects no credential, and a non-empty value pins one workspace credential.
@@ -1272,12 +1278,12 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 			a.Slug = slug
 			if err := tx.QueryRow(ctx,
 				`INSERT INTO apps (id, tenant_id, name, slug, type, repo, image, registry_credential_id, branch, port, replicas, tier, idle_ttl_seconds, suspended, project_id, environment_id, container_policy, port_mode, creation_pending,
-				   build_source_id, build_source_image, scope_project_id, display_name, object_name)
+				   build_source_id, build_source_image, scope_project_id, display_name, object_name, github_repo_id)
 				 VALUES ($1, $2, $3, $4, $5, NULLIF($6,''), NULLIF($7,''), $8, $9, $10, $11, $12, $13, $14, NULLIF($15,''), NULLIF($16,''), $17, $18, $19,
-				   NULLIF($20,''), $21, NULLIF($22,''), $23, NULLIF($24,''))
+				   NULLIF($20,''), $21, NULLIF($22,''), $23, NULLIF($24,''), $25)
 				 RETURNING created_at`,
 				a.ID, a.TenantID, a.Name, a.Slug, a.Type, a.Repo, a.Image, a.RegistryCredentialID, a.Branch, a.Port, a.Replicas, a.Tier, a.IdleTTLSeconds, a.Suspended, a.ProjectID, a.EnvironmentID, a.ContainerPolicy, a.PortMode, a.CreationPending,
-				a.BuildSourceID, a.BuildSourceImage, a.ScopeProjectID, a.DisplayName, a.ObjectName,
+				a.BuildSourceID, a.BuildSourceImage, a.ScopeProjectID, a.DisplayName, a.ObjectName, a.GitHubRepoID,
 			).Scan(&a.CreatedAt); err != nil {
 				return err
 			}
@@ -1321,7 +1327,7 @@ const appColumns = `a.id, a.tenant_id, a.name, a.slug, a.type, COALESCE(a.repo,'
 	a.branch, a.port, a.replicas, a.tier, a.idle_ttl_seconds, a.suspended,
 	COALESCE(a.project_id::text,''), COALESCE(a.environment_id::text,''), a.created_at, a.container_policy, a.port_mode, a.creation_pending,
 	COALESCE(a.display_name,''), COALESCE(a.build_source_id,''), a.build_source_image, COALESCE(a.scope_project_id,''),
-	COALESCE(a.object_name,'')`
+	COALESCE(a.object_name,''), a.github_repo_id`
 
 // SetAppBuildSource links service id to build source carrierID, deploying
 // image (empty until the source has built): the source then provides the
@@ -1443,7 +1449,7 @@ func scanApp(row pgx.Row) (App, error) {
 	err := row.Scan(&a.ID, &a.TenantID, &a.Name, &a.Slug, &a.Type, &a.Repo, &a.Image,
 		&a.RegistryCredentialID, &a.Branch, &a.Port, &a.Replicas, &a.Tier, &a.IdleTTLSeconds, &a.Suspended,
 		&a.ProjectID, &a.EnvironmentID, &a.CreatedAt, &a.ContainerPolicy, &a.PortMode, &a.CreationPending, &a.DisplayName,
-		&a.BuildSourceID, &a.BuildSourceImage, &a.ScopeProjectID, &a.ObjectName)
+		&a.BuildSourceID, &a.BuildSourceImage, &a.ScopeProjectID, &a.ObjectName, &a.GitHubRepoID)
 	return a, err
 }
 
@@ -1967,7 +1973,7 @@ func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
 		err := rows.Scan(&d.ID, &d.TenantID, &d.Name, &d.Slug, &d.Type, &d.Repo, &d.Image,
 			&d.RegistryCredentialID, &d.Branch, &d.Port, &d.Replicas, &d.Tier, &d.IdleTTLSeconds, &d.Suspended,
 			&d.ProjectID, &d.EnvironmentID, &d.CreatedAt, &d.ContainerPolicy, &d.PortMode, &d.CreationPending, &d.DisplayName,
-			&d.BuildSourceID, &d.BuildSourceImage, &d.ScopeProjectID, &d.ObjectName, &d.TenantName, &envRules, &d.SourceRevision, &d.OverlappingDeployPolicy, &d.TenantPlan)
+			&d.BuildSourceID, &d.BuildSourceImage, &d.ScopeProjectID, &d.ObjectName, &d.GitHubRepoID, &d.TenantName, &envRules, &d.SourceRevision, &d.OverlappingDeployPolicy, &d.TenantPlan)
 		if err != nil {
 			return nil, err
 		}
@@ -2492,8 +2498,12 @@ func (s *PGStore) SetAppSource(ctx context.Context, id, repo, image, branch stri
 	const next = `NULLIF($2, ''), NULLIF($3, ''), $4, $5,
 		CASE WHEN ` + noOwnSource + ` THEN a.build_source_id END,
 		CASE WHEN ` + noOwnSource + ` THEN a.build_source_image ELSE '' END`
+	// A GitHub repository id names the repository the row built from, so a
+	// new repository forgets it; the caller records the new one
+	// (SetAppGitHubRepoID) once it knows it (w10/m490).
 	return s.updateAppRow(ctx, "",
-		`(repo, image, branch, registry_credential_id, build_source_id, build_source_image) = (`+next+`)`,
+		`(repo, image, branch, registry_credential_id, build_source_id, build_source_image) = (`+next+`),
+		github_repo_id = CASE WHEN a.repo IS DISTINCT FROM NULLIF($2, '') THEN 0 ELSE a.github_repo_id END`,
 		`(a.repo, a.image, a.branch, a.registry_credential_id, a.build_source_id, a.build_source_image) IS DISTINCT FROM (`+next+`)`,
 		fmt.Errorf("app: %w", ErrNotFound), id, repo, image, branch, registryCredentialID)
 }

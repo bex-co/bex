@@ -1,19 +1,19 @@
 # w10 · m490 — A renamed or transferred GitHub repository keeps deploying
 
-**Worker:** worker10 **Goal:** a push to a GitHub repository that was renamed or transferred after a service or Blueprint was connected to it still deploys the service (or syncs the Blueprint), because bex matches GitHub's stable repository id rather than the URL it stored, and the stored `repo` follows the new name. **Status:** todo
+**Worker:** worker10 **Goal:** a push to a GitHub repository that was renamed or transferred after a service or Blueprint was connected to it still deploys the service (or syncs the Blueprint), because bex matches GitHub's stable repository id rather than the URL it stored, and the stored `repo` follows the new name. **Status:** blocked (t001–t004 and t006–t008 done 2026-11-18; t005, the production rename check, waits for the production deploy that carries this milestone; then t009 closes it)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Store GitHub's repository id for every git-backed service and Blueprint, at create or connect, and backfill existing ones through the installation token | 1h | — |
-| [t002](t002.md) | An App-signed push matches services and Blueprints by repository id first, by URL only where no id is stored | 1h | t001 |
-| [t003](t003.md) | A push whose repository id matches but whose URL differs moves the stored `repo` to the new canonical URL and records the change | 1h | t002 |
-| [t004](t004.md) | A connected service whose repository the GitHub App can no longer read says so on Settings → Source | 45m | t001 |
-| [t005](t005.md) | Production check: rename a QA repository, push, and the service deploys and reads the new URL | 30m | t003, t004 |
-| [t006](t006.md) | Render parity | 30m | t003, t004 |
-| [t007](t007.md) | Simplify | 15m | t006 |
-| [t008](t008.md) | Test coverage | 45m | t006, t007 |
+| [t001](done/t001.md) | Store GitHub's repository id for every git-backed service and Blueprint, at create or connect, and backfill existing ones through the installation token — **DONE** | 1h | — |
+| [t002](done/t002.md) | An App-signed push matches services and Blueprints by repository id first, by URL only where no id is stored — **DONE** | 1h | t001 |
+| [t003](done/t003.md) | A push whose repository id matches but whose URL differs moves the stored `repo` to the new canonical URL and records the change — **DONE** | 1h | t002 |
+| [t004](done/t004.md) | A connected service whose repository the GitHub App can no longer read says so on Settings → Source — **DONE** | 45m | t001 |
+| [t005](t005.md) | Production check: rename a QA repository, push, and the service deploys and reads the new URL — **BLOCKED (production deploy)** | 30m | t003, t004 |
+| [t006](done/t006.md) | Render parity — **DONE** | 30m | t003, t004 |
+| [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 45m | t006, t007 |
 | [t009](t009.md) | Closeout | 10m | t005, t008 |
 
 Total: **9 tasks, about 5h55m**.
@@ -41,3 +41,7 @@ Total: **9 tasks, about 5h55m**.
 - **Expected outcome:** renaming or transferring a repository no longer stops its services from deploying, and no push goes unanswered without a trace because of a stale URL.
 - **Why now:** one real service missed a month of pushes without any signal, and the only recovery was a manual source change. Every repository rename does the same thing to every service and Blueprint on it, silently.
 - **Render parity:** included. The stored `repo` read by REST, GraphQL, MCP and the dashboard changes after a rename, and Settings → Source gains an access warning.
+
+## Gate (2026-11-18)
+
+Parked in `blocked/` with every implementable task done. t005 replays definition of done item 4 on production, which needs the production deploy that carries the commit `feat(api): a push follows a renamed GitHub repository by its id (w10/m490)`. The gate clears by itself: once the production pin carries that commit (`bash scripts/fetch-app-kubeconfig.sh`, or the `hetzner-prod` context, then the `bex-api` Deployment's image tag in `bex-system`), a worker runs t005 as the QA user and t009 closes the milestone. No user action is needed.

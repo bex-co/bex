@@ -3877,7 +3877,8 @@ func (s *Service) resolveBlueprintBranch(ctx context.Context, tenantID string, r
 	// One validation or preview asks once per repository, however many of
 	// its services build it.
 	reported, err := core.Memoized(ctx, "repoDefaultBranch:"+tenantID+"\x00"+core.CanonicalRepo(spec.Repo), func() (string, error) {
-		return s.GitHub.ValidateRepo(ctx, tenantID, spec.Repo)
+		branch, _, err := s.GitHub.ValidateRepo(ctx, tenantID, spec.Repo)
+		return branch, err
 	})
 	if err != nil {
 		return err

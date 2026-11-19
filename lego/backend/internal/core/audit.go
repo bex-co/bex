@@ -174,6 +174,11 @@ type AuditEvent struct {
 	DisplayNameFrom string
 	DisplayNameTo   string
 	Domain          string
+	// RepoFrom/RepoTo are the repository URL a service or Blueprint stored
+	// before and after a signed push moved it to the name GitHub now gives the
+	// repository (w10/m490, RecordRepoMoved). Empty for every other verb.
+	RepoFrom string
+	RepoTo   string
 	// EdgeCacheEnabledTo is what an edge-cache profile save (w9/m345), or a
 	// plan change's edge-cache effect (w9/088), turned caching TO: true for
 	// Render's edge_cache_enabled, false for edge_cache_disabled. Nil when a
@@ -1160,6 +1165,43 @@ func (b *Base) RecordServiceBuildSourceLinked(ctx context.Context, app *appv1alp
 	feed := row(AuditVerbSetSourceAndRegistryCredential)
 	feed.FeedOnly = true
 	b.recordAudits(ctx, feed, row(AuditVerbLinkBuildSource))
+}
+
+// AuditVerbUpdateBlueprint is a Blueprint's settings edit (apps.UpdateBlueprint
+// and MCP's update_blueprint check); RecordBlueprintRepoMoved records a moved
+// repository under it.
+const AuditVerbUpdateBlueprint = "apps.UpdateBlueprint"
+
+// RepoMoveCaller is the caller a followed repository rename's audit row names:
+// the git webhook, which moved it on GitHub's word, as a worker's system rows
+// name the worker (RecordDatabaseSystemEffect).
+const RepoMoveCaller = "git-webhook"
+
+// RecordServiceRepoMoved records that a GitHub App-signed push moved app's
+// stored repository URL from one name to the other, following GitHub's rename
+// or transfer of the repository (w10/m490). It is the source change it is,
+// apps.SetSourceAndRegistryCredential, recorded as the system's, in the
+// service's own workspace: nobody asked. The caller records it once per move
+// that landed.
+func (b *Base) RecordServiceRepoMoved(ctx context.Context, app *appv1alpha1.App, from, to string) {
+	b.recordRepoMoved(ctx, AuditVerbSetSourceAndRegistryCredential, app.Labels[LabelTenant], canonicalAppTarget(app), from, to)
+}
+
+// RecordBlueprintRepoMoved is RecordServiceRepoMoved for a Blueprint, recorded
+// as the Blueprint settings edit it is.
+func (b *Base) RecordBlueprintRepoMoved(ctx context.Context, workspaceID, blueprintID, from, to string) {
+	b.recordRepoMoved(ctx, AuditVerbUpdateBlueprint, workspaceID, BlueprintTarget(blueprintID), from, to)
+}
+
+// recordRepoMoved writes a followed rename's row in the resource's own
+// workspace (the single workspace when it has none, store-less).
+func (b *Base) recordRepoMoved(ctx context.Context, verb, workspaceID, target, from, to string) {
+	resource := DefaultWorkspace
+	if workspaceID != "" {
+		resource = WorkspaceObject(workspaceID)
+	}
+	b.recordAudit(ctx, AuditEvent{Verb: verb, Resource: resource, Target: target, Outcome: AuditAllowed, At: b.Now(),
+		Caller: RepoMoveCaller, CallerMethod: "internal", RepoFrom: from, RepoTo: to})
 }
 
 // RecordDiskChanged records a disk verb that completed with Render's disk

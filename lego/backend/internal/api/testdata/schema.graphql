@@ -658,6 +658,8 @@ type AuditLog {
   oauthGrantScopes: [String]
   oauthScopes: [String]
   relation: String
+  repoFrom: String
+  repoTo: String
   resource: String
   sourceIp: String
   status: String
@@ -2761,6 +2763,7 @@ type Service {
   renderSubdomainPolicy: String
   replicas: Int
   repo: String
+  repoAccessLost: Boolean
   revision: String
   rootDir: String
   routes: [StaticRoute]

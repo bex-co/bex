@@ -114,6 +114,11 @@ query Server($id: String!) {
     # Build & Deploy card's Auto-Deploy hint reads this instead of a host regex.
     # Only the by-id read computes it (the list query has no such field).
     pushDeliveryMethod
+    # repoAccessLost (w10/m490): bex's GitHub app connected this service's
+    # repository and can no longer read it (moved to an account the app is not
+    # installed on, or its grant was revoked), so no push reaches bex. Settings
+    # → Source warns on it. Only the by-id read computes it.
+    repoAccessLost
     # notifyOnFail is Render's per-service deploy-failure notification override
     # (w4/m21, docs/render-artifacts/notify-on-fail.md): default | notify | ignore.
     notifyOnFail

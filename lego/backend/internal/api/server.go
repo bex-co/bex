@@ -138,7 +138,11 @@ type Server struct {
 	// their targets' serving ports (w6/m148). main.go starts it with the serve
 	// context.
 	ServiceRefs *apps.ServiceRefPropagator
-	Postgres    *postgres.Service
+	// RepoIdentities resolves GitHub's repository id for services and
+	// Blueprints that have none, so their pushes match by it (w10/m490).
+	// main.go starts it with the serve context; store-off ⇒ no-op.
+	RepoIdentities *apps.RepoIdentityBackfill
+	Postgres       *postgres.Service
 	// PostgresExpiry expires and deletes free Postgres databases (ADR009
 	// §Free-plan expiry, w8/m126). main.go starts it with the serve context.
 	PostgresExpiry *postgres.FreeExpirySweeper
@@ -1289,6 +1293,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		DeferredDeploys:    &deploys.DeferredDeployWorker{Svc: deploysSvc},
 		DomainVerification: &apps.DomainVerificationWorker{Svc: appsSvc},
 		ServiceRefs:        &apps.ServiceRefPropagator{Svc: appsSvc},
+		RepoIdentities:     &apps.RepoIdentityBackfill{Svc: appsSvc},
 		AgentSessionCompleter: &agentsessions.Completer{
 			Store: d.AgentSessionStore, Sandbox: agentLifecycle, Builds: d.AgentRepoEnvironmentBuildStore,
 			IdleTTL:              d.AgentSandboxIdleTTL,

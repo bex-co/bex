@@ -85,6 +85,10 @@ type AuditRow struct {
 	Domain          string
 	EnvGroupID      string
 	EnvGroupName    string
+	// RepoFrom/RepoTo are a followed repository rename's URLs (migration
+	// 0298, w10/m490); empty on every other row.
+	RepoFrom string
+	RepoTo   string
 	// TwoFactorRequiredTo is the value a workspace admin set the two-factor
 	// requirement TO (migration 0261); nil for every other verb.
 	TwoFactorRequiredTo *bool
@@ -172,8 +176,8 @@ func insertAuditEvent(ctx context.Context, q interface {
 		    autoscaling_cpu_from, autoscaling_cpu_to, autoscaling_memory_from, autoscaling_memory_to,
 		    display_name_from, display_name_to, domain, autoscaling_enabled_from, edge_cache_enabled_to,
 		    two_factor_required_to, read_replicas_from, read_replicas_to, source_ip, user_agent,
-		    env_var_keys, feed_only, oauth_grant_scopes, instance_id, google_login_required_to)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64)
+		    env_var_keys, feed_only, oauth_grant_scopes, instance_id, google_login_required_to, repo_from, repo_to)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66)
 		ON CONFLICT DO NOTHING`,
 		auditID(ev), workspaceOf(ev.Resource), ev.Caller, ev.CallerMethod, ev.Verb, ev.Resource, ev.Target, ev.TargetName, string(ev.Outcome), ev.At,
 		ev.MaintenanceModeTo,
@@ -190,7 +194,8 @@ func insertAuditEvent(ctx context.Context, q interface {
 		ev.AutoscalingCPUFrom, ev.AutoscalingCPUTo, ev.AutoscalingMemoryFrom, ev.AutoscalingMemoryTo,
 		nullIfEmpty(ev.DisplayNameFrom), nullIfEmpty(ev.DisplayNameTo), nullIfEmpty(ev.Domain), ev.AutoscalingEnabledFrom, ev.EdgeCacheEnabledTo,
 		ev.TwoFactorRequiredTo, ev.ReadReplicasFrom, ev.ReadReplicasTo, nullIfEmpty(ev.SourceIP), nullIfEmpty(ev.UserAgent),
-		nullIfEmptyScopes(ev.EnvVarKeys), ev.FeedOnly, nullIfEmptyScopes(ev.OAuthGrantScopes), nullIfEmpty(ev.InstanceID), ev.GoogleLoginRequiredTo)
+		nullIfEmptyScopes(ev.EnvVarKeys), ev.FeedOnly, nullIfEmptyScopes(ev.OAuthGrantScopes), nullIfEmpty(ev.InstanceID), ev.GoogleLoginRequiredTo,
+		nullIfEmpty(ev.RepoFrom), nullIfEmpty(ev.RepoTo))
 	return err
 }
 
@@ -220,13 +225,14 @@ func nullIfEmptyScopes(scopes []string) []string {
 
 const auditColumns = `id, workspace_id, caller, caller_method, verb, resource, target, target_name, outcome, at, maintenance_mode_to, role_from, role_to, revoked_key_count, relation, oauth_client_id, oauth_audience, oauth_scopes,
 	display_name_from, display_name_to, domain, env_group_id, env_group_name, two_factor_required_to, source_ip, user_agent, env_var_keys,
-	oauth_grant_scopes, instance_id, google_login_required_to`
+	oauth_grant_scopes, instance_id, google_login_required_to, repo_from, repo_to`
 
 func scanAuditRow(row pgx.Row) (AuditRow, error) {
 	var r AuditRow
-	var relation, oauthClientID, oauthAudience, nameFrom, nameTo, domain, groupID, groupName, sourceIP, userAgent, instanceID *string
+	var relation, oauthClientID, oauthAudience, nameFrom, nameTo, domain, groupID, groupName, sourceIP, userAgent, instanceID, repoFrom, repoTo *string
 	err := row.Scan(&r.ID, &r.WorkspaceID, &r.Caller, &r.CallerMethod, &r.Verb, &r.Resource, &r.Target, &r.TargetName, &r.Outcome, &r.At, &r.MaintenanceModeTo, &r.RoleFrom, &r.RoleTo, &r.RevokedKeyCount, &relation, &oauthClientID, &oauthAudience, &r.OAuthScopes,
-		&nameFrom, &nameTo, &domain, &groupID, &groupName, &r.TwoFactorRequiredTo, &sourceIP, &userAgent, &r.EnvVarKeys, &r.OAuthGrantScopes, &instanceID, &r.GoogleLoginRequiredTo)
+		&nameFrom, &nameTo, &domain, &groupID, &groupName, &r.TwoFactorRequiredTo, &sourceIP, &userAgent, &r.EnvVarKeys, &r.OAuthGrantScopes, &instanceID, &r.GoogleLoginRequiredTo,
+		&repoFrom, &repoTo)
 	if err != nil {
 		return AuditRow{}, err
 	}
@@ -234,6 +240,7 @@ func scanAuditRow(row pgx.Row) (AuditRow, error) {
 		&r.Relation: relation, &r.OAuthClientID: oauthClientID, &r.OAuthAudience: oauthAudience,
 		&r.DisplayNameFrom: nameFrom, &r.DisplayNameTo: nameTo, &r.Domain: domain, &r.EnvGroupID: groupID, &r.EnvGroupName: groupName,
 		&r.SourceIP: sourceIP, &r.UserAgent: userAgent, &r.InstanceID: instanceID,
+		&r.RepoFrom: repoFrom, &r.RepoTo: repoTo,
 	} {
 		if src != nil {
 			*dst = *src

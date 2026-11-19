@@ -282,9 +282,12 @@ type fakeClient struct {
 	// empty, as GitHub always names one, unless noDefaultBranch is set).
 	defaultBranch   string
 	noDefaultBranch bool
-	commit          Commit // GetCommit result (w9/001)
-	commitErr       error
-	getCommitCalls  int // how many times GetCommit ran (cache assertions)
+	// lookedUp is the id and full name LookupRepo's metadata carries: GitHub
+	// answers a renamed repository's old name with its new one (w10/m490).
+	lookedUp       Repo
+	commit         Commit // GetCommit result (w9/001)
+	commitErr      error
+	getCommitCalls int // how many times GetCommit ran (cache assertions)
 	// gotCommitRef records the (token, owner, repo, ref) GetCommit was called
 	// with, for assertions.
 	gotCommitRef []string
@@ -353,7 +356,8 @@ func (c *fakeClient) MintInstallationToken(_ context.Context, installationID int
 
 func (c *fakeClient) LookupRepo(_ context.Context, token, _, _ string) (Repo, bool, error) {
 	c.repoTokens = append(c.repoTokens, token)
-	meta := Repo{DefaultBranch: c.defaultBranch}
+	meta := c.lookedUp
+	meta.DefaultBranch = c.defaultBranch
 	if meta.DefaultBranch == "" && !c.noDefaultBranch {
 		meta.DefaultBranch = "main" // GitHub always names one; tests opt out explicitly
 	}

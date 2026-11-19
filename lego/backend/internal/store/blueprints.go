@@ -49,6 +49,10 @@ type Blueprint struct {
 	// other readers leave them empty, which means adopt with no suffix.
 	ExistingResources string `json:"-"`
 	ResourceSuffix    string `json:"-"`
+	// GitHubRepoID is GitHub's numeric id for Repo (w10/m490), which a push
+	// matches the Blueprint by: 0 when unknown. Read by ListAutoSyncBlueprints;
+	// other readers leave it zero. Internal, never on an API view.
+	GitHubRepoID int64 `json:"-"`
 	// ExecutionGeneration is the lifecycle fencing counter (w8/m37, migration
 	// 0111): bumped by every admission, disconnect, and explicit
 	// re-creation. Only the Admit/Complete paths populate it; the remaining

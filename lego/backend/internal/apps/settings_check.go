@@ -526,11 +526,14 @@ func withProbedSource(ctx context.Context, probed sourceFields) context.Context 
 	return context.WithValue(ctx, probedSourceKey{}, probed)
 }
 
-func sourceAlreadyProbed(ctx context.Context, next sourceFields) bool {
+// probedSource is the source the preflight probed when it is next, carrying
+// what the probes learned (the repository's GitHub id).
+func probedSource(ctx context.Context, next sourceFields) (sourceFields, bool) {
 	probed, ok := ctx.Value(probedSourceKey{}).(sourceFields)
-	return ok && probed.repo == next.repo && probed.image == next.image &&
+	same := ok && probed.repo == next.repo && probed.image == next.image &&
 		probed.branch == next.branch &&
 		sameStringPtr(probed.registryCredentialID, next.registryCredentialID)
+	return probed, same
 }
 
 // checkSourcePatch folds patch onto a's current source and runs every gate
@@ -565,8 +568,8 @@ func (s *Service) checkSourcePatch(ctx context.Context, a *appv1alpha1.App, patc
 		sameStringPtr(next.registryCredentialID, a.Spec.RegistryCredentialID) {
 		return next, false, nil
 	}
-	if sourceAlreadyProbed(ctx, next) {
-		return next, true, nil
+	if probed, ok := probedSource(ctx, next); ok {
+		return probed, true, nil
 	}
 	probe := a.DeepCopy()
 	next.applyTo(probe)
@@ -576,9 +579,11 @@ func (s *Service) checkSourcePatch(ctx context.Context, a *appv1alpha1.App, patc
 	if next.repo != "" && next.repo != a.Spec.Repo && s.GitHub != nil {
 		// The reported default is unused: a source edit keeps its own branch
 		// rule (explicit empty restores the legacy default).
-		if _, err := s.GitHub.ValidateRepo(ctx, s.AppWorkspace(ctx, a), next.repo); err != nil {
+		_, repoID, err := s.GitHub.ValidateRepo(ctx, s.AppWorkspace(ctx, a), next.repo)
+		if err != nil {
 			return sourceFields{}, false, err
 		}
+		next.githubRepoID = repoID
 	}
 	return next, true, nil
 }

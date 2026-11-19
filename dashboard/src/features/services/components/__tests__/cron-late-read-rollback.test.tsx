@@ -179,6 +179,7 @@ const link = new ApolloLink(
               environmentId: null,
               linkedEnvGroupIds: [],
               pushDeliveryMethod: "none",
+              repoAccessLost: false,
               notifyOnFail: "default",
               notificationsToSend: "default",
               renderSubdomainPolicy: null,

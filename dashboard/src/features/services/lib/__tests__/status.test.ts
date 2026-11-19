@@ -139,6 +139,7 @@ function server(overrides: Partial<ServerNode> = {}): ServerNode {
     environmentId: null,
     linkedEnvGroupIds: null,
     pushDeliveryMethod: null,
+    repoAccessLost: null,
     notifyOnFail: null,
     notificationsToSend: null,
     renderSubdomainPolicy: null,
@@ -229,6 +230,7 @@ describe("toServiceView", () => {
       // The list node doesn't select push deliverability, so the mapper reports
       // null rather than guessing a delivery mechanism (w6/m99).
       pushDeliveryMethod: null,
+      repoAccessLost: null,
       notifyOnFail: null,
       renderSubdomainPolicy: null,
       notificationsToSend: null,
@@ -328,6 +330,13 @@ describe("toServiceView", () => {
         .pushDeliveryMethod,
     ).toBe("manual_webhook");
     expect(toServiceView(node()).pushDeliveryMethod).toBeNull();
+  });
+
+  it("carries lost repository access only from the detail query (w10/m490)", () => {
+    expect(toServiceView(server({ repoAccessLost: true })).repoAccessLost).toBe(
+      true,
+    );
+    expect(toServiceView(node()).repoAccessLost).toBeNull();
   });
 
   it("falls back to id for a missing name and null for a missing url", () => {

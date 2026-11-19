@@ -632,6 +632,7 @@ func (s *Service) UpdateBuildSource(ctx context.Context, id string, req UpdateBu
 			if _, err := s.Store.SetAppSource(ctx, id, next.repo, next.image, next.branch, clonePtr(next.registryCredentialID)); err != nil {
 				return BuildSourceView{}, fmt.Errorf("update source of truth: %w", err)
 			}
+			s.recordGitHubRepoID(ctx, id, next)
 		}
 		if name != "" {
 			if err := s.Store.SetAppDisplayName(ctx, id, name); err != nil {
