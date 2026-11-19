@@ -195,6 +195,7 @@ func nativeUtilityCases() []nativeUtilityCase {
 		{"sqlite3", "94", "sqlite3: command not found", nativePythonRuntime},
 		{"libvips", "95", "cannot load library 'libvips.so.42'", nativePythonRuntime},
 		{"ghostscript", "97", "gs: command not found", nativePythonRuntime},
+		{"typescript", "99", "tsc: command not found", nativeNodeRuntime},
 		{"python-metadata", "103", "No module named 'setuptools'", nativeNodeRuntime},
 		{"python-pip", "103", "No module named pip", nativeNodeRuntime},
 		{"python-headers", "103", "Python.h: No such file or directory", nativeNodeRuntime},
@@ -325,6 +326,11 @@ func nativeUtilityRemovalLayer(removed, name string) string {
 		// Only the program goes; libgs, its init resources and the URW fonts
 		// stay, so the original render fails on the missing gs alone.
 		command = `gs --version && rm /usr/bin/gs && test ! -e /usr/bin/gs && hash -r && ! command -v gs && ldconfig -p | grep -q 'libgs\.so\.10' && test -f "$(dpkg -L libgs10-common | grep '/Resource/Init/gs_init\.ps$')" && test -f /usr/share/fonts/type1/urw-base35/NimbusSans-Regular.t1`
+	case "typescript":
+		// Only the /usr/bin/tsc wrapper goes; the private Node, the compiler
+		// package and its platform binary with the standard library stay, so
+		// the original build fails at its tsc step, after the before proof.
+		command = `tsc --version && rm /usr/bin/tsc && test ! -e /usr/bin/tsc && hash -r && ! command -v tsc && /opt/bex/native-node-tools/node /opt/bex/native-node-tools/node_modules/typescript/bin/tsc --version && test -f /opt/bex/native-node-tools/node_modules/@typescript/typescript-linux-*/lib/lib.es2022.d.ts`
 	case "python-metadata":
 		command = pythonControls + " && rm -r /usr/lib/python3/dist-packages/setuptools && test ! -e /usr/lib/python3/dist-packages/setuptools && /usr/bin/python3 -m pip --version && test -f /usr/include/python3.11/Python.h"
 	case "python-pip":

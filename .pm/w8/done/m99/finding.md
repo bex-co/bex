@@ -2,7 +2,7 @@
 
 Why: ordinary native TypeScript build commands cannot emit the JavaScript service even though the documented native environment supplies a compiler.
 
-**Severity:** major. **Ownership:** operator native-image assembly. Functional CLI sweep420,2026-10-17. Published Bex0.3.2/a6350da0 and unchanged Render2.27.0/a764810a7682, isolated human-QA bex-canary/tea-daif693dqjvc73e7as3g, noninteractive JSON, api.bex.co/v1. Source7fa064b894d6f75e7f44f5bc65d10c5d0dd4d8c5; actual serving revision unknown. [Complete evidence](evidence/cli-sweep420/README.md).
+**Severity:** major. **Ownership:** operator native-image assembly. Functional CLI sweep420,2026-10-17. Published Bex0.3.2/a6350da0 and unchanged Render2.27.0/a764810a7682, isolated human-QA bex-canary/tea-daif693dqjvc73e7as3g, noninteractive JSON, api.bex.co/v1. Source7fa064b894d6f75e7f44f5bc65d10c5d0dd4d8c5; actual serving revision unknown. Complete evidence (sweep 420, purged 2026-11-04).
 
 ## Reproduction and observation
 

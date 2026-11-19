@@ -121,10 +121,38 @@ def extra_cases():
   rsync(*sync,'--delete-excluded','tree/','out/');assert not (out/'keep.tmp').exists() and (out/'data.txt').read_text()=='changed\n'
   rsync('-a','tree','nested/');assert (d/'nested'/'tree'/'bin'/'run.sh').read_bytes()==tool.read_bytes() and not (d/'nested'/'bin').exists()
   results.append('jq/rsync: m98 original manifest filter and asset copy, Oniguruma Unicode regex, --arg/--argjson, raw/@sh/@base64 output, slurp, -e/compile/runtime exit statuses; rsync -a modes/mtimes/symlinks/empty dirs, excluded files kept from --delete until --delete-excluded, itemized dry run, trailing-slash semantics')
-  # Compile actual strict interface+enum at runtime; noEmitOnError failure.
-  (d/'typed.cts').write_text("enum Kind { Nice='雪' }; interface Row { count:number; kind:Kind }; const r:Row={count:7,kind:Kind.Nice};console.log(JSON.stringify({value:r.count*3,label:r.kind}));\n")
-  run(['tsc','--strict','--noEmitOnError','--module','NodeNext','--target','ES2022','--outDir','typed-out','typed.cts'],cwd=d);assert json.loads(run(['node','typed-out/typed.cjs'],cwd=d))=={'value':21,'label':'雪'}
-  (d/'bad.cts').write_text("const count:number='bad';\n");run(['tsc','--strict','--noEmitOnError','--module','NodeNext','--outDir','bad-out','bad.cts'],cwd=d,fails=True);assert not list((d/'bad-out').glob('*.cjs'));results.append('TypeScript actual interface/enum compilation + noEmitOnError/no-output failure')
+  # TypeScript beyond the original build: m99's own source through its original argv, the compiler's exit statuses, the packaged standard library, project and build modes, ES modules with declarations and source maps, its private Node, and a project's own compiler ahead of the platform's.
+  m99=next(x for x in json.loads((ROOT/'original-cases.json').read_text()) if x['mid']==99);tref=m99['validation_reference'];ts=d/'ts-app';ts.mkdir();version='Version '+tref['typescript']
+  for n,s in json.loads(gzip.decompress(base64.b64decode(m99['commands']['initial']['build'].split("Buffer.from('",1)[1].split("'",1)[0]))).items():(ts/n).write_text(s,encoding='utf-8')
+  for n in tref['files']:shutil.copyfile(ROOT/'source-carrier'/n,ts/n)
+  def tsc(*a,cwd=ts,env=None):r=subprocess.run(['tsc',*a],cwd=cwd,capture_output=True,env=env,timeout=90);return r.returncode,r.stdout.decode()
+  assert sha((ts/'qa-ts-app.cts').read_bytes())==tref['source_ts_sha256'] and tsc('--strict','--noEmitOnError','--module','NodeNext','--target','ES2022','--outDir','dist','qa-ts-app.cts')==(0,'')
+  # 7.0.2 emits these bytes on linux/amd64 (production, w8/m99) and linux/arm64: the enum lowered, every type erased.
+  emitted=(ts/'dist'/'qa-ts-app.cjs').read_bytes();assert sha(emitted)=='af1acfde1f1d6e4c12bea3d17f01516494d0f06053ee372377670b7bf3621242' and emitted.startswith(b'"use strict";') and b'Tone["Cool"] = "cool";' in emitted and b'interface' not in emitted
+  rows=tref['rows'];expected={'labels':[r['label'] for r in rows],'total':sum(r['quantity'] for r in rows),'tones':['cool' if i%2 else 'warm' for i in range(len(rows))]}
+  out=json.loads(run(['node','dist/qa-ts-app.cjs','build'],cwd=ts).decode().split('QA_TS_AFTER ',1)[1])
+  assert expected==tref['expected'] and out['result']==expected and out['input']==rows and out['compiler']=={'status':0,'error':None,'version':version} and out['compiled_js_sha256']==sha(emitted)
+  # Exit 1 when noEmitOnError withholds output, 2 when output is emitted despite errors, 1 for an unknown option.
+  (ts/'bad.cts').write_text("const n:number='bad';\nexport {};\n");code,diag=tsc('--strict','--noEmitOnError','--outDir','bad-out','bad.cts');assert code==1 and 'bad.cts(1,7): error TS2322:' in diag and not (ts/'bad-out').exists()
+  code,diag=tsc('--strict','--outDir','emitted-anyway','bad.cts');assert code==2 and 'error TS2322' in diag and (ts/'emitted-anyway'/'bad.cjs').is_file()
+  code,diag=tsc('--bex-unknown-option','bad.cts');assert code==1 and 'error TS5023' in diag
+  # The packaged standard library: ES2022's Array.prototype.at checks under its target and is refused under lib es2020.
+  (ts/'lib.mts').write_text('export const last:number|undefined=[1,2,3].at(-1);\n');assert tsc('--strict','--noEmit','--module','NodeNext','--target','ES2022','lib.mts')==(0,'')
+  code,diag=tsc('--strict','--noEmit','--module','NodeNext','--target','ES2020','--lib','es2020','lib.mts');assert code==1 and 'error TS2550' in diag and "'es2022'" in diag
+  # A bare tsc reads tsconfig.json; --build records its state and then finds the project up to date.
+  proj=ts/'proj';(proj/'src').mkdir(parents=True);(proj/'src'/'index.ts').write_text('export const greet=(s:string):string=>`hi ${s}`;\nconsole.log(greet("雪 two words"));\n',encoding='utf-8')
+  (proj/'tsconfig.json').write_text('{"compilerOptions":{"strict":true,"target":"ES2022","module":"commonjs","outDir":"build","rootDir":"src"},"include":["src"]}\n')
+  assert tsc(cwd=proj)==(0,'') and run(['node','build/index.js'],cwd=proj).decode()=='hi 雪 two words\n' and tsc('--build',cwd=proj)==(0,'') and (proj/'tsconfig.tsbuildinfo').is_file()
+  code,log=tsc('--build','--verbose',cwd=proj);assert code==0 and "Project 'tsconfig.json' is up to date" in log
+  # ES modules: .mts compiles to .mjs with declarations and a source map naming its source, and Node runs the result.
+  (ts/'m.mts').write_text('export function add(a:number,b:number):number{return a+b}\n');(ts/'main.mts').write_text('import {add} from "./m.mjs";\nconsole.log(JSON.stringify({v:add(2,3)}));\n')
+  assert tsc('--strict','--module','NodeNext','--target','ES2022','--declaration','--sourceMap','--outDir','esm','main.mts','m.mts')==(0,'') and json.loads(run(['node','esm/main.mjs'],cwd=ts))=={'v':5}
+  assert (ts/'esm'/'m.d.mts').read_text()=='export declare function add(a: number, b: number): number;\n' and json.loads((ts/'esm'/'m.mjs.map').read_text())['sources']==['../m.mts'] and (ts/'esm'/'m.mjs').read_text().endswith('//# sourceMappingURL=m.mjs.map')
+  # The wrapper runs its private Node, so it works with no node on PATH; npm scripts still run a project's own node_modules/.bin/tsc first.
+  bare={'PATH':'/usr/bin:/bin'};assert shutil.which('node',path=bare['PATH']) is None and tsc('--version',env=bare)==(0,version+'\n')
+  local=ts/'local';(local/'node_modules'/'.bin').mkdir(parents=True);stub=local/'node_modules'/'.bin'/'tsc';stub.write_text('#!/bin/sh\necho "Version 5.9.3-project-local"\n');stub.chmod(0o755);(local/'package.json').write_text('{"name":"local","private":true,"scripts":{"v":"tsc --version"}}\n')
+  assert run(['npm','run','--silent','v'],cwd=local,env=dict(os.environ,npm_config_cache=str(d/'npm-cache'),npm_config_update_notifier='false')).decode()=='Version 5.9.3-project-local\n' and tsc('--version',cwd=local)==(0,version+'\n')
+  results.append('TypeScript: m99 original source via its own argv, frozen 7.0.2 emit and independent result; exit 1 with noEmitOnError and no output, 2 with output, 1 for an unknown option; packaged ES2022 lib refused under lib es2020; tsconfig project and --build modes; ES modules with declarations and source maps; private Node with no node on PATH; project-local tsc first in npm scripts')
   # Real noninteractive bundling and unresolved module failure.
   (d/'domain.mjs').write_text("export function value(){return {n:21,label:'雪'};}\n");(d/'entry.mjs').write_text("import {value} from './domain.mjs';console.log(JSON.stringify(value()));\n");stats=run(['webpack','./entry.mjs','--mode','production','--target','node','--output-path',str(d/'bundle'),'--output-filename','app.cjs','--json'],cwd=d);assert json.loads(stats)['errors']==[];assert json.loads(run(['node','bundle/app.cjs'],cwd=d))=={'n':21,'label':'雪'}
   (d/'broken.mjs').write_text("import './does-not-exist.mjs';\n");bad=run(['webpack','./broken.mjs','--mode','production','--target','node','--output-path',str(d/'bad-bundle'),'--json'],cwd=d,fails=True);assert json.loads(bad)['errors'];results.append('Webpack real two-module runtime production bundle + unresolved-module nonzero statistics')
