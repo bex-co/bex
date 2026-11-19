@@ -44,7 +44,15 @@ func refuseUnimplementedHeaders(r *http.Request, rt *route) *Error {
 			return errNotImplemented("Server-side encryption settings are not implemented; objects are encrypted at rest by the store")
 		case strings.HasPrefix(lower, "x-amz-grant-"):
 			return errNotImplemented("ACLs are not implemented; publish a bucket with `bex s3 public`")
-		case strings.HasPrefix(lower, "x-amz-object-lock-"), lower == "x-amz-bucket-object-lock-enabled":
+		case lower == "x-amz-bucket-object-lock-enabled":
+			// rclone sends `false` on every CreateBucket, which is S3's own default: it asks for
+			// nothing, so it is served (found by scripts/s3-contract.sh, w21/m499 t004).
+			for _, v := range values {
+				if !strings.EqualFold(v, "false") {
+					return errNotImplemented("Object lock is not implemented")
+				}
+			}
+		case strings.HasPrefix(lower, "x-amz-object-lock-"):
 			return errNotImplemented("Object lock is not implemented")
 		case lower == "x-amz-website-redirect-location":
 			return errNotImplemented("Website redirects are not implemented")

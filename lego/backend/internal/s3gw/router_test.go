@@ -166,6 +166,7 @@ func TestAWriteWithAnUnimplementedHeaderIsRefusedAndNeverIgnored(t *testing.T) {
 		{"PUT", "/b/k?partNumber=1&uploadId=u", "If-None-Match", "*"},
 		{"PUT", "/b", "x-amz-acl", "public-read"},
 		{"PUT", "/b", "x-amz-bucket-object-lock-enabled", "true"},
+		{"PUT", "/b", "x-amz-bucket-object-lock-enabled", "yes"},
 	}
 	for _, c := range refused {
 		rec, doc := g.do(g.signed(k, c.method, c.target, nil, func(r *http.Request) { r.Header.Set(c.header, c.value) }))
@@ -181,6 +182,8 @@ func TestAWriteWithAnUnimplementedHeaderIsRefusedAndNeverIgnored(t *testing.T) {
 		{"PUT", "/b/k", "x-amz-storage-class", "STANDARD"}, {"PUT", "/b/k", "x-amz-acl", "private"},
 		{"PUT", "/b/k", "x-amz-meta-mtime", "1700000000"}, {"PUT", "/b/k", "x-amz-sdk-checksum-algorithm", "CRC32"},
 		{"PUT", "/b/k", "x-amz-user-agent", "aws-sdk"},
+		// rclone's CreateBucket says object lock is off, which is what S3 does without it.
+		{"PUT", "/b", "x-amz-bucket-object-lock-enabled", "false"},
 	} {
 		ran = false
 		rec, doc := g.do(g.signed(k, c.method, c.target, nil, func(r *http.Request) { r.Header.Set(c.header, c.value) }))

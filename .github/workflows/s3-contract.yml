@@ -1,0 +1,58 @@
+name: s3 contract
+
+# bex serves the S3 API for stock clients (ADR112 D11, w21/m499 t004). The clients
+# are other people's software and change their defaults in releases (checksum
+# algorithm, payload framing, addressing), so this runs the pinned aws-cli v2,
+# rclone and boto3 of scripts/s3-contract.sh against bex's own gateway, over TLS,
+# on real Postgres and a fake Wasabi, every week and when anything that decides what
+# it runs changes (the script and its pins, the gateway, the store). It is not on
+# every PR: the Go suite on the AWS SDK for Go v2 already runs with the backend
+# tests. A failure here means a client moved or the gateway drifted from what the
+# clients send; the log ends with the defaults each client used.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 7 * * 1"
+  push:
+    branches: [main]
+    paths:
+      - "lego/backend/internal/s3gw/**"
+      - "lego/backend/internal/objectstorage/**"
+      - "scripts/s3-contract.sh"
+      - "scripts/s3-contract-boto3.py"
+      - "scripts/ci-fetch-verified.sh"
+      - ".github/workflows/s3-contract.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s3-contract
+  cancel-in-progress: true
+
+jobs:
+  clients:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    env:
+      # GOWORK=off, same as backend-test.yml: setup-go installs the Go line of
+      # lego/backend/go.mod and pins GOTOOLCHAIN=local, while lego/go.work declares
+      # the cli's newer line, so the workspace would not load.
+      GOWORK: "off"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: lego/backend/go.mod
+          cache-dependency-path: |
+            lego/backend/go.sum
+      - name: Run aws-cli, rclone and boto3 against the S3 gateway
+        # The script starts its own Postgres (the digest backend-test.yml pins) with Docker.
+        run: bash scripts/s3-contract.sh
