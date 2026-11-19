@@ -1,6 +1,6 @@
 # w6 · m469 — An operator deploy that leaves the Key Value proxy's code alone keeps every tenant connection
 
-**Worker:** worker6 **Goal:** a store's `kv-internal-proxy` rolls only when its own binary changes, not on every operator deploy, so tenant connections through a store's internal (and external TLS) URL survive the platform's routine releases, as on Render. **Status:** blocked (t001–t004, t006, t007 done; t005's shipping-deploy check passed on production, and its held probe client waits for the next production deploy, then t008)
+**Worker:** worker6 **Goal:** a store's `kv-internal-proxy` rolls only when its own binary changes, not on every operator deploy, so tenant connections through a store's internal (and external TLS) URL survive the platform's routine releases, as on Render. **Status:** done
 
 ## Tasks (in order)
 
@@ -10,10 +10,10 @@
 | t002 | [A proxy the operator has no record for keeps its image when that image carries the same binary](done/t002.md) — **DONE** | 1h30m | t001 |
 | t003 | [Prove it on the local cluster](done/t003.md) — **DONE** | 45m | t002 |
 | t004 | [Record it in ADR021 and file the SNI-proxy half](done/t004.md) — **DONE** | 30m | t002 |
-| t005 | [Ship and verify on production](t005.md) | 1h | t003, t004 |
+| t005 | [Ship and verify on production](done/t005.md) — **DONE** | 1h | t003, t004 |
 | t006 | [Simplify](done/t006.md) — **DONE** | 15m | t005 |
 | t007 | [Test coverage](done/t007.md) — **DONE** | 30m | t005 |
-| t008 | [Closeout](t008.md) | 10m | t006, t007 |
+| t008 | [Closeout](done/t008.md) — **DONE** | 10m | t006, t007 |
 
 ## Definition of done
 
@@ -54,6 +54,16 @@
 ## Unblock check — 2026-11-18 23:14Z (the gate cleared; the next one is the held client's deploy)
 
 - **Affected:** t005, then t008. **Source:** verified evidence, no user decision. Every production pin since 08:13Z contains `be2914a57`: `054f29128f64` (pin `0070f86ab`, 08:13Z), `1ec5007be0fa` (`c7f44bd87`, 14:44Z) and `1db506777e17` (`e5ace7826`, 21:22Z) all pass `git merge-base --is-ancestor be2914a57 <producer>`.
-- **Result, DoD bullet 1 (met):** the shipping deploy (`054f29128f64`) and both later ones created no ReplicaSet for any of the three stores' `<id>-internal` Deployments. Each proxy pod kept its name and its 01:32Z start time, and each still runs `bex-operator@sha256:b4104643…`. All three producers carry the same `/kv-internal-proxy` (`d1a7d7d0e8ecc328…`), so no roll was due. The manager recorded that hash on each Deployment's own annotations at 08:15Z. Details: [t005 § Progress](t005.md#progress--2026-11-18-2314z-steps-12-done-step-3-holding).
+- **Result, DoD bullet 1 (met):** the shipping deploy (`054f29128f64`) and both later ones created no ReplicaSet for any of the three stores' `<id>-internal` Deployments. Each proxy pod kept its name and its 01:32Z start time, and each still runs `bex-operator@sha256:b4104643…`. All three producers carry the same `/kv-internal-proxy` (`d1a7d7d0e8ecc328…`), so no roll was due. The manager recorded that hash on each Deployment's own annotations at 08:15Z. Details: [t005 § Progress](done/t005.md#progress--2026-11-18-2314z-steps-12-done-step-3-holding).
 - **Still open:** DoD bullet 2 needs a client already held when a deploy happens, and every deploy so far came before the probe existed. Probe `red-dbv30j86mruc7390onu0` in `bex-canary` and pod `m469-t005-client` have held `client_id=25` since 23:11:16Z. t005 step 4 adds a production check of DoD bullet 4: internal auth rolls the probe onto the held digest.
 - **Gate (clears by itself, then worker):** the next production pin, the first `pin platform images` commit after `e5ace7826`. Production deploys once the 21:22Z pin is 6 h old, so not before 03:22Z on 2026-11-19, and `dc41a1a90` and `ab56ddb2a` are already waiting. Its producer must keep `/kv-internal-proxy` at `d1a7d7d0…`, which `proxy-pin -file /kv-internal-proxy` checks. Then t005 § Progress "Next" and t008.
+
+## Closeout — 2026-11-19 10:58Z (the gate cleared; every bullet holds on production)
+
+- **Gate cleared (verified evidence, no user decision).** Production deployed twice after `e5ace7826`: pin `826d32e42` (producer `7af50a28168d`, manager ReplicaSet at 03:53:12Z) and pin `19faf35f3` (`4b2cebd0bd03`, 09:17:12Z). `cmd/proxy-pin -file /kv-internal-proxy` read `kept: … d1a7d7d0e8ecc328… unchanged` for both, so both were deploys to watch. Details: [t005 § Progress 2026-11-19](done/t005.md#progress--2026-11-19-1058z-steps-35-done).
+- **Bullet 1:** met on 2026-11-18 (the shipping deploy `054f29128f64` and two later ones rolled no proxy), and the two new deploys also left the three stores' proxies on their 01:32Z ReplicaSets and pods.
+- **Bullet 2:** probe client `m469-t005-client` held `client_id=25` through `red-dbv30j86mruc7390onu0:6379` from 23:11:16Z to 10:56:10Z, across both deploys and a third manager roll at 06:40Z, answering `+PONG` every minute. The probe's proxy stayed on `62e7ab56…`, ReplicaSet `-6b44c79465`, while the manager moved to `7ce6ae1e…`, then `4407341b…`.
+- **Bullet 3:** t001, t002 and t007's tests (unchanged).
+- **Bullet 4:** on production, enabling internal authentication on the probe rolled its proxy once, onto the held `62e7ab56…` rather than the manager's `4407341b…`, and the held unauthenticated client read EOF within 26 s. The Valkey pod did not restart. The plan-change half is covered by envtest only (t005 notes why).
+- **Bullets 5 and 6:** w6/141, now [w6/m470](../../blocked/m470/README.md), and ADR021 § 10.
+- **Probes removed:** the store (`DELETE` 204, then `GET` 404) and pod `m469-t005-client`. w6/m512 (draining on `SIGTERM`) may now ship: its precondition, this held-client deploy being recorded, holds.
