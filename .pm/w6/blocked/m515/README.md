@@ -1,6 +1,6 @@
 # w6 · m515 — An SNI-proxy roll lets external Key Value and Postgres clients finish, and the edge keeps admitting new ones
 
-**Worker:** worker6 **Goal:** when a deploy changes `/kv-sni-proxy` or `/pg-sni-proxy`, each node's new proxy pod is Ready before the old one stops, so new external clients keep connecting on every node throughout the roll. The old pod then stops accepting and keeps relaying its open streams until each ends or a bounded grace period passes, so an external command in flight at the roll gets its reply. **Status:** todo (t001–t005 done and shipped 2026-11-19 after w6/m470 closed; t006 next: production's record of the shipping roll and of a later SNI-moving deploy. See § Unblock record.)
+**Worker:** worker6 **Goal:** when a deploy changes `/kv-sni-proxy` or `/pg-sni-proxy`, each node's new proxy pod is Ready before the old one stops, so new external clients keep connecting on every node throughout the roll. The old pod then stops accepting and keeps relaying its open streams until each ends or a bounded grace period passes, so an external command in flight at the roll gets its reply. **Status:** blocked (2026-11-19: t001–t005 shipped as `495d04b86` and t007 is done. t006 waits for a production pin that carries `495d04b86`; its Key Value new-connection loop is armed. See § Park record (2026-11-19, after the ship).)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | [Prove it on the local cluster](done/t004.md) | 1h30m | t003 | — **DONE**
 | t005 | [Record it in ADR021, ADR009 and the operator guide](done/t005.md) | 30m | t003 | — **DONE**
 | t006 | [Ship and verify on production](t006.md) | 1h30m | t004, t005, w6/m470 t006 |
-| t007 | [Simplify](t007.md) | 15m | t006 |
+| t007 | [Simplify](done/t007.md) | 15m | t006 | — **DONE**
 | t008 | [Test coverage](t008.md) | 30m | t006 |
 | t009 | [Closeout](t009.md) | 10m | t007, t008 |
 
@@ -98,3 +98,10 @@
   - t004's reference to w6/m512 t005 now names `.pm/w6/done/m512/done/t005.md`.
 - **Rechecked on the merged tree:** `go test -race` on `internal/sniproxy` and both SNI mains, `make test`, `make lint`, `bash scripts/gitops-validate.sh` and `bash scripts/docs-links-validate.sh`.
 - **Next (t006):** once production's pin carries the ship commit, record that each DaemonSet rolled once by surge with no `hostPort`, the drain env and the 40 s grace, with a new-connection loop logging no failure. Then hold clients across the first later deploy that moves an SNI pin. w6/m518 t003 onward waits for that record.
+
+## Park record (2026-11-19, after the ship)
+
+- **Verdict: blocked** on production running the ship commit. `495d04b86` carries t001–t005. The newest pin, `d38508f70` (producer `1c63b6fe0a34`), predates it, and t006 reads the deploy that rolls it.
+- **Done in this run:** the stash applied and shipped (§ Unblock record), the stash dropped, and t007's `/simplify` ran on the shipped diff with nothing to apply. t008's open point, a `main`-level test for the second signal and the manager-exit path, stays for after t006.
+- **Armed for t006 step 1:** `m515-t006-kv-loop` in `bex-canary` opens a new external Key Value connection about every second and logs each failure. No Postgres loop: the workspace's free database was a QA run's. Production's DaemonSet state before the deploy, and the exact next steps, are in [t006](t006.md#progress-2026-11-19-2110z-shipped-as-495d04b86-waiting-for-a-pin-that-carries-it).
+- **Gate:** pin must carry `495d04b86`. Then t006 steps 1–3. w6/m518 t003 onward waits for t006's record.
