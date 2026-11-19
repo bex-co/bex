@@ -1,6 +1,6 @@
 # w6 · m515 — An SNI-proxy roll lets external Key Value and Postgres clients finish, and the edge keeps admitting new ones
 
-**Worker:** worker6 **Goal:** when a deploy changes `/kv-sni-proxy` or `/pg-sni-proxy`, each node's new proxy pod is Ready before the old one stops, so new external clients keep connecting on every node throughout the roll. The old pod then stops accepting and keeps relaying its open streams until each ends or a bounded grace period passes, so an external command in flight at the roll gets its reply. **Status:** todo (t001–t005 and t007 done. t006 resumes now that production's pin carries `495d04b86`: see § Unblock record (2026-11-19, the pin carries the ship).)
+**Worker:** worker6 **Goal:** when a deploy changes `/kv-sni-proxy` or `/pg-sni-proxy`, each node's new proxy pod is Ready before the old one stops, so new external clients keep connecting on every node throughout the roll. The old pod then stops accepting and keeps relaying its open streams until each ends or a bounded grace period passes, so an external command in flight at the roll gets its reply. **Status:** blocked (2026-11-19: t001–t005 and t007 done. t006 step 1 is recorded: the shipping deploy `c8c774658` rolled both DaemonSets by surge, and no new connection failed. Step 2's probes are armed on both proxies and wait for the next deploy that moves an SNI pin. See § Park record (2026-11-19, step 2 armed).)
 
 ## Tasks (in order)
 
@@ -111,3 +111,11 @@
 - **Affected:** w6/m515 t006, and through it t008 and t009. **Source:** verified evidence, the gate's own release condition.
 - **The gate holds.** Production pin `c8c774658` (21:57:46Z) pins `98e053468f52`, which contains `495d04b86` (`git merge-base --is-ancestor`). Its deploy run 44620029262 logged `moved` for both SNI pins (`697fe9c0…` → `1ec4a7c2…`). At 22:16Z both DaemonSets run `1ec4a7c2…` with `maxSurge: 1`, `maxUnavailable: 0`, no `hostPort`, the drain variable at `"30"`, a 5 s `preStop` and a 40 s grace.
 - **Next (t006):** step 1's record from that deploy and `m515-t006-kv-loop`'s log. Then step 2's held clients on both proxies across the next deploy that moves an SNI pin, and step 3.
+
+## Park record (2026-11-19, step 2 armed)
+
+- **Verdict: blocked** on the next production deploy that moves an SNI pin. No commit after `98e053468f52` touches a package the SNI binaries link, so the next pin is expected to keep both (t006 § Next).
+- **Done in this run:** t006 step 1 ([t006 § Step 1](t006.md#step-1-the-shipping-deploy-2026-11-19-pin-c8c774658)). Pin `c8c774658` moved both SNI pins, and each DaemonSet rolled once by surge, each node's new pod Ready before its old pod was deleted. `m515-t006-kv-loop` logged no failed connection. Acceptance criterion 1 is met.
+- **Deviation from § Design "One roll":** Argo applied `495d04b86`'s templates at push, at 21:09Z, on the old image, so each DaemonSet rolled twice: by template, then by binary at 22:00Z. Both rolls were surges and neither failed a new connection, but neither drained, since the old pods ran the old binary. An SNI template change rolls at push.
+- **Armed for step 2:** held `BLPOP` and `pg_sleep` clients, a `SUBSCRIBE` and an idle `psql` session, and a new-connection loop on each proxy, all in `bex-canary`. They reconnect by themselves, so they need no re-arming before the deploy. The free Postgres probe `dpg-dbvnees3j89c738afv00` is new. [t006 § Step 2](t006.md#step-2-armed-2026-11-19-2228z) lists them, and [t006 § Next](t006.md#next-the-worker-after-the-next-pin-that-moves-an-sni-pin) gives the check and the cleanup.
+- **Gate:** pin must carry `c8c774658`, which clears at the next pin, then the first deploy from there that moves an SNI pin. If a pin keeps both, park again on it. w6/m518 t003 onward waits for t006's record.
