@@ -2160,7 +2160,7 @@ const enServices: Record<string, TranslationEntry> = {
       "Edge-caching origin-controlled-all option description, with the dynamic-content warning",
   },
   "services.edgeCachingPurgeOnDeploy": {
-    message: "The cache is purged on every deploy.",
+    message: "The cache is purged on every successful deploy.",
     description: "Note under the edge-caching options",
   },
   "services.edgeCachingPaidOnly": {

@@ -2174,7 +2174,7 @@ const ruServices: Record<string, TranslationEntry> = {
       "Edge-caching origin-controlled-all option description, with the dynamic-content warning",
   },
   "services.edgeCachingPurgeOnDeploy": {
-    message: "Кеш очищается при каждом деплое.",
+    message: "Кеш очищается при каждом успешном деплое.",
     description: "Note under the edge-caching options",
   },
   "services.edgeCachingPaidOnly": {

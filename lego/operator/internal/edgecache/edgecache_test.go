@@ -56,7 +56,16 @@ func newCache(t *testing.T, profile string, o *origin, now func() time.Time) *Ha
 	srv := httptest.NewServer(o)
 	t.Cleanup(srv.Close)
 	u, _ := url.Parse(srv.URL)
-	return New(u, Config{Profile: profile, MaxBytes: 1 << 20, MaxObjectBytes: 1 << 16, Now: now})
+	return mustNew(t, u, Config{Profile: profile, MaxBytes: 1 << 20, MaxObjectBytes: 1 << 16, Now: now})
+}
+
+func mustNew(t *testing.T, upstream *url.URL, cfg Config) *Handler {
+	t.Helper()
+	h, err := New(upstream, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return h
 }
 
 func get(h http.Handler, method, target string, header map[string]string) *httptest.ResponseRecorder {
@@ -193,14 +202,14 @@ func TestTheCacheStaysWithinItsByteBound(t *testing.T) {
 	u, _ := url.Parse(srv.URL)
 	// Learn what one of these entries is charged (body, key, headers and the
 	// entry's own structure), then size the cache to hold two of them.
-	probe := New(u, Config{Profile: ProfileAll, MaxBytes: 1 << 20, MaxObjectBytes: 1 << 10})
+	probe := mustNew(t, u, Config{Profile: ProfileAll, MaxBytes: 1 << 20, MaxObjectBytes: 1 << 10})
 	get(probe, "GET", "http://app.test/aaaa", nil)
 	one := probe.size
 	if one <= int64(len("body:/aaaa")) {
 		t.Fatalf("an entry is charged %d, want more than its body", one)
 	}
 	bound := 2*one + one/2
-	h := New(u, Config{Profile: ProfileAll, MaxBytes: bound, MaxObjectBytes: 1 << 10})
+	h := mustNew(t, u, Config{Profile: ProfileAll, MaxBytes: bound, MaxObjectBytes: 1 << 10})
 	get(h, "GET", "http://app.test/aaaa", nil)
 	get(h, "GET", "http://app.test/bbbb", nil)
 	get(h, "GET", "http://app.test/cccc", nil) // evicts /aaaa
@@ -237,7 +246,7 @@ func TestValidatorsNeverStoreA304(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 	u, _ := url.Parse(srv.URL)
-	h := New(u, Config{Profile: ProfileAll, MaxBytes: 1 << 20, MaxObjectBytes: 1 << 16})
+	h := mustNew(t, u, Config{Profile: ProfileAll, MaxBytes: 1 << 20, MaxObjectBytes: 1 << 16})
 	get(h, "GET", "http://app.test/x", map[string]string{"If-None-Match": `"v1"`})
 	w := get(h, "GET", "http://app.test/x", nil)
 	if sawValidator.Load() || w.Code != http.StatusOK || w.Body.String() != "page" {
@@ -256,7 +265,7 @@ func TestTheOriginSeesTheKeysEncodingPreference(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 	u, _ := url.Parse(srv.URL)
-	h := New(u, Config{Profile: ProfileAll, MaxBytes: 1 << 20, MaxObjectBytes: 1 << 16})
+	h := mustNew(t, u, Config{Profile: ProfileAll, MaxBytes: 1 << 20, MaxObjectBytes: 1 << 16})
 	get(h, "GET", "http://app.test/a", map[string]string{"Accept-Encoding": "br, gzip"})
 	get(h, "GET", "http://app.test/b", map[string]string{"Accept-Encoding": "gzip;q=0, br"})
 	if len(got) != 2 || got[0] != "gzip" || got[1] != "identity" {

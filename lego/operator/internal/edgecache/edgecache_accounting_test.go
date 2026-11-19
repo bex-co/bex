@@ -37,7 +37,7 @@ func newCacheOver(t *testing.T, h http.Handler, cfg Config) *Handler {
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 	u, _ := url.Parse(srv.URL)
-	return New(u, cfg)
+	return mustNew(t, u, cfg)
 }
 
 // perEntryOverhead is the least the cache may charge an entry beyond its body,

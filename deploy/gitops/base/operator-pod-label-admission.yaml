@@ -22,14 +22,15 @@
 # activation). It changes nothing zot runs; every other rule still holds for
 # that pod.
 #
-# The edge-cache control annotations are the other exception (w3/m486): on a
-# pod that runs bex's edge-cache proxy (a container named edge-cache), the
-# operator may set or change app.bex.co/cache-purged-at and
-# app.bex.co/cache-profile (edgecache.PurgedAtAnnotation,
-# edgecache.ProfileAnnotation). The proxy reads them from its pod's downward-API
-# annotations file, so a manual purge or a profile switch reaches it without
-# restarting the instance. They change nothing the kubelet runs; removing one is
-# still denied, and every other rule still holds for that pod.
+# The edge-cache control annotations are the other exception (w3/m486,
+# w3/m489): on a pod that runs bex's edge-cache proxy (a container named
+# edge-cache: a service's cache tier pod), the operator may set or change
+# app.bex.co/cache-purged-at, app.bex.co/cache-profile and
+# app.bex.co/cache-revision (edgecache.PurgedAtAnnotation, ProfileAnnotation,
+# RevisionAnnotation). The proxy reads them from its pod's downward-API
+# annotations file, so a manual purge, a successful deploy or a profile switch
+# reaches it without restarting it. They change nothing the kubelet runs;
+# removing one is still denied, and every other rule still holds for that pod.
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:
@@ -65,7 +66,7 @@ spec:
     - name: edgeCacheControl
       expression: >-
         object.spec.containers.exists(c, c.name == 'edge-cache')
-        ? ['app.bex.co/cache-purged-at', 'app.bex.co/cache-profile'] : []
+        ? ['app.bex.co/cache-purged-at', 'app.bex.co/cache-profile', 'app.bex.co/cache-revision'] : []
   validations:
     - expression: object.spec == oldObject.spec
       message: the operator may relabel a pod but never change its spec

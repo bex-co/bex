@@ -2188,7 +2188,7 @@ const esServices: Record<string, TranslationEntry> = {
       "Edge-caching origin-controlled-all option description, with the dynamic-content warning",
   },
   "services.edgeCachingPurgeOnDeploy": {
-    message: "La caché se purga en cada despliegue.",
+    message: "La caché se purga en cada despliegue exitoso.",
     description: "Note under the edge-caching options",
   },
   "services.edgeCachingPaidOnly": {

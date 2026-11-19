@@ -159,7 +159,7 @@ func applyProbeServerDefaults(p *corev1.Probe) {
 
 // applyVolumeServerDefaults fills in the file-mode defaults of the volume
 // sources, and a downwardAPI volume's fieldRef.apiVersion on each item: the
-// edge-cache sidecar's control file is one (w3/m486).
+// edge-cache proxy's control file is one (w3/m486).
 func applyVolumeServerDefaults(v *corev1.Volume) {
 	if d := v.DownwardAPI; d != nil {
 		if d.DefaultMode == nil {

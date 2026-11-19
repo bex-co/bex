@@ -431,10 +431,10 @@ func TestWithPrivateNetworkPorts(t *testing.T) {
 			ports: []corev1.ServicePort{{Name: servingPortName, Port: 8080, TargetPort: named}},
 			want:  map[int32]intstr.IntOrString{8080: named, 10000: named},
 		},
-		"an edge-cached web service's 10000 goes through the cache too": {
+		"an untyped web service's 10000 copies its primary's target": {
 			app:   appv1alpha1.App{Spec: appv1alpha1.AppSpec{Port: 3000}},
-			ports: []corev1.ServicePort{{Name: servingPortName, Port: 3000, TargetPort: intstr.FromString(edgeCachePortName)}},
-			want:  map[int32]intstr.IntOrString{3000: intstr.FromString(edgeCachePortName), 10000: intstr.FromString(edgeCachePortName)},
+			ports: []corev1.ServicePort{{Name: servingPortName, Port: 3000, TargetPort: intstr.FromInt32(3000)}},
+			want:  map[int32]intstr.IntOrString{3000: intstr.FromInt32(3000), 10000: intstr.FromInt32(3000)},
 		},
 		"a web service already on 10000 is unchanged": {
 			app:   appv1alpha1.App{Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService}},

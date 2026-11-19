@@ -32,6 +32,12 @@ const (
 	// PurgedAtAnnotation is the App's last manual purge
 	// (appv1alpha1.CachePurgedAtAnnotation); a new value empties the cache.
 	PurgedAtAnnotation = "app.bex.co/cache-purged-at"
+	// RevisionAnnotation is the deploy whose success last emptied the cache.
+	// The operator sets it on each pod of a service's cache tier (w3/m489),
+	// which outlives the app's instances, so a deploy no longer starts it
+	// empty by replacing it; a new value empties the cache, as Render purges
+	// on each successful deploy and never on a failed one.
+	RevisionAnnotation = "app.bex.co/cache-revision"
 	// ProfileAnnotation is the profile the service caches by now; absent, the
 	// proxy keeps the one its pod started with.
 	ProfileAnnotation = "app.bex.co/cache-profile"
@@ -45,31 +51,40 @@ type Controller struct {
 	// Logf reports each purge, profile switch and read failure; nil is silent.
 	Logf func(format string, args ...any)
 
-	read     bool
-	purgedAt string
+	read bool
+	// stamps is the value of each purge annotation as last read.
+	stamps map[string]string
 }
+
+// purgeAnnotations are the annotations a new value of which empties the cache.
+var purgeAnnotations = []string{PurgedAtAnnotation, RevisionAnnotation}
 
 // NewController follows the file at path for h.
 func NewController(h *Handler, path string) *Controller {
-	return &Controller{handler: h, path: path}
+	return &Controller{handler: h, path: path, stamps: map[string]string{}}
 }
 
 // Sync reads the control file once. The first read only records the purge
-// stamp, since a new proxy starts empty; a later read whose stamp differs
-// purges. The profile annotation becomes the handler's profile, and without
-// one the profile the proxy started with (Config.Profile) holds.
+// annotations (the manual purge stamp and the cache revision), since a new
+// proxy starts empty; a later read in which either differs purges, once. The
+// profile annotation becomes the handler's profile, and without one the
+// profile the proxy started with (Config.Profile) holds.
 func (c *Controller) Sync() error {
 	raw, err := os.ReadFile(c.path)
 	if err != nil {
 		return err
 	}
 	annotations := parseAnnotations(raw)
-	if stamp := annotations[PurgedAtAnnotation]; stamp != c.purgedAt {
-		if c.read {
-			c.handler.Purge()
-			c.logf("edge-cache: purged (%s=%s)", PurgedAtAnnotation, stamp)
+	var causes []string
+	for _, name := range purgeAnnotations {
+		if stamp := annotations[name]; stamp != c.stamps[name] {
+			causes = append(causes, name+"="+stamp)
+			c.stamps[name] = stamp
 		}
-		c.purgedAt = stamp
+	}
+	if c.read && len(causes) > 0 {
+		c.handler.Purge()
+		c.logf("edge-cache: purged (%s)", strings.Join(causes, ", "))
 	}
 	profile, ok := annotations[ProfileAnnotation]
 	if !ok {

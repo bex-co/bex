@@ -186,12 +186,11 @@ var _ = Describe("Operator pod label admission", func() {
 		}
 	})
 
-	// w3/m486: a purge and a profile switch reach a running edge-cache proxy
-	// through two annotations the operator patches on its pod
-	// (annotateEdgeCachePods). The policy let the operator change no pod
-	// annotation, so on production every pass of a caching service whose pods
-	// read their control file would have been refused, and its reconcile with
-	// it, before any deploy step ran.
+	// w3/m486, w3/m489: a purge, a successful deploy and a profile switch
+	// reach a running edge-cache proxy through three annotations the operator
+	// patches on its tier pod (annotateEdgeCacheTierPods). The policy let the
+	// operator change no pod annotation, so on production every such patch
+	// would have been refused.
 	It("admits the edge-cache control annotations on a pod running the proxy, and nothing more", func() {
 		admin, operator := startOperatorPodAdmission()
 
@@ -201,30 +200,26 @@ var _ = Describe("Operator pod label admission", func() {
 		app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "srv-podlabelcache", Namespace: "default",
 			Annotations: map[string]string{appv1alpha1.CachePurgedAtAnnotation: purge(time.Minute)}},
 			Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Tier: "starter", CacheProfile: appv1alpha1.CacheProfileStatic}}
-		spec := corev1.PodSpec{Containers: []corev1.Container{
-			{Name: appContainerName, Image: "registry.example/app:1"},
-			edgeCacheContainer("registry.example/bex:1", appv1alpha1.CacheProfileStatic, 10000, 0),
-		}}
-		withEdgeCacheControl(&spec, &spec.Containers[1])
-		pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: app.Name + "-abc", Namespace: app.Namespace,
-			Labels: map[string]string{labelApp: app.Name}}, Spec: spec}
+		pod := tierPod(app, app.Name+"-tier-abc")
+		pod.OwnerReferences = nil
 		Expect(admin.Create(ctx, pod)).To(Succeed())
 		plain := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "srv-podlabelplain-abc", Namespace: app.Namespace,
-			Labels: map[string]string{labelApp: "srv-podlabelplain"}},
+			Labels: map[string]string{labelEdgeCacheTier: app.Name}},
 			Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: appContainerName, Image: "registry.example/app:1"}}}}
 		Expect(admin.Create(ctx, plain)).To(Succeed())
 		awaitOperatorPodAdmission(operator, pod)
 
 		r := &AppReconciler{Client: operator, Scheme: admin.Scheme()}
-		Expect(r.annotateEdgeCachePods(ctx, app)).To(Succeed(), "a purge")
+		Expect(r.annotateEdgeCacheTierPods(ctx, app, "rev-1")).To(Succeed(), "a purge")
 		app.Spec.CacheProfile = appv1alpha1.CacheProfileAll
 		second := purge(2 * time.Minute)
 		app.Annotations[appv1alpha1.CachePurgedAtAnnotation] = second
-		Expect(r.annotateEdgeCachePods(ctx, app)).To(Succeed(), "a switch and a second purge")
+		Expect(r.annotateEdgeCacheTierPods(ctx, app, "rev-2")).To(Succeed(), "a switch, a deploy and a second purge")
 		got := &corev1.Pod{}
 		Expect(admin.Get(ctx, client.ObjectKeyFromObject(pod), got)).To(Succeed())
 		Expect(got.Annotations).To(HaveKeyWithValue(edgecache.PurgedAtAnnotation, second))
 		Expect(got.Annotations).To(HaveKeyWithValue(edgecache.ProfileAnnotation, appv1alpha1.CacheProfileAll))
+		Expect(got.Annotations).To(HaveKeyWithValue(edgecache.RevisionAnnotation, "rev-2"))
 
 		stamp := func(target *corev1.Pod, patch string) error {
 			return operator.Patch(ctx, &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: target.Name, Namespace: target.Namespace}},

@@ -15,9 +15,9 @@ limitations under the License.
 */
 
 // Package edgecache is Render's web-service edge caching
-// (render.com/docs/web-service-caching) as a per-pod caching reverse proxy in
-// front of the app container (w5/m151). It caches what Render caches and
-// reports it the way Render does:
+// (render.com/docs/web-service-caching) as a caching reverse proxy in front of
+// the app (w5/m151). It caches what Render caches and reports it the way
+// Render does:
 //
 //   - Profiles: ProfileStatic caches Render's "common static files" list,
 //     ProfileAll caches every eligible response.
@@ -38,11 +38,20 @@ limitations under the License.
 //     full 200s. Every answer from a stored page carries its Age.
 //
 // Every request, cached or not, goes upstream through one
-// httputil.ReverseProxy, so the app sees the same headers either way. The
-// cache lives in the pod's memory, so every deploy starts empty: Render purges
-// a service's cache on each deploy, and so does this. A manual purge and a
-// profile switch reach a running proxy through its control file (control.go,
-// w3/m486), so neither restarts the instance, as on Render's CDN.
+// httputil.ReverseProxy, so the app sees the same headers either way.
+//
+// It runs in one of two shapes. As a sidecar in each app pod (w5/m151) it
+// keeps bodies in memory (Config.Dir empty) and has no peers, so the cache
+// lives and dies with the pod. As a service's cache tier (w3/m489), a small
+// Deployment in front of the app's Service, it keeps bodies on its pod's
+// bounded disk (Config.Dir) and only their metadata in memory, and the
+// replicas share one cache by key affinity (peers.go): each key has one owner
+// replica, the others forward it there, so every key is filled once for the
+// whole service and a restart, a scale change or a crash of the app keeps it.
+// A manual purge, a profile switch and, for the tier, a successful deploy reach
+// a running proxy through its control file (control.go, w3/m486), so none
+// restarts an instance, as on Render's CDN. A proxy process always starts
+// empty: it cannot know which purges it missed while it was down.
 package edgecache
 
 import (
@@ -55,7 +64,9 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"path"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -110,9 +121,18 @@ type Config struct {
 	// Profile is the profile the proxy starts with (SetProfile replaces it).
 	Profile string
 	// MaxBytes bounds the whole cache; MaxObjectBytes one response body;
-	// MaxFills how many responses may be buffered for storing at once.
+	// MaxFills how many responses may be kept for storing at once, each in
+	// memory or in a temporary file under Dir.
 	MaxBytes, MaxObjectBytes int64
 	MaxFills                 int
+	// Dir, when set, keeps response bodies as files in this directory, never
+	// whole in memory; New creates it and empties it. MaxBytes then bounds the
+	// stored bodies on disk, and MaxIndexBytes the metadata kept in memory for
+	// them (key, header and each entry's own structure; MaxBytes/32 when not
+	// positive). Empty, everything an entry holds is in memory and MaxBytes
+	// bounds it all.
+	Dir           string
+	MaxIndexBytes int64
 	// Now is the clock; nil means time.Now.
 	Now func() time.Time
 }
@@ -123,22 +143,37 @@ type Handler struct {
 	proxy   *httputil.ReverseProxy
 	fills   chan struct{}
 	profile atomic.Pointer[string]
+	// peers is the tier this replica shares its cache with (peers.go); nil or
+	// empty, every request is served here.
+	peers     atomic.Pointer[peerSet]
+	forwarder *httputil.ReverseProxy
 
 	mu      sync.Mutex
 	entries map[string]*list.Element
 	lru     *list.List
-	size    int64
-	flights map[string]*flight
+	// size is what the entries are charged against MaxBytes, index what they
+	// are charged against MaxIndexBytes (disk mode only): see charge.
+	size, index int64
+	flights     map[string]*flight
+	// unlinked holds the body files of entries that left while mu was held;
+	// unlock removes them.
+	unlinked []string
 	// generation counts purges: a fill started under an older one is not
-	// stored, so a purge empties the cache of responses fetched before it.
-	generation uint64
+	// stored, so a purge empties the cache of responses fetched before it. It
+	// changes only under mu, and a fill in flight reads it without the lock to
+	// drop its temporary file at once.
+	generation atomic.Uint64
 }
 
 type entry struct {
 	key    string
 	status int
 	header http.Header
-	body   []byte
+	// The body is in body, or, in disk mode, in the file at path file (none
+	// for an empty body); size is its length either way.
+	body []byte
+	file string
+	size int64
 	// born is when the upstream generated the response: the time it was
 	// stored less the Age the upstream gave it (RFC 9111 §4.2.3).
 	born, expires time.Time
@@ -173,33 +208,105 @@ type fill struct {
 	ttl    time.Duration
 	status int
 	header http.Header
-	// body is the copy kept for storing, at most maxBody bytes; a longer
-	// body overflows and nothing is stored.
-	body     bytes.Buffer
-	maxBody  int64
-	overflow bool
+	// The copy kept for storing, at most maxBody bytes: in body, or in disk
+	// mode in a temporary file under dir, created at the first byte. A longer
+	// body, a purge or a disk failure discards it, and nothing is stored.
+	body      bytes.Buffer
+	dir       string
+	file      *os.File
+	written   int64
+	maxBody   int64
+	discarded bool
+	// generation is the purge count the fill began under; purges is the
+	// handler's, which moves past it when a purge comes.
+	generation uint64
+	purges     *atomic.Uint64
 }
 
 // Write keeps p for storing while the response is kept and still fits.
 func (st *fill) Write(p []byte) (int, error) {
-	if st.keep && !st.overflow {
-		if int64(st.body.Len()+len(p)) > st.maxBody {
-			st.overflow = true
-			st.body = bytes.Buffer{}
-		} else {
-			st.body.Write(p)
-		}
+	if !st.keep || st.discarded || len(p) == 0 {
+		return len(p), nil
 	}
+	if st.written+int64(len(p)) > st.maxBody || st.purges.Load() != st.generation {
+		st.discard()
+		return len(p), nil
+	}
+	if st.dir == "" {
+		st.body.Write(p)
+	} else if err := st.writeFile(p); err != nil {
+		st.discard()
+		return len(p), nil
+	}
+	st.written += int64(len(p))
 	return len(p), nil
 }
 
+func (st *fill) writeFile(p []byte) error {
+	if st.file == nil {
+		f, err := os.CreateTemp(st.dir, "fill-*")
+		if err != nil {
+			return err
+		}
+		st.file = f
+	}
+	_, err := st.file.Write(p)
+	return err
+}
+
+// discard drops the kept copy, removing its temporary file, and releases the
+// requests waiting on the fill to fetch for themselves: nothing will be
+// stored for them.
+func (st *fill) discard() {
+	if st.file != nil {
+		_ = st.file.Close()
+		_ = os.Remove(st.file.Name())
+		st.file = nil
+	}
+	st.body = bytes.Buffer{}
+	st.discarded = true
+	st.flight.settle(nil)
+}
+
+// entry is the kept response as an entry to store, its temporary file closed
+// and handed over, or nil when nothing is kept.
+func (st *fill) entry(now time.Time) *entry {
+	if !st.keep || st.discarded {
+		return nil
+	}
+	e := &entry{
+		key: st.key, status: st.status, header: st.header, size: st.written,
+		born: now.Add(-upstreamAge(st.header)), expires: now.Add(st.ttl),
+	}
+	if st.file != nil {
+		if err := st.file.Close(); err != nil {
+			st.discard()
+			return nil
+		}
+		e.file = st.file.Name()
+		st.file = nil
+	} else if st.dir == "" {
+		e.body = st.body.Bytes()
+	}
+	return e
+}
+
 // New returns a Handler proxying to upstream (e.g. http://127.0.0.1:10000).
-func New(upstream *url.URL, cfg Config) *Handler {
+// With cfg.Dir set it creates the directory and removes everything in it.
+func New(upstream *url.URL, cfg Config) (*Handler, error) {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
 	if cfg.MaxFills <= 0 {
 		cfg.MaxFills = 4
+	}
+	if cfg.Dir != "" {
+		if cfg.MaxIndexBytes <= 0 {
+			cfg.MaxIndexBytes = cfg.MaxBytes / 32
+		}
+		if err := emptyDir(cfg.Dir); err != nil {
+			return nil, err
+		}
 	}
 	h := &Handler{
 		cfg: cfg, fills: make(chan struct{}, cfg.MaxFills),
@@ -210,37 +317,119 @@ func New(upstream *url.URL, cfg Config) *Handler {
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			pr.SetURL(upstream)
 			pr.Out.Host = pr.In.Host
-			// ReverseProxy strips the inbound X-Forwarded-*. Traefik sets them
-			// and is the only edge that reaches this sidecar, so the app sees
-			// the client address and scheme the edge saw, as through the
-			// activator's proxy (ADR004; w21/m394 t015, R25-07): the inbound
-			// X-Forwarded-For is copied before SetXForwarded, which appends the
-			// peer, and an http or https X-Forwarded-Proto replaces its "http".
-			if forwardedFor := pr.In.Header.Values("X-Forwarded-For"); len(forwardedFor) > 0 {
-				pr.Out.Header["X-Forwarded-For"] = slices.Clone(forwardedFor)
-			}
-			pr.SetXForwarded()
-			if proto := strings.ToLower(pr.In.Header.Get("X-Forwarded-Proto")); proto == "https" || proto == "http" {
-				pr.Out.Header.Set("X-Forwarded-Proto", proto)
-			}
+			// The hop marker is between replicas; the app never sees it.
+			pr.Out.Header.Del(HopHeader)
+			setForwarded(pr)
 		},
+		// The tier reaches the app over the cluster network through one
+		// Service address, so it keeps a pool of connections to it, where
+		// http.DefaultTransport keeps two idle: past two requests at once every
+		// request would open, and leave behind, a connection of its own.
+		Transport:  upstreamTransport(),
+		BufferPool: &proxyBuffers,
 		// Flush as bytes arrive, so streamed and long-poll responses flow.
 		FlushInterval:  -1,
 		ModifyResponse: h.decide,
 	}
-	return h
+	h.forwarder = newForwarder(h)
+	return h, nil
+}
+
+// upstreamTransport is http.DefaultTransport with an idle pool sized for a
+// tier's whole service.
+func upstreamTransport() *http.Transport {
+	t := http.DefaultTransport.(*http.Transport).Clone()
+	t.MaxIdleConns, t.MaxIdleConnsPerHost = 256, 128
+	return t
+}
+
+// proxyBuffers lends the proxies their copy buffers, so a proxied response
+// allocates none.
+var proxyBuffers bufferPool
+
+type bufferPool struct{ sync.Pool }
+
+func (p *bufferPool) Get() []byte {
+	if b, ok := p.Pool.Get().(*[]byte); ok {
+		return *b
+	}
+	return make([]byte, 32<<10)
+}
+
+func (p *bufferPool) Put(b []byte) { p.Pool.Put(&b) }
+
+// emptyDir creates dir and removes everything in it. A process that restarts
+// cannot know which purges it missed while it was down, so it starts empty,
+// as a new instance does.
+func emptyDir(dir string) error {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	names, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	for _, name := range names {
+		if err := os.RemoveAll(filepath.Join(dir, name.Name())); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// setForwarded sets the X-Forwarded-For, -Host and -Proto the app sees.
+// ReverseProxy strips the inbound ones. Traefik sets them and is the only edge
+// that reaches this proxy, so the app sees the client address and scheme the
+// edge saw, as through the activator's proxy (ADR004; w21/m394 t015, R25-07):
+// the inbound X-Forwarded-For is copied before SetXForwarded, which appends the
+// peer, and an http or https X-Forwarded-Proto replaces its "http". A request
+// another replica forwarded (an accepted hop, peers.go) carries the three as
+// that replica computed them here for its own request, so they pass on
+// verbatim: the app sees the same whichever replica fills.
+func setForwarded(pr *httputil.ProxyRequest) {
+	if hop, _ := pr.In.Context().Value(hopKey{}).(bool); hop {
+		for _, name := range []string{"X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto"} {
+			if values := pr.In.Header.Values(name); len(values) > 0 {
+				pr.Out.Header[name] = slices.Clone(values)
+			}
+		}
+		return
+	}
+	if forwardedFor := pr.In.Header.Values("X-Forwarded-For"); len(forwardedFor) > 0 {
+		pr.Out.Header["X-Forwarded-For"] = slices.Clone(forwardedFor)
+	}
+	pr.SetXForwarded()
+	if proto := strings.ToLower(pr.In.Header.Get("X-Forwarded-Proto")); proto == "https" || proto == "http" {
+		pr.Out.Header.Set("X-Forwarded-Proto", proto)
+	}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	hop := h.acceptedHop(r)
+	if hop {
+		r = r.WithContext(context.WithValue(r.Context(), hopKey{}, true))
+	}
 	if !h.requestEligible(r) {
 		w.Header().Set(StatusHeader, statusDynamic)
 		h.proxy.ServeHTTP(w, r)
 		return
 	}
 	key := cacheKey(r)
-	e, expired := h.lookup(key)
+	if !hop {
+		if owner := h.owner(key); owner != "" {
+			h.forward(w, r, key, owner)
+			return
+		}
+	}
+	h.serve(w, r, key)
+}
+
+// serve answers an eligible request from this replica's own cache, filling it
+// on a miss.
+func (h *Handler) serve(w http.ResponseWriter, r *http.Request, key string) {
+	e, body, expired := h.lookup(key)
 	if e != nil {
-		h.writeEntry(w, r, e)
+		h.writeEntry(w, r, e, body)
 		return
 	}
 	if r.Method != http.MethodGet {
@@ -262,8 +451,8 @@ func (h *Handler) Profile() string { return *h.profile.Load() }
 // SetProfile replaces the profile from the next request on, and purges the
 // entries stored under the old one, as a switch did when it rolled the pods.
 // Any other value than ProfileStatic or ProfileAll passes every request
-// through (DYNAMIC): caching turned off before the next deploy removes the
-// proxy. It reports whether the profile changed.
+// through (DYNAMIC): caching turned off, until the route leaves the proxy. It
+// reports whether the profile changed.
 func (h *Handler) SetProfile(profile string) bool {
 	if h.Profile() == profile {
 		return false
@@ -273,15 +462,37 @@ func (h *Handler) SetProfile(profile string) bool {
 	return true
 }
 
-// Purge empties the cache: every stored entry leaves, and a fill already in
-// flight is served to its own client but not stored.
+// Purge empties the cache: every stored entry leaves, its body file with it,
+// and a fill already in flight is served to its own client but not stored.
 func (h *Handler) Purge() {
 	h.mu.Lock()
-	defer h.mu.Unlock()
+	defer h.unlock()
+	for el := h.lru.Front(); el != nil; el = el.Next() {
+		h.unlinkLocked(el.Value.(*entry))
+	}
 	clear(h.entries)
 	h.lru.Init()
-	h.size = 0
-	h.generation++
+	h.size, h.index = 0, 0
+	h.generation.Add(1)
+}
+
+// unlock releases h.mu, then removes the body files of the entries that left
+// while it was held: no request waits on the disk behind the lock, and a file
+// out of the index is never opened again (one a request already has open
+// stays readable until it closes it).
+func (h *Handler) unlock() {
+	files := h.unlinked
+	h.unlinked = nil
+	h.mu.Unlock()
+	for _, name := range files {
+		_ = os.Remove(name)
+	}
+}
+
+func (h *Handler) unlinkLocked(e *entry) {
+	if e.file != "" {
+		h.unlinked = append(h.unlinked, e.file)
+	}
 }
 
 // requestEligible is the request half of Render's rules.
@@ -325,20 +536,53 @@ func cacheKey(r *http.Request) string {
 	return r.Host + "\x00" + r.URL.RequestURI() + "\x00" + strconv.FormatBool(acceptsGzip(r.Header.Get("Accept-Encoding")))
 }
 
-func (h *Handler) lookup(key string) (*entry, bool) {
+// lookup is the live entry for key, its body file open when it has one, or
+// nil and whether an expired entry was dropped. The file is opened under h.mu,
+// so an eviction cannot unlink it first; an entry whose file will not open is
+// dropped and the request is a miss.
+func (h *Handler) lookup(key string) (*entry, *os.File, bool) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
+	defer h.unlock()
 	el, ok := h.entries[key]
 	if !ok {
-		return nil, false
+		return nil, nil, false
 	}
 	e := el.Value.(*entry)
 	if !h.cfg.Now().Before(e.expires) {
 		h.removeLocked(el)
-		return nil, true
+		return nil, nil, true
+	}
+	body, err := openBody(e)
+	if err != nil {
+		h.removeLocked(el)
+		return nil, nil, false
 	}
 	h.lru.MoveToFront(el)
-	return e, false
+	return e, body, false
+}
+
+// openStored opens the body of e, the entry a fill stored, for a request that
+// waited on the fill: under h.mu and only while e is still stored, since an
+// eviction removes the file. It reports false when that body is gone.
+func (h *Handler) openStored(e *entry) (*os.File, bool) {
+	if e.file == "" {
+		return nil, true
+	}
+	h.mu.Lock()
+	defer h.unlock()
+	if el, ok := h.entries[e.key]; !ok || el.Value.(*entry) != e {
+		return nil, false
+	}
+	body, err := openBody(e)
+	return body, err == nil
+}
+
+// openBody opens e's body file; an entry without one has nothing to open.
+func openBody(e *entry) (*os.File, error) {
+	if e.file == "" {
+		return nil, nil
+	}
+	return os.Open(e.file)
 }
 
 // fetch fetches key once, however many requests miss it at the same time.
@@ -351,9 +595,11 @@ func (h *Handler) fetch(w http.ResponseWriter, r *http.Request, key, fetched str
 		case <-r.Context().Done():
 			return
 		}
-		if f.stored != nil {
-			h.writeEntry(w, r, f.stored)
-			return
+		if e := f.stored; e != nil {
+			if body, ok := h.openStored(e); ok {
+				h.writeEntry(w, r, e, body)
+				return
+			}
 		}
 		w.Header().Set(StatusHeader, statusMiss)
 		h.proxy.ServeHTTP(w, r)
@@ -370,9 +616,18 @@ func (h *Handler) fetch(w http.ResponseWriter, r *http.Request, key, fetched str
 	}
 	f := &flight{done: make(chan struct{})}
 	h.flights[key] = f
-	generation := h.generation
+	generation := h.generation.Load()
 	h.mu.Unlock()
+	st := &fill{
+		key: key, fetched: fetched, flight: f, client: r.Header,
+		dir: h.cfg.Dir, maxBody: h.cfg.MaxObjectBytes, generation: generation, purges: &h.generation,
+	}
 	defer func() {
+		// A temporary file the store did not take is removed, whether the
+		// body was too long, purged, or cut off by a panic in the proxy.
+		if st.file != nil {
+			st.discard()
+		}
 		<-h.fills
 		h.mu.Lock()
 		delete(h.flights, key)
@@ -384,7 +639,6 @@ func (h *Handler) fetch(w http.ResponseWriter, r *http.Request, key, fetched str
 	// sees one canonical encoding preference and no validators (a 304 is not
 	// a page); decide answers the leader's own validators.
 	out := r.Clone(context.WithValue(r.Context(), fillKey{}, nil))
-	st := &fill{key: key, fetched: fetched, flight: f, client: r.Header, maxBody: h.cfg.MaxObjectBytes}
 	out = out.WithContext(context.WithValue(out.Context(), fillKey{}, st))
 	out.Header.Del("If-None-Match")
 	out.Header.Del("If-Modified-Since")
@@ -394,15 +648,8 @@ func (h *Handler) fetch(w http.ResponseWriter, r *http.Request, key, fetched str
 		out.Header.Set("Accept-Encoding", "identity")
 	}
 	h.proxy.ServeHTTP(&teeWriter{ResponseWriter: w, st: st}, out)
-	if st.keep && !st.overflow {
-		now := h.cfg.Now()
-		e := &entry{
-			key: key, status: st.status, header: st.header, body: st.body.Bytes(),
-			born: now.Add(-upstreamAge(st.header)), expires: now.Add(st.ttl),
-		}
-		if h.store(e, generation) {
-			f.settle(e)
-		}
+	if e := st.entry(h.cfg.Now()); e != nil && h.store(e, generation) {
+		f.settle(e)
 	}
 }
 
@@ -434,7 +681,7 @@ func (h *Handler) decide(resp *http.Response) error {
 	if st.keep {
 		// The limit stops reading a body that overflows: nothing is stored.
 		if _, err := io.Copy(st, io.LimitReader(resp.Body, st.maxBody+1)); err != nil {
-			st.keep = false
+			st.discard()
 		}
 	}
 	_ = resp.Body.Close()
@@ -586,21 +833,24 @@ func (t *teeWriter) Flush() {
 
 func (t *teeWriter) Unwrap() http.ResponseWriter { return t.ResponseWriter }
 
-// store keeps e, fetched under generation, unless it is larger than the whole
-// cache. current is false, and nothing is kept, when a purge came after the
-// fetch began: e is then no answer for the requests waiting on it either.
-func (h *Handler) store(e *entry, generation uint64) (current bool) {
+// store keeps e, fetched under generation, unless it is larger than the
+// cache's bounds; a body file it does not keep it removes. It reports whether
+// e answers the requests waiting on its fill: not when a purge came after the
+// fetch began (nothing is kept then), and not when its body file is gone.
+func (h *Handler) store(e *entry, generation uint64) bool {
 	h.mu.Lock()
-	defer h.mu.Unlock()
-	if generation != h.generation {
+	defer h.unlock()
+	if generation != h.generation.Load() {
+		h.unlinkLocked(e)
 		return false
 	}
 	if old, ok := h.entries[e.key]; ok {
 		h.removeLocked(old)
 	}
-	cost := entryCost(e)
-	if cost > h.cfg.MaxBytes {
-		return true
+	size, index := h.charge(e)
+	if !h.within(size, index) {
+		h.unlinkLocked(e)
+		return e.file == ""
 	}
 	// Expired entries leave first, from the cold end, whether or not their key
 	// is ever asked for again; then the least recently used make room.
@@ -608,11 +858,12 @@ func (h *Handler) store(e *entry, generation uint64) (current bool) {
 	for el := h.lru.Back(); el != nil && !now.Before(el.Value.(*entry).expires); el = h.lru.Back() {
 		h.removeLocked(el)
 	}
-	for h.size+cost > h.cfg.MaxBytes && h.lru.Len() > 0 {
+	for !h.within(h.size+size, h.index+index) && h.lru.Len() > 0 {
 		h.removeLocked(h.lru.Back())
 	}
 	h.entries[e.key] = h.lru.PushFront(e)
-	h.size += cost
+	h.size += size
+	h.index += index
 	return true
 }
 
@@ -620,7 +871,32 @@ func (h *Handler) removeLocked(el *list.Element) {
 	e := el.Value.(*entry)
 	h.lru.Remove(el)
 	delete(h.entries, e.key)
-	h.size -= entryCost(e)
+	size, index := h.charge(e)
+	h.size -= size
+	h.index -= index
+	h.unlinkLocked(e)
+}
+
+// within reports whether size bytes against MaxBytes and index bytes against
+// MaxIndexBytes fit the cache's bounds.
+func (h *Handler) within(size, index int64) bool {
+	return size <= h.cfg.MaxBytes && (h.cfg.Dir == "" || index <= h.cfg.MaxIndexBytes)
+}
+
+// diskBlock is the allocation unit a body file is charged in: the kubelet
+// measures an emptyDir's use by the blocks its files hold, so a small body
+// costs a whole block of the volume's size limit.
+const diskBlock = 4096
+
+// charge is what e is charged against the cache's two bounds, so store and
+// removeLocked agree. In memory everything e holds counts against MaxBytes,
+// and there is no index bound; on disk MaxBytes is charged the blocks its body
+// file takes and MaxIndexBytes the metadata kept in memory.
+func (h *Handler) charge(e *entry) (size, index int64) {
+	if h.cfg.Dir == "" {
+		return entryCost(e), 0
+	}
+	return (e.size + diskBlock - 1) / diskBlock * diskBlock, metaCost(e) + int64(len(e.file))
 }
 
 // entryOverhead is the fixed cost charged for an entry's own structure, beyond
@@ -631,13 +907,18 @@ func (h *Handler) removeLocked(el *list.Element) {
 // exhaust the process's memory behind an honest-looking byte count.
 const entryOverhead = 1024
 
-// entryCost is what an entry is charged against the byte budget: everything the
-// cache keeps for it. store and removeLocked share it, so an entry is released
-// for exactly what it was charged.
+// entryCost is what an entry held in memory is charged against the byte
+// budget: everything the cache keeps for it.
 func entryCost(e *entry) int64 {
 	// Capacity, not length: the body comes from a bytes.Buffer, whose spare
 	// capacity stays allocated while the entry lives.
-	cost := int64(cap(e.body)+len(e.key)) + entryOverhead
+	return int64(cap(e.body)) + metaCost(e)
+}
+
+// metaCost is what an entry's metadata costs in memory: its key, its header
+// and its own structure.
+func metaCost(e *entry) int64 {
+	cost := int64(len(e.key)) + entryOverhead
 	for name, values := range e.header {
 		cost += int64(len(name))
 		for _, value := range values {
@@ -649,8 +930,12 @@ func entryCost(e *entry) int64 {
 
 // writeEntry answers r from a stored page: 304 Not Modified when r's
 // validators match it, the page otherwise. Either carries the page's Age, in
-// place of any it was stored with (RFC 9111 §4, §5.1).
-func (h *Handler) writeEntry(w http.ResponseWriter, r *http.Request, e *entry) {
+// place of any it was stored with (RFC 9111 §4, §5.1). body is the page's open
+// body file, when it has one; writeEntry closes it.
+func (h *Handler) writeEntry(w http.ResponseWriter, r *http.Request, e *entry, body *os.File) {
+	if body != nil {
+		defer func() { _ = body.Close() }()
+	}
 	header := w.Header()
 	for k, vs := range e.header {
 		header[k] = append([]string(nil), vs...)
@@ -662,9 +947,15 @@ func (h *Handler) writeEntry(w http.ResponseWriter, r *http.Request, e *entry) {
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
-	header.Set("Content-Length", strconv.Itoa(len(e.body)))
+	header.Set("Content-Length", strconv.FormatInt(e.size, 10))
 	w.WriteHeader(e.status)
-	if r.Method != http.MethodHead {
+	switch {
+	case r.Method == http.MethodHead:
+	case body != nil:
+		// The file was opened before any eviction could unlink it, and an
+		// open file stays readable after its name is gone.
+		_, _ = io.Copy(w, body)
+	default:
 		_, _ = w.Write(e.body)
 	}
 }

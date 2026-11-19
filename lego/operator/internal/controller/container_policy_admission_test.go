@@ -430,7 +430,7 @@ var _ = Describe("Application container policy admission", func() {
 					// the tenant image alone, so its app loses the policy.
 					bad := workload.DeepCopyObject().(client.Object)
 					pod := admissionPodTemplate(bad)
-					pod.Spec.Containers = append(pod.Spec.Containers, edgeCacheContainer("ghcr.io/bex-co/bex:test", appv1alpha1.CacheProfileStatic, 8080, 0))
+					pod.Spec.Containers = append(pod.Spec.Containers, storedEdgeCacheSidecar(appv1alpha1.CacheProfileStatic, 8080))
 					label := scenario + "/edge-cache-sidecar"
 					expectDenied(operator.Create(ctx, admissionFreshWorkload(bad), client.DryRunAll), label+" create")
 					if _, job := bad.(*batchv1.Job); job {
@@ -859,9 +859,10 @@ func admissionTierWorkloads(namespace, policy, tier string) []client.Object {
 }
 
 // admissionEdgeCacheWorkloads is the real Deployment of a paid image-port web
-// service with a caching profile (w9/087), under every container policy: the
-// tenant image as app, then bex's edge-cache proxy, then the health-probe
-// installer before both.
+// service with a caching profile (w9/087), under every container policy, as a
+// template stored before w3/m489 keeps it: the tenant image as app, then
+// bex's edge-cache sidecar, then the health-probe installer before both. The
+// last is the service's cache tier (w3/m489), bex's proxy alone.
 func admissionEdgeCacheWorkloads(namespace string) []client.Object {
 	policies := []string{appv1alpha1.ContainerPolicyImageV1, appv1alpha1.ContainerPolicyRenderV1, appv1alpha1.ContainerPolicyStrictV1, ""}
 	workloads := make([]client.Object, 0, len(policies))
@@ -883,6 +884,8 @@ func admissionEdgeCacheWorkloads(namespace string) []client.Object {
 		r := &AppReconciler{Client: cl, BuildClient: cl, Scheme: cl.Scheme(), BackupHelperImage: "ghcr.io/bex-co/bex:test"}
 		dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
 		Expect(r.applyServingDeployment(ctx, app, dep, params, nil)).To(Succeed())
+		Expect(dep.Spec.Template.Spec.Containers).To(HaveLen(1), name)
+		withStoredEdgeCacheSidecar(&dep.Spec.Template, app, params.port, true)
 		pod := dep.Spec.Template.Spec
 		Expect(pod.Containers).To(HaveLen(2), name)
 		Expect([]string{pod.Containers[0].Name, pod.Containers[1].Name}).To(Equal([]string{appContainerName, edgeCacheContainerName}), name)
@@ -890,7 +893,17 @@ func admissionEdgeCacheWorkloads(namespace string) []client.Object {
 		Expect(pod.Containers[0].SecurityContext.Capabilities.Add).To(HaveLen(len(appv1alpha1.ContainerPolicyCapabilities(policy))), name)
 		workloads = append(workloads, dep)
 	}
-	return workloads
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "cached-tier", Namespace: namespace, UID: "cached-tier-uid",
+			Labels: map[string]string{labelWorkspace: namespace}},
+		Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Tier: "pro", CacheProfile: appv1alpha1.CacheProfileAll},
+	}
+	cl := fake.NewClientBuilder().WithScheme(k8sClient.Scheme()).WithObjects(app).Build()
+	r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes, BackupHelperImage: "ghcr.io/bex-co/bex:test"}
+	Expect(r.reconcileEdgeCacheTier(ctx, app)).To(Succeed())
+	tier := &appsv1.Deployment{}
+	Expect(cl.Get(ctx, client.ObjectKey{Namespace: namespace, Name: edgeCacheTierName(app.Name)}, tier)).To(Succeed())
+	return append(workloads, tier)
 }
 
 func admissionPlatformWorkloads(namespace string) []client.Object {

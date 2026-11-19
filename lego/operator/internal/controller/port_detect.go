@@ -68,8 +68,9 @@ const (
 	portDetectTimeout = 15 * time.Second
 )
 
-// (edgeCacheContainerName, the caching sidecar that also listens inside the
-// pod, is declared in edge_cache.go; a cached service is not scanned.)
+// (edgeCacheContainerName, the caching sidecar a pod template stored before
+// w3/m489 may still run, listening inside the pod, is declared in
+// edge_cache.go; a pod running it is not scanned.)
 
 // explicitServingPort reports whether the App's own configuration already names
 // the serving port, so a detected listener must never override it.

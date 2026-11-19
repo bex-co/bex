@@ -439,11 +439,18 @@ func templateReplicaSetPod(dep *appsv1.Deployment, hash string, tmpl corev1.PodT
 	owner := func(kind, name string, uid types.UID) []metav1.OwnerReference {
 		return []metav1.OwnerReference{{APIVersion: "apps/v1", Kind: kind, Name: name, UID: uid, Controller: new(true)}}
 	}
+	// The ReplicaSet selects what its Deployment does, as the Deployment
+	// controller's would: an App's pods by name, its edge-cache tier's by tier.
+	selector := map[string]string{labelApp: labels[labelApp]}
+	if dep.Spec.Selector != nil {
+		selector = maps.Clone(dep.Spec.Selector.MatchLabels)
+	}
+	selector[appsv1.DefaultDeploymentUniqueLabelKey] = hash
 	rs := &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{Name: dep.Name + "-" + hash, Namespace: dep.Namespace, Labels: labels, OwnerReferences: owner("Deployment", dep.Name, dep.UID)},
 		Spec: appsv1.ReplicaSetSpec{
 			Replicas: new(int32(1)),
-			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{labelApp: labels[labelApp], appsv1.DefaultDeploymentUniqueLabelKey: hash}},
+			Selector: &metav1.LabelSelector{MatchLabels: selector},
 			Template: tmpl,
 		},
 	}

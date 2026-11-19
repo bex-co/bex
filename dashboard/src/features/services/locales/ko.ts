@@ -2160,7 +2160,7 @@ const koServices: Record<string, TranslationEntry> = {
       "Edge-caching origin-controlled-all option description, with the dynamic-content warning",
   },
   "services.edgeCachingPurgeOnDeploy": {
-    message: "캐시는 배포할 때마다 비워집니다.",
+    message: "캐시는 배포가 성공할 때마다 비워집니다.",
     description: "Note under the edge-caching options",
   },
   "services.edgeCachingPaidOnly": {

@@ -45,7 +45,7 @@ describe("EdgeCachingSection", () => {
     // The All-files option warns that dynamic content should opt out.
     expect(radio(/All files/)).toHaveTextContent(/dynamic content/);
     expect(
-      screen.getByText("The cache is purged on every deploy."),
+      screen.getByText("The cache is purged on every successful deploy."),
     ).toBeInTheDocument();
   });
 
@@ -142,7 +142,7 @@ describe("EdgeCachingSection", () => {
       screen.getByText("Edge caching is not available for free web services."),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText("The cache is purged on every deploy."),
+      screen.queryByText("The cache is purged on every successful deploy."),
     ).toBeNull();
     for (const option of screen.getAllByRole("radio")) {
       expect(option).toBeDisabled();

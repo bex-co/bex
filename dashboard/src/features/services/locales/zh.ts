@@ -2112,7 +2112,7 @@ const zhServices: Record<string, TranslationEntry> = {
       "Edge-caching origin-controlled-all option description, with the dynamic-content warning",
   },
   "services.edgeCachingPurgeOnDeploy": {
-    message: "每次部署都会清除缓存。",
+    message: "每次成功部署都会清除缓存。",
     description: "Note under the edge-caching options",
   },
   "services.edgeCachingPaidOnly": {

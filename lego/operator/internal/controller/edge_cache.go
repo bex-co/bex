@@ -19,177 +19,94 @@ package controller
 import (
 	"context"
 	"strconv"
-	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/bex-co/bex/lego/operator/internal/edgecache"
 	"github.com/bex-co/bex/lego/operator/internal/execution"
+	"github.com/bex-co/bex/lego/types/k8sname"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// Edge caching (w5/m151): a web service whose spec.cacheProfile asks for
-// Render's edge caching gets bex's edge-cache proxy (internal/edgecache) as a
-// sidecar, and its Service targets the proxy, which forwards to the app over
-// the pod's loopback. The cache lives in the proxy's memory, so a deploy starts
-// it empty, as Render purges on deploy. A manual purge and a profile switch
-// restart nothing (w3/m486): the operator patches each live pod's annotations
-// (annotateEdgeCachePods) and the proxy reads them from a downward-API file, as
-// Render's CDN purges without touching an instance. The sidecar fronts the
-// port the pod's release was projected on, which for an image-port service is
-// its image network's primary (docs/ADR004 § Edge caching covers discovery and
-// port changes).
+// Edge caching (w5/m151, a per-service tier since w3/m489). A web service
+// whose spec.cacheProfile asks for Render's edge caching gets its own cache
+// tier in its own namespace: a Deployment of bex's edge-cache proxy
+// (internal/edgecache) behind a headless Service. Its public route moves to
+// the tier once a tier pod is Ready and back to the service's own Service
+// whenever none is, and the tier forwards misses to that Service's port 10000,
+// which targets the primary listener whatever its port. The cache therefore
+// lives outside the instances, as Render's CDN does: a Restart, a scale
+// change, an instance crash or a node drain leaves it alone, and every
+// instance is behind one fill per key. It empties only on a successful deploy
+// and on a manual purge, which reach the running proxies through their pods'
+// annotations (annotateEdgeCacheTierPods), so neither restarts anything.
+// docs/ADR004 § Edge caching records the design.
 const (
 	edgeCacheContainerName = appv1alpha1.EdgeCacheContainer
 	edgeCachePortName      = "edge-cache"
-	edgeCacheUpstreamEnv   = "BEX_EDGE_CACHE_UPSTREAM"
-	// edgeCacheProfileEnv is the profile the proxy starts with; a pod's
-	// edgecache.ProfileAnnotation overrides it while the pod runs.
-	edgeCacheProfileEnv = "BEX_EDGE_CACHE_PROFILE"
-	// edgeCacheControlEnv names the proxy's control file: the pod's
+	// edgeCachePort is the proxy's listener. It was the sidecar's inside the
+	// app's own pods, so it is one of the three ports Render reserves
+	// (IsReservedImagePort); a pod template stored before w3/m489 may still
+	// carry that sidecar.
+	edgeCachePort = 19099
+	// edgeCacheControlEnv names the proxy's control file: its pod's
 	// annotations, which the kubelet keeps current in a downward-API volume.
-	// A sidecar without it was projected before w3/m486 and is rolled for a
-	// purge or a profile switch instead.
 	edgeCacheControlEnv        = "BEX_EDGE_CACHE_CONTROL"
 	edgeCacheControlVolumeName = "edge-cache-control"
 	edgeCacheControlDir        = "/etc/bex/edge-cache"
 	edgeCacheControlFile       = "annotations"
-	// edgeCacheUpstreamPrefix precedes the app port in edgeCacheUpstreamEnv.
-	edgeCacheUpstreamPrefix = "http://127.0.0.1:"
-	// edgeCachePort is one of the three ports Render reserves
-	// (IsReservedImagePort), so a service's own PORT can never collide with it
-	// and the refused set stays Render's: 18014, which the sidecar used to take,
-	// is an ordinary port again. The Service reaches it by name
-	// (edgeCachePortName), so a rollout from the old port is seamless.
-	edgeCachePort = 19099
-	// edgeCacheMaxBytes bounds the cache's memory; its container limit leaves
-	// room for the proxy itself.
-	edgeCacheMaxBytes = 48 << 20
+	edgeCacheStoreVolumeName   = "edge-cache-store"
+	edgeCacheStoreDir          = "/var/cache/bex-edge"
+
+	// labelEdgeCacheTier selects an App's tier pods; its value is the App's
+	// name. They carry no app.bex.co/app label, so no instance list, metric,
+	// log stream, shell, bill or Service of the App's own counts them.
+	labelEdgeCacheTier = "app.bex.co/edge-cache"
+	// edgeCacheComponent is the tier pods' app.bex.co/component.
+	edgeCacheComponent = "edge-cache"
+
+	// The tier's shape. Two replicas so one pod's loss never empties the
+	// route: Traefik sends no new request to a terminating endpoint, and a
+	// Service with only terminating endpoints answers 503. Each key is filled
+	// by the one replica that owns it (edgecache.SetPeers), so a key reaches
+	// the app once whatever the replica and instance counts.
+	edgeCacheTierReplicas = 2
+	edgeCacheTierPort     = 80
+	// edgeCacheMaxBytes is one replica's body store on its emptyDir and
+	// edgeCacheMaxObjectBytes one response's cap. The emptyDir's size limit,
+	// past which the kubelet evicts the pod, holds the store, the
+	// edgeCacheFills fills that may stream to temp files at once (the proxy's
+	// default), and 256 MiB of headroom for files a purge is still removing.
+	edgeCacheMaxBytes        = 1 << 30
+	edgeCacheMaxObjectBytes  = 128 << 20
+	edgeCacheFills           = 4
+	edgeCacheStoreLimitBytes = edgeCacheMaxBytes + edgeCacheFills*edgeCacheMaxObjectBytes + 256<<20
+	// edgeCacheDrainSeconds keeps a terminating tier pod serving while
+	// Traefik and its peer drop it, before it finishes in-flight requests.
+	edgeCacheDrainSeconds = 10
 )
 
-// edgeCaches reports whether the App gets the edge cache: the spec serves one
-// (AppSpec.ServesEdgeCache, which bex-api's edge-cache events and purge read
-// too), on an operator that knows its own image.
+// edgeCaches reports whether the App gets the edge-cache tier: a publicly
+// routed web service whose spec serves one (AppSpec.ServesEdgeCache, which
+// bex-api's edge-cache events and purge read too), on a Kubernetes operator
+// that knows its own image.
 func (r *AppReconciler) edgeCaches(app *appv1alpha1.App) bool {
-	return app.Spec.ServesEdgeCache() && r.BackupHelperImage != ""
+	return r.Mode == ModeKubernetes && r.BackupHelperImage != "" && app.Spec.ServesEdgeCache() && app.Spec.PubliclyRoutable()
 }
 
-// edgeCacheContainer is the sidecar, starting on profile. drain is the app's
-// preStop sleep: the proxy keeps serving through it, so a rollout never drops
-// requests the endpoints still route to the pod. GOMEMLIMIT keeps the Go heap
-// well inside the container limit with the cache full. Alone it is the sidecar
-// a template stored before w3/m486 runs; withEdgeCacheControl gives it the
-// control file.
-func edgeCacheContainer(image, profile string, appPort int, drain int64) corev1.Container {
-	resources := corev1.ResourceList{
-		corev1.ResourceCPU:    resource.MustParse("100m"),
-		corev1.ResourceMemory: resource.MustParse("160Mi"),
-	}
-	sec := execution.RestrictedContainerSecurityContext()
-	sec.RunAsNonRoot, sec.RunAsUser, sec.ReadOnlyRootFilesystem = new(true), new(int64(65532)), new(true)
-	return corev1.Container{
-		Name:  edgeCacheContainerName,
-		Image: image,
-		// bex's own image, pinned by the operator: never re-pulled per pod.
-		ImagePullPolicy: corev1.PullIfNotPresent,
-		Command:         []string{"/edge-cache"},
-		Env: []corev1.EnvVar{
-			{Name: "BEX_EDGE_CACHE_LISTEN", Value: ":" + strconv.Itoa(edgeCachePort)},
-			{Name: edgeCacheUpstreamEnv, Value: edgeCacheUpstreamPrefix + strconv.Itoa(appPort)},
-			{Name: edgeCacheProfileEnv, Value: profile},
-			{Name: "BEX_EDGE_CACHE_MAX_BYTES", Value: strconv.Itoa(edgeCacheMaxBytes)},
-			{Name: "BEX_EDGE_CACHE_DRAIN_SECONDS", Value: strconv.FormatInt(drain, 10)},
-			{Name: "GOMEMLIMIT", Value: "120MiB"},
-		},
-		Ports:     []corev1.ContainerPort{{Name: edgeCachePortName, ContainerPort: edgeCachePort, Protocol: corev1.ProtocolTCP}},
-		Resources: corev1.ResourceRequirements{Requests: resources, Limits: resources},
-		ReadinessProbe: &corev1.Probe{ProbeHandler: corev1.ProbeHandler{
-			TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt32(edgeCachePort)},
-		}},
-		SecurityContext: sec,
-	}
-}
-
-// withEdgeCacheControl gives spec's sidecar its control file: the pod's own
-// annotations in a downward-API volume, which the kubelet rewrites when the
-// operator patches them, so a purge and a profile switch reach the running
-// proxy.
-func withEdgeCacheControl(spec *corev1.PodSpec, sidecar *corev1.Container) {
-	sidecar.Env = append(sidecar.Env, corev1.EnvVar{Name: edgeCacheControlEnv, Value: edgeCacheControlDir + "/" + edgeCacheControlFile})
-	sidecar.VolumeMounts = append(sidecar.VolumeMounts, corev1.VolumeMount{Name: edgeCacheControlVolumeName, MountPath: edgeCacheControlDir, ReadOnly: true})
-	spec.Volumes = append(spec.Volumes, edgeCacheControlVolume())
-}
-
-// edgeCacheControlVolume is the volume withEdgeCacheControl mounts.
-func edgeCacheControlVolume() corev1.Volume {
-	return corev1.Volume{Name: edgeCacheControlVolumeName, VolumeSource: corev1.VolumeSource{
-		DownwardAPI: &corev1.DownwardAPIVolumeSource{Items: []corev1.DownwardAPIVolumeFile{{
-			Path:     edgeCacheControlFile,
-			FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.annotations"},
-		}}},
-	}}
-}
-
-// edgeCacheSidecar is a pod spec's edge-cache container, nil without one.
-func edgeCacheSidecar(spec corev1.PodSpec) *corev1.Container {
-	for i := range spec.Containers {
-		if spec.Containers[i].Name == edgeCacheContainerName {
-			return &spec.Containers[i]
-		}
-	}
-	return nil
-}
-
-func containerEnv(c *corev1.Container, name string) (string, bool) {
-	for _, e := range c.Env {
-		if e.Name == name {
-			return e.Value, true
-		}
-	}
-	return "", false
-}
-
-// keptEdgeCache is the sidecar p projects, as a stored pod spec already runs
-// it: what applyDeploymentSpec keeps when nothing else about the template
-// changes. A sidecar with its control file keeps the profile it started with,
-// since the live profile reaches it through the pod's annotations, and stays,
-// as a pass-through, when caching is turned off. One from before w3/m486 has
-// no control file, so it keeps its own shape, which carries the purge stamp on
-// the template: a purge, a switch or turning caching off still rolls it.
-func keptEdgeCache(stored corev1.PodSpec, p deploymentParams) (profile string, legacy bool) {
-	sidecar := edgeCacheSidecar(stored)
-	if sidecar == nil || p.edgeCacheImage == "" {
-		return p.edgeCacheProfile, false
-	}
-	if _, control := containerEnv(sidecar, edgeCacheControlEnv); !control {
-		return p.edgeCacheProfile, p.edgeCacheProfile != ""
-	}
-	profile, _ = containerEnv(sidecar, edgeCacheProfileEnv)
-	return profile, false
-}
-
-// projectEdgeCache appends the sidecar to dep's pod template. Its purge stamp
-// and live profile reach it through the pod's annotations, so the template
-// carries neither: a stamp a template from before w3/m486 carried leaves with
-// the roll that adds the control file. A legacy sidecar (keptEdgeCache) keeps
-// the stamp on the template, so a purge still rolls it.
-func projectEdgeCache(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymentParams, drain int64) {
-	tmpl := &dep.Spec.Template
-	sidecar := edgeCacheContainer(p.edgeCacheImage, p.edgeCacheProfile, p.port, drain)
-	switch purged := app.Annotations[appv1alpha1.CachePurgedAtAnnotation]; {
-	case !p.edgeCacheLegacy:
-		withEdgeCacheControl(&tmpl.Spec, &sidecar)
-		delete(tmpl.Annotations, appv1alpha1.CachePurgedAtAnnotation)
-	case purged != "":
-		metav1.SetMetaDataAnnotation(&tmpl.ObjectMeta, appv1alpha1.CachePurgedAtAnnotation, purged)
-	}
-	tmpl.Spec.Containers = append(tmpl.Spec.Containers, sidecar)
+// edgeCacheTierName names an App's tier Deployment and its headless Service.
+func edgeCacheTierName(appName string) string {
+	return k8sname.Prefixed("bex-edge-cache-", appName)
 }
 
 // edgeCacheProfileFor is the profile app's proxies cache by: its saved one
@@ -202,56 +119,332 @@ func edgeCacheProfileFor(app *appv1alpha1.App) string {
 }
 
 // updateAppPodsInPlace moves what the App's running pods carry outside their
-// template, rolling none: the environment labels (relabelAppPods), then the
-// edge-cache control annotations (annotateEdgeCachePods).
+// template, rolling none: the environment labels (relabelAppPods); then it
+// converges the edge-cache tier, whose pods take the purge and profile the
+// same way. A tier failure is logged and retried by the next pass, never
+// returned: the route stays on the App's own Service while the tier is not
+// Ready, so a broken tier can cost the cache but never a deploy.
 func (r *AppReconciler) updateAppPodsInPlace(ctx context.Context, app *appv1alpha1.App) error {
 	if err := r.relabelAppPods(ctx, app); err != nil {
 		return err
 	}
-	return r.annotateEdgeCachePods(ctx, app)
+	if err := r.reconcileEdgeCacheTier(ctx, app); err != nil {
+		logf.FromContext(ctx).Error(err, "converging the edge-cache tier", "app", app.Name)
+	}
+	return nil
 }
 
-// annotateEdgeCachePods hands each live pod's edge-cache proxy the App's last
-// purge and current profile through the pod's own annotations (w3/m486), on
-// every pass, ahead of any build, hold or gate, like relabelAppPods. The pod
-// template never carries either, so neither a purge nor a switch rolls an
-// instance; a pod created later starts empty and on its template's profile,
-// and is patched here on the pass its creation triggers. A pod whose sidecar
-// has no control file (a template from before w3/m486) is left alone: its
-// template rolls instead.
-func (r *AppReconciler) annotateEdgeCachePods(ctx context.Context, app *appv1alpha1.App) error {
+// reconcileEdgeCacheTier converges app's tier: its headless Service and
+// Deployment while the App caches, then its pods' environment labels and
+// control annotations; once it does not, it removes them, after the route
+// has left them (retireEdgeCacheTier).
+func (r *AppReconciler) reconcileEdgeCacheTier(ctx context.Context, app *appv1alpha1.App) error {
+	if !r.edgeCaches(app) {
+		return r.retireEdgeCacheTier(ctx, app)
+	}
+	name := edgeCacheTierName(app.Name)
+	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, svc, func() error {
+		projectEdgeCacheTierService(svc, app)
+		return controllerutil.SetControllerReference(app, svc, r.Scheme)
+	}); err != nil {
+		return err
+	}
+	appDep := &appsv1.Deployment{}
+	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, appDep); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+		appDep = nil
+	}
+	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, dep, func() error {
+		existed := dep.ResourceVersion != ""
+		before := dep.Spec.Template.DeepCopy()
+		// The tier Deployment's own metadata (never its pod template)
+		// records the release whose successful deploy last emptied the cache,
+		// under the name its pods are handed it by.
+		last := dep.Annotations[edgecache.RevisionAnnotation]
+		revision := edgeCacheRevision(app, appDep, last)
+		metav1.SetMetaDataAnnotation(&dep.ObjectMeta, edgecache.RevisionAnnotation, revision)
+		projectEdgeCacheTier(dep, app, r.edgeCacheTierImage(dep, app, before, existed && revision == last))
+		holdIsolationLabel(&dep.Spec.Template, existed, before, app.Labels)
+		return controllerutil.SetControllerReference(app, dep, r.Scheme)
+	}); err != nil {
+		return err
+	}
+	// The tier's environment labels move in place, as the App's own pods'
+	// do (relabelAppPods): a toggle or a move rolls no tier pod either.
+	if err := relabelPodsInPlace(ctx, r.Client, app.Namespace, client.MatchingLabels{labelEdgeCacheTier: app.Name}, app.Labels,
+		func(_ *corev1.Pod, owner *metav1.OwnerReference) bool { return owner.Kind == "ReplicaSet" }); err != nil {
+		return err
+	}
+	return r.annotateEdgeCacheTierPods(ctx, app, dep.Annotations[edgecache.RevisionAnnotation])
+}
+
+// edgeCacheTierImage is the image the tier runs: the one it runs already while
+// nothing else about its template changes, so an operator release alone
+// restarts no tier pod and empties no cache (the rule w6/m484 sets for the
+// App's own pods). A successful deploy, which empties the cache anyway
+// (held false), and any other template change adopt the operator's own image.
+func (r *AppReconciler) edgeCacheTierImage(dep *appsv1.Deployment, app *appv1alpha1.App, before *corev1.PodTemplateSpec, held bool) string {
+	proxy := edgeCacheSidecar(before.Spec)
+	if !held || proxy == nil || proxy.Image == r.BackupHelperImage {
+		return r.BackupHelperImage
+	}
+	// The environment labels are held apart (holdIsolationLabel).
+	kept := dep.DeepCopy()
+	projectEdgeCacheTier(kept, app, proxy.Image)
+	if templateEqualIgnoringIsolation(&kept.Spec.Template, before) {
+		return proxy.Image
+	}
+	return r.BackupHelperImage
+}
+
+// edgeCacheRevision is the release whose successful deploy last emptied app's
+// cache, last as the tier Deployment records it. It moves to the active
+// release once that is the App's current release, it is no Restart, and the
+// App's own rollout has no old instance left, so a fill can no longer reach
+// the replaced version. Render purges "each time you successfully deploy a
+// new version", and "failed deploys do not trigger a purge": a failed or
+// pending release keeps the active one, and a Restart, which bex runs as a
+// new release of the serving one (spec.releaseConfig.preserveGroupValues),
+// is no new version. A new tier starts empty, on the active release.
+func edgeCacheRevision(app *appv1alpha1.App, appDep *appsv1.Deployment, last string) string {
+	active := app.Status.ActiveRevision
+	switch {
+	case last == "":
+		return active
+	case active == "" || active == last || active != releaseRevision(app) || restartRelease(app):
+		return last
+	case appDep == nil || appDep.Spec.Template.Labels[labelRevision] != active ||
+		appDep.Status.ObservedGeneration < appDep.Generation || appDep.Status.UpdatedReplicas != appDep.Status.Replicas:
+		return last
+	}
+	return active
+}
+
+// restartRelease reports a current release that is a Restart: bex-api's
+// Restart selects the serving release with its exact configuration
+// (ReleaseConfigReference.PreserveGroupValues), where a Rollback or an
+// environment save reusing the served build does not.
+func restartRelease(app *appv1alpha1.App) bool {
+	ref := app.ActiveReleaseConfig()
+	return ref != nil && ref.PreserveGroupValues
+}
+
+// projectEdgeCacheTierService is the tier's headless Service. Traefik routes
+// to its endpoints, never its ClusterIP, and each tier pod resolves its name
+// to its Ready peers (BEX_EDGE_CACHE_PEERS).
+func projectEdgeCacheTierService(svc *corev1.Service, app *appv1alpha1.App) {
+	svc.Labels = map[string]string{labelEdgeCacheTier: app.Name, execution.ManagedByLabel: execution.ManagedByOperator}
+	svc.Spec.ClusterIP = corev1.ClusterIPNone
+	svc.Spec.Selector = map[string]string{labelEdgeCacheTier: app.Name}
+	svc.Spec.Ports = []corev1.ServicePort{{Name: "http", Port: edgeCacheTierPort, TargetPort: intstr.FromString(edgeCachePortName)}}
+	applyServicePortServerDefaults(svc.Spec.Ports)
+}
+
+// projectEdgeCacheTier writes the tier Deployment's spec for app on image. Its
+// template carries neither the profile nor a purge: both reach the running
+// proxies through their annotations, so a new pod passes every request
+// through until its first pass annotates it, within seconds of its creation.
+func projectEdgeCacheTier(dep *appsv1.Deployment, app *appv1alpha1.App, image string) {
+	selector := map[string]string{labelEdgeCacheTier: app.Name}
+	labels := map[string]string{labelEdgeCacheTier: app.Name, execution.LabelComponent: edgeCacheComponent}
+	if ws := app.Labels[labelWorkspace]; ws != "" {
+		labels[labelWorkspace] = ws
+	}
+	dep.Labels = map[string]string{labelEdgeCacheTier: app.Name, execution.ManagedByLabel: execution.ManagedByOperator}
+	dep.Spec.Replicas = new(int32(edgeCacheTierReplicas))
+	dep.Spec.Selector = &metav1.LabelSelector{MatchLabels: selector}
+	// A rollout keeps both replicas serving: the new pod is Ready before an
+	// old one leaves.
+	dep.Spec.Strategy = appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType,
+		RollingUpdate: &appsv1.RollingUpdateDeployment{MaxUnavailable: new(intstr.FromInt32(0)), MaxSurge: new(intstr.FromInt32(1))}}
+	dep.Spec.Template.Labels = labels
+	resources := corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:              resource.MustParse("100m"),
+			corev1.ResourceMemory:           resource.MustParse("192Mi"),
+			corev1.ResourceEphemeralStorage: resource.MustParse("256Mi"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:              resource.MustParse("1"),
+			corev1.ResourceMemory:           resource.MustParse("192Mi"),
+			corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
+		},
+	}
+	sec := execution.RestrictedContainerSecurityContext()
+	sec.RunAsNonRoot, sec.RunAsUser, sec.ReadOnlyRootFilesystem = new(true), new(int64(65532)), new(true)
+	storeLimit := resource.NewQuantity(edgeCacheStoreLimitBytes, resource.BinarySI)
+	dep.Spec.Template.Spec = corev1.PodSpec{
+		Containers: []corev1.Container{{
+			Name:  edgeCacheContainerName,
+			Image: image,
+			// bex's own image, pinned by the operator: never re-pulled per pod.
+			ImagePullPolicy: corev1.PullIfNotPresent,
+			Command:         []string{"/edge-cache"},
+			Env: []corev1.EnvVar{
+				{Name: "BEX_EDGE_CACHE_LISTEN", Value: ":" + strconv.Itoa(edgeCachePort)},
+				// Port 10000 of the App's own Service targets its primary
+				// listener on every port path and through a port change
+				// (withPrivateNetworkPorts), so the tier never follows a port.
+				{Name: "BEX_EDGE_CACHE_UPSTREAM", Value: "http://" + app.Name + ":" + strconv.Itoa(int(appv1alpha1.PrivateHTTPPort))},
+				{Name: "BEX_EDGE_CACHE_DIR", Value: edgeCacheStoreDir},
+				{Name: "BEX_EDGE_CACHE_MAX_BYTES", Value: strconv.Itoa(edgeCacheMaxBytes)},
+				{Name: "BEX_EDGE_CACHE_MAX_OBJECT_BYTES", Value: strconv.Itoa(edgeCacheMaxObjectBytes)},
+				{Name: edgeCacheControlEnv, Value: edgeCacheControlDir + "/" + edgeCacheControlFile},
+				{Name: "BEX_EDGE_CACHE_PEERS", Value: edgeCacheTierName(app.Name)},
+				{Name: "BEX_EDGE_CACHE_SELF", ValueFrom: &corev1.EnvVarSource{FieldRef: &corev1.ObjectFieldSelector{
+					APIVersion: corev1.SchemeGroupVersion.Version, FieldPath: "status.podIP"}}},
+				{Name: "BEX_EDGE_CACHE_DRAIN_SECONDS", Value: strconv.Itoa(edgeCacheDrainSeconds)},
+				{Name: "GOMEMLIMIT", Value: "150MiB"},
+			},
+			Ports:     []corev1.ContainerPort{{Name: edgeCachePortName, ContainerPort: edgeCachePort, Protocol: corev1.ProtocolTCP}},
+			Resources: resources,
+			ReadinessProbe: &corev1.Probe{ProbeHandler: corev1.ProbeHandler{
+				TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt32(edgeCachePort)},
+			}},
+			VolumeMounts: []corev1.VolumeMount{
+				{Name: edgeCacheControlVolumeName, MountPath: edgeCacheControlDir, ReadOnly: true},
+				{Name: edgeCacheStoreVolumeName, MountPath: edgeCacheStoreDir},
+			},
+			SecurityContext: sec,
+		}},
+		Volumes: []corev1.Volume{
+			edgeCacheControlVolume(),
+			{Name: edgeCacheStoreVolumeName, VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: storeLimit}}},
+		},
+		// Spread the replicas so a node's loss leaves the other serving.
+		Affinity: &corev1.Affinity{PodAntiAffinity: &corev1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+				Weight: 100,
+				PodAffinityTerm: corev1.PodAffinityTerm{
+					LabelSelector: &metav1.LabelSelector{MatchLabels: selector},
+					TopologyKey:   corev1.LabelHostname,
+				},
+			}},
+		}},
+		TerminationGracePeriodSeconds: new(int64(edgeCacheDrainSeconds + 30)),
+		AutomountServiceAccountToken:  new(false),
+		EnableServiceLinks:            new(false),
+	}
+	applyPodSpecServerDefaults(&dep.Spec.Template.Spec)
+}
+
+// edgeCacheControlVolume is the proxy's control file: its pod's own
+// annotations in a downward-API volume, which the kubelet rewrites when the
+// operator patches them, so a purge and a profile switch reach the running
+// proxy.
+func edgeCacheControlVolume() corev1.Volume {
+	return corev1.Volume{Name: edgeCacheControlVolumeName, VolumeSource: corev1.VolumeSource{
+		DownwardAPI: &corev1.DownwardAPIVolumeSource{Items: []corev1.DownwardAPIVolumeFile{{
+			Path:     edgeCacheControlFile,
+			FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.annotations"},
+		}}},
+	}}
+}
+
+// edgeCacheTierServing reports whether app's public route goes through its
+// tier: the App caches and a tier pod is Ready. Otherwise the route stays on,
+// or returns to, the App's own Service, so turning caching on, a tier that
+// cannot start, and losing every tier pod at once all serve uncached
+// (DYNAMIC) instead of failing.
+func (r *AppReconciler) edgeCacheTierServing(ctx context.Context, app *appv1alpha1.App) bool {
+	if !r.edgeCaches(app) {
+		return false
+	}
+	dep := &appsv1.Deployment{}
+	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: edgeCacheTierName(app.Name)}, dep); err != nil {
+		return false
+	}
+	return dep.Status.ReadyReplicas > 0
+}
+
+// retireEdgeCacheTier removes the tier of an App that no longer caches, once
+// none of its Ingresses routes to it: the pass that turns caching off hands
+// the proxies no-cache and moves the route, and the Ingress write it makes
+// brings the next pass, which removes the tier.
+func (r *AppReconciler) retireEdgeCacheTier(ctx context.Context, app *appv1alpha1.App) error {
+	name := edgeCacheTierName(app.Name)
+	dep := &appsv1.Deployment{}
+	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: name}, dep); err != nil {
+		return client.IgnoreNotFound(err)
+	}
+	for _, ingName := range append([]string{app.Name}, appv1alpha1.ChildIngressNames(app.Name)...) {
+		ing := &networkingv1.Ingress{}
+		if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: ingName}, ing); err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return err
+		}
+		if ingressRoutesTo(ing, name) {
+			// Until the route moves, the proxies pass every request through.
+			return r.annotateEdgeCacheTierPods(ctx, app, dep.Annotations[edgecache.RevisionAnnotation])
+		}
+	}
+	return r.deleteStaleChildren(ctx, dep, &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}})
+}
+
+// ingressRoutesTo reports whether any rule or the default backend of ing
+// routes to the Service named svc.
+func ingressRoutesTo(ing *networkingv1.Ingress, svc string) bool {
+	if b := ing.Spec.DefaultBackend; b != nil && b.Service != nil && b.Service.Name == svc {
+		return true
+	}
+	for _, rule := range ing.Spec.Rules {
+		if rule.HTTP == nil {
+			continue
+		}
+		for _, path := range rule.HTTP.Paths {
+			if path.Backend.Service != nil && path.Backend.Service.Name == svc {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// annotateEdgeCacheTierPods hands each live tier pod's proxy the App's last
+// purge, its current profile and the release whose deploy last emptied the
+// cache (revision), through the pod's own annotations, on every pass. The
+// proxy empties its cache on a new purge stamp or revision after its first
+// read of them, and a pod created after the purge started empty, so it is
+// not handed that stamp.
+func (r *AppReconciler) annotateEdgeCacheTierPods(ctx context.Context, app *appv1alpha1.App, revision string) error {
 	var pods corev1.PodList
-	if err := r.List(ctx, &pods, client.InNamespace(app.Namespace), client.MatchingLabels{labelApp: app.Name}); err != nil {
+	if err := r.List(ctx, &pods, client.InNamespace(app.Namespace), client.MatchingLabels{labelEdgeCacheTier: app.Name}); err != nil {
 		return err
 	}
 	profile, purged := edgeCacheProfileFor(app), app.Annotations[appv1alpha1.CachePurgedAtAnnotation]
 	purgedAt, err := time.Parse(time.RFC3339Nano, purged)
 	for i := range pods.Items {
 		pod := &pods.Items[i]
-		sidecar := edgeCacheSidecar(pod.Spec)
-		if sidecar == nil || !pod.DeletionTimestamp.IsZero() {
+		// Admission admits the control annotations only on a pod that runs
+		// the proxy.
+		if edgeCacheSidecar(pod.Spec) == nil || !pod.DeletionTimestamp.IsZero() {
 			continue
 		}
-		if _, control := containerEnv(sidecar, edgeCacheControlEnv); !control {
-			continue
+		want := map[string]string{edgecache.ProfileAnnotation: profile}
+		if purged != "" && (err != nil || !pod.CreationTimestamp.After(purgedAt)) {
+			want[edgecache.PurgedAtAnnotation] = purged
 		}
-		current, annotated := pod.Annotations[edgecache.ProfileAnnotation]
-		if !annotated {
-			current, _ = containerEnv(sidecar, edgeCacheProfileEnv)
+		if revision != "" {
+			want[edgecache.RevisionAnnotation] = revision
 		}
-		// A pod created after the purge started empty: handing it the
-		// stamp would only purge it again once its proxy is up.
-		stamp := purged
-		if err == nil && pod.CreationTimestamp.After(purgedAt) {
-			stamp = ""
+		current := true
+		for k, v := range want {
+			if pod.Annotations[k] != v {
+				current = false
+			}
 		}
-		if current == profile && (stamp == "" || pod.Annotations[edgecache.PurgedAtAnnotation] == stamp) {
+		if current {
 			continue
 		}
 		patch := client.MergeFrom(pod.DeepCopy())
-		metav1.SetMetaDataAnnotation(&pod.ObjectMeta, edgecache.ProfileAnnotation, profile)
-		if stamp != "" {
-			metav1.SetMetaDataAnnotation(&pod.ObjectMeta, edgecache.PurgedAtAnnotation, stamp)
+		for k, v := range want {
+			metav1.SetMetaDataAnnotation(&pod.ObjectMeta, k, v)
 		}
 		if err := client.IgnoreNotFound(r.Patch(ctx, pod, patch)); err != nil {
 			return err
@@ -260,49 +453,62 @@ func (r *AppReconciler) annotateEdgeCachePods(ctx context.Context, app *appv1alp
 	return nil
 }
 
-// sidecarUpstreamPort is the app port a pod's edge-cache sidecar forwards to
-// (edgeCacheContainer writes it); ok is false for a pod without a sidecar.
-func sidecarUpstreamPort(p *corev1.Pod) (int32, bool) {
-	sidecar := edgeCacheSidecar(p.Spec)
-	if sidecar == nil || !podHasPortName(p, edgeCachePortName) {
-		return 0, false
-	}
-	upstream, ok := containerEnv(sidecar, edgeCacheUpstreamEnv)
-	number, found := strings.CutPrefix(upstream, edgeCacheUpstreamPrefix)
-	port, err := strconv.ParseInt(number, 10, 32)
-	return int32(port), ok && found && err == nil
-}
-
-// podsCachePort reports whether every routable pod of pods (those a Service
-// selects) runs a sidecar in front of port. An image-port Service targets the
-// cache only then. A pod without the sidecar would drop out of a Service naming
-// the cache's listener, so turning caching on would empty it mid-rollout (the
-// hold servingTargetPort keeps for a configured port). A pod whose sidecar
-// fronts another port was projected on another primary, as a first release's
-// pods are after its HTTP port choice moves the primary, and its cache would
-// forward to a port the app may not serve. Either keeps the direct target
-// until it is gone.
-func podsCachePort(pods []corev1.Pod, port int32) bool {
-	for i := range pods {
-		if !routablePod(&pods[i]) {
-			continue
-		}
-		if upstream, ok := sidecarUpstreamPort(&pods[i]); !ok || upstream != port {
-			return false
+// edgeCacheSidecar is a pod spec's edge-cache container, nil without one: a
+// tier pod's proxy, or the sidecar a template stored before w3/m489 carries.
+func edgeCacheSidecar(spec corev1.PodSpec) *corev1.Container {
+	for i := range spec.Containers {
+		if spec.Containers[i].Name == edgeCacheContainerName {
+			return &spec.Containers[i]
 		}
 	}
-	return true
+	return nil
 }
 
-// targetImageEdgeCache points every Service port that targets an image-port
-// web service's primary at the edge cache: the primary's own port and a
-// replaced primary aliased to it through a port change (aliasedPriorPrimary).
-// withPrivateNetworkPorts then copies the primary's target onto 10000. Other
-// declared ports stay direct to the app.
-func targetImageEdgeCache(ports []corev1.ServicePort, primary int32) {
-	for i := range ports {
-		if ports[i].TargetPort == intstr.FromInt32(primary) {
-			ports[i].TargetPort = intstr.FromString(edgeCachePortName)
+// storedEdgeCache is what a pod template stored before w3/m489 carries for the
+// edge-cache sidecar it ran: the container and its control-file volume (none
+// before w3/m486). A template from before w3/m486 may carry a purge stamp
+// too, which stays among its annotations. applyDeploymentSpec keeps them, as
+// stored, while nothing else about the template changes, so the operator
+// release that moves caching to the tier rolls no instance; the next change
+// for another reason (a deploy, a restart) drops them (projectKeptEdgeCache).
+// The sidecar receives no request meanwhile: the App's Services target the
+// app itself.
+type storedEdgeCache struct {
+	sidecar *corev1.Container
+	control *corev1.Volume
+}
+
+// keptEdgeCache reads stored's edge-cache leftovers, nil when it has none.
+func keptEdgeCache(stored corev1.PodTemplateSpec) *storedEdgeCache {
+	sidecar := edgeCacheSidecar(stored.Spec)
+	_, stamped := stored.Annotations[appv1alpha1.CachePurgedAtAnnotation]
+	if sidecar == nil && !stamped {
+		return nil
+	}
+	kept := &storedEdgeCache{}
+	if sidecar != nil {
+		kept.sidecar = sidecar.DeepCopy()
+	}
+	for i := range stored.Spec.Volumes {
+		if stored.Spec.Volumes[i].Name == edgeCacheControlVolumeName {
+			kept.control = stored.Spec.Volumes[i].DeepCopy()
 		}
+	}
+	return kept
+}
+
+// projectKeptEdgeCache appends kept's sidecar, after its control volume, to
+// tmpl, where the projection of w5/m151 placed them; nil drops the purge
+// stamp a template from before w3/m486 carried.
+func projectKeptEdgeCache(tmpl *corev1.PodTemplateSpec, kept *storedEdgeCache) {
+	if kept == nil {
+		delete(tmpl.Annotations, appv1alpha1.CachePurgedAtAnnotation)
+		return
+	}
+	if kept.control != nil {
+		tmpl.Spec.Volumes = append(tmpl.Spec.Volumes, *kept.control)
+	}
+	if kept.sidecar != nil {
+		tmpl.Spec.Containers = append(tmpl.Spec.Containers, *kept.sidecar)
 	}
 }

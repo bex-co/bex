@@ -496,9 +496,11 @@ func (r *AppReconciler) wakeReadySince(ctx context.Context, app *appv1alpha1.App
 // withPrivateNetworkPorts adds what a stable Service serves on the private
 // network beyond the service's own ports: a web or private service's
 // discovered listeners, each targeting itself, and a web service's port 10000
-// targeting its primary port's own target (the serving listener, the edge
-// cache, or the image network's primary). An image that declares 10000 beside another
-// primary has it retargeted, as Render routes 10000 to the primary HTTP server.
+// targeting its primary port's own target (the serving listener or the image
+// network's primary), which is how a caching web service's edge-cache tier
+// reaches it whatever its port (w3/m489). An image that declares 10000 beside
+// another primary has it retargeted, as Render routes 10000 to the primary
+// HTTP server.
 // Appended entries keep the first port, which release planning reads, first.
 func withPrivateNetworkPorts(app *appv1alpha1.App, ports []corev1.ServicePort) []corev1.ServicePort {
 	numbers := make([]int32, len(ports))

@@ -237,3 +237,58 @@ func TestParseAnnotationsReadsTheKubeletFormat(t *testing.T) {
 		t.Fatalf("parsed %q, want %q", got, want)
 	}
 }
+
+// A tier pod outlives the app's instances, so a deploy empties it through its
+// cache-revision annotation: a new revision after the first read purges, the
+// revision the pod starts with does not, and a purge stamp and a revision
+// arriving together purge once.
+func TestANewCacheRevisionPurgesARunningProxy(t *testing.T) {
+	o := &origin{}
+	h := newCache(t, ProfileStatic, o, nil)
+	path := filepath.Join(t.TempDir(), "annotations")
+	annotations := map[string]string{RevisionAnnotation: "rev-1", PurgedAtAnnotation: "2026-11-18T09:00:00Z"}
+	writeControl(t, path, annotations)
+	var logged []string
+	c := NewController(h, path)
+	c.Logf = func(format string, args ...any) { logged = append(logged, fmt.Sprintf(format, args...)) }
+	status(h, "/app.css")
+	if err := c.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	if s := status(h, "/app.css"); s != "HIT" {
+		t.Fatalf("after the first read = %s, want HIT: the revision a pod starts with is no purge", s)
+	}
+	annotations[RevisionAnnotation] = "rev-2"
+	writeControl(t, path, annotations)
+	if err := c.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	if s := status(h, "/app.css"); s != "MISS" {
+		t.Fatalf("after a new revision = %s, want MISS", s)
+	}
+	if err := c.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	if s := status(h, "/app.css"); s != "HIT" {
+		t.Fatalf("an unchanged revision purged again: %s, want HIT", s)
+	}
+	annotations[RevisionAnnotation] = "rev-3"
+	annotations[PurgedAtAnnotation] = "2026-11-18T11:00:00Z"
+	writeControl(t, path, annotations)
+	if err := c.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	if s := status(h, "/app.css"); s != "MISS" {
+		t.Fatalf("after a new revision and stamp = %s, want MISS", s)
+	}
+	want := []string{
+		`edge-cache: purged (app.bex.co/cache-revision=rev-2)`,
+		`edge-cache: purged (app.bex.co/cache-purged-at=2026-11-18T11:00:00Z, app.bex.co/cache-revision=rev-3)`,
+	}
+	if !slices.Equal(logged, want) {
+		t.Fatalf("logged\n  %q\nwant\n  %q", logged, want)
+	}
+	if o.hits.Load() != 3 {
+		t.Fatalf("origin hits = %d, want 3: the fill and one refill after each purge", o.hits.Load())
+	}
+}

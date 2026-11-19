@@ -2196,7 +2196,7 @@ const deServices: Record<string, TranslationEntry> = {
       "Edge-caching origin-controlled-all option description, with the dynamic-content warning",
   },
   "services.edgeCachingPurgeOnDeploy": {
-    message: "Der Cache wird bei jedem Deployment geleert.",
+    message: "Der Cache wird bei jedem erfolgreichen Deployment geleert.",
     description: "Note under the edge-caching options",
   },
   "services.edgeCachingPaidOnly": {

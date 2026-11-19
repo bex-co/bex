@@ -183,7 +183,7 @@ func (p generationOrDeletionPredicate) Update(e event.UpdateEvent) bool {
 	keptBuildsChanged := e.ObjectNew != nil && e.ObjectOld != nil &&
 		e.ObjectNew.GetLabels()[appv1alpha1.LabelKeptBuilds] != e.ObjectOld.GetLabels()[appv1alpha1.LabelKeptBuilds]
 	// A manual edge-cache purge is a stamp too: the pass hands it to the
-	// running proxies (annotateEdgeCachePods, w3/m486) instead of waiting out
+	// running proxies (annotateEdgeCacheTierPods, w3/m486) instead of waiting out
 	// the 30 s steady-state requeue.
 	cachePurged := e.ObjectNew != nil && e.ObjectOld != nil &&
 		e.ObjectNew.GetAnnotations()[appv1alpha1.CachePurgedAtAnnotation] != e.ObjectOld.GetAnnotations()[appv1alpha1.CachePurgedAtAnnotation]
@@ -708,9 +708,10 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	// The running pods' environment labels are operational, not part of a
 	// release: every pass moves them, ahead of any build, hold or gate, so a
 	// toggle or a move reaches a pod within the pass its event (or the pod's
-	// own creation) triggers (w4/m342). A manual purge and the edge-cache
-	// profile reach the running proxies the same way, through each pod's
-	// annotations (w3/m486).
+	// own creation) triggers (w4/m342). The edge-cache tier converges here
+	// too, and a manual purge, a successful deploy and the profile reach its
+	// running proxies the same way, through each pod's annotations (w3/m486,
+	// w3/m489).
 	if err := r.updateAppPodsInPlace(ctx, &app); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -3370,7 +3371,9 @@ func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.Ap
 }
 
 // ingressBackend picks the Service/port the public Ingress routes to, in a
-// fixed precedence: maintenance → suspended → sleep → the App's own Service.
+// fixed precedence: maintenance → suspended → sleep → the App's edge-cache
+// tier while one of its pods is Ready (edgeCacheTierServing, w3/m489) → the
+// App's own Service.
 // Maintenance has public-routing precedence over both manual suspension and
 // auto-hibernation — an owner who put a service into maintenance mode gets the
 // page they chose even if the service is also suspended. It changes only the
@@ -3419,6 +3422,11 @@ func (r *AppReconciler) ingressBackend(ctx context.Context, app *appv1alpha1.App
 	// Traefik's raw "no available server" (w4/m235).
 	if autoHibernating || (!serving && r.activatorIsWakePath(app)) {
 		return r.activatorBackend(ctx, app)
+	}
+	// The tier forwards to the App's Service on port 10000, which follows
+	// the primary through a port change, so its own port never moves.
+	if r.edgeCacheTierServing(ctx, app) {
+		return edgeCacheTierName(app.Name), edgeCacheTierPort, nil
 	}
 	// The Services keep the serving network's ports until the candidate is
 	// promoted, so the route names the serving primary: a port-changing or
@@ -3757,9 +3765,12 @@ func (r *AppReconciler) deleteStaleChildren(ctx context.Context, objs ...client.
 // applyClusterIPService creates/updates one ClusterIP Service named name over
 // the App's runtime pods (privateServiceProjection's selector) on the App's
 // port, targeting the pods' named listener (servingTargetPort). An image-port
-// service publishes its image network's ports instead, with a caching web
-// service's primary on the edge cache (targetImageEdgeCache). Shared by the
-// primary CR-named Service and the slug alias so the two cannot drift.
+// service publishes its image network's ports instead. Both target the app
+// itself: a caching web service's public route goes through its edge-cache
+// tier, which reaches the app through port 10000 here (w3/m489), and its
+// private network does not, as Render's CDN fronts only the public URL.
+// Shared by the primary CR-named Service and the slug alias so the two cannot
+// drift.
 // The port carries the server's own defaults so the mutate matches the stored
 // object and steady-state reconciles stay read-only (no perpetual no-op PUT).
 func (r *AppReconciler) applyClusterIPService(ctx context.Context, app *appv1alpha1.App, name string, port int) error {
@@ -3767,17 +3778,12 @@ func (r *AppReconciler) applyClusterIPService(ctx context.Context, app *appv1alp
 	if err != nil {
 		return err
 	}
-	cached := r.edgeCaches(app)
-	if !app.Spec.HasImagePorts() || cached {
+	if !app.Spec.HasImagePorts() {
 		var pods corev1.PodList
 		if err := r.List(ctx, &pods, client.InNamespace(app.Namespace), client.MatchingLabels(selector)); err != nil {
 			return err
 		}
-		if !app.Spec.HasImagePorts() {
-			ports[0].Name, ports[0].TargetPort = servingPortName, servingTargetPort(pods.Items, cached)
-		} else if podsCachePort(pods.Items, app.ServicePort()) {
-			targetImageEdgeCache(ports, app.ServicePort())
-		}
+		ports[0].Name, ports[0].TargetPort = servingPortName, servingTargetPort(pods.Items)
 	}
 	ports = withPrivateNetworkPorts(app, ports)
 	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
@@ -3793,21 +3799,12 @@ func (r *AppReconciler) applyClusterIPService(ctx context.Context, app *appv1alp
 // traffic with readiness instead of retargeting ready old pods to a port they
 // do not listen on (w4/m182). A live pod projected before the name existed
 // would drop out of a named Service, so its numeric port is kept until it is
-// gone. With edge caching (w5/m151) the target is the cache's listener, held
-// back the same way while a live pod has no cache yet, so turning caching on
-// never empties the Service mid-rollout. pods are those the Service selects.
-func servingTargetPort(pods []corev1.Pod, cached bool) intstr.IntOrString {
-	target := servingPortName
-	if cached {
-		target = edgeCachePortName
-	}
+// gone. pods are those the Service selects.
+func servingTargetPort(pods []corev1.Pod) intstr.IntOrString {
 	for i := range pods {
 		p := &pods[i]
 		if !routablePod(p) {
 			continue
-		}
-		if target == edgeCachePortName && !podHasPortName(p, edgeCachePortName) {
-			target = servingPortName
 		}
 		for _, c := range p.Spec.Containers {
 			if c.Name != appContainerName || len(c.Ports) == 0 {
@@ -3818,7 +3815,7 @@ func servingTargetPort(pods []corev1.Pod, cached bool) intstr.IntOrString {
 			}
 		}
 	}
-	return intstr.FromString(target)
+	return intstr.FromString(servingPortName)
 }
 
 // routablePod reports whether a pod a Service selects can still become one of
@@ -3828,17 +3825,6 @@ func servingTargetPort(pods []corev1.Pod, cached bool) intstr.IntOrString {
 // never deletes it, so counting it would hold a target back indefinitely.
 func routablePod(p *corev1.Pod) bool {
 	return p.DeletionTimestamp == nil && p.Status.Phase != corev1.PodFailed && p.Status.Phase != corev1.PodSucceeded
-}
-
-func podHasPortName(p *corev1.Pod, name string) bool {
-	for _, c := range p.Spec.Containers {
-		for _, cp := range c.Ports {
-			if cp.Name == name {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // reconcileSlugService converges the slug-named ClusterIP Service that gives an
