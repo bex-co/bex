@@ -218,8 +218,12 @@ jobs:
       # A version bump is not complete when the desired object merely applies.
       # Wait for KCP and every MachineDeployment to finish their own staged
       # rollout and for every replacement Node's kubelet to report that version.
+      # Its fleet diagnostics list every Machine, node and address; this log
+      # is public (w5/m501, ADR019 §Decision 5).
       - name: wait for app cluster fleet rollout
-        run: bash scripts/wait-capi-rollout.sh
+        run: |
+          set -o pipefail
+          bash scripts/wait-capi-rollout.sh 2>&1 | python3 scripts/lib/public_log.py
 
       # cluster-autoscaler is Argo-managed post-pivot (deploy/gitops/base/autoscaler.yaml).
 

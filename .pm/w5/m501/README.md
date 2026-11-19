@@ -33,8 +33,8 @@ Total: **9 tasks, about 5h45m**.
 | Job | What it printed | Tenant data | Fix | Earlier runs |
 | --- | --- | --- | --- | --- |
 | `cluster-diagnose.yml` | raw pods `-A -o wide`, `describe pod`, nodes `-o wide`, `describe nodes`, Machines, autoscaler status and logs | yes: workspace and service names, pod names, node names and addresses, tenant events | `scripts/cluster-diagnose.sh --public-log` (t002), service id read from the event payload and masked | 8 runs deleted (404), with 44033022163 |
-| `ssh-edge-liveness.yml` `request-logs-liveness` | every tenant namespace with request or app logs in 6 h | yes: which workspaces are active | prints the count only; a FAIL list goes through `public_log.py` | 279 runs' logs deleted |
-| `app-cluster.yml` | `kubectl wait node --all`, `get nodes -o wide` | node names and both addresses | wait silenced, node table through `public_log.py` | 35 runs' logs deleted |
+| `ssh-edge-liveness.yml` `request-logs-liveness` | every tenant namespace with request or app logs in 6 h | yes: which workspaces are active | prints the count only; a FAIL list goes through `public_log.py` | 280 runs' logs deleted (one ran after the scan, before the fix) |
+| `app-cluster.yml` | `kubectl wait node --all`, `get nodes -o wide`, and `scripts/wait-capi-rollout.sh`'s fleet diagnostics (Machines and HCloudMachines `-o wide`) | node names, Hetzner server ids and both addresses | wait silenced; node table and fleet step through `public_log.py` (the fleet step found by the first run on `main`, 44485119439) | 36 runs' logs deleted |
 | `platform-rebuild.yml` | the full rebuild JSON (`tee`) | every eligible service's workspace, name and commit | counts, then namespace hash and runtime per item | 2 runs' logs deleted |
 | `hcloud-csi-rollout.yml` inventory | every service with a disk (namespace, App, service id, PVC) | yes | inventory through `public_log.py` | 14 runs' logs deleted |
 | `sandbox-measure.yml` | MEASURE lines with node names and addresses, other workspaces' sandbox namespaces | yes | measure step through `public_log.py` | 18 runs' logs deleted |
@@ -65,7 +65,7 @@ Not changed: the two kubectl wrappers have different contracts (silent text vs. 
 1. `scripts/cluster-diagnose.test.sh` (stub kubectl, synthetic fixtures): the public view carries no tenant id, name, node name or address, image or event text, and still reports counts, reasons, readiness, allocation, Machines and the autoscaler. Eight mutations of the redaction (an event message, `default` as a platform namespace, the live node list, autoscaler pod references, a tenant pod named autoscaler, a fail-open name, the unreachable stop, `0/3` garbling) each turn it red. The live check is the run on `main` (t009).
 2. The same test's local-run case, plus a local run against production on 2026-11-19 that printed the full detail.
 3. `scripts/github-actions-validate.test.sh` check 11: 18 fixtures, the `kubectl get pods -A` one among them, and the validator passes the real tree. Run over the pre-milestone workflows, it flags all 21 printers.
-4. No repository test can hold GitHub state. `gh api repos/bex-co/bex/actions/runs/<id>` answers 404 for the 9 Cluster diagnose runs, and `.../logs` answers 404 for the 367 other runs.
+4. No repository test can hold GitHub state. `gh api repos/bex-co/bex/actions/runs/<id>` answers 404 for the 9 Cluster diagnose runs, and `.../logs` answers 404 for the 369 other runs.
 5. ADR019 §Decision 5 states the rule, and the tests above cover it, along with `scripts/fetch-app-kubeconfig.test.sh` (control-plane addresses masked in CI only).
 
 ## Source + Goal linkage
