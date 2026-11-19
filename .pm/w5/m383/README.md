@@ -1,6 +1,6 @@
 # w5 · m383 — Sandbox image imports cannot fill the shared registry or reach past it: a platform budget, fair workers, no foreign layers, no same-registry sources
 
-**Worker:** worker5 **Goal:** no workspace, and no set of workspaces together, can fill the shared sandbox registry or starve other tenants' imports, and an import can bring in only bytes it actually copied. **Status:** blocked (t001–t007 done; code shipped; t008 Closeout waits on confirming the production registry volume's size, DoD 4)
+**Worker:** worker5 **Goal:** no workspace, and no set of workspaces together, can fill the shared sandbox registry or starve other tenants' imports, and an import can bring in only bytes it actually copied. **Status:** todo (t001–t007 done; code shipped; the production volume check DoD 4 waited on is recorded below, so t008 Closeout is next)
 
 ## Tasks (in order)
 
@@ -27,7 +27,7 @@ Total: **8 tasks, about 3h55m**.
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w5/189](../../done/189.md), from security review round 24 ([ADR107](../../../../docs/ADR107-security-review-round24.md), the S-3 remainder and sandbox hardening notes). Promoted by `/loopx w5` on 2026-11-13.
+- **Source:** inbox note [w5/189](../done/189.md), from security review round 24 ([ADR107](../../../docs/ADR107-security-review-round24.md), the S-3 remainder and sandbox hardening notes). Promoted by `/loopx w5` on 2026-11-13.
 - **Evidence:** the per-workspace cap (500 GB default) exceeds the shared Zot volume (`deploy/gitops/base/zot.yaml`, `storage: 100Gi`); `sandbox/images.go` runs `importWorkers = 2` per replica shared across tenants, and a slow source holds a slot for up to 30 minutes; `Images.copy` writes the source with `remote.Write`, which carries a layer's `urls` into the imported manifest and, for a source on the sink's own host, mounts blobs across repositories with the sink's credential.
 - **Goal linkage:** sandboxes (w2/m358 imports, w2/m359 groups); the security-review lineage (ADR107).
 - **Expected outcome:** imports cannot exhaust the registry other tenants' builds depend on, and an imported image holds only bytes bex copied.
@@ -41,3 +41,11 @@ Total: **8 tasks, about 3h55m**.
 - **Divergence recorded, awaiting sign-off:** ADR018 now lists the platform import budget beside the per-workspace storage cap.
 - **Found by /simplify and fixed:** the copy could write a different image than the one checked (a manifest labeled image at the check and index at the copy); it now writes only the checked digest. A config blob's URLs are refused too. One workspace may hold only a quarter of the budget.
 
+## Unblock record (2026-11-18, `/pmx them all to w5`)
+
+- **Affected:** w5/m383 (DoD 4; t004 step 4; t008).
+- **Source:** verified evidence, read-only on production with the production kubeconfig (`scripts/fetch-app-kubeconfig.sh`), 2026-11-19 about 07:10Z. Not a user decision.
+- **Finding:** the registry volume is the declared size. `kubectl -n bex-registry get pvc` shows `zot-pvc-zot-0` at 100Gi (`hcloud-volumes`, Bound); `kubelet_volume_stats` reports a 98.3 GiB filesystem with 41.2 GiB used. bex-api's Deployment does not set `BEX_SANDBOX_IMPORT_PLATFORM_BUDGET_GB`, so it runs the default 80 GB (`lego/backend/cmd/api/config.go`), about 74.5 GiB, below the volume. DoD 4 holds as written.
+- **Residual, recorded for closeout:** the budget bounds imported sandbox images only. Build images share the same volume (41.2 GiB used today), so imports at the full budget plus today's other use would exceed the volume; `ZotRegistryFillingUp` and `ZotRegistryAlmostFull` page before it fills. Closeout should state this in ADR018's budget row rather than lower the budget silently.
+- **Still open, not a closeout gate:** the ADR018 divergence for the platform import budget awaits the user's sign-off. The definition of done does not require it; it stays recorded in ADR018 until the user signs or asks for a change.
+- **Next:** t008 Closeout, checking DoD 1–5.
