@@ -54,6 +54,10 @@
 #      curl header or user argument (scripts/secret-argv-validate.sh), where
 #      `ps` shows it to every local user. Blocks: pass it on stdin through
 #      scripts/lib/curl-auth.sh instead (w3/m472).
+#  12. The push changes .pm/ and adds a milestone number another workstream
+#      already uses or leaves an open/blocked task with an id: differing from
+#      its path (scripts/pm-board-validate.py --head HEAD). Blocks before push
+#      so a rebased .pm filing cannot turn references.yml red on main.
 #
 # Gates 2, 3, 5 and 6 and the gofmt check run in a detached worktree at HEAD,
 # never in the working tree: a gate run beside an edit in progress tested the
@@ -160,6 +164,9 @@ if grep -qiE '\[(skip ci|ci skip|no ci|skip actions|actions skip)\]' <<<"$messag
 fi
 python3 -B scripts/manifest_flag_guard.py "$base" HEAD
 python3 -B scripts/migration_order_guard.py "$base" HEAD
+if [ -n "$(git diff --name-only "$base"..HEAD -- .pm)" ]; then
+  python3 -B scripts/pm-board-validate.py --base "$base" --head HEAD >&2
+fi
 
 # Which gates this push needs, from git objects only. Captured, not piped into
 # grep: under pipefail an early-exiting grep can SIGPIPE git and make a large

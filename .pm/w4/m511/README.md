@@ -1,4 +1,4 @@
-# w4 · m506 — A read replica that stops syncing with its primary records Render's `postgres_read_replica_stale`
+# w4 · m511 — A read replica that stops syncing with its primary records Render's `postgres_read_replica_stale`
 
 **Worker:** worker4 **Goal:** a named read replica whose streaming from its primary stops records one `postgres_read_replica_stale` per episode on REST, GraphQL, MCP, webhooks and the dashboard, as Render records it. **Status:** todo
 
@@ -26,6 +26,7 @@
 
 ## Source + Goal linkage
 
+- **Renumbered:** from `w4/m506` on 2026-11-19 (`w3` filed `m505–m509` first, and milestone numbers are global).
 - **Source:** `/pm-brainstorm one aspect of render parity for w4` (the service events and outbound webhooks aspect), 2026-11-18, item 5; filed by `/pm them to w4`, 2026-11-19.
 - **Render reference:** render.com/docs/webhooks, read 2026-11-18: `postgres_read_replica_stale` "A Render Postgres read replica has stopped syncing with its primary instance" (Render adds: contact support). The pinned `retrieve-event` member has no fields. render.com/docs/notifications sends no email for it.
 - **bex today:** read replicas since w1/m22, each a one-instance CNPG replica cluster streaming from the primary (`lego/types/v1alpha1/database_types.go:282-292`); replication lag charted from `cnpg_pg_replication_lag` (`lego/backend/internal/metrics/datastore.go:67`). `w4/done/m379/README.md:123` and `w2/done/m171/done/t004.md:40` record "no producer", and `docs/render-artifacts/webhooks-api.md` files the type under "No truthful producer".

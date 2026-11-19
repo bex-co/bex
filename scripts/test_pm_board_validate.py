@@ -45,12 +45,11 @@ class Board:
         (self.root / new).parent.mkdir(parents=True, exist_ok=True)
         os.rename(self.root / old, self.root / new)
 
-    def run(self, base: str = "origin/main") -> tuple[int, str]:
-        done = subprocess.run(
-            [sys.executable, str(SCRIPT), "--root", str(self.root), "--base", base],
-            capture_output=True,
-            text=True,
-        )
+    def run(self, base: str = "origin/main", head: str | None = None) -> tuple[int, str]:
+        cmd = [sys.executable, str(SCRIPT), "--root", str(self.root), "--base", base]
+        if head is not None:
+            cmd.extend(["--head", head])
+        done = subprocess.run(cmd, capture_output=True, text=True)
         return done.returncode, done.stderr + done.stdout
 
 
@@ -191,8 +190,32 @@ class BoardValidateTest(unittest.TestCase):
             done = subprocess.run([sys.executable, str(SCRIPT), "--root", empty], capture_output=True, text=True)
         self.assertEqual(done.returncode, 2)
 
+    def test_head_reads_committed_tree_and_ignores_uncommitted_working_tree_noise(self):
+        board = self.board()
+        # Uncommitted duplicate and mismatched task id in the working tree must not break a clean HEAD.
+        board.write({".pm/w2/m5/README.md": "# uncommitted dup\n", ".pm/w1/m5/t002.md": task("w4/m5/t002")})
+        code, out = board.run(head="HEAD")
+        self.assertEqual(code, 0, out)
+        # Once committed, --head HEAD catches both the colliding milestone and the wrong id.
+        board.git("add", "-A")
+        board.git("commit", "-q", "-m", "dup and bad id")
+        code, out = board.run(head="HEAD")
+        self.assertEqual(code, 1, out)
+        self.assertIn(".pm/w2/m5 adds milestone m5, already used by w1", out)
+        self.assertIn(".pm/w1/m5/t002.md has id: w4/m5/t002, want w1/m5/t002", out)
+
+    def test_head_rejects_unresolvable_revision(self):
+        board = self.board()
+        code, out = board.run(head="no-such-rev")
+        self.assertEqual(code, 2, out)
+        self.assertIn("does not resolve", out)
+
     def test_the_repositorys_own_board_passes(self):
-        done = subprocess.run([sys.executable, str(SCRIPT), "--root", str(REPO)], capture_output=True, text=True)
+        done = subprocess.run(
+            [sys.executable, str(SCRIPT), "--root", str(REPO), "--head", "HEAD"],
+            capture_output=True,
+            text=True,
+        )
         self.assertEqual(done.returncode, 0, done.stderr)
 
 

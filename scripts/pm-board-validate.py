@@ -31,14 +31,17 @@ matches their path after re-homings. Repairing that history is churn, and the
   2. An open or blocked task (outside `done/`) carries `id: wN/mN/tNNN`, the
      same as its path.
 
-  python3 scripts/pm-board-validate.py [--root DIR] [--base REV]
+  python3 scripts/pm-board-validate.py [--root DIR] [--base REV] [--head REV]
 
 --base is the branch the change is measured against (default origin/main; CI
-passes the PR's base branch, or the commit before a push). A change is the
-working tree against the merge base of --base and HEAD, so staged, unstaged and
-untracked board files count before they are committed. When --base or the
-merge base is missing (a shallow clone, a new branch) the duplicate check is
-skipped and the output says so; the id check needs no history.
+passes the PR's base branch, or the commit before a push). Without --head, a
+change is the working tree against the merge base of --base and HEAD, so
+staged, unstaged and untracked board files count before they are committed.
+With --head REV (used by scripts/ship-gates.sh with HEAD), the board is read
+directly from that commit's tree so uncommitted or gitignored files in a
+shared working tree cannot break or rescue a push. When --base or the merge
+base is missing (a shallow clone, a new branch) the duplicate check is skipped
+and the output says so; the id check needs no history.
 
 Exit 0 clean, 1 a violation (each printed), 2 unusable.
 """
@@ -92,17 +95,21 @@ def milestone_dirs(paths: list[str]) -> set[Milestone]:
 
 
 def tree_files(root: str, rev: str) -> list[str]:
-    return git(root, "ls-tree", "-r", "--name-only", rev, "--", ".pm").split("\n")
+    out = git(root, "ls-tree", "-r", "--name-only", rev, "--", ".pm")
+    return [line for line in out.split("\n") if line]
 
 
-def check_duplicates(root: str, base: str, tree: list[str]) -> tuple[list[str], list[str]]:
+def check_duplicates(
+    root: str, base: str, tree: list[str], head: str | None = None
+) -> tuple[list[str], list[str]]:
     """Problems, and a note when the check could not run."""
     if not resolves(root, base):
         return [], [f"base {base!r} does not resolve; the duplicate check is skipped"]
+    head_ref = head or "HEAD"
     try:
-        merge_base = git(root, "merge-base", base, "HEAD").strip()
+        merge_base = git(root, "merge-base", base, head_ref).strip()
     except RuntimeError:
-        return [], [f"{base!r} shares no history with HEAD; the duplicate check is skipped"]
+        return [], [f"{base!r} shares no history with {head_ref}; the duplicate check is skipped"]
     before = milestone_dirs(tree_files(root, merge_base))
     current = milestone_dirs(tree)
     added, deleted = current - before, before - current
@@ -127,9 +134,8 @@ def check_duplicates(root: str, base: str, tree: list[str]) -> tuple[list[str], 
     return sorted(set(problems)), []
 
 
-def frontmatter_id(path: str) -> str | None:
-    with open(path, encoding="utf-8-sig") as handle:
-        lines = handle.read().splitlines()
+def parse_frontmatter_id(text: str) -> str | None:
+    lines = text.splitlines()
     if not lines or lines[0].strip() != "---":
         return None
     for line in lines[1:]:
@@ -141,14 +147,52 @@ def frontmatter_id(path: str) -> str | None:
     return None
 
 
-def check_task_ids(root: str, tree: list[str]) -> list[str]:
-    problems = []
+def frontmatter_id(path: str) -> str | None:
+    with open(path, encoding="utf-8-sig") as handle:
+        return parse_frontmatter_id(handle.read())
+
+
+def git_read_blobs(root: str, rev: str, paths: list[str]) -> dict[str, str]:
+    """Read paths from a git tree in one cat-file --batch call."""
+    if not paths:
+        return {}
+    specs = "".join(f"{rev}:{path}\n" for path in paths).encode("utf-8")
+    done = subprocess.run(
+        ["git", "-C", root, "cat-file", "--batch"],
+        input=specs,
+        capture_output=True,
+    )
+    if done.returncode != 0:
+        raise RuntimeError(f"git cat-file --batch: {done.stderr.decode('utf-8', 'replace').strip()}")
+    out = done.stdout
+    pos = 0
+    contents: dict[str, str] = {}
+    for path in paths:
+        nl = out.find(b"\n", pos)
+        if nl == -1:
+            raise RuntimeError(f"git cat-file --batch: truncated header for {rev}:{path}")
+        header = out[pos:nl].decode("utf-8", "replace")
+        pos = nl + 1
+        parts = header.split(" ")
+        if len(parts) < 3 or parts[1] == "missing":
+            raise RuntimeError(f"git cat-file --batch: missing object {rev}:{path}")
+        size = int(parts[2])
+        blob = out[pos : pos + size]
+        pos += size + 1  # trailing newline
+        contents[path] = blob.decode("utf-8-sig", "replace")
+    return contents
+
+
+def check_task_ids(root: str, tree: list[str], head: str | None = None) -> list[str]:
+    tasks: list[tuple[str, str]] = []
     for path in tree:
         match = OPEN_TASK.match(path)
-        if not match:
-            continue
-        want = "/".join(match.groups())
-        got = frontmatter_id(os.path.join(root, path))
+        if match:
+            tasks.append((path, "/".join(match.groups())))
+    blobs = git_read_blobs(root, head, [path for path, _ in tasks]) if head else None
+    problems = []
+    for path, want in tasks:
+        got = parse_frontmatter_id(blobs[path]) if blobs is not None else frontmatter_id(os.path.join(root, path))
         if got != want:
             problems.append(f"{path} has id: {got if got else '(none)'}, want {want}")
     return problems
@@ -158,18 +202,33 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--root", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
     parser.add_argument("--base", default="origin/main")
+    parser.add_argument("--head", default=None, help="validate a committed tree (e.g. HEAD) instead of the working tree")
     args = parser.parse_args()
     root = os.path.abspath(args.root)
-    if not os.path.isdir(os.path.join(root, ".pm")):
-        print(f"pm-board-validate: no .pm directory under {root}", file=sys.stderr)
-        return 2
-    tree = working_tree_files(root)
+    if args.head is not None:
+        if not resolves(root, args.head):
+            print(f"pm-board-validate: head {args.head!r} does not resolve", file=sys.stderr)
+            return 2
+        try:
+            tree = tree_files(root, args.head)
+        except RuntimeError as err:
+            print(f"pm-board-validate: {err}", file=sys.stderr)
+            return 2
+        if not tree:
+            print(f"pm-board-validate: no .pm directory in {args.head}", file=sys.stderr)
+            return 2
+    else:
+        if not os.path.isdir(os.path.join(root, ".pm")):
+            print(f"pm-board-validate: no .pm directory under {root}", file=sys.stderr)
+            return 2
+        tree = working_tree_files(root)
     try:
-        duplicates, notes = check_duplicates(root, args.base, tree)
+        duplicates, notes = check_duplicates(root, args.base, tree, head=args.head)
+        task_problems = check_task_ids(root, tree, head=args.head)
     except RuntimeError as err:
         print(f"pm-board-validate: {err}", file=sys.stderr)
         return 2
-    problems = duplicates + check_task_ids(root, tree)
+    problems = duplicates + task_problems
     for note in notes:
         print(f"note: {note}", file=sys.stderr)
     for problem in problems:

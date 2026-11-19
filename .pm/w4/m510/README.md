@@ -1,4 +1,4 @@
-# w4 · m505 — A build-source link change and a build that cannot be fetched record Render's `artifact_source_changed` and `artifact_fetch_failed`
+# w4 · m510 — A build-source link change and a build that cannot be fetched record Render's `artifact_source_changed` and `artifact_fetch_failed`
 
 **Worker:** worker4 **Goal:** a service's build-source link changes record `artifact_source_changed {fromBuildSourceId, toBuildSourceId}` instead of bex's `source_changed`, and a linked service's deploy whose build cannot be pulled records `artifact_fetch_failed {buildId, message}`, on REST, GraphQL, MCP, webhooks and the dashboard. **Status:** todo
 
@@ -27,6 +27,7 @@
 
 ## Source + Goal linkage
 
+- **Renumbered:** from `w4/m505` on 2026-11-19 (`w3` filed `m505–m509` first, and milestone numbers are global).
 - **Source:** `/pm-brainstorm one aspect of render parity for w4` (the service events and outbound webhooks aspect), 2026-11-18, item 2; filed by `/pm them to w4`, 2026-11-19.
 - **Render reference:** the pinned OpenAPI `retrieve-event` details members name build sources: Artifact Source Changed (`fromBuildSourceId`, `toBuildSourceId`) and Artifact Fetch Failed (`buildId`, `message`, "The build published by the build source that could not be fetched."). render.com/changelog, 2026-11-10: "Reuse a build across multiple services".
 - **bex today:** Build Sources shipped in w2/m254 (2026-11-08). A link change writes the audit row `apps.LinkBuildSource` (`lego/backend/internal/core/audit.go:471-474`), but the service feed reports it as bex's own `source_changed` (`lego/backend/internal/events/service.go:455`), outside Render's enum, and a failed pull of a build reports `image_pull_failed`. `docs/render-artifacts/webhooks-api.md` lists both artifact types under "No truthful producer", and ADR018's round-3 drift note (2026-09-07) calls artifact sources "a Render feature bex does not target", both written before Build Sources existed.

@@ -125,7 +125,7 @@ if bash "$root/scripts/ship-gates.sh" 2>/dev/null; then fail "a missing base ref
 # and a push without dashboard changes runs nothing.
 repo="$tmp/repo"
 mkdir -p "$repo/scripts" "$repo/dashboard" "$repo/docs" "$repo/.github/scripts" "$repo/.github/workflows" "$repo/lego/operator"
-cp "$root/scripts/ship-gates.sh" "$root/scripts/repo-artifact-guard.sh" "$root/scripts/ci_test_inputs.py" "$root/scripts/gitleaks.sh" "$root/scripts/manifest_flag_guard.py" "$root/scripts/migration_order_guard.py" "$root/scripts/deploy_latency.py" "$root/scripts/secret-argv-validate.sh" "$root/scripts/production-secrets.txt" "$repo/scripts/"
+cp "$root/scripts/ship-gates.sh" "$root/scripts/repo-artifact-guard.sh" "$root/scripts/ci_test_inputs.py" "$root/scripts/gitleaks.sh" "$root/scripts/manifest_flag_guard.py" "$root/scripts/migration_order_guard.py" "$root/scripts/pm-board-validate.py" "$root/scripts/deploy_latency.py" "$root/scripts/secret-argv-validate.sh" "$root/scripts/production-secrets.txt" "$repo/scripts/"
 cp "$root/.github/scripts/native-common-qualify.py" "$repo/.github/scripts/"
 # Stands in for the native suites: logs that it ran, fails on demand.
 cat >"$repo/.github/scripts/test_native_oci_stub.py" <<PY
@@ -293,5 +293,30 @@ if gate HEAD~1; then fail "a migration numbered below the base's highest passed 
 grep -q "0283_audit_source_ip_user_agent.up.sql numbers at or below 0284_cron_minimum.up.sql" "$tmp/err" || fail "the low migration was not named: $(cat "$tmp/err")"
 grep -q "renumber above 0284" "$tmp/err" || fail "the refusal did not say how to fix it: $(cat "$tmp/err")"
 grep -q "testing " "$tmp/err" && fail "the backend suite was reached before the migration order refused the push"
+
+# The .pm board gate (gate 12): a commit that adds a milestone number another
+# workstream already uses or leaves a task with a mismatched id blocks before
+# push, while an uncommitted board edit in the working tree does not affect
+# a clean commit.
+mkdir -p "$repo/.pm/w3/m505"
+echo '# w3 m505' >"$repo/.pm/w3/m505/README.md"
+printf -- '---\nid: w3/m505/t001\ntitle: t\nstatus: todo\n---\n' >"$repo/.pm/w3/m505/t001.md"
+commit "w3 files m505"
+mkdir -p "$repo/.pm/w4/m510"
+echo '# w4 m510' >"$repo/.pm/w4/m510/README.md"
+printf -- '---\nid: w4/m510/t001\ntitle: t\nstatus: todo\n---\n' >"$repo/.pm/w4/m510/t001.md"
+commit "w4 files free m510"
+# Uncommitted collision in the working tree must not break a clean HEAD.
+mkdir -p "$repo/.pm/w4/m505"
+echo '# uncommitted dup' >"$repo/.pm/w4/m505/README.md"
+gate HEAD~1 || fail "a clean .pm commit failed because of an uncommitted collision: $(cat "$tmp/err")"
+commit "w4 commits colliding m505"
+if gate HEAD~1; then fail "a colliding milestone number passed the gate"; fi
+grep -q ".pm/w4/m505 adds milestone m505, already used by w3" "$tmp/err" || fail "the colliding milestone was not named: $(cat "$tmp/err")"
+git -C "$repo" rm -qr .pm/w4/m505
+printf -- '---\nid: w4/m999/t001\ntitle: t\nstatus: todo\n---\n' >"$repo/.pm/w4/m510/t001.md"
+commit "w4 breaks task id"
+if gate HEAD~1; then fail "a mismatched task id passed the gate"; fi
+grep -q ".pm/w4/m510/t001.md has id: w4/m999/t001, want w4/m510/t001" "$tmp/err" || fail "the mismatched task id was not named: $(cat "$tmp/err")"
 
 echo "ship-gates.test: ok"
