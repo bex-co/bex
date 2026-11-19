@@ -833,6 +833,31 @@ func TestRESTAnswersRendersWorkspaceEventNames(t *testing.T) {
 	}
 }
 
+// A project's observability views (w3/m507) answer the two saved-search
+// events Render's pinned enum carries (its docs page lists neither): a create
+// and a duplicate are CreateSavedSearchEvent, a delete DeleteSavedSearchEvent,
+// each naming the view by id and name. Render's enum has no update event; an
+// edit records no row (projects/savedsearches_test.go).
+func TestRESTAnswersRendersSavedSearchEvents(t *testing.T) {
+	for verb, want := range map[string]string{
+		"projects.CreateSavedSearch":    "CreateSavedSearchEvent",
+		"projects.DuplicateSavedSearch": "CreateSavedSearchEvent",
+		"projects.DeleteSavedSearch":    "DeleteSavedSearchEvent",
+	} {
+		row := toRenderAuditLog(Event{Verb: verb, Outcome: string(core.AuditAllowed),
+			Target: core.SavedSearchTarget("svs-1"), TargetName: "Errors"})
+		if row.Event != want || row.Status != "success" ||
+			row.Metadata["savedSearch"] != "svs-1" || row.Metadata["targetName"] != "Errors" {
+			t.Errorf("%s answers %q %q %v, want %s naming svs-1 and Errors", verb, row.Event, row.Status, row.Metadata, want)
+		}
+	}
+	denied := toRenderAuditLog(Event{Verb: "projects.DeleteSavedSearch", Outcome: string(core.AuditDenied),
+		Target: core.SavedSearchTarget("svs-1")})
+	if denied.Event != "DeleteSavedSearchEvent" || denied.Status != "error" {
+		t.Errorf("a refused delete answers %q %q, want DeleteSavedSearchEvent error", denied.Event, denied.Status)
+	}
+}
+
 // w4/m321 t011: GraphQL's resource is the row's target when it names one, so
 // the dashboard's Resource column names a created or deleted service rather
 // than its workspace; a workspace-wide row keeps the workspace object.

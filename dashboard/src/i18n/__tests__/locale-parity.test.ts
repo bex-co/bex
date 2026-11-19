@@ -234,6 +234,7 @@ const ZH_SAME_AS_EN = new Set<string>([
   "keyvalue.cardTitle",
   "keyvalue.resourceType",
   "projects.typeKeyValue",
+  "logs.viewResourceTypeKeyValue",
   "usage.categoryKeyValue",
   "usage.billingMode",
   "agentSessions.agent.muse",
@@ -391,6 +392,7 @@ describe("zh renders each glossary term one way (w4/646)", () => {
 const SAME_AS_EN = new Set<string>([
   ...ZH_SAME_AS_EN,
   // Render service types.
+  "logs.viewResourceTypeCronJob",
   "services.typeWeb",
   "services.typePrivate",
   "services.typeWorker",

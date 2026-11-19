@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
   createRouter,
@@ -12,6 +13,8 @@ import { ProjectSidebar } from "../project-sidebar";
 import type { ProjectView } from "@/features/projects/hooks/use-projects";
 import type { SavedSearch } from "@/features/projects/hooks/use-saved-searches";
 import { SavedSearchType } from "@/graphql/definitions";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 
 const projectsState: {
   projects: ProjectView[];
@@ -49,6 +52,20 @@ vi.mock("@/features/projects/hooks/use-saved-searches", () => ({
     savedSearchesSpy(projectId);
     return savedSearchesState;
   },
+}));
+
+// New View's modal (w3/m507) has its own test; here it shows what it opens.
+vi.mock("@/features/logs/components/edit-view-dialog", () => ({
+  EditViewDialog: ({
+    target,
+  }: {
+    target: { kind: string; type: string; name: string } | null;
+  }) =>
+    target ? (
+      <div role="dialog">
+        {target.kind} {target.type} named {target.name}
+      </div>
+    ) : null,
 }));
 
 function renderAt(pathname: string) {
@@ -95,6 +112,7 @@ function renderAt(pathname: string) {
 }
 
 beforeEach(() => {
+  vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   savedSearchesSpy.mockClear();
   savedSearchesState.loading = false;
   savedSearchesState.views = [
@@ -199,5 +217,46 @@ describe("ProjectSidebar", () => {
     expect(
       screen.queryByRole("link", { name: "Application Logs" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("offers New View by type, opening the editor with the type's free name (w3/m507)", async () => {
+    const user = userEvent.setup();
+    renderAt("/project/prj-1");
+
+    await user.click(await screen.findByRole("button", { name: "New View" }));
+    const menu = screen.getByRole("menu");
+    expect(within(menu).getByText("Type")).toBeInTheDocument();
+    expect(
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Application Logs", "Request Logs"]);
+    await user.click(
+      within(menu).getByRole("menuitem", { name: "Application Logs" }),
+    );
+    // The project already has "Application Logs": the new one is numbered.
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "create APPLICATION_LOGS named Application Logs 2",
+    );
+  });
+
+  it("disables New View with the role's reason for a member who may not edit", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "VIEWER", canCreate: false }),
+    );
+    const user = userEvent.setup();
+    renderAt("/project/prj-1");
+
+    const button = await screen.findByRole("button", { name: "New View" });
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    // The reason is keyboard-reachable: the button stays focusable.
+    act(() => button.focus());
+    expect(
+      await screen.findAllByText(
+        "Your role can’t make this change. Ask a workspace admin.",
+      ),
+    ).not.toHaveLength(0);
+    await user.click(button);
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 });

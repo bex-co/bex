@@ -725,6 +725,10 @@ func WebhookTarget(id string) string { return "webhook:" + id }
 // BlueprintTarget: see ProjectTarget.
 func BlueprintTarget(id string) string { return "blueprint:" + id }
 
+// SavedSearchTarget: see ProjectTarget; a project's observability view by its
+// svs- id (w3/m507).
+func SavedSearchTarget(id string) string { return "savedSearch:" + id }
+
 // MemberTarget is the audit target of a verb acting on one workspace MEMBER
 // (role change, removal). The subject is the member's identity id — an opaque
 // identifier, never a value; the events feed never reads this kind (members

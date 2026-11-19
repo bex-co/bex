@@ -351,6 +351,201 @@ const enLogs: Record<string, TranslationEntry> = {
       "The project's views could not be read. Reload the page to try again.",
     description: "Body of the view load failure (w3/m505)",
   },
+  "logs.newView": {
+    message: "New View",
+    description:
+      "Project sidebar button that opens the TYPE menu for a new observability view (w3/m507, Render's '+ New View')",
+  },
+  "logs.newViewTypeHeading": {
+    message: "Type",
+    description:
+      "Heading of the New View menu listing view types (Render's TYPE)",
+  },
+  "logs.editView": {
+    message: "Edit view",
+    description:
+      "Observability view header button that opens the Edit view modal (w3/m507)",
+  },
+  "logs.duplicateView": {
+    message: "Duplicate",
+    description:
+      "Observability view header button that copies the view (w3/m507)",
+  },
+  "logs.deleteView": {
+    message: "Delete view",
+    description:
+      "Accessible name and confirm label of the observability view's trash button (w3/m507)",
+  },
+  "logs.deleteViewTitle": {
+    message: "Delete {name}?",
+    description:
+      "Title of the confirmation before deleting an observability view; name is the view's name",
+  },
+  "logs.deleteViewBody": {
+    message:
+      "The view is deleted for everyone on the project. The project's resources and their logs are not affected.",
+    description:
+      "Body of the delete-view confirmation: views are shared by the whole project (w3/m507)",
+  },
+  "logs.viewDeleted": {
+    message: "Deleted {name}",
+    description:
+      "Toast after an observability view was deleted; name is the view's name",
+  },
+  "logs.deleteViewFailed": {
+    message: "Couldn't delete the view",
+    description:
+      "Toast when deleting an observability view failed without a server reason",
+  },
+  "logs.viewDuplicated": {
+    message: "Created {name}",
+    description: "Toast after a view was duplicated; name is the copy's name",
+  },
+  "logs.duplicateViewFailed": {
+    message: "Couldn't duplicate the view",
+    description:
+      "Toast when duplicating an observability view failed without a server reason",
+  },
+  "logs.editViewTitle": {
+    message: "Edit view",
+    description: "Title of Render's Edit view modal (w3/m507)",
+  },
+  "logs.newViewTitle": {
+    message: "New view",
+    description: "Title of the view modal when New View opened it (w3/m507)",
+  },
+  "logs.viewNameLabel": {
+    message: "Name",
+    description: "Label of the view name field in the Edit view modal",
+  },
+  "logs.viewNameRequired": {
+    message: "Name the view.",
+    description: "Inline refusal of a blank view name",
+  },
+  "logs.viewFiltersLabel": {
+    message: "Filters",
+    description: "Heading of the filter rows in the Edit view modal",
+  },
+  "logs.viewAddFilter": {
+    message: "Add filter",
+    description: "Accessible name of the Edit view modal's add (+) button",
+  },
+  "logs.viewNoFilters": {
+    message: "No filters: the view reads every resource in the project.",
+    description:
+      "Edit view modal with no filter rows: the view reads the whole project",
+  },
+  "logs.viewSharedNotice": {
+    message:
+      "Editing filters will update the view for everyone on the project.",
+    description:
+      "Render's notice under the Edit view filters: a view is shared by the whole project",
+  },
+  "logs.viewSaveFailed": {
+    message: "Couldn't save the view. Try again.",
+    description:
+      "Edit view modal error when saving failed without a server reason",
+  },
+  "logs.viewClose": {
+    message: "Close",
+    description:
+      "Edit view modal button that discards the changes (Render's Close)",
+  },
+  "logs.viewDone": {
+    message: "Done",
+    description: "Edit view modal button that saves the view (Render's Done)",
+  },
+  "logs.viewFilterField": {
+    message: "Field",
+    description: "Accessible name of a filter row's Field picker",
+  },
+  "logs.viewFilterOperator": {
+    message: "Operator",
+    description: "Accessible name of a filter row's Operator picker",
+  },
+  "logs.viewFilterValuesFor": {
+    message: "Values for {field}",
+    description:
+      "Accessible name of a filter row's Values picker; field is the row's field",
+  },
+  "logs.viewValuesRequired": {
+    message: "Choose at least one value.",
+    description: "Inline refusal of a filter row with no value",
+  },
+  "logs.viewRemoveFilter": {
+    message: "Remove {field} filter",
+    description:
+      "Accessible name of a filter row's trash button; field is the row's field",
+  },
+  "logs.viewOperatorIs": {
+    message: "is",
+    description:
+      "Filter operator IS for a single-valued field (Environment, Time Range)",
+  },
+  "logs.viewOperatorIsOneOf": {
+    message: "is one of",
+    description: "Filter operator IS for a field that takes several values",
+  },
+  "logs.viewOperatorIsNotOneOf": {
+    message: "is not one of",
+    description: "Filter operator IS_NOT",
+  },
+  "logs.viewValuesPlaceholder": {
+    message: "Select values",
+    description:
+      "Placeholder of a filter row's Values picker with nothing chosen",
+  },
+  "logs.viewNoResources": {
+    message: "No resources in this project",
+    description:
+      "Resource picker of a project with no resource the view can read",
+  },
+  "logs.viewValueTypeHint": {
+    message: "Type a value, then press Enter",
+    description:
+      "Placeholder of a typed filter value (instance, search text, status code, host, path)",
+  },
+  "logs.viewValueRemove": {
+    message: "Remove {value}",
+    description:
+      "Accessible name of a typed filter value's remove button; value is the value",
+  },
+  "logs.viewFieldEnvironment": {
+    message: "Environment",
+    description: "Filter field Environment in the Edit view modal",
+  },
+  "logs.viewFieldResource": {
+    message: "Resource",
+    description: "Filter field Resource in the Edit view modal",
+  },
+  "logs.viewFieldResourceType": {
+    message: "Resource Type",
+    description: "Filter field Resource Type in the Edit view modal",
+  },
+  "logs.viewFieldText": {
+    message: "Text Search",
+    description: "Filter field Text Search in the Edit view modal",
+  },
+  "logs.viewFieldTimeRange": {
+    message: "Time Range",
+    description: "Filter field Time Range in the Edit view modal",
+  },
+  "logs.viewResourceTypeService": {
+    message: "Services",
+    description: "Resource Type value Services",
+  },
+  "logs.viewResourceTypeCronJob": {
+    message: "Cron jobs",
+    description: "Resource Type value Cron jobs",
+  },
+  "logs.viewResourceTypePostgres": {
+    message: "Postgres",
+    description: "Resource Type value Postgres",
+  },
+  "logs.viewResourceTypeKeyValue": {
+    message: "Key Value",
+    description: "Resource Type value Key Value (the product name)",
+  },
 };
 
 export default enLogs;

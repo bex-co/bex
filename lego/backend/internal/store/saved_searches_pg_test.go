@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 
@@ -118,6 +119,98 @@ func TestPGProjectSavedSearchesFollowTheProject(t *testing.T) {
 	var left int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM saved_searches WHERE project_id = $1`, project.ID).Scan(&left); err != nil || left != 0 {
 		t.Fatalf("%d saved searches outlived their project (err %v)", left, err)
+	}
+}
+
+// A project's views are written in place (w3/m507): a new view gets a fresh
+// svs- id and reads back with its workspace, a name stays unique in its
+// project on create and on edit, a default view can be edited and deleted,
+// and a project holds at most MaxSavedSearchesPerProject views.
+func TestPGSavedSearchWrites(t *testing.T) {
+	ctx := context.Background()
+	st, pool := webhookPGStore(t, ctx)
+	t.Cleanup(pool.Close)
+	tenant, err := st.CreateWorkspace(ctx, "views-"+ids.New(ids.Workspace), PlanPro, "fixture-owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), tenant.ID) })
+	project, err := st.CreateProject(ctx, tenant.ID, "observed")
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := st.CreateProject(ctx, tenant.ID, "elsewhere")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	doc := json.RawMessage(`{"filters": [{"field": "LEVEL", "operator": "IS", "values": ["error"]}], "version": 1}`)
+	created, err := st.CreateSavedSearch(ctx, SavedSearch{ProjectID: project.ID, TenantID: tenant.ID, Name: "Errors", Type: "APPLICATION_LOGS", Filters: doc})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if kind, ok := ids.KindOf(created.ID); !ok || kind != ids.SavedSearch || created.Name != "Errors" ||
+		created.ProjectID != project.ID || created.Type != "APPLICATION_LOGS" {
+		t.Fatalf("created %+v", created)
+	}
+	var stored, want any
+	_ = json.Unmarshal(created.Filters, &stored)
+	_ = json.Unmarshal(doc, &want)
+	if fmt.Sprint(stored) != fmt.Sprint(want) {
+		t.Fatalf("created filters %s, want %s", created.Filters, doc)
+	}
+	views, err := st.ListSavedSearches(ctx, project.ID, "")
+	if err != nil || len(views) != 4 || views[3].ID != created.ID || views[3].TenantID != tenant.ID {
+		t.Fatalf("the project lists %+v, %v; want the defaults then the new view", views, err)
+	}
+
+	// Render's duplicate_saved_search_name: unique in the project, not across projects.
+	if _, err := st.CreateSavedSearch(ctx, SavedSearch{ProjectID: project.ID, Name: "Errors", Type: "REQUEST_LOGS", Filters: doc}); !errors.Is(err, ErrConflict) {
+		t.Fatalf("a taken name: %v, want ErrConflict", err)
+	}
+	if _, err := st.CreateSavedSearch(ctx, SavedSearch{ProjectID: other.ID, Name: "Errors", Type: "APPLICATION_LOGS", Filters: doc}); err != nil {
+		t.Fatalf("the same name in another project: %v", err)
+	}
+	if _, err := st.CreateSavedSearch(ctx, SavedSearch{ProjectID: ids.New(ids.Project), Name: "Orphan", Type: "APPLICATION_LOGS", Filters: doc}); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("a view of no project: %v, want ErrNotFound", err)
+	}
+
+	// A default view is edited in place; its type and project stay.
+	logs := views[0]
+	edited, err := st.UpdateSavedSearch(ctx, SavedSearch{ID: logs.ID, TenantID: tenant.ID, Name: "All logs", Filters: json.RawMessage(`{"filters": [], "version": 1}`)})
+	if err != nil || edited.ID != logs.ID || edited.Name != "All logs" || edited.Type != "APPLICATION_LOGS" || !edited.UpdatedAt.After(logs.UpdatedAt) {
+		t.Fatalf("edited %+v, %v", edited, err)
+	}
+	if _, err := st.UpdateSavedSearch(ctx, SavedSearch{ID: logs.ID, Name: "Errors", Filters: logs.Filters}); !errors.Is(err, ErrConflict) {
+		t.Fatalf("an edit onto a taken name: %v, want ErrConflict", err)
+	}
+	if _, err := st.UpdateSavedSearch(ctx, SavedSearch{ID: ids.New(ids.SavedSearch), Name: "Ghost", Filters: logs.Filters}); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("editing an unknown view: %v, want ErrNotFound", err)
+	}
+
+	// A default view is deleted like any other.
+	if err := st.DeleteSavedSearch(ctx, logs.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.DeleteSavedSearch(ctx, logs.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("deleting a deleted view: %v, want ErrNotFound", err)
+	}
+	if _, err := st.GetSavedSearch(ctx, logs.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("a deleted view reads %v, want ErrNotFound", err)
+	}
+
+	// The bound counts the project's own views only.
+	views, _ = st.ListSavedSearches(ctx, project.ID, "")
+	for i := len(views); i < MaxSavedSearchesPerProject; i++ {
+		if _, err := st.CreateSavedSearch(ctx, SavedSearch{ProjectID: project.ID, Name: fmt.Sprintf("view %d", i), Type: "REQUEST_LOGS", Filters: doc}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := st.CreateSavedSearch(ctx, SavedSearch{ProjectID: project.ID, Name: "one too many", Type: "REQUEST_LOGS", Filters: doc}); !errors.Is(err, ErrSavedSearchLimit) {
+		t.Fatalf("a view past the bound: %v, want ErrSavedSearchLimit", err)
+	}
+	if _, err := st.CreateSavedSearch(ctx, SavedSearch{ProjectID: other.ID, Name: "still room", Type: "REQUEST_LOGS", Filters: doc}); err != nil {
+		t.Fatalf("another project is not bounded by this one: %v", err)
 	}
 }
 

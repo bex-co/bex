@@ -19,6 +19,8 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -87,6 +89,85 @@ func (s *PGStore) GetSavedSearch(ctx context.Context, id string) (SavedSearch, e
 		return SavedSearch{}, classify("saved search", err)
 	}
 	return v, nil
+}
+
+// MaxSavedSearchesPerProject bounds one project's views (w3/m507), as the
+// filter document's own bounds bound one view: a project editor cannot grow
+// its rows without limit. Render's limit, if it has one, was not captured.
+const MaxSavedSearchesPerProject = 100
+
+// ErrSavedSearchLimit is CreateSavedSearch's refusal once the project holds
+// MaxSavedSearchesPerProject views.
+var ErrSavedSearchLimit = errors.New("saved search limit reached")
+
+// savedSearchWriteColumns is what a write returns: the row's own columns.
+// The caller names the project's workspace (TenantID), which it authorized.
+const savedSearchWriteColumns = `id, project_id, name, type, filters, created_at, updated_at`
+
+func scanWrittenSavedSearch(row pgx.Row, tenantID string) (SavedSearch, error) {
+	v := SavedSearch{TenantID: tenantID}
+	err := row.Scan(&v.ID, &v.ProjectID, &v.Name, &v.Type, &v.Filters, &v.CreatedAt, &v.UpdatedAt)
+	return v, err
+}
+
+// CreateSavedSearch stores a new view of v.ProjectID (in workspace
+// v.TenantID) under a fresh svs- id and returns it. A name the project
+// already uses is ErrConflict (Render's duplicate_saved_search_name); a
+// project already at MaxSavedSearchesPerProject views is ErrSavedSearchLimit.
+// The count and the insert are one statement, but two concurrent creates can
+// both see room, so the bound is an abuse bound that may be passed by a few.
+func (s *PGStore) CreateSavedSearch(ctx context.Context, v SavedSearch) (SavedSearch, error) {
+	if !textBindable(v.ProjectID) || !textBindable(v.Name) {
+		return SavedSearch{}, fmt.Errorf("saved search: %w: not valid text", ErrInvalid)
+	}
+	created, err := scanWrittenSavedSearch(s.Pool.QueryRow(ctx,
+		`INSERT INTO saved_searches (id, project_id, name, type, filters)
+		 SELECT $1::text, $2::text, $3::text, $4::text, $5::jsonb
+		 WHERE (SELECT count(*) FROM saved_searches WHERE project_id = $2::text) < $6::bigint
+		 RETURNING `+savedSearchWriteColumns,
+		ids.New(ids.SavedSearch), v.ProjectID, v.Name, v.Type, v.Filters, MaxSavedSearchesPerProject), v.TenantID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return SavedSearch{}, ErrSavedSearchLimit
+	}
+	if err != nil {
+		return SavedSearch{}, classify("saved search", err)
+	}
+	return created, nil
+}
+
+// UpdateSavedSearch sets view v.ID's name and filter document and returns it.
+// Its project and type never change. A name another view of the project has
+// is ErrConflict.
+func (s *PGStore) UpdateSavedSearch(ctx context.Context, v SavedSearch) (SavedSearch, error) {
+	if !textBindable(v.ID) {
+		return SavedSearch{}, classify("saved search", pgx.ErrNoRows)
+	}
+	if !textBindable(v.Name) {
+		return SavedSearch{}, fmt.Errorf("saved search: %w: not valid text", ErrInvalid)
+	}
+	updated, err := scanWrittenSavedSearch(s.Pool.QueryRow(ctx,
+		`UPDATE saved_searches SET name = $2, filters = $3::jsonb, updated_at = now() WHERE id = $1
+		 RETURNING `+savedSearchWriteColumns, v.ID, v.Name, v.Filters), v.TenantID)
+	if err != nil {
+		return SavedSearch{}, classify("saved search", err)
+	}
+	return updated, nil
+}
+
+// DeleteSavedSearch removes one view, a default one too: a project with no
+// views is a project like any other.
+func (s *PGStore) DeleteSavedSearch(ctx context.Context, id string) error {
+	if !textBindable(id) {
+		return classify("saved search", pgx.ErrNoRows)
+	}
+	tag, err := s.Pool.Exec(ctx, `DELETE FROM saved_searches WHERE id = $1`, id)
+	if err != nil {
+		return classify("saved search", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return classify("saved search", pgx.ErrNoRows)
+	}
+	return nil
 }
 
 // ProjectService is what a project log view needs to know about one of the

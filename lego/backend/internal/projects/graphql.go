@@ -129,6 +129,51 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 		"renameProject": gqlutil.ArgMutation(projectGQLType, "name", s.Rename),
+		// A project's views are written by whoever may edit the project
+		// (w3/m507): New View creates one, Edit view renames it and replaces
+		// its filters, and Duplicate and the trash button copy and delete it,
+		// a default view too.
+		"createSavedSearch": &graphql.Field{
+			Type: savedSearchGQLType,
+			Args: graphql.FieldConfigArgument{
+				"projectId": gqlutil.ReqArg(graphql.String),
+				"type":      gqlutil.ReqArg(savedSearchTypeGQLEnum),
+				"name":      gqlutil.ReqArg(graphql.String),
+				"filters":   gqlutil.Arg(gqlutil.JSONObject),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.CreateSavedSearch(p.Context, p.Args["projectId"].(string), p.Args["type"].(string), p.Args["name"].(string), p.Args["filters"])
+			},
+		},
+		"updateSavedSearch": &graphql.Field{
+			Type: savedSearchGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":      gqlutil.ReqArg(graphql.String),
+				"name":    gqlutil.Arg(graphql.String),
+				"filters": gqlutil.Arg(gqlutil.JSONObject),
+				// Accepted only to refuse a change by name: a view keeps its type.
+				"type": gqlutil.Arg(savedSearchTypeGQLEnum),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.UpdateSavedSearch(p.Context, p.Args["id"].(string), SavedSearchEdit{
+					Name:    gqlutil.StrPtr(p.Args, "name"),
+					Filters: p.Args["filters"],
+					Type:    gqlutil.Str(p.Args, "type"),
+				})
+			},
+		},
+		"duplicateSavedSearch": gqlutil.IDVerb(savedSearchGQLType, s.DuplicateSavedSearch),
+		"deleteSavedSearch": &graphql.Field{
+			Type: graphql.String,
+			Args: gqlutil.IDArg(),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				id := p.Args["id"].(string)
+				if err := s.DeleteSavedSearch(p.Context, id); err != nil {
+					return nil, err
+				}
+				return id, nil
+			},
+		},
 		"deleteProject": &graphql.Field{
 			Type: graphql.String,
 			Args: graphql.FieldConfigArgument{

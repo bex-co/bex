@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { ProjectLogViewPage } from "../project-log-view-page";
 import type { ProjectLogViewerProps } from "../project-log-viewer";
@@ -18,6 +18,21 @@ const savedSearches: {
 } = { views: [], loading: false, error: undefined };
 vi.mock("@/features/projects/hooks/use-saved-searches", () => ({
   useSavedSearches: () => savedSearches,
+}));
+// The header's view actions (w3/m507) have their own test; here they only
+// show which view they act on, and can report one leaving.
+const leaving: { report?: (id: string) => void } = {};
+vi.mock("../observability-view-actions", () => ({
+  ObservabilityViewActions: ({
+    view,
+    onLeaving,
+  }: {
+    view: SavedSearch;
+    onLeaving: (id: string) => void;
+  }) => {
+    leaving.report = onLeaving;
+    return <span>actions for {view.name}</span>;
+  },
 }));
 const viewerProps: ProjectLogViewerProps[] = [];
 vi.mock("../project-log-viewer", () => ({
@@ -192,5 +207,36 @@ describe("ProjectLogViewPage", () => {
         container.querySelector(`[data-skeleton-region="${region}"]`),
       ).not.toBeNull();
     }
+  });
+
+  it("carries the view's actions, and holds its skeleton while the view is deleted", () => {
+    const { container, rerender } = render(
+      <ProjectLogViewPage
+        projectId="prj-observed"
+        viewType={SavedSearchType.ApplicationLogs}
+        search={{ savedSearchId: "svs-app" }}
+        onSearchChange={() => undefined}
+      />,
+    );
+    expect(
+      screen.getByText("actions for Application Logs"),
+    ).toBeInTheDocument();
+
+    // The trash button deleted the view: it leaves the list before the page
+    // navigates away, and the page must not flash "View not found".
+    act(() => leaving.report!("svs-app"));
+    savedSearches.views = savedSearches.views.filter((v) => v.id !== "svs-app");
+    rerender(
+      <ProjectLogViewPage
+        projectId="prj-observed"
+        viewType={SavedSearchType.ApplicationLogs}
+        search={{ savedSearchId: "svs-app" }}
+        onSearchChange={() => undefined}
+      />,
+    );
+    expect(screen.queryByText("View not found")).not.toBeInTheDocument();
+    expect(
+      container.querySelector('[data-route-skeleton="project-log-view"]'),
+    ).not.toBeNull();
   });
 });

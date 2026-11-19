@@ -1,3 +1,5 @@
+import type { en } from "@/i18n";
+
 export interface RangePreset {
   id: "30m" | "1h" | "4h" | "12h" | "24h" | "2d" | "7d" | "14d" | "30d";
   spanSeconds: number;
@@ -9,7 +11,7 @@ export interface RangePreset {
 // (w5/m56). Render's "Custom" is a separate absolute range (see CustomRange).
 // Resolution scales with span so a series stays readable (~120 points, not
 // thousands) while still resolving fine-grained enough to show shape. Display
-// labels live in range-select.tsx's RANGE_LABEL_KEYS (i18n).
+// labels live in RANGE_LABEL_KEYS below (i18n).
 //
 // How far back a range may reach follows the workspace plan, as on Render
 // (Hobby 7 days, Pro 14, Scale and Enterprise 30): the Metrics and Logs pickers
@@ -26,6 +28,20 @@ export const RANGE_PRESETS: RangePreset[] = [
   { id: "14d", spanSeconds: 14 * 24 * 60 * 60, resolutionSeconds: 10080 },
   { id: "30d", spanSeconds: 30 * 24 * 60 * 60, resolutionSeconds: 21600 },
 ];
+
+// Each preset's display label, the range pickers' and a view editor's
+// (w3/m507) one table.
+export const RANGE_LABEL_KEYS: Record<RangePreset["id"], keyof typeof en> = {
+  "30m": "metrics.rangeLast30Minutes",
+  "1h": "metrics.rangeLastHour",
+  "4h": "metrics.rangeLast4Hours",
+  "12h": "metrics.rangeLast12Hours",
+  "24h": "metrics.rangeLast24Hours",
+  "2d": "metrics.rangeLast2Days",
+  "7d": "metrics.rangeLast7Days",
+  "14d": "metrics.rangeLast14Days",
+  "30d": "metrics.rangeLast30Days",
+};
 
 export const DEFAULT_RANGE_PRESET = RANGE_PRESETS[3]; // "12h" — Render's own default
 

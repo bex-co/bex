@@ -332,6 +332,199 @@ const zhLogs: Record<string, TranslationEntry> = {
     message: "无法读取项目的视图。请刷新页面重试。",
     description: "Body of the view load failure (w3/m505)",
   },
+  "logs.newView": {
+    message: "新建视图",
+    description:
+      "Project sidebar button that opens the TYPE menu for a new observability view (w3/m507, Render's '+ New View')",
+  },
+  "logs.newViewTypeHeading": {
+    message: "类型",
+    description:
+      "Heading of the New View menu listing view types (Render's TYPE)",
+  },
+  "logs.editView": {
+    message: "编辑视图",
+    description:
+      "Observability view header button that opens the Edit view modal (w3/m507)",
+  },
+  "logs.duplicateView": {
+    message: "复制",
+    description:
+      "Observability view header button that copies the view (w3/m507)",
+  },
+  "logs.deleteView": {
+    message: "删除视图",
+    description:
+      "Accessible name and confirm label of the observability view's trash button (w3/m507)",
+  },
+  "logs.deleteViewTitle": {
+    message: "删除 {name}？",
+    description:
+      "Title of the confirmation before deleting an observability view; name is the view's name",
+  },
+  "logs.deleteViewBody": {
+    message: "该视图会对项目中的所有人删除。项目的资源及其日志不受影响。",
+    description:
+      "Body of the delete-view confirmation: views are shared by the whole project (w3/m507)",
+  },
+  "logs.viewDeleted": {
+    message: "已删除 {name}",
+    description:
+      "Toast after an observability view was deleted; name is the view's name",
+  },
+  "logs.deleteViewFailed": {
+    message: "无法删除视图",
+    description:
+      "Toast when deleting an observability view failed without a server reason",
+  },
+  "logs.viewDuplicated": {
+    message: "已创建 {name}",
+    description: "Toast after a view was duplicated; name is the copy's name",
+  },
+  "logs.duplicateViewFailed": {
+    message: "无法复制视图",
+    description:
+      "Toast when duplicating an observability view failed without a server reason",
+  },
+  "logs.editViewTitle": {
+    message: "编辑视图",
+    description: "Title of Render's Edit view modal (w3/m507)",
+  },
+  "logs.newViewTitle": {
+    message: "新建视图",
+    description: "Title of the view modal when New View opened it (w3/m507)",
+  },
+  "logs.viewNameLabel": {
+    message: "名称",
+    description: "Label of the view name field in the Edit view modal",
+  },
+  "logs.viewNameRequired": {
+    message: "请为视图命名。",
+    description: "Inline refusal of a blank view name",
+  },
+  "logs.viewFiltersLabel": {
+    message: "筛选条件",
+    description: "Heading of the filter rows in the Edit view modal",
+  },
+  "logs.viewAddFilter": {
+    message: "添加筛选条件",
+    description: "Accessible name of the Edit view modal's add (+) button",
+  },
+  "logs.viewNoFilters": {
+    message: "没有筛选条件：该视图读取项目中的所有资源。",
+    description:
+      "Edit view modal with no filter rows: the view reads the whole project",
+  },
+  "logs.viewSharedNotice": {
+    message: "编辑筛选条件会为项目中的所有人更新该视图。",
+    description:
+      "Render's notice under the Edit view filters: a view is shared by the whole project",
+  },
+  "logs.viewSaveFailed": {
+    message: "无法保存视图。请重试。",
+    description:
+      "Edit view modal error when saving failed without a server reason",
+  },
+  "logs.viewClose": {
+    message: "关闭",
+    description:
+      "Edit view modal button that discards the changes (Render's Close)",
+  },
+  "logs.viewDone": {
+    message: "完成",
+    description: "Edit view modal button that saves the view (Render's Done)",
+  },
+  "logs.viewFilterField": {
+    message: "字段",
+    description: "Accessible name of a filter row's Field picker",
+  },
+  "logs.viewFilterOperator": {
+    message: "运算符",
+    description: "Accessible name of a filter row's Operator picker",
+  },
+  "logs.viewFilterValuesFor": {
+    message: "{field} 的值",
+    description:
+      "Accessible name of a filter row's Values picker; field is the row's field",
+  },
+  "logs.viewValuesRequired": {
+    message: "请至少选择一个值。",
+    description: "Inline refusal of a filter row with no value",
+  },
+  "logs.viewRemoveFilter": {
+    message: "移除 {field} 筛选条件",
+    description:
+      "Accessible name of a filter row's trash button; field is the row's field",
+  },
+  "logs.viewOperatorIs": {
+    message: "是",
+    description:
+      "Filter operator IS for a single-valued field (Environment, Time Range)",
+  },
+  "logs.viewOperatorIsOneOf": {
+    message: "属于",
+    description: "Filter operator IS for a field that takes several values",
+  },
+  "logs.viewOperatorIsNotOneOf": {
+    message: "不属于",
+    description: "Filter operator IS_NOT",
+  },
+  "logs.viewValuesPlaceholder": {
+    message: "选择值",
+    description:
+      "Placeholder of a filter row's Values picker with nothing chosen",
+  },
+  "logs.viewNoResources": {
+    message: "此项目中没有资源",
+    description:
+      "Resource picker of a project with no resource the view can read",
+  },
+  "logs.viewValueTypeHint": {
+    message: "输入一个值，然后按 Enter",
+    description:
+      "Placeholder of a typed filter value (instance, search text, status code, host, path)",
+  },
+  "logs.viewValueRemove": {
+    message: "移除 {value}",
+    description:
+      "Accessible name of a typed filter value's remove button; value is the value",
+  },
+  "logs.viewFieldEnvironment": {
+    message: "环境",
+    description: "Filter field Environment in the Edit view modal",
+  },
+  "logs.viewFieldResource": {
+    message: "资源",
+    description: "Filter field Resource in the Edit view modal",
+  },
+  "logs.viewFieldResourceType": {
+    message: "资源类型",
+    description: "Filter field Resource Type in the Edit view modal",
+  },
+  "logs.viewFieldText": {
+    message: "文本搜索",
+    description: "Filter field Text Search in the Edit view modal",
+  },
+  "logs.viewFieldTimeRange": {
+    message: "时间范围",
+    description: "Filter field Time Range in the Edit view modal",
+  },
+  "logs.viewResourceTypeService": {
+    message: "服务",
+    description: "Resource Type value Services",
+  },
+  "logs.viewResourceTypeCronJob": {
+    message: "Cron 任务",
+    description: "Resource Type value Cron jobs",
+  },
+  "logs.viewResourceTypePostgres": {
+    message: "Postgres",
+    description: "Resource Type value Postgres",
+  },
+  "logs.viewResourceTypeKeyValue": {
+    message: "Key Value",
+    description: "Resource Type value Key Value (the product name)",
+  },
 };
 
 export default zhLogs;

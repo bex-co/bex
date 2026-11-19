@@ -1960,6 +1960,7 @@ type Mutation {
   createSandbox(buildId: String, buildName: String, env: [EnvVarInput!], idleTimeoutSeconds: Int, name: String, networkPolicy: SandboxNetworkPolicyInput, ownerId: String, plan: String, region: String, sandboxGroupId: String, snapshotId: String, snapshotName: String, template: String, timeoutSeconds: Int): Sandbox
   createSandboxGroup(environmentId: String, name: String!, ownerId: String, region: String): SandboxGroup
   createSandboxSnapshot(expiresAt: String, kind: String, name: String, ownerId: String, sandboxId: String!, ttlSeconds: Int): SandboxSnapshot
+  createSavedSearch(filters: JSONObject, name: String!, projectId: String!, type: SavedSearchType!): SavedSearch
   createService(autoDeploy: Boolean, autoDeployTrigger: String, branch: String, buildCommand: String, buildFilter: BuildFilterInput, builder: String, command: String, dockerContext: String, dockerfilePath: String, dryRun: Boolean, envVars: [EnvVarInput], environmentId: String, headers: [StaticHeaderInput], healthCheckPath: String, image: String, ipAllowList: [String], ipAllowListEntries: [IPAllowListEntryInput!], maintenanceMode: MaintenanceModeInput, maxShutdownDelaySeconds: Int, name: String!, notifyOnFail: String, ownerId: String, plan: String, port: Int, preDeployCommand: String, publishPath: String, region: String, registryCredentialId: String, replicas: Int, repo: String, rootDir: String, routes: [StaticRouteInput], runtime: String, schedule: String, secretFiles: [SecretFileInput], startCommand: String, type: String): Service
   createShellSession(id: String!, instanceId: String): ShellSession
   createWebhookEndpoint(enabled: Boolean, eventTypes: [String]!, name: String, ownerId: String, url: String!): WebhookEndpoint
@@ -1991,6 +1992,7 @@ type Mutation {
   deleteSandboxGroup(id: String!, ownerId: String): Boolean!
   deleteSandboxImage(id: String!, ownerId: String, sandboxGroupId: String!): Boolean!
   deleteSandboxSnapshot(id: String!, ownerId: String, sandboxGroupId: String!): Boolean!
+  deleteSavedSearch(id: String!): String
   deleteSecretFile(name: String!, serviceId: String!): Boolean
   deleteService(confirm: String, id: String!): Boolean
   deleteWebhookEndpoint(id: String!, ownerId: String): Boolean
@@ -1998,6 +2000,7 @@ type Mutation {
   disableAutoscaling(id: String!): Boolean
   disconnectBlueprint(id: String!, ownerId: String): Boolean
   disconnectGit(installationId: Float, ownerId: String): Boolean
+  duplicateSavedSearch(id: String!): SavedSearch
   editQueuedAgentSessionMessage(id: String!, messageId: String!, prompt: String!): AgentSessionQueuedMessage!
   enableKeyValueInternalAuth(id: String!): KeyValue
   executeDatabaseQuery(allowWrites: Boolean, confirm: String, id: String!, sql: String!): DatabaseQueryResult
@@ -2154,6 +2157,7 @@ type Mutation {
   updateRegistryCredential(authToken: String, expiresAt: String, id: String!, name: String, ownerId: String, username: String): RegistryCredential
   updateRouterKey(allowCredentials: Boolean!, allowHeaders: String!, allowMethods: String!, allowOrigin: String!, id: String!, name: String!, ownerId: String!): Boolean
   updateSandboxGroup(concurrencyLimit: Int!, id: String!, ownerId: String): SandboxGroup
+  updateSavedSearch(filters: JSONObject, id: String!, name: String, type: SavedSearchType): SavedSearch
   updateServicePlan(confirm: String, dryRun: Boolean, id: String!, plan: String!): Service
   updateWebhookEndpoint(enabled: Boolean, eventTypes: [String], id: String!, name: String, ownerId: String, url: String): WebhookEndpoint
   verifyCustomDomain(confirm: String, id: String!, name: String!): CustomDomain

@@ -2299,6 +2299,7 @@ export type Mutation = {
   createSandbox: Maybe<Sandbox>;
   createSandboxGroup: Maybe<SandboxGroup>;
   createSandboxSnapshot: Maybe<SandboxSnapshot>;
+  createSavedSearch: Maybe<SavedSearch>;
   createService: Maybe<Service>;
   createShellSession: Maybe<ShellSession>;
   createWebhookEndpoint: Maybe<WebhookEndpoint>;
@@ -2338,6 +2339,7 @@ export type Mutation = {
   deleteSandboxGroup: Scalars['Boolean']['output'];
   deleteSandboxImage: Scalars['Boolean']['output'];
   deleteSandboxSnapshot: Scalars['Boolean']['output'];
+  deleteSavedSearch: Maybe<Scalars['String']['output']>;
   deleteSecretFile: Maybe<Scalars['Boolean']['output']>;
   deleteService: Maybe<Scalars['Boolean']['output']>;
   deleteWebhookEndpoint: Maybe<Scalars['Boolean']['output']>;
@@ -2345,6 +2347,7 @@ export type Mutation = {
   disableAutoscaling: Maybe<Scalars['Boolean']['output']>;
   disconnectBlueprint: Maybe<Scalars['Boolean']['output']>;
   disconnectGit: Maybe<Scalars['Boolean']['output']>;
+  duplicateSavedSearch: Maybe<SavedSearch>;
   /** Replaces a pending message's prompt; the turn then runs as you. */
   editQueuedAgentSessionMessage: AgentSessionQueuedMessage;
   enableKeyValueInternalAuth: Maybe<KeyValue>;
@@ -2519,6 +2522,7 @@ export type Mutation = {
   updateRegistryCredential: Maybe<RegistryCredential>;
   updateRouterKey: Maybe<Scalars['Boolean']['output']>;
   updateSandboxGroup: Maybe<SandboxGroup>;
+  updateSavedSearch: Maybe<SavedSearch>;
   updateServicePlan: Maybe<Service>;
   updateWebhookEndpoint: Maybe<WebhookEndpoint>;
   verifyCustomDomain: Maybe<CustomDomain>;
@@ -2893,6 +2897,14 @@ export type MutationCreateSandboxSnapshotArgs = {
 };
 
 
+export type MutationCreateSavedSearchArgs = {
+  filters?: InputMaybe<Scalars['JSONObject']['input']>;
+  name: Scalars['String']['input'];
+  projectId: Scalars['String']['input'];
+  type: SavedSearchType;
+};
+
+
 export type MutationCreateServiceArgs = {
   autoDeploy?: InputMaybe<Scalars['Boolean']['input']>;
   autoDeployTrigger?: InputMaybe<Scalars['String']['input']>;
@@ -3110,6 +3122,11 @@ export type MutationDeleteSandboxSnapshotArgs = {
 };
 
 
+export type MutationDeleteSavedSearchArgs = {
+  id: Scalars['String']['input'];
+};
+
+
 export type MutationDeleteSecretFileArgs = {
   name: Scalars['String']['input'];
   serviceId: Scalars['String']['input'];
@@ -3148,6 +3165,11 @@ export type MutationDisconnectBlueprintArgs = {
 export type MutationDisconnectGitArgs = {
   installationId?: InputMaybe<Scalars['Float']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationDuplicateSavedSearchArgs = {
+  id: Scalars['String']['input'];
 };
 
 
@@ -4222,6 +4244,14 @@ export type MutationUpdateSandboxGroupArgs = {
   concurrencyLimit: Scalars['Int']['input'];
   id: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationUpdateSavedSearchArgs = {
+  filters?: InputMaybe<Scalars['JSONObject']['input']>;
+  id: Scalars['String']['input'];
+  name?: InputMaybe<Scalars['String']['input']>;
+  type?: InputMaybe<SavedSearchType>;
 };
 
 

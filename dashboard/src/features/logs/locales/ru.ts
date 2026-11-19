@@ -375,6 +375,201 @@ const ruLogs: Record<string, TranslationEntry> = {
       "Не удалось прочитать представления проекта. Перезагрузите страницу, чтобы повторить попытку.",
     description: "Body of the view load failure (w3/m505)",
   },
+  "logs.newView": {
+    message: "Новое представление",
+    description:
+      "Project sidebar button that opens the TYPE menu for a new observability view (w3/m507, Render's '+ New View')",
+  },
+  "logs.newViewTypeHeading": {
+    message: "Тип",
+    description:
+      "Heading of the New View menu listing view types (Render's TYPE)",
+  },
+  "logs.editView": {
+    message: "Изменить представление",
+    description:
+      "Observability view header button that opens the Edit view modal (w3/m507)",
+  },
+  "logs.duplicateView": {
+    message: "Дублировать",
+    description:
+      "Observability view header button that copies the view (w3/m507)",
+  },
+  "logs.deleteView": {
+    message: "Удалить представление",
+    description:
+      "Accessible name and confirm label of the observability view's trash button (w3/m507)",
+  },
+  "logs.deleteViewTitle": {
+    message: "Удалить {name}?",
+    description:
+      "Title of the confirmation before deleting an observability view; name is the view's name",
+  },
+  "logs.deleteViewBody": {
+    message:
+      "Представление будет удалено для всех участников проекта. Ресурсы проекта и их логи не затрагиваются.",
+    description:
+      "Body of the delete-view confirmation: views are shared by the whole project (w3/m507)",
+  },
+  "logs.viewDeleted": {
+    message: "{name} удалено",
+    description:
+      "Toast after an observability view was deleted; name is the view's name",
+  },
+  "logs.deleteViewFailed": {
+    message: "Не удалось удалить представление",
+    description:
+      "Toast when deleting an observability view failed without a server reason",
+  },
+  "logs.viewDuplicated": {
+    message: "{name} создано",
+    description: "Toast after a view was duplicated; name is the copy's name",
+  },
+  "logs.duplicateViewFailed": {
+    message: "Не удалось дублировать представление",
+    description:
+      "Toast when duplicating an observability view failed without a server reason",
+  },
+  "logs.editViewTitle": {
+    message: "Изменить представление",
+    description: "Title of Render's Edit view modal (w3/m507)",
+  },
+  "logs.newViewTitle": {
+    message: "Новое представление",
+    description: "Title of the view modal when New View opened it (w3/m507)",
+  },
+  "logs.viewNameLabel": {
+    message: "Название",
+    description: "Label of the view name field in the Edit view modal",
+  },
+  "logs.viewNameRequired": {
+    message: "Укажите название представления.",
+    description: "Inline refusal of a blank view name",
+  },
+  "logs.viewFiltersLabel": {
+    message: "Фильтры",
+    description: "Heading of the filter rows in the Edit view modal",
+  },
+  "logs.viewAddFilter": {
+    message: "Добавить фильтр",
+    description: "Accessible name of the Edit view modal's add (+) button",
+  },
+  "logs.viewNoFilters": {
+    message: "Без фильтров: представление читает все ресурсы проекта.",
+    description:
+      "Edit view modal with no filter rows: the view reads the whole project",
+  },
+  "logs.viewSharedNotice": {
+    message:
+      "Изменение фильтров обновит представление для всех участников проекта.",
+    description:
+      "Render's notice under the Edit view filters: a view is shared by the whole project",
+  },
+  "logs.viewSaveFailed": {
+    message: "Не удалось сохранить представление. Попробуйте ещё раз.",
+    description:
+      "Edit view modal error when saving failed without a server reason",
+  },
+  "logs.viewClose": {
+    message: "Закрыть",
+    description:
+      "Edit view modal button that discards the changes (Render's Close)",
+  },
+  "logs.viewDone": {
+    message: "Готово",
+    description: "Edit view modal button that saves the view (Render's Done)",
+  },
+  "logs.viewFilterField": {
+    message: "Поле",
+    description: "Accessible name of a filter row's Field picker",
+  },
+  "logs.viewFilterOperator": {
+    message: "Оператор",
+    description: "Accessible name of a filter row's Operator picker",
+  },
+  "logs.viewFilterValuesFor": {
+    message: "Значения для {field}",
+    description:
+      "Accessible name of a filter row's Values picker; field is the row's field",
+  },
+  "logs.viewValuesRequired": {
+    message: "Выберите хотя бы одно значение.",
+    description: "Inline refusal of a filter row with no value",
+  },
+  "logs.viewRemoveFilter": {
+    message: "Удалить фильтр {field}",
+    description:
+      "Accessible name of a filter row's trash button; field is the row's field",
+  },
+  "logs.viewOperatorIs": {
+    message: "равно",
+    description:
+      "Filter operator IS for a single-valued field (Environment, Time Range)",
+  },
+  "logs.viewOperatorIsOneOf": {
+    message: "одно из",
+    description: "Filter operator IS for a field that takes several values",
+  },
+  "logs.viewOperatorIsNotOneOf": {
+    message: "не одно из",
+    description: "Filter operator IS_NOT",
+  },
+  "logs.viewValuesPlaceholder": {
+    message: "Выберите значения",
+    description:
+      "Placeholder of a filter row's Values picker with nothing chosen",
+  },
+  "logs.viewNoResources": {
+    message: "В этом проекте нет ресурсов",
+    description:
+      "Resource picker of a project with no resource the view can read",
+  },
+  "logs.viewValueTypeHint": {
+    message: "Введите значение и нажмите Enter",
+    description:
+      "Placeholder of a typed filter value (instance, search text, status code, host, path)",
+  },
+  "logs.viewValueRemove": {
+    message: "Удалить {value}",
+    description:
+      "Accessible name of a typed filter value's remove button; value is the value",
+  },
+  "logs.viewFieldEnvironment": {
+    message: "Окружение",
+    description: "Filter field Environment in the Edit view modal",
+  },
+  "logs.viewFieldResource": {
+    message: "Ресурс",
+    description: "Filter field Resource in the Edit view modal",
+  },
+  "logs.viewFieldResourceType": {
+    message: "Тип ресурса",
+    description: "Filter field Resource Type in the Edit view modal",
+  },
+  "logs.viewFieldText": {
+    message: "Поиск по тексту",
+    description: "Filter field Text Search in the Edit view modal",
+  },
+  "logs.viewFieldTimeRange": {
+    message: "Диапазон времени",
+    description: "Filter field Time Range in the Edit view modal",
+  },
+  "logs.viewResourceTypeService": {
+    message: "Сервисы",
+    description: "Resource Type value Services",
+  },
+  "logs.viewResourceTypeCronJob": {
+    message: "Cron-задачи",
+    description: "Resource Type value Cron jobs",
+  },
+  "logs.viewResourceTypePostgres": {
+    message: "Postgres",
+    description: "Resource Type value Postgres",
+  },
+  "logs.viewResourceTypeKeyValue": {
+    message: "Key Value",
+    description: "Resource Type value Key Value (the product name)",
+  },
 };
 
 export default ruLogs;

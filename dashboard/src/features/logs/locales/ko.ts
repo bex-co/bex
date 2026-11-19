@@ -343,6 +343,201 @@ const koLogs: Record<string, TranslationEntry> = {
       "프로젝트의 보기를 읽지 못했습니다. 페이지를 새로고침하여 다시 시도하세요.",
     description: "Body of the view load failure (w3/m505)",
   },
+  "logs.newView": {
+    message: "새 보기",
+    description:
+      "Project sidebar button that opens the TYPE menu for a new observability view (w3/m507, Render's '+ New View')",
+  },
+  "logs.newViewTypeHeading": {
+    message: "유형",
+    description:
+      "Heading of the New View menu listing view types (Render's TYPE)",
+  },
+  "logs.editView": {
+    message: "보기 편집",
+    description:
+      "Observability view header button that opens the Edit view modal (w3/m507)",
+  },
+  "logs.duplicateView": {
+    message: "복제",
+    description:
+      "Observability view header button that copies the view (w3/m507)",
+  },
+  "logs.deleteView": {
+    message: "보기 삭제",
+    description:
+      "Accessible name and confirm label of the observability view's trash button (w3/m507)",
+  },
+  "logs.deleteViewTitle": {
+    message: "{name}을(를) 삭제할까요?",
+    description:
+      "Title of the confirmation before deleting an observability view; name is the view's name",
+  },
+  "logs.deleteViewBody": {
+    message:
+      "프로젝트의 모든 사용자에게서 이 보기가 삭제됩니다. 프로젝트의 리소스와 로그는 영향을 받지 않습니다.",
+    description:
+      "Body of the delete-view confirmation: views are shared by the whole project (w3/m507)",
+  },
+  "logs.viewDeleted": {
+    message: "{name}을(를) 삭제했습니다",
+    description:
+      "Toast after an observability view was deleted; name is the view's name",
+  },
+  "logs.deleteViewFailed": {
+    message: "보기를 삭제할 수 없습니다",
+    description:
+      "Toast when deleting an observability view failed without a server reason",
+  },
+  "logs.viewDuplicated": {
+    message: "{name}을(를) 만들었습니다",
+    description: "Toast after a view was duplicated; name is the copy's name",
+  },
+  "logs.duplicateViewFailed": {
+    message: "보기를 복제할 수 없습니다",
+    description:
+      "Toast when duplicating an observability view failed without a server reason",
+  },
+  "logs.editViewTitle": {
+    message: "보기 편집",
+    description: "Title of Render's Edit view modal (w3/m507)",
+  },
+  "logs.newViewTitle": {
+    message: "새 보기",
+    description: "Title of the view modal when New View opened it (w3/m507)",
+  },
+  "logs.viewNameLabel": {
+    message: "이름",
+    description: "Label of the view name field in the Edit view modal",
+  },
+  "logs.viewNameRequired": {
+    message: "보기 이름을 입력하세요.",
+    description: "Inline refusal of a blank view name",
+  },
+  "logs.viewFiltersLabel": {
+    message: "필터",
+    description: "Heading of the filter rows in the Edit view modal",
+  },
+  "logs.viewAddFilter": {
+    message: "필터 추가",
+    description: "Accessible name of the Edit view modal's add (+) button",
+  },
+  "logs.viewNoFilters": {
+    message: "필터 없음: 이 보기는 프로젝트의 모든 리소스를 읽습니다.",
+    description:
+      "Edit view modal with no filter rows: the view reads the whole project",
+  },
+  "logs.viewSharedNotice": {
+    message:
+      "필터를 편집하면 프로젝트의 모든 사용자에게 보기가 업데이트됩니다.",
+    description:
+      "Render's notice under the Edit view filters: a view is shared by the whole project",
+  },
+  "logs.viewSaveFailed": {
+    message: "보기를 저장할 수 없습니다. 다시 시도하세요.",
+    description:
+      "Edit view modal error when saving failed without a server reason",
+  },
+  "logs.viewClose": {
+    message: "닫기",
+    description:
+      "Edit view modal button that discards the changes (Render's Close)",
+  },
+  "logs.viewDone": {
+    message: "완료",
+    description: "Edit view modal button that saves the view (Render's Done)",
+  },
+  "logs.viewFilterField": {
+    message: "필드",
+    description: "Accessible name of a filter row's Field picker",
+  },
+  "logs.viewFilterOperator": {
+    message: "연산자",
+    description: "Accessible name of a filter row's Operator picker",
+  },
+  "logs.viewFilterValuesFor": {
+    message: "{field} 값",
+    description:
+      "Accessible name of a filter row's Values picker; field is the row's field",
+  },
+  "logs.viewValuesRequired": {
+    message: "값을 하나 이상 선택하세요.",
+    description: "Inline refusal of a filter row with no value",
+  },
+  "logs.viewRemoveFilter": {
+    message: "{field} 필터 제거",
+    description:
+      "Accessible name of a filter row's trash button; field is the row's field",
+  },
+  "logs.viewOperatorIs": {
+    message: "같음",
+    description:
+      "Filter operator IS for a single-valued field (Environment, Time Range)",
+  },
+  "logs.viewOperatorIsOneOf": {
+    message: "다음 중 하나",
+    description: "Filter operator IS for a field that takes several values",
+  },
+  "logs.viewOperatorIsNotOneOf": {
+    message: "다음 중 하나가 아님",
+    description: "Filter operator IS_NOT",
+  },
+  "logs.viewValuesPlaceholder": {
+    message: "값 선택",
+    description:
+      "Placeholder of a filter row's Values picker with nothing chosen",
+  },
+  "logs.viewNoResources": {
+    message: "이 프로젝트에 리소스가 없습니다",
+    description:
+      "Resource picker of a project with no resource the view can read",
+  },
+  "logs.viewValueTypeHint": {
+    message: "값을 입력한 뒤 Enter를 누르세요",
+    description:
+      "Placeholder of a typed filter value (instance, search text, status code, host, path)",
+  },
+  "logs.viewValueRemove": {
+    message: "{value} 제거",
+    description:
+      "Accessible name of a typed filter value's remove button; value is the value",
+  },
+  "logs.viewFieldEnvironment": {
+    message: "환경",
+    description: "Filter field Environment in the Edit view modal",
+  },
+  "logs.viewFieldResource": {
+    message: "리소스",
+    description: "Filter field Resource in the Edit view modal",
+  },
+  "logs.viewFieldResourceType": {
+    message: "리소스 유형",
+    description: "Filter field Resource Type in the Edit view modal",
+  },
+  "logs.viewFieldText": {
+    message: "텍스트 검색",
+    description: "Filter field Text Search in the Edit view modal",
+  },
+  "logs.viewFieldTimeRange": {
+    message: "시간 범위",
+    description: "Filter field Time Range in the Edit view modal",
+  },
+  "logs.viewResourceTypeService": {
+    message: "서비스",
+    description: "Resource Type value Services",
+  },
+  "logs.viewResourceTypeCronJob": {
+    message: "Cron 작업",
+    description: "Resource Type value Cron jobs",
+  },
+  "logs.viewResourceTypePostgres": {
+    message: "Postgres",
+    description: "Resource Type value Postgres",
+  },
+  "logs.viewResourceTypeKeyValue": {
+    message: "Key Value",
+    description: "Resource Type value Key Value (the product name)",
+  },
 };
 
 export default koLogs;

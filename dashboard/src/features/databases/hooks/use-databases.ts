@@ -27,7 +27,13 @@ export interface UseDatabasesResult {
  * Database CRs (docs/ADR006-bex-api.md §Managed Postgres); mirrors `useServices`.
  * Scoped to the switcher's selected workspace (w6/m3) — see useServices.
  */
-export function useDatabases(): UseDatabasesResult {
+export function useDatabases({
+  poll = true,
+}: {
+  /** Poll for out-of-band changes (default `true`); a secondary reader that
+   *  mounts beside a polling one passes `false`, as `useServices` takes it. */
+  poll?: boolean;
+} = {}): UseDatabasesResult {
   const { currentWorkspaceId } = useWorkspace();
   const resolved = currentWorkspaceId != null;
   const { data, loading, error, refetch, startPolling, stopPolling } = useQuery(
@@ -37,7 +43,7 @@ export function useDatabases(): UseDatabasesResult {
       skip: !resolved,
       fetchPolicy: PRIMED_FETCH_POLICY,
       errorPolicy: "all",
-      pollInterval: RESOURCE_POLL_INTERVAL_MS,
+      pollInterval: poll ? RESOURCE_POLL_INTERVAL_MS : 0,
       skipPollAttempt: skipPollWhenHidden,
     },
   );

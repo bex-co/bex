@@ -21,6 +21,7 @@ import { Button } from "@/common/components/ui/button.tsx";
 import { Input } from "@/common/components/ui/input.tsx";
 import { Label } from "@/common/components/ui/label.tsx";
 import {
+  RANGE_LABEL_KEYS,
   RANGE_PRESETS,
   boundFloorMs,
   isCustomRange,
@@ -28,25 +29,11 @@ import {
   parseRangePreset,
   presetWithinBound,
   type RangeBound,
-  type RangePreset,
   type RangeSelection,
 } from "@/features/metrics/lib/range";
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatMediumDateTime, formatTimeWindow } from "@/common/lib/format";
-import type { en } from "@/i18n";
-
-const RANGE_LABEL_KEYS: Record<RangePreset["id"], keyof typeof en> = {
-  "30m": "metrics.rangeLast30Minutes",
-  "1h": "metrics.rangeLastHour",
-  "4h": "metrics.rangeLast4Hours",
-  "12h": "metrics.rangeLast12Hours",
-  "24h": "metrics.rangeLast24Hours",
-  "2d": "metrics.rangeLast2Days",
-  "7d": "metrics.rangeLast7Days",
-  "14d": "metrics.rangeLast14Days",
-  "30d": "metrics.rangeLast30Days",
-};
 
 // The "Custom" dropdown value — a sentinel that opens the date-time picker
 // instead of applying a preset (w5/m56).

@@ -321,6 +321,13 @@ var renderEvents = map[string]string{
 	core.AuditVerbEndShell:    "EndShellEvent",
 	"apps.ResolveSSHSession":  "StartShellEvent",
 	"apps.CreateShellSession": "StartShellEvent",
+
+	// A project's observability views (w3/m507): New View and Duplicate
+	// create one, the trash button deletes one. Render's enum has no update
+	// event, and an edit records no row.
+	"projects.CreateSavedSearch":    "CreateSavedSearchEvent",
+	"projects.DuplicateSavedSearch": "CreateSavedSearchEvent",
+	"projects.DeleteSavedSearch":    "DeleteSavedSearchEvent",
 }
 
 // docsOnlyEvents are Render events render.com/docs/audit-logs (read

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { EmptyState } from "@/common/components/empty-state";
 import { buttonVariants } from "@/common/components/ui/button";
@@ -17,7 +17,11 @@ import {
 } from "../lib/project-log-search";
 import { LOG_TYPE_APP, LOG_TYPE_REQUEST } from "../types";
 import { type EventSourceFactory } from "../hooks/use-live-logs";
-import { type ProjectLogViewType } from "../lib/project-log-views";
+import {
+  PROJECT_LOG_VIEW_TITLE_KEYS,
+  type ProjectLogViewType,
+} from "../lib/project-log-views";
+import { ObservabilityViewActions } from "./observability-view-actions";
 import { ObservabilityViewHeader } from "./observability-view-header";
 import { ProjectLogViewer } from "./project-log-viewer";
 
@@ -27,6 +31,7 @@ import { ProjectLogViewer } from "./project-log-viewer";
  * page — the eyebrow and the view's name, then the log explorer over every
  * resource the view reads. The view is found in the project's saved searches
  * by its URL id; its `TIME_RANGE` filter is the range when the URL names none.
+ * The header carries the view's Edit view, Duplicate and Delete (w3/m507).
  */
 export function ProjectLogViewPage({
   projectId,
@@ -43,6 +48,9 @@ export function ProjectLogViewPage({
 }) {
   const { t } = useTranslations();
   const { views, loading, error } = useSavedSearches(projectId);
+  // The view this page is deleting: once it leaves the list the page holds
+  // its pending state until the next view opens, not "View not found".
+  const [leaving, setLeaving] = useState<string | null>(null);
   const view = views.find(
     (v) => v.id === search.savedSearchId && v.type === viewType,
   );
@@ -55,7 +63,9 @@ export function ProjectLogViewPage({
     [view, projectId],
   );
 
-  if (loading) return <ProjectLogViewPageSkeleton />;
+  if (loading || leaving === search.savedSearchId) {
+    return <ProjectLogViewPageSkeleton />;
+  }
   if (!view || !scope) {
     // A failed read is not a missing view: say which it is.
     return (
@@ -63,11 +73,7 @@ export function ProjectLogViewPage({
         width="wide"
         header={
           <ObservabilityViewHeader
-            name={
-              viewType === SavedSearchType.RequestLogs
-                ? t("logs.requestLogsTitle")
-                : t("logs.applicationLogsTitle")
-            }
+            name={t(PROJECT_LOG_VIEW_TITLE_KEYS[viewType])}
           />
         }
       >
@@ -108,7 +114,18 @@ export function ProjectLogViewPage({
   return (
     <PageFrame
       width="wide"
-      header={<ObservabilityViewHeader name={view.name} />}
+      header={
+        <ObservabilityViewHeader
+          name={view.name}
+          actions={
+            <ObservabilityViewActions
+              projectId={projectId}
+              view={view}
+              onLeaving={setLeaving}
+            />
+          }
+        />
+      }
     >
       <ProjectLogViewer
         key={view.id}

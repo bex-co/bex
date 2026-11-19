@@ -443,12 +443,8 @@ func (s *Service) createWithEnvironments(ctx context.Context, workspaceID, name 
 	if s.Store == nil {
 		return ProjectView{}, "", ErrProjectsUnavailable
 	}
-	name, err = core.TrimmedLabel(name)
-	if err != nil {
+	if name, err = requiredName(name); err != nil {
 		return ProjectView{}, "", err
-	}
-	if name == "" {
-		return ProjectView{}, "", fmt.Errorf("%w: name: must not be blank", core.ErrBadRequest)
 	}
 	if len(environments) > 0 {
 		if err := s.RequireEnvironmentCapacity(ctx, workspaceID, len(environments)-1); err != nil {
@@ -585,12 +581,9 @@ func (s *Service) Rename(ctx context.Context, id, name string) (ProjectView, err
 	if _, err := s.authorizedProject(ctx, core.RelCanCreate, id); err != nil {
 		return ProjectView{}, err
 	}
-	name, err := core.TrimmedLabel(name)
+	name, err := requiredName(name)
 	if err != nil {
 		return ProjectView{}, err
-	}
-	if name == "" {
-		return ProjectView{}, fmt.Errorf("%w: name: must not be blank", core.ErrBadRequest)
 	}
 	if err := s.Store.RenameProject(ctx, id, name); err != nil {
 		// A rename onto a taken name answers like a create does (w4/155).

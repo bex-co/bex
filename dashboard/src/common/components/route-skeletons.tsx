@@ -96,7 +96,10 @@ import {
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
 import { Switch } from "@/common/components/ui/switch";
 import { Label } from "@/common/components/ui/label";
-import { ObservabilityViewHeader } from "@/features/logs/components/observability-view-header";
+import {
+  ObservabilityViewHeader,
+  ViewActionButtons,
+} from "@/features/logs/components/observability-view-header";
 import {
   LIVE_TOGGLE_CLASS,
   LOG_FILTER_BAR_CLASS,
@@ -1378,7 +1381,8 @@ export function ProjectRouteSkeleton() {
 
 /**
  * A project observability view (w3/m505) while its route or its saved search
- * loads: the ready page's frame and header with the view's name reserved, the
+ * loads: the ready page's frame and header with the view's name reserved and
+ * its Edit view, Duplicate and Delete buttons (w3/m507) disabled, the
  * log explorer's toolbar rows (one on a desktop, [search] then [range | Live]
  * on a phone), its range note, and the log panel at its own height.
  */
@@ -1389,7 +1393,10 @@ export function ProjectLogViewPageSkeleton() {
       pending="project-log-view"
       width="wide"
       header={
-        <ObservabilityViewHeader name={<Skeleton className="h-6 w-44" />} />
+        <ObservabilityViewHeader
+          name={<Skeleton className="h-6 w-44" />}
+          actions={<ViewActionButtons disabled />}
+        />
       }
     >
       <div className="space-y-4">

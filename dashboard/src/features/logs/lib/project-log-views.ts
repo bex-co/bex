@@ -1,13 +1,36 @@
 import type { RouterContext } from "@/common/types/router-context";
 import { titleLoaderFetchPolicy } from "@/common/lib/document-head";
-import {
-  SavedSearchesDocument,
-  type SavedSearchType,
-} from "@/graphql/definitions";
+import type { en } from "@/i18n";
+import { SavedSearchesDocument, SavedSearchType } from "@/graphql/definitions";
 
 /** The two log view types a project's Observability group shows (w3/m505). */
 export type ProjectLogViewType =
   SavedSearchType.ApplicationLogs | SavedSearchType.RequestLogs;
+
+/** Those types in Render's order: the sidebar's list and New View's TYPE
+ *  menu (w3/m507). Service Metrics joins with its page (w3/m508). */
+export const PROJECT_LOG_VIEW_TYPES: readonly ProjectLogViewType[] = [
+  SavedSearchType.ApplicationLogs,
+  SavedSearchType.RequestLogs,
+];
+
+/** Each log view type's own name: a new view's, and a page's without one. */
+export const PROJECT_LOG_VIEW_TITLE_KEYS: Record<
+  ProjectLogViewType,
+  keyof typeof en
+> = {
+  [SavedSearchType.ApplicationLogs]: "logs.applicationLogsTitle",
+  [SavedSearchType.RequestLogs]: "logs.requestLogsTitle",
+};
+
+/** Whether a view has a log page (Service Metrics has none yet). */
+export function isProjectLogView<T extends { type: SavedSearchType }>(
+  view: T,
+): view is T & { type: ProjectLogViewType } {
+  return (PROJECT_LOG_VIEW_TYPES as readonly SavedSearchType[]).includes(
+    view.type,
+  );
+}
 
 /**
  * The route loader's half of a view page: reads the project's views (warming

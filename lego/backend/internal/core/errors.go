@@ -389,6 +389,9 @@ func CheckResourceName(field, name string) error {
 		map[string]any{"field": field, "maxLength": appv1alpha1.MaxResourceNameLength})
 }
 
+// MaxLabelLength is how many code points CheckLabel lets a label keep.
+const MaxLabelLength = 100
+
 // CheckLabel is the one rule for a free-form, human-facing label — a service's
 // display name and a Postgres or Key Value name (Render leaves both free-form;
 // w5/m153): no control characters or line separators, at most 100 code
@@ -402,9 +405,8 @@ func CheckLabel(value string) (string, error) {
 		}
 	}
 	value = strings.TrimSpace(value)
-	const maxLength = 100
-	if utf8.RuneCountInString(value) > maxLength {
-		return "", NewBadRequestError("DISPLAY_NAME_TOO_LONG", fmt.Sprintf("display name must be at most %d Unicode code points", maxLength), map[string]any{"maxLength": maxLength})
+	if utf8.RuneCountInString(value) > MaxLabelLength {
+		return "", NewBadRequestError("DISPLAY_NAME_TOO_LONG", fmt.Sprintf("display name must be at most %d Unicode code points", MaxLabelLength), map[string]any{"maxLength": MaxLabelLength})
 	}
 	return value, nil
 }

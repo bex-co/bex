@@ -30,7 +30,13 @@ export interface UseKeyValuesResult {
  * workspace B lands in a list showing every workspace's stores. Skipped until
  * the selection resolves, exactly like useServices/useDatabases.
  */
-export function useKeyValues(): UseKeyValuesResult {
+export function useKeyValues({
+  poll = true,
+}: {
+  /** Poll for out-of-band changes (default `true`); a secondary reader that
+   *  mounts beside a polling one passes `false`, as `useServices` takes it. */
+  poll?: boolean;
+} = {}): UseKeyValuesResult {
   const { currentWorkspaceId } = useWorkspace();
   const resolved = currentWorkspaceId != null;
   const { data, loading, error, refetch, startPolling, stopPolling } = useQuery(
@@ -40,7 +46,7 @@ export function useKeyValues(): UseKeyValuesResult {
       skip: !resolved,
       fetchPolicy: PRIMED_FETCH_POLICY,
       errorPolicy: "all",
-      pollInterval: RESOURCE_POLL_INTERVAL_MS,
+      pollInterval: poll ? RESOURCE_POLL_INTERVAL_MS : 0,
       skipPollAttempt: skipPollWhenHidden,
     },
   );

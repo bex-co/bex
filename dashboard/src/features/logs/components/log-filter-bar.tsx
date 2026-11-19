@@ -60,6 +60,7 @@ import {
   STRUCTURED_LABEL_KEYS,
   type LogFilters,
   type LogTypeFilter,
+  LOG_METHODS,
 } from "../types";
 
 // Render's Logs filter row (design source .pm/w5/m6/README.md + the request/
@@ -94,7 +95,6 @@ const ALL = "all";
 // They are fallbacks for "we could not ask", NOT for "the answer was none" —
 // see mergeOptions (w6/m131/t003).
 
-const METHOD_FALLBACK = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 const STATUS_CLASSES = ["2xx", "3xx", "4xx", "5xx"];
 
 // mergeOptions keeps the static fallbacks first (a stable, familiar order) then
@@ -170,7 +170,7 @@ export function LogFilterBar({
     useLogLabelDiscovery(resource, LOG_LABEL_LEVEL),
   );
   const methods = mergeOptions(
-    METHOD_FALLBACK,
+    LOG_METHODS,
     useLogLabelDiscovery(resource, LOG_LABEL_METHOD, { skip: !servesRequests }),
   );
   const statuses = mergeOptions(

@@ -214,3 +214,7 @@ export function hasActiveLogFilters(f: LogFilters): boolean {
 /** The shipper's level buckets: the values a log line's `level` label takes
  *  (app severities, a Postgres record's, a Valkey line's marker). */
 export const LOG_LEVELS = ["debug", "info", "warning", "error"] as const;
+
+/** The request methods a method filter offers before discovery answers (the
+ *  service Logs tab), and a project view's Method field (w3/m507). */
+export const LOG_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;

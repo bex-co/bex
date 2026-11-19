@@ -82,3 +82,37 @@ query SavedSearches($projectId: String!, $type: SavedSearchType) {
     ...SavedSearchFields
   }
 }
+
+# Managing a project's views (w3/m507): New View, Edit view, Duplicate and
+# Delete, each by whoever may edit the project.
+mutation CreateSavedSearch(
+  $projectId: String!
+  $type: SavedSearchType!
+  $name: String!
+  $filters: JSONObject
+) {
+  createSavedSearch(
+    projectId: $projectId
+    type: $type
+    name: $name
+    filters: $filters
+  ) {
+    ...SavedSearchFields
+  }
+}
+
+mutation UpdateSavedSearch($id: String!, $name: String, $filters: JSONObject) {
+  updateSavedSearch(id: $id, name: $name, filters: $filters) {
+    ...SavedSearchFields
+  }
+}
+
+mutation DuplicateSavedSearch($id: String!) {
+  duplicateSavedSearch(id: $id) {
+    ...SavedSearchFields
+  }
+}
+
+mutation DeleteSavedSearch($id: String!) {
+  deleteSavedSearch(id: $id)
+}
