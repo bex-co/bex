@@ -1,6 +1,6 @@
 # w6 · m517 — A store's proxy keeps its held clients until the store's own change rolls it
 
-**Worker:** worker6 **Goal:** a platform deploy that changes `/kv-internal-proxy`, or the proxy pod template the operator renders, rolls no store's proxy. Each store's proxy keeps the template it runs until the store's own change rolls it: a plan change, enabling internal authentication, a credential rotation or a resume. That roll takes the current image and template at once. A code-reviewed override rolls every proxy at once for a security fix. **Status:** in progress (t001–t004 done and shipping from stash `loopx/w6/m517`, unblocked 2026-11-19, see § Unblock record; next t005 on production)
+**Worker:** worker6 **Goal:** a platform deploy that changes `/kv-internal-proxy`, or the proxy pod template the operator renders, rolls no store's proxy. Each store's proxy keeps the template it runs until the store's own change rolls it: a plan change, enabling internal authentication, a credential rotation or a resume. That roll takes the current image and template at once. A code-reviewed override rolls every proxy at once for a security fix. **Status:** blocked (t001–t004 shipped as `b24a19161` and t007 done; t005 waits for the first production pin that carries `b24a19161`. See § Park record (2026-11-19 20:50Z).)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | [Record it in ADR021 § 10 and the operator guide](done/t004.md) — **DONE** | 30m | t002 |
 | t005 | [Ship and verify on production](t005.md) | 1h30m | t003, t004, w6/m512 t007 |
 | t006 | [Simplify](t006.md) | 30m | t005 |
-| t007 | [Test coverage](t007.md) | 30m | t005 |
+| t007 | [Test coverage](done/t007.md) — **DONE** | 30m | t005 |
 | t008 | [Closeout](t008.md) | 10m | t006, t007 |
 
 ## Definition of done
@@ -27,7 +27,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** promoted from inbox note [w6/145](../done/145.md) on 2026-11-19 by `/loopx w6`. w6/m512 t006 filed it as the stricter variant ADR021 § 10 names.
+- **Source:** promoted from inbox note [w6/145](../../done/145.md) on 2026-11-19 by `/loopx w6`. w6/m512 t006 filed it as the stricter variant ADR021 § 10 names.
 - **Goal linkage:** ADR008 § Render parity first.
   - Render breaks a store's connections when the customer changes it ("Render restarts your Key Value instance", [Key Value](https://render.com/docs/key-value)). For its own infrastructure it does so only in service-affecting maintenance, which "usually occur[s] no more than once every three months". For a paid service, "Render always provides advance notice via email" and can usually reschedule it ([platform maintenance](https://render.com/docs/platform-maintenance), both read 2026-11-19).
   - bex closes every held client of every store, without notice, on each deploy that changes the proxy. That was 2 of the 11 production deploys on 2026-11-17, and w6/m512's drain only bounds the close at 30 s. No ADR018 row signs this off.
@@ -95,8 +95,19 @@
 ## Unblock record (2026-11-19 20:25Z)
 
 - **Source:** verified evidence (`/pm unblock`, `/loopx w6`); no user decision was needed.
-- **The gate holds.** `git merge-base --is-ancestor d6d29f9a7 <producer>` holds for every pin since `a91e9aeb3`: `aefb144dc` (`c81d2d447bd8`), `99bbc4239` (`c624a4f217ff`) and the newest, `d38508f70` (`1c63b6fe0a34`, 19:49Z). w6/m512 is in `done/` (`b7a9e4676`). Its [t007](../done/m512/done/t007.md) records each of the three stores' proxies rolling exactly once, at 18:09:37–38Z, onto `BEX_KV_DRAIN_SECONDS=30` and a 35 s grace, and the next two pins writing none of them.
+- **The gate holds.** `git merge-base --is-ancestor d6d29f9a7 <producer>` holds for every pin since `a91e9aeb3`: `aefb144dc` (`c81d2d447bd8`), `99bbc4239` (`c624a4f217ff`) and the newest, `d38508f70` (`1c63b6fe0a34`, 19:49Z). w6/m512 is in `done/` (`b7a9e4676`). Its [t007](../../done/m512/done/t007.md) records each of the three stores' proxies rolling exactly once, at 18:09:37–38Z, onto `BEX_KV_DRAIN_SECONDS=30` and a 35 s grace, and the next two pins writing none of them.
 - **Nothing in flight moves the adoption.** Since `1c63b6fe0a34`, no commit on `main` touches `internal/kvinternalauth`, `cmd/kv-internal-proxy`, `go.mod`, `lego/Dockerfile`, `lego/types` or the Key Value controller files. So the production templates still equal the rendering, and the manager's `/kv-internal-proxy` still hashes `5615a21b…`, which each Deployment records. The shipping deploy should therefore only adopt.
 - **The stash applies cleanly** on `b7a9e4676`. The only upstream drift in its files is `6dff53a8f`, a link rewrite in ADR021 § 9.
 - **Next:** rerun `make test` and `make lint`, record t005 step 1's baseline, ship t001–t004 in one commit, then t005 steps 3–7.
+
+## Park record (2026-11-19 20:50Z)
+
+- **Shipped:** t001–t004 as `b24a19161`, with one `/simplify` change on top of the stash (t006 step 1). `make test` and `make lint` passed on `b7a9e4676`, and after the change the Key Value unit tests, the 13 envtest specs and `make lint` passed. Stash `loopx/w6/m517` is dropped.
+- **t007 is done:** the five mutations each fail a test on the shipped tree.
+- **Gate:** pin must carry `b24a19161`. A push deploys only when the pin is at least 6 hours old, and the in-flight dispatch (20:23Z) builds `b23fe4543`, which does not contain it (t005 § Progress).
+- **Then:**
+  1. t005 step 3 against its baseline: each of the three proxies gains both records with no new ReplicaSet and the same pod.
+  2. Steps 4–6 on a `bex-canary` probe. Step 5 needs one more pin after that, so the item may park again on that pin's commit.
+  3. t006 steps 2–3 once every proxy Deployment carries its records.
+  4. t008.
 
