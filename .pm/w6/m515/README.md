@@ -1,0 +1,75 @@
+# w6 · m515 — An SNI-proxy roll lets external Key Value and Postgres clients finish, and the edge keeps admitting new ones
+
+**Worker:** worker6 **Goal:** when a deploy changes `/kv-sni-proxy` or `/pg-sni-proxy`, each node's new proxy pod is Ready before the old one stops, so new external clients keep connecting on every node throughout the roll. The old pod then stops accepting and keeps relaying its open streams until each ends or a bounded grace period passes, so an external command in flight at the roll gets its reply. **Status:** todo
+
+## Tasks (in order)
+
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | [`sniproxy` drains its open streams](t001.md) | 1h | — |
+| t002 | [Both SNI proxies drain on `SIGTERM`](t002.md) | 45m | t001 |
+| t003 | [The SNI DaemonSets surge instead of holding the node's port](t003.md) | 1h | t002 |
+| t004 | [Prove it on the local cluster](t004.md) | 1h30m | t003 |
+| t005 | [Record it in ADR021, ADR009 and the operator guide](t005.md) | 30m | t003 |
+| t006 | [Ship and verify on production](t006.md) | 1h30m | t004, t005 |
+| t007 | [Simplify](t007.md) | 15m | t006 |
+| t008 | [Test coverage](t008.md) | 30m | t006 |
+| t009 | [Closeout](t009.md) | 10m | t007, t008 |
+
+## Definition of done
+
+- A test starts `sniproxy`'s drain while a client is mid-command, and the client still reads the backend's reply. A dial after the drain began is not accepted by the old listener. An idle client stays open until the deadline and is closed then. Every limiter slot is released. Cancelling without a drain still closes everything at once.
+- `kv-sni-proxy` and `pg-sni-proxy` drain on their first `SIGTERM` for their drain variable and exit as soon as no stream is open. With the variable unset they close at once, as today. A second signal closes everything at once.
+- Neither DaemonSet asks for a `hostPort`. Both roll with `maxSurge: 1` and `maxUnavailable: 0`, and `terminationGracePeriodSeconds` covers the bound.
+- On the local cluster, a roll of each SNI DaemonSet caused by a binary change lets an external TLS client mid-command get its reply: a Key Value `BLPOP` and a Postgres `pg_sleep`. New external clients keep connecting throughout the roll, and a held idle client is closed no earlier than the chosen bound.
+- On production, the shipping deploy rolls each DaemonSet once by surge, and no new external connection fails during it. Across the first later deploy that moves an SNI pin, a held external client mid-command gets its reply through each proxy.
+- ADR021 § 10 and ADR009 § SNI proxy state the rule, the bound and its Render basis, the rejected directions and the gap that remains.
+
+## Source + Goal linkage
+
+- **Source:** promoted from inbox note [w6/144](../done/144.md) on 2026-11-19 by `/loopx w6`. w6/m512 t006 filed it.
+- **Goal linkage:** ADR008 § Render parity first.
+  - Render breaks a datastore's connections for its own infrastructure only in service-affecting maintenance, which "usually occur[s] no more than once every three months". It announces it by email, and a paid service can usually reschedule it ([platform maintenance](https://render.com/docs/platform-maintenance), read 2026-11-19).
+  - bex closes every external Key Value and Postgres connection, without notice, on each deploy that changes an SNI binary. Any `lego/types/v1alpha1` edit does: at most 22 of the 56 production pins from 2026-11-12 to 2026-11-18 (ADR021 § 10). No ADR018 row signs this off.
+  - While the old pod holds the node's port, the edge cannot admit new clients on that node either.
+- **Expected outcome:** an external command in flight at an SNI-proxy roll gets its reply instead of a reset, and new external clients connect on every node throughout the roll. Held clients (pools, pub/sub, long blocking commands, idle `psql` sessions) still reconnect once, at the end of the bound at the latest.
+- **Why now:** w6/m470 holds the SNI images on deploys that leave their code alone. The deploys that do change it still drop every external stream at once, and they are frequent because the binaries link the whole CRD scheme. w6/m512 just shipped the same drain for `kv-internal-proxy`. Activator (w6/m485) and ssh-gateway (w6/m482) drains are the recent precedents.
+- **Render parity task omitted:** the change is a platform-internal mechanism. No REST, GraphQL, MCP or dashboard field or message changes. t004 and t006 check the tenant-visible effect.
+
+## Findings at promotion (2026-11-19, code at `82b453c8f`)
+
+- **The premise holds.**
+  - On `SIGTERM`, `ctrl.SetupSignalHandler` cancels the context, and both mains close the listener (`cmd/kv-sni-proxy/main.go` around line 255, `cmd/pg-sni-proxy/main.go` around line 403).
+  - `sniproxy.Serve` (`internal/sniproxy/limiter.go`) then returns, `main` returns, and the process exit closes every relayed stream (`sniproxy.CopyBidirectional`, `internal/sniproxy/meter.go`).
+  - Both DaemonSets (`config/kv-sni-proxy/daemonset.yaml`, `config/pg-sni-proxy/daemonset.yaml`) set `hostPort` (6379, 5432), no `updateStrategy` and no `terminationGracePeriodSeconds`. On the local cluster that reads as `{"maxSurge":0,"maxUnavailable":1}` with the default 30 s grace.
+- **Production does not use the `hostPort`.**
+  - The Hetzner edge LB sends `5432 → 31056` and `6379 → 31892`, each with a TCP health check every 15 s, 3 retries (`infra/terraform/main.tf`).
+  - Those NodePorts are `bex-pg-sni-proxy-public` and `bex-kv-sni-proxy-public`, both `externalTrafficPolicy: Local` (`config/prod/*-sni-proxy-lb.yaml`).
+  - The `hostPort` serves only ADR009's dev "hostNetwork edge". It is also what stops a surge: the scheduler will not place a second pod asking for the same host port on a node, so a new pod would wait for the old one to be gone.
+- **The local cluster cannot run either proxy today.** On 2026-11-19, `bex-kv-sni-proxy` and `bex-pg-sni-proxy` showed desired 1, current 0, with `FailedCreate … violates PodSecurity "baseline:latest": hostPort`. w6/m457 hit the same refusal. Dropping the `hostPort` is therefore also what makes t004's local proof possible.
+- **Topology.**
+  - Production has 3 `bex-platform` nodes (cx33, autoscaler min = max = 3) and runs Cilium.
+  - The local cluster runs Calico with kube-proxy, and each DaemonSet targets one node there (desired 1), the single-node case w6/144 names.
+  - How an established NodePort flow to a terminating pod behaves must be checked on both. Locally that is t004, and on production it is t006's held client.
+- **The deploy wait fits a surge.** `scripts/operator-pins.sh wait` waits for each DaemonSet's pinned image, then `rollout status` with 300 s. A rollout completes when each node's new pod is available and does not wait for terminating pods.
+- **Host ports are already a privilege.** `deploy/gitops/base/operator-workload-admission.yaml` refuses a `hostPort` in every operator-authored workload, because it "publishes a container on its node's address, past every Service and NetworkPolicy". The SNI DaemonSets come from Argo, so that rule never covered them.
+
+## Design
+
+- **Surge, not port handover.**
+  - Drop both `hostPort`s and roll with `maxSurge: 1`, `maxUnavailable: 0`. Each node's new pod becomes a Ready local endpoint of the `Local` NodePort before the old pod gets `SIGTERM`. The edge LB's health check never sees the node without an endpoint, and the old pod's established flows keep their conntrack entries.
+  - **Rejected: `SO_REUSEPORT` handover.** Two pods share a port only in the host's network namespace, which needs `hostNetwork`, a stronger privilege than `hostPort`. Both pods would also have to leave the port undeclared to pass the scheduler's host-port check.
+  - **Rejected: draining only while another node serves the edge.** The LB takes up to 45 s (15 s × 3) to drop a node, and a single-node pool has no other node.
+- **The drain is opt-in by env.** With the drain variable unset, the proxy closes at once, as today, so `make run` and the existing tests are unchanged.
+- **One roll.** The binary change and the template change (no `hostPort`, the drain env, the grace period) ship in one commit. The roll that ships them is already a surge, since the new pods ask for no host port. Each DaemonSet rolls once, and that roll still closes the old pods' streams at once, because the old pods run the old code.
+- **The bound.** By default 30 s with `terminationGracePeriodSeconds: 35`, as w6/m512, which is Render's default shutdown delay for its own instances ([deploys](https://render.com/docs/deploys)).
+  - With a surge the drain no longer holds the edge, so a longer bound costs less here than on a Deployment: up to the proxies' 1 h idle timeout, as the ssh-gateway's 3,660 s grace for open sessions (w6/m482).
+  - t003 weighs that against how long a platform node drain waits for the pod, and two pods of up to 512 Mi each per node.
+  - t005 records the choice and its Render basis, and files the other as a follow-up.
+- **Routing during the drain is unchanged.** The manager stops with the signal, so a draining pod's routing table is frozen. Open streams never consult it again, and dropping a route has never closed an open stream (ADR021 § 10).
+- **Limits during the surge.** Each pod has its own limiter, so for one node's drain the route caps (twice the plan's limit) and the 4,096 global cap count per pod. The datastore's own limit still decides who connects (w6/m457), as it does across nodes today.
+
+## Sequencing constraint
+
+- **Do not ship before w6/m470 t006 has its held-client deploy.** This milestone changes both SNI binaries, so its shipping deploy moves both pins and rolls both DaemonSets. m470's DoD bullet 2 needs a deploy that keeps both pins while `m470-t006-kv-client` and `m470-t006-pg-client` hold their connections.
+- Implement and prove it locally meanwhile. Ship once m470 t006 has recorded that deploy, or m470 is in `done/`. If m470's probes are re-established for a later window, coordinate the ship with its record.
