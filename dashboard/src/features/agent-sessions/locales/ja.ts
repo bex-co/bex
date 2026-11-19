@@ -736,6 +736,22 @@ const jaAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Transcript line under a stopped turn: its unpushed changes were lost, for a reason that is not worth naming (the session was canceled or archived)",
   },
+  "agentSessions.turnRetentionLostSandboxLost": {
+    message:
+      "ターンが失敗し、サンドボックスがなくなったため、プッシュされていない変更は失われました。",
+    description:
+      "Transcript line under a failed turn: its sandbox was gone before its disk could be kept, so the unpushed work in it is lost (w10/m491)",
+  },
+  "agentSessions.turnStakeCommits_other": {
+    message: "プッシュされていないコミット {count} 件",
+    description:
+      "Under a turn whose disk was kept or lost: how many commits its checkout held that were not pushed (w10/m491)",
+  },
+  "agentSessions.turnStakeChanges": {
+    message: "コミットされていない変更",
+    description:
+      "Under a turn whose disk was kept or lost: its checkout held uncommitted changes (w10/m491)",
+  },
   "agentSessions.turnError": {
     message: "ターン {turn} が失敗しました",
     description:

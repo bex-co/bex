@@ -1367,6 +1367,70 @@ func (l *AgentSessionLifecycle) InterruptSessionTurn(ctx context.Context, worksp
 	return nil
 }
 
+// agentCheckoutScript reads the session checkout's state with read-only Git
+// commands, in the sandbox's working directory. The sandbox is the tenant's,
+// so its Git configuration is not trusted to run anything: the hooks a status
+// could fire (fsmonitor) are off, and any owner is accepted, since the exec
+// user need not be the driver's. It prints "git <dirty lines> <unpushed>", or
+// "files" / "empty" for a directory that is not a checkout, where any file
+// counts as uncommitted (a session with no repository).
+const agentCheckoutScript = `cd /workspace 2>/dev/null || { echo empty; exit 0; }
+g() { git -c safe.directory='*' -c core.fsmonitor=false -c core.untrackedCache=false "$@"; }
+if g rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  dirty=$(g status --porcelain 2>/dev/null | head -n 1 | wc -l | tr -d ' ')
+  unpushed=$(g rev-list --count HEAD --not --remotes 2>/dev/null || echo 0)
+  echo "git $dirty $unpushed"
+elif [ -n "$(ls -A 2>/dev/null)" ]; then
+  echo files
+else
+  echo empty
+fi`
+
+// ReadSessionCheckout reads what the exact session sandbox's checkout holds
+// that the turn did not deliver (ADR047 D12, w10/m491): uncommitted changes
+// and local commits that no remote-tracking ref has, through the gateway exec boundary the status
+// read uses and as the same system subject: it re-validates the sandbox
+// binding and performs no user-facing authorization (its caller decides
+// whether to keep the sandbox's disk). The answer is the untrusted sandbox's
+// word, believed only to decide whether its own disk is worth keeping. A
+// sandbox that is gone surfaces as NotFound.
+func (l *AgentSessionLifecycle) ReadSessionCheckout(ctx context.Context, workspaceID, sessionID, sandboxID string) (store.TurnCheckout, error) {
+	s := l.service
+	status, err := s.sessionSandboxState(ctx, workspaceID, sessionID, sandboxID)
+	if err != nil {
+		return store.TurnCheckout{}, err
+	}
+	if status == StatusTerminated || status == StatusErrored {
+		return store.TurnCheckout{}, sandboxNotFound(sandboxID)
+	}
+	result, err := s.sessionExec(ctx, workspaceID, sessionID, sandboxID, agentCheckoutScript)
+	if err != nil {
+		return store.TurnCheckout{}, err
+	}
+	if result.ExitCode != 0 {
+		return store.TurnCheckout{}, fmt.Errorf("%w: reading the checkout exited %d", core.ErrSandboxesUnavailable, result.ExitCode)
+	}
+	return parseSessionCheckout(result.Stdout)
+}
+
+// parseSessionCheckout reads agentCheckoutScript's answer.
+func parseSessionCheckout(out string) (store.TurnCheckout, error) {
+	fields := strings.Fields(out)
+	switch {
+	case len(fields) == 1 && fields[0] == "empty":
+		return store.TurnCheckout{}, nil
+	case len(fields) == 1 && fields[0] == "files":
+		return store.TurnCheckout{Dirty: true}, nil
+	case len(fields) == 3 && fields[0] == "git":
+		dirty, err1 := strconv.Atoi(fields[1])
+		unpushed, err2 := strconv.Atoi(fields[2])
+		if err1 == nil && err2 == nil && dirty >= 0 && unpushed >= 0 {
+			return store.TurnCheckout{Dirty: dirty > 0, UnpushedCommits: unpushed}, nil
+		}
+	}
+	return store.TurnCheckout{}, fmt.Errorf("%w: unreadable checkout state %q", core.ErrSandboxesUnavailable, truncate([]byte(out)))
+}
+
 // agentSessionLogPath is the driver's per-part conversation log inside
 // the sandbox (BEX_AGENT_SESSION_LOG default, lego/agent-image/driver/src/config.mjs).
 const agentSessionLogPath = "/var/log/bex-agent/session.jsonl"

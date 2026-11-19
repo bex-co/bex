@@ -182,6 +182,73 @@ test("an interrupted repo turn records what it left undelivered, and never commi
   );
 });
 
+// w10/m491: a turn that fails (here at its ceiling) records what it left
+// undelivered too, so bex-api can keep the sandbox's disk for the next message.
+test("a failed repo turn records its checkout's facts, and never commits", async () => {
+  const { ensureRepo } = await import("../src/git-setup.js");
+  const { git, seedBareRemote } = await import("./helpers.js");
+  const config = await tempConfig({
+    deliver: true,
+    branch: "bex-agent/ags-test",
+    baseBranch: "main",
+    turnTimeoutMs: 3_000,
+  });
+  config.agentEnv = slowAgent(config.root);
+  config.repoUrl = await seedBareRemote(config.root);
+  await ensureRepo(config);
+  const turn = runHeadlessTurn(
+    config,
+    childEnv(config),
+    new UIMessageStreamHub(),
+  );
+  await waitForPrompt(config.root);
+  // The agent commits one change and leaves another uncommitted, then the
+  // turn runs out of time.
+  await writeFile(`${config.cwd}/committed.txt`, "done\n");
+  git(config.cwd, ["add", "committed.txt"]);
+  git(config.cwd, [
+    "-c",
+    "user.email=a@bex.co",
+    "-c",
+    "user.name=a",
+    "commit",
+    "-m",
+    "work",
+  ]);
+  await writeFile(`${config.cwd}/half-done.txt`, "work in progress\n");
+  const head = git(config.cwd, ["rev-parse", "HEAD"]);
+  await assert.rejects(turn);
+  const status = JSON.parse(await readFile(config.statusPath, "utf8"));
+  assert.equal(status.state, "failed");
+  assert.equal(status.git.dirty, true);
+  assert.equal(status.git.unpushedCommits, 1);
+  assert.match(status.git.undelivered.join(" "), /uncommitted changes/);
+  // The driver neither commits nor pushes for the agent.
+  assert.equal(git(config.cwd, ["rev-parse", "HEAD"]), head);
+  assert.match(git(config.cwd, ["status", "--porcelain"]), /half-done\.txt/);
+  assert.equal(
+    git(config.root, [
+      "--git-dir",
+      config.repoUrl,
+      "branch",
+      "--list",
+      "bex-agent/ags-test",
+    ]),
+    "",
+  );
+});
+
+// A failure before the turn owns it (the clone, the setup) has no checkout to
+// describe: its status carries no facts.
+test("a setup failure records no checkout facts", async () => {
+  const { markTurnFailed } = await import("../src/session.js");
+  const config = await tempConfig({ deliver: true });
+  await markTurnFailed(config, new Error("clone failed"));
+  const status = JSON.parse(await readFile(config.statusPath, "utf8"));
+  assert.equal(status.state, "failed");
+  assert.equal(status.git, undefined);
+});
+
 test("a stopped watch never fires, and the sentinel is read only for its turn", async () => {
   const config = await tempConfig();
   const sentinel = interruptPath(config);

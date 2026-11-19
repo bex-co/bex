@@ -45,7 +45,8 @@ func TestTurnRetentionReadsTheStoredRecord(t *testing.T) {
 		{"kept, with no time recorded", store.AgentSessionTurn{Interrupted: true, Retention: store.TurnRetentionKept}, RetentionNone, nil, ""},
 		{"continued", store.AgentSessionTurn{Interrupted: true, Retention: store.TurnRetentionContinued, RetainedUntil: &later}, RetentionContinued, nil, ""},
 		{"lost, no reason recorded", store.AgentSessionTurn{Interrupted: true, Retention: store.TurnRetentionLost}, RetentionLost, nil, ""},
-		{"a turn that was not stopped reads none whatever is recorded", store.AgentSessionTurn{Retention: store.TurnRetentionKept, RetainedUntil: &later}, RetentionNone, nil, ""},
+		{"a turn that was not stopped reads as recorded (w10/m491)", store.AgentSessionTurn{Retention: store.TurnRetentionKept, RetainedUntil: &later, RetentionCause: store.TurnRetentionCauseFailed}, RetentionKept, &later, ""},
+		{"a turn that was not stopped and kept nothing reads none", store.AgentSessionTurn{}, RetentionNone, nil, ""},
 		{"an unknown record reads none", store.AgentSessionTurn{Interrupted: true, Retention: "mystery"}, RetentionNone, nil, ""},
 	}
 	for _, c := range cases {
@@ -72,6 +73,7 @@ func TestEveryStoredLossReasonIsNamedOrLeftOutOnPurpose(t *testing.T) {
 		store.RetainedReleaseContinued, store.RetainedReleaseSuperseded, store.RetainedReleaseExpired, store.RetainedReleaseCanceled,
 		store.RetainedReleaseArchived, store.RetainedReleaseDeleted, store.RetainedReleaseSaveFailed, store.RetainedReleaseStorageFull,
 		store.RetainedReleaseUnusable, store.RetainedReleaseAbandoned, store.RetainedReleaseNewAgent, store.RetainedNotSavedEditorOpen,
+		store.RetainedNotSavedSandboxLost,
 	}
 	now := time.Now()
 	for _, stored := range all {
@@ -107,5 +109,62 @@ func TestTranscriptReadsTheTurnsThroughTheRetentionAwareStore(t *testing.T) {
 	plain, err := st.AgentSessionTurns(context.Background(), id)
 	if err != nil || plain[0].Retention != "" {
 		t.Fatalf("the plain read says %q: it must not derive what the gateway's role cannot read", plain[0].Retention)
+	}
+}
+
+// w10/m491: the cause and the stake ride every state but none; a stopped turn
+// recorded before the cause was reads stopped.
+func TestTurnRetentionCarriesTheCauseAndTheStake(t *testing.T) {
+	now := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
+	later := now.Add(time.Hour)
+	dirty, unpushed := true, 2
+	got := turnRetention(store.AgentSessionTurn{Retention: store.TurnRetentionKept, RetainedUntil: &later,
+		RetentionCause: store.TurnRetentionCauseReplaced, CheckoutDirty: &dirty, UnpushedCommits: &unpushed}, now)
+	if got.Cause != RetentionCauseReplaced || got.Uncommitted == nil || !*got.Uncommitted || got.UnpushedCommits == nil || *got.UnpushedCommits != 2 {
+		t.Fatalf("view = %+v", got)
+	}
+	if got := turnRetention(store.AgentSessionTurn{Interrupted: true, Retention: store.TurnRetentionContinued}, now); got.Cause != RetentionCauseStopped || got.UnpushedCommits != nil {
+		t.Fatalf("an older stopped turn = %+v, want stopped with no stake", got)
+	}
+	if got := turnRetention(store.AgentSessionTurn{RetentionCause: store.TurnRetentionCauseFailed, CheckoutDirty: &dirty, UnpushedCommits: &unpushed}, now); got.Cause != "" || got.UnpushedCommits != nil {
+		t.Fatalf("a turn that kept nothing = %+v, want neither", got)
+	}
+	lost := turnRetention(store.AgentSessionTurn{Retention: store.TurnRetentionLost, RetentionReason: store.RetainedNotSavedSandboxLost, RetentionCause: store.TurnRetentionCauseFailed}, now)
+	if lost.LostReason != RetentionLostReasonSandboxLost || lost.Cause != RetentionCauseFailed {
+		t.Fatalf("a lost sandbox = %+v", lost)
+	}
+}
+
+// The start note and the agent's note name what was at stake, with the verb
+// agreeing, and why it was lost.
+func TestCheckoutNotesNameTheStake(t *testing.T) {
+	now := time.Now()
+	n := func(v int) *int { return &v }
+	b := func(v bool) *bool { return &v }
+	for _, tc := range []struct {
+		name string
+		turn store.AgentSessionTurn
+		lost string
+		kept string
+	}{
+		{"commits and changes", store.AgentSessionTurn{Turn: 3, Retention: store.TurnRetentionLost, RetentionReason: store.RetainedReleaseStorageFull, CheckoutDirty: b(true), UnpushedCommits: n(2)},
+			"The 2 unpushed commits and the uncommitted changes from turn 3 were lost (the workspace's sandbox storage was full), so this turn started from a fresh checkout of the branch.",
+			"This turn's checkout is the one turn 3 left, restored from its sandbox's disk: the 2 unpushed commits and the uncommitted changes are still there, as that turn left them."},
+		{"one commit", store.AgentSessionTurn{Turn: 1, Retention: store.TurnRetentionLost, RetentionReason: store.RetainedReleaseExpired, CheckoutDirty: b(false), UnpushedCommits: n(1)},
+			"The 1 unpushed commit from turn 1 was lost (the time it was kept for ran out), so this turn started from a fresh checkout of the branch.",
+			"This turn's checkout is the one turn 1 left, restored from its sandbox's disk: the 1 unpushed commit is still there, as that turn left it."},
+		{"unknown, no reason", store.AgentSessionTurn{Turn: 2, Retention: store.TurnRetentionLost},
+			"Any uncommitted changes and unpushed commits from turn 2 were lost, so this turn started from a fresh checkout of the branch.",
+			"This turn's checkout is the one turn 2 left, restored from its sandbox's disk: its uncommitted changes and unpushed commits are still there, as that turn left them."},
+	} {
+		if got := lostNote(tc.turn, now); got != tc.lost {
+			t.Errorf("%s lost:\n got %q\nwant %q", tc.name, got, tc.lost)
+		}
+		if got := restoredNote(tc.turn); got != tc.kept {
+			t.Errorf("%s restored:\n got %q\nwant %q", tc.name, got, tc.kept)
+		}
+	}
+	if got := lostNote(store.AgentSessionTurn{Turn: 1, Retention: store.TurnRetentionContinued}, now); got != "" {
+		t.Errorf("a continued turn's note = %q, want none", got)
 	}
 }

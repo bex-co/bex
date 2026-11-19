@@ -52,21 +52,24 @@ describe("useAgentSessionInterruptedTurns", () => {
     const { result } = renderHook(() =>
       useAgentSessionInterruptedTurns("ags-1", "k"),
     );
-    expect(result.current.get(1)).toEqual({
-      state: "none",
-      until: null,
-      lostReason: null,
+    const stopped = (over: object) => ({
+      interrupted: true,
+      retention: {
+        state: "none",
+        until: null,
+        lostReason: null,
+        unpushedCommits: null,
+        uncommittedChanges: null,
+        ...over,
+      },
     });
-    expect(result.current.get(2)).toEqual({
-      state: "kept",
-      until: RETAINED_UNTIL,
-      lostReason: null,
-    });
-    expect(result.current.get(3)).toEqual({
-      state: "lost",
-      until: null,
-      lostReason: "storage_full",
-    });
+    expect(result.current.get(1)).toEqual(stopped({}));
+    expect(result.current.get(2)).toEqual(
+      stopped({ state: "kept", until: RETAINED_UNTIL }),
+    );
+    expect(result.current.get(3)).toEqual(
+      stopped({ state: "lost", lostReason: "storage_full" }),
+    );
   });
 
   it("is empty before the read lands and when nothing was interrupted", () => {
@@ -123,7 +126,7 @@ describe("useAgentSessionInterruptedTurns", () => {
       const { result, rerender } = renderHook(() =>
         useAgentSessionInterruptedTurns("ags-1", "k"),
       );
-      expect(result.current.get(1)?.state).toBe("saving");
+      expect(result.current.get(1)?.retention.state).toBe("saving");
       expect(startPolling).toHaveBeenLastCalledWith(
         AGENT_SESSION_ACTIVE_POLL_MS,
       );
@@ -131,20 +134,28 @@ describe("useAgentSessionInterruptedTurns", () => {
       data = turns({ retention: "kept" });
       stopPolling.mockClear();
       rerender();
-      expect(result.current.get(1)?.state).toBe("kept");
+      expect(result.current.get(1)?.retention.state).toBe("kept");
       expect(stopPolling).toHaveBeenCalled();
       expect(startPolling).toHaveBeenCalledTimes(1);
     });
 
-    it("does not poll for a kept, lost or continued disk, or a turn nobody stopped", () => {
+    it("does not poll for a kept, lost or continued disk", () => {
       data = turns(
-        { turn: 1, interrupted: false, retention: "saving" },
+        { turn: 1, interrupted: false, retention: "none" },
         { turn: 2, retention: "kept" },
         { turn: 3, retention: "lost" },
         { turn: 4, retention: "continued" },
       );
       renderHook(() => useAgentSessionInterruptedTurns("ags-1", "k"));
       expect(startPolling).not.toHaveBeenCalled();
+    });
+
+    // w10/m491: a turn that failed, idled out or was followed by a message
+    // saves its disk too, and its answer is read the same way.
+    it("polls for a turn nobody stopped whose disk is being saved", () => {
+      data = turns({ turn: 1, interrupted: false, retention: "saving" });
+      renderHook(() => useAgentSessionInterruptedTurns("ags-1", "k"));
+      expect(startPolling).toHaveBeenCalledTimes(1);
     });
 
     it("lets the poll go when the page unmounts", () => {

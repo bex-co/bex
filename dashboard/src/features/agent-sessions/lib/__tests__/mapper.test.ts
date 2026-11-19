@@ -410,29 +410,38 @@ describe("isSandboxCapacityFailure", () => {
 
 // w22/m413 t004: what bex-api says became of a stopped turn's unpushed work.
 describe("toTurnRetentionView", () => {
-  const none = { state: "none", until: null, lostReason: null };
+  const unknown = { unpushedCommits: null, uncommittedChanges: null };
+  const none = { state: "none", until: null, lostReason: null, ...unknown };
 
   it("projects each state with only what it carries", () => {
     expect(toTurnRetentionView(wireTurn({ retention: "kept" }))).toEqual({
       state: "kept",
       until: RETAINED_UNTIL,
       lostReason: null,
+      ...unknown,
     });
     expect(toTurnRetentionView(wireTurn({ retention: "saving" }))).toEqual({
       state: "saving",
       until: null,
       lostReason: null,
+      ...unknown,
     });
     expect(toTurnRetentionView(wireTurn({ retention: "continued" }))).toEqual({
       state: "continued",
       until: null,
       lostReason: null,
+      ...unknown,
     });
     expect(
       toTurnRetentionView(
         wireTurn({ retention: "lost", retentionLostReason: "storage_full" }),
       ),
-    ).toEqual({ state: "lost", until: null, lostReason: "storage_full" });
+    ).toEqual({
+      state: "lost",
+      until: null,
+      lostReason: "storage_full",
+      ...unknown,
+    });
   });
 
   it("keeps a time only for a kept disk, and a reason only for a lost one", () => {
@@ -473,10 +482,40 @@ describe("toTurnRetentionView", () => {
       toTurnRetentionView(
         wireTurn({ retention: "lost", retentionLostReason: "something-new" }),
       ),
-    ).toEqual({ state: "lost", until: null, lostReason: null });
+    ).toEqual({ state: "lost", until: null, lostReason: null, ...unknown });
     expect(toTurnRetentionView(wireTurn({ retention: "lost" }))).toMatchObject({
       lostReason: null,
+      ...unknown,
     });
+  });
+
+  // w10/m491: what was at stake rides every state but none.
+  it("carries what was at stake for a kept or lost disk, and nothing for none", () => {
+    expect(
+      toTurnRetentionView(
+        wireTurn({
+          retention: "lost",
+          retentionLostReason: "sandbox_lost",
+          unpushedCommits: 3,
+          uncommittedChanges: false,
+        }),
+      ),
+    ).toEqual({
+      state: "lost",
+      until: null,
+      lostReason: "sandbox_lost",
+      unpushedCommits: 3,
+      uncommittedChanges: false,
+    });
+    expect(
+      toTurnRetentionView(
+        wireTurn({
+          retention: "none",
+          unpushedCommits: 3,
+          uncommittedChanges: true,
+        }),
+      ),
+    ).toEqual(none);
   });
 
   it("knows exactly bex-api's states and loss reasons", () => {
@@ -495,20 +534,44 @@ describe("toTurnRetentionView", () => {
 });
 
 describe("toInterruptedTurns", () => {
-  it("is the stopped turns by number, each with its retention, in turn order", () => {
+  it("is the stopped turns and those that kept or lost work, by number, in turn order", () => {
     const turns = toInterruptedTurns([
       wireTurn({ turn: 1, interrupted: false }),
       wireTurn({ turn: 2, retention: "kept" }),
-      wireTurn({ turn: 3, interrupted: false, retention: "kept" }),
+      wireTurn({
+        turn: 3,
+        interrupted: false,
+        retention: "kept",
+        unpushedCommits: 2,
+        uncommittedChanges: true,
+      }),
       wireTurn({ turn: 4, retention: "saving" }),
+      wireTurn({ turn: 5, interrupted: false, retention: "none" }),
     ]);
-    expect([...turns.keys()]).toEqual([2, 4]);
+    expect([...turns.keys()]).toEqual([2, 3, 4]);
     expect(turns.get(2)).toEqual({
-      state: "kept",
-      until: RETAINED_UNTIL,
-      lostReason: null,
+      interrupted: true,
+      retention: {
+        state: "kept",
+        until: RETAINED_UNTIL,
+        lostReason: null,
+        unpushedCommits: null,
+        uncommittedChanges: null,
+      },
     });
-    expect(turns.get(4)?.state).toBe("saving");
+    // w10/m491: a turn nobody stopped is noted for the work it kept, with
+    // what was at stake.
+    expect(turns.get(3)).toEqual({
+      interrupted: false,
+      retention: {
+        state: "kept",
+        until: RETAINED_UNTIL,
+        lostReason: null,
+        unpushedCommits: 2,
+        uncommittedChanges: true,
+      },
+    });
+    expect(turns.get(4)?.retention.state).toBe("saving");
   });
 
   it("is empty with no read yet", () => {

@@ -224,7 +224,7 @@ func TestAStoppedTurnsRetentionIsTheSameOnEverySurface(t *testing.T) {
 				e.lc.imageCreateErr = errors.New("ImagePullBackOff")
 				e.send(t, "alice", "continue")
 			},
-			want: want{turn: 2, retention: RetentionNone, note: retainedFresh},
+			want: want{turn: 2, retention: RetentionNone, note: notRestoredNote(1)},
 		},
 		{
 			name: "none when retention is off",

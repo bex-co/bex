@@ -47,6 +47,33 @@ type statusReport struct {
 	// Code is believed only when it is FailureCodeSetupFailed (ADR109 D5).
 	Code string    `json:"code"`
 	Git  statusGit `json:"git"`
+	// HasGit says the status carried Git facts at all: a session with no
+	// repository, a setup failure and an older driver's failed turn carry
+	// none, which is unknown rather than clean (w10/m491).
+	HasGit bool `json:"-"`
+}
+
+// UnmarshalJSON decodes a status and notes whether it carried Git facts.
+func (r *statusReport) UnmarshalJSON(b []byte) error {
+	type plain statusReport
+	var aux struct {
+		plain
+		Git *statusGit `json:"git"`
+	}
+	if err := json.Unmarshal(b, &aux); err != nil {
+		return err
+	}
+	*r = statusReport(aux.plain)
+	if aux.Git != nil {
+		r.Git, r.HasGit = *aux.Git, true
+	}
+	return nil
+}
+
+// checkout is what the turn left undelivered in its checkout, as the driver
+// reported it, and whether it reported any.
+func (r statusReport) checkout() (store.TurnCheckout, bool) {
+	return store.TurnCheckout{Dirty: r.Git.Dirty, UnpushedCommits: max(0, r.Git.UnpushedCommits)}, r.HasGit
 }
 
 // statusGit is the driver's post-turn view of the session's Git checkout.
@@ -636,6 +663,13 @@ func (c *Completer) finalize(ctx context.Context, record store.AgentSession) {
 		return // a partial/torn read; try again next tick
 	}
 	switch report.State {
+	case driverStateSucceeded, driverStateInterrupted, driverStateFailed:
+		// The facts first, while the session still runs, so whatever decides
+		// from them once it settles (the next message, the idle close) has
+		// them; a retried settle writes them again.
+		c.recordCheckout(ctx, record, report)
+	}
+	switch report.State {
 	case driverStateRunning:
 		c.harvestRunningTurn(ctx, record)
 	case driverStateSucceeded:
@@ -778,7 +812,7 @@ func (c *Completer) settleCompleted(ctx context.Context, record store.AgentSessi
 	// from the image. It runs behind the settle, so Stop shows at once. Without
 	// one the sandbox takes the ordinary teardown below.
 	if retention != nil {
-		c.runRetention(func() { c.saveRetention(ctx, final, *retention) })
+		c.runRetention(func() { c.saveRetention(ctx, final, *retention, false) })
 		return
 	}
 	// Tear down against the FINALIZED row so the idle clock (record.UpdatedAt) is
@@ -921,6 +955,7 @@ func (c *Completer) failLostSandbox(ctx context.Context, record store.AgentSessi
 	c.Metrics.converged(metricReason)
 	c.Metrics.observeTerminalTurn(turnOutcomeLost, fact)
 	c.markTurnTranscript(ctx, final, false, true, reason)
+	c.loseWithSandbox(ctx, final)
 	log.Printf("agent-session completer: terminal fallback converged session=%s reason=%q", record.ID, reason)
 	c.terminate(ctx, final)
 }
@@ -1001,6 +1036,12 @@ func (c *Completer) teardown(ctx context.Context, record store.AgentSession) {
 	}
 	if grace := c.idleTTL(); !skipGrace && grace > 0 && c.now().Sub(idleSince) < grace {
 		c.logDeferral(record, "idle grace not elapsed")
+		return
+	}
+	// A checkout holding undelivered work keeps its disk for the next message
+	// instead (ADR047 D12, w10/m491); the save reads the transcript itself and
+	// ends the sandbox.
+	if c.retainOnClose(ctx, record) {
 		return
 	}
 	if harvested {

@@ -769,6 +769,32 @@ const ptAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Transcript line under a stopped turn: its unpushed changes were lost, for a reason that is not worth naming (the session was canceled or archived)",
   },
+  "agentSessions.turnRetentionLostSandboxLost": {
+    message:
+      "Suas alterações sem push foram perdidas quando o turno falhou e seu sandbox já não existia.",
+    description:
+      "Transcript line under a failed turn: its sandbox was gone before its disk could be kept, so the unpushed work in it is lost (w10/m491)",
+  },
+  "agentSessions.turnStakeCommits_one": {
+    message: "{count} commit sem push",
+    description:
+      "Under a turn whose disk was kept or lost: how many commits its checkout held that were not pushed (w10/m491)",
+  },
+  "agentSessions.turnStakeCommits_many": {
+    message: "{count} de commits sem push",
+    description:
+      "Under a turn whose disk was kept or lost: how many commits its checkout held that were not pushed (w10/m491)",
+  },
+  "agentSessions.turnStakeCommits_other": {
+    message: "{count} commits sem push",
+    description:
+      "Under a turn whose disk was kept or lost: how many commits its checkout held that were not pushed (w10/m491)",
+  },
+  "agentSessions.turnStakeChanges": {
+    message: "alterações não confirmadas",
+    description:
+      "Under a turn whose disk was kept or lost: its checkout held uncommitted changes (w10/m491)",
+  },
   "agentSessions.turnError": {
     message: "O turno {turn} falhou",
     description:

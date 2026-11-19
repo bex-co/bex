@@ -325,6 +325,7 @@ export const TURN_RETENTION_LOST_REASONS = [
   "canceled",
   "archived",
   "not_restored",
+  "sandbox_lost",
 ] as const;
 
 export type TurnRetentionLostReason =
@@ -336,10 +337,26 @@ export interface TurnRetentionView {
   until: string | null;
   /** Why a lost disk was lost; null for every other state, or an unnamed cause. */
   lostReason: TurnRetentionLostReason | null;
+  /**
+   * What the turn left undelivered, for a disk kept or lost (w10/m491): how
+   * many commits were not on the remote branch and whether there were
+   * uncommitted changes; null when bex-api does not know.
+   */
+  unpushedCommits: number | null;
+  uncommittedChanges: boolean | null;
 }
 
-/** The stopped turns of a session by turn number, each with its retention. */
-export type InterruptedTurns = ReadonlyMap<number, TurnRetentionView>;
+/** A turn that ends with a note: a person stopped it, or its disk was kept or lost. */
+export interface TurnEndView {
+  interrupted: boolean;
+  retention: TurnRetentionView;
+}
+
+/**
+ * The turns of a session that end with a note, by turn number: those a person
+ * stopped, and those whose undelivered work was kept or lost (ADR047 D12).
+ */
+export type InterruptedTurns = ReadonlyMap<number, TurnEndView>;
 
 /**
  * What a steer answers: the session and its ticket as for any mint, plus the

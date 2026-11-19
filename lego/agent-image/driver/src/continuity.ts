@@ -126,12 +126,25 @@ export function renderPreamble(
   return header + kept.join("\n\n") + footer;
 }
 
+// taggedBlock frames text in a tag for the ACP prompt, or "" for none.
+function taggedBlock(tag: string, text: string): string {
+  if (!text.trim()) return "";
+  return `<${tag}>\n${text.trim()}\n</${tag}>\n\n`;
+}
+
 // overlayPreamble frames the bex platform overlay for adapters without a
 // native system-prompt channel. It rides only the ACP prompt, never the
 // published stream.
 export function overlayPreamble(overlay: string): string {
-  if (!overlay.trim()) return "";
-  return `<bex-platform-context>\n${overlay.trim()}\n</bex-platform-context>\n\n`;
+  return taggedBlock("bex-platform-context", overlay);
+}
+
+// checkoutPreamble frames bex-api's note on where the turn's checkout comes
+// from (w10/m491): the agent cannot tell a restored checkout from a fresh
+// clone that lost the previous turn's unpushed work, and a loaded ACP session
+// remembers the old checkout, so the note rides every rung.
+export function checkoutPreamble(note: string): string {
+  return taggedBlock("checkout-state", note);
 }
 
 // resolveContinuity picks the rung for this turn and composes the effective
@@ -139,18 +152,24 @@ export function overlayPreamble(overlay: string): string {
 // already remembers, so injecting a preamble would only duplicate history.
 // overlay (the preamble-channel platform overlay) is prepended exactly once to
 // the first prompt of a fresh ACP session; a loaded session already carries it.
+// The checkout note goes before the prompt on every rung.
 export function resolveContinuity(
   // Partial on purpose: hand-built configs (tests, standalone launches) may
   // predate the continuity fields.
-  config: { contextJson?: string; originalTask?: string },
+  config: {
+    contextJson?: string;
+    originalTask?: string;
+    checkoutNote?: string;
+  },
   resume: SessionProvider["resume"],
   userPrompt: string,
   overlay = "",
 ): ContinuityResult {
+  const checkout = checkoutPreamble(config.checkoutNote ?? "");
   if (resume === "loaded") {
-    return { rung: "session-load", prompt: userPrompt };
+    return { rung: "session-load", prompt: checkout + userPrompt };
   }
-  const platform = overlayPreamble(overlay);
+  const platform = overlayPreamble(overlay) + checkout;
   const preamble = renderPreamble(config.contextJson ?? "");
   if (preamble) {
     return {

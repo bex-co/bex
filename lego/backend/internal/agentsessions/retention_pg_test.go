@@ -60,6 +60,25 @@ type fakeRetainers struct {
 	// transcriptReads reads the harvest count when a save starts, to show the
 	// transcript was read before the pause.
 	transcriptReads func() int
+	// checkout is what a read of a sandbox's checkout answers (clean unless
+	// set), checkoutErr fails it, and checkoutReads counts the reads
+	// (w10/m491).
+	checkout      store.TurnCheckout
+	checkoutErr   error
+	checkoutReads int
+}
+
+func (f *fakeRetainers) ReadSessionCheckout(context.Context, string, string, string) (store.TurnCheckout, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.checkoutReads++
+	return f.checkout, f.checkoutErr
+}
+
+func (f *fakeRetainers) setCheckout(c store.TurnCheckout) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.checkout = c
 }
 
 type retainCall struct {
@@ -187,6 +206,7 @@ func newRetainEnv(t *testing.T) *retainEnv {
 	e.svc.Retention = e.r
 	e.c = &Completer{Store: e.pg, Sandbox: e.lc, Retention: e.r, Now: e.clock.Now, Metrics: NewCompletionMetrics(prometheus.NewRegistry()),
 		retainRunner: func(fn func()) { fn() }}
+	e.svc.Completer = e.c
 	return e
 }
 
@@ -891,7 +911,7 @@ func TestASandboxThatCannotStartFromTheDiskStartsFresh(t *testing.T) {
 		if e.lc.image != (sandbox.AgentImage{}) || e.phase(t, e.id) != PhaseRunning || e.lc.created != 2 {
 			t.Fatalf("image %+v phase %s created %d, want one fresh sandbox", e.lc.image, e.phase(t, e.id), e.lc.created)
 		}
-		if note := e.turn(t, 2).StartNote; note != retainedFresh {
+		if note := e.turn(t, 2).StartNote; note != notRestoredNote(1) {
 			t.Fatalf("start note = %q", note)
 		}
 		if e.rs.deletions(img.ID) != 1 || e.handles(t) != 0 {
@@ -900,7 +920,7 @@ func TestASandboxThatCannotStartFromTheDiskStartsFresh(t *testing.T) {
 		// The turn says so when it finishes, before what it left undelivered.
 		e.lc.status = `{"state":"succeeded","git":{"undelivered":["a note"]}}`
 		e.settle(t)
-		if got := e.session(t).DeliveryNote; got != retainedFresh+" a note" {
+		if got := e.session(t).DeliveryNote; got != notRestoredNote(1)+" a note" {
 			t.Fatalf("delivery note = %q", got)
 		}
 	})

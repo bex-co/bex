@@ -94,6 +94,9 @@
         "retention": "kept",
         "retainedUntil": "2026-11-06T10:00:00Z",
         "retentionLostReason": "expired",
+        "retentionCause": "stopped",
+        "unpushedCommits": 2,
+        "uncommittedChanges": true,
         "attachments": []
       }
     ],
@@ -107,7 +110,8 @@
     "editor_open",
     "canceled",
     "archived",
-    "not_restored"
+    "not_restored",
+    "sandbox_lost"
   ],
   "error": {
     "error": "agent session not found",

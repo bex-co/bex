@@ -760,6 +760,27 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Transcript line under a stopped turn: its unpushed changes were lost, for a reason that is not worth naming (the session was canceled or archived)",
   },
+  "agentSessions.turnRetentionLostSandboxLost": {
+    message:
+      "Your unpushed changes were lost when the turn failed and its sandbox was gone.",
+    description:
+      "Transcript line under a failed turn: its sandbox was gone before its disk could be kept, so the unpushed work in it is lost (w10/m491)",
+  },
+  "agentSessions.turnStakeCommits_one": {
+    message: "{count} unpushed commit",
+    description:
+      "Under a turn whose disk was kept or lost: how many commits its checkout held that were not pushed (w10/m491)",
+  },
+  "agentSessions.turnStakeCommits_other": {
+    message: "{count} unpushed commits",
+    description:
+      "Under a turn whose disk was kept or lost: how many commits its checkout held that were not pushed (w10/m491)",
+  },
+  "agentSessions.turnStakeChanges": {
+    message: "uncommitted changes",
+    description:
+      "Under a turn whose disk was kept or lost: its checkout held uncommitted changes (w10/m491)",
+  },
   "agentSessions.turnError": {
     message: "Turn {turn} failed",
     description:

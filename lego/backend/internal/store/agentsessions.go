@@ -142,7 +142,36 @@ type AgentSessionTurn struct {
 	// release reason (RetainedRelease*), or RetainedNotSavedEditorOpen; "" for
 	// every other Retention.
 	RetentionReason string
+	// RetentionCause is what ended the sandbox whose disk was kept or lost
+	// (TurnRetentionCause*, w10/m491); "" when nothing was decided for the turn.
+	RetentionCause string
+	// CheckoutDirty and UnpushedCommits are what the turn left undelivered in
+	// its checkout: as the driver measured it when the turn ended, or as
+	// bex-api read it in the sandbox when it decided whether to keep the disk.
+	// nil is unknown (no repository, a setup failure, an older status).
+	CheckoutDirty   *bool
+	UnpushedCommits *int
 }
+
+// Checkout is the turn's checkout facts, and whether they are known.
+func (t AgentSessionTurn) Checkout() (TurnCheckout, bool) {
+	if t.CheckoutDirty == nil || t.UnpushedCommits == nil {
+		return TurnCheckout{}, false
+	}
+	return TurnCheckout{Dirty: *t.CheckoutDirty, UnpushedCommits: *t.UnpushedCommits}, true
+}
+
+// TurnCheckout is what a turn left undelivered in its checkout (ADR047 D12,
+// w10/m491): uncommitted changes, and local commits not on the remote session
+// branch.
+type TurnCheckout struct {
+	Dirty           bool
+	UnpushedCommits int
+}
+
+// Undelivered reports whether the checkout holds any work the turn did not
+// deliver: only then is its disk worth keeping.
+func (c TurnCheckout) Undelivered() bool { return c.Dirty || c.UnpushedCommits > 0 }
 
 // AgentTurnOutput is the structured-output contract a turn is accepted with
 // (ADR094 D5): the already-validated schema, or nil for a free-form turn.
@@ -706,18 +735,21 @@ const agentSessionTurnColumns = `session_id, turn, prompt, delivery_mode,
 // privilege on any other table, so it must never join one. A stopped turn's
 // retention reads as recorded, which is "" until its save has ended.
 const agentSessionTurnsSQL = `SELECT ` + agentSessionTurnColumns + `,
-		       retention, retained_until, start_note, retention_reason
+		       retention, retained_until, start_note, retention_reason,
+		       retention_cause, checkout_dirty, unpushed_commits
 		FROM agent_session_turns WHERE session_id=$1 ORDER BY turn`
 
-// agentSessionTurnsWithRetentionSQL is agentSessionTurnsSQL with a stopped turn's
+// agentSessionTurnsWithRetentionSQL is agentSessionTurnsSQL with a turn's
 // save in progress read as TurnRetentionSaving, from the image's saving row.
-// Only a stopped turn can have one, so only it probes.
+// Whatever ended the turn (w10/m491), its save begins with its retention
+// reset to none recorded, so any such turn probes.
 const agentSessionTurnsWithRetentionSQL = `SELECT ` + agentSessionTurnColumns + `,
-		       CASE WHEN interrupted AND retention = '' AND EXISTS (
+		       CASE WHEN retention = '' AND EXISTS (
 		              SELECT 1 FROM agent_session_retained_images r
 		              WHERE r.session_id = t.session_id AND r.turn = t.turn AND r.state = 'saving')
 		            THEN 'saving' ELSE retention END,
-		       retained_until, start_note, retention_reason
+		       retained_until, start_note, retention_reason,
+		       retention_cause, checkout_dirty, unpushed_commits
 		FROM agent_session_turns t WHERE session_id=$1 ORDER BY turn`
 
 // AgentSessionTurns returns the durable user intents in chronological order.
@@ -752,7 +784,8 @@ func (s *PGStore) agentSessionTurns(ctx context.Context, query, sessionID string
 			&turn.TranscriptComplete, &turn.TranscriptTruncated, &turn.TruncationReason,
 			&turn.CreatedAt, &turn.StartedAt, &turn.CompletedAt, &turn.Attachments,
 			&turn.OutputSchema, &turn.OutputRequired, &turn.Result, &turn.ResultFinal, &turn.Skills, &turn.Interrupted, &turn.InterruptRequestedAt,
-			&turn.Retention, &turn.RetainedUntil, &turn.StartNote, &turn.RetentionReason); err != nil {
+			&turn.Retention, &turn.RetainedUntil, &turn.StartNote, &turn.RetentionReason,
+			&turn.RetentionCause, &turn.CheckoutDirty, &turn.UnpushedCommits); err != nil {
 			return nil, err
 		}
 		out = append(out, turn)

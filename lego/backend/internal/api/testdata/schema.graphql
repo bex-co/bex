@@ -534,6 +534,7 @@ type AgentSessionTranscriptTurn {
   resultFinal: Boolean!
   retainedUntil: String
   retention: String!
+  retentionCause: String!
   retentionLostReason: String!
   skills: [AgentSessionSkill!]!
   startNote: String!
@@ -541,6 +542,8 @@ type AgentSessionTranscriptTurn {
   transcriptTruncated: Boolean!
   truncationReason: String!
   turn: Int!
+  uncommittedChanges: Boolean
+  unpushedCommits: Int
 }
 
 type AgentSessionTree {

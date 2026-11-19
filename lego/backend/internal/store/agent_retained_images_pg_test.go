@@ -668,23 +668,32 @@ func TestPGStoppedTurnSettlesAndRecordsWhyNothingIsKeptTogether(t *testing.T) {
 	}
 }
 
-// Only a stopped turn can have a save in progress, so only it is probed for
-// one: a turn nobody stopped reads as recorded even beside a saving row for its
-// number (which the settle never creates).
-func TestPGOnlyAStoppedTurnIsReadAsSaving(t *testing.T) {
+// Whatever ended a turn (w10/m491: a stop, a failure, the idle close, the
+// next message), a saving row for that turn reads as saving while the turn's
+// own record is still undecided; another turn's saving row says nothing about
+// it, and a decided record reads as recorded.
+func TestPGATurnIsReadAsSavingBesideItsOwnSavingRow(t *testing.T) {
 	f := newRetainedFixture(t, "retain-probe")
 	ctx := context.Background()
 	session := f.running() // not stopped
 	if _, err := f.pool.Exec(ctx, `INSERT INTO agent_session_retained_images (id, session_id, workspace_id, turn, save_deadline)
-		VALUES ($1, $2, $3, 1, now() + interval '5 minutes')`, ids.New(ids.AgentRetainedImage), session.ID, f.ws); err != nil {
+		VALUES ($1, $2, $3, 2, now() + interval '5 minutes')`, ids.New(ids.AgentRetainedImage), session.ID, f.ws); err != nil {
 		t.Fatal(err)
 	}
 	if turn := f.apiTurn(session); turn.Retention != "" {
-		t.Fatalf("a turn nobody stopped reads %q beside a saving row, want it as recorded", turn.Retention)
+		t.Fatalf("turn 1 reads %q beside turn 2's saving row, want it as recorded", turn.Retention)
 	}
-	f.stop(session)
+	if _, err := f.pool.Exec(ctx, `UPDATE agent_session_retained_images SET turn = 1 WHERE session_id = $1`, session.ID); err != nil {
+		t.Fatal(err)
+	}
 	if turn := f.apiTurn(session); turn.Retention != TurnRetentionSaving {
-		t.Fatalf("a stopped turn with a saving row reads %q, want saving", turn.Retention)
+		t.Fatalf("a turn nobody stopped reads %q beside its own saving row, want saving", turn.Retention)
+	}
+	if _, err := f.pool.Exec(ctx, `UPDATE agent_session_turns SET retention = 'lost' WHERE session_id = $1`, session.ID); err != nil {
+		t.Fatal(err)
+	}
+	if turn := f.apiTurn(session); turn.Retention != TurnRetentionLost {
+		t.Fatalf("a decided turn reads %q, want it as recorded", turn.Retention)
 	}
 }
 
@@ -750,4 +759,108 @@ func TestPGAgentSessionTurnsTouchesNoOtherTable(t *testing.T) {
 	if got, err := f.s.AgentSessionTurnsWithRetention(ctx, session.ID); err != nil || got[0].Retention != TurnRetentionSaving {
 		t.Fatalf("the API's read = %+v / %v, want saving", got, err)
 	}
+}
+
+// w10/m491: a settled turn's disk is kept when it failed, idled out or is
+// replaced by the next message. The begin is the claim on pausing the sandbox:
+// it takes only the sandbox the session still holds (or the one its new turn
+// just replaced), never an archived session's, and never a second live row.
+func TestPGBeginRetentionOfASettledTurn(t *testing.T) {
+	f := newRetainedFixture(t, "retain-begin")
+	ctx := context.Background()
+	img := func() NewAgentRetainedImage {
+		return NewAgentRetainedImage{ID: ids.New(ids.AgentRetainedImage), BaseImage: "agent:1", SaveDeadline: f.now.Add(5 * time.Minute)}
+	}
+	// Each session's sandbox id is its own (a live sandbox belongs to one
+	// session); sbx names it.
+	sbx := func(session AgentSession) string { return "sbx-" + session.ID }
+	settled := func(phase string) AgentSession {
+		session := f.running()
+		if _, err := f.pool.Exec(ctx, `UPDATE agent_sessions SET phase = $2, sandbox_id = $3 WHERE id = $1`, session.ID, phase, sbx(session)); err != nil {
+			t.Fatal(err)
+		}
+		return session
+	}
+	stake := TurnCheckout{Dirty: true, UnpushedCommits: 2}
+
+	t.Run("the facts, then one claim on the held sandbox", func(t *testing.T) {
+		session := settled("failed")
+		if err := f.s.RecordAgentSessionTurnCheckout(ctx, session.ID, 1, TurnCheckout{UnpushedCommits: 1}); err != nil {
+			t.Fatal(err)
+		}
+		if c, ok := f.turn(session).Checkout(); !ok || c.Dirty || c.UnpushedCommits != 1 {
+			t.Fatalf("recorded facts = %+v (%t)", c, ok)
+		}
+		if got, err := f.s.BeginAgentSessionRetention(ctx, session.ID, 1, "sbx-other", TurnRetentionCauseFailed, stake, img()); err != nil || got != nil {
+			t.Fatalf("a sandbox the session does not hold was claimed: %+v / %v", got, err)
+		}
+		got, err := f.s.BeginAgentSessionRetention(ctx, session.ID, 1, sbx(session), TurnRetentionCauseFailed, stake, img())
+		if err != nil || got == nil || got.State != RetainedImageSaving || got.Turn != 1 {
+			t.Fatalf("begin = %+v / %v", got, err)
+		}
+		turn := f.apiTurn(session)
+		if turn.Retention != TurnRetentionSaving || turn.RetentionCause != TurnRetentionCauseFailed {
+			t.Fatalf("turn = %+v, want saving for the failed turn", turn)
+		}
+		if c, _ := turn.Checkout(); c != stake {
+			t.Fatalf("stake = %+v, want the one that decided it", c)
+		}
+		if again, err := f.s.BeginAgentSessionRetention(ctx, session.ID, 1, sbx(session), TurnRetentionCauseIdleClosed, stake, img()); err != nil || again != nil {
+			t.Fatalf("a second begin = %+v / %v, want none", again, err)
+		}
+	})
+	t.Run("the sandbox the next turn replaced", func(t *testing.T) {
+		session := settled("completed")
+		if _, err := f.s.BeginAgentSessionTurn(ctx, session.ID, "more", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil); err != nil {
+			t.Fatal(err)
+		}
+		if got, err := f.s.BeginAgentSessionRetention(ctx, session.ID, 1, "sbx-2", TurnRetentionCauseReplaced, stake, img()); err != nil || got != nil {
+			t.Fatalf("another sandbox = %+v / %v", got, err)
+		}
+		if got, err := f.s.BeginAgentSessionRetention(ctx, session.ID, 2, sbx(session), TurnRetentionCauseReplaced, stake, img()); err != nil || got != nil {
+			t.Fatalf("the running turn = %+v / %v", got, err)
+		}
+		got, err := f.s.BeginAgentSessionRetention(ctx, session.ID, 1, sbx(session), TurnRetentionCauseReplaced, stake, img())
+		if err != nil || got == nil || got.Turn != 1 {
+			t.Fatalf("begin = %+v / %v", got, err)
+		}
+	})
+	t.Run("an archived session keeps nothing", func(t *testing.T) {
+		session := settled("completed")
+		if _, err := f.pool.Exec(ctx, `UPDATE agent_sessions SET archived_at = now() WHERE id = $1`, session.ID); err != nil {
+			t.Fatal(err)
+		}
+		if got, err := f.s.BeginAgentSessionRetention(ctx, session.ID, 1, sbx(session), TurnRetentionCauseIdleClosed, stake, img()); err != nil || got != nil {
+			t.Fatalf("begin = %+v / %v", got, err)
+		}
+	})
+	t.Run("a loss with no image, and a later keep clears it", func(t *testing.T) {
+		session := settled("completed")
+		if err := f.s.LoseAgentSessionTurnRetention(ctx, session.ID, 1, TurnRetentionCauseReplaced, RetainedNotSavedEditorOpen, &stake); err != nil {
+			t.Fatal(err)
+		}
+		turn := f.turn(session)
+		if turn.Retention != TurnRetentionLost || turn.RetentionReason != RetainedNotSavedEditorOpen || turn.RetentionCause != TurnRetentionCauseReplaced {
+			t.Fatalf("turn = %+v", turn)
+		}
+		// A decided loss is not overwritten by a second one.
+		if err := f.s.LoseAgentSessionTurnRetention(ctx, session.ID, 1, TurnRetentionCauseFailed, RetainedNotSavedSandboxLost, nil); err != nil {
+			t.Fatal(err)
+		}
+		if turn := f.turn(session); turn.RetentionReason != RetainedNotSavedEditorOpen {
+			t.Fatalf("turn = %+v, want the first loss", turn)
+		}
+		// The editor closed and the idle close kept the disk after all.
+		got, err := f.s.BeginAgentSessionRetention(ctx, session.ID, 1, sbx(session), TurnRetentionCauseIdleClosed, stake, img())
+		if err != nil || got == nil {
+			t.Fatalf("begin = %+v / %v", got, err)
+		}
+		if ok, err := f.s.KeepAgentSessionRetainedImage(ctx, got.ID, testImageDigest, f.now.Add(time.Hour)); err != nil || !ok {
+			t.Fatalf("keep = %v / %v", ok, err)
+		}
+		turn = f.turn(session)
+		if turn.Retention != TurnRetentionKept || turn.RetentionReason != "" || turn.RetentionCause != TurnRetentionCauseIdleClosed {
+			t.Fatalf("turn = %+v, want kept with no loss reason", turn)
+		}
+	})
 }

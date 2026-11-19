@@ -68,10 +68,23 @@ const (
 	RetainedReleaseUnusable    = "unusable"
 	RetainedReleaseAbandoned   = "abandoned"
 	RetainedReleaseNewAgent    = "agent_image_changed"
-	// RetainedNotSavedEditorOpen is recorded on a stopped turn only, as the
-	// reason it kept nothing: an editor was open on its sandbox, which a Stop
-	// must not end, so no image was ever begun (agent_session_turns.retention_reason).
+	// RetainedNotSavedEditorOpen is recorded on a turn as the reason it kept
+	// nothing: an editor was open on its sandbox, which a Stop must not end,
+	// or which a message replaced, so no image was ever begun
+	// (agent_session_turns.retention_reason).
 	RetainedNotSavedEditorOpen = "editor_open"
+	// RetainedNotSavedSandboxLost is recorded on a failed turn whose sandbox
+	// was gone before its disk could be kept (w10/m491).
+	RetainedNotSavedSandboxLost = "sandbox_lost"
+)
+
+// What ended the sandbox whose disk a turn kept or lost
+// (agent_session_turns.retention_cause, w10/m491, ADR047 D12).
+const (
+	TurnRetentionCauseStopped    = "stopped"     // a person stopped the turn
+	TurnRetentionCauseFailed     = "failed"      // the turn failed
+	TurnRetentionCauseReplaced   = "replaced"    // the next message replaced the sandbox
+	TurnRetentionCauseIdleClosed = "idle_closed" // the idle grace closed the sandbox
 )
 
 // AgentRetainedImage is one retained image's handle.
@@ -154,7 +167,9 @@ func (s *PGStore) FinalizeAgentSessionRetaining(ctx context.Context, id, headSHA
 			return err
 		}
 		retained = &row
-		return nil
+		_, err = tx.Exec(ctx, `UPDATE agent_session_turns SET retention_cause = $3
+			WHERE session_id = $1 AND turn = $2`, id, row.Turn, TurnRetentionCauseStopped)
+		return err
 	})
 	if err != nil {
 		return AgentSession{}, TerminalTurnFact{}, nil, classify("agent session", err)
@@ -177,14 +192,87 @@ func (s *PGStore) FinalizeAgentSessionNotRetaining(ctx context.Context, id, head
 		if out, fact, err = finalizeAgentSessionTx(ctx, tx, id, "completed", headSHA, deliveryNote, ""); err != nil {
 			return err
 		}
-		_, err = tx.Exec(ctx, `UPDATE agent_session_turns SET retention = $4, retention_reason = $3
-			WHERE session_id = $1 AND turn = $2 AND interrupted AND retention = ''`, id, out.Turns, reason, TurnRetentionLost)
+		_, err = tx.Exec(ctx, `UPDATE agent_session_turns SET retention = $4, retention_reason = $3, retention_cause = $5
+			WHERE session_id = $1 AND turn = $2 AND interrupted AND retention = ''`, id, out.Turns, reason, TurnRetentionLost, TurnRetentionCauseStopped)
 		return err
 	})
 	if err != nil {
 		return AgentSession{}, TerminalTurnFact{}, classify("agent session", err)
 	}
 	return out, fact, nil
+}
+
+// RecordAgentSessionTurnCheckout records what a turn left undelivered in its
+// checkout, as its sandbox reported it when the turn ended (w10/m491). It is
+// written before the turn settles, so every reader that decides from it (the
+// next message, the idle close) sees it.
+func (s *PGStore) RecordAgentSessionTurnCheckout(ctx context.Context, sessionID string, turn int, c TurnCheckout) error {
+	_, err := s.Pool.Exec(ctx, `UPDATE agent_session_turns SET checkout_dirty = $3, unpushed_commits = $4
+		WHERE session_id = $1 AND turn = $2`, sessionID, turn, c.Dirty, c.UnpushedCommits)
+	return err
+}
+
+// BeginAgentSessionRetention begins keeping the disk of a settled turn whose
+// checkout holds undelivered work (ADR047 D12, w10/m491): the turn failed, the
+// idle grace is closing its sandbox, or the next message is replacing it. It
+// inserts the saving row, the claim on pausing sandboxID, only while the
+// session still holds that sandbox, is not archived, and either is settled on
+// turn (the Completer's close) or has just begun turn+1 (a message replacing
+// it, which blanked the session's sandbox id and recorded sandboxID as the
+// dispatch's previous sandbox), and not when a live row exists; and records
+// on the turn the cause and the checkout that decided it, with its retention
+// reset for the save to answer. nil when nothing was begun.
+func (s *PGStore) BeginAgentSessionRetention(ctx context.Context, sessionID string, turn int, sandboxID, cause string, c TurnCheckout, in NewAgentRetainedImage) (*AgentRetainedImage, error) {
+	var retained *AgentRetainedImage
+	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		row, err := scanAgentRetainedImage(tx.QueryRow(ctx, `
+			INSERT INTO agent_session_retained_images (id, session_id, workspace_id, turn, base_image, save_deadline)
+			SELECT $1, s.id, s.workspace_id, t.turn, $5, $6
+			FROM agent_sessions s
+			JOIN agent_session_turns t ON t.session_id = s.id AND t.turn = $3
+			WHERE s.id = $2 AND $4 <> '' AND s.archived_at IS NULL AND t.retention IN ('', 'lost')
+			  AND ((s.turns = $3 AND s.phase IN ('completed', 'failed') AND s.sandbox_id = $4)
+			    OR (s.turns = $3 + 1 AND s.phase = 'redispatching' AND EXISTS (
+			          SELECT 1 FROM agent_session_dispatches d
+			          WHERE d.session_id = s.id AND d.turn = s.turns AND d.previous_sandbox_id = $4)))
+			ON CONFLICT (session_id) WHERE state <> 'released' DO NOTHING
+			RETURNING `+agentRetainedImageColumns,
+			in.ID, sessionID, turn, sandboxID, in.BaseImage, in.SaveDeadline))
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		retained = &row
+		_, err = tx.Exec(ctx, `UPDATE agent_session_turns
+			SET retention = '', retention_reason = '', retained_until = NULL,
+			    retention_cause = $3, checkout_dirty = $4, unpushed_commits = $5
+			WHERE session_id = $1 AND turn = $2`, sessionID, turn, cause, c.Dirty, c.UnpushedCommits)
+		return err
+	})
+	if err != nil {
+		return nil, classify("agent session retained image", err)
+	}
+	return retained, nil
+}
+
+// LoseAgentSessionTurnRetention records on a settled turn that its
+// undelivered work was not kept, with the cause, the reason and, when known,
+// the checkout at stake, for a loss no image was begun for (an editor open on
+// a sandbox a message replaced, a failed turn's sandbox already gone). A turn
+// whose retention is already decided keeps it.
+func (s *PGStore) LoseAgentSessionTurnRetention(ctx context.Context, sessionID string, turn int, cause, reason string, c *TurnCheckout) error {
+	var dirty *bool
+	var unpushed *int
+	if c != nil {
+		dirty, unpushed = &c.Dirty, &c.UnpushedCommits
+	}
+	_, err := s.Pool.Exec(ctx, `UPDATE agent_session_turns
+		SET retention = $3, retention_reason = $4, retention_cause = $5,
+		    checkout_dirty = coalesce($6, checkout_dirty), unpushed_commits = coalesce($7, unpushed_commits)
+		WHERE session_id = $1 AND turn = $2 AND retention = ''`, sessionID, turn, TurnRetentionLost, reason, cause, dirty, unpushed)
+	return err
 }
 
 // ReserveAgentSessionRetainedImage records a saving image's size before it is
@@ -233,7 +321,7 @@ func (s *PGStore) KeepAgentSessionRetainedImage(ctx context.Context, id, digest 
 			return err
 		}
 		kept = true
-		_, err = tx.Exec(ctx, `UPDATE agent_session_turns SET retention = $4, retained_until = $3
+		_, err = tx.Exec(ctx, `UPDATE agent_session_turns SET retention = $4, retained_until = $3, retention_reason = ''
 			WHERE session_id = $1 AND turn = $2`, sessionID, turn, until, TurnRetentionKept)
 		return err
 	})

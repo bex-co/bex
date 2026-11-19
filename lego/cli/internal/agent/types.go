@@ -200,16 +200,27 @@ type transcriptTurn struct {
 	Turn   int    `json:"turn"`
 	Prompt string `json:"prompt"`
 	// Interrupted says a person stopped the turn; Retention, RetainedUntil and
-	// RetentionLostReason say what became of its unpushed work (its disk, kept
-	// for the next message): none, saving, kept (until RetainedUntil),
-	// continued or lost (and why) (ADR047 D12).
+	// RetentionLostReason say what became of the work its sandbox held
+	// undelivered (its disk, kept for the next message): none, saving, kept
+	// (until RetainedUntil), continued or lost (and why) (ADR047 D12).
+	// UnpushedCommits and UncommittedChanges say what was at stake, nil when
+	// unknown (w10/m491).
 	Interrupted         bool       `json:"interrupted"`
 	Retention           string     `json:"retention"`
 	RetainedUntil       *time.Time `json:"retainedUntil"`
 	RetentionLostReason string     `json:"retentionLostReason"`
-	// raw is a stopped turn as the API sent it, for --output json; other
+	UnpushedCommits     *int       `json:"unpushedCommits"`
+	UncommittedChanges  *bool      `json:"uncommittedChanges"`
+	// raw is a noted turn as the API sent it, for --output json; other
 	// turns are not printed, so they are not copied.
 	raw json.RawMessage
+}
+
+// noted reports whether the turn ends with a line of its own: a person
+// stopped it, or the CLI has something to say of the work its sandbox held
+// undelivered.
+func (t transcriptTurn) noted() bool {
+	return t.Interrupted || retentionSentence(t) != ""
 }
 
 func (t *transcriptTurn) UnmarshalJSON(data []byte) error {
@@ -219,7 +230,7 @@ func (t *transcriptTurn) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*t = transcriptTurn(f)
-	if t.Interrupted {
+	if t.noted() {
 		t.raw = append(json.RawMessage(nil), data...)
 	}
 	return nil

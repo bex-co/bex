@@ -61,10 +61,29 @@ interface StatusRecord {
 }
 
 // How long an interrupted turn waits for the agent's last streamed parts to
-// land in the log, and for the facts about its checkout. Both are best effort:
-// a person stopped the turn, so neither may hold the stop up.
+// land in the log, and how long an interrupted or failed turn waits for the
+// facts about its checkout. Both are best effort: neither may hold the turn's
+// verdict up.
 const interruptDrainMs = 3_000;
-const interruptFactsMs = 15_000;
+const endFactsMs = 15_000;
+
+// checkoutFacts reads the facts about a repository session's checkout for a
+// turn that did not end on its own (a stop, a failure): bex-api keeps the
+// sandbox's disk for the next message when they show undelivered work (ADR047
+// D12). Bounded and best effort: a read that fails or runs out of time
+// records none, and bex-api then reads the checkout itself.
+async function checkoutFacts(
+  config: AgentDriverConfig,
+): Promise<DeliveryStatus | undefined> {
+  if (!config.deliver) return undefined;
+  return within(
+    readGitFacts(config).then((facts) => ({
+      ...facts,
+      undelivered: undeliveredFacts(facts, config),
+    })),
+    endFactsMs,
+  ).catch(() => undefined);
+}
 
 const maxSessionLogBytes = 16 << 20;
 
@@ -305,16 +324,7 @@ export async function runHeadlessTurn(
     } catch (logError) {
       console.warn(`turn log flush failed: ${describeError(logError)}`);
     }
-    let git: DeliveryStatus | undefined;
-    if (config.deliver) {
-      git = await within(
-        readGitFacts(config).then((facts) => ({
-          ...facts,
-          undelivered: undeliveredFacts(facts, config),
-        })),
-        interruptFactsMs,
-      ).catch(() => undefined);
-    }
+    const git = await checkoutFacts(config);
     const status: StatusRecord = {
       state: "interrupted",
       sessionId: provider?.sessionId ?? null,
@@ -391,8 +401,10 @@ export async function runHeadlessTurn(
             // prompt, never the stream, so history is never double-rendered.
             // An invoked skill rides the dispatching turn's prompt only
             // (ADR099 D4); a later live turn names its own.
+            // The checkout note is the dispatching turn's: a later live
+            // turn's agent already has it in context.
             const continuity = resolveContinuity(
-              config,
+              turn === config.turn ? config : { ...config, checkoutNote: "" },
               provider.resume,
               turn === config.turn
                 ? withSkillInvocations(prompt, config.skills)
@@ -510,10 +522,15 @@ export async function runHeadlessTurn(
         );
       }
     }
+    // The agent is stopped, so the facts are final: what the failed turn
+    // left undelivered in its checkout, which bex-api keeps for the next
+    // message when there is any (ADR047 D12, w10/m491).
+    const git = await checkoutFacts(config);
     await writeStatus(config.statusPath, {
       state: "failed",
       error: redactor.redactString(describeError(terminalError)),
       ...(error instanceof RepoSetupError ? { code: error.code } : {}),
+      ...(git ? { git } : {}),
     });
     throw terminalError;
   } finally {

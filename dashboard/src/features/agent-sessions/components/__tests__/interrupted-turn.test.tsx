@@ -71,11 +71,15 @@ const NO_RETENTION: TurnRetentionView = {
   state: "none",
   until: null,
   lostReason: null,
+  unpushedCommits: null,
+  uncommittedChanges: null,
 };
 
 /** Stopped turns whose disk kept nothing: the note alone. */
 const stopped = (...turns: number[]): InterruptedTurns =>
-  new Map(turns.map((turn) => [turn, NO_RETENTION]));
+  new Map(
+    turns.map((turn) => [turn, { interrupted: true, retention: NO_RETENTION }]),
+  );
 
 function renderConversation(
   transcript: UIMessageChunk[],
@@ -301,7 +305,10 @@ describe("what became of a stopped turn's unpushed work", () => {
   });
 
   it("sits under the note it belongs to, between the reply and the next prompt", async () => {
-    renderConversation(THREE_TURNS, new Map([[2, KEPT]]));
+    renderConversation(
+      THREE_TURNS,
+      new Map([[2, { interrupted: true, retention: KEPT }]]),
+    );
     const note = await screen.findByText(NOTE(2));
     const line = await screen.findByText(
       "Your changes are kept until November 16, 2026 at 10:00 AM.",
@@ -337,5 +344,113 @@ describe("what became of a stopped turn's unpushed work", () => {
     expect(column).toHaveClass("min-w-0");
     expect(column.parentElement).toBe(note);
     expect(note).toHaveClass("flex", "items-start", "gap-2", "text-xs");
+  });
+});
+
+// w10/m491: a turn nobody stopped keeps its disk when it failed, idled out or
+// was followed by a message with work it had not delivered, and its end says
+// so, with what was at stake; one that kept nothing says nothing.
+describe("what became of the undelivered work of a turn nobody stopped", () => {
+  const retention = (over: Partial<TurnRetentionView>): TurnRetentionView => ({
+    ...NO_RETENTION,
+    ...over,
+  });
+
+  it.each([
+    [
+      "a failed turn whose disk is kept",
+      retention({
+        state: "kept",
+        until: RETAINED_UNTIL,
+        unpushedCommits: 2,
+        uncommittedChanges: true,
+      }),
+      "Your changes are kept until November 16, 2026 at 10:00 AM.",
+      "2 unpushed commits · uncommitted changes",
+    ],
+    [
+      "a replaced turn the next message continued from",
+      retention({ state: "continued", unpushedCommits: 1 }),
+      "The next message continued from these changes.",
+      "1 unpushed commit",
+    ],
+    [
+      "an idle-closed turn whose disk expired",
+      retention({
+        state: "lost",
+        lostReason: "expired",
+        uncommittedChanges: true,
+      }),
+      "Your unpushed changes were lost when the retained sandbox expired.",
+      "uncommitted changes",
+    ],
+    [
+      "a failed turn whose sandbox was gone",
+      retention({ state: "lost", lostReason: "sandbox_lost" }),
+      "Your unpushed changes were lost when the turn failed and its sandbox was gone.",
+      null,
+    ],
+  ] as const)("%s", (_, kept, sentence, stake) => {
+    render(
+      <TurnInterruptedNote turn={3} retention={kept} interrupted={false} />,
+    );
+    const note = screen.getByTestId("turn-retained");
+    expect(screen.queryByTestId("turn-interrupted")).toBeNull();
+    expect(note).not.toHaveTextContent(NOTE(3));
+    expect(screen.getByTestId("turn-retention")).toHaveTextContent(sentence);
+    if (stake) {
+      expect(screen.getByTestId("turn-retention-stake")).toHaveTextContent(
+        stake,
+      );
+    } else {
+      expect(screen.queryByTestId("turn-retention-stake")).toBeNull();
+    }
+    expect(note).toHaveClass("text-muted-foreground");
+    expect(note.querySelector(".text-destructive")).toBeNull();
+  });
+
+  it("is drawn at the end of its turn in the transcript", async () => {
+    renderConversation(
+      THREE_TURNS,
+      new Map([
+        [
+          1,
+          {
+            interrupted: false,
+            retention: retention({
+              state: "kept",
+              until: RETAINED_UNTIL,
+              unpushedCommits: 1,
+            }),
+          },
+        ],
+      ]),
+    );
+    const line = await screen.findByText(
+      "Your changes are kept until November 16, 2026 at 10:00 AM.",
+    );
+    expect(before(screen.getByText("parser written"), line)).toBe(true);
+    expect(before(line, screen.getByText("now the whole test suite"))).toBe(
+      true,
+    );
+    expect(screen.queryByText(NOTE(1))).toBeNull();
+  });
+
+  it("counts commits in the viewer's language", async () => {
+    await i18n.changeLanguage("zh");
+    try {
+      render(
+        <TurnInterruptedNote
+          turn={3}
+          retention={retention({ state: "continued", unpushedCommits: 3 })}
+          interrupted={false}
+        />,
+      );
+      expect(screen.getByTestId("turn-retention-stake")).toHaveTextContent(
+        "3 个未推送的提交",
+      );
+    } finally {
+      await i18n.changeLanguage("en");
+    }
   });
 });

@@ -730,6 +730,21 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Transcript line under a stopped turn: its unpushed changes were lost, for a reason that is not worth naming (the session was canceled or archived)",
   },
+  "agentSessions.turnRetentionLostSandboxLost": {
+    message: "该轮失败且其沙箱已不存在，你未推送的更改已丢失。",
+    description:
+      "Transcript line under a failed turn: its sandbox was gone before its disk could be kept, so the unpushed work in it is lost (w10/m491)",
+  },
+  "agentSessions.turnStakeCommits_other": {
+    message: "{count} 个未推送的提交",
+    description:
+      "Under a turn whose disk was kept or lost: how many commits its checkout held that were not pushed (w10/m491)",
+  },
+  "agentSessions.turnStakeChanges": {
+    message: "未提交的更改",
+    description:
+      "Under a turn whose disk was kept or lost: its checkout held uncommitted changes (w10/m491)",
+  },
   "agentSessions.turnError": {
     message: "第 {turn} 轮失败",
     description:

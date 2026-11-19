@@ -16,10 +16,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  renderPreamble,
-  resolveContinuity,
-} from "../src/continuity.js";
+import { renderPreamble, resolveContinuity } from "../src/continuity.js";
 
 const context = JSON.stringify([
   { turn: 1, prompt: "fix the translation", reply: "I fixed pricing.tier" },
@@ -73,7 +70,9 @@ test("context material re-primes a fresh session and precedes the prompt", () =>
   );
   assert.equal(result.rung, "transcript-reprime");
   assert.ok(result.prompt.endsWith("try again"));
-  assert.ok(result.prompt.indexOf("also check zh") < result.prompt.indexOf("try again"));
+  assert.ok(
+    result.prompt.indexOf("also check zh") < result.prompt.indexOf("try again"),
+  );
 });
 
 test("original task is re-delivered when no conversation ever happened", () => {
@@ -101,4 +100,34 @@ test("no material and no load stays a plain cold prompt", () => {
   const result = resolveContinuity({}, "new", "hello");
   assert.equal(result.rung, "none");
   assert.equal(result.prompt, "hello");
+});
+
+// w10/m491: bex-api says where the checkout comes from, and the agent reads it
+// before the prompt on every rung, restored or lost.
+test("the checkout note precedes the prompt on every rung", () => {
+  const restored =
+    "This turn's checkout is the one turn 1 left, restored from its sandbox's disk: the 1 unpushed commit is still there, as that turn left it.";
+  const lost =
+    "The 2 unpushed commits and the uncommitted changes from turn 1 were lost (the workspace's sandbox storage was full), so this turn started from a fresh checkout of the branch.";
+  for (const [note, resume, material] of [
+    [restored, "loaded", { contextJson: context }],
+    [restored, "new", { contextJson: context }],
+    [lost, "new", { contextJson: "", originalTask: "fix it" }],
+    [lost, "new", {}],
+  ] as const) {
+    const result = resolveContinuity(
+      { ...material, checkoutNote: note },
+      resume,
+      "carry on",
+    );
+    assert.ok(result.prompt.endsWith("carry on"), result.prompt);
+    const at = result.prompt.indexOf(note);
+    assert.ok(at >= 0, `the ${resume} rung left the note out`);
+    assert.ok(at < result.prompt.indexOf("carry on"));
+    assert.match(result.prompt, /<checkout-state>\n[^]*\n<\/checkout-state>/);
+  }
+  assert.equal(
+    resolveContinuity({ checkoutNote: "  " }, "new", "hello").prompt,
+    "hello",
+  );
 });

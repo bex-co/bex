@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -28,15 +29,19 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// A turn a person stops keeps its disk (ADR047 D12, w22/m413, the reference
-// being Devin, whose sleeping session keeps its machine). When the Completer
-// settles the turn as interrupted it reads the transcript, then pauses the
-// sandbox, which commits its root filesystem, and copies the result to an
-// image in the workspace's images repository: the retained image. The
-// session's next turn boots a fresh sandbox from that image, with its own
-// environment, secrets and egress, and the driver finds its checkout, commits
-// and working-tree edits where the stopped turn left them. The driver still
-// never commits or pushes (ADR090).
+// A turn's disk outlives its sandbox (ADR047 D12, w22/m413 and w10/m491, the
+// reference being Devin, whose session keeps its machine across sleeps and
+// follow-ups). A turn a person stops keeps it always; a turn that failed,
+// completed and idled out, or is followed by a message keeps it when its
+// checkout holds work it did not deliver (uncommitted changes, commits not
+// on the remote branch), at the moment its sandbox would otherwise be ended.
+// The Completer, or the dispatch of the next message, reads the transcript,
+// then pauses the sandbox, which commits its root filesystem, and copies the
+// result to an image in the workspace's images repository: the retained
+// image. The session's next turn boots a fresh sandbox from that image, with
+// its own environment, secrets and egress, and the driver finds its checkout,
+// commits and working-tree edits where the earlier turn left them. The driver
+// still never commits or pushes (ADR090).
 //
 // The retained image's row (agent_session_retained_images) is its handle and
 // the one place every decision is made, by compare-and-set on its state:
@@ -50,9 +55,9 @@ import (
 //     and the workspace delete release it, and the purge deletes every
 //     released image from the registry before its row goes, so none is left.
 
-// DefaultRetentionTTL is how long a stopped turn's disk is kept
-// (BEX_AGENT_INTERRUPT_RETENTION). MaxRetentionTTL bounds the setting below
-// Devin's 14 days (docs.devin.ai release notes, 2026-10-09).
+// DefaultRetentionTTL is how long a turn's kept disk is kept, whatever ended
+// the turn (BEX_AGENT_INTERRUPT_RETENTION). MaxRetentionTTL bounds the setting
+// below Devin's 14 days (docs.devin.ai release notes, 2026-10-09).
 const (
 	DefaultRetentionTTL = 24 * time.Hour
 	MaxRetentionTTL     = 7 * 24 * time.Hour
@@ -129,21 +134,26 @@ type RetainedImageStore interface {
 	AgentSessionsSavingRetainedImage(ctx context.Context, sessionIDs []string) (map[string]bool, error)
 	SetAgentSessionTurnStartNote(ctx context.Context, sessionID string, turn int, note string) error
 	FinalizeAgentSessionNotRetaining(ctx context.Context, id, headSHA, deliveryNote, reason string) (store.AgentSession, store.TerminalTurnFact, error)
+	RecordAgentSessionTurnCheckout(ctx context.Context, sessionID string, turn int, c store.TurnCheckout) error
+	BeginAgentSessionRetention(ctx context.Context, sessionID string, turn int, sandboxID, cause string, c store.TurnCheckout, in store.NewAgentRetainedImage) (*store.AgentRetainedImage, error)
+	LoseAgentSessionTurnRetention(ctx context.Context, sessionID string, turn int, cause, reason string, c *store.TurnCheckout) error
 }
 
 // RetentionSandboxes is the sandbox side of retention
-// (*sandbox.AgentSessionLifecycle): saving a paused sandbox's disk, deleting a
-// retained image, and the template image a disk ran on.
+// (*sandbox.AgentSessionLifecycle): reading what a checkout left undelivered,
+// saving a paused sandbox's disk, deleting a retained image, and the template
+// image a disk ran on.
 type RetentionSandboxes interface {
+	ReadSessionCheckout(ctx context.Context, workspaceID, sessionID, sandboxID string) (store.TurnCheckout, error)
 	RetainAgentSessionSandbox(ctx context.Context, workspaceID, sessionID, sandboxID, imageID string) (sandbox.RetainedCommit, error)
 	DeleteAgentRetainedImage(ctx context.Context, workspaceID, imageID string) error
 	DeleteAgentSessionEgress(ctx context.Context, workspaceID, sessionID string) error
 	AgentTemplateImage(template string) string
 }
 
-// Retention keeps stopped turns' disks. The same pointer serves the Service,
-// which continues from them and releases them, and the Completer, which saves
-// and expires them. nil, or without a store or sandboxes, retains nothing and
+// Retention keeps turns' disks. The same pointer serves the Service, which
+// continues from them and releases them, and the Completer, which saves and
+// expires them. nil, or without a store or sandboxes, retains nothing and
 // every path behaves as it did before retention.
 type Retention struct {
 	Store     RetainedImageStore
@@ -159,7 +169,7 @@ type Retention struct {
 // active reports whether retained images can be handled at all.
 func (r *Retention) active() bool { return r != nil && r.Store != nil && r.Sandboxes != nil }
 
-// retains reports whether a stopped turn's disk is kept now.
+// retains reports whether a turn's disk is kept now.
 func (r *Retention) retains() bool { return r.active() && r.TTL > 0 }
 
 // ttl is the retention time, never longer than MaxRetentionTTL.
@@ -302,7 +312,106 @@ func (r *Retention) deleteSessionImages(ctx context.Context, now func() time.Tim
 	return nil
 }
 
-// retainedFresh is the sentence a turn adds to its delivery note when its
-// sandbox had to start from a fresh checkout although the stopped turn's disk
-// was kept.
-const retainedFresh = "The changes kept from the stopped turn could not be restored, so this turn started from a fresh checkout of the branch."
+// envCheckoutNote tells the agent of a turn that follows one with
+// undelivered work where its checkout comes from: restored from that turn's
+// kept disk, or a fresh clone that lost the work (w10/m491). The driver puts
+// it before the prompt; the same sentence, for a loss, begins the turn's
+// delivery note (its start note).
+const envCheckoutNote = "BEX_AGENT_CHECKOUT_NOTE"
+
+// notRestoredNote is the sentence a turn adds to its delivery note, and tells
+// its agent, when its sandbox had to start from a fresh checkout although the
+// disk of turn kept was kept.
+func notRestoredNote(kept int) string {
+	return fmt.Sprintf("The changes kept from turn %d could not be restored%s", kept, startedFresh)
+}
+
+// startedFresh ends a note that says the turn's checkout is a fresh clone.
+const startedFresh = ", so this turn started from a fresh checkout of the branch."
+
+// restoredNote tells the agent of a turn booted from turn prev's kept disk
+// that its checkout is the one prev left, with what was at stake.
+func restoredNote(prev store.AgentSessionTurn) string {
+	stake, plural := stakeOf(prev, "its uncommitted changes and unpushed commits")
+	return fmt.Sprintf("This turn's checkout is the one turn %d left, restored from its sandbox's disk: %s %s still there, as that turn left %s.",
+		prev.Turn, stake, pick(plural, "are", "is"), pick(plural, "them", "it"))
+}
+
+// lostNote is the sentence a turn adds to its delivery note, and tells its
+// agent, when it started from a fresh checkout because the work turn prev
+// left undelivered was lost; "" when prev lost nothing.
+func lostNote(prev store.AgentSessionTurn, now time.Time) string {
+	view := turnRetention(prev, now)
+	if view.State != RetentionLost {
+		return ""
+	}
+	why := ""
+	if phrase := lostReasonPhrases[view.LostReason]; phrase != "" {
+		why = " (" + phrase + ")"
+	}
+	stake, plural := stakeOf(prev, "any uncommitted changes and unpushed commits")
+	return fmt.Sprintf("%s from turn %d %s lost%s%s",
+		strings.ToUpper(stake[:1])+stake[1:], prev.Turn, pick(plural, "were", "was"), why, startedFresh)
+}
+
+// lostReasonPhrases say why a turn's undelivered work was lost, in the start
+// note of the turn after it.
+var lostReasonPhrases = map[string]string{
+	RetentionLostReasonExpired:     "the time it was kept for ran out",
+	RetentionLostReasonStorageFull: "the workspace's sandbox storage was full",
+	RetentionLostReasonSaveFailed:  "the sandbox's disk could not be saved",
+	RetentionLostReasonEditorOpen:  "an editor was open on the sandbox",
+	RetentionLostReasonNotRestored: "the kept disk could not be restored",
+	RetentionLostReasonSandboxLost: "the sandbox ended before its disk could be kept",
+}
+
+// stakeOf names what turn left undelivered ("the 2 unpushed commits and the
+// uncommitted changes"), or unknown when its checkout was never read, and
+// whether the phrase is plural.
+func stakeOf(turn store.AgentSessionTurn, unknown string) (string, bool) {
+	c, known := turn.Checkout()
+	if !known || !c.Undelivered() {
+		return unknown, true
+	}
+	commits := fmt.Sprintf("the %d unpushed commit%s", c.UnpushedCommits, pick(c.UnpushedCommits != 1, "s", ""))
+	switch {
+	case c.Dirty && c.UnpushedCommits > 0:
+		return commits + " and the uncommitted changes", true
+	case c.Dirty:
+		return "the uncommitted changes", true
+	}
+	return commits, c.UnpushedCommits != 1
+}
+
+// pick picks the plural or the singular form (the CLI's twin has the same
+// name).
+func pick(plural bool, many, one string) string {
+	if plural {
+		return many
+	}
+	return one
+}
+
+// checkoutNote reads the turn this dispatch follows and says where its
+// checkout comes from: restored from that turn's kept disk, or, for a fresh
+// start that lost that turn's work, the loss. "" when there is nothing to say.
+func (s *Service) checkoutNote(ctx context.Context, sessionID string, spec dispatchSpec) string {
+	want := spec.turn - 1
+	if spec.retained != nil {
+		want = spec.retained.Turn
+	}
+	if want < 1 {
+		return ""
+	}
+	turn, err := s.turnLoader(ctx, sessionID, want)()
+	if err != nil || turn.Turn == 0 {
+		if err != nil {
+			log.Printf("agent-session dispatch: read the turn for the checkout note failed (session=%s): %v", sessionID, err)
+		}
+		return ""
+	}
+	if spec.retained != nil {
+		return restoredNote(turn)
+	}
+	return lostNote(turn, s.Now())
+}

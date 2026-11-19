@@ -269,9 +269,9 @@ type Config struct {
 	AgentSessionGatewayURL string
 	AgentGitProxyURL       string
 	AgentSandboxIdleTTL    time.Duration
-	// AgentInterruptRetention is how long a stopped turn's disk is kept for
-	// the session's next message (BEX_AGENT_INTERRUPT_RETENTION, ADR047 D12);
-	// 0 keeps nothing.
+	// AgentInterruptRetention is how long a turn's kept disk is kept for the
+	// session's next message, whatever ended the turn
+	// (BEX_AGENT_INTERRUPT_RETENTION, ADR047 D12, w10/m491); 0 keeps nothing.
 	AgentInterruptRetention time.Duration
 	AgentTurnTimeout        time.Duration
 	// AgentTurnIdleTimeout bounds how long one turn may go without progress

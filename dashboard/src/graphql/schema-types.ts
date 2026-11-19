@@ -688,18 +688,24 @@ export type AgentSessionTranscriptTurn = {
   resultFinal: Scalars['Boolean']['output'];
   /** When the disk of a kept turn expires (RFC 3339); null for every other retention. */
   retainedUntil: Maybe<Scalars['String']['output']>;
-  /** What became of the unpushed work of a turn a person stopped (its disk, ADR047 D12): none (nothing was kept, and always for a turn that was not stopped), saving (being saved now), kept (until retainedUntil; the next message continues from it), continued (the next turn started from it) or lost (retentionLostReason says why, when it is known). */
+  /** What became of the work the turn's sandbox held undelivered (its disk, ADR047 D12): none (nothing was kept and nothing is owed: the turn left nothing undelivered, retention is off, or the session was archived), saving (being saved now), kept (until retainedUntil; the next message continues from it), continued (the next turn started from it) or lost (retentionLostReason says why, when it is known). A stopped turn's disk is always kept; a turn that failed, was left idle until its sandbox closed, or was followed by a message keeps its disk when its checkout held uncommitted changes or unpushed commits. */
   retention: Scalars['String']['output'];
-  /** Why a lost disk was lost: expired, storage_full (the workspace's storage cap was full), save_failed, editor_open (an editor was open on the sandbox), canceled, archived or not_restored (the next turn could not start from it). Empty when the turn's retention is not lost or the cause is none of these. */
+  /** What ended the sandbox whose disk was kept or lost: stopped (a person stopped the turn), failed (the turn failed), replaced (the next message replaced the sandbox) or idle_closed (the sandbox was closed after the session sat idle). Empty when retention is none. */
+  retentionCause: Scalars['String']['output'];
+  /** Why a lost disk was lost: expired, storage_full (the workspace's storage cap was full), save_failed, editor_open (an editor was open on the sandbox when it was stopped or replaced), canceled, archived, not_restored (the next turn could not start from it) or sandbox_lost (the sandbox was gone before its disk could be kept). Empty otherwise. */
   retentionLostReason: Scalars['String']['output'];
   /** The workspace skills this turn invoked (ADR099). */
   skills: Array<AgentSessionSkill>;
-  /** Set on a turn that had to start from a fresh checkout although the stopped turn's disk was kept: the sentence its delivery note begins with. Empty otherwise. */
+  /** Set on a turn that started from a fresh checkout although the turn before it left work undelivered: the sentence its delivery note begins with, saying that work could not be restored or was lost. Empty otherwise. */
   startNote: Scalars['String']['output'];
   transcriptComplete: Scalars['Boolean']['output'];
   transcriptTruncated: Scalars['Boolean']['output'];
   truncationReason: Scalars['String']['output'];
   turn: Scalars['Int']['output'];
+  /** Whether the turn's checkout held uncommitted changes, for a turn whose disk was kept or lost. Null when retention is none or it is unknown. */
+  uncommittedChanges: Maybe<Scalars['Boolean']['output']>;
+  /** How many commits the turn's checkout held that were not on the remote session branch, for a turn whose disk was kept or lost. Null when retention is none or the count is unknown. */
+  unpushedCommits: Maybe<Scalars['Int']['output']>;
 };
 
 /** The tree of agent sessions a session belongs to (ADR102): its root and every session below it. */

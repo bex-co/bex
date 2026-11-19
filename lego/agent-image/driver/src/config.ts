@@ -87,6 +87,11 @@ export interface AgentDriverConfig {
   // session/load succeeds (rung 1).
   contextJson: string;
   originalTask: string;
+  // Where this turn's checkout comes from when the turn before it left work
+  // undelivered (ADR047 D12, w10/m491): restored from that turn's kept disk,
+  // or a fresh clone that lost it. A sentence from bex-api, put before the
+  // dispatching turn's prompt whatever the rung; "" when there is none.
+  checkoutNote?: string;
   listenHost: string;
   listenPort: number;
   sessionLogPath: string;
@@ -468,6 +473,7 @@ export function loadConfig(
     persistSession: env.BEX_AGENT_PERSIST_SESSION !== "0",
     contextJson: env.BEX_AGENT_CONTEXT_JSON || "",
     originalTask: env.BEX_AGENT_ORIGINAL_TASK || "",
+    checkoutNote: env.BEX_AGENT_CHECKOUT_NOTE || "",
     listenHost: env.BEX_AGENT_LISTEN_HOST || "0.0.0.0",
     listenPort: positivePort(env.BEX_AGENT_LISTEN_PORT),
     shareUrl: env.BEX_AGENT_SHARE_URL || "",

@@ -20,6 +20,7 @@ import {
   type InterruptedTurns,
   type QueuedMessageView,
   type SteerResult,
+  type TurnEndView,
   type TurnRetentionView,
 } from "@/features/agent-sessions/types";
 
@@ -198,12 +199,22 @@ type WireTurnRetention =
 export function toTurnRetentionView(
   wire: Pick<
     WireTurnRetention,
-    "retention" | "retainedUntil" | "retentionLostReason"
+    | "retention"
+    | "retainedUntil"
+    | "retentionLostReason"
+    | "unpushedCommits"
+    | "uncommittedChanges"
   >,
 ): TurnRetentionView {
   const state = TURN_RETENTION_STATES.find((s) => s === wire.retention);
-  if (!state || (state === "kept" && !wire.retainedUntil)) {
-    return { state: "none", until: null, lostReason: null };
+  if (!state || state === "none" || (state === "kept" && !wire.retainedUntil)) {
+    return {
+      state: "none",
+      until: null,
+      lostReason: null,
+      unpushedCommits: null,
+      uncommittedChanges: null,
+    };
   }
   return {
     state,
@@ -214,21 +225,27 @@ export function toTurnRetentionView(
             (reason) => reason === wire.retentionLostReason,
           ) ?? null)
         : null,
+    unpushedCommits: wire.unpushedCommits ?? null,
+    uncommittedChanges: wire.uncommittedChanges ?? null,
   };
 }
 
-/** The turns a person stopped, by turn number, each with its retention. */
+/**
+ * The turns that end with a note, by turn number: each one a person stopped,
+ * and each whose undelivered work was kept or lost (w10/m491), with its
+ * retention.
+ */
 export function toInterruptedTurns(
   wire: ReadonlyArray<WireTurnRetention> | null | undefined,
 ): InterruptedTurns {
-  return new Map(
-    (wire ?? [])
-      .filter((turn) => turn.interrupted)
-      .map((turn): [number, TurnRetentionView] => [
-        turn.turn,
-        toTurnRetentionView(turn),
-      ]),
-  );
+  const noted = new Map<number, TurnEndView>();
+  for (const turn of wire ?? []) {
+    const retention = toTurnRetentionView(turn);
+    if (turn.interrupted || retention.state !== "none") {
+      noted.set(turn.turn, { interrupted: turn.interrupted, retention });
+    }
+  }
+  return noted;
 }
 
 /** Bounded title for list rows — caps raw task text to avoid DOM/ARIA bloat. */

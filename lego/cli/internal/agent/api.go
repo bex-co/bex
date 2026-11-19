@@ -513,7 +513,7 @@ func (a *api) stoppedTurn(ctx context.Context, s session) *transcriptTurn {
 	if json.Unmarshal(raw, &page) != nil || len(page.Turns) == 0 {
 		return nil
 	}
-	if last := page.Turns[len(page.Turns)-1]; last.Interrupted {
+	if last := page.Turns[len(page.Turns)-1]; last.noted() {
 		return &last
 	}
 	return nil

@@ -111,6 +111,8 @@ export function wireTurn(over: Partial<WireTurn> = {}): WireTurn {
     retention,
     retainedUntil: retention === "kept" ? RETAINED_UNTIL : null,
     retentionLostReason: "",
+    unpushedCommits: null,
+    uncommittedChanges: null,
     ...over,
   };
 }

@@ -531,17 +531,33 @@ var transcriptTurnGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"outputRequired": &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.OutputRequired })},
 		"result":         jsonTextField("The agent's last valid structured result for the turn as JSON text, readable while the turn runs, or null.", func(v TranscriptTurn) any { return v.Result }),
 		"resultFinal":    &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Description: "The agent declared result final; only a final result becomes outcome.result.", Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.ResultFinal })},
-		"retention": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Description: "What became of the unpushed work of a turn a person stopped (its disk, ADR047 D12): none (nothing was kept, and always for a turn that was not stopped), saving (being saved now), kept (until retainedUntil; the next message continues from it), continued (the next turn started from it) or lost (retentionLostReason says why, when it is known).",
+		"retention": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Description: retentionDescription,
 			Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.Retention })},
-		"retainedUntil": &graphql.Field{Type: graphql.String, Description: "When the disk of a kept turn expires (RFC 3339); null for every other retention.", Resolve: gqlutil.Field(func(v TranscriptTurn) any {
+		"retainedUntil": &graphql.Field{Type: graphql.String, Description: retainedUntilDescription, Resolve: gqlutil.Field(func(v TranscriptTurn) any {
 			if v.RetainedUntil == nil {
 				return nil
 			}
 			return gqlTime(*v.RetainedUntil)
 		})},
-		"retentionLostReason": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Description: "Why a lost disk was lost: expired, storage_full (the workspace's storage cap was full), save_failed, editor_open (an editor was open on the sandbox), canceled, archived or not_restored (the next turn could not start from it). Empty when the turn's retention is not lost or the cause is none of these.",
+		"retentionLostReason": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Description: retentionLostReasonDescription + " Empty otherwise.",
 			Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.RetentionLostReason })},
-		"startNote": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Description: "Set on a turn that had to start from a fresh checkout although the stopped turn's disk was kept: the sentence its delivery note begins with. Empty otherwise.",
+		"retentionCause": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Description: retentionCauseDescription + " Empty when retention is none.",
+			Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.RetentionCause })},
+		"unpushedCommits": &graphql.Field{Type: graphql.Int, Description: unpushedCommitsDescription + " Null when retention is none or the count is unknown.",
+			Resolve: gqlutil.Field(func(v TranscriptTurn) any {
+				if v.UnpushedCommits == nil {
+					return nil
+				}
+				return *v.UnpushedCommits
+			})},
+		"uncommittedChanges": &graphql.Field{Type: graphql.Boolean, Description: uncommittedChangesDescription + " Null when retention is none or it is unknown.",
+			Resolve: gqlutil.Field(func(v TranscriptTurn) any {
+				if v.UncommittedChanges == nil {
+					return nil
+				}
+				return *v.UncommittedChanges
+			})},
+		"startNote": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Description: startNoteDescription + " Empty otherwise.",
 			Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.StartNote })},
 	},
 })

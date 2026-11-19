@@ -221,8 +221,12 @@ func writeSession(w io.Writer, s session) {
 	}
 	row("PR", pr)
 	row("Delivery", o.DeliveryNote)
-	if s.stopped != nil {
-		row("Stopped", stoppedNote(*s.stopped))
+	if t := s.stopped; t != nil {
+		label := "Changes"
+		if t.Interrupted {
+			label = "Stopped"
+		}
+		row(label, turnNote(*t))
 	}
 	if c := o.Cost; c != nil {
 		switch {
@@ -325,7 +329,7 @@ func newPartPrinter(w io.Writer, jsonLines, reasoning bool) *partPrinter {
 func (p *partPrinter) turns(turns []transcriptTurn) {
 	for _, t := range turns {
 		p.prompts[t.Turn] = t.Prompt
-		if t.Interrupted {
+		if t.noted() {
 			p.stopped[t.Turn] = t
 		}
 	}
@@ -408,7 +412,7 @@ func (p *partPrinter) endTurn(turn int) {
 		_, _ = fmt.Fprintf(p.w, "%s\n", compactJSON(t.raw))
 		return
 	}
-	_, _ = fmt.Fprintf(p.w, "■ %s\n", stoppedNote(t))
+	_, _ = fmt.Fprintf(p.w, "■ %s\n", turnNote(t))
 }
 
 // turnHeader opens turn with its prompt, once.

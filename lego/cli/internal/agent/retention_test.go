@@ -60,8 +60,38 @@ func TestRetentionSentencesAreTheDashboardsWords(t *testing.T) {
 			t.Errorf("%s: %q, want %q", tc.name, got, tc.want)
 		}
 	}
-	if got := stoppedNote(transcriptTurn{Turn: 3, Retention: "none"}); got != "Turn 3 was interrupted before it finished." {
+	if got := turnNote(transcriptTurn{Turn: 3, Interrupted: true, Retention: "none"}); got != "Turn 3 was interrupted before it finished." {
 		t.Errorf("a stopped turn that kept nothing: %q", got)
+	}
+}
+
+// w10/m491: what was at stake is named when the API counted it, with the verb
+// agreeing; a turn nobody stopped is introduced by its number alone.
+func TestRetentionSentencesNameWhatWasAtStake(t *testing.T) {
+	until := keptUntil
+	n := func(v int) *int { return &v }
+	b := func(v bool) *bool { return &v }
+	for _, tc := range []struct {
+		name string
+		turn transcriptTurn
+		want string
+	}{
+		{"kept, commits and changes", transcriptTurn{Turn: 2, Retention: "kept", RetainedUntil: &until, UnpushedCommits: n(2), UncommittedChanges: b(true)},
+			"Turn 2: Your 2 unpushed commits and uncommitted changes are kept until " + keptUntilText() + "."},
+		{"kept, one commit", transcriptTurn{Turn: 2, Retention: "kept", RetainedUntil: &until, UnpushedCommits: n(1), UncommittedChanges: b(false)},
+			"Turn 2: Your 1 unpushed commit is kept until " + keptUntilText() + "."},
+		{"continued", transcriptTurn{Turn: 4, Retention: "continued", UnpushedCommits: n(0), UncommittedChanges: b(true)},
+			"Turn 4: The next message continued from these changes."},
+		{"lost with the sandbox, stake unknown", transcriptTurn{Turn: 1, Retention: "lost", RetentionLostReason: "sandbox_lost"},
+			"Turn 1: Your unpushed changes were lost when the turn failed and its sandbox was gone."},
+		{"lost, expired, one commit", transcriptTurn{Turn: 1, Retention: "lost", RetentionLostReason: "expired", UnpushedCommits: n(1), UncommittedChanges: b(false)},
+			"Turn 1: Your 1 unpushed commit was lost when the retained sandbox expired."},
+		{"lost, storage full, changes", transcriptTurn{Turn: 1, Interrupted: true, Retention: "lost", RetentionLostReason: "storage_full", UnpushedCommits: n(0), UncommittedChanges: b(true)},
+			"Turn 1 was interrupted before it finished. Your uncommitted changes were not kept because the workspace's sandbox storage was full."},
+	} {
+		if got := turnNote(tc.turn); got != tc.want {
+			t.Errorf("%s:\n got %q\nwant %q", tc.name, got, tc.want)
+		}
 	}
 }
 
@@ -122,15 +152,23 @@ func TestLogsEndsTheLastTurnToo(t *testing.T) {
 	}
 }
 
-// A turn nobody stopped has no ending, whatever else the answer says.
-func TestLogsSaysNothingOfATurnNobodyStopped(t *testing.T) {
+// A turn nobody stopped that kept nothing has no ending; one whose undelivered
+// work was kept (w10/m491: it failed, idled out or was followed) ends with it.
+func TestLogsEndsATurnNobodyStoppedOnlyWhenItKeptOrLostWork(t *testing.T) {
 	f := newFakeAPI(t)
 	f.script["ags-s3"] = []string{stateSucceeded}
 	f.transcript["ags-s3"] = []string{row(1, 1, 1, `{"type":"text","text":"all done"}`, false)}
-	f.turns["ags-s3"] = []map[string]any{{"turn": 1, "prompt": "fix it", "interrupted": false, "retention": "kept", "retainedUntil": "2026-11-16T10:00:00Z"}}
+	f.turns["ags-s3"] = []map[string]any{{"turn": 1, "prompt": "fix it", "interrupted": false, "retention": "none"}}
 	stdout, _, _ := run(t, f.deps(t).deps, "logs", "ags-s3")
 	if stdout != "── turn 1 ──\n> fix it\nall done\n" {
 		t.Fatalf("logs printed %q", stdout)
+	}
+	f.turns["ags-s3"] = []map[string]any{{"turn": 1, "prompt": "fix it", "interrupted": false, "retention": "kept", "retainedUntil": "2026-11-16T10:00:00Z",
+		"retentionCause": "failed", "unpushedCommits": 2, "uncommittedChanges": true}}
+	stdout, _, _ = run(t, f.deps(t).deps, "logs", "ags-s3")
+	want := "── turn 1 ──\n> fix it\nall done\n■ Turn 1: Your 2 unpushed commits and uncommitted changes are kept until " + keptUntilText() + ".\n"
+	if stdout != want {
+		t.Fatalf("logs\n got %q\nwant %q", stdout, want)
 	}
 }
 
@@ -251,7 +289,7 @@ func TestEveryRetentionStateAndLossReasonTheContractNamesIsSaid(t *testing.T) {
 	if want := []string{retentionNone, retentionSaving, retentionKept, retentionContinued, retentionLost}; !slices.Equal(golden.States, want) {
 		t.Fatalf("the contract's states %v are not the CLI's %v", golden.States, want)
 	}
-	if want := []string{lostExpired, lostStorageFull, lostSaveFailed, lostEditorOpen, lostCanceled, lostArchived, lostNotRestored}; !slices.Equal(golden.Reasons, want) {
+	if want := []string{lostExpired, lostStorageFull, lostSaveFailed, lostEditorOpen, lostCanceled, lostArchived, lostNotRestored, lostSandboxLost}; !slices.Equal(golden.Reasons, want) {
 		t.Fatalf("the contract's loss reasons %v are not the CLI's %v", golden.Reasons, want)
 	}
 
@@ -262,29 +300,32 @@ func TestEveryRetentionStateAndLossReasonTheContractNamesIsSaid(t *testing.T) {
 			t.Errorf("state %q says %q: only none says nothing", state, got)
 		}
 	}
-	plainLoss := lostSentence("")
+	plainLoss := lostSentence(transcriptTurn{})
 	for _, reason := range golden.Reasons {
-		got := lostSentence(reason)
+		got := lostSentence(transcriptTurn{RetentionLostReason: reason})
 		ended := reason == lostCanceled || reason == lostArchived
 		if got == "" || (got == plainLoss) != ended {
 			t.Errorf("loss reason %q says %q: only a canceled or archived session is a plain loss (%q)", reason, got, plainLoss)
 		}
 	}
 	// A reason this CLI does not know is a plain loss, never a guess.
-	if got := lostSentence("something-new"); got != plainLoss {
+	if got := lostSentence(transcriptTurn{RetentionLostReason: "something-new"}); got != plainLoss {
 		t.Errorf("an unknown loss reason says %q, want %q", got, plainLoss)
 	}
 }
 
-// Only a stopped turn is ever printed as the API sent it, so only it keeps its
-// bytes: a transcript of many turns is not copied turn by turn.
-func TestOnlyAStoppedTurnKeepsItsRawBytes(t *testing.T) {
+// Only a noted turn (stopped, or one that kept or lost work) is ever printed
+// as the API sent it, so only it keeps its bytes: a transcript of many turns
+// is not copied turn by turn.
+func TestOnlyANotedTurnKeepsItsRawBytes(t *testing.T) {
 	var page transcriptPage
-	const body = `{"parts":[],"turns":[{"turn":1,"prompt":"a","interrupted":false},{"turn":2,"prompt":"b","interrupted":true,"retention":"lost"}],"nextAfterSeq":0}`
+	const body = `{"parts":[],"turns":[{"turn":1,"prompt":"a","interrupted":false,"retention":"none"},{"turn":2,"prompt":"b","interrupted":true,"retention":"lost"},` +
+		`{"turn":3,"prompt":"c","interrupted":false,"retention":"kept","retainedUntil":"2026-11-16T10:00:00Z","retentionCause":"failed"}],"nextAfterSeq":0}`
 	if err := json.Unmarshal([]byte(body), &page); err != nil {
 		t.Fatal(err)
 	}
-	if len(page.Turns) != 2 || page.Turns[0].raw != nil || !strings.Contains(string(page.Turns[1].raw), `"retention":"lost"`) {
-		t.Fatalf("raw bytes kept: turn 1 %q, turn 2 %q", page.Turns[0].raw, page.Turns[1].raw)
+	if len(page.Turns) != 3 || page.Turns[0].raw != nil || !strings.Contains(string(page.Turns[1].raw), `"retention":"lost"`) ||
+		!strings.Contains(string(page.Turns[2].raw), `"retentionCause":"failed"`) {
+		t.Fatalf("raw bytes kept: turn 1 %q, turn 2 %q, turn 3 %q", page.Turns[0].raw, page.Turns[1].raw, page.Turns[2].raw)
 	}
 }

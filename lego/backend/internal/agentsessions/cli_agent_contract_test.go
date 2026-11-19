@@ -60,7 +60,7 @@ func TestShapesMatchCLIAgentContract(t *testing.T) {
 		t.Errorf("retention states %v, the CLI expects %v", states, golden["retentionStates"])
 	}
 	reasons := []any{RetentionLostReasonExpired, RetentionLostReasonStorageFull, RetentionLostReasonSaveFailed, RetentionLostReasonEditorOpen,
-		RetentionLostReasonCanceled, RetentionLostReasonArchived, RetentionLostReasonNotRestored}
+		RetentionLostReasonCanceled, RetentionLostReasonArchived, RetentionLostReasonNotRestored, RetentionLostReasonSandboxLost}
 	if !reflect.DeepEqual(golden["retentionLostReasons"], reasons) {
 		t.Errorf("retention loss reasons %v, the CLI expects %v", reasons, golden["retentionLostReasons"])
 	}

@@ -12,8 +12,9 @@ const NO_TURNS: InterruptedTurns = new Map();
 /**
  * The turns a person stopped with Stop turn (ADR047 D12), so the transcript
  * marks them "interrupted" rather than leave them looking cut off or failed,
- * each with what became of its unpushed work (w22/m413): kept until a time,
- * being saved, continued, or lost. An interrupted turn settles as a completed
+ * and every turn whose undelivered work was kept or lost (w10/m491: it
+ * failed, idled out or was followed by a message), each with what became of
+ * that work (w22/m413): kept until a time, being saved, continued, or lost. An interrupted turn settles as a completed
  * one, so the stream carries no trace of the stop: only the turn's own
  * `interrupted` flag says so. It is read when the page opens and again
  * whenever `settleKey` changes (the page passes its attach signal: a turn
@@ -45,7 +46,10 @@ export function useAgentSessionInterruptedTurns(
   }, [turns]);
 
   const saving = useMemo(
-    () => [...interrupted.values()].some((turn) => turn.state === "saving"),
+    () =>
+      [...interrupted.values()].some(
+        (turn) => turn.retention.state === "saving",
+      ),
     [interrupted],
   );
   useEffect(() => {

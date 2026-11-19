@@ -5265,7 +5265,7 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
-    "description": "Read one page of a cloud coding-agent session's durable conversation transcript, seq-ordered: each part is a completed item (a UIMessage text, reasoning or dynamic-tool part; a data snapshot; or a start/finish chunk), partial when the live stream ended inside it (a later page may carry its complete copy under a new seq with the same turn and partIndex, which supersedes it; render parts in turn, partIndex order). Works for live, completed, and archived sessions; page by echoing nextAfterSeq as afterSeq until parts is empty. Each turn in turns carries interrupted (a person stopped it) and, for a stopped turn, retention: what became of its unpushed work, the disk the next message continues from (none, saving, kept until retainedUntil, continued, or lost with retentionLostReason); startNote is set on a turn that had to start from a fresh checkout although that disk was kept.",
+    "description": "Read one page of a cloud coding-agent session's durable conversation transcript, seq-ordered: each part is a completed item (a UIMessage text, reasoning or dynamic-tool part; a data snapshot; or a start/finish chunk), partial when the live stream ended inside it (a later page may carry its complete copy under a new seq with the same turn and partIndex, which supersedes it; render parts in turn, partIndex order). Works for live, completed, and archived sessions; page by echoing nextAfterSeq as afterSeq until parts is empty. Each turn in turns carries interrupted (a person stopped it) and what became of its undelivered work. retention: What became of the work the turn's sandbox held undelivered (its disk, ADR047 D12): none (nothing was kept and nothing is owed: the turn left nothing undelivered, retention is off, or the session was archived), saving (being saved now), kept (until retainedUntil; the next message continues from it), continued (the next turn started from it) or lost (retentionLostReason says why, when it is known). A stopped turn's disk is always kept; a turn that failed, was left idle until its sandbox closed, or was followed by a message keeps its disk when its checkout held uncommitted changes or unpushed commits. retainedUntil: When the disk of a kept turn expires (RFC 3339); null for every other retention. retentionLostReason: Why a lost disk was lost: expired, storage_full (the workspace's storage cap was full), save_failed, editor_open (an editor was open on the sandbox when it was stopped or replaced), canceled, archived, not_restored (the next turn could not start from it) or sandbox_lost (the sandbox was gone before its disk could be kept). retentionCause: What ended the sandbox whose disk was kept or lost: stopped (a person stopped the turn), failed (the turn failed), replaced (the next message replaced the sandbox) or idle_closed (the sandbox was closed after the session sat idle). unpushedCommits: How many commits the turn's checkout held that were not on the remote session branch, for a turn whose disk was kept or lost. uncommittedChanges: Whether the turn's checkout held uncommitted changes, for a turn whose disk was kept or lost. Each of these but retention is absent when it does not apply or is unknown. startNote: Set on a turn that started from a fresh checkout although the turn before it left work undelivered: the sentence its delivery note begins with, saying that work could not be restored or was lost.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -5407,6 +5407,9 @@
               "retention": {
                 "type": "string"
               },
+              "retentionCause": {
+                "type": "string"
+              },
               "retentionLostReason": {
                 "type": "string"
               },
@@ -5447,6 +5450,18 @@
               },
               "turn": {
                 "type": "integer"
+              },
+              "uncommittedChanges": {
+                "type": [
+                  "null",
+                  "boolean"
+                ]
+              },
+              "unpushedCommits": {
+                "type": [
+                  "null",
+                  "integer"
+                ]
               }
             },
             "required": [

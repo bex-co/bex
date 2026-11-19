@@ -325,10 +325,15 @@ type Service struct {
 	// D12). nil (store off) answers such a message with the in-flight
 	// refusal and offers no queue verbs.
 	Queue QueueStore
-	// Retention keeps a stopped turn's disk, which the session's next turn
-	// continues from (ADR047 D12, w22/m413). The Completer holds the same
+	// Retention keeps a turn's disk, which the session's next turn continues
+	// from (ADR047 D12, w22/m413, w10/m491). The Completer holds the same
 	// pointer. nil starts every turn from a fresh sandbox.
 	Retention *Retention
+	// Completer saves the disk of the turn a message replaces, when its
+	// checkout holds undelivered work, before the dispatch tears that sandbox
+	// down (w10/m491). nil keeps only what a Stop, a failure or the idle close
+	// already kept.
+	Completer *Completer
 	// Stops tells the Completer which sessions a person just asked to stop, so
 	// it settles them in seconds (the Completer holds the same pointer). nil
 	// leaves Stop to the ordinary Completer tick.
@@ -997,12 +1002,14 @@ func (s *Service) bootSandbox(ctx context.Context, record store.AgentSession, sp
 	if cleanupErr := s.Sandbox.CleanupAgentDispatches(ctx, []store.AgentDispatch{attempt}); cleanupErr != nil {
 		log.Printf("agent-session dispatch: end the failed attempt's sandbox failed (session=%s): %v", record.ID, cleanupErr)
 	}
+	note := notRestoredNote(retained.Turn)
+	spec.env = withEnv(spec.env, envCheckoutNote, note)
 	image, env = s.dispatchImage(ctx, repoEnv, spec)
 	if sb, err = s.createSessionSandbox(ctx, record, spec, image, env); err != nil {
 		return bootedSandbox{}, err
 	}
 	s.Retention.release(ctx, s.Now, retained.ID, store.RetainedReleaseUnusable)
-	if noteErr := s.Retention.Store.SetAgentSessionTurnStartNote(ctx, record.ID, spec.turn, retainedFresh); noteErr != nil {
+	if noteErr := s.Retention.Store.SetAgentSessionTurnStartNote(ctx, record.ID, spec.turn, note); noteErr != nil {
 		log.Printf("agent-session dispatch: record the fresh start failed (session=%s): %v", record.ID, noteErr)
 	}
 	return bootedSandbox{Sandbox: sb, image: image}, nil
@@ -1504,7 +1511,8 @@ func (s *Service) Transcript(ctx context.Context, sessionID string, afterSeq int
 			Result: jsonValue(turn.Result), ResultFinal: turn.ResultFinal,
 			Skills: turnSkills(turn.Skills), Interrupted: turn.Interrupted,
 			Retention: retention.State, RetainedUntil: retention.Until,
-			RetentionLostReason: retention.LostReason, StartNote: turn.StartNote,
+			RetentionLostReason: retention.LostReason, RetentionCause: retention.Cause,
+			UnpushedCommits: retention.UnpushedCommits, UncommittedChanges: retention.Uncommitted, StartNote: turn.StartNote,
 		})
 	}
 	for _, p := range parts {
@@ -2164,11 +2172,29 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 // runSteerDispatch tears the previous turn's sandbox down (idempotent) then
 // re-dispatches a fresh one for the steering prompt, in the background.
 func (s *Service) runSteerDispatch(ctx context.Context, record store.AgentSession, spec dispatchSpec) {
-	// A turn a person stopped kept its disk (ADR047 D12): wait for its save,
-	// which also reads the transcript the continuity below primes the agent
-	// from, and claim the image to boot from. This comes before the previous
-	// sandbox is torn down, since the save is pausing that very sandbox.
+	// The previous sandbox still stands: when its checkout holds work the turn
+	// did not deliver, save its disk before it is torn down (ADR047 D12,
+	// w10/m491). The session reads redispatching meanwhile.
+	if s.Completer != nil && spec.previousSandboxID != "" && spec.turn > 1 {
+		prev := record
+		prev.Turns, prev.SandboxID = spec.turn-1, spec.previousSandboxID
+		s.Completer.retainReplaced(ctx, prev)
+	}
+	// A turn kept its disk (ADR047 D12): wait for its save, which also reads
+	// the transcript the continuity below primes the agent from, and claim the
+	// image to boot from. This comes before the previous sandbox is torn
+	// down, since the save is pausing that very sandbox.
 	spec.retained = s.Retention.claim(ctx, s.Now, record.ID, spec.template)
+	// Tell the agent where its checkout comes from, and, when the previous
+	// turn's undelivered work was lost, the user too (the turn's start note).
+	if note := s.checkoutNote(ctx, record.ID, spec); note != "" {
+		spec.env[envCheckoutNote] = note
+		if spec.retained == nil && s.Retention.active() {
+			if err := s.Retention.Store.SetAgentSessionTurnStartNote(ctx, record.ID, spec.turn, note); err != nil {
+				log.Printf("agent-session steer: record the start note failed (session=%s): %v", record.ID, err)
+			}
+		}
+	}
 	// A redispatch crosses a sandbox-generation boundary: prime the blank agent
 	// from the durable transcript (ADR047 D3 ladder, w5/m84). Off the accept path
 	// by design — the transcript read is background work.

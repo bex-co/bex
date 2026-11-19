@@ -777,6 +777,37 @@ const ruAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Transcript line under a stopped turn: its unpushed changes were lost, for a reason that is not worth naming (the session was canceled or archived)",
   },
+  "agentSessions.turnRetentionLostSandboxLost": {
+    message:
+      "Ваши неотправленные изменения потеряны: ход завершился ошибкой, и его песочницы уже нет.",
+    description:
+      "Transcript line under a failed turn: its sandbox was gone before its disk could be kept, so the unpushed work in it is lost (w10/m491)",
+  },
+  "agentSessions.turnStakeCommits_one": {
+    message: "{count} неотправленный коммит",
+    description:
+      "Under a turn whose disk was kept or lost: how many commits its checkout held that were not pushed (w10/m491)",
+  },
+  "agentSessions.turnStakeCommits_few": {
+    message: "{count} неотправленных коммита",
+    description:
+      "Under a turn whose disk was kept or lost: how many commits its checkout held that were not pushed (w10/m491)",
+  },
+  "agentSessions.turnStakeCommits_many": {
+    message: "{count} неотправленных коммитов",
+    description:
+      "Under a turn whose disk was kept or lost: how many commits its checkout held that were not pushed (w10/m491)",
+  },
+  "agentSessions.turnStakeCommits_other": {
+    message: "{count} неотправленного коммита",
+    description:
+      "Under a turn whose disk was kept or lost: how many commits its checkout held that were not pushed (w10/m491)",
+  },
+  "agentSessions.turnStakeChanges": {
+    message: "незакоммиченные изменения",
+    description:
+      "Under a turn whose disk was kept or lost: its checkout held uncommitted changes (w10/m491)",
+  },
   "agentSessions.turnError": {
     message: "Сбой хода {turn}",
     description:

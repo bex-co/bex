@@ -700,6 +700,18 @@ start_api() {
     if [ -n "${DEV_AGENT_INTERRUPT_RETENTION:-}" ]; then
       env_args+=(BEX_AGENT_INTERRUPT_RETENTION="$DEV_AGENT_INTERRUPT_RETENTION")
     fi
+    # The idle grace before a finished turn's sandbox is closed (its disk kept
+    # when it holds undelivered work, w10/m491), and the turn ceiling, past
+    # which a turn fails; set them short (e.g. 2m, 3m) to watch the idle
+    # close or a failed turn keep their work. Unset keeps bex-api's defaults.
+    # (A held stub turn streams a tick a second, so its idle bound never fires:
+    # the turn ceiling is what fails it.)
+    if [ -n "${DEV_AGENT_SANDBOX_IDLE_TTL:-}" ]; then
+      env_args+=(BEX_AGENT_SANDBOX_IDLE_TTL="$DEV_AGENT_SANDBOX_IDLE_TTL")
+    fi
+    if [ -n "${DEV_AGENT_TURN_TIMEOUT:-}" ]; then
+      env_args+=(BEX_AGENT_TURN_TIMEOUT="$DEV_AGENT_TURN_TIMEOUT")
+    fi
     # Dev-only OpenRouter model route (ADR090), switched on by
     # `agent-openrouter`. bex-api refuses it unless BEX_CP_IDENTITY is a dev
     # identity, which it always is here. DEV_AGENT_MODEL overrides the model.

@@ -435,6 +435,8 @@ query AgentSessionTurnInterrupts($id: String!) {
       retention
       retainedUntil
       retentionLostReason
+      unpushedCommits
+      uncommittedChanges
     }
   }
 }
