@@ -1,6 +1,6 @@
 # w10 · m516 — An agent session or automation can choose its model from the platform catalog, and every surface shows the model that will run, as on Devin
 
-**Worker:** worker10 **Goal:** on a workspace that runs agents on the platform model (no model key of its own), a person picks the model a `claude` session runs, per session, per automation and as the workspace default, from a catalog bex offers. A session can switch models from its next message. `bex agent models`, the capabilities read and the dashboard show the model each agent will run and the choices. The gateway still refuses any request model other than the one its session chose, and every request is still priced at its OpenRouter cost × 1.3 (ADR091 D1). **Status:** blocked (t001–t005, t007–t009 done; t006 waits for a production pin carrying `1988962c0`)
+**Worker:** worker10 **Goal:** on a workspace that runs agents on the platform model (no model key of its own), a person picks the model a `claude` session runs, per session, per automation and as the workspace default, from a catalog bex offers. A session can switch models from its next message. `bex agent models`, the capabilities read and the dashboard show the model each agent will run and the choices. The gateway still refuses any request model other than the one its session chose, and every request is still priced at its OpenRouter cost × 1.3 (ADR091 D1). **Status:** done (2026-11-19; live check on pin `1c63b6fe0a34`)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | A message can switch the session's model from its next turn, as Devin's agent toggle — **DONE** | 1h30m | t002 |
 | [t004](done/t004.md) | The capabilities read and `bex agent models` show each agent's effective model and its choices — **DONE** | 1h15m | t002 |
 | [t005](done/t005.md) | Dashboard: a model picker in the new-session composer, the steering composer, the automation form and Settings → Agents — **DONE** | 2h30m | t003, t004 |
-| [t006](t006.md) | Live check on production: a non-default catalog model runs, is metered at its own cost, and every surface shows it | 45m | t005 |
+| [t006](done/t006.md) | Live check on production: a non-default catalog model runs, is metered at its own cost, and every surface shows it — **DONE** | 45m | t005 |
 | [t007](done/t007.md) | Render parity (Devin) — **DONE** | 30m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 20m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
-| [t010](t010.md) | Closeout | 10m | t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t009 |
 
 Total: **10 tasks, about 11h**.
 
@@ -30,7 +30,7 @@ Total: **10 tasks, about 11h**.
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w10/019](../../done/019.md), filed from the agent-automation runs of 2026-11-15..18, promoted by `/loopx w10` on 2026-11-19.
+- **Source:** inbox note [w10/019](../019.md), filed from the agent-automation runs of 2026-11-15..18, promoted by `/loopx w10` on 2026-11-19.
 - **Triage evidence (2026-11-19, `7d71e9cfd`):**
   - **One model per workspace.** `agentsession.PlatformPinnedModel` (`lego/backend/internal/agentsession/devroute.go:311`) returns the one route model for every workspace without its own key. `sessionModel` (`lego/backend/internal/agentsessions/environment.go:649`) refuses any other explicit claude model with `AGENT_SESSION_MODEL_PINNED`, automations resolve through the same path (`resolveCreateModel`, `service.go:648`), and the workspace default is refused with `AGENT_ENVIRONMENT_MODEL_PINNED` (`environment.go:502`). The mint pins `route.model` (`agentsession/model.go:402`) and `ModelRouteEnv` injects it into every sandbox (`devroute.go:344`).
   - **The choice is hidden.** `bex agent models` prints agent, name and readiness only (`lego/cli/internal/agent/config.go:506`); capabilities `agents[]` carry `id`, `label` and `modelKeyReady` (`agentsessions/models.go:122`). The dashboard shows the pinned model read-only in Settings → Agents only (`agent-environment-card.tsx:284`); the composer has no model control.
@@ -60,3 +60,21 @@ Recorded in [ADR090 § Model pin](../../../../docs/ADR090-agent-owned-delivery.m
 
 t006's live check needs production to run the milestone: the newest `chore(deploy): pin platform images to <sha>` must contain `1988962c0`, which also carries `BEX_AGENT_PLATFORM_MODELS` in bex-api's deployment. Nothing else gates it. Then, in the `bex` workspace (CLI or the QA user): `bex agent models` lists the four catalog models with `claude`'s default marked; `bex agent run --agent claude --model anthropic/claude-sonnet-5.5` on a small task completes a turn, its session read reports the model and its model cost (`bex agent cost`) shows that model; `bex agent send --model deepseek/deepseek-v4.1-flash-1017` switches the next turn back; `--model claude-opus-5-5` is refused with `AGENT_SESSION_MODEL_NOT_OFFERED`; the dashboard composer lists the catalog and starts a session on a picked model. Record the session ids here, delete what the check created, then t010 closes the milestone.
 
+## Unblock (2026-11-19, verified evidence)
+
+- **Affected:** t006, then t010.
+- **Finding:** the newest pin on `origin/main`, `d38508f70` (`chore(deploy): pin platform images to 1c63b6fe0a34`), carries `1988962c0` (`git merge-base --is-ancestor 1988962c0 1c63b6fe0a34` holds). On production, `bex-api` runs that pin's digest `sha256:092e0a87…` on 2/2 ready replicas, with `BEX_AGENT_PLATFORM_MODEL=deepseek/deepseek-v4.1-flash-1017` and `BEX_AGENT_PLATFORM_MODELS=anthropic/claude-haiku-5.5,anthropic/claude-sonnet-5.5,anthropic/claude-opus-5.5`.
+- **Remaining gates:** none. Next: t006's live check in the `bex` workspace as the Gate section describes, then t010.
+
+## Live check (t006, production, 2026-11-19)
+
+Workspace `bex` (`tea-d98210cbbpdc73dcrkvg`), deploy pin `1c63b6fe0a34`. The CLI runs were the owner's login with a `bex` built from `main` at `b23fe4543`, because the newest release, `bex-cli/v0.7.0`, predates `1988962c0`. The dashboard run was the QA user. Usage was read on the read-only standby `bex-db-1` from `agent_model_usage_events`.
+
+1. **`bex agent models`** printed `claude — Claude Code — yes — deepseek/deepseek-v4.1-flash-1017` and then "Models claude can run (--model ID)": `deepseek/deepseek-v4.1-flash-1017 (default)`, `anthropic/claude-haiku-5.5`, `anthropic/claude-sonnet-5.5`, `anthropic/claude-opus-5.5`. `muse` (`muse-spark-1.3-contributor`) and `deepseek` (`~deepseek/deepseek-flash-latest`) each showed their one fixed model. `codex` and `gemini` showed "the provider's default" and needed the workspace's own key.
+2. **A non-default model runs and is metered at its own cost.** `bex agent run --agent claude --model anthropic/claude-sonnet-5.5 --max-spend 1 --wait` started `ags-dbvlkp39f6kc73d4acu0`, and its turn succeeded at 20:22Z. The session read reported `agentConfig.model: anthropic/claude-sonnet-5.5`, and the agent's `echo $ANTHROPIC_MODEL` printed `anthropic/claude-sonnet-5.5`. `bex agent cost` showed turn 1 at $0.15 over 2 requests, model `anthropic/claude-sonnet-5.5`. The 2 usage events record that model with `cost_source = reported`: upstream 111 910 µ$ and price 145 482 µ$, which is × 1.3000.
+3. **A message switches the next turn back.** `bex agent send ags-dbvlkp39f6kc73d4acu0 --model deepseek/deepseek-v4.1-flash-1017 --wait` succeeded. The session read then reported `deepseek/deepseek-v4.1-flash-1017`, and `echo $ANTHROPIC_MODEL` printed it. `bex agent cost` showed turn 2 at $0.01 over 3 requests, model `deepseek/deepseek-v4.1-flash-1017`. Its 3 events record that model at its own reported cost: upstream 4 320 µ$ and price 5 616 µ$, which is × 1.3000. Turn 1 still showed the sonnet model.
+4. **A model outside the catalog is refused.** `bex agent run --model claude-opus-5-5` exited 1 with `400 AGENT_SESSION_MODEL_NOT_OFFERED`, and the error listed the four offered ids. No session was created; `bex agent list` shows none. `bex agent send <id> --model claude-opus-5-5` was refused the same way.
+5. **The dashboard composer.** On `/agents` in the `bex` workspace, the composer's Model control listed the four catalog models, with `deepseek/deepseek-v4.1-flash-1017 (default)` selected. Picking `anthropic/claude-haiku-5.5` and starting the session created `ags-dbvllsp0rfcc73dnr740`. Its turn succeeded and printed `anthropic/claude-haiku-5.5`, and the session header's "Model: anthropic/claude-haiku-5.5" and the steering composer both showed it. Its 3 usage events record `anthropic/claude-haiku-5.5` with `cost_source = reported`: upstream 6 048 µ$ and price 7 862 µ$, which is × 1.2999 because each request is rounded half-up.
+6. **Observation (cosmetic, not filed).** At a 1000 px viewport, the composer's model chip shows `claude-haiku-…`, truncated, while the option list shows each full id.
+
+**Cleanup.** Both sessions were deleted (`bex agent get` now returns 404 `AGENT_SESSION_NOT_FOUND`). The QA user's dashboard workspace was set back to `bex-canary`, and its Kratos session was logged out. The check cost $0.16 of platform model spend at price.
