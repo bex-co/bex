@@ -1,6 +1,6 @@
 # w8 · m460 — A static site's first deploy goes live when a publish setting is saved during its build, and an IP rule saved meanwhile takes effect
 
-**Worker:** worker8 **Goal:** saving a static site's publish directory or root directory while its first deploy builds no longer hangs that deploy for ~21 minutes and fails it with a health-gate message. The deploy goes live on the settings it started with, and an IP rule saved in the meantime blocks within seconds, as Render's do. **Status:** todo (t001–t007 done; production pin `4b2cebd0bd03` carries the fix `bc06052a5`; t008 replays the definition of done on production)
+**Worker:** worker8 **Goal:** saving a static site's publish directory or root directory while its first deploy builds no longer hangs that deploy for ~21 minutes and fails it with a health-gate message. The deploy goes live on the settings it started with, and an IP rule saved in the meantime blocks within seconds, as Render's do. **Status:** done (the definition of done passed on production pin `4b2cebd0bd03`, 2026-11-19; follow-up w8/339)
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | Render parity — **DONE**                                                                                                                    | 20m | t004       |
 | t006 | Simplify — **DONE**                                                                                                                         | 15m | t005       |
 | t007 | Test coverage — **DONE**                                                                                                                    | 30m | t005       |
-| t008 | Closeout                                                                                                                         | 15m | t007       |
+| t008 | Closeout — **DONE** | 15m | t007 |
 
 ## Definition of done
 
@@ -144,3 +144,26 @@ t001–t007 shipped together (`fix(operator): … (w8/m460 t001–t007)`). Only 
 - **Finding:** the newest pin on `origin/main`, `19faf35f3` (`chore(deploy): pin platform images to 4b2cebd0bd03`, 2026-11-19 09:13Z), contains the fix: `git merge-base --is-ancestor bc06052a5 4b2cebd0bd03` holds. Its `deploy.yml` run 44490624602 finished green. The next roll waits for that pin to turn 6 hours old (about 15:13 UTC).
 - **Status:** pending verification. A deployed operator is not proof that the definition of done holds on production.
 - **Next:** t008 replays the definition of done's five steps as the QA user in `bex-canary` with bex CLI v0.7.0, records each command and answer here, deletes every fixture by ID, and closes the milestone.
+
+## Production replay (t008, 2026-11-19)
+
+Production pin `4b2cebd0bd03` (carries `bc06052a5`), bex CLI v0.7.0 (Render CLI v2.36.0), the QA user's human device login, `bex-canary` (`tea-daif693dqjvc73e7as3g`, Scale). Run nonce `d623`, 09:44–09:57 UTC. Every site was created with the definition of done's `bex services create --type static_site … --publish-directory out --build-command 'mkdir -p out out2 && …' --confirm -o json`, and every save ran `bex services update <id> … --confirm -o json` while the deploy row read `build_in_progress`.
+
+**Steps 1–2.** Both first deploys went `live` in about 3–4.5 minutes, with phase `Running`:
+
+- **A** (`qa-20261119-d623-pp`, `srv-dbvc9u7h83kc738vm1dg`). The build log read `==> Building from https://github.com/octocat/Spoon-Knife@d0dd1f6` at 09:44:27, and `--publish-directory out2` was saved at 09:44:29. The deploy went `live` at 09:48:52, 4m28s after create, on `rev-1`, and `/marker.txt` answered `m-out`. GraphQL read `publishPath: "out2"`, `undeployedChanges: true`, reason `saved`. That record (snapshot taken, the saved directory waits) matches what was served. `bex deploys create <id> --wait` then went `live` in 2m48s (`rev-3`), `/marker.txt` answered `m-out2`, and `undeployedChanges` read `false`.
+- **B** (`qa-20261119-d623-rd`, `srv-dbvc9ufh83kc738vm1fg`). `--root-directory sub` was saved at 09:44:32 and `''` at 09:44:33. The deploy went `live` at 09:47:29 (3m04s) on `rev-1`, `/marker.txt` answered `m-out`, and there was one deploy row and no rebuild. GraphQL read `undeployedChanges: true`, reason `saved`, though nothing differs from what is served. That false notice is filed as [w8/339](../../339.md): `SetRootDir` bumps `spec.restartedAt`, and `staticSaveWaits` compares the full release identity.
+
+**Step 3.** C (`qa-20261119-d623-ipp`, `srv-dbvc9v0nl4hs73cv7pmg`) saved `--ip-allow-list 'cidr=203.0.113.0/24,description=doc' --publish-directory out2` at 09:44:32, mid-build. The first probe, 1 s later, got `403 Forbidden` from outside the range, and every probe through `update_in_progress` did too. The deploy went `live` at 09:47:25 (2m57s), and `/` and `/marker.txt` still answered `403`.
+
+**Step 4 (controls).**
+
+- No mid-build save: D (`srv-dbvcc97h83kc738vm1lg`) went `live` (4m14s, `Running`, `m-out`, `undeployedChanges: false`).
+- IP rule only, 20 s into the build: E (`srv-dbvcc9onl4hs73cv7pqg`) answered `403` at the first probe after the save, went `live` (2m41s), and answered `403` afterwards.
+- Rename only, 20 s into the build: F (`srv-dbvcca0nl4hs73cv7psg`) went `live`, `Running`, `undeployedChanges: false`.
+- A non-first deploy: D's `bex deploys create`, then a root-directory set-and-clear 15–20 s into its build, went `live` in 2m46s on `rev-2`, `Running`. It also reads `saved` ([w8/339](../../339.md)).
+- A native web service: G (`srv-dbvcdcgnl4hs73cv7pv0`, Node, `render-examples/express-hello-world`, free plan) took a root-directory set-and-clear 15 s into its first build. It went `live` in 4m05s, `Running`, `/` answered `200`, and `undeployedChanges` read `false`.
+
+**Surfaces.** For A, B and C, REST `GET /v1/services/<id>/deploys` and MCP `list_deploys` returned the same rows and statuses: A `[live, deactivated]`, B and C `[live]`. The REST service read's `publishPath` agreed with GraphQL. The dashboard was not driven, because this host has no browser; it reads the same GraphQL fields (t005).
+
+**Step 5.** All seven fixtures were deleted by ID with `bex services delete <id> --confirm` (09:57:26–36, exit 0). At 09:57:46, REST detail and each site's URL answered `404` for all seven, and the workspace list no longer named them. The CLI session was logged out and the Kratos session revoked.
