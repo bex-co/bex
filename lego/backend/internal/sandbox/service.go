@@ -1075,7 +1075,8 @@ func NewAgentSessionLifecycle(service *Service) *AgentSessionLifecycle {
 }
 
 // DefaultAgentTemplate is the template an agent sandbox that names none
-// runs on.
+// runs on, and a session's when its workspace sets no default template of
+// its own (w10/m519).
 const DefaultAgentTemplate = "agent"
 
 // AgentTemplate is a template an agent session can name
@@ -1091,11 +1092,23 @@ func quantity(q string) resource.Quantity {
 	return parsed
 }
 
+// Cores is t's CPU limit in cores (2, or 0.5 for "500m").
+func (t AgentTemplate) Cores() float64 {
+	cpu := quantity(t.CPU)
+	return cpu.AsApproximateFloat64()
+}
+
+// MemoryGB is t's memory limit in GB, binary as Kubernetes counts it ("8Gi"
+// is 8).
+func (t AgentTemplate) MemoryGB() float64 {
+	memory := quantity(t.Memory)
+	return float64(memory.Value()) / (1 << 30)
+}
+
 // Size words t's limits for a person: "4 CPU, 8 GB".
 func (t AgentTemplate) Size() string {
-	cpu, memory := quantity(t.CPU), quantity(t.Memory)
-	return strconv.FormatFloat(cpu.AsApproximateFloat64(), 'f', -1, 64) + " CPU, " +
-		strconv.FormatFloat(float64(memory.Value())/(1<<30), 'f', -1, 64) + " GB"
+	return strconv.FormatFloat(t.Cores(), 'f', -1, 64) + " CPU, " +
+		strconv.FormatFloat(t.MemoryGB(), 'f', -1, 64) + " GB"
 }
 
 // compareMemory orders t and u by the memory their sandboxes get.

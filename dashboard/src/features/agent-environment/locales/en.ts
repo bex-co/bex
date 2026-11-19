@@ -130,7 +130,8 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelPlatformDefault": {
     message: "Platform default ({model})",
-    description: "Default model picker — no default: the platform catalog's first model (w10/m516)",
+    description:
+      "Default model picker — no default: the platform catalog's first model (w10/m516)",
   },
   "agentEnvironment.modelCatalogHelp": {
     message:
@@ -144,7 +145,22 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.modelNotOfferedError": {
     message:
       "The platform model doesn't offer {model}. Pick one from the list.",
-    description: "Server refusal: the default model is not in the platform catalog (w10/m516)",
+    description:
+      "Server refusal: the default model is not in the platform catalog (w10/m516)",
+  },
+  "agentEnvironment.templateLabel": {
+    message: "Default sandbox",
+    description: "Label of the default sandbox template picker (w10/m519)",
+  },
+  "agentEnvironment.templateHelp": {
+    message:
+      "New sessions and automations that name no sandbox run on this one. It applies to sessions started afterwards; members can still pick another for a session.",
+    description: "Help under the default sandbox template picker (w10/m519)",
+  },
+  "agentEnvironment.templateInvalidError": {
+    message: "{template} isn't a sandbox template. Pick one of: {templates}.",
+    description:
+      "Server refusal: the default sandbox template is not a registered one; {templates} lists those (w10/m519)",
   },
   "agentEnvironment.tierInvalid": {
     message: "That network access option isn't supported.",

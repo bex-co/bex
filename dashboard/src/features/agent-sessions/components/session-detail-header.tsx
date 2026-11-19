@@ -14,6 +14,7 @@ import {
   Loader2,
   MoreHorizontal,
   PackageCheck,
+  Server,
   Tag,
   Terminal,
   Trash2,
@@ -33,6 +34,8 @@ import { CopyButton } from "@/common/components/copy-button";
 import { SessionFilesButton } from "@/features/agent-sessions/components/session-files-sheet";
 import { SessionModelCost } from "@/features/agent-sessions/components/session-model-cost";
 import { shortModel } from "@/features/agent-sessions/lib/models";
+import { namedTemplateLabel } from "@/features/agent-sessions/lib/templates";
+import { useAgentSessionCapabilities } from "@/features/agent-sessions/hooks/use-agent-session-capabilities";
 import { SessionSecrets } from "@/features/agent-sessions/components/session-secrets";
 import {
   Tooltip,
@@ -76,7 +79,8 @@ export interface SessionDetailHeaderProps {
  * back-to-sessions link, the phase chip + the session's derived name (w1/m90 —
  * its repo, or its prompt when the session is repo-less), a compact meta row
  * (the wait for a sandbox machine while the pool is full (w10/m497), branch
- * when there is one, ticking duration, turns, model cost — ADR091 D6),
+ * when there is one, ticking duration, turns, the model and the sandbox
+ * template it runs on (w10/m516, w10/m519), model cost — ADR091 D6),
  * an inline draft-PR badge `#N`, the Open in Zed action (w2/m65), a "…"
  * overflow menu (open PR), and cancel-with-confirm. The duration ticks live
  * while the session is non-terminal; once terminal it pins to the session's
@@ -285,6 +289,14 @@ export function SessionDetailHeader({
               <Cpu aria-hidden className="size-3" />
               {shortModel(session.agentConfig.model)}
             </span>
+          ) : null}
+          {/* The sandbox template it runs on (w10/m519): bex-api records the
+              resolved one, so every session names it. */}
+          {session.agentConfig.template ? (
+            <SessionSandbox
+              template={session.agentConfig.template}
+              ownerId={session.ownerId}
+            />
           ) : null}
           <SessionModelCost session={session} />
           {session.automationId ? (
@@ -636,6 +648,38 @@ function CancelButton({
       </TooltipTrigger>
       <TooltipContent>{reason}</TooltipContent>
     </Tooltip>
+  );
+}
+
+/**
+ * The session's sandbox template with its size (w10/m519), the size read from
+ * the workspace's template list; a template the list no longer carries (one
+ * retired since) shows its name alone.
+ */
+function SessionSandbox({
+  template,
+  ownerId,
+}: {
+  template: string;
+  ownerId: string;
+}) {
+  const { t, i18n } = useTranslations();
+  const { capabilities } = useAgentSessionCapabilities(ownerId);
+  const label = namedTemplateLabel(
+    template,
+    capabilities?.sandbox.templates ?? [],
+    t,
+    i18n.language,
+  );
+  return (
+    <span
+      className="inline-flex items-center gap-1 font-mono"
+      title={t("agentSessions.metaSandbox", { template: label })}
+      data-testid="session-sandbox"
+    >
+      <Server aria-hidden className="size-3" />
+      {label}
+    </span>
   );
 }
 

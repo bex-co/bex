@@ -241,7 +241,8 @@ func lostSandboxReason(readErr error) string {
 
 // lostSessionSandboxReason is lostSandboxReason for a session's sandbox. One
 // killed for memory also names its template and the next larger one, which a
-// new session can ask for (w10/017).
+// new session can ask for (w10/017) in the dashboard composer or the CLI
+// (w10/m519).
 func (c *Completer) lostSessionSandboxReason(record store.AgentSession, readErr error) string {
 	reason := lostSandboxReason(readErr)
 	if termination, _ := sandbox.TerminationOf(readErr); !termination.OutOfMemory() {
@@ -260,7 +261,7 @@ func (c *Completer) lostSessionSandboxReason(record store.AgentSession, readErr 
 	had := templates[i]
 	for _, larger := range templates[i+1:] {
 		if larger.HasMoreMemory(had) {
-			return fmt.Sprintf("%s on the %s template (%s); start a new session on a larger one: %s (%s), e.g. bex agent run --template %s",
+			return fmt.Sprintf("%s on the %s template (%s); start a new session on a larger one, %s (%s): pick it as the Sandbox in the dashboard's new-session composer, or run bex agent run --template %s",
 				reason, had.Name, had.Size(), larger.Name, larger.Size(), larger.Name)
 		}
 	}

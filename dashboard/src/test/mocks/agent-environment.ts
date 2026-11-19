@@ -15,6 +15,10 @@ export function agentEnvironment(
     customHosts: [],
     defaultModel: null,
     models: [],
+    // The sandbox templates (w10/m519): none listed, so Settings draws no
+    // default-sandbox control unless a test lists some.
+    defaultTemplate: "agent",
+    templates: [],
     modelKeySet: false,
     modelSource: AgentModelSource.Platform,
     registryHosts: [],

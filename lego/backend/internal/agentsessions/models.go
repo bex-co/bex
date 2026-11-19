@@ -149,14 +149,16 @@ type GitHubReadinessView struct {
 	InstallURL   string `json:"installUrl,omitempty"`
 }
 
-// Capabilities is the mobile-safe composer/readiness projection (w11/m6 t001).
-// It reveals only what a phone needs to compose and gate a fire-and-forget
-// session — selectable agent profiles and readiness booleans — and deliberately
-// carries none of the raw AgentConfig secret surface (model endpoint, template,
-// egress) nor any credential. Enabled is false when the feature is not wired;
-// Ready folds the two provisioning gates (GitHub App + BYO model key) so the
-// composer can present a single submit affordance with desktop-configuration
-// callouts for whatever is missing.
+// Capabilities is the composer/readiness projection (w11/m6 t001). It reveals
+// what a client needs to compose and gate a session — selectable agent
+// profiles, the agent sandbox templates a session may name (w10/m519: their
+// names and sizes, never an image or an internal sandbox template) and
+// readiness booleans — and deliberately carries none of the raw AgentConfig
+// secret surface (model endpoint, egress) nor any credential. Enabled is false
+// when the feature is not wired; Ready folds the two provisioning gates
+// (GitHub App + BYO model key) so the composer can present a single submit
+// affordance with desktop-configuration callouts for whatever is missing.
+// TemplateOffer is the agent environment's (Environment).
 type Capabilities struct {
 	Enabled       bool                `json:"enabled"`
 	GitHub        GitHubReadinessView `json:"github"`
@@ -164,6 +166,7 @@ type Capabilities struct {
 	Agents        []AgentProfile      `json:"agents"`
 	Ready         bool                `json:"ready"`
 	Attachments   AttachmentLimits    `json:"attachments"`
+	TemplateOffer
 }
 
 // agentProfiles is the fixed, secret-free presentation metadata for the

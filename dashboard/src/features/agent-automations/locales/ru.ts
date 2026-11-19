@@ -476,6 +476,10 @@ const ruAgentAutomations: Record<string, TranslationEntry> = {
     message: "Модель",
     description: "Automation form — model field label (w10/m516)",
   },
+  "agentAutomations.field.template": {
+    message: "Песочница",
+    description: "Automation form — sandbox template field label (w10/m519)",
+  },
   "agentAutomations.field.spendLimit": {
     message: "Лимит расходов на запуск (USD)",
     description: "Form field label",
@@ -600,6 +604,11 @@ const ruAgentAutomations: Record<string, TranslationEntry> = {
       "Модель для каждого запуска. Оставьте значение по умолчанию, чтобы следовать настройке рабочего пространства.",
     description: "Automation form — model field help",
   },
+  "agentAutomations.help.template": {
+    message:
+      "Машина, которую получает песочница каждого запуска. Значение по умолчанию для рабочего пространства берётся из «Настройки → Агенты» при каждом запуске.",
+    description: "Automation form — sandbox template field help (w10/m519)",
+  },
   "agentAutomations.help.emailNotifications": {
     message:
       "О каких запусках вам приходят письма. О приостановке платформой — всегда.",
@@ -629,6 +638,11 @@ const ruAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.placeholder.model": {
     message: "По умолчанию для рабочего пространства",
     description: "Automation form — empty free-form model field",
+  },
+  "agentAutomations.placeholder.template": {
+    message: "По умолчанию для рабочего пространства",
+    description:
+      "Automation form — the sandbox field while no template list is available: the workspace default",
   },
   "agentAutomations.summary": {
     message: "Запуски: {schedule}",

@@ -9,7 +9,10 @@ import {
 import userEvent from "@testing-library/user-event";
 import { NewSessionComposer } from "@/features/agent-sessions/components/new-session-composer";
 import { AgentSessionError } from "@/features/agent-sessions/lib/errors";
-import type { AgentSessionView } from "@/features/agent-sessions/types";
+import type {
+  AgentSandboxTemplateView,
+  AgentSessionView,
+} from "@/features/agent-sessions/types";
 import { agentSessionView } from "@/test/mocks/agent-session";
 import { agentEnvironment } from "@/test/mocks/agent-environment";
 import { mockCapabilities } from "@/test/mocks/capabilities";
@@ -103,6 +106,10 @@ const capabilitiesState = {
     agents: ["claude", "gemini", "codex"] as string[] | undefined,
     modelKeyReadyAgents: ["claude", "gemini", "codex", "muse"],
     models: {} as Record<string, { model: string | null; models: string[] }>,
+    sandbox: {
+      defaultTemplate: "agent",
+      templates: [] as AgentSandboxTemplateView[],
+    },
     github: {
       connected: true,
     },
@@ -215,6 +222,10 @@ beforeEach(() => {
   ];
   capabilitiesState.capabilities.agents = ["claude", "gemini", "codex"];
   capabilitiesState.capabilities.models = {};
+  capabilitiesState.capabilities.sandbox = {
+    defaultTemplate: "agent",
+    templates: [],
+  };
   capabilitiesState.capabilities.github.connected = true;
   capabilitiesState.loading = false;
   capabilitiesState.error = undefined;
@@ -1507,6 +1518,81 @@ describe("NewSessionComposer agent model spend (ADR091 D6)", () => {
       await user.click(screen.getByRole("button", { name: "Start session" }));
       await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
       expect(create.mock.calls[0][0]).not.toHaveProperty("model");
+    });
+  });
+
+  // w10/m519: the composer offers the workspace's sandbox templates with their
+  // sizes, the workspace default preselected, and the session starts on the
+  // one picked. The list is the server's: a third, made-up template proves no
+  // name or size is built in.
+  describe("sandbox", () => {
+    const templates: AgentSandboxTemplateView[] = [
+      { name: "agent", cpu: 2, memoryGb: 4 },
+      { name: "agent-4c-8g", cpu: 4, memoryGb: 8 },
+      { name: "agent-8c-16g", cpu: 8, memoryGb: 16 },
+    ];
+    beforeEach(() => {
+      capabilitiesState.capabilities.sandbox = {
+        defaultTemplate: "agent-4c-8g",
+        templates,
+      };
+    });
+    const picker = () => screen.getByRole("combobox", { name: "Sandbox" });
+
+    it("lists the server's templates with their sizes and preselects the workspace default", async () => {
+      const user = userEvent.setup();
+      render(<NewSessionComposer />);
+      expect(picker()).toHaveTextContent("agent-4c-8g");
+      // The width the /agents skeleton holds for it (detail-skeletons.tsx).
+      expect(picker()).toHaveClass("h-8", "w-[9.5rem]");
+      await user.click(picker());
+      expect(
+        screen.getAllByRole("option").map((option) => option.textContent),
+      ).toEqual([
+        "agent · 2 CPU, 4 GB",
+        "agent-4c-8g · 4 CPU, 8 GB (default)",
+        "agent-8c-16g · 8 CPU, 16 GB",
+      ]);
+    });
+
+    it("starts the session on the picked template", async () => {
+      const user = userEvent.setup();
+      render(<NewSessionComposer />);
+      await user.click(picker());
+      await user.click(
+        screen.getByRole("option", { name: "agent-8c-16g · 8 CPU, 16 GB" }),
+      );
+      expect(picker()).toHaveTextContent("agent-8c-16g");
+      await typeTask(user);
+      await user.click(screen.getByRole("button", { name: "Start session" }));
+      await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+      expect(create.mock.calls[0][0]).toMatchObject({
+        agent: "claude",
+        template: "agent-8c-16g",
+      });
+    });
+
+    it("leaves the template to the server while the default stays picked", async () => {
+      const user = userEvent.setup();
+      render(<NewSessionComposer />);
+      await user.click(picker());
+      await user.click(screen.getByRole("option", { name: /^agent · 2 CPU/ }));
+      await user.click(picker());
+      await user.click(screen.getByRole("option", { name: /\(default\)$/ }));
+      expect(picker()).toHaveTextContent("agent-4c-8g");
+      await typeTask(user);
+      await user.click(screen.getByRole("button", { name: "Start session" }));
+      await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+      expect(create.mock.calls[0][0]).not.toHaveProperty("template");
+    });
+
+    it("draws no control when the server lists no templates", () => {
+      capabilitiesState.capabilities.sandbox = {
+        defaultTemplate: "agent",
+        templates: [],
+      };
+      render(<NewSessionComposer />);
+      expect(screen.queryByRole("combobox", { name: "Sandbox" })).toBeNull();
     });
   });
 });

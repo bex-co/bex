@@ -117,6 +117,18 @@ describe("toAutomationInput", () => {
     expect(input.template?.maxSpendUSD).toBeNull();
   });
 
+  // w10/m519: a named template is sent; "" names none, so each run takes the
+  // workspace default in force when it fires.
+  it("sends the chosen sandbox template and none for the workspace default", () => {
+    expect(
+      toAutomationInput(valid({ template: "agent-8c-16g" })).template
+        ?.agentConfig,
+    ).toEqual({ agent: "claude", template: "agent-8c-16g" });
+    expect(
+      toAutomationInput(valid({ template: "" })).template?.agentConfig,
+    ).toEqual({ agent: "claude" });
+  });
+
   it("sends ifVersion on an update", () => {
     expect(toAutomationInput(valid(), { ifVersion: 4 }).ifVersion).toBe(4);
     expect(toAutomationInput(valid()).ifVersion).toBeUndefined();
@@ -182,6 +194,8 @@ describe("toAutomationInput", () => {
     } as unknown as AgentAutomationFieldsFragment;
     const values = valuesFromAutomation(stored);
     expect(values.agent).toBe("codex");
+    // A template that names no sandbox follows the workspace default.
+    expect(values.template).toBe("");
     expect(values.spendLimit).toBe("2.5");
     expect(values.schedule.weekdays).toEqual(["mon", "wed"]);
     expect(values.emailNotifications).toBe("on_success");
@@ -265,6 +279,18 @@ describe("mapAutomationError (server refusals placed on their field)", () => {
         fallback,
       ).target,
     ).toBe("repo");
+    // An unknown sandbox template (w10/m519), however the server names it.
+    for (const field of [
+      "agentConfig.template",
+      "template.agentConfig.template",
+    ]) {
+      expect(
+        mapAutomationError(
+          codedGraphQLError("AGENT_SESSION_INPUT_INVALID", { field }),
+          fallback,
+        ).target,
+      ).toBe("template");
+    }
   });
 
   it("places a refused email setting on the email notifications field", () => {

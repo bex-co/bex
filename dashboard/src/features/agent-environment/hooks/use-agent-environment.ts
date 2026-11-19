@@ -40,13 +40,15 @@ export function useAgentEnvironment(
   const update = useCallback(
     async (input: AgentEnvironmentInput) => {
       if (ownerId == null) throw new Error("no workspace selected");
-      // The capabilities query carries the composer's agent list and each
-      // agent's model-key readiness, so a key or availability change
-      // refreshes it.
+      // The capabilities query carries the composer's agent list, each
+      // agent's model-key readiness and default model, and the default
+      // sandbox template, so a change of any of them refreshes it.
       const capabilitiesChange =
         input.modelApiKey != null ||
         input.clearModelApiKey === true ||
-        input.enabledAgents != null;
+        input.enabledAgents != null ||
+        input.defaultModel != null ||
+        input.defaultTemplate != null;
       const result = await mutate({
         variables: { ownerId, input },
         refetchQueries: capabilitiesChange ? [CAPABILITIES_QUERY] : undefined,

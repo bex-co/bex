@@ -467,6 +467,10 @@ const zhAgentAutomations: Record<string, TranslationEntry> = {
     message: "模型",
     description: "Automation form — model field label (w10/m516)",
   },
+  "agentAutomations.field.template": {
+    message: "沙箱",
+    description: "Automation form — sandbox template field label (w10/m519)",
+  },
   "agentAutomations.field.spendLimit": {
     message: "每次运行的花费上限（美元）",
     description: "Form field label",
@@ -586,6 +590,11 @@ const zhAgentAutomations: Record<string, TranslationEntry> = {
     message: "每次运行使用的模型。保持默认即跟随工作区设置。",
     description: "Automation form — model field help",
   },
+  "agentAutomations.help.template": {
+    message:
+      "每次运行的沙箱所用的机器。工作区默认值在每次运行时跟随“设置 → 智能体”。",
+    description: "Automation form — sandbox template field help (w10/m519)",
+  },
   "agentAutomations.help.emailNotifications": {
     message: "哪些运行会给你发邮件。平台暂停此自动化时总会发送。",
     description: "Email notifications field help",
@@ -613,6 +622,11 @@ const zhAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.placeholder.model": {
     message: "工作区默认",
     description: "Automation form — empty free-form model field",
+  },
+  "agentAutomations.placeholder.template": {
+    message: "工作区默认",
+    description:
+      "Automation form — the sandbox field while no template list is available: the workspace default",
   },
   "agentAutomations.summary": {
     message: "运行计划：{schedule}",

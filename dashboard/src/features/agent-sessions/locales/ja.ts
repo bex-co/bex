@@ -236,6 +236,34 @@ const jaAgentSessions: Record<string, TranslationEntry> = {
     message: "モデル: {model}",
     description: "Session header — tooltip of the model the session runs",
   },
+  "agentSessions.sandboxLabel": {
+    message: "サンドボックス",
+    description: "Composer — sandbox template select label (w10/m519)",
+  },
+  "agentSessions.sandboxSize": {
+    message: "CPU {cpu} コア、メモリ {memory} GB",
+    description:
+      "Sandbox template size: CPU cores and memory in GB, numbers already formatted",
+  },
+  "agentSessions.sandboxOption": {
+    message: "{name} · {size}",
+    description: "Sandbox template choice: its name, then its size",
+  },
+  "agentSessions.sandboxDefaultOption": {
+    message: "{template}（デフォルト）",
+    description:
+      "Sandbox list — the template a session runs on when it names none (the workspace default)",
+  },
+  "agentSessions.sandboxWorkspaceDefault": {
+    message: "ワークスペースのデフォルト（{template}）",
+    description:
+      "Automation sandbox choice — follow the workspace default at each run; {template} is the default now",
+  },
+  "agentSessions.metaSandbox": {
+    message: "サンドボックス: {template}",
+    description:
+      "Tooltip of the sandbox template a session runs on, with its size",
+  },
   "agentSessions.agent.claude": {
     message: "Claude",
     description: "Composer — agent option: claude",
@@ -556,7 +584,8 @@ const jaAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.queueModel": {
     message: "セッションを {model} に切り替えます",
-    description: "Queued message — the model its turn switches the session to (w10/m516)",
+    description:
+      "Queued message — the model its turn switches the session to (w10/m516)",
   },
   "agentSessions.queueSendNow": {
     message: "今すぐ送信",
@@ -695,7 +724,8 @@ const jaAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.errors.AGENT_SESSION_MODEL_NOT_OFFERED": {
     message:
       "このワークスペースのプラットフォームモデルでは {model} を利用できません。モデル一覧から選んでください。",
-    description: "Mapped message for AGENT_SESSION_MODEL_NOT_OFFERED (w10/m516)",
+    description:
+      "Mapped message for AGENT_SESSION_MODEL_NOT_OFFERED (w10/m516)",
   },
   "agentSessions.errors.AGENT_SESSION_MODEL_PINNED": {
     message: "このエージェントは {pinnedModel} のみを使用します。",

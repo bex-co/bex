@@ -21,6 +21,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -344,18 +345,42 @@ func writeSkillVersions(w io.Writer, versions []skillVersion) {
 	_ = tw.Flush()
 }
 
+// sandboxTemplate is an agent sandbox template a session can name with
+// --template, as bex-api lists it (w10/m519).
+type sandboxTemplate struct {
+	Name     string  `json:"name"`
+	CPU      float64 `json:"cpu"`
+	MemoryGB float64 `json:"memoryGb"`
+}
+
+// size words t's limits: "4 CPU, 8 GB".
+func (t sandboxTemplate) size() string {
+	return strconv.FormatFloat(t.CPU, 'f', -1, 64) + " CPU, " + strconv.FormatFloat(t.MemoryGB, 'f', -1, 64) + " GB"
+}
+
+// templateSize is name and its size when templates list it: "agent-4c-8g
+// (4 CPU, 8 GB)".
+func templateSize(name string, templates []sandboxTemplate) string {
+	if i := slices.IndexFunc(templates, func(t sandboxTemplate) bool { return t.Name == name }); i >= 0 {
+		return name + " (" + templates[i].size() + ")"
+	}
+	return name
+}
+
 // agentEnvironment is the workspace agent environment, as text output needs it.
 type agentEnvironment struct {
-	NetworkTier                   string   `json:"networkTier"`
-	CustomHosts                   []string `json:"customHosts"`
-	DefaultModel                  *string  `json:"defaultModel"`
-	Models                        []string `json:"models"`
-	ModelSource                   string   `json:"modelSource"`
-	ModelKeySet                   bool     `json:"modelKeySet"`
-	AgentModelMonthlySpendCapUSD  *float64 `json:"agentModelMonthlySpendCapUsd"`
-	AgentModelSpendMonthToDateUSD *float64 `json:"agentModelSpendMonthToDateUsd"`
-	TrustTier                     *string  `json:"trustTier"`
-	EnabledAgents                 []string `json:"enabledAgents"`
+	NetworkTier                   string            `json:"networkTier"`
+	CustomHosts                   []string          `json:"customHosts"`
+	DefaultModel                  *string           `json:"defaultModel"`
+	Models                        []string          `json:"models"`
+	DefaultTemplate               string            `json:"defaultTemplate"`
+	Templates                     []sandboxTemplate `json:"templates"`
+	ModelSource                   string            `json:"modelSource"`
+	ModelKeySet                   bool              `json:"modelKeySet"`
+	AgentModelMonthlySpendCapUSD  *float64          `json:"agentModelMonthlySpendCapUsd"`
+	AgentModelSpendMonthToDateUSD *float64          `json:"agentModelSpendMonthToDateUsd"`
+	TrustTier                     *string           `json:"trustTier"`
+	EnabledAgents                 []string          `json:"enabledAgents"`
 	AgentDataUse                  []struct {
 		Agent          string     `json:"agent"`
 		AcknowledgedAt *time.Time `json:"acknowledgedAt"`
@@ -366,7 +391,7 @@ type agentEnvironment struct {
 func envCommand(d deps) *cobra.Command {
 	root := &cobra.Command{
 		Use:   "env",
-		Short: "Show the workspace's agent environment: network, default model, spend cap, agents",
+		Short: "Show the workspace's agent environment: network, default model and sandbox, spend cap, agents",
 		Args:  cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			return workspaceShow(d, c, http.MethodGet, nil, nil, "read the agent environment", writeEnvironment, "agent-environment")
@@ -374,6 +399,7 @@ func envCommand(d deps) *cobra.Command {
 	}
 	var (
 		tier, model, spendCap string
+		template              string
 		hosts, agents, acks   []string
 		noHosts, keyStdin     bool
 		clearKey              bool
@@ -385,7 +411,10 @@ func envCommand(d deps) *cobra.Command {
 			"plan's cap). The workspace's own model key is read from stdin or a hidden\n" +
 			"prompt with --model-key-stdin, never from an argument. --agents replaces the\n" +
 			"agents members can start sessions with; an agent whose model provider may\n" +
-			"train on session data also needs --acknowledge-data-use naming it.",
+			"train on session data also needs --acknowledge-data-use naming it.\n" +
+			"--default-template sets the sandbox template sessions and automation runs\n" +
+			"that name none run on (`bex agent models` lists them; \"\" returns to the\n" +
+			"platform's); it applies to sessions created afterwards.",
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			f := c.Flags()
@@ -403,6 +432,9 @@ func envCommand(d deps) *cobra.Command {
 			}
 			if f.Changed("default-model") {
 				patch["defaultModel"] = model
+			}
+			if f.Changed("default-template") {
+				patch["defaultTemplate"] = template
 			}
 			if f.Changed("spend-cap") {
 				if spendCap == spendCapPlanDefault {
@@ -442,6 +474,7 @@ func envCommand(d deps) *cobra.Command {
 	f.StringArrayVar(&hosts, "custom-host", nil, "a host sessions may reach; repeatable, replaces the list")
 	f.BoolVar(&noHosts, "no-custom-hosts", false, "remove every custom host")
 	f.StringVar(&model, "default-model", "", "the workspace's default model id (\"\" returns to the provider default)")
+	f.StringVar(&template, "default-template", "", "the workspace's default sandbox template (\"\" returns to the platform's; `bex agent models` lists them)")
 	f.StringVar(&spendCap, "spend-cap", "", "monthly agent-model spend cap in USD, or "+spendCapPlanDefault)
 	f.BoolVar(&keyStdin, "model-key-stdin", false, "set the workspace's own model API key, read from stdin")
 	f.BoolVar(&clearKey, "clear-model-key", false, "remove the workspace's own model API key")
@@ -463,6 +496,9 @@ func writeEnvironment(w io.Writer, e agentEnvironment) error {
 	}
 	if len(e.Models) > 0 {
 		tw.row("Models", strings.Join(e.Models, ", "))
+	}
+	if e.DefaultTemplate != "" {
+		tw.row("Default sandbox", templateSize(e.DefaultTemplate, e.Templates))
 	}
 	source := e.ModelSource
 	if e.ModelKeySet {
@@ -513,18 +549,26 @@ type agentCapabilities struct {
 		Model  *string  `json:"model"`
 		Models []string `json:"models"`
 	} `json:"agents"`
+	// Templates are the sandbox templates a session may name, and
+	// DefaultTemplate the one a session that names none runs on (w10/m519).
+	Templates       []sandboxTemplate `json:"templates"`
+	DefaultTemplate string            `json:"defaultTemplate"`
 }
 
 func modelsCommand(d deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "models",
-		Short: "Show the agents this workspace can run, the model each runs and the models it can choose",
+		Short: "Show the agents this workspace can run, the models they can choose and the sandbox templates",
 		Long: "Lists each agent the workspace can start, whether it is ready, and the model\n" +
 			"a session runs when it names none. Where an agent offers a choice of models\n" +
 			"(the platform model catalog), they are listed below the table with the\n" +
 			"default marked. Pick one per session with `bex agent run --model ID`, switch\n" +
 			"a session from its next message with `bex agent send --model ID`, and change\n" +
-			"the workspace default with `bex agent env set --default-model ID`.",
+			"the workspace default with `bex agent env set --default-model ID`.\n\n" +
+			"Then the sandbox templates a session can run on, with their CPU and memory\n" +
+			"and the workspace default marked: pick one per session with\n" +
+			"`bex agent run --template NAME`, and change the default with\n" +
+			"`bex agent env set --default-template NAME`.",
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			return workspaceShow(d, c, http.MethodGet, nil, nil, "read agent capabilities", writeCapabilities, "agent-sessions", "capabilities")
@@ -579,7 +623,19 @@ func writeCapabilities(w io.Writer, caps agentCapabilities) error {
 			_, _ = fmt.Fprintf(w, "  %s\n", m)
 		}
 	}
-	return nil
+	if len(caps.Templates) == 0 {
+		return nil
+	}
+	_, _ = fmt.Fprintln(w, "\nSandbox templates (--template NAME):")
+	tw = newTable(w)
+	for _, t := range caps.Templates {
+		mark := ""
+		if t.Name == caps.DefaultTemplate {
+			mark = " (default)"
+		}
+		_, _ = fmt.Fprintf(tw, "  %s\t%s%s\n", t.Name, t.size(), mark)
+	}
+	return tw.Flush()
 }
 
 // workspaceShow sends one ownerId-addressed request and prints the answer:

@@ -472,6 +472,10 @@ const koAgentAutomations: Record<string, TranslationEntry> = {
     message: "모델",
     description: "Automation form — model field label (w10/m516)",
   },
+  "agentAutomations.field.template": {
+    message: "샌드박스",
+    description: "Automation form — sandbox template field label (w10/m519)",
+  },
   "agentAutomations.field.spendLimit": {
     message: "실행당 지출 한도 (USD)",
     description: "Form field label",
@@ -592,8 +596,14 @@ const koAgentAutomations: Record<string, TranslationEntry> = {
     description: "Spend limit field help",
   },
   "agentAutomations.help.model": {
-    message: "각 실행에서 사용할 모델입니다. 기본값으로 두면 워크스페이스 설정을 따릅니다.",
+    message:
+      "각 실행에서 사용할 모델입니다. 기본값으로 두면 워크스페이스 설정을 따릅니다.",
     description: "Automation form — model field help",
+  },
+  "agentAutomations.help.template": {
+    message:
+      "각 실행의 샌드박스가 받는 머신입니다. 워크스페이스 기본값은 실행할 때마다 설정 → 에이전트를 따릅니다.",
+    description: "Automation form — sandbox template field help (w10/m519)",
   },
   "agentAutomations.help.emailNotifications": {
     message:
@@ -624,6 +634,11 @@ const koAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.placeholder.model": {
     message: "워크스페이스 기본값",
     description: "Automation form — empty free-form model field",
+  },
+  "agentAutomations.placeholder.template": {
+    message: "워크스페이스 기본값",
+    description:
+      "Automation form — the sandbox field while no template list is available: the workspace default",
   },
   "agentAutomations.summary": {
     message: "실행: {schedule}",

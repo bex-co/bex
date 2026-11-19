@@ -31,6 +31,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -38,8 +39,8 @@ import (
 // The workspace agent environment (w10/m17, ADR047 D5 amendment 2026-10-27)
 // is configured once per workspace instead of per session, the way Codex
 // cloud, Claude Code on the web, Devin and Copilot configure theirs: the
-// sandbox network tier, the custom hostnames the `custom` tier opens, and the
-// default model.
+// sandbox network tier, the custom hostnames the `custom` tier opens, the
+// default model and the default sandbox template (w10/m519).
 const (
 	// NetworkTierRegistries (the default, including for every workspace with
 	// no row): GitHub, the gateway hops and the built-in package registries,
@@ -79,6 +80,7 @@ type Environment struct {
 	Models       []string `json:"models"`
 	ModelPinned  bool     `json:"modelPinned"`
 	PinnedModel  *string  `json:"pinnedModel"`
+	TemplateOffer
 	// ModelSource is the credential the workspace's claude sessions use;
 	// ModelKeySet is ModelSource == ModelSourceBYO (environmentView derives
 	// it). The key itself is write-only and never returned by any surface.
@@ -131,7 +133,8 @@ type Environment struct {
 
 // EnvironmentInput is a partial update: an omitted (or null) field keeps its
 // value. CustomHosts replaces the whole list ([] clears it); DefaultModel ""
-// returns to the provider default. AgentModelMonthlySpendCapUSD is the one
+// returns to the provider default and DefaultTemplate "" to the platform's
+// (sandbox.DefaultAgentTemplate). AgentModelMonthlySpendCapUSD is the one
 // exception to "null keeps": an explicit null clears the override back to
 // the plan default, which the wire adapters record in
 // AgentModelMonthlySpendCapSet.
@@ -139,6 +142,7 @@ type EnvironmentInput struct {
 	NetworkTier                    *string   `json:"networkTier,omitempty"`
 	CustomHosts                    *[]string `json:"customHosts,omitempty"`
 	DefaultModel                   *string   `json:"defaultModel,omitempty"`
+	DefaultTemplate                *string   `json:"defaultTemplate,omitempty" jsonschema:"the sandbox template sessions and automation runs that name none run on: one of the environment's templates (\"\" returns to agent); applies to sessions created afterwards"`
 	AgentModelMonthlySpendCapUSD   *float64  `json:"agentModelMonthlySpendCapUsd,omitempty" jsonschema:"monthly agent-model spend cap in USD (admins only), up to 10x the plan default; null returns to the plan default"`
 	ResetAgentModelMonthlySpendCap bool      `json:"resetAgentModelMonthlySpendCap,omitempty" jsonschema:"true returns the spend cap to the plan default"`
 	// ModelAPIKey sets or rotates the workspace's own model provider key.
@@ -372,7 +376,7 @@ func (s *Service) UpdateEnvironment(ctx context.Context, ownerID string, input E
 	if err != nil {
 		return Environment{}, err
 	}
-	patch, err := validateEnvironmentInput(workspaceID, input, byoKey)
+	patch, err := validateEnvironmentInput(workspaceID, input, byoKey, s.agentTemplates())
 	if err != nil {
 		return Environment{}, err
 	}
@@ -480,8 +484,15 @@ func (s *Service) writeModelKey(ctx context.Context, workspaceID, key string, pa
 	return row, nil
 }
 
-func validateEnvironmentInput(workspaceID string, input EnvironmentInput, byoKey bool) (store.AgentEnvironmentPatch, error) {
+func validateEnvironmentInput(workspaceID string, input EnvironmentInput, byoKey bool, templates []sandbox.AgentTemplate) (store.AgentEnvironmentPatch, error) {
 	var patch store.AgentEnvironmentPatch
+	if input.DefaultTemplate != nil {
+		name := strings.TrimSpace(*input.DefaultTemplate)
+		if name != "" && !hasTemplate(templates, name) {
+			return patch, templateRefusal(CodeEnvironmentTemplateInvalid, "defaultTemplate", name, templates)
+		}
+		patch.DefaultTemplate = &name
+	}
 	if input.NetworkTier != nil {
 		switch *input.NetworkTier {
 		case NetworkTierRegistries, NetworkTierCustom, NetworkTierFull:
@@ -574,6 +585,7 @@ func (s *Service) environmentView(row store.AgentEnvironment) Environment {
 		model := row.DefaultModel
 		view.DefaultModel = &model
 	}
+	view.TemplateOffer = s.templateOffer(row)
 	view.Models = []string{}
 	switch models, ok := agentsession.PlatformModels(row.ModelKeySet()); {
 	case row.ModelKeySet():
@@ -615,6 +627,74 @@ func (s *Service) registryHosts() []string {
 		return slices.Clone(s.RegistryHosts)
 	}
 	return sessionegress.DefaultRegistryDomains()
+}
+
+// SandboxTemplate is an agent sandbox template a session can name
+// (agentConfig.template, w10/m519): its name, CPU cores and memory in GB.
+type SandboxTemplate struct {
+	Name     string  `json:"name"`
+	CPU      float64 `json:"cpu"`
+	MemoryGB float64 `json:"memoryGb"`
+}
+
+// TemplateOffer is what the environment and capabilities reads say about
+// sandbox templates (w10/m519). DefaultTemplate is the one a session or an
+// automation run that names none runs on: the workspace's while it is
+// registered, else sandbox.DefaultAgentTemplate. Templates are every one a
+// session may name, smallest first.
+type TemplateOffer struct {
+	DefaultTemplate string            `json:"defaultTemplate"`
+	Templates       []SandboxTemplate `json:"templates"`
+}
+
+// CodeEnvironmentTemplateInvalid refuses a defaultTemplate that is not a
+// registered agent template; its params list the templates.
+const CodeEnvironmentTemplateInvalid = "AGENT_ENVIRONMENT_TEMPLATE_INVALID"
+
+// agentTemplates are the templates agentConfig.template and defaultTemplate
+// can name, smallest first; none without a sandbox lifecycle.
+func (s *Service) agentTemplates() []sandbox.AgentTemplate {
+	if s.Sandbox == nil {
+		return nil
+	}
+	return s.Sandbox.AgentTemplates()
+}
+
+func hasTemplate(templates []sandbox.AgentTemplate, name string) bool {
+	return slices.ContainsFunc(templates, func(t sandbox.AgentTemplate) bool { return t.Name == name })
+}
+
+// templateRefusal refuses name in field, listing the templates with their
+// sizes so the caller can pick one.
+func templateRefusal(code, field, name string, templates []sandbox.AgentTemplate) error {
+	names, sizes := make([]string, len(templates)), make([]string, len(templates))
+	for i, t := range templates {
+		names[i], sizes[i] = t.Name, t.Name+" ("+t.Size()+")"
+	}
+	return core.NewBadRequestError(code,
+		fmt.Sprintf("%s %q is not an agent template; use one of %s", field, name, strings.Join(sizes, ", ")),
+		map[string]any{"field": field, "template": name, "templates": names})
+}
+
+// sessionTemplate is the template a session of env's workspace that names
+// none runs on: the workspace default while it is registered, else
+// sandbox.DefaultAgentTemplate, so a default whose template was retired
+// never fails a session.
+func sessionTemplate(env store.AgentEnvironment, templates []sandbox.AgentTemplate) string {
+	if hasTemplate(templates, env.DefaultTemplate) {
+		return env.DefaultTemplate
+	}
+	return sandbox.DefaultAgentTemplate
+}
+
+// templateOffer is env's workspace's TemplateOffer.
+func (s *Service) templateOffer(env store.AgentEnvironment) TemplateOffer {
+	templates := s.agentTemplates()
+	offer := TemplateOffer{DefaultTemplate: sessionTemplate(env, templates), Templates: make([]SandboxTemplate, len(templates))}
+	for i, t := range templates {
+		offer.Templates[i] = SandboxTemplate{Name: t.Name, CPU: t.Cores(), MemoryGB: t.MemoryGB()}
+	}
+	return offer
 }
 
 // effectiveHosts is the widening the workspace tier contributes to a session

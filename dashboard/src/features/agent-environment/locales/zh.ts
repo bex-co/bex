@@ -124,7 +124,8 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelPlatformDefault": {
     message: "平台默认（{model}）",
-    description: "Default model picker — no default: the platform catalog's first model (w10/m516)",
+    description:
+      "Default model picker — no default: the platform catalog's first model (w10/m516)",
   },
   "agentEnvironment.modelCatalogHelp": {
     message:
@@ -136,9 +137,23 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     description: "Default model validation error",
   },
   "agentEnvironment.modelNotOfferedError": {
+    message: "平台模型不提供 {model}。请从列表中选择。",
+    description:
+      "Server refusal: the default model is not in the platform catalog (w10/m516)",
+  },
+  "agentEnvironment.templateLabel": {
+    message: "默认沙箱",
+    description: "Label of the default sandbox template picker (w10/m519)",
+  },
+  "agentEnvironment.templateHelp": {
     message:
-      "平台模型不提供 {model}。请从列表中选择。",
-    description: "Server refusal: the default model is not in the platform catalog (w10/m516)",
+      "未指定沙箱的新会话和自动化将在此沙箱上运行。仅对之后启动的会话生效；成员仍可为单个会话选择其他沙箱。",
+    description: "Help under the default sandbox template picker (w10/m519)",
+  },
+  "agentEnvironment.templateInvalidError": {
+    message: "{template} 不是沙箱模板。请从以下模板中选择：{templates}。",
+    description:
+      "Server refusal: the default sandbox template is not a registered one; {templates} lists those (w10/m519)",
   },
   "agentEnvironment.tierInvalid": {
     message: "不支持该网络访问选项。",

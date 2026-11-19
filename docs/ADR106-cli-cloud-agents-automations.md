@@ -474,7 +474,7 @@ bex agent skills update NAME -f SKILL.md
 bex agent skills delete NAME [--confirm]
 bex agent skills versions NAME
 bex agent env
-bex agent env set [--network-tier T] [--custom-host H]… [--default-model M]
+bex agent env set [--network-tier T] [--custom-host H]… [--default-model M] [--default-template T]
                   [--spend-cap USD | --spend-cap default] [--model-key-stdin | --clear-model-key]
 bex agent models
 ```

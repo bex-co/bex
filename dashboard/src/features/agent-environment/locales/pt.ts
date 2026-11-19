@@ -136,7 +136,8 @@ const ptAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelPlatformDefault": {
     message: "Padrão da plataforma ({model})",
-    description: "Default model picker — no default: the platform catalog's first model (w10/m516)",
+    description:
+      "Default model picker — no default: the platform catalog's first model (w10/m516)",
   },
   "agentEnvironment.modelCatalogHelp": {
     message:
@@ -148,9 +149,24 @@ const ptAgentEnvironment: Record<string, TranslationEntry> = {
     description: "Default model validation error",
   },
   "agentEnvironment.modelNotOfferedError": {
+    message: "O modelo da plataforma não oferece {model}. Escolha um da lista.",
+    description:
+      "Server refusal: the default model is not in the platform catalog (w10/m516)",
+  },
+  "agentEnvironment.templateLabel": {
+    message: "Sandbox padrão",
+    description: "Label of the default sandbox template picker (w10/m519)",
+  },
+  "agentEnvironment.templateHelp": {
     message:
-      "O modelo da plataforma não oferece {model}. Escolha um da lista.",
-    description: "Server refusal: the default model is not in the platform catalog (w10/m516)",
+      "Novas sessões e automações que não indicam um sandbox rodam neste. Vale para as sessões iniciadas depois; os membros ainda podem escolher outro para uma sessão.",
+    description: "Help under the default sandbox template picker (w10/m519)",
+  },
+  "agentEnvironment.templateInvalidError": {
+    message:
+      "{template} não é um template de sandbox. Escolha um destes: {templates}.",
+    description:
+      "Server refusal: the default sandbox template is not a registered one; {templates} lists those (w10/m519)",
   },
   "agentEnvironment.tierInvalid": {
     message: "Essa opção de acesso à rede não é compatível.",

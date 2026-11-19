@@ -477,6 +477,10 @@ const deAgentAutomations: Record<string, TranslationEntry> = {
     message: "Modell",
     description: "Automation form — model field label (w10/m516)",
   },
+  "agentAutomations.field.template": {
+    message: "Sandbox",
+    description: "Automation form — sandbox template field label (w10/m519)",
+  },
   "agentAutomations.field.spendLimit": {
     message: "Ausgabenlimit pro Lauf (USD)",
     description: "Form field label",
@@ -602,6 +606,11 @@ const deAgentAutomations: Record<string, TranslationEntry> = {
       "Das Modell, das jeder Lauf nutzt. Beim Standard folgt es dem Workspace.",
     description: "Automation form — model field help",
   },
+  "agentAutomations.help.template": {
+    message:
+      "Die Maschine, die die Sandbox jedes Laufs bekommt. Der Workspace-Standard folgt bei jedem Lauf Einstellungen → Agents.",
+    description: "Automation form — sandbox template field help (w10/m519)",
+  },
   "agentAutomations.help.emailNotifications": {
     message:
       "Bei welchen Läufen du eine E-Mail bekommst. Bei einer Pausierung durch die Plattform immer.",
@@ -631,6 +640,11 @@ const deAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.placeholder.model": {
     message: "Workspace-Standard",
     description: "Automation form — empty free-form model field",
+  },
+  "agentAutomations.placeholder.template": {
+    message: "Workspace-Standard",
+    description:
+      "Automation form — the sandbox field while no template list is available: the workspace default",
   },
   "agentAutomations.summary": {
     message: "Läuft: {schedule}",

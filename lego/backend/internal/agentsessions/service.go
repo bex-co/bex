@@ -17,6 +17,7 @@ limitations under the License.
 package agentsessions
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -620,35 +621,26 @@ func (s *Service) validateCreateInput(req *CreateRequest) (store.AgentTurnOutput
 
 // validateTemplate refuses an agentConfig.template the platform does not
 // register, at create rather than when the sandbox starts (w10/017). Empty
-// keeps the default template.
+// takes the workspace's default template (resolveCreateModel).
 func (s *Service) validateTemplate(config *AgentConfig) error {
 	config.Template = strings.TrimSpace(config.Template)
 	if config.Template == "" || s.Sandbox == nil {
 		return nil
 	}
-	templates := s.Sandbox.AgentTemplates()
-	if slices.ContainsFunc(templates, func(t sandbox.AgentTemplate) bool { return t.Name == config.Template }) {
-		return nil
+	if templates := s.agentTemplates(); !hasTemplate(templates, config.Template) {
+		return templateRefusal("AGENT_SESSION_INPUT_INVALID", "agentConfig.template", config.Template, templates)
 	}
-	names, sizes := make([]string, len(templates)), make([]string, len(templates))
-	for i, t := range templates {
-		names[i], sizes[i] = t.Name, t.Name+" ("+t.Size()
-		if t.Name == sandbox.DefaultAgentTemplate {
-			sizes[i] += "; the default"
-		}
-		sizes[i] += ")"
-	}
-	return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID",
-		fmt.Sprintf("agentConfig.template %q is not an agent template; use one of %s", config.Template, strings.Join(sizes, ", ")),
-		map[string]any{"field": "agentConfig.template", "templates": names})
+	return nil
 }
 
 // resolveCreateModel is the workspace-dependent half: the agent environment
-// (w10/m17) supplies the network tier's hosts and the default model, the
-// request's explicit fields still win, and the agent must have a model
-// credential. It sets req's model and model endpoint and returns the
-// environment and the effective egress allowlist. Shared with the
-// automation save-time validation.
+// (w10/m17) supplies the network tier's hosts, the default model and the
+// default sandbox template (w10/m519), the request's explicit fields still
+// win, and the agent must have a model credential. It sets req's model, model
+// endpoint and template and returns the environment and the effective egress
+// allowlist. Shared with the automation save-time validation, which stores
+// none of what it resolves, so a run takes the defaults in force when it
+// fires.
 func (s *Service) resolveCreateModel(ctx context.Context, workspaceID string, req *CreateRequest) (store.AgentEnvironment, []string, error) {
 	env, err := s.workspaceEnvironment(ctx, workspaceID)
 	if err != nil {
@@ -670,6 +662,11 @@ func (s *Service) resolveCreateModel(ctx context.Context, workspaceID string, re
 		return env, nil, err
 	}
 	req.AgentConfig.ModelEndpoint = modelEndpoint
+	// Recorded on the session, so its read reports the template it runs on
+	// and a later change of the default leaves it alone.
+	if req.AgentConfig.Template == "" {
+		req.AgentConfig.Template = sessionTemplate(env, s.agentTemplates())
+	}
 	return env, egressAllowlist, nil
 }
 
@@ -1124,11 +1121,12 @@ func (s *Service) settleDispatchTurn(ctx context.Context, sessionID string, turn
 	}
 }
 
-// Capabilities projects the workspace's mobile-safe agent-composer readiness
-// (w11/m6 t001): which agent profiles are selectable and whether GitHub and a
-// BYO model key are provisioned — never model endpoints, templates, egress,
-// installation ids, or credentials. It authorizes against the target workspace
-// first (cross-workspace callers are denied like every other verb). When the
+// Capabilities projects the workspace's agent-composer readiness (w11/m6
+// t001): which agent profiles and agent sandbox templates (w10/m519) are
+// selectable and whether GitHub and a BYO model key are provisioned — never
+// model endpoints, template images, egress, installation ids, or credentials.
+// It authorizes against the target workspace first (cross-workspace callers
+// are denied like every other verb). When the
 // feature is not wired it returns Enabled:false with empty readiness rather than
 // an error, so the phone can render a desktop-configuration callout; an unready
 // GitHub App carries its install URL as the remediation, not a phone-editable
@@ -1144,8 +1142,9 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 		// configuration callout off Enabled:false) — but "none" is an empty
 		// array, not `null`. agents is a declared array on REST and already
 		// non-nullable on GraphQL, so the zero Capabilities was the one shape
-		// that disagreed with both (w4/m116/t006).
+		// that disagreed with both (w4/m116/t006). Templates likewise.
 		caps.Agents = []AgentProfile{}
+		caps.TemplateOffer = TemplateOffer{DefaultTemplate: sandbox.DefaultAgentTemplate, Templates: []SandboxTemplate{}}
 		return caps, nil
 	}
 	workspaceID, ok := s.Tenant(ctx)
@@ -1200,6 +1199,7 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 		return !agentEnabled(env, profile.ID) || !agentsession.ProfileServed(profile.ID)
 	})
 	caps.ModelKeyReady = ownKey || routed
+	caps.TemplateOffer = s.templateOffer(env)
 	for i := range caps.Agents {
 		// A platform-only agent is listed only where its route serves it, so the
 		// workspace key never decides its readiness.
@@ -2466,6 +2466,9 @@ func viewOf(record store.AgentSession) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
+	// A session created before its template was recorded (w10/m519) ran, and
+	// runs its next turn, on the platform default.
+	config.Template = cmp.Or(config.Template, sandbox.DefaultAgentTemplate)
 	view := View{ID: record.ID, OwnerID: record.WorkspaceID, Repo: record.Repo, Branch: record.Branch, Title: record.Title, Tags: record.Tags,
 		AgentConfig: config, SandboxID: record.SandboxID, Phase: record.Phase, Status: record.Status,
 		State: stateOf(record.Phase), Steerable: steerable(record.Phase, record.ArchivedAt != nil),

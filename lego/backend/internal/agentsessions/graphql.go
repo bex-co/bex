@@ -107,16 +107,36 @@ var githubReadinessGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var agentSandboxTemplateGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "AgentSandboxTemplate",
+	Description: "An agent sandbox template a session can name in agentConfig.template: its CPU and memory.",
+	Fields: graphql.Fields{
+		"name":     gqlutil.ReqStrField(func(v SandboxTemplate) any { return v.Name }),
+		"cpu":      &graphql.Field{Type: graphql.NewNonNull(graphql.Float), Description: "CPU cores.", Resolve: gqlutil.Field(func(v SandboxTemplate) any { return v.CPU })},
+		"memoryGb": &graphql.Field{Type: graphql.NewNonNull(graphql.Float), Description: "Memory in GB.", Resolve: gqlutil.Field(func(v SandboxTemplate) any { return v.MemoryGB })},
+	},
+})
+
+// withTemplateFields adds a TemplateOffer's fields, which the environment
+// and the capabilities reads share, to fields.
+func withTemplateFields[T any](fields graphql.Fields, offer func(T) TemplateOffer) graphql.Fields {
+	fields["defaultTemplate"] = &graphql.Field{Type: graphql.NewNonNull(graphql.String), Description: "The sandbox template a session or automation run that names none runs on: the workspace default, else agent.",
+		Resolve: gqlutil.Field(func(v T) any { return offer(v).DefaultTemplate })}
+	fields["templates"] = &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(agentSandboxTemplateGQLType))), Description: "The agent sandbox templates a session may name, smallest first.",
+		Resolve: gqlutil.Field(func(v T) any { return offer(v).Templates })}
+	return fields
+}
+
 var agentCapabilitiesGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSessionCapabilities",
-	Fields: graphql.Fields{
+	Fields: withTemplateFields(graphql.Fields{
 		"enabled":       gqlutil.ReqBoolField(func(v Capabilities) any { return v.Enabled }),
 		"github":        gqlutil.Typed(graphql.NewNonNull(githubReadinessGQLType), func(v Capabilities) any { return v.GitHub }),
 		"modelKeyReady": gqlutil.ReqBoolField(func(v Capabilities) any { return v.ModelKeyReady }),
 		"attachments":   &graphql.Field{Type: graphql.NewNonNull(attachmentLimitsGQLType), Resolve: gqlutil.Field(func(v Capabilities) any { return v.Attachments })},
 		"agents":        gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(agentProfileGQLType))), func(v Capabilities) any { return v.Agents }),
 		"ready":         gqlutil.ReqBoolField(func(v Capabilities) any { return v.Ready }),
-	},
+	}, func(v Capabilities) TemplateOffer { return v.TemplateOffer }),
 })
 
 var agentNetworkTierGQLEnum = graphql.NewEnum(graphql.EnumConfig{
@@ -157,7 +177,7 @@ var agentDataUseGQLType = graphql.NewObject(graphql.ObjectConfig{
 
 var agentEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentEnvironment",
-	Fields: graphql.Fields{
+	Fields: withTemplateFields(graphql.Fields{
 		"ownerId":      gqlutil.ReqStrField(func(v Environment) any { return v.OwnerID }),
 		"networkTier":  gqlutil.Typed(graphql.NewNonNull(agentNetworkTierGQLEnum), func(v Environment) any { return v.NetworkTier }),
 		"customHosts":  gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(v Environment) any { return v.CustomHosts }),
@@ -193,7 +213,7 @@ var agentEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"agentModelSpendCapReached":     optionalBoolField("Platform-model requests are refused at the spend cap now. False while the next request would charge the card at the trust tier's threshold instead.", func(v Environment) *bool { return v.AgentModelSpendCapReached }),
 		"agentModelChargesAtThreshold":  optionalBoolField("Reaching nextChargeThresholdUsd charges the workspace's card and it keeps working. False where bex cannot charge it (no subscription, excluded or comped), on its own model key, or under a payment hold.", func(v Environment) *bool { return v.AgentModelChargesAtThreshold }),
 		"billingBalanceDue":             optionalBoolField("A failed invoice is unpaid, so platform-model requests are refused with BILLING_BALANCE_DUE until it is paid.", func(v Environment) *bool { return v.BillingBalanceDue }),
-	},
+	}, func(v Environment) TemplateOffer { return v.TemplateOffer }),
 })
 
 func optionalBoolField(description string, get func(Environment) *bool) *graphql.Field {
@@ -220,6 +240,7 @@ var agentEnvironmentGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 		"networkTier":                    &graphql.InputObjectFieldConfig{Type: agentNetworkTierGQLEnum},
 		"customHosts":                    &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Replaces the whole list; [] clears it. Opened only by the CUSTOM tier."},
 		"defaultModel":                   &graphql.InputObjectFieldConfig{Type: graphql.String, Description: "\"\" returns to the provider default."},
+		"defaultTemplate":                &graphql.InputObjectFieldConfig{Type: graphql.String, Description: "The sandbox template sessions and automation runs that name none run on: one of templates; \"\" returns to agent. Applies to sessions created afterwards."},
 		spendCapField:                    &graphql.InputObjectFieldConfig{Type: graphql.Float, Description: "Monthly agent-model spend cap in USD (more than 0, at most 10x the plan default)."},
 		"resetAgentModelMonthlySpendCap": &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "true returns the spend cap to the plan default."},
 		"modelApiKey":                    &graphql.InputObjectFieldConfig{Type: graphql.String, Description: "Write-only: sets or rotates the workspace's own model provider key. Never returned; read modelKeySet."},
@@ -251,6 +272,7 @@ func environmentInputArg(args map[string]any) EnvironmentInput {
 	if model, ok := raw["defaultModel"].(string); ok {
 		input.DefaultModel = &model
 	}
+	input.DefaultTemplate = gqlutil.StrPtr(raw, "defaultTemplate")
 	input.ModelAPIKey = gqlutil.StrPtr(raw, "modelApiKey")
 	if clear := gqlutil.BoolPtr(raw, "clearModelApiKey"); clear != nil {
 		input.ClearModelAPIKey = *clear

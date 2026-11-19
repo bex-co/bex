@@ -236,6 +236,34 @@ const koAgentSessions: Record<string, TranslationEntry> = {
     message: "모델: {model}",
     description: "Session header — tooltip of the model the session runs",
   },
+  "agentSessions.sandboxLabel": {
+    message: "샌드박스",
+    description: "Composer — sandbox template select label (w10/m519)",
+  },
+  "agentSessions.sandboxSize": {
+    message: "CPU {cpu}코어, 메모리 {memory}GB",
+    description:
+      "Sandbox template size: CPU cores and memory in GB, numbers already formatted",
+  },
+  "agentSessions.sandboxOption": {
+    message: "{name} · {size}",
+    description: "Sandbox template choice: its name, then its size",
+  },
+  "agentSessions.sandboxDefaultOption": {
+    message: "{template} (기본값)",
+    description:
+      "Sandbox list — the template a session runs on when it names none (the workspace default)",
+  },
+  "agentSessions.sandboxWorkspaceDefault": {
+    message: "워크스페이스 기본값 ({template})",
+    description:
+      "Automation sandbox choice — follow the workspace default at each run; {template} is the default now",
+  },
+  "agentSessions.metaSandbox": {
+    message: "샌드박스: {template}",
+    description:
+      "Tooltip of the sandbox template a session runs on, with its size",
+  },
   "agentSessions.agent.claude": {
     message: "Claude",
     description: "Composer — agent option: claude",
@@ -553,7 +581,8 @@ const koAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.queueModel": {
     message: "세션을 {model}(으)로 전환합니다",
-    description: "Queued message — the model its turn switches the session to (w10/m516)",
+    description:
+      "Queued message — the model its turn switches the session to (w10/m516)",
   },
   "agentSessions.queueSendNow": {
     message: "지금 보내기",
@@ -689,7 +718,8 @@ const koAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.errors.AGENT_SESSION_MODEL_NOT_OFFERED": {
     message:
       "이 워크스페이스의 플랫폼 모델은 {model}을(를) 제공하지 않습니다. 모델 목록에서 선택하세요.",
-    description: "Mapped message for AGENT_SESSION_MODEL_NOT_OFFERED (w10/m516)",
+    description:
+      "Mapped message for AGENT_SESSION_MODEL_NOT_OFFERED (w10/m516)",
   },
   "agentSessions.errors.AGENT_SESSION_MODEL_PINNED": {
     message: "이 에이전트는 {pinnedModel}만 사용합니다.",

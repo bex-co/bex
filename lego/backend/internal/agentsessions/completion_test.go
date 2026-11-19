@@ -644,7 +644,7 @@ func TestCompleterLostSandboxRecordsHowItsContainerEnded(t *testing.T) {
 		want    string
 	}{
 		{"OOM killed", &sandbox.TerminatedError{Termination: sandbox.Termination{Reason: "OOMKilled", ExitCode: &code}},
-			"the sandbox ran out of memory (exit 137) on the agent template (2 CPU, 4 GB); start a new session on a larger one: agent-4c-8g (4 CPU, 8 GB), e.g. bex agent run --template agent-4c-8g"},
+			"the sandbox ran out of memory (exit 137) on the agent template (2 CPU, 4 GB); start a new session on a larger one, agent-4c-8g (4 CPU, 8 GB): pick it as the Sandbox in the dashboard's new-session composer, or run bex agent run --template agent-4c-8g"},
 		{"killed by a signal", &sandbox.TerminatedError{Termination: sandbox.Termination{Reason: "Error", ExitCode: &code}}, "the sandbox's agent was killed by signal 9 (exit 137)"},
 		{"pod already gone", &sandbox.TerminatedError{}, defaultLostSandboxReason},
 		{"lifecycle server only", core.ErrNotFound, defaultLostSandboxReason},
@@ -667,7 +667,7 @@ func TestCompleterOutOfMemoryNamesTheSessionsTemplate(t *testing.T) {
 	code := 128
 	oom := &sandbox.TerminatedError{Termination: sandbox.Termination{Reason: "OOMKilled", ExitCode: &code}}
 	for template, want := range map[string]string{
-		"agent":       "the sandbox ran out of memory (exit 128) on the agent template (2 CPU, 4 GB); start a new session on a larger one: agent-4c-8g (4 CPU, 8 GB), e.g. bex agent run --template agent-4c-8g",
+		"agent":       "the sandbox ran out of memory (exit 128) on the agent template (2 CPU, 4 GB); start a new session on a larger one, agent-4c-8g (4 CPU, 8 GB): pick it as the Sandbox in the dashboard's new-session composer, or run bex agent run --template agent-4c-8g",
 		"agent-4c-8g": "the sandbox ran out of memory (exit 128) on the agent-4c-8g template (4 CPU, 8 GB), the largest there is",
 		"retired":     "the sandbox ran out of memory (exit 128)",
 	} {

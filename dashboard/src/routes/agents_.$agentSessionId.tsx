@@ -233,6 +233,8 @@ function DetailSkeleton() {
             <Skeleton className="h-3 w-12" />
             {/* The session's model (w10/m516) */}
             <Skeleton className="h-3 w-24" />
+            {/* Its sandbox template and size (w10/m519) */}
+            <Skeleton className="h-3 w-40" />
             {/* SessionModelCost (ADR091 D6) */}
             <Skeleton className="h-3 w-14" />
           </div>

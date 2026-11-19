@@ -49,6 +49,14 @@ export function useAgentSessionCapabilities(
                 { model: agent.model, models: agent.models },
               ]),
             ),
+            sandbox: {
+              defaultTemplate: value.defaultTemplate,
+              templates: value.templates.map((template) => ({
+                name: template.name,
+                cpu: template.cpu,
+                memoryGb: template.memoryGb,
+              })),
+            },
             github: {
               connected: value.github.connected,
             },

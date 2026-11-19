@@ -1,13 +1,15 @@
 import type { ReactNode } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { codedGraphQLError } from "@/test/mocks/apollo";
+import type { AgentAutomationInput } from "@/graphql/definitions";
 import { AutomationForm } from "@/features/agent-automations/components/automation-form";
 import {
   emptyFormValues,
   valuesFromAutomation,
 } from "@/features/agent-automations/lib/form";
+import type { AgentTemplateOffer } from "@/features/agent-sessions/types";
 import { automation } from "./fixtures";
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
@@ -25,6 +27,7 @@ const capabilitiesState: {
   capabilities: {
     agents: string[];
     models: Record<string, { model: string | null; models: string[] }>;
+    sandbox?: AgentTemplateOffer;
   } | null;
 } = {
   capabilities: null,
@@ -367,3 +370,170 @@ describe("AutomationForm model", () => {
   });
 });
 
+// w10/m519: an automation runs on a sandbox template it names, or on the
+// workspace default in force at each run when it names none. The list is the
+// server's: a made-up third template proves no name or size is built in.
+describe("AutomationForm sandbox", () => {
+  const sandbox: AgentTemplateOffer = {
+    defaultTemplate: "agent-4c-8g",
+    templates: [
+      { name: "agent", cpu: 2, memoryGb: 4 },
+      { name: "agent-4c-8g", cpu: 4, memoryGb: 8 },
+      { name: "agent-8c-16g", cpu: 8, memoryGb: 16 },
+    ],
+  };
+  const picker = () => screen.getByRole("combobox", { name: "Sandbox" });
+  const stored = (template: string | null) => {
+    const base = automation();
+    return automation({
+      template: {
+        ...base.template,
+        agentConfig: { ...base.template.agentConfig, template },
+      },
+    });
+  };
+  function renderEdit(template: string | null) {
+    const user = userEvent.setup();
+    const onSave = vi.fn(async () => undefined);
+    const saved = stored(template);
+    render(
+      <AutomationForm
+        mode="edit"
+        initial={valuesFromAutomation(saved)}
+        version={saved.version}
+        onSave={onSave}
+        cancelTo={{ to: "/automations/$automationId", id: saved.id }}
+      />,
+    );
+    return { user, onSave };
+  }
+  const savedAgentConfig = (onSave: ReturnType<typeof vi.fn>) =>
+    (onSave.mock.calls[0][0] as AgentAutomationInput).template?.agentConfig;
+
+  beforeEach(() => {
+    capabilitiesState.capabilities = {
+      agents: ["claude"],
+      models: {},
+      sandbox,
+    };
+  });
+  afterEach(() => {
+    capabilitiesState.capabilities = null;
+  });
+
+  it("follows the workspace default by default and sends no template", async () => {
+    const { user, onSave } = setup();
+    await fillValid(user);
+    expect(picker()).toHaveTextContent(
+      "Workspace default (agent-4c-8g · 4 CPU, 8 GB)",
+    );
+    await user.click(picker());
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual([
+      "Workspace default (agent-4c-8g · 4 CPU, 8 GB)",
+      "agent · 2 CPU, 4 GB",
+      "agent-4c-8g · 4 CPU, 8 GB",
+      "agent-8c-16g · 8 CPU, 16 GB",
+    ]);
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("button", { name: "Create automation" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(savedAgentConfig(onSave)).toEqual({ agent: "claude" });
+  });
+
+  it("saves the picked template", async () => {
+    const { user, onSave } = setup();
+    await fillValid(user);
+    await user.click(picker());
+    await user.click(
+      screen.getByRole("option", { name: "agent-8c-16g · 8 CPU, 16 GB" }),
+    );
+    expect(picker()).toHaveTextContent("agent-8c-16g · 8 CPU, 16 GB");
+    await user.click(screen.getByRole("button", { name: "Create automation" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(savedAgentConfig(onSave)).toEqual({
+      agent: "claude",
+      template: "agent-8c-16g",
+    });
+  });
+
+  it("pins the default's template by name when it is picked itself", async () => {
+    const { user, onSave } = setup();
+    await fillValid(user);
+    await user.click(picker());
+    await user.click(
+      screen.getByRole("option", { name: "agent-4c-8g · 4 CPU, 8 GB" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Create automation" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(savedAgentConfig(onSave)).toEqual({
+      agent: "claude",
+      template: "agent-4c-8g",
+    });
+  });
+
+  it("an edit form shows the stored template and can return to the workspace default", async () => {
+    const { user, onSave } = renderEdit("agent-8c-16g");
+    expect(picker()).toHaveTextContent("agent-8c-16g · 8 CPU, 16 GB");
+    await user.click(picker());
+    await user.click(
+      screen.getByRole("option", { name: /^Workspace default/ }),
+    );
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(savedAgentConfig(onSave)).toEqual({ agent: "claude" });
+  });
+
+  it("keeps a stored template the list no longer carries", async () => {
+    const { user, onSave } = renderEdit("retired-1c-1g");
+    expect(picker()).toHaveTextContent("retired-1c-1g");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(savedAgentConfig(onSave)).toEqual({
+      agent: "claude",
+      template: "retired-1c-1g",
+    });
+  });
+
+  it("keeps the stored template, read-only, while no list is available", async () => {
+    capabilitiesState.capabilities = null;
+    const { user, onSave } = renderEdit("agent-8c-16g");
+    const field = screen.getByLabelText("Sandbox");
+    expect(field).toHaveValue("agent-8c-16g");
+    expect(field).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(savedAgentConfig(onSave)).toEqual({
+      agent: "claude",
+      template: "agent-8c-16g",
+    });
+  });
+
+  it("shows the server's template refusal under the sandbox field", async () => {
+    const onSave = vi.fn(async () => {
+      throw codedGraphQLError(
+        "AGENT_SESSION_INPUT_INVALID",
+        {
+          field: "agentConfig.template",
+          template: "agent-8c-16g",
+          templates: ["agent", "agent-4c-8g"],
+        },
+        'agentConfig.template "agent-8c-16g" is not an agent template; use one of agent (2 CPU, 4 GB), agent-4c-8g (4 CPU, 8 GB)',
+      );
+    });
+    const { user } = setup(onSave);
+    await fillValid(user);
+    await user.click(picker());
+    await user.click(
+      screen.getByRole("option", { name: "agent-8c-16g · 8 CPU, 16 GB" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Create automation" }));
+    await waitFor(() =>
+      expect(picker()).toHaveAttribute("aria-invalid", "true"),
+    );
+    expect(picker()).toHaveAccessibleDescription(
+      /is not an agent template; use one of agent/,
+    );
+  });
+});

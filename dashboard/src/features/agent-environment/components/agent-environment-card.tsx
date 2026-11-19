@@ -33,6 +33,7 @@ import { useAgentEnvironment } from "@/features/agent-environment/hooks/use-agen
 import { ModelKeySection } from "@/features/agent-environment/components/model-key-section";
 import { SpendCapSection } from "@/features/agent-environment/components/spend-cap-section";
 import { AvailableAgentsSection } from "@/features/agent-environment/components/available-agents-section";
+import { templateLabel } from "@/features/agent-sessions/lib/templates";
 import {
   AgentEnvironmentCardSkeleton,
   AgentSectionHeading,
@@ -61,8 +62,9 @@ const PLATFORM_DEFAULT = "__platform_default__";
 
 /**
  * Settings → Agents (w10/m17/t005): the workspace agent environment — the
- * sandbox network tier, the Custom tier's extra hostnames, the default model
- * the model source with the write-only provider key (ADR091 D7), and the
+ * sandbox network tier, the Custom tier's extra hostnames, the default model,
+ * the default sandbox template (w10/m519, Devin's default platform), the
+ * model source with the write-only provider key (ADR091 D7), and the
  * agent-model spend against its monthly cap (ADR091 D5, D6). Any member sees
  * it; only admins (can_manage) can change it.
  */
@@ -120,11 +122,12 @@ function AgentEnvironmentForm({
   update,
   saving,
 }: AgentEnvironmentFormProps) {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
   const { canManage, denied } = useCapabilities();
   const ids = useId();
   const hostsId = `${ids}-hosts`;
   const modelId = `${ids}-model`;
+  const templateId = `${ids}-template`;
 
   const [draft, setDraft] = useState<AgentEnvironmentDraft>(() =>
     draftFrom(saved),
@@ -182,6 +185,10 @@ function AgentEnvironmentForm({
   const modelError = problems.model
     ? t("agentEnvironment.modelInvalid")
     : serverError?.field === "model"
+      ? t(serverError.key, serverError.params)
+      : null;
+  const templateError =
+    serverError?.field === "template"
       ? t(serverError.key, serverError.params)
       : null;
   const hostCount = parseHostLines(draft.hostsText).length;
@@ -379,6 +386,54 @@ function AgentEnvironmentForm({
             </p>
           ) : null}
         </div>
+
+        {saved.templates.length > 0 ? (
+          <div
+            className="space-y-2 border-t pt-6"
+            data-testid="default-template-section"
+          >
+            <Label htmlFor={templateId}>
+              {t("agentEnvironment.templateLabel")}
+            </Label>
+            {/* The sandbox template every session and automation run that
+                names none runs on (w10/m519); a member may still pick
+                another for one session. */}
+            <Select
+              value={draft.defaultTemplate}
+              onValueChange={(value) =>
+                edit({ defaultTemplate: value }, ["template"])
+              }
+              disabled={readOnly}
+            >
+              <SelectTrigger
+                id={templateId}
+                aria-invalid={templateError != null}
+                aria-describedby={`${templateId}-help`}
+                className="w-full max-w-sm"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {saved.templates.map((template) => (
+                  <SelectItem key={template.name} value={template.name}>
+                    {templateLabel(template, t, i18n.language)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p
+              id={`${templateId}-help`}
+              className="text-muted-foreground text-xs"
+            >
+              {t("agentEnvironment.templateHelp")}
+            </p>
+            {templateError ? (
+              <p className="text-destructive text-sm" role="alert">
+                {templateError}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         <ModelKeySection saved={saved} update={update} canManage={canManage} />
 

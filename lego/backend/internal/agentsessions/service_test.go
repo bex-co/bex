@@ -966,6 +966,8 @@ type fakeLifecycle struct {
 	// interrupts records InterruptSessionTurn calls (session, sandbox, turn).
 	interrupts   []string
 	interruptErr error
+	// agentTemplates, when set, replaces production's two agent templates.
+	agentTemplates []sandbox.AgentTemplate
 }
 
 func (f *fakeLifecycle) InterruptSessionTurn(_ context.Context, _, sessionID, sandboxID string, turn int) error {
@@ -1050,6 +1052,9 @@ func (f *fakeLifecycle) ReadSessionTranscript(_ context.Context, _, _, _ string,
 // AgentTemplates answers production's two agent templates
 // (sandboxTemplateRegistry, cmd/api).
 func (f *fakeLifecycle) AgentTemplates() []sandbox.AgentTemplate {
+	if f.agentTemplates != nil {
+		return f.agentTemplates
+	}
 	return []sandbox.AgentTemplate{{Name: "agent", CPU: "2", Memory: "4Gi"}, {Name: "agent-4c-8g", CPU: "4", Memory: "8Gi"}}
 }
 
@@ -1139,7 +1144,10 @@ func TestCreateTakesARegisteredAgentTemplateAndRefusesAnyOther(t *testing.T) {
 			coded.Params["field"] != "agentConfig.template" || !reflect.DeepEqual(coded.Params["templates"], []string{"agent", "agent-4c-8g"}) {
 			t.Fatalf("create on %q = %#v, want AGENT_SESSION_INPUT_INVALID on agentConfig.template", name, err)
 		}
-		if want := fmt.Sprintf("agentConfig.template %q is not an agent template; use one of agent (2 CPU, 4 GB; the default), agent-4c-8g (4 CPU, 8 GB)", name); coded.Error() != want {
+		if coded.Params["template"] != name {
+			t.Fatalf("refusal params = %v, want the refused template %q", coded.Params, name)
+		}
+		if want := fmt.Sprintf("agentConfig.template %q is not an agent template; use one of agent (2 CPU, 4 GB), agent-4c-8g (4 CPU, 8 GB)", name); coded.Error() != want {
 			t.Fatalf("refusal = %q, want %q", coded.Error(), want)
 		}
 	}
@@ -2007,11 +2015,15 @@ func newMCPClient(t *testing.T, ctx context.Context, svc *Service) *mcp.ClientSe
 
 func TestRESTGraphQLMCPCreateParity(t *testing.T) {
 	want := createInput()
+	// The create names no template, so the session records the one it runs
+	// on: the workspace default, here the platform's (w10/m519).
+	wantConfig := want.AgentConfig
+	wantConfig.Template = sandbox.DefaultAgentTemplate
 	check := func(t *testing.T, got View) {
 		t.Helper()
 		// Create returns fast: the creating phase with no sandbox/ticket yet
 		// (w2/m64) — identically across REST, GraphQL, and MCP.
-		if got.OwnerID != want.OwnerID || got.Repo != want.Repo || got.Branch != want.Branch || got.AgentConfig != want.AgentConfig || got.Phase != PhaseCreating || got.SandboxID != "" || got.Ticket != "" || got.URL != "" {
+		if got.OwnerID != want.OwnerID || got.Repo != want.Repo || got.Branch != want.Branch || got.AgentConfig != wantConfig || got.Phase != PhaseCreating || got.SandboxID != "" || got.Ticket != "" || got.URL != "" {
 			t.Fatalf("surface view = %+v", got)
 		}
 	}
@@ -2180,12 +2192,14 @@ func TestCapabilitiesProjection(t *testing.T) {
 		t.Fatalf("cross-workspace capabilities = %v, want ErrForbidden", err)
 	}
 
-	// No secret field ever crosses the projection.
+	// No secret field ever crosses the projection. The agent templates a
+	// session may name are listed by name and size (w10/m519), never with an
+	// image.
 	raw, err := json.Marshal(caps)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, secret := range []string{"modelEndpoint", "template", "egress", "installationId", "ticket", "task"} {
+	for _, secret := range []string{"modelEndpoint", "image", "egress", "installationId", "ticket", "task"} {
 		if strings.Contains(string(raw), secret) {
 			t.Fatalf("capabilities JSON leaked a secret-shaped field %q: %s", secret, raw)
 		}

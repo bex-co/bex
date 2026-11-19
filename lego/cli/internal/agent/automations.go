@@ -631,7 +631,9 @@ func writeAutomation(w io.Writer, a automation) {
 		tw.row("Repo", repoBranch(t.Repo, t.Branch))
 	}
 	tw.row("Agent", strings.TrimSuffix(t.AgentConfig.Agent+" · "+t.AgentConfig.Model, " · "))
-	tw.row("Sandbox", t.AgentConfig.Template)
+	// A template naming none runs on the workspace default in force at each
+	// fire (w10/m519).
+	tw.row("Sandbox", firstNonEmpty(t.AgentConfig.Template, "the workspace's default"))
 	if t.MaxSpendUSD != nil {
 		tw.row("Max spend", "$"+strconv.FormatFloat(*t.MaxSpendUSD, 'f', -1, 64)+" a run")
 	}

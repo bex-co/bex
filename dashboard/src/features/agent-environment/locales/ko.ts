@@ -127,7 +127,8 @@ const koAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelPlatformDefault": {
     message: "플랫폼 기본값 ({model})",
-    description: "Default model picker — no default: the platform catalog's first model (w10/m516)",
+    description:
+      "Default model picker — no default: the platform catalog's first model (w10/m516)",
   },
   "agentEnvironment.modelCatalogHelp": {
     message:
@@ -141,7 +142,23 @@ const koAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.modelNotOfferedError": {
     message:
       "플랫폼 모델은 {model}을(를) 제공하지 않습니다. 목록에서 선택하세요.",
-    description: "Server refusal: the default model is not in the platform catalog (w10/m516)",
+    description:
+      "Server refusal: the default model is not in the platform catalog (w10/m516)",
+  },
+  "agentEnvironment.templateLabel": {
+    message: "기본 샌드박스",
+    description: "Label of the default sandbox template picker (w10/m519)",
+  },
+  "agentEnvironment.templateHelp": {
+    message:
+      "샌드박스를 지정하지 않은 새 세션과 자동화는 이 샌드박스에서 실행됩니다. 이후에 시작하는 세션에 적용되며, 멤버는 세션마다 다른 샌드박스를 고를 수도 있습니다.",
+    description: "Help under the default sandbox template picker (w10/m519)",
+  },
+  "agentEnvironment.templateInvalidError": {
+    message:
+      "{template}은(는) 샌드박스 템플릿이 아닙니다. 다음 중 하나를 고르세요: {templates}",
+    description:
+      "Server refusal: the default sandbox template is not a registered one; {templates} lists those (w10/m519)",
   },
   "agentEnvironment.tierInvalid": {
     message: "지원하지 않는 네트워크 접근 옵션입니다.",

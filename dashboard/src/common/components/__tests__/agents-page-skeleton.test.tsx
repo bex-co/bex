@@ -43,22 +43,25 @@ describe("AgentsPageSkeleton", () => {
       "pb-1.5",
     );
     const controls = Array.from(toolbar?.children ?? []);
-    // Agent select, attach, Secrets, Skills, spend limit, the repository
-    // mention and Start: the ready toolbar's seven controls.
-    expect(controls).toHaveLength(7);
+    // Agent select, model (w10/m516), sandbox (w10/m519), attach, Secrets,
+    // Skills, spend limit, the repository mention and Start: the ready
+    // toolbar's nine controls.
+    expect(controls).toHaveLength(9);
     expect(controls[0]).toHaveClass("h-8", "w-[7.5rem]");
-    for (const icon of controls.slice(1, 4)) expect(icon).toHaveClass("size-8");
-    expect(controls[4]).toHaveClass("h-8", "w-28");
+    expect(controls[1]).toHaveClass("h-8", "w-[10.5rem]");
+    expect(controls[2]).toHaveClass("h-8", "w-[9.5rem]");
+    for (const icon of controls.slice(3, 6)) expect(icon).toHaveClass("size-8");
+    expect(controls[6]).toHaveClass("h-8", "w-28");
     // The text controls size to their real labels, drawn invisibly.
-    expect(controls[5]).toHaveTextContent("Add repository or session");
-    expect(controls[5]).toHaveClass(
+    expect(controls[7]).toHaveTextContent("Add repository or session");
+    expect(controls[7]).toHaveClass(
       "max-w-56",
       "px-2",
       "text-xs",
       "text-transparent",
     );
-    expect(controls[6]).toHaveClass("ml-auto", "h-8", "text-transparent");
-    expect(controls[6]?.textContent?.length).toBeGreaterThan(0);
+    expect(controls[8]).toHaveClass("ml-auto", "h-8", "text-transparent");
+    expect(controls[8]?.textContent?.length).toBeGreaterThan(0);
   });
 
   it("matches filtered history without inventing the composer or tabs", () => {

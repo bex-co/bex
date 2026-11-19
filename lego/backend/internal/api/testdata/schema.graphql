@@ -232,6 +232,7 @@ type AgentEnvironment {
   billingBalanceDue: Boolean
   customHosts: [String!]!
   defaultModel: String
+  defaultTemplate: String!
   enabledAgents: [String!]!
   modelKeySet: Boolean!
   modelPinned: Boolean!
@@ -242,6 +243,7 @@ type AgentEnvironment {
   ownerId: String!
   pinnedModel: String
   registryHosts: [String!]!
+  templates: [AgentSandboxTemplate!]!
   trustTier: String
   trustTierLocked: Boolean
   updatedAt: String
@@ -253,6 +255,7 @@ input AgentEnvironmentInput {
   clearModelApiKey: Boolean
   customHosts: [String!]
   defaultModel: String
+  defaultTemplate: String
   enabledAgents: [String!]
   modelApiKey: String
   networkTier: AgentNetworkTier
@@ -341,6 +344,12 @@ input AgentRepoStepInput {
   run: String!
 }
 
+type AgentSandboxTemplate {
+  cpu: Float!
+  memoryGb: Float!
+  name: String!
+}
+
 type AgentSecret {
   name: String!
   repo: String
@@ -407,10 +416,12 @@ type AgentSession {
 type AgentSessionCapabilities {
   agents: [AgentSessionProfile!]!
   attachments: AgentAttachmentLimits!
+  defaultTemplate: String!
   enabled: Boolean!
   github: AgentSessionGitHubReadiness!
   modelKeyReady: Boolean!
   ready: Boolean!
+  templates: [AgentSandboxTemplate!]!
 }
 
 type AgentSessionConfig {

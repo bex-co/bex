@@ -170,6 +170,17 @@ export function AgentEnvironmentCardSkeleton({
             </SkeletonText>
           </p>
         </div>
+        {/* The default sandbox template (w10/m519). */}
+        <div
+          className="space-y-2 border-t pt-6"
+          data-testid="default-template-section-skeleton"
+        >
+          <StaticLabel>{t("agentEnvironment.templateLabel")}</StaticLabel>
+          <Skeleton className="h-9 w-full max-w-sm" />
+          <p className="text-muted-foreground text-xs">
+            {t("agentEnvironment.templateHelp")}
+          </p>
+        </div>
         <div
           className="space-y-3 border-t pt-6"
           data-testid="model-key-section-skeleton"

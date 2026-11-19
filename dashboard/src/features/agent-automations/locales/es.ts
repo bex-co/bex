@@ -476,6 +476,10 @@ const esAgentAutomations: Record<string, TranslationEntry> = {
     message: "Modelo",
     description: "Automation form — model field label (w10/m516)",
   },
+  "agentAutomations.field.template": {
+    message: "Sandbox",
+    description: "Automation form — sandbox template field label (w10/m519)",
+  },
   "agentAutomations.field.spendLimit": {
     message: "Límite de gasto por ejecución (USD)",
     description: "Form field label",
@@ -601,6 +605,11 @@ const esAgentAutomations: Record<string, TranslationEntry> = {
       "El modelo que usa cada ejecución. Déjalo en el predeterminado para seguir el del espacio de trabajo.",
     description: "Automation form — model field help",
   },
+  "agentAutomations.help.template": {
+    message:
+      "La máquina que recibe el sandbox de cada ejecución. El predeterminado del espacio de trabajo sigue Configuración → Agentes en cada ejecución.",
+    description: "Automation form — sandbox template field help (w10/m519)",
+  },
   "agentAutomations.help.emailNotifications": {
     message:
       "Qué ejecuciones te envían un correo. Una pausa de la plataforma siempre lo hace.",
@@ -630,6 +639,11 @@ const esAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.placeholder.model": {
     message: "Predeterminado del espacio de trabajo",
     description: "Automation form — empty free-form model field",
+  },
+  "agentAutomations.placeholder.template": {
+    message: "Predeterminado del espacio de trabajo",
+    description:
+      "Automation form — the sandbox field while no template list is available: the workspace default",
   },
   "agentAutomations.summary": {
     message: "Se ejecuta: {schedule}",

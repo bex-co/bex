@@ -25,6 +25,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -367,7 +368,11 @@ func TestSkillsCommands(t *testing.T) {
 
 func TestEnvSet(t *testing.T) {
 	env := map[string]any{"networkTier": "standard", "modelSource": "platform", "agentModelMonthlySpendCapUsd": 50.0, "agentModelSpendMonthToDateUsd": 3.25,
-		"enabledAgents": []any{"claude", "codex"}, "agentDataUse": []any{map[string]any{"agent": "muse", "acknowledgedAt": nil, "acknowledgedBy": nil}}}
+		"enabledAgents": []any{"claude", "codex"}, "agentDataUse": []any{map[string]any{"agent": "muse", "acknowledgedAt": nil, "acknowledgedBy": nil}},
+		"defaultTemplate": "agent-8c-16g", "templates": []any{
+			map[string]any{"name": "agent", "cpu": 2, "memoryGb": 4},
+			map[string]any{"name": "agent-8c-16g", "cpu": 8, "memoryGb": 16},
+		}}
 	f := newRouteFake(t, map[string]http.HandlerFunc{
 		"GET /v1/agent-environment":   answer(http.StatusOK, env),
 		"PATCH /v1/agent-environment": answer(http.StatusOK, env),
@@ -375,7 +380,8 @@ func TestEnvSet(t *testing.T) {
 	d := f.deps()
 	stdout, _, code := run(t, d, "-o", "text", "env")
 	if code != 0 || !strings.Contains(stdout, "$50.00 a month, $3.25 used this month") || !strings.Contains(stdout, "claude, codex") ||
-		!strings.Contains(stdout, "needs an admin's --acknowledge-data-use to turn on") {
+		!strings.Contains(stdout, "needs an admin's --acknowledge-data-use to turn on") ||
+		!regexp.MustCompile(`(?m)^Default sandbox\s+agent-8c-16g \(8 CPU, 16 GB\)$`).MatchString(stdout) {
 		t.Fatalf("env:\n%s", stdout)
 	}
 	cases := []struct {
@@ -388,6 +394,8 @@ func TestEnvSet(t *testing.T) {
 		{[]string{"--clear-model-key"}, `{"clearModelApiKey":true}`},
 		{[]string{"--agents", "claude,muse", "--acknowledge-data-use", "muse"}, `{"acknowledgeAgentDataUse":["muse"],"enabledAgents":["claude","muse"]}`},
 		{[]string{"--agents", ""}, `{"enabledAgents":[]}`},
+		{[]string{"--default-template", "agent-4c-8g"}, `{"defaultTemplate":"agent-4c-8g"}`},
+		{[]string{"--default-template", ""}, `{"defaultTemplate":""}`},
 	}
 	for _, tc := range cases {
 		f.calls = nil
@@ -418,6 +426,12 @@ func TestModels(t *testing.T) {
 		"agents": []any{map[string]any{"id": "claude", "label": "Claude Code", "modelKeyReady": true, "model": catalog[1], "models": catalog},
 			map[string]any{"id": "deepseek", "label": "DeepSeek", "modelKeyReady": true, "model": "~deepseek/deepseek-flash-latest", "models": []string{"~deepseek/deepseek-flash-latest"}},
 			map[string]any{"id": "codex", "label": "Codex", "modelKeyReady": false, "model": nil, "models": []string{}}},
+		// A made-up third template: the CLI prints what the server lists.
+		"defaultTemplate": "agent-4c-8g", "templates": []any{
+			map[string]any{"name": "agent", "cpu": 2, "memoryGb": 4},
+			map[string]any{"name": "agent-4c-8g", "cpu": 4, "memoryGb": 8},
+			map[string]any{"name": "agent-half", "cpu": 0.5, "memoryGb": 0.5},
+		},
 	})})
 	stdout, _, code := run(t, f.deps(), "-o", "text", "models")
 	if code != 0 || !strings.Contains(stdout, "connected (acme)") || !strings.Contains(stdout, "codex") || !strings.Contains(stdout, "needs the workspace's own model key") {
@@ -428,6 +442,7 @@ func TestModels(t *testing.T) {
 	for _, want := range []string{
 		"Claude Code  yes", catalog[1] + "\n", "~deepseek/deepseek-flash-latest\n", "the provider's default (any model its provider serves)",
 		"Models claude can run (--model ID):\n  " + catalog[0] + "\n  " + catalog[1] + " (default)\n  " + catalog[2] + "\n",
+		"Sandbox templates (--template NAME):\n  agent        2 CPU, 4 GB\n  agent-4c-8g  4 CPU, 8 GB (default)\n  agent-half   0.5 CPU, 0.5 GB\n",
 	} {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("models output lacks %q:\n%s", want, stdout)
@@ -476,14 +491,15 @@ func TestConfigContractFixtureDecodes(t *testing.T) {
 	if v := golden.SkillVersionList; len(v.Versions) != 1 || v.Versions[0].ShortID == "" || !v.Versions[0].Current || v.NextCursor == "" {
 		t.Fatalf("skill versions lost: %+v", v)
 	}
-	if e := golden.Environment; e.NetworkTier == "" || e.AgentModelMonthlySpendCapUSD == nil || e.TrustTier == nil || len(e.CustomHosts) != 1 || len(e.Models) != 3 {
+	if e := golden.Environment; e.NetworkTier == "" || e.AgentModelMonthlySpendCapUSD == nil || e.TrustTier == nil || len(e.CustomHosts) != 1 || len(e.Models) != 3 ||
+		e.DefaultTemplate != "agent-4c-8g" || len(e.Templates) != 2 || e.Templates[1].MemoryGB != 8 {
 		t.Fatalf("environment lost: %+v", e)
 	}
 	if l := golden.SecretList; len(l.Secrets) != 1 || l.Secrets[0].Name == "" {
 		t.Fatalf("secret list lost: %+v", l)
 	}
 	if c := golden.Capabilities; !c.Ready || !c.GitHub.Connected || c.GitHub.AccountLogin == "" || len(c.Agents) != 2 || !c.Agents[0].ModelKeyReady ||
-		c.Agents[0].Model == nil || len(c.Agents[0].Models) != 3 || len(c.Agents[1].Models) != 1 {
+		c.Agents[0].Model == nil || len(c.Agents[0].Models) != 3 || len(c.Agents[1].Models) != 1 || len(c.Templates) != 2 || c.Templates[0].CPU != 2 || c.DefaultTemplate != "agent-4c-8g" {
 		t.Fatalf("capabilities lost: %+v", c)
 	}
 }

@@ -240,6 +240,34 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Model: {model}",
     description: "Session header — tooltip of the model the session runs",
   },
+  "agentSessions.sandboxLabel": {
+    message: "Sandbox",
+    description: "Composer — sandbox template select label (w10/m519)",
+  },
+  "agentSessions.sandboxSize": {
+    message: "{cpu} CPU, {memory} GB",
+    description:
+      "Sandbox template size: CPU cores and memory in GB, numbers already formatted",
+  },
+  "agentSessions.sandboxOption": {
+    message: "{name} · {size}",
+    description: "Sandbox template choice: its name, then its size",
+  },
+  "agentSessions.sandboxDefaultOption": {
+    message: "{template} (default)",
+    description:
+      "Sandbox list — the template a session runs on when it names none (the workspace default)",
+  },
+  "agentSessions.sandboxWorkspaceDefault": {
+    message: "Workspace default ({template})",
+    description:
+      "Automation sandbox choice — follow the workspace default at each run; {template} is the default now",
+  },
+  "agentSessions.metaSandbox": {
+    message: "Sandbox: {template}",
+    description:
+      "Tooltip of the sandbox template a session runs on, with its size",
+  },
   "agentSessions.agent.claude": {
     message: "Claude",
     description: "Composer — agent option: claude",
@@ -578,7 +606,8 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.queueModel": {
     message: "Switches the session to {model}",
-    description: "Queued message — the model its turn switches the session to (w10/m516)",
+    description:
+      "Queued message — the model its turn switches the session to (w10/m516)",
   },
   "agentSessions.queueSendNow": {
     message: "Send now",
@@ -717,7 +746,8 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.errors.AGENT_SESSION_MODEL_NOT_OFFERED": {
     message:
       "This workspace's platform model doesn't offer {model}. Pick one from the model list.",
-    description: "Mapped message for AGENT_SESSION_MODEL_NOT_OFFERED (w10/m516)",
+    description:
+      "Mapped message for AGENT_SESSION_MODEL_NOT_OFFERED (w10/m516)",
   },
   "agentSessions.errors.AGENT_SESSION_MODEL_PINNED": {
     message: "This agent runs only {pinnedModel}.",

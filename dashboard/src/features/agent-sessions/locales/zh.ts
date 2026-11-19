@@ -240,6 +240,34 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "模型：{model}",
     description: "Session header — tooltip of the model the session runs",
   },
+  "agentSessions.sandboxLabel": {
+    message: "沙箱",
+    description: "Composer — sandbox template select label (w10/m519)",
+  },
+  "agentSessions.sandboxSize": {
+    message: "{cpu} 核 CPU，{memory} GB 内存",
+    description:
+      "Sandbox template size: CPU cores and memory in GB, numbers already formatted",
+  },
+  "agentSessions.sandboxOption": {
+    message: "{name} · {size}",
+    description: "Sandbox template choice: its name, then its size",
+  },
+  "agentSessions.sandboxDefaultOption": {
+    message: "{template}（默认）",
+    description:
+      "Sandbox list — the template a session runs on when it names none (the workspace default)",
+  },
+  "agentSessions.sandboxWorkspaceDefault": {
+    message: "工作区默认（{template}）",
+    description:
+      "Automation sandbox choice — follow the workspace default at each run; {template} is the default now",
+  },
+  "agentSessions.metaSandbox": {
+    message: "沙箱：{template}",
+    description:
+      "Tooltip of the sandbox template a session runs on, with its size",
+  },
   "agentSessions.agent.claude": {
     message: "Claude",
     description: "Composer — agent option: claude",
@@ -557,7 +585,8 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.queueModel": {
     message: "将会话切换到 {model}",
-    description: "Queued message — the model its turn switches the session to (w10/m516)",
+    description:
+      "Queued message — the model its turn switches the session to (w10/m516)",
   },
   "agentSessions.queueSendNow": {
     message: "立即发送",
@@ -690,9 +719,9 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description: "Mapped message for AGENT_SESSION_MODEL_ENDPOINT_INVALID",
   },
   "agentSessions.errors.AGENT_SESSION_MODEL_NOT_OFFERED": {
-    message:
-      "此工作区的平台模型不提供 {model}。请从模型列表中选择。",
-    description: "Mapped message for AGENT_SESSION_MODEL_NOT_OFFERED (w10/m516)",
+    message: "此工作区的平台模型不提供 {model}。请从模型列表中选择。",
+    description:
+      "Mapped message for AGENT_SESSION_MODEL_NOT_OFFERED (w10/m516)",
   },
   "agentSessions.errors.AGENT_SESSION_MODEL_PINNED": {
     message: "此智能体只能使用 {pinnedModel}。",

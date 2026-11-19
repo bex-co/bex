@@ -303,6 +303,108 @@ describe("AgentEnvironmentCard", () => {
     expect(save()).toBeDisabled();
   });
 
+  // w10/m519: the workspace default sandbox template, Devin's default
+  // platform. The list is the server's: a made-up third template proves no
+  // name or size is built in.
+  describe("default sandbox", () => {
+    const tpl = (name: string, cpu: number, memoryGb: number) => ({
+      __typename: "AgentSandboxTemplate" as const,
+      name,
+      cpu,
+      memoryGb,
+      default: name === "agent",
+    });
+    const SIZED = {
+      ...ENV,
+      defaultTemplate: "agent",
+      templates: [
+        tpl("agent", 2, 4),
+        tpl("agent-4c-8g", 4, 8),
+        tpl("agent-8c-16g", 8, 16),
+      ],
+    };
+    const picker = () =>
+      screen.getByRole("combobox", { name: "Default sandbox" });
+
+    it("offers the templates with their sizes and saves the one picked", async () => {
+      const { user, update } = setup(SIZED);
+      expect(picker()).toHaveTextContent("agent · 2 CPU, 4 GB");
+      expect(picker()).toHaveAccessibleDescription(
+        /New sessions and automations that name no sandbox run on this one/,
+      );
+      await user.click(picker());
+      expect(
+        screen.getAllByRole("option").map((option) => option.textContent),
+      ).toEqual([
+        "agent · 2 CPU, 4 GB",
+        "agent-4c-8g · 4 CPU, 8 GB",
+        "agent-8c-16g · 8 CPU, 16 GB",
+      ]);
+      await user.click(
+        screen.getByRole("option", { name: "agent-8c-16g · 8 CPU, 16 GB" }),
+      );
+      await user.click(save());
+      expect(update).toHaveBeenCalledWith({ defaultTemplate: "agent-8c-16g" });
+      expect(toast.success).toHaveBeenCalledWith("Agent settings saved");
+    });
+
+    it("shows the refusal on the field and clears it on the next pick", async () => {
+      const { user, update } = setup(SIZED);
+      update.mockRejectedValueOnce(
+        codedGraphQLError("AGENT_ENVIRONMENT_TEMPLATE_INVALID", {
+          field: "defaultTemplate",
+          template: "agent-8c-16g",
+          templates: ["agent", "agent-4c-8g"],
+        }),
+      );
+      await user.click(picker());
+      await user.click(
+        screen.getByRole("option", { name: "agent-8c-16g · 8 CPU, 16 GB" }),
+      );
+      await user.click(save());
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "agent-8c-16g isn't a sandbox template. Pick one of: agent, agent-4c-8g.",
+      );
+      expect(picker()).toHaveAttribute("aria-invalid", "true");
+      expect(toast.success).not.toHaveBeenCalled();
+      await user.click(picker());
+      await user.click(
+        screen.getByRole("option", { name: "agent-4c-8g · 4 CPU, 8 GB" }),
+      );
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it("is read-only for a member without can_manage", () => {
+      vi.mocked(useCapabilities).mockReturnValue(
+        mockCapabilities({ role: "DEVELOPER", canManage: false }),
+      );
+      setup(SIZED);
+      expect(picker()).toBeDisabled();
+      expect(picker()).toHaveTextContent("agent · 2 CPU, 4 GB");
+    });
+
+    it("keeps the skeleton's default-sandbox section in step with the ready card", () => {
+      setup(SIZED);
+      const ready = screen.getByTestId("default-template-section");
+      const readyRows = ready.children.length;
+      // A 36px (h-9) trigger, full width up to max-w-sm.
+      expect(picker()).toHaveAttribute("data-size", "default");
+      expect(picker()).toHaveClass("w-full", "max-w-sm");
+      cleanup();
+
+      setup(null, true);
+      const skeleton = screen.getByTestId("default-template-section-skeleton");
+      expect(skeleton.className).toBe(ready.className);
+      // Label, control, help: the same three rows, the control the same box.
+      expect(skeleton.children).toHaveLength(readyRows);
+      expect(skeleton.children[1]).toHaveClass("h-9", "w-full", "max-w-sm");
+      expect(skeleton).toHaveTextContent("Default sandbox");
+      expect(skeleton).toHaveTextContent(
+        /New sessions and automations that name no sandbox run on this one/,
+      );
+    });
+  });
+
   describe("model provider key", () => {
     const keyField = () => screen.getByLabelText(/provider API key/i);
     const saveKey = () => screen.getByRole("button", { name: "Save key" });

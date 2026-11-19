@@ -67,6 +67,7 @@ Develop against `.pm/w10/dev-10/`, this worker's own isolated stack on the share
 - [ ] **028** — [A workspace admin cannot narrow which platform models its members may choose](028.md) ← w10/m516 Devin comparison (t007), 2026-11-19
 - [ ] **029** — [The mobile app's session composer cannot choose the model](029.md) ← w10/m516 Devin comparison (t007), 2026-11-19
 - [ ] **030** — [The `bex` workspace's beancount-io automations still tell the agent that `gh` is not installed](030.md) ← w10/m513 t006 (live check), 2026-11-19
+- [ ] **031** — [The mobile app's session composer cannot choose the sandbox template](031.md) ← w10/m519 Devin comparison (t007), 2026-11-19
 
 - [ ] **012** — moved to **w21/m336** (2026-11-11): Billing lifecycle worker fails every tick with "no rows in result set" (11 workspaces stuck `enforcing`) → [`../w21/done/m336/`](../w21/done/m336/README.md)
 

@@ -236,6 +236,34 @@ const ptAgentSessions: Record<string, TranslationEntry> = {
     message: "Modelo: {model}",
     description: "Session header — tooltip of the model the session runs",
   },
+  "agentSessions.sandboxLabel": {
+    message: "Sandbox",
+    description: "Composer — sandbox template select label (w10/m519)",
+  },
+  "agentSessions.sandboxSize": {
+    message: "{cpu} CPU, {memory} GB de memória",
+    description:
+      "Sandbox template size: CPU cores and memory in GB, numbers already formatted",
+  },
+  "agentSessions.sandboxOption": {
+    message: "{name} · {size}",
+    description: "Sandbox template choice: its name, then its size",
+  },
+  "agentSessions.sandboxDefaultOption": {
+    message: "{template} (padrão)",
+    description:
+      "Sandbox list — the template a session runs on when it names none (the workspace default)",
+  },
+  "agentSessions.sandboxWorkspaceDefault": {
+    message: "Padrão do workspace ({template})",
+    description:
+      "Automation sandbox choice — follow the workspace default at each run; {template} is the default now",
+  },
+  "agentSessions.metaSandbox": {
+    message: "Sandbox: {template}",
+    description:
+      "Tooltip of the sandbox template a session runs on, with its size",
+  },
   "agentSessions.agent.claude": {
     message: "Claude",
     description: "Composer — agent option: claude",
@@ -584,7 +612,8 @@ const ptAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.queueModel": {
     message: "Muda a sessão para {model}",
-    description: "Queued message — the model its turn switches the session to (w10/m516)",
+    description:
+      "Queued message — the model its turn switches the session to (w10/m516)",
   },
   "agentSessions.queueSendNow": {
     message: "Enviar agora",
@@ -724,7 +753,8 @@ const ptAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.errors.AGENT_SESSION_MODEL_NOT_OFFERED": {
     message:
       "O modelo da plataforma deste workspace não oferece {model}. Escolha um na lista de modelos.",
-    description: "Mapped message for AGENT_SESSION_MODEL_NOT_OFFERED (w10/m516)",
+    description:
+      "Mapped message for AGENT_SESSION_MODEL_NOT_OFFERED (w10/m516)",
   },
   "agentSessions.errors.AGENT_SESSION_MODEL_PINNED": {
     message: "Este agente usa apenas {pinnedModel}.",

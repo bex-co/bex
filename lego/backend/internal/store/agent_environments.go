@@ -25,12 +25,14 @@ import (
 
 // AgentEnvironment is a workspace's agent-session environment row
 // (w10/m17): the sandbox network tier, the custom hostnames the `custom` tier
-// opens, and the default model. A workspace with no row has the defaults.
+// opens, the default model and the default sandbox template (w10/m519; empty
+// means the platform's). A workspace with no row has the defaults.
 type AgentEnvironment struct {
-	WorkspaceID  string
-	NetworkTier  string
-	CustomHosts  []string
-	DefaultModel string
+	WorkspaceID     string
+	NetworkTier     string
+	CustomHosts     []string
+	DefaultModel    string
+	DefaultTemplate string
 	// SpendCapOverrideMicroUSD is the admin's monthly agent-model spend cap
 	// (ADR091 D5); nil means the plan default.
 	SpendCapOverrideMicroUSD *int64
@@ -60,9 +62,10 @@ func (e AgentEnvironment) ModelKeySet() bool { return e.ModelKeySetAt != nil }
 // AgentEnvironmentPatch is a partial update: a nil field keeps the stored
 // value (or the column default on first write).
 type AgentEnvironmentPatch struct {
-	NetworkTier  *string
-	CustomHosts  *[]string
-	DefaultModel *string
+	NetworkTier     *string
+	CustomHosts     *[]string
+	DefaultModel    *string
+	DefaultTemplate *string
 	// SpendCapOverrideMicroUSD sets the override; ClearSpendCapOverride returns
 	// to the plan default (and wins over a set value).
 	SpendCapOverrideMicroUSD *int64
@@ -131,10 +134,10 @@ func (s *PGStore) UpsertAgentEnvironmentLocked(ctx context.Context, workspaceID 
 }
 
 // agentEnvironmentColumns are the columns AgentEnvironment.dest scans.
-const agentEnvironmentColumns = `network_tier, custom_hosts, default_model, agent_model_spend_cap_override_microusd, model_key_set_at, disabled_agents, agent_data_use_acks, updated_at`
+const agentEnvironmentColumns = `network_tier, custom_hosts, default_model, default_template, agent_model_spend_cap_override_microusd, model_key_set_at, disabled_agents, agent_data_use_acks, updated_at`
 
 func (e *AgentEnvironment) dest() []any {
-	return []any{&e.NetworkTier, &e.CustomHosts, &e.DefaultModel, &e.SpendCapOverrideMicroUSD, &e.ModelKeySetAt, &e.DisabledAgents, &e.DataUseAcks, &e.UpdatedAt}
+	return []any{&e.NetworkTier, &e.CustomHosts, &e.DefaultModel, &e.DefaultTemplate, &e.SpendCapOverrideMicroUSD, &e.ModelKeySetAt, &e.DisabledAgents, &e.DataUseAcks, &e.UpdatedAt}
 }
 
 func upsertAgentEnvironment(ctx context.Context, q interface {
@@ -155,15 +158,16 @@ func upsertAgentEnvironment(ctx context.Context, q interface {
 	}
 	e := AgentEnvironment{WorkspaceID: workspaceID}
 	err := q.QueryRow(ctx, `
-		INSERT INTO agent_environments (workspace_id, network_tier, custom_hosts, default_model, agent_model_spend_cap_override_microusd, model_key_set_at, disabled_agents, agent_data_use_acks)
+		INSERT INTO agent_environments (workspace_id, network_tier, custom_hosts, default_model, agent_model_spend_cap_override_microusd, model_key_set_at, disabled_agents, agent_data_use_acks, default_template)
 		VALUES ($1, COALESCE($2, 'registries'), COALESCE($3::text[], '{}'), COALESCE($4, ''),
 		        CASE WHEN $6::boolean THEN NULL ELSE $5::bigint END,
 		        CASE WHEN $7::boolean THEN now() END,
-		        COALESCE($8::text[], '{}'), $9::jsonb)
+		        COALESCE($8::text[], '{}'), $9::jsonb, COALESCE($10, ''))
 		ON CONFLICT (workspace_id) DO UPDATE
 			SET network_tier  = COALESCE($2, agent_environments.network_tier),
 			    custom_hosts  = COALESCE($3::text[], agent_environments.custom_hosts),
 			    default_model = COALESCE($4, agent_environments.default_model),
+			    default_template = COALESCE($10, agent_environments.default_template),
 			    agent_model_spend_cap_override_microusd = CASE
 			        WHEN $6::boolean THEN NULL
 			        ELSE COALESCE($5::bigint, agent_environments.agent_model_spend_cap_override_microusd) END,
@@ -176,7 +180,7 @@ func upsertAgentEnvironment(ctx context.Context, q interface {
 			    updated_at    = now()
 		RETURNING `+agentEnvironmentColumns,
 		workspaceID, patch.NetworkTier, hosts, patch.DefaultModel, patch.SpendCapOverrideMicroUSD, patch.ClearSpendCapOverride, patch.ModelKeySet,
-		disabled, acks,
+		disabled, acks, patch.DefaultTemplate,
 	).Scan(e.dest()...)
 	if err != nil {
 		return AgentEnvironment{}, classify("agent environment", err)

@@ -63,6 +63,7 @@ import { useComposerSpendGate } from "@/features/agent-sessions/hooks/use-compos
 import { blocksCreate } from "@/features/agent-environment/lib/spend";
 import { ComposerSecrets } from "@/features/agent-sessions/components/composer-secrets";
 import { ModelPicker } from "@/features/agent-sessions/components/model-picker";
+import { SandboxPicker } from "@/features/agent-sessions/components/sandbox-picker";
 import {
   ComposerSkillChips,
   ComposerSkills,
@@ -84,14 +85,15 @@ const EXAMPLE_KEYS = [
 ] as const;
 
 /**
- * The prompt-box composer: the visual center of `/agents`. Agent, model and
- * repo live on the toolbar (w10/m17, w10/m516): the branch is always derived
- * from the task, the sandbox network comes from the workspace's agent
- * environment, and the model control shows the agent's model and its
- * catalog, sending a model only when the person picks another. A repo is
- * optional — a repo-less prompt starts a chat-only session. The Connect GitHub
- * callout appears only when the composer targets a repo but the workspace has
- * no GitHub App repos connected.
+ * The prompt-box composer: the visual center of `/agents`. Agent, model,
+ * sandbox and repo live on the toolbar (w10/m17, w10/m516, w10/m519): the
+ * branch is always derived from the task, the sandbox network comes from the
+ * workspace's agent environment, the model control shows the agent's model
+ * and its catalog, and the sandbox control the workspace's templates with the
+ * default preselected; each sends its choice only when the person picks
+ * something other than the default. A repo is optional — a repo-less prompt
+ * starts a chat-only session. The Connect GitHub callout appears only when the
+ * composer targets a repo but the workspace has no GitHub App repos connected.
  */
 export function NewSessionComposer() {
   const { t } = useTranslations();
@@ -130,6 +132,8 @@ export function NewSessionComposer() {
   const [skills, setSkills] = useState<ComposerSkill[]>([]);
   // The model the session runs (w10/m516); "" runs the agent's default.
   const [model, setModel] = useState("");
+  // The sandbox template it runs on (w10/m519); "" runs the workspace default.
+  const [template, setTemplate] = useState("");
   const skillsInvalid = !composerSkillsValid(skills);
   const editorRef = useRef<InlineMentionEditorHandle | null>(null);
   const { task, repo, sessionIds } = composerDocument;
@@ -223,6 +227,7 @@ export function NewSessionComposer() {
         branch,
         values.agent,
         model,
+        template,
         prompt,
         sentAttachmentIds,
         spendLimit.value,
@@ -241,6 +246,7 @@ export function NewSessionComposer() {
         branch,
         agent: values.agent,
         ...(model ? { model } : {}),
+        ...(template ? { template } : {}),
         task: prompt,
         attachmentIds: sentAttachmentIds,
         maxSpendUSD: spendLimit.value,
@@ -404,6 +410,13 @@ export function NewSessionComposer() {
                 offer={modelOffer}
                 value={model}
                 onChange={setModel}
+                disabled={isSubmitting}
+              />
+
+              <SandboxPicker
+                offer={capabilities?.sandbox}
+                value={template}
+                onChange={setTemplate}
                 disabled={isSubmitting}
               />
 

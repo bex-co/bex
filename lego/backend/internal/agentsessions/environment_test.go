@@ -75,6 +75,9 @@ func (f *fakeEnvironments) UpsertAgentEnvironment(_ context.Context, ws string, 
 	if patch.DefaultModel != nil {
 		row.DefaultModel = *patch.DefaultModel
 	}
+	if patch.DefaultTemplate != nil {
+		row.DefaultTemplate = *patch.DefaultTemplate
+	}
 	if patch.SpendCapOverrideMicroUSD != nil {
 		row.SpendCapOverrideMicroUSD = patch.SpendCapOverrideMicroUSD
 	}
@@ -151,10 +154,20 @@ func environmentService(ws string, environments EnvironmentStore) *Service {
 			"admin": "admin", "dev": "developer", "viewer": "viewer",
 		}}},
 		Environments: environments,
+		// Production's two agent templates (fakeLifecycle.AgentTemplates).
+		Sandbox: &fakeLifecycle{},
 	}
 }
 
 func ptr[T any](v T) *T { return &v }
+
+// productionTemplates are fakeLifecycle's templates as the reads list them.
+var productionTemplates = []SandboxTemplate{{Name: "agent", CPU: 2, MemoryGB: 4}, {Name: "agent-4c-8g", CPU: 4, MemoryGB: 8}}
+
+// offerOf is the TemplateOffer of a workspace whose default is def.
+func offerOf(def string) TemplateOffer {
+	return TemplateOffer{DefaultTemplate: def, Templates: productionTemplates}
+}
 
 // TestEnvironmentDefaultsAndRoundTrip: a workspace with no row reads the
 // defaults; a partial update keeps every field it does not name.
@@ -169,6 +182,7 @@ func exerciseEnvironmentRoundTrip(t *testing.T, svc *Service, ws string) {
 		t.Fatalf("Environment: %v", err)
 	}
 	want := Environment{OwnerID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}, Models: []string{}, ModelSource: ModelSourceNone, RegistryHosts: sessionegress.DefaultRegistryDomains(),
+		TemplateOffer: offerOf("agent"),
 		EnabledAgents: []string{"claude", "codex", "deepseek", "gemini"}, AgentDataUse: []AgentDataUse{{Agent: "muse"}}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("defaults = %+v, want %+v", got, want)
@@ -197,6 +211,24 @@ func exerciseEnvironmentRoundTrip(t *testing.T, svc *Service, ws string) {
 	}
 	if len(got.CustomHosts) != 0 || got.CustomHosts == nil || got.DefaultModel != nil || got.NetworkTier != NetworkTierCustom {
 		t.Fatalf("clear = %+v, want no hosts, provider-default model, tier kept", got)
+	}
+
+	// The default sandbox template (w10/m519): a registered one is stored and
+	// read back, a template-only update keeps every other field, and
+	// "" returns to the platform's.
+	got, err = svc.UpdateEnvironment(caller("admin"), ws, EnvironmentInput{DefaultTemplate: ptr(" agent-4c-8g ")})
+	if err != nil {
+		t.Fatalf("UpdateEnvironment template: %v", err)
+	}
+	if !reflect.DeepEqual(got.TemplateOffer, offerOf("agent-4c-8g")) || got.NetworkTier != NetworkTierCustom {
+		t.Fatalf("after defaultTemplate = %+v", got)
+	}
+	if read, err := svc.Environment(caller("viewer"), ws); err != nil || !reflect.DeepEqual(read.TemplateOffer, got.TemplateOffer) {
+		t.Fatalf("read back template = %+v err=%v", read, err)
+	}
+	got, err = svc.UpdateEnvironment(caller("admin"), ws, EnvironmentInput{DefaultTemplate: ptr("")})
+	if err != nil || !reflect.DeepEqual(got.TemplateOffer, offerOf("agent")) {
+		t.Fatalf("clear template = %+v err=%v, want agent", got, err)
 	}
 }
 
@@ -274,6 +306,8 @@ func exerciseEnvironmentValidation(t *testing.T, newService func() (*Service, st
 		{"github baseline", EnvironmentInput{CustomHosts: &[]string{"github.com"}}, "AGENT_ENVIRONMENT_HOSTS_INVALID"},
 		{"model provider", EnvironmentInput{CustomHosts: &[]string{"openrouter.ai"}}, "AGENT_ENVIRONMENT_HOSTS_INVALID"},
 		{"model id", EnvironmentInput{DefaultModel: ptr("claude sonnet")}, "AGENT_ENVIRONMENT_MODEL_INVALID"},
+		{"unregistered template", EnvironmentInput{DefaultTemplate: ptr("agent-8c-16g")}, CodeEnvironmentTemplateInvalid},
+		{"internal template", EnvironmentInput{DefaultTemplate: ptr("base")}, CodeEnvironmentTemplateInvalid},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, ws := newService()
@@ -327,6 +361,9 @@ func gqlInput(in EnvironmentInput) map[string]any {
 	if in.DefaultModel != nil {
 		out["defaultModel"] = *in.DefaultModel
 	}
+	if in.DefaultTemplate != nil {
+		out["defaultTemplate"] = *in.DefaultTemplate
+	}
 	return out
 }
 
@@ -347,9 +384,11 @@ func environmentSchema(t *testing.T, svc *Service) graphql.Schema {
 // GraphQL update round-trips through the same service.
 func TestEnvironmentSurfacesShareOneShape(t *testing.T) {
 	wantFields := map[string]bool{}
-	typ := reflect.TypeFor[Environment]()
-	for i := range typ.NumField() {
-		wantFields[strings.Split(typ.Field(i).Tag.Get("json"), ",")[0]] = true
+	// Embedded structs (TemplateOffer) serialize their fields inline.
+	for _, field := range reflect.VisibleFields(reflect.TypeFor[Environment]()) {
+		if !field.Anonymous {
+			wantFields[strings.Split(field.Tag.Get("json"), ",")[0]] = true
+		}
 	}
 	gqlFields := agentEnvironmentGQLType.Fields()
 	if len(gqlFields) != len(wantFields) {

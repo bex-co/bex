@@ -56,6 +56,8 @@ export interface AgentEnvironmentDraft {
   /** One hostname per line, as typed. */
   hostsText: string;
   defaultModel: string;
+  /** The default sandbox template (w10/m519): always one the list names. */
+  defaultTemplate: string;
 }
 
 export function draftFrom(env: AgentEnvironmentView): AgentEnvironmentDraft {
@@ -63,6 +65,7 @@ export function draftFrom(env: AgentEnvironmentView): AgentEnvironmentDraft {
     networkTier: env.networkTier,
     hostsText: env.customHosts.join("\n"),
     defaultModel: env.defaultModel ?? "",
+    defaultTemplate: env.defaultTemplate,
   };
 }
 
@@ -116,8 +119,9 @@ function sameHosts(a: string[], b: string[]): boolean {
  * The partial update the draft implies: only the fields that differ from the
  * saved environment. Custom hosts are sent only while the Custom tier is
  * selected (they are hidden and inert otherwise). On the platform route the
- * model is one of the catalog's (w10/m516) or "" for its default. An empty
- * object means nothing to save.
+ * model is one of the catalog's (w10/m516) or "" for its default. The
+ * default sandbox template is one of the environment's templates (w10/m519).
+ * An empty object means nothing to save.
  */
 export function buildPatch(
   saved: AgentEnvironmentView,
@@ -133,6 +137,9 @@ export function buildPatch(
   }
   const model = draft.defaultModel.trim();
   if (model !== (saved.defaultModel ?? "")) patch.defaultModel = model;
+  if (draft.defaultTemplate !== saved.defaultTemplate) {
+    patch.defaultTemplate = draft.defaultTemplate;
+  }
   return patch;
 }
 
@@ -155,8 +162,11 @@ export function draftProblems(draft: AgentEnvironmentDraft): DraftProblems {
 /** A save refusal, anchored to the field it belongs to when it has one. */
 export type SaveError =
   | { field: "hosts"; problem: HostsProblem }
-  | { field: "model"; key: string; params?: Record<string, string> }
-  | { field: "form"; key: string; params?: Record<string, string> };
+  | {
+      field: "model" | "template" | "form";
+      key: string;
+      params?: Record<string, string>;
+    };
 
 /**
  * Maps a failed save onto a field by the server's stable `extensions.code`,
@@ -186,6 +196,22 @@ export function saveErrorFrom(err: unknown): SaveError {
             key: "agentEnvironment.modelNotOfferedError",
             params: { model: str("model") ?? "" },
           };
+        case "AGENT_ENVIRONMENT_TEMPLATE_INVALID": {
+          // The refusal lists the registered templates (w10/m519).
+          const templates = Array.isArray(ext["templates"])
+            ? (ext["templates"] as unknown[]).filter(
+                (name): name is string => typeof name === "string",
+              )
+            : [];
+          return {
+            field: "template",
+            key: "agentEnvironment.templateInvalidError",
+            params: {
+              template: str("template") ?? "",
+              templates: templates.join(", "),
+            },
+          };
+        }
         case "AGENT_ENVIRONMENT_TIER_INVALID":
           return { field: "form", key: "agentEnvironment.tierInvalid" };
         case "FORBIDDEN":

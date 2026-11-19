@@ -22,13 +22,17 @@ describe("useAgentEnvironment update", () => {
     });
   });
 
-  // The composer's per-agent model-key readiness comes from the capabilities query, so a key
-  // set or clear refetches it; other saves leave it alone.
-  it("refetches the composer capabilities only on a key change", async () => {
+  // The composer's per-agent model-key readiness, default model and default
+  // sandbox come from the capabilities query, so a save of any of them
+  // refetches it; other saves leave it alone.
+  it("refetches the composer capabilities only when a save changes what they carry", async () => {
     const { result } = renderHook(() => useAgentEnvironment("tea-1"));
     for (const input of [
       { modelApiKey: "sk-ant-api03-x" },
       { clearModelApiKey: true },
+      { defaultModel: "anthropic/claude-sonnet-5.5" },
+      { defaultTemplate: "agent-8c-16g" },
+      { defaultTemplate: "" },
     ]) {
       await act(() => result.current.update(input));
       expect(mutate).toHaveBeenLastCalledWith({

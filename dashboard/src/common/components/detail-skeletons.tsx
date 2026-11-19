@@ -126,8 +126,11 @@ function ComposerBoxSkeleton() {
         className="flex flex-wrap items-center gap-1 px-1.5 pb-1.5"
         data-skeleton-region="composer-toolbar"
       >
-        {/* Agent select, attach, Secrets, Skills, spend limit. */}
+        {/* Agent select, model (w10/m516), sandbox (w10/m519), attach,
+            Secrets, Skills, spend limit. */}
         <Skeleton className="h-8 w-[7.5rem]" />
+        <Skeleton className="h-8 w-[10.5rem]" />
+        <Skeleton className="h-8 w-[9.5rem]" />
         <Skeleton className="size-8" />
         <Skeleton className="size-8" />
         <Skeleton className="size-8" />

@@ -387,6 +387,11 @@ func TestAutomationTemplateFlagSetsTheSandbox(t *testing.T) {
 	}
 
 	f.seed("triage", map[string]any{"frequency": "day", "at": "09:00", "timezone": "Europe/Berlin"}, tpl("Triage"))
+	// One that names none runs on the workspace default at each fire (w10/m519).
+	stdout, _, _ = run(t, f.deps(), "-o", "text", "automations", "get", "triage")
+	if !regexp.MustCompile(`(?m)^Sandbox\s+the workspace's default$`).MatchString(stdout) {
+		t.Fatalf("get of an automation naming no template:\n%s", stdout)
+	}
 	for i, tc := range []struct{ value, want string }{
 		{"agent-4c-8g", `{"agent":"claude","template":"agent-4c-8g"}`},
 		{"", `{"agent":"claude"}`},

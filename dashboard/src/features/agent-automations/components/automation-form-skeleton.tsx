@@ -120,6 +120,14 @@ export function AutomationFormSkeleton({ mode }: { mode: "create" | "edit" }) {
                 {INPUT}
               </FormField>
             </div>
+            {/* The sandbox template (w10/m519), full width like the repo. */}
+            <FormField
+              id="sk-template"
+              label={t("agentAutomations.field.template")}
+              help={t("agentAutomations.help.template")}
+            >
+              {INPUT}
+            </FormField>
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 id="sk-spend"

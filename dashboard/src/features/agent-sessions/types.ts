@@ -139,10 +139,33 @@ export interface AgentSessionCapabilitiesView {
   modelKeyReadyAgents: string[];
   /** Each listed profile's model offer (w10/m516), keyed by profile id. */
   models: Record<string, AgentModelOffer>;
+  /** The sandbox templates a session may run on (w10/m519). */
+  sandbox: AgentTemplateOffer;
   github: {
     connected: boolean;
   };
   attachments: AttachmentLimitsView;
+}
+
+/**
+ * An agent sandbox template a session can name (w10/m519): its name, CPU
+ * cores and memory in GB, all as bex-api serves them.
+ */
+export interface AgentSandboxTemplateView {
+  name: string;
+  cpu: number;
+  memoryGb: number;
+}
+
+/**
+ * What a workspace offers for its sandbox (w10/m519): `defaultTemplate` runs
+ * when a session or an automation run names none (the workspace default, else
+ * the platform's), and `templates` are every one it may name, smallest first.
+ * Empty `templates` offers no choice.
+ */
+export interface AgentTemplateOffer {
+  defaultTemplate: string;
+  templates: AgentSandboxTemplateView[];
 }
 
 /**

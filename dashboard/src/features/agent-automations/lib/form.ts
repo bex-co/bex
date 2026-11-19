@@ -46,6 +46,11 @@ export interface AutomationFormValues {
    * free-form id on the workspace's own key, or "" for the agent's default.
    */
   model: string;
+  /**
+   * The sandbox template each run uses (w10/m519): one of the workspace's
+   * templates, or "" for the workspace default in force when it fires.
+   */
+  template: string;
   /** Typed as-is; blank means no ceiling (the server requires one on the platform model). */
   spendLimit: string;
   secretNames: string[];
@@ -56,12 +61,12 @@ export interface AutomationFormValues {
   /**
    * Template fields the form does not edit but must not drop on an update
    * (the template is replaced whole): branch, title, tags, output contract,
-   * egress, sandbox template.
+   * egress.
    */
   carried: Omit<
     AgentAutomationTemplateInput,
     "task" | "repo" | "agentConfig" | "maxSpendUSD" | "secretNames" | "skills"
-  > & { agentTemplate?: string | null };
+  >;
 }
 
 export function emptyFormValues(timezone?: string): AutomationFormValues {
@@ -71,6 +76,7 @@ export function emptyFormValues(timezone?: string): AutomationFormValues {
     repo: "",
     agent: "claude",
     model: "",
+    template: "",
     spendLimit: "",
     secretNames: [],
     skills: [],
@@ -98,6 +104,7 @@ export function valuesFromAutomation(
       ? tpl.agentConfig.agent
       : "claude",
     model: tpl.agentConfig.model ?? "",
+    template: tpl.agentConfig.template ?? "",
     spendLimit: tpl.maxSpendUSD != null ? String(tpl.maxSpendUSD) : "",
     secretNames: tpl.secretNames ?? [],
     skills: (tpl.skills ?? []).map((s) => ({
@@ -115,7 +122,6 @@ export function valuesFromAutomation(
       egressAllowlist: tpl.egressAllowlist ?? undefined,
       outputSchema: tpl.outputSchema ?? undefined,
       outputRequired: tpl.outputRequired ?? undefined,
-      agentTemplate: tpl.agentConfig.template ?? undefined,
     },
   };
 }
@@ -125,6 +131,7 @@ export type FormField =
   | "task"
   | "repo"
   | "model"
+  | "template"
   | "spendLimit"
   | "emailNotifications"
   | "skills"
@@ -169,16 +176,15 @@ export function toAutomationInput(
   options: { ifVersion?: number } = {},
 ): AgentAutomationInput {
   const spend = parseSpendLimit(values.spendLimit);
-  const { agentTemplate, ...carried } = values.carried;
   const model = values.model.trim();
   const template: AgentAutomationTemplateInput = {
-    ...carried,
+    ...values.carried,
     task: values.task.trim(),
     repo: values.repo.trim() || null,
     agentConfig: {
       agent: values.agent,
       ...(model ? { model } : {}),
-      ...(agentTemplate ? { template: agentTemplate } : {}),
+      ...(values.template ? { template: values.template } : {}),
     },
     maxSpendUSD: spend.ok ? spend.value : null,
     secretNames: [...values.secretNames].sort(),
@@ -252,6 +258,9 @@ function targetForField(
     case "template.agentConfig.model":
     case "agentConfig.model":
       return { target: "model" };
+    case "template.agentConfig.template":
+    case "agentConfig.template":
+      return { target: "template" };
     default:
       return { target: "general" };
   }

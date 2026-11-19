@@ -102,6 +102,32 @@ describe("buildPatch", () => {
       }),
     ).toEqual({ defaultModel: "anthropic/claude-opus-5.5" });
   });
+
+  it("sends a changed default sandbox template (w10/m519)", () => {
+    const sized = {
+      ...SAVED,
+      defaultTemplate: "box-small",
+      templates: [
+        {
+          __typename: "AgentSandboxTemplate" as const,
+          name: "box-small",
+          cpu: 1,
+          memoryGb: 2,
+        },
+        {
+          __typename: "AgentSandboxTemplate" as const,
+          name: "box-large",
+          cpu: 8,
+          memoryGb: 16,
+        },
+      ],
+    };
+    expect(draftFrom(sized).defaultTemplate).toBe("box-small");
+    expect(buildPatch(sized, draftFrom(sized))).toEqual({});
+    expect(
+      buildPatch(sized, { ...draftFrom(sized), defaultTemplate: "box-large" }),
+    ).toEqual({ defaultTemplate: "box-large" });
+  });
 });
 
 describe("saveErrorFrom", () => {
@@ -130,6 +156,19 @@ describe("saveErrorFrom", () => {
       field: "model",
       key: "agentEnvironment.modelNotOfferedError",
       params: { model: "x/y" },
+    });
+    expect(
+      saveErrorFrom(
+        codedGraphQLError("AGENT_ENVIRONMENT_TEMPLATE_INVALID", {
+          field: "defaultTemplate",
+          template: "box-huge",
+          templates: ["box-small", "box-large"],
+        }),
+      ),
+    ).toEqual({
+      field: "template",
+      key: "agentEnvironment.templateInvalidError",
+      params: { template: "box-huge", templates: "box-small, box-large" },
     });
     expect(saveErrorFrom(codedGraphQLError("FORBIDDEN")).field).toBe("form");
   });

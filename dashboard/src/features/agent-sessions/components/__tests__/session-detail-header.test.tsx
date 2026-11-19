@@ -2,7 +2,10 @@ import { beforeEach, describe, it, expect, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SessionDetailHeader } from "@/features/agent-sessions/components/session-detail-header";
-import type { AgentSessionView } from "@/features/agent-sessions/types";
+import type {
+  AgentSessionView,
+  AgentTemplateOffer,
+} from "@/features/agent-sessions/types";
 import { hydrateAcrossBoundary } from "@/test/hydration";
 import {
   agentSessionView,
@@ -76,6 +79,24 @@ vi.mock(
   "@/features/agent-sessions/hooks/use-agent-session-applied-secrets",
   () => ({
     useAgentSessionAppliedSecrets: () => appliedSecrets.current,
+  }),
+);
+
+// The sandbox template list (w10/m519) comes from the capabilities read.
+const capabilities = vi.hoisted(() => ({
+  sandbox: null as AgentTemplateOffer | null,
+}));
+vi.mock(
+  "@/features/agent-sessions/hooks/use-agent-session-capabilities",
+  () => ({
+    useAgentSessionCapabilities: () => ({
+      capabilities: capabilities.sandbox
+        ? { sandbox: capabilities.sandbox }
+        : null,
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+    }),
   }),
 );
 
@@ -768,5 +789,56 @@ describe("SessionDetailHeader model cost (ADR091 D6)", () => {
     const placeholder = screen.getByTestId("session-model-cost-placeholder");
     expect(placeholder).toHaveAttribute("aria-hidden", "true");
     expect(placeholder).toHaveClass(...skeletonClass);
+  });
+});
+
+// w10/m519: the header names the sandbox template the session runs on, with
+// the size the workspace's template list gives it. The list here is made up,
+// so nothing the dashboard could hard-code would match it.
+describe("SessionDetailHeader sandbox (w10/m519)", () => {
+  const withTemplate = (template: string | null) =>
+    view({
+      agentConfig: {
+        agent: "claude",
+        model: null,
+        modelEndpoint: null,
+        task: "refactor the mapper",
+        template,
+      },
+    });
+
+  beforeEach(() => {
+    capabilities.sandbox = {
+      defaultTemplate: "box-2c-4g",
+      templates: [
+        { name: "box-2c-4g", cpu: 2, memoryGb: 4 },
+        { name: "agent-8c-16g", cpu: 8, memoryGb: 16 },
+      ],
+    };
+  });
+
+  it("shows the session's template and its size", () => {
+    render(<SessionDetailHeader session={withTemplate("agent-8c-16g")} />);
+    const sandbox = screen.getByTestId("session-sandbox");
+    expect(sandbox).toHaveTextContent("agent-8c-16g · 8 CPU, 16 GB");
+    expect(sandbox).toHaveAttribute(
+      "title",
+      "Sandbox: agent-8c-16g · 8 CPU, 16 GB",
+    );
+  });
+
+  it("names a template the list no longer carries without a size", () => {
+    render(<SessionDetailHeader session={withTemplate("retired-1c-1g")} />);
+    expect(screen.getByTestId("session-sandbox").textContent).toBe(
+      "retired-1c-1g",
+    );
+  });
+
+  it("names the template before the list has loaded", () => {
+    capabilities.sandbox = null;
+    render(<SessionDetailHeader session={withTemplate("agent-8c-16g")} />);
+    expect(screen.getByTestId("session-sandbox").textContent).toBe(
+      "agent-8c-16g",
+    );
   });
 });

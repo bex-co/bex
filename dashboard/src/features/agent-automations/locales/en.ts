@@ -475,6 +475,10 @@ const enAgentAutomations: Record<string, TranslationEntry> = {
     message: "Model",
     description: "Automation form — model field label (w10/m516)",
   },
+  "agentAutomations.field.template": {
+    message: "Sandbox",
+    description: "Automation form — sandbox template field label (w10/m519)",
+  },
   "agentAutomations.field.spendLimit": {
     message: "Spend limit per run (USD)",
     description: "Form field label",
@@ -599,6 +603,11 @@ const enAgentAutomations: Record<string, TranslationEntry> = {
       "The model each run uses. Leave it at the default to follow the workspace's.",
     description: "Automation form — model field help",
   },
+  "agentAutomations.help.template": {
+    message:
+      "The machine each run's sandbox gets. The workspace default follows Settings → Agents at each run.",
+    description: "Automation form — sandbox template field help (w10/m519)",
+  },
   "agentAutomations.help.emailNotifications": {
     message: "Which runs email you. A platform pause always does.",
     description: "Email notifications field help",
@@ -627,6 +636,11 @@ const enAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.placeholder.model": {
     message: "Workspace default",
     description: "Automation form — empty free-form model field",
+  },
+  "agentAutomations.placeholder.template": {
+    message: "Workspace default",
+    description:
+      "Automation form — the sandbox field while no template list is available: the workspace default",
   },
   "agentAutomations.summary": {
     message: "Runs: {schedule}",

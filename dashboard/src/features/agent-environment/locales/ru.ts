@@ -141,7 +141,8 @@ const ruAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelPlatformDefault": {
     message: "По умолчанию платформы ({model})",
-    description: "Default model picker — no default: the platform catalog's first model (w10/m516)",
+    description:
+      "Default model picker — no default: the platform catalog's first model (w10/m516)",
   },
   "agentEnvironment.modelCatalogHelp": {
     message:
@@ -156,7 +157,22 @@ const ruAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.modelNotOfferedError": {
     message:
       "Модель платформы не предлагает {model}. Выберите модель из списка.",
-    description: "Server refusal: the default model is not in the platform catalog (w10/m516)",
+    description:
+      "Server refusal: the default model is not in the platform catalog (w10/m516)",
+  },
+  "agentEnvironment.templateLabel": {
+    message: "Песочница по умолчанию",
+    description: "Label of the default sandbox template picker (w10/m519)",
+  },
+  "agentEnvironment.templateHelp": {
+    message:
+      "Новые сессии и автоматизации без указанной песочницы запускаются на этой. Действует для сессий, начатых после изменения; участники по-прежнему могут выбрать другую для сессии.",
+    description: "Help under the default sandbox template picker (w10/m519)",
+  },
+  "agentEnvironment.templateInvalidError": {
+    message: "{template} — не шаблон песочницы. Выберите один из: {templates}.",
+    description:
+      "Server refusal: the default sandbox template is not a registered one; {templates} lists those (w10/m519)",
   },
   "agentEnvironment.tierInvalid": {
     message: "Этот вариант доступа к сети не поддерживается.",

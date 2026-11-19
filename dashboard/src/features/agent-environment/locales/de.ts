@@ -131,7 +131,8 @@ const deAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelPlatformDefault": {
     message: "Plattform-Standard ({model})",
-    description: "Default model picker — no default: the platform catalog's first model (w10/m516)",
+    description:
+      "Default model picker — no default: the platform catalog's first model (w10/m516)",
   },
   "agentEnvironment.modelCatalogHelp": {
     message:
@@ -146,7 +147,23 @@ const deAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.modelNotOfferedError": {
     message:
       "Das Plattformmodell bietet {model} nicht an. Wähle eines aus der Liste.",
-    description: "Server refusal: the default model is not in the platform catalog (w10/m516)",
+    description:
+      "Server refusal: the default model is not in the platform catalog (w10/m516)",
+  },
+  "agentEnvironment.templateLabel": {
+    message: "Standard-Sandbox",
+    description: "Label of the default sandbox template picker (w10/m519)",
+  },
+  "agentEnvironment.templateHelp": {
+    message:
+      "Neue Sitzungen und Automationen ohne eigene Sandbox laufen auf dieser. Sie gilt für danach gestartete Sitzungen; Mitglieder können für eine Sitzung weiterhin eine andere wählen.",
+    description: "Help under the default sandbox template picker (w10/m519)",
+  },
+  "agentEnvironment.templateInvalidError": {
+    message:
+      "{template} ist keine Sandbox-Vorlage. Wähle eine von: {templates}.",
+    description:
+      "Server refusal: the default sandbox template is not a registered one; {templates} lists those (w10/m519)",
   },
   "agentEnvironment.tierInvalid": {
     message: "Diese Option für den Netzwerkzugriff wird nicht unterstützt.",

@@ -33,6 +33,7 @@ import {
 } from "@/features/agent-sessions/components/composer-skills";
 import { selectableAgents } from "@/features/agent-sessions/lib/composer";
 import { ModelPicker } from "@/features/agent-sessions/components/model-picker";
+import { SandboxPicker } from "@/features/agent-sessions/components/sandbox-picker";
 import { useAgentSessionCapabilities } from "@/features/agent-sessions/hooks/use-agent-session-capabilities";
 import {
   FormField,
@@ -74,12 +75,14 @@ interface AutomationFormProps {
 
 /**
  * The create and edit form (ADR101 D9): name, the schedule picker, then the
- * session each fire starts with the same task, repository, agent, spend-limit,
- * secrets and skills controls the /agents composer has, and which runs email
- * the creator. Shape errors are caught here and shown beside their field; the
- * server's named refusals (a schedule too frequent, a missing spend limit, a
- * taken name, a bad email setting) are shown beside the field they name, with
- * the server's own wording.
+ * session each fire starts with the same task, repository, agent, model,
+ * sandbox, spend-limit, secrets and skills controls the /agents composer has
+ * (the sandbox may also follow the workspace default at each run, w10/m519),
+ * and which runs email the creator. Shape errors are caught here and shown
+ * beside their field; the server's named refusals (a schedule too frequent, a
+ * missing spend limit, a taken name, a bad email setting, an unknown sandbox
+ * template) are shown beside the field they name, with the server's own
+ * wording.
  */
 const subscribeNever = () => () => {};
 
@@ -192,6 +195,13 @@ export function AutomationForm({
   const modelOffer = capabilities?.models[values.agent];
   const modelDescribedBy = describedBy(id("model"), {
     hasError: modelError != null,
+    hasHelp: true,
+  });
+  const templateError = fieldError("template");
+  // The workspace's sandbox templates (w10/m519).
+  const sandboxOffer = capabilities?.sandbox;
+  const templateDescribedBy = describedBy(id("template"), {
+    hasError: templateError != null,
     hasHelp: true,
   });
   const emailError = fieldError("emailNotifications");
@@ -356,6 +366,40 @@ export function AutomationForm({
             )}
           </FormField>
         </div>
+
+        <FormField
+          id={id("template")}
+          label={t("agentAutomations.field.template")}
+          help={t("agentAutomations.help.template")}
+          error={templateError}
+        >
+          {sandboxOffer && sandboxOffer.templates.length > 0 ? (
+            <SandboxPicker
+              id={id("template")}
+              variant="field"
+              defaultChoice="follow"
+              offer={sandboxOffer}
+              value={values.template}
+              onChange={(template) => change({ template })}
+              disabled={saving}
+              invalid={templateError != null}
+              describedBy={templateDescribedBy}
+            />
+          ) : (
+            // No list to pick from yet (or none served): the stored choice,
+            // read-only, holds the field's place.
+            <Input
+              id={id("template")}
+              value={values.template}
+              readOnly
+              disabled
+              placeholder={t("agentAutomations.placeholder.template")}
+              className="font-mono"
+              aria-invalid={templateError != null}
+              aria-describedby={templateDescribedBy}
+            />
+          )}
+        </FormField>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField

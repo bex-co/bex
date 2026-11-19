@@ -1,5 +1,6 @@
 # The workspace agent environment (w10/m17, ADR047 D5): the sandbox network
-# tier, the custom hostnames the CUSTOM tier opens, and the default model.
+# tier, the custom hostnames the CUSTOM tier opens, the default model and the
+# default sandbox template (w10/m519).
 # Any member reads it; only admins (can_manage) write it. The workspace's own
 # model provider key (ADR091 D7) is write-only: input.modelApiKey sets it,
 # input.clearModelApiKey removes it, and reads see only modelKeySet and
@@ -12,6 +13,14 @@ fragment AgentEnvironmentFields on AgentEnvironment {
   # The platform model catalog, its default first (w10/m516): the choices for
   # defaultModel. Empty on the workspace's own key, where it is free-form.
   models
+  # The sandbox template a session or automation run that names none runs on
+  # (w10/m519), and every agent template a session may name, smallest first.
+  defaultTemplate
+  templates {
+    name
+    cpu
+    memoryGb
+  }
   modelKeySet
   modelSource
   registryHosts
@@ -56,7 +65,8 @@ query AgentEnvironment($ownerId: String!) {
 }
 
 # Partial update: omitted fields keep their value; customHosts [] clears the
-# list and defaultModel "" returns to the provider default.
+# list, defaultModel "" returns to the provider default and defaultTemplate ""
+# to the platform's.
 mutation UpdateAgentEnvironment(
   $ownerId: String!
   $input: AgentEnvironmentInput!

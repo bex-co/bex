@@ -475,6 +475,10 @@ const jaAgentAutomations: Record<string, TranslationEntry> = {
     message: "モデル",
     description: "Automation form — model field label (w10/m516)",
   },
+  "agentAutomations.field.template": {
+    message: "サンドボックス",
+    description: "Automation form — sandbox template field label (w10/m519)",
+  },
   "agentAutomations.field.spendLimit": {
     message: "実行ごとの支出上限（USD）",
     description: "Form field label",
@@ -595,8 +599,14 @@ const jaAgentAutomations: Record<string, TranslationEntry> = {
     description: "Spend limit field help",
   },
   "agentAutomations.help.model": {
-    message: "各実行で使うモデル。デフォルトのままにするとワークスペースの設定に従います。",
+    message:
+      "各実行で使うモデル。デフォルトのままにするとワークスペースの設定に従います。",
     description: "Automation form — model field help",
+  },
+  "agentAutomations.help.template": {
+    message:
+      "各実行のサンドボックスに割り当てるマシン。ワークスペースのデフォルトは、実行のたびに「設定 → エージェント」の設定に従います。",
+    description: "Automation form — sandbox template field help (w10/m519)",
   },
   "agentAutomations.help.emailNotifications": {
     message:
@@ -627,6 +637,11 @@ const jaAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.placeholder.model": {
     message: "ワークスペースのデフォルト",
     description: "Automation form — empty free-form model field",
+  },
+  "agentAutomations.placeholder.template": {
+    message: "ワークスペースのデフォルト",
+    description:
+      "Automation form — the sandbox field while no template list is available: the workspace default",
   },
   "agentAutomations.summary": {
     message: "実行: {schedule}",

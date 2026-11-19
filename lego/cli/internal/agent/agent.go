@@ -542,7 +542,7 @@ func (s *sessionFlags) bind(f *pflag.FlagSet) {
 	f.StringVar(&s.branch, "branch", "", "branch to start from (default: the repository's default branch)")
 	f.StringVar(&s.agent, "agent", defaultAgent, "agent to run (see the dashboard composer for the workspace's agents)")
 	f.StringVar(&s.model, "model", "", "model id (default: the agent's model; `bex agent models` lists the choices)")
-	f.StringVar(&s.template, "template", "", "sandbox template, which sets the sandbox's CPU and memory (default: agent, 2 CPU and 4 GB; agent-4c-8g has 4 CPU and 8 GB)")
+	f.StringVar(&s.template, "template", "", "sandbox template, which sets the sandbox's CPU and memory (default: the workspace's; `bex agent models` lists them)")
 	f.StringVar(&s.title, "title", "", "display title (default: the task's first line)")
 	f.StringArrayVar(&s.tags, "tag", nil, "label for filtering and cost attribution; repeatable")
 	f.Float64Var(&s.spend, "max-spend", 0, "ceiling on this session's platform model spend, in USD")

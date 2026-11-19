@@ -129,7 +129,8 @@ const jaAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.modelPlatformDefault": {
     message: "プラットフォームのデフォルト（{model}）",
-    description: "Default model picker — no default: the platform catalog's first model (w10/m516)",
+    description:
+      "Default model picker — no default: the platform catalog's first model (w10/m516)",
   },
   "agentEnvironment.modelCatalogHelp": {
     message:
@@ -143,7 +144,23 @@ const jaAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.modelNotOfferedError": {
     message:
       "プラットフォームモデルでは {model} を利用できません。一覧から選んでください。",
-    description: "Server refusal: the default model is not in the platform catalog (w10/m516)",
+    description:
+      "Server refusal: the default model is not in the platform catalog (w10/m516)",
+  },
+  "agentEnvironment.templateLabel": {
+    message: "デフォルトのサンドボックス",
+    description: "Label of the default sandbox template picker (w10/m519)",
+  },
+  "agentEnvironment.templateHelp": {
+    message:
+      "サンドボックスを指定しない新しいセッションと自動化はこれで実行されます。以降に開始したセッションに適用され、メンバーはセッションごとに別のものを選ぶこともできます。",
+    description: "Help under the default sandbox template picker (w10/m519)",
+  },
+  "agentEnvironment.templateInvalidError": {
+    message:
+      "{template} はサンドボックスのテンプレートではありません。次のいずれかを選んでください: {templates}",
+    description:
+      "Server refusal: the default sandbox template is not a registered one; {templates} lists those (w10/m519)",
   },
   "agentEnvironment.tierInvalid": {
     message: "そのネットワークアクセスのオプションはサポートされていません。",

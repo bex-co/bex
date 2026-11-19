@@ -303,6 +303,8 @@ export type AgentEnvironment = {
   billingBalanceDue: Maybe<Scalars['Boolean']['output']>;
   customHosts: Array<Scalars['String']['output']>;
   defaultModel: Maybe<Scalars['String']['output']>;
+  /** The sandbox template a session or automation run that names none runs on: the workspace default, else agent. */
+  defaultTemplate: Scalars['String']['output'];
   /** The agent profiles members can start sessions with, as the workspace's admins chose. */
   enabledAgents: Array<Scalars['String']['output']>;
   modelKeySet: Scalars['Boolean']['output'];
@@ -318,6 +320,8 @@ export type AgentEnvironment = {
   /** The platform catalog's default model; models lists every choice. */
   pinnedModel: Maybe<Scalars['String']['output']>;
   registryHosts: Array<Scalars['String']['output']>;
+  /** The agent sandbox templates a session may name, smallest first. */
+  templates: Array<AgentSandboxTemplate>;
   /** The workspace's billing trust tier (T0 new .. T4). */
   trustTier: Maybe<Scalars['String']['output']>;
   /** A failed or disputed payment holds the workspace at the first trust tier. */
@@ -336,6 +340,8 @@ export type AgentEnvironmentInput = {
   customHosts?: InputMaybe<Array<Scalars['String']['input']>>;
   /** "" returns to the provider default. */
   defaultModel?: InputMaybe<Scalars['String']['input']>;
+  /** The sandbox template sessions and automation runs that name none run on: one of templates; "" returns to agent. Applies to sessions created afterwards. */
+  defaultTemplate?: InputMaybe<Scalars['String']['input']>;
   /** Replaces the agent profiles members can start sessions with; the others are turned off. A profile in agentDataUse needs its acknowledgement first. */
   enabledAgents?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Write-only: sets or rotates the workspace's own model provider key. Never returned; read modelKeySet. */
@@ -454,6 +460,16 @@ export type AgentRepoStepInput = {
   run: Scalars['String']['input'];
 };
 
+/** An agent sandbox template a session can name in agentConfig.template: its CPU and memory. */
+export type AgentSandboxTemplate = {
+  __typename: 'AgentSandboxTemplate';
+  /** CPU cores. */
+  cpu: Scalars['Float']['output'];
+  /** Memory in GB. */
+  memoryGb: Scalars['Float']['output'];
+  name: Scalars['String']['output'];
+};
+
 /** A workspace agent secret: its name and scope. The value is never readable. */
 export type AgentSecret = {
   __typename: 'AgentSecret';
@@ -542,10 +558,14 @@ export type AgentSessionCapabilities = {
   __typename: 'AgentSessionCapabilities';
   agents: Array<AgentSessionProfile>;
   attachments: AgentAttachmentLimits;
+  /** The sandbox template a session or automation run that names none runs on: the workspace default, else agent. */
+  defaultTemplate: Scalars['String']['output'];
   enabled: Scalars['Boolean']['output'];
   github: AgentSessionGitHubReadiness;
   modelKeyReady: Scalars['Boolean']['output'];
   ready: Scalars['Boolean']['output'];
+  /** The agent sandbox templates a session may name, smallest first. */
+  templates: Array<AgentSandboxTemplate>;
 };
 
 export type AgentSessionConfig = {
