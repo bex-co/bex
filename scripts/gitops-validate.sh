@@ -3408,12 +3408,29 @@ for render in "$tmp/bex-operator-prod.yaml" "$tmp/bex-operator-default.yaml"; do
      "services": [.spec.routes[0].services[] | .name + ":" + (.port | tostring)],
      "middlewares": [.spec.routes[0].middlewares[]?.name], "tls": .spec.tls}' | sort | tr '\n' ' ')"
   want_s3_match="Host(\`objects.${objectgw_domain}\`)"
-  want_s3="$(jq -cnS --arg m "$want_s3_match" '{"name":"bex-s3gw-objects","entryPoints":["websecure"],"routes":1,"match":$m,"priorityAboveApps":true,"services":["bex-s3gw:8080"],"middlewares":[],"tls":{}}')"
+  want_s3="$(jq -cnS --arg m "$want_s3_match" '{"name":"bex-s3gw-objects","entryPoints":["websecure"],"routes":1,"match":$m,"priorityAboveApps":true,"services":["bex-s3gw:8080"],"middlewares":["bex-s3gw-metadata-case"],"tls":{}}')"
   [ "$s3_objects" = "$want_s3 " ] || {
     echo "FAIL: the S3 API route in $render_name is $s3_objects, want exactly $want_s3" >&2
     echo "      objects.<BEX_BASE_DOMAIN> is DNS-only so an object of up to 5 GiB is not stopped by Cloudflare's 100 MiB proxy limit on api.<BEX_BASE_DOMAIN>; keep lego/operator/config/s3gw/ingressroute.yaml in sync" >&2
     fail=1
   }
+  # Its one middleware writes x-amz-meta-* names in lowercase (w21/113) with Traefik's
+  # local plugin bexS3MetadataCase, which the Traefik release must load (the plugin
+  # check above). Traefik disables a router whose middleware is missing, which would
+  # take the whole S3 host down, so the Middleware must exist and name that plugin.
+  s3_case_plugin="$(yq -N 'select(.kind == "Middleware" and .metadata.name == "bex-s3gw-metadata-case" and .metadata.namespace == "bex-system") | .spec.plugin | keys | .[]' "$render")"
+  [ "$s3_case_plugin" = bexS3MetadataCase ] || {
+    echo "FAIL: $render_name lacks the bex-system/bex-s3gw-metadata-case Middleware using plugin bexS3MetadataCase (got '$s3_case_plugin'); the S3 route names it (w21/113)" >&2
+    fail=1
+  }
+  for traefik_render in base prod; do
+    # Captured first: grep -q closing the pipe early would fail yq under pipefail.
+    traefik_plugin_args="$(yq -N 'select(.kind == "Deployment") | .spec.template.spec.containers[] | select(.name == "traefik") | .args[]' "$tmp/traefik-$traefik_render.yaml")"
+    grep -qxF -- "--experimental.localPlugins.bexS3MetadataCase.moduleName=github.com/bex-co/bex-s3-metadata-case" <<<"$traefik_plugin_args" || {
+      echo "FAIL: the $traefik_render Traefik release does not load the bexS3MetadataCase plugin the S3 route's middleware uses" >&2
+      fail=1
+    }
+  done
   s3_count="$(yq -N 'select(.kind == "Deployment" and .metadata.name == "bex-s3gw") | .metadata.name' "$render" | grep -c . || true)"
   [ "$s3_count" = "1" ] || {
     echo "FAIL: $render_name has $s3_count bex-s3gw Deployments, want exactly 1" >&2

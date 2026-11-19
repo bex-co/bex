@@ -16,9 +16,10 @@
 # removed in w21/m500, so no path of the host reaches bex-api.
 #
 # No plain-HTTP route: an access key's id travels in every request, so http://
-# meets the platform-host fallback. Nothing in front of bex-s3 may read the body, so
-# there is no middleware here; Traefik cleans request paths by default, so a key with
-# a doubled slash or a dot segment is refused by the surface (ADR112 D7).
+# meets the platform-host fallback. Nothing in front of bex-s3 may read the body: the
+# one middleware here, s3gw-metadata-case (middleware.yaml), rewrites response header
+# names and never touches the request. Traefik cleans request paths by default, so a
+# key with a doubled slash or a dot segment is refused by the surface (ADR112 D7).
 #
 # The suffix is "." + BEX_BASE_DOMAIN; scripts/gitops-validate.sh checks it names the
 # prod suffix, pins this route exactly and that the old bex-api-objects route is gone.
@@ -34,6 +35,8 @@ spec:
     - kind: Rule
       priority: 9000
       match: Host(`objects.onbex.co`)
+      middlewares:
+        - name: s3gw-metadata-case # kustomize rewrites to bex-s3gw-metadata-case
       services:
         - name: s3gw # kustomize rewrites to bex-s3gw (namePrefix)
           port: 8080

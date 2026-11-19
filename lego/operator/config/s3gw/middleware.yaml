@@ -1,0 +1,20 @@
+# The S3 route's response-header rewrite (w21/113): Traefik's local plugin
+# bexS3MetadataCase (deploy/gitops/charts/traefik-plugins/s3metadatacase) writes
+# each x-amz-meta-* response header name in lowercase, as S3 does. Traefik
+# canonicalises every header name it reads from a backend (X-Amz-Meta-Mtime), and
+# botocore hands boto3 and the AWS CLI the rest of the name as it came, so
+# Metadata["mtime"] was a KeyError against bex and not against S3.
+#
+# The plugin touches the response head only and never the request, so a body
+# still streams to bex-s3 unread. Synced a wave ahead of the IngressRoute that
+# names it, because Traefik disables a router whose middleware is missing.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: s3gw-metadata-case
+  namespace: system
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  plugin:
+    bexS3MetadataCase: {}

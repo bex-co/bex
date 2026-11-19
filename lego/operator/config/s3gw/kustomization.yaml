@@ -5,6 +5,7 @@ resources:
   - service.yaml
   - deployment.yaml
   - pdb.yaml
+  - middleware.yaml
   - ingressroute.yaml
 
 configurations:
