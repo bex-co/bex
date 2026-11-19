@@ -1,6 +1,6 @@
 # w6 · m512 — A Key Value proxy roll that changes the proxy's code lets open commands finish
 
-**Worker:** worker6 **Goal:** when a deploy does change `/kv-internal-proxy`, the old proxy pod stops accepting, keeps relaying its open connections until each client closes or a bounded grace period ends, and only then closes the rest, so a command in flight at the roll gets its reply. A roll that must cut access, such as enabling internal authentication, still closes the old pod's connections within seconds. **Status:** blocked (t001–t006, t008, t009 done and shipped; t007 waits for the first production pin whose producer contains the ship commit, then t010)
+**Worker:** worker6 **Goal:** when a deploy does change `/kv-internal-proxy`, the old proxy pod stops accepting, keeps relaying its open connections until each client closes or a bounded grace period ends, and only then closes the rest, so a command in flight at the roll gets its reply. A roll that must cut access, such as enabling internal authentication, still closes the old pod's connections within seconds. **Status:** done 2026-11-19 (the first production pin carrying the ship commit rolled each store's proxy once onto the drain, and on production enabling internal authentication still closed a held unauthenticated client within seconds)
 
 ## Tasks (in order)
 
@@ -12,14 +12,26 @@
 | t004 | [A roll that must cut access still closes the old pod's connections within seconds](done/t004.md) — **DONE** | 1h30m | t003 |
 | t005 | [Prove it on the local cluster](done/t005.md) — **DONE** | 1h | t004 |
 | t006 | [Record it in ADR021 and file the SNI-proxy drain](done/t006.md) — **DONE** | 30m | t004 |
-| t007 | [Ship and verify on production](t007.md) | 1h | t005, t006 |
+| t007 | [Ship and verify on production](done/t007.md) — **DONE** | 1h | t005, t006 |
 | t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
 | t009 | [Test coverage](done/t009.md) — **DONE** | 30m | t007 |
-| t010 | [Closeout](t010.md) | 10m | t008, t009 |
+| t010 | [Closeout](done/t010.md) — **DONE** | 10m | t008, t009 |
 
 ## Blocked — 2026-11-19
 
 **Gate (time, clears by itself):** the first production pin whose producer contains this milestone's ship commit. Check it with `git log origin/main --grep "pin platform images"`, then `git merge-base --is-ancestor <commit> <producer>`. Production deploys `main` once its pin is 6 h old. Then run t007's steps: the three stores' proxies rolled once onto the drain env and the 35 s grace period, and the w6/m463 t005 internal-auth check on a `bex-canary` free probe. After that comes t010. Everything else is done: the code, the local proof (t005), ADR021 § 10 with w6/144 and w6/145 filed (t006), Simplify (t008) and Test coverage (t009).
+
+## Unblocked — 2026-11-19 20:06Z
+
+- **Affected:** w6/m512 t007 and t010.
+- **Source:** verified evidence; the gate cleared by itself.
+- **Finding:** production pin `aefb144dc` (producer `c81d2d447bd8`, committed 18:04Z) is the first whose producer contains `d6d29f9a7`. The later pins `99bbc4239` (`c624a4f217ff`) and `d38508f70` (`1c63b6fe0a34`) carry it too, while the pin before, `a91e9aeb3` (`dff52c596d13`), does not. Each was checked with `git merge-base --is-ancestor`. The production manager has run these images in turn since 18:08:52Z, 18:52:55Z and 19:50:48Z.
+- **Next:** t007's three steps, then t010.
+
+## Closed — 2026-11-19 20:12Z
+
+- **t007 on production.** Each of the three stores' proxies rolled exactly once, at 18:09:37–38Z, in the deploy of `c81d2d447bd8`. Each moved onto `BEX_KV_DRAIN_SECONDS=30` with a 35 s grace period, and the two later deploys left them alone. On free probe `red-dbvlei90rfcc73dnr5mg` in `bex-canary`, enabling internal authentication closed a held unauthenticated client 3.4 s after the call, on a proxy that drains for 30 s, and new clients read `-NOAUTH`. The probe and its client pod are deleted.
+- **t010** checked every DoD bullet against the evidence in t001–t009.
 
 ## Definition of done
 
