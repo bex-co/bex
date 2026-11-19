@@ -116,12 +116,20 @@ func tryOnTerminal(t *testing.T, env []string, args ...string) (stdout, stderr s
 	return out.String(), strings.ReplaceAll(captured.String(), "\r\n", "\n"), runErr
 }
 
+// awsLaunchEnv is what `bex s3 ls` needs to reach a fake `aws`: the AWS CLI
+// on PATH, the active workspace and the test control plane's S3 endpoint.
+func awsLaunchEnv(t *testing.T) []string {
+	t.Helper()
+	bin, _, _ := fakeAWS(t)
+	return []string{"PATH=" + bin + string(os.PathListSeparator) + os.Getenv("PATH"), "BEX_WORKSPACE=" + s3Workspace, "BEX_S3_ENDPOINT=" + s3Endpoint}
+}
+
 // TestUndisclosedHeadlessRunSendsNothing: with no terminal and no CI the
 // notice cannot be shown, so nothing is ever sent, including by the
-// launcher's own reports (`--version`, a provider launch), and no Bex marker
+// launcher's own reports (`--version`, a provider launch, `bex s3`), and no Bex marker
 // is written. Upstream's marker is, so Render's notice can never print.
 func TestUndisclosedHeadlessRunSendsNothing(t *testing.T) {
-	stub := &telemetryStub{}
+	stub := &telemetryStub{routes: s3MintRoutes()}
 	api := httptest.NewServer(stub.handler())
 	t.Cleanup(api.Close)
 	home := t.TempDir()
@@ -135,6 +143,7 @@ func TestUndisclosedHeadlessRunSendsNothing(t *testing.T) {
 		{[]string{"glm"}, []string{
 			"PATH=" + stubClaudeOnPath(t) + string(os.PathListSeparator) + os.Getenv("PATH"),
 			"ZAI_API_KEY=test-provider-key"}},
+		{[]string{"s3", "ls"}, awsLaunchEnv(t)},
 	} {
 		command := exec.Command(buildBex(), run.args...)
 		command.Env = telemetryEnv(t, home, api.URL, run.extra...)

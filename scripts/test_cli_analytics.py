@@ -403,6 +403,7 @@ class CLIAnalyticsTest(unittest.TestCase):
             "bex workflows tasks": "hosting",
             "bex postgres get": "data", "bex keyvalues list": "data", "bex psql": "data",
             "bex pgcli": "data", "bex kv-cli": "data", "bex ea objects put": "data",
+            "bex s3": "data", "bex s3api": "data", "bex s3 keys list": "data", "bex s3 public": "data",
             "bex agent": "agent", "bex agent run": "agent", "bex agent wait": "agent",
             "bex agent secrets set": "agent", "bex agent skills": "agent", "bex agent ssh": "agent",
             "bex agent automations": "automation", "bex agent automations run": "automation",

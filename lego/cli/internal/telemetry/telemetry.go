@@ -8,9 +8,10 @@
 //
 //   - the commands that replace the process with syscall.Exec (`bex glm` and
 //     the other provider launchers, `bex edit`, `bex agent open` into bex
-//     desktop, `bex agent ssh`), so the execution never "finishes" and the
-//     hook never runs. lego/cli/telemetry_coverage_test.go lists every such
-//     call site with the test proving it reports once (ADR113 D7);
+//     desktop, `bex agent ssh`, `bex s3` and `bex s3api` into the AWS CLI), so
+//     the execution never "finishes" and the hook never runs.
+//     lego/cli/telemetry_coverage_test.go lists every such call site with the
+//     test proving it reports once (ADR113 D7);
 //   - root `--version` answers and exits before cmd.Execute() is reached.
 //
 // Sending is delegated to upstream's own Sender, so consent resolution

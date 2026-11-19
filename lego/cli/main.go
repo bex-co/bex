@@ -21,6 +21,7 @@ import (
 	"github.com/bex-co/bex/lego/cli/internal/desktop"
 	"github.com/bex-co/bex/lego/cli/internal/disclosure"
 	"github.com/bex-co/bex/lego/cli/internal/pgtrust"
+	"github.com/bex-co/bex/lego/cli/internal/s3"
 	"github.com/bex-co/bex/lego/cli/internal/skills"
 	"github.com/bex-co/bex/lego/cli/internal/telemetry"
 	"github.com/bex-co/bex/lego/cli/internal/update"
@@ -59,6 +60,8 @@ func main() {
 	cmd.RootCmd.AddCommand(upgrade.Command(bexVersion))
 	cmd.RootCmd.AddCommand(desktop.Command())
 	cmd.RootCmd.AddCommand(agent.Command())
+	// `bex s3` runs the AWS CLI against bex object storage (ADR112 D3).
+	cmd.RootCmd.AddCommand(s3.Commands()...)
 	// Upstream's `skills` installs Render's skills (w8/m143); bex's own tree
 	// takes its place with the same subcommands and flags.
 	replaceCommand(cmd.RootCmd, skills.Command())

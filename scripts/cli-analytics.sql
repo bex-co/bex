@@ -80,7 +80,7 @@ SELECT
         WHEN c.verb IN ('code', 'glm', 'muse', 'kimi', 'deepseek') THEN 'coding-agent'
         WHEN c.verb IN ('sandboxes', 'sandbox-groups')
           OR (c.verb = 'ea' AND c.sub IN ('sandboxes', 'sandbox-groups')) THEN 'sandbox'
-        WHEN c.verb IN ('postgres', 'keyvalues', 'psql', 'pgcli', 'kv-cli')
+        WHEN c.verb IN ('postgres', 'keyvalues', 'psql', 'pgcli', 'kv-cli', 's3', 's3api')
           OR (c.verb = 'ea' AND c.sub = 'objects') THEN 'data'
         WHEN c.verb IN ('services', 'deploys', 'jobs', 'restart', 'logs', 'ssh',
                         'blueprints', 'environments', 'projects', 'workflows')
