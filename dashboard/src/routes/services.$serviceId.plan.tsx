@@ -1,59 +1,13 @@
-import { serviceTabHead } from "@/features/services/lib/service-tab-head";
-import { createFileRoute, getRouteApi } from "@tanstack/react-router";
-import { InstanceTypePicker } from "@/features/services/components/instance-type-picker";
-import { useCachedServiceType } from "@/features/services/hooks/use-cached-service-type";
-import { NonStaticRoute } from "@/features/services/components/non-static-route";
-import { useServer } from "@/features/services/hooks/use-server";
-import { ServicePlanSkeleton } from "@/common/components/route-skeletons";
-import { hasServed } from "@/features/services/lib/status";
-
-export const Route = createFileRoute("/services/$serviceId/plan")({
-  head: serviceTabHead("services.navPlan", "/services/$serviceId"),
-  component: ServicePlanPage,
-  pendingComponent: ServicePlanPending,
-});
-
-function ServicePlanPending() {
-  const parent = getRouteApi("/services/$serviceId").useLoaderData();
-  const ready = parent?.state === "ready" ? parent.resource : null;
-  return (
-    <ServicePlanSkeleton
-      serviceType={ready ? ready.type : null}
-      currentPlan={ready ? (ready.plan ?? null) : undefined}
-    />
-  );
-}
-
-/** Mounted only while the server read is missing; the list cache may know the type. */
-function CachedServicePlanSkeleton({ serviceId }: { serviceId: string }) {
-  return <ServicePlanSkeleton serviceType={useCachedServiceType(serviceId)} />;
-}
+import { createFileRoute } from "@tanstack/react-router";
+import { redirectToComputePage } from "@/features/services/lib/compute-page";
 
 /**
- * The plan-picker page (w5/m7), reached from the Settings tab's Instance
- * Type "Update" link — mirrors Render's own URL split (a service's plan page
- * is a sibling route of its settings page, not nested under it).
- *
- * Gated on the server query the same way the Settings tab is: the picker
- * seeds its selection from `currentPlan` only on mount, so mounting it before
- * the query resolves would freeze the pre-selection at the not-yet-loaded
- * null value.
+ * The service's Plan tab (w5/m7) became the Compute page's Compute section,
+ * as on Render since 2026-08-26 (w6/m483). Bookmarks and links minted before
+ * land there, query and hash kept.
  */
-function ServicePlanPage() {
-  const { serviceId } = Route.useParams();
-  const { service, loading } = useServer(serviceId, { poll: false });
-  if (!service && loading) {
-    return <CachedServicePlanSkeleton serviceId={serviceId} />;
-  }
-
-  return (
-    <NonStaticRoute serviceId={serviceId}>
-      <InstanceTypePicker
-        serviceId={serviceId}
-        currentPlan={service?.plan ?? null}
-        serviceType={service?.type ?? null}
-        live={service == null || hasServed(service)}
-      />
-    </NonStaticRoute>
-  );
-}
+export const Route = createFileRoute("/services/$serviceId/plan")({
+  beforeLoad: ({ params, location }) => {
+    redirectToComputePage(params.serviceId, location);
+  },
+});

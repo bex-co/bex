@@ -94,13 +94,13 @@ const koServices: Record<string, TranslationEntry> = {
   },
   "services.sshUnavailableSuspendedFree": {
     message:
-      "이 서비스는 일시 중지되었고, SSH에는 유료 인스턴스 유형이 필요합니다. 재개하면 트래픽은 복구되지만 무료 서비스에는 여전히 셸 액세스가 포함되지 않습니다.",
+      "이 서비스는 일시 중지되었고, SSH에는 유료 컴퓨팅 플랜이 필요합니다. 재개하면 트래픽은 복구되지만 무료 서비스에는 여전히 셸 액세스가 포함되지 않습니다.",
     description:
       "Why SSH is unavailable on a suspended Free service: both blockers, without implying a resume grants SSH (w4/m183)",
   },
   "services.sshUnavailableFree": {
     message:
-      "SSH에는 유료 인스턴스 유형이 필요합니다. 무료 서비스에는 셸 액세스가 포함되지 않습니다.",
+      "SSH에는 유료 컴퓨팅 플랜이 필요합니다. 무료 서비스에는 셸 액세스가 포함되지 않습니다.",
     description: "Why SSH is unavailable on a Free-plan service (w4/143)",
   },
   "services.sshRemedyResume": {
@@ -109,9 +109,9 @@ const koServices: Record<string, TranslationEntry> = {
       "Link from an SSH-unavailable state to the service's suspend/resume setting (w4/143)",
   },
   "services.sshRemedyChangePlan": {
-    message: "인스턴스 유형 변경",
+    message: "컴퓨팅 플랜 변경",
     description:
-      "Link from an SSH-unavailable state on a Free service to its instance-type page (w4/143)",
+      "Link from an SSH-unavailable state on a Free service to its compute-plan page (w4/143)",
   },
   "services.shellDescription": {
     message: "터미널에서 실행 중인 서비스 인스턴스의 셸을 엽니다.",
@@ -495,10 +495,6 @@ const koServices: Record<string, TranslationEntry> = {
     message: "첫 번째 App을 배포하면 여기에 표시됩니다.",
     description: "Services list empty state body",
   },
-  "services.navPlan": {
-    message: "요금제",
-    description: "Service sidebar link to the instance-type (plan) page",
-  },
   "services.headerServiceId": {
     message: "서비스 ID:",
     description: "Service-detail header metadata label for the service id",
@@ -570,10 +566,6 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail nav item (static-site response headers page, Render's label)",
   },
-  "services.navScaling": {
-    message: "확장",
-    description: "Service-detail nav item (autoscaling tab)",
-  },
   "services.scalingTitle": {
     message: "자동 확장",
     description: "Scaling tab section heading",
@@ -607,17 +599,6 @@ const koServices: Record<string, TranslationEntry> = {
   "services.scalingTargetMemory": {
     message: "목표 메모리 %",
     description: "Autoscaling target memory utilization input label",
-  },
-  "services.scalingUnavailableTitle": {
-    message: "확장을 사용할 수 없습니다",
-    description:
-      "Scaling tab heading when this service type cannot be scaled (cron)",
-  },
-  "services.scalingUnavailableBody": {
-    message:
-      "확장은 장시간 실행되는 인스턴스를 가진 Web Service, Private Service, Background Worker에 적용됩니다. 이 서비스 유형에는 조정할 복제본 수가 없습니다.",
-    description:
-      "Scaling tab explanation when reached by direct URL for an ineligible type",
   },
   "services.scalingValidationMinMax": {
     message: "최소 인스턴스는 최대 인스턴스 이하여야 합니다.",
@@ -743,7 +724,7 @@ const koServices: Record<string, TranslationEntry> = {
   },
   "services.scalingManualDescription": {
     message:
-      "자동으로 로드 밸런싱되는 여러 인스턴스를 실행합니다. 모든 인스턴스는 같은 인스턴스 유형을 사용하며 그에 따라 요금이 청구됩니다.",
+      "자동으로 로드 밸런싱되는 여러 인스턴스를 실행합니다. 모든 인스턴스는 같은 컴퓨팅 플랜을 사용하며 그에 따라 요금이 청구됩니다.",
     description: "Scaling page: manual instance-count card description",
   },
   "services.scalingManualDescriptionFree": {
@@ -1319,16 +1300,16 @@ const koServices: Record<string, TranslationEntry> = {
     description: "Toast after setDisplayName fails",
   },
   "services.settingsInstanceType": {
-    message: "인스턴스 유형",
+    message: "컴퓨팅 플랜",
     description: "Settings tab row label for the App's current plan/tier",
   },
   "services.settingsNoInstanceType": {
-    message: "인스턴스 유형이 설정되지 않음",
+    message: "컴퓨팅 플랜이 설정되지 않음",
     description: "Settings tab state for an untiered (bare-CR) App",
   },
   "services.settingsUpdate": {
     message: "업데이트",
-    description: "Settings tab link to the instance-type picker",
+    description: "Settings tab link to the compute-plan picker",
   },
   "services.settingsIdleTimeout": {
     message: "유휴 시간 제한",
@@ -1553,8 +1534,19 @@ const koServices: Record<string, TranslationEntry> = {
     description: "Toast after setNotifyOnFail fails",
   },
   "services.planPickerTitle": {
-    message: "인스턴스 유형 선택",
-    description: "Plan-picker page heading",
+    message: "컴퓨팅 플랜",
+    description:
+      "Accessible name of the Compute section's plan cards, shown after Edit (w6/m483)",
+  },
+  "services.computeTitle": {
+    message: "컴퓨팅",
+    description:
+      "Compute page: title of the section holding the service's compute plan (Render: 'Under Compute, click Edit', w6/m483)",
+  },
+  "services.computePlanEdit": {
+    message: "편집",
+    description:
+      "Compute section button that opens the compute plan cards (w6/m483)",
   },
   "services.planPickerFreeGroup": {
     message: "무료",
@@ -1575,39 +1567,39 @@ const koServices: Record<string, TranslationEntry> = {
   },
   "services.planPickerLegacyFreeWorker": {
     message:
-      "이 Background Worker는 Free 요금제를 사용 중이지만 Background Worker는 더 이상 Free를 사용할 수 없습니다. 계속 실행되며, 유료 인스턴스 유형을 선택하면 Free에서 벗어나고 다시 돌아올 수 없습니다.",
+      "이 Background Worker는 Free 요금제를 사용 중이지만 Background Worker는 더 이상 Free를 사용할 수 없습니다. 계속 실행되며, 유료 컴퓨팅 플랜을 선택하면 Free에서 벗어나고 다시 돌아올 수 없습니다.",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredWorker": {
     message:
-      "이 Background Worker에는 인스턴스 유형이 없고, Background Worker는 더 이상 Free를 사용할 수 없습니다. 계속 실행되며, 유료 인스턴스 유형을 선택하여 지정하세요.",
+      "이 Background Worker에는 컴퓨팅 플랜이 없고, Background Worker는 더 이상 Free를 사용할 수 없습니다. 계속 실행되며, 유료 컴퓨팅 플랜을 선택하여 지정하세요.",
     description:
-      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+      "Plan picker notice: this service type has no compute plan, and Free is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerLegacyFreePrivateService": {
     message:
-      "이 Private Service는 Free 요금제를 사용 중이지만 Private Service는 더 이상 Free를 사용할 수 없습니다. 계속 실행되며, 유료 인스턴스 유형을 선택하면 Free에서 벗어나고 다시 돌아올 수 없습니다.",
+      "이 Private Service는 Free 요금제를 사용 중이지만 Private Service는 더 이상 Free를 사용할 수 없습니다. 계속 실행되며, 유료 컴퓨팅 플랜을 선택하면 Free에서 벗어나고 다시 돌아올 수 없습니다.",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredPrivateService": {
     message:
-      "이 Private Service에는 인스턴스 유형이 없고, Private Service는 더 이상 Free를 사용할 수 없습니다. 계속 실행되며, 유료 인스턴스 유형을 선택하여 지정하세요.",
+      "이 Private Service에는 컴퓨팅 플랜이 없고, Private Service는 더 이상 Free를 사용할 수 없습니다. 계속 실행되며, 유료 컴퓨팅 플랜을 선택하여 지정하세요.",
     description:
-      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+      "Plan picker notice: this service type has no compute plan, and Free is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerLegacyFreeCronJob": {
     message:
-      "이 Cron Job은 Free 요금제를 사용 중이지만 Cron Job은 더 이상 Free를 사용할 수 없습니다. 계속 실행되며, 유료 인스턴스 유형을 선택하면 Free에서 벗어나고 다시 돌아올 수 없습니다.",
+      "이 Cron Job은 Free 요금제를 사용 중이지만 Cron Job은 더 이상 Free를 사용할 수 없습니다. 계속 실행되며, 유료 컴퓨팅 플랜을 선택하면 Free에서 벗어나고 다시 돌아올 수 없습니다.",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredCronJob": {
     message:
-      "이 Cron Job에는 인스턴스 유형이 없고, Cron Job은 더 이상 Free를 사용할 수 없습니다. 계속 실행되며, 유료 인스턴스 유형을 선택하여 지정하세요.",
+      "이 Cron Job에는 컴퓨팅 플랜이 없고, Cron Job은 더 이상 Free를 사용할 수 없습니다. 계속 실행되며, 유료 컴퓨팅 플랜을 선택하여 지정하세요.",
     description:
-      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+      "Plan picker notice: this service type has no compute plan, and Free is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerPaidGroup": {
     message: "유료",
@@ -1623,11 +1615,12 @@ const koServices: Record<string, TranslationEntry> = {
     description: "Plan-picker footer button: discard the selection",
   },
   "services.planPickerSave": {
-    message: "변경 사항 저장",
-    description: "Plan-picker footer button: confirm the plan change",
+    message: "저장",
+    description:
+      'Compute section footer button: confirm the plan change ("Select a new compute plan and click Save", render.com/docs/compute-plans)',
   },
   "services.planPickerConfirmTitle": {
-    message: "인스턴스 유형을 변경하시겠습니까? 새 유형: {name}",
+    message: "컴퓨팅 플랜을 변경하시겠습니까? 새 플랜: {name}",
     description: "Plan-change confirm dialog title",
   },
   "services.planPickerConfirmBody": {
@@ -1637,48 +1630,48 @@ const koServices: Record<string, TranslationEntry> = {
   },
   "services.instanceTypePausedReason": {
     message:
-      '"{name}" 유형은 일시적으로 사용할 수 없습니다. {largest} 또는 더 작은 인스턴스 유형을 선택하세요.',
+      '"{name}" 플랜은 일시적으로 사용할 수 없습니다. {largest} 또는 더 작은 컴퓨팅 플랜을 선택하세요.',
     description:
-      "A paused instance type's tooltip and screen-reader reason, composed in the dashboard's language from the tier and the largest still offered; matches bex-api's English unavailableReason (w4/552)",
+      "A paused compute plan's tooltip and screen-reader reason, composed in the dashboard's language from the tier and the largest still offered; matches bex-api's English unavailableReason (w4/552)",
   },
   "services.planPickerConfirmBodyCron": {
-    message: "변경 이후에 시작되는 실행부터 새 인스턴스 유형이 사용됩니다.",
+    message: "변경 이후에 시작되는 실행부터 새 컴퓨팅 플랜이 사용됩니다.",
     description:
       "Plan-change confirm body for a cron job, which serves no requests: its next run takes the new size (w4/548)",
   },
   "services.planPickerConfirmBodyNeverLive": {
     message:
-      "서비스가 새 인스턴스 유형으로 실행됩니다. 아직 서비스 중인 것이 없으며, 배포가 성공하면 라이브가 됩니다.",
+      "서비스가 새 컴퓨팅 플랜으로 실행됩니다. 아직 서비스 중인 것이 없으며, 배포가 성공하면 라이브가 됩니다.",
     description:
       "Plan-change confirm body for a service that has never gone live (w4/548)",
   },
   "services.planPickerConfirmRunPrice": {
     message:
-      "이 인스턴스 유형은 실행 시간 1분당 ${price}이며, 실행되는 동안 초 단위로 청구됩니다. Cron Job당 최소 요금은 월 ${minimum}입니다.",
+      "이 컴퓨팅 플랜은 실행 시간 1분당 ${price}이며, 실행되는 동안 초 단위로 청구됩니다. Cron Job당 최소 요금은 월 ${minimum}입니다.",
     description:
-      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
+      "Plan-change confirm for a cron job: the new compute plan's run-time rate (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.createFieldPlanCronHint": {
     message:
       "Cron Job은 실행되는 동안 초 단위로 청구됩니다. Cron Job당 최소 요금은 월 ${minimum}입니다.",
     description:
-      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
+      "Under the create form's compute plans for a cron job, which are priced per minute of run time (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.planPickerConfirmPrice": {
-    message: "이 인스턴스 유형은 월 ${price}입니다.",
+    message: "이 컴퓨팅 플랜은 월 ${price}입니다.",
     description:
-      "Plan-change confirm: the new instance type's monthly price, from the API's price sheet (w4/400)",
+      "Plan-change confirm: the new compute plan's monthly price, from the API's price sheet (w4/400)",
   },
   "services.planPickerSuccess": {
-    message: "인스턴스 유형을 업데이트했습니다: {name}",
+    message: "컴퓨팅 플랜을 업데이트했습니다: {name}",
     description: "Toast on a successful plan change",
   },
   "services.planPickerError": {
-    message: "인스턴스 유형을 업데이트하지 못했습니다. 다시 시도하세요.",
+    message: "컴퓨팅 플랜을 업데이트하지 못했습니다. 다시 시도하세요.",
     description: "Toast on a failed plan change",
   },
   "services.planPickerErrorTitle": {
-    message: "인스턴스 유형을 불러오지 못했습니다",
+    message: "컴퓨팅 플랜을 불러오지 못했습니다",
     description: "Plan-picker error state title (instanceTypes query failed)",
   },
   "services.planPickerErrorBody": {
@@ -3626,7 +3619,7 @@ const koServices: Record<string, TranslationEntry> = {
   },
   "services.resumeCardDescriptionCrashLoop": {
     message:
-      "이 서비스는 24시간 넘게 시작과 정상 상태 전환에 반복적으로 실패하여 일시 중지되었습니다. 설정 오류, 애플리케이션 코드의 버그, 또는 인스턴스 유형이 작은 것이 원인인 경우가 많습니다. 원인을 해결한 다음 서비스를 재개하여 다시 온라인 상태로 만드세요.",
+      "이 서비스는 24시간 넘게 시작과 정상 상태 전환에 반복적으로 실패하여 일시 중지되었습니다. 설정 오류, 애플리케이션 코드의 버그, 또는 컴퓨팅 플랜이 작은 것이 원인인 경우가 많습니다. 원인을 해결한 다음 서비스를 재개하여 다시 온라인 상태로 만드세요.",
     description:
       "Settings tab resume section description for a service the platform suspended for a crash loop (stuck_crashlooping)",
   },
@@ -4055,7 +4048,7 @@ const koServices: Record<string, TranslationEntry> = {
     description: "Create-wizard Docker runtime option",
   },
   "services.createFieldPlan": {
-    message: "인스턴스 유형",
+    message: "컴퓨팅 플랜",
     description: "Create-wizard plan-picker section label",
   },
   "services.createFieldAutoDeploy": {
@@ -4330,7 +4323,7 @@ const koServices: Record<string, TranslationEntry> = {
   },
   "services.diskPaidOnly": {
     message:
-      "디스크를 사용하려면 유료 인스턴스 유형이 필요합니다. 디스크를 연결하려면 이 서비스의 요금제를 업그레이드하세요.",
+      "디스크를 사용하려면 유료 컴퓨팅 플랜이 필요합니다. 디스크를 연결하려면 이 서비스의 요금제를 업그레이드하세요.",
     description: "Shown instead of the add button on a free service",
   },
   "services.diskAddAction": {
@@ -4605,6 +4598,11 @@ const koServices: Record<string, TranslationEntry> = {
   "services.navShell": {
     message: "셸",
     description: "Service-detail nav item (running-instance SSH page)",
+  },
+  "services.navCompute": {
+    message: "컴퓨팅",
+    description:
+      "Service sidebar link to the Compute page: the compute plan, manual scaling and autoscaling, as on Render (w6/m483)",
   },
   "services.eventsTitle": {
     message: "활동",
@@ -4945,9 +4943,9 @@ const koServices: Record<string, TranslationEntry> = {
       "One side of an autoscaling change: its instance range and both targets (w4/m335)",
   },
   "services.eventsPlanChange": {
-    message: "인스턴스 유형 {from} → {to}",
+    message: "컴퓨팅 플랜 {from} → {to}",
     description:
-      "plan_changed detail line, by the instance types' names (w4/568)",
+      "plan_changed detail line, by the compute plans' names (w4/568, w6/m483)",
   },
   "services.eventsBranchChange": {
     message: "브랜치 {from} → {to}",

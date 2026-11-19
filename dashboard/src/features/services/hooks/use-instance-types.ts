@@ -5,10 +5,17 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { withPausedReasons } from "@/common/lib/paused-tier";
 import { InstanceTypesDocument } from "@/graphql/definitions";
 
-/** One catalog tier, as the picker and Settings row consume it. */
+/** One catalog tier, as the Compute page and Settings row consume it. */
 export interface InstanceTypeView {
   /** Render's plan spelling — what updateServicePlan accepts. */
   id: string;
+  /**
+   * Render's spec-based plan ID ("0.5c-512mb" for Starter), shown beside the
+   * legacy name as Render's dashboard has since 2026-08-26 (w6/m483); bex-api
+   * reads it from the alias table Blueprints use. Equal to `id` for Free.
+   * Optional here; the hook always sets it.
+   */
+  planId?: string;
   name: string;
   cpu: string;
   memory: string;
@@ -49,7 +56,7 @@ export interface UseInstanceTypesResult {
 /**
  * Reads bex-api's `instanceTypes` (w5/m7, backed by lego/types/tiers) — the
  * plan picker's data source. A bex extension: Render's dashboard hardcodes its
- * own instance-type list, so there is nothing to poll against; this query
+ * own compute-plan list, so there is nothing to poll against; this query
  * rarely changes, so the default Apollo cache-first policy is fine.
  */
 export function useInstanceTypes(): UseInstanceTypesResult {
@@ -62,6 +69,8 @@ export function useInstanceTypes(): UseInstanceTypesResult {
       .filter((it): it is NonNullable<typeof it> => it?.id != null)
       .map((it) => ({
         id: it.id!,
+        // An older bex-api without the field: the legacy id is all there is.
+        planId: it.planId || it.id!,
         name: it.name ?? it.id!,
         cpu: it.cpu ?? "",
         memory: it.memory ?? "",

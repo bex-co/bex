@@ -244,11 +244,12 @@ const zhMetrics: Record<string, TranslationEntry> = {
   "metrics.limitLink": {
     message: "限额",
     description:
-      "Link to the Instance Type tab on the Memory/CPU chart headers, followed by the limit value when configured",
+      "Link to the Compute page on the Memory/CPU chart headers, followed by the limit value when configured",
   },
   "metrics.manageScaling": {
     message: "管理扩缩容",
-    description: "Link to the Scaling tab on the Total Instances chart header",
+    description:
+      "Link to the Compute page's Manual Scaling section on the Total Instances chart header",
   },
   "metrics.noLimitConfigured": {
     message: "未配置资源限额——无法计算百分比",

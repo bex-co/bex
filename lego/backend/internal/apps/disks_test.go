@@ -118,7 +118,7 @@ func TestAddDiskRefusesIneligibleServices(t *testing.T) {
 	}{
 		{"cron job", func(a *appv1alpha1.App) { a.Spec.Type = appv1alpha1.TypeCronJob }, "cannot have a disk"},
 		{"static site", func(a *appv1alpha1.App) { a.Spec.Type = appv1alpha1.TypeStaticSite }, "cannot have a disk"},
-		{"free tier", func(a *appv1alpha1.App) { a.Spec.Tier = "free" }, "paid instance type"},
+		{"free tier", func(a *appv1alpha1.App) { a.Spec.Tier = "free" }, "paid compute plan"},
 		{"two instances", func(a *appv1alpha1.App) { a.Spec.Replicas = 2 }, "more than one instance"},
 		{"autoscaling on", func(a *appv1alpha1.App) {
 			a.Spec.Autoscaling = &appv1alpha1.AutoscalingSpec{Enabled: true, MaxReplicas: 3}

@@ -38,9 +38,10 @@ From live repo captures (w3/m3 metrics, w5/m13 settings, w9/m1 deploys) plus the
 | `/env` | m32 walk (Environment tab) | `services.$serviceId.env.tsx` | match |
 | `/metrics` | w3/m3 live URL | `services.$serviceId.metrics.tsx` | match |
 | `/settings` | w5/m13 live URL | `services.$serviceId.settings.tsx` | match |
-| `/scaling` | m32 walk (Render folds scaling into settings/scaling) | `services.$serviceId.scaling.tsx`, `…plan.tsx` | bex splits Plan out; IA-only difference (m32 verdict: not a gap) |
+| `/compute` | render.com/docs/compute-plans and /docs/scaling since 2026-08-26 ([compute-page.md](compute-page.md)) | `services.$serviceId.compute.tsx` | match (w6/m483): the compute plan, Autoscaling and Manual Scaling on one page |
+| `/scaling` | m32 walk (Render's Scaling tab before 2026-08-26) | `services.$serviceId.scaling.tsx` | redirects to `/compute#manual-scaling` (w6/m483); bex's bex-only `/plan` tab redirects to `/compute` |
 
-Because tab names already agree, the alias redirect needs **no segment renaming**: `/{web|worker|pserv|static|cron}/{srv-id}/<rest>` → `/services/{srv-id}/<rest>` verbatim (query string preserved). bex-only tabs (`/plan`) simply have no Render inbound shape.
+Because tab names already agree, the alias redirect needs **no segment renaming**: `/{web|worker|pserv|static|cron}/{srv-id}/<rest>` → `/services/{srv-id}/<rest>` verbatim (query string preserved). The bex-only `/plan` tab had no Render inbound shape; since w6/m483 it redirects to `/compute`.
 
 ## Decision (w5/m39)
 

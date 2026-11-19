@@ -124,7 +124,7 @@ func TestBlueprintDiskRefusesIneligibleServices(t *testing.T) {
 	}{
 		"cron job":      {appv1alpha1.TypeCronJob, "starter", 1, "cannot have a disk"},
 		"static site":   {appv1alpha1.TypeStaticSite, "starter", 1, "cannot have a disk"},
-		"free tier":     {appv1alpha1.TypeWebService, "free", 1, "paid instance type"},
+		"free tier":     {appv1alpha1.TypeWebService, "free", 1, "paid compute plan"},
 		"two instances": {appv1alpha1.TypeWebService, "starter", 2, "more than one instance"},
 	} {
 		t.Run(name, func(t *testing.T) {

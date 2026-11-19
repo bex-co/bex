@@ -30,7 +30,7 @@ const deKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value table column header",
   },
   "keyvalue.colPlan": {
-    message: "Instanztyp",
+    message: "Compute-Plan",
     description: "Key Value table column header (plan / tier)",
   },
   "keyvalue.colVersion": {
@@ -275,7 +275,7 @@ const deKeyValue: Record<string, TranslationEntry> = {
     description: "Create-Key-Value name validation message",
   },
   "keyvalue.fieldPlan": {
-    message: "Instanztyp",
+    message: "Compute-Plan",
     description: "Create-Key-Value form field label (plan / tier)",
   },
   "keyvalue.fieldVersion": {
@@ -368,7 +368,7 @@ const deKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value detail metadata row label",
   },
   "keyvalue.metaPlan": {
-    message: "Instanztyp",
+    message: "Compute-Plan",
     description: "Key Value detail metadata row label",
   },
   "keyvalue.metaConnectionLimit": {
@@ -561,17 +561,17 @@ const deKeyValue: Record<string, TranslationEntry> = {
     description: "Toast when a resume request fails",
   },
   "keyvalue.planTitle": {
-    message: "Instanztyp",
+    message: "Compute-Plan",
     description: "Key Value detail plan-picker card title",
   },
   "keyvalue.planDescription": {
     message:
-      "Wechsle zu einem größeren Instanztyp; eine Key-Value-Instanz kann nicht auf einen kleineren wechseln. Die Änderung startet den Store neu, er ist dann ein bis zwei Minuten nicht verfügbar. Daten bleiben gemäß dem Persistenzmodus erhalten; ein Store mit Persistenz „Aus“ verliert jeden Key.",
+      "Wechsle zu einem größeren Compute-Plan; eine Key-Value-Instanz kann nicht auf einen kleineren wechseln. Die Änderung startet den Store neu, er ist dann ein bis zwei Minuten nicht verfügbar. Daten bleiben gemäß dem Persistenzmodus erhalten; ein Store mit Persistenz „Aus“ verliert jeden Key.",
     description: "Key Value detail plan-picker card description",
   },
   "keyvalue.planDowngradeUnavailable": {
     message:
-      "Eine Key-Value-Instanz kann nicht auf einen kleineren Instanztyp wechseln. Erstelle eine neue Instanz mit diesem Typ und verschiebe deine Daten dorthin.",
+      "Eine Key-Value-Instanz kann nicht auf einen kleineren Compute-Plan wechseln. Erstelle eine neue Instanz mit diesem Plan und verschiebe deine Daten dorthin.",
     description:
       "Tooltip on a disabled plan card smaller than the store's current plan: Render does not downgrade a Key Value instance (w8/249)",
   },
@@ -595,7 +595,7 @@ const deKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.planPickerConfirmBody": {
     message:
-      "Der Store wird neu gestartet, um den neuen Instanztyp anzuwenden, und ist ein bis zwei Minuten nicht verfügbar. Verbindungen brechen ab.",
+      "Der Store wird neu gestartet, um den neuen Compute-Plan anzuwenden, und ist ein bis zwei Minuten nicht verfügbar. Verbindungen brechen ab.",
     description: "Key Value plan-picker confirm dialog body",
   },
   "keyvalue.restartConfirmDataLoss": {

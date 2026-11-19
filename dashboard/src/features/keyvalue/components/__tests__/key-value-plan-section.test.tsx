@@ -124,7 +124,7 @@ describe("KeyValuePlanSection", () => {
     expect(free).toHaveTextContent("Unavailable");
     expect(free).toHaveAttribute(
       "title",
-      expect.stringContaining("can't move to a smaller instance type"),
+      expect.stringContaining("can't move to a smaller compute plan"),
     );
     const starter = screen.getByRole("radio", { name: /Starter/ });
     expect(starter).toBeEnabled();

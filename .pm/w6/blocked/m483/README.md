@@ -1,20 +1,20 @@
 # w6 · m483 — A service's Compute page holds its plan, manual scaling and autoscaling, with Render's "compute plan" wording and plan IDs
 
-**Worker:** worker6 **Goal:** as on Render since 2026-08-26, a service's dashboard has one **Compute** page with its compute plan, Manual Scaling and Autoscaling; plans are called "compute plans", not "instance types", and plan cards show Render's spec-based plan IDs beside the legacy names. **Status:** todo
+**Worker:** worker6 **Goal:** as on Render since 2026-08-26, a service's dashboard has one **Compute** page with its compute plan, Manual Scaling and Autoscaling; plans are called "compute plans", not "instance types", and plan cards show Render's spec-based plan IDs beside the legacy names. **Status:** blocked (t001–t006, t008, t009 done and shipped; t007 waits for the first production pin carrying the shipping commit, then its production walk; then t010)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Record Render's Compute page and wording](t001.md) | 30m | — |
-| t002 | [Merge the Plan and Scaling tabs into a Compute page; the old paths redirect](t002.md) | 1h30m | t001 |
-| t003 | [The Compute page's pending skeleton matches the ready page at 1440 and 390 px](t003.md) | 45m | t002 |
-| t004 | [Plan cards show Render's plan ID beside the legacy name](t004.md) | 45m | t001 |
-| t005 | ["Compute plan" replaces "instance type" in the dashboard and bex-api's messages](t005.md) | 1h | t001 |
-| t006 | [Links that opened Plan or Scaling open Compute](t006.md) | 30m | t002 |
+| t001 | [Record Render's Compute page and wording](done/t001.md) — **DONE** | 30m | — |
+| t002 | [Merge the Plan and Scaling tabs into a Compute page; the old paths redirect](done/t002.md) — **DONE** | 1h30m | t001 |
+| t003 | [The Compute page's pending skeleton matches the ready page at 1440 and 390 px](done/t003.md) — **DONE** | 45m | t002 |
+| t004 | [Plan cards show Render's plan ID beside the legacy name](done/t004.md) — **DONE** | 45m | t001 |
+| t005 | ["Compute plan" replaces "instance type" in the dashboard and bex-api's messages](done/t005.md) — **DONE** | 1h | t001 |
+| t006 | [Links that opened Plan or Scaling open Compute](done/t006.md) — **DONE** | 30m | t002 |
 | t007 | [Render parity](t007.md) | 20m | t003, t004, t005, t006 |
-| t008 | [Simplify](t008.md) | 15m | t007 |
-| t009 | [Test coverage](t009.md) | 30m | t007 |
+| t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
+| t009 | [Test coverage](done/t009.md) — **DONE** | 30m | t007 |
 | t010 | [Closeout](t010.md) | 10m | t008, t009 |
 
 ## Definition of done

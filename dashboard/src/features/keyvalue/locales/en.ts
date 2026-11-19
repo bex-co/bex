@@ -32,7 +32,7 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value table column header",
   },
   "keyvalue.colPlan": {
-    message: "Instance type",
+    message: "Compute plan",
     description: "Key Value table column header (plan / tier)",
   },
   "keyvalue.colVersion": {
@@ -271,7 +271,7 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description: "Create-Key-Value name validation message",
   },
   "keyvalue.fieldPlan": {
-    message: "Instance type",
+    message: "Compute plan",
     description: "Create-Key-Value form field label (plan / tier)",
   },
   "keyvalue.fieldVersion": {
@@ -363,7 +363,7 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value detail metadata row label",
   },
   "keyvalue.metaPlan": {
-    message: "Instance type",
+    message: "Compute plan",
     description: "Key Value detail metadata row label",
   },
   "keyvalue.metaConnectionLimit": {
@@ -556,17 +556,17 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   // --- Plan section (m16) ---
   "keyvalue.planTitle": {
-    message: "Instance type",
+    message: "Compute plan",
     description: "Key Value detail plan-picker card title",
   },
   "keyvalue.planDescription": {
     message:
-      "Move to a larger instance type; a Key Value instance can't move to a smaller one. Changing it restarts the store, which is unavailable for a minute or two. Data survives according to the persistence mode; a store with Persistence Off loses every key.",
+      "Move to a larger compute plan; a Key Value instance can't move to a smaller one. Changing it restarts the store, which is unavailable for a minute or two. Data survives according to the persistence mode; a store with Persistence Off loses every key.",
     description: "Key Value detail plan-picker card description",
   },
   "keyvalue.planDowngradeUnavailable": {
     message:
-      "A Key Value instance can't move to a smaller instance type. Create a new instance on this one and move your data to it.",
+      "A Key Value instance can't move to a smaller compute plan. Create a new instance on this one and move your data to it.",
     description:
       "Tooltip on a disabled plan card smaller than the store's current plan: Render does not downgrade a Key Value instance (w8/249)",
   },
@@ -590,7 +590,7 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.planPickerConfirmBody": {
     message:
-      "The store restarts to apply the new instance type and is unavailable for a minute or two. Connections drop.",
+      "The store restarts to apply the new compute plan and is unavailable for a minute or two. Connections drop.",
     description: "Key Value plan-picker confirm dialog body",
   },
   "keyvalue.restartConfirmDataLoss": {

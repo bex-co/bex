@@ -1,13 +1,12 @@
 import { describe, expect, it } from "vitest";
 import "@/i18n/init";
+import { Route as ComputeRoute } from "@/routes/services.$serviceId.compute";
 import { Route as DeploysRoute } from "@/routes/services.$serviceId.deploys.index";
 import { Route as DiskRoute } from "@/routes/services.$serviceId.disk";
 import { Route as EnvRoute } from "@/routes/services.$serviceId.env";
 import { Route as EventsRoute } from "@/routes/services.$serviceId.events";
 import { Route as LogsRoute } from "@/routes/services.$serviceId.logs";
 import { Route as MetricsRoute } from "@/routes/services.$serviceId.metrics";
-import { Route as PlanRoute } from "@/routes/services.$serviceId.plan";
-import { Route as ScalingRoute } from "@/routes/services.$serviceId.scaling";
 import { Route as SettingsRoute } from "@/routes/services.$serviceId.settings";
 import { Route as ShellRoute } from "@/routes/services.$serviceId.shell";
 import { Route as StaticHeadersRoute } from "@/routes/static.$serviceId.headers";
@@ -15,14 +14,13 @@ import { Route as StaticHeadersRoute } from "@/routes/static.$serviceId.headers"
 // w4/m249: the service layout sets one title for all of its tabs; each tab now
 // puts its own name first.
 const tabs: Array<[string, { options: { head?: unknown } }]> = [
+  ["Compute", ComputeRoute],
   ["Deploys", DeploysRoute],
   ["Disk", DiskRoute],
   ["Environment", EnvRoute],
   ["Events", EventsRoute],
   ["Logs", LogsRoute],
   ["Metrics", MetricsRoute],
-  ["Plan", PlanRoute],
-  ["Scaling", ScalingRoute],
   ["Settings", SettingsRoute],
   ["Shell", ShellRoute],
 ];

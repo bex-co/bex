@@ -244,11 +244,12 @@ const jaMetrics: Record<string, TranslationEntry> = {
   "metrics.limitLink": {
     message: "上限",
     description:
-      "Link to the Instance Type tab on the Memory/CPU chart headers, followed by the limit value when configured",
+      "Link to the Compute page on the Memory/CPU chart headers, followed by the limit value when configured",
   },
   "metrics.manageScaling": {
     message: "スケーリングを管理",
-    description: "Link to the Scaling tab on the Total Instances chart header",
+    description:
+      "Link to the Compute page's Manual Scaling section on the Total Instances chart header",
   },
   "metrics.noLimitConfigured": {
     message: "上限が設定されていないため、割合を算出できません",

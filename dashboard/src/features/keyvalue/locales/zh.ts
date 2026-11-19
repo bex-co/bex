@@ -32,7 +32,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value table column header",
   },
   "keyvalue.colPlan": {
-    message: "实例类型",
+    message: "计算套餐",
     description: "Key Value table column header (plan / tier)",
   },
   "keyvalue.colVersion": {
@@ -262,7 +262,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Create-Key-Value name validation message",
   },
   "keyvalue.fieldPlan": {
-    message: "实例类型",
+    message: "计算套餐",
     description: "Create-Key-Value form field label (plan / tier)",
   },
   "keyvalue.fieldVersion": {
@@ -354,7 +354,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value detail metadata row label",
   },
   "keyvalue.metaPlan": {
-    message: "实例类型",
+    message: "计算套餐",
     description: "Key Value detail metadata row label",
   },
   "keyvalue.metaConnectionLimit": {
@@ -545,17 +545,17 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   // --- Plan section (m16) ---
   "keyvalue.planTitle": {
-    message: "实例规格",
+    message: "计算套餐",
     description: "Key Value detail plan-picker card title",
   },
   "keyvalue.planDescription": {
     message:
-      "可升级到更大的实例规格；Key Value 实例无法降到更小的规格。更改会重启存储，期间约一到两分钟不可用。数据是否保留取决于持久化模式；持久化为“关闭”的存储会丢失所有键。",
+      "可升级到更大的计算套餐；Key Value 实例无法降到更小的规格。更改会重启存储，期间约一到两分钟不可用。数据是否保留取决于持久化模式；持久化为“关闭”的存储会丢失所有键。",
     description: "Key Value detail plan-picker card description",
   },
   "keyvalue.planDowngradeUnavailable": {
     message:
-      "Key Value 实例无法降到更小的实例规格。请用该规格新建一个实例，再把数据迁移过去。",
+      "Key Value 实例无法降到更小的计算套餐。请用该规格新建一个实例，再把数据迁移过去。",
     description:
       "Tooltip on a disabled plan card smaller than the store's current plan: Render does not downgrade a Key Value instance (w8/249)",
   },
@@ -579,7 +579,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.planPickerConfirmBody": {
     message:
-      "存储将重启以应用新的实例规格，期间约一到两分钟不可用，连接会中断。",
+      "存储将重启以应用新的计算套餐，期间约一到两分钟不可用，连接会中断。",
     description: "Key Value plan-picker confirm dialog body",
   },
   "keyvalue.restartConfirmDataLoss": {

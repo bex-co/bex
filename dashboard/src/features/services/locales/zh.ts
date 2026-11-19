@@ -91,12 +91,12 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.sshUnavailableSuspendedFree": {
     message:
-      "此服务已暂停，且 SSH 需要付费实例类型。恢复服务只会恢复流量；免费服务仍不包含 Shell 访问。",
+      "此服务已暂停，且 SSH 需要付费计算套餐。恢复服务只会恢复流量；免费服务仍不包含 Shell 访问。",
     description:
       "Why SSH is unavailable on a suspended Free service: both blockers, without implying a resume grants SSH (w4/m183)",
   },
   "services.sshUnavailableFree": {
-    message: "SSH 需要付费实例类型。免费服务不包含 Shell 访问。",
+    message: "SSH 需要付费计算套餐。免费服务不包含 Shell 访问。",
     description: "Why SSH is unavailable on a Free-plan service (w4/143)",
   },
   "services.sshRemedyResume": {
@@ -105,9 +105,9 @@ const zhServices: Record<string, TranslationEntry> = {
       "Link from an SSH-unavailable state to the service's suspend/resume setting (w4/143)",
   },
   "services.sshRemedyChangePlan": {
-    message: "更改实例类型",
+    message: "更改计算套餐",
     description:
-      "Link from an SSH-unavailable state on a Free service to its instance-type page (w4/143)",
+      "Link from an SSH-unavailable state on a Free service to its compute-plan page (w4/143)",
   },
   "services.shellDescription": {
     message: "从本地终端打开正在运行的服务实例 Shell。",
@@ -479,10 +479,6 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "部署你的第一个 App，它就会出现在这里。",
     description: "Services list empty state body",
   },
-  "services.navPlan": {
-    message: "套餐",
-    description: "Service sidebar link to the instance-type (plan) page",
-  },
   "services.headerServiceId": {
     message: "服务 ID：",
     description: "Service-detail header metadata label for the service id",
@@ -554,10 +550,6 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail nav item (static-site response headers page, Render's label)",
   },
-  "services.navScaling": {
-    message: "弹性伸缩",
-    description: "Service-detail nav item (autoscaling tab)",
-  },
   "services.scalingTitle": {
     message: "自动伸缩",
     description: "Scaling tab section heading",
@@ -591,17 +583,6 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.scalingTargetMemory": {
     message: "目标内存使用率 %",
     description: "Autoscaling target memory utilization input label",
-  },
-  "services.scalingUnavailableTitle": {
-    message: "不支持伸缩",
-    description:
-      "Scaling tab heading when this service type cannot be scaled (cron)",
-  },
-  "services.scalingUnavailableBody": {
-    message:
-      "伸缩适用于具有长期运行实例的 Web、私有和后台服务。此服务类型没有可调整的副本数。",
-    description:
-      "Scaling tab explanation when reached by direct URL for an ineligible type",
   },
   "services.scalingValidationMinMax": {
     message: "最少实例数必须 ≤ 最多实例数。",
@@ -725,7 +706,7 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.scalingManualDescription": {
     message:
-      "运行多个自动负载均衡的实例。所有实例使用相同的实例类型并按此计费。",
+      "运行多个自动负载均衡的实例。所有实例使用相同的计算套餐并按此计费。",
     description: "Scaling page: manual instance-count card description",
   },
   "services.scalingManualDescriptionFree": {
@@ -1291,16 +1272,16 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Toast after setDisplayName fails",
   },
   "services.settingsInstanceType": {
-    message: "实例类型",
+    message: "计算套餐",
     description: "Settings tab row label for the App's current plan/tier",
   },
   "services.settingsNoInstanceType": {
-    message: "未设置实例类型",
+    message: "未设置计算套餐",
     description: "Settings tab state for an untiered (bare-CR) App",
   },
   "services.settingsUpdate": {
     message: "更新",
-    description: "Settings tab link to the instance-type picker",
+    description: "Settings tab link to the compute-plan picker",
   },
   "services.settingsIdleTimeout": {
     message: "空闲超时",
@@ -1521,8 +1502,19 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Toast after setNotifyOnFail fails",
   },
   "services.planPickerTitle": {
-    message: "选择实例类型",
-    description: "Plan-picker page heading",
+    message: "计算套餐",
+    description:
+      "Accessible name of the Compute section's plan cards, shown after Edit (w6/m483)",
+  },
+  "services.computeTitle": {
+    message: "计算",
+    description:
+      "Compute page: title of the section holding the service's compute plan (Render: 'Under Compute, click Edit', w6/m483)",
+  },
+  "services.computePlanEdit": {
+    message: "编辑",
+    description:
+      "Compute section button that opens the compute plan cards (w6/m483)",
   },
   "services.planPickerFreeGroup": {
     message: "免费",
@@ -1542,39 +1534,39 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.planPickerLegacyFreeWorker": {
     message:
-      "此后台工作进程仍在使用免费套餐，后台工作进程现已不再提供该套餐。它会继续运行。改选付费实例类型后将无法切回免费套餐。",
+      "此后台工作进程仍在使用免费套餐，后台工作进程现已不再提供该套餐。它会继续运行。改选付费计算套餐后将无法切回免费套餐。",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredWorker": {
     message:
-      "此后台工作进程没有实例类型，后台工作进程现已不再提供免费套餐。它会继续运行。选择付费实例类型即可为它设定实例类型。",
+      "此后台工作进程没有计算套餐，后台工作进程现已不再提供免费套餐。它会继续运行。选择付费计算套餐即可为它设定计算套餐。",
     description:
-      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+      "Plan picker notice: this service type has no compute plan, and Free is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerLegacyFreePrivateService": {
     message:
-      "此私有服务仍在使用免费套餐，私有服务现已不再提供该套餐。它会继续运行。改选付费实例类型后将无法切回免费套餐。",
+      "此私有服务仍在使用免费套餐，私有服务现已不再提供该套餐。它会继续运行。改选付费计算套餐后将无法切回免费套餐。",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredPrivateService": {
     message:
-      "此私有服务没有实例类型，私有服务现已不再提供免费套餐。它会继续运行。选择付费实例类型即可为它设定实例类型。",
+      "此私有服务没有计算套餐，私有服务现已不再提供免费套餐。它会继续运行。选择付费计算套餐即可为它设定计算套餐。",
     description:
-      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+      "Plan picker notice: this service type has no compute plan, and Free is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerLegacyFreeCronJob": {
     message:
-      "此定时任务仍在使用免费套餐，定时任务现已不再提供该套餐。它会继续运行。改选付费实例类型后将无法切回免费套餐。",
+      "此定时任务仍在使用免费套餐，定时任务现已不再提供该套餐。它会继续运行。改选付费计算套餐后将无法切回免费套餐。",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredCronJob": {
     message:
-      "此定时任务没有实例类型，定时任务现已不再提供免费套餐。它会继续运行。选择付费实例类型即可为它设定实例类型。",
+      "此定时任务没有计算套餐，定时任务现已不再提供免费套餐。它会继续运行。选择付费计算套餐即可为它设定计算套餐。",
     description:
-      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+      "Plan picker notice: this service type has no compute plan, and Free is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerPaidGroup": {
     message: "付费",
@@ -1590,11 +1582,12 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Plan-picker footer button: discard the selection",
   },
   "services.planPickerSave": {
-    message: "保存更改",
-    description: "Plan-picker footer button: confirm the plan change",
+    message: "保存",
+    description:
+      'Compute section footer button: confirm the plan change ("Select a new compute plan and click Save", render.com/docs/compute-plans)',
   },
   "services.planPickerConfirmTitle": {
-    message: "将实例类型更改为 {name}？",
+    message: "将计算套餐更改为 {name}？",
     description: "Plan-change confirm dialog title",
   },
   "services.planPickerConfirmBody": {
@@ -1603,48 +1596,48 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Plan-change confirm dialog body",
   },
   "services.instanceTypePausedReason": {
-    message: "“{name}”暂不可用，请选择 {largest} 或更小的实例类型。",
+    message: "“{name}”暂不可用，请选择 {largest} 或更小的计算套餐。",
     description:
-      "A paused instance type's tooltip and screen-reader reason, composed in the dashboard's language from the tier and the largest still offered; matches bex-api's English unavailableReason (w4/552)",
+      "A paused compute plan's tooltip and screen-reader reason, composed in the dashboard's language from the tier and the largest still offered; matches bex-api's English unavailableReason (w4/552)",
   },
   "services.planPickerConfirmBodyCron": {
-    message: "更改之后开始的运行会使用新的实例类型。",
+    message: "更改之后开始的运行会使用新的计算套餐。",
     description:
       "Plan-change confirm body for a cron job, which serves no requests: its next run takes the new size (w4/548)",
   },
   "services.planPickerConfirmBodyNeverLive": {
     message:
-      "服务会以新的实例类型运行。目前还没有任何版本在运行——部署成功后才会上线。",
+      "服务会以新的计算套餐运行。目前还没有任何版本在运行——部署成功后才会上线。",
     description:
       "Plan-change confirm body for a service that has never gone live (w4/548)",
   },
   "services.planPickerConfirmRunPrice": {
     message:
-      "此实例类型每分钟运行时间费用为 ${price}，运行期间按秒计费。每个定时任务每月最低收费 ${minimum}。",
+      "此计算套餐每分钟运行时间费用为 ${price}，运行期间按秒计费。每个定时任务每月最低收费 ${minimum}。",
     description:
-      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
+      "Plan-change confirm for a cron job: the new compute plan's run-time rate (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.createFieldPlanCronHint": {
     message:
       "定时任务仅在运行期间按秒计费。每个定时任务每月最低收费 ${minimum}。",
     description:
-      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
+      "Under the create form's compute plans for a cron job, which are priced per minute of run time (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.planPickerConfirmPrice": {
-    message: "此实例类型每月费用为 ${price}。",
+    message: "此计算套餐每月费用为 ${price}。",
     description:
-      "Plan-change confirm: the new instance type's monthly price, from the API's price sheet (w4/400)",
+      "Plan-change confirm: the new compute plan's monthly price, from the API's price sheet (w4/400)",
   },
   "services.planPickerSuccess": {
-    message: "实例类型已更新为 {name}",
+    message: "计算套餐已更新为 {name}",
     description: "Toast on a successful plan change",
   },
   "services.planPickerError": {
-    message: "无法更新实例类型，请重试。",
+    message: "无法更新计算套餐，请重试。",
     description: "Toast on a failed plan change",
   },
   "services.planPickerErrorTitle": {
-    message: "无法加载实例类型",
+    message: "无法加载计算套餐",
     description: "Plan-picker error state title (instanceTypes query failed)",
   },
   "services.planPickerErrorBody": {
@@ -3536,7 +3529,7 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.resumeCardDescriptionCrashLoop": {
     message:
-      "该服务在 24 小时内反复启动失败、无法变为健康状态，因此已被暂停。常见原因是配置错误、应用代码缺陷或实例规格过小。请先修复问题，再恢复服务使其重新上线。",
+      "该服务在 24 小时内反复启动失败、无法变为健康状态，因此已被暂停。常见原因是配置错误、应用代码缺陷或计算套餐过小。请先修复问题，再恢复服务使其重新上线。",
     description:
       "Settings tab resume section description for a service the platform suspended for a crash loop (stuck_crashlooping)",
   },
@@ -3956,7 +3949,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Create-wizard Docker runtime option",
   },
   "services.createFieldPlan": {
-    message: "实例类型",
+    message: "计算套餐",
     description: "Create-wizard plan-picker section label",
   },
   "services.createFieldAutoDeploy": {
@@ -4225,7 +4218,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Disk tab empty state body",
   },
   "services.diskPaidOnly": {
-    message: "磁盘需要付费实例类型。升级此服务的套餐即可挂载。",
+    message: "磁盘需要付费计算套餐。升级此服务的套餐即可挂载。",
     description: "Shown instead of the add button on a free service",
   },
   "services.diskAddAction": {
@@ -4497,6 +4490,11 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.navShell": {
     message: "Shell",
     description: "Service-detail nav item (running-instance SSH page)",
+  },
+  "services.navCompute": {
+    message: "计算",
+    description:
+      "Service sidebar link to the Compute page: the compute plan, manual scaling and autoscaling, as on Render (w6/m483)",
   },
   "services.eventsTitle": {
     message: "活动",
@@ -4837,9 +4835,9 @@ const zhServices: Record<string, TranslationEntry> = {
       "One side of an autoscaling change: its instance range and both targets (w4/m335)",
   },
   "services.eventsPlanChange": {
-    message: "实例类型 {from} → {to}",
+    message: "计算套餐 {from} → {to}",
     description:
-      "plan_changed detail line, by the instance types' names (w4/568)",
+      "plan_changed detail line, by the compute plans' names (w4/568, w6/m483)",
   },
   "services.eventsBranchChange": {
     message: "分支 {from} → {to}",

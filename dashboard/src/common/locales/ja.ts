@@ -89,7 +89,7 @@ const jaCommon: Record<string, TranslationEntry> = {
   "common.pricePerRunMinute": {
     message: "${price}/分（実行時間）",
     description:
-      "A cron job's USD price per minute of run time, on a Change Instance Type card (w4/546): it is billed per second only while a run executes; price is an API-supplied decimal without the currency symbol",
+      "A cron job's USD price per minute of run time, on a Change Compute Plan card (w4/546): it is billed per second only while a run executes; price is an API-supplied decimal without the currency symbol",
   },
   "common.pricePerMinute": {
     message: "${price}/分",
@@ -104,7 +104,7 @@ const jaCommon: Record<string, TranslationEntry> = {
   "common.planUnavailable": {
     message: "利用不可",
     description:
-      "Shown in place of the price on a disabled plan card whose instance type is paused (it cannot be selected for now); the server's full reason is the card's tooltip",
+      "Shown in place of the price on a disabled plan card whose compute plan is paused (it cannot be selected for now); the server's full reason is the card's tooltip",
   },
   "common.planConnections_other": {
     message: "{formatted} 接続",

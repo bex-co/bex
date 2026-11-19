@@ -201,7 +201,7 @@ export function ServiceDetailHeader({
               ) : null}
               {isStaticSite(service) ? null : instanceType ? (
                 <Link
-                  to="/services/$serviceId/plan"
+                  to="/services/$serviceId/compute"
                   params={{ serviceId: service.id }}
                   className="relative flex after:absolute after:-inset-x-1 after:-inset-y-3 after:content-['']"
                 >
@@ -606,7 +606,7 @@ function SshUnavailable({ service }: { service: ServiceView }) {
         <Link
           to={
             remedy.action.path === "plan"
-              ? "/services/$serviceId/plan"
+              ? "/services/$serviceId/compute"
               : "/services/$serviceId/settings"
           }
           params={{ serviceId: service.id }}

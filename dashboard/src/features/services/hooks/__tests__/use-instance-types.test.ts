@@ -14,6 +14,7 @@ const CATALOG = [
   {
     __typename: "InstanceType" as const,
     id: "free",
+    planId: "free",
     name: "Free",
     cpu: "100m",
     memory: "512Mi",
@@ -25,6 +26,7 @@ const CATALOG = [
   {
     __typename: "InstanceType" as const,
     id: "standard",
+    planId: "1c-2g",
     name: "Standard",
     cpu: "1",
     memory: "2Gi",
@@ -48,6 +50,7 @@ describe("useInstanceTypes", () => {
     expect(result.current.instanceTypes).toEqual([
       {
         id: "free",
+        planId: "free",
         name: "Free",
         cpu: "100m",
         memory: "512Mi",
@@ -58,6 +61,7 @@ describe("useInstanceTypes", () => {
       },
       {
         id: "standard",
+        planId: "1c-2g",
         name: "Standard",
         cpu: "1",
         memory: "2Gi",
@@ -65,8 +69,28 @@ describe("useInstanceTypes", () => {
         usdPerMinute: "0.0004",
         available: false,
         unavailableReason:
-          '"Standard" is temporarily unavailable; choose Free or a smaller instance type.',
+          '"Standard" is temporarily unavailable; choose Free or a smaller compute plan.',
       },
+    ]);
+  });
+
+  // w6/m483: a bex-api from before the plan ID field lists the legacy id as
+  // the plan ID, so the cards show the name alone instead of a blank ID.
+  it("falls back to the legacy id when bex-api sends no plan ID", () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        instanceTypes: [
+          { ...CATALOG[1], planId: "" },
+          { ...CATALOG[0], planId: undefined },
+        ],
+      },
+      loading: false,
+      error: undefined,
+    });
+    const { result } = renderHook(() => useInstanceTypes());
+    expect(result.current.instanceTypes.map((it) => it.planId)).toEqual([
+      "standard",
+      "free",
     ]);
   });
 
@@ -86,7 +110,7 @@ describe("useInstanceTypes", () => {
       });
       const { result } = renderHook(() => useInstanceTypes());
       expect(result.current.byID("standard")?.unavailableReason).toBe(
-        "“Standard”暂不可用，请选择 Free 或更小的实例类型。",
+        "“Standard”暂不可用，请选择 Free 或更小的计算套餐。",
       );
       expect(result.current.byID("free")?.unavailableReason).toBe("");
     });

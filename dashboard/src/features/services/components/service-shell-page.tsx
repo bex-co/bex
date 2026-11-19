@@ -118,7 +118,7 @@ export function ServiceShellPage({ serviceId }: { serviceId: string }) {
                 <Link
                   to={
                     remedy.action.path === "plan"
-                      ? "/services/$serviceId/plan"
+                      ? "/services/$serviceId/compute"
                       : "/services/$serviceId/settings"
                   }
                   params={{ serviceId }}

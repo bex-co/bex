@@ -532,9 +532,9 @@ const jaDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.reason.startup_out_of_memory": {
     message:
-      "起動中にインスタンスのメモリが不足しました（インスタンスタイプの上限は {memory}、終了コード {code}）。メモリ使用量を減らすか、より大きなインスタンスタイプを選択してください",
+      "起動中にインスタンスのメモリが不足しました（コンピュートプランの上限は {memory}、終了コード {code}）。メモリ使用量を減らすか、より大きなコンピュートプランを選択してください",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the instance type's memory limit (e.g. 512Mi), code the exit code",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the compute plan's memory limit (e.g. 512Mi), code the exit code",
   },
   "deploys.reason.probe_http_waiting": {
     message:

@@ -135,11 +135,11 @@ const FreeInstanceLimitCode = "FREE_INSTANCE_LIMIT"
 func FreeInstanceLimitError(noun, existingName string, terminating bool) error {
 	if terminating {
 		return NewBadRequestError(FreeInstanceLimitCode,
-			fmt.Sprintf("this workspace's free %s (%s) is still being deleted; wait for its deletion to finish or choose a paid instance type", noun, existingName),
+			fmt.Sprintf("this workspace's free %s (%s) is still being deleted; wait for its deletion to finish or choose a paid compute plan", noun, existingName),
 			map[string]any{"limit": 1, "field": "plan"})
 	}
 	return NewBadRequestError(FreeInstanceLimitCode,
-		fmt.Sprintf("this workspace already has a free %s (%s); delete it or choose a paid instance type", noun, existingName),
+		fmt.Sprintf("this workspace already has a free %s (%s); delete it or choose a paid compute plan", noun, existingName),
 		map[string]any{"limit": 1, "field": "plan"})
 }
 

@@ -30,7 +30,7 @@ const ptKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value table column header",
   },
   "keyvalue.colPlan": {
-    message: "Tipo de instância",
+    message: "Plano de computação",
     description: "Key Value table column header (plan / tier)",
   },
   "keyvalue.colVersion": {
@@ -270,7 +270,7 @@ const ptKeyValue: Record<string, TranslationEntry> = {
     description: "Create-Key-Value name validation message",
   },
   "keyvalue.fieldPlan": {
-    message: "Tipo de instância",
+    message: "Plano de computação",
     description: "Create-Key-Value form field label (plan / tier)",
   },
   "keyvalue.fieldVersion": {
@@ -363,7 +363,7 @@ const ptKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value detail metadata row label",
   },
   "keyvalue.metaPlan": {
-    message: "Tipo de instância",
+    message: "Plano de computação",
     description: "Key Value detail metadata row label",
   },
   "keyvalue.metaConnectionLimit": {
@@ -553,17 +553,17 @@ const ptKeyValue: Record<string, TranslationEntry> = {
     description: "Toast when a resume request fails",
   },
   "keyvalue.planTitle": {
-    message: "Tipo de instância",
+    message: "Plano de computação",
     description: "Key Value detail plan-picker card title",
   },
   "keyvalue.planDescription": {
     message:
-      "Mude para um tipo de instância maior; uma instância Key Value não pode passar para um menor. A mudança reinicia o store, que fica indisponível por um ou dois minutos. Os dados sobrevivem conforme o modo de persistência; um store com persistência desativada perde todas as chaves.",
+      "Mude para um plano de computação maior; uma instância Key Value não pode passar para um menor. A mudança reinicia o store, que fica indisponível por um ou dois minutos. Os dados sobrevivem conforme o modo de persistência; um store com persistência desativada perde todas as chaves.",
     description: "Key Value detail plan-picker card description",
   },
   "keyvalue.planDowngradeUnavailable": {
     message:
-      "Uma instância Key Value não pode passar para um tipo de instância menor. Crie uma nova instância neste tipo e mova seus dados para ela.",
+      "Uma instância Key Value não pode passar para um plano de computação menor. Crie uma nova instância neste plano e mova seus dados para ela.",
     description:
       "Tooltip on a disabled plan card smaller than the store's current plan: Render does not downgrade a Key Value instance (w8/249)",
   },
@@ -587,7 +587,7 @@ const ptKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.planPickerConfirmBody": {
     message:
-      "O store reinicia para aplicar o novo tipo de instância e fica indisponível por um ou dois minutos. As conexões caem.",
+      "O store reinicia para aplicar o novo plano de computação e fica indisponível por um ou dois minutos. As conexões caem.",
     description: "Key Value plan-picker confirm dialog body",
   },
   "keyvalue.restartConfirmDataLoss": {

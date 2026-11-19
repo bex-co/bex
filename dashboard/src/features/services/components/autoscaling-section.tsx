@@ -1,4 +1,4 @@
-import { useState, useMemo, type ReactNode } from "react";
+import { useState, useMemo } from "react";
 import { TriangleAlert } from "lucide-react";
 import {
   Alert,
@@ -9,20 +9,18 @@ import { Switch } from "@/common/components/ui/switch";
 import { Label } from "@/common/components/ui/label";
 import { Input } from "@/common/components/ui/input";
 import { Button } from "@/common/components/ui/button";
-import { Skeleton } from "@/common/components/ui/skeleton";
 import { Slider } from "@/common/components/ui/slider";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { PlanBillingLink } from "@/common/components/plan-billing-link";
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/common/components/ui/card";
+  AutoscalingHeader,
+  AutoscalingLoadingCard,
+  AutoscalingLockedNotice,
+} from "@/features/services/components/scaling-frames";
+import { autoscalingLock } from "@/features/services/lib/autoscaling-lock";
+import { Card, CardContent } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { UseAutoscalingResult } from "@/features/services/hooks/use-autoscaling";
-import { proFeaturesPlan } from "@/features/workspaces/types";
 
 // Render uses 1–100 for instance count and 1–90 for utilization targets, with
 // 60% as the first-enable default target (live capture 2026-07-16, w7/m43).
@@ -258,9 +256,7 @@ export function AutoscalingSection({
   // higher), so the switch is held off with the plan notice and a Billing
   // link. A policy it already runs keeps running: it reads as on, with its
   // settings, and the switch can only turn it off.
-  const eligible = plan !== "free";
-  const planGated = eligible && !proFeaturesPlan(workspacePlan);
-  const locked = !eligible || planGated;
+  const { eligible, planGated, locked } = autoscalingLock(plan, workspacePlan);
   const storedLocked = locked && as.enabled;
   const enabled = !locked && (draft != null || as.enabled);
   const form = draft ?? serverForm;
@@ -313,38 +309,6 @@ export function AutoscalingSection({
     setValidationError(null);
   }
 
-  // The header is shared by both branches so the loading frame and the ready
-  // card cannot drift apart (w4/688): only the switch slot differs.
-  const header = (control: ReactNode) => (
-    <CardHeader>
-      {/* A phone puts the switch under the description: beside it, the
-          switch squeezed the sentence into a column a third of the card
-          wide and floated mid-paragraph. */}
-      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <CardTitle>{t("services.scalingTitle")}</CardTitle>
-          <CardDescription className="mt-1">
-            {t("services.scalingDescription")}
-          </CardDescription>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">{control}</div>
-      </div>
-    </CardHeader>
-  );
-
-  // Why the switch is held off. Both plans are known before the autoscaling
-  // read settles, so the loading frame shows the same notice as the ready card.
-  const lockedNotice = (
-    <p className="text-sm text-muted-foreground">
-      {planGated ? (
-        <>
-          {t("services.scalingProPlanOnly")} <PlanBillingLink />
-        </>
-      ) : (
-        t("services.scalingPaidOnly")
-      )}
-    </p>
-  );
   const switchedOn = enabled || storedLocked;
 
   // A stored policy the switch can only turn off: its settings, read-only.
@@ -358,48 +322,30 @@ export function AutoscalingSection({
     </p>
   );
 
+  // The header and the plan notice are the loading frame's own
+  // (scaling-frames.tsx), so the two cannot drift apart (w4/688): only the
+  // switch slot differs.
   if (as.loading) {
-    // Draw the autoscaling-off frame — the common ready state, and the only
-    // one a free plan can show besides a stored-but-inactive config. The
-    // switch and its label become blocks of their ready size; the free plan's
-    // paid-only hint is plan-derived, so it shows as is. A paid service whose
-    // autoscaling turns out to be on expands into the form: that swap depends
-    // on data and is the one residual shift.
-    return (
-      <Card data-testid="autoscaling-loading">
-        {header(
-          <>
-            <Skeleton className="h-5 w-9 rounded-full" />
-            <Skeleton className="rounded-sm">
-              <span
-                aria-hidden
-                className="invisible block text-sm leading-none"
-              >
-                {t("services.scalingOff")}
-              </span>
-            </Skeleton>
-          </>,
-        )}
-        {locked && <CardContent>{lockedNotice}</CardContent>}
-      </Card>
-    );
+    return <AutoscalingLoadingCard plan={plan} workspacePlan={workspacePlan} />;
   }
 
   return (
     <Card>
-      {header(
-        <>
-          <Switch
-            id="autoscaling-enabled"
-            checked={switchedOn}
-            disabled={as.saving || (locked && !as.enabled)}
-            onCheckedChange={handleMainToggle}
-          />
-          <Label htmlFor="autoscaling-enabled" className="text-sm">
-            {switchedOn ? t("services.scalingOn") : t("services.scalingOff")}
-          </Label>
-        </>,
-      )}
+      <AutoscalingHeader
+        control={
+          <>
+            <Switch
+              id="autoscaling-enabled"
+              checked={switchedOn}
+              disabled={as.saving || (locked && !as.enabled)}
+              onCheckedChange={handleMainToggle}
+            />
+            <Label htmlFor="autoscaling-enabled" className="text-sm">
+              {switchedOn ? t("services.scalingOn") : t("services.scalingOff")}
+            </Label>
+          </>
+        }
+      />
 
       {locked && (
         <CardContent>
@@ -418,7 +364,7 @@ export function AutoscalingSection({
               {storedSummary}
             </div>
           ) : (
-            lockedNotice
+            <AutoscalingLockedNotice planGated={planGated} />
           )}
         </CardContent>
       )}

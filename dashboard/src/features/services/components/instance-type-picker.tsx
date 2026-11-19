@@ -1,12 +1,5 @@
 import { RadioDot } from "@/common/components/radio-dot";
-import { useId, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/common/components/ui/card";
+import { useState } from "react";
 import { Button } from "@/common/components/ui/button";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -21,9 +14,9 @@ import {
 import { useUpdatePlan } from "@/features/services/hooks/use-update-plan";
 import { isCronType } from "@/features/services/lib/service-type";
 import {
+  computePlanLabel,
   formatInstanceCPU,
   formatInstanceMemory,
-  legacyFreeNotice,
   offeredInstanceTypes,
 } from "@/features/services/lib/instance-type";
 import {
@@ -32,8 +25,8 @@ import {
   InstanceTypeCardBody,
   InstanceTypeGroup,
   InstanceTypeGroupsSkeleton,
-  LegacyFreeNotice,
 } from "@/features/services/components/instance-type-groups";
+import { ComputePlanName } from "@/common/components/compute-plan-name";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { Badge } from "@/common/components/ui/badge";
 import { CRON_MINIMUM_USD } from "@/common/lib/cron-minimum";
@@ -46,29 +39,34 @@ export interface InstanceTypePickerProps {
   serviceType: string | null;
   /** A release has gone live; false means nothing keeps serving (w4/548). */
   live?: boolean;
+  /** Leaves edit mode: Cancel, or a change the server accepted. */
+  onDone: () => void;
+  /** The id of the legacy-Free notice above the picker, when one is shown. */
+  describedBy?: string;
 }
 
 /**
- * Render's "Pick an Instance Type" page (captured live): a card per tier —
- * Free visually separated from the paid ladder (and absent entirely for a
- * paid-only service type) — the current plan pre-selected, Save disabled
- * until the selection changes. Cards show the catalog monthly price, and the
- * confirmation repeats it. The custom-instance contact link is omitted (no
- * bex equivalent).
+ * The Compute section's editor, opened by its Edit button: "Select a new
+ * compute plan and click Save" (render.com/docs/compute-plans, w6/m483). A
+ * card per tier — Free visually separated from the paid ladder (and absent
+ * entirely for a paid-only service type) — the current plan pre-selected,
+ * Save disabled until the selection changes. Cards show the plan ID beside
+ * the legacy name and the catalog monthly price, and the confirmation repeats
+ * the price. The custom-instance contact link is omitted (no bex equivalent).
  */
 export function InstanceTypePicker({
   serviceId,
   currentPlan,
   serviceType,
   live = true,
+  onDone,
+  describedBy,
 }: InstanceTypePickerProps) {
   const { t } = useTranslations();
-  const navigate = useNavigate();
   const { instanceTypes, loading, error } = useInstanceTypes();
   const { updatePlan, busy } = useUpdatePlan();
   const [selected, setSelected] = useState<string | null>(currentPlan);
   const [confirming, setConfirming] = useState(false);
-  const noticeId = useId();
   const offered = offeredInstanceTypes(serviceType, instanceTypes);
   // A cron job is billed per second only while a run executes (w4/546).
   const runTimePricing = serviceType !== null && isCronType(serviceType);
@@ -84,20 +82,24 @@ export function InstanceTypePicker({
 
   if (error) {
     return (
-      <Card>
-        <CardContent className="py-6 text-center">
+      <div className="space-y-4">
+        <div className="py-6 text-center">
           <p className="mb-1 font-medium">
             {t("services.planPickerErrorTitle")}
           </p>
           <p className="text-sm text-muted-foreground">
             {t("services.planPickerErrorBody")}
           </p>
-        </CardContent>
-      </Card>
+        </div>
+        <div className="flex justify-end border-t pt-4">
+          <Button variant="outline" onClick={onDone}>
+            {t("services.planPickerCancel")}
+          </Button>
+        </div>
+      </div>
     );
   }
 
-  const hasNotice = legacyFreeNotice(serviceType, currentPlan) !== null;
   const selectedType = offered.find((it) => it.id === selected);
   const canSave =
     selected != null &&
@@ -107,102 +109,82 @@ export function InstanceTypePicker({
   async function handleConfirm() {
     setConfirming(false);
     if (!selectedType?.available) return;
-    const ok = await updatePlan(serviceId, selectedType.id, selectedType.name);
-    if (ok) {
-      void navigate({
-        to: "/services/$serviceId/settings",
-        params: { serviceId },
-      });
-    }
+    const ok = await updatePlan(
+      serviceId,
+      selectedType.id,
+      computePlanLabel(selectedType),
+    );
+    if (ok) onDone();
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("services.planPickerTitle")}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <LegacyFreeNotice
-          id={noticeId}
-          serviceType={serviceType}
-          currentPlan={currentPlan}
-        />
-        <CronBillingHint serviceType={serviceType} />
-        {loading && instanceTypes.length === 0 ? (
-          <InstanceTypeGroupsSkeleton serviceType={serviceType} />
-        ) : (
-          <div
-            role="radiogroup"
-            aria-label={t("services.planPickerTitle")}
-            aria-describedby={hasNotice ? noticeId : undefined}
-            className="space-y-4"
-          >
-            {free.length > 0 && (
-              <InstanceTypeGroup
-                label={t("services.planPickerFreeGroup")}
-                note={t("services.planPickerFreeSmtp")}
-              >
-                {free.map((it) => (
-                  <InstanceTypeCard
-                    key={it.id}
-                    instanceType={it}
-                    selected={selected === it.id}
-                    current={currentPlan === it.id}
-                    onSelect={() => setSelected(it.id)}
-                    radio={radio(it.id)}
-                    runTimePricing={runTimePricing}
-                  />
-                ))}
-              </InstanceTypeGroup>
-            )}
-            {paid.length > 0 && (
-              <InstanceTypeGroup
-                label={t("services.planPickerPaidGroup")}
-                note={t("services.planPickerPaidSmtp")}
-              >
-                {paid.map((it) => (
-                  <InstanceTypeCard
-                    key={it.id}
-                    instanceType={it}
-                    selected={selected === it.id}
-                    current={currentPlan === it.id}
-                    onSelect={() => setSelected(it.id)}
-                    radio={radio(it.id)}
-                    runTimePricing={runTimePricing}
-                  />
-                ))}
-              </InstanceTypeGroup>
-            )}
-          </div>
-        )}
-
-        <div className="flex justify-end gap-2 border-t pt-4">
-          <Button
-            variant="outline"
-            onClick={() =>
-              void navigate({
-                to: "/services/$serviceId/settings",
-                params: { serviceId },
-              })
-            }
-          >
-            {t("services.planPickerCancel")}
-          </Button>
-          <Button
-            disabled={!canSave || busy}
-            onClick={() => setConfirming(true)}
-          >
-            {t("services.planPickerSave")}
-          </Button>
+    <div className="space-y-6">
+      <CronBillingHint serviceType={serviceType} />
+      {loading && instanceTypes.length === 0 ? (
+        <InstanceTypeGroupsSkeleton serviceType={serviceType} />
+      ) : (
+        <div
+          role="radiogroup"
+          aria-label={t("services.planPickerTitle")}
+          aria-describedby={describedBy}
+          className="space-y-4"
+        >
+          {free.length > 0 && (
+            <InstanceTypeGroup
+              label={t("services.planPickerFreeGroup")}
+              note={t("services.planPickerFreeSmtp")}
+            >
+              {free.map((it) => (
+                <InstanceTypeCard
+                  key={it.id}
+                  instanceType={it}
+                  selected={selected === it.id}
+                  current={currentPlan === it.id}
+                  onSelect={() => setSelected(it.id)}
+                  radio={radio(it.id)}
+                  runTimePricing={runTimePricing}
+                />
+              ))}
+            </InstanceTypeGroup>
+          )}
+          {paid.length > 0 && (
+            <InstanceTypeGroup
+              label={t("services.planPickerPaidGroup")}
+              note={t("services.planPickerPaidSmtp")}
+            >
+              {paid.map((it) => (
+                <InstanceTypeCard
+                  key={it.id}
+                  instanceType={it}
+                  selected={selected === it.id}
+                  current={currentPlan === it.id}
+                  onSelect={() => setSelected(it.id)}
+                  radio={radio(it.id)}
+                  runTimePricing={runTimePricing}
+                />
+              ))}
+            </InstanceTypeGroup>
+          )}
         </div>
-      </CardContent>
+      )}
+
+      <div className="flex justify-end gap-2 border-t pt-4">
+        <Button variant="outline" onClick={onDone}>
+          {t("services.planPickerCancel")}
+        </Button>
+        <Button disabled={!canSave || busy} onClick={() => setConfirming(true)}>
+          {t("services.planPickerSave")}
+        </Button>
+      </div>
 
       <ConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}
         title={
           selectedType
-            ? t("services.planPickerConfirmTitle", { name: selectedType.name })
+            ? t("services.planPickerConfirmTitle", {
+                name: computePlanLabel(selectedType),
+              })
             : ""
         }
         description={[
@@ -233,7 +215,7 @@ export function InstanceTypePicker({
         destructive={false}
         onConfirm={() => void handleConfirm()}
       />
-    </Card>
+    </div>
   );
 }
 
@@ -283,7 +265,7 @@ function InstanceTypeCard({
           // read as one choice; the current plan carries its badge.
           <span className="flex items-center justify-between gap-2">
             <span className="flex min-w-0 items-center gap-2">
-              <span className="truncate">{instanceType.name}</span>
+              <ComputePlanName plan={instanceType} className="min-w-0" />
               {current ? (
                 <>
                   {/* A space for assistive tech: "Pro Current", not

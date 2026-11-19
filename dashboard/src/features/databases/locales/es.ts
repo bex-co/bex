@@ -31,7 +31,7 @@ const esDatabases: Record<string, TranslationEntry> = {
   },
   "databases.colPlan": {
     message: "Plan",
-    description: "Databases table column header (instance type / tier)",
+    description: "Databases table column header (compute plan / tier)",
   },
   "databases.colVersion": {
     message: "Versión",
@@ -195,11 +195,11 @@ const esDatabases: Record<string, TranslationEntry> = {
     description: "Create-database physical PostgreSQL identifier validation",
   },
   "databases.fieldPlan": {
-    message: "Tipo de instancia",
+    message: "Plan de cómputo",
     description: "Create-database form field label (plan / tier)",
   },
   "databases.fieldPlanPlaceholder": {
-    message: "Selecciona un tipo de instancia",
+    message: "Selecciona un plan de cómputo",
     description: "Create-database plan select placeholder",
   },
   "databases.fieldVersion": {
@@ -370,7 +370,7 @@ const esDatabases: Record<string, TranslationEntry> = {
     description: "Database detail metadata row label",
   },
   "databases.metaPlan": {
-    message: "Tipo de instancia",
+    message: "Plan de cómputo",
     description: "Database detail metadata row label",
   },
   "databases.metaVersion": {
@@ -1430,12 +1430,12 @@ const esDatabases: Record<string, TranslationEntry> = {
     description: "Plan change blocked while a connection pooler is enabled",
   },
   "databases.planTitle": {
-    message: "Tipo de instancia",
+    message: "Plan de cómputo",
     description: "Database detail plan-picker card title",
   },
   "databases.planDescription": {
     message:
-      "Cambia el tipo de instancia. Una base de datos sin réplica en espera se reinicia para aplicarlo y no está disponible durante uno o dos minutos. Tus datos se conservan.",
+      "Cambia el plan de cómputo. Una base de datos sin réplica en espera se reinicia para aplicarlo y no está disponible durante uno o dos minutos. Tus datos se conservan.",
     description: "Database detail plan-picker card description",
   },
   "databases.planPickerSave": {
@@ -1452,7 +1452,7 @@ const esDatabases: Record<string, TranslationEntry> = {
   },
   "databases.planPickerConfirmBody": {
     message:
-      "La base de datos se reinicia para aplicar el nuevo tipo de instancia y no está disponible durante uno o dos minutos. Las conexiones se interrumpen. Tus datos se conservan.",
+      "La base de datos se reinicia para aplicar el nuevo plan de cómputo y no está disponible durante uno o dos minutos. Las conexiones se interrumpen. Tus datos se conservan.",
     description: "Database plan-picker confirm dialog body",
   },
   "databases.planPickerConfirmPrice": {

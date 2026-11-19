@@ -1,6 +1,7 @@
 import { cn } from "@/common/lib/utils/utils.ts";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useCardRadioGroup } from "@/common/hooks/use-card-radio-group";
+import { ComputePlanName } from "@/common/components/compute-plan-name";
 import {
   formatInstanceCPU,
   formatInstanceMemory,
@@ -12,6 +13,8 @@ export const CREATE_PLAN_CARD_GRID_CLASS =
 /** The subset of a catalog tier the cards render — services and Key Value both satisfy it. */
 export interface PlanCardTier {
   id: string;
+  /** Render's compute plan ID, shown beside the name (w6/m483); services only. */
+  planId?: string;
   name: string;
   cpu: string;
   memory: string;
@@ -49,7 +52,7 @@ export interface PlanCardGridProps {
 
 /**
  * The create forms' plan-tier cards, matching Render's captured `/new/redis`
- * instance-type radio cards (docs/render-artifacts/key-value.md) — one card per
+ * compute-plan radio cards (docs/render-artifacts/key-value.md) — one card per
  * catalog plan, RAM and CPU, the connection limit where the tier carries one,
  * current selection highlighted.
  * A plain button grid rather than a Radix RadioGroup: the codebase has no
@@ -108,7 +111,7 @@ export function PlanCardGrid({
             )}
           >
             <div className="flex items-baseline justify-between gap-2">
-              <div className="font-medium">{it.name}</div>
+              <ComputePlanName plan={it} className="font-medium" />
               {unavailable ? (
                 // In the price's slot, so a paused card keeps its height.
                 <div className="shrink-0 text-sm text-muted-foreground">

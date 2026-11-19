@@ -239,19 +239,19 @@ describe("CreateDatabaseDialog", () => {
       ),
     ).toBeInTheDocument();
 
-    await user.click(within(dialog).getByLabelText("Instance type"));
+    await user.click(within(dialog).getByLabelText("Compute plan"));
     await user.click(await screen.findByRole("option", { name: /^1c-2g/ }));
     expect(ha()).toBeEnabled();
     await user.click(ha());
     expect(ha()).toBeChecked();
 
     // Back to a plan below 1 CPU: off, disabled, not sent.
-    await user.click(within(dialog).getByLabelText("Instance type"));
+    await user.click(within(dialog).getByLabelText("Compute plan"));
     await user.click(await screen.findByRole("option", { name: /Basic 1GB/ }));
     expect(ha()).not.toBeChecked();
     expect(ha()).toBeDisabled();
 
-    await user.click(within(dialog).getByLabelText("Instance type"));
+    await user.click(within(dialog).getByLabelText("Compute plan"));
     await user.click(await screen.findByRole("option", { name: /^1c-2g/ }));
     expect(ha()).toBeChecked();
     await user.click(
@@ -284,12 +284,12 @@ describe("CreateDatabaseDialog", () => {
     const dialog = await screen.findByRole("dialog");
     await user.type(within(dialog).getByLabelText("Name"), "shop-db");
 
-    await user.click(within(dialog).getByLabelText("Instance type"));
+    await user.click(within(dialog).getByLabelText("Compute plan"));
     await user.click(await screen.findByRole("option", { name: /Pro 4GB/ }));
     await user.click(
       within(dialog).getByRole("switch", { name: "High availability" }),
     );
-    await user.click(within(dialog).getByLabelText("Instance type"));
+    await user.click(within(dialog).getByLabelText("Compute plan"));
     await user.click(await screen.findByRole("option", { name: /Basic 1GB/ }));
     await user.click(
       within(dialog).getByRole("button", { name: "Create database" }),
@@ -386,7 +386,7 @@ describe("CreateDatabaseDialog", () => {
     render(<CreateDatabaseDialog onCreated={vi.fn()} />);
     await user.click(screen.getByRole("button", { name: "New Database" }));
     await user.type(screen.getByLabelText("Name"), "shop-db");
-    await user.click(screen.getByRole("combobox", { name: "Instance type" }));
+    await user.click(screen.getByRole("combobox", { name: "Compute plan" }));
     await user.click(await screen.findByRole("option", { name: /Basic 1GB/ }));
     const disk = screen.getByLabelText("Disk size (GB)");
     const submit = screen.getByRole("button", { name: "Create database" });
@@ -400,11 +400,11 @@ describe("CreateDatabaseDialog", () => {
     expect(submit).toBeEnabled();
     // Free's disk is fixed (w4/376): it shows 1 GB and creates, while the
     // entered size is kept for when a paid plan is chosen again.
-    await user.click(screen.getByRole("combobox", { name: "Instance type" }));
+    await user.click(screen.getByRole("combobox", { name: "Compute plan" }));
     await user.click(await screen.findByRole("option", { name: /^Free/ }));
     expect(disk).toHaveValue(1);
     expect(submit).toBeEnabled();
-    await user.click(screen.getByRole("combobox", { name: "Instance type" }));
+    await user.click(screen.getByRole("combobox", { name: "Compute plan" }));
     await user.click(await screen.findByRole("option", { name: /Basic 1GB/ }));
     expect(disk).toHaveValue(25);
     expect(create).not.toHaveBeenCalled();
@@ -452,7 +452,7 @@ describe("CreateDatabaseDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "New Database" }));
     const dialog = await screen.findByRole("dialog");
-    await user.click(within(dialog).getByLabelText("Instance type"));
+    await user.click(within(dialog).getByLabelText("Compute plan"));
     expect(
       await screen.findByRole("option", {
         name: /Basic 1GB .*\$14\.00\/month/,

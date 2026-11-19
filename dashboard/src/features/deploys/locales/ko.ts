@@ -529,9 +529,9 @@ const koDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.reason.startup_out_of_memory": {
     message:
-      "시작하는 동안 인스턴스의 메모리가 부족했습니다(인스턴스 유형의 {memory} 한도, 종료 코드 {code}) — 메모리 사용량을 줄이거나 더 큰 인스턴스 유형을 선택하세요",
+      "시작하는 동안 인스턴스의 메모리가 부족했습니다(컴퓨팅 플랜의 {memory} 한도, 종료 코드 {code}) — 메모리 사용량을 줄이거나 더 큰 컴퓨팅 플랜을 선택하세요",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the instance type's memory limit (e.g. 512Mi), code the exit code",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the compute plan's memory limit (e.g. 512Mi), code the exit code",
   },
   "deploys.reason.probe_http_waiting": {
     message:

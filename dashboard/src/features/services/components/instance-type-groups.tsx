@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { Alert, AlertDescription } from "@/common/components/ui/alert";
-import { Card, CardContent, CardHeader } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
@@ -153,11 +152,10 @@ export function LegacyFreeNotice({
   );
 }
 
-/** The whole picker card — title, notice, groups and Cancel/Save slot. */
 /**
- * How a cron job is billed (w4/546) and its monthly minimum (w9/m448), above
- * its instance types: drawn by the picker and its skeleton alike, so the
- * pending card has the ready card's height. Nothing for any other type.
+ * How a cron job is billed (w4/546) and its monthly minimum (w9/m448), drawn
+ * above the picker's cards and their loading groups. Nothing for any other
+ * type.
  */
 export function CronBillingHint({
   serviceType,
@@ -170,31 +168,5 @@ export function CronBillingHint({
     <p className="text-xs text-muted-foreground">
       {t("services.createFieldPlanCronHint", { minimum: CRON_MINIMUM_USD })}
     </p>
-  );
-}
-
-export function InstanceTypePickerCardSkeleton({
-  serviceType,
-  currentPlan,
-}: {
-  serviceType: string | null;
-  /** Undefined while unknown: no notice is drawn. */
-  currentPlan?: string | null;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <Skeleton className="h-4 w-48" />
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <LegacyFreeNotice serviceType={serviceType} currentPlan={currentPlan} />
-        <CronBillingHint serviceType={serviceType} />
-        <InstanceTypeGroupsSkeleton serviceType={serviceType} />
-        <div className="flex justify-end gap-2 border-t pt-4">
-          <Skeleton className="h-9 w-20" />
-          <Skeleton className="h-9 w-32" />
-        </div>
-      </CardContent>
-    </Card>
   );
 }

@@ -146,7 +146,7 @@ func TestDeployReasonFieldReadsATailAsParts(t *testing.T) {
 // w4/630: the operator's startup out-of-memory sentence, as stored, reads as
 // its code with the instance type's limit and the exit code.
 func TestDeployReasonParsesStartupOutOfMemory(t *testing.T) {
-	text := "the instance ran out of memory during startup (512Mi limit on its instance type; exit code 137) — reduce memory use or choose a larger instance type"
+	text := "the instance ran out of memory during startup (512Mi limit on its compute plan; exit code 137) — reduce memory use or choose a larger compute plan"
 	code, params, ok := appv1alpha1.ParseDeployReason(text)
 	want := []appv1alpha1.DeployReasonParam{{Name: "memory", Value: "512Mi"}, {Name: "code", Value: "137"}}
 	if !ok || code != appv1alpha1.DeployReasonStartupOutOfMemory || !slices.Equal(params, want) {

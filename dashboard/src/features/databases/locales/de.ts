@@ -31,7 +31,7 @@ const deDatabases: Record<string, TranslationEntry> = {
   },
   "databases.colPlan": {
     message: "Tarif",
-    description: "Databases table column header (instance type / tier)",
+    description: "Databases table column header (compute plan / tier)",
   },
   "databases.colVersion": {
     message: "Version",
@@ -197,11 +197,11 @@ const deDatabases: Record<string, TranslationEntry> = {
     description: "Create-database physical PostgreSQL identifier validation",
   },
   "databases.fieldPlan": {
-    message: "Instanztyp",
+    message: "Compute-Plan",
     description: "Create-database form field label (plan / tier)",
   },
   "databases.fieldPlanPlaceholder": {
-    message: "Instanztyp auswählen",
+    message: "Compute-Plan auswählen",
     description: "Create-database plan select placeholder",
   },
   "databases.fieldVersion": {
@@ -373,7 +373,7 @@ const deDatabases: Record<string, TranslationEntry> = {
     description: "Database detail metadata row label",
   },
   "databases.metaPlan": {
-    message: "Instanztyp",
+    message: "Compute-Plan",
     description: "Database detail metadata row label",
   },
   "databases.metaVersion": {
@@ -1427,12 +1427,12 @@ const deDatabases: Record<string, TranslationEntry> = {
     description: "Plan change blocked while a connection pooler is enabled",
   },
   "databases.planTitle": {
-    message: "Instanztyp",
+    message: "Compute-Plan",
     description: "Database detail plan-picker card title",
   },
   "databases.planDescription": {
     message:
-      "Ändere den Instanztyp. Eine Datenbank ohne Standby wird dafür neu gestartet und ist ein bis zwei Minuten nicht verfügbar. Deine Daten bleiben erhalten.",
+      "Ändere den Compute-Plan. Eine Datenbank ohne Standby wird dafür neu gestartet und ist ein bis zwei Minuten nicht verfügbar. Deine Daten bleiben erhalten.",
     description: "Database detail plan-picker card description",
   },
   "databases.planPickerSave": {
@@ -1449,7 +1449,7 @@ const deDatabases: Record<string, TranslationEntry> = {
   },
   "databases.planPickerConfirmBody": {
     message:
-      "Die Datenbank wird neu gestartet, um den neuen Instanztyp anzuwenden, und ist ein bis zwei Minuten nicht verfügbar. Verbindungen brechen ab. Deine Daten bleiben erhalten.",
+      "Die Datenbank wird neu gestartet, um den neuen Compute-Plan anzuwenden, und ist ein bis zwei Minuten nicht verfügbar. Verbindungen brechen ab. Deine Daten bleiben erhalten.",
     description: "Database plan-picker confirm dialog body",
   },
   "databases.planPickerConfirmPrice": {

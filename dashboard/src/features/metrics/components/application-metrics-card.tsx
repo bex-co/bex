@@ -38,6 +38,7 @@ import {
   type LimitSummary,
 } from "@/features/metrics/lib/limit-summary";
 import { utilizationEmptyReason } from "@/features/metrics/lib/utilization";
+import { MANUAL_SCALING_ANCHOR } from "@/features/services/lib/compute-page";
 
 interface ApplicationMetricsCardProps {
   /** The service id — names the metrics resource and the plan/scaling links. */
@@ -331,8 +332,9 @@ export function ApplicationMetricsCard({
             <div className="flex items-baseline gap-2">
               {scalable ? (
                 <Link
-                  to="/services/$serviceId/scaling"
+                  to="/services/$serviceId/compute"
                   params={{ serviceId: resource }}
+                  hash={MANUAL_SCALING_ANCHOR}
                   className={`text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground ${TOUCH_LINK_CLASS}`}
                 >
                   {t("metrics.manageScaling")}
@@ -370,7 +372,7 @@ function shortInstanceLabel(id: string): string {
 
 interface ResourceSectionProps {
   title: string;
-  /** Names the header's `Limit` link target (the service's Instance Type tab). */
+  /** Names the header's `Limit` link target (the service's Compute page). */
   serviceId: string;
   /** The series to chart: server percentages in Percentage mode, absolutes in Total. */
   result: UseMetricsResult;
@@ -482,10 +484,11 @@ function ResourceSection({
       headerExtra={
         <div className="flex items-baseline gap-2">
           <span className="text-xs text-muted-foreground">
-            {/* Render links "Limit" to the plan page — with no limit set, the
-                link still leads where one is configured (w5/m42). */}
+            {/* Render links "Limit" to the page that sets the plan (the
+                Compute page) — with no limit set, the link still leads where
+                one is configured (w5/m42). */}
             <Link
-              to="/services/$serviceId/plan"
+              to="/services/$serviceId/compute"
               params={{ serviceId }}
               className={`underline underline-offset-2 hover:text-foreground ${TOUCH_LINK_CLASS}`}
             >

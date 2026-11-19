@@ -542,9 +542,9 @@ const deDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.reason.startup_out_of_memory": {
     message:
-      "der Arbeitsspeicher der Instanz ging beim Start aus (Limit {memory} für ihren Instanztyp; Exit-Code {code}) — reduziere den Speicherverbrauch oder wähle einen größeren Instanztyp",
+      "der Arbeitsspeicher der Instanz ging beim Start aus (Limit {memory} für ihren Compute-Plan; Exit-Code {code}) — reduziere den Speicherverbrauch oder wähle einen größeren Compute-Plan",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the instance type's memory limit (e.g. 512Mi), code the exit code",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the compute plan's memory limit (e.g. 512Mi), code the exit code",
   },
   "deploys.reason.probe_http_waiting": {
     message:

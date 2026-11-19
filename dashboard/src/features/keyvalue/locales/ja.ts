@@ -30,7 +30,7 @@ const jaKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value table column header",
   },
   "keyvalue.colPlan": {
-    message: "インスタンスタイプ",
+    message: "コンピュートプラン",
     description: "Key Value table column header (plan / tier)",
   },
   "keyvalue.colVersion": {
@@ -268,7 +268,7 @@ const jaKeyValue: Record<string, TranslationEntry> = {
     description: "Create-Key-Value name validation message",
   },
   "keyvalue.fieldPlan": {
-    message: "インスタンスタイプ",
+    message: "コンピュートプラン",
     description: "Create-Key-Value form field label (plan / tier)",
   },
   "keyvalue.fieldVersion": {
@@ -361,7 +361,7 @@ const jaKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value detail metadata row label",
   },
   "keyvalue.metaPlan": {
-    message: "インスタンスタイプ",
+    message: "コンピュートプラン",
     description: "Key Value detail metadata row label",
   },
   "keyvalue.metaConnectionLimit": {
@@ -551,17 +551,17 @@ const jaKeyValue: Record<string, TranslationEntry> = {
     description: "Toast when a resume request fails",
   },
   "keyvalue.planTitle": {
-    message: "インスタンスタイプ",
+    message: "コンピュートプラン",
     description: "Key Value detail plan-picker card title",
   },
   "keyvalue.planDescription": {
     message:
-      "より大きいインスタンスタイプに変更できます。Key Value インスタンスは、より小さいものには変更できません。変更するとストアが再起動され、1〜2 分間利用できなくなります。データは永続化モードに従って保持されます。永続化がオフのストアでは、すべてのキーが失われます。",
+      "より大きいコンピュートプランに変更できます。Key Value インスタンスは、より小さいものには変更できません。変更するとストアが再起動され、1〜2 分間利用できなくなります。データは永続化モードに従って保持されます。永続化がオフのストアでは、すべてのキーが失われます。",
     description: "Key Value detail plan-picker card description",
   },
   "keyvalue.planDowngradeUnavailable": {
     message:
-      "Key Value インスタンスは、より小さいインスタンスタイプには変更できません。このタイプで新しいインスタンスを作成し、データを移行してください。",
+      "Key Value インスタンスは、より小さいコンピュートプランには変更できません。このプランで新しいインスタンスを作成し、データを移行してください。",
     description:
       "Tooltip on a disabled plan card smaller than the store's current plan: Render does not downgrade a Key Value instance (w8/249)",
   },
@@ -585,7 +585,7 @@ const jaKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.planPickerConfirmBody": {
     message:
-      "新しいインスタンスタイプを適用するためにストアが再起動され、1〜2 分間利用できなくなります。接続は切断されます。",
+      "新しいコンピュートプランを適用するためにストアが再起動され、1〜2 分間利用できなくなります。接続は切断されます。",
     description: "Key Value plan-picker confirm dialog body",
   },
   "keyvalue.restartConfirmDataLoss": {

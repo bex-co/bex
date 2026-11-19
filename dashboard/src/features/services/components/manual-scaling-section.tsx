@@ -1,15 +1,8 @@
-import { cn } from "@/common/lib/utils/utils";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
-import { Skeleton } from "@/common/components/ui/skeleton";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/common/components/ui/card";
+import { Card, CardContent } from "@/common/components/ui/card";
+import { ManualScalingHeader } from "@/features/services/components/scaling-frames";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useScaleService } from "@/features/services/hooks/use-scale-service";
 import {
@@ -27,9 +20,9 @@ export interface ManualScalingSectionProps {
 }
 
 /**
- * Render's "Manual Scaling" card on the Scaling page (w7/m43): a fixed
+ * Render's "Manual Scaling" card on the Compute page (w7/m43): a fixed
  * instance count via slider + numeric input, saved through the same
- * `scaleService` verb REST/MCP use. The Scaling route mounts it only while
+ * `scaleService` verb REST/MCP use. The Compute page mounts it only while
  * autoscaling is off (Render's mutual exclusion) and only for service types
  * with a replica concept — supersedes the w5/m16 Settings stepper, whose
  * placement followed a docs-fallback guess the live capture corrected
@@ -97,52 +90,6 @@ export function ManualScalingSection({
               t("services.scalingSaveChanges")
             )}
           </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function ManualScalingHeader({ isFree }: { isFree: boolean }) {
-  const { t } = useTranslations();
-  return (
-    <CardHeader>
-      <CardTitle>{t("services.scalingManualTitle")}</CardTitle>
-      <CardDescription className="mt-1">
-        {isFree
-          ? t("services.scalingManualDescriptionFree")
-          : t("services.scalingManualDescription")}
-      </CardDescription>
-    </CardHeader>
-  );
-}
-
-/**
- * The Manual Scaling card's frame while the autoscaling read resolves
- * (w4/688). The off state — this card showing — is the common outcome and the
- * only one on a free plan, so the slot is reserved at this card's geometry:
- * the same header and Instances label, the field row (the capped numeric input
- * alone on free, the slider row otherwise; both 32 px) and the Save button.
- */
-export function ManualScalingSkeleton({ plan }: { plan?: string | null }) {
-  const { t } = useTranslations();
-  const isFree = plan === "free";
-  return (
-    <Card data-testid="manual-scaling-loading">
-      <ManualScalingHeader isFree={isFree} />
-      <CardContent>
-        <div className="max-w-xl space-y-3">
-          <p className="text-sm font-medium">
-            {t("services.scalingManualInstances")}
-          </p>
-          {/* The ready row's input and Save are 44px tall below `lg`. */}
-          <Skeleton
-            className={cn(
-              isFree ? "h-8 w-16" : "h-8 w-full",
-              "max-lg:h-11 pointer-coarse:h-11",
-            )}
-          />
-          <Skeleton className="h-8 w-28 max-lg:h-11 pointer-coarse:h-11" />
         </div>
       </CardContent>
     </Card>

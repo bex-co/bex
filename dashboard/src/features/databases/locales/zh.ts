@@ -33,7 +33,7 @@ const zhDatabases: Record<string, TranslationEntry> = {
   },
   "databases.colPlan": {
     message: "实例类型",
-    description: "Databases table column header (instance type / tier)",
+    description: "Databases table column header (compute plan / tier)",
   },
   "databases.colVersion": {
     message: "版本",
@@ -196,11 +196,11 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Create-database physical PostgreSQL identifier validation",
   },
   "databases.fieldPlan": {
-    message: "实例类型",
+    message: "计算套餐",
     description: "Create-database form field label (plan / tier)",
   },
   "databases.fieldPlanPlaceholder": {
-    message: "选择实例类型",
+    message: "选择计算套餐",
     description: "Create-database plan select placeholder",
   },
   "databases.fieldVersion": {
@@ -361,7 +361,7 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Database detail metadata row label",
   },
   "databases.metaPlan": {
-    message: "实例类型",
+    message: "计算套餐",
     description: "Database detail metadata row label",
   },
   "databases.metaVersion": {
@@ -1365,12 +1365,12 @@ const zhDatabases: Record<string, TranslationEntry> = {
   },
   // --- Plan section (m16) ---
   "databases.planTitle": {
-    message: "实例规格",
+    message: "计算套餐",
     description: "Database detail plan-picker card title",
   },
   "databases.planDescription": {
     message:
-      "更改实例规格。没有备用实例的数据库会重启以应用更改，期间约一到两分钟不可用。数据会保留。",
+      "更改计算套餐。没有备用实例的数据库会重启以应用更改，期间约一到两分钟不可用。数据会保留。",
     description: "Database detail plan-picker card description",
   },
   "databases.planPickerSave": {
@@ -1387,7 +1387,7 @@ const zhDatabases: Record<string, TranslationEntry> = {
   },
   "databases.planPickerConfirmBody": {
     message:
-      "数据库将重启以应用新的实例规格，期间约一到两分钟不可用，连接会中断。数据会保留。",
+      "数据库将重启以应用新的计算套餐，期间约一到两分钟不可用，连接会中断。数据会保留。",
     description: "Database plan-picker confirm dialog body",
   },
   "databases.planPickerConfirmPrice": {

@@ -1,13 +1,40 @@
 import type { en } from "@/i18n";
 // Display helpers for lego/types/tiers' CPU/Memory quantity strings (the same
 // k8s resource.Quantity spellings the operator parses), matching Render's own
-// instance-type card labels captured live: "0.5 CPU", "512 MB", "2 GB".
+// plan card labels captured live: "0.5 CPU", "512 MB", "2 GB".
 
 /** "500m" -> "0.5 CPU"; "1" -> "1 CPU"; "8" -> "8 CPU". */
 export function formatInstanceCPU(cpu: string): string {
   const cores = cpu.endsWith("m") ? parseInt(cpu, 10) / 1000 : parseFloat(cpu);
   const n = Number.isInteger(cores) ? cores.toString() : cores.toFixed(1);
   return `${n} CPU`;
+}
+
+interface NamedPlan {
+  /** The legacy Render spelling ("starter"). */
+  id: string;
+  /** Render's plan ID ("0.5c-512mb"); omitted where the family has none. */
+  planId?: string;
+  name: string;
+}
+
+/**
+ * The plan ID worth showing beside a plan's legacy name (w6/m483), or
+ * undefined where it is the legacy id itself (Free, an older bex-api's
+ * catalog) or the family has none (Key Value, Postgres).
+ */
+export function distinctPlanId(plan: NamedPlan): string | undefined {
+  return plan.planId && plan.planId !== plan.id ? plan.planId : undefined;
+}
+
+/**
+ * A compute plan in one line of text, for a sentence or a dialog title: the
+ * plan ID with the legacy name in brackets ("0.5c-512mb (Starter)"), else the
+ * name alone — the text form of ComputePlanName.
+ */
+export function computePlanLabel(plan: NamedPlan): string {
+  const planId = distinctPlanId(plan);
+  return planId ? `${planId} (${plan.name})` : plan.name;
 }
 
 /** "512Mi" -> "512 MB"; "2Gi" -> "2 GB" (Render's card unit spelling, not Mi/Gi). */

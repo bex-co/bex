@@ -82,6 +82,29 @@ var computeInputAliases = map[string]string{
 	"8c-32g":     "pro-ultra",
 }
 
+// computeSpecIDs is each compute rung's Render plan ID — computeInputAliases
+// spelled the other way, written out as postgresSpecIDs is so a second alias
+// for one rung cannot make the reverse lookup depend on map iteration order.
+// TestComputeSpecID holds the two directions together.
+var computeSpecIDs = map[string]string{
+	"starter":   "0.5c-512mb",
+	"standard":  "1c-2g",
+	"pro":       "2c-4g",
+	"pro-plus":  "4c-8g",
+	"pro-max":   "4c-16g",
+	"pro-ultra": "8c-32g",
+}
+
+// ComputeSpecID is a compute rung's Render plan ID ("0.5c-512mb" for starter),
+// the name Render's dashboard shows beside the legacy one since 2026-08-26
+// (w6/m483). A rung without one, free included, keeps its id.
+func ComputeSpecID(id string) string {
+	if spec, ok := computeSpecIDs[id]; ok {
+		return spec
+	}
+	return id
+}
+
 // CanonicalID maps a Postgres plan input (bex id or accepted Render alias) to
 // the Database CRD's spec.plan spelling. Unknown inputs are returned unchanged
 // so ByID can still reject them.

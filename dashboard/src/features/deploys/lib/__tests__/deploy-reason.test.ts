@@ -50,7 +50,7 @@ describe("deployReasonText", () => {
     ).toBe("已被 dep-d4newer 取代");
   });
 
-  // w4/630: a startup out-of-memory kill names the instance type's limit in
+  // w4/630: a startup out-of-memory kill names the compute plan's limit in
   // both languages, with no port hint.
   it("words a startup out-of-memory kill in en and zh", () => {
     const oom = wire("startup_out_of_memory", [
@@ -58,10 +58,10 @@ describe("deployReasonText", () => {
       { name: "code", value: "137" },
     ]);
     const sentence =
-      "the instance ran out of memory during startup (512Mi limit on its instance type; exit code 137) — reduce memory use or choose a larger instance type";
+      "the instance ran out of memory during startup (512Mi limit on its compute plan; exit code 137) — reduce memory use or choose a larger compute plan";
     expect(deployReasonText(translator("en"), sentence, oom)).toBe(sentence);
     expect(deployReasonText(translator("zh"), sentence, oom)).toBe(
-      "实例在启动期间内存不足（其实例类型的内存上限为 512Mi；退出码 137）— 请减少内存占用或选择更大的实例类型",
+      "实例在启动期间内存不足（其计算套餐的内存上限为 512Mi；退出码 137）— 请减少内存占用或选择更大的计算套餐",
     );
   });
 

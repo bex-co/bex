@@ -19,7 +19,7 @@ describe("serviceNavGroups (w5/m48, w5/m57)", () => {
         "services.navHeaders",
       ],
     ]);
-    // Every link stays within the /static tree; no Deploys/Logs/Shell/Scaling/Plan.
+    // Every link stays within the /static tree; no Deploys/Logs/Shell/Compute.
     expect(tos(groups).every((to) => to.startsWith("/static/$serviceId"))).toBe(
       true,
     );
@@ -36,8 +36,7 @@ describe("serviceNavGroups (w5/m48, w5/m57)", () => {
         "services.navEnvironment",
         "services.navDisk",
         "services.navShell",
-        "services.navScaling",
-        "services.navPlan",
+        "services.navCompute",
       ],
     ]);
     expect(
@@ -45,10 +44,25 @@ describe("serviceNavGroups (w5/m48, w5/m57)", () => {
     ).toBe(true);
   });
 
-  it("worker keeps Disk + Scaling (same eligible set as the API)", () => {
+  // w6/m483: one Compute entry, where Render's Manage group had Scaling,
+  // replaces bex's Scaling and Plan entries for every runtime type.
+  it.each(["web", "private", "worker", "cron"] as const)(
+    "%s has one Compute entry and neither Scaling nor Plan",
+    (type) => {
+      const groups = serviceNavGroups(type);
+      const manage = groups[2].items;
+      expect(manage.at(-1)).toMatchObject({
+        labelKey: "services.navCompute",
+        to: "/services/$serviceId/compute",
+      });
+      expect(tos(groups)).not.toContain("/services/$serviceId/plan");
+      expect(tos(groups)).not.toContain("/services/$serviceId/scaling");
+    },
+  );
+
+  it("worker keeps Disk (same eligible set as the API)", () => {
     const flat = labels(serviceNavGroups("worker")).flat();
     expect(flat).toContain("services.navDisk");
-    expect(flat).toContain("services.navScaling");
   });
 
   it("cron: Builds and Runs replace Deploys, as on Render (w2/m360)", () => {
@@ -69,25 +83,24 @@ describe("serviceNavGroups (w5/m48, w5/m57)", () => {
     }
   });
 
-  it("cron omits Disk and Scaling (no long-running instance)", () => {
+  it("cron omits Disk (no long-running instance) and keeps Compute for its plan", () => {
     const flat = labels(serviceNavGroups("cron")).flat();
     expect(flat).toContain("services.navShell");
-    expect(flat).toContain("services.navPlan");
+    expect(flat).toContain("services.navCompute");
     expect(flat).not.toContain("services.navDisk");
-    expect(flat).not.toContain("services.navScaling");
   });
 
   it("null (still loading): only the shared entries, so nothing type-specific flashes", () => {
     const groups = serviceNavGroups(null, "/services");
     const flat = labels(groups).flat();
-    // Deploys and Shell/Scaling/Plan wait for the type — a static site must
+    // Deploys and Shell/Compute wait for the type — a static site must
     // never flash a Deploys tab (w5/m57).
     expect(groups[0].items.map((i) => i.labelKey)).toEqual([
       "services.navSettings",
     ]);
     expect(flat).not.toContain("services.navDeploys");
     expect(flat).not.toContain("services.navShell");
-    expect(flat).not.toContain("services.navScaling");
+    expect(flat).not.toContain("services.navCompute");
   });
 
   it("defaults the base to /services", () => {

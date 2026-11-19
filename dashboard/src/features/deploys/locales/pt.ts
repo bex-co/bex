@@ -550,9 +550,9 @@ const ptDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.reason.startup_out_of_memory": {
     message:
-      "a instância ficou sem memória durante a inicialização (limite de {memory} no tipo de instância; código de saída {code}) — reduza o uso de memória ou escolha um tipo de instância maior",
+      "a instância ficou sem memória durante a inicialização (limite de {memory} no plano de computação; código de saída {code}) — reduza o uso de memória ou escolha um plano de computação maior",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the instance type's memory limit (e.g. 512Mi), code the exit code",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the compute plan's memory limit (e.g. 512Mi), code the exit code",
   },
   "deploys.reason.probe_http_waiting": {
     message:

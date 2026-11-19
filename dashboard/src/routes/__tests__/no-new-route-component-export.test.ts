@@ -44,7 +44,6 @@ const ALLOWLIST = new Set<string>([
   "services.$serviceId.logs.tsx ServiceLogsPage",
   "services.$serviceId.metrics.tsx ServiceMetricsPage",
   "services.$serviceId.redirects.tsx ServiceRedirectsPage",
-  "services.$serviceId.scaling.tsx ServiceScalingPage",
   "services.$serviceId.settings.tsx ServiceSettingsPage",
   "services.new.tsx NewServicePage",
   "webhooks_.new.tsx NewWebhookPage",

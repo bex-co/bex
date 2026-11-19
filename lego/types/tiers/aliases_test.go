@@ -113,6 +113,27 @@ func TestComputeByRenderPlanAcceptsExactSizeAliases(t *testing.T) {
 	}
 }
 
+// w6/m483: every compute rung reads back as the Render plan ID that resolves
+// to it, and free keeps its own name (render.com/docs/compute-plans).
+func TestComputeSpecID(t *testing.T) {
+	want := map[string]string{
+		"free": "free", "starter": "0.5c-512mb", "standard": "1c-2g", "pro": "2c-4g",
+		"pro-plus": "4c-8g", "pro-max": "4c-16g", "pro-ultra": "8c-32g",
+	}
+	if len(want) != len(Compute.IDs()) {
+		t.Fatalf("want covers %d rungs, catalog has %v", len(want), Compute.IDs())
+	}
+	for _, id := range Compute.IDs() {
+		got := ComputeSpecID(id)
+		if got != want[id] {
+			t.Errorf("ComputeSpecID(%q) = %q, want %q", id, got, want[id])
+		}
+		if tier, ok := Compute.ByRenderPlan(got); !ok || tier.ID != id {
+			t.Errorf("Compute.ByRenderPlan(%q) = %+v, %v; want rung %s", got, tier, ok, id)
+		}
+	}
+}
+
 // w8/246: a refusal about a plan the caller did not name uses its Render
 // spec-based id; a rung without one keeps its own id.
 func TestPostgresSpecID(t *testing.T) {

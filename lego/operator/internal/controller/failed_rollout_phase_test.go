@@ -577,7 +577,7 @@ func TestPermanentStartupCrashSettlesBeforeRolloutDeadline(t *testing.T) {
 }
 
 // w4/630: a service the kernel kills for its memory limit while starting
-// settles as Render's "Out of memory", naming its instance type's limit and
+// settles as Render's "Out of memory", naming its compute plan's limit and
 // the exit code, with no port-bind hint and no pointer at logs it never wrote.
 func TestStartupOutOfMemorySettlesAsOutOfMemory(t *testing.T) {
 	ctx := context.Background()
@@ -603,7 +603,7 @@ func TestStartupOutOfMemorySettlesAsOutOfMemory(t *testing.T) {
 	cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).WithObjects(app, dep, pod, servedReplicaSet(dep, "old")).WithStatusSubresource(&appv1alpha1.App{}).Build()
 	r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes}
 
-	want := "the instance ran out of memory during startup (512Mi limit on its instance type; exit code 137) — reduce memory use or choose a larger instance type"
+	want := "the instance ran out of memory during startup (512Mi limit on its compute plan; exit code 137) — reduce memory use or choose a larger compute plan"
 	if _, msg := r.stuckPodMessage(ctx, dep, 3000); msg != want {
 		t.Fatalf("in-flight diagnosis = %q, want %q", msg, want)
 	}

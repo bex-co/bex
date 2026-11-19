@@ -86,9 +86,8 @@ vi.mock("@apollo/client/react", () => ({
 }));
 
 vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
-  const { mockAllowedResourceActions } = await import(
-    "@/test/mocks/resource-actions"
-  );
+  const { mockAllowedResourceActions } =
+    await import("@/test/mocks/resource-actions");
   return mockAllowedResourceActions("app");
 });
 
@@ -555,11 +554,9 @@ describe("ServiceEventsPage — configuration change values (w4/568)", () => {
       screen.getByText("Autoscaling 1–2 instances → Off"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Instance type Starter → Standard"),
+      screen.getByText("Compute plan Starter → Standard"),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText("Instance type none → Starter"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Compute plan none → Starter")).toBeInTheDocument();
     // The legacy row adds no third "Autoscaling …" line, Off → Off included.
     expect(screen.getAllByText(/^Autoscaling .+ → /)).toHaveLength(2);
   });

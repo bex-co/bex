@@ -2019,6 +2019,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
           {
             __typename: "InstanceType",
             id: "free",
+            planId: "free",
             name: "Free",
             cpu: "0.1",
             memory: "512Mi",
@@ -2026,6 +2027,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
           {
             __typename: "InstanceType",
             id: "starter",
+            planId: "0.5c-512mb",
             name: "Starter",
             cpu: "0.5",
             memory: "1Gi",
@@ -2033,6 +2035,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
           {
             __typename: "InstanceType",
             id: "standard",
+            planId: "1c-2g",
             name: "Standard",
             cpu: "1",
             memory: "2Gi",
@@ -2040,6 +2043,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
           {
             __typename: "InstanceType",
             id: "pro",
+            planId: "2c-4g",
             name: "Pro",
             cpu: "2",
             memory: "4Gi",

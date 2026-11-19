@@ -33,7 +33,7 @@ const enDatabases: Record<string, TranslationEntry> = {
   },
   "databases.colPlan": {
     message: "Plan",
-    description: "Databases table column header (instance type / tier)",
+    description: "Databases table column header (compute plan / tier)",
   },
   "databases.colVersion": {
     message: "Version",
@@ -200,11 +200,11 @@ const enDatabases: Record<string, TranslationEntry> = {
     description: "Create-database physical PostgreSQL identifier validation",
   },
   "databases.fieldPlan": {
-    message: "Instance type",
+    message: "Compute plan",
     description: "Create-database form field label (plan / tier)",
   },
   "databases.fieldPlanPlaceholder": {
-    message: "Select an instance type",
+    message: "Select a compute plan",
     description: "Create-database plan select placeholder",
   },
   "databases.fieldVersion": {
@@ -372,7 +372,7 @@ const enDatabases: Record<string, TranslationEntry> = {
     description: "Database detail metadata row label",
   },
   "databases.metaPlan": {
-    message: "Instance type",
+    message: "Compute plan",
     description: "Database detail metadata row label",
   },
   "databases.metaVersion": {
@@ -1419,12 +1419,12 @@ const enDatabases: Record<string, TranslationEntry> = {
   },
   // --- Plan section (m16) ---
   "databases.planTitle": {
-    message: "Instance type",
+    message: "Compute plan",
     description: "Database detail plan-picker card title",
   },
   "databases.planDescription": {
     message:
-      "Change the instance type. A database without a standby restarts to apply it and is unavailable for a minute or two. Your data is kept.",
+      "Change the compute plan. A database without a standby restarts to apply it and is unavailable for a minute or two. Your data is kept.",
     description: "Database detail plan-picker card description",
   },
   "databases.planPickerSave": {
@@ -1441,7 +1441,7 @@ const enDatabases: Record<string, TranslationEntry> = {
   },
   "databases.planPickerConfirmBody": {
     message:
-      "The database restarts to apply the new instance type and is unavailable for a minute or two. Connections drop. Your data is kept.",
+      "The database restarts to apply the new compute plan and is unavailable for a minute or two. Connections drop. Your data is kept.",
     description: "Database plan-picker confirm dialog body",
   },
   "databases.planPickerConfirmPrice": {

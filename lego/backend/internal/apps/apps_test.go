@@ -2139,7 +2139,7 @@ func TestGraphQLInstanceTypes(t *testing.T) {
 	}
 
 	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
-		RequestString: `{ instanceTypes { id name cpu memory monthlyUsd } }`})
+		RequestString: `{ instanceTypes { id planId name cpu memory monthlyUsd } }`})
 	if len(res.Errors) > 0 {
 		t.Fatalf("gql: %v", res.Errors)
 	}
@@ -2148,8 +2148,20 @@ func TestGraphQLInstanceTypes(t *testing.T) {
 		t.Fatalf("want %d instance types, got %d", len(tiers.Compute.IDs()), len(list))
 	}
 	first := list[0].(map[string]any)
-	if first["id"] != "free" || first["name"] != "Free" || first["monthlyUsd"] != "0.00" {
-		t.Errorf("first entry = %+v, want id=free name=Free monthlyUsd=0.00 (ladder order)", first)
+	if first["id"] != "free" || first["planId"] != "free" || first["name"] != "Free" || first["monthlyUsd"] != "0.00" {
+		t.Errorf("first entry = %+v, want id=free planId=free name=Free monthlyUsd=0.00 (ladder order)", first)
+	}
+	// w6/m483: each paid rung carries the Render plan ID the alias table
+	// resolves back to it, so the dashboard shows Render's mapping.
+	for _, entry := range list[1:] {
+		e := entry.(map[string]any)
+		tier, ok := tiers.Compute.ByRenderPlan(e["planId"].(string))
+		if !ok || tier.RenderPlan != e["id"] || e["planId"] == e["id"] {
+			t.Errorf("entry %+v: planId must be the Render plan ID that resolves to %v", e, e["id"])
+		}
+	}
+	if starter := list[1].(map[string]any); starter["id"] != "starter" || starter["planId"] != "0.5c-512mb" {
+		t.Errorf("second entry = %+v, want starter with planId 0.5c-512mb", starter)
 	}
 }
 

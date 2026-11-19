@@ -558,9 +558,9 @@ const ruDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.reason.startup_out_of_memory": {
     message:
-      "инстанс исчерпал память при запуске (лимит {memory} для его типа инстанса; код выхода {code}) — сократите использование памяти или выберите более крупный тип инстанса",
+      "инстанс исчерпал память при запуске (лимит {memory} для его тарифа вычислений; код выхода {code}) — сократите использование памяти или выберите более крупный тариф вычислений",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the instance type's memory limit (e.g. 512Mi), code the exit code",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the compute plan's memory limit (e.g. 512Mi), code the exit code",
   },
   "deploys.reason.probe_http_waiting": {
     message:

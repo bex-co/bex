@@ -215,7 +215,7 @@ describe("useCreateKeyValue at the workspace cap", () => {
           codedGraphQLError(
             "FREE_INSTANCE_LIMIT",
             { limit: 1 },
-            "this workspace already has a free Key Value store (kv); delete it or choose a paid instance type",
+            "this workspace already has a free Key Value store (kv); delete it or choose a paid compute plan",
           ),
         ),
       { loading: false },

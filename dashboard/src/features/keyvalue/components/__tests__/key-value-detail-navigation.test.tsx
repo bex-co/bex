@@ -15,7 +15,7 @@ describe("KeyValueDetailNavigation", () => {
       ["Details", "#metadata"],
       ["Connections", "#connection"],
       ["Networking", "#networking"],
-      ["Instance type", "#plan"],
+      ["Compute plan", "#plan"],
       ["Maxmemory Policy", "#maxmemory-policy"],
       ["Persistence Mode", "#persistence-mode"],
       ["Danger Zone", "#danger-zone"],

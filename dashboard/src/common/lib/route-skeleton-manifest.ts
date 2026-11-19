@@ -542,10 +542,9 @@ export const ROUTE_SKELETON_MANIFEST = {
     regions: ["metrics-filters", "application-metrics", "network-metrics"],
   },
   "/services/$serviceId/plan": {
-    kind: "render",
+    kind: "redirect",
     owner: "routes/services.$serviceId.plan.tsx",
-    shape: "service-plan",
-    regions: ["plan-picker"],
+    destination: "/services/$serviceId/compute",
   },
   "/services/$serviceId/redirects": {
     kind: "render",
@@ -560,10 +559,9 @@ export const ROUTE_SKELETON_MANIFEST = {
     regions: ["cron-runs-table"],
   },
   "/services/$serviceId/scaling": {
-    kind: "render",
+    kind: "redirect",
     owner: "routes/services.$serviceId.scaling.tsx",
-    shape: "service-scaling",
-    regions: ["autoscaling", "manual-scaling", "recent-metrics"],
+    destination: "/services/$serviceId/compute#manual-scaling",
   },
   "/services/$serviceId/settings": {
     kind: "render",
@@ -648,6 +646,17 @@ export const ROUTE_SKELETON_MANIFEST = {
     owner: "routes/webhook.$webhookId.index.tsx",
     shape: "webhook-activity",
     regions: ["deliveries"],
+  },
+  "/services/$serviceId/compute": {
+    kind: "render",
+    owner: "routes/services.$serviceId.compute.tsx",
+    shape: "service-compute",
+    regions: [
+      "compute-plan",
+      "autoscaling",
+      "manual-scaling",
+      "recent-metrics",
+    ],
   },
   "/services/$serviceId/deploys/$deployId": {
     kind: "render",

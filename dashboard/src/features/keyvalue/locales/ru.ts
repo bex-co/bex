@@ -30,7 +30,7 @@ const ruKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value table column header",
   },
   "keyvalue.colPlan": {
-    message: "Тип инстанса",
+    message: "Тариф вычислений",
     description: "Key Value table column header (plan / tier)",
   },
   "keyvalue.colVersion": {
@@ -268,7 +268,7 @@ const ruKeyValue: Record<string, TranslationEntry> = {
     description: "Create-Key-Value name validation message",
   },
   "keyvalue.fieldPlan": {
-    message: "Тип инстанса",
+    message: "Тариф вычислений",
     description: "Create-Key-Value form field label (plan / tier)",
   },
   "keyvalue.fieldVersion": {
@@ -359,7 +359,7 @@ const ruKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value detail metadata row label",
   },
   "keyvalue.metaPlan": {
-    message: "Тип инстанса",
+    message: "Тариф вычислений",
     description: "Key Value detail metadata row label",
   },
   "keyvalue.metaConnectionLimit": {
@@ -550,17 +550,17 @@ const ruKeyValue: Record<string, TranslationEntry> = {
     description: "Toast when a resume request fails",
   },
   "keyvalue.planTitle": {
-    message: "Тип инстанса",
+    message: "Тариф вычислений",
     description: "Key Value detail plan-picker card title",
   },
   "keyvalue.planDescription": {
     message:
-      "Перейдите на больший тип инстанса; на меньший инстанс Key Value перейти нельзя. При изменении хранилище перезапускается и будет недоступно минуту-две. Сохранность данных зависит от режима сохранения; хранилище с режимом «Выключено» теряет все ключи.",
+      "Перейдите на больший тариф вычислений; на меньший инстанс Key Value перейти нельзя. При изменении хранилище перезапускается и будет недоступно минуту-две. Сохранность данных зависит от режима сохранения; хранилище с режимом «Выключено» теряет все ключи.",
     description: "Key Value detail plan-picker card description",
   },
   "keyvalue.planDowngradeUnavailable": {
     message:
-      "Инстанс Key Value нельзя перевести на меньший тип инстанса. Создайте новый инстанс этого типа и перенесите в него данные.",
+      "Инстанс Key Value нельзя перевести на меньший тариф вычислений. Создайте новый инстанс этого тарифа и перенесите в него данные.",
     description:
       "Tooltip on a disabled plan card smaller than the store's current plan: Render does not downgrade a Key Value instance (w8/249)",
   },
@@ -584,7 +584,7 @@ const ruKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.planPickerConfirmBody": {
     message:
-      "Хранилище перезапустится для применения нового типа инстанса и будет недоступно минуту-две. Подключения прервутся.",
+      "Хранилище перезапустится для применения нового тарифа вычислений и будет недоступно минуту-две. Подключения прервутся.",
     description: "Key Value plan-picker confirm dialog body",
   },
   "keyvalue.restartConfirmDataLoss": {

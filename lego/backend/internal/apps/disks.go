@@ -307,7 +307,7 @@ func errDisksUnavailable() error {
 
 // The disk rules every surface states in the same words.
 const (
-	diskPaidPlanRefusal        = "disks require a paid instance type"
+	diskPaidPlanRefusal        = "disks require a paid compute plan"
 	diskWithAutoscalingRefusal = "a service with a disk cannot use autoscaling"
 )
 

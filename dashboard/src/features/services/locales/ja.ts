@@ -94,13 +94,13 @@ const jaServices: Record<string, TranslationEntry> = {
   },
   "services.sshUnavailableSuspendedFree": {
     message:
-      "このサービスは一時停止中で、SSH には有料のインスタンスタイプが必要です。再開するとトラフィックは復旧しますが、Free サービスにはシェルアクセスが含まれません。",
+      "このサービスは一時停止中で、SSH には有料のコンピュートプランが必要です。再開するとトラフィックは復旧しますが、Free サービスにはシェルアクセスが含まれません。",
     description:
       "Why SSH is unavailable on a suspended Free service: both blockers, without implying a resume grants SSH (w4/m183)",
   },
   "services.sshUnavailableFree": {
     message:
-      "SSH には有料のインスタンスタイプが必要です。Free サービスにはシェルアクセスが含まれません。",
+      "SSH には有料のコンピュートプランが必要です。Free サービスにはシェルアクセスが含まれません。",
     description: "Why SSH is unavailable on a Free-plan service (w4/143)",
   },
   "services.sshRemedyResume": {
@@ -109,9 +109,9 @@ const jaServices: Record<string, TranslationEntry> = {
       "Link from an SSH-unavailable state to the service's suspend/resume setting (w4/143)",
   },
   "services.sshRemedyChangePlan": {
-    message: "インスタンスタイプを変更",
+    message: "コンピュートプランを変更",
     description:
-      "Link from an SSH-unavailable state on a Free service to its instance-type page (w4/143)",
+      "Link from an SSH-unavailable state on a Free service to its compute-plan page (w4/143)",
   },
   "services.shellDescription": {
     message: "稼働中のサービスインスタンスのシェルを、ターミナルから開きます。",
@@ -499,10 +499,6 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "最初の App をデプロイすると、ここに表示されます。",
     description: "Services list empty state body",
   },
-  "services.navPlan": {
-    message: "プラン",
-    description: "Service sidebar link to the instance-type (plan) page",
-  },
   "services.headerServiceId": {
     message: "サービス ID:",
     description: "Service-detail header metadata label for the service id",
@@ -574,10 +570,6 @@ const jaServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail nav item (static-site response headers page, Render's label)",
   },
-  "services.navScaling": {
-    message: "スケーリング",
-    description: "Service-detail nav item (autoscaling tab)",
-  },
   "services.scalingTitle": {
     message: "オートスケーリング",
     description: "Scaling tab section heading",
@@ -611,17 +603,6 @@ const jaServices: Record<string, TranslationEntry> = {
   "services.scalingTargetMemory": {
     message: "目標メモリ %",
     description: "Autoscaling target memory utilization input label",
-  },
-  "services.scalingUnavailableTitle": {
-    message: "スケーリングは利用できません",
-    description:
-      "Scaling tab heading when this service type cannot be scaled (cron)",
-  },
-  "services.scalingUnavailableBody": {
-    message:
-      "スケーリングは、長時間稼働するインスタンスを持つ Web、プライベート、バックグラウンドサービスに適用されます。このサービスタイプには調整できるレプリカ数がありません。",
-    description:
-      "Scaling tab explanation when reached by direct URL for an ineligible type",
   },
   "services.scalingValidationMinMax": {
     message: "最小インスタンス数は最大インスタンス数以下にしてください。",
@@ -751,7 +732,7 @@ const jaServices: Record<string, TranslationEntry> = {
   },
   "services.scalingManualDescription": {
     message:
-      "自動的に負荷分散される複数のインスタンスを実行します。すべてのインスタンスは同じインスタンスタイプを使用し、それに応じて課金されます。",
+      "自動的に負荷分散される複数のインスタンスを実行します。すべてのインスタンスは同じコンピュートプランを使用し、それに応じて課金されます。",
     description: "Scaling page: manual instance-count card description",
   },
   "services.scalingManualDescriptionFree": {
@@ -1330,16 +1311,16 @@ const jaServices: Record<string, TranslationEntry> = {
     description: "Toast after setDisplayName fails",
   },
   "services.settingsInstanceType": {
-    message: "インスタンスタイプ",
+    message: "コンピュートプラン",
     description: "Settings tab row label for the App's current plan/tier",
   },
   "services.settingsNoInstanceType": {
-    message: "インスタンスタイプが設定されていません",
+    message: "コンピュートプランが設定されていません",
     description: "Settings tab state for an untiered (bare-CR) App",
   },
   "services.settingsUpdate": {
     message: "更新",
-    description: "Settings tab link to the instance-type picker",
+    description: "Settings tab link to the compute-plan picker",
   },
   "services.settingsIdleTimeout": {
     message: "アイドルタイムアウト",
@@ -1565,8 +1546,19 @@ const jaServices: Record<string, TranslationEntry> = {
     description: "Toast after setNotifyOnFail fails",
   },
   "services.planPickerTitle": {
-    message: "インスタンスタイプを選択",
-    description: "Plan-picker page heading",
+    message: "コンピュートプラン",
+    description:
+      "Accessible name of the Compute section's plan cards, shown after Edit (w6/m483)",
+  },
+  "services.computeTitle": {
+    message: "コンピュート",
+    description:
+      "Compute page: title of the section holding the service's compute plan (Render: 'Under Compute, click Edit', w6/m483)",
+  },
+  "services.computePlanEdit": {
+    message: "編集",
+    description:
+      "Compute section button that opens the compute plan cards (w6/m483)",
   },
   "services.planPickerFreeGroup": {
     message: "Free",
@@ -1587,39 +1579,39 @@ const jaServices: Record<string, TranslationEntry> = {
   },
   "services.planPickerLegacyFreeWorker": {
     message:
-      "このバックグラウンドワーカーは Free プランですが、バックグラウンドワーカーは Free を利用できなくなりました。引き続き稼働します。有料のインスタンスタイプを選択すると Free から移行し、元には戻せません。",
+      "このバックグラウンドワーカーは Free プランですが、バックグラウンドワーカーは Free を利用できなくなりました。引き続き稼働します。有料のコンピュートプランを選択すると Free から移行し、元には戻せません。",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredWorker": {
     message:
-      "このバックグラウンドワーカーにはインスタンスタイプがなく、バックグラウンドワーカーは Free を利用できなくなりました。引き続き稼働します。有料のインスタンスタイプを選択して設定してください。",
+      "このバックグラウンドワーカーにはコンピュートプランがなく、バックグラウンドワーカーは Free を利用できなくなりました。引き続き稼働します。有料のコンピュートプランを選択して設定してください。",
     description:
-      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+      "Plan picker notice: this service type has no compute plan, and Free is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerLegacyFreePrivateService": {
     message:
-      "このプライベートサービスは Free プランですが、プライベートサービスは Free を利用できなくなりました。引き続き稼働します。有料のインスタンスタイプを選択すると Free から移行し、元には戻せません。",
+      "このプライベートサービスは Free プランですが、プライベートサービスは Free を利用できなくなりました。引き続き稼働します。有料のコンピュートプランを選択すると Free から移行し、元には戻せません。",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredPrivateService": {
     message:
-      "このプライベートサービスにはインスタンスタイプがなく、プライベートサービスは Free を利用できなくなりました。引き続き稼働します。有料のインスタンスタイプを選択して設定してください。",
+      "このプライベートサービスにはコンピュートプランがなく、プライベートサービスは Free を利用できなくなりました。引き続き稼働します。有料のコンピュートプランを選択して設定してください。",
     description:
-      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+      "Plan picker notice: this service type has no compute plan, and Free is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerLegacyFreeCronJob": {
     message:
-      "この Cron Job は Free プランですが、Cron Job は Free を利用できなくなりました。引き続き稼働します。有料のインスタンスタイプを選択すると Free から移行し、元には戻せません。",
+      "この Cron Job は Free プランですが、Cron Job は Free を利用できなくなりました。引き続き稼働します。有料のコンピュートプランを選択すると Free から移行し、元には戻せません。",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredCronJob": {
     message:
-      "この Cron Job にはインスタンスタイプがなく、Cron Job は Free を利用できなくなりました。引き続き稼働します。有料のインスタンスタイプを選択して設定してください。",
+      "この Cron Job にはコンピュートプランがなく、Cron Job は Free を利用できなくなりました。引き続き稼働します。有料のコンピュートプランを選択して設定してください。",
     description:
-      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+      "Plan picker notice: this service type has no compute plan, and Free is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerPaidGroup": {
     message: "有料",
@@ -1635,11 +1627,12 @@ const jaServices: Record<string, TranslationEntry> = {
     description: "Plan-picker footer button: discard the selection",
   },
   "services.planPickerSave": {
-    message: "変更を保存",
-    description: "Plan-picker footer button: confirm the plan change",
+    message: "保存",
+    description:
+      'Compute section footer button: confirm the plan change ("Select a new compute plan and click Save", render.com/docs/compute-plans)',
   },
   "services.planPickerConfirmTitle": {
-    message: "インスタンスタイプを {name} に変更しますか？",
+    message: "コンピュートプランを {name} に変更しますか？",
     description: "Plan-change confirm dialog title",
   },
   "services.planPickerConfirmBody": {
@@ -1649,50 +1642,50 @@ const jaServices: Record<string, TranslationEntry> = {
   },
   "services.instanceTypePausedReason": {
     message:
-      "「{name}」は一時的に利用できません。{largest} またはそれより小さいインスタンスタイプを選択してください。",
+      "「{name}」は一時的に利用できません。{largest} またはそれより小さいコンピュートプランを選択してください。",
     description:
-      "A paused instance type's tooltip and screen-reader reason, composed in the dashboard's language from the tier and the largest still offered; matches bex-api's English unavailableReason (w4/552)",
+      "A paused compute plan's tooltip and screen-reader reason, composed in the dashboard's language from the tier and the largest still offered; matches bex-api's English unavailableReason (w4/552)",
   },
   "services.planPickerConfirmBodyCron": {
     message:
-      "変更後に開始される実行では、新しいインスタンスタイプが使用されます。",
+      "変更後に開始される実行では、新しいコンピュートプランが使用されます。",
     description:
       "Plan-change confirm body for a cron job, which serves no requests: its next run takes the new size (w4/548)",
   },
   "services.planPickerConfirmBodyNeverLive": {
     message:
-      "サービスは新しいインスタンスタイプで実行されます。まだ何も配信されておらず、デプロイが成功すると公開されます。",
+      "サービスは新しいコンピュートプランで実行されます。まだ何も配信されておらず、デプロイが成功すると公開されます。",
     description:
       "Plan-change confirm body for a service that has never gone live (w4/548)",
   },
   "services.planPickerConfirmRunPrice": {
     message:
-      "このインスタンスタイプは、実行時間 1 分あたり ${price} で、実行中は秒単位で課金されます。Cron Job 1 件あたりの最低料金は月額 ${minimum} です。",
+      "このコンピュートプランは、実行時間 1 分あたり ${price} で、実行中は秒単位で課金されます。Cron Job 1 件あたりの最低料金は月額 ${minimum} です。",
     description:
-      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
+      "Plan-change confirm for a cron job: the new compute plan's run-time rate (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.createFieldPlanCronHint": {
     message:
       "Cron Job は、実行中は秒単位で課金されます。Cron Job 1 件あたりの最低料金は月額 ${minimum} です。",
     description:
-      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
+      "Under the create form's compute plans for a cron job, which are priced per minute of run time (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.planPickerConfirmPrice": {
-    message: "このインスタンスタイプは月額 ${price} です。",
+    message: "このコンピュートプランは月額 ${price} です。",
     description:
-      "Plan-change confirm: the new instance type's monthly price, from the API's price sheet (w4/400)",
+      "Plan-change confirm: the new compute plan's monthly price, from the API's price sheet (w4/400)",
   },
   "services.planPickerSuccess": {
-    message: "インスタンスタイプを {name} に更新しました",
+    message: "コンピュートプランを {name} に更新しました",
     description: "Toast on a successful plan change",
   },
   "services.planPickerError": {
     message:
-      "インスタンスタイプを更新できませんでした。もう一度お試しください。",
+      "コンピュートプランを更新できませんでした。もう一度お試しください。",
     description: "Toast on a failed plan change",
   },
   "services.planPickerErrorTitle": {
-    message: "インスタンスタイプを読み込めませんでした",
+    message: "コンピュートプランを読み込めませんでした",
     description: "Plan-picker error state title (instanceTypes query failed)",
   },
   "services.planPickerErrorBody": {
@@ -3651,7 +3644,7 @@ const jaServices: Record<string, TranslationEntry> = {
   },
   "services.resumeCardDescriptionCrashLoop": {
     message:
-      "このサービスは、24 時間にわたって起動と正常化に繰り返し失敗したため、一時停止されました。設定の誤り、アプリケーションコードのバグ、インスタンスタイプのサイズ不足が原因であることがよくあります。原因を修正してから再開して、オンラインに戻してください。",
+      "このサービスは、24 時間にわたって起動と正常化に繰り返し失敗したため、一時停止されました。設定の誤り、アプリケーションコードのバグ、コンピュートプランのサイズ不足が原因であることがよくあります。原因を修正してから再開して、オンラインに戻してください。",
     description:
       "Settings tab resume section description for a service the platform suspended for a crash loop (stuck_crashlooping)",
   },
@@ -4083,7 +4076,7 @@ const jaServices: Record<string, TranslationEntry> = {
     description: "Create-wizard Docker runtime option",
   },
   "services.createFieldPlan": {
-    message: "インスタンスタイプ",
+    message: "コンピュートプラン",
     description: "Create-wizard plan-picker section label",
   },
   "services.createFieldAutoDeploy": {
@@ -4358,7 +4351,7 @@ const jaServices: Record<string, TranslationEntry> = {
   },
   "services.diskPaidOnly": {
     message:
-      "ディスクには有料のインスタンスタイプが必要です。ディスクをアタッチするには、このサービスのプランをアップグレードしてください。",
+      "ディスクには有料のコンピュートプランが必要です。ディスクをアタッチするには、このサービスのプランをアップグレードしてください。",
     description: "Shown instead of the add button on a free service",
   },
   "services.diskAddAction": {
@@ -4637,6 +4630,11 @@ const jaServices: Record<string, TranslationEntry> = {
   "services.navShell": {
     message: "シェル",
     description: "Service-detail nav item (running-instance SSH page)",
+  },
+  "services.navCompute": {
+    message: "コンピュート",
+    description:
+      "Service sidebar link to the Compute page: the compute plan, manual scaling and autoscaling, as on Render (w6/m483)",
   },
   "services.eventsTitle": {
     message: "アクティビティ",
@@ -4978,9 +4976,9 @@ const jaServices: Record<string, TranslationEntry> = {
       "One side of an autoscaling change: its instance range and both targets (w4/m335)",
   },
   "services.eventsPlanChange": {
-    message: "インスタンスタイプ {from} → {to}",
+    message: "コンピュートプラン {from} → {to}",
     description:
-      "plan_changed detail line, by the instance types' names (w4/568)",
+      "plan_changed detail line, by the compute plans' names (w4/568, w6/m483)",
   },
   "services.eventsBranchChange": {
     message: "ブランチ {from} → {to}",

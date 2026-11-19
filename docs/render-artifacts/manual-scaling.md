@@ -40,3 +40,7 @@ Render's Settings page has **no instance-count control**. bex adopted this place
 ## Production mechanism correction (2026-07-18, w2/m56)
 
 The API/UI shape was already correct, but bex's operator treated the scale mutation's Kubernetes generation bump as a release. On source-backed `srv-d9dd16roviqs738quds0`, scaling 1→2 launched `bld-…-gen-2`; the copied one-hour GitHub installation token was already expired, so the build failed and the generation-1 Deployment remained at one replica. w2/m56 separates artifact/release identity from generic generation: replicas now reconcile against the active image and revision, and the dashboard acknowledges accepted intent with in-progress wording.
+
+## Compute page (2026-11-19, w6/m483)
+
+Render moved these sections onto a service's **Compute** page on 2026-08-26 ("open your service's Compute page and scroll down to the Manual Scaling section", render.com/docs/scaling). bex followed: the Scaling tab's three sections now sit under the Compute section on `/services/{id}/compute`, in the order above, and `/scaling` redirects to `/compute#manual-scaling` ([compute-page.md](compute-page.md)).

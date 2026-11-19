@@ -306,11 +306,12 @@ const ruMetrics: Record<string, TranslationEntry> = {
   "metrics.limitLink": {
     message: "Лимит",
     description:
-      "Link to the Instance Type tab on the Memory/CPU chart headers, followed by the limit value when configured",
+      "Link to the Compute page on the Memory/CPU chart headers, followed by the limit value when configured",
   },
   "metrics.manageScaling": {
     message: "Управление масштабированием",
-    description: "Link to the Scaling tab on the Total Instances chart header",
+    description:
+      "Link to the Compute page's Manual Scaling section on the Total Instances chart header",
   },
   "metrics.noLimitConfigured": {
     message: "Лимит не задан — процент не определён",

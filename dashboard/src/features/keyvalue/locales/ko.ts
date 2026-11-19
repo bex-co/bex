@@ -30,7 +30,7 @@ const koKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value table column header",
   },
   "keyvalue.colPlan": {
-    message: "인스턴스 유형",
+    message: "컴퓨팅 플랜",
     description: "Key Value table column header (plan / tier)",
   },
   "keyvalue.colVersion": {
@@ -263,7 +263,7 @@ const koKeyValue: Record<string, TranslationEntry> = {
     description: "Create-Key-Value name validation message",
   },
   "keyvalue.fieldPlan": {
-    message: "인스턴스 유형",
+    message: "컴퓨팅 플랜",
     description: "Create-Key-Value form field label (plan / tier)",
   },
   "keyvalue.fieldVersion": {
@@ -354,7 +354,7 @@ const koKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value detail metadata row label",
   },
   "keyvalue.metaPlan": {
-    message: "인스턴스 유형",
+    message: "컴퓨팅 플랜",
     description: "Key Value detail metadata row label",
   },
   "keyvalue.metaConnectionLimit": {
@@ -544,17 +544,17 @@ const koKeyValue: Record<string, TranslationEntry> = {
     description: "Toast when a resume request fails",
   },
   "keyvalue.planTitle": {
-    message: "인스턴스 유형",
+    message: "컴퓨팅 플랜",
     description: "Key Value detail plan-picker card title",
   },
   "keyvalue.planDescription": {
     message:
-      "더 큰 인스턴스 유형으로 변경할 수 있으며, Key Value 인스턴스는 더 작은 유형으로 변경할 수 없습니다. 변경하면 스토어가 다시 시작되어 1~2분간 사용할 수 없습니다. 데이터는 영속성 모드에 따라 보존되며, 영속성이 끔인 스토어는 모든 키가 사라집니다.",
+      "더 큰 컴퓨팅 플랜으로 변경할 수 있으며, Key Value 인스턴스는 더 작은 플랜으로 변경할 수 없습니다. 변경하면 스토어가 다시 시작되어 1~2분간 사용할 수 없습니다. 데이터는 영속성 모드에 따라 보존되며, 영속성이 끔인 스토어는 모든 키가 사라집니다.",
     description: "Key Value detail plan-picker card description",
   },
   "keyvalue.planDowngradeUnavailable": {
     message:
-      "Key Value 인스턴스는 더 작은 인스턴스 유형으로 변경할 수 없습니다. 원하는 유형으로 새 인스턴스를 만들고 데이터를 옮기세요.",
+      "Key Value 인스턴스는 더 작은 컴퓨팅 플랜으로 변경할 수 없습니다. 원하는 플랜으로 새 인스턴스를 만들고 데이터를 옮기세요.",
     description:
       "Tooltip on a disabled plan card smaller than the store's current plan: Render does not downgrade a Key Value instance (w8/249)",
   },
@@ -578,7 +578,7 @@ const koKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.planPickerConfirmBody": {
     message:
-      "새 인스턴스 유형을 적용하기 위해 스토어가 다시 시작되며 1~2분간 사용할 수 없습니다. 연결이 끊어집니다.",
+      "새 컴퓨팅 플랜을 적용하기 위해 스토어가 다시 시작되며 1~2분간 사용할 수 없습니다. 연결이 끊어집니다.",
     description: "Key Value plan-picker confirm dialog body",
   },
   "keyvalue.restartConfirmDataLoss": {

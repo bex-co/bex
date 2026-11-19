@@ -94,13 +94,13 @@ const esServices: Record<string, TranslationEntry> = {
   },
   "services.sshUnavailableSuspendedFree": {
     message:
-      "Este servicio está suspendido y SSH necesita un tipo de instancia de pago. Reanudarlo restablece el tráfico; los servicios gratuitos siguen sin incluir acceso a shell.",
+      "Este servicio está suspendido y SSH necesita un plan de cómputo de pago. Reanudarlo restablece el tráfico; los servicios gratuitos siguen sin incluir acceso a shell.",
     description:
       "Why SSH is unavailable on a suspended Free service: both blockers, without implying a resume grants SSH (w4/m183)",
   },
   "services.sshUnavailableFree": {
     message:
-      "SSH necesita un tipo de instancia de pago. Los servicios gratuitos no incluyen acceso a shell.",
+      "SSH necesita un plan de cómputo de pago. Los servicios gratuitos no incluyen acceso a shell.",
     description: "Why SSH is unavailable on a Free-plan service (w4/143)",
   },
   "services.sshRemedyResume": {
@@ -109,9 +109,9 @@ const esServices: Record<string, TranslationEntry> = {
       "Link from an SSH-unavailable state to the service's suspend/resume setting (w4/143)",
   },
   "services.sshRemedyChangePlan": {
-    message: "Cambiar tipo de instancia",
+    message: "Cambiar plan de cómputo",
     description:
-      "Link from an SSH-unavailable state on a Free service to its instance-type page (w4/143)",
+      "Link from an SSH-unavailable state on a Free service to its compute-plan page (w4/143)",
   },
   "services.shellDescription": {
     message:
@@ -501,10 +501,6 @@ const esServices: Record<string, TranslationEntry> = {
     message: "Despliega tu primera App y aparecerá aquí.",
     description: "Services list empty state body",
   },
-  "services.navPlan": {
-    message: "Plan",
-    description: "Service sidebar link to the instance-type (plan) page",
-  },
   "services.headerServiceId": {
     message: "ID del servicio:",
     description: "Service-detail header metadata label for the service id",
@@ -576,10 +572,6 @@ const esServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail nav item (static-site response headers page, Render's label)",
   },
-  "services.navScaling": {
-    message: "Escalado",
-    description: "Service-detail nav item (autoscaling tab)",
-  },
   "services.scalingTitle": {
     message: "Escalado automático",
     description: "Scaling tab section heading",
@@ -613,17 +605,6 @@ const esServices: Record<string, TranslationEntry> = {
   "services.scalingTargetMemory": {
     message: "% objetivo de memoria",
     description: "Autoscaling target memory utilization input label",
-  },
-  "services.scalingUnavailableTitle": {
-    message: "El escalado no está disponible",
-    description:
-      "Scaling tab heading when this service type cannot be scaled (cron)",
-  },
-  "services.scalingUnavailableBody": {
-    message:
-      "El escalado se aplica a servicios web, privados y en segundo plano con instancias de larga duración. Este tipo de servicio no tiene un número de réplicas que ajustar.",
-    description:
-      "Scaling tab explanation when reached by direct URL for an ineligible type",
   },
   "services.scalingValidationMinMax": {
     message: "El mínimo de instancias debe ser ≤ el máximo de instancias.",
@@ -753,7 +734,7 @@ const esServices: Record<string, TranslationEntry> = {
   },
   "services.scalingManualDescription": {
     message:
-      "Ejecuta varias instancias con balanceo de carga automático. Todas las instancias usan el mismo tipo de instancia y se facturan en consecuencia.",
+      "Ejecuta varias instancias con balanceo de carga automático. Todas las instancias usan el mismo plan de cómputo y se facturan en consecuencia.",
     description: "Scaling page: manual instance-count card description",
   },
   "services.scalingManualDescriptionFree": {
@@ -1334,16 +1315,16 @@ const esServices: Record<string, TranslationEntry> = {
     description: "Toast after setDisplayName fails",
   },
   "services.settingsInstanceType": {
-    message: "Tipo de instancia",
+    message: "Plan de cómputo",
     description: "Settings tab row label for the App's current plan/tier",
   },
   "services.settingsNoInstanceType": {
-    message: "Sin tipo de instancia definido",
+    message: "Sin plan de cómputo definido",
     description: "Settings tab state for an untiered (bare-CR) App",
   },
   "services.settingsUpdate": {
     message: "Actualizar",
-    description: "Settings tab link to the instance-type picker",
+    description: "Settings tab link to the compute-plan picker",
   },
   "services.settingsIdleTimeout": {
     message: "Tiempo de inactividad",
@@ -1572,8 +1553,19 @@ const esServices: Record<string, TranslationEntry> = {
     description: "Toast after setNotifyOnFail fails",
   },
   "services.planPickerTitle": {
-    message: "Elige un tipo de instancia",
-    description: "Plan-picker page heading",
+    message: "Plan de cómputo",
+    description:
+      "Accessible name of the Compute section's plan cards, shown after Edit (w6/m483)",
+  },
+  "services.computeTitle": {
+    message: "Cómputo",
+    description:
+      "Compute page: title of the section holding the service's compute plan (Render: 'Under Compute, click Edit', w6/m483)",
+  },
+  "services.computePlanEdit": {
+    message: "Editar",
+    description:
+      "Compute section button that opens the compute plan cards (w6/m483)",
   },
   "services.planPickerFreeGroup": {
     message: "Gratuito",
@@ -1594,39 +1586,39 @@ const esServices: Record<string, TranslationEntry> = {
   },
   "services.planPickerLegacyFreeWorker": {
     message:
-      "Este Background Worker está en el plan gratuito, que ya no pueden usar los Background Workers. Sigue en ejecución. Al elegir un tipo de instancia de pago sale del plan gratuito y no puede volver.",
+      "Este Background Worker está en el plan gratuito, que ya no pueden usar los Background Workers. Sigue en ejecución. Al elegir un plan de cómputo de pago sale del plan gratuito y no puede volver.",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredWorker": {
     message:
-      "Este Background Worker no tiene tipo de instancia, y los Background Workers ya no pueden usar el plan gratuito. Sigue en ejecución. Elige un tipo de instancia de pago para asignarle uno.",
+      "Este Background Worker no tiene plan de cómputo, y los Background Workers ya no pueden usar el plan gratuito. Sigue en ejecución. Elige un plan de cómputo de pago para asignarle uno.",
     description:
-      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+      "Plan picker notice: this service type has no compute plan, and Free is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerLegacyFreePrivateService": {
     message:
-      "Este Private Service está en el plan gratuito, que ya no pueden usar los Private Services. Sigue en ejecución. Al elegir un tipo de instancia de pago sale del plan gratuito y no puede volver.",
+      "Este Private Service está en el plan gratuito, que ya no pueden usar los Private Services. Sigue en ejecución. Al elegir un plan de cómputo de pago sale del plan gratuito y no puede volver.",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredPrivateService": {
     message:
-      "Este Private Service no tiene tipo de instancia, y los Private Services ya no pueden usar el plan gratuito. Sigue en ejecución. Elige un tipo de instancia de pago para asignarle uno.",
+      "Este Private Service no tiene plan de cómputo, y los Private Services ya no pueden usar el plan gratuito. Sigue en ejecución. Elige un plan de cómputo de pago para asignarle uno.",
     description:
-      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+      "Plan picker notice: this service type has no compute plan, and Free is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerLegacyFreeCronJob": {
     message:
-      "Este Cron Job está en el plan gratuito, que ya no pueden usar los Cron Jobs. Sigue en ejecución. Al elegir un tipo de instancia de pago sale del plan gratuito y no puede volver.",
+      "Este Cron Job está en el plan gratuito, que ya no pueden usar los Cron Jobs. Sigue en ejecución. Al elegir un plan de cómputo de pago sale del plan gratuito y no puede volver.",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredCronJob": {
     message:
-      "Este Cron Job no tiene tipo de instancia, y los Cron Jobs ya no pueden usar el plan gratuito. Sigue en ejecución. Elige un tipo de instancia de pago para asignarle uno.",
+      "Este Cron Job no tiene plan de cómputo, y los Cron Jobs ya no pueden usar el plan gratuito. Sigue en ejecución. Elige un plan de cómputo de pago para asignarle uno.",
     description:
-      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+      "Plan picker notice: this service type has no compute plan, and Free is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerPaidGroup": {
     message: "De pago",
@@ -1642,11 +1634,12 @@ const esServices: Record<string, TranslationEntry> = {
     description: "Plan-picker footer button: discard the selection",
   },
   "services.planPickerSave": {
-    message: "Guardar cambios",
-    description: "Plan-picker footer button: confirm the plan change",
+    message: "Guardar",
+    description:
+      'Compute section footer button: confirm the plan change ("Select a new compute plan and click Save", render.com/docs/compute-plans)',
   },
   "services.planPickerConfirmTitle": {
-    message: "¿Cambiar el tipo de instancia a {name}?",
+    message: "¿Cambiar el plan de cómputo a {name}?",
     description: "Plan-change confirm dialog title",
   },
   "services.planPickerConfirmBody": {
@@ -1656,49 +1649,49 @@ const esServices: Record<string, TranslationEntry> = {
   },
   "services.instanceTypePausedReason": {
     message:
-      "“{name}” no está disponible temporalmente; elige {largest} o un tipo de instancia menor.",
+      "“{name}” no está disponible temporalmente; elige {largest} o un plan de cómputo menor.",
     description:
-      "A paused instance type's tooltip and screen-reader reason, composed in the dashboard's language from the tier and the largest still offered; matches bex-api's English unavailableReason (w4/552)",
+      "A paused compute plan's tooltip and screen-reader reason, composed in the dashboard's language from the tier and the largest still offered; matches bex-api's English unavailableReason (w4/552)",
   },
   "services.planPickerConfirmBodyCron": {
     message:
-      "Las ejecuciones que empiecen después del cambio usan el nuevo tipo de instancia.",
+      "Las ejecuciones que empiecen después del cambio usan el nuevo plan de cómputo.",
     description:
       "Plan-change confirm body for a cron job, which serves no requests: its next run takes the new size (w4/548)",
   },
   "services.planPickerConfirmBodyNeverLive": {
     message:
-      "El servicio se ejecuta en el nuevo tipo de instancia. Aún no sirve nada: pasa a estar activo cuando un despliegue tenga éxito.",
+      "El servicio se ejecuta en el nuevo plan de cómputo. Aún no sirve nada: pasa a estar activo cuando un despliegue tenga éxito.",
     description:
       "Plan-change confirm body for a service that has never gone live (w4/548)",
   },
   "services.planPickerConfirmRunPrice": {
     message:
-      "Este tipo de instancia cuesta ${price} por minuto de ejecución, facturado por segundo mientras se ejecuta. El cargo mínimo es de ${minimum} al mes por Cron Job.",
+      "Este plan de cómputo cuesta ${price} por minuto de ejecución, facturado por segundo mientras se ejecuta. El cargo mínimo es de ${minimum} al mes por Cron Job.",
     description:
-      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
+      "Plan-change confirm for a cron job: the new compute plan's run-time rate (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.createFieldPlanCronHint": {
     message:
       "Un Cron Job se factura por segundo mientras se ejecuta. El cargo mínimo es de ${minimum} al mes por Cron Job.",
     description:
-      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
+      "Under the create form's compute plans for a cron job, which are priced per minute of run time (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.planPickerConfirmPrice": {
-    message: "Este tipo de instancia cuesta ${price}/mes.",
+    message: "Este plan de cómputo cuesta ${price}/mes.",
     description:
-      "Plan-change confirm: the new instance type's monthly price, from the API's price sheet (w4/400)",
+      "Plan-change confirm: the new compute plan's monthly price, from the API's price sheet (w4/400)",
   },
   "services.planPickerSuccess": {
-    message: "Tipo de instancia actualizado a {name}",
+    message: "Plan de cómputo actualizado a {name}",
     description: "Toast on a successful plan change",
   },
   "services.planPickerError": {
-    message: "No se pudo actualizar el tipo de instancia. Inténtalo de nuevo.",
+    message: "No se pudo actualizar el plan de cómputo. Inténtalo de nuevo.",
     description: "Toast on a failed plan change",
   },
   "services.planPickerErrorTitle": {
-    message: "No se pudieron cargar los tipos de instancia",
+    message: "No se pudieron cargar los planes de cómputo",
     description: "Plan-picker error state title (instanceTypes query failed)",
   },
   "services.planPickerErrorBody": {
@@ -3665,7 +3658,7 @@ const esServices: Record<string, TranslationEntry> = {
   },
   "services.resumeCardDescriptionCrashLoop": {
     message:
-      "Suspendimos este servicio porque no logró iniciarse ni estar en buen estado de forma repetida durante 24 horas. Suele deberse a un error de configuración, un fallo en el código de la aplicación o un tipo de instancia demasiado pequeño. Corrige la causa y luego reanúdalo para volver a ponerlo en línea.",
+      "Suspendimos este servicio porque no logró iniciarse ni estar en buen estado de forma repetida durante 24 horas. Suele deberse a un error de configuración, un fallo en el código de la aplicación o un plan de cómputo demasiado pequeño. Corrige la causa y luego reanúdalo para volver a ponerlo en línea.",
     description:
       "Settings tab resume section description for a service the platform suspended for a crash loop (stuck_crashlooping)",
   },
@@ -4098,7 +4091,7 @@ const esServices: Record<string, TranslationEntry> = {
     description: "Create-wizard Docker runtime option",
   },
   "services.createFieldPlan": {
-    message: "Tipo de instancia",
+    message: "Plan de cómputo",
     description: "Create-wizard plan-picker section label",
   },
   "services.createFieldAutoDeploy": {
@@ -4387,7 +4380,7 @@ const esServices: Record<string, TranslationEntry> = {
   },
   "services.diskPaidOnly": {
     message:
-      "Los discos requieren un tipo de instancia de pago. Mejora el plan de este servicio para conectar uno.",
+      "Los discos requieren un plan de cómputo de pago. Mejora el plan de este servicio para conectar uno.",
     description: "Shown instead of the add button on a free service",
   },
   "services.diskAddAction": {
@@ -4667,6 +4660,11 @@ const esServices: Record<string, TranslationEntry> = {
   "services.navShell": {
     message: "Shell",
     description: "Service-detail nav item (running-instance SSH page)",
+  },
+  "services.navCompute": {
+    message: "Cómputo",
+    description:
+      "Service sidebar link to the Compute page: the compute plan, manual scaling and autoscaling, as on Render (w6/m483)",
   },
   "services.eventsTitle": {
     message: "Actividad",
@@ -5028,9 +5026,9 @@ const esServices: Record<string, TranslationEntry> = {
       "One side of an autoscaling change: its instance range and both targets (w4/m335)",
   },
   "services.eventsPlanChange": {
-    message: "Tipo de instancia {from} → {to}",
+    message: "Plan de cómputo {from} → {to}",
     description:
-      "plan_changed detail line, by the instance types' names (w4/568)",
+      "plan_changed detail line, by the compute plans' names (w4/568, w6/m483)",
   },
   "services.eventsBranchChange": {
     message: "Rama {from} → {to}",

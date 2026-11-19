@@ -126,17 +126,24 @@ import { RegistryCredentialsPanelSkeleton } from "@/features/registry-credential
 import { AuditLogPanelSkeleton } from "@/features/audit/components/audit-log-panel-skeleton";
 import { DeploysListFrameSkeleton } from "@/features/deploys/components/deploys-list-frame";
 import { CHART_FRAME_STYLE } from "@/features/metrics/components/chart-layout";
-import { InstanceTypePickerCardSkeleton } from "@/features/services/components/instance-type-groups";
+import { ComputePlanSectionSkeleton } from "@/features/services/components/compute-plan-frames";
+import {
+  AutoscalingLoadingCard,
+  ManualScalingSkeleton,
+  ScalingRecentMetricsSkeleton,
+} from "@/features/services/components/scaling-frames";
 import {
   autoSleepEligibleType,
   planSleeps,
 } from "@/features/services/lib/idle-timeout";
 import {
+  deriveServiceType,
   isCronType,
   isDockerBuild,
   isStaticSiteType,
   publiclyRoutable,
   supportsMaxShutdownDelay,
+  supportsScalingType,
 } from "@/features/services/lib/service-type";
 import {
   navigableSettingsSections,
@@ -2719,24 +2726,14 @@ export function ServiceSettingsSkeleton({
   );
 }
 
-export function ServiceScalingSkeleton() {
-  return (
-    <PendingFrame route="service-scaling" className="space-y-6">
-      <Region name="autoscaling">
-        <CardSkeleton rows={5} />
-      </Region>
-      <Region name="manual-scaling">
-        <CardSkeleton rows={2} touchRows />
-      </Region>
-      <Region name="recent-metrics">
-        <MetricsCardSkeleton sections={3} />
-      </Region>
-    </PendingFrame>
-  );
-}
-
-/** `serviceType` shapes the Free/Paid groups; null/omitted = still undecided. */
-export function ServicePlanSkeleton({
+/**
+ * The Compute page (w6/m483): the Compute section with its plan row, then —
+ * for a scalable type — Autoscaling, Manual Scaling and Recent Metrics, the
+ * order the ready page draws them in. A cron job has a compute plan but no
+ * scaling, so its frame stops after the Compute section. An undecided type
+ * (null) reserves the scaling sections every other compute type has.
+ */
+export function ServiceComputeSkeleton({
   serviceType = null,
   currentPlan,
 }: {
@@ -2744,14 +2741,35 @@ export function ServicePlanSkeleton({
   /** Undefined while unknown. */
   currentPlan?: string | null;
 }) {
+  const { currentWorkspace } = useWorkspace();
+  const scalable =
+    serviceType === null || supportsScalingType(deriveServiceType(serviceType));
   return (
-    <PendingFrame route="service-plan">
-      <Region name="plan-picker">
-        <InstanceTypePickerCardSkeleton
+    <PendingFrame route="service-compute" className="space-y-6">
+      <Region name="compute-plan">
+        <ComputePlanSectionSkeleton
           serviceType={serviceType}
           currentPlan={currentPlan}
         />
       </Region>
+      {scalable ? (
+        <>
+          {/* The scaling cards' own loading frames, which hold the ready
+              cards' geometry in the autoscaling-off state (w4/688). */}
+          <Region name="autoscaling">
+            <AutoscalingLoadingCard
+              plan={currentPlan}
+              workspacePlan={currentWorkspace?.plan}
+            />
+          </Region>
+          <Region name="manual-scaling">
+            <ManualScalingSkeleton plan={currentPlan} />
+          </Region>
+          <Region name="recent-metrics">
+            <ScalingRecentMetricsSkeleton />
+          </Region>
+        </>
+      ) : null}
     </PendingFrame>
   );
 }
@@ -3242,10 +3260,9 @@ type ServiceRouteSkeletonKind =
   | "environment"
   | "events"
   | "logs"
+  | "compute"
   | "metrics"
-  | "plan"
   | "rules"
-  | "scaling"
   | "settings"
   | "shell";
 
@@ -3253,6 +3270,7 @@ const SERVICE_ROUTE_SKELETON_BY_ID = {
   "/services/$serviceId": "deploys",
   "/services/$serviceId/": "deploys",
   "/services/$serviceId/builds": "deploys",
+  "/services/$serviceId/compute": "compute",
   "/services/$serviceId/deploys/": "deploys",
   "/services/$serviceId/deploys/$deployId": "deploy-detail",
   "/services/$serviceId/disk": "disk",
@@ -3261,10 +3279,8 @@ const SERVICE_ROUTE_SKELETON_BY_ID = {
   "/services/$serviceId/headers": "rules",
   "/services/$serviceId/logs": "logs",
   "/services/$serviceId/metrics": "metrics",
-  "/services/$serviceId/plan": "plan",
   "/services/$serviceId/redirects": "rules",
   "/services/$serviceId/runs": "cron-runs",
-  "/services/$serviceId/scaling": "scaling",
   "/services/$serviceId/settings": "settings",
   "/services/$serviceId/shell": "shell",
   "/static/$serviceId": "events",
@@ -3324,12 +3340,10 @@ export function ServiceRouteContentSkeleton({
           servesRequests={serviceType == null || publiclyRoutable(serviceType)}
         />
       );
-    case "plan":
-      return <ServicePlanSkeleton serviceType={serviceType} />;
+    case "compute":
+      return <ServiceComputeSkeleton serviceType={serviceType} />;
     case "rules":
       return <StaticEdgeRulesSkeleton />;
-    case "scaling":
-      return <ServiceScalingSkeleton />;
     case "settings":
       return <ServiceSettingsSkeleton staticSite={base === "/static"} />;
     case "shell":

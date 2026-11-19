@@ -17,7 +17,7 @@ describe("DatabaseDetailNavigation", () => {
       ["SQL console", "#sql-console"],
       ["High Availability", "#high-availability"],
       ["Metrics", "#metrics"],
-      ["Instance type", "#plan"],
+      ["Compute plan", "#plan"],
       ["Insights", "#insights"],
       ["Recovery", "#recovery"],
       ["Access control", "#access-control"],

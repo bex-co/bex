@@ -31,7 +31,7 @@ const ruDatabases: Record<string, TranslationEntry> = {
   },
   "databases.colPlan": {
     message: "Тариф",
-    description: "Databases table column header (instance type / tier)",
+    description: "Databases table column header (compute plan / tier)",
   },
   "databases.colVersion": {
     message: "Версия",
@@ -195,11 +195,11 @@ const ruDatabases: Record<string, TranslationEntry> = {
     description: "Create-database physical PostgreSQL identifier validation",
   },
   "databases.fieldPlan": {
-    message: "Тип инстанса",
+    message: "Тариф вычислений",
     description: "Create-database form field label (plan / tier)",
   },
   "databases.fieldPlanPlaceholder": {
-    message: "Выберите тип инстанса",
+    message: "Выберите тариф вычислений",
     description: "Create-database plan select placeholder",
   },
   "databases.fieldVersion": {
@@ -368,7 +368,7 @@ const ruDatabases: Record<string, TranslationEntry> = {
     description: "Database detail metadata row label",
   },
   "databases.metaPlan": {
-    message: "Тип инстанса",
+    message: "Тариф вычислений",
     description: "Database detail metadata row label",
   },
   "databases.metaVersion": {
@@ -1435,12 +1435,12 @@ const ruDatabases: Record<string, TranslationEntry> = {
     description: "Plan change blocked while a connection pooler is enabled",
   },
   "databases.planTitle": {
-    message: "Тип инстанса",
+    message: "Тариф вычислений",
     description: "Database detail plan-picker card title",
   },
   "databases.planDescription": {
     message:
-      "Измените тип инстанса. База данных без резервного инстанса перезапускается для применения изменения и будет недоступна минуту-две. Ваши данные сохраняются.",
+      "Измените тариф вычислений. База данных без резервного инстанса перезапускается для применения изменения и будет недоступна минуту-две. Ваши данные сохраняются.",
     description: "Database detail plan-picker card description",
   },
   "databases.planPickerSave": {
@@ -1457,7 +1457,7 @@ const ruDatabases: Record<string, TranslationEntry> = {
   },
   "databases.planPickerConfirmBody": {
     message:
-      "База данных перезапустится для применения нового типа инстанса и будет недоступна минуту-две. Подключения прервутся. Ваши данные сохранятся.",
+      "База данных перезапустится для применения нового тарифа вычислений и будет недоступна минуту-две. Подключения прервутся. Ваши данные сохранятся.",
     description: "Database plan-picker confirm dialog body",
   },
   "databases.planPickerConfirmPrice": {

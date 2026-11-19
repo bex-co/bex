@@ -138,7 +138,7 @@ func TestBlueprintSyncKeepsTheDiskRulesOnAnExistingService(t *testing.T) {
 			existing: appv1alpha1.AppSpec{Tier: "starter", Replicas: 1, Disk: disk},
 			want:     appv1alpha1.AppSpec{Tier: "free"},
 			fields:   declares("plan"),
-			path:     "plan", message: "disks require a paid instance type",
+			path:     "plan", message: "disks require a paid compute plan",
 		},
 		"a disk and one instance declared together for a service on two": {
 			existing: appv1alpha1.AppSpec{Tier: "starter", Replicas: 2},
@@ -237,7 +237,7 @@ var appRuleBlueprintCover = map[string]struct{ manifest, refusal, elsewhere stri
 		refusal: "additional properties 'disk' not allowed"},
 	"spec.disk requires a paid tier": {
 		manifest: strings.Replace(diskRuleWeb, "plan: starter", "plan: free", 1) + diskRuleDisk,
-		refusal:  "disks require a paid instance type"},
+		refusal:  "disks require a paid compute plan"},
 	"a service with spec.disk cannot run more than one instance": {
 		manifest: diskRuleWeb + "    numInstances: 2\n" + diskRuleDisk,
 		refusal:  "cannot run more than one instance"},

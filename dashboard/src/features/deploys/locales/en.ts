@@ -540,9 +540,9 @@ const enDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.reason.startup_out_of_memory": {
     message:
-      "the instance ran out of memory during startup ({memory} limit on its instance type; exit code {code}) — reduce memory use or choose a larger instance type",
+      "the instance ran out of memory during startup ({memory} limit on its compute plan; exit code {code}) — reduce memory use or choose a larger compute plan",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the instance type's memory limit (e.g. 512Mi), code the exit code",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the compute plan's memory limit (e.g. 512Mi), code the exit code",
   },
   "deploys.reason.probe_http_waiting": {
     message:

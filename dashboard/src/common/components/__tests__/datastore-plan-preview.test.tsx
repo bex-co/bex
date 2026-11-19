@@ -51,7 +51,7 @@ describe("datastore plan preview", () => {
     [
       "Postgres",
       DatabaseOverviewSkeleton,
-      "Instance type",
+      "Compute plan",
       ["Cancel", "Save", "Edit"],
       6,
       2,
@@ -59,7 +59,7 @@ describe("datastore plan preview", () => {
     [
       "Key Value",
       KeyValueOverviewSkeleton,
-      "Instance type",
+      "Compute plan",
       ["Cancel", "Save"],
       9,
       3,

@@ -31,7 +31,7 @@ const koDatabases: Record<string, TranslationEntry> = {
   },
   "databases.colPlan": {
     message: "요금제",
-    description: "Databases table column header (instance type / tier)",
+    description: "Databases table column header (compute plan / tier)",
   },
   "databases.colVersion": {
     message: "버전",
@@ -193,11 +193,11 @@ const koDatabases: Record<string, TranslationEntry> = {
     description: "Create-database physical PostgreSQL identifier validation",
   },
   "databases.fieldPlan": {
-    message: "인스턴스 유형",
+    message: "컴퓨팅 플랜",
     description: "Create-database form field label (plan / tier)",
   },
   "databases.fieldPlanPlaceholder": {
-    message: "인스턴스 유형 선택",
+    message: "컴퓨팅 플랜 선택",
     description: "Create-database plan select placeholder",
   },
   "databases.fieldVersion": {
@@ -364,7 +364,7 @@ const koDatabases: Record<string, TranslationEntry> = {
     description: "Database detail metadata row label",
   },
   "databases.metaPlan": {
-    message: "인스턴스 유형",
+    message: "컴퓨팅 플랜",
     description: "Database detail metadata row label",
   },
   "databases.metaVersion": {
@@ -1393,12 +1393,12 @@ const koDatabases: Record<string, TranslationEntry> = {
     description: "Plan change blocked while a connection pooler is enabled",
   },
   "databases.planTitle": {
-    message: "인스턴스 유형",
+    message: "컴퓨팅 플랜",
     description: "Database detail plan-picker card title",
   },
   "databases.planDescription": {
     message:
-      "인스턴스 유형을 변경합니다. 대기 인스턴스가 없는 데이터베이스는 적용을 위해 다시 시작되며 1~2분간 사용할 수 없습니다. 데이터는 보존됩니다.",
+      "컴퓨팅 플랜을 변경합니다. 대기 인스턴스가 없는 데이터베이스는 적용을 위해 다시 시작되며 1~2분간 사용할 수 없습니다. 데이터는 보존됩니다.",
     description: "Database detail plan-picker card description",
   },
   "databases.planPickerSave": {
@@ -1415,7 +1415,7 @@ const koDatabases: Record<string, TranslationEntry> = {
   },
   "databases.planPickerConfirmBody": {
     message:
-      "새 인스턴스 유형을 적용하기 위해 데이터베이스가 다시 시작되며 1~2분간 사용할 수 없습니다. 연결이 끊어집니다. 데이터는 보존됩니다.",
+      "새 컴퓨팅 플랜을 적용하기 위해 데이터베이스가 다시 시작되며 1~2분간 사용할 수 없습니다. 연결이 끊어집니다. 데이터는 보존됩니다.",
     description: "Database plan-picker confirm dialog body",
   },
   "databases.planPickerConfirmPrice": {

@@ -39,7 +39,7 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-const wantPausedMessage = `"Pro Ultra" is temporarily unavailable; choose Pro Max or a smaller instance type.`
+const wantPausedMessage = `"Pro Ultra" is temporarily unavailable; choose Pro Max or a smaller compute plan.`
 
 func requirePausedProUltra(t *testing.T) {
 	t.Helper()

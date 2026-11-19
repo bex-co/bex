@@ -2569,10 +2569,9 @@ func blueprintErrorField(message string) string {
 	if strings.Contains(message, "pre-deploy command") {
 		return ".preDeployCommand"
 	}
-	// A paid-only refusal on a free plan names "instance type", which is not
-	// the type field: the declared feature, else the plan, is what changes
-	// (w4/416).
-	if strings.Contains(message, "paid instance type") {
+	// A paid-only refusal on a free plan names a "paid compute plan": the
+	// declared feature, else the plan, is what changes (w4/416).
+	if strings.Contains(message, "paid compute plan") {
 		switch {
 		case strings.Contains(message, "autoscaling"):
 			return ".scaling"

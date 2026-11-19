@@ -31,7 +31,7 @@ const ptDatabases: Record<string, TranslationEntry> = {
   },
   "databases.colPlan": {
     message: "Plano",
-    description: "Databases table column header (instance type / tier)",
+    description: "Databases table column header (compute plan / tier)",
   },
   "databases.colVersion": {
     message: "Versão",
@@ -195,11 +195,11 @@ const ptDatabases: Record<string, TranslationEntry> = {
     description: "Create-database physical PostgreSQL identifier validation",
   },
   "databases.fieldPlan": {
-    message: "Tipo de instância",
+    message: "Plano de computação",
     description: "Create-database form field label (plan / tier)",
   },
   "databases.fieldPlanPlaceholder": {
-    message: "Selecione um tipo de instância",
+    message: "Selecione um plano de computação",
     description: "Create-database plan select placeholder",
   },
   "databases.fieldVersion": {
@@ -368,7 +368,7 @@ const ptDatabases: Record<string, TranslationEntry> = {
     description: "Database detail metadata row label",
   },
   "databases.metaPlan": {
-    message: "Tipo de instância",
+    message: "Plano de computação",
     description: "Database detail metadata row label",
   },
   "databases.metaVersion": {
@@ -1427,12 +1427,12 @@ const ptDatabases: Record<string, TranslationEntry> = {
     description: "Plan change blocked while a connection pooler is enabled",
   },
   "databases.planTitle": {
-    message: "Tipo de instância",
+    message: "Plano de computação",
     description: "Database detail plan-picker card title",
   },
   "databases.planDescription": {
     message:
-      "Altere o tipo de instância. Um banco de dados sem standby reinicia para aplicar a mudança e fica indisponível por um ou dois minutos. Seus dados são mantidos.",
+      "Altere o plano de computação. Um banco de dados sem standby reinicia para aplicar a mudança e fica indisponível por um ou dois minutos. Seus dados são mantidos.",
     description: "Database detail plan-picker card description",
   },
   "databases.planPickerSave": {
@@ -1449,7 +1449,7 @@ const ptDatabases: Record<string, TranslationEntry> = {
   },
   "databases.planPickerConfirmBody": {
     message:
-      "O banco de dados reinicia para aplicar o novo tipo de instância e fica indisponível por um ou dois minutos. As conexões caem. Seus dados são mantidos.",
+      "O banco de dados reinicia para aplicar o novo plano de computação e fica indisponível por um ou dois minutos. As conexões caem. Seus dados são mantidos.",
     description: "Database plan-picker confirm dialog body",
   },
   "databases.planPickerConfirmPrice": {

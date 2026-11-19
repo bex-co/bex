@@ -1843,7 +1843,7 @@ describe("NewServicePage plan region while the catalog loads (w4/329)", () => {
     instanceTypesState.instanceTypes = [];
     instanceTypesState.loading = true;
     renderPage(`/?type=${type}`);
-    const label = await screen.findByText("Instance Type");
+    const label = await screen.findByText("Compute Plan");
     const region = label.parentElement!;
     const preview = region.querySelector('[aria-hidden="true"]');
     expect(preview?.children).toHaveLength(slots);
@@ -1854,7 +1854,7 @@ describe("NewServicePage plan region while the catalog loads (w4/329)", () => {
     instanceTypesState.instanceTypes = [];
     renderPage("/?type=static_site");
     await screen.findByRole("heading", { level: 1 });
-    expect(screen.queryByText("Instance Type")).toBeNull();
+    expect(screen.queryByText("Compute Plan")).toBeNull();
   });
 });
 

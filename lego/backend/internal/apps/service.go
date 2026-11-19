@@ -1413,7 +1413,7 @@ func sshSessionReady(v AppView) error {
 	case !sshTypeHasInstances(v.Type):
 		return shellRefusal(ShellRefusalIneligible, fmt.Errorf("%w: shell access is available for web services, private services and background workers", core.ErrConflict))
 	case !sshPaidPlan(v.Plan):
-		return shellRefusal(ShellRefusalIneligible, fmt.Errorf("%w: shell access needs a paid instance type; Free services have no SSH or shell", core.ErrConflict))
+		return shellRefusal(ShellRefusalIneligible, fmt.Errorf("%w: shell access needs a paid compute plan; Free services have no SSH or shell", core.ErrConflict))
 	case v.Revision == "" || v.Image == "":
 		return shellRefusal(ShellRefusalInstanceGone, fmt.Errorf("%w: the service has no running instance yet; wait for the current deploy to go live", core.ErrConflict))
 	}
@@ -1596,7 +1596,10 @@ func (s *Service) List(ctx context.Context, ownerID string) ([]AppView, error) {
 // captured-live shape; ID is Render's plan spelling (what SetPlan accepts),
 // matching the picker's other fields.
 type InstanceType struct {
-	ID         string
+	ID string
+	// PlanID is Render's spec-based plan ID ("0.5c-512mb" for starter), shown
+	// beside the legacy name since Render's 2026-08-26 plan rename (w6/m483).
+	PlanID     string
 	Name       string
 	CPU        string
 	Memory     string
@@ -1627,7 +1630,7 @@ func (s *Service) InstanceTypes(ctx context.Context) ([]InstanceType, error) {
 		perMinute, _ := pricing.Default.InstanceUSDPerMinute(id, store.ResourceKindService)
 		reason := pausedTierMessage(id)
 		out[i] = InstanceType{
-			ID: t.RenderPlan, Name: tierDisplayName(id), CPU: t.CPU,
+			ID: t.RenderPlan, PlanID: tiers.ComputeSpecID(id), Name: tierDisplayName(id), CPU: t.CPU,
 			Memory: t.Memory, MonthlyUSD: monthlyUSD, USDPerMinute: perMinute,
 			Available: reason == "", UnavailableReason: reason,
 		}
@@ -4168,7 +4171,7 @@ func pausedTierMessage(tierID string) string {
 	if !tiers.Compute.Paused(tierID) {
 		return ""
 	}
-	return fmt.Sprintf("%q is temporarily unavailable; choose %s or a smaller instance type.", tierDisplayName(tierID), tierDisplayName(largestSelectableTierID()))
+	return fmt.Sprintf("%q is temporarily unavailable; choose %s or a smaller compute plan.", tierDisplayName(tierID), tierDisplayName(largestSelectableTierID()))
 }
 
 // largestSelectableTierID is the top rung that is not paused — the catalog is
@@ -4195,8 +4198,8 @@ func errPausedTier(tierID, current string) error {
 		return nil
 	}
 	t, _ := tiers.Compute.ByID(tierID)
-	// field locates a Blueprint refusal at plan: the message names "instance
-	// type", which is not the type field (w8/231).
+	// field locates a Blueprint refusal at plan: the message names a "compute
+	// plan", the plan field rather than the type field (w8/231).
 	return core.NewBadRequestError(InstanceTypeUnavailableCode, msg, map[string]any{"plan": t.RenderPlan, "field": "plan"})
 }
 
@@ -6689,7 +6692,7 @@ func autoscalingSpec(req SetAutoscalingRequest, serviceType, tier string) (appv1
 	// under the free plan's 1-instance cap (w4/365). Empty tier reads as
 	// free, the validateMaintenanceEligibility/validateDisk convention.
 	if tier == "" || tier == "free" {
-		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: autoscaling requires a paid instance type", core.ErrBadRequest)
+		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: autoscaling requires a paid compute plan", core.ErrBadRequest)
 	}
 	if req.MinInstances < 0 {
 		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: minInstances must be ≥ 0", core.ErrBadRequest)

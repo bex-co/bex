@@ -1,12 +1,7 @@
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/common/components/ui/card";
+import { Card, CardContent } from "@/common/components/ui/card";
+import { ScalingRecentMetricsHeader } from "@/features/services/components/scaling-frames";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { MetricSection } from "@/features/metrics/components/metric-section";
@@ -38,7 +33,7 @@ const RECENT_WINDOW: RangeWindow = {
 };
 
 /**
- * Render's "Recent Metrics" section on the Scaling page (w7/m43): average
+ * Render's "Recent Metrics" section on the Compute page (w7/m43): average
  * CPU/memory utilization across all instances plus total instances over the
  * past 48 hours — the data behind an instance-count or autoscaling-target
  * choice, without leaving the page. Reuses the metrics feature's query hook
@@ -87,10 +82,8 @@ export function ScalingRecentMetrics({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{t("services.scalingMetricsTitle")}</CardTitle>
-        <CardDescription className="mt-1">
-          {t("services.scalingMetricsNote")}{" "}
+      <ScalingRecentMetricsHeader
+        viewAll={
           <Link
             to="/services/$serviceId/metrics"
             params={{ serviceId }}
@@ -98,8 +91,8 @@ export function ScalingRecentMetrics({
           >
             {t("services.scalingMetricsViewAll")}
           </Link>
-        </CardDescription>
-      </CardHeader>
+        }
+      />
       <CardContent className="space-y-6">
         <AvgUtilizationSection
           title={t("services.scalingMetricsMemory")}

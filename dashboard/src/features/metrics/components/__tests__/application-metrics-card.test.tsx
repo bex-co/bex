@@ -290,7 +290,7 @@ describe("ApplicationMetricsCard", () => {
     expect(limitLinks.length).toBe(2); // memory + cpu sections
     expect(limitLinks[0]).toHaveAttribute(
       "href",
-      "/services/beancount-cms/plan",
+      "/services/beancount-cms/compute",
     );
   });
 
@@ -314,14 +314,14 @@ describe("ApplicationMetricsCard", () => {
     expect(await screen.findByText("50.0%")).toBeInTheDocument();
   });
 
-  it("links Total Instances to the scaling tab (w5/m42)", async () => {
+  it("links Total Instances to the Compute page's Manual Scaling section (w5/m42, w6/m483)", async () => {
     mockUseMetrics.mockReturnValue(emptyResult());
 
     renderCard("beancount-cms");
 
     expect(
       await screen.findByRole("link", { name: "Manage scaling" }),
-    ).toHaveAttribute("href", "/services/beancount-cms/scaling");
+    ).toHaveAttribute("href", "/services/beancount-cms/compute#manual-scaling");
   });
 
   // w4/567: a cron job has no replica count and no Scaling page to link to.

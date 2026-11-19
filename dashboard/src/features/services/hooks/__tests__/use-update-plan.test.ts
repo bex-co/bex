@@ -39,7 +39,7 @@ describe("useUpdatePlan", () => {
       variables: { id: "app", plan: "pro_plus" },
     });
     expect(toastSuccess).toHaveBeenCalledWith(
-      "Instance type updated to Pro Plus",
+      "Compute plan updated to Pro Plus",
     );
     expect(toastError).not.toHaveBeenCalled();
   });
@@ -56,7 +56,7 @@ describe("useUpdatePlan", () => {
 
     expect(ok).toBe(false);
     expect(toastError).toHaveBeenCalledWith(
-      "Couldn't update the instance type. Please try again.",
+      "Couldn't update the compute plan. Please try again.",
     );
     expect(toastSuccess).not.toHaveBeenCalled();
   });

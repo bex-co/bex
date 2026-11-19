@@ -678,7 +678,9 @@ var cronRunGQLType = graphql.NewObject(graphql.ObjectConfig{
 var instanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "InstanceType",
 	Fields: graphql.Fields{
-		"id":     gqlutil.StrField(func(t InstanceType) any { return t.ID }),
+		"id": gqlutil.StrField(func(t InstanceType) any { return t.ID }),
+		// Render's spec-based plan ID, beside the legacy name (w6/m483).
+		"planId": gqlutil.ReqStrField(func(t InstanceType) any { return t.PlanID }),
 		"name":   gqlutil.StrField(func(t InstanceType) any { return t.Name }),
 		"cpu":    gqlutil.StrField(func(t InstanceType) any { return t.CPU }),
 		"memory": gqlutil.StrField(func(t InstanceType) any { return t.Memory }),

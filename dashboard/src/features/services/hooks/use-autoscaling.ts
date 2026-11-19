@@ -30,12 +30,17 @@ export interface UseAutoscalingResult {
   disable: () => Promise<boolean>;
 }
 
-export function useAutoscaling(serviceId: string): UseAutoscalingResult {
+/** `skip`: a service that cannot scale (a cron job) has no config to read. */
+export function useAutoscaling(
+  serviceId: string,
+  { skip = false }: { skip?: boolean } = {},
+): UseAutoscalingResult {
   const { t } = useTranslations();
   const [saving, setSaving] = useState(false);
 
   const { data, loading } = useQuery(AutoscalingConfigDocument, {
     variables: { id: serviceId },
+    skip,
   });
 
   const [mutateSet] = useMutation(SetAutoscalingDocument);

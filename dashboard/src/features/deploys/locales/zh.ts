@@ -518,9 +518,9 @@ const zhDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.reason.startup_out_of_memory": {
     message:
-      "实例在启动期间内存不足（其实例类型的内存上限为 {memory}；退出码 {code}）— 请减少内存占用或选择更大的实例类型",
+      "实例在启动期间内存不足（其计算套餐的内存上限为 {memory}；退出码 {code}）— 请减少内存占用或选择更大的计算套餐",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the instance type's memory limit (e.g. 512Mi), code the exit code",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the compute plan's memory limit (e.g. 512Mi), code the exit code",
   },
   "deploys.reason.probe_http_waiting": {
     message:

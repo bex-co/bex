@@ -1349,7 +1349,7 @@ func (s *Service) rollbackFetched(ctx context.Context, service string, a *appv1a
 			return DeployView{}, err
 		}
 		if limited && !slices.Contains(ids, deployID) {
-			return DeployView{}, fmt.Errorf("%w: a Free web service can roll back only to its two most recent previous deploys, and deploy %q is older. Upgrade the instance type to roll back further, or %s", core.ErrConflict, deployID, redeployHint(a, target, false))
+			return DeployView{}, fmt.Errorf("%w: a Free web service can roll back only to its two most recent previous deploys, and deploy %q is older. Upgrade the compute plan to roll back further, or %s", core.ErrConflict, deployID, redeployHint(a, target, false))
 		}
 	}
 	// A static site restores the target's retained publication, built or

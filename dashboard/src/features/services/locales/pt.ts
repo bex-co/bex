@@ -93,13 +93,13 @@ const ptServices: Record<string, TranslationEntry> = {
   },
   "services.sshUnavailableSuspendedFree": {
     message:
-      "Este serviço está suspenso, e o SSH exige um tipo de instância pago. Retomar restaura o tráfego; serviços gratuitos continuam sem acesso ao shell.",
+      "Este serviço está suspenso, e o SSH exige um plano de computação pago. Retomar restaura o tráfego; serviços gratuitos continuam sem acesso ao shell.",
     description:
       "Why SSH is unavailable on a suspended Free service: both blockers, without implying a resume grants SSH (w4/m183)",
   },
   "services.sshUnavailableFree": {
     message:
-      "O SSH exige um tipo de instância pago. Serviços gratuitos não incluem acesso ao shell.",
+      "O SSH exige um plano de computação pago. Serviços gratuitos não incluem acesso ao shell.",
     description: "Why SSH is unavailable on a Free-plan service (w4/143)",
   },
   "services.sshRemedyResume": {
@@ -108,9 +108,9 @@ const ptServices: Record<string, TranslationEntry> = {
       "Link from an SSH-unavailable state to the service's suspend/resume setting (w4/143)",
   },
   "services.sshRemedyChangePlan": {
-    message: "Alterar tipo de instância",
+    message: "Alterar plano de computação",
     description:
-      "Link from an SSH-unavailable state on a Free service to its instance-type page (w4/143)",
+      "Link from an SSH-unavailable state on a Free service to its compute-plan page (w4/143)",
   },
   "services.shellDescription": {
     message:
@@ -499,10 +499,6 @@ const ptServices: Record<string, TranslationEntry> = {
     message: "Faça o deploy do seu primeiro App e ele aparecerá aqui.",
     description: "Services list empty state body",
   },
-  "services.navPlan": {
-    message: "Plano",
-    description: "Service sidebar link to the instance-type (plan) page",
-  },
   "services.headerServiceId": {
     message: "ID do serviço:",
     description: "Service-detail header metadata label for the service id",
@@ -574,10 +570,6 @@ const ptServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail nav item (static-site response headers page, Render's label)",
   },
-  "services.navScaling": {
-    message: "Escalonamento",
-    description: "Service-detail nav item (autoscaling tab)",
-  },
   "services.scalingTitle": {
     message: "Escalonamento automático",
     description: "Scaling tab section heading",
@@ -611,17 +603,6 @@ const ptServices: Record<string, TranslationEntry> = {
   "services.scalingTargetMemory": {
     message: "% de memória alvo",
     description: "Autoscaling target memory utilization input label",
-  },
-  "services.scalingUnavailableTitle": {
-    message: "O escalonamento não está disponível",
-    description:
-      "Scaling tab heading when this service type cannot be scaled (cron)",
-  },
-  "services.scalingUnavailableBody": {
-    message:
-      "O escalonamento se aplica a serviços web, privados e em segundo plano com instâncias de longa duração. Este tipo de serviço não tem um número de réplicas a ajustar.",
-    description:
-      "Scaling tab explanation when reached by direct URL for an ineligible type",
   },
   "services.scalingValidationMinMax": {
     message: "O mín. de instâncias deve ser ≤ ao máx. de instâncias.",
@@ -751,7 +732,7 @@ const ptServices: Record<string, TranslationEntry> = {
   },
   "services.scalingManualDescription": {
     message:
-      "Execute várias instâncias com balanceamento de carga automático. Todas as instâncias usam o mesmo tipo de instância e são cobradas de acordo.",
+      "Execute várias instâncias com balanceamento de carga automático. Todas as instâncias usam o mesmo plano de computação e são cobradas de acordo.",
     description: "Scaling page: manual instance-count card description",
   },
   "services.scalingManualDescriptionFree": {
@@ -1335,16 +1316,16 @@ const ptServices: Record<string, TranslationEntry> = {
     description: "Toast after setDisplayName fails",
   },
   "services.settingsInstanceType": {
-    message: "Tipo de instância",
+    message: "Plano de computação",
     description: "Settings tab row label for the App's current plan/tier",
   },
   "services.settingsNoInstanceType": {
-    message: "Nenhum tipo de instância definido",
+    message: "Nenhum plano de computação definido",
     description: "Settings tab state for an untiered (bare-CR) App",
   },
   "services.settingsUpdate": {
     message: "Atualizar",
-    description: "Settings tab link to the instance-type picker",
+    description: "Settings tab link to the compute-plan picker",
   },
   "services.settingsIdleTimeout": {
     message: "Tempo limite de inatividade",
@@ -1570,8 +1551,19 @@ const ptServices: Record<string, TranslationEntry> = {
     description: "Toast after setNotifyOnFail fails",
   },
   "services.planPickerTitle": {
-    message: "Escolha um tipo de instância",
-    description: "Plan-picker page heading",
+    message: "Plano de computação",
+    description:
+      "Accessible name of the Compute section's plan cards, shown after Edit (w6/m483)",
+  },
+  "services.computeTitle": {
+    message: "Computação",
+    description:
+      "Compute page: title of the section holding the service's compute plan (Render: 'Under Compute, click Edit', w6/m483)",
+  },
+  "services.computePlanEdit": {
+    message: "Editar",
+    description:
+      "Compute section button that opens the compute plan cards (w6/m483)",
   },
   "services.planPickerFreeGroup": {
     message: "Free",
@@ -1592,39 +1584,39 @@ const ptServices: Record<string, TranslationEntry> = {
   },
   "services.planPickerLegacyFreeWorker": {
     message:
-      "Este Background Worker está no plano Free, que Background Workers não podem mais usar. Ele continua em execução. Escolher um tipo de instância pago o tira do Free, e ele não poderá voltar.",
+      "Este Background Worker está no plano Free, que Background Workers não podem mais usar. Ele continua em execução. Escolher um plano de computação pago o tira do Free, e ele não poderá voltar.",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredWorker": {
     message:
-      "Este Background Worker não tem tipo de instância, e Background Workers não podem mais usar o Free. Ele continua em execução. Escolha um tipo de instância pago para atribuir um a ele.",
+      "Este Background Worker não tem plano de computação, e Background Workers não podem mais usar o Free. Ele continua em execução. Escolha um plano de computação pago para atribuir um a ele.",
     description:
-      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+      "Plan picker notice: this service type has no compute plan, and Free is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerLegacyFreePrivateService": {
     message:
-      "Este Private Service está no plano Free, que Private Services não podem mais usar. Ele continua em execução. Escolher um tipo de instância pago o tira do Free, e ele não poderá voltar.",
+      "Este Private Service está no plano Free, que Private Services não podem mais usar. Ele continua em execução. Escolher um plano de computação pago o tira do Free, e ele não poderá voltar.",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredPrivateService": {
     message:
-      "Este Private Service não tem tipo de instância, e Private Services não podem mais usar o Free. Ele continua em execução. Escolha um tipo de instância pago para atribuir um a ele.",
+      "Este Private Service não tem plano de computação, e Private Services não podem mais usar o Free. Ele continua em execução. Escolha um plano de computação pago para atribuir um a ele.",
     description:
-      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+      "Plan picker notice: this service type has no compute plan, and Free is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerLegacyFreeCronJob": {
     message:
-      "Este Cron Job está no plano Free, que Cron Jobs não podem mais usar. Ele continua em execução. Escolher um tipo de instância pago o tira do Free, e ele não poderá voltar.",
+      "Este Cron Job está no plano Free, que Cron Jobs não podem mais usar. Ele continua em execução. Escolher um plano de computação pago o tira do Free, e ele não poderá voltar.",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredCronJob": {
     message:
-      "Este Cron Job não tem tipo de instância, e Cron Jobs não podem mais usar o Free. Ele continua em execução. Escolha um tipo de instância pago para atribuir um a ele.",
+      "Este Cron Job não tem plano de computação, e Cron Jobs não podem mais usar o Free. Ele continua em execução. Escolha um plano de computação pago para atribuir um a ele.",
     description:
-      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+      "Plan picker notice: this service type has no compute plan, and Free is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerPaidGroup": {
     message: "Pago",
@@ -1640,11 +1632,12 @@ const ptServices: Record<string, TranslationEntry> = {
     description: "Plan-picker footer button: discard the selection",
   },
   "services.planPickerSave": {
-    message: "Salvar alterações",
-    description: "Plan-picker footer button: confirm the plan change",
+    message: "Salvar",
+    description:
+      'Compute section footer button: confirm the plan change ("Select a new compute plan and click Save", render.com/docs/compute-plans)',
   },
   "services.planPickerConfirmTitle": {
-    message: "Alterar o tipo de instância para {name}?",
+    message: "Alterar o plano de computação para {name}?",
     description: "Plan-change confirm dialog title",
   },
   "services.planPickerConfirmBody": {
@@ -1654,49 +1647,50 @@ const ptServices: Record<string, TranslationEntry> = {
   },
   "services.instanceTypePausedReason": {
     message:
-      "“{name}” está temporariamente indisponível; escolha {largest} ou um tipo de instância menor.",
+      "“{name}” está temporariamente indisponível; escolha {largest} ou um plano de computação menor.",
     description:
-      "A paused instance type's tooltip and screen-reader reason, composed in the dashboard's language from the tier and the largest still offered; matches bex-api's English unavailableReason (w4/552)",
+      "A paused compute plan's tooltip and screen-reader reason, composed in the dashboard's language from the tier and the largest still offered; matches bex-api's English unavailableReason (w4/552)",
   },
   "services.planPickerConfirmBodyCron": {
     message:
-      "As execuções iniciadas após a alteração usam o novo tipo de instância.",
+      "As execuções iniciadas após a alteração usam o novo plano de computação.",
     description:
       "Plan-change confirm body for a cron job, which serves no requests: its next run takes the new size (w4/548)",
   },
   "services.planPickerConfirmBodyNeverLive": {
     message:
-      "O serviço é executado no novo tipo de instância. Nada está sendo servido ainda — ele entra no ar quando um deploy for bem-sucedido.",
+      "O serviço é executado no novo plano de computação. Nada está sendo servido ainda — ele entra no ar quando um deploy for bem-sucedido.",
     description:
       "Plan-change confirm body for a service that has never gone live (w4/548)",
   },
   "services.planPickerConfirmRunPrice": {
     message:
-      "Este tipo de instância custa ${price} por minuto de execução, cobrado por segundo enquanto uma execução está em andamento. A cobrança mínima é de ${minimum} por mês por Cron Job.",
+      "Este plano de computação custa ${price} por minuto de execução, cobrado por segundo enquanto uma execução está em andamento. A cobrança mínima é de ${minimum} por mês por Cron Job.",
     description:
-      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
+      "Plan-change confirm for a cron job: the new compute plan's run-time rate (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.createFieldPlanCronHint": {
     message:
       "Um Cron Job é cobrado por segundo enquanto uma execução está em andamento. A cobrança mínima é de ${minimum} por mês por Cron Job.",
     description:
-      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
+      "Under the create form's compute plans for a cron job, which are priced per minute of run time (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.planPickerConfirmPrice": {
-    message: "Este tipo de instância custa ${price}/mês.",
+    message: "Este plano de computação custa ${price}/mês.",
     description:
-      "Plan-change confirm: the new instance type's monthly price, from the API's price sheet (w4/400)",
+      "Plan-change confirm: the new compute plan's monthly price, from the API's price sheet (w4/400)",
   },
   "services.planPickerSuccess": {
-    message: "Tipo de instância atualizado para {name}",
+    message: "Plano de computação atualizado para {name}",
     description: "Toast on a successful plan change",
   },
   "services.planPickerError": {
-    message: "Não foi possível atualizar o tipo de instância. Tente novamente.",
+    message:
+      "Não foi possível atualizar o plano de computação. Tente novamente.",
     description: "Toast on a failed plan change",
   },
   "services.planPickerErrorTitle": {
-    message: "Não foi possível carregar os tipos de instância",
+    message: "Não foi possível carregar os planos de computação",
     description: "Plan-picker error state title (instanceTypes query failed)",
   },
   "services.planPickerErrorBody": {
@@ -3659,7 +3653,7 @@ const ptServices: Record<string, TranslationEntry> = {
   },
   "services.resumeCardDescriptionCrashLoop": {
     message:
-      "Suspendemos este serviço porque ele falhou repetidamente ao iniciar e ficar saudável ao longo de 24 horas. Isso costuma ser causado por um erro de configuração, um bug no código da aplicação ou um tipo de instância subdimensionado. Corrija a causa e depois retome-o para colocá-lo de volta no ar.",
+      "Suspendemos este serviço porque ele falhou repetidamente ao iniciar e ficar saudável ao longo de 24 horas. Isso costuma ser causado por um erro de configuração, um bug no código da aplicação ou um plano de computação subdimensionado. Corrija a causa e depois retome-o para colocá-lo de volta no ar.",
     description:
       "Settings tab resume section description for a service the platform suspended for a crash loop (stuck_crashlooping)",
   },
@@ -4093,7 +4087,7 @@ const ptServices: Record<string, TranslationEntry> = {
     description: "Create-wizard Docker runtime option",
   },
   "services.createFieldPlan": {
-    message: "Tipo de instância",
+    message: "Plano de computação",
     description: "Create-wizard plan-picker section label",
   },
   "services.createFieldAutoDeploy": {
@@ -4381,7 +4375,7 @@ const ptServices: Record<string, TranslationEntry> = {
   },
   "services.diskPaidOnly": {
     message:
-      "Discos exigem um tipo de instância pago. Faça upgrade do plano deste serviço para anexar um.",
+      "Discos exigem um plano de computação pago. Faça upgrade do plano deste serviço para anexar um.",
     description: "Shown instead of the add button on a free service",
   },
   "services.diskAddAction": {
@@ -4660,6 +4654,11 @@ const ptServices: Record<string, TranslationEntry> = {
   "services.navShell": {
     message: "Shell",
     description: "Service-detail nav item (running-instance SSH page)",
+  },
+  "services.navCompute": {
+    message: "Computação",
+    description:
+      "Service sidebar link to the Compute page: the compute plan, manual scaling and autoscaling, as on Render (w6/m483)",
   },
   "services.eventsTitle": {
     message: "Atividade",
@@ -5022,9 +5021,9 @@ const ptServices: Record<string, TranslationEntry> = {
       "One side of an autoscaling change: its instance range and both targets (w4/m335)",
   },
   "services.eventsPlanChange": {
-    message: "Tipo de instância {from} → {to}",
+    message: "Plano de computação {from} → {to}",
     description:
-      "plan_changed detail line, by the instance types' names (w4/568)",
+      "plan_changed detail line, by the compute plans' names (w4/568, w6/m483)",
   },
   "services.eventsBranchChange": {
     message: "Branch {from} → {to}",

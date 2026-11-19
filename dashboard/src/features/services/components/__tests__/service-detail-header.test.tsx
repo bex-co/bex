@@ -363,7 +363,7 @@ describe("ServiceDetailHeader", () => {
 
   // w4/143: the reason used to sit in a hover-only title; it is visible text
   // now, with a link to the remedy the user can take.
-  it("says a Free service needs a paid instance type for SSH, and links to the plan", async () => {
+  it("says a Free service needs a paid compute plan for SSH, and links to the plan", async () => {
     const user = userEvent.setup();
     renderHeader(svc({ sshAddress: null, plan: "free" }));
 
@@ -371,12 +371,12 @@ describe("ServiceDetailHeader", () => {
 
     expect(
       screen.getByText(
-        "SSH needs a paid instance type. Free services don't include shell access.",
+        "SSH needs a paid compute plan. Free services don't include shell access.",
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Change instance type" }),
-    ).toHaveAttribute("href", "/services/app/plan");
+      screen.getByRole("link", { name: "Change compute plan" }),
+    ).toHaveAttribute("href", "/services/app/compute");
   });
 
   // w4/643: every other action is disabled while suspended, so the header
@@ -441,7 +441,7 @@ describe("ServiceDetailHeader", () => {
 
     expect(
       screen.getByText(
-        "This service is suspended, and SSH needs a paid instance type. Resuming restores traffic; Free services still don't include shell access.",
+        "This service is suspended, and SSH needs a paid compute plan. Resuming restores traffic; Free services still don't include shell access.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Resume it to connect over SSH/)).toBeNull();
@@ -454,7 +454,7 @@ describe("ServiceDetailHeader", () => {
   // a remedy link used to leave the modal menu (and its body pointer lock)
   // open over the page it recommended.
   it.each([
-    [{ plan: "free" }, "Change instance type", "plan page"],
+    [{ plan: "free" }, "Change compute plan", "compute page"],
     [{ plan: "starter", suspended: true }, "Resume service", "settings page"],
   ])(
     "closes Connect when its %o remedy navigates",
@@ -480,7 +480,7 @@ describe("ServiceDetailHeader", () => {
       const router = createRouter({
         routeTree: rootRoute.addChildren([
           page("/", "overview page"),
-          page("/services/$serviceId/plan", "plan page"),
+          page("/services/$serviceId/compute", "compute page"),
           page("/services/$serviceId/settings", "settings page"),
         ]),
         history: createMemoryHistory({ initialEntries: ["/"] }),
@@ -565,7 +565,7 @@ describe("ServiceDetailHeader", () => {
     // instance-type chip deep-links to the plan tab
     expect(screen.getByRole("link", { name: "Starter" })).toHaveAttribute(
       "href",
-      "/services/app/plan",
+      "/services/app/compute",
     );
 
     // the bex-native facts line, incl. the platform-host slug (w4/m20/t002)
@@ -635,7 +635,7 @@ describe("ServiceDetailHeader", () => {
     renderHeader(svc({ type: "web_service", plan: "starter" }));
     expect(
       await screen.findByRole("link", { name: "Starter" }),
-    ).toHaveAttribute("href", "/services/app/plan");
+    ).toHaveAttribute("href", "/services/app/compute");
   });
 
   it("shows a bound image credential by name and links to its settings panel", async () => {

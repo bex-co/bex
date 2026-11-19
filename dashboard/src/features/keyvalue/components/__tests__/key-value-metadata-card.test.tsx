@@ -199,13 +199,13 @@ describe("KeyValueMetadataCard connection limit", () => {
 
   it("reads the plan's limit from the catalog, after the plan row", () => {
     renderCard(kv({ plan: "pro_plus" }));
-    expect(row("Instance type")).toHaveTextContent("Pro Plus");
+    expect(row("Compute plan")).toHaveTextContent("Pro Plus");
     expect(row("Connection limit")).toHaveTextContent(/^10,000$/);
     const labels = Array.from(document.querySelectorAll("dt")).map(
       (dt) => dt.textContent,
     );
     expect(labels.indexOf("Connection limit")).toBe(
-      labels.indexOf("Instance type") + 1,
+      labels.indexOf("Compute plan") + 1,
     );
   });
 

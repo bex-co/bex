@@ -72,15 +72,15 @@ describe("InstanceTypeRow", () => {
 
   it("shows an honest no-plan state for an untiered App", async () => {
     renderRow(null);
-    expect(await screen.findByText("No instance type set")).toBeInTheDocument();
+    expect(await screen.findByText("No compute plan set")).toBeInTheDocument();
   });
 
-  it("links Update to the plan picker for this service", async () => {
+  it("links Update to this service's Compute page (w6/m483)", async () => {
     renderRow("standard");
     instanceTypesState.byID = (id) =>
       id === "standard" ? STANDARD : undefined;
 
     const link = await screen.findByRole("link", { name: "Update" });
-    expect(link).toHaveAttribute("href", "/services/app/plan");
+    expect(link).toHaveAttribute("href", "/services/app/compute");
   });
 });

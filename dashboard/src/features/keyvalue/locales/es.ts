@@ -30,7 +30,7 @@ const esKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value table column header",
   },
   "keyvalue.colPlan": {
-    message: "Tipo de instancia",
+    message: "Plan de cómputo",
     description: "Key Value table column header (plan / tier)",
   },
   "keyvalue.colVersion": {
@@ -272,7 +272,7 @@ const esKeyValue: Record<string, TranslationEntry> = {
     description: "Create-Key-Value name validation message",
   },
   "keyvalue.fieldPlan": {
-    message: "Tipo de instancia",
+    message: "Plan de cómputo",
     description: "Create-Key-Value form field label (plan / tier)",
   },
   "keyvalue.fieldVersion": {
@@ -365,7 +365,7 @@ const esKeyValue: Record<string, TranslationEntry> = {
     description: "Key Value detail metadata row label",
   },
   "keyvalue.metaPlan": {
-    message: "Tipo de instancia",
+    message: "Plan de cómputo",
     description: "Key Value detail metadata row label",
   },
   "keyvalue.metaConnectionLimit": {
@@ -556,17 +556,17 @@ const esKeyValue: Record<string, TranslationEntry> = {
     description: "Toast when a resume request fails",
   },
   "keyvalue.planTitle": {
-    message: "Tipo de instancia",
+    message: "Plan de cómputo",
     description: "Key Value detail plan-picker card title",
   },
   "keyvalue.planDescription": {
     message:
-      "Cambia a un tipo de instancia mayor; una instancia de Key Value no puede pasar a una menor. El cambio reinicia el almacén, que no está disponible durante uno o dos minutos. Los datos sobreviven según el modo de persistencia; un almacén con la persistencia desactivada pierde todas las claves.",
+      "Cambia a un plan de cómputo mayor; una instancia de Key Value no puede pasar a una menor. El cambio reinicia el almacén, que no está disponible durante uno o dos minutos. Los datos sobreviven según el modo de persistencia; un almacén con la persistencia desactivada pierde todas las claves.",
     description: "Key Value detail plan-picker card description",
   },
   "keyvalue.planDowngradeUnavailable": {
     message:
-      "Una instancia de Key Value no puede pasar a un tipo de instancia menor. Crea una instancia nueva con este tipo y traslada tus datos a ella.",
+      "Una instancia de Key Value no puede pasar a un plan de cómputo menor. Crea una instancia nueva con este plan y traslada tus datos a ella.",
     description:
       "Tooltip on a disabled plan card smaller than the store's current plan: Render does not downgrade a Key Value instance (w8/249)",
   },
@@ -590,7 +590,7 @@ const esKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.planPickerConfirmBody": {
     message:
-      "El almacén se reinicia para aplicar el nuevo tipo de instancia y no está disponible durante uno o dos minutos. Las conexiones se interrumpen.",
+      "El almacén se reinicia para aplicar el nuevo plan de cómputo y no está disponible durante uno o dos minutos. Las conexiones se interrumpen.",
     description: "Key Value plan-picker confirm dialog body",
   },
   "keyvalue.restartConfirmDataLoss": {

@@ -44,8 +44,8 @@ func TestSSHSessionReadyNamesTheBlocker(t *testing.T) {
 	}{
 		{"ready", ready, ""},
 		{"suspended", with(func(v *AppView) { v.Suspended = true }), "suspended; resume it first"},
-		{"free plan", with(func(v *AppView) { v.Plan = "free" }), "needs a paid instance type"},
-		{"unknown plan", with(func(v *AppView) { v.Plan = "" }), "needs a paid instance type"},
+		{"free plan", with(func(v *AppView) { v.Plan = "free" }), "needs a paid compute plan"},
+		{"unknown plan", with(func(v *AppView) { v.Plan = "" }), "needs a paid compute plan"},
 		{"static site", with(func(v *AppView) { v.Type = appv1alpha1.TypeStaticSite; v.Plan = "" }), "web services, private services and background workers"},
 		{"cron job", with(func(v *AppView) { v.Type = appv1alpha1.TypeCronJob }), "web services, private services and background workers"},
 		{"no revision", with(func(v *AppView) { v.Revision = "" }), "no running instance yet"},

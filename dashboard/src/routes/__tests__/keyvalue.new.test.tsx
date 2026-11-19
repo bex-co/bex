@@ -276,7 +276,7 @@ describe("NewKeyValuePage plan region while the catalog loads (w4/330)", () => {
     instanceTypesState.instanceTypes = [];
     instanceTypesState.loading = true;
     renderPage();
-    const label = await screen.findByText("Instance type");
+    const label = await screen.findByText("Compute plan");
     const preview = label.parentElement!.querySelector('[aria-hidden="true"]');
     // The route skeleton's slots: one per catalog plan, each with the ready
     // card's name, specs and connection-limit lines (w6/m459).

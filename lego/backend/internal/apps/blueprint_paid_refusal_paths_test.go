@@ -24,7 +24,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// A paid-only refusal on a free plan names "instance type", but the field to
+// A paid-only refusal on a free plan names a "paid compute plan", but the field to
 // change is the plan or the paid feature declared, never type (w4/416).
 func TestBlueprintPaidRefusalsPointAtTheFieldToChange(t *testing.T) {
 	for _, tc := range []struct {
@@ -53,9 +53,9 @@ func TestBlueprintPaidRefusalsPointAtTheFieldToChange(t *testing.T) {
 
 func TestBlueprintErrorFieldNeverAttributesInstanceTypeToType(t *testing.T) {
 	for message, want := range map[string]string{
-		"autoscaling requires a paid instance type": ".scaling",
-		"disks require a paid instance type":        ".disk",
-		"this workspace already has a free Key Value store (kv1); delete it or choose a paid instance type": ".plan",
+		"autoscaling requires a paid compute plan": ".scaling",
+		"disks require a paid compute plan":        ".disk",
+		"this workspace already has a free Key Value store (kv1); delete it or choose a paid compute plan": ".plan",
 		// Controls: the earlier keyword fixes are unchanged (w8/055).
 		"hostname example.com is already in use": ".domains",
 		"unsupported type \"cron\"":              ".type",

@@ -77,7 +77,7 @@ describe("DiskSection", () => {
 
   it("refuses to offer a disk on a free service, and says why", () => {
     render(<DiskSection serviceId="srv-1" plan="free" serviceType="web_service" />);
-    expect(screen.getByText(/require a paid instance type/i)).toBeInTheDocument();
+    expect(screen.getByText(/require a paid compute plan/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /add disk/i })).toBeDisabled();
   });
 
@@ -347,7 +347,7 @@ describe("DiskSection", () => {
     expect(
       screen.getByText(/need a long-running instance to mount on/i),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/paid instance type/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/paid compute plan/i)).not.toBeInTheDocument();
   });
 
   // "Not configured" is an operator's job and nothing the tenant can act on.

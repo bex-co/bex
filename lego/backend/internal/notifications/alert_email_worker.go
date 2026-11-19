@@ -448,7 +448,7 @@ func alertEmail(st store.AlertEmailStream, url string) (string, email.Message) {
 	case store.AlertEmailServiceSuspended:
 		title, cta = "Service suspended", "View events"
 		lead = fmt.Sprintf("We suspended %q because it repeatedly failed to start and become healthy over %s. "+
-			"This is often caused by a configuration error, a bug in the application code, or an undersized instance type. "+
+			"This is often caused by a configuration error, a bug in the application code, or an undersized compute plan. "+
 			"Fix the cause, then resume the service from its Settings page.", name, st.Detail)
 		st.Detail = ""
 	default:

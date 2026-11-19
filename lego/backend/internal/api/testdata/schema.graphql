@@ -1580,6 +1580,7 @@ type InstanceType {
   memory: String
   monthlyUsd: String
   name: String
+  planId: String!
   unavailableReason: String!
   usdPerMinute: String
 }

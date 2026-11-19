@@ -63,7 +63,7 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
     expect(screen.getByText("storefront-api")).toBeInTheDocument();
 
     // Navigation: top items {Deploys, Settings}, Monitor {Events, Logs,
-    // Metrics}, Manage {Environment, Disk, Shell, Scaling, Plan}.
+    // Metrics}, Manage {Environment, Disk, Shell, Compute}.
     expect(screen.getByText("Monitor")).toBeInTheDocument();
     expect(screen.getByText("Manage")).toBeInTheDocument();
     for (const [name, href, iconClass] of [
@@ -75,8 +75,7 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
       ["Environment", "/services/srv-1/env", "lucide-braces"],
       ["Disk", "/services/srv-1/disk", "lucide-hard-drive"],
       ["Shell", "/services/srv-1/shell", "lucide-square-terminal"],
-      ["Scaling", "/services/srv-1/scaling", "lucide-scaling"],
-      ["Plan", "/services/srv-1/plan", "lucide-credit-card"],
+      ["Compute", "/services/srv-1/compute", "lucide-cpu"],
     ] as const) {
       const link = screen.getByRole("link", { name });
       expect(link).toHaveAttribute("href", href);
@@ -98,8 +97,7 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
       "Environment",
       "Disk",
       "Shell",
-      "Scaling",
-      "Plan",
+      "Compute",
     ]);
   });
 
@@ -126,13 +124,13 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
       await screen.findByRole("link", { name: "Events" }),
     ).toBeInTheDocument();
     // Type-specific entries wait for the type: a static site must never flash
-    // Shell/Scaling/Plan (w5/m48/t001).
+    // Shell/Compute (w5/m48/t001).
     expect(
       screen.queryByRole("link", { name: "Shell" }),
     ).not.toBeInTheDocument();
   });
 
-  it("type-gates a static site: Events-first, no Deploys/Logs/Shell/Scaling/Plan, adds Redirects + Headers (w5/m48, w5/m57)", async () => {
+  it("type-gates a static site: Events-first, no Deploys/Logs/Shell/Compute, adds Redirects + Headers (w5/m48, w5/m57)", async () => {
     serverState.service = {
       id: "srv-1",
       name: "docs-site",

@@ -97,7 +97,7 @@ describe("service Shell page", () => {
 // w4/143: a Free service's Shell tab offered only "Manage SSH public keys",
 // which cannot help; it now names the plan gate and links to the plan.
 describe("service Shell page remedies (w4/143)", () => {
-  it("sends a Free service to its instance type instead of key management", async () => {
+  it("sends a Free service to its compute plan instead of key management", async () => {
     serverState.service = {
       ...serverState.service!,
       sshAddress: null,
@@ -107,12 +107,12 @@ describe("service Shell page remedies (w4/143)", () => {
 
     expect(
       await screen.findByText(
-        "SSH needs a paid instance type. Free services don't include shell access.",
+        "SSH needs a paid compute plan. Free services don't include shell access.",
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Change instance type" }),
-    ).toHaveAttribute("href", "/services/srv-example/plan");
+      screen.getByRole("link", { name: "Change compute plan" }),
+    ).toHaveAttribute("href", "/services/srv-example/compute");
     expect(
       screen.queryByRole("link", { name: "Manage SSH public keys" }),
     ).not.toBeInTheDocument();

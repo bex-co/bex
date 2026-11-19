@@ -11,12 +11,12 @@ src/
 │   ├── auth.{login,sign-up,forgot-password,reset-password,logout}.tsx
 │   ├── setup.payment.tsx   # sign-up payment wall (ADR075 D7 rev. 2026-08-29) — bare (no chrome), verification lands here
 │   ├── services.$serviceId.tsx            # service-detail shell + tab nav, with child tabs:
-│   │     services.$serviceId.{index,env,logs,metrics,plan,settings}.tsx
+│   │     services.$serviceId.{index,env,logs,metrics,compute,settings}.tsx
 │   ├── settings.tsx        # account settings (Kratos settings flow)
 │   └── $.tsx               # catch-all 404
 ├── features/auth/          # login/registration/recovery/settings pages + shared page shell
 ├── features/onboarding/     # payment wall page + `EmailVerificationGate` / `PaymentSetupGate` (root walls) + their pure decisions
-├── features/services/       # service list + detail tabs (overview/env/plan/settings), lifecycle actions
+├── features/services/       # service list + detail tabs (overview/env/compute/settings), lifecycle actions
 ├── features/logs/           # live logs page (query + follow) over bex-api
 ├── features/metrics/        # App metrics page (Render-style) — first real bex-api GraphQL client
 ├── features/i18n/           # language-switcher component

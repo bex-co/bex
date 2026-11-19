@@ -73,7 +73,7 @@ function renderServiceRootSkeleton(base: "/services" | "/static") {
   return render(<RouterProvider router={router} />);
 }
 
-function renderServicePlanParentSkeleton(serviceType: string | null) {
+function renderServiceComputeParentSkeleton(serviceType: string | null) {
   const rootRoute = createRootRoute({ component: Outlet });
   const resourceRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -82,14 +82,18 @@ function renderServicePlanParentSkeleton(serviceType: string | null) {
       <ServiceRouteContentSkeleton base="/services" serviceType={serviceType} />
     ),
   });
-  const planRoute = createRoute({
+  const computeRoute = createRoute({
     getParentRoute: () => resourceRoute,
-    path: "/plan",
+    path: "/compute",
     component: () => null,
   });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([resourceRoute.addChildren([planRoute])]),
-    history: createMemoryHistory({ initialEntries: ["/services/srv-1/plan"] }),
+    routeTree: rootRoute.addChildren([
+      resourceRoute.addChildren([computeRoute]),
+    ]),
+    history: createMemoryHistory({
+      initialEntries: ["/services/srv-1/compute"],
+    }),
     context: {},
   });
   return render(<RouterProvider router={router} />);
@@ -607,29 +611,41 @@ it("previews a cron job's plan billing hint", async () => {
   );
 });
 
-describe("service plan pending groups (w4/m196)", () => {
-  // The card grid is each group's last child: a label always precedes it and
-  // an SMTP note may (w8/m127).
-  function groupCards(container: HTMLElement): number[] {
+describe("service compute pending frame (w6/m483)", () => {
+  function regions(container: HTMLElement): string[] {
     return [
       ...container.querySelectorAll(
-        '[data-route-skeleton="service-plan"] [data-instance-type-group]',
+        '[data-route-skeleton="service-compute"] [data-skeleton-region]',
       ),
-    ].map((group) => group.lastElementChild?.children.length ?? 0);
+    ].map((region) => region.getAttribute("data-skeleton-region")!);
   }
 
+  const SCALABLE = [
+    "compute-plan",
+    "autoscaling",
+    "manual-scaling",
+    "recent-metrics",
+  ];
+
   it.each([
-    ["web_service", [1, 6]],
-    ["cron_job", [6]],
-    ["background_worker", [6]],
-    ["private_service", [6]],
-    // Undecided: never guess Free eligibility — only the shared paid ladder.
-    [null, [6]],
+    ["web_service", SCALABLE],
+    ["private_service", SCALABLE],
+    ["background_worker", SCALABLE],
+    // A cron job has a compute plan and no scaling sections.
+    ["cron_job", ["compute-plan"]],
+    // Undecided: reserve the sections every other compute type has.
+    [null, SCALABLE],
   ])(
-    "parent-pending plan frame for %s reserves its ready Free/Paid groups",
-    async (serviceType, cards) => {
-      const { container } = renderServicePlanParentSkeleton(serviceType);
-      await waitFor(() => expect(groupCards(container)).toEqual(cards));
+    "parent-pending Compute frame for %s reserves its ready sections",
+    async (serviceType, expected) => {
+      const { container } = renderServiceComputeParentSkeleton(serviceType);
+      await waitFor(() => expect(regions(container)).toEqual(expected));
+      // The Compute section's title is static copy, drawn as on the ready card.
+      expect(
+        container.querySelector(
+          '[data-skeleton-region="compute-plan"] [data-slot="card-title"]',
+        ),
+      ).toHaveTextContent("Compute");
     },
   );
 });

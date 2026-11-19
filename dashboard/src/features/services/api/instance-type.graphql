@@ -11,6 +11,8 @@
 query InstanceTypes {
   instanceTypes {
     id
+    # Render's spec-based plan ID, shown beside the legacy name (w6/m483).
+    planId
     name
     cpu
     memory

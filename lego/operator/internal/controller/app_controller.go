@@ -6730,9 +6730,9 @@ func pendingPodMessage(pods []corev1.Pod, now time.Time) (string, string) {
 func unschedulableMessage(scheduler string) string {
 	msg := "no node currently has room for this service's instance"
 	if short := build.ScarceResources(scheduler); len(short) > 0 {
-		msg += " (not enough " + strings.Join(short, ", ") + " free for its instance type)"
+		msg += " (not enough " + strings.Join(short, ", ") + " free for its compute plan)"
 	}
-	return msg + ". Nothing has run yet, so there are no service logs; " + unschedulableWaiting + ", or choose a smaller instance type."
+	return msg + ". Nothing has run yet, so there are no service logs; " + unschedulableWaiting + ", or choose a smaller compute plan."
 }
 
 // unschedulableWaiting is the in-flight half of an unschedulable diagnosis;

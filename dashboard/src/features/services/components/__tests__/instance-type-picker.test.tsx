@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -8,7 +8,7 @@ import {
   createRoute,
   createMemoryHistory,
 } from "@tanstack/react-router";
-import { InstanceTypePicker } from "@/features/services/components/instance-type-picker";
+import { ComputePlanSection } from "@/features/services/components/compute-plan-section";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 
 const instanceTypesState: {
@@ -18,7 +18,11 @@ const instanceTypesState: {
 } = { instanceTypes: [], loading: false, error: undefined };
 
 vi.mock("@/features/services/hooks/use-instance-types", () => ({
-  useInstanceTypes: () => instanceTypesState,
+  useInstanceTypes: () => ({
+    ...instanceTypesState,
+    byID: (id: string | null | undefined) =>
+      instanceTypesState.instanceTypes.find((it) => it.id === id),
+  }),
 }));
 
 const updatePlan = vi.fn();
@@ -28,6 +32,7 @@ vi.mock("@/features/services/hooks/use-update-plan", () => ({
 
 const FREE: InstanceTypeView = {
   id: "free",
+  planId: "free",
   name: "Free",
   cpu: "100m",
   memory: "512Mi",
@@ -37,6 +42,7 @@ const FREE: InstanceTypeView = {
 };
 const STANDARD: InstanceTypeView = {
   id: "standard",
+  planId: "1c-2g",
   name: "Standard",
   cpu: "1",
   memory: "2Gi",
@@ -46,6 +52,7 @@ const STANDARD: InstanceTypeView = {
 };
 const PRO: InstanceTypeView = {
   id: "pro",
+  planId: "2c-4g",
   name: "Pro",
   cpu: "2",
   memory: "4Gi",
@@ -54,7 +61,9 @@ const PRO: InstanceTypeView = {
   unavailableReason: "",
 };
 
-function renderPicker(
+// The picker is the Compute section's edit mode (w6/m483): render the
+// section and open it with Edit, as a user does.
+async function renderPicker(
   currentPlan: string | null,
   serviceType: string | null = "web_service",
   neverLive = false,
@@ -64,7 +73,7 @@ function renderPicker(
     getParentRoute: () => rootRoute,
     path: "/",
     component: () => (
-      <InstanceTypePicker
+      <ComputePlanSection
         serviceId="app"
         currentPlan={currentPlan}
         serviceType={serviceType}
@@ -72,17 +81,14 @@ function renderPicker(
       />
     ),
   });
-  const settingsRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/services/$serviceId/settings",
-    component: () => <div>settings page</div>,
-  });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([pickerRoute, settingsRoute]),
+    routeTree: rootRoute.addChildren([pickerRoute]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
     context: { client: {} as never, session: null },
   });
-  return render(<RouterProvider router={router} />);
+  const view = render(<RouterProvider router={router} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+  return view;
 }
 
 beforeEach(() => {
@@ -95,29 +101,44 @@ beforeEach(() => {
 
 describe("InstanceTypePicker", () => {
   it("pre-selects the current plan and keeps Save disabled until the selection changes", async () => {
-    renderPicker("standard");
+    await renderPicker("standard");
 
     const standardCard = await screen.findByRole("radio", { name: /Standard/ });
     expect(standardCard).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  // w6/m483: Render's plan ID first, the legacy name beside it; Free has no
+  // legacy name, so its card keeps the name.
+  it("names each paid card by its Render plan ID beside the legacy name", async () => {
+    await renderPicker("standard");
+
+    const standard = await screen.findByRole("radio", { name: /Standard/ });
+    expect(standard.querySelector(".font-mono")).toHaveTextContent(/^1c-2g$/);
+    expect(standard).toHaveAccessibleName(/^1c-2g Standard Current 2 GB/);
+    expect(
+      screen.getByRole("radio", { name: /^2c-4g Pro 4 GB/ }),
+    ).toBeInTheDocument();
+    const free = screen.getByRole("radio", { name: /^Free 512 MB/ });
+    expect(free.querySelector(".font-mono")).toBeNull();
   });
 
   it("enables Save once a different card is picked, and separates Free from the paid ladder", async () => {
     const user = userEvent.setup();
-    renderPicker("standard");
+    await renderPicker("standard");
 
     expect(await screen.findAllByText("Free")).toHaveLength(2); // group label + card title
     expect(screen.getByText("Paid")).toBeInTheDocument();
 
     await user.click(screen.getByRole("radio", { name: /Pro\b/ }));
-    expect(screen.getByRole("button", { name: "Save Changes" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
   });
 
   // w4/m207: one Tab stop across the Free and Paid sections; the arrows move
   // the draft, Save follows it, and restoring the plan disables Save again.
   it("moves the draft across Free and Paid with the arrows, without saving", async () => {
     const user = userEvent.setup();
-    renderPicker("free");
+    await renderPicker("free");
     const free = await screen.findByRole("radio", { name: /^Free/ });
     expect(free).toHaveAttribute("tabindex", "0");
     expect(screen.getByRole("radio", { name: /Standard/ })).toHaveAttribute(
@@ -129,15 +150,15 @@ describe("InstanceTypePicker", () => {
     const standard = screen.getByRole("radio", { name: /Standard/ });
     expect(document.activeElement).toBe(standard);
     expect(standard).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByRole("button", { name: "Save Changes" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
     await user.keyboard("{ArrowLeft}");
     expect(free).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     expect(updatePlan).not.toHaveBeenCalled();
   });
 
   it("offers no Free tier for a background worker (w6/025 paid-only)", async () => {
-    renderPicker("standard", "background_worker");
+    await renderPicker("standard", "background_worker");
 
     expect(await screen.findByText("Paid")).toBeInTheDocument();
     expect(screen.queryByText("Free")).not.toBeInTheDocument();
@@ -145,7 +166,7 @@ describe("InstanceTypePicker", () => {
   });
 
   it("offers no Free tier for a private service either (w1/111 paid-only)", async () => {
-    renderPicker("standard", "private_service");
+    await renderPicker("standard", "private_service");
 
     expect(await screen.findByText("Paid")).toBeInTheDocument();
     expect(screen.queryByText("Free")).not.toBeInTheDocument();
@@ -154,14 +175,14 @@ describe("InstanceTypePicker", () => {
 
   it("still offers Free to the type Render sells on it (w1/111 control)", async () => {
     // A web service keeps Free; cron jobs became paid-only with w8/048.
-    renderPicker("standard", "web_service");
+    await renderPicker("standard", "web_service");
 
     expect(await screen.findAllByText("Free")).toHaveLength(2); // group label + card title
     expect(screen.getByText("Paid")).toBeInTheDocument();
   });
 
   it("offers no Free tier for a cron job (w8/048 paid-only)", async () => {
-    renderPicker("standard", "cron_job");
+    await renderPicker("standard", "cron_job");
 
     expect(await screen.findByText("Paid")).toBeInTheDocument();
     expect(screen.queryByText("Free")).not.toBeInTheDocument();
@@ -171,7 +192,7 @@ describe("InstanceTypePicker", () => {
   // w4/351: a cron job created on Free before w8/048 matched no offered card,
   // so the page showed an empty selection and never said it runs on Free.
   it("says a legacy Free cron job is on Free, and pre-selects nothing", async () => {
-    renderPicker("free", "cron_job");
+    await renderPicker("free", "cron_job");
 
     const note = await screen.findByRole("note");
     expect(note).toHaveTextContent("This cron job is on Free");
@@ -183,17 +204,17 @@ describe("InstanceTypePicker", () => {
     for (const radio of screen.getAllByRole("radio")) {
       expect(radio).toHaveAttribute("aria-checked", "false");
     }
-    expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
 
   it.each([
     ["background_worker", "free", "This background worker is on Free"],
     ["private_service", "free", "This private service is on Free"],
-    ["cron_job", null, "This cron job has no instance type"],
+    ["cron_job", null, "This cron job has no compute plan"],
   ])(
     "words the notice for a %s on %s",
     async (serviceType, currentPlan, opening) => {
-      renderPicker(currentPlan, serviceType);
+      await renderPicker(currentPlan, serviceType);
       expect(await screen.findByRole("note")).toHaveTextContent(opening);
     },
   );
@@ -201,7 +222,7 @@ describe("InstanceTypePicker", () => {
   it("shows the notice while the catalog is still loading", async () => {
     instanceTypesState.instanceTypes = [];
     instanceTypesState.loading = true;
-    renderPicker("free", "cron_job");
+    await renderPicker("free", "cron_job");
     expect(await screen.findByRole("note")).toHaveTextContent(
       "This cron job is on Free",
     );
@@ -213,7 +234,7 @@ describe("InstanceTypePicker", () => {
   ])(
     "adds no notice where the current plan %s is offered to a %s",
     async (currentPlan, serviceType, card) => {
-      renderPicker(currentPlan, serviceType);
+      await renderPicker(currentPlan, serviceType);
       expect(await screen.findByRole("radio", { name: card })).toHaveAttribute(
         "aria-checked",
         "true",
@@ -224,17 +245,17 @@ describe("InstanceTypePicker", () => {
 
   it("shows each card's catalog price and repeats it in the confirmation (w4/400)", async () => {
     const user = userEvent.setup();
-    renderPicker("standard");
+    await renderPicker("standard");
 
     expect(await screen.findByText("$0.00/month")).toBeInTheDocument();
     expect(screen.getByText("$17.50/month")).toBeInTheDocument();
     expect(screen.getByText("$59.50/month")).toBeInTheDocument();
 
     await user.click(screen.getByRole("radio", { name: /Pro\b/ }));
-    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
     const dialog = await screen.findByRole("alertdialog");
     expect(
-      within(dialog).getByText(/This instance type costs \$59\.50\/month\./),
+      within(dialog).getByText(/This compute plan costs \$59\.50\/month\./),
     ).toBeInTheDocument();
   });
 
@@ -246,14 +267,14 @@ describe("InstanceTypePicker", () => {
       { ...PRO, usdPerMinute: "0.0014" },
     ];
     const user = userEvent.setup();
-    renderPicker("standard", "cron_job");
+    await renderPicker("standard", "cron_job");
 
     expect(
       await screen.findByText("$0.0004/min of run time"),
     ).toBeInTheDocument();
     expect(screen.queryByText(/\/month/)).not.toBeInTheDocument();
     await user.click(screen.getByRole("radio", { name: /Pro\b/ }));
-    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
     const dialog = await screen.findByRole("alertdialog");
     expect(
       within(dialog).getByText(
@@ -265,14 +286,14 @@ describe("InstanceTypePicker", () => {
   // w9/m448: the Plan page states the cron job minimum above a cron job's
   // instance types, as the create form does, and never for another type.
   it("states the cron job minimum on a cron job's Plan page only", async () => {
-    const view = renderPicker("standard", "cron_job");
+    const view = await renderPicker("standard", "cron_job");
     expect(
       await screen.findByText(
         "A cron job is billed per second while a run executes. The minimum charge is $0.70 a month per cron job.",
       ),
     ).toBeInTheDocument();
     view.unmount();
-    renderPicker("standard", "web_service");
+    await renderPicker("standard", "web_service");
     await screen.findByRole("radiogroup");
     expect(screen.queryByText(/minimum charge/)).not.toBeInTheDocument();
   });
@@ -297,22 +318,22 @@ describe("InstanceTypePicker", () => {
       "a cron job",
       "cron_job",
       false,
-      "Runs that start after the change use the new instance type.",
+      "Runs that start after the change use the new compute plan.",
     ],
     // A cron job serves nothing either way, so its own copy wins.
     [
       "a never-run cron job",
       "cron_job",
       true,
-      "Runs that start after the change use the new instance type.",
+      "Runs that start after the change use the new compute plan.",
     ],
   ])(
     "confirms a resize truthfully for %s",
     async (_, type, neverLive, want) => {
       const user = userEvent.setup();
-      renderPicker("standard", type, neverLive);
+      await renderPicker("standard", type, neverLive);
       await user.click(await screen.findByRole("radio", { name: /Pro\b/ }));
-      await user.click(screen.getByRole("button", { name: "Save Changes" }));
+      await user.click(screen.getByRole("button", { name: "Save" }));
       const dialog = await screen.findByRole("alertdialog");
       expect(dialog).toHaveTextContent(want);
       if (neverLive) {
@@ -323,52 +344,52 @@ describe("InstanceTypePicker", () => {
 
   it("renders no price when the catalog omits one (w4/400)", async () => {
     instanceTypesState.instanceTypes = [{ ...PRO, monthlyUsd: "" }];
-    renderPicker("standard");
+    await renderPicker("standard");
     const card = await screen.findByRole("radio", { name: /Pro\b/ });
     expect(card).not.toHaveTextContent("$");
     expect(card).not.toHaveTextContent("undefined");
   });
 
-  it("confirms and fires updateServicePlan with the picked Render-spelled id, then navigates to Settings on success", async () => {
+  it("confirms and fires updateServicePlan with the picked Render-spelled id, then closes the cards on success", async () => {
     const user = userEvent.setup();
-    renderPicker("standard");
+    await renderPicker("standard");
 
     await user.click(await screen.findByRole("radio", { name: /Pro\b/ }));
-    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     const dialog = await screen.findByRole("alertdialog");
     expect(
-      within(dialog).getByText("Change instance type to Pro?"),
+      within(dialog).getByText("Change compute plan to 2c-4g (Pro)?"),
     ).toBeInTheDocument();
 
-    await user.click(
-      within(dialog).getByRole("button", { name: "Save Changes" }),
-    );
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
-    expect(updatePlan).toHaveBeenCalledWith("app", "pro", "Pro");
-    expect(await screen.findByText("settings page")).toBeInTheDocument();
+    expect(updatePlan).toHaveBeenCalledWith("app", "pro", "2c-4g (Pro)");
+    expect(
+      await screen.findByRole("button", { name: "Edit" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup")).toBeNull();
   });
 
-  it("does not navigate when the mutation fails", async () => {
+  it("keeps the cards open when the mutation fails", async () => {
     updatePlan.mockResolvedValue(false);
     const user = userEvent.setup();
-    renderPicker("standard");
+    await renderPicker("standard");
 
     await user.click(await screen.findByRole("radio", { name: /Pro\b/ }));
-    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
     const dialog = await screen.findByRole("alertdialog");
-    await user.click(
-      within(dialog).getByRole("button", { name: "Save Changes" }),
-    );
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
     expect(updatePlan).toHaveBeenCalled();
-    expect(screen.queryByText("settings page")).not.toBeInTheDocument();
+    expect(screen.getByRole("radiogroup")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
   });
 
   // w2/m250: a paused tier stays listed, disabled with bex-api's reason, and
   // can never be submitted — not by click, nor by arrowing past it.
   const PAUSED_REASON =
-    '"Pro Ultra" is temporarily unavailable; choose Pro Max or a smaller instance type.';
+    '"Pro Ultra" is temporarily unavailable; choose Pro Max or a smaller compute plan.';
   const ULTRA: InstanceTypeView = {
     id: "pro_ultra",
     name: "Pro Ultra",
@@ -382,7 +403,7 @@ describe("InstanceTypePicker", () => {
   it("shows a paused tier disabled with its reason and never submits it", async () => {
     instanceTypesState.instanceTypes = [FREE, STANDARD, PRO, ULTRA];
     const user = userEvent.setup();
-    renderPicker("pro");
+    await renderPicker("pro");
 
     const ultra = await screen.findByRole("radio", { name: /Pro Ultra/ });
     expect(ultra).toBeDisabled();
@@ -393,11 +414,11 @@ describe("InstanceTypePicker", () => {
 
     await user.click(ultra);
     expect(ultra).toHaveAttribute("aria-checked", "false");
-    expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 
     // Arrowing on from the last available card wraps past the paused one.
     // The service is on Pro, so its card carries the Current badge.
-    const pro = screen.getByRole("radio", { name: /^Pro Current 4 GB/ });
+    const pro = screen.getByRole("radio", { name: /^2c-4g Pro Current 4 GB/ });
     pro.focus();
     await user.keyboard("{ArrowRight}");
     expect(ultra).toHaveAttribute("aria-checked", "false");
@@ -410,12 +431,12 @@ describe("InstanceTypePicker", () => {
 
   it("still shows a service already on a paused tier as its current plan", async () => {
     instanceTypesState.instanceTypes = [FREE, STANDARD, PRO, ULTRA];
-    renderPicker("pro_ultra");
+    await renderPicker("pro_ultra");
 
     const ultra = await screen.findByRole("radio", { name: /Pro Ultra/ });
     expect(ultra).toHaveAttribute("aria-checked", "true");
     expect(ultra).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
 
   // The catalog-loading state is a structural preview of the ready picker —
@@ -459,22 +480,20 @@ describe("InstanceTypePicker", () => {
           "pro_plus",
           "pro_max",
           "pro_ultra",
-        ].map((id) => ({ ...STANDARD, id, name: id })),
+        ].map((id) => ({ ...STANDARD, id, planId: id, name: id })),
       ];
       instanceTypesState.instanceTypes = [];
       instanceTypesState.loading = true;
-      const pending = renderPicker("standard", serviceType);
-      await screen.findByText("Pick an Instance Type");
+      const pending = await renderPicker("standard", serviceType);
+      await screen.findByRole("button", { name: "Cancel" });
       const pendingShape = groupShape(cardContent(pending.container));
       expect(screen.queryAllByRole("radio")).toHaveLength(0);
-      expect(
-        screen.getByRole("button", { name: "Save Changes" }),
-      ).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
       pending.unmount();
 
       instanceTypesState.instanceTypes = catalog;
       instanceTypesState.loading = false;
-      const ready = renderPicker("standard", serviceType);
+      const ready = await renderPicker("standard", serviceType);
       await screen.findByRole("radiogroup");
       const readyShape = groupShape(cardContent(ready.container));
 
@@ -488,27 +507,25 @@ describe("InstanceTypePicker", () => {
         "aria-checked",
         "true",
       );
-      expect(
-        screen.getByRole("button", { name: "Save Changes" }),
-      ).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     },
   );
 
   it("never reserves a Free group while the service type is undecided", async () => {
     instanceTypesState.instanceTypes = [];
     instanceTypesState.loading = true;
-    const { container } = renderPicker(null, null);
-    await screen.findByText("Pick an Instance Type");
+    const { container } = await renderPicker(null, null);
+    await screen.findByRole("button", { name: "Cancel" });
 
     expect(groupShape(cardContent(container))).toHaveLength(1);
   });
 
   it("shows an error card instead of the picker when the catalog query fails", async () => {
     instanceTypesState.error = new Error("network down");
-    renderPicker("standard");
+    await renderPicker("standard");
 
     expect(
-      await screen.findByText("Couldn't load instance types"),
+      await screen.findByText("Couldn't load compute plans"),
     ).toBeInTheDocument();
     expect(screen.queryByRole("radiogroup")).not.toBeInTheDocument();
   });
@@ -525,7 +542,7 @@ describe("InstanceTypePicker SMTP rule", () => {
   it("notes the rule under the Free and Paid groups", async () => {
     instanceTypesState.instanceTypes = [FREE, STANDARD, PRO];
     instanceTypesState.loading = false;
-    renderPicker("free");
+    await renderPicker("free");
     expect(await screen.findByText(FREE_NOTE)).toBeInTheDocument();
     expect(screen.getByText(PAID_NOTE)).toBeInTheDocument();
   });
@@ -533,7 +550,7 @@ describe("InstanceTypePicker SMTP rule", () => {
   it("draws the same notes while the catalog loads", async () => {
     instanceTypesState.instanceTypes = [];
     instanceTypesState.loading = true;
-    const { container } = renderPicker("free");
+    const { container } = await renderPicker("free");
     await screen.findByText(PAID_NOTE);
     const skeleton = container.querySelector(
       "[data-instance-type-groups-skeleton]",

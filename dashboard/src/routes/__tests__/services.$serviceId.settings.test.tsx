@@ -1303,7 +1303,7 @@ describe("ServiceSettingsPage", () => {
     },
   );
 
-  it("hides the Instance Type row for a static site (no sized pod, w5/m48)", async () => {
+  it("hides the Compute Plan row for a static site (no sized pod, w5/m48)", async () => {
     serverState.service = svc({
       type: "static_site",
       repo: "https://github.com/acme/docs",
@@ -1317,14 +1317,14 @@ describe("ServiceSettingsPage", () => {
     expect(
       await screen.findByText("Static Site", { selector: ":not(a)" }),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Instance Type")).not.toBeInTheDocument();
+    expect(screen.queryByText("Compute Plan")).not.toBeInTheDocument();
   });
 
-  it("keeps the Instance Type row for a web service (guard against over-gating)", async () => {
+  it("keeps the Compute Plan row for a web service (guard against over-gating)", async () => {
     serverState.service = svc();
     renderSettings();
 
-    expect(await screen.findByText("Instance Type")).toBeInTheDocument();
+    expect(await screen.findByText("Compute Plan")).toBeInTheDocument();
   });
 
   it("links the static edge-rule editors' dedicated pages from Settings (w5/m48)", async () => {

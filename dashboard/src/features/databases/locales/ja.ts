@@ -31,7 +31,7 @@ const jaDatabases: Record<string, TranslationEntry> = {
   },
   "databases.colPlan": {
     message: "プラン",
-    description: "Databases table column header (instance type / tier)",
+    description: "Databases table column header (compute plan / tier)",
   },
   "databases.colVersion": {
     message: "バージョン",
@@ -194,11 +194,11 @@ const jaDatabases: Record<string, TranslationEntry> = {
     description: "Create-database physical PostgreSQL identifier validation",
   },
   "databases.fieldPlan": {
-    message: "インスタンスタイプ",
+    message: "コンピュートプラン",
     description: "Create-database form field label (plan / tier)",
   },
   "databases.fieldPlanPlaceholder": {
-    message: "インスタンスタイプを選択",
+    message: "コンピュートプランを選択",
     description: "Create-database plan select placeholder",
   },
   "databases.fieldVersion": {
@@ -367,7 +367,7 @@ const jaDatabases: Record<string, TranslationEntry> = {
     description: "Database detail metadata row label",
   },
   "databases.metaPlan": {
-    message: "インスタンスタイプ",
+    message: "コンピュートプラン",
     description: "Database detail metadata row label",
   },
   "databases.metaVersion": {
@@ -1402,12 +1402,12 @@ const jaDatabases: Record<string, TranslationEntry> = {
     description: "Plan change blocked while a connection pooler is enabled",
   },
   "databases.planTitle": {
-    message: "インスタンスタイプ",
+    message: "コンピュートプラン",
     description: "Database detail plan-picker card title",
   },
   "databases.planDescription": {
     message:
-      "インスタンスタイプを変更します。スタンバイのないデータベースは、適用のために再起動され、1〜2 分間利用できなくなります。データは保持されます。",
+      "コンピュートプランを変更します。スタンバイのないデータベースは、適用のために再起動され、1〜2 分間利用できなくなります。データは保持されます。",
     description: "Database detail plan-picker card description",
   },
   "databases.planPickerSave": {
@@ -1424,7 +1424,7 @@ const jaDatabases: Record<string, TranslationEntry> = {
   },
   "databases.planPickerConfirmBody": {
     message:
-      "新しいインスタンスタイプを適用するためにデータベースが再起動され、1〜2 分間利用できなくなります。接続は切断されます。データは保持されます。",
+      "新しいコンピュートプランを適用するためにデータベースが再起動され、1〜2 分間利用できなくなります。接続は切断されます。データは保持されます。",
     description: "Database plan-picker confirm dialog body",
   },
   "databases.planPickerConfirmPrice": {

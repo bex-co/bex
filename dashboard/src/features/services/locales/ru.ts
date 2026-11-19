@@ -94,13 +94,13 @@ const ruServices: Record<string, TranslationEntry> = {
   },
   "services.sshUnavailableSuspendedFree": {
     message:
-      "Этот сервис приостановлен, а для SSH нужен платный тип инстанса. Возобновление восстановит трафик, но бесплатные сервисы по-прежнему не включают доступ к оболочке.",
+      "Этот сервис приостановлен, а для SSH нужен платный тариф вычислений. Возобновление восстановит трафик, но бесплатные сервисы по-прежнему не включают доступ к оболочке.",
     description:
       "Why SSH is unavailable on a suspended Free service: both blockers, without implying a resume grants SSH (w4/m183)",
   },
   "services.sshUnavailableFree": {
     message:
-      "Для SSH нужен платный тип инстанса. Бесплатные сервисы не включают доступ к оболочке.",
+      "Для SSH нужен платный тариф вычислений. Бесплатные сервисы не включают доступ к оболочке.",
     description: "Why SSH is unavailable on a Free-plan service (w4/143)",
   },
   "services.sshRemedyResume": {
@@ -109,9 +109,9 @@ const ruServices: Record<string, TranslationEntry> = {
       "Link from an SSH-unavailable state to the service's suspend/resume setting (w4/143)",
   },
   "services.sshRemedyChangePlan": {
-    message: "Изменить тип инстанса",
+    message: "Изменить тариф вычислений",
     description:
-      "Link from an SSH-unavailable state on a Free service to its instance-type page (w4/143)",
+      "Link from an SSH-unavailable state on a Free service to its compute-plan page (w4/143)",
   },
   "services.shellDescription": {
     message:
@@ -499,10 +499,6 @@ const ruServices: Record<string, TranslationEntry> = {
     message: "Разверните своё первое приложение, и оно появится здесь.",
     description: "Services list empty state body",
   },
-  "services.navPlan": {
-    message: "Тариф",
-    description: "Service sidebar link to the instance-type (plan) page",
-  },
   "services.headerServiceId": {
     message: "ID сервиса:",
     description: "Service-detail header metadata label for the service id",
@@ -574,10 +570,6 @@ const ruServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail nav item (static-site response headers page, Render's label)",
   },
-  "services.navScaling": {
-    message: "Масштабирование",
-    description: "Service-detail nav item (autoscaling tab)",
-  },
   "services.scalingTitle": {
     message: "Автомасштабирование",
     description: "Scaling tab section heading",
@@ -611,17 +603,6 @@ const ruServices: Record<string, TranslationEntry> = {
   "services.scalingTargetMemory": {
     message: "Целевая память, %",
     description: "Autoscaling target memory utilization input label",
-  },
-  "services.scalingUnavailableTitle": {
-    message: "Масштабирование недоступно",
-    description:
-      "Scaling tab heading when this service type cannot be scaled (cron)",
-  },
-  "services.scalingUnavailableBody": {
-    message:
-      "Масштабирование применимо к Web Service, Private Service и Background Worker с долгоживущими инстансами. У этого типа сервиса нет числа реплик, которое можно изменить.",
-    description:
-      "Scaling tab explanation when reached by direct URL for an ineligible type",
   },
   "services.scalingValidationMinMax": {
     message: "Мин. число инстансов не должно превышать макс. число.",
@@ -750,7 +731,7 @@ const ruServices: Record<string, TranslationEntry> = {
   },
   "services.scalingManualDescription": {
     message:
-      "Запускайте несколько инстансов с автоматической балансировкой нагрузки. Все инстансы используют один тип инстанса и оплачиваются соответственно.",
+      "Запускайте несколько инстансов с автоматической балансировкой нагрузки. Все инстансы используют один тариф вычислений и оплачиваются соответственно.",
     description: "Scaling page: manual instance-count card description",
   },
   "services.scalingManualDescriptionFree": {
@@ -1328,16 +1309,16 @@ const ruServices: Record<string, TranslationEntry> = {
     description: "Toast after setDisplayName fails",
   },
   "services.settingsInstanceType": {
-    message: "Тип инстанса",
+    message: "Тариф вычислений",
     description: "Settings tab row label for the App's current plan/tier",
   },
   "services.settingsNoInstanceType": {
-    message: "Тип инстанса не задан",
+    message: "Тариф вычислений не задан",
     description: "Settings tab state for an untiered (bare-CR) App",
   },
   "services.settingsUpdate": {
     message: "Изменить",
-    description: "Settings tab link to the instance-type picker",
+    description: "Settings tab link to the compute-plan picker",
   },
   "services.settingsIdleTimeout": {
     message: "Тайм-аут простоя",
@@ -1562,8 +1543,19 @@ const ruServices: Record<string, TranslationEntry> = {
     description: "Toast after setNotifyOnFail fails",
   },
   "services.planPickerTitle": {
-    message: "Выберите тип инстанса",
-    description: "Plan-picker page heading",
+    message: "Тариф вычислений",
+    description:
+      "Accessible name of the Compute section's plan cards, shown after Edit (w6/m483)",
+  },
+  "services.computeTitle": {
+    message: "Вычисления",
+    description:
+      "Compute page: title of the section holding the service's compute plan (Render: 'Under Compute, click Edit', w6/m483)",
+  },
+  "services.computePlanEdit": {
+    message: "Изменить",
+    description:
+      "Compute section button that opens the compute plan cards (w6/m483)",
   },
   "services.planPickerFreeGroup": {
     message: "Бесплатные",
@@ -1584,39 +1576,39 @@ const ruServices: Record<string, TranslationEntry> = {
   },
   "services.planPickerLegacyFreeWorker": {
     message:
-      "Этот Background Worker работает на бесплатном тарифе, который Background Worker больше не могут использовать. Он продолжает работать. Выбор платного типа инстанса переведёт его с бесплатного тарифа, и вернуться на него будет нельзя.",
+      "Этот Background Worker работает на бесплатном тарифе, который Background Worker больше не могут использовать. Он продолжает работать. Выбор платного тарифа вычислений переведёт его с бесплатного тарифа, и вернуться на него будет нельзя.",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredWorker": {
     message:
-      "У этого Background Worker нет типа инстанса, а бесплатный тариф для Background Worker больше недоступен. Он продолжает работать. Выберите платный тип инстанса, чтобы задать его.",
+      "У этого Background Worker нет тарифа вычислений, а бесплатный тариф для Background Worker больше недоступен. Он продолжает работать. Выберите платный тариф вычислений, чтобы задать его.",
     description:
-      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+      "Plan picker notice: this service type has no compute plan, and Free is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerLegacyFreePrivateService": {
     message:
-      "Этот Private Service работает на бесплатном тарифе, который Private Service больше не могут использовать. Он продолжает работать. Выбор платного типа инстанса переведёт его с бесплатного тарифа, и вернуться на него будет нельзя.",
+      "Этот Private Service работает на бесплатном тарифе, который Private Service больше не могут использовать. Он продолжает работать. Выбор платного тарифа вычислений переведёт его с бесплатного тарифа, и вернуться на него будет нельзя.",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredPrivateService": {
     message:
-      "У этого Private Service нет типа инстанса, а бесплатный тариф для Private Service больше недоступен. Он продолжает работать. Выберите платный тип инстанса, чтобы задать его.",
+      "У этого Private Service нет тарифа вычислений, а бесплатный тариф для Private Service больше недоступен. Он продолжает работать. Выберите платный тариф вычислений, чтобы задать его.",
     description:
-      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+      "Plan picker notice: this service type has no compute plan, and Free is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerLegacyFreeCronJob": {
     message:
-      "Этот Cron Job работает на бесплатном тарифе, который Cron Job больше не могут использовать. Он продолжает работать. Выбор платного типа инстанса переведёт его с бесплатного тарифа, и вернуться на него будет нельзя.",
+      "Этот Cron Job работает на бесплатном тарифе, который Cron Job больше не могут использовать. Он продолжает работать. Выбор платного тарифа вычислений переведёт его с бесплатного тарифа, и вернуться на него будет нельзя.",
     description:
       "Plan picker notice: this legacy service type is still on Free, which is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerUntieredCronJob": {
     message:
-      "У этого Cron Job нет типа инстанса, а бесплатный тариф для Cron Job больше недоступен. Он продолжает работать. Выберите платный тип инстанса, чтобы задать его.",
+      "У этого Cron Job нет тарифа вычислений, а бесплатный тариф для Cron Job больше недоступен. Он продолжает работать. Выберите платный тариф вычислений, чтобы задать его.",
     description:
-      "Plan picker notice: this service type has no instance type, and Free is no longer offered to it (ADR030 §7)",
+      "Plan picker notice: this service type has no compute plan, and Free is no longer offered to it (ADR030 §7)",
   },
   "services.planPickerPaidGroup": {
     message: "Платные",
@@ -1632,11 +1624,12 @@ const ruServices: Record<string, TranslationEntry> = {
     description: "Plan-picker footer button: discard the selection",
   },
   "services.planPickerSave": {
-    message: "Сохранить изменения",
-    description: "Plan-picker footer button: confirm the plan change",
+    message: "Сохранить",
+    description:
+      'Compute section footer button: confirm the plan change ("Select a new compute plan and click Save", render.com/docs/compute-plans)',
   },
   "services.planPickerConfirmTitle": {
-    message: "Изменить тип инстанса на {name}?",
+    message: "Изменить тариф вычислений на {name}?",
     description: "Plan-change confirm dialog title",
   },
   "services.planPickerConfirmBody": {
@@ -1646,49 +1639,49 @@ const ruServices: Record<string, TranslationEntry> = {
   },
   "services.instanceTypePausedReason": {
     message:
-      "«{name}» временно недоступен; выберите {largest} или меньший тип инстанса.",
+      "«{name}» временно недоступен; выберите {largest} или меньший тариф вычислений.",
     description:
-      "A paused instance type's tooltip and screen-reader reason, composed in the dashboard's language from the tier and the largest still offered; matches bex-api's English unavailableReason (w4/552)",
+      "A paused compute plan's tooltip and screen-reader reason, composed in the dashboard's language from the tier and the largest still offered; matches bex-api's English unavailableReason (w4/552)",
   },
   "services.planPickerConfirmBodyCron": {
     message:
-      "Запуски, начавшиеся после изменения, используют новый тип инстанса.",
+      "Запуски, начавшиеся после изменения, используют новый тариф вычислений.",
     description:
       "Plan-change confirm body for a cron job, which serves no requests: its next run takes the new size (w4/548)",
   },
   "services.planPickerConfirmBodyNeverLive": {
     message:
-      "Сервис работает на новом типе инстанса. Пока ничего не обслуживается — он запустится, когда деплой завершится успешно.",
+      "Сервис работает на новом тарифе вычислений. Пока ничего не обслуживается — он запустится, когда деплой завершится успешно.",
     description:
       "Plan-change confirm body for a service that has never gone live (w4/548)",
   },
   "services.planPickerConfirmRunPrice": {
     message:
-      "Этот тип инстанса стоит ${price} за минуту работы, оплата посекундная на время выполнения запуска. Минимальная плата — ${minimum} в месяц за каждый Cron Job.",
+      "Этот тариф вычислений стоит ${price} за минуту работы, оплата посекундная на время выполнения запуска. Минимальная плата — ${minimum} в месяц за каждый Cron Job.",
     description:
-      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
+      "Plan-change confirm for a cron job: the new compute plan's run-time rate (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.createFieldPlanCronHint": {
     message:
       "Cron Job оплачивается посекундно на время выполнения запуска. Минимальная плата — ${minimum} в месяц за каждый Cron Job.",
     description:
-      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
+      "Under the create form's compute plans for a cron job, which are priced per minute of run time (w4/546); minimum is the cron job minimum in USD without the currency symbol (w9/m448)",
   },
   "services.planPickerConfirmPrice": {
-    message: "Этот тип инстанса стоит ${price} в месяц.",
+    message: "Этот тариф вычислений стоит ${price} в месяц.",
     description:
-      "Plan-change confirm: the new instance type's monthly price, from the API's price sheet (w4/400)",
+      "Plan-change confirm: the new compute plan's monthly price, from the API's price sheet (w4/400)",
   },
   "services.planPickerSuccess": {
-    message: "Тип инстанса изменён на {name}",
+    message: "Тариф вычислений изменён на {name}",
     description: "Toast on a successful plan change",
   },
   "services.planPickerError": {
-    message: "Не удалось изменить тип инстанса. Попробуйте ещё раз.",
+    message: "Не удалось изменить тариф вычислений. Попробуйте ещё раз.",
     description: "Toast on a failed plan change",
   },
   "services.planPickerErrorTitle": {
-    message: "Не удалось загрузить типы инстансов",
+    message: "Не удалось загрузить тарифы вычислений",
     description: "Plan-picker error state title (instanceTypes query failed)",
   },
   "services.planPickerErrorBody": {
@@ -3640,7 +3633,7 @@ const ruServices: Record<string, TranslationEntry> = {
   },
   "services.resumeCardDescriptionCrashLoop": {
     message:
-      "Мы приостановили этот сервис, потому что в течение 24 часов он многократно не мог запуститься и стать работоспособным. Частые причины — ошибка конфигурации, ошибка в коде приложения или слишком малый тип инстанса. Устраните причину, затем возобновите сервис, чтобы вернуть его в работу.",
+      "Мы приостановили этот сервис, потому что в течение 24 часов он многократно не мог запуститься и стать работоспособным. Частые причины — ошибка конфигурации, ошибка в коде приложения или слишком малый тариф вычислений. Устраните причину, затем возобновите сервис, чтобы вернуть его в работу.",
     description:
       "Settings tab resume section description for a service the platform suspended for a crash loop (stuck_crashlooping)",
   },
@@ -4071,7 +4064,7 @@ const ruServices: Record<string, TranslationEntry> = {
     description: "Create-wizard Docker runtime option",
   },
   "services.createFieldPlan": {
-    message: "Тип инстанса",
+    message: "Тариф вычислений",
     description: "Create-wizard plan-picker section label",
   },
   "services.createFieldAutoDeploy": {
@@ -4362,7 +4355,7 @@ const ruServices: Record<string, TranslationEntry> = {
   },
   "services.diskPaidOnly": {
     message:
-      "Для дисков нужен платный тип инстанса. Перейдите на другой тариф сервиса, чтобы подключить диск.",
+      "Для дисков нужен платный тариф вычислений. Перейдите на другой тариф сервиса, чтобы подключить диск.",
     description: "Shown instead of the add button on a free service",
   },
   "services.diskAddAction": {
@@ -4640,6 +4633,11 @@ const ruServices: Record<string, TranslationEntry> = {
   "services.navShell": {
     message: "Shell",
     description: "Service-detail nav item (running-instance SSH page)",
+  },
+  "services.navCompute": {
+    message: "Вычисления",
+    description:
+      "Service sidebar link to the Compute page: the compute plan, manual scaling and autoscaling, as on Render (w6/m483)",
   },
   "services.eventsTitle": {
     message: "Активность",
@@ -5012,9 +5010,9 @@ const ruServices: Record<string, TranslationEntry> = {
       "One side of an autoscaling change: its instance range and both targets (w4/m335)",
   },
   "services.eventsPlanChange": {
-    message: "Тип инстанса {from} → {to}",
+    message: "Тариф вычислений {from} → {to}",
     description:
-      "plan_changed detail line, by the instance types' names (w4/568)",
+      "plan_changed detail line, by the compute plans' names (w4/568, w6/m483)",
   },
   "services.eventsBranchChange": {
     message: "Ветка {from} → {to}",

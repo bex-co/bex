@@ -551,9 +551,9 @@ const esDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.reason.startup_out_of_memory": {
     message:
-      "la instancia se quedó sin memoria durante el arranque (límite de {memory} en su tipo de instancia; código de salida {code}): reduce el uso de memoria o elige un tipo de instancia mayor",
+      "la instancia se quedó sin memoria durante el arranque (límite de {memory} en su plan de cómputo; código de salida {code}): reduce el uso de memoria o elige un plan de cómputo mayor",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the instance type's memory limit (e.g. 512Mi), code the exit code",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason startup_out_of_memory, w4/630); params are the sentence's values: memory is the compute plan's memory limit (e.g. 512Mi), code the exit code",
   },
   "deploys.reason.probe_http_waiting": {
     message:
