@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1180" viewBox="0 0 1280 1180" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
-  <title>ADR112 — bex object storage: the Render CLI and wrangler r2 contracts served by bex-api over one Wasabi store, with public buckets served by objectgw</title>
-  <desc>render ea objects calls bex-api's Render routes, which authorize and sign a presigned URL, and the bytes move straight between the client and Wasabi. Stock wrangler r2 calls bex-api's Cloudflare-shaped routes and the bytes stream through bex-api. Buckets are rows in Postgres over one shared bucket per region on the platform's Wasabi account. A public bucket is served read-only by objectgw at pub-id.onbex.co. An hourly sweep feeds the quota gate, lifecycle rules and shadow meters. The platform's backups sit in other buckets of the same account, under other credentials.</desc>
+  <title>ADR112 — bex object storage: the Render CLI contract and an S3-compatible API served by bex-api over one Wasabi store, with public buckets served by objectgw</title>
+  <desc>render ea objects calls bex-api's Render routes, which authorize and sign a presigned URL, and the bytes move straight between the client and Wasabi. aws-cli, rclone, boto3 and bex s3 call bex-api's S3 surface on objects.onbex.co, which verifies SigV4 with an access key whose secret is held in OpenBao, and the bytes stream through bex-api. Buckets are rows in Postgres over one shared bucket per region on the platform's Wasabi account. A public bucket is served read-only by objectgw at pub-id.onbex.co. An hourly sweep feeds the quota gate, lifecycle rules and shadow meters. The platform's backups sit in other buckets of the same account, under other credentials.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="#1f2937"/>
@@ -24,8 +24,8 @@
 
   <rect width="1280" height="1180" fill="#ffffff"/>
 
-  <text x="30" y="40" font-size="20" font-weight="700" fill="#111827">ADR112 — bex object storage: two CLI contracts over Wasabi</text>
-  <text x="30" y="64" class="t">render ea objects and wrangler r2 are served by bex-api. Wasabi holds the bytes, and a tenant never holds a Wasabi credential.</text>
+  <text x="30" y="40" font-size="20" font-weight="700" fill="#111827">ADR112 — bex object storage: Render's CLI and S3 over Wasabi</text>
+  <text x="30" y="64" class="t">render ea objects and S3 clients (bex s3, aws-cli, rclone, boto3) are served by bex-api and bex-s3. Wasabi holds the bytes, and a tenant never holds a Wasabi credential.</text>
 
   <!-- Path A bytes: the bytes bypass bex-api -->
   <path class="flow2" d="M180,120 L180,104 L1085,104 L1085,118"/>
@@ -37,29 +37,29 @@
   <text x="48" y="148" class="h">Clients</text>
   <text x="48" y="172" class="m">render ea objects …</text>
   <text x="48" y="188" class="s">Render CLI and SDKs · presigned URLs (D2)</text>
-  <text x="48" y="212" class="m">wrangler r2 … --remote</text>
-  <text x="48" y="228" class="s">stock wrangler, three env vars (D3)</text>
-  <text x="48" y="262" class="t">No bex CLI is added</text>
+  <text x="48" y="212" class="m">bex s3 … · aws · rclone · boto3</text>
+  <text x="48" y="228" class="s">S3 client, access key, path style (D3)</text>
+  <text x="48" y="262" class="t">bex s3 runs aws with the key set</text>
   <text x="48" y="278" class="s">bex ea objects passes through (D2)</text>
   <text x="48" y="304" class="t">Not here (D10)</text>
-  <text x="48" y="320" class="s">S3 API · custom domains · multipart</text>
+  <text x="48" y="320" class="s">virtual-hosted style · per-bucket keys</text>
 
   <!-- bex-api -->
   <rect x="400" y="120" width="430" height="325" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6"/>
-  <text x="418" y="148" class="h">bex-api · internal/objectstorage</text>
+  <text x="418" y="148" class="h">bex-api · bex-s3 · internal/objectstorage</text>
   <text x="418" y="172" class="m">A  /v1/objects/{ownerId}/{region}[/{key}]</text>
   <text x="418" y="188" class="s">Render's four routes · mint a presigned URL</text>
-  <text x="418" y="212" class="m">B  /cloudflare/client/v4/accounts/{id}/r2/…</text>
-  <text x="418" y="228" class="s">buckets · objects · dev-url · cors · lifecycle</text>
-  <text x="418" y="244" class="s">object bytes stream through bex-api (≤ 300 MiB)</text>
-  <text x="418" y="272" class="t">a · authorize: FGA relation + OAuth scope class</text>
+  <text x="418" y="212" class="m">S3  objects.onbex.co/&lt;bucket&gt;/&lt;key&gt;</text>
+  <text x="418" y="228" class="s">SigV4 · buckets · objects · multipart · cors</text>
+  <text x="418" y="244" class="s">lifecycle · bytes stream through bex-s3 (≤ 5 GiB)</text>
+  <text x="418" y="272" class="t">a · authorize: FGA relation (A: + OAuth scope class)</text>
   <text x="418" y="288" class="s">get can_view_sensitive · write can_create · public can_manage</text>
   <text x="418" y="312" class="t">b · validate: bucket name, key, size</text>
-  <text x="418" y="328" class="s">no . or .. segment · wrangler's bucket-name rule</text>
+  <text x="418" y="328" class="s">no . or .. segment · S3-subset bucket names</text>
   <text x="418" y="352" class="t">c · quota gate: last sweep + size vs the caps</text>
   <text x="418" y="376" class="t">d · registry: bucket name → obk-id → region</text>
   <text x="418" y="392" class="s">the Wasabi key is &lt;tea-id&gt;/&lt;obk-id&gt;/&lt;key&gt;</text>
-  <text x="418" y="424" class="t">credentials not set → today's 404 "not offered"</text>
+  <text x="418" y="424" class="t">credentials not set → 404 (A) · 503 (S3)</text>
 
   <!-- Wasabi, tenant buckets -->
   <rect x="920" y="120" width="330" height="685" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="1.6"/>
@@ -67,10 +67,10 @@
   <text x="936" y="164" class="s">same account as the platform's backups</text>
   <rect x="936" y="180" width="298" height="58" rx="8" fill="#ffffff" stroke="#059669" stroke-width="1.2"/>
   <text x="950" y="204" class="m">bex-objects-oregon</text>
-  <text x="950" y="222" class="s">us-west-1 · hint wnam</text>
+  <text x="950" y="222" class="s">us-west-1 · LocationConstraint oregon</text>
   <rect x="936" y="248" width="298" height="58" rx="8" fill="#ffffff" stroke="#059669" stroke-width="1.2"/>
   <text x="950" y="272" class="m">bex-objects-frankfurt</text>
-  <text x="950" y="290" class="s">eu-central-2 · hint weur, jurisdiction eu</text>
+  <text x="950" y="290" class="s">eu-central-2 · LocationConstraint frankfurt</text>
   <text x="936" y="336" class="m">&lt;tea-id&gt;/&lt;obk-id&gt;/&lt;key&gt;</text>
   <text x="936" y="354" class="s">obk-id is the bucket's id, not its name</text>
   <text x="936" y="372" class="s">Contract A's namespace is the system</text>
@@ -80,7 +80,7 @@
   <text x="936" y="446" class="s">one read-only IAM user, held by objectgw</text>
   <text x="936" y="462" class="s">AES-256 at rest is automatic on Wasabi</text>
   <text x="936" y="490" class="t">every other region or hint</text>
-  <text x="936" y="506" class="s">→ 400 REGION_NOT_OFFERED (dated divergence)</text>
+  <text x="936" y="506" class="s">→ 400 InvalidLocationConstraint (divergence)</text>
   <text x="936" y="540" class="t">Why one shared bucket per region</text>
   <text x="936" y="556" class="s">1000 buckets per account by default</text>
   <text x="936" y="572" class="s">free egress is a fair-use ratio (D4)</text>
@@ -90,14 +90,14 @@
   <path class="flow" d="M320,172 L400,172"/>
   <g class="badge"><circle cx="360" cy="172" r="11"/><text x="360" y="176">A</text></g>
   <path class="flow" d="M320,212 L400,212"/>
-  <g class="badge"><circle cx="360" cy="212" r="11"/><text x="360" y="216">B</text></g>
+  <g class="badge"><circle cx="360" cy="212" r="11"/><text x="360" y="216">3</text></g>
   <path class="back" d="M400,262 L320,262"/>
   <text x="360" y="254" class="s mid">answers</text>
 
   <path class="flow" d="M830,172 L920,172"/>
   <g class="badge"><circle cx="875" cy="172" r="11"/><text x="875" y="176">A</text></g>
   <path class="flow2" d="M830,212 L920,212"/>
-  <g class="badge"><circle cx="875" cy="212" r="11"/><text x="875" y="216">B</text></g>
+  <g class="badge"><circle cx="875" cy="212" r="11"/><text x="875" y="216">3</text></g>
   <path class="back" d="M920,262 L830,262"/>
   <text x="875" y="254" class="s mid">answers</text>
 
@@ -106,11 +106,11 @@
   <text x="48" y="383" class="h">Bounds · bex's own</text>
   <text x="48" y="407" class="t">100 GB per workspace per region</text>
   <text x="48" y="425" class="t">1M objects per workspace per region</text>
-  <text x="48" y="443" class="t">5 GiB per object (A) · 300 MiB (B)</text>
+  <text x="48" y="443" class="t">5 GiB per object (A and S3)</text>
   <text x="48" y="461" class="t">1,000 buckets per workspace</text>
-  <text x="48" y="479" class="t">8 concurrent streams per workspace</text>
+  <text x="48" y="479" class="t">16 S3 streams per workspace per replica</text>
   <text x="48" y="497" class="t">list ≤ 1000 · presigned URL 15 min</text>
-  <text x="48" y="523" class="s">No Render or Cloudflare value was found for</text>
+  <text x="48" y="523" class="s">No Render or S3-provider value was found for</text>
   <text x="48" y="539" class="s">any of these; each is a dated ADR018 entry.</text>
 
   <!-- Sweep arrow and Postgres -->
@@ -124,12 +124,13 @@
   <text x="418" y="589" class="s">per bucket: bytes, objects, observed_at</text>
   <text x="418" y="613" class="t">shadow meters · storage GB-s · bytes in and out</text>
   <text x="418" y="629" class="s">no Stripe Price yet · later one cost dimension (D8)</text>
+  <text x="418" y="645" class="s">access keys · multipart uploads · parts (secrets: OpenBao)</text>
 
   <!-- Public clients -->
   <rect x="30" y="610" width="290" height="170" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.6"/>
   <text x="48" y="638" class="h">Browsers and anyone</text>
   <text x="48" y="662" class="m">GET pub-&lt;id&gt;.onbex.co/&lt;key&gt;</text>
-  <text x="48" y="678" class="s">a bucket whose dev-url is enabled (D4)</text>
+  <text x="48" y="678" class="s">a bucket published with bex s3 public (D4)</text>
   <text x="48" y="698" class="s">no credential · GET and HEAD · Range</text>
   <text x="48" y="724" class="t">Never reaches bex-api</text>
   <text x="48" y="740" class="s">objectgw serves it from Wasabi</text>
@@ -161,10 +162,10 @@
   <text x="48" y="952" class="h">Request flows</text>
   <text x="48" y="978" class="t">A · put: the CLI or an SDK posts {sizeBytes}. bex-api authorizes, checks the quota and signs a PUT with Content-Length = sizeBytes. The client uploads straight to Wasabi.</text>
   <text x="48" y="1000" class="t">A · get, delete, list: get and delete HEAD the key first and answer 404 for a missing one. List pages ListObjectsV2 over the system bucket render-&lt;region&gt;.</text>
-  <text x="48" y="1022" class="t">B · put: wrangler PUTs the bytes to bex-api with Content-Length. bex-api checks the 300 MiB cap and the quota, then streams them to Wasabi on a server-signed URL.</text>
-  <text x="48" y="1044" class="t">B · get, buckets: get HEADs the key and streams it back (a missing key is 404, code 10007). Bucket create, delete, cors, lifecycle and dev-url change Postgres rows only.</text>
-  <text x="48" y="1066" class="t">P · public: dev-url enable returns pub-&lt;obk-id&gt;.onbex.co. objectgw looks the host up, applies the bucket's CORS and reads Wasabi with a read-only credential.</text>
+  <text x="48" y="1022" class="t">3 · put: an S3 client PUTs or uploads parts with a SigV4 signature. bex-s3 verifies it, checks cap and quota, then streams to Wasabi.</text>
+  <text x="48" y="1044" class="t">3 · get, list, buckets: get streams back with Range; list reads Wasabi under the bucket prefix; bucket calls change Postgres rows.</text>
+  <text x="48" y="1066" class="t">P · public: bex s3 public makes pub-&lt;obk-id&gt;.onbex.co serve the bucket. objectgw looks the host up, applies the bucket's CORS and reads Wasabi with a read-only credential.</text>
   <text x="48" y="1088" class="t">S · sweep, hourly: list each workspace prefix, write usage per bucket, delete objects past a lifecycle rule, and retry the purge of a deleted workspace.</text>
-  <text x="48" y="1110" class="t">Bytes in and out are counted exactly on B and on P, and estimated on A. Nothing is billed until the user sets a price, and then through one Stripe dimension.</text>
-  <text x="48" y="1142" class="s">Solid arrows are requests. Dashed arrows are answers. Grey is unchanged. Amber marks limits bex chose itself. Badges: A Render contract · B wrangler contract · P public reads · S sweep.</text>
+  <text x="48" y="1110" class="t">Bytes in and out are counted exactly on 3 and on P, and estimated on A. Nothing is billed until the user sets a price, and then through one Stripe dimension.</text>
+  <text x="48" y="1142" class="s">Solid arrows are requests. Dashed arrows are answers. Grey is unchanged. Amber marks limits bex chose itself. Badges: A Render contract · 3 S3 API · P public reads · S sweep.</text>
 </svg>
