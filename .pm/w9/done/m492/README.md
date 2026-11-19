@@ -1,6 +1,6 @@
 # w9 · m492 — Object-storage BuildKit layer cache (`BEX_BUILD_CACHE=s3`), enabled permanently in production
 
-**Worker:** worker9 **Goal:** Docker and native builds reuse cached BuildKit layers across deploys in production via off-Zot Wasabi S3 storage, and `clearCache: "clear"` ("Clear build cache & deploy") clears and rebuilds cold on every workspace with zero Zot PVC growth. **Status:** todo (t001–t004 and t006–t008 done; production pin `4b2cebd0bd03` carries `d7e76d312` and the manager logs `S3 build cache enabled`; t005's production check, then t009)
+**Worker:** worker9 **Goal:** Docker and native builds reuse cached BuildKit layers across deploys in production via off-Zot Wasabi S3 storage, and `clearCache: "clear"` ("Clear build cache & deploy") clears and rebuilds cold on every workspace with zero Zot PVC growth. **Status:** done (2026-11-19: all 9 tasks done; verified on production pin `4b2cebd0bd03` in t005)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | Implement `BEX_BUILD_CACHE=s3` in `lego/operator/internal/build/` (`cache-restore`, `cache-purge`, `cache-save` syncing local OCI layout to `<tea-id>/<app-uid>/layer-cache/`) — **DONE** | 1h30m | t001 |
 | [t003](done/t003.md) | Wire S3 build-cache config, per-App cleanup in App finalizer, and `clearCache` purge across services and Build Source carriers — **DONE** | 1h | t002 |
 | [t004](done/t004.md) | Enable `BEX_BUILD_CACHE=s3` + sealed credential in production overlays and add `bex_build_cache_*` metrics/alerts — **DONE** | 45m | t003 |
-| [t005](t005.md) | Production verification: cold→warm Dockerfile & native rebuild speedup, `clearCache: "clear"`, Build Source clear-cache, and zero Zot PVC growth | 1h | t004 |
+| [t005](done/t005.md) | Production verification: cold→warm Dockerfile & native rebuild speedup, `clearCache: "clear"`, Build Source clear-cache, and zero Zot PVC growth — **DONE** | 1h | t004 |
 | [t006](done/t006.md) | Render parity — **DONE** | 30m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 45m | t006, t007 |
-| [t009](t009.md) | Closeout | 10m | t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t008 |
 
 ## Definition of done
 
@@ -25,8 +25,8 @@
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm for one aspect of render parity` (Build Caching & Build Environment Parity, 2026-11-18, item 1); [ADR060 § D3](../../../docs/ADR060-build-worker-reliability-and-performance.md#d3--per-app-remote-build-cache-in-zot-registry-backend-modemax), [w7/done/047.md](../../w7/done/047.md), [ADR018](../../../docs/ADR018-render-parity.md) (`Runtime, build strategy + Root Directory`, `Trigger a deploy`).
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)) — automatic Docker/native build layer caching and functional `clearCache: "clear"` in every workspace (`render.com/docs/docker`, `render.com/docs/deploys`).
+- **Source:** `/pm-brainstorm for one aspect of render parity` (Build Caching & Build Environment Parity, 2026-11-18, item 1); [ADR060 § D3](../../../../docs/ADR060-build-worker-reliability-and-performance.md#d3--per-app-remote-build-cache-in-zot-registry-backend-modemax), [w7/done/047.md](../../../w7/done/047.md), [ADR018](../../../../docs/ADR018-render-parity.md) (`Runtime, build strategy + Root Directory`, `Trigger a deploy`).
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)) — automatic Docker/native build layer caching and functional `clearCache: "clear"` in every workspace (`render.com/docs/docker`, `render.com/docs/deploys`).
 - **Expected outcome:** Cuts repeat Dockerfile/native build wall time (50–75% on dependency-heavy builds, per ADR060 measurements) and makes `Clear build cache & deploy` truthful in production without threatening Zot's 100 GiB PVC.
 - **Why now:** `BEX_BUILD_CACHE` has been off in production since the 2026-10-26 rollback with no open follow-up, and an off-Zot S3 build-cache store is the storage foundation required by w9/m493 (`$XDG_CACHE_HOME`), w9/m494 (per-runtime dependency caches), and w8/m161 (`NODE_MODULES_CACHE`).
 - **Render parity:** included (t006). Although no API schema field is added, this makes `clearCache: "clear"` effective across REST, GraphQL, MCP, CLI, Build Sources, and Dashboard and closes a customer-visible parity gap in ADR018.
@@ -37,3 +37,7 @@
 - **Finding:** the newest pin on `origin/main`, `19faf35f3` (`chore(deploy): pin platform images to 4b2cebd0bd03`, 2026-11-19 09:13Z), contains the implementation: `git merge-base --is-ancestor d7e76d312 4b2cebd0bd03` holds. Its `deploy.yml` run 44493552189 finished green, `bex-system/bex-controller-manager` runs the pinned `bex-operator@sha256:4407341b60d6…`, its env carries `BEX_BUILD_CACHE=s3` with the four `BEX_BUILD_CACHE_S3_*` values, and it logged `S3 build cache enabled` (bucket `bex-build-cache`, secret `bex-build-cache-s3`) at 09:18:04Z. The release condition in t005's § Prepared is met.
 - **Status:** pending verification. A deployed backend is not proof that the definition of done holds on production.
 - **Next:** run t005 as written (as the QA user in `bex-canary`), write the record into t005, then t009.
+
+## Production verification (t005, 2026-11-19)
+
+The walk ran on pin `4b2cebd0bd03` in `bex-canary`; the full record is in [t005](done/t005.md#production-record--2026-11-19). A two-stage Dockerfile build went from 77 s of BuildKit time cold (`miss`) to 39 s warm (`hit`, every build step `CACHED`). A native Python build went from 170 s to 124 s, its build command served from the cache. `clearCache: "clear"` on the service and on a Build Source each read `purged`, imported nothing, built cold, saved a fresh cache, and the next build was a `hit`. A blob deleted from the bucket gave `incomplete`, then a clean build and a healed layout. The `buildkit` container held no credential, and Zot gained no `_cache` repository. All three fixtures were deleted (`GET` 404), and their prefixes are empty.
