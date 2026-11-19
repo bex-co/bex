@@ -185,7 +185,7 @@ func TestApplyBlueprintDatabaseSpecEnablingHAJudgesTheSyncPlan(t *testing.T) {
 			changed, err := applyBlueprintDatabaseSpecForTest(&dst, appv1alpha1.DatabaseSpec{HighAvailability: true}, map[string]BlueprintField{"highAvailability": {}})
 			if tc.refused {
 				var conflict *BlueprintFieldConflictError
-				if !errors.As(err, &conflict) || !strings.Contains(conflict.Message, "high availability requires") {
+				if !errors.As(err, &conflict) || !strings.Contains(conflict.Message, "high availability requires") || strings.Contains(conflict.Message, "disable high availability") {
 					t.Fatalf("enabling HA on %s => want HA refusal, got changed=%v err=%v", tc.plan, changed, err)
 				}
 				return
