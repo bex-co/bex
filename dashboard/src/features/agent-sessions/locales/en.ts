@@ -224,6 +224,22 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Agent",
     description: "Composer — agent select label",
   },
+  "agentSessions.modelLabel": {
+    message: "Model",
+    description: "Composer — model select label (w10/m516)",
+  },
+  "agentSessions.modelDefaultOption": {
+    message: "{model} (default)",
+    description: "Model list — the model a session runs when it names none",
+  },
+  "agentSessions.modelFixed": {
+    message: "This agent always runs {model}",
+    description: "Tooltip of the model of an agent with one fixed model",
+  },
+  "agentSessions.metaModel": {
+    message: "Model: {model}",
+    description: "Session header — tooltip of the model the session runs",
+  },
   "agentSessions.agent.claude": {
     message: "Claude",
     description: "Composer — agent option: claude",
@@ -560,6 +576,10 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Queued message row — why the dispatcher could not start it (a spend ceiling or the live-sandbox limit)",
   },
+  "agentSessions.queueModel": {
+    message: "Switches the session to {model}",
+    description: "Queued message — the model its turn switches the session to (w10/m516)",
+  },
   "agentSessions.queueSendNow": {
     message: "Send now",
     description:
@@ -693,6 +713,15 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.errors.AGENT_SESSION_MODEL_ENDPOINT_INVALID": {
     message: "The model endpoint must be a valid HTTPS URL.",
     description: "Mapped message for AGENT_SESSION_MODEL_ENDPOINT_INVALID",
+  },
+  "agentSessions.errors.AGENT_SESSION_MODEL_NOT_OFFERED": {
+    message:
+      "This workspace's platform model doesn't offer {model}. Pick one from the model list.",
+    description: "Mapped message for AGENT_SESSION_MODEL_NOT_OFFERED (w10/m516)",
+  },
+  "agentSessions.errors.AGENT_SESSION_MODEL_PINNED": {
+    message: "This agent runs only {pinnedModel}.",
+    description: "Mapped message for AGENT_SESSION_MODEL_PINNED",
   },
   "agentSessions.errors.AGENT_SESSION_EGRESS_ALLOWLIST_INVALID": {
     message: 'Egress allowlist entry "{entry}" is invalid: {reason}',

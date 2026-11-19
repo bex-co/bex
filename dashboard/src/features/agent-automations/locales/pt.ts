@@ -472,6 +472,10 @@ const ptAgentAutomations: Record<string, TranslationEntry> = {
     message: "Agente",
     description: "Form field label",
   },
+  "agentAutomations.field.model": {
+    message: "Modelo",
+    description: "Automation form — model field label (w10/m516)",
+  },
   "agentAutomations.field.spendLimit": {
     message: "Limite de gastos por execução (USD)",
     description: "Form field label",
@@ -591,6 +595,11 @@ const ptAgentAutomations: Record<string, TranslationEntry> = {
       "Um teto de gasto com modelo para cada execução. Obrigatório quando as execuções usam o modelo da plataforma.",
     description: "Spend limit field help",
   },
+  "agentAutomations.help.model": {
+    message:
+      "O modelo que cada execução usa. Deixe no padrão para seguir o do workspace.",
+    description: "Automation form — model field help",
+  },
   "agentAutomations.help.emailNotifications": {
     message:
       "Quais execuções enviam e-mail para você. Uma pausa da plataforma sempre envia.",
@@ -616,6 +625,10 @@ const ptAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.placeholder.repo": {
     message: "owner/repository",
     description: "Repository field placeholder",
+  },
+  "agentAutomations.placeholder.model": {
+    message: "Padrão do workspace",
+    description: "Automation form — empty free-form model field",
   },
   "agentAutomations.summary": {
     message: "Executa: {schedule}",

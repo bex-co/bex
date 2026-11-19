@@ -113,11 +113,11 @@ describe("AgentEnvironmentCard", () => {
 
   it("holds wrapping data lines at their longest variant, hidden from assistive tech", () => {
     setup(null, true);
-    // The default-model help is the platform-pinned variant when a route pins
-    // the model, which is longer than the editable variant (measured +16px).
+    // The default-model help is the platform catalog's variant on the
+    // platform route (w10/m516), which is longer than the editable variant.
     expect(
       screen.getByText(
-        /This workspace runs agents on the platform model, so every session uses deepseek\/deepseek-v4\.1-flash-1017/,
+        /New sessions and automations that name no model run this one/,
       ),
     ).toHaveAttribute("aria-hidden", "true");
     const source = screen
@@ -235,14 +235,52 @@ describe("AgentEnvironmentCard", () => {
     expect(toast.success).toHaveBeenCalledWith("Agent settings saved");
   });
 
-  it("shows a pinned model read-only and never sends it", async () => {
-    setup({ ...ENV, modelPinned: true, pinnedModel: "deepseek/deepseek-v4" });
-    const model = screen.getByLabelText("Default model");
-    expect(model).toHaveValue("deepseek/deepseek-v4");
-    expect(model).toHaveAttribute("readonly");
+  it("offers the platform catalog as the default model and saves a choice", async () => {
+    const { user, update } = setup({
+      ...ENV,
+      models: ["deepseek/deepseek-v4", "anthropic/claude-opus-5.5"],
+    });
+    const model = screen.getByRole("combobox", { name: "Default model" });
+    expect(model).toHaveTextContent("Platform default (deepseek/deepseek-v4)");
     expect(
-      screen.getByText(/runs agents on the platform model/),
+      screen.getByText(/Members can still pick another model/),
     ).toBeInTheDocument();
+    await user.click(model);
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual([
+      "Platform default (deepseek/deepseek-v4)",
+      "deepseek/deepseek-v4",
+      "anthropic/claude-opus-5.5",
+    ]);
+    await user.click(
+      screen.getByRole("option", { name: "anthropic/claude-opus-5.5" }),
+    );
+    await user.click(save());
+    expect(update).toHaveBeenCalledWith({
+      defaultModel: "anthropic/claude-opus-5.5",
+    });
+  });
+
+  it("names a catalog refusal on the model field", async () => {
+    const { user, update } = setup({
+      ...ENV,
+      models: ["deepseek/deepseek-v4", "anthropic/claude-opus-5.5"],
+    });
+    update.mockRejectedValueOnce(
+      codedGraphQLError("AGENT_ENVIRONMENT_MODEL_NOT_OFFERED", {
+        field: "defaultModel",
+        model: "anthropic/claude-opus-5.5",
+      }),
+    );
+    await user.click(screen.getByRole("combobox", { name: "Default model" }));
+    await user.click(
+      screen.getByRole("option", { name: "anthropic/claude-opus-5.5" }),
+    );
+    await user.click(save());
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "The platform model doesn't offer anthropic/claude-opus-5.5",
+    );
   });
 
   it("is read-only for a member without can_manage", async () => {

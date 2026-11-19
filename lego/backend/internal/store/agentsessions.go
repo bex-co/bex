@@ -596,9 +596,13 @@ func (s *PGStore) AgentSessionWorkspace(ctx context.Context, id string) (string,
 // or renumber what the user submitted. A non-nil secretNames replaces the
 // session's attached secret names with the turn (ADR098 D1: steer computes the
 // union), so a refused turn attaches none; nil leaves them unchanged. skills
-// are the skills the turn invokes explicitly (ADR099 D4).
-func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding, output AgentTurnOutput, secretNames []string, skills []TurnSkill) (AgentSession, error) {
-	return s.beginAgentSessionTurn(ctx, turnOrigin{}, id, prompt, deliveryMode, phase, status, attachments, output, secretNames, skills)
+// are the skills the turn invokes explicitly (ADR099 D4). A non-nil model is
+// the model the turn runs, recorded as the session's agent_config.model ("" removes
+// it) in the same transaction, so a message that switches the model
+// (w10/m516) switches it with the turn it starts and never without one; nil
+// leaves it unchanged.
+func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding, output AgentTurnOutput, secretNames []string, skills []TurnSkill, model *string) (AgentSession, error) {
+	return s.beginAgentSessionTurn(ctx, turnOrigin{}, id, prompt, deliveryMode, phase, status, attachments, output, secretNames, skills, model)
 }
 
 // BeginKeyedAgentSessionTurn is BeginAgentSessionTurn for a direct send that
@@ -606,8 +610,8 @@ func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliver
 // key and the request's digest on the turn, so a retried send finds the turn
 // it started. A key an earlier send of the session already used, for a turn or
 // a queued message, is ErrAgentSessionKeyUsed and starts nothing.
-func (s *PGStore) BeginKeyedAgentSessionTurn(ctx context.Context, key, requestHash, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding, output AgentTurnOutput, secretNames []string, skills []TurnSkill) (AgentSession, error) {
-	return s.beginAgentSessionTurn(ctx, turnOrigin{key: key, requestHash: requestHash}, id, prompt, deliveryMode, phase, status, attachments, output, secretNames, skills)
+func (s *PGStore) BeginKeyedAgentSessionTurn(ctx context.Context, key, requestHash, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding, output AgentTurnOutput, secretNames []string, skills []TurnSkill, model *string) (AgentSession, error) {
+	return s.beginAgentSessionTurn(ctx, turnOrigin{key: key, requestHash: requestHash}, id, prompt, deliveryMode, phase, status, attachments, output, secretNames, skills, model)
 }
 
 // BeginQueuedAgentSessionTurn is BeginAgentSessionTurn for a turn that
@@ -618,8 +622,8 @@ func (s *PGStore) BeginKeyedAgentSessionTurn(ctx context.Context, key, requestHa
 // caller read the message when it claimed it: prompt and author are that
 // copy, and a message edited since is ErrQueuedMessageChanged, so a turn never
 // runs text, or as a member, that is no longer the message's.
-func (s *PGStore) BeginQueuedAgentSessionTurn(ctx context.Context, messageID, author, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding, output AgentTurnOutput, secretNames []string, skills []TurnSkill) (AgentSession, error) {
-	return s.beginAgentSessionTurn(ctx, turnOrigin{queuedMessageID: messageID, queuedAuthor: author}, id, prompt, deliveryMode, phase, status, attachments, output, secretNames, skills)
+func (s *PGStore) BeginQueuedAgentSessionTurn(ctx context.Context, messageID, author, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding, output AgentTurnOutput, secretNames []string, skills []TurnSkill, model *string) (AgentSession, error) {
+	return s.beginAgentSessionTurn(ctx, turnOrigin{queuedMessageID: messageID, queuedAuthor: author}, id, prompt, deliveryMode, phase, status, attachments, output, secretNames, skills, model)
 }
 
 // turnOrigin is what a turn's begin records or checks beyond the session's
@@ -631,7 +635,7 @@ type turnOrigin struct {
 	key, requestHash              string
 }
 
-func (s *PGStore) beginAgentSessionTurn(ctx context.Context, origin turnOrigin, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding, output AgentTurnOutput, secretNames []string, skills []TurnSkill) (AgentSession, error) {
+func (s *PGStore) beginAgentSessionTurn(ctx context.Context, origin turnOrigin, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding, output AgentTurnOutput, secretNames []string, skills []TurnSkill, model *string) (AgentSession, error) {
 	var out AgentSession
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
 		var turns int
@@ -676,9 +680,14 @@ func (s *PGStore) beginAgentSessionTurn(ctx context.Context, origin turnOrigin, 
 			UPDATE agent_sessions
 			SET sandbox_id='', phase=$2, status=$3, turns=turns+1,
 			    failure_reason='', failure_reason_code='', failure_cause='', sandbox_wait_since=NULL, updated_at=now(),
-			    secret_names=COALESCE($4::text[], secret_names)
+			    secret_names=COALESCE($4::text[], secret_names),
+			    agent_config=CASE
+			      WHEN $5::text IS NULL THEN agent_config
+			      WHEN $5::text = '' THEN agent_config - 'model'
+			      ELSE jsonb_set(agent_config, '{model}', to_jsonb($5::text))
+			    END
 			WHERE id=$1
-			RETURNING `+agentSessionColumns, id, phase, status, secretNames))
+			RETURNING `+agentSessionColumns, id, phase, status, secretNames, model))
 		if err != nil {
 			return err
 		}

@@ -693,8 +693,16 @@ func TestSkillsReachCreateAndSteer(t *testing.T) {
 		t.Fatalf("send exit %d: %s", code, stderr)
 	}
 	var steered steerRequest
-	if err := json.Unmarshal(f.steers[0].body, &steered); err != nil || !slices.Equal(steered.Skills, []skillInvocation{{Name: "lint"}}) {
+	if err := json.Unmarshal(f.steers[0].body, &steered); err != nil || !slices.Equal(steered.Skills, []skillInvocation{{Name: "lint"}}) || steered.Model != "" {
 		t.Fatalf("steer skills = %s", f.steers[0].body)
+	}
+	// --model switches the session's model with this message (w10/m516).
+	f.script["ags-s1"] = []string{stateSucceeded}
+	if _, stderr, code := run(t, f.deps(t).deps, "send", "ags-s1", "--model", "anthropic/claude-opus-5.5", "think", "harder"); code != 0 {
+		t.Fatalf("send --model exit %d: %s", code, stderr)
+	}
+	if err := json.Unmarshal(f.steers[1].body, &steered); err != nil || steered.Model != "anthropic/claude-opus-5.5" || steered.Prompt != "think harder" {
+		t.Fatalf("steer --model = %s", f.steers[1].body)
 	}
 	creates := len(f.creates)
 	if _, _, code := run(t, f.deps(t).deps, "run", "--skill", ":args", "task"); code != 2 || len(f.creates) != creates {

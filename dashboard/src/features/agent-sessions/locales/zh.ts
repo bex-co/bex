@@ -224,6 +224,22 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "智能体",
     description: "Composer — agent select label",
   },
+  "agentSessions.modelLabel": {
+    message: "模型",
+    description: "Composer — model select label (w10/m516)",
+  },
+  "agentSessions.modelDefaultOption": {
+    message: "{model}（默认）",
+    description: "Model list — the model a session runs when it names none",
+  },
+  "agentSessions.modelFixed": {
+    message: "此智能体始终使用 {model}",
+    description: "Tooltip of the model of an agent with one fixed model",
+  },
+  "agentSessions.metaModel": {
+    message: "模型：{model}",
+    description: "Session header — tooltip of the model the session runs",
+  },
   "agentSessions.agent.claude": {
     message: "Claude",
     description: "Composer — agent option: claude",
@@ -539,6 +555,10 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Queued message row — why the dispatcher could not start it (a spend ceiling or the live-sandbox limit)",
   },
+  "agentSessions.queueModel": {
+    message: "将会话切换到 {model}",
+    description: "Queued message — the model its turn switches the session to (w10/m516)",
+  },
   "agentSessions.queueSendNow": {
     message: "立即发送",
     description:
@@ -668,6 +688,15 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.errors.AGENT_SESSION_MODEL_ENDPOINT_INVALID": {
     message: "模型端点必须是有效的 HTTPS URL。",
     description: "Mapped message for AGENT_SESSION_MODEL_ENDPOINT_INVALID",
+  },
+  "agentSessions.errors.AGENT_SESSION_MODEL_NOT_OFFERED": {
+    message:
+      "此工作区的平台模型不提供 {model}。请从模型列表中选择。",
+    description: "Mapped message for AGENT_SESSION_MODEL_NOT_OFFERED (w10/m516)",
+  },
+  "agentSessions.errors.AGENT_SESSION_MODEL_PINNED": {
+    message: "此智能体只能使用 {pinnedModel}。",
+    description: "Mapped message for AGENT_SESSION_MODEL_PINNED",
   },
   "agentSessions.errors.AGENT_SESSION_EGRESS_ALLOWLIST_INVALID": {
     message: "出站允许列表条目“{entry}”无效：{reason}",

@@ -33,12 +33,26 @@ const platformKey = "sk-or-v1-PLATFORM-SECRET"
 
 var routeModelVars = []string{"ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL"}
 
-func enablePlatformRoute(t *testing.T) {
+// testCatalog is the platform catalog enablePlatformCatalog installs: the
+// route's default first.
+var testCatalog = []string{agentsession.DefaultDevModel, "anthropic/claude-sonnet-5.5", "anthropic/claude-opus-5.5"}
+
+// enablePlatformCatalog is enablePlatformRoute with testCatalog's models
+// offered beside the default (w10/m516).
+func enablePlatformCatalog(t *testing.T) {
 	t.Helper()
-	if err := agentsession.EnablePlatformModelRoute(agentsession.DevModelRouteOpenRouter, "", platformKey); err != nil {
+	if err := agentsession.EnablePlatformModelRoute(agentsession.DevModelRouteOpenRouter, "", strings.Join(testCatalog[1:], ","), platformKey); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = agentsession.EnablePlatformModelRoute("", "", "") })
+	t.Cleanup(func() { _ = agentsession.EnablePlatformModelRoute("", "", "", "") })
+}
+
+func enablePlatformRoute(t *testing.T) {
+	t.Helper()
+	if err := agentsession.EnablePlatformModelRoute(agentsession.DevModelRouteOpenRouter, "", "", platformKey); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = agentsession.EnablePlatformModelRoute("", "", "", "") })
 }
 
 func assertNoPlatformKey(t *testing.T, lifecycle *fakeLifecycle) {
@@ -106,7 +120,7 @@ func TestCreateWithoutPlatformRouteIsUnchanged(t *testing.T) {
 // endpoint: a session created on api.anthropic.com moves onto OpenRouter on
 // its next steer once the platform route is on.
 func TestSteerSwitchesAnExistingSessionOntoThePlatformRoute(t *testing.T) {
-	_ = agentsession.EnablePlatformModelRoute("", "", "")
+	_ = agentsession.EnablePlatformModelRoute("", "", "", "")
 	svc, st, _, lifecycle := fixture()
 	input := createInput()
 	input.AgentConfig = AgentConfig{Agent: "claude", Task: "fix the tests"}
@@ -151,7 +165,7 @@ func TestCapabilitiesCountPlatformRouteAsModelKeyReady(t *testing.T) {
 			t.Fatalf("%s: routed workspace not ready: %#v", who, caps)
 		}
 	}
-	_ = agentsession.EnablePlatformModelRoute("", "", "")
+	_ = agentsession.EnablePlatformModelRoute("", "", "", "")
 	if _, err := svc.Capabilities(caller("bob"), ""); err == nil {
 		t.Fatal("capabilities without the route skipped its BYO key read")
 	}

@@ -32,6 +32,7 @@ import {
   ComposerSkills,
 } from "@/features/agent-sessions/components/composer-skills";
 import { selectableAgents } from "@/features/agent-sessions/lib/composer";
+import { ModelPicker } from "@/features/agent-sessions/components/model-picker";
 import { useAgentSessionCapabilities } from "@/features/agent-sessions/hooks/use-agent-session-capabilities";
 import {
   FormField,
@@ -185,6 +186,14 @@ export function AutomationForm({
   const taskError = fieldError("task");
   const repoError = fieldError("repo");
   const spendError = fieldError("spendLimit");
+  const modelError = fieldError("model");
+  // The agent's model offer (w10/m516): the platform catalog to pick from, a
+  // fixed model, or none (the workspace's own key: any model id).
+  const modelOffer = capabilities?.models[values.agent];
+  const modelDescribedBy = describedBy(id("model"), {
+    hasError: modelError != null,
+    hasHelp: true,
+  });
   const emailError = fieldError("emailNotifications");
   const skillsError = fieldError("skills");
 
@@ -291,7 +300,10 @@ export function AutomationForm({
             <Select
               value={values.agent}
               onValueChange={(agent) =>
-                change({ agent: agent as AutomationFormValues["agent"] })
+                change({
+                  agent: agent as AutomationFormValues["agent"],
+                  model: "",
+                })
               }
               disabled={saving}
             >
@@ -310,6 +322,42 @@ export function AutomationForm({
             </Select>
           </FormField>
 
+          <FormField
+            id={id("model")}
+            label={t("agentAutomations.field.model")}
+            help={t("agentAutomations.help.model")}
+            error={modelError}
+          >
+            {modelOffer && modelOffer.models.length > 0 ? (
+              <ModelPicker
+                id={id("model")}
+                variant="field"
+                offer={modelOffer}
+                value={values.model}
+                onChange={(model) => change({ model })}
+                disabled={saving}
+                invalid={modelError != null}
+                describedBy={modelDescribedBy}
+              />
+            ) : (
+              <Input
+                id={id("model")}
+                value={values.model}
+                onChange={(e) => change({ model: e.target.value })}
+                disabled={saving}
+                placeholder={t("agentAutomations.placeholder.model")}
+                spellCheck={false}
+                autoCapitalize="off"
+                autoComplete="off"
+                className="font-mono"
+                aria-invalid={modelError != null}
+                aria-describedby={modelDescribedBy}
+              />
+            )}
+          </FormField>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             id={id("spend")}
             label={t("agentAutomations.field.spendLimit")}
@@ -331,9 +379,7 @@ export function AutomationForm({
               })}
             />
           </FormField>
-        </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             id={id("email")}
             label={t("agentAutomations.field.emailNotifications")}

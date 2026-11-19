@@ -412,14 +412,29 @@ func TestEnvSet(t *testing.T) {
 }
 
 func TestModels(t *testing.T) {
+	catalog := []string{"deepseek/deepseek-v4.1-flash-1017", "anthropic/claude-sonnet-5.5", "anthropic/claude-opus-5.5"}
 	f := newRouteFake(t, map[string]http.HandlerFunc{"GET /v1/agent-sessions/capabilities": answer(http.StatusOK, map[string]any{
 		"ready": true, "github": map[string]any{"connected": true, "accountLogin": "acme"},
-		"agents": []any{map[string]any{"id": "claude", "label": "Claude Code", "modelKeyReady": true},
-			map[string]any{"id": "codex", "label": "Codex", "modelKeyReady": false}},
+		"agents": []any{map[string]any{"id": "claude", "label": "Claude Code", "modelKeyReady": true, "model": catalog[1], "models": catalog},
+			map[string]any{"id": "deepseek", "label": "DeepSeek", "modelKeyReady": true, "model": "~deepseek/deepseek-flash-latest", "models": []string{"~deepseek/deepseek-flash-latest"}},
+			map[string]any{"id": "codex", "label": "Codex", "modelKeyReady": false, "model": nil, "models": []string{}}},
 	})})
 	stdout, _, code := run(t, f.deps(), "-o", "text", "models")
 	if code != 0 || !strings.Contains(stdout, "connected (acme)") || !strings.Contains(stdout, "codex") || !strings.Contains(stdout, "needs the workspace's own model key") {
 		t.Fatalf("models:\n%s", stdout)
+	}
+	// Each agent's model, and the catalog of the one that offers a choice
+	// with its default marked (w10/m516).
+	for _, want := range []string{
+		"Claude Code  yes", catalog[1] + "\n", "~deepseek/deepseek-flash-latest\n", "the provider's default (any model its provider serves)",
+		"Models claude can run (--model ID):\n  " + catalog[0] + "\n  " + catalog[1] + " (default)\n  " + catalog[2] + "\n",
+	} {
+		if !strings.Contains(stdout, want) {
+			t.Errorf("models output lacks %q:\n%s", want, stdout)
+		}
+	}
+	if strings.Contains(stdout, "Models deepseek") {
+		t.Errorf("a fixed-model agent listed a choice:\n%s", stdout)
 	}
 	if got := f.only(t).query; got != "ownerId=tea-ws" {
 		t.Fatalf("query %q", got)
@@ -461,13 +476,14 @@ func TestConfigContractFixtureDecodes(t *testing.T) {
 	if v := golden.SkillVersionList; len(v.Versions) != 1 || v.Versions[0].ShortID == "" || !v.Versions[0].Current || v.NextCursor == "" {
 		t.Fatalf("skill versions lost: %+v", v)
 	}
-	if e := golden.Environment; e.NetworkTier == "" || e.AgentModelMonthlySpendCapUSD == nil || e.TrustTier == nil || len(e.CustomHosts) != 1 {
+	if e := golden.Environment; e.NetworkTier == "" || e.AgentModelMonthlySpendCapUSD == nil || e.TrustTier == nil || len(e.CustomHosts) != 1 || len(e.Models) != 3 {
 		t.Fatalf("environment lost: %+v", e)
 	}
 	if l := golden.SecretList; len(l.Secrets) != 1 || l.Secrets[0].Name == "" {
 		t.Fatalf("secret list lost: %+v", l)
 	}
-	if c := golden.Capabilities; !c.Ready || !c.GitHub.Connected || c.GitHub.AccountLogin == "" || len(c.Agents) != 1 || !c.Agents[0].ModelKeyReady {
+	if c := golden.Capabilities; !c.Ready || !c.GitHub.Connected || c.GitHub.AccountLogin == "" || len(c.Agents) != 2 || !c.Agents[0].ModelKeyReady ||
+		c.Agents[0].Model == nil || len(c.Agents[0].Models) != 3 || len(c.Agents[1].Models) != 1 {
 		t.Fatalf("capabilities lost: %+v", c)
 	}
 }

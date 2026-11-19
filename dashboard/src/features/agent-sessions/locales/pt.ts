@@ -220,6 +220,22 @@ const ptAgentSessions: Record<string, TranslationEntry> = {
     message: "Agente",
     description: "Composer — agent select label",
   },
+  "agentSessions.modelLabel": {
+    message: "Modelo",
+    description: "Composer — model select label (w10/m516)",
+  },
+  "agentSessions.modelDefaultOption": {
+    message: "{model} (padrão)",
+    description: "Model list — the model a session runs when it names none",
+  },
+  "agentSessions.modelFixed": {
+    message: "Este agente sempre usa {model}",
+    description: "Tooltip of the model of an agent with one fixed model",
+  },
+  "agentSessions.metaModel": {
+    message: "Modelo: {model}",
+    description: "Session header — tooltip of the model the session runs",
+  },
   "agentSessions.agent.claude": {
     message: "Claude",
     description: "Composer — agent option: claude",
@@ -566,6 +582,10 @@ const ptAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Queued message row — why the dispatcher could not start it (a spend ceiling or the live-sandbox limit)",
   },
+  "agentSessions.queueModel": {
+    message: "Muda a sessão para {model}",
+    description: "Queued message — the model its turn switches the session to (w10/m516)",
+  },
   "agentSessions.queueSendNow": {
     message: "Enviar agora",
     description:
@@ -700,6 +720,15 @@ const ptAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.errors.AGENT_SESSION_MODEL_ENDPOINT_INVALID": {
     message: "O endpoint do modelo deve ser uma URL HTTPS válida.",
     description: "Mapped message for AGENT_SESSION_MODEL_ENDPOINT_INVALID",
+  },
+  "agentSessions.errors.AGENT_SESSION_MODEL_NOT_OFFERED": {
+    message:
+      "O modelo da plataforma deste workspace não oferece {model}. Escolha um na lista de modelos.",
+    description: "Mapped message for AGENT_SESSION_MODEL_NOT_OFFERED (w10/m516)",
+  },
+  "agentSessions.errors.AGENT_SESSION_MODEL_PINNED": {
+    message: "Este agente usa apenas {pinnedModel}.",
+    description: "Mapped message for AGENT_SESSION_MODEL_PINNED",
   },
   "agentSessions.errors.AGENT_SESSION_EGRESS_ALLOWLIST_INVALID": {
     message:

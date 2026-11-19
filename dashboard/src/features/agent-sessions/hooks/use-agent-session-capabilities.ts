@@ -43,6 +43,12 @@ export function useAgentSessionCapabilities(
             modelKeyReadyAgents: value.agents
               .filter((agent) => agent.modelKeyReady)
               .map((agent) => agent.id),
+            models: Object.fromEntries(
+              value.agents.map((agent) => [
+                agent.id,
+                { model: agent.model, models: agent.models },
+              ]),
+            ),
             github: {
               connected: value.github.connected,
             },

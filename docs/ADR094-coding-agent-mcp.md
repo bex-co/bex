@@ -89,12 +89,12 @@ The toolset has nine tools. Each one has its own name, so `readOnlyHint`/`destru
 
 | Tool | Kind | What it does |
 | --- | --- | --- |
-| `get_agent_session_capabilities` | read | Preflight, unchanged: GitHub connected, model ready, agent profiles, `ready`. |
+| `get_agent_session_capabilities` | read | Preflight: GitHub connected, model ready, agent profiles, `ready`; each profile carries `model` and `models`, the model a session runs when it names none and the ones it may name (w10/m516). |
 | `create_agent_session` | write | Starts a task (D3, D4, D5). It is the canonical name; `spawn_agent_session` stays on `/mcp` as an alias. |
 | `wait_agent_sessions` | read | Blocks until sessions settle (D6). |
 | `get_agent_session` | read | Session view plus the new `outcome` block (D7). |
 | `list_agent_sessions` | read | Unchanged filters; adds `state` and `tag` filters (D7). |
-| `send_agent_session_message` | write | A follow-up turn. It is the canonical name for `steer_agent_session` (alias kept) and also accepts a per-turn `outputSchema`. |
+| `send_agent_session_message` | write | A follow-up turn. It is the canonical name for `steer_agent_session` (alias kept) and also accepts a per-turn `outputSchema` and a `model` that switches the session's model from this turn (w10/m516). |
 | `get_agent_session_transcript` | read | Unchanged; the escape hatch when `outcome.summary` is not enough. |
 | `get_agent_session_tool_output` | read | Unchanged. |
 | `cancel_agent_session` | destructive | Unchanged. |

@@ -129,20 +129,24 @@ const deAgentEnvironment: Record<string, TranslationEntry> = {
       "Modell-ID, die neue Sitzungen verwenden, z. B. claude-sonnet-4-5. Leer lassen für den Standard des Anbieters.",
     description: "Help under the default model field",
   },
-  "agentEnvironment.modelPinnedHelp": {
+  "agentEnvironment.modelPlatformDefault": {
+    message: "Plattform-Standard ({model})",
+    description: "Default model picker — no default: the platform catalog's first model (w10/m516)",
+  },
+  "agentEnvironment.modelCatalogHelp": {
     message:
-      "Dieser Workspace betreibt Agents mit dem Plattformmodell, daher verwendet jede Sitzung {model}. Das lässt sich hier nicht ändern.",
-    description: "Help under the read-only pinned model",
+      "Neue Sitzungen und Automationen ohne eigenes Modell nutzen dieses. Mitglieder können für eine Sitzung weiterhin ein anderes Modell des Plattformkatalogs wählen.",
+    description: "Help under the platform model catalog picker (w10/m516)",
   },
   "agentEnvironment.modelInvalid": {
     message:
       "Verwende eine Modell-ID ohne Leerzeichen (höchstens 255 Zeichen).",
     description: "Default model validation error",
   },
-  "agentEnvironment.modelPinnedError": {
+  "agentEnvironment.modelNotOfferedError": {
     message:
-      "Dieser Workspace betreibt Agents mit dem Plattformmodell ({model}); sein Standardmodell lässt sich nicht ändern.",
-    description: "Server refusal: model is pinned",
+      "Das Plattformmodell bietet {model} nicht an. Wähle eines aus der Liste.",
+    description: "Server refusal: the default model is not in the platform catalog (w10/m516)",
   },
   "agentEnvironment.tierInvalid": {
     message: "Diese Option für den Netzwerkzugriff wird nicht unterstützt.",

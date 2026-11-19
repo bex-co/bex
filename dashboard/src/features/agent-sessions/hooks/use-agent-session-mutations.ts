@@ -45,6 +45,11 @@ export interface CreateAgentSessionInput {
   /** The `bex-agent/*` working branch. */
   branch: string;
   agent: string;
+  /**
+   * The model the session runs (w10/m516): one of the agent's capabilities
+   * models; omitted ⇒ the agent's default.
+   */
+  model?: string;
   /** The initial fire-and-forget prompt. */
   task: string;
   /** Platform-registered sandbox image; omitted ⇒ the default template. */
@@ -69,8 +74,8 @@ export interface CreateAgentSessionInput {
   secrets?: AgentSessionSecretInput[];
   /** Workspace skills the first turn must follow (ADR099 D4). */
   skills?: AgentSessionSkillInput[];
-  // No model / egressAllowlist: the dashboard leaves both to the workspace's
-  // agent environment (w10/m17). The API still accepts them for CLI/MCP.
+  // No egressAllowlist: the dashboard leaves it to the workspace's agent
+  // environment (w10/m17). The API still accepts it for CLI/MCP.
 }
 
 /** Optional steer fields; the dashboard sends attachments, CLI/MCP may send egress. */
@@ -80,6 +85,11 @@ export interface SteerOptions {
   attachmentIds?: string[];
   /** Workspace skills the follow-up turn must follow (ADR099 D4). */
   skills?: AgentSessionSkillInput[];
+  /**
+   * Switches the session's model from this message's turn (w10/m516); a
+   * queued message switches it when it runs. Omitted keeps the session's.
+   */
+  model?: string;
   /**
    * Makes a retried send of a message that was queued harmless (ADR047 D12):
    * the server answers the message already queued. Sent only for a send the
@@ -265,6 +275,7 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
               branch: input.branch,
               agentConfig: {
                 agent: input.agent,
+                model: input.model || undefined,
                 task: input.task,
                 template: input.template || undefined,
               },
@@ -314,6 +325,7 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
                 : undefined,
               skills: options?.skills?.length ? options.skills : undefined,
               idempotencyKey: options?.idempotencyKey || undefined,
+              model: options?.model || undefined,
             },
             fetchPolicy: "no-cache",
           }),

@@ -220,6 +220,22 @@ const ruAgentSessions: Record<string, TranslationEntry> = {
     message: "Агент",
     description: "Composer — agent select label",
   },
+  "agentSessions.modelLabel": {
+    message: "Модель",
+    description: "Composer — model select label (w10/m516)",
+  },
+  "agentSessions.modelDefaultOption": {
+    message: "{model} (по умолчанию)",
+    description: "Model list — the model a session runs when it names none",
+  },
+  "agentSessions.modelFixed": {
+    message: "Этот агент всегда использует {model}",
+    description: "Tooltip of the model of an agent with one fixed model",
+  },
+  "agentSessions.metaModel": {
+    message: "Модель: {model}",
+    description: "Session header — tooltip of the model the session runs",
+  },
   "agentSessions.agent.claude": {
     message: "Claude",
     description: "Composer — agent option: claude",
@@ -576,6 +592,10 @@ const ruAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Queued message row — why the dispatcher could not start it (a spend ceiling or the live-sandbox limit)",
   },
+  "agentSessions.queueModel": {
+    message: "Переключает сессию на {model}",
+    description: "Queued message — the model its turn switches the session to (w10/m516)",
+  },
   "agentSessions.queueSendNow": {
     message: "Отправить сейчас",
     description:
@@ -708,6 +728,15 @@ const ruAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.errors.AGENT_SESSION_MODEL_ENDPOINT_INVALID": {
     message: "Конечная точка модели должна быть допустимым HTTPS URL.",
     description: "Mapped message for AGENT_SESSION_MODEL_ENDPOINT_INVALID",
+  },
+  "agentSessions.errors.AGENT_SESSION_MODEL_NOT_OFFERED": {
+    message:
+      "Модель платформы этого рабочего пространства не предлагает {model}. Выберите модель из списка.",
+    description: "Mapped message for AGENT_SESSION_MODEL_NOT_OFFERED (w10/m516)",
+  },
+  "agentSessions.errors.AGENT_SESSION_MODEL_PINNED": {
+    message: "Этот агент использует только {pinnedModel}.",
+    description: "Mapped message for AGENT_SESSION_MODEL_PINNED",
   },
   "agentSessions.errors.AGENT_SESSION_EGRESS_ALLOWLIST_INVALID": {
     message:

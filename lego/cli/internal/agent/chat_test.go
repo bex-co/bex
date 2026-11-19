@@ -784,6 +784,23 @@ func TestChatSendsStagedSkillsWithTheNextMessage(t *testing.T) {
 	}
 }
 
+// /model switches the session's model with the next message only (w10/m516);
+// the line after it names no model, so the session keeps the one it switched to.
+func TestChatModelSwitchesWithTheNextMessage(t *testing.T) {
+	f := newChatFake(t)
+	typed, wait := chatRun(t, f, "ags-chat1")
+	<-f.streaming
+	typeLines(t, typed, "/model anthropic/claude-opus-5.5", "Think harder", "Update the docs")
+	f.waitQueued(t, 2)
+	_ = typed.Close()
+	_, _, _ = wait()
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.sent[0].Model != "anthropic/claude-opus-5.5" || f.sent[1].Model != "" {
+		t.Fatalf("models sent: %q then %q", f.sent[0].Model, f.sent[1].Model)
+	}
+}
+
 func TestChatHelpListsTheQueueAndStop(t *testing.T) {
 	for _, want := range []string{"is queued on", "type more to queue more", "/stop", "/cancel", "after a confirmation"} {
 		if !strings.Contains(chatHelp, want) {

@@ -349,6 +349,7 @@ type agentEnvironment struct {
 	NetworkTier                   string   `json:"networkTier"`
 	CustomHosts                   []string `json:"customHosts"`
 	DefaultModel                  *string  `json:"defaultModel"`
+	Models                        []string `json:"models"`
 	ModelSource                   string   `json:"modelSource"`
 	ModelKeySet                   bool     `json:"modelKeySet"`
 	AgentModelMonthlySpendCapUSD  *float64 `json:"agentModelMonthlySpendCapUsd"`
@@ -454,8 +455,14 @@ func writeEnvironment(w io.Writer, e agentEnvironment) error {
 	tw := newTable(w)
 	tw.row("Network tier", e.NetworkTier)
 	tw.row("Custom hosts", strings.Join(e.CustomHosts, ", "))
-	if e.DefaultModel != nil {
+	switch {
+	case e.DefaultModel != nil:
 		tw.row("Default model", *e.DefaultModel)
+	case len(e.Models) > 0:
+		tw.row("Default model", e.Models[0]+" (the platform default)")
+	}
+	if len(e.Models) > 0 {
+		tw.row("Models", strings.Join(e.Models, ", "))
 	}
 	source := e.ModelSource
 	if e.ModelKeySet {
@@ -500,14 +507,25 @@ type agentCapabilities struct {
 		ID            string `json:"id"`
 		Label         string `json:"label"`
 		ModelKeyReady bool   `json:"modelKeyReady"`
+		// Model is what a session that names none runs (nil: the provider's
+		// own default); Models are the models one may name, empty where any
+		// model the workspace's own provider serves is accepted (w10/m516).
+		Model  *string  `json:"model"`
+		Models []string `json:"models"`
 	} `json:"agents"`
 }
 
 func modelsCommand(d deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "models",
-		Short: "Show the agents this workspace can run and whether it is ready",
-		Args:  cobra.NoArgs,
+		Short: "Show the agents this workspace can run, the model each runs and the models it can choose",
+		Long: "Lists each agent the workspace can start, whether it is ready, and the model\n" +
+			"a session runs when it names none. Where an agent offers a choice of models\n" +
+			"(the platform model catalog), they are listed below the table with the\n" +
+			"default marked. Pick one per session with `bex agent run --model ID`, switch\n" +
+			"a session from its next message with `bex agent send --model ID`, and change\n" +
+			"the workspace default with `bex agent env set --default-model ID`.",
+		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			return workspaceShow(d, c, http.MethodGet, nil, nil, "read agent capabilities", writeCapabilities, "agent-sessions", "capabilities")
 		},
@@ -528,15 +546,40 @@ func writeCapabilities(w io.Writer, caps agentCapabilities) error {
 	_ = tw.Flush()
 	_, _ = fmt.Fprintln(w)
 	tw = newTable(w)
-	_, _ = fmt.Fprintln(tw, "AGENT\tNAME\tREADY")
+	_, _ = fmt.Fprintln(tw, "AGENT\tNAME\tREADY\tMODEL")
 	for _, a := range caps.Agents {
 		ready := "yes"
 		if !a.ModelKeyReady {
 			ready = "no: needs the workspace's own model key (`bex agent env set --model-key-stdin`)"
 		}
-		_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\n", a.ID, a.Label, ready)
+		model := "the provider's default"
+		switch {
+		case a.Model != nil:
+			model = *a.Model
+		case len(a.Models) > 0:
+			model = a.Models[0]
+		}
+		if len(a.Models) == 0 {
+			model += " (any model its provider serves)"
+		}
+		_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", a.ID, a.Label, ready, model)
 	}
-	return tw.Flush()
+	if err := tw.Flush(); err != nil {
+		return err
+	}
+	for _, a := range caps.Agents {
+		if len(a.Models) < 2 {
+			continue // one fixed model, or free-form
+		}
+		_, _ = fmt.Fprintf(w, "\nModels %s can run (--model ID):\n", a.ID)
+		for _, m := range a.Models {
+			if a.Model != nil && *a.Model == m {
+				m += " (default)"
+			}
+			_, _ = fmt.Fprintf(w, "  %s\n", m)
+		}
+	}
+	return nil
 }
 
 // workspaceShow sends one ownerId-addressed request and prints the answer:

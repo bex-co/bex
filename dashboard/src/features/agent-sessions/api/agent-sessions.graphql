@@ -100,6 +100,8 @@ fragment AgentSessionQueuedMessageFields on AgentSessionQueuedMessage {
   author
   attachmentIds
   blockedReason
+  # The model its turn switches the session to (w10/m516); null keeps it.
+  model
   createdAt
 }
 
@@ -118,12 +120,17 @@ fragment AgentSessionMintFields on AgentSession {
 
 # Secret-free composer readiness. The dashboard uses the individual gates
 # rather than `ready`: chat-only sessions require a model key but not GitHub.
+# Each agent's `model` is what a session that names none runs and `models` what
+# it may name (w10/m516): the platform catalog, a fixed model's one entry, or
+# empty where the workspace's own provider takes any model.
 query AgentSessionCapabilities($ownerId: String) {
   agentSessionCapabilities(ownerId: $ownerId) {
     enabled
     agents {
       id
       modelKeyReady
+      model
+      models
     }
     github {
       connected
@@ -260,6 +267,7 @@ mutation SteerAgentSession(
   $attachmentIds: [String!]
   $skills: [AgentSessionSkillInput!]
   $idempotencyKey: String
+  $model: String
 ) {
   steerAgentSession(
     id: $id
@@ -268,6 +276,7 @@ mutation SteerAgentSession(
     attachmentIds: $attachmentIds
     skills: $skills
     idempotencyKey: $idempotencyKey
+    model: $model
   ) {
     ...AgentSessionFields
     ...AgentSessionMintFields

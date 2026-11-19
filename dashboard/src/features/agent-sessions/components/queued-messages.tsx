@@ -3,6 +3,7 @@ import {
   AlertCircle,
   ArrowDown,
   ArrowUp,
+  Cpu,
   Loader2,
   Paperclip,
   Pencil,
@@ -289,6 +290,19 @@ function QueuedMessageRows({
                           <X />
                         </RowButton>
                       </div>
+                      {message.model ? (
+                        <p
+                          className="text-muted-foreground flex basis-full items-center gap-1.5 pl-6 text-xs"
+                          title={message.model}
+                        >
+                          <Cpu aria-hidden className="size-3 shrink-0" />
+                          <span className="min-w-0 truncate">
+                            {t("agentSessions.queueModel", {
+                              model: message.model,
+                            })}
+                          </span>
+                        </p>
+                      ) : null}
                       {message.blockedReason ? (
                         <p className="text-muted-foreground flex basis-full items-start gap-1.5 pl-6 text-xs">
                           <AlertCircle

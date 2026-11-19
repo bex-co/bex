@@ -258,7 +258,7 @@ func TestPGQueuedMessageStartsOneTurnWhoeverRaces(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, results[i] = s.BeginQueuedAgentSessionTurn(ctx, msg.ID, "alice", session.ID, "next", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil)
+			_, results[i] = s.BeginQueuedAgentSessionTurn(ctx, msg.ID, "alice", session.ID, "next", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil, nil)
 		}()
 	}
 	wg.Wait()
@@ -293,7 +293,7 @@ func TestPGQueuedMessageStartsOneTurnWhoeverRaces(t *testing.T) {
 	if err := s.DropQueuedAgentMessage(ctx, gone.ID, "member left"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.BeginQueuedAgentSessionTurn(ctx, gone.ID, "alice", session.ID, "gone", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil); !errors.Is(err, ErrQueuedMessageNotPending) {
+	if _, err := s.BeginQueuedAgentSessionTurn(ctx, gone.ID, "alice", session.ID, "gone", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil, nil); !errors.Is(err, ErrQueuedMessageNotPending) {
 		t.Fatalf("a dropped message started a turn: %v", err)
 	}
 	if row, _ := s.GetAgentSession(ctx, session.ID); row.Turns != 2 || row.Phase != "completed" {
@@ -316,7 +316,7 @@ func TestPGQueuedMessageStartsNoTurnOnASessionThatEndedAfterTheClaim(t *testing.
 		if _, err := s.Pool.Exec(ctx, end, session.ID); err != nil {
 			t.Fatal(err)
 		}
-		_, err := s.BeginQueuedAgentSessionTurn(ctx, msg.ID, "alice", session.ID, "too late", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil)
+		_, err := s.BeginQueuedAgentSessionTurn(ctx, msg.ID, "alice", session.ID, "too late", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil, nil)
 		if !errors.Is(err, ErrAgentSessionTurnState) {
 			t.Fatalf("%s: begin = %v, want ErrAgentSessionTurnState", name, err)
 		}
@@ -407,7 +407,7 @@ func TestPGFeedbackYieldsToQueuedMessagesAndTurnsRecordInterruption(t *testing.T
 	}
 
 	// A turn records that it was interrupted.
-	if _, err := s.BeginAgentSessionTurn(ctx, session.ID, "go", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil); err != nil {
+	if _, err := s.BeginAgentSessionTurn(ctx, session.ID, "go", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.MarkAgentSessionTurnInterrupted(ctx, session.ID, 2); err != nil {
@@ -471,7 +471,7 @@ func TestPGQueuedMessageWithAttachmentsIsEditedBySenderOnly(t *testing.T) {
 
 // beginKeyed starts a turn of the session for a direct send under key.
 func beginKeyed(s *PGStore, sessionID, prompt, key, hash string) error {
-	_, err := s.BeginKeyedAgentSessionTurn(context.Background(), key, hash, sessionID, prompt, "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil)
+	_, err := s.BeginKeyedAgentSessionTurn(context.Background(), key, hash, sessionID, prompt, "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil, nil)
 	return err
 }
 
@@ -539,7 +539,7 @@ func TestPGKeyedTurnRecordsItsKeyAndAKeyIsUsedOnce(t *testing.T) {
 	}
 	settleSession(t, s, other.ID)
 	for range 2 {
-		if _, err := s.BeginAgentSessionTurn(ctx, other.ID, "plain", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil); err != nil {
+		if _, err := s.BeginAgentSessionTurn(ctx, other.ID, "plain", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil, nil); err != nil {
 			t.Fatal(err)
 		}
 		settleSession(t, s, other.ID)
@@ -590,7 +590,7 @@ func TestPGKeyedQueuedMessageIsFoundPendingDeliveredAndDropped(t *testing.T) {
 		if head.Message.ID == "" {
 			t.Fatal("no claim for the session")
 		}
-		if _, err := s.BeginQueuedAgentSessionTurn(ctx, head.Message.ID, head.Message.Author, session.ID, head.Message.Prompt, "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil); err != nil {
+		if _, err := s.BeginQueuedAgentSessionTurn(ctx, head.Message.ID, head.Message.Author, session.ID, head.Message.Prompt, "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil, nil); err != nil {
 			t.Fatal(err)
 		}
 		settleSession(t, s, session.ID)
@@ -655,7 +655,7 @@ func TestPGInterruptRequestBelongsToItsTurn(t *testing.T) {
 	s, _, tenant := agentSessionPGStore(t, "agent-session-interrupt-request")
 	ctx := context.Background()
 	session := newQueueSession(t, s, tenant.ID, "completed")
-	if _, err := s.BeginAgentSessionTurn(ctx, session.ID, "two", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil); err != nil {
+	if _, err := s.BeginAgentSessionTurn(ctx, session.ID, "two", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	requested := func() []*time.Time {
@@ -755,7 +755,7 @@ func TestPGQueuedBeginRefusesAMessageEditedSinceItsClaim(t *testing.T) {
 	session := newQueueSession(t, s, tenant.ID, "completed")
 	msg := enqueue(t, s, session.ID, "original", "")
 	begin := func(author, prompt string) error {
-		_, err := s.BeginQueuedAgentSessionTurn(ctx, msg.ID, author, session.ID, prompt, "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil)
+		_, err := s.BeginQueuedAgentSessionTurn(ctx, msg.ID, author, session.ID, prompt, "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil, nil)
 		return err
 	}
 	check := func(what string) {

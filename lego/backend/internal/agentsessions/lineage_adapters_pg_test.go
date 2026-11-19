@@ -314,10 +314,10 @@ func TestLineageFiltersRefuseMalformedValuesWithANamed400(t *testing.T) {
 func TestChildCreateRefusalsCarryTheSameCodeOnEverySurface(t *testing.T) {
 	a := newLineageAdapters(t)
 	e := a.e
-	if err := agentsession.EnablePlatformModelRoute(agentsession.DevModelRouteOpenRouter, "", "sk-platform-test"); err != nil {
+	if err := agentsession.EnablePlatformModelRoute(agentsession.DevModelRouteOpenRouter, "", "", "sk-platform-test"); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = agentsession.EnablePlatformModelRoute("", "", "") })
+	t.Cleanup(func() { _ = agentsession.EnablePlatformModelRoute("", "", "", "") })
 	root := func(usd *float64) View {
 		t.Helper()
 		in := e.input("")

@@ -796,7 +796,7 @@ func TestLoadConfigPlatformModelRoute(t *testing.T) {
 		t.Fatalf("warnings = %q, want a loud disabled-route warning", warnings)
 	}
 	// Enabling exactly what loadConfig produced succeeds (route cleared ⇒ off).
-	if err := agentsession.EnablePlatformModelRoute(cfg.AgentPlatformModelRoute, cfg.AgentPlatformModel, cfg.AgentPlatformModelKey); err != nil {
+	if err := agentsession.EnablePlatformModelRoute(cfg.AgentPlatformModelRoute, cfg.AgentPlatformModel, cfg.AgentPlatformModels, cfg.AgentPlatformModelKey); err != nil {
 		t.Fatalf("enable after a disabled route: %v", err)
 	}
 	if agentsession.PlatformModelKeyReady(false) {

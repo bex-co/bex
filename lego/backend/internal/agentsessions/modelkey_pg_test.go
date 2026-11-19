@@ -275,7 +275,7 @@ func TestModelKeyBackfillKeepsPlatformRoutePG(t *testing.T) {
 			mint.EndpointHost, mint.Credential == platformKey, mint.Credential == stale)
 	}
 
-	_ = agentsession.EnablePlatformModelRoute("", "", "")
+	_ = agentsession.EnablePlatformModelRoute("", "", "", "")
 	got, err = BackfillModelKeyFlags(ctx, keys, pg)
 	if err != nil {
 		t.Fatal(err)

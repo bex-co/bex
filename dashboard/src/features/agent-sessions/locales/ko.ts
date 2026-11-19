@@ -220,6 +220,22 @@ const koAgentSessions: Record<string, TranslationEntry> = {
     message: "에이전트",
     description: "Composer — agent select label",
   },
+  "agentSessions.modelLabel": {
+    message: "모델",
+    description: "Composer — model select label (w10/m516)",
+  },
+  "agentSessions.modelDefaultOption": {
+    message: "{model} (기본값)",
+    description: "Model list — the model a session runs when it names none",
+  },
+  "agentSessions.modelFixed": {
+    message: "이 에이전트는 항상 {model}을(를) 사용합니다",
+    description: "Tooltip of the model of an agent with one fixed model",
+  },
+  "agentSessions.metaModel": {
+    message: "모델: {model}",
+    description: "Session header — tooltip of the model the session runs",
+  },
   "agentSessions.agent.claude": {
     message: "Claude",
     description: "Composer — agent option: claude",
@@ -535,6 +551,10 @@ const koAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Queued message row — why the dispatcher could not start it (a spend ceiling or the live-sandbox limit)",
   },
+  "agentSessions.queueModel": {
+    message: "세션을 {model}(으)로 전환합니다",
+    description: "Queued message — the model its turn switches the session to (w10/m516)",
+  },
   "agentSessions.queueSendNow": {
     message: "지금 보내기",
     description:
@@ -665,6 +685,15 @@ const koAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.errors.AGENT_SESSION_MODEL_ENDPOINT_INVALID": {
     message: "모델 엔드포인트는 올바른 HTTPS URL이어야 합니다.",
     description: "Mapped message for AGENT_SESSION_MODEL_ENDPOINT_INVALID",
+  },
+  "agentSessions.errors.AGENT_SESSION_MODEL_NOT_OFFERED": {
+    message:
+      "이 워크스페이스의 플랫폼 모델은 {model}을(를) 제공하지 않습니다. 모델 목록에서 선택하세요.",
+    description: "Mapped message for AGENT_SESSION_MODEL_NOT_OFFERED (w10/m516)",
+  },
+  "agentSessions.errors.AGENT_SESSION_MODEL_PINNED": {
+    message: "이 에이전트는 {pinnedModel}만 사용합니다.",
+    description: "Mapped message for AGENT_SESSION_MODEL_PINNED",
   },
   "agentSessions.errors.AGENT_SESSION_EGRESS_ALLOWLIST_INVALID": {
     message: '이그레스 허용 목록 항목 "{entry}"이 올바르지 않습니다: {reason}',

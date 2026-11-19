@@ -115,8 +115,9 @@ function sameHosts(a: string[], b: string[]): boolean {
 /**
  * The partial update the draft implies: only the fields that differ from the
  * saved environment. Custom hosts are sent only while the Custom tier is
- * selected (they are hidden and inert otherwise), and the model never while it
- * is pinned. An empty object means nothing to save.
+ * selected (they are hidden and inert otherwise). On the platform route the
+ * model is one of the catalog's (w10/m516) or "" for its default. An empty
+ * object means nothing to save.
  */
 export function buildPatch(
   saved: AgentEnvironmentView,
@@ -130,10 +131,8 @@ export function buildPatch(
     const hosts = parseHostLines(draft.hostsText);
     if (!sameHosts(hosts, saved.customHosts)) patch.customHosts = hosts;
   }
-  if (!saved.modelPinned) {
-    const model = draft.defaultModel.trim();
-    if (model !== (saved.defaultModel ?? "")) patch.defaultModel = model;
-  }
+  const model = draft.defaultModel.trim();
+  if (model !== (saved.defaultModel ?? "")) patch.defaultModel = model;
   return patch;
 }
 
@@ -181,11 +180,11 @@ export function saveErrorFrom(err: unknown): SaveError {
           };
         case "AGENT_ENVIRONMENT_MODEL_INVALID":
           return { field: "model", key: "agentEnvironment.modelInvalid" };
-        case "AGENT_ENVIRONMENT_MODEL_PINNED":
+        case "AGENT_ENVIRONMENT_MODEL_NOT_OFFERED":
           return {
             field: "model",
-            key: "agentEnvironment.modelPinnedError",
-            params: { model: str("pinnedModel") ?? "" },
+            key: "agentEnvironment.modelNotOfferedError",
+            params: { model: str("model") ?? "" },
           };
         case "AGENT_ENVIRONMENT_TIER_INVALID":
           return { field: "form", key: "agentEnvironment.tierInvalid" };

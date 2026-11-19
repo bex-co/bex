@@ -34,6 +34,7 @@ function message(
     author: "alice",
     attachmentCount: 0,
     blockedReason: null,
+    model: null,
     createdAt: null,
     ...over,
   };
@@ -115,6 +116,21 @@ describe("QueuedMessageList rendering", () => {
       ),
     ).toBeInTheDocument();
     expect(row("aqm-2").queryByText(/Couldn't start yet/)).toBeNull();
+  });
+
+  it("says which model a message switches the session to (w10/m516)", () => {
+    renderList([
+      message("aqm-1", "think harder", 1, {
+        model: "anthropic/claude-opus-5.5",
+      }),
+      message("aqm-2", "same model", 2),
+    ]);
+    expect(
+      row("aqm-1").getByText(
+        "Switches the session to anthropic/claude-opus-5.5",
+      ),
+    ).toBeInTheDocument();
+    expect(row("aqm-2").queryByText(/Switches the session/)).toBeNull();
   });
 
   it("shows how many attachments ride with a message", () => {

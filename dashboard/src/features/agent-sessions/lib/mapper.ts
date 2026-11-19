@@ -190,6 +190,7 @@ export function toQueuedMessageView(
     author: wire.author,
     attachmentCount: wire.attachmentIds?.length ?? 0,
     blockedReason: wire.blockedReason || null,
+    model: wire.model || null,
     createdAt: wire.createdAt ?? null,
   };
 }

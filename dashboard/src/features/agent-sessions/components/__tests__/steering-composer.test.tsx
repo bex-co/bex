@@ -19,6 +19,7 @@ const capabilitiesState = {
   capabilities: {
     enabled: true,
     modelKeyReadyAgents: ["claude"],
+    models: {} as Record<string, { model: string | null; models: string[] }>,
     github: { connected: true },
     attachments: { enabled: true, maxBytes: 25 * 1024 * 1024, maxPerTurn: 10 },
   },
@@ -95,6 +96,7 @@ const queuedResult = {
     author: "alice",
     attachmentCount: 0,
     blockedReason: null,
+    model: null,
     createdAt: null,
   },
 };
@@ -540,5 +542,92 @@ describe("SteeringComposer queue refusals (ADR047 D12)", () => {
     render(<SteeringComposer session={view("canceled")} chat={null} />);
     expect(screen.getByRole("textbox")).toBeDisabled();
     expect(screen.getByText("This session was canceled.")).toBeInTheDocument();
+  });
+});
+
+// w10/m516: a message can switch the session's model from its turn, as Devin's
+// agent selector does. The control shows the model the session runs; a send
+// names a model only when the person picked another.
+describe("SteeringComposer model switch", () => {
+  const catalog = [
+    "deepseek/deepseek-v4.1-flash-1017",
+    "anthropic/claude-sonnet-5.5",
+    "anthropic/claude-opus-5.5",
+  ];
+  function onModel(model: string): AgentSessionView {
+    return agentSessionView({
+      phase: "completed",
+      agentConfig: {
+        agent: "claude",
+        model,
+        modelEndpoint: null,
+        task: "t",
+        template: null,
+      },
+    });
+  }
+  beforeEach(() => {
+    capabilitiesState.capabilities.models = {
+      claude: { model: catalog[0], models: catalog },
+    };
+  });
+
+  it("sends the picked model with the message, then keeps the session's", async () => {
+    const user = userEvent.setup();
+    render(<SteeringComposer session={onModel(catalog[0])} chat={null} />);
+    const picker = screen.getByRole("combobox", { name: "Model" });
+    expect(picker).toHaveTextContent("deepseek-v4.1-flash-1017");
+    await user.click(picker);
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual([
+      "deepseek/deepseek-v4.1-flash-1017 (default)",
+      "anthropic/claude-sonnet-5.5",
+      "anthropic/claude-opus-5.5",
+    ]);
+    await user.click(
+      screen.getByRole("option", { name: "anthropic/claude-opus-5.5" }),
+    );
+    await user.type(screen.getByRole("textbox"), "think harder");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() =>
+      expect(steer).toHaveBeenCalledWith("as-1", "think harder", {
+        attachmentIds: [],
+        model: "anthropic/claude-opus-5.5",
+      }),
+    );
+
+    await user.type(screen.getByRole("textbox"), "and the docs");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(steer).toHaveBeenCalledTimes(2));
+    expect(steer).toHaveBeenLastCalledWith("as-1", "and the docs", {
+      attachmentIds: [],
+    });
+  });
+
+  it("names no model when the session's own is picked again", async () => {
+    const user = userEvent.setup();
+    render(<SteeringComposer session={onModel(catalog[1])} chat={null} />);
+    const picker = screen.getByRole("combobox", { name: "Model" });
+    expect(picker).toHaveTextContent("claude-sonnet-5.5");
+    await user.click(picker);
+    await user.click(
+      screen.getByRole("option", { name: "anthropic/claude-sonnet-5.5" }),
+    );
+    await user.type(screen.getByRole("textbox"), "go on");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() =>
+      expect(steer).toHaveBeenCalledWith("as-1", "go on", {
+        attachmentIds: [],
+      }),
+    );
+  });
+
+  it("draws no model control where the workspace's own key takes any model", () => {
+    capabilitiesState.capabilities.models = {
+      claude: { model: null, models: [] },
+    };
+    render(<SteeringComposer session={onModel("claude-opus-4-1")} chat={null} />);
+    expect(screen.queryByRole("combobox", { name: "Model" })).toBeNull();
   });
 });

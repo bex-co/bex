@@ -80,7 +80,7 @@ func TestBackfillModelKeyFlags(t *testing.T) {
 	}
 
 	// Without the route every hand-put key is flagged.
-	_ = agentsession.EnablePlatformModelRoute("", "", "")
+	_ = agentsession.EnablePlatformModelRoute("", "", "", "")
 	got, err = BackfillModelKeyFlags(context.Background(), keys, marks)
 	if err != nil {
 		t.Fatal(err)

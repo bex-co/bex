@@ -91,6 +91,10 @@ var agentProfileGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"id":            gqlutil.ReqStrField(func(v AgentProfile) any { return v.ID }),
 		"label":         gqlutil.ReqStrField(func(v AgentProfile) any { return v.Label }),
 		"modelKeyReady": gqlutil.ReqBoolField(func(v AgentProfile) any { return v.ModelKeyReady }),
+		"model": &graphql.Field{Type: graphql.String, Description: "The model a session of this agent runs when it names none: the workspace default, else the platform catalog's first model or the agent's fixed one. Null when the provider's own default runs.",
+			Resolve: gqlutil.Field(func(v AgentProfile) any { return optionalString(v.Model) })},
+		"models": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Description: "The models a session of this agent may name; empty where any model the workspace's own provider serves is accepted.",
+			Resolve: gqlutil.Field(func(v AgentProfile) any { return v.Models })},
 	},
 })
 
@@ -154,12 +158,16 @@ var agentDataUseGQLType = graphql.NewObject(graphql.ObjectConfig{
 var agentEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentEnvironment",
 	Fields: graphql.Fields{
-		"ownerId":       gqlutil.ReqStrField(func(v Environment) any { return v.OwnerID }),
-		"networkTier":   gqlutil.Typed(graphql.NewNonNull(agentNetworkTierGQLEnum), func(v Environment) any { return v.NetworkTier }),
-		"customHosts":   gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(v Environment) any { return v.CustomHosts }),
-		"defaultModel":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any { return optionalString(v.DefaultModel) })},
-		"modelPinned":   gqlutil.ReqBoolField(func(v Environment) any { return v.ModelPinned }),
-		"pinnedModel":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any { return optionalString(v.PinnedModel) })},
+		"ownerId":      gqlutil.ReqStrField(func(v Environment) any { return v.OwnerID }),
+		"networkTier":  gqlutil.Typed(graphql.NewNonNull(agentNetworkTierGQLEnum), func(v Environment) any { return v.NetworkTier }),
+		"customHosts":  gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(v Environment) any { return v.CustomHosts }),
+		"defaultModel": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any { return optionalString(v.DefaultModel) })},
+		"models": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Description: "The platform model catalog, its default first: the models a claude session, an automation and defaultModel may name. Empty on the workspace's own key, where any model id is accepted.",
+			Resolve: gqlutil.Field(func(v Environment) any { return v.Models })},
+		"modelPinned": &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Description: "True on the platform model route, whose gateway pins each claude session to the catalog model it chose.",
+			Resolve: gqlutil.Field(func(v Environment) any { return v.ModelPinned })},
+		"pinnedModel": &graphql.Field{Type: graphql.String, Description: "The platform catalog's default model; models lists every choice.",
+			Resolve: gqlutil.Field(func(v Environment) any { return optionalString(v.PinnedModel) })},
 		"modelKeySet":   gqlutil.ReqBoolField(func(v Environment) any { return v.ModelKeySet }),
 		"modelSource":   gqlutil.Typed(graphql.NewNonNull(agentModelSourceGQLEnum), func(v Environment) any { return v.ModelSource }),
 		"registryHosts": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(v Environment) any { return v.RegistryHosts }),
@@ -922,13 +930,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"secretNames":     gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 				"secrets":         gqlutil.Arg(graphql.NewList(graphql.NewNonNull(agentSessionSecretGQLInput))),
 				"skills":          gqlutil.Arg(graphql.NewList(graphql.NewNonNull(agentSessionSkillGQLInput))),
+				"model":           &graphql.ArgumentConfig{Type: graphql.String, Description: "Switch the session's model from the turn this message starts (a queued message switches it when it runs). On the platform model route it must be one of the agent's capabilities models; omitted keeps the session's model."},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				schema, required, err := outputArgs(p.Args)
 				if err != nil {
 					return nil, err
 				}
-				return s.Steer(p.Context, SteerRequest{OutputSchema: schema, OutputRequired: required, SessionID: gqlutil.Str(p.Args, "id"), Prompt: gqlutil.Str(p.Args, "prompt"), IdempotencyKey: gqlutil.Str(p.Args, "idempotencyKey"), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"]), SessionSecretsInput: secretsArg(p.Args), Skills: skillsArg(p.Args)})
+				return s.Steer(p.Context, SteerRequest{OutputSchema: schema, OutputRequired: required, SessionID: gqlutil.Str(p.Args, "id"), Prompt: gqlutil.Str(p.Args, "prompt"), IdempotencyKey: gqlutil.Str(p.Args, "idempotencyKey"), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"]), SessionSecretsInput: secretsArg(p.Args), Skills: skillsArg(p.Args), Model: gqlutil.Str(p.Args, "model")})
 			},
 		},
 		"setAgentRepoEnvironment": &graphql.Field{

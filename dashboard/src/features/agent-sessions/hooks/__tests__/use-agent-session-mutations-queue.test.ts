@@ -66,6 +66,7 @@ const queuedWire = (
   author: "alice",
   attachmentIds: null,
   blockedReason: null,
+  model: null,
   createdAt: null,
 });
 

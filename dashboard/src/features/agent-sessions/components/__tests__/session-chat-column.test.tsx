@@ -285,6 +285,7 @@ describe("SessionChatColumn message queue (ADR047 D12)", () => {
     author: "alice",
     attachmentCount: 0,
     blockedReason: null,
+    model: null,
     createdAt: null,
   });
 

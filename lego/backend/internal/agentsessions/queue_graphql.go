@@ -39,6 +39,8 @@ var queuedMessageGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"secretNames":     gqlutil.Typed(graphql.NewList(graphql.NewNonNull(graphql.String)), func(v QueuedMessage) any { return v.SecretNames }),
 		"egressAllowlist": gqlutil.Typed(graphql.NewList(graphql.NewNonNull(graphql.String)), func(v QueuedMessage) any { return v.EgressAllowlist }),
 		"hasOutputSchema": gqlutil.Typed(graphql.NewNonNull(graphql.Boolean), func(v QueuedMessage) any { return v.HasOutputSchema }),
+		"model": &graphql.Field{Type: graphql.String, Description: "The model its turn switches the session to; null keeps the session's.",
+			Resolve: gqlutil.OptionalStrField(func(v QueuedMessage) any { return v.Model }).Resolve},
 		"blockedReason": &graphql.Field{Type: graphql.String, Description: "Why the last attempt to run it failed (a spend or live-sandbox limit); it is retried about every half minute.",
 			Resolve: gqlutil.OptionalStrField(func(v QueuedMessage) any { return v.BlockedReason }).Resolve},
 		"state":         gqlutil.ReqStrField(func(v QueuedMessage) any { return v.State }),

@@ -304,12 +304,16 @@ export type AgentEnvironment = {
   /** The agent profiles members can start sessions with, as the workspace's admins chose. */
   enabledAgents: Array<Scalars['String']['output']>;
   modelKeySet: Scalars['Boolean']['output'];
+  /** True on the platform model route, whose gateway pins each claude session to the catalog model it chose. */
   modelPinned: Scalars['Boolean']['output'];
   modelSource: AgentModelSource;
+  /** The platform model catalog, its default first: the models a claude session, an automation and defaultModel may name. Empty on the workspace's own key, where any model id is accepted. */
+  models: Array<Scalars['String']['output']>;
   networkTier: AgentNetworkTier;
   /** The agent-model spend beyond billing credits (which pay first) at which the card is charged mid-cycle; null at the top tier (month-end only). */
   nextChargeThresholdUsd: Maybe<Scalars['Float']['output']>;
   ownerId: Scalars['String']['output'];
+  /** The platform catalog's default model; models lists every choice. */
   pinnedModel: Maybe<Scalars['String']['output']>;
   registryHosts: Array<Scalars['String']['output']>;
   /** The workspace's billing trust tier (T0 new .. T4). */
@@ -605,7 +609,11 @@ export type AgentSessionProfile = {
   __typename: 'AgentSessionProfile';
   id: Scalars['String']['output'];
   label: Scalars['String']['output'];
+  /** The model a session of this agent runs when it names none: the workspace default, else the platform catalog's first model or the agent's fixed one. Null when the provider's own default runs. */
+  model: Maybe<Scalars['String']['output']>;
   modelKeyReady: Scalars['Boolean']['output'];
+  /** The models a session of this agent may name; empty where any model the workspace's own provider serves is accepted. */
+  models: Array<Scalars['String']['output']>;
 };
 
 export type AgentSessionPullRequest = {
@@ -629,6 +637,8 @@ export type AgentSessionQueuedMessage = {
   egressAllowlist: Maybe<Array<Scalars['String']['output']>>;
   hasOutputSchema: Scalars['Boolean']['output'];
   id: Scalars['String']['output'];
+  /** The model its turn switches the session to; null keeps the session's. */
+  model: Maybe<Scalars['String']['output']>;
   position: Scalars['Int']['output'];
   prompt: Scalars['String']['output'];
   secretNames: Maybe<Array<Scalars['String']['output']>>;
@@ -3951,6 +3961,7 @@ export type MutationSteerAgentSessionArgs = {
   egressAllowlist?: InputMaybe<Array<Scalars['String']['input']>>;
   id: Scalars['String']['input'];
   idempotencyKey?: InputMaybe<Scalars['String']['input']>;
+  model?: InputMaybe<Scalars['String']['input']>;
   outputRequired?: InputMaybe<Scalars['Boolean']['input']>;
   outputSchema?: InputMaybe<Scalars['String']['input']>;
   prompt: Scalars['String']['input'];

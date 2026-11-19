@@ -234,12 +234,15 @@ type Config struct {
 	// PLATFORM model route (ADR090, production-capable):
 	// BEX_AGENT_PLATFORM_MODEL_ROUTE=openrouter runs the claude profile of every
 	// workspace without its own model key on OpenRouter with the
-	// platform-owned BEX_AGENT_PLATFORM_MODEL_KEY, pinned to
-	// BEX_AGENT_PLATFORM_MODEL. A missing key disables the route (warning)
-	// instead of failing startup. AgentPlatformModelKey is a secret: never log
-	// or print it (or this struct).
+	// platform-owned BEX_AGENT_PLATFORM_MODEL_KEY, each session pinned to the
+	// catalog model it chose: BEX_AGENT_PLATFORM_MODEL (the default) or one of
+	// the comma-separated BEX_AGENT_PLATFORM_MODELS (w10/m516). A missing key
+	// disables the route (warning) instead of failing startup.
+	// AgentPlatformModelKey is a secret: never log or print it (or this
+	// struct).
 	AgentPlatformModelRoute string
 	AgentPlatformModel      string
+	AgentPlatformModels     string
 	AgentPlatformModelKey   string
 	// AgentPlatformMetaKey (BEX_AGENT_PLATFORM_META_KEY, a secret: never log
 	// it) runs the platform-only muse profile on Meta's API in every
@@ -924,8 +927,9 @@ func (p *parser) imageCompatibilityWorkspaces(name string) map[string]bool {
 	return set
 }
 
-// platformModelRoute — policy "fail" for the route and model (an unknown
-// route or a malformed model id refuses startup), but "warn" for a missing
+// platformModelRoute — policy "fail" for the route and its catalog (an
+// unknown route, a malformed model id or a repeated catalog entry refuses
+// startup), but "warn" for a missing
 // key: the key arrives from the optional Secret bex-agent-platform-model, and
 // its absence must not crash-loop bex-api. The route is then disabled and the reason logged. The
 // key's value is never part of any message.
@@ -933,13 +937,14 @@ func (p *parser) platformModelRoute(cfg *Config) {
 	const routeEnv = "BEX_AGENT_PLATFORM_MODEL_ROUTE"
 	cfg.AgentPlatformModelRoute = strings.TrimSpace(p.getenv(routeEnv))
 	cfg.AgentPlatformModel = strings.TrimSpace(p.getenv("BEX_AGENT_PLATFORM_MODEL"))
+	cfg.AgentPlatformModels = strings.TrimSpace(p.getenv("BEX_AGENT_PLATFORM_MODELS"))
 	cfg.AgentPlatformModelKey = strings.TrimSpace(p.getenv("BEX_AGENT_PLATFORM_MODEL_KEY"))
 	cfg.AgentPlatformMetaKey = strings.TrimSpace(p.getenv("BEX_AGENT_PLATFORM_META_KEY"))
 	cfg.AgentMetaRouteMaxSessions, _ = p.positiveInt("BEX_AGENT_META_ROUTE_MAX_SESSIONS", agentsessions.DefaultMetaRouteMaxSessions)
 	if cfg.AgentPlatformModelRoute == "" {
 		return
 	}
-	if err := agentsession.ValidatePlatformModelRoute(cfg.AgentPlatformModelRoute, cfg.AgentPlatformModel); err != nil {
+	if err := agentsession.ValidatePlatformModelRoute(cfg.AgentPlatformModelRoute, cfg.AgentPlatformModel, cfg.AgentPlatformModels); err != nil {
 		p.err(err)
 		return
 	}

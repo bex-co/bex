@@ -62,6 +62,7 @@ import { ComposerSpendBanner } from "@/features/agent-sessions/components/compos
 import { useComposerSpendGate } from "@/features/agent-sessions/hooks/use-composer-spend-gate";
 import { blocksCreate } from "@/features/agent-environment/lib/spend";
 import { ComposerSecrets } from "@/features/agent-sessions/components/composer-secrets";
+import { ModelPicker } from "@/features/agent-sessions/components/model-picker";
 import {
   ComposerSkillChips,
   ComposerSkills,
@@ -83,10 +84,11 @@ const EXAMPLE_KEYS = [
 ] as const;
 
 /**
- * The prompt-box composer: the visual center of `/agents`. Agent and repo live
- * on the toolbar, and that is the whole form (w10/m17): the branch is always
- * derived from the task, and the model and sandbox network come from the
- * workspace's agent environment, so the composer sends neither. A repo is
+ * The prompt-box composer: the visual center of `/agents`. Agent, model and
+ * repo live on the toolbar (w10/m17, w10/m516): the branch is always derived
+ * from the task, the sandbox network comes from the workspace's agent
+ * environment, and the model control shows the agent's model and its
+ * catalog, sending a model only when the person picks another. A repo is
  * optional — a repo-less prompt starts a chat-only session. The Connect GitHub
  * callout appears only when the composer targets a repo but the workspace has
  * no GitHub App repos connected.
@@ -126,6 +128,8 @@ export function NewSessionComposer() {
   );
   // Workspace skills this first turn must follow (ADR099 D4), sent once.
   const [skills, setSkills] = useState<ComposerSkill[]>([]);
+  // The model the session runs (w10/m516); "" runs the agent's default.
+  const [model, setModel] = useState("");
   const skillsInvalid = !composerSkillsValid(skills);
   const editorRef = useRef<InlineMentionEditorHandle | null>(null);
   const { task, repo, sessionIds } = composerDocument;
@@ -144,6 +148,7 @@ export function NewSessionComposer() {
   // Readiness is per agent: the platform route serves claude in every
   // workspace, while codex and gemini still need the workspace's own key.
   const agent = useWatch({ control: form.control, name: "agent" });
+  const modelOffer = capabilities?.models[agent];
   const modelKeyMissing =
     capabilities?.enabled && !capabilities.modelKeyReadyAgents.includes(agent);
   // ADR091 D6: a platform-route workspace at its spend cap (or with an unpaid
@@ -217,6 +222,7 @@ export function NewSessionComposer() {
         repo ?? "",
         branch,
         values.agent,
+        model,
         prompt,
         sentAttachmentIds,
         spendLimit.value,
@@ -234,6 +240,7 @@ export function NewSessionComposer() {
         repo: repo ?? "",
         branch,
         agent: values.agent,
+        ...(model ? { model } : {}),
         task: prompt,
         attachmentIds: sentAttachmentIds,
         maxSpendUSD: spendLimit.value,
@@ -365,7 +372,10 @@ export function NewSessionComposer() {
                     <FormControl>
                       <Select
                         value={field.value}
-                        onValueChange={(v) => field.onChange(v as AgentOption)}
+                        onValueChange={(v) => {
+                          field.onChange(v as AgentOption);
+                          setModel("");
+                        }}
                       >
                         <SelectTrigger
                           size="sm"
@@ -388,6 +398,13 @@ export function NewSessionComposer() {
                     </FormControl>
                   </FormItem>
                 )}
+              />
+
+              <ModelPicker
+                offer={modelOffer}
+                value={model}
+                onChange={setModel}
+                disabled={isSubmitting}
               />
 
               {attachmentLimits?.enabled ? (

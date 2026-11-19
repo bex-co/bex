@@ -232,7 +232,9 @@ type ModelMintResponse struct {
 	// PinnedModel, when set, means Credential is the PLATFORM route's key: the
 	// gateway must refuse any request whose JSON body's top-level "model" is not
 	// exactly this id, so a tenant sandbox cannot spend the platform key on a
-	// different (more expensive) model. Empty for every workspace BYO key.
+	// model its session did not choose. On the OpenRouter route it is the
+	// catalog model the session recorded (w10/m516), else the route's default.
+	// Empty for every workspace BYO key.
 	// It also marks the exchange as platform-metered: the gateway reports its
 	// token usage (InternalModelUsagePath) and applies the platform data
 	// policy (OpenRouter provider routing).
@@ -345,7 +347,7 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 	if !CurrentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) {
 		return ModelMintResponse{}, ErrForbidden
 	}
-	agent, stored, err := decodeModelConfig(session.AgentConfig)
+	agent, stored, model, err := decodeModelConfig(session.AgentConfig)
 	if err != nil {
 		return ModelMintResponse{}, err
 	}
@@ -390,16 +392,17 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 	}
 	// The platform route (ADR090) injects its own key for a workspace
 	// without its own key: the workspace's BYO key is not read, and
-	// the model is pinned (which also meters and spend-caps the exchange). The
-	// route is resolved for the workspace now, the same decision
-	// modelEndpointHost just made, so the host is OpenRouter here.
+	// the model is pinned (which also meters and spend-caps the exchange) to
+	// the catalog model the session recorded, which only bex-api writes
+	// (w10/m516). The route is resolved for the workspace now, the same
+	// decision modelEndpointHost just made, so the host is OpenRouter here.
 	if route := routeFor(agent, status.ModelKeySet); route != nil && route.platformKey != "" && host == OpenRouterHost {
 		if err := m.admitPlatformSpend(ctx, req.Workspace, session, status); err != nil {
 			return ModelMintResponse{}, err
 		}
 		return ModelMintResponse{
 			Credential: route.platformKey, EndpointHost: host, Scheme: AuthSchemeBearer,
-			PathPrefix: pathPrefix, PinnedModel: route.model,
+			PathPrefix: pathPrefix, PinnedModel: route.pin(model),
 		}, nil
 	}
 	if m.Keys == nil {
@@ -598,19 +601,20 @@ func (f *ModelAuthFailer) now() time.Time {
 	return time.Now().UTC()
 }
 
-// decodeModelConfig extracts the agent and stored endpoint from a session's
+// decodeModelConfig extracts the agent, stored endpoint and model from a session's
 // AgentConfig.
-func decodeModelConfig(config json.RawMessage) (agent, endpoint string, err error) {
+func decodeModelConfig(config json.RawMessage) (agent, endpoint, model string, err error) {
 	var decoded struct {
 		Agent         string `json:"agent"`
 		ModelEndpoint string `json:"modelEndpoint"`
+		Model         string `json:"model"`
 	}
 	if len(config) > 0 {
 		if err := json.Unmarshal(config, &decoded); err != nil {
-			return "", "", fmt.Errorf("%w: decode agent config", ErrInvalidRequest)
+			return "", "", "", fmt.Errorf("%w: decode agent config", ErrInvalidRequest)
 		}
 	}
-	return decoded.Agent, decoded.ModelEndpoint, nil
+	return decoded.Agent, decoded.ModelEndpoint, decoded.Model, nil
 }
 
 // modelEndpointHost re-validates the vendor host for a session's agent and

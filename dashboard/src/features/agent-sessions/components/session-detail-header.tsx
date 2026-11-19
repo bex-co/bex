@@ -7,6 +7,7 @@ import {
   ChevronDown,
   CircleStop,
   Code2,
+  Cpu,
   ExternalLink,
   GitBranch,
   Hourglass,
@@ -31,6 +32,7 @@ import {
 import { CopyButton } from "@/common/components/copy-button";
 import { SessionFilesButton } from "@/features/agent-sessions/components/session-files-sheet";
 import { SessionModelCost } from "@/features/agent-sessions/components/session-model-cost";
+import { shortModel } from "@/features/agent-sessions/lib/models";
 import { SessionSecrets } from "@/features/agent-sessions/components/session-secrets";
 import {
   Tooltip,
@@ -271,6 +273,19 @@ export function SessionDetailHeader({
             {t("agentSessions.metaDuration", { duration })}
           </span>
           <span>{t("agentSessions.metaTurns", { count: session.turns })}</span>
+          {/* The model the session runs (w10/m516): a message can switch it. */}
+          {session.agentConfig.model ? (
+            <span
+              className="inline-flex items-center gap-1 font-mono"
+              title={t("agentSessions.metaModel", {
+                model: session.agentConfig.model,
+              })}
+              data-testid="session-model"
+            >
+              <Cpu aria-hidden className="size-3" />
+              {shortModel(session.agentConfig.model)}
+            </span>
+          ) : null}
           <SessionModelCost session={session} />
           {session.automationId ? (
             <StartedByAutomation

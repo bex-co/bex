@@ -113,14 +113,21 @@ export function AutomationFormSkeleton({ mode }: { mode: "create" | "edit" }) {
                 {INPUT}
               </FormField>
               <FormField
+                id="sk-model"
+                label={t("agentAutomations.field.model")}
+                help={t("agentAutomations.help.model")}
+              >
+                {INPUT}
+              </FormField>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
                 id="sk-spend"
                 label={t("agentAutomations.field.spendLimit")}
                 help={t("agentAutomations.help.spendLimit")}
               >
                 {INPUT}
               </FormField>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 id="sk-email"
                 label={t("agentAutomations.field.emailNotifications")}

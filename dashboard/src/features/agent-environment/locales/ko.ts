@@ -125,19 +125,23 @@ const koAgentEnvironment: Record<string, TranslationEntry> = {
       "새 세션이 사용할 모델 ID입니다(예: claude-sonnet-4-5). 비워 두면 제공업체 기본값을 사용합니다.",
     description: "Help under the default model field",
   },
-  "agentEnvironment.modelPinnedHelp": {
+  "agentEnvironment.modelPlatformDefault": {
+    message: "플랫폼 기본값 ({model})",
+    description: "Default model picker — no default: the platform catalog's first model (w10/m516)",
+  },
+  "agentEnvironment.modelCatalogHelp": {
     message:
-      "이 워크스페이스는 플랫폼 모델로 에이전트를 실행하므로 모든 세션이 {model} 모델을 사용합니다. 여기서는 변경할 수 없습니다.",
-    description: "Help under the read-only pinned model",
+      "모델을 지정하지 않은 새 세션과 자동화는 이 모델을 사용합니다. 멤버는 세션마다 플랫폼 카탈로그의 다른 모델을 선택할 수 있습니다.",
+    description: "Help under the platform model catalog picker (w10/m516)",
   },
   "agentEnvironment.modelInvalid": {
     message: "공백이 없는 모델 ID를 사용하세요(최대 255자).",
     description: "Default model validation error",
   },
-  "agentEnvironment.modelPinnedError": {
+  "agentEnvironment.modelNotOfferedError": {
     message:
-      "이 워크스페이스는 플랫폼 모델({model})로 에이전트를 실행하므로 기본 모델을 변경할 수 없습니다.",
-    description: "Server refusal: model is pinned",
+      "플랫폼 모델은 {model}을(를) 제공하지 않습니다. 목록에서 선택하세요.",
+    description: "Server refusal: the default model is not in the platform catalog (w10/m516)",
   },
   "agentEnvironment.tierInvalid": {
     message: "지원하지 않는 네트워크 접근 옵션입니다.",

@@ -52,6 +52,7 @@ const chatHelp = `Type a message and press Enter to send it. While a turn runs i
 the server and runs when the turn ends; type more to queue more. Commands:
   /attach FILE        attach a file to the next message
   /skill NAME[:ARGS]  use a workspace skill in the next message
+  /model ID           switch the session's model from the next message on
   /files [flags]      list (or --download DIR) the files the agent shared
   /open [--dashboard] open the sandbox in bex desktop, or the dashboard page
   /tags TAG…|--clear  replace the session's tags
@@ -153,7 +154,7 @@ type chatState struct {
 	lines    <-chan string
 	renderer *chunkRenderer
 
-	staged    message   // what /attach and /skill staged for the next message
+	staged    message   // what /attach, /skill and /model staged for the next message
 	held      []message // messages an older server refused for a running turn
 	summaries int       // the last turn whose summary was printed
 }
@@ -167,6 +168,7 @@ type message struct {
 	files  []string
 	ids    []string
 	skills []skillInvocation
+	model  string
 }
 
 func (ch *chatState) say(format string, args ...any) {
@@ -383,7 +385,7 @@ func (ch *chatState) input(line string) (moved bool, err error) {
 	return false, err
 }
 
-// send sends a typed line with what /attach and /skill staged for it.
+// send sends a typed line with what /attach, /skill and /model staged for it.
 func (ch *chatState) send(prompt string) (moved bool, err error) {
 	m := ch.staged
 	m.prompt, m.key = prompt, ch.d.newKey()
@@ -406,7 +408,7 @@ func (ch *chatState) post(m *message) (took, later bool, err error) {
 			return false, false, err
 		}
 	}
-	s, _, err := ch.a.api.steer(ch.a.ctx, ch.id, steerRequest{Prompt: m.prompt, AttachmentIDs: m.ids, Skills: m.skills}, m.key)
+	s, _, err := ch.a.api.steer(ch.a.ctx, ch.id, steerRequest{Prompt: m.prompt, AttachmentIDs: m.ids, Skills: m.skills, Model: m.model}, m.key)
 	var apiErr *apiError
 	switch {
 	case errors.As(err, &apiErr) && apiErr.Code == codeSessionTurnInFlight:
@@ -446,6 +448,13 @@ func (ch *chatState) command(words []string) error {
 		}
 		ch.staged.skills = append(ch.staged.skills, skills...)
 		ch.say("the next message uses %d skill(s)", len(ch.staged.skills))
+	case "model":
+		if len(rest) != 1 {
+			ch.say("usage: /model ID   (`bex agent models` lists them)")
+			return nil
+		}
+		ch.staged.model = rest[0]
+		ch.say("the next message switches the session to %s", rest[0])
 	case "ssh":
 		// chat reads the terminal's input itself, so an interactive ssh
 		// cannot share it; print the command to run beside the chat.

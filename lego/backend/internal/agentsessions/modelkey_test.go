@@ -332,14 +332,14 @@ func TestBYOKeyWinsOverThePlatformRoute(t *testing.T) {
 	}
 }
 
-// Setting a key lifts the platform pin in the same update, so a pinned
-// workspace may choose its default model together with its own key.
+// Setting a key lifts the platform catalog in the same update, so a routed
+// workspace may choose a default model outside it together with its own key.
 func TestModelKeyLiftsThePlatformPin(t *testing.T) {
 	enablePlatformRoute(t)
 	keys := &fakeModelKeys{}
 	svc, _ := modelKeyService("tea-pinned", keys)
-	if _, err := svc.UpdateEnvironment(caller("admin"), "tea-pinned", EnvironmentInput{DefaultModel: ptr("claude-opus-4-1")}); !isCode(err, "AGENT_ENVIRONMENT_MODEL_PINNED") {
-		t.Fatalf("pinned default model = %v", err)
+	if _, err := svc.UpdateEnvironment(caller("admin"), "tea-pinned", EnvironmentInput{DefaultModel: ptr("claude-opus-4-1")}); !isCode(err, CodeEnvironmentModelNotOffered) {
+		t.Fatalf("default model outside the catalog = %v", err)
 	}
 	got, err := svc.UpdateEnvironment(caller("admin"), "tea-pinned", EnvironmentInput{ModelAPIKey: ptr(restModelKey), DefaultModel: ptr("claude-opus-4-1")})
 	if err != nil || got.ModelPinned || got.ModelSource != ModelSourceBYO || got.DefaultModel == nil || *got.DefaultModel != "claude-opus-4-1" {
@@ -351,10 +351,12 @@ func TestModelKeyLiftsThePlatformPin(t *testing.T) {
 	}
 }
 
-// A session created on the platform route stored the pinned OpenRouter model
-// and endpoint. Once its workspace sets its own key, the next steer runs the
-// workspace default model (or the profile's, with none) against the
-// provider; once the key is cleared again, the pinned model on OpenRouter.
+// A session created on the platform route stored the catalog's OpenRouter
+// model and endpoint. Once its workspace sets its own key, the next steer runs
+// the workspace default model (or the profile's, with none) against the
+// provider, and the session records the model that turn ran, which it then
+// keeps like any session's model; once the key is cleared again, a model the
+// catalog does not offer gives way to the catalog default on OpenRouter.
 func TestSteerFollowsTheModelSource(t *testing.T) {
 	enablePlatformRoute(t)
 	svc, st, lifecycle := sessionWithEnvironment(t, &store.AgentEnvironment{NetworkTier: NetworkTierRegistries})
@@ -395,6 +397,19 @@ func TestSteerFollowsTheModelSource(t *testing.T) {
 			t.Fatalf("%s still pinned after set", name)
 		}
 	}
+	if got := st.rows[created.ID].AgentConfig; !strings.Contains(string(got), `"model":"claude-opus-4-1"`) {
+		t.Fatalf("the session did not record the model its turn ran: %s", got)
+	}
+	steer(true, "")
+	if model := lifecycle.driverEnv["ANTHROPIC_MODEL"]; model != "claude-opus-4-1" {
+		t.Fatalf("steer after the default was cleared = %q, want the session's own model", model)
+	}
+
+	// A session that never left the route's default follows the profile
+	// default once the workspace sets its own key with no default model.
+	session := st.rows[created.ID]
+	session.AgentConfig = []byte(`{"agent":"claude","model":"` + agentsession.DefaultDevModel + `","modelEndpoint":"https://openrouter.ai/api","task":"fix the tests"}`)
+	st.rows[created.ID] = session
 	steer(true, "")
 	if model, ok := lifecycle.driverEnv["ANTHROPIC_MODEL"]; ok {
 		t.Fatalf("steer after set with no default model = %q, want the profile default", model)

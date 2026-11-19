@@ -9,8 +9,9 @@ fragment AgentEnvironmentFields on AgentEnvironment {
   networkTier
   customHosts
   defaultModel
-  modelPinned
-  pinnedModel
+  # The platform model catalog, its default first (w10/m516): the choices for
+  # defaultModel. Empty on the workspace's own key, where it is free-form.
+  models
   modelKeySet
   modelSource
   registryHosts

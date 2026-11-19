@@ -252,10 +252,10 @@ func TestChildCreateIsIdempotentWithAParent(t *testing.T) {
 // request once the tree has spent the ceiling.
 func TestChildSpendCountsAgainstTheParentCeiling(t *testing.T) {
 	e := newLineageEnv(t)
-	if err := agentsession.EnablePlatformModelRoute(agentsession.DevModelRouteOpenRouter, "", "sk-platform-test"); err != nil {
+	if err := agentsession.EnablePlatformModelRoute(agentsession.DevModelRouteOpenRouter, "", "", "sk-platform-test"); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = agentsession.EnablePlatformModelRoute("", "", "") })
+	t.Cleanup(func() { _ = agentsession.EnablePlatformModelRoute("", "", "", "") })
 	input := func(parentID string, usd *float64) CreateRequest {
 		in := e.input(parentID)
 		in.AgentConfig = AgentConfig{Agent: "claude", Task: "split the work"}

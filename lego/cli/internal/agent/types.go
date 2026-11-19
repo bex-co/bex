@@ -154,6 +154,9 @@ type steerRequest struct {
 	AttachmentIDs []string          `json:"attachmentIds,omitempty"`
 	OutputSchema  json.RawMessage   `json:"outputSchema,omitempty"`
 	Skills        []skillInvocation `json:"skills,omitempty"`
+	// Model switches the session's model from the turn this message starts
+	// (w10/m516); empty keeps the session's.
+	Model string `json:"model,omitempty"`
 	sessionSecrets
 }
 

@@ -472,6 +472,10 @@ const ruAgentAutomations: Record<string, TranslationEntry> = {
     message: "Агент",
     description: "Form field label",
   },
+  "agentAutomations.field.model": {
+    message: "Модель",
+    description: "Automation form — model field label (w10/m516)",
+  },
   "agentAutomations.field.spendLimit": {
     message: "Лимит расходов на запуск (USD)",
     description: "Form field label",
@@ -591,6 +595,11 @@ const ruAgentAutomations: Record<string, TranslationEntry> = {
       "Верхний предел расходов на модель за каждый запуск. Обязателен, если запуски используют модель платформы.",
     description: "Spend limit field help",
   },
+  "agentAutomations.help.model": {
+    message:
+      "Модель для каждого запуска. Оставьте значение по умолчанию, чтобы следовать настройке рабочего пространства.",
+    description: "Automation form — model field help",
+  },
   "agentAutomations.help.emailNotifications": {
     message:
       "О каких запусках вам приходят письма. О приостановке платформой — всегда.",
@@ -616,6 +625,10 @@ const ruAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.placeholder.repo": {
     message: "owner/repository",
     description: "Repository field placeholder",
+  },
+  "agentAutomations.placeholder.model": {
+    message: "По умолчанию для рабочего пространства",
+    description: "Automation form — empty free-form model field",
   },
   "agentAutomations.summary": {
     message: "Запуски: {schedule}",

@@ -64,6 +64,9 @@ type QueuedMessage struct {
 	SecretNames     []string          `json:"secretNames,omitempty"`
 	Skills          []SkillInvocation `json:"skills,omitempty"`
 	EgressAllowlist []string          `json:"egressAllowlist,omitempty"`
+	// Model is the model its turn switches the session to (w10/m516); empty
+	// keeps the session's.
+	Model string `json:"model,omitempty"`
 	// HasOutputSchema says the turn will be held to a structured-output contract.
 	HasOutputSchema bool `json:"hasOutputSchema,omitempty"`
 	// BlockedReason is why the last attempt to run it failed (a spend ceiling,
@@ -101,11 +104,11 @@ type QueueStore interface {
 	// BeginQueuedAgentSessionTurn starts the turn that delivers a queued
 	// message, as author and with the prompt the dispatcher claimed; a message
 	// edited since is refused.
-	BeginQueuedAgentSessionTurn(ctx context.Context, messageID, author, id, prompt, deliveryMode, phase, status string, attachments store.AgentAttachmentBinding, output store.AgentTurnOutput, secretNames []string, skills []store.TurnSkill) (store.AgentSession, error)
+	BeginQueuedAgentSessionTurn(ctx context.Context, messageID, author, id, prompt, deliveryMode, phase, status string, attachments store.AgentAttachmentBinding, output store.AgentTurnOutput, secretNames []string, skills []store.TurnSkill, model *string) (store.AgentSession, error)
 	// BeginKeyedAgentSessionTurn starts the turn of a direct send that carries
 	// an idempotency key, recording the key and its digest with the turn;
 	// FindKeyedAgentSessionSend finds what a key was first used for.
-	BeginKeyedAgentSessionTurn(ctx context.Context, key, requestHash, id, prompt, deliveryMode, phase, status string, attachments store.AgentAttachmentBinding, output store.AgentTurnOutput, secretNames []string, skills []store.TurnSkill) (store.AgentSession, error)
+	BeginKeyedAgentSessionTurn(ctx context.Context, key, requestHash, id, prompt, deliveryMode, phase, status string, attachments store.AgentAttachmentBinding, output store.AgentTurnOutput, secretNames []string, skills []store.TurnSkill, model *string) (store.AgentSession, error)
 	FindKeyedAgentSessionSend(ctx context.Context, sessionID, key string) (store.KeyedSend, error)
 }
 
@@ -119,11 +122,12 @@ type queuedRequest struct {
 	OutputRequired  *bool             `json:"outputRequired,omitempty"`
 	SecretNames     []string          `json:"secretNames,omitempty"`
 	Skills          []SkillInvocation `json:"skills,omitempty"`
+	Model           string            `json:"model,omitempty"`
 }
 
 func queuedRequestOf(req SteerRequest) queuedRequest {
 	return queuedRequest{EgressAllowlist: req.EgressAllowlist, AttachmentIDs: req.AttachmentIDs, OutputSchema: req.OutputSchema,
-		OutputRequired: req.OutputRequired, SecretNames: req.SecretNames, Skills: req.Skills}
+		OutputRequired: req.OutputRequired, SecretNames: req.SecretNames, Skills: req.Skills, Model: req.Model}
 }
 
 // steerRequestOf is the steer a queued message stands for, as the dispatcher
@@ -137,7 +141,7 @@ func steerRequestOf(m store.QueuedAgentMessage) (SteerRequest, error) {
 	}
 	return SteerRequest{SessionID: m.SessionID, Prompt: m.Prompt, EgressAllowlist: stored.EgressAllowlist, AttachmentIDs: stored.AttachmentIDs,
 		OutputSchema: stored.OutputSchema, OutputRequired: stored.OutputRequired,
-		SessionSecretsInput: SessionSecretsInput{SecretNames: stored.SecretNames}, Skills: stored.Skills,
+		SessionSecretsInput: SessionSecretsInput{SecretNames: stored.SecretNames}, Skills: stored.Skills, Model: stored.Model,
 		queuedMessageID: m.ID}, nil
 }
 
@@ -146,7 +150,7 @@ func queuedMessageOf(row store.QueuedAgentMessage) QueuedMessage {
 		BlockedReason: row.BlockedReason, State: QueuedPending, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 	var stored queuedRequest
 	if len(row.Request) > 0 && json.Unmarshal(row.Request, &stored) == nil {
-		m.AttachmentIDs, m.SecretNames, m.Skills, m.EgressAllowlist = stored.AttachmentIDs, stored.SecretNames, stored.Skills, stored.EgressAllowlist
+		m.AttachmentIDs, m.SecretNames, m.Skills, m.EgressAllowlist, m.Model = stored.AttachmentIDs, stored.SecretNames, stored.Skills, stored.EgressAllowlist, stored.Model
 		m.HasOutputSchema = len(stored.OutputSchema) > 0
 	}
 	switch {

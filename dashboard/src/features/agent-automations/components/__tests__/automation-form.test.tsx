@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { codedGraphQLError } from "@/test/mocks/apollo";
@@ -21,7 +21,12 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 vi.mock("@/features/workspaces/context/hooks", () => ({
   useWorkspace: () => ({ currentWorkspaceId: "tea-1" }),
 }));
-const capabilitiesState: { capabilities: { agents: string[] } | null } = {
+const capabilitiesState: {
+  capabilities: {
+    agents: string[];
+    models: Record<string, { model: string | null; models: string[] }>;
+  } | null;
+} = {
   capabilities: null,
 };
 vi.mock(
@@ -309,3 +314,56 @@ describe("AutomationForm", () => {
     ).toBeEnabled();
   });
 });
+
+// w10/m516: an automation picks its model from the agent's catalog, and a
+// refused model is shown under the model field.
+describe("AutomationForm model", () => {
+  const catalog = [
+    "deepseek/deepseek-v4.1-flash-1017",
+    "anthropic/claude-opus-5.5",
+  ];
+  afterEach(() => {
+    capabilitiesState.capabilities = null;
+  });
+
+  it("saves the picked catalog model in the template", async () => {
+    capabilitiesState.capabilities = {
+      agents: ["claude"],
+      models: { claude: { model: catalog[0], models: catalog } },
+    };
+    const { user, onSave } = setup();
+    await fillValid(user);
+    await user.type(screen.getByLabelText(/Spend limit/), "5");
+    const model = screen.getByRole("combobox", { name: "Model" });
+    expect(model).toHaveTextContent(catalog[0]);
+    await user.click(model);
+    await user.click(screen.getByRole("option", { name: catalog[1] }));
+    await user.click(screen.getByRole("button", { name: "Create automation" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        template: expect.objectContaining({
+          agentConfig: { agent: "claude", model: catalog[1] },
+        }),
+      }),
+    );
+  });
+
+  it("shows the server's model refusal under the model field", async () => {
+    const onSave = vi.fn(async () => {
+      throw codedGraphQLError(
+        "AGENT_SESSION_MODEL_NOT_OFFERED",
+        { field: "agentConfig.model", model: "gpt-x" },
+        "this workspace runs agents on the platform model route, which offers a, b; \"gpt-x\" is not one of them",
+      );
+    });
+    const { user } = setup(onSave);
+    await fillValid(user);
+    const model = screen.getByLabelText("Model");
+    await user.type(model, "gpt-x");
+    await user.click(screen.getByRole("button", { name: "Create automation" }));
+    await waitFor(() => expect(model).toHaveAttribute("aria-invalid", "true"));
+    expect(model).toHaveAccessibleDescription(/"gpt-x" is not one of them/);
+  });
+});
+

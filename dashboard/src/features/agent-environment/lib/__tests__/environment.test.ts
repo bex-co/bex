@@ -88,11 +88,19 @@ describe("buildPatch", () => {
     ).toEqual({ networkTier: AgentNetworkTier.Registries });
   });
 
-  it("never sends the model while it is pinned", () => {
-    const pinned = { ...SAVED, modelPinned: true, pinnedModel: "x/y" };
+  it("sends a catalog default on the platform route (w10/m516)", () => {
+    const routed = {
+      ...SAVED,
+      defaultModel: null,
+      models: ["deepseek/deepseek-v4.1-flash-1017", "anthropic/claude-opus-5.5"],
+    };
+    expect(buildPatch(routed, draftFrom(routed))).toEqual({});
     expect(
-      buildPatch(pinned, { ...draftFrom(pinned), defaultModel: "z" }),
-    ).toEqual({});
+      buildPatch(routed, {
+        ...draftFrom(routed),
+        defaultModel: "anthropic/claude-opus-5.5",
+      }),
+    ).toEqual({ defaultModel: "anthropic/claude-opus-5.5" });
   });
 });
 
@@ -112,13 +120,15 @@ describe("saveErrorFrom", () => {
     });
     expect(
       saveErrorFrom(
-        codedGraphQLError("AGENT_ENVIRONMENT_MODEL_PINNED", {
-          pinnedModel: "x/y",
+        codedGraphQLError("AGENT_ENVIRONMENT_MODEL_NOT_OFFERED", {
+          field: "defaultModel",
+          model: "x/y",
+          models: ["a/b"],
         }),
       ),
     ).toEqual({
       field: "model",
-      key: "agentEnvironment.modelPinnedError",
+      key: "agentEnvironment.modelNotOfferedError",
       params: { model: "x/y" },
     });
     expect(saveErrorFrom(codedGraphQLError("FORBIDDEN")).field).toBe("form");

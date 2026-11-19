@@ -40,7 +40,7 @@ func TestDevModelRouteIsRefusedInProduction(t *testing.T) {
 	if _, err := RegisteredModelEndpoint("claude", openRouterEndpoint, false); err == nil {
 		t.Fatal("OpenRouter endpoint accepted with the route off")
 	}
-	if env := ModelRouteEnv("claude", false); env != nil {
+	if env := ModelRouteEnv("claude", "", false); env != nil {
 		t.Fatalf("route env with the route off: %v", env)
 	}
 }
@@ -67,13 +67,13 @@ func TestDevModelRouteSwapsOnlyTheClaudeEndpoint(t *testing.T) {
 	if profile, _ := LookupAgentProfile("claude"); profile.ModelEndpoint != "https://api.anthropic.com/v1" {
 		t.Fatalf("release claude profile endpoint = %q", profile.ModelEndpoint)
 	}
-	env := ModelRouteEnv(" Claude ", false)
+	env := ModelRouteEnv(" Claude ", "", false)
 	for _, name := range []string{"ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL"} {
 		if env[name] != DefaultDevModel {
 			t.Fatalf("%s = %q, want %q", name, env[name], DefaultDevModel)
 		}
 	}
-	if ModelRouteEnv("codex", false) != nil {
+	if ModelRouteEnv("codex", "", false) != nil {
 		t.Fatal("route env leaked to another profile")
 	}
 
@@ -100,7 +100,7 @@ func TestDevModelRouteHonorsAnExplicitModel(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = EnableDevModelRoute("", "", "") })
-	if got := ModelRouteEnv("claude", false)["ANTHROPIC_MODEL"]; got != "deepseek/deepseek-v4.1-flash" {
+	if got := ModelRouteEnv("claude", "", false)["ANTHROPIC_MODEL"]; got != "deepseek/deepseek-v4.1-flash" {
 		t.Fatalf("ANTHROPIC_MODEL = %q", got)
 	}
 }

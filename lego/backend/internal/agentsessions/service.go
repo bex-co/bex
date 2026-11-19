@@ -69,7 +69,7 @@ type Store interface {
 	// Archive (ADR065 D1): the orthogonal list-state flag; never touches phase.
 	SetAgentSessionArchived(context.Context, string, bool) (store.AgentSession, error)
 	ReplaceAgentSessionTags(context.Context, string, []string) (store.AgentSession, error)
-	BeginAgentSessionTurn(context.Context, string, string, string, string, string, store.AgentAttachmentBinding, store.AgentTurnOutput, []string, []store.TurnSkill) (store.AgentSession, error)
+	BeginAgentSessionTurn(context.Context, string, string, string, string, string, store.AgentAttachmentBinding, store.AgentTurnOutput, []string, []store.TurnSkill, *string) (store.AgentSession, error)
 	// RecordAgentSessionResult stores the structured result submitted for the
 	// session's current turn (ADR094 D5); false when the turn takes none.
 	RecordAgentSessionResult(ctx context.Context, sessionID string, turn int, result json.RawMessage, final bool) (bool, error)
@@ -554,8 +554,9 @@ func validateCreate(req *CreateRequest) error {
 	}
 	// The model reaches the sandbox env (ANTHROPIC_MODEL), so it must be a
 	// plain model id.
-	if req.AgentConfig.Model = strings.TrimSpace(req.AgentConfig.Model); req.AgentConfig.Model != "" && !modelIDPattern.MatchString(req.AgentConfig.Model) {
-		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "agentConfig.model must be a model id without spaces", map[string]any{"field": "agentConfig.model"})
+	req.AgentConfig.Model = strings.TrimSpace(req.AgentConfig.Model)
+	if err := checkModelID("agentConfig.model", req.AgentConfig.Model); err != nil {
+		return err
 	}
 	// Repo-less (chat-only) mode: with no repository the session just runs the
 	// agent against the prompt in an empty sandbox — no clone, no branch, and no
@@ -658,7 +659,7 @@ func (s *Service) resolveCreateModel(ctx context.Context, workspaceID string, re
 	if err := s.requireModelCredential(ctx, workspaceID, req.AgentConfig.Agent, env); err != nil {
 		return env, nil, err
 	}
-	if req.AgentConfig.Model, err = sessionModel(workspaceID, req.AgentConfig, env, true); err != nil {
+	if req.AgentConfig.Model, err = sessionModel(req.AgentConfig, env, true); err != nil {
 		return env, nil, err
 	}
 	modelEndpoint, egressAllowlist, err := createEgress(req.AgentConfig, effectiveHosts(env), req.EgressAllowlist, env.ModelKeySet())
@@ -1193,6 +1194,7 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 		// A platform-only agent is listed only where its route serves it, so the
 		// workspace key never decides its readiness.
 		caps.Agents[i].ModelKeyReady = ownKey || agentsession.PlatformRouteServes(caps.Agents[i].ID)
+		caps.Agents[i].Model, caps.Agents[i].Models = agentModels(caps.Agents[i].ID, env)
 	}
 	if s.GitHub != nil {
 		caps.GitHub = GitHubReadinessView{
@@ -1909,9 +1911,9 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, byoKe
 		env["ANTHROPIC_MODEL"] = config.Model
 	}
 	// Model route (ADR090, dev or platform): the model id
-	// Claude Code must ask the OpenRouter endpoint for. It overrides the line
-	// above, so a platform-route sandbox always carries the pinned model.
-	for name, value := range agentsession.ModelRouteEnv(config.Agent, byoKey) {
+	// Claude Code must ask the OpenRouter endpoint for, the one the mint pins
+	// for this session. It overrides the line above.
+	for name, value := range agentsession.ModelRouteEnv(config.Agent, config.Model, byoKey) {
 		env[name] = value
 	}
 	return env
@@ -2093,6 +2095,13 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if record.Phase == PhaseCanceled || record.Phase == PhaseCanceling {
 		return View{}, errNotSteerable(record.Phase)
 	}
+	// A message that switches the model (w10/m516) is refused now when the
+	// session could not run that model, before it queues or starts anything.
+	if req.queuedMessageID == "" {
+		if req.Model, err = s.steerModel(ctx, record, req.Model); err != nil {
+			return View{}, err
+		}
+	}
 	// The dispatcher delivering a queued message (queuedMessageID) is itself
 	// the head of the queue, so it is never queued behind it, and its message
 	// carries any key.
@@ -2154,8 +2163,21 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if err := s.enforceMetaRouteCapacity(ctx, config.Agent, record.ID); err != nil {
 		return View{}, err
 	}
-	if config.Model, err = sessionModel(record.WorkspaceID, config, workspaceEnv, false); err != nil {
+	// The message's model, when it names one, is the session's from this turn
+	// on (Devin's agent selector). A queued message whose model left the
+	// catalog while it waited runs the fallback instead of failing. The turn
+	// records the model only when it changes.
+	storedModel := config.Model
+	explicit := req.Model != "" && req.queuedMessageID == ""
+	if req.Model != "" {
+		config.Model = req.Model
+	}
+	if config.Model, err = sessionModel(config, workspaceEnv, explicit); err != nil {
 		return View{}, err
+	}
+	var turnModel *string
+	if config.Model != storedModel {
+		turnModel = &config.Model
 	}
 	modelEndpoint, egressAllowlist, err := createEgress(config, effectiveHosts(workspaceEnv), req.EgressAllowlist, workspaceEnv.ModelKeySet())
 	if err != nil {
@@ -2185,12 +2207,12 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 		// The same transaction that starts the turn marks the message
 		// delivered, so it starts one turn however often it is attempted. It
 		// refuses a message edited since its claim: the author is the claim's.
-		begun, err = s.Queue.BeginQueuedAgentSessionTurn(ctx, req.queuedMessageID, core.SubjectFrom(ctx), record.ID, prompt, DeliveryRedispatch, PhaseRedispatching, "redispatching", binding, output, secretNames, skills)
+		begun, err = s.Queue.BeginQueuedAgentSessionTurn(ctx, req.queuedMessageID, core.SubjectFrom(ctx), record.ID, prompt, DeliveryRedispatch, PhaseRedispatching, "redispatching", binding, output, secretNames, skills, turnModel)
 	case keyHash != "":
 		// The key and its digest are recorded with the turn, so a retry finds it.
-		begun, err = s.Queue.BeginKeyedAgentSessionTurn(ctx, req.IdempotencyKey, keyHash, record.ID, prompt, DeliveryRedispatch, PhaseRedispatching, "redispatching", binding, output, secretNames, skills)
+		begun, err = s.Queue.BeginKeyedAgentSessionTurn(ctx, req.IdempotencyKey, keyHash, record.ID, prompt, DeliveryRedispatch, PhaseRedispatching, "redispatching", binding, output, secretNames, skills, turnModel)
 	default:
-		begun, err = s.Store.BeginAgentSessionTurn(ctx, record.ID, prompt, DeliveryRedispatch, PhaseRedispatching, "redispatching", binding, output, secretNames, skills)
+		begun, err = s.Store.BeginAgentSessionTurn(ctx, record.ID, prompt, DeliveryRedispatch, PhaseRedispatching, "redispatching", binding, output, secretNames, skills, turnModel)
 	}
 	// A send under the same key may have won the race: this one is its retry.
 	if view, done, replayErr := s.replayOnKeyUsed(ctx, record, req.IdempotencyKey, keyHash, err); done {

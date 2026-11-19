@@ -221,7 +221,7 @@ func main() {
 	}
 	// loadConfig already validated the route and cleared it when the key is
 	// missing; the key itself is never logged.
-	if err := agentsession.EnablePlatformModelRoute(cfg.AgentPlatformModelRoute, cfg.AgentPlatformModel, cfg.AgentPlatformModelKey); err != nil {
+	if err := agentsession.EnablePlatformModelRoute(cfg.AgentPlatformModelRoute, cfg.AgentPlatformModel, cfg.AgentPlatformModels, cfg.AgentPlatformModelKey); err != nil {
 		log.Fatalf("bex-api: %v", err)
 	}
 	if cfg.AgentPlatformModelRoute != "" {

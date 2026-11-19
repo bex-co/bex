@@ -168,7 +168,7 @@ func exerciseEnvironmentRoundTrip(t *testing.T, svc *Service, ws string) {
 	if err != nil {
 		t.Fatalf("Environment: %v", err)
 	}
-	want := Environment{OwnerID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}, ModelSource: ModelSourceNone, RegistryHosts: sessionegress.DefaultRegistryDomains(),
+	want := Environment{OwnerID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}, Models: []string{}, ModelSource: ModelSourceNone, RegistryHosts: sessionegress.DefaultRegistryDomains(),
 		EnabledAgents: []string{"claude", "codex", "deepseek", "gemini"}, AgentDataUse: []AgentDataUse{{Agent: "muse"}}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("defaults = %+v, want %+v", got, want)
@@ -234,15 +234,23 @@ func exerciseEnvironmentAuthorization(t *testing.T, svc *Service, ws, other stri
 func TestEnvironmentValidationErrorsOnEverySurface(t *testing.T) {
 	exerciseEnvironmentValidation(t, func() (*Service, string) { return environmentService("tea-a", newFakeEnvironments()), "tea-a" })
 
-	enablePlatformRoute(t)
+	enablePlatformCatalog(t)
 
-	pinned := environmentService("tea-pinned", newFakeEnvironments())
-	if _, err := pinned.UpdateEnvironment(caller("admin"), "tea-pinned", EnvironmentInput{DefaultModel: ptr("claude-sonnet-4-5")}); !isCode(err, "AGENT_ENVIRONMENT_MODEL_PINNED") {
-		t.Fatalf("pinned default model = %v, want AGENT_ENVIRONMENT_MODEL_PINNED", err)
+	// On the platform route the default is any catalog model (w10/m516); a
+	// model outside it is the typed 400 listing the offered ones.
+	routed := environmentService("tea-pinned", newFakeEnvironments())
+	_, err := routed.UpdateEnvironment(caller("admin"), "tea-pinned", EnvironmentInput{DefaultModel: ptr("claude-sonnet-4-5")})
+	var coded *core.CodedError
+	if !isCode(err, CodeEnvironmentModelNotOffered) || !errors.As(err, &coded) ||
+		coded.Params["field"] != "defaultModel" || coded.Params["model"] != "claude-sonnet-4-5" || !slices.Equal(coded.Params["models"].([]string), testCatalog) {
+		t.Fatalf("default model outside the catalog = %v, want %s with the offered models", err, CodeEnvironmentModelNotOffered)
 	}
-	got, err := pinned.UpdateEnvironment(caller("admin"), "tea-pinned", EnvironmentInput{DefaultModel: ptr(agentsession.DefaultDevModel)})
-	if err != nil || !got.ModelPinned || got.PinnedModel == nil || *got.PinnedModel != agentsession.DefaultDevModel {
-		t.Fatalf("pinned workspace = %+v err=%v, want modelPinned with the pinned model", got, err)
+	for _, model := range testCatalog {
+		got, err := routed.UpdateEnvironment(caller("admin"), "tea-pinned", EnvironmentInput{DefaultModel: ptr(model)})
+		if err != nil || got.DefaultModel == nil || *got.DefaultModel != model || !slices.Equal(got.Models, testCatalog) ||
+			!got.ModelPinned || got.PinnedModel == nil || *got.PinnedModel != agentsession.DefaultDevModel {
+			t.Fatalf("catalog default %q = %+v err=%v", model, got, err)
+		}
 	}
 }
 
@@ -544,39 +552,48 @@ func TestCreateUsesTheWorkspaceDefaultModel(t *testing.T) {
 	}
 }
 
-// t002: on the platform route a different explicit model is a typed 400 at
-// create — never a gateway 403 mid-turn — and the sandbox always carries the
-// pinned model, including on steer for a session whose stored model differs.
-func TestPlatformRouteModelIsPinnedAtCreateAndSteer(t *testing.T) {
-	enablePlatformRoute(t)
+// w10/m516 t002: on the platform route a session chooses its model from the
+// catalog. A model outside it is a typed 400 at create listing the offered
+// ones — never a gateway 403 mid-turn; no model runs the catalog's default;
+// a catalog model reaches all four sandbox names. A session whose stored
+// model left the catalog steers onto the default instead of failing.
+func TestPlatformRouteCatalogAtCreateAndSteer(t *testing.T) {
+	enablePlatformCatalog(t)
 	svc, st, lifecycle := sessionWithEnvironment(t, nil)
 	input := createInput()
 	input.AgentConfig = AgentConfig{Agent: "claude", Model: "anthropic/claude-sonnet-4.5", Task: "fix the tests"}
 	_, err := svc.Create(caller("alice"), input)
-	if !errors.Is(err, core.ErrBadRequest) || !isCode(err, "AGENT_SESSION_MODEL_PINNED") {
-		t.Fatalf("create with a different model = %v, want AGENT_SESSION_MODEL_PINNED", err)
+	if !errors.Is(err, core.ErrBadRequest) || !isCode(err, CodeSessionModelNotOffered) {
+		t.Fatalf("create with a model outside the catalog = %v, want %s", err, CodeSessionModelNotOffered)
 	}
 	var coded *core.CodedError
-	if errors.As(err, &coded); coded.Params["pinnedModel"] != agentsession.DefaultDevModel {
-		t.Fatalf("pinned refusal params = %v", coded.Params)
+	if errors.As(err, &coded); coded.Params["field"] != "agentConfig.model" || coded.Params["model"] != "anthropic/claude-sonnet-4.5" ||
+		!slices.Equal(coded.Params["models"].([]string), testCatalog) {
+		t.Fatalf("refusal params = %v", coded.Params)
 	}
 	if lifecycle.created != 0 {
 		t.Fatal("a refused create provisioned a sandbox")
 	}
 
-	for _, model := range []string{"", agentsession.DefaultDevModel} {
+	for model, want := range map[string]string{"": agentsession.DefaultDevModel, agentsession.DefaultDevModel: agentsession.DefaultDevModel, testCatalog[2]: testCatalog[2]} {
 		input.AgentConfig.Model = model
 		created, err := svc.Create(caller("alice"), input)
 		if err != nil {
 			t.Fatalf("create with model %q: %v", model, err)
 		}
-		if created.AgentConfig.Model != agentsession.DefaultDevModel || lifecycle.driverEnv["ANTHROPIC_MODEL"] != agentsession.DefaultDevModel {
-			t.Fatalf("model %q = view %q env %q, want pinned", model, created.AgentConfig.Model, lifecycle.driverEnv["ANTHROPIC_MODEL"])
+		if created.AgentConfig.Model != want {
+			t.Fatalf("model %q = view %q, want %q", model, created.AgentConfig.Model, want)
+		}
+		for _, name := range routeModelVars {
+			if lifecycle.driverEnv[name] != want {
+				t.Fatalf("model %q: %s = %q, want %q", model, name, lifecycle.driverEnv[name], want)
+			}
 		}
 	}
 
 	// A session created before the workspace joined the route stored another
-	// model; steering it carries the pinned one without an error.
+	// model; steering it runs the default without an error.
+	input.AgentConfig.Model = ""
 	created, err := svc.Create(caller("alice"), input)
 	if err != nil {
 		t.Fatal(err)
@@ -585,19 +602,41 @@ func TestPlatformRouteModelIsPinnedAtCreateAndSteer(t *testing.T) {
 	row.Phase = PhaseCompleted
 	row.AgentConfig = []byte(`{"agent":"claude","model":"anthropic/claude-sonnet-4.5","task":"fix the tests"}`)
 	st.rows[created.ID] = row
-	if _, err := svc.Steer(caller("alice"), SteerRequest{SessionID: created.ID, Prompt: "and the docs"}); err != nil {
+	steered, err := svc.Steer(caller("alice"), SteerRequest{SessionID: created.ID, Prompt: "and the docs"})
+	if err != nil {
 		t.Fatalf("steer: %v", err)
+	}
+	if steered.AgentConfig.Model != agentsession.DefaultDevModel {
+		t.Fatalf("steer of a model that left the catalog = %q, want the default", steered.AgentConfig.Model)
 	}
 	for _, name := range routeModelVars {
 		if lifecycle.driverEnv[name] != agentsession.DefaultDevModel {
-			t.Fatalf("steer %s = %q, want pinned", name, lifecycle.driverEnv[name])
+			t.Fatalf("steer %s = %q, want the default", name, lifecycle.driverEnv[name])
 		}
 	}
 
 	// codex is not served by the route: its explicit model is its own.
 	input.AgentConfig = AgentConfig{Agent: "codex", Model: "gpt-5", Task: "fix the tests"}
 	if created, err := svc.Create(caller("alice"), input); err != nil || created.AgentConfig.Model != "gpt-5" {
-		t.Fatalf("codex in a pinned workspace = %+v err=%v", created.AgentConfig, err)
+		t.Fatalf("codex in a routed workspace = %+v err=%v", created.AgentConfig, err)
+	}
+}
+
+// A workspace default in the catalog is what a session that names no model
+// runs; one that left the catalog falls back to the catalog's first.
+func TestPlatformRouteRunsTheWorkspaceDefault(t *testing.T) {
+	enablePlatformCatalog(t)
+	for stored, want := range map[string]string{testCatalog[1]: testCatalog[1], "anthropic/claude-sonnet-4.5": agentsession.DefaultDevModel} {
+		svc, _, lifecycle := sessionWithEnvironment(t, &store.AgentEnvironment{NetworkTier: NetworkTierRegistries, DefaultModel: stored})
+		input := createInput()
+		input.AgentConfig = AgentConfig{Agent: "claude", Task: "fix the tests"}
+		created, err := svc.Create(caller("alice"), input)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if created.AgentConfig.Model != want || lifecycle.driverEnv["ANTHROPIC_MODEL"] != want {
+			t.Fatalf("default %q = view %q env %q, want %q", stored, created.AgentConfig.Model, lifecycle.driverEnv["ANTHROPIC_MODEL"], want)
+		}
 	}
 }
 

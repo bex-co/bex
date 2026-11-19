@@ -134,19 +134,23 @@ const ptAgentEnvironment: Record<string, TranslationEntry> = {
       "ID do modelo que as novas sessões usam, como claude-sonnet-4-5. Deixe vazio para usar o padrão do provedor.",
     description: "Help under the default model field",
   },
-  "agentEnvironment.modelPinnedHelp": {
+  "agentEnvironment.modelPlatformDefault": {
+    message: "Padrão da plataforma ({model})",
+    description: "Default model picker — no default: the platform catalog's first model (w10/m516)",
+  },
+  "agentEnvironment.modelCatalogHelp": {
     message:
-      "Este workspace executa agentes no modelo da plataforma, então toda sessão usa {model}. Isso não pode ser alterado aqui.",
-    description: "Help under the read-only pinned model",
+      "Novas sessões e automações que não indicam um modelo usam este. Os membros ainda podem escolher outro modelo do catálogo da plataforma para uma sessão.",
+    description: "Help under the platform model catalog picker (w10/m516)",
   },
   "agentEnvironment.modelInvalid": {
     message: "Use um ID de modelo sem espaços (no máximo 255 caracteres).",
     description: "Default model validation error",
   },
-  "agentEnvironment.modelPinnedError": {
+  "agentEnvironment.modelNotOfferedError": {
     message:
-      "Este workspace executa agentes no modelo da plataforma ({model}); o modelo padrão não pode ser alterado.",
-    description: "Server refusal: model is pinned",
+      "O modelo da plataforma não oferece {model}. Escolha um da lista.",
+    description: "Server refusal: the default model is not in the platform catalog (w10/m516)",
   },
   "agentEnvironment.tierInvalid": {
     message: "Essa opção de acesso à rede não é compatível.",

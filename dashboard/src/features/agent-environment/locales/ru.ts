@@ -139,20 +139,24 @@ const ruAgentEnvironment: Record<string, TranslationEntry> = {
       "Идентификатор модели для новых сессий, например claude-sonnet-4-5. Оставьте пустым, чтобы использовать модель поставщика по умолчанию.",
     description: "Help under the default model field",
   },
-  "agentEnvironment.modelPinnedHelp": {
+  "agentEnvironment.modelPlatformDefault": {
+    message: "По умолчанию платформы ({model})",
+    description: "Default model picker — no default: the platform catalog's first model (w10/m516)",
+  },
+  "agentEnvironment.modelCatalogHelp": {
     message:
-      "В этом рабочем пространстве агенты работают на модели платформы, поэтому каждая сессия использует {model}. Изменить это здесь нельзя.",
-    description: "Help under the read-only pinned model",
+      "Новые сессии и автоматизации без указанной модели используют эту. Участники по-прежнему могут выбрать для сессии другую модель из каталога платформы.",
+    description: "Help under the platform model catalog picker (w10/m516)",
   },
   "agentEnvironment.modelInvalid": {
     message:
       "Используйте идентификатор модели без пробелов (не более 255 символов).",
     description: "Default model validation error",
   },
-  "agentEnvironment.modelPinnedError": {
+  "agentEnvironment.modelNotOfferedError": {
     message:
-      "В этом рабочем пространстве агенты работают на модели платформы ({model}); модель по умолчанию изменить нельзя.",
-    description: "Server refusal: model is pinned",
+      "Модель платформы не предлагает {model}. Выберите модель из списка.",
+    description: "Server refusal: the default model is not in the platform catalog (w10/m516)",
   },
   "agentEnvironment.tierInvalid": {
     message: "Этот вариант доступа к сети не поддерживается.",

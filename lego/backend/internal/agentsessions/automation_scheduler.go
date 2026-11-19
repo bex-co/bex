@@ -22,10 +22,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -225,14 +227,39 @@ func (s *Service) decideAutomationRun(ctx context.Context, verb string, c store.
 		return store.AutomationRunSkippedOverlap, "", "the previous run's session " + previous + " is still working", nil
 	}
 
-	view, err := s.Create(ctx, tpl.createRequest(a, key))
+	req := tpl.createRequest(a, key)
+	note := s.retiredTemplateModel(ctx, &req)
+	view, err := s.Create(ctx, req)
 	switch {
 	case err == nil:
-		return store.AutomationRunStarted, view.ID, "", nil
+		return store.AutomationRunStarted, view.ID, note, nil
 	case isDefiniteRefusal(err):
 		return store.AutomationRunFailedCreate, "", truncateRunError(err.Error()), nil
 	}
 	return "", "", "", err
+}
+
+// retiredTemplateModel lets a run whose template names a model the platform
+// catalog no longer offers (w10/m516) run the workspace's model instead of
+// failing every fire until someone edits it: it clears req's model and
+// returns the note the run records, or "" when the model still stands. A
+// manual create, or saving the template again, still refuses that model.
+func (s *Service) retiredTemplateModel(ctx context.Context, req *CreateRequest) string {
+	model := req.AgentConfig.Model
+	if model == "" || !agentsession.PinnedAgent(req.AgentConfig.Agent) {
+		return ""
+	}
+	env, err := s.workspaceEnvironment(ctx, req.OwnerID)
+	if err != nil {
+		return "" // the create reads it again and fails the same way
+	}
+	models, routed := agentsession.PlatformModels(env.ModelKeySet())
+	if !routed || slices.Contains(models, model) {
+		return ""
+	}
+	req.AgentConfig.Model = ""
+	runs, _ := sessionModel(req.AgentConfig, env, false)
+	return fmt.Sprintf("the template's model %s is no longer offered; this run used %s", model, runs)
 }
 
 // createRequest is the session create an automation's template describes.

@@ -1,20 +1,20 @@
 # w10 · m516 — An agent session or automation can choose its model from the platform catalog, and every surface shows the model that will run, as on Devin
 
-**Worker:** worker10 **Goal:** on a workspace that runs agents on the platform model (no model key of its own), a person picks the model a `claude` session runs, per session, per automation and as the workspace default, from a catalog bex offers. A session can switch models from its next message. `bex agent models`, the capabilities read and the dashboard show the model each agent will run and the choices. The gateway still refuses any request model other than the one its session chose, and every request is still priced at its OpenRouter cost × 1.3 (ADR091 D1). **Status:** todo
+**Worker:** worker10 **Goal:** on a workspace that runs agents on the platform model (no model key of its own), a person picks the model a `claude` session runs, per session, per automation and as the workspace default, from a catalog bex offers. A session can switch models from its next message. `bex agent models`, the capabilities read and the dashboard show the model each agent will run and the choices. The gateway still refuses any request model other than the one its session chose, and every request is still priced at its OpenRouter cost × 1.3 (ADR091 D1). **Status:** in progress (t001–t005, t007–t009 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Design: the platform model catalog, the per-session pin and the switch on the next message; ADR090, ADR047 and ADR091 amended | 1h | — |
-| [t002](t002.md) | Backend: a session, an automation and the workspace default choose a catalog model; the mint and the sandbox run that model | 2h30m | t001 |
-| [t003](t003.md) | A message can switch the session's model from its next turn, as Devin's agent toggle | 1h30m | t002 |
-| [t004](t004.md) | The capabilities read and `bex agent models` show each agent's effective model and its choices | 1h15m | t002 |
-| [t005](t005.md) | Dashboard: a model picker in the new-session composer, the steering composer, the automation form and Settings → Agents | 2h30m | t003, t004 |
+| [t001](done/t001.md) | Design: the platform model catalog, the per-session pin and the switch on the next message; ADR090, ADR047 and ADR091 amended — **DONE** | 1h | — |
+| [t002](done/t002.md) | Backend: a session, an automation and the workspace default choose a catalog model; the mint and the sandbox run that model — **DONE** | 2h30m | t001 |
+| [t003](done/t003.md) | A message can switch the session's model from its next turn, as Devin's agent toggle — **DONE** | 1h30m | t002 |
+| [t004](done/t004.md) | The capabilities read and `bex agent models` show each agent's effective model and its choices — **DONE** | 1h15m | t002 |
+| [t005](done/t005.md) | Dashboard: a model picker in the new-session composer, the steering composer, the automation form and Settings → Agents — **DONE** | 2h30m | t003, t004 |
 | [t006](t006.md) | Live check on production: a non-default catalog model runs, is metered at its own cost, and every surface shows it | 45m | t005 |
-| [t007](t007.md) | Render parity (Devin) | 30m | t006 |
-| [t008](t008.md) | Simplify | 20m | t007 |
-| [t009](t009.md) | Test coverage | 45m | t007, t008 |
+| [t007](done/t007.md) | Render parity (Devin) — **DONE** | 30m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 20m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
 | [t010](t010.md) | Closeout | 10m | t009 |
 
 Total: **10 tasks, about 11h**.
@@ -40,3 +40,19 @@ Total: **10 tasks, about 11h**.
 - **Expected outcome:** a workspace runs bug-hunting routines on a stronger model and routine work on the cheap default, and anyone reading `bex agent models` or the composer knows which model a session will run.
 - **Why now:** a controlled comparison of routine runs on 2026-11-17 found model quality mattered most for bug hunting, and 17 scheduled automations in the `bex` workspace cannot act on it; `bex agent run --model` returns 400 today.
 - **Render parity included (reference product: Devin):** sessions, automations and the agent environment are tenant-facing on REST, GraphQL, MCP, the CLI and the dashboard; t007 walks each against Devin's agent selector.
+
+## Design record (t001, 2026-11-19)
+
+Recorded in [ADR090 § Model pin](../../../docs/ADR090-agent-owned-delivery.md#platform-openrouter-route-for-an-allowlisted-workspace-2026-10-23) (amended), [ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md) D7 amendment, [ADR091](../../../docs/ADR091-agent-model-pricing.md) D1 amendment and the `lego/backend/AGENTS.md` env inventory.
+
+- **Catalog.** `BEX_AGENT_PLATFORM_MODEL` (default, first) plus the comma-separated `BEX_AGENT_PLATFORM_MODELS`, set in `lego/operator/config/api/deployment.yaml`. A malformed or repeated entry refuses startup. No aliases: ids are OpenRouter's, and the refusal lists them.
+- **Initial models and probe.** `deepseek/deepseek-v4.1-flash-1017` (default), `anthropic/claude-haiku-5.5`, `anthropic/claude-sonnet-5.5`, `anthropic/claude-opus-5.5`. On 2026-11-19 at 14:31Z each answered `https://openrouter.ai/api/v1/messages` with the platform key under `provider.data_collection: deny`: a tool-use request with `tool_choice: auto` returned 200 `stop_reason: tool_use` with its own `usage.cost`, and a streamed request carried `usage.cost` on `message_delta`. The 5.5 Sonnet and Opus refuse a forced `tool_choice`; Claude Code sends `auto`.
+- **Errors.** `400 AGENT_SESSION_MODEL_NOT_OFFERED` (create, message, automation template; params `field`, `model`, `models`) and `400 AGENT_ENVIRONMENT_MODEL_NOT_OFFERED` (default model). `AGENT_SESSION_MODEL_PINNED` stays for `muse` and `deepseek`; `AGENT_ENVIRONMENT_MODEL_PINNED` is retired.
+- **Switch mechanism.** Every turn boots a fresh sandbox (ADR047 D8), so the turn's begin records the message's model in `agentConfig.model` in the same transaction (`store.BeginAgentSessionTurn`'s `model`), the new pod's env carries it, and the mint pins it. No ACP model call and no agent restart; claude-agent-acp is never asked to switch in place.
+
+## Render parity (Devin) — t007, 2026-11-19
+
+- **Across bex's surfaces.** Create: `agentConfig.model` on REST, GraphQL (`AgentSessionConfigInput.model`), MCP `create_agent_session` and `bex agent run --model`. Message: `model` on REST `POST /v1/agent-sessions/{id}/steer`, GraphQL `steerAgentSession(model:)`, MCP `send_agent_session_message`/`steer_agent_session`, `bex agent send --model`, chat `/model`, the steering composer. Automations: `template.agentConfig.model` everywhere, the automation form's Model field. Default: `defaultModel` on REST/GraphQL/MCP, `bex agent env set --default-model`, Settings → Agents. Reads: capabilities `agents[].model`/`models` and environment `models` on all three (one struct; `TestCapabilitiesShowEachAgentsModelOnEverySurface`), the queued message's `model`, `bex agent models`, `bex agent env`. Same field names, the same two codes with the same params everywhere; a message's refusal names `field: model`.
+- **Against Devin** ([Your First Session](https://docs.devin.ai/get-started/first-run), [Create Session](https://docs.devin.ai/api-reference/v3/sessions/post-organizations-sessions), [Models](https://docs.devin.ai/cli/models), read 2026-11-19): selector at start ✅; switch "with your next message" ✅ (a queued message switches when it runs); organization default ✅; the resolved choice in the session read ✅ (`agentConfig.model`, the session header); a CLI list of the choices ✅ (`bex agent models`). Devin names modes (`lite`, `normal`, `ultra`, …) where bex names model ids. Recorded in [ADR018](../../../docs/ADR018-render-parity.md).
+- **Filed:** [w10/028](../028.md) (an admin narrows the catalog per workspace, Devin's "Admins control which agents are available") and [w10/029](../029.md) (the mobile composer's model control).
+

@@ -128,19 +128,23 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
       "Model id new sessions use, such as claude-sonnet-4-5. Leave empty for the provider default.",
     description: "Help under the default model field",
   },
-  "agentEnvironment.modelPinnedHelp": {
+  "agentEnvironment.modelPlatformDefault": {
+    message: "Platform default ({model})",
+    description: "Default model picker — no default: the platform catalog's first model (w10/m516)",
+  },
+  "agentEnvironment.modelCatalogHelp": {
     message:
-      "This workspace runs agents on the platform model, so every session uses {model}. It can't be changed here.",
-    description: "Help under the read-only pinned model",
+      "New sessions and automations that name no model run this one. Members can still pick another model of the platform catalog for a session.",
+    description: "Help under the platform model catalog picker (w10/m516)",
   },
   "agentEnvironment.modelInvalid": {
     message: "Use a model id without spaces (at most 255 characters).",
     description: "Default model validation error",
   },
-  "agentEnvironment.modelPinnedError": {
+  "agentEnvironment.modelNotOfferedError": {
     message:
-      "This workspace runs agents on the platform model ({model}); its default model can't be changed.",
-    description: "Server refusal: model is pinned",
+      "The platform model doesn't offer {model}. Pick one from the list.",
+    description: "Server refusal: the default model is not in the platform catalog (w10/m516)",
   },
   "agentEnvironment.tierInvalid": {
     message: "That network access option isn't supported.",

@@ -196,7 +196,7 @@ func TestAStopRequestedForOneTurnDoesNotCoverTheNext(t *testing.T) {
 	row := st.rows[id]
 	row.Phase = PhaseCompleted
 	st.rows[id] = row
-	if _, err := st.BeginAgentSessionTurn(ctx, id, "next", DeliveryRedispatch, PhaseRedispatching, "redispatching", store.AgentAttachmentBinding{}, store.AgentTurnOutput{}, nil, nil); err != nil {
+	if _, err := st.BeginAgentSessionTurn(ctx, id, "next", DeliveryRedispatch, PhaseRedispatching, "redispatching", store.AgentAttachmentBinding{}, store.AgentTurnOutput{}, nil, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := st.RecordAgentSessionDispatch(ctx, id, "sandbox-2", PhaseRunning, "running", "", 2); err != nil {

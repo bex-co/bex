@@ -541,7 +541,7 @@ func (s *sessionFlags) bind(f *pflag.FlagSet) {
 	f.StringVar(&s.repo, "repo", "", "repository to work on (owner/name or URL); empty runs without one")
 	f.StringVar(&s.branch, "branch", "", "branch to start from (default: the repository's default branch)")
 	f.StringVar(&s.agent, "agent", defaultAgent, "agent to run (see the dashboard composer for the workspace's agents)")
-	f.StringVar(&s.model, "model", "", "model id (default: the workspace default)")
+	f.StringVar(&s.model, "model", "", "model id (default: the agent's model; `bex agent models` lists the choices)")
 	f.StringVar(&s.template, "template", "", "sandbox template, which sets the sandbox's CPU and memory (default: agent, 2 CPU and 4 GB; agent-4c-8g has 4 CPU and 8 GB)")
 	f.StringVar(&s.title, "title", "", "display title (default: the task's first line)")
 	f.StringArrayVar(&s.tags, "tag", nil, "label for filtering and cost attribution; repeatable")
@@ -685,6 +685,7 @@ func sendCommand(d deps) *cobra.Command {
 	var (
 		turn    turnFlags
 		waiting waitFlags
+		model   string
 	)
 	c := &cobra.Command{
 		Use:   "send <ags-id> [flags] <message…>",
@@ -696,7 +697,10 @@ func sendCommand(d deps) *cobra.Command {
 			"work as they do for a message that starts a turn at once: they wait for (or\n" +
 			"stream) the turn the message started and exit by its state. A message that\n" +
 			"left the queue without a turn (the server dropped it) is a failed send\n" +
-			"(exit 1). --timeout covers the queue wait too; the message stays queued.",
+			"(exit 1). --timeout covers the queue wait too; the message stays queued.\n\n" +
+			"--model switches the session's model from the turn the message starts\n" +
+			"(a queued message switches it when it runs); `bex agent models` lists the\n" +
+			"models each agent can run. Without it the session keeps its model.",
 		Args: sessionArgs(-1),
 		RunE: func(c *cobra.Command, args []string) error {
 			id := args[0]
@@ -707,7 +711,7 @@ func sendCommand(d deps) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			in := steerRequest{Prompt: t.prompt, OutputSchema: t.schema, Skills: t.skills, sessionSecrets: t.secrets}
+			in := steerRequest{Prompt: t.prompt, OutputSchema: t.schema, Skills: t.skills, Model: strings.TrimSpace(model), sessionSecrets: t.secrets}
 			inv, cancel, err := d.start(c)
 			if err != nil {
 				return err
@@ -743,6 +747,7 @@ func sendCommand(d deps) *cobra.Command {
 	}
 	turn.bind(c.Flags())
 	waiting.bindTurn(c)
+	c.Flags().StringVar(&model, "model", "", "switch the session to this model from this message's turn (`bex agent models` lists them)")
 	return c
 }
 

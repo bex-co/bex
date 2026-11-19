@@ -235,6 +235,7 @@ type AgentEnvironment {
   modelKeySet: Boolean!
   modelPinned: Boolean!
   modelSource: AgentModelSource!
+  models: [String!]!
   networkTier: AgentNetworkTier!
   nextChargeThresholdUsd: Float
   ownerId: String!
@@ -463,7 +464,9 @@ type AgentSessionOutcome {
 type AgentSessionProfile {
   id: String!
   label: String!
+  model: String
   modelKeyReady: Boolean!
+  models: [String!]!
 }
 
 type AgentSessionPullRequest {
@@ -482,6 +485,7 @@ type AgentSessionQueuedMessage {
   egressAllowlist: [String!]
   hasOutputSchema: Boolean!
   id: String!
+  model: String
   position: Int!
   prompt: String!
   secretNames: [String!]
@@ -2114,7 +2118,7 @@ type Mutation {
   setWorkspacePrivacy(privacy: String!, workspaceId: String!): Workspace
   setWorkspaceRequireGoogleLogin(enabled: Boolean!, workspaceId: String!): Workspace
   setWorkspaceRequireTwoFactor(enabled: Boolean!, workspaceId: String!): Workspace
-  steerAgentSession(attachmentIds: [String!], egressAllowlist: [String!], id: String!, idempotencyKey: String, outputRequired: Boolean, outputSchema: String, prompt: String!, secretNames: [String!], secrets: [AgentSessionSecretInput!], skills: [AgentSessionSkillInput!]): AgentSession
+  steerAgentSession(attachmentIds: [String!], egressAllowlist: [String!], id: String!, idempotencyKey: String, model: String, outputRequired: Boolean, outputSchema: String, prompt: String!, secretNames: [String!], secrets: [AgentSessionSecretInput!], skills: [AgentSessionSkillInput!]): AgentSession
   suspendDatabase(confirm: String, id: String!): Database
   suspendKeyValue(confirm: String, id: String!): KeyValue
   suspendService(confirm: String, id: String!): Service

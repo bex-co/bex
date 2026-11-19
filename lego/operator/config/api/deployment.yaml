@@ -626,8 +626,13 @@ spec:
                   optional: true
             # ADR090 platform model route (2026-10-23; every workspace since
             # 2026-11-16): the claude profile of every workspace without its
-            # own model key runs on OpenRouter with a platform-owned key, model
-            # pinned by the gateway. The key arrives from the out-of-band
+            # own model key runs on OpenRouter with a platform-owned key, each
+            # session pinned by the gateway to the catalog model it chose
+            # (w10/m516): BEX_AGENT_PLATFORM_MODEL is the default, then
+            # BEX_AGENT_PLATFORM_MODELS in the order pickers list them. Every
+            # catalog model must answer /api/v1/messages under
+            # provider.data_collection deny (ADR090 § Model pin records the
+            # probe). The key arrives from the out-of-band
             # bex-agent-platform-model Secret installed by
             # scripts/agent-platform-model-secret.sh; the reference is optional
             # and a missing key only DISABLES the route (loud startup log), so
@@ -636,6 +641,8 @@ spec:
               value: openrouter
             - name: BEX_AGENT_PLATFORM_MODEL
               value: deepseek/deepseek-v4.1-flash-1017
+            - name: BEX_AGENT_PLATFORM_MODELS
+              value: anthropic/claude-haiku-5.5,anthropic/claude-sonnet-5.5,anthropic/claude-opus-5.5
             - name: BEX_AGENT_PLATFORM_MODEL_KEY
               valueFrom:
                 secretKeyRef:

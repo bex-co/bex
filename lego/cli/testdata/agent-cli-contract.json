@@ -199,6 +199,11 @@
       "sentry.io"
     ],
     "defaultModel": "claude-sonnet-5-5",
+    "models": [
+      "deepseek/deepseek-v4.1-flash-1017",
+      "anthropic/claude-sonnet-5.5",
+      "anthropic/claude-opus-5.5"
+    ],
     "modelSource": "platform",
     "modelKeySet": false,
     "agentModelMonthlySpendCapUsd": 50,
@@ -228,7 +233,22 @@
       {
         "id": "claude",
         "label": "Claude Code",
-        "modelKeyReady": true
+        "modelKeyReady": true,
+        "model": "anthropic/claude-sonnet-5.5",
+        "models": [
+          "deepseek/deepseek-v4.1-flash-1017",
+          "anthropic/claude-sonnet-5.5",
+          "anthropic/claude-opus-5.5"
+        ]
+      },
+      {
+        "id": "deepseek",
+        "label": "DeepSeek",
+        "modelKeyReady": true,
+        "model": "~deepseek/deepseek-flash-latest",
+        "models": [
+          "~deepseek/deepseek-flash-latest"
+        ]
       }
     ]
   },
@@ -239,7 +259,8 @@
     "prompt": "Also add a regression test",
     "blockedReason": "the workspace is at its live sandbox limit",
     "state": "pending",
-    "createdAt": "2026-11-14T10:00:00Z"
+    "createdAt": "2026-11-14T10:00:00Z",
+    "model": "anthropic/claude-opus-5.5"
   },
   "queuedMessageList": {
     "queuedMessages": [

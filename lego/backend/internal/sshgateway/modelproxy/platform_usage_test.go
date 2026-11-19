@@ -147,10 +147,10 @@ func eventually(t *testing.T, cond func() bool) {
 // shipped spend caps (a fresh Hobby workspace: T0, $10).
 func platformHarness(t *testing.T, upstream *cannedTransport) (*httptest.Server, *usageStore) {
 	t.Helper()
-	if err := agentsession.EnablePlatformModelRoute(agentsession.DevModelRouteOpenRouter, "", platformKey); err != nil {
+	if err := agentsession.EnablePlatformModelRoute(agentsession.DevModelRouteOpenRouter, "", "", platformKey); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = agentsession.EnablePlatformModelRoute("", "", "") })
+	t.Cleanup(func() { _ = agentsession.EnablePlatformModelRoute("", "", "", "") })
 	st := &usageStore{
 		session: store.AgentSession{
 			ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "running",

@@ -39,7 +39,7 @@ type editBeforeBegin struct {
 	as   string
 }
 
-func (b *editBeforeBegin) BeginQueuedAgentSessionTurn(ctx context.Context, messageID, author, id, prompt, deliveryMode, phase, status string, attachments store.AgentAttachmentBinding, output store.AgentTurnOutput, secretNames []string, skills []store.TurnSkill) (store.AgentSession, error) {
+func (b *editBeforeBegin) BeginQueuedAgentSessionTurn(ctx context.Context, messageID, author, id, prompt, deliveryMode, phase, status string, attachments store.AgentAttachmentBinding, output store.AgentTurnOutput, secretNames []string, skills []store.TurnSkill, model *string) (store.AgentSession, error) {
 	if b.done.CompareAndSwap(false, true) {
 		// The lease lapsed while Steer was working, and a member edited the message.
 		if _, err := b.pg.Pool.Exec(ctx, `UPDATE agent_session_queued_messages SET claimed_until = now() - interval '1 second' WHERE id=$1`, messageID); err != nil {
@@ -49,7 +49,7 @@ func (b *editBeforeBegin) BeginQueuedAgentSessionTurn(ctx context.Context, messa
 			return store.AgentSession{}, err
 		}
 	}
-	return b.QueueStore.BeginQueuedAgentSessionTurn(ctx, messageID, author, id, prompt, deliveryMode, phase, status, attachments, output, secretNames, skills)
+	return b.QueueStore.BeginQueuedAgentSessionTurn(ctx, messageID, author, id, prompt, deliveryMode, phase, status, attachments, output, secretNames, skills, model)
 }
 
 func TestAnEditAfterTheClaimIsNotLost(t *testing.T) {

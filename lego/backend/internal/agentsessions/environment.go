@@ -64,14 +64,19 @@ type EnvironmentStore interface {
 }
 
 // Environment is the one cross-surface projection of a workspace's agent
-// environment. DefaultModel nil means the provider default. ModelPinned is
-// true on the platform model route, whose PinnedModel every claude session
-// runs; UpdatedAt is nil until the environment is first written.
+// environment. DefaultModel nil means the provider default, or on the
+// platform model route the catalog's first model. Models is that catalog
+// (w10/m516), the models a claude session, an automation and DefaultModel
+// may name; empty off the route, where any model is free-form. ModelPinned
+// is true on the route, whose gateway pins each session to its chosen
+// model; PinnedModel is the catalog's default, kept for clients older than
+// Models. UpdatedAt is nil until the environment is first written.
 type Environment struct {
 	OwnerID      string   `json:"ownerId"`
 	NetworkTier  string   `json:"networkTier"`
 	CustomHosts  []string `json:"customHosts"`
 	DefaultModel *string  `json:"defaultModel"`
+	Models       []string `json:"models"`
 	ModelPinned  bool     `json:"modelPinned"`
 	PinnedModel  *string  `json:"pinnedModel"`
 	// ModelSource is the credential the workspace's claude sessions use;
@@ -420,12 +425,12 @@ func (s *Service) UpdateEnvironment(ctx context.Context, ownerID string, input E
 
 // byoKeyAfter is whether the workspace has its own model key after this
 // update. Only a default model change on a workspace the platform route
-// covers depends on it (the pin), so only that case reads the stored flag.
+// covers depends on it (the catalog), so only that case reads the stored flag.
 func (s *Service) byoKeyAfter(ctx context.Context, workspaceID string, input EnvironmentInput, keyChanged bool, key string) (bool, error) {
 	if keyChanged {
 		return key != "", nil
 	}
-	if _, covered := agentsession.PlatformPinnedModel(false); !covered || input.DefaultModel == nil {
+	if _, covered := agentsession.PlatformModels(false); !covered || input.DefaultModel == nil {
 		return false, nil
 	}
 	current, err := s.workspaceEnvironment(ctx, workspaceID)
@@ -499,10 +504,8 @@ func validateEnvironmentInput(workspaceID string, input EnvironmentInput, byoKey
 			return patch, core.NewBadRequestError("AGENT_ENVIRONMENT_MODEL_INVALID",
 				"defaultModel must be a model id without spaces (at most 255 characters)", map[string]any{"field": "defaultModel"})
 		}
-		if pinned, ok := agentsession.PlatformPinnedModel(byoKey); ok && model != "" && model != pinned {
-			return patch, core.NewBadRequestError("AGENT_ENVIRONMENT_MODEL_PINNED",
-				"this workspace runs agents on the platform model; its default model cannot be changed",
-				map[string]any{"field": "defaultModel", "pinnedModel": pinned})
+		if models, ok := agentsession.PlatformModels(byoKey); ok && model != "" && !slices.Contains(models, model) {
+			return patch, modelNotOfferedError(CodeEnvironmentModelNotOffered, "defaultModel", model, models)
 		}
 		patch.DefaultModel = &model
 	}
@@ -571,13 +574,15 @@ func (s *Service) environmentView(row store.AgentEnvironment) Environment {
 		model := row.DefaultModel
 		view.DefaultModel = &model
 	}
-	switch pinned, ok := agentsession.PlatformPinnedModel(row.ModelKeySet()); {
+	view.Models = []string{}
+	switch models, ok := agentsession.PlatformModels(row.ModelKeySet()); {
 	case row.ModelKeySet():
 		view.ModelSource = ModelSourceBYO
 	case ok:
 		view.ModelSource = ModelSourcePlatform
+		view.Models = models
 		view.ModelPinned = true
-		view.PinnedModel = &pinned
+		view.PinnedModel = &models[0]
 	default:
 		view.ModelSource = ModelSourceNone
 	}
@@ -628,8 +633,24 @@ func sessionEgress(env store.AgentEnvironment, allowlist []string) sessionegress
 	return sessionegress.Egress{FullInternet: env.NetworkTier == NetworkTierFull, Hosts: allowlist}
 }
 
-// modelPinnedError refuses an explicit model other than the one a session
-// must run.
+// The typed refusals of a model the platform route's catalog does not offer
+// (w10/m516): at session create, on a message and in an automation's template
+// (agentConfig.model), and for the workspace default (defaultModel). Their
+// params name the refused model and the offered ones, so a client can show
+// the choice instead of a 403 from the gateway mid-turn.
+const (
+	CodeSessionModelNotOffered     = "AGENT_SESSION_MODEL_NOT_OFFERED"
+	CodeEnvironmentModelNotOffered = "AGENT_ENVIRONMENT_MODEL_NOT_OFFERED"
+)
+
+func modelNotOfferedError(code, field, model string, models []string) error {
+	return core.NewBadRequestError(code,
+		fmt.Sprintf("this workspace runs agents on the platform model route, which offers %s; %q is not one of them", strings.Join(models, ", "), model),
+		map[string]any{"field": field, "model": model, "models": models})
+}
+
+// modelPinnedError refuses an explicit model other than the one a profile
+// with a release-locked model runs (muse, ADR108 D4).
 func modelPinnedError(message, pinned string) error {
 	return core.NewBadRequestError("AGENT_SESSION_MODEL_PINNED", message,
 		map[string]any{"field": "agentConfig.model", "pinnedModel": pinned})
@@ -637,16 +658,18 @@ func modelPinnedError(message, pinned string) error {
 
 // sessionModel resolves the model a session runs: the request's explicit
 // model, else the workspace default. The claude session of a workspace on
-// the platform route (one without its own model key) always runs the pinned
-// model; an explicit different model is refused at create
-// (AGENT_SESSION_MODEL_PINNED) instead of reaching the gateway's model pin as
-// a 403 mid-turn. On steer, where the caller chose no model, the stored model
-// follows the workspace's model source now: a session created before the
-// workspace joined the route (or after it cleared its key) takes the pinned
-// model, and one created on the route before the workspace set its own key
-// drops the pinned OpenRouter model for the workspace default (empty: the
-// agent profile's), which its own provider serves.
-func sessionModel(workspaceID string, config AgentConfig, env store.AgentEnvironment, explicit bool) (string, error) {
+// the platform route (one without its own model key) runs a model of the
+// route's catalog (w10/m516): an explicit model the catalog does not offer
+// is refused (AGENT_SESSION_MODEL_NOT_OFFERED) instead of reaching the
+// gateway's per-session pin as a 403 mid-turn, and no model takes the
+// workspace default, else the catalog's first. Where the caller chose no
+// model (a steer, a queued message delivered later), the stored model is kept
+// while the catalog still offers it and otherwise falls back the same way, so
+// a model removed from the catalog never strands a session. A session created
+// on the route before the workspace set its own key drops its catalog model
+// for the workspace default (empty: the agent profile's), which its own
+// provider serves.
+func sessionModel(config AgentConfig, env store.AgentEnvironment, explicit bool) (string, error) {
 	// A profile with a release-locked model (ADR108 D4, muse) runs only it,
 	// whatever the workspace default.
 	if profile, _ := agentsession.LookupAgentProfile(config.Agent); profile.Model != "" {
@@ -656,17 +679,85 @@ func sessionModel(workspaceID string, config AgentConfig, env store.AgentEnviron
 		return profile.Model, nil
 	}
 	pinnedAgent := agentsession.PinnedAgent(config.Agent)
-	if pinned, ok := agentsession.PlatformPinnedModel(env.ModelKeySet()); ok && pinnedAgent {
-		if explicit && config.Model != "" && config.Model != pinned {
-			return "", modelPinnedError("this workspace runs agents on the platform model; omit agentConfig.model or set it to the pinned model", pinned)
+	if models, ok := agentsession.PlatformModels(env.ModelKeySet()); ok && pinnedAgent {
+		switch {
+		case config.Model != "" && slices.Contains(models, config.Model):
+			return config.Model, nil
+		case explicit && config.Model != "":
+			return "", modelNotOfferedError(CodeSessionModelNotOffered, "agentConfig.model", config.Model, models)
+		case slices.Contains(models, env.DefaultModel):
+			return env.DefaultModel, nil
 		}
-		return pinned, nil
+		return models[0], nil
 	}
-	if routeModel, covered := agentsession.PlatformPinnedModel(false); pinnedAgent && !explicit && covered && config.Model == routeModel {
+	if catalog, covered := agentsession.PlatformModels(false); pinnedAgent && !explicit && covered && slices.Contains(catalog, config.Model) {
 		return env.DefaultModel, nil
 	}
 	if config.Model != "" {
 		return config.Model, nil
 	}
 	return env.DefaultModel, nil
+}
+
+// checkModelID refuses a session's model that is not a model id: one that
+// reaches a sandbox env var must hold no spaces or shell syntax.
+func checkModelID(field, model string) error {
+	if model != "" && !modelIDPattern.MatchString(model) {
+		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", field+" must be a model id without spaces", map[string]any{"field": field})
+	}
+	return nil
+}
+
+// steerModel checks the model a message switches its session to (w10/m516)
+// against the session's agent and its workspace now, so a model the session
+// could not run is a 400 at send, never a queued message that cannot start.
+// It returns the trimmed model, "" when the message names none.
+func (s *Service) steerModel(ctx context.Context, record store.AgentSession, model string) (string, error) {
+	if model = strings.TrimSpace(model); model == "" {
+		return "", nil
+	}
+	if err := checkModelID("model", model); err != nil {
+		return "", err
+	}
+	config, err := decodeAgentConfig(record)
+	if err != nil {
+		return "", err
+	}
+	env, err := s.workspaceEnvironment(ctx, record.WorkspaceID)
+	if err != nil {
+		return "", err
+	}
+	config.Model = model
+	if _, err := sessionModel(config, env, true); err != nil {
+		var coded *core.CodedError
+		if errors.As(err, &coded) && coded.Params != nil {
+			coded.Params["field"] = "model"
+		}
+		return "", err
+	}
+	return model, nil
+}
+
+// agentModels is what the capabilities read offers for agent in a workspace
+// (w10/m516): the model a session that names none runs, and the models one
+// may name. A profile with a fixed model offers only it; the claude profile on
+// the platform route offers the catalog; elsewhere any model the workspace's
+// own provider serves is accepted (no list), and only the claude profile reads
+// the workspace default.
+func agentModels(agent string, env store.AgentEnvironment) (*string, []string) {
+	if profile, _ := agentsession.LookupAgentProfile(agent); profile.Model != "" {
+		return &profile.Model, []string{profile.Model}
+	}
+	if !agentsession.PinnedAgent(agent) {
+		return nil, []string{}
+	}
+	models, routed := agentsession.PlatformModels(env.ModelKeySet())
+	model, _ := sessionModel(AgentConfig{Agent: agent}, env, false)
+	if !routed {
+		models = []string{}
+	}
+	if model == "" {
+		return nil, models
+	}
+	return &model, models
 }

@@ -463,6 +463,10 @@ const zhAgentAutomations: Record<string, TranslationEntry> = {
     message: "智能体",
     description: "Form field label",
   },
+  "agentAutomations.field.model": {
+    message: "模型",
+    description: "Automation form — model field label (w10/m516)",
+  },
   "agentAutomations.field.spendLimit": {
     message: "每次运行的花费上限（美元）",
     description: "Form field label",
@@ -578,6 +582,10 @@ const zhAgentAutomations: Record<string, TranslationEntry> = {
     message: "每次运行的模型花费上限。使用平台模型时必填。",
     description: "Spend limit field help",
   },
+  "agentAutomations.help.model": {
+    message: "每次运行使用的模型。保持默认即跟随工作区设置。",
+    description: "Automation form — model field help",
+  },
   "agentAutomations.help.emailNotifications": {
     message: "哪些运行会给你发邮件。平台暂停此自动化时总会发送。",
     description: "Email notifications field help",
@@ -601,6 +609,10 @@ const zhAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.placeholder.repo": {
     message: "owner/repository",
     description: "Repository field placeholder",
+  },
+  "agentAutomations.placeholder.model": {
+    message: "工作区默认",
+    description: "Automation form — empty free-form model field",
   },
   "agentAutomations.summary": {
     message: "运行计划：{schedule}",

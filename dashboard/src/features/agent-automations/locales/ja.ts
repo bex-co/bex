@@ -471,6 +471,10 @@ const jaAgentAutomations: Record<string, TranslationEntry> = {
     message: "エージェント",
     description: "Form field label",
   },
+  "agentAutomations.field.model": {
+    message: "モデル",
+    description: "Automation form — model field label (w10/m516)",
+  },
   "agentAutomations.field.spendLimit": {
     message: "実行ごとの支出上限（USD）",
     description: "Form field label",
@@ -590,6 +594,10 @@ const jaAgentAutomations: Record<string, TranslationEntry> = {
       "実行ごとのモデル支出の上限です。実行にプラットフォームのモデルを使う場合は必須です。",
     description: "Spend limit field help",
   },
+  "agentAutomations.help.model": {
+    message: "各実行で使うモデル。デフォルトのままにするとワークスペースの設定に従います。",
+    description: "Automation form — model field help",
+  },
   "agentAutomations.help.emailNotifications": {
     message:
       "メールを受け取る実行の条件です。プラットフォームによる一時停止は常に通知されます。",
@@ -615,6 +623,10 @@ const jaAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.placeholder.repo": {
     message: "owner/repository",
     description: "Repository field placeholder",
+  },
+  "agentAutomations.placeholder.model": {
+    message: "ワークスペースのデフォルト",
+    description: "Automation form — empty free-form model field",
   },
   "agentAutomations.summary": {
     message: "実行: {schedule}",

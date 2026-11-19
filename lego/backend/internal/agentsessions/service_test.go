@@ -598,10 +598,29 @@ func (f *fakeStore) CreateAgentSession(ctx context.Context, in store.AgentSessio
 	return in, nil
 }
 
-func (f *fakeStore) BeginAgentSessionTurn(_ context.Context, id, prompt, delivery, phase, status string, _ store.AgentAttachmentBinding, output store.AgentTurnOutput, secretNames []string, skills []store.TurnSkill) (store.AgentSession, error) {
+func (f *fakeStore) BeginAgentSessionTurn(_ context.Context, id, prompt, delivery, phase, status string, _ store.AgentAttachmentBinding, output store.AgentTurnOutput, secretNames []string, skills []store.TurnSkill, model *string) (store.AgentSession, error) {
 	row, ok := f.rows[id]
 	if !ok {
 		return store.AgentSession{}, store.ErrNotFound
+	}
+	if model != nil {
+		var config map[string]any
+		if err := json.Unmarshal(row.AgentConfig, &config); err != nil {
+			return store.AgentSession{}, err
+		}
+		if config == nil {
+			config = map[string]any{}
+		}
+		if *model == "" {
+			delete(config, "model")
+		} else {
+			config["model"] = *model
+		}
+		raw, err := json.Marshal(config)
+		if err != nil {
+			return store.AgentSession{}, err
+		}
+		row.AgentConfig = raw
 	}
 	previousSandboxID := row.SandboxID
 	f.recordTurn(id, row.Turns+1, prompt, delivery)

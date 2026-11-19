@@ -249,6 +249,65 @@ func assertAgentSessions(ctx context.Context, t *testing.T, s *PGStore, tenant T
 	assertAgentSessionPromptQuota(ctx, t, s, tenant)
 	assertAgentSessionTurnAcceptanceCAS(ctx, t, s, tenant)
 	assertAgentSessionRetryClearsFailure(ctx, t, s, tenant)
+	assertAgentSessionTurnRecordsTheModel(ctx, t, s, tenant)
+}
+
+// A turn's begin records the model it runs as the session's
+// agent_config.model in the same transaction (w10/m516): nil keeps it, ""
+// removes it, and a refused begin changes nothing.
+func assertAgentSessionTurnRecordsTheModel(ctx context.Context, t *testing.T, s *PGStore, tenant Tenant) {
+	t.Helper()
+	record, err := s.CreateAgentSession(ctx, AgentSession{
+		WorkspaceID: tenant.ID, Repo: "bex-co/model", Branch: "main",
+		AgentConfig: []byte(`{"agent":"claude","model":"deepseek/deepseek-v4.1-flash-1017","task":"initial"}`), InitialPrompt: "initial",
+	})
+	if err != nil {
+		t.Fatalf("create model session: %v", err)
+	}
+	model := func(want string) {
+		t.Helper()
+		got, err := s.GetAgentSession(ctx, record.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var config map[string]any
+		if err := json.Unmarshal(got.AgentConfig, &config); err != nil {
+			t.Fatal(err)
+		}
+		if m, _ := config["model"].(string); m != want || config["agent"] != "claude" || config["task"] != "initial" {
+			t.Fatalf("agent_config = %s, want model %q with the rest kept", got.AgentConfig, want)
+		}
+	}
+	turn := func(prompt string, m *string) error {
+		t.Helper()
+		if _, _, err := s.FinalizeAgentSession(ctx, record.ID, "completed", "", "", ""); err != nil && !errors.Is(err, ErrNotFound) {
+			t.Fatal(err)
+		}
+		_, err := s.BeginAgentSessionTurn(ctx, record.ID, prompt, "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil, m)
+		return err
+	}
+	opus := "anthropic/claude-opus-5.5"
+	if err := turn("switch", &opus); err != nil {
+		t.Fatal(err)
+	}
+	model(opus)
+	if err := turn("keep", nil); err != nil {
+		t.Fatal(err)
+	}
+	model(opus)
+	empty := ""
+	if err := turn("provider default", &empty); err != nil {
+		t.Fatal(err)
+	}
+	model("")
+	// A begin refused while a turn runs records no model.
+	if _, err := s.SetAgentSessionLifecycle(ctx, record.ID, "sandbox-1", "running", "running", false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.BeginAgentSessionTurn(ctx, record.ID, "too soon", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil, &opus); !errors.Is(err, ErrAgentSessionTurnState) {
+		t.Fatalf("begin during a turn = %v, want ErrAgentSessionTurnState", err)
+	}
+	model("")
 }
 
 func assertAgentSessionRetryClearsFailure(ctx context.Context, t *testing.T, s *PGStore, tenant Tenant) {
@@ -266,7 +325,7 @@ func assertAgentSessionRetryClearsFailure(ctx context.Context, t *testing.T, s *
 	if _, _, err := s.FinalizeAgentSession(ctx, record.ID, "failed", "", "", "old push failure"); err != nil {
 		t.Fatalf("fail retry session: %v", err)
 	}
-	record, err = s.BeginAgentSessionTurn(ctx, record.ID, "retry", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil)
+	record, err = s.BeginAgentSessionTurn(ctx, record.ID, "retry", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil, nil)
 	if err != nil || record.FailureReason != "" {
 		t.Fatalf("accepted retry retained failure = %+v err=%v", record, err)
 	}
@@ -303,7 +362,7 @@ func assertAgentSessionPromptQuota(ctx context.Context, t *testing.T, s *PGStore
 	if _, err := s.Pool.Exec(ctx, `UPDATE agent_sessions SET turns=84 WHERE id=$1`, record.ID); err != nil {
 		t.Fatalf("advance prompt quota session: %v", err)
 	}
-	if _, err := s.BeginAgentSessionTurn(ctx, record.ID, strings.Repeat("y", 100000), "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil); !errors.Is(err, ErrAgentSessionPromptQuota) {
+	if _, err := s.BeginAgentSessionTurn(ctx, record.ID, strings.Repeat("y", 100000), "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil, nil); !errors.Is(err, ErrAgentSessionPromptQuota) {
 		t.Fatalf("prompt quota error = %v, want ErrAgentSessionPromptQuota", err)
 	}
 	got, err := s.GetAgentSession(ctx, record.ID)
@@ -330,7 +389,7 @@ func assertAgentSessionTurnAcceptanceCAS(ctx context.Context, t *testing.T, s *P
 		prompt := prompt
 		go func() {
 			<-start
-			_, err := s.BeginAgentSessionTurn(ctx, record.ID, prompt, "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil)
+			_, err := s.BeginAgentSessionTurn(ctx, record.ID, prompt, "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil, nil)
 			errs <- err
 		}()
 	}

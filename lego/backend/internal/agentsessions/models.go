@@ -127,6 +127,16 @@ type AgentProfile struct {
 	// workspace) or the workspace's own model key. A profile that is not ready
 	// is refused at create with AGENT_SESSION_MODEL_KEY_REQUIRED.
 	ModelKeyReady bool `json:"modelKeyReady"`
+	// Model is the model a session of this profile runs when it names none
+	// (w10/m516): the workspace default, else the platform catalog's first
+	// model or the profile's fixed one. Nil when the provider's own default
+	// runs (the workspace's own key and no workspace default).
+	Model *string `json:"model"`
+	// Models are the models a session of this profile may name: the platform
+	// route's catalog for the claude profile, the one fixed model of a profile
+	// that runs only it (muse, deepseek). Empty where any model id the
+	// workspace's own provider serves is accepted.
+	Models []string `json:"models"`
 }
 
 // GitHubReadinessView is the mobile-safe slice of a workspace's GitHub App
@@ -250,6 +260,10 @@ type SteerRequest struct {
 	SessionSecretsInput
 	// Skills are workspace skills this turn must use (ADR099 D4).
 	Skills []SkillInvocation `json:"skills,omitempty"`
+	// Model switches the session's model from the turn this message starts
+	// (w10/m516, Devin's agent selector): a queued message switches it when
+	// it is delivered. Empty keeps the session's model.
+	Model string `json:"model,omitempty"`
 }
 
 // steerMode says what Steer does with a message that cannot start a turn now.

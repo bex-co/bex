@@ -31,6 +31,7 @@ vi.mock(
       capabilities: {
         enabled: true,
         modelKeyReadyAgents: ["claude"],
+        models: {},
         github: { connected: true },
         attachments: { enabled: false, maxBytes: 0, maxPerTurn: 0 },
       },
@@ -62,6 +63,7 @@ const wire = (id: string, prompt: string): Wire => ({
   author: "alice",
   attachmentIds: null,
   blockedReason: null,
+  model: null,
   createdAt: "2026-11-14T00:00:00Z",
 });
 

@@ -194,7 +194,7 @@ func TestPGAgentSessionTurnSkills(t *testing.T) {
 	if _, err := pool.Exec(ctx, `UPDATE agent_sessions SET phase='completed' WHERE id=$1`, row.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.BeginAgentSessionTurn(ctx, row.ID, "plain", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil); err != nil {
+	if _, err := s.BeginAgentSessionTurn(ctx, row.ID, "plain", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	turns, err := s.AgentSessionTurns(ctx, row.ID)

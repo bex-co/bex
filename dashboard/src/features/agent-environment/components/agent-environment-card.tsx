@@ -13,6 +13,13 @@ import { Alert, AlertDescription } from "@/common/components/ui/alert";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/common/components/ui/select";
 import { Textarea } from "@/common/components/ui/textarea";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useCardRadioGroup } from "@/common/hooks/use-card-radio-group";
@@ -47,6 +54,10 @@ import {
 } from "@/features/agent-environment/lib/environment";
 
 const TIER_VALUES = TIERS.map(({ tier }) => tier);
+
+// The default-model picker's value for "no default": Radix Select refuses an
+// empty item value, and "" is what the API stores for it.
+const PLATFORM_DEFAULT = "__platform_default__";
 
 /**
  * Settings → Agents (w10/m17/t005): the workspace agent environment — the
@@ -281,22 +292,60 @@ function AgentEnvironmentForm({
 
         <div className="space-y-2 border-t pt-6">
           <Label htmlFor={modelId}>{t("agentEnvironment.modelLabel")}</Label>
-          {saved.modelPinned ? (
+          {saved.models.length > 0 ? (
             <>
-              <Input
-                id={modelId}
-                value={saved.pinnedModel ?? ""}
-                readOnly
-                aria-describedby={`${modelId}-help`}
-                className="max-w-sm font-mono"
-              />
+              {/* The platform model catalog (w10/m516): the default every
+                  session and automation that names no model runs; a member
+                  may still pick another catalog model for one session. */}
+              <Select
+                value={draft.defaultModel || PLATFORM_DEFAULT}
+                onValueChange={(value) =>
+                  edit(
+                    {
+                      defaultModel: value === PLATFORM_DEFAULT ? "" : value,
+                    },
+                    ["model"],
+                  )
+                }
+                disabled={readOnly}
+              >
+                <SelectTrigger
+                  id={modelId}
+                  aria-invalid={modelError != null}
+                  aria-describedby={`${modelId}-help`}
+                  className="w-full max-w-sm font-mono"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={PLATFORM_DEFAULT} className="font-mono">
+                    {t("agentEnvironment.modelPlatformDefault", {
+                      model: saved.models[0],
+                    })}
+                  </SelectItem>
+                  {saved.models.map((model) => (
+                    <SelectItem key={model} value={model} className="font-mono">
+                      {model}
+                    </SelectItem>
+                  ))}
+                  {/* A default saved before its model left the catalog is
+                      still shown, so the picker never misreads it. */}
+                  {draft.defaultModel &&
+                  !saved.models.includes(draft.defaultModel) ? (
+                    <SelectItem
+                      value={draft.defaultModel}
+                      className="font-mono"
+                    >
+                      {draft.defaultModel}
+                    </SelectItem>
+                  ) : null}
+                </SelectContent>
+              </Select>
               <p
                 id={`${modelId}-help`}
                 className="text-muted-foreground text-xs"
               >
-                {t("agentEnvironment.modelPinnedHelp", {
-                  model: saved.pinnedModel ?? "",
-                })}
+                {t("agentEnvironment.modelCatalogHelp")}
               </p>
             </>
           ) : (

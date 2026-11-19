@@ -14,6 +14,7 @@ const wireMessage = {
   author: "kratos-alice",
   attachmentIds: ["att-1", "att-2"],
   blockedReason: "the session's spend ceiling was reached",
+  model: "anthropic/claude-opus-5.5",
   createdAt: "2026-11-14T00:00:00Z",
 };
 
@@ -26,6 +27,7 @@ describe("toQueuedMessageView", () => {
       author: "kratos-alice",
       attachmentCount: 2,
       blockedReason: "the session's spend ceiling was reached",
+      model: "anthropic/claude-opus-5.5",
       createdAt: "2026-11-14T00:00:00Z",
     });
   });
@@ -36,11 +38,13 @@ describe("toQueuedMessageView", () => {
         ...wireMessage,
         attachmentIds: null,
         blockedReason: null,
+        model: null,
         createdAt: null,
       }),
     ).toMatchObject({
       attachmentCount: 0,
       blockedReason: null,
+      model: null,
       createdAt: null,
     });
     expect(

@@ -222,6 +222,22 @@ const deAgentSessions: Record<string, TranslationEntry> = {
     message: "Agent",
     description: "Composer — agent select label",
   },
+  "agentSessions.modelLabel": {
+    message: "Modell",
+    description: "Composer — model select label (w10/m516)",
+  },
+  "agentSessions.modelDefaultOption": {
+    message: "{model} (Standard)",
+    description: "Model list — the model a session runs when it names none",
+  },
+  "agentSessions.modelFixed": {
+    message: "Dieser Agent nutzt immer {model}",
+    description: "Tooltip of the model of an agent with one fixed model",
+  },
+  "agentSessions.metaModel": {
+    message: "Modell: {model}",
+    description: "Session header — tooltip of the model the session runs",
+  },
   "agentSessions.agent.claude": {
     message: "Claude",
     description: "Composer — agent option: claude",
@@ -558,6 +574,10 @@ const deAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Queued message row — why the dispatcher could not start it (a spend ceiling or the live-sandbox limit)",
   },
+  "agentSessions.queueModel": {
+    message: "Wechselt die Sitzung zu {model}",
+    description: "Queued message — the model its turn switches the session to (w10/m516)",
+  },
   "agentSessions.queueSendNow": {
     message: "Jetzt senden",
     description:
@@ -695,6 +715,15 @@ const deAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.errors.AGENT_SESSION_MODEL_ENDPOINT_INVALID": {
     message: "Der Modell-Endpunkt muss eine gültige HTTPS-URL sein.",
     description: "Mapped message for AGENT_SESSION_MODEL_ENDPOINT_INVALID",
+  },
+  "agentSessions.errors.AGENT_SESSION_MODEL_NOT_OFFERED": {
+    message:
+      "Das Plattformmodell dieses Workspaces bietet {model} nicht an. Wähle ein Modell aus der Liste.",
+    description: "Mapped message for AGENT_SESSION_MODEL_NOT_OFFERED (w10/m516)",
+  },
+  "agentSessions.errors.AGENT_SESSION_MODEL_PINNED": {
+    message: "Dieser Agent nutzt nur {pinnedModel}.",
+    description: "Mapped message for AGENT_SESSION_MODEL_PINNED",
   },
   "agentSessions.errors.AGENT_SESSION_EGRESS_ALLOWLIST_INVALID": {
     message: "Der Egress-Allowlist-Eintrag „{entry}“ ist ungültig: {reason}",

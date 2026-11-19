@@ -27,6 +27,8 @@ The customer price of each platform-route request is **upstream cost (USD) × `m
 
 Gross margin is 30% on every request. That holds automatically across time-of-day prices, model changes and OpenRouter price changes, with no catalog to maintain.
 
+_Amended 2026-11-19 (w10/m516): a person chooses the model from a platform catalog._ D1 is unchanged. A session, an automation, a message or the workspace default may name any model of the platform catalog ([ADR090 § Model pin](ADR090-agent-owned-delivery.md#platform-openrouter-route-for-an-allowlisted-workspace-2026-10-23)), and each request is still priced at its own reported cost × 1.30 with no per-model rows. The gateway's usage report carries the model the session pinned, so the usage breakdown and the session cost show it. A stronger model costs more per request (on 2026-11-19 OpenRouter listed `anthropic/claude-opus-5.5` at $4/$20 and `deepseek/deepseek-v4.1-flash-1017` at $0.15/$0.60 per 1M input/output tokens). The D5 workspace cap, the D10.1 trust tier and a session's own `maxSpendUSD` (ADR094 D8) bound that spend, unchanged. An automation on the platform model still needs `maxSpendUSD`.
+
 ### D2 — Cost source
 
 1. **Reported cost (primary).** OpenRouter's own per-request cost. The gateway model proxy already tee-parses usage (`sshgateway/modelproxy/usage.go`); it also reads `usage.cost`, and asks for usage accounting in the request if the Anthropic-format `/api/v1/messages` endpoint needs it. The first implementation task confirms this with one live probe.

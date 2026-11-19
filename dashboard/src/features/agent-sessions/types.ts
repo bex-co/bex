@@ -137,10 +137,23 @@ export interface AgentSessionCapabilitiesView {
    * claude, so readiness is per profile (AGENT_SESSION_MODEL_KEY_REQUIRED).
    */
   modelKeyReadyAgents: string[];
+  /** Each listed profile's model offer (w10/m516), keyed by profile id. */
+  models: Record<string, AgentModelOffer>;
   github: {
     connected: boolean;
   };
   attachments: AttachmentLimitsView;
+}
+
+/**
+ * What a profile offers for its model (w10/m516): `model` runs when a session
+ * names none (null: the provider's own default), and `models` are the ones it
+ * may name — the platform catalog, one fixed model, or empty where the
+ * workspace's own provider takes any model id.
+ */
+export interface AgentModelOffer {
+  model: string | null;
+  models: string[];
 }
 
 /** The API's attachment limits (ADR095 D8); `enabled` is false until storage exists. */
@@ -331,6 +344,8 @@ export interface QueuedMessageView {
    * limit); the dispatcher retries within seconds. Null while nothing blocks it.
    */
   blockedReason: string | null;
+  /** The model its turn switches the session to (w10/m516); null keeps it. */
+  model: string | null;
   createdAt: string | null;
 }
 

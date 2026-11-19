@@ -19,6 +19,7 @@ package agentsession
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"sync/atomic"
 
@@ -39,8 +40,10 @@ import (
 //     production control plane (EnableDevModelRoute);
 //   - the PLATFORM route (BEX_AGENT_PLATFORM_MODEL_ROUTE) is production-capable
 //     and covers every workspace except one that set its own model key; it
-//     injects a platform-owned key and pins the model: the gateway refuses any
-//     request body whose top-level "model" differs.
+//     injects a platform-owned key and pins each session to the catalog model
+//     it chose (BEX_AGENT_PLATFORM_MODEL first, then BEX_AGENT_PLATFORM_MODELS,
+//     w10/m516): the gateway refuses any request body whose top-level "model"
+//     differs.
 //
 // A workspace's own model key (BYO, ADR091 D7) wins over the platform route:
 // a workspace whose admin set one is never on the platform route, so it is
@@ -79,10 +82,13 @@ const (
 )
 
 // modelRoute is one active route. The agent, endpoint, host and path prefix
-// are the openRouter* constants; only the model and key vary. An active route
+// are the openRouter* constants; only the models and key vary. An active route
 // covers every workspace.
 type modelRoute struct {
-	model string
+	// models is the catalog a session chooses from (ADR090 § Model pin,
+	// w10/m516), the route's default first. The dev route offers only its
+	// one model; the Meta route none (each profile runs its own).
+	models []string
 	// platformKey is the platform-owned credential the mint injects instead of
 	// the workspace BYO key. Empty for the dev route. Never logged or returned
 	// outside ModelMintResponse.Credential.
@@ -91,6 +97,16 @@ type modelRoute struct {
 
 func (r *modelRoute) active() bool {
 	return r != nil
+}
+
+// pin is the model a session that chose model runs on this route: model when
+// the catalog offers it, else the default. A model that left the catalog
+// never strands a session.
+func (r *modelRoute) pin(model string) string {
+	if slices.Contains(r.models, model) {
+		return model
+	}
+	return r.models[0]
 }
 
 var (
@@ -139,14 +155,15 @@ func resolveDevModelRoute(route, model, controlPlaneIdentity string) (*modelRout
 	if err != nil {
 		return nil, err
 	}
-	return &modelRoute{model: model}, nil
+	return &modelRoute{models: []string{model}}, nil
 }
 
 // EnablePlatformModelRoute installs (or, for an empty route, clears) the
-// platform model route for every workspace. key must be non-empty when route
+// platform model route for every workspace: model is its default and models
+// the comma-separated rest of its catalog. key must be non-empty when route
 // is set. Errors never include the key.
-func EnablePlatformModelRoute(route, model, key string) error {
-	resolved, err := resolvePlatformModelRoute(route, model)
+func EnablePlatformModelRoute(route, model, models, key string) error {
+	resolved, err := resolvePlatformModelRoute(route, model, models)
 	if err != nil {
 		return err
 	}
@@ -212,15 +229,15 @@ func platformKey(host string) string {
 	return ""
 }
 
-// ValidatePlatformModelRoute checks the route and model without the key and
-// without installing anything (bex-api's startup config check; a missing key
-// is a degraded-but-running state the loader handles itself).
-func ValidatePlatformModelRoute(route, model string) error {
-	_, err := resolvePlatformModelRoute(route, model)
+// ValidatePlatformModelRoute checks the route and its catalog without the key
+// and without installing anything (bex-api's startup config check; a missing
+// key is a degraded-but-running state the loader handles itself).
+func ValidatePlatformModelRoute(route, model, models string) error {
+	_, err := resolvePlatformModelRoute(route, model, models)
 	return err
 }
 
-func resolvePlatformModelRoute(route, model string) (*modelRoute, error) {
+func resolvePlatformModelRoute(route, model, models string) (*modelRoute, error) {
 	if route == "" {
 		return nil, nil
 	}
@@ -231,7 +248,35 @@ func resolvePlatformModelRoute(route, model string) (*modelRoute, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &modelRoute{model: model}, nil
+	catalog, err := routeCatalog("BEX_AGENT_PLATFORM_MODELS", model, models)
+	if err != nil {
+		return nil, err
+	}
+	return &modelRoute{models: catalog}, nil
+}
+
+// routeCatalog is the route's catalog: its default model, then each model of
+// the comma-separated list in order. An entry that is not a model id, or
+// that repeats one, is refused loudly rather than dropped.
+func routeCatalog(env, model, list string) ([]string, error) {
+	catalog := []string{model}
+	if strings.TrimSpace(list) == "" {
+		return catalog, nil
+	}
+	for _, entry := range strings.Split(list, ",") {
+		entry = strings.TrimSpace(entry)
+		if !modelIDPattern.MatchString(entry) {
+			return nil, fmt.Errorf("%s entry %q is not a model id", env, entry)
+		}
+		if entry == model {
+			continue // the default may be listed again
+		}
+		if slices.Contains(catalog, entry) {
+			return nil, fmt.Errorf("%s lists %q twice", env, entry)
+		}
+		catalog = append(catalog, entry)
+	}
+	return catalog, nil
 }
 
 func routeModel(env, model string) (string, error) {
@@ -302,18 +347,18 @@ func PlatformModelKeyReady(byoKey bool) bool {
 	return !byoKey && activePlatformModelRoute.Load().active()
 }
 
-// PlatformPinnedModel is the model the platform route pins for a workspace's
-// claude sessions — the gateway refuses any other request model with a 403 —
-// and whether the workspace is on that route at all (never with its own key,
-// byoKey). Session create refuses a different explicit model up front
-// (AGENT_SESSION_MODEL_PINNED) and the workspace agent environment reports it
-// as read-only (w10/m17).
-func PlatformPinnedModel(byoKey bool) (string, bool) {
+// PlatformModels is the platform route's model catalog for a workspace's
+// claude sessions, its default first, and whether the workspace is on that
+// route at all (never with its own key, byoKey). A session, an automation, a
+// message and the workspace default choose from it (w10/m516); the mint pins
+// each session to its choice, and the gateway refuses any other request model
+// with a 403. The slice is the caller's.
+func PlatformModels(byoKey bool) ([]string, bool) {
 	route := activePlatformModelRoute.Load()
 	if byoKey || !route.active() {
-		return "", false
+		return nil, false
 	}
-	return route.model, true
+	return slices.Clone(route.models), true
 }
 
 // IsPlatformModelEndpoint reports whether a session's stored model endpoint
@@ -339,17 +384,19 @@ func registeredEndpoint(profile AgentProfile, byoKey bool) string {
 }
 
 // ModelRouteEnv is the extra sandbox environment a route needs for agent: the
-// model id under every name Claude Code reads. Nil when no
-// route applies (byoKey: see routeFor).
-func ModelRouteEnv(agent string, byoKey bool) map[string]string {
+// model the session runs (model when the route's catalog offers it, else the
+// route's default, as the mint pins it) under every name Claude Code reads.
+// Nil when no route applies (byoKey: see routeFor).
+func ModelRouteEnv(agent, model string, byoKey bool) map[string]string {
 	route := routeFor(agent, byoKey)
 	if route == nil {
 		return nil
 	}
+	model = route.pin(model)
 	return map[string]string{
-		"ANTHROPIC_MODEL":                route.model,
-		"ANTHROPIC_DEFAULT_OPUS_MODEL":   route.model,
-		"ANTHROPIC_DEFAULT_SONNET_MODEL": route.model,
-		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  route.model,
+		"ANTHROPIC_MODEL":                model,
+		"ANTHROPIC_DEFAULT_OPUS_MODEL":   model,
+		"ANTHROPIC_DEFAULT_SONNET_MODEL": model,
+		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  model,
 	}
 }

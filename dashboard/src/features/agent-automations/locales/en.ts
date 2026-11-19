@@ -471,6 +471,10 @@ const enAgentAutomations: Record<string, TranslationEntry> = {
     message: "Agent",
     description: "Form field label",
   },
+  "agentAutomations.field.model": {
+    message: "Model",
+    description: "Automation form — model field label (w10/m516)",
+  },
   "agentAutomations.field.spendLimit": {
     message: "Spend limit per run (USD)",
     description: "Form field label",
@@ -590,6 +594,11 @@ const enAgentAutomations: Record<string, TranslationEntry> = {
       "A ceiling on model spend for each run. Required when runs use the platform model.",
     description: "Spend limit field help",
   },
+  "agentAutomations.help.model": {
+    message:
+      "The model each run uses. Leave it at the default to follow the workspace's.",
+    description: "Automation form — model field help",
+  },
   "agentAutomations.help.emailNotifications": {
     message: "Which runs email you. A platform pause always does.",
     description: "Email notifications field help",
@@ -614,6 +623,10 @@ const enAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.placeholder.repo": {
     message: "owner/repository",
     description: "Repository field placeholder",
+  },
+  "agentAutomations.placeholder.model": {
+    message: "Workspace default",
+    description: "Automation form — empty free-form model field",
   },
   "agentAutomations.summary": {
     message: "Runs: {schedule}",

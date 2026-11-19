@@ -811,7 +811,7 @@ func TestPGBeginRetentionOfASettledTurn(t *testing.T) {
 	})
 	t.Run("the sandbox the next turn replaced", func(t *testing.T) {
 		session := settled("completed")
-		if _, err := f.s.BeginAgentSessionTurn(ctx, session.ID, "more", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil); err != nil {
+		if _, err := f.s.BeginAgentSessionTurn(ctx, session.ID, "more", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil, nil); err != nil {
 			t.Fatal(err)
 		}
 		if got, err := f.s.BeginAgentSessionRetention(ctx, session.ID, 1, "sbx-2", TurnRetentionCauseReplaced, stake, img()); err != nil || got != nil {

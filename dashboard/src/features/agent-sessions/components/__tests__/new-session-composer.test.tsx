@@ -102,6 +102,7 @@ const capabilitiesState = {
     enabled: true,
     agents: ["claude", "gemini", "codex"] as string[] | undefined,
     modelKeyReadyAgents: ["claude", "gemini", "codex", "muse"],
+    models: {} as Record<string, { model: string | null; models: string[] }>,
     github: {
       connected: true,
     },
@@ -213,6 +214,7 @@ beforeEach(() => {
     "muse",
   ];
   capabilitiesState.capabilities.agents = ["claude", "gemini", "codex"];
+  capabilitiesState.capabilities.models = {};
   capabilitiesState.capabilities.github.connected = true;
   capabilitiesState.loading = false;
   capabilitiesState.error = undefined;
@@ -277,8 +279,8 @@ describe("NewSessionComposer", () => {
         task: "refactor the mapper",
       }),
     );
-    // The model and sandbox network come from the workspace's agent
-    // environment (w10/m17); the composer never sends either.
+    // The sandbox network comes from the workspace's agent environment
+    // (w10/m17), and so does the model unless the person picks one (w10/m516).
     const input = create.mock.calls[0][0];
     // w21/002: every submit carries a retry-safe idempotency key.
     expect(input.idempotencyKey).toEqual(expect.any(String));
@@ -1426,5 +1428,85 @@ describe("NewSessionComposer agent model spend (ADR091 D6)", () => {
     expect(
       await screen.findByText(/Settle the outstanding payment in Billing/),
     ).toBeInTheDocument();
+  });
+
+  // w10/m516: the composer shows the model the agent runs and its catalog;
+  // a session starts on the picked model, and on the agent's default (no model
+  // sent) otherwise. Another agent starts back at its own default.
+  describe("model", () => {
+    const catalog = [
+      "deepseek/deepseek-v4.1-flash-1017",
+      "anthropic/claude-sonnet-5.5",
+      "anthropic/claude-opus-5.5",
+    ];
+    beforeEach(() => {
+      capabilitiesState.capabilities.agents = ["claude", "deepseek", "codex"];
+      capabilitiesState.capabilities.modelKeyReadyAgents = [
+        "claude",
+        "deepseek",
+        "codex",
+      ];
+      capabilitiesState.capabilities.models = {
+        claude: { model: catalog[1], models: catalog },
+        deepseek: {
+          model: "~deepseek/deepseek-flash-latest",
+          models: ["~deepseek/deepseek-flash-latest"],
+        },
+        codex: { model: null, models: [] },
+      };
+    });
+
+    it("starts a session on the picked catalog model", async () => {
+      const user = userEvent.setup();
+      render(<NewSessionComposer />);
+      const picker = screen.getByRole("combobox", { name: "Model" });
+      expect(picker).toHaveTextContent("claude-sonnet-5.5");
+      await user.click(picker);
+      expect(
+        screen.getAllByRole("option").map((option) => option.textContent),
+      ).toEqual([
+        "deepseek/deepseek-v4.1-flash-1017",
+        "anthropic/claude-sonnet-5.5 (default)",
+        "anthropic/claude-opus-5.5",
+      ]);
+      await user.click(
+        screen.getByRole("option", { name: "anthropic/claude-opus-5.5" }),
+      );
+      await typeTask(user);
+      await user.click(screen.getByRole("button", { name: "Start session" }));
+      await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+      expect(create.mock.calls[0][0]).toMatchObject({
+        agent: "claude",
+        model: "anthropic/claude-opus-5.5",
+      });
+    });
+
+    it("shows a fixed model without a choice and resets on another agent", async () => {
+      const user = userEvent.setup();
+      render(<NewSessionComposer />);
+      await user.click(screen.getByRole("combobox", { name: "Model" }));
+      await user.click(
+        screen.getByRole("option", { name: "anthropic/claude-opus-5.5" }),
+      );
+      await user.click(screen.getByLabelText("Agent"));
+      await user.click(await screen.findByRole("option", { name: /DeepSeek/ }));
+      expect(screen.queryByRole("combobox", { name: "Model" })).toBeNull();
+      expect(screen.getByTestId("model-picker-fixed")).toHaveTextContent(
+        "deepseek-flash-latest",
+      );
+      await user.click(screen.getByLabelText("Agent"));
+      await user.click(await screen.findByRole("option", { name: "Codex" }));
+      expect(screen.queryByTestId("model-picker-fixed")).toBeNull();
+      expect(screen.queryByRole("combobox", { name: "Model" })).toBeNull();
+      await user.click(screen.getByLabelText("Agent"));
+      await user.click(await screen.findByRole("option", { name: /Claude/ }));
+      expect(screen.getByRole("combobox", { name: "Model" })).toHaveTextContent(
+        "claude-sonnet-5.5",
+      );
+      await typeTask(user);
+      await user.click(screen.getByRole("button", { name: "Start session" }));
+      await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+      expect(create.mock.calls[0][0]).not.toHaveProperty("model");
+    });
   });
 });

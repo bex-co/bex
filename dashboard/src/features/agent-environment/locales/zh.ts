@@ -122,18 +122,23 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
       "新会话使用的模型 ID，例如 claude-sonnet-4-5。留空则使用提供方默认模型。",
     description: "Help under the default model field",
   },
-  "agentEnvironment.modelPinnedHelp": {
+  "agentEnvironment.modelPlatformDefault": {
+    message: "平台默认（{model}）",
+    description: "Default model picker — no default: the platform catalog's first model (w10/m516)",
+  },
+  "agentEnvironment.modelCatalogHelp": {
     message:
-      "此工作区的智能体运行在平台模型上，所有会话都使用 {model}，无法在此更改。",
-    description: "Help under the read-only pinned model",
+      "未指定模型的新会话和自动化将使用此模型。成员仍可为单个会话选择平台目录中的其他模型。",
+    description: "Help under the platform model catalog picker (w10/m516)",
   },
   "agentEnvironment.modelInvalid": {
     message: "请使用不含空格的模型 ID（最多 255 个字符）。",
     description: "Default model validation error",
   },
-  "agentEnvironment.modelPinnedError": {
-    message: "此工作区的智能体运行在平台模型（{model}）上，无法更改默认模型。",
-    description: "Server refusal: model is pinned",
+  "agentEnvironment.modelNotOfferedError": {
+    message:
+      "平台模型不提供 {model}。请从列表中选择。",
+    description: "Server refusal: the default model is not in the platform catalog (w10/m516)",
   },
   "agentEnvironment.tierInvalid": {
     message: "不支持该网络访问选项。",

@@ -127,19 +127,23 @@ const jaAgentEnvironment: Record<string, TranslationEntry> = {
       "新しいセッションが使用するモデル ID（claude-sonnet-4-5 など）。空のままにすると、プロバイダーのデフォルトが使われます。",
     description: "Help under the default model field",
   },
-  "agentEnvironment.modelPinnedHelp": {
+  "agentEnvironment.modelPlatformDefault": {
+    message: "プラットフォームのデフォルト（{model}）",
+    description: "Default model picker — no default: the platform catalog's first model (w10/m516)",
+  },
+  "agentEnvironment.modelCatalogHelp": {
     message:
-      "このワークスペースではエージェントがプラットフォームのモデルで動作するため、すべてのセッションで {model} が使用されます。ここでは変更できません。",
-    description: "Help under the read-only pinned model",
+      "モデルを指定しない新しいセッションと自動化はこのモデルを使用します。メンバーはセッションごとにプラットフォームカタログの別のモデルを選ぶこともできます。",
+    description: "Help under the platform model catalog picker (w10/m516)",
   },
   "agentEnvironment.modelInvalid": {
     message: "空白を含まないモデル ID を使用してください（255 文字以内）。",
     description: "Default model validation error",
   },
-  "agentEnvironment.modelPinnedError": {
+  "agentEnvironment.modelNotOfferedError": {
     message:
-      "このワークスペースではエージェントがプラットフォームのモデル（{model}）で動作するため、デフォルトモデルは変更できません。",
-    description: "Server refusal: model is pinned",
+      "プラットフォームモデルでは {model} を利用できません。一覧から選んでください。",
+    description: "Server refusal: the default model is not in the platform catalog (w10/m516)",
   },
   "agentEnvironment.tierInvalid": {
     message: "そのネットワークアクセスのオプションはサポートされていません。",

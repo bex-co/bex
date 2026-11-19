@@ -10,6 +10,7 @@ import {
 import { Button } from "@/common/components/ui/button";
 import { Textarea } from "@/common/components/ui/textarea";
 import { cn } from "@/common/lib/utils/utils";
+import { ModelPicker } from "@/features/agent-sessions/components/model-picker";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
 import { useAgentSessionCapabilities } from "@/features/agent-sessions/hooks/use-agent-session-capabilities";
@@ -104,6 +105,11 @@ export function SteeringComposer({
   const [value, setValue] = useState("");
   // Workspace skills the follow-up turn must follow (ADR099 D4).
   const [skills, setSkills] = useState<ComposerSkill[]>([]);
+  // A model to switch the session to from this message's turn (w10/m516,
+  // Devin's agent selector); "" keeps the session's model.
+  const [model, setModel] = useState("");
+  const sessionModel = session.agentConfig.model;
+  const modelOffer = capabilities?.models[session.agentConfig.agent];
   const [pending, setPending] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -179,6 +185,7 @@ export function SteeringComposer({
             prompt,
             sent,
             composerSkillsFingerprint(skills),
+            model,
           ]),
         );
       }
@@ -186,10 +193,12 @@ export function SteeringComposer({
         attachmentIds: sent,
         ...(skills.length > 0 ? { skills: composerSkillsInput(skills) } : {}),
         ...(idempotencyKey ? { idempotencyKey } : {}),
+        ...(model ? { model } : {}),
       });
       submitKey.release();
       uploads.clear(sent);
       setSkills([]);
+      setModel("");
       if (result.queuedMessage) {
         // The server queued it (the session was busy after all): no turn began.
         if (echoed) onOptimisticSteer?.(null);
@@ -254,6 +263,16 @@ export function SteeringComposer({
                   value={skills}
                   onChange={setSkills}
                   disabled={pending}
+                />
+              ) : null}
+              {!hardDisabled ? (
+                <ModelPicker
+                  offer={modelOffer}
+                  value={model}
+                  current={sessionModel}
+                  onChange={setModel}
+                  disabled={pending}
+                  className="w-auto max-w-[7.5rem] sm:max-w-[10.5rem]"
                 />
               ) : null}
               {/* `field-sizing-content` (base Textarea) auto-grows the input to

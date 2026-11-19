@@ -25,6 +25,7 @@ function wire(
     author: "alice",
     attachmentIds: null,
     blockedReason: null,
+    model: null,
     createdAt: "2026-11-14T00:00:00Z",
   };
 }

@@ -30,10 +30,10 @@ const testPlatformKey = "sk-or-v1-PLATFORM-SECRET"
 
 func enablePlatformRoute(t *testing.T) {
 	t.Helper()
-	if err := EnablePlatformModelRoute(DevModelRouteOpenRouter, "", testPlatformKey); err != nil {
+	if err := EnablePlatformModelRoute(DevModelRouteOpenRouter, "", "", testPlatformKey); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = EnablePlatformModelRoute("", "", "") })
+	t.Cleanup(func() { _ = EnablePlatformModelRoute("", "", "", "") })
 }
 
 // recordingKV is a core.SecretKV that records every path read.
@@ -56,7 +56,7 @@ func mintFor(t *testing.T, workspace, endpoint string, keys *recordingKV) (Model
 }
 
 func TestPlatformModelRouteConfigRefusals(t *testing.T) {
-	t.Cleanup(func() { _ = EnablePlatformModelRoute("", "", "") })
+	t.Cleanup(func() { _ = EnablePlatformModelRoute("", "", "", "") })
 	cases := []struct {
 		name, route, model, key, want string
 	}{
@@ -65,16 +65,16 @@ func TestPlatformModelRouteConfigRefusals(t *testing.T) {
 		{"missing key", DevModelRouteOpenRouter, "", " ", "BEX_AGENT_PLATFORM_MODEL_KEY"},
 	}
 	for _, tc := range cases {
-		err := EnablePlatformModelRoute(tc.route, tc.model, tc.key)
+		err := EnablePlatformModelRoute(tc.route, tc.model, "", tc.key)
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Fatalf("%s: err = %v, want it to name %q", tc.name, err, tc.want)
 		}
 	}
-	if PlatformModelKeyReady(false) || ModelRouteEnv("claude", false) != nil {
+	if PlatformModelKeyReady(false) || ModelRouteEnv("claude", "", false) != nil {
 		t.Fatal("a refused configuration left a route installed")
 	}
 	// Production identity is irrelevant to the platform route (it has none).
-	if err := ValidatePlatformModelRoute(DevModelRouteOpenRouter, ""); err != nil {
+	if err := ValidatePlatformModelRoute(DevModelRouteOpenRouter, "", ""); err != nil {
 		t.Fatalf("validate: %v", err)
 	}
 }
@@ -106,7 +106,7 @@ func TestPlatformModelRouteMintsThePlatformKeyForAWorkspace(t *testing.T) {
 	if !PlatformModelKeyReady(false) {
 		t.Fatal("workspace not model-key ready")
 	}
-	env := ModelRouteEnv("claude", false)
+	env := ModelRouteEnv("claude", "", false)
 	for _, name := range []string{"ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL"} {
 		if env[name] != DefaultDevModel {
 			t.Fatalf("%s = %q", name, env[name])
@@ -116,7 +116,7 @@ func TestPlatformModelRouteMintsThePlatformKeyForAWorkspace(t *testing.T) {
 	if got, err := RegisteredModelEndpoint("codex", "", false); err != nil || got != "https://api.openai.com/v1" {
 		t.Fatalf("codex endpoint = %q err=%v", got, err)
 	}
-	if ModelRouteEnv("codex", false) != nil {
+	if ModelRouteEnv("codex", "", false) != nil {
 		t.Fatal("route env leaked to codex")
 	}
 }
@@ -128,7 +128,7 @@ func TestPlatformModelRouteCoversEveryWorkspace(t *testing.T) {
 	if got, err := RegisteredModelEndpoint("claude", "", false); err != nil || got != openRouterEndpoint {
 		t.Fatalf("endpoint = %q err=%v", got, err)
 	}
-	if !PlatformModelKeyReady(false) || ModelRouteEnv("claude", false)["ANTHROPIC_MODEL"] != DefaultDevModel {
+	if !PlatformModelKeyReady(false) || ModelRouteEnv("claude", "", false)["ANTHROPIC_MODEL"] != DefaultDevModel {
 		t.Fatal("not on the platform route")
 	}
 	for _, ws := range []string{"tea-a", "tea-other"} {
@@ -149,7 +149,7 @@ func TestPlatformModelRouteOffLeavesWorkspacesOnTheirOwnKey(t *testing.T) {
 	if _, err := RegisteredModelEndpoint("claude", openRouterEndpoint, false); err == nil {
 		t.Fatal("an off-route workspace accepted the OpenRouter endpoint")
 	}
-	if ModelRouteEnv("claude", false) != nil || PlatformModelKeyReady(false) {
+	if ModelRouteEnv("claude", "", false) != nil || PlatformModelKeyReady(false) {
 		t.Fatal("route env or readiness without a route")
 	}
 	keys := &recordingKV{memoryKV: memoryKV{ModelKeySecretPath("tea-other"): {ModelKeyField: "sk-ant-api03-BYO"}}}
@@ -186,8 +186,8 @@ func TestPlatformRouteTakesPrecedenceOverDevRoute(t *testing.T) {
 	if got.Credential != "sk-or-v1-BYO" || got.EndpointHost != OpenRouterHost || got.PinnedModel != "" {
 		t.Fatalf("dev-route mint = host %q pin %q platformKey=%v", got.EndpointHost, got.PinnedModel, got.Credential == testPlatformKey)
 	}
-	if ModelRouteEnv("claude", true)["ANTHROPIC_MODEL"] != "deepseek/dev-model" ||
-		ModelRouteEnv("claude", false)["ANTHROPIC_MODEL"] != DefaultDevModel {
+	if ModelRouteEnv("claude", "", true)["ANTHROPIC_MODEL"] != "deepseek/dev-model" ||
+		ModelRouteEnv("claude", "", false)["ANTHROPIC_MODEL"] != DefaultDevModel {
 		t.Fatal("route env did not follow the per-workspace route")
 	}
 	if got, err := mintFor(t, "tea-a", "", &recordingKV{memoryKV: memoryKV{}}); err != nil || got.Credential != testPlatformKey {
@@ -222,10 +222,10 @@ func TestBYOKeyWinsOverThePlatformRouteAtMint(t *testing.T) {
 				stored, got.EndpointHost, got.Scheme, got.PinnedModel, got.PathPrefix, got.Credential == "sk-ant-api03-BYO")
 		}
 	}
-	if PlatformModelKeyReady(true) || ModelRouteEnv("claude", true) != nil {
+	if PlatformModelKeyReady(true) || ModelRouteEnv("claude", "", true) != nil {
 		t.Fatal("a BYO workspace is still on the platform route")
 	}
-	if _, ok := PlatformPinnedModel(true); ok {
+	if _, ok := PlatformModels(true); ok {
 		t.Fatal("a BYO workspace is still pinned")
 	}
 

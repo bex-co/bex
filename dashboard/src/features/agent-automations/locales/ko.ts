@@ -468,6 +468,10 @@ const koAgentAutomations: Record<string, TranslationEntry> = {
     message: "에이전트",
     description: "Form field label",
   },
+  "agentAutomations.field.model": {
+    message: "모델",
+    description: "Automation form — model field label (w10/m516)",
+  },
   "agentAutomations.field.spendLimit": {
     message: "실행당 지출 한도 (USD)",
     description: "Form field label",
@@ -587,6 +591,10 @@ const koAgentAutomations: Record<string, TranslationEntry> = {
       "실행당 모델 지출 상한입니다. 플랫폼 모델을 사용하는 실행에는 필수입니다.",
     description: "Spend limit field help",
   },
+  "agentAutomations.help.model": {
+    message: "각 실행에서 사용할 모델입니다. 기본값으로 두면 워크스페이스 설정을 따릅니다.",
+    description: "Automation form — model field help",
+  },
   "agentAutomations.help.emailNotifications": {
     message:
       "어떤 실행에 대해 이메일을 받을지 선택합니다. 플랫폼에 의한 일시 중지는 항상 이메일로 알려드립니다.",
@@ -612,6 +620,10 @@ const koAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.placeholder.repo": {
     message: "owner/repository",
     description: "Repository field placeholder",
+  },
+  "agentAutomations.placeholder.model": {
+    message: "워크스페이스 기본값",
+    description: "Automation form — empty free-form model field",
   },
   "agentAutomations.summary": {
     message: "실행: {schedule}",
