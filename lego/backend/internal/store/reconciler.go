@@ -2052,8 +2052,17 @@ func (r *Reconciler) servedReleaseImage(ctx context.Context, app *appv1alpha1.Ap
 
 // releaseDetectedHTTPPort accepts only a selected HTTP listener for this exact
 // release and image. A candidate's port must never narrate an older deploy.
+// A configured-port web service (a native one, or one switched to an image)
+// names the lone HTTP listener bound-port detection serves it on (w8/177,
+// w8/m504) when this release is the one the operator runs.
 func releaseDetectedHTTPPort(app *appv1alpha1.App, generation int64, image string) int32 {
-	if !app.Spec.UsesWebImagePorts() || generation <= 0 || image == "" {
+	if generation <= 0 || image == "" {
+		return 0
+	}
+	if !app.Spec.UsesWebImagePorts() {
+		if app.Spec.Type == appv1alpha1.TypeWebService && servesGeneration(app, generation) && app.ServingPortDetected() {
+			return app.Status.DetectedPort
+		}
 		return 0
 	}
 	for _, network := range []*appv1alpha1.ImageNetworkStatus{app.Status.ServingNetwork, app.Status.ImageNetwork} {

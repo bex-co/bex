@@ -1,6 +1,6 @@
 # w8 · m504 — A service switched to a prebuilt image goes live on the port its image binds, private services included
 
-**Worker:** worker8 **Goal:** a web or private service switched from a native build to a prebuilt image (`bex services update <id> --image <ref>`, the REST/GraphQL/MCP source writers, a Blueprint sync) goes live on the port its image binds, as Render serves it, and reads that port afterwards, as an image-created service does. **Status:** todo (t001–t006 done; production pin `dff52c596d13` carries w8/m461 and this milestone; t007's production replay next)
+**Worker:** worker8 **Goal:** a web or private service switched from a native build to a prebuilt image (`bex services update <id> --image <ref>`, the REST/GraphQL/MCP source writers, a Blueprint sync) goes live on the port its image binds, as Render serves it, and reads that port afterwards, as an image-created service does. **Status:** todo (t001–t006 and t008 done; t007's production replay on pin `dff52c596d13` found the switched deploy's log naming no port, which t008 fixes; the replay runs again after a roll that carries t008)
 
 ## Tasks (in order)
 
@@ -12,9 +12,10 @@
 | [t004](done/t004.md) | Render parity — **DONE** | 20m | t003 |
 | [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 30m | t004, t005 |
-| [t007](t007.md) | Closeout | 30m | t006 |
+| [t008](done/t008.md) | A switched web service's deploy log names the port detection found — **DONE** | 30m | t006 |
+| [t007](t007.md) | Closeout | 30m | t008 |
 
-Total: **7 tasks, about 3h55m**.
+Total: **8 tasks, about 4h25m**.
 
 ## Definition of done
 

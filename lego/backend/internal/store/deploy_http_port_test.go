@@ -162,3 +162,89 @@ func TestPGDetectedHTTPPortSurvivesReplacement(t *testing.T) {
 		t.Fatal("DB accepted invalid HTTP port")
 	}
 }
+
+// A configured-port web service, native or switched to an image, names the
+// listener bound-port detection serves its release on (w8/177, w8/m504). Only
+// the release the operator runs, with no port of its own, is narrated.
+func TestReleaseDetectedHTTPPortNamesABoundPortDetection(t *testing.T) {
+	served := func() *appv1alpha1.App {
+		return &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Port: appv1alpha1.DefaultPort}, Status: appv1alpha1.AppStatus{
+			ReleaseGeneration: 2, ActiveRevision: "rev-2", DetectedPort: 80,
+		}}
+	}
+	if got := releaseDetectedHTTPPort(served(), 2, "nginx@sha256:b"); got != 80 {
+		t.Fatalf("served detected port narrated %d, want 80", got)
+	}
+	for _, tc := range []struct {
+		name       string
+		edit       func(*appv1alpha1.App)
+		generation int64
+		image      string
+	}{
+		{"older release", nil, 1, "node@sha256:a"},
+		{"release not served yet", func(a *appv1alpha1.App) { a.Status.ActiveRevision = "rev-1" }, 2, "nginx@sha256:b"},
+		{"nothing detected", func(a *appv1alpha1.App) { a.Status.DetectedPort = 0 }, 2, "nginx@sha256:b"},
+		{"explicit port", func(a *appv1alpha1.App) { a.Spec.Port = 8080 }, 2, "nginx@sha256:b"},
+		{"PORT variable", func(a *appv1alpha1.App) { a.Status.EnvPort = 3000 }, 2, "nginx@sha256:b"},
+		{"private service, no HTTP check", func(a *appv1alpha1.App) { a.Spec.Type = appv1alpha1.TypePrivateService }, 2, "redis@sha256:c"},
+		{"nothing ran", nil, 2, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := served()
+			if tc.edit != nil {
+				tc.edit(app)
+			}
+			if got := releaseDetectedHTTPPort(app, tc.generation, tc.image); got != 0 {
+				t.Fatalf("narrated port %d", got)
+			}
+		})
+	}
+}
+
+// The production replay of w8/m504: a native web service's deploy serves its
+// configured 10000 and names no port; once switched to nginx, the deploy whose
+// release bound-port detection moved to 80 names 80, as an image-created
+// service's deploy does, and the native deploy keeps naming none.
+func TestSwitchedServicesDeployNamesItsDetectedPort(t *testing.T) {
+	ctx := context.Background()
+	reconciler, st, cl := newTestReconciler(t)
+	tenant, _ := st.CreateTenant(ctx, "switched-port", "free")
+	row, err := st.CreateApp(ctx, App{TenantID: tenant.ID, Name: "web", Image: "node:22", Type: appv1alpha1.TypeWebService, Port: 10000, Replicas: 1, Tier: "free"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := reconciler.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	history, _ := st.ListDeploys(ctx, row.ID, DeployFilter{})
+	if len(history) != 1 {
+		t.Fatalf("create deploys=%v", history)
+	}
+	serve := func(deploy Deploy, image string, detected int32) Deploy {
+		t.Helper()
+		app := getApp(t, cl)
+		app.Status.Phase, app.Status.Image, app.Status.ReleaseGeneration = appv1alpha1.PhaseRunning, image, deploy.Generation
+		app.Status.ActiveRevision = fmt.Sprintf("rev-%d", deploy.Generation)
+		app.Status.DetectedPort = detected
+		if err := cl.Status().Update(ctx, app); err != nil {
+			t.Fatal(err)
+		}
+		if err := reconciler.ReconcileOnce(ctx); err != nil {
+			t.Fatal(err)
+		}
+		return mustGetDeploy(t, st, row.ID, deploy.ID)
+	}
+	native := serve(history[0], "node@sha256:native", 0)
+	if native.Status != DeployLive || native.DetectedHTTPPort != 0 {
+		t.Fatalf("native=%+v", native)
+	}
+	switched, err := st.CreateDeploy(ctx, row.ID, TriggerAPI, "nginx:1.27-alpine", native.Generation+1, CommitInfo{}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	switched = serve(switched, "nginx@sha256:switched", 80)
+	native = mustGetDeploy(t, st, row.ID, native.ID)
+	if switched.Status != DeployLive || switched.DetectedHTTPPort != 80 || native.DetectedHTTPPort != 0 {
+		t.Fatalf("switched=%+v native=%+v", switched, native)
+	}
+}

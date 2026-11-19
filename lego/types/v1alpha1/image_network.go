@@ -302,6 +302,13 @@ func (a *App) SavedPortDetected() bool {
 	return a.portDetected(a.Spec)
 }
 
+// ServingPortDetected reports that ServingPort is the listener the operator
+// detected for the running release, as SavedPortDetected does for the saved
+// settings. The deploy log names that port (w8/m504).
+func (a *App) ServingPortDetected() bool {
+	return a.portDetected(a.RuntimeSpec())
+}
+
 func (a *App) portDetected(spec AppSpec) bool {
 	return !spec.HasImagePorts() && a.Status.EnvPort == 0 && a.Status.DetectedPort > 0 && !spec.hasExplicitPort()
 }
