@@ -1,6 +1,6 @@
 # w3 · m486 — Purging a service's edge cache, or switching between its two caching profiles, restarts no instance, as on Render
 
-**Worker:** worker3 **Goal:** a manual purge and a switch between `origin-controlled` and `origin-controlled-all` empty or re-scope the edge cache while every instance keeps running, as on Render, where the cache lives on its CDN; a disk-bearing caching service no longer goes down on a purge. **Status:** todo (t001–t005 and t007–t009 done; `c6bab1b92` is in production pin `7af50a28168d`; t006's production check, then t010)
+**Worker:** worker3 **Goal:** a manual purge and a switch between `origin-controlled` and `origin-controlled-all` empty or re-scope the edge cache while every instance keeps running, as on Render, where the cache lives on its CDN; a disk-bearing caching service no longer goes down on a purge. **Status:** done (2026-11-19; verified on production pin `7af50a28168d`, § Production record)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | The operator patches live pods on a purge or profile switch, and rolls no existing template — **DONE** | 1h | t002 |
 | [t004](done/t004.md) | The dashboard's purge copy stops promising a restart (en/zh) — **DONE** | 30m | t003 |
 | [t005](done/t005.md) | Record the rule in ADR004 § Edge caching and ADR018 — **DONE** | 20m | t003 |
-| [t006](t006.md) | Ship and verify on production | 45m | t004, t005 |
+| [t006](done/t006.md) | Ship and verify on production — **DONE** | 45m | t004, t005 |
 | [t007](done/t007.md) | Render parity — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 30m | t007 |
-| [t010](t010.md) | Closeout | 10m | t008, t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t008, t009 |
 
 ## Definition of done
 
@@ -79,3 +79,35 @@ No new drift to file: the one divergence is `w3/m489`'s, and ADR018's Edge cachi
 - **Before measuring:** The pin was pushed by `deploy.yml` run 44451653443, whose `deploy` job was still running at 2026-11-19 03:50Z: confirm that run finished green and that `bex-system`'s images match the pin before measuring. The pin does not carry `a6b1658fb` (`w3/m489`'s per-service tier), so production still runs the per-pod edge-cache sidecar this milestone changed; the deploy that carries `a6b1658fb` moves caching services to the tier.
 - **Status:** pending verification. A deployed fix is not proof that the definition of done holds on production.
 - **Next:** run t006 as written in § Blocked (its "Then" and "Expect" lines still hold), write the record here, then t010.
+
+## Production record (t006, 2026-11-19)
+
+**Release.** `deploy.yml` run 44451653443 finished green (its `deploy` job took 7m7s). Every `bex-system` Deployment ran `bex-operator@sha256:7ce6ae1e…`, the digest pin `826d32e42` writes, and `bex-controller-manager` restarted on it at about 03:52Z. The pin contains `c6bab1b92` and `6d428736b`.
+
+**Existing caching services.** Production had one before the fixture: `m484-t005-cache` in `bex-canary`, which is w6/m484's fixture and was left untouched. The release rolled it once (ReplicaSet `6c78c9d9c9` → `cf8d5d895`). That roll was the sidecar image move w6/m484 owns (`62e7ab56` → `7ce6ae1e`), and it carried the pod onto the controlled shape (`BEX_EDGE_CACHE_CONTROL` and the `edge-cache-control` volume), as § Blocked expected. m486's own projection keeps a stored template's shape: `TestAnUpgradeKeepsAnEdgeCacheTemplateFromBeforeItsControlFile` covers it at the pin.
+
+**Fixture.** `m486-t006-cache` (`srv-dbv77hm85hks73fqim3g`) was a starter web service in `bex-canary` running `docker.io/traefik/whoami:v1.10.1`, created through REST at 03:57:58Z by the QA user (`scripts/qa-login.sh`). Caching was turned on with REST `PATCH` `serviceDetails.cache.profile=origin-controlled`. Adding the sidecar rolled the service once, the residual w3/m489 owns. Every step below ran on the same pod `…-74655f994d-692ct`, UID `3b6eaf95-e71e-4fb0-af06-6bdc7cc88924`.
+
+| Step (UTC) | Cache | Pod UID, `restartCount` (app / edge-cache), ReplicaSet |
+| --- | --- | --- |
+| Before: `GET /m486.css` three times | `MISS`, then `HIT` (`Age: 0`), then `HIT` (`Age: 1`) | `3b6eaf95…`, 0 / 0, `74655f994d` |
+| REST `POST …/cache/purge` answered `202` at 03:59:56.46. The App stamp was 03:59:56.32 and the sidecar logged `edge-cache: purged (app.bex.co/cache-purged-at=…)` at 03:59:57.29 | `MISS` at 03:59:59.55 (the first request after the purge), then `HIT` at 04:00:00.80 | unchanged |
+| GraphQL `setCacheProfile` → `origin-controlled-all` at 04:01:25. The sidecar logged `profile "origin-controlled" -> "origin-controlled-all"` at 04:01:27.29 | `/` read `DYNAMIC` (04:01:26.94), `MISS` (04:01:28.10), then `HIT` (04:01:28.66); `/m486.css` read `MISS` once, because a switch empties the cache | unchanged |
+| GraphQL `setCacheProfile` → `origin-controlled` at 04:01:45. The sidecar logged the switch at 04:01:47.29 | `/` read `DYNAMIC` again at 04:01:48.13 | unchanged |
+| GraphQL `purgeServiceCache` (the dashboard's Purge cache verb). The stamp was 04:02:06.94 and the sidecar purged at 04:02:07.29 | `MISS` at 04:02:07.67, then `HIT` at 04:02:08.40 | unchanged |
+| REST `PATCH` → `no-cache` at 04:02:48. The sidecar logged `profile "origin-controlled" -> "no-cache"` at 04:02:51 | No `CF-Cache-Status` header. The Service sends ports 80 and 10000 straight to the app's 80 | unchanged |
+
+- **Deploys and releases.** The service kept one deploy row (its create), release generation 1 and active revision `rev-1` throughout, so no switch opened a deploy.
+- **Timing.** From a purge or switch stamp, the sidecar applied it within 1 s, on its next 2 s tick. On this pod the kubelet refreshed the downward-API file on the pod update. The path then read `MISS` on the next request, 1–3 s after the API answered, and `HIT` on the request after that.
+- **Fleet.** Production has 29 Apps. Two have caching on: w6's fixture and this one, both in `bex-canary`. Neither has a disk. Six Apps have disks, and none of them caches. The disk-bearing case is covered by `TestAPurgeOrAProfileSwitchKeepsTheEdgeCachedPodTemplate`'s disk cases (strategy `Recreate`, template unchanged).
+- **Deviation.** Step 3 sent the dashboard's own `SetCacheProfile` GraphQL document from the QA session instead of clicking **Save edge caching**. The shared Playwright browser was held by another session, and the button sends the same request. The deployed toast reads "Cache purge started." (en) and "缓存清除已开始。" (zh).
+- **Cleanup.** The fixture was deleted (`204`, then `GET` `404`), and both of this run's QA sessions were logged out.
+
+**Definition of done.** Each item holds:
+
+- Purges through REST and GraphQL kept the UID and restart counts and read `MISS`, then `HIT`.
+- The disk case holds by its projection test.
+- Both profile switches and turning caching off rolled nothing.
+- m486's release kept each stored template's shape; the one roll was w6/m484's image move.
+- The en and zh copy no longer mentions a restart.
+- This record is in this README.
