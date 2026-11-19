@@ -1,6 +1,6 @@
 # w5 · m371 — Security review round 24: the agent, sandbox and hosting surfaces shipped since round 23
 
-**Worker:** worker5 **Goal:** every tenant-facing surface shipped since the last broad review (round 23, ADR085, 2026-08-29) has a recorded security verdict; confirmed findings are fixed with regression tests or filed with an owner; ADR107 records the round in the ADR028 lineage. **Status:** blocked (t001–t009 done; fixes shipped; t010 Closeout waits on the production deploy that carries them)
+**Worker:** worker5 **Goal:** every tenant-facing surface shipped since the last broad review (round 23, ADR085, 2026-08-29) has a recorded security verdict; confirmed findings are fixed with regression tests or filed with an owner; ADR107 records the round in the ADR028 lineage. **Status:** done
 
 ## Tasks (in order)
 
@@ -15,7 +15,7 @@
 | [t007](done/t007.md) | Render parity — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 30m | t007, t008 |
-| [t010](t010.md) | Closeout | 10m | t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t009 |
 
 Total: **10 tasks, about 9h40m**.
 
@@ -55,3 +55,10 @@ Total: **10 tasks, about 9h40m**.
   - Not applied: an audit row for a refused mint-class call (API-key creation has the same gap, so it is a separate decision); a paged version of the stateful `fakeOpenSandbox`.
 - **t009 (Test coverage):** the regression tests ADR107 § Verification lists, each failing on the pre-fix code; the sandbox ones run against real Postgres.
 - **Follow-ups filed:** w5/186–190 (hardening, ADR107 § Residuals).
+
+### 2026-11-19 — unblock and close (loopx w5)
+
+- **Source:** verified evidence. The release gate cleared by itself; no user decision was involved.
+- **Gate check:** the production pin `7af50a28168d` (`826d32e42`, `chore(deploy): pin platform images to 7af50a28168d`) carries every round-24 fix commit: `2664fa856` (S-1, H-1, S-2, S-3 and ADR107), `1c4ea7b6d` (migration 0248) and `3c6f11dde` each pass `git merge-base --is-ancestor <sha> 7af50a28168d`. At the pin, `sandbox.Client.List` pages at `listPageSize = 200`, `members` takes `AuthorizeMintClass` for an invite, its resend and a role change, and `maxSourceConfigBytes = 1 << 20` bounds the config read.
+- **Deployed:** production `bex-api` runs 2/2 ready replicas on `bex-operator@sha256:7ce6ae1e…`, the manifest the `deploy.yml` run for `7af50a28168d` pushed (run 44451653443). The platform database is at migration 299 (clean; the pin's highest), and `sandbox_builds_stored` has 0248's definition (`WHERE status <> 'failed' AND deleted_at IS NULL`).
+- **Definition of done:** 1 holds (ADR107's scope table gives every surface a verdict); 2 holds (S-1 high is fixed, its regression tests are on main and the fix is deployed; H-1, S-2 and S-3 are fixed, and S-3's remainder w5/189 shipped as w5/m383); 3 holds (ADR107 is in the `docs/AGENTS.md` lineage and the root `AGENTS.md` entry points); 4 holds (ADR107 § Residuals keeps the five `DO_NOT_DO` anchors as accepted). S-1 on a live workspace with more than 20 sandboxes stays ADR107's deployment-testing residual, not a DoD item. t010 closes the milestone.
