@@ -1,6 +1,6 @@
 # w3 · m489 — A service's edge cache outlives its instances: restarts, scaling and crashes keep it, and every instance shares it, as Render's CDN does
 
-**Worker:** worker3 **Goal:** each caching web service's edge cache lives in a per-service tier outside its instances, so it empties only on a successful deploy or a manual purge, as on Render; a Restart, a scale change, an instance crash or a node drain keeps it, all instances share one fill per key, and turning caching on rolls no instance. **Status:** in progress (t001–t006 and t008–t010 done; t007 verifies on production once a deploy carries this, then t011 closes out)
+**Worker:** worker3 **Goal:** each caching web service's edge cache lives in a per-service tier outside its instances, so it empties only on a successful deploy or a manual purge, as on Render; a Restart, a scale change, an instance crash or a node drain keeps it, all instances share one fill per key, and turning caching on rolls no instance. **Status:** blocked (t001–t006 and t008–t010 done, shipped in `a6b1658fb`; t007's production check waits for a production deploy carrying it, then t011 closes out)
 
 ## Tasks (in order)
 
