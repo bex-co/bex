@@ -49,12 +49,16 @@ func (o GetOptions) ConditionStatus(etag string, lastModified time.Time) int {
 // etagListHas reports whether a comma-separated list of entity tags, as a client sends in
 // If-Match, holds etag or "*". Quotes and the weak prefix W/ are not part of the compare.
 func etagListHas(list, etag string) bool {
-	norm := func(s string) string { return strings.Trim(strings.TrimPrefix(strings.TrimSpace(s), "W/"), `"`) }
-	want := norm(etag)
 	for _, tag := range strings.Split(list, ",") {
-		if tag = strings.TrimSpace(tag); tag == "*" || norm(tag) == want {
+		if tag = strings.TrimSpace(tag); tag == "*" || etagEqual(tag, etag) {
 			return true
 		}
 	}
 	return false
+}
+
+// etagEqual compares two entity tags without their quotes or a weak prefix.
+func etagEqual(a, b string) bool {
+	norm := func(s string) string { return strings.Trim(strings.TrimPrefix(strings.TrimSpace(s), "W/"), `"`) }
+	return norm(a) == norm(b)
 }

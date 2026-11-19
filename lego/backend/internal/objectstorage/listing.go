@@ -21,6 +21,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -175,11 +176,7 @@ func (s *Service) ListS3(ctx context.Context, workspaceID string, b store.Object
 	}
 	if page.Truncated && page.Last != "" {
 		last := strings.TrimPrefix(page.Last, base)
-		isPrefix := false
-		for _, p := range out.CommonPrefixes {
-			isPrefix = isPrefix || p == last
-		}
-		out.NextToken, out.NextMarker = EncodeListToken(isPrefix, last), last
+		out.NextToken, out.NextMarker = EncodeListToken(slices.Contains(out.CommonPrefixes, last), last), last
 	}
 	// What the listing read is Wasabi's egress, listed or not.
 	wasabiObjects := page.Objects

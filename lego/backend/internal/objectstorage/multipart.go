@@ -62,7 +62,7 @@ type MultipartRepository interface {
 	ListObjectMultipartParts(ctx context.Context, uploadID string, after, limit int) ([]store.ObjectMultipartPart, error)
 	ObjectMultipartUploadBytes(ctx context.Context, id string, exceptPart int) (int64, error)
 	DeleteObjectMultipartUpload(ctx context.Context, id string) error
-	ObjectBucketHasMultipartUploads(ctx context.Context, bucketID string) (bool, error)
+	ObjectBucketHasMultipartUploads(ctx context.Context, workspaceID, bucketID string) (bool, error)
 }
 
 // MultipartSweepRepository is what aborting uploads in bulk reads: the uploads with no part
@@ -71,7 +71,7 @@ type MultipartSweepRepository interface {
 	MultipartRepository
 	StaleObjectMultipartUploads(ctx context.Context, cutoff time.Time, limit int) ([]store.ObjectMultipartUpload, error)
 	ObjectMultipartUploadsOfWorkspace(ctx context.Context, workspaceID string, limit int) ([]store.ObjectMultipartUpload, error)
-	ObjectMultipartUploadsStartedBefore(ctx context.Context, bucketID, prefix string, cutoff time.Time, limit int) ([]store.ObjectMultipartUpload, error)
+	ObjectMultipartUploadsStartedBefore(ctx context.Context, workspaceID, bucketID, prefix string, cutoff time.Time, limit int) ([]store.ObjectMultipartUpload, error)
 }
 
 func (s *Service) multipart() (MultipartRepository, error) {
@@ -275,10 +275,9 @@ func (s *Service) UploadPartCopy(ctx context.Context, workspaceID string, src st
 	}
 	size := info.Size
 	if opts.Range != "" {
-		if !RangeSatisfiable(opts.Range, info.Size) {
-			return CopyResult{}, ErrRangeNotSatisfiable
+		if size, err = copyRangeLength(opts.Range, info.Size); err != nil {
+			return CopyResult{}, err
 		}
-		size = rangeLength(opts.Range, info.Size)
 	}
 	if err := s.checkPart(ctx, repo, u, part, size); err != nil {
 		return CopyResult{}, err
@@ -303,30 +302,42 @@ func (s *Service) UploadPartCopy(ctx context.Context, workspaceID string, src st
 	return res, s.recordPart(ctx, repo, u.ID, part, size, res.ETag)
 }
 
-// rangeLength is the bytes an HTTP range of the form bytes=a-b (b optional) takes of an
-// object of size bytes, after RangeSatisfiable accepted it.
-func rangeLength(header string, size int64) int64 {
-	spec, _ := strings.CutPrefix(strings.TrimSpace(header), "bytes=")
-	from, to, _ := strings.Cut(spec, "-")
-	start, _ := strconv.ParseInt(from, 10, 64)
-	end := size - 1
-	if v, err := strconv.ParseInt(to, 10, 64); err == nil {
-		end = min(v, size-1)
-	}
-	return end - start + 1
-}
+// ErrInvalidCopyRange is an x-amz-copy-source-range that is not bytes=first-last or bytes=first-,
+// the only forms S3 defines for it (a suffix range and several ranges are not).
+var ErrInvalidCopyRange = errors.New("x-amz-copy-source-range must be bytes=first-last")
 
-// CompletedPartRef is one entry of a CompleteMultipartUpload's part list.
-type CompletedPartRef struct {
-	Number int
-	ETag   string
+// copyRangeLength is the bytes of an object of size bytes that an x-amz-copy-source-range takes:
+// bytes=first-last, or bytes=first- to the end. A range that starts past the end is
+// ErrRangeNotSatisfiable.
+func copyRangeLength(header string, size int64) (int64, error) {
+	spec, ok := strings.CutPrefix(strings.TrimSpace(header), "bytes=")
+	from, to, found := strings.Cut(spec, "-")
+	if !ok || !found || from == "" || strings.Contains(spec, ",") {
+		return 0, ErrInvalidCopyRange
+	}
+	start, err := strconv.ParseInt(from, 10, 64)
+	if err != nil || start < 0 {
+		return 0, ErrInvalidCopyRange
+	}
+	end := size - 1
+	if to != "" {
+		last, err := strconv.ParseInt(to, 10, 64)
+		if err != nil || last < start {
+			return 0, ErrInvalidCopyRange
+		}
+		end = min(last, size-1)
+	}
+	if start >= size {
+		return 0, ErrRangeNotSatisfiable
+	}
+	return end - start + 1, nil
 }
 
 // CompleteMultipartUpload assembles an upload from the listed parts. The list is rebuilt
 // from the part numbers and ETags alone, in ascending order, every one of which must be a
 // part the upload holds; each but the last must be at least 5 MiB and the total at most
 // 5 GiB. Parts uploaded and not listed are dropped, as on S3.
-func (s *Service) CompleteMultipartUpload(ctx context.Context, workspaceID string, b store.ObjectBucket, key, uploadID string, parts []CompletedPartRef) (etag string, err error) {
+func (s *Service) CompleteMultipartUpload(ctx context.Context, workspaceID string, b store.ObjectBucket, key, uploadID string, parts []CompletedPart) (etag string, err error) {
 	repo, err := s.multipart()
 	if err != nil {
 		return "", err
@@ -352,7 +363,9 @@ func (s *Service) CompleteMultipartUpload(ctx context.Context, workspaceID strin
 	if errors.Is(err, ErrNoSuchUpload) {
 		// Wasabi lost it (aborted by an operator, or completed by a request that raced this
 		// one): the row has nothing left to track.
-		_ = repo.DeleteObjectMultipartUpload(context.WithoutCancel(ctx), u.ID)
+		if err := repo.DeleteObjectMultipartUpload(context.WithoutCancel(ctx), u.ID); err != nil {
+			log.Printf("object storage: delete the row of multipart upload %s that Wasabi lost: %v", u.ID, err)
+		}
 		return "", ErrNoSuchUpload
 	}
 	if err != nil {
@@ -370,7 +383,7 @@ func (s *Service) CompleteMultipartUpload(ctx context.Context, workspaceID strin
 
 // checkPartList validates a CompleteMultipartUpload's list against the upload's rows and
 // returns what to send Wasabi and the object's size.
-func (s *Service) checkPartList(ctx context.Context, repo MultipartRepository, u store.ObjectMultipartUpload, parts []CompletedPartRef) ([]CompletedPart, int64, error) {
+func (s *Service) checkPartList(ctx context.Context, repo MultipartRepository, u store.ObjectMultipartUpload, parts []CompletedPart) ([]CompletedPart, int64, error) {
 	if len(parts) == 0 {
 		return nil, 0, ErrNoParts
 	}
@@ -403,7 +416,7 @@ func (s *Service) checkPartList(ctx context.Context, repo MultipartRepository, u
 	var total int64
 	for i, p := range parts {
 		have, ok := held[p.Number]
-		if !ok || strings.Trim(p.ETag, `"`) != strings.Trim(have.ETag, `"`) {
+		if !ok || !etagEqual(p.ETag, have.ETag) {
 			return nil, 0, ErrInvalidPart
 		}
 		if i < len(parts)-1 && have.Size < MinPartBytes {
@@ -583,6 +596,9 @@ func (s *Service) abortBatches(ctx context.Context, repo MultipartRepository, ma
 	return aborted, nil
 }
 
+// maxPurgeBatches is effectively no bound: a workspace being purged aborts every upload it has.
+const maxPurgeBatches = 1 << 20
+
 func (s *Service) sweepRepo() (MultipartSweepRepository, bool) {
 	repo, ok := s.repo.(MultipartSweepRepository)
 	return repo, ok && s.Enabled()
@@ -613,7 +629,7 @@ func (s *Service) AbortBucketUploads(ctx context.Context, b store.ObjectBucket, 
 	for _, rule := range abortRules(b.ID, b.Lifecycle, logf) {
 		cutoff := now.Add(-rule.maxAge)
 		n, err := s.abortBatches(ctx, repo, sweepAbortBatches, func(limit int) ([]store.ObjectMultipartUpload, error) {
-			return repo.ObjectMultipartUploadsStartedBefore(ctx, b.ID, rule.prefix, cutoff, limit)
+			return repo.ObjectMultipartUploadsStartedBefore(ctx, b.WorkspaceID, b.ID, rule.prefix, cutoff, limit)
 		})
 		total += n
 		if err != nil {
@@ -630,7 +646,7 @@ func (s *Service) abortWorkspaceUploads(ctx context.Context, workspaceID string)
 	if !ok {
 		return nil
 	}
-	_, err := s.abortBatches(ctx, repo, 1<<20, func(limit int) ([]store.ObjectMultipartUpload, error) {
+	_, err := s.abortBatches(ctx, repo, maxPurgeBatches, func(limit int) ([]store.ObjectMultipartUpload, error) {
 		return repo.ObjectMultipartUploadsOfWorkspace(ctx, workspaceID, limit)
 	})
 	return err

@@ -18,7 +18,6 @@ package s3gw
 
 import (
 	"encoding/xml"
-	"errors"
 	"net/http"
 	"strconv"
 
@@ -192,10 +191,7 @@ func (rq *request) uploadPartCopy() *Error {
 	rq.extendDeadlines()
 	res, err := rq.g.cfg.Service.UploadPartCopy(rq.ctx, rq.workspaceID, src, srcKey, dst, rq.objectKey, rq.q.Get("uploadId"), part,
 		objectstorage.PartCopyOptions{Range: rq.r.Header.Get("X-Amz-Copy-Source-Range"), Conditions: conditionsFrom(rq.r.Header, copySourceHeaderPrefix)})
-	switch {
-	case errors.Is(err, objectstorage.ErrCopyAcrossRegions):
-		return errNotImplemented("Copying between regions is not implemented")
-	case err != nil:
+	if err != nil {
 		return rq.putError(err)
 	}
 	rq.addCORS(dst)
@@ -215,9 +211,9 @@ func (rq *request) completeMultipartUpload() *Error {
 	if e := decodeXML(raw, &in); e != nil {
 		return e
 	}
-	parts := make([]objectstorage.CompletedPartRef, 0, len(in.Parts))
+	parts := make([]objectstorage.CompletedPart, 0, len(in.Parts))
 	for _, p := range in.Parts {
-		parts = append(parts, objectstorage.CompletedPartRef{Number: p.PartNumber, ETag: p.ETag})
+		parts = append(parts, objectstorage.CompletedPart{Number: p.PartNumber, ETag: p.ETag})
 	}
 	rq.extendDeadlines()
 	etag, err := rq.g.cfg.Service.CompleteMultipartUpload(rq.ctx, rq.workspaceID, b, rq.objectKey, rq.q.Get("uploadId"), parts)

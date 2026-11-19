@@ -508,6 +508,14 @@ func TestAPartCopyTakesARangeOfASourceInsideWasabiAndNeedsTheSourceRead(t *testi
 	if rec, doc := copyPart(1, fmt.Sprintf("bytes=%d-%d", len(data), len(data)+9)); rec.Code != 416 {
 		t.Errorf("a range past the source's end = %d %q, want 416", rec.Code, doc.Code)
 	}
+	// S3 defines the range only as bytes=first-last or bytes=first-: a suffix range, several ranges
+	// and garbage are refused instead of being read some other way (a suffix would have counted
+	// one byte too many against the quota).
+	for _, bad := range []string{"bytes=-5", "bytes=0-1,3-4", "bytes=abc", "bytes=5-2", "0-5", "bytes=-"} {
+		if rec, doc := copyPart(1, bad); rec.Code != 400 || doc.Code != "InvalidArgument" {
+			t.Errorf("a part copy with the range %q = %d %q, want 400 InvalidArgument", bad, rec.Code, doc.Code)
+		}
+	}
 	if rec, doc := copyPart(1, "", func(r *http.Request) { r.Header.Set("x-amz-copy-source", "/eur/x") }); rec.Code != 501 || doc.Code != "NotImplemented" {
 		t.Errorf("a part copy from a bucket of another region = %d %q, want 501", rec.Code, doc.Code)
 	}
@@ -658,5 +666,40 @@ func TestDeletingAWorkspaceAbortsItsUploadsAtWasabi(t *testing.T) {
 	}
 	if rows, err := p.PG.ObjectMultipartUploadsOfWorkspace(context.Background(), p.ws, 10); err != nil || len(rows) != 0 {
 		t.Errorf("the purge left upload rows %v (%v)", rows, err)
+	}
+}
+
+func TestAnAbortThatFailsAtWasabiKeepsTheRowSoTheClientOrTheNextPassRetries(t *testing.T) {
+	p := newWideRig(t)
+	k := p.newKey(objectstorage.KeyPermissionReadWrite, 0)
+	p.bucket("mpu", objectstorage.Oregon)
+	idle := p.createUpload(k, "mpu", "idle")
+	live := p.createUpload(k, "mpu", "live")
+	ctx := context.Background()
+	if _, err := p.Pool.Exec(ctx, `UPDATE object_multipart_uploads SET last_part_at = now() - interval '8 days' WHERE id = $1`, idle); err != nil {
+		t.Fatal(err)
+	}
+	fake := p.Fakes[objectstorage.Oregon]
+	fake.SetDown(true)
+	if n, err := p.Svc.AbortStaleUploads(ctx, time.Now()); err == nil || n != 0 {
+		t.Fatalf("the sweep with Wasabi down aborted %d (%v), want a failure and none", n, err)
+	}
+	if rec, _ := p.abort(k, "mpu", "live", live); rec.Code < 500 {
+		t.Errorf("an abort with Wasabi down = %d, want a 5xx the SDK retries", rec.Code)
+	}
+	for _, id := range []string{idle, live} {
+		if _, err := p.PG.GetObjectMultipartUpload(ctx, p.ws, id); err != nil {
+			t.Errorf("upload %s lost its row while Wasabi still holds it: %v", id, err)
+		}
+	}
+	fake.SetDown(false)
+	if n, err := p.Svc.AbortStaleUploads(ctx, time.Now()); err != nil || n != 1 {
+		t.Errorf("the next pass aborted %d (%v), want the one stale upload", n, err)
+	}
+	if rec, doc := p.abort(k, "mpu", "live", live); rec.Code != 204 {
+		t.Errorf("the client's retry = %d %q, want 204", rec.Code, doc.Code)
+	}
+	if fake.OpenUploads() != 0 {
+		t.Errorf("%d uploads are still open at Wasabi", fake.OpenUploads())
 	}
 }

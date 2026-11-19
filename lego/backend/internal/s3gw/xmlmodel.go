@@ -122,7 +122,7 @@ type filterXML struct {
 
 type expirationXML struct {
 	Days                      *int64 `xml:"Days"`
-	Date                      string `xml:"Date"`
+	Date                      string `xml:"Date,omitempty"`
 	ExpiredObjectDeleteMarker *bool  `xml:"ExpiredObjectDeleteMarker"`
 }
 

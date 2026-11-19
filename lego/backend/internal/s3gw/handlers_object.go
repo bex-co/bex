@@ -440,10 +440,7 @@ func (rq *request) copyObject() *Error {
 	}
 	rq.extendDeadlines()
 	res, err := rq.g.cfg.Service.CopyObject(rq.ctx, rq.workspaceID, src, srcKey, dst, rq.objectKey, replace, conditionsFrom(rq.r.Header, copySourceHeaderPrefix))
-	switch {
-	case errors.Is(err, objectstorage.ErrCopyAcrossRegions):
-		return errNotImplemented("Copying between regions is not implemented")
-	case err != nil:
+	if err != nil {
 		return rq.putError(err)
 	}
 	rq.g.cfg.Base.RecordAllowedWrite(rq.ctx, objectstorage.AuditVerbCopyObject, core.RelCanCreate, rq.workspaceID,

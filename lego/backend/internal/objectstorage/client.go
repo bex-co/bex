@@ -614,6 +614,7 @@ func (w *wasabiStore) DeletePrefix(ctx context.Context, prefix string) (int, err
 
 // isNotFound recognises S3's missing-key and missing-object answers, which a
 // HEAD reports with no body as a bare 404.
+// isNoSuchUpload reports a multipart upload Wasabi does not hold.
 func isNoSuchUpload(err error) bool {
 	var nsu *types.NoSuchUpload
 	if errors.As(err, &nsu) {

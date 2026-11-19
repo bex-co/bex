@@ -513,6 +513,38 @@ func TestSweepEndedDeletesRevokedAndExpiredKeysAfterSevenDays(t *testing.T) {
 	_ = expired
 }
 
+func TestPurgeWorkspaceDeletesItsKeysAndSecretsAndAnotherWorkspacesAreUntouched(t *testing.T) {
+	e := newKeyEnv(t, "s3k-purge")
+	ctx := context.Background()
+	a := e.create(t, "usr-a", objectstorage.KeyPermissionReadWrite, 0)
+	b := e.create(t, "usr-b", objectstorage.KeyPermissionRead, time.Hour)
+	// A key of another workspace, with its own secret.
+	other := newKeyEnv(t, "s3k-purge-other")
+	other.KV = e.KV
+	other.Keys = objectstorage.NewAccessKeys(other.Repo, e.KV)
+	keep := other.create(t, "usr-c", objectstorage.KeyPermissionRead, 0)
+	if e.KV.count() != 3 {
+		t.Fatalf("OpenBao holds %d secrets before the purge, want 3", e.KV.count())
+	}
+	if err := e.Keys.PurgeWorkspace(ctx, e.WS); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{a.Key.ID, b.Key.ID} {
+		if _, err := e.PG.GetObjectAccessKey(ctx, id); !errors.Is(err, store.ErrNotFound) {
+			t.Errorf("key %s survived its workspace's purge: %v", id, err)
+		}
+		if _, err := e.Keys.Authenticate(ctx, id); !errors.Is(err, objectstorage.ErrInvalidAccessKey) {
+			t.Errorf("a purged key %s still authenticates: %v", id, err)
+		}
+	}
+	if e.KV.count() != 1 {
+		t.Errorf("OpenBao holds %d secrets after the purge, want only the other workspace's", e.KV.count())
+	}
+	if _, err := other.Keys.Authenticate(ctx, keep.Key.ID); err != nil {
+		t.Errorf("another workspace's key was purged: %v", err)
+	}
+}
+
 func TestDisabledServicesRefuseEverything(t *testing.T) {
 	k := objectstorage.NewAccessKeys(nil, nil)
 	if k.Enabled() {

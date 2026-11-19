@@ -18,7 +18,6 @@ package store
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -105,10 +104,10 @@ func (s *PGStore) CreateObjectMultipartUpload(ctx context.Context, in ObjectMult
 // workspace's id is simply not found.
 func (s *PGStore) GetObjectMultipartUpload(ctx context.Context, workspaceID, id string) (ObjectMultipartUpload, error) {
 	u, err := scanMultipart(s.Pool.QueryRow(ctx, `SELECT `+multipartColumns+` FROM object_multipart_uploads WHERE id = $1 AND workspace_id = $2`, id, workspaceID))
-	if errors.Is(err, pgx.ErrNoRows) {
-		return ObjectMultipartUpload{}, fmt.Errorf("multipart upload %s: %w", id, ErrNotFound)
+	if err != nil {
+		return ObjectMultipartUpload{}, classify("multipart upload", err)
 	}
-	return u, err
+	return u, nil
 }
 
 // ListObjectMultipartUploads lists a bucket's open uploads ordered by key and id, after the
@@ -122,20 +121,19 @@ func (s *PGStore) ListObjectMultipartUploads(ctx context.Context, workspaceID, b
 // UpsertObjectMultipartPart records a part of an upload, replacing one of the same number,
 // and moves the upload's last_part_at. An upload that is gone is ErrNotFound.
 func (s *PGStore) UpsertObjectMultipartPart(ctx context.Context, uploadID string, part int, size int64, etag string) error {
-	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		tag, err := tx.Exec(ctx, `UPDATE object_multipart_uploads SET last_part_at = now() WHERE id = $1`, uploadID)
-		if err != nil {
-			return err
-		}
-		if tag.RowsAffected() == 0 {
-			return fmt.Errorf("multipart upload %s: %w", uploadID, ErrNotFound)
-		}
-		_, err = tx.Exec(ctx, `
-			INSERT INTO object_multipart_parts (upload_id, part_number, size, etag) VALUES ($1, $2, $3, $4)
-			ON CONFLICT (upload_id, part_number) DO UPDATE SET size = EXCLUDED.size, etag = EXCLUDED.etag, uploaded_at = now()`,
-			uploadID, part, size, etag)
+	tag, err := s.Pool.Exec(ctx, `
+		WITH touched AS (UPDATE object_multipart_uploads SET last_part_at = now() WHERE id = $1 RETURNING id)
+		INSERT INTO object_multipart_parts (upload_id, part_number, size, etag)
+		SELECT id, $2, $3, $4 FROM touched
+		ON CONFLICT (upload_id, part_number) DO UPDATE SET size = EXCLUDED.size, etag = EXCLUDED.etag, uploaded_at = now()`,
+		uploadID, part, size, etag)
+	if err != nil {
 		return err
-	})
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("multipart upload %s: %w", uploadID, ErrNotFound)
+	}
+	return nil
 }
 
 // ListObjectMultipartParts lists an upload's parts by number, after a part number, at most limit.
@@ -186,10 +184,10 @@ func (s *PGStore) OpenMultipartBytes(ctx context.Context, workspaceID, region st
 
 // ObjectBucketHasMultipartUploads reports whether a bucket has an unfinished upload, which
 // keeps it from being deleted, as on S3.
-func (s *PGStore) ObjectBucketHasMultipartUploads(ctx context.Context, bucketID string) (bool, error) {
-	var any bool
-	err := s.Pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM object_multipart_uploads WHERE bucket_id = $1)`, bucketID).Scan(&any)
-	return any, err
+func (s *PGStore) ObjectBucketHasMultipartUploads(ctx context.Context, workspaceID, bucketID string) (bool, error) {
+	var open bool
+	err := s.Pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM object_multipart_uploads WHERE workspace_id = $1 AND bucket_id = $2)`, workspaceID, bucketID).Scan(&open)
+	return open, err
 }
 
 // StaleObjectMultipartUploads lists uploads with no part since cutoff, oldest first, at most limit.
@@ -204,6 +202,6 @@ func (s *PGStore) ObjectMultipartUploadsOfWorkspace(ctx context.Context, workspa
 
 // ObjectMultipartUploadsStartedBefore lists a bucket's uploads started before cutoff under a
 // key prefix: what a lifecycle AbortIncompleteMultipartUpload rule aborts.
-func (s *PGStore) ObjectMultipartUploadsStartedBefore(ctx context.Context, bucketID, prefix string, cutoff time.Time, limit int) ([]ObjectMultipartUpload, error) {
-	return s.queryMultipart(ctx, `WHERE bucket_id = $1 AND starts_with(key, $2) AND created_at < $3 ORDER BY created_at LIMIT $4`, bucketID, prefix, cutoff, limit)
+func (s *PGStore) ObjectMultipartUploadsStartedBefore(ctx context.Context, workspaceID, bucketID, prefix string, cutoff time.Time, limit int) ([]ObjectMultipartUpload, error) {
+	return s.queryMultipart(ctx, `WHERE workspace_id = $1 AND bucket_id = $2 AND starts_with(key, $3) AND created_at < $4 ORDER BY created_at LIMIT $5`, workspaceID, bucketID, prefix, cutoff, limit)
 }

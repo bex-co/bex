@@ -108,7 +108,7 @@ var routes = []route{
 	{op: "CompleteMultipartUpload", level: levelObject, method: http.MethodPost, sub: "uploadId", relation: core.RelCanCreate, verb: objectstorage.AuditVerbCompleteMultipartUpload, write: true},
 	{op: "AbortMultipartUpload", level: levelObject, method: http.MethodDelete, sub: "uploadId", relation: core.RelCanCreate, verb: objectstorage.AuditVerbAbortMultipartUpload},
 	{op: "ListParts", level: levelObject, method: http.MethodGet, sub: "uploadId", relation: core.RelCanView, verb: objectstorage.AuditVerbGetObject,
-		params: []string{"max-parts", "part-number-marker", "encoding-type"}},
+		params: []string{"max-parts", "part-number-marker"}},
 }
 
 // commonParams are the query parameters every operation may carry. The AWS SDKs

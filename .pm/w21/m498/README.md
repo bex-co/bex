@@ -1,6 +1,6 @@
 # w21 · m498 — S3 core: SigV4, access keys, buckets, objects, listing and multipart on a `bex-s3` Deployment
 
-**Worker:** worker21 **Goal:** any S3 client (aws-cli, rclone, boto3) with a bex access key and `https://objects.onbex.co` as its endpoint lists, uploads (single and in parts), copies, downloads and deletes objects in the workspace's buckets, with quota, metering, audit and limits in bex's path. **Status:** todo (t001, t002, t003, t004, t005, t006, t007, t008, t009, t010, t011, t012, t013 done)
+**Worker:** worker21 **Goal:** any S3 client (aws-cli, rclone, boto3) with a bex access key and `https://objects.onbex.co` as its endpoint lists, uploads (single and in parts), copies, downloads and deletes objects in the workspace's buckets, with quota, metering, audit and limits in bex's path. **Status:** todo (t001, t002, t003, t004, t005, t006, t007, t008, t009, t010, t011, t012, t013, t014, t015, t016, t017, t018 done)
 
 ## Tasks (in order)
 
@@ -19,11 +19,11 @@
 | [t011](done/t011.md) | Audit rows for S3 — **DONE** | 40m | t009 |
 | [t012](done/t012.md) | Listing: `ListObjectsV2` and `ListObjects` — **DONE** | 45m | t008 |
 | [t013](done/t013.md) | Multipart upload, `UploadPartCopy` and the sweep's cleanup — **DONE** | 75m | t009, t010 |
-| [t014](t014.md) | Observability, the kill switch and the S3 runbook | 50m | t007, t010 |
-| [t015](t015.md) | The Go suite on the AWS SDK for Go v2 and the isolation tests | 60m | t012, t013 |
-| [t016](t016.md) | Render parity | 30m | t015 |
-| [t017](t017.md) | Simplify | 20m | t016 |
-| [t018](t018.md) | Test coverage | 45m | t016, t017 |
+| [t014](done/t014.md) | Observability, the kill switch and the S3 runbook — **DONE** | 50m | t007, t010 |
+| [t015](done/t015.md) | The Go suite on the AWS SDK for Go v2 and the isolation tests — **DONE** | 60m | t012, t013 |
+| [t016](done/t016.md) | Render parity — **DONE** | 30m | t015 |
+| [t017](done/t017.md) | Simplify — **DONE** | 20m | t016 |
+| [t018](done/t018.md) | Test coverage — **DONE** | 45m | t016, t017 |
 | [t019](t019.md) | Closeout | 10m | t018 |
 
 ## Definition of done

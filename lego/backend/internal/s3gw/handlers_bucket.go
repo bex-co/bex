@@ -97,6 +97,10 @@ func serviceError(w http.ResponseWriter, err error) *Error {
 		return newError(http.StatusBadRequest, "EntityTooSmall", "Your proposed upload is smaller than the minimum allowed size: every part but the last must be at least 5 MiB.")
 	case errors.Is(err, objectstorage.ErrNoParts):
 		return errMalformedXML("The XML you provided was not well-formed or did not validate against our published schema: a CompleteMultipartUpload lists at least one part.")
+	case errors.Is(err, objectstorage.ErrCopyAcrossRegions):
+		return errNotImplemented("Copying between regions is not implemented")
+	case errors.Is(err, objectstorage.ErrInvalidCopyRange):
+		return errInvalidArgument("The x-amz-copy-source-range value must be of the form bytes=first-last.")
 	case errors.Is(err, objectstorage.ErrPreconditionFailed):
 		return newError(http.StatusPreconditionFailed, "PreconditionFailed", "At least one of the pre-conditions you specified did not hold")
 	case errors.Is(err, objectstorage.ErrRangeNotSatisfiable):

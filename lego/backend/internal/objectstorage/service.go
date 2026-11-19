@@ -209,7 +209,7 @@ func (s *Service) DeleteBucket(ctx context.Context, workspaceID, name string) er
 		// An unfinished upload keeps a bucket from being deleted, as on S3: its parts are
 		// in no listing, and the bucket's prefix would hold them with no row to map.
 		if mp, ok := s.repo.(MultipartRepository); ok {
-			open, err := mp.ObjectBucketHasMultipartUploads(ctx, b.ID)
+			open, err := mp.ObjectBucketHasMultipartUploads(ctx, workspaceID, b.ID)
 			if err != nil {
 				return false, fmt.Errorf("check bucket %s has no unfinished upload: %w", name, err)
 			}
