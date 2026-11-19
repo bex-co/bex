@@ -1497,6 +1497,15 @@ func storageStepError(message string, requested int32) error {
 // or a multiple of 5 GB. A restore keeps its source's size, so recovery runs
 // CheckDatabaseAdmission alone.
 func CheckNewDatabase(spec appv1alpha1.DatabaseSpec) error {
+	// High availability needs a plan that can run a second instance (w8/m43),
+	// the same refusal the create API runs before this admission — so every
+	// Blueprint create path sharing this admission refuses a standby on an
+	// incapable plan, including the create default an omitted plan carries.
+	if spec.HighAvailability {
+		if err := CheckHighAvailabilityPlan(spec.Plan); err != nil {
+			return err
+		}
+	}
 	if spec.StorageGB > 1 && spec.StorageGB%storageStepGB != 0 {
 		return storageStepError(fmt.Sprintf("diskSizeGB must be 1 GB or a multiple of %d GB, got %d", storageStepGB, spec.StorageGB), spec.StorageGB)
 	}
