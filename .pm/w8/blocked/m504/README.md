@@ -1,6 +1,6 @@
 # w8 · m504 — A service switched to a prebuilt image goes live on the port its image binds, private services included
 
-**Worker:** worker8 **Goal:** a web or private service switched from a native build to a prebuilt image (`bex services update <id> --image <ref>`, the REST/GraphQL/MCP source writers, a Blueprint sync) goes live on the port its image binds, as Render serves it, and reads that port afterwards, as an image-created service does. **Status:** blocked (t001–t006 and t008 done; t007's production replay on pin `dff52c596d13` found the switched deploy's log naming no port, which t008 fixes in `9fac4888a`; t007 waits for a roll that carries it)
+**Worker:** worker8 **Goal:** a web or private service switched from a native build to a prebuilt image (`bex services update <id> --image <ref>`, the REST/GraphQL/MCP source writers, a Blueprint sync) goes live on the port its image binds, as Render serves it, and reads that port afterwards, as an image-created service does. **Status:** blocked (t001–t006 and t008 done; t007's second replay on pin `c81d2d447bd8` passed every free-plan check, the switched deploy's log line included; only the paid Starter private-service case is left, and it needs the user's OK)
 
 ## Tasks (in order)
 
@@ -69,6 +69,23 @@ Production pin `dff52c596d13`, `https://api.bex.co/v1/`, bex CLI v0.7.0 (Render 
 - **Finding:** the newest pin on `origin/main`, `aefb144dc` (`chore(deploy): pin platform images to c81d2d447bd8`, 2026-11-19 18:04Z), carries t008's fix: `git merge-base --is-ancestor 9fac4888a c81d2d447bd8` holds, and so does w8/m461's `0d5ef6256`.
 - **Still open:** Gate 2. No user OK for a paid Starter private service has been given, so the private case stays unverified on production and the milestone stays in `blocked/`.
 - **Next:** t007 replays step 4's free web case in `bex-canary` and checks the switched deploy's log for `==> Detected HTTP on port 80; serving it`.
+
+## Production replay 2 (t007, 2026-11-19 18:46–18:53 UTC)
+
+Production pin `c81d2d447bd8` (the pin moved to `c624a4f217ff` at 18:51:25, which carries `9fac4888a` too), bex CLI v0.7.0 (Render CLI v2.36.0), the QA user by device OAuth in an isolated config, workspace `bex-canary`. Every mutation ran with `--confirm </dev/null`. **The free web case passes in full.**
+
+1. **Web switch: passes.**
+   - `bex services create --name qa-20261119-m504-web2 --type web_service --repo https://github.com/render-examples/express-hello-world --branch main --runtime node --plan free --build-command yarn --start-command 'node app.js' --confirm -o json` exited 0 with `srv-dbvk8c568n7c73fpbvq0`. Its first deploy went `live` at 18:49:50, the URL answered 200 with `<title>Hello from Render!`, and REST read `port: 10000`, `openPorts: [{10000, TCP}]`.
+   - `bex services update <id> --image docker.io/library/nginx:1.27-alpine --confirm -o json` exited 0 and started no deploy. REST read `runtime: image`, `env: image`, and still `port: 10000` with `openPorts: [{10000, TCP}]`, the native release's.
+   - `bex deploys create <id> --wait --confirm -o json` exited 0 after 86 s: `dep-dbvk9q7i2lkc73a9hbrg` went `live` on `nginx:1.27-alpine` (`sha256:65645c7bb6a0…`). The URL answered 200 `text/html` with `<title>Welcome to nginx!`, and REST read `port: 80` and `openPorts: [{port: 80, protocol: TCP}]`.
+   - The deploy log (`bex logs --resources <id> --type build,deploy -o json`) read `==> Deploy queued`, `==> Deploying image docker.io/library/nginx:1.27-alpine`, `==> Detected HTTP on port 80; serving it`, `==> Your service is live 🎉`, the last two at 18:51:36.49. t008's fix holds on production.
+2. **Private service: unverified on production (Gate 2).** `bex services create --type private_service --plan free …` answered 400 `a private_service requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max` again. No paid fixture was created: this dispatch allowed free plans only and no user OK for a Starter fixture exists.
+3. **Cleanup.** `bex services delete srv-dbvk8c568n7c73fpbvq0 --confirm` exited 0, `GET /v1/services/<id>` answered 404, and so did `https://qa-20261119-m504-web2.onbex.co/`. Other sessions' fixtures (`hello-go`, `m482-t006-ssh`, `m484-t005-cache`, the `qa495-*` services) were not touched. Both Kratos jars were logged out (`ok logged-out`, `ok already-signed-out`) and deleted, and the isolated CLI config was deleted.
+
+## Parked again (2026-11-19)
+
+- **Gate 1 is clear** (see above). **Gate 2 remains:** the user has to allow one Starter private service in `bex-canary` for a few minutes (`/unblock w8`).
+- **Next, once allowed:** create a Starter native private service, switch it with `bex services update <id> --image docker.io/library/redis:7-alpine --confirm`, deploy it, check that it goes `live` and that `openPorts` lists 6379, delete it by ID with a 404 check, then run `/pm done w8/m504/t007`.
 
 ## Render parity
 
