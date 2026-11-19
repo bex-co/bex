@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
@@ -205,6 +206,23 @@ func TestCapsAreCodeConstantsNotConfiguration(t *testing.T) {
 	}
 	if ListDefaultLimit != 20 || ListMaxLimit != 1000 || MaxKeyBytes != 1024 {
 		t.Error("list and key limits differ from ADR112 D2 and D7")
+	}
+}
+
+// TestPacesLetAMaximumObjectFinishInsideTheStreamDeadline pins the arithmetic behind
+// ADR112 D3's "up to 5 GiB for up to 30 minutes" (w21/114). The pace is the one thing
+// bex itself puts between a client and StreamDeadline, so a pace under what a
+// maximum-size object needs (5 GiB in 30 minutes is 2.84 MiB/s) would make the largest
+// legal PutObject unfinishable by construction, which is what a pace of 1 MiB/s does
+// (1.76 GiB). Twice the minimum leaves room for one more stream of the same workspace,
+// which shares the pace.
+func TestPacesLetAMaximumObjectFinishInsideTheStreamDeadline(t *testing.T) {
+	need := MaxObjectBytesPresigned / int64(StreamDeadline/time.Second)
+	for name, pace := range map[string]int64{"upload": S3WriteBytesPerSecond, "download": S3ReadBytesPerSecond} {
+		if pace < 2*need {
+			t.Errorf("the %s pace of %d B/s moves %d B in %v, under twice the largest object (%d B): a maximum-size object would not finish",
+				name, pace, pace*int64(StreamDeadline/time.Second), StreamDeadline, MaxObjectBytesPresigned)
+		}
 	}
 }
 
