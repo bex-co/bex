@@ -294,3 +294,28 @@ func TestMintReadsTheCreditBeforeCharging(t *testing.T) {
 		t.Fatalf("second crossing = %+v, want the $15 the $10 credit leaves", c)
 	}
 }
+
+// ADR091 D10.3: an unpaid failed invoice stops model spend at once, before
+// the cap is even consulted — on every status the mint acts on, including the
+// fresh re-read after a threshold charge. A failure that lands while the
+// charge is in flight (the charge RPC takes seconds; the webhook commits
+// meanwhile) must refuse the request, not serve it on the pre-charge status.
+func TestMintRechecksBalanceDueAfterTheCharge(t *testing.T) {
+	enablePlatformRoute(t)
+	config, _ := json.Marshal(map[string]string{"agent": "claude"})
+	session := store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "running", AgentConfig: config}
+	req := ModelMintRequest{SessionID: "ags-one", Workspace: "tea-a", PodName: "sbx-1-0", PodUID: "uid-one"}
+	now := time.Date(2026, 11, 13, 10, 0, 0, 0, time.UTC)
+	ledger := &spendLedger{plan: store.PlanPro, used: 10_000_000, chargeable: true}
+	// The charge succeeds (lifting the workspace to T1, so no cap binds the
+	// re-read), but an invoice fails while it is in flight.
+	charger := &chargerFake{outcome: ThresholdChargePaid, onCharge: func() {
+		ledger.trust, ledger.charged, ledger.chargeSeq, ledger.due =
+			store.BillingTrust{LifetimePaidCents: 1000}, 10_000_000, 1, true
+	}}
+	m := &ModelMinter{Keys: &recordingKV{memoryKV: memoryKV{}}, Sessions: fakeSessions{session: session}, Spend: ledger,
+		Charges: charger, Now: func() time.Time { return now }}
+	if _, err := m.Mint(context.Background(), req); !errors.Is(err, ErrBillingBalanceDue) {
+		t.Fatalf("mint = %v, want ErrBillingBalanceDue: the post-charge status is balance-due", err)
+	}
+}

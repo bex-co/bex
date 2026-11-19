@@ -438,6 +438,12 @@ func (m *ModelMinter) admitPlatformSpend(ctx context.Context, workspaceID string
 		if status, err = m.chargeThreshold(ctx, workspaceID); err != nil {
 			return err
 		}
+		// The charge took seconds; a failure may have landed meanwhile. The
+		// re-read is fresh, so the balance-due stop applies to it before the
+		// cap, as above — it is not the 20 s cache's accepted staleness.
+		if status.BalanceDue {
+			return ErrBillingBalanceDue
+		}
 	}
 	if status.Reached() {
 		return ErrModelSpendCapReached
