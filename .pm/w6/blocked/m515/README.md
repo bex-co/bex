@@ -1,6 +1,6 @@
 # w6 · m515 — An SNI-proxy roll lets external Key Value and Postgres clients finish, and the edge keeps admitting new ones
 
-**Worker:** worker6 **Goal:** when a deploy changes `/kv-sni-proxy` or `/pg-sni-proxy`, each node's new proxy pod is Ready before the old one stops, so new external clients keep connecting on every node throughout the roll. The old pod then stops accepting and keeps relaying its open streams until each ends or a bounded grace period passes, so an external command in flight at the roll gets its reply. **Status:** todo
+**Worker:** worker6 **Goal:** when a deploy changes `/kv-sni-proxy` or `/pg-sni-proxy`, each node's new proxy pod is Ready before the old one stops, so new external clients keep connecting on every node throughout the roll. The old pod then stops accepting and keeps relaying its open streams until each ends or a bounded grace period passes, so an external command in flight at the roll gets its reply. **Status:** blocked (2026-11-19: t001–t005 implemented and verified on the local cluster, in stash `loopx/w6/m515`. Nothing ships before w6/m470 t006 records its held-client deploy, because any of this code rolls both SNI DaemonSets. See § Park record.)
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | [The SNI DaemonSets surge instead of holding the node's port](t003.md) | 1h | t002 |
 | t004 | [Prove it on the local cluster](t004.md) | 1h30m | t003 |
 | t005 | [Record it in ADR021, ADR009 and the operator guide](t005.md) | 30m | t003 |
-| t006 | [Ship and verify on production](t006.md) | 1h30m | t004, t005 |
+| t006 | [Ship and verify on production](t006.md) | 1h30m | t004, t005, w6/m470 t006 |
 | t007 | [Simplify](t007.md) | 15m | t006 |
 | t008 | [Test coverage](t008.md) | 30m | t006 |
 | t009 | [Closeout](t009.md) | 10m | t007, t008 |
@@ -27,7 +27,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** promoted from inbox note [w6/144](../done/144.md) on 2026-11-19 by `/loopx w6`. w6/m512 t006 filed it.
+- **Source:** promoted from inbox note [w6/144](../../done/144.md) on 2026-11-19 by `/loopx w6`. w6/m512 t006 filed it.
 - **Goal linkage:** ADR008 § Render parity first.
   - Render breaks a datastore's connections for its own infrastructure only in service-affecting maintenance, which "usually occur[s] no more than once every three months". It announces it by email, and a paid service can usually reschedule it ([platform maintenance](https://render.com/docs/platform-maintenance), read 2026-11-19).
   - bex closes every external Key Value and Postgres connection, without notice, on each deploy that changes an SNI binary. Any `lego/types/v1alpha1` edit does: at most 22 of the 56 production pins from 2026-11-12 to 2026-11-18 (ADR021 § 10). No ADR018 row signs this off.
@@ -73,3 +73,18 @@
 
 - **Do not ship before w6/m470 t006 has its held-client deploy.** This milestone changes both SNI binaries, so its shipping deploy moves both pins and rolls both DaemonSets. m470's DoD bullet 2 needs a deploy that keeps both pins while `m470-t006-kv-client` and `m470-t006-pg-client` hold their connections.
 - Implement and prove it locally meanwhile. Ship once m470 t006 has recorded that deploy, or m470 is in `done/`. If m470's probes are re-established for a later window, coordinate the ship with its record.
+
+## Park record (2026-11-19)
+
+- **Verdict: blocked.** The premise held at `ffd500edd`, and nothing in the work needed a decision. The milestone's own sequencing gate is the blocker. w6/m470 was re-parked in `ffd500edd`: its next pin moves both SNI pins, and its held-client record needs a later pin that keeps both. Every task here changes the SNI binaries or the DaemonSet templates, and either change rolls both DaemonSets. So no part of it can ship early without costing m470 its kept-pin deploy.
+- **Ready in stash `loopx/w6/m515` (`a1c172dc0`).** It holds t001–t005: `internal/sniproxy/serve.go` and its tests, both SNI mains and their tests, both DaemonSets and the Service comment, the `gitops-validate.sh` guard, ADR021 § 10, ADR009 and `lego/operator/AGENTS.md`. Checked on that tree:
+  - `go test -race` on the three packages, and `make test`;
+  - `make lint`;
+  - `bash scripts/gitops-validate.sh`;
+  - `bash scripts/docs-links-validate.sh`.
+- **Proven on the local cluster (t004).** In a binary-change roll of both DaemonSets, external `BLPOP` and `pg_sleep` clients read their results through the old pods after `SIGTERM`. Held idle clients closed at the 30 s bound, and new-connection loops saw no failure.
+- **Two findings change the design, recorded in t003.**
+  - Each old pod pauses 5 s in `preStop` before `SIGTERM`. Without the pause, a new client routed to the old pod in the moment before its endpoint left kube-proxy's rules was refused. The grace period is therefore 40 s.
+  - § Findings' "a rollout … does not wait for terminating pods" does not hold for `kubectl rollout status`, which waits for them: 91.5 s for a 90 s drain, measured. That keeps the bound at 30 s. The 1 h variant is [w6/146](../../146.md).
+- **Gate:** [w6/m470 t006](../m470/t006.md) records a deploy whose write-back logs `kept` for both SNI pins while its probes hold, or m470 is in `done/`. That clears on its own after at least two more production pins; check `git log origin/main --grep "pin platform images"` and m470's board. Then apply the stash and follow t006 § Gate.
+- **Seen on the way, not changed here.** `ByteMeter.Add` counts a stream's egress only when it closes. A stream that closes less than one 15 s scrape before its process exits is never billed: today that is every open stream at a roll. The drain bills more of them, not all (w6/146 § Weigh).
