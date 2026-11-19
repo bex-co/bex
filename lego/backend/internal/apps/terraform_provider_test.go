@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // terraformDockerCron is the Docker cron job create Render's Terraform
@@ -178,5 +179,196 @@ func TestImagePathReadsBackInRendersQualifiedForm(t *testing.T) {
 				t.Errorf("MCP get_service imagePath = %q, want %q", mcpRead.ImagePath, tc.want)
 			}
 		})
+	}
+}
+
+// terraformAutoscaledWorker is the autoscaled worker create Render's Terraform
+// provider sent in its own recording (internal/provider/backgroundworker/
+// resource/testdata/scaling_cassette.yaml): CPU on at 60, memory off at 70.
+// Render answered 201 with both percentages, and its PUT …/autoscaling of the
+// same criteria echoed memory 70 too.
+const terraformAutoscaledWorker = `{"envVars":null,"image":{"imagePath":"nginx","ownerId":""},"name":"autoscaling-test","ownerId":"some-owner-id","rootDir":"","secretFiles":null,"serviceDetails":{"autoscaling":{"criteria":{"cpu":{"enabled":true,"percentage":60},"memory":{"enabled":false,"percentage":70}},"enabled":true,"max":3,"min":1},"envSpecificDetails":{},"numInstances":1,"plan":"starter","previews":{},"pullRequestPreviewsEnabled":"no","region":"oregon","runtime":"image"},"type":"background_worker"}`
+
+// detailsAutoscaling is serviceDetails.autoscaling of a Render service read.
+func detailsAutoscaling(t *testing.T, raw []byte) renderAutoscalingConfig {
+	t.Helper()
+	var svc struct {
+		Service        *json.RawMessage `json:"service"`
+		ServiceDetails struct {
+			Autoscaling *renderAutoscalingConfig `json:"autoscaling"`
+		} `json:"serviceDetails"`
+	}
+	if err := json.Unmarshal(raw, &svc); err != nil {
+		t.Fatalf("decode %s: %v", raw, err)
+	}
+	if svc.Service != nil { // the create's {service, deployId} envelope
+		return detailsAutoscaling(t, *svc.Service)
+	}
+	if svc.ServiceDetails.Autoscaling == nil {
+		t.Fatalf("no serviceDetails.autoscaling in %s", raw)
+	}
+	return *svc.ServiceDetails.Autoscaling
+}
+
+// TestDisabledAutoscalingCriterionKeepsItsPercentage pins w9/111: a criterion
+// sent turned off keeps its percentage on every read surface, as Render's
+// does, while scaling still reads only the criteria that are on.
+func TestDisabledAutoscalingCriterionKeepsItsPercentage(t *testing.T) {
+	svc, cl := newService(nil)
+	rec := strictCreate(t, svc, terraformAutoscaledWorker)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("POST = %d: %s", rec.Code, rec.Body.String())
+	}
+	want := renderAutoscalingConfig{Enabled: true, Min: 1, Max: 3, Criteria: renderAutoscalingCriteria{
+		CPU:    renderAutoscalingCriterion{Enabled: true, Percentage: 60},
+		Memory: renderAutoscalingCriterion{Enabled: false, Percentage: 70},
+	}}
+	if got := detailsAutoscaling(t, rec.Body.Bytes()); got != want {
+		t.Errorf("create response autoscaling = %+v, want %+v", got, want)
+	}
+	var created serviceAndDeploy
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	id, name := created.Service.ID, created.Service.Name
+
+	// Scaling reads the targets alone: memory stays off.
+	as := getApp(t, cl, name).Spec.Autoscaling
+	if as == nil || as.TargetMemoryPercent != nil || as.DisabledMemoryPercent == nil || *as.DisabledMemoryPercent != 70 ||
+		as.TargetCPUPercent == nil || *as.TargetCPUPercent != 60 || as.DisabledCPUPercent != nil {
+		t.Fatalf("spec.autoscaling = %+v, want cpu target 60 and memory off, kept at 70", as)
+	}
+
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	do := func(method, path, body string) *httptest.ResponseRecorder {
+		t.Helper()
+		req := httptest.NewRequest(method, path, strings.NewReader(body))
+		req = req.WithContext(core.WithStrictJSONDecoding(req.Context()))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		validated(t, mux).ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s %s = %d: %s", method, path, rec.Code, rec.Body.String())
+		}
+		return rec
+	}
+	if got := detailsAutoscaling(t, do(http.MethodGet, "/v1/services/"+id, "").Body.Bytes()); got != want {
+		t.Errorf("REST GET serviceDetails.autoscaling = %+v, want %+v", got, want)
+	}
+	readConfig := func(rec *httptest.ResponseRecorder) renderAutoscalingConfig {
+		t.Helper()
+		var got renderAutoscalingConfig
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	if got := readConfig(do(http.MethodGet, "/v1/services/"+id+"/autoscaling", "")); got != want {
+		t.Errorf("REST GET …/autoscaling = %+v, want %+v", got, want)
+	}
+
+	// The provider's recorded PUT, which Render echoed with memory 70.
+	want.Min = 2
+	put := `{"criteria":{"cpu":{"enabled":true,"percentage":60},"memory":{"enabled":false,"percentage":70}},"enabled":true,"max":3,"min":2}`
+	if got := readConfig(do(http.MethodPut, "/v1/services/"+id+"/autoscaling", put)); got != want {
+		t.Errorf("PUT …/autoscaling = %+v, want %+v", got, want)
+	}
+
+	data := gqlDo(t, gqlSchema(t, svc), `{ service(id: "`+id+`") { autoscaling { targetMemoryPercent disabledMemoryPercent disabledCPUPercent } } }`)
+	gql := data["service"].(map[string]any)["autoscaling"].(map[string]any)
+	if gql["targetMemoryPercent"] != nil || gql["disabledMemoryPercent"] != 70 || gql["disabledCPUPercent"] != nil {
+		t.Errorf("GraphQL autoscaling = %v, want memory off, kept at 70", gql)
+	}
+
+	res := callMCPTool(t, svc, "get_service", map[string]any{"serviceId": id})
+	if res.IsError {
+		t.Fatalf("MCP get_service: %s", mcpResultText(res))
+	}
+	if got := detailsAutoscaling(t, []byte(mcpResultText(res))); got != want {
+		t.Errorf("MCP get_service autoscaling = %+v, want %+v", got, want)
+	}
+	res = callMCPTool(t, svc, "get_autoscaling", map[string]any{"serviceId": id})
+	var mcpView AutoscalingView
+	if err := json.Unmarshal([]byte(mcpResultText(res)), &mcpView); err != nil || res.IsError {
+		t.Fatalf("MCP get_autoscaling: %v: %s", err, mcpResultText(res))
+	}
+	if mcpView.DisabledMemoryPercent == nil || *mcpView.DisabledMemoryPercent != 70 {
+		t.Errorf("MCP get_autoscaling = %+v, want disabledMemoryPercent 70", mcpView)
+	}
+
+	// GraphQL and MCP cannot name the kept percentage, so their writes keep
+	// it; Render's body names it, so 0 clears it.
+	gqlDo(t, gqlSchema(t, svc), `mutation { setAutoscaling(id: "`+id+`", minInstances: 1, maxInstances: 2, targetCPUPercent: 50) { enabled } }`)
+	res = callMCPTool(t, svc, "update_service", map[string]any{"serviceId": id,
+		"autoscaling": map[string]any{"minInstances": 1, "maxInstances": 3, "targetCPUPercent": 55}})
+	if res.IsError {
+		t.Fatalf("MCP update_service: %s", mcpResultText(res))
+	}
+	if got := readConfig(do(http.MethodGet, "/v1/services/"+id+"/autoscaling", "")); got.Criteria.Memory != want.Criteria.Memory || got.Criteria.CPU.Percentage != 55 {
+		t.Errorf("after GraphQL and MCP writes = %+v, want cpu 55 and memory still off at 70", got)
+	}
+	cleared := strings.Replace(put, `"enabled":false,"percentage":70`, `"enabled":false,"percentage":0`, 1)
+	if got := readConfig(do(http.MethodPut, "/v1/services/"+id+"/autoscaling", cleared)); got.Criteria.Memory != (renderAutoscalingCriterion{}) {
+		t.Errorf("PUT memory {false, 0} = %+v, want memory cleared", got.Criteria.Memory)
+	}
+	if as := getApp(t, cl, name).Spec.Autoscaling; as.DisabledMemoryPercent != nil {
+		t.Errorf("spec.autoscaling.disabledMemoryPercent = %v after a PUT of 0, want unset", *as.DisabledMemoryPercent)
+	}
+}
+
+// TestDisabledAutoscalingPercentageRules pins the rest of w9/111: a kept
+// percentage is 0–100, never sits beside its criterion's target, survives a
+// Blueprint's scaling block, and changes nothing about how the service scales.
+func TestDisabledAutoscalingPercentageRules(t *testing.T) {
+	put := func(memory string) *httptest.ResponseRecorder {
+		svc, _ := newService(nil, paidWebApp("web"))
+		return putAutoscaling(t, svc, `{"enabled":true,"min":1,"max":1,"criteria":{"cpu":{"enabled":true,"percentage":60},"memory":`+memory+`}}`)
+	}
+	for _, percentage := range []string{"-1", "101"} {
+		if rec := put(`{"enabled":false,"percentage":` + percentage + `}`); rec.Code != http.StatusBadRequest ||
+			!strings.Contains(rec.Body.String(), "criteria.memory.percentage must be 0–100") {
+			t.Errorf("memory off at %s = %d %s, want 400 naming the range", percentage, rec.Code, rec.Body.String())
+		}
+	}
+
+	// Turning memory on makes its percentage the target; nothing is kept.
+	req, _, err := setAutoscalingRequestFromRender(renderAutoscalingConfig{Enabled: true, Min: 1, Max: 2, Criteria: renderAutoscalingCriteria{
+		CPU: renderAutoscalingCriterion{Enabled: true, Percentage: 60}, Memory: renderAutoscalingCriterion{Enabled: true, Percentage: 70},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec, err := autoscalingSpec(req, appv1alpha1.TypeWebService, "starter")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if spec.TargetMemoryPercent == nil || *spec.TargetMemoryPercent != 70 || spec.DisabledMemoryPercent != nil || spec.DisabledCPUPercent != nil {
+		t.Errorf("memory on = %+v, want target 70 and nothing kept", spec)
+	}
+
+	// A Blueprint's scaling block cannot name the kept percentage: it stays.
+	kept := int32(70)
+	dst := appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Tier: "starter", Autoscaling: &appv1alpha1.AutoscalingSpec{
+		Enabled: true, MinReplicas: 1, MaxReplicas: 2, TargetCPUPercent: int32p(60), DisabledMemoryPercent: &kept,
+	}}
+	want := appv1alpha1.AppSpec{Autoscaling: &appv1alpha1.AutoscalingSpec{Enabled: true, MinReplicas: 1, MaxReplicas: 3, TargetCPUPercent: int32p(60)}}
+	if _, err := ApplyBlueprintServiceSpec(&dst, want, map[string]BlueprintField{"scaling": {}}); err != nil {
+		t.Fatal(err)
+	}
+	if got := dst.Autoscaling; got.MaxReplicas != 3 || got.DisabledMemoryPercent == nil || *got.DisabledMemoryPercent != 70 {
+		t.Errorf("after a Blueprint scaling block = %+v, want max 3 and memory still kept at 70", got)
+	}
+
+	// A kept percentage alone scales nothing, so it is no change.
+	other := int32(80)
+	moved := *dst.Autoscaling
+	moved.DisabledMemoryPercent = &other
+	if autoscalingChanged(dst.Autoscaling, moved) {
+		t.Error("a kept percentage alone counts as an autoscaling change")
+	}
+	moved.MaxReplicas = 4
+	if !autoscalingChanged(dst.Autoscaling, moved) {
+		t.Error("a new maximum does not count as an autoscaling change")
 	}
 }

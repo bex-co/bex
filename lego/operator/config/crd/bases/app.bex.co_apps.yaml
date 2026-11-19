@@ -73,6 +73,24 @@ spec:
                   live CPU/memory utilization. When nil or disabled, the service runs at a
                   fixed spec.replicas. Only applies to the kubernetes runtime.
                 properties:
+                  disabledCPUPercent:
+                    description: |-
+                      DisabledCPUPercent is the percentage given to a CPU criterion that is
+                      turned off: Render's criteria.cpu {enabled: false, percentage: N}
+                      keeps N and reads it back (w9/111). It never drives scaling, which
+                      TargetCPUPercent alone does, so the two are never both set. Unset reads
+                      as 0.
+                    format: int32
+                    maximum: 100
+                    minimum: 1
+                    type: integer
+                  disabledMemoryPercent:
+                    description: DisabledMemoryPercent is DisabledCPUPercent for the
+                      memory criterion.
+                    format: int32
+                    maximum: 100
+                    minimum: 1
+                    type: integer
                   enabled:
                     description: |-
                       Enabled turns per-service autoscaling on. When false the service runs at

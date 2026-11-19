@@ -412,6 +412,10 @@ func (s *Service) checkAutoscaling(ctx context.Context, a *appv1alpha1.App, req 
 	if a.Spec.Disk != nil {
 		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: detach the disk before enabling autoscaling", core.ErrBadRequest)
 	}
+	if before := a.Spec.Autoscaling; before != nil {
+		req.DisabledCPUPercent = keptPercent(req.DisabledCPUPercent, req.TargetCPUPercent, before.DisabledCPUPercent)
+		req.DisabledMemoryPercent = keptPercent(req.DisabledMemoryPercent, req.TargetMemoryPercent, before.DisabledMemoryPercent)
+	}
 	as, err := autoscalingSpec(req, a.Spec.Type, a.Spec.Tier)
 	if err != nil {
 		return as, err

@@ -6569,6 +6569,11 @@ type AutoscalingView struct {
 	MaxInstances        int32  `json:"maxInstances"`
 	TargetCPUPercent    *int32 `json:"targetCPUPercent,omitempty"`
 	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty"`
+	// DisabledCPUPercent and DisabledMemoryPercent are the percentages kept
+	// for a criterion that is turned off (spec.autoscaling's, w9/111): Render
+	// reads them back in criteria.{cpu,memory}.percentage. They never scale.
+	DisabledCPUPercent    *int32 `json:"disabledCPUPercent,omitempty"`
+	DisabledMemoryPercent *int32 `json:"disabledMemoryPercent,omitempty"`
 	// MetricsUnavailable reports autoscaling that is on but paused: the
 	// operator cannot read the service's utilization, so it holds the
 	// instance count (the App's AutoscalingMetricsAvailable=False condition,
@@ -6583,6 +6588,13 @@ type SetAutoscalingRequest struct {
 	MaxInstances        int32  `json:"maxInstances"`
 	TargetCPUPercent    *int32 `json:"targetCPUPercent,omitempty"`
 	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty"`
+	// DisabledCPUPercent and DisabledMemoryPercent are the percentages given
+	// to a criterion turned off, Render's {enabled: false, percentage: N}
+	// (w9/111). Only Render's REST body names them, and 0 clears one; a
+	// request that leaves one out keeps the percentage kept before
+	// (checkAutoscaling), since GraphQL and MCP cannot name it.
+	DisabledCPUPercent    *int32 `json:"disabledCPUPercent,omitempty"`
+	DisabledMemoryPercent *int32 `json:"disabledMemoryPercent,omitempty"`
 }
 
 // autoscalingEligible reports whether the runtime can honor autoscaling for
@@ -6661,13 +6673,45 @@ func autoscalingSpec(req SetAutoscalingRequest, serviceType, tier string) (appv1
 	if req.TargetCPUPercent == nil && req.TargetMemoryPercent == nil {
 		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: at least one of targetCPUPercent or targetMemoryPercent is required", core.ErrBadRequest)
 	}
+	cpuOff, err := disabledPercent("cpu", req.TargetCPUPercent, req.DisabledCPUPercent)
+	if err != nil {
+		return appv1alpha1.AutoscalingSpec{}, err
+	}
+	memoryOff, err := disabledPercent("memory", req.TargetMemoryPercent, req.DisabledMemoryPercent)
+	if err != nil {
+		return appv1alpha1.AutoscalingSpec{}, err
+	}
 	return appv1alpha1.AutoscalingSpec{
-		Enabled:             true,
-		MinReplicas:         req.MinInstances,
-		MaxReplicas:         req.MaxInstances,
-		TargetCPUPercent:    req.TargetCPUPercent,
-		TargetMemoryPercent: req.TargetMemoryPercent,
+		Enabled:               true,
+		MinReplicas:           req.MinInstances,
+		MaxReplicas:           req.MaxInstances,
+		TargetCPUPercent:      req.TargetCPUPercent,
+		TargetMemoryPercent:   req.TargetMemoryPercent,
+		DisabledCPUPercent:    cpuOff,
+		DisabledMemoryPercent: memoryOff,
 	}, nil
+}
+
+// disabledPercent is the percentage to keep for a criterion: none while the
+// criterion is on (target set), and none for 0, which reads back the same.
+func disabledPercent(criterion string, target, percent *int32) (*int32, error) {
+	if target != nil || percent == nil || *percent == 0 {
+		return nil, nil
+	}
+	if *percent < 0 || *percent > 100 {
+		return nil, fmt.Errorf("%w: criteria.%s.percentage must be 0–100", core.ErrBadRequest, criterion)
+	}
+	return percent, nil
+}
+
+// keptPercent is the percentage a write keeps for a criterion: the one it
+// names, else, for a criterion it leaves off, the one kept before. GraphQL,
+// MCP and a Blueprint cannot name one, so their writes keep it (w9/111).
+func keptPercent(named, target, before *int32) *int32 {
+	if named == nil && target == nil {
+		return before
+	}
+	return named
 }
 
 // autoscalingView projects spec.autoscaling onto the neutral view. Nil
@@ -6685,11 +6729,13 @@ func autoscalingView(a *appv1alpha1.App) AutoscalingView {
 		return AutoscalingView{}
 	}
 	return AutoscalingView{
-		Enabled:             as.Enabled,
-		MinInstances:        as.MinReplicas,
-		MaxInstances:        as.MaxReplicas,
-		TargetCPUPercent:    as.TargetCPUPercent,
-		TargetMemoryPercent: as.TargetMemoryPercent,
+		Enabled:               as.Enabled,
+		MinInstances:          as.MinReplicas,
+		MaxInstances:          as.MaxReplicas,
+		TargetCPUPercent:      as.TargetCPUPercent,
+		TargetMemoryPercent:   as.TargetMemoryPercent,
+		DisabledCPUPercent:    as.DisabledCPUPercent,
+		DisabledMemoryPercent: as.DisabledMemoryPercent,
 		MetricsUnavailable: as.Enabled && meta.IsStatusConditionFalse(a.Status.Conditions,
 			appv1alpha1.ConditionAutoscalingMetricsAvailable),
 	}
@@ -6732,11 +6778,17 @@ func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutosc
 }
 
 // autoscalingChanged reports whether turning autoscaling on with settings to
-// changes anything from the settings before: a save that changes nothing
-// records no event. SetAutoscaling and a Blueprint `scaling:` (w9/092) share
-// it.
+// changes how the service scales from the settings before: a save that
+// changes nothing records no event. A turned-off criterion's kept percentage
+// scales nothing, so changing it alone is no change (w9/111). SetAutoscaling
+// and a Blueprint `scaling:` (w9/092) share it.
 func autoscalingChanged(from *appv1alpha1.AutoscalingSpec, to appv1alpha1.AutoscalingSpec) bool {
-	return from == nil || !reflect.DeepEqual(*from, to)
+	if from == nil {
+		return true
+	}
+	before := *from
+	before.DisabledCPUPercent, before.DisabledMemoryPercent = to.DisabledCPUPercent, to.DisabledMemoryPercent
+	return !reflect.DeepEqual(before, to)
 }
 
 // autoscalingOn reports whether settings as are running, not absent or kept

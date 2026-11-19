@@ -309,9 +309,34 @@ type renderAutoscalingCriterion struct {
 	Percentage int  `json:"percentage"`
 }
 
+// split is the criterion's percentage as a target when it is on, else as the
+// percentage kept for it turned off.
+func (c renderAutoscalingCriterion) split() (target, disabled *int32) {
+	p := int32(c.Percentage)
+	if c.Enabled {
+		return &p, nil
+	}
+	return nil, &p
+}
+
+// renderAutoscalingCriterionFrom is split's inverse: an unset percentage
+// reads 0.
+func renderAutoscalingCriterionFrom(target, disabled *int32) renderAutoscalingCriterion {
+	switch {
+	case target != nil:
+		return renderAutoscalingCriterion{Enabled: true, Percentage: int(*target)}
+	case disabled != nil:
+		return renderAutoscalingCriterion{Percentage: int(*disabled)}
+	default:
+		return renderAutoscalingCriterion{}
+	}
+}
+
 // setAutoscalingRequestFromRender maps the Render wire body onto the shared
 // SetAutoscalingRequest used by GraphQL/MCP/Blueprint. enabled:false means
-// disable (caller should DeleteAutoscaling); ok is false in that case.
+// disable (caller should DeleteAutoscaling); ok is false in that case. A
+// criterion turned off still names its percentage, which Render keeps and
+// reads back (w9/111).
 func setAutoscalingRequestFromRender(body renderAutoscalingConfig) (SetAutoscalingRequest, bool, error) {
 	if !body.Enabled {
 		return SetAutoscalingRequest{}, false, nil
@@ -320,14 +345,8 @@ func setAutoscalingRequestFromRender(body renderAutoscalingConfig) (SetAutoscali
 		MinInstances: body.Min,
 		MaxInstances: body.Max,
 	}
-	if body.Criteria.CPU.Enabled {
-		p := int32(body.Criteria.CPU.Percentage)
-		req.TargetCPUPercent = &p
-	}
-	if body.Criteria.Memory.Enabled {
-		p := int32(body.Criteria.Memory.Percentage)
-		req.TargetMemoryPercent = &p
-	}
+	req.TargetCPUPercent, req.DisabledCPUPercent = body.Criteria.CPU.split()
+	req.TargetMemoryPercent, req.DisabledMemoryPercent = body.Criteria.Memory.split()
 	if req.TargetCPUPercent == nil && req.TargetMemoryPercent == nil {
 		return SetAutoscalingRequest{}, true, fmt.Errorf(
 			"%w: at least one of criteria.cpu or criteria.memory must have enabled:true",
@@ -343,15 +362,9 @@ func renderAutoscalingConfigFromView(v AutoscalingView) renderAutoscalingRead {
 		Min:     v.MinInstances,
 		Max:     v.MaxInstances,
 		Criteria: renderAutoscalingCriteria{
-			CPU:    renderAutoscalingCriterion{Enabled: false, Percentage: 0},
-			Memory: renderAutoscalingCriterion{Enabled: false, Percentage: 0},
+			CPU:    renderAutoscalingCriterionFrom(v.TargetCPUPercent, v.DisabledCPUPercent),
+			Memory: renderAutoscalingCriterionFrom(v.TargetMemoryPercent, v.DisabledMemoryPercent),
 		},
-	}
-	if v.TargetCPUPercent != nil {
-		out.Criteria.CPU = renderAutoscalingCriterion{Enabled: true, Percentage: int(*v.TargetCPUPercent)}
-	}
-	if v.TargetMemoryPercent != nil {
-		out.Criteria.Memory = renderAutoscalingCriterion{Enabled: true, Percentage: int(*v.TargetMemoryPercent)}
 	}
 	return renderAutoscalingRead{renderAutoscalingConfig: out, MetricsUnavailable: v.MetricsUnavailable}
 }

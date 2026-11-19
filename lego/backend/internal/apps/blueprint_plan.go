@@ -458,7 +458,14 @@ func probeBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 		if want.Autoscaling == nil {
 			turnOffAutoscaling(dst)
 		} else {
-			dst.Autoscaling = want.Autoscaling.DeepCopy()
+			next := want.Autoscaling.DeepCopy()
+			// A file cannot name a turned-off criterion's percentage, so the
+			// one kept for it stays (w9/111).
+			if kept := before.Autoscaling; kept != nil {
+				next.DisabledCPUPercent = keptPercent(next.DisabledCPUPercent, next.TargetCPUPercent, kept.DisabledCPUPercent)
+				next.DisabledMemoryPercent = keptPercent(next.DisabledMemoryPercent, next.TargetMemoryPercent, kept.DisabledMemoryPercent)
+			}
+			dst.Autoscaling = next
 		}
 	} else if applies("numInstances") && !present("scaling") {
 		turnOffAutoscaling(dst)

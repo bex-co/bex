@@ -46,6 +46,10 @@ var autoscalingGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"maxInstances":        gqlutil.IntField(func(a AutoscalingView) any { return a.MaxInstances }),
 		"targetCPUPercent":    gqlutil.IntField(func(a AutoscalingView) any { return a.TargetCPUPercent }),
 		"targetMemoryPercent": gqlutil.IntField(func(a AutoscalingView) any { return a.TargetMemoryPercent }),
+		// The percentage kept for a criterion turned off, which Render's REST
+		// reads back in criteria.{cpu,memory}.percentage (w9/111).
+		"disabledCPUPercent":    gqlutil.IntField(func(a AutoscalingView) any { return a.DisabledCPUPercent }),
+		"disabledMemoryPercent": gqlutil.IntField(func(a AutoscalingView) any { return a.DisabledMemoryPercent }),
 		// bex extension (w4/m364): autoscaling is on but holds the instance
 		// count because the service's utilization cannot be read.
 		"metricsUnavailable": gqlutil.BoolField(func(a AutoscalingView) any { return a.MetricsUnavailable }),

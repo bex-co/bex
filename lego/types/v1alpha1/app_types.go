@@ -1256,6 +1256,22 @@ type AutoscalingSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
 	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty"`
+
+	// DisabledCPUPercent is the percentage given to a CPU criterion that is
+	// turned off: Render's criteria.cpu {enabled: false, percentage: N}
+	// keeps N and reads it back (w9/111). It never drives scaling, which
+	// TargetCPUPercent alone does, so the two are never both set. Unset reads
+	// as 0.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
+	DisabledCPUPercent *int32 `json:"disabledCPUPercent,omitempty"`
+
+	// DisabledMemoryPercent is DisabledCPUPercent for the memory criterion.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
+	DisabledMemoryPercent *int32 `json:"disabledMemoryPercent,omitempty"`
 }
 
 // DiskSpec declares the persistent disk attached to a service, mirroring

@@ -671,6 +671,8 @@ type AuditLogMetadata {
 }
 
 type Autoscaling {
+  disabledCPUPercent: Int
+  disabledMemoryPercent: Int
   enabled: Boolean
   maxInstances: Int
   metricsUnavailable: Boolean
