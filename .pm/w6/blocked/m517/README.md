@@ -1,6 +1,6 @@
 # w6 · m517 — A store's proxy keeps its held clients until the store's own change rolls it
 
-**Worker:** worker6 **Goal:** a platform deploy that changes `/kv-internal-proxy`, or the proxy pod template the operator renders, rolls no store's proxy. Each store's proxy keeps the template it runs until the store's own change rolls it: a plan change, enabling internal authentication, a credential rotation or a resume. That roll takes the current image and template at once. A code-reviewed override rolls every proxy at once for a security fix. **Status:** todo
+**Worker:** worker6 **Goal:** a platform deploy that changes `/kv-internal-proxy`, or the proxy pod template the operator renders, rolls no store's proxy. Each store's proxy keeps the template it runs until the store's own change rolls it: a plan change, enabling internal authentication, a credential rotation or a resume. That roll takes the current image and template at once. A code-reviewed override rolls every proxy at once for a security fix. **Status:** blocked (2026-11-19: t001–t004 implemented and verified, with t007's fleet-guard extension and mutation checks, in stash `loopx/w6/m517`. Nothing ships before production carries w6/m512's `d6d29f9a7` and w6/m512 t007 has recorded that roll. See § Park record.)
 
 ## Tasks (in order)
 
@@ -10,7 +10,7 @@
 | t002 | [A security override rolls every proxy at once, and a guard makes each rendering change a decision](t002.md) | 45m | t001 |
 | t003 | [Prove it on the local cluster](t003.md) | 1h30m | t002 |
 | t004 | [Record it in ADR021 § 10 and the operator guide](t004.md) | 30m | t002 |
-| t005 | [Ship and verify on production](t005.md) | 1h30m | t003, t004 |
+| t005 | [Ship and verify on production](t005.md) | 1h30m | t003, t004, w6/m512 t007 |
 | t006 | [Simplify](t006.md) | 30m | t005 |
 | t007 | [Test coverage](t007.md) | 30m | t005 |
 | t008 | [Closeout](t008.md) | 10m | t006, t007 |
@@ -27,7 +27,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** promoted from inbox note [w6/145](../done/145.md) on 2026-11-19 by `/loopx w6`. w6/m512 t006 filed it as the stricter variant ADR021 § 10 names.
+- **Source:** promoted from inbox note [w6/145](../../done/145.md) on 2026-11-19 by `/loopx w6`. w6/m512 t006 filed it as the stricter variant ADR021 § 10 names.
 - **Goal linkage:** ADR008 § Render parity first.
   - Render breaks a store's connections when the customer changes it ("Render restarts your Key Value instance", [Key Value](https://render.com/docs/key-value)). For its own infrastructure it does so only in service-affecting maintenance, which "usually occur[s] no more than once every three months". For a paid service, "Render always provides advance notice via email" and can usually reschedule it ([platform maintenance](https://render.com/docs/platform-maintenance), both read 2026-11-19).
   - bex closes every held client of every store, without notice, on each deploy that changes the proxy. That was 2 of the 11 production deploys on 2026-11-17, and w6/m512's drain only bounds the close at 30 s. No ADR018 row signs this off.
@@ -72,3 +72,23 @@
 - **Held templates must keep working.** While any proxy may run an old template and binary, the operator must not rename or remove what one relies on: the `<id>-backend` Service and its ports, the auth and TLS Secrets it mounts, the pod labels its NetworkPolicy and the internal-auth cut select (`reconcileKeyValueInternalProxyPolicy`, w6/m512 t004), and the `--check` readiness command. A change that breaks this must bump the override.
 - **No authority gained.** The proxy pod gets no service account token and no new Secret, and the operator gets no new RBAC.
 - **No `lego/types`, `cmd/kv-internal-proxy` or `internal/kvinternalauth` edits** (see § Findings, interplay).
+
+## Park record (2026-11-19)
+
+- **Verdict: blocked.** The premise holds at `fc5de7e45`. The milestone's own sequencing gate blocks it. Production's newest pin, `a91e9aeb3` → `dff52c596d13`, does not contain w6/m512's `d6d29f9a7` (`git merge-base --is-ancestor` fails), and w6/m512 t007 has recorded no roll. Shipping now would put this commit and `d6d29f9a7` into the same production deploy. That deploy would roll every proxy once for w6/m512's drain env, through this milestone's adoption path, so t005's "the shipping deploy rolls no store's proxy" could not hold. It would also hide w6/m512's roll inside this milestone's.
+- **Ready in stash `loopx/w6/m517` (`8ccdf92d0`).** It holds t001, t002 and t004, plus t007's step 1:
+  - `internal/controller/keyvalue_internal_proxy.go`: `keyValueInternalProxyRoll`, the inputs digest, the override `kvInternalProxyRollRevision = 1`, and the once-per-store log. The image hold is used only for adoption.
+  - `keyvalue_internal_proxy_hold_envtest_test.go`, rewritten for the template hold: 13 envtest specs.
+  - `keyvalue_internal_proxy_test.go`: `TestKeyValueInternalProxyRenderingIsPinned`.
+  - `operator_upgrade_test.go`: the fleet guard's Key Value case also covers a binary change and an added field.
+  - `keyvalue_controller.go`: a field comment.
+  - ADR021 § 10 and `lego/operator/AGENTS.md`.
+- **Checked on that tree:**
+  - `make test`, which passed before a `staticcheck` switch rewrite;
+  - after the rewrite, the Key Value unit tests, the 13 envtest specs and `make lint` (see t001's Progress);
+  - `bash scripts/docs-links-validate.sh` and prettier on both documents.
+- **The commit changes no rendered template.** The pinned rendering hashes of all four fixtures are identical on `fc5de7e45` and on the stash, so this commit adds no roll of its own. Once w6/m512's roll is recorded, its deploy only adopts: each Deployment gets the two records, and its generation moves, but no ReplicaSet is created. A rendering change that lands in between fails the pin first.
+- **Proven on the local cluster (t003).** A deploy that changed `/kv-internal-proxy` and added an env var rolled no proxy across three passes, and the held clients kept `CLIENT ID` 17 and 18. A plan change rolled its proxy once onto the new binary and rendering. Enabling internal auth rolled once and closed the held clients within 5 s, and new clients read `-NOAUTH`. An override bump rolled each proxy once, and later passes rolled nothing.
+- **Mutation checks (t007 step 2), each reverted.** Each of these fails at least one test: dropping the inputs comparison, recording the inputs on the pod template, dropping the resume path, letting the override roll on every pass, and holding nothing.
+- **Gate:** pin must carry `d6d29f9a7`, and w6/m512 t007 has recorded every store's roll onto `BEX_KV_DRAIN_SECONDS=30` and the 35 s grace (or w6/m512 is in `done/`). Then apply the stash on current `main`, rerun `make test` and `make lint`, run t005 step 1 (the baseline), ship t001–t004 in one commit, and continue with t005.
+
