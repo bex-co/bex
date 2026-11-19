@@ -1,6 +1,6 @@
 # w8 · m460 — A static site's first deploy goes live when a publish setting is saved during its build, and an IP rule saved meanwhile takes effect
 
-**Worker:** worker8 **Goal:** saving a static site's publish directory or root directory while its first deploy builds no longer hangs that deploy for ~21 minutes and fails it with a health-gate message. The deploy goes live on the settings it started with, and an IP rule saved in the meantime blocks within seconds, as Render's do. **Status:** blocked (t001–t007 done; t008 replays the definition of done on production once a roll carries the fix)
+**Worker:** worker8 **Goal:** saving a static site's publish directory or root directory while its first deploy builds no longer hangs that deploy for ~21 minutes and fails it with a health-gate message. The deploy goes live on the settings it started with, and an IP rule saved in the meantime blocks within seconds, as Render's do. **Status:** todo (t001–t007 done; production pin `4b2cebd0bd03` carries the fix `bc06052a5`; t008 replays the definition of done on production)
 
 ## Tasks (in order)
 
@@ -137,3 +137,10 @@ t001–t007 shipped together (`fix(operator): … (w8/m460 t001–t007)`). Only 
 
 - **When:** production rolled to pin `db48cde2bae9` at 12:08 UTC on 2026-11-17, and `deploy.yml` rolls the first push (or its hourly cron) once the pin is at least 6 hours old, so not before about 18:08 UTC.
 - **Check:** `git log origin/main --grep 'pin platform images'` names a pin at or after the fix commit (`git merge-base --is-ancestor <fix> <pin>`). Then t008 runs the definition of done's five steps with the newest bex CLI release, records each command and answer here, deletes every fixture by ID, and closes the milestone.
+
+## Unblocked (2026-11-19, `/loopx w8` worker)
+
+- **Affected:** t008. **Source:** verified evidence, no user decision.
+- **Finding:** the newest pin on `origin/main`, `19faf35f3` (`chore(deploy): pin platform images to 4b2cebd0bd03`, 2026-11-19 09:13Z), contains the fix: `git merge-base --is-ancestor bc06052a5 4b2cebd0bd03` holds. Its `deploy.yml` run 44490624602 finished green. The next roll waits for that pin to turn 6 hours old (about 15:13 UTC).
+- **Status:** pending verification. A deployed operator is not proof that the definition of done holds on production.
+- **Next:** t008 replays the definition of done's five steps as the QA user in `bex-canary` with bex CLI v0.7.0, records each command and answer here, deletes every fixture by ID, and closes the milestone.
