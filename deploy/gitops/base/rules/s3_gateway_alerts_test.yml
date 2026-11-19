@@ -1,0 +1,175 @@
+# w21/m498 t014: the S3 entry point's alerts (ADR112 D3 "What watches it"). The series
+# are per replica and the rules sum or max over them; every case runs two replicas so a
+# rule that read only one would fail.
+rule_files:
+- alerting_rules.yml
+evaluation_interval: 1m
+tests:
+- name: 5xx answers other than SlowDown, over 5% of requests, fire after ten minutes
+  interval: 1m
+  input_series:
+  - series: bex_s3gw_requests_total{job="bex-s3gw",pod="s3gw-a",operation="GetObject",code="OK",status="200"}
+    values: 0+60x40
+  - series: bex_s3gw_requests_total{job="bex-s3gw",pod="s3gw-b",operation="GetObject",code="OK",status="200"}
+    values: 0+60x40
+  - series: bex_s3gw_requests_total{job="bex-s3gw",pod="s3gw-a",operation="PutObject",code="InternalError",status="500"}
+    values: 0+30x40
+  - series: bex_s3gw_requests_total{job="bex-s3gw",pod="s3gw-b",operation="PutObject",code="InternalError",status="500"}
+    values: 0+30x40
+  alert_rule_test:
+  - eval_time: 8m
+    alertname: S3GatewayServerErrors
+    exp_alerts: []
+  - eval_time: 20m
+    alertname: S3GatewayServerErrors
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: "33.33% of S3 requests are failing with a 5xx"
+        description: "More than 5% of the requests bex-s3 answered in the last five minutes were 5xx other than the SlowDown throttle, for ten minutes. Find the code on the Billing and metering dashboard (S3 requests by code): ServiceUnavailable is a dependency down (Postgres, OpenFGA, OpenBao or Wasabi), InternalError is a bug (the bex-s3 log names the request id). Runbook: docs/runbooks/objectgw-kill-switch.md"
+- name: SlowDown is a throttle, not a fault, and a quiet service cannot trip the ratio
+  interval: 1m
+  input_series:
+  - series: bex_s3gw_requests_total{job="bex-s3gw",pod="s3gw-a",operation="GetObject",code="OK",status="200"}
+    values: 0+60x40
+  - series: bex_s3gw_requests_total{job="bex-s3gw",pod="s3gw-a",operation="GetObject",code="SlowDown",status="503"}
+    values: 0+60x40
+  # One failure a minute among almost nothing else: a 100% ratio on 0.017 requests a second.
+  - series: bex_s3gw_requests_total{job="bex-s3gw",pod="s3gw-b",operation="PutObject",code="InternalError",status="500"}
+    values: 0+1x40
+  alert_rule_test:
+  - eval_time: 30m
+    alertname: S3GatewayServerErrors
+    exp_alerts: []
+- name: refused authentications other than OpenBao's fire above 5 a second
+  interval: 1m
+  input_series:
+  - series: bex_s3gw_auth_failures_total{job="bex-s3gw",pod="s3gw-a",reason="bad_signature"}
+    values: 0+240x30
+  - series: bex_s3gw_auth_failures_total{job="bex-s3gw",pod="s3gw-b",reason="unknown_key"}
+    values: 0+240x30
+  - series: bex_s3gw_auth_failures_total{job="bex-s3gw",pod="s3gw-a",reason="secret_store"}
+    values: 0+0x30
+  alert_rule_test:
+  - eval_time: 9m
+    alertname: S3GatewayAuthFailuresHigh
+    exp_alerts: []
+  - eval_time: 20m
+    alertname: S3GatewayAuthFailuresHigh
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: "bex-s3 is refusing 8 authentications a second"
+        description: "bex-s3 has refused more than 5 requests a second at authentication for ten minutes, for reasons that are the client's (unknown key, wrong signature, clock skew, an expired URL). Per client address the limit is 20 failed authentications a minute, so this is many addresses: a guessing flood, or a fleet holding a revoked key. See S3 authentication failures by reason on the Billing and metering dashboard, then the audit log for the denied rows. Runbook: docs/runbooks/objectgw-kill-switch.md"
+  - eval_time: 20m
+    alertname: S3SecretStoreErrors
+    exp_alerts: []
+- name: a few failed authentications a second stay quiet, and OpenBao's do not count toward them
+  interval: 1m
+  input_series:
+  - series: bex_s3gw_auth_failures_total{job="bex-s3gw",pod="s3gw-a",reason="bad_signature"}
+    values: 0+60x30
+  - series: bex_s3gw_auth_failures_total{job="bex-s3gw",pod="s3gw-a",reason="secret_store"}
+    values: 0+600x30
+  - series: bex_s3gw_auth_failures_total{job="bex-s3gw",pod="s3gw-a",reason="throttled"}
+    values: 0+600x30
+  alert_rule_test:
+  - eval_time: 25m
+    alertname: S3GatewayAuthFailuresHigh
+    exp_alerts: []
+- name: OpenBao failing on the key path is critical after five minutes
+  interval: 1m
+  input_series:
+  - series: bex_s3gw_auth_failures_total{job="bex-s3gw",pod="s3gw-a",reason="secret_store"}
+    values: 0+3x30
+  - series: bex_s3gw_auth_failures_total{job="bex-s3gw",pod="s3gw-b",reason="secret_store"}
+    values: 0+0x30
+  alert_rule_test:
+  - eval_time: 3m
+    alertname: S3SecretStoreErrors
+    exp_alerts: []
+  - eval_time: 15m
+    alertname: S3SecretStoreErrors
+    exp_alerts:
+    - exp_labels:
+        severity: critical
+      exp_annotations:
+        summary: "bex-s3 cannot read access key secrets from OpenBao"
+        description: "bex-s3 has answered 503 at authentication because OpenBao failed on the key path for five minutes. Keys whose secret a replica holds in memory (15 minutes) still work; every other S3 request fails until OpenBao answers, and bex-s3's role binding (scripts/bao-k8s-auth.sh) is the first thing to check after a rollout. See the bex-s3 log and OpenBao's own alerts. Runbook: docs/runbooks/objectgw-kill-switch.md"
+- name: the busiest replica above 80% of its stream slots fires, one below does not
+  interval: 1m
+  input_series:
+  - series: bex_s3gw_streams_in_flight{job="bex-s3gw",pod="s3gw-a"}
+    values: 60x30
+  - series: bex_s3gw_stream_limit{job="bex-s3gw",pod="s3gw-a"}
+    values: 64x30
+  - series: bex_s3gw_streams_in_flight{job="bex-s3gw",pod="s3gw-b"}
+    values: 4x30
+  - series: bex_s3gw_stream_limit{job="bex-s3gw",pod="s3gw-b"}
+    values: 64x30
+  alert_rule_test:
+  - eval_time: 8m
+    alertname: S3StreamSlotsSaturated
+    exp_alerts: []
+  - eval_time: 20m
+    alertname: S3StreamSlotsSaturated
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: "A bex-s3 replica has 93.75% of its stream slots in use"
+        description: "A bex-s3 replica has had more than 80% of its stream slots (64 a replica, 16 a workspace) in use for ten minutes. Past the cap clients get 503 SlowDown and retry. See S3 streams in flight against the cap on the Billing and metering dashboard, and the S3 audit rows for the workspaces behind it. Runbook: docs/runbooks/objectgw-kill-switch.md"
+- name: replicas at half their slots stay quiet
+  interval: 1m
+  input_series:
+  - series: bex_s3gw_streams_in_flight{job="bex-s3gw",pod="s3gw-a"}
+    values: 32x30
+  - series: bex_s3gw_stream_limit{job="bex-s3gw",pod="s3gw-a"}
+    values: 64x30
+  alert_rule_test:
+  - eval_time: 25m
+    alertname: S3StreamSlotsSaturated
+    exp_alerts: []
+- name: a refused read for the egress budget fires and a quiet hour does not
+  interval: 1m
+  input_series:
+  - series: bex_s3gw_egress_budget_refusals_total{job="bex-s3gw",pod="s3gw-a"}
+    values: 0x10 3+0x40
+  - series: bex_s3gw_egress_budget_refusals_total{job="bex-s3gw",pod="s3gw-b"}
+    values: 0x50
+  alert_rule_test:
+  - eval_time: 9m
+    alertname: S3EgressBudgetRefusals
+    exp_alerts: []
+  - eval_time: 20m
+    alertname: S3EgressBudgetRefusals
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: "bex-s3 refused 3 reads this hour for passing the egress budget"
+        description: "A workspace has passed its monthly S3 egress budget (the larger of the bytes it stores and 5 GiB) and bex-s3 refused its GetObject requests with 403 QuotaExceeded. One workspace recurring is a customer to talk to, or a loop; many at once mean the budget is below what the platform needs. The month-to-date total is on the Object storage egress panel (ObjectStoragePublicEgressHigh). Runbook: docs/runbooks/objectgw-kill-switch.md"
+  - eval_time: 200m
+    alertname: S3EgressBudgetRefusals
+    exp_alerts: []
+- name: listings reading over 1 GB in a day fire after thirty minutes and under it do not
+  interval: 1m
+  input_series:
+  - series: bex_s3gw_listing_response_bytes_total{job="bex-s3gw",pod="s3gw-a"}
+    values: 0+1e6x600
+  - series: bex_s3gw_listing_response_bytes_total{job="bex-s3gw",pod="s3gw-b"}
+    values: 0+1e6x600
+  alert_rule_test:
+  - eval_time: 100m
+    alertname: S3ListingBytesHigh
+    exp_alerts: []
+  - eval_time: 600m
+    alertname: S3ListingBytesHigh
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: "bex-s3 listings read 1.2GB in a day"
+        description: "The ListObjects and ListObjectsV2 answers bex-s3 sent in the last day total over 1 GB. Wasabi counts what a listing reads as egress against the shared account's free allowance, beside the hourly sweep's listings (ObjectStorageSweepListingHigh), and a day at this level is a month over 30 GB. One workspace is capped at 5 listings a second on each replica, so many clients or a very large bucket listed in a loop is the cause. See S3 listing bytes on the Billing and metering dashboard. Runbook: docs/runbooks/objectgw-kill-switch.md"

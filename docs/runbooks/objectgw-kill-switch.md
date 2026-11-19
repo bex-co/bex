@@ -1,6 +1,6 @@
 # Runbook: objectgw kill switch (stop public object-storage reads)
 
-**What it is:** `bex-system/bex-objectgw` serves the public `pub-<obk-xid>.<base domain>` hosts of public object-storage buckets, read-only, from the shared Wasabi account. The kill switch is its replica count in the production overlay: set it to `0` in Git and Argo CD stops every public bucket host at once. Design: [ADR112 § D4](../ADR112-object-storage.md#d4--public-access-dev-url-enables-a-read-only-gateway-at-pub-obk-idonbexco). Board: `w21/m417`.
+**What it is:** `bex-system/bex-objectgw` serves the public `pub-<obk-xid>.<base domain>` hosts of public object-storage buckets, read-only, from the shared Wasabi account. The kill switch is its replica count in the production overlay: set it to `0` in Git and Argo CD stops every public bucket host at once. Design: [ADR112 § D4](../ADR112-object-storage.md#d4--public-access-bex-s3-public-enables-a-read-only-gateway-at-pub-obk-idonbexco). Board: `w21/m417`. **There are two switches**: this one (public `pub-` reads) and the S3 API's, `bex-system/bex-s3gw` (authenticated reads and writes on `objects.<base domain>`, [ADR112 § D3](../ADR112-object-storage.md#d3--the-s3-compatible-api-sigv4-verified-by-bex-the-bytes-streamed-through-bex-s3-and-bex-s3-as-the-command)), set the same way and described under "The S3 API switch" below. Find which one the egress is leaving through before using either.
 
 ## When to use it
 
@@ -36,6 +36,37 @@ Confirm:
 kubectl -n bex-system get deploy bex-objectgw   # READY 0/0
 kubectl -n bex-system get pods -l app.bex.co/component=objectgw   # none
 ```
+
+## The S3 API switch
+
+`bex-system/bex-s3gw` serves `objects.<base domain>` for stock S3 clients (`aws`, `rclone`, `boto3`, `bex s3`), authenticated with an access key, and streams their bytes through the same shared Wasabi account. It has its own switch for the same reason as the gateway above: Argo CD syncs production from `lego/operator/config/prod/kustomization.yaml` with `selfHeal`, so `kubectl scale` is reverted within seconds and is not a kill switch.
+
+**Use it when** `ObjectStoragePublicEgressCritical` fires or Wasabi warns, and the Billing and metering board shows the egress leaving through S3: "S3 bytes in and out" (`direction="out"`) is the growing part while "Public gateway bytes out by origin" is flat; or `S3ListingBytesHigh` and `S3EgressBudgetRefusals` fire together. The per-workspace pacing (8 MiB/s a workspace on each replica) and the monthly egress budget (the larger of the bytes a workspace stores and 5 GiB) are what bound one workspace; this switch bounds the sum, which only a person decides to do.
+
+One reviewed commit: the patch targeting `bex-s3gw` in the same file, next to the gateway's.
+
+```yaml
+- target:
+    group: apps
+    version: v1
+    kind: Deployment
+    name: bex-s3gw
+  patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: 0
+```
+
+Merge to `main` and let Argo sync `bex-operator`. The Service, the PodDisruptionBudget, the ServiceAccount and the route stay in place, so a restore is the same one-line change. Uploads in flight are cut: the pods' 35-minute grace period lets a stream finish when the Deployment rolls, but a scale to zero starts it for every pod at once, so announce it.
+
+```bash
+kubectl -n bex-system get deploy bex-s3gw   # READY 0/0
+kubectl -n bex-system get pods -l app.bex.co/component=s3gw   # none
+```
+
+**A client sees** Traefik's own `503` with the plain body `no available server` for every request on `objects.<base domain>` outside Contract B's `/cloudflare/client/v4/` prefix. S3 SDKs retry a 503 and then fail with their service-unavailable error, which is the message an operator wants a customer to read during an egress incident; nothing is lost, because the keys, buckets and objects are untouched. **Not affected:** `bex-objectgw` and every `pub-` host, Contract A's routes in bex-api (`/v1/objects`) and Contract B's `wrangler r2` routes, the hourly usage sweep, the shadow meters and every access key (rows and OpenBao secrets).
+
+**Restore** by setting the value back to `2`, merging, and checking `kubectl -n bex-system rollout status deploy/bex-s3gw`. After it, `bex_s3gw_requests_total{code="OK"}` rises on the "S3 requests by code" panel and `ServiceUnavailable` does not, and `aws s3 ls` with a key answers. Restore only when the egress source is understood: a workspace's key revoked, or its loop stopped.
 
 ## What a visitor sees
 

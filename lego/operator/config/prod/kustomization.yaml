@@ -158,6 +158,22 @@ patches:
       - op: replace
         path: /spec/replicas
         value: 2
+  # THE bex-s3 KILL SWITCH (docs/ADR112-object-storage.md D3,
+  # docs/runbooks/objectgw-kill-switch.md "The S3 API switch"). Same mechanism and
+  # the same reason as the objectgw one above: Argo CD's selfHeal reverts a
+  # `kubectl scale`, so this reviewed value is what stops the S3 API on
+  # objects.<base domain> (Traefik then answers 503). Normal value: 2. Contract A
+  # and B object routes, the pub- hosts and every access key are unaffected.
+  # Never leave it at 0 after an incident.
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: bex-s3gw
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
   - target:
       group: apps
       version: v1

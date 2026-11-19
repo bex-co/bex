@@ -580,6 +580,33 @@ spec:
                   - source_labels: [__name__]
                     regex: bex_objectgw_.*
                     action: keep
+              # The S3 entry point (w21/m498 t014, ADR112 D3): requests by S3
+              # operation, error code and status, authentication failures by
+              # reason, streams in flight against their cap, bytes in and out and
+              # what listings read. Labels are bounded by construction; no
+              # workspace, bucket, key or address is one. One target per pod, like
+              # objectgw above and for the same reason: the counters are per
+              # replica, and a scrape of the Service keeps one connection to one
+              # pod. The keep-list drops Go and process families.
+              - job_name: bex-s3gw
+                scrape_interval: 15s
+                kubernetes_sd_configs:
+                  - role: pod
+                    namespaces:
+                      names: [bex-system]
+                relabel_configs:
+                  - source_labels: [__meta_kubernetes_pod_label_app_bex_co_component]
+                    action: keep
+                    regex: s3gw
+                  - source_labels: [__meta_kubernetes_pod_ip]
+                    target_label: __address__
+                    replacement: ${1}:9090
+                  - source_labels: [__meta_kubernetes_pod_name]
+                    target_label: pod
+                metric_relabel_configs:
+                  - source_labels: [__name__]
+                    regex: bex_s3gw_.*
+                    action: keep
               # Stripe Billing operations expose only account-wide gauges and
               # bounded operation/result labels. No workspace, provider object,
               # invoice, transaction, payment, or secret value is a label.

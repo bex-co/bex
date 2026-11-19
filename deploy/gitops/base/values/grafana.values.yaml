@@ -7315,6 +7315,125 @@ dashboards:
                  "legendFormat": "since the last complete pass"
                 }
               ]
+            },
+            {
+             "id": 19,
+             "type": "timeseries",
+             "title": "S3 requests by code",
+             "description": "bex-s3 requests per second by S3 error code (OK for a success), summed over its replicas. A rising InternalError or ServiceUnavailable is a fault of ours and feeds S3GatewayServerErrors; SlowDown is the 503 throttle clients retry (request rate, listing rate, stream slots) and is not a fault. Zero with no line when bex-s3 is scaled to zero. Runbook: docs/runbooks/objectgw-kill-switch.md",
+             "gridPos": { "h": 9, "w": 8, "x": 0, "y": 81 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "reqps", "min": 0 },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum by (code) (rate(bex_s3gw_requests_total[5m]))",
+                 "legendFormat": "{{code}}"
+                }
+              ]
+            },
+            {
+             "id": 20,
+             "type": "timeseries",
+             "title": "S3 authentication failures by reason",
+             "description": "Requests bex-s3 refused before an operation ran, per second by reason: unknown_key and bad_signature are a client guessing or holding a wrong secret (S3GatewayAuthFailuresHigh), clock_skew and expired are a client's clock or URL, secret_store is OpenBao failing on the key path, which is ours (S3SecretStoreErrors) and stops every key whose secret a replica no longer holds in memory.",
+             "gridPos": { "h": 9, "w": 8, "x": 8, "y": 81 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "reqps", "min": 0 },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum by (reason) (rate(bex_s3gw_auth_failures_total[5m]))",
+                 "legendFormat": "{{reason}}"
+                }
+              ]
+            },
+            {
+             "id": 21,
+             "type": "timeseries",
+             "title": "S3 streams in flight against the cap",
+             "description": "Uploads and downloads in flight on each bex-s3 replica against the replica-wide cap of 64 (a workspace has 16). Above 80% for ten minutes is S3StreamSlotsSaturated: clients get 503 SlowDown and retry, so a long run means one workspace or a few are holding most of the slots.",
+             "gridPos": { "h": 9, "w": 8, "x": 16, "y": 81 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "short", "min": 0 },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "max by (pod) (bex_s3gw_streams_in_flight)",
+                 "legendFormat": "in flight {{pod}}"
+                },
+                {
+                 "refId": "B",
+                 "expr": "max(bex_s3gw_stream_limit)",
+                 "legendFormat": "cap"
+                }
+              ]
+            },
+            {
+             "id": 22,
+             "type": "timeseries",
+             "title": "S3 bytes in and out",
+             "description": "Body bytes bex-s3 reads from clients (in) and writes to them (out), per second, summed over replicas. Out is what Wasabi counts as egress for authenticated reads, paced at 8 MiB/s a workspace on each replica (ADR112 D3); the month-to-date total is on the Object storage egress panel.",
+             "gridPos": { "h": 9, "w": 8, "x": 0, "y": 90 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "Bps", "min": 0 },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum by (direction) (rate(bex_s3gw_bytes_total[5m]))",
+                 "legendFormat": "{{direction}}"
+                }
+              ]
+            },
+            {
+             "id": 23,
+             "type": "timeseries",
+             "title": "S3 egress-budget refusals",
+             "description": "GetObject requests refused per hour because a workspace passed its monthly S3 egress budget (the larger of the bytes it stores and 5 GiB, ADR112 D3). Each is a workspace the budget stopped; one that recurs is a customer to talk to, many at once mean the budget is too low for the platform (S3EgressBudgetRefusals).",
+             "gridPos": { "h": 9, "w": 8, "x": 8, "y": 90 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "short", "min": 0 },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum(increase(bex_s3gw_egress_budget_refusals_total[1h]))",
+                 "legendFormat": "refusals in the last hour"
+                }
+              ]
+            },
+            {
+             "id": 24,
+             "type": "timeseries",
+             "title": "S3 listing bytes",
+             "description": "Bytes of ListObjects and ListObjectsV2 answers over the trailing day, summed over replicas. Wasabi counts what a listing reads as egress against the shared account's free allowance, beside the hourly sweep's (Object storage sweep: listing bytes); more than 1 GB in a day is S3ListingBytesHigh, and the per-workspace listing cap (5 a second) is what bounds a single client.",
+             "gridPos": { "h": 9, "w": 8, "x": 16, "y": 90 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "decbytes", "min": 0 },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum(increase(bex_s3gw_listing_response_bytes_total[1d]))",
+                 "legendFormat": "listing answers in the last day"
+                }
+              ]
             }
           ]
         }

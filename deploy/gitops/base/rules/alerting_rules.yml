@@ -1975,6 +1975,98 @@ groups:
           summary: "The object storage sweep read {{ $value | humanize }}B of listings in three days"
           description: "The hourly sweep's listings of Wasabi read over 1 GB in the last three days, a pace above the 10 GB a month it is budgeted (ADR112 D8). Wasabi counts what a listing reads as egress, and the account's free egress is its active storage (67 GB when measured on 2026-11-16), shared with the platform's backups. Find the workspaces on the Billing and metering dashboard (Object storage sweep: listing bytes) and in bex-api's logs (the pass line says what its listings read). The sweep already lists a region less often the more objects it held (at most every 72 hours); the next step is keeping object counts incrementally on writes so a listing is only a reconciliation, or a lower object cap, both named in ADR112 D8."
 
+      # w21/m498 t014: the S3 entry point (bex-s3, ADR112 D3 "What watches it"). It
+      # carries customer bytes through the shared Wasabi account, so what it answers,
+      # who fails to authenticate, how full its stream slots are and how much it reads
+      # are watched, each with a panel on the Billing and metering board (ADR088 §6).
+      # The series are per replica and the rules sum or max over them. Runbook:
+      # docs/runbooks/objectgw-kill-switch.md (the second step is the S3 route).
+      #
+      # S3GatewayServerErrors: more than 5% of requests answered 5xx for ten minutes,
+      # with at least one request every ten seconds so a quiet service cannot trip it
+      # on a single failure. SlowDown is a 503 too, but it is the throttle clients are
+      # meant to retry (request rate, listing rate, stream slots) and is not a fault;
+      # S3StreamSlotsSaturated watches the one of those that signals a real limit.
+      - alert: S3GatewayServerErrors
+        expr: |
+          sum(rate(bex_s3gw_requests_total{status=~"5..",code!="SlowDown"}[5m]))
+            / sum(rate(bex_s3gw_requests_total[5m])) > 0.05
+          and sum(rate(bex_s3gw_requests_total[5m])) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value | humanizePercentage }} of S3 requests are failing with a 5xx"
+          description: "More than 5% of the requests bex-s3 answered in the last five minutes were 5xx other than the SlowDown throttle, for ten minutes. Find the code on the Billing and metering dashboard (S3 requests by code): ServiceUnavailable is a dependency down (Postgres, OpenFGA, OpenBao or Wasabi), InternalError is a bug (the bex-s3 log names the request id). Runbook: docs/runbooks/objectgw-kill-switch.md"
+
+      # S3GatewayAuthFailuresHigh: refused authentications other than the platform's
+      # own faults (S3SecretStoreErrors) at more than 5 a second for ten minutes. One
+      # client address is limited to 20 failed authentications a minute, so this is a
+      # guessing flood from many addresses or a fleet whose key was revoked.
+      - alert: S3GatewayAuthFailuresHigh
+        expr: |
+          sum(rate(bex_s3gw_auth_failures_total{reason!~"secret_store|internal|throttled"}[5m])) > 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "bex-s3 is refusing {{ $value | humanize }} authentications a second"
+          description: "bex-s3 has refused more than 5 requests a second at authentication for ten minutes, for reasons that are the client's (unknown key, wrong signature, clock skew, an expired URL). Per client address the limit is 20 failed authentications a minute, so this is many addresses: a guessing flood, or a fleet holding a revoked key. See S3 authentication failures by reason on the Billing and metering dashboard, then the audit log for the denied rows. Runbook: docs/runbooks/objectgw-kill-switch.md"
+
+      # S3SecretStoreErrors: OpenBao failing on the key path. A key's secret is cached for
+      # 15 minutes, so the first sign is a few keys, then every key a replica has not
+      # served lately; an OpenBao error is a 503, never a 403, so clients retry and nothing
+      # looks revoked. Any such failure for five minutes is the platform's.
+      - alert: S3SecretStoreErrors
+        expr: |
+          sum(rate(bex_s3gw_auth_failures_total{reason="secret_store"}[5m])) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "bex-s3 cannot read access key secrets from OpenBao"
+          description: "bex-s3 has answered 503 at authentication because OpenBao failed on the key path for five minutes. Keys whose secret a replica holds in memory (15 minutes) still work; every other S3 request fails until OpenBao answers, and bex-s3's role binding (scripts/bao-k8s-auth.sh) is the first thing to check after a rollout. See the bex-s3 log and OpenBao's own alerts. Runbook: docs/runbooks/objectgw-kill-switch.md"
+
+      # S3StreamSlotsSaturated: the busiest replica has used 80% of its 64 stream slots
+      # for ten minutes. A workspace has 16 of them, so a handful of workspaces at their
+      # cap fills a replica; at 64 every further upload and download is a 503 SlowDown.
+      - alert: S3StreamSlotsSaturated
+        expr: |
+          max(bex_s3gw_streams_in_flight / bex_s3gw_stream_limit) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "A bex-s3 replica has {{ $value | humanizePercentage }} of its stream slots in use"
+          description: "A bex-s3 replica has had more than 80% of its stream slots (64 a replica, 16 a workspace) in use for ten minutes. Past the cap clients get 503 SlowDown and retry. See S3 streams in flight against the cap on the Billing and metering dashboard, and the S3 audit rows for the workspaces behind it. Runbook: docs/runbooks/objectgw-kill-switch.md"
+
+      # S3EgressBudgetRefusals: a workspace passed its monthly S3 egress budget (the larger
+      # of the bytes it stores and 5 GiB) and bex refused its read. Informational: the
+      # budget doing its job is also a customer being told no.
+      - alert: S3EgressBudgetRefusals
+        expr: |
+          sum(increase(bex_s3gw_egress_budget_refusals_total[1h])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "bex-s3 refused {{ $value | humanize }} reads this hour for passing the egress budget"
+          description: "A workspace has passed its monthly S3 egress budget (the larger of the bytes it stores and 5 GiB) and bex-s3 refused its GetObject requests with 403 QuotaExceeded. One workspace recurring is a customer to talk to, or a loop; many at once mean the budget is below what the platform needs. The month-to-date total is on the Object storage egress panel (ObjectStoragePublicEgressHigh). Runbook: docs/runbooks/objectgw-kill-switch.md"
+
+      # S3ListingBytesHigh: the listings bex-s3 serves read over 1 GB in a day. Wasabi counts
+      # what a listing reads as egress, beside the sweep's (ObjectStorageSweepListingHigh);
+      # a day over 1 GB is a month over 30 GB, the level ObjectStoragePublicEgressHigh
+      # warns at for everything else bex serves.
+      - alert: S3ListingBytesHigh
+        expr: |
+          sum(increase(bex_s3gw_listing_response_bytes_total[1d])) > 1e9
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "bex-s3 listings read {{ $value | humanize }}B in a day"
+          description: "The ListObjects and ListObjectsV2 answers bex-s3 sent in the last day total over 1 GB. Wasabi counts what a listing reads as egress against the shared account's free allowance, beside the hourly sweep's listings (ObjectStorageSweepListingHigh), and a day at this level is a month over 30 GB. One workspace is capped at 5 listings a second on each replica, so many clients or a very large bucket listed in a loop is the cause. See S3 listing bytes on the Billing and metering dashboard. Runbook: docs/runbooks/objectgw-kill-switch.md"
+
       # w21/096: the sweep itself. Per-bucket usage, the quota gate, `bucket info`,
       # the lifecycle rules, the purge of a deleted workspace and the storage meter
       # all ride on a pass that finishes; w21/088 exports how long a pass takes and

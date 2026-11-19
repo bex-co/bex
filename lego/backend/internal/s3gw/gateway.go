@@ -47,6 +47,8 @@ type Config struct {
 	// TrustedProxies are the edge proxies whose forwarding headers name the client
 	// the failed-authentication budget is kept for (BEX_TRUSTED_PROXY_CIDRS).
 	TrustedProxies core.TrustedProxies
+	// Metrics is the gateway's telemetry; nil records nothing.
+	Metrics *Metrics
 	// Now supplies the clock; nil is time.Now. SigV4's 15-minute window and the
 	// presigned expiry read it.
 	Now func() time.Time
@@ -114,18 +116,26 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // serve is a configured gateway's request path: authenticate, route, authorize,
 // run. Each step refuses with S3's XML before the next costs more.
 func (g *Gateway) serve(w http.ResponseWriter, r *http.Request) {
+	cw, record := g.cfg.Metrics.instrument(w, r)
 	client := g.clientKey(r)
-	rq, e := g.authenticate(w, r, g.failures.exhausted(client))
+	rq, e := g.authenticate(cw, r, g.failures.exhausted(client))
 	if e != nil {
 		if isAuthFailure(e) {
 			g.failures.record(client)
 		}
-		writeError(w, r, e)
+		writeError(cw, r, e)
+		record("unauthenticated", true, e)
 		return
 	}
-	if e := g.dispatch(rq); e != nil {
-		writeError(w, r, e)
+	e = g.dispatch(rq)
+	if e != nil {
+		writeError(cw, r, e)
 	}
+	op := "unrouted"
+	if rq.route != nil {
+		op = rq.route.op
+	}
+	record(op, false, e)
 }
 
 // authenticate verifies the request's SigV4 signature against its access key's

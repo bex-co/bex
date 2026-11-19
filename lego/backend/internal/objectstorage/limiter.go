@@ -67,6 +67,16 @@ func (l *StreamLimiter) Acquire(workspaceID string) (release func(), err error) 
 	}, nil
 }
 
+// Load is the streams in flight on this replica and the replica's cap.
+func (l *StreamLimiter) Load() (inFlight, limit int) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.total, l.perReplica
+}
+
+// StreamLoad is the streams in flight on this replica and its cap, for the saturation alert.
+func (s *Service) StreamLoad() (inFlight, limit int) { return s.streams.Load() }
+
 // AcquireStream takes a stream slot for the workspace.
 func (s *Service) AcquireStream(workspaceID string) (release func(), err error) {
 	return s.streams.Acquire(workspaceID)

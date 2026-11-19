@@ -3370,6 +3370,37 @@ for render in "$tmp/bex-operator-prod.yaml" "$tmp/bex-operator-default.yaml"; do
     fail=1
   }
 done
+# The bex-s3 kill switch (w21/m498 t014, docs/runbooks/objectgw-kill-switch.md "The S3 API
+# switch"): a plain replica count in the prod overlay's own patch, which Argo CD's selfHeal
+# makes the only switch that holds, and the runbook shows exactly that patch. The value may be
+# 0 during an incident, so only its shape is asserted. A switch the runbook describes and the
+# overlay lacks (or the other way) would send an operator into an incident with nothing to edit.
+echo "==> bex-s3 kill switch: the prod overlay patches bex-s3gw's replicas as a plain number and the runbook shows that patch"
+s3_replicas="$(yq -N 'select(.kind == "Deployment" and .metadata.name == "bex-s3gw") | .spec.replicas' "$tmp/bex-operator-prod.yaml")"
+case "$s3_replicas" in
+  ''|*[!0-9]*)
+    echo "FAIL: bex-s3gw replicas in the prod render is '$s3_replicas', want a plain number (the kill switch, docs/runbooks/objectgw-kill-switch.md)" >&2
+    fail=1
+    ;;
+esac
+s3_switch="$(yq -N -o=json -I=0 '.patches[]? | select(.target.name == "bex-s3gw") | [.target.kind, .patch]' lego/operator/config/prod/kustomization.yaml | jq -r '.[0] + "|" + (.[1] | gsub("\n"; " "))')"
+case "$s3_switch" in
+  Deployment\|*"path: /spec/replicas"*"value: "[0-9]*) ;;
+  *)
+    echo "FAIL: lego/operator/config/prod/kustomization.yaml has no replicas patch targeting the bex-s3gw Deployment (got '$s3_switch'); the runbook's S3 step edits it" >&2
+    fail=1
+    ;;
+esac
+for needle in 'name: bex-s3gw' 'path: /spec/replicas' 'kubectl -n bex-system get deploy bex-s3gw' '#d3--the-s3-compatible-api-sigv4-verified-by-bex'; do
+  grep -qF -- "$needle" docs/runbooks/objectgw-kill-switch.md || {
+    echo "FAIL: docs/runbooks/objectgw-kill-switch.md no longer shows '$needle' in its S3 API step" >&2
+    fail=1
+  }
+done
+grep -qF -- '### D3 — The S3-compatible API: SigV4 verified by bex' docs/ADR112-object-storage.md || {
+  echo "FAIL: ADR112's D3 heading changed, so the runbook's anchor into it (#d3--the-s3-compatible-api-...) points nowhere" >&2
+  fail=1
+}
 # The scrape is one target per pod (pod discovery in bex-system, the objectgw
 # component's pod IP on :9090, a pod label), never the Service: the counters
 # are per replica and a scrape of the ClusterIP reads one pod's series only, so
