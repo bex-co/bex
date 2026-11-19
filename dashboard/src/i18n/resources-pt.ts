@@ -32,7 +32,7 @@ import ptAgentAutomations from "@/features/agent-automations/locales/pt";
 import ptSandboxGroups from "@/features/sandbox-groups/locales/pt";
 import ptLegal from "@/features/legal/locales/pt";
 import ptOrganizations from "@/features/organizations/locales/pt";
-import ptOrySettings from "@/features/auth/ory-settings-copy/pt";
+import ptOryCopy from "@/features/auth/ory-copy/pt";
 import { extractMessages } from "./index";
 
 /**
@@ -79,7 +79,7 @@ const pt: Record<string, string> = {
   ...extractMessages(ptSandboxGroups),
   ...extractMessages(ptLegal),
   ...extractMessages(ptOrganizations),
-  ...ptOrySettings,
+  ...ptOryCopy,
 };
 
 export default pt;

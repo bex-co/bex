@@ -1,7 +1,7 @@
-import type { OrySettingsCopy } from "./keys";
+import type { OryCopy } from "./keys";
 
 // Ory Elements' own `en` catalog entries, copied verbatim (see ./keys.ts).
-const en: OrySettingsCopy = {
+const en: OryCopy = {
   "orySettings.profileTitle": "Profile Settings",
   "orySettings.profileDescription": "Update your profile information",
   "orySettings.passwordTitle": "Change Password",
@@ -30,6 +30,24 @@ const en: OrySettingsCopy = {
   "orySettings.totpInfoNotLinked":
     "To enable scan the QR code with your authenticator and enter the code.",
   "orySettings.save": "Save",
+  "oryCard.loginTitle": "Sign in",
+  "oryCard.loginSubtitle": "Sign in with {parts}",
+  "oryCard.registrationTitle": "Register an account",
+  "oryCard.registrationSubtitle": "Sign up with {parts}",
+  "oryCard.passwordPart": "your {identifierLabel} and password",
+  "oryCard.oidcPart": "a social provider",
+  "oryCard.identifierPart": "your {identifierLabel}",
+  "oryCard.or": "or",
+  "oryCard.recoveryTitle": "Recover your account",
+  "oryCard.recoverySubtitle":
+    "Enter the identifier associated with your account to receive a one-time access code",
+  "oryCard.verificationTitle": "Verify your account",
+  "oryCard.verificationSubtitle":
+    "Enter the email address associated with your account to verify it",
+  "oryCard.loginFooterLabel": "Don't have an account?",
+  "oryCard.loginFooterLink": "Sign up",
+  "oryCard.registrationFooterLabel": "Already have an account?",
+  "oryCard.registrationFooterLink": "Sign in",
 };
 
 export default en;

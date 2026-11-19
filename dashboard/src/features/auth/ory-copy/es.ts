@@ -1,7 +1,7 @@
-import type { OrySettingsCopy } from "./keys";
+import type { OryCopy } from "./keys";
 
 // Ory Elements' own `es` catalog entries, copied verbatim (see ./keys.ts).
-const es: OrySettingsCopy = {
+const es: OryCopy = {
   "orySettings.profileTitle": "Configuración de Perfil",
   "orySettings.profileDescription": "Actualiza la información de tu perfil",
   "orySettings.passwordTitle": "Cambiar Contraseña",
@@ -33,6 +33,24 @@ const es: OrySettingsCopy = {
   "orySettings.totpInfoNotLinked":
     "Para habilitar, escanea el código QR con tu autenticador e ingresa el código.",
   "orySettings.save": "Guardar",
+  "oryCard.loginTitle": "Iniciar sesión",
+  "oryCard.loginSubtitle": "Iniciar sesión con {parts}",
+  "oryCard.registrationTitle": "Registrar una cuenta",
+  "oryCard.registrationSubtitle": "Registrarse con {parts}",
+  "oryCard.passwordPart": "tu {identifierLabel} y contraseña",
+  "oryCard.oidcPart": "un proveedor social",
+  "oryCard.identifierPart": "tu {identifierLabel}",
+  "oryCard.or": "o",
+  "oryCard.recoveryTitle": "Recuperar su cuenta",
+  "oryCard.recoverySubtitle":
+    "Ingresa el identificador asociado con tu cuenta para recibir un código de acceso único",
+  "oryCard.verificationTitle": "Verificar su cuenta",
+  "oryCard.verificationSubtitle":
+    "Ingresa la dirección de correo electrónico asociada con tu cuenta para verificarla",
+  "oryCard.loginFooterLabel": "¿No tiene una cuenta?",
+  "oryCard.loginFooterLink": "Registrarse",
+  "oryCard.registrationFooterLabel": "¿Ya tiene una cuenta?",
+  "oryCard.registrationFooterLink": "Iniciar sesión",
 };
 
 export default es;

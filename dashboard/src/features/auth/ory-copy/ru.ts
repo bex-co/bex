@@ -1,7 +1,7 @@
-import type { OrySettingsCopy } from "./keys";
+import type { OryCopy } from "./keys";
 
 // Ory Elements' own `ru` catalog entries, copied verbatim (see ./keys.ts).
-const ru: OrySettingsCopy = {
+const ru: OryCopy = {
   "orySettings.profileTitle": "Настройки профиля",
   "orySettings.profileDescription": "Обновите информацию о вашем профиле",
   "orySettings.passwordTitle": "Сменить пароль",
@@ -32,6 +32,24 @@ const ru: OrySettingsCopy = {
   "orySettings.totpInfoNotLinked":
     "Чтобы включить, отсканируйте QR-код с помощью вашего аутентификатора и введите код.",
   "orySettings.save": "Сохранить",
+  "oryCard.loginTitle": "Войти",
+  "oryCard.loginSubtitle": "Войти с помощью {parts}",
+  "oryCard.registrationTitle": "Зарегистрировать аккаунт",
+  "oryCard.registrationSubtitle": "Зарегистрироваться с помощью {parts}",
+  "oryCard.passwordPart": "ваш {identifierLabel} и пароль",
+  "oryCard.oidcPart": "социальный провайдер",
+  "oryCard.identifierPart": "ваш {identifierLabel}",
+  "oryCard.or": "или",
+  "oryCard.recoveryTitle": "Восстановите свой аккаунт",
+  "oryCard.recoverySubtitle":
+    "Введите идентификатор, связанный с вашим аккаунтом, чтобы получить одноразовый код доступа",
+  "oryCard.verificationTitle": "Подтвердите свой аккаунт",
+  "oryCard.verificationSubtitle":
+    "Введите адрес электронной почты, связанный с вашим аккаунтом, чтобы подтвердить его",
+  "oryCard.loginFooterLabel": "Нет аккаунта?",
+  "oryCard.loginFooterLink": "Зарегистрироваться",
+  "oryCard.registrationFooterLabel": "Уже есть аккаунт?",
+  "oryCard.registrationFooterLink": "Войти",
 };
 
 export default ru;

@@ -1,7 +1,7 @@
-import type { OrySettingsCopy } from "./keys";
+import type { OryCopy } from "./keys";
 
 // Ory Elements' own `zh` catalog entries, copied verbatim (see ./keys.ts).
-const zh: OrySettingsCopy = {
+const zh: OryCopy = {
   "orySettings.profileTitle": "个人资料设置",
   "orySettings.profileDescription": "更新您的个人资料信息",
   "orySettings.passwordTitle": "更改密码",
@@ -28,6 +28,22 @@ const zh: OrySettingsCopy = {
   "orySettings.totpInfoNotLinked":
     "要启用，请使用您的身份验证器扫描二维码并输入代码。",
   "orySettings.save": "保存",
+  "oryCard.loginTitle": "登录",
+  "oryCard.loginSubtitle": "使用 {parts} 登录",
+  "oryCard.registrationTitle": "注册账户",
+  "oryCard.registrationSubtitle": "使用 {parts} 注册",
+  "oryCard.passwordPart": "您的 {identifierLabel} 和密码",
+  "oryCard.oidcPart": "一个社交提供商",
+  "oryCard.identifierPart": "您的 {identifierLabel}",
+  "oryCard.or": "或",
+  "oryCard.recoveryTitle": "恢复账户",
+  "oryCard.recoverySubtitle": "输入与您的账户关联的标识符以接收一次性访问码",
+  "oryCard.verificationTitle": "验证您的账户",
+  "oryCard.verificationSubtitle": "输入与您的账户关联的电子邮件地址以进行验证",
+  "oryCard.loginFooterLabel": "没有账户？",
+  "oryCard.loginFooterLink": "注册",
+  "oryCard.registrationFooterLabel": "已有账户？",
+  "oryCard.registrationFooterLink": "登录",
 };
 
 export default zh;

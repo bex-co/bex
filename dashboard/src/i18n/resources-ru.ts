@@ -32,7 +32,7 @@ import ruAgentAutomations from "@/features/agent-automations/locales/ru";
 import ruSandboxGroups from "@/features/sandbox-groups/locales/ru";
 import ruLegal from "@/features/legal/locales/ru";
 import ruOrganizations from "@/features/organizations/locales/ru";
-import ruOrySettings from "@/features/auth/ory-settings-copy/ru";
+import ruOryCopy from "@/features/auth/ory-copy/ru";
 import { extractMessages } from "./index";
 
 /**
@@ -79,7 +79,7 @@ const ru: Record<string, string> = {
   ...extractMessages(ruSandboxGroups),
   ...extractMessages(ruLegal),
   ...extractMessages(ruOrganizations),
-  ...ruOrySettings,
+  ...ruOryCopy,
 };
 
 export default ru;

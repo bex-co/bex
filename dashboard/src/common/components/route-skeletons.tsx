@@ -1648,33 +1648,111 @@ function AuthFeatureRailSkeleton() {
   );
 }
 
+/** The flows whose Ory card has a loading frame. */
+type OryCardFlow = "login" | "registration" | "recovery" | "verification";
+
+/** Ory's "a, b or c" (`joinWithCommaOr` in its theme). */
+function joinWithOr(parts: readonly string[], or: string): string {
+  if (parts.length < 2) return parts[0] ?? "";
+  return `${parts.slice(0, -1).join(", ")} ${or} ${parts.at(-1)}`;
+}
+
+/**
+ * The words Ory's card draws for a flow's first step, in the page's language
+ * from the mirrored catalog (`ory-copy/keys.ts`, w7/092): the header
+ * (`useCardHeaderText` in `@ory/elements-react`'s theme) and, on login and
+ * sign-up, the footer's link to the other one. Login's subtitle names the
+ * e-mail and password (Ory passes the literal "email" in every language),
+ * sign-up's the e-mail field by the label the forms give it (`useOryConfig`),
+ * and both add "a social provider" when the card offers one, in Ory's order.
+ */
+function useOryCardCopy(
+  flow: OryCardFlow,
+  hasSso: boolean,
+): { title: string; subtitle: string; footer?: string } {
+  const { t } = useTranslations();
+  const sso = hasSso ? [t("oryCard.oidcPart")] : [];
+  switch (flow) {
+    case "login":
+      return {
+        title: t("oryCard.loginTitle"),
+        subtitle: t("oryCard.loginSubtitle", {
+          parts: joinWithOr(
+            [t("oryCard.passwordPart", { identifierLabel: "email" }), ...sso],
+            t("oryCard.or"),
+          ),
+        }),
+        footer: `${t("oryCard.loginFooterLabel")} ${t("oryCard.loginFooterLink")}`,
+      };
+    case "registration":
+      return {
+        title: t("oryCard.registrationTitle"),
+        subtitle: t("oryCard.registrationSubtitle", {
+          parts: joinWithOr(
+            [
+              ...sso,
+              t("oryCard.identifierPart", {
+                identifierLabel: t("auth.profileEmailLabel"),
+              }),
+            ],
+            t("oryCard.or"),
+          ),
+        }),
+        footer: `${t("oryCard.registrationFooterLabel")} ${t("oryCard.registrationFooterLink")}`,
+      };
+    case "recovery":
+      return {
+        title: t("oryCard.recoveryTitle"),
+        subtitle: t("oryCard.recoverySubtitle"),
+      };
+    case "verification":
+      return {
+        title: t("oryCard.verificationTitle"),
+        subtitle: t("oryCard.verificationSubtitle"),
+      };
+  }
+}
+
 /**
  * Ory's flow card while its flow loads, at the ready card's geometry under the
- * dashboard's overrides (`style.css`): the header (the title, then the
- * subtitle's lines), the card's parts 24 px apart, and the footer link when
- * the card has one. Below `sm` Ory's card is square with only its bottom
- * border.
+ * dashboard's overrides (`style.css`): the header, the card's parts 24 px
+ * apart, and the footer link when the card has one. The header and footer
+ * reserve Ory's own words in its font and type scale, so they wrap to as many
+ * lines as the card's do at any width and in every language (w7/092). Below
+ * `sm` Ory's card is square with only its bottom border.
  */
 function OryCardSkeleton({
-  subtitleClassName,
-  footer = false,
+  flow,
+  hasSso = false,
   children,
 }: {
-  subtitleClassName: string;
-  footer?: boolean;
+  flow: OryCardFlow;
+  hasSso?: boolean;
   children: React.ReactNode;
 }) {
+  const { title, subtitle, footer } = useOryCardCopy(flow, hasSso);
   return (
     <Region
       name="auth-widget"
-      className="grid gap-6 border-b bg-card p-6 shadow-sm sm:rounded-xl sm:border sm:p-8"
+      className="grid gap-6 border-b bg-card p-6 shadow-sm [font-family:var(--font-sans-default)] sm:rounded-xl sm:border sm:p-8"
     >
-      <div className="space-y-2">
-        <Skeleton className="h-[27px] w-28" />
-        <Skeleton className={cn("w-4/5", subtitleClassName)} />
+      <div data-skeleton-card-header className="flex flex-col gap-2">
+        <span className="relative w-fit max-w-full text-lg leading-normal font-semibold">
+          <ReservedText>{title}</ReservedText>
+        </span>
+        <span className="relative w-fit max-w-full text-base leading-normal">
+          <ReservedText>{subtitle}</ReservedText>
+        </span>
       </div>
       {children}
-      {footer ? <Skeleton className="h-6 w-3/5" /> : null}
+      {footer ? (
+        <span
+          data-skeleton-card-footer
+          className="relative w-fit max-w-full text-base leading-normal"
+        >
+          <ReservedText>{footer}</ReservedText>
+        </span>
+      ) : null}
     </Region>
   );
 }
@@ -1699,24 +1777,15 @@ function FieldSkeleton({
   );
 }
 
-/** How many lines each flow's subtitle (Ory's copy, in English) wraps to. */
-const AUTH_WIDGET_SUBTITLE = {
-  // "Enter the identifier associated with your account to receive a
-  // one-time access code"
-  recovery: "h-[72px] sm:h-12",
-  // "Enter the email address associated with your account to verify it"
-  verification: "h-12",
-} as const;
-
 /** The recovery and verification cards: the e-mail field and "Continue", 32 px
  *  apart, and no footer. */
 export function AuthWidgetSkeleton({
   flow,
 }: {
-  flow: keyof typeof AUTH_WIDGET_SUBTITLE;
+  flow: "recovery" | "verification";
 }) {
   return (
-    <OryCardSkeleton subtitleClassName={AUTH_WIDGET_SUBTITLE[flow]}>
+    <OryCardSkeleton flow={flow}>
       <div className="grid gap-8">
         <FieldSkeleton />
         <Skeleton className="h-9 w-full" />
@@ -1730,15 +1799,16 @@ export function AuthWidgetSkeleton({
  * out: the labelled fields and the submit button 32 px apart, then "Or
  * continue with" (its words between two rules) and the installation's
  * provider buttons (Render's first row, then the "More options" line when it
- * hides GitLab and Bitbucket), and the footer link. The subtitle wraps to two
- * lines below `sm` when the card names a social provider ("…or a social
- * provider"). `ssoProviders` is `loadSsoProviders`' answer; null (not known)
- * draws no providers.
+ * hides GitLab and Bitbucket), and the footer link. The subtitle names "a
+ * social provider" when the card offers one. `ssoProviders` is
+ * `loadSsoProviders`' answer; null (not known) draws no providers.
  */
 function OryAuthCardSkeleton({
+  flow,
   ssoProviders,
   children,
 }: {
+  flow: "login" | "registration";
   ssoProviders: readonly string[] | null;
   children: React.ReactNode;
 }) {
@@ -1746,7 +1816,7 @@ function OryAuthCardSkeleton({
   const { primary, more } = arrangeSsoProviders(providers);
   const hasSso = providers.length > 0;
   return (
-    <OryCardSkeleton subtitleClassName={hasSso ? "h-12 sm:h-6" : "h-6"} footer>
+    <OryCardSkeleton flow={flow} hasSso={hasSso}>
       <div className="grid gap-8">{children}</div>
       {hasSso ? (
         <>
@@ -1782,7 +1852,7 @@ export function LoginWidgetSkeleton({
   ssoProviders: readonly string[] | null;
 }) {
   return (
-    <OryAuthCardSkeleton ssoProviders={ssoProviders}>
+    <OryAuthCardSkeleton flow="login" ssoProviders={ssoProviders}>
       <FieldSkeleton action />
       <FieldSkeleton inputClassName="h-[38px]" />
       <Skeleton className="h-9 w-full" />
@@ -1798,7 +1868,7 @@ export function RegistrationWidgetSkeleton({
   ssoProviders: readonly string[] | null;
 }) {
   return (
-    <OryAuthCardSkeleton ssoProviders={ssoProviders}>
+    <OryAuthCardSkeleton flow="registration" ssoProviders={ssoProviders}>
       <FieldSkeleton />
       <FieldSkeleton />
       <Skeleton className="h-9 w-full" />

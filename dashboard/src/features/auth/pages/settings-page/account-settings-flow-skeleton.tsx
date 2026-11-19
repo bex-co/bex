@@ -8,7 +8,7 @@ import { cn } from "@/common/lib/utils/utils";
  * Elements' `<Settings>` draws for an account with no second factor yet, at
  * their ready geometry under the dashboard's overrides (`style.css`,
  * `.account-settings-flow`). Ory's own copy is reserved invisibly from the
- * mirrored catalog (`ory-settings-copy/keys.ts`), in Ory's font, so every title,
+ * mirrored catalog (`ory-copy/keys.ts`), in Ory's font, so every title,
  * description and footer wraps as the ready card does.
  *
  * The page draws it until the flow arrives, and the route's pending frame draws

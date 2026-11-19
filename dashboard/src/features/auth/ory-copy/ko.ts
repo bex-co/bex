@@ -1,7 +1,7 @@
-import type { OrySettingsCopy } from "./keys";
+import type { OryCopy } from "./keys";
 
 // Ory Elements' own `ko` catalog entries, copied verbatim (see ./keys.ts).
-const ko: OrySettingsCopy = {
+const ko: OryCopy = {
   "orySettings.profileTitle": "프로필 설정",
   "orySettings.profileDescription": "프로필 정보 업데이트",
   "orySettings.passwordTitle": "비밀번호 변경",
@@ -29,6 +29,24 @@ const ko: OrySettingsCopy = {
   "orySettings.totpInfoNotLinked":
     "활성화하려면 인증 앱으로 QR 코드를 스캔하고 코드를 입력하세요.",
   "orySettings.save": "저장",
+  "oryCard.loginTitle": "로그인",
+  "oryCard.loginSubtitle": "{parts}로 로그인",
+  "oryCard.registrationTitle": "계정 등록",
+  "oryCard.registrationSubtitle": "{parts}로 가입",
+  "oryCard.passwordPart": "{identifierLabel}과 비밀번호",
+  "oryCard.oidcPart": "소셜 제공자",
+  "oryCard.identifierPart": "{identifierLabel}",
+  "oryCard.or": "또는",
+  "oryCard.recoveryTitle": "계정 복구",
+  "oryCard.recoverySubtitle":
+    "계정과 연결된 식별자를 입력하여 일회용 액세스 코드를 받으세요",
+  "oryCard.verificationTitle": "계정 확인",
+  "oryCard.verificationSubtitle":
+    "계정과 연결된 이메일 주소를 입력하여 확인하세요",
+  "oryCard.loginFooterLabel": "계정이 없으신가요?",
+  "oryCard.loginFooterLink": "가입",
+  "oryCard.registrationFooterLabel": "계정이 있으신가요?",
+  "oryCard.registrationFooterLink": "로그인",
 };
 
 export default ko;

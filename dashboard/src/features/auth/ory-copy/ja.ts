@@ -1,7 +1,7 @@
-import type { OrySettingsCopy } from "./keys";
+import type { OryCopy } from "./keys";
 
 // Ory Elements' own `ja` catalog entries, copied verbatim (see ./keys.ts).
-const ja: OrySettingsCopy = {
+const ja: OryCopy = {
   "orySettings.profileTitle": "プロフィール設定",
   "orySettings.profileDescription": "プロフィール情報を更新",
   "orySettings.passwordTitle": "パスワードを変更",
@@ -30,6 +30,24 @@ const ja: OrySettingsCopy = {
   "orySettings.totpInfoNotLinked":
     "有効にするには、認証アプリでQRコードをスキャンし、コードを入力してください。",
   "orySettings.save": "保存",
+  "oryCard.loginTitle": "ログイン",
+  "oryCard.loginSubtitle": "{parts}でログイン",
+  "oryCard.registrationTitle": "アカウント登録",
+  "oryCard.registrationSubtitle": "{parts}で登録",
+  "oryCard.passwordPart": "あなたの{identifierLabel}とパスワード",
+  "oryCard.oidcPart": "ソーシャルプロバイダー",
+  "oryCard.identifierPart": "あなたの{identifierLabel}",
+  "oryCard.or": "または",
+  "oryCard.recoveryTitle": "アカウントを復旧",
+  "oryCard.recoverySubtitle":
+    "アカウントに関連する識別子を入力して、一時的なアクセスコードを取得してください",
+  "oryCard.verificationTitle": "アカウントを検証",
+  "oryCard.verificationSubtitle":
+    "アカウントに関連するメールアドレスを入力して検証してください",
+  "oryCard.loginFooterLabel": "アカウントをお持ちでないですか？",
+  "oryCard.loginFooterLink": "登録",
+  "oryCard.registrationFooterLabel": "アカウントをお持ちですか？",
+  "oryCard.registrationFooterLink": "ログイン",
 };
 
 export default ja;

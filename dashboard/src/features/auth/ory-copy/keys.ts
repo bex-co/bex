@@ -1,22 +1,26 @@
 /**
- * Ory Elements' own copy for the account settings flow's cards (w3/067).
+ * Ory Elements' own copy for the loading frames of the cards it draws.
  *
- * `<Settings>` words its cards from Ory's bundled catalog (`OryLocales`), which
- * lives in the settings page's chunk. The flow's loading frame
- * (`AccountSettingsFlowSkeleton`) paints before that chunk arrives, and it
- * reserves this copy invisibly so each card wraps, and so stands as tall, as
- * the ready one does at the same width and in the same language.
+ * Ory words its cards from its bundled catalog (`OryLocales`), which lives in
+ * the flow page's chunk. The loading frames paint before that chunk arrives,
+ * and they reserve this copy invisibly so each card wraps, and so stands as
+ * tall, as the ready one does at the same width and in the same language:
+ *
+ * - the account settings flow's cards (`AccountSettingsFlowSkeleton`, w3/067);
+ * - the login, sign-up, forgot-password and verification cards' headers and
+ *   footers (`OryCardSkeleton` in `route-skeletons.tsx`, w7/092), whose
+ *   subtitle Ory composes from parts (`useOryCardCopy` there).
  *
  * So each language's entries are mirrored here and merged into that language's
  * i18n resources: `en` eagerly, the rest with their lazy catalogs. They sit
  * outside `locales/` because they are Ory's words, not the dashboard's (Ory's
- * zh says 您), and `ory-settings-copy.test.ts` keeps every mirror equal to
+ * zh says 您), and `ory-copy.test.ts` keeps every mirror equal to
  * `OryLocales`, so an `@ory/elements-react` upgrade that rewords a card fails
  * the suite until the mirrors are regenerated from it.
  *
  * Maps each mirrored key to the Ory catalog key it copies.
  */
-export const ORY_SETTINGS_COPY_SOURCE = {
+export const ORY_COPY_SOURCE = {
   "orySettings.profileTitle": "settings.profile.title",
   "orySettings.profileDescription": "settings.profile.description",
   "orySettings.passwordTitle": "settings.password.title",
@@ -39,9 +43,23 @@ export const ORY_SETTINGS_COPY_SOURCE = {
   "orySettings.totpCodeLabel": "identities.messages.1070006",
   "orySettings.totpInfoNotLinked": "settings.totp.info.not-linked",
   "orySettings.save": "identities.messages.1070003",
+  // The auth cards' headers (Ory's `useCardHeaderText`) and footers.
+  "oryCard.loginTitle": "login.title",
+  "oryCard.loginSubtitle": "login.subtitle",
+  "oryCard.registrationTitle": "registration.title",
+  "oryCard.registrationSubtitle": "registration.subtitle",
+  "oryCard.passwordPart": "card.header.parts.password.login",
+  "oryCard.oidcPart": "card.header.parts.oidc",
+  "oryCard.identifierPart": "card.header.parts.identifier-first",
+  "oryCard.or": "misc.or",
+  "oryCard.recoveryTitle": "recovery.title",
+  "oryCard.recoverySubtitle": "recovery.subtitle",
+  "oryCard.verificationTitle": "verification.title",
+  "oryCard.verificationSubtitle": "verification.subtitle",
+  "oryCard.loginFooterLabel": "login.registration-label",
+  "oryCard.loginFooterLink": "login.registration-button",
+  "oryCard.registrationFooterLabel": "registration.login-label",
+  "oryCard.registrationFooterLink": "registration.login-button",
 } as const;
 
-export type OrySettingsCopy = Record<
-  keyof typeof ORY_SETTINGS_COPY_SOURCE,
-  string
->;
+export type OryCopy = Record<keyof typeof ORY_COPY_SOURCE, string>;
