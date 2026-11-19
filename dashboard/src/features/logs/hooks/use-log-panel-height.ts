@@ -14,6 +14,10 @@ const GAP_FLUSH = 24;
  *  stream status line under it, or `"flush"` to the page's bottom padding. */
 export type LogPanelFill = boolean | "flush";
 
+// Below this width the Logs tab's filter bar sticks under the top bar, and
+// the panel is sized to the screen under that docked bar.
+export const LOG_DOCK_MEDIA = "(max-width: 39.99rem)";
+
 /**
  * The panel's height once mounted: the viewport's room below the panel's
  * top, so the newest line and the stream status end at the bottom of the
@@ -32,8 +36,24 @@ export function useLogPanelHeight<T extends HTMLElement>(
   useLayoutEffect(() => {
     // A panel its parent sizes (`fill`) needs no measuring or listener.
     if (!el || !enabled) return;
+    const scroller = el.closest("[data-page-scroll]");
     const measure = () => {
-      const top = el.getBoundingClientRect().top;
+      // Where the panel sits with the page unscrolled, so a page already
+      // scrolled (a phone's docked bar, a short desktop) measures the same.
+      let top = el.getBoundingClientRect().top + (scroller?.scrollTop ?? 0);
+      // A phone's Logs tab docks its filter bar under the top bar once the
+      // service header scrolls away (`data-log-dock` inside the panel's
+      // `data-log-frame`), so the panel takes the screen under the docked
+      // bar — about double what was left beside the header.
+      const dock = el
+        .closest("[data-log-frame]")
+        ?.querySelector<HTMLElement>("[data-log-dock]");
+      if (dock && window.matchMedia?.(LOG_DOCK_MEDIA)?.matches) {
+        const dockedAt = scroller ? scroller.getBoundingClientRect().top : 0;
+        top =
+          dockedAt +
+          (el.getBoundingClientRect().top - dock.getBoundingClientRect().top);
+      }
       if (!(window.innerHeight > 0) || top <= 0) return;
       setHeight(
         Math.max(
@@ -44,7 +64,19 @@ export function useLogPanelHeight<T extends HTMLElement>(
     };
     measure();
     window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    // Whatever sits above the panel can change height after it mounts (the
+    // service header settling into more rows): measure again when the page's
+    // content resizes, not only the window.
+    const content = scroller?.firstElementChild;
+    const observer =
+      content && typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(measure)
+        : null;
+    if (content) observer?.observe(content);
+    return () => {
+      window.removeEventListener("resize", measure);
+      observer?.disconnect();
+    };
   }, [el, enabled, bottomGap]);
   return { ref, height };
 }

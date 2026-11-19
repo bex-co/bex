@@ -51,6 +51,8 @@ export interface UseLogHistoryResult {
    * first page arrives.
    */
   resources: LogResource[] | undefined;
+  /** Read the first page again, after a failed read. */
+  retry: () => void;
 }
 
 // A structured filter is single-valued in the UI; bex-api takes lists, so send a
@@ -125,7 +127,7 @@ export function useLogHistory(
     ],
   );
 
-  const { data, loading, error } = useQuery(LogsDocument, {
+  const { data, loading, error, refetch } = useQuery(LogsDocument, {
     variables,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
@@ -205,5 +207,6 @@ export function useLogHistory(
     loadingOlder: pages.loadingOlder,
     loadOlder: pages.loadOlder,
     resources,
+    retry: () => void refetch(),
   };
 }

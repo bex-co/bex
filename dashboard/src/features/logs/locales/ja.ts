@@ -152,6 +152,17 @@ const jaLogs: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the scrollable log list, which takes keyboard focus so arrow keys and Page Up/Down scroll it",
   },
+  "logs.linesKeysHint": {
+    message:
+      "上下の矢印キーで行を移動し、Enter でその行のインスタンスだけを表示します。",
+    description:
+      "Logs list: screen-reader hint on the focusable log region, naming its row keys",
+  },
+  "logs.linesKeysShort": {
+    message: "↑↓ 行を移動 · Enter: このインスタンスのみ表示",
+    description:
+      "Logs tab: the keys of the focused log list, shown in its corner while it has keyboard focus — arrows move between lines, Enter shows only that line's instance",
+  },
   "logs.endOfLog": {
     message: "ログの終わり",
     description:
@@ -227,6 +238,37 @@ const jaLogs: Record<string, TranslationEntry> = {
   "logs.errorTitle": {
     message: "ログを読み込めませんでした",
     description: "Error-state title when the logs query fails",
+  },
+  "logs.errorBody": {
+    message:
+      "この期間のリクエストに失敗しました。もう一度試すか、より短い期間を選んでください。",
+    description:
+      "Logs tab: body when the log history read failed, under logs.errorTitle; the server's own reason follows as a detail line",
+  },
+  "logs.errorBodyLive": {
+    message:
+      "新しい行は届きしだいここに表示されます。もう一度試すと、この期間の履歴を読み込みます。",
+    description:
+      "Logs tab: body when the history read failed while the live tail still streams \u2014 new lines will still land in the panel",
+  },
+  "logs.filtersDone": {
+    message: "完了",
+    description: "Logs tab: button closing the Filters panel",
+  },
+  "logs.emptyBodyRange": {
+    message: "期間を長くするか、ライブをオンにして新しい行を待ちます。",
+    description:
+      "Logs tab: body when the chosen range holds no lines, under logs.emptyTitle \u2014 what to try next",
+  },
+  "logs.turnOnLive": {
+    message: "ライブをオンにする",
+    description:
+      "Logs tab: button in the empty state that switches the live tail on",
+  },
+  "logs.clearFilters": {
+    message: "フィルターをクリア",
+    description:
+      "Logs tab: button in the no-match state that clears the search and every filter",
   },
   "logs.errorTitleWithReason": {
     message: "ログを読み込めませんでした: {reason}",

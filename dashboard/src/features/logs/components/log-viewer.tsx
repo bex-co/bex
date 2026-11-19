@@ -19,6 +19,8 @@ import {
 import { useUrlEcho } from "@/common/hooks/use-url-echo";
 import { EmptyState } from "@/common/components/empty-state";
 import { LogEmptyState } from "./log-empty-state";
+import { useOpenDocked } from "../hooks/use-open-docked";
+import { Button } from "@/common/components/ui/button";
 import { useLogHistory } from "../hooks/use-log-history";
 import {
   useLiveLogs,
@@ -42,7 +44,11 @@ import { LogFilterBar } from "./log-filter-bar";
 import { LogLineList } from "./log-line-list";
 import { LogTruncationNotice } from "./log-truncation-notice";
 import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
-import { type RangeSelection } from "@/features/metrics/lib/range";
+import {
+  isCustomRange,
+  RANGE_PRESETS,
+  type RangeSelection,
+} from "@/features/metrics/lib/range";
 import { DEFAULT_LOG_RANGE } from "../lib/log-search";
 
 interface LogViewerProps {
@@ -89,6 +95,8 @@ export function LogViewer({
   onFiltersChange,
   servesRequests = true,
 }: LogViewerProps) {
+  const frameRef = useRef<HTMLDivElement>(null);
+  useOpenDocked(frameRef);
   const { t } = useTranslations();
   const urlKey = logStateKey(urlFilters, urlLive);
   const [state, setState] = useState(() => viewFromUrl(urlFilters, urlLive));
@@ -288,7 +296,15 @@ export function LogViewer({
   // One body per state (store-unavailable / error / loading-first / empty /
   // list) — resolved to a single node so the render stays flat.
   const historyReason = relayableReason(history.error);
+  // The stream line under a state as under lines: a failed history read or an
+  // empty range says nothing about whether new lines are still arriving.
+  const streamLine = liveSupported ? (
+    <StreamStatus live={live} status={stream.status} />
+  ) : null;
   let body: ReactNode;
+  // Only the lines carry their own stream line; every other state gets it
+  // under the panel below.
+  let isListBody = false;
   if (planRefused) {
     body = (
       <EmptyState
@@ -312,13 +328,16 @@ export function LogViewer({
       />
     );
   } else if (history.timedOut && history.lines.length === 0) {
-    body = <LogEmptyState reason="timeout" />;
+    body = <LogEmptyState reason="timeout" fillViewport />;
   } else if (history.error && history.lines.length === 0) {
     body = (
       <LogEmptyState
         reason="failed"
+        fillViewport
         title={t("logs.errorTitle")}
         error={history.error}
+        onRetry={history.retry}
+        liveTailing={live && liveSupported && stream.status === "open"}
       />
     );
   } else if (history.loading && history.lines.length === 0) {
@@ -327,13 +346,55 @@ export function LogViewer({
     body = (
       <LogEmptyState
         reason="empty"
+        fillViewport
         filtered={filtered}
         emptyTitle={t("logs.emptyTitle")}
-        emptyBody={t("logs.emptyBody")}
+        emptyBody={t("logs.emptyBodyRange")}
         pages={history}
+        action={
+          filtered ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                patchFilters({ ...EMPTY_LOG_FILTERS, type: filters.type })
+              }
+            >
+              {t("logs.clearFilters")}
+            </Button>
+          ) : (
+            <>
+              {!live && liveSupported ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setState((previous) => ({ ...previous, live: true }))
+                  }
+                >
+                  {t("logs.turnOnLive")}
+                </Button>
+              ) : null}
+              {/* The longer range the copy suggests, when there is one to
+                  widen to. */}
+              {range &&
+              !isCustomRange(range) &&
+              range.spanSeconds < DAY_RANGE.spanSeconds ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onRangeChange(DAY_RANGE)}
+                >
+                  {t("metrics.rangeLast24Hours")}
+                </Button>
+              ) : null}
+            </>
+          )
+        }
       />
     );
   } else {
+    isListBody = true;
     body = (
       <div className="space-y-2">
         {history.error ? (
@@ -364,15 +425,13 @@ export function LogViewer({
           loadingOlder={history.loadingOlder}
           onLoadOlder={history.loadOlder}
         />
-        {liveSupported ? (
-          <StreamStatus live={live} status={stream.status} />
-        ) : null}
+        {streamLine}
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div ref={frameRef} data-log-frame="" className="space-y-4">
       <LogFilterBar
         resource={resource}
         filters={filters}
@@ -388,25 +447,33 @@ export function LogViewer({
         servesRequests={servesRequests}
       />
       {/* With the tail off, the note says why, in every state — the switch it
-          describes is disabled, so this is its only reachable reason, and
-          "live mode appends new lines" would be untrue (w4/556). */}
-      <p
-        id={liveSupported ? undefined : liveOffReasonId}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground"
-      >
-        {liveSupported ? (
-          t("logs.rangeHistoryNote")
-        ) : (
-          <>
-            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-            {liveOffReason}
-          </>
-        )}
-      </p>
-      {body}
+          describes is disabled, so this is its only reachable reason (w4/556).
+          With it on, the controls and the stream line under the panel say
+          what the old "range limits history" sentence did, so the log gets
+          the line back. */}
+      {liveSupported ? null : (
+        <p
+          id={liveOffReasonId}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground"
+        >
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          {liveOffReason}
+        </p>
+      )}
+      {isListBody ? (
+        body
+      ) : (
+        <div className="space-y-2">
+          {body}
+          {history.loading && history.lines.length === 0 ? null : streamLine}
+        </div>
+      )}
     </div>
   );
 }
+
+// The range the empty state widens to.
+const DAY_RANGE = RANGE_PRESETS.find((preset) => preset.id === "24h")!;
 
 // How long a free-text draft waits before it reaches the queries and the URL,
 // so a keystroke doesn't refetch history and reopen the stream.

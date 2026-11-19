@@ -172,6 +172,17 @@ const ptLogs: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the scrollable log list, which takes keyboard focus so arrow keys and Page Up/Down scroll it",
   },
+  "logs.linesKeysHint": {
+    message:
+      "Use as setas para cima e para baixo para mover entre linhas e Enter para mostrar só a instância dessa linha.",
+    description:
+      "Logs list: screen-reader hint on the focusable log region, naming its row keys",
+  },
+  "logs.linesKeysShort": {
+    message: "↑↓ mover entre linhas · Enter: só esta instância",
+    description:
+      "Logs tab: the keys of the focused log list, shown in its corner while it has keyboard focus — arrows move between lines, Enter shows only that line's instance",
+  },
   "logs.endOfLog": {
     message: "Fim do log",
     description:
@@ -248,6 +259,38 @@ const ptLogs: Record<string, TranslationEntry> = {
   "logs.errorTitle": {
     message: "Não foi possível carregar os logs",
     description: "Error-state title when the logs query fails",
+  },
+  "logs.errorBody": {
+    message:
+      "A solicitação para este intervalo falhou. Tente novamente ou escolha um intervalo menor.",
+    description:
+      "Logs tab: body when the log history read failed, under logs.errorTitle; the server's own reason follows as a detail line",
+  },
+  "logs.errorBodyLive": {
+    message:
+      "As novas linhas continuarão aparecendo aqui à medida que chegarem. Tente novamente para carregar o histórico deste intervalo.",
+    description:
+      "Logs tab: body when the history read failed while the live tail still streams \u2014 new lines will still land in the panel",
+  },
+  "logs.filtersDone": {
+    message: "Concluído",
+    description: "Logs tab: button closing the Filters panel",
+  },
+  "logs.emptyBodyRange": {
+    message:
+      "Tente um intervalo maior ou ative Ao vivo para acompanhar as novas linhas.",
+    description:
+      "Logs tab: body when the chosen range holds no lines, under logs.emptyTitle \u2014 what to try next",
+  },
+  "logs.turnOnLive": {
+    message: "Ativar Ao vivo",
+    description:
+      "Logs tab: button in the empty state that switches the live tail on",
+  },
+  "logs.clearFilters": {
+    message: "Limpar filtros",
+    description:
+      "Logs tab: button in the no-match state that clears the search and every filter",
   },
   "logs.errorTitleWithReason": {
     message: "Não foi possível carregar os logs: {reason}",

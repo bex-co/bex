@@ -162,6 +162,17 @@ const deLogs: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the scrollable log list, which takes keyboard focus so arrow keys and Page Up/Down scroll it",
   },
+  "logs.linesKeysHint": {
+    message:
+      "Mit den Pfeiltasten nach oben und unten zwischen Zeilen wechseln, mit Enter nur die Instanz dieser Zeile anzeigen.",
+    description:
+      "Logs list: screen-reader hint on the focusable log region, naming its row keys",
+  },
+  "logs.linesKeysShort": {
+    message: "↑↓ zwischen Zeilen wechseln · Enter: nur diese Instanz",
+    description:
+      "Logs tab: the keys of the focused log list, shown in its corner while it has keyboard focus — arrows move between lines, Enter shows only that line's instance",
+  },
   "logs.endOfLog": {
     message: "Ende des Logs",
     description:
@@ -238,6 +249,38 @@ const deLogs: Record<string, TranslationEntry> = {
   "logs.errorTitle": {
     message: "Logs konnten nicht geladen werden",
     description: "Error-state title when the logs query fails",
+  },
+  "logs.errorBody": {
+    message:
+      "Die Anfrage für diesen Zeitraum ist fehlgeschlagen. Versuche es erneut oder wähle einen kürzeren Zeitraum.",
+    description:
+      "Logs tab: body when the log history read failed, under logs.errorTitle; the server's own reason follows as a detail line",
+  },
+  "logs.errorBodyLive": {
+    message:
+      "Neue Zeilen erscheinen hier weiterhin, sobald sie eintreffen. Versuche es erneut, um den Verlauf dieses Zeitraums zu laden.",
+    description:
+      "Logs tab: body when the history read failed while the live tail still streams \u2014 new lines will still land in the panel",
+  },
+  "logs.filtersDone": {
+    message: "Fertig",
+    description: "Logs tab: button closing the Filters panel",
+  },
+  "logs.emptyBodyRange": {
+    message:
+      "Wähle einen längeren Zeitraum oder schalte Live ein, um auf neue Zeilen zu warten.",
+    description:
+      "Logs tab: body when the chosen range holds no lines, under logs.emptyTitle \u2014 what to try next",
+  },
+  "logs.turnOnLive": {
+    message: "Live einschalten",
+    description:
+      "Logs tab: button in the empty state that switches the live tail on",
+  },
+  "logs.clearFilters": {
+    message: "Filter zurücksetzen",
+    description:
+      "Logs tab: button in the no-match state that clears the search and every filter",
   },
   "logs.errorTitleWithReason": {
     message: "Logs konnten nicht geladen werden: {reason}",

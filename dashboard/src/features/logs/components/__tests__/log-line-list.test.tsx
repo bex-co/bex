@@ -402,3 +402,36 @@ describe("LogLineList ended (a finished deploy's log)", () => {
     expect(heightOf(container)).toBe("520px");
   });
 });
+
+describe("LogLineList keyboard row cursor", () => {
+  setupVirtualGeometry();
+
+  it("moves a row cursor with the arrow keys and filters by its instance on Enter", () => {
+    const onInstanceFilter = vi.fn();
+    const lines = [
+      line({ key: "a", message: "first", instance: "web-1" }),
+      line({ key: "b", message: "second", instance: "web-2" }),
+    ];
+    const { container } = render(
+      <LogLineList lines={lines} onInstanceFilter={onInstanceFilter} />,
+    );
+    const viewport = viewportOf(container);
+    // The region names its keys for a screen reader.
+    expect(viewport).toHaveAccessibleDescription(
+      "Use the up and down arrow keys to move between lines, and Enter to show only that line's instance.",
+    );
+
+    act(() => viewport.focus());
+    fireEvent.keyDown(viewport, { key: "ArrowDown" });
+    fireEvent.keyDown(viewport, { key: "ArrowDown" });
+    const rows = container.querySelectorAll("[data-index]");
+    expect(rows[1]).toHaveClass("outline-ring");
+    expect(rows[0]).not.toHaveClass("outline-ring");
+
+    fireEvent.keyDown(viewport, { key: "Enter" });
+    expect(onInstanceFilter).toHaveBeenCalledWith("web-2");
+
+    fireEvent.keyDown(viewport, { key: "Escape" });
+    expect(rows[1]).not.toHaveClass("outline-ring");
+  });
+});

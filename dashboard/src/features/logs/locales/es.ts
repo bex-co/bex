@@ -172,6 +172,17 @@ const esLogs: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the scrollable log list, which takes keyboard focus so arrow keys and Page Up/Down scroll it",
   },
+  "logs.linesKeysHint": {
+    message:
+      "Usa las flechas arriba y abajo para moverte entre líneas, e Intro para mostrar solo la instancia de esa línea.",
+    description:
+      "Logs list: screen-reader hint on the focusable log region, naming its row keys",
+  },
+  "logs.linesKeysShort": {
+    message: "↑↓ moverse entre líneas · Intro: solo esta instancia",
+    description:
+      "Logs tab: the keys of the focused log list, shown in its corner while it has keyboard focus — arrows move between lines, Enter shows only that line's instance",
+  },
   "logs.endOfLog": {
     message: "Fin del log",
     description:
@@ -248,6 +259,38 @@ const esLogs: Record<string, TranslationEntry> = {
   "logs.errorTitle": {
     message: "No se pudieron cargar los logs",
     description: "Error-state title when the logs query fails",
+  },
+  "logs.errorBody": {
+    message:
+      "La solicitud para este intervalo falló. Vuelve a intentarlo o elige un intervalo más corto.",
+    description:
+      "Logs tab: body when the log history read failed, under logs.errorTitle; the server's own reason follows as a detail line",
+  },
+  "logs.errorBodyLive": {
+    message:
+      "Las líneas nuevas seguirán apareciendo aquí a medida que lleguen. Vuelve a intentarlo para cargar el historial de este intervalo.",
+    description:
+      "Logs tab: body when the history read failed while the live tail still streams \u2014 new lines will still land in the panel",
+  },
+  "logs.filtersDone": {
+    message: "Listo",
+    description: "Logs tab: button closing the Filters panel",
+  },
+  "logs.emptyBodyRange": {
+    message:
+      "Prueba un intervalo más largo o activa En vivo para ver las líneas nuevas.",
+    description:
+      "Logs tab: body when the chosen range holds no lines, under logs.emptyTitle \u2014 what to try next",
+  },
+  "logs.turnOnLive": {
+    message: "Activar En vivo",
+    description:
+      "Logs tab: button in the empty state that switches the live tail on",
+  },
+  "logs.clearFilters": {
+    message: "Borrar filtros",
+    description:
+      "Logs tab: button in the no-match state that clears the search and every filter",
   },
   "logs.errorTitleWithReason": {
     message: "No se pudieron cargar los logs: {reason}",

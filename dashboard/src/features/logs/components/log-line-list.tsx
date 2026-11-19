@@ -5,6 +5,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  useId,
 } from "react";
 import { ArrowDown } from "lucide-react";
 import { Link } from "@tanstack/react-router";
@@ -54,6 +55,19 @@ const LOAD_OLDER_THRESHOLD = 64;
 // (`virtualizer.measureElement`) refines each rendered row afterward, so a
 // wrapped multi-line row still lays out at its true height.
 const ROW_ESTIMATE = 24;
+
+// A row's tint and edge rule by its level: error and warning lines stand
+// out from the stream, as on Render's log.
+const ERROR_ROW =
+  "bg-destructive/10 shadow-[inset_2px_0_0_var(--color-destructive)]";
+const WARN_ROW =
+  "bg-amber-500/10 shadow-[inset_2px_0_0_var(--color-amber-500)]";
+const LEVEL_ROW_CLASS: Partial<Record<string, string>> = {
+  error: ERROR_ROW,
+  fatal: ERROR_ROW,
+  warn: WARN_ROW,
+  warning: WARN_ROW,
+};
 
 // The end note's line (`h-6`), counted into the content a panel grows to.
 const END_NOTE_HEIGHT = 24;
@@ -158,8 +172,13 @@ export function LogLineList({
   resourceLabels,
 }: LogLineListProps) {
   const { t, i18n } = useTranslations();
+  const keysHintId = useId();
   const viewportRef = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(true);
+  // The keyboard's row cursor in the focused list: ↑/↓ move it, Enter shows
+  // only its line's instance (the tags themselves are out of the Tab order),
+  // Escape lets it go.
+  const [cursor, setCursor] = useState<number | null>(null);
   // Whether rows are scrolled off the top, which fade out (below).
   const [scrolledDown, setScrolledDown] = useState(false);
   const anchorRef = useRef<{ key: string; offset: number } | null>(null);
@@ -194,8 +213,9 @@ export function LogLineList({
     overscan: OVERSCAN,
     paddingStart: LIST_INSET,
     paddingEnd: LIST_INSET,
-    // Jumping to the newest row scrolls on past the inset to the end note.
-    scrollPaddingEnd: ended ? LIST_INSET : 0,
+    // Jumping to the newest row scrolls on past the inset (and any end
+    // note), so the newest line never sits on the panel's bottom border.
+    scrollPaddingEnd: LIST_INSET,
   });
 
   // Scroll the newest line to the viewport bottom through the virtualizer (which
@@ -380,23 +400,54 @@ export function LogLineList({
         onWheel={endSettling}
         onTouchStart={endSettling}
         onPointerDown={endSettling}
-        onKeyDown={endSettling}
+        onKeyDown={(event) => {
+          endSettling();
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            const last = lines.length - 1;
+            if (last < 0) return;
+            const visible = virtualizer.getVirtualItems();
+            const next =
+              cursor === null
+                ? event.key === "ArrowDown"
+                  ? (visible[0]?.index ?? 0)
+                  : (visible.at(-1)?.index ?? last)
+                : Math.min(
+                    last,
+                    Math.max(0, cursor + (event.key === "ArrowDown" ? 1 : -1)),
+                  );
+            setCursor(next);
+            virtualizer.scrollToIndex(next, { align: "auto" });
+          } else if (event.key === "Enter" && cursor !== null) {
+            const instance = lines[cursor]?.instance;
+            if (instance && onInstanceFilter) {
+              event.preventDefault();
+              onInstanceFilter(instance);
+            }
+          } else if (event.key === "Escape") {
+            setCursor(null);
+          }
+        }}
+        onBlur={() => setCursor(null)}
+        aria-describedby={onInstanceFilter ? keysHintId : undefined}
         style={fill ? undefined : { height: panelHeight }}
         className={cn(
           // The list anchors the reader itself; the browser's own overflow
           // anchoring would move it again mid-reflow (w4/m228).
           // A container, so a wrapped row can stack by the panel's own width.
-          "@container/logs overflow-auto rounded-md border bg-muted/30 font-mono text-xs leading-relaxed [overflow-anchor:none] focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none",
+          "peer @container/logs overflow-auto rounded-md border bg-muted/30 font-mono text-xs leading-relaxed [overflow-anchor:none] focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none",
           fill && "h-full",
         )}
       >
         {/* Rows scrolled off the top fade out under the border rather than
             being sliced through by it: a sticky wash in the panel's own
-            colour (its muted tint over the page), above the rows. */}
+            colour (its muted tint over the page), above the rows. Solid for
+            its first few pixels, so a tinted row's last sliver never shows
+            as a strip along the edge. */}
         {scrolledDown ? (
           <div
             aria-hidden
-            className="pointer-events-none sticky top-0 left-0 z-10 -mb-5 h-5 bg-linear-to-b from-[color-mix(in_oklab,var(--color-muted)_30%,var(--color-background))] to-transparent"
+            className="pointer-events-none sticky top-0 left-0 z-10 -mb-6 h-6 bg-linear-to-b from-[color-mix(in_oklab,var(--color-muted)_30%,var(--color-background))] from-40% to-transparent"
           />
         ) : null}
         {loadingOlder ? (
@@ -404,12 +455,13 @@ export function LogLineList({
             {t("logs.loadingOlder")}
           </p>
         ) : null}
-        <div className={cn("px-3", wrap ? "min-w-full" : "w-max min-w-full")}>
+        <div className={wrap ? "min-w-full" : "w-max min-w-full"}>
           <div aria-hidden style={{ height: paddingTop }} />
           {virtualRows.map((virtualRow) => (
             <LogRow
               key={virtualRow.key}
               index={virtualRow.index}
+              active={cursor === virtualRow.index}
               measureRef={virtualizer.measureElement}
               line={lines[virtualRow.index]}
               wrap={wrap}
@@ -432,6 +484,22 @@ export function LogLineList({
         ) : null}
       </div>
 
+      {onInstanceFilter ? (
+        <>
+          <p id={keysHintId} className="sr-only">
+            {t("logs.linesKeysHint")}
+          </p>
+          {/* The keys, shown to a sighted keyboard user while the region has
+              focus: in its top corner, over the oldest line as it fades out,
+              never over the newest, where a live tail's lines land. */}
+          <p
+            aria-hidden
+            className="pointer-events-none absolute top-2 right-2 z-20 hidden max-w-[calc(100%-1rem)] truncate rounded border bg-background px-2 py-0.5 text-xs text-muted-foreground shadow-xs peer-focus-visible:block"
+          >
+            {t("logs.linesKeysShort")}
+          </p>
+        </>
+      ) : null}
       {!pinned ? (
         <Button
           size="sm"
@@ -462,6 +530,7 @@ export function LogLineList({
 // measurement (w9/m83) — `data-index` is how it identifies the measured row.
 const LogRow = memo(function LogRow({
   index,
+  active,
   measureRef,
   line,
   wrap,
@@ -472,6 +541,8 @@ const LogRow = memo(function LogRow({
   language,
 }: {
   index: number;
+  /** The keyboard's row cursor is on this row. */
+  active: boolean;
   measureRef: (node: Element | null) => void;
   line: LogLine;
   wrap: boolean;
@@ -491,18 +562,31 @@ const LogRow = memo(function LogRow({
       data-index={index}
       ref={measureRef}
       className={cn(
-        "flex gap-3 px-1 py-0.5 hover:bg-muted/60",
+        // Every cell reads from the first line: a tag centred against a
+        // wrapped message sat a line below its time.
+        "flex items-baseline gap-3 px-4 py-0.5 hover:bg-muted/60",
+        // The keyboard's row cursor (↑/↓ in the focused list).
+        active && "outline-2 -outline-offset-2 outline-ring",
+        // Errors and warnings stand out as Render's log does: a tinted row
+        // with a rule at its edge; the text keeps its colour.
+        LEVEL_ROW_CLASS[line.level?.toLowerCase() ?? ""],
         // In a narrow panel a wrapped row puts its time and instance on one
         // line and gives the message the panel's full width under them:
         // beside a fixed time-and-instance gutter, the message had under
-        // half a phone's width and broke tokens mid-word ("2026-/07").
+        // half a phone's width and broke tokens mid-word ("2026-/07"). A row
+        // with an instance tag has the wider gutter, so it stacks sooner.
         wrap
-          ? "whitespace-pre-wrap break-words @max-md/logs:flex-wrap @max-md/logs:gap-x-2 @max-md/logs:gap-y-0 @max-md/logs:py-1"
+          ? line.instance
+            ? "whitespace-pre-wrap break-words @max-lg/logs:flex-wrap @max-lg/logs:gap-x-2 @max-lg/logs:gap-y-0 @max-lg/logs:py-1"
+            : "whitespace-pre-wrap break-words @max-md/logs:flex-wrap @max-md/logs:gap-x-2 @max-md/logs:gap-y-0 @max-md/logs:py-1"
           : "whitespace-pre",
       )}
     >
       {showTimestamps ? (
-        <span className="shrink-0 tabular-nums text-muted-foreground">
+        <span
+          className="shrink-0 tabular-nums text-muted-foreground"
+          title={line.timestamp}
+        >
           {formatClockTime(line.timestamp, language)}
         </span>
       ) : null}
@@ -515,9 +599,13 @@ const LogRow = memo(function LogRow({
             type="button"
             // Part of the line's text, not a control row: exempt from the
             // touch region's 44px control height, with its own 44px-tall
-            // hit area on touch widths instead.
+            // hit area on touch widths instead. Out of the Tab order: one
+            // stop per line made the log hundreds of stops long; the focused
+            // list's Enter (and Filters ▸ Instance) is the keyboard's way to
+            // the same filter.
             data-touch-exempt=""
-            className="relative shrink-0 cursor-pointer rounded-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-lg:after:absolute max-lg:after:-inset-y-3 max-lg:after:-inset-x-0 max-lg:after:content-['']"
+            tabIndex={-1}
+            className="relative shrink-0 cursor-pointer rounded-sm px-0.5 text-muted-foreground underline decoration-muted-foreground/50 decoration-dotted underline-offset-2 hover:bg-muted hover:text-foreground max-lg:after:absolute max-lg:after:-inset-y-3.5 max-lg:after:-inset-x-0 max-lg:after:content-['']"
             aria-label={t("logs.filterByInstance", {
               instance: line.instance,
             })}
@@ -559,7 +647,13 @@ const LogRow = memo(function LogRow({
       <span
         className={cn(
           "min-w-0 flex-1 text-foreground",
-          wrap && "@max-md/logs:basis-full",
+          // Wrapped lines hang 2ch in, so a continuation reads as part of its
+          // entry, not a new one.
+          wrap && "pl-[2ch] -indent-[2ch]",
+          wrap &&
+            (line.instance
+              ? "@max-lg/logs:basis-full"
+              : "@max-md/logs:basis-full"),
         )}
       >
         {/* Inside the message cell, so a long host or path wraps with the

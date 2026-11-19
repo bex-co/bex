@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { Search, SlidersHorizontal } from "lucide-react";
 import {
   Select,
@@ -9,6 +9,23 @@ import {
 } from "@/common/components/ui/select.tsx";
 import { Input } from "@/common/components/ui/input.tsx";
 import { Switch } from "@/common/components/ui/switch.tsx";
+import { XIcon } from "lucide-react";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/common/components/ui/sheet";
+import { useIsMobile } from "@/common/hooks/use-mobile";
+import {
+  LIVE_TOGGLE_CLASS,
+  LOG_FILTER_BAR_CLASS,
+  LOG_FILTER_TAIL_CLASS,
+  LOG_SELECT_WIDTH_CLASS,
+} from "./log-toolbar-layout";
 import { Label } from "@/common/components/ui/label.tsx";
 import { Badge } from "@/common/components/ui/badge";
 import { RemovableChip } from "@/common/components/removable-chip";
@@ -170,19 +187,122 @@ export function LogFilterBar({
   const rangeBound = useLogRetentionBound(resource);
 
   const active = STRUCTURED_FILTER_KEYS.filter((key) => filters[key] !== "");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const isPhone = useIsMobile();
+  const clearButton = (
+    <Button
+      variant="ghost"
+      size="sm"
+      disabled={active.length === 0}
+      onClick={() =>
+        onChange(
+          Object.fromEntries(
+            STRUCTURED_FILTER_KEYS.map((key) => [key, ""]),
+          ) as Partial<LogFilters>,
+        )
+      }
+    >
+      {t("logs.clearFilters")}
+    </Button>
+  );
+  const doneButton = (
+    <Button size="sm" className="flex-1" onClick={() => setFiltersOpen(false)}>
+      {t("logs.filtersDone")}
+    </Button>
+  );
+  const filtersTrigger = (
+    <Button
+      size="sm"
+      variant="outline"
+      className="gap-1.5 max-sm:min-w-0 max-sm:flex-1"
+    >
+      <SlidersHorizontal className="h-4 w-4 shrink-0" />
+      <span className="truncate">{t("logs.filtersButton")}</span>
+      {active.length > 0 ? (
+        // On a phone the chips under the bar list each filter already.
+        <Badge
+          variant="secondary"
+          className="h-5 min-w-5 rounded-full px-1.5 max-sm:hidden"
+        >
+          {active.length}
+        </Badge>
+      ) : null}
+    </Button>
+  );
+  // The same fields in the phone sheet and the desktop popover.
+  const filterFields = (
+    <>
+      <SelectFilterRow
+        label={t("logs.levelLabel")}
+        allLabel={t("logs.levelAll")}
+        value={filters.level}
+        options={levels}
+        onValueChange={(level) => onChange({ level })}
+      />
+      {servesRequests && (
+        <>
+          <SelectFilterRow
+            label={t("logs.methodLabel")}
+            allLabel={t("logs.methodAll")}
+            value={filters.method}
+            options={methods}
+            onValueChange={(method) => onChange({ method })}
+          />
+          <SelectFilterRow
+            label={t("logs.statusCodeLabel")}
+            allLabel={t("logs.statusCodeAll")}
+            value={filters.statusCode}
+            options={statuses}
+            onValueChange={(statusCode) => onChange({ statusCode })}
+          />
+        </>
+      )}
+      <SelectFilterRow
+        label={t("logs.instanceLabel")}
+        allLabel={t("logs.instanceAll")}
+        value={filters.instance}
+        options={instances}
+        onValueChange={(instance) => onChange({ instance })}
+      />
+      {servesRequests && (
+        <>
+          <FilterRow label={t("logs.pathLabel")}>
+            <Input
+              value={filters.path}
+              onChange={(e) => onChange({ path: e.target.value })}
+              placeholder={t("logs.pathPlaceholder")}
+              aria-label={t("logs.pathLabel")}
+              className="h-8"
+            />
+          </FilterRow>
+          <FilterRow label={t("logs.hostLabel")}>
+            <Input
+              value={filters.host}
+              onChange={(e) => onChange({ host: e.target.value })}
+              placeholder={t("logs.hostPlaceholder")}
+              aria-label={t("logs.hostLabel")}
+              className="h-8"
+            />
+          </FilterRow>
+        </>
+      )}
+    </>
+  );
 
   // A phone gets two even rows in reading order, [type | search] then
   // [range | Filters | Live], instead of four ragged ones that pushed the
-  // first log line past the middle of the screen.
+  // first log line past the middle of the screen. It docks under the top bar
+  // as the service header scrolls away, and the log fills the screen below
+  // it (see useLogPanelHeight).
   return (
-    <div className="flex flex-wrap items-center gap-3 max-sm:gap-2">
+    <div data-log-dock="" className={LOG_FILTER_BAR_CLASS}>
       <Select
         value={filters.type}
         onValueChange={(v) => onChange({ type: v as LogTypeFilter })}
       >
         <SelectTrigger
           size="sm"
-          className="w-40 max-sm:w-auto max-sm:flex-1 max-sm:min-w-0 max-sm:basis-[calc(50%-0.25rem)]"
+          className={LOG_SELECT_WIDTH_CLASS}
           aria-label={t("logs.typeLabel")}
         >
           <SelectValue />
@@ -198,7 +318,7 @@ export function LogFilterBar({
         </SelectContent>
       </Select>
 
-      <div className="relative min-w-48 flex-1 max-sm:min-w-0 max-sm:basis-[calc(50%-0.25rem)]">
+      <div className="relative min-w-48 flex-1 max-sm:min-w-0">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={filters.text}
@@ -208,7 +328,7 @@ export function LogFilterBar({
           onChange={(e) => onChange({ text: e.target.value })}
           placeholder={t("logs.searchPlaceholder")}
           aria-label={t("logs.searchPlaceholder")}
-          className="h-9 pl-8"
+          className="h-8 pl-8"
         />
       </div>
 
@@ -217,96 +337,80 @@ export function LogFilterBar({
         onRangeChange={onRangeChange}
         ariaLabel={t("logs.rangeLabel")}
         bound={rangeBound}
-        triggerClassName="max-sm:w-auto max-sm:min-w-0 max-sm:flex-1"
+        triggerClassName={LOG_SELECT_WIDTH_CLASS}
       />
 
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button size="sm" variant="outline" className="gap-1.5">
-            <SlidersHorizontal className="h-4 w-4" />
-            {t("logs.filtersButton")}
-            {active.length > 0 ? (
-              <Badge
-                variant="secondary"
-                className="h-5 min-w-5 rounded-full px-1.5"
-              >
-                {active.length}
-              </Badge>
-            ) : null}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          align="end"
-          className="w-72 space-y-3"
-          aria-label={t("logs.filtersButton")}
-        >
-          <SelectFilterRow
-            label={t("logs.levelLabel")}
-            allLabel={t("logs.levelAll")}
-            value={filters.level}
-            options={levels}
-            onValueChange={(level) => onChange({ level })}
-          />
-          {servesRequests && (
-            <>
-              <SelectFilterRow
-                label={t("logs.methodLabel")}
-                allLabel={t("logs.methodAll")}
-                value={filters.method}
-                options={methods}
-                onValueChange={(method) => onChange({ method })}
-              />
-              <SelectFilterRow
-                label={t("logs.statusCodeLabel")}
-                allLabel={t("logs.statusCodeAll")}
-                value={filters.statusCode}
-                options={statuses}
-                onValueChange={(statusCode) => onChange({ statusCode })}
-              />
-            </>
-          )}
-          <SelectFilterRow
-            label={t("logs.instanceLabel")}
-            allLabel={t("logs.instanceAll")}
-            value={filters.instance}
-            options={instances}
-            onValueChange={(instance) => onChange({ instance })}
-          />
-          {servesRequests && (
-            <>
-              <FilterRow label={t("logs.pathLabel")}>
-                <Input
-                  value={filters.path}
-                  onChange={(e) => onChange({ path: e.target.value })}
-                  placeholder={t("logs.pathPlaceholder")}
-                  aria-label={t("logs.pathLabel")}
-                  className="h-9"
-                />
-              </FilterRow>
-              <FilterRow label={t("logs.hostLabel")}>
-                <Input
-                  value={filters.host}
-                  onChange={(e) => onChange({ host: e.target.value })}
-                  placeholder={t("logs.hostPlaceholder")}
-                  aria-label={t("logs.hostLabel")}
-                  className="h-9"
-                />
-              </FilterRow>
-            </>
-          )}
-        </PopoverContent>
-      </Popover>
+      <div className={LOG_FILTER_TAIL_CLASS}>
+        {isPhone ? (
+          // A phone gets a bottom sheet: every field in view at once, rather
+          // than a popover under a low trigger that showed three of six.
+          <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <SheetTrigger asChild>{filtersTrigger}</SheetTrigger>
+            <SheetContent
+              side="bottom"
+              data-touch-region=""
+              aria-describedby={undefined}
+              // The sheet's built-in close sits apart from the title; ours shares
+              // the title's row.
+              className="max-h-[85dvh] gap-0 rounded-t-xl p-0 [&>button:last-child]:hidden"
+            >
+              <SheetHeader className="flex-row items-center justify-between border-b px-4 py-2">
+                <SheetTitle>{t("logs.filtersButton")}</SheetTitle>
+                <SheetClose asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t("common.close")}
+                  >
+                    <XIcon className="size-4" />
+                  </Button>
+                </SheetClose>
+              </SheetHeader>
+              <div className="space-y-3 overflow-y-auto overscroll-contain px-4 py-4">
+                {filterFields}
+              </div>
+              <SheetFooter className="flex-row border-t px-4 py-3">
+                {clearButton}
+                {doneButton}
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
+        ) : (
+          <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <PopoverTrigger asChild>{filtersTrigger}</PopoverTrigger>
+            <PopoverContent
+              align="end"
+              // A touch region of its own (it is portalled outside the
+              // page's): its selects and fields take the touch height on a
+              // touch screen.
+              data-touch-region=""
+              collisionPadding={16}
+              className="max-h-[var(--radix-popover-content-available-height)] w-72 space-y-3 overflow-y-auto overscroll-contain pb-0"
+              aria-label={t("logs.filtersButton")}
+            >
+              <p className="text-sm font-medium">{t("logs.filtersButton")}</p>
+              {filterFields}
+              {/* A way out that is always in reach, however far the fields
+                run: pinned under them, over the fields scrolling past. */}
+              <div className="sticky bottom-0 -mx-4 flex gap-2 border-t bg-popover px-4 py-3">
+                {clearButton}
+                {doneButton}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
 
-      <LiveToggle
-        id="logs-live-toggle"
-        checked={live && liveSupported}
-        disabled={!liveSupported}
-        onCheckedChange={onLiveChange}
-        describedBy={unsupportedReasonId}
-      />
+        <LiveToggle
+          id="logs-live-toggle"
+          checked={live && liveSupported}
+          disabled={!liveSupported}
+          onCheckedChange={onLiveChange}
+          describedBy={unsupportedReasonId}
+        />
+      </div>
 
       {active.length > 0 ? (
-        <div className="flex w-full flex-wrap items-center gap-1.5">
+        <div className="flex w-full flex-wrap items-center gap-1.5 max-sm:col-span-2">
           {active.map((key) => {
             const label = t(STRUCTURED_LABEL_KEYS[key]);
             return (
@@ -397,8 +501,10 @@ export function LiveToggle({
   describedBy?: string;
 }) {
   const { t } = useTranslations();
+  // One target, switch and word together: the gap between them was a dead
+  // strip, and the word a separate small target.
   return (
-    <div className="flex items-center gap-2">
+    <Label className={LIVE_TOGGLE_CLASS}>
       <Switch
         id={id}
         checked={checked}
@@ -406,9 +512,7 @@ export function LiveToggle({
         onCheckedChange={onCheckedChange}
         aria-describedby={describedBy}
       />
-      <Label htmlFor={id} className="cursor-pointer text-sm">
-        {t("logs.live")}
-      </Label>
-    </div>
+      {t("logs.live")}
+    </Label>
   );
 }

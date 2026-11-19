@@ -43,22 +43,24 @@ export function LogPanelSkeleton({
     <div role="status" aria-label={t("logs.loading")} className="space-y-2">
       <div
         ref={ref}
-        className="@container/logs overflow-hidden rounded-md border bg-muted/30 p-3"
+        className="@container/logs overflow-hidden rounded-md border bg-muted/30 px-4 py-3"
         style={{ height }}
       >
         {/* Clipped inside the padding, so the last row ends whole above the
             border rather than cut by it. */}
-        <div className="h-full space-y-2 overflow-hidden">
-          {/* As the loaded rows do, a narrow panel stacks each row's time over
-            its message. */}
+        <div className="h-full overflow-hidden">
+          {/* The loaded rows' shape: time, instance tag and message on one
+            24px line, or, in a narrow panel, time and tag over the message —
+            as the loaded rows stack. */}
           {Array.from({ length: ROWS }, (_, i) => (
             <div
               key={i}
-              className="flex items-center gap-3 @max-md/logs:flex-col @max-md/logs:items-start @max-md/logs:gap-1.5"
+              className="flex h-6 items-center gap-3 @max-lg/logs:h-auto @max-lg/logs:flex-wrap @max-lg/logs:gap-x-2 @max-lg/logs:gap-y-1.5 @max-lg/logs:py-1"
             >
-              <Skeleton className="h-3 w-16 shrink-0" />
+              <Skeleton className="h-3 w-20 shrink-0" />
+              <Skeleton className="h-3 w-12 shrink-0" />
               <Skeleton
-                className={`h-3 ${BAR_WIDTHS[i % BAR_WIDTHS.length]}`}
+                className={`h-3 @max-lg/logs:basis-full ${BAR_WIDTHS[i % BAR_WIDTHS.length]}`}
               />
             </div>
           ))}

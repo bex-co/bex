@@ -1,7 +1,6 @@
 import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { createFileRoute } from "@tanstack/react-router";
 import { LogViewer } from "@/features/logs/components/log-viewer";
-import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
 import { NonStaticRoute } from "@/features/services/components/non-static-route";
 import {
   isCustomRange,
@@ -19,7 +18,10 @@ import {
 import type { LogFilters } from "@/features/logs/types";
 import { useServer } from "@/features/services/hooks/use-server";
 import { publiclyRoutable } from "@/features/services/lib/service-type";
-import { ServiceLogsSkeleton } from "@/common/components/route-skeletons";
+import {
+  ServiceLogsBodySkeleton,
+  ServiceLogsSkeleton,
+} from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/logs")({
   head: serviceTabHead("services.navLogs", "/services/$serviceId"),
@@ -64,7 +66,7 @@ function RouteComponent() {
     <NonStaticRoute
       serviceId={serviceId}
       holdWhileLoading
-      loadingFallback={<LogPanelSkeleton fillViewport />}
+      loadingFallback={<ServiceLogsBodySkeleton />}
     >
       <ServiceLogsPage
         serviceId={serviceId}

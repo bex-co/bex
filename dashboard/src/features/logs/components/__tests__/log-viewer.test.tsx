@@ -35,6 +35,7 @@ const historyState: UseLogHistoryResult = {
   loadingOlder: false,
   loadOlder: () => undefined,
   resources: undefined,
+  retry: () => undefined,
 };
 const useHistorySpy = vi.fn();
 vi.mock("../../hooks/use-log-history", () => ({
@@ -92,6 +93,7 @@ beforeEach(() => {
   historyState.hasMore = false;
   historyState.loadingOlder = false;
   historyState.loadOlder = () => undefined;
+  historyState.retry = () => undefined;
   liveState.lines = [];
   useHistorySpy.mockReset();
   useLiveLogsSpy.mockReset();
@@ -108,16 +110,21 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
     expect(screen.queryByText("Couldn't load logs")).not.toBeInTheDocument();
   });
 
-  it("shows the generic error state for a non-store error", () => {
+  it("shows the generic error state for a non-store error, with a retry", async () => {
+    const retry = vi.fn();
     historyState.error = new Error("upstream exploded");
+    historyState.retry = retry;
     render(<LogViewer resource="web" />);
-    expect(screen.getByText("Couldn't load logs")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Couldn't load logs");
     expect(
       screen.getByText(
-        "Something went wrong while loading. Refresh the page to try again.",
+        "The request for this range failed. Try again, or pick a shorter range.",
       ),
     ).toBeInTheDocument();
+    // A read that never got an answer shows no raw transport text (w5/167).
     expect(screen.queryByText("upstream exploded")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(retry).toHaveBeenCalledTimes(1);
   });
 
   it("shows the Pro-plan notice, not a load failure, when request logs are plan-refused (w8/m138)", () => {
@@ -229,7 +236,9 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
     render(<LogViewer resource="web" />);
     expect(screen.getByText("No logs in this time range")).toBeInTheDocument();
     expect(
-      screen.getByText("No log lines fall within this time range."),
+      screen.getByText(
+        "Try a longer time range, or turn on Live to watch for new lines.",
+      ),
     ).toBeInTheDocument();
     // Never the unassertable "this service has never logged" claim — every range
     // is bounded, so the page structurally can't know that (w6/m111).
@@ -380,11 +389,13 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
     expect(Date.parse(window.endTime) - Date.parse(window.startTime)).toBe(
       4 * 60 * 60 * 1000,
     );
+    // With the tail available, no note sits between the controls and the
+    // log: the stream line under the panel says what it would have.
     expect(
-      screen.getByText(
+      screen.queryByText(
         "The range limits history. Live mode appends new lines as they arrive.",
       ),
-    ).toBeInTheDocument();
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -516,7 +527,9 @@ describe("LogViewer zero-result empty state (w6/m47, w6/m111)", () => {
     render(<LogViewer resource="web" />);
     expect(screen.getByText("No logs in this time range")).toBeInTheDocument();
     expect(
-      screen.getByText("No log lines fall within this time range."),
+      screen.getByText(
+        "Try a longer time range, or turn on Live to watch for new lines.",
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByText("No matching logs")).not.toBeInTheDocument();
     // The claim this page can never truthfully make (w6/m111).

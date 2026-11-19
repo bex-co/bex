@@ -153,6 +153,17 @@ const koLogs: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the scrollable log list, which takes keyboard focus so arrow keys and Page Up/Down scroll it",
   },
+  "logs.linesKeysHint": {
+    message:
+      "위아래 화살표 키로 줄 사이를 이동하고, Enter로 해당 줄의 인스턴스만 표시합니다.",
+    description:
+      "Logs list: screen-reader hint on the focusable log region, naming its row keys",
+  },
+  "logs.linesKeysShort": {
+    message: "↑↓ 줄 이동 · Enter: 이 인스턴스만 보기",
+    description:
+      "Logs tab: the keys of the focused log list, shown in its corner while it has keyboard focus — arrows move between lines, Enter shows only that line's instance",
+  },
   "logs.endOfLog": {
     message: "로그 끝",
     description:
@@ -228,6 +239,37 @@ const koLogs: Record<string, TranslationEntry> = {
   "logs.errorTitle": {
     message: "로그를 불러오지 못했습니다",
     description: "Error-state title when the logs query fails",
+  },
+  "logs.errorBody": {
+    message:
+      "이 시간 범위에 대한 요청이 실패했습니다. 다시 시도하거나 더 짧은 범위를 선택하세요.",
+    description:
+      "Logs tab: body when the log history read failed, under logs.errorTitle; the server's own reason follows as a detail line",
+  },
+  "logs.errorBodyLive": {
+    message:
+      "새 줄은 도착하는 대로 여기에 계속 표시됩니다. 다시 시도하면 이 범위의 기록을 불러옵니다.",
+    description:
+      "Logs tab: body when the history read failed while the live tail still streams \u2014 new lines will still land in the panel",
+  },
+  "logs.filtersDone": {
+    message: "완료",
+    description: "Logs tab: button closing the Filters panel",
+  },
+  "logs.emptyBodyRange": {
+    message: "더 긴 시간 범위를 선택하거나 실시간을 켜서 새 줄을 확인하세요.",
+    description:
+      "Logs tab: body when the chosen range holds no lines, under logs.emptyTitle \u2014 what to try next",
+  },
+  "logs.turnOnLive": {
+    message: "실시간 켜기",
+    description:
+      "Logs tab: button in the empty state that switches the live tail on",
+  },
+  "logs.clearFilters": {
+    message: "필터 지우기",
+    description:
+      "Logs tab: button in the no-match state that clears the search and every filter",
   },
   "logs.errorTitleWithReason": {
     message: "로그를 불러오지 못했습니다: {reason}",

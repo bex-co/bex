@@ -150,6 +150,16 @@ const zhLogs: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the scrollable log list, which takes keyboard focus so arrow keys and Page Up/Down scroll it",
   },
+  "logs.linesKeysHint": {
+    message: "使用上下方向键在行间移动，按 Enter 仅显示该行的实例。",
+    description:
+      "Logs list: screen-reader hint on the focusable log region, naming its row keys",
+  },
+  "logs.linesKeysShort": {
+    message: "↑↓ 在行间移动 · Enter：仅显示此实例",
+    description:
+      "Logs tab: the keys of the focused log list, shown in its corner while it has keyboard focus — arrows move between lines, Enter shows only that line's instance",
+  },
   "logs.endOfLog": {
     message: "日志结束",
     description:
@@ -223,6 +233,35 @@ const zhLogs: Record<string, TranslationEntry> = {
   "logs.errorTitle": {
     message: "无法加载日志",
     description: "Error-state title when the logs query fails",
+  },
+  "logs.errorBody": {
+    message: "此时间范围的请求失败。请重试，或选择更短的时间范围。",
+    description:
+      "Logs tab: body when the log history read failed, under logs.errorTitle; the server's own reason follows as a detail line",
+  },
+  "logs.errorBodyLive": {
+    message: "新日志到达后仍会显示在这里。重试即可加载此时间范围的历史记录。",
+    description:
+      "Logs tab: body when the history read failed while the live tail still streams \u2014 new lines will still land in the panel",
+  },
+  "logs.filtersDone": {
+    message: "完成",
+    description: "Logs tab: button closing the Filters panel",
+  },
+  "logs.emptyBodyRange": {
+    message: "请选择更长的时间范围，或开启实时以查看新日志。",
+    description:
+      "Logs tab: body when the chosen range holds no lines, under logs.emptyTitle \u2014 what to try next",
+  },
+  "logs.turnOnLive": {
+    message: "开启实时",
+    description:
+      "Logs tab: button in the empty state that switches the live tail on",
+  },
+  "logs.clearFilters": {
+    message: "清除筛选",
+    description:
+      "Logs tab: button in the no-match state that clears the search and every filter",
   },
   "logs.errorTitleWithReason": {
     message: "无法加载日志：{reason}",

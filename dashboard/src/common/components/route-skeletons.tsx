@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { InvitationFrame } from "@/features/invites/invitation-frame";
 import { CRON_MINIMUM_USD } from "@/common/lib/cron-minimum";
 import { EnvGroupsTableHeader } from "@/features/env-groups/components/env-groups-table-header";
@@ -96,6 +97,13 @@ import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton"
 import { Switch } from "@/common/components/ui/switch";
 import { Label } from "@/common/components/ui/label";
 import { ObservabilityViewHeader } from "@/features/logs/components/observability-view-header";
+import {
+  LIVE_TOGGLE_CLASS,
+  LOG_FILTER_BAR_CLASS,
+  LOG_FILTER_TAIL_CLASS,
+  LOG_SELECT_WIDTH_CLASS,
+} from "@/features/logs/components/log-toolbar-layout";
+import { useOpenDocked } from "@/features/logs/hooks/use-open-docked";
 import { EnvRowsSkeleton } from "@/features/services/components/env-rows-skeleton";
 import { SERVICE_TAB_DESCRIPTION_OFFSET } from "@/features/services/components/service-tab-description";
 import { AgentEnvironmentCardSkeleton } from "@/features/agent-environment/components/agent-environment-card-skeleton";
@@ -212,13 +220,14 @@ export function Region({
   name,
   className,
   children,
+  ...rest
 }: {
   name: string;
   className?: string;
   children: React.ReactNode;
-}) {
+} & Omit<React.ComponentProps<"div">, "className" | "children">) {
   return (
-    <div data-skeleton-region={name} className={className}>
+    <div data-skeleton-region={name} className={className} {...rest}>
       {children}
     </div>
   );
@@ -2440,18 +2449,50 @@ export function ServiceEventsSkeleton() {
 
 export function ServiceLogsSkeleton() {
   return (
-    <PendingFrame route="service-logs" className="space-y-4">
-      <Region name="log-filters" className="flex flex-wrap gap-2">
-        <Skeleton className="h-9 w-36" />
-        <Skeleton className="h-9 min-w-40 flex-1" />
-        <Skeleton className="h-9 w-32" />
-        <Skeleton className="h-9 w-24" />
+    <PendingFrame route="service-logs">
+      <ServiceLogsBodySkeleton />
+    </PendingFrame>
+  );
+}
+
+// A filter-bar control's height: 32px, or the 44px touch target.
+const LOG_CONTROL = "h-8 max-lg:h-11 pointer-coarse:h-11";
+
+/**
+ * The Logs tab's loading body, control for control: the filter bar at its
+ * controls' widths and heights (two rows on a phone, as loaded), then the log
+ * panel at its screen-filling height. The route's pending frame and the tab's
+ * own hold (while it checks the service is not a static site) both show it,
+ * so the bar never appears late above a panel that then drops.
+ */
+export function ServiceLogsBodySkeleton() {
+  const frameRef = useRef<HTMLDivElement>(null);
+  useOpenDocked(frameRef);
+  return (
+    <div ref={frameRef} data-log-frame="" className="space-y-4">
+      <Region
+        name="log-filters"
+        data-log-dock=""
+        className={LOG_FILTER_BAR_CLASS}
+      >
+        <Skeleton className={cn(LOG_SELECT_WIDTH_CLASS, LOG_CONTROL)} />
+        <Skeleton
+          className={cn("min-w-48 flex-1 max-sm:min-w-0", LOG_CONTROL)}
+        />
+        <Skeleton className={cn(LOG_SELECT_WIDTH_CLASS, LOG_CONTROL)} />
+        <div className={LOG_FILTER_TAIL_CLASS}>
+          <Skeleton className={cn("w-[5.25rem] max-sm:flex-1", LOG_CONTROL)} />
+          {/* The Live switch, then its word, in the control's own row. */}
+          <div className={LIVE_TOGGLE_CLASS}>
+            <Skeleton className="h-5 w-9 rounded-full" />
+            <Skeleton className="h-3.5 w-7" />
+          </div>
+        </div>
       </Region>
-      <Skeleton className="h-3 w-64 max-w-full" />
       <Region name="log-panel">
         <LogPanelSkeleton fillViewport />
       </Region>
-    </PendingFrame>
+    </div>
   );
 }
 

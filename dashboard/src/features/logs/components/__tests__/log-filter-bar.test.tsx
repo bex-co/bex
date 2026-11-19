@@ -324,3 +324,40 @@ describe("LogFilterBar without request logs", () => {
     ).toEqual({ ...EMPTY_LOG_FILTERS, type: LOG_TYPE_APP, level: "error" });
   });
 });
+
+describe("LogFilterBar Filters panel", () => {
+  it("clears every structured filter at once and closes on Done", async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderBar({
+      filters: { level: "error", instance: "web-1", text: "timeout" },
+    });
+    await user.click(screen.getByRole("button", { name: /Filters/ }));
+    const panel = screen.getByRole("dialog", { name: "Filters" });
+    expect(panel).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    // The structured filters only: the search and log type stay.
+    expect(onChange).toHaveBeenCalledWith({
+      level: "",
+      instance: "",
+      method: "",
+      statusCode: "",
+      path: "",
+      host: "",
+    });
+
+    await user.click(screen.getByRole("button", { name: "Done" }));
+    expect(
+      screen.queryByRole("dialog", { name: "Filters" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("has nothing to clear while no structured filter is set", async () => {
+    const user = userEvent.setup();
+    renderBar();
+    await user.click(screen.getByRole("button", { name: /Filters/ }));
+    expect(
+      screen.getByRole("button", { name: "Clear filters" }),
+    ).toBeDisabled();
+  });
+});

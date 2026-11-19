@@ -182,6 +182,17 @@ const ruLogs: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the scrollable log list, which takes keyboard focus so arrow keys and Page Up/Down scroll it",
   },
+  "logs.linesKeysHint": {
+    message:
+      "Стрелками вверх и вниз переходите между строками, клавишей Enter показывайте только экземпляр этой строки.",
+    description:
+      "Logs list: screen-reader hint on the focusable log region, naming its row keys",
+  },
+  "logs.linesKeysShort": {
+    message: "↑↓ переход по строкам · Enter: только этот экземпляр",
+    description:
+      "Logs tab: the keys of the focused log list, shown in its corner while it has keyboard focus — arrows move between lines, Enter shows only that line's instance",
+  },
   "logs.endOfLog": {
     message: "Конец лога",
     description:
@@ -258,6 +269,38 @@ const ruLogs: Record<string, TranslationEntry> = {
   "logs.errorTitle": {
     message: "Не удалось загрузить логи",
     description: "Error-state title when the logs query fails",
+  },
+  "logs.errorBody": {
+    message:
+      "Запрос за этот период не выполнен. Повторите попытку или выберите более короткий период.",
+    description:
+      "Logs tab: body when the log history read failed, under logs.errorTitle; the server's own reason follows as a detail line",
+  },
+  "logs.errorBodyLive": {
+    message:
+      "Новые строки по-прежнему будут появляться здесь по мере поступления. Повторите попытку, чтобы загрузить историю за этот период.",
+    description:
+      "Logs tab: body when the history read failed while the live tail still streams \u2014 new lines will still land in the panel",
+  },
+  "logs.filtersDone": {
+    message: "Готово",
+    description: "Logs tab: button closing the Filters panel",
+  },
+  "logs.emptyBodyRange": {
+    message:
+      "Выберите более длинный период или включите режим «В реальном времени», чтобы видеть новые строки.",
+    description:
+      "Logs tab: body when the chosen range holds no lines, under logs.emptyTitle \u2014 what to try next",
+  },
+  "logs.turnOnLive": {
+    message: "Включить режим реального времени",
+    description:
+      "Logs tab: button in the empty state that switches the live tail on",
+  },
+  "logs.clearFilters": {
+    message: "Сбросить фильтры",
+    description:
+      "Logs tab: button in the no-match state that clears the search and every filter",
   },
   "logs.errorTitleWithReason": {
     message: "Не удалось загрузить логи: {reason}",

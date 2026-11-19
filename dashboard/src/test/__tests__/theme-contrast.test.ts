@@ -159,6 +159,18 @@ const TOKEN_PAIRS: Pair[] = [
   tokenPair("ring", "card", 3),
 ];
 
+// An off switch's track is the input fill, too faint to find on its own; its
+// edge, muted-foreground at 70%, identifies the control (WCAG 1.4.11).
+const SWITCH_OFF_EDGE: Pair = {
+  name: "unchecked switch edge (--muted-foreground/70 on --background)",
+  min: 3,
+  colours: (tokens) => {
+    const bg = token(tokens, "background").rgb;
+    const edge = { ...token(tokens, "muted-foreground"), alpha: 0.7 };
+    return { fg: over(edge, bg), bg };
+  },
+};
+
 // A status colour is a Tailwind palette entry, with `dark:` naming the entry
 // the dark theme uses. `files` are the sources that carry the classes: the test
 // fails when one stops containing them, so a change of colour there comes back
@@ -305,7 +317,7 @@ function failures(tokensByTheme: Record<Theme, Tokens>): Failure[] {
       if (ratio < min)
         found.push({ theme, pair, ratio: Math.round(ratio * 100) / 100, min });
     };
-    for (const pair of [...TOKEN_PAIRS, LOG_META]) {
+    for (const pair of [...TOKEN_PAIRS, LOG_META, SWITCH_OFF_EDGE]) {
       const { fg, bg } = pair.colours(tokens);
       check(pair.name, pair.min, fg, bg);
     }

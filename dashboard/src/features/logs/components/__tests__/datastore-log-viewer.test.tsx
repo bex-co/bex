@@ -32,6 +32,7 @@ const state: UseLogHistoryResult = {
   loadingOlder: false,
   loadOlder: () => undefined,
   resources: undefined,
+  retry: () => undefined,
 };
 const useHistorySpy = vi.fn();
 
