@@ -1,17 +1,17 @@
 # w3 · m488 — An edge-cached response answers conditional requests with 304 and carries its Age
 
-**Worker:** worker3 **Goal:** turning on edge caching no longer turns an app's 304s into full 200s: a conditional request whose validator matches the cached response gets `304 Not Modified`, on a hit and on the fill alike, and every response answered from the cache carries `Age`. **Status:** todo
+**Worker:** worker3 **Goal:** turning on edge caching no longer turns an app's 304s into full 200s: a conditional request whose validator matches the cached response gets `304 Not Modified`, on a hit and on the fill alike, and every response answered from the cache carries `Age`. **Status:** todo (t001–t003, t005, t006 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | A cache hit answers a matching If-None-Match or If-Modified-Since with 304 | 45m | — |
-| [t002](t002.md) | A miss or expired fill answers the client's matching conditional with 304 and still stores the full body | 45m | t001 |
-| [t003](t003.md) | Every hit and 304 carries Age | 20m | t001 |
+| [t001](done/t001.md) | A cache hit answers a matching If-None-Match or If-Modified-Since with 304 — **DONE** | 45m | — |
+| [t002](done/t002.md) | A miss or expired fill answers the client's matching conditional with 304 and still stores the full body — **DONE** | 45m | t001 |
+| [t003](done/t003.md) | Every hit and 304 carries Age — **DONE** | 20m | t001 |
 | [t004](t004.md) | Record it in ADR004, ship and verify on production | 30m | t002, t003 |
-| [t005](t005.md) | Simplify | 15m | t004 |
-| [t006](t006.md) | Test coverage | 30m | t004 |
+| [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
+| [t006](done/t006.md) | Test coverage — **DONE** | 30m | t004 |
 | [t007](t007.md) | Closeout | 10m | t005, t006 |
 
 ## Definition of done

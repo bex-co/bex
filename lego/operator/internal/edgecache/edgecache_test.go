@@ -28,14 +28,20 @@ import (
 )
 
 type origin struct {
-	hits   atomic.Int64
-	header http.Header
-	status int
-	delay  time.Duration
+	hits atomic.Int64
+	// validators counts requests that reached it carrying If-None-Match or
+	// If-Modified-Since.
+	validators atomic.Int64
+	header     http.Header
+	status     int
+	delay      time.Duration
 }
 
 func (o *origin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	o.hits.Add(1)
+	if r.Header.Get("If-None-Match") != "" || r.Header.Get("If-Modified-Since") != "" {
+		o.validators.Add(1)
+	}
 	time.Sleep(o.delay)
 	maps.Copy(w.Header(), o.header)
 	w.WriteHeader(o.status)

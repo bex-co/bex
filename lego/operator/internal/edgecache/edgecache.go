@@ -32,6 +32,10 @@ limitations under the License.
 //   - CF-Cache-Status: HIT, MISS, EXPIRED, BYPASS (the response opted out)
 //     or DYNAMIC (not eligible).
 //   - Concurrent misses for one key collapse into a single upstream request.
+//   - Conditional requests (w3/m488): a client whose If-None-Match or
+//     If-Modified-Since matches the page gets 304 Not Modified, from a stored
+//     page and from the fill alike, so caching never turns an app's 304s into
+//     full 200s. Every answer from a stored page carries its Age.
 //
 // Every request, cached or not, goes upstream through one
 // httputil.ReverseProxy, so the app sees the same headers either way. The
@@ -45,6 +49,8 @@ import (
 	"bytes"
 	"container/list"
 	"context"
+	"errors"
+	"io"
 	"mime"
 	"net/http"
 	"net/http/httputil"
@@ -129,11 +135,13 @@ type Handler struct {
 }
 
 type entry struct {
-	key     string
-	status  int
-	header  http.Header
-	body    []byte
-	expires time.Time
+	key    string
+	status int
+	header http.Header
+	body   []byte
+	// born is when the upstream generated the response: the time it was
+	// stored less the Age the upstream gave it (RFC 9111 §4.2.3).
+	born, expires time.Time
 }
 
 // flight is one upstream fetch other requests for the key wait on. done
@@ -158,10 +166,31 @@ type fillKey struct{}
 type fill struct {
 	key, fetched string
 	flight       *flight
-	keep         bool
-	ttl          time.Duration
-	status       int
-	header       http.Header
+	// client is the leader's own request header, validators and all; the
+	// upstream sees none, so the body it sends suits every client.
+	client http.Header
+	keep   bool
+	ttl    time.Duration
+	status int
+	header http.Header
+	// body is the copy kept for storing, at most maxBody bytes; a longer
+	// body overflows and nothing is stored.
+	body     bytes.Buffer
+	maxBody  int64
+	overflow bool
+}
+
+// Write keeps p for storing while the response is kept and still fits.
+func (st *fill) Write(p []byte) (int, error) {
+	if st.keep && !st.overflow {
+		if int64(st.body.Len()+len(p)) > st.maxBody {
+			st.overflow = true
+			st.body = bytes.Buffer{}
+		} else {
+			st.body.Write(p)
+		}
+	}
+	return len(p), nil
 }
 
 // New returns a Handler proxying to upstream (e.g. http://127.0.0.1:10000).
@@ -211,7 +240,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	key := cacheKey(r)
 	e, expired := h.lookup(key)
 	if e != nil {
-		writeEntry(w, r, e, statusHit)
+		h.writeEntry(w, r, e)
 		return
 	}
 	if r.Method != http.MethodGet {
@@ -323,7 +352,7 @@ func (h *Handler) fetch(w http.ResponseWriter, r *http.Request, key, fetched str
 			return
 		}
 		if f.stored != nil {
-			writeEntry(w, r, f.stored, statusHit)
+			h.writeEntry(w, r, f.stored)
 			return
 		}
 		w.Header().Set(StatusHeader, statusMiss)
@@ -353,9 +382,9 @@ func (h *Handler) fetch(w http.ResponseWriter, r *http.Request, key, fetched str
 
 	// The stored body must suit every client the key covers, so the upstream
 	// sees one canonical encoding preference and no validators (a 304 is not
-	// a page).
+	// a page); decide answers the leader's own validators.
 	out := r.Clone(context.WithValue(r.Context(), fillKey{}, nil))
-	st := &fill{key: key, fetched: fetched, flight: f}
+	st := &fill{key: key, fetched: fetched, flight: f, client: r.Header, maxBody: h.cfg.MaxObjectBytes}
 	out = out.WithContext(context.WithValue(out.Context(), fillKey{}, st))
 	out.Header.Del("If-None-Match")
 	out.Header.Del("If-Modified-Since")
@@ -364,10 +393,13 @@ func (h *Handler) fetch(w http.ResponseWriter, r *http.Request, key, fetched str
 	} else {
 		out.Header.Set("Accept-Encoding", "identity")
 	}
-	tee := &teeWriter{ResponseWriter: w, st: st, max: h.cfg.MaxObjectBytes}
-	h.proxy.ServeHTTP(tee, out)
-	if st.keep && !tee.overflow {
-		e := &entry{key: key, status: st.status, header: st.header, body: tee.buf.Bytes(), expires: h.cfg.Now().Add(st.ttl)}
+	h.proxy.ServeHTTP(&teeWriter{ResponseWriter: w, st: st}, out)
+	if st.keep && !st.overflow {
+		now := h.cfg.Now()
+		e := &entry{
+			key: key, status: st.status, header: st.header, body: st.body.Bytes(),
+			born: now.Add(-upstreamAge(st.header)), expires: now.Add(st.ttl),
+		}
 		if h.store(e, generation) {
 			f.settle(e)
 		}
@@ -376,7 +408,10 @@ func (h *Handler) fetch(w http.ResponseWriter, r *http.Request, key, fetched str
 
 // decide is the ReverseProxy's ModifyResponse: for a leader's fetch it
 // decides whether to keep the response, and releases waiters at once when
-// not, so a stream or an uncacheable page never holds them up.
+// not, so a stream or an uncacheable page never holds them up. A leader whose
+// own validators match the response gets a 304, as the app would have sent
+// it, and a kept body is read into the store here, since the leader is sent
+// none of it.
 func (h *Handler) decide(resp *http.Response) error {
 	st, _ := resp.Request.Context().Value(fillKey{}).(*fill)
 	if st == nil {
@@ -385,15 +420,104 @@ func (h *Handler) decide(resp *http.Response) error {
 	ttl, status := responseTTL(resp)
 	if ttl > 0 && resp.ContentLength <= h.cfg.MaxObjectBytes {
 		st.keep, st.ttl, st.status, st.header = true, ttl, resp.StatusCode, resp.Header.Clone()
-		resp.Header.Set(StatusHeader, st.fetched)
-		return nil
-	}
-	if status == "" {
-		status = statusDynamic
+		status = st.fetched
+	} else {
+		if status == "" {
+			status = statusDynamic
+		}
+		st.flight.settle(nil)
 	}
 	resp.Header.Set(StatusHeader, status)
-	st.flight.settle(nil)
+	if !notModified(st.client, resp.StatusCode, resp.Header) {
+		return nil
+	}
+	if st.keep {
+		// The limit stops reading a body that overflows: nothing is stored.
+		if _, err := io.Copy(st, io.LimitReader(resp.Body, st.maxBody+1)); err != nil {
+			st.keep = false
+		}
+	}
+	_ = resp.Body.Close()
+	resp.StatusCode, resp.Body, resp.ContentLength = http.StatusNotModified, http.NoBody, 0
+	notModifiedHeader(resp.Header)
 	return nil
+}
+
+// notModified reports whether a GET or HEAD carrying reqHeader is answered 304
+// Not Modified by a response with status and header, as RFC 9110 §13.2.2
+// orders the validators: If-None-Match by weak comparison, and, only without
+// it, If-Modified-Since against Last-Modified. Only a 2xx is ever replaced
+// (§13.2.1).
+func notModified(reqHeader http.Header, status int, header http.Header) bool {
+	if status < 200 || status > 299 {
+		return false
+	}
+	if inm := strings.Join(reqHeader.Values("If-None-Match"), ","); inm != "" {
+		return noneMatch(inm, header.Get("ETag"))
+	}
+	ims := reqHeader.Values("If-Modified-Since")
+	if len(ims) != 1 {
+		return false
+	}
+	since, err := http.ParseTime(ims[0])
+	if err != nil {
+		return false
+	}
+	modified, err := http.ParseTime(header.Get("Last-Modified"))
+	return err == nil && !modified.After(since)
+}
+
+// noneMatch reports whether an If-None-Match value is "*" or names etag by weak
+// comparison (RFC 9110 §8.8.3.2, §13.1.2), scanning entity-tags as net/http's
+// file server does: an entity-tag may hold a comma, and a malformed one ends
+// the value.
+func noneMatch(tags, etag string) bool {
+	etag = strings.TrimPrefix(etag, "W/")
+	for {
+		tags = strings.TrimLeft(tags, " \t,")
+		if tags == "" {
+			return false
+		}
+		if tags[0] == '*' {
+			return true
+		}
+		tag := strings.TrimPrefix(tags, "W/")
+		if !strings.HasPrefix(tag, `"`) {
+			return false
+		}
+		end := strings.IndexByte(tag[1:], '"') + 2
+		if end < 2 {
+			return false
+		}
+		if tag[:end] == etag {
+			return true
+		}
+		tags = tag[end:]
+	}
+}
+
+// notModifiedHeader trims a 2xx's header to its 304's, as net/http's file
+// server does (RFC 9110 §15.4.5): no representation metadata beyond what
+// updates the client's stored copy, so Last-Modified stays only without an
+// ETag.
+func notModifiedHeader(header http.Header) {
+	header.Del("Content-Type")
+	header.Del("Content-Length")
+	header.Del("Content-Encoding")
+	if header.Get("ETag") != "" {
+		header.Del("Last-Modified")
+	}
+}
+
+// upstreamAge is the Age the upstream gave a response (RFC 9111 §5.1): none,
+// or one that is not a count of seconds, is zero, and one too large counts as
+// 2^31 - 1 seconds (§1.2.2).
+func upstreamAge(header http.Header) time.Duration {
+	seconds, err := strconv.ParseUint(strings.TrimSpace(header.Get("Age")), 10, 31)
+	if err != nil && !errors.Is(err, strconv.ErrRange) {
+		return 0
+	}
+	return time.Duration(seconds) * time.Second
 }
 
 // responseTTL is the response half of Render's rules: how long to keep it,
@@ -442,25 +566,15 @@ func responseTTL(resp *http.Response) (time.Duration, string) {
 	return defaultTTL(resp.StatusCode), ""
 }
 
-// teeWriter passes a leader's response through and keeps a copy of a body
-// the leader decided to store, up to max bytes.
+// teeWriter passes a leader's response through and gives its fill a copy of
+// the body.
 type teeWriter struct {
 	http.ResponseWriter
-	st       *fill
-	max      int64
-	buf      bytes.Buffer
-	overflow bool
+	st *fill
 }
 
 func (t *teeWriter) Write(p []byte) (int, error) {
-	if t.st.keep && !t.overflow {
-		if int64(t.buf.Len()+len(p)) > t.max {
-			t.overflow = true
-			t.buf = bytes.Buffer{}
-		} else {
-			t.buf.Write(p)
-		}
-	}
+	_, _ = t.st.Write(p)
 	return t.ResponseWriter.Write(p)
 }
 
@@ -533,12 +647,22 @@ func entryCost(e *entry) int64 {
 	return cost
 }
 
-func writeEntry(w http.ResponseWriter, r *http.Request, e *entry, status string) {
+// writeEntry answers r from a stored page: 304 Not Modified when r's
+// validators match it, the page otherwise. Either carries the page's Age, in
+// place of any it was stored with (RFC 9111 §4, §5.1).
+func (h *Handler) writeEntry(w http.ResponseWriter, r *http.Request, e *entry) {
+	header := w.Header()
 	for k, vs := range e.header {
-		w.Header()[k] = append([]string(nil), vs...)
+		header[k] = append([]string(nil), vs...)
 	}
-	w.Header().Set(StatusHeader, status)
-	w.Header().Set("Content-Length", strconv.Itoa(len(e.body)))
+	header.Set(StatusHeader, statusHit)
+	header.Set("Age", strconv.FormatInt(int64(max(h.cfg.Now().Sub(e.born), 0)/time.Second), 10))
+	if notModified(r.Header, e.status, header) {
+		notModifiedHeader(header)
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+	header.Set("Content-Length", strconv.Itoa(len(e.body)))
 	w.WriteHeader(e.status)
 	if r.Method != http.MethodHead {
 		_, _ = w.Write(e.body)
