@@ -1902,12 +1902,12 @@ func (s *Service) ResourceLimits(ctx context.Context, ownerID string) (ResourceL
 	out.Postgres.FreeLimit = 1
 	out.KeyValues.FreeLimit = 1
 	for i := range dbs.Items {
-		if dbs.Items[i].Spec.Plan == "free" {
+		if dbs.Items[i].Spec.Plan == core.FreePlanID {
 			out.Postgres.FreeUsed++
 		}
 	}
 	for i := range kvs.Items {
-		if kvs.Items[i].Spec.Plan == "free" {
+		if kvs.Items[i].Spec.Plan == core.FreePlanID {
 			out.KeyValues.FreeUsed++
 		}
 	}

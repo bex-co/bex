@@ -554,51 +554,67 @@ func (s *Service) GetKeyValue(ctx context.Context, name string) (KeyValueView, e
 var CountCap = core.CountCap{Key: store.KeyValuesQuotaCountKey, Noun: "key-value store"}
 
 // freeKeyValueHolderFor returns the workspace's free Key Value holding the
-// one-free slot (w4/m241), mid-deletion included (w6/m129).
+// one-free slot (w4/m241), mid-deletion included (w6/m129). The rule lives in
+// core so the Postgres copy cannot drift from this one.
 func freeKeyValueHolderFor(ctx context.Context, b *core.Base, tenantID, excludeID string) (string, bool, error) {
+	slots, err := freeKeyValueSlots(ctx, b, tenantID)
+	if err != nil {
+		return "", false, err
+	}
+	name, terminating := core.FreeSlotHolder(slots, excludeID)
+	return name, terminating, nil
+}
+
+// freeKeyValueSlots lists the workspace's stores projected onto the
+// one-free-slot rule (list order kept: the holder is the first free match).
+func freeKeyValueSlots(ctx context.Context, b *core.Base, tenantID string) ([]core.FreeSlotInstance, error) {
 	var list appv1alpha1.KeyValueList
 	if err := b.Client.List(ctx, &list, b.DatastoreListOptions(tenantID)...); err != nil {
-		return "", false, fmt.Errorf("checking free Key Value limit: %w", err)
+		return nil, fmt.Errorf("checking free Key Value limit: %w", err)
 	}
-	for i := range list.Items {
-		kv := &list.Items[i]
-		if kv.Name == excludeID || kv.Labels[core.LabelTenant] != tenantID || kv.Spec.Plan != "free" {
-			continue
+	return collectFreeKeyValueSlots(list.Items, tenantID), nil
+}
+
+// collectFreeKeyValueSlots projects listed stores onto the one-free-slot
+// rule, skipping other tenants' instances.
+func collectFreeKeyValueSlots(items []appv1alpha1.KeyValue, tenantID string) []core.FreeSlotInstance {
+	return core.CollectFreeSlots(items, func(kv appv1alpha1.KeyValue) (core.FreeSlotInstance, bool) {
+		if kv.Labels[core.LabelTenant] != tenantID {
+			return core.FreeSlotInstance{}, false
 		}
 		name := kv.Spec.Name
 		if name == "" {
 			name = kv.Name
 		}
-		return name, !kv.DeletionTimestamp.IsZero(), nil
-	}
-	return "", false, nil
+		return core.FreeSlotInstance{
+			Name:        kv.Name,
+			DisplayName: name,
+			Plan:        kv.Spec.Plan,
+			CreatedAt:   kv.CreationTimestamp.Time,
+			Terminating: !kv.DeletionTimestamp.IsZero(),
+		}, true
+	})
 }
 
 // CheckFreeLimit refuses a free Key Value create/plan when the workspace's
 // free slot is taken (w4/m241) — the shared admission every writer runs.
 func CheckFreeLimit(ctx context.Context, b *core.Base, tenantID, excludeID, plan string) error {
-	if plan != "free" {
+	if plan != core.FreePlanID {
 		return nil
 	}
-	name, terminating, err := freeKeyValueHolderFor(ctx, b, tenantID, excludeID)
+	slots, err := freeKeyValueSlots(ctx, b, tenantID)
 	if err != nil {
 		return err
 	}
-	if name == "" {
-		return nil
-	}
-	return core.FreeInstanceLimitError("Key Value store", name, terminating)
+	return core.RefuseSecondFree(slots, excludeID, "Key Value store")
 }
 
 func (s *Service) refuseSecondFreeKeyValue(ctx context.Context, tenantID, excludeID string) error {
-	name, terminating, err := freeKeyValueHolderFor(ctx, s.Base, tenantID, excludeID)
+	slots, err := freeKeyValueSlots(ctx, s.Base, tenantID)
 	if err != nil {
 		return err
 	}
-	if name == "" {
-		return nil
-	}
-	return core.FreeInstanceLimitError("Key Value store", name, terminating)
+	return core.RefuseSecondFree(slots, excludeID, "Key Value store")
 }
 
 // rollbackSecondFreeKeyValueFor closes the create race: after the CR lands,
@@ -608,31 +624,13 @@ func rollbackSecondFreeKeyValueFor(ctx context.Context, b *core.Base, tenantID s
 	if err := b.Client.List(ctx, &list, b.DatastoreListOptions(tenantID)...); err != nil {
 		return nil
 	}
-	var free []*appv1alpha1.KeyValue
-	for i := range list.Items {
-		kv := &list.Items[i]
-		if kv.Labels[core.LabelTenant] == tenantID && kv.Spec.Plan == "free" {
-			free = append(free, kv)
-		}
-	}
-	if len(free) <= 1 {
-		return nil
-	}
-	slices.SortFunc(free, func(a, b *appv1alpha1.KeyValue) int {
-		if c := a.CreationTimestamp.Time.Compare(b.CreationTimestamp.Time); c != 0 {
-			return c
-		}
-		return strings.Compare(a.Name, b.Name)
-	})
-	if free[0].Name == mine.Name {
+	slots := collectFreeKeyValueSlots(list.Items, tenantID)
+	keeper, mineKeeps := core.ResolveFreeSlotRace(slots, mine.Name)
+	if mineKeeps {
 		return nil
 	}
 	_ = b.Client.Delete(ctx, mine)
-	name := free[0].Spec.Name
-	if name == "" {
-		name = free[0].Name
-	}
-	return core.FreeInstanceLimitError("Key Value store", name, !free[0].DeletionTimestamp.IsZero())
+	return core.FreeInstanceLimitError("Key Value store", keeper.DisplayName, keeper.Terminating)
 }
 
 // CreateKeyValue provisions a managed key-value store (a KeyValue CR the operator
@@ -711,7 +709,7 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if err := s.RequirePlanBilling(ctx, tenantID, req.Plan); err != nil {
 		return KeyValueView{}, err
 	}
-	if req.Plan == "free" {
+	if req.Plan == core.FreePlanID {
 		if err := s.refuseSecondFreeKeyValue(ctx, tenantID, ""); err != nil {
 			return KeyValueView{}, err
 		}
@@ -732,14 +730,14 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 		return s.view(kv), nil
 	}
 	create := func() error {
-		if req.Plan == "free" {
+		if req.Plan == core.FreePlanID {
 			if err := s.refuseSecondFreeKeyValue(ctx, tenantID, ""); err != nil {
 				return err
 			}
 		}
 		return CreateResource(ctx, s.Base, tenantID, kv)
 	}
-	if req.Plan == "free" {
+	if req.Plan == core.FreePlanID {
 		if err := core.WithTenantAdvisoryLock(ctx, s.Workspace, tenantID, create); err != nil {
 			return KeyValueView{}, err
 		}
@@ -757,7 +755,7 @@ func CreateResource(ctx context.Context, b *core.Base, tenantID string, kv *appv
 	if err := b.EnsureWorkspaceNamespace(ctx, tenantID); err != nil {
 		return err
 	}
-	if kv.Spec.Plan == "free" {
+	if kv.Spec.Plan == core.FreePlanID {
 		if name, terminating, err := freeKeyValueHolderFor(ctx, b, tenantID, kv.Name); err != nil {
 			return err
 		} else if name != "" {
@@ -772,7 +770,7 @@ func CreateResource(ctx context.Context, b *core.Base, tenantID string, kv *appv
 		// postgres.CreateResource.
 		return CountCap.CreateError(err)
 	}
-	if kv.Spec.Plan == "free" {
+	if kv.Spec.Plan == core.FreePlanID {
 		return rollbackSecondFreeKeyValueFor(ctx, b, tenantID, kv)
 	}
 	return nil
@@ -1103,7 +1101,7 @@ func (s *Service) setPlan(ctx context.Context, name, plan string, dryRun bool) (
 	if err := s.RequirePlanBilling(ctx, kv.Labels[core.LabelTenant], plan); err != nil {
 		return KeyValueView{}, err
 	}
-	if plan == "free" {
+	if plan == core.FreePlanID {
 		if err := s.refuseSecondFreeKeyValue(ctx, kv.Labels[core.LabelTenant], kv.Name); err != nil {
 			return KeyValueView{}, err
 		}
@@ -1327,7 +1325,7 @@ func (s *Service) updateKeyValue(ctx context.Context, name string, patch KeyValu
 			return KeyValueView{}, err
 		}
 	}
-	if patch.Plan != nil && tiers.Valkey.CanonicalID(*patch.Plan) == "free" {
+	if patch.Plan != nil && tiers.Valkey.CanonicalID(*patch.Plan) == core.FreePlanID {
 		if err := s.refuseSecondFreeKeyValue(ctx, kv.Labels[core.LabelTenant], kv.Name); err != nil {
 			return KeyValueView{}, err
 		}

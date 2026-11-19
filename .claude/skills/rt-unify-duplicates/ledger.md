@@ -4,10 +4,11 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 
 ## Deferred
 
-- 2026-11-18 postgres/keyvalue free-slot quartet (`freeDatabaseHolderFor`/`CheckFreeLimit`/`refuseSecondFree*`/`rollbackSecondFree*For`) — identical one-free-slot rule in both packages, must change together; unify via a generics helper with fake-client tests for both packages; no drift today so no bug to prove this run
+(none open — the 2026-11-18 postgres/keyvalue free-slot quartet unified into `core.FreeSlot*` + `core.FreePlanID` on 2026-11-19)
 
 ## Skipped
 
+- 2026-11-19 postgres/keyvalue restart-free helpers (`restartFreePending`/`markRestartFree`/`annotationRestartFreeGeneration`) — intentionally different per-datastore restart semantics (CNPG cert-reload and allow-list layers vs Valkey eviction policy, `externalAccessRestarts` and the SNI-proxy layers); the field allow-lists must stay per datastore, comments already cross-reference
 - 2026-11-18 `pg-sni-proxy`/`kv-sni-proxy` mains — deliberately parallel binaries (Postgres SSLRequest preamble vs plain TLS); twins maintained with backport comments, merging two mains is out of the bar
 - 2026-11-18 `bandwidth`/`buildminutes` Sweepers — parallel enforcement policies with intentionally different stages (spend-limit stage only in buildminutes); shared sweep primitives already live in `core`/`store`
 - 2026-11-18 `sandboxexec`/`shellticket` Mint+Verify — thin shells over the canonical `codec`+`hmacticket` envelope; per-claims required-field checks are inherent
