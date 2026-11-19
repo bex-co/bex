@@ -8,6 +8,9 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 
 ## Skipped
 
+- 2026-11-19 authz/router-key verbs vs dispatch-mint — audited, holds: Service.call requires a verified-email Kratos session before any upstream call, stricter than the class gate the dispatch comment claims; pinned by TestDeniedRequestsNeverReachUpstream including the machine case
+- 2026-11-19 authz/mint-gate pairing — audited, holds: every AuthorizeMintClass site pairs with a relation Authorize; postgres CreateCredential is deliberately echo-less, its password readable only through sensitive-gated connection info
+- 2026-11-19 authz/MintClass display vs AuthorizeMintClass verb — audited, holds: the display predicate is read-only and the verb re-checks the live registry; nil-resolver and stale-stamp deltas both fail closed
 - 2026-11-19 billing/estimate totals-vs-lines — the total rounded the raw float sum while lines round individually (1c drift on multi-line stacks); fixed this run to sum rounded line cents in MonthlyEstimate and ResourceEstimate.CostUSD; EstimatedCost.TotalUSD still counts sub-cent meters by design, untouched
 - 2026-11-19 billing/spend-cap mint-vs-view agreement — audited, holds: Reached exceeds RefusesAtCap exactly in the serve-and-charge cell by design, lock pins T0 on both sides, tree/non-tree ceiling boundaries agree; the post-charge balance-due gap was a bug, fixed this run
 - 2026-11-19 billing/held-meter charger gap — skipped: with the agent-model meter held there is no ThresholdCharger while a subscription can keep ChargeDue true, so the mint refuses where the view says it will charge; the held-meter $10 stop is intentional (ADR091 D3) and the window is transient

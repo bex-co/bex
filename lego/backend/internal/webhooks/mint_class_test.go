@@ -127,6 +127,82 @@ func TestRepointAndSecretReadRequireMintCredentialClass(t *testing.T) {
 	}
 }
 
+// A non-repoint Update and SetEnabled are permitted to a delegated
+// third-party token (TestRepointAndSecretReadRequireMintCredentialClass: it
+// may rename or disable, just not move). Their responses echo the endpoint,
+// so the echo must agree with Get/List: redacted URL and no signing secret
+// for a caller that fails the credential class. Otherwise the rename/disable
+// round-trip discloses the durable secret the read verbs withhold.
+func TestUpdateAndSetEnabledEchoRedactedToDelegatedCaller(t *testing.T) {
+	const exact = "https://example.com/h"
+	st := newFakeEndpointStore()
+	s := &Service{
+		Base:  &core.Base{Namespace: "default", PlatformClients: coretest.PlatformClients{"platform-cli": true}, Authz: manageChecker{admin: "user-a"}},
+		Store: st,
+	}
+	session := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "session"})
+	created, err := s.Create(session, CreateRequest{
+		Name: "hook", URL: exact, EventTypes: []string{TypeDeployEnded}, Enabled: true,
+	})
+	if err != nil {
+		t.Fatalf("session Create: %v", err)
+	}
+	if created.Secret == "" || created.URL != exact {
+		t.Fatal("session Create must echo the exact URL and the signing secret")
+	}
+	thirdParty := core.WithIdentity(context.Background(), core.Identity{
+		Subject: "user-a", Method: "oauth2", ClientID: "dcr-agent-7", Human: true,
+		CanonicalScopes: core.ScopeWrite + " " + core.ScopeRead,
+	})
+
+	renamed := "renamed"
+	updated, err := s.Update(thirdParty, "", created.ID, UpdateRequest{Name: &renamed})
+	if err != nil {
+		t.Fatalf("third-party rename => %v, want success: only the destination is gated", err)
+	}
+	if updated.Secret != "" {
+		t.Error("third-party rename echoed the signing secret Get withholds")
+	}
+	if updated.URL != RedactedURL(exact) {
+		t.Errorf("third-party rename echoed URL %q, want the redacted %q Get shows", updated.URL, RedactedURL(exact))
+	}
+
+	got, err := s.Get(thirdParty, "", created.ID)
+	if err != nil {
+		t.Fatalf("third-party Get: %v", err)
+	}
+	if updated.Secret != got.Secret || updated.URL != got.URL {
+		t.Errorf("Update echo (secret %t, url %q) disagrees with Get (secret %t, url %q)",
+			updated.Secret != "", updated.URL, got.Secret != "", got.URL)
+	}
+
+	toggled, err := s.SetEnabled(thirdParty, "", created.ID, false)
+	if err != nil {
+		t.Fatalf("third-party disable => %v, want success", err)
+	}
+	if toggled.Secret != "" {
+		t.Error("third-party disable echoed the signing secret Get withholds")
+	}
+	if toggled.URL != RedactedURL(exact) {
+		t.Errorf("third-party disable echoed URL %q, want the redacted %q Get shows", toggled.URL, RedactedURL(exact))
+	}
+
+	managed, err := s.Update(session, "", created.ID, UpdateRequest{Name: &renamed})
+	if err != nil {
+		t.Fatalf("session rename: %v", err)
+	}
+	if managed.Secret == "" || managed.URL != exact {
+		t.Error("a manager's Update echo must keep the exact URL and the signing secret")
+	}
+	reenabled, err := s.SetEnabled(session, "", created.ID, true)
+	if err != nil {
+		t.Fatalf("session re-enable: %v", err)
+	}
+	if reenabled.Secret == "" || reenabled.URL != exact {
+		t.Error("a manager's SetEnabled echo must keep the exact URL and the signing secret")
+	}
+}
+
 // adminsChecker grants can_manage to every subject in admins and can_view to
 // everyone, so the key ceiling (a key is allowed only what its creator is)
 // has a creator to consult.
