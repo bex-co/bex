@@ -1,6 +1,6 @@
 # w8 · m461 — A service switched from a native runtime to a prebuilt image runs the image, and reads as an image service
 
-**Worker:** worker8 **Goal:** `bex services update <native service> --image <ref>` leaves a service that deploys the image with its own entrypoint, reads `runtime: image` on every surface, and clones with the pinned CLI, the way an image-created service does. **Status:** blocked (t001–t006 done 2026-11-17; t007 waits for the production roll that carries the fix)
+**Worker:** worker8 **Goal:** `bex services update <native service> --image <ref>` leaves a service that deploys the image with its own entrypoint, reads `runtime: image` on every surface, and clones with the pinned CLI, the way an image-created service does. **Status:** todo (t001–t006 done 2026-11-17; production pin `dff52c596d13` carries the fix `0d5ef6256`; t007's production replay next)
 
 ## Tasks (in order)
 
@@ -30,7 +30,7 @@ Verified on production after a roll that carries the change, with bex CLI v0.7.0
 
 ## Results (2026-11-17)
 
-The fix: `core.EffectiveRuntime` reads an image with no repo as runtime `image` whatever runtime it keeps (t001), and the one source writer, `sourceFields.applyTo` → `settleSourceSwitch`, drops the build command and a start command the build baked into its image on a switch to a prebuilt image (t002). [ADR004](../../../../docs/ADR004-app-deployment.md) § w8/m461 records the rule: a command that already was a Docker Command carries over, a same-PATCH command runs, and the dropped commands are not restored by a switch back.
+The fix: `core.EffectiveRuntime` reads an image with no repo as runtime `image` whatever runtime it keeps (t001), and the one source writer, `sourceFields.applyTo` → `settleSourceSwitch`, drops the build command and a start command the build baked into its image on a switch to a prebuilt image (t002). [ADR004](../../../docs/ADR004-app-deployment.md) § w8/m461 records the rule: a command that already was a Docker Command carries over, a same-PATCH command runs, and the dropped commands are not restored by a switch back.
 
 ### Blast radius (t003)
 
@@ -61,11 +61,19 @@ Pinned by `TestSourceSwitchToImageAcrossCallersTypesAndSources` (75 cases: every
 
 - `TestSwitchedServiceReadsAsAnImageCreatedOne` creates a native Node service and an image service through REST, switches the first, and diffs the reads without identity and history. Every field matches except the port: an image-created web service serves on its image's exposed port (`portMode: web-image-v1`, stamped at create only, w4/m243), while a switched one keeps its configured port 10000. Filed as w8/337. The definition of done's step 3 already relies on the kept port.
 - GraphQL `service { runtime startCommand buildCommand }` reads `image`, `""`, `""`; MCP `get_service` reads runtime `image` with Render's image `envSpecificDetails` (an empty `dockerCommand`, no build or start command, w9/m473); the dashboard reads the same GraphQL fields (Source and Deploy sections, no Runtime or Build section without a repo).
-- [ADR018](../../../../docs/ADR018-render-parity.md)'s runtime row records the switch as an extension and its Render basis: Render's docs don't say whether a Git-backed service can switch to an image, and an image-backed service reads `runtime: image` with an optional Docker Command.
+- [ADR018](../../../docs/ADR018-render-parity.md)'s runtime row records the switch as an extension and its Render basis: Render's docs don't say whether a Git-backed service can switch to an image, and an image-backed service reads `runtime: image` with an optional Docker Command.
 
 ### What t007 replays
 
 The definition of done above on production, after the roll that carries this change. With the pinned CLI, switch back in two calls: an image service refuses `--start-command` client-side (`pkg/service/update.go`), so first send `--repo … --branch main`, then `--build-command yarn --start-command 'node app.js'`.
+
+## Unblocked (2026-11-19, `/loopx w8` worker)
+
+- **Affected:** t007. **Source:** verified evidence, no user decision.
+- **Finding:** the newest pin on `origin/main`, `a91e9aeb3` (`chore(deploy): pin platform images to dff52c596d13`, 2026-11-19 11:30Z), carries this milestone's commit: `git merge-base --is-ancestor 0d5ef6256 dff52c596d13` holds. The previous pin, `4b2cebd0bd03`, already carried it.
+- **w8/m504 on the same pin:** the pin also carries `cf5f56884`, which builds on this milestone (a switched service goes live on the port its image binds). echo-server listens on `$PORT`, so step 3's expectations do not change; m504's own replay stays with its own t007.
+- **Status:** pending verification. A deployed bex-api is not proof that the definition of done holds on production.
+- **Next:** t007 replays the definition of done in `bex-canary` with bex CLI v0.7.0, records the commands and answers here, deletes every fixture by ID, and closes the milestone.
 
 ## Finding
 
