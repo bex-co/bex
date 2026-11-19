@@ -414,13 +414,20 @@ func TestAnUpgradeKeepsAStoredEdgeCacheSidecarUntilTheTemplateChanges(t *testing
 }
 
 // podTemplateDiff names what moved between two pod templates in the terms an
-// edge-cache change can move: template annotations, the sidecar, the pod's
-// volumes, then anything else.
+// edge-cache change or an operator upgrade can move: template annotations,
+// container images, the sidecar, the pod's volumes, then anything else.
 func podTemplateDiff(before, after corev1.PodTemplateSpec) string {
 	var diffs []string
 	for k := range mergedKeys(before.Annotations, after.Annotations) {
 		if before.Annotations[k] != after.Annotations[k] {
 			diffs = append(diffs, "template annotation "+k+": "+strconv.Quote(before.Annotations[k])+" -> "+strconv.Quote(after.Annotations[k]))
+		}
+	}
+	for _, was := range slices.Concat(before.Spec.InitContainers, before.Spec.Containers) {
+		for _, now := range slices.Concat(after.Spec.InitContainers, after.Spec.Containers) {
+			if now.Name == was.Name && now.Image != was.Image {
+				diffs = append(diffs, "container "+now.Name+" image: "+strconv.Quote(was.Image)+" -> "+strconv.Quote(now.Image))
+			}
 		}
 	}
 	b, a := edgeCacheSidecar(before.Spec), edgeCacheSidecar(after.Spec)
