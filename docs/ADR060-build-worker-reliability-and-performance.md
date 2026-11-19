@@ -322,7 +322,16 @@ Render keeps the directories a native runtime installs dependencies into from on
 | Rust, cold | Cargo downloads 11 crates and compiles 12 |
 | Rust, source change | `Compiling drill` alone, `Finished` in 0.32 s |
 
-The version-bump and clear-cache rows ran on that first version: keeping less of `.gems` changes neither the key nor the clear path. The loader's seed, the save step and the seed and export solves' steps also run as unit tests on GNU userland (`depscache_test.go`, `xdgcache_test.go`), and the tools they call (`bash`, GNU `du`, `cp`, `find`, `mv`, `tar` 1.34) are on the production common base. Sixteen guards were each removed in turn, and fifteen removals were caught. The survivor drops `deps` from the export's early size check, which the archive's own stream bound then enforces, so the outcome is the same. The production proof (warm dependency reuse on two runtimes, a clear-cache reset, fixture deletion) is w9/m494 t004, once the production pin carries the commit.
+The version-bump and clear-cache rows ran on that first version: keeping less of `.gems` changes neither the key nor the clear path. The loader's seed, the save step and the seed and export solves' steps also run as unit tests on GNU userland (`depscache_test.go`, `xdgcache_test.go`), and the tools they call (`bash`, GNU `du`, `cp`, `find`, `mv`, `tar` 1.34) are on the production common base. Sixteen guards were each removed in turn, and fifteen removals were caught. The survivor drops `deps` from the export's early size check, which the archive's own stream bound then enforces, so the outcome is the same. The production proof (warm dependency reuse on two runtimes, a clear-cache reset, fixture deletion) is w9/m494 t004.
+
+**On production (2026-11-19, pin `dff52c596d13`, w9/m494 t004).** The fixtures were native web services built from Render's own quickstarts: `render-examples/jekyll` (Ruby 3.3.5 from `.ruby-version`, 34 gems, three with compiled extensions) and `render-examples/go-gin-web-server` (15 modules). A changed environment variable reran each build command, as a source edit does.
+
+- **Cold build:** `xdg miss`. Ruby's `bundle install` took 40.6 s with three `with native extensions` lines; Go's build took 44.9 s with 15 `go: downloading` lines.
+- **Source-only rebuild:** `xdg hit`, `==> Downloading cache...` and `==> Transferred 19MB in 11s.` (Ruby) or `57MB in 9s` (Go). Nothing installed: Ruby's step took 0.96 s and Go's 0.78 s. BuildKit's own time fell from 200 s to 153 s (Ruby) and from 164 s to 98 s (Go); the rest of a warm build is the layer cache's import and re-export.
+- **Clear-cache release:** `xdg purged` and no restore line on both, and every gem and module installed again. The Ruby build after it was warm again (0.88 s).
+- **Runtime change:** jekyll's previous commit has the same `Gemfile.lock` and `.ruby-version` 3.3.0, so both versions install into `.gems/ruby/3.3.0`. Its build restored the archive yet installed all 34 gems again, extensions included, and the archive it saved holds only the gems Ruby 3.3.0 built, under a new key.
+- **Runtime:** every release went live and served 200. `jekyll serve` built the site at start with the gems the cache had restored into the image.
+- **Deletion:** deleting the services emptied their prefixes through the finalizer's purge Jobs.
 
 ### D4 — Registry hardening for the build path
 
