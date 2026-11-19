@@ -196,3 +196,32 @@ func TestAnAdminsAPIKeyManagesWebhooksAsTheAdminDoes(t *testing.T) {
 		t.Fatalf("refused callers created endpoints: %d rows", len(st.rows))
 	}
 }
+
+// w9/m496: an Admin's key reads a webhook's signing secret only with
+// Workspaces Read & write, the permission whose "Create, update, and delete
+// webhooks" the secret belongs to; a read-only grant reads it redacted, and an
+// unreadable grant hides it.
+func TestAScopedKeyReadsTheSigningSecretOnlyWithTheWebhooksWrite(t *testing.T) {
+	grant := core.KeyGrantFromEntries([]string{"workspaces:read"})
+	var grantErr error
+	s := &Service{Base: &core.Base{
+		Namespace:   "default",
+		Authz:       adminsChecker{"user-a": true, "key-admin": true},
+		KeyCreators: coretest.KeyCreators{"key-admin": "user-a"},
+		KeyGrants: coretest.KeyGrantsFunc(func(context.Context, string) (core.KeyGrant, error) {
+			return grant, grantErr
+		}),
+	}}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "key-admin", ClientID: "key-admin", Method: core.MethodOAuth2})
+	if s.mayManageWorkspace(ctx, "tea-1") {
+		t.Error("a Workspaces Read key reads the signing secret")
+	}
+	grant = core.KeyGrantFromEntries([]string{"workspaces:read_write"})
+	if !s.mayManageWorkspace(ctx, "tea-1") {
+		t.Error("a Workspaces Read & write key reads the endpoint redacted")
+	}
+	grantErr = errors.New("postgres down")
+	if s.mayManageWorkspace(ctx, "tea-1") {
+		t.Error("an unreadable grant revealed the signing secret")
+	}
+}

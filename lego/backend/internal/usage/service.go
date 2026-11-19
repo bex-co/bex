@@ -368,6 +368,11 @@ func (s *Service) mayManageBilling(ctx context.Context, tenantID string) bool {
 	if err := id.RequireCapability(core.RelCanManageBilling); err != nil {
 		return false
 	}
+	// A scoped key sees billing figures only when granted the workspace's
+	// settings, plan and usage (w9/m496).
+	if granted, err := s.KeyGrantAllows(ctx, core.KeyWorkspaceSettings); err != nil || !granted {
+		return false
+	}
 	// HoldsFresh, not the raw checker: an API key's answer is capped by its
 	// creator's (w9/m481).
 	allowed, err := s.HoldsFresh(ctx, core.RelCanManageBilling, core.WorkspaceObject(tenantID))

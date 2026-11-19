@@ -1,23 +1,23 @@
 # w9 · m496 — An API key carries a chosen subset of its creator's permissions, as Render's scoped keys do
 
-**Worker:** worker9 **Goal:** a bex API key is minted with a chosen set of Render's per-area permissions, never more than its creator's current role allows; every request outside that set is refused on REST, GraphQL and MCP even when the creator holds it; the set can be changed after minting; and the dashboard's API keys page offers Render's permission picker with its All, Read only and Clear all presets. **Status:** todo
+**Worker:** worker9 **Goal:** a bex API key is minted with a chosen set of Render's per-area permissions, never more than its creator's current role allows; every request outside that set is refused on REST, GraphQL and MCP even when the creator holds it; the set can be changed after minting; and the dashboard's API keys page offers Render's permission picker with its All, Read only and Clear all presets. **Status:** in progress (t001–t008 and t010–t012 done; t009 done on dev-9, its production step waits for a pin that carries this milestone's commit; then t013)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Design: Render's permission catalog, how a key's grant is stored and enforced, what keys minted before it get; ADR024, ADR012 §8e and ADR018 amended | 1h | — |
-| [t002](t002.md) | Catalog and storage: the permission catalog in `core`, a key's grant persisted at mint and read back | 1h | t001 |
-| [t003](t003.md) | Operation map, hosting areas: Services, Deploys, Monitoring, Postgres, Key Value, Environment groups, Projects, Blueprints | 1h30m | t002 |
-| [t004](t004.md) | Operation map, the rest: Workspaces, Sandboxes, Build sources, Object storage, Audit logs and bex's own areas; a guard test fails on any unmapped operation | 1h30m | t003 |
-| [t005](t005.md) | Enforce: a request outside the key's grant is refused on every surface and side entry point, ANDed with the creator ceiling | 1h30m | t004 |
-| [t006](t006.md) | Mint and edit: `permissions` on REST, GraphQL and MCP create, a change-permissions verb, and a grant above the creator's role refused | 1h15m | t005 |
-| [t007](t007.md) | Dashboard: Render's permission picker on create and on a gear-icon edit, presets, role-disabled rows and a grant summary per key | 2h | t006 |
-| [t008](t008.md) | Security review of the scoped-key boundary, recorded in the security lineage | 45m | t005, t006 |
+| [t001](done/t001.md) | Design: Render's permission catalog, how a key's grant is stored and enforced, what keys minted before it get; ADR024, ADR012 §8e and ADR018 amended — **DONE** | 1h | — |
+| [t002](done/t002.md) | Catalog and storage: the permission catalog in `core`, a key's grant persisted at mint and read back — **DONE** | 1h | t001 |
+| [t003](done/t003.md) | Operation map, hosting areas: Services, Deploys, Monitoring, Postgres, Key Value, Environment groups, Projects, Blueprints — **DONE** | 1h30m | t002 |
+| [t004](done/t004.md) | Operation map, the rest: Workspaces, Sandboxes, Build sources, Object storage, Audit logs and bex's own areas; a guard test fails on any unmapped operation — **DONE** | 1h30m | t003 |
+| [t005](done/t005.md) | Enforce: a request outside the key's grant is refused on every surface and side entry point, ANDed with the creator ceiling — **DONE** | 1h30m | t004 |
+| [t006](done/t006.md) | Mint and edit: `permissions` on REST, GraphQL and MCP create, a change-permissions verb, and a grant above the creator's role refused — **DONE** | 1h15m | t005 |
+| [t007](done/t007.md) | Dashboard: Render's permission picker on create and on a gear-icon edit, presets, role-disabled rows and a grant summary per key — **DONE** | 2h | t006 |
+| [t008](done/t008.md) | Security review of the scoped-key boundary, recorded in the security lineage — **DONE** | 45m | t005, t006 |
 | [t009](t009.md) | Live check on dev-9 and production; Render's Terraform provider rerun with an All key | 1h30m | t007, t008 |
-| [t010](t010.md) | Render parity | 30m | t009 |
-| [t011](t011.md) | Simplify | 15m | t010 |
-| [t012](t012.md) | Test coverage | 45m | t010, t011 |
+| [t010](done/t010.md) | Render parity — **DONE** | 30m | t009 |
+| [t011](done/t011.md) | Simplify — **DONE** | 15m | t010 |
+| [t012](done/t012.md) | Test coverage — **DONE** | 45m | t010, t011 |
 | [t013](t013.md) | Closeout | 10m | t012 |
 
 Total: **13 tasks, about 13h**.

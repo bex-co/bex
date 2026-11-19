@@ -13,6 +13,10 @@
 # ownerId (w6/m18): the workspace to list/mint/revoke in — the dashboard always
 # sends the switcher's selection so a multi-workspace caller manages the right
 # workspace's keys, not just whichever workspace they resolve to implicitly.
+#
+# permissions (w9/m496): what the key may do, as Render's scoped keys carry.
+# `all` is every permission its creator's role allows (and follows the role);
+# otherwise exactly `grants`, each a catalog permission at one of its levels.
 query ApiKeys($ownerId: String) {
   apiKeys(ownerId: $ownerId) {
     id
@@ -20,16 +24,78 @@ query ApiKeys($ownerId: String) {
     createdAt
     createdBy
     lastUsedAt
+    permissions {
+      all
+      grants {
+        permission
+        level
+      }
+    }
   }
 }
 
-mutation CreateApiKey($name: String!, $ownerId: String) {
-  createApiKey(name: $name, ownerId: $ownerId) {
+# permissions omitted or {all: true} is Render's All; {grants: []} is Clear all.
+mutation CreateApiKey(
+  $name: String!
+  $ownerId: String
+  $permissions: ApiKeyPermissionsInput
+) {
+  createApiKey(name: $name, ownerId: $ownerId, permissions: $permissions) {
     id
     name
     key
     secret
     createdAt
+  }
+}
+
+# The gear on a key's row (Render: "Change your key's permissions, then click
+# Save changes"). Only the key's creator or a workspace Admin may change it
+# (403 api_key_permissions_editor_forbidden), and never past the creator's
+# role (403 api_key_permission_above_role).
+mutation UpdateApiKeyPermissions(
+  $id: String!
+  $ownerId: String
+  $permissions: ApiKeyPermissionsInput!
+) {
+  updateApiKeyPermissions(
+    id: $id
+    ownerId: $ownerId
+    permissions: $permissions
+  ) {
+    id
+    permissions {
+      all
+      grants {
+        permission
+        level
+      }
+    }
+  }
+}
+
+# The picker's areas, permissions and levels, with whether the viewer's role
+# may grant each level. bex-api owns the catalog; the dashboard holds no copy.
+query ApiKeyPermissionCatalog($ownerId: String) {
+  apiKeyPermissionCatalog(ownerId: $ownerId) {
+    id
+    name
+    bex
+    permissions {
+      id
+      name
+      levels {
+        level
+        name
+        grantable
+        requiredRole
+        actions {
+          id
+          name
+          bex
+        }
+      }
+    }
   }
 }
 

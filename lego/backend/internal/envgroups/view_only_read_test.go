@@ -17,12 +17,15 @@ limitations under the License.
 package envgroups
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 )
 
 // w8/m442: Render's 2026-11-16 envGroup omits envVars and secretFiles "if the
@@ -123,5 +126,32 @@ func TestACallerWhoMayNotViewTheGroupIsStillRefused(t *testing.T) {
 	}
 	if strings.Contains(rec.Body.String(), "shared") {
 		t.Errorf("the refusal names the group: %s", rec.Body)
+	}
+}
+
+// w9/m496: a scoped API key reads a group's values, on its read and on a
+// write's response alike, only when granted Render's "View environment group
+// variable and secret file values", whatever its creator may see.
+func TestAScopedKeyReadsGroupValuesOnlyWhenGranted(t *testing.T) {
+	svc, id, _ := viewOnlyGroup(t, nil)
+	grants := coretest.KeyGrants{"key-1": core.KeyGrantFromEntries([]string{"env_groups:read_write"})}
+	svc.KeyGrants = grants
+	key := core.WithIdentity(context.Background(), core.Identity{Subject: "key-1", ClientID: "key-1", Method: core.MethodOAuth2})
+	reveals := func(rec *httptest.ResponseRecorder) bool {
+		t.Helper()
+		if rec.Code >= 300 {
+			t.Fatalf("answer = %d %s", rec.Code, rec.Body)
+		}
+		return strings.Contains(rec.Body.String(), "s3cret-value") || strings.Contains(rec.Body.String(), "PEM-BODY")
+	}
+	if reveals(serveRESTContext(key, svc, http.MethodGet, "/v1/env-groups/"+id, "")) {
+		t.Error("a key without the values read them on GET")
+	}
+	if reveals(serveRESTContext(key, svc, http.MethodPatch, "/v1/env-groups/"+id, `{"name":"renamed"}`)) {
+		t.Error("a key without the values read them in a rename's response")
+	}
+	grants["key-1"] = core.KeyGrantFromEntries([]string{"env_groups:read_write", "env_group_values:read"})
+	if !reveals(serveRESTContext(key, svc, http.MethodGet, "/v1/env-groups/"+id, "")) {
+		t.Error("a key granted the values did not read them")
 	}
 }

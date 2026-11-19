@@ -32,6 +32,17 @@ describe("useApiKeys", () => {
             createdAt: "2026-07-01T00:00:00Z",
             createdBy: "user:minter",
             lastUsedAt: "2026-07-05T00:00:00Z",
+            permissions: {
+              __typename: "ApiKeyPermissions",
+              all: false,
+              grants: [
+                {
+                  __typename: "ApiKeyGrant",
+                  permission: "services",
+                  level: "read",
+                },
+              ],
+            },
           },
           null,
           {
@@ -41,6 +52,11 @@ describe("useApiKeys", () => {
             createdAt: null,
             createdBy: null,
             lastUsedAt: null,
+            permissions: {
+              __typename: "ApiKeyPermissions",
+              all: true,
+              grants: [],
+            },
           },
         ],
       },
@@ -57,6 +73,11 @@ describe("useApiKeys", () => {
         createdAt: "2026-07-01T00:00:00Z",
         createdBy: "user:minter",
         lastUsedAt: "2026-07-05T00:00:00Z",
+        // w9/m496: the key's grant, without Apollo's __typename.
+        permissions: {
+          all: false,
+          grants: [{ permission: "services", level: "read" }],
+        },
       },
     ]);
   });
@@ -72,6 +93,11 @@ describe("useApiKeys", () => {
             createdAt: null,
             createdBy: null,
             lastUsedAt: null,
+            permissions: {
+              __typename: "ApiKeyPermissions",
+              all: true,
+              grants: [],
+            },
           },
         ],
       },

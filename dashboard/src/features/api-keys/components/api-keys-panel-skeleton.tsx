@@ -9,8 +9,46 @@ import {
 } from "@/common/components/ui/card";
 import { PanelTableFrame } from "@/common/components/panel-states";
 import { ReservedButton } from "@/common/components/reserved-skeleton";
+import { Skeleton } from "@/common/components/ui/skeleton";
+import { TableCell, TableRow } from "@/common/components/ui/table";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { apiKeysColumns } from "@/features/api-keys/lib/api-keys-columns";
+import {
+  API_KEYS_PERMISSIONS_COLUMN,
+  apiKeysColumns,
+} from "@/features/api-keys/lib/api-keys-columns";
+
+/**
+ * The keys table while its keys load (w4/686): the ready header, then one row
+ * shaped like a key's — a text line per column, the permissions summary
+ * beside its 32 px gear (w9/m496), and the 36 px revoke slot. The panel and
+ * its frame below both draw it.
+ */
+export function ApiKeysTableFrame({ columns }: { columns: string[] }) {
+  return (
+    <PanelTableFrame columns={columns}>
+      <TableRow data-testid="panel-table-row-placeholder">
+        {columns.map((column, i) => (
+          <TableCell key={column}>
+            {i === API_KEYS_PERMISSIONS_COLUMN ? (
+              <div
+                className="flex items-center gap-1"
+                data-testid="api-key-permissions-placeholder"
+              >
+                <Skeleton className="h-5 w-16" />
+                <Skeleton className="size-8" />
+              </div>
+            ) : (
+              <Skeleton className="h-5 w-16" />
+            )}
+          </TableCell>
+        ))}
+        <TableCell>
+          <Skeleton className="ml-auto size-9" />
+        </TableCell>
+      </TableRow>
+    </PanelTableFrame>
+  );
+}
 
 /**
  * ApiKeysPanel's frame before it mounts (w3/067): its static title and
@@ -37,7 +75,7 @@ export function ApiKeysPanelSkeleton() {
         </CardAction>
       </CardHeader>
       <CardContent>
-        <PanelTableFrame columns={apiKeysColumns(t)} />
+        <ApiKeysTableFrame columns={apiKeysColumns(t)} />
       </CardContent>
     </Card>
   );

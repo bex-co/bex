@@ -83,15 +83,22 @@ func classifiedClass(op string) string {
 	return defaultScopeClass(op)
 }
 
-// requireScopeClass is the one shared checker the three surfaces call. Exempt
-// identities (sessions, API keys, platform clients without a granular grant)
-// pass. Refusals are audited; allows are not (volume).
+// requireScopeClass is the one shared checker the three surfaces call. An API
+// key is held to its grant (requireKeyGrant); other exempt identities
+// (sessions, platform clients without a granular grant) pass. Refusals are
+// audited; allows are not (volume).
 func (s *Server) requireScopeClass(ctx context.Context, op string) error {
 	if op == "" {
 		return nil
 	}
 	id, ok := core.IdentityFrom(ctx)
-	if !ok || id.CapabilityExempt() {
+	if !ok {
+		return nil
+	}
+	if id.IsAPIKey() {
+		return s.requireKeyGrant(ctx, op)
+	}
+	if id.CapabilityExempt() {
 		return nil
 	}
 	class := gateScopeClass(op)
@@ -102,6 +109,45 @@ func (s *Server) requireScopeClass(ctx context.Context, op string) error {
 	if err != nil {
 		s.recordScopeClassDenial(ctx, op, class)
 		return err
+	}
+	return nil
+}
+
+// keyGrantDenialClass is the class an audited grant refusal names.
+const keyGrantDenialClass = "api_key_permission"
+
+// keyGrantPseudoOps are the checks a scoped key's GraphQL document can need
+// beyond its root fields, which are not live operations: a nested secret
+// field (graphQLSensitiveNestedFields, a service's envVar or secretFile).
+var keyGrantPseudoOps = map[string][]core.KeyAction{
+	graphQLSensitiveNestedOp: {core.KeyServicesEnv},
+}
+
+// requireKeyGrant holds an API key to its grant (w9/m496, I6, I7): every op
+// must be covered, an op missing from keyPermissionOps is refused, and a
+// grant that cannot be read refuses the request (503) rather than falling
+// back to the creator's role. A key whose grant is All passes untouched; its
+// own tuples and its creator ceiling (core keyCeiling) decide the rest, as
+// for every key. The grant is read once per call, uncached (I8).
+func (s *Server) requireKeyGrant(ctx context.Context, ops ...string) error {
+	grant, err := s.scopeBase().KeyGrant(ctx)
+	if err != nil {
+		return err
+	}
+	if grant.All {
+		return nil
+	}
+	for _, op := range ops {
+		need, mapped := keyPermissionOps[op]
+		if !mapped {
+			if need, mapped = keyGrantPseudoOps[op]; !mapped {
+				need = []core.KeyAction{core.KeyNoGrant}
+			}
+		}
+		if !grant.Allows(need...) {
+			s.recordScopeClassDenial(ctx, op, keyGrantDenialClass)
+			return core.NewKeyPermissionDeniedError(need)
+		}
 	}
 	return nil
 }
@@ -152,7 +198,7 @@ func boundScopeOp(op string) string {
 
 func (s *Server) withScopeClassREST(mux *http.ServeMux, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if id, ok := core.IdentityFrom(r.Context()); ok && id.CapabilityExempt() {
+		if id, ok := core.IdentityFrom(r.Context()); ok && id.CapabilityExempt() && !id.IsAPIKey() {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -315,7 +361,20 @@ const graphQLSensitiveNestedOp = "GQL Nested.sensitiveSelection"
 
 func (s *Server) requireGraphQLScopeFrom(ctx context.Context, fragments map[string]*ast.FragmentDefinition, ops []*ast.OperationDefinition, operationName string) error {
 	id, ok := core.IdentityFrom(ctx)
-	if !ok || id.CapabilityExempt() {
+	if !ok {
+		return nil
+	}
+	if id.IsAPIKey() {
+		// Every top-level field of every selected operation, and a nested
+		// secret anywhere in them, against one read of the grant: a batch
+		// cannot slip a refused field past a permitted one.
+		keyOps := graphqlTopLevelOpsFrom(fragments, ops, operationName)
+		if graphQLSelectsSensitiveNested(fragments, ops, operationName) {
+			keyOps = append(keyOps, graphQLSensitiveNestedOp)
+		}
+		return s.requireKeyGrant(ctx, keyOps...)
+	}
+	if id.CapabilityExempt() {
 		return nil
 	}
 	for _, op := range graphqlTopLevelOpsFrom(fragments, ops, operationName) {

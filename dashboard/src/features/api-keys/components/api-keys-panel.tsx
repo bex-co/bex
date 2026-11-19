@@ -11,7 +11,6 @@ import { Table, TableBody } from "@/common/components/ui/table";
 import {
   PanelCenteredState,
   PanelTableHeader,
-  PanelTableFrame,
 } from "@/common/components/panel-states";
 import { isForbiddenError } from "@/common/lib/graphql-error";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -19,6 +18,7 @@ import { useApiKeys } from "@/features/api-keys/hooks/use-api-keys";
 import { useRevokeApiKey } from "@/features/api-keys/hooks/use-revoke-api-key";
 import { ApiKeyRow } from "@/features/api-keys/components/api-key-row";
 import { CreateApiKeyDialog } from "@/features/api-keys/components/create-api-key-dialog";
+import { ApiKeysTableFrame } from "@/features/api-keys/components/api-keys-panel-skeleton";
 import { apiKeysColumns } from "@/features/api-keys/lib/api-keys-columns";
 
 /**
@@ -72,7 +72,7 @@ export function ApiKeysPanel() {
             body={t(forbidden ? "apiKeys.forbiddenBody" : "apiKeys.errorBody")}
           />
         ) : initialLoading ? (
-          <PanelTableFrame columns={columns} />
+          <ApiKeysTableFrame columns={columns} />
         ) : keys.length === 0 ? (
           <PanelCenteredState
             icon={<KeyRound />}

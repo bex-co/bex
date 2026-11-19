@@ -1632,7 +1632,11 @@ func (s *Service) ListBlueprints(ctx context.Context, ownerID string) ([]Bluepri
 func (s *Service) canReadManifest(ctx context.Context) bool {
 	// RelCanViewSensitive is a read relation, so Can/Authorize would ride a
 	// stale positive. Get/list blank Manifest rather than failing the whole
-	// read: metadata stays viewer-readable (codex round-15 #4).
+	// read: metadata stays viewer-readable (codex round-15 #4). A scoped API
+	// key needs the env-var values read too, as a preview does (w9/m496).
+	if granted, err := s.KeyGrantAllows(ctx, core.KeyServicesEnv); err != nil || !granted {
+		return false
+	}
 	return s.AuthorizeFresh(ctx, core.RelCanViewSensitive) == nil
 }
 

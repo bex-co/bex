@@ -12,6 +12,12 @@ export const apolloCacheConfig: InMemoryCacheConfig = {
     // not a cache identity: entries stay embedded in their query's result, as
     // they were before the id was selected.
     LogEntry: { keyFields: false },
+    // The API key permission catalog (w9/m496) says, per level, whether the
+    // viewer may grant it, which differs by workspace. Kept inline under each
+    // workspace's `apiKeyPermissionCatalog(ownerId)` instead of normalized by
+    // id, so one workspace's answer never overwrites another's.
+    ApiKeyPermissionArea: { keyFields: false },
+    ApiKeyPermission: { keyFields: false },
     // One agent environment per workspace (w10/m17): keyed by its owner so
     // updateAgentEnvironment's result refreshes the settings query in place.
     AgentEnvironment: { keyFields: ["ownerId"] },

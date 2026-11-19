@@ -7,9 +7,9 @@ const ruApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "Машинные учётные данные для скриптов и агентов. Каждый ключ действует с текущей ролью участника, который его создал, и только в этом рабочем пространстве. Общие для всего рабочего пространства — любой, кто может управлять ключами, видит здесь все ключи, а не только свои.",
+      "Машинные учётные данные для скриптов и агентов. Каждый ключ может использовать только выбранные для него разрешения, не больше, чем допускает текущая роль участника, который его создал, и только в этом рабочем пространстве. Общие для всего рабочего пространства — любой, кто может управлять ключами, видит здесь все ключи, а не только свои.",
     description:
-      "Settings API Keys section card description: what a key is, that it acts with its creator's current role in this workspace, and that the list is shared",
+      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and that the list is shared",
   },
   "apiKeys.cliGuide": {
     message: "Настройте CLI.",
@@ -113,9 +113,9 @@ const ruApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.keyHelp": {
     message:
-      "Передавайте его в каждом запросе как Authorization: Bearer. Ключ действует с вашей текущей ролью участника в этом рабочем пространстве и меняется вместе с ней, поэтому обращайтесь с ним как с паролем.",
+      "Передавайте его в каждом запросе как Authorization: Bearer. Ключ может использовать только выбранные вами разрешения, не больше, чем допускает ваша текущая роль участника в этом рабочем пространстве, поэтому обращайтесь с ним как с паролем.",
     description:
-      "Mint dialog copy under the key: how to send it, and that it acts with the creator's current member role in this workspace and follows it",
+      "Mint dialog copy under the key: how to send it, and that it uses only the chosen permissions, capped by the creator's current member role in this workspace (w9/m496)",
   },
   "apiKeys.curlTitle": {
     message: "Пример запроса",
@@ -208,6 +208,166 @@ const ruApiKeys: Record<string, TranslationEntry> = {
   "apiKeys.revokeError": {
     message: "Не удалось отозвать {name}",
     description: "Toast on a failed revoke",
+  },
+  "apiKeys.colPermissions": {
+    message: "Разрешения",
+    description: "API Keys table column header: what each key may do (w9/m496)",
+  },
+  "apiKeys.permSummaryAll": {
+    message: "Все",
+    description:
+      "Key row permissions summary: the key has every permission its creator's member role allows (Render's All)",
+  },
+  "apiKeys.permSummaryReadOnly": {
+    message: "Только чтение",
+    description:
+      "Key row permissions summary: every permission the key has is at Read, so it can change nothing",
+  },
+  "apiKeys.permSummaryNone": {
+    message: "Нет разрешений",
+    description:
+      "Key row permissions summary: the key has no permissions (Clear all)",
+  },
+  "apiKeys.permSummaryCustom": {
+    message: "Выборочные",
+    description:
+      "Key row permissions summary: the key has a chosen set of permissions; followed by their count",
+  },
+  "apiKeys.editPermissionsNamed": {
+    message: "Изменить разрешения ключа {name}",
+    description:
+      "Gear button aria-label on a key row; opens the permissions editor",
+  },
+  "apiKeys.editPermissionsTitle": {
+    message: "Изменение разрешений",
+    description: "Permissions editor dialog title",
+  },
+  "apiKeys.editPermissionsDescription": {
+    message:
+      "Измените, что может использовать {name}, и нажмите «Сохранить изменения». Новые разрешения действуют сразу.",
+    description:
+      "Permissions editor dialog description; {name} is the key's name",
+  },
+  "apiKeys.editPermissionsCancel": {
+    message: "Отменить",
+    description: "Permissions editor dialog cancel button",
+  },
+  "apiKeys.editPermissionsSave": {
+    message: "Сохранить изменения",
+    description: "Permissions editor dialog save button (Render's words)",
+  },
+  "apiKeys.permissionsSaved": {
+    message: "Разрешения ключа {name} обновлены",
+    description: "Toast after a key's permissions are saved",
+  },
+  "apiKeys.permissionsSaveError": {
+    message: "Не удалось обновить разрешения ключа {name}",
+    description:
+      "Toast when saving a key's permissions fails (the server's reason is shown instead when it gives one)",
+  },
+  "apiKeys.permIntro": {
+    message: "Выберите разрешения, которые может использовать этот API-ключ.",
+    description:
+      "Permission picker heading in the create dialog and the permissions editor (Render's words)",
+  },
+  "apiKeys.permPresetAll": {
+    message: "Все",
+    description:
+      "Picker preset button: grant every permission the member role allows (Render's All)",
+  },
+  "apiKeys.permPresetReadOnly": {
+    message: "Только чтение",
+    description:
+      "Picker preset button: grant Read on every permission that offers it (Render's Read only)",
+  },
+  "apiKeys.permPresetClear": {
+    message: "Снять все",
+    description:
+      "Picker preset button: remove every permission from the key (Render's Clear all)",
+  },
+  "apiKeys.permAllHelp": {
+    message:
+      "«Все» даёт каждое разрешение, которое допускает роль участника, создавшего ключ, для всех ресурсов, и меняется вместе с этой ролью.",
+    description: "Picker note while the All preset is selected: what All means",
+  },
+  "apiKeys.permNoneHelp": {
+    message: "Разрешения не выбраны. Ключ может только идентифицировать себя.",
+    description: "Picker note when every permission is None (Clear all)",
+  },
+  "apiKeys.permAreaToggle": {
+    message: "Выдать разрешения раздела {area}",
+    description:
+      "Switch aria-label on one area of the picker; {area} is Render's area name, e.g. Services (kept in English)",
+  },
+  "apiKeys.permLevelNone": {
+    message: "Нет",
+    description: "Picker option on a permission: the key gets none of it",
+  },
+  "apiKeys.permLevelGrants": {
+    message: "{level} даёт:",
+    description:
+      "Picker label over the actions a permission's chosen level grants; {level} is Render's level name, e.g. Read & write (kept in English)",
+  },
+  "apiKeys.permRequiresRole.viewer": {
+    message: "Для уровня {level} нужна роль «Наблюдатель».",
+    description:
+      "Reason beside a level the viewer's role cannot grant; {level} is Render's level name (kept in English); the lowest role that can is Viewer",
+  },
+  "apiKeys.permRequiresRole.contributor": {
+    message: "Для уровня {level} нужна роль «Участник-исполнитель».",
+    description:
+      "Reason beside a level the viewer's role cannot grant; {level} is Render's level name (kept in English); the lowest role that can is Contributor",
+  },
+  "apiKeys.permRequiresRole.developer": {
+    message: "Для уровня {level} нужна роль «Разработчик».",
+    description:
+      "Reason beside a level the viewer's role cannot grant; {level} is Render's level name (kept in English); the lowest role that can is Developer",
+  },
+  "apiKeys.permRequiresRole.admin": {
+    message: "Для уровня {level} нужна роль «Администратор».",
+    description:
+      "Reason beside a level the viewer's role cannot grant; {level} is Render's level name (kept in English); the lowest role that can is Admin",
+  },
+  "apiKeys.permRequiresHigherRole": {
+    message: "Для уровня {level} нужна более высокая роль участника.",
+    description:
+      "Reason beside a level the viewer's role cannot grant, when bex-api names a role the dashboard does not know",
+  },
+  "apiKeys.permCatalogLoading": {
+    message: "Загрузка разрешений…",
+    description:
+      "Accessible name of the picker while its permission list loads",
+  },
+  "apiKeys.permCatalogErrorCreate": {
+    message:
+      "Не удалось загрузить список разрешений. Ключ, созданный сейчас, получит все разрешения.",
+    description:
+      "Create dialog note when the permission list fails to load: creating still works and grants All",
+  },
+  "apiKeys.permCatalogErrorEdit": {
+    message: "Не удалось загрузить список разрешений.",
+    description:
+      "Permissions editor note when the permission list fails to load, beside a Try again button",
+  },
+  "apiKeys.permSummaryCount_one": {
+    message: "{count} разрешение",
+    description:
+      "Key row permissions summary beside Custom: how many permissions the key has",
+  },
+  "apiKeys.permSummaryCount_few": {
+    message: "{count} разрешения",
+    description:
+      "Key row permissions summary beside Custom: how many permissions the key has",
+  },
+  "apiKeys.permSummaryCount_many": {
+    message: "{count} разрешений",
+    description:
+      "Key row permissions summary beside Custom: how many permissions the key has",
+  },
+  "apiKeys.permSummaryCount_other": {
+    message: "{count} разрешения",
+    description:
+      "Key row permissions summary beside Custom: how many permissions the key has",
   },
 };
 

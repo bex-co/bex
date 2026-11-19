@@ -130,6 +130,7 @@ var neverEmptyArrayRoutes = map[string]string{
 	"GET /v1/postgres/{id}/credentials":                                           "always includes the default CNPG owner credential (postgres.ListCredentials)",
 	"GET /v1/metrics/disk-capacity":                                               "the provisioned capacity of a disk — one constant series, never an empty list",
 	"GET /v1/webhooks/event-types":                                                "webhooks.EventTypes, a sorted package var over a non-empty set (webhooks/service.go)",
+	"GET /v1/api-keys/permissions":                                                "core.KeyPermissionCatalog, a package var over a non-empty set; every area, permission and level lists its entries (apikeys.PermissionCatalog)",
 	"GET /v1/metrics/filters/http":                                                "one descriptor per supported HTTP filter; inner values[] via filterValuesOrEmpty (metrics/service.go)",
 	"GET /v1/metrics/filters/application":                                         "one descriptor per supported application filter, same helper",
 	"GET /v1/viewer/capabilities":                                                 "grants is append onto make([]CapabilityGrant, 0, 8) and is never empty (members/service.go)",

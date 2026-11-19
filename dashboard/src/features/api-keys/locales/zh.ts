@@ -7,9 +7,9 @@ const zhApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "供脚本和智能体使用的机器凭证。每个密钥以其创建者当前的成员角色行事，且仅在此工作区内有效。整个工作区共享——任何有密钥管理权限的人都能看到这里的所有密钥，而不仅仅是自己创建的。",
+      "供脚本和智能体使用的机器凭证。每个密钥只能使用为它选择的权限，绝不超出其创建者当前成员角色允许的范围，且仅在此工作区内有效。整个工作区共享——任何有密钥管理权限的人都能看到这里的所有密钥，而不仅仅是自己创建的。",
     description:
-      "Settings API Keys section card description: what a key is, that it acts with its creator's current role in this workspace, and that the list is shared",
+      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and that the list is shared",
   },
   "apiKeys.cliGuide": {
     message: "设置 CLI。",
@@ -112,9 +112,9 @@ const zhApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.keyHelp": {
     message:
-      "在每个请求中将它作为 Authorization: Bearer 发送。此密钥以你在该工作区当前的成员角色行事，并会随你的角色变化而变化，请像密码一样保管。",
+      "在每个请求中将它作为 Authorization: Bearer 发送。此密钥只能使用你为它选择的权限，绝不超出你在该工作区当前成员角色允许的范围，请像密码一样保管。",
     description:
-      "Mint dialog copy under the key: how to send it, and that it acts with the creator's current member role in this workspace and follows it",
+      "Mint dialog copy under the key: how to send it, and that it uses only the chosen permissions, capped by the creator's current member role in this workspace (w9/m496)",
   },
   "apiKeys.curlTitle": {
     message: "示例请求",
@@ -206,6 +206,150 @@ const zhApiKeys: Record<string, TranslationEntry> = {
   "apiKeys.revokeError": {
     message: "无法撤销 {name}",
     description: "Toast on a failed revoke",
+  },
+  "apiKeys.colPermissions": {
+    message: "权限",
+    description: "API Keys table column header: what each key may do (w9/m496)",
+  },
+  "apiKeys.permSummaryAll": {
+    message: "全部",
+    description:
+      "Key row permissions summary: the key has every permission its creator's member role allows (Render's All)",
+  },
+  "apiKeys.permSummaryReadOnly": {
+    message: "只读",
+    description:
+      "Key row permissions summary: every permission the key has is at Read, so it can change nothing",
+  },
+  "apiKeys.permSummaryNone": {
+    message: "无权限",
+    description:
+      "Key row permissions summary: the key has no permissions (Clear all)",
+  },
+  "apiKeys.permSummaryCustom": {
+    message: "自定义",
+    description:
+      "Key row permissions summary: the key has a chosen set of permissions; followed by their count",
+  },
+  "apiKeys.editPermissionsNamed": {
+    message: "更改 {name} 的权限",
+    description:
+      "Gear button aria-label on a key row; opens the permissions editor",
+  },
+  "apiKeys.editPermissionsTitle": {
+    message: "编辑权限",
+    description: "Permissions editor dialog title",
+  },
+  "apiKeys.editPermissionsDescription": {
+    message:
+      "更改 {name} 可以使用的权限，然后点击“保存更改”。新权限会立即生效。",
+    description:
+      "Permissions editor dialog description; {name} is the key's name",
+  },
+  "apiKeys.editPermissionsCancel": {
+    message: "取消",
+    description: "Permissions editor dialog cancel button",
+  },
+  "apiKeys.editPermissionsSave": {
+    message: "保存更改",
+    description: "Permissions editor dialog save button (Render's words)",
+  },
+  "apiKeys.permissionsSaved": {
+    message: "已更新 {name} 的权限",
+    description: "Toast after a key's permissions are saved",
+  },
+  "apiKeys.permissionsSaveError": {
+    message: "无法更新 {name} 的权限",
+    description:
+      "Toast when saving a key's permissions fails (the server's reason is shown instead when it gives one)",
+  },
+  "apiKeys.permIntro": {
+    message: "选择此 API 密钥可以使用的权限。",
+    description:
+      "Permission picker heading in the create dialog and the permissions editor (Render's words)",
+  },
+  "apiKeys.permPresetAll": {
+    message: "全部",
+    description:
+      "Picker preset button: grant every permission the member role allows (Render's All)",
+  },
+  "apiKeys.permPresetReadOnly": {
+    message: "只读",
+    description:
+      "Picker preset button: grant Read on every permission that offers it (Render's Read only)",
+  },
+  "apiKeys.permPresetClear": {
+    message: "全部清除",
+    description:
+      "Picker preset button: remove every permission from the key (Render's Clear all)",
+  },
+  "apiKeys.permAllHelp": {
+    message:
+      "“全部”会授予创建者成员角色允许的每一项权限，覆盖所有资源，并在该角色变化时随之变化。",
+    description: "Picker note while the All preset is selected: what All means",
+  },
+  "apiKeys.permNoneHelp": {
+    message: "未选择任何权限。此密钥只能识别自身。",
+    description: "Picker note when every permission is None (Clear all)",
+  },
+  "apiKeys.permAreaToggle": {
+    message: "授予 {area} 权限",
+    description:
+      "Switch aria-label on one area of the picker; {area} is Render's area name, e.g. Services (kept in English)",
+  },
+  "apiKeys.permLevelNone": {
+    message: "无",
+    description: "Picker option on a permission: the key gets none of it",
+  },
+  "apiKeys.permLevelGrants": {
+    message: "{level} 授予：",
+    description:
+      "Picker label over the actions a permission's chosen level grants; {level} is Render's level name, e.g. Read & write (kept in English)",
+  },
+  "apiKeys.permRequiresRole.viewer": {
+    message: "{level} 需要查看者角色。",
+    description:
+      "Reason beside a level the viewer's role cannot grant; {level} is Render's level name (kept in English); the lowest role that can is Viewer",
+  },
+  "apiKeys.permRequiresRole.contributor": {
+    message: "{level} 需要贡献者角色。",
+    description:
+      "Reason beside a level the viewer's role cannot grant; {level} is Render's level name (kept in English); the lowest role that can is Contributor",
+  },
+  "apiKeys.permRequiresRole.developer": {
+    message: "{level} 需要开发者角色。",
+    description:
+      "Reason beside a level the viewer's role cannot grant; {level} is Render's level name (kept in English); the lowest role that can is Developer",
+  },
+  "apiKeys.permRequiresRole.admin": {
+    message: "{level} 需要管理员角色。",
+    description:
+      "Reason beside a level the viewer's role cannot grant; {level} is Render's level name (kept in English); the lowest role that can is Admin",
+  },
+  "apiKeys.permRequiresHigherRole": {
+    message: "{level} 需要更高的成员角色。",
+    description:
+      "Reason beside a level the viewer's role cannot grant, when bex-api names a role the dashboard does not know",
+  },
+  "apiKeys.permCatalogLoading": {
+    message: "正在加载权限…",
+    description:
+      "Accessible name of the picker while its permission list loads",
+  },
+  "apiKeys.permCatalogErrorCreate": {
+    message: "无法加载权限列表。现在创建的密钥将获得全部权限。",
+    description:
+      "Create dialog note when the permission list fails to load: creating still works and grants All",
+  },
+  "apiKeys.permCatalogErrorEdit": {
+    message: "无法加载权限列表。",
+    description:
+      "Permissions editor note when the permission list fails to load, beside a Try again button",
+  },
+  "apiKeys.permSummaryCount_other": {
+    message: "{count} 项权限",
+    description:
+      "Key row permissions summary beside Custom: how many permissions the key has",
   },
 };
 

@@ -7,9 +7,9 @@ const koApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "스크립트와 에이전트를 위한 머신 자격 증명입니다. 각 키는 만든 사람의 현재 멤버 역할로, 이 워크스페이스에서만 동작합니다. 워크스페이스 전체에서 공유되며, 키를 관리할 수 있는 사람은 본인 키뿐 아니라 모든 키를 볼 수 있습니다.",
+      "스크립트와 에이전트를 위한 머신 자격 증명입니다. 각 키는 선택된 권한만 사용할 수 있으며, 만든 사람의 현재 멤버 역할이 허용하는 범위를 넘지 않고, 이 워크스페이스에서만 동작합니다. 워크스페이스 전체에서 공유되며, 키를 관리할 수 있는 사람은 본인 키뿐 아니라 모든 키를 볼 수 있습니다.",
     description:
-      "Settings API Keys section card description: what a key is, that it acts with its creator's current role in this workspace, and that the list is shared",
+      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and that the list is shared",
   },
   "apiKeys.cliGuide": {
     message: "CLI 설정하기.",
@@ -112,9 +112,9 @@ const koApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.keyHelp": {
     message:
-      "모든 요청에 Authorization: Bearer로 보내세요. 이 키는 이 워크스페이스에서 회원님의 현재 멤버 역할로 동작하고 역할이 바뀌면 그에 따르므로 비밀번호처럼 다루세요.",
+      "모든 요청에 Authorization: Bearer로 보내세요. 이 키는 선택한 권한만 사용할 수 있으며 이 워크스페이스에서 회원님의 현재 멤버 역할이 허용하는 범위를 넘지 않으므로 비밀번호처럼 다루세요.",
     description:
-      "Mint dialog copy under the key: how to send it, and that it acts with the creator's current member role in this workspace and follows it",
+      "Mint dialog copy under the key: how to send it, and that it uses only the chosen permissions, capped by the creator's current member role in this workspace (w9/m496)",
   },
   "apiKeys.curlTitle": {
     message: "요청 예시",
@@ -207,6 +207,152 @@ const koApiKeys: Record<string, TranslationEntry> = {
   "apiKeys.revokeError": {
     message: "{name} 키를 취소하지 못했습니다",
     description: "Toast on a failed revoke",
+  },
+  "apiKeys.colPermissions": {
+    message: "권한",
+    description: "API Keys table column header: what each key may do (w9/m496)",
+  },
+  "apiKeys.permSummaryAll": {
+    message: "전체",
+    description:
+      "Key row permissions summary: the key has every permission its creator's member role allows (Render's All)",
+  },
+  "apiKeys.permSummaryReadOnly": {
+    message: "읽기 전용",
+    description:
+      "Key row permissions summary: every permission the key has is at Read, so it can change nothing",
+  },
+  "apiKeys.permSummaryNone": {
+    message: "권한 없음",
+    description:
+      "Key row permissions summary: the key has no permissions (Clear all)",
+  },
+  "apiKeys.permSummaryCustom": {
+    message: "사용자 지정",
+    description:
+      "Key row permissions summary: the key has a chosen set of permissions; followed by their count",
+  },
+  "apiKeys.editPermissionsNamed": {
+    message: "{name}의 권한 변경",
+    description:
+      "Gear button aria-label on a key row; opens the permissions editor",
+  },
+  "apiKeys.editPermissionsTitle": {
+    message: "권한 편집",
+    description: "Permissions editor dialog title",
+  },
+  "apiKeys.editPermissionsDescription": {
+    message:
+      "{name}이(가) 사용할 수 있는 항목을 변경한 다음 변경 사항 저장을 클릭하세요. 새 권한은 즉시 적용됩니다.",
+    description:
+      "Permissions editor dialog description; {name} is the key's name",
+  },
+  "apiKeys.editPermissionsCancel": {
+    message: "취소",
+    description: "Permissions editor dialog cancel button",
+  },
+  "apiKeys.editPermissionsSave": {
+    message: "변경 사항 저장",
+    description: "Permissions editor dialog save button (Render's words)",
+  },
+  "apiKeys.permissionsSaved": {
+    message: "{name}의 권한을 업데이트했습니다",
+    description: "Toast after a key's permissions are saved",
+  },
+  "apiKeys.permissionsSaveError": {
+    message: "{name}의 권한을 업데이트할 수 없습니다",
+    description:
+      "Toast when saving a key's permissions fails (the server's reason is shown instead when it gives one)",
+  },
+  "apiKeys.permIntro": {
+    message: "이 API 키가 사용할 수 있는 권한을 선택하세요.",
+    description:
+      "Permission picker heading in the create dialog and the permissions editor (Render's words)",
+  },
+  "apiKeys.permPresetAll": {
+    message: "전체",
+    description:
+      "Picker preset button: grant every permission the member role allows (Render's All)",
+  },
+  "apiKeys.permPresetReadOnly": {
+    message: "읽기 전용",
+    description:
+      "Picker preset button: grant Read on every permission that offers it (Render's Read only)",
+  },
+  "apiKeys.permPresetClear": {
+    message: "모두 해제",
+    description:
+      "Picker preset button: remove every permission from the key (Render's Clear all)",
+  },
+  "apiKeys.permAllHelp": {
+    message:
+      "전체는 만든 사람의 멤버 역할이 허용하는 권한을 하나도 빠짐없이 모든 리소스에 부여하며, 역할이 바뀌면 그에 따릅니다.",
+    description: "Picker note while the All preset is selected: what All means",
+  },
+  "apiKeys.permNoneHelp": {
+    message:
+      "선택한 권한이 없습니다. 이 키는 자신을 식별하는 것만 할 수 있습니다.",
+    description: "Picker note when every permission is None (Clear all)",
+  },
+  "apiKeys.permAreaToggle": {
+    message: "{area} 권한 부여",
+    description:
+      "Switch aria-label on one area of the picker; {area} is Render's area name, e.g. Services (kept in English)",
+  },
+  "apiKeys.permLevelNone": {
+    message: "없음",
+    description: "Picker option on a permission: the key gets none of it",
+  },
+  "apiKeys.permLevelGrants": {
+    message: "{level} 권한으로 가능한 작업:",
+    description:
+      "Picker label over the actions a permission's chosen level grants; {level} is Render's level name, e.g. Read & write (kept in English)",
+  },
+  "apiKeys.permRequiresRole.viewer": {
+    message: "{level} 권한에는 뷰어 역할이 필요합니다.",
+    description:
+      "Reason beside a level the viewer's role cannot grant; {level} is Render's level name (kept in English); the lowest role that can is Viewer",
+  },
+  "apiKeys.permRequiresRole.contributor": {
+    message: "{level} 권한에는 기여자 역할이 필요합니다.",
+    description:
+      "Reason beside a level the viewer's role cannot grant; {level} is Render's level name (kept in English); the lowest role that can is Contributor",
+  },
+  "apiKeys.permRequiresRole.developer": {
+    message: "{level} 권한에는 개발자 역할이 필요합니다.",
+    description:
+      "Reason beside a level the viewer's role cannot grant; {level} is Render's level name (kept in English); the lowest role that can is Developer",
+  },
+  "apiKeys.permRequiresRole.admin": {
+    message: "{level} 권한에는 관리자 역할이 필요합니다.",
+    description:
+      "Reason beside a level the viewer's role cannot grant; {level} is Render's level name (kept in English); the lowest role that can is Admin",
+  },
+  "apiKeys.permRequiresHigherRole": {
+    message: "{level} 권한에는 더 높은 멤버 역할이 필요합니다.",
+    description:
+      "Reason beside a level the viewer's role cannot grant, when bex-api names a role the dashboard does not know",
+  },
+  "apiKeys.permCatalogLoading": {
+    message: "권한을 불러오는 중…",
+    description:
+      "Accessible name of the picker while its permission list loads",
+  },
+  "apiKeys.permCatalogErrorCreate": {
+    message:
+      "권한 목록을 불러올 수 없습니다. 지금 만드는 키에는 전체 권한이 부여됩니다.",
+    description:
+      "Create dialog note when the permission list fails to load: creating still works and grants All",
+  },
+  "apiKeys.permCatalogErrorEdit": {
+    message: "권한 목록을 불러올 수 없습니다.",
+    description:
+      "Permissions editor note when the permission list fails to load, beside a Try again button",
+  },
+  "apiKeys.permSummaryCount_other": {
+    message: "권한 {count}개",
+    description:
+      "Key row permissions summary beside Custom: how many permissions the key has",
   },
 };
 

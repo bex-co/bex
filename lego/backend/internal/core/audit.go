@@ -1705,6 +1705,7 @@ var readVerbs = map[string]bool{
 	"members.ListOrganizationInvites":    true,
 	"members.ListInvites":                true,
 	"apikeys.ListAPIKeys":                true,
+	"apikeys.PermissionCatalog":          true,
 	"sshkeys.List":                       true,
 	"workspaces.PipelineSettings":        true,
 	"workspaces.WorkspaceCreationPolicy": true,

@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
-import { CreateApiKeyDocument } from "@/graphql/definitions";
+import {
+  CreateApiKeyDocument,
+  type ApiKeyPermissionsInput,
+} from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
@@ -9,8 +12,15 @@ import { bearerKey } from "@/features/api-keys/lib/bearer-key";
 import type { CreatedApiKey } from "@/features/api-keys/types";
 
 export interface UseCreateApiKeyResult {
-  /** Fires createApiKey; resolves the minted key (its bearer string and secret included) or null. */
-  create: (name: string) => Promise<CreatedApiKey | null>;
+  /**
+   * Fires createApiKey; resolves the minted key (its bearer string and secret
+   * included) or null. `permissions` is the key's grant (w9/m496); omitted,
+   * bex-api grants All, as Render does.
+   */
+  create: (
+    name: string,
+    permissions?: ApiKeyPermissionsInput,
+  ) => Promise<CreatedApiKey | null>;
   busy: boolean;
 }
 
@@ -32,7 +42,7 @@ export function useCreateApiKey(): UseCreateApiKeyResult {
   const [busy, setBusy] = useState(false);
 
   const create = useCallback(
-    async (name: string) => {
+    async (name: string, permissions?: ApiKeyPermissionsInput) => {
       // Scoped to the switcher's selected workspace (w6/m18) — refused (never
       // sent with a null ownerId, which the backend would silently route to the
       // caller's default workspace) until the workspace list resolves, mirroring
@@ -44,7 +54,11 @@ export function useCreateApiKey(): UseCreateApiKeyResult {
       setBusy(true);
       try {
         const res = await mutate({
-          variables: { name, ownerId: currentWorkspaceId },
+          variables: {
+            name,
+            ownerId: currentWorkspaceId,
+            ...(permissions ? { permissions } : {}),
+          },
         });
         const minted = res.data?.createApiKey;
         if (!minted?.id || !minted.secret) {

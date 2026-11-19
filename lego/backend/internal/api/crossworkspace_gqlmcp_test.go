@@ -263,6 +263,11 @@ var callerScopedMCPTools = map[string]bool{
 	// another workspace's data (members.TestViewerCapabilitiesProjection proves
 	// the non-member denial).
 	"get_viewer_capabilities": true,
+	// The API key permission catalog (w9/m496): arg-less, so it resolves to
+	// the caller's own workspace (NamedWorkspace), where it is authorized
+	// (can_manage_keys); it lists the static catalog and whether the caller's
+	// own role there may grant each level, never another workspace's data.
+	"list_api_key_permissions": true,
 }
 
 func TestCrossWorkspaceMCPMatrix(t *testing.T) {

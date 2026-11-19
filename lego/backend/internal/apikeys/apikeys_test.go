@@ -204,7 +204,7 @@ func TestCreateAPIKeyBindsToCallerTenant(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 
-	created, err := svc.CreateAPIKey(ctx, "", "agent")
+	created, err := svc.CreateAPIKey(ctx, "", "agent", nil)
 	if err != nil {
 		t.Fatalf("CreateAPIKey: %v", err)
 	}
@@ -235,7 +235,7 @@ func TestCreateAPIKeyStampsTheCreatorsSignIn(t *testing.T) {
 			Binding: newFakeBinder(),
 		}
 		ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session", Human: true, SignIn: signIn})
-		created, err := svc.CreateAPIKey(ctx, "", "agent")
+		created, err := svc.CreateAPIKey(ctx, "", "agent", nil)
 		if err != nil {
 			t.Fatalf("CreateAPIKey: %v", err)
 		}
@@ -256,7 +256,7 @@ func TestCreateAPIKeyRollsBackWhenDeletionStartsDuringIssuance(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 
-	_, err := svc.CreateAPIKey(ctx, "", "racing-agent")
+	_, err := svc.CreateAPIKey(ctx, "", "racing-agent", nil)
 	var coded *core.CodedError
 	if !errors.As(err, &coded) || coded.Code != "ACCOUNT_DELETION_PENDING" {
 		t.Fatalf("CreateAPIKey = %v, want ACCOUNT_DELETION_PENDING", err)
@@ -274,10 +274,10 @@ func TestCreateAPIKeyEnforcesWorkspaceActiveQuota(t *testing.T) {
 		APIKeys: store, Binding: binder, MaxActiveKeys: 1,
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
-	if _, err := svc.CreateAPIKey(ctx, "", "first"); err != nil {
+	if _, err := svc.CreateAPIKey(ctx, "", "first", nil); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.CreateAPIKey(ctx, "", "second"); !errors.Is(err, core.ErrConflict) {
+	if _, err := svc.CreateAPIKey(ctx, "", "second", nil); !errors.Is(err, core.ErrConflict) {
 		t.Fatalf("second key = %v, want active-key conflict", err)
 	}
 	if len(store.keys) != 1 {
@@ -297,7 +297,7 @@ func TestCreateAPIKeyQuotaLockerSerializesAcrossServiceInstances(t *testing.T) {
 	errs := make(chan error, len(services))
 	for i, svc := range services {
 		go func() {
-			_, err := svc.CreateAPIKey(ctx, "", fmt.Sprintf("key-%d", i))
+			_, err := svc.CreateAPIKey(ctx, "", fmt.Sprintf("key-%d", i), nil)
 			errs <- err
 		}()
 	}
@@ -327,10 +327,10 @@ func TestCreateAPIKeyEnforcesWorkspaceCreationRate(t *testing.T) {
 		CreationLimiter: core.NewKeyedRateLimiter[string](1, 1, time.Hour, time.Minute),
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
-	if _, err := svc.CreateAPIKey(ctx, "", "first"); err != nil {
+	if _, err := svc.CreateAPIKey(ctx, "", "first", nil); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.CreateAPIKey(ctx, "", "second"); !errors.Is(err, core.ErrConflict) {
+	if _, err := svc.CreateAPIKey(ctx, "", "second", nil); !errors.Is(err, core.ErrConflict) {
 		t.Fatalf("second key = %v, want creation-rate conflict", err)
 	}
 }
@@ -350,7 +350,7 @@ func TestCreateAPIKeyNoTenantIsRefused(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "unbound-caller", Method: "session"})
 
-	if _, err := svc.CreateAPIKey(ctx, "", "agent"); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.CreateAPIKey(ctx, "", "agent", nil); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("no-tenant caller: want ErrBadRequest, got %v", err)
 	}
 	if len(store.keys) != 0 {
@@ -368,7 +368,7 @@ func TestCreateAPIKeyBindFailureRollsBackHydraClient(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 
-	if _, err := svc.CreateAPIKey(ctx, "", "agent"); err == nil {
+	if _, err := svc.CreateAPIKey(ctx, "", "agent", nil); err == nil {
 		t.Fatal("bind failure must surface as an error")
 	}
 	// No orphaned credential: the Hydra client created before the failed bind
@@ -388,7 +388,7 @@ func TestRevokeAPIKeyUnbindsFromTenant(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 
-	created, err := svc.CreateAPIKey(ctx, "", "agent")
+	created, err := svc.CreateAPIKey(ctx, "", "agent", nil)
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -414,7 +414,7 @@ func TestRevokeAPIKeyFailsClosedWhenUnbindFails(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 
-	created, err := svc.CreateAPIKey(ctx, "", "agent")
+	created, err := svc.CreateAPIKey(ctx, "", "agent", nil)
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -445,11 +445,11 @@ func TestListAPIKeysScopedToTargetWorkspace(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 
-	keyA, err := svc.CreateAPIKey(ctx, "", "agent-a") // no ownerId => default, tea-a
+	keyA, err := svc.CreateAPIKey(ctx, "", "agent-a", nil) // no ownerId => default, tea-a
 	if err != nil {
 		t.Fatalf("create agent-a: %v", err)
 	}
-	keyB, err := svc.CreateAPIKey(ctx, "tea-b", "agent-b")
+	keyB, err := svc.CreateAPIKey(ctx, "tea-b", "agent-b", nil)
 	if err != nil {
 		t.Fatalf("create agent-b: %v", err)
 	}
@@ -486,7 +486,7 @@ func TestRevokeAPIKeyRefusesCrossWorkspaceTarget(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 
-	keyA, err := svc.CreateAPIKey(ctx, "", "agent-a") // tea-a
+	keyA, err := svc.CreateAPIKey(ctx, "", "agent-a", nil) // tea-a
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -519,7 +519,7 @@ func TestRevokeAPIKeyRefusesUnboundKey(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 
-	keyA, err := svc.CreateAPIKey(ctx, "", "agent-a") // bound to tea-a
+	keyA, err := svc.CreateAPIKey(ctx, "", "agent-a", nil) // bound to tea-a
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -560,7 +560,7 @@ func TestRevokeAPIKeyWithoutOwnerResolvesKeyWorkspace(t *testing.T) {
 	dana := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 	outsider := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-c", Method: "session"})
 
-	keyB, err := svc.CreateAPIKey(dana, "tea-b", "agent-b")
+	keyB, err := svc.CreateAPIKey(dana, "tea-b", "agent-b", nil)
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -617,7 +617,7 @@ func TestCreateAPIKeyNilBindingMintsUnbound(t *testing.T) {
 	svc := newService(store)
 	ctx := context.Background() // no identity at all — must not matter
 
-	created, err := svc.CreateAPIKey(ctx, "", "agent")
+	created, err := svc.CreateAPIKey(ctx, "", "agent", nil)
 	if err != nil || created.ID == "" {
 		t.Fatalf("nil Binding: %v %+v", err, created)
 	}
@@ -630,7 +630,7 @@ func TestAPIKeyVerbs(t *testing.T) {
 	svc := newService(store)
 	ctx := context.Background()
 
-	created, err := svc.CreateAPIKey(ctx, "", "ci-agent")
+	created, err := svc.CreateAPIKey(ctx, "", "ci-agent", nil)
 	if err != nil || created.ID == "" || created.Secret == "" {
 		t.Fatalf("create must return id+secret: %v %+v", err, created)
 	}
@@ -642,21 +642,21 @@ func TestAPIKeyVerbs(t *testing.T) {
 		t.Fatalf("revoke should delete: %v store=%d", err, len(store.keys))
 	}
 	// blank name => ErrBadRequest.
-	if _, err := svc.CreateAPIKey(ctx, "", "  "); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.CreateAPIKey(ctx, "", "  ", nil); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("blank name => ErrBadRequest, got %v", err)
 	}
 	// w21/023: the shared label rule — a control character or 101 code points is
 	// refused with a named 400 and mints nothing; exactly 100 still creates.
 	before := len(store.keys)
 	for _, bad := range []string{"a\nb", "a\x07b", strings.Repeat("x", 101)} {
-		if _, err := svc.CreateAPIKey(ctx, "", bad); !errors.Is(err, core.ErrBadRequest) {
+		if _, err := svc.CreateAPIKey(ctx, "", bad, nil); !errors.Is(err, core.ErrBadRequest) {
 			t.Errorf("name %q => ErrBadRequest, got %v", bad, err)
 		}
 	}
 	if len(store.keys) != before {
 		t.Errorf("a refused name minted a key: %d -> %d", before, len(store.keys))
 	}
-	if _, err := svc.CreateAPIKey(ctx, "", strings.Repeat("é", 100)); err != nil {
+	if _, err := svc.CreateAPIKey(ctx, "", strings.Repeat("é", 100), nil); err != nil {
 		t.Errorf("a 100-code-point name must still create: %v", err)
 	}
 	// nil store => ErrAPIKeysUnavailable on every verb.
@@ -1043,7 +1043,7 @@ func TestCreateAPIKeyStampsCaller(t *testing.T) {
 	svc := newService(store)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user:alice", Method: "session"})
 
-	created, err := svc.CreateAPIKey(ctx, "", "for-alice")
+	created, err := svc.CreateAPIKey(ctx, "", "for-alice", nil)
 	if err != nil {
 		t.Fatalf("CreateAPIKey: %v", err)
 	}
@@ -1051,7 +1051,7 @@ func TestCreateAPIKeyStampsCaller(t *testing.T) {
 		t.Fatalf("createdBy = %q, want user:alice", created.CreatedBy)
 	}
 	// With no identity in context, created-by is simply empty (no crash).
-	anon, err := svc.CreateAPIKey(context.Background(), "", "anon")
+	anon, err := svc.CreateAPIKey(context.Background(), "", "anon", nil)
 	if err != nil || anon.CreatedBy != "" {
 		t.Fatalf("anon create: %v createdBy=%q, want empty", err, anon.CreatedBy)
 	}

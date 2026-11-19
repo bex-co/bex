@@ -4,7 +4,12 @@ import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspaceSubjectLabel } from "@/common/hooks/use-workspace-subject-label";
 import { RelativeAge } from "@/common/components/relative-time";
-import type { ApiKeyView } from "@/features/api-keys/types";
+import { EditApiKeyPermissionsDialog } from "@/features/api-keys/components/edit-api-key-permissions-dialog";
+import { summarizePermissions } from "@/features/api-keys/lib/permissions";
+import type {
+  ApiKeyPermissionsView,
+  ApiKeyView,
+} from "@/features/api-keys/types";
 
 export interface ApiKeyRowProps {
   entry: ApiKeyView;
@@ -13,15 +18,23 @@ export interface ApiKeyRowProps {
   revoking: boolean;
 }
 
-/** One API Keys row: name, client id, provenance, usage ages, and revoke. */
+/**
+ * One API Keys row: name, permissions with the gear that changes them
+ * (w9/m496, Render's "Read-Only ⚙"), client id, provenance, usage ages, and
+ * revoke.
+ */
 export function ApiKeyRow({ entry, onRevoke, revoking }: ApiKeyRowProps) {
   const { t } = useTranslations();
   const createdBy = useWorkspaceSubjectLabel(entry.createdBy ?? "");
 
   return (
     <TableRow>
-      <TableCell className="font-mono text-sm">
-        {entry.name}
+      <TableCell className="font-mono text-sm">{entry.name}</TableCell>
+      <TableCell className="text-sm whitespace-nowrap">
+        <div className="flex items-center gap-1">
+          <PermissionsSummary permissions={entry.permissions} />
+          <EditApiKeyPermissionsDialog entry={entry} />
+        </div>
       </TableCell>
       <TableCell className="font-mono text-sm">
         <div className="flex max-w-[14rem] items-center gap-1">
@@ -65,3 +78,38 @@ export function ApiKeyRow({ entry, onRevoke, revoking }: ApiKeyRowProps) {
     </TableRow>
   );
 }
+
+/** A key's grant in a word: All, Read only, No permissions, or Custom and how many. */
+function PermissionsSummary({
+  permissions,
+}: {
+  permissions: ApiKeyPermissionsView;
+}) {
+  const { t } = useTranslations();
+  const summary = summarizePermissions(permissions);
+  switch (summary.kind) {
+    case "all":
+      return <span>{t("apiKeys.permSummaryAll")}</span>;
+    case "none":
+      return (
+        <span className="text-muted-foreground">
+          {t("apiKeys.permSummaryNone")}
+        </span>
+      );
+    case "readOnly":
+    case "custom":
+      return (
+        <span className="flex items-baseline gap-1.5">
+          <span>{t(COUNTED_SUMMARY_LABEL[summary.kind])}</span>
+          <span className="text-muted-foreground text-xs">
+            {t("apiKeys.permSummaryCount", { count: summary.count })}
+          </span>
+        </span>
+      );
+  }
+}
+
+const COUNTED_SUMMARY_LABEL = {
+  readOnly: "apiKeys.permSummaryReadOnly",
+  custom: "apiKeys.permSummaryCustom",
+} as const;

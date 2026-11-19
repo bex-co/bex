@@ -817,7 +817,61 @@ export type ApiKey = {
   key: Maybe<Scalars['String']['output']>;
   lastUsedAt: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
+  permissions: ApiKeyPermissions;
   secret: Maybe<Scalars['String']['output']>;
+};
+
+export type ApiKeyGrant = {
+  __typename: 'ApiKeyGrant';
+  level: Scalars['String']['output'];
+  permission: Scalars['String']['output'];
+};
+
+export type ApiKeyGrantInput = {
+  level: Scalars['String']['input'];
+  permission: Scalars['String']['input'];
+};
+
+export type ApiKeyPermission = {
+  __typename: 'ApiKeyPermission';
+  id: Scalars['String']['output'];
+  levels: Array<ApiKeyPermissionLevel>;
+  name: Scalars['String']['output'];
+};
+
+export type ApiKeyPermissionAction = {
+  __typename: 'ApiKeyPermissionAction';
+  bex: Scalars['Boolean']['output'];
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+};
+
+export type ApiKeyPermissionArea = {
+  __typename: 'ApiKeyPermissionArea';
+  bex: Scalars['Boolean']['output'];
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  permissions: Array<ApiKeyPermission>;
+};
+
+export type ApiKeyPermissionLevel = {
+  __typename: 'ApiKeyPermissionLevel';
+  actions: Array<ApiKeyPermissionAction>;
+  grantable: Scalars['Boolean']['output'];
+  level: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  requiredRole: Scalars['String']['output'];
+};
+
+export type ApiKeyPermissions = {
+  __typename: 'ApiKeyPermissions';
+  all: Scalars['Boolean']['output'];
+  grants: Array<ApiKeyGrant>;
+};
+
+export type ApiKeyPermissionsInput = {
+  all?: InputMaybe<Scalars['Boolean']['input']>;
+  grants?: InputMaybe<Array<ApiKeyGrantInput>>;
 };
 
 export type AuditLog = {
@@ -859,6 +913,8 @@ export type AuditLogMetadata = {
 
 export type Autoscaling = {
   __typename: 'Autoscaling';
+  disabledCPUPercent: Maybe<Scalars['Int']['output']>;
+  disabledMemoryPercent: Maybe<Scalars['Int']['output']>;
   enabled: Maybe<Scalars['Boolean']['output']>;
   maxInstances: Maybe<Scalars['Int']['output']>;
   metricsUnavailable: Maybe<Scalars['Boolean']['output']>;
@@ -2342,6 +2398,7 @@ export type Mutation = {
   setPipelineSpendLimit: Maybe<PipelineSettings>;
   setPort: Maybe<Service>;
   setPreDeployCommand: Maybe<Service>;
+  setPreviewNotificationsEnabled: Maybe<Service>;
   setProjectDatabases: Maybe<Project>;
   setProjectKeyValues: Maybe<Project>;
   setProjectServices: Maybe<Project>;
@@ -2382,6 +2439,7 @@ export type Mutation = {
   updateAgentEnvironment: AgentEnvironment;
   /** Change a workspace skill (admins only). */
   updateAgentSkill: AgentSkill;
+  updateApiKeyPermissions: Maybe<ApiKey>;
   updateBlueprint: Maybe<Blueprint>;
   updateBuildSource: Maybe<BuildSource>;
   updateCronJob: Maybe<Service>;
@@ -2559,6 +2617,7 @@ export type MutationCreateAgentSkillArgs = {
 export type MutationCreateApiKeyArgs = {
   name: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
+  permissions?: InputMaybe<ApiKeyPermissionsInput>;
 };
 
 
@@ -3680,6 +3739,13 @@ export type MutationSetPreDeployCommandArgs = {
 };
 
 
+export type MutationSetPreviewNotificationsEnabledArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
+  id: Scalars['String']['input'];
+  value: Scalars['String']['input'];
+};
+
+
 export type MutationSetProjectDatabasesArgs = {
   databaseIds: Array<Scalars['String']['input']>;
   id: Scalars['String']['input'];
@@ -3923,6 +3989,13 @@ export type MutationUpdateAgentSkillArgs = {
   input: AgentSkillInput;
   ownerId?: InputMaybe<Scalars['String']['input']>;
   skill: Scalars['String']['input'];
+};
+
+
+export type MutationUpdateApiKeyPermissionsArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  permissions: ApiKeyPermissionsInput;
 };
 
 
@@ -4403,6 +4476,7 @@ export type Query = {
   agentSkillVersions: AgentSkillVersionList;
   /** The workspace's skills for cloud agents, without bodies. */
   agentSkills: AgentSkillList;
+  apiKeyPermissionCatalog: Array<ApiKeyPermissionArea>;
   apiKeys: Maybe<Array<Maybe<ApiKey>>>;
   auditLogs: Maybe<Array<Maybe<AuditLog>>>;
   autoscalingConfig: Maybe<Autoscaling>;
@@ -4686,6 +4760,11 @@ export type QueryAgentSkillVersionsArgs = {
 
 
 export type QueryAgentSkillsArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryApiKeyPermissionCatalogArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -5821,6 +5900,7 @@ export type Service = {
   port: Maybe<Scalars['Int']['output']>;
   portConfigured: Maybe<Scalars['Boolean']['output']>;
   preDeployCommand: Maybe<Scalars['String']['output']>;
+  previewNotificationsEnabled: Maybe<Scalars['String']['output']>;
   projectId: Maybe<Scalars['String']['output']>;
   publicRoutingNotice: Maybe<Scalars['String']['output']>;
   publishPath: Maybe<Scalars['String']['output']>;

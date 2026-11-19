@@ -1485,7 +1485,7 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 		relist:       s.tailRelistInterval(),
 		pollRequests: true,
 	}
-	ctx, stopWatchdog := core.WithRevalidation(ctx, s.revalidateInterval(), target.revalidate)
+	ctx, stopWatchdog := core.WithRevalidation(ctx, s.revalidateInterval(), s.withKeyGrant(target.revalidate))
 	defer stopWatchdog()
 	if len(q.Types) == 1 && q.Types[0] == LogTypeBuild {
 		if q.renderStream {
@@ -1719,9 +1719,21 @@ func (s *Service) followDatastore(ctx context.Context, q LogQuery, emit func(Log
 	}
 	selectors := slices.Clone(q.Instance)
 	s.translateInstanceFilter(ctx, target.resource, target.namespace, &q, candidatesFromPods(pods))
-	ctx, stopWatchdog := core.WithRevalidation(ctx, s.revalidateInterval(), target.revalidate)
+	ctx, stopWatchdog := core.WithRevalidation(ctx, s.revalidateInterval(), s.withKeyGrant(target.revalidate))
 	defer stopWatchdog()
 	return s.followPods(ctx, q, selectors, target, pods, emit, heartbeat)
+}
+
+// withKeyGrant adds the caller's grant to a live tail's watchdog: a scoped API
+// key whose "View service logs" is taken away loses its open tail at the next
+// tick, as one whose role is does (w9/m496, I8).
+func (s *Service) withKeyGrant(check func(context.Context) error) func(context.Context) error {
+	return func(ctx context.Context) error {
+		if err := s.RequireKeyGrant(ctx, core.KeyMonitoringLogs); err != nil {
+			return err
+		}
+		return check(ctx)
+	}
 }
 
 // podFollow is a pod tail's record of one pod it has attached to.

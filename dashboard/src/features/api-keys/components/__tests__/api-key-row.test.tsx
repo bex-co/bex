@@ -20,6 +20,7 @@ const entry: ApiKeyView = {
   createdAt: "2026-07-01T00:00:00Z",
   createdBy: "user:minter",
   lastUsedAt: "2026-07-05T00:00:00Z",
+  permissions: { all: true, grants: [] },
 };
 
 beforeEach(() => {
@@ -171,6 +172,74 @@ describe("ApiKeyRow — revoke with confirmation (w4/m8/t002)", () => {
     );
     expect(
       screen.getByRole("button", { name: "Revoke API key deploy-agent" }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("ApiKeyRow — permissions summary and gear (w9/m496)", () => {
+  function renderRow(permissions: ApiKeyView["permissions"]) {
+    return render(
+      <table>
+        <tbody>
+          <ApiKeyRow
+            entry={{ ...entry, permissions }}
+            onRevoke={vi.fn()}
+            revoking={false}
+          />
+        </tbody>
+      </table>,
+    );
+  }
+
+  /** The permissions cell: the row's second, after the name. */
+  function permissionsCell(container: HTMLElement) {
+    return container.querySelectorAll("td")[1];
+  }
+
+  it.each<[ApiKeyView["permissions"], string]>([
+    [{ all: true, grants: [] }, "All"],
+    [
+      {
+        all: false,
+        grants: [
+          { permission: "services", level: "read" },
+          { permission: "git", level: "read" },
+        ],
+      },
+      "Read only2 permissions",
+    ],
+    [{ all: false, grants: [] }, "No permissions"],
+    [
+      {
+        all: false,
+        grants: [
+          { permission: "services", level: "read_write" },
+          { permission: "services_env", level: "read" },
+          { permission: "git", level: "read" },
+        ],
+      },
+      "Custom3 permissions",
+    ],
+    [
+      {
+        all: false,
+        grants: [{ permission: "deploys_run", level: "run" }],
+      },
+      "Custom1 permission",
+    ],
+  ])("summarizes %j as %s", (permissions, summary) => {
+    const { container } = renderRow(permissions);
+    expect(permissionsCell(container)).toHaveTextContent(summary, {
+      normalizeWhitespace: true,
+    });
+  });
+
+  it("puts a gear named after the key beside the summary", () => {
+    const { container } = renderRow({ all: true, grants: [] });
+    expect(
+      within(permissionsCell(container)).getByRole("button", {
+        name: "Change permissions for deploy-agent",
+      }),
     ).toBeInTheDocument();
   });
 });

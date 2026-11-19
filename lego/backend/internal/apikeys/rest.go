@@ -17,6 +17,7 @@ limitations under the License.
 package apikeys
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -31,12 +32,14 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var req struct {
 			Name    string `json:"name"`
 			OwnerID string `json:"ownerId"`
+			// Permissions is the key's grant (w9/m496); omitted means All.
+			Permissions *core.KeyGrant `json:"permissions"`
 		}
 		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
-		key, err := s.CreateAPIKey(r.Context(), req.OwnerID, req.Name)
+		key, err := s.CreateAPIKey(r.Context(), req.OwnerID, req.Name, req.Permissions)
 		if err != nil {
 			core.WriteErr(w, err)
 			return
@@ -50,6 +53,33 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, keys)
+	})
+	// The permission picker's catalog: Render's areas, permissions and
+	// levels, each level marked with whether the caller may grant it.
+	mux.HandleFunc("GET /v1/api-keys/permissions", func(w http.ResponseWriter, r *http.Request) {
+		areas, err := s.PermissionCatalog(r.Context(), r.URL.Query().Get("ownerId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, areas)
+	})
+	// Change a key's permissions (Render's gear icon). The body's
+	// permissions replace the key's grant whole.
+	mux.HandleFunc("PATCH /v1/api-keys/{id}", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Permissions *core.KeyGrant `json:"permissions"`
+		}
+		if err := core.DecodeJSON(r, &req); err != nil || req.Permissions == nil {
+			core.WriteErr(w, fmt.Errorf("%w: permissions: required", core.ErrBadRequest))
+			return
+		}
+		key, err := s.UpdateAPIKeyPermissions(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("id"), *req.Permissions)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, key)
 	})
 	mux.HandleFunc("DELETE /v1/api-keys/{id}", func(w http.ResponseWriter, r *http.Request) {
 		if err := s.RevokeAPIKey(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("id")); err != nil {

@@ -4,6 +4,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { codedGraphQLError } from "@/test/mocks/apollo";
 import { ApiKeysPanel } from "@/features/api-keys/components/api-keys-panel";
+import { ApiKeysPanelSkeleton } from "@/features/api-keys/components/api-keys-panel-skeleton";
 import type { ApiKeyView } from "@/features/api-keys/types";
 
 const apiKeysState: {
@@ -54,6 +55,7 @@ describe("ApiKeysPanel", () => {
         createdAt: null,
         createdBy: null,
         lastUsedAt: null,
+        permissions: { all: true, grants: [] },
       },
       {
         id: "key-2",
@@ -61,6 +63,7 @@ describe("ApiKeysPanel", () => {
         createdAt: null,
         createdBy: null,
         lastUsedAt: null,
+        permissions: { all: true, grants: [] },
       },
     ];
     render(<ApiKeysPanel />);
@@ -68,6 +71,10 @@ describe("ApiKeysPanel", () => {
     expect(screen.getByText("deploy-agent")).toBeInTheDocument();
     expect(screen.getByText("ci-bot")).toBeInTheDocument();
     expect(screen.getByText("Client ID")).toBeInTheDocument();
+    expect(screen.getByText("Permissions")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Change permissions for ci-bot" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("key-1")).toBeInTheDocument();
     expect(screen.getByText("key-2")).toBeInTheDocument();
   });
@@ -98,6 +105,7 @@ describe("ApiKeysPanel", () => {
         createdAt: null,
         createdBy: null,
         lastUsedAt: null,
+        permissions: { all: true, grants: [] },
       },
     ];
     revoke.mockResolvedValue(false);
@@ -125,6 +133,7 @@ describe("ApiKeysPanel", () => {
         createdAt: null,
         createdBy: null,
         lastUsedAt: null,
+        permissions: { all: true, grants: [] },
       },
     ];
     revoke.mockResolvedValue(true);
@@ -150,6 +159,7 @@ describe("ApiKeysPanel", () => {
         createdAt: null,
         createdBy: null,
         lastUsedAt: null,
+        permissions: { all: true, grants: [] },
       },
     ];
     const ready = render(<ApiKeysPanel />);
@@ -168,5 +178,38 @@ describe("ApiKeysPanel", () => {
     const cells = rows[0].querySelectorAll("td");
     expect(cells).toHaveLength(readyHeaders.length);
     expect(cells[cells.length - 1].firstElementChild).toHaveClass("size-9");
+    // The Permissions column (w9/m496): its summary beside the 32 px gear.
+    expect(readyHeaders[1]).toBe("Permissions");
+    expect(
+      cells[1].querySelector(
+        "[data-testid='api-key-permissions-placeholder'] .size-8",
+      ),
+    ).not.toBeNull();
+  });
+
+  it("the route's pending frame draws the ready table's header and the panel's own loading row", () => {
+    apiKeysState.keys = [
+      {
+        id: "key-1",
+        name: "deploy-agent",
+        createdAt: null,
+        createdBy: null,
+        lastUsedAt: null,
+        permissions: { all: false, grants: [] },
+      },
+    ];
+    const ready = render(<ApiKeysPanel />);
+    const readyHeaders = tableHeaders(ready.container);
+    ready.unmount();
+
+    apiKeysState.keys = [];
+    apiKeysState.loading = true;
+    const loading = render(<ApiKeysPanel />);
+    const loadingRow = loading.container.querySelector("tbody")?.innerHTML;
+    loading.unmount();
+
+    const { container } = render(<ApiKeysPanelSkeleton />);
+    expect(tableHeaders(container)).toEqual(readyHeaders);
+    expect(container.querySelector("tbody")?.innerHTML).toBe(loadingRow);
   });
 });

@@ -28,8 +28,30 @@ import (
 // mcp.go is the api-key MCP fragment (bex extensions over Render's MCP, which
 // manages keys outside its tools; naming follows Render's convention).
 
+// grantArgs is a requested grant (w9/m496) as a tool argument: both fields
+// optional, so {all: true} and {grants: [...]} are each complete.
+type grantArgs struct {
+	All    bool                 `json:"all,omitempty" jsonschema:"every permission your member role allows, now and as your role changes"`
+	Grants []core.KeyGrantEntry `json:"grants,omitempty" jsonschema:"the permissions, each at one level, from list_api_key_permissions; empty with all false grants nothing (Render's Clear all)"`
+}
+
+func (g grantArgs) grant() core.KeyGrant {
+	return core.KeyGrant{All: g.All, Grants: g.Grants}
+}
+
 type createAPIKeyArgs struct {
 	Name string `json:"name" jsonschema:"human-readable name for the credential"`
+	// Permissions is the key's grant; omitted means All.
+	Permissions *grantArgs `json:"permissions,omitempty" jsonschema:"the key's permissions; omitted means all: every permission your role allows"`
+}
+
+type updateAPIKeyPermissionsArgs struct {
+	KeyID       string    `json:"keyId" jsonschema:"the API key id (OAuth2 client_id)"`
+	Permissions grantArgs `json:"permissions" jsonschema:"the key's new permissions, replacing its grant"`
+}
+
+type listAPIKeyPermissionsResult struct {
+	Areas []PermissionArea `json:"areas"`
 }
 
 type listAPIKeysResult struct {
@@ -50,8 +72,29 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "create_api_key",
 		Description: "Create an API key for the platform API. `key` is returned once — store it and send it as `Authorization: Bearer`. `id` and `secret` are the same credential as an OAuth2 client, for a client_credentials exchange. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createAPIKeyArgs) (*mcp.CallToolResult, APIKey, error) {
-		key, err := s.CreateAPIKey(ctx, core.NamedWorkspace(ctx), in.Name)
+		var grant *core.KeyGrant
+		if in.Permissions != nil {
+			g := in.Permissions.grant()
+			grant = &g
+		}
+		key, err := s.CreateAPIKey(ctx, core.NamedWorkspace(ctx), in.Name, grant)
 		return nil, key, err
+	})
+
+	mcputil.AddTool(srv, &mcp.Tool{
+		Name:        "update_api_key_permissions",
+		Description: "Change an API key's permissions, replacing its grant, as Render's gear icon does. Only the key's creator or a workspace Admin may, within the creator's role; the change applies on the key's next request. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateAPIKeyPermissionsArgs) (*mcp.CallToolResult, APIKey, error) {
+		key, err := s.UpdateAPIKeyPermissions(ctx, core.NamedWorkspace(ctx), in.KeyID, in.Permissions.grant())
+		return nil, key, err
+	})
+
+	mcputil.AddTool(srv, &mcp.Tool{
+		Name:        "list_api_key_permissions",
+		Description: "List the permissions an API key can be granted (Render's areas, permissions and levels), each level marked with whether your role lets you grant it. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listAPIKeyPermissionsResult, error) {
+		areas, err := s.PermissionCatalog(ctx, core.NamedWorkspace(ctx))
+		return nil, listAPIKeyPermissionsResult{Areas: areas}, err
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{

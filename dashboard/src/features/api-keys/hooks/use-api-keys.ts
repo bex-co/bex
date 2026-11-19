@@ -5,6 +5,7 @@ import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
 } from "@/common/lib/polling";
+import { isPermissionLevel } from "@/features/api-keys/lib/permissions";
 import type { ApiKeyView } from "@/features/api-keys/types";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
@@ -20,6 +21,14 @@ function toApiKeyViews(raw: ApiKeysQuery["apiKeys"] | undefined): ApiKeyView[] {
       createdAt: k.createdAt,
       createdBy: k.createdBy,
       lastUsedAt: k.lastUsedAt,
+      permissions: {
+        all: k.permissions.all,
+        // bex-api checks every grant against the catalog, so each level is
+        // one of Render's; narrowing drops nothing in practice.
+        grants: k.permissions.grants.flatMap(({ permission, level }) =>
+          isPermissionLevel(level) ? [{ permission, level }] : [],
+        ),
+      },
     }));
 }
 

@@ -138,16 +138,20 @@ var callerScopedRoutes = map[string]bool{
 	"POST /v1/invites/preview": true, // authenticated bearer preview; membership state is caller-specific
 
 	// Collection lists — scoped to the caller's own workspace (or identity).
-	"GET /v1/services":             true,
-	"GET /v1/postgres":             true,
-	"GET /v1/key-value":            true,
-	"GET /v1/redis":                true, // Render's deprecated spelling of GET /v1/key-value (w3/m274)
-	"GET /v1/env-groups":           true,
-	"GET /v1/environments":         true,
-	"GET /v1/projects":             true,
-	"GET /v1/registrycredentials":  true,
-	"GET /v1/ssh-keys":             true,
-	"GET /v1/api-keys":             true,
+	"GET /v1/services":            true,
+	"GET /v1/postgres":            true,
+	"GET /v1/key-value":           true,
+	"GET /v1/redis":               true, // Render's deprecated spelling of GET /v1/key-value (w3/m274)
+	"GET /v1/env-groups":          true,
+	"GET /v1/environments":        true,
+	"GET /v1/projects":            true,
+	"GET /v1/registrycredentials": true,
+	"GET /v1/ssh-keys":            true,
+	"GET /v1/api-keys":            true,
+	// The permission picker's catalog (w9/m496): the static catalog, each
+	// level marked for the caller's own role in its own (or named, member-
+	// checked) workspace.
+	"GET /v1/api-keys/permissions": true,
 	"GET /v1/webhooks":             true,
 	"GET /v1/webhooks/event-types": true,
 	// Disks list the caller's own workspace; a serviceId filter is authorized

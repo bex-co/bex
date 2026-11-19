@@ -7,9 +7,9 @@ const esApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "Credenciales de máquina para scripts y agentes. Cada clave actúa con el rol de miembro actual de quien la creó, solo en este espacio de trabajo. Se comparten en todo el espacio de trabajo: quien pueda administrar claves ve todas las claves aquí, no solo las suyas.",
+      "Credenciales de máquina para scripts y agentes. Cada clave solo puede usar los permisos elegidos para ella, nunca más de lo que permite el rol de miembro actual de quien la creó, y solo en este espacio de trabajo. Se comparten en todo el espacio de trabajo: quien pueda administrar claves ve todas las claves aquí, no solo las suyas.",
     description:
-      "Settings API Keys section card description: what a key is, that it acts with its creator's current role in this workspace, and that the list is shared",
+      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and that the list is shared",
   },
   "apiKeys.cliGuide": {
     message: "Configura la CLI.",
@@ -113,9 +113,9 @@ const esApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.keyHelp": {
     message:
-      "Envíala como Authorization: Bearer en cada solicitud. La clave actúa con tu rol de miembro actual en este espacio de trabajo y lo sigue si tu rol cambia, así que trátala como una contraseña.",
+      "Envíala como Authorization: Bearer en cada solicitud. La clave solo puede usar los permisos que elegiste para ella, nunca más de lo que permite tu rol de miembro actual en este espacio de trabajo, así que trátala como una contraseña.",
     description:
-      "Mint dialog copy under the key: how to send it, and that it acts with the creator's current member role in this workspace and follows it",
+      "Mint dialog copy under the key: how to send it, and that it uses only the chosen permissions, capped by the creator's current member role in this workspace (w9/m496)",
   },
   "apiKeys.curlTitle": {
     message: "Solicitud de ejemplo",
@@ -208,6 +208,162 @@ const esApiKeys: Record<string, TranslationEntry> = {
   "apiKeys.revokeError": {
     message: "No se pudo revocar {name}",
     description: "Toast on a failed revoke",
+  },
+  "apiKeys.colPermissions": {
+    message: "Permisos",
+    description: "API Keys table column header: what each key may do (w9/m496)",
+  },
+  "apiKeys.permSummaryAll": {
+    message: "Todos",
+    description:
+      "Key row permissions summary: the key has every permission its creator's member role allows (Render's All)",
+  },
+  "apiKeys.permSummaryReadOnly": {
+    message: "Solo lectura",
+    description:
+      "Key row permissions summary: every permission the key has is at Read, so it can change nothing",
+  },
+  "apiKeys.permSummaryNone": {
+    message: "Sin permisos",
+    description:
+      "Key row permissions summary: the key has no permissions (Clear all)",
+  },
+  "apiKeys.permSummaryCustom": {
+    message: "Personalizados",
+    description:
+      "Key row permissions summary: the key has a chosen set of permissions; followed by their count",
+  },
+  "apiKeys.editPermissionsNamed": {
+    message: "Cambiar los permisos de {name}",
+    description:
+      "Gear button aria-label on a key row; opens the permissions editor",
+  },
+  "apiKeys.editPermissionsTitle": {
+    message: "Editar permisos",
+    description: "Permissions editor dialog title",
+  },
+  "apiKeys.editPermissionsDescription": {
+    message:
+      "Cambia lo que puede usar {name} y haz clic en Guardar cambios. Los nuevos permisos se aplican de inmediato.",
+    description:
+      "Permissions editor dialog description; {name} is the key's name",
+  },
+  "apiKeys.editPermissionsCancel": {
+    message: "Cancelar",
+    description: "Permissions editor dialog cancel button",
+  },
+  "apiKeys.editPermissionsSave": {
+    message: "Guardar cambios",
+    description: "Permissions editor dialog save button (Render's words)",
+  },
+  "apiKeys.permissionsSaved": {
+    message: "Se actualizaron los permisos de {name}",
+    description: "Toast after a key's permissions are saved",
+  },
+  "apiKeys.permissionsSaveError": {
+    message: "No se pudieron actualizar los permisos de {name}",
+    description:
+      "Toast when saving a key's permissions fails (the server's reason is shown instead when it gives one)",
+  },
+  "apiKeys.permIntro": {
+    message: "Selecciona los permisos que puede usar esta clave de API.",
+    description:
+      "Permission picker heading in the create dialog and the permissions editor (Render's words)",
+  },
+  "apiKeys.permPresetAll": {
+    message: "Todos",
+    description:
+      "Picker preset button: grant every permission the member role allows (Render's All)",
+  },
+  "apiKeys.permPresetReadOnly": {
+    message: "Solo lectura",
+    description:
+      "Picker preset button: grant Read on every permission that offers it (Render's Read only)",
+  },
+  "apiKeys.permPresetClear": {
+    message: "Quitar todos",
+    description:
+      "Picker preset button: remove every permission from the key (Render's Clear all)",
+  },
+  "apiKeys.permAllHelp": {
+    message:
+      "Todos concede cada permiso que permite el rol de miembro de quien creó la clave, para cada recurso, y sigue ese rol si cambia.",
+    description: "Picker note while the All preset is selected: what All means",
+  },
+  "apiKeys.permNoneHelp": {
+    message:
+      "No hay permisos seleccionados. La clave solo puede identificarse a sí misma.",
+    description: "Picker note when every permission is None (Clear all)",
+  },
+  "apiKeys.permAreaToggle": {
+    message: "Conceder permisos de {area}",
+    description:
+      "Switch aria-label on one area of the picker; {area} is Render's area name, e.g. Services (kept in English)",
+  },
+  "apiKeys.permLevelNone": {
+    message: "Ninguno",
+    description: "Picker option on a permission: the key gets none of it",
+  },
+  "apiKeys.permLevelGrants": {
+    message: "{level} concede:",
+    description:
+      "Picker label over the actions a permission's chosen level grants; {level} is Render's level name, e.g. Read & write (kept in English)",
+  },
+  "apiKeys.permRequiresRole.viewer": {
+    message: "{level} requiere el rol Lector.",
+    description:
+      "Reason beside a level the viewer's role cannot grant; {level} is Render's level name (kept in English); the lowest role that can is Viewer",
+  },
+  "apiKeys.permRequiresRole.contributor": {
+    message: "{level} requiere el rol Colaborador.",
+    description:
+      "Reason beside a level the viewer's role cannot grant; {level} is Render's level name (kept in English); the lowest role that can is Contributor",
+  },
+  "apiKeys.permRequiresRole.developer": {
+    message: "{level} requiere el rol Desarrollador.",
+    description:
+      "Reason beside a level the viewer's role cannot grant; {level} is Render's level name (kept in English); the lowest role that can is Developer",
+  },
+  "apiKeys.permRequiresRole.admin": {
+    message: "{level} requiere el rol Administrador.",
+    description:
+      "Reason beside a level the viewer's role cannot grant; {level} is Render's level name (kept in English); the lowest role that can is Admin",
+  },
+  "apiKeys.permRequiresHigherRole": {
+    message: "{level} requiere un rol de miembro superior.",
+    description:
+      "Reason beside a level the viewer's role cannot grant, when bex-api names a role the dashboard does not know",
+  },
+  "apiKeys.permCatalogLoading": {
+    message: "Cargando permisos…",
+    description:
+      "Accessible name of the picker while its permission list loads",
+  },
+  "apiKeys.permCatalogErrorCreate": {
+    message:
+      "No se pudo cargar la lista de permisos. Una clave que crees ahora recibirá todos los permisos.",
+    description:
+      "Create dialog note when the permission list fails to load: creating still works and grants All",
+  },
+  "apiKeys.permCatalogErrorEdit": {
+    message: "No se pudo cargar la lista de permisos.",
+    description:
+      "Permissions editor note when the permission list fails to load, beside a Try again button",
+  },
+  "apiKeys.permSummaryCount_one": {
+    message: "{count} permiso",
+    description:
+      "Key row permissions summary beside Custom: how many permissions the key has",
+  },
+  "apiKeys.permSummaryCount_many": {
+    message: "{count} de permisos",
+    description:
+      "Key row permissions summary beside Custom: how many permissions the key has",
+  },
+  "apiKeys.permSummaryCount_other": {
+    message: "{count} permisos",
+    description:
+      "Key row permissions summary beside Custom: how many permissions the key has",
   },
 };
 

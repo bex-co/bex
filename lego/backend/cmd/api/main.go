@@ -1151,6 +1151,9 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	base.Workspace = tenantSvc
 	deps.Onboard = tenantSvc
 	deps.KeyBinder = tenantSvc
+	// A key's grant, read uncached by the dispatch gate on every request it
+	// makes (w9/m496).
+	base.KeyGrants = tenantSvc
 	return granter
 }
 

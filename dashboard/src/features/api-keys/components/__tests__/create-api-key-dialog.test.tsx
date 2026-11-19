@@ -2,11 +2,23 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CreateApiKeyDialog } from "@/features/api-keys/components/create-api-key-dialog";
+import type { UseApiKeyPermissionCatalogResult } from "@/features/api-keys/hooks/use-api-key-permission-catalog";
+import { CATALOG } from "@/features/api-keys/__tests__/catalog-fixtures";
 
 const create = vi.fn();
 let busy = false;
 vi.mock("@/features/api-keys/hooks/use-create-api-key", () => ({
   useCreateApiKey: () => ({ create, busy }),
+}));
+
+// bex-api's catalog as a Developer sees it (w9/m496).
+let catalog: UseApiKeyPermissionCatalogResult;
+const catalogRead = vi.fn();
+vi.mock("@/features/api-keys/hooks/use-api-key-permission-catalog", () => ({
+  useApiKeyPermissionCatalog: () => {
+    catalogRead();
+    return catalog;
+  },
 }));
 
 const copy = vi.fn();
@@ -33,7 +45,9 @@ const CREATED = { id: ID, name: "deploy-agent", key: KEY, secret: SECRET };
 beforeEach(() => {
   create.mockReset();
   copy.mockReset();
+  catalogRead.mockReset();
   busy = false;
+  catalog = { areas: CATALOG, error: undefined, refetch: vi.fn() };
 });
 
 /** Opens the dialog, names the key, submits, and waits for the created step. */
@@ -62,7 +76,8 @@ describe("CreateApiKeyDialog — one bearer key, shown once (w4/m8/t003, w7/m426
     render(<CreateApiKeyDialog onCreated={vi.fn()} />);
     const dialog = await mint(user);
 
-    expect(create).toHaveBeenCalledWith("deploy-agent");
+    // Untouched, the picker stays on All (w9/m496).
+    expect(create).toHaveBeenCalledWith("deploy-agent", { all: true });
     const field = within(dialog).getByRole("group", { name: "API key" });
     expect(within(field).getByText(KEY)).toBeVisible();
 
@@ -73,7 +88,7 @@ describe("CreateApiKeyDialog — one bearer key, shown once (w4/m8/t003, w7/m426
     expect(copy).toHaveBeenCalledWith(KEY);
   });
 
-  it("says in the primary area that the key is shown once and acts with your role", async () => {
+  it("says in the primary area that the key is shown once and is bounded by your role", async () => {
     create.mockResolvedValue(CREATED);
     const user = userEvent.setup();
     render(<CreateApiKeyDialog onCreated={vi.fn()} />);
@@ -82,10 +97,11 @@ describe("CreateApiKeyDialog — one bearer key, shown once (w4/m8/t003, w7/m426
     const once = within(dialog).getByText(
       "Copy the key now. You won't be able to see it again.",
     );
-    // w9/m481: a key acts with its creator's current member role in this
-    // workspace and follows it, as on Render; it never had "full authority".
+    // w9/m481, w9/m496: a key uses only the permissions chosen for it, and
+    // never more than its creator's current member role in this workspace
+    // allows, as on Render; it never had "full authority".
     const authority = within(dialog).getByText(
-      /acts with your current member role in this workspace and follows it if your role changes/,
+      /can use only the permissions you chose for it, never more than your current member role in this workspace allows/,
     );
     expect(authority).toHaveTextContent(/treat it like a password/);
     expect(authority).toHaveTextContent(/Authorization: Bearer/);
@@ -240,5 +256,152 @@ describe("CreateApiKeyDialog — one bearer key, shown once (w4/m8/t003, w7/m426
     expect(
       within(dialog).getByRole("button", { name: "Cancel" }),
     ).toBeDisabled();
+  });
+});
+
+/** Opens the dialog and names the key; returns the dialog. */
+async function openNamed(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: "Create API key" }));
+  const dialog = await screen.findByRole("dialog");
+  await user.type(within(dialog).getByLabelText("Name"), "deploy-agent");
+  return dialog;
+}
+
+describe("CreateApiKeyDialog — the key's permissions (w9/m496)", () => {
+  it("opens on All, loads the catalog only while open, and creates with {all: true}", async () => {
+    create.mockResolvedValue(CREATED);
+    const user = userEvent.setup();
+    render(<CreateApiKeyDialog onCreated={vi.fn()} />);
+    expect(catalogRead).not.toHaveBeenCalled();
+
+    const dialog = await openNamed(user);
+    expect(catalogRead).toHaveBeenCalled();
+    expect(
+      within(dialog).getByRole("group", {
+        name: "Select the permissions this API key can use.",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        /All grants every permission the creator's member role allows/,
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    expect(create).toHaveBeenCalledWith("deploy-agent", { all: true });
+  });
+
+  it("Read only creates with Read on every permission the viewer may grant it on", async () => {
+    create.mockResolvedValue(CREATED);
+    const user = userEvent.setup();
+    render(<CreateApiKeyDialog onCreated={vi.fn()} />);
+    const dialog = await openNamed(user);
+
+    await user.click(within(dialog).getByRole("button", { name: "Read only" }));
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+
+    expect(create).toHaveBeenCalledWith("deploy-agent", {
+      grants: [
+        { permission: "services", level: "read" },
+        { permission: "services_env", level: "read" },
+        { permission: "git", level: "read" },
+      ],
+    });
+  });
+
+  it("Clear all creates a key with no permissions", async () => {
+    create.mockResolvedValue(CREATED);
+    const user = userEvent.setup();
+    render(<CreateApiKeyDialog onCreated={vi.fn()} />);
+    const dialog = await openNamed(user);
+
+    await user.click(within(dialog).getByRole("button", { name: "Clear all" }));
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+
+    expect(create).toHaveBeenCalledWith("deploy-agent", { grants: [] });
+  });
+
+  it("creates with exactly the subset chosen", async () => {
+    create.mockResolvedValue(CREATED);
+    const user = userEvent.setup();
+    render(<CreateApiKeyDialog onCreated={vi.fn()} />);
+    const dialog = await openNamed(user);
+
+    await user.click(within(dialog).getByRole("button", { name: "Clear all" }));
+    await user.click(
+      within(dialog).getByRole("switch", {
+        name: "Grant Services permissions",
+      }),
+    );
+    await user.click(
+      within(
+        within(dialog).getByRole("radiogroup", {
+          name: "Web and private services, static sites, background workers, and cron jobs",
+        }),
+      ).getByRole("radio", { name: "Read" }),
+    );
+    await user.click(
+      within(
+        within(dialog).getByRole("radiogroup", {
+          name: "Environment variables and secret files",
+        }),
+      ).getByRole("radio", { name: "None" }),
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+
+    expect(create).toHaveBeenCalledWith("deploy-agent", {
+      grants: [{ permission: "services", level: "read" }],
+    });
+  });
+
+  it("a level the viewer cannot grant is disabled with the role it needs", async () => {
+    const user = userEvent.setup();
+    render(<CreateApiKeyDialog onCreated={vi.fn()} />);
+    const dialog = await openNamed(user);
+
+    const readWrite = within(
+      within(dialog).getByRole("radiogroup", {
+        name: "Git connections and repositories",
+      }),
+    ).getByRole("radio", { name: "Read & write" });
+    expect(readWrite).toBeDisabled();
+    expect(readWrite).toHaveAccessibleDescription(
+      "Read & write requires the Admin role.",
+    );
+  });
+
+  it("still creates (with All) when the catalog cannot load, and says so", async () => {
+    catalog = {
+      areas: undefined,
+      error: new Error("boom"),
+      refetch: vi.fn().mockResolvedValue(undefined),
+    };
+    create.mockResolvedValue(CREATED);
+    const user = userEvent.setup();
+    render(<CreateApiKeyDialog onCreated={vi.fn()} />);
+    const dialog = await openNamed(user);
+
+    expect(within(dialog).getByRole("alert")).toHaveTextContent(
+      "Couldn't load the permission list. A key you create now gets All permissions.",
+    );
+    // The read can be tried again in place.
+    await user.click(within(dialog).getByRole("button", { name: "Try again" }));
+    expect(catalog.refetch).toHaveBeenCalledTimes(1);
+
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    expect(create).toHaveBeenCalledWith("deploy-agent", { all: true });
+  });
+
+  it("a reopened dialog starts on All again", async () => {
+    create.mockResolvedValue(null);
+    const user = userEvent.setup();
+    render(<CreateApiKeyDialog onCreated={vi.fn()} />);
+    let dialog = await openNamed(user);
+    await user.click(within(dialog).getByRole("button", { name: "Clear all" }));
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    dialog = await openNamed(user);
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    expect(create).toHaveBeenLastCalledWith("deploy-agent", { all: true });
   });
 });

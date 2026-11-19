@@ -81,7 +81,7 @@ func TestCreateAPIKeyRequiresMintCredentialClass(t *testing.T) {
 			svc := &Service{Base: &core.Base{Namespace: "default", PlatformClients: tc.platform}, APIKeys: store} // Binding nil — the legacy unbound mint path
 			ctx := core.WithIdentity(context.Background(), tc.id)
 
-			_, err := svc.CreateAPIKey(ctx, "", "agent")
+			_, err := svc.CreateAPIKey(ctx, "", "agent", nil)
 			if tc.want == nil && err != nil {
 				t.Fatalf("mint => %v, want success", err)
 			}
@@ -116,7 +116,7 @@ func TestCreateAPIKeyUsesFreshPlatformClientClassification(t *testing.T) {
 	ctx := core.WithIdentity(context.Background(), core.Identity{
 		Subject: "user-a", Method: "oauth2", ClientID: "was-platform", Human: true,
 	})
-	_, err := svc.CreateAPIKey(ctx, "", "agent")
+	_, err := svc.CreateAPIKey(ctx, "", "agent", nil)
 	if !errors.Is(err, core.ErrForbidden) {
 		t.Fatalf("stale-positive mint => %v, want ErrForbidden", err)
 	}

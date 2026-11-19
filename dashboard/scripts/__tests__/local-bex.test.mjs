@@ -500,4 +500,66 @@ describe("local-bex.mjs API keys", () => {
       { id, ownerId },
     );
   });
+
+  it("keeps a key's permissions: All by default, then whatever the editor saves (w9/m496)", async () => {
+    const ownerId = "tea-localdefault00000001";
+    const PERMISSIONS = "permissions { all grants { permission level } }";
+    const created = await graphql(
+      "CreateApiKey",
+      `
+        mutation CreateApiKey($name: String!, $ownerId: String) {
+          createApiKey(name: $name, ownerId: $ownerId) {
+            id
+          }
+        }
+      `,
+      { name: "scoped-agent", ownerId },
+    );
+    const { id } = created.data.createApiKey;
+    const list = async () =>
+      (
+        await graphql(
+          "ApiKeys",
+          `query ApiKeys($ownerId: String) { apiKeys(ownerId: $ownerId) { id ${PERMISSIONS} } }`,
+          { ownerId },
+        )
+      ).data.apiKeys.find((key) => key.id === id);
+    expect((await list()).permissions).toMatchObject({ all: true, grants: [] });
+
+    const grants = [{ permission: "services", level: "read" }];
+    const updated = await graphql(
+      "UpdateApiKeyPermissions",
+      `
+        mutation UpdateApiKeyPermissions($id: String!, $ownerId: String, $permissions: ApiKeyPermissionsInput!) {
+          updateApiKeyPermissions(id: $id, ownerId: $ownerId, permissions: $permissions) { id ${PERMISSIONS} }
+        }
+      `,
+      { id, ownerId, permissions: { grants } },
+    );
+    expect(updated.errors).toBeUndefined();
+    expect((await list()).permissions).toMatchObject({ all: false, grants });
+
+    const catalog = await graphql(
+      "ApiKeyPermissionCatalog",
+      `
+        query ApiKeyPermissionCatalog($ownerId: String) {
+          apiKeyPermissionCatalog(ownerId: $ownerId) {
+            id
+            permissions {
+              id
+              levels {
+                level
+                grantable
+              }
+            }
+          }
+        }
+      `,
+      { ownerId },
+    );
+    const offered = catalog.data.apiKeyPermissionCatalog.flatMap((area) =>
+      area.permissions.map((p) => p.id),
+    );
+    expect(offered).toContain("services");
+  });
 });

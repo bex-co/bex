@@ -73,3 +73,22 @@ func (p PlatformClients) IsPlatformClient(_ context.Context, clientID string) (b
 func (p PlatformClients) IsPlatformClientFresh(ctx context.Context, clientID string) (bool, error) {
 	return p.IsPlatformClient(ctx, clientID)
 }
+
+// KeyGrants is a core.KeyGrantResolver from a fixed map: a client id in it
+// carries that grant; any other key acts with All.
+type KeyGrants map[string]core.KeyGrant
+
+func (k KeyGrants) APIKeyGrant(_ context.Context, clientID string) (core.KeyGrant, error) {
+	if g, ok := k[clientID]; ok {
+		return g, nil
+	}
+	return core.AllKeyGrant(), nil
+}
+
+// KeyGrantsFunc is a core.KeyGrantResolver over a function, for a test that
+// changes the grant or the store's answer between calls.
+type KeyGrantsFunc func(ctx context.Context, clientID string) (core.KeyGrant, error)
+
+func (f KeyGrantsFunc) APIKeyGrant(ctx context.Context, clientID string) (core.KeyGrant, error) {
+	return f(ctx, clientID)
+}

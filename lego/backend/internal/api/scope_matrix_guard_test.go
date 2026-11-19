@@ -172,6 +172,8 @@ func heuristicRequiredClass(op string) (want string, ok bool) {
 		return core.OpClassMint, true
 	case strings.Contains(op, "createApiKey") || strings.Contains(op, "create_api_key") || op == "REST POST /v1/api-keys":
 		return core.OpClassMint, true
+	case strings.Contains(op, "updateApiKeyPermissions") || strings.Contains(op, "update_api_key_permissions") || op == "REST PATCH /v1/api-keys/{id}":
+		return core.OpClassMint, true
 	case strings.Contains(op, "createRouterKey") || strings.Contains(op, "create_router_key"):
 		return core.OpClassMint, true
 	case strings.Contains(op, "createSSHKey") || op == "MCP add_ssh_key" || op == "REST POST /v1/ssh-keys":

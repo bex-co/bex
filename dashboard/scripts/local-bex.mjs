@@ -97,6 +97,127 @@ const WORKSPACES = [
 // display rule.
 const API_KEYS = [];
 
+// A key's grant (w9/m496): All unless the create names one, as bex-api does.
+function apiKeyPermissions(input) {
+  const grants = input && !input.all ? (input.grants ?? []) : [];
+  return {
+    __typename: "ApiKeyPermissions",
+    all: !input || Boolean(input.all),
+    grants: grants.map(({ permission, level }) => ({
+      __typename: "ApiKeyGrant",
+      permission,
+      level,
+    })),
+  };
+}
+
+// A small SAMPLE of bex-api's permission catalog (core.KeyPermissionCatalog),
+// enough to drive the picker offline: a Render area with a Write-only level,
+// an area the stub's viewer may not grant (Audit logs needs an Admin, and the
+// stub plays a Developer here), and a bex area. Not the catalog: bex-api owns
+// it, and the dashboard reads it from there.
+const catalogLevel = (id, name, grantable, requiredRole, actions) => ({
+  __typename: "ApiKeyPermissionLevel",
+  level: id,
+  name,
+  grantable,
+  requiredRole,
+  actions: actions.map(([actionId, actionName, bex = false]) => ({
+    __typename: "ApiKeyPermissionAction",
+    id: actionId,
+    name: actionName,
+    bex,
+  })),
+});
+const catalogPermission = (id, name, levels) => ({
+  __typename: "ApiKeyPermission",
+  id,
+  name,
+  levels,
+});
+const API_KEY_PERMISSION_CATALOG_SAMPLE = [
+  {
+    __typename: "ApiKeyPermissionArea",
+    id: "services",
+    name: "Services",
+    bex: false,
+    permissions: [
+      catalogPermission(
+        "services",
+        "Web and private services, static sites, background workers, and cron jobs",
+        [
+          catalogLevel("read", "Read", true, "viewer", [
+            ["services.view", "View services and their configuration"],
+          ]),
+          catalogLevel("read_write", "Read & write", true, "developer", [
+            ["services.view", "View services and their configuration"],
+            ["services.manage", "Create, update, and delete services"],
+            ["services.jobs", "Manage preview environments and one-off jobs"],
+          ]),
+        ],
+      ),
+      catalogPermission(
+        "services_env",
+        "Environment variables and secret files",
+        [
+          catalogLevel("read", "Read", true, "developer", [
+            [
+              "services.env.view",
+              "View environment variables and secret files",
+            ],
+          ]),
+          catalogLevel("write", "Write", true, "developer", [
+            [
+              "services.env.set",
+              "Set environment variable and secret file values",
+            ],
+          ]),
+          catalogLevel("read_write", "Read & write", true, "developer", [
+            [
+              "services.env.view",
+              "View environment variables and secret files",
+            ],
+            [
+              "services.env.set",
+              "Set environment variable and secret file values",
+            ],
+          ]),
+        ],
+      ),
+    ],
+  },
+  {
+    __typename: "ApiKeyPermissionArea",
+    id: "audit_logs",
+    name: "Audit logs",
+    bex: false,
+    permissions: [
+      catalogPermission("audit_logs", "Read workspace audit logs", [
+        catalogLevel("read", "Read", false, "admin", [
+          ["auditlogs.view", "Read workspace audit logs"],
+        ]),
+      ]),
+    ],
+  },
+  {
+    __typename: "ApiKeyPermissionArea",
+    id: "git",
+    name: "Git",
+    bex: true,
+    permissions: [
+      catalogPermission("git", "Git connections and repositories", [
+        catalogLevel("read", "Read", true, "viewer", [
+          ["git.view", "View Git connections and repositories", true],
+        ]),
+        catalogLevel("read_write", "Read & write", false, "admin", [
+          ["git.view", "View Git connections and repositories", true],
+          ["git.manage", "Connect and disconnect Git providers", true],
+        ]),
+      ]),
+    ],
+  },
+];
+
 // Render allows five free Hobby workspaces per user (w6/RESEARCH-workspaces.md
 // finding 3) — mirrored here so the create flow's inline limit error
 // (w6/m3 DoD) is reachable offline without a real control-plane store.
@@ -2392,6 +2513,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
         createdAt: new Date().toISOString(),
         createdBy: "owner@acme-hq.example",
         lastUsedAt: null,
+        permissions: apiKeyPermissions(variables.permissions),
       };
       API_KEYS.push(created);
       const secret = randomBytes(20).toString("base64url").slice(0, 26);
@@ -2402,6 +2524,18 @@ function resolveGraphQL({ operationName, variables = {} }) {
           secret,
         },
       };
+    }
+    case "ApiKeyPermissionCatalog":
+      return { apiKeyPermissionCatalog: API_KEY_PERMISSION_CATALOG_SAMPLE };
+    case "UpdateApiKeyPermissions": {
+      const key = API_KEYS.find(
+        (candidate) =>
+          candidate.id === variables.id &&
+          candidate.ownerId === (variables.ownerId ?? WORKSPACE_DEFAULT),
+      );
+      if (!key) return { updateApiKeyPermissions: null };
+      key.permissions = apiKeyPermissions(variables.permissions);
+      return { updateApiKeyPermissions: key };
     }
     case "RevokeApiKey": {
       const index = API_KEYS.findIndex(

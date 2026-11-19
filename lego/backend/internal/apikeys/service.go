@@ -54,6 +54,10 @@ type APIKey struct {
 	// login reads. Unrecorded on keys minted before the stamp existed, which
 	// that requirement exempts. Internal: never on the wire.
 	CreatedSignIn core.SignIn `json:"-"`
+	// Permissions is the key's grant (w9/m496, core.KeyGrant): All, or the
+	// Render permissions it was given. Filled by the service from the key's
+	// binding, never by the Hydra store.
+	Permissions core.KeyGrant `json:"permissions"`
 }
 
 // APIKeyStore is the Service's seam to the OAuth2 client registry — Hydra's admin
@@ -89,6 +93,20 @@ type KeyBinder interface {
 	// ListAPIKeys/RevokeAPIKey to one workspace's own keys (w6/m18).
 	TenantForKey(ctx context.Context, clientID string) (tenantID string, ok bool)
 }
+
+// KeyGrantBinder records and reads a bound key's grant (w9/m496, migration
+// 0300). *tenancy.Service implements it; a binder without it scopes no key, so
+// every key it binds acts with All and a mint naming permissions is refused.
+type KeyGrantBinder interface {
+	SetKeyGrant(ctx context.Context, clientID string, g core.KeyGrant) error
+	// APIKeyGrantsOfTenant is every key bound to tenantID with its grant; a
+	// key it does not name acts with All.
+	APIKeyGrantsOfTenant(ctx context.Context, tenantID string) (map[string]core.KeyGrant, error)
+}
+
+// errCannotScope refuses a grant other than All where none can be recorded
+// (the store-off mode, or a binder that records no grants).
+var errCannotScope = fmt.Errorf("%w: permissions: this deployment cannot scope an API key", core.ErrBadRequest)
 
 // KeyQuotaLocker serializes one workspace's count→Hydra-create→bind sequence
 // across bex-api replicas. The Postgres-backed tenant service implements it
@@ -275,6 +293,10 @@ func (s *Service) activeKeyQuota() int {
 // CreateAPIKey mints a new machine credential. The returned Secret, and the Key
 // that carries it as one bearer string, are shown once, and the caller's
 // identity (IdentityFrom) is stamped as the key's created-by.
+// permissions is the key's grant (w9/m496): nil is All, every permission the
+// creator's role allows, as Render's "All" preset and every key minted before
+// scoped keys; anything else must name catalog permissions the caller's
+// current role allows (403 otherwise), checked at a write's freshness.
 // With the store on, the key is bound to ownerID's tenant (Render's `ownerId`,
 // w6/m18; "" => the caller's default workspace, membership-checked via
 // core.WithWorkspace like every other explicit-target verb) — a mapping row +
@@ -282,7 +304,7 @@ func (s *Service) activeKeyQuota() int {
 // session-less machine caller with no tenant is refused rather than minting an
 // orphaned, tuple-less key. A bind failure rolls the Hydra client back so no
 // half-bound credential lingers.
-func (s *Service) CreateAPIKey(ctx context.Context, ownerID, name string) (APIKey, error) {
+func (s *Service) CreateAPIKey(ctx context.Context, ownerID, name string, permissions *core.KeyGrant) (APIKey, error) {
 	// codex round-7 F3: minting a durable credential is reserved for direct
 	// human callers (AuthorizeMintClass) — a machine token must not
 	// self-replicate, and a consented third-party client must not persist past
@@ -314,20 +336,40 @@ func (s *Service) CreateAPIKey(ctx context.Context, ownerID, name string) (APIKe
 	if name == "" {
 		return APIKey{}, fmt.Errorf("%w: name: must not be blank", core.ErrBadRequest)
 	}
+	grant := core.AllKeyGrant()
+	if permissions != nil {
+		if grant, err = core.ValidateKeyGrant(*permissions); err != nil {
+			return APIKey{}, err
+		}
+	}
 	createdBy := ""
 	if id, ok := core.IdentityFrom(ctx); ok {
 		createdBy = id.Subject
 	}
 	if s.Binding == nil {
+		if !grant.All {
+			return APIKey{}, errCannotScope
+		}
 		key, err := s.APIKeys.Create(ctx, name, createdBy, core.KeySignInStamp(ctx)) // store off — unbound, as before
 		if err != nil {
 			return APIKey{}, err
 		}
+		key.Permissions = grant
 		return withBearerKey(key), nil
 	}
 	tenantID, ok := s.Tenant(ctx)
 	if !ok {
 		return APIKey{}, fmt.Errorf("%w: caller has no tenant to bind the key to", core.ErrBadRequest)
+	}
+	grants, scopable := s.Binding.(KeyGrantBinder)
+	if !grant.All && !scopable {
+		return APIKey{}, errCannotScope
+	}
+	// Render: "Your member role in the selected workspace determines which
+	// permissions you can grant an API key." Checked before any credential
+	// exists, uncached, as a write is.
+	if err := s.RequireGrantableKeyGrant(ctx, createdBy, tenantID, grant); err != nil {
+		return APIKey{}, err
 	}
 	// The mutex is a local fast path. Production's Postgres-backed Binding also
 	// takes a workspace advisory lock below, closing the count→create→bind race
@@ -344,8 +386,19 @@ func (s *Service) CreateAPIKey(ctx context.Context, ownerID, name string) (APIKe
 	var key APIKey
 	create := func() error {
 		var err error
-		key, err = s.createBoundAPIKey(ctx, tenantID, name, createdBy)
-		return err
+		if key, err = s.createBoundAPIKey(ctx, tenantID, name, createdBy); err != nil {
+			return err
+		}
+		// The secret has not left this function yet, so nobody holds the key
+		// while its row still says All; a failed write takes the key back.
+		if !grant.All {
+			if err := grants.SetKeyGrant(ctx, key.ID, grant); err != nil {
+				s.discardKey(ctx, key.ID)
+				return fmt.Errorf("record api key permissions: %w", err)
+			}
+		}
+		key.Permissions = grant
+		return nil
 	}
 	if locker, ok := s.Binding.(KeyQuotaLocker); ok {
 		if err := locker.WithTenantAdvisoryLock(ctx, tenantID, create); err != nil {
@@ -401,11 +454,17 @@ func (s *Service) createBoundAPIKey(ctx context.Context, tenantID, name, created
 	// commits after this check, the deletion worker's later Hydra inventory sees
 	// this completed key, so every ordering converges without an orphan.
 	if err := s.refuseDeletingCreator(ctx, createdBy); err != nil {
-		_ = s.Binding.UnbindKey(ctx, key.ID)
-		_ = s.APIKeys.Delete(ctx, key.ID)
+		s.discardKey(ctx, key.ID)
 		return APIKey{}, err
 	}
 	return key, nil
+}
+
+// discardKey takes back a key whose mint did not finish: its binding, then
+// its client. Best effort, as a mint's own rollback has always been.
+func (s *Service) discardKey(ctx context.Context, id string) {
+	_ = s.Binding.UnbindKey(ctx, id)
+	_ = s.APIKeys.Delete(ctx, id)
 }
 
 func (s *Service) refuseDeletingCreator(ctx context.Context, subject string) error {
@@ -485,14 +544,27 @@ func (s *Service) ListAPIKeys(ctx context.Context, ownerID string) ([]APIKey, er
 	}
 	tenantID, scoped := s.boundTenant(ctx)
 	if !scoped {
+		for i := range keys {
+			keys[i].Permissions = core.AllKeyGrant()
+		}
 		return keys, nil
 	}
 	if tenantID == "" {
 		return []APIKey{}, nil
 	}
+	var grants map[string]core.KeyGrant
+	if binder, ok := s.Binding.(KeyGrantBinder); ok {
+		if grants, err = binder.APIKeyGrantsOfTenant(ctx, tenantID); err != nil {
+			return nil, fmt.Errorf("read api key permissions: %w", err)
+		}
+	}
 	out := make([]APIKey, 0, len(keys))
 	for _, k := range keys {
 		if owner, ok := s.Binding.TenantForKey(ctx, k.ID); ok && owner == tenantID {
+			k.Permissions = core.AllKeyGrant()
+			if g, ok := grants[k.ID]; ok {
+				k.Permissions = g
+			}
 			out = append(out, k)
 		}
 	}
@@ -541,20 +613,8 @@ func (s *Service) RevokeAPIKey(ctx context.Context, ownerID, id string) error {
 		return core.ErrAPIKeysUnavailable
 	}
 	if tenantID, scoped := s.boundTenant(ctx); scoped {
-		if tenantID == "" {
-			return core.ErrForbidden
-		}
-		owner, boundOK := s.Binding.TenantForKey(ctx, id)
-		if !boundOK {
-			// An unbound/unknown key belongs to no workspace (w1/m53): the old
-			// fall-through let a can_manage_keys caller in ANY workspace delete an
-			// orphaned key. It isn't in the caller's workspace, so report not-found.
-			return core.ErrNotFound
-		}
-		if owner != tenantID {
-			// The key lives in another workspace than the one this request
-			// acts in: not found in it (w5/086).
-			return core.ErrNotInNamedWorkspace
+		if err := s.requireKeyIn(ctx, tenantID, id); err != nil {
+			return err
 		}
 	}
 	if s.Binding != nil {
@@ -566,6 +626,179 @@ func (s *Service) RevokeAPIKey(ctx context.Context, ownerID, id string) error {
 		return err
 	}
 	return nil
+}
+
+// requireKeyIn refuses a key that is not bound to tenantID, the workspace a
+// request acts in.
+func (s *Service) requireKeyIn(ctx context.Context, tenantID, id string) error {
+	if tenantID == "" {
+		return core.ErrForbidden
+	}
+	owner, bound := s.Binding.TenantForKey(ctx, id)
+	if !bound {
+		// An unbound/unknown key belongs to no workspace (w1/m53): the old
+		// fall-through let a can_manage_keys caller in ANY workspace delete an
+		// orphaned key. It isn't in the caller's workspace, so report not-found.
+		return core.ErrNotFound
+	}
+	if owner != tenantID {
+		// The key lives in another workspace than the one this request
+		// acts in: not found in it (w5/086).
+		return core.ErrNotInNamedWorkspace
+	}
+	return nil
+}
+
+// UpdateAPIKeyPermissions changes a key's grant (w9/m496): Render's gear icon,
+// "Change your key's permissions, then click Save changes"
+// (render.com/docs/api-keys). It is a human verb, like minting (I8: a key
+// never widens its own grant or another's), scoped as RevokeAPIKey is to the
+// key's own workspace, and open to the key's creator or a workspace Admin.
+// The grant is validated against the key's CREATOR's current role, uncached,
+// since the key acts under that role whoever edits it. The dispatch gate reads
+// the grant uncached, so the change applies on the key's next request.
+func (s *Service) UpdateAPIKeyPermissions(ctx context.Context, ownerID, id string, permissions core.KeyGrant) (APIKey, error) {
+	if err := s.AuthorizeMintClass(ctx); err != nil {
+		return APIKey{}, err
+	}
+	ctx, err := s.revokeScope(ctx, ownerID, id)
+	if err != nil {
+		return APIKey{}, err
+	}
+	if err := s.Authorize(ctx, core.RelCanManageKeys); err != nil {
+		return APIKey{}, err
+	}
+	if s.APIKeys == nil {
+		return APIKey{}, core.ErrAPIKeysUnavailable
+	}
+	grant, err := core.ValidateKeyGrant(permissions)
+	if err != nil {
+		return APIKey{}, err
+	}
+	tenantID, scoped := s.boundTenant(ctx)
+	grants, scopable := s.Binding.(KeyGrantBinder)
+	if !scoped || !scopable {
+		return APIKey{}, errCannotScope
+	}
+	if err := s.requireKeyIn(ctx, tenantID, id); err != nil {
+		return APIKey{}, err
+	}
+	key, err := s.boundKey(ctx, id)
+	if err != nil {
+		return APIKey{}, err
+	}
+	if key.CreatedBy == "" && !grant.All {
+		return APIKey{}, fmt.Errorf("%w: permissions: this key records no creator, so its permissions cannot be chosen; create a new key", core.ErrBadRequest)
+	}
+	if caller := core.SubjectFrom(ctx); caller != key.CreatedBy {
+		admin, err := s.HoldsFresh(ctx, core.RelCanManage, core.WorkspaceObject(tenantID))
+		if err != nil {
+			return APIKey{}, err
+		}
+		if !admin {
+			return APIKey{}, core.NewForbiddenError(KeyEditorForbiddenCode,
+				"only the key's creator or a workspace Admin may change its permissions", nil)
+		}
+	}
+	if key.CreatedBy != "" {
+		if err := s.RequireGrantableKeyGrant(ctx, key.CreatedBy, tenantID, grant); err != nil {
+			return APIKey{}, err
+		}
+	}
+	if err := grants.SetKeyGrant(ctx, id, grant); err != nil {
+		return APIKey{}, fmt.Errorf("record api key permissions: %w", err)
+	}
+	key.Permissions = grant
+	return key, nil
+}
+
+// KeyEditorForbiddenCode refuses a grant edit by someone who is neither the
+// key's creator nor a workspace Admin.
+const KeyEditorForbiddenCode = "api_key_permissions_editor_forbidden"
+
+// keyGetter reads one key from the registry; hydraAPIKeys implements it with
+// one admin GET. A store without it is listed.
+type keyGetter interface {
+	Get(ctx context.Context, id string) (APIKey, error)
+}
+
+// boundKey reads one key back from the registry (secret omitted).
+func (s *Service) boundKey(ctx context.Context, id string) (APIKey, error) {
+	if getter, ok := s.APIKeys.(keyGetter); ok {
+		return getter.Get(ctx, id)
+	}
+	keys, err := s.APIKeys.List(ctx)
+	if err != nil {
+		return APIKey{}, err
+	}
+	for _, k := range keys {
+		if k.ID == id {
+			return k, nil
+		}
+	}
+	return APIKey{}, core.ErrNotFound
+}
+
+// PermissionArea is one area of the permission picker: Render's catalog
+// (core.KeyPermissionCatalog) with, per level, whether the caller's current
+// role lets them grant it. The dashboard builds its picker from it and holds
+// no copy of the catalog.
+type PermissionArea struct {
+	ID          string           `json:"id"`
+	Name        string           `json:"name"`
+	Bex         bool             `json:"bex"`
+	Permissions []PermissionInfo `json:"permissions"`
+}
+
+// PermissionInfo is one permission of an area.
+type PermissionInfo struct {
+	ID     string                `json:"id"`
+	Name   string                `json:"name"`
+	Levels []PermissionLevelInfo `json:"levels"`
+}
+
+// PermissionLevelInfo is one level a permission offers.
+type PermissionLevelInfo struct {
+	Level   core.KeyLevel        `json:"level"`
+	Name    string               `json:"name"`
+	Actions []core.KeyActionInfo `json:"actions"`
+	// Grantable is whether the caller's current role allows it;
+	// RequiredRole is the lowest member role that does.
+	Grantable    bool   `json:"grantable"`
+	RequiredRole string `json:"requiredRole"`
+}
+
+// PermissionCatalog is the picker's catalog for ownerID ("" => the caller's
+// default workspace), each level marked with whether the caller may grant it.
+func (s *Service) PermissionCatalog(ctx context.Context, ownerID string) ([]PermissionArea, error) {
+	ctx = core.WithWorkspace(ctx, ownerID)
+	if err := s.Authorize(ctx, core.RelCanManageKeys); err != nil {
+		return nil, err
+	}
+	tenantID, _ := s.Tenant(ctx)
+	caps := s.KeyGrantCap(core.SubjectFrom(ctx), tenantID)
+	out := make([]PermissionArea, 0, len(core.KeyPermissionCatalog))
+	for _, area := range core.KeyPermissionCatalog {
+		av := PermissionArea{ID: area.ID, Name: area.Name, Bex: area.Bex, Permissions: make([]PermissionInfo, 0, len(area.Permissions))}
+		for _, p := range area.Permissions {
+			pv := PermissionInfo{ID: p.ID, Name: p.Name, Levels: make([]PermissionLevelInfo, 0, len(p.Levels))}
+			for _, l := range p.Levels {
+				grantable, err := caps.Grantable(ctx, l)
+				if err != nil {
+					return nil, err
+				}
+				lv := PermissionLevelInfo{Level: l.Level, Name: core.KeyLevelName(l.Level), Grantable: grantable,
+					RequiredRole: core.KeyLevelRequiredRole(l), Actions: make([]core.KeyActionInfo, 0, len(l.Actions))}
+				for _, a := range l.Actions {
+					lv.Actions = append(lv.Actions, core.KeyActionNamed(a))
+				}
+				pv.Levels = append(pv.Levels, lv)
+			}
+			av.Permissions = append(av.Permissions, pv)
+		}
+		out = append(out, av)
+	}
+	return out, nil
 }
 
 // revokeScope picks the workspace RevokeAPIKey authorizes in (w4/194) through
@@ -844,6 +1077,17 @@ func (h *hydraAPIKeys) Touch(ctx context.Context, id string, at time.Time) error
 		"value": at.UTC().Format(time.RFC3339),
 	}})
 	return h.do(ctx, http.MethodPatch, hydraClientPath(id), patch, http.StatusOK, nil)
+}
+
+// Get reads one bex API key (secret omitted) with one admin GET; a client
+// that is not a bex key is ErrNotFound.
+func (h *hydraAPIKeys) Get(ctx context.Context, id string) (APIKey, error) {
+	c, err := h.getAPIKey(ctx, id)
+	if err != nil {
+		return APIKey{}, err
+	}
+	c.ClientSecret = ""
+	return apiKeyFromHydra(c), nil
 }
 
 // KeyOwner reads back the client's created-by stamp. Any failure (unknown

@@ -7,9 +7,9 @@ const jaApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.description": {
     message:
-      "スクリプトやエージェント向けのマシン認証情報です。各キーは、作成したメンバーの現在のロールで、このワークスペースでのみ動作します。ワークスペース全体で共有され、キーを管理できるメンバーは、自分のキーだけでなくすべてのキーを確認できます。",
+      "スクリプトやエージェント向けのマシン認証情報です。各キーは選択された権限だけを使え、作成したメンバーの現在のロールで許可される範囲を超えることはなく、このワークスペースでのみ動作します。ワークスペース全体で共有され、キーを管理できるメンバーは、自分のキーだけでなくすべてのキーを確認できます。",
     description:
-      "Settings API Keys section card description: what a key is, that it acts with its creator's current role in this workspace, and that the list is shared",
+      "Settings API Keys section card description: what a key is, that it uses only its chosen permissions within its creator's current role in this workspace (w9/m496), and that the list is shared",
   },
   "apiKeys.cliGuide": {
     message: "CLI をセットアップする。",
@@ -112,9 +112,9 @@ const jaApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.keyHelp": {
     message:
-      "すべてのリクエストで Authorization: Bearer として送信してください。このキーはこのワークスペースでのあなたの現在のメンバーロールで動作し、ロールが変わるとそれに従うため、パスワードと同様に扱ってください。",
+      "すべてのリクエストで Authorization: Bearer として送信してください。このキーは選択した権限だけを使え、このワークスペースでのあなたの現在のメンバーロールで許可される範囲を超えることはありません。パスワードと同様に扱ってください。",
     description:
-      "Mint dialog copy under the key: how to send it, and that it acts with the creator's current member role in this workspace and follows it",
+      "Mint dialog copy under the key: how to send it, and that it uses only the chosen permissions, capped by the creator's current member role in this workspace (w9/m496)",
   },
   "apiKeys.curlTitle": {
     message: "リクエスト例",
@@ -207,6 +207,151 @@ const jaApiKeys: Record<string, TranslationEntry> = {
   "apiKeys.revokeError": {
     message: "{name} を失効できませんでした",
     description: "Toast on a failed revoke",
+  },
+  "apiKeys.colPermissions": {
+    message: "権限",
+    description: "API Keys table column header: what each key may do (w9/m496)",
+  },
+  "apiKeys.permSummaryAll": {
+    message: "すべて",
+    description:
+      "Key row permissions summary: the key has every permission its creator's member role allows (Render's All)",
+  },
+  "apiKeys.permSummaryReadOnly": {
+    message: "読み取り専用",
+    description:
+      "Key row permissions summary: every permission the key has is at Read, so it can change nothing",
+  },
+  "apiKeys.permSummaryNone": {
+    message: "権限なし",
+    description:
+      "Key row permissions summary: the key has no permissions (Clear all)",
+  },
+  "apiKeys.permSummaryCustom": {
+    message: "カスタム",
+    description:
+      "Key row permissions summary: the key has a chosen set of permissions; followed by their count",
+  },
+  "apiKeys.editPermissionsNamed": {
+    message: "{name} の権限を変更",
+    description:
+      "Gear button aria-label on a key row; opens the permissions editor",
+  },
+  "apiKeys.editPermissionsTitle": {
+    message: "権限を編集",
+    description: "Permissions editor dialog title",
+  },
+  "apiKeys.editPermissionsDescription": {
+    message:
+      "{name} が使える権限を変更し、「変更を保存」をクリックしてください。新しい権限はすぐに適用されます。",
+    description:
+      "Permissions editor dialog description; {name} is the key's name",
+  },
+  "apiKeys.editPermissionsCancel": {
+    message: "キャンセル",
+    description: "Permissions editor dialog cancel button",
+  },
+  "apiKeys.editPermissionsSave": {
+    message: "変更を保存",
+    description: "Permissions editor dialog save button (Render's words)",
+  },
+  "apiKeys.permissionsSaved": {
+    message: "{name} の権限を更新しました",
+    description: "Toast after a key's permissions are saved",
+  },
+  "apiKeys.permissionsSaveError": {
+    message: "{name} の権限を更新できませんでした",
+    description:
+      "Toast when saving a key's permissions fails (the server's reason is shown instead when it gives one)",
+  },
+  "apiKeys.permIntro": {
+    message: "この API キーが使える権限を選択してください。",
+    description:
+      "Permission picker heading in the create dialog and the permissions editor (Render's words)",
+  },
+  "apiKeys.permPresetAll": {
+    message: "すべて",
+    description:
+      "Picker preset button: grant every permission the member role allows (Render's All)",
+  },
+  "apiKeys.permPresetReadOnly": {
+    message: "読み取り専用",
+    description:
+      "Picker preset button: grant Read on every permission that offers it (Render's Read only)",
+  },
+  "apiKeys.permPresetClear": {
+    message: "すべてクリア",
+    description:
+      "Picker preset button: remove every permission from the key (Render's Clear all)",
+  },
+  "apiKeys.permAllHelp": {
+    message:
+      "「すべて」は、作成者のメンバーロールで許可されるすべての権限をすべてのリソースに付与し、ロールが変わるとそれに従います。",
+    description: "Picker note while the All preset is selected: what All means",
+  },
+  "apiKeys.permNoneHelp": {
+    message: "権限が選択されていません。このキーは自身の識別しかできません。",
+    description: "Picker note when every permission is None (Clear all)",
+  },
+  "apiKeys.permAreaToggle": {
+    message: "{area} の権限を付与",
+    description:
+      "Switch aria-label on one area of the picker; {area} is Render's area name, e.g. Services (kept in English)",
+  },
+  "apiKeys.permLevelNone": {
+    message: "なし",
+    description: "Picker option on a permission: the key gets none of it",
+  },
+  "apiKeys.permLevelGrants": {
+    message: "{level} で許可される操作:",
+    description:
+      "Picker label over the actions a permission's chosen level grants; {level} is Render's level name, e.g. Read & write (kept in English)",
+  },
+  "apiKeys.permRequiresRole.viewer": {
+    message: "{level} には 閲覧者 ロールが必要です。",
+    description:
+      "Reason beside a level the viewer's role cannot grant; {level} is Render's level name (kept in English); the lowest role that can is Viewer",
+  },
+  "apiKeys.permRequiresRole.contributor": {
+    message: "{level} には コントリビューター ロールが必要です。",
+    description:
+      "Reason beside a level the viewer's role cannot grant; {level} is Render's level name (kept in English); the lowest role that can is Contributor",
+  },
+  "apiKeys.permRequiresRole.developer": {
+    message: "{level} には 開発者 ロールが必要です。",
+    description:
+      "Reason beside a level the viewer's role cannot grant; {level} is Render's level name (kept in English); the lowest role that can is Developer",
+  },
+  "apiKeys.permRequiresRole.admin": {
+    message: "{level} には 管理者 ロールが必要です。",
+    description:
+      "Reason beside a level the viewer's role cannot grant; {level} is Render's level name (kept in English); the lowest role that can is Admin",
+  },
+  "apiKeys.permRequiresHigherRole": {
+    message: "{level} にはより上位のメンバーロールが必要です。",
+    description:
+      "Reason beside a level the viewer's role cannot grant, when bex-api names a role the dashboard does not know",
+  },
+  "apiKeys.permCatalogLoading": {
+    message: "権限を読み込んでいます…",
+    description:
+      "Accessible name of the picker while its permission list loads",
+  },
+  "apiKeys.permCatalogErrorCreate": {
+    message:
+      "権限の一覧を読み込めませんでした。今作成するキーにはすべての権限が付与されます。",
+    description:
+      "Create dialog note when the permission list fails to load: creating still works and grants All",
+  },
+  "apiKeys.permCatalogErrorEdit": {
+    message: "権限の一覧を読み込めませんでした。",
+    description:
+      "Permissions editor note when the permission list fails to load, beside a Try again button",
+  },
+  "apiKeys.permSummaryCount_other": {
+    message: "{count} 件の権限",
+    description:
+      "Key row permissions summary beside Custom: how many permissions the key has",
   },
 };
 

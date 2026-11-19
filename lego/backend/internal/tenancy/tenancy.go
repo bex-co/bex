@@ -716,6 +716,55 @@ func (t *Service) UnbindKey(ctx context.Context, clientID string) error {
 	return nil
 }
 
+// keyGrantStore records and reads an API key's grant (w9/m496). *store.PGStore
+// implements it; a store without it cannot scope a key, so every key there
+// acts with All.
+type keyGrantStore interface {
+	SetAPIKeyGrant(ctx context.Context, clientID string, g core.KeyGrant) error
+	APIKeyGrant(ctx context.Context, clientID string) (core.KeyGrant, error)
+	APIKeyGrantsOfTenant(ctx context.Context, tenantID string) (map[string]core.KeyGrant, error)
+}
+
+// errNoKeyGrants refuses a scoped grant where it cannot be recorded.
+var errNoKeyGrants = fmt.Errorf("%w: permissions: this deployment cannot scope an API key", core.ErrBadRequest)
+
+// SetKeyGrant implements apikeys.KeyBinder: records the bound key's grant on
+// its machine row. Recording All where no grant can be stored is a no-op,
+// since All is what every key there already has.
+func (t *Service) SetKeyGrant(ctx context.Context, clientID string, g core.KeyGrant) error {
+	grants, ok := t.store.(keyGrantStore)
+	if !ok {
+		if g.All {
+			return nil
+		}
+		return errNoKeyGrants
+	}
+	return grants.SetAPIKeyGrant(ctx, clientID, g)
+}
+
+// APIKeyGrant implements core.KeyGrantResolver and apikeys.KeyBinder's read
+// side: the key's recorded grant, uncached; All where none can be stored.
+func (t *Service) APIKeyGrant(ctx context.Context, clientID string) (core.KeyGrant, error) {
+	grants, ok := t.store.(keyGrantStore)
+	if !ok {
+		return core.AllKeyGrant(), nil
+	}
+	return grants.APIKeyGrant(ctx, clientID)
+}
+
+// APIKeyGrantsOfTenant implements apikeys.KeyGrantBinder's read side: every
+// key bound to tenantID with its grant; nil where none can be stored, so each
+// key reads as All.
+func (t *Service) APIKeyGrantsOfTenant(ctx context.Context, tenantID string) (map[string]core.KeyGrant, error) {
+	grants, ok := t.store.(keyGrantStore)
+	if !ok {
+		return nil, nil
+	}
+	return grants.APIKeyGrantsOfTenant(ctx, tenantID)
+}
+
+var _ core.KeyGrantResolver = (*Service)(nil)
+
 // WorkspaceKeys implements apikeys.WorkspaceKeyBinding: the client ids of the
 // API keys bound to tenantID, sorted (w9/120).
 func (t *Service) WorkspaceKeys(ctx context.Context, tenantID string) ([]string, error) {

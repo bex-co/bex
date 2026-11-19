@@ -33,7 +33,12 @@ var scopeClassOverrides = map[string]string{
 	// wait_ blocks on state but writes nothing (ADR094 D6).
 	"MCP wait_agent_sessions": core.OpClassRead,
 	// Durable-credential mint. AuthorizeMintClass still runs at the verb.
-	"REST POST /v1/api-keys":                             core.OpClassMint,
+	"REST POST /v1/api-keys": core.OpClassMint,
+	// Changing a key's grant is mint too (w9/m496, I8): it widens what a
+	// durable credential may do, so only a person may.
+	"REST PATCH /v1/api-keys/{id}":                       core.OpClassMint,
+	"GQL Mutation.updateApiKeyPermissions":               core.OpClassMint,
+	"MCP update_api_key_permissions":                     core.OpClassMint,
 	"REST POST /v1/ssh-keys":                             core.OpClassMint,
 	"REST POST /v1/postgres/{id}/users":                  core.OpClassMint,
 	"REST GET /v1/services/{id}/deploy-hook":             core.OpClassMint,

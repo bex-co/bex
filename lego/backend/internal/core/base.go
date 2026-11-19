@@ -496,6 +496,10 @@ type Base struct {
 	// mode, where keys are unbound and hold no tuple, and the SSH gateway,
 	// which never authenticates an API key.
 	KeyCreators KeyCreatorResolver
+	// KeyGrants reads the permissions a bex API key was granted (keygrant.go,
+	// w9/m496): the dispatch gate refuses an operation outside them. nil =>
+	// every key acts with All, the store-off mode, where no key can be scoped.
+	KeyGrants KeyGrantResolver
 }
 
 // NamespaceEnsurer provisions one workspace's per-tenant namespaces

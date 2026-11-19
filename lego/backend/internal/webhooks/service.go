@@ -1065,6 +1065,11 @@ func (s *Service) mayManageWorkspace(ctx context.Context, tenantID string) bool 
 			return false
 		}
 	}
+	// A scoped key reads them only with Workspaces Read & write, whose
+	// "Create, update, and delete webhooks" they are the credential of (w9/m496).
+	if granted, err := s.KeyGrantAllows(ctx, core.KeyWorkspaceWebhooksManage); err != nil || !granted {
+		return false
+	}
 	// HoldsFresh, not the raw checker: an API key's answer is capped by its
 	// creator's (w9/m481).
 	allowed, err := s.HoldsFresh(ctx, core.RelCanManage, core.WorkspaceObject(tenantID))

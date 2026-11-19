@@ -159,4 +159,29 @@ describe("useCreateApiKey", () => {
     expect(key).toBeNull();
     expect(toastError).toHaveBeenCalled();
   });
+
+  it("sends the key's permissions when the dialog names them (w9/m496)", async () => {
+    const mutate = vi.fn().mockResolvedValue({
+      data: {
+        createApiKey: {
+          id: "key-1",
+          name: "deploy-agent",
+          key: "bex_issued-by-the-server",
+          secret: "s3cret",
+          createdAt: null,
+        },
+      },
+    });
+    mockUseMutation.mockReturnValue([mutate]);
+
+    const { result } = renderHook(() => useCreateApiKey());
+    const permissions = { grants: [{ permission: "services", level: "read" }] };
+    await act(async () => {
+      await result.current.create("deploy-agent", permissions);
+    });
+
+    expect(mutate).toHaveBeenCalledWith({
+      variables: { name: "deploy-agent", ownerId: "tea-1", permissions },
+    });
+  });
 });

@@ -137,6 +137,13 @@ func (s *Service) retrieved(ctx context.Context, group renderEnvGroup) (any, err
 	if s.CanDecisionOn(ctx, core.RelCanViewSensitive, core.WorkspaceObject(group.OwnerID)).Outcome == core.DecisionDenied {
 		return envGroupMeta(group), nil
 	}
+	// A scoped API key not granted the values reads the group without them,
+	// as a member without can_view_sensitive does (w9/m496).
+	if granted, err := s.KeyGrantAllows(ctx, core.KeyEnvGroupsValues); err != nil {
+		return nil, err
+	} else if !granted {
+		return envGroupMeta(group), nil
+	}
 	return s.revealedOne(ctx, group, false)
 }
 
@@ -209,6 +216,13 @@ func (s *Service) revealGroups(ctx context.Context, groups []renderEnvGroup, rea
 // already committed is answered masked, with the failure logged, when its values
 // cannot be revealed: a retry cannot repeat the write.
 func (s *Service) revealedOne(ctx context.Context, group renderEnvGroup, committed bool) (any, error) {
+	// A write's response reveals the whole group's values, not only the ones
+	// the write set, so a scoped key not granted them gets it masked (w9/m496).
+	if committed {
+		if granted, err := s.KeyGrantAllows(ctx, core.KeyEnvGroupsValues); err != nil || !granted {
+			return group, nil
+		}
+	}
 	out, err := s.revealGroups(ctx, []renderEnvGroup{group}, !committed)
 	if err != nil {
 		if committed {

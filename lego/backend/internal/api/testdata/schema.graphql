@@ -637,7 +637,55 @@ type ApiKey {
   key: String
   lastUsedAt: String
   name: String
+  permissions: ApiKeyPermissions!
   secret: String
+}
+
+type ApiKeyGrant {
+  level: String!
+  permission: String!
+}
+
+input ApiKeyGrantInput {
+  level: String!
+  permission: String!
+}
+
+type ApiKeyPermission {
+  id: String!
+  levels: [ApiKeyPermissionLevel!]!
+  name: String!
+}
+
+type ApiKeyPermissionAction {
+  bex: Boolean!
+  id: String!
+  name: String!
+}
+
+type ApiKeyPermissionArea {
+  bex: Boolean!
+  id: String!
+  name: String!
+  permissions: [ApiKeyPermission!]!
+}
+
+type ApiKeyPermissionLevel {
+  actions: [ApiKeyPermissionAction!]!
+  grantable: Boolean!
+  level: String!
+  name: String!
+  requiredRole: String!
+}
+
+type ApiKeyPermissions {
+  all: Boolean!
+  grants: [ApiKeyGrant!]!
+}
+
+input ApiKeyPermissionsInput {
+  all: Boolean
+  grants: [ApiKeyGrantInput!]
 }
 
 type AuditLog {
@@ -1849,7 +1897,7 @@ type Mutation {
   createAgentAutomation(input: AgentAutomationInput!, ownerId: String): AgentAutomation!
   createAgentSession(agentConfig: AgentSessionConfigInput!, attachmentIds: [String!], branch: String, egressAllowlist: [String!], idempotencyKey: String, maxSpendUSD: Float, outputRequired: Boolean, outputSchema: String, ownerId: String, parentSessionId: String, repo: String!, secretNames: [String!], secrets: [AgentSessionSecretInput!], skills: [AgentSessionSkillInput!], tags: [String!], title: String): AgentSession
   createAgentSkill(input: AgentSkillInput!, ownerId: String): AgentSkill!
-  createApiKey(name: String!, ownerId: String): ApiKey
+  createApiKey(name: String!, ownerId: String, permissions: ApiKeyPermissionsInput): ApiKey
   createBillingCheckoutSession(cancelUrl: String!, successUrl: String!, workspaceId: String!): BillingHostedSession
   createBillingPortalSession(returnUrl: String!, workspaceId: String!): BillingHostedSession
   createBlueprint(branch: String, confirm: String, envVarValues: [BlueprintEnvVarValueInput], existingResources: String, name: String, ownerId: String, path: String, repo: String!, resourceSuffix: String): Blueprint
@@ -2044,6 +2092,7 @@ type Mutation {
   updateAgentAutomation(id: String!, input: AgentAutomationInput!, ownerId: String): AgentAutomation!
   updateAgentEnvironment(input: AgentEnvironmentInput!, ownerId: String): AgentEnvironment!
   updateAgentSkill(input: AgentSkillInput!, ownerId: String, skill: String!): AgentSkill!
+  updateApiKeyPermissions(id: String!, ownerId: String, permissions: ApiKeyPermissionsInput!): ApiKey
   updateBlueprint(autoSync: Boolean, branch: String, id: String!, name: String, ownerId: String, path: String): Blueprint
   updateBuildSource(git: BuildSourceGitInput, id: String!, image: BuildSourceImageInput, name: String): BuildSource
   updateCronJob(command: String, confirm: String, id: String!, schedule: String!): Service
@@ -2334,6 +2383,7 @@ type Query {
   agentSkillVersion(id: String!, ownerId: String, version: Int!): AgentSkillVersion!
   agentSkillVersions(cursor: String, id: String!, limit: Int, ownerId: String): AgentSkillVersionList!
   agentSkills(ownerId: String): AgentSkillList!
+  apiKeyPermissionCatalog(ownerId: String): [ApiKeyPermissionArea!]!
   apiKeys(ownerId: String): [ApiKey]
   auditLogs(cursor: String, direction: String, endTime: String, limit: Int, ownerId: String!, startTime: String): [AuditLog]
   autoscalingConfig(id: String!): Autoscaling

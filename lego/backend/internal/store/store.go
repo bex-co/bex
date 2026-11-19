@@ -1104,6 +1104,70 @@ func (s *PGStore) BindClientForCreator(ctx context.Context, clientID, tenantID, 
 	return role, nil
 }
 
+// SetAPIKeyGrant records an API key's grant on its machine row (w9/m496,
+// migration 0300): All is NULL (a nil Entries), anything else its
+// "permission:level" entries. A key with no binding is ErrNotFound.
+func (s *PGStore) SetAPIKeyGrant(ctx context.Context, clientID string, g core.KeyGrant) error {
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE tenant_members SET key_permissions = $2::text[] WHERE subject = $1 AND kind = 'machine'`, clientID, g.Entries())
+	if err != nil {
+		return classify("tenant_member", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("api key %s: %w", clientID, ErrNotFound)
+	}
+	return nil
+}
+
+// APIKeyGrant implements core.KeyGrantResolver: the grant on the key's machine
+// row, uncached. A key with no row (unbound, or a client that is not a key)
+// and a NULL grant are both All; the dispatch gate decides everything else
+// from the key's own tuples and its creator.
+func (s *PGStore) APIKeyGrant(ctx context.Context, clientID string) (core.KeyGrant, error) {
+	var all bool
+	var entries []string
+	err := s.Pool.QueryRow(ctx, `
+		SELECT key_permissions IS NULL, coalesce(key_permissions, '{}'::text[])
+		FROM tenant_members WHERE subject = $1 AND kind = 'machine'`, clientID).Scan(&all, &entries)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return core.AllKeyGrant(), nil
+	}
+	if err != nil {
+		return core.KeyGrant{}, err
+	}
+	return keyGrantOf(all, entries), nil
+}
+
+// APIKeyGrantsOfTenant is APIKeyGrant for every key bound to tenantID, in one
+// query: the list of a workspace's keys reads them all at once.
+func (s *PGStore) APIKeyGrantsOfTenant(ctx context.Context, tenantID string) (map[string]core.KeyGrant, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT subject, key_permissions IS NULL, coalesce(key_permissions, '{}'::text[])
+		FROM tenant_members WHERE tenant_id = $1 AND kind = 'machine'`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]core.KeyGrant{}
+	for rows.Next() {
+		var subject string
+		var all bool
+		var entries []string
+		if err := rows.Scan(&subject, &all, &entries); err != nil {
+			return nil, err
+		}
+		out[subject] = keyGrantOf(all, entries)
+	}
+	return out, rows.Err()
+}
+
+func keyGrantOf(all bool, entries []string) core.KeyGrant {
+	if all {
+		return core.AllKeyGrant()
+	}
+	return core.KeyGrantFromEntries(entries)
+}
+
 // ClientBindingsOfTenants answers which API keys are bound to tenantIDs: each
 // bound client id with its workspace, read from the machine rows BindClient
 // writes. The enable confirmation of a login requirement assesses these keys
