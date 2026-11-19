@@ -107,7 +107,7 @@ func (s *Service) previewStackCreates(ctx context.Context, st parsedStack, plan 
 			continue
 		}
 		d, err := s.planStackDatabase(ctx, db, core.EnvironmentAssignment{})
-		if err == nil && db.spec.Plan == "free" {
+		if err == nil && db.spec.Plan == core.FreePlanID {
 			// A second free database in the same stack also takes the slot:
 			// the first planned free one counts as the holder (w4/m241).
 			if plannedFreeDB > 0 {
@@ -134,7 +134,7 @@ func (s *Service) previewStackCreates(ctx context.Context, st parsedStack, plan 
 			continue
 		}
 		var err error
-		if kv.spec.Plan == "free" {
+		if kv.spec.Plan == core.FreePlanID {
 			if plannedFreeKV > 0 {
 				err = core.FreeInstanceLimitError("Key Value store", plannedFreeKVName, false)
 			} else {
