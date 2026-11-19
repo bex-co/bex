@@ -47,7 +47,7 @@
 
 ## Progress — 2026-11-18 (parked on its production deploy)
 
-- **Shipped:** the hold (t001), registry adoption (t002), the local proof (t003: an unrelated operator build kept the proxy's pod and a held client's `CLIENT ID`, a proxy code change rolled it once, and internal auth rolled it on the held image), ADR021 § 10 with follow-ups [w6/141](../../done/141.md) and [w6/142](../../142.md) (t004), `/simplify` (t006) and the reverted-rule tests (t007).
+- **Shipped:** the hold (t001), registry adoption (t002), the local proof (t003: an unrelated operator build kept the proxy's pod and a held client's `CLIENT ID`, a proxy code change rolled it once, and internal auth rolled it on the held image), ADR021 § 10 with follow-ups [w6/141](../../done/141.md) and [w6/142](../../done/142.md) (t004), `/simplify` (t006) and the reverted-rule tests (t007).
 - **Expected on production:** the running proxies' image `bex-operator@sha256:b4104643…` carries `/kv-internal-proxy` `d1a7d7d0e8ecc328…` (read by `registry.ImageFileSHA256` from GHCR), and this tree builds the same bytes for linux/amd64 in the pinned builder. So the shipping deploy should record the hash on all three stores' `<id>-internal` Deployments and create no ReplicaSet. Recording the hash bumps each Deployment's generation, which is not a roll.
 - **Gate (clears by itself):** a production pin whose producer contains this milestone's commit (`git log origin/main --grep "pin platform images"`, then `git merge-base --is-ancestor <commit> <producer>`). Production deploys `main` once its pin is 6 h old. Then t005: the before/after record, a held client across a later deploy, and t008.
 

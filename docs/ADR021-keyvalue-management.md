@@ -297,7 +297,7 @@ Verified on production on 2026-11-18 (pin `359aee37d`), on free probes in `bex-c
 
 The SNI binaries link the whole CRD scheme (`lego/types/v1alpha1`), `k8s.io` and controller-runtime, so they change more often than `/kv-internal-proxy`, and any CRD types edit rolls them. Over the 56 production pins from 2026-11-12 to 2026-11-18, at most 22 had a commit touching one of their packages since the previous producer. That is an upper bound, since test files and unlinked code leave the bytes alone. A content-addressed image per proxy was rejected: it needs two more GHCR packages with signing, SBOM and the CVE gate and a reproducible image config, and would still roll on every distroless base bump.
 
-**Not covered.** A deploy that does change a proxy's code still closes its connections at once ([w6/142](../.pm/w6/142.md), draining).
+**Not covered.** A deploy that does change a proxy's code still closes its connections at once ([w6/142](../.pm/w6/done/142.md), draining; now [w6/m512](../.pm/w6/m512/README.md)).
 
 ## MVP scope
 
