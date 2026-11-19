@@ -1,6 +1,6 @@
 # w6 · m515 — An SNI-proxy roll lets external Key Value and Postgres clients finish, and the edge keeps admitting new ones
 
-**Worker:** worker6 **Goal:** when a deploy changes `/kv-sni-proxy` or `/pg-sni-proxy`, each node's new proxy pod is Ready before the old one stops, so new external clients keep connecting on every node throughout the roll. The old pod then stops accepting and keeps relaying its open streams until each ends or a bounded grace period passes, so an external command in flight at the roll gets its reply. **Status:** blocked (2026-11-19: t001–t005 shipped as `495d04b86` and t007 is done. t006 waits for a production pin that carries `495d04b86`; its Key Value new-connection loop is armed. See § Park record (2026-11-19, after the ship).)
+**Worker:** worker6 **Goal:** when a deploy changes `/kv-sni-proxy` or `/pg-sni-proxy`, each node's new proxy pod is Ready before the old one stops, so new external clients keep connecting on every node throughout the roll. The old pod then stops accepting and keeps relaying its open streams until each ends or a bounded grace period passes, so an external command in flight at the roll gets its reply. **Status:** todo (t001–t005 and t007 done. t006 resumes now that production's pin carries `495d04b86`: see § Unblock record (2026-11-19, the pin carries the ship).)
 
 ## Tasks (in order)
 
@@ -105,3 +105,9 @@
 - **Done in this run:** the stash applied and shipped (§ Unblock record), the stash dropped, and t007's `/simplify` ran on the shipped diff with nothing to apply. t008's open point, a `main`-level test for the second signal and the manager-exit path, stays for after t006.
 - **Armed for t006 step 1:** `m515-t006-kv-loop` in `bex-canary` opens a new external Key Value connection about every second and logs each failure. No Postgres loop: the workspace's free database was a QA run's. Production's DaemonSet state before the deploy, and the exact next steps, are in [t006](t006.md#progress-2026-11-19-2110z-shipped-as-495d04b86-waiting-for-a-pin-that-carries-it).
 - **Gate:** pin must carry `495d04b86`. Then t006 steps 1–3. w6/m518 t003 onward waits for t006's record.
+
+## Unblock record (2026-11-19, the pin carries the ship)
+
+- **Affected:** w6/m515 t006, and through it t008 and t009. **Source:** verified evidence, the gate's own release condition.
+- **The gate holds.** Production pin `c8c774658` (21:57:46Z) pins `98e053468f52`, which contains `495d04b86` (`git merge-base --is-ancestor`). Its deploy run 44620029262 logged `moved` for both SNI pins (`697fe9c0…` → `1ec4a7c2…`). At 22:16Z both DaemonSets run `1ec4a7c2…` with `maxSurge: 1`, `maxUnavailable: 0`, no `hostPort`, the drain variable at `"30"`, a 5 s `preStop` and a 40 s grace.
+- **Next (t006):** step 1's record from that deploy and `m515-t006-kv-loop`'s log. Then step 2's held clients on both proxies across the next deploy that moves an SNI pin, and step 3.
