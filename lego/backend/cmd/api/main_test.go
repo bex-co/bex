@@ -100,6 +100,17 @@ func TestSandboxTemplateRegistryIncludesPluggableAgentDriver(t *testing.T) {
 			t.Errorf("%s SessionOnly = %v, want %v", name, tmpl.SessionOnly, want)
 		}
 	}
+	// w10/017: these are the templates agentConfig.template (bex agent run
+	// --template) accepts, smallest first, in the words an out-of-memory
+	// failure and a refused create use. The agentsessions fakeLifecycle
+	// answers the same list.
+	var named []string
+	for _, tmpl := range sandbox.NewAgentSessionLifecycle(&sandbox.Service{Templates: templates}).AgentTemplates() {
+		named = append(named, tmpl.Name+" ("+tmpl.Size()+")")
+	}
+	if want := []string{sandbox.DefaultAgentTemplate + " (2 CPU, 4 GB)", "agent-4c-8g (4 CPU, 8 GB)"}; !slices.Equal(named, want) {
+		t.Fatalf("agent templates = %q, want %q", named, want)
+	}
 	base := templates["base"]
 	if base.Image != "alpine:3" {
 		t.Fatalf("base template image = %q", base.Image)

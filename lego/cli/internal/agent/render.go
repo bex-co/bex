@@ -265,6 +265,7 @@ func writeSession(w io.Writer, s session) {
 	if s.Repo != "" {
 		row("Repo", repoBranch(s.Repo, s.Branch))
 	}
+	row("Sandbox", s.AgentConfig.Template)
 	o := s.Outcome
 	if o == nil {
 		o = &outcome{}

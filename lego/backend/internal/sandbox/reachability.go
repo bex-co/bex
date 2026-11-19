@@ -123,6 +123,10 @@ func (t Termination) Describe() string {
 	return "the sandbox's agent exited before finishing its turn (exit 0)" + suffix
 }
 
+// OutOfMemory reports whether the container was killed for passing its
+// memory limit.
+func (t Termination) OutOfMemory() bool { return cleanTerminationReason(t.Reason) == "OOMKilled" }
+
 // cleanTerminationReason keeps a kubelet reason only when it is one short
 // alphanumeric word, so the platform never stores free text from the node.
 func cleanTerminationReason(reason string) string {

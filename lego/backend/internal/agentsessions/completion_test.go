@@ -643,7 +643,9 @@ func TestCompleterLostSandboxRecordsHowItsContainerEnded(t *testing.T) {
 		readErr error
 		want    string
 	}{
-		{"OOM killed", &sandbox.TerminatedError{Termination: sandbox.Termination{Reason: "OOMKilled", ExitCode: &code}}, "the sandbox ran out of memory (exit 137)"},
+		{"OOM killed", &sandbox.TerminatedError{Termination: sandbox.Termination{Reason: "OOMKilled", ExitCode: &code}},
+			"the sandbox ran out of memory (exit 137) on the agent template (2 CPU, 4 GB); start a new session on a larger one: agent-4c-8g (4 CPU, 8 GB), e.g. bex agent run --template agent-4c-8g"},
+		{"killed by a signal", &sandbox.TerminatedError{Termination: sandbox.Termination{Reason: "Error", ExitCode: &code}}, "the sandbox's agent was killed by signal 9 (exit 137)"},
 		{"pod already gone", &sandbox.TerminatedError{}, defaultLostSandboxReason},
 		{"lifecycle server only", core.ErrNotFound, defaultLostSandboxReason},
 	} {
@@ -652,6 +654,31 @@ func TestCompleterLostSandboxRecordsHowItsContainerEnded(t *testing.T) {
 			c.Reconcile(context.Background())
 			if st.rows[id].Phase != PhaseFailed || st.rows[id].FailureReason != tc.want || lc.canceled != 1 {
 				t.Fatalf("failure reason = %q (phase %s, canceled %d), want %q", st.rows[id].FailureReason, st.rows[id].Phase, lc.canceled, tc.want)
+			}
+		})
+	}
+}
+
+// A session whose sandbox ran out of memory is told which template it had
+// and the next larger one a new session can name, or that it already had the
+// largest (w10/017). A template the platform no longer registers gets the
+// bare reason.
+func TestCompleterOutOfMemoryNamesTheSessionsTemplate(t *testing.T) {
+	code := 128
+	oom := &sandbox.TerminatedError{Termination: sandbox.Termination{Reason: "OOMKilled", ExitCode: &code}}
+	for template, want := range map[string]string{
+		"agent":       "the sandbox ran out of memory (exit 128) on the agent template (2 CPU, 4 GB); start a new session on a larger one: agent-4c-8g (4 CPU, 8 GB), e.g. bex agent run --template agent-4c-8g",
+		"agent-4c-8g": "the sandbox ran out of memory (exit 128) on the agent-4c-8g template (4 CPU, 8 GB), the largest there is",
+		"retired":     "the sandbox ran out of memory (exit 128)",
+	} {
+		t.Run(template, func(t *testing.T) {
+			c, st, _, id := completerFixture("", oom)
+			row := st.rows[id]
+			row.AgentConfig, _ = json.Marshal(AgentConfig{Agent: "codex", Task: "fix the tests", Template: template})
+			st.rows[id] = row
+			c.Reconcile(context.Background())
+			if st.rows[id].Phase != PhaseFailed || st.rows[id].FailureReason != want {
+				t.Fatalf("failure reason = %q (phase %s), want %q", st.rows[id].FailureReason, st.rows[id].Phase, want)
 			}
 		})
 	}

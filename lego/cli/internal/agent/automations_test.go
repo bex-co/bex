@@ -362,6 +362,39 @@ func TestAutomationUpdateChangesOnlyWhatTheFlagsName(t *testing.T) {
 	}
 }
 
+// --template names each run's sandbox size (w10/017): create sends it in
+// agentConfig, update changes only it and keeps the agent, an emptied flag
+// returns to the default template, and get shows it.
+func TestAutomationTemplateFlagSetsTheSandbox(t *testing.T) {
+	f := newFakeAutomations(t)
+	_, stderr, code := run(t, f.deps(), "automations", "create", "--name", "big", "--every", "day", "--at", "09:00",
+		"--max-spend", "1", "--template", "agent-4c-8g", "task")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if got := asJSON(t, f.calls(http.MethodPost)[0].body["template"].(map[string]any)["agentConfig"]); got != `{"agent":"claude","template":"agent-4c-8g"}` {
+		t.Fatalf("agentConfig %s, want the template", got)
+	}
+	stdout, _, _ := run(t, f.deps(), "-o", "text", "automations", "get", "big")
+	if !regexp.MustCompile(`(?m)^Sandbox\s+agent-4c-8g$`).MatchString(stdout) {
+		t.Fatalf("get does not show the sandbox template:\n%s", stdout)
+	}
+
+	f.seed("triage", map[string]any{"frequency": "day", "at": "09:00", "timezone": "Europe/Berlin"}, tpl("Triage"))
+	for i, tc := range []struct{ value, want string }{
+		{"agent-4c-8g", `{"agent":"claude","template":"agent-4c-8g"}`},
+		{"", `{"agent":"claude"}`},
+	} {
+		if _, stderr, code := run(t, f.deps(), "automations", "update", "triage", "--template", tc.value); code != 0 {
+			t.Fatalf("exit %d: %s", code, stderr)
+		}
+		got := f.calls(http.MethodPatch)[i].body["template"].(map[string]any)
+		if asJSON(t, got["agentConfig"]) != tc.want || got["task"] != "Triage" {
+			t.Fatalf("--template %q sent %v, want agentConfig %s and the rest kept", tc.value, got, tc.want)
+		}
+	}
+}
+
 func TestAutomationUpdateNewFrequencyStartsAFreshSchedule(t *testing.T) {
 	f := newFakeAutomations(t)
 	f.seed("triage", map[string]any{"frequency": "week", "at": "09:00", "weekdays": []any{"mon"}, "timezone": "Europe/Berlin"}, tpl("t"))

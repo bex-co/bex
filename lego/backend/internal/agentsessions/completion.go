@@ -18,6 +18,7 @@ package agentsessions
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -232,6 +233,34 @@ func lostSandboxReason(readErr error) string {
 		return reason
 	}
 	return defaultLostSandboxReason
+}
+
+// lostSessionSandboxReason is lostSandboxReason for a session's sandbox. One
+// killed for memory also names its template and the next larger one, which a
+// new session can ask for (w10/017).
+func (c *Completer) lostSessionSandboxReason(record store.AgentSession, readErr error) string {
+	reason := lostSandboxReason(readErr)
+	if termination, _ := sandbox.TerminationOf(readErr); !termination.OutOfMemory() {
+		return reason
+	}
+	config, err := decodeAgentConfig(record)
+	if err != nil {
+		return reason
+	}
+	name := cmp.Or(strings.TrimSpace(config.Template), sandbox.DefaultAgentTemplate)
+	templates := c.Sandbox.AgentTemplates()
+	i := slices.IndexFunc(templates, func(t sandbox.AgentTemplate) bool { return t.Name == name })
+	if i < 0 {
+		return reason
+	}
+	had := templates[i]
+	for _, larger := range templates[i+1:] {
+		if larger.HasMoreMemory(had) {
+			return fmt.Sprintf("%s on the %s template (%s); start a new session on a larger one: %s (%s), e.g. bex agent run --template %s",
+				reason, had.Name, had.Size(), larger.Name, larger.Size(), larger.Name)
+		}
+	}
+	return fmt.Sprintf("%s on the %s template (%s), the largest there is", reason, had.Name, had.Size())
 }
 
 // retryWindowReason is the failure reason of a session whose status stayed
@@ -914,7 +943,7 @@ func (c *Completer) fail(ctx context.Context, record store.AgentSession, reason,
 func (c *Completer) statusReadFailed(ctx context.Context, record store.AgentSession, err error, timedOut bool) {
 	if errors.Is(err, core.ErrNotFound) {
 		c.Metrics.read(statusReadTerminal)
-		c.failLostSandbox(ctx, record, lostSandboxReason(err), convergenceTargetTerminated)
+		c.failLostSandbox(ctx, record, c.lostSessionSandboxReason(record, err), convergenceTargetTerminated)
 		return
 	}
 	transient := sandbox.Transient(err) || timedOut

@@ -85,9 +85,10 @@ type queuedMessage struct {
 }
 
 type agentConfig struct {
-	Agent string `json:"agent"`
-	Model string `json:"model,omitempty"`
-	Task  string `json:"task"`
+	Agent    string `json:"agent"`
+	Model    string `json:"model,omitempty"`
+	Task     string `json:"task"`
+	Template string `json:"template,omitempty"`
 }
 
 type outcome struct {

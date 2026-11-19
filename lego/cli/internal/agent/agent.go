@@ -532,9 +532,9 @@ func parseSkills(specs []string) ([]skillInvocation, error) {
 // sessionFlags are the session settings `run` and an automation's template
 // share, with the same names and help.
 type sessionFlags struct {
-	repo, branch, agent, model, title string
-	tags                              []string
-	spend                             float64
+	repo, branch, agent, model, title, template string
+	tags                                        []string
+	spend                                       float64
 }
 
 func (s *sessionFlags) bind(f *pflag.FlagSet) {
@@ -542,6 +542,7 @@ func (s *sessionFlags) bind(f *pflag.FlagSet) {
 	f.StringVar(&s.branch, "branch", "", "branch to start from (default: the repository's default branch)")
 	f.StringVar(&s.agent, "agent", defaultAgent, "agent to run (see the dashboard composer for the workspace's agents)")
 	f.StringVar(&s.model, "model", "", "model id (default: the workspace default)")
+	f.StringVar(&s.template, "template", "", "sandbox template, which sets the sandbox's CPU and memory (default: agent, 2 CPU and 4 GB; agent-4c-8g has 4 CPU and 8 GB)")
 	f.StringVar(&s.title, "title", "", "display title (default: the task's first line)")
 	f.StringArrayVar(&s.tags, "tag", nil, "label for filtering and cost attribution; repeatable")
 	f.Float64Var(&s.spend, "max-spend", 0, "ceiling on this session's platform model spend, in USD")
@@ -589,7 +590,7 @@ func (f *createFlags) request(d deps, task []string) (createRequest, error) {
 	}
 	in := createRequest{
 		Repo: f.session.repo, Branch: f.session.branch, Title: f.session.title, Tags: f.session.tags,
-		AgentConfig:  agentConfig{Agent: f.session.agent, Model: f.session.model, Task: t.prompt},
+		AgentConfig:  agentConfig{Agent: f.session.agent, Model: f.session.model, Task: t.prompt, Template: f.session.template},
 		OutputSchema: t.schema, Skills: t.skills, sessionSecrets: t.secrets,
 		IdempotencyKey: firstNonEmpty(f.key, d.newKey()),
 	}

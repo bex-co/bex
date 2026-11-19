@@ -416,7 +416,7 @@ aliases: bex agent automation …, bex agent aut …
 | `--timezone ZONE` | `timezone` | default: the machine's IANA zone, printed |
 | `--ends TIME` / `--no-end` | `endsAt` (exclusive) / `null` | `--ends 2026-12-31` |
 
-**Template flags.** These are the same as `run`: `--repo`, `--branch`, `--agent`, `--model`, `--title`, `--tag`, `--max-spend`, `--skill`, `--secret`, `--output-schema`, and the task as words or `-f FILE`. `--max-spend` is required when the model is platform-metered; the API enforces this with `AGENT_AUTOMATION_SPEND_LIMIT_REQUIRED`.
+**Template flags.** These are the same as `run`: `--repo`, `--branch`, `--agent`, `--model`, `--template` (the sandbox template, `agentConfig.template`, w10/017), `--title`, `--tag`, `--max-spend`, `--skill`, `--secret`, `--output-schema`, and the task as words or `-f FILE`. `--max-spend` is required when the model is platform-metered; the API enforces this with `AGENT_AUTOMATION_SPEND_LIMIT_REQUIRED`.
 
 **Definition file** for `apply` and `export`. It is the REST body as written:
 

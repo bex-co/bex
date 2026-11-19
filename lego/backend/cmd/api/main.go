@@ -137,8 +137,8 @@ func sandboxTemplateRegistry(baseImage, agentImage string) map[string]sandbox.Te
 		// Customers' sessions keep the 2c-4g agent; a session or automation
 		// that builds a large repository names agent-4c-8g, and the sandbox
 		// meter bills the larger shape.
-		"agent":       agentTemplate(sandbox.Plan2C4G),
-		"agent-4c-8g": agentTemplate(sandbox.Plan4C8G),
+		sandbox.DefaultAgentTemplate: agentTemplate(sandbox.Plan2C4G),
+		"agent-4c-8g":                agentTemplate(sandbox.Plan4C8G),
 	}
 }
 

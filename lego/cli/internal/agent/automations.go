@@ -631,6 +631,7 @@ func writeAutomation(w io.Writer, a automation) {
 		tw.row("Repo", repoBranch(t.Repo, t.Branch))
 	}
 	tw.row("Agent", strings.TrimSuffix(t.AgentConfig.Agent+" · "+t.AgentConfig.Model, " · "))
+	tw.row("Sandbox", t.AgentConfig.Template)
 	if t.MaxSpendUSD != nil {
 		tw.row("Max spend", "$"+strconv.FormatFloat(*t.MaxSpendUSD, 'f', -1, 64)+" a run")
 	}

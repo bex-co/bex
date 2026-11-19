@@ -17,6 +17,7 @@ limitations under the License.
 package sandbox
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -91,10 +92,7 @@ func (s *Service) agentImageRef(workspaceID string, image AgentImage) (string, e
 // template): the base a build ran on, which a session's template must still
 // have for the build's image to carry its driver.
 func (l *AgentSessionLifecycle) AgentTemplateImage(template string) string {
-	if template == "" {
-		template = "agent"
-	}
-	return l.service.Templates[template].Image
+	return l.service.Templates[cmp.Or(template, DefaultAgentTemplate)].Image
 }
 
 // CreateAgentBuildSandbox starts a repository environment build's builder

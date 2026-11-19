@@ -124,3 +124,27 @@ func TestAgentSessionLifecycleRejectsReusableOrMissingModelCredential(t *testing
 		t.Fatalf("invalid credential reached OpenSandbox %d time(s)", calls)
 	}
 }
+
+// The templates a session can name are the session-only ones, smallest
+// memory first, each sized in a person's words (w10/017).
+func TestAgentTemplatesListTheSessionOnlyOnesSmallestFirst(t *testing.T) {
+	svc := &Service{Templates: map[string]Template{
+		"base":      {CPU: "1", Memory: "2Gi"},
+		"big":       {CPU: "4", Memory: "8Gi", SessionOnly: true},
+		"agent":     {CPU: "2", Memory: "4Gi", SessionOnly: true},
+		"half":      {CPU: "500m", Memory: "512Mi", SessionOnly: true},
+		"also-half": {CPU: "500m", Memory: "512Mi", SessionOnly: true},
+	}}
+	got := NewAgentSessionLifecycle(svc).AgentTemplates()
+	var words []string
+	for _, tmpl := range got {
+		words = append(words, tmpl.Name+": "+tmpl.Size())
+	}
+	want := []string{"also-half: 0.5 CPU, 0.5 GB", "half: 0.5 CPU, 0.5 GB", "agent: 2 CPU, 4 GB", "big: 4 CPU, 8 GB"}
+	if fmt.Sprint(words) != fmt.Sprint(want) {
+		t.Fatalf("AgentTemplates() = %q, want %q", words, want)
+	}
+	if !got[3].HasMoreMemory(got[2]) || got[2].HasMoreMemory(got[3]) || got[1].HasMoreMemory(got[0]) {
+		t.Fatalf("HasMoreMemory does not order %v by memory", got)
+	}
+}

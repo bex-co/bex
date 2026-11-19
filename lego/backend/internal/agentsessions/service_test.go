@@ -912,6 +912,7 @@ type fakeLifecycle struct {
 	egressAllowlist                     []string
 	fullInternet                        bool
 	repository, branch                  string
+	template                            string // the last create's agent template
 	driverEnv                           map[string]string
 	image                               sandbox.AgentImage
 	sandboxSeq                          int
@@ -973,6 +974,7 @@ func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, spec sandbo
 	f.image = spec.Image
 	f.sandboxSeq++
 	f.repository, f.branch = spec.Repository, spec.Branch
+	f.template = spec.Template
 	f.modelEndpoint = spec.ModelEndpoint
 	f.modelAPIKey = spec.ModelAPIKey
 	f.egressAllowlist = append([]string(nil), spec.Egress.Hosts...)
@@ -1020,6 +1022,12 @@ func (f *fakeLifecycle) ReadSessionTranscript(_ context.Context, _, _, _ string,
 		line([]byte(l))
 	}
 	return int64(len(f.transcriptLog)), nil
+}
+
+// AgentTemplates answers production's two agent templates
+// (sandboxTemplateRegistry, cmd/api).
+func (f *fakeLifecycle) AgentTemplates() []sandbox.AgentTemplate {
+	return []sandbox.AgentTemplate{{Name: "agent", CPU: "2", Memory: "4Gi"}, {Name: "agent-4c-8g", CPU: "4", Memory: "8Gi"}}
 }
 
 func fixture() (*Service, *fakeStore, *fakeFGA, *fakeLifecycle) {
@@ -1082,6 +1090,38 @@ func TestCreateRefusedAtLiveSandboxCap(t *testing.T) {
 	}
 	if len(st.rows) != 2 {
 		t.Fatalf("a session row was minted despite the pre-provision cap refusal: rows=%d", len(st.rows))
+	}
+}
+
+// A session names its sandbox's size with agentConfig.template (w10/017): a
+// registered agent template reaches the sandbox create, and any other name is
+// refused at create, before a row or a sandbox exists, with the templates
+// there are.
+func TestCreateTakesARegisteredAgentTemplateAndRefusesAnyOther(t *testing.T) {
+	svc, st, _, lc := fixture()
+	in := createInput()
+	in.AgentConfig.Template = " agent-4c-8g "
+	view, err := svc.Create(caller("alice"), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lc.created != 1 || lc.template != "agent-4c-8g" || view.AgentConfig.Template != "agent-4c-8g" {
+		t.Fatalf("sandbox template = %q (created %d), view %q; want agent-4c-8g", lc.template, lc.created, view.AgentConfig.Template)
+	}
+	for _, name := range []string{"agent-8c-16g", "base"} {
+		in.AgentConfig.Template = name
+		_, err = svc.Create(caller("alice"), in)
+		var coded *core.CodedError
+		if !errors.Is(err, core.ErrBadRequest) || !errors.As(err, &coded) || coded.Code != "AGENT_SESSION_INPUT_INVALID" ||
+			coded.Params["field"] != "agentConfig.template" || !reflect.DeepEqual(coded.Params["templates"], []string{"agent", "agent-4c-8g"}) {
+			t.Fatalf("create on %q = %#v, want AGENT_SESSION_INPUT_INVALID on agentConfig.template", name, err)
+		}
+		if want := fmt.Sprintf("agentConfig.template %q is not an agent template; use one of agent (2 CPU, 4 GB; the default), agent-4c-8g (4 CPU, 8 GB)", name); coded.Error() != want {
+			t.Fatalf("refusal = %q, want %q", coded.Error(), want)
+		}
+	}
+	if len(st.rows) != 1 || lc.created != 1 {
+		t.Fatalf("a refused template still created a session (rows=%d sandboxes=%d)", len(st.rows), lc.created)
 	}
 }
 

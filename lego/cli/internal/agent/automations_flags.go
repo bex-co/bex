@@ -350,6 +350,7 @@ func (t *templateFlags) template(c *cobra.Command, d deps, task []string, curren
 	set(out, "title", "title", t.session.title)
 	set(agent, "agent", "agent", t.session.agent)
 	set(agent, "model", "model", t.session.model)
+	set(agent, "template", "template", t.session.template)
 	out["agentConfig"] = agent
 	if f.Changed("tag") {
 		out["tags"] = t.session.tags

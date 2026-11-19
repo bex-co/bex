@@ -29,6 +29,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -504,7 +505,7 @@ func TestRunSendsTheCreateContract(t *testing.T) {
 	if err := os.WriteFile(schemaPath, []byte(`{"type": "object", "required": ["ok"]}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, stderr, code := run(t, f.deps(t).deps, "run", "--repo", "acme/api", "--branch", "dev", "--model", "m1", "--title", "T",
+	_, stderr, code := run(t, f.deps(t).deps, "run", "--repo", "acme/api", "--branch", "dev", "--model", "m1", "--template", "agent-4c-8g", "--title", "T",
 		"--tag", "ci", "--tag", "nightly", "--attach", logPath, "--output-schema", schemaPath, "--max-spend", "2.5", "Fix", "it")
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
@@ -525,7 +526,7 @@ func TestRunSendsTheCreateContract(t *testing.T) {
 	}
 	want := map[string]any{
 		"repo": "acme/api", "branch": "dev", "title": "T", "maxSpendUSD": 2.5,
-		"agentConfig":   map[string]any{"agent": "claude", "model": "m1", "task": "Fix it"},
+		"agentConfig":   map[string]any{"agent": "claude", "model": "m1", "task": "Fix it", "template": "agent-4c-8g"},
 		"tags":          []any{"ci", "nightly"},
 		"attachmentIds": []any{"att-up1"},
 		"outputSchema":  map[string]any{"type": "object", "required": []any{"ok"}},
@@ -1233,6 +1234,21 @@ func TestADroppedConnectionIsTransient(t *testing.T) {
 	}
 	if transient(errors.New("token refresh failed")) {
 		t.Fatal("a plain error counted as transient")
+	}
+}
+
+// The text view names a session's sandbox template when it has one, and no
+// row for the default (w10/017).
+func TestSessionTextShowsTheSandboxTemplate(t *testing.T) {
+	var out strings.Builder
+	writeSession(&out, session{ID: "ags-t1", State: stateFailed, AgentConfig: agentConfig{Agent: "claude", Template: "agent-4c-8g"}})
+	if !regexp.MustCompile(`(?m)^Sandbox\s+agent-4c-8g$`).MatchString(out.String()) {
+		t.Fatalf("text view:\n%s", out.String())
+	}
+	out.Reset()
+	writeSession(&out, session{ID: "ags-t2", State: stateFailed, AgentConfig: agentConfig{Agent: "claude"}})
+	if strings.Contains(out.String(), "Sandbox") {
+		t.Fatalf("text view of a default-template session:\n%s", out.String())
 	}
 }
 

@@ -174,6 +174,9 @@ type SandboxLifecycle interface {
 	// InterruptSessionTurn asks the driver in the sandbox to end turn, and
 	// only that turn (ADR047 D12), through the same boundary.
 	InterruptSessionTurn(ctx context.Context, workspaceID, sessionID, sandboxID string, turn int) error
+	// AgentTemplates lists the templates agentConfig.template can name,
+	// smallest first.
+	AgentTemplates() []sandbox.AgentTemplate
 }
 
 // modelKeySecretPath delegates to the one shared definition in the agentsession
@@ -596,6 +599,9 @@ func (s *Service) validateCreateInput(req *CreateRequest) (store.AgentTurnOutput
 	if err := validateCreate(req); err != nil {
 		return store.AgentTurnOutput{}, err
 	}
+	if err := s.validateTemplate(&req.AgentConfig); err != nil {
+		return store.AgentTurnOutput{}, err
+	}
 	if err := s.validateAttachmentIDs(req.AttachmentIDs); err != nil {
 		return store.AgentTurnOutput{}, err
 	}
@@ -606,6 +612,31 @@ func (s *Service) validateCreateInput(req *CreateRequest) (store.AgentTurnOutput
 		return store.AgentTurnOutput{}, err
 	}
 	return parseTurnOutput(req.OutputSchema, req.OutputRequired)
+}
+
+// validateTemplate refuses an agentConfig.template the platform does not
+// register, at create rather than when the sandbox starts (w10/017). Empty
+// keeps the default template.
+func (s *Service) validateTemplate(config *AgentConfig) error {
+	config.Template = strings.TrimSpace(config.Template)
+	if config.Template == "" || s.Sandbox == nil {
+		return nil
+	}
+	templates := s.Sandbox.AgentTemplates()
+	if slices.ContainsFunc(templates, func(t sandbox.AgentTemplate) bool { return t.Name == config.Template }) {
+		return nil
+	}
+	names, sizes := make([]string, len(templates)), make([]string, len(templates))
+	for i, t := range templates {
+		names[i], sizes[i] = t.Name, t.Name+" ("+t.Size()
+		if t.Name == sandbox.DefaultAgentTemplate {
+			sizes[i] += "; the default"
+		}
+		sizes[i] += ")"
+	}
+	return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID",
+		fmt.Sprintf("agentConfig.template %q is not an agent template; use one of %s", config.Template, strings.Join(sizes, ", ")),
+		map[string]any{"field": "agentConfig.template", "templates": names})
 }
 
 // resolveCreateModel is the workspace-dependent half: the agent environment

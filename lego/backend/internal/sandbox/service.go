@@ -1074,6 +1074,53 @@ func NewAgentSessionLifecycle(service *Service) *AgentSessionLifecycle {
 	return &AgentSessionLifecycle{service: service}
 }
 
+// DefaultAgentTemplate is the template an agent sandbox that names none
+// runs on.
+const DefaultAgentTemplate = "agent"
+
+// AgentTemplate is a template an agent session can name
+// (agentConfig.template): its name and the CPU and memory limit, as
+// Kubernetes quantities, its sandbox gets.
+type AgentTemplate struct {
+	Name, CPU, Memory string
+}
+
+// quantity is q parsed, zero when it is not a quantity.
+func quantity(q string) resource.Quantity {
+	parsed, _ := resource.ParseQuantity(q)
+	return parsed
+}
+
+// Size words t's limits for a person: "4 CPU, 8 GB".
+func (t AgentTemplate) Size() string {
+	cpu, memory := quantity(t.CPU), quantity(t.Memory)
+	return strconv.FormatFloat(cpu.AsApproximateFloat64(), 'f', -1, 64) + " CPU, " +
+		strconv.FormatFloat(float64(memory.Value())/(1<<30), 'f', -1, 64) + " GB"
+}
+
+// compareMemory orders t and u by the memory their sandboxes get.
+func (t AgentTemplate) compareMemory(u AgentTemplate) int {
+	memory := quantity(t.Memory)
+	return memory.Cmp(quantity(u.Memory))
+}
+
+// HasMoreMemory reports whether t's sandbox gets more memory than u's.
+func (t AgentTemplate) HasMoreMemory(u AgentTemplate) bool { return t.compareMemory(u) > 0 }
+
+// AgentTemplates lists the templates an agent session can name, the
+// session-only ones (w10/017), by memory and then name, so the first is the
+// smallest.
+func (l *AgentSessionLifecycle) AgentTemplates() []AgentTemplate {
+	var out []AgentTemplate
+	for name, t := range l.service.Templates {
+		if t.SessionOnly {
+			out = append(out, AgentTemplate{Name: name, CPU: t.CPU, Memory: t.Memory})
+		}
+	}
+	slices.SortFunc(out, func(a, b AgentTemplate) int { return cmp.Or(a.compareMemory(b), strings.Compare(a.Name, b.Name)) })
+	return out
+}
+
 // ModelAPIKeyEnvVar is the exact env var name the agent-image driver reads its
 // BYO model provider credential from (lego/agent-image/driver/src/config.mjs,
 // ADR047 D7). The tenant secret's OpenBao value must be stored under this same
@@ -1162,7 +1209,7 @@ type agentSandbox struct {
 }
 
 func (s *Service) createAgentSandbox(ctx context.Context, a agentSandbox) (Sandbox, error) {
-	template := cmp.Or(a.template, "agent")
+	template := cmp.Or(a.template, DefaultAgentTemplate)
 	tmpl, ok := s.Templates[template]
 	if !ok {
 		return Sandbox{}, fmt.Errorf("%w: unknown agent sandbox template %q", core.ErrBadRequest, template)
