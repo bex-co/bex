@@ -29,64 +29,43 @@ import (
 	"unicode/utf8"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
 )
 
-// w21/094: an object or bucket row names its bucket, and an object row its key, and
-// a successful get leaves one row per request. These drive both contracts as an
-// allowed and as a refused caller and read the rows the sink was handed.
+// w21/094: an object row names its bucket and key, and a successful get leaves
+// one row per request. These drive Render's contract as an allowed and as a
+// refused caller and read the rows the sink was handed.
 
 type objectAuditFixture struct {
-	cf       *cfHarness
+	ws       string
 	sink     *lockedAuditSink
-	cfMux    http.Handler
 	restMux  http.Handler
 	identity context.Context
 }
 
 func newObjectAuditFixture(t *testing.T, allow bool) *objectAuditFixture {
 	t.Helper()
-	cf := newCFHarness(t)
+	svc, ws := newObjectService(t)
 	sink := &lockedAuditSink{}
 	base := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default", Authz: &fakeChecker{allow: allow}, Audit: sink}
-	srv := NewServer(base, Deps{ObjectStorage: cf.svc, BaseDomain: cfTestBaseDomain})
+	srv := NewServer(base, Deps{ObjectStorage: svc, BaseDomain: objectsTestBaseDomain})
 	srv.HydraAdminURL = fakeHydraURL(t)
 	return &objectAuditFixture{
-		cf: cf, sink: sink, cfMux: srv.cloudflareRoutes(), restMux: srv.restHandler(),
+		ws: ws, sink: sink, restMux: srv.restHandler(),
 		identity: core.WithIdentity(context.Background(), core.Identity{Subject: "user-1", Method: core.MethodSession}),
 	}
 }
 
-// serve is one request as the signed-in caller; headers are name, value pairs.
-func (f *objectAuditFixture) serve(mux http.Handler, method, path, body string, headers ...string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(method, path, strings.NewReader(body)).WithContext(f.identity)
+// restServe is one request to Render's object routes as the signed-in caller.
+func (f *objectAuditFixture) restServe(method, path, body string, headers ...string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(method, "/v1/objects/"+f.ws+"/oregon"+path, strings.NewReader(body)).WithContext(f.identity)
 	req.Header.Set("Content-Type", "application/json")
 	for i := 0; i+1 < len(headers); i += 2 {
 		req.Header.Set(headers[i], headers[i+1])
 	}
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, req)
+	f.restMux.ServeHTTP(rec, req)
 	return rec
-}
-
-func (f *objectAuditFixture) cfServe(method, suffix, body string, headers ...string) *httptest.ResponseRecorder {
-	return f.serve(f.cfMux, method, f.cf.url(suffix), body, headers...)
-}
-
-func (f *objectAuditFixture) restServe(method, path, body string) *httptest.ResponseRecorder {
-	return f.serve(f.restMux, method, "/v1/objects/"+f.cf.ws+"/oregon"+path, body)
-}
-
-// newBucket creates a bucket and discards the row that records it.
-func (f *objectAuditFixture) newBucket(t *testing.T) string {
-	t.Helper()
-	name := "bucket-" + strings.TrimPrefix(ids.New(ids.ObjectBucket), "obk-")[:8]
-	if rec := f.cfServe(http.MethodPost, "/buckets", `{"name":"`+name+`"}`); rec.Code != http.StatusOK {
-		t.Fatalf("bucket create = %d %s", rec.Code, rec.Body)
-	}
-	f.sink.take()
-	return name
 }
 
 // one fails unless exactly one row was recorded, and returns it.
@@ -98,9 +77,8 @@ func one(t *testing.T, what string, events []core.AuditEvent) core.AuditEvent {
 	return events[0]
 }
 
-func TestObjectAndBucketRowsNameTheirBucketAndKey(t *testing.T) {
+func TestObjectRowsNameTheirBucketAndKey(t *testing.T) {
 	f := newObjectAuditFixture(t, true)
-	bucket := f.newBucket(t)
 	key := "reports/2026/q3.csv"
 
 	for _, tc := range []struct {
@@ -108,170 +86,28 @@ func TestObjectAndBucketRowsNameTheirBucketAndKey(t *testing.T) {
 		do           func() *httptest.ResponseRecorder
 		verb, target string
 	}{
-		{"wrangler's put", func() *httptest.ResponseRecorder {
-			return f.cfServe(http.MethodPut, "/buckets/"+bucket+"/objects/"+key, "hello")
-		}, objectstorage.AuditVerbPutObject, core.ObjectTarget(bucket, key)},
-		{"wrangler's delete", func() *httptest.ResponseRecorder {
-			return f.cfServe(http.MethodDelete, "/buckets/"+bucket+"/objects/"+key, "")
-		}, objectstorage.AuditVerbDeleteObject, core.ObjectTarget(bucket, key)},
 		{"Render's put", func() *httptest.ResponseRecorder {
-			return f.restServe(http.MethodPut, "/exports/a.txt", `{"sizeBytes":5}`)
-		}, objectstorage.AuditVerbPutObject, core.ObjectTarget("render-oregon", "exports/a.txt")},
-		{"a cors set", func() *httptest.ResponseRecorder {
-			return f.cfServe(http.MethodPut, "/buckets/"+bucket+"/cors", `{"rules":[]}`)
-		}, objectstorage.AuditVerbSetBucketCORS, core.BucketTarget(bucket)},
-		{"a cors delete", func() *httptest.ResponseRecorder {
-			return f.cfServe(http.MethodDelete, "/buckets/"+bucket+"/cors", "")
-		}, objectstorage.AuditVerbDeleteBucketCORS, core.BucketTarget(bucket)},
-		{"a lifecycle set", func() *httptest.ResponseRecorder {
-			return f.cfServe(http.MethodPut, "/buckets/"+bucket+"/lifecycle", `{"rules":[]}`)
-		}, objectstorage.AuditVerbSetBucketLifecycle, core.BucketTarget(bucket)},
-		{"a bucket update", func() *httptest.ResponseRecorder {
-			return f.cfServe(http.MethodPatch, "/buckets/"+bucket, `{}`)
-		}, objectstorage.AuditVerbUpdateBucket, core.BucketTarget(bucket)},
-		{"the dev-url toggle", func() *httptest.ResponseRecorder {
-			return f.cfServe(http.MethodPut, "/buckets/"+bucket+"/domains/managed", `{"enabled":true}`)
-		}, objectstorage.AuditVerbSetBucketPublic, core.BucketTarget(bucket)},
-		{"a bucket delete", func() *httptest.ResponseRecorder {
-			return f.cfServe(http.MethodDelete, "/buckets/"+bucket, "")
-		}, objectstorage.AuditVerbDeleteBucket, core.BucketTarget(bucket)},
+			return f.restServe(http.MethodPut, "/"+key, `{"sizeBytes":5}`)
+		}, objectstorage.AuditVerbPutObject, core.ObjectTarget("render-oregon", key)},
+		{"Render's delete", func() *httptest.ResponseRecorder {
+			return f.restServe(http.MethodDelete, "/"+key, "")
+		}, objectstorage.AuditVerbDeleteObject, core.ObjectTarget("render-oregon", key)},
 	} {
 		tc.do()
 		ev := one(t, tc.what, f.sink.take())
 		if ev.Verb != tc.verb || ev.Target != tc.target || ev.Outcome != core.AuditAllowed ||
-			ev.Resource != core.WorkspaceObject(f.cf.ws) || ev.Caller != "user-1" {
+			ev.Resource != core.WorkspaceObject(f.ws) || ev.Caller != "user-1" {
 			t.Errorf("%s recorded %+v, want an allowed %s row on target %q", tc.what, ev, tc.verb, tc.target)
 		}
 	}
 }
 
-// The create names its bucket once the bucket exists: the name is in the body,
-// which is read only after the caller is authorized.
-func TestABucketCreateRecordsItsRowOnceTheBucketExists(t *testing.T) {
-	f := newObjectAuditFixture(t, true)
-	name := "assets-" + strings.TrimPrefix(ids.New(ids.ObjectBucket), "obk-")[:6]
-
-	if rec := f.cfServe(http.MethodPost, "/buckets", `{"name":"`+name+`"}`); rec.Code != http.StatusOK {
-		t.Fatalf("create = %d %s", rec.Code, rec.Body)
-	}
-	ev := one(t, "a bucket create", f.sink.take())
-	if ev.Verb != objectstorage.AuditVerbCreateBucket || ev.Target != core.BucketTarget(name) || ev.Outcome != core.AuditAllowed ||
-		ev.Resource != core.WorkspaceObject(f.cf.ws) || ev.Relation != core.RelCanCreate || ev.Caller != "user-1" {
-		t.Errorf("recorded %+v", ev)
-	}
-
-	// A create that made no bucket is an action that did not happen: no allowed row.
-	for what, body := range map[string]string{
-		"a name taken":        `{"name":"` + name + `"}`,
-		"an invalid name":     `{"name":"No Spaces Or Capitals"}`,
-		"a reserved name":     `{"name":"render-oregon"}`,
-		"a body that is junk": `not json`,
-	} {
-		if rec := f.cfServe(http.MethodPost, "/buckets", body); rec.Code < 400 {
-			t.Fatalf("%s: create = %d, want a refusal", what, rec.Code)
-		}
-		if events := f.sink.take(); len(events) != 0 {
-			t.Errorf("%s recorded %+v, want no row for a create that made nothing", what, events)
-		}
-	}
-
-	// A refusal of the caller is recorded, with no target: the body is not read
-	// before the caller is known to be allowed.
-	denied := newObjectAuditFixture(t, false)
-	if rec := denied.cfServe(http.MethodPost, "/buckets", `{"name":"`+name+`"}`); rec.Code != http.StatusForbidden {
-		t.Fatalf("refused create = %d", rec.Code)
-	}
-	ev = one(t, "a refused bucket create", denied.sink.take())
-	if ev.Verb != objectstorage.AuditVerbCreateBucket || ev.Outcome != core.AuditDenied || ev.Target != "" {
-		t.Errorf("recorded %+v, want a denied row with no target", ev)
-	}
-}
-
-// The usage query names its bucket in the GraphQL body, jurisdiction prefix cut.
-func TestTheUsageQueryRowNamesTheBucketOfItsBody(t *testing.T) {
-	f := newObjectAuditFixture(t, false)
-	body := `{"operationName":"` + cfStorageMetricsOperation + `","variables":{"accountTag":"` + f.cf.ws + `","filter":{"bucketName":"eu_assets"}}}`
-	f.serve(f.cfMux, http.MethodPost, cloudflareGraphQLPath, body)
-	ev := one(t, "the usage query", f.sink.take())
-	if ev.Verb != objectstorage.AuditVerbGetBucketUsage || ev.Target != core.BucketTarget("assets") || ev.Outcome != core.AuditDenied {
-		t.Errorf("recorded %+v", ev)
-	}
-}
-
-// A successful get is one row per request, written once the object opened or the
-// URL was minted. Not per chunk, not for a HEAD, a list or a get that found nothing.
+// A successful get is one row per request, written once the URL was minted. Not
+// for a list, or a get that found nothing.
 func TestASuccessfulGetRecordsOneRowPerRequest(t *testing.T) {
 	f := newObjectAuditFixture(t, true)
-	bucket := f.newBucket(t)
-	object := "/buckets/" + bucket + "/objects/big.bin"
-	want := core.ObjectTarget(bucket, "big.bin")
+	want := core.ObjectTarget("render-oregon", "dumps/a.txt")
 
-	// 3 MiB crosses several copy buffers; the stream is still one request.
-	payload := strings.Repeat("0123456789abcdef", 3<<16)
-	if rec := f.cfServe(http.MethodPut, object, payload); rec.Code != http.StatusOK {
-		t.Fatalf("put = %d %s", rec.Code, rec.Body)
-	}
-	f.sink.take()
-
-	checkGet := func(what string, rec *httptest.ResponseRecorder, target string) {
-		t.Helper()
-		if rec.Code != http.StatusOK && rec.Code != http.StatusPartialContent {
-			t.Fatalf("%s = %d %s", what, rec.Code, rec.Body)
-		}
-		ev := one(t, what, f.sink.take())
-		if ev.Verb != "objectstorage.GetObject" || ev.Outcome != core.AuditAllowed ||
-			ev.Target != target || ev.Resource != core.WorkspaceObject(f.cf.ws) || ev.Caller != "user-1" {
-			t.Errorf("%s recorded %+v, want an allowed GetObject row on %q", what, ev, target)
-		}
-	}
-
-	rec := f.cfServe(http.MethodGet, object, "")
-	if rec.Body.Len() != len(payload) {
-		t.Fatalf("the get returned %d bytes, want %d", rec.Body.Len(), len(payload))
-	}
-	checkGet("a streamed get", rec, want)
-	// A ranged request is a request: one row whether the route honors the range or not.
-	checkGet("a ranged get", f.cfServe(http.MethodGet, object, "", "Range", "bytes=0-9"), want)
-
-	// Five at once are five rows: one per request.
-	var wg sync.WaitGroup
-	for range 5 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			f.cfServe(http.MethodGet, object, "")
-		}()
-	}
-	wg.Wait()
-	if events := f.sink.take(); len(events) != 5 {
-		t.Errorf("five concurrent gets recorded %d rows, want 5", len(events))
-	}
-
-	// No bytes, nothing found, or a list: nothing to record.
-	for _, tc := range []struct {
-		what string
-		do   func() *httptest.ResponseRecorder
-	}{
-		{"a HEAD", func() *httptest.ResponseRecorder { return f.cfServe(http.MethodHead, object, "") }},
-		{"a get of a missing key", func() *httptest.ResponseRecorder {
-			return f.cfServe(http.MethodGet, "/buckets/"+bucket+"/objects/missing.bin", "")
-		}},
-		{"a get in a missing bucket", func() *httptest.ResponseRecorder {
-			return f.cfServe(http.MethodGet, "/buckets/nosuchbucket/objects/big.bin", "")
-		}},
-		{"a bucket info", func() *httptest.ResponseRecorder { return f.cfServe(http.MethodGet, "/buckets/"+bucket, "") }},
-		{"a bucket list", func() *httptest.ResponseRecorder { return f.cfServe(http.MethodGet, "/buckets", "") }},
-		{"a cors read", func() *httptest.ResponseRecorder { return f.cfServe(http.MethodGet, "/buckets/"+bucket+"/cors", "") }},
-		{"Render's list", func() *httptest.ResponseRecorder { return f.restServe(http.MethodGet, "", "") }},
-	} {
-		tc.do()
-		if events := f.sink.take(); len(events) != 0 {
-			t.Errorf("%s recorded %+v, want no row", tc.what, events)
-		}
-	}
-
-	// Render's contract: the mint is the request. The URL is minted for an object
-	// that is there, and the row names it in the workspace's system bucket.
 	put := f.restServe(http.MethodPut, "/dumps/a.txt", `{"sizeBytes":5}`)
 	if put.Code != http.StatusOK {
 		t.Fatalf("mint put = %d %s", put.Code, put.Body)
@@ -285,12 +121,45 @@ func TestASuccessfulGetRecordsOneRowPerRequest(t *testing.T) {
 	if resp, err := http.DefaultClient.Do(up); err != nil || resp.StatusCode != http.StatusOK {
 		t.Fatalf("upload to the presigned URL: %v %v", resp, err)
 	}
-	checkGet("Render's get mint", f.restServe(http.MethodGet, "/dumps/a.txt", ""), core.ObjectTarget("render-oregon", "dumps/a.txt"))
-	if rec := f.restServe(http.MethodGet, "/dumps/missing.txt", ""); rec.Code != http.StatusNotFound {
-		t.Fatalf("a mint for a missing object = %d", rec.Code)
+
+	// The mint is the request. The URL is minted for an object that is there, and
+	// the row names it in the workspace's system bucket.
+	rec := f.restServe(http.MethodGet, "/dumps/a.txt", "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("get mint = %d %s", rec.Code, rec.Body)
 	}
-	if events := f.sink.take(); len(events) != 0 {
-		t.Errorf("a mint that found no object recorded %+v", events)
+	ev := one(t, "Render's get mint", f.sink.take())
+	if ev.Verb != "objectstorage.GetObject" || ev.Outcome != core.AuditAllowed ||
+		ev.Target != want || ev.Resource != core.WorkspaceObject(f.ws) || ev.Caller != "user-1" {
+		t.Errorf("Render's get mint recorded %+v, want an allowed GetObject row on %q", ev, want)
+	}
+
+	// Five at once are five rows: one per request.
+	var wg sync.WaitGroup
+	for range 5 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			f.restServe(http.MethodGet, "/dumps/a.txt", "")
+		}()
+	}
+	wg.Wait()
+	if events := f.sink.take(); len(events) != 5 {
+		t.Errorf("five concurrent gets recorded %d rows, want 5", len(events))
+	}
+
+	// Nothing found, or a list: nothing to record.
+	for _, tc := range []struct {
+		what string
+		do   func() *httptest.ResponseRecorder
+	}{
+		{"a get of a missing key", func() *httptest.ResponseRecorder { return f.restServe(http.MethodGet, "/dumps/missing.txt", "") }},
+		{"Render's list", func() *httptest.ResponseRecorder { return f.restServe(http.MethodGet, "", "") }},
+	} {
+		tc.do()
+		if events := f.sink.take(); len(events) != 0 {
+			t.Errorf("%s recorded %+v, want no row", tc.what, events)
+		}
 	}
 }
 
@@ -336,12 +205,6 @@ func TestARefusedGetStillRecordsAndNamesItsObject(t *testing.T) {
 		do     func() *httptest.ResponseRecorder
 		target string
 	}{
-		{"wrangler's get", func() *httptest.ResponseRecorder {
-			return f.cfServe(http.MethodGet, "/buckets/assets/objects/secrets/prod.env", "")
-		}, core.ObjectTarget("assets", "secrets/prod.env")},
-		{"wrangler's HEAD", func() *httptest.ResponseRecorder {
-			return f.cfServe(http.MethodHead, "/buckets/assets/objects/secrets/prod.env", "")
-		}, core.ObjectTarget("assets", "secrets/prod.env")},
 		{"Render's get mint", func() *httptest.ResponseRecorder {
 			return f.restServe(http.MethodGet, "/secrets/prod.env", "")
 		}, core.ObjectTarget("render-oregon", "secrets/prod.env")},
@@ -349,7 +212,7 @@ func TestARefusedGetStillRecordsAndNamesItsObject(t *testing.T) {
 		tc.do()
 		ev := one(t, tc.what, f.sink.take())
 		if ev.Verb != objectstorage.AuditVerbGetObject || ev.Outcome != core.AuditDenied || ev.Target != tc.target ||
-			ev.Relation != core.RelCanViewSensitive || ev.Resource != core.WorkspaceObject(f.cf.ws) {
+			ev.Relation != core.RelCanViewSensitive || ev.Resource != core.WorkspaceObject(f.ws) {
 			t.Errorf("%s recorded %+v, want a denied GetObject row on %q under can_view_sensitive", tc.what, ev, tc.target)
 		}
 	}
@@ -372,7 +235,7 @@ func TestNoSignedMaterialReachesAnObjectAuditRow(t *testing.T) {
 		"Authorization", "AWS4-HMAC-SHA256 Credential=" + credential + "/20261116/us-west-1/s3/aws4_request, Signature=" + signature,
 		"X-Amz-Security-Token", sessionTok,
 		"Cookie", "session=" + bearer,
-		"Cf-R2-Metadata", bearer,
+		"X-Custom-Metadata", bearer,
 	}
 	// A key that is a presigned URL's tail, as a script that put a URL in the key
 	// would send it: its "?" and "=" are percent-encoded in the path.
@@ -380,20 +243,12 @@ func TestNoSignedMaterialReachesAnObjectAuditRow(t *testing.T) {
 
 	for _, allow := range []bool{true, false} {
 		f := newObjectAuditFixture(t, allow)
-		bucket := "assets"
-		if allow {
-			bucket = f.newBucket(t)
-		}
 		var requests []func()
 		for _, key := range []string{"report.pdf", pasted} {
 			requests = append(requests,
-				func() { f.cfServe(http.MethodPut, "/buckets/"+bucket+"/objects/"+key+signedQuery, "hello", headers...) },
-				func() { f.cfServe(http.MethodGet, "/buckets/"+bucket+"/objects/"+key+signedQuery, "", headers...) },
-				func() { f.cfServe(http.MethodHead, "/buckets/"+bucket+"/objects/"+key+signedQuery, "", headers...) },
-				func() { f.cfServe(http.MethodDelete, "/buckets/"+bucket+"/objects/"+key+signedQuery, "", headers...) },
-				func() { f.cfServe(http.MethodGet, "/buckets/"+bucket+signedQuery, "", headers...) },
-				func() { f.restServe(http.MethodPut, "/"+key+signedQuery, `{"sizeBytes":5}`) },
-				func() { f.restServe(http.MethodGet, "/"+key+signedQuery, "") },
+				func() { f.restServe(http.MethodPut, "/"+key+signedQuery, `{"sizeBytes":5}`, headers...) },
+				func() { f.restServe(http.MethodGet, "/"+key+signedQuery, "", headers...) },
+				func() { f.restServe(http.MethodDelete, "/"+key+signedQuery, "", headers...) },
 			)
 		}
 		var rows []core.AuditEvent
@@ -401,7 +256,7 @@ func TestNoSignedMaterialReachesAnObjectAuditRow(t *testing.T) {
 			do()
 			rows = append(rows, f.sink.take()...)
 		}
-		if len(rows) < 6 {
+		if len(rows) < 4 {
 			t.Fatalf("allow=%v: only %d rows recorded; the requests did not reach the audit", allow, len(rows))
 		}
 		for _, ev := range rows {
@@ -453,10 +308,11 @@ func TestNoSignedMaterialReachesAnObjectAuditRow(t *testing.T) {
 	}
 }
 
-// A refused caller's bucket and key are the caller's text, so a row stores them
-// bounded, escaped and valid, not as sent.
+// A refused caller's key is the caller's text, so a row stores it bounded,
+// escaped and valid, not as sent.
 func TestARefusedCallersKeyIsBoundedAndEscapedInTheRow(t *testing.T) {
 	f := newObjectAuditFixture(t, false)
+	const prefix = "object:render-oregon/"
 	for what, key := range map[string]string{
 		"a newline":                "a%0Ab",
 		"a NUL":                    "a%00b",
@@ -467,10 +323,10 @@ func TestARefusedCallersKeyIsBoundedAndEscapedInTheRow(t *testing.T) {
 		"1024 bytes":               strings.Repeat("k", 1024),
 		"half a megabyte":          strings.Repeat("%00", 170000),
 	} {
-		f.cfServe(http.MethodDelete, "/buckets/assets/objects/"+key, "")
+		f.restServe(http.MethodDelete, "/"+key, "")
 		ev := one(t, what, f.sink.take())
-		stored := strings.TrimPrefix(ev.Target, "object:assets/")
-		if !strings.HasPrefix(ev.Target, "object:assets/") || len(stored) > core.AuditKeyMaxBytes || !utf8.ValidString(ev.Target) {
+		stored := strings.TrimPrefix(ev.Target, prefix)
+		if !strings.HasPrefix(ev.Target, prefix) || len(stored) > core.AuditKeyMaxBytes || !utf8.ValidString(ev.Target) {
 			t.Errorf("%s: target %q is %d bytes, valid UTF-8 %v", what, ev.Target, len(stored), utf8.ValidString(ev.Target))
 		}
 		for _, r := range ev.Target {
@@ -479,31 +335,15 @@ func TestARefusedCallersKeyIsBoundedAndEscapedInTheRow(t *testing.T) {
 			}
 		}
 	}
-	// A bucket that is not a valid name, with a slash in it, cannot end itself early.
-	f.cfServe(http.MethodDelete, "/buckets/a%2Fb/objects/k", "")
-	ev := one(t, "a bucket with a slash", f.sink.take())
-	if bucket, key, ok := core.SplitObjectTarget(strings.TrimPrefix(ev.Target, "object:")); !ok || strings.Contains(bucket, "/") || key != "k" {
-		t.Errorf("target %q splits into bucket %q key %q", ev.Target, bucket, key)
-	}
 }
 
 // wantSweptTarget is the target a refused call to pattern records, for the path
-// TestEveryRegisteredRouteRecordsANamedVerb fills in: every wildcard of a
-// Cloudflare route is the workspace id, a Render route has region oregon and key k.
-func wantSweptTarget(pattern, ws string) string {
+// TestEveryRegisteredRouteRecordsANamedVerb fills in: a Render route has region
+// oregon and key k.
+func wantSweptTarget(pattern string) string {
 	_, path := splitPattern(pattern)
-	switch {
-	case pattern == "POST "+cloudflareGraphQLPath:
-		return core.BucketTarget("b")
-	case strings.HasPrefix(path, "/v1/objects/"):
-		if strings.Contains(path, "{key...}") {
-			return core.ObjectTarget("render-oregon", "k")
-		}
-		return core.BucketTarget("render-oregon")
-	case strings.Contains(path, "{key...}"):
-		return core.ObjectTarget(ws, ws)
-	case strings.Contains(path, "{bucket}"):
-		return core.BucketTarget(ws)
+	if strings.Contains(path, "{key...}") {
+		return core.ObjectTarget("render-oregon", "k")
 	}
-	return "" // the bucket list and a bucket create: no bucket in their path
+	return core.BucketTarget("render-oregon")
 }

@@ -328,7 +328,6 @@ jobs:
           scripts/disk-snapshot-secret.sh scripts/disk-snapshot-secret.test.sh
           scripts/object-storage-s3-credentials.sh scripts/object-storage-s3-credentials.test.sh
           scripts/build-cache-s3-credentials.sh scripts/build-cache-s3-credentials.test.sh
-          scripts/wrangler-r2-contract.sh
           scripts/s3-contract.sh
           scripts/request-logs-liveness.sh
           scripts/cluster-diagnose.sh scripts/cluster-diagnose.test.sh

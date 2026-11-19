@@ -57,8 +57,8 @@ type ObjectPage struct {
 }
 
 // The Render routes work in the workspace's system bucket render-<region>, so
-// an object put with the Render CLI is readable with wrangler and the other
-// way round (ADR112 D1).
+// an object put with the Render CLI is readable over S3 and the other way
+// round (ADR112 D1).
 
 // MintPut returns a URL that uploads exactly size bytes to key in the
 // workspace's render-<region> bucket. It refuses a bad key, an object over the

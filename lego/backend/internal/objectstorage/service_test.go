@@ -68,7 +68,7 @@ func TestDisabledServiceAnswersNotConfiguredEverywhere(t *testing.T) {
 		if s.Enabled() {
 			t.Fatal("a service with no stores reports enabled")
 		}
-		if _, err := s.CreateBucket(ctx, "tea-x", "photos", objectstorage.Oregon, ""); !errors.Is(err, objectstorage.ErrNotConfigured) {
+		if _, err := s.CreateBucket(ctx, "tea-x", "photos", objectstorage.Oregon); !errors.Is(err, objectstorage.ErrNotConfigured) {
 			t.Errorf("CreateBucket = %v", err)
 		}
 		if _, err := s.SystemBucket(ctx, "tea-x", objectstorage.Oregon); !errors.Is(err, objectstorage.ErrNotConfigured) {
@@ -106,20 +106,20 @@ func TestCreateBucketRefusesWhatTheRulesRefuse(t *testing.T) {
 		"render-oregon": objectstorage.ErrReservedBucketName,
 		"render-x1":     objectstorage.ErrReservedBucketName,
 	} {
-		if _, err := s.CreateBucket(ctx, "tea-x", name, objectstorage.Oregon, ""); !errors.Is(err, want) {
+		if _, err := s.CreateBucket(ctx, "tea-x", name, objectstorage.Oregon); !errors.Is(err, want) {
 			t.Errorf("CreateBucket(%q) = %v, want %v", name, err, want)
 		}
 	}
 	// Frankfurt has no store here, so a bucket cannot be created there.
 	var notOffered *objectstorage.RegionNotOfferedError
-	if _, err := s.CreateBucket(ctx, "tea-x", "photos", objectstorage.Frankfurt, ""); !errors.As(err, &notOffered) {
+	if _, err := s.CreateBucket(ctx, "tea-x", "photos", objectstorage.Frankfurt); !errors.As(err, &notOffered) {
 		t.Errorf("CreateBucket in a region with no store = %v, want a RegionNotOfferedError", err)
 	}
 	if called {
 		t.Fatal("a refused request reached the repository")
 	}
-	b, err := s.CreateBucket(ctx, "tea-x", "photos", objectstorage.Oregon, "wnam")
-	if err != nil || b.Name != "photos" || b.LocationHint != "wnam" || b.Region != "oregon" || !called {
+	b, err := s.CreateBucket(ctx, "tea-x", "photos", objectstorage.Oregon)
+	if err != nil || b.Name != "photos" || b.Region != "oregon" || !called {
 		t.Fatalf("CreateBucket = %+v, %v", b, err)
 	}
 }
@@ -134,14 +134,14 @@ func TestCreateBucketMapsTheStoreErrors(t *testing.T) {
 		{store.ErrObjectBucketQuota, objectstorage.ErrTooManyBuckets},
 	} {
 		repo := &stubRepo{create: func(store.ObjectBucket, int) (store.ObjectBucket, error) { return store.ObjectBucket{}, c.from }}
-		_, err := objectstorage.NewService(repo, stores).CreateBucket(context.Background(), "tea-x", "photos", objectstorage.Oregon, "")
+		_, err := objectstorage.NewService(repo, stores).CreateBucket(context.Background(), "tea-x", "photos", objectstorage.Oregon)
 		if !errors.Is(err, c.want) {
 			t.Errorf("store error %v became %v, want %v", c.from, err, c.want)
 		}
 	}
 	boom := errors.New("database is down")
 	repo := &stubRepo{create: func(store.ObjectBucket, int) (store.ObjectBucket, error) { return store.ObjectBucket{}, boom }}
-	if _, err := objectstorage.NewService(repo, stores).CreateBucket(context.Background(), "tea-x", "photos", objectstorage.Oregon, ""); !errors.Is(err, boom) {
+	if _, err := objectstorage.NewService(repo, stores).CreateBucket(context.Background(), "tea-x", "photos", objectstorage.Oregon); !errors.Is(err, boom) {
 		t.Errorf("an unrelated store error became %v", err)
 	}
 }
@@ -150,7 +150,7 @@ func TestCreateBucketPassesTheWorkspaceBucketCap(t *testing.T) {
 	stores, _ := oregonOnly(t)
 	gotCap := 0
 	repo := &stubRepo{create: func(in store.ObjectBucket, cap int) (store.ObjectBucket, error) { gotCap = cap; return in, nil }}
-	if _, err := objectstorage.NewService(repo, stores).CreateBucket(context.Background(), "tea-x", "photos", objectstorage.Oregon, ""); err != nil {
+	if _, err := objectstorage.NewService(repo, stores).CreateBucket(context.Background(), "tea-x", "photos", objectstorage.Oregon); err != nil {
 		t.Fatal(err)
 	}
 	if gotCap != objectstorage.MaxUserBuckets {
@@ -280,7 +280,7 @@ func TestSystemBucketIsCreatedOnceAndListed(t *testing.T) {
 	if err != nil || len(list) != 1 || list[0].ID != a.ID {
 		t.Fatalf("ListBuckets = %+v, %v", list, err)
 	}
-	if _, err := s.CreateBucket(ctx, ws, "render-oregon", objectstorage.Oregon, ""); !errors.Is(err, objectstorage.ErrReservedBucketName) {
+	if _, err := s.CreateBucket(ctx, ws, "render-oregon", objectstorage.Oregon); !errors.Is(err, objectstorage.ErrReservedBucketName) {
 		t.Fatalf("a user bucket in the reserved namespace = %v", err)
 	}
 }
@@ -288,10 +288,10 @@ func TestSystemBucketIsCreatedOnceAndListed(t *testing.T) {
 func TestCreateBucketRefusesADuplicateNameButNotInAnotherWorkspace(t *testing.T) {
 	s, _, ws := pgService(t, "objsvc-dup")
 	ctx := context.Background()
-	if _, err := s.CreateBucket(ctx, ws, "photos", objectstorage.Oregon, ""); err != nil {
+	if _, err := s.CreateBucket(ctx, ws, "photos", objectstorage.Oregon); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.CreateBucket(ctx, ws, "photos", objectstorage.Oregon, ""); !errors.Is(err, objectstorage.ErrBucketExists) {
+	if _, err := s.CreateBucket(ctx, ws, "photos", objectstorage.Oregon); !errors.Is(err, objectstorage.ErrBucketExists) {
 		t.Fatalf("a duplicate name = %v, want ErrBucketExists", err)
 	}
 	// Another workspace's bucket of the same name is not visible here, and the
@@ -304,7 +304,7 @@ func TestCreateBucketRefusesADuplicateNameButNotInAnotherWorkspace(t *testing.T)
 func TestDeleteBucketNeedsAnEmptyBucket(t *testing.T) {
 	s, fake, ws := pgService(t, "objsvc-delete")
 	ctx := context.Background()
-	b, err := s.CreateBucket(ctx, ws, "photos", objectstorage.Oregon, "")
+	b, err := s.CreateBucket(ctx, ws, "photos", objectstorage.Oregon)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -347,7 +347,7 @@ func TestDeleteBucketNeedsAnEmptyBucket(t *testing.T) {
 func TestARecreatedBucketDoesNotSeeTheOldObjects(t *testing.T) {
 	s, fake, ws := pgService(t, "objsvc-recreate")
 	ctx := context.Background()
-	old, err := s.CreateBucket(ctx, ws, "photos", objectstorage.Oregon, "")
+	old, err := s.CreateBucket(ctx, ws, "photos", objectstorage.Oregon)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -358,7 +358,7 @@ func TestARecreatedBucketDoesNotSeeTheOldObjects(t *testing.T) {
 	}
 	fake.Put(objectstorage.Oregon.Bucket(), oldKey, []byte("old tenant data"))
 
-	fresh, err := s.CreateBucket(ctx, ws, "photos", objectstorage.Oregon, "")
+	fresh, err := s.CreateBucket(ctx, ws, "photos", objectstorage.Oregon)
 	if err != nil || fresh.ID == old.ID {
 		t.Fatalf("recreated bucket = %+v, %v; want a new id", fresh, err)
 	}
@@ -413,14 +413,14 @@ func TestASystemBucketIsNeverDeleted(t *testing.T) {
 func TestAStreamRacingADeleteNeverOrphansItsObject(t *testing.T) {
 	e := newPGEnv(t, "objsvc-stream-race")
 	ctx := context.Background()
-	b, err := e.Svc.CreateBucket(ctx, e.WS, "photos", objectstorage.Oregon, "")
+	b, err := e.Svc.CreateBucket(ctx, e.WS, "photos", objectstorage.Oregon)
 	if err != nil {
 		t.Fatal(err)
 	}
 	pr, pw := io.Pipe()
 	done := make(chan error, 1)
 	go func() {
-		_, err := e.Svc.PutStream(ctx, e.WS, b, "big.bin", 4, pr, objectstorage.ObjectHeaders{})
+		_, err := e.Svc.PutObject(ctx, e.WS, b, "big.bin", 4, pr, objectstorage.ObjectHeaders{})
 		done <- err
 	}()
 	// The first bytes are taken, so the put is past its checks and streaming.
@@ -441,11 +441,11 @@ func TestAStreamRacingADeleteNeverOrphansItsObject(t *testing.T) {
 		t.Fatalf("the failed put left %v under the deleted bucket's prefix", keys)
 	}
 
-	kept, err := e.Svc.CreateBucket(ctx, e.WS, "photos", objectstorage.Oregon, "")
+	kept, err := e.Svc.CreateBucket(ctx, e.WS, "photos", objectstorage.Oregon)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.Svc.PutStream(ctx, e.WS, kept, "a.txt", 1, strings.NewReader("x"), objectstorage.ObjectHeaders{}); err != nil {
+	if _, err := e.Svc.PutObject(ctx, e.WS, kept, "a.txt", 1, strings.NewReader("x"), objectstorage.ObjectHeaders{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.Svc.DeleteBucket(ctx, e.WS, "photos"); !errors.Is(err, objectstorage.ErrBucketNotEmpty) {

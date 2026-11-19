@@ -99,7 +99,7 @@ func objectBucketStore(t *testing.T, name string) (*PGStore, string) {
 
 func newObjectBucket(t *testing.T, s *PGStore, ws, name string, cap int) ObjectBucket {
 	t.Helper()
-	b, err := s.CreateObjectBucket(context.Background(), ObjectBucket{WorkspaceID: ws, Name: name, Region: "oregon", LocationHint: "wnam"}, cap)
+	b, err := s.CreateObjectBucket(context.Background(), ObjectBucket{WorkspaceID: ws, Name: name, Region: "oregon"}, cap)
 	if err != nil {
 		t.Fatalf("create %s: %v", name, err)
 	}
@@ -114,7 +114,7 @@ func TestObjectBucketRoundTrip(t *testing.T) {
 	if !strings.HasPrefix(b.ID, "obk-") || !ids.WellFormed(b.ID) {
 		t.Fatalf("bucket id %q is not an obk- id", b.ID)
 	}
-	if b.System || b.Public || string(b.CORS) != "[]" || string(b.Lifecycle) != "[]" || b.LocationHint != "wnam" {
+	if b.System || b.Public || string(b.CORS) != "[]" || string(b.Lifecycle) != "[]" {
 		t.Fatalf("new bucket defaults wrong: %+v", b)
 	}
 
@@ -159,7 +159,7 @@ func TestObjectBucketSummariesLeaveTheRulesOut(t *testing.T) {
 		if sum.CORS != nil || sum.Lifecycle != nil {
 			t.Errorf("%s: a summary carries rules: %s %s", sum.Name, sum.CORS, sum.Lifecycle)
 		}
-		if sum.ID == "" || sum.Region != "oregon" || sum.LocationHint != "wnam" || sum.CreatedAt.IsZero() {
+		if sum.ID == "" || sum.Region != "oregon" || sum.CreatedAt.IsZero() {
 			t.Errorf("%s: a summary lost a column: %+v", sum.Name, sum)
 		}
 	}

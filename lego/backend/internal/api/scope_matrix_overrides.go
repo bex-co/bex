@@ -148,11 +148,4 @@ var scopeClassOverrides = map[string]string{
 	"GQL Mutation.changeOrganizationMemberRole": core.OpClassMint,
 	"MCP invite_organization_member":            core.OpClassMint,
 	"MCP change_organization_member_role":       core.OpClassMint,
-
-	// Contract B's object get hands over the same customer bytes as the Render
-	// route above (ADR112 D6), so it is sensitive too; bucket info's size query
-	// is a POST that writes nothing.
-
-	"REST GET " + cloudflareObjectPattern: core.OpClassSensitive,
-	"REST POST " + cloudflareGraphQLPath:  core.OpClassRead,
 }

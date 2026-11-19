@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 // Command objectgw is the public bucket gateway (ADR112 D4): it serves the
-// objects of buckets a workspace published with `wrangler r2 bucket dev-url
+// objects of buckets a workspace published with `bex s3 public <bucket>
 // enable`, read-only and with no credential, at pub-<xid>.<BEX_BASE_DOMAIN>.
 //
 // Its environment is credentials and nothing else (ADR112 D9): a read-only

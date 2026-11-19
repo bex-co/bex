@@ -29,7 +29,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// ageRule is a rule in the wrangler shape that deletes after maxAge seconds.
+// ageRule is a rule in the stored shape that deletes after maxAge seconds.
 func ageRule(id, prefix string, maxAge int, enabled bool) string {
 	return fmt.Sprintf(`{"id":%q,"enabled":%t,"conditions":{"prefix":%q},"deleteObjectsTransition":{"condition":{"type":"Age","maxAge":%d}}}`,
 		id, enabled, prefix, maxAge)

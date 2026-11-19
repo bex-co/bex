@@ -74,7 +74,7 @@ func serviceError(w http.ResponseWriter, err error) *Error {
 	case errors.Is(err, objectstorage.ErrBucketDeleting):
 		return newError(http.StatusConflict, "OperationAborted", "A conflicting conditional operation is currently in progress against this resource. Try again.")
 	case errors.Is(err, objectstorage.ErrInvalidBucketName), errors.Is(err, objectstorage.ErrReservedBucketName):
-		return newError(http.StatusBadRequest, "InvalidBucketName", "The specified bucket is not valid: a name is 3 to 63 lower-case letters, digits and hyphens, and render-* and cloudflare are reserved.")
+		return newError(http.StatusBadRequest, "InvalidBucketName", "The specified bucket is not valid: a name is 3 to 63 lower-case letters, digits and hyphens, and render-* is reserved.")
 	case errors.As(err, &notOffered):
 		return newError(http.StatusBadRequest, "InvalidLocationConstraint", notOffered.Error())
 	case errors.Is(err, objectstorage.ErrInvalidKey):
@@ -158,7 +158,7 @@ func (rq *request) createBucket() *Error {
 	if err != nil {
 		return rq.fail(err)
 	}
-	b, err := rq.g.cfg.Service.CreateBucket(rq.ctx, rq.workspaceID, rq.bucket, region, "")
+	b, err := rq.g.cfg.Service.CreateBucket(rq.ctx, rq.workspaceID, rq.bucket, region)
 	if err != nil {
 		return rq.fail(err)
 	}
@@ -417,8 +417,9 @@ func expirationCondition(x *expirationXML) (objectstorage.LifecycleDeleteConditi
 	return objectstorage.LifecycleDeleteCondition{}, errMalformedXML("An Expiration takes Days or Date.")
 }
 
-// lifecycleToXML is the reverse: what a Put sent reads back, and a rule written through
-// Contract B in seconds reads as the whole days that cover it.
+// lifecycleToXML is the reverse: what a Put sent reads back, and a rule stored in
+// seconds (the removed Cloudflare-shaped surface wrote them) reads as the whole days
+// that cover it.
 func lifecycleToXML(rules []objectstorage.LifecycleRule) lifecycleConfigurationXML {
 	doc := lifecycleConfigurationXML{Xmlns: s3Namespace}
 	for _, r := range rules {

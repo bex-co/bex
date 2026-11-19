@@ -18,8 +18,8 @@ package objectstorage
 
 import "time"
 
-// The caps below are bex's own (ADR112 D8). No Render or Cloudflare value was
-// found for any of them, so each is a dated, unverified entry in ADR018.
+// The caps below are bex's own (ADR112 D8). No Render value was found for any
+// of them, so each is a dated, unverified entry in ADR018.
 // Changing one is a reviewed code change with a new dated entry; none is an
 // environment variable (ADR112 D9).
 const (
@@ -35,14 +35,10 @@ const (
 	// MaxObjectBytesPresigned is the largest object Render's routes mint a
 	// URL for: the S3 single-PUT ceiling. Wasabi's own limit is unverified.
 	MaxObjectBytesPresigned int64 = 5 << 30
-	// MaxObjectBytesStreamed is the largest object the Cloudflare-shaped routes
-	// take: wrangler's own cap, because its bytes stream through bex-api.
-	MaxObjectBytesStreamed int64 = 300 << 20
 
 	// MaxConcurrentStreamsPerWorkspace bounds the uploads and downloads one
-	// workspace may have in flight through one bex replica. Contract B's cap was 8,
-	// sized for wrangler's one stream; `aws s3 cp` runs 10 requests at a time, so S3
-	// takes 16 (ADR112 D3, D8; bex's own, unverified).
+	// workspace may have in flight through one bex replica. `aws s3 cp` runs 10
+	// requests at a time, so S3 takes 16 (ADR112 D3, D8; bex's own, unverified).
 	MaxConcurrentStreamsPerWorkspace = 16
 	// MaxConcurrentStreamsPerReplica bounds all workspaces together on one
 	// bex-api replica, so a crowd of workspaces cannot exhaust its connections

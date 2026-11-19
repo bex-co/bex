@@ -25,7 +25,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
 )
 
-func TestParseLifecycleReadsTheWranglerShapeAndToleratesUnknownFields(t *testing.T) {
+func TestParseLifecycleReadsTheStoredShapeAndToleratesUnknownFields(t *testing.T) {
 	raw := json.RawMessage(`[
 		{"id":"expire-logs","enabled":true,"conditions":{"prefix":"logs/"},
 		 "deleteObjectsTransition":{"condition":{"type":"Age","maxAge":86400}}},

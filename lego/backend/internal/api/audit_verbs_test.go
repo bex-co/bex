@@ -34,7 +34,6 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
 )
 
@@ -93,56 +92,33 @@ func (s *lockedAuditSink) take() []core.AuditEvent {
 	return out
 }
 
-// objectRouteVerbs is the verb of every object and Cloudflare-shaped route that
-// has an action of its own. Every other route of those two surfaces is a
-// refusal of something bex does not offer and records
-// objectstorage.AuditVerbNotOffered; a route added without a line here fails
-// TestEveryRegisteredRouteRecordsANamedVerb until its verb is chosen.
+// objectRouteVerbs is the verb of every Render object route (/v1/objects). A
+// route added without a line here fails TestEveryRegisteredRouteRecordsANamedVerb
+// until its verb is chosen.
 var objectRouteVerbs = map[string]string{
 	"GET /v1/objects/{ownerId}/{region}":             objectstorage.AuditVerbListObjects,
 	"PUT /v1/objects/{ownerId}/{region}/{key...}":    objectstorage.AuditVerbPutObject,
 	"GET /v1/objects/{ownerId}/{region}/{key...}":    objectstorage.AuditVerbGetObject,
 	"DELETE /v1/objects/{ownerId}/{region}/{key...}": objectstorage.AuditVerbDeleteObject,
-
-	"GET " + cloudflareAccountR2 + "/buckets":                          objectstorage.AuditVerbListBuckets,
-	"POST " + cloudflareAccountR2 + "/buckets":                         objectstorage.AuditVerbCreateBucket,
-	"GET " + cloudflareAccountR2 + "/buckets/{bucket}":                 objectstorage.AuditVerbGetBucket,
-	"DELETE " + cloudflareAccountR2 + "/buckets/{bucket}":              objectstorage.AuditVerbDeleteBucket,
-	"PATCH " + cloudflareAccountR2 + "/buckets/{bucket}":               objectstorage.AuditVerbUpdateBucket,
-	"POST " + cloudflareGraphQLPath:                                    objectstorage.AuditVerbGetBucketUsage,
-	"GET " + cloudflareAccountR2 + "/buckets/{bucket}/cors":            objectstorage.AuditVerbGetBucketCORS,
-	"PUT " + cloudflareAccountR2 + "/buckets/{bucket}/cors":            objectstorage.AuditVerbSetBucketCORS,
-	"DELETE " + cloudflareAccountR2 + "/buckets/{bucket}/cors":         objectstorage.AuditVerbDeleteBucketCORS,
-	"GET " + cloudflareAccountR2 + "/buckets/{bucket}/lifecycle":       objectstorage.AuditVerbGetBucketLifecycle,
-	"PUT " + cloudflareAccountR2 + "/buckets/{bucket}/lifecycle":       objectstorage.AuditVerbSetBucketLifecycle,
-	"GET " + cloudflareAccountR2 + "/buckets/{bucket}/domains/managed": objectstorage.AuditVerbGetBucketPublic,
-	"PUT " + cloudflareAccountR2 + "/buckets/{bucket}/domains/managed": objectstorage.AuditVerbSetBucketPublic,
-	"GET " + cloudflareAccountR2 + "/buckets/{bucket}/domains/custom":  objectstorage.AuditVerbListCustomDomains,
-	"PUT " + cloudflareObjectPattern:                                   objectstorage.AuditVerbPutObject,
-	"GET " + cloudflareObjectPattern:                                   objectstorage.AuditVerbGetObject,
-	"DELETE " + cloudflareObjectPattern:                                objectstorage.AuditVerbDeleteObject,
 }
 
 // auditVerbFixture is every route the API registers, over a caller that every
 // authorization refuses: a refusal is recorded whatever the relation, so one
 // request per route shows the verb the route authorizes under.
 type auditVerbFixture struct {
-	sink  *lockedAuditSink
-	muxes map[string]*http.ServeMux // by surface name
-	ws    string
+	sink *lockedAuditSink
+	mux  *http.ServeMux
+	ws   string
 }
 
 func newAuditVerbFixture(t *testing.T, allow bool) *auditVerbFixture {
 	t.Helper()
-	cf := newCFHarness(t) // the object store over a fake S3, enabled
+	svc, ws := newObjectService(t) // the object store over a fake S3, enabled
 	sink := &lockedAuditSink{}
 	base := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default", Authz: &fakeChecker{allow: allow}, Audit: sink}
-	srv := NewServer(base, Deps{ObjectStorage: cf.svc, BaseDomain: cfTestBaseDomain})
+	srv := NewServer(base, Deps{ObjectStorage: svc, BaseDomain: objectsTestBaseDomain})
 	srv.HydraAdminURL = fakeHydraURL(t)
-	return &auditVerbFixture{
-		sink: sink, ws: cf.ws,
-		muxes: map[string]*http.ServeMux{"rest": srv.restHandler(), "cloudflare": srv.cloudflareRoutes()},
-	}
+	return &auditVerbFixture{sink: sink, ws: ws, mux: srv.restHandler()}
 }
 
 // drive serves one request as a signed-in human and returns the audit events it
@@ -163,13 +139,13 @@ func (f *auditVerbFixture) drive(mux http.Handler, method, path, body string) []
 // object route "api.route.func1": core.callerVerb names a verb after the frame
 // that called Authorize, and an adapter route authorizes inside a closure. The
 // sweeps over the services (TestAuditCoversEveryWriteVerbExactlyOnce) walk the
-// types that embed core.Base, which the two object adapters do not, so nothing
-// looked at them.
+// types that embed core.Base, which the object adapter does not, so nothing
+// looked at it.
 //
-// This drives every route registered on the REST mux and on the Cloudflare mux
-// and requires each verb it records to be "<feature>.<Action>", so a verb
-// derived from a closure, a method value or an unexported helper fails it. The
-// object and Cloudflare-shaped routes must also record the verb listed for them.
+// This drives every route registered on the REST mux and requires each verb it
+// records to be "<feature>.<Action>", so a verb derived from a closure, a method
+// value or an unexported helper fails it. The Render object routes must also
+// record the verb listed for them.
 func TestEveryRegisteredRouteRecordsANamedVerb(t *testing.T) {
 	// Refused, every route that authorizes records; allowed, a write route reaches
 	// further into its handler before it records, and the verbs it records there
@@ -177,71 +153,58 @@ func TestEveryRegisteredRouteRecordsANamedVerb(t *testing.T) {
 	refused := newAuditVerbFixture(t, false)
 	allowed := newAuditVerbFixture(t, true)
 
-	patterns := map[string][]string{}
-	total := 0
-	for surface, mux := range refused.muxes {
-		patterns[surface] = serveMuxPatterns(mux)
-		total += len(patterns[surface])
-	}
+	patterns := serveMuxPatterns(refused.mux)
+	total := len(patterns)
 	if total < 150 {
 		t.Fatalf("enumerated only %d patterns — the ServeMux tree walk broke (Go release?)", total)
 	}
 
 	seen := map[string]bool{}
 	recorded := map[string]bool{}
-	for _, surface := range []string{"rest", "cloudflare"} {
-		for _, pattern := range patterns[surface] {
-			method, path := splitPattern(pattern)
-			target := fillWildcards(path, refused.ws)
-			if strings.Contains(path, "{region}") {
-				target = strings.Replace(path, "{region}", string(objectstorage.Oregon), 1)
-				target = fillWildcards(strings.Replace(target, "{ownerId}", refused.ws, 1), "k")
+	for _, pattern := range patterns {
+		method, path := splitPattern(pattern)
+		target := fillWildcards(path, refused.ws)
+		if strings.Contains(path, "{region}") {
+			target = strings.Replace(path, "{region}", string(objectstorage.Oregon), 1)
+			target = fillWildcards(strings.Replace(target, "{ownerId}", refused.ws, 1), "k")
+		}
+		body := ""
+		if method == http.MethodPost || method == http.MethodPut || method == http.MethodPatch {
+			body = "{}"
+		}
+		events := refused.drive(refused.mux, method, target, body)
+		allowedEvents := allowed.drive(allowed.mux, method, target, body)
+		if method == http.MethodGet {
+			checkReadRecordsNoSuccess(t, "rest", pattern, allowedEvents)
+		}
+		for _, ev := range append(slices.Clone(events), allowedEvents...) {
+			seen[ev.Verb] = true
+			if p := verbProblem(ev.Verb); p != "" {
+				t.Errorf("rest %s recorded verb %q: %s", pattern, ev.Verb, p)
 			}
-			body := ""
-			if method == http.MethodPost || method == http.MethodPut || method == http.MethodPatch {
-				body = "{}"
-			}
-			if pattern == "POST "+cloudflareGraphQLPath {
-				body = `{"operationName":"` + cfStorageMetricsOperation + `","variables":{"accountTag":"` + refused.ws + `","filter":{"bucketName":"b"}}}`
-			}
-			events := refused.drive(refused.muxes[surface], method, target, body)
-			allowedEvents := allowed.drive(allowed.muxes[surface], method, target, body)
-			if method == http.MethodGet {
-				checkReadRecordsNoSuccess(t, surface, pattern, allowedEvents)
-			}
-			for _, ev := range append(slices.Clone(events), allowedEvents...) {
-				seen[ev.Verb] = true
-				if p := verbProblem(ev.Verb); p != "" {
-					t.Errorf("%s %s recorded verb %q: %s", surface, pattern, ev.Verb, p)
-				}
-			}
-			want, listed := objectRouteVerbs[pattern]
-			isObjectRoute := surface == "cloudflare" || strings.HasPrefix(path, "/v1/objects/")
-			switch {
-			case !isObjectRoute:
-				continue
-			case len(events) != 1:
-				t.Errorf("%s %s recorded %d audit events, want exactly one", surface, pattern, len(events))
-			case !listed && events[0].Verb != objectstorage.AuditVerbNotOffered:
-				t.Errorf("%s %s recorded %q but has no line in objectRouteVerbs; give the route its own verb there, or it is a refusal and records %q",
-					surface, pattern, events[0].Verb, objectstorage.AuditVerbNotOffered)
-			case listed && events[0].Verb != want:
-				t.Errorf("%s %s recorded %q, want %q", surface, pattern, events[0].Verb, want)
-			case events[0].Target != wantSweptTarget(pattern, refused.ws):
-				t.Errorf("%s %s recorded target %q, want %q: a row names its bucket, and an object's its key (w21/094)",
-					surface, pattern, events[0].Target, wantSweptTarget(pattern, refused.ws))
-			default:
-				recorded[pattern] = true
-			}
+		}
+		want, listed := objectRouteVerbs[pattern]
+		switch {
+		case !strings.HasPrefix(path, "/v1/objects/"):
+			continue
+		case len(events) != 1:
+			t.Errorf("rest %s recorded %d audit events, want exactly one", pattern, len(events))
+		case !listed:
+			t.Errorf("rest %s recorded %q but has no line in objectRouteVerbs; give the route its own verb there", pattern, events[0].Verb)
+		case events[0].Verb != want:
+			t.Errorf("rest %s recorded %q, want %q", pattern, events[0].Verb, want)
+		case events[0].Target != wantSweptTarget(pattern):
+			t.Errorf("rest %s recorded target %q, want %q: a row names its bucket, and an object's its key (w21/094)",
+				pattern, events[0].Target, wantSweptTarget(pattern))
+		default:
+			recorded[pattern] = true
 		}
 	}
 
 	// A table line for a route that no longer exists is stale cover.
 	registered := map[string]bool{}
-	for _, ps := range patterns {
-		for _, p := range ps {
-			registered[p] = true
-		}
+	for _, p := range patterns {
+		registered[p] = true
 	}
 	for p := range objectRouteVerbs {
 		if !registered[p] {
@@ -546,7 +509,7 @@ func gqlSelection(t graphql.Type) string {
 // predicate the sweep applies must reject the shapes that were recorded.
 func TestVerbProblemFlagsClosureVerbs(t *testing.T) {
 	for _, bad := range []string{
-		"api.route.func1",            // the Cloudflare routes' closure
+		"api.route.func1",            // an object route's closure
 		"api.RegisterREST.func2",     // Render's object routes' closure
 		"http.HandlerFunc.ServeHTTP", // a method value mounted straight on the mux
 		"api.serve",                  // an unexported helper
@@ -572,23 +535,23 @@ func TestVerbProblemFlagsClosureVerbs(t *testing.T) {
 	}
 }
 
-// TestObjectRoutesRecordAPutAndABucketCreate drives a real bucket create and a
-// real object put through both contracts as an allowed caller, and checks the
-// audit log's rows: one allowed row each, under the verb a reader can search for.
-func TestObjectRoutesRecordAPutAndABucketCreate(t *testing.T) {
-	cf := newCFHarness(t)
+// TestObjectRoutesRecordAPut drives a real object put and delete through
+// Render's contract as an allowed caller, and checks the audit log's rows: one
+// allowed row each, under the verb a reader can search for.
+func TestObjectRoutesRecordAPut(t *testing.T) {
+	svc, ws := newObjectService(t)
 	sink := &lockedAuditSink{}
 	base := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default", Authz: &fakeChecker{allow: true}, Audit: sink}
-	srv := NewServer(base, Deps{ObjectStorage: cf.svc, BaseDomain: cfTestBaseDomain})
+	srv := NewServer(base, Deps{ObjectStorage: svc, BaseDomain: objectsTestBaseDomain})
 	srv.HydraAdminURL = fakeHydraURL(t)
-	cfMux, restMux := srv.cloudflareRoutes(), srv.restHandler()
+	restMux := srv.restHandler()
 	identity := core.WithIdentity(context.Background(), core.Identity{Subject: "user-1", Method: core.MethodSession})
 
-	serve := func(mux http.Handler, method, path, body string) *httptest.ResponseRecorder {
+	serve := func(method, path, body string) *httptest.ResponseRecorder {
 		req := httptest.NewRequest(method, path, strings.NewReader(body)).WithContext(identity)
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, req)
+		restMux.ServeHTTP(rec, req)
 		return rec
 	}
 	only := func(t *testing.T, what, verb string) {
@@ -598,38 +561,40 @@ func TestObjectRoutesRecordAPutAndABucketCreate(t *testing.T) {
 			t.Fatalf("%s recorded %d audit events, want 1: %+v", what, len(events), events)
 		}
 		ev := events[0]
-		if ev.Verb != verb || ev.Outcome != core.AuditAllowed || ev.Resource != core.WorkspaceObject(cf.ws) || ev.Caller != "user-1" {
+		if ev.Verb != verb || ev.Outcome != core.AuditAllowed || ev.Resource != core.WorkspaceObject(ws) || ev.Caller != "user-1" {
 			t.Fatalf("%s recorded %+v, want an allowed %s row on the workspace by user-1", what, ev, verb)
 		}
 	}
 
-	bucket := "bucket-" + strings.TrimPrefix(ids.New(ids.ObjectBucket), "obk-")[:8]
-	if rec := serve(cfMux, http.MethodPost, cf.url("/buckets"), `{"name":"`+bucket+`"}`); rec.Code != http.StatusOK {
-		t.Fatalf("bucket create = %d %s", rec.Code, rec.Body)
-	}
-	only(t, "a bucket create", objectstorage.AuditVerbCreateBucket)
-
-	if rec := serve(cfMux, http.MethodPut, cf.url("/buckets/"+bucket+"/objects/a.txt"), "hello"); rec.Code != http.StatusOK {
-		t.Fatalf("wrangler put = %d %s", rec.Code, rec.Body)
-	}
-	only(t, "wrangler's object put", objectstorage.AuditVerbPutObject)
-
-	if rec := serve(restMux, http.MethodPut, "/v1/objects/"+cf.ws+"/oregon/b.txt", `{"sizeBytes":5}`); rec.Code != http.StatusOK {
-		t.Fatalf("render put = %d %s", rec.Code, rec.Body)
+	put := serve(http.MethodPut, "/v1/objects/"+ws+"/oregon/b.txt", `{"sizeBytes":5}`)
+	if put.Code != http.StatusOK {
+		t.Fatalf("render put = %d %s", put.Code, put.Body)
 	}
 	only(t, "Render's object put", objectstorage.AuditVerbPutObject)
+	// Render's delete answers 404 for an object that is not there, so upload one
+	// through the minted URL first.
+	var minted struct {
+		URL string `json:"url"`
+	}
+	if err := json.Unmarshal(put.Body.Bytes(), &minted); err != nil {
+		t.Fatal(err)
+	}
+	up, _ := http.NewRequest(http.MethodPut, minted.URL, strings.NewReader("hello"))
+	if resp, err := http.DefaultClient.Do(up); err != nil || resp.StatusCode != http.StatusOK {
+		t.Fatalf("upload to the presigned URL: %v %v", resp, err)
+	}
 
 	// A read that is allowed records nothing (core.readRelations): the log
 	// would hold a row for every download.
-	if rec := serve(cfMux, http.MethodGet, cf.url("/buckets/"+bucket), ""); rec.Code != http.StatusOK {
-		t.Fatalf("bucket info = %d %s", rec.Code, rec.Body)
+	if rec := serve(http.MethodGet, "/v1/objects/"+ws+"/oregon", ""); rec.Code != http.StatusOK {
+		t.Fatalf("render list = %d %s", rec.Code, rec.Body)
 	}
 	if events := sink.take(); len(events) != 0 {
-		t.Fatalf("an allowed bucket read recorded %+v, want nothing", events)
+		t.Fatalf("an allowed list recorded %+v, want nothing", events)
 	}
 
-	if rec := serve(cfMux, http.MethodDelete, cf.url("/buckets/"+bucket+"/objects/a.txt"), ""); rec.Code != http.StatusOK {
-		t.Fatalf("wrangler delete = %d %s", rec.Code, rec.Body)
+	if rec := serve(http.MethodDelete, "/v1/objects/"+ws+"/oregon/b.txt", ""); rec.Code != http.StatusNoContent {
+		t.Fatalf("render delete = %d %s", rec.Code, rec.Body)
 	}
-	only(t, "wrangler's object delete", objectstorage.AuditVerbDeleteObject)
+	only(t, "Render's object delete", objectstorage.AuditVerbDeleteObject)
 }

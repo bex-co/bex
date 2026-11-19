@@ -74,7 +74,7 @@ func TestCreateBucketTakesALocationConstraintAndOneNameIsOneBucketPerWorkspace(t
 		}
 	}
 	// The same name in another workspace is a different bucket, never BucketAlreadyExists.
-	if _, err := p.Svc.CreateBucket(context.Background(), p.otherWorkspace(), "elsewhere", objectstorage.Oregon, ""); err != nil {
+	if _, err := p.Svc.CreateBucket(context.Background(), p.otherWorkspace(), "elsewhere", objectstorage.Oregon); err != nil {
 		t.Fatal(err)
 	}
 	if rec, doc := p.call(k, "PUT", "/elsewhere", ""); rec.Code != 200 {
@@ -97,6 +97,26 @@ func TestCreateBucketTakesALocationConstraintAndOneNameIsOneBucketPerWorkspace(t
 	}
 }
 
+// Until ADR112 D3's removal of Contract B (w21/m500) the S3 surface refused a bucket
+// named cloudflare, because a key under client/v4/ would have reached the
+// Cloudflare-shaped route on the same host instead of this gateway. That route is
+// gone, so the name is an ordinary one and such a key is an ordinary key.
+func TestABucketNamedCloudflareIsAnOrdinaryBucketNowThatTheRouteItProtectedIsGone(t *testing.T) {
+	p := newPGRig(t)
+	k := p.newKey(objectstorage.KeyPermissionReadWrite, 0)
+	if rec, doc := p.call(k, "PUT", "/cloudflare", ""); rec.Code != 200 {
+		t.Fatalf("create cloudflare = %d %q %s", rec.Code, doc.Code, doc.Message)
+	}
+	const key = "/cloudflare/client/v4/accounts/x/r2/buckets"
+	if rec, doc := p.put(k, key, 7); rec.Code != 200 {
+		t.Fatalf("put %s = %d %q %s", key, rec.Code, doc.Code, doc.Message)
+	}
+	rec, _ := p.call(k, "HEAD", key, "")
+	if rec.Code != 200 || rec.Header().Get("Content-Length") != "7" {
+		t.Errorf("HEAD %s = %d length %q, want 200 and 7", key, rec.Code, rec.Header().Get("Content-Length"))
+	}
+}
+
 func TestACreatedBucketIsAuditedOnceItExistsAndAFailedCreateIsNot(t *testing.T) {
 	p := newPGRig(t)
 	k := p.newKey(objectstorage.KeyPermissionReadWrite, 0)
@@ -113,7 +133,7 @@ func TestBucketOperationsAreScopedToTheKeysWorkspace(t *testing.T) {
 	p := newPGRig(t)
 	k := p.newKey(objectstorage.KeyPermissionReadWrite, 0)
 	other := p.otherWorkspace()
-	foreign, err := p.Svc.CreateBucket(context.Background(), other, "theirs", objectstorage.Oregon, "")
+	foreign, err := p.Svc.CreateBucket(context.Background(), other, "theirs", objectstorage.Oregon)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +185,7 @@ func TestDeleteBucketNeedsAnEmptyBucketAndNeverDeletesTheSystemBucket(t *testing
 func TestGetBucketLocationAnswersTheBexRegionName(t *testing.T) {
 	p := newPGRig(t)
 	k := p.newKey(objectstorage.KeyPermissionRead, 0)
-	if _, err := p.Svc.CreateBucket(context.Background(), p.ws, "eu-data", objectstorage.Frankfurt, ""); err != nil {
+	if _, err := p.Svc.CreateBucket(context.Background(), p.ws, "eu-data", objectstorage.Frankfurt); err != nil {
 		t.Fatal(err)
 	}
 	rec, doc := p.call(k, "GET", "/eu-data?location", "")
@@ -298,7 +318,7 @@ func TestALifecycleRuleRoundTripsAndEachLimitIsRefused(t *testing.T) {
 	if rec, _ := p.call(k, "GET", "/logs?lifecycle", ""); !strings.Contains(rec.Body.String(), "<ID>rule-1</ID>") {
 		t.Errorf("the assigned ID is not read back: %s", rec.Body)
 	}
-	// A rule Contract B wrote in seconds reads as the whole days that cover it.
+	// A rule stored in seconds reads as the whole days that cover it.
 	age := int64(3600)
 	stored := []objectstorage.LifecycleRule{{ID: "hour", Enabled: true, DeleteObjectsTransition: &objectstorage.LifecycleDelete{Condition: objectstorage.LifecycleDeleteCondition{Type: objectstorage.LifecycleAge, MaxAge: &age}}}}
 	if err := p.Svc.SetLifecycle(context.Background(), p.ws, b, stored); err != nil {
@@ -315,7 +335,7 @@ func TestALifecycleRuleRoundTripsAndEachLimitIsRefused(t *testing.T) {
 func TestThePreflightIsRoutedByTheKeyIdOfAPresignedURLAndEveryRefusalLooksTheSame(t *testing.T) {
 	p := newPGRig(t)
 	k := p.newKey(objectstorage.KeyPermissionRead, 0)
-	if _, err := p.Svc.CreateBucket(context.Background(), p.ws, "site", objectstorage.Oregon, ""); err != nil {
+	if _, err := p.Svc.CreateBucket(context.Background(), p.ws, "site", objectstorage.Oregon); err != nil {
 		t.Fatal(err)
 	}
 	b, _ := p.Svc.GetBucket(context.Background(), p.ws, "site")

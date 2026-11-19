@@ -86,7 +86,7 @@ func (b *Base) recordView(ctx context.Context, verb, workspaceID, target, target
 	b.RecordAllowedWrite(ctx, verb, "", workspaceID, target, targetName)
 }
 
-// RecordObjectViewed records one download of an object: Contract B's streamed
+// RecordObjectViewed records one download of an object: the S3 gateway's streamed
 // get once the object opened and before its first byte, Contract A's mint of a
 // presigned GET once it was minted. One row per request, never one per chunk or
 // per range; a HEAD, a list and a get that found no object record none. target is

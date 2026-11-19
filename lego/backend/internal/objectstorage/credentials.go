@@ -25,8 +25,8 @@ type Credentials struct {
 }
 
 // Enabled reports whether both halves are set. Without them object storage is
-// not offered: the Render routes answer their named 404 and the Cloudflare-shaped
-// routes answer 10042, so the code can ship before any bucket exists.
+// not offered: the Render routes answer their named 404 and the S3 gateway
+// answers 503, so the code can ship before any bucket exists.
 func (c Credentials) Enabled() bool { return c.AccessKey != "" && c.SecretKey != "" }
 
 // Configured reports whether either half is set.

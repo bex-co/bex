@@ -181,7 +181,6 @@ type Server struct {
 	Jobs            *jobs.Service
 	RenderObjects   *renderObjects
 	ObjectAdmin     *objectStorageAdmin // ADR112 D3, D4: access keys, a bucket's facts and publishing
-	CloudflareR2    *cloudflareR2       // ADR112 D3: wrangler's routes, mounted on the root mux, not under /v1
 	CLITelemetry    *clitelemetry.Service
 	// StripeWebhook is the signature-verifying public billing callback. It is
 	// nil unless BEX_STRIPE_WEBHOOK_SECRET is configured.
@@ -1344,7 +1343,6 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Jobs:             &jobs.Service{Base: base, Store: d.JobStore, EventFacts: d.EventFacts},
 		RenderObjects:    &renderObjects{base: base, svc: d.ObjectStorage},
 		ObjectAdmin:      newObjectStorageAdmin(base, d.ObjectStorage, d.ObjectAccessKeys, d.BaseDomain),
-		CloudflareR2:     newCloudflareR2(base, d.ObjectStorage, d.BaseDomain),
 		CLITelemetry:     telSvc,
 		Onboard:          d.Onboard,
 		OAuthRevocations: d.OAuthRevocations,
@@ -1711,13 +1709,6 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 	// fact would only ever see the outer `/v1/` mount, not the specific route
 	// the telemetry needs (w3/m84).
 	mux.Handle(restMountPattern, auth(rl(withValidQueryText(restBodyLimit(s.MaxBodyBytes)(s.withScopeClassREST(restMux, s.withCLIWorkspace(recordRoutePattern(restMux, s.withRequestBudget(rest)))))))))
-	// The Cloudflare-shaped object storage surface (ADR112 D3) sits behind the
-	// same gate, limiter and scope-class check. Object bytes stream through it,
-	// so it has neither the buffered body cap nor the request budget: each
-	// route bounds its own body and extends its own deadlines.
-	if s.CloudflareR2 != nil {
-		mux.Handle(cloudflareMountPattern, s.cloudflareHandler(auth, rl))
-	}
 	// GraphQL is body-bearing JSON and supports POST only. A method-qualified
 	// pattern makes ServeMux return 405 before auth/body decoding for GET (whose
 	// generic body limiter intentionally skips bodies). Both carry the
@@ -1764,21 +1755,6 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 	}
 
 	return serverMuxes{root: mux, rest: restMux}, nil
-}
-
-// cloudflareRoutes is the mux of the Cloudflare-shaped surface.
-func (s *Server) cloudflareRoutes() *http.ServeMux {
-	mux := http.NewServeMux()
-	s.CloudflareR2.register(mux)
-	return mux
-}
-
-// cloudflareHandler serves the surface behind auth and the identity-keyed rate
-// limiter, with the scope-class gate on each route's pattern and every failure
-// answered in Cloudflare's envelope.
-func (s *Server) cloudflareHandler(auth, rl func(http.Handler) http.Handler) http.Handler {
-	mux := s.cloudflareRoutes()
-	return cloudflareGate(auth(rl(s.withScopeClassREST(mux, cloudflareReached(cloudflareMux(mux))))))
 }
 
 // rateLimitMiddleware returns the rate-limiting middleware when a RateLimiter

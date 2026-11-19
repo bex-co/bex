@@ -95,10 +95,10 @@ func BucketIDOfHost(host, baseDomain string) (bucketID string, ok bool) {
 }
 
 // APILabel is the host label of the direct (not Cloudflare-proxied) host of the
-// Cloudflare-shaped object storage API, "objects" (objects.<base domain>). The
-// proxy in front of api.<base domain> refuses a body over 100 MiB, so the
-// wrangler routes that take up to 300 MiB are also routed here
-// (lego/operator/config/api/ingressroute-objects.yaml, ADR112 D3).
+// S3 API, "objects" (objects.<base domain>). The proxy in front of
+// api.<base domain> refuses a body over 100 MiB, so the S3 surface, which takes
+// objects of up to 5 GiB, is routed here (lego/operator/config/s3gw/ingressroute.yaml,
+// ADR112 D3).
 const APILabel = "objects"
 
 // Reserved reports whether a service slug is a label the platform serves objects

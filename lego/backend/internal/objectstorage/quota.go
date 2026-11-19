@@ -57,7 +57,7 @@ func CheckObjectSize(size, max int64) error {
 // refuses a write that would pass a cap. It does not reserve anything: the
 // sweep's reading is up to an hour old, so the overshoot is bounded by the
 // mint rate limit on Contract A and by the concurrent streams times the
-// per-object cap on Contract B. A put over an existing key counts as a new
+// per-object cap on the S3 surface. A put over an existing key counts as a new
 // object, which errs on the safe side.
 func (s *Service) Gate(ctx context.Context, workspaceID string, region Region, addBytes int64) error {
 	if !s.Enabled() {

@@ -32,9 +32,9 @@ import (
 )
 
 // TestObjectRoutesWriteAuditRowsTheAuditLogReadsPG is w21/087 on real Postgres:
-// a bucket create, a wrangler put and Render's put each leave a row in
-// audit_events, and the workspace's audit log (GET /v1/owners/{ownerId}/audit-logs)
-// reads them under objectstorage verbs, never under a closure's name.
+// a Render put, get and delete each leave a row in audit_events, and the
+// workspace's audit log (GET /v1/owners/{ownerId}/audit-logs) reads them under
+// objectstorage verbs, never under a closure's name.
 func TestObjectRoutesWriteAuditRowsTheAuditLogReadsPG(t *testing.T) {
 	ctx, pool, st := ownerGuardPG(t)
 	owner, err := st.CreateWorkspace(ctx, "objaudit-"+ids.New(ids.Workspace), store.PlanHobby, "client-1")
@@ -51,24 +51,31 @@ func TestObjectRoutesWriteAuditRowsTheAuditLogReadsPG(t *testing.T) {
 	base.Authz = &fakeChecker{allow: true}
 	base.Audit = st
 	handler, srv := serverWith(t, base, Deps{
-		WorkspaceStore: st, Store: st, ObjectStorage: objectstorage.NewService(st, stores), BaseDomain: cfTestBaseDomain,
+		WorkspaceStore: st, Store: st, ObjectStorage: objectstorage.NewService(st, stores), BaseDomain: objectsTestBaseDomain,
 		Audit: &audit.Service{Base: base, Store: st},
 	})
-	wrangler := srv.cloudflareHandler(cfTestAuth, passThrough)
-	account := cloudflareMount + "/accounts/" + owner.ID + "/r2"
 
-	bucket := "audit-" + strings.ToLower(uniqueRunSuffix())
-	wantOK(t, serveCF(t, wrangler, http.MethodPost, account+"/buckets", []byte(`{"name":"`+bucket+`"}`)))
-	wantOK(t, serveCF(t, wrangler, http.MethodPut, account+"/buckets/"+bucket+"/objects/a.txt", []byte("hello")))
-	// A get streams the object and records one row (w21/094); a HEAD records none.
-	if got := serveCF(t, wrangler, http.MethodGet, account+"/buckets/"+bucket+"/objects/a.txt", nil); got.Code != http.StatusOK || string(got.Raw) != "hello" {
-		t.Fatalf("wrangler get = %d %q", got.Code, got.Raw)
+	// Mint a put, upload through the presigned URL, then mint a get (which records
+	// one row, w21/094) and delete.
+	put := do(t, handler, http.MethodPut, "/v1/objects/"+owner.ID+"/oregon/b.txt", testToken, `{"sizeBytes":5}`)
+	if put.Code != http.StatusOK {
+		t.Fatalf("Render put = %d %s", put.Code, put.Body)
 	}
-	if got := serveCF(t, wrangler, http.MethodHead, account+"/buckets/"+bucket+"/objects/a.txt", nil); got.Code != http.StatusOK {
-		t.Fatalf("wrangler head = %d", got.Code)
+	var minted struct {
+		URL string `json:"url"`
 	}
-	if rec := do(t, handler, http.MethodPut, "/v1/objects/"+owner.ID+"/oregon/b.txt", testToken, `{"sizeBytes":5}`); rec.Code != http.StatusOK {
-		t.Fatalf("Render put = %d %s", rec.Code, rec.Body)
+	if err := json.Unmarshal(put.Body.Bytes(), &minted); err != nil {
+		t.Fatal(err)
+	}
+	up, _ := http.NewRequest(http.MethodPut, minted.URL, strings.NewReader("hello"))
+	if resp, err := http.DefaultClient.Do(up); err != nil || resp.StatusCode != http.StatusOK {
+		t.Fatalf("upload to the presigned URL: %v %v", resp, err)
+	}
+	if rec := do(t, handler, http.MethodGet, "/v1/objects/"+owner.ID+"/oregon/b.txt", testToken, ""); rec.Code != http.StatusOK {
+		t.Fatalf("Render get = %d %s", rec.Code, rec.Body)
+	}
+	if rec := do(t, handler, http.MethodDelete, "/v1/objects/"+owner.ID+"/oregon/b.txt", testToken, ""); rec.Code != http.StatusNoContent {
+		t.Fatalf("Render delete = %d %s", rec.Code, rec.Body)
 	}
 
 	// Read through the unvalidated handler: the pinned response schema's event
@@ -101,18 +108,19 @@ func TestObjectRoutesWriteAuditRowsTheAuditLogReadsPG(t *testing.T) {
 		got[r.AuditLog.Event]++
 		named[r.AuditLog.Event] = append(named[r.AuditLog.Event], r.AuditLog.Metadata)
 	}
-	want := map[string]int{objectstorage.AuditVerbCreateBucket: 1, objectstorage.AuditVerbPutObject: 2, objectstorage.AuditVerbGetObject: 1}
+	want := map[string]int{objectstorage.AuditVerbPutObject: 1, objectstorage.AuditVerbGetObject: 1, objectstorage.AuditVerbDeleteObject: 1}
 	for verb, n := range want {
 		if got[verb] != n {
 			t.Errorf("audit log holds %d %s rows, want %d: %v", got[verb], verb, n, got)
 		}
 	}
-	// Each row names its bucket, and an object row its key, in REST's metadata
-	// (w21/094): the target survives the store and reads back as two keys.
+	// Each row names its bucket and its key in REST's metadata (w21/094): the
+	// target survives the store and reads back as two keys.
+	object := map[string]string{"bucket": "render-oregon", "key": "b.txt"}
 	wantMetadata := map[string][]map[string]string{
-		objectstorage.AuditVerbCreateBucket: {{"bucket": bucket}},
-		objectstorage.AuditVerbGetObject:    {{"bucket": bucket, "key": "a.txt"}},
-		objectstorage.AuditVerbPutObject:    {{"bucket": bucket, "key": "a.txt"}, {"bucket": "render-oregon", "key": "b.txt"}},
+		objectstorage.AuditVerbGetObject:    {object},
+		objectstorage.AuditVerbPutObject:    {object},
+		objectstorage.AuditVerbDeleteObject: {object},
 	}
 	for verb, wantRows := range wantMetadata {
 		for _, wantRow := range wantRows {

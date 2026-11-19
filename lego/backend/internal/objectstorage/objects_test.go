@@ -135,7 +135,7 @@ func TestRenderObjectsAreScopedToTheWorkspaceAndTheSystemBucket(t *testing.T) {
 	}
 
 	// An object in a user bucket of the same workspace is not in the Render namespace.
-	photos, err := e.Svc.CreateBucket(ctx, e.WS, "photos", objectstorage.Oregon, "")
+	photos, err := e.Svc.CreateBucket(ctx, e.WS, "photos", objectstorage.Oregon)
 	if err != nil {
 		t.Fatal(err)
 	}

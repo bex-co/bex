@@ -1,5 +1,5 @@
 # objects.<base domain>: the S3-compatible API (docs/ADR112-object-storage.md D3,
-# w21/m498). Every path of the host that is not Contract B's goes to bex-s3.
+# w21/m498). Every path of the host goes to bex-s3.
 #
 # The host is the DNS-only one, not api.<base domain>: api.bex.co is behind
 # Cloudflare's proxy, which refuses a request body over 100 MiB with its own HTML
@@ -9,12 +9,11 @@
 # virtual-hosted request to <bucket>.objects.onbex.co has no certificate or route
 # (ADR112 D10).
 #
-# Precedence: Contract B's route (config/api/ingressroute-objects.yaml) matches
-# `PathPrefix(/cloudflare/client/v4/)` at priority 10000 and goes to bex-api until
-# it is removed with the production walk's removal task (w21/m500); this route is
-# below it and above every App route. While both exist, a key under client/v4/ of a
-# bucket named cloudflare would reach the old route, so the S3 surface refuses that
-# bucket name (objectstorage.ValidateBucketName).
+# Precedence: an explicit priority above every App route, so a service named
+# "objects" cannot shadow the host (the label is also reserved as a service slug,
+# publichost.Reserved), as for the pub- routes of config/objectgw. The
+# Cloudflare-shaped route that once shared the host and went to bex-api was
+# removed in w21/m500, so no path of the host reaches bex-api.
 #
 # No plain-HTTP route: an access key's id travels in every request, so http://
 # meets the platform-host fallback. Nothing in front of bex-s3 may read the body, so
@@ -22,7 +21,7 @@
 # a doubled slash or a dot segment is refused by the surface (ADR112 D7).
 #
 # The suffix is "." + BEX_BASE_DOMAIN; scripts/gitops-validate.sh checks it names the
-# prod suffix and that both routes of the host are pinned.
+# prod suffix, pins this route exactly and that the old bex-api-objects route is gone.
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:

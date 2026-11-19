@@ -16,7 +16,7 @@ limitations under the License.
 
 // Package objectstorage is bex's object store (ADR112): workspace buckets that
 // are rows in Postgres over one shared Wasabi bucket per region, served to the
-// Render CLI and to stock wrangler.
+// Render CLI (Contract A, /v1/objects) and to S3 clients (internal/s3gw).
 //
 // Everything that decides what a region, a name, a key or a cap is lives here
 // as a constant. An environment variable carries a credential and nothing else
@@ -37,13 +37,13 @@ const (
 	Frankfurt Region = "frankfurt"
 )
 
-// DefaultRegion is where a bucket created without a location hint goes.
+// DefaultRegion is where a bucket created without a LocationConstraint goes.
 const DefaultRegion = Oregon
 
 // Regions lists every region bex offers, in the order the docs name them.
 var Regions = []Region{Oregon, Frankfurt}
 
-// ErrRegionNotOffered is the error behind every region or location hint bex
+// ErrRegionNotOffered is the error behind every region or location constraint bex
 // does not serve; callers answer it with HTTP 400 (ADR112 D1).
 var ErrRegionNotOffered = errors.New("region is not offered")
 
@@ -91,42 +91,6 @@ func ParseRegion(value string) (Region, error) {
 		}
 	}
 	return "", &RegionNotOfferedError{Value: value}
-}
-
-// DefaultLocationHint is the Cloudflare location hint that names r, which a
-// bucket created without a hint reports: the inverse of what RegionFromHint
-// accepts.
-func (r Region) DefaultLocationHint() string {
-	if r == Frankfurt {
-		return "weur"
-	}
-	return "wnam"
-}
-
-// RegionFromHint reads the placement a Cloudflare bucket create asks for: a
-// location hint (`wnam`, `weur`, ...) and a jurisdiction (the cf-r2-jurisdiction
-// header, `eu`, `fedramp`, `default`). No hint and the hint `wnam` give oregon;
-// `weur` and the jurisdiction `eu` give frankfurt; every other value is not
-// offered. Cloudflare calls a hint best effort; bex's region is exact.
-func RegionFromHint(hint, jurisdiction string) (Region, error) {
-	hint = strings.ToLower(strings.TrimSpace(hint))
-	jurisdiction = strings.ToLower(strings.TrimSpace(jurisdiction))
-	switch jurisdiction {
-	case "", "default":
-		switch hint {
-		case "", "wnam":
-			return Oregon, nil
-		case "weur":
-			return Frankfurt, nil
-		}
-		return "", &RegionNotOfferedError{Value: hint}
-	case "eu":
-		if hint == "" || hint == "weur" {
-			return Frankfurt, nil
-		}
-		return "", &RegionNotOfferedError{Value: hint}
-	}
-	return "", &RegionNotOfferedError{Value: jurisdiction}
 }
 
 // RegionFromLocationConstraint is the region an S3 CreateBucket's LocationConstraint

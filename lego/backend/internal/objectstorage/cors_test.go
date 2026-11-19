@@ -29,7 +29,7 @@ func rule(origins []string, methods []string) objectstorage.CORSRule {
 	return objectstorage.CORSRule{Allowed: objectstorage.CORSAllowed{Origins: origins, Methods: methods}}
 }
 
-func TestValidateCORSAcceptsWranglersShape(t *testing.T) {
+func TestValidateCORSAcceptsTheStoredShape(t *testing.T) {
 	age := int64(3600)
 	rules := []objectstorage.CORSRule{
 		{ID: "web", Allowed: objectstorage.CORSAllowed{Origins: []string{"https://example.com", "http://localhost:3000"}, Methods: []string{"GET", "HEAD"}, Headers: []string{"*"}},
@@ -40,7 +40,7 @@ func TestValidateCORSAcceptsWranglersShape(t *testing.T) {
 	if err := objectstorage.ValidateCORS(rules); err != nil {
 		t.Fatal(err)
 	}
-	// What wrangler sends parses to the same rules and back.
+	// What is stored parses to the same rules and back.
 	raw, _ := json.Marshal(rules)
 	parsed, err := objectstorage.ParseCORS(raw)
 	if err != nil {

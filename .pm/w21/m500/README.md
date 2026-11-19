@@ -1,18 +1,18 @@
 # w21 · m500 — S3 walked on production, then Contract B removed
 
-**Worker:** worker21 **Goal:** the S3 surface is proven on production with the stock clients, and the Cloudflare-shaped routes, the wrangler fixtures, the weekly wrangler job and their docs are gone. **Status:** todo
+**Worker:** worker21 **Goal:** the S3 surface is proven on production with the stock clients, and the Cloudflare-shaped routes, the wrangler fixtures, the weekly wrangler job and their docs are gone. **Status:** in progress
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | [t001](done/t001.md) | The production walk of the S3 surface | 90m | w21/m498/t019, w21/m499/t009 — **DONE** |
-| [t002](t002.md) | The removal gate and the removal of Contract B's routes and code | 60m | t001 |
-| [t003](t003.md) | Remove the wrangler CI, scripts and docs, and finish the dead-code pass | 40m | t002 |
-| [t004](t004.md) | ADR112: record the walk and the removal | 30m | t003 |
-| [t005](t005.md) | Render parity | 30m | t004 |
-| [t006](t006.md) | Simplify | 20m | t005 |
-| [t007](t007.md) | Test coverage | 45m | t005, t006 |
+| [t002](done/t002.md) | The removal gate and the removal of Contract B's routes and code | 60m | t001 — **DONE** |
+| [t003](done/t003.md) | Remove the wrangler CI, scripts and docs, and finish the dead-code pass | 40m | t002 — **DONE** |
+| [t004](done/t004.md) | ADR112: record the walk and the removal | 30m | t003 — **DONE** |
+| [t005](done/t005.md) | Render parity | 30m | t004 — **DONE** |
+| [t006](done/t006.md) | Simplify | 20m | t005 — **DONE** |
+| [t007](done/t007.md) | Test coverage | 45m | t005, t006 — **DONE** |
 | [t008](t008.md) | Closeout | 10m | t007 |
 
 ## Definition of done

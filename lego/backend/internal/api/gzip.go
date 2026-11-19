@@ -42,8 +42,7 @@ var gzipWriterPool = sync.Pool{
 // byte-for-byte with per-event flushing intact.
 func withGzip(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// An object's bytes reach the client as stored, with their length.
-		if !clientAcceptsGzip(r) || isCloudflareObjectPath(r.URL.Path) {
+		if !clientAcceptsGzip(r) {
 			next.ServeHTTP(w, r)
 			return
 		}

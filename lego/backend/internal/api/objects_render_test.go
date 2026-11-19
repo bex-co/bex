@@ -188,6 +188,32 @@ func (r *memObjectRepo) update(ws, id string, set func(*store.ObjectBucket)) err
 	return store.ErrNotFound
 }
 
+// objectsTestBaseDomain is the hosting domain the audit tests give public buckets.
+const objectsTestBaseDomain = "onbex.test"
+
+// fakeObjectStores is every region's Wasabi store over one fake S3.
+func fakeObjectStores(t *testing.T) (*fakes3.Server, map[objectstorage.Region]objectstorage.Store) {
+	t.Helper()
+	fake := fakes3.New(objectstorage.Oregon.Bucket(), objectstorage.Frankfurt.Bucket())
+	t.Cleanup(fake.Close)
+	stores := map[objectstorage.Region]objectstorage.Store{}
+	for _, r := range objectstorage.Regions {
+		stores[r] = objectstorage.NewStore(objectstorage.Config{
+			Endpoint: fake.URL, Region: r.WasabiRegion(), Bucket: r.Bucket(), AccessKey: "a", SecretKey: "s", MaxAttempts: 1,
+		})
+	}
+	return fake, stores
+}
+
+// newObjectService is the object service over every region's fake S3 and an
+// in-memory bucket registry, with a workspace id, for the tests that mount it on
+// a full Server.
+func newObjectService(t *testing.T) (*objectstorage.Service, string) {
+	t.Helper()
+	_, stores := fakeObjectStores(t)
+	return objectstorage.NewService(&memObjectRepo{}, stores), ids.New(ids.Workspace)
+}
+
 type objectsHarness struct {
 	mux  http.Handler
 	fake *fakes3.Server

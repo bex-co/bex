@@ -89,8 +89,6 @@ cli-release-staleness.yml 216
 deploy-canary.yml 216
 isolation-matrix.yml 216
 render-schema-drift.yml 216
-# w21/m416. Weekly; no history yet, so the weekly workflows' window.
-wrangler-r2-contract.yml 216
 # w21/m499. Weekly; no history yet, so the weekly workflows' window.
 s3-contract.yml 216
 # This checker. It cannot observe its own absence, and its first run would see

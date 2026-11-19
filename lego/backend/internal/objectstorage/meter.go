@@ -24,7 +24,7 @@ import (
 )
 
 // RecordIngress adds bytes a workspace sent into object storage to its
-// object_storage_ingress_bytes shadow meter (ADR112 D8); PutStream calls it with
+// object_storage_ingress_bytes shadow meter (ADR112 D8); PutObject calls it with
 // the exact length of a completed put. It sums in memory and never fails or
 // blocks the request; it does nothing until SetUsageSink turns the meters on.
 func (s *Service) RecordIngress(ctx context.Context, workspaceID string, bytes int64) {
@@ -32,7 +32,7 @@ func (s *Service) RecordIngress(ctx context.Context, workspaceID string, bytes i
 }
 
 // RecordEgress adds bytes a workspace read out of object storage to its
-// object_storage_egress_bytes shadow meter (ADR112 D8): OpenObject calls it
+// object_storage_egress_bytes shadow meter (ADR112 D8): OpenObjectWith calls it
 // with the bytes a get streamed, and MintGet with the size of the object a GET
 // URL was minted for (an estimate). Like RecordIngress it never fails the
 // request.

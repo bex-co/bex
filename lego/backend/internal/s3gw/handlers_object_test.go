@@ -37,7 +37,7 @@ import (
 // prefix its objects live under.
 func (p *pgRig) bucket(name string, region objectstorage.Region) string {
 	p.t.Helper()
-	b, err := p.Svc.CreateBucket(context.Background(), p.ws, name, region, "")
+	b, err := p.Svc.CreateBucket(context.Background(), p.ws, name, region)
 	if err != nil {
 		p.t.Fatal(err)
 	}

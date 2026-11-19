@@ -168,20 +168,3 @@ func TestKeysAreValidatedAfterAuthorizationAndTheD7RulesHold(t *testing.T) {
 		t.Errorf("a read key's put of a bad key = %d %q, want AccessDenied before the key is looked at", rec.Code, doc.Code)
 	}
 }
-
-func TestTheBucketNameContractBReservesIsRefusedUntilContractBGoes(t *testing.T) {
-	g := newRig(t)
-	k := g.newKey(objectstorage.KeyPermissionReadWrite, 0)
-	ran := false
-	spyOn(t, "ListObjects", func(*request) *Error { ran = true; return nil })
-	spyOn(t, "GetObject", func(*request) *Error { ran = true; return nil })
-	for _, target := range []string{"/cloudflare", "/cloudflare/client/v4/accounts/x/r2/buckets", "/cloudflare/key"} {
-		rec, doc := g.do(g.signed(k, "GET", target, nil))
-		if rec.Code != 400 || doc.Code != "InvalidBucketName" || ran {
-			t.Errorf("GET %s = %d %q (ran %v), want 400 InvalidBucketName", target, rec.Code, doc.Code, ran)
-		}
-	}
-	if err := objectstorage.ValidateBucketName("cloudflare"); err == nil {
-		t.Error("a bucket named cloudflare can be created")
-	}
-}

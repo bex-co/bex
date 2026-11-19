@@ -18,12 +18,11 @@ package objectstorage
 
 import "github.com/bex-co/bex/lego/backend/internal/core"
 
-// The audit verbs of the object store. Render's /v1/objects routes and
-// wrangler's Cloudflare-shaped routes authorize in their HTTP adapters
-// (internal/api), where the stack frame core.Base derives a verb from is a
-// route closure, so each route names its verb here and passes it to
-// core.Base.AuthorizeWorkspaceTargetAs. Both contracts share a verb for the same
-// action: a put through either is objectstorage.PutObject.
+// The audit verbs of the object store. Render's /v1/objects routes and the S3
+// gateway (internal/s3gw) authorize in their HTTP adapters, where the stack frame
+// core.Base derives a verb from is a route closure, so each route names its verb
+// here and passes it to core.Base.AuthorizeWorkspaceTargetAs. Both share a verb
+// for the same action: a put through either is objectstorage.PutObject.
 //
 // Render's audit-log enum has no object or bucket event, so none maps onto one:
 // the audit log reports these as bex's own "<feature>.<Action>" value
@@ -43,12 +42,10 @@ const (
 	AuditVerbDeleteObject = "objectstorage.DeleteObject"
 
 	// Buckets.
-	AuditVerbListBuckets    = "objectstorage.ListBuckets"
-	AuditVerbCreateBucket   = "objectstorage.CreateBucket"
-	AuditVerbGetBucket      = "objectstorage.GetBucket"
-	AuditVerbUpdateBucket   = "objectstorage.UpdateBucket"
-	AuditVerbDeleteBucket   = "objectstorage.DeleteBucket"
-	AuditVerbGetBucketUsage = "objectstorage.GetBucketUsage"
+	AuditVerbListBuckets  = "objectstorage.ListBuckets"
+	AuditVerbCreateBucket = "objectstorage.CreateBucket"
+	AuditVerbGetBucket    = "objectstorage.GetBucket"
+	AuditVerbDeleteBucket = "objectstorage.DeleteBucket"
 
 	// A bucket's configuration.
 	AuditVerbGetBucketCORS      = "objectstorage.GetBucketCORS"
@@ -58,8 +55,6 @@ const (
 	AuditVerbSetBucketLifecycle = "objectstorage.SetBucketLifecycle"
 	AuditVerbGetBucketPublic    = "objectstorage.GetBucketPublic"
 	AuditVerbSetBucketPublic    = "objectstorage.SetBucketPublic"
-	AuditVerbListCustomDomains  = "objectstorage.ListCustomDomains"
-	AuditVerbNotOffered         = "objectstorage.NotOffered"
 
 	// The S3 operations Render's routes have no counterpart for (ADR112 D6).
 	// DeleteObjects records one row naming the bucket, the count and the first

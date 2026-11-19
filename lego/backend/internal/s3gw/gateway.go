@@ -234,9 +234,6 @@ func (g *Gateway) dispatch(rq *request) *Error {
 		// One row for the batch, once it ran, with its count and first key.
 		rq.ctx = core.WithDeferredAllowedWriteAudit(rq.ctx)
 	}
-	if rq.bucket == objectstorage.ContractBBucketName {
-		return newError(http.StatusBadRequest, "InvalidBucketName", "The specified bucket name is reserved.")
-	}
 	if e := rq.authorize(rt.relation, verb, rq.target()); e != nil {
 		return e
 	}

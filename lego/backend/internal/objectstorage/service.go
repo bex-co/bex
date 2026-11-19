@@ -61,7 +61,7 @@ type Repository interface {
 }
 
 // Service is the object store's core (ADR006: one core, thin adapters). The
-// Render and Cloudflare routes call it; it holds no HTTP.
+// Render routes and the S3 gateway call it; it holds no HTTP.
 type Service struct {
 	repo    Repository
 	stores  map[Region]Store
@@ -113,9 +113,8 @@ func (s *Service) Store(r Region) (Store, error) {
 	return st, nil
 }
 
-// CreateBucket creates a user bucket in region. hint is the Cloudflare location
-// hint it was asked for, kept so `bucket info` can report it.
-func (s *Service) CreateBucket(ctx context.Context, workspaceID, name string, region Region, hint string) (store.ObjectBucket, error) {
+// CreateBucket creates a user bucket in region.
+func (s *Service) CreateBucket(ctx context.Context, workspaceID, name string, region Region) (store.ObjectBucket, error) {
 	if !s.Enabled() {
 		return store.ObjectBucket{}, ErrNotConfigured
 	}
@@ -126,7 +125,7 @@ func (s *Service) CreateBucket(ctx context.Context, workspaceID, name string, re
 		return store.ObjectBucket{}, err
 	}
 	b, err := s.repo.CreateObjectBucket(ctx, store.ObjectBucket{
-		WorkspaceID: workspaceID, Name: name, Region: string(region), LocationHint: hint,
+		WorkspaceID: workspaceID, Name: name, Region: string(region),
 	}, MaxUserBuckets)
 	switch {
 	case errors.Is(err, store.ErrObjectBucketExists):

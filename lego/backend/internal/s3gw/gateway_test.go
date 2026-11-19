@@ -56,8 +56,7 @@ func doReq(t *testing.T, h http.Handler, method, target string) (*httptest.Respo
 // probes, metrics). On the S3 host every one of them is a bucket or a key.
 var nonS3Paths = []string{
 	"/graphql", "/mcp", "/mcp/cloud-agents", "/v1/services", "/v1/objects/tea-x/oregon", "/healthz", "/readyz", "/metrics",
-	"/.well-known/oauth-authorization-server", "/oauth/token", "/cloudflare/client/v4/accounts/x/r2/buckets",
-	"/internal/object-gateway/egress", "/",
+	"/.well-known/oauth-authorization-server", "/oauth/token", "/internal/object-gateway/egress", "/",
 }
 
 func TestADegradedGatewayAnswersS3sServiceUnavailableToEveryPath(t *testing.T) {

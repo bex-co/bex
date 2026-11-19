@@ -136,17 +136,17 @@ func (e *streamEnv) puts() int {
 	return n
 }
 
-func TestPutStreamStoresTheBytesAndHeadersWithTheRealLength(t *testing.T) {
+func TestPutObjectStoresTheBytesAndHeadersWithTheRealLength(t *testing.T) {
 	e := newStreamEnv(t)
 	ctx := context.Background()
 	for _, size := range []int{0, 1, 5 << 20} {
 		body := bytes.Repeat([]byte{'q'}, size)
-		etag, err := e.Svc.PutStream(ctx, e.WS, e.B, "dir/o", int64(size), bytes.NewReader(body), objectstorage.ObjectHeaders{
+		etag, err := e.Svc.PutObject(ctx, e.WS, e.B, "dir/o", int64(size), bytes.NewReader(body), objectstorage.ObjectHeaders{
 			ContentType: "text/plain", CacheControl: "no-cache", ContentDisposition: "attachment; filename=o", ContentEncoding: "gzip",
 			ContentLanguage: "en", Expires: "Wed, 21 Oct 2037 07:28:00 GMT",
 		})
 		if err != nil || etag == "" {
-			t.Fatalf("PutStream %d bytes = %q, %v", size, etag, err)
+			t.Fatalf("PutObject %d bytes = %q, %v", size, etag, err)
 		}
 		got, ok := e.Fake.Get(objectstorage.Oregon.Bucket(), e.wasabiKey("dir/o"))
 		if !ok || !bytes.Equal(got, body) {
@@ -165,7 +165,7 @@ func TestPutStreamStoresTheBytesAndHeadersWithTheRealLength(t *testing.T) {
 	}
 
 	// A reader gets the headers back as stored, and gzip bytes untouched.
-	obj, err := e.Svc.OpenObject(ctx, e.WS, e.B, "dir/o")
+	obj, _, err := e.Svc.OpenObjectWith(ctx, e.WS, e.B, "dir/o", objectstorage.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,12 +182,12 @@ func TestPutStreamStoresTheBytesAndHeadersWithTheRealLength(t *testing.T) {
 	}
 }
 
-func TestPutStreamRefusesBeforeItReadsAByte(t *testing.T) {
+func TestPutObjectRefusesBeforeItReadsAByte(t *testing.T) {
 	e := newStreamEnv(t)
 	ctx := context.Background()
 	never := readerFunc(func([]byte) (int, error) { t.Error("a refused put read its body"); return 0, io.EOF })
 	put := func(key string, size int64) error {
-		_, err := e.Svc.PutStream(ctx, e.WS, e.B, key, size, never, objectstorage.ObjectHeaders{})
+		_, err := e.Svc.PutObject(ctx, e.WS, e.B, key, size, never, objectstorage.ObjectHeaders{})
 		return err
 	}
 	if err := put("a/../b", 1); !errors.Is(err, objectstorage.ErrInvalidKey) {
@@ -196,8 +196,8 @@ func TestPutStreamRefusesBeforeItReadsAByte(t *testing.T) {
 	if err := put("k", -1); !errors.Is(err, objectstorage.ErrMissingContentLength) {
 		t.Errorf("an unknown length = %v", err)
 	}
-	if err := put("k", objectstorage.MaxObjectBytesStreamed+1); !errors.Is(err, objectstorage.ErrObjectTooLarge) {
-		t.Errorf("300 MiB + 1 = %v", err)
+	if err := put("k", objectstorage.MaxObjectBytesPresigned+1); !errors.Is(err, objectstorage.ErrObjectTooLarge) {
+		t.Errorf("5 GiB + 1 = %v", err)
 	}
 	e.Repo.bytes = objectstorage.MaxWorkspaceBytes
 	var quota *objectstorage.QuotaError
@@ -224,7 +224,7 @@ func TestPutStreamRefusesBeforeItReadsAByte(t *testing.T) {
 		t.Fatalf("%d PUTs reached Wasabi from refused writes", e.puts())
 	}
 	// Disabled and exactly at the cap are the two edges.
-	if _, err := objectstorage.NewService(nil, nil).PutStream(ctx, e.WS, e.B, "k", 1, never, objectstorage.ObjectHeaders{}); !errors.Is(err, objectstorage.ErrNotConfigured) {
+	if _, err := objectstorage.NewService(nil, nil).PutObject(ctx, e.WS, e.B, "k", 1, never, objectstorage.ObjectHeaders{}); !errors.Is(err, objectstorage.ErrNotConfigured) {
 		t.Errorf("a disabled service = %v", err)
 	}
 }
@@ -233,9 +233,9 @@ type readerFunc func([]byte) (int, error)
 
 func (f readerFunc) Read(p []byte) (int, error) { return f(p) }
 
-func TestPutStreamShortBodyStoresNothingAndFreesItsSlot(t *testing.T) {
+func TestPutObjectShortBodyStoresNothingAndFreesItsSlot(t *testing.T) {
 	e := newStreamEnv(t)
-	_, err := e.Svc.PutStream(context.Background(), e.WS, e.B, "short", 10, strings.NewReader("12345"), objectstorage.ObjectHeaders{})
+	_, err := e.Svc.PutObject(context.Background(), e.WS, e.B, "short", 10, strings.NewReader("12345"), objectstorage.ObjectHeaders{})
 	if !errors.Is(err, objectstorage.ErrIncompleteBody) {
 		t.Fatalf("a body of 5 against 10 = %v, want ErrIncompleteBody", err)
 	}
@@ -251,19 +251,19 @@ func TestPutStreamShortBodyStoresNothingAndFreesItsSlot(t *testing.T) {
 	}
 }
 
-// TestPutStreamErrorsNeverCarryTheSignedURL: the URL's query is a signature
+// TestPutObjectErrorsNeverCarryTheSignedURL: the URL's query is a signature
 // good for 15 minutes, and a failure is logged by the adapter.
-func TestPutStreamErrorsNeverCarryTheSignedURL(t *testing.T) {
+func TestPutObjectErrorsNeverCarryTheSignedURL(t *testing.T) {
 	e := newStreamEnv(t)
 	ctx := context.Background()
 	e.Fake.SetDown(true)
-	_, err := e.Svc.PutStream(ctx, e.WS, e.B, "k", 1, strings.NewReader("x"), objectstorage.ObjectHeaders{})
+	_, err := e.Svc.PutObject(ctx, e.WS, e.B, "k", 1, strings.NewReader("x"), objectstorage.ObjectHeaders{})
 	if err == nil || strings.Contains(err.Error(), "X-Amz-Signature") {
 		t.Fatalf("an answered failure = %v", err)
 	}
 	e.Fake.SetDown(false)
 	e.Fake.Close() // nothing listens: net/http's error would quote the whole URL
-	_, err = e.Svc.PutStream(ctx, e.WS, e.B, "k", 1, strings.NewReader("x"), objectstorage.ObjectHeaders{})
+	_, err = e.Svc.PutObject(ctx, e.WS, e.B, "k", 1, strings.NewReader("x"), objectstorage.ObjectHeaders{})
 	if err == nil || strings.Contains(err.Error(), "X-Amz-Signature") || strings.Contains(err.Error(), "X-Amz-Credential") {
 		t.Fatalf("a connection failure = %v, which quotes the presigned URL", err)
 	}
@@ -277,7 +277,7 @@ func TestPutStreamErrorsNeverCarryTheSignedURL(t *testing.T) {
 func TestOpenObjectGivesItsSlotBackOnCloseAndOnAMiss(t *testing.T) {
 	e := newStreamEnv(t)
 	ctx := context.Background()
-	if _, err := e.Svc.PutStream(ctx, e.WS, e.B, "k", 3, strings.NewReader("abc"), objectstorage.ObjectHeaders{}); err != nil {
+	if _, err := e.Svc.PutObject(ctx, e.WS, e.B, "k", 3, strings.NewReader("abc"), objectstorage.ObjectHeaders{}); err != nil {
 		t.Fatal(err)
 	}
 	free := func() int {
@@ -296,7 +296,7 @@ func TestOpenObjectGivesItsSlotBackOnCloseAndOnAMiss(t *testing.T) {
 		}
 		return n
 	}
-	obj, err := e.Svc.OpenObject(ctx, e.WS, e.B, "k")
+	obj, _, err := e.Svc.OpenObjectWith(ctx, e.WS, e.B, "k", objectstorage.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -308,7 +308,7 @@ func TestOpenObjectGivesItsSlotBackOnCloseAndOnAMiss(t *testing.T) {
 	if free() != objectstorage.MaxConcurrentStreamsPerWorkspace {
 		t.Fatalf("a closed object kept its slot")
 	}
-	if _, err := e.Svc.OpenObject(ctx, e.WS, e.B, "ghost"); !errors.Is(err, objectstorage.ErrObjectNotFound) {
+	if _, _, err := e.Svc.OpenObjectWith(ctx, e.WS, e.B, "ghost", objectstorage.GetOptions{}); !errors.Is(err, objectstorage.ErrObjectNotFound) {
 		t.Fatalf("a missing key = %v", err)
 	}
 	if free() != objectstorage.MaxConcurrentStreamsPerWorkspace {
@@ -316,7 +316,7 @@ func TestOpenObjectGivesItsSlotBackOnCloseAndOnAMiss(t *testing.T) {
 	}
 	// Another workspace's bucket of the same id string cannot be reached.
 	other := store.ObjectBucket{ID: e.B.ID, WorkspaceID: ids.New(ids.Workspace), Region: "oregon"}
-	if _, err := e.Svc.OpenObject(ctx, other.WorkspaceID, other, "k"); !errors.Is(err, objectstorage.ErrObjectNotFound) {
+	if _, _, err := e.Svc.OpenObjectWith(ctx, other.WorkspaceID, other, "k", objectstorage.GetOptions{}); !errors.Is(err, objectstorage.ErrObjectNotFound) {
 		t.Fatalf("the same bucket id in another workspace reads %v", err)
 	}
 }
@@ -324,7 +324,7 @@ func TestOpenObjectGivesItsSlotBackOnCloseAndOnAMiss(t *testing.T) {
 func TestRemoveObjectIsIdempotent(t *testing.T) {
 	e := newStreamEnv(t)
 	ctx := context.Background()
-	if _, err := e.Svc.PutStream(ctx, e.WS, e.B, "k", 1, strings.NewReader("x"), objectstorage.ObjectHeaders{}); err != nil {
+	if _, err := e.Svc.PutObject(ctx, e.WS, e.B, "k", 1, strings.NewReader("x"), objectstorage.ObjectHeaders{}); err != nil {
 		t.Fatal(err)
 	}
 	for range 2 {
@@ -457,10 +457,10 @@ func TestClosingAnObjectTwiceMetersItsBytesOnce(t *testing.T) {
 	done := make(chan struct{})
 	go func() { e.Svc.RunMeter(ctx, time.Hour); close(done) }()
 
-	if _, err := e.Svc.PutStream(context.Background(), e.WS, e.B, "k", 6, strings.NewReader("abcdef"), objectstorage.ObjectHeaders{}); err != nil {
+	if _, err := e.Svc.PutObject(context.Background(), e.WS, e.B, "k", 6, strings.NewReader("abcdef"), objectstorage.ObjectHeaders{}); err != nil {
 		t.Fatal(err)
 	}
-	obj, err := e.Svc.OpenObject(context.Background(), e.WS, e.B, "k")
+	obj, _, err := e.Svc.OpenObjectWith(context.Background(), e.WS, e.B, "k", objectstorage.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -516,10 +516,10 @@ func TestAStalledWasabiDoesNotHoldAStreamSlot(t *testing.T) {
 		return n
 	}
 	start := time.Now()
-	if _, err := svc.PutStream(context.Background(), ws, b, "k", 1, strings.NewReader("x"), objectstorage.ObjectHeaders{}); err == nil {
+	if _, err := svc.PutObject(context.Background(), ws, b, "k", 1, strings.NewReader("x"), objectstorage.ObjectHeaders{}); err == nil {
 		t.Fatal("a put to a stalled Wasabi succeeded")
 	}
-	if _, err := svc.OpenObject(context.Background(), ws, b, "k"); err == nil {
+	if _, _, err := svc.OpenObjectWith(context.Background(), ws, b, "k", objectstorage.GetOptions{}); err == nil {
 		t.Fatal("a get from a stalled Wasabi succeeded")
 	}
 	if time.Since(start) > 5*time.Second {
@@ -530,14 +530,14 @@ func TestAStalledWasabiDoesNotHoldAStreamSlot(t *testing.T) {
 	}
 }
 
-// TestPutStreamNeverSucceedsIntoAGoneBucket: a bucket a delete is checking is
+// TestPutObjectNeverSucceedsIntoAGoneBucket: a bucket a delete is checking is
 // refused before a byte is read, and a bucket deleted while the bytes moved
 // loses the object again (w4/678).
-func TestPutStreamNeverSucceedsIntoAGoneBucket(t *testing.T) {
+func TestPutObjectNeverSucceedsIntoAGoneBucket(t *testing.T) {
 	e := newStreamEnv(t)
 	ctx := context.Background()
 	e.Repo.writeErr = store.ErrObjectBucketDeleting
-	if _, err := e.Svc.PutStream(ctx, e.WS, e.B, "a.txt", 1, strings.NewReader("x"), objectstorage.ObjectHeaders{}); !errors.Is(err, objectstorage.ErrBucketDeleting) {
+	if _, err := e.Svc.PutObject(ctx, e.WS, e.B, "a.txt", 1, strings.NewReader("x"), objectstorage.ObjectHeaders{}); !errors.Is(err, objectstorage.ErrBucketDeleting) {
 		t.Fatalf("a put into a bucket being deleted = %v, want ErrBucketDeleting", err)
 	}
 	if n := e.puts(); n != 0 {
@@ -546,7 +546,7 @@ func TestPutStreamNeverSucceedsIntoAGoneBucket(t *testing.T) {
 	e.Repo.writeErr = nil
 
 	e.Repo.confirm = func() { delete(e.Repo.buckets, e.WS+"/photos") }
-	if _, err := e.Svc.PutStream(ctx, e.WS, e.B, "a.txt", 1, strings.NewReader("x"), objectstorage.ObjectHeaders{}); !errors.Is(err, objectstorage.ErrBucketNotFound) {
+	if _, err := e.Svc.PutObject(ctx, e.WS, e.B, "a.txt", 1, strings.NewReader("x"), objectstorage.ObjectHeaders{}); !errors.Is(err, objectstorage.ErrBucketNotFound) {
 		t.Fatalf("a put whose bucket went mid-stream = %v, want ErrBucketNotFound", err)
 	}
 	if _, ok := e.Fake.Get(objectstorage.Oregon.Bucket(), e.wasabiKey("a.txt")); ok {

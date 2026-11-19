@@ -599,8 +599,7 @@ spec:
             # installed by scripts/object-storage-s3-credentials.sh. The
             # credential is the only setting; endpoints, buckets, regions and
             # caps are constants in internal/objectstorage. Optional: absent
-            # means the Render object routes answer their named 404 and the
-            # Cloudflare-shaped routes answer 10042.
+            # means the Render object routes answer their named 404.
             - name: BEX_OBJECT_STORAGE_ACCESS_KEY
               valueFrom:
                 secretKeyRef:

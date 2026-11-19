@@ -24,10 +24,11 @@ import (
 	"strings"
 )
 
-// CORSRule is one rule of a bucket's CORS configuration in Cloudflare's shape,
-// which is what wrangler reads and writes and what the bucket row stores. bex
-// applies the rules itself where it serves a bucket to browsers (a public
-// bucket's host, ADR112 D4); Wasabi's own CORS stays off.
+// CORSRule is one rule of a bucket's CORS configuration in the shape the bucket
+// row stores (Cloudflare's, which the removed Cloudflare-shaped surface read and
+// wrote; the S3 gateway converts to and from it). bex applies the rules itself where it
+// serves a bucket to browsers (a public bucket's host, ADR112 D4); Wasabi's own
+// CORS stays off.
 type CORSRule struct {
 	ID            string      `json:"id,omitempty"`
 	Allowed       CORSAllowed `json:"allowed"`
@@ -45,15 +46,15 @@ type CORSAllowed struct {
 var (
 	// ErrCORSOverCap refuses a rule set over MaxCORSRules or MaxCORSBytes.
 	ErrCORSOverCap = errors.New("the CORS configuration is over bex's limit")
-	// ErrInvalidCORS refuses a rule that breaks Cloudflare's shape.
+	// ErrInvalidCORS refuses a rule that breaks the stored shape.
 	ErrInvalidCORS = errors.New("invalid CORS rule")
 )
 
-// CORSMethods are the methods a rule may allow (Cloudflare's list).
+// CORSMethods are the methods a rule may allow.
 var CORSMethods = []string{"GET", "PUT", "POST", "DELETE", "HEAD"}
 
 // MaxCORSMaxAgeSeconds is the largest preflight cache time a rule may ask for:
-// the maximum Cloudflare's published schema shows (browsers cap it lower).
+// the maximum of the stored shape (browsers cap it lower).
 const MaxCORSMaxAgeSeconds = 86400
 
 const maxCORSTokenBytes = 256
@@ -71,7 +72,7 @@ func ParseCORS(raw json.RawMessage) ([]CORSRule, error) {
 	return rules, nil
 }
 
-// ValidateCORS checks a rule set against bex's limits and Cloudflare's shape:
+// ValidateCORS checks a rule set against bex's limits and the stored shape:
 // at most MaxCORSRules rules in at most MaxCORSBytes, each with an origin and a
 // method, origins that are "*" or a scheme and host, known methods, header
 // names without spaces, and a max age of 0 to 86400 seconds. A breach of a limit is

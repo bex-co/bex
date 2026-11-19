@@ -28,22 +28,15 @@ import (
 const SystemBucketPrefix = "render-"
 
 var (
-	// ErrInvalidBucketName refuses a name that breaks wrangler's own rule.
+	// ErrInvalidBucketName refuses a name that breaks the bucket-name rule.
 	ErrInvalidBucketName = errors.New("invalid bucket name")
 	// ErrReservedBucketName refuses a name in the reserved render- namespace.
 	ErrReservedBucketName = errors.New("bucket names starting with render- are reserved")
 )
 
-// ContractBBucketName is the one bucket name the S3 surface refuses while
-// Contract B's routes are served from the same host: a key under client/v4/ of a
-// bucket with this name would reach the Cloudflare-shaped route (priority 10000,
-// PathPrefix /cloudflare/client/v4/) instead of bex-s3. Remove it, and its check,
-// with Contract B (ADR112 D3).
-const ContractBBucketName = "cloudflare"
-
-// bucketNameRE is wrangler's bucket-name rule (workers-utils
-// config/validation.ts): 3 to 63 characters, lower-case letters, digits and
-// hyphens, starting and ending with a letter or digit.
+// bucketNameRE is the bucket-name rule: 3 to 63 characters, lower-case letters,
+// digits and hyphens, starting and ending with a letter or digit (the DNS-label
+// subset of S3's rule).
 var bucketNameRE = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$`)
 
 // SystemBucketName is the name of a workspace's system bucket in region r.
@@ -58,7 +51,7 @@ func ValidateBucketName(name string) error {
 	if !bucketNameRE.MatchString(name) {
 		return ErrInvalidBucketName
 	}
-	if IsSystemBucketName(name) || name == ContractBBucketName {
+	if IsSystemBucketName(name) {
 		return ErrReservedBucketName
 	}
 	return nil

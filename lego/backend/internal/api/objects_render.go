@@ -145,7 +145,7 @@ func (o *renderObjects) RegisterREST(mux *http.ServeMux) {
 // renderObjectTarget is the audit target of a request: the object its path names
 // in the workspace's system bucket for the region (render-oregon), or that bucket
 // for the list. Render's paths carry no bucket, so the system bucket's name is the
-// one a wrangler caller would see (ADR112 D2). It reads the path alone, so a
+// one an S3 client sees (ADR112 D2). It reads the path alone, so a
 // region or a key that is not valid yet is still bounded and escaped (core.ObjectTarget).
 func renderObjectTarget(r *http.Request) string {
 	return core.ObjectTarget(objectstorage.SystemBucketName(objectstorage.Region(r.PathValue("region"))), r.PathValue("key"))

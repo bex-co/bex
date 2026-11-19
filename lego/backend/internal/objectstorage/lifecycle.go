@@ -27,9 +27,10 @@ import (
 )
 
 // A bucket's lifecycle rules are stored in object_buckets.lifecycle in the shape
-// wrangler and Cloudflare use (ADR112 D3, D5), and the hourly sweep executes the
-// ones that delete objects and abort incomplete multipart uploads.
-// storageClassTransitions are refused at the route (bex has one storage class).
+// Cloudflare's R2 uses (ADR112 D3, D5; the S3 gateway converts to and from it), and
+// the hourly sweep executes the ones that delete objects and abort incomplete
+// multipart uploads. storageClassTransitions are refused at the route (bex has one
+// storage class).
 
 // Lifecycle condition types of deleteObjectsTransition.
 const (

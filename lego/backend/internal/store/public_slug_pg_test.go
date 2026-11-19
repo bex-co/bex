@@ -66,8 +66,8 @@ func TestPGAServiceCannotTakeAPublicBucketsHost(t *testing.T) {
 		t.Errorf("stored slug = %q, %v; want %q", got.Slug, err, shaped.Slug)
 	}
 
-	// objects.<base domain> is the direct host of the Cloudflare-shaped object
-	// storage API (ADR112 D3), so a service called objects gets a suffixed slug too.
+	// objects.<base domain> is the direct host of the S3 API (ADR112 D3), so a
+	// service called objects gets a suffixed slug too.
 	objects := create(publichost.APILabel)
 	if objects.Name != publichost.APILabel || objects.Slug == publichost.APILabel || !strings.HasPrefix(objects.Slug, publichost.APILabel+"-") {
 		t.Errorf("service %q got name %q and slug %q, want its name kept and a suffixed slug: the bare name is the API's host", publichost.APILabel, objects.Name, objects.Slug)

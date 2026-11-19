@@ -46,9 +46,6 @@ type ObjectBucket struct {
 	WorkspaceID string
 	Name        string
 	Region      string
-	// LocationHint is the Cloudflare hint the bucket was created with, kept so
-	// `bucket info` can report it; bex's region is exact.
-	LocationHint string
 	// System marks the workspace's render-<region> bucket, the namespace of
 	// Render's /v1/objects routes. It is created on first use.
 	System    bool
@@ -58,7 +55,7 @@ type ObjectBucket struct {
 	CreatedAt time.Time
 }
 
-const objectBucketColumns = `id, workspace_id, name, region, location_hint, system, public, cors, lifecycle, created_at`
+const objectBucketColumns = `id, workspace_id, name, region, system, public, cors, lifecycle, created_at`
 
 // objectBucketQuerier is the QueryRow both a pool and a transaction have.
 type objectBucketQuerier interface {
@@ -69,10 +66,10 @@ type objectBucketQuerier interface {
 // lifecycle take the migration's defaults.
 func insertObjectBucket(ctx context.Context, q objectBucketQuerier, in ObjectBucket) (ObjectBucket, error) {
 	return scanObjectBucket(q.QueryRow(ctx, `
-		INSERT INTO object_buckets (id, workspace_id, name, region, location_hint, system)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO object_buckets (id, workspace_id, name, region, system)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING `+objectBucketColumns,
-		ids.New(ids.ObjectBucket), in.WorkspaceID, in.Name, in.Region, in.LocationHint, in.System))
+		ids.New(ids.ObjectBucket), in.WorkspaceID, in.Name, in.Region, in.System))
 }
 
 func selectLiveObjectBucket(ctx context.Context, q objectBucketQuerier, workspaceID, name string) (ObjectBucket, error) {
@@ -83,7 +80,7 @@ func selectLiveObjectBucket(ctx context.Context, q objectBucketQuerier, workspac
 
 func scanObjectBucket(row pgx.Row) (ObjectBucket, error) {
 	var b ObjectBucket
-	err := row.Scan(&b.ID, &b.WorkspaceID, &b.Name, &b.Region, &b.LocationHint, &b.System, &b.Public, &b.CORS, &b.Lifecycle, &b.CreatedAt)
+	err := row.Scan(&b.ID, &b.WorkspaceID, &b.Name, &b.Region, &b.System, &b.Public, &b.CORS, &b.Lifecycle, &b.CreatedAt)
 	return b, err
 }
 
@@ -182,7 +179,7 @@ func (s *PGStore) GetObjectBucketByID(ctx context.Context, id string) (ObjectBuc
 // are nil in the result.
 func (s *PGStore) ListObjectBucketSummaries(ctx context.Context, workspaceID string) ([]ObjectBucket, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT id, workspace_id, name, region, location_hint, system, public, created_at
+		`SELECT id, workspace_id, name, region, system, public, created_at
 		 FROM object_buckets WHERE workspace_id = $1 AND deleted_at IS NULL ORDER BY created_at, id`,
 		workspaceID)
 	if err != nil {
@@ -192,7 +189,7 @@ func (s *PGStore) ListObjectBucketSummaries(ctx context.Context, workspaceID str
 	var out []ObjectBucket
 	for rows.Next() {
 		var b ObjectBucket
-		if err := rows.Scan(&b.ID, &b.WorkspaceID, &b.Name, &b.Region, &b.LocationHint, &b.System, &b.Public, &b.CreatedAt); err != nil {
+		if err := rows.Scan(&b.ID, &b.WorkspaceID, &b.Name, &b.Region, &b.System, &b.Public, &b.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, b)

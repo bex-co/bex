@@ -214,17 +214,6 @@ func TestAPIKeyBearerOnEverySurface(t *testing.T) {
 		}
 	}
 	bearer := map[string]string{"Authorization": "Bearer " + minted.Key}
-	// The Cloudflare-shaped object storage routes sit behind the same gate, so
-	// wrangler's CLOUDFLARE_API_TOKEN takes the key too: the request passes
-	// authentication and gets the route's own answer, while a wrong key gets
-	// Cloudflare's authentication error.
-	const buckets = "/cloudflare/client/v4/accounts/tea-a/r2/buckets"
-	if w := request(h, http.MethodGet, buckets, "", bearer); w.Code == http.StatusUnauthorized {
-		t.Errorf("the Cloudflare-shaped route refused the key: %d %s", w.Code, w.Body.String())
-	}
-	if w := request(h, http.MethodGet, buckets, "", map[string]string{"Authorization": "Bearer " + minted.Key + "x"}); w.Code != http.StatusUnauthorized {
-		t.Errorf("the Cloudflare-shaped route with a wrong key = %d %s, want 401", w.Code, w.Body.String())
-	}
 	if w := request(h, http.MethodGet, "/v1/services/beta", "", bearer); w.Code != http.StatusForbidden && w.Code != http.StatusNotFound {
 		t.Errorf("the key read another workspace's service: %d %s", w.Code, w.Body.String())
 	}

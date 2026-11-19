@@ -16,7 +16,7 @@ limitations under the License.
 
 // Package objectgw is the public-bucket gateway of bex object storage (ADR112
 // D4): a read-only HTTP server that serves the objects of a bucket a workspace
-// admin published with `wrangler r2 bucket dev-url enable`, at
+// admin published with `bex s3 public <bucket> enable`, at
 // pub-<xid>.<BEX_BASE_DOMAIN>, to anyone, with no credential.
 //
 // It is one binary in the backend image (cmd/objectgw), deployed beside the

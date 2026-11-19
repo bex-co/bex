@@ -391,9 +391,6 @@ func (rq *request) copySource() (store.ObjectBucket, string, *Error) {
 	if e != nil {
 		return store.ObjectBucket{}, "", e
 	}
-	if srcName == objectstorage.ContractBBucketName {
-		return store.ObjectBucket{}, "", newError(http.StatusBadRequest, "InvalidBucketName", "The specified bucket name is reserved.")
-	}
 	if err := objectstorage.ValidateKey(srcKey); err != nil {
 		return store.ObjectBucket{}, "", errInvalidArgument("The copy source key is not valid.")
 	}

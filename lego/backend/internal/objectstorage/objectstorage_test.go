@@ -53,45 +53,12 @@ func TestParseRegionServesOnlyOregonAndFrankfurt(t *testing.T) {
 			t.Errorf("ParseRegion(%q) = %q, %v", ok, r, err)
 		}
 	}
-	// Render's other regions, Cloudflare's hints, near misses and junk.
+	// Render's other regions, near misses and junk.
 	for _, bad := range []string{"ohio", "virginia", "singapore", "wnam", "weur", "eu", "", "Oregon", "oregon ", "us-west-1"} {
 		_, err := ParseRegion(bad)
 		var named *RegionNotOfferedError
 		if !errors.Is(err, ErrRegionNotOffered) || !errors.As(err, &named) || named.Value != bad {
 			t.Errorf("ParseRegion(%q) error = %v, want a RegionNotOfferedError naming it", bad, err)
-		}
-	}
-}
-
-func TestRegionFromHint(t *testing.T) {
-	cases := []struct {
-		hint, jurisdiction string
-		want               Region
-		offered            bool
-	}{
-		{"", "", Oregon, true},
-		{"wnam", "", Oregon, true},
-		{"WNAM", "", Oregon, true},
-		{"", "default", Oregon, true},
-		{"weur", "", Frankfurt, true},
-		{"", "eu", Frankfurt, true},
-		{"weur", "eu", Frankfurt, true},
-		{"", " EU ", Frankfurt, true},
-		{"enam", "", "", false},
-		{"eeur", "", "", false},
-		{"apac", "", "", false},
-		{"oc", "", "", false},
-		{"wnam", "eu", "", false},
-		{"", "fedramp", "", false},
-		{"nonsense", "", "", false},
-	}
-	for _, c := range cases {
-		got, err := RegionFromHint(c.hint, c.jurisdiction)
-		if c.offered && (err != nil || got != c.want) {
-			t.Errorf("RegionFromHint(%q, %q) = %q, %v; want %q", c.hint, c.jurisdiction, got, err, c.want)
-		}
-		if !c.offered && !errors.Is(err, ErrRegionNotOffered) {
-			t.Errorf("RegionFromHint(%q, %q) = %q, %v; want ErrRegionNotOffered", c.hint, c.jurisdiction, got, err)
 		}
 	}
 }
@@ -233,7 +200,7 @@ func TestCapsAreCodeConstantsNotConfiguration(t *testing.T) {
 	if MaxWorkspaceBytes != 100_000_000_000 || MaxWorkspaceObjects != 1_000_000 || MaxUserBuckets != 1000 {
 		t.Error("workspace caps differ from ADR112 D8")
 	}
-	if MaxObjectBytesPresigned != 5<<30 || MaxObjectBytesStreamed != 300<<20 || MaxConcurrentStreamsPerWorkspace != 16 {
+	if MaxObjectBytesPresigned != 5<<30 || MaxConcurrentStreamsPerWorkspace != 16 {
 		t.Error("object and stream caps differ from ADR112 D8")
 	}
 	if ListDefaultLimit != 20 || ListMaxLimit != 1000 || MaxKeyBytes != 1024 {

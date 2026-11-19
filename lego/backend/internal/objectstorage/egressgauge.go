@@ -52,7 +52,7 @@ func NewEgressMonitor(registerer prometheus.Registerer, usage EgressUsage) *Egre
 	m := &EgressMonitor{
 		gauge: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: "bex", Subsystem: "usage", Name: "object_storage_egress_month_bytes",
-			Help: "Bytes read out of object storage by every workspace since the start of the current UTC month, from the object_storage_egress_bytes shadow meter: Render's presigned reads, wrangler's streamed reads and public bucket reads together. An upper bound of Wasabi's own egress, which is a fair-use ratio against stored volume on a shared account.",
+			Help: "Bytes read out of object storage by every workspace since the start of the current UTC month, from the object_storage_egress_bytes shadow meter: Render's presigned reads, the S3 surface's streamed reads and public bucket reads together. An upper bound of Wasabi's own egress, which is a fair-use ratio against stored volume on a shared account.",
 		}),
 		usage: usage,
 		now:   time.Now,

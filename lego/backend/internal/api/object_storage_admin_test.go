@@ -183,7 +183,7 @@ func TestPublishingABucketNeedsCanManageAndABucketIsResolvedInsideTheCallersWork
 	svc := objectstorage.NewService(repo, map[objectstorage.Region]objectstorage.Store{objectstorage.Oregon: st})
 	ws, other := ids.New(ids.Workspace), ids.New(ids.Workspace)
 	ctx := context.Background()
-	if _, err := svc.CreateBucket(ctx, ws, "photos", objectstorage.Oregon, ""); err != nil {
+	if _, err := svc.CreateBucket(ctx, ws, "photos", objectstorage.Oregon); err != nil {
 		t.Fatal(err)
 	}
 	callCtx := sessionCtx(ws)
