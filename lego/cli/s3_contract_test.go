@@ -181,6 +181,19 @@ func TestBexS3GivesTheAWSCLIOnlyBexsKey(t *testing.T) {
 	}
 }
 
+// pathWithout is the ambient PATH minus every directory that holds a
+// `name`: GitHub's runner images ship AWS CLI v2 in /usr/local/bin, so a test
+// of "no aws" cannot lean on the host not having one.
+func pathWithout(name string) string {
+	var kept []string
+	for _, dir := range filepath.SplitList(os.Getenv("PATH")) {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			kept = append(kept, dir)
+		}
+	}
+	return strings.Join(kept, string(os.PathListSeparator))
+}
+
 // TestBexS3WithoutAWSIsReportedOnceByUpstream is the no-double-count half:
 // with no `aws` the process is never replaced, so Cobra finishes normally,
 // upstream's hook reports it, and no key was minted for nothing.
@@ -193,7 +206,8 @@ func TestBexS3WithoutAWSIsReportedOnceByUpstream(t *testing.T) {
 	seedNoticeMarker(t, home)
 
 	command := exec.Command(buildBex(), "s3", "ls")
-	command.Env = s3Env(t, home, api.URL, t.TempDir())
+	// The last PATH wins: no aws anywhere, whatever the host installed.
+	command.Env = append(s3Env(t, home, api.URL, t.TempDir()), "PATH="+pathWithout("aws"))
 	output, err := command.CombinedOutput()
 	if err == nil {
 		t.Fatalf("bex s3 ls succeeded with no aws on PATH:\n%s", output)
