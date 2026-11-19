@@ -1,6 +1,6 @@
 # w5 · m503 — GET /v1/logs answers in a few seconds, not 10–30 s for one read in four
 
-**Worker:** worker5 **Goal:** reading a service's logs over the API takes a few seconds for the query shapes callers actually send, instead of 10–30 s for a quarter of reads and a timeout for the slowest. **Status:** todo (t001 to t006 done; t007 reads 24 h of production after the deploy, see § Findings)
+**Worker:** worker5 **Goal:** reading a service's logs over the API takes a few seconds for the query shapes callers actually send, instead of 10–30 s for a quarter of reads and a timeout for the slowest. **Status:** blocked (t001 to t006 done and shipped in `31108e539`; t007 reads 24 h of `GET /v1/logs` on production once the pin carries it, see § Findings)
 
 ## Tasks (in order)
 
@@ -29,7 +29,7 @@ Total: **7 tasks, about 5h45m**.
 - **Source:** `/pm-brainstorm for w5`, round 10 item 3 (2026-11-18), selected with `/pmx them all to w5`.
 - **Evidence (production Prometheus, 7 days to 2026-11-19):** 9,096 `GET /v1/logs` requests; 3,916 finished under 1 s and 2,262 took between 10 and 30 s. In the last 24 hours, 20 answered 500. The p99 (28.7 s) sits at the 28 s REST deadline w5/m286 set. The histogram has no bucket between 10 and 30 s, so its p90 and p95 (about 17 s and 24 s) are interpolated. Traffic is bursty (1,037 requests in the three hours from 2026-11-18 15:00Z). CLI telemetry shows `bex logs` runs at p95 1.3 s over 862 runs, so the slow shapes come from other API callers: the mobile app's REST transport (`mobile/src/features/logs/rest-transport.ts`) and verification scripts (`scripts/logs-verify.sh`, `scripts/cli-logs-verify.sh`) use this route.
 - **Code:** `lego/backend/internal/logs/loki.go`, `loki_streams.go` (one `query_range` per read), `rest.go`, `render.go` (paging).
-- **Goal linkage:** hosting observability on Render's API ([ADR018](../../../docs/ADR018-render-parity.md) Logs rows, [ADR010](../../../docs/ADR010-observability.md)).
+- **Goal linkage:** hosting observability on Render's API ([ADR018](../../../../docs/ADR018-render-parity.md) Logs rows, [ADR010](../../../../docs/ADR010-observability.md)).
 - **Expected outcome:** logs reads stop timing out on wide windows, for the mobile app and API clients alike.
 - **Why now:** the slowest reads fail at the deadline instead of finishing, and one read in four takes 10–30 s.
 - **Render parity:** included (t004). REST, GraphQL and MCP share the logs service, so a change to how it queries Loki must leave all three identical and Render-shaped.
@@ -64,8 +64,8 @@ Shapes whose page is short or reads one stream (most `app`, `build` and `level` 
 
 1. **A full page was read again once per stream (w21/063), and a text search fills a page every 1,000 raw lines.** Every full page listed the window's streams and read each alone. On the busiest service that is about 22 requests per 1,000 raw lines, so a one-hour text search spent 216 requests and most of its budget. On the idle service a forward page whose lines spread over days read every stream across every 15-minute piece of those days: 63 to 65 s of Loki time, 13 s or a `QUERY_TIMEOUT`.
 2. **Those fan-outs queue on a small Loki.** Four querier workers on one CPU serve every reader, so one fan-out of a few dozen stream reads, each cut into pieces, holds them while the client's next overlapping read waits.
-3. **A text search reads every raw line into bex-api** (the match is in Go, `lokiTextScanPage`): about 0.4 s of Loki time and 12 MB per hour of the busiest service even when each line is read once, so a search over a day or a week of it still ends at the budget: [w5/198](../198.md).
-4. **The default window is seven days, where Render's is an hour.** A sparse type's default read walks a week of pieces before it has a page (`type=app` on the busiest service, 5 s of Loki time, unchanged): [w5/197](../197.md).
+3. **A text search reads every raw line into bex-api** (the match is in Go, `lokiTextScanPage`): about 0.4 s of Loki time and 12 MB per hour of the busiest service even when each line is read once, so a search over a day or a week of it still ends at the budget: [w5/198](../../198.md).
+4. **The default window is seven days, where Render's is an hour.** A sparse type's default read walks a week of pieces before it has a page (`type=app` on the busiest service, 5 s of Loki time, unchanged): [w5/197](../../197.md).
 5. **A `path` or `host` filter makes Loki parse every request line's JSON:** a week of the busiest service is 13 s of Loki time and a partial page at the budget. Unchanged here: the filter runs inside Loki and the cost is Loki's.
 
 ### 2026-11-19 — t002 to t006 (loopx w5)
