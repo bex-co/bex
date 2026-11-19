@@ -41,10 +41,14 @@ import (
 // archive that changes every build would cost every build its "Reusing the
 // cached result" (w4/582). A cache mount is no part of that key.
 //
+// The same archive carries the runtime's dependency directories (w9/m494,
+// depscache.go) beside the directory, under a top-level name of their own,
+// as Render keeps both in its one build cache.
+//
 // The archive is made and unpacked only inside BuildKit's sandbox, on the
 // image the build itself runs on. The credentialed phases move one opaque file
 // and parse nothing in it, and whatever a hostile archive could do while it is
-// unpacked lands in a sandbox whose only lasting effect is the cache mount,
+// unpacked lands in a sandbox whose only lasting effects are the cache mounts,
 // which the tenant's own build command writes anyway.
 const (
 	// xdgCacheObject is the archive's object, beside the layer cache in the
@@ -200,53 +204,81 @@ fi
 // xdgMaxBytes is the bound as the scripts inside BuildKit spell it.
 var xdgMaxBytes = strconv.FormatInt(xdgCacheMaxBytes, 10)
 
+// xdgArchiveRoot is where the seed and export solves mount both caches the
+// archive carries, each under its own top-level name: $XDG_CACHE_HOME's as
+// xdgArchiveXDG, the dependency directories' (depscache.go) as
+// xdgArchiveDeps, beside xdgArchiveDepsKey, the toolchain they were built
+// with. A cache mount is its id, wherever a solve mounts it.
+const (
+	xdgArchiveRoot    = "/bex-cache"
+	xdgArchiveXDG     = "xdg"
+	xdgArchiveDeps    = "deps"
+	xdgArchiveDepsKey = "deps.key"
+)
+
+// xdgArchiveMounts is the seed and export steps' mounts of both caches.
+const xdgArchiveMounts = " --mount=type=cache,id=" + nativeXDGCacheID + ",target=" + xdgArchiveRoot + "/" + xdgArchiveXDG + ",sharing=locked" +
+	" --mount=type=cache,id=" + nativeDepsCacheID + ",target=" + xdgArchiveRoot + "/" + xdgArchiveDeps + ",sharing=locked"
+
 // xdgDockerfile holds the two solves around the image's. Both run on the
 // image the build's own final stage runs on (BEX_XDG_BASE), which that solve
-// pulls anyway, and mount the build command's cache mount by its id. Neither
-// step can be served from a cache: the daemon is the pod's own, and neither
-// solve imports one.
+// pulls anyway, and mount the build command's cache mounts by their ids.
+// Neither step can be served from a cache: the daemon is the pod's own, and
+// neither solve imports one.
 //
 // The seed unpacks no more than the bound and keeps nothing of an archive
-// that does not unpack cleanly, gzip's own check included. The save archives
-// the directory only within the bound, removing each file as it is archived so
-// the cache never sits on BuildKit's disk twice. It names the directory's
-// entries rather than the directory, which is the cache mount's mountpoint and
-// so cannot be removed. An empty directory or one
-// over the bound leaves the "skipped" marker instead. Its export holds just
-// that one file.
+// that does not unpack cleanly, gzip's own check included. It keeps the
+// dependency directories only when the archive names this build's toolchain
+// (BEX_DEPS_KEY): a gem's extension, a NIF or a target directory built
+// against another Ruby, OTP, Rust or system library is never restored. A
+// member outside both caches lands in the seed's own discarded filesystem.
+//
+// The save archives both caches only within the bound together, Render's one
+// 7 GB build cache, removing each file as it is archived so the cache never
+// sits on BuildKit's disk twice. It names each cache's entries rather than
+// the cache, which is a mountpoint and so cannot be removed. Two empty caches,
+// or a total over the bound, leave the "skipped" marker instead. Its export
+// holds just that one file.
 var xdgDockerfile = `ARG BEX_XDG_BASE
 FROM $BEX_XDG_BASE AS bex-xdg-seed
-RUN --mount=type=bind,target=/run/bex-xdg-in --mount=type=cache,id=` + nativeXDGCacheID + `,target=` + nativeXDGCacheHome + `,sharing=locked <<'BEX_XDG_SEED'
+ARG BEX_DEPS_KEY
+RUN --mount=type=bind,target=/run/bex-xdg-in` + xdgArchiveMounts + ` <<'BEX_XDG_SEED'
 bex_t0=$(date +%s)
-if { { gzip -dc /run/bex-xdg-in/` + xdgCacheObject + `; echo $? > /tmp/bex-gzip; } | head -c ` + strconv.FormatInt(xdgCacheMaxBytes+1, 10) + ` | tar -xf - -C ` + nativeXDGCacheHome + ` --no-same-owner; } 2>/dev/null &&
+if { { gzip -dc /run/bex-xdg-in/` + xdgCacheObject + `; echo $? > /tmp/bex-gzip; } | head -c ` + strconv.FormatInt(xdgCacheMaxBytes+1, 10) + ` | tar -xf - -C ` + xdgArchiveRoot + ` --no-same-owner; } 2>/dev/null &&
   [ "$(cat /tmp/bex-gzip)" = 0 ]; then
+  [ -n "$BEX_DEPS_KEY" ] && [ "$(cat ` + xdgArchiveRoot + `/` + xdgArchiveDepsKey + ` 2>/dev/null)" = "$BEX_DEPS_KEY" ] ||
+    find ` + xdgArchiveRoot + `/` + xdgArchiveDeps + ` -mindepth 1 -delete
   echo "bex-xdg-seed: restored in $(( $(date +%s) - bex_t0 ))s"
 else
-  find ` + nativeXDGCacheHome + ` -mindepth 1 -delete
+  find ` + xdgArchiveRoot + `/` + xdgArchiveXDG + ` ` + xdgArchiveRoot + `/` + xdgArchiveDeps + ` -mindepth 1 -delete
   echo "bex-xdg-seed: unusable"
 fi
 BEX_XDG_SEED
 
 FROM $BEX_XDG_BASE AS bex-xdg-save
-RUN --mount=type=cache,id=` + nativeXDGCacheID + `,target=` + nativeXDGCacheHome + `,sharing=locked <<'BEX_XDG_SAVE'
-mkdir /bex-xdg-out && cd /bex-xdg-out || exit 1
-if [ -z "$(ls -A ` + nativeXDGCacheHome + `)" ]; then
-  echo 0 > skipped
+ARG BEX_DEPS_KEY
+RUN` + xdgArchiveMounts + ` <<'BEX_XDG_SAVE'
+mkdir /bex-xdg-out && cd ` + xdgArchiveRoot + ` || exit 1
+if [ -n "$(ls -A ` + xdgArchiveDeps + `)" ]; then
+  [ -n "$BEX_DEPS_KEY" ] && printf '%s\n' "$BEX_DEPS_KEY" > ` + xdgArchiveDepsKey + ` || find ` + xdgArchiveDeps + ` -mindepth 1 -delete
+fi
+if [ -z "$(ls -A ` + xdgArchiveXDG + `)" ] && [ -z "$(ls -A ` + xdgArchiveDeps + `)" ]; then
+  echo 0 > /bex-xdg-out/skipped
   exit 0
 fi
-bex_bytes=$(du -sb ` + nativeXDGCacheHome + ` | cut -f1)
+bex_bytes=$(du -sbc ` + xdgArchiveXDG + ` ` + xdgArchiveDeps + ` | tail -n 1 | cut -f1)
 if [ "$bex_bytes" -gt ` + xdgMaxBytes + ` ]; then
-  echo "$bex_bytes" > skipped
+  echo "$bex_bytes" > /bex-xdg-out/skipped
   exit 0
 fi
-{ find ` + nativeXDGCacheHome + ` -mindepth 1 -maxdepth 1 -printf '%P\0' |
-  tar --sparse --numeric-owner --totals --remove-files -C ` + nativeXDGCacheHome + ` --null -T - -cf - 2> /tmp/bex-tar.log; echo $? > /tmp/bex-tar; } |
-  gzip -1 > ` + xdgCacheObject + ` || exit 1
+{ { find ` + xdgArchiveXDG + ` ` + xdgArchiveDeps + ` -mindepth 1 -maxdepth 1 -print0; [ ! -f ` + xdgArchiveDepsKey + ` ] || printf '` + xdgArchiveDepsKey + `\0'; } |
+  tar --sparse --numeric-owner --totals --remove-files --null -T - -cf - 2> /tmp/bex-tar.log; echo $? > /tmp/bex-tar; } |
+  gzip -1 > /bex-xdg-out/` + xdgCacheObject + ` || exit 1
 bex_stream=$(sed -n 's/^Total bytes written: \([0-9]*\).*/\1/p' /tmp/bex-tar.log)
 [ "$(cat /tmp/bex-tar)" = 0 ] && [ -n "$bex_stream" ] || exit 1
-if [ "$bex_stream" -gt ` + xdgMaxBytes + ` ] || [ "$(wc -c < ` + xdgCacheObject + `)" -gt ` + xdgMaxBytes + ` ]; then
-  rm ` + xdgCacheObject + `
-  echo "$bex_stream" > skipped
+if [ "$bex_stream" -gt ` + xdgMaxBytes + ` ] || [ "$(wc -c < /bex-xdg-out/` + xdgCacheObject + `)" -gt ` + xdgMaxBytes + ` ]; then
+  rm /bex-xdg-out/` + xdgCacheObject + `
+  echo "$bex_stream" > /bex-xdg-out/skipped
 fi
 BEX_XDG_SAVE
 
@@ -257,9 +289,9 @@ COPY --from=bex-xdg-save /bex-xdg-out/ /
 // xdgBuildctl is the buildctl buildctl-daemonless.sh runs for a native build
 // that keeps $XDG_CACHE_HOME ($BUILDCTL, which the script reads for exactly
 // this): `$BUILDCTL --addr=<socket> <command> ...`. Anything but a build is
-// buildctl's. A build seeds the cache mount when cache-restore fetched an
+// buildctl's. A build seeds the cache mounts when cache-restore fetched an
 // archive, runs the image's solve exactly as asked, and then archives the
-// mount into /xdg-out. Seed and export are best-effort, quiet and bounded:
+// mounts into /xdg-out. Seed and export are best-effort, quiet and bounded:
 // their output never reaches the build log, which shows Render's restore line
 // instead, and only the image's solve decides the phase's exit status.
 //
@@ -267,15 +299,29 @@ COPY --from=bex-xdg-save /bex-xdg-out/ /
 // resolver may put a stage ahead of it, and every such stage is named. Once
 // seeded, the fetched archive and BuildKit's copy of it are deleted, so the
 // build has the disk they held.
+//
+// The dependency directories' key (BEX_DEPS_KEY) is the toolchain they are
+// built with: the generated Dockerfile up to its source copy, which pins every
+// image the build runs on by digest (the final base with its system
+// libraries, the selected runtime copied onto it, every companion) and sets
+// the runtime's defaults, plus the machine. The source, the service's
+// variables and its build command come after that line, so a source-only
+// commit keeps the key; a new runtime version, a refreshed image or another
+// architecture changes it. A Dockerfile that cannot be hashed gives no key,
+// and no dependency directories cross into or out of the build.
 var xdgBuildctl = `bex_addr=$1
 shift
 [ "${1:-}" = build ] || exec buildctl "$bex_addr" "$@"
 bex_base=$(sed -n 's/^FROM \([^ ]*\)$/\1/p' /native/Dockerfile | tail -n 1)
+bex_deps_key=$(sed '/^COPY \. \.$/q' /native/Dockerfile | sha256sum | cut -c1-64)
+case $bex_deps_key in *[!0-9a-f]*) bex_deps_key= ;; esac
+[ "${#bex_deps_key}" = 64 ] && bex_deps_key=$bex_deps_key-$(uname -m) || bex_deps_key=
 bex_xdg() {
   bex_target=$1
   shift
   timeout ` + strconv.Itoa(cacheBudgetSeconds) + ` buildctl "$bex_addr" build --progress=plain --frontend dockerfile.v0 \
-    --local dockerfile=` + xdgDir + ` --opt target="$bex_target" --opt build-arg:BEX_XDG_BASE="$bex_base" "$@" 2>&1
+    --local dockerfile=` + xdgDir + ` --opt target="$bex_target" --opt build-arg:BEX_XDG_BASE="$bex_base" \
+    --opt build-arg:BEX_DEPS_KEY="$bex_deps_key" "$@" 2>&1
 }
 bex_number() { case $1 in ''|*[!0-9]*) return 1 ;; esac; }
 bex_size() {

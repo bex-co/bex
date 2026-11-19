@@ -21,9 +21,11 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -76,13 +78,19 @@ func TestNativeRecipeGivesTheBuildXDGCacheHomeAndKeepsItOutOfTheImage(t *testing
 			t.Errorf("%s: the build command does not write $XDG_CACHE_HOME into its own cache mount:\n%s", name, df)
 		}
 	}
-	// The seed and export solves must name the very mount the build writes:
-	// the same id, target and sharing, or they seed and archive another one.
+	// The seed and export solves must name the very mounts the build writes:
+	// the same id and sharing, or they seed and archive other ones. A cache
+	// mount is its id; where a solve mounts it is the solve's own choice.
 	for _, stage := range []string{"bex-xdg-seed", "bex-xdg-save"} {
 		at := strings.Index(xdgDockerfile, " AS "+stage+"\n")
-		if at < 0 || !strings.Contains(xdgDockerfile[at:], "--mount=type=cache,id="+nativeXDGCacheID+",target="+nativeXDGCacheHome+",sharing=locked") {
-			t.Errorf("%s does not mount the build command's cache mount", stage)
+		for _, id := range []string{nativeXDGCacheID, nativeDepsCacheID} {
+			if at < 0 || !regexp.MustCompile(`--mount=type=cache,id=`+id+`,target=\S+,sharing=locked`).MatchString(xdgDockerfile[at:]) {
+				t.Errorf("%s does not mount the build command's cache mount %s", stage, id)
+			}
 		}
+	}
+	if !strings.Contains(nativeXDGCacheMount, ",sharing=locked") || !strings.Contains(nativeDepsCacheMount, ",sharing=locked") {
+		t.Error("the build command's cache mounts are not the locked ones the seed and export solves mount")
 	}
 }
 
@@ -504,7 +512,7 @@ func (r *wrapperRig) run(args []string, env ...string) (string, error) {
 		xdgInMount, r.xin, xdgOutMount, r.xout).Replace(xdgBuildctl)
 	_ = os.Remove(r.log)
 	cmd := exec.Command("sh", append([]string{"-c", script, "bex-buildctl", "--addr=unix:///run/buildkit/buildkitd.sock"}, args...)...)
-	cmd.Env = append([]string{"PATH=" + r.bin + ":/usr/bin:/bin", "FAKE_BUILDCTL_LOG=" + r.log, "FAKE_XDG_OUT=" + r.xout}, env...)
+	cmd.Env = append([]string{"PATH=" + r.bin + ":/usr/bin:/bin:/usr/sbin:/sbin", "FAKE_BUILDCTL_LOG=" + r.log, "FAKE_XDG_OUT=" + r.xout}, env...)
 	out, err := cmd.CombinedOutput()
 	return string(out), err
 }
@@ -653,7 +661,8 @@ func TestXDGBuildctlNeverLetsTheCacheDecideTheBuild(t *testing.T) {
 // --- the seed and save steps BuildKit runs, on GNU userland ---
 
 // xdgStep is one of xdgDockerfile's RUN heredocs, its paths retargeted at dir
-// and its bound replaced by bound.
+// and its bound replaced by bound. dir/cache stands for the archive root,
+// dir/cache/xdg and dir/cache/deps for the two cache mounts under it.
 func xdgStep(t *testing.T, delim, dir string, bound int64) string {
 	t.Helper()
 	start := strings.Index(xdgDockerfile, "<<'"+delim+"'\n")
@@ -663,7 +672,7 @@ func xdgStep(t *testing.T, delim, dir string, bound int64) string {
 	body := xdgDockerfile[start+len("<<'"+delim+"'\n"):]
 	body = body[:strings.Index(body, "\n"+delim+"\n")+1]
 	return strings.NewReplacer(
-		nativeXDGCacheHome, filepath.Join(dir, "cache"),
+		xdgArchiveRoot, filepath.Join(dir, "cache"),
 		"/run/bex-xdg-in", filepath.Join(dir, "in"),
 		"/bex-xdg-out", filepath.Join(dir, "out"),
 		"/tmp/bex-", filepath.Join(dir, "tmp-"),
@@ -684,9 +693,12 @@ func gnuUserland(t *testing.T) {
 	}
 }
 
-func runStep(t *testing.T, script string) string {
+// runStep runs a step as BuildKit would, with env as the stage's ARGs.
+func runStep(t *testing.T, script string, env ...string) string {
 	t.Helper()
-	out, err := exec.Command("sh", "-c", script).CombinedOutput()
+	cmd := exec.Command("sh", "-c", script)
+	cmd.Env = append(os.Environ(), env...)
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("step failed: %v\n%s", err, out)
 	}
@@ -719,10 +731,22 @@ func tarGz(t *testing.T, entries []tar.Header, data map[string]string) []byte {
 	return buf.Bytes()
 }
 
+// archiveMounts makes dir/cache/xdg and dir/cache/deps, the two cache mounts
+// the seed and save steps find under the archive root, and returns the first.
+func archiveMounts(t *testing.T, dir string) string {
+	t.Helper()
+	for _, m := range []string{xdgArchiveXDG, xdgArchiveDeps} {
+		if err := os.MkdirAll(filepath.Join(dir, "cache", m), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return filepath.Join(dir, "cache", xdgArchiveXDG)
+}
+
 func TestXDGSaveAndSeedRoundTripTheDirectory(t *testing.T) {
 	gnuUserland(t)
 	dir := t.TempDir()
-	cache := filepath.Join(dir, "cache")
+	cache := archiveMounts(t, dir)
 	writeFile(t, filepath.Join(cache, "pip", "http", "wheel"), "wheel bytes")
 	writeFile(t, filepath.Join(cache, ".hidden"), "dotfile")
 	if err := os.Symlink("/etc/passwd", filepath.Join(cache, "pip", "link")); err != nil {
@@ -758,17 +782,16 @@ func TestXDGSaveKeepsNothingEmptyOrOverTheBound(t *testing.T) {
 		bound int64
 		want  string
 	}{
-		"empty":                  {files: nil, bound: xdgCacheMaxBytes, want: "0"},
-		"over the bound":         {files: map[string]string{"big": strings.Repeat("x", 4096)}, bound: 1024},
-		"archive over its bound": {files: map[string]string{"a": "x", "b": "y"}, bound: 8192},
+		"empty":          {files: nil, bound: xdgCacheMaxBytes, want: "0"},
+		"over the bound": {files: map[string]string{"big": strings.Repeat("x", 4096)}, bound: 1024},
+		// Within the bound as two directories (du), over it as a tar stream.
+		"archive over its bound": {files: map[string]string{"a": "x", "b": "y"}, bound: 9000},
 	} {
 		t.Run(name, func(t *testing.T) {
 			dir := t.TempDir()
-			if err := os.MkdirAll(filepath.Join(dir, "cache"), 0o755); err != nil {
-				t.Fatal(err)
-			}
+			cache := archiveMounts(t, dir)
 			for f, body := range tc.files {
-				writeFile(t, filepath.Join(dir, "cache", f), body)
+				writeFile(t, filepath.Join(cache, f), body)
 			}
 			runStep(t, xdgStep(t, "BEX_XDG_SAVE", dir, tc.bound))
 			if _, err := os.Stat(filepath.Join(dir, "out", xdgCacheObject)); err == nil {
@@ -787,31 +810,37 @@ func TestXDGSaveKeepsNothingEmptyOrOverTheBound(t *testing.T) {
 
 func TestXDGSeedKeepsNothingOfAnArchiveThatDoesNotUnpackCleanly(t *testing.T) {
 	gnuUserland(t)
-	valid := tarGz(t, []tar.Header{{Name: "ok", Typeflag: tar.TypeReg}}, map[string]string{"ok": "fine"})
+	const key = "k-x86_64"
+	good := []tar.Header{{Name: "xdg/ok", Typeflag: tar.TypeReg}, {Name: "deps/ok", Typeflag: tar.TypeReg}, {Name: xdgArchiveDepsKey, Typeflag: tar.TypeReg}}
+	fine := map[string]string{"xdg/ok": "fine", "deps/ok": "fine", xdgArchiveDepsKey: key + "\n"}
+	valid := tarGz(t, good, fine)
 	corruptCRC := slices.Clone(valid)
 	corruptCRC[len(corruptCRC)-6] ^= 0xff // gzip's CRC-32 trailer
+	with := func(extra []tar.Header, data map[string]string) []byte {
+		maps.Copy(data, fine)
+		return tarGz(t, append(slices.Clone(good), extra...), data)
+	}
 	for name, archive := range map[string][]byte{
-		"not an archive":     []byte("garbage that is no gzip stream"),
-		"gzip's check fails": corruptCRC,
-		"a member climbs out": tarGz(t, []tar.Header{{Name: "ok", Typeflag: tar.TypeReg}, {Name: "../escape", Typeflag: tar.TypeReg}},
-			map[string]string{"ok": "fine", "../escape": "pwn"}),
-		"a link is written through": tarGz(t, []tar.Header{{Name: "ok", Typeflag: tar.TypeReg}, {Name: "link", Typeflag: tar.TypeSymlink, Linkname: "../outside"},
-			{Name: "link/pwned", Typeflag: tar.TypeReg}}, map[string]string{"ok": "fine", "link/pwned": "pwn"}),
-		"more than the bound unpacks": tarGz(t, []tar.Header{{Name: "ok", Typeflag: tar.TypeReg}, {Name: "bomb", Typeflag: tar.TypeReg}},
-			map[string]string{"ok": "fine", "bomb": strings.Repeat("\x00", 64<<10)}),
+		"not an archive":      []byte("garbage that is no gzip stream"),
+		"gzip's check fails":  corruptCRC,
+		"a member climbs out": with([]tar.Header{{Name: "../escape", Typeflag: tar.TypeReg}}, map[string]string{"../escape": "pwn"}),
+		"a link is written through": with([]tar.Header{{Name: "xdg/link", Typeflag: tar.TypeSymlink, Linkname: "../../outside"},
+			{Name: "xdg/link/pwned", Typeflag: tar.TypeReg}}, map[string]string{"xdg/link/pwned": "pwn"}),
+		"more than the bound unpacks": with([]tar.Header{{Name: "deps/bomb", Typeflag: tar.TypeReg}},
+			map[string]string{"deps/bomb": strings.Repeat("\x00", 64<<10)}),
 	} {
 		t.Run(name, func(t *testing.T) {
 			dir := t.TempDir()
 			writeFile(t, filepath.Join(dir, "in", xdgCacheObject), string(archive))
-			if err := os.MkdirAll(filepath.Join(dir, "cache"), 0o755); err != nil {
-				t.Fatal(err)
-			}
-			out := runStep(t, xdgStep(t, "BEX_XDG_SEED", dir, 32<<10))
+			archiveMounts(t, dir)
+			out := runStep(t, xdgStep(t, "BEX_XDG_SEED", dir, 32<<10), "BEX_DEPS_KEY="+key)
 			if !strings.Contains(out, "bex-xdg-seed: unusable") {
 				t.Errorf("seed accepted it: %s", out)
 			}
-			if entries, _ := os.ReadDir(filepath.Join(dir, "cache")); len(entries) != 0 {
-				t.Errorf("an unusable archive left %v behind", entries)
+			for _, m := range []string{xdgArchiveXDG, xdgArchiveDeps} {
+				if entries, _ := os.ReadDir(filepath.Join(dir, "cache", m)); len(entries) != 0 {
+					t.Errorf("an unusable archive left %v behind in %s", entries, m)
+				}
 			}
 			for _, outside := range []string{"escape", filepath.Join("outside", "pwned")} {
 				if _, err := os.Stat(filepath.Join(dir, outside)); err == nil {
@@ -820,13 +849,16 @@ func TestXDGSeedKeepsNothingOfAnArchiveThatDoesNotUnpackCleanly(t *testing.T) {
 			}
 		})
 	}
-	// The same archive, whole, within the bound, is restored.
+	// The same archive, whole, within the bound, is restored, both halves.
 	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, "in", xdgCacheObject), string(valid))
-	if err := os.MkdirAll(filepath.Join(dir, "cache"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if out := runStep(t, xdgStep(t, "BEX_XDG_SEED", dir, 32<<10)); !strings.Contains(out, "restored in") {
+	archiveMounts(t, dir)
+	if out := runStep(t, xdgStep(t, "BEX_XDG_SEED", dir, 32<<10), "BEX_DEPS_KEY="+key); !strings.Contains(out, "restored in") {
 		t.Errorf("a valid archive was refused: %s", out)
+	}
+	for _, m := range []string{xdgArchiveXDG, xdgArchiveDeps} {
+		if got, _ := os.ReadFile(filepath.Join(dir, "cache", m, "ok")); string(got) != "fine" {
+			t.Errorf("%s/ok = %q", m, got)
+		}
 	}
 }

@@ -412,7 +412,8 @@ func nativeDockerfile(o Options) string {
 	// The decoder is resolved once, under the image's PATH, into a function a
 	// decoded variable cannot overwrite: a decoded PATH is exported mid-loop
 	// and must reach the command exactly, not stop the next decode (w8/m61).
-	loader := fmt.Sprintf(": bex-native-env-rev=%s\n", nativeEnvRevision(o)) + assembleFiles + `decoder="$(command -v base64)" || exit 1
+	depsMount, depsSeed, depsSave := nativeDepsRecipe(o.depsCache())
+	loader := fmt.Sprintf(": bex-native-env-rev=%s\n", nativeEnvRevision(o)) + depsSeed + assembleFiles + `decoder="$(command -v base64)" || exit 1
 eval "bex_decode() { '$decoder' -d; }"
 while IFS= read -r record; do
   [ -n "$record" ] || continue
@@ -433,8 +434,8 @@ COPY <<'%s' %s
 %s%s
 %sARG RENDER_GIT_COMMIT
 %s%s %s
-`, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools+hugo+nativeBuildDefaults(o)+nativeXDGCacheDir, nativeWorkdir, nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
-		installLines, nativeEnvRunMount, fileMounts+nativeOIDCMounts(o)+nativeXDGCacheMount, run)
+%s`, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools+hugo+nativeBuildDefaults(o)+nativeXDGCacheDir, nativeWorkdir, nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
+		installLines, nativeEnvRunMount, fileMounts+nativeOIDCMounts(o)+nativeXDGCacheMount+depsMount, run, depsSave)
 	if o.StaticSite {
 		// No PORT/CMD: the image only carries the built site for the publish
 		// Job's extract initContainer (ADR029) and never runs as a workload.
