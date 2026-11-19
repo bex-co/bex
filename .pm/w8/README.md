@@ -712,7 +712,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [x] **223** — [A rollout refused by workspace memory quota shows its reason](done/223.md) — **DONE 2026-10-29:** already fixed by `885d61317`; newest-ReplicaSet quota regressions pass. Prior live-check limits retained.
 
 - [x] **224** — [`bex login` tells the user to complete login in the "Render Dashboard"](done/224.md) — **DONE 2026-11-04** (released `bex-cli/v0.4.0` prints "Complete login in the Bex dashboard" in text and interactive modes)
-- [ ] [222 — Preserve exact Python3.14.8 with repaired Brotli](blocked/222.md) — **BLOCKED (native build worker: m91 common qualification/adoption and original default hosted acceptance); option3 is already chosen.**
+- [x] **222** — [Preserve exact Python3.14.8 with repaired Brotli](done/222.md) — **DONE 2026-11-19:** checked on production pin `c624a4f217ff` (common image `4b809600…`) with a fresh Free service. With no version signal, it built and served Render's current default, 3.14.10. With `PYTHON_VERSION=3.14.8`, the same build path a service from the 2026-10-23 to 11-03 window takes, it built and served 3.14.8. Both ran on `libbrotli1 1.0.9-2+deb12u1` (`dpkg -V` clean), and the system-decoder probe passed at build and at runtime. Option 3 holds with no version divergence.
 
 - [x] **221** — [Small disks: preserve requested-size billing and enforce actual capacity](done/221.md) — promoted to **m144** 2026-10-29; implementation remains open.
 
