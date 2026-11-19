@@ -2,7 +2,7 @@
 
 Why: ordinary native asset builds and download handlers cannot create ZIP archives with the supplied toolchain.
 
-**Severity:** major. **Attribution:** shared operator native image assembly. Ordinary functional CLI sweep434, 2026-10-17, noninteractive JSON, api.bex.co/v1, isolated human QA bex-canary/tea-daif693dqjvc73e7as3g. Published Bex 0.3.2/a6350da0 and unmodified Render 2.27.0/a764810a7682. Source HEAD is captured; actual serving SHA/OCI is unknown. [Complete evidence](evidence/cli-sweep434/README.md).
+**Severity:** major. **Attribution:** shared operator native image assembly. Ordinary functional CLI sweep434, 2026-10-17, noninteractive JSON, api.bex.co/v1, isolated human QA bex-canary/tea-daif693dqjvc73e7as3g. Published Bex 0.3.2/a6350da0 and unmodified Render 2.27.0/a764810a7682. Source HEAD is captured; actual serving SHA/OCI is unknown. Complete evidence (sweep 434, purged 2026-11-04).
 
 ## Reproduce and isolate
 

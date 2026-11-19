@@ -1,6 +1,6 @@
 """Offline generated-image behavior regressions; no hosting or publication claim."""
 from pathlib import Path
-import base64,email.parser,gettext,gzip,http.client,importlib.metadata,io,json,lzma,os,platform,runpy,shlex,shutil,socket,struct,subprocess,sys,sysconfig,tarfile,tempfile,time,zipfile,zlib,hashlib
+import base64,email.parser,gettext,gzip,http.client,importlib.metadata,io,json,lzma,os,platform,runpy,shlex,shutil,socket,stat,struct,subprocess,sys,sysconfig,tarfile,tempfile,time,zipfile,zlib,hashlib
 ROOT=Path(__file__).resolve().parent
 PHASE=sys.argv[1]
 def sha(b):return hashlib.sha256(b).hexdigest()
@@ -235,17 +235,89 @@ def extra_cases():
   (sw/'bad.i').write_text('%module bad\n%inline %{\nint broken( ;\n%}\n');code,diag=swig('-python','bad.i');assert code==1 and 'bad.i:3: Error: Syntax error in input(1).' in diag and not (sw/'bad_wrap.c').exists() and not (sw/'bad.py').exists()
   code,diag=swig('-python','-bex-unknown-option','qa_swig.i');assert code==1 and 'Unrecognized option -bex-unknown-option' in diag
   results.append('SWIG: m100 original interface via its own argv, frozen 4.1.0 wrapper and proxy, independent C result and Unicode; OUTPUT typemaps, exception.i ValueError and carrays from the packaged library, which an authored SWIG_LIB replaces; C++ std::string via std_string.i; authored -I include path with -o/-outdir; exit 1 for a syntax error with no output and for an unknown option')
-  # Independent ZIP names/bytes/CRC/method checks; no unzip-as-oracle shortcut.
-  zipdir=d/'zip';zipdir.mkdir();members={'empty.txt':b'','greeting.txt':('Crème brûlée & 李\n'*100).encode(),'two words.bin':bytes(range(256))*64}
+  # ZIP creation, which Render lists at build and runtime: m107's own program and zip 3.0's options in every phase, each archive read back with Python's zipfile alone.
+  m107=next(x for x in json.loads((ROOT/'original-cases.json').read_text()) if x['mid']==107);zref=m107['validation_reference'];zq=ROOT/'qa-zip';zipdir=d/'zip';zipdir.mkdir()
+  ZIP3='This is Zip 3.0 (July 5th 2008), by Info-ZIP.'
+  # zip 3.0 (3.0-13+deb12u1) writes these bytes for m107's frozen marker on linux/amd64 and linux/arm64; production wrote the arm64 replica's bytes for its own markers (w8/m107).
+  frozen={'build':'317e333e35d37cbee7b083083a949a64935dd8297e700857c44d656a525ee7d6','runtime':'67642885d48c45e8502a66c9b763a8333becff1bd0e3ce1b351f1204db8b35a9'}
+  def zipcmd(*a,data=None):r=subprocess.run(['zip',*a],cwd=zipdir,input=data,capture_output=True,timeout=90);return r.returncode,r.stdout.decode()
+  def entries(archive,expected):
+   # Exact ordered names, bytes, sizes and CRC32; returns each member's method, flags and extra field ids.
+   with zipfile.ZipFile(archive) as z:
+    assert [v.filename for v in z.infolist()]==list(expected) and z.testzip() is None,z.namelist()
+    out=[]
+    for v in z.infolist():
+     b=expected[v.filename];assert (z.read(v),v.file_size,v.CRC)==(b,len(b),zlib.crc32(b)),v.filename;ids,i=[],0
+     while i<len(v.extra):h,n=struct.unpack_from('<HH',v.extra,i);ids.append(h);i+=4+n
+     out.append((v.compress_type,v.flag_bits,ids))
+    return out
+  # zip stores a non-ASCII name as its UTF-8 bytes without the UTF-8 flag, so zipfile reads it as code page 437.
+  cp437=lambda n:n.encode().decode('cp437')
+  def program_members(label):return {'CHANGELOG':(zq/'CHANGELOG').read_bytes(),'LICENSE':(zq/'LICENSE').read_bytes(),'empty.txt':b'','greeting.txt':('Crème brûlée & 李\n'*7).encode(),'request.txt':label.encode(),'two words.bin':bytes((i*31+17)&255 for i in range(8192))}
+  if PHASE=='build':
+   # m107's own program through its original argv, outside the original build.
+   zq.mkdir()
+   for n,s in json.loads(gzip.decompress(base64.b64decode(m107['commands']['initial']['build'].split("Buffer.from('\"'\"'",1)[1].split("'",1)[0]))).items():(zq/n).write_text(s,encoding='utf-8')
+   for n in zref['files']:shutil.copyfile(ROOT/'source-carrier'/n,zq/n)
+   out=run(['node','qa434-app.cjs','build'],cwd=zq).decode();before=json.loads(out.split('QA434_BEFORE ',1)[1].split('\n',1)[0])
+   assert before['marker']==m107['marker'] and before['source']==zref['files'] and before['unzip']=='UnZip 6.00 of 20 April 2009, by Debian. Original by Info-ZIP.'
+  # Every phase: the retained build archive is the frozen bytes, with the program's members and methods.
+  built=json.loads((zq/'qa434-built.json').read_text());blob=base64.b64decode(built['archive']['base64'])
+  assert (built['marker'],built['source'],built['zip'],sha(blob),len(blob))==(m107['marker'],zref['files'],ZIP3,frozen['build'],built['archive']['bytes']) and 'No errors detected in compressed data of ' in built['unzip_test']
+  assert [m for m,_,_ in entries(io.BytesIO(blob),program_members(m107['marker']+'|build'))]==[0,8,0,8,0,8]
+  if PHASE=='runtime':
+   # m107's own server creates a fresh archive per request with the runtime's zip, downloaded and inspected.
+   with socket.socket() as s:s.bind(('127.0.0.1',0));port=s.getsockname()[1]
+   server=subprocess.Popen(['node','qa434-app.cjs','serve'],cwd=zq,env=dict(os.environ,PORT=str(port)),stdout=subprocess.DEVNULL)
+   def get(path):c=http.client.HTTPConnection('127.0.0.1',port,timeout=10);c.request('GET',path);r=c.getresponse();return r.status,r.getheader('Content-Type'),r.read()
+   try:
+    for _ in range(150):
+     try:download=get('/download?qa=qa-zip-runtime');break
+     except OSError:time.sleep(.03)
+    else:raise RuntimeError('qa434-app.cjs serve did not listen')
+    inspect=get('/inspect?qa=qa-zip-runtime')
+   finally:server.terminate();server.wait(timeout=5)
+   proof=json.loads(inspect[2]);fresh=base64.b64decode(proof['runtime']['archive']['base64'])
+   assert download[:2]==(200,'application/zip') and inspect[:2]==(200,'application/json') and sha(download[2])==sha(fresh)==frozen['runtime'] and proof['built']==built and proof['runtime']['zip']==ZIP3
+   entries(io.BytesIO(download[2]),program_members(m107['marker']+'|qa-zip-runtime'))
+  # -0 stores every member; -9 deflates with the maximum-compression flag, but an empty member stays stored. unzip restores the Unicode, space-containing name and its bytes.
+  members={'empty.txt':b'','greeting.txt':('Crème brûlée & 李\n'*100).encode(),'two words.bin':bytes(range(256))*64,'雪 two.txt':'Crème 雪\n'.encode()*50}
   for n,b in members.items():(zipdir/n).write_bytes(b)
-  for label,level in [('stored','-0'),('deflated','-9')]:
-   run(['zip','-q',level,label+'.zip',*sorted(members)],cwd=zipdir);raw=(zipdir/(label+'.zip')).read_bytes()
-   with zipfile.ZipFile(io.BytesIO(raw)) as z:
-    assert z.namelist()==sorted(members) and z.testzip() is None
-    for v in z.infolist():assert z.read(v.filename)==members[v.filename] and v.file_size==len(members[v.filename]) and v.CRC==zlib.crc32(members[v.filename])&0xffffffff
-    assert all(v.compress_type==0 for v in z.infolist()) if label=='stored' else any(v.compress_type==8 for v in z.infolist())
+  for label,level,methods in [('stored','-0',[(0,0)]*4),('deflated','-9',[(0,0)]+[(8,2)]*3)]:
+   assert zipcmd('-q',level,label+'.zip',*members)==(0,'')
+   assert [(m,f,ids) for m,f,ids in entries(zipdir/(label+'.zip'),{cp437(n):b for n,b in members.items()})]==[(m,f,[0x5455,0x7875]) for m,f in methods]
    if PHASE=='build':shutil.copyfile(zipdir/(label+'.zip'),ROOT/'public'/(label+'.zip'))
-  run(['zip','-q','bad.zip','absent.txt'],cwd=zipdir,fails=True);results.append('ZIP independent exact empty/binary/Unicode/space members+CRC32/stored+deflated methods and missing input failure')
+  run(['unzip','-q','-d','out','deflated.zip'],cwd=zipdir);assert {n:(zipdir/'out'/n).read_bytes() for n in os.listdir(zipdir/'out')}==members
+  # -X drops the extended timestamp (UT) and Unix owner (ux) fields; -Z bzip2 compresses through libbz2; -y keeps a symlink as a link.
+  assert zipcmd('-q','-X','plain.zip','empty.txt')==(0,'') and entries(zipdir/'plain.zip',{'empty.txt':b''})==[(0,0,[])]
+  assert zipcmd('-q','-Z','bzip2','bz.zip','greeting.txt')==(0,'') and entries(zipdir/'bz.zip',{'greeting.txt':members['greeting.txt']})[0][0]==12
+  os.symlink('two words.bin',zipdir/'link');assert zipcmd('-q','-y','link.zip','link')==zipcmd('-q','follow.zip','link')==(0,'')
+  with zipfile.ZipFile(zipdir/'link.zip') as z:v=z.infolist()[0];assert stat.S_ISLNK(v.external_attr>>16) and z.read(v)==b'two words.bin'
+  entries(zipdir/'follow.zip',{'link':members['two words.bin']})
+  # Recursion with and without directory entries, junked paths, an exclusion and names read from stdin.
+  tree={'tree/b.bin':bytes(range(256)),'tree/sub/a.txt':b'a\n'}
+  for n,b in tree.items():(zipdir/n).parent.mkdir(parents=True,exist_ok=True);(zipdir/n).write_bytes(b)
+  dirs={'tree/':b'','tree/sub/':b''}
+  for argv,expected in [(['-r','r.zip','tree'],{**dirs,**tree}),(['-r','-D','D.zip','tree'],tree),(['-r','-j','j.zip','tree'],{'b.bin':tree['tree/b.bin'],'a.txt':tree['tree/sub/a.txt']}),(['-r','x.zip','tree','-x','*.bin'],{**dirs,'tree/sub/a.txt':tree['tree/sub/a.txt']})]:
+   assert zipcmd('-q',*argv)==(0,'')
+   with zipfile.ZipFile(zipdir/next(a for a in argv if a.endswith('.zip'))) as z:assert {n:z.read(n) for n in z.namelist()}==expected and len(z.namelist())==len(expected)
+  assert zipcmd('-q','-@','at.zip',data=b'tree/sub/a.txt\ntree/b.bin\n')==(0,'') and entries(zipdir/'at.zip',{n:tree[n] for n in ('tree/sub/a.txt','tree/b.bin')})
+  # Streams: stdin becomes the member '-', and an archive written to a pipe uses data descriptors.
+  assert zipcmd('-q','stdin.zip','-',data=members['greeting.txt'])==(0,'') and entries(zipdir/'stdin.zip',{'-':members['greeting.txt']})[0][0]==8
+  r=subprocess.run(['zip','-q','-','empty.txt','two words.bin'],cwd=zipdir,capture_output=True,timeout=90);assert r.returncode==0 and [f&8 for _,f,_ in entries(io.BytesIO(r.stdout),{n:members[n] for n in ('empty.txt','two words.bin')})]==[8,8]
+  # Update replaces only the newer member, delete removes one, -z writes the archive comment from stdin and -T tests the archive.
+  (zipdir/'old.txt').write_bytes(b'old\n');os.utime(zipdir/'old.txt',(1000000000,1000000000));assert zipcmd('-q','u.zip','old.txt','empty.txt')==(0,'');(zipdir/'old.txt').write_bytes(b'newer\n')
+  assert zipcmd('-u','u.zip','old.txt','empty.txt')==(0,'updating: old.txt (stored 0%)\n') and entries(zipdir/'u.zip',{'old.txt':b'newer\n','empty.txt':b''})
+  assert zipcmd('-d','u.zip','old.txt')==(0,'deleting: old.txt\n') and zipcmd('-z','u.zip',data='note 雪\n'.encode())[0]==0 and zipcmd('-T','u.zip')==(0,'test of u.zip OK\n')
+  with zipfile.ZipFile(zipdir/'u.zip') as z:assert z.namelist()==['empty.txt'] and z.comment=='note 雪'.encode()
+  # Exit statuses with zip's own messages: 12 when nothing matches, an archive kept unchanged; 18 under -MM for an unreadable input; 16 for an unknown option; 3 for a damaged archive, left as it was.
+  kept=sha((zipdir/'u.zip').read_bytes());(zipdir/'damaged.zip').write_bytes(b'not a zip archive')
+  assert zipcmd('-q','none.zip','absent.txt')==(12,'\nzip error: Nothing to do! (none.zip)\n') and not (zipdir/'none.zip').exists()
+  assert zipcmd('-d','u.zip','absent.txt')==(12,'\tzip warning: name not matched: absent.txt\n\nzip error: Nothing to do! (u.zip)\n') and sha((zipdir/'u.zip').read_bytes())==kept
+  assert zipcmd('-MM','-q','mm.zip','empty.txt','absent.txt')==(18,'zip I/O error: No such file or directory\nzip error: File not found or no read permission (absent.txt)\n') and not (zipdir/'mm.zip').exists()
+  assert zipcmd('--bex-unknown-option','x2.zip','empty.txt')==(16,"\nzip error: Invalid command arguments (long option 'bex-unknown-option' not supported)\n")
+  code,out=zipcmd('damaged.zip','empty.txt');assert code==3 and out.endswith('\nzip error: Zip file structure invalid (damaged.zip)\n') and (zipdir/'damaged.zip').read_bytes()==b'not a zip archive'
+  results.append('ZIP (build and runtime): m107 original program via its own argv, frozen 3.0 build archive at every phase and fresh runtime archives from its server; -0/-9 methods with empty/binary/Unicode/space members, unzip restoring names and bytes; -X extra fields, bzip2 through libbz2, symlinks with and without -y; recursion, -D, -j, -x, -@; stdin member and piped archive with data descriptors; -u, -d, -z comment, -T; exit 12/18/16/3 with zip\'s messages and archives kept')
   # pigz is build-only, as Render lists it: it runs at build, and every phase reads the retained artifacts back with Python's zlib alone.
   compressed_dir=ROOT/'public';payloads={'empty':b'','binary':bytes(range(256))*64,'unicode':('Crème 雪\n'*100).encode()}
   m102=next(x for x in json.loads((ROOT/'original-cases.json').read_text()) if x['mid']==102);pref=m102['validation_reference'];pz=ROOT/'qa-pigz'

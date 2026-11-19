@@ -203,6 +203,7 @@ func nativeUtilityCases() []nativeUtilityCase {
 		{"python-metadata", "103", "No module named 'setuptools'", nativeNodeRuntime},
 		{"python-pip", "103", "No module named pip", nativeNodeRuntime},
 		{"python-headers", "103", "Python.h: No such file or directory", nativeNodeRuntime},
+		{"zip", "107", "Error: spawnSync zip ENOENT", nativeNodeRuntime},
 	}
 	cases := make([]nativeUtilityCase, 0, 5+len(omissions))
 	cases = append(cases,
@@ -359,6 +360,11 @@ func nativeUtilityRemovalLayer(removed, name string) string {
 		command = pythonControls + " && rm -r /usr/lib/python3/dist-packages/pip && test ! -e /usr/lib/python3/dist-packages/pip && /usr/bin/python3 -c 'import setuptools' && test -f /usr/include/python3.11/Python.h"
 	case "python-headers":
 		command = pythonControls + " && rm -r /usr/include/python3.11 && test ! -e /usr/include/python3.11 && /usr/bin/python3 -c 'import setuptools' && /usr/bin/python3 -m pip --version"
+	case "zip":
+		// Only the zip program goes; unzip, zipinfo, the package's other tools
+		// and libbz2 stay, so the original build fails at its first archive,
+		// after the before proof.
+		command = `zip -v >/dev/null && rm /usr/bin/zip && test ! -e /usr/bin/zip && hash -r && ! command -v zip && unzip -v | head -1 | grep -q '^UnZip 6\.00 ' && test -x /usr/bin/zipinfo && test -x /usr/bin/zipnote && test -x /usr/bin/zipcloak && test -x /usr/bin/zipsplit && ldconfig -p | grep -q 'libbz2\.so\.1\.0'`
 	default:
 		panic("unknown test-only native supplier removal")
 	}
