@@ -302,9 +302,13 @@ func nativeUtilityRemovalLayer(removed, name string) string {
 	var command string
 	switch removed {
 	case "jq":
-		command = "jq --version && rsync --version && rm /usr/bin/jq && test ! -e /usr/bin/jq && rsync --version"
+		// Only the program goes; libjq and Oniguruma stay, and so does rsync, so
+		// the original build fails at its jq step, before any manifest exists.
+		command = `jq --version && rsync --version && rm /usr/bin/jq && test ! -e /usr/bin/jq && hash -r && ! command -v jq && test -e "$(dpkg -L libjq1 | grep '/libjq\.so\.1$')" && test -e "$(dpkg -L libonig5 | grep '/libonig\.so\.5$')" && rsync --version`
 	case "rsync":
-		command = "jq --version && rsync --version && rm /usr/bin/rsync && test ! -e /usr/bin/rsync && jq --version"
+		// jq stays, so the original build writes its manifest and then fails at
+		// the copy, as the second historical stage did.
+		command = "jq --version && rsync --version && rm /usr/bin/rsync && test ! -e /usr/bin/rsync && hash -r && ! command -v rsync && jq --version"
 	case "pandoc":
 		// The packaged data must survive, so the original command fails on the
 		// missing program alone. dash caches command paths, hence hash -r.

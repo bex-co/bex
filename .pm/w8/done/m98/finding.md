@@ -2,7 +2,7 @@
 
 Why: normal build scripts cannot generate a JSON release manifest or copy local assets with utilities documented as supplied by the native environment.
 
-**Severity:** major for each of two independently isolated omissions. **Ownership:** operator native-image assembly. **Estimate:**270m across7 tasks, with separate jq and rsync repairs. Functional CLI sweep419,2026-10-17. Published Bex0.3.2/a6350da0 and unchanged Render2.27.0/a764810a7682, isolated human-QA bex-canary/tea-daif693dqjvc73e7as3g, noninteractive JSON, api.bex.co/v1. Source94e8cea37f4177c9092f8cd2a5a63a6eda695c0c; serving revision unknown. [Complete evidence](evidence/cli-sweep419/README.md).
+**Severity:** major for each of two independently isolated omissions. **Ownership:** operator native-image assembly. **Estimate:**270m across7 tasks, with separate jq and rsync repairs. Functional CLI sweep419,2026-10-17. Published Bex0.3.2/a6350da0 and unchanged Render2.27.0/a764810a7682, isolated human-QA bex-canary/tea-daif693dqjvc73e7as3g, noninteractive JSON, api.bex.co/v1. Source94e8cea37f4177c9092f8cd2a5a63a6eda695c0c; serving revision unknown. Complete evidence (sweep 419, purged 2026-11-04).
 
 ## Two real failures, isolated in three stages
 

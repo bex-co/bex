@@ -97,6 +97,30 @@ def extra_cases():
   source=d/'assets';source.mkdir();expected={'two words.bin':bytes(range(256))*8,'naïve.txt':'Crème 雪'.encode()};
   for n,b in expected.items():(source/n).write_bytes(b)
   (source/'skip.tmp').write_bytes(b'excluded');dest=d/'copied';dest.mkdir();(dest/'stale.txt').write_bytes(b'stale');run(['rsync','-a','--delete','--exclude=*.tmp',str(source)+'/',str(dest)+'/']);assert {f.name:f.read_bytes() for f in dest.iterdir()}==expected;run(['jq','-e','.'],data=b'{ invalid JSON',fails=True);run(['rsync','-a',str(d/'missing')+'/',str(d/'failed-copy')+'/'],fails=True);results.append('jq malformed input + rsync exact Unicode/space bytes/exclude/stale/missing-source failure')
+  # jq and rsync beyond that copy: m98's own manifest and asset tree through the original argv, Oniguruma regex, safe --arg/--argjson, raw/@sh/@base64 output, slurp and exit statuses; archive attributes, symlinks, excluded files kept from --delete, itemized dry runs and trailing-slash semantics.
+  aref=next(x for x in json.loads((ROOT/'original-cases.json').read_text()) if x['mid']==98)['validation_reference'];app=d/'asset-app';published=[a['path'] for a in aref['manifest']['assets'] if a['publish']]
+  for n,s in aref['assets'].items():f=app/'qa-assets-src'/n;f.parent.mkdir(parents=True,exist_ok=True);f.write_text(s,encoding='utf-8')
+  (app/'qa-assets-input.json').write_text(json.dumps(aref['manifest'],ensure_ascii=False),encoding='utf-8');(app/'dist').mkdir();(app/'dist'/'old-owned.txt').write_text('own stale output')
+  jq=lambda *a,data=None:run(['jq',*a],cwd=app,data=data)
+  def exit_of(args,data=None):r=subprocess.run(args,cwd=app,input=data,capture_output=True,timeout=90);return r.returncode,r.stderr
+  assert json.loads(jq('-e','-c','{release:.release,paths:[.assets[]|select(.publish==true)|.path]}','qa-assets-input.json'))=={'release':aref['manifest']['release'],'paths':published}
+  run(['rsync','-a','--delete','--exclude=*.tmp','qa-assets-src/','dist/'],cwd=app);assert {p.relative_to(app/'dist').as_posix():p.read_bytes() for p in (app/'dist').rglob('*') if p.is_file()}=={n:aref['assets'][n].encode() for n in published}
+  assert jq('-r','.assets[]|select(.publish)|.path','qa-assets-input.json').decode().splitlines()==published and shlex.split(jq('-r','[.assets[]|select(.publish)|.path]|@sh','qa-assets-input.json').decode())==published
+  assert json.loads(jq('-c',r'[.assets[].path|select(test("^assets/\\p{L}+\\.txt$"))|sub("\\.txt$";".md")]','qa-assets-input.json'))==['assets/écho.md']
+  tricky='a "quoted" $(name) 雪';assert json.loads(jq('-n','-c','--arg','name',tricky,'--argjson','n','7','{name:$name,n:($n*3)}'))=={'name':tricky,'n':21}
+  assert jq('-n','-r','"Crème 雪"|@base64').strip()==base64.b64encode('Crème 雪'.encode()) and jq('-n','-r','"Q3LDqG1lIOmbqg=="|@base64d').decode().strip()=='Crème 雪'
+  assert json.loads(jq('-s','-c','map(.n)|add',data=b'{"n":1}\n{"n":2.5}\n{"n":-7}\n'))==-3.5
+  assert [exit_of(['jq','-e',f,'qa-assets-input.json'])[0] for f in ('.release','.missing','.assets[3].publish')]==[0,1,1] and exit_of(['jq','.['],b'{}')[0]==3 and exit_of(['jq','error("bex refused")'],b'{}\n')==(5,b'jq: error (at <stdin>:1): bex refused\n')
+  tree=d/'tree';(tree/'empty dir').mkdir(parents=True);(tree/'bin').mkdir();tool=tree/'bin'/'run.sh';tool.write_text('#!/bin/sh\necho ok\n');tool.chmod(0o750);(tree/'data.txt').write_text('Zoë 李\n',encoding='utf-8');os.symlink('data.txt',tree/'link to data')
+  stamp=1700000000;os.utime(tool,(stamp,stamp));os.utime(tree/'data.txt',(stamp+1,stamp+1));out=d/'out';(out/'stale dir').mkdir(parents=True);(out/'stale dir'/'old.txt').write_text('stale');(out/'keep.tmp').write_text('excluded, so kept')
+  rsync=lambda *a:run(['rsync',*a],cwd=d);sync=('-a','--delete','--exclude=*.tmp');rsync(*sync,'tree/','out/');copy=out/'bin'/'run.sh'
+  assert (copy.stat().st_mode&0o7777,int(copy.stat().st_mtime),copy.read_bytes(),int((out/'data.txt').stat().st_mtime))==(0o750,stamp,tool.read_bytes(),stamp+1)
+  assert os.readlink(out/'link to data')=='data.txt' and (out/'empty dir').is_dir() and not (out/'stale dir').exists() and (out/'keep.tmp').read_text()=='excluded, so kept'
+  assert rsync(*sync,'--dry-run','--itemize-changes','tree/','out/')==b''
+  (tree/'data.txt').write_text('changed\n');assert rsync(*sync,'--dry-run','--itemize-changes','tree/','out/').decode().split()==['>f.st......','data.txt'] and (out/'data.txt').read_text(encoding='utf-8')=='Zoë 李\n'
+  rsync(*sync,'--delete-excluded','tree/','out/');assert not (out/'keep.tmp').exists() and (out/'data.txt').read_text()=='changed\n'
+  rsync('-a','tree','nested/');assert (d/'nested'/'tree'/'bin'/'run.sh').read_bytes()==tool.read_bytes() and not (d/'nested'/'bin').exists()
+  results.append('jq/rsync: m98 original manifest filter and asset copy, Oniguruma Unicode regex, --arg/--argjson, raw/@sh/@base64 output, slurp, -e/compile/runtime exit statuses; rsync -a modes/mtimes/symlinks/empty dirs, excluded files kept from --delete until --delete-excluded, itemized dry run, trailing-slash semantics')
   # Compile actual strict interface+enum at runtime; noEmitOnError failure.
   (d/'typed.cts').write_text("enum Kind { Nice='雪' }; interface Row { count:number; kind:Kind }; const r:Row={count:7,kind:Kind.Nice};console.log(JSON.stringify({value:r.count*3,label:r.kind}));\n")
   run(['tsc','--strict','--noEmitOnError','--module','NodeNext','--target','ES2022','--outDir','typed-out','typed.cts'],cwd=d);assert json.loads(run(['node','typed-out/typed.cjs'],cwd=d))=={'value':21,'label':'雪'}
