@@ -154,6 +154,7 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [ ] **127** — [A native Python build keeps its virtualenv's packages across source-only commits](127.md) ← from w9/m494 t005 (Render parity) 2026-11-19
 - [ ] **128** — [A Ruby service whose Gemfile.lock names a newer Bundler than its Ruby ships builds, then fails `bundle exec` at start](128.md) ← from the w9/m494 BuildKit drill 2026-11-19
 - [ ] **129** — [A service read carries no `serviceDetails.previews`, where Render reads `{"generation":"off"}`, so Terraform's `previews = { generation = "off" }` aborts the apply](129.md) ← from w9/m472 t005 (production Terraform run) 2026-11-19
+- [ ] **130** — [A person's OAuth-token audit rows export as their raw Kratos subject, where the table names them by email](130.md) ← from w9/101 (production check) 2026-11-19
 
 ## Approved queue (priority order, 2026-09-08)
 
