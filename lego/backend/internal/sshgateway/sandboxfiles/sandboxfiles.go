@@ -203,6 +203,15 @@ var (
 	// errNotReady is a target Pod that is not Ready (a NotReady or unreachable
 	// node): out of reach for now, never a missing sandbox.
 	errNotReady = &statusError{status: http.StatusServiceUnavailable, message: "sandbox is not reachable right now: its pod is not ready"}
+	// errUploadContentType answers an upload in neither of the two content
+	// types Render documents (connect-sandbox-files: "Use
+	// application/octet-stream for a single file or application/x-tar for a
+	// directory archive. For gzip compression, also set Content-Encoding:
+	// gzip."). That includes application/gzip, which Render's TypeScript SDK
+	// still lists from before Render moved compression into Content-Encoding
+	// (w32/041).
+	errUploadContentType = &statusError{status: http.StatusUnsupportedMediaType,
+		message: "unsupported upload Content-Type: send a file as application/octet-stream, or a directory as an application/x-tar archive (with Content-Encoding: gzip when it is gzipped)"}
 	// errGatewayBusy is a directory transfer past archiveIndexMemory, and
 	// errWorkspaceBusy one past its workspace's share of it.
 	errGatewayBusy   = &statusError{status: http.StatusServiceUnavailable, message: "the sandbox file gateway is at capacity; retry the transfer"}
@@ -398,7 +407,7 @@ func shell(script string, args ...string) []string {
 func (s *Server) upload(ctx context.Context, target apps.SSHInstanceTarget, destination string, r *http.Request) error {
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil {
-		return &statusError{status: http.StatusUnsupportedMediaType, message: "expected application/octet-stream or application/x-tar"}
+		return errUploadContentType
 	}
 	kind := "file"
 	encoding := r.Header.Get("Content-Encoding")
@@ -427,7 +436,7 @@ func (s *Server) upload(ctx context.Context, target apps.SSHInstanceTarget, dest
 			return &statusError{status: http.StatusUnsupportedMediaType, message: "unsupported archive Content-Encoding"}
 		}
 	default:
-		return &statusError{status: http.StatusUnsupportedMediaType, message: "unsupported upload Content-Type"}
+		return errUploadContentType
 	}
 	if r.ContentLength > files.MaxTransferBytes {
 		return errTooLarge

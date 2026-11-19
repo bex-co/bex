@@ -287,6 +287,53 @@ func TestChunkedEmptyRawUploadMatchesPinnedCLI(t *testing.T) {
 	}
 }
 
+// w32/041: Render documents two upload content types. Render's TypeScript SDK
+// still offers application/gzip, left over from before Render moved
+// compression into Content-Encoding, so a caller who picks it is refused before
+// the sandbox is touched, and told the documented way to send the same bytes.
+func TestAnUploadInAnotherContentTypeIsRefusedWithTheDocumentedForms(t *testing.T) {
+	gzippedTar := gzipBytes(t, archive(t, &tar.Header{Name: "a.txt", Typeflag: tar.TypeReg, Mode: 0644, Size: 2}))
+	for _, tc := range []struct {
+		name, media, encoding string
+	}{
+		{"gzip, as the TypeScript SDK can send it", "application/gzip", ""},
+		{"gzip with a gzip encoding", "application/gzip", "gzip"},
+		{"x-gzip", "application/x-gzip", ""},
+		{"text", "text/plain; charset=utf-8", ""},
+		{"none", "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var execs atomic.Int32
+			s := serverFor(func(context.Context, []string, io.Reader, io.Writer) (int, error) {
+				execs.Add(1)
+				return 0, nil
+			})
+			r := requestFor(t, http.MethodPut, gzippedTar)
+			r.Header.Del("Content-Type")
+			if tc.media != "" {
+				r.Header.Set("Content-Type", tc.media)
+			}
+			if tc.encoding != "" {
+				r.Header.Set("Content-Encoding", tc.encoding)
+			}
+			w := httptest.NewRecorder()
+			s.Handler().ServeHTTP(w, r)
+			var body struct{ Message string }
+			if w.Code != http.StatusUnsupportedMediaType || json.Unmarshal(w.Body.Bytes(), &body) != nil || body.Message != errUploadContentType.message {
+				t.Fatalf("answered %d %q, want 415 %q", w.Code, w.Body, errUploadContentType.message)
+			}
+			for _, documented := range []string{"application/octet-stream", "application/x-tar", "Content-Encoding: gzip"} {
+				if !strings.Contains(body.Message, documented) {
+					t.Fatalf("message %q does not name %s", body.Message, documented)
+				}
+			}
+			if n := execs.Load(); n != 0 {
+				t.Fatalf("a refused upload ran %d sandbox commands", n)
+			}
+		})
+	}
+}
+
 func TestArchiveEntryPolicyAndBudgets(t *testing.T) {
 	for _, name := range []string{"/", "/absolute", "a/../b", "../b", "a//b", "a\nb", "a\\b", strings.Repeat("a", files.MaxPathBytes+1)} {
 		t.Run(name, func(t *testing.T) {
