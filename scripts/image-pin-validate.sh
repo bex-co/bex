@@ -121,6 +121,7 @@ lego/operator/config/ssh/deployment.yaml	controller:latest	same manager image, /
 lego/operator/config/activator/deployment.yaml	controller:latest	same manager image, /activator entrypoint; rewritten by the same kustomize edit
 lego/operator/config/staticserver/deployment.yaml	controller:latest	same manager image, /staticserver entrypoint; rewritten by the same kustomize edit
 lego/operator/config/objectgw/deployment.yaml	controller:latest	same manager image, /objectgw entrypoint; rewritten by the same kustomize edit
+lego/operator/config/s3gw/deployment.yaml	controller:latest	same manager image, /s3gw entrypoint; rewritten by the same kustomize edit (config/default)
 lego/operator/config/pg-sni-proxy/daemonset.yaml	pg-sni-proxy:latest	kustomize `images:` placeholder for the manager image's /pg-sni-proxy entrypoint under its own pin (w6/m470) — deploy/gitops/base/bex.yaml rewrites it to an operator digest deploy.yml pushed, held while the binary is unchanged
 lego/operator/config/kv-sni-proxy/daemonset.yaml	kv-sni-proxy:latest	kustomize `images:` placeholder for the manager image's /kv-sni-proxy entrypoint under its own pin (w6/m470) — deploy/gitops/base/bex.yaml rewrites it to an operator digest deploy.yml pushed, held while the binary is unchanged
 lego/operator/config/egress-meter/daemonset.yaml	controller:latest	same manager image, /egress-meter entrypoint; rewritten by the same kustomize edit
