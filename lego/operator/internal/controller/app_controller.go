@@ -8228,6 +8228,9 @@ func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// A listener sweep finished off the worker (scanPrivatePorts, w4/665).
 		WatchesRawSource(crsource.Channel(r.privatePortSwept, &handler.EnqueueRequestForObject{})).
 		For(&appv1alpha1.App{}, crbuilder.WithPredicates(generationOrDeletionPredicate{})).
+		// An App mid-change when the manager starts goes ahead of the
+		// startup sweep (w5/m370 t003).
+		WatchesRawSource(crsource.Kind(mgr.GetCache(), &appv1alpha1.App{}, inFlightFirstAtStart())).
 		// Deployment readiness and rollout revisions live entirely in status, so
 		// child resourceVersion updates must not inherit the App's generation-only
 		// primary filter. Pod events close the shorter crash-loop window before the

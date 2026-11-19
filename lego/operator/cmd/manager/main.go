@@ -270,6 +270,21 @@ func buildServerOptions(cfg managerConfig) (webhook.Server, metricsserver.Option
 	return webhookServer, metricsServerOptions
 }
 
+// withLeaderElection sets the manager's leader election. A stopping leader
+// hands its lease back (w5/m370 t003): without that, the next pod waited out
+// the 15 s lease before any controller ran, and production measured 14 to
+// 21 s with no App reconciled at each of 53 rollouts in three days, so a
+// spec change made then waited at least that long. Releasing is safe only
+// when the binary ends as soon as the manager stops, which main does: the
+// manager gives the lease back after every leader-election runnable has
+// returned, and main exits right after mgr.Start returns.
+func withLeaderElection(o ctrl.Options, enabled bool) ctrl.Options {
+	o.LeaderElection = enabled
+	o.LeaderElectionID = "36450c48.bex.co"
+	o.LeaderElectionReleaseOnCancel = true
+	return o
+}
+
 // logOptions are the manager's logging defaults before the --zap-* flags are
 // applied: zap's production set (JSON, info level, stack traces on errors only,
 // sampling). Development mode, which the kubebuilder scaffold sets, logs at
@@ -285,18 +300,14 @@ func main() {
 	webhookServer, metricsServerOptions := buildServerOptions(cfg)
 
 	appsNamespace := env.Or("BEX_APPS_NAMESPACE", "default")
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), withLeaderElection(ctrl.Options{
 		Scheme:                 scheme,
 		Cache:                  controller.NamespacedSecretCacheOptions(appsNamespace),
 		Metrics:                metricsServerOptions,
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: cfg.probeAddr,
 		PprofBindAddress:       cfg.pprofAddr,
-		LeaderElection:         cfg.enableLeaderElection,
-		LeaderElectionID:       "36450c48.bex.co",
-		// LeaderElectionReleaseOnCancel: true, // voluntary step-down on stop;
-		// only safe when the binary exits immediately after the manager stops.
-	})
+	}, cfg.enableLeaderElection))
 	if err != nil {
 		setupLog.Error(err, "Failed to start manager")
 		os.Exit(1)

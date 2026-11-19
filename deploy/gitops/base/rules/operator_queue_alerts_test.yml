@@ -50,6 +50,39 @@ tests:
       - eval_time: 40m
         alertname: BexOperatorReconcileQueueSlow
         exp_alerts: []
+  # w5/m370 t006: with no queue series at all the slow-queue alert cannot
+  # evaluate, so the missing-metrics alert says so; a scraped queue keeps it quiet.
+  - name: an absent queue series fires the missing-metrics alert, not the slow-queue one
+    interval: 1m
+    input_series:
+      - series: up{job="bex-operator"}
+        values: 0x30
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: BexOperatorQueueMetricsMissing
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: BexOperatorQueueMetricsMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: bex-operator
+              name: app
+            exp_annotations:
+              summary: "The operator's App work-queue metrics are missing"
+              description: "Prometheus has no App work-queue series from the bex-operator scrape for 15 minutes, so BexOperatorReconcileQueueSlow and BexOperatorAppReconcileSlowPasses are blind. This is monitoring loss, not a slow queue. Check that the manager runs (kubectl -n bex-system get deploy bex-controller-manager), that up{job=\"bex-operator\"} is 1, and that the bex-operator job's keep regex in deploy/gitops/base/prometheus.yaml still keeps workqueue_*. Context: .pm/w5/m370."
+      - eval_time: 20m
+        alertname: BexOperatorReconcileQueueSlow
+        exp_alerts: []
+  - name: a scraped queue keeps the missing-metrics alert quiet
+    interval: 1m
+    input_series:
+      - series: workqueue_queue_duration_seconds_bucket{job="bex-operator",name="app",controller="app",le="+Inf"}
+        values: 0+60x40
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: BexOperatorQueueMetricsMissing
+        exp_alerts: []
   # w4/665: passes that block on the network fire; a rare long pass does not.
   - name: App reconciles that keep taking 15 s fire after 15 minutes
     interval: 1m

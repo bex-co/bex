@@ -834,6 +834,18 @@ groups:
         annotations:
           summary: "App changes wait {{ $value | humanizeDuration }} (p95) in the operator's queue"
           description: "A settings change, a resume or a route repoint reaches the cluster only when the operator reconciles that App, and its queue p95 wait has been over 15 s for 10 minutes. Tenants see settings apply late and maintenance mode or resume answer from the old route. Read the Builds dashboard's operator panels: high queue depth with workers saturated means too few BEX_APP_RECONCILE_WORKERS (lego/operator/config/manager/manager.yaml) for the fleet; long reconcile times mean a slow pass. Context: .pm/w5/m370, w21/012."
+      # Both queue alerts above evaluate nothing when the series are gone: a
+      # failed scrape, a manager that is not running, or a keep-list in
+      # prometheus.yaml that drops workqueue_* (the w2/m72 failure). This says
+      # so instead of staying quiet (w5/m370 t006).
+      - alert: BexOperatorQueueMetricsMissing
+        expr: absent(workqueue_queue_duration_seconds_bucket{job="bex-operator",name="app"})
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "The operator's App work-queue metrics are missing"
+          description: "Prometheus has no App work-queue series from the bex-operator scrape for 15 minutes, so BexOperatorReconcileQueueSlow and BexOperatorAppReconcileSlowPasses are blind. This is monitoring loss, not a slow queue. Check that the manager runs (kubectl -n bex-system get deploy bex-controller-manager), that up{job=\"bex-operator\"} is 1, and that the bex-operator job's keep regex in deploy/gitops/base/prometheus.yaml still keeps workqueue_*. Context: .pm/w5/m370."
 
       # The cause class behind most of that wait (w4/665): a pass that blocks
       # on the network. The private-network listener sweep ran inside the pass
