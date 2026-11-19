@@ -1,6 +1,6 @@
 # w6 · m333 — Deleting a disk or a service closes its usage coverage, and a deleted service's last egress hours are billed
 
-**Worker:** worker6 **Goal:** A deleted service's bandwidth is metered through its deletion hour, and neither a deleted service nor a deleted disk leaves the month's coverage degraded or behind. **Status:** todo — t001–t007 done and verified on production; t008's 50 h read of the fixture disk is due now (see Unblocked — 2026-11-19).
+**Worker:** worker6 **Goal:** A deleted service's bandwidth is metered through its deletion hour, and neither a deleted service nor a deleted disk leaves the month's coverage degraded or behind. **Status:** done — verified on production 2026-11-19: the fixture disk deleted from a live service closed its stream healthy, and no deletion since the fix left a coverage hole (see Done — 2026-11-19).
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | [Render parity](done/t005.md) — **DONE** | 30m | t004 |
 | t006 | [Simplify](done/t006.md) — **DONE** | 15m | t005 |
 | t007 | [Test coverage](done/t007.md) — **DONE** | 30m | t006 |
-| t008 | [Closeout](t008.md) | 10m | t007 |
+| t008 | [Closeout](done/t008.md) — **DONE** | 10m | t007 |
 
 ## Definition of done
 
@@ -68,3 +68,12 @@
 - **Affected IDs:** w6/m333 (t008).
 - **Source:** verified finding. The gate `at or after 2026-11-19 06:00Z` (the fixture disk's deletion at 2026-11-17 03:43:14Z plus 50 h, rounded up) has passed: it is 2026-11-19 22:35Z. No user gate was left.
 - **Next:** t008 runs the read the BLOCKED — 2026-11-17 gate lists: `bex-canary`'s `coverage.degradedSources` on `GET /v1/usage` as the QA user, then, read-only on `bex-db`, the fixture's disk stream and every other `bex-canary` disk stream's windows this month. If the fixture's stream reads [02:00Z, 04:00Z) healthy and the only disk hole is the pre-fix `srv-dbpcja9pjd2c73f0qqjg` 2026-11-10 08:00Z, DoD clause 2 holds; verify clauses 1 and 3 again and close the milestone.
+
+## Done — 2026-11-19
+
+- **Clause 2 holds on production.** It is 64 h after the fixture's disk deletion. The fixture's disk stream expects [2026-11-17 02:00Z, 04:00Z), and both windows are healthy.
+- **`disk` is on `bex-canary`'s November list for one reason only:** the pre-fix hole of `srv-dbpcja9pjd2c73f0qqjg` at 2026-11-10 08:00Z. It is the only missing or non-healthy window in any of the workspace's 8 November disk streams.
+- **The 2026-11-16 decision's literal check cannot pass this month.** That check was `disk` absent from the list, and the pre-fix hole keeps it there until 2026-12-01. The attribution read stands in for it, as the 2026-11-17 record set out.
+- **No `bex-canary` stream of any source has a missing window** from 2026-11-12 12:00Z to the 49 h settled edge. Its other degraded names come from health-gated `degraded` readings, not from deletions (t008).
+- **Clauses 1 and 3 still hold.** The probe's deletion-hour `egress_bytes` row reads on `GET /v1/usage`, and `through` is the latest closed hour (2026-11-19T22:00Z). ADR023 and ADR082 D9 record the rules.
+- **Details:** [t008](done/t008.md).
