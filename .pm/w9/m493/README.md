@@ -1,6 +1,6 @@
 # w9 · m493 — Persistent `$XDG_CACHE_HOME` (`/opt/render/.cache`) across native builds, reset on `clearCache: "clear"`
 
-**Worker:** worker9 **Goal:** every native build receives `XDG_CACHE_HOME=/opt/render/.cache`, persists its contents across deploys of the same service via w9/m492's S3 build-cache store without leaking into the final runtime image, and clears it on `clearCache: "clear"`. **Status:** blocked (t001–t003 and t005–t007 done; t004 waits for a production pin carrying the commit that adds `lego/operator/internal/build/xdgcache.go`; then t008)
+**Worker:** worker9 **Goal:** every native build receives `XDG_CACHE_HOME=/opt/render/.cache`, persists its contents across deploys of the same service via w9/m492's S3 build-cache store without leaking into the final runtime image, and clears it on `clearCache: "clear"`. **Status:** todo (t001–t003 and t005–t007 done; production pin `4b2cebd0bd03` carries `7bfd497da`, the commit that adds `lego/operator/internal/build/xdgcache.go`; t004's production check, then t008)
 
 ## Tasks (in order)
 
@@ -24,8 +24,15 @@
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm for one aspect of render parity` (Build Caching & Build Environment Parity, 2026-11-18, item 2); code audit of `lego/operator/internal/build/native.go` and [default-env-live.md](../../../../docs/render-artifacts/default-env-live.md) vs Render's documented `$XDG_CACHE_HOME` persistence (`render.com/docs/deploy-nextjs-app`, `render.com/docs/deploy-gatsby`, `render.com/docs/deploys`).
-- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)) — [ADR018](../../../../docs/ADR018-render-parity.md) rows `Runtime, build strategy + Root Directory` and `Default environment variables`.
+- **Source:** `/pm-brainstorm for one aspect of render parity` (Build Caching & Build Environment Parity, 2026-11-18, item 2); code audit of `lego/operator/internal/build/native.go` and [default-env-live.md](../../../docs/render-artifacts/default-env-live.md) vs Render's documented `$XDG_CACHE_HOME` persistence (`render.com/docs/deploy-nextjs-app`, `render.com/docs/deploy-gatsby`, `render.com/docs/deploys`).
+- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)) — [ADR018](../../../docs/ADR018-render-parity.md) rows `Runtime, build strategy + Root Directory` and `Default environment variables`.
 - **Expected outcome:** Standard Render Next.js/Gatsby/Astro/Python/Go build scripts that rely on `$XDG_CACHE_HOME` work unchanged on bex with real cross-deploy speedup.
 - **Why now:** Builds directly on w9/m492's off-Zot S3 build-cache store and gives all native runtimes cross-deploy framework and XDG tool caching (cleanly distinct from `w8/blocked/m161`, which owns Node's `node_modules` directory and `NODE_MODULES_CACHE=true`).
 - **Render parity:** included (t005). Adds a Render-documented build-time environment variable and persistent cache contract across native runtimes and updates ADR018 and `default-env-live.md`.
+
+## Unblocked (2026-11-19, `/loopx w9` worker)
+
+- **Affected:** t004, t008. **Source:** verified evidence, no user decision.
+- **Finding:** the newest pin on `origin/main`, `19faf35f3` (`chore(deploy): pin platform images to 4b2cebd0bd03`, 2026-11-19 09:13Z), contains the implementation: `git merge-base --is-ancestor 7bfd497da 4b2cebd0bd03` holds, and so does w9/m492's `d7e76d312`, which it sits on. `bex-system/bex-controller-manager` runs the pinned `bex-operator@sha256:4407341b60d6…` and logged `S3 build cache enabled` (bucket `bex-build-cache`) at 09:18:04Z. w9/m492 closed on that pin (`d35c04241`) after its production run in `bex-canary` proved the S3 store live. The release condition in t004's § Prepared is met.
+- **Status:** pending verification. A deployed operator is not proof that the definition of done holds on production.
+- **Next:** run t004 as written (as the QA user in `bex-canary`), write the record into t004, then t008.
