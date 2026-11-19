@@ -1,6 +1,6 @@
 # w10 · m490 — A renamed or transferred GitHub repository keeps deploying
 
-**Worker:** worker10 **Goal:** a push to a GitHub repository that was renamed or transferred after a service or Blueprint was connected to it still deploys the service (or syncs the Blueprint), because bex matches GitHub's stable repository id rather than the URL it stored, and the stored `repo` follows the new name. **Status:** blocked (t001–t004 and t006–t008 done 2026-11-18; t005, the production rename check, waits for the production deploy that carries this milestone; then t009 closes it)
+**Worker:** worker10 **Goal:** a push to a GitHub repository that was renamed or transferred after a service or Blueprint was connected to it still deploys the service (or syncs the Blueprint), because bex matches GitHub's stable repository id rather than the URL it stored, and the stored `repo` follows the new name. **Status:** done (t001–t004 and t006–t008 done 2026-11-18; t005, the production rename check, and t009 done 2026-11-19)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | An App-signed push matches services and Blueprints by repository id first, by URL only where no id is stored — **DONE** | 1h | t001 |
 | [t003](done/t003.md) | A push whose repository id matches but whose URL differs moves the stored `repo` to the new canonical URL and records the change — **DONE** | 1h | t002 |
 | [t004](done/t004.md) | A connected service whose repository the GitHub App can no longer read says so on Settings → Source — **DONE** | 45m | t001 |
-| [t005](t005.md) | Production check: rename a QA repository, push, and the service deploys and reads the new URL — **BLOCKED (production deploy)** | 30m | t003, t004 |
+| [t005](done/t005.md) | Production check: rename a QA repository, push, and the service deploys and reads the new URL — **DONE** | 30m | t003, t004 |
 | [t006](done/t006.md) | Render parity — **DONE** | 30m | t003, t004 |
 | [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 45m | t006, t007 |
-| [t009](t009.md) | Closeout | 10m | t005, t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t005, t008 |
 
 Total: **9 tasks, about 5h55m**.
 
@@ -45,3 +45,14 @@ Total: **9 tasks, about 5h55m**.
 ## Gate (2026-11-18)
 
 Parked in `blocked/` with every implementable task done. t005 replays definition of done item 4 on production, which needs the production deploy that carries the commit `feat(api): a push follows a renamed GitHub repository by its id (w10/m490)`. The gate clears by itself: once the production pin carries that commit (`bash scripts/fetch-app-kubeconfig.sh`, or the `hetzner-prod` context, then the `bex-api` Deployment's image tag in `bex-system`), a worker runs t005 as the QA user and t009 closes the milestone. No user action is needed.
+
+## Unblocked and closed (2026-11-19)
+
+- **Gate cleared (verified finding).** The newest pin commit on `origin/main`, `a91e9aeb3`, pins `dff52c596d13`, and `git merge-base --is-ancestor fd9787d29 dff52c596d13` holds. Production's `bex-api` (context `hetzner-prod`) runs the digest that pin set. No user action was needed.
+- **t005 held on production** (details in [t005](done/t005.md)):
+  - A push to a repository renamed after its service was connected opened a `new_commit` deploy 2.5 s later, and that deploy went `live`.
+  - REST, GraphQL and MCP then read the new URL.
+  - The fixture service and repository were deleted (404).
+- **Deviation:** the check ran in `tian-personal`, not `bex-canary`. `bex-canary` has no GitHub App connection (`GET /v1/git/connections` answers `[]`), so no App-signed push can reach it, and binding one needs a GitHub browser sign-in.
+- **Not checked live:** the system's audit row, since Hobby workspaces cannot read audit logs. Its tests stand from t008.
+- **Closeout:** t009 closed the milestone.
