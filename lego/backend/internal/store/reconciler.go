@@ -1678,13 +1678,15 @@ func instanceExitFacts(appID string, app *appv1alpha1.App) []ServiceEventFact {
 // whose image is recorded as serving; a newer release that failed over it
 // carries a later generation, and its deploy row has already recorded its own
 // fact. The key holds the condition's transition time: one event per time the
-// release stops being able to pull, however many passes see it.
+// release stops being able to pull, however many passes see it. The operator
+// drops the release's own verdict once its instances are ready again
+// (clearRecoveredRolloutVerdict, w32/042), so a later failure of the same
+// release is written afresh with a transition time, and so a key, of its own.
 //
 // The fact is dated by the pass that first sees it, as observedImagePullFailure
-// is (w32/036): the operator only ever writes Rollout False, so its transition
-// time is the App's first failed rollout, which can be weeks before this one.
-// For the same reason the key does not yet tell a second incident of the same
-// release from the first (w32/042).
+// is (w32/036): a False Rollout condition already on the App keeps its
+// transition time when the operator rewrites it False, so the first failure
+// can carry the time of an earlier release's failed rollout, weeks before.
 func servedReleasePullFailure(appID string, app *appv1alpha1.App) (ServiceEventFact, bool) {
 	serving := app.Status.ImageDigest
 	c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout)

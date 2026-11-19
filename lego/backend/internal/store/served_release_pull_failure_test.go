@@ -17,10 +17,13 @@ limitations under the License.
 package store
 
 import (
+	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -44,8 +47,8 @@ func servedPullFailureApp(servingGeneration, failedGeneration int64, reason stri
 }
 
 func TestServedReleasePullFailureIsRecordedOncePerIncident(t *testing.T) {
-	// The Rollout condition went False at the App's first failed rollout, long
-	// before this one: the operator never writes it True (w32/036).
+	// The Rollout condition went False at an earlier release's failed rollout,
+	// long before this one: rewriting it False keeps that time (w32/036).
 	at := time.Date(2026, 11, 11, 15, 52, 0, 0, time.UTC)
 	app := servedPullFailureApp(8, 8, "ImagePullBackOff", at)
 
@@ -67,10 +70,119 @@ func TestServedReleasePullFailureIsRecordedOncePerIncident(t *testing.T) {
 	if again.SourceKey != fact.SourceKey {
 		t.Errorf("source key moved between passes: %q then %q", fact.SourceKey, again.SourceKey)
 	}
-	// The release failing to pull again later is a new incident.
+	// The operator drops the verdict once the release recovers, so a later
+	// failure is written with a transition time of its own: a new incident
+	// (w32/042; the whole sequence through the reconciler is below).
 	later := servedPullFailureApp(8, 8, "ImagePullBackOff", at.Add(3*time.Hour))
 	if next, ok := servedReleasePullFailure("srv-1", later); !ok || next.SourceKey == fact.SourceKey {
 		t.Errorf("a later incident reused the key %q (ok %v)", next.SourceKey, ok)
+	}
+}
+
+// w32/042: the same served release fails to pull, recovers, and fails again,
+// as the operator writes it. During the first outage the Rollout condition is
+// rewritten False on every pass and keeps its transition time, the one an
+// earlier failed rollout left. The recovery drops the release's own verdict
+// (the operator's clearRecoveredRolloutVerdict), so the second outage's
+// condition is written afresh. Two outages, two image_pull_failed facts. Until
+// the operator dropped the verdict the second outage carried the first's key
+// and recorded nothing.
+func TestServedReleasePullFailureIsRecordedForEachOutage(t *testing.T) {
+	ctx := context.Background()
+	rec, st, cl := newTestReconciler(t)
+	ten, _ := st.CreateTenant(ctx, "acme", "free")
+	const image = "registry.example/acme/web:v1"
+	row, _ := st.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: image, Port: 80, Replicas: 1, Tier: "free"})
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("create projection: %v", err)
+	}
+	history, _ := st.ListDeploys(ctx, row.ID, DeployFilter{})
+	if len(history) != 1 {
+		t.Fatalf("history = %+v, want the create deploy", history)
+	}
+	gen := history[0].Generation
+	pass := func(mutate func(*appv1alpha1.App)) {
+		t.Helper()
+		app := getApp(t, cl)
+		mutate(app)
+		if err := cl.Status().Update(ctx, app); err != nil {
+			t.Fatal(err)
+		}
+		if err := rec.ReconcileOnce(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	served := func(a *appv1alpha1.App) {
+		a.Status.Phase, a.Status.ReleaseGeneration, a.Status.ActiveRevision = appv1alpha1.PhaseRunning, gen, fmt.Sprintf("rev-%d", gen)
+		a.Status.Image, a.Status.ImageDigest = image, &appv1alpha1.ImageDigestStatus{Generation: gen, Digest: "sha256:" + strings.Repeat("a", 64)}
+		meta.RemoveStatusCondition(&a.Status.Conditions, appv1alpha1.ConditionRollout)
+		meta.SetStatusCondition(&a.Status.Conditions, metav1.Condition{
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Deployed",
+			Message: "1/1 replicas ready", ObservedGeneration: a.Generation,
+		})
+	}
+	cannotPull := func(message string) func(*appv1alpha1.App) {
+		return func(a *appv1alpha1.App) {
+			meta.SetStatusCondition(&a.Status.Conditions, metav1.Condition{
+				Type: appv1alpha1.ConditionRollout, Status: metav1.ConditionFalse, Reason: "ImagePullBackOff",
+				Message: message, ObservedGeneration: gen,
+			})
+			meta.SetStatusCondition(&a.Status.Conditions, metav1.Condition{
+				Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: appv1alpha1.ReasonPriorReleaseServing,
+				Message: "the latest rollout failed: " + message + "; the previously deployed release keeps serving", ObservedGeneration: a.Generation,
+			})
+		}
+	}
+	facts := func() []ServiceEventFact {
+		t.Helper()
+		st.mu.Lock()
+		defer st.mu.Unlock()
+		var out []ServiceEventFact
+		for key, fact := range st.eventFacts {
+			if strings.HasPrefix(key, fmt.Sprintf("release:%s:%d:image_pull_failed:", row.ID, gen)) {
+				out = append(out, fact)
+			}
+		}
+		return out
+	}
+
+	pass(served)
+	if d, _ := st.GetDeploy(ctx, row.ID, history[0].ID); d.Status != DeployLive {
+		t.Fatalf("setup: deploy %q, want live", d.Status)
+	}
+
+	// The first outage. The condition is False since an earlier release's
+	// failed rollout three weeks ago, and keeps that time.
+	earlier := metav1.NewTime(time.Now().Add(-21 * 24 * time.Hour).Truncate(time.Second))
+	pass(func(a *appv1alpha1.App) {
+		a.Status.Conditions = append(a.Status.Conditions, metav1.Condition{
+			Type: appv1alpha1.ConditionRollout, Status: metav1.ConditionFalse, Reason: "ProgressDeadlineExceeded",
+			Message: "rollout did not become healthy", ObservedGeneration: gen - 1, LastTransitionTime: earlier,
+		})
+		cannotPull("image pull is failing: the build this release runs on is no longer stored")(a)
+		if c := meta.FindStatusCondition(a.Status.Conditions, appv1alpha1.ConditionRollout); !c.LastTransitionTime.Equal(&earlier) {
+			t.Fatalf("setup: Rollout's transition moved to %s; the operator's write keeps %s", c.LastTransitionTime, earlier)
+		}
+	})
+	pass(cannotPull("image pull is failing: the platform could not pull this release's build"))
+	if got := facts(); len(got) != 1 || got[0].Type != EventFactImagePullFailed || got[0].DeployID != "" {
+		t.Fatalf("first outage facts = %+v, want one image_pull_failed with no deploy", got)
+	}
+
+	// The pull recovers: the instances are ready, and the operator drops the
+	// verdict. Nothing is recorded.
+	pass(served)
+	if got := facts(); len(got) != 1 {
+		t.Fatalf("facts after the recovery = %+v, want the first outage's only", got)
+	}
+
+	// The second outage, written afresh.
+	pass(cannotPull("image pull is failing: the build this release runs on is no longer stored"))
+	if got := facts(); len(got) != 2 {
+		t.Fatalf("facts after the second outage = %+v, want one for each outage", got)
+	}
+	if open, ok, _ := openDeployFor(ctx, st, row.ID); ok {
+		t.Fatalf("an outage of the served release opened deploy %+v", open)
 	}
 }
 

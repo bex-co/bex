@@ -3730,6 +3730,8 @@ func (r *AppReconciler) markRunning(ctx context.Context, app *appv1alpha1.App, d
 // re-stamps identical status on every steady-state pass (childHealthRequeue),
 // so the no-op PUT is skipped; written reports whether status was written.
 func (r *AppReconciler) settleReady(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, reason, message string) (bool, error) {
+	// Before ActiveRevision moves: only a release that had already served recovers.
+	clearRecoveredRolloutVerdict(app)
 	app.Status.Phase = appv1alpha1.PhaseRunning
 	app.Status.ActiveRevision = releaseRevision(app)
 	if dep != nil {
@@ -3751,6 +3753,27 @@ func (r *AppReconciler) settleReady(ctx context.Context, app *appv1alpha1.App, d
 		}
 	}
 	return written, r.protectPublishedImage(ctx, app)
+}
+
+// clearRecoveredRolloutVerdict drops the Rollout verdict a served release
+// recorded against itself (an instance that could not pull its image or crashed
+// on a wake, a restart or a reschedule) once every instance is ready again, as
+// clearPublishVerdict does for a static site that publishes (w32/042). Left
+// behind, the verdict read as a failure of the release that serves, and
+// meta.SetStatusCondition kept its transition time on every later False write,
+// so bex-api, which keys the served release's image_pull_failed by that time,
+// recorded one event for the release, ever. Dropped, the next failure is
+// written afresh with its own transition time. Only the served release's own
+// verdict goes: a release that has not served yet keeps its verdict, as does
+// an earlier release's, which bex-api may still need to close its deploy row.
+func clearRecoveredRolloutVerdict(app *appv1alpha1.App) {
+	if app.Status.ActiveRevision != releaseRevision(app) {
+		return
+	}
+	if c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout); c != nil &&
+		c.ObservedGeneration == releaseGeneration(app) {
+		meta.RemoveStatusCondition(&app.Status.Conditions, appv1alpha1.ConditionRollout)
+	}
 }
 
 // deleteStaleChildren removes leftover children a type change orphaned.
