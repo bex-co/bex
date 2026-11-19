@@ -1,21 +1,25 @@
 # w6 · m512 — A Key Value proxy roll that changes the proxy's code lets open commands finish
 
-**Worker:** worker6 **Goal:** when a deploy does change `/kv-internal-proxy`, the old proxy pod stops accepting, keeps relaying its open connections until each client closes or a bounded grace period ends, and only then closes the rest, so a command in flight at the roll gets its reply. A roll that must cut access, such as enabling internal authentication, still closes the old pod's connections within seconds. **Status:** todo
+**Worker:** worker6 **Goal:** when a deploy does change `/kv-internal-proxy`, the old proxy pod stops accepting, keeps relaying its open connections until each client closes or a bounded grace period ends, and only then closes the rest, so a command in flight at the roll gets its reply. A roll that must cut access, such as enabling internal authentication, still closes the old pod's connections within seconds. **Status:** blocked (t001–t006, t008, t009 done and shipped; t007 waits for the first production pin whose producer contains the ship commit, then t010)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [`kvinternalauth.Serve` drains](t001.md) | 1h | — |
-| t002 | [`kv-internal-proxy` drains on `SIGTERM`](t002.md) | 30m | t001 |
-| t003 | [The proxy Deployment gives a draining pod its bound, and tenants cannot hold the reserve](t003.md) | 1h | t002 |
-| t004 | [A roll that must cut access still closes the old pod's connections within seconds](t004.md) | 1h30m | t003 |
-| t005 | [Prove it on the local cluster](t005.md) | 1h | t004 |
-| t006 | [Record it in ADR021 and file the SNI-proxy drain](t006.md) | 30m | t004 |
+| t001 | [`kvinternalauth.Serve` drains](done/t001.md) — **DONE** | 1h | — |
+| t002 | [`kv-internal-proxy` drains on `SIGTERM`](done/t002.md) — **DONE** | 30m | t001 |
+| t003 | [The proxy Deployment gives a draining pod its bound, and tenants cannot hold the reserve](done/t003.md) — **DONE** | 1h | t002 |
+| t004 | [A roll that must cut access still closes the old pod's connections within seconds](done/t004.md) — **DONE** | 1h30m | t003 |
+| t005 | [Prove it on the local cluster](done/t005.md) — **DONE** | 1h | t004 |
+| t006 | [Record it in ADR021 and file the SNI-proxy drain](done/t006.md) — **DONE** | 30m | t004 |
 | t007 | [Ship and verify on production](t007.md) | 1h | t005, t006 |
-| t008 | [Simplify](t008.md) | 15m | t007 |
-| t009 | [Test coverage](t009.md) | 30m | t007 |
+| t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
+| t009 | [Test coverage](done/t009.md) — **DONE** | 30m | t007 |
 | t010 | [Closeout](t010.md) | 10m | t008, t009 |
+
+## Blocked — 2026-11-19
+
+**Gate (time, clears by itself):** the first production pin whose producer contains this milestone's ship commit. Check it with `git log origin/main --grep "pin platform images"`, then `git merge-base --is-ancestor <commit> <producer>`. Production deploys `main` once its pin is 6 h old. Then run t007's steps: the three stores' proxies rolled once onto the drain env and the 35 s grace period, and the w6/m463 t005 internal-auth check on a `bex-canary` free probe. After that comes t010. Everything else is done: the code, the local proof (t005), ADR021 § 10 with w6/144 and w6/145 filed (t006), Simplify (t008) and Test coverage (t009).
 
 ## Definition of done
 
@@ -28,7 +32,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** promoted from inbox note [w6/142](../done/142.md) on 2026-11-19 by `/loopx w6`. w6/m469 t004 filed it as w6/140's "drain on `SIGTERM`" direction.
+- **Source:** promoted from inbox note [w6/142](../../done/142.md) on 2026-11-19 by `/loopx w6`. w6/m469 t004 filed it as w6/140's "drain on `SIGTERM`" direction.
 - **Goal linkage:** ADR008 § Render parity first.
   - Render breaks a store's connections when the customer changes the store. Enabling internal authentication: "Render restarts your Key Value instance (it will be unavailable for a few seconds)". A plan change: "Upgrading requires a restart" ([Key Value](https://render.com/docs/key-value), read 2026-11-19).
   - For its own infrastructure, Render breaks them only in service-affecting maintenance, which "usually occur[s] no more than once every three months". Render gives advance notice by email, and a paid service can usually reschedule the window ([platform maintenance](https://render.com/docs/platform-maintenance), read 2026-11-19).

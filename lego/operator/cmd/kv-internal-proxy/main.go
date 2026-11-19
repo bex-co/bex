@@ -18,7 +18,8 @@ limitations under the License.
 // its plan's connection limit. Internal clients inherit the tenant default ACL
 // unless BEX_KV_INTERNAL_AUTH=client (the store requires internal
 // authentication), when they authenticate themselves; external TLS remains end
-// to end.
+// to end. The first SIGTERM or SIGINT drains for BEX_KV_DRAIN_SECONDS
+// (w6/m512) and a second closes every stream at once.
 package main
 
 import (
@@ -31,26 +32,42 @@ import (
 	"os/signal"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/bex-co/bex/lego/operator/internal/kvinternalauth"
 )
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 	check := flag.Bool("check", false, "check authenticated upstream readiness without opening listeners")
 	flag.Parse()
-	if err := run(ctx, os.Getenv, *check); err != nil {
+	ctx, stop := context.WithCancel(context.Background())
+	defer stop()
+	drain := make(chan struct{})
+	signals := make(chan os.Signal, 2)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-signals
+		close(drain)
+		<-signals
+		stop()
+	}()
+	if err := run(ctx, os.Getenv, *check, drain); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(ctx context.Context, getenv func(string) string, check bool) error {
+// run serves until ctx ends, which closes every stream at once, or until both
+// listeners have drained once drain closes.
+func run(ctx context.Context, getenv func(string) string, check bool, drain <-chan struct{}) error {
 	upstream, password := getenv("BEX_KV_UPSTREAM_ADDR"), getenv("VALKEY_PASSWORD")
 	if upstream == "" || password == "" {
 		return errors.New("kv-internal-proxy: BEX_KV_UPSTREAM_ADDR and VALKEY_PASSWORD are required")
 	}
 	mode, err := internalMode(getenv("BEX_KV_INTERNAL_AUTH"))
+	if err != nil {
+		return err
+	}
+	drainTimeout, err := drainSeconds(getenv("BEX_KV_DRAIN_SECONDS"))
 	if err != nil {
 		return err
 	}
@@ -96,20 +113,50 @@ func run(ctx context.Context, getenv func(string) string, check bool) error {
 			results <- kvinternalauth.Serve(ctx, listener, kvinternalauth.Config{
 				Upstream: tlsUpstream, Mode: kvinternalauth.TLSPassthrough, Budget: budget,
 				TLSCertFile: getenv("BEX_KV_TLS_CERT_FILE"), TLSKeyFile: getenv("BEX_KV_TLS_KEY_FILE"),
+				Drain: drain, DrainTimeout: drainTimeout,
 			})
 		}()
 	}
 	go func() {
-		results <- kvinternalauth.Serve(ctx, internal, kvinternalauth.Config{Upstream: upstream, Password: password, Mode: mode, Budget: budget})
+		results <- kvinternalauth.Serve(ctx, internal, kvinternalauth.Config{
+			Upstream: upstream, Password: password, Mode: mode, Budget: budget,
+			Drain: drain, DrainTimeout: drainTimeout,
+		})
 	}()
+	if drainTimeout > 0 {
+		go func() {
+			select {
+			case <-drain:
+				kvinternalauth.KeepReserve(ctx, kvinternalauth.Config{Upstream: upstream, Password: password}, budget)
+			case <-ctx.Done():
+			}
+		}()
+	}
 	var result error
 	for range count {
-		if err := <-results; err != nil && result == nil {
-			result = err
+		// A listener that has drained leaves the other to finish its own drain;
+		// one that failed stops both.
+		if err := <-results; err != nil {
+			if result == nil {
+				result = err
+			}
+			cancel()
 		}
-		cancel()
 	}
 	return result
+}
+
+// drainSeconds reads BEX_KV_DRAIN_SECONDS: a whole number of seconds, zero
+// included. Unset means zero, which closes every stream at once on SIGTERM.
+func drainSeconds(raw string) (time.Duration, error) {
+	if raw == "" {
+		return 0, nil
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 0 {
+		return 0, errors.New("kv-internal-proxy: BEX_KV_DRAIN_SECONDS must be a whole number of seconds")
+	}
+	return time.Duration(n) * time.Second, nil
 }
 
 // internalMode is the plain listener's mode: the proxy authenticates its

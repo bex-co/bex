@@ -94,6 +94,8 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context,
 			kvSecretEnv(kvPasswordEnv, intent.authSecretName),
 			// The plan's limit, one budget across both listeners (w6/m456).
 			{Name: "BEX_KV_MAX_CONNECTIONS", Value: strconv.Itoa(int(intent.plan.ConnectionLimit))},
+			// A pod that stops lets its open commands finish (w6/m512).
+			{Name: "BEX_KV_DRAIN_SECONDS", Value: strconv.Itoa(kvInternalProxyDrainSeconds)},
 		}
 		if kv.Spec.InternalAuth {
 			// The plain listener forwards the client's own AUTH (w6/m463).
@@ -134,6 +136,7 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context,
 				TimeoutSeconds: 6, PeriodSeconds: 5,
 			},
 		}}
+		dep.Spec.Template.Spec.TerminationGracePeriodSeconds = new(int64(kvInternalProxyGraceSeconds))
 		dep.Spec.Template.Spec.AutomountServiceAccountToken = new(false)
 		applyPodSpecServerDefaults(&dep.Spec.Template.Spec)
 		holdDatastorePriority(&dep.Spec.Template, !dep.CreationTimestamp.IsZero(), before)
@@ -149,6 +152,16 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context,
 
 const (
 	kvInternalProxyContainer = "internal-proxy"
+	// kvInternalProxyDrainSeconds is how long a proxy pod that gets SIGTERM
+	// keeps relaying the streams it holds (BEX_KV_DRAIN_SECONDS, w6/m512):
+	// Render's default shutdown delay for its own instances (render.com/docs/deploys,
+	// read 2026-11-19). A command in flight finishes in milliseconds, and the
+	// drain closes as soon as the last stream ends, so the bound only decides
+	// when a held client (a pool, pub/sub, a long blocking command) is closed.
+	kvInternalProxyDrainSeconds = 30
+	// kvInternalProxyGraceSeconds lets the process close what the drain leaves
+	// itself, before the kubelet's SIGKILL.
+	kvInternalProxyGraceSeconds = kvInternalProxyDrainSeconds + 5
 	// kvInternalProxyBinaryAnnotation records, on a proxy Deployment's own
 	// metadata, the sha256 of the /kv-internal-proxy its pod template's image
 	// carries (w6/m469). Never on the pod template: adding it there would roll

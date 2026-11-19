@@ -22,12 +22,15 @@ limitations under the License.
 package kvinternalauth
 
 import (
+	"bufio"
 	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"net"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -45,27 +48,51 @@ var errUpstreamFull = errors.New("kv-internal-proxy: upstream refused: max numbe
 
 // Budget is the client connections the listeners in front of one store hold
 // together: the store's plan limit, shared by its plain and TLS listeners
-// (w6/m456).
-type Budget struct{ slots chan struct{} }
+// (w6/m456). It knows each stream it admitted, so a draining proxy can close
+// some of them to keep the store's platform reserve free (KeepReserve).
+type Budget struct {
+	limit   int
+	mu      sync.Mutex
+	streams map[net.Conn]struct{}
+}
 
 // NewBudget holds at most n connections; n <= 0 holds 1,024.
 func NewBudget(n int) *Budget {
 	if n <= 0 {
 		n = 1024
 	}
-	return &Budget{slots: make(chan struct{}, n)}
+	return &Budget{limit: n, streams: make(map[net.Conn]struct{})}
 }
 
-func (b *Budget) acquire() bool {
-	select {
-	case b.slots <- struct{}{}:
-		return true
-	default:
+func (b *Budget) admit(conn net.Conn) bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if len(b.streams) >= b.limit {
 		return false
 	}
+	b.streams[conn] = struct{}{}
+	return true
 }
 
-func (b *Budget) release() { <-b.slots }
+func (b *Budget) release(conn net.Conn) {
+	b.mu.Lock()
+	delete(b.streams, conn)
+	b.mu.Unlock()
+}
+
+// shed closes up to n of the budget's streams and gives their slots back.
+func (b *Budget) shed(n int) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	for conn := range b.streams {
+		if n <= 0 {
+			return
+		}
+		_ = conn.Close()
+		delete(b.streams, conn)
+		n--
+	}
+}
 
 // Mode is what a listener does with its clients' bytes.
 type Mode int
@@ -101,6 +128,13 @@ type Config struct {
 	TLSCertFile      string
 	TLSKeyFile       string
 	HandshakeTimeout time.Duration
+	// Drain, once closed, starts this listener's drain (w6/m512): it stops
+	// accepting, and every open stream keeps relaying until its client or the
+	// upstream closes it. Streams still open DrainTimeout later close as on
+	// cancellation, so a zero DrainTimeout closes them at once. Nil never
+	// drains.
+	Drain        <-chan struct{}
+	DrainTimeout time.Duration
 }
 
 func (c Config) normalized() (Config, error) {
@@ -130,6 +164,8 @@ func (c Config) normalized() (Config, error) {
 // reply Valkey gives at its own maxclients.
 // Only dial and the injected AUTH have deadlines: Redis blocking commands,
 // pubsub and idle connection pools may keep a stream open indefinitely.
+// Once config.Drain closes, the listener closes and Serve returns as soon as
+// its last stream ends, or at the drain's deadline, when it closes the rest.
 func Serve(ctx context.Context, listener net.Listener, config Config) error {
 	defer func() { _ = listener.Close() }()
 	config, err := config.normalized()
@@ -153,10 +189,25 @@ func Serve(ctx context.Context, listener net.Listener, config Config) error {
 		}
 	})
 	defer func() { cancel(); <-shutdownDone; handlers.Wait() }()
+	go func() {
+		select {
+		case <-config.Drain:
+		case <-ctx.Done():
+			return
+		}
+		_ = listener.Close()
+		deadline := time.AfterFunc(config.DrainTimeout, cancel)
+		<-ctx.Done()
+		deadline.Stop()
+	}()
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			if ctx.Err() != nil {
+				return nil
+			}
+			if draining(config.Drain) {
+				handlers.Wait()
 				return nil
 			}
 			return err
@@ -165,7 +216,7 @@ func Serve(ctx context.Context, listener net.Listener, config Config) error {
 			_ = conn.Close()
 			return nil
 		}
-		if !config.Budget.acquire() {
+		if !config.Budget.admit(conn) {
 			select {
 			case refusing <- struct{}{}:
 				handlers.Go(func() {
@@ -180,7 +231,7 @@ func Serve(ctx context.Context, listener net.Listener, config Config) error {
 		mu.Lock()
 		if ctx.Err() != nil {
 			mu.Unlock()
-			config.Budget.release()
+			config.Budget.release(conn)
 			_ = conn.Close()
 			return nil
 		}
@@ -192,10 +243,20 @@ func Serve(ctx context.Context, listener net.Listener, config Config) error {
 				mu.Lock()
 				delete(active, conn)
 				mu.Unlock()
-				config.Budget.release()
+				config.Budget.release(conn)
 			}()
 			proxy(ctx, conn, config)
 		})
+	}
+}
+
+// draining reports whether drain is closed; a nil drain never is.
+func draining(drain <-chan struct{}) bool {
+	select {
+	case <-drain:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -233,6 +294,91 @@ func Check(ctx context.Context, config Config) error {
 		return errors.New("kv-internal-proxy: upstream check failed")
 	}
 	return nil
+}
+
+// reserveInterval is how often a draining proxy reads its store's client
+// count (KeepReserve).
+const reserveInterval = 100 * time.Millisecond
+
+// KeepReserve keeps the store's platform reserve free while this proxy drains
+// (w6/m512, ADR021 § 9). Valkey admits the plan's limit plus a reserve of 10
+// for the readiness probes, the exporter and the operator. A draining pod
+// accepts nothing new, but a new pod admits up to the limit on a budget of
+// its own, so tenants who dial while the old pod still holds their streams
+// could take the reserve. Until ctx ends, KeepReserve reads the store's
+// connected clients (INFO clients, as the default user, whatever the
+// listeners' mode) and, while there are more than the budget's limit besides
+// its own connection, closes that many of the streams the budget still holds.
+// Those would close at the drain's deadline anyway.
+func KeepReserve(ctx context.Context, config Config, budget *Budget) {
+	config.Mode = InjectAuth
+	config, err := config.normalized()
+	if err != nil {
+		return
+	}
+	var upstream net.Conn
+	var reader *bufio.Reader
+	defer func() {
+		if upstream != nil {
+			_ = upstream.Close()
+		}
+	}()
+	tick := time.NewTicker(reserveInterval)
+	defer tick.Stop()
+	for ; ; <-tick.C {
+		if ctx.Err() != nil {
+			return
+		}
+		if upstream == nil {
+			conn, err := connect(ctx, config)
+			if errors.Is(err, errUpstreamFull) {
+				// The store is past its limit already: the reserve is taken.
+				budget.shed(1)
+				continue
+			}
+			if err != nil {
+				continue
+			}
+			upstream, reader = conn, bufio.NewReader(conn)
+		}
+		connected, err := connectedClients(upstream, reader, config.HandshakeTimeout)
+		if err != nil {
+			_ = upstream.Close()
+			upstream = nil
+			continue
+		}
+		if over := connected - 1 - budget.limit; over > 0 {
+			budget.shed(over)
+		}
+	}
+}
+
+// connectedClients asks upstream for INFO clients and reads connected_clients.
+func connectedClients(upstream net.Conn, reader *bufio.Reader, timeout time.Duration) (int, error) {
+	if err := upstream.SetDeadline(time.Now().Add(timeout)); err != nil {
+		return 0, err
+	}
+	if _, err := io.WriteString(upstream, "*2\r\n$4\r\nINFO\r\n$7\r\nclients\r\n"); err != nil {
+		return 0, err
+	}
+	head, err := reader.ReadString('\n')
+	if err != nil {
+		return 0, err
+	}
+	size, err := strconv.Atoi(strings.TrimSuffix(strings.TrimPrefix(head, "$"), "\r\n"))
+	if !strings.HasPrefix(head, "$") || err != nil || size < 0 || size > 64<<10 {
+		return 0, errors.New("kv-internal-proxy: unexpected INFO reply")
+	}
+	body := make([]byte, size+2)
+	if _, err := io.ReadFull(reader, body); err != nil {
+		return 0, err
+	}
+	for line := range strings.SplitSeq(string(body), "\r\n") {
+		if value, ok := strings.CutPrefix(line, "connected_clients:"); ok {
+			return strconv.Atoi(value)
+		}
+	}
+	return 0, errors.New("kv-internal-proxy: INFO reply has no connected_clients")
 }
 
 func connect(ctx context.Context, config Config) (net.Conn, error) {

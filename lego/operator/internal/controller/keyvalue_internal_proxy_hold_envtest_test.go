@@ -101,6 +101,9 @@ var _ = Describe("Key Value proxy image across operator deploys", func() {
 		Expect(equality.Semantic.DeepEqual(held.Spec.Template, first.Spec.Template)).To(BeTrue(),
 			"the pod template changed: %v", held.Spec.Template)
 		Expect(image(held)).To(Equal(imageA))
+		// The drain (w6/m512) rides in the template the hold keeps.
+		Expect(env(held)).To(HaveKeyWithValue("BEX_KV_DRAIN_SECONDS", fmt.Sprint(kvInternalProxyDrainSeconds)))
+		Expect(held.Spec.Template.Spec.TerminationGracePeriodSeconds).To(HaveValue(BeEquivalentTo(kvInternalProxyGraceSeconds)))
 	})
 
 	It("rolls the proxy onto the new image when the binary changes, and records the new hash", func() {

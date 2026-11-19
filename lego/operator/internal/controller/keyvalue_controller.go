@@ -345,6 +345,9 @@ type KeyValueReconciler struct {
 	// setMaxclients sets a running store's client limit; nil is
 	// setValkeyMaxclientsAtPod. Tests substitute it.
 	setMaxclients func(ctx context.Context, pod *corev1.Pod, platform *corev1.Secret, maxclients string) error
+	// cutValkeyClients closes a running store's clients connected from ips;
+	// nil is cutValkeyClientsAtPod. Tests substitute it.
+	cutValkeyClients func(ctx context.Context, pod *corev1.Pod, platform *corev1.Secret, ips map[string]bool) error
 	// Backup is the non-secret object-store contract for paid-plan RDB
 	// snapshots. All fields are required; an incomplete contract is disabled.
 	Backup BackupStore
@@ -1074,6 +1077,7 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if err := r.reconcileKeyValueInternalRoute(ctx, &kv, &intent); err != nil {
 		return r.kvFail(ctx, &kv, appv1alpha1.ReasonServiceFailed, err)
 	}
+	proxyCutPending := r.cutStaleKeyValueProxyClients(ctx, &kv, platform)
 	if result, done, err := r.prepareKeyValuePersistence(ctx, &kv, sts, platform, &intent); done || err != nil {
 		return result, err
 	}
@@ -1126,19 +1130,28 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return r.kvFail(ctx, &kv, appv1alpha1.ReasonPVCResizeFailed, err)
 	}
 	if result, done, err := r.applyKeyValueStorageState(ctx, &kv, storageState); done || err != nil {
-		return keyValueRuntimeRequeue(result, runtimePending), err
+		return keyValueRuntimeRequeue(result, runtimePending, proxyCutPending), err
 	}
 
 	result, err = r.updateKeyValueReadiness(ctx, &kv, sts, intent.replicas, intent.credentialRevision)
-	return keyValueRuntimeRequeue(result, runtimePending), err
+	return keyValueRuntimeRequeue(result, runtimePending, proxyCutPending), err
 }
 
 // keyValueRuntimeRequeue polls sooner while a runtime TLS, maxmemory or client
 // limit switch is pending: no watch fires when cert-manager writes the Secret,
-// the kubelet projects it, or a refused CONFIG SET can be retried.
-func keyValueRuntimeRequeue(result ctrl.Result, pending bool) ctrl.Result {
-	if pending && (result.RequeueAfter == 0 || result.RequeueAfter > kvRuntimePendingRequeue) {
-		result.RequeueAfter = kvRuntimePendingRequeue
+// the kubelet projects it, or a refused CONFIG SET can be retried. A stale
+// proxy pod whose clients are being cut is polled sooner still.
+func keyValueRuntimeRequeue(result ctrl.Result, pending, proxyCutPending bool) ctrl.Result {
+	within := func(after time.Duration) {
+		if result.RequeueAfter == 0 || result.RequeueAfter > after {
+			result.RequeueAfter = after
+		}
+	}
+	if pending {
+		within(kvRuntimePendingRequeue)
+	}
+	if proxyCutPending {
+		within(kvProxyCutRequeue)
 	}
 	return result
 }
@@ -1478,7 +1491,9 @@ func keyValuePVCRequests(_ context.Context, object client.Object) []reconcile.Re
 }
 
 func keyValuePodRequests(_ context.Context, object client.Object) []reconcile.Request {
-	name := object.GetLabels()[labelKeyValue]
+	// A proxy pod's events matter too: the pass that sees a stale one
+	// terminating closes its connections (cutStaleKeyValueProxyClients).
+	name := cmp.Or(object.GetLabels()[labelKeyValue], object.GetLabels()[labelKeyValueInternalProxy])
 	if name == "" {
 		return nil
 	}

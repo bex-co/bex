@@ -463,6 +463,31 @@ func TestKeyValueInternalProxyCarriesThePlansLimit(t *testing.T) {
 	}
 }
 
+// w6/m512: every proxy drains on SIGTERM, and its pod's grace period outlasts
+// the drain, so the process closes what is left itself before SIGKILL.
+func TestKeyValueInternalProxyDrainsWithinItsGracePeriod(t *testing.T) {
+	ctx := context.Background()
+	scheme := keyValueBackupTestScheme(t)
+	for _, internalAuth := range []bool{false, true} {
+		kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "red-drain", Namespace: "tea-test", UID: "test"}, Spec: appv1alpha1.KeyValueSpec{Plan: "free", InternalAuth: internalAuth}}
+		cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+		r := &KeyValueReconciler{Client: cl, Scheme: scheme, InternalProxyImage: "bex@sha256:fixture"}
+		plan, _ := resolveKVPlan(kv.Spec)
+		if _, err := r.reconcileKeyValueInternalProxy(ctx, kv, keyValueIntent{plan: plan, authSecretName: "auth", labels: map[string]string{labelKeyValue: kv.Name}}); err != nil {
+			t.Fatal(err)
+		}
+		dep, env := proxyEnv(t, cl, kv)
+		drain, err := strconv.Atoi(env["BEX_KV_DRAIN_SECONDS"])
+		if err != nil || drain <= 0 {
+			t.Fatalf("internalAuth=%v: BEX_KV_DRAIN_SECONDS %q, want a drain", internalAuth, env["BEX_KV_DRAIN_SECONDS"])
+		}
+		grace := dep.Spec.Template.Spec.TerminationGracePeriodSeconds
+		if grace == nil || *grace <= int64(drain) {
+			t.Fatalf("internalAuth=%v: terminationGracePeriodSeconds %v does not outlast the %ds drain", internalAuth, grace, drain)
+		}
+	}
+}
+
 // w6/m463: enabling internal auth on a running store, through the whole
 // reconcile, rolls its proxy and nothing of Valkey's: the StatefulSet's spec
 // is unchanged (so its pod and run_id survive), <id> stays on the proxy, and
@@ -539,5 +564,65 @@ func TestInternalProxyBinaryFromRegistryNeedsADigest(t *testing.T) {
 		if sum, err := binaryOf(context.Background(), image); err == nil || !strings.Contains(err.Error(), "not pinned by digest") {
 			t.Errorf("%s: %q, %v; want a refusal without a registry call", image, sum, err)
 		}
+	}
+}
+
+// w6/m512: once internal authentication is enabled, the operator closes the
+// connections of the old, authenticating proxy pod as soon as it terminates,
+// so its drain does not keep them, and only that pod's. A roll that keeps the
+// proxy's mode, and a stale pod still serving, are left alone.
+func TestKeyValueCutsOnlyATerminatingProxyOfTheOldMode(t *testing.T) {
+	ctx := context.Background()
+	scheme := keyValueBackupTestScheme(t)
+	enabled := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "red-cut", Namespace: "tea-test"}, Spec: appv1alpha1.KeyValueSpec{Plan: "free", InternalAuth: true}}
+	unchanged := enabled.DeepCopy()
+	unchanged.Spec.InternalAuth = false
+	serving := terminatingProxyPod(enabled, "", "10.0.0.7")
+	serving.Name, serving.DeletionTimestamp, serving.Finalizers = "red-cut-internal-serving", nil, nil
+	current := terminatingProxyPod(enabled, "client", "10.0.0.8")
+	current.Name, current.DeletionTimestamp, current.Finalizers = "red-cut-internal-new", nil, nil
+	for _, c := range []struct {
+		name        string
+		kv          *appv1alpha1.KeyValue
+		pods        []client.Object
+		wantCut     []string
+		wantPending bool
+	}{
+		{"enabling internal auth", enabled, []client.Object{terminatingProxyPod(enabled, "", "10.0.0.5"), current}, []string{"10.0.0.5"}, true},
+		{"a binary-only roll", unchanged, []client.Object{terminatingProxyPod(unchanged, "", "10.0.0.5")}, nil, false},
+		{"a roll after enabling", enabled, []client.Object{terminatingProxyPod(enabled, "client", "10.0.0.5"), current}, nil, false},
+		{"the old pod still serving", enabled, []client.Object{serving, current}, nil, false},
+		{"no address yet", enabled, []client.Object{terminatingProxyPod(enabled, "", "")}, nil, true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			var cut []string
+			r := &KeyValueReconciler{
+				Client:             fake.NewClientBuilder().WithScheme(scheme).WithObjects(append(c.pods, valkeyServerPod(c.kv))...).Build(),
+				InternalProxyImage: "bex@sha256:fixture",
+				cutValkeyClients: func(_ context.Context, server *corev1.Pod, _ *corev1.Secret, ips map[string]bool) error {
+					if server.Name != c.kv.Name+"-0" {
+						t.Errorf("cut through %s, want the store's server", server.Name)
+					}
+					for ip := range ips {
+						cut = append(cut, ip)
+					}
+					return nil
+				},
+			}
+			if pending := r.cutStaleKeyValueProxyClients(ctx, c.kv, nil); pending != c.wantPending {
+				t.Errorf("pending %v, want %v", pending, c.wantPending)
+			}
+			if !reflect.DeepEqual(cut, c.wantCut) {
+				t.Errorf("cut %v, want %v", cut, c.wantCut)
+			}
+		})
+	}
+	// A stale pod is polled within a second, sooner than any other wait.
+	if got := keyValueRuntimeRequeue(reconcile.Result{RequeueAfter: childHealthRequeue}, true, true).RequeueAfter; got != kvProxyCutRequeue {
+		t.Errorf("requeue %v while a stale proxy terminates, want %v", got, kvProxyCutRequeue)
+	}
+	// Its events reach the store's reconcile.
+	if got := keyValuePodRequests(ctx, serving); len(got) != 1 || got[0].Name != enabled.Name {
+		t.Errorf("a proxy pod's event enqueued %v", got)
 	}
 }

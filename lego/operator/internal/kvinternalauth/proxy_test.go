@@ -17,6 +17,7 @@ limitations under the License.
 package kvinternalauth
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/ecdsa"
@@ -33,6 +34,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -381,7 +383,7 @@ func TestBudgetIsSharedAndRefusesInsideTLS(t *testing.T) {
 // past its maxclients before the handshake.
 func TestTLSRefusalWithoutCertificateCloses(t *testing.T) {
 	budget := NewBudget(1)
-	if !budget.acquire() {
+	if !budget.admit(stream(0)) {
 		t.Fatal("empty budget refused")
 	}
 	addr, _ := startProxy(t, Config{Upstream: "127.0.0.1:1", Mode: TLSPassthrough, Budget: budget})
@@ -462,21 +464,39 @@ func TestBudgetAdmitsPastTheOld1024Cap(t *testing.T) {
 func TestNewBudgetHoldsExactlyItsSize(t *testing.T) {
 	b := NewBudget(5000)
 	for i := range 5000 {
-		if !b.acquire() {
+		if !b.admit(stream(i)) {
 			t.Fatalf("refused connection %d of 5000", i+1)
 		}
 	}
-	if b.acquire() {
+	if b.admit(stream(5000)) {
 		t.Fatal("admitted connection 5001")
 	}
-	b.release()
-	if !b.acquire() {
+	b.release(stream(0))
+	if !b.admit(stream(5000)) {
 		t.Fatal("a released slot was not reusable")
 	}
-	if got := cap(NewBudget(0).slots); got != 1024 {
+	if got := NewBudget(0).limit; got != 1024 {
 		t.Fatalf("default budget %d, want 1024", got)
 	}
 }
+
+func (b *Budget) held() int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return len(b.streams)
+}
+
+// stream is a distinct, closable stand-in for an admitted client.
+type stream int
+
+func (stream) Read([]byte) (int, error)         { return 0, io.EOF }
+func (stream) Write(b []byte) (int, error)      { return len(b), nil }
+func (stream) Close() error                     { return nil }
+func (stream) LocalAddr() net.Addr              { return nil }
+func (stream) RemoteAddr() net.Addr             { return nil }
+func (stream) SetDeadline(time.Time) error      { return nil }
+func (stream) SetReadDeadline(time.Time) error  { return nil }
+func (stream) SetWriteDeadline(time.Time) error { return nil }
 
 // servingUpstream answers the injected AUTH and then PING on every
 // connection, as an authenticated Valkey does.
@@ -665,5 +685,401 @@ func TestConfigRefusesAnUnknownMode(t *testing.T) {
 	}
 	if err := Serve(t.Context(), listener, Config{Upstream: "127.0.0.1:1", Password: testPassword, Mode: TLSPassthrough + 1}); err == nil {
 		t.Fatal("served an unknown mode")
+	}
+}
+
+// drainingProxy serves config with a drain the test starts, which returns once
+// the listener is closed, and reports when Serve returns.
+func drainingProxy(t *testing.T, config Config) (addr string, drain func(), served <-chan error) {
+	t.Helper()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	watched := &closeWatch{Listener: listener, closed: make(chan struct{})}
+	start := make(chan struct{})
+	config.Drain = start
+	done := make(chan error, 1)
+	go func() { done <- Serve(t.Context(), watched, config) }()
+	return listener.Addr().String(), sync.OnceFunc(func() {
+		close(start)
+		awaitSignal(t, watched.closed)
+	}), done
+}
+
+// closeWatch reports its listener's first Close.
+type closeWatch struct {
+	net.Listener
+	once   sync.Once
+	closed chan struct{}
+}
+
+func (w *closeWatch) Close() error {
+	w.once.Do(func() { close(w.closed) })
+	return w.Listener.Close()
+}
+
+// refusesDial fails the test if addr still accepts a connection.
+func refusesDial(t *testing.T, addr string) {
+	t.Helper()
+	if conn, err := net.DialTimeout("tcp", addr, time.Second); err == nil {
+		_ = conn.Close()
+		t.Fatal("the draining listener still accepts")
+	}
+}
+
+// A command in flight when the drain begins gets its reply, a new dial is not
+// accepted, and Serve returns as soon as the stream ends, long before the
+// deadline, with every budget slot back (w6/m512).
+func TestDrainLetsACommandInFlightFinish(t *testing.T) {
+	received, reply := make(chan struct{}), make(chan struct{})
+	upstream, finish := scriptedUpstream(t, func(conn net.Conn) error {
+		if err := readExact(conn, authFrame()); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(conn, "+OK\r\n"); err != nil {
+			return err
+		}
+		if err := readExact(conn, "BLPOP k 0\r\n"); err != nil {
+			return err
+		}
+		close(received)
+		<-reply
+		_, err := io.WriteString(conn, "*2\r\n$1\r\nk\r\n$1\r\nv\r\n")
+		return err
+	})
+	budget := NewBudget(4)
+	addr, drain, served := drainingProxy(t, Config{Upstream: upstream, Password: testPassword, Budget: budget, DrainTimeout: time.Minute})
+	conn := dialProxy(t, addr)
+	if _, err := io.WriteString(conn, "BLPOP k 0\r\n"); err != nil {
+		t.Fatal(err)
+	}
+	awaitSignal(t, received)
+	drain()
+	refusesDial(t, addr)
+	close(reply)
+	if err := readExact(conn, "*2\r\n$1\r\nk\r\n$1\r\nv\r\n"); err != nil {
+		t.Fatalf("the command in flight lost its reply: %v", err)
+	}
+	finish()
+	_ = conn.Close()
+	select {
+	case err := <-served:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Serve did not return when its last stream ended")
+	}
+	if n := budget.held(); n != 0 {
+		t.Fatalf("%d budget slots held after the drain", n)
+	}
+}
+
+// An idle client keeps its stream until the deadline, and is closed then.
+func TestDrainClosesAnIdleClientAtTheDeadline(t *testing.T) {
+	const timeout = 400 * time.Millisecond
+	upstream := servingUpstream(t)
+	budget := NewBudget(4)
+	addr, drain, served := drainingProxy(t, Config{Upstream: upstream, Password: testPassword, Budget: budget, DrainTimeout: timeout})
+	conn := dialProxy(t, addr)
+	if _, err := io.WriteString(conn, "PING\r\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := readExact(conn, "+PONG\r\n"); err != nil {
+		t.Fatal(err)
+	}
+	began := time.Now()
+	drain()
+	refusesDial(t, addr)
+	if _, err := io.WriteString(conn, "PING\r\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := readExact(conn, "+PONG\r\n"); err != nil {
+		t.Fatalf("the idle client lost its stream before the deadline: %v", err)
+	}
+	var b [1]byte
+	if n, err := conn.Read(b[:]); n != 0 || err == nil {
+		t.Fatalf("the idle client was not closed: n=%d err=%v", n, err)
+	}
+	if held := time.Since(began); held < timeout {
+		t.Fatalf("the idle client was closed after %v, before the %v deadline", held, timeout)
+	}
+	select {
+	case err := <-served:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Serve did not return at the deadline")
+	}
+	if n := budget.held(); n != 0 {
+		t.Fatalf("%d budget slots held after the drain", n)
+	}
+}
+
+// Cancellation is still the hard stop, before a drain or during one.
+func TestCancellationClosesAtOnceWhetherOrNotDraining(t *testing.T) {
+	for _, drainFirst := range []bool{false, true} {
+		t.Run(fmt.Sprint(drainFirst), func(t *testing.T) {
+			upstream := servingUpstream(t)
+			listener, err := net.Listen("tcp", "127.0.0.1:0")
+			if err != nil {
+				t.Fatal(err)
+			}
+			ctx, cancel := context.WithCancel(t.Context())
+			drain := make(chan struct{})
+			served := make(chan error, 1)
+			go func() {
+				served <- Serve(ctx, listener, Config{Upstream: upstream, Password: testPassword, Drain: drain, DrainTimeout: time.Minute})
+			}()
+			conn := dialProxy(t, listener.Addr().String())
+			if _, err := io.WriteString(conn, "PING\r\n"); err != nil {
+				t.Fatal(err)
+			}
+			if err := readExact(conn, "+PONG\r\n"); err != nil {
+				t.Fatal(err)
+			}
+			if drainFirst {
+				close(drain)
+				for deadline := time.Now().Add(2 * time.Second); ; time.Sleep(5 * time.Millisecond) {
+					probe, err := net.DialTimeout("tcp", listener.Addr().String(), time.Second)
+					if err != nil {
+						break
+					}
+					_ = probe.Close()
+					if time.Now().After(deadline) {
+						t.Fatal("the drain never closed the listener")
+					}
+				}
+			}
+			cancel()
+			var b [1]byte
+			if n, err := conn.Read(b[:]); n != 0 || err == nil {
+				t.Fatalf("cancel left the client open: n=%d err=%v", n, err)
+			}
+			select {
+			case err := <-served:
+				if err != nil {
+					t.Fatal(err)
+				}
+			case <-time.After(2 * time.Second):
+				t.Fatal("Serve did not return on cancellation")
+			}
+		})
+	}
+}
+
+// countingUpstream is a Valkey stand-in for KeepReserve: it answers the
+// injected AUTH, PING and INFO clients, whose connected_clients is the
+// connections it holds open, as Valkey's is.
+func countingUpstream(t *testing.T) (addr string, open func() int) {
+	t.Helper()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = listener.Close() })
+	var mu sync.Mutex
+	count := 0
+	open = func() int {
+		mu.Lock()
+		defer mu.Unlock()
+		return count
+	}
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			mu.Lock()
+			count++
+			mu.Unlock()
+			go func() {
+				defer func() {
+					_ = conn.Close()
+					mu.Lock()
+					count--
+					mu.Unlock()
+				}()
+				if readExact(conn, authFrame()) != nil {
+					return
+				}
+				if _, err := io.WriteString(conn, "+OK\r\n"); err != nil {
+					return
+				}
+				buf := make([]byte, 64)
+				for {
+					n, err := conn.Read(buf)
+					if err != nil {
+						return
+					}
+					reply := "+PONG\r\n"
+					if strings.Contains(string(buf[:n]), "INFO") {
+						info := fmt.Sprintf("# Clients\r\nconnected_clients:%d\r\nmaxclients:%d\r\n", open(), 1000)
+						reply = fmt.Sprintf("$%d\r\n%s\r\n", len(info), info)
+					}
+					if _, err := io.WriteString(conn, reply); err != nil {
+						return
+					}
+				}
+			}()
+		}
+	}()
+	return listener.Addr().String(), open
+}
+
+// While a proxy drains, the store's clients besides KeepReserve's own stay
+// within the plan's limit: as tenants dial through the new pod, the old pod
+// closes as many of its draining streams, so they never take the reserve.
+func TestKeepReserveGivesTheNewPodsClientsTheDrainingStreams(t *testing.T) {
+	const limit = 5
+	upstream, open := countingUpstream(t)
+	budget := NewBudget(limit)
+	addr, drain, _ := drainingProxy(t, Config{Upstream: upstream, Password: testPassword, Budget: budget, DrainTimeout: time.Minute})
+	old := make([]net.Conn, limit)
+	for i := range old {
+		old[i] = dialProxy(t, addr)
+		if _, err := io.WriteString(old[i], "PING\r\n"); err != nil {
+			t.Fatal(err)
+		}
+		if err := readExact(old[i], "+PONG\r\n"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	drain()
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	go KeepReserve(ctx, Config{Upstream: upstream, Password: testPassword}, budget)
+
+	// The new pod's tenants: three more upstream connections.
+	newPod := startServing(t, upstream, 3)
+	settled := func() bool { return open()-1 <= limit && budget.held() == limit-3 }
+	for deadline := time.Now().Add(3 * time.Second); !settled(); time.Sleep(10 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatalf("the store holds %d clients besides KeepReserve's, past the limit of %d; the old pod holds %d", open()-1, limit, budget.held())
+		}
+	}
+	for _, conn := range newPod {
+		if _, err := io.WriteString(conn, "PING\r\n"); err != nil {
+			t.Fatal(err)
+		}
+		if err := readExact(conn, "+PONG\r\n"); err != nil {
+			t.Fatalf("a new pod's client was closed: %v", err)
+		}
+	}
+	closed := 0
+	for _, conn := range old {
+		_ = conn.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
+		var b [1]byte
+		if _, err := conn.Read(b[:]); err == io.EOF {
+			closed++
+		}
+	}
+	if closed != 3 {
+		t.Fatalf("the old pod closed %d of its streams, want the 3 the new pod's clients took", closed)
+	}
+}
+
+// startServing opens n authenticated upstream connections, as a new proxy
+// pod's tenants do.
+func startServing(t *testing.T, upstream string, n int) []net.Conn {
+	t.Helper()
+	conns := make([]net.Conn, n)
+	for i := range conns {
+		conn, err := net.DialTimeout("tcp", upstream, time.Second)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = conn.Close() })
+		_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
+		if _, err := io.WriteString(conn, authFrame()); err != nil {
+			t.Fatal(err)
+		}
+		if err := readExact(conn, "+OK\r\n"); err != nil {
+			t.Fatal(err)
+		}
+		conns[i] = conn
+	}
+	return conns
+}
+
+// Below the limit KeepReserve closes nothing, however long the drain.
+func TestKeepReserveClosesNothingBelowTheLimit(t *testing.T) {
+	const limit = 5
+	upstream, _ := countingUpstream(t)
+	budget := NewBudget(limit)
+	addr, drain, _ := drainingProxy(t, Config{Upstream: upstream, Password: testPassword, Budget: budget, DrainTimeout: time.Minute})
+	held := dialProxy(t, addr)
+	if _, err := io.WriteString(held, "PING\r\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := readExact(held, "+PONG\r\n"); err != nil {
+		t.Fatal(err)
+	}
+	drain()
+	ctx, cancel := context.WithTimeout(t.Context(), 10*reserveInterval)
+	defer cancel()
+	startServing(t, upstream, limit-1)
+	KeepReserve(ctx, Config{Upstream: upstream, Password: testPassword}, budget)
+	if _, err := io.WriteString(held, "PING\r\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := readExact(held, "+PONG\r\n"); err != nil {
+		t.Fatalf("KeepReserve closed a stream at the limit: %v", err)
+	}
+}
+
+// An upstream already refusing past its maxclients means the reserve is
+// taken: KeepReserve closes a draining stream for each refusal.
+func TestKeepReserveShedsWhenTheUpstreamIsFull(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = listener.Close() })
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			_, _ = io.WriteString(conn, maxClientsReply)
+			_ = conn.Close()
+		}
+	}()
+	budget := NewBudget(2)
+	for i := range 2 {
+		budget.admit(stream(i))
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+	defer cancel()
+	go KeepReserve(ctx, Config{Upstream: listener.Addr().String(), Password: testPassword}, budget)
+	for budget.held() > 0 {
+		if ctx.Err() != nil {
+			t.Fatalf("a full upstream left %d draining streams open", budget.held())
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func TestConnectedClientsRefusesAnUnexpectedReply(t *testing.T) {
+	for _, reply := range []string{
+		"-NOPERM this user has no permissions to run the 'info' command\r\n",
+		"$99999999\r\n",
+		"$20\r\n# Clients\r\nblocked:0\r\n\r\n",
+	} {
+		client, server := net.Pipe()
+		go func() {
+			buf := make([]byte, 64)
+			_, _ = server.Read(buf)
+			_, _ = io.WriteString(server, reply)
+			_ = server.Close()
+		}()
+		if n, err := connectedClients(client, bufio.NewReader(client), time.Second); err == nil {
+			t.Fatalf("reply %q read as %d clients", reply, n)
+		}
+		_ = client.Close()
 	}
 }
