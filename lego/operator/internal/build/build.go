@@ -182,6 +182,22 @@ const terminationMessageBytes = 4096
 // the verdict is cut off (w8/295).
 const podTerminationMessageBytes = 12 * 1024
 
+// nativeStepLogEnv lifts buildkitd's per-step log limits for a native build
+// (static sites included), so the build command's whole output reaches the
+// build log as it printed it: Render caps no build log (w8/340). BuildKit's
+// defaults keep the first 2 MiB of a step and at most 200 KiB for each second
+// since it started, and drop the rest after "[output clipped, log limit …]";
+// -1 disables each (util/progress/logs/logs.go at v0.30.0). buildkitd keeps a
+// solve's progress in memory until it ends, so a step's output counts against
+// the build's memory limit. Loki's per-stream limit answers a faster stream
+// with 429, which the shipper retries (ADR010 § Per-instance line cap).
+// Dockerfile builds keep BuildKit's defaults: Render builds Dockerfiles with
+// BuildKit (render.com/docs/docker), and whether it lifts them is unobserved.
+var nativeStepLogEnv = []corev1.EnvVar{
+	{Name: "BUILDKIT_STEP_LOG_MAX_SIZE", Value: "-1"},
+	{Name: "BUILDKIT_STEP_LOG_MAX_SPEED", Value: "-1"},
+}
+
 // nativeLogDisplay is what a native build's tenant log shows of BuildKit's
 // plain transcript (w4/m324): Render's narration and the build command's own
 // output, as the command printed it. BuildKit's bookkeeping for the Dockerfile
@@ -1385,6 +1401,7 @@ fi
 		env = append(env, dockerBuildInputsEnv(o, dockerLiterals)...)
 	} else {
 		env = append(env, corev1.EnvVar{Name: "BEX_BUILD_COMMAND", Value: execution.KubernetesLiteral(o.BuildCommand)})
+		env = append(env, nativeStepLogEnv...)
 	}
 
 	deadline := int64(BuildTimeout / time.Second)

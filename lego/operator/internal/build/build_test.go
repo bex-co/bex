@@ -737,6 +737,30 @@ func envValue(envs []corev1.EnvVar, name string) string {
 	return ""
 }
 
+// w8/340: a native build's command printed 3.4 MB at 97 KB/s, and its log kept
+// the first 2 MiB and nothing after, not even pip's "Successfully installed".
+// A native build (static sites too) lifts buildkitd's per-step log limits; a
+// Dockerfile build keeps BuildKit's defaults.
+func TestNativeBuildLogKeepsTheWholeStepOutput(t *testing.T) {
+	native := opts()
+	native.Builder, native.Runtime, native.BuildCommand, native.StartCommand = BuilderNative, "python", "pip install -r requirements.txt", "gunicorn app:app"
+	static := native
+	static.StaticSite, static.Runtime, static.StartCommand, static.StaticPublishPath = true, "", "", "public"
+	limits := []string{"BUILDKIT_STEP_LOG_MAX_SIZE", "BUILDKIT_STEP_LOG_MAX_SPEED"}
+	for name, o := range map[string]Options{"native": native, "static site": static, "dockerfile": opts()} {
+		bk := containerByName(BuildJob(o, o.ImageRef()).Spec.Template.Spec.InitContainers, "buildkit")
+		for _, v := range limits {
+			want := "-1"
+			if o.Builder != BuilderNative {
+				want = ""
+			}
+			if got := envValue(bk.Env, v); got != want {
+				t.Errorf("%s build: %s = %q, want %q", name, v, got, want)
+			}
+		}
+	}
+}
+
 func TestBuildJobResourceLimits(t *testing.T) {
 	pod := BuildJob(opts(), opts().ImageRef()).Spec.Template.Spec
 	c := containerByName(pod.InitContainers, "buildkit")
