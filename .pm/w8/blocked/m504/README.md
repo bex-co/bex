@@ -1,6 +1,6 @@
 # w8 · m504 — A service switched to a prebuilt image goes live on the port its image binds, private services included
 
-**Worker:** worker8 **Goal:** a web or private service switched from a native build to a prebuilt image (`bex services update <id> --image <ref>`, the REST/GraphQL/MCP source writers, a Blueprint sync) goes live on the port its image binds, as Render serves it, and reads that port afterwards, as an image-created service does. **Status:** todo (t001–t006 and t008 done; t007's production replay on pin `dff52c596d13` found the switched deploy's log naming no port, which t008 fixes; the replay runs again after a roll that carries t008)
+**Worker:** worker8 **Goal:** a web or private service switched from a native build to a prebuilt image (`bex services update <id> --image <ref>`, the REST/GraphQL/MCP source writers, a Blueprint sync) goes live on the port its image binds, as Render serves it, and reads that port afterwards, as an image-created service does. **Status:** blocked (t001–t006 and t008 done; t007's production replay on pin `dff52c596d13` found the switched deploy's log naming no port, which t008 fixes in `9fac4888a`; t007 waits for a roll that carries it)
 
 ## Tasks (in order)
 
@@ -45,6 +45,24 @@ Total: **8 tasks, about 4h25m**.
 - **Status:** pending verification. A deployed pin is not proof that the definition of done holds on production.
 - **Next:** t007 replays step 4 in `bex-canary`, records the commands and answers here, deletes every fixture by ID with a 404 check, and closes the milestone.
 
+## Production replay (t007, 2026-11-19 12:05–12:16 UTC)
+
+Production pin `dff52c596d13`, `https://api.bex.co/v1/`, bex CLI v0.7.0 (Render CLI v2.36.0), the QA user by device OAuth in an isolated config, workspace `bex-canary` (`tea-daif693dqjvc73e7as3g`). Every mutation ran with `--confirm </dev/null`. **Not met:** the switched deploy's log named no port, and the private case could not run on a free plan.
+
+1. **Web switch: passes but for the log line.**
+   - `bex services create --name qa-20261119-m504-web --type web_service --repo https://github.com/render-examples/express-hello-world --branch main --runtime node --plan free --build-command yarn --start-command 'node app.js' --confirm -o json` exited 0 with `srv-dbvebrg1ks2s73a6pfs0`. Its first deploy went `live` at 12:09:41, and the URL answered 200 with `<title>Hello from Render!`. REST read `port: 10000` and `openPorts: [{port: 10000, protocol: TCP}]`.
+   - `bex services update <id> --image docker.io/library/nginx:1.27-alpine --confirm -o json` exited 0 and started no deploy. REST then read `runtime: image` and `env: image`, and still `port: 10000` and `openPorts: [{10000, TCP}]`, the native release's (t002).
+   - `bex deploys create <id> --wait --confirm -o json` exited 0 after 79 s: `dep-dbvee9u014qc73acu830` went `live` on `nginx:1.27-alpine` (`sha256:65645c7bb6a0…`). The first nginx instance started at 12:10:28 and was replaced at 12:11:24 by one serving the detected port. The URL answered 200 `text/html` with `<title>Welcome to nginx!`. REST read `port: 80` and `openPorts: [{port: 80, protocol: TCP}]`.
+   - **Fails:** the deploy log (`bex logs --resources <id> --type build,deploy`) read `==> Deploy queued`, `==> Deploying image docker.io/library/nginx:1.27-alpine`, `==> Your service is live 🎉`, and named no port. The control, an image-created `nginx:1.27-alpine` service (`qa-20261119-m504-img`, `srv-dbvefeo1ks2s73a6pgsg`), went `live` in about 50 s. Its log read `==> Detected HTTP on port 80; serving it` before the live line, and it read `port: 80` and `openPorts: [{80, TCP}]` and served the nginx page. The deploy row recorded a detected port only for an image-port service's HTTP discovery. t008 fixes that in `9fac4888a`.
+2. **Private service: unverified on production.** `bex services create --type private_service --plan free …` answered 400 `a private_service requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max`, as on Render. No paid fixture was created: the `/loopx` dispatch for this run allowed free plans only, and said to record a private-service case that needs a paid plan as unverified. t001's envtest (`serves a private service that names no port on the port its process binds (w8/m504)`, `redis:7-alpine` adopting 6379) is the evidence so far.
+3. **Cleanup.** `bex services delete <id> --confirm` exited 0 for both fixtures. `GET /v1/services/<id>` answered 404 for each, and so did both `https://qa-20261119-m504-{web,img}.onbex.co/`. `hello-go` and another run's `m484-t005-cache` were not touched. The QA session was logged out with `qa-login.sh --logout`, and the isolated CLI config was deleted.
+
+## Parked (2026-11-19)
+
+- **Gate 1, clears by itself:** a production roll that carries `9fac4888a`. To check, find the newest `chore(deploy): pin platform images to <sha>` on `origin/main`, then run `git merge-base --is-ancestor 9fac4888a <sha>`.
+- **Gate 2, the private case:** a Starter private service in `bex-canary` costs money. A replay under the free-plans-only rule records it as unverified again. To verify it live, the user has to allow one Starter private service for a few minutes (`/unblock w8`).
+- **Next:** replay step 4's web case and check that the switched deploy's log reads `==> Detected HTTP on port 80; serving it`. Then run or record the private case as Gate 2 allows, and close the milestone.
+
 ## Render parity
 
 | Surface | Before the switched deploy | After it | Result |
@@ -52,7 +70,7 @@ Total: **8 tasks, about 4h25m**.
 | REST `GET /v1/services/{id}` `port` / `openPorts` | 10000 / `[{10000, TCP}]`, the native release | the image's port, as an image-created service reads | ✅ `TestSwitchedServiceReadsAsAnImageCreatedOne` (web and private) |
 | MCP `get_service` | same as REST | equal to an image-created service's full read | ✅ same test |
 | GraphQL `port`, `openPorts` | 10000 | the image's port | ✅ same test |
-| Dashboard Settings → Port (`configuredPort`, `App.SavedPort`) | 10000 | the image's port | ✅ same value. The row shows a detected port as if configured: follow-up [w8/338](../done/338.md) (done 2026-11-19) |
+| Dashboard Settings → Port (`configuredPort`, `App.SavedPort`) | 10000 | the image's port | ✅ same value. The row shows a detected port as if configured: follow-up [w8/338](../../done/338.md) (done 2026-11-19) |
 | Blueprint sync, native entry → `runtime: image` | — | no port mode written; the port is detected as after any other switch | ✅ `TestBlueprintGitToImageKeepsTheConfiguredPortMode` (web and private); `ApplyBlueprintServiceSpec` has no port-mode applier |
 | Operator, private service | probed on 10000 only, so it failed at 15 minutes | listener adopted after two scans | ✅ t001 |
 
@@ -60,9 +78,9 @@ Render serves a private service on any port it binds, and a web service on the p
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w8/337](../done/337.md), a follow-up from w8/m461 t004 on 2026-11-17. It was promoted by `/loopx w8` on 2026-11-19, when triage found that the note's premise holds only for private services and that its proposed fix is unsafe.
+- **Source:** inbox note [w8/337](../../done/337.md), a follow-up from w8/m461 t004 on 2026-11-17. It was promoted by `/loopx w8` on 2026-11-19, when triage found that the note's premise holds only for private services and that its proposed fix is unsafe.
 - **Triage evidence (code at `36463267c`, 2026-11-19):**
-  - **Web: detection already serves the switched image.** A switched web service keeps no port mode and the default `spec.port` 10000. `explicitServingPort` (`lego/operator/internal/controller/port_detect.go`) is therefore false, and `detectBoundPort` adopts the image's lone HTTP listener while the startup check on 10000 fails (w8/177, w8/202). On production pin `838feec85fdd` (2026-10-28), a configured-port `nginx:1.27-alpine` service in exactly this state went live on 80 in under a minute ([w8/177](../done/177.md), [w4/393](../../w4/done/393.md)). The note's claim that nginx "still fails its first deploy after a switch" was inferred from a fake-client read diff. It was never measured.
+  - **Web: detection already serves the switched image.** A switched web service keeps no port mode and the default `spec.port` 10000. `explicitServingPort` (`lego/operator/internal/controller/port_detect.go`) is therefore false, and `detectBoundPort` adopts the image's lone HTTP listener while the startup check on 10000 fails (w8/177, w8/202). On production pin `838feec85fdd` (2026-10-28), a configured-port `nginx:1.27-alpine` service in exactly this state went live on 80 in under a minute ([w8/177](../../done/177.md), [w4/393](../../../w4/done/393.md)). The note's claim that nginx "still fails its first deploy after a switch" was inferred from a fake-client read diff. It was never measured.
   - **Private: the gap is real, and wider than the switch.** `detectBoundPort` returns early for any type but a web service. `detectPrivatePrimary` (`private_ports.go`) needs `UsesImagePorts()`. A configured-port private service is probed by TCP on its configured port only (`healthCheckHandler`, `deployment_projection.go`). So a private service switched to an image that binds anything else, such as redis on 6379, fails at the 15-minute start limit. So does a native private service that binds another port. Render: "Private services can listen on _almost_ any port" and "must bind to at least one port" ([render.com/docs/private-services](https://render.com/docs/private-services), read 2026-11-19).
   - **The note's fix (stamp `web-image-v1` / `image-v1` in the source writer) would break a save-only switch.** The operator gates `resolveImageNetwork` and the image-port Service projection on `app.Spec.HasImagePorts()`, which is the saved spec (`app_controller.go`, `image_network.go`). `PortMode` is release identity (`lego/types/v1alpha1/app_identity.go`). Update Source saves without deploying, as on Render, so flipping the mode at the save would re-project, and could roll, the native release that is still serving. `port_mode` is also a projector-owned row column (`store/reconciler.go` `applyOwnedSpec`), which `SetAppSource` does not write. Detection reaches Render's behavior without any of that. Render routes to the port a service binds; it does not read `EXPOSE`. Stamping the mode at the switched release's deploy remains a possible later variant if detection's ~1-minute first-deploy delay matters.
 - **Goal linkage:** ADR008 § Render parity first. Switching a service's source to a prebuilt image is a Render dashboard, API and CLI flow, and the service must serve afterwards.
