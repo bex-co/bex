@@ -193,6 +193,11 @@ type ServiceEventRow struct {
 	// versions (postgres_upgrade_*, w4/m379); by-id read only, like LeaderID.
 	VersionFrom string
 	VersionTo   string
+	// ArtifactBuildID / ArtifactMessage are an artifact_fetch_failed fact's
+	// build source build id (bld-...) and pull failure message (w4/m510),
+	// attached after a page or by-id lookup is read.
+	ArtifactBuildID string
+	ArtifactMessage string
 }
 
 // ServiceEventLookup is one globally-addressed event plus the resource identity
@@ -515,6 +520,12 @@ WITH feed AS (
            OR ($12::smallint IS NULL AND a.edge_cache_enabled_to IS NOT NULL)
            OR ($12 & 1 <> 0 AND a.edge_cache_enabled_to = true)
            OR ($12 & 2 <> 0 AND a.edge_cache_enabled_to = false))
+      -- Pre-w4/m510 apps.LinkBuildSource rows carried neither side because their
+      -- sibling feed_only SetSourceAndRegistryCredential row already appeared in
+      -- the feed; skip them here so those historical links are not duplicated.
+      AND (a.verb <> '` + core.AuditVerbLinkBuildSource + `'
+           OR a.build_source_from IS NOT NULL
+           OR a.build_source_to IS NOT NULL)
   UNION ALL
     SELECT 'fact:' || f.source_key,
            f.at,
@@ -622,7 +633,10 @@ func (s *PGStore) ListServiceEvents(ctx context.Context, appID, ownerWorkspace s
 	if err := s.attachAuditChanges(ctx, out); err != nil {
 		return nil, err
 	}
-	return out, s.attachDiskUsage(ctx, out)
+	if err := s.attachDiskUsage(ctx, out); err != nil {
+		return nil, err
+	}
+	return out, s.attachArtifactFetchFailures(ctx, out)
 }
 
 // AuditChanges are the audit_events columns event details need beyond the
@@ -657,6 +671,9 @@ type AuditChanges struct {
 	// A managed-Postgres replica change's counts on each side (w4/m379).
 	ReadReplicasFrom *int32
 	ReadReplicasTo   *int32
+	// A build-source link change's previous and new build source ids (w4/m510).
+	BuildSourceFrom *string
+	BuildSourceTo   *string
 }
 
 // auditChangesColumns are AuditChanges' columns of audit_events aliased a, in
@@ -665,14 +682,14 @@ const auditChangesColumns = `a.maintenance_mode_to, a.disk_size_from_gb, a.maint
        a.auto_deploy_reason, a.auto_deploy_trigger, a.env_group_id, a.env_group_name,
        a.autoscaling_cpu_from, a.autoscaling_cpu_to, a.autoscaling_memory_from, a.autoscaling_memory_to,
        a.display_name_from, a.display_name_to, a.domain, a.autoscaling_enabled_from, a.edge_cache_enabled_to,
-       a.read_replicas_from, a.read_replicas_to`
+       a.read_replicas_from, a.read_replicas_to, a.build_source_from, a.build_source_to`
 
 func (c *AuditChanges) scanDestinations() []any {
 	return []any{&c.MaintenanceModeTo, &c.DiskSizeFromGB, &c.MaintenanceURIFrom, &c.MaintenanceURITo,
 		&c.AutoDeployReason, &c.AutoDeployTrigger, &c.EnvGroupID, &c.EnvGroupName,
 		&c.AutoscalingCPUFrom, &c.AutoscalingCPUTo, &c.AutoscalingMemoryFrom, &c.AutoscalingMemoryTo,
 		&c.DisplayNameFrom, &c.DisplayNameTo, &c.Domain, &c.AutoscalingEnabledFrom, &c.EdgeCacheEnabledTo,
-		&c.ReadReplicasFrom, &c.ReadReplicasTo}
+		&c.ReadReplicasFrom, &c.ReadReplicasTo, &c.BuildSourceFrom, &c.BuildSourceTo}
 }
 
 // auditRowID is an audit row's id from its feed key ("<audit row id>:").
@@ -686,6 +703,7 @@ var auditChangeVerbs = map[string]bool{
 	core.AuditVerbSetAutoscaling: true, core.AuditVerbDeleteAutoscaling: true,
 	core.AuditVerbSetDisplayName: true, core.AuditVerbAddDomain: true, core.AuditVerbDeleteDomain: true, core.AuditVerbVerifyDomain: true,
 	core.AuditVerbSetCacheProfile: true, core.AuditVerbSetPlanEdgeCache: true,
+	core.AuditVerbLinkBuildSource: true,
 }
 
 // attachAuditChanges fills AuditChanges on a page's audit rows from
@@ -931,8 +949,45 @@ func (s *PGStore) GetServiceEvent(ctx context.Context, workspaceID, eventID stri
 	if err := s.attachDiskUsage(ctx, one); err != nil {
 		return ServiceEventLookup{}, err
 	}
+	if err := s.attachArtifactFetchFailures(ctx, one); err != nil {
+		return ServiceEventLookup{}, err
+	}
 	out.Event = one[0]
 	return out, nil
+}
+
+// attachArtifactFetchFailures fills ArtifactBuildID and ArtifactMessage on any
+// artifact_fetch_failed rows in one read (w4/m510), matching attachDiskUsage so
+// the feed's UNION stays unchanged.
+func (s *PGStore) attachArtifactFetchFailures(ctx context.Context, rows []ServiceEventRow) error {
+	at := map[string][]int{}
+	for i, r := range rows {
+		if r.Source == EventSourceFact && r.FactType == string(EventFactArtifactFetchFailed) {
+			key := factSourceKey(r.Key)
+			at[key] = append(at[key], i)
+		}
+	}
+	if len(at) == 0 {
+		return nil
+	}
+	found, err := s.Pool.Query(ctx,
+		`SELECT source_key, build_id, message FROM service_event_facts WHERE source_key = ANY($1)`,
+		slices.Collect(maps.Keys(at)))
+	if err != nil {
+		return fmt.Errorf("read artifact fetch failure details: %w", err)
+	}
+	defer found.Close()
+	for found.Next() {
+		var key, buildID, message string
+		if err := found.Scan(&key, &buildID, &message); err != nil {
+			return fmt.Errorf("read artifact fetch failure details: %w", err)
+		}
+		for _, i := range at[key] {
+			rows[i].ArtifactBuildID = buildID
+			rows[i].ArtifactMessage = message
+		}
+	}
+	return found.Err()
 }
 
 // ServiceEventWorkspaces returns every workspace that indexes an evt-… id,

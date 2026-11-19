@@ -604,7 +604,7 @@ func (r *Reconciler) recordObservations(ctx context.Context, d DesiredApp, cur *
 		r.recordDeploy(ctx, d, deploy, cur)
 	}
 	if len(open) == 0 {
-		if fact, ok := servedReleasePullFailure(d.ID, cur); ok {
+		if fact, ok := r.servedReleasePullFailureFor(ctx, d.ID, cur); ok {
 			if _, err := r.Store.InsertServiceEventFact(ctx, fact); err != nil {
 				log.Printf("controlplane: record image-pull failure of the served release %s: %v", d.ID, err)
 			}
@@ -1602,6 +1602,18 @@ func observedImagePullFailure(open Deploy, app *appv1alpha1.App) (ServiceEventFa
 		if condition.Type != appv1alpha1.ConditionReady || condition.ObservedGeneration != app.Generation || !imagePullFailure(condition.Reason) {
 			continue
 		}
+		if open.BuildID != "" {
+			return ServiceEventFact{
+				SourceKey:  "deploy:" + open.ID + ":artifact_fetch_failed",
+				AppID:      open.AppID,
+				Type:       EventFactArtifactFetchFailed,
+				At:         time.Now().UTC(),
+				DeployID:   open.ID,
+				BuildID:    open.BuildID,
+				Message:    artifactFetchFailedMessage(condition.Message),
+				ReasonCode: EventReasonImagePullBackoff,
+			}, true
+		}
 		image := open.Image
 		if image == "" {
 			image = app.Spec.Image
@@ -1617,6 +1629,13 @@ func observedImagePullFailure(open Deploy, app *appv1alpha1.App) (ServiceEventFa
 		}, true
 	}
 	return ServiceEventFact{}, false
+}
+
+func artifactFetchFailedMessage(msg string) string {
+	if trimmed := strings.TrimSpace(msg); trimmed != "" {
+		return trimmed
+	}
+	return DefaultArtifactFetchFailedMessage
 }
 
 // instanceExitFacts turns the exits the operator recorded for the serving
@@ -1688,25 +1707,69 @@ func instanceExitFacts(appID string, app *appv1alpha1.App) []ServiceEventFact {
 // is (w32/036): a False Rollout condition already on the App keeps its
 // transition time when the operator rewrites it False, so the first failure
 // can carry the time of an earlier release's failed rollout, weeks before.
-func servedReleasePullFailure(appID string, app *appv1alpha1.App) (ServiceEventFact, bool) {
+func servedReleasePullCondition(app *appv1alpha1.App) (int64, *metav1.Condition, bool) {
 	serving := app.Status.ImageDigest
 	c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout)
 	if serving == nil || serving.Generation <= 0 || c == nil || c.Status != metav1.ConditionFalse ||
-		!imagePullFailure(c.Reason) || c.ObservedGeneration != serving.Generation {
+		!imagePullFailure(c.Reason) || c.ObservedGeneration != serving.Generation || c.LastTransitionTime.IsZero() {
+		return 0, nil, false
+	}
+	return serving.Generation, c, true
+}
+
+func (r *Reconciler) servedReleasePullFailureFor(ctx context.Context, appID string, app *appv1alpha1.App) (ServiceEventFact, bool) {
+	gen, c, ok := servedReleasePullCondition(app)
+	if !ok {
 		return ServiceEventFact{}, false
 	}
-	at := c.LastTransitionTime.Time
-	if at.IsZero() {
+	buildID := ""
+	if app.Spec.BuildSource != nil {
+		if lookup, ok := r.Store.(interface {
+			LiveDeployBuildID(ctx context.Context, appID string, generation int64) (string, error)
+		}); ok {
+			if id, err := lookup.LiveDeployBuildID(ctx, appID, gen); err == nil {
+				buildID = id
+			} else {
+				log.Printf("controlplane: resolve live build id for %s: %v", appID, err)
+			}
+		}
+	}
+	return buildServedReleasePullFact(appID, app.Status.Image, gen, c, buildID), true
+}
+
+func servedReleasePullFailure(appID string, app *appv1alpha1.App) (ServiceEventFact, bool) {
+	return servedReleasePullFailureWithBuild(appID, app, "")
+}
+
+func servedReleasePullFailureWithBuild(appID string, app *appv1alpha1.App, buildID string) (ServiceEventFact, bool) {
+	gen, c, ok := servedReleasePullCondition(app)
+	if !ok {
 		return ServiceEventFact{}, false
+	}
+	return buildServedReleasePullFact(appID, app.Status.Image, gen, c, buildID), true
+}
+
+func buildServedReleasePullFact(appID, image string, gen int64, c *metav1.Condition, buildID string) ServiceEventFact {
+	at := c.LastTransitionTime.Time
+	if buildID != "" {
+		return ServiceEventFact{
+			SourceKey:  fmt.Sprintf("release:%s:%d:artifact_fetch_failed:%d", appID, gen, at.Unix()),
+			AppID:      appID,
+			Type:       EventFactArtifactFetchFailed,
+			At:         time.Now().UTC(),
+			BuildID:    buildID,
+			Message:    artifactFetchFailedMessage(c.Message),
+			ReasonCode: EventReasonImagePullBackoff,
+		}
 	}
 	return ServiceEventFact{
-		SourceKey:  fmt.Sprintf("release:%s:%d:image_pull_failed:%d", appID, serving.Generation, at.Unix()),
+		SourceKey:  fmt.Sprintf("release:%s:%d:image_pull_failed:%d", appID, gen, at.Unix()),
 		AppID:      appID,
 		Type:       EventFactImagePullFailed,
 		At:         time.Now().UTC(),
-		Image:      app.Status.Image,
+		Image:      image,
 		ReasonCode: EventReasonImagePullBackoff,
-	}, true
+	}
 }
 
 // imagePullFailure reports a Ready or Rollout reason that Render reports as

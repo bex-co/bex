@@ -4898,6 +4898,35 @@ const ptServices: Record<string, TranslationEntry> = {
     message: "Falha ao baixar a imagem",
     description: "Service activity type: image pull failed",
   },
+  "services.eventsTypeArtifactFetchFailed": {
+    message: "Falha ao obter artefato",
+    description:
+      "Service activity type: a build published by a build source could not be fetched",
+  },
+  "services.eventsTypeArtifactSourceChanged": {
+    message: "Origem de build alterada",
+    description:
+      "Service activity type: the service's linked build source changed",
+  },
+  "services.eventsArtifactSourceChanged": {
+    message: "Origem de build {from} → {to}",
+    description:
+      "Detail line on artifact_source_changed when switching between two build sources",
+  },
+  "services.eventsArtifactSourceLinked": {
+    message: "Vinculado à origem de build {to}",
+    description:
+      "Detail line on artifact_source_changed when newly linked to a build source",
+  },
+  "services.eventsArtifactSourceUnlinked": {
+    message: "Desvinculado da origem de build {from}",
+    description:
+      "Detail line on artifact_source_changed when detached from a build source",
+  },
+  "services.eventsBuildReference": {
+    message: "Build {id}",
+    description: "Build identifier shown on an artifact_fetch_failed activity row",
+  },
   "services.eventsTypeSuspended": {
     message: "Suspenso",
     description: "Service activity type: service suspended",

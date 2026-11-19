@@ -4887,6 +4887,35 @@ const ruServices: Record<string, TranslationEntry> = {
     message: "Не удалось загрузить образ",
     description: "Service activity type: image pull failed",
   },
+  "services.eventsTypeArtifactFetchFailed": {
+    message: "Не удалось получить артефакт",
+    description:
+      "Service activity type: a build published by a build source could not be fetched",
+  },
+  "services.eventsTypeArtifactSourceChanged": {
+    message: "Источник сборки изменён",
+    description:
+      "Service activity type: the service's linked build source changed",
+  },
+  "services.eventsArtifactSourceChanged": {
+    message: "Источник сборки {from} → {to}",
+    description:
+      "Detail line on artifact_source_changed when switching between two build sources",
+  },
+  "services.eventsArtifactSourceLinked": {
+    message: "Привязан источник сборки {to}",
+    description:
+      "Detail line on artifact_source_changed when newly linked to a build source",
+  },
+  "services.eventsArtifactSourceUnlinked": {
+    message: "Отвязан источник сборки {from}",
+    description:
+      "Detail line on artifact_source_changed when detached from a build source",
+  },
+  "services.eventsBuildReference": {
+    message: "Сборка {id}",
+    description: "Build identifier shown on an artifact_fetch_failed activity row",
+  },
   "services.eventsTypeSuspended": {
     message: "Приостановлен",
     description: "Service activity type: service suspended",

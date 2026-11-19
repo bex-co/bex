@@ -90,9 +90,9 @@ describe("ServiceEventFilter", () => {
 
     // The Deploy group carries the full deploy lifecycle (w7/m66 added
     // build/pre-deploy/job-run-ended, w9/m345 pipeline_minutes_exhausted,
-    // w4/m504 zero_downtime_redeploy_*): 15 types.
+    // w4/m504 zero_downtime_redeploy_*, w4/m510 artifact_fetch_failed): 16 types.
     expect(
-      screen.getByRole("button", { name: "Event types: 15" }),
+      screen.getByRole("button", { name: "Event types: 16" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("checkbox", { name: "Deploy started" }),

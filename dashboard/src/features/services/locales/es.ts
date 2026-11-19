@@ -4903,6 +4903,35 @@ const esServices: Record<string, TranslationEntry> = {
     message: "Falló la descarga de la imagen",
     description: "Service activity type: image pull failed",
   },
+  "services.eventsTypeArtifactFetchFailed": {
+    message: "Error al obtener el artefacto",
+    description:
+      "Service activity type: a build published by a build source could not be fetched",
+  },
+  "services.eventsTypeArtifactSourceChanged": {
+    message: "Origen de compilación cambiado",
+    description:
+      "Service activity type: the service's linked build source changed",
+  },
+  "services.eventsArtifactSourceChanged": {
+    message: "Origen de compilación {from} → {to}",
+    description:
+      "Detail line on artifact_source_changed when switching between two build sources",
+  },
+  "services.eventsArtifactSourceLinked": {
+    message: "Vinculado al origen de compilación {to}",
+    description:
+      "Detail line on artifact_source_changed when newly linked to a build source",
+  },
+  "services.eventsArtifactSourceUnlinked": {
+    message: "Desvinculado del origen de compilación {from}",
+    description:
+      "Detail line on artifact_source_changed when detached from a build source",
+  },
+  "services.eventsBuildReference": {
+    message: "Compilación {id}",
+    description: "Build identifier shown on an artifact_fetch_failed activity row",
+  },
   "services.eventsTypeSuspended": {
     message: "Suspendido",
     description: "Service activity type: service suspended",

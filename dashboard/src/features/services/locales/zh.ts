@@ -4714,6 +4714,35 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "镜像拉取失败",
     description: "Service activity type: image pull failed",
   },
+  "services.eventsTypeArtifactFetchFailed": {
+    message: "产物拉取失败",
+    description:
+      "Service activity type: a build published by a build source could not be fetched",
+  },
+  "services.eventsTypeArtifactSourceChanged": {
+    message: "构建源已更改",
+    description:
+      "Service activity type: the service's linked build source changed",
+  },
+  "services.eventsArtifactSourceChanged": {
+    message: "构建源 {from} → {to}",
+    description:
+      "Detail line on artifact_source_changed when switching between two build sources",
+  },
+  "services.eventsArtifactSourceLinked": {
+    message: "已关联构建源 {to}",
+    description:
+      "Detail line on artifact_source_changed when newly linked to a build source",
+  },
+  "services.eventsArtifactSourceUnlinked": {
+    message: "已取消关联构建源 {from}",
+    description:
+      "Detail line on artifact_source_changed when detached from a build source",
+  },
+  "services.eventsBuildReference": {
+    message: "构建 {id}",
+    description: "Build identifier shown on an artifact_fetch_failed activity row",
+  },
   "services.eventsTypeSuspended": {
     message: "已暂停",
     description: "Service activity type: service suspended",

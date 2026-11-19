@@ -569,6 +569,16 @@ const jaWebhooks: Record<string, TranslationEntry> = {
     message: "イメージ取得失敗",
     description: "Event label — image_pull_failed",
   },
+  "webhooks.event.artifact_fetch_failed": {
+    message: "アーティファクト取得失敗",
+    description:
+      "Event label — artifact_fetch_failed: a build published by a build source could not be fetched",
+  },
+  "webhooks.event.artifact_source_changed": {
+    message: "ビルドソース変更",
+    description:
+      "Event label — artifact_source_changed: a service's linked build source changed",
+  },
   "webhooks.event.pipeline_minutes_exhausted": {
     message: "パイプライン時間の枯渇",
     description: "Event label — pipeline_minutes_exhausted",

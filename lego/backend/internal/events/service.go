@@ -197,8 +197,11 @@ const (
 	TypeCronJobRunStarted        = "cron_job_run_started"
 	TypeCronJobRunEnded          = "cron_job_run_ended"
 	TypeImagePullFailed          = "image_pull_failed"
-	TypeServiceSuspended         = "service_suspended"
-	TypeServiceResumed           = "service_resumed"
+	// Build-source events (w4/m510, ADR097), Render's spellings.
+	TypeArtifactSourceChanged = "artifact_source_changed"
+	TypeArtifactFetchFailed   = "artifact_fetch_failed"
+	TypeServiceSuspended      = "service_suspended"
+	TypeServiceResumed        = "service_resumed"
 	// Free-tier idle auto-sleep (w6/m47), distinct from the user-driven pair
 	// above so the timeline never claims a human suspended a service that
 	// simply went to sleep on its idle timeout.
@@ -457,6 +460,7 @@ var eventTypes = map[string]string{
 	"apps.SetSource":                      TypeSourceChanged,
 	"apps.SetRegistryCredential":          TypeSourceChanged,
 	"apps.SetSourceAndRegistryCredential": TypeSourceChanged,
+	core.AuditVerbLinkBuildSource:         TypeArtifactSourceChanged,
 	"apps.SetDisplayName":                 TypeDisplayNameChanged,
 	"apps.SetPreDeployCommand":            TypePreDeployChanged,
 	"apps.SetMaxShutdownDelay":            TypeMaxShutdownDelayChanged,
@@ -516,6 +520,7 @@ var (
 	allPhases    = []string{store.EventPhaseStarted, store.EventPhaseEnded}
 	allFactTypes = []string{
 		TypeImagePullFailed,
+		TypeArtifactFetchFailed,
 		TypeServiceSuspended,
 		TypeServiceResumed,
 		TypeServiceHibernated,
@@ -595,14 +600,8 @@ func pushDownOne(eventType string) store.ServiceEventFilter {
 		return store.ServiceEventFilter{Verbs: core.EdgeCacheToggleVerbs, EdgeCache: store.EdgeCacheFilterEnabled}
 	case TypeEdgeCacheDisabled:
 		return store.ServiceEventFilter{Verbs: core.EdgeCacheToggleVerbs, EdgeCache: store.EdgeCacheFilterDisabled}
-	case TypeImagePullFailed, TypeServiceSuspended, TypeServiceResumed,
-		TypeServiceHibernated, TypeServiceWoken,
-		TypeServerFailed, TypeServerHardwareFailure, TypeServerAvailable, TypeBranchChanged, TypeBranchDeleted,
-		TypeCommitIgnored, TypeAutoscalingStarted, TypeAutoscalingEnded,
-		TypeBuildStarted, TypeBuildEnded, TypePreDeployStarted, TypePreDeployEnded,
-		TypeJobRunEnded, TypeCronJobRunStarted, TypeCronJobRunEnded,
-		TypeServiceDiskUsageHigh, TypeServiceDiskUsageRecovered, TypePipelineMinutesExhausted,
-		TypeZeroDowntimeRedeployStarted, TypeZeroDowntimeRedeployEnded:
+	}
+	if slices.Contains(allFactTypes, eventType) {
 		return store.ServiceEventFilter{FactTypes: []string{eventType}}
 	}
 	var f store.ServiceEventFilter
@@ -969,6 +968,14 @@ type Details struct {
 	// Render's string details.trigger on REST/MCP and details.redeployTrigger on
 	// GraphQL.
 	RedeployTrigger string
+	// artifact_source_changed (w4/m510): the previously and newly linked build
+	// source bds- ids; empty on the absent side (attach or detach).
+	FromBuildSourceID string
+	ToBuildSourceID   string
+	// artifact_fetch_failed (w4/m510): the build source build id (bld-...) that
+	// could not be fetched and the pull failure message.
+	BuildID string
+	Message string
 	// render is the Render details REST and MCP send for the event's type. Only
 	// the copy GraphQL's ServiceEventDetails resolves over carries it, so the
 	// members REST derives per type read the same values there (w4/655).
@@ -1449,6 +1456,20 @@ func view(r store.ServiceEventRow, service string) Event {
 			if r.DisplayNameFrom != nil && r.DisplayNameTo != nil {
 				ev.Details.DisplayNameFrom, ev.Details.DisplayNameTo = *r.DisplayNameFrom, *r.DisplayNameTo
 			}
+		case TypeArtifactSourceChanged:
+			if r.BuildSourceFrom == nil && r.BuildSourceTo == nil {
+				// Pre-w4/m510 apps.LinkBuildSource rows carried neither side
+				// (their sibling feed_only SetSourceAndRegistryCredential row
+				// is already the service event). Drop here so Get answers 404.
+				ev.Type = ""
+				break
+			}
+			if r.BuildSourceFrom != nil {
+				ev.Details.FromBuildSourceID = *r.BuildSourceFrom
+			}
+			if r.BuildSourceTo != nil {
+				ev.Details.ToBuildSourceID = *r.BuildSourceTo
+			}
 		case TypeCustomDomainAdded, TypeCustomDomainRemoved, TypeCustomDomainVerified:
 			if r.Domain != nil {
 				ev.Details.Domain = *r.Domain
@@ -1522,6 +1543,9 @@ func view(r store.ServiceEventRow, service string) Event {
 			ev.Details.ReasonCode = ""
 		case TypeZeroDowntimeRedeployEnded:
 			ev.Details.ReasonCode = ""
+		case TypeArtifactFetchFailed:
+			ev.Details.BuildID = r.ArtifactBuildID
+			ev.Details.Message = r.ArtifactMessage
 		}
 	}
 	return ev

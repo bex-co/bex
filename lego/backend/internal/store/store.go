@@ -3467,15 +3467,27 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status string, ran R
 			}
 		}
 		if failureCode == EventReasonImagePullBackoff {
+			// A deploy that shipped a build-source build records Render's
+			// artifact_fetch_failed (instead of image_pull_failed), with the
+			// same source key observedImagePullFailure writes so the fact lands
+			// at most once (w4/m510).
 			if _, err := tx.Exec(ctx,
 				`INSERT INTO service_event_facts (
-				     source_key, app_id, fact_type, at, deploy_id, image, reason_code
+				     source_key, app_id, fact_type, at, deploy_id, image, reason_code, build_id, message
 				 )
-				 SELECT 'deploy:' || id || ':image_pull_failed', app_id, $2,
-				        COALESCE(finished_at, clock_timestamp()), id, image, $3
+				 SELECT CASE WHEN COALESCE(build_id, '') <> '' THEN 'deploy:' || id || ':artifact_fetch_failed'
+				             ELSE 'deploy:' || id || ':image_pull_failed' END,
+				        app_id,
+				        CASE WHEN COALESCE(build_id, '') <> '' THEN $2 ELSE $3 END,
+				        COALESCE(finished_at, clock_timestamp()),
+				        id,
+				        CASE WHEN COALESCE(build_id, '') <> '' THEN '' ELSE image END,
+				        $4,
+				        COALESCE(build_id, ''),
+				        CASE WHEN COALESCE(build_id, '') <> '' THEN COALESCE(NULLIF(BTRIM(failure_reason), ''), $5) ELSE '' END
 				 FROM deploys WHERE id = $1
 				 ON CONFLICT (source_key) DO NOTHING`,
-				id, EventFactImagePullFailed, EventReasonImagePullBackoff); err != nil {
+				id, EventFactArtifactFetchFailed, EventFactImagePullFailed, EventReasonImagePullBackoff, DefaultArtifactFetchFailedMessage); err != nil {
 				return err
 			}
 		}
@@ -3490,6 +3502,25 @@ func (s *PGStore) CloseDeploy(ctx context.Context, id, status, resolvedImage str
 		return false, nil
 	}
 	return s.TransitionDeploy(ctx, id, status, RanImage{Ref: resolvedImage}, "", "", "", nil)
+}
+
+// LiveDeployBuildID returns the build-source build id (bld-...) shipped by
+// appID's release at generation (falling back to the live deploy), or "" when
+// that release did not come from a build source. Used by servedReleasePullFailure
+// to record artifact_fetch_failed instead of image_pull_failed (w4/m510).
+func (s *PGStore) LiveDeployBuildID(ctx context.Context, appID string, generation int64) (string, error) {
+	var buildID string
+	err := s.Pool.QueryRow(ctx,
+		`SELECT COALESCE(build_id, '')
+		 FROM deploys
+		 WHERE app_id = $1 AND (generation = $2 OR status = $3) AND COALESCE(build_id, '') <> ''
+		 ORDER BY (generation = $2) DESC, created_at DESC
+		 LIMIT 1`,
+		appID, generation, DeployLive).Scan(&buildID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	return buildID, err
 }
 
 // SetDeployPreDeployStatus records the pre-deploy step's outcome on a deploy

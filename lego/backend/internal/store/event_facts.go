@@ -33,9 +33,12 @@ import (
 type ServiceEventFactType string
 
 const (
-	EventFactImagePullFailed  ServiceEventFactType = "image_pull_failed"
-	EventFactServiceSuspended ServiceEventFactType = "service_suspended"
-	EventFactServiceResumed   ServiceEventFactType = "service_resumed"
+	EventFactImagePullFailed ServiceEventFactType = "image_pull_failed"
+	// EventFactArtifactFetchFailed is Render's artifact_fetch_failed (w4/m510):
+	// a deploy of a build-source build whose image could not be pulled.
+	EventFactArtifactFetchFailed ServiceEventFactType = "artifact_fetch_failed"
+	EventFactServiceSuspended    ServiceEventFactType = "service_suspended"
+	EventFactServiceResumed      ServiceEventFactType = "service_resumed"
 	// Free-tier idle auto-sleep (w6/m47). Deliberately NOT the suspended/resumed
 	// pair: those stay exclusively user-driven, so a webhook or push subscriber
 	// watching for an unexpected suspension is not woken by every routine sleep
@@ -78,6 +81,7 @@ const (
 
 var serviceEventFactTypes = map[ServiceEventFactType]bool{
 	EventFactImagePullFailed:             true,
+	EventFactArtifactFetchFailed:         true,
 	EventFactServiceSuspended:            true,
 	EventFactServiceResumed:              true,
 	EventFactServiceHibernated:           true,
@@ -193,7 +197,16 @@ type ServiceEventFact struct {
 	// DiskUsage is a service_disk_usage_high/_recovered fact's details
 	// (w2/m255); written only through RecordDiskUsageCrossing.
 	DiskUsage *DiskUsageDetails
+	// BuildID and Message belong to artifact_fetch_failed (w4/m510): the build
+	// source build (bld-...) that could not be fetched and the pull failure
+	// message Render requires.
+	BuildID string
+	Message string
 }
+
+// DefaultArtifactFetchFailedMessage is the fallback pull-failure message for
+// artifact_fetch_failed when the operator condition carried no message text.
+const DefaultArtifactFetchFailedMessage = "The build image could not be pulled"
 
 // EventFactWriter is the narrow producer seam used by apps and webhook code.
 type EventFactWriter interface {
@@ -356,7 +369,7 @@ func (f ServiceEventFact) insertArgs() []any {
 		f.SourceKey, f.AppID, f.Type, f.At, f.DeployID, f.Image,
 		f.ReasonCode, f.InstanceID, f.FromCount, f.ToCount,
 		f.BranchFrom, f.BranchTo, f.CommitID, f.CommitURL, f.Status,
-		f.ExitCode, f.RunID,
+		f.ExitCode, f.RunID, f.BuildID, f.Message,
 	}
 }
 
@@ -364,8 +377,8 @@ const insertServiceEventFactSQL = `
 INSERT INTO service_event_facts (
     source_key, app_id, fact_type, at, deploy_id, image, reason_code,
     instance_id, from_count, to_count, branch_from, branch_to, commit_id, commit_url, status,
-    exit_code, run_id
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+    exit_code, run_id, build_id, message
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 ON CONFLICT (source_key) DO NOTHING`
 
 // BuiltDeployIDs is the set of an App's deploys that actually ran a build —
@@ -831,19 +844,19 @@ const instanceExitExplainsOutageSQL = `SELECT EXISTS (
 	        AND a.at > LEAST(e.at, $4::timestamptz) AND a.at <= GREATEST(e.at, $4::timestamptz)))`
 
 // insertInstanceExitFactSQL is insertServiceEventFactSQL for an exit fact: it
-// inserts nothing when a sampled outage starting between $18 and $19, with no
+// inserts nothing when a sampled outage starting between $20 and $21, with no
 // server_available between it and the exit, already has its server_failed.
 const insertInstanceExitFactSQL = `
 INSERT INTO service_event_facts (
     source_key, app_id, fact_type, at, deploy_id, image, reason_code,
     instance_id, from_count, to_count, branch_from, branch_to, commit_id, commit_url, status,
-    exit_code, run_id
+    exit_code, run_id, build_id, message
 )
-SELECT $1, $2, $3, $4::timestamptz, $5, $6, $7, $8, $9::integer, $10::integer, $11, $12, $13, $14, $15, $16::integer, $17
+SELECT $1, $2, $3, $4::timestamptz, $5, $6, $7, $8, $9::integer, $10::integer, $11, $12, $13, $14, $15, $16::integer, $17, $18, $19
 WHERE NOT EXISTS (
     SELECT 1 FROM service_event_facts o
     WHERE o.app_id = $2 AND o.fact_type = 'server_failed' AND o.reason_code = 'readiness_failed'
-      AND o.at >= $18 AND o.at <= $19
+      AND o.at >= $20 AND o.at <= $21
       AND NOT EXISTS (
           SELECT 1 FROM service_event_facts a
           WHERE a.app_id = $2 AND a.fact_type = 'server_available'

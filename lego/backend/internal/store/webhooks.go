@@ -860,6 +860,10 @@ WITH feed AS (
     WHERE e.outcome = 'allowed' AND e.verb = ANY($4) AND a.tenant_id = ANY($5)
       -- A profile save that left caching as it was is no event (w9/m345).
       AND (e.verb <> ALL($7::text[]) OR e.edge_cache_enabled_to IS NOT NULL)
+      -- Pre-w4/m510 apps.LinkBuildSource rows carried neither side (w4/m510).
+      AND (e.verb <> '` + core.AuditVerbLinkBuildSource + `'
+           OR e.build_source_from IS NOT NULL
+           OR e.build_source_to IS NOT NULL)
   UNION ALL
     SELECT e.at,
            e.id || ':',

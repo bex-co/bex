@@ -155,6 +155,12 @@ query ServiceEvents(
       domain
       # zero_downtime_redeploy_started (w4/m504): node_replacement | node_consolidation.
       redeployTrigger
+      # artifact_source_changed / artifact_fetch_failed (w4/m510): build source link
+      # sides, build id and pull failure message.
+      fromBuildSourceId
+      toBuildSourceId
+      buildId
+      message
       trigger {
         firstBuild
         envUpdated

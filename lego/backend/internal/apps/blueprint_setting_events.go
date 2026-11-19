@@ -135,6 +135,23 @@ func (s *Service) recordStackDomainChanges(ctx context.Context, a *appv1alpha1.A
 	}
 }
 
+// recordBlueprintSourceChange records the service event for a Blueprint source
+// transition: Render's artifact_source_changed for any build-source attach,
+// switch or detach (w4/m510), and source_changed for a repo/image/branch move.
+func (s *Service) recordBlueprintSourceChange(ctx context.Context, a *appv1alpha1.App, change blueprintSourceChange, before, after *appv1alpha1.AppSpec) {
+	tenant := a.Labels[core.LabelTenant]
+	switch change {
+	case blueprintSourceLinked:
+		s.RecordServiceBuildSourceLinked(ctx, a, core.BuildSourceIDOfLink(tenant, before.BuildSource), core.BuildSourceIDOfLink(tenant, after.BuildSource))
+	case blueprintSourceSet:
+		if from := core.BuildSourceIDOfLink(tenant, before.BuildSource); from != "" && after.BuildSource == nil {
+			s.RecordServiceBuildSourceLinked(ctx, a, from, "")
+		} else {
+			s.recordSourceChanged(ctx, a, before.Branch, after.Branch, "")
+		}
+	}
+}
+
 // recordStackSettingChanges records, once a Blueprint apply's patch of a
 // landed, each setting it changed from before to after that no row recorded
 // already: for a store-less App also its source, plan, instance count and
@@ -144,12 +161,7 @@ func (s *Service) recordStackDomainChanges(ctx context.Context, a *appv1alpha1.A
 func (s *Service) recordStackSettingChanges(ctx context.Context, a *appv1alpha1.App, before, after *appv1alpha1.AppSpec) {
 	ctx = s.WithResolvedWorkspace(ctx)
 	if s.blueprintIntentRow(a) == "" {
-		switch blueprintSourceChangeOf(before, after) {
-		case blueprintSourceLinked:
-			s.recordSourceChanged(ctx, a, "", "", "")
-		case blueprintSourceSet:
-			s.recordSourceChanged(ctx, a, before.Branch, after.Branch, "")
-		}
+		s.recordBlueprintSourceChange(ctx, a, blueprintSourceChangeOf(before, after), before, after)
 		if before.Tier != after.Tier {
 			s.recordStackPlanChange(ctx, a, before, after)
 		}

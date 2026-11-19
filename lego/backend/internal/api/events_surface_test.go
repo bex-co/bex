@@ -940,3 +940,131 @@ func TestZeroDowntimeRedeploySurfaceParity(t *testing.T) {
 		t.Errorf("MCP get_service_event = %+v, want match REST %+v", mcpOne, rest[1].Event)
 	}
 }
+
+// TestArtifactEventsSurfaceParity pins w4/m510: artifact_source_changed
+// (attach, switch, detach with absent side omitted) and artifact_fetch_failed
+// (buildId + message) read identically across REST list (with type= filter),
+// REST retrieve, GraphQL serviceEvents/serviceEvent and MCP list_events /
+// get_service_event.
+func TestArtifactEventsSurfaceParity(t *testing.T) {
+	at := time.Date(2026, 11, 19, 2, 0, 0, 0, time.UTC)
+	fetchRow := store.ServiceEventRow{
+		Key: "fact:deploy:dep-bs:artifact_fetch_failed", At: at,
+		Source: store.EventSourceFact, FactType: string(store.EventFactArtifactFetchFailed),
+		DeployID: "dep-bs", ArtifactBuildID: "bld-0123456789abcdefghij",
+		ArtifactMessage: "image pull failed: manifest unknown",
+		ReasonCode:      store.EventReasonImagePullBackoff,
+	}
+	detachRow := store.ServiceEventRow{
+		Key: "aud-detach:", At: at.Add(-time.Minute),
+		Source: store.EventSourceAudit, Verb: core.AuditVerbLinkBuildSource, Caller: "user-x",
+		AuditChanges: store.AuditChanges{BuildSourceFrom: new("bds-two")},
+	}
+	relinkRow := store.ServiceEventRow{
+		Key: "aud-relink:", At: at.Add(-2 * time.Minute),
+		Source: store.EventSourceAudit, Verb: core.AuditVerbLinkBuildSource, Caller: "user-x",
+		AuditChanges: store.AuditChanges{BuildSourceFrom: new("bds-one"), BuildSourceTo: new("bds-two")},
+	}
+	attachRow := store.ServiceEventRow{
+		Key: "aud-attach:", At: at.Add(-3 * time.Minute),
+		Source: store.EventSourceAudit, Verb: core.AuditVerbLinkBuildSource, Caller: "user-x",
+		AuditChanges: store.AuditChanges{BuildSourceTo: new("bds-one")},
+	}
+	fake := &fakeEventStore{rows: []store.ServiceEventRow{fetchRow, detachRow, relinkRow, attachRow}}
+	base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true}}
+	h, srv := serverWith(t, base, Deps{EventStore: fake})
+
+	// REST list with type= filter (Render's enum accepts both).
+	res := do(t, h, "GET",
+		"/v1/services/web/events?type=artifact_source_changed,artifact_fetch_failed&startTime=2026-11-01T00:00:00Z",
+		testToken, "")
+	if res.Code != http.StatusOK {
+		t.Fatalf("REST list: %d %s", res.Code, res.Body.String())
+	}
+	var rest []restEvent
+	if err := json.Unmarshal(res.Body.Bytes(), &rest); err != nil {
+		t.Fatalf("decode REST list: %v", err)
+	}
+	if len(rest) != 4 {
+		t.Fatalf("REST list = %d events, want 4", len(rest))
+	}
+	// artifact_fetch_failed carries buildId + message and no deployId/image/reasonCode.
+	if rest[0].Event.Type != events.TypeArtifactFetchFailed ||
+		rest[0].Event.Details["buildId"] != "bld-0123456789abcdefghij" ||
+		rest[0].Event.Details["message"] != "image pull failed: manifest unknown" ||
+		len(rest[0].Event.Details) != 2 {
+		t.Errorf("REST artifact_fetch_failed = %+v, want {buildId, message}", rest[0].Event)
+	}
+	// Detach omits toBuildSourceId; relink carries both; attach omits fromBuildSourceId.
+	if _, hasTo := rest[1].Event.Details["toBuildSourceId"]; hasTo || rest[1].Event.Details["fromBuildSourceId"] != "bds-two" {
+		t.Errorf("REST detach = %+v, want only fromBuildSourceId=bds-two", rest[1].Event)
+	}
+	if rest[2].Event.Details["fromBuildSourceId"] != "bds-one" || rest[2].Event.Details["toBuildSourceId"] != "bds-two" {
+		t.Errorf("REST relink = %+v, want from=bds-one to=bds-two", rest[2].Event)
+	}
+	if _, hasFrom := rest[3].Event.Details["fromBuildSourceId"]; hasFrom || rest[3].Event.Details["toBuildSourceId"] != "bds-one" {
+		t.Errorf("REST attach = %+v, want only toBuildSourceId=bds-one", rest[3].Event)
+	}
+
+	// REST retrieve by ID agrees with list.
+	for _, r := range rest {
+		got := do(t, h, "GET", "/v1/events/"+r.Event.ID, testToken, "")
+		if got.Code != http.StatusOK {
+			t.Fatalf("REST get %s: %d %s", r.Event.ID, got.Code, got.Body.String())
+		}
+		var one wireEvent
+		if err := json.Unmarshal(got.Body.Bytes(), &one); err != nil {
+			t.Fatal(err)
+		}
+		if one.ID != r.Event.ID || one.Type != r.Event.Type || fmt.Sprint(one.Details) != fmt.Sprint(r.Event.Details) {
+			t.Errorf("REST retrieve = %+v, want %+v", one, r.Event)
+		}
+	}
+
+	// GraphQL list and single retrieve.
+	gqlList := gql(t, h, `{ serviceEvents(serviceId: "web", type: "artifact_source_changed,artifact_fetch_failed", startTime: "2026-11-01T00:00:00Z") { id type details { deployId buildId message fromBuildSourceId toBuildSourceId } } }`)["serviceEvents"].([]any)
+	if len(gqlList) != 4 {
+		t.Fatalf("GraphQL list = %d, want 4", len(gqlList))
+	}
+	gqlFetch := gqlList[0].(map[string]any)["details"].(map[string]any)
+	if gqlFetch["buildId"] != "bld-0123456789abcdefghij" || gqlFetch["message"] != "image pull failed: manifest unknown" || gqlFetch["deployId"] != "dep-bs" {
+		t.Errorf("GraphQL artifact_fetch_failed = %v", gqlFetch)
+	}
+	gqlRelink := gqlList[2].(map[string]any)["details"].(map[string]any)
+	if gqlRelink["fromBuildSourceId"] != "bds-one" || gqlRelink["toBuildSourceId"] != "bds-two" {
+		t.Errorf("GraphQL relink = %v", gqlRelink)
+	}
+	gqlOne := gql(t, h, fmt.Sprintf(`{ serviceEvent(id: %q) { id type details { buildId message } } }`, rest[0].Event.ID))["serviceEvent"].(map[string]any)
+	if gqlOne["id"] != rest[0].Event.ID || gqlOne["details"].(map[string]any)["buildId"] != "bld-0123456789abcdefghij" {
+		t.Errorf("GraphQL serviceEvent = %v", gqlOne)
+	}
+
+	// MCP list_events and get_service_event agree with REST.
+	mcpRes, err := mcpSessionAs(t, srv, "user-x").CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "list_events",
+		Arguments: map[string]any{
+			"serviceId":  "web",
+			"eventTypes": []string{events.TypeArtifactSourceChanged, events.TypeArtifactFetchFailed},
+			"startTime":  "2026-11-01T00:00:00Z",
+		},
+	})
+	if err != nil || mcpRes.IsError || len(mcpRes.Content) == 0 {
+		t.Fatalf("MCP list_events: res=%+v err=%v", mcpRes, err)
+	}
+	arrayPart, _, _ := strings.Cut(mcpRes.Content[0].(*mcp.TextContent).Text, "\n\n")
+	var mcpList []wireEvent
+	if err := json.Unmarshal([]byte(arrayPart), &mcpList); err != nil {
+		t.Fatalf("decode MCP list_events %q: %v", arrayPart, err)
+	}
+	if len(mcpList) != 4 || mcpList[0].ID != rest[0].Event.ID ||
+		mcpList[0].Details["buildId"] != "bld-0123456789abcdefghij" ||
+		mcpList[2].Details["fromBuildSourceId"] != "bds-one" ||
+		mcpList[2].Details["toBuildSourceId"] != "bds-two" {
+		t.Errorf("MCP list_events = %+v, want match REST %+v", mcpList, rest)
+	}
+	mcpOne := callGetServiceEvent(t, srv, rest[2].Event.ID)
+	if mcpOne.ID != rest[2].Event.ID || mcpOne.Type != events.TypeArtifactSourceChanged ||
+		mcpOne.Details["fromBuildSourceId"] != "bds-one" || mcpOne.Details["toBuildSourceId"] != "bds-two" {
+		t.Errorf("MCP get_service_event = %+v, want match REST %+v", mcpOne, rest[2].Event)
+	}
+}

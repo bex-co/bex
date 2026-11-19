@@ -577,6 +577,16 @@ const deWebhooks: Record<string, TranslationEntry> = {
     message: "Image-Pull fehlgeschlagen",
     description: "Event label — image_pull_failed",
   },
+  "webhooks.event.artifact_fetch_failed": {
+    message: "Artefaktabruf fehlgeschlagen",
+    description:
+      "Event label — artifact_fetch_failed: a build published by a build source could not be fetched",
+  },
+  "webhooks.event.artifact_source_changed": {
+    message: "Build-Quelle geändert",
+    description:
+      "Event label — artifact_source_changed: a service's linked build source changed",
+  },
   "webhooks.event.pipeline_minutes_exhausted": {
     message: "Pipeline-Minuten aufgebraucht",
     description: "Event label — pipeline_minutes_exhausted",

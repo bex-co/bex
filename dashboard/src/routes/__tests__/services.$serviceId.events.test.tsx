@@ -52,6 +52,18 @@ vi.mock("@/features/services/hooks/use-instance-types", () => ({
   }),
 }));
 
+const buildSourceList: { id: string; name: string }[] = [
+  { id: "bds-one", name: "Monorepo" },
+  { id: "bds-two", name: "Backend API" },
+];
+vi.mock("@/features/services/hooks/use-build-sources", () => ({
+  useBuildSources: () => ({
+    sources: buildSourceList,
+    loading: false,
+    error: undefined,
+  }),
+}));
+
 vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
   useWorkspaceSubjectLabel: (subject: string, known?: string | null) =>
     known || subject,
@@ -1479,5 +1491,73 @@ describe("ServiceEventsPage — a deploy's trigger is named the way the Deploys 
     ).toHaveLength(2);
     expect(screen.getByText("Node replaced")).toBeInTheDocument();
     expect(screen.getByText("Node removed by autoscaling")).toBeInTheDocument();
+  });
+
+  it("renders artifact_source_changed (attach, switch, detach) and artifact_fetch_failed with build id and message", async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          {
+            id: "evt-art-fail",
+            type: "artifact_fetch_failed",
+            timestamp: "2026-11-19T02:03:00Z",
+            cursor: "c-4",
+            details: {
+              deployId: "dep-bs-1",
+              buildId: "bld-0123456789abcdefghij",
+              message: "image pull failed: manifest unknown",
+              reasonCode: "image_pull_backoff",
+            },
+          },
+          {
+            id: "evt-art-detach",
+            type: "artifact_source_changed",
+            timestamp: "2026-11-19T02:02:00Z",
+            cursor: "c-3",
+            details: { fromBuildSourceId: "bds-two" },
+          },
+          {
+            id: "evt-art-relink",
+            type: "artifact_source_changed",
+            timestamp: "2026-11-19T02:01:00Z",
+            cursor: "c-2",
+            details: {
+              fromBuildSourceId: "bds-one",
+              toBuildSourceId: "bds-two",
+            },
+          },
+          {
+            id: "evt-art-attach",
+            type: "artifact_source_changed",
+            timestamp: "2026-11-19T02:00:00Z",
+            cursor: "c-1",
+            details: { toBuildSourceId: "bds-deleted" },
+          },
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(
+      await screen.findByText("Artifact fetch failed"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("bld-0123456789abcdefghij")).toBeInTheDocument();
+    expect(
+      screen.getByText("image pull failed: manifest unknown"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Build source changed")).toHaveLength(3);
+    expect(
+      screen.getByText("Unlinked from build source Backend API"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Build source Monorepo → Backend API"),
+    ).toBeInTheDocument();
+    // Deleted or unknown build source falls back to its id.
+    expect(
+      screen.getByText("Linked to build source bds-deleted"),
+    ).toBeInTheDocument();
   });
 });

@@ -29,6 +29,7 @@ import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useServer } from "@/features/services/hooks/use-server";
+import { useBuildSources } from "@/features/services/hooks/use-build-sources";
 import { useInstanceTypes } from "@/features/services/hooks/use-instance-types";
 import { useProjects } from "@/features/projects/hooks/use-projects";
 import { useEnvironments } from "@/features/environments/hooks/use-environments";
@@ -522,6 +523,12 @@ function EventRow({
     type === "zero_downtime_redeploy_started"
       ? redeployTriggerKey(details?.redeployTrigger)
       : null;
+  const fromBuildSourceId = details?.fromBuildSourceId || null;
+  const toBuildSourceId = details?.toBuildSourceId || null;
+  const artifactBuildId =
+    type === "artifact_fetch_failed" ? details?.buildId || null : null;
+  const artifactMessage =
+    type === "artifact_fetch_failed" ? details?.message || null : null;
   // service_moved placement pair (w6/m134). A dimension renders only when it
   // actually changed; an absent side reads as the placement-none placeholder.
   const projectFrom = details?.projectFrom ?? null;
@@ -620,6 +627,7 @@ function EventRow({
             <span>{t("services.eventsActor", { actor: actorLabel })}</span>
           ) : null}
           {deployId ? <DeployReference id={deployId} /> : null}
+          {artifactBuildId ? <BuildReference id={artifactBuildId} /> : null}
         </SeparatedMeta>
         {/* Deploy enrichment (w1/m47): commit, message, image and
             duration on one line, as a deploy row reads on the Deploys tab. */}
@@ -644,7 +652,10 @@ function EventRow({
             {t(preDeploy as Parameters<typeof t>[0])}
           </p>
         ) : null}
-        {reasonCode ? (
+        {artifactMessage ? (
+          <p className="text-destructive">{artifactMessage}</p>
+        ) : null}
+        {reasonCode && !artifactMessage ? (
           <p>
             {t(eventReasonKey(type, reasonCode, memoryLimit), {
               exitCode: exitCode ?? "",
@@ -692,6 +703,13 @@ function EventRow({
         ) : null}
         {redeployTrigger ? (
           <p>{t(redeployTrigger as Parameters<typeof t>[0])}</p>
+        ) : null}
+        {type === "artifact_source_changed" &&
+        (fromBuildSourceId || toBuildSourceId) ? (
+          <ArtifactSourceChange
+            from={fromBuildSourceId}
+            to={toBuildSourceId}
+          />
         ) : null}
         {branchFrom && branchTo ? (
           <p>
@@ -945,4 +963,59 @@ function PlanChange({ from, to }: { from: string | null; to: string }) {
       })}
     </p>
   );
+}
+
+/** "Build bld-…": mirrors DeployReference for artifact_fetch_failed (w4/m510). */
+function BuildReference({ id }: { id: string }) {
+  const { t } = useTranslations();
+  const [before, after] = aroundPlaceholder(
+    t("services.eventsBuildReference", { id: PLACEHOLDER_SENTINEL }),
+  );
+  return (
+    <span>
+      {before}
+      <span className="font-mono">{id}</span>
+      {after}
+    </span>
+  );
+}
+
+/**
+ * An artifact_source_changed event's build-source link sides (w4/m510).
+ * Resolves bds-… ids to their build source names when still present, falling
+ * back to the id when deleted or loading. Mounted only on build-source link
+ * rows so other events do not fetch the build-source list.
+ */
+function ArtifactSourceChange({
+  from,
+  to,
+}: {
+  from: string | null;
+  to: string | null;
+}) {
+  const { t } = useTranslations();
+  const { sources } = useBuildSources(true);
+  const label = (id: string) =>
+    sources.find((item) => item.id === id)?.name ?? id;
+  if (from && to) {
+    return (
+      <p>
+        {t("services.eventsArtifactSourceChanged", {
+          from: label(from),
+          to: label(to),
+        })}
+      </p>
+    );
+  }
+  if (to) {
+    return (
+      <p>{t("services.eventsArtifactSourceLinked", { to: label(to) })}</p>
+    );
+  }
+  if (from) {
+    return (
+      <p>{t("services.eventsArtifactSourceUnlinked", { from: label(from) })}</p>
+    );
+  }
+  return null;
 }

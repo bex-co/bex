@@ -2931,6 +2931,7 @@ type ServiceEventDetails {
   autoscalingMinTo: Int
   branchFrom: String
   branchTo: String
+  buildId: String
   cancelReason: String
   cancelReasonTemplate: DeployReason
   commitId: String
@@ -2954,6 +2955,7 @@ type ServiceEventDetails {
   failureReason: String
   failureReasonTemplate: DeployReason
   finishedAt: String
+  fromBuildSourceId: String
   fromCount: Int
   fromDiskSize: Int
   fromReplicas: Int
@@ -2988,6 +2990,7 @@ type ServiceEventDetails {
   status: String
   suspendedByUser: EventUser
   thresholdPercent: Float
+  toBuildSourceId: String
   toCount: Int
   toDiskSize: Int
   toReplicas: Int

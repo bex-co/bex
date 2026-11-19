@@ -4821,6 +4821,35 @@ const koServices: Record<string, TranslationEntry> = {
     message: "이미지 가져오기 실패",
     description: "Service activity type: image pull failed",
   },
+  "services.eventsTypeArtifactFetchFailed": {
+    message: "아티팩트 가져오기 실패",
+    description:
+      "Service activity type: a build published by a build source could not be fetched",
+  },
+  "services.eventsTypeArtifactSourceChanged": {
+    message: "빌드 소스 변경됨",
+    description:
+      "Service activity type: the service's linked build source changed",
+  },
+  "services.eventsArtifactSourceChanged": {
+    message: "빌드 소스 {from} → {to}",
+    description:
+      "Detail line on artifact_source_changed when switching between two build sources",
+  },
+  "services.eventsArtifactSourceLinked": {
+    message: "빌드 소스 {to}에 연결됨",
+    description:
+      "Detail line on artifact_source_changed when newly linked to a build source",
+  },
+  "services.eventsArtifactSourceUnlinked": {
+    message: "빌드 소스 {from} 연결 해제됨",
+    description:
+      "Detail line on artifact_source_changed when detached from a build source",
+  },
+  "services.eventsBuildReference": {
+    message: "빌드 {id}",
+    description: "Build identifier shown on an artifact_fetch_failed activity row",
+  },
   "services.eventsTypeSuspended": {
     message: "일시 중지됨",
     description: "Service activity type: service suspended",

@@ -17,6 +17,7 @@ limitations under the License.
 package events
 
 import (
+	"cmp"
 	"net/http"
 	"net/url"
 	"time"
@@ -195,6 +196,10 @@ type renderDetails struct {
 	// auto_deploy_enabled's trigger after it.
 	FromTrigger *string `json:"fromTrigger,omitempty"`
 	NewTrigger  *string `json:"newTrigger,omitempty"`
+	// artifact_source_changed (w4/m510): the previously and newly linked build
+	// source ids; the absent side is omitted.
+	FromBuildSourceID string `json:"fromBuildSourceId,omitempty"`
+	ToBuildSourceID   string `json:"toBuildSourceId,omitempty"`
 }
 
 // unhealthyMessage is server_failed's reason when an instance failed its
@@ -433,6 +438,13 @@ func toRenderEvent(e Event) renderEvent {
 	case TypeImagePullFailed:
 		d.ImageURL, d.Message = e.Details.Image, imagePullFailedMessage
 		d.Image, d.ReasonCode = "", ""
+	case TypeArtifactSourceChanged:
+		d.FromBuildSourceID = e.Details.FromBuildSourceID
+		d.ToBuildSourceID = e.Details.ToBuildSourceID
+	case TypeArtifactFetchFailed:
+		d.BuildID = e.Details.BuildID
+		d.Message = cmp.Or(e.Details.Message, store.DefaultArtifactFetchFailedMessage)
+		d.Image, d.ReasonCode, d.DeployID = "", "", ""
 	case TypeJobRunEnded:
 		d.Status, d.JobID = e.Details.Status, e.Details.JobID
 	case TypeServiceMoved:

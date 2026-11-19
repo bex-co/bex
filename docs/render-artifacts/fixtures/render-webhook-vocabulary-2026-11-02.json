@@ -155,6 +155,8 @@
     "agent_session_needs_input",
     "agent_session_turn_failed",
     "agent_session_turn_succeeded",
+    "artifact_fetch_failed",
+    "artifact_source_changed",
     "auto_deploy_disabled",
     "auto_deploy_enabled",
     "autoscaling_config_changed",
@@ -245,8 +247,6 @@
     "maintenance_started"
   ],
   "sourceBoundUnsupported": [
-    "artifact_fetch_failed",
-    "artifact_source_changed",
     "postgres_connection_pool_changed",
     "postgres_read_replica_stale"
   ]

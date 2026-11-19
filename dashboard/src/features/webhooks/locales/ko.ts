@@ -566,6 +566,16 @@ const koWebhooks: Record<string, TranslationEntry> = {
     message: "이미지 가져오기 실패",
     description: "Event label — image_pull_failed",
   },
+  "webhooks.event.artifact_fetch_failed": {
+    message: "아티팩트 가져오기 실패",
+    description:
+      "Event label — artifact_fetch_failed: a build published by a build source could not be fetched",
+  },
+  "webhooks.event.artifact_source_changed": {
+    message: "빌드 소스 변경됨",
+    description:
+      "Event label — artifact_source_changed: a service's linked build source changed",
+  },
   "webhooks.event.pipeline_minutes_exhausted": {
     message: "파이프라인 시간 소진",
     description: "Event label — pipeline_minutes_exhausted",

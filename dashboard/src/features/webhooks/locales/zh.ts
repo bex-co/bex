@@ -558,6 +558,16 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "镜像拉取失败",
     description: "Event label — image_pull_failed",
   },
+  "webhooks.event.artifact_fetch_failed": {
+    message: "产物拉取失败",
+    description:
+      "Event label — artifact_fetch_failed: a build published by a build source could not be fetched",
+  },
+  "webhooks.event.artifact_source_changed": {
+    message: "构建源已更改",
+    description:
+      "Event label — artifact_source_changed: a service's linked build source changed",
+  },
   "webhooks.event.pipeline_minutes_exhausted": {
     message: "流水线分钟数已用尽",
     description: "Event label — pipeline_minutes_exhausted",

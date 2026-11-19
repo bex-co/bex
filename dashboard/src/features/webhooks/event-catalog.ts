@@ -17,6 +17,8 @@ const GROUPS: Record<string, string[]> = {
     "zero_downtime_redeploy_started",
     "zero_downtime_redeploy_ended",
     "image_pull_failed",
+    "artifact_fetch_failed",
+    "artifact_source_changed",
     "pipeline_minutes_exhausted",
     "pre_deploy_started",
     "pre_deploy_ended",

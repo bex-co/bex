@@ -1,21 +1,21 @@
 # w4 · m510 — A build-source link change and a build that cannot be fetched record Render's `artifact_source_changed` and `artifact_fetch_failed`
 
-**Worker:** worker4 **Goal:** a service's build-source link changes record `artifact_source_changed {fromBuildSourceId, toBuildSourceId}` instead of bex's `source_changed`, and a linked service's deploy whose build cannot be pulled records `artifact_fetch_failed {buildId, message}`, on REST, GraphQL, MCP, webhooks and the dashboard. **Status:** todo
+**Worker:** worker4 **Goal:** a service's build-source link changes record `artifact_source_changed {fromBuildSourceId, toBuildSourceId}` instead of bex's `source_changed`, and a linked service's deploy whose build cannot be pulled records `artifact_fetch_failed {buildId, message}`, on REST, GraphQL, MCP, webhooks and the dashboard. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Record `artifact_source_changed` for every build-source link change | 60m | — |
-| t002 | Record `artifact_fetch_failed` when a linked service cannot fetch its build | 50m | — |
-| t003 | Serve both types on REST, GraphQL, MCP and webhooks | 40m | t001, t002 |
-| t004 | Show both types in the dashboard's Events feed and webhook picker | 35m | t003 |
-| t005 | Correct the docs that file artifact events as unproduced | 25m | t003 |
-| t006 | Verify link changes and a fetch failure on dev-4 | 40m | t004, t005 |
-| t007 | Render parity | 20m | t006 |
-| t008 | Simplify | 15m | t007 |
-| t009 | Test coverage | 30m | t007 |
-| t010 | Closeout | 10m | t008, t009 |
+| t001 | [Record `artifact_source_changed` for every build-source link change](done/t001.md) — **DONE** | 60m | — |
+| t002 | [Record `artifact_fetch_failed` when a linked service cannot fetch its build](done/t002.md) — **DONE** | 50m | — |
+| t003 | [Serve both types on REST, GraphQL, MCP and webhooks](done/t003.md) — **DONE** | 40m | t001, t002 |
+| t004 | [Show both types in the dashboard's Events feed and webhook picker](done/t004.md) — **DONE** | 35m | t003 |
+| t005 | [Correct the docs that file artifact events as unproduced](done/t005.md) — **DONE** | 25m | t003 |
+| t006 | [Verify link changes and a fetch failure on dev-4](done/t006.md) — **DONE** | 40m | t004, t005 |
+| t007 | [Render parity](done/t007.md) — **DONE** | 20m | t006 |
+| t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
+| t009 | [Test coverage](done/t009.md) — **DONE** | 30m | t007 |
+| t010 | [Closeout](done/t010.md) — **DONE** | 10m | t008, t009 |
 
 ## Definition of done
 

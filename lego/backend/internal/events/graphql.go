@@ -316,6 +316,12 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// (node_replacement | node_consolidation); GraphQL's trigger field is
 		// the DeployTrigger object.
 		"redeployTrigger": gqlutil.StrField(func(d Details) any { return d.RedeployTrigger }),
+		// artifact_source_changed / artifact_fetch_failed (w4/m510): Render's
+		// build source link sides and the build id (message is served by the
+		// existing message field above via d.render.Message).
+		"fromBuildSourceId": gqlutil.StrField(func(d Details) any { return d.FromBuildSourceID }),
+		"toBuildSourceId":   gqlutil.StrField(func(d Details) any { return d.ToBuildSourceID }),
+		"buildId":           gqlutil.StrField(func(d Details) any { return d.BuildID }),
 	},
 })
 

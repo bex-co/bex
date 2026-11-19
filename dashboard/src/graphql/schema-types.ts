@@ -5999,6 +5999,7 @@ export type ServiceEventDetails = {
   autoscalingMinTo: Maybe<Scalars['Int']['output']>;
   branchFrom: Maybe<Scalars['String']['output']>;
   branchTo: Maybe<Scalars['String']['output']>;
+  buildId: Maybe<Scalars['String']['output']>;
   cancelReason: Maybe<Scalars['String']['output']>;
   cancelReasonTemplate: Maybe<DeployReason>;
   commitId: Maybe<Scalars['String']['output']>;
@@ -6022,6 +6023,7 @@ export type ServiceEventDetails = {
   failureReason: Maybe<Scalars['String']['output']>;
   failureReasonTemplate: Maybe<DeployReason>;
   finishedAt: Maybe<Scalars['String']['output']>;
+  fromBuildSourceId: Maybe<Scalars['String']['output']>;
   fromCount: Maybe<Scalars['Int']['output']>;
   fromDiskSize: Maybe<Scalars['Int']['output']>;
   fromReplicas: Maybe<Scalars['Int']['output']>;
@@ -6056,6 +6058,7 @@ export type ServiceEventDetails = {
   status: Maybe<Scalars['String']['output']>;
   suspendedByUser: Maybe<EventUser>;
   thresholdPercent: Maybe<Scalars['Float']['output']>;
+  toBuildSourceId: Maybe<Scalars['String']['output']>;
   toCount: Maybe<Scalars['Int']['output']>;
   toDiskSize: Maybe<Scalars['Int']['output']>;
   toReplicas: Maybe<Scalars['Int']['output']>;

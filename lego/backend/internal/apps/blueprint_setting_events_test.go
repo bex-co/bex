@@ -692,12 +692,17 @@ func TestManagedBlueprintBuildSourceLinkRecordsOnlyTheSourceChange(t *testing.T)
 			got = append(got, row)
 		}
 	}
-	if want := []string{"apps.SetSourceAndRegistryCredential by user-a"}; !slices.Equal(got, want) {
+	if want := []string{"apps.LinkBuildSource by user-a"}; !slices.Equal(got, want) {
 		t.Fatalf("the link recorded %v, want %v", got, want)
 	}
 	for _, ev := range sink.events {
-		if ev.Verb == core.AuditVerbSetSourceAndRegistryCredential && ev.Target != core.ServiceTarget(core.AppPublicID(app)) {
-			t.Fatalf("source_changed targets %q, want the linked service", ev.Target)
+		if ev.Verb == core.AuditVerbLinkBuildSource {
+			if ev.Target != core.ServiceTarget(core.AppPublicID(app)) {
+				t.Fatalf("artifact_source_changed targets %q, want the linked service", ev.Target)
+			}
+			if ev.BuildSourceFrom != "" || ev.BuildSourceTo == "" {
+				t.Fatalf("artifact_source_changed sides = %q->%q, want empty from and non-empty to", ev.BuildSourceFrom, ev.BuildSourceTo)
+			}
 		}
 	}
 }

@@ -122,6 +122,12 @@ function describeEvent(
         labelKey: "metrics.eventsChanged",
         typeLabelKey: serviceEventLabelKey(type),
       };
+    case "artifact_fetch_failed":
+      return {
+        kind: "failure",
+        labelKey: "metrics.eventsChanged",
+        typeLabelKey: serviceEventLabelKey(type),
+      };
     case "build_started":
       return { kind: "start", labelKey: "metrics.eventBuildStarted" };
     case "pre_deploy_started":

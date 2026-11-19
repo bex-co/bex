@@ -1110,6 +1110,7 @@ func (s *Service) LinkBuildSource(ctx context.Context, name, buildSourceID strin
 		}
 	}
 	oldCloneSecret := a.Spec.CloneSecret
+	fromBuildSourceID := core.BuildSourceIDOfLink(a.Labels[core.LabelTenant], a.Spec.BuildSource)
 	updated, err := s.patchUntracked(ctx, a, func(app *appv1alpha1.App) {
 		spec := &app.Spec
 		linkBuildSourceSpec(spec, *link)
@@ -1129,6 +1130,10 @@ func (s *Service) LinkBuildSource(ctx context.Context, name, buildSourceID strin
 			log.Printf("apps: clear clone secret for %s after linking a build source: %v", a.Name, err)
 		}
 	}
-	s.RecordServiceBuildSourceLinked(ctx, a)
+	if fromBuildSourceID != buildSourceID {
+		s.RecordServiceBuildSourceLinked(ctx, a, fromBuildSourceID, buildSourceID)
+	} else if existing != start {
+		s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetCommands)
+	}
 	return updated, nil
 }

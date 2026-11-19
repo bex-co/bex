@@ -179,6 +179,12 @@ type AuditEvent struct {
 	// repository (w10/m490, RecordRepoMoved). Empty for every other verb.
 	RepoFrom string
 	RepoTo   string
+	// BuildSourceFrom/BuildSourceTo are the previously and newly linked build
+	// source bds- ids on a service's build-source link change (w4/m510,
+	// AuditVerbLinkBuildSource): empty on the absent side (attach or detach)
+	// and empty on every other verb.
+	BuildSourceFrom string
+	BuildSourceTo   string
 	// EdgeCacheEnabledTo is what an edge-cache profile save (w9/m345), or a
 	// plan change's edge-cache effect (w9/088), turned caching TO: true for
 	// Render's edge_cache_enabled, false for edge_cache_disabled. Nil when a
@@ -468,9 +474,10 @@ const (
 	// The change's apps.SetAutoDeploy row stays the service feed's and
 	// webhooks' record of it (feed_only).
 	AuditVerbSetAutoDeployTrigger = "apps.SetAutoDeployTrigger"
-	// AuditVerbLinkBuildSource is a service linked to a build source, Render's
-	// UpdateServiceBuildSourceEvent (w9/m449), named after the real method. The
-	// link's apps.SetSourceAndRegistryCredential row stays the feed's (feed_only).
+	// AuditVerbLinkBuildSource is a service's build-source link change (attach,
+	// switch, or detach): Render's UpdateServiceBuildSourceEvent in the
+	// workspace audit log (w9/m449) and Render's artifact_source_changed in the
+	// service events feed and webhooks (w4/m510).
 	AuditVerbLinkBuildSource = "apps.LinkBuildSource"
 	// AuditVerbLinkBuildSourceEnvGroup / AuditVerbUnlinkBuildSourceEnvGroup are
 	// an env group linked to or unlinked from a build source, Render's
@@ -1153,18 +1160,24 @@ func (b *Base) RecordEnvVarWrite(ctx context.Context, app *appv1alpha1.App, verb
 	b.recordAudits(ctx, evs...)
 }
 
-// RecordServiceBuildSourceLinked records app linked to a build source
-// (w9/m449): the source change it is, apps.SetSourceAndRegistryCredential, as
-// the feed's feed_only row, and Render's UpdateServiceBuildSourceEvent row
-// for the workspace audit log.
-func (b *Base) RecordServiceBuildSourceLinked(ctx context.Context, app *appv1alpha1.App) {
+// RecordServiceBuildSourceLinked records a service's build-source link change
+// (w9/m449, w4/m510): one apps.LinkBuildSource row carrying the previous and
+// new build source ids (empty on the absent side), read as
+// UpdateServiceBuildSourceEvent by the workspace audit log and as Render's
+// artifact_source_changed by the service events feed and webhooks. A no-op
+// (both sides equal) records nothing.
+func (b *Base) RecordServiceBuildSourceLinked(ctx context.Context, app *appv1alpha1.App, fromBuildSourceID, toBuildSourceID string) {
+	if fromBuildSourceID == toBuildSourceID {
+		return
+	}
 	row, ok := b.appRows(ctx, app, "build source link")
 	if !ok {
 		return
 	}
-	feed := row(AuditVerbSetSourceAndRegistryCredential)
-	feed.FeedOnly = true
-	b.recordAudits(ctx, feed, row(AuditVerbLinkBuildSource))
+	ev := row(AuditVerbLinkBuildSource)
+	ev.BuildSourceFrom = fromBuildSourceID
+	ev.BuildSourceTo = toBuildSourceID
+	b.recordAudits(ctx, ev)
 }
 
 // AuditVerbUpdateBlueprint is a Blueprint's settings edit (apps.UpdateBlueprint

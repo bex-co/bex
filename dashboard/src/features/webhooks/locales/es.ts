@@ -580,6 +580,16 @@ const esWebhooks: Record<string, TranslationEntry> = {
     message: "Falló la descarga de la imagen",
     description: "Event label — image_pull_failed",
   },
+  "webhooks.event.artifact_fetch_failed": {
+    message: "Error al obtener el artefacto",
+    description:
+      "Event label — artifact_fetch_failed: a build published by a build source could not be fetched",
+  },
+  "webhooks.event.artifact_source_changed": {
+    message: "Origen de compilación cambiado",
+    description:
+      "Event label — artifact_source_changed: a service's linked build source changed",
+  },
   "webhooks.event.pipeline_minutes_exhausted": {
     message: "Minutos de pipeline agotados",
     description: "Event label — pipeline_minutes_exhausted",

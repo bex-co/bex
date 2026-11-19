@@ -176,8 +176,9 @@ func insertAuditEvent(ctx context.Context, q interface {
 		    autoscaling_cpu_from, autoscaling_cpu_to, autoscaling_memory_from, autoscaling_memory_to,
 		    display_name_from, display_name_to, domain, autoscaling_enabled_from, edge_cache_enabled_to,
 		    two_factor_required_to, read_replicas_from, read_replicas_to, source_ip, user_agent,
-		    env_var_keys, feed_only, oauth_grant_scopes, instance_id, google_login_required_to, repo_from, repo_to)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66)
+		    env_var_keys, feed_only, oauth_grant_scopes, instance_id, google_login_required_to, repo_from, repo_to,
+		    build_source_from, build_source_to)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68)
 		ON CONFLICT DO NOTHING`,
 		auditID(ev), workspaceOf(ev.Resource), ev.Caller, ev.CallerMethod, ev.Verb, ev.Resource, ev.Target, ev.TargetName, string(ev.Outcome), ev.At,
 		ev.MaintenanceModeTo,
@@ -195,7 +196,8 @@ func insertAuditEvent(ctx context.Context, q interface {
 		nullIfEmpty(ev.DisplayNameFrom), nullIfEmpty(ev.DisplayNameTo), nullIfEmpty(ev.Domain), ev.AutoscalingEnabledFrom, ev.EdgeCacheEnabledTo,
 		ev.TwoFactorRequiredTo, ev.ReadReplicasFrom, ev.ReadReplicasTo, nullIfEmpty(ev.SourceIP), nullIfEmpty(ev.UserAgent),
 		nullIfEmptyScopes(ev.EnvVarKeys), ev.FeedOnly, nullIfEmptyScopes(ev.OAuthGrantScopes), nullIfEmpty(ev.InstanceID), ev.GoogleLoginRequiredTo,
-		nullIfEmpty(ev.RepoFrom), nullIfEmpty(ev.RepoTo))
+		nullIfEmpty(ev.RepoFrom), nullIfEmpty(ev.RepoTo),
+		nullIfEmpty(ev.BuildSourceFrom), nullIfEmpty(ev.BuildSourceTo))
 	return err
 }
 

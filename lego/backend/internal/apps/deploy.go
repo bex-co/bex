@@ -4330,7 +4330,8 @@ func (s *Service) persistBlueprintIntent(ctx context.Context, a *appv1alpha1.App
 		return nil
 	}
 	cur := a.Spec
-	switch blueprintSourceChangeOf(&cur, &want) {
+	change := blueprintSourceChangeOf(&cur, &want)
+	switch change {
 	case blueprintSourceLinked:
 		linker, ok := s.buildSourceLinker()
 		if !ok {
@@ -4344,7 +4345,7 @@ func (s *Service) persistBlueprintIntent(ctx context.Context, a *appv1alpha1.App
 			return err
 		}
 		if changed {
-			s.recordSourceChanged(ctx, a, "", "", "")
+			s.recordBlueprintSourceChange(ctx, a, change, &cur, &want)
 		}
 	case blueprintSourceSet:
 		if err := s.markSourcePending(ctx, a); err != nil {
@@ -4355,7 +4356,7 @@ func (s *Service) persistBlueprintIntent(ctx context.Context, a *appv1alpha1.App
 			return err
 		}
 		if changed {
-			s.recordSourceChanged(ctx, a, cur.Branch, want.Branch, "")
+			s.recordBlueprintSourceChange(ctx, a, change, &cur, &want)
 		}
 	}
 	if cur.Tier != want.Tier {

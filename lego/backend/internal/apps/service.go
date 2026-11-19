@@ -5214,6 +5214,7 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 		}
 	}
 	previousBranch := a.Spec.Branch
+	previousBuildSourceID := core.BuildSourceIDOfLink(a.Labels[core.LabelTenant], a.Spec.BuildSource)
 	// SECURITY (codex #5): when the repository origin changes, the retained GitHub
 	// clone token is scoped to the OLD origin. Static publisher and kpack would send
 	// it to the new (possibly attacker-controlled) origin. Atomically clear the old
@@ -5235,8 +5236,14 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 		}
 	}
 	// The source really moved: past the no-op return above, past every
-	// validation, and the CR patch landed.
-	s.recordSourceChanged(ctx, a, previousBranch, next.branch, updated.UpdatedAt)
+	// validation, and the CR patch landed. Detaching from a build source
+	// records Render's artifact_source_changed (toBuildSourceId omitted)
+	// instead of bex's source_changed (w4/m510).
+	if previousBuildSourceID != "" && (next.repo != "" || next.image != "") {
+		s.RecordServiceBuildSourceLinked(ctx, a, previousBuildSourceID, "")
+	} else {
+		s.recordSourceChanged(ctx, a, previousBranch, next.branch, updated.UpdatedAt)
+	}
 	return updated, nil
 }
 

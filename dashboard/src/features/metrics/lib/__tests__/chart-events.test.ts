@@ -162,6 +162,34 @@ describe("catalogued event types (w21/017)", () => {
       "services.eventsTypeZeroDowntimeRedeployEnded",
     );
   });
+
+  it("marks artifact_fetch_failed as failure and artifact_source_changed as info with catalog labels", () => {
+    const markers = toChartEventMarkers(
+      [
+        event({
+          id: "evt-1",
+          type: "artifact_source_changed",
+          timestamp: "2026-07-17T10:15:00Z",
+        }),
+        event({
+          id: "evt-2",
+          type: "artifact_fetch_failed",
+          timestamp: "2026-07-17T10:16:00Z",
+        }),
+      ],
+      WINDOW_START,
+      WINDOW_END,
+    );
+    expect(markers).toHaveLength(2);
+    expect(markers[0].kind).toBe("info");
+    expect(markers[0].typeLabelKey).toBe(
+      "services.eventsTypeArtifactSourceChanged",
+    );
+    expect(markers[1].kind).toBe("failure");
+    expect(markers[1].typeLabelKey).toBe(
+      "services.eventsTypeArtifactFetchFailed",
+    );
+  });
 });
 
 describe("clusterMarkers", () => {

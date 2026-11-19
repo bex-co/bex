@@ -11,6 +11,8 @@ describe("EventIcon", () => {
     ["pre_deploy_started", "terminal"],
     ["branch_deleted", "git-branch"],
     ["image_pull_failed", "circle-x"],
+    ["artifact_fetch_failed", "circle-x"],
+    ["artifact_source_changed", "link-2"],
     ["server_failed", "circle-x"],
     ["suspender_added", "circle-pause"],
     ["service_suspended", "circle-pause"],

@@ -1136,3 +1136,44 @@ func TestByIDVerbsResolveTheEndpointsOwnWorkspace(t *testing.T) {
 		t.Error("endpoint still stored after Delete")
 	}
 }
+
+// TestArtifactEventsWebhookProjectionAndSubscription pins w4/m510: an endpoint
+// can subscribe to artifact_source_changed and artifact_fetch_failed, and
+// project maps both source rows to Render's thin webhook payloads.
+func TestArtifactEventsWebhookProjectionAndSubscription(t *testing.T) {
+	st := newFakeEndpointStore()
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "u1", Method: "session"})
+	svc := &Service{Base: &core.Base{Namespace: "default", Workspace: coretest.Workspaces{"tea-a"}}, Store: st}
+	ep, err := svc.Create(ctx, CreateRequest{
+		Name:       "artifact-hooks",
+		URL:        "https://example.com/hook",
+		EventTypes: []string{TypeArtifactSourceChanged, TypeArtifactFetchFailed},
+		Enabled:    true,
+	})
+	if err != nil {
+		t.Fatalf("Create webhook with artifact events: %v", err)
+	}
+	if !slices.Contains(ep.EventTypes, TypeArtifactSourceChanged) || !slices.Contains(ep.EventTypes, TypeArtifactFetchFailed) {
+		t.Fatalf("saved EventTypes = %v, want both artifact event types", ep.EventTypes)
+	}
+
+	at := time.Date(2026, 11, 19, 2, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		row      store.WebhookEventRow
+		wantType string
+	}{
+		{
+			row:      store.WebhookEventRow{Key: "aud-1:", At: at, TenantID: "tea-a", ServiceID: "srv-1", ServiceName: "web", Source: store.EventSourceAudit, Verb: core.AuditVerbLinkBuildSource},
+			wantType: TypeArtifactSourceChanged,
+		},
+		{
+			row:      store.WebhookEventRow{Key: "fact:deploy:dep-1:artifact_fetch_failed", At: at, TenantID: "tea-a", ServiceID: "srv-1", ServiceName: "web", Source: store.EventSourceFact, FactType: string(store.EventFactArtifactFetchFailed)},
+			wantType: TypeArtifactFetchFailed,
+		},
+	} {
+		evType, payload, ok := project(tc.row)
+		if !ok || evType != tc.wantType || payload.ServiceID != "srv-1" || payload.ServiceName != "web" || !strings.HasPrefix(payload.ID, "evt-") {
+			t.Errorf("project(%+v) = %q, %+v, %v; want %q with evt- id", tc.row, evType, payload, ok, tc.wantType)
+		}
+	}
+}

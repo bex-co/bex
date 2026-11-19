@@ -39,8 +39,8 @@ limitations under the License.
 // Render's webhook event names (verified live, render.com/docs/webhooks
 // 2026-07-18), scoped to transitions bex can record truthfully: deploy rows,
 // audited API intent, and typed observed/Git facts. Unsupported provider
-// maintenance, artifact, workflow and preview events have no durable bex
-// source, so they are omitted, not faked.
+// maintenance, workflow and preview events have no durable bex source, so they
+// are omitted, not faked.
 //
 // # Delivery semantics (w3/m11/t003, matching Render's documented behavior)
 //
@@ -160,7 +160,10 @@ const (
 	TypeDiskDeleted          = "disk_deleted"
 	TypeDiskSnapshotRestored = "disk_snapshot_restored"
 	TypeImagePullFailed      = "image_pull_failed"
-	TypeServerFailed         = "server_failed"
+	// Build-source events (w4/m510, ADR097), Render's spellings.
+	TypeArtifactSourceChanged = "artifact_source_changed"
+	TypeArtifactFetchFailed   = "artifact_fetch_failed"
+	TypeServerFailed          = "server_failed"
 	// TypeServerHardwareFailure is server_failed for an instance lost with its
 	// node (w5/m142).
 	TypeServerHardwareFailure = "server_hardware_failure"
@@ -224,6 +227,7 @@ var verbEvents = func() map[string]string {
 	types[core.AuditVerbProjectServiceMoved] = TypeServiceMoved
 	types[core.AuditVerbEnvironmentServiceMoved] = TypeServiceMoved
 	types[core.AuditVerbPurgeCache] = TypeEdgeCachePurged
+	types[core.AuditVerbLinkBuildSource] = TypeArtifactSourceChanged
 	return types
 }()
 
@@ -250,6 +254,7 @@ const autoDeployVerb = core.AuditVerbSetAutoDeploy
 
 var factEvents = map[string]string{
 	string(store.EventFactImagePullFailed):             TypeImagePullFailed,
+	string(store.EventFactArtifactFetchFailed):         TypeArtifactFetchFailed,
 	string(store.EventFactServiceSuspended):            TypeServiceSuspended,
 	string(store.EventFactServiceResumed):              TypeServiceResumed,
 	string(store.EventFactServiceHibernated):           TypeServiceHibernated,

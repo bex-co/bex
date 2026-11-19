@@ -9,6 +9,7 @@ import {
   Hammer,
   History,
   Hourglass,
+  Link2,
   Moon,
   PauseCircle,
   PlayCircle,
@@ -38,6 +39,8 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   pre_deploy_started: Terminal,
   branch_deleted: GitBranch,
   image_pull_failed: XCircle,
+  artifact_fetch_failed: XCircle,
+  artifact_source_changed: Link2,
   // A build the workspace's pipeline minutes did not cover (w9/m345).
   pipeline_minutes_exhausted: Hourglass,
   server_failed: XCircle,

@@ -430,14 +430,17 @@ func TestServicePatchLinksABuildSource(t *testing.T) {
 	if len(st.linked) != 1 {
 		t.Fatalf("store links = %v, want one", st.linked)
 	}
-	// The link is Render's UpdateServiceBuildSourceEvent in the workspace audit
-	// log, and stays the source change it is in the service's feed (w9/m449).
+	// The link is one apps.LinkBuildSource row carrying the new build source id
+	// (no fromBuildSourceId on initial attach): UpdateServiceBuildSourceEvent
+	// in the workspace audit log (w9/m449) and Render's artifact_source_changed
+	// in the service feed and webhooks (w4/m510), with no source_changed row.
 	linked, feed := allowedRows(sink, core.AuditVerbLinkBuildSource), allowedRows(sink, core.AuditVerbSetSourceAndRegistryCredential)
-	if len(linked) != 1 || linked[0].FeedOnly || linked[0].Target != core.ServiceTarget(web.ID) {
-		t.Errorf("link rows = %+v, want one audit-log row naming the service", linked)
+	if len(linked) != 1 || linked[0].FeedOnly || linked[0].Target != core.ServiceTarget(web.ID) ||
+		linked[0].BuildSourceFrom != "" || linked[0].BuildSourceTo != source.ID {
+		t.Errorf("link rows = %+v, want one row naming the service with to=%s", linked, source.ID)
 	}
-	if len(feed) != 1 || !feed[0].FeedOnly {
-		t.Errorf("source-change rows = %+v, want one feed_only row", feed)
+	if len(feed) != 0 {
+		t.Errorf("source-change rows = %+v, want none for a build-source link", feed)
 	}
 }
 
