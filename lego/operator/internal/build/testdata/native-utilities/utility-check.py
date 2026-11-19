@@ -1,6 +1,6 @@
 """Offline generated-image behavior regressions; no hosting or publication claim."""
 from pathlib import Path
-import base64,gettext,gzip,http.client,io,json,os,runpy,shlex,shutil,socket,struct,subprocess,sys,tempfile,time,zipfile,zlib,hashlib
+import base64,email.parser,gettext,gzip,http.client,importlib.metadata,io,json,lzma,os,platform,runpy,shlex,shutil,socket,struct,subprocess,sys,sysconfig,tarfile,tempfile,time,zipfile,zlib,hashlib
 ROOT=Path(__file__).resolve().parent
 PHASE=sys.argv[1]
 def sha(b):return hashlib.sha256(b).hexdigest()
@@ -300,6 +300,58 @@ def extra_cases():
    finally:server.terminate();server.wait(timeout=5)
    proof=json.loads(inspect[2]);assert asset[:2]==(200,'application/gzip') and sha(asset[2])==frozen and inspect[:2]==(200,'application/json') and proof['runtime']['gzip']==proof['build']['gzip']==frozen_proof and proof['build']['build_compressor_version']=='pigz 2.6'
   results.append('pigz (build only): m102 original program via its own argv, frozen 2.6 bytes and build proof; empty/binary/Unicode and original artifacts with exact header/CRC32/ISIZE/inflation at every phase; in-place name/mode/time and -N restore; output independent of thread count, -i; zlib/ZIP/zopfli formats, concatenated members, unpigz, PIGZ options; exit 1 for corrupt/truncated/missing input and an existing output kept until -f, 22 for an unknown option; the runtime serves the built bytes with no pigz on PATH')
+  # Python packaging on Debian's system Python, which Render lists for builds and runtime (python3-setuptools, python3-pip, python3-dev). m103's original build runs in original-cases.py; this packages m103's own C source and wheel into a second project.
+  m103=next(x for x in json.loads((ROOT/'original-cases.json').read_text()) if x['mid']==103);pref=m103['validation_reference'];pk=ROOT/'qa-pypkg';py='/usr/bin/python3';pip=[py,'-m','pip'];links=pk/'links'
+  src=json.loads(lzma.decompress(base64.b64decode(m103['commands']['initial']['build'].split("b64decode('",1)[1].split("'",1)[0])));tag='cp311-cp311-linux_'+platform.machine()
+  def pyrun(*a,cwd=pk,env=None):r=subprocess.run(list(a),cwd=cwd,capture_output=True,env=env,timeout=180);return r.returncode,r.stdout.decode(),r.stderr.decode()
+  expected={'label':pref['unicode'],'dessert':pref['unicode'],'sums':[e['value'] for e in pref['expected']],'data':'Crème 雪 two words\n'}
+  assert sys.executable==py and platform.python_version()=='3.11.2' and sysconfig.get_path('include')=='/usr/include/python3.11' and sysconfig.get_config_var('SOABI')=='cpython-311-'+sysconfig.get_config_var('MULTIARCH')
+  wheel=links/'qa_local_data-1.0-py3-none-any.whl';built=pk/'wh'/('qa_meta-2.5-'+tag+'.whl');ext='qa_native_ext'+sysconfig.get_config_var('EXT_SUFFIX')
+  def proof(*a,cwd=d,env=None):code,out,err=pyrun(*a,cwd=cwd,env=env);assert code==0,(a,err[-800:]);assert json.loads(out)==expected,(a,out)
+  if PHASE=='build':
+   # One project from m103's own C source and wheel: setuptools metadata (requirement, entry point, package data) and an sdist.
+   (pk/'qa_meta').mkdir(parents=True);links.mkdir()
+   with zipfile.ZipFile(wheel,'w') as z:
+    for f,b in src[wheel.name]['wheel'].items():z.writestr(zipfile.ZipInfo(f,(2000,1,1,0,0,0)),b)
+   assert sha(wheel.read_bytes())==m103['source_file_identities'][wheel.name]['sha256'];(pk/'qa_native_ext.c').write_text(src['qa_native_ext.c']['text'])
+   (pk/'qa_meta'/'data.txt').write_text(expected['data'],encoding='utf-8');(pk/'qa_meta'/'__init__.py').write_text('import json,qa_native_ext\nfrom importlib.resources import files\nfrom qa_local_data import label\ndef main():print(json.dumps({"label":label(),"dessert":qa_native_ext.dessert(),"sums":[qa_native_ext.weighted_sum(a,b) for a,b in '+json.dumps(pref['pairs'])+'],"data":files("qa_meta").joinpath("data.txt").read_text(encoding="utf-8")},ensure_ascii=False))\n')
+   (pk/'setup.py').write_text("from setuptools import Extension,setup\nsetup(name='qa-meta',version='2.5',packages=['qa_meta'],package_data={'qa_meta':['data.txt']},install_requires=['qa-local-data>=1.0'],entry_points={'console_scripts':['qa-meta=qa_meta:main']},ext_modules=[Extension('qa_native_ext',['qa_native_ext.c'])])\n")
+   assert json.loads(run([py,'-c','import json,setuptools,pkg_resources,distutils,wheel;print(json.dumps([setuptools.__version__,wheel.__version__,setuptools.__file__,pkg_resources.__file__,distutils.__file__]))']))==['66.1.1','0.38.4','/usr/lib/python3/dist-packages/setuptools/__init__.py','/usr/lib/python3/dist-packages/pkg_resources/__init__.py','/usr/lib/python3/dist-packages/setuptools/_distutils/__init__.py']
+   run([py,'setup.py','egg_info'],cwd=pk);info=pk/'qa_meta.egg-info';pkg=email.parser.Parser().parsestr((info/'PKG-INFO').read_text())
+   assert (pkg['Name'],pkg['Version'],(info/'requires.txt').read_text(),(info/'entry_points.txt').read_text())==('qa-meta','2.5','qa-local-data>=1.0\n','[console_scripts]\nqa-meta = qa_meta:main\n') and {'qa_native_ext.c','qa_meta/data.txt','setup.py'}<=set((info/'SOURCES.txt').read_text().split())
+   run([py,'setup.py','sdist','--formats=gztar'],cwd=pk)
+   with tarfile.open(pk/'dist'/'qa-meta-2.5.tar.gz') as t:assert {'qa-meta-2.5/PKG-INFO','qa-meta-2.5/setup.py','qa-meta-2.5/qa_native_ext.c','qa-meta-2.5/qa_meta/data.txt','qa-meta-2.5/qa_meta.egg-info/requires.txt'}<=set(t.getnames()) and t.extractfile('qa-meta-2.5/qa_native_ext.c').read()==(pk/'qa_native_ext.c').read_bytes()
+   # pip builds a platform wheel against the matching 3.11 headers through setuptools and wheel 0.38.4; every RECORD hash is checked independently.
+   assert run(pip+['--version']).decode()=='pip 23.0.1 from /usr/lib/python3/dist-packages/pip (python 3.11)\n';run(pip+['wheel','--no-index','--no-deps','--no-build-isolation','--wheel-dir','wh','.'],cwd=pk)
+   with zipfile.ZipFile(built) as z:
+    record=[l.split(',') for l in z.read('qa_meta-2.5.dist-info/RECORD').decode().splitlines()];meta=email.parser.Parser().parsestr(z.read('qa_meta-2.5.dist-info/METADATA').decode())
+    assert ('Tag: '+tag) in z.read('qa_meta-2.5.dist-info/WHEEL').decode().splitlines() and meta.get_all('Requires-Dist')==['qa-local-data (>=1.0)'] and {ext,'qa_meta/data.txt','qa_meta/__init__.py'}<={n for n,_,_ in record}
+    assert all(h=='sha256='+base64.urlsafe_b64encode(hashlib.sha256(z.read(n)).digest()).rstrip(b'=').decode() and int(s)==len(z.read(n)) for n,h,s in record if h);so=z.read(ext)
+   # Offline dependency resolution into an explicit target: the own wheel comes from --find-links, its module bytes exact; the console script and PYTHONPATH work as installed.
+   run(pip+['install','--no-index','--find-links','links','--target','site',str(built)],cwd=pk);site=pk/'site'
+   assert sha((site/'qa_local_data'/'__init__.py').read_bytes())==m103['expected_module_sha'] and (site/ext).read_bytes()==so and (site/'bin'/'qa-meta').read_text().startswith('#!/usr/bin/python3')
+   env=dict(os.environ,PYTHONPATH=str(site));proof(py,'-c','import qa_meta;qa_meta.main()',env=env);proof(str(site/'bin'/'qa-meta'),env=env)
+   dists={x.metadata['Name']:x for x in importlib.metadata.distributions(path=[str(site)])};assert {n:x.version for n,x in dists.items()}=={'qa-meta':'2.5','qa-local-data':'1.0'} and dists['qa-meta'].requires==['qa-local-data (>=1.0)'] and [e.value for e in dists['qa-meta'].entry_points]==['qa_meta:main']
+   import pkg_resources;assert sorted(x.project_name for x in pkg_resources.WorkingSet([str(site)]).require('qa-meta'))==['qa-local-data','qa-meta']
+   # Debian marks its site-packages externally managed (PEP 668): a system or --user install is refused, a venv bootstraps pip and setuptools offline from Debian's wheels and installs with dependencies.
+   for extra in ([],['--user']):code,_,err=pyrun(*pip,'install','--no-index','--no-deps',*extra,str(wheel));assert code==1 and err.startswith('error: externally-managed-environment')
+   run([py,'-m','venv','venv'],cwd=pk);vpy=str(pk/'venv'/'bin'/'python');run([vpy,'-m','pip','install','--no-index','--find-links','links',str(built)],cwd=pk);proof(str(pk/'venv'/'bin'/'qa-meta'))
+   assert {p['name']:p['version'] for p in json.loads(run([vpy,'-m','pip','list','--format','json']))}=={'pip':'23.0.1','setuptools':'66.1.1','qa-meta':'2.5','qa-local-data':'1.0'} and pyrun(py,'-c','import qa_meta',cwd=d)[0]==1
+   # pip's refusals: an unsatisfiable requirement, an invalid wheel (nothing written) and an unknown option.
+   code,_,err=pyrun(*pip,'install','--no-index','--find-links','links','--target','t-missing','qa-local-data>=2');assert code==1 and 'ERROR: No matching distribution found for qa-local-data>=2' in err and not (pk/'t-missing').exists()
+   (d/'bad-1.0-py3-none-any.whl').write_bytes(b'not a wheel');code,_,err=pyrun(*pip,'install','--no-index','--no-deps','--target','t-bad',str(d/'bad-1.0-py3-none-any.whl'));assert code==1 and "ERROR: Wheel 'bad' located at" in err and err.endswith(' is invalid.\n') and not (pk/'t-bad').exists()
+   code,_,err=pyrun(*pip,'install','--bex-unknown-option');assert code==2 and err.endswith('no such option: --bex-unknown-option\n')
+   # Development headers match the interpreter: python3-config, Python.h's version, an embedded interpreter linked to libpython3.11, and a named compiler error with no extension written.
+   assert run(['python3-config','--includes'])==b'-I/usr/include/python3.11 -I/usr/include/python3.11\n' and run(['python3-config','--extension-suffix']).decode().strip()==sysconfig.get_config_var('EXT_SUFFIX') and '#define PY_VERSION              "3.11.2"\n' in Path('/usr/include/python3.11/patchlevel.h').read_text()
+   (pk/'embed.c').write_text('#define PY_SSIZE_T_CLEAN\n#include <Python.h>\nint main(int argc,char **argv){if(argc!=3)return 2;Py_Initialize();PyObject *m=PyImport_ImportModule("json"),*r=m?PyObject_CallMethod(m,"dumps","(s)",argv[1]):NULL;if(!r)return 3;printf("%s %d %s %ld\\n",PY_VERSION,PY_VERSION_HEX==Py_Version,PyUnicode_AsUTF8(r),2*atol(argv[2])+3*7);Py_DECREF(r);Py_DECREF(m);return Py_FinalizeEx()<0?4:0;}\n')
+   flags=lambda *a:shlex.split(run(['python3-config','--cflags',*a,'--ldflags']).decode());assert pyrun('gcc','embed.c','-o','embed',*flags())[0]==1;run(['gcc','embed.c','-o','embed',*flags('--embed')],cwd=pk)
+   (pk/'broken.c').write_text('#include <Python.h>\nstatic PyObject *f(PyObject *s,PyObject *a){return PyLong_FromLong(undeclared_bex_name);}\n');(pk/'broken_setup.py').write_text("from setuptools import Extension,setup\nsetup(name='broken',ext_modules=[Extension('broken',['broken.c'])])\n")
+   code,_,err=pyrun(py,'broken_setup.py','build_ext','--build-lib','broken-lib','--build-temp','broken-temp');assert code==1 and 'undeclared_bex_name' in err and 'undeclared (first use in this function)' in err and 'gcc\' failed with exit code 1' in err and not list(pk.glob('broken-lib/broken*'))
+  # Every phase: the retained wheel installs again offline into a fresh target, both installations give the expected results with the same extension bytes, and the embedded interpreter runs.
+  run(pip+['install','--no-index','--find-links',str(links),'--target',str(d/'again'),str(built)],cwd=d);assert (d/'again'/ext).read_bytes()==(pk/'site'/ext).read_bytes()
+  for target in (d/'again',pk/'site'):proof(py,'-c','import qa_meta;qa_meta.main()',env=dict(os.environ,PYTHONPATH=str(target)))
+  assert run([str(pk/'embed'),pref['unicode'],'-4'],cwd=d).decode()=='3.11.2 1 '+json.dumps(pref['unicode'])+' 13\n' and 'libpython3.11.so.1.0' in run(['ldd',str(pk/'embed')]).decode()
+  results.append('Python packaging on system Python 3.11 (setuptools 66.1.1, pip 23.0.1, wheel 0.38.4, python3.11-dev): m103 own C source and wheel in a second project; egg_info requirement/entry point/package data and sdist; a cp311 platform wheel with independently checked RECORD; offline --find-links dependency install into a target with the exact own module bytes, console script, PYTHONPATH, importlib.metadata and pkg_resources; PEP 668 refuses system and --user installs while a venv installs offline; python3-config, Python.h version, an embedded libpython3.11 interpreter; named errors for an unsatisfiable requirement, an invalid wheel, an unknown option and a C compile error; at every phase the retained wheel reinstalls offline')
  return results
 (ROOT/'public').mkdir(exist_ok=True)
 checks=extra_cases()

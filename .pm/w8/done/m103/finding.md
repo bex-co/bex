@@ -2,7 +2,7 @@
 
 Why: a normal Node service build cannot generate Python package metadata, install a local helper wheel, or compile the Python C extension used by its HTTP server, although those native tools are documented as supplied.
 
-**Severity:** three major functional omissions, independently isolated. **Ownership:** operator native image assembly. Ordinary CLI sweep424, 2026-10-17. Published Bex 0.3.2/a6350da0 and unchanged Render 2.27.0/a764810a7682, isolated human-QA bex-canary/tea-daif693dqjvc73e7as3g, noninteractive JSON, api.bex.co/v1. Source 522dfe3cdd6787b8635b992a5d863822ce6e2e22; serving SHA/OCI unobserved. [Complete evidence](evidence/cli-sweep424/README.md).
+**Severity:** three major functional omissions, independently isolated. **Ownership:** operator native image assembly. Ordinary CLI sweep424, 2026-10-17. Published Bex 0.3.2/a6350da0 and unchanged Render 2.27.0/a764810a7682, isolated human-QA bex-canary/tea-daif693dqjvc73e7as3g, noninteractive JSON, api.bex.co/v1. Source 522dfe3cdd6787b8635b992a5d863822ce6e2e22; serving SHA/OCI unobserved. Complete evidence (sweep 424, purged 2026-11-04).
 
 ## Three failures in one real four-stage build
 
