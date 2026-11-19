@@ -1,6 +1,6 @@
 # w6 · m470 — An operator deploy that leaves the SNI proxies' code alone keeps every external datastore connection
 
-**Worker:** worker6 **Goal:** `bex-kv-sni-proxy` and `bex-pg-sni-proxy` roll only when their own binary (or their DaemonSet template) changes, not on every operator deploy, so external TLS clients of Key Value stores and Postgres databases survive the platform's routine releases, as on Render. **Status:** blocked (t001–t005, t007, t008 done; t006's moved-pin checks passed on production, and its held clients wait for the first deploy that keeps both pins, then t009)
+**Worker:** worker6 **Goal:** `bex-kv-sni-proxy` and `bex-pg-sni-proxy` roll only when their own binary (or their DaemonSet template) changes, not on every operator deploy, so external TLS clients of Key Value stores and Postgres databases survive the platform's routine releases, as on Render. **Status:** blocked (t001–t005, t007, t008 done; t006's moved-pin checks passed on production, and `19faf35f3` kept both pins and both DaemonSets; its re-armed held clients wait for the next deploy that keeps both pins, then t009)
 
 ## Tasks (in order)
 
@@ -72,3 +72,15 @@
 - **Still open:** DoD bullet 2. No deploy so far could hold, so the held clients are now in place in `bex-canary`. Pod `m470-t006-kv-client` holds `client_id=258295` to `red-dbpf5q5me2kc73f2l0og.kv.bex.co:6379`, and pod `m470-t006-pg-client` holds `pg_backend_pid=187` to the free probe `dpg-dbv37l06mruc7390oomg.db.bex.co:5432`. Both connected at about 23:27Z, over TLS through the edge LB.
 - **Gate (clears by itself, then worker):** the next production pin after `e5ace7826`, with a write-back that logs `kept` for both proxies. Production deploys once the 21:22Z pin is 6 h old, so not before 03:22Z on 2026-11-19. It keeps both pins only if no commit before it touches a linked package; none has as of 23:35Z. The held streams end at their 24 h cap at 23:27Z on 2026-11-19. Then t006 § Progress "Next", and t009.
 
+## Unblock check — 2026-11-19 13:00Z (one deploy kept both pins, but no client was held across it; re-armed)
+
+- **Affected:** t006, then t009. **Source:** verified evidence, no user decision. Three production pins came after `e5ace7826`: `826d32e42` (`7af50a28168d`, 03:48Z), `19faf35f3` (`4b2cebd0bd03`, 09:13Z) and `a91e9aeb3` (`dff52c596d13`, 11:30Z).
+- **Write-backs.**
+  - `826d32e42` and `a91e9aeb3` moved both SNI pins, each for non-test `lego/types/v1alpha1` changes: `568b388ce` … `e1c7d08cc`, then `cf5f56884`, `a7cb94de2` and `4a08adc46`.
+  - `19faf35f3` logged `kept` for both. Both DaemonSets kept their generation, revision and pods across it: the six pods from 03:50Z ran until 11:34Z. This is the first deploy to keep both pins, and it holds the DaemonSet half of DoD bullet 2. Details: [t006 § Progress](t006.md#progress-2026-11-19-1300z-three-more-deploys-one-kept-both-pins-but-no-client-was-held-across-it).
+- **The held clients did not reach it.** Both exited with `Error` at 23:40:18Z and 23:40:24Z on 2026-11-18, 13 minutes after connecting and before any of these deploys.
+  - No SNI pod restarted at that time. A tenant node joining at 23:38:46Z is the only coincident event found; it is a correlation, not a cause.
+  - Their pods were deleted at about 03:14Z. So DoD bullet 2's held-client half is still open. The dispatcher's rule applies: re-park, do not force.
+- **Re-armed at 12:57Z, now reconnecting.** The probes now reconnect after a closed connection and log each one as `conn=<n>`. So they outlive node churn and the 24 h stream cap, and the check reads the log, not the pod phase. They hold `client_id=280163` and `pg_backend_pid=23773` (via `bex-pg-sni-proxy-t64mc`).
+- **Gate (clears by itself, then worker).** The held-client deploy is the first production pin after `a91e9aeb3` whose write-back logs `kept` for both SNI pins. It is not the next one: `9fac4888a` and `05dbc4a35` changed `lego/types/v1alpha1` after `dff52c596d13`, and local builds show both binaries differ, so the first pin after 17:30Z on 2026-11-19 moves both. The worker then reads both probe logs across that kept deploy (t006 § Progress "Next"), deletes the probes, and closes t009.
+- **Ordering.** w6/m515 changes both SNI binaries, so it ships only after that record, or once m470 is in `done/` (m515 README § Sequencing constraint).
