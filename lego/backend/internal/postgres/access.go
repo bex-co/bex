@@ -130,8 +130,13 @@ func credentialViews(d *appv1alpha1.Database) []PostgresCredentialView {
 // Database (spec.users), which the operator projects to CNPG's managed roles.
 // The password is returned once and never logged.
 func (s *Service) CreateUser(ctx context.Context, name, role string) (CreateUserResult, error) {
-	// The password is returned here, so minting it is credential issuance.
-	if err := s.AuthorizeMintClass(ctx); err != nil {
+	// The password is returned here, so minting it is credential issuance: a
+	// person, a platform client, or a bex API key with a recorded creator,
+	// which Render's key with "Create and delete database credentials" is
+	// (w9/117). A delegated third-party token and any other machine client
+	// stay refused. The key acts as its creator: createUser's uncached
+	// can_create re-check is capped by the creator's own (core.keyCeiling).
+	if err := s.AuthorizeExportClass(ctx); err != nil {
 		return CreateUserResult{}, err
 	}
 	res, _, err := s.createUser(ctx, name, "name", role, false)

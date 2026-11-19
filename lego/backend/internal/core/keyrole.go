@@ -148,14 +148,16 @@ func (b *Base) AttributedAPIKey(ctx context.Context) (bool, error) {
 }
 
 // AuthorizeExportClass gates a verb that exports the workspace's activity under
-// a durable secret (a webhook endpoint's create and repoint), or that changes a
-// member's role (w9/116), on the credential class: AuthorizeMintClass's callers
+// a durable secret (a webhook endpoint's create and repoint), that changes a
+// member's role (w9/116), or that issues a Postgres login and returns its
+// password (w9/117), on the credential class: AuthorizeMintClass's callers
 // plus a bex API key with a recorded creator, which Render's keys are (its
-// Workspaces permissions include "Create, update, and delete webhooks" and
-// "Update member roles and remove members"). A delegated third-party OAuth
-// token and any other machine client stay refused (w4/079, round 24 H-1). Like
-// AuthorizeMintClass it decides no role: the verb's relation check does, and
-// for a key that check is already capped by its creator.
+// permissions include "Create, update, and delete webhooks", "Update member
+// roles and remove members" and "Create and delete database credentials"). A
+// delegated third-party OAuth token and any other machine client stay refused
+// (w4/079, round 24 H-1). Like AuthorizeMintClass it decides no role: the
+// verb's relation check does, and for a key that check is already capped by
+// its creator.
 func (b *Base) AuthorizeExportClass(ctx context.Context) error {
 	if id, ok := IdentityFrom(ctx); ok && id.IsAPIKey() {
 		if err := revalidateBearer(ctx); err != nil {
