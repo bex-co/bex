@@ -1,6 +1,6 @@
 # w3 · m506 — A running instance keeps at most 6,000 application log lines a minute, as on Render, so one flooding service cannot delay or drop every tenant's logs
 
-**Worker:** worker3 **Goal:** the log shipper drops an instance's application lines beyond Render's documented 6,000 a minute, counts what it drops, and Loki's ingestion limits are explicit, so one service printing in a loop costs only its own excess lines. **Status:** todo (t001–t005 and t007–t010 done; t006 reads production for 24 hours after the pin)
+**Worker:** worker3 **Goal:** the log shipper drops an instance's application lines beyond Render's documented 6,000 a minute, counts what it drops, and Loki's ingestion limits are explicit, so one service printing in a loop costs only its own excess lines. **Status:** blocked — t001–t005 and t007–t010 done and shipped in `e737b2412`; t006 reads production for 24 hours once a production pin carries it (§ Gate)
 
 ## Tasks (in order)
 
@@ -85,3 +85,9 @@ Read from production Loki (each pod's lines per minute, `count_over_time`, in si
 - **Expected outcome:** one service printing in a loop loses its own excess, as on Render, instead of slowing or dropping every tenant's logs.
 - **Why now:** Loki runs single-tenant with default ingestion limits, so a flood from any one service gets every push refused with 429 and retried, delaying or dropping everyone's lines. The sandbox pipeline already proved the mechanism.
 - **Render parity included:** the capped history is what every log surface reads.
+
+## Gate (2026-11-19)
+
+**Clears by itself; no decision needed.** t006 needs a production deploy carrying `e737b2412` (the shipper's cap, the Loki limits, the alert and the tail cap), then 24 hours of it. Check: the newest `chore(deploy): pin platform images to <sha>` on `main` passes `git merge-base --is-ancestor e737b2412 <sha>`, and production's `monitoring/log-shipper` ConfigMap carries `stage.limit` in `app_logs`.
+
+**Next (t006, then t011):** once the pin is 24 hours old, fetch the production kubeconfig (`scripts/fetch-app-kubeconfig.sh`) and read, over those 24 hours: Alloy's `loki_process_dropped_lines_by_label_total{label_name="pod"}` per pod (expect only pods printing more than about 100 lines a second for over a minute, on current traffic `twenty-crm`'s error loops; § Measurement), `loki_write_request_duration_seconds_count{status_code="429"}` and `loki_discarded_samples_total` (expect none), and Loki's `/config` (8 MB/s, 16 MB burst). Record it here, then close out with t011. A pod dropped that the measurement did not predict is a finding to explain before closing.
