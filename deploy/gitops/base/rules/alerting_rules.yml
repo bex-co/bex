@@ -2546,3 +2546,25 @@ groups:
           summary: Loki WAL disk-full failures threaten log durability
           description: 'Loki reported WAL disk-full failures during the last 15 minutes. Accepted logs may lack WAL durability even while readiness succeeds; later recovery does not retroactively establish durability.'
           runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      # Render's per-instance cap (w3/m506): the shipper drops a running
+      # instance's application lines beyond 6,000 a minute, as Render does, so
+      # a drop is the cap working, not lost delivery (LogDeliveryEntriesDropped
+      # counts only the writer's). Sustained drops name the pod whose service
+      # prints in a loop. Dashboard-only: Render tells no one either.
+      - alert: AppLogLinesRateLimited
+        expr: |
+          sum by (pod) (
+            label_replace(
+              rate(loki_process_dropped_lines_by_label_total{job="alloy",label_name="pod"}[5m]),
+              "pod", "$1", "label_value", "(.+)"
+            )
+          ) > 0
+        for: 15m
+        labels:
+          severity: info
+          namespace: monitoring
+          service: log-shipper
+        annotations:
+          summary: 'Instance {{ $labels.pod }} prints more than 6,000 application log lines a minute'
+          description: 'For 15 minutes the log shipper has dropped lines of instance {{ $labels.pod }} beyond Render''s per-instance limit of 6,000 application lines a minute. Its history and live tail keep the first 6,000 and then 100 a second; other instances lose nothing. The service is likely logging in a loop.'
+          runbook_url: docs/ADR010-observability.md#per-instance-line-cap

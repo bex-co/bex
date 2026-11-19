@@ -22,8 +22,15 @@ controller:
 alloy:
   configMap:
     content: |-
+      // Node-scoped, as in prod (w3/m13): each replica tails only its own
+      // node's pods, so a line ships once and its pod's line cap (below) is
+      // one bucket, not one per node. The chart sets K8S_NODE_NAME itself.
       discovery.kubernetes "pods" {
         role = "pod"
+        selectors {
+          role  = "pod"
+          field = "spec.nodeName=" + sys.env("K8S_NODE_NAME")
+        }
       }
 
       // type=app: tenant App container logs (labelled app.bex.co/app).
@@ -59,6 +66,16 @@ alloy:
       }
 
       loki.process "app_logs" {
+        // Render's per-instance cap, as the prod shipper keeps it (w3/m506):
+        // 6,000 application lines a minute per pod, the excess dropped and
+        // counted. bex-api's live tail applies the same bucket.
+        stage.limit {
+          rate                = 100
+          burst               = 6000
+          by_label_name       = "pod"
+          max_distinct_labels = 10000
+          drop                = true
+        }
         // dev-__N__ minimal: no JSON `level` parse (prod does) — default to unknown,
         // the honest value, and stamp Render's `type` vocabulary.
         stage.static_labels {

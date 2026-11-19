@@ -137,6 +137,18 @@ def verify_log_metric_filtering(alloy, loki):
                       component_path="/", service="zot", repository="unbounded")
         assert retained(alloy, labels) == dict(identity, __name__=name, service="zot")
     assert retained(alloy, dict(writer, __name__="loki_process_dropped_lines_total", reason="cnpg_instance_manager")) is None
+    # Render's per-instance line cap (w3/m506): app_logs' drops are kept, with
+    # the capped pod; every other pipeline's intentional filtering is not.
+    capped = dict(identity, component_id="loki.process.app_logs", component_path="/")
+    labels = dict(capped, __name__="loki_process_dropped_lines_total", reason="ratelimit_drop_stage")
+    assert retained(alloy, labels) == dict(identity, __name__=labels["__name__"], reason="ratelimit_drop_stage")
+    labels = dict(capped, __name__="loki_process_dropped_lines_by_label_total", label_name="pod",
+                  label_value="tea-a-web-7d9f-x2")
+    assert retained(alloy, labels) == dict(identity, __name__=labels["__name__"], label_name="pod",
+                                           label_value="tea-a-web-7d9f-x2")
+    for key, wrong in (("component_id", "loki.process.sandbox_logs"), ("component_id", "loki.process.database_logs"),
+                       ("component_path", "/nested")):
+        assert retained(alloy, dict(labels, **{key: wrong})) is None, (key, wrong)
 
     identity = {"job": "loki", "instance": "loki.monitoring.svc:3100"}
     rejection = dict(identity, __name__="loki_discarded_samples_total", tenant="fake", policy="",
@@ -475,8 +487,12 @@ def main():
                        for rule in alloy["relabel_configs"]), "Only scrape the intended collector and port"
             kept_labels = next(rule["regex"] for rule in alloy["metric_relabel_configs"]
                                if rule["action"] == "labelkeep").split("|")
+            # label_name/label_value: app_logs' per-pod drop counter names the
+            # pod over Render's line cap (w3/m506); the keep above admits it
+            # from that pipeline alone, and only a capped pod gets a series.
             assert set(kept_labels) == {
                 "__name__", "job", "instance", "node", "pod", "service", "reason", "status_code", "health_type",
+                "label_name", "label_value",
             }, "No repository, path, tenant or credential labels in Alloy metrics"
             loki_jobs = [job for job in prometheus["scrape_configs"] if job["job_name"] == "loki"]
             assert len(loki_jobs) == 1

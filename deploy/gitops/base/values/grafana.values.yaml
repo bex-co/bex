@@ -4127,6 +4127,43 @@ dashboards:
              }
             },
             {
+             "id": 33,
+             "type": "timeseries",
+             "title": "Application log lines over Render's per-instance cap",
+             "description": "Lines the log shipper dropped per pod beyond Render's 6,000 application log lines a minute for one running instance (app_logs' token bucket: 100 a second with a 6,000-line burst). AppLogLinesRateLimited (info, dashboard-only) names a pod whose drops have lasted 15m. These drops are intentional, as on Render, and stay out of the final-drop panel: the pod is printing in a loop and loses only its own excess. No series means no instance is over the cap.",
+             "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 156
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Per-instance line cap (ADR010)",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR010-observability.md#per-instance-line-cap",
+               "targetBlank": true
+              }
+             ],
+             "fieldConfig": {
+              "defaults": {
+               "unit": "short",
+               "min": 0
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "sum by (label_value) (rate(loki_process_dropped_lines_by_label_total{job=\"alloy\",label_name=\"pod\"}[5m]))",
+               "legendFormat": "{{label_value}} dropped lines/s"
+              }
+             ]
+            },
+            {
              "type": "timeseries",
              "title": "Alert pipeline health",
              "description": "Failures inside the alerting path itself (w3/m174): notifications Alertmanager could not deliver, rule groups Prometheus could not evaluate, and alerts Prometheus dropped or failed to hand to Alertmanager. Any non-zero line means other alerts may be firing unseen. Whole-pipeline death is caught outside the cluster by the Watchdog heartbeat check.",

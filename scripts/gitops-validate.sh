@@ -1743,6 +1743,20 @@ if [ -f "$LOGSHIP" ]; then
       grep -qF "$required" <<<"$block" \
         || { echo "FAIL: log-shipper.yaml $logs lost required stage: $required" >&2; fail=1; }
     done
+    # Render's per-instance cap (w3/m506): 6,000 application lines a minute
+    # per pod, dropped and counted before the severity parse. bex-api's live
+    # tail keeps the same bucket (appLineRate/appLineBurst, checked below).
+    [ "$logs" = app_logs ] || continue
+    limit="$(awk '/stage\.limit \{/{on=1} on{gsub(/^[ \t]+|[ \t]+$/, ""); gsub(/[ \t]+/, " "); print} on&&/^\}$/{exit}' <<<"$block" | tr '\n' ';')"
+    if [ "$limit" != 'stage.limit {;rate = 100;burst = 6000;by_label_name = "pod";max_distinct_labels = 10000;drop = true;};' ] \
+      || ! awk '/stage\.limit \{/ {limit=NR} /stage\.json \{/ && !json {json=NR} END {exit !(limit && json && limit < json)}' <<<"$block"; then
+      echo "FAIL: log-shipper.yaml app_logs must cap each pod at Render's 6,000 lines a minute (stage.limit rate 100, burst 6000, by pod, drop) before the severity parse (w3/m506); got '$limit'" >&2
+      fail=1
+    fi
+  done
+  for tail_cap in 'appLineRate  = 100 ' 'appLineBurst = 6000 '; do
+    grep -qF "$tail_cap" lego/backend/internal/logs/linecap.go \
+      || { echo "FAIL: bex-api's live tail must keep the shipper's per-instance bucket ($tail_cap in lego/backend/internal/logs/linecap.go), or a tail shows lines history never stored (w3/m506)" >&2; fail=1; }
   done
   [ "$(echo "$vals" | yq '.alloy.storagePath')" = "/var/lib/alloy" ] \
     && [ "$(echo "$vals" | yq '.controller.volumes.extra[] | select(.name == "alloy-storage") | .hostPath.path')" = "/var/lib/bex-log-shipper" ] \
@@ -1865,6 +1879,11 @@ if [ -f "$LOKI_APP" ]; then
   [ -n "$loki_size" ] || loki_size="$(yq '.singleBinary.persistence.size' <<<"$loki_vals")"
   [ "$loki_size" = "$LOKI_LIVE_CLAIM" ] \
     || { echo "FAIL: production renders a $loki_size Loki claim, but the live claim monitoring/storage-loki-0 is $LOKI_LIVE_CLAIM; a StatefulSet's claim template never resizes an existing claim, so grow the live claim first and change loki.yaml, this guard and ADR010 § Durability & retention together (w7/067)" >&2; fail=1; }
+  # Explicit ingestion limits sized over the measured peak and the shipper's
+  # per-instance cap (w3/m506); a chart default must not set them silently.
+  loki_limits="$(yq -o=json -I=0 '.loki.limits_config | pick(["ingestion_rate_mb", "ingestion_burst_size_mb", "per_stream_rate_limit", "per_stream_rate_limit_burst", "max_global_streams_per_user", "max_line_size"])' <<<"$loki_vals")"
+  [ "$loki_limits" = '{"ingestion_rate_mb":8,"ingestion_burst_size_mb":16,"per_stream_rate_limit":"3MB","per_stream_rate_limit_burst":"15MB","max_global_streams_per_user":5000,"max_line_size":"256KB"}' ] \
+    || { echo "FAIL: loki.yaml's explicit ingestion limits changed ($loki_limits); re-measure and update loki.yaml, this guard and ADR010 § Per-instance line cap together (w3/m506)" >&2; fail=1; }
 fi
 
 # Metrics retention (w7/m427): production Prometheus keeps the longest plan

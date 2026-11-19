@@ -406,10 +406,13 @@ spec:
                   # them, so unrelated native series cannot collide after relabel.
                   # Root health/config markers also establish a baseline for
                   # detecting counters that appear at their first positive value.
+                  # app_logs' drop counters are Render's per-instance line cap
+                  # (w3/m506): its stage.limit is the pipeline's only drop, and
+                  # the by-label counter names the capped pod in label_value.
                   - source_labels: [__name__, component_id, component_path, host, tenant, controller_id, controller_path]
-                    regex: 'bex_zot_(gc_failure|log)_last_observed_timestamp_seconds;loki\.process\.zot_gc_metrics;/;;;;|alloy_config_last_load_successful;;;;;;|alloy_component_controller_running_components;;;;;;/|loki_write_(sent_entries_total|batch_retries_total|dropped_entries_total|request_duration_seconds_count);loki\.write\.default;/;loki\.monitoring\.svc:3100;;;'
+                    regex: 'bex_zot_(gc_failure|log)_last_observed_timestamp_seconds;loki\.process\.zot_gc_metrics;/;;;;|alloy_config_last_load_successful;;;;;;|alloy_component_controller_running_components;;;;;;/|loki_write_(sent_entries_total|batch_retries_total|dropped_entries_total|request_duration_seconds_count);loki\.write\.default;/;loki\.monitoring\.svc:3100;;;|loki_process_dropped_lines(_by_label)?_total;loki\.process\.app_logs;/;;;;'
                     action: keep
-                  - regex: __name__|job|instance|node|pod|service|reason|status_code|health_type
+                  - regex: __name__|job|instance|node|pod|service|reason|status_code|health_type|label_name|label_value
                     action: labelkeep
               # Single-binary Loki has one private service target. Tenant and
               # policy are fixed by the deployed auth-disabled configuration;

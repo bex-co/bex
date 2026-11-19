@@ -99,6 +99,19 @@
 # the same rule by source: every container line carries the timestamp the
 # kubelet stamps, and its own answers carry none.
 #
+# RENDER'S PER-INSTANCE CAP (w3/m506): "Render processes a maximum of 6,000
+# application-generated log lines per minute for each running instance. Excess
+# lines are dropped" (render.com/docs/logging). app_logs keeps a token bucket
+# per pod (100 lines/s, a 6,000-line burst) and drops the rest before any
+# parsing, so one service printing in a loop loses only its own excess and
+# never fills Loki's ingestion limit (loki.yaml) for every tenant. Drops are
+# counted in loki_process_dropped_lines_total{reason="ratelimit_drop_stage"}
+# and, per pod, loki_process_dropped_lines_by_label_total (AppLogLinesRateLimited).
+# Request lines (request_logs) and Postgres/Key Value logs are platform-
+# generated and stay uncapped. bex-api's live tail applies the same bucket
+# (lego/backend/internal/logs, appLineRate). Edges: docs/ADR010-observability.md
+# § Per-instance line cap.
+#
 # AGENT SANDBOX PODS: the sandbox_pods pipeline tails their CRI files (a
 # crashing container's last lines are the evidence, and the API tailer misses
 # a container that exits fast), caps a reassembled line at 16 KiB (the
@@ -332,6 +345,18 @@ spec:
                 // discards, not a second stream.
                 stage.label_drop {
                   values = ["filename", "stream"]
+                }
+                // Render's per-instance cap: see RENDER'S PER-INSTANCE CAP at
+                // the top of this file. Before the severity parse, so a
+                // flooding pod's excess costs nothing downstream. 10,000
+                // buckets (~1 MiB) is Alloy's floor; set, so it logs no
+                // adjustment warning.
+                stage.limit {
+                  rate                = 100
+                  burst               = 6000
+                  by_label_name       = "pod"
+                  max_distinct_labels = 10000
+                  drop                = true
                 }
 
                 // Both spellings seen in the wild: `level` (slog/zap/logrus, and

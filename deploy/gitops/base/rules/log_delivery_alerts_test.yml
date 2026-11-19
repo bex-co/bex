@@ -1702,3 +1702,36 @@ tests:
         exp_samples:
           - labels: bex:log_delivery_collector_healthy{node="b"}
             value: 1
+  # w3/m506: Render's per-instance cap. Sustained drops of one instance's lines
+  # page nobody and name that instance; a short burst and the writer's delivery
+  # alerts stay quiet, because the cap is intentional filtering.
+  - name: sustained per-instance cap drops name the instance and stay dashboard-only
+    interval: 1m
+    input_series:
+      - series: loki_process_dropped_lines_by_label_total{job="alloy",instance="a:12345",node="a",pod="alloy-a",label_name="pod",label_value="tea-x-web-7d9f-x2"}
+        values: 0+14000x60
+      - series: loki_process_dropped_lines_by_label_total{job="alloy",instance="b:12345",node="b",pod="alloy-b",label_name="pod",label_value="tea-x-api-5c6b-k8"}
+        values: 0+14000x5 70000x55
+      - series: loki_process_dropped_lines_total{job="alloy",instance="a:12345",node="a",pod="alloy-a",reason="ratelimit_drop_stage"}
+        values: 0+14000x60
+      - series: loki_write_dropped_entries_total{job="alloy",instance="a:12345",node="a",pod="alloy-a",reason="ingester_error"}
+        values: "0x60"
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: AppLogLinesRateLimited
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: AppLogLinesRateLimited
+        exp_alerts:
+          - exp_labels:
+              severity: info
+              namespace: monitoring
+              service: log-shipper
+              pod: tea-x-web-7d9f-x2
+            exp_annotations:
+              summary: Instance tea-x-web-7d9f-x2 prints more than 6,000 application log lines a minute
+              description: For 15 minutes the log shipper has dropped lines of instance tea-x-web-7d9f-x2 beyond Render's per-instance limit of 6,000 application lines a minute. Its history and live tail keep the first 6,000 and then 100 a second; other instances lose nothing. The service is likely logging in a loop.
+              runbook_url: docs/ADR010-observability.md#per-instance-line-cap
+      - eval_time: 30m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts: []

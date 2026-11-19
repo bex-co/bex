@@ -57,8 +57,30 @@ spec:
           # workspace plan's window (Hobby 7 d, Pro 14 d; ADR010, w9/m389), so
           # storage holds the longest one. ≈31 MB/day raw (2026-09-28) puts
           # 30 days near 3 GB, far inside the claim below.
+          #
+          # Ingestion limits (w3/m506), explicit instead of Loki 3.6's defaults
+          # (4 MB/s, 6 MB burst). Single-tenant, so the tenant limit is the
+          # whole platform's. Measured on production over 14 days to
+          # 2026-11-19: peak 3.3 MB and 38,172 lines in one minute (0.06 MB/s),
+          # 267 active streams, 21 running instances, app lines 151 B on
+          # average, and no 429 or discarded sample. The shipper caps each
+          # instance at 100 lines/s with a 6,000-line burst (log-shipper.yaml,
+          # RENDER'S PER-INSTANCE CAP), so the worst case is every instance
+          # flooding at once: 21 × 100 × 1 KiB lines = 2.1 MB/s, one
+          # instance's burst 6 MB. 8 MB/s holds that 4× over; 16 MB absorbs
+          # two instances' bursts together. Per stream (one instance's
+          # pod/container/level), 3 MB/s is 30× a capped instance's 1 KiB-line
+          # rate and the 15 MB burst holds its whole burst at up to ~2.5 KiB a
+          # line. A push over these is refused 429 and retried by the shipper;
+          # LogDeliveryLokiRejected and LogDeliveryRetriesPersistent fire on it.
           limits_config:
             retention_period: 720h
+            ingestion_rate_mb: 8
+            ingestion_burst_size_mb: 16
+            per_stream_rate_limit: 3MB
+            per_stream_rate_limit_burst: 15MB
+            max_global_streams_per_user: 5000
+            max_line_size: 256KB
           compactor:
             retention_enabled: true
             delete_request_store: filesystem

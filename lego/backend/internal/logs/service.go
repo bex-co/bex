@@ -1854,6 +1854,11 @@ func (s *Service) followPods(ctx context.Context, q LogQuery, selectors []string
 		defer ticker.Stop()
 		beat = ticker.C
 	}
+	// Render's per-instance line cap, as the shipper keeps it for history
+	// (linecap.go). Before the filters: the cap drops lines whatever the
+	// viewer asked for, so a filtered tail shows what a filtered history read
+	// does.
+	capped := lineCap{}
 
 	for {
 		select {
@@ -1885,7 +1890,7 @@ func (s *Service) followPods(ctx context.Context, q LogQuery, selectors []string
 				return err
 			}
 		case e := <-ch:
-			if !q.keep(e) {
+			if !capped.admit(e) || !q.keep(e) {
 				continue
 			}
 			setLogEntryResource(&e, target.resource)
@@ -2525,8 +2530,13 @@ func (s *Service) appPodNames(ctx context.Context, namespace string, q LogQuery)
 	return out, nil
 }
 
+// readPodLogs is the store-less history read of one App pod. It keeps the
+// shipper's per-instance line cap (linecap.go), so a deployment without Loki
+// shows what one with it stores.
 func (s *Service) readPodLogs(ctx context.Context, namespace, service, pod string, tail int64) ([]LogEntry, error) {
-	return s.readContainerLogs(ctx, namespace, service, pod, core.AppContainer, LogTypeApp, tail)
+	entries, err := s.readContainerLogs(ctx, namespace, service, pod, core.AppContainer, LogTypeApp, tail)
+	capped := lineCap{}
+	return slices.DeleteFunc(entries, func(e LogEntry) bool { return !capped.admit(e) }), err
 }
 
 // readContainerLogs reads up to tail lines from one pod's container, tagged with
