@@ -5001,7 +5001,8 @@ func (s *Service) SetIdleTTL(ctx context.Context, name string, seconds int32) (A
 // otherwise a rootDir-only change would sit unbuilt until the next unrelated
 // push. Not projection-owned (mirrors Builder): the control-plane row never
 // carries it, so this is a direct CR patch like Restart, not
-// writeThroughStore. Rejected for an image-backed App (nothing to build).
+// writeThroughStore. Rejected for an image-backed App (nothing to build),
+// except that the App's own root directory is a no-op on any App (w9/113).
 // Release identity (codex round-9 #8): rootDir selects which repository
 // subtree BuildKit executes, so it is a can_create (developer) input like
 // Builder — not an operational can_operate one a contributor holds.
@@ -5011,8 +5012,12 @@ func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView
 	if err != nil {
 		return AppView{}, err
 	}
-	if err := s.checkRootDir(ctx, a, name, rootDir); err != nil {
+	changed, err := s.checkRootDir(ctx, a, name, rootDir)
+	if err != nil {
 		return AppView{}, err
+	}
+	if !changed {
+		return s.view(a), nil
 	}
 	return s.recordedPatch(ctx, core.AuditVerbSetRootDir, a, func(a *appv1alpha1.App) {
 		a.Spec.DockerContext = rebaseDockerContext(a.Spec.RootDir, rootDir, a.Spec.DockerContext)

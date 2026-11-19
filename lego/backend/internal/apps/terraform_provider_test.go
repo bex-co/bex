@@ -40,18 +40,24 @@ const terraformDockerCron = `{"autoDeployTrigger":"commit","branch":"main","buil
 // object alike.
 const terraformImageCron = `{"envVars":null,"image":{"imagePath":"ghcr.io/acme/private:1","ownerId":"","registryCredentialId":"rgc-one"},"name":"nightly","ownerId":"some-owner-id","secretFiles":null,"serviceDetails":{"envSpecificDetails":{"dockerCommand":"","dockerContext":"","dockerfilePath":"","registryCredential":{"id":"rgc-one","name":"","registry":"","updatedAt":"0001-01-01T00:00:00Z","username":""}},"plan":"starter","region":"oregon","runtime":"image","schedule":"0 0 * * *"},"type":"cron_job"}`
 
-// strictCreate serves one POST /v1/services the way bex-api does behind the
-// Render request gate: strict JSON decoding, response checked against
-// Render's schema.
-func strictCreate(t *testing.T, svc *Service, body string) *httptest.ResponseRecorder {
+// strictRequest serves one request the way bex-api does behind the Render
+// request gate: strict JSON decoding, response checked against Render's
+// schema.
+func strictRequest(t *testing.T, svc *Service, method, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
-	req := httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body))
+	req := httptest.NewRequest(method, path, strings.NewReader(body))
 	req = req.WithContext(core.WithStrictJSONDecoding(req.Context()))
 	rec := httptest.NewRecorder()
 	validated(t, mux).ServeHTTP(rec, req)
 	return rec
+}
+
+// strictCreate serves one POST /v1/services behind the Render request gate.
+func strictCreate(t *testing.T, svc *Service, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	return strictRequest(t, svc, http.MethodPost, "/v1/services", body)
 }
 
 func TestRESTCreateAcceptsTerraformRegistryCredentialObject(t *testing.T) {
@@ -371,4 +377,99 @@ func TestDisabledAutoscalingPercentageRules(t *testing.T) {
 	if !autoscalingChanged(dst.Autoscaling, moved) {
 		t.Error("a new maximum does not count as an autoscaling change")
 	}
+}
+
+// terraformImageUpdate is the update the provider sent in
+// TestWebServiceResource_Image's second step, which Render answered 200
+// (internal/provider/webservice/resource/testdata/web_service_image_cassette.yaml
+// at 06af456): every update carries the service's rootDir, "" for an image
+// service. The image owner is the test service's (unlabeled) workspace.
+const terraformImageUpdate = `{"image":{"imagePath":"docker.io/library/nginx:stable-perl","ownerId":""},"name":"web-service-image-tf","rootDir":"","serviceDetails":{"envSpecificDetails":{"dockerCommand":"echo hello"},"healthCheckPath":"","maintenanceMode":{"enabled":false,"uri":""},"plan":"starter","preDeployCommand":"","previews":{},"pullRequestPreviewsEnabled":"no","runtime":"image"}}`
+
+// terraformRepoToImageUpdate is TestWebServiceResource_RuntimeUpdate's last
+// step (runtime_update_cassette.yaml): a Docker service from a repo becomes
+// an image service, still with rootDir "".
+const terraformRepoToImageUpdate = `{"image":{"imagePath":"docker.io/library/nginx:latest","ownerId":""},"name":"web-service-runtime-tf","rootDir":"","serviceDetails":{"envSpecificDetails":{"dockerCommand":""},"healthCheckPath":"","maintenanceMode":{"enabled":false,"uri":""},"plan":"starter","preDeployCommand":"","previews":{},"pullRequestPreviewsEnabled":"no","runtime":"image"}}`
+
+// TestPatchKeepsTheServicesOwnRootDir pins w9/113: a rootDir equal to the
+// service's own is no change, so an image service's "" is not refused for
+// having no repo, while a different one still is, by name.
+func TestPatchKeepsTheServicesOwnRootDir(t *testing.T) {
+	patch := func(t *testing.T, svc *Service, body string) *httptest.ResponseRecorder {
+		t.Helper()
+		return strictRequest(t, svc, http.MethodPatch, "/v1/services/web", body)
+	}
+	t.Run("image service update", func(t *testing.T) {
+		svc, cl := newService(nil, paidWebApp("web"))
+		rec := patch(t, svc, terraformImageUpdate)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("PATCH = %d: %s", rec.Code, rec.Body.String())
+		}
+		var out renderService
+		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+			t.Fatal(err)
+		}
+		if out.ImagePath != "docker.io/library/nginx:stable-perl" || out.RootDir != "" {
+			t.Errorf("answer imagePath %q rootDir %q, want the new image and rootDir \"\"", out.ImagePath, out.RootDir)
+		}
+		if a := getApp(t, cl, "web"); a.Spec.Image != "docker.io/library/nginx:stable-perl" || a.Spec.StartCommand != "echo hello" || a.Spec.RootDir != "" {
+			t.Errorf("spec image %q startCommand %q rootDir %q, want the update applied", a.Spec.Image, a.Spec.StartCommand, a.Spec.RootDir)
+		}
+	})
+
+	t.Run("repo service becomes an image service", func(t *testing.T) {
+		a := repoApp("web", "https://github.com/render-examples/bun-docker", "main")
+		a.Spec.Type, a.Spec.Tier, a.Spec.Runtime = appv1alpha1.TypeWebService, "starter", "docker"
+		svc, cl := newService(nil, a)
+		if rec := patch(t, svc, terraformRepoToImageUpdate); rec.Code != http.StatusOK {
+			t.Fatalf("PATCH = %d: %s", rec.Code, rec.Body.String())
+		}
+		if got := getApp(t, cl, "web").Spec; got.Repo != "" || got.Image != "docker.io/library/nginx:latest" {
+			t.Errorf("spec repo %q image %q, want the image service", got.Repo, got.Image)
+		}
+	})
+
+	t.Run("another root directory on an image service", func(t *testing.T) {
+		svc, cl := newService(nil, paidWebApp("web"))
+		body := strings.Replace(terraformImageUpdate, `"rootDir":""`, `"rootDir":"api"`, 1)
+		rec := patch(t, svc, body)
+		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "root directory only applies to build-from-git") {
+			t.Fatalf("PATCH rootDir api = %d %s, want 400 naming the root directory", rec.Code, rec.Body.String())
+		}
+		if a := getApp(t, cl, "web"); a.Spec.Image != "web:v1" || a.Spec.RootDir != "" {
+			t.Errorf("a refused patch wrote image %q rootDir %q", a.Spec.Image, a.Spec.RootDir)
+		}
+	})
+
+	t.Run("a repo service's own root directory starts no build", func(t *testing.T) {
+		a := repoApp("web", "https://github.com/x/mono", "main")
+		a.Spec.RootDir = "services/api"
+		svc, cl := newService(nil, a)
+		for _, rootDir := range []string{"services/api", "./services/api/"} {
+			if rec := patch(t, svc, `{"rootDir":"`+rootDir+`"}`); rec.Code != http.StatusOK {
+				t.Fatalf("PATCH rootDir %q = %d: %s", rootDir, rec.Code, rec.Body.String())
+			}
+		}
+		if got := getApp(t, cl, "web").Spec; got.RootDir != "services/api" || got.RestartedAt != "" {
+			t.Errorf("spec rootDir %q restartedAt %q, want unchanged and no fresh build", got.RootDir, got.RestartedAt)
+		}
+	})
+
+	t.Run("GraphQL and MCP", func(t *testing.T) {
+		svc, cl := newService(nil, paidWebApp("web"))
+		data := gqlDo(t, gqlSchema(t, svc), `mutation { setRootDir(id: "web", rootDir: "") { rootDir } }`)
+		if got := data["setRootDir"].(map[string]any)["rootDir"]; got != "" {
+			t.Errorf("GraphQL setRootDir rootDir = %v, want \"\"", got)
+		}
+		if res := callMCPTool(t, svc, "update_service", map[string]any{"serviceId": "web", "rootDir": ""}); res.IsError {
+			t.Errorf("MCP update_service rootDir \"\": %s", mcpResultText(res))
+		}
+		res := callMCPTool(t, svc, "update_service", map[string]any{"serviceId": "web", "rootDir": "api"})
+		if !res.IsError || !strings.Contains(mcpResultText(res), "root directory only applies to build-from-git") {
+			t.Errorf("MCP update_service rootDir api = %s, want the refusal", mcpResultText(res))
+		}
+		if a := getApp(t, cl, "web"); a.Spec.RootDir != "" || a.Spec.RestartedAt != "" {
+			t.Errorf("spec rootDir %q restartedAt %q, want untouched", a.Spec.RootDir, a.Spec.RestartedAt)
+		}
+	})
 }

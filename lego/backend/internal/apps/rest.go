@@ -1147,8 +1147,8 @@ func (req patchServiceRequest) resolveFields(r *http.Request) (patchFields, erro
 
 // patchService handles PATCH /v1/services/{id} — a plan change (serviceDetails.plan),
 // an idle-timeout change (serviceDetails.idleTTLSeconds), and/or a root
-// directory change (rootDir); an unknown plan or a rootDir on an image-backed
-// App is core.ErrBadRequest => 400.
+// directory change (rootDir); an unknown plan or a new rootDir on an
+// image-backed App is core.ErrBadRequest => 400.
 // Pass `dryRun: true` in the body or `?dryRun=true` to run the whole patch's
 // checks without writing; returns 200 with the resolved spec (w2/m29, w5/m116).
 func (s *Service) patchService(w http.ResponseWriter, r *http.Request) {

@@ -195,19 +195,29 @@ func checkIdleTTL(seconds int32) error {
 	return nil
 }
 
-func (s *Service) checkRootDir(ctx context.Context, a *appv1alpha1.App, name, rootDir string) error {
+// checkRootDir gates a change to a's root directory and reports whether
+// rootDir (already normalized) changes it. The service's own root directory
+// changes nothing, so it is not refused for an image service: Render's
+// Terraform provider sends every service's rootDir on each update, "" for an
+// image service, and Render answers 200 (w9/113).
+func (s *Service) checkRootDir(ctx context.Context, a *appv1alpha1.App, name, rootDir string) (bool, error) {
 	// What gets built is what runs, so this is the same identity change that
-	// repointing the source is (w4/m126).
+	// repointing the source is (w4/m126). Like the source's guard, it runs
+	// before the no-op return, so the error does not tell a caller whether
+	// the value was already set.
 	if err := s.requireUnprotected(ctx, a, "redefine"); err != nil {
-		return err
+		return false, err
+	}
+	if rootDir == a.Spec.RootDir {
+		return false, nil
 	}
 	if err := requireRepoBacked(a, name, "root directory only applies to build-from-git"); err != nil {
-		return err
+		return false, err
 	}
 	if problem := store.RootDirProblem(rootDir); problem != "" {
-		return fmt.Errorf("%w: rootDirectory %s", core.ErrBadRequest, problem)
+		return false, fmt.Errorf("%w: rootDirectory %s", core.ErrBadRequest, problem)
 	}
-	return nil
+	return true, nil
 }
 
 func (s *Service) checkDockerfilePath(ctx context.Context, a *appv1alpha1.App, name, dockerfilePath string) (string, error) {

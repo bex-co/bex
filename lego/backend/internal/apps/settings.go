@@ -347,7 +347,7 @@ var servicePatchTable = []servicePatchOp{
 		relation: canCreate,
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, id string, p ServicePatch) error {
 			rootDir := store.NormalizeRootDir(*p.RootDir)
-			if err := s.checkRootDir(ctx, probe, id, rootDir); err != nil {
+			if changed, err := s.checkRootDir(ctx, probe, id, rootDir); err != nil || !changed {
 				return err
 			}
 			probe.Spec.DockerContext = rebaseDockerContext(probe.Spec.RootDir, rootDir, probe.Spec.DockerContext)
