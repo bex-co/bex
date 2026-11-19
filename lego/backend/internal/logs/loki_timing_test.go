@@ -29,6 +29,9 @@ package logs
 //	LOKI_TIMING_TARGETS='busy=<namespace>/<app CR name>/<srv- id>;idle=…' \
 //	go test -tags lokitiming -run TestLokiTiming -v -timeout 60m ./internal/logs/
 //
+// LOKI_TIMING_ONLY keeps the shapes whose name holds it (`text`), and
+// LOKI_TIMING_TEXT names the term a text shape searches for.
+//
 // The targets name tenants, so they come from the environment and are never
 // written down in the repository.
 
@@ -39,7 +42,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -157,7 +162,12 @@ func (s timingShape) query(target timingTarget, now time.Time) LogQuery {
 	}
 	switch s.filter {
 	case "text":
+		// LOKI_TIMING_TEXT names the term: one the service never logs times the
+		// prefilter's no-match read (w5/m520), a common one its full pages.
 		q.Search = []string{"error"}
+		if term := os.Getenv("LOKI_TIMING_TEXT"); term != "" {
+			q.Search = []string{term}
+		}
 	case "status":
 		q.StatusCode = []string{"5xx"}
 	case "level":
@@ -263,6 +273,110 @@ func TestLokiTimingConcurrent(t *testing.T) {
 			t.Logf("%s x%d: all %5.2fs, slowest caller %5.2fs, range=%d series=%d queue=%5.2fs",
 				shape, n, time.Since(start).Seconds(), time.Duration(slowest.Load()).Seconds(),
 				tr.calls["query_range"], tr.calls["series"], tr.queue.Seconds())
+		}
+	}
+}
+
+// TestLokiTimingPrefilter times candidate LogQL line filters for a `text`
+// search (w5/m520 t001): one query_range per window, as the scan's first
+// slice sends it, over the request streams and over every stream the
+// default read selects. LOKI_TIMING_WINDOWS overrides the windows (Go
+// durations, comma-separated).
+func TestLokiTimingPrefilter(t *testing.T) {
+	base := os.Getenv("LOKI_TIMING_URL")
+	if base == "" {
+		t.Skip("LOKI_TIMING_URL is not set")
+	}
+	windows := []time.Duration{time.Hour, 24 * time.Hour}
+	if v := os.Getenv("LOKI_TIMING_WINDOWS"); v != "" {
+		windows = nil
+		for _, w := range strings.Split(v, ",") {
+			d, err := time.ParseDuration(w)
+			if err != nil {
+				t.Fatal(err)
+			}
+			windows = append(windows, d)
+		}
+	}
+	// Each candidate renders the pipeline for one term. `contains` is the
+	// cheapest filter Loki has (case-sensitive, not a superset); `fold` is
+	// `(?i)` over the literal, which Loki answers with its own lowercase
+	// compare; `classes` writes i and k as explicit classes, which keeps Loki
+	// on Go's regexp; `json` renders the request line in LogQL first.
+	classes := func(term string) string {
+		var b strings.Builder
+		b.WriteString("(?i)")
+		for _, r := range term {
+			switch r {
+			case 'i':
+				b.WriteString(`[iI\x{0130}]`)
+			case 'k':
+				b.WriteString(`[kK\x{212A}]`)
+			default:
+				b.WriteString(regexp.QuoteMeta(string(r)))
+			}
+		}
+		return b.String()
+	}
+	candidates := []struct {
+		name     string
+		pipeline func(term string) string
+	}{
+		{"raw", func(string) string { return "" }},
+		{"contains", func(term string) string { return fmt.Sprintf(" |= %q", term) }},
+		{"fold", func(term string) string { return fmt.Sprintf(" |~ %q", "(?i)"+regexp.QuoteMeta(term)) }},
+		{"classes", func(term string) string { return fmt.Sprintf(" |~ %q", classes(term)) }},
+		{"json", func(term string) string {
+			return ` | json ip="[\"request_True-Client-Ip\"]", rid="[\"request_Rndr-Id\"]", d="Duration", b="DownstreamContentSize", ua="[\"request_User-Agent\"]"` +
+				` | line_format "clientIP=\"{{.ip}}\" requestID=\"{{.rid}}\" responseTimeMS={{.d}} responseBytes={{.b}} userAgent=\"{{.ua}}\""` +
+				fmt.Sprintf(" |~ %q", "(?i)"+regexp.QuoteMeta(term))
+		}},
+	}
+	terms := []struct{ shape, term string }{
+		{"no match", "zqxtimeoutzq"},
+		{"common", "mozilla"},
+	}
+	for _, target := range timingTargets(t) {
+		for _, types := range [][]string{{LogTypeRequest}, nil} {
+			for _, window := range windows {
+				for _, term := range terms {
+					for _, c := range candidates {
+						if c.name == "raw" && term.shape != "no match" {
+							continue // the same read for either term
+						}
+						now := time.Now()
+						q := LogQuery{App: target.app, Types: types}
+						q.appID = target.appID
+						tr := &timingTransport{calls: map[string]int{}}
+						hc := &http.Client{Transport: tr, Timeout: 120 * time.Second}
+						u := fmt.Sprintf("%s/loki/api/v1/query_range?%s", strings.TrimRight(base, "/"), url.Values{
+							"query":     {lokiSelectorFor(target.namespace, q) + c.pipeline(term.term)},
+							"start":     {strconv.FormatInt(now.Add(-window).UnixNano(), 10)},
+							"end":       {strconv.FormatInt(now.UnixNano(), 10)},
+							"limit":     {strconv.Itoa(lokiTextScanPage)},
+							"direction": {DirectionBackward},
+						}.Encode())
+						var lr lokiRangeResponse
+						err := lokiGet(context.Background(), hc, u, &lr)
+						took := time.Since(now)
+						lines := 0
+						for _, st := range lr.Data.Result {
+							lines += len(st.Values)
+						}
+						outcome := fmt.Sprintf("%d lines", lines)
+						if err != nil {
+							outcome = "error: " + err.Error()
+						}
+						ty := "all"
+						if len(types) > 0 {
+							ty = types[0]
+						}
+						t.Logf("%-5s %-7s %-4s %-8s %-8s %6.2fs loki=%5.2fs MB=%5.1f scanned=%-8d %s",
+							target.name, ty, window, term.shape, c.name, took.Seconds(), tr.exec.Seconds(),
+							float64(tr.bytes)/1e6, tr.scanned, outcome)
+					}
+				}
+			}
 		}
 	}
 }

@@ -844,9 +844,10 @@ func NormalizeTypes(types []string) ([]string, error) {
 // case-insensitive Unicode literals into byte contains filters that are not a
 // superset of Go's strings.ToLower + literal contains contract (for example
 // Greek iota folds through U+0345). Running the same matcher for raw and display
-// history keeps the REST/GraphQL/MCP/CLI contract exact; scanLokiWindow still
-// bounds the work and returns an honest partial page when it cannot cover the
-// whole window.
+// history keeps the REST/GraphQL/MCP/CLI contract exact. Loki is sent only a
+// prefilter proven to keep every line the matcher can accept
+// (lokiTextPrefilter); scanLokiWindow still bounds the work and returns an
+// honest partial page when it cannot cover the whole window.
 func (q LogQuery) localTextSearch() bool {
 	return len(q.Search) > 0
 }
@@ -2766,8 +2767,13 @@ func capLogMessage(msg string) string {
 	if len(msg) <= maxLogMessageBytes {
 		return msg
 	}
-	return strings.ToValidUTF8(msg[:maxLogMessageBytes], "") + " …[truncated]"
+	return strings.ToValidUTF8(msg[:maxLogMessageBytes], "") + logTruncationMarker
 }
+
+// logTruncationMarker ends a message capLogMessage cut. A text search matches
+// it like any other text, so the Loki prefilter must not drop a line a term
+// could match only there (lokiTextPrefilter).
+const logTruncationMarker = " …[truncated]"
 
 // newLogEntry is one container record, its message capped at
 // maxLogMessageBytes.

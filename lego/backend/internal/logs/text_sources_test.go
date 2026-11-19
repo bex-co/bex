@@ -159,8 +159,10 @@ func TestTextSourcesDatastoreHistoryKeepsScopedUnion(t *testing.T) {
 					// A Postgres's lines include each read replica cluster's (w6/m467).
 					wantQuery = `{namespace="tea-logs", database=~"` + postgresID + `(-r-[0-9a-f]{10})?"}`
 				}
+				// Loki drops only the lines that hold neither term; Go decides.
+				wantQuery += ` |~ "(?i)qa_text_a" or "(?i)qa_text_b"`
 				if got := f.lastValues.Get("query"); got != wantQuery {
-					t.Fatalf("datastore history lost scope or delegated text matching to Loki: got %q, want %q", got, wantQuery)
+					t.Fatalf("datastore history lost scope or its text prefilter: got %q, want %q", got, wantQuery)
 				}
 				for _, entry := range entries {
 					if entry.Labels["service"] != tc.resource || entry.Labels[LabelType] != tc.kind {

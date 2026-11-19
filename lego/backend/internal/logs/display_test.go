@@ -212,21 +212,20 @@ func TestLiveTailAppliesDisplayMatching(t *testing.T) {
 	}
 }
 
-func TestLokiTextSearchesKeepTheLokiQueryBroad(t *testing.T) {
+// Loki is sent a text search's prefilter, never the match: a raw search keeps
+// the lines holding a needle, and a display search also every line with an
+// ESC or a CR, whose display text may differ from its bytes. The prefilter
+// comes before the path stage, and the path filter stays.
+func TestLokiTextSearchesSendOnlyAPrefilter(t *testing.T) {
+	stages := ` | json request_path="RequestPath", request_host="RequestHost" | request_path="/x"`
 	raw := lokiQueryFor("default", LogQuery{App: "web", Search: []string{"a.b"}, Path: []string{"/x"}}.normalized())
-	if strings.Contains(raw, " |~ ") {
-		t.Fatalf("raw text search must not delegate matching to Loki: %s", raw)
-	}
-	if !strings.Contains(raw, `request_path="/x"`) {
-		t.Fatalf("raw query lost the path filter: %s", raw)
+	if want := `{namespace="default", app="web", container=~"app|"} |~ "(?i)\\.b"` + stages; raw != want {
+		t.Fatalf("raw text search query:\n got %s\nwant %s", raw, want)
 	}
 	q := LogQuery{App: "web", Search: []string{"QA_A31_ANSI_red_end", "a.b"}, Path: []string{"/x"}, TextMode: TextModeDisplay}.normalized()
 	query := lokiQueryFor("default", q)
-	if strings.Contains(query, " |~ ") {
-		t.Fatalf("display text search must not delegate matching to Loki: %s", query)
-	}
-	if !strings.Contains(query, `request_path="/x"`) {
-		t.Fatalf("display query lost a filter: %s", query)
+	if want := `{namespace="default", app="web", container=~"app|"} |~ "(?i)\\.b" or "(?i)qa_a31_ans" or "\\x1b" or "\\r"` + stages; query != want {
+		t.Fatalf("display text search query:\n got %s\nwant %s", query, want)
 	}
 }
 

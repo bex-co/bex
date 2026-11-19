@@ -45,9 +45,14 @@ import (
 // from the requested end, in label order, instead of by time. A read of one
 // stream, of a window that fits the limit, or of a window inside one split
 // bucket (which Loki hands the querier uncut, w5/m503) is exact.
+//
+// With filterLines it also applies a text search's prefilter, as the pinned
+// Loki evaluates it (lokiFilterKeeps), before it pages (w5/m520); without it
+// every line of a matching stream is a candidate.
 type frontendLoki struct {
-	streams []fakeStream
-	srv     *httptest.Server
+	streams     []fakeStream
+	srv         *httptest.Server
+	filterLines bool
 
 	mu          sync.Mutex
 	rangeCalls  []url.Values
@@ -59,8 +64,9 @@ type frontendLoki struct {
 
 type fakeStream struct {
 	labels map[string]string
-	stamps []int64        // ascending
-	marked map[int64]bool // stamps whose line reads "MATCH ..."
+	stamps []int64               // ascending
+	marked map[int64]bool        // stamps whose line reads "MATCH ..."
+	text   func(ns int64) string // the line at ns, when set
 }
 
 var equalityMatcher = regexp.MustCompile(`([A-Za-z_][A-Za-z0-9_]*)=("(?:[^"\\]|\\.)*")`)
@@ -106,7 +112,7 @@ func (f *frontendLoki) handle(w http.ResponseWriter, r *http.Request) {
 		var matched []fakeStream
 		for _, s := range f.streams {
 			if s.matches(v.Get("query")) {
-				matched = append(matched, s)
+				matched = append(matched, f.filtered(s, v.Get("query")))
 			}
 		}
 		sort.Slice(matched, func(i, j int) bool { return matched[i].labels["pod"] < matched[j].labels["pod"] })
@@ -189,8 +195,26 @@ func (f *frontendLoki) handle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// filtered is s holding only the lines the query's line filter keeps, when the
+// frontend applies it.
+func (f *frontendLoki) filtered(s fakeStream, query string) fakeStream {
+	_, pipeline, _ := strings.Cut(query, "}")
+	alts := lokiFilterValues(pipeline)
+	if !f.filterLines || alts == nil {
+		return s
+	}
+	kept := s
+	kept.stamps = slices.DeleteFunc(slices.Clone(s.stamps), func(ns int64) bool {
+		return !slices.ContainsFunc(alts, func(alt string) bool { return lokiFilterKeeps(alt, s.message(ns)) })
+	})
+	return kept
+}
+
 // message is the line stored at ns.
 func (s fakeStream) message(ns int64) string {
+	if s.text != nil {
+		return s.text(ns)
+	}
 	msg := s.labels["pod"] + "@" + strconv.FormatInt(ns, 10)
 	if s.marked[ns] {
 		return "MATCH " + msg

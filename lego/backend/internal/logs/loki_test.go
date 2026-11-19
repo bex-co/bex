@@ -66,10 +66,11 @@ func TestLokiQueryFor(t *testing.T) {
 			want: `{namespace="default", app="web", type="request"}`,
 		},
 		{
-			name: "text search keeps Loki query broad and matches locally",
+			// Loki only drops lines that cannot hold the term; Go's matcher decides.
+			name: "text search sends Loki a superset prefilter and matches locally",
 			ns:   "default",
 			q:    LogQuery{App: "web", Types: []string{LogTypeApp}, Search: []string{"ERROR boot"}},
-			want: `{namespace="default", app="web", container="app"}`,
+			want: `{namespace="default", app="web", container="app"} |~ "(?i)error boot"`,
 		},
 		{
 			// Bounded fields are label matchers — the cheap, indexed half.
@@ -154,11 +155,12 @@ func TestLokiQueryFor(t *testing.T) {
 		},
 		{
 			// A regex metacharacter in the search still matches literally in the Go
-			// matcher; it is never interpolated into the LogQL query.
-			name: "search regex metachars do not enter LogQL",
+			// matcher, and reaches the prefilter quoted: `.*` is a wildcard whose
+			// one literal part is `.`.
+			name: "search regex metachars stay literal in the prefilter",
 			ns:   "default",
 			q:    LogQuery{App: "web", Types: []string{LogTypeApp}, Search: []string{".*"}},
-			want: `{namespace="default", app="web", container="app"}`,
+			want: `{namespace="default", app="web", container="app"} |~ "(?i)\\."`,
 		},
 	}
 	for _, c := range cases {
@@ -505,7 +507,7 @@ func TestLokiSourceRequestAndDecode(t *testing.T) {
 
 	// The first request pushed the filters/bounds/limit to Loki (real time range).
 	got := f.firstValues
-	if q := got.Get("query"); q != `{namespace="default", app="web", container=~"app|"}` {
+	if q := got.Get("query"); q != `{namespace="default", app="web", container=~"app|"} |~ "(?i)hel"` {
 		t.Errorf("query pushed to loki wrong: %s", q)
 	}
 	if got.Get("direction") != "backward" {
@@ -697,7 +699,7 @@ func TestManagedPostgresHistoryIsDatabaseScoped(t *testing.T) {
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("Postgres history = %+v, err=%v", entries, err)
 	}
-	if got := f.lastValues.Get("query"); got != `{namespace="default", database=~"`+postgresID+`(-r-[0-9a-f]{10})?"}` {
+	if got := f.lastValues.Get("query"); got != `{namespace="default", database=~"`+postgresID+`(-r-[0-9a-f]{10})?"} |~ "(?i)select"` {
 		t.Fatalf("Postgres selector = %q", got)
 	}
 	if entries[0].Labels["service"] != postgresID || entries[0].Labels[LabelType] != "postgres" {

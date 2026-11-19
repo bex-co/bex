@@ -90,7 +90,8 @@ func NewLokiSource(base string, hc *http.Client) LogHistorySource {
 }
 
 // A line-filtered history read (text, path, or host) reads every line in the
-// window (Loki applies path/host; text is matched in Go over raw pages), so a search with few or no matches over a week of a busy
+// window (Loki applies path/host; text is matched in Go over raw pages Loki
+// prefilters), so a search with few or no matches over a week of a busy
 // service outlasts the HTTP write deadline and reaches the browser as an edge
 // 502 (w4/m140). Such reads are scanned in slices from the end the direction
 // keeps (newest-first by default), each twice the last, so the common case (the
@@ -131,9 +132,10 @@ func lokiScansLines(q LogQuery) bool {
 // reads (w4/m189, w8/m58). Loki cannot match the displayed text — an escape
 // inside the needle breaks a raw substring — and its raw case-insensitive regexp
 // simplifier is not a safe Unicode superset, so text searches read raw pages and
-// match in Go. A page larger than Render's 100-line cap keeps a week's scan to
-// fewer round trips; it stays under Loki's default max_entries_limit_per_query
-// (5000).
+// match in Go; Loki drops only the lines that cannot match (lokiTextPrefilter,
+// w5/m520), and a raw page holds the rest. A page larger than Render's 100-line
+// cap keeps a week's scan to fewer round trips; it stays under Loki's default
+// max_entries_limit_per_query (5000).
 const lokiTextScanPage = 1000
 
 // lokiFetchLimit is the line cap of one query_range request: the caller's page
@@ -562,12 +564,14 @@ func lokiTypeMatcher(q LogQuery) string {
 	}
 }
 
-// lokiQueryFor builds the full LogQL for a query: the stream selector and the
-// request-only line filters (`path`, `host`) parsed out of the JSON access line
-// with LogQL's `json` stage — the query-time half of the cardinality budget's
-// "unbounded fields stay in the line". Text matching is applied in Go after raw
-// pages return; Loki's case-insensitive regexp simplifier is not a safe Unicode
-// superset of the API's literal matching contract.
+// lokiQueryFor builds the full LogQL for a query: the stream selector, a text
+// search's prefilter, and the request-only line filters (`path`, `host`) parsed
+// out of the JSON access line with LogQL's `json` stage — the query-time half
+// of the cardinality budget's "unbounded fields stay in the line". The text
+// match itself is applied in Go to the lines Loki returns: the prefilter only
+// drops lines Go's matcher cannot accept (lokiTextPrefilter), because Loki's
+// case-insensitive matching is not a safe Unicode superset of the API's
+// literal matching contract.
 //
 // An app log line has no RequestPath/RequestHost (and typically isn't JSON at all),
 // so either filter also narrows the read to request logs, which is exactly Render's
@@ -577,15 +581,17 @@ func lokiQueryFor(namespace string, q LogQuery) string {
 	return lokiSelectorFor(namespace, q) + lokiPipelineFor(q)
 }
 
-// lokiPipelineFor is the stages lokiQueryFor appends to the stream selector: none
-// without a path or host filter.
+// lokiPipelineFor is the stages lokiQueryFor appends to the stream selector: a
+// text search's line filter first, where Loki applies it before any parsing,
+// then the path and host stages.
 func lokiPipelineFor(q LogQuery) string {
+	pipeline := lokiTextPrefilter(q)
 	if len(q.Path) == 0 && len(q.Host) == 0 {
-		return ""
+		return pipeline
 	}
 	// One `json` stage extracting only the two fields we filter on (not the whole
 	// line — the access log has ~20 fields), then a label filter per field.
-	pipeline := ` | json request_path="RequestPath", request_host="RequestHost"`
+	pipeline += ` | json request_path="RequestPath", request_host="RequestHost"`
 	if m := labelMatcher("request_path", q.Path); m != "" {
 		pipeline += " | " + m
 	}
@@ -762,6 +768,11 @@ type accessRecord struct {
 	RequestID  string `json:"request_Rndr-Id"`
 	ResponseID string `json:"downstream_Rndr-Id"`
 }
+
+// requestLineKeys are the keys of a rendered request line, in order. A text
+// term inside one of them can match every rendered line, which the Loki
+// prefilter allows for (requestNeedle).
+var requestLineKeys = []string{"clientIP", "requestID", "responseTimeMS", "responseBytes", "userAgent"}
 
 // requestLine renders a stored access record as Render's request-log line
 // (w4/m325, docs/render-artifacts/request-logs.md): the message is

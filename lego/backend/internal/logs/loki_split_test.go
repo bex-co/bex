@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"slices"
@@ -165,6 +166,8 @@ func mustParseCursor(t *testing.T, s string) time.Time {
 // whole window: a merge that deals the page out one line per stream fills it
 // with every sparse line and stops short of the dense lines it owes, so a scan
 // that trusts that page moves its coverage past dense matches it never read.
+// The noise lines hold the prefilter's needle (`eedle`, w5/m520) but not the
+// term, so Loki returns them too and the scan still fills raw pages.
 func TestLokiBusyTextSearchAcrossASplitBoundaryFindsEveryMatch(t *testing.T) {
 	base := os.Getenv("BEX_TEST_LOKI_URL")
 	if base == "" {
@@ -196,7 +199,7 @@ func TestLokiBusyTextSearchAcrossASplitBoundaryFindsEveryMatch(t *testing.T) {
 			step := (in.last - in.first) / time.Duration(in.lines)
 			for n := range in.lines {
 				at := start.Add(in.first + time.Duration(n)*step)
-				msg := fmt.Sprintf("noise pod=%s n=%d", in.pod, n)
+				msg := fmt.Sprintf("reedle pod=%s n=%d", in.pod, n)
 				if n%50 == 7 {
 					msg = fmt.Sprintf("needle pod=%s n=%d", in.pod, n)
 					want = append(want, msg)
@@ -221,12 +224,29 @@ func TestLokiBusyTextSearchAcrossASplitBoundaryFindsEveryMatch(t *testing.T) {
 
 		for _, direction := range []string{DirectionBackward, DirectionForward} {
 			t.Run(layout.name+", "+direction, func(t *testing.T) {
-				listings := 0
+				listings, fullPages := 0, 0
 				counting := &http.Client{Timeout: 30 * time.Second, Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 					if strings.HasSuffix(r.URL.Path, "/series") {
 						listings++
 					}
-					return http.DefaultTransport.RoundTrip(r)
+					resp, err := http.DefaultTransport.RoundTrip(r)
+					if err != nil || !strings.HasSuffix(r.URL.Path, "/query_range") {
+						return resp, err
+					}
+					body, err := io.ReadAll(resp.Body)
+					_ = resp.Body.Close()
+					var lr lokiRangeResponse
+					if err == nil && json.Unmarshal(body, &lr) == nil {
+						lines := 0
+						for _, st := range lr.Data.Result {
+							lines += len(st.Values)
+						}
+						if lines >= lokiTextScanPage {
+							fullPages++
+						}
+					}
+					resp.Body = io.NopCloser(bytes.NewReader(body))
+					return resp, err
 				})}
 				q := LogQuery{App: "web", Search: []string{"needle"}, Direction: direction, Limit: 100, Since: start, End: end}.normalized()
 				got, err := NewLokiSource(base, counting)(context.Background(), ns, q)
@@ -243,6 +263,9 @@ func TestLokiBusyTextSearchAcrossASplitBoundaryFindsEveryMatch(t *testing.T) {
 				}
 				if listings != 0 {
 					t.Fatalf("%d stream listings, want none", listings)
+				}
+				if fullPages == 0 {
+					t.Fatal("no read filled a raw page: the search no longer reads across the cut")
 				}
 			})
 		}
