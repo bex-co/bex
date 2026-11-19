@@ -81,8 +81,25 @@ func newTwoFactorGate(secret, apiURL string, sessions sshgateway.TwoFactorSessio
 }
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
+	// Two lifetimes (w6/m482, docs/ADR035-ssh.md § Sessions across a gateway
+	// release). ctx is the listeners': SIGTERM ends it, so a release's old pod
+	// stops accepting. sessionCtx is the open sessions': they keep running until
+	// they end on their own or the drain bound passes, and a second signal ends
+	// them at once.
+	ctx, stopListening := context.WithCancel(context.Background())
+	defer stopListening()
+	sessionCtx, endSessions := context.WithCancelCause(context.Background())
+	defer endSessions(nil)
+	signals := make(chan os.Signal, 2)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	go drainOnSignal(signals, stopListening, endSessions)
+	// A listener that fails ends the process at once, as before: a pod that
+	// stops accepting while Kubernetes still routes to it must not linger.
+	stop := func() {
+		stopListening()
+		endSessions(errListenerFailed)
+	}
+	shutdownTimeout := durationEnv("BEX_SSH_SHUTDOWN_TIMEOUT", time.Hour)
 
 	dbURI := requiredEnv("BEX_CP_DB_URI")
 	fgaURL := requiredEnv("BEX_OPENFGA_URL")
@@ -406,7 +423,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("ssh gateway: listen %s: %v", addr, err)
 	}
-	metricsServer := &http.Server{Handler: metricsHandler(registry), ReadHeaderTimeout: 5 * time.Second}
+	// /readyz turns 503 once the listeners close, so a draining pod leaves every
+	// Service endpoint (serving=false), not only the ready set.
+	metricsServer := &http.Server{Handler: metricsHandler(registry, func() bool { return ctx.Err() == nil }), ReadHeaderTimeout: 5 * time.Second}
 	metricsAddr := env.Or("BEX_SSH_METRICS_ADDR", ":9090")
 	metricsListener, err := net.Listen("tcp", metricsAddr)
 	if err != nil {
@@ -426,6 +445,10 @@ func main() {
 		_ = metricsServer.Shutdown(shutdownCtx)
 	}()
 
+	// Each auxiliary listener's drain: stop accepting, then wait for its open
+	// sessions.
+	var drainers []func(context.Context) error
+
 	// Browser Web Shell WebSocket listener (docs/ADR035-ssh.md § Browser Web
 	// Shell). Started only when BEX_SHELL_TICKET_SECRET is set; Traefik
 	// terminates TLS onto this plain-HTTP listener. The handler shares the
@@ -433,7 +456,7 @@ func main() {
 	if shell.Enabled() {
 		shellMux := http.NewServeMux()
 		shellMux.Handle("GET /shell", shell.Handler())
-		defer startAuxListener("web shell", "web shell", env.Or("BEX_SHELL_WS_ADDR", ":8080"), shellMux, stop, metrics)()
+		drainers = append(drainers, startAuxListener("web shell", "web shell", env.Or("BEX_SHELL_WS_ADDR", ":8080"), shellMux, sessionCtx, stop, metrics))
 	}
 
 	// Sandbox-exec SSE listener (w3/m33, `render ea sandbox exec`). Internal-only
@@ -455,7 +478,7 @@ func main() {
 		fileHandler := files.Handler()
 		execMux.Handle("PUT "+sandboxfiles.GatewayPath, fileHandler)
 		execMux.Handle("GET "+sandboxfiles.GatewayPath, fileHandler)
-		defer startAuxListener("sandbox-exec", "sandbox exec", env.Or("BEX_SANDBOX_EXEC_ADDR", ":8081"), execMux, stop, metrics)()
+		drainers = append(drainers, startAuxListener("sandbox-exec", "sandbox exec", env.Or("BEX_SANDBOX_EXEC_ADDR", ":8081"), execMux, sessionCtx, stop, metrics))
 	}
 
 	// Agent-session Git smart-HTTP proxy (ADR047 D2). Sandboxes can clone/push
@@ -470,11 +493,11 @@ func main() {
 	// (the clone direction) is a write and stays unbounded.
 	if credentials.Enabled() {
 		credentialMux := newCredentialMux(credentials)
-		defer startAuxListener("agent git proxy", "agent git proxy", env.Or("BEX_AGENT_CREDENTIAL_ADDR", ":8082"), credentialMux, stop, metrics,
+		drainers = append(drainers, startAuxListener("agent git proxy", "agent git proxy", env.Or("BEX_AGENT_CREDENTIAL_ADDR", ":8082"), credentialMux, sessionCtx, stop, metrics,
 			func(server *http.Server) {
 				server.ReadTimeout = durationEnv("BEX_AGENT_GIT_READ_TIMEOUT", 10*time.Minute)
 				server.IdleTimeout = 2 * time.Minute
-			})()
+			}))
 	}
 	// Agent-session model proxy (ADR062). Internal-only (sandbox → gateway → vendor
 	// on :8084 by default); the sandbox's agent base URL points here so the BYO
@@ -483,25 +506,25 @@ func main() {
 	if model.Enabled() {
 		modelMux := http.NewServeMux()
 		modelMux.Handle("POST "+agentsession.ModelProxyPath, model.Handler())
-		defer startAuxListener("agent model proxy", "agent model proxy", env.Or("BEX_AGENT_MODEL_PROXY_ADDR", ":8084"), modelMux, stop, metrics,
+		drainers = append(drainers, startAuxListener("agent model proxy", "agent model proxy", env.Or("BEX_AGENT_MODEL_PROXY_ADDR", ":8084"), modelMux, sessionCtx, stop, metrics,
 			func(server *http.Server) {
 				server.ReadTimeout = durationEnv("BEX_AGENT_MODEL_READ_TIMEOUT", 2*time.Minute)
 				server.IdleTimeout = 2 * time.Minute
-			})()
+			}))
 	}
 	// Agent-session egress proxy (w10/m19). Internal-only (sandbox → gateway →
 	// internet on :8085 by default); only full-tier session policies admit
 	// this hop. Serves CONNECT and absolute-form HTTP, so it takes the broker
 	// handler directly rather than a path mux. Same start gate as the others.
 	if egress.Enabled() {
-		defer startAuxListener("agent egress proxy", "agent egress proxy", env.Or("BEX_AGENT_EGRESS_PROXY_ADDR", ":8085"), egress.Handler(), stop, metrics,
+		drainers = append(drainers, startAuxListener("agent egress proxy", "agent egress proxy", env.Or("BEX_AGENT_EGRESS_PROXY_ADDR", ":8085"), egress.Handler(), sessionCtx, stop, metrics,
 			func(server *http.Server) {
 				// Bounds a plain-HTTP request body; CONNECT tunnels clear the
 				// deadline after the hijack and run under their own idle and
 				// total timeouts.
 				server.ReadTimeout = durationEnv("BEX_AGENT_EGRESS_READ_TIMEOUT", 2*time.Minute)
 				server.IdleTimeout = 2 * time.Minute
-			})()
+			}))
 	}
 	// Agent-session conversation listener (ADR047 D9, w3/m43). Browser-facing via
 	// the platform edge, which path-routes api.bex.co/v1/agent-sessions/{id}/stream
@@ -514,10 +537,10 @@ func main() {
 		// OPTIONS reaches the same handler so the CORS preflight is answered (the
 		// cross-origin dashboard sends one before the ticketed GET/POST).
 		attachMux.Handle("OPTIONS /v1/agent-sessions/{id}/stream", attach.Handler())
-		defer startAuxListener("agent attach", "agent session attach", env.Or("BEX_AGENT_ATTACH_ADDR", ":8083"), attachMux, stop, metrics)()
+		drainers = append(drainers, startAuxListener("agent attach", "agent session attach", env.Or("BEX_AGENT_ATTACH_ADDR", ":8083"), attachMux, sessionCtx, stop, metrics))
 	}
 	log.Printf("ssh gateway listening on %s", addr)
-	if err := gateway.Serve(ctx, listener); err != nil && !errors.Is(err, context.Canceled) {
+	if err := serve(ctx, sessionCtx, endSessions, gateway, listener, shutdownTimeout, drainers); err != nil {
 		log.Fatalf("ssh gateway: %v", err)
 	}
 	select {
@@ -529,18 +552,86 @@ func main() {
 	}
 }
 
+// errListenerFailed ends the open sessions when a listener fails.
+var errListenerFailed = errors.New("a gateway listener failed")
+
+// drainGrace is how long the sessions ended at the drain bound get to send
+// their end reason and write their audit row before the process exits.
+const drainGrace = 10 * time.Second
+
+// drainOnSignal stops the listeners on the first SIGTERM or SIGINT and ends
+// every open session on the second (w6/m482).
+func drainOnSignal(signals <-chan os.Signal, stopListening context.CancelFunc, endSessions context.CancelCauseFunc) {
+	log.Printf("ssh gateway: %v: closing the listeners; open sessions keep running", <-signals)
+	stopListening()
+	log.Printf("ssh gateway: second %v: ending every open session", <-signals)
+	endSessions(sshgateway.ErrGatewayShutdown)
+}
+
+// serve runs native SSH under sessionCtx until ctx, the listeners' lifetime,
+// ends, then drains it with every auxiliary listener (w6/m482). It returns
+// Serve's error when native SSH stops accepting on its own.
+func serve(ctx, sessionCtx context.Context, endSessions context.CancelCauseFunc, gateway *nativessh.Server, listener net.Listener, bound time.Duration, drainers []func(context.Context) error) error {
+	served := make(chan error, 1)
+	go func() { served <- gateway.Serve(sessionCtx, listener) }()
+	select {
+	case err := <-served:
+		if err != nil {
+			return err
+		}
+	case <-ctx.Done():
+	}
+	drain(sessionCtx, endSessions, bound, drainGrace, append(drainers, gateway.Shutdown))
+	return nil
+}
+
+// drain runs once the listeners are closing (w6/m482): it waits, up to bound,
+// for every listener's open sessions to end on their own, then ends the rest
+// with sshgateway.ErrGatewayShutdown and gives them grace to finish. Ending
+// sessionCtx early (a second signal, a failed listener) ends the wait too.
+// Sessions that ignore their context (a CONNECT tunnel) die with the process.
+func drain(sessionCtx context.Context, endSessions context.CancelCauseFunc, bound, grace time.Duration, drainers []func(context.Context) error) {
+	log.Printf("ssh gateway: draining for up to %s", bound)
+	waitCtx, cancel := context.WithTimeout(sessionCtx, bound)
+	drainAll(waitCtx, drainers)
+	cancel()
+	if errors.Is(waitCtx.Err(), context.DeadlineExceeded) {
+		log.Printf("ssh gateway: the %s drain bound passed; ending the open sessions", bound)
+	}
+	endSessions(sshgateway.ErrGatewayShutdown)
+	graceCtx, cancelGrace := context.WithTimeout(context.Background(), grace)
+	defer cancelGrace()
+	drainAll(graceCtx, drainers)
+	log.Printf("ssh gateway: drained")
+}
+
+// drainAll runs every drainer at once and returns when all have returned.
+func drainAll(ctx context.Context, drainers []func(context.Context) error) {
+	var wg sync.WaitGroup
+	for _, d := range drainers {
+		wg.Go(func() { _ = d(ctx) })
+	}
+	wg.Wait()
+}
+
 // startAuxListener runs one auxiliary HTTP listener (health-checked mux, fatal
-// on bind failure, stop() on serve failure) and returns the shutdown closure
-// the caller defers, keeping the process-exit LIFO order at the call sites.
-// Each opt may still shape the server (e.g. a request-read deadline for a
+// on bind failure, stop() on serve failure) and returns its drain: close the
+// listener, then wait for the requests in flight, hijacked ones included,
+// which run under sessionCtx and so outlive the listener (w6/m482). Each opt
+// may still shape the server (e.g. a request-read deadline for a
 // body-carrying proxy listener); the defaults suit streaming listeners.
-func startAuxListener(name, logName, addr string, handler http.Handler, stop context.CancelFunc, metrics *sshgateway.Metrics, opts ...func(*http.Server)) func() {
+func startAuxListener(name, logName, addr string, handler http.Handler, sessionCtx context.Context, stop func(), metrics *sshgateway.Metrics, opts ...func(*http.Server)) func(context.Context) error {
 	// A path mux gets the shared health route; a raw handler (the egress
 	// proxy, which must see CONNECT) answers /healthz itself.
 	if mux, ok := handler.(*http.ServeMux); ok {
 		mux.HandleFunc("GET /healthz", healthzOK)
 	}
-	server := &http.Server{Handler: handler, ReadHeaderTimeout: 5 * time.Second}
+	sessions := &sshgateway.Inflight{Name: logName}
+	server := &http.Server{
+		Handler:           sessions.Handler(handler),
+		ReadHeaderTimeout: 5 * time.Second,
+		BaseContext:       func(net.Listener) context.Context { return sessionCtx },
+	}
 	for _, opt := range opts {
 		opt(server)
 	}
@@ -572,10 +663,11 @@ func startAuxListener(name, logName, addr string, handler http.Handler, stop con
 		}
 	}()
 	log.Printf("%s listening on %s", logName, addr)
-	return func() {
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = server.Shutdown(shutdownCtx)
+	return func(ctx context.Context) error {
+		// Shutdown first: a request it still counts as active may yet hijack
+		// its connection, and is in sessions by then.
+		err := server.Shutdown(ctx)
+		return errors.Join(err, sessions.Wait(ctx))
 	}
 }
 
@@ -660,10 +752,19 @@ func connectionSource(addr net.Addr) string {
 
 func healthzOK(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }
 
-func metricsHandler(gatherer prometheus.Gatherer) http.Handler {
+// metricsHandler serves Prometheus, liveness (/healthz, always OK) and
+// readiness (/readyz, 503 once ready reports false: the listeners closed).
+func metricsHandler(gatherer prometheus.Gatherer, ready func() bool) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /metrics", promhttp.HandlerFor(gatherer, promhttp.HandlerOpts{}))
 	mux.HandleFunc("GET /healthz", healthzOK)
+	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, _ *http.Request) {
+		if !ready() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
 	return mux
 }
 

@@ -199,12 +199,28 @@ func TestMetricsHandlerServesHealthAndPrometheus(t *testing.T) {
 	gauge := prometheus.NewGauge(prometheus.GaugeOpts{Name: "bex_ssh_gateway_test_metric"})
 	registry.MustRegister(gauge)
 	gauge.Set(1)
-	handler := metricsHandler(registry)
+	ready := true
+	handler := metricsHandler(registry, func() bool { return ready })
 
-	health := httptest.NewRecorder()
-	handler.ServeHTTP(health, httptest.NewRequest(http.MethodGet, "/healthz", nil))
-	if health.Code != http.StatusOK {
-		t.Fatalf("healthz = %d, want 200", health.Code)
+	probe := func(path string) int {
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
+		return recorder.Code
+	}
+	if got := probe("/healthz"); got != http.StatusOK {
+		t.Fatalf("healthz = %d, want 200", got)
+	}
+	if got := probe("/readyz"); got != http.StatusOK {
+		t.Fatalf("readyz = %d, want 200 while the listeners accept", got)
+	}
+	// A draining pod (w6/m482) is no longer ready, so no Service endpoint
+	// sends it new connections; it stays live, so the kubelet never kills it.
+	ready = false
+	if got := probe("/readyz"); got != http.StatusServiceUnavailable {
+		t.Fatalf("readyz = %d, want 503 once the listeners closed", got)
+	}
+	if got := probe("/healthz"); got != http.StatusOK {
+		t.Fatalf("healthz = %d, want 200 while draining", got)
 	}
 	metrics := httptest.NewRecorder()
 	handler.ServeHTTP(metrics, httptest.NewRequest(http.MethodGet, "/metrics", nil))

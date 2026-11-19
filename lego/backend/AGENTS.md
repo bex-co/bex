@@ -89,6 +89,7 @@ Full meanings + defaults + ADR pointers live in the long descriptions below; thi
 | ssh-gateway | `BEX_AGENT_ATTACH_ADDR` `:8083`, `BEX_AGENT_SESSION_DRIVER_PORT` `8787`, `BEX_SHELL_TICKET_SECRET` | agent conversation SSE transport; shares shell secret |
 | ssh-gateway | `BEX_CP_DB_URI`, `BEX_OPENFGA_URL`, `BEX_OPENFGA_TOKEN`, `BEX_API_NAMESPACE` | gateway store/authz/ns scope |
 | ssh-gateway | `BEX_SSH_HANDSHAKE_TIMEOUT` `10s`, `…_SESSION_TIMEOUT` `4h`, `…_MAX_SESSIONS` `100`, `…_PER_IDENTITY` `5` | connection bounds |
+| ssh-gateway | `BEX_SSH_SHUTDOWN_TIMEOUT` `1h` | how long a terminating gateway keeps its open SSH, Shell and agent sessions after SIGTERM closed its listeners (w6/m482, Render's one hour; [ADR035 § Sessions across a gateway release](../../docs/ADR035-ssh.md#sessions-across-a-gateway-release-w6m482)); `/readyz` is 503 meanwhile, the rest end at the bound, a second signal ends them at once. Keep the Deployment's `terminationGracePeriodSeconds` above it (`scripts/gitops-validate.sh`) |
 | ssh-gateway | `BEX_SSH_MAX_PREAUTH_CONNS` `256`, `…_PER_SOURCE` `32` | pre-auth handshake caps (global + per-source); trusted PROXY CIDRs |
 | ssh-gateway | `BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS` | CIDRs allowed to assert PROXY v1/v2 client IP (host bits set, `10.244.0.5/16`, is refused at startup, not masked) |
 | ssh-gateway | `BEX_SSH_MAX_CHANNELS_PER_CONN` `16` | Zed multiplexing cap per conn for `ags-*` |

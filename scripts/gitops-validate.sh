@@ -2798,6 +2798,32 @@ if [ -n "$ssh_proxy_version" ] && [ "$ssh_proxy_version" != "null" ]; then
   fi
 fi
 
+# w6/m482: a terminating gateway keeps its open sessions for
+# BEX_SSH_SHUTDOWN_TIMEOUT (Render's one hour) and then gives the ended ones
+# 10 s to say why. The pod's grace period must cover both, or the kubelet
+# SIGKILLs a draining pod and cuts every session it holds; the roll must start
+# each new pod before it stops an old one; and readiness must be the probe
+# that fails once the listeners close.
+ssh_deploy=lego/operator/config/ssh/deployment.yaml
+ssh_shutdown="$(yq -N '.spec.template.spec.containers[] | select(.name == "ssh-gateway") | .env[]? | select(.name == "BEX_SSH_SHUTDOWN_TIMEOUT") | .value' "$ssh_deploy")"
+ssh_grace="$(yq -N '.spec.template.spec.terminationGracePeriodSeconds' "$ssh_deploy")"
+ssh_unavailable="$(yq -N '.spec.strategy.rollingUpdate.maxUnavailable' "$ssh_deploy")"
+ssh_ready_path="$(yq -N '.spec.template.spec.containers[] | select(.name == "ssh-gateway") | .readinessProbe.httpGet.path' "$ssh_deploy")"
+case "$ssh_shutdown" in
+  *h) ssh_shutdown_s=$(( ${ssh_shutdown%h} * 3600 )) ;;
+  *m) ssh_shutdown_s=$(( ${ssh_shutdown%m} * 60 )) ;;
+  *s) ssh_shutdown_s=${ssh_shutdown%s} ;;
+  *) ssh_shutdown_s="" ;;
+esac
+if ! [[ "$ssh_shutdown_s" =~ ^[0-9]+$ ]] || ! [[ "$ssh_grace" =~ ^[0-9]+$ ]] || [ "$ssh_grace" -lt $(( ssh_shutdown_s + 30 )) ]; then
+  echo "FAIL: ssh-gateway terminationGracePeriodSeconds='$ssh_grace' must be at least BEX_SSH_SHUTDOWN_TIMEOUT='$ssh_shutdown' plus 30 s, or the kubelet kills a draining gateway mid-session (w6/m482)" >&2
+  fail=1
+fi
+if [ "$ssh_unavailable" != "0" ] || [ "$ssh_ready_path" != "/readyz" ]; then
+  echo "FAIL: ssh-gateway rollingUpdate.maxUnavailable='$ssh_unavailable' and readinessProbe path='$ssh_ready_path', want 0 and /readyz so a release starts new pods first and a draining pod leaves the Service (w6/m482)" >&2
+  fail=1
+fi
+
 # w2/m90: the Web Shell Ingress and the shared bex-shell-ticket Secret wiring are
 # one activation contract. The route alone is not enough (m55 shipped it; the
 # edge stayed dark until the Secret existed). Keep the public host/path, the

@@ -199,6 +199,34 @@ func (f *FakeExecutor) Execute(ctx context.Context, target apps.SSHInstanceTarge
 	return f.Code, f.Err
 }
 
+// EchoExecutor plays an interactive shell: it echoes stdin to stdout until
+// stdin closes (exit 0) or ctx ends, so a test can keep exchanging data over
+// a live session. Started, when set, is signalled (without blocking) as each
+// exec starts.
+type EchoExecutor struct {
+	Started chan struct{}
+}
+
+func (e *EchoExecutor) Execute(ctx context.Context, _ apps.SSHInstanceTarget, _ []string, _ bool, _ remotecommand.TerminalSizeQueue, stdin io.Reader, stdout, _ io.Writer) (int, error) {
+	if e.Started != nil {
+		select {
+		case e.Started <- struct{}{}:
+		default:
+		}
+	}
+	copied := make(chan struct{})
+	go func() {
+		_, _ = io.Copy(stdout, stdin)
+		close(copied)
+	}()
+	select {
+	case <-copied:
+		return 0, nil
+	case <-ctx.Done():
+		return 0, ctx.Err()
+	}
+}
+
 // FakeTwoFactor plays bex-api's login-requirements verb
 // (agentsession.TwoFactorHandler over the real twofactor.Gate) for the
 // gateway's TwoFactorGate: workspaces that Require 2FA admit only Enrolled

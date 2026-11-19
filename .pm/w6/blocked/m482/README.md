@@ -1,20 +1,20 @@
 # w6 · m482 — An ssh-gateway release gives open SSH and Shell sessions an hour, as Render's SSH maintenance does
 
-**Worker:** worker6 **Goal:** a production deploy that restarts `bex-ssh-gateway` leaves every open SSH and dashboard Shell session working until the user ends it, its instance stops, its access is revoked, or an hour has passed since the gateway began draining; new connections reach only the new pods. **Status:** todo
+**Worker:** worker6 **Goal:** a production deploy that restarts `bex-ssh-gateway` leaves every open SSH and dashboard Shell session working until the user ends it, its instance stops, its access is revoked, or an hour has passed since the gateway began draining; new connections reach only the new pods. **Status:** blocked (t001–t005, t007–t009 done and shipped; t006 waits for the second production pin after the shipping commit, the first deploy whose old gateway pods drain; then t010)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [On SIGTERM the gateway stops accepting and keeps established SSH and Shell sessions for up to an hour](t001.md) | 1h30m | — |
-| t002 | [The agent and sandbox listeners drain within the same bound](t002.md) | 45m | t001 |
-| t003 | [The Deployment, PDB and deploy.yml let an old pod drain for an hour without holding the deploy](t003.md) | 45m | t001 |
-| t004 | [Tests: a session open at SIGTERM keeps working, revocation still ends it, the hour closes it](t004.md) | 1h | t001, t002 |
-| t005 | [Record the rule in ADR035](t005.md) | 20m | t003 |
+| t001 | [On SIGTERM the gateway stops accepting and keeps established SSH and Shell sessions for up to an hour](done/t001.md) — **DONE** | 1h30m | — |
+| t002 | [The agent and sandbox listeners drain within the same bound](done/t002.md) — **DONE** | 45m | t001 |
+| t003 | [The Deployment, PDB and deploy.yml let an old pod drain for an hour without holding the deploy](done/t003.md) — **DONE** | 45m | t001 |
+| t004 | [Tests: a session open at SIGTERM keeps working, revocation still ends it, the hour closes it](done/t004.md) — **DONE** | 1h | t001, t002 |
+| t005 | [Record the rule in ADR035](done/t005.md) — **DONE** | 20m | t003 |
 | t006 | [Ship and verify on production](t006.md) | 45m | t004, t005 |
-| t007 | [Render parity](t007.md) | 20m | t006 |
-| t008 | [Simplify](t008.md) | 15m | t007 |
-| t009 | [Test coverage](t009.md) | 30m | t007 |
+| t007 | [Render parity](done/t007.md) — **DONE** | 20m | t006 |
+| t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
+| t009 | [Test coverage](done/t009.md) — **DONE** | 30m | t007 |
 | t010 | [Closeout](t010.md) | 10m | t008, t009 |
 
 ## Definition of done

@@ -81,14 +81,14 @@ Materialized from all five proposals of `/pm-brainstorm one aspect of render par
 
 Materialized from `/pm-brainstorm for w6` 2026-11-17 after its verification pass, approved by the user's `/pmx them all to w6` 2026-11-18. Items 1, 3 and 4 continue m469/m470 (a platform release keeps tenant connections) on the SSH and HTTP paths; item 2 is Render's 2026-08-26 dashboard change. The proposal's fifth item (a native build's `render-env` secret over BuildKit's 500 KiB) was not filed: verification found no Render reference behavior (Render documents no environment size limit) and no realistic way to reach it. Scheduled items for worker6, not a workstream specialty.
 
-1. **[m482](m482/README.md)** — an ssh-gateway release gives open SSH and Shell sessions an hour, as Render's SSH maintenance does (10 tasks).
+1. **[m482](blocked/m482/README.md)** — **BLOCKED** (time: the second production pin after the shipping commit is the first whose old gateway pods drain; clears by itself) — an ssh-gateway release gives open SSH and Shell sessions an hour, as Render's SSH maintenance does (10 tasks).
 2. **[m483](m483/README.md)** — a service's Compute page holds its plan, manual scaling and autoscaling, with Render's "compute plan" wording and plan IDs (10 tasks).
 3. **[m484](m484/README.md)** — a platform release keeps every edge-cached service's instances and its cache (8 tasks).
 4. **[m485](m485/README.md)** — a platform release drops no request the activator is holding through a cold start (8 tasks).
 
 ## Milestones
 
-- [ ] **m482** — [An ssh-gateway release gives open SSH and Shell sessions an hour, as Render's SSH maintenance does](m482/README.md) (10 tasks) ← from `/pm-brainstorm for w6` 2026-11-17
+- [ ] **m482** — **BLOCKED (time, clears by itself: t006 needs two production pins after the commit that parked this milestone (`git log origin/main --grep 'w6/m482'`): the first rolls the gateway onto the drain and still cuts sessions, because the old pods run the old binary; across the next deploy that restarts `bex-ssh-gateway`, t006 holds a `bex ssh` session and a dashboard Shell on a Starter fixture in `bex-canary` and records both surviving, new connections landing on the new pods, and the fixture deleted; then t010. t001–t005, t007–t009 done: SIGTERM closes every listener and fails `/readyz`, open sessions keep running up to `BEX_SSH_SHUTDOWN_TIMEOUT` (1h) with revocation and the 4 h cap intact, a Shell ends at the bound with `timeout`, the Deployment rolls `maxUnavailable: 0` with a 3660 s grace, and `rollout status` returned in 3 s with old pods terminating on the local cluster)** — [An ssh-gateway release gives open SSH and Shell sessions an hour, as Render's SSH maintenance does](blocked/m482/README.md) (10 tasks) ← from `/pm-brainstorm for w6` 2026-11-17
 - [ ] **m483** — [A service's Compute page holds its plan, manual scaling and autoscaling, with Render's "compute plan" wording and plan IDs](m483/README.md) (10 tasks) ← from `/pm-brainstorm for w6` 2026-11-17
 - [ ] **m484** — [A platform release keeps every edge-cached service's instances and its cache](m484/README.md) (8 tasks) ← from `/pm-brainstorm for w6` 2026-11-17
 - [ ] **m485** — [A platform release drops no request the activator is holding through a cold start](m485/README.md) (8 tasks) ← from `/pm-brainstorm for w6` 2026-11-17

@@ -134,6 +134,13 @@ type Server struct {
 	// EndShellEvent rows (w9/m451, sshgateway.RecordShellEvent). nil records
 	// none.
 	Audit core.AuditSink
+
+	// mu guards the drain state (w6/m482): the listener Serve accepts on, which
+	// Shutdown closes, and the open connections Shutdown waits for.
+	mu       sync.Mutex
+	listener net.Listener
+	shutdown bool
+	sessions *sshgateway.Inflight
 }
 
 var errUnverifiedOwner = errors.New("public key rejected: verify your bex account email first")
@@ -302,17 +309,19 @@ func (s *Server) config(ctx context.Context) (*ssh.ServerConfig, error) {
 	return config, nil
 }
 
-// Serve accepts until ctx is cancelled. Individual connections inherit that
-// cancellation and therefore cannot outlive a terminating gateway process.
+// Serve accepts until ctx is cancelled or Shutdown is called. Every
+// connection runs under ctx, so cancelling it ends them all at once; Shutdown
+// instead stops accepting and leaves them running (w6/m482).
 func (s *Server) Serve(ctx context.Context, listener net.Listener) error {
 	config, err := s.config(ctx)
 	if err != nil {
 		return err
 	}
-	go func() {
-		<-ctx.Done()
-		_ = listener.Close()
-	}()
+	if !s.track(listener) {
+		return listener.Close()
+	}
+	stop := context.AfterFunc(ctx, func() { _ = listener.Close() })
+	defer stop()
 	// Pre-authentication admission. Bounds concurrent handshakes-in-flight before
 	// ssh.NewServerConn and its key-lookup DB round trips run, so an anonymous
 	// connection flood cannot exhaust goroutines, descriptors, and store QPS ahead
@@ -326,7 +335,7 @@ func (s *Server) Serve(ctx context.Context, listener net.Listener) error {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			if ctx.Err() != nil {
+			if ctx.Err() != nil || s.draining() {
 				return nil
 			}
 			return err
@@ -338,7 +347,14 @@ func (s *Server) Serve(ctx context.Context, listener net.Listener) error {
 			_ = conn.Close()
 			continue
 		}
+		if !s.admit() {
+			// Accepted just as Shutdown closed the listener.
+			<-preAuth
+			_ = conn.Close()
+			return nil
+		}
 		go func() {
+			defer s.sessions.End()
 			// Idempotent release: serveConn frees the slot as soon as the handshake
 			// resolves; this is the safety net if it returns without doing so.
 			released := false
@@ -354,6 +370,56 @@ func (s *Server) Serve(ctx context.Context, listener net.Listener) error {
 			release()
 		}()
 	}
+}
+
+// Shutdown stops accepting and waits for the open connections to end, or
+// returns ctx's error once ctx is done; they keep running under Serve's
+// context, whose cancellation is what ends them (w6/m482). Calling it again
+// waits again.
+func (s *Server) Shutdown(ctx context.Context) error {
+	s.mu.Lock()
+	s.shutdown = true
+	listener := s.listener
+	sessions := s.inflightLocked()
+	s.mu.Unlock()
+	if listener != nil {
+		_ = listener.Close()
+	}
+	return sessions.Wait(ctx)
+}
+
+// track records the listener Shutdown closes; false once Shutdown has run.
+func (s *Server) track(listener net.Listener) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.inflightLocked()
+	s.listener = listener
+	return !s.shutdown
+}
+
+// admit counts one accepted connection in; false once Shutdown has run, so
+// every connection it counts is one Shutdown's wait sees.
+func (s *Server) admit() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.shutdown {
+		return false
+	}
+	s.sessions.Begin()
+	return true
+}
+
+func (s *Server) draining() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.shutdown
+}
+
+func (s *Server) inflightLocked() *sshgateway.Inflight {
+	if s.sessions == nil {
+		s.sessions = &sshgateway.Inflight{Name: "native SSH"}
+	}
+	return s.sessions
 }
 
 func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.ServerConfig, releasePreAuth func(), preAuthSources *sshgateway.SourceLimiter) error {

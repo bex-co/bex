@@ -349,6 +349,10 @@ func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims she
 	case execCtx.Err() != nil && timedCtx.Err() == nil:
 		result = "revoked" // the watchdog ended the stream, not the client
 		ws.end(watchdogEndReason(context.Cause(execCtx)))
+	case errors.Is(context.Cause(ctx), sshgateway.ErrGatewayShutdown):
+		// A terminating gateway's drain bound passed (w6/m482): like the
+		// session cap, a time limit ended the session.
+		ws.end(endTimeout)
 	case ctx.Err() == nil && errors.Is(timedCtx.Err(), context.DeadlineExceeded):
 		ws.end(endTimeout)
 	case errors.Is(err, sshgateway.ErrTargetTerminated), errors.Is(err, sshgateway.ErrTargetNotReady):

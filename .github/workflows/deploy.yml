@@ -1374,6 +1374,10 @@ jobs:
           # image. A new gateway DB method can no longer reach users before its
           # accompanying grant is installed (w5/m72).
           GRANTS_ONLY=1 bash scripts/ssh-gateway-db-role.sh
+          # The old gateway pods drain: they keep their open SSH and Shell
+          # sessions for up to an hour (w6/m482, ADR035 § Sessions across a
+          # gateway release). Terminating pods are not counted as replicas, so
+          # the status wait returns once the new pods are available.
           kubectl -n bex-system rollout restart deploy/bex-ssh-gateway
           kubectl -n bex-system rollout status deploy/bex-ssh-gateway --timeout=300s
           # drain-guard holds a pre-drain hook on every tenant Machine; while it
