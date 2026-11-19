@@ -1,6 +1,6 @@
 # w6 · m333 — Deleting a disk or a service closes its usage coverage, and a deleted service's last egress hours are billed
 
-**Worker:** worker6 **Goal:** A deleted service's bandwidth is metered through its deletion hour, and neither a deleted service nor a deleted disk leaves the month's coverage degraded or behind. **Status:** blocked — t001–t007 done and verified on production; t008's fixture disk was deleted from a live service on 2026-11-17 and its 50 h read is due at 2026-11-19 06:00Z (see BLOCKED — 2026-11-17).
+**Worker:** worker6 **Goal:** A deleted service's bandwidth is metered through its deletion hour, and neither a deleted service nor a deleted disk leaves the month's coverage degraded or behind. **Status:** todo — t001–t007 done and verified on production; t008's 50 h read of the fixture disk is due now (see Unblocked — 2026-11-19).
 
 ## Tasks (in order)
 
@@ -62,3 +62,9 @@
   1. Reads `GET /v1/usage?ownerId=tea-daif693dqjvc73e7as3g` signed in as the QA user, and records `coverage.degradedSources`.
   2. On `bex-db`, read-only, checks that the fixture's stream `(service, srv-dbts58fa12vs7398m010, disk_gb_seconds, disk)` still expects [2026-11-17 02:00Z, 04:00Z) with both windows `healthy`. It also checks that the only missing or non-healthy window in any `bex-canary` disk stream this month is `srv-dbpcja9pjd2c73f0qqjg`'s 2026-11-10 08:00Z.
   3. If both hold, the deleted disk did not make `disk` a degraded source: DoD clause 2 holds. Verify clauses 1 and 3 again, then close the milestone.
+
+## Unblocked — 2026-11-19
+
+- **Affected IDs:** w6/m333 (t008).
+- **Source:** verified finding. The gate `at or after 2026-11-19 06:00Z` (the fixture disk's deletion at 2026-11-17 03:43:14Z plus 50 h, rounded up) has passed: it is 2026-11-19 22:35Z. No user gate was left.
+- **Next:** t008 runs the read the BLOCKED — 2026-11-17 gate lists: `bex-canary`'s `coverage.degradedSources` on `GET /v1/usage` as the QA user, then, read-only on `bex-db`, the fixture's disk stream and every other `bex-canary` disk stream's windows this month. If the fixture's stream reads [02:00Z, 04:00Z) healthy and the only disk hole is the pre-fix `srv-dbpcja9pjd2c73f0qqjg` 2026-11-10 08:00Z, DoD clause 2 holds; verify clauses 1 and 3 again and close the milestone.
