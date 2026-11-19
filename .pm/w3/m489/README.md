@@ -1,6 +1,6 @@
 # w3 · m489 — A service's edge cache outlives its instances: restarts, scaling and crashes keep it, and every instance shares it, as Render's CDN does
 
-**Worker:** worker3 **Goal:** each caching web service's edge cache lives in a per-service tier outside its instances, so it empties only on a successful deploy or a manual purge, as on Render; a Restart, a scale change, an instance crash or a node drain keeps it, all instances share one fill per key, and turning caching on rolls no instance. **Status:** blocked (t001–t006 and t008–t010 done, shipped in `a6b1658fb`; t007's production check waits for a production deploy carrying it, then t011 closes out)
+**Worker:** worker3 **Goal:** each caching web service's edge cache lives in a per-service tier outside its instances, so it empties only on a successful deploy or a manual purge, as on Render; a Restart, a scale change, an instance crash or a node drain keeps it, all instances share one fill per key, and turning caching on rolls no instance. **Status:** todo (t001–t006 and t008–t010 done, shipped in `a6b1658fb`; t007's production check ran on pin `dff52c596d13` on 2026-11-19 and every case held but a deploy after a Restart, whose fix ships with that record; t007 re-checks that case on a pin carrying the fix, then t011 closes out)
 
 ## Tasks (in order)
 
@@ -70,3 +70,30 @@ Render's reference is [render.com/docs/web-service-caching](https://render.com/d
 | Capacity | 2 GiB per service, 128 MiB per object | not documented (Cloudflare's default object cap is 512 MB) | recorded in ADR018 |
 | Geography | in-cluster tier per service | global CDN | recorded in ADR018 |
 | Private network | not cached | the CDN fronts only the public URL | matches by construction |
+
+## Unblock (2026-11-19)
+
+- **Affected:** t007, then t011.
+- **Source:** verified evidence. The newest production pin on `origin/main`, `a91e9aeb3` (`chore(deploy): pin platform images to dff52c596d13`), carries `a6b1658fb`: `git merge-base --is-ancestor a6b1658fb dff52c596d13` succeeds.
+- **Remaining gates:** none. t007's steps are unchanged: a paid `bex-canary` web service with `origin-controlled-all` as the QA user, its route on `bex-edge-cache-<app>:80` with both tier pods Ready, then the Restart, scale-out, deploy, purge and failed-deploy checks.
+
+## Production check (t007, 2026-11-19)
+
+Production ran pin `a91e9aeb3` (`dff52c596d13`): every `bex-system` Deployment on `bex-operator@sha256:9850d357…`, the digest that pin names. The fixture was `qa-20261119-m489-cache` (`srv-dbvg0km014qc73acuc40`) in `bex-canary`, a starter web service on `docker.io/traefik/whoami:v1.10.1` with the Docker Command `/whoami -verbose`, so the app logs every request that reaches it. It was created with caching off, as the QA user over REST (`bash scripts/qa-login.sh`).
+
+| check | what production did | result |
+| --- | --- | --- |
+| Turning caching on (`PATCH serviceDetails.cache.profile = origin-controlled-all`, 200) | `bex-edge-cache-<app>` had 2/2 pods Ready on two nodes within 8 s, and the Ingress moved to `bex-edge-cache-<app>:80`. The app pod kept its UID (`b3d4d24e…`), with one ReplicaSet | holds: no instance rolled |
+| Restart (`POST …/restart`, 200) | a new instance, the old one gone; `/m489-a.css` read `HIT` with `Age: 122`, no request reached the new instance, and the tier revision stayed `rev-1` | holds |
+| Scale from 1 to 2 (`POST …/scale`, 202) | `/m489-a.css` read `HIT` with `Age: 156` | holds |
+| A new key with two instances | `/m489-b.css`: one `MISS`, then nine `HIT` on fresh connections, and `HIT` read directly from each tier replica (port-forward). The app logged one request across both instances. Sixteen concurrent requests for `/m489-c.css` reached the app once | holds |
+| A successful deploy (`POST …/deploys`) | `MISS` once the rollout's old instances had left (both tier pods: `purged (app.bex.co/cache-revision=rev-5)`), then `HIT` | holds, but it also emptied the cache at its start (below) |
+| A manual purge (`POST …/cache/purge`, 202) | `MISS` within a second, then `HIT` | holds |
+| A failed deploy (a missing image tag: `image_pull_failed`, `update_failed` in 6 s) | `HIT` throughout; the tier revision stayed `rev-5` | holds |
+| A failed deploy after a Restart | `MISS`: both tier pods logged `purged (app.bex.co/cache-revision=rev-7)`, the Restart's release, in the second the deploy was requested | **fails** |
+
+**The defect.** The tier converges at the top of a pass (`updateAppPodsInPlace`), before the pass adopts a newly stamped release. In the first pass after a deploy request, `status.releaseGeneration` still named the Restart's release, which was the active one, while `spec.releaseConfig` already belonged to the request: none for a plain deploy, an image reference for an image deploy. So `restartRelease` read false, and `edgeCacheRevision` recorded the Restart's release as a successful deploy and emptied the cache. Every deploy after a Restart emptied it twice, once at its start and once at its end, and a failed one emptied it once, against Render's "failed deploys do not trigger a purge". The fix keeps the revision while a stamped release is unadopted (`releaseUnadopted`), with two cases in `TestTheCacheEmptiesOnlyOnASuccessfulDeploy` that fail without it. ADR004 § Edge caching records it.
+
+**Observed, not a definition-of-done item.** A new tier's replicas resolved their peers only 30 s after they started. Their first lookup ran before the headless Service had a Ready endpoint, and the empty answer was cached (`no such host` at 13:58:43, peers at 13:59:13). Meanwhile the route had moved to the tier, so the first key, `/m489-a.css`, was filled once per replica. From then on, every key filled once.
+
+**Cleanup.** The fixture was deleted by id (`DELETE` answered 204, then `GET` 404, and its App, tier, Services and Ingress were gone). The QA session was logged out, after which its cookie answered 401, and the session files and the fetched kubeconfig were deleted.

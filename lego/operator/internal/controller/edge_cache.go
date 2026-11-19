@@ -210,12 +210,19 @@ func (r *AppReconciler) edgeCacheTierImage(dep *appsv1.Deployment, app *appv1alp
 // pending release keeps the active one, and a Restart, which bex runs as a
 // new release of the serving one (spec.releaseConfig.preserveGroupValues),
 // is no new version. A new tier starts empty, on the active release.
+//
+// A release stamped but not yet adopted holds it too. The tier converges at
+// the top of a pass, before the adoption, so the status still names the active
+// release while spec.releaseConfig is already the request's, and restartRelease
+// can no longer tell a Restart. A deploy requested after a Restart recorded the
+// Restart's release and emptied the cache before that deploy began, even one
+// that then failed (w3/m489 t007, on production).
 func edgeCacheRevision(app *appv1alpha1.App, appDep *appsv1.Deployment, last string) string {
 	active := app.Status.ActiveRevision
 	switch {
 	case last == "":
 		return active
-	case active == "" || active == last || active != releaseRevision(app) || restartRelease(app):
+	case active == "" || active == last || active != releaseRevision(app) || releaseUnadopted(app) || restartRelease(app):
 		return last
 	case appDep == nil || appDep.Spec.Template.Labels[labelRevision] != active ||
 		appDep.Status.ObservedGeneration < appDep.Generation || appDep.Status.UpdatedReplicas != appDep.Status.Replicas:

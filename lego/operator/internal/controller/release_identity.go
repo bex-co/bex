@@ -376,7 +376,7 @@ func (r *AppReconciler) adoptLegacyReleaseIdentity(ctx context.Context, app *app
 		return nil
 	}
 	if path := app.Spec.HealthCheckPath; path == "" || path == "/" {
-		if stamped, ok := stampedReleaseGeneration(app); ok && stamped > app.Status.ReleaseGeneration {
+		if releaseUnadopted(app) {
 			return nil
 		}
 		if app.ActiveReleaseConfig() == nil {
@@ -773,6 +773,13 @@ func survivingReleaseGeneration(app *appv1alpha1.App) (int64, bool) {
 func stampedReleaseGeneration(app *appv1alpha1.App) (int64, bool) {
 	generation, err := strconv.ParseInt(app.Annotations[appv1alpha1.AnnotationReleaseGeneration], 10, 64)
 	return generation, err == nil
+}
+
+// releaseUnadopted reports a release bex-api has stamped that the operator has
+// not adopted into status.releaseGeneration yet.
+func releaseUnadopted(app *appv1alpha1.App) bool {
+	stamped, ok := stampedReleaseGeneration(app)
+	return ok && stamped > app.Status.ReleaseGeneration
 }
 
 func successfulReleaseGeneration(app *appv1alpha1.App) int64 {

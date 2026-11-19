@@ -708,6 +708,17 @@ func TestTheCacheEmptiesOnlyOnASuccessfulDeploy(t *testing.T) {
 		a.Status.SelectedReleaseGeneration = 2
 	}
 	failed := live(1, func(a *appv1alpha1.App) { a.Generation, a.Status.ReleaseGeneration = 2, 2 })
+	// stamped is bex-api opening release generation g. Until the operator
+	// adopts it, the status still names the active release while
+	// spec.releaseConfig is the new request's: none for a plain deploy, an
+	// image reference for an image deploy.
+	stamped := func(g int64, ref *appv1alpha1.ReleaseConfigReference) func(*appv1alpha1.App) {
+		return func(a *appv1alpha1.App) {
+			metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, strconv.FormatInt(g, 10))
+			a.Spec.ReleaseConfig = ref
+		}
+	}
+	imageDeploy := &appv1alpha1.ReleaseConfigReference{Generation: 3, Image: "registry.test/web:missing"}
 	for name, tc := range map[string]struct {
 		app  *appv1alpha1.App
 		dep  *appsv1.Deployment
@@ -722,7 +733,12 @@ func TestTheCacheEmptiesOnlyOnASuccessfulDeploy(t *testing.T) {
 		"a failed or pending deploy":              {failed, rolledOut("rev-2"), "rev-1", "rev-1"},
 		"a Restart":                               {live(2, restart), rolledOut("rev-2"), "rev-1", "rev-1"},
 		"a Rollback is a deploy":                  {live(2, rollback), rolledOut("rev-2"), "rev-1", "rev-2"},
-		"no Deployment to read":                   {live(2), nil, "rev-1", "rev-1"},
+		// The deploy after a Restart is not yet adopted: the Restart is still
+		// no new version, and that deploy may yet fail.
+		"a deploy requested after a Restart":         {live(2, restart, stamped(3, nil)), rolledOut("rev-2"), "rev-1", "rev-1"},
+		"an image deploy requested after a Restart":  {live(2, restart, stamped(3, imageDeploy)), rolledOut("rev-2"), "rev-1", "rev-1"},
+		"a successful deploy whose stamp is adopted": {live(2, stamped(2, nil)), rolledOut("rev-2"), "rev-1", "rev-2"},
+		"no Deployment to read":                      {live(2), nil, "rev-1", "rev-1"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			if got := edgeCacheRevision(tc.app, tc.dep, tc.last); got != tc.want {
