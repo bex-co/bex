@@ -49,11 +49,6 @@ const ruDeploys: Record<string, TranslationEntry> = {
     message: "Неизвестно",
     description: "Deploy status: unrecognized backend value",
   },
-  "deploys.statusLabel": {
-    message: "Статус деплоя",
-    description:
-      "Deploy detail header: explicit label distinguishing deploy status from service phase",
-  },
   "deploys.imageDigestCopy": {
     message: "Копировать дайджест образа",
     description:
@@ -67,25 +62,72 @@ const ruDeploys: Record<string, TranslationEntry> = {
     message: "Не удалось скопировать в буфер обмена",
     description: "Deploy header: toast when copying the image digest fails",
   },
-  "deploys.created": {
-    message: "Создан",
-    description: "Deploy header: created-at label",
-  },
-  "deploys.updated": {
-    message: "Обновлён",
-    description: "Label for the deploy's latest stored transition time",
-  },
-  "deploys.started": {
-    message: "Запущен",
-    description: "Deploy header: started-at label",
-  },
-  "deploys.finished": {
-    message: "Завершён",
-    description: "Deploy header: finished-at label",
-  },
   "deploys.duration": {
     message: "Длительность",
     description: "Deploy header: elapsed build/deploy time label",
+  },
+  "deploys.factStatus": {
+    message: "Статус",
+    description:
+      "Deploy page: label of the deploy's Status fact (Render's STATUS)",
+  },
+  "deploys.factDeployed": {
+    message: "Развёрнут",
+    description:
+      "Deploy page: label of the fact giving when the deploy was created (Render's DEPLOYED)",
+  },
+  "deploys.factSource": {
+    message: "Источник",
+    description:
+      "Deploy page: label of the fact naming the commit or image the deploy ran (Render's SOURCE)",
+  },
+  "deploys.factPreDeploy": {
+    message: "Перед деплоем",
+    description:
+      "Deploy page: label of the fact giving the outcome of the deploy's pre-deploy command",
+  },
+  "deploys.preDeployRunning": {
+    message: "Выполняется",
+    description:
+      "Deploy page: Pre-deploy fact value while the pre-deploy command runs",
+  },
+  "deploys.preDeploySucceeded": {
+    message: "Успешно",
+    description:
+      "Deploy page: Pre-deploy fact value once the pre-deploy command succeeded",
+  },
+  "deploys.preDeployFailed": {
+    message: "Ошибка",
+    description:
+      "Deploy page: Pre-deploy fact value when the pre-deploy command failed",
+  },
+  "deploys.preDeployCanceled": {
+    message: "Отменён",
+    description:
+      "Deploy page: Pre-deploy fact value when the pre-deploy command was canceled",
+  },
+  "deploys.idLabel": {
+    message: "ID деплоя",
+    description:
+      "Deploy page: the deploy's id, named in its copy button's accessible name",
+  },
+  "deploys.idCopied": {
+    message: "ID деплоя скопирован",
+    description: "Deploy page: toast after copying the deploy's id",
+  },
+  "deploys.idCopyFailed": {
+    message: "Не удалось скопировать ID деплоя",
+    description: "Deploy page: toast when copying the deploy's id fails",
+  },
+  "deploys.loadErrorTitle": {
+    message: "Не удалось загрузить этот деплой",
+    description:
+      "Deploy page: title of the state shown when the deploy itself could not be read",
+  },
+  "deploys.loadErrorBody": {
+    message: "Сейчас не удалось прочитать этот деплой. Сам деплой не затронут.",
+    description:
+      "Deploy page: body of the state shown when the deploy itself could not be read; says the deploy is unaffected",
   },
   "deploys.durationValue": {
     message: "Длительность {duration}",
@@ -469,6 +511,11 @@ const ruDeploys: Record<string, TranslationEntry> = {
     message: "Выйти из полноэкранного режима",
     description:
       "Deploy log viewer: button restoring the maximized viewer to its inline size",
+  },
+  "deploys.logMinimizeHint": {
+    message: "Выйти из полноэкранного режима (Esc)",
+    description:
+      "Deploy log viewer: tooltip of the button leaving full screen, naming the Escape key that also leaves it",
   },
   "deploys.reason.http_port_waiting": {
     message: "ожидание запуска контейнера перед определением его HTTP-порта",

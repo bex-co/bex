@@ -1,11 +1,6 @@
+import { useId } from "react";
 import { AlertCircle } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/common/components/ui/card";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { DeployView } from "@/features/deploys/hooks/use-deploy";
 import { useDeployTimeline } from "@/features/deploys/hooks/use-deploy-timeline";
@@ -15,6 +10,13 @@ import {
 } from "@/features/deploys/lib/deploy-timeline";
 import { deployStatusKey } from "@/features/deploys/lib/deploy-status";
 import { LocalDateTime } from "@/common/components/local-time";
+import { DeployTimelineStepsSkeleton } from "./deploy-page-skeletons";
+import {
+  TIMELINE_DOT_CLASS,
+  TIMELINE_LIST_CLASS,
+  TIMELINE_SECTION_CLASS,
+  TIMELINE_STEP_CLASS,
+} from "./deploy-page-layout";
 
 const STEP_KEYS: Record<DeployTimelineStepKind, string> = {
   created: "deploys.timelineCreated",
@@ -35,6 +37,7 @@ export interface DeployTimelineProps {
 /** A deploy-row + matching-service-events timeline with no inferred phases. */
 export function DeployTimeline({ serviceId, deploy }: DeployTimelineProps) {
   const { t } = useTranslations();
+  const titleId = useId();
   // Mounted in parallel with the header query; its own query stays skipped
   // until the deploy's window arrives (w9/m62 t002), then fires — no serialized
   // extra mount behind the header round trip.
@@ -47,60 +50,55 @@ export function DeployTimeline({ serviceId, deploy }: DeployTimelineProps) {
   );
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("deploys.timelineTitle")}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {!deploy ? (
-          <div
-            className="space-y-3"
-            role="status"
-            aria-label={t("common.loading")}
-          >
-            <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-4 w-28" />
-            <Skeleton className="h-4 w-36" />
-          </div>
-        ) : (
-          <ol className="ml-2 border-l">
-            {buildDeployTimeline(deploy, events).map((step) => (
-              <li key={step.id} className="relative pb-5 pl-6 last:pb-0">
-                <span
-                  className={`absolute -left-1.5 top-1 h-3 w-3 rounded-full border-2 border-background ${dotClass(step.kind)}`}
+    <section aria-labelledby={titleId} className={TIMELINE_SECTION_CLASS}>
+      <h3 id={titleId} className="text-sm leading-5 font-semibold">
+        {t("deploys.timelineTitle")}
+      </h3>
+      {!deploy ? (
+        <div role="status" aria-label={t("common.loading")}>
+          <DeployTimelineStepsSkeleton />
+        </div>
+      ) : (
+        <ol className={TIMELINE_LIST_CLASS}>
+          {buildDeployTimeline(deploy, events).map((step) => (
+            <li key={step.id} className={TIMELINE_STEP_CLASS}>
+              <span
+                aria-hidden
+                className={cn(TIMELINE_DOT_CLASS, dotClass(step.kind))}
+              />
+              <p className="text-sm leading-5 font-medium">
+                {t(
+                  (step.status
+                    ? deployStatusKey(step.status)
+                    : STEP_KEYS[step.kind]) as Parameters<typeof t>[0],
+                )}
+              </p>
+              {step.timestamp ? (
+                <LocalDateTime
+                  value={step.timestamp}
+                  className="block text-xs leading-4 text-muted-foreground"
                 />
-                <p className="text-sm font-medium">
-                  {t(
-                    (step.status
-                      ? deployStatusKey(step.status)
-                      : STEP_KEYS[step.kind]) as Parameters<typeof t>[0],
-                  )}
-                </p>
-                {step.timestamp ? (
-                  <LocalDateTime
-                    value={step.timestamp}
-                    className="text-xs text-muted-foreground"
-                  />
-                ) : null}
-              </li>
-            ))}
-          </ol>
-        )}
-        {error ? (
-          <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-            <AlertCircle className="h-3.5 w-3.5" />
-            {t("deploys.timelineEventsUnavailable")}
-          </p>
-        ) : null}
-      </CardContent>
-    </Card>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      )}
+      {error ? (
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          <AlertCircle className="h-3.5 w-3.5" />
+          {t("deploys.timelineEventsUnavailable")}
+        </p>
+      ) : null}
+    </section>
   );
 }
 
 function dotClass(kind: DeployTimelineStepKind): string {
   switch (kind) {
+    // One green for every step that happened: the Live step is the last of
+    // them, not a second shade.
     case "live":
-      return "bg-emerald-500";
+      return "bg-primary";
     case "failed":
       return "bg-destructive";
     case "canceled":

@@ -157,6 +157,16 @@ const deLogs: Record<string, TranslationEntry> = {
     message: "Zum Neuesten springen",
     description: "Button to re-pin autoscroll to the newest log line",
   },
+  "logs.linesLabel": {
+    message: "Logzeilen",
+    description:
+      "Accessible name of the scrollable log list, which takes keyboard focus so arrow keys and Page Up/Down scroll it",
+  },
+  "logs.endOfLog": {
+    message: "Ende des Logs",
+    description:
+      "Closing line after the last row of a log that will not grow (a finished deploy's), so a short log reads as complete",
+  },
   "logs.loading": {
     message: "Logs werden geladen…",
     description: "Shown while the first historical page is loading",

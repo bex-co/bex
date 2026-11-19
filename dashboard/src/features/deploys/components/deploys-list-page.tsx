@@ -1,15 +1,7 @@
 import { META_SEPARATED_CLASS } from "@/common/lib/ui/meta-separators";
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  AlertCircle,
-  CircleCheck,
-  CircleDashed,
-  CircleSlash,
-  CircleX,
-  LoaderCircle,
-  Search,
-} from "lucide-react";
+import { AlertCircle, Search } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
@@ -44,6 +36,8 @@ import {
 import { useServer } from "@/features/services/hooks/use-server";
 import { useDeployActions } from "@/features/capabilities/hooks/use-resource-actions";
 import { repoCommitUrl } from "@/features/services/lib/repo";
+import { DeployStatusIcon } from "@/features/deploys/components/deploy-status-icon";
+import { CommitSha } from "@/features/deploys/components/commit-sha";
 import { useDeploys, type DeployRow } from "../hooks/use-deploys";
 import {
   DEPLOY_STATUS_FILTERS,
@@ -59,9 +53,10 @@ import {
   preDeployStatusKey,
 } from "../lib/deploy-status";
 import {
+  deployDurationValue,
   deployMatchesSearch,
   deployRowTimestamp,
-  formatDeployDuration,
+  deploySubject,
 } from "../lib/deploy-presentation";
 import { DeployActions } from "./deploy-actions";
 import { DeployFailureReason } from "./deploy-failure-reason";
@@ -87,54 +82,11 @@ function filtersKey(filters: DeployListFilters) {
   return JSON.stringify([filters.status, filters.search]);
 }
 
-// The Duration column value: the settled elapsed time once a deploy finishes,
-// a running-elapsed marker while an active deploy is still building/deploying,
-// and an em-dash for a deploy that never started (created/queued). The column
-// header supplies the "Duration" label, so the cell shows the bare value —
-// unlike the detail header's `deploys.durationValue` ("Duration {duration}").
+// The Duration column value, or an em-dash for a deploy that never started
+// (created/queued). The column header supplies the "Duration" label, so the
+// cell shows the bare value.
 function durationLabel(d: DeployRow, t: Translate): string {
-  const duration = formatDeployDuration(d.startedAt, d.finishedAt);
-  if (duration) return duration;
-  if (d.startedAt && !isTerminalDeployStatus(d.status))
-    return t("deploys.durationActive");
-  return t("deploys.notYet");
-}
-
-/**
- * A row's status as Render draws it: one icon, filled for the deploy that is
- * live now. The status's own name is the icon's accessible name.
- */
-function DeployStatusIcon({
-  status,
-  label,
-}: {
-  status: string;
-  label: string;
-}) {
-  let Icon = CircleDashed;
-  let tone = "text-muted-foreground";
-  if (status === "live") {
-    Icon = CircleCheck;
-    tone = "fill-primary text-primary-foreground";
-  } else if (status === "deactivated" || status === "succeeded") {
-    Icon = CircleCheck;
-    tone = "text-primary";
-  } else if (deployStatusVariant(status) === "destructive") {
-    Icon = CircleX;
-    tone = "text-destructive";
-  } else if (status === "canceled") {
-    Icon = CircleSlash;
-  } else if (status.endsWith("_in_progress")) {
-    Icon = LoaderCircle;
-    tone = "animate-spin text-foreground motion-reduce:animate-none";
-  }
-  return (
-    <Icon
-      role="img"
-      aria-label={label}
-      className={cn("mt-px size-[18px] shrink-0", tone)}
-    />
-  );
+  return deployDurationValue(d, t) || t("deploys.notYet");
 }
 
 /**
@@ -297,9 +249,7 @@ export function DeploysListPage({
             const statusLabel = t(
               deployStatusKey(d.status) as Parameters<typeof t>[0],
             );
-            const subject = d.commitMessage
-              ? d.commitMessage.split("\n")[0].trim()
-              : "";
+            const subject = deploySubject(d.commitMessage);
             // The icon and the row's verb ("Deployed", "Failed", "Canceled")
             // say how a finished deploy ended. A deploy still under way has
             // no such verb, and a failure with no stored reason has nothing
@@ -329,7 +279,11 @@ export function DeploysListPage({
                   role="cell"
                   className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 px-2 py-3 whitespace-normal"
                 >
-                  <DeployStatusIcon status={d.status} label={statusLabel} />
+                  <DeployStatusIcon
+                    status={d.status}
+                    label={statusLabel}
+                    className="mt-px"
+                  />
                   {/* Render's row: the commit subject is the headline and
                       opens the deploy. The link wraps only that line: the
                       commit SHA below is its own link (to the diff) and the
@@ -374,20 +328,18 @@ export function DeploysListPage({
                       {/* Render's list links the short SHA to the commit's
                         diff on the forge; with no browsable repo (an
                         image-backed service) it stays plain text. */}
-                      {d.commitId && commitUrl ? (
-                        <a
-                          href={commitUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="relative z-10 font-mono text-foreground/80 underline decoration-muted-foreground/60 underline-offset-2 hover:text-foreground hover:decoration-foreground max-md:after:absolute max-md:after:-inset-x-2 max-md:after:-inset-y-3.5 max-md:after:content-['']"
-                          title={d.commitId}
-                        >
-                          {d.commitId.slice(0, 7)}
-                        </a>
-                      ) : d.commitId ? (
-                        <span className="font-mono" title={d.commitId}>
-                          {d.commitId.slice(0, 7)}
-                        </span>
+                      {d.commitId ? (
+                        <CommitSha
+                          commitId={d.commitId}
+                          url={commitUrl}
+                          // Above the row's stretched link, so it opens the
+                          // diff rather than the deploy.
+                          className={
+                            commitUrl
+                              ? "z-10 text-foreground/80 hover:text-foreground"
+                              : undefined
+                          }
+                        />
                       ) : null}
                       {spellStatus ? (
                         <span

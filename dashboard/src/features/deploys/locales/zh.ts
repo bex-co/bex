@@ -49,11 +49,6 @@ const zhDeploys: Record<string, TranslationEntry> = {
     message: "未知",
     description: "Deploy status: unrecognized backend value",
   },
-  "deploys.statusLabel": {
-    message: "部署状态",
-    description:
-      "Deploy detail header: explicit label distinguishing deploy status from service phase",
-  },
   "deploys.imageDigestCopy": {
     message: "复制镜像摘要",
     description:
@@ -67,25 +62,72 @@ const zhDeploys: Record<string, TranslationEntry> = {
     message: "无法复制到剪贴板",
     description: "Deploy header: toast when copying the image digest fails",
   },
-  "deploys.created": {
-    message: "创建于",
-    description: "Deploy header: created-at label",
-  },
-  "deploys.updated": {
-    message: "更新时间",
-    description: "部署最近一次已存储状态转换时间的标签",
-  },
-  "deploys.started": {
-    message: "开始于",
-    description: "Deploy header: started-at label",
-  },
-  "deploys.finished": {
-    message: "完成于",
-    description: "Deploy header: finished-at label",
-  },
   "deploys.duration": {
     message: "耗时",
     description: "Deploy header: elapsed build/deploy time label",
+  },
+  "deploys.factStatus": {
+    message: "状态",
+    description:
+      "Deploy page: label of the deploy's Status fact (Render's STATUS)",
+  },
+  "deploys.factDeployed": {
+    message: "部署时间",
+    description:
+      "Deploy page: label of the fact giving when the deploy was created (Render's DEPLOYED)",
+  },
+  "deploys.factSource": {
+    message: "来源",
+    description:
+      "Deploy page: label of the fact naming the commit or image the deploy ran (Render's SOURCE)",
+  },
+  "deploys.factPreDeploy": {
+    message: "预部署",
+    description:
+      "Deploy page: label of the fact giving the outcome of the deploy's pre-deploy command",
+  },
+  "deploys.preDeployRunning": {
+    message: "运行中",
+    description:
+      "Deploy page: Pre-deploy fact value while the pre-deploy command runs",
+  },
+  "deploys.preDeploySucceeded": {
+    message: "成功",
+    description:
+      "Deploy page: Pre-deploy fact value once the pre-deploy command succeeded",
+  },
+  "deploys.preDeployFailed": {
+    message: "失败",
+    description:
+      "Deploy page: Pre-deploy fact value when the pre-deploy command failed",
+  },
+  "deploys.preDeployCanceled": {
+    message: "已取消",
+    description:
+      "Deploy page: Pre-deploy fact value when the pre-deploy command was canceled",
+  },
+  "deploys.idLabel": {
+    message: "部署 ID",
+    description:
+      "Deploy page: the deploy's id, named in its copy button's accessible name",
+  },
+  "deploys.idCopied": {
+    message: "已复制部署 ID",
+    description: "Deploy page: toast after copying the deploy's id",
+  },
+  "deploys.idCopyFailed": {
+    message: "无法复制部署 ID",
+    description: "Deploy page: toast when copying the deploy's id fails",
+  },
+  "deploys.loadErrorTitle": {
+    message: "无法加载此部署",
+    description:
+      "Deploy page: title of the state shown when the deploy itself could not be read",
+  },
+  "deploys.loadErrorBody": {
+    message: "暂时无法读取此部署。部署本身不受影响。",
+    description:
+      "Deploy page: body of the state shown when the deploy itself could not be read; says the deploy is unaffected",
   },
   "deploys.durationValue": {
     message: "耗时 {duration}",
@@ -434,6 +476,11 @@ const zhDeploys: Record<string, TranslationEntry> = {
     message: "退出全屏",
     description:
       "Deploy log viewer: button restoring the maximized viewer to its inline size",
+  },
+  "deploys.logMinimizeHint": {
+    message: "退出全屏 (Esc)",
+    description:
+      "Deploy log viewer: tooltip of the button leaving full screen, naming the Escape key that also leaves it",
   },
   "deploys.reason.http_port_waiting": {
     message: "正在等待容器启动，然后检测其 HTTP 端口",

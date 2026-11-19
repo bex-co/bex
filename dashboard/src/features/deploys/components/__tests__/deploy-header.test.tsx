@@ -77,18 +77,23 @@ describe("DeployHeader", () => {
   });
 
   it.each([
-    ["running", "Pre-deploy command running"],
-    ["succeeded", "Pre-deploy command succeeded"],
-    ["failed", "Pre-deploy command failed"],
-    ["canceled", "Pre-deploy command canceled"],
+    ["running", "Running"],
+    ["succeeded", "Succeeded"],
+    ["failed", "Failed"],
+    ["canceled", "Canceled"],
   ])("renders the %s pre-deploy outcome", (preDeployStatus, label) => {
-    render(<DeployHeader deploy={deploy({ preDeployStatus })} />);
-    expect(screen.getByText(label)).toBeInTheDocument();
+    // A status the deploy itself cannot share with this word, so the match is
+    // the Pre-deploy fact's.
+    render(
+      <DeployHeader deploy={deploy({ status: "queued", preDeployStatus })} />,
+    );
+    const fact = screen.getByText("Pre-deploy").closest("div");
+    expect(fact).toHaveTextContent(label);
   });
 
-  it("shows no pre-deploy line when the deploy has no pre-deploy step", () => {
+  it("shows no pre-deploy fact when the deploy has no pre-deploy step", () => {
     render(<DeployHeader deploy={deploy({ preDeployStatus: "" })} />);
-    expect(screen.queryByText(/Pre-deploy command/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Pre-deploy")).not.toBeInTheDocument();
   });
 
   it.each([
@@ -110,7 +115,8 @@ describe("DeployHeader", () => {
     expect(label).not.toHaveClass("capitalize");
   });
 
-  it("renders the resolved commit as short SHA + the message's first line (w9/001)", () => {
+  // Render titles the deploy page with the commit's subject.
+  it("titles the deploy with the commit's first line and shows its short SHA (w9/001)", () => {
     render(
       <DeployHeader
         deploy={deploy({
@@ -119,9 +125,29 @@ describe("DeployHeader", () => {
         })}
       />,
     );
+    expect(
+      screen.getByRole("heading", { level: 2, name: "fix: header" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("abc1234")).toBeInTheDocument();
-    expect(screen.getByText(/fix: header/)).toBeInTheDocument();
     expect(screen.queryByText(/longer body/)).not.toBeInTheDocument();
+    // The deploy's own id stays on the page, copyable.
+    expect(screen.getByText("dep-1")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Copy Deploy ID" }),
+    ).toBeInTheDocument();
+  });
+
+  it("links the short SHA to its diff when the repo is browsable", () => {
+    render(
+      <DeployHeader
+        repo="https://github.com/acme/web"
+        deploy={deploy({ commitId: "abc1234def5678", commitMessage: "fix" })}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "abc1234" })).toHaveAttribute(
+      "href",
+      "https://github.com/acme/web/commit/abc1234def5678",
+    );
   });
 
   // Hash-only commits (message unavailable) must still render cleanly — the
@@ -135,14 +161,18 @@ describe("DeployHeader", () => {
         })}
       />,
     );
-    const line = screen.getByText("abc1234").closest("p");
+    // No subject to title it by: the deploy's id is its name.
+    expect(
+      screen.getByRole("heading", { level: 2, name: "dep-1" }),
+    ).toBeInTheDocument();
+    const line = screen.getByText("abc1234").parentElement;
     expect(line?.textContent?.trim()).toBe("abc1234");
   });
 
-  // w6/m45 t004: the date used to be separated from the commit message by a
-  // margin alone, so the paragraph was one unbroken text run — a screen reader
-  // (and anyone copying the line) got "…Docker build contextAugust 22, 2026".
-  it("separates the commit message from the commit date with real text", () => {
+  // w6/m45 t004: the date used to be separated from the commit by a margin
+  // alone, so the line was one unbroken text run — a screen reader (and anyone
+  // copying the line) got "…Docker build contextAugust 22, 2026".
+  it("separates the commit from the commit date with real text", () => {
     render(
       <DeployHeader
         deploy={deploy({
@@ -152,8 +182,8 @@ describe("DeployHeader", () => {
         })}
       />,
     );
-    const line = screen.getByText("abc1234").closest("p");
-    expect(line?.textContent).toMatch(/Docker build context\s+·\s+\S/);
+    const line = screen.getByText("abc1234").parentElement;
+    expect(line?.textContent).toMatch(/abc1234\s+·\s+\S/);
   });
 
   it("shows no commit line when the commit was never resolved", () => {
@@ -167,15 +197,15 @@ describe("DeployHeader", () => {
         deploy={deploy({ image: "registry.example.com/web:abc123" })}
       />,
     );
-    expect(
-      screen.getByText("registry.example.com/web:abc123"),
-    ).toBeInTheDocument();
+    // Whole, with a break opportunity after each slash rather than a cut.
+    const image = screen.getByText("registry.example.com/web:abc123");
+    expect(image.querySelectorAll("wbr")).toHaveLength(1);
   });
 
   it("shows duration through the shared formatter", () => {
     render(<DeployHeader deploy={deploy()} />);
 
-    expect(screen.getByText("Duration:")).toBeInTheDocument();
+    expect(screen.getByText("Duration")).toBeInTheDocument();
     expect(screen.getByText("59s")).toBeInTheDocument();
   });
 
@@ -192,22 +222,31 @@ describe("DeployHeader", () => {
       />,
     );
 
-    expect(screen.queryByText("Created:")).not.toBeInTheDocument();
-    expect(screen.queryByText("Duration:")).not.toBeInTheDocument();
+    expect(screen.queryByText("Deployed")).not.toBeInTheDocument();
+    expect(screen.queryByText("Duration")).not.toBeInTheDocument();
     expect(screen.queryByText("—")).not.toBeInTheDocument();
   });
 
   // w4/m156: a live deploy whose start was never observed arrives with
-  // GraphQL's empty-string encoding. The header shows no Started fact and no
-  // Duration — not a 0s span ending at the finish — while keeping the facts
-  // that are known.
-  it("shows no start or duration for a finished deploy with an unknown start", () => {
+  // GraphQL's empty-string encoding. The header shows no Duration — not a 0s
+  // span ending at the finish — while keeping the facts that are known.
+  it("shows no duration for a finished deploy with an unknown start", () => {
     render(<DeployHeader deploy={deploy({ startedAt: "" })} />);
 
-    expect(screen.queryByText("Started:")).not.toBeInTheDocument();
-    expect(screen.queryByText("Duration:")).not.toBeInTheDocument();
+    expect(screen.queryByText("Duration")).not.toBeInTheDocument();
     expect(screen.queryByText("0s")).not.toBeInTheDocument();
-    expect(screen.getByText("Finished:")).toBeInTheDocument();
+    expect(screen.queryByText("In progress")).not.toBeInTheDocument();
+    expect(screen.getByText("Deployed")).toBeInTheDocument();
+  });
+
+  it("says a running deploy's duration is still in progress", () => {
+    render(
+      <DeployHeader
+        deploy={deploy({ status: "build_in_progress", finishedAt: null })}
+      />,
+    );
+    expect(screen.getByText("Duration")).toBeInTheDocument();
+    expect(screen.getByText("In progress")).toBeInTheDocument();
   });
 
   // w4/m112: a rollout gated on a failing health check used to show a bare

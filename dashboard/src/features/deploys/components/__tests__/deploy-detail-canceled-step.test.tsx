@@ -16,6 +16,13 @@ import type { LogRange } from "../../lib/log-range";
 // only the server is fake — and it filters logs by the requested window exactly
 // as bex-api does, so the default window's end bound is what's under test.
 
+// The page's back link is a router Link; these tests render the page with no
+// router around it, so it stands in as a plain anchor at its path.
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  Link: (await import("@/test/mocks/router-link")).PlainLink,
+}));
+
 vi.mock("../deploy-header", () => ({
   DeployHeader: ({ deploy }: { deploy: { finishedAt: string } | null }) => (
     <div data-testid="deploy-header" data-finished={deploy?.finishedAt ?? ""} />

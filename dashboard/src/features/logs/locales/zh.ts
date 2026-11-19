@@ -145,6 +145,16 @@ const zhLogs: Record<string, TranslationEntry> = {
     message: "跳到最新",
     description: "Button to re-pin autoscroll to the newest log line",
   },
+  "logs.linesLabel": {
+    message: "日志行",
+    description:
+      "Accessible name of the scrollable log list, which takes keyboard focus so arrow keys and Page Up/Down scroll it",
+  },
+  "logs.endOfLog": {
+    message: "日志结束",
+    description:
+      "Closing line after the last row of a log that will not grow (a finished deploy's), so a short log reads as complete",
+  },
   "logs.loading": {
     message: "正在加载日志……",
     description: "Shown while the first historical page is loading",

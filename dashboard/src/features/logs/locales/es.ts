@@ -167,6 +167,16 @@ const esLogs: Record<string, TranslationEntry> = {
     message: "Ir al último",
     description: "Button to re-pin autoscroll to the newest log line",
   },
+  "logs.linesLabel": {
+    message: "Líneas de log",
+    description:
+      "Accessible name of the scrollable log list, which takes keyboard focus so arrow keys and Page Up/Down scroll it",
+  },
+  "logs.endOfLog": {
+    message: "Fin del log",
+    description:
+      "Closing line after the last row of a log that will not grow (a finished deploy's), so a short log reads as complete",
+  },
   "logs.loading": {
     message: "Cargando logs…",
     description: "Shown while the first historical page is loading",

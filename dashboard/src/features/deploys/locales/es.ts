@@ -49,11 +49,6 @@ const esDeploys: Record<string, TranslationEntry> = {
     message: "Desconocido",
     description: "Deploy status: unrecognized backend value",
   },
-  "deploys.statusLabel": {
-    message: "Estado del despliegue",
-    description:
-      "Deploy detail header: explicit label distinguishing deploy status from service phase",
-  },
   "deploys.imageDigestCopy": {
     message: "Copiar digest de la imagen",
     description:
@@ -67,25 +62,73 @@ const esDeploys: Record<string, TranslationEntry> = {
     message: "No se pudo copiar al portapapeles",
     description: "Deploy header: toast when copying the image digest fails",
   },
-  "deploys.created": {
-    message: "Creado",
-    description: "Deploy header: created-at label",
-  },
-  "deploys.updated": {
-    message: "Actualizado",
-    description: "Label for the deploy's latest stored transition time",
-  },
-  "deploys.started": {
-    message: "Iniciado",
-    description: "Deploy header: started-at label",
-  },
-  "deploys.finished": {
-    message: "Finalizado",
-    description: "Deploy header: finished-at label",
-  },
   "deploys.duration": {
     message: "Duración",
     description: "Deploy header: elapsed build/deploy time label",
+  },
+  "deploys.factStatus": {
+    message: "Estado",
+    description:
+      "Deploy page: label of the deploy's Status fact (Render's STATUS)",
+  },
+  "deploys.factDeployed": {
+    message: "Desplegado",
+    description:
+      "Deploy page: label of the fact giving when the deploy was created (Render's DEPLOYED)",
+  },
+  "deploys.factSource": {
+    message: "Fuente",
+    description:
+      "Deploy page: label of the fact naming the commit or image the deploy ran (Render's SOURCE)",
+  },
+  "deploys.factPreDeploy": {
+    message: "Previo al despliegue",
+    description:
+      "Deploy page: label of the fact giving the outcome of the deploy's pre-deploy command",
+  },
+  "deploys.preDeployRunning": {
+    message: "En ejecución",
+    description:
+      "Deploy page: Pre-deploy fact value while the pre-deploy command runs",
+  },
+  "deploys.preDeploySucceeded": {
+    message: "Completado",
+    description:
+      "Deploy page: Pre-deploy fact value once the pre-deploy command succeeded",
+  },
+  "deploys.preDeployFailed": {
+    message: "Falló",
+    description:
+      "Deploy page: Pre-deploy fact value when the pre-deploy command failed",
+  },
+  "deploys.preDeployCanceled": {
+    message: "Cancelado",
+    description:
+      "Deploy page: Pre-deploy fact value when the pre-deploy command was canceled",
+  },
+  "deploys.idLabel": {
+    message: "ID del despliegue",
+    description:
+      "Deploy page: the deploy's id, named in its copy button's accessible name",
+  },
+  "deploys.idCopied": {
+    message: "ID del despliegue copiado",
+    description: "Deploy page: toast after copying the deploy's id",
+  },
+  "deploys.idCopyFailed": {
+    message: "No se pudo copiar el ID del despliegue",
+    description: "Deploy page: toast when copying the deploy's id fails",
+  },
+  "deploys.loadErrorTitle": {
+    message: "No se pudo cargar este despliegue",
+    description:
+      "Deploy page: title of the state shown when the deploy itself could not be read",
+  },
+  "deploys.loadErrorBody": {
+    message:
+      "No se pudo leer este despliegue en este momento. El despliegue en sí no se ve afectado.",
+    description:
+      "Deploy page: body of the state shown when the deploy itself could not be read; says the deploy is unaffected",
   },
   "deploys.durationValue": {
     message: "Duración {duration}",
@@ -460,6 +503,11 @@ const esDeploys: Record<string, TranslationEntry> = {
     message: "Salir de pantalla completa",
     description:
       "Deploy log viewer: button restoring the maximized viewer to its inline size",
+  },
+  "deploys.logMinimizeHint": {
+    message: "Salir de pantalla completa (Esc)",
+    description:
+      "Deploy log viewer: tooltip of the button leaving full screen, naming the Escape key that also leaves it",
   },
   "deploys.reason.http_port_waiting": {
     message:

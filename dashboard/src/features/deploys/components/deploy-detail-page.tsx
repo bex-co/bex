@@ -1,20 +1,26 @@
 import { isCron } from "@/features/services/lib/service-type";
 import { useMemo } from "react";
+import { Link } from "@tanstack/react-router";
+import { ChevronLeft } from "lucide-react";
 import { EmptyState } from "@/common/components/empty-state";
 import { Button } from "@/common/components/ui/button";
 import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import { relayableReason } from "@/common/lib/graphql-error";
+import { isUnauthenticatedError } from "@/common/apollo/auth-error-link";
+import { ResourceLoadError } from "@/common/components/resource-load-error";
 import { useServiceBase } from "@/features/services/lib/service-base";
 import { useServer } from "@/features/services/hooks/use-server";
 import { useDeploy } from "../hooks/use-deploy";
 import { useCanceledStepEnd } from "../hooks/use-canceled-step-end";
 import { hookWindowEnd } from "../lib/hook-window";
+import { deployTitle } from "../lib/deploy-presentation";
 import { rangeStart, type LogRange } from "../lib/log-range";
 import { DeployHeader } from "./deploy-header";
 import { DeployLogPanel } from "./deploy-log-panel";
 import { DeployTimeline } from "./deploy-timeline";
 import { DeployActions } from "./deploy-actions";
+import { DEPLOY_BODY_CLASS, DEPLOY_PAGE_TOP_CLASS } from "./deploy-page-layout";
 
 export interface DeployDetailPageProps {
   serviceId: string;
@@ -94,17 +100,61 @@ export function DeployDetailPage({
         ? {}
         : undefined;
 
+  // The way back to the list this deploy was opened from — on a phone the
+  // sidebar that names it is a drawer away.
+  const backLink = (
+    <Link
+      to={deploysTab.to}
+      params={deploysTab.params}
+      className="relative inline-flex h-5 items-center gap-1 text-xs text-muted-foreground hover:text-foreground max-lg:after:absolute max-lg:after:-inset-x-2 max-lg:after:-inset-y-3 max-lg:after:content-['']"
+    >
+      <ChevronLeft className="size-3.5" aria-hidden />
+      {t(cron ? "services.navBuilds" : "services.navDeploys")}
+    </Link>
+  );
+
   // A Live deploy keeps refreshing (w4/262), so a failed refresh must not
   // unmount the detail it already shows: only a first-load failure is
   // whole-page; afterwards the last good detail stays with an inline retry.
-  if (error && !deploy) {
+  // An expired session gets the detail pages' Sign in (w3/m80 t002), never
+  // an outage's Try again.
+  if (error && !deploy && isUnauthenticatedError(error)) {
     return (
-      <EmptyState
-        role="alert"
-        iconName="AlertCircle"
-        title={t("logs.errorTitle")}
-        description={mutationErrorMessage(error, t("common.loadErrorRetry"))}
-      />
+      <div className={DEPLOY_PAGE_TOP_CLASS}>
+        {backLink}
+        <ResourceLoadError variant="unauthenticated" />
+      </div>
+    );
+  }
+  if (error && !deploy) {
+    // Under the plain explanation goes the server's own words, for support,
+    // when it gave any; a read that never got an answer has none worth
+    // showing (w5/167).
+    const errorDetail = relayableReason(error);
+    return (
+      <div className={DEPLOY_PAGE_TOP_CLASS}>
+        {backLink}
+        <EmptyState
+          role="alert"
+          iconName="AlertCircle"
+          title={t("deploys.loadErrorTitle")}
+          description={
+            <>
+              {t("deploys.loadErrorBody")}
+              {errorDetail ? (
+                <span className="mt-1 block font-mono text-xs">
+                  {errorDetail}
+                </span>
+              ) : null}
+            </>
+          }
+          action={
+            <Button variant="outline" size="sm" onClick={refetch}>
+              {t("common.tryAgain")}
+            </Button>
+          }
+        />
+      </div>
     );
   }
 
@@ -126,42 +176,52 @@ export function DeployDetailPage({
           </Button>
         </div>
       ) : null}
-      <DeployHeader
-        deploy={deploy}
-        actions={
-          deploy ? (
-            <DeployActions
-              serviceId={serviceId}
-              deployId={deploy.id}
-              status={deploy.status}
-              commitId={deploy.commitId}
-              commitMessage={deploy.commitMessage}
-              image={deploy.image}
-              trigger={deploy.trigger}
-              buildAvailable={deploy.buildAvailable}
-              autoDeployOn={service ? service.autoDeploy === true : undefined}
-            />
-          ) : undefined
-        }
-      />
-      <DeployTimeline serviceId={serviceId} deploy={deploy} />
-      {/* Keyed per deploy: the live build tail keeps its rows through a pause
-          (w4/m192), so a same-service deploy switch must start a fresh reader
-          rather than carry the previous build's streamed lines. */}
-      <DeployLogPanel
-        key={deployId}
-        resource={serviceId}
-        deployId={deployId}
-        startTime={window ? window.start : deployStart}
-        endTime={window ? window.end : deployEnd}
-        hasPreDeploy={
-          !!deploy?.preDeployStatus || !!deploy?.initialDeployHookStatus
-        }
-        followBuild={deploy?.status === "build_in_progress"}
-        range={range}
-        onRangeChange={onRangeChange}
-        limitedWindow={limitedWindow}
-      />
+      <div className={DEPLOY_PAGE_TOP_CLASS}>
+        {backLink}
+        <DeployHeader
+          deploy={deploy}
+          repo={service?.repo}
+          actions={
+            deploy ? (
+              <DeployActions
+                serviceId={serviceId}
+                deployId={deploy.id}
+                status={deploy.status}
+                commitId={deploy.commitId}
+                commitMessage={deploy.commitMessage}
+                image={deploy.image}
+                trigger={deploy.trigger}
+                buildAvailable={deploy.buildAvailable}
+                autoDeployOn={service ? service.autoDeploy === true : undefined}
+              />
+            ) : undefined
+          }
+        />
+      </div>
+      {/* Render's deploy page goes from its facts straight to the log; the
+          step-by-step timeline is the supporting record, beside it on a wide
+          screen and under it otherwise. */}
+      <div className={DEPLOY_BODY_CLASS}>
+        {/* Keyed per deploy: the live build tail keeps its rows through a pause
+            (w4/m192), so a same-service deploy switch must start a fresh reader
+            rather than carry the previous build's streamed lines. */}
+        <DeployLogPanel
+          key={deployId}
+          resource={serviceId}
+          title={deployTitle(deploy?.commitMessage, deployId)}
+          deployId={deployId}
+          startTime={window ? window.start : deployStart}
+          endTime={window ? window.end : deployEnd}
+          hasPreDeploy={
+            !!deploy?.preDeployStatus || !!deploy?.initialDeployHookStatus
+          }
+          followBuild={deploy?.status === "build_in_progress"}
+          range={range}
+          onRangeChange={onRangeChange}
+          limitedWindow={limitedWindow}
+        />
+        <DeployTimeline serviceId={serviceId} deploy={deploy} />
+      </div>
     </div>
   );
 }

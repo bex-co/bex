@@ -167,6 +167,16 @@ const ptLogs: Record<string, TranslationEntry> = {
     message: "Ir para o mais recente",
     description: "Button to re-pin autoscroll to the newest log line",
   },
+  "logs.linesLabel": {
+    message: "Linhas de log",
+    description:
+      "Accessible name of the scrollable log list, which takes keyboard focus so arrow keys and Page Up/Down scroll it",
+  },
+  "logs.endOfLog": {
+    message: "Fim do log",
+    description:
+      "Closing line after the last row of a log that will not grow (a finished deploy's), so a short log reads as complete",
+  },
   "logs.loading": {
     message: "Carregando logs…",
     description: "Shown while the first historical page is loading",

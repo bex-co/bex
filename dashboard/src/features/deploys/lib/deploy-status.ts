@@ -3,10 +3,7 @@
 // surfaces can't drift on what a status badge looks like.
 
 export type DeployBadgeVariant =
-  | "default"
-  | "secondary"
-  | "destructive"
-  | "outline";
+  "default" | "secondary" | "destructive" | "outline";
 
 /** Terminal values in Render's eleven-state deploy vocabulary. */
 const TERMINAL_STATUSES = new Set([
@@ -115,9 +112,27 @@ export function deployEndedStatus(
   return details?.deployStatus ?? "";
 }
 
-// The pre-deploy step's own status line (w1/m33), shown under the deploy badge
-// so a migration failure reads distinctly from a health-check failure. Only
-// running/succeeded/failed carry a label; "" (no pre-deploy step) shows nothing.
+/**
+ * Where a deploy is in its life, the one classification every drawing of a
+ * status starts from — its icon (DeployStatusIcon) and the deploy page's
+ * Status tint — so the two cannot disagree. A deactivated deploy went live
+ * once, so it counts as succeeded.
+ */
+export type DeployStatusKind =
+  "live" | "succeeded" | "failed" | "canceled" | "in_progress" | "pending";
+
+export function deployStatusKind(status: string): DeployStatusKind {
+  if (status === "live") return "live";
+  if (status === "deactivated" || status === "succeeded") return "succeeded";
+  if (deployStatusVariant(status) === "destructive") return "failed";
+  if (status === "canceled") return "canceled";
+  if (status.endsWith("_in_progress")) return "in_progress";
+  return "pending";
+}
+
+// The pre-deploy step's own status sentence (w1/m33) on a Deploys list row, so
+// a migration failure reads distinctly from a health-check failure. Only a
+// known step status carries a label; "" (no pre-deploy step) shows nothing.
 export function preDeployStatusKey(status: string): string | null {
   switch (status) {
     case "running":
@@ -128,6 +143,22 @@ export function preDeployStatusKey(status: string): string | null {
       return "services.eventsPreDeployFailed";
     case "canceled":
       return "services.eventsPreDeployCanceled";
+    default:
+      return null;
+  }
+}
+
+// The same outcome as one word, the deploy page's Pre-deploy fact value.
+export function preDeployValueKey(status: string): string | null {
+  switch (status) {
+    case "running":
+      return "deploys.preDeployRunning";
+    case "succeeded":
+      return "deploys.preDeploySucceeded";
+    case "failed":
+      return "deploys.preDeployFailed";
+    case "canceled":
+      return "deploys.preDeployCanceled";
     default:
       return null;
   }

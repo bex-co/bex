@@ -49,11 +49,6 @@ const koDeploys: Record<string, TranslationEntry> = {
     message: "알 수 없음",
     description: "Deploy status: unrecognized backend value",
   },
-  "deploys.statusLabel": {
-    message: "배포 상태",
-    description:
-      "Deploy detail header: explicit label distinguishing deploy status from service phase",
-  },
   "deploys.imageDigestCopy": {
     message: "이미지 다이제스트 복사",
     description:
@@ -67,25 +62,73 @@ const koDeploys: Record<string, TranslationEntry> = {
     message: "클립보드에 복사하지 못했습니다",
     description: "Deploy header: toast when copying the image digest fails",
   },
-  "deploys.created": {
-    message: "생성",
-    description: "Deploy header: created-at label",
-  },
-  "deploys.updated": {
-    message: "업데이트",
-    description: "Label for the deploy's latest stored transition time",
-  },
-  "deploys.started": {
-    message: "시작",
-    description: "Deploy header: started-at label",
-  },
-  "deploys.finished": {
-    message: "완료",
-    description: "Deploy header: finished-at label",
-  },
   "deploys.duration": {
     message: "소요 시간",
     description: "Deploy header: elapsed build/deploy time label",
+  },
+  "deploys.factStatus": {
+    message: "상태",
+    description:
+      "Deploy page: label of the deploy's Status fact (Render's STATUS)",
+  },
+  "deploys.factDeployed": {
+    message: "배포 시각",
+    description:
+      "Deploy page: label of the fact giving when the deploy was created (Render's DEPLOYED)",
+  },
+  "deploys.factSource": {
+    message: "소스",
+    description:
+      "Deploy page: label of the fact naming the commit or image the deploy ran (Render's SOURCE)",
+  },
+  "deploys.factPreDeploy": {
+    message: "사전 배포",
+    description:
+      "Deploy page: label of the fact giving the outcome of the deploy's pre-deploy command",
+  },
+  "deploys.preDeployRunning": {
+    message: "실행 중",
+    description:
+      "Deploy page: Pre-deploy fact value while the pre-deploy command runs",
+  },
+  "deploys.preDeploySucceeded": {
+    message: "성공",
+    description:
+      "Deploy page: Pre-deploy fact value once the pre-deploy command succeeded",
+  },
+  "deploys.preDeployFailed": {
+    message: "실패",
+    description:
+      "Deploy page: Pre-deploy fact value when the pre-deploy command failed",
+  },
+  "deploys.preDeployCanceled": {
+    message: "취소됨",
+    description:
+      "Deploy page: Pre-deploy fact value when the pre-deploy command was canceled",
+  },
+  "deploys.idLabel": {
+    message: "배포 ID",
+    description:
+      "Deploy page: the deploy's id, named in its copy button's accessible name",
+  },
+  "deploys.idCopied": {
+    message: "배포 ID를 복사했습니다",
+    description: "Deploy page: toast after copying the deploy's id",
+  },
+  "deploys.idCopyFailed": {
+    message: "배포 ID를 복사하지 못했습니다",
+    description: "Deploy page: toast when copying the deploy's id fails",
+  },
+  "deploys.loadErrorTitle": {
+    message: "이 배포를 불러오지 못했습니다",
+    description:
+      "Deploy page: title of the state shown when the deploy itself could not be read",
+  },
+  "deploys.loadErrorBody": {
+    message:
+      "지금은 이 배포를 읽을 수 없습니다. 배포 자체에는 영향이 없습니다.",
+    description:
+      "Deploy page: body of the state shown when the deploy itself could not be read; says the deploy is unaffected",
   },
   "deploys.durationValue": {
     message: "소요 시간 {duration}",
@@ -440,6 +483,11 @@ const koDeploys: Record<string, TranslationEntry> = {
     message: "전체 화면 종료",
     description:
       "Deploy log viewer: button restoring the maximized viewer to its inline size",
+  },
+  "deploys.logMinimizeHint": {
+    message: "전체 화면 종료 (Esc)",
+    description:
+      "Deploy log viewer: tooltip of the button leaving full screen, naming the Escape key that also leaves it",
   },
   "deploys.reason.http_port_waiting": {
     message: "컨테이너가 시작되기를 기다린 후 HTTP 포트를 감지합니다",

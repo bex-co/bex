@@ -359,3 +359,45 @@ describe("LogLineList reader anchor during refresh", () => {
     await settleVirtualScroll();
   });
 });
+
+describe("LogLineList ended (a finished deploy's log)", () => {
+  setupVirtualGeometry();
+
+  // The harness has no layout, so the panel keeps its 520px fixed height and
+  // every row measures 24px; the list adds a 12px inset above and below, and
+  // an ended log its 24px end line.
+  const heightOf = (container: HTMLElement) =>
+    viewportOf(container).style.height;
+
+  it("closes a finished log with an end line", () => {
+    render(<LogLineList lines={buffer(3)} ended />);
+    expect(screen.getByText("End of log")).toBeInTheDocument();
+  });
+
+  it("has no end line while the log can still grow", () => {
+    render(<LogLineList lines={buffer(3)} />);
+    expect(screen.queryByText("End of log")).not.toBeInTheDocument();
+  });
+
+  it("never shrinks the panel under a short log, so its placeholder holds", () => {
+    const { container } = render(<LogLineList lines={buffer(3)} ended />);
+    expect(heightOf(container)).toBe("520px");
+  });
+
+  it("grows the panel to show a log that only just overflows it whole", () => {
+    // 24 rows + 24px inset + 24px end line + 2px border = 626px, within
+    // 1.25 × 520px.
+    const { container } = render(<LogLineList lines={buffer(24)} ended />);
+    expect(heightOf(container)).toBe("626px");
+  });
+
+  it("keeps a live log's panel at its height as lines arrive", () => {
+    const { container } = render(<LogLineList lines={buffer(24)} />);
+    expect(heightOf(container)).toBe("520px");
+  });
+
+  it("scrolls a long finished log inside the panel's own height", () => {
+    const { container } = render(<LogLineList lines={buffer(40)} ended />);
+    expect(heightOf(container)).toBe("520px");
+  });
+});

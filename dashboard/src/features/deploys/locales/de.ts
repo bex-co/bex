@@ -49,11 +49,6 @@ const deDeploys: Record<string, TranslationEntry> = {
     message: "Unbekannt",
     description: "Deploy status: unrecognized backend value",
   },
-  "deploys.statusLabel": {
-    message: "Deployment-Status",
-    description:
-      "Deploy detail header: explicit label distinguishing deploy status from service phase",
-  },
   "deploys.imageDigestCopy": {
     message: "Image-Digest kopieren",
     description:
@@ -67,25 +62,73 @@ const deDeploys: Record<string, TranslationEntry> = {
     message: "Kopieren in die Zwischenablage fehlgeschlagen",
     description: "Deploy header: toast when copying the image digest fails",
   },
-  "deploys.created": {
-    message: "Erstellt",
-    description: "Deploy header: created-at label",
-  },
-  "deploys.updated": {
-    message: "Aktualisiert",
-    description: "Label for the deploy's latest stored transition time",
-  },
-  "deploys.started": {
-    message: "Gestartet",
-    description: "Deploy header: started-at label",
-  },
-  "deploys.finished": {
-    message: "Beendet",
-    description: "Deploy header: finished-at label",
-  },
   "deploys.duration": {
     message: "Dauer",
     description: "Deploy header: elapsed build/deploy time label",
+  },
+  "deploys.factStatus": {
+    message: "Status",
+    description:
+      "Deploy page: label of the deploy's Status fact (Render's STATUS)",
+  },
+  "deploys.factDeployed": {
+    message: "Bereitgestellt",
+    description:
+      "Deploy page: label of the fact giving when the deploy was created (Render's DEPLOYED)",
+  },
+  "deploys.factSource": {
+    message: "Quelle",
+    description:
+      "Deploy page: label of the fact naming the commit or image the deploy ran (Render's SOURCE)",
+  },
+  "deploys.factPreDeploy": {
+    message: "Pre-Deploy",
+    description:
+      "Deploy page: label of the fact giving the outcome of the deploy's pre-deploy command",
+  },
+  "deploys.preDeployRunning": {
+    message: "Läuft",
+    description:
+      "Deploy page: Pre-deploy fact value while the pre-deploy command runs",
+  },
+  "deploys.preDeploySucceeded": {
+    message: "Erfolgreich",
+    description:
+      "Deploy page: Pre-deploy fact value once the pre-deploy command succeeded",
+  },
+  "deploys.preDeployFailed": {
+    message: "Fehlgeschlagen",
+    description:
+      "Deploy page: Pre-deploy fact value when the pre-deploy command failed",
+  },
+  "deploys.preDeployCanceled": {
+    message: "Abgebrochen",
+    description:
+      "Deploy page: Pre-deploy fact value when the pre-deploy command was canceled",
+  },
+  "deploys.idLabel": {
+    message: "Deployment-ID",
+    description:
+      "Deploy page: the deploy's id, named in its copy button's accessible name",
+  },
+  "deploys.idCopied": {
+    message: "Deployment-ID kopiert",
+    description: "Deploy page: toast after copying the deploy's id",
+  },
+  "deploys.idCopyFailed": {
+    message: "Deployment-ID konnte nicht kopiert werden",
+    description: "Deploy page: toast when copying the deploy's id fails",
+  },
+  "deploys.loadErrorTitle": {
+    message: "Dieses Deployment konnte nicht geladen werden",
+    description:
+      "Deploy page: title of the state shown when the deploy itself could not be read",
+  },
+  "deploys.loadErrorBody": {
+    message:
+      "Dieses Deployment konnte gerade nicht gelesen werden. Das Deployment selbst ist nicht betroffen.",
+    description:
+      "Deploy page: body of the state shown when the deploy itself could not be read; says the deploy is unaffected",
   },
   "deploys.durationValue": {
     message: "Dauer {duration}",
@@ -451,6 +494,11 @@ const deDeploys: Record<string, TranslationEntry> = {
     message: "Vollbild beenden",
     description:
       "Deploy log viewer: button restoring the maximized viewer to its inline size",
+  },
+  "deploys.logMinimizeHint": {
+    message: "Vollbild beenden (Esc)",
+    description:
+      "Deploy log viewer: tooltip of the button leaving full screen, naming the Escape key that also leaves it",
   },
   "deploys.reason.http_port_waiting": {
     message:

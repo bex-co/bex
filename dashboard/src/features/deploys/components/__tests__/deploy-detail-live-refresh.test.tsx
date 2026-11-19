@@ -12,6 +12,13 @@ import { DeployDetailPage } from "../deploy-detail-page";
 // page, useDeploy, header and timeline over a real Apollo client; actions are
 // stubbed to expose the status that gates Rollback.
 
+// The page's back link is a router Link; these tests render the page with no
+// router around it, so it stands in as a plain anchor at its path.
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  Link: (await import("@/test/mocks/router-link")).PlainLink,
+}));
+
 vi.mock("../deploy-log-panel", () => ({ DeployLogPanel: () => null }));
 vi.mock("../deploy-actions", () => ({
   DeployActions: ({ status }: { status: string }) => (
@@ -109,9 +116,9 @@ function expectShown(status: "Live" | "Deactivated") {
   );
   // The header badge and the timeline's terminal step.
   expect(screen.getAllByText(status)).toHaveLength(2);
-  // The replacement instant: the header's Updated and the Deactivated step.
+  // The replacement instant: the timeline's Deactivated step.
   const replaced = screen.queryAllByText(formatDateTime(REPLACED_AT)!);
-  expect(replaced).toHaveLength(status === "Live" ? 0 : 2);
+  expect(replaced).toHaveLength(status === "Live" ? 0 : 1);
 }
 
 let hidden = false;

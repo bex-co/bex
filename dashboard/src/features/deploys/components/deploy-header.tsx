@@ -1,19 +1,42 @@
-import { formatDateTime } from "@/common/lib/format";
-import { Card, CardContent } from "@/common/components/ui/card";
-import { Badge } from "@/common/components/ui/badge";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import {
+  CalendarDays,
+  GitCommitHorizontal,
+  Package,
+  Terminal,
+  Timer,
+  Zap,
+} from "lucide-react";
+import { Fragment, useId, type ReactNode } from "react";
 import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
-import type { ReactNode } from "react";
+import { useLocalDateTime } from "@/common/hooks/use-local-date";
+import { cn } from "@/common/lib/utils/utils";
 import {
-  deployStatusVariant,
   deployStatusKey,
+  deployStatusKind,
   deployTriggerLabel,
-  preDeployStatusKey,
+  preDeployValueKey,
+  type DeployStatusKind,
 } from "@/features/deploys/lib/deploy-status";
-import { formatDeployDuration } from "@/features/deploys/lib/deploy-presentation";
+import {
+  deployDurationValue,
+  deploySubject,
+  deployTitle,
+} from "@/features/deploys/lib/deploy-presentation";
+import { repoCommitUrl } from "@/features/services/lib/repo";
+import { CommitSha } from "./commit-sha";
 import { DeployFailureReason } from "./deploy-failure-reason";
+import { DeployHeaderSkeleton } from "./deploy-page-skeletons";
+import { DeployStatusIcon } from "./deploy-status-icon";
+import {
+  DEPLOY_FACT_CLASS,
+  DEPLOY_FACT_ICON_CLASS,
+  DEPLOY_FACT_FULL_CLASS,
+  DEPLOY_FACTS_GRID_CLASS,
+  DEPLOY_HEADER_CLASS,
+  DEPLOY_ID_ROW_CLASS,
+  DEPLOY_TITLE_ROW_CLASS,
+} from "./deploy-page-layout";
 import type { DeployView } from "../hooks/use-deploy";
 
 /** "sha256:" plus the first 12 hex digits, Docker's short image id length. */
@@ -26,187 +49,275 @@ export interface DeployHeaderProps {
   /** Nullish while the header `deploy` query is still in flight (w9/m62 t002). */
   deploy?: DeployView | null;
   actions?: ReactNode;
+  /** The service's repo, which links the commit to its diff; none for an
+   *  image-backed service. */
+  repo?: string | null;
 }
 
 /**
- * The deploy detail page's header (w9/m1/t003): Render's compact deploy-page
- * banner — status badge, trigger/rollback provenance, image, pre-deploy
- * outcome, and the created/updated/started/finished timestamps. Reuses the same
- * status→badge mapping as the Events tab (deploy-status.ts) so the two
- * surfaces can't drift on what a given status looks like.
+ * The deploy page's header (w9/m1/t003), laid out as Render's deploy page
+ * is: the commit's subject as the page's title with the deploy's actions
+ * beside it, then a grid of facts — Status, Duration, Deployed, Trigger,
+ * Source, and Pre-deploy where Render's Scaling sits — each under a small
+ * label beside an icon tile, and the image across the grid's width. The
+ * status words and icon come from the mappings the Deploys list and Events
+ * tab use, so the surfaces cannot drift on what a status looks like.
  */
-export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
-  const { t, i18n } = useTranslations();
-  // Absolute deploy times are the viewer's local timezone; the UTC SSR pod
-  // can't know it, so defer them to a post-hydration render (w6/m107). Must be
-  // read before the early `!deploy` return so the hook order stays stable.
-  const hydrated = useIsHydrated();
-  if (!deploy) {
-    return (
-      <Card>
-        <CardContent className="flex items-start justify-between gap-4 pt-6">
-          <div
-            className="space-y-2"
-            role="status"
-            aria-label={t("common.loading")}
-          >
-            <Skeleton className="h-6 w-64" />
-            <Skeleton className="h-4 w-40" />
-          </div>
-          {actions}
-        </CardContent>
-      </Card>
-    );
-  }
-  const preDeploy = preDeployStatusKey(deploy.preDeployStatus);
-  const commitCreatedAt = hydrated
-    ? formatDateTime(deploy.commitCreatedAt, i18n.language)
-    : null;
-  const facts = [
-    {
-      label: t("deploys.created"),
-      value: hydrated ? formatDateTime(deploy.createdAt, i18n.language) : null,
-    },
-    {
-      label: t("deploys.updated"),
-      value: hydrated ? formatDateTime(deploy.updatedAt, i18n.language) : null,
-    },
-    {
-      label: t("deploys.started"),
-      value: hydrated ? formatDateTime(deploy.startedAt, i18n.language) : null,
-    },
-    {
-      label: t("deploys.finished"),
-      value: hydrated ? formatDateTime(deploy.finishedAt, i18n.language) : null,
-    },
-    {
-      // Duration is an elapsed span, not a wall-clock reading — timezone-neutral,
-      // so it renders on the SSR pass too (no hydration gate).
-      label: t("deploys.duration"),
-      value: formatDeployDuration(deploy.startedAt, deploy.finishedAt),
-    },
-  ].filter((fact): fact is { label: string; value: string } => !!fact.value);
+export function DeployHeader({ deploy, actions, repo }: DeployHeaderProps) {
+  const { t } = useTranslations();
+  const titleId = useId();
+  // Absolute deploy times are the viewer's local timezone, deferred past
+  // hydration (w6/m107). Read before the early `!deploy` return so the hook
+  // order stays stable.
+  const deployedAt = useLocalDateTime(deploy?.createdAt);
+  const commitCreatedAt = useLocalDateTime(deploy?.commitCreatedAt);
+  if (!deploy) return <DeployHeaderSkeleton />;
+
+  const subject = deploySubject(deploy.commitMessage);
+  const kind = deployStatusKind(deploy.status);
+  const statusText = t(
+    deployStatusKey(deploy.status) as Parameters<typeof t>[0],
+  );
+  const preDeploy = preDeployValueKey(deploy.preDeployStatus);
+  // Duration is an elapsed span, not a wall-clock reading — timezone-neutral,
+  // so it renders on the SSR pass too. A deploy that never started has
+  // nothing to time and shows no fact.
+  const duration = deployDurationValue(deploy, t);
+  const commitUrl =
+    repo && deploy.commitId ? repoCommitUrl(repo, deploy.commitId) : null;
 
   return (
-    <Card>
-      <CardContent className="space-y-3 py-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">
-              {t("deploys.statusLabel")}
-            </span>
-            <Badge variant={deployStatusVariant(deploy.status)}>
-              {t(deployStatusKey(deploy.status) as Parameters<typeof t>[0])}
-            </Badge>
-            <span className="text-xs text-muted-foreground">
-              {deployTriggerLabel(deploy.trigger, deploy.rollbackOf, t)}
-            </span>
-            <span className="font-mono text-xs text-muted-foreground">
-              {deploy.id}
-            </span>
-          </div>
-          {actions}
-        </div>
-
-        {/* Actionable cause of a failed deploy (w9/011) — the operator's
-            diagnosis (crash loop with the $PORT hint, image-pull failure,
-            build error) or a health-gate-timeout line. A supersede cancel
-            (w4/089) uses cancelReason with a neutral tone instead. */}
-        <DeployFailureReason
-          reason={deploy.failureReason}
-          template={deploy.failureReasonTemplate}
-        />
-        <DeployFailureReason
-          reason={deploy.cancelReason}
-          template={deploy.cancelReasonTemplate}
-          tone="neutral"
-        />
-
-        {/* w4/m112: while the deploy is still open, say what the rollout is
-            waiting on. Live on 2026-09-17 a 404ing Health Check Path held a
-            rollout for the full 900s budget behind a bare "In Progress" —
-            the page named no probe, the events feed was empty, and the log
-            stream simply stopped. Neutral tone: a stall is an observation,
-            not a verdict; a deploy carrying one may still go live. The server
-            clears the field as the deploy goes terminal, so the terminal
-            states' copy above is untouched. */}
-        <DeployFailureReason
-          reason={deploy.stallReason}
-          template={deploy.stallReasonTemplate}
-          tone="neutral"
-        />
-
-        {preDeploy && (
-          <p
-            className={`text-xs ${
-              deploy.preDeployStatus === "failed"
-                ? "text-destructive"
-                : "text-muted-foreground"
-            }`}
-          >
-            {t(preDeploy as Parameters<typeof t>[0])}
-          </p>
-        )}
-
-        {/* The resolved commit this deploy ran (w9/001 + w2/m42 + w4/m108
-            t004) — Render's deploy-page header leads with it for
-            repo-backed deploys: short SHA + the message's first line +
-            author date when available. Absent (image-backed, or
-            unresolvable public/private ref) => omitted, not faked. Hash
-            alone still renders cleanly when the message is empty. */}
-        {deploy.commitId && (
-          <p className="truncate text-xs text-foreground">
-            <span className="font-mono text-muted-foreground">
-              {deploy.commitId.slice(0, 7)}
-            </span>
-            {deploy.commitMessage && (
-              <> {deploy.commitMessage.split("\n")[0]}</>
+    <section aria-labelledby={titleId} className={DEPLOY_HEADER_CLASS}>
+      <div className={DEPLOY_TITLE_ROW_CLASS}>
+        <div className="min-w-0 flex-1 space-y-1">
+          {/* Render titles a deploy by its commit's subject. An image-backed
+              deploy has none; its id is the only name it has. */}
+          <h2
+            id={titleId}
+            className={cn(
+              "text-lg leading-7 font-semibold tracking-tight break-words text-pretty",
+              !subject && "font-mono",
             )}
-            {commitCreatedAt && (
-              // The separator is a real text node, not just the margin it used
-              // to be (w6/m45 t004): a margin leaves the paragraph one
-              // unbroken text run, so the commit message and the date ran
-              // together — "…Docker build contextAugust 22, 2026 at 6:16 PM" —
-              // for a screen reader and for anyone copying the line.
+          >
+            {deployTitle(deploy.commitMessage, deploy.id)}
+          </h2>
+          {subject ? (
+            <div className={DEPLOY_ID_ROW_CLASS}>
+              <span className="truncate">{deploy.id}</span>
+              <CopyButton
+                value={deploy.id}
+                label={t("common.copyField", { field: t("deploys.idLabel") })}
+                successText={t("deploys.idCopied")}
+                errorText={t("deploys.idCopyFailed")}
+              />
+            </div>
+          ) : null}
+        </div>
+        {actions}
+      </div>
+
+      {/* Why a deploy ended, or what an open rollout waits on, sits under the
+          title where the eye lands first. Actionable cause of a failed deploy
+          (w9/011); a supersede cancel (w4/089) and a stalled rollout (w4/m112)
+          are observations, so they read neutral. The server clears the stall
+          as the deploy goes terminal. */}
+      {deploy.failureReason || deploy.cancelReason || deploy.stallReason ? (
+        <div className="space-y-1">
+          <DeployFailureReason
+            reason={deploy.failureReason}
+            template={deploy.failureReasonTemplate}
+          />
+          <DeployFailureReason
+            reason={deploy.cancelReason}
+            template={deploy.cancelReasonTemplate}
+            tone="neutral"
+          />
+          <DeployFailureReason
+            reason={deploy.stallReason}
+            template={deploy.stallReasonTemplate}
+            tone="neutral"
+          />
+        </div>
+      ) : null}
+
+      <dl className={DEPLOY_FACTS_GRID_CLASS}>
+        {/* "Did it go live?" is the page's first question, so Status alone
+            carries its state's colour: a tinted tile, the coloured word, and
+            on a phone (no tiles) the state's glyph beside the word. */}
+        <DeployFact
+          icon={<DeployStatusIcon status={deploy.status} />}
+          label={t("deploys.factStatus")}
+          tileClassName={STATUS_TILE_CLASS[kind]}
+        >
+          <span
+            className={cn(
+              "flex items-center gap-1.5 font-medium",
+              STATUS_TEXT_CLASS[kind],
+            )}
+          >
+            <DeployStatusIcon
+              status={deploy.status}
+              className="size-4 @md/page:hidden"
+            />
+            {statusText}
+          </span>
+        </DeployFact>
+        {duration ? (
+          <DeployFact icon={<Timer />} label={t("deploys.duration")}>
+            {duration}
+          </DeployFact>
+        ) : null}
+        {deployedAt ? (
+          <DeployFact icon={<CalendarDays />} label={t("deploys.factDeployed")}>
+            {deployedAt}
+          </DeployFact>
+        ) : null}
+        <DeployFact icon={<Zap />} label={t("deploys.columnTrigger")}>
+          {deployTriggerLabel(deploy.trigger, deploy.rollbackOf, t)}
+        </DeployFact>
+        {/* The resolved commit this deploy ran (w9/001 + w2/m42 + w4/m108
+            t004), linked to its diff when the repo is browsable. Absent
+            (image-backed, or an unresolvable ref) => omitted, not faked. */}
+        {deploy.commitId ? (
+          <DeployFact
+            icon={<GitCommitHorizontal />}
+            label={t("deploys.factSource")}
+          >
+            <CommitSha commitId={deploy.commitId} url={commitUrl} />
+            {commitCreatedAt ? (
+              // A real text separator, not a margin (w6/m45 t004): a
+              // screen reader and a copied line keep the two apart.
               <span className="text-muted-foreground">
                 {" "}
                 · {commitCreatedAt}
               </span>
-            )}
-          </p>
-        )}
-
-        {/* Render's image.sha (w8/m122): unknown => omitted, not faked. */}
-        {deploy.image ? (
-          <div className="flex min-w-0 items-center gap-2 font-mono text-xs text-muted-foreground">
-            <p className="truncate">{deploy.image}</p>
-            {deploy.imageSha ? (
-              <>
-                <span className="shrink-0" title={deploy.imageSha}>
-                  {shortDigest(deploy.imageSha)}
-                </span>
-                <CopyButton
-                  value={deploy.imageSha}
-                  label={t("deploys.imageDigestCopy")}
-                  successText={t("deploys.imageDigestCopied")}
-                  errorText={t("deploys.imageDigestCopyError")}
-                />
-              </>
             ) : null}
-          </div>
+          </DeployFact>
         ) : null}
+        {preDeploy ? (
+          <DeployFact icon={<Terminal />} label={t("deploys.factPreDeploy")}>
+            <span
+              className={
+                deploy.preDeployStatus === "failed"
+                  ? "text-destructive"
+                  : undefined
+              }
+            >
+              {t(preDeploy as Parameters<typeof t>[0])}
+            </span>
+          </DeployFact>
+        ) : null}
+        {/* The image the deploy ran, across the grid's full width so the
+            whole reference fits rather than being cut to its first letters.
+            Render's image.sha (w8/m122): unknown => omitted, not faked. */}
+        {deploy.image ? (
+          <DeployFact
+            icon={<Package />}
+            label={t("services.sourceImageLabel")}
+            className={DEPLOY_FACT_FULL_CLASS}
+          >
+            <span className="flex min-w-0 flex-wrap items-center gap-x-2 font-mono">
+              <ImageReference image={deploy.image} />
+              {deploy.imageSha ? (
+                <span className="inline-flex shrink-0 items-center gap-1 text-muted-foreground">
+                  <span title={deploy.imageSha}>
+                    {shortDigest(deploy.imageSha)}
+                  </span>
+                  <CopyButton
+                    value={deploy.imageSha}
+                    label={t("deploys.imageDigestCopy")}
+                    successText={t("deploys.imageDigestCopied")}
+                    errorText={t("deploys.imageDigestCopyError")}
+                  />
+                </span>
+              ) : null}
+            </span>
+          </DeployFact>
+        ) : null}
+      </dl>
+    </section>
+  );
+}
 
-        {facts.length > 0 ? (
-          <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-xs text-muted-foreground @lg:grid-cols-2 @3xl:grid-cols-5">
-            {facts.map((fact) => (
-              <div key={fact.label}>
-                <dt className="inline font-medium">{fact.label}: </dt>
-                <dd className="inline">{fact.value}</dd>
-              </div>
-            ))}
-          </dl>
-        ) : null}
-      </CardContent>
-    </Card>
+// The Status fact's tint and word colour by where the deploy is in its life,
+// from the classification its icon uses: the deploy that is live now speaks
+// in green, one that went live before keeps a green tile under a plain word.
+const STATUS_TILE_CLASS: Record<DeployStatusKind, string> = {
+  live: "bg-primary/10",
+  succeeded: "bg-primary/10",
+  failed: "bg-destructive/10",
+  canceled: "bg-muted",
+  in_progress: "bg-muted",
+  pending: "bg-muted",
+};
+
+const STATUS_TEXT_CLASS: Record<DeployStatusKind, string> = {
+  live: "text-primary",
+  succeeded: "text-foreground",
+  failed: "text-destructive",
+  canceled: "text-foreground",
+  in_progress: "text-foreground",
+  pending: "text-foreground",
+};
+
+/**
+ * An image reference, whole: where the line is too narrow it breaks after a
+ * slash ("registry.example.com/" over "eden-cms-v2:a1b2c3d"), never inside a
+ * name, and is never cut — the registry, name and tag each tell two images
+ * apart.
+ */
+function ImageReference({ image }: { image: string }) {
+  return (
+    <span className="min-w-0 [overflow-wrap:anywhere]">
+      {image.split("/").map((part, i) => (
+        <Fragment key={i}>
+          {i > 0 ? (
+            <>
+              /<wbr />
+            </>
+          ) : null}
+          {part}
+        </Fragment>
+      ))}
+    </span>
+  );
+}
+
+/** One labelled fact; its icon tile sits in the term, decorative. */
+function DeployFact({
+  icon,
+  label,
+  className,
+  tileClassName = "bg-muted",
+  children,
+}: {
+  icon: ReactNode;
+  label: string;
+  className?: string;
+  /** The icon tile's fill; Status tints it by state. */
+  tileClassName?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className={cn(DEPLOY_FACT_CLASS, className)}>
+      {/* Small tracked capitals carry a Latin label; CJK has no capitals to
+          carry, so it reads at 12px without the tracking. */}
+      <dt className="text-[11px] leading-4 font-medium tracking-wider text-muted-foreground uppercase [&:is(:lang(zh),:lang(ja),:lang(ko))]:text-xs [&:is(:lang(zh),:lang(ja),:lang(ko))]:tracking-normal">
+        <span
+          aria-hidden
+          className={cn(
+            DEPLOY_FACT_ICON_CLASS,
+            "items-center justify-center text-muted-foreground [&_svg]:size-[18px]",
+            tileClassName,
+          )}
+        >
+          {icon}
+        </span>
+        {label}
+      </dt>
+      {/* Balanced, so a value that wraps breaks evenly ("July 11, 2026 /
+          at 7:30 AM"), never leaving one word alone on its last line. */}
+      <dd className="text-sm leading-5 text-balance break-words">{children}</dd>
+    </div>
   );
 }

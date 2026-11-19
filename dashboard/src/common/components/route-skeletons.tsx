@@ -125,6 +125,16 @@ import { NotificationOverridesCardSkeleton } from "@/features/notifications/comp
 import { RegistryCredentialsPanelSkeleton } from "@/features/registry-credentials/components/registry-credentials-panel-skeleton";
 import { AuditLogPanelSkeleton } from "@/features/audit/components/audit-log-panel-skeleton";
 import { DeploysListFrameSkeleton } from "@/features/deploys/components/deploys-list-frame";
+import {
+  DeployBackLinkSkeleton,
+  DeployHeaderSkeleton,
+  DeployLogToolbarSkeleton,
+  DeployTimelineCardSkeleton,
+} from "@/features/deploys/components/deploy-page-skeletons";
+import {
+  DEPLOY_BODY_CLASS,
+  DEPLOY_PAGE_TOP_CLASS,
+} from "@/features/deploys/components/deploy-page-layout";
 import { CHART_FRAME_STYLE } from "@/features/metrics/components/chart-layout";
 import { ComputePlanSectionSkeleton } from "@/features/services/components/compute-plan-frames";
 import {
@@ -2141,20 +2151,19 @@ export function DeploysListSkeleton({
 export function DeployDetailSkeleton() {
   return (
     <PendingFrame route="deploy-detail" className="space-y-6">
-      <Region name="deploy-header">
-        <CardSkeleton rows={3} />
+      <Region name="deploy-header" className={DEPLOY_PAGE_TOP_CLASS}>
+        <DeployBackLinkSkeleton />
+        <DeployHeaderSkeleton />
       </Region>
-      <Region name="deploy-timeline">
-        <CardSkeleton rows={3} />
-      </Region>
-      <Region name="deploy-logs" className="space-y-3">
-        <div className="flex gap-2">
-          <Skeleton className="h-9 w-28" />
-          <Skeleton className="h-9 max-w-sm flex-1" />
-          <Skeleton className="size-9" />
-        </div>
-        <Skeleton className="h-64 w-full rounded-md" />
-      </Region>
+      <div className={DEPLOY_BODY_CLASS}>
+        <Region name="deploy-logs" className="space-y-3">
+          <DeployLogToolbarSkeleton />
+          <LogPanelSkeleton fillViewport="flush" />
+        </Region>
+        <Region name="deploy-timeline">
+          <DeployTimelineCardSkeleton />
+        </Region>
+      </div>
     </PendingFrame>
   );
 }

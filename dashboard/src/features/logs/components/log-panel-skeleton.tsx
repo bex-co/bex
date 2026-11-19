@@ -1,6 +1,9 @@
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useLogPanelHeight } from "@/features/logs/hooks/use-log-panel-height";
+import {
+  useLogPanelHeight,
+  type LogPanelFill,
+} from "@/features/logs/hooks/use-log-panel-height";
 
 // Monospace-ish bar widths so the placeholder reads as log lines, not a
 // generic block.
@@ -27,8 +30,9 @@ const ROWS = 24;
 export function LogPanelSkeleton({
   fillViewport = false,
 }: {
-  /** As LogLineList's `fillViewport`: the panel sized to the viewport. */
-  fillViewport?: boolean;
+  /** As LogLineList's `fillViewport`: the panel sized to the viewport.
+   *  `"flush"` (a deploy's log) has no stream status line under it. */
+  fillViewport?: LogPanelFill;
 }) {
   const { t } = useTranslations();
   const { ref, height } = useLogPanelHeight<HTMLDivElement>(fillViewport);
@@ -39,17 +43,28 @@ export function LogPanelSkeleton({
     <div role="status" aria-label={t("logs.loading")} className="space-y-2">
       <div
         ref={ref}
-        className="space-y-2 overflow-hidden rounded-md border bg-muted/30 p-3"
+        className="@container/logs overflow-hidden rounded-md border bg-muted/30 p-3"
         style={{ height }}
       >
-        {Array.from({ length: ROWS }, (_, i) => (
-          <div key={i} className="flex items-center gap-3">
-            <Skeleton className="h-3 w-16 shrink-0" />
-            <Skeleton className={`h-3 ${BAR_WIDTHS[i % BAR_WIDTHS.length]}`} />
-          </div>
-        ))}
+        {/* Clipped inside the padding, so the last row ends whole above the
+            border rather than cut by it. */}
+        <div className="h-full space-y-2 overflow-hidden">
+          {/* As the loaded rows do, a narrow panel stacks each row's time over
+            its message. */}
+          {Array.from({ length: ROWS }, (_, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-3 @max-md/logs:flex-col @max-md/logs:items-start @max-md/logs:gap-1.5"
+            >
+              <Skeleton className="h-3 w-16 shrink-0" />
+              <Skeleton
+                className={`h-3 ${BAR_WIDTHS[i % BAR_WIDTHS.length]}`}
+              />
+            </div>
+          ))}
+        </div>
       </div>
-      <Skeleton className="h-4 w-44" />
+      {fillViewport === "flush" ? null : <Skeleton className="h-4 w-44" />}
     </div>
   );
 }

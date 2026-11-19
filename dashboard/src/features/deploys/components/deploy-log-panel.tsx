@@ -1,7 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ChevronDown,
-  Loader2,
   Maximize2,
   Minimize2,
   Settings2,
@@ -27,11 +26,16 @@ import {
 import { cn } from "@/common/lib/utils/utils.ts";
 import { LogEmptyState } from "@/features/logs/components/log-empty-state";
 import { LogLineList } from "@/features/logs/components/log-line-list";
+import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
 import { LogTruncationNotice } from "@/features/logs/components/log-truncation-notice";
 import { stripAnsi } from "@/features/logs/lib/ansi";
 import { goLowercase } from "@/features/logs/lib/go-lowercase";
 import type { EventSourceFactory } from "@/features/logs/hooks/use-live-logs";
 import { useDeployLogs } from "../hooks/use-deploy-logs";
+import {
+  DEPLOY_LOG_TOOLBAR_CLASS,
+  DEPLOY_LOG_TOOLBAR_END_CLASS,
+} from "./deploy-page-layout";
 import { LOG_RANGES, RANGE_LABEL_KEYS, type LogRange } from "../lib/log-range";
 
 // The radio group needs a value for "no ?r= param" (the deploy window).
@@ -51,6 +55,8 @@ const LOG_TYPE_KEYS: Record<LogTypeChoice, string> = {
 
 export interface DeployLogPanelProps {
   resource: string;
+  /** The deploy's name, shown over the log in full-screen mode. */
+  title?: string;
   /** The deploy whose page this is: its build and pre-deploy lines are scoped
    *  to it, not just to its time window (w21/m324). A relative `range` widens
    *  the view to the service's logs across deploys. */
@@ -94,6 +100,7 @@ export interface DeployLogPanelProps {
  */
 export function DeployLogPanel({
   resource,
+  title,
   deployId,
   startTime,
   endTime,
@@ -113,6 +120,22 @@ export function DeployLogPanel({
   const [wrap, setWrap] = useState(true);
   const [showTimestamps, setShowTimestamps] = useState(true);
   const [maximized, setMaximized] = useState(false);
+  // Full screen covers the page, so Escape leaves it as it would a dialog —
+  // unless the Escape is closing one of the panel's own menus first.
+  useEffect(() => {
+    if (!maximized) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (
+        event.target instanceof Element &&
+        event.target.closest('[role="menu"]')
+      )
+        return;
+      setMaximized(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [maximized]);
 
   const {
     lines,
@@ -173,12 +196,7 @@ export function DeployLogPanel({
     // `startTime === undefined` = still awaiting the deploy's window (the panel
     // mounts in parallel with the header query, w9/m62 t002); show the same
     // loading affordance rather than a premature "no logs" empty state.
-    body = (
-      <div className="flex h-64 items-center justify-center rounded-md border text-muted-foreground">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        {t("logs.loading")}
-      </div>
-    );
+    body = <LogPanelSkeleton fillViewport="flush" />;
   } else if (buildStoreUnavailable && lines.length === 0) {
     body = (
       <EmptyState
@@ -205,6 +223,14 @@ export function DeployLogPanel({
         wrap={wrap}
         showTimestamps={showTimestamps}
         fill={maximized}
+        // The deploy's log runs to the bottom of the screen, as the Logs
+        // tab's does, and anything under it starts at the fold rather than
+        // being cut by it. It keeps that height however few its lines (the
+        // loading placeholder holds the same box, so nothing moves when they
+        // land); a finished deploy's log says where it ends, and one that
+        // only just overflows grows to show whole rather than hide a row.
+        fillViewport="flush"
+        ended={endTime !== undefined}
         hasMore={hasMore}
         loadingOlder={loadingOlder}
         onLoadOlder={loadOlder}
@@ -218,11 +244,17 @@ export function DeployLogPanel({
         "space-y-3",
         // Maximized (w9/003): a full-screen overlay, the log list filling
         // everything under the control row.
+        // m-0: the page's stack spacing would otherwise give the overlay a
+        // bottom margin, stopping it short of the screen's bottom edge.
         maximized &&
-          "fixed inset-0 z-50 flex flex-col bg-background p-4 sm:p-6 [&>*:last-child]:min-h-0 [&>*:last-child]:flex-1",
+          "fixed inset-0 z-50 m-0 flex flex-col bg-background p-4 sm:p-6 [&>*:last-child]:min-h-0 [&>*:last-child]:flex-1",
       )}
     >
-      <div className="flex items-center gap-2">
+      {/* Full screen covers the page's own title, so it names the log. */}
+      {maximized && title ? (
+        <p className="truncate text-sm font-medium">{title}</p>
+      ) : null}
+      <div className={DEPLOY_LOG_TOOLBAR_CLASS}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -254,7 +286,8 @@ export function DeployLogPanel({
           disabled={!hydrated}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t("deploys.logSearchPlaceholder")}
-          className="max-w-sm"
+          // Search takes the row's spare width, as Render's does.
+          className="min-w-0 flex-1"
         />
         {followBuild && buildLiveStatus === "error" && (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -262,7 +295,7 @@ export function DeployLogPanel({
             {t("logs.disconnected")}
           </span>
         )}
-        <div className="ml-auto flex shrink-0 items-center gap-1">
+        <div className={DEPLOY_LOG_TOOLBAR_END_CLASS}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -321,7 +354,9 @@ export function DeployLogPanel({
               maximized ? t("deploys.logMinimize") : t("deploys.logMaximize")
             }
             title={
-              maximized ? t("deploys.logMinimize") : t("deploys.logMaximize")
+              maximized
+                ? t("deploys.logMinimizeHint")
+                : t("deploys.logMaximize")
             }
             onClick={() => setMaximized((m) => !m)}
           >

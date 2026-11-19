@@ -12,7 +12,10 @@ import { Button } from "@/common/components/ui/button.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatClockTime } from "@/common/lib/format";
 import { cn } from "@/common/lib/utils/utils.ts";
-import { useLogPanelHeight } from "@/features/logs/hooks/use-log-panel-height";
+import {
+  useLogPanelHeight,
+  type LogPanelFill,
+} from "@/features/logs/hooks/use-log-panel-height";
 import { type AnsiSpan } from "../lib/ansi";
 import { LOG_TYPE_REQUEST, type LogLine } from "../types";
 
@@ -50,6 +53,11 @@ const LOAD_OLDER_THRESHOLD = 64;
 // wrapped multi-line row still lays out at its true height.
 const ROW_ESTIMATE = 24;
 
+// The end note's line (`h-6`), counted into the content a panel grows to.
+const END_NOTE_HEIGHT = 24;
+// How far past its screen-sized height an `ended` log's panel grows.
+const GROW_TO_FIT_LIMIT = 1.25;
+
 // Rows rendered above/below the viewport so a fast scroll doesn't flash blank.
 const OVERSCAN = 12;
 
@@ -84,10 +92,21 @@ interface LogLineListProps {
   fill?: boolean;
   /**
    * Size the panel to the viewport's room below it (min 320px) instead of a
-   * fixed 520px: the service Logs tab, where the panel is the page. Other
-   * hosts (a deploy's log, a datastore's) keep the fixed height.
+   * fixed 520px: the service Logs tab, where the panel is the page and its
+   * stream status line sits under it. `"flush"` leaves only the page's bottom
+   * padding (a deploy's log, which has no status line). Other hosts (a
+   * datastore's log) keep the fixed height.
    */
-  fillViewport?: boolean;
+  fillViewport?: LogPanelFill;
+  /**
+   * The log is finished and will not grow (a finished deploy's): it closes
+   * with an "End of log" line, so a short one reads as complete rather than
+   * still loading, and one that only just overflows the panel (up to a
+   * quarter past its height) grows it to show whole rather than scroll to
+   * hide a row. The panel never shrinks, so a loading placeholder at its
+   * height still holds.
+   */
+  ended?: boolean;
   /** More history exists older than the loaded pages (w4/m107). */
   hasMore?: boolean;
   loadingOlder?: boolean;
@@ -124,6 +143,7 @@ export function LogLineList({
   showTimestamps = true,
   fill = false,
   fillViewport = false,
+  ended = false,
   hasMore = false,
   loadingOlder = false,
   onLoadOlder,
@@ -131,6 +151,8 @@ export function LogLineList({
   const { t, i18n } = useTranslations();
   const viewportRef = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(true);
+  // Whether rows are scrolled off the top, which fade out (below).
+  const [scrolledDown, setScrolledDown] = useState(false);
   const anchorRef = useRef<{ key: string; offset: number } | null>(null);
   const previousLines = useRef(lines);
   // A wrap or timestamp toggle changes every row's height while the records
@@ -163,6 +185,8 @@ export function LogLineList({
     overscan: OVERSCAN,
     paddingStart: LIST_INSET,
     paddingEnd: LIST_INSET,
+    // Jumping to the newest row scrolls on past the inset to the end note.
+    scrollPaddingEnd: ended ? LIST_INSET : 0,
   });
 
   // Scroll the newest line to the viewport bottom through the virtualizer (which
@@ -218,6 +242,7 @@ export function LogLineList({
 
   const onScroll = () => {
     const el = viewportRef.current;
+    if (el) setScrolledDown(el.scrollTop > 0);
     if (!el || settling.current) return;
     recordAnchor(el);
     recordPin(el);
@@ -305,10 +330,19 @@ export function LogLineList({
     if (pinned) scrollToBottom();
   }, [lines, pinned, scrollToBottom]);
 
-  const { ref: panelRef, height: panelHeight } =
-    useLogPanelHeight<HTMLDivElement>(fillViewport && !fill);
+  const { ref: panelRef, height: fillHeight } =
+    useLogPanelHeight<HTMLDivElement>(fill ? false : fillViewport);
   const virtualRows = virtualizer.getVirtualItems();
   const totalSize = virtualizer.getTotalSize();
+  // The rows, their inset and any end note, plus the viewport's 1px top and
+  // bottom border.
+  const contentHeight = totalSize + (ended ? END_NOTE_HEIGHT : 0) + 2;
+  const panelHeight =
+    ended &&
+    contentHeight > fillHeight &&
+    contentHeight <= fillHeight * GROW_TO_FIT_LIMIT
+      ? contentHeight
+      : fillHeight;
   // Spacer heights standing in for the unrendered rows above and below the
   // window — this keeps every row in normal flow (so wrap/nowrap layout and
   // in-window text selection behave exactly as before), unlike absolute
@@ -321,9 +355,16 @@ export function LogLineList({
 
   return (
     <div ref={panelRef} className={cn("relative", fill && "h-full")}>
-      {/* eslint-disable-next-line jsx-a11y-x/no-static-element-interactions -- the viewport only listens for reader input to end a reflow; it is not a control */}
+      {/* A focusable, named region: keyboard readers scroll the list with the
+          arrow and Page keys, as a mouse wheel does. Its listeners only end a
+          reflow's settling on reader input; it is not a control. */}
+      {/* eslint-disable-next-line jsx-a11y-x/no-noninteractive-element-interactions -- see above */}
       <div
         ref={viewportRef}
+        role="region"
+        aria-label={t("logs.linesLabel")}
+        // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- a scrollable region must be reachable by keyboard (WCAG 2.1.1)
+        tabIndex={0}
         data-log-viewport=""
         onScroll={onScroll}
         // Any reader input ends a display reflow's settling at once.
@@ -336,10 +377,19 @@ export function LogLineList({
           // The list anchors the reader itself; the browser's own overflow
           // anchoring would move it again mid-reflow (w4/m228).
           // A container, so a wrapped row can stack by the panel's own width.
-          "@container/logs overflow-auto rounded-md border bg-muted/30 font-mono text-xs leading-relaxed [overflow-anchor:none]",
+          "@container/logs overflow-auto rounded-md border bg-muted/30 font-mono text-xs leading-relaxed [overflow-anchor:none] focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none",
           fill && "h-full",
         )}
       >
+        {/* Rows scrolled off the top fade out under the border rather than
+            being sliced through by it: a sticky wash in the panel's own
+            colour (its muted tint over the page), above the rows. */}
+        {scrolledDown ? (
+          <div
+            aria-hidden
+            className="pointer-events-none sticky top-0 left-0 z-10 -mb-5 h-5 bg-linear-to-b from-[color-mix(in_oklab,var(--color-muted)_30%,var(--color-background))] to-transparent"
+          />
+        ) : null}
         {loadingOlder ? (
           <p className="px-3 py-2 text-center text-muted-foreground">
             {t("logs.loadingOlder")}
@@ -362,6 +412,11 @@ export function LogLineList({
           ))}
           <div aria-hidden style={{ height: paddingBottom }} />
         </div>
+        {ended ? (
+          <p className="sticky left-0 flex h-6 w-full items-center gap-3 px-4 font-sans text-[11px] text-muted-foreground before:h-px before:flex-1 before:bg-border before:content-[''] after:h-px after:flex-1 after:bg-border after:content-['']">
+            {t("logs.endOfLog")}
+          </p>
+        ) : null}
       </div>
 
       {!pinned ? (
@@ -424,7 +479,7 @@ const LogRow = memo(function LogRow({
         // beside a fixed time-and-instance gutter, the message had under
         // half a phone's width and broke tokens mid-word ("2026-/07").
         wrap
-          ? "whitespace-pre-wrap break-words @max-xl/logs:flex-wrap @max-xl/logs:gap-x-2 @max-xl/logs:gap-y-0 @max-xl/logs:py-1"
+          ? "whitespace-pre-wrap break-words @max-md/logs:flex-wrap @max-md/logs:gap-x-2 @max-md/logs:gap-y-0 @max-md/logs:py-1"
           : "whitespace-pre",
       )}
     >
@@ -483,7 +538,7 @@ const LogRow = memo(function LogRow({
       <span
         className={cn(
           "min-w-0 flex-1 text-foreground",
-          wrap && "@max-xl/logs:basis-full",
+          wrap && "@max-md/logs:basis-full",
         )}
       >
         {/* Inside the message cell, so a long host or path wraps with the

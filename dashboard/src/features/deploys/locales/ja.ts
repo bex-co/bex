@@ -49,11 +49,6 @@ const jaDeploys: Record<string, TranslationEntry> = {
     message: "不明",
     description: "Deploy status: unrecognized backend value",
   },
-  "deploys.statusLabel": {
-    message: "デプロイのステータス",
-    description:
-      "Deploy detail header: explicit label distinguishing deploy status from service phase",
-  },
   "deploys.imageDigestCopy": {
     message: "イメージダイジェストをコピー",
     description:
@@ -67,25 +62,73 @@ const jaDeploys: Record<string, TranslationEntry> = {
     message: "クリップボードにコピーできませんでした",
     description: "Deploy header: toast when copying the image digest fails",
   },
-  "deploys.created": {
-    message: "作成日時",
-    description: "Deploy header: created-at label",
-  },
-  "deploys.updated": {
-    message: "更新日時",
-    description: "Label for the deploy's latest stored transition time",
-  },
-  "deploys.started": {
-    message: "開始日時",
-    description: "Deploy header: started-at label",
-  },
-  "deploys.finished": {
-    message: "終了日時",
-    description: "Deploy header: finished-at label",
-  },
   "deploys.duration": {
     message: "所要時間",
     description: "Deploy header: elapsed build/deploy time label",
+  },
+  "deploys.factStatus": {
+    message: "ステータス",
+    description:
+      "Deploy page: label of the deploy's Status fact (Render's STATUS)",
+  },
+  "deploys.factDeployed": {
+    message: "デプロイ日時",
+    description:
+      "Deploy page: label of the fact giving when the deploy was created (Render's DEPLOYED)",
+  },
+  "deploys.factSource": {
+    message: "ソース",
+    description:
+      "Deploy page: label of the fact naming the commit or image the deploy ran (Render's SOURCE)",
+  },
+  "deploys.factPreDeploy": {
+    message: "プレデプロイ",
+    description:
+      "Deploy page: label of the fact giving the outcome of the deploy's pre-deploy command",
+  },
+  "deploys.preDeployRunning": {
+    message: "実行中",
+    description:
+      "Deploy page: Pre-deploy fact value while the pre-deploy command runs",
+  },
+  "deploys.preDeploySucceeded": {
+    message: "成功",
+    description:
+      "Deploy page: Pre-deploy fact value once the pre-deploy command succeeded",
+  },
+  "deploys.preDeployFailed": {
+    message: "失敗",
+    description:
+      "Deploy page: Pre-deploy fact value when the pre-deploy command failed",
+  },
+  "deploys.preDeployCanceled": {
+    message: "キャンセル済み",
+    description:
+      "Deploy page: Pre-deploy fact value when the pre-deploy command was canceled",
+  },
+  "deploys.idLabel": {
+    message: "デプロイID",
+    description:
+      "Deploy page: the deploy's id, named in its copy button's accessible name",
+  },
+  "deploys.idCopied": {
+    message: "デプロイIDをコピーしました",
+    description: "Deploy page: toast after copying the deploy's id",
+  },
+  "deploys.idCopyFailed": {
+    message: "デプロイIDをコピーできませんでした",
+    description: "Deploy page: toast when copying the deploy's id fails",
+  },
+  "deploys.loadErrorTitle": {
+    message: "このデプロイを読み込めませんでした",
+    description:
+      "Deploy page: title of the state shown when the deploy itself could not be read",
+  },
+  "deploys.loadErrorBody": {
+    message:
+      "現在このデプロイを読み込めません。デプロイ自体には影響ありません。",
+    description:
+      "Deploy page: body of the state shown when the deploy itself could not be read; says the deploy is unaffected",
   },
   "deploys.durationValue": {
     message: "所要時間 {duration}",
@@ -442,6 +485,11 @@ const jaDeploys: Record<string, TranslationEntry> = {
     message: "全画面表示を終了",
     description:
       "Deploy log viewer: button restoring the maximized viewer to its inline size",
+  },
+  "deploys.logMinimizeHint": {
+    message: "全画面表示を終了 (Esc)",
+    description:
+      "Deploy log viewer: tooltip of the button leaving full screen, naming the Escape key that also leaves it",
   },
   "deploys.reason.http_port_waiting": {
     message: "コンテナーの起動を待ってから HTTP ポートを検出します",

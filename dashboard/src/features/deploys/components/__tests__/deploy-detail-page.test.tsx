@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { ServerError } from "@apollo/client/errors";
+import { fireEvent, render, screen } from "@testing-library/react";
 import {
   RouterProvider,
   createMemoryHistory,
@@ -16,6 +17,7 @@ const deployState: {
   loading: boolean;
   error: Error | undefined;
   notFound: boolean;
+  refetch: () => void;
 } = {
   deploy: {
     id: "dep-1",
@@ -45,7 +47,15 @@ const deployState: {
   loading: false,
   error: undefined as Error | undefined,
   notFound: false,
+  refetch: vi.fn(),
 };
+
+// The page's back link is a router Link; most of these tests render the page
+// with no router around it, so it stands in as a plain anchor at its path.
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  Link: (await import("@/test/mocks/router-link")).PlainLink,
+}));
 
 vi.mock("@/features/services/hooks/use-server", () => ({
   useServer: () => ({ service: undefined, loading: false, error: undefined }),
@@ -124,6 +134,14 @@ describe("DeployDetailPage", () => {
     expect(screen.getByTestId("build-log")).toHaveAttribute(
       "data-follow-build",
       "false",
+    );
+  });
+
+  it("leads back to the service's Deploys list above the header", () => {
+    render(<DeployDetailPage serviceId="web" deployId="dep-1" />);
+    expect(screen.getByRole("link", { name: "Deploys" })).toHaveAttribute(
+      "href",
+      "/services/web/deploys",
     );
   });
 
@@ -220,6 +238,20 @@ describe("DeployDetailPage", () => {
     expect(router.state.location.pathname).toBe("/services/web/deploys");
   });
 
+  it("offers Sign in, not Try again, when the session has expired", () => {
+    deployState.deploy = null as never;
+    deployState.error = new ServerError("status 401", {
+      response: new Response(null, { status: 401 }),
+      bodyText: "",
+    });
+
+    render(<DeployDetailPage serviceId="web" deployId="dep-1" />);
+
+    expect(screen.getByText("Your session has expired")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
   it("shows a request error instead of leaving a permanent skeleton", () => {
     deployState.deploy = null as never;
     deployState.error = new Error("deploy query unavailable");
@@ -229,10 +261,14 @@ describe("DeployDetailPage", () => {
     // A read that never got an answer shows translated copy, not its raw
     // transport text (w5/167).
     expect(
-      screen.getByText(
-        "Something went wrong while loading. Refresh the page to try again.",
-      ),
+      screen.getByText(/This deploy couldn't be read just now/),
     ).toBeInTheDocument();
     expect(screen.queryByText("deploy query unavailable")).toBeNull();
+    // It names what failed — the deploy, not its logs — and offers a retry.
+    expect(screen.getByText("Couldn't load this deploy")).toBeInTheDocument();
+    // The way back stays when the deploy itself cannot be read.
+    expect(screen.getByRole("link", { name: "Deploys" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(deployState.refetch).toHaveBeenCalled();
   });
 });

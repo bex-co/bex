@@ -49,11 +49,6 @@ const enDeploys: Record<string, TranslationEntry> = {
     message: "Unknown",
     description: "Deploy status: unrecognized backend value",
   },
-  "deploys.statusLabel": {
-    message: "Deploy status",
-    description:
-      "Deploy detail header: explicit label distinguishing deploy status from service phase",
-  },
   "deploys.imageDigestCopy": {
     message: "Copy image digest",
     description:
@@ -67,25 +62,73 @@ const enDeploys: Record<string, TranslationEntry> = {
     message: "Couldn't copy to clipboard",
     description: "Deploy header: toast when copying the image digest fails",
   },
-  "deploys.created": {
-    message: "Created",
-    description: "Deploy header: created-at label",
-  },
-  "deploys.updated": {
-    message: "Updated",
-    description: "Label for the deploy's latest stored transition time",
-  },
-  "deploys.started": {
-    message: "Started",
-    description: "Deploy header: started-at label",
-  },
-  "deploys.finished": {
-    message: "Finished",
-    description: "Deploy header: finished-at label",
-  },
   "deploys.duration": {
     message: "Duration",
     description: "Deploy header: elapsed build/deploy time label",
+  },
+  "deploys.factStatus": {
+    message: "Status",
+    description:
+      "Deploy page: label of the deploy's Status fact (Render's STATUS)",
+  },
+  "deploys.factDeployed": {
+    message: "Deployed",
+    description:
+      "Deploy page: label of the fact giving when the deploy was created (Render's DEPLOYED)",
+  },
+  "deploys.factSource": {
+    message: "Source",
+    description:
+      "Deploy page: label of the fact naming the commit or image the deploy ran (Render's SOURCE)",
+  },
+  "deploys.factPreDeploy": {
+    message: "Pre-deploy",
+    description:
+      "Deploy page: label of the fact giving the outcome of the deploy's pre-deploy command",
+  },
+  "deploys.preDeployRunning": {
+    message: "Running",
+    description:
+      "Deploy page: Pre-deploy fact value while the pre-deploy command runs",
+  },
+  "deploys.preDeploySucceeded": {
+    message: "Succeeded",
+    description:
+      "Deploy page: Pre-deploy fact value once the pre-deploy command succeeded",
+  },
+  "deploys.preDeployFailed": {
+    message: "Failed",
+    description:
+      "Deploy page: Pre-deploy fact value when the pre-deploy command failed",
+  },
+  "deploys.preDeployCanceled": {
+    message: "Canceled",
+    description:
+      "Deploy page: Pre-deploy fact value when the pre-deploy command was canceled",
+  },
+  "deploys.idLabel": {
+    message: "Deploy ID",
+    description:
+      "Deploy page: the deploy's id, named in its copy button's accessible name",
+  },
+  "deploys.idCopied": {
+    message: "Deploy ID copied",
+    description: "Deploy page: toast after copying the deploy's id",
+  },
+  "deploys.idCopyFailed": {
+    message: "Couldn't copy the deploy ID",
+    description: "Deploy page: toast when copying the deploy's id fails",
+  },
+  "deploys.loadErrorTitle": {
+    message: "Couldn't load this deploy",
+    description:
+      "Deploy page: title of the state shown when the deploy itself could not be read",
+  },
+  "deploys.loadErrorBody": {
+    message:
+      "This deploy couldn't be read just now. The deploy itself isn't affected.",
+    description:
+      "Deploy page: body of the state shown when the deploy itself could not be read; says the deploy is unaffected",
   },
   "deploys.durationValue": {
     message: "Duration {duration}",
@@ -449,6 +492,11 @@ const enDeploys: Record<string, TranslationEntry> = {
     message: "Exit full screen",
     description:
       "Deploy log viewer: button restoring the maximized viewer to its inline size",
+  },
+  "deploys.logMinimizeHint": {
+    message: "Exit full screen (Esc)",
+    description:
+      "Deploy log viewer: tooltip of the button leaving full screen, naming the Escape key that also leaves it",
   },
   "deploys.reason.http_port_waiting": {
     message:

@@ -1,3 +1,5 @@
+import { isTerminalDeployStatus } from "./deploy-status";
+
 /**
  * Presentation helpers shared by deploy-history rows and the deploy-detail
  * header. Keeping row timestamp selection and duration parsing here prevents
@@ -62,6 +64,43 @@ export function formatDeployDuration(
 }
 
 /**
+ * A deploy's duration: the finished span, "In progress" for one started and
+ * still under way, or "" when there is nothing to time yet (the caller
+ * decides whether that shows as a dash or as no fact at all).
+ */
+export function deployDurationValue(
+  deploy: {
+    status: string;
+    startedAt: string | null;
+    finishedAt: string | null;
+  },
+  t: (key: "deploys.durationActive") => string,
+): string {
+  const duration = formatDeployDuration(deploy.startedAt, deploy.finishedAt);
+  if (duration) return duration;
+  return deploy.startedAt && !isTerminalDeployStatus(deploy.status)
+    ? t("deploys.durationActive")
+    : "";
+}
+
+/** A deploy's name: its commit's subject, as Render titles the deploy page,
+ *  or the deploy's id when it has none (an image-backed deploy). */
+export function deployTitle(
+  commitMessage: string | null | undefined,
+  deployId: string,
+): string {
+  return deploySubject(commitMessage) || deployId;
+}
+
+/** A commit message's subject: its first line, which titles the deploy page
+ *  as it does on Render. Empty for a deploy with no resolved commit. */
+export function deploySubject(
+  commitMessage: string | null | undefined,
+): string {
+  return (commitMessage ?? "").split("\n")[0].trim();
+}
+
+/**
  * `<short-sha> <subject>` for a deploy's commit — the exact identity the
  * history row renders, so the rollback confirm dialog can name the code it is
  * about to restore in the same words the row behind it uses (w4/m110 t003).
@@ -75,7 +114,7 @@ export function deployCommitLabel(
 ): string {
   const sha = (commitId ?? "").trim();
   if (!sha) return "";
-  const subject = (commitMessage ?? "").split("\n")[0].trim();
+  const subject = deploySubject(commitMessage);
   const short = sha.slice(0, 7);
   return subject ? `${short} ${subject}` : short;
 }

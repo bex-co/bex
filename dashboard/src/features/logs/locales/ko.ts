@@ -148,6 +148,16 @@ const koLogs: Record<string, TranslationEntry> = {
     message: "최신으로 이동",
     description: "Button to re-pin autoscroll to the newest log line",
   },
+  "logs.linesLabel": {
+    message: "로그 줄",
+    description:
+      "Accessible name of the scrollable log list, which takes keyboard focus so arrow keys and Page Up/Down scroll it",
+  },
+  "logs.endOfLog": {
+    message: "로그 끝",
+    description:
+      "Closing line after the last row of a log that will not grow (a finished deploy's), so a short log reads as complete",
+  },
   "logs.loading": {
     message: "로그를 불러오는 중…",
     description: "Shown while the first historical page is loading",

@@ -85,6 +85,39 @@ describe("DeployLogPanel", () => {
     expect(useDeployLogsMock.mock.lastCall?.[6]).toBeUndefined();
   });
 
+  it("leaves full screen on Escape, but lets Escape close an open menu first", async () => {
+    const user = userEvent.setup();
+    logState.lines = [line("hello", "app")];
+    render(
+      <DeployLogPanel
+        resource="web"
+        deployId="dep-1"
+        startTime="2026-07-14T00:00:00Z"
+        endTime="2026-07-14T00:05:00Z"
+        hasPreDeploy={false}
+        followBuild={false}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Maximize" }));
+    expect(
+      screen.getByRole("button", { name: "Exit full screen" }),
+    ).toBeInTheDocument();
+
+    // Escape inside the open options menu closes the menu only.
+    await user.click(screen.getByRole("button", { name: "Log options" }));
+    expect(await screen.findByRole("menu")).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    expect(
+      screen.getByRole("button", { name: "Exit full screen" }),
+    ).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+    expect(
+      screen.getByRole("button", { name: "Maximize" }),
+    ).toBeInTheDocument();
+  });
+
   it("states a capped build and loads older lines on request (w4/m136)", async () => {
     logState.lines = [line("==> step 9", "build")];
     logState.hasMore = true;

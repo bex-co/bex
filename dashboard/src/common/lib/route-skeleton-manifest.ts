@@ -662,13 +662,13 @@ export const ROUTE_SKELETON_MANIFEST = {
     kind: "render",
     owner: "routes/services.$serviceId.deploys.$deployId.tsx",
     shape: "deploy-detail",
-    regions: ["deploy-header", "deploy-timeline", "deploy-logs"],
+    regions: ["deploy-header", "deploy-logs", "deploy-timeline"],
   },
   "/static/$serviceId/deploys/$deployId": {
     kind: "render",
     owner: "routes/static.$serviceId.deploys.$deployId.tsx",
     shape: "deploy-detail",
-    regions: ["deploy-header", "deploy-timeline", "deploy-logs"],
+    regions: ["deploy-header", "deploy-logs", "deploy-timeline"],
   },
   "/services/$serviceId/deploys/": {
     kind: "render",

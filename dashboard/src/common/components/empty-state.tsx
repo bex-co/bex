@@ -32,6 +32,8 @@ interface EmptyStateProps {
    * announces it (WCAG 4.1.3); empty and notice states stay silent (w21/025).
    */
   role?: "alert";
+  /** A way forward under the copy, e.g. a load failure's Try again. */
+  action?: React.ReactNode;
 }
 
 export function EmptyState({
@@ -39,6 +41,7 @@ export function EmptyState({
   description,
   iconName,
   role,
+  action,
 }: EmptyStateProps) {
   const Icon: LucideIcon =
     (iconName ? ICONS[iconName] : undefined) ?? FileSpreadsheet;
@@ -50,6 +53,7 @@ export function EmptyState({
           <Icon className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3" />
           <p className="font-medium mb-1">{title}</p>
           <p className="text-muted-foreground text-sm">{description}</p>
+          {action ? <div className="mt-4">{action}</div> : null}
         </div>
       </CardContent>
     </Card>
