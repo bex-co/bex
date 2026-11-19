@@ -1,6 +1,11 @@
 import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
-import { AlertCircle, Search } from "lucide-react";
-import { EmptyState } from "@/common/components/empty-state";
+import {
+  AlertCircle,
+  Database,
+  LockKeyhole,
+  ScrollText,
+  Search,
+} from "lucide-react";
 import { PlanBillingLink } from "@/common/components/plan-billing-link";
 import { RemovableChip } from "@/common/components/removable-chip";
 import { Input } from "@/common/components/ui/input.tsx";
@@ -39,6 +44,7 @@ import { LiveToggle } from "./log-filter-bar";
 import { LogEmptyState } from "./log-empty-state";
 import { LogLineList } from "./log-line-list";
 import { LogPanelSkeleton } from "./log-panel-skeleton";
+import { LogPanelState } from "./log-panel-state";
 import { LogTruncationNotice } from "./log-truncation-notice";
 import {
   COMMIT_DELAY_MS,
@@ -174,13 +180,17 @@ export function ProjectLogViewer({
   const emptyScope = history.resources?.length === 0;
 
   const historyReason = relayableReason(history.error);
+  // Every state without lines is drawn in the log panel's own screen-filling
+  // box, as the loading panel and the lines are, so the view keeps one shape
+  // whatever its read answers (as the service Logs tab does).
   let body: ReactNode;
   if (planRefused) {
     body = (
-      <EmptyState
-        iconName="LockKeyhole"
+      <LogPanelState
+        fillViewport
+        icon={LockKeyhole}
         title={t("logs.requestPlanTitle")}
-        description={
+        body={
           <>
             {t("logs.requestPlanBody")} <PlanBillingLink />
           </>
@@ -189,18 +199,20 @@ export function ProjectLogViewer({
     );
   } else if (history.storeUnavailable && history.lines.length === 0) {
     body = (
-      <EmptyState
-        iconName="Database"
+      <LogPanelState
+        fillViewport
+        icon={Database}
         title={t("logs.storeRequiredTitle")}
-        description={t("logs.storeRequiredBody")}
+        body={t("logs.storeRequiredBody")}
       />
     );
   } else if (history.timedOut && history.lines.length === 0) {
-    body = <LogEmptyState reason="timeout" />;
+    body = <LogEmptyState reason="timeout" fillViewport />;
   } else if (history.error && history.lines.length === 0) {
     body = (
       <LogEmptyState
         reason="failed"
+        fillViewport
         title={t("logs.errorTitle")}
         error={history.error}
       />
@@ -209,10 +221,11 @@ export function ProjectLogViewer({
     body = <LogPanelSkeleton fillViewport />;
   } else if (emptyScope && lines.length === 0) {
     body = (
-      <EmptyState
-        iconName="ScrollText"
+      <LogPanelState
+        fillViewport
+        icon={ScrollText}
         title={t("logs.projectScopeEmptyTitle")}
-        description={
+        body={
           logType === LOG_TYPE_REQUEST
             ? t("logs.projectRequestScopeEmptyBody")
             : t("logs.projectScopeEmptyBody")
@@ -223,6 +236,7 @@ export function ProjectLogViewer({
     body = (
       <LogEmptyState
         reason="empty"
+        fillViewport
         filtered={picks.length > 0 || committed.text !== ""}
         emptyTitle={t("logs.projectEmptyTitle")}
         emptyBody={t("logs.projectEmptyBody")}

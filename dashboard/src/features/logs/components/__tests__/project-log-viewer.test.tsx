@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import { ProjectLogViewer } from "../project-log-viewer";
@@ -12,6 +12,7 @@ import {
 } from "../../types";
 import { DEFAULT_LOG_RANGE } from "../../lib/log-search";
 import { setupVirtualGeometry } from "@/test/virtual-geometry";
+import { ProjectLogViewPageSkeleton } from "@/common/components/route-skeletons";
 
 // A project observability view's explorer (w3/m505): the history and the tail
 // read the view's scope, each line names its resource, and every state reads
@@ -260,5 +261,107 @@ describe("ProjectLogViewer", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  // The loading panel fills the screen, so a read that answers without lines
+  // keeps that box instead of collapsing to a short card under it, as the
+  // service Logs tab does (production's walk at 1440 and 390, w3/m505).
+  const planRefusal = () =>
+    new CombinedGraphQLErrors({
+      errors: [
+        {
+          message: "HTTP request logs require the Pro plan or higher",
+          extensions: { code: "PLAN_FEATURE_REQUIRED", feature: "requestLogs" },
+        },
+      ],
+    } as never);
+  it.each([
+    [
+      "the Pro-plan refusal",
+      LOG_TYPE_REQUEST,
+      "HTTP request logs require the Pro plan",
+      () => {
+        historyState.error = planRefusal();
+      },
+    ],
+    [
+      "a missing log store",
+      LOG_TYPE_REQUEST,
+      "Request logs need the log store",
+      () => {
+        historyState.storeUnavailable = true;
+      },
+    ],
+    [
+      "a timed-out read",
+      LOG_TYPE_APP,
+      "This search took too long",
+      () => {
+        historyState.timedOut = true;
+      },
+    ],
+    [
+      "a failed read",
+      LOG_TYPE_APP,
+      "Couldn't load logs",
+      () => {
+        historyState.error = new Error("upstream exploded");
+      },
+    ],
+    [
+      "a view with nothing in it",
+      LOG_TYPE_APP,
+      "Nothing to read in this view yet",
+      () => {
+        historyState.resources = [];
+      },
+    ],
+    [
+      "a quiet range",
+      LOG_TYPE_APP,
+      "No logs in this range",
+      () => {
+        historyState.resources = resources;
+      },
+    ],
+  ] as const)(
+    "draws %s in the loading panel's own box",
+    (_, logType, title, arrange) => {
+      historyState.loading = true;
+      const loading = viewer(logType);
+      const panelHeight = loading
+        .getByRole("status", { name: "Loading logs…" })
+        .querySelector<HTMLElement>("[style]")?.style.height;
+      expect(panelHeight).toMatch(/^\d+px$/);
+      loading.unmount();
+
+      historyState.loading = false;
+      arrange();
+      viewer(logType);
+      expect(
+        screen.getByText(title).closest<HTMLElement>("[style]")?.style.height,
+      ).toBe(panelHeight);
+    },
+  );
+
+  // The Live control sets the toolbar's height: 32px on a desktop, a 44px
+  // touch target below lg, where it shares a phone's second row with the
+  // range. Production's walk at 390 (w3/m505) found the pending frame's Live
+  // row 20px tall, so the ready view landed 12px lower.
+  it("reserves the ready Live control's height in the pending frame at every width", () => {
+    const liveRowHeights = (root: HTMLElement) =>
+      within(root)
+        .getByRole("switch", { hidden: true })
+        .closest("label")
+        ?.className.split(/\s+/)
+        .filter((name) => /(^|:)min-h-/.test(name))
+        .sort();
+    const ready = liveRowHeights(viewer(LOG_TYPE_APP).container);
+    expect(ready).toEqual(
+      expect.arrayContaining(["min-h-8", "max-lg:min-h-11"]),
+    );
+    expect(
+      liveRowHeights(render(<ProjectLogViewPageSkeleton />).container),
+    ).toEqual(ready);
   });
 });

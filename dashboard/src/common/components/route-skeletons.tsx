@@ -1406,17 +1406,13 @@ export function ProjectLogViewPageSkeleton() {
         >
           <Skeleton className="h-9 min-w-48 flex-1 max-sm:min-w-0 max-sm:basis-full" />
           <Skeleton className="h-8 w-40 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1" />
-          {/* LiveToggle's own markup, without pulling the filter bar into
-              the skeleton chunk. */}
-          <div className="flex items-center gap-2">
-            <Switch id="project-logs-live-toggle-pending" checked disabled />
-            <Label
-              htmlFor="project-logs-live-toggle-pending"
-              className="text-sm"
-            >
-              {t("logs.live")}
-            </Label>
-          </div>
+          {/* LiveToggle's own markup and row height (a 44px touch target
+              below lg, which sets the phone's second row), without pulling
+              the filter bar into the skeleton chunk. */}
+          <Label className={LIVE_TOGGLE_CLASS}>
+            <Switch checked disabled />
+            {t("logs.live")}
+          </Label>
         </Region>
         <p className="text-xs text-muted-foreground">
           {t("logs.rangeHistoryNote")}
