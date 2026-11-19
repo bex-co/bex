@@ -1,6 +1,6 @@
 # w3 · m489 — A service's edge cache outlives its instances: restarts, scaling and crashes keep it, and every instance shares it, as Render's CDN does
 
-**Worker:** worker3 **Goal:** each caching web service's edge cache lives in a per-service tier outside its instances, so it empties only on a successful deploy or a manual purge, as on Render; a Restart, a scale change, an instance crash or a node drain keeps it, all instances share one fill per key, and turning caching on rolls no instance. **Status:** blocked (t001–t006 and t008–t010 done, shipped in `a6b1658fb`; t007's production check ran on pin `dff52c596d13` on 2026-11-19 and every case held but a deploy after a Restart, fixed in `395ba2eb3`; t007 re-checks that case once a production pin carries it, then t011 closes out)
+**Worker:** worker3 **Goal:** each caching web service's edge cache lives in a per-service tier outside its instances, so it empties only on a successful deploy or a manual purge, as on Render; a Restart, a scale change, an instance crash or a node drain keeps it, all instances share one fill per key, and turning caching on rolls no instance. **Status:** done (t001–t006 and t008–t010 shipped in `a6b1658fb`; t007's production check held on pin `dff52c596d13` for every case but a deploy after a Restart, fixed in `395ba2eb3` and re-checked on pin `1c63b6fe0a34` on 2026-11-19; t011 closed it out)
 
 ## Tasks (in order)
 
@@ -12,11 +12,11 @@
 | [t004](done/t004.md) | A successful deploy or a manual purge advances the tier's purge generation; a failed deploy does not — **DONE** | 1h | t002, w3/m486/t003 |
 | [t005](done/t005.md) | Existing sidecar services move to the tier without dropping a request; the sidecar leaves at their next deploy — **DONE** | 1h | t002, t004 |
 | [t006](done/t006.md) | Fail-open drill: a killed cache pod costs no 5xx — **DONE** | 45m | t005 |
-| [t007](t007.md) | Ship and verify on production | 45m | t006 |
+| [t007](done/t007.md) | Ship and verify on production — **DONE** | 45m | t006 |
 | [t008](done/t008.md) | Render parity — **DONE** | 20m | t007 |
 | [t009](done/t009.md) | Simplify — **DONE** | 15m | t008 |
 | [t010](done/t010.md) | Test coverage — **DONE** | 30m | t008 |
-| [t011](t011.md) | Closeout | 10m | t009, t010 |
+| [t011](done/t011.md) | Closeout — **DONE** | 10m | t009, t010 |
 
 ## Definition of done
 
@@ -101,3 +101,32 @@ Production ran pin `a91e9aeb3` (`dff52c596d13`): every `bex-system` Deployment o
 ## Gate (2026-11-19, after t007's first run)
 
 The fix for a deploy after a Restart shipped in `395ba2eb3`, and production has to run it before t007 can re-check that case. The gate clears by itself once the newest `chore(deploy): pin platform images to <sha>` commit carries it (`git merge-base --is-ancestor 395ba2eb3 <sha>`). Then, as the QA user in `bex-canary`, create a fresh `origin-controlled-all` fixture as in the production check above. Warm a path and Restart. A deploy of a missing image tag then keeps the path at `HIT`, with no new `purged` line in either tier pod. Restart again and deploy successfully: the path reads `MISS` exactly once, after the rollout, with one `purged (app.bex.co/cache-revision=…)` line per tier pod. Delete the fixture by id, then run t011.
+
+## Unblock (2026-11-19, second)
+
+- **Affected:** t007's deploy-after-a-Restart re-check, then t011.
+- **Source:** verified evidence. The newest production pin on `origin/main`, `d38508f70` (`chore(deploy): pin platform images to 1c63b6fe0a34`, 19:49Z), carries `395ba2eb3`: `git merge-base --is-ancestor 395ba2eb3 1c63b6fe0a34` succeeds. The earlier pin `c81d2d447bd8` (`aefb144dc`, 18:04Z) already did.
+- **Remaining gates:** none. t007's remaining steps are those in § Gate (2026-11-19, after t007's first run) above.
+
+## Production re-check (t007, 2026-11-19, after the fix)
+
+Production ran pin `d38508f70` (`1c63b6fe0a34`), which carries `395ba2eb3`: every `bex-system` Deployment ran `bex-operator@sha256:092e0a87…`, the digest that pin names. The fixture was `qa-20261119-m489-recheck` (`srv-dbvl9710rfcc73dnr3v0`) in `bex-canary`, built as in the first run: a starter web service on `docker.io/traefik/whoami:v1.10.1` with `/whoami -verbose`, created as the QA user over REST, then `PATCH serviceDetails.cache.profile = origin-controlled-all` (200). The tier had 2/2 pods Ready, the Ingress named `bex-edge-cache-<app>:80`, and the app pod did not roll. `/m489-a.css` read `MISS` once, then `HIT`. One tier pod had logged `purged (app.bex.co/cache-revision=rev-1)` at start-up, the other none.
+
+| check | what production did | result |
+| --- | --- | --- |
+| Restart (`POST …/restart`, 200) | a new instance; `HIT` with `Age: 116`; the tier stayed `rev-1` with no new `purged` line | holds |
+| A failed deploy after that Restart (`POST …/deploys` with `imageUrl` `whoami:v0.0.0-m489-missing`: `update_failed` in 2 s) | `HIT` on every poll through the deploy and for 90 s after (`Age` 134 to 229); the tier stayed `rev-1` with no new `purged` line in either pod; the Restart's instance kept serving | holds (failed on `dff52c596d13`) |
+| A second Restart | a new instance; `HIT` with `Age: 325`, still `rev-1` | holds |
+| A successful deploy after it (`POST …/deploys`, live in 14 s) | `HIT` on every poll while the new instance started (`Age` up to 353), then exactly one `MISS` at 20:06:04, as the deploy went live and the old instance left rotation, then `HIT` again. Each tier pod logged one `purged (app.bex.co/cache-revision=rev-6)` at 20:06:02, rev-6 being the deploy's release. After the old instance was gone, the path still read `HIT` (`Age: 93`) from that one fill, and the new instance had logged one request for it | holds (emptied the cache twice on `dff52c596d13`) |
+
+**Cleanup.** The fixture was deleted by id (`DELETE` 204, then `GET` 404, and no App, tier, Service, Ingress or pod of it was left). The QA session was logged out, after which its cookie answered 401, and the session files and the fetched kubeconfig were deleted.
+
+## Closeout (t011, 2026-11-19)
+
+Every definition-of-done item holds:
+
+- ADR004 § Edge caching records the per-service tier, and ADR018's Edge caching row names the tier. It mentions the per-instance sidecar only as what the tier replaced.
+- On production, a Restart and a scale-out kept a cached path at `HIT`, two instances filled a new key once, a successful deploy and a manual purge each read `MISS` once, and a failed deploy kept `HIT` (first run). The deploy-after-a-Restart case now holds too (re-check above).
+- Turning caching on rolled no instance on production (both runs) and in envtest (`TestTurningCachingOnRollsNoInstance`).
+- The local fail-open drill (t006) had zero 5xx on a graceful tier-pod deletion, and no 5xx on a forced kill.
+- An operator upgrade changes neither the tier's template nor a stored sidecar template (`TestTheTierKeepsItsImageUntilASuccessfulDeploy`, `TestAnUpgradeKeepsAStoredEdgeCacheSidecarUntilTheTemplateChanges`).
