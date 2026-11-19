@@ -159,6 +159,11 @@ func serveSubscribe(h http.Handler, rec *httptest.ResponseRecorder, req *http.Re
 	<-done
 }
 
+// fixtureDay is the day the pod-log fixtures are stamped. A read on Render's
+// surfaces without a startTime reads only the last hour (w5/197), so a test
+// that reads these months-old lines names the window that holds them.
+const fixtureDay = "2026-07-05T00:00:00Z"
+
 func newService(logs map[string][]string, objs ...client.Object) *Service {
 	return &Service{
 		Base:          &core.Base{Client: fakeClientWith(objs...), Namespace: "default"},
@@ -285,7 +290,7 @@ func TestRESTLogsEnvelopeAndFilters(t *testing.T) {
 	}, sampleApp("web"), podFor("web", "web-1"), podFor("web", "web-2"))
 
 	var env renderLogList
-	rec := serveREST(svc, "GET", "/v1/logs?resource=web")
+	rec := serveREST(svc, "GET", "/v1/logs?resource=web&startTime="+fixtureDay)
 	if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
@@ -301,11 +306,11 @@ func TestRESTLogsEnvelopeAndFilters(t *testing.T) {
 	}
 
 	// text search, limit+hasMore.
-	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/logs?resource=web&text=get").Body.Bytes(), &env)
+	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/logs?resource=web&text=get&startTime="+fixtureDay).Body.Bytes(), &env)
 	if len(env.Logs) != 1 || env.Logs[0].Message != "GET / 200" {
 		t.Errorf("text=get should match one line: %+v", env.Logs)
 	}
-	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/logs?resource=web&limit=1").Body.Bytes(), &env)
+	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/logs?resource=web&limit=1&startTime="+fixtureDay).Body.Bytes(), &env)
 	if len(env.Logs) != 1 || !env.HasMore {
 		t.Errorf("limit=1 => newest line + hasMore: %+v", env)
 	}
@@ -428,7 +433,7 @@ func TestManagedPostgresLogsAcrossRESTGraphQLAndMCP(t *testing.T) {
 
 	// REST keeps Render's generic resource filter and returns the immutable dpg-
 	// id, the Postgres type, and the CNPG instance without a database-only route.
-	rec := serveREST(svc, http.MethodGet, "/v1/logs?resource="+postgresID+"&text=checkpoint&level=warning&level=error&instance="+pod)
+	rec := serveREST(svc, http.MethodGet, "/v1/logs?resource="+postgresID+"&text=checkpoint&level=warning&level=error&instance="+pod+"&startTime="+fixtureDay)
 	var env renderLogList
 	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &env) != nil || len(env.Logs) != 1 {
 		t.Fatalf("REST Postgres logs => %d %s", rec.Code, rec.Body.String())
@@ -448,7 +453,7 @@ func TestManagedPostgresLogsAcrossRESTGraphQLAndMCP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schema: %v", err)
 	}
-	data := runQuery(t, schema, `{ logs(resource:"`+postgresID+`", text:"checkpoint", level:["warning","error"], instance:["`+pod+`"]) { logs { message type instance level } } }`)
+	data := runQuery(t, schema, `{ logs(resource:"`+postgresID+`", text:"checkpoint", level:["warning","error"], instance:["`+pod+`"], startTime:"`+fixtureDay+`") { logs { message type instance level } } }`)
 	rows := data["logs"].(map[string]any)["logs"].([]any)
 	if len(rows) != 1 || rows[0].(map[string]any)["type"] != "postgres" || rows[0].(map[string]any)["level"] != "error" {
 		t.Fatalf("GraphQL Postgres logs = %+v", rows)
@@ -467,7 +472,7 @@ func TestManagedPostgresLogsAcrossRESTGraphQLAndMCP(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = cs.Close() })
 	result, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "list_logs", Arguments: map[string]any{
-		"resource": []string{postgresID}, "text": []string{"checkpoint"}, "level": []string{"warning", "error"}, "instance": []string{pod},
+		"resource": []string{postgresID}, "text": []string{"checkpoint"}, "level": []string{"warning", "error"}, "instance": []string{pod}, "startTime": fixtureDay,
 	}})
 	if err != nil || result.IsError || !strings.Contains(result.Content[0].(*mcp.TextContent).Text, "checkpoint failed") || strings.Contains(result.Content[0].(*mcp.TextContent).Text, "checkpoint complete") {
 		t.Fatalf("MCP Postgres logs = %+v, err=%v", result, err)
@@ -541,7 +546,7 @@ func TestRESTLogsResolveTypedIDToTenantPrefixedApp(t *testing.T) {
 		"web-1": {"2026-07-05T00:00:01Z booted"},
 	}, app, podFor(physicalName, "web-1"))
 
-	rec := serveREST(svc, "GET", "/v1/logs?resource=srv-c185th5c2rvvnhbfiltg")
+	rec := serveREST(svc, "GET", "/v1/logs?resource=srv-c185th5c2rvvnhbfiltg&startTime="+fixtureDay)
 	var env renderLogList
 	if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil || rec.Code != http.StatusOK {
 		t.Fatalf("typed-id logs => %d: %v %s", rec.Code, err, rec.Body.String())
@@ -600,7 +605,7 @@ func TestRESTStructuredFiltersRefusedWithoutStore(t *testing.T) {
 	// `instance` is the one structured filter the pod-log path CAN honor — a pod
 	// name is a pod name — so it narrows rather than refusing.
 	var env renderLogList
-	rec := serveREST(svc, "GET", "/v1/logs?resource=web&instance=web-1")
+	rec := serveREST(svc, "GET", "/v1/logs?resource=web&instance=web-1&startTime="+fixtureDay)
 	if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil || rec.Code != 200 || len(env.Logs) != 1 {
 		t.Errorf("instance filter should be honored on pod logs: %d %+v", rec.Code, env.Logs)
 	}
@@ -1079,7 +1084,7 @@ func TestGraphQLLogs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schema: %v", err)
 	}
-	data := runQuery(t, schema, `{ logs(resource:"web") { hasMore logs { message type instance } } }`)
+	data := runQuery(t, schema, `{ logs(resource:"web", startTime:"`+fixtureDay+`") { hasMore logs { message type instance } } }`)
 	env := data["logs"].(map[string]any)
 	list := env["logs"].([]any)
 	if len(list) != 1 {
@@ -2272,7 +2277,7 @@ func TestManagedPostgresPodLogsUnwrapCNPG(t *testing.T) {
 		},
 	}, sampleDatabase(postgresID), databasePod(postgresID, pod))
 
-	env := decodeLogList(t, serveREST(svc, http.MethodGet, "/v1/logs?resource="+postgresID))
+	env := decodeLogList(t, serveREST(svc, http.MethodGet, "/v1/logs?resource="+postgresID+"&startTime="+fixtureDay))
 	if len(env.Logs) != 1 || env.Logs[0].Message != `2026-07-05 00:00:02.000 UTC [7] FATAL:  password authentication failed for user "app"` {
 		t.Fatalf("Postgres logs = %+v, want only the unwrapped record", env.Logs)
 	}

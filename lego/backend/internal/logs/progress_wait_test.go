@@ -220,12 +220,15 @@ func TestQueuedWaitNarrationIsNotSourcedFromFailureReason(t *testing.T) {
 // or truncated it.
 func TestQueuedWaitLineIsIdenticalOnEveryLogSurface(t *testing.T) {
 	const wantLine = "==> Waiting for a build slot: this workspace has 2/2 builds running"
+	// The wait line is stamped at the fixture's transition; a read without a
+	// startTime reads only the last hour (w5/197).
+	const since = "2026-09-14T10:00:00Z"
 	svc := queuedWaitService(t, waitingApp("web", appv1alpha1.ReasonBuildQueued, workspaceCapMessage))
 
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/logs?resource=web&type=build", nil))
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/logs?resource=web&type=build&startTime="+since, nil))
 	var env renderLogList
 	if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil {
 		t.Fatalf("decode REST logs: %v (body %s)", err, rec.Body.String())
@@ -241,7 +244,7 @@ func TestQueuedWaitLineIsIdenticalOnEveryLogSurface(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schema: %v", err)
 	}
-	data := runQuery(t, schema, `{ logs(resource:"web", type:"build") { logs { message } } }`)
+	data := runQuery(t, schema, `{ logs(resource:"web", type:"build", startTime:"`+since+`") { logs { message } } }`)
 	var gqlLine string
 	for _, row := range data["logs"].(map[string]any)["logs"].([]any) {
 		msg, _ := row.(map[string]any)["message"].(string)
@@ -263,7 +266,7 @@ func TestQueuedWaitLineIsIdenticalOnEveryLogSurface(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = cs.Close() })
 	out, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "list_logs", Arguments: map[string]any{
-		"resource": []string{"web"}, "type": []string{LogTypeBuild},
+		"resource": []string{"web"}, "type": []string{LogTypeBuild}, "startTime": since,
 	}})
 	if err != nil || out.IsError {
 		t.Fatalf("list_logs = %+v, err %v", out, err)

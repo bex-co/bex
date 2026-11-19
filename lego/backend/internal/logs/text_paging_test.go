@@ -103,7 +103,7 @@ func TestGraphQLTextRemainsOneLiteralSubstring(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data := runQuery(t, schema, `{ logs(resource:"web", text:"a,b") { logs { message } } }`)
+	data := runQuery(t, schema, `{ logs(resource:"web", text:"a,b", startTime:"`+fixtureDay+`") { logs { message } } }`)
 	raw, err := json.Marshal(data["logs"])
 	if err != nil {
 		t.Fatal(err)

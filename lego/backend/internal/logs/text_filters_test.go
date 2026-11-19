@@ -75,12 +75,12 @@ func TestTextFilterUnionAcrossAdaptersAndPodSources(t *testing.T) {
 			{"all_empty", []string{"", ""}, []string{"qa_text_A qa_text_B", "unrelated control", "qa_text_B", "qa_text_A"}},
 		} {
 			t.Run(resource+"/"+tc.name, func(t *testing.T) {
-				params := url.Values{"resource": {resource}, "text": tc.terms}
+				params := url.Values{"resource": {resource}, "text": tc.terms, "startTime": {fixtureDay}}
 				rec := serveREST(svc, http.MethodGet, "/v1/logs?"+params.Encode())
 				if rec.Code != http.StatusOK {
 					t.Fatalf("REST: %d %s", rec.Code, rec.Body.String())
 				}
-				result, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "list_logs", Arguments: map[string]any{"resource": []string{resource}, "text": tc.terms}})
+				result, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "list_logs", Arguments: map[string]any{"resource": []string{resource}, "text": tc.terms, "startTime": fixtureDay}})
 				if err != nil {
 					t.Fatal(err)
 				}

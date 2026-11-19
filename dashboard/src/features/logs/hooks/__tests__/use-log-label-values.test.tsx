@@ -8,7 +8,10 @@ import {
 } from "@apollo/client";
 import { ApolloProvider } from "@apollo/client/react";
 import { RESOURCE_POLL_INTERVAL_MS } from "@/common/lib/polling";
-import { useLogLabelDiscovery } from "../use-log-label-values";
+import {
+  discoveryStartTime,
+  useLogLabelDiscovery,
+} from "../use-log-label-values";
 
 // w4/178: discovery refreshes while the page stays open, keeps its last
 // answer through a transient failure, and skips work while the tab is hidden.
@@ -17,11 +20,13 @@ type Reply = { values?: string[]; fail?: boolean };
 
 function transport(replies: Reply[]) {
   let calls = 0;
+  const variables: Record<string, unknown>[] = [];
   const client = new ApolloClient({
     cache: new InMemoryCache(),
     link: new ApolloLink(
-      () =>
+      (operation) =>
         new Observable<ApolloLink.Result>((observer) => {
+          variables.push(operation.variables);
           const reply = replies[Math.min(calls, replies.length - 1)];
           calls++;
           if (reply.fail) {
@@ -33,7 +38,7 @@ function transport(replies: Reply[]) {
         }),
     ),
   });
-  return { client, calls: () => calls };
+  return { client, calls: () => calls, variables };
 }
 
 function Probe() {
@@ -133,5 +138,35 @@ describe("useLogLabelDiscovery freshness", () => {
     await tick(RESOURCE_POLL_INTERVAL_MS);
     expect(calls()).toBe(2);
     expect(probe()).toBe("resolved:GET,POST");
+  });
+});
+
+// w5/197: a logLabelValues read without a startTime covers only the last hour,
+// as Render's does, so discovery names its own window: the shortest plan's
+// seven days, rounded up to the hour so polls within an hour share one query.
+describe("useLogLabelDiscovery window", () => {
+  it("rounds the seven-day start up to the hour", () => {
+    expect(discoveryStartTime(Date.parse("2026-11-19T12:34:56Z"))).toBe(
+      "2026-11-12T13:00:00.000Z",
+    );
+    expect(discoveryStartTime(Date.parse("2026-11-19T12:00:00Z"))).toBe(
+      "2026-11-12T12:00:00.000Z",
+    );
+  });
+
+  it("asks for seven days and keeps the start across polls within the hour", async () => {
+    vi.setSystemTime(new Date("2026-11-19T12:34:56Z"));
+    const { client, variables } = transport([{ values: ["GET"] }]);
+    mount(client);
+    await tick(0);
+    await tick(RESOURCE_POLL_INTERVAL_MS);
+    expect(variables.length).toBeGreaterThanOrEqual(2);
+    for (const v of variables) {
+      expect(v).toEqual({
+        resource: "srv-1",
+        label: "method",
+        startTime: "2026-11-12T13:00:00.000Z",
+      });
+    }
   });
 });

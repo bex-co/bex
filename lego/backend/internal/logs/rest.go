@@ -53,20 +53,39 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/logs/subscribe", s.logsSubscribe)
 }
 
-// checkWindow enforces BEX_MAX_QUERY_HOURS on a query's time range. Every REST
-// log read goes through it — the historical query AND label discovery — and so
-// do GraphQL's `logs`/`logLabelValues` (graphql.go, w9/m1/t002) and MCP's
-// `list_logs`/`list_log_label_values` (mcp.go, w9/004) — all accept the same
-// startTime/endTime and would otherwise let a caller scan the store unbounded.
+// renderLookback is how far back a read on Render's logs surfaces reaches when
+// it names no startTime: Render's List logs and List log label values document
+// startTime as "Defaults to `now() - 1 hour`", and its MCP server's list_logs
+// and list_log_label_values as "Defaults to 1 hour ago" (w5/197).
+const renderLookback = time.Hour
+
+// renderWindow resolves a read's window on Render's logs surfaces and enforces
+// BEX_MAX_QUERY_HOURS on it. Every REST log read goes through it — the
+// historical query AND label discovery — and so do GraphQL's
+// `logs`/`logLabelValues` (graphql.go, w9/m1/t002) and MCP's
+// `list_logs`/`list_log_label_values` (mcp.go, w9/004).
+//
+// An omitted startTime reads the hour before the earlier of endTime and now:
+// Render's `now() - 1 hour` whenever the window ends now or later, and a
+// window that is never inverted when an endTime alone lies further back
+// (w8/120). Setting it here, before the read, is what makes the store, the
+// pod-log fallback and the page cursors all name that one hour.
 //
 // The cap measures the part of the window that can hold lines, up to now: no
 // line is stamped after it (w8/123), and a window that has not begun holds
 // none (w8/120).
-func (s *Service) checkWindow(q LogQuery) error {
+func (s *Service) renderWindow(q *LogQuery) error {
+	now := time.Now()
+	if q.Since.IsZero() {
+		end := now
+		if !q.End.IsZero() {
+			end = earlier(q.End, now)
+		}
+		q.Since = end.Add(-renderLookback)
+	}
 	if err := core.ValidateInclusiveQueryRange(q.Since, q.End); err != nil {
 		return err
 	}
-	now := time.Now()
 	if q.Since.After(now) {
 		return nil
 	}
@@ -82,7 +101,7 @@ func (s *Service) logsValues(w http.ResponseWriter, r *http.Request) {
 		core.WriteErr(w, err)
 		return
 	}
-	if err := s.checkWindow(q); err != nil {
+	if err := s.renderWindow(&q); err != nil {
 		core.WriteErr(w, err)
 		return
 	}
@@ -123,7 +142,7 @@ func (s *Service) logsQuery(w http.ResponseWriter, r *http.Request) {
 		core.WriteErr(w, err)
 		return
 	}
-	if err := s.checkWindow(q); err != nil {
+	if err := s.renderWindow(&q); err != nil {
 		core.WriteErr(w, err)
 		return
 	}

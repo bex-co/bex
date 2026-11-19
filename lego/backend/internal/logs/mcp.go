@@ -54,8 +54,8 @@ type logFilters struct {
 	Build      []string `json:"build,omitempty" jsonschema:"bex extension, Render's REST build filter — filter build logs by build ID (a service build's ID is its deploy's dep- id)"`
 	Text       []string `json:"text,omitempty" jsonschema:"case-insensitive literal substrings, * wildcards or /regex/ (RE2); match any nonempty value"`
 	TextMode   string   `json:"textMode,omitempty" jsonschema:"bex extension — what text matches: raw (default, the stored message bytes) | display (the text a terminal shows, ANSI styling and overwritten text excluded); returned messages stay raw either way"`
-	StartTime  string   `json:"startTime,omitempty" jsonschema:"RFC3339 lower time bound (inclusive)"`
-	EndTime    string   `json:"endTime,omitempty" jsonschema:"RFC3339 upper time bound (inclusive)"`
+	StartTime  string   `json:"startTime,omitempty" jsonschema:"RFC3339 lower time bound (inclusive); defaults to 1 hour ago (one hour before endTime when endTime is earlier)"`
+	EndTime    string   `json:"endTime,omitempty" jsonschema:"RFC3339 upper time bound (inclusive); defaults to the current time"`
 	Direction  string   `json:"direction,omitempty" jsonschema:"which end of the time range to take lines from: backward (default, most recent) | forward (oldest)"`
 }
 
@@ -127,7 +127,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "List log lines for one or more services, managed Postgres databases, or Key Value stores (Render's `resource` array), filtered by text, time range, and instance; service and Postgres logs also support level; service logs additionally support type, host, statusCode, method, and path. " +
 			"Timestamp-sorted and aggregated across instances. Returns Render's paging envelope: hasMore, nextStartTime, nextEndTime, and logs. " +
 			"When hasMore is true, call again with startTime=nextStartTime and endTime=nextEndTime (same direction) to fetch the next page — the result is capped at 100 lines. " +
-			"Logs reach back as far as the workspace plan keeps them; an earlier startTime reads from that limit. " +
+			"Without startTime the last hour is read, as on Render. Logs reach back as far as the workspace plan keeps them; an earlier startTime reads from that limit. " +
 			"Use list_log_label_values to discover which filter values exist for a resource.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listLogsArgs) (*mcp.CallToolResult, renderLogList, error) {
 		resources, err := boundedResources(in.Resource)
@@ -138,10 +138,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		if err != nil {
 			return nil, renderLogList{}, err
 		}
-		// BEX_MAX_QUERY_HOURS bounds this surface too (w9/004) — the same
-		// checkWindow REST's logsQuery/logsValues and GraphQL's resolvers call,
-		// so no adapter lets a caller scan the store unbounded.
-		if err := s.checkWindow(q); err != nil {
+		// BEX_MAX_QUERY_HOURS bounds this surface too (w9/004), and an absent
+		// startTime reads the last hour (w5/197) — the same renderWindow
+		// REST's logsQuery/logsValues and GraphQL's resolvers call, so no
+		// adapter lets a caller scan the store unbounded.
+		if err := s.renderWindow(&q); err != nil {
 			return nil, renderLogList{}, err
 		}
 		q.Limit = in.Limit
@@ -170,7 +171,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := s.checkWindow(q); err != nil {
+		if err := s.renderWindow(&q); err != nil {
 			return nil, nil, err
 		}
 		all := []string{}

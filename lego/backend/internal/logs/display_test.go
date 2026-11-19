@@ -104,8 +104,8 @@ func TestDisplayModeAcrossAdaptersKeepsRawBytesAndRawDefault(t *testing.T) {
 	messages := func(t *testing.T, term, mode string) map[string][]string {
 		t.Helper()
 		out := map[string][]string{}
-		params := url.Values{"resource": {"web"}, "text": {term}}
-		args := map[string]any{"resource": []string{"web"}, "text": []string{term}}
+		params := url.Values{"resource": {"web"}, "text": {term}, "startTime": {fixtureDay}}
+		args := map[string]any{"resource": []string{"web"}, "text": []string{term}, "startTime": fixtureDay}
 		gqlMode := ""
 		if mode != "" {
 			params.Set("textMode", mode)
@@ -120,7 +120,7 @@ func TestDisplayModeAcrossAdaptersKeepsRawBytesAndRawDefault(t *testing.T) {
 		if err != nil || res.IsError {
 			t.Fatalf("MCP: %v %+v", err, res)
 		}
-		data := runQuery(t, schema, fmt.Sprintf(`{ logs(resource:"web", text:%q%s) { logs { message } } }`, term, gqlMode))
+		data := runQuery(t, schema, fmt.Sprintf(`{ logs(resource:"web", text:%q%s, startTime:%q) { logs { message } } }`, term, gqlMode, fixtureDay))
 		gqlBody, err := json.Marshal(data["logs"])
 		if err != nil {
 			t.Fatal(err)

@@ -40,10 +40,14 @@ import (
 // exactly like metrics' Prometheus source. Loki owns metrics? no: Prometheus
 // owns metrics, Loki owns logs — this is the logs sibling of NewPrometheus*.
 
-// lokiLookback is the default lower time bound for a query that carries none:
-// the point of durable history is a real window, so an unbounded "recent logs"
-// read still reaches back across restarts. It is the shortest plan window, so
-// a bare query never reaches past any workspace's retention floor (w9/m389).
+// lokiLookback is the default lower time bound for a store query that carries
+// none: the point of durable history is a real window, so an unbounded "recent
+// logs" read still reaches back across restarts. It is the shortest plan
+// window, so a bare query never reaches past any workspace's retention floor
+// (w9/m389). Render's logs surfaces never get here without a start: they read
+// the last hour, as Render documents (renderWindow, w5/197). What still does is
+// bex's own reads with no Render counterpart, such as Service.Logs' tail and
+// the per-datastore log endpoints.
 var lokiLookback = core.ShortestLogRetention()
 
 // NewLokiSource returns the production LogHistorySource, backed by a Loki

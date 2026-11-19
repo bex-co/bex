@@ -144,15 +144,20 @@ func TestLokiEndParamNudgesOnlyTheCallersEnd(t *testing.T) {
 	}
 }
 
-// w8/125: with startTime omitted the read looks back lokiLookback, so the page
-// cursors must name that same window. They defaulted to one hour, and a
-// backward page whose oldest line was older than that handed out a start
-// after its end, which the next request refused with a 400.
+// w8/125, w5/197: with startTime omitted a read covers the last hour, as
+// Render documents, and the page cursors name that same hour. Cursors that
+// named a shorter window than the read handed a backward page whose oldest
+// line lay outside it a start after its end, which the next request refused
+// with a 400; a read longer than the cursors' window walked lines Render
+// would not return.
 func TestBackwardPagesWithoutAStartFollowTheirCursorsToTheEnd(t *testing.T) {
 	now := time.Now().UTC()
-	stamps := make([]time.Time, 6)
-	for i := range stamps {
-		stamps[i] = now.Add(-time.Duration(5-i)*time.Hour - 30*time.Minute) // 5h30m .. 30m ago
+	var stamps, inHour []time.Time
+	for _, age := range []time.Duration{5*time.Hour + 30*time.Minute, 2 * time.Hour, 61 * time.Minute, 50 * time.Minute, 40 * time.Minute, 30 * time.Minute, 20 * time.Minute, 10 * time.Minute} {
+		stamps = append(stamps, now.Add(-age))
+		if age < renderLookback {
+			inHour = append(inHour, now.Add(-age))
+		}
 	}
 	srv := exclusiveEndLoki(t, stamps)
 	defer srv.Close()
@@ -161,7 +166,11 @@ func TestBackwardPagesWithoutAStartFollowTheirCursorsToTheEnd(t *testing.T) {
 
 	seen := map[string]bool{}
 	path := "/v1/logs?resource=web&limit=2"
-	for range 10 {
+	hourStart := ""
+	for page := 0; ; page++ {
+		if page == 10 {
+			t.Fatal("paging never ended")
+		}
 		env := decodeLogList(t, serveREST(svc, "GET", path))
 		for _, l := range env.Logs {
 			if seen[l.Timestamp] {
@@ -174,12 +183,25 @@ func TestBackwardPagesWithoutAStartFollowTheirCursorsToTheEnd(t *testing.T) {
 		if start.After(end) {
 			t.Fatalf("cursors start %s after their end %s", env.NextStartTime, env.NextEndTime)
 		}
+		if hourStart == "" {
+			hourStart = env.NextStartTime
+			if from := now.Add(-renderLookback); start.Before(from) || start.After(time.Now().Add(-renderLookback)) {
+				t.Fatalf("first page's nextStartTime = %s, want the hour before now (%s)", env.NextStartTime, from.Format(time.RFC3339Nano))
+			}
+		} else if env.NextStartTime != hourStart {
+			t.Fatalf("page %d's nextStartTime = %s, want the same hour's start %s", page, env.NextStartTime, hourStart)
+		}
 		if !env.HasMore {
 			break
 		}
 		path = "/v1/logs?resource=web&limit=2&startTime=" + env.NextStartTime + "&endTime=" + env.NextEndTime
 	}
-	if len(seen) != len(stamps) {
-		t.Fatalf("paged %d of %d lines", len(seen), len(stamps))
+	if len(seen) != len(inHour) {
+		t.Fatalf("paged %d lines, want the last hour's %d", len(seen), len(inHour))
+	}
+	for _, s := range inHour {
+		if !seen[s.Format(time.RFC3339Nano)] {
+			t.Errorf("the line from %s ago was never paged", now.Sub(s))
+		}
 	}
 }

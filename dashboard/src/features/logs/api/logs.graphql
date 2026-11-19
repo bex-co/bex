@@ -97,8 +97,10 @@ query Logs(
 # of `metricsFilters` — populates the Logs-tab filter dropdowns with real observed
 # values, not a hardcoded guess. `host` resolves even without the store (answered
 # from the App's own URLs); the rest report 503 when the store is unwired.
-query LogLabelValues($label: String!, $resource: String!) {
-  logLabelValues(label: $label, resource: $resource)
+# Without a startTime the read covers only the last hour, Render's default
+# (w5/197), so the dropdowns name the window they discover over.
+query LogLabelValues($label: String!, $resource: String!, $startTime: String) {
+  logLabelValues(label: $label, resource: $resource, startTime: $startTime)
 }
 
 # How far back one resource's logs reach on its workspace plan (w9/m389, a Bex

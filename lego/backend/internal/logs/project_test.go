@@ -100,8 +100,11 @@ func projectFixture(objs ...client.Object) (*Service, *fakeProject) {
 	return svc, project
 }
 
+// runProjectQuery reads the project view from the fixture day: without a
+// startTime the read covers only the last hour (w5/197).
 func runProjectQuery(t *testing.T, svc *Service, ctx context.Context, args string) (map[string]any, []error) {
 	t.Helper()
+	args += `, startTime:"` + fixtureDay + `"`
 	schema, err := gqlSchema(svc)
 	if err != nil {
 		t.Fatal(err)

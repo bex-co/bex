@@ -206,7 +206,7 @@ func TestKeyValueLevelOnEveryAdapter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data := runQuery(t, schema, `{ logs(resource:"`+keyValueID+`", level:["warning"]) { logs { message } } }`)
+	data := runQuery(t, schema, `{ logs(resource:"`+keyValueID+`", level:["warning"], startTime:"`+fixtureDay+`") { logs { message } } }`)
 	raw, _ := json.Marshal(data["logs"])
 	if !strings.Contains(string(raw), "Memory overcommit") || strings.Contains(string(raw), "Ready to accept") {
 		t.Fatalf("GraphQL logs(level:warning) = %s", raw)
@@ -225,7 +225,7 @@ func TestKeyValueLevelOnEveryAdapter(t *testing.T) {
 	}
 	defer func() { _ = cs.Close() }()
 	result, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "list_logs", Arguments: map[string]any{
-		"resource": []string{keyValueID}, "level": []string{"warning"},
+		"resource": []string{keyValueID}, "level": []string{"warning"}, "startTime": fixtureDay,
 	}})
 	if err != nil || result.IsError {
 		t.Fatalf("MCP list_logs = %+v, err=%v", result, err)

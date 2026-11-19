@@ -267,7 +267,8 @@ func TestEveryReadSurfaceStopsAtThePlansWindow(t *testing.T) {
 }
 
 // A window wholly before the floor is an empty page, not an error, and the
-// default lookback (no startTime) stays inside every plan's window.
+// default window (no startTime) is the last hour, inside every plan's window,
+// which holds none of these day-old lines (w5/197).
 func TestAWindowBeforeTheFloorIsAnEmptyPage(t *testing.T) {
 	svc, now := retentionService(t, "hobby", time.Time{})
 	from := now.Add(-20 * day).UTC().Format(time.RFC3339)
@@ -280,13 +281,8 @@ func TestAWindowBeforeTheFloorIsAnEmptyPage(t *testing.T) {
 		t.Fatalf("a window wholly before the floor = %d lines, hasMore=%v; want an empty last page", len(env.Logs), env.HasMore)
 	}
 
-	env := decodeLogList(t, serveREST(svc, http.MethodGet, "/v1/logs?resource=web&limit=100"))
-	var stamps []string
-	for _, l := range env.Logs {
-		stamps = append(stamps, l.Timestamp)
-	}
-	if got := agesOf(t, now, stamps); !slices.Equal(got, visibleAges(7)) {
-		t.Fatalf("default lookback ages %v, want %v", got, visibleAges(7))
+	if env := decodeLogList(t, serveREST(svc, http.MethodGet, "/v1/logs?resource=web&limit=100")); len(env.Logs) != 0 || env.HasMore {
+		t.Fatalf("the default window = %d lines, hasMore=%v; want the last hour's none", len(env.Logs), env.HasMore)
 	}
 }
 

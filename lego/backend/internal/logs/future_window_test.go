@@ -75,7 +75,7 @@ func TestLogsFromAFutureInstantAreAnEmptyPageOnEverySurface(t *testing.T) {
 }
 
 // An endTime in the future alone still reads the lines up to now: the default
-// lookback counts back from now, not from the end, where it held nothing yet.
+// hour counts back from now, not from the end, where it held nothing yet.
 func TestLogsUpToAFutureEndLookBackFromNow(t *testing.T) {
 	f := newFakeLoki(lokiResp(map[string]any{
 		"stream": `{"app":"web","pod":"web-9","container":"app"}`,
@@ -85,12 +85,13 @@ func TestLogsUpToAFutureEndLookBackFromNow(t *testing.T) {
 	svc := newService(nil, sampleApp("web"))
 	svc.History = NewLokiSource(f.srv.URL, f.srv.Client())
 
+	before := time.Now()
 	if env := decodeLogList(t, serveREST(svc, "GET", "/v1/logs?resource=web&endTime=2030-01-01T00:00:00Z")); len(env.Logs) != 1 {
 		t.Fatalf("a future endTime alone = %d lines, want the one before now", len(env.Logs))
 	}
 	start, err := strconv.ParseInt(f.lastValues.Get("start"), 10, 64)
-	if err != nil || time.Unix(0, start).After(time.Now().Add(lokiFutureGrace-lokiLookback)) {
-		t.Errorf("Loki window starts at %s, want the lookback from now", time.Unix(0, start).UTC())
+	if from := time.Unix(0, start); err != nil || from.Before(before.Add(-renderLookback)) || from.After(time.Now().Add(-renderLookback)) {
+		t.Errorf("Loki window starts at %s, want the hour before now (w5/197)", from.UTC())
 	}
 
 	if since, _ := resolveCursorWindow(time.Time{}, time.Now().AddDate(4, 0, 0)); since.After(time.Now()) {
@@ -124,8 +125,8 @@ func TestLogsUpToAFarFutureEndQueryLokiOnlyUpToNow(t *testing.T) {
 		if err != nil || time.Unix(0, end).After(time.Now().Add(lokiFutureGrace)) || time.Unix(0, end).Before(before) {
 			t.Errorf("%s: Loki end = %s, want now plus at most the clock grace", path, time.Unix(0, end).UTC())
 		}
-		if span := time.Duration(end - start); span > lokiLookback+time.Second {
-			t.Errorf("%s: Loki window spans %s, want at most the %s lookback", path, span, lokiLookback)
+		if span := time.Duration(end - start); span > renderLookback+lokiFutureGrace+time.Second {
+			t.Errorf("%s: Loki window spans %s, want at most the %s default plus the clock grace", path, span, renderLookback)
 		}
 	}
 }
@@ -144,7 +145,7 @@ func TestLogQueryCapMeasuresTheWindowUpToNow(t *testing.T) {
 		{now.Add(-31 * 24 * time.Hour), now.Add(24 * time.Hour), false},
 		{now.Add(24 * time.Hour), now.Add(40 * 24 * time.Hour), true},
 	} {
-		err := svc.checkWindow(LogQuery{Since: tc.start, End: tc.end})
+		err := svc.renderWindow(&LogQuery{Since: tc.start, End: tc.end})
 		if (err == nil) != tc.ok {
 			t.Errorf("window %s .. %s: err = %v, want ok=%v", tc.start.UTC(), tc.end.UTC(), err, tc.ok)
 		}

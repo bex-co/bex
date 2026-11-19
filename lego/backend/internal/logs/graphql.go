@@ -139,10 +139,11 @@ func logFilterArgs() graphql.FieldConfigArgument {
 		"direction": gqlutil.Arg(graphql.String),
 		// startTime/endTime (w9/m1/t002): the RFC3339 window REST (?startTime=…&
 		// endTime=…) and MCP (list_logs) already accept — the deploy detail page
-		// scopes its log query to a deploy's createdAt..finishedAt window. Absent
-		// ⇒ prior unbounded behavior; BEX_MAX_QUERY_HOURS is enforced by the
-		// resolvers below (s.checkWindow), the same call REST's logsQuery/
-		// logsValues make — not duplicated here as a second cap.
+		// scopes its log query to a deploy's createdAt..finishedAt window. An
+		// absent startTime reads the last hour, Render's default (w5/197); that
+		// and BEX_MAX_QUERY_HOURS are applied by the resolvers below
+		// (s.renderWindow), the same call REST's logsQuery/logsValues make —
+		// not duplicated here.
 		"startTime": gqlutil.Arg(graphql.String),
 		"endTime":   gqlutil.Arg(graphql.String),
 	}
@@ -187,7 +188,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				if p.Args["filterDocument"] != nil && project == "" {
 					return nil, fmt.Errorf("%w: filterDocument applies to a project read", core.ErrBadRequest)
 				}
-				if err := s.checkWindow(q); err != nil {
+				if err := s.renderWindow(&q); err != nil {
 					return nil, err
 				}
 				if project != "" {
@@ -219,7 +220,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				if err != nil {
 					return nil, err
 				}
-				if err := s.checkWindow(q); err != nil {
+				if err := s.renderWindow(&q); err != nil {
 					return nil, err
 				}
 				label := gqlutil.Str(p.Args, "label")

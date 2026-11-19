@@ -1,10 +1,34 @@
 import { useLastAnswer } from "@/common/hooks/use-last-answer";
+import { useNow } from "@/common/hooks/use-now";
 import { useQuery } from "@apollo/client/react";
 import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
 } from "@/common/lib/polling";
 import { LogLabelValuesDocument } from "@/graphql/definitions";
+
+const HOUR_MS = 60 * 60 * 1000;
+
+/**
+ * How far back discovery looks: seven days, the shortest plan's log window
+ * (Hobby's), so it never reaches past any workspace's floor. A read without a
+ * startTime covers only the last hour, as Render documents (w5/197), and the
+ * filter dropdowns would then lose an instance or a status code the App last
+ * produced yesterday.
+ */
+const DISCOVERY_LOOKBACK_MS = 7 * 24 * HOUR_MS;
+
+/**
+ * The discovery window's start for the instant `now` (epoch ms): the lookback
+ * rounded up to the hour, so the query's variables (and its cache entry)
+ * change once an hour rather than on every render, and the start never lies
+ * before the seven-day floor.
+ */
+export function discoveryStartTime(now: number): string {
+  return new Date(
+    Math.ceil((now - DISCOVERY_LOOKBACK_MS) / HOUR_MS) * HOUR_MS,
+  ).toISOString();
+}
 
 /**
  * One label's discovery result, with the distinction the filter bar needs:
@@ -46,8 +70,9 @@ export function useLogLabelDiscovery(
   // status first seen after load becomes selectable on the next visible poll
   // instead of after a reload (w4/178). Apollo's cache-first default would
   // otherwise answer every re-render from the first result forever.
+  const startTime = discoveryStartTime(useNow(HOUR_MS));
   const { data, loading, error } = useQuery(LogLabelValuesDocument, {
-    variables: { resource, label },
+    variables: { resource, label, startTime },
     errorPolicy: "all",
     skip,
     pollInterval: RESOURCE_POLL_INTERVAL_MS,

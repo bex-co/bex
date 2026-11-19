@@ -327,10 +327,11 @@ func backwardCursors(since, before time.Time) (string, string) {
 }
 
 // resolveCursorWindow fills the read's defaults so REQUIRED cursors are never
-// empty when the caller omitted a bound. An omitted start reads back
-// lokiLookback, not Render's documented hour, so the cursors name that same
-// window; a one-hour start put a backward page's next start after its next end
-// once its lines were older than an hour (w8/125).
+// empty when the caller omitted a bound. Render's surfaces always arrive with
+// a start, their last hour (renderWindow, w5/197); a page read without one
+// reads back lokiLookback, so the cursors name that same window. Cursors that
+// named a shorter window than the read put a backward page's next start after
+// its next end once its lines were older than it (w8/125).
 func resolveCursorWindow(since, end time.Time) (time.Time, time.Time) {
 	now := time.Now().UTC()
 	if end.IsZero() {
