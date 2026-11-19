@@ -29,9 +29,12 @@ import {
  * Ory's words in the page's language, so the card does not move when it
  * lands. At 390 px Ory's subtitle runs from one line (ko login) to three (de
  * login), so a header sized for English shifted the card by a line in the
- * other languages; at 320 px the footer wraps too. The skeleton lays out the
- * same text in the same type as the ready card, so it wraps to the same lines
- * at every width: these tests pin that the text is the same.
+ * other languages; at 320 px the footer wraps too, and so do login's e-mail
+ * label row and its submit button in es, ja, pt and ru (w7/093), so the
+ * skeleton reserves the form's labels, login's "Recover Account" and the
+ * submit's label as well. The skeleton lays out the same text in the same type
+ * as the ready card, so it wraps to the same lines at every width: these tests
+ * pin that the text is the same.
  */
 
 /** A node as Kratos v26.2.0 sends it (production's flows, read 2026-11-18). */
@@ -198,9 +201,29 @@ function readyCopy(card: Card, sso: boolean) {
     title: header?.querySelector("h2")?.textContent ?? null,
     subtitle: header?.querySelector("p")?.textContent ?? null,
     footer: footerLink?.parentElement?.textContent ?? null,
+    ...formCopy(container, {
+      labels: '[data-testid^="ory/form/node/input/label/"]',
+      action: '[data-testid="ory/screen/login/action/recover-account"]',
+      submit: '[data-testid="ory/form/node/button/method"]',
+    }),
   };
   unmount();
   return result;
+}
+
+/** A form's words: each field's label in order, the link beside a label
+ *  (login's "Recover Account"), and the submit button's label (w7/093). */
+function formCopy(
+  container: HTMLElement,
+  selectors: { labels: string; action: string; submit: string },
+) {
+  return {
+    labels: Array.from(container.querySelectorAll(selectors.labels)).map(
+      (label) => label.textContent,
+    ),
+    action: container.querySelector(selectors.action)?.textContent ?? null,
+    submit: container.querySelector(selectors.submit)?.textContent ?? null,
+  };
 }
 
 /** The words the skeleton reserves in the same places. */
@@ -214,6 +237,11 @@ function skeletonCopy(card: Card, sso: boolean) {
     footer:
       container.querySelector("[data-skeleton-card-footer]")?.textContent ??
       null,
+    ...formCopy(container, {
+      labels: "[data-skeleton-field-label]",
+      action: "[data-skeleton-field-action]",
+      submit: "[data-skeleton-submit]",
+    }),
   };
   unmount();
   return result;
@@ -233,9 +261,9 @@ afterEach(async () => {
   await i18n.changeLanguage("en");
 });
 
-describe("the auth card skeletons reserve Ory's words in the page's language (w7/092)", () => {
+describe("the auth card skeletons reserve Ory's words in the page's language (w7/092, w7/093)", () => {
   it.each(SUPPORTED_LANGUAGES)(
-    "%s: each card's title, subtitle and footer are the ready card's",
+    "%s: each card's title, subtitle, form words and footer are the ready card's",
     async (lang) => {
       await switchLanguage(lang);
       for (const [card, sso] of CASES) {
@@ -244,6 +272,13 @@ describe("the auth card skeletons reserve Ory's words in the page's language (w7
         expect(ready.footer !== null, `${card} footer`).toBe(
           card === "login" || card === "registration",
         );
+        expect(ready.labels, `${card} labels`).toHaveLength(
+          card === "login" || card === "registration" ? 2 : 1,
+        );
+        expect(ready.action !== null, `${card} label link`).toBe(
+          card === "login",
+        );
+        expect(ready.submit, `${card} submit`).toBeTruthy();
         expect(skeletonCopy(card, sso), `${lang} ${card} sso=${sso}`).toEqual(
           ready,
         );
@@ -257,14 +292,24 @@ describe("the auth card skeletons reserve Ory's words in the page's language (w7
       title: "로그인",
       subtitle: "email과 비밀번호 또는 소셜 제공자로 로그인",
       footer: "계정이 없으신가요? 가입",
+      labels: ["이메일", "비밀번호"],
+      action: "계정 복구",
+      submit: "비밀번호로 로그인",
     });
     await switchLanguage("de");
     expect(skeletonCopy("login", true).subtitle).toBe(
       "Melden Sie sich mit Ihrer email und Ihrem Passwort oder einem Social-Login an.",
     );
+    // w7/093: at 320 px these wrap the label row and the button to two lines.
+    await switchLanguage("es");
+    expect(skeletonCopy("login", true)).toMatchObject({
+      labels: ["Correo electrónico", "Contraseña"],
+      action: "Recuperar cuenta",
+      submit: "Iniciar sesión con contraseña",
+    });
   });
 
-  it("lays the words out in Ory's type: an 18 px title over 16 px text, all 1.5 lines", () => {
+  it("lays the words out in Ory's type: an 18 px title over 16 px text, all 1.5 lines, and a 14 px submit", () => {
     const { container } = render(skeleton("login", true));
     expect(
       container.querySelector('[data-skeleton-region="auth-widget"]'),
@@ -277,8 +322,32 @@ describe("the auth card skeletons reserve Ory's words in the page's language (w7
     for (const text of [subtitle, footer]) {
       expect(text).toHaveClass("text-base", "leading-normal");
     }
+    // The form (w7/093): Ory's label row puts the label and its link at the
+    // two ends of a 16 px line, and the submit is at least 36 px around its
+    // 14 px medium label, 16 px in from each side and 4 px from top and bottom.
+    const label = container.querySelector("[data-skeleton-field-label]");
+    const action = container.querySelector("[data-skeleton-field-action]");
+    expect(label!.parentElement).toHaveClass(
+      "flex",
+      "justify-between",
+      "text-base",
+      "leading-normal",
+    );
+    expect(action!.parentElement).toBe(label!.parentElement);
+    const submit = container.querySelector("[data-skeleton-submit]");
+    expect(submit).toHaveClass(
+      "flex",
+      "min-h-9",
+      "items-center",
+      "justify-center",
+      "px-4",
+      "py-1",
+      "text-sm",
+      "leading-5",
+      "font-medium",
+    );
     // Each reserves its words under one bar, nothing drawn at a fixed height.
-    for (const line of [title, subtitle, footer]) {
+    for (const line of [title, subtitle, footer, label, action, submit]) {
       expect(line!.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(1);
       expect(line!.querySelector(".invisible")).not.toBeNull();
     }

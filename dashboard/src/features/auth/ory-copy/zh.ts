@@ -44,6 +44,11 @@ const zh: OryCopy = {
   "oryCard.loginFooterLink": "注册",
   "oryCard.registrationFooterLabel": "已有账户？",
   "oryCard.registrationFooterLink": "登录",
+  "oryCard.recoverAccount": "恢复账户",
+  "oryCard.loginSubmit": "使用密码登录",
+  "oryCard.registrationSubmit": "注册",
+  "oryCard.emailLabel": "电子邮件",
+  "oryCard.continue": "继续",
 };
 
 export default zh;

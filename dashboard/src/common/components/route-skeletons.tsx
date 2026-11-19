@@ -49,6 +49,7 @@ import {
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   ReservedButton,
+  ReservedOryButton,
   ReservedText,
 } from "@/common/components/reserved-skeleton";
 import {
@@ -1757,21 +1758,33 @@ function OryCardSkeleton({
   );
 }
 
-/** A labelled field: the label's 24 px line (with a link beside it, as login's
- *  "Recover Account"), then the h-9 input. */
+/**
+ * A labelled field as Ory's `DefaultLabel` draws it: the label's words and the
+ * link Ory sets beside them (login's "Recover Account") at the row's two ends
+ * in its 16 px type, then the h-9 input. The words are reserved, so at phone
+ * width the row wraps to the lines the card's does (w7/093).
+ */
 function FieldSkeleton({
-  action = false,
+  label,
+  action,
   inputClassName = "h-9",
 }: {
-  action?: boolean;
+  label: string;
+  action?: string;
   inputClassName?: string;
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-6 w-20" />
-        {action ? <Skeleton className="h-6 w-32" /> : null}
-      </div>
+      <span className="flex items-start justify-between text-base leading-normal">
+        <span data-skeleton-field-label className="relative">
+          <ReservedText>{label}</ReservedText>
+        </span>
+        {action ? (
+          <span data-skeleton-field-action className="relative">
+            <ReservedText>{action}</ReservedText>
+          </span>
+        ) : null}
+      </span>
       <Skeleton className={cn("w-full", inputClassName)} />
     </div>
   );
@@ -1784,11 +1797,14 @@ export function AuthWidgetSkeleton({
 }: {
   flow: "recovery" | "verification";
 }) {
+  const { t } = useTranslations();
   return (
     <OryCardSkeleton flow={flow}>
       <div className="grid gap-8">
-        <FieldSkeleton />
-        <Skeleton className="h-9 w-full" />
+        <FieldSkeleton label={t("oryCard.emailLabel")} />
+        <ReservedOryButton afterInput data-skeleton-submit>
+          {t("oryCard.continue")}
+        </ReservedOryButton>
       </div>
     </OryCardSkeleton>
   );
@@ -1851,11 +1867,20 @@ export function LoginWidgetSkeleton({
 }: {
   ssoProviders: readonly string[] | null;
 }) {
+  const { t } = useTranslations();
   return (
     <OryAuthCardSkeleton flow="login" ssoProviders={ssoProviders}>
-      <FieldSkeleton action />
-      <FieldSkeleton inputClassName="h-[38px]" />
-      <Skeleton className="h-9 w-full" />
+      <FieldSkeleton
+        label={t("auth.profileEmailLabel")}
+        action={t("oryCard.recoverAccount")}
+      />
+      <FieldSkeleton
+        label={t("orySettings.passwordLabel")}
+        inputClassName="h-[38px]"
+      />
+      <ReservedOryButton afterInput data-skeleton-submit>
+        {t("oryCard.loginSubmit")}
+      </ReservedOryButton>
     </OryAuthCardSkeleton>
   );
 }
@@ -1867,11 +1892,14 @@ export function RegistrationWidgetSkeleton({
 }: {
   ssoProviders: readonly string[] | null;
 }) {
+  const { t } = useTranslations();
   return (
     <OryAuthCardSkeleton flow="registration" ssoProviders={ssoProviders}>
-      <FieldSkeleton />
-      <FieldSkeleton />
-      <Skeleton className="h-9 w-full" />
+      <FieldSkeleton label={t("auth.profileEmailLabel")} />
+      <FieldSkeleton label={t("auth.profileNameLabel")} />
+      <ReservedOryButton afterInput data-skeleton-submit>
+        {t("oryCard.registrationSubmit")}
+      </ReservedOryButton>
     </OryAuthCardSkeleton>
   );
 }

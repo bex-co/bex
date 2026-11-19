@@ -51,6 +51,11 @@ const es: OryCopy = {
   "oryCard.loginFooterLink": "Registrarse",
   "oryCard.registrationFooterLabel": "¿Ya tiene una cuenta?",
   "oryCard.registrationFooterLink": "Iniciar sesión",
+  "oryCard.recoverAccount": "Recuperar cuenta",
+  "oryCard.loginSubmit": "Iniciar sesión con contraseña",
+  "oryCard.registrationSubmit": "Registrarse",
+  "oryCard.emailLabel": "Correo electrónico",
+  "oryCard.continue": "Continuar",
 };
 
 export default es;

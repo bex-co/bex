@@ -48,6 +48,11 @@ const ja: OryCopy = {
   "oryCard.loginFooterLink": "登録",
   "oryCard.registrationFooterLabel": "アカウントをお持ちですか？",
   "oryCard.registrationFooterLink": "ログイン",
+  "oryCard.recoverAccount": "アカウントを復旧",
+  "oryCard.loginSubmit": "パスワードでログイン",
+  "oryCard.registrationSubmit": "アカウント登録",
+  "oryCard.emailLabel": "メールアドレス",
+  "oryCard.continue": "続行",
 };
 
 export default ja;

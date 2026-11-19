@@ -47,6 +47,11 @@ const ko: OryCopy = {
   "oryCard.loginFooterLink": "가입",
   "oryCard.registrationFooterLabel": "계정이 있으신가요?",
   "oryCard.registrationFooterLink": "로그인",
+  "oryCard.recoverAccount": "계정 복구",
+  "oryCard.loginSubmit": "비밀번호로 로그인",
+  "oryCard.registrationSubmit": "계정 생성",
+  "oryCard.emailLabel": "이메일",
+  "oryCard.continue": "계속하기",
 };
 
 export default ko;

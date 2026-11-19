@@ -50,6 +50,11 @@ const ru: OryCopy = {
   "oryCard.loginFooterLink": "Зарегистрироваться",
   "oryCard.registrationFooterLabel": "Уже есть аккаунт?",
   "oryCard.registrationFooterLink": "Войти",
+  "oryCard.recoverAccount": "Восстановить аккаунт",
+  "oryCard.loginSubmit": "Войти с помощью пароля",
+  "oryCard.registrationSubmit": "Зарегистрироваться",
+  "oryCard.emailLabel": "Электронная почта",
+  "oryCard.continue": "Продолжить",
 };
 
 export default ru;

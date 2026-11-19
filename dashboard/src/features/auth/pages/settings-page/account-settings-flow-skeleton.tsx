@@ -1,5 +1,8 @@
-import { Skeleton, SkeletonSpan } from "@/common/components/ui/skeleton";
-import { ReservedText } from "@/common/components/reserved-skeleton";
+import { Skeleton } from "@/common/components/ui/skeleton";
+import {
+  ReservedOryButton,
+  ReservedText,
+} from "@/common/components/reserved-skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils";
 
@@ -85,7 +88,7 @@ export function AccountSettingsFlowSkeleton() {
           <div className="flex-1">
             <FlowField label={t("orySettings.webauthnNameLabel")} />
           </div>
-          <OryButtonBox>{t("orySettings.webauthnAdd")}</OryButtonBox>
+          <ReservedOryButton>{t("orySettings.webauthnAdd")}</ReservedOryButton>
         </div>
       </FlowCard>
       <FlowCard
@@ -161,7 +164,9 @@ function FlowCard({
         <span className="relative">
           {footerText ? <ReservedText>{footerText}</ReservedText> : null}
         </span>
-        {footerButton ? <OryButtonBox>{footerButton}</OryButtonBox> : null}
+        {footerButton ? (
+          <ReservedOryButton>{footerButton}</ReservedOryButton>
+        ) : null}
       </div>
     </div>
   );
@@ -182,19 +187,5 @@ function FlowField({
       </span>
       <Skeleton className={cn("h-9 w-full max-w-[488px]", inputClassName)} />
     </div>
-  );
-}
-
-/**
- * An Ory submit button's box at the dashboard's h-9 scale (`style.css`). Like
- * Ory's, it clips its overflow, so a narrow footer shrinks it and its label
- * wraps the same way.
- */
-function OryButtonBox({ children }: { children: string }) {
-  return (
-    <span className="relative flex min-h-9 max-w-[488px] items-center justify-center overflow-hidden px-4 py-2 text-sm leading-5 font-medium">
-      <span className="invisible">{children}</span>
-      <SkeletonSpan />
-    </span>
   );
 }

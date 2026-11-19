@@ -48,6 +48,11 @@ const en: OryCopy = {
   "oryCard.loginFooterLink": "Sign up",
   "oryCard.registrationFooterLabel": "Already have an account?",
   "oryCard.registrationFooterLink": "Sign in",
+  "oryCard.recoverAccount": "Recover Account",
+  "oryCard.loginSubmit": "Sign in with password",
+  "oryCard.registrationSubmit": "Sign up",
+  "oryCard.emailLabel": "Email",
+  "oryCard.continue": "Continue",
 };
 
 export default en;
