@@ -19,9 +19,10 @@ package pricing
 // monthly_property_test.go encodes the MonthlyEstimate model as properties
 // (ADR030): the always-on estimate is monotonic in provisioned storage and in
 // the resource set, free/unknown tiers contribute nothing at any storage
-// size, high availability doubles the primary, cron never prices, and scaling
-// prices exactly one instance. Hand-rolled generators keep the cases
-// deterministic; they persist as durable coverage for the billing domain.
+// size, high availability doubles the primary, cron never prices, scaling
+// prices exactly one instance, and the total is the sum of the displayed
+// lines. Hand-rolled generators keep the cases deterministic; they persist
+// as durable coverage for the billing domain.
 
 import (
 	"reflect"
@@ -233,6 +234,52 @@ func TestMonthlyEstimateScaledServicePricesOneInstance(t *testing.T) {
 	}
 	if got := Default.MonthlyEstimate(scaled[1:]); len(got.Variable) != 1 || got.Variable[0].Reason != VariableMultiInstance {
 		t.Errorf("multi-instance variable = %+v, want one multi_instance entry", got.Variable)
+	}
+}
+
+// The total is the sum of the displayed lines, to the cent: the panel's
+// TotalUSD is what a reader gets adding the line items (ADR030). Each line
+// rounds its own figure, so the total must sum the rounded lines, not round
+// the raw float sum — otherwise multi-line stacks drift by a cent.
+func TestMonthlyEstimateTotalEqualsSumOfLines(t *testing.T) {
+	sumLines := func(t *testing.T, est MonthlyEstimate) int64 {
+		t.Helper()
+		var sum int64
+		for _, l := range est.Lines {
+			sum += monthlyCents(t, l.MonthlyUSD)
+		}
+		return sum
+	}
+	for _, fam := range propFamilies {
+		for _, size := range []int32{0, 1, 7, 10, 100, 1000} {
+			r := fam
+			r.StorageGB = size
+			got := Default.MonthlyEstimate([]MonthlyResource{r})
+			if total, sum := monthlyCents(t, got.TotalUSD), sumLines(t, got); total != sum {
+				t.Errorf("%s/%s at %dGB: total %s != sum of lines (%d cents vs %d)",
+					fam.Tier, fam.ResourceKind, size, got.TotalUSD, total, sum)
+			}
+		}
+	}
+	stacks := [][]MonthlyResource{
+		{
+			{Name: "web", ResourceKind: store.ResourceKindService, Tier: "starter", StorageGB: 17},
+			{Name: "db", ResourceKind: store.ResourceKindPostgres, Tier: "basic-256mb", StorageGB: 23, HighAvailability: true, ReadReplicas: 2},
+			{Name: "cache", ResourceKind: store.ResourceKindKeyValue, Tier: "starter", StorageGB: 29},
+		},
+		{
+			{Name: "web", ResourceKind: store.ResourceKindService, Tier: "standard", StorageGB: 3},
+			{Name: "db", ResourceKind: store.ResourceKindPostgres, Tier: "1c-2g", StorageGB: 41, ReadReplicas: 1},
+			{Name: "cache", ResourceKind: store.ResourceKindKeyValue, Tier: "standard", StorageGB: 13},
+			{Name: "worker", ResourceKind: store.ResourceKindService, Tier: "standard", StorageGB: 7, Instances: 4},
+		},
+	}
+	for i, stack := range stacks {
+		got := Default.MonthlyEstimate(stack)
+		if total, sum := monthlyCents(t, got.TotalUSD), sumLines(t, got); total != sum {
+			t.Errorf("stack %d: total %s != sum of lines (%d cents vs %d): %+v",
+				i, got.TotalUSD, total, sum, got.Lines)
+		}
 	}
 }
 

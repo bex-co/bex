@@ -627,7 +627,10 @@ func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow, covered map[cove
 
 	out := make([]ResourceEstimate, 0, len(resOrder))
 	for _, rk := range resOrder {
-		var resRaw float64
+		// The figure sums the displayed charges' rounded cents, so the
+		// resource always adds up: rounding the raw float sum can drift a
+		// cent from what the charges show.
+		var resCents int64
 		charges := make([]ChargeLine, 0, len(lineOrder[rk]))
 		for _, lk := range lineOrder[rk] {
 			qty := lines[rk][lk]
@@ -636,7 +639,7 @@ func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow, covered map[cove
 				rate = 0
 			}
 			cost := rate * float64(qty)
-			resRaw += cost
+			resCents += int64(math.Round(cost * 100))
 			unit := unitFor(lk.kind)
 			line := ChargeLine{
 				Kind:     lk.kind,
@@ -658,7 +661,7 @@ func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow, covered map[cove
 		out = append(out, ResourceEstimate{
 			ServiceID:    rk.serviceID,
 			ResourceKind: rk.resourceKind,
-			CostUSD:      FormatUSD(resRaw),
+			CostUSD:      FormatUSD(float64(resCents) / 100),
 			Charges:      charges,
 		})
 	}
