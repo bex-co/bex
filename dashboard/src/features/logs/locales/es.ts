@@ -254,6 +254,74 @@ const esLogs: Record<string, TranslationEntry> = {
     description:
       "Inline banner over loaded log lines when a later read was refused; reason is the server's refusal",
   },
+  "logs.observabilityViewEyebrow": {
+    message: "Vista de observabilidad",
+    description:
+      "Eyebrow over a project observability view's name (Render's OBSERVABILITY VIEW, w3/m505)",
+  },
+  "logs.applicationLogsTitle": {
+    message: "Logs de aplicación",
+    description:
+      "Document title part for a project's Application Logs view page (w3/m505)",
+  },
+  "logs.requestLogsTitle": {
+    message: "Logs de solicitudes",
+    description:
+      "Document title part for a project's Request Logs view page (w3/m505)",
+  },
+  "logs.projectScopeEmptyTitle": {
+    message: "Todavía no hay nada que leer en esta vista",
+    description:
+      "Project log view state: the view's scope holds no resource to read (w3/m505)",
+  },
+  "logs.projectScopeEmptyBody": {
+    message:
+      "Esta vista lee los servicios, cron jobs, bases de datos Postgres e instancias Key Value del proyecto, y todavía no incluye ninguno.",
+    description:
+      "Project Application Logs view with no service, cron job, Postgres or Key Value in it (w3/m505)",
+  },
+  "logs.projectRequestScopeEmptyBody": {
+    message:
+      "Los logs de solicitudes leen los servicios web del proyecto, y todavía no hay ninguno en esta vista.",
+    description:
+      "Project Request Logs view with no web service in it (w3/m505)",
+  },
+  "logs.projectEmptyTitle": {
+    message: "No hay logs en este intervalo",
+    description:
+      "Project log view state: its resources logged nothing in the selected range (w3/m505)",
+  },
+  "logs.projectEmptyBody": {
+    message:
+      "Ningún recurso de esta vista registró nada en el intervalo seleccionado.",
+    description:
+      "Project log view state body: no line in the range from any of its resources (w3/m505)",
+  },
+  "logs.viewNotFoundTitle": {
+    message: "Vista no encontrada",
+    description:
+      "Project observability page whose savedSearchId names no view of this project (w3/m505)",
+  },
+  "logs.viewNotFoundBody": {
+    message:
+      "Este proyecto no tiene ninguna vista en este enlace. Puede que se haya eliminado.",
+    description: "Body of the view-not-found state (w3/m505)",
+  },
+  "logs.viewOpen": {
+    message: "Abrir {name}",
+    description:
+      "Link from the view-not-found state to the project's default view of the same type; name is the view's name",
+  },
+  "logs.viewLoadErrorTitle": {
+    message: "No se pudo cargar esta vista",
+    description:
+      "Project observability page whose saved searches could not be read (w3/m505)",
+  },
+  "logs.viewLoadErrorBody": {
+    message:
+      "No se pudieron leer las vistas del proyecto. Recarga la página para volver a intentarlo.",
+    description: "Body of the view load failure (w3/m505)",
+  },
 };
 
 export default esLogs;

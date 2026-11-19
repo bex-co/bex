@@ -93,6 +93,9 @@ import {
   serviceTypeCreateCopy,
 } from "@/features/services/lib/create-context";
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
+import { Switch } from "@/common/components/ui/switch";
+import { Label } from "@/common/components/ui/label";
+import { ObservabilityViewHeader } from "@/features/logs/components/observability-view-header";
 import { EnvRowsSkeleton } from "@/features/services/components/env-rows-skeleton";
 import { SERVICE_TAB_DESCRIPTION_OFFSET } from "@/features/services/components/service-tab-description";
 import { AgentEnvironmentCardSkeleton } from "@/features/agent-environment/components/agent-environment-card-skeleton";
@@ -1341,19 +1344,72 @@ export function ProjectRouteSkeleton() {
   const routeId = useRouterState({
     select: (state) => state.matches.at(-1)?.routeId,
   });
+  let child: React.ReactNode;
+  if (routeId === "/project/$projectId/settings") {
+    child = <ProjectSettingsPageSkeleton />;
+  } else if (
+    routeId === "/project/$projectId/observability/logs/application" ||
+    routeId === "/project/$projectId/observability/logs/request"
+  ) {
+    child = <ProjectLogViewPageSkeleton />;
+  } else {
+    child = <ProjectOverviewPageSkeleton />;
+  }
   return (
     <PendingFrame
       route="project-active-child"
       className="flex min-h-0 flex-1 flex-col"
     >
       <Region name="active-child" className="contents">
-        {routeId === "/project/$projectId/settings" ? (
-          <ProjectSettingsPageSkeleton />
-        ) : (
-          <ProjectOverviewPageSkeleton />
-        )}
+        {child}
       </Region>
     </PendingFrame>
+  );
+}
+
+/**
+ * A project observability view (w3/m505) while its route or its saved search
+ * loads: the ready page's frame and header with the view's name reserved, the
+ * log explorer's toolbar rows (one on a desktop, [search] then [range | Live]
+ * on a phone), its range note, and the log panel at its own height.
+ */
+export function ProjectLogViewPageSkeleton() {
+  const { t } = useTranslations();
+  return (
+    <PageFrame
+      pending="project-log-view"
+      width="wide"
+      header={
+        <ObservabilityViewHeader name={<Skeleton className="h-6 w-44" />} />
+      }
+    >
+      <div className="space-y-4">
+        <Region
+          name="log-toolbar"
+          className="flex flex-wrap items-center gap-3 max-sm:gap-2"
+        >
+          <Skeleton className="h-9 min-w-48 flex-1 max-sm:min-w-0 max-sm:basis-full" />
+          <Skeleton className="h-8 w-40 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1" />
+          {/* LiveToggle's own markup, without pulling the filter bar into
+              the skeleton chunk. */}
+          <div className="flex items-center gap-2">
+            <Switch id="project-logs-live-toggle-pending" checked disabled />
+            <Label
+              htmlFor="project-logs-live-toggle-pending"
+              className="text-sm"
+            >
+              {t("logs.live")}
+            </Label>
+          </div>
+        </Region>
+        <p className="text-xs text-muted-foreground">
+          {t("logs.rangeHistoryNote")}
+        </p>
+        <Region name="log-panel">
+          <LogPanelSkeleton fillViewport />
+        </Region>
+      </div>
+    </PageFrame>
   );
 }
 

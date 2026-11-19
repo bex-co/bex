@@ -31,6 +31,7 @@ const state: UseLogHistoryResult = {
   hasMore: false,
   loadingOlder: false,
   loadOlder: () => undefined,
+  resources: undefined,
 };
 const useHistorySpy = vi.fn();
 
@@ -61,6 +62,7 @@ function line(i: number): LogLine {
     instance: "dpg-example-1",
     message: i === 0 ? "checkpoint complete" : `line ${i}`,
     spans: null,
+    resource: "",
     type: "postgres",
     level: "",
     method: "",

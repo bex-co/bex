@@ -132,7 +132,7 @@ func TestNoTimeReachesAStringField(t *testing.T) {
 // a failure in itself — it is a field this test stopped covering, which is
 // worth one line of acknowledgement in a diff.
 const (
-	maxOpaqueResolvers   = 57 // +1 LogEntry.build (w8/m442): a label lookup, never a time; +1 AuditLog.actorId (w9/m450): the usr- id or the subject, both strings, never a time; +1 AuditLog.resource (w4/m321): the target or the workspace object, both strings, never a time; +1 LogEntry.id (w4/m217): logID returns a string, never a time; +2 LogEntry.host/path (w4/m325): label lookups, never a time; +6 ServiceEventDetails datastore strings (w4/655): renderDetails string members, never a time
+	maxOpaqueResolvers   = 58 // +1 LogEntry.resource (w3/m505): a label lookup, never a time; +1 LogEntry.build (w8/m442): a label lookup, never a time; +1 AuditLog.actorId (w9/m450): the usr- id or the subject, both strings, never a time; +1 AuditLog.resource (w4/m321): the target or the workspace object, both strings, never a time; +1 LogEntry.id (w4/m217): logID returns a string, never a time; +2 LogEntry.host/path (w4/m325): label lookups, never a time; +6 ServiceEventDetails datastore strings (w4/655): renderDetails string members, never a time
 	maxUnresolvedMembers = 4
 )
 

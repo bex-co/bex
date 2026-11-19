@@ -242,6 +242,73 @@ const enLogs: Record<string, TranslationEntry> = {
     description:
       "Inline banner over loaded log lines when a later read was refused; reason is the server's refusal",
   },
+  "logs.observabilityViewEyebrow": {
+    message: "Observability view",
+    description:
+      "Eyebrow over a project observability view's name (Render's OBSERVABILITY VIEW, w3/m505)",
+  },
+  "logs.applicationLogsTitle": {
+    message: "Application Logs",
+    description:
+      "Document title part for a project's Application Logs view page (w3/m505)",
+  },
+  "logs.requestLogsTitle": {
+    message: "Request Logs",
+    description:
+      "Document title part for a project's Request Logs view page (w3/m505)",
+  },
+  "logs.projectScopeEmptyTitle": {
+    message: "Nothing to read in this view yet",
+    description:
+      "Project log view state: the view's scope holds no resource to read (w3/m505)",
+  },
+  "logs.projectScopeEmptyBody": {
+    message:
+      "This view reads the project's services, cron jobs, Postgres databases and Key Value instances, and there are none in it yet.",
+    description:
+      "Project Application Logs view with no service, cron job, Postgres or Key Value in it (w3/m505)",
+  },
+  "logs.projectRequestScopeEmptyBody": {
+    message:
+      "Request Logs read the project's web services, and there are none in this view yet.",
+    description:
+      "Project Request Logs view with no web service in it (w3/m505)",
+  },
+  "logs.projectEmptyTitle": {
+    message: "No logs in this range",
+    description:
+      "Project log view state: its resources logged nothing in the selected range (w3/m505)",
+  },
+  "logs.projectEmptyBody": {
+    message:
+      "None of the resources in this view logged anything in the selected range.",
+    description:
+      "Project log view state body: no line in the range from any of its resources (w3/m505)",
+  },
+  "logs.viewNotFoundTitle": {
+    message: "View not found",
+    description:
+      "Project observability page whose savedSearchId names no view of this project (w3/m505)",
+  },
+  "logs.viewNotFoundBody": {
+    message: "This project has no view at this link. It may have been deleted.",
+    description: "Body of the view-not-found state (w3/m505)",
+  },
+  "logs.viewOpen": {
+    message: "Open {name}",
+    description:
+      "Link from the view-not-found state to the project's default view of the same type; name is the view's name",
+  },
+  "logs.viewLoadErrorTitle": {
+    message: "Couldn't load this view",
+    description:
+      "Project observability page whose saved searches could not be read (w3/m505)",
+  },
+  "logs.viewLoadErrorBody": {
+    message:
+      "The project's views could not be read. Reload the page to try again.",
+    description: "Body of the view load failure (w3/m505)",
+  },
 };
 
 export default enLogs;

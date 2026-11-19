@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { ArrowDown } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/common/components/ui/button.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -17,6 +18,7 @@ import {
   type LogPanelFill,
 } from "@/features/logs/hooks/use-log-panel-height";
 import { type AnsiSpan } from "../lib/ansi";
+import { type LogResourceLabel } from "../lib/resource-labels";
 import { LOG_TYPE_REQUEST, type LogLine } from "../types";
 
 type Translate = ReturnType<typeof useTranslations>["t"];
@@ -112,6 +114,12 @@ interface LogLineListProps {
   loadingOlder?: boolean;
   /** Fired when the user scrolls near the top of the pane. */
   onLoadOlder?: () => void;
+  /**
+   * A project view's resources (w3/m505): each line then names its own after
+   * the time, with Render's colored dot and `[name]` linking to the resource.
+   * Absent on a single resource's log, whose rows are unchanged.
+   */
+  resourceLabels?: ReadonlyMap<string, LogResourceLabel>;
 }
 
 /**
@@ -147,6 +155,7 @@ export function LogLineList({
   hasMore = false,
   loadingOlder = false,
   onLoadOlder,
+  resourceLabels,
 }: LogLineListProps) {
   const { t, i18n } = useTranslations();
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -406,6 +415,10 @@ export function LogLineList({
               wrap={wrap}
               showTimestamps={showTimestamps}
               onInstanceFilter={onInstanceFilter}
+              resourceLabel={
+                resourceLabels &&
+                (resourceLabels.get(lines[virtualRow.index].resource) ?? null)
+              }
               t={t}
               language={i18n.language}
             />
@@ -454,6 +467,7 @@ const LogRow = memo(function LogRow({
   wrap,
   showTimestamps,
   onInstanceFilter,
+  resourceLabel,
   t,
   language,
 }: {
@@ -463,6 +477,10 @@ const LogRow = memo(function LogRow({
   wrap: boolean;
   showTimestamps: boolean;
   onInstanceFilter?: (instance: string) => void;
+  /** The line's resource in a project view (see LogLineList.resourceLabels):
+   *  null for one the list does not name, which shows its id; undefined when
+   *  the list names no resources at all. */
+  resourceLabel: LogResourceLabel | null | undefined;
   t: Translate;
   /** The dashboard language the line clock reads in. */
   language: string;
@@ -487,6 +505,9 @@ const LogRow = memo(function LogRow({
         <span className="shrink-0 tabular-nums text-muted-foreground">
           {formatClockTime(line.timestamp, language)}
         </span>
+      ) : null}
+      {resourceLabel !== undefined && line.resource ? (
+        <ResourceTag id={line.resource} label={resourceLabel} />
       ) : null}
       {line.instance ? (
         onInstanceFilter ? (
@@ -551,6 +572,44 @@ const LogRow = memo(function LogRow({
     </div>
   );
 });
+
+// A project view line's resource (w3/m505): Render's colored dot and
+// `[name]`, linking to the resource's own page. A resource the page's list
+// does not name (one that joined the view since its history was read) shows
+// its id, unlinked, until the next read names it.
+function ResourceTag({
+  id,
+  label,
+}: {
+  id: string;
+  label: LogResourceLabel | null;
+}) {
+  const className =
+    "inline-flex shrink-0 items-center gap-1.5 text-muted-foreground";
+  const content = (
+    <>
+      <span
+        aria-hidden
+        className={cn(
+          "size-2 shrink-0 rounded-full",
+          label?.dotClass ?? "bg-muted-foreground/40",
+        )}
+      />
+      [{label?.name ?? id}]
+    </>
+  );
+  const linkClass = cn(
+    className,
+    "rounded-sm underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+  );
+  return label?.href ? (
+    <Link to={label.href} data-touch-exempt="" className={linkClass}>
+      {content}
+    </Link>
+  ) : (
+    <span className={className}>{content}</span>
+  );
+}
 
 // The message cell. `spans` is null for a line with nothing to interpret, which
 // renders the bare string — byte-identical to the pre-ANSI DOM for the common

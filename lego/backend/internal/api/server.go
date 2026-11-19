@@ -1370,6 +1370,9 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// A protected environment restricts variables and secret files to Admins (w8/193).
 	secretsSvc.Protection = srv.Apps.ProtectionGuard()
 	srv.Deploys.PullSecrets = srv.Apps.DeployPullSecretPreparer()
+	// A project's log views read the resources the projects feature lists
+	// (w3/m505).
+	srv.Logs.Projects = srv.Projects
 	return srv
 }
 

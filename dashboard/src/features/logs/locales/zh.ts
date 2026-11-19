@@ -229,6 +229,70 @@ const zhLogs: Record<string, TranslationEntry> = {
     description:
       "Inline banner over loaded log lines when a later read was refused; reason is the server's refusal",
   },
+  "logs.observabilityViewEyebrow": {
+    message: "可观测性视图",
+    description:
+      "Eyebrow over a project observability view's name (Render's OBSERVABILITY VIEW, w3/m505)",
+  },
+  "logs.applicationLogsTitle": {
+    message: "应用日志",
+    description:
+      "Document title part for a project's Application Logs view page (w3/m505)",
+  },
+  "logs.requestLogsTitle": {
+    message: "请求日志",
+    description:
+      "Document title part for a project's Request Logs view page (w3/m505)",
+  },
+  "logs.projectScopeEmptyTitle": {
+    message: "此视图中暂无可读取的内容",
+    description:
+      "Project log view state: the view's scope holds no resource to read (w3/m505)",
+  },
+  "logs.projectScopeEmptyBody": {
+    message:
+      "此视图读取项目的服务、定时任务、Postgres 数据库和 Key Value 实例，但目前其中还没有任何资源。",
+    description:
+      "Project Application Logs view with no service, cron job, Postgres or Key Value in it (w3/m505)",
+  },
+  "logs.projectRequestScopeEmptyBody": {
+    message: "请求日志读取项目的 Web 服务，但此视图中目前还没有。",
+    description:
+      "Project Request Logs view with no web service in it (w3/m505)",
+  },
+  "logs.projectEmptyTitle": {
+    message: "此时间范围内没有日志",
+    description:
+      "Project log view state: its resources logged nothing in the selected range (w3/m505)",
+  },
+  "logs.projectEmptyBody": {
+    message: "此视图中的资源在所选时间范围内没有记录任何日志。",
+    description:
+      "Project log view state body: no line in the range from any of its resources (w3/m505)",
+  },
+  "logs.viewNotFoundTitle": {
+    message: "未找到视图",
+    description:
+      "Project observability page whose savedSearchId names no view of this project (w3/m505)",
+  },
+  "logs.viewNotFoundBody": {
+    message: "此项目在该链接下没有视图，它可能已被删除。",
+    description: "Body of the view-not-found state (w3/m505)",
+  },
+  "logs.viewOpen": {
+    message: "打开 {name}",
+    description:
+      "Link from the view-not-found state to the project's default view of the same type; name is the view's name",
+  },
+  "logs.viewLoadErrorTitle": {
+    message: "无法加载此视图",
+    description:
+      "Project observability page whose saved searches could not be read (w3/m505)",
+  },
+  "logs.viewLoadErrorBody": {
+    message: "无法读取项目的视图。请刷新页面重试。",
+    description: "Body of the view load failure (w3/m505)",
+  },
 };
 
 export default zhLogs;

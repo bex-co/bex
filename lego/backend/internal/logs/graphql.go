@@ -17,10 +17,13 @@ limitations under the License.
 package logs
 
 import (
+	"fmt"
+
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
+	"github.com/bex-co/bex/lego/backend/internal/savedsearch"
 )
 
 // logGQLType is the GraphQL projection of a LogEntry — a flat row (the REST
@@ -34,8 +37,11 @@ var logGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// id is the record's identity — REST's per-record id (instance,
 		// original timestamp, message hash) — so a client can keep two records
 		// that share a millisecond apart and recognize a replay of one (w4/m217).
-		"id":         gqlutil.StrField(func(e LogEntry) any { return logID(e) }),
-		"timestamp":  gqlutil.StrField(func(e LogEntry) any { return e.Timestamp }),
+		"id":        gqlutil.StrField(func(e LogEntry) any { return logID(e) }),
+		"timestamp": gqlutil.StrField(func(e LogEntry) any { return e.Timestamp }),
+		// resource is the line's resource id (REST's `resource` label, Render's
+		// SERVICE): a project view's lines come from several (w3/m505).
+		"resource":   gqlutil.StrField(func(e LogEntry) any { return e.Labels["service"] }),
 		"message":    gqlutil.StrField(func(e LogEntry) any { return e.Message }),
 		"type":       gqlutil.StrField(func(e LogEntry) any { return e.Labels[LabelType] }),
 		"instance":   gqlutil.StrField(func(e LogEntry) any { return e.Labels["instance"] }),
@@ -62,6 +68,23 @@ var logListGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"nextStartTime": &graphql.Field{Type: graphql.NewNonNull(graphql.String)},
 		"nextEndTime":   &graphql.Field{Type: graphql.NewNonNull(graphql.String)},
 		"logs":          &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(logGQLType))},
+		// resources is what a project-scoped read read (w3/m505): the
+		// resources of the view the caller may read the logs of. Null for a
+		// `resource` read.
+		"resources": &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(logResourceGQLType))},
+	},
+})
+
+// logResourceGQLType is one resource a project view read (w3/m505, a Bex
+// extension): its id, shown name, type (a service type, postgres or
+// key_value) and environment, so a client names each line's resource.
+var logResourceGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "LogResource",
+	Fields: graphql.Fields{
+		"id":            gqlutil.ReqStrField(func(r savedsearch.Resource) any { return r.ID }),
+		"name":          gqlutil.ReqStrField(func(r savedsearch.Resource) any { return r.Name }),
+		"type":          gqlutil.ReqStrField(func(r savedsearch.Resource) any { return r.Type }),
+		"environmentId": gqlutil.OptionalStrField(func(r savedsearch.Resource) any { return r.EnvironmentID }),
 	},
 })
 
@@ -130,6 +153,12 @@ func logFilterArgs() graphql.FieldConfigArgument {
 func (s *Service) GraphQLQuery() graphql.Fields {
 	logsArgs := logFilterArgs()
 	logsArgs["limit"] = gqlutil.Arg(graphql.Int)
+	// project + filterDocument (w3/m505): read a project's view instead of one
+	// resource, as Render's logs(query: {project, filterDocument}) does. The
+	// server resolves the resources; `type` picks the view (app or request).
+	logsArgs["resource"] = gqlutil.Arg(graphql.String)
+	logsArgs["project"] = gqlutil.Arg(graphql.String)
+	logsArgs["filterDocument"] = gqlutil.Arg(gqlutil.JSONObject)
 	// deployId (w21/m324, a Bex extension): scope a build or predeploy read to
 	// one deploy. The time window alone cannot: two deploys that overlap in time
 	// share every line inside it. Absent => the window alone, as before.
@@ -151,19 +180,30 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				if n, ok := p.Args["limit"].(int); ok {
 					q.Limit = int64(n)
 				}
+				project, _ := p.Args["project"].(string)
+				if (project == "") == (q.App == "") {
+					return nil, fmt.Errorf("%w: logs takes exactly one of resource and project", core.ErrBadRequest)
+				}
+				if p.Args["filterDocument"] != nil && project == "" {
+					return nil, fmt.Errorf("%w: filterDocument applies to a project read", core.ErrBadRequest)
+				}
 				if err := s.checkWindow(q); err != nil {
 					return nil, err
+				}
+				if project != "" {
+					page, resources, err := s.queryProjectLogPage(p.Context, project, p.Args["filterDocument"], q)
+					if err != nil {
+						return nil, err
+					}
+					out := logListResult(page)
+					out["resources"] = resources
+					return out, nil
 				}
 				page, err := s.queryLogPage(p.Context, []string{q.App}, q)
 				if err != nil {
 					return nil, err
 				}
-				return map[string]any{
-					"hasMore":       page.HasMore,
-					"nextStartTime": page.NextStartTime,
-					"nextEndTime":   page.NextEndTime,
-					"logs":          page.Entries,
-				}, nil
+				return logListResult(page), nil
 			},
 		},
 		// How far back the resource's logs reach on its workspace plan (w9/m389);
@@ -189,11 +229,22 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 	}
 }
 
+// logListResult is a page as the LogList fields.
+func logListResult(page logPage) map[string]any {
+	return map[string]any{
+		"hasMore":       page.HasMore,
+		"nextStartTime": page.NextStartTime,
+		"nextEndTime":   page.NextEndTime,
+		"logs":          page.Entries,
+	}
+}
+
 // logQueryFromArgs maps the GraphQL filter args onto a LogQuery. An unknown type
 // or direction errors (naming the value) rather than widening the query silently —
 // the same contract the REST adapter enforces.
 func logQueryFromArgs(args map[string]any) (LogQuery, error) {
-	q := LogQuery{App: args["resource"].(string)}
+	resource, _ := args["resource"].(string)
+	q := LogQuery{App: resource}
 	if t, ok := args["type"].(string); ok {
 		types, err := NormalizeTypes([]string{t})
 		if err != nil {

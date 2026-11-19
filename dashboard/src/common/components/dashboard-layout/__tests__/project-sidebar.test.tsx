@@ -10,6 +10,8 @@ import {
 import { SidebarProvider } from "@/common/components/ui/sidebar.tsx";
 import { ProjectSidebar } from "../project-sidebar";
 import type { ProjectView } from "@/features/projects/hooks/use-projects";
+import type { SavedSearch } from "@/features/projects/hooks/use-saved-searches";
+import { SavedSearchType } from "@/graphql/definitions";
 
 const projectsState: {
   projects: ProjectView[];
@@ -24,6 +26,29 @@ const projectsState: {
 };
 vi.mock("@/features/projects/hooks/use-projects", () => ({
   useProjects: () => projectsState,
+}));
+
+// The project's observability views (w3/m505): Render's three defaults.
+const emptyDocument = { filters: [], version: 1 };
+const view = (id: string, name: string, type: SavedSearchType) =>
+  ({
+    __typename: "SavedSearch",
+    id,
+    name,
+    type,
+    filters: emptyDocument,
+  }) satisfies SavedSearch;
+const savedSearchesState: {
+  views: SavedSearch[];
+  loading: boolean;
+  error: Error | undefined;
+} = { views: [], loading: false, error: undefined };
+const savedSearchesSpy = vi.fn();
+vi.mock("@/features/projects/hooks/use-saved-searches", () => ({
+  useSavedSearches: (projectId: string) => {
+    savedSearchesSpy(projectId);
+    return savedSearchesState;
+  },
 }));
 
 function renderAt(pathname: string) {
@@ -46,8 +71,23 @@ function renderAt(pathname: string) {
       </SidebarProvider>
     ),
   });
+  const viewRoutes = ["application", "request"].map((kind) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: `/project/$projectId/observability/logs/${kind}`,
+      component: () => (
+        <SidebarProvider>
+          <ProjectSidebar projectId="prj-1" />
+        </SidebarProvider>
+      ),
+    }),
+  );
   const router = createRouter({
-    routeTree: rootRoute.addChildren([overviewRoute, settingsRoute]),
+    routeTree: rootRoute.addChildren([
+      overviewRoute,
+      settingsRoute,
+      ...viewRoutes,
+    ]),
     history: createMemoryHistory({ initialEntries: [pathname] }),
     context: { client: {} as never, session: null },
   });
@@ -55,6 +95,13 @@ function renderAt(pathname: string) {
 }
 
 beforeEach(() => {
+  savedSearchesSpy.mockClear();
+  savedSearchesState.loading = false;
+  savedSearchesState.views = [
+    view("svs-app", "Application Logs", SavedSearchType.ApplicationLogs),
+    view("svs-req", "Request Logs", SavedSearchType.RequestLogs),
+    view("svs-metrics", "Service Metrics", SavedSearchType.Metrics),
+  ];
   projectsState.projects = [
     {
       id: "prj-1",
@@ -94,5 +141,63 @@ describe("ProjectSidebar", () => {
       "data-active",
       "true",
     );
+  });
+
+  it("lists the project's log views between Overview and Manage, without Service Metrics (w3/m505)", async () => {
+    renderAt("/project/prj-1");
+
+    expect(await screen.findByText("Observability")).toBeInTheDocument();
+    expect(savedSearchesSpy).toHaveBeenCalledWith("prj-1");
+    expect(
+      screen.getByRole("link", { name: "Application Logs" }),
+    ).toHaveAttribute(
+      "href",
+      "/project/prj-1/observability/logs/application?savedSearchId=svs-app",
+    );
+    expect(screen.getByRole("link", { name: "Request Logs" })).toHaveAttribute(
+      "href",
+      "/project/prj-1/observability/logs/request?savedSearchId=svs-req",
+    );
+    // Render keeps the METRICS view but does not list it.
+    expect(screen.queryByText("Service Metrics")).not.toBeInTheDocument();
+    const labels = screen
+      .getAllByText(/^(Observability|Manage)$/)
+      .map((el) => el.textContent);
+    expect(labels).toEqual(["Observability", "Manage"]);
+  });
+
+  it("marks the open view active, not Overview, and links back to the project", async () => {
+    renderAt(
+      "/project/prj-1/observability/logs/request?savedSearchId=svs-req&r=4h",
+    );
+
+    expect(
+      await screen.findByRole("link", { name: "Request Logs" }),
+    ).toHaveAttribute("data-active", "true");
+    expect(
+      screen.getByRole("link", { name: "Application Logs" }),
+    ).toHaveAttribute("data-active", "false");
+    expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute(
+      "data-active",
+      "false",
+    );
+    expect(screen.getByRole("link", { name: /Project/ })).toHaveAttribute(
+      "href",
+      "/project/prj-1",
+    );
+  });
+
+  it("reserves the two default views while the list loads", async () => {
+    savedSearchesState.loading = true;
+    savedSearchesState.views = [];
+    const { container } = renderAt("/project/prj-1");
+
+    expect(await screen.findByText("Observability")).toBeInTheDocument();
+    expect(
+      container.querySelectorAll('[data-sidebar="menu-skeleton"]'),
+    ).toHaveLength(2);
+    expect(
+      screen.queryByRole("link", { name: "Application Logs" }),
+    ).not.toBeInTheDocument();
   });
 });

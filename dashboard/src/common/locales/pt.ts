@@ -321,6 +321,11 @@ const ptCommon: Record<string, TranslationEntry> = {
     description:
       "Contextual project sidebar nav link to the project's own Overview page",
   },
+  "common.navObservabilityGroup": {
+    message: "Observabilidade",
+    description:
+      "Contextual project sidebar section label above the project's log views (Render's OBSERVABILITY group, w3/m505)",
+  },
   "common.navManageGroup": {
     message: "Gerenciar",
     description: "Contextual project sidebar section label above Settings",

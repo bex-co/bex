@@ -1657,6 +1657,8 @@ type InstanceType {
   usdPerMinute: String
 }
 
+scalar JSONObject
+
 type Job {
   createdAt: String
   finishedAt: String
@@ -1740,6 +1742,7 @@ type LogEntry {
   method: String
   path: String
   requestId: String
+  resource: String
   statusCode: String
   timestamp: String
   type: String
@@ -1750,6 +1753,14 @@ type LogList {
   logs: [LogEntry]!
   nextEndTime: String!
   nextStartTime: String!
+  resources: [LogResource!]
+}
+
+type LogResource {
+  environmentId: String
+  id: String!
+  name: String!
+  type: String!
 }
 
 type LogRetention {
@@ -2505,7 +2516,7 @@ type Query {
   keyValues(cursor: String, limit: Int, ownerId: String): [KeyValue]
   logLabelValues(build: [String!], direction: String, endTime: String, host: [String!], instance: [String!], label: String!, level: [String!], method: [String!], path: [String!], resource: String!, startTime: String, statusCode: [String!], text: String, textMode: String, type: String): [String!]
   logRetention(resource: String!): LogRetention
-  logs(build: [String!], deployId: String, direction: String, endTime: String, host: [String!], instance: [String!], level: [String!], limit: Int, method: [String!], path: [String!], resource: String!, startTime: String, statusCode: [String!], text: String, textMode: String, type: String): LogList
+  logs(build: [String!], deployId: String, direction: String, endTime: String, filterDocument: JSONObject, host: [String!], instance: [String!], level: [String!], limit: Int, method: [String!], path: [String!], project: String, resource: String, startTime: String, statusCode: [String!], text: String, textMode: String, type: String): LogList
   metrics(query: MetricsQueryInput!): [MetricSeries]
   metricsFilters(query: MetricsFiltersQueryInput!): MetricsFiltersResult
   metricsPathFilterSuggestions(query: MetricsPathFilterSuggestionsInput!): MetricsPathFilterSuggestions
@@ -2548,6 +2559,8 @@ type Query {
   sandboxSnapshot(id: String!, ownerId: String, sandboxGroupId: String!): SandboxSnapshot
   sandboxSnapshots(cursor: String, limit: Int, name: String, ownerId: String, sandboxGroupId: String!, status: [String!]): [SandboxSnapshot]
   sandboxes(name: String, ownerId: String, sandboxGroupId: String, status: [String!]): [Sandbox]
+  savedSearch(id: String!): SavedSearch
+  savedSearches(projectId: String!, type: SavedSearchType): [SavedSearch!]!
   secretFiles(cursor: String, limit: Int, serviceId: String!): [SecretFileWithCursor]
   server(id: String!): Service
   serverActions(id: String!, ownerId: String): [ActionDecision!]!
@@ -2789,6 +2802,19 @@ type SandboxSnapshot {
   sourceSandboxId: String!
   status: String!
   ttlSeconds: Float
+}
+
+type SavedSearch {
+  filters: JSONObject!
+  id: String!
+  name: String!
+  type: SavedSearchType!
+}
+
+enum SavedSearchType {
+  APPLICATION_LOGS
+  METRICS
+  REQUEST_LOGS
 }
 
 type SecretFile {

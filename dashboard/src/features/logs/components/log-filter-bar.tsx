@@ -40,9 +40,9 @@ import {
   LOG_TYPE_FILTERS,
   LOG_TYPE_REQUEST,
   STRUCTURED_FILTER_KEYS,
+  STRUCTURED_LABEL_KEYS,
   type LogFilters,
   type LogTypeFilter,
-  type StructuredFilterKey,
 } from "../types";
 
 // Render's Logs filter row (design source .pm/w5/m6/README.md + the request/
@@ -101,17 +101,6 @@ function mergeOptions(
   const extra = discovery.values.filter((v) => !fallback.includes(v)).sort();
   return [...fallback, ...extra];
 }
-
-// The five structured filters live behind the Filters popover — one row each
-// in the popover, one removable chip each while active (list owned by types.ts).
-const STRUCTURED_LABEL_KEYS: Record<StructuredFilterKey, keyof typeof en> = {
-  level: "logs.levelLabel",
-  method: "logs.methodLabel",
-  statusCode: "logs.statusCodeLabel",
-  instance: "logs.instanceLabel",
-  path: "logs.pathLabel",
-  host: "logs.hostLabel",
-};
 
 interface LogFilterBarProps {
   /** App name — scopes the `logLabelValues` discovery queries. */

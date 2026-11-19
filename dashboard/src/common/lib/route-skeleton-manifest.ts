@@ -499,6 +499,18 @@ export const ROUTE_SKELETON_MANIFEST = {
     owner: "routes/billing_.$first.$.tsx",
     destination: "/billing or /workspace/settings",
   },
+  "/project/$projectId/observability/logs/application": {
+    kind: "render",
+    owner: "routes/project.$projectId.observability.logs.application.tsx",
+    shape: "project-log-view",
+    regions: ["page-header", "log-toolbar", "log-panel"],
+  },
+  "/project/$projectId/observability/logs/request": {
+    kind: "render",
+    owner: "routes/project.$projectId.observability.logs.request.tsx",
+    shape: "project-log-view",
+    regions: ["page-header", "log-toolbar", "log-panel"],
+  },
   "/project/$projectId/settings": {
     kind: "render",
     owner: "routes/project.$projectId.settings.tsx",

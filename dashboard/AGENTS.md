@@ -17,7 +17,9 @@ src/
 ├── features/auth/          # login/registration/recovery/settings pages + shared page shell
 ├── features/onboarding/     # payment wall page + `EmailVerificationGate` / `PaymentSetupGate` (root walls) + their pure decisions
 ├── features/services/       # service list + detail tabs (overview/env/compute/settings), lifecycle actions
-├── features/logs/           # live logs page (query + follow) over bex-api
+├── features/logs/           # live logs page (query + follow) over bex-api; also a project's
+│                            # Observability views (ProjectLogViewer, w3/m505): one explorer over
+│                            # every resource a saved search's scope resolves to, server-side
 ├── features/metrics/        # App metrics page (Render-style) — first real bex-api GraphQL client
 ├── features/i18n/           # language-switcher component
 ├── i18n/                    # i18next core: config, init, detect-language, resource aggregation
@@ -116,7 +118,7 @@ Pages/components this pattern applies to (w5/m2 scope): `features/auth/pages/{lo
 
 The dashboard has exactly **one** left sidebar. A route module must never render an `<aside>` or its own rail inside `DashboardLayout` — that yields two side-by-side sidebars. Contextual navigation is a branch **inside** `DashboardSidebar`, in one of two flavors:
 
-- **Replace** the nav (`ProjectSidebar`, `ServiceSidebar`) — deep hierarchical context, entered via a back link.
+- **Replace** the nav (`ProjectSidebar`, `ServiceSidebar`) — deep hierarchical context, entered via a back link. `ProjectSidebar` follows Render's project nav: Overview, an **Observability** group listing the project's log views (its `APPLICATION_LOGS` and `REQUEST_LOGS` saved searches, linked as `/project/$projectId/observability/logs/{application,request}?savedSearchId=…`; the `METRICS` one stays unlisted, as on Render), then **Manage** → Settings (w3/m505).
 - **Augment** it (`AgentSessionsNavSection`) — a section-scoped working-set list beneath the global nav, Devin's shape. Scope it to its own routes; it must not follow the user elsewhere.
 
 `DashboardLayout` takes no `sidebar` override prop, and `routes/__tests__/one-rail-invariant.test.ts` fails the build if a route module grows an `<aside>` or imports a `*-sidebar`. A genuinely needed second panel goes on the **right**. Rationale: `docs/ADR047-cloud-coding-agent-sessions.md` § D9a.

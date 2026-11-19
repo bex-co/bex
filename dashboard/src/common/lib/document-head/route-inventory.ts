@@ -59,6 +59,8 @@ export const ROUTE_HEAD_INVENTORY: Record<
     "org.$orgId.members.tsx",
     "org.$orgId.settings.tsx",
     "org.$orgId.workspaces.tsx",
+    "project.$projectId.observability.logs.application.tsx",
+    "project.$projectId.observability.logs.request.tsx",
     "project.$projectId.settings.tsx",
     "project.$projectId.tsx",
     "services.$serviceId.tsx",

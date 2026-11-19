@@ -23,8 +23,17 @@
 # one deploy. The deploy page's window alone cannot — two deploys that overlap in
 # time share every line inside it — so the server drops the other deploys' platform
 # lines and build pods. Omitted keeps the window alone.
+#
+# `project` + `filterDocument` (w3/m505): read a project's observability view
+# instead of one resource, as Render's `logs(query: {project, filterDocument})`
+# does. The server resolves the view's resources; `type` picks the view (`app`
+# for Application Logs, `request` for Request Logs). `resources` lists what the
+# page read (null for a `resource` read), and each line's `resource` names its
+# own, so a project view labels every line.
 query Logs(
-  $resource: String!
+  $resource: String
+  $project: String
+  $filterDocument: JSONObject
   $type: String
   $text: String
   $textMode: String
@@ -41,6 +50,8 @@ query Logs(
 ) {
   logs(
     resource: $resource
+    project: $project
+    filterDocument: $filterDocument
     type: $type
     text: $text
     textMode: $textMode
@@ -62,6 +73,7 @@ query Logs(
       id
       timestamp
       message
+      resource
       type
       instance
       level
@@ -69,6 +81,12 @@ query Logs(
       statusCode
       host
       path
+    }
+    resources {
+      id
+      name
+      type
+      environmentId
     }
   }
 }

@@ -244,6 +244,74 @@ const deLogs: Record<string, TranslationEntry> = {
     description:
       "Inline banner over loaded log lines when a later read was refused; reason is the server's refusal",
   },
+  "logs.observabilityViewEyebrow": {
+    message: "Observability-Ansicht",
+    description:
+      "Eyebrow over a project observability view's name (Render's OBSERVABILITY VIEW, w3/m505)",
+  },
+  "logs.applicationLogsTitle": {
+    message: "Anwendungs-Logs",
+    description:
+      "Document title part for a project's Application Logs view page (w3/m505)",
+  },
+  "logs.requestLogsTitle": {
+    message: "Request-Logs",
+    description:
+      "Document title part for a project's Request Logs view page (w3/m505)",
+  },
+  "logs.projectScopeEmptyTitle": {
+    message: "In dieser Ansicht gibt es noch nichts zu lesen",
+    description:
+      "Project log view state: the view's scope holds no resource to read (w3/m505)",
+  },
+  "logs.projectScopeEmptyBody": {
+    message:
+      "Diese Ansicht liest die Dienste, Cron-Jobs, Postgres-Datenbanken und Key-Value-Instanzen des Projekts, aber noch keine davon gehört dazu.",
+    description:
+      "Project Application Logs view with no service, cron job, Postgres or Key Value in it (w3/m505)",
+  },
+  "logs.projectRequestScopeEmptyBody": {
+    message:
+      "Request-Logs lesen die Webdienste des Projekts, aber in dieser Ansicht gibt es noch keinen.",
+    description:
+      "Project Request Logs view with no web service in it (w3/m505)",
+  },
+  "logs.projectEmptyTitle": {
+    message: "Keine Logs in diesem Zeitraum",
+    description:
+      "Project log view state: its resources logged nothing in the selected range (w3/m505)",
+  },
+  "logs.projectEmptyBody": {
+    message:
+      "Keine Ressource dieser Ansicht hat im gewählten Zeitraum etwas protokolliert.",
+    description:
+      "Project log view state body: no line in the range from any of its resources (w3/m505)",
+  },
+  "logs.viewNotFoundTitle": {
+    message: "Ansicht nicht gefunden",
+    description:
+      "Project observability page whose savedSearchId names no view of this project (w3/m505)",
+  },
+  "logs.viewNotFoundBody": {
+    message:
+      "Dieses Projekt hat unter diesem Link keine Ansicht. Sie wurde möglicherweise gelöscht.",
+    description: "Body of the view-not-found state (w3/m505)",
+  },
+  "logs.viewOpen": {
+    message: "{name} öffnen",
+    description:
+      "Link from the view-not-found state to the project's default view of the same type; name is the view's name",
+  },
+  "logs.viewLoadErrorTitle": {
+    message: "Diese Ansicht konnte nicht geladen werden",
+    description:
+      "Project observability page whose saved searches could not be read (w3/m505)",
+  },
+  "logs.viewLoadErrorBody": {
+    message:
+      "Die Ansichten des Projekts konnten nicht gelesen werden. Laden Sie die Seite neu, um es erneut zu versuchen.",
+    description: "Body of the view load failure (w3/m505)",
+  },
 };
 
 export default deLogs;

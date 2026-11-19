@@ -62,7 +62,10 @@ function makeLogLine(
   message: string,
   type: string,
   labels: Partial<
-    Pick<LogLine, "level" | "method" | "statusCode" | "host" | "path">
+    Pick<
+      LogLine,
+      "resource" | "level" | "method" | "statusCode" | "host" | "path"
+    >
   > = {},
 ): LogLine {
   return {
@@ -72,6 +75,7 @@ function makeLogLine(
     message,
     // ANSI parsed once here at ingest, not per render (w9/m63 t001).
     spans: needsAnsiParse(message) ? parseAnsi(message) : null,
+    resource: labels.resource ?? "",
     type: type || LOG_TYPE_APP,
     level: labels.level ?? "",
     method: labels.method ?? "",
@@ -94,6 +98,7 @@ export function toLogLine(e: GraphQLLogEntry): LogLine {
     e.message ?? "",
     e.type ?? "",
     {
+      resource: e.resource ?? "",
       level: e.level ?? "",
       method: e.method ?? "",
       statusCode: e.statusCode ?? "",
@@ -143,6 +148,7 @@ export function fromRenderLog(log: RenderLog): LogLine {
     log.message ?? "",
     label("type"),
     {
+      resource: label("resource"),
       level: label("level"),
       method: label("method"),
       statusCode: label("statusCode"),

@@ -94,7 +94,7 @@ function parseType(value: unknown): LogSearch["type"] {
   return undefined;
 }
 
-function parseRangeAlias(value: unknown): RangePreset | null {
+export function parseRangeAlias(value: unknown): RangePreset | null {
   if (typeof value !== "string") return null;
   return (
     parseRangePreset(value) ?? parseRangePreset(RENDER_RANGE_ALIASES[value])

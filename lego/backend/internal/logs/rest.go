@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"slices"
 	"sync"
 	"time"
@@ -155,6 +156,10 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	// Mounted as a method value, this has no verb method beneath it: the tail's
 	// authorizations name FollowLogs, as the other surfaces' tail does (w21/093).
 	r = r.WithContext(core.WithAuditVerb(r.Context(), AuditVerbFollowLogs))
+	if r.URL.Query().Has("project") {
+		s.projectSubscribe(w, r)
+		return
+	}
 	resources, q, err := parseLogParams(r)
 	if err != nil {
 		core.WriteErr(w, err)
@@ -175,9 +180,7 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	// is the only bound, and on the WebSocket transport with neither the tail
 	// begins when it opens (followLogs, w8/288); with a startTime and no resume
 	// (the first connect) the window is the bound.
-	if resume, ok := resumeFrom(r.Header.Get("Last-Event-ID")); ok && resume.After(q.Since) {
-		q.Since = resume
-	}
+	resumeTail(r, &q)
 	// Refuse invalid bounds before writing streaming headers or upgrading to
 	// WebSocket; FollowLogs' validation would otherwise run after HTTP 200/101.
 	if err := q.validate(); err != nil {
@@ -185,31 +188,13 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// SECURITY (codex #3): reject a subscription with no live producer BEFORE
-	// acquiring a slot — a type=predeploy (or other producerless) request would
-	// otherwise park on an idle stream and hold one of the process-global SSE
-	// slots until it chose to disconnect, letting one tenant exhaust the pool.
-	// Every resource answers to its own contract — a datastore's filters
-	// (w5/m139), an App's routed to the producers whose lines carry them
-	// (w8/m147) — and the check reads only the id's kind and the query, so it
-	// confirms nothing about existence.
-	requestOnly := false
-	for _, resource := range resources {
-		each := q
-		each.App = resource
-		routed, err := each.liveSubscribable()
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		requestOnly = requestOnly || routed.onlyRequest()
+	queries := make([]LogQuery, len(resources))
+	for i, resource := range resources {
+		queries[i] = q
+		queries[i].App = resource
 	}
-	// The request producer polls the log store: with none wired, a
-	// request-only subscription (request filters alone narrow to one) fails
-	// closed here too, before a slot or a header — after every resource's
-	// own 400. Mixed streams still serve their pod lines without it.
-	if requestOnly && s.History == nil {
-		core.WriteErr(w, core.ErrLogStoreUnavailable)
+	if err := s.checkLiveSubscribable(queries); err != nil {
+		core.WriteErr(w, err)
 		return
 	}
 
@@ -217,30 +202,156 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	// after resource authorization, leaving capacity for unrelated tenants —
 	// one slot per followed resource, so a multi-resource tail costs what that
 	// many single tails would.
-	queries := make([]LogQuery, len(resources))
-	for i, resource := range resources {
-		queries[i] = q
-		queries[i].App = resource
+	for i := range queries {
 		release, err := s.acquireSubscription(r.Context(), queries[i])
 		if err != nil {
-			if errors.Is(err, errSubscriptionLimit) {
-				// Render's one error dialect ({error,message,id}) on every branch, so a
-				// Render client reads .message here too, not a bare {error} (w9/m39).
-				core.WriteErrStatus(w, http.StatusTooManyRequests, "too many active log subscriptions")
-			} else {
-				core.WriteErr(w, err)
-			}
+			writeSubscriptionRefusal(w, err)
 			return
 		}
 		defer release()
 	}
 
+	follow := func(ctx context.Context, emit func(LogEntry) error, heartbeat func() error) error {
+		return s.followAll(ctx, queries, emit, heartbeat)
+	}
 	// Render CLI v2+ sends an upgrade request; everyone else gets SSE or NDJSON.
 	if websocket.IsWebSocketUpgrade(r) {
-		s.subscribeWebSocket(w, r, queries)
+		// Render's own transport: Render's subscription semantics (renderStream).
+		for i := range queries {
+			queries[i].renderStream = true
+		}
+		s.subscribeWebSocket(w, r, follow)
 		return
 	}
-	s.subscribeStream(w, r, queries)
+	s.subscribeStream(w, r, follow)
+}
+
+// checkLiveSubscribable refuses, before a slot or a header, a subscription
+// with no live producer for one of its resources.
+//
+// SECURITY (codex #3): such a request (type=predeploy, say) would otherwise
+// park on an idle stream and hold one of the process-global SSE slots until
+// it chose to disconnect, letting one tenant exhaust the pool. Every resource
+// answers to its own contract — a datastore's filters (w5/m139), an App's
+// routed to the producers whose lines carry them (w8/m147) — and the check
+// reads only the id's kind and the query, so it confirms nothing about
+// existence. The request producer polls the log store: with none wired, a
+// request-only subscription (request filters alone narrow to one) fails
+// closed too, after every resource's own 400. Mixed streams still serve their
+// pod lines without it.
+func (s *Service) checkLiveSubscribable(queries []LogQuery) error {
+	requestOnly := false
+	for _, q := range queries {
+		routed, err := q.liveSubscribable()
+		if err != nil {
+			return err
+		}
+		requestOnly = requestOnly || routed.onlyRequest()
+	}
+	if requestOnly && s.History == nil {
+		return core.ErrLogStoreUnavailable
+	}
+	return nil
+}
+
+// serializedWriters wraps a tail's emit and heartbeat so the followers of a
+// multi-resource tail, each in its own goroutine, write to the one transport
+// one at a time. A nil heartbeat stays a no-op.
+func serializedWriters(emit func(LogEntry) error, heartbeat func() error) (func(LogEntry) error, func() error) {
+	var mu sync.Mutex
+	serialized := func(write func() error) error {
+		mu.Lock()
+		defer mu.Unlock()
+		return write()
+	}
+	return func(e LogEntry) error { return serialized(func() error { return emit(e) }) },
+		func() error {
+			if heartbeat == nil {
+				return nil
+			}
+			return serialized(heartbeat)
+		}
+}
+
+// tailFollow is what a subscription transport streams: a follow that calls
+// emit per line and heartbeat on its keepalive, until the context ends or the
+// tail fails.
+type tailFollow func(ctx context.Context, emit func(LogEntry) error, heartbeat func() error) error
+
+// resumeTail lowers q's bound to where this client's previous connection
+// stopped (the SSE Last-Event-ID), never below the caller's own window.
+func resumeTail(r *http.Request, q *LogQuery) {
+	if resume, ok := resumeFrom(r.Header.Get("Last-Event-ID")); ok && resume.After(q.Since) {
+		q.Since = resume
+	}
+}
+
+// projectSubscribe is /v1/logs/subscribe for a project view (w3/m505, a Bex
+// extension: Render's public API has no project tail): `project`, the view's
+// `filterDocument` (JSON, Render's empty default when absent) and `type`
+// (app or request). The scope is resolved and every resource's filters
+// checked before any streaming header, and the whole tail holds one
+// subscription slot; followProject re-resolves the scope while it runs.
+func (s *Service) projectSubscribe(w http.ResponseWriter, r *http.Request) {
+	v := r.URL.Query()
+	if v.Has("resource") {
+		core.WriteErr(w, fmt.Errorf("%w: a subscription takes exactly one of resource and project", core.ErrBadRequest))
+		return
+	}
+	if err := refuseUnsupportedLogFilters(v); err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	q, err := parseLogQuery(v)
+	if err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	var rawDoc any
+	if raw := v.Get("filterDocument"); raw != "" {
+		if err := json.Unmarshal([]byte(raw), &rawDoc); err != nil {
+			core.WriteErr(w, fmt.Errorf("%w: filterDocument is not JSON: %v", core.ErrBadRequest, err))
+			return
+		}
+	}
+	ctx := core.WithRequestMemo(r.Context())
+	view, err := newProjectView(v.Get("project"), rawDoc, &q)
+	if err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	resumeTail(r, &q)
+	if err := q.validate(); err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	workspace, resources, err := s.resolveProjectView(ctx, view, nil)
+	if err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	queries := make([]LogQuery, len(resources))
+	for i, res := range resources {
+		queries[i] = q.forResource(res.ID)
+	}
+	if err := s.checkLiveSubscribable(queries); err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	release, err := s.acquireSlot(r.Context(), func() (string, error) { return workspace, nil })
+	if err != nil {
+		writeSubscriptionRefusal(w, err)
+		return
+	}
+	defer release()
+	follow := func(ctx context.Context, emit func(LogEntry) error, heartbeat func() error) error {
+		return s.followProject(ctx, view, q, resources, emit, heartbeat)
+	}
+	if websocket.IsWebSocketUpgrade(r) {
+		s.subscribeWebSocket(w, r, follow)
+		return
+	}
+	s.subscribeStream(w, r, follow)
 }
 
 // followAll is followLogs over every subscribed resource, merged: one follower
@@ -256,18 +367,11 @@ func (s *Service) followAll(ctx context.Context, queries []LogQuery, emit func(L
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	var mu sync.Mutex
-	serialized := func(write func() error) error {
-		mu.Lock()
-		defer mu.Unlock()
-		return write()
-	}
+	emitOne, beat := serializedWriters(emit, heartbeat)
 	done := make(chan error, len(queries))
 	for _, q := range queries {
 		go func() {
-			done <- s.followLogs(ctx, q,
-				func(e LogEntry) error { return serialized(func() error { return emit(e) }) },
-				func() error { return serialized(heartbeat) })
+			done <- s.followLogs(ctx, q, emitOne, beat)
 		}()
 	}
 	var first error
@@ -299,7 +403,28 @@ func resumeFrom(lastEventID string) (time.Time, bool) {
 
 var errSubscriptionLimit = errors.New("log subscription capacity reached")
 
+// writeSubscriptionRefusal answers a subscription admission refused: 429 at
+// capacity, the error's own status otherwise.
+func writeSubscriptionRefusal(w http.ResponseWriter, err error) {
+	if errors.Is(err, errSubscriptionLimit) {
+		// Render's one error dialect ({error,message,id}) on every branch, so a
+		// Render client reads .message here too, not a bare {error} (w9/m39).
+		core.WriteErrStatus(w, http.StatusTooManyRequests, "too many active log subscriptions")
+		return
+	}
+	core.WriteErr(w, err)
+}
+
 func (s *Service) acquireSubscription(ctx context.Context, q LogQuery) (func(), error) {
+	ctx = core.WithAuditVerb(ctx, AuditVerbFollowLogs)
+	return s.acquireSlot(ctx, func() (string, error) { return s.subscriptionWorkspace(ctx, q.App) })
+}
+
+// acquireSlot takes one subscription slot for the caller in the workspace
+// workspaceOf answers: one of the process-global, per-caller and
+// per-workspace shares. The global share is taken first, so a full process
+// refuses before any authorization runs.
+func (s *Service) acquireSlot(ctx context.Context, workspaceOf func() (string, error)) (func(), error) {
 	global := false
 	if s.MaxSSEConns > 0 {
 		if s.sseConns.Add(1) > s.MaxSSEConns {
@@ -313,8 +438,7 @@ func (s *Service) acquireSubscription(ctx context.Context, q LogQuery) (func(), 
 			s.sseConns.Add(-1)
 		}
 	}
-
-	workspace, err := s.subscriptionWorkspace(ctx, q.App)
+	workspace, err := workspaceOf()
 	if err != nil {
 		releaseGlobal()
 		return nil, err
@@ -384,7 +508,7 @@ func decrementSubscriptionKey(counts map[string]int, key string) {
 }
 
 // subscribeWebSocket streams the follow as WS text frames, one per log line.
-func (s *Service) subscribeWebSocket(w http.ResponseWriter, r *http.Request, queries []LogQuery) {
+func (s *Service) subscribeWebSocket(w http.ResponseWriter, r *http.Request, follow tailFollow) {
 	conn, wsErr := wsUpgrader.Upgrade(w, r, nil)
 	if wsErr != nil {
 		return // upgrader already wrote the error response
@@ -399,11 +523,7 @@ func (s *Service) subscribeWebSocket(w http.ResponseWriter, r *http.Request, que
 			}
 		}
 	}()
-	// Render's own transport: Render's subscription semantics (renderStream).
-	for i := range queries {
-		queries[i].renderStream = true
-	}
-	followErr := s.followAll(r.Context(), queries, func(e LogEntry) error {
+	followErr := follow(r.Context(), func(e LogEntry) error {
 		payload, mErr := json.Marshal(toRenderLog(e))
 		if mErr != nil {
 			return mErr
@@ -459,7 +579,7 @@ func refusalLogEntry(err error) LogEntry {
 
 // subscribeStream streams the follow as SSE (Accept: text/event-stream) or
 // NDJSON. The two differ only in content type and per-line framing.
-func (s *Service) subscribeStream(w http.ResponseWriter, r *http.Request, queries []LogQuery) {
+func (s *Service) subscribeStream(w http.ResponseWriter, r *http.Request, follow tailFollow) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		core.WriteErrStatus(w, http.StatusInternalServerError, "streaming unsupported")
@@ -518,7 +638,7 @@ func (s *Service) subscribeStream(w http.ResponseWriter, r *http.Request, querie
 		flusher.Flush()
 		return nil
 	}
-	err := s.followAll(r.Context(), queries, func(e LogEntry) error {
+	err := follow(r.Context(), func(e LogEntry) error {
 		payload, mErr := json.Marshal(toRenderLog(e))
 		if mErr != nil {
 			return mErr
@@ -558,17 +678,36 @@ var unsupportedLogFilters = []struct{ name, reason string }{
 // /v1/logs/subscribe so the three agree on what a filter means.
 func parseLogParams(r *http.Request) ([]string, LogQuery, error) {
 	v := r.URL.Query()
-	for _, f := range unsupportedLogFilters {
-		if v.Has(f.name) {
-			return nil, LogQuery{}, fmt.Errorf("%w: log filter %q is not supported: %s", core.ErrBadRequest, f.name, f.reason)
-		}
+	if v.Has("project") {
+		return nil, LogQuery{}, fmt.Errorf("%w: project is taken only by /v1/logs/subscribe", core.ErrBadRequest)
 	}
-
+	if err := refuseUnsupportedLogFilters(v); err != nil {
+		return nil, LogQuery{}, err
+	}
 	resources, err := boundedResources(v["resource"])
 	if err != nil {
 		return nil, LogQuery{}, err
 	}
+	q, err := parseLogQuery(v)
+	if err != nil {
+		return nil, LogQuery{}, err
+	}
+	return resources, q, nil
+}
 
+func refuseUnsupportedLogFilters(v url.Values) error {
+	for _, f := range unsupportedLogFilters {
+		if v.Has(f.name) {
+			return fmt.Errorf("%w: log filter %q is not supported: %s", core.ErrBadRequest, f.name, f.reason)
+		}
+	}
+	return nil
+}
+
+// parseLogQuery is parseLogParams without the resources: every filter, the
+// window, direction and limit. The caller refuses the unsupported filters
+// first (refuseUnsupportedLogFilters).
+func parseLogQuery(v url.Values) (LogQuery, error) {
 	q := LogQuery{
 		Search:     v["text"],
 		TextMode:   v.Get("textMode"), // Bex extension (w4/m189); vetted by LogQuery.validate
@@ -583,7 +722,7 @@ func parseLogParams(r *http.Request) ([]string, LogQuery, error) {
 
 	types, err := NormalizeTypes(v["type"])
 	if err != nil {
-		return nil, LogQuery{}, err
+		return LogQuery{}, err
 	}
 	q.Types = types
 
@@ -593,13 +732,12 @@ func parseLogParams(r *http.Request) ([]string, LogQuery, error) {
 	q.Direction = v.Get("direction")
 	q.Since, q.End, err = core.ParseTimeWindow(v.Get("startTime"), v.Get("endTime"))
 	if err != nil {
-		return nil, LogQuery{}, err
+		return LogQuery{}, err
 	}
 	if q.Limit, err = core.QueryLimit64(v, "limit"); err != nil {
-		return nil, LogQuery{}, err
+		return LogQuery{}, err
 	}
-
-	return resources, q, nil
+	return q, nil
 }
 
 // maxLogResources bounds the per-request authorization + Loki/Kubernetes fan-out

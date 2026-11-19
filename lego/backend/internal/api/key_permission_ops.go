@@ -407,6 +407,8 @@ var keyPermissionOps = map[string][]core.KeyAction{
 	"GQL Query.pipelineSettings":                                    {core.KeyWorkspaceSettings},
 	"GQL Query.project":                                             {core.KeyProjectsView},
 	"GQL Query.projects":                                            {core.KeyProjectsView},
+	"GQL Query.savedSearch":                                         {core.KeyProjectsView},
+	"GQL Query.savedSearches":                                       {core.KeyProjectsView},
 	"GQL Query.pushEventUrgencies":                                  {core.KeyNoGrant},
 	"GQL Query.pushNotificationSettings":                            {core.KeyNoGrant},
 	"GQL Query.pushNotificationsAvailable":                          {core.KeyNoGrant},

@@ -264,6 +264,74 @@ const ruLogs: Record<string, TranslationEntry> = {
     description:
       "Inline banner over loaded log lines when a later read was refused; reason is the server's refusal",
   },
+  "logs.observabilityViewEyebrow": {
+    message: "Представление наблюдаемости",
+    description:
+      "Eyebrow over a project observability view's name (Render's OBSERVABILITY VIEW, w3/m505)",
+  },
+  "logs.applicationLogsTitle": {
+    message: "Логи приложений",
+    description:
+      "Document title part for a project's Application Logs view page (w3/m505)",
+  },
+  "logs.requestLogsTitle": {
+    message: "Логи запросов",
+    description:
+      "Document title part for a project's Request Logs view page (w3/m505)",
+  },
+  "logs.projectScopeEmptyTitle": {
+    message: "В этом представлении пока нечего читать",
+    description:
+      "Project log view state: the view's scope holds no resource to read (w3/m505)",
+  },
+  "logs.projectScopeEmptyBody": {
+    message:
+      "Это представление читает сервисы, cron-задания, базы данных Postgres и экземпляры Key Value проекта, но их пока нет.",
+    description:
+      "Project Application Logs view with no service, cron job, Postgres or Key Value in it (w3/m505)",
+  },
+  "logs.projectRequestScopeEmptyBody": {
+    message:
+      "Логи запросов читают веб-сервисы проекта, но в этом представлении их пока нет.",
+    description:
+      "Project Request Logs view with no web service in it (w3/m505)",
+  },
+  "logs.projectEmptyTitle": {
+    message: "Нет логов за этот период",
+    description:
+      "Project log view state: its resources logged nothing in the selected range (w3/m505)",
+  },
+  "logs.projectEmptyBody": {
+    message:
+      "Ни один ресурс этого представления ничего не записал за выбранный период.",
+    description:
+      "Project log view state body: no line in the range from any of its resources (w3/m505)",
+  },
+  "logs.viewNotFoundTitle": {
+    message: "Представление не найдено",
+    description:
+      "Project observability page whose savedSearchId names no view of this project (w3/m505)",
+  },
+  "logs.viewNotFoundBody": {
+    message:
+      "В этом проекте нет представления по этой ссылке. Возможно, оно было удалено.",
+    description: "Body of the view-not-found state (w3/m505)",
+  },
+  "logs.viewOpen": {
+    message: "Открыть {name}",
+    description:
+      "Link from the view-not-found state to the project's default view of the same type; name is the view's name",
+  },
+  "logs.viewLoadErrorTitle": {
+    message: "Не удалось загрузить это представление",
+    description:
+      "Project observability page whose saved searches could not be read (w3/m505)",
+  },
+  "logs.viewLoadErrorBody": {
+    message:
+      "Не удалось прочитать представления проекта. Перезагрузите страницу, чтобы повторить попытку.",
+    description: "Body of the view load failure (w3/m505)",
+  },
 };
 
 export default ruLogs;

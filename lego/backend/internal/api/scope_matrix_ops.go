@@ -394,6 +394,8 @@ var classifiedOps = map[string]string{
 	"GQL Query.sandboxSnapshot":                              core.OpClassRead,
 	"GQL Query.sandboxSnapshots":                             core.OpClassRead,
 	"GQL Query.sandboxes":                                    core.OpClassRead,
+	"GQL Query.savedSearch":                                  core.OpClassRead,
+	"GQL Query.savedSearches":                                core.OpClassRead,
 	"GQL Query.secretFiles":                                  core.OpClassSensitive,
 	"GQL Query.server":                                       core.OpClassRead,
 	"GQL Query.serverActions":                                core.OpClassRead,

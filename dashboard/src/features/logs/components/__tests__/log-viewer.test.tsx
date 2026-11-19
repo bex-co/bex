@@ -34,6 +34,7 @@ const historyState: UseLogHistoryResult = {
   hasMore: false,
   loadingOlder: false,
   loadOlder: () => undefined,
+  resources: undefined,
 };
 const useHistorySpy = vi.fn();
 vi.mock("../../hooks/use-log-history", () => ({
@@ -185,6 +186,7 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
         host: "",
         path: "",
         spans: null,
+        resource: "",
       },
     ];
     render(<LogViewer resource="web" />);
@@ -250,6 +252,7 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
         host: "",
         path: "",
         spans: null,
+        resource: "",
       },
     ];
     historyState.hasMore = false;
@@ -336,6 +339,7 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
         host: "",
         path: "",
         spans: null,
+        resource: "",
       },
     ];
     historyState.hasMore = true;
@@ -462,6 +466,7 @@ describe("LogViewer URL-backed filter state (w7/m42)", () => {
         host: "",
         path: "",
         spans: null,
+        resource: "",
       },
     ];
     const onFiltersChange = vi.fn();
@@ -538,6 +543,7 @@ describe("LogViewer populated background failures", () => {
           host: "",
           path: "",
           spans: null,
+          resource: "",
         },
       ];
       const { container, rerender } = render(
@@ -572,6 +578,7 @@ describe("LogViewer combined live reader (w4/m192)", () => {
       host: "",
       path: "",
       spans: null,
+      resource: "",
     };
   };
 

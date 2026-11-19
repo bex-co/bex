@@ -10,7 +10,9 @@ import {
   LOG_TYPE_ALL,
   type LogFilters,
   type LogLine,
+  type LogResource,
   type LogTextMode,
+  type ProjectLogScope,
 } from "../types";
 
 // bex-api's GraphQL logs query defaults to 20 lines and caps at 100 (Render's
@@ -43,6 +45,12 @@ export interface UseLogHistoryResult {
   loadingOlder: boolean;
   /** Fetch the next older page and prepend it. No-op when !hasMore. */
   loadOlder: () => void;
+  /**
+   * The resources a project view's page read (w3/m505), each line's
+   * `resource` among them; undefined for a single-resource read and until the
+   * first page arrives.
+   */
+  resources: LogResource[] | undefined;
 }
 
 // A structured filter is single-valued in the UI; bex-api takes lists, so send a
@@ -67,6 +75,11 @@ function list(value: string): string[] | undefined {
  *
  * `textMode` opts a reader into display-text matching (w4/m189); it is part of
  * the query variables, so older pages and the reader identity carry it too.
+ *
+ * `project` reads a project observability view instead of `resource` (w3/m505):
+ * bex-api resolves the view's resources from its filter document, and the
+ * page says which it read (`resources`). Keep the scope object stable (its
+ * fields are the query's identity).
  */
 export function useLogHistory(
   resource: string,
@@ -74,10 +87,13 @@ export function useLogHistory(
   window?: { startTime: string; endTime: string },
   readerSelection?: string,
   textMode?: LogTextMode,
+  project?: ProjectLogScope,
 ): UseLogHistoryResult {
+  const projectID = project?.project;
+  const filterDocument = project?.filterDocument;
   const variables = useMemo(
     () => ({
-      resource,
+      ...(projectID ? { project: projectID, filterDocument } : { resource }),
       type: filters.type === LOG_TYPE_ALL ? undefined : filters.type,
       text: filters.text || undefined,
       textMode: filters.text ? textMode : undefined,
@@ -93,6 +109,8 @@ export function useLogHistory(
     }),
     [
       resource,
+      projectID,
+      filterDocument,
       filters.type,
       filters.text,
       textMode,
@@ -114,7 +132,7 @@ export function useLogHistory(
   });
 
   const readerKey = JSON.stringify([
-    resource,
+    projectID ? [projectID, filterDocument] : resource,
     filters.type,
     filters.text,
     textMode,
@@ -174,6 +192,8 @@ export function useLogHistory(
 
   const storeUnavailable = isLogStoreUnavailable(readError);
   const timedOut = hasGraphQLErrorCode(readError, QUERY_TIMEOUT);
+  const resources =
+    projectID && !blocked ? (data?.logs?.resources ?? undefined) : undefined;
 
   return {
     lines,
@@ -184,5 +204,6 @@ export function useLogHistory(
     hasMore: pages.hasMore,
     loadingOlder: pages.loadingOlder,
     loadOlder: pages.loadOlder,
+    resources,
   };
 }

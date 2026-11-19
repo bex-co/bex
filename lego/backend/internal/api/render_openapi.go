@@ -108,7 +108,9 @@ var renderOptionalParameterCompatibility = map[string][]string{
 	// or default workspace on all three log reads.
 	"list-logs":        {"ownerId"},
 	"list-logs-values": {"ownerId"},
-	"subscribe-logs":   {"ownerId"},
+	// A project view's tail names its project instead of resources (w3/m505);
+	// the handler still refuses a subscription that names neither.
+	"subscribe-logs": {"ownerId", "resource"},
 	// The sandbox list resolves an omitted ownerId from the caller's selected
 	// or default workspace, as it did before the operation entered the pin.
 	"list-sandboxes": {"ownerId"},
@@ -262,7 +264,10 @@ var renderQueryExtensions = map[string]map[string]struct{}{
 	// dashboard's service Logs tab sends it on history and its live tail.
 	"list-logs":        {"textMode": {}},
 	"list-logs-values": {"textMode": {}},
-	"subscribe-logs":   {"textMode": {}},
+	// project + filterDocument tail a project's log view (w3/m505): Render's
+	// public API has no project tail, its dashboard's view reads the project
+	// through private GraphQL.
+	"subscribe-logs": {"textMode": {}, "project": {}, "filterDocument": {}},
 
 	// Render's disk-capacity series covers only its own service disks, so its
 	// schema has no `kind`. Bex reads capacity for three resource kinds through

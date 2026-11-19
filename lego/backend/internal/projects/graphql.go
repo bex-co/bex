@@ -20,6 +20,7 @@ import (
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
+	"github.com/bex-co/bex/lego/backend/internal/savedsearch"
 )
 
 // graphql.go is the projects GraphQL fragment (bex extension).
@@ -38,9 +39,47 @@ var projectGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// savedSearchTypeGQLEnum is Render's SavedSearchType, less WORKFLOW_RUNS
+// (Render Workflows is a bex non-goal), so such a value is refused by the
+// schema itself (w3/m505).
+var savedSearchTypeGQLEnum = graphql.NewEnum(graphql.EnumConfig{
+	Name: "SavedSearchType",
+	Values: graphql.EnumValueConfigMap{
+		savedsearch.TypeApplicationLogs: &graphql.EnumValueConfig{Value: savedsearch.TypeApplicationLogs},
+		savedsearch.TypeMetrics:         &graphql.EnumValueConfig{Value: savedsearch.TypeMetrics},
+		savedsearch.TypeRequestLogs:     &graphql.EnumValueConfig{Value: savedsearch.TypeRequestLogs},
+	},
+})
+
+// savedSearchGQLType is a project's observability view with the fields
+// Render's own query selects: id, name, type and the filter document.
+var savedSearchGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "SavedSearch",
+	Fields: graphql.Fields{
+		"id":      gqlutil.ReqStrField(func(v SavedSearchView) any { return v.ID }),
+		"name":    gqlutil.ReqStrField(func(v SavedSearchView) any { return v.Name }),
+		"type":    gqlutil.Typed(graphql.NewNonNull(savedSearchTypeGQLEnum), func(v SavedSearchView) any { return v.Type }),
+		"filters": gqlutil.Typed(graphql.NewNonNull(gqlutil.JSONObject), func(v SavedSearchView) any { return v.Filters }),
+	},
+})
+
 // GraphQLQuery contributes the projects reads to the root Query.
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
+		// Render's two saved-search reads (w3/m505), under the project's view
+		// permission.
+		"savedSearches": &graphql.Field{
+			Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(savedSearchGQLType))),
+			Args: graphql.FieldConfigArgument{
+				"projectId": gqlutil.ReqArg(graphql.String),
+				"type":      gqlutil.Arg(savedSearchTypeGQLEnum),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				searchType, _ := p.Args["type"].(string)
+				return s.SavedSearches(p.Context, p.Args["projectId"].(string), searchType)
+			},
+		},
+		"savedSearch": gqlutil.IDVerb(savedSearchGQLType, s.SavedSearch),
 		"projects": &graphql.Field{
 			Type: graphql.NewList(projectGQLType),
 			Args: gqlutil.PageArgs(graphql.FieldConfigArgument{

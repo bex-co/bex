@@ -25,6 +25,8 @@ import (
 	"sort"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
@@ -143,8 +145,7 @@ func (s *Service) lineBeyond(ctx context.Context, resources []string, q LogQuery
 	next := q
 	next.Since, next.End, next.Limit = since, until, 1
 	for _, id := range resources {
-		next.App = id
-		entries, err := s.QueryLogs(ctx, next)
+		entries, err := s.QueryLogs(ctx, next.forResource(id))
 		var partial *ScanIncompleteError
 		if errors.As(err, &partial) || len(entries) > 0 {
 			return true, nil
@@ -154,6 +155,34 @@ func (s *Service) lineBeyond(ctx context.Context, resources []string, q LogQuery
 		}
 	}
 	return false, nil
+}
+
+// maxConcurrentLogReads bounds how many resources one page reads at once. A
+// project view reads up to maxProjectLogResources, and one at a time its page
+// took the sum of every resource's store latency (w3/m505).
+const maxConcurrentLogReads = 8
+
+// resourceRead is one resource's part of a page read.
+type resourceRead struct {
+	entries []LogEntry
+	err     error
+}
+
+// readEach reads q from every resource, at most maxConcurrentLogReads at a
+// time, and answers in resource order, so the page's first error is the
+// first failing resource's, as a sequential read answered.
+func (s *Service) readEach(ctx context.Context, resources []string, q LogQuery) []resourceRead {
+	reads := make([]resourceRead, len(resources))
+	var g errgroup.Group
+	g.SetLimit(maxConcurrentLogReads)
+	for i, id := range resources {
+		g.Go(func() error {
+			reads[i].entries, reads[i].err = s.QueryLogs(ctx, q.forResource(id))
+			return nil
+		})
+	}
+	_ = g.Wait() // each read keeps its own error
+	return reads
 }
 
 // logPage is one resolved page of a logs query: the lines in the query's
@@ -187,12 +216,12 @@ func (s *Service) queryLogPage(ctx context.Context, resources []string, q LogQue
 	// a guess that sent clients to an empty next page (w8/m116).
 	probe := q
 	probe.Limit, probe.probe = n.Limit+1, true
+	reads := s.readEach(ctx, resources, probe)
 	var all []LogEntry
 	var edge *time.Time
 	filled := false
-	for _, id := range resources {
-		probe.App = id
-		entries, err := s.QueryLogs(ctx, probe)
+	for _, r := range reads {
+		entries, err := r.entries, r.err
 		var partial *ScanIncompleteError
 		if errors.As(err, &partial) {
 			entries, err = partial.Entries, nil

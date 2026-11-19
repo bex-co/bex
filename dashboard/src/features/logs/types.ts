@@ -1,3 +1,4 @@
+import type { en } from "@/i18n";
 import type { AnsiSpan } from "./lib/ansi";
 
 // A single rendered log line — the flat shape the viewer draws, mapped from
@@ -17,6 +18,10 @@ export interface LogLine {
   // for a line with nothing to interpret — the common app line renders as a
   // bare text node, byte-identical to the pre-parse DOM.
   spans: AnsiSpan[] | null;
+  // The line's resource id (REST's `resource` label, Render's SERVICE): a
+  // project view reads several resources and names each line's (w3/m505).
+  // "" when the source did not say.
+  resource: string;
   type: string; // Render log type: `app`, `request`, `build`, or `postgres`
   // Request/HTTP-line labels (populated for `type=request`; empty for app
   // lines). The Logs viewer renders a request line as method/status chips
@@ -26,6 +31,25 @@ export interface LogLine {
   statusCode: string; // request HTTP status, or ""
   host: string; // request host, or ""
   path: string; // request path, or ""
+}
+
+/**
+ * A project observability view's read scope (w3/m505): bex-api resolves the
+ * project's resources the view's filter document keeps, server-side, for the
+ * history query and the live tail alike — the client never names them.
+ */
+export interface ProjectLogScope {
+  project: string;
+  filterDocument: Record<string, unknown>;
+}
+
+/** One resource a project view read, as `logs(...).resources` lists it. */
+export interface LogResource {
+  id: string;
+  name: string;
+  /** A service type (web_service, cron_job, …), `postgres` or `key_value`. */
+  type: string;
+  environmentId: string | null;
 }
 
 // The type filter, matching Render's Logs dropdown (All / Application / Request).
@@ -109,6 +133,20 @@ export const STRUCTURED_FILTER_KEYS = [
   "host",
 ] as const;
 export type StructuredFilterKey = (typeof STRUCTURED_FILTER_KEYS)[number];
+
+// The label of each structured filter: one row each in the service Logs tab's
+// Filters popover, and one removable chip each while active in any explorer.
+export const STRUCTURED_LABEL_KEYS: Record<
+  StructuredFilterKey,
+  keyof typeof en
+> = {
+  level: "logs.levelLabel",
+  method: "logs.methodLabel",
+  statusCode: "logs.statusCodeLabel",
+  instance: "logs.instanceLabel",
+  path: "logs.pathLabel",
+  host: "logs.hostLabel",
+};
 
 export const EMPTY_LOG_FILTERS: LogFilters = {
   type: LOG_TYPE_ALL,

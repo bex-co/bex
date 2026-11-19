@@ -246,6 +246,7 @@ var idKindRouting = map[string]struct{ family, why string }{
 	ids.CronRun.Prefix():                  {"cron-jobs", "addressed under its cron job"},
 	ids.Notification.Prefix():             {"", "a member's preferences, addressed by owner or service"},
 	ids.Project.Prefix():                  {"projects", ""},
+	ids.SavedSearch.Prefix():              {"", "a project's observability view, read by id only through GraphQL savedSearch, which authorizes it on its project's workspace; no REST or MCP route takes one (w3/m505)"},
 	ids.RegistryCredential.Prefix():       {"registrycredentials", ""},
 	ids.Blueprint.Prefix():                {"blueprints", ""},
 	ids.Environment.Prefix():              {"environments", ""},

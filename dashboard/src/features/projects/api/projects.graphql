@@ -66,3 +66,19 @@ mutation SetProjectKeyValues($id: String!, $keyValueIds: [String!]!) {
     ...ProjectFields
   }
 }
+
+# A project's observability views (w3/m505): Render's saved searches. The
+# sidebar lists them and a view page finds its own in the same list, so one
+# read serves both (Render's savedSearch(id) single read is not needed here).
+fragment SavedSearchFields on SavedSearch {
+  id
+  name
+  type
+  filters
+}
+
+query SavedSearches($projectId: String!, $type: SavedSearchType) {
+  savedSearches(projectId: $projectId, type: $type) {
+    ...SavedSearchFields
+  }
+}

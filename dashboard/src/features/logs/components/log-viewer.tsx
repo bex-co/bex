@@ -410,7 +410,7 @@ export function LogViewer({
 
 // How long a free-text draft waits before it reaches the queries and the URL,
 // so a keystroke doesn't refetch history and reopen the stream.
-const COMMIT_DELAY_MS = 300;
+export const COMMIT_DELAY_MS = 300;
 // `filters` is what the controls show; its free-text fields are drafts.
 // `committed` is the text and path the queries and the URL carry.
 interface LogViewState {

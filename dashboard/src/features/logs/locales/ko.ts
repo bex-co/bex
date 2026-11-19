@@ -234,6 +234,73 @@ const koLogs: Record<string, TranslationEntry> = {
     description:
       "Inline banner over loaded log lines when a later read was refused; reason is the server's refusal",
   },
+  "logs.observabilityViewEyebrow": {
+    message: "관측성 보기",
+    description:
+      "Eyebrow over a project observability view's name (Render's OBSERVABILITY VIEW, w3/m505)",
+  },
+  "logs.applicationLogsTitle": {
+    message: "애플리케이션 로그",
+    description:
+      "Document title part for a project's Application Logs view page (w3/m505)",
+  },
+  "logs.requestLogsTitle": {
+    message: "요청 로그",
+    description:
+      "Document title part for a project's Request Logs view page (w3/m505)",
+  },
+  "logs.projectScopeEmptyTitle": {
+    message: "이 보기에는 아직 읽을 항목이 없습니다",
+    description:
+      "Project log view state: the view's scope holds no resource to read (w3/m505)",
+  },
+  "logs.projectScopeEmptyBody": {
+    message:
+      "이 보기는 프로젝트의 서비스, 크론 작업, Postgres 데이터베이스, Key Value 인스턴스를 읽지만 아직 아무것도 없습니다.",
+    description:
+      "Project Application Logs view with no service, cron job, Postgres or Key Value in it (w3/m505)",
+  },
+  "logs.projectRequestScopeEmptyBody": {
+    message:
+      "요청 로그는 프로젝트의 웹 서비스를 읽지만 이 보기에는 아직 없습니다.",
+    description:
+      "Project Request Logs view with no web service in it (w3/m505)",
+  },
+  "logs.projectEmptyTitle": {
+    message: "이 기간에는 로그가 없습니다",
+    description:
+      "Project log view state: its resources logged nothing in the selected range (w3/m505)",
+  },
+  "logs.projectEmptyBody": {
+    message: "이 보기의 리소스가 선택한 기간에 아무것도 기록하지 않았습니다.",
+    description:
+      "Project log view state body: no line in the range from any of its resources (w3/m505)",
+  },
+  "logs.viewNotFoundTitle": {
+    message: "보기를 찾을 수 없습니다",
+    description:
+      "Project observability page whose savedSearchId names no view of this project (w3/m505)",
+  },
+  "logs.viewNotFoundBody": {
+    message:
+      "이 프로젝트에는 이 링크에 해당하는 보기가 없습니다. 삭제되었을 수 있습니다.",
+    description: "Body of the view-not-found state (w3/m505)",
+  },
+  "logs.viewOpen": {
+    message: "{name} 열기",
+    description:
+      "Link from the view-not-found state to the project's default view of the same type; name is the view's name",
+  },
+  "logs.viewLoadErrorTitle": {
+    message: "이 보기를 불러올 수 없습니다",
+    description:
+      "Project observability page whose saved searches could not be read (w3/m505)",
+  },
+  "logs.viewLoadErrorBody": {
+    message:
+      "프로젝트의 보기를 읽지 못했습니다. 페이지를 새로고침하여 다시 시도하세요.",
+    description: "Body of the view load failure (w3/m505)",
+  },
 };
 
 export default koLogs;

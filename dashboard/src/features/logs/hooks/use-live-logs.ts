@@ -7,6 +7,7 @@ import {
   type LogLine,
   type LogTextMode,
   type LogTypeFilter,
+  type ProjectLogScope,
 } from "../types";
 
 /*
@@ -49,8 +50,11 @@ const defaultCreateEventSource: EventSourceFactory = (url) =>
 // stream because the store poll producer honors them for request lines
 // (w4/m237); over app lines they keep live tail off in the viewer
 // (docs/ADR010-observability.md).
-function subscribeUrl(opts: {
+export function subscribeUrl(opts: {
   resource: string;
+  /** A project view's scope (w3/m505): sent instead of `resource`; bex-api
+   *  resolves the view's resources and follows them all. */
+  project?: ProjectLogScope;
   type: LogTypeFilter;
   text: string;
   textMode: LogTextMode | undefined;
@@ -60,6 +64,7 @@ function subscribeUrl(opts: {
 }): string {
   const {
     resource,
+    project,
     type,
     text,
     textMode,
@@ -67,7 +72,14 @@ function subscribeUrl(opts: {
     startTime,
     requestFilters,
   } = opts;
-  const params = new URLSearchParams({ resource });
+  const params = new URLSearchParams(
+    project
+      ? {
+          project: project.project,
+          filterDocument: JSON.stringify(project.filterDocument),
+        }
+      : { resource },
+  );
   if (type !== LOG_TYPE_ALL) params.set("type", type);
   if (text) params.set("text", text);
   if (text && textMode) params.set("textMode", textMode);
@@ -108,6 +120,8 @@ const NO_REQUEST_FILTERS: RequestLogFilters = {
 
 export interface UseLiveLogsOptions {
   resource: string;
+  /** Tail a project view (w3/m505) instead of `resource`. */
+  project?: ProjectLogScope;
   /**
    * Live toggle — off closes the stream (pause); on (re)opens it (resume). A
    * pause KEEPS the lines already received (w4/m192): the reader is unchanged,
@@ -178,6 +192,7 @@ const FLUSH_MS = 100;
  */
 export function useLiveLogs({
   resource,
+  project,
   enabled,
   type,
   text,
@@ -209,7 +224,10 @@ export function useLiveLogs({
   // The request filters join the identity in the hook (not only via the
   // caller's readerKey): they parameterize the stream itself, so a change
   // must reopen it even for a caller that passes no readerKey (w4/m237).
-  const subKey = `${resource}|${type}|${text}|${textMode}|${instance}|${readerKey}|${requestFilters.level}|${requestFilters.method}|${requestFilters.statusCode}|${requestFilters.path}|${requestFilters.host}`;
+  const scopeKey = project
+    ? JSON.stringify([project.project, project.filterDocument])
+    : resource;
+  const subKey = `${scopeKey}|${type}|${text}|${textMode}|${instance}|${readerKey}|${requestFilters.level}|${requestFilters.method}|${requestFilters.statusCode}|${requestFilters.path}|${requestFilters.host}`;
   const [buffer, setBuffer] = useState<{ key: string; lines: LogLine[] }>({
     key: subKey,
     lines: [],
@@ -264,6 +282,7 @@ export function useLiveLogs({
     const es = createEventSource(
       subscribeUrl({
         resource,
+        project,
         type,
         text,
         textMode,
@@ -350,6 +369,7 @@ export function useLiveLogs({
     };
   }, [
     resource,
+    project,
     enabled,
     type,
     text,

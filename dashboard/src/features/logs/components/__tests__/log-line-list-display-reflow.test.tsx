@@ -79,6 +79,7 @@ const makeLines = (count: number): LogLine[] =>
     instance: "",
     message: `ROW=${i}`,
     spans: null,
+    resource: "",
     type: "app",
     level: "",
     method: "",

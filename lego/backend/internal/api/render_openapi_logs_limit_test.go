@@ -54,6 +54,10 @@ func TestRenderListLogsAdmitsTheCLIPageLimit(t *testing.T) {
 		{"/v1/logs?resource=srv-x&limit=abc", `invalid query parameter \"limit\"`},
 		{"/v1/logs?resource=srv-x&limit=2.5", `invalid query parameter \"limit\"`},
 		{"/v1/logs/subscribe?resource=srv-x&limit=1000", "limit must be an integer between 1 and 100"},
+		// A project view's tail names its project, not resources (w3/m505);
+		// only the tail takes one.
+		{"/v1/logs/subscribe?project=prj-x&type=app&filterDocument=%7B%22filters%22%3A%5B%5D%2C%22version%22%3A1%7D", ""},
+		{"/v1/logs?project=prj-x&resource=srv-x", `unsupported query parameter \"project\"`},
 		{"/v1/logs/values?resource=srv-x&label=level&limit=1000", "limit must be an integer between 1 and 100"},
 		{"/v1/services?limit=1000", "limit must be an integer between 1 and 100"},
 	} {

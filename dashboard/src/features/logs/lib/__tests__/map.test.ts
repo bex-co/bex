@@ -13,6 +13,7 @@ import type { LogLine } from "../../types";
 
 const gqlEntry = (over: Partial<Record<string, string | null>> = {}) => ({
   __typename: "LogEntry" as const,
+  resource: null,
   id: null as string | null,
   timestamp: "2026-07-05T10:36:01.709Z",
   message: "hello world",
@@ -240,6 +241,7 @@ describe("mergeLogLines", () => {
     host: "",
     path: "",
     spans: null,
+    resource: "",
   });
 
   // Stamp-bearing variant: key + RFC3339 timestamp + message.
@@ -480,6 +482,7 @@ describe("record identity within one millisecond (w4/m217)", () => {
     const legacy = toLogLines([
       {
         __typename: "LogEntry",
+        resource: null,
         id: null,
         timestamp: `${ms}100Z`,
         message: "x",
@@ -493,6 +496,7 @@ describe("record identity within one millisecond (w4/m217)", () => {
       },
       {
         __typename: "LogEntry",
+        resource: null,
         id: null,
         timestamp: `${ms}200Z`,
         message: "x",

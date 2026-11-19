@@ -253,6 +253,12 @@ type Service struct {
 	// derived from deploy rows, merged into explicit type=build reads and the
 	// live build tail. nil => no synthesis (byte-identical prior behavior).
 	DeployProgress DeployProgressSource
+	// Projects lists a project's resources for its log views (w3/m505);
+	// nil => a project-scoped read answers ErrProjectLogsUnavailable.
+	Projects ProjectResources
+	// ProjectRescopeInterval is how often a project tail re-resolves its
+	// scope. 0 = DefaultProjectRescopeInterval; tests shrink it.
+	ProjectRescopeInterval time.Duration
 
 	sseConns       atomic.Int64
 	sseMu          sync.Mutex
@@ -349,6 +355,10 @@ type LogQuery struct {
 	// probe lets a page read one line past the caller's (clamped) Limit, so the
 	// page can tell whether any line lies beyond it (queryLogPage).
 	probe bool
+	// projectScope marks a project view's read (w3/m505): its type filter
+	// names the view, not a datastore's lines (forResource). Set by
+	// newProjectView, never by a caller.
+	projectScope bool
 	// renderStream marks the tail of Render's own transport, the WebSocket
 	// subscription the pinned Render CLI opens (w8/m159). Render's subscribe
 	// "stream[s] logs matching the provided filters ... in real-time as they are

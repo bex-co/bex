@@ -7,6 +7,7 @@ export type Scalars = {
   Boolean: { input: boolean; output: boolean; }
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
+  JSONObject: { input: Record<string, unknown>; output: Record<string, unknown>; }
 };
 
 export type AcceptedOrganizationInvite = {
@@ -1345,6 +1346,18 @@ export type ChargeLine = {
   unit: Maybe<Scalars['String']['output']>;
 };
 
+export type CreatedObjectAccessKey = {
+  __typename: 'CreatedObjectAccessKey';
+  createdAt: Scalars['String']['output'];
+  createdBy: Scalars['String']['output'];
+  expiresAt: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  permission: Scalars['String']['output'];
+  secret: Scalars['String']['output'];
+  status: Scalars['String']['output'];
+};
+
 export type CronRun = {
   __typename: 'CronRun';
   canceledBy: Maybe<Scalars['String']['output']>;
@@ -2033,6 +2046,7 @@ export type LogEntry = {
   method: Maybe<Scalars['String']['output']>;
   path: Maybe<Scalars['String']['output']>;
   requestId: Maybe<Scalars['String']['output']>;
+  resource: Maybe<Scalars['String']['output']>;
   statusCode: Maybe<Scalars['String']['output']>;
   timestamp: Maybe<Scalars['String']['output']>;
   type: Maybe<Scalars['String']['output']>;
@@ -2044,6 +2058,15 @@ export type LogList = {
   logs: Array<Maybe<LogEntry>>;
   nextEndTime: Scalars['String']['output'];
   nextStartTime: Scalars['String']['output'];
+  resources: Maybe<Array<LogResource>>;
+};
+
+export type LogResource = {
+  __typename: 'LogResource';
+  environmentId: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  type: Scalars['String']['output'];
 };
 
 export type LogRetention = {
@@ -2253,6 +2276,7 @@ export type Mutation = {
   createEnvironment: Maybe<Environment>;
   createJob: Maybe<Job>;
   createKeyValue: Maybe<KeyValue>;
+  createObjectAccessKey: Maybe<CreatedObjectAccessKey>;
   /** Create a workspace in an organization (Owner only): it takes the org's plan, with no plan fee or payment step. privacy is public or invite_only (the default). */
   createOrganizationWorkspace: Maybe<Workspace>;
   createPlannedBlueprint: Maybe<BlueprintPlanResult>;
@@ -2362,6 +2386,7 @@ export type Mutation = {
   resumeService: Maybe<Service>;
   revokeApiKey: Maybe<Scalars['Boolean']['output']>;
   revokeNotificationDeviceSubscriptions: Maybe<Scalars['Int']['output']>;
+  revokeObjectAccessKey: Scalars['Boolean']['output'];
   revokeOrganizationInvite: Maybe<Scalars['Boolean']['output']>;
   revokeWorkspaceInvite: Maybe<Scalars['String']['output']>;
   rollbackService: Maybe<Deploy>;
@@ -2413,6 +2438,7 @@ export type Mutation = {
   setMaxShutdownDelay: Maybe<Service>;
   setNotificationsToSend: Maybe<Service>;
   setNotifyOnFail: Maybe<Service>;
+  setObjectBucketPublic: Maybe<ObjectBucketPublic>;
   /** Require signing in with Google in every workspace of an organization, and on the org itself, or stop requiring it (Owner only; Render's ChangeOrgAllowedLoginMethodsEvent). Turning it on is refused while the acting Owner is not signed in with Google (WORKSPACE_GOOGLE_LOGIN_ADMIN_NOT_SIGNED_IN). */
   setOrganizationRequireGoogleLogin: Maybe<Organization>;
   /** Require two-factor authentication in every workspace of an organization, and on the org itself, or stop requiring it (Owner only; Render's ChangeOrg2FAEnforcementEvent). Turning it on is refused while the acting Owner has no second factor (WORKSPACE_2FA_ADMIN_NOT_ENROLLED). */
@@ -2761,6 +2787,14 @@ export type MutationCreateKeyValueArgs = {
   region?: InputMaybe<Scalars['String']['input']>;
   storageGB?: InputMaybe<Scalars['Int']['input']>;
   version?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationCreateObjectAccessKeyArgs = {
+  expiresInSeconds?: InputMaybe<Scalars['Int']['input']>;
+  name: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  permission: Scalars['String']['input'];
 };
 
 
@@ -3420,6 +3454,12 @@ export type MutationRevokeNotificationDeviceSubscriptionsArgs = {
 };
 
 
+export type MutationRevokeObjectAccessKeyArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationRevokeOrganizationInviteArgs = {
   inviteId: Scalars['String']['input'];
   organizationId: Scalars['String']['input'];
@@ -3727,6 +3767,13 @@ export type MutationSetNotifyOnFailArgs = {
   confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   value: Scalars['String']['input'];
+};
+
+
+export type MutationSetObjectBucketPublicArgs = {
+  enabled: Scalars['Boolean']['input'];
+  name: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -4221,6 +4268,38 @@ export type NotificationWebPushSubscription = {
   updatedAt: Maybe<Scalars['String']['output']>;
 };
 
+export type ObjectAccessKey = {
+  __typename: 'ObjectAccessKey';
+  createdAt: Scalars['String']['output'];
+  createdBy: Scalars['String']['output'];
+  expiresAt: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  lastUsedAt: Maybe<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
+  permission: Scalars['String']['output'];
+  status: Scalars['String']['output'];
+};
+
+export type ObjectBucket = {
+  __typename: 'ObjectBucket';
+  bytes: Scalars['Float']['output'];
+  createdAt: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  objects: Scalars['Float']['output'];
+  observedAt: Maybe<Scalars['String']['output']>;
+  public: Scalars['Boolean']['output'];
+  publicHost: Maybe<Scalars['String']['output']>;
+  region: Scalars['String']['output'];
+  system: Scalars['Boolean']['output'];
+};
+
+export type ObjectBucketPublic = {
+  __typename: 'ObjectBucketPublic';
+  host: Scalars['String']['output'];
+  public: Scalars['Boolean']['output'];
+};
+
 export type OomKilled = {
   __typename: 'OomKilled';
   memoryLimit: Maybe<Scalars['String']['output']>;
@@ -4234,9 +4313,7 @@ export type Organization = {
   name: Scalars['String']['output'];
   plan: Scalars['String']['output'];
   primaryWorkspaceId: Scalars['String']['output'];
-  /** Whether every workspace of the org, and the org itself, requires signing in with Google (w7/m466), beside each workspace's own setting. */
   requireGoogleLogin: Scalars['Boolean']['output'];
-  /** Whether every workspace of the org, and the org itself, requires two-factor authentication (w7/m466), beside each workspace's own setting. */
   requireTwoFactor: Scalars['Boolean']['output'];
   viewerRole: Scalars['String']['output'];
   workspaces: Array<OrganizationWorkspace>;
@@ -4575,6 +4652,8 @@ export type Query = {
   notificationInbox: Array<PushNotification>;
   notificationSettings: Maybe<NotificationSettings>;
   notificationWebPushSubscriptions: Maybe<Array<Maybe<NotificationWebPushSubscription>>>;
+  objectAccessKeys: Maybe<Array<Maybe<ObjectAccessKey>>>;
+  objectBucket: Maybe<ObjectBucket>;
   organization: Maybe<Organization>;
   organizationAuditLogs: Maybe<Array<Maybe<AuditLog>>>;
   organizationInvitePreview: Maybe<OrganizationInvitePreview>;
@@ -4607,6 +4686,8 @@ export type Query = {
   sandboxSnapshot: Maybe<SandboxSnapshot>;
   sandboxSnapshots: Maybe<Array<Maybe<SandboxSnapshot>>>;
   sandboxes: Maybe<Array<Maybe<Sandbox>>>;
+  savedSearch: Maybe<SavedSearch>;
+  savedSearches: Array<SavedSearch>;
   secretFiles: Maybe<Array<Maybe<SecretFileWithCursor>>>;
   server: Maybe<Service>;
   serverActions: Array<ActionDecision>;
@@ -5205,13 +5286,15 @@ export type QueryLogsArgs = {
   deployId?: InputMaybe<Scalars['String']['input']>;
   direction?: InputMaybe<Scalars['String']['input']>;
   endTime?: InputMaybe<Scalars['String']['input']>;
+  filterDocument?: InputMaybe<Scalars['JSONObject']['input']>;
   host?: InputMaybe<Array<Scalars['String']['input']>>;
   instance?: InputMaybe<Array<Scalars['String']['input']>>;
   level?: InputMaybe<Array<Scalars['String']['input']>>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   method?: InputMaybe<Array<Scalars['String']['input']>>;
   path?: InputMaybe<Array<Scalars['String']['input']>>;
-  resource: Scalars['String']['input'];
+  project?: InputMaybe<Scalars['String']['input']>;
+  resource?: InputMaybe<Scalars['String']['input']>;
   startTime?: InputMaybe<Scalars['String']['input']>;
   statusCode?: InputMaybe<Array<Scalars['String']['input']>>;
   text?: InputMaybe<Scalars['String']['input']>;
@@ -5257,6 +5340,17 @@ export type QueryNotificationInboxArgs = {
 
 
 export type QueryNotificationSettingsArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryObjectAccessKeysArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryObjectBucketArgs = {
+  name: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -5437,6 +5531,17 @@ export type QuerySandboxesArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
   sandboxGroupId?: InputMaybe<Scalars['String']['input']>;
   status?: InputMaybe<Array<Scalars['String']['input']>>;
+};
+
+
+export type QuerySavedSearchArgs = {
+  id: Scalars['String']['input'];
+};
+
+
+export type QuerySavedSearchesArgs = {
+  projectId: Scalars['String']['input'];
+  type?: InputMaybe<SavedSearchType>;
 };
 
 
@@ -5840,6 +5945,20 @@ export type SandboxSnapshot = {
   status: Scalars['String']['output'];
   ttlSeconds: Maybe<Scalars['Float']['output']>;
 };
+
+export type SavedSearch = {
+  __typename: 'SavedSearch';
+  filters: Scalars['JSONObject']['output'];
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  type: SavedSearchType;
+};
+
+export enum SavedSearchType {
+  ApplicationLogs = 'APPLICATION_LOGS',
+  Metrics = 'METRICS',
+  RequestLogs = 'REQUEST_LOGS'
+}
 
 export type SecretFile = {
   __typename: 'SecretFile';
