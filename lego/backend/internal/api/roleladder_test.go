@@ -27,6 +27,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/members"
 )
 
 // w7/m61 — the insider role-ladder deny matrix, the m55 negative-authorization
@@ -146,6 +147,28 @@ func TestRoleGrantsPinnedToModel(t *testing.T) {
 		if !reflect.DeepEqual(sortedKeys(want), sortedKeys(have)) {
 			t.Errorf("role %q grants drifted:\n  model.fga: %v\n  roleGrants: %v\n"+
 				"update roleGrants to match deploy/gitops/authz/model.fga", role, sortedKeys(have), sortedKeys(want))
+		}
+	}
+}
+
+// TestRoleWithinMatchesTheModel pins members.RoleWithin, the role order an API
+// key's member verbs are capped by (w9/116), to the model: role is within
+// ceiling exactly when every relation role grants, ceiling grants too.
+func TestRoleWithinMatchesTheModel(t *testing.T) {
+	for _, role := range workspaceRoles {
+		for _, ceiling := range workspaceRoles {
+			subset := true
+			for rel := range roleGrants[role] {
+				subset = subset && roleGrants[ceiling][rel]
+			}
+			if got := members.RoleWithin(role, ceiling); got != subset {
+				t.Errorf("RoleWithin(%s, %s) = %v; model.fga's grants say %v", role, ceiling, got, subset)
+			}
+		}
+	}
+	for _, bad := range []string{"", "owner", "ADMIN"} {
+		if members.RoleWithin(bad, "admin") || members.RoleWithin("viewer", bad) {
+			t.Errorf("RoleWithin accepts the unknown role %q", bad)
 		}
 	}
 }

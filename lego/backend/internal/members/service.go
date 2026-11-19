@@ -36,6 +36,7 @@ import (
 	"io"
 	"log"
 	"net/mail"
+	"slices"
 	"strings"
 	"time"
 
@@ -98,6 +99,12 @@ const (
 	// tuple for the machine subject (verified live on dev-5, 2026-09-17).
 	ErrorMemberIsMachine = "MEMBER_IS_MACHINE"
 )
+
+// ErrorRoleAboveKeyCreator refuses an API key's member verb that would set a
+// role above its creator's current role, or act on a member whose role is
+// above it (w9/116). Unlike the conflicts above it is a 403: the key lacks the
+// authority, whatever the target's state.
+const ErrorRoleAboveKeyCreator = "ROLE_ABOVE_KEY_CREATOR"
 
 // Service holds the membership logic once. It embeds *core.Base for the
 // authorization gate + caller Identity and writes through the Postgres source of
@@ -946,8 +953,12 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
 	// A role change writes a membership that outlives the caller's credential
 	// (a promotion to admin is a durable administrator), so a delegated
-	// third-party OAuth token may not make one (round 24, H-1).
-	if err := s.AuthorizeMintClass(ctx); err != nil {
+	// third-party OAuth token may not make one (round 24, H-1). A bex API key
+	// with a recorded creator may, as Render's key with "Update member roles
+	// and remove members" does (w9/116): it acts for the person who minted it,
+	// capped at their current role (keyCreatorRole below, and the ceiling on
+	// every relation check), so it re-roles only as that person could.
+	if err := s.AuthorizeExportClass(ctx); err != nil {
 		return MemberView{}, err
 	}
 	workspaceID, err := s.AuthorizeWorkspaceTarget(ctx, core.RelCanManage, workspaceID, core.MemberTarget(subject))
@@ -977,6 +988,11 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 	if s.Store == nil {
 		return MemberView{}, ErrMembersUnavailable
 	}
+	creatorRole, err := s.keyCreatorRole(ctx, workspaceID, subject, ErrorCannotChangeOwnRole,
+		"an API key cannot change its creator's role; ask another admin to change it")
+	if err != nil {
+		return MemberView{}, err
+	}
 	role, ok := canonicalRole(role)
 	if !ok {
 		return MemberView{}, fmt.Errorf("%w: role must be one of %s", core.ErrBadRequest, strings.Join(Roles, "|"))
@@ -986,6 +1002,9 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 		return MemberView{}, mapStoreErr(err)
 	}
 	if err := guardMachine(m); err != nil {
+		return MemberView{}, err
+	}
+	if err := guardKeyCreatorRole(creatorRole, m.Role, role); err != nil {
 		return MemberView{}, err
 	}
 	if m.Role == role {
@@ -1187,11 +1206,19 @@ func (s *Service) Remove(ctx context.Context, workspaceID, subject string) error
 	if s.Store == nil {
 		return ErrMembersUnavailable
 	}
+	creatorRole, err := s.keyCreatorRole(ctx, workspaceID, subject, ErrorCannotRemoveSelf,
+		"an API key cannot remove its creator from a workspace; its creator can leave the workspace instead")
+	if err != nil {
+		return err
+	}
 	m, err := s.Store.GetTenantMember(ctx, workspaceID, subject)
 	if err != nil {
 		return mapStoreErr(err)
 	}
 	if err := guardMachine(m); err != nil {
+		return err
+	}
+	if err := guardKeyCreatorRole(creatorRole, m.Role, m.Role); err != nil {
 		return err
 	}
 	if err := s.guardLastAdmin(ctx, workspaceID, m.Role, ""); err != nil {
@@ -1507,6 +1534,82 @@ func guardSelf(ctx context.Context, subject, code, msg string) error {
 	return core.NewConflictError(code, msg, nil)
 }
 
+// keyCreatorRole holds a bex API key to the person who minted it in a
+// manage-members verb (w9/116, docs/ADR024-members.md § An API key manages
+// members as its creator). It returns the creator's current role in
+// workspaceID, read from their row (the source of truth, uncached), or "" when
+// the caller is not a bex API key. It refuses:
+//
+//   - the creator as the target, with guardSelf's code: the key acts for that
+//     person, so this is them acting on their own membership (and a removal
+//     would end the key with them);
+//   - a key with no recorded creator, or one whose creator is not a person in
+//     this workspace (a key minted by a key, a creator who left): no person
+//     stands behind it whose role could cap it;
+//   - a creator whose own role change is still being applied (round-19 #3, as
+//     guardCallerRoleSettled refuses the caller): their tuples may still say
+//     the old, higher role.
+//
+// guardKeyCreatorRole then compares the roles. The relation checks already
+// cap the key at its creator (core.keyCeiling); this is the same rule stated
+// over roles, independent of the model.
+func (s *Service) keyCreatorRole(ctx context.Context, workspaceID, subject, selfCode, selfMsg string) (string, error) {
+	creator, isKey, err := s.KeyCreator(ctx)
+	if err != nil || !isKey {
+		return "", err
+	}
+	if creator == subject {
+		return "", core.NewConflictError(selfCode, selfMsg, nil)
+	}
+	// A key with no recorded creator ("") has no row either.
+	row, err := s.Store.GetTenantMember(ctx, workspaceID, creator)
+	switch {
+	case errors.Is(err, store.ErrNotFound):
+		return "", core.ErrForbidden
+	case err != nil:
+		return "", mapStoreErr(err)
+	case row.Kind == store.MemberKindMachine:
+		return "", core.ErrForbidden
+	}
+	if err := s.guardRoleSettled(ctx, workspaceID, creator, "the key creator's"); err != nil {
+		return "", err
+	}
+	return row.Role, nil
+}
+
+// guardKeyCreatorRole refuses a key's member verb that reaches above its
+// creator: setting a role the creator's does not cover, or acting on a member
+// whose current role the creator's does not cover. creatorRole "" (not a key)
+// passes. A Remove passes the member's role as both.
+func guardKeyCreatorRole(creatorRole, memberRole, newRole string) error {
+	if creatorRole == "" || (RoleWithin(memberRole, creatorRole) && RoleWithin(newRole, creatorRole)) {
+		return nil
+	}
+	return core.NewForbiddenError(ErrorRoleAboveKeyCreator,
+		"an API key cannot set a role above its creator's, or change a member whose role is above its creator's",
+		map[string]any{"creatorRole": wireRole(creatorRole)})
+}
+
+// RoleWithin reports whether role grants nothing ceiling does not. The five
+// roles' relations nest in two chains, viewer ⊂ contributor ⊂ developer ⊂
+// admin and viewer ⊂ billing ⊂ admin (deploy/gitops/authz/model.fga);
+// TestRoleWithinMatchesTheModel pins this to the model's grants.
+func RoleWithin(role, ceiling string) bool {
+	switch ceiling {
+	case "admin":
+		return slices.Contains(Roles, role)
+	case "developer":
+		return role == "developer" || role == "contributor" || role == "viewer"
+	case "contributor":
+		return role == "contributor" || role == "viewer"
+	case "billing":
+		return role == "billing" || role == "viewer"
+	case "viewer":
+		return role == "viewer"
+	}
+	return false
+}
+
 // errLastAdmin is minted once, for the service guard and the store backstop
 // (mapStoreErr) alike, so the refusal reads the same whichever layer caught it.
 func errLastAdmin() error {
@@ -1603,22 +1706,28 @@ func (s *Service) reconcileExactRole(ctx context.Context, tenantID, subject, rol
 // mode, narrow fakes) keeps its historical behavior; a caller with no identity
 // (background sweeps) was already decided by the Authorize gate above.
 func (s *Service) guardCallerRoleSettled(ctx context.Context, workspaceID string) error {
-	queue, ok := s.Store.(RoleReconciliationStore)
-	if !ok {
-		return nil
-	}
 	id, ok := core.IdentityFrom(ctx)
 	if !ok || id.Subject == "" {
 		return nil
 	}
-	pending, err := queue.HasPendingRoleReconciliation(ctx, workspaceID, id.Subject)
+	return s.guardRoleSettled(ctx, workspaceID, id.Subject, "your")
+}
+
+// guardRoleSettled refuses while subject's own role reconciliation in
+// workspaceID is pending; whose names them in the refusal.
+func (s *Service) guardRoleSettled(ctx context.Context, workspaceID, subject, whose string) error {
+	queue, ok := s.Store.(RoleReconciliationStore)
+	if !ok {
+		return nil
+	}
+	pending, err := queue.HasPendingRoleReconciliation(ctx, workspaceID, subject)
 	if err != nil {
 		// Fail closed on the check itself: an unreadable outbox cannot vouch
-		// that the caller's authorization has converged.
+		// that the subject's authorization has converged.
 		return fmt.Errorf("workspace %s: check pending role reconciliation: %w", workspaceID, err)
 	}
 	if pending {
-		return fmt.Errorf("%w: your workspace role change is still being applied; retry shortly", core.ErrForbidden)
+		return fmt.Errorf("%w: %s workspace role change is still being applied; retry shortly", core.ErrForbidden, whose)
 	}
 	return nil
 }

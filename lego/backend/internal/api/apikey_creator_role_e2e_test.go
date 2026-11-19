@@ -400,10 +400,11 @@ func TestAPIKeyActsWithItsCreatorsRoleE2E(t *testing.T) {
 	expect("the re-promoted Admin's key", keyOf(keyA), true)
 
 	// I4/I5: the key still mints no credential and is no member to re-role.
+	// (Since w9/116 an Admin's key changes other members' roles, as on Render:
+	// TestAPIKeyManagesMembersAsItsCreatorE2E.)
 	for _, call := range []struct{ method, path, body string }{
 		{http.MethodPost, "/v1/api-keys", `{"name":"again","ownerId":"` + ws.ID + `"}`},
 		{http.MethodPost, "/v1/workspaces/" + ws.ID + "/members", `{"email":"x-` + run + `@example.com","role":"ADMIN"}`},
-		{http.MethodPatch, "/v1/workspaces/" + ws.ID + "/members/" + dev, `{"role":"ADMIN"}`},
 	} {
 		if rec := rest(keyOf(keyA), call.method, call.path, call.body); rec.Code != http.StatusForbidden {
 			t.Errorf("an Admin's key %s %s = %d %s, want 403", call.method, call.path, rec.Code, rec.Body)

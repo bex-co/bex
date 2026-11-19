@@ -119,32 +119,43 @@ func (b *Base) keyCeiling(ctx context.Context, id Identity, relation, object str
 	return ErrForbidden
 }
 
+// KeyCreator names who minted the caller when it is a bex API key. isKey is
+// false for every other caller (a person, a delegated OAuth token, an
+// operator-provisioned client, a deployment with no key registry); creator is
+// "" for a key minted before the created-by stamp existed. An error means the
+// key registry could not answer.
+func (b *Base) KeyCreator(ctx context.Context) (creator string, isKey bool, err error) {
+	id, ok := IdentityFrom(ctx)
+	if !ok || !id.IsAPIKey() || b.KeyCreators == nil {
+		return "", false, nil
+	}
+	creator, isKey, err = b.KeyCreators.APIKeyCreator(ctx, id.KeyClientID())
+	if err != nil {
+		log.Printf("core: API key creator lookup unavailable: %v", err)
+		return "", false, ErrAuthzUnavailable
+	}
+	return creator, isKey, nil
+}
+
 // AttributedAPIKey reports whether the caller is a bex API key with a recorded
 // creator: a first-party credential a person minted through the mint-class
 // gate, revoked with that person's membership. An error means the key registry
 // could not answer. It is false for every other caller, including any other
 // client_credentials client.
 func (b *Base) AttributedAPIKey(ctx context.Context) (bool, error) {
-	id, ok := IdentityFrom(ctx)
-	if !ok || !id.IsAPIKey() || b.KeyCreators == nil {
-		return false, nil
-	}
-	creator, isKey, err := b.KeyCreators.APIKeyCreator(ctx, id.KeyClientID())
-	if err != nil {
-		log.Printf("core: API key creator lookup unavailable: %v", err)
-		return false, ErrAuthzUnavailable
-	}
-	return isKey && creator != "", nil
+	creator, isKey, err := b.KeyCreator(ctx)
+	return isKey && creator != "", err
 }
 
 // AuthorizeExportClass gates a verb that exports the workspace's activity under
-// a durable secret (a webhook endpoint's create and repoint) on the credential
-// class: AuthorizeMintClass's callers plus a bex API key with a recorded
-// creator, which Render's keys are (its Workspaces permissions include
-// "Create, update, and delete webhooks"). A delegated third-party OAuth token
-// and any other machine client stay refused (w4/079). Like AuthorizeMintClass
-// it decides no role: the verb's relation check does, and for a key that check
-// is already capped by its creator.
+// a durable secret (a webhook endpoint's create and repoint), or that changes a
+// member's role (w9/116), on the credential class: AuthorizeMintClass's callers
+// plus a bex API key with a recorded creator, which Render's keys are (its
+// Workspaces permissions include "Create, update, and delete webhooks" and
+// "Update member roles and remove members"). A delegated third-party OAuth
+// token and any other machine client stay refused (w4/079, round 24 H-1). Like
+// AuthorizeMintClass it decides no role: the verb's relation check does, and
+// for a key that check is already capped by its creator.
 func (b *Base) AuthorizeExportClass(ctx context.Context) error {
 	if id, ok := IdentityFrom(ctx); ok && id.IsAPIKey() {
 		if err := revalidateBearer(ctx); err != nil {

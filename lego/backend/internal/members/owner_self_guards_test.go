@@ -299,8 +299,9 @@ func TestListMarksTheOwnerAndTheCallersOwnRow(t *testing.T) {
 // Two shapes are legal, distinguished by whether the verb names its target:
 //
 //   - TEAMMATE-TARGETED (takes a `subject` parameter, e.g. Remove/ChangeRole):
-//     must run guardSelf (acting on yourself is not managing a teammate) and
-//     guardLastAdmin.
+//     must run guardSelf (acting on yourself is not managing a teammate),
+//     guardLastAdmin, and keyCreatorRole + guardKeyCreatorRole (an API key
+//     acts for its creator: never on them, never above them, w9/116).
 //   - SELF-ONLY (no subject parameter, e.g. LeaveWorkspace): the subject comes
 //     from the caller's identity, so guardSelf is meaningless; it must run
 //     guardLastAdmin. A self-only verb that grew a subject parameter would fall
@@ -332,7 +333,7 @@ func TestMemberMutatingVerbsRunTheGuards(t *testing.T) {
 		if !ok || fn.Body == nil {
 			continue
 		}
-		var mutates, self, lastAdmin bool
+		var mutates, self, lastAdmin, keyCreator, keyRole bool
 		ast.Inspect(fn.Body, func(n ast.Node) bool {
 			call, ok := n.(*ast.CallExpr)
 			if !ok {
@@ -343,12 +344,18 @@ func TestMemberMutatingVerbsRunTheGuards(t *testing.T) {
 				if mutators[f.Sel.Name] {
 					mutates = true
 				}
-				if f.Sel.Name == "guardLastAdmin" {
+				switch f.Sel.Name {
+				case "guardLastAdmin":
 					lastAdmin = true
+				case "keyCreatorRole":
+					keyCreator = true
 				}
 			case *ast.Ident:
-				if f.Name == "guardSelf" {
+				switch f.Name {
+				case "guardSelf":
 					self = true
+				case "guardKeyCreatorRole":
+					keyRole = true
 				}
 			}
 			return true
@@ -358,9 +365,9 @@ func TestMemberMutatingVerbsRunTheGuards(t *testing.T) {
 		}
 		checked++
 		if namesASubject(fn) {
-			if !self || !lastAdmin {
-				t.Errorf("%s writes membership on a named subject without its guards: guardSelf=%v guardLastAdmin=%v",
-					fn.Name.Name, self, lastAdmin)
+			if !self || !lastAdmin || !keyCreator || !keyRole {
+				t.Errorf("%s writes membership on a named subject without its guards: guardSelf=%v guardLastAdmin=%v keyCreatorRole=%v guardKeyCreatorRole=%v",
+					fn.Name.Name, self, lastAdmin, keyCreator, keyRole)
 			}
 			continue
 		}
