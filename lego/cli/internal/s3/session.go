@@ -27,6 +27,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/render-oss/cli/pkg/config"
@@ -201,6 +202,19 @@ func writeFileAtomic(path string, data []byte) error {
 	return err
 }
 
+// lockFile takes an exclusive advisory lock on path until the returned release runs.
+func lockFile(path string) (release func(), err error) {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return nil, err
+	}
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
+		_ = f.Close()
+		return nil, err
+	}
+	return func() { _ = f.Close() }, nil // closing the file releases the lock
+}
+
 // writeIfChanged keeps a bex-owned file at content without rewriting it on
 // every launch.
 func writeIfChanged(path, content string) error {
@@ -228,6 +242,13 @@ func (d deps) session(ctx context.Context) (session, error) {
 	}
 	host := d.host()
 	path := keyFile(dir, host, workspace)
+	// One mint at a time: a script that starts many `bex s3` commands at once on a machine
+	// with no key would otherwise make one each and hit the limit of 20 live ephemeral keys.
+	unlock, err := lockFile(path + ".lock")
+	if err != nil {
+		return session{}, fmt.Errorf("lock %s: %w", path, err)
+	}
+	defer unlock()
 	key, ok := loadKey(path, host, workspace, d.now())
 	if !ok {
 		if key, err = d.mintKey(ctx, host, workspace); err != nil {

@@ -1,6 +1,6 @@
 # w21 · m499 — `bex s3`: the AWS CLI with bex's endpoint and keys, the S3 contract suite, and the docs
 
-**Worker:** worker21 **Goal:** `bex s3 <…>` runs the AWS CLI against bex with no setup beyond `bex login`, stock aws-cli, rclone and boto3 are pinned by a weekly contract suite, and the docs and ADR018 describe the S3 surface instead of wrangler's. **Status:** todo (t001 to t004 done)
+**Worker:** worker21 **Goal:** `bex s3 <…>` runs the AWS CLI against bex with no setup beyond `bex login`, stock aws-cli, rclone and boto3 are pinned by a weekly contract suite, and the docs and ADR018 describe the S3 surface instead of wrangler's. **Status:** todo (t001 to t008 done)
 
 ## Tasks (in order)
 
@@ -10,10 +10,10 @@
 | [t002](done/t002.md) | `bex s3 env`, `keys`, `public` and `info` — **DONE** | 45m | t001 |
 | [t003](done/t003.md) | CLI tests with a fake `aws` and the telemetry coverage contract — **DONE** | 45m | t002 |
 | [t004](done/t004.md) | `scripts/s3-contract.sh`: pinned aws-cli v2, rclone and boto3, weekly — **DONE** | 60m | w21/m498/t015, t001 |
-| [t005](t005.md) | Docs: `bex s3`, ADR018, the runbook and the inventories | 60m | t003, t004 |
-| [t006](t006.md) | Render parity | 30m | t005 |
-| [t007](t007.md) | Simplify | 20m | t006 |
-| [t008](t008.md) | Test coverage | 45m | t006, t007 |
+| [t005](done/t005.md) | Docs: `bex s3`, ADR018, the runbook and the inventories — **DONE** | 60m | t003, t004 |
+| [t006](done/t006.md) | Render parity — **DONE** | 30m | t005 |
+| [t007](done/t007.md) | Simplify — **DONE** | 20m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 45m | t006, t007 |
 | [t009](t009.md) | Closeout | 10m | t008 |
 
 ## Definition of done

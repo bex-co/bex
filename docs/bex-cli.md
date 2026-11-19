@@ -76,7 +76,7 @@ BEX_HOST=http://localhost:8090/v1/ bex workspaces -o json
 
 Eligible `bex` invocations send a usage event to bex-api (`POST /v1/cli-telemetry-events`, w5/m92): the command path, duration, exit code, OS/arch, output format, TTY/CI/agent signals (environment-variable _names_ only, never values), the active workspace id, and a stable per-machine install id. Each request also carries an `X-Bex-CLI-Version` header naming the launcher's own release, stored beside the pinned upstream version so release adoption is measurable (w5/m94); the two are separate fields, and a request without the header is accepted and recorded as unknown. Command arguments, prompts, and secret values are never collected. Sending is best-effort and cannot fail your command; the upstream sender chooses detached or bounded synchronous delivery according to the execution environment. Events are attributed to your authenticated identity server-side, retained under the platform audit-retention window, and never shared with Render.
 
-Every Bex-native command reports exactly once, with its command names only (ADR113 D7). Most return through the imported CLI's post-run hook like any Render command. The ones that hand the terminal to another program can never reach that hook, so they report themselves immediately before they replace the process: the provider launchers (`bex glm`, `bex muse`, `bex kimi`, `bex deepseek`), `bex edit` and `bex <path>`, `bex agent open` when it opens bex desktop, and `bex agent ssh`. A root `--version` answer emits one event with completion kind `version`, a deliberate divergence from upstream, which treats version as a non-event. None carries the arguments handed to the launched program, and all honor exactly the opt-outs and the one-time notice below. The outcomes `bex agent` reports by exit code (3 a failed turn, 4 canceled, 6 an automation run that started no session) are stored as completion kind `explicit_exit` with that code, not as CLI failures. `lego/cli/telemetry_coverage_test.go` fails when a new process-replacing call site lands without a self-report and a contract test.
+Every Bex-native command reports exactly once, with its command names only (ADR113 D7). Most return through the imported CLI's post-run hook like any Render command. The ones that hand the terminal to another program can never reach that hook, so they report themselves immediately before they replace the process: the provider launchers (`bex glm`, `bex muse`, `bex kimi`, `bex deepseek`), `bex edit` and `bex <path>`, `bex agent open` when it opens bex desktop, `bex agent ssh`, and `bex s3` and `bex s3api` when they hand over to the AWS CLI. A root `--version` answer emits one event with completion kind `version`, a deliberate divergence from upstream, which treats version as a non-event. None carries the arguments handed to the launched program, and all honor exactly the opt-outs and the one-time notice below. The outcomes `bex agent` reports by exit code (3 a failed turn, 4 canceled, 6 an automation run that started no session) are stored as completion kind `explicit_exit` with that code, not as CLI failures. `lego/cli/telemetry_coverage_test.go` fails when a new process-replacing call site lands without a self-report and a contract test.
 
 The ops-only [CLI usage board](https://obs.bex.co/d/bex-cli-usage/cli-usage) visualizes observed adoption, repeat usage, command outcomes/duration, and agent/CI signals, sliced by either version axis. It does not measure all installed CLIs: opt-outs, unavailable authentication, and early initialization failures are absent — an unauthenticated run in particular has no identity to attribute an event to, so it is silent by construction. See [metric definitions](runbooks/cli-analytics.md).
 
@@ -86,7 +86,7 @@ Nothing is sent until you have been told (ADR113 D5, the same gate as Render's C
 
 - **CI.** With `CI=true` (or `1`) a run sends without a notice and records nothing, as Render's CLI does.
 - **No terminal.** A run whose stderr is not a terminal cannot show the notice, so it sends nothing until a terminal run has shown it. `scripts/install-bex.sh` prints the notice at the end of an install and records it, so a headless install (an agent in a container with an API key) reports from its first run. `bex analytics notice` does the same for any other installer. The Homebrew formula shows the notice in its caveats but cannot record it, so a Homebrew install is disclosed on its first terminal run.
-- **Process-replacing commands.** `bex glm` and the other provider launchers, `bex edit`, `bex agent open` and `bex agent ssh` hand the terminal to another program, so they cannot print afterwards. They send nothing until a later run has shown the notice. `bex --version` waits the same way.
+- **Process-replacing commands.** `bex glm` and the other provider launchers, `bex edit`, `bex agent open`, `bex agent ssh`, `bex s3` and `bex s3api` hand the terminal to another program, so they cannot print afterwards. They send nothing until a later run has shown the notice. `bex --version` waits the same way.
 
 The imported CLI's own notice, which names Render, never prints: the launcher records it as shown on every run.
 
@@ -350,58 +350,82 @@ bex ea objects get backups/users.ndjson --file ./out.ndjson --region oregon
 bex ea objects delete backups/users.ndjson --region oregon --yes
 ```
 
-bex serves two regions, `oregon` and `frankfurt`; any other region answers 400. The limits are 5 GiB per object, 100 GB and 1,000,000 objects per workspace per region, and keys of 1 to 1024 bytes with no `.` or `..` segment. Render has not published its own limits, so these are bex's, listed with their status in the [object storage row of ADR018](ADR018-render-parity.md). A Render API key reaches every object of its workspace, as on Render. These commands need `bex` v0.7.0 or newer; run `bex upgrade` on an older binary. The unmodified `render` CLI works against bex too. If the platform has no Wasabi credential installed, the commands say that object storage is not offered yet. `--local` stays upstream's filesystem mode under `.render/objects/` and never calls bex.
+bex serves two regions, `oregon` and `frankfurt`; any other region answers 400. For buckets, listing, `sync` and presigned URLs of your own, use [`bex s3`](#buckets-objects-sync-and-presigned-urls-bex-s3). The limits are 5 GiB per object, 100 GB and 1,000,000 objects per workspace per region, and keys of 1 to 1024 bytes with no `.` or `..` segment. Render has not published its own limits, so these are bex's, listed with their status in the [object storage row of ADR018](ADR018-render-parity.md). A Render API key reaches every object of its workspace, as on Render. These commands need `bex` v0.7.0 or newer; run `bex upgrade` on an older binary. The unmodified `render` CLI works against bex too. If the platform has no Wasabi credential installed, the commands say that object storage is not offered yet. `--local` stays upstream's filesystem mode under `.render/objects/` and never calls bex.
 
-### Buckets, CORS and lifecycle with `wrangler`
+### Buckets, objects, sync and presigned URLs: `bex s3`
 
-bex has no bucket command of its own. Cloudflare's `wrangler r2` manages buckets, objects, CORS and lifecycle rules against bex when it is pointed at bex's Cloudflare-shaped API ([ADR112](ADR112-object-storage.md) D3). Three environment variables are all it needs, and nothing is installed on the bex side:
-
-```sh
-export CLOUDFLARE_API_BASE_URL=https://objects.onbex.co/cloudflare/client/v4
-export CLOUDFLARE_API_TOKEN=<a bex API key>        # sent as Authorization: Bearer; see "The token" below
-export CLOUDFLARE_ACCOUNT_ID=<tea-id>              # the workspace id
-
-wrangler r2 bucket create photos
-wrangler r2 object put photos/cat.jpg --file cat.jpg --remote
-wrangler r2 object get photos/cat.jpg --file out.jpg --remote
-wrangler r2 bucket cors set photos --file cors.json
-wrangler r2 bucket lifecycle add photos expire-logs logs/ --expire-days 7
-```
-
-Things to know:
-
-- **The token is a bex API key.** wrangler sends `CLOUDFLARE_API_TOKEN` as `Authorization: Bearer`, and bex takes an API key there as on every other route ([CI and automation](#ci-and-automation)), so there is nothing to exchange or refresh. A signed-in person can use their own OAuth access token instead; that token needs the sensitive scope class for an object get. Either way the caller needs access to the workspace.
-- **Which host.** `objects.onbex.co` is the host to use: it goes straight to bex's edge, and only the `/cloudflare/client/v4/` routes answer there. `api.bex.co` serves the same routes but sits behind Cloudflare's proxy, which refuses any request body over 100 MiB with its own `413` page (measured on 2026-11-15: 104,857,600 bytes passed and 104,857,601 did not), so a larger object never reaches bex through it.
-- **`--remote` is required.** `wrangler r2 object put|get|delete` defaults to a local simulator and never reaches bex without it. Bucket, CORS and lifecycle commands have no local mode.
-- **The workspace is the account id,** so a key reaches the buckets of its own workspace and no other. A viewer lists buckets, reads their CORS and lifecycle rules and sees their size; reading an object's bytes needs a developer or an admin, and so do put, delete and every change.
-- **An object is at most 300 MiB.** wrangler sends the file in the API call itself and refuses a larger one before it connects; bex refuses it too (`100100`). Through `objects.onbex.co` a 300 MiB object goes in and out byte for byte (verified on production, 2026-11-15); through `api.bex.co` the limit is 100 MiB, see above. Bigger objects need the S3 API of ADR112 D10, which does not exist yet; Contract A (`bex ea objects put`, up to 5 GiB) carries them in the meantime.
-- **wrangler cannot list a bucket's objects.** It has no such command, and bex has no S3 API for another tool to list with. The Render CLI lists only the workspace's `render-<region>` bucket (`bex ea objects list --region oregon`); a bucket you created is not listable from any CLI yet. Objects written to `render-oregon` or `render-frankfurt` with wrangler are the ones `bex ea objects` reads, and the other way round.
-- **Two regions.** A bucket created with no location hint, `--location wnam` or nothing else goes to Oregon; `--location weur` or `--jurisdiction eu` goes to Frankfurt. Every other hint answers `10042`. bex's region is exact where Cloudflare's hint is a preference, and `bucket info` reports the hint you gave. Names are unique per workspace; bex ignores the jurisdiction when it looks a name up. A bucket name must follow wrangler's own rule and must not start with `render-`.
-- **One storage class.** `--storage-class InfrequentAccess` and lifecycle storage-class transitions answer `10042`. `bucket lock`, `notification`, `sippy`, Data Catalog and custom domains (`domain list` returns an empty list) are not offered either.
-- **CORS applies to public buckets.** `bucket cors set|list|delete` keep your rules (at most 100 rules and 64 KiB per bucket), and bex applies them where it serves a bucket to browsers: the public host of a bucket you published with `dev-url` (below). The `wrangler` routes need a token, so a browser never reaches them and the rules do not apply there.
-- **Lifecycle rules run hourly.** An `Age` (up to 100 years) or `Date` expiry deletes the matching objects, at most 10,000 per rule per run (a `Date` rule was run on production on 2026-11-15; an `Age` one was not). A short rule saves nothing on storage: Wasabi bills a 90-day minimum for every object, and whether it bills the rest of the 90 days for an object deleted sooner is unverified. `--abort-multipart-days` is stored and does nothing, since bex has no multipart upload.
-- **Limits.** 1,000 buckets per workspace, 100 GB and 1,000,000 objects per workspace per region, 8 uploads or downloads at once per workspace on each bex-api replica (16 in all on the two production replicas, measured 2026-11-15); a breach answers `10042` (a quota) or `10058` (too many at once). Keys follow the same rule as the Render CLI. Render and Cloudflare publish none of these limits for bex to match, so each is bex's own, listed with its status in [ADR018](ADR018-render-parity.md).
-- **Private unless you publish, and no durability beyond one provider.** Objects live on one provider in one region with no replica. A bucket is private until a workspace admin runs `bucket dev-url enable` (below).
-
-#### Public buckets: `dev-url`
+`bex s3` is the AWS CLI pointed at bex's S3-compatible object storage, with the endpoint and a key already set ([ADR112](ADR112-object-storage.md) D3). Sign in with `bex login` and use any `aws s3` command:
 
 ```sh
-wrangler r2 bucket dev-url enable photos      # prints https://pub-<id>.<bex hosting domain>
-wrangler r2 bucket dev-url get photos
-wrangler r2 bucket dev-url disable photos
+bex s3 mb s3://photos --region frankfurt     # a bucket in Frankfurt (the default is Oregon)
+bex s3 cp cat.jpg s3://photos/cat.jpg
+bex s3 ls s3://photos/
+bex s3 sync ./site s3://photos/site
+bex s3 presign s3://photos/cat.jpg --expires-in 3600
+bex s3api put-bucket-cors --bucket photos --cors-configuration file://cors.json
+bex s3 public photos enable                  # publish the bucket read-only (workspace admin)
 ```
 
-With `dev-url` on, anyone can read the bucket's objects over the web at `https://pub-<id>.<hosting domain>/<key>`, with no credential. It follows Cloudflare's `r2.dev` public development URL ([ADR112](ADR112-object-storage.md) D4, [ADR018](ADR018-render-parity.md)); Render has no public buckets.
+`bex s3 <args>` runs `aws s3 <args>` and `bex s3api <args>` runs `aws s3api <args>` with every argument as you typed it, so anything the AWS CLI does with S3 works and `aws s3 help` is its help (`bex s3 help`). Everything the AWS CLI offers that bex does not serve answers `501 NotImplemented` (see below), never a silent no-op. `bex s3` needs the AWS CLI v2 on your PATH; without it the command says how to install it and points at `bex s3 env`. It needs a `bex` release newer than v0.7.0 (`bex upgrade`).
 
-- **Who may publish.** The workspace's admin. `dev-url get` needs only read access to the workspace. A deployment with no hosting domain answers `10042`.
+**What `bex s3` sets, and what it keeps out.**
+
+- The endpoint is `https://objects.onbex.co`, put last on the command line (`--endpoint-url`), so an `--endpoint-url` of your own can never send bex's key to another host. A control plane that is not the production one names its endpoint in `BEX_S3_ENDPOINT`.
+- **A key is made for you.** `bex s3` mints an ephemeral key for the signed-in person in the active workspace (`bex workspace set`), good for twelve hours, keeps it in `~/.bex/state/s3/` with mode 0600 and replaces it when under one hour is left. A command that outlives its key fails with a `403` that the AWS CLI does not retry, and a URL from `bex s3 presign` dies with its key whatever `--expires-in` says: for a transfer over hours or a URL that must live longer, use a persistent key (below).
+- Path-style addressing, `AWS_REGION=oregon` (`--region` overrides it) and two AWS files of bex's own (`aws-config` and an empty `aws-credentials` next to the key). Your own `~/.aws` is never read and never written: `AWS_PROFILE`, `AWS_SESSION_TOKEN`, a role or web-identity source and every other credential-bearing `AWS_` variable are dropped from the AWS CLI's environment, so your AWS credentials are not sent to bex and bex's key does not reach your AWS account. Settings that only change behavior (`AWS_PAGER`, `AWS_CA_BUNDLE`, retries, checksum modes) pass through.
+- Creating a key is a person's act: an API key (`BEX_API_KEY`) cannot make one, so in CI make a persistent key once and use it with a plain `aws` or `rclone`.
+
+**bex's own commands** (everything else goes to `aws`):
+
+| Command | What it does |
+| --- | --- |
+| `bex s3 env` | Prints the endpoint and the key as `export` lines for aws-sdk programs, boto3, rclone (`RCLONE_S3_*`) and s5cmd (`S3_ENDPOINT_URL`), and the settings no variable carries. `eval "$(bex s3 env)"` loads them; `-o json` prints them as data. |
+| `bex s3 keys create [--name N] [--permission read\|readwrite] [--expires-in 12h]` | Creates a key. Without `--expires-in` it never expires (for CI, rclone, Terraform). The secret is printed once, never again; `-o json` prints the API's own answer. |
+| `bex s3 keys list` / `revoke <id>…` | Lists the workspace's keys (status, expiry, last use) and revokes some; a revoked key stops working within 30 seconds. |
+| `bex s3 public <bucket> enable\|disable\|status` | Publishes a bucket (below). |
+| `bex s3 info <bucket>` | A bucket's region, public host, objects and bytes as of the last hourly count. |
+
+**Flags, output and exit codes.** They follow the other bex-native commands (`bex agent`), with the one difference that `bex s3` and `bex s3api` are pass-throughs. `bex s3 <args>` and `bex s3api <args>` parse no bex flag at all: `--output`, `--region`, `--profile` and every other flag are the AWS CLI's, and the exit status is the AWS CLI's own (`0`, `1`, `2`, `130`, `252` to `255`). `env`, `keys`, `public` and `info` take the usual `-o json|yaml|text` (`json` and `yaml` print the API's own answer on stdout, `env` its own structure), exit `2` for a usage error (a malformed bucket or key id, an unknown action, `--expires-in` over 12 hours) and `1` for any other failure, and use the active workspace (`bex workspace set` or `BEX_WORKSPACE`; there is no per-command `--workspace`). Render has no S3 command and `bex ea objects` is unchanged, so there is no Render convention to match beyond these.
+
+**Keys.** A key acts as the person who made it, in one workspace, with `read` (list and get) or `readwrite` (everything else) as a ceiling, and reaches every bucket of that workspace (per-bucket keys are not offered). It never holds the admin role, so a leaked key cannot publish a bucket. A key is revoked with its person: removing a member or deleting an account deletes the keys they made, and re-adding the person revives nothing. A workspace holds at most 100 live persistent keys and a person at most 20 live ephemeral ones; revoked and expired keys disappear after 7 days.
+
+**Using other tools.** Any S3 client works with the endpoint, a key and path-style addressing; bex serves no virtual-hosted style (`<bucket>.objects.onbex.co`), so a tool that defaults to it must be told. `bex s3 env` has the values.
+
+- **rclone:** `RCLONE_S3_PROVIDER=Other`, the endpoint, the key and `RCLONE_S3_REGION` (rclone uses path style by default); then `rclone sync ./site :s3:photos/site`.
+- **boto3:** `boto3.client("s3", endpoint_url="https://objects.onbex.co", config=Config(s3={"addressing_style": "path"}))`.
+- **Terraform's AWS provider:** `s3_use_path_style = true`. It is not tested against bex, and attributes it reads on a bucket (versioning, ACLs, tags, encryption) answer `501`.
+- **Presigned URLs** made with any SDK work until their key expires (at most 7 days for a persistent key).
+
+**What is served.** `mb`, `rb`, `ls`, `cp`, `mv`, `rm`, `sync` and `presign`, and through `s3api`: bucket create, delete, head, location and listing; `PutObject`, `GetObject` with `Range` and the conditional headers, `HeadObject`, `DeleteObject`, `DeleteObjects`; `CopyObject` and `UploadPartCopy` inside one workspace and region (up to 5 GiB); `ListObjectsV2` and `ListObjects`; the whole multipart family; CORS and lifecycle (below); and `GetObjectTagging`, which is always empty. Objects are never versioned and every object is private. Differences from S3 that you will meet:
+
+- **Two regions.** `mb --region frankfurt` (also `eu-central-1`, `eu-central-2`) or `oregon` (`us-west-1`, `us-west-2`; the default). Any other value answers `InvalidLocationConstraint`; bex does not compare a request's signing region with the bucket's. A bucket name is 3 to 63 lowercase letters, digits and hyphens, unique **within your workspace** (never `BucketAlreadyExists`), cannot start with `render-` and never changes. The workspace's `render-oregon` and `render-frankfurt` buckets, where `bex ea objects` keeps its objects, show up in `ls` and cannot be deleted; an object put either way is read the other way.
+- **Not implemented, answered `501`:** versioning, ACLs and `x-amz-acl` other than `private`, bucket policies (publish with `bex s3 public`), tag writes and `x-amz-tagging`, object lock (`x-amz-bucket-object-lock-enabled: false` is accepted), encryption settings, replication, notifications, website hosting, accelerate, S3 Select, storage classes other than `STANDARD`, conditional writes (`If-None-Match` and `If-Match` on a put, which Terraform's state lock uses), signed-chunk payloads and SigV2, copies across workspaces or regions, a multipart listing with a `delimiter`, and a listing delimiter that is not one ASCII character.
+- **Keys** are 1 to 1024 bytes and have no `.` or `..` segment, no doubled slash, no leading slash, no backslash and no control character: Traefik cleans such paths before bex sees them, so a client that sends one fails with `SignatureDoesNotMatch`. A put replaces an object; a delete of a missing key succeeds, as on S3.
+- **User metadata names** come back capitalised (`X-Amz-Meta-Mtime`, so `Metadata["Mtime"]` in boto3) where S3 returns them lowercase ([w21/113](../.pm/w21/113.md)); rclone is unaffected.
+- **Downloads are served as attachments** (`Content-Disposition: attachment` unless the object stored one, `nosniff`, no script), so a browser that follows a link never runs your HTML on bex's origin.
+
+**Limits.** 5 GiB per object and part-count 10,000 (parts of 5 MiB or more, as Wasabi enforces; an upload past 5 GiB fails at that mark), 100 open multipart uploads per workspace (abandoned for 7 days: aborted), 1,000 buckets, 100 GB and 1,000,000 objects per workspace per region (a put over a cap is `403 QuotaExceeded`), 16 uploads or downloads at once per workspace on each of the two gateway replicas (`503 SlowDown`, which clients retry), reads paced at 8 MiB/s and uploads at 16 MiB/s per workspace per replica, 100 requests a second per workspace and 50 per key, and 5 listings a second. Reads are also limited to the larger of the bytes you store and 5 GiB a month: past it a read answers `403 QuotaExceeded` until the month turns. **A listing counts as egress** (Wasabi counts what a LIST reads), so a loop that lists a bucket of millions of objects spends the shared allowance. Deletes and overwrites free quota at the next hourly count, up to 72 hours later for a large region, so a `sync --delete` that frees space and refills it can be refused meanwhile. Each number is bex's own (Render and Wasabi publish none to match), recorded with its status in [ADR018](ADR018-render-parity.md). Egress is metered and not billed yet. Objects live on one provider in one region with no replica.
+
+**CORS and lifecycle.** `put-bucket-cors` keeps up to 100 rules and 64 KiB per bucket; bex applies them on a public bucket's host and to presigned URLs on `objects.onbex.co` (the preflight names no credential, so the rule is found from the key id inside the presigned URL; a browser SDK that signs with headers cannot be served). `put-bucket-lifecycle-configuration` takes `Filter.Prefix`, `Status`, `Expiration` (`Days` from 1 to 36,500, or a `Date`) and `AbortIncompleteMultipartUpload`; `Transition`, noncurrent-version and tag or size filters answer `501`. Rules run in an hourly sweep, at most 10,000 deletions per rule per run (a region with many objects is listed less often, so a rule can run up to 72 hours late). A short expiry saves nothing on storage: Wasabi bills a 90-day minimum per object, and whether it bills the rest for an object deleted sooner is unverified.
+
+#### Public buckets: `bex s3 public`
+
+```sh
+bex s3 public photos enable      # prints https://pub-<id>.<hosting domain>/<key>
+bex s3 public photos status
+bex s3 public photos disable
+```
+
+With a bucket public, anyone can read its objects over the web at `https://pub-<id>.<hosting domain>/<key>` with no credential. Publishing is not an S3 call and not something an access key can do: it needs the workspace's admin role and your own login (`status` needs only read access), and `put-bucket-policy` answers `501`. It follows Cloudflare's `r2.dev` public development URL ([ADR112](ADR112-object-storage.md) D4, [ADR018](ADR018-render-parity.md)); Render has no public buckets. A deployment with no hosting domain refuses to publish.
+
 - **What is served.** `GET` and `HEAD` of one object at a time, with `Range` (partial content) and conditional requests (`ETag`, `Last-Modified`), the `Content-Type` and `Cache-Control` the object was stored with, and `X-Content-Type-Options: nosniff`. The root and any path that is not a valid key answer `404`; there is no listing and no directory index. Anything but `GET`, `HEAD` and a CORS preflight answers `405`. A private, deleted or unknown bucket answers `404`, the same answer.
-- **CORS.** The rules you stored with `bucket cors set` apply to the public host, including the preflight. A bucket with no rules sends no CORS headers; credentials are never allowed.
+- **CORS.** The rules you stored apply to the public host, including the preflight. A bucket with no rules sends no CORS headers; credentials are never allowed.
 - **Turning it off takes up to 30 seconds** to reach every visitor (24.5 seconds measured on production), and a changed object up to 60 seconds, because the host serves from a short cache.
 - **Not for production traffic.** Like `r2.dev`, the host is rate-limited and is not a CDN: it caps requests and bandwidth per bucket and per workspace (2 MiB a second per bucket and 4 MiB a second per workspace on each gateway replica, so about twice that in all; a refusal is `429` with `Retry-After`), serves one provider from one region, and offers no custom domain, caching rules or signed URLs.
 - **A shared domain.** The host is under the platform's shared hosting domain, as tenant apps and static sites are, so a page served from a public bucket shares a registrable domain with them. Serve only content you would put on a static site, and do not host untrusted uploads from a public bucket.
-- **Egress is metered, not billed yet.** Bytes read from a public bucket count toward the workspace's `object_storage_egress_bytes`, shown at $0 until a price is set.
+- **Egress is the exposure, and it is shared.** Bytes read from a public bucket count toward the workspace's `object_storage_egress_bytes` (shown at $0 until a price is set), and bex's storage provider asks that egress stay at or below the bytes stored, across all customers, so bex can switch the public hosts off to protect it. Do not rely on a public bucket for anything that must stay up.
 
-bex's routes are tested against the real tool: a recorded replay of wrangler 4.162.0's requests runs with every build, and the real wrangler runs against the handlers every week ([`scripts/wrangler-r2-contract.sh`](../scripts/wrangler-r2-contract.sh)). Stock wrangler 4.162.0 was also run against production on 2026-11-15: every `bucket`, `object`, `cors` and `lifecycle` command above. Other wrangler versions may differ.
+bex's S3 surface is tested against the real clients: the AWS SDK for Go v2 suite runs with every build, and every week [`scripts/s3-contract.sh`](../scripts/s3-contract.sh) runs the pinned aws-cli v2, rclone and boto3 with their own defaults against the real gateway (their defaults are recorded in ADR112 § Not verified). `bex ea objects` and the unmodified `render` CLI keep their own routes and are unaffected.
 
 ## Compatibility and branding limits
 

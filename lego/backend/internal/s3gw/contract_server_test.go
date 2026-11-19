@@ -318,3 +318,38 @@ func TestS3ContractServer(t *testing.T) {
 		t.Error(problem)
 	}
 }
+
+// TestContractReportFailsOnA5xxAndListsA501: the verdict of scripts/s3-contract.sh. A client
+// answered 5xx fails the run, whichever phase it was in; a 501 is listed for a person to read
+// (rclone asks for versioning and goes on without it) and fails nothing; a refusal the script
+// asked for, and the probe of what a client's defaults do, are not findings.
+func TestContractReportFailsOnA5xxAndListsA501(t *testing.T) {
+	l := &contractLog{}
+	add := func(phase, client string, status int, query ...string) {
+		l.rows = append(l.rows, contractRecord{Phase: phase, Client: client, Method: "GET", Host: "objects.localhost:1", Path: "/b", Query: query, Status: status})
+	}
+	add("rclone", "rclone", 200)
+	add("rclone", "rclone", 501, "versioning")
+	add("refused", "aws-cli", 501, "versioning")
+	add("probe", "aws-cli", 501)
+	add("other", "other", 500) // not one of the three clients
+	report, problems := l.report("objects.localhost:1")
+	if len(problems) != 0 {
+		t.Fatalf("problems = %v, want none for a 501 the client tolerates", problems)
+	}
+	if !strings.Contains(report, "answered 501 to 1 request(s) of rclone GET /b?versioning") || strings.Contains(report, "aws-cli GET") {
+		t.Errorf("the report lists the wrong 501s:\n%s", report)
+	}
+
+	add("aws", "aws-cli", 500)
+	add("boto3", "boto3", 502)
+	add("boto3", "boto3", 503) // SlowDown: clients retry it
+	if _, problems = l.report("objects.localhost:1"); len(problems) != 2 {
+		t.Errorf("problems = %v, want the 500 and the 502 only", problems)
+	}
+	add("aws", "aws-cli", 200)
+	l.rows[len(l.rows)-1].Host = "photos.objects.localhost:1"
+	if report, _ = l.report("objects.localhost:1"); !strings.Contains(report, "addressing=virtual-hosted (photos.objects.localhost:1)") {
+		t.Errorf("a virtual-hosted request is not named in the report:\n%s", report)
+	}
+}

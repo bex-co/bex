@@ -10,7 +10,7 @@
 
 Why this is serious: Wasabi's egress is free only while monthly downloads stay at or below the active storage volume, and this account also holds the platform's backups and restore paths ([ADR031](../ADR031-platform-data-backup.md)). A limit on the account would reach them. The two alert thresholds (30 GB warning, 50 GB critical, each after five minutes) come from the production walk of 2026-11-16 (`w21/m417` t008): Wasabi's free egress is monthly egress at or below the account's active storage, which measured 67 GB for the whole shared account, so they are about 45% and 75% of that allowance. The caps in `lego/backend/internal/objectgw/limits.go` are sized from the same number (one workspace flat out moves about 30 GB an hour). When the account's storage changes materially, measure it again (below) and reset both thresholds and the sizing test in the same commit.
 
-Check first that public reads are the cause. The kill switch stops only the `pub-` hosts. If the "Object storage egress: month to date" panel keeps climbing while "Public gateway bytes out by origin" is flat, the bytes are leaving through presigned Contract A or Contract B downloads, which objectgw does not serve; the switch does not help, and the lever is a workspace's cap or the bucket itself.
+Check first that public reads are the cause. The kill switch stops only the `pub-` hosts. If the "Object storage egress: month to date" panel keeps climbing while "Public gateway bytes out by origin" is flat, the bytes are leaving through Contract A's presigned downloads (Render's `/v1/objects`) or through the S3 API on `objects.<base domain>`, which objectgw does not serve; this switch does not help. For the S3 API use its own switch below (the lever for one workspace is revoking its access keys, `bex s3 keys revoke`, or its cap or the bucket itself).
 
 ## The change
 
@@ -64,7 +64,7 @@ kubectl -n bex-system get deploy bex-s3gw   # READY 0/0
 kubectl -n bex-system get pods -l app.bex.co/component=s3gw   # none
 ```
 
-**A client sees** Traefik's own `503` with the plain body `no available server` for every request on `objects.<base domain>` outside Contract B's `/cloudflare/client/v4/` prefix. S3 SDKs retry a 503 and then fail with their service-unavailable error, which is the message an operator wants a customer to read during an egress incident; nothing is lost, because the keys, buckets and objects are untouched. **Not affected:** `bex-objectgw` and every `pub-` host, Contract A's routes in bex-api (`/v1/objects`) and Contract B's `wrangler r2` routes, the hourly usage sweep, the shadow meters and every access key (rows and OpenBao secrets).
+**A client sees** Traefik's own `503` with the plain body `no available server` for every request on `objects.<base domain>` except the `/cloudflare/client/v4/` prefix, which stays on bex-api until w21/m500 removes it. S3 SDKs retry a 503 and then fail with their service-unavailable error, which is the message an operator wants a customer to read during an egress incident; nothing is lost, because the keys, buckets and objects are untouched. **Not affected:** `bex-objectgw` and every `pub-` host, Contract A's routes in bex-api (`/v1/objects`) and, until w21/m500 removes them, the Cloudflare-shaped routes under `/cloudflare/client/v4/`, the hourly usage sweep, the shadow meters and every access key (rows and OpenBao secrets).
 
 **Restore** by setting the value back to `2`, merging, and checking `kubectl -n bex-system rollout status deploy/bex-s3gw`. After it, `bex_s3gw_requests_total{code="OK"}` rises on the "S3 requests by code" panel and `ServiceUnavailable` does not, and `aws s3 ls` with a key answers. Restore only when the egress source is understood: a workspace's key revoked, or its loop stopped.
 
@@ -78,7 +78,7 @@ The measurement used `kubectl scale`, which Argo CD's `selfHeal` reverts in 4 to
 
 ## What is not affected
 
-- **Contract A and B object routes** (Render's `/v1/objects` and the Cloudflare-shaped `wrangler r2` routes) live in bex-api and keep working, including presigned reads and writes. Only the `pub-` hosts stop.
+- **Contract A's object routes** (Render's `/v1/objects`) live in bex-api and keep working, including presigned reads and writes, and so does the S3 API on `objects.<base domain>` (`bex-s3gw`, which has its own switch, "The S3 API switch" above). The Cloudflare-shaped routes that remain until w21/m500 removes them are bex-api's too and also keep working. Only the `pub-` hosts stop.
 - Private buckets, bucket settings (the public flag stays set), CORS and lifecycle rules, the hourly usage sweep and the shadow meters.
 - Every other platform host: the route is a `HostRegexp` for `pub-` plus a 20-character id, so service hosts, static sites and the activator fallback are unaffected.
 

@@ -298,14 +298,13 @@ func keysRevokeCommand(d deps) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			dir, dirErr := d.stateDir()
 			revoked := []string{}
 			for _, id := range args {
 				if _, err := a.do(commandContext(c), http.MethodDelete, nil, keysPath(owner, id)...); err != nil {
 					return fmt.Errorf("revoke %s: %w", id, err)
 				}
 				revoked = append(revoked, id)
-				if dirErr == nil {
+				if dir, err := d.stateDir(); err == nil {
 					forgetKey(dir, id)
 				}
 				if f == formatText {

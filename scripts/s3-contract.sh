@@ -159,7 +159,8 @@ echo setup >"$state/phase"
 (cd "$root/lego/backend" && GOWORK=off go test -c -o "$work/s3gw.test" ./internal/s3gw)
 (
   cd "$root/lego/backend/internal/s3gw"
-  BEX_S3_CONTRACT_DIR="$state" BEX_TEST_REQUIRE_DEPS=1 "$work/s3gw.test" -test.run '^TestS3ContractServer$' -test.v -test.timeout 30m
+  # exec: the background job is the test binary itself, so the cleanup's kill reaches it.
+  BEX_S3_CONTRACT_DIR="$state" BEX_TEST_REQUIRE_DEPS=1 exec "$work/s3gw.test" -test.run '^TestS3ContractServer$' -test.v -test.timeout 30m
 ) >"$work/server.log" 2>&1 &
 server_pid=$!
 for _ in $(seq 1 120); do

@@ -59,20 +59,22 @@ type fakeAPI struct {
 	expiry func() time.Time
 	// status overrides the answer of a route ("METHOD path") with a status and
 	// body.
-	status map[string]struct {
-		code int
-		body string
-	}
+	status map[string]answer
+	// delay holds every mint, so concurrent launches overlap.
+	delay time.Duration
 	mints int
+}
+
+// answer is a scripted reply.
+type answer struct {
+	code int
+	body string
 }
 
 func newFakeAPI(t *testing.T) *fakeAPI {
 	t.Helper()
 	f := &fakeAPI{expiry: func() time.Time { return testNow.Add(keyLife) }}
-	f.status = map[string]struct {
-		code int
-		body string
-	}{}
+	f.status = map[string]answer{}
 	f.srv = httptest.NewServer(http.HandlerFunc(f.serve))
 	t.Cleanup(f.srv.Close)
 	return f
@@ -95,6 +97,7 @@ func (f *fakeAPI) serve(w http.ResponseWriter, r *http.Request) {
 	prefix := "/v1/object-storage/" + testWorkspace
 	switch {
 	case r.Method == http.MethodPost && r.URL.Path == prefix+"/access-keys":
+		time.Sleep(f.delay)
 		f.mu.Lock()
 		f.mints++
 		f.mu.Unlock()
@@ -389,6 +392,37 @@ func TestKeyIsCachedPrivatelyAndReusedUntilAnHourIsLeft(t *testing.T) {
 	}
 }
 
+// TestConcurrentFirstLaunchesMintOneKey: `xargs -P 16 bex s3 cp …` on a machine with no key
+// must not make sixteen keys, which would pass the limit of twenty live ephemeral ones.
+func TestConcurrentFirstLaunchesMintOneKey(t *testing.T) {
+	f := newFakeAPI(t)
+	f.delay = 50 * time.Millisecond
+	d, _, _ := testDeps(t, f)
+	var wg sync.WaitGroup
+	errs := make(chan error, 16)
+	for range 16 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			s, err := d.session(t.Context())
+			if err == nil && s.AccessKeyID != testKeyID {
+				err = fmt.Errorf("key %q", s.AccessKeyID)
+			}
+			errs <- err
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	if f.mintCount() != 1 {
+		t.Errorf("mints = %d for 16 concurrent first launches, want 1", f.mintCount())
+	}
+}
+
 func TestDamagedKeyCacheIsReplacedNotTrusted(t *testing.T) {
 	f := newFakeAPI(t)
 	d, _, state := testDeps(t, f)
@@ -467,14 +501,16 @@ func TestNothingToRunShowsBexsHelp(t *testing.T) {
 			t.Errorf("%v printed %q, want bex's help", args, stdout)
 		}
 	}
-	// A longer command line, --help among it, is the AWS CLI's.
-	f := newFakeAPI(t)
-	d, call, _ := testDeps(t, f)
-	if _, _, err := run(t, d, "s3", "ls", "--help"); err != nil {
-		t.Fatal(err)
-	}
-	if call.callsMade != 1 || call.argv[2] != "ls" {
-		t.Errorf("`bex s3 ls --help` did not reach aws: %v", call.argv)
+	// A longer command line, --help among it, is the AWS CLI's, whichever word comes first.
+	for _, args := range [][]string{{"s3", "ls", "--help"}, {"s3", "--help", "ls"}, {"s3", "-h", "cp"}} {
+		f := newFakeAPI(t)
+		d, call, _ := testDeps(t, f)
+		if _, _, err := run(t, d, args...); err != nil {
+			t.Fatal(err)
+		}
+		if call.callsMade != 1 || call.argv[2] != args[1] {
+			t.Errorf("`bex %s` did not reach aws: %v", strings.Join(args, " "), call.argv)
+		}
 	}
 }
 
@@ -650,10 +686,7 @@ func TestKeysCreateRefusesWhatTheServerWould(t *testing.T) {
 
 func TestKeysCreateExplainsAMintClassRefusal(t *testing.T) {
 	f := newFakeAPI(t)
-	f.status["POST /v1/object-storage/"+testWorkspace+"/access-keys"] = struct {
-		code int
-		body string
-	}{http.StatusForbidden, `{"code":"FORBIDDEN","message":"forbidden"}`}
+	f.status["POST /v1/object-storage/"+testWorkspace+"/access-keys"] = answer{http.StatusForbidden, `{"code":"FORBIDDEN","message":"forbidden"}`}
 	d, _, _ := testDeps(t, f)
 	_, _, err := run(t, d, "s3", "keys", "create")
 	if err == nil || !strings.Contains(err.Error(), "bex login") {
@@ -743,10 +776,7 @@ func TestPublicEnableDisableAndStatus(t *testing.T) {
 
 func TestPublicRefusalForANonAdminSaysWhoMayPublish(t *testing.T) {
 	f := newFakeAPI(t)
-	f.status["PUT /v1/object-storage/"+testWorkspace+"/buckets/photos/public"] = struct {
-		code int
-		body string
-	}{http.StatusForbidden, `{"code":"FORBIDDEN","message":"forbidden"}`}
+	f.status["PUT /v1/object-storage/"+testWorkspace+"/buckets/photos/public"] = answer{http.StatusForbidden, `{"code":"FORBIDDEN","message":"forbidden"}`}
 	d, _, _ := testDeps(t, f)
 	_, _, err := run(t, d, "s3", "public", "photos", "enable")
 	if err == nil || !strings.Contains(err.Error(), "admin role") || !strings.Contains(err.Error(), "403") {
