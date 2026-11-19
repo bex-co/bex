@@ -92,9 +92,10 @@ type memUsageStore struct {
 	egressIdentities      map[string]store.EgressIdentity
 	egressIdentityErr     error
 	egressIdentityRecords int
-	// holes is what UnmeteredUsageHoles answers; closedAtLast captures each
-	// CloseUsageSourceStreamsAtLastReading call.
+	// holes is what UnmeteredUsageHoles answers, or holesErr fails it;
+	// closedAtLast captures each CloseUsageSourceStreamsAtLastReading call.
 	holes        []store.UsageHole
+	holesErr     error
 	closedAtLast []store.UsageResourceRef
 	// domains is the custom domain meter's source (w7/m429), one entry per
 	// counted domain; meterCursors is usage_meter_cursors.
@@ -112,7 +113,7 @@ func (m *memUsageStore) CloseUsageSourceStreamsAtLastReading(_ context.Context, 
 func (m *memUsageStore) UnmeteredUsageHoles(_ context.Context, _ time.Time) ([]store.UsageHole, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return slices.Clone(m.holes), nil
+	return slices.Clone(m.holes), m.holesErr
 }
 
 func (m *memUsageStore) RecordAppEgressIdentity(_ context.Context, appID string, identity store.EgressIdentity) error {

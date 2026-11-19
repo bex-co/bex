@@ -260,3 +260,77 @@ func TestDiskMeterRetriesAWindowCutOffMidPass(t *testing.T) {
 func diskRowKey(service string, window time.Time) usageKey {
 	return usageKey{resourceKind: store.ResourceKindService, serviceID: service, kind: store.UsageKindDiskGBSeconds, windowStart: window}
 }
+
+// w5/194: one disk's window left empty behind a newer metered window (a pass
+// cut off before w6/132 made windows commit whole) is the disk source's hole,
+// and the next pass re-meters forward from it. Before, the pass resumed after
+// the newest disk row, so production's 2026-11-17 06:00Z disks were never
+// metered and the hour left the catch-up window unbilled.
+func TestDiskMeterFillsAHoleBehindANewerWindow(t *testing.T) {
+	before, hole, after, next := hourWindow(-4), hourWindow(-3), hourWindow(-2), hourWindow(-1)
+	disks := []store.DiskUsageRow{
+		{TenantID: "tea-1", AppID: "srv-1", GBSeconds: 54000},
+		{TenantID: "tea-1", AppID: "srv-2", GBSeconds: 3600},
+	}
+	st := &memUsageStore{
+		rows:     map[usageKey]store.HourlyRow{},
+		latestBy: map[string]time.Time{},
+		diskRows: map[time.Time][]store.DiskUsageRow{before: disks, hole: disks, after: disks, next: disks},
+	}
+	written := func(window time.Time, services ...string) {
+		t.Helper()
+		var rows []store.HourlyRow
+		for _, service := range services {
+			rows = append(rows, store.HourlyRow{WorkspaceID: "tea-1", ResourceKind: store.ResourceKindService,
+				ServiceID: service, Kind: store.UsageKindDiskGBSeconds, WindowStart: window, Quantity: 1})
+		}
+		if err := st.UpsertUsageWindow(context.Background(), store.UsageKindDiskGBSeconds, store.UsageSourceDisk, window, rows); err != nil {
+			t.Fatal(err)
+		}
+	}
+	written(before, "srv-1", "srv-2")
+	written(hole, "srv-1") // srv-2's row never committed
+	written(after, "srv-1", "srv-2")
+	st.holes = []store.UsageHole{
+		// Another source's older hole is that meter's to fill, not this one's.
+		{ResourceKind: store.ResourceKindService, ServiceID: "srv-9", Kind: store.UsageKindEgressBytes, Source: store.UsageSourceHTTP, Window: hourWindow(-20)},
+		{ResourceKind: store.ResourceKindService, ServiceID: "srv-2", Kind: store.UsageKindDiskGBSeconds, Source: store.UsageSourceDisk, Window: hole},
+		{ResourceKind: store.ResourceKindService, ServiceID: "srv-1", Kind: store.UsageKindDiskGBSeconds, Source: store.UsageSourceDisk, Window: next},
+	}
+	seeded := len(st.idleClosed)
+
+	diskMeterService(st, "").catchUpDisksThrough(context.Background(), next)
+
+	if row, ok := st.rows[diskRowKey("srv-2", hole)]; !ok || row.Quantity != 3600 {
+		t.Fatalf("srv-2 at the hole = %+v (present=%v), want the next pass to meter its 3600 GB-seconds", row, ok)
+	}
+	var metered []time.Time
+	for _, idle := range st.idleClosed[seeded:] {
+		metered = append(metered, idle.through)
+	}
+	if want := []time.Time{hole, after, next}; !reflect.DeepEqual(metered, want) {
+		t.Fatalf("metered windows %v, want %v: forward from the disk hole, in order", metered, want)
+	}
+}
+
+// The hole read is a fleet-wide query. When it fails, the pass still meters
+// on from its cursor: a new hour must not go unbilled because an old one
+// could not be looked up.
+func TestDiskMeterMetersOnWhenTheHoleReadFails(t *testing.T) {
+	last, next := hourWindow(-2), hourWindow(-1)
+	disks := []store.DiskUsageRow{{TenantID: "tea-1", AppID: "srv-1", GBSeconds: 36000}}
+	st := &memUsageStore{
+		rows:     map[usageKey]store.HourlyRow{},
+		latestBy: map[string]time.Time{},
+		diskRows: map[time.Time][]store.DiskUsageRow{last: disks, next: disks},
+	}
+	svc := diskMeterService(st, "")
+	svc.catchUpDisksThrough(context.Background(), last)
+	st.holesErr = errors.New("statement timeout")
+
+	svc.catchUpDisksThrough(context.Background(), next)
+
+	if row, ok := st.rows[diskRowKey("srv-1", next)]; !ok || row.Quantity != 36000 {
+		t.Fatalf("srv-1 at %s = %+v (present=%v), want it metered from the cursor", next, row, ok)
+	}
+}

@@ -1781,6 +1781,12 @@ func (s *Service) platformRebuildRevisions(ctx context.Context, appID string) (m
 // Because the arithmetic is over committed rows, re-running a window is
 // idempotent and a restart backfills losslessly (bounded by catchupLimit, the
 // same horizon inside which usage_hourly stays rewritable).
+//
+// A pass starts after the newest disk row, or at the disk source's oldest
+// hole when that is older: one disk's window missing behind a newer metered
+// one is otherwise never revisited, and is skipped for good once it leaves
+// the catch-up window (w5/194). It re-meters forward from the hole, in order,
+// so each window's idle close sees the streams as that window left them.
 func (s *Service) catchUpDisksThrough(ctx context.Context, through time.Time) {
 	if s.Store == nil {
 		return
@@ -1796,6 +1802,13 @@ func (s *Service) catchUpDisksThrough(ctx context.Context, through time.Time) {
 		return
 	} else if ok {
 		window = cursor.UTC().Truncate(time.Hour).Add(time.Hour)
+	}
+	// The hole is the hour the unmetered-hour gauge pages on. A failed read
+	// still meters from the cursor, so new hours keep billing.
+	if holes, err := s.oldestFillableHoles(ctx, through.Add(time.Hour)); err != nil {
+		log.Printf("usage: disk meter holes: %v", err)
+	} else if hole, ok := holes[store.UsageSourceDisk]; ok && hole.Before(window) {
+		window = hole
 	}
 	if window.Before(floor) {
 		window = floor
