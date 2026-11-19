@@ -18,7 +18,10 @@ package agentsessions
 
 import (
 	"context"
+	"maps"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -338,4 +341,240 @@ func (a *archiveThenBlock) CreateAgentSessionSandbox(ctx context.Context, spec s
 	spec.PoolFull()
 	<-ctx.Done()
 	return sandbox.Sandbox{}, ctx.Err()
+}
+
+// A wait for a sandbox machine survives its replica stopping: dispatch
+// recovery on another replica carries it on (w10/022).
+
+// turnSandboxes is the sandbox fake as two replicas share it: it counts the
+// turn's live sandboxes, and the most there ever were, and its stop-th create
+// stops the replica that makes it.
+type turnSandboxes struct {
+	*fakeLifecycle
+	mu         sync.Mutex
+	live, most int
+	stop       int // the create during which its replica stops; 0 never
+	specs      []sandbox.AgentSessionSandbox
+}
+
+func (f *turnSandboxes) CreateAgentSessionSandbox(ctx context.Context, spec sandbox.AgentSessionSandbox) (sandbox.Sandbox, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.specs = append(f.specs, spec)
+	if len(f.specs) == f.stop {
+		// The replica stops mid-create: its dispatch's context ends (its
+		// ceiling firing stands in for the process exiting), so nothing it
+		// does from here lands. The server finishes the create anyway and
+		// leaves a sandbox nobody binds.
+		ctx.Value(dispatchCeilingKey{}).(*time.Timer).Reset(0)
+		<-ctx.Done()
+		f.created++
+		f.add()
+		return sandbox.Sandbox{}, ctx.Err()
+	}
+	sb, err := f.fakeLifecycle.CreateAgentSessionSandbox(ctx, spec)
+	if err == nil {
+		f.add()
+	}
+	return sb, err
+}
+
+func (f *turnSandboxes) add() {
+	f.live++
+	f.most = max(f.most, f.live)
+}
+
+// CleanupAgentDispatches ends every sandbox of the turn.
+func (f *turnSandboxes) CleanupAgentDispatches(ctx context.Context, d []store.AgentDispatch) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.live = 0
+	return f.fakeLifecycle.CleanupAgentDispatches(ctx, d)
+}
+
+// replica is another bex-api replica on the same database and sandbox server:
+// a Service that shares nothing in memory with e.svc, and its Completer.
+func (e lineageEnv) replica(sb SandboxLifecycle) (*Service, *Completer) {
+	svc, _, _, _ := fixture()
+	svc.Store, svc.Sandbox, svc.ModelKeys = e.pg, sb, e.svc.ModelKeys
+	svc.Metrics = NewCompletionMetrics(prometheus.NewRegistry())
+	return svc, &Completer{Store: e.pg, Sandbox: sb, Metrics: svc.Metrics, Waits: svc}
+}
+
+// stoppedWhileWaiting starts a session that waits for a machine, its replica
+// stopping during its second create, and makes its dispatch due, as it is a
+// lease after that replica's last keep-alive.
+func (e lineageEnv) stoppedWhileWaiting(t *testing.T, sb *turnSandboxes, in CreateRequest) store.AgentSession {
+	t.Helper()
+	e.svc.Sandbox = sb
+	sb.stop = 2
+	e.lc.createQueue = []error{startFailure(sandbox.StartCausePoolFull)}
+	created, err := e.svc.Create(caller("alice"), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := e.row(t, created.ID)
+	if row.Phase != PhaseCreating || row.SandboxWaitSince == nil || row.FailureReason != "" {
+		t.Fatalf("after its replica stopped the session is %s (waiting since %v, failure %q), want still creating and waiting", row.Phase, row.SandboxWaitSince, row.FailureReason)
+	}
+	if next, ok := e.dispatchNextCheck(t, row.ID, row.Turns); !ok || time.Until(next) < dispatchTimeout {
+		t.Fatalf("the waiting dispatch is due at %v (found %v), want a lease past its ceiling", next, ok)
+	}
+	if _, err := e.pg.Pool.Exec(context.Background(), `UPDATE agent_session_dispatches SET next_check_at = now() - interval '1 second' WHERE session_id=$1`, row.ID); err != nil {
+		t.Fatal(err)
+	}
+	return row
+}
+
+func TestAWaitSurvivesItsReplicaStopping(t *testing.T) {
+	e := waitEnv(t)
+	sb := &turnSandboxes{fakeLifecycle: e.lc}
+	row := e.stoppedWhileWaiting(t, sb, e.input(""))
+	other, c := e.replica(sb)
+	c.recoverDispatches(context.Background())
+
+	row = e.row(t, row.ID)
+	if row.Phase != PhaseRunning || row.SandboxID == "" || row.FailureReason != "" || row.SandboxWaitSince != nil {
+		t.Fatalf("after another replica's recovery the session is %s on %q (failure %q, waiting since %v), want running", row.Phase, row.SandboxID, row.FailureReason, row.SandboxWaitSince)
+	}
+	if len(sb.specs) != 3 || e.lc.created != 2 {
+		t.Fatalf("creates = %d making %d sandboxes, want 3 making 2: the stopped replica's, and the other's", len(sb.specs), e.lc.created)
+	}
+	if sb.most != 1 || sb.live != 1 {
+		t.Fatalf("the turn had up to %d sandboxes (%d now), want never more than 1: the stopped replica's leftover ends before the next create", sb.most, sb.live)
+	}
+	if _, ok := e.dispatchNextCheck(t, row.ID, row.Turns); ok {
+		t.Fatal("the bound turn still has a dispatch intent")
+	}
+	// The other replica made the same sandbox the first asked for.
+	first, resumed := sb.specs[0], sb.specs[2]
+	if !maps.Equal(first.DriverEnv, resumed.DriverEnv) || first.ModelAPIKey != resumed.ModelAPIKey || first.Template != resumed.Template ||
+		first.ModelEndpoint != resumed.ModelEndpoint || !slices.Equal(first.Egress.Hosts, resumed.Egress.Hosts) || first.Egress.FullInternet != resumed.Egress.FullInternet {
+		t.Fatalf("the resumed create differs from the first:\n%+v\n%+v", first, resumed)
+	}
+	if got := testutil.ToFloat64(other.Metrics.sandboxWaiting.WithLabelValues("pool_full")); got != 0 {
+		t.Fatalf("the resuming replica's waiting gauge = %v after the start, want 0", got)
+	}
+	if got := histogramCount(t, other.Metrics.sandboxWait.WithLabelValues(string(waitOutcomeStarted)).(prometheus.Histogram)); got != 1 {
+		t.Fatalf("waits the resuming replica saw start = %d, want 1", got)
+	}
+}
+
+// The resumed wait keeps its bound, counted from when the session began to
+// wait on the replica that stopped.
+func TestAResumedWaitKeepsItsBound(t *testing.T) {
+	e := waitEnv(t)
+	sb := &turnSandboxes{fakeLifecycle: e.lc}
+	row := e.stoppedWhileWaiting(t, sb, e.input(""))
+	if _, err := e.pg.Pool.Exec(context.Background(), `UPDATE agent_sessions SET sandbox_wait_since = now() - interval '2 hours' WHERE id=$1`, row.ID); err != nil {
+		t.Fatal(err)
+	}
+	e.lc.createErr = startFailure(sandbox.StartCausePoolFull)
+	_, c := e.replica(sb)
+	c.recoverDispatches(context.Background())
+	row = e.row(t, row.ID)
+	if row.Phase != PhaseFailed || row.FailureCause != string(sandbox.StartCausePoolFull) || !strings.HasPrefix(row.FailureReason, "No sandbox machine had room for this session for 120 minutes") {
+		t.Fatalf("a resumed wait past its bound is %s %q (cause %q), want failed pool_full after the 2 hours it waited", row.Phase, row.FailureReason, row.FailureCause)
+	}
+	if len(sb.specs) != 3 || sb.live != 0 {
+		t.Fatalf("creates = %d with %d sandboxes left, want 3 and none: one more create once resumed, then the bound", len(sb.specs), sb.live)
+	}
+}
+
+// Cancel and Archive while no replica waits end the wait when it is resumed:
+// nothing is created, and the session ends as a live wait would leave it.
+func TestALeftWaitIsNotResumed(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		leave  func(e lineageEnv, id string) error
+		phase  string
+		reason string
+	}{
+		{"cancel", func(e lineageEnv, id string) error { _, err := e.svc.Cancel(caller("alice"), id); return err }, PhaseCanceled, ""},
+		{"archive", func(e lineageEnv, id string) error { _, err := e.svc.Archive(caller("alice"), id); return err }, PhaseFailed, archivedWhileWaiting.Reason},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			e := waitEnv(t)
+			sb := &turnSandboxes{fakeLifecycle: e.lc}
+			row := e.stoppedWhileWaiting(t, sb, e.input(""))
+			if err := tc.leave(e, row.ID); err != nil {
+				t.Fatal(err)
+			}
+			_, c := e.replica(sb)
+			c.recoverDispatches(context.Background())
+			row = e.row(t, row.ID)
+			if row.Phase != tc.phase || row.FailureReason != tc.reason || row.SandboxID != "" {
+				t.Fatalf("session = %s %q on %q, want %s %q and no sandbox", row.Phase, row.FailureReason, row.SandboxID, tc.phase, tc.reason)
+			}
+			if len(sb.specs) != 2 || sb.live != 0 {
+				t.Fatalf("creates = %d with %d sandboxes left, want none after the stop and none left", len(sb.specs), sb.live)
+			}
+		})
+	}
+}
+
+// Replicas whose recovery ticks find the same due wait resume it once.
+func TestOneReplicaResumesAWait(t *testing.T) {
+	e := waitEnv(t)
+	sb := &turnSandboxes{fakeLifecycle: e.lc}
+	row := e.stoppedWhileWaiting(t, sb, e.input(""))
+	var mu sync.Mutex
+	var resumed []func()
+	var ticks sync.WaitGroup
+	for range 4 {
+		svc, c := e.replica(sb)
+		svc.dispatchRunner = func(fn func()) {
+			mu.Lock()
+			defer mu.Unlock()
+			resumed = append(resumed, fn)
+		}
+		ticks.Add(1)
+		go func() {
+			defer ticks.Done()
+			c.recoverDispatches(context.Background())
+		}()
+	}
+	ticks.Wait()
+	if len(resumed) != 1 {
+		t.Fatalf("replicas that resumed the wait = %d, want 1", len(resumed))
+	}
+	if got := e.row(t, row.ID); got.Phase != PhaseCreating || got.FailureReason != "" {
+		t.Fatalf("while one replica resumes it the session is %s (%q), want still creating", got.Phase, got.FailureReason)
+	}
+	resumed[0]()
+	if got := e.row(t, row.ID); got.Phase != PhaseRunning || sb.most != 1 {
+		t.Fatalf("the session is %s with up to %d sandboxes, want running on one", got.Phase, sb.most)
+	}
+}
+
+// The stored wait holds no secret: the resumed dispatch reads the session's
+// secrets again, as every dispatch does.
+func TestAStoredWaitHoldsNoSecret(t *testing.T) {
+	e := waitEnv(t)
+	e.keys.data[workspaceSecretPath(e.ws, "STRIPE_KEY")] = map[string]string{agentSecretValueField: stripeValue}
+	in := e.input("")
+	in.SecretNames = []string{"STRIPE_KEY"}
+	in.Secrets = []SecretInput{{Name: "TEST_TOKEN", Value: inlineValue}}
+	sb := &turnSandboxes{fakeLifecycle: e.lc}
+	row := e.stoppedWhileWaiting(t, sb, in)
+	var stored string
+	if err := e.pg.Pool.QueryRow(context.Background(), `SELECT wait_spec::text FROM agent_session_dispatches WHERE session_id=$1`, row.ID).Scan(&stored); err != nil {
+		t.Fatal(err)
+	}
+	for _, secret := range []string{stripeValue, inlineValue, "sk-fixture-" + e.ws} {
+		if strings.Contains(stored, secret) {
+			t.Fatalf("the stored wait holds a secret value: %s", stored)
+		}
+	}
+	if sb.specs[0].DriverEnv["STRIPE_KEY"] != stripeValue {
+		t.Fatal("the first create's env lacks the workspace secret")
+	}
+	_, c := e.replica(sb)
+	c.recoverDispatches(context.Background())
+	if got := e.row(t, row.ID).Phase; got != PhaseRunning {
+		t.Fatalf("phase = %s, want running", got)
+	}
+	if env := sb.specs[len(sb.specs)-1].DriverEnv; env["STRIPE_KEY"] != stripeValue || env["TEST_TOKEN"] != inlineValue {
+		t.Fatalf("the resumed create's env lacks the secrets it reads again: %v", slices.Sorted(maps.Keys(env)))
+	}
 }

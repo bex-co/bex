@@ -17,7 +17,9 @@ limitations under the License.
 package store
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"sync"
@@ -263,4 +265,95 @@ func TestPGAgentDispatchRecovery(t *testing.T) {
 			}
 		}
 	})
+	// w10/022: a waiting dispatch stores its input, recovery lists it as
+	// waiting, and exactly one replica claims it to carry on the wait.
+	listed := func(t *testing.T, id string, at time.Time) (AgentDispatch, bool) {
+		t.Helper()
+		due, err := s.ListAgentDispatchesDue(ctx, at)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, d := range due {
+			if d.SessionID == id {
+				return d, true
+			}
+		}
+		return AgentDispatch{}, false
+	}
+	t.Run("a waiting dispatch is resumed by one replica", func(t *testing.T) {
+		row := create()
+		d := AgentDispatch{SessionID: row.ID, Turn: row.Turns, WorkspaceID: row.WorkspaceID}
+		spec := []byte(`{"env":{"BEX_AGENT_PROMPT":"do the task"}}`)
+		lease := time.Now().Add(16 * time.Minute)
+		if _, ok, err := s.MarkAgentDispatchWaiting(ctx, d, time.Now(), lease, spec); err != nil || !ok {
+			t.Fatalf("mark: ok=%v err=%v", ok, err)
+		}
+		if _, due := listed(t, row.ID, lease.Add(-time.Second)); due {
+			t.Fatal("a waiting dispatch is due before its lease ends")
+		}
+		due, ok := listed(t, row.ID, lease.Add(time.Second))
+		if !ok || !due.Waiting {
+			t.Fatalf("after its lease the dispatch is listed %v waiting=%v, want listed and waiting", ok, due.Waiting)
+		}
+		// Two replicas listed it: the first claim wins, the second finds it taken.
+		next := lease.Add(16 * time.Minute)
+		got, err := s.ResumeAgentDispatchWait(ctx, due, next)
+		if err != nil || !bytes.Equal(compactJSON(t, got), compactJSON(t, spec)) {
+			t.Fatalf("resume = %s, %v; want the stored input", got, err)
+		}
+		if _, err := s.ResumeAgentDispatchWait(ctx, due, next); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("a second claim of the same listing = %v, want ErrNotFound", err)
+		}
+		if _, still := listed(t, row.ID, lease.Add(time.Second)); still {
+			t.Fatal("a resumed wait is due again before its new lease")
+		}
+		// Abandoning it drops the input: a tombstone is never resumed.
+		if _, err := s.AbandonAgentDispatch(ctx, d, time.Now(), AgentSessionFailure{Reason: "interrupted"}); err != nil {
+			t.Fatal(err)
+		}
+		tomb, ok := listed(t, row.ID, next.Add(time.Second))
+		if !ok || tomb.Waiting {
+			t.Fatalf("the abandoned dispatch is listed %v waiting=%v, want a tombstone that does not wait", ok, tomb.Waiting)
+		}
+		if _, err := s.ResumeAgentDispatchWait(ctx, tomb, next); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("resuming a tombstone = %v, want ErrNotFound", err)
+		}
+	})
+	t.Run("a failed previous-sandbox teardown never makes a live dispatch due", func(t *testing.T) {
+		row := create()
+		d := AgentDispatch{SessionID: row.ID, Turn: row.Turns, WorkspaceID: row.WorkspaceID}
+		lease := time.Now().Add(16 * time.Minute)
+		if _, ok, err := s.MarkAgentDispatchWaiting(ctx, d, time.Now(), lease, []byte(`{}`)); err != nil || !ok {
+			t.Fatalf("mark: ok=%v err=%v", ok, err)
+		}
+		if _, err := pool.Exec(ctx, `UPDATE agent_session_dispatches SET previous_sandbox_id='sandbox-prev' WHERE session_id=$1`, row.ID); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.DeferPreviousSandboxTeardown(ctx, row.ID, row.Turns, time.Now().Add(time.Minute)); err != nil {
+			t.Fatal(err)
+		}
+		if _, due := listed(t, row.ID, time.Now().Add(2*time.Minute)); due {
+			t.Fatal("a teardown retry pulled the waiting dispatch's check before its lease")
+		}
+		// A tombstone's retry is still a minute out.
+		if _, err := pool.Exec(ctx, `UPDATE agent_session_dispatches SET abandoned=true WHERE session_id=$1`, row.ID); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.DeferPreviousSandboxTeardown(ctx, row.ID, row.Turns, time.Now().Add(time.Minute)); err != nil {
+			t.Fatal(err)
+		}
+		if _, due := listed(t, row.ID, time.Now().Add(2*time.Minute)); !due {
+			t.Fatal("a tombstone's teardown retry is not due a minute later")
+		}
+	})
+}
+
+// compactJSON is raw JSON without insignificant whitespace, as jsonb returns it.
+func compactJSON(t *testing.T, raw []byte) []byte {
+	t.Helper()
+	var out bytes.Buffer
+	if err := json.Compact(&out, raw); err != nil {
+		t.Fatal(err)
+	}
+	return out.Bytes()
 }

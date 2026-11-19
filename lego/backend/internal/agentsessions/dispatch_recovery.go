@@ -41,6 +41,8 @@ func (s *Service) abandonDispatch(ctx context.Context, row store.AgentSession, t
 
 // Recovery follows normal completion and spends at most ten seconds per tick.
 // Successful tombstones are revisited hourly; failures rotate after a minute.
+// A dispatch that waited for a sandbox machine when its replica stopped is
+// resumed here instead of abandoned (w10/022).
 func (c *Completer) recoverDispatches(ctx context.Context) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -53,6 +55,9 @@ func (c *Completer) recoverDispatches(ctx context.Context) {
 	for _, d := range due {
 		if ctx.Err() != nil {
 			return
+		}
+		if d.Waiting && !d.SessionDeleted && c.Waits != nil && c.Waits.resumeWait(ctx, d) {
+			continue
 		}
 		fact, err := c.Store.AbandonAgentDispatch(ctx, d, c.now(), store.AgentSessionFailure{Reason: interruptedDispatchReason})
 		if err != nil {

@@ -19,9 +19,12 @@ package agentsessions
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
+	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -106,5 +109,50 @@ func TestDispatchRecoveryGroupsWorkspaceDiscoveryAndRotatesBeforeIO(t *testing.T
 	c.recoverDispatches(context.Background())
 	if calls != 1 {
 		t.Fatalf("workspace listings=%d", calls)
+	}
+}
+
+// A waiting dispatch's stored input gives the replica that resumes it the
+// dispatch it began (w10/022): the same template, endpoint, egress, env,
+// delivery and retained disk, the session's placeholder for the model key,
+// and the turn the dispatch row names.
+func TestASavedSpecResumesTheSameDispatch(t *testing.T) {
+	spec := dispatchSpec{
+		template: "large", modelEndpoint: "https://api.openai.com/v1",
+		modelAPIKey: agentsession.ModelKeyPlaceholder("ags-1"),
+		egress:      sessionegress.Egress{FullInternet: true, Hosts: []string{"docs.example.com"}},
+		env:         map[string]string{"BEX_AGENT_PROMPT": "and then", envCheckoutNote: "restored"},
+		delivery:    DeliveryRedispatch, turn: 3, previousSandboxID: "sandbox-2", task: "fix it",
+		retained: &store.AgentRetainedImage{ID: "img-1", SessionID: "ags-1", Turn: 2, ImageDigest: "sha256:abc", State: store.RetainedImageInUse},
+	}
+	got, err := resumedSpec(spec.save(), "ags-1", 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := spec
+	want.previousSandboxID, want.task = "", "" // the steer's own steps, done before it waited
+	want.retained = &store.AgentRetainedImage{ID: "img-1", SessionID: "ags-1", Turn: 2, ImageDigest: "sha256:abc"}
+	want.resumed = true
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("resumed spec =\n%+v\nwant\n%+v", got, want)
+	}
+	if _, err := resumedSpec([]byte(`{"env":`), "ags-1", 3); err == nil {
+		t.Fatal("a stored input that does not parse resumed")
+	}
+}
+
+// A waiting dispatch whose stored input cannot be read is abandoned as
+// before, so its session fails instead of waiting for nobody.
+func TestAnUnreadableWaitIsAbandoned(t *testing.T) {
+	svc, st, _, _ := fixture()
+	row := seedLiveSession(st, "tea-a")
+	session := st.rows[row]
+	session.SandboxID, session.Phase, session.Turns = "", PhaseCreating, 1
+	st.rows[row] = session
+	st.dispatches[dispatchKey(row, 1)] = fakeDispatch{intent: store.AgentDispatch{SessionID: row, Turn: 1, WorkspaceID: "tea-a"}, next: st.now, spec: []byte(`{"env":`)}
+	c := &Completer{Store: st, Sandbox: svc.Sandbox, Now: func() time.Time { return st.now }, Waits: svc}
+	c.recoverDispatches(context.Background())
+	if got := st.rows[row]; got.Phase != PhaseFailed || got.FailureReason != interruptedDispatchReason {
+		t.Fatalf("session = %s %q, want failed as interrupted", got.Phase, got.FailureReason)
 	}
 }

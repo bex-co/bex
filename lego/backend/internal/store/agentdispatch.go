@@ -33,6 +33,12 @@ type AgentDispatch struct {
 	Turn              int
 	WorkspaceID       string
 	Legacy            bool
+	// Waiting is a live dispatch that waits for room on the sandbox pool and
+	// stored its input to be resumed by another replica (w10/022).
+	// NextCheckAt is when recovery was due to look at it, as listed: the
+	// value ResumeAgentDispatchWait compares and sets.
+	Waiting     bool
+	NextCheckAt time.Time
 }
 
 func insertAgentDispatch(ctx context.Context, tx pgx.Tx, row AgentSession, previousSandboxID string) error {
@@ -55,7 +61,9 @@ func (s *PGStore) ListAgentDispatchesDue(ctx context.Context, now time.Time) ([]
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.Pool.Query(ctx, `SELECT session_id, turn, workspace_id, legacy, previous_sandbox_id, NOT EXISTS (SELECT 1 FROM agent_sessions WHERE id=session_id) FROM agent_session_dispatches WHERE next_check_at <= $1 ORDER BY abandoned, next_check_at, session_id, turn LIMIT 100`, now)
+	rows, err := s.Pool.Query(ctx, `SELECT session_id, turn, workspace_id, legacy, previous_sandbox_id, NOT EXISTS (SELECT 1 FROM agent_sessions WHERE id=session_id),
+		wait_spec IS NOT NULL AND NOT abandoned, next_check_at
+		FROM agent_session_dispatches WHERE next_check_at <= $1 ORDER BY abandoned, next_check_at, session_id, turn LIMIT 100`, now)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +71,7 @@ func (s *PGStore) ListAgentDispatchesDue(ctx context.Context, now time.Time) ([]
 	var out []AgentDispatch
 	for rows.Next() {
 		var d AgentDispatch
-		if err := rows.Scan(&d.SessionID, &d.Turn, &d.WorkspaceID, &d.Legacy, &d.PreviousSandboxID, &d.SessionDeleted); err != nil {
+		if err := rows.Scan(&d.SessionID, &d.Turn, &d.WorkspaceID, &d.Legacy, &d.PreviousSandboxID, &d.SessionDeleted, &d.Waiting, &d.NextCheckAt); err != nil {
 			return nil, err
 		}
 		out = append(out, d)
@@ -116,13 +124,13 @@ func (s *PGStore) AbandonAgentDispatch(ctx context.Context, d AgentDispatch, now
 				return nil
 			}
 			if previous != "" {
-				_, err := tx.Exec(ctx, `UPDATE agent_session_dispatches SET abandoned=true, next_check_at=$3 WHERE session_id=$1 AND turn=$2`, d.SessionID, d.Turn, now)
+				_, err := tx.Exec(ctx, `UPDATE agent_session_dispatches SET abandoned=true, wait_spec=NULL, next_check_at=$3 WHERE session_id=$1 AND turn=$2`, d.SessionID, d.Turn, now)
 				return err
 			}
 			_, err := tx.Exec(ctx, `DELETE FROM agent_session_dispatches WHERE session_id=$1 AND turn=$2`, d.SessionID, d.Turn)
 			return err
 		}
-		tag, err := tx.Exec(ctx, `UPDATE agent_session_dispatches SET abandoned=true WHERE session_id=$1 AND turn=$2`, d.SessionID, d.Turn)
+		tag, err := tx.Exec(ctx, `UPDATE agent_session_dispatches SET abandoned=true, wait_spec=NULL WHERE session_id=$1 AND turn=$2`, d.SessionID, d.Turn)
 		if err != nil {
 			return err
 		}
@@ -175,11 +183,13 @@ func (s *PGStore) AbandonAgentDispatch(ctx context.Context, d AgentDispatch, now
 // sandbox pool and keeps it alive (ADR047 § w10/m497): it stamps the
 // session's sandbox_wait_since once and moves the dispatch's next_check_at to
 // next, so neither recovery nor the legacy repair abandons a dispatch that is
-// still waiting. It returns when the wait began. ok is false, and nothing is
-// written, when the wait must end: the session is no longer unbound on d's
-// turn in creating or redispatching (a cancel, a delete, a newer turn), it was
-// archived, or the dispatch was abandoned.
-func (s *PGStore) MarkAgentDispatchWaiting(ctx context.Context, d AgentDispatch, now, next time.Time) (since time.Time, ok bool, err error) {
+// still waiting. It stores spec, the dispatch's input, so that recovery on
+// another replica resumes the wait if this one stops (w10/022). It returns
+// when the wait began. ok is false, and nothing is written, when the wait must
+// end: the session is no longer unbound on d's turn in creating or
+// redispatching (a cancel, a delete, a newer turn), it was archived, or the
+// dispatch was abandoned.
+func (s *PGStore) MarkAgentDispatchWaiting(ctx context.Context, d AgentDispatch, now, next time.Time, spec []byte) (since time.Time, ok bool, err error) {
 	err = s.withTx(ctx, func(tx pgx.Tx) error {
 		// Lock in the same order as binding and abandonment: session, then intent.
 		var current *time.Time
@@ -192,8 +202,8 @@ func (s *PGStore) MarkAgentDispatchWaiting(ctx context.Context, d AgentDispatch,
 		if err != nil {
 			return err
 		}
-		tag, err := tx.Exec(ctx, `UPDATE agent_session_dispatches SET next_check_at=$3
-			WHERE session_id=$1 AND turn=$2 AND NOT abandoned`, d.SessionID, d.Turn, next)
+		tag, err := tx.Exec(ctx, `UPDATE agent_session_dispatches SET next_check_at=$3, wait_spec=$4
+			WHERE session_id=$1 AND turn=$2 AND NOT abandoned`, d.SessionID, d.Turn, next, spec)
 		if err != nil || tag.RowsAffected() == 0 {
 			return err
 		}
@@ -211,6 +221,25 @@ func (s *PGStore) MarkAgentDispatchWaiting(ctx context.Context, d AgentDispatch,
 		return time.Time{}, false, err
 	}
 	return since, ok, nil
+}
+
+// ResumeAgentDispatchWait claims d, a waiting dispatch recovery listed as due,
+// for this replica to carry on its wait (w10/022): one compare-and-set moves
+// its next_check_at from the value listed to next, so of the replicas that
+// list it at once exactly one resumes it. It returns the stored input, and
+// ErrNotFound when another replica claimed it first or it no longer waits.
+func (s *PGStore) ResumeAgentDispatchWait(ctx context.Context, d AgentDispatch, next time.Time) ([]byte, error) {
+	var spec []byte
+	err := s.Pool.QueryRow(ctx, `UPDATE agent_session_dispatches SET next_check_at=$4
+		WHERE session_id=$1 AND turn=$2 AND next_check_at=$3 AND NOT abandoned AND wait_spec IS NOT NULL
+		RETURNING wait_spec`, d.SessionID, d.Turn, d.NextCheckAt, next).Scan(&spec)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return spec, nil
 }
 
 func (s *PGStore) DeferAgentDispatchCleanup(ctx context.Context, d AgentDispatch, next time.Time) error {

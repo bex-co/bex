@@ -1265,6 +1265,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Retention:            agentRetention,
 	}
 	agentSessionsSvc.Completer = agentCompleter
+	agentCompleter.Waits = agentSessionsSvc
 	// A membership exit ends the sessions the member started (w5/186).
 	memberExit := agentsessions.MemberExit{Service: agentSessionsSvc}
 	membersSvc.Sessions = memberExit

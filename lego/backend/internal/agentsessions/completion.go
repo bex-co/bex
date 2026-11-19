@@ -174,6 +174,10 @@ type Completer struct {
 	// Retention keeps an interrupted turn's disk for the session's next turn
 	// (ADR047 D12, w22/m413); nil leaves every sandbox to its idle grace.
 	Retention *Retention
+	// Waits is the Service that carries on the wait for a sandbox machine of
+	// a dispatch whose replica stopped (w10/022). nil abandons such a
+	// dispatch as interrupted, like any other.
+	Waits *Service
 	// retainRunner runs a save; nil starts a goroutine and tests run it inline.
 	retainRunner func(func())
 	retainWG     sync.WaitGroup

@@ -51,8 +51,11 @@ type Store interface {
 	AbandonAgentDispatch(context.Context, store.AgentDispatch, time.Time, store.AgentSessionFailure) (store.TerminalTurnFact, error)
 	DeferAgentDispatchCleanup(context.Context, store.AgentDispatch, time.Time) error
 	// MarkAgentDispatchWaiting keeps a dispatch waiting for room on the
-	// sandbox pool alive (ADR047 § w10/m497).
-	MarkAgentDispatchWaiting(ctx context.Context, d store.AgentDispatch, now, next time.Time) (time.Time, bool, error)
+	// sandbox pool alive (ADR047 § w10/m497) and stores its input;
+	// ResumeAgentDispatchWait claims a waiting dispatch whose replica stopped,
+	// for another to carry on its wait (w10/022).
+	MarkAgentDispatchWaiting(ctx context.Context, d store.AgentDispatch, now, next time.Time, spec []byte) (time.Time, bool, error)
+	ResumeAgentDispatchWait(ctx context.Context, d store.AgentDispatch, next time.Time) ([]byte, error)
 	GetAgentSession(context.Context, string) (store.AgentSession, error)
 	// SetAgentSessionAppliedSecrets records the names (and sources) the
 	// latest dispatch applied (ADR098 D9).
@@ -863,6 +866,12 @@ type dispatchSpec struct {
 	// retained is the stopped turn's retained image this dispatch has claimed
 	// and boots its sandbox from (ADR047 D12); nil starts a fresh sandbox.
 	retained *store.AgentRetainedImage
+	// saved is this spec as stored while the dispatch waits for a sandbox
+	// machine (savedSpec), taken when the dispatch starts, before any secret
+	// joins env. resumed is set on a dispatch carrying on the wait of a
+	// replica that stopped (w10/022).
+	saved   []byte
+	resumed bool
 }
 
 // runDispatch executes the slow sandbox-provisioning half of a create/steer turn
@@ -882,6 +891,7 @@ func (s *Service) runDispatch(ctx context.Context, record store.AgentSession, sp
 // Steer's re-dispatch so their rollback semantics stay in lock-step.
 func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec dispatchSpec) (store.AgentSession, error) {
 	ws := record.WorkspaceID
+	spec.saved = spec.save()
 	// The stopped turn's retained disk, when this dispatch claimed it, is not
 	// spent until the turn is bound to the sandbox that booted from it: a
 	// dispatch that ends before that, however early, lets it go, so a later

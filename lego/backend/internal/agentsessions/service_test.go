@@ -33,6 +33,7 @@ type fakeDispatch struct {
 	intent    store.AgentDispatch
 	next      time.Time
 	abandoned bool
+	spec      []byte // the stored input of a waiting dispatch (w10/022)
 }
 
 type fakeStore struct {
@@ -236,7 +237,10 @@ func (f *fakeStore) DeferPreviousSandboxTeardown(_ context.Context, sessionID st
 	intent := f.dispatches[key]
 	intent.intent.SessionID = sessionID
 	intent.intent.Turn = turn
-	intent.next = next
+	// A live intent's check is only ever moved later (the PG GREATEST).
+	if intent.abandoned || next.After(intent.next) {
+		intent.next = next
+	}
 	f.dispatches[key] = intent
 	return nil
 }
@@ -2226,7 +2230,9 @@ func (f *fakeStore) ListAgentDispatchesDue(_ context.Context, now time.Time) ([]
 	var out []store.AgentDispatch
 	for _, d := range f.dispatches {
 		if !d.next.After(now) {
-			out = append(out, d.intent)
+			intent := d.intent
+			intent.Waiting, intent.NextCheckAt = d.spec != nil && !d.abandoned, d.next
+			out = append(out, intent)
 		}
 	}
 	return out, nil
@@ -2237,7 +2243,7 @@ func (f *fakeStore) AbandonAgentDispatch(ctx context.Context, d store.AgentDispa
 	if !ok {
 		return store.TerminalTurnFact{}, store.ErrNotFound
 	}
-	intent.abandoned = true
+	intent.abandoned, intent.spec = true, nil
 	f.dispatches[key] = intent
 	row := f.rows[d.SessionID]
 	if row.Turns == d.Turn && row.SandboxID != "" {
@@ -2270,7 +2276,7 @@ func (f *fakeStore) AbandonAgentDispatch(ctx context.Context, d store.AgentDispa
 	}
 	return store.TerminalTurnFact{}, nil
 }
-func (f *fakeStore) MarkAgentDispatchWaiting(_ context.Context, d store.AgentDispatch, now, next time.Time) (time.Time, bool, error) {
+func (f *fakeStore) MarkAgentDispatchWaiting(_ context.Context, d store.AgentDispatch, now, next time.Time, spec []byte) (time.Time, bool, error) {
 	f.rowMu.Lock()
 	defer f.rowMu.Unlock()
 	row, ok := f.rows[d.SessionID]
@@ -2283,13 +2289,25 @@ func (f *fakeStore) MarkAgentDispatchWaiting(_ context.Context, d store.AgentDis
 	if !ok || intent.abandoned {
 		return time.Time{}, false, nil
 	}
-	intent.next = next
+	intent.next, intent.spec = next, spec
 	f.dispatches[key] = intent
 	if row.SandboxWaitSince == nil {
 		row.SandboxWaitSince = &now
 		f.rows[row.ID] = row
 	}
 	return *row.SandboxWaitSince, true, nil
+}
+func (f *fakeStore) ResumeAgentDispatchWait(_ context.Context, d store.AgentDispatch, next time.Time) ([]byte, error) {
+	f.rowMu.Lock()
+	defer f.rowMu.Unlock()
+	key := dispatchKey(d.SessionID, d.Turn)
+	intent, ok := f.dispatches[key]
+	if !ok || intent.abandoned || intent.spec == nil || !intent.next.Equal(d.NextCheckAt) {
+		return nil, store.ErrNotFound
+	}
+	intent.next = next
+	f.dispatches[key] = intent
+	return intent.spec, nil
 }
 func (f *fakeStore) DeferAgentDispatchCleanup(_ context.Context, d store.AgentDispatch, next time.Time) error {
 	key := dispatchKey(d.SessionID, d.Turn)

@@ -90,7 +90,7 @@ t001–t007 and t009–t011 shipped together with this board move (one commit). 
   - The panel "Agent sessions waiting for a sandbox machine" is on the bex-api dashboard. ADR105 § Until the AX42-1 arrives names the alert as the pool-size decision's evidence.
 - **Item 6 (live): not yet,** see the gate below.
 - **Deviations, stated.**
-  - A wait lives in the replica that accepted the turn. Recovery and other replicas never end or double it, but the waiting replica's own exit ends it as "interrupted" within 15 minutes, as for any dispatch in flight. A wait that survives its own replica's restart needs the dispatch's inputs stored, and is filed as [w10/022](../../022.md).
+  - A wait lives in the replica that accepted the turn. Recovery and other replicas never end or double it, but the waiting replica's own exit ends it as "interrupted" within 15 minutes, as for any dispatch in flight. A wait that survives its own replica's restart needs the dispatch's inputs stored, and is filed as [w10/022](../../done/022.md).
   - Events are not read (pods get/list is the least privilege that names every cause in the DoD).
   - The visual check of the waiting state ran on the offline stub (`dashboard/scripts/local-bex.mjs` gained a waiting and a pool-full fixture) for the list rows and sidebar at 1440 px and 390 px. They show no layout shift.
   - The stub cannot render a session page for any fixture (its turns query is missing, which predates this work). The header and failure callout rest on their component tests, and on t008's dashboard step.

@@ -19,12 +19,15 @@ package agentsessions
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"sync"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
+	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -45,6 +48,13 @@ var sandboxWaitBackoff = 15 * time.Second
 // sandboxWaitWatch is how often the create in flight checks, once the session
 // waits, that it still does. A var so tests check fast.
 var sandboxWaitWatch = 10 * time.Second
+
+// sandboxWaitLease is how far ahead each keep-alive moves a waiting dispatch's
+// next check, and so how long recovery on another replica leaves the wait
+// alone. It runs a minute past the dispatch's own ceiling, which every
+// keep-alive restarts: a replica still waiting has always ended its wait, by
+// that ceiling, before another may take it over (w10/022).
+const sandboxWaitLease = dispatchTimeout + time.Minute
 
 // errWaitEnded ends a wait the session left: a cancel, a delete, an archive,
 // a newer turn, or recovery abandoning the dispatch.
@@ -120,6 +130,9 @@ func restartDispatchCeiling(ctx context.Context) {
 type sandboxWait struct {
 	s *Service
 	d store.AgentDispatch
+	// saved is the dispatch's stored input (dispatchSpec.saved), written with
+	// every keep-alive.
+	saved []byte
 
 	mu    sync.Mutex
 	since time.Time // zero until the dispatch waits
@@ -142,10 +155,10 @@ func (w *sandboxWait) left() bool {
 // reports false when the session left the wait.
 func (w *sandboxWait) mark(ctx context.Context) bool {
 	now := time.Now()
-	since, ok, err := w.s.Store.MarkAgentDispatchWaiting(ctx, w.d, now, now.Add(dispatchTimeout))
+	since, ok, err := w.s.Store.MarkAgentDispatchWaiting(ctx, w.d, now, now.Add(sandboxWaitLease), w.saved)
 	if err != nil {
 		// The keep-alive did not land; the next create tries again, and the
-		// dispatch still has dispatchTimeout before recovery could take it.
+		// dispatch still has its last lease before recovery could take it.
 		log.Printf("agent-session dispatch: record the wait for a sandbox machine failed (session=%s turn=%d): %v", w.d.SessionID, w.d.Turn, err)
 		return !w.left()
 	}
@@ -215,7 +228,7 @@ func startingPhase(phase string) bool { return phase == PhaseCreating || phase =
 // It returns how long the dispatch waited, from the wait's start to the start
 // of its last create.
 func (s *Service) createWaitingForRoom(ctx context.Context, record store.AgentSession, spec dispatchSpec, image sandbox.AgentImage, env map[string]string) (sb sandbox.Sandbox, waited time.Duration, err error) {
-	w := &sandboxWait{s: s, d: store.AgentDispatch{SessionID: record.ID, WorkspaceID: record.WorkspaceID, Turn: spec.turn}}
+	w := &sandboxWait{s: s, d: store.AgentDispatch{SessionID: record.ID, WorkspaceID: record.WorkspaceID, Turn: spec.turn}, saved: spec.saved}
 	outcome := waitOutcomeEnded
 	defer func() {
 		if since, waiting := w.waiting(); waiting {
@@ -223,6 +236,15 @@ func (s *Service) createWaitingForRoom(ctx context.Context, record store.AgentSe
 			s.Metrics.waitOver()
 		}
 	}()
+	if spec.resumed {
+		// Another replica waited for this turn and stopped (w10/022). This
+		// one carries on that wait, from when it began, once whatever the
+		// other's last create left is gone.
+		if !w.mark(ctx) {
+			return sandbox.Sandbox{}, 0, errWaitEnded
+		}
+		s.endAttempt(ctx, w.d)
+	}
 	for {
 		attempt, cancel := context.WithCancel(ctx)
 		watched := make(chan struct{})
@@ -278,4 +300,93 @@ func (s *Service) endAttempt(ctx context.Context, d store.AgentDispatch) {
 	if err := s.Sandbox.CleanupAgentDispatches(ctx, []store.AgentDispatch{d}); err != nil {
 		log.Printf("agent-session dispatch: end the last create's sandbox failed (session=%s turn=%d): %v", d.SessionID, d.Turn, err)
 	}
+}
+
+// savedSpec is a dispatch's input as it is stored while the dispatch waits for
+// a sandbox machine, so that dispatch recovery on another replica carries on
+// the wait if this one stops (w10/022). It holds no secret: secrets,
+// attachments, skills and the repository environment are read again by every
+// dispatch, and the model key is the session's placeholder, made again.
+type savedSpec struct {
+	Template      string            `json:"template,omitempty"`
+	ModelEndpoint string            `json:"modelEndpoint,omitempty"`
+	FullInternet  bool              `json:"fullInternet,omitempty"`
+	Hosts         []string          `json:"hosts,omitempty"`
+	Env           map[string]string `json:"env,omitempty"`
+	Delivery      string            `json:"delivery,omitempty"`
+	// Retained is the retained disk the dispatch claimed (ADR047 D12); its
+	// claim is the row's, so the resumed dispatch boots from it as well.
+	Retained *savedRetained `json:"retained,omitempty"`
+}
+
+type savedRetained struct {
+	ID          string `json:"id"`
+	ImageDigest string `json:"imageDigest"`
+	Turn        int    `json:"turn"`
+}
+
+// save encodes the spec's savedSpec. It is taken at the dispatch's start,
+// when env holds only what the accepting verb put there.
+func (spec dispatchSpec) save() []byte {
+	saved := savedSpec{
+		Template: spec.template, ModelEndpoint: spec.modelEndpoint,
+		FullInternet: spec.egress.FullInternet, Hosts: spec.egress.Hosts,
+		Env: spec.env, Delivery: spec.delivery,
+	}
+	if r := spec.retained; r != nil {
+		saved.Retained = &savedRetained{ID: r.ID, ImageDigest: r.ImageDigest, Turn: r.Turn}
+	}
+	encoded, _ := json.Marshal(saved) // strings, a bool and a map of strings
+	return encoded
+}
+
+// resumedSpec is the dispatch spec of the session's turn a stopped replica
+// waited for, from its stored input.
+func resumedSpec(raw []byte, sessionID string, turn int) (dispatchSpec, error) {
+	var saved savedSpec
+	if err := json.Unmarshal(raw, &saved); err != nil {
+		return dispatchSpec{}, err
+	}
+	spec := dispatchSpec{
+		template: saved.Template, modelEndpoint: saved.ModelEndpoint,
+		modelAPIKey: agentsession.ModelKeyPlaceholder(sessionID),
+		egress:      sessionegress.Egress{FullInternet: saved.FullInternet, Hosts: saved.Hosts},
+		env:         saved.Env, delivery: saved.Delivery, turn: turn, resumed: true,
+	}
+	if r := saved.Retained; r != nil {
+		spec.retained = &store.AgentRetainedImage{ID: r.ID, SessionID: sessionID, Turn: r.Turn, ImageDigest: r.ImageDigest}
+	}
+	return spec, nil
+}
+
+// resumeWait carries on, on this replica, the wait of d, a dispatch that
+// waited for a sandbox machine and whose replica stopped (w10/022): recovery
+// found it due, which a replica still waiting never lets it be. One
+// compare-and-set claims it, so of the replicas that find it at once exactly
+// one resumes it. It reports false when recovery must abandon the dispatch as
+// before: its session is gone or its stored input cannot be read.
+func (s *Service) resumeWait(ctx context.Context, d store.AgentDispatch) bool {
+	raw, err := s.Store.ResumeAgentDispatchWait(ctx, d, time.Now().Add(sandboxWaitLease))
+	if err != nil {
+		// Another replica resumed it first, or the next tick tries again.
+		if !errors.Is(err, store.ErrNotFound) {
+			log.Printf("agent-session dispatch: claim the wait for a sandbox machine failed (session=%s turn=%d): %v", d.SessionID, d.Turn, err)
+		}
+		return true
+	}
+	record, err := s.Store.GetAgentSession(ctx, d.SessionID)
+	if err != nil {
+		// A session that is gone is abandoned now; a read that failed leaves
+		// the wait to the next lease.
+		log.Printf("agent-session dispatch: read the session whose wait to resume failed (session=%s turn=%d): %v", d.SessionID, d.Turn, err)
+		return !errors.Is(err, store.ErrNotFound)
+	}
+	spec, err := resumedSpec(raw, record.ID, d.Turn)
+	if err != nil {
+		log.Printf("agent-session dispatch: the stored wait cannot be read (session=%s turn=%d): %v", d.SessionID, d.Turn, err)
+		return false
+	}
+	log.Printf("agent-session dispatch: resuming the wait for a sandbox machine a stopped replica left (session=%s turn=%d)", d.SessionID, d.Turn)
+	s.detach(ctx, func(ctx context.Context) { s.runDispatch(ctx, record, spec) })
+	return true
 }

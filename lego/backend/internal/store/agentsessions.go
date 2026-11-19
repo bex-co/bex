@@ -1304,10 +1304,15 @@ func (s *PGStore) ListPreviousSandboxTeardownsDue(ctx context.Context, now time.
 
 // DeferPreviousSandboxTeardown pushes next_check_at on a previous-sandbox
 // teardown intent after a failed terminate, without requiring abandoned=true
-// (active steers keep the intent live while the new turn provisions).
+// (active steers keep the intent live while the new turn provisions). A live
+// intent's next_check_at is also when dispatch recovery may take its turn, so
+// it is only ever moved later: a retry never makes the turn's dispatch due
+// while it still provisions or waits for a machine (w10/022). Its binding
+// makes the intent a tombstone that is due at once.
 func (s *PGStore) DeferPreviousSandboxTeardown(ctx context.Context, sessionID string, turn int, next time.Time) error {
 	_, err := s.Pool.Exec(ctx, `
-		UPDATE agent_session_dispatches SET next_check_at = $3
+		UPDATE agent_session_dispatches
+		SET next_check_at = CASE WHEN abandoned THEN $3 ELSE GREATEST(next_check_at, $3) END
 		WHERE session_id = $1 AND turn = $2 AND previous_sandbox_id <> ''`, sessionID, turn, next)
 	return err
 }
@@ -1398,7 +1403,7 @@ func (s *PGStore) RecordAgentSessionDispatch(ctx context.Context, id, sandboxID,
 		// predecessor sandbox (w5/m99 t004). Empty previous → delete as before.
 		tag, err := tx.Exec(ctx, `
 			UPDATE agent_session_dispatches
-			SET abandoned = true, next_check_at = now()
+			SET abandoned = true, wait_spec = NULL, next_check_at = now()
 			WHERE session_id = $1 AND turn = $2 AND previous_sandbox_id <> ''`, id, turn)
 		if err != nil {
 			return err
