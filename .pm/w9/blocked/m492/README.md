@@ -1,6 +1,6 @@
 # w9 · m492 — Object-storage BuildKit layer cache (`BEX_BUILD_CACHE=s3`), enabled permanently in production
 
-**Worker:** worker9 **Goal:** Docker and native builds reuse cached BuildKit layers across deploys in production via off-Zot Wasabi S3 storage, and `clearCache: "clear"` ("Clear build cache & deploy") clears and rebuilds cold on every workspace with zero Zot PVC growth. **Status:** in progress (t001–t004 and t006–t008 done; t005 needs a production pin carrying this milestone; then t009)
+**Worker:** worker9 **Goal:** Docker and native builds reuse cached BuildKit layers across deploys in production via off-Zot Wasabi S3 storage, and `clearCache: "clear"` ("Clear build cache & deploy") clears and rebuilds cold on every workspace with zero Zot PVC growth. **Status:** blocked (t001–t004 and t006–t008 done; t005 waits for a production pin carrying commit `d7e76d312`; then t009)
 
 ## Tasks (in order)
 
@@ -25,8 +25,8 @@
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm for one aspect of render parity` (Build Caching & Build Environment Parity, 2026-11-18, item 1); [ADR060 § D3](../../../docs/ADR060-build-worker-reliability-and-performance.md#d3--per-app-remote-build-cache-in-zot-registry-backend-modemax), [w7/done/047.md](../../w7/done/047.md), [ADR018](../../../docs/ADR018-render-parity.md) (`Runtime, build strategy + Root Directory`, `Trigger a deploy`).
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)) — automatic Docker/native build layer caching and functional `clearCache: "clear"` in every workspace (`render.com/docs/docker`, `render.com/docs/deploys`).
+- **Source:** `/pm-brainstorm for one aspect of render parity` (Build Caching & Build Environment Parity, 2026-11-18, item 1); [ADR060 § D3](../../../../docs/ADR060-build-worker-reliability-and-performance.md#d3--per-app-remote-build-cache-in-zot-registry-backend-modemax), [w7/done/047.md](../../../w7/done/047.md), [ADR018](../../../../docs/ADR018-render-parity.md) (`Runtime, build strategy + Root Directory`, `Trigger a deploy`).
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)) — automatic Docker/native build layer caching and functional `clearCache: "clear"` in every workspace (`render.com/docs/docker`, `render.com/docs/deploys`).
 - **Expected outcome:** Cuts repeat Dockerfile/native build wall time (50–75% on dependency-heavy builds, per ADR060 measurements) and makes `Clear build cache & deploy` truthful in production without threatening Zot's 100 GiB PVC.
 - **Why now:** `BEX_BUILD_CACHE` has been off in production since the 2026-10-26 rollback with no open follow-up, and an off-Zot S3 build-cache store is the storage foundation required by w9/m493 (`$XDG_CACHE_HOME`), w9/m494 (per-runtime dependency caches), and w8/m161 (`NODE_MODULES_CACHE`).
 - **Render parity:** included (t006). Although no API schema field is added, this makes `clearCache: "clear"` effective across REST, GraphQL, MCP, CLI, Build Sources, and Dashboard and closes a customer-visible parity gap in ADR018.
