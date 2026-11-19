@@ -1,6 +1,6 @@
 # w10 · m513 — An agent session has Python 3.12, `uv`, `gitleaks` and a working `gh`, and a repository environment can install other versions, as on Devin
 
-**Worker:** worker10 **Goal:** an agent session on either template (`agent`, `agent-4c-8g`) can run the checks common repositories ask for without network installs: Python 3.12 next to the image's 3.11, `uv`/`uvx` and `gitleaks`. `gh` reads the session repository's CI history and pull requests with no GitHub token in the sandbox. A repository environment's setup step can download a GitHub release asset, so a workspace can add a tool or version the image lacks. **Status:** todo (t001–t005 and t007–t009 done 2026-11-19; t006 and t010 wait on the production deploy that carries this commit)
+**Worker:** worker10 **Goal:** an agent session on either template (`agent`, `agent-4c-8g`) can run the checks common repositories ask for without network installs: Python 3.12 next to the image's 3.11, `uv`/`uvx` and `gitleaks`. `gh` reads the session repository's CI history and pull requests with no GitHub token in the sandbox. A repository environment's setup step can download a GitHub release asset, so a workspace can add a tool or version the image lacks. **Status:** blocked (t001–t005 and t007–t009 done 2026-11-19; t006 and t010 wait on the production deploy that carries this milestone, see § Gate)
 
 ## Tasks (in order)
 
@@ -28,7 +28,7 @@ Total: **10 tasks, about 8h**.
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w10/018](../done/018.md), filed from the agent-automation runs of 2026-11-15..18 (bex-co/beancount-io #188, #189, #208, #212), promoted by `/loopx w10` on 2026-11-19.
+- **Source:** inbox note [w10/018](../../done/018.md), filed from the agent-automation runs of 2026-11-15..18 (bex-co/beancount-io #188, #189, #208, #212), promoted by `/loopx w10` on 2026-11-19.
 - **Triage evidence (2026-11-19):**
   - **The image has only Debian's tools.** `lego/agent-image/Dockerfile` installs bookworm's `python3` (3.11), `python3-pip` and `python3-venv`, Go and Node. There is no `uv`, `gitleaks` or `gh`. ADR090 left `gh` out on purpose ("`gh` is not installed, so there is no second PR path to guard"), and the overlay says "the `gh` CLI is not authenticated" (`lego/agent-image/driver/src/overlay.ts`).
   - **A repository environment cannot add them either.** Setup steps (ADR109, snapshots in ADR111) run as uid 10001, so `apt` is out. The registries tier's egress (`sessionegress/policy.go`: `githubDomains` + `registryDomains`) reaches PyPI, so `pip install uv` works, but not `release-assets.githubusercontent.com`. Python builds (`uv python install`), `gitleaks` and `gh` release downloads all redirect there, which is the "release-asset hosts are unreachable" the agents reported.
@@ -36,7 +36,15 @@ Total: **10 tasks, about 8h**.
 - **Reference product (Devin):**
   - Devin's base image comes with some tools preinstalled (JDK 17, Rust and Cargo, the AWS CLI, direnv, nvm). A blueprint's `initialize` step installs the rest, for example Python 3.12 through `actions/setup-python` or `uv` through its installer ([Template library](https://docs.devin.ai/onboard-devin/environment/templates), [Blueprint reference](https://docs.devin.ai/onboard-devin/environment/blueprint-reference), read 2026-11-19). bex's equivalent of `initialize` is the ADR109 setup step, and DoD 2 makes those installs reachable. DoD 1 bakes in the tools common repositories expect, so sessions with no environment have them too.
   - "Devin's machine can carry a GitHub CLI (`gh`) token that lets Devin use GitHub features directly through the GitHub API", and a security profile can remove it ([Security profiles](https://docs.devin.ai/product-guides/security-profiles), read 2026-11-19). bex reaches the same observable result, a `gh` that works, through the gateway, keeping its no-token invariant. Reads come first because they are what the evidence needs. A write path for `gh` would be a second pull-request path next to the `bex` MCP tools, so it is a separate follow-up, not part of this milestone.
-- **Goal linkage:** ADR008 pillar 5, cloud coding agents ([ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md)). An agent that cannot run a repository's checks pushes work only CI verifies, and cannot reproduce a red CI run.
+- **Goal linkage:** ADR008 pillar 5, cloud coding agents ([ADR047](../../../../docs/ADR047-cloud-coding-agent-sessions.md)). An agent that cannot run a repository's checks pushes work only CI verifies, and cannot reproduce a red CI run.
 - **Expected outcome:** automation and session reports stop saying "relying on CI" for Python 3.12, `uv` and secret-scan checks. A routine that reads CI history (`rt-flaky-test-fixer`) can use `gh`. A workspace whose repository needs another runtime version installs it in a setup step.
 - **Why now:** every bex-co/beancount-io automation run from 2026-11-16 to 2026-11-18 skipped at least one of these checks, and 17 scheduled automations run in the `bex` workspace.
 - **Render parity included (reference product: Devin):** sessions are a tenant-facing surface. t007 compares the tools a bex session has with Devin's base image and blueprint model, and `gh` with Devin's token, and files any gap (for example Java or Rust) as follow-up work.
+
+## Gate (2026-11-19)
+
+Everything implementable shipped in `52f5db3b6`. What remains is t006, the live check, which needs production to run that commit, and then t010.
+
+- **Clears by itself (pin must carry `52f5db3b6`):** the deploy.yml run that carries it builds the amd64 agent image (its build check runs there, and the Trivy CRITICAL gate) and pins bex-api, the ssh gateway and the image digest. Check: `deploy/gitops/base/values/opensandbox-controller.values.yaml` (or the `bex-api` deployment's agent image) names a digest built from a commit that contains `52f5db3b6`.
+- **Then (t006):** in the `bex` workspace, a repo session on `agent-4c-8g` runs `python3 --version`, `python3.12 --version`, `uv --version`, `uvx --version`, `gitleaks version`, `gh run list --limit 3` (answers) and `gh pr create` (refused, naming the bex tools); a repository environment whose setup step runs `uv python install 3.13` builds on a registries-tier workspace; and the next bex-co/beancount-io automation report no longer says it skipped the Python 3.12, `uv` or secret-scan checks. The production App (`bex-co`) already holds Actions and Commit statuses, so its read tokens carry them.
+- **Ready for QA when deployed:** no user decision is needed. Use `/unblock w10` only if t006 finds this milestone's own defect.
