@@ -26,8 +26,12 @@ package apps
 // either signal matters, so only valid stacks appear here.
 
 import (
+	"fmt"
+	"math/rand"
 	"testing"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -148,4 +152,187 @@ func TestStackPaidPlanAgreesWithEstimate(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestStackPaidPlanAgreesWithEstimateAcrossValidStacks is the generative
+// companion to TestStackPaidPlanAgreesWithEstimate: instead of one row per
+// shape, it walks deterministic pseudo-random cross-products of valid
+// services, databases and key values and asserts the gate/estimate agreement
+// on every stack. The generator only produces stacks validation would accept,
+// so a disagreement is a real billing bug rather than an invalid-input
+// artifact. Each rule is grounded in the validator it mirrors:
+//
+//   - a static site names no plan (the compiler schema rejects the key;
+//     TestStaticSitePlanIsTheNamedOffender pins it)
+//   - worker, private service and cron refuse the free plan
+//     (normalizeTierForType's paid-only rule)
+//   - unknown or paused plans are refused for a new service
+//     (normalizeTierOrPlan, errPausedTier), so plans come from the catalog
+//   - a free plan caps at one instance (checkInstanceCap) and refuses
+//     autoscaling (autoscalingSpec is paid-only) and disks (validateDisk)
+//   - a disk needs a web, private or worker service, a paid plan, at most one
+//     replica and no autoscaling (validateDisk)
+//
+// A database or key value plan is always a catalog id (the parse writes the
+// create default into a plan-less entry); HA and read replicas stay on the
+// 1c-2g plan, the conservative subset CheckHighAvailabilityPlan admits.
+func TestStackPaidPlanAgreesWithEstimateAcrossValidStacks(t *testing.T) {
+	rng := rand.New(rand.NewSource(1))
+	var sawPaid, sawUnpaid, sawVariable bool
+	for i := 0; i < 200; i++ {
+		st, want := randomPricedStack(rng, i)
+		est := blueprintEstimatedPricing(st)
+		if est == nil {
+			t.Fatalf("stack %d: blueprintEstimatedPricing returned nil", i)
+		}
+		if got := stackHasPaidPlan(st); got != want.paidGate {
+			t.Errorf("stack %d: stackHasPaidPlan = %v, want %v", i, got, want.paidGate)
+		}
+		paidContent := len(est.Lines) > 0 || len(est.Variable) > 0
+		if paidContent != want.paidGate {
+			t.Errorf("stack %d: gate = %v but estimate shows lines=%d variable=%d",
+				i, want.paidGate, len(est.Lines), len(est.Variable))
+		}
+		sawPaid = sawPaid || want.paidGate
+		sawUnpaid = sawUnpaid || !want.paidGate
+		sawVariable = sawVariable || len(est.Variable) > 0
+		// Every priced line names a paid plan: the estimator's $0 filter and
+		// the gate's PaidPlan must read the same tiers as paid.
+		for _, line := range est.Lines {
+			if !core.PaidPlan(line.Tier) {
+				t.Errorf("stack %d: line %q priced at non-paid tier %q", i, line.Name, line.Tier)
+			}
+		}
+		// Static sites run no instance, so they never surface anywhere.
+		for _, name := range want.staticNames {
+			for _, line := range est.Lines {
+				if line.Name == name {
+					t.Errorf("stack %d: static site %q priced in line %q", i, name, line.Name)
+				}
+			}
+			for _, v := range est.Variable {
+				if v.Name == name {
+					t.Errorf("stack %d: static site %q listed as variable %q", i, name, v.Reason)
+				}
+			}
+		}
+		// Every variable entry is explained by its resource's declaration.
+		for _, v := range est.Variable {
+			decl, ok := want.byName[v.Name]
+			if !ok {
+				t.Errorf("stack %d: variable entry %q names no declared service", i, v.Name)
+				continue
+			}
+			switch v.Reason {
+			case pricing.VariableCron:
+				if decl.svcType != appv1alpha1.TypeCronJob {
+					t.Errorf("stack %d: %q listed as cron but is %q", i, v.Name, decl.svcType)
+				}
+			case pricing.VariableAutoscaling:
+				if !decl.autoscaling {
+					t.Errorf("stack %d: %q listed as autoscaled without autoscaling", i, v.Name)
+				}
+			case pricing.VariableMultiInstance:
+				if decl.replicas <= 1 {
+					t.Errorf("stack %d: %q listed as multi-instance with %d replicas", i, v.Name, decl.replicas)
+				}
+			default:
+				t.Errorf("stack %d: unknown variable reason %q", i, v.Reason)
+			}
+		}
+	}
+	// The generator must exercise both sides of the agreement, or it would
+	// pass vacuously.
+	if !sawPaid || !sawUnpaid || !sawVariable {
+		t.Errorf("generator coverage: paid=%v unpaid=%v variable=%v; want all true", sawPaid, sawUnpaid, sawVariable)
+	}
+}
+
+// pricedServiceDecl is what a generated parsedService declared, the fields the
+// estimate can observe.
+type pricedServiceDecl struct {
+	svcType     string
+	replicas    int32
+	autoscaling bool
+}
+
+type pricingAgreementOracle struct {
+	paidGate    bool
+	staticNames []string
+	byName      map[string]pricedServiceDecl
+}
+
+// randomPricedStack builds a validation-acceptable stack plus its oracle: the
+// gate verdict, the static-site names, and every service's estimate-visible
+// declaration by name.
+func randomPricedStack(rng *rand.Rand, seed int) (parsedStack, pricingAgreementOracle) {
+	want := pricingAgreementOracle{byName: map[string]pricedServiceDecl{}}
+	var st parsedStack
+	svcTypes := []string{"", appv1alpha1.TypeWebService, appv1alpha1.TypeBackgroundWorker,
+		appv1alpha1.TypePrivateService, appv1alpha1.TypeCronJob, appv1alpha1.TypeStaticSite}
+	computePlans := []string{"", "free", "starter", "standard"}
+	for j := 0; j < rng.Intn(4); j++ {
+		svcType := svcTypes[rng.Intn(len(svcTypes))]
+		plan := computePlans[rng.Intn(len(computePlans))]
+		if svcType == appv1alpha1.TypeStaticSite {
+			plan = ""
+		} else if plan == "free" && (svcType == appv1alpha1.TypeBackgroundWorker ||
+			svcType == appv1alpha1.TypePrivateService || svcType == appv1alpha1.TypeCronJob) {
+			plan = "starter"
+		}
+		paid := plan != "free" && svcType != appv1alpha1.TypeStaticSite
+		replicas := int32(rng.Intn(4))
+		if !paid && replicas > 1 {
+			replicas = 1
+		}
+		autoscaling := paid && rng.Intn(2) == 0 &&
+			(svcType == "" || svcType == appv1alpha1.TypeWebService ||
+				svcType == appv1alpha1.TypePrivateService || svcType == appv1alpha1.TypeBackgroundWorker)
+		disk := paid && !autoscaling && replicas <= 1 && rng.Intn(2) == 0 &&
+			(svcType == "" || svcType == appv1alpha1.TypeWebService ||
+				svcType == appv1alpha1.TypePrivateService || svcType == appv1alpha1.TypeBackgroundWorker)
+		req := CreateRequest{Name: fmt.Sprintf("svc-%d-%d", seed, j), Type: svcType, Plan: plan, Replicas: replicas}
+		if autoscaling {
+			req.Autoscaling = &SetAutoscalingRequest{MinInstances: 1, MaxInstances: 3}
+		}
+		if disk {
+			size := int32(10 * rng.Intn(3))
+			req.Disk = &ServiceDiskView{Name: "data", MountPath: "/data", SizeGB: size}
+		}
+		st.services = append(st.services, parsedService{req: req})
+		want.byName[req.Name] = pricedServiceDecl{svcType: svcType, replicas: replicas, autoscaling: autoscaling}
+		if paid {
+			want.paidGate = true
+		}
+		if svcType == appv1alpha1.TypeStaticSite {
+			want.staticNames = append(want.staticNames, req.Name)
+		}
+	}
+	dbPlans := []string{"free", "basic-256mb", "basic-1gb", "1c-2g"}
+	dbStorage := []int32{0, 1, 5, 10}
+	for j := 0; j < rng.Intn(3); j++ {
+		plan := dbPlans[rng.Intn(len(dbPlans))]
+		spec := appv1alpha1.DatabaseSpec{Plan: plan, StorageGB: dbStorage[rng.Intn(len(dbStorage))]}
+		if plan == "1c-2g" {
+			spec.HighAvailability = rng.Intn(2) == 0
+			for k := 0; k < rng.Intn(3); k++ {
+				spec.ReadReplicas = append(spec.ReadReplicas,
+					appv1alpha1.DatabaseReadReplica{Name: fmt.Sprintf("r%d", k)})
+			}
+		}
+		st.databases = append(st.databases, parsedDatabase{name: fmt.Sprintf("db-%d-%d", seed, j), spec: spec})
+		if core.PaidPlan(plan) {
+			want.paidGate = true
+		}
+	}
+	kvPlans := []string{"free", "starter"}
+	for j := 0; j < rng.Intn(3); j++ {
+		plan := kvPlans[rng.Intn(len(kvPlans))]
+		spec := appv1alpha1.KeyValueSpec{Plan: plan, StorageGB: int32(5 * rng.Intn(2))}
+		st.keyValues = append(st.keyValues, parsedKeyValue{name: fmt.Sprintf("kv-%d-%d", seed, j), spec: spec})
+		if core.PaidPlan(plan) {
+			want.paidGate = true
+		}
+	}
+	return st, want
 }
