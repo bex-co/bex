@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ListFilter } from "lucide-react";
+import { cn } from "@/common/lib/utils/utils";
+import { MOBILE_BREAKPOINT } from "@/common/hooks/use-mobile";
 import { Button } from "@/common/components/ui/button";
 import { Checkbox } from "@/common/components/ui/checkbox";
 import { Input } from "@/common/components/ui/input";
@@ -46,16 +48,25 @@ function triState(selected: number, total: number): TriState {
 // everything the API returned, and only a type the user actively unchecks
 // disappears. `extraTypes` carries the types present in the current feed that
 // the catalog does not know, so they are controllable as well as visible.
+// An option row: a 44px target on a touch layout, which the popover (portalled
+// outside the page's touch region) has to size itself.
+const OPTION_CLASS =
+  "flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50 max-lg:min-h-11 pointer-coarse:min-h-11";
+
 export function ServiceEventFilter({
   hidden,
   onChange,
   extraTypes = [],
+  disabled = false,
 }: {
   hidden: Set<string>;
   onChange: (next: Set<string>) => void;
   extraTypes?: string[];
+  /** Nothing to filter yet: the feed's first page is still loading. */
+  disabled?: boolean;
 }) {
   const { t } = useTranslations();
+  const allRef = useRef<HTMLButtonElement>(null);
   const [search, setSearch] = useState("");
   const needle = search.trim().toLowerCase();
   const groups = useMemo(
@@ -103,7 +114,7 @@ export function ServiceEventFilter({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" disabled={disabled}>
           <ListFilter className="size-3.5" aria-hidden="true" />
           {hidden.size === 0
             ? t("services.eventsFilter")
@@ -115,6 +126,21 @@ export function ServiceEventFilter({
           (w4/438). */}
       <PopoverContent
         align="end"
+        // Clear of the screen's edges on a phone, where it can flip upward.
+        collisionPadding={8}
+        // On a touch screen or a phone, focus lands on the first option, not
+        // the search field: focusing it would raise the keyboard over the
+        // list just opened to tick. Search takes focus when tapped.
+        onOpenAutoFocus={(event) => {
+          if (
+            window.matchMedia?.(
+              `(pointer: coarse), (max-width: ${MOBILE_BREAKPOINT - 1}px)`,
+            )?.matches
+          ) {
+            event.preventDefault();
+            allRef.current?.focus();
+          }
+        }}
         aria-label={t("services.eventsFilter")}
         className="max-h-[min(30rem,var(--radix-popover-content-available-height))] w-80 p-0"
       >
@@ -126,8 +152,9 @@ export function ServiceEventFilter({
             aria-label={t("services.eventsFilterSearch")}
             autoComplete="off"
           />
-          <label className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-muted/50">
+          <label className={cn(OPTION_CLASS, "font-medium")}>
             <Checkbox
+              ref={allRef}
               checked={allState}
               onCheckedChange={() =>
                 // Select-all clears the exclusion set outright rather than
@@ -147,7 +174,7 @@ export function ServiceEventFilter({
             const groupLabel = t(`services.eventsFilterGroup.${group.key}`);
             return (
               <section key={group.key} aria-label={groupLabel}>
-                <label className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 text-sm font-semibold hover:bg-muted/50">
+                <label className={cn(OPTION_CLASS, "font-semibold")}>
                   <Checkbox
                     checked={state}
                     onCheckedChange={() => setMany(group.types, state !== true)}
@@ -157,10 +184,7 @@ export function ServiceEventFilter({
                 </label>
                 <div className="space-y-0.5 ps-6">
                   {group.types.map((type) => (
-                    <label
-                      key={type}
-                      className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
-                    >
+                    <label key={type} className={OPTION_CLASS}>
                       <Checkbox
                         checked={!hidden.has(type)}
                         onCheckedChange={(checked) =>
@@ -181,6 +205,12 @@ export function ServiceEventFilter({
             </p>
           ) : null}
         </div>
+        {/* More types below the panel's edge fade out rather than end
+            flush, so the list reads as one that scrolls. */}
+        <div
+          aria-hidden
+          className="from-popover pointer-events-none sticky bottom-0 -mt-6 h-6 bg-linear-to-t to-transparent"
+        />
       </PopoverContent>
     </Popover>
   );

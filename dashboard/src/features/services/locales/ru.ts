@@ -4639,56 +4639,48 @@ const ruServices: Record<string, TranslationEntry> = {
     description:
       "Service sidebar link to the Compute page: the compute plan, manual scaling and autoscaling, as on Render (w6/m483)",
   },
-  "services.eventsTitle": {
-    message: "Активность",
-    description: "Events tab card title",
-  },
-  "services.eventsDescription": {
-    message: "Недавние деплои и изменения сервиса.",
-    description: "Events tab card description",
-  },
   "services.eventsCount_one": {
-    message: "{count} недавнее событие",
+    message: "{count} событие",
     description:
       "Accessible label for the number of visible service events (singular)",
   },
   "services.eventsCount_few": {
-    message: "{count} недавних события",
+    message: "{count} события",
     description:
       "Accessible label for the number of visible service events (plural)",
   },
   "services.eventsCount_many": {
-    message: "{count} недавних событий",
+    message: "{count} событий",
     description:
       "Accessible label for the number of visible service events (plural)",
   },
   "services.eventsCount_other": {
-    message: "{count} недавнего события",
+    message: "{count} события",
     description:
       "Accessible label for the number of visible service events (plural)",
   },
   "services.eventsCountAtLeast_one": {
-    message: "Как минимум {count} недавнее событие",
+    message: "{count}+ событие",
     description:
       "Accessible label for the event count badge while older events remain unread (singular)",
   },
   "services.eventsCountAtLeast_few": {
-    message: "Как минимум {count} недавних события",
+    message: "{count}+ события",
     description:
       "Accessible label for the event count badge while older events remain unread (plural)",
   },
   "services.eventsCountAtLeast_many": {
-    message: "Как минимум {count} недавних событий",
+    message: "{count}+ событий",
     description:
       "Accessible label for the event count badge while older events remain unread (plural)",
   },
   "services.eventsCountAtLeast_other": {
-    message: "Как минимум {count} недавнего события",
+    message: "{count}+ события",
     description:
       "Accessible label for the event count badge while older events remain unread (plural)",
   },
   "services.eventsEmptyTitle": {
-    message: "Активности пока нет",
+    message: "Событий пока нет",
     description: "Events tab empty-state title",
   },
   "services.eventsEmpty": {
@@ -4696,12 +4688,11 @@ const ruServices: Record<string, TranslationEntry> = {
     description: "Events tab empty-state description",
   },
   "services.eventsErrorTitle": {
-    message: "Активность недоступна",
+    message: "События недоступны",
     description: "Events tab query-error title",
   },
   "services.eventsErrorDescription": {
-    message:
-      "Не удалось загрузить недавнюю активность. Повторите попытку чуть позже.",
+    message: "Не удалось загрузить события этого сервиса.",
     description: "Events tab query-error description",
   },
   "services.eventsRetry": {
@@ -4725,12 +4716,22 @@ const ruServices: Record<string, TranslationEntry> = {
     description: "Button opening the service event-type filter",
   },
   "services.eventsFilterSelected": {
-    message: "Фильтр событий ({count})",
+    message: "Типы событий: {count}",
     description: "Event filter button with selected-type count",
   },
   "services.eventsFilterSearch": {
-    message: "Поиск событий",
+    message: "Поиск типов событий",
     description: "Search input for service event types",
+  },
+  "services.eventsFilterShowAll": {
+    message: "Показать все события",
+    description:
+      "Events tab: button in the filtered-to-nothing state that shows every event type again",
+  },
+  "services.eventsShownOf": {
+    message: "Показано {shown} из {total}",
+    description:
+      "Events tab: count over the feed while a filter hides some rows; {total} is the loaded count, '20+' while older events remain",
   },
   "services.eventsFilterAll": {
     message: "Все события",
@@ -4748,6 +4749,16 @@ const ruServices: Record<string, TranslationEntry> = {
     message:
       "Выберите больше типов событий или загрузите более старую историю.",
     description: "Body when loaded history has no selected event types",
+  },
+  "services.eventsFilterNoneTitle": {
+    message: "Не выбран ни один тип событий",
+    description:
+      "Events tab: title when the filter has every event type deselected",
+  },
+  "services.eventsFilterNone": {
+    message: "Выберите хотя бы один тип, чтобы увидеть события.",
+    description:
+      "Events tab: body when the filter has every event type deselected",
   },
   "services.eventsFilterGroup.deploy": {
     message: "Деплой",

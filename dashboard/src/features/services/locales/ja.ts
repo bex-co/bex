@@ -4636,26 +4636,18 @@ const jaServices: Record<string, TranslationEntry> = {
     description:
       "Service sidebar link to the Compute page: the compute plan, manual scaling and autoscaling, as on Render (w6/m483)",
   },
-  "services.eventsTitle": {
-    message: "アクティビティ",
-    description: "Events tab card title",
-  },
-  "services.eventsDescription": {
-    message: "最近のデプロイとサービスの変更です。",
-    description: "Events tab card description",
-  },
   "services.eventsCount_other": {
-    message: "最近のイベント {count} 件",
+    message: "イベント {count} 件",
     description:
       "Accessible label for the number of visible service events (plural)",
   },
   "services.eventsCountAtLeast_other": {
-    message: "最近のイベント {count} 件以上",
+    message: "イベント {count} 件以上",
     description:
       "Accessible label for the event count badge while older events remain unread (plural)",
   },
   "services.eventsEmptyTitle": {
-    message: "アクティビティはまだありません",
+    message: "イベントはまだありません",
     description: "Events tab empty-state title",
   },
   "services.eventsEmpty": {
@@ -4663,12 +4655,11 @@ const jaServices: Record<string, TranslationEntry> = {
     description: "Events tab empty-state description",
   },
   "services.eventsErrorTitle": {
-    message: "アクティビティを利用できません",
+    message: "イベントを表示できません",
     description: "Events tab query-error title",
   },
   "services.eventsErrorDescription": {
-    message:
-      "最近のアクティビティを読み込めませんでした。しばらくしてからもう一度お試しください。",
+    message: "このサービスのイベントを読み込めませんでした。",
     description: "Events tab query-error description",
   },
   "services.eventsRetry": {
@@ -4692,12 +4683,22 @@ const jaServices: Record<string, TranslationEntry> = {
     description: "Button opening the service event-type filter",
   },
   "services.eventsFilterSelected": {
-    message: "イベントを絞り込む（{count}）",
+    message: "イベントの種類: {count}",
     description: "Event filter button with selected-type count",
   },
   "services.eventsFilterSearch": {
-    message: "イベントを検索",
+    message: "イベントの種類を検索",
     description: "Search input for service event types",
+  },
+  "services.eventsFilterShowAll": {
+    message: "すべてのイベントを表示",
+    description:
+      "Events tab: button in the filtered-to-nothing state that shows every event type again",
+  },
+  "services.eventsShownOf": {
+    message: "{total} 件中 {shown} 件を表示",
+    description:
+      "Events tab: count over the feed while a filter hides some rows; {total} is the loaded count, '20+' while older events remain",
   },
   "services.eventsFilterAll": {
     message: "すべてのイベント",
@@ -4714,6 +4715,17 @@ const jaServices: Record<string, TranslationEntry> = {
   "services.eventsFilterEmpty": {
     message: "イベントタイプをさらに選択するか、古い履歴を読み込んでください。",
     description: "Body when loaded history has no selected event types",
+  },
+  "services.eventsFilterNoneTitle": {
+    message: "イベントの種類が選択されていません",
+    description:
+      "Events tab: title when the filter has every event type deselected",
+  },
+  "services.eventsFilterNone": {
+    message:
+      "イベントを表示するには、少なくとも 1 つの種類を選択してください。",
+    description:
+      "Events tab: body when the filter has every event type deselected",
   },
   "services.eventsFilterGroup.deploy": {
     message: "デプロイ",

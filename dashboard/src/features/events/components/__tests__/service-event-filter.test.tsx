@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import i18n from "@/i18n/init";
 import { ServiceEventFilter } from "@/features/events/components/service-event-filter";
 import { SERVICE_EVENT_GROUPS } from "@/features/events/service-event-catalog";
@@ -20,6 +20,34 @@ function Harness({ extraTypes }: { extraTypes?: string[] }) {
 }
 
 describe("ServiceEventFilter", () => {
+  // On a phone the search field would raise the keyboard over the list just
+  // opened to tick; desktop keeps the search-first focus.
+  it.each([
+    [true, "All events"],
+    [false, "Search event types"],
+  ])("on a phone (%s) opens with focus on %s", async (phone, focused) => {
+    const matchMedia = vi.spyOn(window, "matchMedia").mockImplementation(
+      (query: string) =>
+        ({
+          matches: phone,
+          media: query,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+        }) as unknown as MediaQueryList,
+    );
+    try {
+      const user = userEvent.setup();
+      render(<Harness />);
+      await user.click(screen.getByRole("button", { name: "Filter events" }));
+      const target = phone
+        ? screen.getByRole("checkbox", { name: focused })
+        : screen.getByRole("textbox", { name: focused });
+      expect(target).toHaveFocus();
+    } finally {
+      matchMedia.mockRestore();
+    }
+  });
+
   it("exposes the truthful Render-shaped groups and filters them by search", async () => {
     const user = userEvent.setup();
     render(<Harness />);
@@ -42,7 +70,7 @@ describe("ServiceEventFilter", () => {
     ).not.toBeInTheDocument();
 
     await user.type(
-      screen.getByRole("textbox", { name: "Search events" }),
+      screen.getByRole("textbox", { name: "Search event types" }),
       "commit ignored",
     );
     expect(
@@ -64,7 +92,7 @@ describe("ServiceEventFilter", () => {
     // build/pre-deploy/job-run-ended, w9/m345 pipeline_minutes_exhausted): 13
     // types.
     expect(
-      screen.getByRole("button", { name: /Filter events \(13\)/ }),
+      screen.getByRole("button", { name: "Event types: 13" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("checkbox", { name: "Deploy started" }),
@@ -179,7 +207,7 @@ describe("ServiceEventFilter — every option has its own name (w4/223)", () => 
     );
 
     expect(
-      screen.getByRole("button", { name: /Filter events \(1\)/ }),
+      screen.getByRole("button", { name: "Event types: 1" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("checkbox", { name: "Root directory changed" }),
@@ -195,7 +223,7 @@ describe("ServiceEventFilter — every option has its own name (w4/223)", () => 
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(screen.getByRole("button", { name: "Filter events" }));
-    const search = screen.getByRole("textbox", { name: "Search events" });
+    const search = screen.getByRole("textbox", { name: "Search event types" });
 
     await user.type(search, "shutdown");
     expect(

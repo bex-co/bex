@@ -48,6 +48,14 @@ const shortDateTime = perLanguage({
   hour12: true,
 });
 const mediumDateTime = perLanguage({ dateStyle: "medium", timeStyle: "short" });
+const timeToMinute = perLanguage({ hour: "numeric", minute: "2-digit" });
+const mediumDate = perLanguage({ dateStyle: "medium" });
+const monthDayTime = perLanguage({
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
 const axisTime = perLanguage({
   hour: "numeric",
   minute: "2-digit",
@@ -59,6 +67,7 @@ const axisDate = perLanguage({
   hour: "numeric",
   hour12: true,
 });
+// The day without its year: an axis's whole-day tick, and this year's dates.
 const axisDay = perLanguage({ month: "short", day: "numeric" });
 
 /**
@@ -102,6 +111,41 @@ export function formatMediumDateTime(
   language?: string,
 ): string {
   return formatWith(mediumDateTime(language), instant);
+}
+
+/** A compact date: "Nov 17, 2026", "2026年11月17日". Client-only. */
+export function formatMediumDate(
+  instant: string | number,
+  language?: string,
+): string {
+  return formatWith(mediumDate(language), instant);
+}
+
+/** The day without its year, for this year's dates: "Nov 17", "11月17日".
+ *  Client-only. */
+export function formatMonthDay(
+  instant: string | number,
+  language?: string,
+): string {
+  return formatWith(axisDay(language), instant);
+}
+
+/** The day without its year, and the time to the minute: "Nov 17, 11:53 PM",
+ *  "11月17日 下午11:53". Client-only. */
+export function formatMonthDayTime(
+  instant: string | number,
+  language?: string,
+): string {
+  return formatWith(monthDayTime(language), instant);
+}
+
+/** The time of day to the minute, on the dashboard language's own clock:
+ *  "11:53 PM", "23:53", "下午11:53". Client-only. */
+export function formatTimeToMinute(
+  instant: string | number,
+  language?: string,
+): string {
+  return formatWith(timeToMinute(language), instant);
 }
 
 function formatWith(format: Intl.DateTimeFormat, instant: string | number) {

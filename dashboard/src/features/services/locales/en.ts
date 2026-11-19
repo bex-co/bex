@@ -4592,36 +4592,28 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Service sidebar link to the Compute page: the compute plan, manual scaling and autoscaling, as on Render (w6/m483)",
   },
-  "services.eventsTitle": {
-    message: "Activity",
-    description: "Events tab card title",
-  },
-  "services.eventsDescription": {
-    message: "Recent deploys and service changes.",
-    description: "Events tab card description",
-  },
   "services.eventsCount_one": {
-    message: "{count} recent event",
+    message: "{count} event",
     description:
       "Accessible label for the number of visible service events (singular)",
   },
   "services.eventsCount_other": {
-    message: "{count} recent events",
+    message: "{count} events",
     description:
       "Accessible label for the number of visible service events (plural)",
   },
   "services.eventsCountAtLeast_one": {
-    message: "At least {count} recent event",
+    message: "{count}+ events",
     description:
       "Accessible label for the event count badge while older events remain unread (singular)",
   },
   "services.eventsCountAtLeast_other": {
-    message: "At least {count} recent events",
+    message: "{count}+ events",
     description:
       "Accessible label for the event count badge while older events remain unread (plural)",
   },
   "services.eventsEmptyTitle": {
-    message: "No activity yet",
+    message: "No events yet",
     description: "Events tab empty-state title",
   },
   "services.eventsEmpty": {
@@ -4629,11 +4621,11 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Events tab empty-state description",
   },
   "services.eventsErrorTitle": {
-    message: "Activity is unavailable",
+    message: "Events are unavailable",
     description: "Events tab query-error title",
   },
   "services.eventsErrorDescription": {
-    message: "We couldn't load recent activity. Try again in a moment.",
+    message: "We couldn't load this service's events.",
     description: "Events tab query-error description",
   },
   "services.eventsRetry": {
@@ -4657,12 +4649,22 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Button opening the service event-type filter",
   },
   "services.eventsFilterSelected": {
-    message: "Filter events ({count})",
+    message: "Event types: {count}",
     description: "Event filter button with selected-type count",
   },
   "services.eventsFilterSearch": {
-    message: "Search events",
+    message: "Search event types",
     description: "Search input for service event types",
+  },
+  "services.eventsFilterShowAll": {
+    message: "Show all events",
+    description:
+      "Events tab: button in the filtered-to-nothing state that shows every event type again",
+  },
+  "services.eventsShownOf": {
+    message: "Showing {shown} of {total}",
+    description:
+      "Events tab: count over the feed while a filter hides some rows; {total} is the loaded count, '20+' while older events remain",
   },
   "services.eventsFilterAll": {
     message: "All events",
@@ -4679,6 +4681,16 @@ const enServices: Record<string, TranslationEntry> = {
   "services.eventsFilterEmpty": {
     message: "Choose more event types or load older history.",
     description: "Body when loaded history has no selected event types",
+  },
+  "services.eventsFilterNoneTitle": {
+    message: "No event types selected",
+    description:
+      "Events tab: title when the filter has every event type deselected",
+  },
+  "services.eventsFilterNone": {
+    message: "Pick at least one type to see events.",
+    description:
+      "Events tab: body when the filter has every event type deselected",
   },
   "services.eventsFilterGroup.deploy": {
     message: "Deploy",

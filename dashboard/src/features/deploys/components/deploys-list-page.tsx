@@ -1,4 +1,5 @@
-import { META_SEPARATED_CLASS } from "@/common/lib/ui/meta-separators";
+import { SeparatedMeta } from "@/common/components/separated-meta";
+import { STRETCHED_LINK_CLASS } from "@/common/lib/stretched-link";
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { AlertCircle, Search } from "lucide-react";
@@ -294,7 +295,10 @@ export function DeploysListPage({
                     to="/services/$serviceId/deploys/$deployId"
                     params={{ serviceId, deployId: d.id }}
                     title={d.id}
-                    className="col-start-2 min-w-0 after:absolute after:inset-0 after:rounded-md after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
+                    className={cn(
+                      "col-start-2 min-w-0 after:rounded-md",
+                      STRETCHED_LINK_CLASS,
+                    )}
                   >
                     {subject ? (
                       <>
@@ -318,13 +322,7 @@ export function DeploysListPage({
                       phone, one line once the list has room for it, and the
                       table's own columns from there up. */}
                   <div className="col-start-2 flex min-w-0 flex-col gap-y-1 @2xl/deploys:flex-row @2xl/deploys:items-center @2xl/deploys:gap-x-1.5">
-                    <div
-                      className={cn(
-                        "flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs whitespace-nowrap text-muted-foreground @2xl/deploys:shrink-0",
-                        // One dot between neighbours, whichever are present.
-                        META_SEPARATED_CLASS,
-                      )}
-                    >
+                    <SeparatedMeta className="text-xs text-muted-foreground @2xl/deploys:shrink-0">
                       {/* Render's list links the short SHA to the commit's
                         diff on the forge; with no browsable repo (an
                         image-backed service) it stays plain text. */}
@@ -375,7 +373,7 @@ export function DeploysListPage({
                           {t(preDeploy as Parameters<typeof t>[0])}
                         </span>
                       ) : null}
-                    </div>
+                    </SeparatedMeta>
                     {/* Until the list is wide enough for the full table,
                       Trigger/Duration fold into a line of their own, which
                       keeps clear of the row's action on a phone. */}

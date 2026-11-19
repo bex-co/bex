@@ -127,6 +127,15 @@ import { RegistryCredentialsPanelSkeleton } from "@/features/registry-credential
 import { AuditLogPanelSkeleton } from "@/features/audit/components/audit-log-panel-skeleton";
 import { DeploysListFrameSkeleton } from "@/features/deploys/components/deploys-list-frame";
 import {
+  EVENT_BODY_CELL,
+  EVENT_FOOTER_CLASS,
+  EVENT_ICON_CELL,
+  EVENT_ROW_CLASS,
+  EVENT_TIME_CELL,
+  EVENT_TITLE_CELL,
+  EVENT_TOOLBAR_CLASS,
+} from "@/features/events/lib/event-row-layout";
+import {
   DeployBackLinkSkeleton,
   DeployHeaderSkeleton,
   DeployLogToolbarSkeleton,
@@ -2283,30 +2292,67 @@ export function ServiceCronRunsSkeleton() {
   );
 }
 
+// A typical feed's mix of detail lines per row — a restart's one, a finished
+// deploy's commit and pre-deploy lines, a started deploy's one, then
+// configuration changes with an outcome line each — and how many of its meta
+// lines wrap onto a second line in a phone's narrower column.
+const EVENT_ROW_BODY_LINES = [
+  { lines: 1, phoneWraps: 0 },
+  { lines: 3, phoneWraps: 0 },
+  { lines: 1, phoneWraps: 1 },
+  { lines: 2, phoneWraps: 0 },
+  { lines: 2, phoneWraps: 1 },
+  { lines: 2, phoneWraps: 1 },
+];
+const EVENT_BODY_BAR_WIDTHS = ["w-56", "w-44", "w-40"];
+
 /**
- * The feed's rows while its first page loads: divided rows at the loaded
- * rows' padding, each with the event icon, title and meta lines and the
- * right-hand time, then the Load older slot.
+ * The feed's rows while its first page loads, on the loaded rows' grid: the
+ * icon disc, the title line, the time (a line under the title, or two lines
+ * in its own column in the wide layout), the detail lines, then the Load
+ * older slot.
  */
 export function ServiceEventRowsSkeleton() {
   return (
     <>
       <div className="divide-y">
-        {Array.from({ length: 6 }, (_, index) => (
-          <div key={index} className="flex items-start gap-3 px-5 py-4 sm:px-6">
-            <Skeleton className="size-9 shrink-0 rounded-full" />
-            <div className="flex-1 space-y-2 pt-0.5">
-              <div className="flex items-start justify-between gap-3">
-                <Skeleton className="h-4 w-40" />
-                <Skeleton className="h-3 w-8" />
+        {EVENT_ROW_BODY_LINES.map(({ lines, phoneWraps }, index) => (
+          <div key={index} className={EVENT_ROW_CLASS}>
+            <Skeleton className={EVENT_ICON_CELL} />
+            <div className={EVENT_TITLE_CELL}>
+              <Skeleton className="h-3.5 w-36" />
+            </div>
+            <div className={EVENT_TIME_CELL}>
+              <div className="flex h-5 items-center">
+                <Skeleton className="h-3 w-28" />
               </div>
-              <Skeleton className="h-3 w-56 max-w-full" />
+              <div className="hidden h-5 items-center @2xl/page:flex">
+                <Skeleton className="h-3 w-16" />
+              </div>
+            </div>
+            <div className={EVENT_BODY_CELL}>
+              {Array.from({ length: lines + phoneWraps }, (_, line) => (
+                <div
+                  key={line}
+                  className={cn(
+                    "flex h-5 items-center",
+                    // The phone-only wraps come first: `space-y` spaces every
+                    // line but the last, so a hidden last line would leave
+                    // its neighbour's gap behind on a wider screen.
+                    line < phoneWraps && "@md/page:hidden",
+                  )}
+                >
+                  <Skeleton
+                    className={`h-3 max-w-full ${EVENT_BODY_BAR_WIDTHS[line % EVENT_BODY_BAR_WIDTHS.length]}`}
+                  />
+                </div>
+              ))}
             </div>
           </div>
         ))}
       </div>
-      <div className="flex justify-center border-t px-5 py-4 sm:px-6">
-        <Skeleton className="h-8 w-40" />
+      <div className={EVENT_FOOTER_CLASS}>
+        <Skeleton className="h-8 w-40 max-lg:h-11 pointer-coarse:h-11" />
       </div>
     </>
   );
@@ -2317,25 +2363,12 @@ export function ServiceEventsSkeleton() {
     <PendingFrame route="service-events" className="space-y-6">
       <Region name="event-feed">
         <Card className="gap-0 overflow-hidden py-0">
-          <CardHeader className="border-b py-5">
-            <div className="flex flex-col justify-between gap-4 sm:flex-row">
-              <div className="flex gap-3">
-                <Skeleton className="size-9 shrink-0" />
-                <div className="space-y-1">
-                  {/* Title and count badge on one line, as loaded. */}
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="h-5 w-24" />
-                    <Skeleton className="h-[22px] w-9 rounded-full" />
-                  </div>
-                  <Skeleton className="h-4 w-64 max-w-full" />
-                </div>
-              </div>
-              <Skeleton className="h-9 w-32" />
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ServiceEventRowsSkeleton />
-          </CardContent>
+          {/* The count on the left, the filter on the right, as loaded. */}
+          <div className={EVENT_TOOLBAR_CLASS}>
+            <Skeleton className="h-4 w-36" />
+            <Skeleton className="h-8 w-32 max-lg:h-11 pointer-coarse:h-11" />
+          </div>
+          <ServiceEventRowsSkeleton />
         </Card>
       </Region>
     </PendingFrame>

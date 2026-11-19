@@ -4604,26 +4604,18 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "Service sidebar link to the Compute page: the compute plan, manual scaling and autoscaling, as on Render (w6/m483)",
   },
-  "services.eventsTitle": {
-    message: "활동",
-    description: "Events tab card title",
-  },
-  "services.eventsDescription": {
-    message: "최근 배포 및 서비스 변경 내역입니다.",
-    description: "Events tab card description",
-  },
   "services.eventsCount_other": {
-    message: "최근 이벤트 {count}개",
+    message: "이벤트 {count}개",
     description:
       "Accessible label for the number of visible service events (plural)",
   },
   "services.eventsCountAtLeast_other": {
-    message: "최근 이벤트 {count}개 이상",
+    message: "이벤트 {count}개 이상",
     description:
       "Accessible label for the event count badge while older events remain unread (plural)",
   },
   "services.eventsEmptyTitle": {
-    message: "아직 활동이 없습니다",
+    message: "아직 이벤트가 없습니다",
     description: "Events tab empty-state title",
   },
   "services.eventsEmpty": {
@@ -4631,11 +4623,11 @@ const koServices: Record<string, TranslationEntry> = {
     description: "Events tab empty-state description",
   },
   "services.eventsErrorTitle": {
-    message: "활동을 사용할 수 없습니다",
+    message: "이벤트를 표시할 수 없습니다",
     description: "Events tab query-error title",
   },
   "services.eventsErrorDescription": {
-    message: "최근 활동을 불러오지 못했습니다. 잠시 후 다시 시도하세요.",
+    message: "이 서비스의 이벤트를 불러오지 못했습니다.",
     description: "Events tab query-error description",
   },
   "services.eventsRetry": {
@@ -4659,12 +4651,22 @@ const koServices: Record<string, TranslationEntry> = {
     description: "Button opening the service event-type filter",
   },
   "services.eventsFilterSelected": {
-    message: "이벤트 필터({count})",
+    message: "이벤트 유형: {count}",
     description: "Event filter button with selected-type count",
   },
   "services.eventsFilterSearch": {
-    message: "이벤트 검색",
+    message: "이벤트 유형 검색",
     description: "Search input for service event types",
+  },
+  "services.eventsFilterShowAll": {
+    message: "모든 이벤트 표시",
+    description:
+      "Events tab: button in the filtered-to-nothing state that shows every event type again",
+  },
+  "services.eventsShownOf": {
+    message: "{total}개 중 {shown}개 표시",
+    description:
+      "Events tab: count over the feed while a filter hides some rows; {total} is the loaded count, '20+' while older events remain",
   },
   "services.eventsFilterAll": {
     message: "모든 이벤트",
@@ -4681,6 +4683,16 @@ const koServices: Record<string, TranslationEntry> = {
   "services.eventsFilterEmpty": {
     message: "이벤트 유형을 더 선택하거나 이전 기록을 불러오세요.",
     description: "Body when loaded history has no selected event types",
+  },
+  "services.eventsFilterNoneTitle": {
+    message: "선택된 이벤트 유형이 없습니다",
+    description:
+      "Events tab: title when the filter has every event type deselected",
+  },
+  "services.eventsFilterNone": {
+    message: "이벤트를 보려면 유형을 하나 이상 선택하세요.",
+    description:
+      "Events tab: body when the filter has every event type deselected",
   },
   "services.eventsFilterGroup.deploy": {
     message: "배포",

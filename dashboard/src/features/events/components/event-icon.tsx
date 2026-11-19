@@ -1,7 +1,6 @@
 import {
   Ban,
   CheckCircle2,
-  CircleDot,
   Eraser,
   FolderInput,
   Globe,
@@ -17,6 +16,7 @@ import {
   RefreshCcw,
   Rocket,
   Scale,
+  Settings2,
   Terminal,
   Unplug,
   XCircle,
@@ -94,6 +94,7 @@ export function EventIcon({
       <CheckCircle2 {...iconProps} />
     );
   }
-  const Icon = Object.hasOwn(EVENT_ICONS, type) ? EVENT_ICONS[type] : CircleDot;
+  // The fallback type's label is "Service settings changed".
+  const Icon = Object.hasOwn(EVENT_ICONS, type) ? EVENT_ICONS[type] : Settings2;
   return <Icon {...iconProps} />;
 }

@@ -22,14 +22,16 @@ export function eventIconClass(
     factStatus === "succeeded" ||
     (type === "deploy_ended" && status === "live")
   ) {
-    return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
+    // The Live badge's own green, so a success reads in one colour.
+    return "bg-primary/10 text-primary";
   }
   if (
     type === "deploy_started" ||
     type === "build_started" ||
     type === "pre_deploy_started"
   ) {
-    return "bg-primary/10 text-primary";
+    // Under way, not yet a success: the foreground, not green.
+    return "bg-muted text-foreground";
   }
   return "bg-muted text-muted-foreground";
 }

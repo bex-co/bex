@@ -1,8 +1,22 @@
-import { META_SEPARATED_CLASS } from "@/common/lib/ui/meta-separators";
+import { SeparatedMeta } from "@/common/components/separated-meta";
+import { STRETCHED_LINK_CLASS } from "@/common/lib/stretched-link";
+import {
+  aroundPlaceholder,
+  PLACEHOLDER_SENTINEL,
+} from "@/common/lib/i18n-placeholder";
+import { CommitSha } from "@/features/deploys/components/commit-sha";
 import { serviceTabHead } from "@/features/services/lib/service-tab-head";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Activity, AlertCircle, ListFilter, RefreshCcw } from "lucide-react";
+import {
+  Activity,
+  AlertCircle,
+  ChevronRight,
+  History,
+  ListFilter,
+  RefreshCcw,
+  type LucideIcon,
+} from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspaceSubjectLabel } from "@/common/hooks/use-workspace-subject-label";
 import { EventIcon } from "@/features/events/components/event-icon";
@@ -10,13 +24,7 @@ import {
   eventIconClass,
   lifecycleStatusVariant,
 } from "@/features/events/lib/event-presentation";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/common/components/ui/card";
+import { Card } from "@/common/components/ui/card";
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import { Skeleton } from "@/common/components/ui/skeleton";
@@ -25,8 +33,29 @@ import { useInstanceTypes } from "@/features/services/hooks/use-instance-types";
 import { useProjects } from "@/features/projects/hooks/use-projects";
 import { useEnvironments } from "@/features/environments/hooks/use-environments";
 import { useServiceBase } from "@/features/services/lib/service-base";
-import { RelativeAge } from "@/common/components/relative-time";
 import { useLocalDateTime } from "@/common/hooks/use-local-date";
+import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
+import {
+  formatMediumDate,
+  formatMediumDateTime,
+  formatMonthDay,
+  formatMonthDayTime,
+  formatTimeAgo,
+  formatTimeToMinute,
+} from "@/common/lib/format";
+import { useNow } from "@/common/hooks/use-now";
+import { cn } from "@/common/lib/utils/utils";
+import {
+  EVENT_ACTIONS_CELL,
+  EVENT_BODY_CELL,
+  EVENT_CHEVRON_CELL,
+  EVENT_FOOTER_CLASS,
+  EVENT_ICON_CELL,
+  EVENT_ROW_CLASS,
+  EVENT_TIME_CELL,
+  EVENT_TITLE_CELL,
+  EVENT_TOOLBAR_CLASS,
+} from "@/features/events/lib/event-row-layout";
 import {
   deployStatusVariant as statusVariant,
   deployStatusKey as statusKey,
@@ -35,7 +64,10 @@ import {
   isCancelableDeployStatus,
 } from "@/features/deploys/lib/deploy-status";
 import { DeployActions } from "@/features/deploys/components/deploy-actions";
-import { formatDeployDuration } from "@/features/deploys/lib/deploy-presentation";
+import {
+  deploySubject,
+  formatDeployDuration,
+} from "@/features/deploys/lib/deploy-presentation";
 import { useGoneBuilds } from "@/features/deploys/hooks/use-gone-builds";
 import {
   autoDeployDisabledReasonKey,
@@ -132,7 +164,6 @@ function triggerKey(trigger: TriggerFlags): string | null {
 
 export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();
-  const base = useServiceBase();
   // The service's createdAt bounds the history and autoDeploy words the
   // auto-deploy events; a cron job's runs have their own Runs page (w2/m360).
   const { service } = useServer(serviceId, { poll: false });
@@ -184,113 +215,112 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
     [events],
   );
 
+  const filtered = hiddenTypes.size > 0;
+  // Every known type is hidden, which the filtered-to-nothing state names
+  // rather than suggesting more types it has none of. Older history can still
+  // bring a type nobody hid, so Load older stays.
+  const noTypeSelected =
+    filtered &&
+    [...SERVICE_EVENT_TYPES, ...uncataloguedTypes].every((type) =>
+      hiddenTypes.has(type),
+    );
+  // How much the feed holds: the loaded count, a floor ("20+") while older
+  // events remain (w4/700), and how many of them a filter leaves showing.
+  const loadedTotal = hasMore ? `${events.length}+` : String(events.length);
+  const countText = filtered
+    ? t("services.eventsShownOf", {
+        shown: visibleEvents.length,
+        total: loadedTotal,
+      })
+    : t(hasMore ? "services.eventsCountAtLeast" : "services.eventsCount", {
+        count: events.length,
+      });
+
+  const firstLoad = loading && events.length === 0;
+  const retryButton = (
+    <Button variant="outline" size="sm" onClick={() => void refetch()}>
+      <RefreshCcw className="size-3.5" aria-hidden="true" />
+      {t("services.eventsRetry")}
+    </Button>
+  );
+
   return (
-    <div className="space-y-6">
-      <Card className="gap-0 overflow-hidden py-0">
-        <CardHeader className="border-b py-5">
-          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-            <div className="flex items-start gap-3">
-              <div className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
-                <Activity className="size-4" aria-hidden="true" />
-              </div>
-              <div className="min-w-0 space-y-1">
-                <div className="flex items-center gap-2">
-                  <CardTitle>{t("services.eventsTitle")}</CardTitle>
-                  {/* Counts the feed read so far, not the post-filter subset:
-                      the badge answers "how much happened", while the list
-                      below answers "what am I looking at". The feed is read a
-                      page at a time, so while older events remain it states a
-                      floor, "20+", never a total it has not read (w4/700). */}
-                  {loading && events.length === 0 ? (
-                    // The count's slot while the first page loads, so the
-                    // title line keeps its height when the count lands.
-                    <Skeleton className="h-[22px] w-9 rounded-full" />
-                  ) : !loading && !error && events.length > 0 ? (
-                    <Badge
-                      variant="secondary"
-                      aria-label={t(
-                        hasMore
-                          ? "services.eventsCountAtLeast"
-                          : "services.eventsCount",
-                        { count: events.length },
-                      )}
-                    >
-                      {hasMore ? `${events.length}+` : events.length}
-                    </Badge>
-                  ) : null}
-                </div>
-                <CardDescription>
-                  {t("services.eventsDescription")}
-                </CardDescription>
-              </div>
-            </div>
-            <ServiceEventFilter
-              hidden={hiddenTypes}
-              onChange={setHiddenTypes}
-              extraTypes={uncataloguedTypes}
-            />
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {error && events.length > 0 ? (
-            <div
-              role="alert"
-              className="flex items-center justify-between gap-3 border-b px-5 py-3 text-sm"
-            >
-              <span>{t("services.eventsErrorDescription")}</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void refetch()}
-              >
-                <RefreshCcw className="size-3.5" aria-hidden="true" />
-                {t("services.eventsRetry")}
-              </Button>
-            </div>
-          ) : null}
+    <Card className="gap-0 overflow-hidden py-0">
+      {/* The tab's name is the heading above; the feed opens on what it
+          holds and the filter, on one line at every width. An empty or
+          unread feed has neither, so its state stands alone. */}
+      {!firstLoad && events.length === 0 ? null : (
+        <div className={EVENT_TOOLBAR_CLASS}>
           {loading && events.length === 0 ? (
-            <ServiceEventRowsSkeleton />
-          ) : error && events.length === 0 ? (
-            <div className="flex flex-col items-center px-6 py-14 text-center">
-              <div className="bg-destructive/10 text-destructive mb-4 flex size-10 items-center justify-center rounded-full">
-                <AlertCircle className="size-5" aria-hidden="true" />
-              </div>
-              <p className="font-medium">{t("services.eventsErrorTitle")}</p>
-              <p className="text-muted-foreground mt-1 max-w-sm text-sm">
-                {t("services.eventsErrorDescription")}
-              </p>
-              <Button
-                className="mt-4"
-                variant="outline"
-                size="sm"
-                onClick={() => void refetch()}
-              >
-                <RefreshCcw className="size-3.5" aria-hidden="true" />
-                {t("services.eventsRetry")}
-              </Button>
-            </div>
-          ) : events.length === 0 ? (
-            <div className="flex flex-col items-center px-6 py-14 text-center">
-              <div className="bg-muted text-muted-foreground mb-4 flex size-10 items-center justify-center rounded-full">
-                <Activity className="size-5" aria-hidden="true" />
-              </div>
-              <p className="font-medium">{t("services.eventsEmptyTitle")}</p>
-              <p className="text-muted-foreground mt-1 max-w-sm text-sm">
-                {t("services.eventsEmpty")}
-              </p>
-            </div>
-          ) : visibleEvents.length === 0 ? (
-            <div className="flex flex-col items-center px-6 py-14 text-center">
-              <div className="bg-muted text-muted-foreground mb-4 flex size-10 items-center justify-center rounded-full">
-                <ListFilter className="size-5" aria-hidden="true" />
-              </div>
-              <p className="font-medium">
-                {t("services.eventsFilterEmptyTitle")}
-              </p>
-              <p className="text-muted-foreground mt-1 max-w-sm text-sm">
-                {t("services.eventsFilterEmpty")}
-              </p>
-            </div>
+            // The count's slot while the first page loads.
+            <Skeleton className="h-4 w-36" />
+          ) : (
+            <p className="text-muted-foreground text-sm" aria-live="polite">
+              {countText}
+            </p>
+          )}
+          <ServiceEventFilter
+            hidden={hiddenTypes}
+            onChange={setHiddenTypes}
+            extraTypes={uncataloguedTypes}
+            // Nothing to filter until the first page lands.
+            disabled={events.length === 0}
+          />
+        </div>
+      )}
+      {error && events.length > 0 ? (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-3 border-b px-5 py-3 text-sm sm:px-6"
+        >
+          <span>{t("services.eventsErrorDescription")}</span>
+          {retryButton}
+        </div>
+      ) : null}
+      {firstLoad ? (
+        <ServiceEventRowsSkeleton />
+      ) : error && events.length === 0 ? (
+        <FeedState
+          role="alert"
+          icon={AlertCircle}
+          tone="destructive"
+          title={t("services.eventsErrorTitle")}
+          body={t("services.eventsErrorDescription")}
+          action={retryButton}
+        />
+      ) : events.length === 0 ? (
+        <FeedState
+          icon={Activity}
+          title={t("services.eventsEmptyTitle")}
+          body={t("services.eventsEmpty")}
+        />
+      ) : (
+        <>
+          {visibleEvents.length === 0 ? (
+            // Both ways forward the copy names, a click away: every type
+            // back, or (below) older history.
+            <FeedState
+              icon={ListFilter}
+              title={t(
+                noTypeSelected
+                  ? "services.eventsFilterNoneTitle"
+                  : "services.eventsFilterEmptyTitle",
+              )}
+              body={t(
+                noTypeSelected
+                  ? "services.eventsFilterNone"
+                  : "services.eventsFilterEmpty",
+              )}
+              action={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setHiddenTypes(new Set())}
+                >
+                  {t("services.eventsFilterShowAll")}
+                </Button>
+              }
+            />
           ) : (
             <div className="divide-y">
               {visibleEvents.map((event) => {
@@ -305,24 +335,6 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
                       ? ""
                       : "update_in_progress"
                     : deployEndedStatus(details);
-                const trigger = triggerKey(details?.trigger ?? null);
-                const preDeploy = preDeployKey(details?.preDeployStatus ?? "");
-                const actor = eventActor(details);
-                const summary = (
-                  <EventSummary
-                    type={event.type ?? ""}
-                    status={status}
-                    factStatus={details?.status ?? ""}
-                    trigger={trigger}
-                    deployId={deployId}
-                    actor={actor.subject}
-                    actorEmail={actor.email}
-                    preDeployStatus={details?.preDeployStatus ?? ""}
-                    preDeploy={preDeploy}
-                    timestamp={event.timestamp}
-                    details={details}
-                  />
-                );
                 // Cancel an in-progress deploy, or roll back a PREVIOUS
                 // (deactivated) one — never the current live deploy, which would
                 // be a no-op restart (w4/051). Mirrors the deploys list's guard
@@ -335,23 +347,13 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
                     (status === "deactivated" && !goneBuilds.has(deployId)));
 
                 return (
-                  <div
+                  <EventRow
                     key={event.id}
-                    className="hover:bg-muted/30 flex flex-col gap-3 px-5 py-4 transition-colors sm:flex-row sm:items-start sm:px-6"
-                  >
-                    {deployId ? (
-                      <Link
-                        to={`${base}/$serviceId/deploys/$deployId`}
-                        params={{ serviceId, deployId }}
-                        className="group min-w-0 flex-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        {summary}
-                      </Link>
-                    ) : (
-                      <div className="min-w-0 flex-1">{summary}</div>
-                    )}
-                    {hasAction ? (
-                      <div className="shrink-0 self-end sm:self-center">
+                    event={event}
+                    status={status}
+                    serviceId={serviceId}
+                    actions={
+                      hasAction ? (
                         <DeployActions
                           serviceId={serviceId}
                           deployId={deployId}
@@ -370,37 +372,78 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
                           }
                           onChanged={() => void refetch()}
                         />
-                      </div>
-                    ) : null}
-                  </div>
+                      ) : null
+                    }
+                  />
                 );
               })}
-              {hasMore ? (
-                <div className="flex justify-center px-5 py-4 sm:px-6">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={loadingMore}
-                    onClick={() => void loadMore()}
-                  >
-                    <RefreshCcw
-                      className={`size-3.5 ${loadingMore ? "animate-spin" : ""}`}
-                      aria-hidden="true"
-                    />
-                    {loadingMore
-                      ? t("services.eventsLoadingOlder")
-                      : t("services.eventsLoadOlder")}
-                  </Button>
-                </div>
-              ) : (
-                <p className="text-muted-foreground px-5 py-4 text-center text-xs sm:px-6">
-                  {t("services.eventsHistoryEnd")}
-                </p>
-              )}
             </div>
           )}
-        </CardContent>
-      </Card>
+          <div className={EVENT_FOOTER_CLASS}>
+            {hasMore ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={loadingMore}
+                onClick={() => void loadMore()}
+              >
+                <History
+                  className={`size-3.5 ${loadingMore ? "animate-pulse" : ""}`}
+                  aria-hidden="true"
+                />
+                {loadingMore
+                  ? t("services.eventsLoadingOlder")
+                  : t("services.eventsLoadOlder")}
+              </Button>
+            ) : (
+              <p className="text-muted-foreground text-center text-xs">
+                {t("services.eventsHistoryEnd")}
+              </p>
+            )}
+          </div>
+        </>
+      )}
+    </Card>
+  );
+}
+
+/** The feed's empty, error and filtered-to-nothing states: one shape. */
+function FeedState({
+  role,
+  icon: Icon,
+  tone = "muted",
+  title,
+  body,
+  action,
+}: {
+  /** `alert` for the load failure, so assistive technology announces it. */
+  role?: "alert";
+  icon: LucideIcon;
+  tone?: "muted" | "destructive";
+  title: string;
+  body: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div
+      role={role}
+      className="flex flex-col items-center px-6 py-14 text-center"
+    >
+      <div
+        className={cn(
+          "mb-4 flex size-10 items-center justify-center rounded-full",
+          tone === "destructive"
+            ? "bg-destructive/10 text-destructive"
+            : "bg-muted text-muted-foreground",
+        )}
+      >
+        <Icon className="size-5" aria-hidden="true" />
+      </div>
+      <p className="font-medium">{title}</p>
+      <p className="text-muted-foreground mt-1 max-w-sm text-sm text-balance">
+        {body}
+      </p>
+      {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );
 }
@@ -425,36 +468,32 @@ function eventActor(details: EventDetails): { subject: string; email: string } {
   return { subject: stored, email: "" };
 }
 
-function EventSummary({
-  type,
+function EventRow({
+  event,
   status,
-  factStatus,
-  trigger,
-  deployId,
-  actor,
-  actorEmail,
-  preDeployStatus,
-  preDeploy,
-  timestamp,
-  details,
+  serviceId,
+  actions,
 }: {
-  type: string;
+  event: ServiceEventView;
+  /** The deploy's status this row shows, worked out across the feed. */
   status: string;
-  factStatus: string;
-  trigger: string | null;
-  deployId: string;
-  actor: string;
-  actorEmail: string;
-  preDeployStatus: string;
-  preDeploy: string | null;
-  timestamp: string | null;
-  // The event's own payload. Its fields were previously re-spelled as twelve
-  // pass-through props, so a rename on ServiceEventView had to be mirrored in
-  // two more places to keep compiling.
-  details: ServiceEventView["details"];
+  serviceId: string;
+  /** A deploy row's Cancel or Rollback. */
+  actions: ReactNode;
 }) {
   const { t } = useTranslations();
-  const actorLabel = useWorkspaceSubjectLabel(actor, actorEmail);
+  const base = useServiceBase();
+  const bodyId = useId();
+  const type = event.type ?? "";
+  const timestamp = event.timestamp;
+  const details = event.details;
+  const factStatus = details?.status ?? "";
+  const trigger = triggerKey(details?.trigger ?? null);
+  const deployId = details?.deployId ?? "";
+  const preDeployStatus = details?.preDeployStatus ?? "";
+  const preDeploy = preDeployKey(preDeployStatus);
+  const actor = eventActor(details);
+  const actorLabel = useWorkspaceSubjectLabel(actor.subject, actor.email);
   const image = details?.image || null;
   const commitId = details?.commitId || null;
   const commitMessage = details?.commitMessage || null;
@@ -494,63 +533,70 @@ function EventSummary({
   const environmentChanged =
     type === "service_moved" && environmentFrom !== environmentTo;
   const isDeploy = type === "deploy_started" || type === "deploy_ended";
-  const exactTimestamp = useLocalDateTime(timestamp);
+  const title =
+    namedTitle ?? t(serviceEventLabelKey(type) as Parameters<typeof t>[0]);
   // The Deploys list's own duration (w4/601), so one deploy reads the same on
   // both tabs.
   const deployDuration = formatDeployDuration(startedAt, finishedAt);
 
   return (
-    <div className="flex min-w-0 items-start gap-3">
+    <div
+      className={cn(
+        EVENT_ROW_CLASS,
+        deployId && "transition-colors hover:bg-muted/40",
+      )}
+    >
       <div
-        className={`flex size-9 shrink-0 items-center justify-center rounded-full ${eventIconClass(type, status, factStatus)}`}
+        className={cn(
+          EVENT_ICON_CELL,
+          "flex items-center justify-center",
+          eventIconClass(type, status, factStatus),
+        )}
       >
         <EventIcon type={type} status={status} factStatus={factStatus} />
       </div>
-      <div className="min-w-0 flex-1">
-        {/* The time has one slot, right of the title on every row, so the
-            feed's times read down one column; in the meta line it landed
-            wherever that line ended, or alone on a wrapped line. */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <p className="text-sm font-medium group-hover:text-primary">
-              {namedTitle ??
-                t(serviceEventLabelKey(type) as Parameters<typeof t>[0])}
-            </p>
-            {isDeploy && status ? (
-              <Badge variant={statusVariant(status)}>
-                {t(statusKey(status) as Parameters<typeof t>[0])}
-              </Badge>
-            ) : null}
-            {/* Lifecycle-step outcome (w7/m66): build/pre-deploy/job endings. */}
-            {factStatus ? (
-              <Badge variant={lifecycleStatusVariant(factStatus)}>
-                {t(
-                  `services.eventsStatus.${factStatus}` as Parameters<
-                    typeof t
-                  >[0],
-                )}
-              </Badge>
-            ) : null}
-          </div>
-          {timestamp ? (
-            <span className="text-muted-foreground shrink-0 pt-0.5 text-xs tabular-nums">
-              <RelativeAge
-                value={timestamp}
-                title={exactTimestamp ?? undefined}
-              />
-            </span>
-          ) : null}
-        </div>
+      <div className={EVENT_TITLE_CELL}>
+        {deployId ? (
+          // The whole row opens the deploy; the row's details describe the
+          // link.
+          <Link
+            to={`${base}/$serviceId/deploys/$deployId`}
+            params={{ serviceId, deployId }}
+            aria-describedby={bodyId}
+            className={cn(
+              "text-sm leading-5 font-medium",
+              STRETCHED_LINK_CLASS,
+            )}
+          >
+            {title}
+          </Link>
+        ) : (
+          <p className="text-sm leading-5 font-medium">{title}</p>
+        )}
+        {isDeploy && status ? (
+          <Badge variant={statusVariant(status)}>
+            {t(statusKey(status) as Parameters<typeof t>[0])}
+          </Badge>
+        ) : null}
+        {/* Lifecycle-step outcome (w7/m66): build/pre-deploy/job endings. */}
+        {factStatus ? (
+          <Badge variant={lifecycleStatusVariant(factStatus)}>
+            {t(
+              `services.eventsStatus.${factStatus}` as Parameters<typeof t>[0],
+            )}
+          </Badge>
+        ) : null}
+      </div>
+      {timestamp ? <EventTime timestamp={timestamp} /> : null}
+      <div id={bodyId} className={EVENT_BODY_CELL}>
         <DeployFailureReason
           reason={details?.failureReason}
           template={toDeployReasonTemplate(details?.failureReasonTemplate)}
-          className="mt-1"
         />
         <DeployFailureReason
           reason={details?.cancelReason}
           template={toDeployReasonTemplate(details?.cancelReasonTemplate)}
           tone="neutral"
-          className="mt-1"
         />
         {/* w4/m112: the same stall_reason column the deploy detail page
             reads, so the feed and that page cannot disagree about why an
@@ -560,55 +606,41 @@ function EventSummary({
           reason={details?.stallReason}
           template={toDeployReasonTemplate(details?.stallReasonTemplate)}
           tone="neutral"
-          className="mt-1"
         />
-        <div
-          className={`text-muted-foreground mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs ${META_SEPARATED_CLASS}`}
-        >
+        <SeparatedMeta>
           {trigger ? (
             <span>{t(trigger as Parameters<typeof t>[0])}</span>
           ) : null}
-          {actor ? (
+          {actor.subject ? (
             <span>{t("services.eventsActor", { actor: actorLabel })}</span>
           ) : null}
-          {deployId ? (
-            <span className="font-mono">
-              {t("services.eventsDeployReference", { id: deployId })}
-            </span>
-          ) : null}
-        </div>
-        {/* Deploy enrichment (w1/m47): show commit, image, duration for deploy events */}
-        {isDeploy && (
-          <div className="text-muted-foreground mt-2 space-y-1 text-xs">
-            {/* Commit, message, image and duration on one line, as a deploy
-                row reads on the Deploys tab. */}
-            <div
-              className={`flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 ${META_SEPARATED_CLASS}`}
-            >
-              {commitId ? (
-                <span className="font-mono">{commitId.slice(0, 8)}</span>
-              ) : null}
-              {commitMessage ? (
-                <span className="min-w-0 truncate">{commitMessage}</span>
-              ) : null}
-              {image ? <span className="truncate">{image}</span> : null}
-              {deployDuration !== null ? <span>{deployDuration}</span> : null}
-            </div>
-          </div>
-        )}
+          {deployId ? <DeployReference id={deployId} /> : null}
+        </SeparatedMeta>
+        {/* Deploy enrichment (w1/m47): commit, message, image and
+            duration on one line, as a deploy row reads on the Deploys tab. */}
+        {isDeploy && (commitId || commitMessage || image || deployDuration) ? (
+          <SeparatedMeta>
+            {commitId ? <CommitSha commitId={commitId} url={null} /> : null}
+            {commitMessage ? (
+              <span className="min-w-0 truncate">
+                {deploySubject(commitMessage)}
+              </span>
+            ) : null}
+            {image ? <span className="min-w-0 truncate">{image}</span> : null}
+            {deployDuration !== null ? <span>{deployDuration}</span> : null}
+          </SeparatedMeta>
+        ) : null}
         {preDeploy ? (
           <p
-            className={`mt-2 text-xs ${
-              preDeployStatus === "failed"
-                ? "text-destructive"
-                : "text-muted-foreground"
-            }`}
+            className={
+              preDeployStatus === "failed" ? "text-destructive" : undefined
+            }
           >
             {t(preDeploy as Parameters<typeof t>[0])}
           </p>
         ) : null}
         {reasonCode ? (
-          <p className="text-muted-foreground mt-2 text-xs">
+          <p>
             {t(eventReasonKey(type, reasonCode, memoryLimit), {
               exitCode: exitCode ?? "",
               memory: memoryLimit ? memoryLimitLabel(memoryLimit) : "",
@@ -619,7 +651,7 @@ function EventSummary({
           </p>
         ) : null}
         {fromCount != null && toCount != null ? (
-          <p className="text-muted-foreground mt-2 text-xs">
+          <p>
             {t("services.eventsReplicaChange", {
               from: fromCount,
               to: toCount,
@@ -633,7 +665,7 @@ function EventSummary({
           <PlanChange from={details?.planFrom || null} to={planTo} />
         ) : null}
         {usagePercent != null && thresholdPercent != null ? (
-          <p className="text-muted-foreground mt-2 text-xs">
+          <p>
             {t("services.eventsDiskUsage", {
               disk: details?.diskName ?? "",
               mountPath: details?.mountPath ?? "",
@@ -643,7 +675,7 @@ function EventSummary({
           </p>
         ) : null}
         {type === "display_name_changed" && details?.displayNameTo ? (
-          <p className="text-muted-foreground mt-2 text-xs">
+          <p>
             {t("services.eventsDisplayNameChange", {
               from: details.displayNameFrom ?? "",
               to: details.displayNameTo,
@@ -651,12 +683,10 @@ function EventSummary({
           </p>
         ) : null}
         {autoDeployReason ? (
-          <p className="text-muted-foreground mt-2 text-xs">
-            {t(autoDeployReason as Parameters<typeof t>[0])}
-          </p>
+          <p>{t(autoDeployReason as Parameters<typeof t>[0])}</p>
         ) : null}
         {branchFrom && branchTo ? (
-          <p className="text-muted-foreground mt-2 text-xs">
+          <p>
             {t("services.eventsBranchChange", {
               from: branchFrom,
               to: branchTo,
@@ -672,28 +702,92 @@ function EventSummary({
           />
         ) : null}
         {type === "branch_deleted" && branchFrom ? (
-          <p className="text-muted-foreground mt-2 text-xs">
-            {t("services.eventsBranchDeleted", { branch: branchFrom })}
-          </p>
+          <p>{t("services.eventsBranchDeleted", { branch: branchFrom })}</p>
         ) : null}
         {type === "commit_ignored" && commitId ? (
-          <p className="text-muted-foreground mt-2 text-xs">
-            {commitUrl ? (
-              <a
-                href={commitUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="font-mono underline underline-offset-2"
-              >
-                {commitId.slice(0, 8)}
-              </a>
-            ) : (
-              <span className="font-mono">{commitId.slice(0, 8)}</span>
-            )}
+          <p>
+            <CommitSha commitId={commitId} url={commitUrl} className="z-10" />
           </p>
         ) : null}
       </div>
+      {actions ? (
+        <div className={cn(EVENT_ACTIONS_CELL, "relative z-10")}>{actions}</div>
+      ) : null}
+      {deployId ? (
+        <ChevronRight
+          aria-hidden="true"
+          className={cn(EVENT_CHEVRON_CELL, "text-muted-foreground size-4")}
+        />
+      ) : null}
     </div>
+  );
+}
+
+/**
+ * When an event happened, in the viewer's zone (deferred past hydration,
+ * w6/m107): the date and clock reading, then how long ago — said as "ago", so
+ * it never reads as how long the event took. This year's events leave the year
+ * off, which repeated on every row. Its own component, so the minute tick that
+ * moves "23 hours ago" redraws only this, not the row.
+ */
+function EventTime({ timestamp }: { timestamp: string }) {
+  const { t, i18n } = useTranslations();
+  const hydrated = useIsHydrated();
+  const now = useNow();
+  const exact = useLocalDateTime(timestamp);
+  const local = hydrated ? timestamp : null;
+  const language = i18n.language;
+  const thisYear =
+    !!local && new Date(local).getFullYear() === new Date(now).getFullYear();
+  const ago = local
+    ? ` · ${formatTimeAgo(local, { now, language, justNow: t("common.justNow") })}`
+    : null;
+  return (
+    <time
+      dateTime={timestamp}
+      title={exact ?? undefined}
+      className={EVENT_TIME_CELL}
+    >
+      {/* A phone's line under the title, then the wide layout's column: one
+          is always display:none, so each is read once. */}
+      <span className="block @2xl/page:hidden">
+        {local
+          ? (thisYear ? formatMonthDayTime : formatMediumDateTime)(
+              local,
+              language,
+            )
+          : null}
+        {ago}
+      </span>
+      <span className="hidden @2xl/page:block">
+        {local
+          ? (thisYear ? formatMonthDay : formatMediumDate)(local, language)
+          : null}
+      </span>
+      <span className="hidden whitespace-nowrap @2xl/page:block">
+        {local ? formatTimeToMinute(local, language) : null}
+        {ago}
+      </span>
+    </time>
+  );
+}
+
+/**
+ * "Deploy dep-live-001": the word in the UI font, as the line's other labels
+ * are, and only the id in mono, as the commit hash beside it is. The id goes
+ * wherever the language's own phrase puts it.
+ */
+function DeployReference({ id }: { id: string }) {
+  const { t } = useTranslations();
+  const [before, after] = aroundPlaceholder(
+    t("services.eventsDeployReference", { id: PLACEHOLDER_SENTINEL }),
+  );
+  return (
+    <span>
+      {before}
+      <span className="font-mono">{id}</span>
+      {after}
+    </span>
   );
 }
 
@@ -737,7 +831,7 @@ function PlacementChange({
       : t("services.eventsPlacementNone");
   const environments = [...fromEnvironments, ...toEnvironments];
   return (
-    <div className="text-muted-foreground mt-2 space-y-1 text-xs">
+    <div className="space-y-1">
       {projectChanged ? (
         <p>
           {t("services.eventsProjectChange", {
@@ -808,7 +902,7 @@ function AutoscalingChange({
     return t("services.eventsAutoscalingRange", { min, max });
   };
   return (
-    <p className="text-muted-foreground mt-2 text-xs">
+    <p>
       {t("services.eventsAutoscalingChange", {
         from: fromOff
           ? t("services.eventsAutoscalingOff")
@@ -834,7 +928,7 @@ function PlanChange({ from, to }: { from: string | null; to: string }) {
   const { t } = useTranslations();
   const { byID } = useInstanceTypes();
   return (
-    <p className="text-muted-foreground mt-2 text-xs">
+    <p>
       {t("services.eventsPlanChange", {
         from: from
           ? (byID(from)?.name ?? from)

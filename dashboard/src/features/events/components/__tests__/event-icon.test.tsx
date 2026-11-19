@@ -32,8 +32,8 @@ describe("EventIcon", () => {
     ["edge_cache_enabled", "zap"],
     ["edge_cache_disabled", "zap-off"],
     ["edge_cache_purged", "eraser"],
-    ["unknown_event", "circle-dot"],
-    ["constructor", "circle-dot"],
+    ["unknown_event", "settings-2"],
+    ["constructor", "settings-2"],
   ])("shows %s independently of unrelated outcome fields", (type, icon) => {
     const { container } = render(
       <EventIcon type={type} status="update_failed" factStatus="failed" />,

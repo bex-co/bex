@@ -4666,46 +4666,38 @@ const esServices: Record<string, TranslationEntry> = {
     description:
       "Service sidebar link to the Compute page: the compute plan, manual scaling and autoscaling, as on Render (w6/m483)",
   },
-  "services.eventsTitle": {
-    message: "Actividad",
-    description: "Events tab card title",
-  },
-  "services.eventsDescription": {
-    message: "Despliegues y cambios recientes del servicio.",
-    description: "Events tab card description",
-  },
   "services.eventsCount_one": {
-    message: "{count} evento reciente",
+    message: "{count} evento",
     description:
       "Accessible label for the number of visible service events (singular)",
   },
   "services.eventsCount_many": {
-    message: "{count} de eventos recientes",
+    message: "{count} de eventos",
     description:
       "Accessible label for the number of visible service events (plural)",
   },
   "services.eventsCount_other": {
-    message: "{count} eventos recientes",
+    message: "{count} eventos",
     description:
       "Accessible label for the number of visible service events (plural)",
   },
   "services.eventsCountAtLeast_one": {
-    message: "Al menos {count} evento reciente",
+    message: "{count}+ eventos",
     description:
       "Accessible label for the event count badge while older events remain unread (singular)",
   },
   "services.eventsCountAtLeast_many": {
-    message: "Al menos {count} de eventos recientes",
+    message: "{count}+ eventos",
     description:
       "Accessible label for the event count badge while older events remain unread (plural)",
   },
   "services.eventsCountAtLeast_other": {
-    message: "Al menos {count} eventos recientes",
+    message: "{count}+ eventos",
     description:
       "Accessible label for the event count badge while older events remain unread (plural)",
   },
   "services.eventsEmptyTitle": {
-    message: "Aún no hay actividad",
+    message: "Aún no hay eventos",
     description: "Events tab empty-state title",
   },
   "services.eventsEmpty": {
@@ -4713,12 +4705,11 @@ const esServices: Record<string, TranslationEntry> = {
     description: "Events tab empty-state description",
   },
   "services.eventsErrorTitle": {
-    message: "La actividad no está disponible",
+    message: "Los eventos no están disponibles",
     description: "Events tab query-error title",
   },
   "services.eventsErrorDescription": {
-    message:
-      "No pudimos cargar la actividad reciente. Inténtalo de nuevo en un momento.",
+    message: "No pudimos cargar los eventos de este servicio.",
     description: "Events tab query-error description",
   },
   "services.eventsRetry": {
@@ -4742,12 +4733,22 @@ const esServices: Record<string, TranslationEntry> = {
     description: "Button opening the service event-type filter",
   },
   "services.eventsFilterSelected": {
-    message: "Filtrar eventos ({count})",
+    message: "Tipos de evento: {count}",
     description: "Event filter button with selected-type count",
   },
   "services.eventsFilterSearch": {
-    message: "Buscar eventos",
+    message: "Buscar tipos de evento",
     description: "Search input for service event types",
+  },
+  "services.eventsFilterShowAll": {
+    message: "Mostrar todos los eventos",
+    description:
+      "Events tab: button in the filtered-to-nothing state that shows every event type again",
+  },
+  "services.eventsShownOf": {
+    message: "Mostrando {shown} de {total}",
+    description:
+      "Events tab: count over the feed while a filter hides some rows; {total} is the loaded count, '20+' while older events remain",
   },
   "services.eventsFilterAll": {
     message: "Todos los eventos",
@@ -4764,6 +4765,16 @@ const esServices: Record<string, TranslationEntry> = {
   "services.eventsFilterEmpty": {
     message: "Elige más tipos de evento o carga un historial más antiguo.",
     description: "Body when loaded history has no selected event types",
+  },
+  "services.eventsFilterNoneTitle": {
+    message: "No hay tipos de evento seleccionados",
+    description:
+      "Events tab: title when the filter has every event type deselected",
+  },
+  "services.eventsFilterNone": {
+    message: "Elige al menos un tipo para ver eventos.",
+    description:
+      "Events tab: body when the filter has every event type deselected",
   },
   "services.eventsFilterGroup.deploy": {
     message: "Despliegue",

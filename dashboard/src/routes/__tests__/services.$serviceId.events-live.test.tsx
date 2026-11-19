@@ -40,9 +40,8 @@ vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
   useWorkspaceSubjectLabel: (subject: string) => subject,
 }));
 vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
-  const { mockAllowedResourceActions } = await import(
-    "@/test/mocks/resource-actions"
-  );
+  const { mockAllowedResourceActions } =
+    await import("@/test/mocks/resource-actions");
   return mockAllowedResourceActions("app");
 });
 vi.mock("@/features/workspaces/context/hooks", async () => {
@@ -306,7 +305,9 @@ describe("mounted Activity refresh", () => {
     await tick(30_000);
     expect(screen.getByText("Service woke up")).toBeInTheDocument();
     expect(screen.getAllByText("Service went to sleep")).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: /^Filter events/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /^(Filter events|Event types)/ }),
+    );
     expect(
       screen.getByRole("checkbox", { name: "Configuration" }),
     ).not.toBeChecked();

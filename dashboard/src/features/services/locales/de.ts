@@ -4676,36 +4676,28 @@ const deServices: Record<string, TranslationEntry> = {
     description:
       "Service sidebar link to the Compute page: the compute plan, manual scaling and autoscaling, as on Render (w6/m483)",
   },
-  "services.eventsTitle": {
-    message: "Aktivität",
-    description: "Events tab card title",
-  },
-  "services.eventsDescription": {
-    message: "Aktuelle Deployments und Service-Änderungen.",
-    description: "Events tab card description",
-  },
   "services.eventsCount_one": {
-    message: "{count} aktuelles Ereignis",
+    message: "{count} Ereignis",
     description:
       "Accessible label for the number of visible service events (singular)",
   },
   "services.eventsCount_other": {
-    message: "{count} aktuelle Ereignisse",
+    message: "{count} Ereignisse",
     description:
       "Accessible label for the number of visible service events (plural)",
   },
   "services.eventsCountAtLeast_one": {
-    message: "Mindestens {count} aktuelles Ereignis",
+    message: "{count}+ Ereignisse",
     description:
       "Accessible label for the event count badge while older events remain unread (singular)",
   },
   "services.eventsCountAtLeast_other": {
-    message: "Mindestens {count} aktuelle Ereignisse",
+    message: "{count}+ Ereignisse",
     description:
       "Accessible label for the event count badge while older events remain unread (plural)",
   },
   "services.eventsEmptyTitle": {
-    message: "Noch keine Aktivität",
+    message: "Noch keine Ereignisse",
     description: "Events tab empty-state title",
   },
   "services.eventsEmpty": {
@@ -4713,12 +4705,11 @@ const deServices: Record<string, TranslationEntry> = {
     description: "Events tab empty-state description",
   },
   "services.eventsErrorTitle": {
-    message: "Aktivität ist nicht verfügbar",
+    message: "Ereignisse sind nicht verfügbar",
     description: "Events tab query-error title",
   },
   "services.eventsErrorDescription": {
-    message:
-      "Die aktuelle Aktivität konnte nicht geladen werden. Versuche es gleich noch einmal.",
+    message: "Die Ereignisse dieses Services konnten nicht geladen werden.",
     description: "Events tab query-error description",
   },
   "services.eventsRetry": {
@@ -4742,12 +4733,22 @@ const deServices: Record<string, TranslationEntry> = {
     description: "Button opening the service event-type filter",
   },
   "services.eventsFilterSelected": {
-    message: "Ereignisse filtern ({count})",
+    message: "Ereignistypen: {count}",
     description: "Event filter button with selected-type count",
   },
   "services.eventsFilterSearch": {
-    message: "Ereignisse suchen",
+    message: "Ereignistypen durchsuchen",
     description: "Search input for service event types",
+  },
+  "services.eventsFilterShowAll": {
+    message: "Alle Ereignisse anzeigen",
+    description:
+      "Events tab: button in the filtered-to-nothing state that shows every event type again",
+  },
+  "services.eventsShownOf": {
+    message: "{shown} von {total} angezeigt",
+    description:
+      "Events tab: count over the feed while a filter hides some rows; {total} is the loaded count, '20+' while older events remain",
   },
   "services.eventsFilterAll": {
     message: "Alle Ereignisse",
@@ -4764,6 +4765,16 @@ const deServices: Record<string, TranslationEntry> = {
   "services.eventsFilterEmpty": {
     message: "Wähle weitere Ereignistypen oder lade älteren Verlauf.",
     description: "Body when loaded history has no selected event types",
+  },
+  "services.eventsFilterNoneTitle": {
+    message: "Keine Ereignistypen ausgewählt",
+    description:
+      "Events tab: title when the filter has every event type deselected",
+  },
+  "services.eventsFilterNone": {
+    message: "Wähle mindestens einen Typ, um Ereignisse zu sehen.",
+    description:
+      "Events tab: body when the filter has every event type deselected",
   },
   "services.eventsFilterGroup.deploy": {
     message: "Deployment",

@@ -2,12 +2,10 @@ import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { en } from "@/i18n";
-
-/**
- * Never collides with real phrase text, so splitting on it recovers the
- * translated words around the phrase regardless of language word order.
- */
-const PHRASE_SENTINEL = "\u0000";
+import {
+  aroundPlaceholder,
+  PLACEHOLDER_SENTINEL,
+} from "@/common/lib/i18n-placeholder";
 
 export interface SudoCommandFieldProps {
   /** DOM id for the input (unique per dialog). */
@@ -68,8 +66,8 @@ export function SudoPrompt({
   phrase: string;
 }) {
   const { t } = useTranslations();
-  const [before, after] = t(promptKey, { phrase: PHRASE_SENTINEL }).split(
-    PHRASE_SENTINEL,
+  const [before, after] = aroundPlaceholder(
+    t(promptKey, { phrase: PLACEHOLDER_SENTINEL }),
   );
   return (
     <>

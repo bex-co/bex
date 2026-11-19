@@ -4,9 +4,13 @@ export { formatDateISO } from "./format-date-iso";
 export {
   formatAxisTime,
   formatClockTime,
+  formatMediumDate,
+  formatMonthDay,
+  formatMonthDayTime,
   formatMediumDateTime,
   formatShortDateTime,
   formatTimeOfDay,
+  formatTimeToMinute,
 } from "./format-clock-time";
 export { isValidTimeZone } from "./language";
 export { formatDateTime, formatDateLong } from "./format-date-time";

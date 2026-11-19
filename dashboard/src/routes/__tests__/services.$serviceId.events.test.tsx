@@ -1078,7 +1078,9 @@ describe("ServiceEventsPage — the feed is fail-open (w6/m122)", () => {
     ).toHaveLength(1);
     expect(screen.queryByText("No matching events")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /Filter events/ }));
+    await user.click(
+      screen.getByRole("button", { name: /^(Filter events|Event types)/ }),
+    );
     await user.click(
       screen.getByRole("checkbox", { name: "Max shutdown delay changed" }),
     );
@@ -1111,12 +1113,10 @@ describe("ServiceEventsPage — the feed is fail-open (w6/m122)", () => {
     renderEvents("app");
 
     // A window that fits in one page is read whole: the exact count, no "+".
-    expect(await screen.findByLabelText("3 recent events")).toHaveTextContent(
-      /^3$/,
-    );
+    expect(await screen.findByText("3 events")).toBeInTheDocument();
 
-    // Hiding a group narrows the list but not the badge: the badge answers
-    // "how much happened", the list answers "what am I looking at".
+    // Hiding a group narrows the list, and the count says how much of the
+    // read feed is showing — of the window's own total, not the subset.
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Filter events" }));
     await user.click(screen.getByRole("checkbox", { name: "Configuration" }));
@@ -1125,7 +1125,7 @@ describe("ServiceEventsPage — the feed is fail-open (w6/m122)", () => {
     // document-wide text query and hide whether the FEED changed.
     await user.keyboard("{Escape}");
 
-    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getByText("Showing 1 of 3")).toBeInTheDocument();
     expect(
       screen.queryByText("Custom domain verified"),
     ).not.toBeInTheDocument();
@@ -1190,20 +1190,19 @@ describe("ServiceEventsPage — the count badge never states a total it has not 
     const fetchMore = pagedFeed(20, 5);
     renderEvents("app");
 
-    const badge = await screen.findByLabelText("At least 20 recent events");
-    expect(badge).toHaveTextContent(/^20\+$/);
-    expect(screen.queryByText("20")).not.toBeInTheDocument();
+    expect(await screen.findByText("20+ events")).toBeInTheDocument();
+    expect(screen.queryByText("20 events")).not.toBeInTheDocument();
 
-    // Hiding every row changes the list, not the count.
+    // Hiding every row empties the list; the count keeps the floor it read.
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Filter events" }));
     await user.click(screen.getByRole("checkbox", { name: "Configuration" }));
     await user.keyboard("{Escape}");
     expect(screen.getByText("No matching events")).toBeInTheDocument();
-    expect(
-      screen.getByLabelText("At least 20 recent events"),
-    ).toHaveTextContent(/^20\+$/);
-    await user.click(screen.getByRole("button", { name: /Filter events/ }));
+    expect(screen.getByText("Showing 0 of 20+")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: /^(Filter events|Event types)/ }),
+    );
     await user.click(screen.getByRole("checkbox", { name: "Configuration" }));
     await user.keyboard("{Escape}");
 
@@ -1212,11 +1211,8 @@ describe("ServiceEventsPage — the count badge never states a total it has not 
 
     // The older page was short: the window is read to its end, so the badge
     // states the total, with no "+".
-    const total = await screen.findByLabelText("25 recent events");
-    expect(total).toHaveTextContent(/^25$/);
-    expect(
-      screen.queryByLabelText(/At least \d+ recent events/),
-    ).not.toBeInTheDocument();
+    expect(await screen.findByText("25 events")).toBeInTheDocument();
+    expect(screen.queryByText(/\d+\+ events/)).not.toBeInTheDocument();
     expect(
       screen.getByText(
         "You've reached the beginning of this service's history.",
@@ -1227,13 +1223,11 @@ describe("ServiceEventsPage — the count badge never states a total it has not 
   it("words the floor in zh", async () => {
     pagedFeed(20, 0);
     renderEvents("app");
-    await screen.findByLabelText("At least 20 recent events");
+    await screen.findByText("20+ events");
 
     await act(() => i18n.changeLanguage("zh"));
     try {
-      expect(
-        await screen.findByLabelText("最近至少 20 条事件"),
-      ).toHaveTextContent(/^20\+$/);
+      expect(await screen.findByText("至少 20 条事件")).toBeInTheDocument();
     } finally {
       await act(() => i18n.changeLanguage("en"));
     }

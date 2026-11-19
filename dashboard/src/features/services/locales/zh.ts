@@ -4496,25 +4496,17 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Service sidebar link to the Compute page: the compute plan, manual scaling and autoscaling, as on Render (w6/m483)",
   },
-  "services.eventsTitle": {
-    message: "活动",
-    description: "Events tab card title",
-  },
-  "services.eventsDescription": {
-    message: "最近的部署和服务变更。",
-    description: "Events tab card description",
-  },
   "services.eventsCount_other": {
-    message: "最近 {count} 条事件",
+    message: "{count} 条事件",
     description: "Accessible label for the number of visible service events",
   },
   "services.eventsCountAtLeast_other": {
-    message: "最近至少 {count} 条事件",
+    message: "至少 {count} 条事件",
     description:
       "Accessible label for the event count badge while older events remain unread",
   },
   "services.eventsEmptyTitle": {
-    message: "暂无活动",
+    message: "暂无事件",
     description: "Events tab empty-state title",
   },
   "services.eventsEmpty": {
@@ -4522,11 +4514,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Events tab empty-state description",
   },
   "services.eventsErrorTitle": {
-    message: "活动暂不可用",
+    message: "无法显示事件",
     description: "Events tab query-error title",
   },
   "services.eventsErrorDescription": {
-    message: "无法加载最近活动，请稍后重试。",
+    message: "无法加载此服务的事件。",
     description: "Events tab query-error description",
   },
   "services.eventsRetry": {
@@ -4550,12 +4542,22 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "打开服务事件类型筛选器的按钮",
   },
   "services.eventsFilterSelected": {
-    message: "筛选事件（{count}）",
+    message: "事件类型：{count}",
     description: "带所选类型数量的事件筛选按钮",
   },
   "services.eventsFilterSearch": {
-    message: "搜索事件",
+    message: "搜索事件类型",
     description: "服务事件类型搜索输入框",
+  },
+  "services.eventsFilterShowAll": {
+    message: "显示所有事件",
+    description:
+      "Events tab: button in the filtered-to-nothing state that shows every event type again",
+  },
+  "services.eventsShownOf": {
+    message: "显示 {shown} / {total}",
+    description:
+      "Events tab: count over the feed while a filter hides some rows; {total} is the loaded count, '20+' while older events remain",
   },
   "services.eventsFilterAll": {
     message: "所有事件",
@@ -4572,6 +4574,16 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.eventsFilterEmpty": {
     message: "请选择更多事件类型或加载更早的历史记录。",
     description: "已加载历史中没有所选事件类型时的说明",
+  },
+  "services.eventsFilterNoneTitle": {
+    message: "未选择任何事件类型",
+    description:
+      "Events tab: title when the filter has every event type deselected",
+  },
+  "services.eventsFilterNone": {
+    message: "至少选择一种类型以查看事件。",
+    description:
+      "Events tab: body when the filter has every event type deselected",
   },
   "services.eventsFilterGroup.deploy": {
     message: "部署",
