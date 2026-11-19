@@ -154,6 +154,18 @@ func storedCount(h *Handler) int {
 	return len(h.entries)
 }
 
+// ownerStored is storedCount for the owner of a request another replica
+// forwarded. The owner stores its fill only once its response has gone out
+// (ServeHTTP's store after the proxy returns), so the forwarder can finish
+// reading first; this waits up to five seconds for want entries to appear.
+func ownerStored(owner *Handler, want int) int {
+	deadline := time.Now().Add(5 * time.Second)
+	for storedCount(owner) < want && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	return storedCount(owner)
+}
+
 func TestATierFillsEachKeyOnceThroughEitherReplica(t *testing.T) {
 	app := &recorder{delay: 50 * time.Millisecond}
 	a, b := newTier(t, app)
@@ -208,9 +220,9 @@ func TestOnlyAPeerCanMarkAHop(t *testing.T) {
 	if w.Code != http.StatusOK || w.Header().Get(StatusHeader) != statusMiss {
 		t.Fatalf("a forged hop = %d %s", w.Code, w.Header().Get(StatusHeader))
 	}
-	if b.served.Load() != 1 || storedCount(a.h) != 0 || storedCount(b.h) != 1 {
+	if owned := ownerStored(b.h, 1); b.served.Load() != 1 || storedCount(a.h) != 0 || owned != 1 {
 		t.Fatalf("a hop header from outside the tier: owner served %d, stored %d here and %d on the owner; want it ignored and the request forwarded",
-			b.served.Load(), storedCount(a.h), storedCount(b.h))
+			b.served.Load(), storedCount(a.h), owned)
 	}
 
 	path := ownedBy(t, b, a, ".css", forged.URL.Path)
