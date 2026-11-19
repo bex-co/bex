@@ -240,36 +240,53 @@ func (c *Client) MintInstallationToken(ctx context.Context, installationID int64
 	}{Permissions: map[string]string{"contents": "read", "metadata": "read"}})
 }
 
-// MintSessionInstallationToken mints the least-privilege Git credential used by
-// one agent session. GitHub's request accepts repository NAMES (the installation
-// itself fixes the owner), so callers must separately bind owner/account before
-// reaching this method. Contents write includes clone/fetch read access and push;
-// metadata stays read-only. The token expires after GitHub's fixed one-hour TTL.
+// MintSessionInstallationToken mints the Git credential used by one agent
+// session. GitHub's request accepts repository NAMES (the installation itself
+// fixes the owner), so callers must separately bind owner/account before
+// reaching this method. It is a repository write token (see
+// mintRepositoryWriteToken); metadata stays read-only. The token expires after
+// GitHub's fixed one-hour TTL.
 func (c *Client) MintSessionInstallationToken(ctx context.Context, installationID int64, repository string) (InstallationToken, error) {
-	return c.mintRepositoryToken(ctx, installationID, repository, "write")
+	return c.mintRepositoryWriteToken(ctx, installationID, repository)
 }
 
 // MintRepositoryReadToken mints a repository environment build's clone
 // credential (ADR111): contents read-only, so the token cannot push whatever
 // the gateway lets through.
 func (c *Client) MintRepositoryReadToken(ctx context.Context, installationID int64, repository string) (InstallationToken, error) {
-	return c.mintRepositoryToken(ctx, installationID, repository, "read")
+	return c.mintRepositoryToken(ctx, installationID, repository, map[string]string{"contents": "read"})
+}
+
+// mintRepositoryWriteToken mints contents:write plus workflows:write for one
+// repository, as Devin's App holds both (w10/014). GitHub refuses any ref
+// update that changes a file under .github/workflows/ without workflows:write,
+// and it compares a NEW branch with the default branch: a session that started
+// from an older commit could not even push its branch once main had changed a
+// workflow. An installation that has not granted Workflows (an App created
+// from the older manifest, or an owner yet to approve the change) refuses the
+// whole mint with 422, so that mint retries with contents alone, which still
+// pushes every change that leaves the workflow files as they are.
+func (c *Client) mintRepositoryWriteToken(ctx context.Context, installationID int64, repository string) (InstallationToken, error) {
+	token, err := c.mintRepositoryToken(ctx, installationID, repository, map[string]string{"contents": "write", "workflows": "write"})
+	var apiErr *APIError
+	if errors.As(err, &apiErr) && apiErr.Status == http.StatusUnprocessableEntity {
+		return c.mintRepositoryToken(ctx, installationID, repository, map[string]string{"contents": "write"})
+	}
+	return token, err
 }
 
 // mintRepositoryToken mints a token narrowed to one repository NAME with the
-// given contents permission and read-only metadata.
-func (c *Client) mintRepositoryToken(ctx context.Context, installationID int64, repository, contents string) (InstallationToken, error) {
+// given permissions and read-only metadata.
+func (c *Client) mintRepositoryToken(ctx context.Context, installationID int64, repository string, permissions map[string]string) (InstallationToken, error) {
 	repository = strings.TrimSpace(repository)
 	if repository == "" || strings.Contains(repository, "/") {
 		return InstallationToken{}, fmt.Errorf("github: repository name is required")
 	}
+	permissions["metadata"] = "read"
 	return c.mintInstallationToken(ctx, installationID, struct {
 		Repositories []string          `json:"repositories"`
 		Permissions  map[string]string `json:"permissions"`
-	}{
-		Repositories: []string{repository},
-		Permissions:  map[string]string{"contents": contents, "metadata": "read"},
-	})
+	}{Repositories: []string{repository}, Permissions: permissions})
 }
 
 func (c *Client) mintInstallationToken(ctx context.Context, installationID int64, payload any) (InstallationToken, error) {

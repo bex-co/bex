@@ -64,11 +64,7 @@ func (c *Client) repoJSON(ctx context.Context, installationID int64, repo string
 // repoToken mints an installation token for the one repository with only
 // permissions plus metadata:read.
 func (c *Client) repoToken(ctx context.Context, installationID int64, repo string, permissions map[string]string) (string, error) {
-	permissions["metadata"] = "read"
-	tok, err := c.mintInstallationToken(ctx, installationID, struct {
-		Repositories []string          `json:"repositories"`
-		Permissions  map[string]string `json:"permissions"`
-	}{Repositories: []string{repo}, Permissions: permissions})
+	tok, err := c.mintRepositoryToken(ctx, installationID, repo, permissions)
 	return tok.Token, err
 }
 
@@ -265,13 +261,15 @@ var (
 // fast-forward is attempted (a branch already there is left as it is), and
 // it sends force:false, so GitHub refuses anything else too; history on
 // branch is never rewritten. ErrHeadBranchNotFound means from does not exist
-// on GitHub. One token, narrowed to the repository with contents:write,
-// serves every call.
+// on GitHub. One repository write token (contents and, where the
+// installation grants it, workflows: the session's commits may change a
+// workflow file, as a push of its own branch may) serves every call.
 func (c *Client) FastForwardBranch(ctx context.Context, installationID int64, owner, repo, branch, from string) (string, error) {
-	token, err := c.repoToken(ctx, installationID, repo, map[string]string{"contents": "write"})
+	minted, err := c.mintRepositoryWriteToken(ctx, installationID, repo)
 	if err != nil {
 		return "", err
 	}
+	token := minted.Token
 	sha, err := c.GetRepoCommitSHA(ctx, token, owner, repo, from)
 	var apiErr *APIError
 	if errors.As(err, &apiErr) && apiErr.Status == http.StatusNotFound {

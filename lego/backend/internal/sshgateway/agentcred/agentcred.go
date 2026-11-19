@@ -402,7 +402,11 @@ func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 	// "accepted" metric + allowed audit below, which is exactly how the 512 MiB
 	// truncation hid for ten days (w5/m82 follow-on).
 	budget := b.maxResponseBytes()
-	copied, copyErr := io.Copy(w, io.LimitReader(response.Body, budget+1))
+	relay := io.Copy
+	if service == "git-receive-pack" {
+		relay = relayReceivePackReport
+	}
+	copied, copyErr := relay(w, io.LimitReader(response.Body, budget+1))
 	if copied > budget {
 		b.failUpstream("response_cap", service, verified, fmt.Errorf("upstream response exceeded the %d-byte budget", budget))
 		panic(http.ErrAbortHandler)
@@ -583,6 +587,97 @@ func validateReceivePack(body io.Reader, branch string) (io.Reader, error) {
 		}
 	}
 	return io.MultiReader(bytes.NewReader(prefix.Bytes()), reader), nil
+}
+
+// workflowRefusal is how GitHub words a ref update it refuses because the
+// update changes a workflow file and the token lacks workflows:write.
+var workflowRefusal = []byte("without `workflows` permission")
+
+// workflowRefusalExplanation is that refusal in plain words, as side-band
+// progress packets, which git prints as "remote: bex: …".
+var workflowRefusalExplanation = sidebandProgress(
+	"bex: GitHub refused this push because it changes a file under .github/workflows/, and the GitHub App bex pushes with has not been granted the Workflows permission on this repository.",
+	"bex: GitHub compares a new branch with the default branch, so a branch that started from an older commit changes every workflow file the default branch has changed since.",
+	"bex: If you did not edit a workflow, run `git fetch origin HEAD && git merge FETCH_HEAD`, then push again.",
+	"bex: A change to a workflow file itself can be pushed only once an owner of the repository's GitHub account approves the Workflows permission for that App; tell the user.",
+)
+
+func sidebandProgress(lines ...string) []byte {
+	var packets bytes.Buffer
+	for _, line := range lines {
+		fmt.Fprintf(&packets, "%04x\x02%s\n", len(line)+6, line)
+	}
+	return packets.Bytes()
+}
+
+// relayReceivePackReport copies a receive-pack response, GitHub's report on
+// each ref update, to w as io.Copy would, and returns the upstream bytes it
+// read. Before the side-band packet in which GitHub refuses an update for want
+// of the workflows permission, it inserts workflowRefusalExplanation (w10/014),
+// so the agent reads why and what to do ahead of git's raw "[remote rejected]"
+// line. A response that is not side-band framed is copied unchanged.
+func relayReceivePackReport(w io.Writer, upstream io.Reader) (int64, error) {
+	var read int64
+	var tail []byte
+	explained := false
+	// passThrough writes chunk and, unless the stream already ended, copies the
+	// rest unchanged. A stream cut short ends cleanly, as io.Copy's would.
+	passThrough := func(chunk []byte, readErr error) (int64, error) {
+		if _, err := w.Write(chunk); err != nil {
+			return read, err
+		}
+		if errors.Is(readErr, io.EOF) || errors.Is(readErr, io.ErrUnexpectedEOF) {
+			return read, nil
+		}
+		if readErr != nil {
+			return read, readErr
+		}
+		rest, err := io.Copy(w, upstream)
+		return read + rest, err
+	}
+	header := make([]byte, 4)
+	for {
+		n, err := io.ReadFull(upstream, header)
+		read += int64(n)
+		if err != nil {
+			return passThrough(header[:n], err)
+		}
+		length, err := strconv.ParseUint(string(header), 16, 16)
+		if err != nil || length > maxPacketBytes {
+			return passThrough(header, nil) // not pkt-lines
+		}
+		if length <= 4 { // a flush or an empty packet
+			if _, err := w.Write(header); err != nil {
+				return read, err
+			}
+			continue
+		}
+		packet := make([]byte, length)
+		copy(packet, header)
+		n, err = io.ReadFull(upstream, packet[4:])
+		read += int64(n)
+		if err != nil {
+			return passThrough(packet[:4+n], err)
+		}
+		band := packet[4]
+		if band < 1 || band > 3 {
+			return passThrough(packet, nil) // no side-band to speak on
+		}
+		if band == 1 && !explained {
+			// The refusal may straddle two packets of the band-1 stream.
+			seen := append(tail, packet[5:]...)
+			if bytes.Contains(seen, workflowRefusal) {
+				explained = true
+				if _, err := w.Write(workflowRefusalExplanation); err != nil {
+					return read, err
+				}
+			}
+			tail = bytes.Clone(seen[max(0, len(seen)-len(workflowRefusal)+1):])
+		}
+		if _, err := w.Write(packet); err != nil {
+			return read, err
+		}
+	}
 }
 
 func validObjectID(value string) bool {

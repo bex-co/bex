@@ -163,8 +163,9 @@ func TestTakeoverEndpoints(t *testing.T) {
 
 // The takeover fast-forward compares first and moves the pull request's
 // branch only when the session head is ahead of it, with force:false, under
-// one contents:write token. Behind or diverged is ErrNotFastForward without a
-// write; a 422 on the write itself is a branch rule, ErrBranchUpdateRefused.
+// one contents:write + workflows:write token (w10/014). Behind or diverged is
+// ErrNotFastForward without a write; a 422 on the write itself is a branch
+// rule, ErrBranchUpdateRefused.
 func TestFastForwardBranch(t *testing.T) {
 	const head = "0123456789abcdef0123456789abcdef01234567"
 	var patched []map[string]any
@@ -211,8 +212,8 @@ func TestFastForwardBranch(t *testing.T) {
 	if len(patched) != 1 || patched[0]["sha"] != head || patched[0]["force"] != false {
 		t.Fatalf("PATCH bodies = %v, want {sha, force:false}", patched)
 	}
-	if len(scopes) != 1 || scopes[0] != `{"contents":"write","metadata":"read"}` {
-		t.Fatalf("tokens = %v, want one contents:write token", scopes)
+	if len(scopes) != 1 || scopes[0] != `{"contents":"write","metadata":"read","workflows":"write"}` {
+		t.Fatalf("tokens = %v, want one contents:write + workflows:write token", scopes)
 	}
 	// Already there: nothing to move, nothing written.
 	status = "identical"

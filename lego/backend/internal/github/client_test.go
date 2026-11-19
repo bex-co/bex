@@ -29,6 +29,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -166,7 +167,8 @@ func TestMintSessionInstallationTokenNarrowsRepositoryAndPermissions(t *testing.
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatal(err)
 		}
-		if len(body.Repositories) != 1 || body.Repositories[0] != "repo" || body.Permissions["contents"] != "write" || body.Permissions["metadata"] != "read" || len(body.Permissions) != 2 {
+		if len(body.Repositories) != 1 || body.Repositories[0] != "repo" || len(body.Permissions) != 3 ||
+			body.Permissions["contents"] != "write" || body.Permissions["workflows"] != "write" || body.Permissions["metadata"] != "read" {
 			t.Fatalf("scoped token body = %+v", body)
 		}
 		w.WriteHeader(http.StatusCreated)
@@ -182,6 +184,53 @@ func TestMintSessionInstallationTokenNarrowsRepositoryAndPermissions(t *testing.
 	}
 	if _, err := client.MintSessionInstallationToken(context.Background(), 42, "owner/repo"); err == nil {
 		t.Fatal("repository owner must not reach GitHub's name-only narrowing field")
+	}
+}
+
+// w10/014: an installation that has not granted Workflows refuses the whole
+// workflows:write mint with 422, so the session still gets a contents:write
+// token; a 422 the narrower mint repeats (a repository the installation cannot
+// reach) stays an error.
+func TestMintSessionInstallationTokenFallsBackWithoutWorkflows(t *testing.T) {
+	keyPEM, _ := testKeyPEM(t)
+	var requested []string
+	reachable := true
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Permissions map[string]string `json:"permissions"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		perms, _ := json.Marshal(body.Permissions)
+		requested = append(requested, string(perms))
+		if body.Permissions["workflows"] != "" || !reachable {
+			http.Error(w, `{"message":"The permissions requested are not granted to this installation."}`, http.StatusUnprocessableEntity)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		fmt.Fprint(w, `{"token":"ghs_contents","expires_at":"2026-08-01T13:00:00Z"}`)
+	}))
+	defer server.Close()
+	client, _ := NewClient(Config{AppID: "1", PrivateKey: keyPEM, Slug: "bex"})
+	client.baseURL = server.URL
+
+	token, err := client.MintSessionInstallationToken(context.Background(), 42, "repo")
+	if err != nil || token.Token != "ghs_contents" {
+		t.Fatalf("fallback mint = %+v %v", token, err)
+	}
+	want := []string{`{"contents":"write","metadata":"read","workflows":"write"}`, `{"contents":"write","metadata":"read"}`}
+	if !slices.Equal(requested, want) {
+		t.Fatalf("mints = %v, want %v", requested, want)
+	}
+
+	requested, reachable = nil, false
+	var apiErr *APIError
+	if _, err := client.MintSessionInstallationToken(context.Background(), 42, "repo"); !errors.As(err, &apiErr) || apiErr.Status != http.StatusUnprocessableEntity {
+		t.Fatalf("an unreachable repository = %v, want the 422", err)
+	}
+	if len(requested) != 2 {
+		t.Fatalf("mints = %v, want the workflows mint and one retry", requested)
 	}
 }
 
