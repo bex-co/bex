@@ -33,7 +33,7 @@ Total: **12 tasks, about 12h30m**.
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w10/013](../../done/013.md), filed 2026-11-18 from the agent-automation runs of 2026-11-15..18 (sessions `ags-dbu0pfdikg6s738lam7g`, `ags-dbu0pfmc1l2s739d3n3g`, `ags-dbutgej906ns73ff3kb0`), promoted by `/loopx w10` on 2026-11-18. It also covers the last clause of [w10/016](../../016.md) ("before failing a turn on the watchdog, snapshot unpushed work"); 016's own fix (counting a running tool's output as progress) stays there.
+- **Source:** inbox note [w10/013](../../done/013.md), filed 2026-11-18 from the agent-automation runs of 2026-11-15..18 (sessions `ags-dbu0pfdikg6s738lam7g`, `ags-dbu0pfmc1l2s739d3n3g`, `ags-dbutgej906ns73ff3kb0`), promoted by `/loopx w10` on 2026-11-18. It also covers the last clause of [w10/016](../../done/016.md) ("before failing a turn on the watchdog, snapshot unpushed work"); 016's own fix (counting a running tool's output as progress) stays there.
 - **Triage evidence (main at `fd9787d29`, 2026-11-18):**
   - Retention is gated on a Stop: `settleCompleted` keeps a disk only when `outcome == turnOutcomeInterrupted` (`lego/backend/internal/agentsessions/completion.go:756`), and `turnRetention` answers `none` for any turn that is not `Interrupted` (`turn_retention.go:85`).
   - The loss is wider than the note says. Every follow-up message tears the previous sandbox down and boots a fresh one (`runSteerDispatch`, `service.go:2166-2190`; ADR047 D8, a new prompt cannot ride the old sandbox), so a completed turn's unpushed work is gone at the **next message**, not only after the idle close. `dispatchImage` boots the retained image, else the repository environment's image, else the template: none holds the old checkout.

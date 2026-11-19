@@ -37,6 +37,10 @@ export interface TurnBoundOptions {
 // their own, so a hung tool would otherwise hold the turn until the ceiling.
 // The ceiling ends any turn after ceilingMs, progress or not.
 //
+// An agent can also wait on a command with no tool call open (activity.ts):
+// while the commands it started use the CPU they hold the idle clock, for at
+// most toolCallMs past the agent's last progress.
+//
 // Progress only stamps a time; the idle timer re-arms itself for the
 // remaining quiet time when it fires, so a streaming turn costs no timer
 // churn per chunk.
@@ -50,6 +54,7 @@ export class TurnBound {
   #idleTimer: ReturnType<typeof setTimeout> | undefined;
   #toolTimer: ReturnType<typeof setTimeout> | undefined;
   #lastProgress: number;
+  #lastActivity = 0;
   #stopped = false;
 
   constructor(options: TurnBoundOptions) {
@@ -97,6 +102,14 @@ export class TurnBound {
     this.progress();
   }
 
+  // activity notes that the commands the agent started used the CPU since
+  // the last sample. It is ignored once the agent has been silent for
+  // toolCallMs, so a runaway command fails the turn there, not at the ceiling.
+  activity(): void {
+    const now = Date.now();
+    if (now - this.#lastProgress < this.#toolCallMs) this.#lastActivity = now;
+  }
+
   // promptSettled notes the agent ending a prompt: no tool call of it still
   // runs, whatever the agent last reported for one.
   promptSettled(): void {
@@ -122,7 +135,8 @@ export class TurnBound {
     this.#idleTimer = setTimeout(() => {
       this.#idleTimer = undefined;
       if (this.#stopped || this.#toolCalls.size > 0) return;
-      const quietMs = Date.now() - this.#lastProgress;
+      const quietMs =
+        Date.now() - Math.max(this.#lastProgress, this.#lastActivity);
       if (quietMs >= this.#idleMs) {
         this.#expire(
           new Error(`ACP turn made no progress for ${this.#idleMs}ms`),

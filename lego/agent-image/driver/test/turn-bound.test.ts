@@ -146,6 +146,40 @@ test("the cap applies to each tool call from its own start", (t) => {
   assert.match(expired[0].message, /tool call ran longer/);
 });
 
+test("commands using the CPU hold the idle clock, and it runs again once they stop", (t) => {
+  const { bound, expired } = boundUnderFakeTimers(t);
+  // muse's background test suite: the tool call ended at once, then nothing
+  // but CPU for an hour (w10/016).
+  bound.update(toolCall("in_progress"));
+  bound.update(toolCall("completed", true));
+  for (let elapsed = 0; elapsed < 60 * minute; elapsed += minute) {
+    t.mock.timers.tick(minute);
+    bound.activity();
+  }
+  assert.deepEqual(expired, [], "a busy command was cut by the idle bound");
+  t.mock.timers.tick(idleMs - 1);
+  assert.deepEqual(expired, []);
+  t.mock.timers.tick(1);
+  assert.equal(expired.length, 1);
+  assert.match(expired[0].message, /ACP turn made no progress for 1800000ms/);
+});
+
+test("commands using the CPU hold the clock at most the tool-call cap past the agent's last progress", (t) => {
+  const { bound, expired } = boundUnderFakeTimers(t, {
+    ceilingMs: 8 * 60 * minute,
+  });
+  bound.progress();
+  for (let elapsed = 0; elapsed < 6 * 60 * minute; elapsed += minute) {
+    t.mock.timers.tick(minute);
+    if (expired.length) break;
+    bound.activity();
+  }
+  // The last activity counted is the one a minute before the cap.
+  assert.equal(expired.length, 1);
+  assert.equal(Date.now(), toolCallMs - minute + idleMs);
+  assert.match(expired[0].message, /made no progress/);
+});
+
 test("a prompt that ends settles any tool call the agent left running", (t) => {
   const { bound, expired } = boundUnderFakeTimers(t);
   bound.update(toolCall("in_progress"));
@@ -244,3 +278,53 @@ test("a turn whose agent goes silent fails at the idle bound, not the ceiling", 
   assert.equal(status.state, "failed");
   assert.match(status.error, /made no progress/);
 });
+
+// The fixture agent waits on a background command with no tool call open and
+// no update, as muse does (w10/016). The driver reads the command's CPU in
+// /proc, so these need Linux.
+const needsProc = { skip: process.platform !== "linux" && "needs /proc" };
+
+test(
+  "a turn waiting on a busy background command outlives the idle bound",
+  needsProc,
+  async () => {
+    const config = await tempConfig({
+      agentEnv: {
+        ACP_FIXTURE_BACKGROUND: "busy",
+        ACP_FIXTURE_BACKGROUND_MS: "2000",
+      },
+      turnTimeoutMs: 20_000,
+      turnIdleTimeoutMs: 500,
+    });
+    const result = await runHeadlessTurn(
+      config,
+      childEnv(config),
+      new UIMessageStreamHub(),
+      { activityIntervalMs: 100 },
+    );
+    assert.equal(result.state, "succeeded");
+  },
+);
+
+test(
+  "a turn waiting on an idle background command still fails at the idle bound",
+  needsProc,
+  async () => {
+    const config = await tempConfig({
+      agentEnv: {
+        ACP_FIXTURE_BACKGROUND: "idle",
+        ACP_FIXTURE_BACKGROUND_MS: "10000",
+      },
+      turnTimeoutMs: 20_000,
+      turnIdleTimeoutMs: 500,
+    });
+    const started = Date.now();
+    await assert.rejects(
+      runHeadlessTurn(config, childEnv(config), new UIMessageStreamHub(), {
+        activityIntervalMs: 100,
+      }),
+      /ACP turn made no progress for 500ms/,
+    );
+    assert.ok(Date.now() - started < 10_000, "an idle command held the turn");
+  },
+);

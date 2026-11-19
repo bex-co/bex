@@ -439,6 +439,21 @@ lines.on("line", async (line) => {
       }
       const delay = Number(process.env.ACP_FIXTURE_DELAY_MS || 0);
       if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+      // w10/016: wait on a background command the way muse does, with no
+      // tool call open and no update until it ends. `busy` spins the CPU
+      // like a test suite, `idle` sleeps like a hung command.
+      const background = process.env.ACP_FIXTURE_BACKGROUND;
+      if (background) {
+        const ms = Number(process.env.ACP_FIXTURE_BACKGROUND_MS || 1000);
+        const body =
+          background === "busy"
+            ? `const end = Date.now() + ${ms}; while (Date.now() < end);`
+            : `setTimeout(() => {}, ${ms});`;
+        const command = spawn(process.execPath, ["-e", body], {
+          stdio: "ignore",
+        });
+        await new Promise((resolve) => command.once("exit", resolve));
+      }
       // ADR098: echo a session secret the way an agent would leak it, split
       // across two text chunks and whole in a tool output.
       const echoed = process.env.ACP_FIXTURE_ECHO_SECRET;

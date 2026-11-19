@@ -255,7 +255,8 @@ type Service struct {
 	TurnTimeout time.Duration
 	// TurnIdleTimeout bounds how long one turn may make no progress
 	// (BEX_AGENT_TURN_IDLE_TIMEOUT): the driver fails a turn once no ACP update
-	// or prompt has happened for this long. It is injected as
+	// or prompt has happened, and the agent's commands have been idle, for
+	// this long. It is injected as
 	// BEX_AGENT_TURN_IDLE_TIMEOUT_MS; <= 0 ⇒ defaultTurnIdleTimeout; never
 	// above the ceiling.
 	TurnIdleTimeout time.Duration

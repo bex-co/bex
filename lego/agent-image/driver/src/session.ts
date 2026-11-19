@@ -43,6 +43,7 @@ import { readResultRecord, resultReminder } from "./submit-result.js";
 import type { UIMessageStreamHub, UIMessagePart } from "./stream-hub.js";
 import { TurnLogSink } from "./turn-log.js";
 import { TurnBound } from "./turn-bound.js";
+import { activityIntervalMs, watchActivity } from "./activity.js";
 import { SecretRedactor } from "./redact.js";
 
 interface RunTurnOptions {
@@ -53,6 +54,8 @@ interface RunTurnOptions {
   abortSignal?: AbortSignal;
   // How often the interrupt sentinel is polled; tests shorten it.
   interruptPollMs?: number;
+  // How often the agent's commands' CPU time is sampled; tests shorten it.
+  activityIntervalMs?: number;
 }
 
 interface StatusRecord {
@@ -285,6 +288,13 @@ export async function runHeadlessTurn(
       turnAbort.abort(error);
       rejectDeadline(error);
     },
+  });
+  // A command the agent waits on with no tool call open is progress while
+  // it uses the CPU (w10/016).
+  const stopWatchingActivity = watchActivity({
+    root: process.pid,
+    intervalMs: options.activityIntervalMs ?? activityIntervalMs,
+    onActive: () => bound.activity(),
   });
   // A person stopping the turn (ADR047 D12) aborts it like an outside abort,
   // but with a reason of its own, so the verdict below is not a failure.
@@ -535,6 +545,7 @@ export async function runHeadlessTurn(
     throw terminalError;
   } finally {
     stopWatchingInterrupt();
+    stopWatchingActivity();
     bound.stop();
     options.abortSignal?.removeEventListener("abort", abortFromOutside);
     // Idempotent safety net for errors thrown before the success/catch path
