@@ -28,6 +28,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -179,6 +180,70 @@ func (s *signalingWatch) Watch(ctx context.Context, list client.ObjectList, opts
 		}
 	}
 	return wi, err
+}
+
+// refusedWatch is an apiserver that refuses every watch: bex-api lost its watch
+// permission, or the apiserver cannot serve watches.
+type refusedWatch struct {
+	client.WithWatch
+	attempts atomic.Int32
+}
+
+func (r *refusedWatch) Watch(context.Context, client.ObjectList, ...client.ListOption) (watch.Interface, error) {
+	r.attempts.Add(1)
+	return nil, apierrors.NewServiceUnavailable("watch refused")
+}
+
+// TestResyncClosesADeployWhileTheStatusWatchIsDown is the backstop half of
+// w5/m369's promise (DoD 5): the watch only brings a verdict sooner, so with
+// every watch refused the resync alone still records the operator's verdict,
+// failed or live, and each refusal is counted for the ADR088 panel.
+func TestResyncClosesADeployWhileTheStatusWatchIsDown(t *testing.T) {
+	for _, verdict := range []struct {
+		name  string
+		write func(*testing.T, context.Context, client.Client)
+		want  string
+	}{
+		{"failed rollout", failRollout, DeployUpdateFailed},
+		{"good rollout", runningRollout, DeployLive},
+	} {
+		t.Run(verdict.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			rec, s, cl := newTestReconciler(t)
+			ten, _ := s.CreateTenant(ctx, "acme", "free")
+			row, _ := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatalf("reconcile: %v", err)
+			}
+			rec.Resync = 100 * time.Millisecond
+			rec.Metrics = NewReconcilerMetrics(prometheus.NewRegistry())
+			down := &refusedWatch{WithWatch: cl.(client.WithWatch)}
+			w := &AppStatusWatch{Client: down, Kick: rec.KickFromWatch, Metrics: rec.Metrics, Backoff: 20 * time.Millisecond}
+			go w.Run(ctx)
+			go rec.Run(ctx)
+			waitFor(t, "a refused watch", func() bool { return down.attempts.Load() > 0 })
+			waitFor(t, "the first pass", func() bool { return passCount(t, rec.Metrics) >= 1 })
+
+			verdict.write(t, ctx, cl)
+
+			waitFor(t, "the resync to close the deploy "+verdict.want,
+				func() bool { return onlyDeploy(t, s, row.ID).Status == verdict.want })
+			var failures, watchKicks dto.Metric
+			if err := rec.Metrics.watchFailures.Write(&failures); err != nil {
+				t.Fatal(err)
+			}
+			if err := rec.Metrics.kicks.WithLabelValues(string(kickSourceWatch)).Write(&watchKicks); err != nil {
+				t.Fatal(err)
+			}
+			if failures.GetCounter().GetValue() == 0 {
+				t.Fatal("refused watches were not counted; the panel would show a healthy watch")
+			}
+			if watchKicks.GetCounter().GetValue() != 0 {
+				t.Fatalf("watch kicks = %v with every watch refused; the resync did not close the deploy on its own", watchKicks.GetCounter().GetValue())
+			}
+		})
+	}
 }
 
 // TestStatusFingerprintNamesEveryStatusField keeps statusFingerprint's field

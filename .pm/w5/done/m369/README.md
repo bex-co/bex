@@ -1,6 +1,6 @@
 # w5 · m369 — A deploy's verdict, a Suspend→Resume and a rollout's start reach every surface within seconds, not on the next 30 s pass
 
-**Worker:** worker5 **Goal:** bex-api records an App's deploy transitions within seconds of the operator writing them, a quick Suspend→Resume always records its `service_suspended`/`service_resumed` pair, and a deploy with no build starts at the operator's own dispatch time. REST, GraphQL, MCP, webhooks, push and the dashboard move together because they all read the rows this pass writes. **Status:** blocked (t001–t007 done; code shipped; t008, the production replay, waits on the deploy that carries it)
+**Worker:** worker5 **Goal:** bex-api records an App's deploy transitions within seconds of the operator writing them, a quick Suspend→Resume always records its `service_suspended`/`service_resumed` pair, and a deploy with no build starts at the operator's own dispatch time. REST, GraphQL, MCP, webhooks, push and the dashboard move together because they all read the rows this pass writes. **Status:** done (2026-11-19: DoD 1–6 hold on production pin `7af50a28168d`)
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | [t005](done/t005.md) | Render parity — **DONE** | 20m | t002, t003, t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 40m | t005, t006 |
-| [t008](t008.md) | Closeout (live replay on production) | 30m | t007 |
+| [t008](done/t008.md) | Closeout (live replay on production) — **DONE** | 30m | t007 |
 
 Total: **8 tasks, about 5h20m**.
 
@@ -69,7 +69,7 @@ REST was polled every 1 s.
    - The operator's own `==> error: … exited with code 1` / `==> Build failed` lines are at **01:42:12.952**, 17.3 s later.
    - bex-api followed in under a second: `deploy_ended` dated 01:42:12, and REST `build_failed` at 01:42:13 (+17.4 s from the exit).
    - Both terminal webhooks were first delivered at 01:42:17 (+21.6 s; bound 15 s). Round 250 measured ~46 s.
-   - The remaining ~17 s sit between the build command's exit and the operator writing its verdict. That is the same side [w21/064](../../w21/blocked/064.md) found slow for the success path (blocked on an operator reading). Its "closes a failed build in seconds" did not hold in this run.
+   - The remaining ~17 s sit between the build command's exit and the operator writing its verdict. That is the same side [w21/064](../../../w21/blocked/064.md) found slow for the success path (blocked on an operator reading). Its "closes a failed build in seconds" did not hold in this run.
 2. **Successful deploy — `live` coincides with the operator's verdict, which itself trails the app.**
    - Git deploy: the app printed `listening on 10000` at 01:45:46.8. REST `live` and `==> Your service is live` both came at 01:46:10.9 (+24 s).
    - Image deploy on the busybox service: the app's first line at 01:46:50.4. `==> Detected HTTP on port 10000; serving it` and `live` came at 01:47:16.7 (+26 s).
@@ -77,9 +77,31 @@ REST was polled every 1 s.
 3. **Quick Suspend→Resume — holds.**
    - Three runs 5 s apart on the busybox service (suspend 01:47:28 … resume 01:47:55): 6 events, alternating, in call order. The last `service_resumed` is dated at the wake's Ready (01:47:58), by design.
    - The webhook received all six, first attempts 3–9 s after each call.
-   - Round 338: six runs 5 s apart gave 12 events, and three runs 30 s apart gave 6 ([w21/065](../../w21/done/065.md) § Live check).
+   - Round 338: six runs 5 s apart gave 12 events, and three runs 30 s apart gave 6 ([w21/065](../../../w21/done/065.md) § Live check).
 4. **Image deploy start — holds.** `dep-dbrrquprr8ts738m9ne0`: `startedAt` 01:46:43 is earlier than the new instance's `createdAt` 01:46:46. `==> Deploying image` (01:46:43) prints before the app's first line (01:46:50.4).
 5. **Not checked:** the pass-duration histogram on obs.bex.co. It is behind the ADR088 ops gate.
 6. **Fixtures:** all deleted (`GET` 404).
 
 **Verdict for t008:** bullets 3, 4 and 6 hold. Bullet 1 holds on bex-api's side (sub-second after the operator's verdict) but not end to end (17.4 s and 21.6 s against 10 s and 15 s). Bullet 2 is w21/064's operator-side lag. Bullet 5 needs the ops gate. The milestone stays blocked on w21/064 (operator side) and the obs.bex.co reading. Closing it as written would need bullets 1 and 2 met, or re-scoped to "bex-api adds ≤ 1 s to the operator's verdict" with the operator lag carried by w21/064.
+
+### 2026-11-19 — unblock: production pin `7af50a28168d` carries the code (verified evidence)
+
+- **Affected:** w5/m369 t008.
+- **Source:** verified evidence, no user decision. The release gate recorded on the w5 board ("the next batched production deploy pins this code, then a worker replays the DoD on `bex-canary`") cleared with `826d32e42` (`chore(deploy): pin platform images to 7af50a28168d`). `git merge-base --is-ancestor <sha> 7af50a28168d` holds for `f076e96e7` (the watch, the suspension mark, the dispatch start), `6b185606d` (the fingerprint enumeration) and `2b2cae902` (w21/065, every Suspend and Resume reports its own pair). The production app cluster runs that pin's digest (`bex-api` and `bex-controller-manager` on `bex-operator@sha256:7ce6ae1e…`, the image `826d32e42` writes into `deploy/gitops/base/bex.yaml`).
+- **Scope:** unchanged. The definition of done stands as written.
+- **Next:** t008 replays the definition of done on production, workspace `bex-canary`, QA account. Production cluster reads now work from a worker session (`scripts/fetch-app-kubeconfig.sh`), so bullet 5's histogram can be read from the in-cluster Prometheus, and the operator's own status-write times can be read beside bex-api's.
+
+### 2026-11-19 — production replay on pin `7af50a28168d` (t008): DoD 1–6 hold
+
+Workspace `bex-canary`, QA account, a run-minted API key (revoked afterwards) and the QA session (logged out afterwards). REST was polled every 1 s. The App CR and its pods were read every ~1 s from the production app cluster (`scripts/fetch-app-kubeconfig.sh`, read-only), so each verdict is timed against the operator's own status write and the pod's Ready time, not only against public surfaces. Fixtures: a Free Go web service from `https://github.com/bex-co/bex`, root `examples/hello-go`; a Free image service on `mendhak/http-https-echo:31` that answers 200 and logs each request, used as the webhook target; a second such image service as the Suspend→Resume target; and a workspace webhook on `build_*`, `deploy_*` and `service_suspended`/`service_resumed`.
+
+1. **A failed build reads Failed at once — holds.** `buildCommand: go build -o app ./does-not-exist`. The build log's `error: build command … exited with code 1` is stamped 08:27:08.898. The operator wrote `Build=False/BuildFailedUserError` at 08:27:12 (its `buildRun.finishedAt` 08:27:11), the row's `finishedAt` and `==> Build failed` are 08:27:13.143, and REST first read `build_failed` at 08:27:14.007: **+5.1 s** (bound 10 s; round 339 measured +17.4 s, round 250 ~46 s). The receiver logged `build_ended` and `deploy_ended` at 08:27:16.66, **+7.8 s** (bound 15 s; round 339 +21.6 s), each delivered once with 200.
+2. **A successful deploy reads Live at once — holds.** Pod Ready (second precision, from the pod's `Ready` condition) to the row's `finishedAt` / REST `live`:
+   - Go service, first good deploy (no predecessor serving): Ready 08:35:11 → `==> Your service is live` 08:35:13.13, about **2 s**.
+   - Go service, redeploy with a healthy predecessor: Ready 08:41:10 → `finishedAt` 08:41:11.95, REST `live` 08:41:12.75, about **2–3 s**. The CR read `Running` with the new active revision at the same poll (08:41:12.43).
+   - Image service, redeploy with a healthy predecessor: Ready 08:36:58 → `finishedAt` 08:36:59.60, REST `live` 08:37:00.27, about **2 s**; first deploy: Ready 08:23:37 → `finishedAt` 08:23:38.65.
+   - The operator-side lag that kept bullets 1 and 2 open on 2026-11-14 (round 339) and that [w21/064](../../../w21/blocked/064.md) measured at 20–34 s did not reproduce in any of these four rollouts: the operator wrote each verdict within about 2 s of Ready, and bex-api followed within about 1 s.
+3. **A quick Suspend→Resume is never lost — holds.** Six calls 5 s apart (suspend 08:39:17, resume 08:39:22, suspend 08:39:27, resume 08:39:33, suspend 08:39:38, resume 08:39:44) recorded three `service_suspended` and three `service_resumed`, alternating, each resume listed above its suspend. The last `service_resumed` is dated 08:40:05, the wake's Ready, by design (round 339). The webhook received all six with 200, at 3.4–9.4 s after each call (the last at 08:40:09.8, 4.8 s after its event).
+4. **An image deploy starts when it started — holds.** First deploy: `startedAt` 08:23:05, new instance `createdAt` 08:23:06; `==> Deploying image` 08:23:05 before the app's first line 08:23:29.76. Redeploy: `startedAt` 08:36:36.893, new instance `createdAt` 08:36:38; `==> Deploying image` 08:36:36.893 before the new instance's first line 08:36:58.43.
+5. **The pass is measured — holds.** The `bex_controlplane_` family is stored by production Prometheus, and the ADR088 `bex-api + gateways` dashboard provisioned on the `obs.bex.co` Grafana carries panels 32 (pass p50/p95) and 33 (kicks by source, status-watch failures), both rendering data. **Production baseline** (all bex-api replicas, 24 h to 08:43Z): 9,725 passes, p50 0.73 s, p95 2.36 s, p99 5.95 s, mean 0.94 s; last hour p95 1.49 s; 7 days p95 1.82 s over 52,414 passes. Kicks in 24 h: `watch` 3,929, `confirm` 84, `api` 81; 15 status-watch failures. The resync-without-watch half had no test (the no-watch controls only show the deploy does not close early), so t008 added `TestResyncClosesADeployWhileTheStatusWatchIsDown` (`lego/backend/internal/store/app_status_watch_test.go`): with every watch refused, a 100 ms resync alone closes a failed and a good rollout, the refusals are counted, and no watch kick fires. It fails when `Run` stops resyncing and when a refused watch is not counted (both mutations checked).
+6. **Fixtures — deleted.** The webhook and all three services answered `DELETE` 204 and then `GET` 404; their App CRs are gone.
