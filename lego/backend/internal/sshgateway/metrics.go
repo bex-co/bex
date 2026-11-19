@@ -91,7 +91,7 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 		}),
 		reauths: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "channel_reauthorizations_total",
-			Help: "Per-channel reassertions of the transport-auth-time key + target authorization (codex round-8 #5) by bounded result.",
+			Help: "Native SSH reassertions of the transport-auth-time key + target authorization (codex round-8 #5), at each channel open and revalidation tick, by bounded result: accepted, rejected (a definite no), or unavailable (no answer; a live session retries it, w6/147).",
 		}, []string{"result"}),
 		twoFactor: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "two_factor_refusals_total",
@@ -181,9 +181,10 @@ func (m *Metrics) ChannelClosed() {
 	}
 }
 
-// Reauthorization records one per-channel reassertion outcome ("accepted" /
-// "rejected") — the transport may live for hours, so each channel re-checks the
-// key and the authorization that admitted the transport (codex round-8 #5).
+// Reauthorization records one reassertion outcome ("accepted", "rejected" or
+// "unavailable") — the transport may live for hours, so each channel and each
+// revalidation tick re-checks the key and the authorization that admitted the
+// transport (codex round-8 #5).
 func (m *Metrics) Reauthorization(result string) {
 	if m != nil {
 		m.reauths.WithLabelValues(result).Inc()

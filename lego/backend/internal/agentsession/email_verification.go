@@ -18,6 +18,7 @@ package agentsession
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 )
@@ -87,9 +88,15 @@ type EmailVerificationClient struct {
 	Now    func() time.Time
 }
 
-// Check returns nil when subject may use bex, ErrForbidden for an unverified
-// human, and any other error when the answer could not be obtained — callers
-// refuse on every non-nil error.
+// ErrEmailUnverified is bex-api's answer for a human whose email is not
+// verified. It wraps ErrForbidden, but only it is that answer: a plain
+// ErrForbidden from Check is the request itself refused (a 401 or 403, such as
+// the nonce claim timing out), which says nothing about the subject (w6/147).
+var ErrEmailUnverified = fmt.Errorf("%w: email not verified", ErrForbidden)
+
+// Check returns nil when subject may use bex, ErrEmailUnverified for an
+// unverified human, and any other error when the answer could not be obtained
+// — callers refuse on every non-nil error.
 func (c *EmailVerificationClient) Check(ctx context.Context, subject string) error {
 	req := EmailVerificationRequest{Subject: subject, Nonce: newNonce()}
 	out, err := postSignedMint(ctx, c.URL, c.Secret, c.now(), c.HTTP, req,
@@ -98,7 +105,7 @@ func (c *EmailVerificationClient) Check(ctx context.Context, subject string) err
 		return err
 	}
 	if !out.Allowed() {
-		return ErrForbidden
+		return ErrEmailUnverified
 	}
 	return nil
 }

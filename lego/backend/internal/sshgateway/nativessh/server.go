@@ -35,6 +35,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
@@ -127,7 +128,9 @@ type Server struct {
 	// EmailVerified refuses a key whose owner is a human with an unverified
 	// email (ADR075 D8 revision, w2/m168): key auth never passes bex-api's
 	// middleware, so authentication and every reauthorization ask. Any
-	// non-nil error refuses. nil skips the check (BEX_REQUIRE_VERIFIED_EMAIL=0).
+	// non-nil error refuses; only agentsession.ErrEmailUnverified is the
+	// definite answer, so a live session retries any other error (w6/147).
+	// nil skips the check (BEX_REQUIRE_VERIFIED_EMAIL=0).
 	EmailVerified func(ctx context.Context, subject string) error
 
 	// Audit receives each service shell session's StartShellEvent and
@@ -566,7 +569,10 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 		resolved, err := s.reauthorize(ctx, subject, fingerprint, connUser, sticky)
 		if err != nil {
 			_ = newChannel.Reject(ssh.Prohibited, channelRefusal(err))
-			result = "revoked"
+			result = "failed" // no answer refuses the channel too, but revoked nothing (w6/147)
+			if definiteRefusal(err) {
+				result = "revoked"
+			}
 			return nil
 		}
 		if ok, scope := s.ChannelLimits.AcquireChannel(subject); !ok {
@@ -594,10 +600,7 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 		// codex round-9 #6: keep re-running the channel-open reauthorization
 		// while the exec is LIVE, not only at admission — a revocation cancels
 		// the stream's context from below. sessionCtx still bounds the lifetime.
-		streamCtx, cancelStream := sshgateway.WithRevalidation(sessionCtx, s.RevalidateInterval, func(c context.Context) error {
-			_, err := s.reauthorize(c, subject, fingerprint, connUser, sticky)
-			return err
-		})
+		streamCtx, cancelStream := sshgateway.WithRevalidation(sessionCtx, s.RevalidateInterval, s.revalidator(subject, fingerprint, connUser, sticky))
 		err = serveSession(streamCtx, channel, channelRequests, s.Executor, resolved)
 		cancelStream()
 		s.ChannelLimits.ReleaseChannel(subject)
@@ -654,10 +657,7 @@ func (s *Server) serveMultiChannel(ctx context.Context, channels <-chan ssh.NewC
 	// reauthorization on the interval, so a revocation ends EVERY live channel
 	// at once (each new channel still rechecks on open, round-8 #5). One
 	// watchdog per connection, not per channel.
-	mctx, mcancel := sshgateway.WithRevalidation(ctx, s.RevalidateInterval, func(c context.Context) error {
-		_, err := s.reauthorize(c, subject, fingerprint, connUser, sticky)
-		return err
-	})
+	mctx, mcancel := sshgateway.WithRevalidation(ctx, s.RevalidateInterval, s.revalidator(subject, fingerprint, connUser, sticky))
 	defer mcancel()
 	sem := make(chan struct{}, s.MaxChannelsPerConn)
 	for {
@@ -690,7 +690,12 @@ func (s *Server) serveMultiChannel(ctx context.Context, channels <-chan ssh.NewC
 		if err != nil {
 			<-sem
 			_ = newChannel.Reject(ssh.Prohibited, channelRefusal(err))
-			return "revoked"
+			if definiteRefusal(err) {
+				return "revoked"
+			}
+			// No answer refuses this channel only: the live ones stay under
+			// the watchdog, which retries the same checks (w6/147).
+			continue
 		}
 		if ok, scope := s.ChannelLimits.AcquireChannel(subject); !ok {
 			<-sem
@@ -716,6 +721,51 @@ func (s *Server) serveMultiChannel(ctx context.Context, channels <-chan ssh.NewC
 	}
 }
 
+// maxUnansweredRevalidations is how many revalidation ticks in a row may fail
+// to get an answer before a live session ends anyway (w6/147): an outage of
+// the key store, bex-api or OpenFGA cannot keep sessions open without checks
+// for longer than this many intervals (3 minutes at the default 1 m).
+const maxUnansweredRevalidations = 3
+
+// reauthFailure is one failed reauthorization with its bounded cause (w6/147).
+// A definite failure is an authoritative no: the key is gone or bound to
+// another subject, the owner's email is unverified, the authorization denies,
+// or the target is gone or refused. Any other failure means the gateway could
+// not get an answer: a store, bex-api, OpenFGA or Kubernetes error or timeout.
+// A channel open refuses on either; a live session's watchdog retries the
+// second kind (revalidator).
+type reauthFailure struct {
+	cause    string
+	definite bool
+	err      error
+}
+
+func (f *reauthFailure) Error() string { return f.err.Error() }
+func (f *reauthFailure) Unwrap() error { return f.err }
+
+// definiteRefusal reports whether err is a reauthorization's authoritative no.
+func definiteRefusal(err error) bool {
+	var f *reauthFailure
+	return errors.As(err, &f) && f.definite
+}
+
+// The bounded causes a reauthorization fails with, logged without the subject
+// or the key (w6/147). A target refusal is logged under its own
+// apps.ShellRefusal reason (suspended, ineligible, instance_gone).
+const (
+	causeKeyGone         = "key_gone"
+	causeKeyLookup       = "key_lookup_failed"
+	causeEmailUnverified = "email_unverified"
+	causeEmailCheck      = "email_check_failed"
+	causeDenied          = "denied"
+	causeTargetNotFound  = "not_found"
+	causeResolveFailed   = "resolve_failed"
+)
+
+// maxLoggedErrorLength bounds the dependency error an unanswered
+// reauthorization logs.
+const maxLoggedErrorLength = 200
+
 // reauthorize re-runs, immediately before a channel is accepted, the two checks
 // transport authentication made: the fingerprint's key still exists and still
 // belongs to the subject, and the subject is still authorized for the requested
@@ -724,18 +774,43 @@ func (s *Server) serveMultiChannel(ctx context.Context, channels <-chan ssh.NewC
 // resolves the connection's sticky instance ID, so a bare service username
 // cannot randomly select a different Ready replica between the audit row and
 // pods/exec. Only an exact-instance not-found result permits selecting a new
-// Ready target; authorization and store failures remain fail closed.
+// Ready target; authorization and store failures remain fail closed. Every
+// failure is a *reauthFailure, counted and logged with its cause (w6/147).
 func (s *Server) reauthorize(ctx context.Context, subject, fingerprint, connUser string, sticky *connectionTarget) (apps.SSHInstanceTarget, error) {
+	target, failure := s.reassert(ctx, subject, fingerprint, connUser, sticky)
+	switch {
+	case failure == nil:
+		sticky.Set(target)
+		s.Metrics.Reauthorization("accepted")
+		return target, nil
+	case failure.definite:
+		s.Metrics.Reauthorization("rejected")
+		log.Printf("ssh gateway: reauthorization rejected: %s", failure.cause)
+	default:
+		s.Metrics.Reauthorization("unavailable")
+		if ctx.Err() == nil { // not the session itself ending mid-check
+			log.Printf("ssh gateway: reauthorization unanswered: %s: %s", failure.cause, boundedError(failure.err))
+		}
+	}
+	return apps.SSHInstanceTarget{}, failure
+}
+
+// reassert runs reauthorize's checks and classifies the first that fails.
+func (s *Server) reassert(ctx context.Context, subject, fingerprint, connUser string, sticky *connectionTarget) (apps.SSHInstanceTarget, *reauthFailure) {
 	lookupCtx, cancel := context.WithTimeout(ctx, s.HandshakeTimeout)
 	defer cancel()
 	registered, err := s.Store.SSHKeyByFingerprint(lookupCtx, fingerprint)
-	if err != nil || registered.Subject == "" || registered.Subject != subject {
-		s.Metrics.Reauthorization("rejected")
-		return apps.SSHInstanceTarget{}, errors.New("public key rejected")
+	switch {
+	case err != nil && !errors.Is(err, store.ErrNotFound):
+		return apps.SSHInstanceTarget{}, &reauthFailure{cause: causeKeyLookup, err: fmt.Errorf("public key lookup: %w", err)}
+	case err != nil || registered.Subject == "" || registered.Subject != subject:
+		return apps.SSHInstanceTarget{}, &reauthFailure{cause: causeKeyGone, definite: true, err: errors.New("public key rejected")}
 	}
 	if err := s.verifiedOwner(ctx, subject); err != nil {
-		s.Metrics.Reauthorization("rejected")
-		return apps.SSHInstanceTarget{}, errUnverifiedOwner
+		if errors.Is(err, agentsession.ErrEmailUnverified) {
+			return apps.SSHInstanceTarget{}, &reauthFailure{cause: causeEmailUnverified, definite: true, err: errUnverifiedOwner}
+		}
+		return apps.SSHInstanceTarget{}, &reauthFailure{cause: causeEmailCheck, err: fmt.Errorf("email verification: %w", err)}
 	}
 	authCtx := core.WithIdentity(lookupCtx, keyIdentity(registered))
 	target, err := s.Apps.ResolveSSHSession(authCtx, sticky.Get().ID)
@@ -743,12 +818,61 @@ func (s *Server) reauthorize(ctx context.Context, subject, fingerprint, connUser
 		target, err = s.Apps.ResolveSSHSession(authCtx, connUser)
 	}
 	if err != nil {
-		s.Metrics.Reauthorization("rejected")
-		return apps.SSHInstanceTarget{}, err
+		return apps.SSHInstanceTarget{}, resolveFailure(err)
 	}
-	sticky.Set(target)
-	s.Metrics.Reauthorization("accepted")
 	return target, nil
+}
+
+// resolveFailure classifies a ResolveSSHSession error the way the web shell's
+// watchdogEndReason does: a runtime-gate refusal, a deny (a login requirement
+// and a protected environment included) and a missing target are answers;
+// anything else is the resolver failing closed on a dependency it could not
+// reach.
+func resolveFailure(err error) *reauthFailure {
+	var refusal *apps.ShellRefusal
+	switch {
+	case errors.As(err, &refusal):
+		return &reauthFailure{cause: refusal.Reason, definite: true, err: err}
+	case errors.Is(err, core.ErrForbidden):
+		return &reauthFailure{cause: causeDenied, definite: true, err: err}
+	case errors.Is(err, core.ErrNotFound):
+		return &reauthFailure{cause: causeTargetNotFound, definite: true, err: err}
+	default:
+		return &reauthFailure{cause: causeResolveFailed, err: err}
+	}
+}
+
+// boundedError is err's text cut to maxLoggedErrorLength bytes.
+func boundedError(err error) string {
+	msg := err.Error()
+	if len(msg) > maxLoggedErrorLength {
+		msg = msg[:maxLoggedErrorLength] + "…"
+	}
+	return msg
+}
+
+// revalidator is a live session's watchdog check (codex round-9 #6). A
+// definite refusal ends the session at once; a reauthorization that got no
+// answer is retried on the next tick, until maxUnansweredRevalidations in a
+// row end the session too (w6/147). The watchdog calls it from one goroutine.
+func (s *Server) revalidator(subject, fingerprint, connUser string, sticky *connectionTarget) func(context.Context) error {
+	unanswered := 0
+	return func(ctx context.Context) error {
+		_, err := s.reauthorize(ctx, subject, fingerprint, connUser, sticky)
+		switch {
+		case err == nil:
+			unanswered = 0
+			return nil
+		case definiteRefusal(err):
+			return err
+		}
+		unanswered++
+		if unanswered < maxUnansweredRevalidations {
+			return nil
+		}
+		log.Printf("ssh gateway: ending a session after %d revalidations in a row without an answer", unanswered)
+		return err
+	}
 }
 
 // connectionTarget is the instance selected at transport authentication. It is

@@ -29,6 +29,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -243,7 +244,7 @@ func TestDrainingSessionStillEndsOnRevocationAndTheSessionCap(t *testing.T) {
 	}{
 		"revocation": {
 			configure: func(s *Server) { s.RevalidateInterval = 10 * time.Millisecond },
-			trigger:   func(r *gatewaytest.FakeResolver) { r.SetFlip(errors.New("revoked")) },
+			trigger:   func(r *gatewaytest.FakeResolver) { r.SetFlip(core.ErrForbidden) },
 			result:    ":revoked",
 		},
 		"session cap": {

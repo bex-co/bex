@@ -56,19 +56,24 @@ func TestEmailVerificationRoundTrip(t *testing.T) {
 					t.Fatalf("Check = %v, want allowed", err)
 				}
 			case "forbidden":
-				if !errors.Is(err, ErrForbidden) {
-					t.Fatalf("Check = %v, want ErrForbidden", err)
+				if !errors.Is(err, ErrEmailUnverified) || !errors.Is(err, ErrForbidden) {
+					t.Fatalf("Check = %v, want ErrEmailUnverified wrapping ErrForbidden", err)
 				}
 			default:
 				if err == nil {
 					t.Fatal("Check allowed a subject whose state could not be resolved")
+				}
+				if errors.Is(err, ErrEmailUnverified) {
+					t.Fatalf("Check = %v: no answer is not the unverified answer", err)
 				}
 			}
 		})
 	}
 }
 
-// Every way the verb can fail to answer must refuse, never allow.
+// Every way the verb can fail to answer must refuse, never allow, and none of
+// them is the unverified answer: a refused request (401 here) says nothing
+// about the subject, so a live SSH session retries it (w6/147).
 func TestEmailVerificationFailsClosed(t *testing.T) {
 	allow := func(context.Context, string) (bool, bool, error) { return true, true, nil }
 	for name, tc := range map[string]struct {
@@ -83,8 +88,12 @@ func TestEmailVerificationFailsClosed(t *testing.T) {
 			srv := httptest.NewServer(tc.handler)
 			t.Cleanup(srv.Close)
 			client := &EmailVerificationClient{URL: srv.URL, Secret: []byte(tc.clientSecret)}
-			if err := client.Check(context.Background(), "verified-human"); err == nil {
+			err := client.Check(context.Background(), "verified-human")
+			if err == nil {
 				t.Fatal("Check allowed without a trustworthy answer")
+			}
+			if errors.Is(err, ErrEmailUnverified) {
+				t.Fatalf("Check = %v: a refused request is not the unverified answer", err)
 			}
 		})
 	}

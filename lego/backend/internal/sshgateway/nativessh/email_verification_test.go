@@ -22,6 +22,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
 )
 
@@ -53,7 +54,7 @@ func TestVerificationLostAfterAuthenticationRefusesNextChannel(t *testing.T) {
 	addr, stop := startGatewayConfigured(t, &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{}, &countingExecutor{release: make(chan struct{})}, clientSigner, func(s *Server) {
 		s.EmailVerified = func(context.Context, string) error {
 			if unverified.Load() {
-				return errors.New("unverified")
+				return agentsession.ErrEmailUnverified
 			}
 			return nil
 		}

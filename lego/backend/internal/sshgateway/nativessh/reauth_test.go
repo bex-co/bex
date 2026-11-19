@@ -17,12 +17,12 @@ limitations under the License.
 package nativessh
 
 import (
-	"errors"
 	"testing"
 	"time"
 
 	"golang.org/x/crypto/ssh"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -31,7 +31,9 @@ import (
 // codex round-8 #5: a transport may outlive its auth-time decision by hours,
 // so every channel re-authorizes (key re-read + fresh target resolution)
 // before it is accepted. These tests flip the store/resolver AFTER transport
-// auth and assert the next channel — and the whole transport — die.
+// auth and assert the next channel — and the whole transport — die. A
+// revocation is a definite no (core.ErrForbidden here); an error that is no
+// answer at all is retried instead (transient_reauth_test.go, w6/147).
 
 // holdChannel opens one session channel whose exec blocks until released, so a
 // test can hold slots open the way a live editor session does.
@@ -66,7 +68,7 @@ func TestRevocationAfterTransportAuthEndsTransportAndActiveChannels(t *testing.T
 	// One live channel is executing when the revocation lands.
 	holdChannel(t, client, exec)
 
-	resolver.SetFlip(errors.New("revoked"))
+	resolver.SetFlip(core.ErrForbidden)
 
 	// The next channel must be refused — no new exec on a stale decision.
 	if _, err := client.NewSession(); err == nil {
@@ -113,7 +115,7 @@ func TestMidStreamRevocationEndsActiveMultiChannelExec(t *testing.T) {
 	defer client.Close()
 
 	holdChannel(t, client, exec)
-	resolver.SetFlip(errors.New("revoked"))
+	resolver.SetFlip(core.ErrForbidden)
 
 	waitFor(t, func() bool {
 		if exec.activeNow() != 0 {
@@ -177,7 +179,7 @@ func TestMidStreamRevocationEndsActiveSingleChannelExec(t *testing.T) {
 	defer client.Close()
 
 	holdChannel(t, client, exec)
-	resolver.SetFlip(errors.New("revoked"))
+	resolver.SetFlip(core.ErrForbidden)
 
 	waitFor(t, func() bool {
 		if exec.activeNow() != 0 {
@@ -239,7 +241,7 @@ func TestSingleChannelPathReauthorizesBeforeAccept(t *testing.T) {
 	}
 	defer client.Close()
 
-	resolver.SetFlip(errors.New("revoked"))
+	resolver.SetFlip(core.ErrForbidden)
 
 	if _, err := client.NewSession(); err == nil {
 		t.Fatal("the App path must re-authorize before accepting its one channel")
