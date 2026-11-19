@@ -27,9 +27,10 @@ import (
 
 // The S3 surface's telemetry (ADR112 D3, "What watches it"): what it answers, who fails to
 // authenticate and why, the streams in flight against their cap, the bytes in and out and what
-// listings read. Labels are bounded by construction: the operation is one of the routes, the code
-// one of S3's, the reason one of a closed set, and no workspace, bucket, key or address is ever a
-// label.
+// listings read. Labels are bounded by construction: the operation is one of the routes (a put
+// or a part upload that carries X-Amz-Copy-Source is CopyObject or UploadPartCopy, as S3 names
+// them), the code one of S3's, the reason one of a closed set, and no workspace, bucket, key or
+// address is ever a label.
 
 // authFailureReasons maps an authentication refusal's code to the closed set of the
 // auth-failure counter's reason label. "secret_store" is OpenBao failing on the key path, which

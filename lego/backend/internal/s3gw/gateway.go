@@ -133,7 +133,7 @@ func (g *Gateway) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	op := "unrouted"
 	if rq.route != nil {
-		op = rq.route.op
+		op = rq.route.operation(rq.r)
 	}
 	record(op, false, e)
 }
@@ -213,24 +213,24 @@ func (g *Gateway) dispatch(rq *request) *Error {
 		return e
 	}
 	verb := rt.verb
-	switch {
-	case rt.op == "CreateBucket":
+	switch op := rt.operation(rq.r); op {
+	case "CreateBucket":
 		// The allowed row is written once the bucket exists (createBucket).
 		rq.ctx = core.WithDeferredAllowedWriteAudit(rq.ctx)
-	case rt.op == "PutObject" && rq.r.Header.Get("X-Amz-Copy-Source") != "":
+	case "CopyObject":
 		// A copy is its own verb, and its allowed row names the source too, once the
 		// copy happened (copyObject); a denial of it is still recorded at once.
 		verb = objectstorage.AuditVerbCopyObject
 		rq.ctx = core.WithDeferredAllowedWriteAudit(rq.ctx)
-	case rt.op == "UploadPart":
+	case "UploadPart", "UploadPartCopy":
 		// A part writes no allowed row, however many a large upload has (a 1 GiB `aws s3
 		// cp` is 128); the upload's create and complete rows are its record, and a denied
 		// part is still recorded at once, once per window. A part copy is a copy.
-		if rq.r.Header.Get("X-Amz-Copy-Source") != "" {
+		if op == "UploadPartCopy" {
 			verb = objectstorage.AuditVerbCopyObject
 		}
 		rq.ctx = core.WithDeferredAllowedWriteAudit(rq.ctx)
-	case rt.op == "DeleteObjects":
+	case "DeleteObjects":
 		// One row for the batch, once it ran, with its count and first key.
 		rq.ctx = core.WithDeferredAllowedWriteAudit(rq.ctx)
 	}

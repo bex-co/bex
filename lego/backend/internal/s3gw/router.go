@@ -47,7 +47,8 @@ type request struct {
 // route is one S3 operation bex serves: where it lives, what it asks of the key's
 // creator and which audit verb it records.
 type route struct {
-	// op is the operation's S3 name, the label of the metrics.
+	// op is the operation's S3 name and the key of its handler; the metrics label is
+	// operation(), which names a copy and a part copy as S3 does.
 	op string
 	// level is where the operation lives: the service (ListBuckets), a bucket or an
 	// object.
@@ -109,6 +110,30 @@ var routes = []route{
 	{op: "AbortMultipartUpload", level: levelObject, method: http.MethodDelete, sub: "uploadId", relation: core.RelCanCreate, verb: objectstorage.AuditVerbAbortMultipartUpload},
 	{op: "ListParts", level: levelObject, method: http.MethodGet, sub: "uploadId", relation: core.RelCanView, verb: objectstorage.AuditVerbGetObject,
 		params: []string{"max-parts", "part-number-marker"}},
+}
+
+// copySourceHeader is the header that makes a put or a part upload a copy of an object bex
+// already holds.
+const copySourceHeader = "X-Amz-Copy-Source"
+
+// isCopy reports whether the request carries a copy source.
+func isCopy(r *http.Request) bool { return r.Header.Get(copySourceHeader) != "" }
+
+// operation is the S3 operation the request is, which the route alone does not say: S3 takes
+// a copy as `PUT /<bucket>/<key>` and a part copy as `PUT …?partNumber&uploadId`, both with
+// X-Amz-Copy-Source, and names them CopyObject and UploadPartCopy. One header decides it, on
+// those two routes only, so the answer is always one of a closed set and never anything the
+// client chose; the handlers still run by the route's op.
+func (rt *route) operation(r *http.Request) string {
+	if isCopy(r) {
+		switch rt.op {
+		case "PutObject":
+			return "CopyObject"
+		case "UploadPart":
+			return "UploadPartCopy"
+		}
+	}
+	return rt.op
 }
 
 // commonParams are the query parameters every operation may carry. The AWS SDKs

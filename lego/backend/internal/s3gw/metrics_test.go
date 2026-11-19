@@ -17,11 +17,14 @@ limitations under the License.
 package s3gw
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -173,5 +176,152 @@ func TestAnEgressBudgetRefusalAndTheBytesOfAListingAreCounted(t *testing.T) {
 	}
 	if got["bex_s3gw_streams_in_flight"] != 7 || got["bex_s3gw_stream_limit"] != 64 {
 		t.Errorf("the stream gauges read %v, want 7 in flight of 64", got)
+	}
+}
+
+// opCount reads one series of the request counter.
+func opCount(m *Metrics, op, code string, status int) float64 {
+	return testutil.ToFloat64(m.requests.WithLabelValues(op, code, strconv.Itoa(status)))
+}
+
+func TestACopyAndAPartCopyAreCountedAsTheirOwnOperationsNotAsAPutAndAPart(t *testing.T) {
+	g := newRig(t)
+	m, _ := newTestMetrics(t, g)
+	rw := g.newKey(objectstorage.KeyPermissionReadWrite, 0)
+	ro := g.newKey(objectstorage.KeyPermissionRead, 0)
+	const part = "/b/o?partNumber=1&uploadId=u"
+	copyOf := func(r *http.Request) { r.Header.Set("x-amz-copy-source", "/b/src") }
+	g.do(g.signed(rw, "PUT", "/b/o", nil))                        // a put
+	g.do(g.signed(rw, "PUT", "/b/o", nil, copyOf))                // a copy
+	g.do(g.signed(rw, "PUT", "/b/o", nil, copyOf))                // another
+	g.do(g.signed(rw, "PUT", part, nil))                          // a part
+	g.do(g.signed(rw, "PUT", part, nil, copyOf))                  // a part copy
+	g.do(g.signed(ro, "PUT", "/b/o", nil, copyOf))                // a copy the key may not make: denied, still a copy
+	g.do(g.signed(ro, "PUT", part, nil, copyOf))                  // a part copy the key may not make
+	g.do(g.signed(ro, "GET", "/b/o", nil, copyOf))                // the header on a read is not a copy
+	g.do(g.signed(rw, "PUT", "/b", nil, copyOf))                  // nor on CreateBucket
+	g.do(g.signed(rw, "PUT", "/b/o", nil, func(r *http.Request) { // whatever the header holds, the label is the same
+		r.Header.Set("x-amz-copy-source", "PutObject\n\"} evil{")
+	}))
+	for _, c := range []struct {
+		op, code string
+		status   int
+		want     float64
+	}{
+		{"PutObject", "OK", 200, 1},
+		{"CopyObject", "OK", 200, 3},
+		{"UploadPart", "OK", 200, 1},
+		{"UploadPartCopy", "OK", 200, 1},
+		{"CopyObject", "AccessDenied", 403, 1},
+		{"UploadPartCopy", "AccessDenied", 403, 1},
+		{"PutObject", "AccessDenied", 403, 0},
+		{"UploadPart", "AccessDenied", 403, 0},
+		{"GetObject", "OK", 200, 1},
+		{"CreateBucket", "OK", 200, 1},
+	} {
+		if got := opCount(m, c.op, c.code, c.status); got != c.want {
+			t.Errorf("%s %s %d = %v, want %v", c.op, c.code, c.status, got, c.want)
+		}
+	}
+}
+
+func TestARefusedCopyKeepsItsOperationAndNeverLabelsAPut(t *testing.T) {
+	g := newRig(t)
+	m, _ := newTestMetrics(t, g)
+	k := g.newKey(objectstorage.KeyPermissionReadWrite, 0)
+	// A copy across regions is refused 501 by the handlers, after the route was chosen.
+	spyOn(t, "PutObject", func(*request) *Error { return errNotImplemented("a copy across regions") })
+	spyOn(t, "UploadPart", func(*request) *Error { return errNotImplemented("a part copy across regions") })
+	g.do(g.signed(k, "PUT", "/b/o", nil, func(r *http.Request) { r.Header.Set("x-amz-copy-source", "/eu/o") }))
+	g.do(g.signed(k, "PUT", "/b/o?partNumber=1&uploadId=u", nil, func(r *http.Request) { r.Header.Set("x-amz-copy-source", "/eu/o") }))
+	g.do(g.signed(k, "PUT", "/b/o", nil)) // a put refused the same way is a put
+	g.do(g.signed(k, "PUT", "/b/o?acl", nil, func(r *http.Request) { r.Header.Set("x-amz-copy-source", "/eu/o") }))
+	// A subresource bex does not serve is refused before a route is chosen: that is "unrouted",
+	// whatever the headers say, and not a copy.
+	for _, c := range []struct {
+		op   string
+		want float64
+	}{{"CopyObject", 1}, {"UploadPartCopy", 1}, {"PutObject", 1}, {"UploadPart", 0}, {"unrouted", 1}} {
+		if got := opCount(m, c.op, "NotImplemented", 501); got != c.want {
+			t.Errorf("%s NotImplemented 501 = %v, want %v", c.op, got, c.want)
+		}
+	}
+}
+
+func TestTheOperationLabelIsOneOfTheRoutesOrTheTwoCopiesAndNothingAClientSends(t *testing.T) {
+	closed := map[string]bool{"CopyObject": true, "UploadPartCopy": true}
+	for _, rt := range routes {
+		closed[rt.op] = true
+	}
+	for i := range routes {
+		rt := &routes[i]
+		for _, source := range []string{"", "/b/k", "PutObject", "line\nbreak", strings.Repeat("x", 4096)} {
+			r := httptest.NewRequest(rt.method, "/b/k", nil)
+			if source != "" {
+				r.Header.Set("X-Amz-Copy-Source", source)
+			}
+			got := rt.operation(r)
+			if !closed[got] {
+				t.Errorf("%s with a copy source of %d bytes is labelled %q, which is not a route or a copy", rt.op, len(source), got)
+			}
+			want := rt.op
+			switch {
+			case source != "" && rt.op == "PutObject":
+				want = "CopyObject"
+			case source != "" && rt.op == "UploadPart":
+				want = "UploadPartCopy"
+			}
+			if got != want {
+				t.Errorf("%s with a copy source of %d bytes is labelled %q, want %q", rt.op, len(source), got, want)
+			}
+		}
+	}
+}
+
+func TestARealCopyAndARealPartCopyAreCountedAsCopiesAndTheirRefusalsToo(t *testing.T) {
+	p := newPGRig(t)
+	m, _ := newTestMetrics(t, p.rig)
+	k := p.newKey(objectstorage.KeyPermissionReadWrite, 0)
+	p.bucket("src", objectstorage.Oregon)
+	p.bucket("dst", objectstorage.Oregon)
+	p.bucket("eu-data", objectstorage.Frankfurt)
+	data := payload(70_000)
+	if rec, doc := p.do(p.signed(k, "PUT", "/src/o", bytes.NewReader(data), func(r *http.Request) { r.ContentLength = int64(len(data)) })); rec.Code != 200 {
+		t.Fatalf("put = %d %q", rec.Code, doc.Code)
+	}
+	copyOf := func(source string) func(*http.Request) {
+		return func(r *http.Request) { r.ContentLength = 0; r.Header.Set("x-amz-copy-source", source) }
+	}
+	if rec, doc := p.do(p.signed(k, "PUT", "/dst/c", nil, copyOf("/src/o"))); rec.Code != 200 {
+		t.Fatalf("copy = %d %q", rec.Code, doc.Code)
+	}
+	if rec, doc := p.do(p.signed(k, "PUT", "/eu-data/c", nil, copyOf("/src/o"))); rec.Code != 501 || doc.Code != "NotImplemented" {
+		t.Fatalf("a copy across regions = %d %q, want 501", rec.Code, doc.Code)
+	}
+	id := p.createUpload(k, "dst", "big")
+	partTarget := "/dst/big?partNumber=1&uploadId=" + id
+	if rec, doc := p.do(p.signed(k, "PUT", partTarget, nil, copyOf("/src/o"))); rec.Code != 200 {
+		t.Fatalf("part copy = %d %q", rec.Code, doc.Code)
+	}
+	if rec, doc := p.do(p.signed(k, "PUT", partTarget, nil, copyOf("/eu-data/c"))); rec.Code != 501 || doc.Code != "NotImplemented" {
+		t.Fatalf("a part copy across regions = %d %q, want 501", rec.Code, doc.Code)
+	}
+	for _, c := range []struct {
+		op, code string
+		status   int
+		want     float64
+	}{
+		{"PutObject", "OK", 200, 1}, // the one plain put, which seeded the source
+		{"CopyObject", "OK", 200, 1},
+		{"CopyObject", "NotImplemented", 501, 1},
+		{"UploadPartCopy", "OK", 200, 1},
+		{"UploadPartCopy", "NotImplemented", 501, 1},
+		{"PutObject", "NotImplemented", 501, 0},
+		{"UploadPart", "OK", 200, 0},
+		{"UploadPart", "NotImplemented", 501, 0},
+	} {
+		if got := opCount(m, c.op, c.code, c.status); got != c.want {
+			t.Errorf("%s %s %d = %v, want %v", c.op, c.code, c.status, got, c.want)
+		}
 	}
 }

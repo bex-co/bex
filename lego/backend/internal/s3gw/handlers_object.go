@@ -96,7 +96,7 @@ func (rq *request) entityHeaders() (objectstorage.ObjectHeaders, *Error) {
 }
 
 func (rq *request) putObject() *Error {
-	if rq.r.Header.Get("X-Amz-Copy-Source") != "" {
+	if isCopy(rq.r) {
 		return rq.copyObject()
 	}
 	b, e := rq.bucketRow()
@@ -387,7 +387,7 @@ func parseCopySource(raw string) (bucket, key string, e *Error) {
 // the key's workspace and a valid key, and reading it needs the creator's can_view_sensitive
 // whatever the destination needs.
 func (rq *request) copySource() (store.ObjectBucket, string, *Error) {
-	srcName, srcKey, e := parseCopySource(rq.r.Header.Get("X-Amz-Copy-Source"))
+	srcName, srcKey, e := parseCopySource(rq.r.Header.Get(copySourceHeader))
 	if e != nil {
 		return store.ObjectBucket{}, "", e
 	}

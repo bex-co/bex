@@ -142,7 +142,7 @@ func (rq *request) partNumber() (int, *Error) {
 }
 
 func (rq *request) uploadPart() *Error {
-	if rq.r.Header.Get("X-Amz-Copy-Source") != "" {
+	if isCopy(rq.r) {
 		return rq.uploadPartCopy()
 	}
 	b, e := rq.bucketRow()
