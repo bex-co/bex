@@ -113,10 +113,6 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "Link from an SSH-unavailable state on a Free service to its instance-type page (w4/143)",
   },
-  "services.shellTitle": {
-    message: "셸",
-    description: "Running-instance SSH connection page title",
-  },
   "services.shellDescription": {
     message: "터미널에서 실행 중인 서비스 인스턴스의 셸을 엽니다.",
     description: "Running-instance SSH connection page description",
@@ -1617,6 +1613,11 @@ const koServices: Record<string, TranslationEntry> = {
     message: "유료",
     description: "Plan-picker section label for the paid tier ladder",
   },
+  "services.planCurrent": {
+    message: "현재",
+    description:
+      "Plan picker: badge on the instance type the service is on now",
+  },
   "services.planPickerCancel": {
     message: "취소",
     description: "Plan-picker footer button: discard the selection",
@@ -2377,6 +2378,11 @@ const koServices: Record<string, TranslationEntry> = {
     message: "빌드",
     description:
       "Settings tab: Build card title, Render's split Build section (w5/m52)",
+  },
+  "services.buildDeployNav": {
+    message: "빌드 및 배포",
+    description:
+      "Settings section index: the one entry for the Build and Deploy cards, which the page renders as one section (Render names it Build & Deploy)",
   },
   "services.buildDescription": {
     message: "bex가 저장소에서 서비스를 빌드하는 방식을 구성합니다.",
@@ -4307,10 +4313,6 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail nav item (persistent disk page); Render's label is singular",
   },
-  "services.diskTitle": {
-    message: "디스크",
-    description: "Disk tab card title",
-  },
   "services.diskDescription": {
     message:
       "SSD를 연결하면 배포 간에도 서비스의 파일 시스템 데이터가 유지됩니다. 디스크는 월 $0.175/GB가 청구됩니다.",
@@ -5589,10 +5591,6 @@ const koServices: Record<string, TranslationEntry> = {
   "services.outboundIpsCopyError": {
     message: "복사할 수 없습니다",
     description: "Toast when clipboard write fails for an outbound IP (w8/010)",
-  },
-  "services.environmentPageTitle": {
-    message: "환경",
-    description: "Service Environment page heading",
   },
   "services.environmentPageDescription": {
     message: "서비스 전용 변수, 시크릿 파일, 연결된 환경 그룹을 관리합니다.",

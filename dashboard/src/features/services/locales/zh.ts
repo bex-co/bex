@@ -109,10 +109,6 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Link from an SSH-unavailable state on a Free service to its instance-type page (w4/143)",
   },
-  "services.shellTitle": {
-    message: "Shell",
-    description: "Running-instance SSH connection page title",
-  },
   "services.shellDescription": {
     message: "从本地终端打开正在运行的服务实例 Shell。",
     description: "Running-instance SSH connection page description",
@@ -1584,6 +1580,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "付费",
     description: "Plan-picker section label for the paid tier ladder",
   },
+  "services.planCurrent": {
+    message: "当前",
+    description:
+      "Plan picker: badge on the instance type the service is on now",
+  },
   "services.planPickerCancel": {
     message: "取消",
     description: "Plan-picker footer button: discard the selection",
@@ -2324,6 +2325,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "构建",
     description:
       "Settings tab: Build card title, Render's split Build section (w5/m52)",
+  },
+  "services.buildDeployNav": {
+    message: "构建与部署",
+    description:
+      "Settings section index: the one entry for the Build and Deploy cards, which the page renders as one section (Render names it Build & Deploy)",
   },
   "services.buildDescription": {
     message: "配置 bex 如何从你的代码仓库构建此服务。",
@@ -4204,10 +4210,6 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail nav item (persistent disk page); Render's label is singular",
   },
-  "services.diskTitle": {
-    message: "磁盘",
-    description: "Disk tab card title",
-  },
   "services.diskDescription": {
     message:
       "挂载一块 SSD，让服务的文件系统数据在多次部署之间得以保留。磁盘按每月 $0.175/GB 计费。",
@@ -5473,10 +5475,6 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.outboundIpsCopyError": {
     message: "无法复制",
     description: "Toast when clipboard write fails for an outbound IP (w8/010)",
-  },
-  "services.environmentPageTitle": {
-    message: "环境",
-    description: "Service Environment page heading",
   },
   "services.environmentPageDescription": {
     message: "管理此服务的环境变量、机密文件和已关联的环境组。",

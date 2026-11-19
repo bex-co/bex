@@ -26,7 +26,6 @@ function RouteComponent() {
   return (
     <DeployHistoryView
       serviceId={serviceId}
-      titleKey="deploys.buildsTitle"
       search={search}
       // The functional form commits the explicit undefineds, which is what
       // clears a key.

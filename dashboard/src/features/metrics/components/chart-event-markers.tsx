@@ -4,11 +4,7 @@ import { CircleDot, Rocket } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatTimeOfDay } from "@/common/lib/format";
 import { useServiceBase } from "@/features/services/lib/service-base";
-import {
-  CHART_WIDTH as WIDTH,
-  CHART_HEIGHT as HEIGHT,
-  CHART_PAD as PAD,
-} from "@/features/metrics/components/chart-layout";
+import { CHART_PAD as PAD } from "@/features/metrics/components/chart-layout";
 import type {
   ChartEventKind,
   ChartEventMarker,
@@ -28,7 +24,14 @@ export function EventLaneSlot() {
 }
 
 /** Vertical dashed line per event cluster — rendered inside the chart SVG. */
-export function ChartEventLines({ clusters }: { clusters: MarkerCluster[] }) {
+export function ChartEventLines({
+  clusters,
+  height,
+}: {
+  clusters: MarkerCluster[];
+  /** The chart's drawn height (its measured box). */
+  height: number;
+}) {
   return (
     <g>
       {clusters.map((c) => (
@@ -37,7 +40,7 @@ export function ChartEventLines({ clusters }: { clusters: MarkerCluster[] }) {
           x1={c.x}
           x2={c.x}
           y1={PAD.top}
-          y2={HEIGHT - PAD.bottom}
+          y2={height - PAD.bottom}
           stroke="var(--muted-foreground)"
           strokeWidth={1}
           strokeDasharray="3 3"
@@ -67,9 +70,12 @@ const DEPLOY_KINDS = new Set<ChartEventKind>(["start", "success", "failure"]);
 export function ChartEventStrip({
   clusters,
   serviceId,
+  width,
 }: {
   clusters: MarkerCluster[];
   serviceId: string;
+  /** The chart's drawn width (its measured box) the cluster x is in. */
+  width: number;
 }) {
   const { t, i18n } = useTranslations();
   const base = useServiceBase();
@@ -97,7 +103,7 @@ export function ChartEventStrip({
             key={cluster.x}
             role="listitem"
             className="absolute top-0 -translate-x-1/2"
-            style={{ left: `${(cluster.x / WIDTH) * 100}%` }}
+            style={{ left: `${(cluster.x / width) * 100}%` }}
             onPointerEnter={() => setActive(i)}
             onPointerLeave={() => setActive((cur) => (cur === i ? null : cur))}
           >

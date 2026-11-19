@@ -317,8 +317,11 @@ export function AutoscalingSection({
   // card cannot drift apart (w4/688): only the switch slot differs.
   const header = (control: ReactNode) => (
     <CardHeader>
-      <div className="flex items-center justify-between">
-        <div>
+      {/* A phone puts the switch under the description: beside it, the
+          switch squeezed the sentence into a column a third of the card
+          wide and floated mid-paragraph. */}
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <CardTitle>{t("services.scalingTitle")}</CardTitle>
           <CardDescription className="mt-1">
             {t("services.scalingDescription")}

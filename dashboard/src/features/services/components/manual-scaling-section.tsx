@@ -1,3 +1,4 @@
+import { cn } from "@/common/lib/utils/utils";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
@@ -66,7 +67,10 @@ export function ManualScalingSection({
     <Card>
       <ManualScalingHeader isFree={isFree} />
       <CardContent>
-        <div className="space-y-3">
+        {/* The count control keeps a control's measure on a wide screen:
+            stretched across the card, the slider ran ~1000px and put the
+            value a screen-width from its Save. */}
+        <div className="max-w-xl space-y-3">
           <p className="text-sm font-medium">
             {t("services.scalingManualInstances")}
           </p>
@@ -127,12 +131,18 @@ export function ManualScalingSkeleton({ plan }: { plan?: string | null }) {
     <Card data-testid="manual-scaling-loading">
       <ManualScalingHeader isFree={isFree} />
       <CardContent>
-        <div className="space-y-3">
+        <div className="max-w-xl space-y-3">
           <p className="text-sm font-medium">
             {t("services.scalingManualInstances")}
           </p>
-          <Skeleton className={isFree ? "h-8 w-16" : "h-8 w-full"} />
-          <Skeleton className="h-8 w-28" />
+          {/* The ready row's input and Save are 44px tall below `lg`. */}
+          <Skeleton
+            className={cn(
+              isFree ? "h-8 w-16" : "h-8 w-full",
+              "max-lg:h-11 pointer-coarse:h-11",
+            )}
+          />
+          <Skeleton className="h-8 w-28 max-lg:h-11 pointer-coarse:h-11" />
         </div>
       </CardContent>
     </Card>

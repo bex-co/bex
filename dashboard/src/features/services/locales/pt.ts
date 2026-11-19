@@ -112,10 +112,6 @@ const ptServices: Record<string, TranslationEntry> = {
     description:
       "Link from an SSH-unavailable state on a Free service to its instance-type page (w4/143)",
   },
-  "services.shellTitle": {
-    message: "Shell",
-    description: "Running-instance SSH connection page title",
-  },
   "services.shellDescription": {
     message:
       "Abra um shell em uma instância de serviço em execução a partir do seu terminal.",
@@ -1634,6 +1630,11 @@ const ptServices: Record<string, TranslationEntry> = {
     message: "Pago",
     description: "Plan-picker section label for the paid tier ladder",
   },
+  "services.planCurrent": {
+    message: "Atual",
+    description:
+      "Plan picker: badge on the instance type the service is on now",
+  },
   "services.planPickerCancel": {
     message: "Cancelar",
     description: "Plan-picker footer button: discard the selection",
@@ -2405,6 +2406,11 @@ const ptServices: Record<string, TranslationEntry> = {
     message: "Build",
     description:
       "Settings tab: Build card title, Render's split Build section (w5/m52)",
+  },
+  "services.buildDeployNav": {
+    message: "Build e deploy",
+    description:
+      "Settings section index: the one entry for the Build and Deploy cards, which the page renders as one section (Render names it Build & Deploy)",
   },
   "services.buildDescription": {
     message:
@@ -4358,10 +4364,6 @@ const ptServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail nav item (persistent disk page); Render's label is singular",
   },
-  "services.diskTitle": {
-    message: "Disco",
-    description: "Disk tab card title",
-  },
   "services.diskDescription": {
     message:
       "Anexe um SSD para manter os dados do sistema de arquivos do seu serviço entre deploys. Os discos são cobrados a US$ 0,175/GB por mês.",
@@ -5671,10 +5673,6 @@ const ptServices: Record<string, TranslationEntry> = {
   "services.outboundIpsCopyError": {
     message: "Não foi possível copiar",
     description: "Toast when clipboard write fails for an outbound IP (w8/010)",
-  },
-  "services.environmentPageTitle": {
-    message: "Ambiente",
-    description: "Service Environment page heading",
   },
   "services.environmentPageDescription": {
     message:

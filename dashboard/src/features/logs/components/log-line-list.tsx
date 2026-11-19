@@ -12,6 +12,7 @@ import { Button } from "@/common/components/ui/button.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatClockTime } from "@/common/lib/format";
 import { cn } from "@/common/lib/utils/utils.ts";
+import { useLogPanelHeight } from "@/features/logs/hooks/use-log-panel-height";
 import { type AnsiSpan } from "../lib/ansi";
 import { LOG_TYPE_REQUEST, type LogLine } from "../types";
 
@@ -42,9 +43,6 @@ const PIN_THRESHOLD = 24;
 // How close to the top (px) counts as "load older" — large enough that a fast
 // flick to the top still fires before the user stares at empty overscan.
 const LOAD_OLDER_THRESHOLD = 64;
-
-// Height of the scroll viewport; the list fills it and scrolls internally.
-const VIEWPORT_HEIGHT = 520;
 
 // Estimated row height before measurement — one `text-xs` line at
 // `leading-relaxed` plus the row's vertical padding. Dynamic measurement
@@ -84,6 +82,12 @@ interface LogLineListProps {
   /** Fill the parent's height instead of the fixed viewport (the deploy
    *  page's maximized mode, w9/003). The parent owns the height. */
   fill?: boolean;
+  /**
+   * Size the panel to the viewport's room below it (min 320px) instead of a
+   * fixed 520px: the service Logs tab, where the panel is the page. Other
+   * hosts (a deploy's log, a datastore's) keep the fixed height.
+   */
+  fillViewport?: boolean;
   /** More history exists older than the loaded pages (w4/m107). */
   hasMore?: boolean;
   loadingOlder?: boolean;
@@ -119,6 +123,7 @@ export function LogLineList({
   wrap = true,
   showTimestamps = true,
   fill = false,
+  fillViewport = false,
   hasMore = false,
   loadingOlder = false,
   onLoadOlder,
@@ -300,6 +305,8 @@ export function LogLineList({
     if (pinned) scrollToBottom();
   }, [lines, pinned, scrollToBottom]);
 
+  const { ref: panelRef, height: panelHeight } =
+    useLogPanelHeight<HTMLDivElement>(fillViewport && !fill);
   const virtualRows = virtualizer.getVirtualItems();
   const totalSize = virtualizer.getTotalSize();
   // Spacer heights standing in for the unrendered rows above and below the
@@ -313,7 +320,7 @@ export function LogLineList({
       : 0;
 
   return (
-    <div className={cn("relative", fill && "h-full")}>
+    <div ref={panelRef} className={cn("relative", fill && "h-full")}>
       {/* eslint-disable-next-line jsx-a11y-x/no-static-element-interactions -- the viewport only listens for reader input to end a reflow; it is not a control */}
       <div
         ref={viewportRef}
@@ -324,11 +331,12 @@ export function LogLineList({
         onTouchStart={endSettling}
         onPointerDown={endSettling}
         onKeyDown={endSettling}
-        style={fill ? undefined : { height: VIEWPORT_HEIGHT }}
+        style={fill ? undefined : { height: panelHeight }}
         className={cn(
           // The list anchors the reader itself; the browser's own overflow
           // anchoring would move it again mid-reflow (w4/m228).
-          "overflow-auto rounded-md border bg-muted/30 font-mono text-xs leading-relaxed [overflow-anchor:none]",
+          // A container, so a wrapped row can stack by the panel's own width.
+          "@container/logs overflow-auto rounded-md border bg-muted/30 font-mono text-xs leading-relaxed [overflow-anchor:none]",
           fill && "h-full",
         )}
       >
@@ -411,7 +419,13 @@ const LogRow = memo(function LogRow({
       ref={measureRef}
       className={cn(
         "flex gap-3 px-1 py-0.5 hover:bg-muted/60",
-        wrap ? "whitespace-pre-wrap break-words" : "whitespace-pre",
+        // In a narrow panel a wrapped row puts its time and instance on one
+        // line and gives the message the panel's full width under them:
+        // beside a fixed time-and-instance gutter, the message had under
+        // half a phone's width and broke tokens mid-word ("2026-/07").
+        wrap
+          ? "whitespace-pre-wrap break-words @max-xl/logs:flex-wrap @max-xl/logs:gap-x-2 @max-xl/logs:gap-y-0 @max-xl/logs:py-1"
+          : "whitespace-pre",
       )}
     >
       {showTimestamps ? (
@@ -423,7 +437,11 @@ const LogRow = memo(function LogRow({
         onInstanceFilter ? (
           <button
             type="button"
-            className="shrink-0 cursor-pointer rounded-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            // Part of the line's text, not a control row: exempt from the
+            // touch region's 44px control height, with its own 44px-tall
+            // hit area on touch widths instead.
+            data-touch-exempt=""
+            className="relative shrink-0 cursor-pointer rounded-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-lg:after:absolute max-lg:after:-inset-y-3 max-lg:after:-inset-x-0 max-lg:after:content-['']"
             aria-label={t("logs.filterByInstance", {
               instance: line.instance,
             })}
@@ -462,7 +480,12 @@ const LogRow = memo(function LogRow({
           {line.statusCode}
         </span>
       ) : null}
-      <span className="min-w-0 flex-1 text-foreground">
+      <span
+        className={cn(
+          "min-w-0 flex-1 text-foreground",
+          wrap && "@max-xl/logs:basis-full",
+        )}
+      >
         {/* Inside the message cell, so a long host or path wraps with the
             message rather than squeezing it (w5/m139). */}
         {isRequest && (line.host || line.path)

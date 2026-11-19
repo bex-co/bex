@@ -112,10 +112,6 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Link from an SSH-unavailable state on a Free service to its instance-type page (w4/143)",
   },
-  "services.shellTitle": {
-    message: "Shell",
-    description: "Running-instance SSH connection page title",
-  },
   "services.shellDescription": {
     message: "Open a shell on a running service instance from your terminal.",
     description: "Running-instance SSH connection page description",
@@ -1618,6 +1614,11 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Paid",
     description: "Plan-picker section label for the paid tier ladder",
   },
+  "services.planCurrent": {
+    message: "Current",
+    description:
+      "Plan picker: badge on the instance type the service is on now",
+  },
   "services.planPickerCancel": {
     message: "Cancel",
     description: "Plan-picker footer button: discard the selection",
@@ -2374,6 +2375,11 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Build",
     description:
       "Settings tab: Build card title, Render's split Build section (w5/m52)",
+  },
+  "services.buildDeployNav": {
+    message: "Build & Deploy",
+    description:
+      "Settings section index: the one entry for the Build and Deploy cards, which the page renders as one section (Render names it Build & Deploy)",
   },
   "services.buildDescription": {
     message: "Configure how bex builds your service from your repository.",
@@ -4293,10 +4299,6 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail nav item (persistent disk page); Render's label is singular",
   },
-  "services.diskTitle": {
-    message: "Disk",
-    description: "Disk tab card title",
-  },
   "services.diskDescription": {
     message:
       "Attach an SSD to persist your service's filesystem data across deploys. Disks are charged at $0.175/GB per month.",
@@ -5598,10 +5600,6 @@ const enServices: Record<string, TranslationEntry> = {
   "services.outboundIpsCopyError": {
     message: "Could not copy",
     description: "Toast when clipboard write fails for an outbound IP (w8/010)",
-  },
-  "services.environmentPageTitle": {
-    message: "Environment",
-    description: "Service Environment page heading",
   },
   "services.environmentPageDescription": {
     message:

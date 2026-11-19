@@ -10,6 +10,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardAction,
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card";
@@ -89,7 +90,7 @@ export function ServiceSourceCard(props: ServiceSourceCardProps) {
 
   return (
     <Card>
-      <CardHeader className="flex-row items-start justify-between gap-4">
+      <CardHeader>
         <div className="space-y-1.5">
           <CardTitle>{t("services.sourceTitle")}</CardTitle>
           <CardDescription>
@@ -102,7 +103,12 @@ export function ServiceSourceCard(props: ServiceSourceCardProps) {
             )}
           </CardDescription>
         </div>
-        <SourceEditDialog {...props} disabled={!canCreate} />
+        {/* The card's action, top right like every other card's: as a bare
+            grid item the button stretched across the card above the
+            values it edits. */}
+        <CardAction>
+          <SourceEditDialog {...props} disabled={!canCreate} />
+        </CardAction>
       </CardHeader>
       <CardContent>
         <dl className="grid gap-4 text-sm sm:grid-cols-2">

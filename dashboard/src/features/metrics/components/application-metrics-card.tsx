@@ -7,6 +7,14 @@ import {
   CardTitle,
 } from "@/common/components/ui/card.tsx";
 import { Tabs, TabsList, TabsTrigger } from "@/common/components/ui/tabs.tsx";
+import { ChevronDown } from "lucide-react";
+import { Button } from "@/common/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/common/components/ui/dropdown-menu";
 import {
   SvgLineChart,
   ChartLegend,
@@ -61,6 +69,15 @@ interface ApplicationMetricsCardProps {
  * dashed reference line, so mixed limits read as "Limits vary" instead of
  * one max presented as universal.
  */
+
+// Below `lg` (or on a coarse pointer), segmented controls grow to 44px
+// triggers, and small inline text links take a 44px hit area around their
+// drawn text.
+const TOUCH_SEGMENTS_CLASS =
+  "max-lg:h-auto max-lg:[&_[role=tab]]:min-h-11 pointer-coarse:h-auto pointer-coarse:[&_[role=tab]]:min-h-11";
+const TOUCH_LINK_CLASS =
+  "max-lg:relative max-lg:after:absolute max-lg:after:-inset-x-1 max-lg:after:-inset-y-3.5 max-lg:after:content-['']";
+
 export function ApplicationMetricsCard({
   resource,
   window,
@@ -172,30 +189,53 @@ export function ApplicationMetricsCard({
         <div className="flex flex-wrap items-center gap-2">
           {instanceChoices.length > 0 ? (
             <span className="flex items-center gap-2">
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="sr-only">{t("metrics.instanceFilter")}</span>
-                <select
-                  multiple
-                  aria-label={t("metrics.instanceFilter")}
-                  className="h-9 min-w-[9rem] max-w-[14rem] rounded-md border bg-background px-2 text-xs text-foreground"
-                  value={selectedInstances}
-                  onChange={(e) => {
-                    const next = Array.from(e.target.selectedOptions).map(
-                      (o) => o.value,
-                    );
-                    setSelectedInstances(next);
-                  }}
+              {/* A select-shaped trigger over a checkbox menu: a native
+                  multi-select squeezed to one row read as a broken box,
+                  its one option pinned to the top edge. */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 max-w-[16rem] min-w-[9rem] justify-between gap-2 font-normal"
+                  >
+                    <span className="text-muted-foreground">
+                      {t("metrics.instanceFilter")}
+                    </span>
+                    <span className="min-w-0 truncate">
+                      {hasSelection
+                        ? selectedInstances.map(shortInstanceLabel).join(", ")
+                        : t("metrics.instanceFilterAll")}
+                    </span>
+                    <ChevronDown className="opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  className="max-h-72 overflow-y-auto"
                 >
                   {instanceChoices.map((id) => (
-                    <option key={id} value={id}>
+                    <DropdownMenuCheckboxItem
+                      key={id}
+                      checked={selectedInstances.includes(id)}
+                      // A multi-select: the menu stays open between picks.
+                      onSelect={(event) => event.preventDefault()}
+                      onCheckedChange={(checked) =>
+                        setSelectedInstances(
+                          checked
+                            ? [...selectedInstances, id]
+                            : selectedInstances.filter((x) => x !== id),
+                        )
+                      }
+                    >
                       {shortInstanceLabel(id)}
                       {!availableInstances.has(id)
                         ? t("metrics.instanceUnavailableSuffix")
                         : ""}
-                    </option>
+                    </DropdownMenuCheckboxItem>
                   ))}
-                </select>
-              </label>
+                </DropdownMenuContent>
+              </DropdownMenu>
               {hasSelection ? (
                 <button
                   type="button"
@@ -213,7 +253,7 @@ export function ApplicationMetricsCard({
             <span
               data-instance-filter-slot
               aria-hidden="true"
-              className="invisible h-9 min-w-[9rem] rounded-md border"
+              className="invisible h-9 min-w-[9rem] rounded-md border max-lg:h-11 pointer-coarse:h-11"
             />
           ) : null}
           <Tabs
@@ -224,7 +264,10 @@ export function ApplicationMetricsCard({
               )
             }
           >
-            <TabsList aria-label={t("metrics.aggregateFilter")}>
+            <TabsList
+              aria-label={t("metrics.aggregateFilter")}
+              className={TOUCH_SEGMENTS_CLASS}
+            >
               <TabsTrigger value="raw">{t("metrics.aggregateRaw")}</TabsTrigger>
               <TabsTrigger value="MIN">{t("metrics.aggregateMin")}</TabsTrigger>
               <TabsTrigger value="MAX">{t("metrics.aggregateMax")}</TabsTrigger>
@@ -235,7 +278,7 @@ export function ApplicationMetricsCard({
             value={percentage ? "percentage" : "total"}
             onValueChange={(v) => setPercentage(v === "percentage")}
           >
-            <TabsList>
+            <TabsList className={TOUCH_SEGMENTS_CLASS}>
               <TabsTrigger value="percentage">
                 {t("metrics.filterPercentage")}
               </TabsTrigger>
@@ -290,7 +333,7 @@ export function ApplicationMetricsCard({
                 <Link
                   to="/services/$serviceId/scaling"
                   params={{ serviceId: resource }}
-                  className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                  className={`text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground ${TOUCH_LINK_CLASS}`}
                 >
                   {t("metrics.manageScaling")}
                 </Link>
@@ -444,7 +487,7 @@ function ResourceSection({
             <Link
               to="/services/$serviceId/plan"
               params={{ serviceId }}
-              className="underline underline-offset-2 hover:text-foreground"
+              className={`underline underline-offset-2 hover:text-foreground ${TOUCH_LINK_CLASS}`}
             >
               {t("metrics.limitLink")}
             </Link>

@@ -300,15 +300,6 @@ const jaDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploys page banner body for a repo whose pushes can't reach bex: no Auto-Deploy setting can turn deploys on push on (Render: a public Git URL must be deployed manually)",
   },
-  "deploys.listTitle": {
-    message: "デプロイ",
-    description: "Deploys tab: card title over the deploy-history list",
-  },
-  "deploys.buildsTitle": {
-    message: "ビルド",
-    description:
-      "A cron job's Builds tab: card title over its build history, Render's Builds page (w2/m360)",
-  },
   "deploys.columnDeploy": {
     message: "デプロイ",
     description:

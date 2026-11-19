@@ -1,7 +1,12 @@
+import { ServiceTabDescription } from "@/features/services/components/service-tab-description";
 import { HardDrive, Pencil, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
-import { Alert, AlertDescription, AlertTitle } from "@/common/components/ui/alert";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/common/components/ui/alert";
 import { Button } from "@/common/components/ui/button";
 import {
   Card,
@@ -12,7 +17,10 @@ import {
 } from "@/common/components/ui/card";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
-import { PanelCenteredState } from "@/common/components/panel-states";
+import {
+  PanelCenteredState,
+  PanelCenteredStateSkeleton,
+} from "@/common/components/panel-states";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
@@ -82,7 +90,11 @@ const MIN_SIZE_GB = 1;
 const MAX_SIZE_GB = 10000;
 
 /** The service types validateDisk accepts (lego/backend/internal/apps/disks.go). */
-const DISK_ELIGIBLE_TYPES = ["web_service", "private_service", "background_worker"];
+const DISK_ELIGIBLE_TYPES = [
+  "web_service",
+  "private_service",
+  "background_worker",
+];
 
 export function DiskSection({
   serviceId,
@@ -107,7 +119,8 @@ export function DiskSection({
   // as a failed submit: a disk needs a long-running instance to mount on (so
   // no cron job or static site) and a paid instance type. Type is checked
   // first because it is the one the tenant cannot fix by upgrading.
-  const wrongType = serviceType !== null && !DISK_ELIGIBLE_TYPES.includes(serviceType);
+  const wrongType =
+    serviceType !== null && !DISK_ELIGIBLE_TYPES.includes(serviceType);
   const eligible = !wrongType && plan !== null && plan !== "free";
   const ineligibleReason = wrongType
     ? t("services.diskUnsupportedType")
@@ -122,22 +135,18 @@ export function DiskSection({
   //
   // A diskless service collapses to the single add card: there is no usage to
   // chart, nothing to snapshot, and nothing to delete.
+  // The tab's name is the detail layout's heading, so a diskless page leads
+  // with its description, as Environment and Shell do, not a card that
+  // repeated "Disk" under the "Disk" heading.
   if (loading && !disk) {
     return (
       <div className="space-y-6">
+        <ServiceTabDescription>
+          {t("services.diskDescription")}
+        </ServiceTabDescription>
         <Card>
-          <CardHeader>
-            <CardTitle>{t("services.diskTitle")}</CardTitle>
-            <CardDescription>{t("services.diskDescription")}</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center gap-4 py-8">
-            <Skeleton className="size-10 rounded-full" />
-            <div className="w-full max-w-md space-y-2">
-              <Skeleton className="mx-auto h-5 w-40" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="mx-auto h-4 w-4/5" />
-            </div>
-            <Skeleton className="h-9 w-24" />
+          <CardContent>
+            <PanelCenteredStateSkeleton />
           </CardContent>
         </Card>
       </div>
@@ -147,11 +156,10 @@ export function DiskSection({
   if (!disk) {
     return (
       <div className="space-y-6">
+        <ServiceTabDescription>
+          {t("services.diskDescription")}
+        </ServiceTabDescription>
         <Card>
-          <CardHeader>
-            <CardTitle>{t("services.diskTitle")}</CardTitle>
-            <CardDescription>{t("services.diskDescription")}</CardDescription>
-          </CardHeader>
           <CardContent>
             {error ? (
               <PanelCenteredState
@@ -178,7 +186,7 @@ export function DiskSection({
 
   return (
     <div className="space-y-6">
-      {(
+      {
         <>
           {/* The series is the same kubelet volume-stats pair a managed
               datastore's disk chart reads, so it reuses that panel rather than
@@ -195,25 +203,41 @@ export function DiskSection({
             description={t("services.diskUsageDescription")}
             diskHeaderExtra={
               <span className="text-xs text-muted-foreground">
-                {t("services.diskProvisionedLabel", { size: String(disk.sizeGB) })}
+                {t("services.diskProvisionedLabel", {
+                  size: String(disk.sizeGB),
+                })}
               </span>
             }
           />
           <Card>
             <CardHeader>
               <CardTitle>{t("services.diskConfigTitle")}</CardTitle>
-              <CardDescription>{t("services.diskConfigDescription")}</CardDescription>
+              <CardDescription>
+                {t("services.diskConfigDescription")}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <AttachedDisk disk={disk} mutations={mutations} canCreate={canCreate} />
+              <AttachedDisk
+                disk={disk}
+                mutations={mutations}
+                canCreate={canCreate}
+              />
             </CardContent>
           </Card>
-          <SnapshotsCard disk={disk} mutations={mutations} canCreate={canCreate} />
+          <SnapshotsCard
+            disk={disk}
+            mutations={mutations}
+            canCreate={canCreate}
+          />
           {canCreate ? (
-            <DeleteDiskCard disk={disk} onDelete={mutations.deleteDisk} busy={mutations.busy} />
+            <DeleteDiskCard
+              disk={disk}
+              onDelete={mutations.deleteDisk}
+              busy={mutations.busy}
+            />
           ) : null}
         </>
-      )}
+      }
     </div>
   );
 }
@@ -261,20 +285,21 @@ function AddDiskForm({
 
   if (!open) {
     return (
-      <div className="space-y-4">
-        <PanelCenteredState
-          icon={<HardDrive className="size-6" />}
-          title={t("services.diskEmptyTitle")}
-          body={eligible ? t("services.diskEmptyBody") : ineligibleReason}
-        />
-        {canCreate ? (
-          <div className="flex justify-center">
+      // The action sits in the empty state itself, a step under its copy,
+      // not after the state's own bottom padding where it read as a
+      // separate, orphaned control.
+      <PanelCenteredState
+        icon={<HardDrive className="size-6" />}
+        title={t("services.diskEmptyTitle")}
+        body={eligible ? t("services.diskEmptyBody") : ineligibleReason}
+        action={
+          canCreate ? (
             <Button onClick={() => setOpen(true)} disabled={!eligible || busy}>
               {t("services.diskAddAction")}
             </Button>
-          </div>
-        ) : null}
-      </div>
+          ) : undefined
+        }
+      />
     );
   }
 
@@ -297,8 +322,12 @@ function AddDiskForm({
     <div className="space-y-4">
       <DiskWarnings />
       <div className="space-y-2">
-        <Label htmlFor="disk-mount-path">{t("services.diskMountPathLabel")}</Label>
-        <p className="text-sm text-muted-foreground">{t("services.diskMountPathHint")}</p>
+        <Label htmlFor="disk-mount-path">
+          {t("services.diskMountPathLabel")}
+        </Label>
+        <p className="text-sm text-muted-foreground">
+          {t("services.diskMountPathHint")}
+        </p>
         <Input
           id="disk-mount-path"
           placeholder="/var/data"
@@ -312,17 +341,25 @@ function AddDiskForm({
             if (e.key === "Enter") void submit();
           }}
           aria-invalid={invalid !== null || addError !== null}
-          aria-describedby={invalid || addError ? "disk-mount-path-error" : undefined}
+          aria-describedby={
+            invalid || addError ? "disk-mount-path-error" : undefined
+          }
         />
         {invalid || addError ? (
-          <p id="disk-mount-path-error" role="alert" className="text-sm text-destructive">
+          <p
+            id="disk-mount-path-error"
+            role="alert"
+            className="text-sm text-destructive"
+          >
             {invalid ?? addError}
           </p>
         ) : null}
       </div>
       <div className="space-y-2">
         <Label htmlFor="disk-size">{t("services.diskSizeLabel")}</Label>
-        <p className="text-sm text-muted-foreground">{t("services.diskSizeHint")}</p>
+        <p className="text-sm text-muted-foreground">
+          {t("services.diskSizeHint")}
+        </p>
         <div className="flex flex-wrap items-center gap-2">
           {SIZE_CHIPS.map((size) => (
             <Button
@@ -350,7 +387,11 @@ function AddDiskForm({
         </div>
       </div>
       <div className="flex gap-2">
-        <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>
+        <Button
+          variant="outline"
+          onClick={() => setOpen(false)}
+          disabled={busy}
+        >
           {t("common.cancel")}
         </Button>
         <Button onClick={() => void submit()} disabled={busy}>
@@ -365,10 +406,14 @@ function AddDiskForm({
  * The same mount-path rules the CRD enforces, checked before submit so the
  * common mistakes read as guidance rather than as a server rejection.
  */
-function validateMountPath(path: string, t: (key: string) => string): string | null {
+function validateMountPath(
+  path: string,
+  t: (key: string) => string,
+): string | null {
   if (path === "") return t("services.diskMountPathRequired");
   if (!path.startsWith("/")) return t("services.diskMountPathAbsolute");
-  if (path === "/" || path.endsWith("/")) return t("services.diskMountPathNotRoot");
+  if (path === "/" || path.endsWith("/"))
+    return t("services.diskMountPathNotRoot");
   const reserved = [
     "/etc",
     "/etc/secrets",
@@ -416,7 +461,12 @@ function AttachedDisk({
             pod's volume mount, so changing it is a detach and re-attach, not an
             edit. Rendering it as a disabled field rather than plain text says
             "this is a setting, and it is fixed" in one glance. */}
-        <Input id="disk-mount-path-value" value={disk.mountPath} readOnly className="font-mono" />
+        <Input
+          id="disk-mount-path-value"
+          value={disk.mountPath}
+          readOnly
+          className="font-mono"
+        />
       </ConfigRow>
 
       <ConfigRow
@@ -436,19 +486,27 @@ function AttachedDisk({
             value={size}
             onChange={(e) => setSize(Number(e.target.value))}
           />
-          <span className="text-sm text-muted-foreground">{t("services.diskSizeUnit")}</span>
+          <span className="text-sm text-muted-foreground">
+            {t("services.diskSizeUnit")}
+          </span>
         </div>
         {canCreate ? (
           <div className="mt-2 flex justify-end gap-2">
             {editing ? (
               <>
-                <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={mutations.busy}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={cancelEdit}
+                  disabled={mutations.busy}
+                >
                   {t("common.cancel")}
                 </Button>
                 <Button
                   size="sm"
                   onClick={async () => {
-                    if (await mutations.growDisk(disk.id, size)) setEditing(false);
+                    if (await mutations.growDisk(disk.id, size))
+                      setEditing(false);
                   }}
                   disabled={mutations.busy || size <= disk.sizeGB}
                 >
@@ -456,7 +514,11 @@ function AttachedDisk({
                 </Button>
               </>
             ) : (
-              <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditing(true)}
+              >
                 <Pencil className="size-3.5" />
                 {t("services.diskEditAction")}
               </Button>
@@ -465,7 +527,9 @@ function AttachedDisk({
         ) : null}
       </ConfigRow>
 
-      <p className="text-sm text-muted-foreground">{t("services.diskGrowHint")}</p>
+      <p className="text-sm text-muted-foreground">
+        {t("services.diskGrowHint")}
+      </p>
     </div>
   );
 }
@@ -520,7 +584,9 @@ function DeleteDiskCard({
     <Card>
       <CardHeader>
         <CardTitle>{t("services.diskDeleteCardTitle")}</CardTitle>
-        <CardDescription>{t("services.diskDeleteCardDescription")}</CardDescription>
+        <CardDescription>
+          {t("services.diskDeleteCardDescription")}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <DeleteDiskButton disk={disk} onDelete={onDelete} busy={busy} />
@@ -543,7 +609,12 @@ function DeleteDiskButton({
   const phrase = diskSudoPhrase("delete", disk);
   return (
     <>
-      <Button variant="destructive" size="sm" onClick={() => setOpen(true)} disabled={busy}>
+      <Button
+        variant="destructive"
+        size="sm"
+        onClick={() => setOpen(true)}
+        disabled={busy}
+      >
         {t("services.diskDeleteAction")}
       </Button>
       <ConfirmDialog
@@ -560,7 +631,6 @@ function DeleteDiskButton({
   );
 }
 
-
 function SnapshotsCard({
   disk,
   mutations,
@@ -574,18 +644,25 @@ function SnapshotsCard({
   const { snapshots, loading, error } = useDiskSnapshots(disk.id);
   // Snapshots that should exist but don't (w6/m152): never read as "not yet".
   const warning = useDiskSnapshotWarning(disk.id);
-  const dueBy = useLocalDateTime(warning?.state === "overdue" ? warning.dueBy : null);
+  const dueBy = useLocalDateTime(
+    warning?.state === "overdue" ? warning.dueBy : null,
+  );
   // Branch on the server's code, never on its prose: the message can be
   // sanitized in transit, and "not configured" must stay distinguishable from a
   // real outage no matter what words survive.
-  const notConfigured = hasGraphQLErrorCode(error, DISK_SNAPSHOTS_NOT_CONFIGURED);
+  const notConfigured = hasGraphQLErrorCode(
+    error,
+    DISK_SNAPSHOTS_NOT_CONFIGURED,
+  );
   const [pending, setPending] = useState<string | null>(null);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>{t("services.diskSnapshotsTitle")}</CardTitle>
-        <CardDescription>{t("services.diskSnapshotsDescription")}</CardDescription>
+        <CardDescription>
+          {t("services.diskSnapshotsDescription")}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Render's own warning, and the most important thing on this page. */}
@@ -597,21 +674,31 @@ function SnapshotsCard({
             <TriangleAlert />
             {warning.state === "failing" ? (
               <>
-                <AlertTitle>{t("services.diskSnapshotsFailedTitle")}</AlertTitle>
+                <AlertTitle>
+                  {t("services.diskSnapshotsFailedTitle")}
+                </AlertTitle>
                 <AlertDescription>
                   {t(DISK_SNAPSHOT_FAILURE_BODY[warning.stage])}
                 </AlertDescription>
               </>
             ) : warning.state === "unavailable" ? (
               <>
-                <AlertTitle>{t("services.diskSnapshotsNotRunningTitle")}</AlertTitle>
-                <AlertDescription>{t("services.diskSnapshotsNotRunningBody")}</AlertDescription>
+                <AlertTitle>
+                  {t("services.diskSnapshotsNotRunningTitle")}
+                </AlertTitle>
+                <AlertDescription>
+                  {t("services.diskSnapshotsNotRunningBody")}
+                </AlertDescription>
               </>
             ) : (
               <>
-                <AlertTitle>{t("services.diskSnapshotsOverdueTitle")}</AlertTitle>
+                <AlertTitle>
+                  {t("services.diskSnapshotsOverdueTitle")}
+                </AlertTitle>
                 <AlertDescription>
-                  {t("services.diskSnapshotsOverdueBody", { dueBy: dueBy ?? "" })}
+                  {t("services.diskSnapshotsOverdueBody", {
+                    dueBy: dueBy ?? "",
+                  })}
                 </AlertDescription>
               </>
             )}
@@ -671,8 +758,15 @@ function SnapshotsCard({
         ) : (
           <ul className="divide-y">
             {snapshots.map((snapshot) => (
-              <li key={snapshot.snapshotKey} className="flex items-center justify-between gap-4 py-3">
-                <LocalDateTime value={snapshot.createdAt} className="text-sm" as="span" />
+              <li
+                key={snapshot.snapshotKey}
+                className="flex items-center justify-between gap-4 py-3"
+              >
+                <LocalDateTime
+                  value={snapshot.createdAt}
+                  className="text-sm"
+                  as="span"
+                />
                 {canCreate ? (
                   <Button
                     variant="outline"

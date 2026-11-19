@@ -439,6 +439,11 @@ const zhMetrics: Record<string, TranslationEntry> = {
     message: "实例",
     description: "Application metrics instance multi-select label",
   },
+  "metrics.instanceFilterAll": {
+    message: "全部",
+    description:
+      "Instances filter trigger's value when no instance is picked (every instance is shown)",
+  },
   "metrics.instanceShowAll": {
     message: "显示全部",
     description:

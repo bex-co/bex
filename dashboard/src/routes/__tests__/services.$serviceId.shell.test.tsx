@@ -56,9 +56,14 @@ describe("service Shell page", () => {
   it("hosts the browser terminal alongside the copy-ready SSH command", async () => {
     renderPage();
 
+    // The tab's name is the detail layout's heading; the page opens with
+    // its description.
     expect(
-      await screen.findByRole("heading", { name: "Shell" }),
+      await screen.findByText(
+        "Open a shell on a running service instance from your terminal.",
+      ),
     ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Shell" })).toBeNull();
     // The in-browser Web Shell terminal (w2/m55).
     expect(screen.getByTestId("web-shell-terminal")).toHaveTextContent(
       "srv-example",

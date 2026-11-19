@@ -17,17 +17,16 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { DEPLOYS_PAGE_SIZE } from "../lib/deploy-list-search";
 
 /**
- * The deploy history's frame: its title with the count line at the right, the
- * search and status filter, then the list. The page and its route skeleton
- * both draw it, so the two pending states share the ready geometry (w4/702).
+ * The deploy history's frame: the count line, the search and status filter,
+ * then the list (the tab's name is the detail layout's heading). The page and
+ * its route skeleton both draw it, so the two pending states share the ready
+ * geometry (w4/702).
  */
 export function DeploysListFrame({
-  title,
   count,
   controls,
   children,
 }: {
-  title: ReactNode;
   count: ReactNode;
   controls: ReactNode;
   children: ReactNode;
@@ -35,10 +34,7 @@ export function DeploysListFrame({
   return (
     <section className="@container/deploys space-y-4 max-sm:space-y-3">
       <div className="space-y-3 max-sm:space-y-2 @3xl/deploys:flex @3xl/deploys:items-center @3xl/deploys:justify-between @3xl/deploys:gap-6 @3xl/deploys:space-y-0">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-2 @3xl/deploys:justify-start">
-          <h2 className="text-base leading-6 font-semibold">{title}</h2>
-          {count}
-        </div>
+        <div>{count}</div>
         <div className="flex gap-2 @3xl/deploys:w-[32rem] @3xl/deploys:max-w-[60%]">
           {controls}
         </div>
@@ -180,19 +176,11 @@ export function DeploysTableFrame({ commits = true }: { commits?: boolean }) {
   );
 }
 
-/** The whole list before the route's component mounts: the title, the count
- *  slot, the search and status filter's boxes, and the table frame. */
-export function DeploysListFrameSkeleton({
-  titleKey = "deploys.listTitle",
-  commits,
-}: {
-  titleKey?: "deploys.listTitle" | "deploys.buildsTitle";
-  commits?: boolean;
-}) {
-  const { t } = useTranslations();
+/** The whole list before the route's component mounts: the count slot, the
+ *  search and status filter's boxes, and the table frame. */
+export function DeploysListFrameSkeleton({ commits }: { commits?: boolean }) {
   return (
     <DeploysListFrame
-      title={t(titleKey)}
       count={<DeploysCountSlot />}
       controls={
         <>

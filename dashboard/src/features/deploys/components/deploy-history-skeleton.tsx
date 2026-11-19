@@ -31,9 +31,6 @@ export function DeployHistorySkeleton() {
   const { service } = useServer(serviceId, { poll: false });
   return (
     <DeploysListSkeleton
-      titleKey={
-        pathname.endsWith("/builds") ? "deploys.buildsTitle" : undefined
-      }
       commits={!service || Boolean(service.repo)}
       banner={
         autoDeployOff(service) ? (

@@ -89,6 +89,31 @@ function multiSeriesResult(
   };
 }
 
+/** Toggles one instance in the card's checkbox menu, then closes the menu. */
+async function toggleInstance(label: string) {
+  await userEvent.click(
+    await screen.findByRole("button", { name: /^Instances/ }),
+  );
+  await userEvent.click(
+    await screen.findByRole("menuitemcheckbox", {
+      name: new RegExp(`^${label}`),
+    }),
+  );
+  await userEvent.keyboard("{Escape}");
+}
+
+/** The instances the menu shows as checked. */
+async function checkedInstances() {
+  await userEvent.click(
+    await screen.findByRole("button", { name: /^Instances/ }),
+  );
+  const checked = (await screen.findAllByRole("menuitemcheckbox"))
+    .filter((item) => item.getAttribute("aria-checked") === "true")
+    .map((item) => item.textContent);
+  await userEvent.keyboard("{Escape}");
+  return checked;
+}
+
 describe("ApplicationMetricsCard", () => {
   beforeEach(() => {
     mockUseMetrics.mockReset();
@@ -182,12 +207,12 @@ describe("ApplicationMetricsCard", () => {
     await screen.findByRole("tab", { name: "Total" });
     expect(
       loading.container.querySelector("[data-instance-filter-slot]"),
-    ).toHaveClass("h-9", "min-w-[9rem]");
+    ).toHaveClass("h-9", "min-w-[9rem]", "max-lg:h-11");
     loading.unmount();
 
     mockUseMetrics.mockReturnValue(multiSeriesResult("cpu", { "web-a": [1] }));
     const ready = renderCard();
-    await screen.findByRole("listbox", { name: "Instances" });
+    await screen.findByRole("button", { name: /^Instances/ });
     expect(
       ready.container.querySelector("[data-instance-filter-slot]"),
     ).toBeNull();
@@ -500,20 +525,15 @@ describe("ApplicationMetricsCard", () => {
       return emptyResult();
     });
     renderCard();
-    const select = (await screen.findByLabelText("Instances")) as HTMLElement;
-    await userEvent.selectOptions(select, ["web-a"]);
+    await toggleInstance("web-a");
     // Discovery gap: live list empties and the inventory goes quiet. Force a
     // re-render via the Total tab so the card recomputes choices while the
     // explicit selection must survive.
     mockFilterValues.mockReturnValue([]);
     mockUseMetrics.mockImplementation(() => emptyResult());
     await userEvent.click(await screen.findByRole("tab", { name: "Total" }));
-    const reselected = (await screen.findByLabelText(
-      "Instances",
-    )) as unknown as HTMLSelectElement;
-    expect(Array.from(reselected.selectedOptions).map((o) => o.value)).toEqual([
-      "web-a",
-    ]);
+    // Still checked, and marked as out of this window rather than dropped.
+    expect(await checkedInstances()).toEqual(["web-a (unavailable)"]);
     expect(
       await screen.findByRole("button", { name: "Show all" }),
     ).toBeInTheDocument();
@@ -535,8 +555,7 @@ describe("ApplicationMetricsCard", () => {
       return emptyResult();
     });
     renderCard();
-    const select = (await screen.findByLabelText("Instances")) as HTMLElement;
-    await userEvent.selectOptions(select, ["web-a"]);
+    await toggleInstance("web-a");
     // Filtered usage reads carry the retained id even though the window has
     // no samples for it.
     expect(mockUseMetrics).toHaveBeenCalledWith(
@@ -594,10 +613,7 @@ describe("ApplicationMetricsCard", () => {
       context: { client: {} as never, session: null },
     });
     render(<RouterProvider router={router} />);
-    await userEvent.selectOptions(
-      (await screen.findByLabelText("Instances")) as HTMLElement,
-      ["web-a"],
-    );
+    await toggleInstance("web-a");
     expect(
       await screen.findByRole("button", { name: "Show all" }),
     ).toBeInTheDocument();
@@ -622,8 +638,7 @@ describe("ApplicationMetricsCard", () => {
       return emptyResult();
     });
     renderCard();
-    const select = (await screen.findByLabelText("Instances")) as HTMLElement;
-    await userEvent.selectOptions(select, ["web-a"]);
+    await toggleInstance("web-a");
     // The choice leaves the window: force a re-render with quiet discovery.
     mockUseMetrics.mockImplementation(() => emptyResult());
     mockFilterValues.mockReturnValue([]);
@@ -785,11 +800,10 @@ describe("ApplicationMetricsCard usage header across instances (w4/258)", () => 
     await screen.findAllByText(NEW);
     expect(headerScalars(container)).toEqual([]);
 
-    const select = (await screen.findByLabelText("Instances")) as HTMLElement;
-    await userEvent.selectOptions(select, [OLD]);
+    await toggleInstance(OLD);
     expect(headerScalars(container)).toEqual(["0.1%"]);
-    await userEvent.deselectOptions(select, [OLD]);
-    await userEvent.selectOptions(select, [NEW]);
+    await toggleInstance(OLD);
+    await toggleInstance(NEW);
     expect(headerScalars(container)).toEqual(["100.0%"]);
   });
 });

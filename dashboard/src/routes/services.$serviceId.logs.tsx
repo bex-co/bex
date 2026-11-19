@@ -64,7 +64,7 @@ function RouteComponent() {
     <NonStaticRoute
       serviceId={serviceId}
       holdWhileLoading
-      loadingFallback={<LogPanelSkeleton />}
+      loadingFallback={<LogPanelSkeleton fillViewport />}
     >
       <ServiceLogsPage
         serviceId={serviceId}

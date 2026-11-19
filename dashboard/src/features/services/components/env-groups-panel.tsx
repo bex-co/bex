@@ -272,9 +272,17 @@ export function EnvGroupsPanel({
   return (
     <Card>
       <CardHeader className="grid-cols-1 grid-rows-none sm:grid-cols-[minmax(0,1fr)_auto] sm:grid-rows-[auto_auto]">
-        <CardTitle>{t("services.envGroupsLinkedTitle")}</CardTitle>
-        <CardDescription>{t("services.envGroupsDescription")}</CardDescription>
-        <CardAction className="col-start-1 row-start-3 mt-2 justify-self-start sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:justify-self-end">
+        {/* Title and description share one cell, as in the variables and
+            secret-files cards above: as two grid items, the card header's
+            action column put the description beside the title on a phone,
+            three words to a line. */}
+        <div>
+          <CardTitle>{t("services.envGroupsLinkedTitle")}</CardTitle>
+          <CardDescription className="mt-1.5">
+            {t("services.envGroupsDescription")}
+          </CardDescription>
+        </div>
+        <CardAction className="col-start-1 row-start-2 mt-2 justify-self-start sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:justify-self-end">
           <Button
             variant="outline"
             size="sm"

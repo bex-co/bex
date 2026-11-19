@@ -230,7 +230,9 @@ export function NetworkMetricsCard({
           <CardDescription>{t("metrics.networkDescription")}</CardDescription>
         </div>
         {servesRequests && (
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          // One left-aligned row from the card's content edge; on a phone the
+          // two selects share a line and the path field takes the next.
+          <div className="flex flex-wrap items-center gap-2">
             <Select
               value={statusCode === "" ? STATUS_CODE_ALL : statusCode}
               onValueChange={(v) =>
@@ -239,7 +241,7 @@ export function NetworkMetricsCard({
             >
               <SelectTrigger
                 size="sm"
-                className="min-w-36"
+                className="min-w-36 max-sm:min-w-0 max-sm:flex-1 max-[24rem]:basis-full"
                 aria-label={t("metrics.statusCode")}
               >
                 <span className="text-muted-foreground">
@@ -264,7 +266,7 @@ export function NetworkMetricsCard({
             >
               <SelectTrigger
                 size="sm"
-                className="min-w-36 max-w-72"
+                className="min-w-36 max-w-72 max-sm:min-w-0 max-sm:flex-1 max-[24rem]:basis-full"
                 aria-label={t("metrics.host")}
                 title={host || undefined}
               >
@@ -290,7 +292,7 @@ export function NetworkMetricsCard({
                 ))}
               </SelectContent>
             </Select>
-            <div className="relative">
+            <div className="relative max-sm:basis-full">
               <Input
                 value={pathInput}
                 onChange={(e) => setPathInput(e.target.value)}
@@ -300,7 +302,7 @@ export function NetworkMetricsCard({
                 onBlur={() => setPath(pathInput.trim())}
                 placeholder={t("metrics.pathPlaceholder")}
                 aria-label={t("metrics.path")}
-                className="h-8 w-40 pr-7"
+                className="h-8 w-40 pr-7 max-sm:w-full"
               />
               {path !== "" && (
                 <button
@@ -327,9 +329,9 @@ export function NetworkMetricsCard({
               title={t("metrics.totalRequests")}
               result={requests}
               headerExtra={
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {requestCount > 0 && (
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs whitespace-nowrap text-muted-foreground">
                       {t("metrics.requestsCount", {
                         // `count` (numeric) drives the native `_one`/`_other`
                         // plural pick; `formatted` is what the message renders

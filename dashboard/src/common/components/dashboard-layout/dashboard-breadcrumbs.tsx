@@ -101,7 +101,11 @@ function ServiceBreadcrumbs({ serviceId }: { serviceId: string }) {
       aria-label={t("common.topbarBreadcrumbs")}
       className="flex min-w-0 items-center gap-0.5"
     >
-      <div className="hidden sm:contents">
+      {/* Below `lg` the bar has room for the service crumb alone: beside a
+          visible sidebar (768–1023) all three were cut to a letter or two
+          ("s… › P… › ed…"), which named nothing. The service crumb keeps its
+          switcher; project and environment return from `lg` up. */}
+      <div className="hidden lg:contents">
         {project ? (
           <>
             <ProjectMenu currentId={project.id} projects={projects} />
@@ -117,17 +121,17 @@ function ServiceBreadcrumbs({ serviceId }: { serviceId: string }) {
             <BreadcrumbSeparator />
           </>
         )}
+        {project && environment ? (
+          <>
+            <EnvironmentMenu
+              projectId={project.id}
+              currentId={environment.id}
+              environments={environments}
+            />
+            <BreadcrumbSeparator />
+          </>
+        ) : null}
       </div>
-      {project && environment ? (
-        <>
-          <EnvironmentMenu
-            projectId={project.id}
-            currentId={environment.id}
-            environments={environments}
-          />
-          <BreadcrumbSeparator />
-        </>
-      ) : null}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button

@@ -206,7 +206,15 @@ export function IPAllowListEditor({
         }
         disabled={saving}
       >
-        {saving ? <Loader2 className="animate-spin" /> : <Trash2 />}
+        {/* Where an empty list blocks everything, the action adds the
+            allow-all rule: a plus, not the trash can of a clear. */}
+        {saving ? (
+          <Loader2 className="animate-spin" />
+        ) : emptyBlocks ? (
+          <Plus />
+        ) : (
+          <Trash2 />
+        )}
         {clearOnly?.clearAll}
       </Button>
     );
@@ -218,10 +226,12 @@ export function IPAllowListEditor({
             {emptyBlocks.open}
           </span>
         ) : entries.length === 0 ? (
-          <>
+          // The warning and its fix as one group with a gap between them:
+          // inline, the button butted against the sentence's last word.
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             {empty}
             {emptyBlocks ? clear : null}
-          </>
+          </div>
         ) : (
           <>
             <ul className="space-y-1 font-mono text-sm">

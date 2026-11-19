@@ -48,6 +48,43 @@ const shortDateTime = perLanguage({
   hour12: true,
 });
 const mediumDateTime = perLanguage({ dateStyle: "medium", timeStyle: "short" });
+const axisTime = perLanguage({
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+});
+const axisDate = perLanguage({
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  hour12: true,
+});
+const axisDay = perLanguage({ month: "short", day: "numeric" });
+
+/**
+ * A chart's x-axis label: the time of day to the minute ("2:15 PM",
+ * "下午2:15"), or the day and hour ("Nov 12, 6 PM", "11月12日 下午6时") when
+ * the axis spans more than a day and a half — the day alone repeated across
+ * a 48-hour axis ("Nov 17 · Nov 17 · Nov 17"). Client-only, as
+ * `formatClockTime`.
+ */
+export function formatAxisTime(
+  instant: number,
+  spanMs: number,
+  language?: string,
+  /** The axis's tick step: a whole-day step labels the day alone. */
+  stepMs = 0,
+): string {
+  const day = 24 * 60 * 60 * 1000;
+  return formatWith(
+    stepMs >= day
+      ? axisDay(language)
+      : spanMs > 1.5 * day
+        ? axisDate(language)
+        : axisTime(language),
+    instant,
+  );
+}
 
 /** A numeric date and time to the second: "11/12/2026, 3:39:00 PM",
  *  "2026/11/12 下午3:39:00". Client-only. */

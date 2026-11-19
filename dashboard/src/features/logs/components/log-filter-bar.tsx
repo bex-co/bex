@@ -182,15 +182,18 @@ export function LogFilterBar({
 
   const active = STRUCTURED_FILTER_KEYS.filter((key) => filters[key] !== "");
 
+  // A phone gets two even rows in reading order, [type | search] then
+  // [range | Filters | Live], instead of four ragged ones that pushed the
+  // first log line past the middle of the screen.
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-center gap-3 max-sm:gap-2">
       <Select
         value={filters.type}
         onValueChange={(v) => onChange({ type: v as LogTypeFilter })}
       >
         <SelectTrigger
           size="sm"
-          className="w-40"
+          className="w-40 max-sm:w-auto max-sm:flex-1 max-sm:min-w-0 max-sm:basis-[calc(50%-0.25rem)]"
           aria-label={t("logs.typeLabel")}
         >
           <SelectValue />
@@ -206,7 +209,7 @@ export function LogFilterBar({
         </SelectContent>
       </Select>
 
-      <div className="relative min-w-48 flex-1">
+      <div className="relative min-w-48 flex-1 max-sm:min-w-0 max-sm:basis-[calc(50%-0.25rem)]">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={filters.text}
@@ -225,6 +228,7 @@ export function LogFilterBar({
         onRangeChange={onRangeChange}
         ariaLabel={t("logs.rangeLabel")}
         bound={rangeBound}
+        triggerClassName="max-sm:w-auto max-sm:min-w-0 max-sm:flex-1"
       />
 
       <Popover>

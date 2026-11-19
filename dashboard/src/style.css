@@ -445,3 +445,57 @@
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+/* Touch targets. Below the desktop layout (<1024px) or on any coarse
+   pointer, every control inside a `data-touch-region` is at least 44px tall,
+   and an icon-only button 44px wide as well: the deploys list's
+   `max-lg:h-11 pointer-coarse:h-11`, applied once to a region instead of
+   control by control (the service detail pages measured 12–82 controls under
+   44px on a phone). Switches, segmented tabs, checkboxes and radios keep
+   their drawn size (a host that wants 44px tabs sizes its own list), and a control marked `data-touch-exempt` (a log line's
+   inline instance filter) keeps its own. A `data-touch-spacer` reserves a
+   control's slot and grows with it. */
+@media (width < 64rem), (pointer: coarse) {
+  [data-touch-region]
+    :is(
+      button,
+      a[data-slot="button"],
+      select,
+      textarea,
+      [role="combobox"],
+      input:not(
+        [type="checkbox"],
+        [type="radio"],
+        [type="range"],
+        [type="hidden"]
+      )
+    ):not(
+      [role="switch"],
+      [role="tab"],
+      [role="checkbox"],
+      [role="radio"],
+      [data-touch-exempt]
+    ) {
+    min-height: 2.75rem;
+  }
+  [data-touch-region] [data-touch-spacer] {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+  /* A switch keeps its drawn 36×20 and takes a 44×44 hit area. */
+  [data-touch-region] [role="switch"]:not([data-touch-exempt]) {
+    position: relative;
+  }
+  [data-touch-region] [role="switch"]:not([data-touch-exempt])::after {
+    content: "";
+    position: absolute;
+    inset: -12px -4px;
+  }
+  [data-touch-region]
+    button:is(.size-6, .size-7, .size-8, .size-9):not(
+      [role="switch"],
+      [data-touch-exempt]
+    ) {
+    min-width: 2.75rem;
+  }
+}

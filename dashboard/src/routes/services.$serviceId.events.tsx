@@ -1,3 +1,4 @@
+import { META_SEPARATED_CLASS } from "@/common/lib/ui/meta-separators";
 import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -53,7 +54,10 @@ import {
   serviceEventLabelKey,
 } from "@/features/events/service-event-catalog";
 const CATALOG_TYPES = new Set(SERVICE_EVENT_TYPES);
-import { ServiceEventsSkeleton } from "@/common/components/route-skeletons";
+import {
+  ServiceEventRowsSkeleton,
+  ServiceEventsSkeleton,
+} from "@/common/components/route-skeletons";
 
 type EventDetails = ServiceEventView["details"];
 
@@ -197,7 +201,11 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
                       below answers "what am I looking at". The feed is read a
                       page at a time, so while older events remain it states a
                       floor, "20+", never a total it has not read (w4/700). */}
-                  {!loading && !error && events.length > 0 ? (
+                  {loading && events.length === 0 ? (
+                    // The count's slot while the first page loads, so the
+                    // title line keeps its height when the count lands.
+                    <Skeleton className="h-[22px] w-9 rounded-full" />
+                  ) : !loading && !error && events.length > 0 ? (
                     <Badge
                       variant="secondary"
                       aria-label={t(
@@ -241,18 +249,7 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
             </div>
           ) : null}
           {loading && events.length === 0 ? (
-            <div className="space-y-5 p-5 sm:p-6">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <Skeleton className="size-9 shrink-0 rounded-full" />
-                  <div className="flex-1 space-y-2 pt-0.5">
-                    <Skeleton className="h-4 w-40" />
-                    <Skeleton className="h-3 w-24" />
-                  </div>
-                  <Skeleton className="h-3 w-12" />
-                </div>
-              ))}
-            </div>
+            <ServiceEventRowsSkeleton />
           ) : error && events.length === 0 ? (
             <div className="flex flex-col items-center px-6 py-14 text-center">
               <div className="bg-destructive/10 text-destructive mb-4 flex size-10 items-center justify-center rounded-full">
@@ -510,25 +507,38 @@ function EventSummary({
         <EventIcon type={type} status={status} factStatus={factStatus} />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-medium group-hover:text-primary">
-            {namedTitle ??
-              t(serviceEventLabelKey(type) as Parameters<typeof t>[0])}
-          </p>
-          {isDeploy && status ? (
-            <Badge variant={statusVariant(status)}>
-              {t(statusKey(status) as Parameters<typeof t>[0])}
-            </Badge>
-          ) : null}
-          {/* Lifecycle-step outcome (w7/m66): build/pre-deploy/job endings. */}
-          {factStatus ? (
-            <Badge variant={lifecycleStatusVariant(factStatus)}>
-              {t(
-                `services.eventsStatus.${factStatus}` as Parameters<
-                  typeof t
-                >[0],
-              )}
-            </Badge>
+        {/* The time has one slot, right of the title on every row, so the
+            feed's times read down one column; in the meta line it landed
+            wherever that line ended, or alone on a wrapped line. */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <p className="text-sm font-medium group-hover:text-primary">
+              {namedTitle ??
+                t(serviceEventLabelKey(type) as Parameters<typeof t>[0])}
+            </p>
+            {isDeploy && status ? (
+              <Badge variant={statusVariant(status)}>
+                {t(statusKey(status) as Parameters<typeof t>[0])}
+              </Badge>
+            ) : null}
+            {/* Lifecycle-step outcome (w7/m66): build/pre-deploy/job endings. */}
+            {factStatus ? (
+              <Badge variant={lifecycleStatusVariant(factStatus)}>
+                {t(
+                  `services.eventsStatus.${factStatus}` as Parameters<
+                    typeof t
+                  >[0],
+                )}
+              </Badge>
+            ) : null}
+          </div>
+          {timestamp ? (
+            <span className="text-muted-foreground shrink-0 pt-0.5 text-xs tabular-nums">
+              <RelativeAge
+                value={timestamp}
+                title={exactTimestamp ?? undefined}
+              />
+            </span>
           ) : null}
         </div>
         <DeployFailureReason
@@ -552,7 +562,9 @@ function EventSummary({
           tone="neutral"
           className="mt-1"
         />
-        <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+        <div
+          className={`text-muted-foreground mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs ${META_SEPARATED_CLASS}`}
+        >
           {trigger ? (
             <span>{t(trigger as Parameters<typeof t>[0])}</span>
           ) : null}
@@ -564,22 +576,20 @@ function EventSummary({
               {t("services.eventsDeployReference", { id: deployId })}
             </span>
           ) : null}
-          {timestamp ? (
-            <RelativeAge
-              value={timestamp}
-              title={exactTimestamp ?? undefined}
-            />
-          ) : null}
         </div>
         {/* Deploy enrichment (w1/m47): show commit, image, duration for deploy events */}
         {isDeploy && (
           <div className="text-muted-foreground mt-2 space-y-1 text-xs">
-            {commitMessage ? (
-              <p className="line-clamp-1">{commitMessage}</p>
-            ) : null}
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            {/* Commit, message, image and duration on one line, as a deploy
+                row reads on the Deploys tab. */}
+            <div
+              className={`flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 ${META_SEPARATED_CLASS}`}
+            >
               {commitId ? (
                 <span className="font-mono">{commitId.slice(0, 8)}</span>
+              ) : null}
+              {commitMessage ? (
+                <span className="min-w-0 truncate">{commitMessage}</span>
               ) : null}
               {image ? <span className="truncate">{image}</span> : null}
               {deployDuration !== null ? <span>{deployDuration}</span> : null}

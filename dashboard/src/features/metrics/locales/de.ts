@@ -465,6 +465,11 @@ const deMetrics: Record<string, TranslationEntry> = {
     message: "Instanzen",
     description: "Application metrics instance multi-select label",
   },
+  "metrics.instanceFilterAll": {
+    message: "Alle",
+    description:
+      "Instances filter trigger's value when no instance is picked (every instance is shown)",
+  },
   "metrics.instanceShowAll": {
     message: "Alle anzeigen",
     description:

@@ -484,6 +484,11 @@ const ptMetrics: Record<string, TranslationEntry> = {
     message: "Instâncias",
     description: "Application metrics instance multi-select label",
   },
+  "metrics.instanceFilterAll": {
+    message: "Todas",
+    description:
+      "Instances filter trigger's value when no instance is picked (every instance is shown)",
+  },
   "metrics.instanceShowAll": {
     message: "Mostrar todas",
     description:

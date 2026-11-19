@@ -92,9 +92,15 @@ export interface EditableFieldRowProps {
 
 const trimDraft = (draft: string) => draft.trim();
 
+/** A row's control before its pencil is pressed: the saved value at full
+ *  contrast on a quiet surface, unlike a placeholder or a locked field. */
+const READ_MODE_CLASS =
+  "disabled:cursor-default disabled:opacity-100 bg-muted/40";
+
 /**
  * Render's settings edit-in-place row (w5/m50): the field's current value always
- * lives in a real, visibly disabled input (or select). A pencil Edit button
+ * lives in a real, disabled input (or select), drawn at full contrast until the
+ * pencil is pressed. A pencil Edit button
  * enables and focuses that same control and swaps the pencil for Cancel + "Save
  * changes", Save staying disabled until the draft actually differs. Cancel (and
  * Escape) restores the value and the disabled state, and returns keyboard
@@ -105,6 +111,7 @@ const trimDraft = (draft: string) => draft.trim();
  * Notifications and Auto-Deploy rows), `comboboxOptions` for the searchable
  * combobox variant (the Branch row, w5/m54), otherwise a text/number input.
  */
+
 export function EditableFieldRow({
   label,
   hint,
@@ -200,6 +207,11 @@ export function EditableFieldRow({
   // The editing, prefixed plain-input variant wraps on narrow screens.
   const prefixedEdit =
     editing && Boolean(valuePrefix) && !options && !comboboxOptions;
+  // The shared disabled look (half opacity) made a saved "Dockerfile" read
+  // like the "e.g. backend" placeholders beside it; a row that cannot be
+  // edited at all keeps that look.
+  const readMode = !editing && !disabled && !busy;
+  const readModeClass = readMode ? READ_MODE_CLASS : undefined;
   return (
     <div className="space-y-2">
       <div>
@@ -251,7 +263,7 @@ export function EditableFieldRow({
               allowCustom
               ariaLabel={label}
               placeholder={placeholder}
-              className={mono ? "font-mono text-sm" : undefined}
+              className={cn(mono && "font-mono text-sm", readModeClass)}
             />
           </div>
         ) : options ? (
@@ -267,6 +279,7 @@ export function EditableFieldRow({
               className={cn(
                 "min-h-8 min-w-0 flex-1 text-left whitespace-normal data-[size=sm]:h-auto *:data-[slot=select-value]:line-clamp-none",
                 editing && "basis-full sm:basis-0",
+                readModeClass,
               )}
               // A closed trigger cancels on Escape like the Input; an open
               // popup consumes its own Escape and refocuses here (w4/250).
@@ -309,6 +322,7 @@ export function EditableFieldRow({
               "flex-1",
               prefixedEdit && "basis-full sm:basis-0",
               mono && "font-mono text-sm",
+              readModeClass,
             )}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
@@ -331,18 +345,25 @@ export function EditableFieldRow({
               {t("services.editRowSave")}
             </Button>
           </>
+        ) : editable ? (
+          <Button
+            ref={editButtonRef}
+            size="icon"
+            variant="ghost"
+            aria-label={editLabel}
+            onClick={startEdit}
+          >
+            <Pencil />
+          </Button>
         ) : (
-          editable && (
-            <Button
-              ref={editButtonRef}
-              size="icon"
-              variant="ghost"
-              aria-label={editLabel}
-              onClick={startEdit}
-            >
-              <Pencil />
-            </Button>
-          )
+          // A read-only row keeps the pencil's column, so every field in a
+          // card ends on the same right edge (Region ran 44px past its
+          // editable neighbours).
+          <span
+            aria-hidden="true"
+            data-touch-spacer=""
+            className="size-9 shrink-0"
+          />
         )}
       </div>
 
@@ -435,7 +456,12 @@ export function EditableFieldRowPreview({
             <ChevronDown className="text-muted-foreground size-4 shrink-0 opacity-50" />
           </div>
         ) : (
-          <Input disabled aria-label={label} className="flex-1" />
+          // The read-mode look the loaded row has, so the two match.
+          <Input
+            disabled
+            aria-label={label}
+            className={cn("flex-1", READ_MODE_CLASS)}
+          />
         )}
         <Button size="icon" variant="ghost" disabled aria-hidden="true">
           <Pencil />

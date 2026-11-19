@@ -37,18 +37,18 @@ function DiskRoute({ serviceId }: { serviceId: string }) {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   return (
-    <div className="p-4 sm:p-6">
-      <DiskSection
-        serviceId={serviceId}
-        plan={service?.plan ?? null}
-        serviceType={service?.type ?? null}
-        range={rangeFromSearch(search, DEFAULT_RANGE_PRESET)}
-        onRangeChange={(range) =>
-          // Functional form: committed verbatim, so rangeToSearch's explicit
-          // undefineds clear stale custom bounds (w7/m42).
-          void navigate({ search: () => rangeToSearch(range), replace: true })
-        }
-      />
-    </div>
+    // No padding of its own: the detail layout's tab column already pads,
+    // and a second inset made Disk the one tab narrower than its siblings.
+    <DiskSection
+      serviceId={serviceId}
+      plan={service?.plan ?? null}
+      serviceType={service?.type ?? null}
+      range={rangeFromSearch(search, DEFAULT_RANGE_PRESET)}
+      onRangeChange={(range) =>
+        // Functional form: committed verbatim, so rangeToSearch's explicit
+        // undefineds clear stale custom bounds (w7/m42).
+        void navigate({ search: () => rangeToSearch(range), replace: true })
+      }
+    />
   );
 }

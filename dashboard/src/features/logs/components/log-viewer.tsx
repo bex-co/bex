@@ -322,7 +322,7 @@ export function LogViewer({
       />
     );
   } else if (history.loading && history.lines.length === 0) {
-    body = <LogPanelSkeleton />;
+    body = <LogPanelSkeleton fillViewport />;
   } else if (lines.length === 0) {
     body = (
       <LogEmptyState
@@ -357,6 +357,7 @@ export function LogViewer({
           <StreamDisconnected />
         ) : null}
         <LogLineList
+          fillViewport
           lines={lines}
           onInstanceFilter={onInstanceFilter}
           hasMore={history.hasMore}

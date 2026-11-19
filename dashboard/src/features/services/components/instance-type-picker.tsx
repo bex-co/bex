@@ -1,3 +1,4 @@
+import { RadioDot } from "@/common/components/radio-dot";
 import { useId, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -34,6 +35,7 @@ import {
   LegacyFreeNotice,
 } from "@/features/services/components/instance-type-groups";
 import { cn } from "@/common/lib/utils/utils.ts";
+import { Badge } from "@/common/components/ui/badge";
 import { CRON_MINIMUM_USD } from "@/common/lib/cron-minimum";
 
 export interface InstanceTypePickerProps {
@@ -145,6 +147,7 @@ export function InstanceTypePicker({
                     key={it.id}
                     instanceType={it}
                     selected={selected === it.id}
+                    current={currentPlan === it.id}
                     onSelect={() => setSelected(it.id)}
                     radio={radio(it.id)}
                     runTimePricing={runTimePricing}
@@ -162,6 +165,7 @@ export function InstanceTypePicker({
                     key={it.id}
                     instanceType={it}
                     selected={selected === it.id}
+                    current={currentPlan === it.id}
                     onSelect={() => setSelected(it.id)}
                     radio={radio(it.id)}
                     runTimePricing={runTimePricing}
@@ -236,12 +240,16 @@ export function InstanceTypePicker({
 function InstanceTypeCard({
   instanceType,
   selected,
+  current,
   onSelect,
   radio,
   runTimePricing,
 }: {
   instanceType: InstanceTypeView;
   selected: boolean;
+  /** The service's plan now: badged, so it stays findable once another
+   *  card is picked (the selection ring alone moved away with the pick). */
+  current: boolean;
   onSelect: () => void;
   radio: CardRadioProps;
   /** A cron job's price is per minute of run time (w4/546). */
@@ -270,7 +278,25 @@ function InstanceTypeCard({
       )}
     >
       <InstanceTypeCardBody
-        name={instanceType.name}
+        name={
+          // A radio's dot, as the Edge Caching cards draw it, so the cards
+          // read as one choice; the current plan carries its badge.
+          <span className="flex items-center justify-between gap-2">
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="truncate">{instanceType.name}</span>
+              {current ? (
+                <>
+                  {/* A space for assistive tech: "Pro Current", not
+                      "ProCurrent". */}{" "}
+                  <Badge variant="secondary" className="font-normal">
+                    {t("services.planCurrent")}
+                  </Badge>
+                </>
+              ) : null}
+            </span>
+            <RadioDot checked={selected} />
+          </span>
+        }
         memory={`${formatInstanceMemory(instanceType.memory)} (RAM)`}
         cpu={formatInstanceCPU(instanceType.cpu)}
         price={

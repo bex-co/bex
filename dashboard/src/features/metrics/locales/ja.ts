@@ -441,6 +441,11 @@ const jaMetrics: Record<string, TranslationEntry> = {
     message: "インスタンス",
     description: "Application metrics instance multi-select label",
   },
+  "metrics.instanceFilterAll": {
+    message: "すべて",
+    description:
+      "Instances filter trigger's value when no instance is picked (every instance is shown)",
+  },
   "metrics.instanceShowAll": {
     message: "すべて表示",
     description:

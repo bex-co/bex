@@ -119,7 +119,8 @@ export function serviceNavGroups(
   // worker (validateDisk in lego/backend/internal/apps/disks.go). A cron job
   // has no long-running instance to mount a volume on, so offering the tab
   // there would lead to an Add Disk button that always 400s.
-  const diskEligible = type === "web" || type === "private" || type === "worker";
+  const diskEligible =
+    type === "web" || type === "private" || type === "worker";
   // Scaling matches the same eligible set the API/operator honor for
   // autoscaling (m101/t001+t002) — web, private, worker. Cron is omitted from
   // the nav (Disk's pattern); a direct URL still reaches an explanation page.
@@ -138,4 +139,29 @@ export function serviceNavGroups(
     { labelKey: "common.navMonitorGroup", items: [EVENTS, LOGS, METRICS] },
     { labelKey: "common.navManageGroup", items: [ENVIRONMENT, ...manageTail] },
   ];
+}
+
+/**
+ * The nav label of the tab `pathname` is exactly on — the tab's heading in
+ * the detail layout, so every tab names itself with the same words as its
+ * sidebar entry (on a phone the sidebar is in a drawer, and nothing else on
+ * the page said which tab was open). Null below a tab (a deploy's detail
+ * page carries its own title) or off the service tree.
+ */
+export function serviceTabLabelKey(
+  pathname: string,
+  serviceId: string,
+  base: ServiceBase = "/services",
+): SidebarNavItem["labelKey"] | null {
+  const path = pathname.replace(/\/+$/, "");
+  for (const type of ["web", "cron", "static"] as const) {
+    for (const group of serviceNavGroups(type, base)) {
+      for (const item of group.items) {
+        if (item.to.replace("$serviceId", serviceId) === path) {
+          return item.labelKey;
+        }
+      }
+    }
+  }
+  return null;
 }

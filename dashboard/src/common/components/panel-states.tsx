@@ -38,6 +38,22 @@ export function PanelCenteredState({
 }
 
 /**
+ * PanelCenteredState's loading frame, line for line: icon, title, a body
+ * line (two below `lg`, where the body wraps) and the action's button.
+ */
+export function PanelCenteredStateSkeleton() {
+  return (
+    <div className="flex flex-col items-center py-12">
+      <Skeleton className="mb-3 size-8 rounded-full" />
+      <Skeleton className="mb-1 h-6 w-40" />
+      <Skeleton className="h-5 w-96 max-w-full" />
+      <Skeleton className="h-5 w-56 max-w-full lg:hidden" />
+      <Skeleton className="mt-4 h-9 w-24" />
+    </div>
+  );
+}
+
+/**
  * A settings-panel table's header row: its column labels, then the sr-only
  * row-actions head. The ready table and its loading frame
  * (`PanelTableFrame`) share it so the two never drift apart.

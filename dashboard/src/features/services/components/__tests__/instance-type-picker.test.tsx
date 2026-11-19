@@ -396,7 +396,8 @@ describe("InstanceTypePicker", () => {
     expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled();
 
     // Arrowing on from the last available card wraps past the paused one.
-    const pro = screen.getByRole("radio", { name: /^Pro 4 GB/ });
+    // The service is on Pro, so its card carries the Current badge.
+    const pro = screen.getByRole("radio", { name: /^Pro Current 4 GB/ });
     pro.focus();
     await user.keyboard("{ArrowRight}");
     expect(ultra).toHaveAttribute("aria-checked", "false");

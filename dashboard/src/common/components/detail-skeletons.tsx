@@ -1,3 +1,4 @@
+import { cn } from "@/common/lib/utils/utils";
 import {
   PageFrame,
   PageHeader,
@@ -166,7 +167,15 @@ export function FormPageSkeleton() {
  * `rows` body lines of varying width (so it reads as prose, not identical bars).
  * The generic stand-in for a detail-page panel while it loads.
  */
-export function CardSkeleton({ rows = 3 }: { rows?: number }) {
+export function CardSkeleton({
+  rows = 3,
+  touchRows = false,
+}: {
+  rows?: number;
+  /** Rows standing in for controls, which grow to 44px below `lg` and on a
+   *  coarse pointer: each row grows by the same 12px. */
+  touchRows?: boolean;
+}) {
   return (
     <Card>
       <CardHeader>
@@ -176,13 +185,14 @@ export function CardSkeleton({ rows = 3 }: { rows?: number }) {
         {Array.from({ length: rows }).map((_, i) => (
           <Skeleton
             key={i}
-            className={
+            className={cn(
               i % 3 === 0
                 ? "h-4 w-full"
                 : i % 3 === 1
                   ? "h-4 w-5/6"
-                  : "h-4 w-2/3"
-            }
+                  : "h-4 w-2/3",
+              touchRows && "max-lg:h-7 pointer-coarse:h-7",
+            )}
           />
         ))}
       </CardContent>

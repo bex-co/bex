@@ -1,3 +1,5 @@
+import { cn } from "@/common/lib/utils/utils";
+import { SERVICE_TAB_DESCRIPTION_OFFSET } from "@/features/services/components/service-tab-description";
 import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
@@ -32,15 +34,16 @@ export function ServiceEnvPage({ serviceId }: { serviceId: string }) {
   const { service } = useServer(serviceId, { poll: false });
   return (
     <div className="space-y-6">
-      <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight">
-            {t("services.environmentPageTitle")}
-          </h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {t("services.environmentPageDescription")}
-          </p>
-        </div>
+      {/* The tab's description and page action, under the layout's heading. */}
+      <div
+        className={cn(
+          "flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between",
+          SERVICE_TAB_DESCRIPTION_OFFSET,
+        )}
+      >
+        <p className="text-muted-foreground text-sm">
+          {t("services.environmentPageDescription")}
+        </p>
         <Button
           variant="outline"
           aria-haspopup="dialog"

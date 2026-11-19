@@ -18,13 +18,17 @@ import {
 } from "@/features/notifications/lib/push-policy";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { PanelCenteredState } from "@/common/components/panel-states";
+import {
+  PanelCenteredState,
+  PanelCenteredStateSkeleton,
+} from "@/common/components/panel-states";
 import { useWorkspace } from "@/features/workspaces/context";
 import { useGettingStartedDismissal } from "@/features/onboarding/hooks/use-getting-started-dismissal";
 import { useOverviewShape } from "@/features/onboarding/hooks/use-overview-shape";
@@ -88,6 +92,8 @@ import {
   serviceTypeCreateCopy,
 } from "@/features/services/lib/create-context";
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
+import { EnvRowsSkeleton } from "@/features/services/components/env-rows-skeleton";
+import { SERVICE_TAB_DESCRIPTION_OFFSET } from "@/features/services/components/service-tab-description";
 import { AgentEnvironmentCardSkeleton } from "@/features/agent-environment/components/agent-environment-card-skeleton";
 import { AgentSecretsCardSkeleton } from "@/features/agent-environment/components/agent-secrets-card-skeleton";
 import { AgentRepoEnvironmentsCardSkeleton } from "@/features/agent-environment/components/agent-repo-environments-card-skeleton";
@@ -280,7 +286,7 @@ function ResponsiveSectionNavigationSkeleton({ count }: { count: number }) {
         {Array.from({ length: count }, (_, index) => (
           <Skeleton
             key={index}
-            className="h-8 w-24 shrink-0 rounded-full @4xl/page:w-full @4xl/page:rounded-md"
+            className="h-8 w-24 shrink-0 rounded-full max-lg:h-11 pointer-coarse:h-11 @4xl/page:w-full @4xl/page:rounded-md"
           />
         ))}
       </div>
@@ -2104,26 +2110,20 @@ export function ServiceCreatePageSkeleton() {
 
 export function DeploysListSkeleton({
   banner,
-  titleKey,
   commits,
 }: {
   /** The auto-deploy-off banner the ready page shows above the list
    *  (w3/064): its own content is already known, so the pending state shows
    *  it as is and matches at every width. */
   banner?: React.ReactNode;
-  /** A cron job's history is titled Builds (w2/m360). */
-  titleKey?: "deploys.listTitle" | "deploys.buildsTitle";
   /** False when the cached service is image-backed: no commit lines. */
   commits?: boolean;
 } = {}) {
   return (
-    <PendingFrame
-      route="deploys-list"
-      className="service-wide-layout space-y-4"
-    >
+    <PendingFrame route="deploys-list" className="space-y-4">
       {banner ? <Region name="auto-deploy-off-banner">{banner}</Region> : null}
       <Region name="deploys-table">
-        <DeploysListFrameSkeleton titleKey={titleKey} commits={commits} />
+        <DeploysListFrameSkeleton commits={commits} />
       </Region>
     </PendingFrame>
   );
@@ -2162,6 +2162,35 @@ export function ServiceCronRunsSkeleton() {
   );
 }
 
+/**
+ * The feed's rows while its first page loads: divided rows at the loaded
+ * rows' padding, each with the event icon, title and meta lines and the
+ * right-hand time, then the Load older slot.
+ */
+export function ServiceEventRowsSkeleton() {
+  return (
+    <>
+      <div className="divide-y">
+        {Array.from({ length: 6 }, (_, index) => (
+          <div key={index} className="flex items-start gap-3 px-5 py-4 sm:px-6">
+            <Skeleton className="size-9 shrink-0 rounded-full" />
+            <div className="flex-1 space-y-2 pt-0.5">
+              <div className="flex items-start justify-between gap-3">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-8" />
+              </div>
+              <Skeleton className="h-3 w-56 max-w-full" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-center border-t px-5 py-4 sm:px-6">
+        <Skeleton className="h-8 w-40" />
+      </div>
+    </>
+  );
+}
+
 export function ServiceEventsSkeleton() {
   return (
     <PendingFrame route="service-events" className="space-y-6">
@@ -2171,25 +2200,20 @@ export function ServiceEventsSkeleton() {
             <div className="flex flex-col justify-between gap-4 sm:flex-row">
               <div className="flex gap-3">
                 <Skeleton className="size-9 shrink-0" />
-                <div className="space-y-2">
-                  <Skeleton className="h-5 w-36" />
+                <div className="space-y-1">
+                  {/* Title and count badge on one line, as loaded. */}
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-5 w-24" />
+                    <Skeleton className="h-[22px] w-9 rounded-full" />
+                  </div>
                   <Skeleton className="h-4 w-64 max-w-full" />
                 </div>
               </div>
               <Skeleton className="h-9 w-32" />
             </div>
           </CardHeader>
-          <CardContent className="space-y-5 p-5 sm:p-6">
-            {Array.from({ length: 3 }, (_, index) => (
-              <div key={index} className="flex items-start gap-3">
-                <Skeleton className="size-9 shrink-0 rounded-full" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-40" />
-                  <Skeleton className="h-3 w-24" />
-                </div>
-                <Skeleton className="h-3 w-12" />
-              </div>
-            ))}
+          <CardContent className="p-0">
+            <ServiceEventRowsSkeleton />
           </CardContent>
         </Card>
       </Region>
@@ -2208,7 +2232,7 @@ export function ServiceLogsSkeleton() {
       </Region>
       <Skeleton className="h-3 w-64 max-w-full" />
       <Region name="log-panel">
-        <LogPanelSkeleton />
+        <LogPanelSkeleton fillViewport />
       </Region>
     </PendingFrame>
   );
@@ -2308,58 +2332,67 @@ export function ServiceMetricsSkeleton({
 export function ServiceEnvironmentSkeleton() {
   return (
     <PendingFrame route="service-environment" className="space-y-6">
+      {/* The tab's name is the layout's heading; this row is its
+          description and page action. */}
       <Region
         name="page-header"
-        className="flex flex-col justify-between gap-3 sm:flex-row"
+        className={cn(
+          "flex flex-col justify-between gap-3 sm:flex-row sm:items-center",
+          SERVICE_TAB_DESCRIPTION_OFFSET,
+        )}
       >
-        <div className="space-y-2">
-          <Skeleton className="h-6 w-40" />
-          <div className="space-y-1">
-            <Skeleton className="h-4 w-72 max-w-full" />
-            <Skeleton className="h-5 w-3/4 sm:hidden" />
-          </div>
+        <div className="w-full space-y-1 sm:w-auto">
+          <Skeleton className="h-4 w-96 max-w-full" />
+          <Skeleton className="h-5 w-3/4 sm:hidden" />
         </div>
         <Skeleton className="h-9 w-36" />
       </Region>
       <Region name="environment-editor" className="space-y-6">
-        {Array.from({ length: 2 }, (_, index) => (
+        {/* Variables (two rows), then Secret Files (one row, no header
+            actions), on the loaded rows' grid: key, value, then Reveal and
+            copy — beside the key on a phone. */}
+        {[2, 1].map((rows, index) => (
           <Card key={index}>
-            <CardHeader className="flex-row items-start justify-between gap-3">
+            <CardHeader className="grid-cols-1 grid-rows-none sm:grid-cols-[minmax(0,1fr)_auto] sm:grid-rows-[auto_auto]">
               <div className="space-y-2">
                 <Skeleton className="h-5 w-40" />
                 <div className="space-y-1">
                   <Skeleton className="h-4 w-72 max-w-full" />
-                  {index === 0 ? (
-                    <Skeleton className="h-4 w-2/3 sm:hidden" />
-                  ) : null}
+                  <Skeleton className="h-4 w-2/3 sm:hidden" />
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Skeleton className="h-8 w-20" />
-                <Skeleton className="h-8 w-16" />
-              </div>
+              {index === 0 ? (
+                <div className="col-start-1 row-start-2 mt-2 flex gap-2 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0">
+                  <Skeleton className="h-8 w-24 max-lg:h-11 pointer-coarse:h-11" />
+                  <Skeleton className="h-8 w-16 max-lg:h-11 pointer-coarse:h-11" />
+                </div>
+              ) : null}
             </CardHeader>
             <CardContent>
-              <Skeleton className="h-[6.375rem] w-full sm:h-24" />
+              <EnvRowsSkeleton rows={rows} />
             </CardContent>
           </Card>
         ))}
       </Region>
       <Region name="environment-groups">
         <Card>
-          <CardHeader className="space-y-2">
-            <Skeleton className="h-5 w-48" />
-            <div className="space-y-1">
-              {Array.from({ length: 5 }, (_, index) => (
-                <Skeleton
-                  key={index}
-                  className={`${index === 0 ? "w-4/5" : "w-full"} h-4 ${index === 0 ? "" : "sm:hidden"}`}
-                />
-              ))}
+          <CardHeader className="grid-cols-1 grid-rows-none sm:grid-cols-[minmax(0,1fr)_auto] sm:grid-rows-[auto_auto]">
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-48" />
+              <div className="space-y-1">
+                <Skeleton className="h-4 w-4/5" />
+                <Skeleton className="h-4 w-full sm:hidden" />
+              </div>
             </div>
+            <Skeleton className="col-start-1 row-start-2 mt-2 h-8 w-32 max-lg:h-11 pointer-coarse:h-11 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0" />
           </CardHeader>
-          <CardContent>
-            <Skeleton className="h-[15.5rem] w-full sm:h-[11.75rem]" />
+          {/* "Linked (n)" and one group card, then "Available to link"
+              and its box. */}
+          <CardContent className="space-y-3">
+            <Skeleton className="h-5 w-20" />
+            <Skeleton className="h-[7.25rem] w-full rounded-lg sm:h-[6.75rem]" />
+            <Skeleton className="mt-6 h-5 w-28" />
+            <Skeleton className="h-24 w-full rounded-lg" />
           </CardContent>
         </Card>
       </Region>
@@ -2480,11 +2513,13 @@ function SettingsSourceCardSkeleton({ repo }: { repo: boolean }) {
   return (
     <Card
       className={cn(
-        repo ? "h-[272px] sm:h-[192px]" : "h-[232px] sm:h-[192px]",
+        // The loaded card's heights, its Edit now in the header's action
+        // slot (measured: 228/148 with a repo, 44px less on a phone without).
+        repo ? "h-[228px] sm:h-[148px]" : "h-[188px] sm:h-[148px]",
         "overflow-hidden",
       )}
     >
-      <CardHeader className="flex-row items-start justify-between gap-4">
+      <CardHeader>
         <div className="space-y-1.5">
           <Skeleton className="h-4 w-20" />
           <CardDescription className="relative">
@@ -2498,7 +2533,9 @@ function SettingsSourceCardSkeleton({ repo }: { repo: boolean }) {
             <Skeleton className="absolute inset-0" />
           </CardDescription>
         </div>
-        <Skeleton className="h-8 w-full" />
+        <CardAction>
+          <Skeleton className="h-8 w-14" />
+        </CardAction>
       </CardHeader>
       <CardContent>
         <div
@@ -2689,7 +2726,7 @@ export function ServiceScalingSkeleton() {
         <CardSkeleton rows={5} />
       </Region>
       <Region name="manual-scaling">
-        <CardSkeleton rows={2} />
+        <CardSkeleton rows={2} touchRows />
       </Region>
       <Region name="recent-metrics">
         <MetricsCardSkeleton sections={3} />
@@ -2721,21 +2758,18 @@ export function ServicePlanSkeleton({
 
 export function ServiceDiskSkeleton() {
   return (
-    <PendingFrame route="service-disk" className="p-4 sm:p-6">
+    <PendingFrame route="service-disk" className="space-y-6">
+      <Region
+        name="disk-description"
+        className={cn("space-y-1", SERVICE_TAB_DESCRIPTION_OFFSET)}
+      >
+        <Skeleton className="h-4 w-full max-w-xl" />
+        <Skeleton className="h-4 w-2/3 sm:hidden" />
+      </Region>
       <Region name="disk-card">
         <Card>
-          <CardHeader className="space-y-1">
-            <Skeleton className="h-5 w-24" />
-            <Skeleton className="h-4 w-full" />
-          </CardHeader>
-          <CardContent className="flex flex-col items-center gap-4 py-8">
-            <Skeleton className="size-10 rounded-full" />
-            <div className="w-full max-w-md space-y-2">
-              <Skeleton className="mx-auto h-5 w-40" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="mx-auto h-4 w-4/5" />
-            </div>
-            <Skeleton className="h-9 w-24" />
+          <CardContent>
+            <PanelCenteredStateSkeleton />
           </CardContent>
         </Card>
       </Region>
@@ -2746,12 +2780,13 @@ export function ServiceDiskSkeleton() {
 export function ServiceShellSkeleton() {
   return (
     <PendingFrame route="service-shell" className="space-y-6">
-      <Region name="page-header" className="space-y-2">
-        <Skeleton className="h-6 w-32" />
-        <div className="space-y-1">
-          <Skeleton className="h-4 w-72 max-w-full" />
-          <Skeleton className="h-5 w-3/4 sm:hidden" />
-        </div>
+      {/* The tab's name is the layout's heading; this is its description. */}
+      <Region
+        name="page-header"
+        className={cn("space-y-1", SERVICE_TAB_DESCRIPTION_OFFSET)}
+      >
+        <Skeleton className="h-4 w-72 max-w-full" />
+        <Skeleton className="h-5 w-3/4 sm:hidden" />
       </Region>
       <ServiceShellCardsSkeleton />
     </PendingFrame>
@@ -3080,7 +3115,7 @@ export function DatastoreLogsSkeleton() {
         <Skeleton className="h-9 min-w-56 flex-1" />
       </Region>
       <Region name="log-lines" className="min-h-64">
-        <LogPanelSkeleton rows={8} />
+        <LogPanelSkeleton />
       </Region>
     </PendingFrame>
   );
@@ -3273,17 +3308,7 @@ export function ServiceRouteContentSkeleton({
     case "deploy-detail":
       return <DeployDetailSkeleton />;
     case "deploys":
-      return (
-        deploys ?? (
-          <DeploysListSkeleton
-            titleKey={
-              routeId === "/services/$serviceId/builds"
-                ? "deploys.buildsTitle"
-                : undefined
-            }
-          />
-        )
-      );
+      return deploys ?? <DeploysListSkeleton />;
     case "disk":
       return <ServiceDiskSkeleton />;
     case "environment":

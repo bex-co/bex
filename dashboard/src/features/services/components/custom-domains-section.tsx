@@ -109,10 +109,16 @@ export function CustomDomainsSection({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{t("services.domainsTitle")}</CardTitle>
-        <CardDescription>{t("services.domainsDescription")}</CardDescription>
-        <CardAction>
+      {/* A phone stacks the action under the copy; beside it, "Add Custom
+          Domain" left the title and description a third of the card. */}
+      <CardHeader className="max-sm:has-data-[slot=card-action]:grid-cols-1">
+        <div>
+          <CardTitle>{t("services.domainsTitle")}</CardTitle>
+          <CardDescription className="mt-1.5">
+            {t("services.domainsDescription")}
+          </CardDescription>
+        </div>
+        <CardAction className="max-sm:col-start-1 max-sm:row-span-1 max-sm:row-start-2 max-sm:mt-2 max-sm:justify-self-start">
           <AddDomainButton
             addDomain={addDomain}
             addError={addError}
@@ -137,7 +143,11 @@ export function CustomDomainsSection({
             body={t("services.domainsEmptyBody")}
           />
         ) : (
-          <Table>
+          // A phone reads each domain as a block, not a table it has to
+          // scroll sideways: the name takes the first line, its two
+          // statuses and actions the second, and the DNS panel the card's
+          // full width. The column heads stay for assistive tech.
+          <Table className="max-lg:block max-lg:[&_tbody]:block max-lg:[&_td]:block max-lg:[&_td]:whitespace-normal max-lg:[&_thead]:sr-only max-lg:[&_tr]:flex max-lg:[&_tr]:flex-wrap max-lg:[&_tr]:items-center">
             <TableHeader>
               <TableRow>
                 <TableHead>{t("services.domainColName")}</TableHead>
@@ -243,15 +253,18 @@ function CustomDomainRow({
   return (
     <>
       <TableRow>
-        <TableCell className="font-medium">
+        <TableCell className="font-medium max-lg:min-w-0 max-lg:grow max-lg:basis-[calc(100%-6rem)] max-lg:pb-0">
           <a
             href={`https://${domain.name}`}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 hover:underline"
+            title={domain.name}
+            className="inline-flex max-w-full items-center gap-1 hover:underline"
           >
-            {domain.name}
-            <ExternalLink className="text-muted-foreground size-3" />
+            {/* One line, ellipsized: wrapped at its hyphen ("www.eden-" /
+                "cms.com") the name read as two hosts. */}
+            <span className="min-w-0 truncate">{domain.name}</span>
+            <ExternalLink className="text-muted-foreground size-3 shrink-0" />
           </a>
           {domain.redirectForName && (
             <p className="text-muted-foreground text-xs font-normal">
@@ -267,20 +280,29 @@ function CustomDomainRow({
               </p>
             )}
         </TableCell>
-        <TableCell>
+        {/* Stacked (below `lg`), the statuses take the second line under
+            the name and its actions, each named by its column: two bare
+            "Pending" chips side by side said nothing. */}
+        <TableCell className="max-lg:order-2 max-lg:basis-full max-lg:py-1">
+          <span className="text-muted-foreground mr-1.5 text-xs lg:hidden">
+            {t("services.domainColVerified")}
+          </span>
           <StatusBadge
             ok={domain.dnsVerified}
             okLabel={t("services.domainVerified")}
             pendingLabel={t("services.domainPending")}
           />
         </TableCell>
-        <TableCell>
+        <TableCell className="max-lg:order-2 max-lg:basis-full max-lg:py-1">
+          <span className="text-muted-foreground mr-1.5 text-xs lg:hidden">
+            {t("services.domainColCertificate")}
+          </span>
           <CertificateStatusBadge
             verified={domain.certificateVerified}
             active={domain.active}
           />
         </TableCell>
-        <TableCell className="text-right whitespace-nowrap">
+        <TableCell className="text-right whitespace-nowrap max-lg:order-1 max-lg:flex max-lg:shrink-0 max-lg:items-center max-lg:justify-end max-lg:pb-0">
           <Button
             variant="ghost"
             size="icon-sm"
@@ -334,14 +356,17 @@ function CustomDomainRow({
       </TableRow>
       {domain.certificateReason && (
         <TableRow className="hover:bg-transparent">
-          <TableCell colSpan={COLUMN_COUNT} className="pt-0">
+          <TableCell colSpan={COLUMN_COUNT} className="max-lg:w-full pt-0">
             <CertificateReasonHint reason={domain.certificateReason} />
           </TableCell>
         </TableRow>
       )}
       {open && (
         <TableRow className="hover:bg-transparent">
-          <TableCell colSpan={COLUMN_COUNT} className="bg-muted/30">
+          <TableCell
+            colSpan={COLUMN_COUNT}
+            className="max-lg:w-full bg-muted/30"
+          >
             <DnsInstructions domain={domain} onVerify={onVerify} busy={busy} />
           </TableCell>
         </TableRow>
@@ -414,7 +439,9 @@ function DnsRecordFieldsRow({
   if (!record) return null;
   const type = record.type;
   return (
-    <div className="grid gap-2 sm:grid-cols-3">
+    // Three record columns only from `lg`: in a tablet-wide card each was
+    // ~128px and clipped the Target to "eden-cms-v2.onbe".
+    <div className="grid gap-2 lg:grid-cols-3">
       <RecordField label={t("services.domainRecordType")} value={type} />
       <RecordField
         label={t("services.domainRecordHost")}
@@ -480,7 +507,9 @@ function RecordField({
   const { t } = useTranslations();
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between gap-2">
+      {/* The copy button's height on every label row, with a button or
+          without, so Type, Host and Target labels and boxes share a line. */}
+      <div className="flex min-h-8 items-center justify-between gap-2">
         <span className="text-muted-foreground text-xs font-medium">
           {label}
         </span>

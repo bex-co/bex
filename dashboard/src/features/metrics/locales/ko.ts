@@ -441,6 +441,11 @@ const koMetrics: Record<string, TranslationEntry> = {
     message: "인스턴스",
     description: "Application metrics instance multi-select label",
   },
+  "metrics.instanceFilterAll": {
+    message: "전체",
+    description:
+      "Instances filter trigger's value when no instance is picked (every instance is shown)",
+  },
   "metrics.instanceShowAll": {
     message: "모두 표시",
     description:

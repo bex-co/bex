@@ -96,10 +96,12 @@ export function GlobalSearch() {
         aria-keyshortcuts={isMac ? "Meta+K" : "Control+K"}
       >
         <Search />
-        <span className="hidden lg:inline">{t("common.topbarSearch")}</span>
+        {/* The label from `xl`: at 1024 it took the room the breadcrumbs
+            needed and cut them to "storefro…". */}
+        <span className="hidden xl:inline">{t("common.topbarSearch")}</span>
         <kbd
           aria-hidden="true"
-          className="hidden rounded border bg-muted px-1.5 py-0.5 font-sans text-[10px] font-medium lg:inline"
+          className="hidden rounded border bg-muted px-1.5 py-0.5 font-sans text-[10px] font-medium xl:inline"
         >
           {isMac ? "⌘ K" : "Ctrl K"}
         </kbd>

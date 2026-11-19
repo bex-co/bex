@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { serviceNavGroups } from "../service-nav";
+import { serviceNavGroups, serviceTabLabelKey } from "../service-nav";
 import type { SidebarNavGroup } from "@/common/components/dashboard-layout/sidebar-nav-groups";
 
 const labels = (groups: SidebarNavGroup[]) =>
@@ -94,5 +94,31 @@ describe("serviceNavGroups (w5/m48, w5/m57)", () => {
     expect(serviceNavGroups("web")[0].items[0].to).toBe(
       "/services/$serviceId/deploys",
     );
+  });
+});
+
+describe("serviceTabLabelKey (the detail layout's tab heading)", () => {
+  it("names the tab a path is exactly on with its sidebar label", () => {
+    expect(serviceTabLabelKey("/services/srv-1/logs", "srv-1")).toBe(
+      "services.navLogs",
+    );
+    expect(serviceTabLabelKey("/services/srv-1/env/", "srv-1")).toBe(
+      "services.navEnvironment",
+    );
+    // A cron job's Builds and a static site's Headers are tabs too.
+    expect(serviceTabLabelKey("/services/srv-1/builds", "srv-1")).toBe(
+      "services.navBuilds",
+    );
+    expect(
+      serviceTabLabelKey("/static/site-1/headers", "site-1", "/static"),
+    ).toBe("services.navHeaders");
+  });
+
+  it("names nothing below a tab, off the tree, or for another service", () => {
+    expect(serviceTabLabelKey("/services/srv-1/deploys/dep-1", "srv-1")).toBe(
+      null,
+    );
+    expect(serviceTabLabelKey("/services/srv-1", "srv-1")).toBe(null);
+    expect(serviceTabLabelKey("/services/srv-2/logs", "srv-1")).toBe(null);
   });
 });

@@ -1,3 +1,4 @@
+import { META_SEPARATED_CLASS } from "@/common/lib/ui/meta-separators";
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
@@ -78,8 +79,6 @@ export interface DeploysListPageProps {
   urlFilters?: DeployListFilters;
   /** Fired with the whole filter state on each change, for the URL write. */
   onFiltersChange?: (filters: DeployListFilters) => void;
-  /** The card's title: "Deploys", or a cron job's "Builds" (w2/m360). */
-  titleKey?: "deploys.listTitle" | "deploys.buildsTitle";
 }
 
 type Translate = ReturnType<typeof useTranslations>["t"];
@@ -150,7 +149,6 @@ export function DeploysListPage({
   serviceId,
   urlFilters = NO_DEPLOY_LIST_FILTERS,
   onFiltersChange,
-  titleKey = "deploys.listTitle",
 }: DeploysListPageProps) {
   const { t, i18n } = useTranslations();
   const hydrated = useIsHydrated();
@@ -305,11 +303,14 @@ export function DeploysListPage({
             // The icon and the row's verb ("Deployed", "Failed", "Canceled")
             // say how a finished deploy ended. A deploy still under way has
             // no such verb, and a failure with no stored reason has nothing
-            // else naming which step failed, so those rows spell the status.
+            // else naming which step failed, so those rows spell the status —
+            // unless the pre-deploy line already names it, where the spelled
+            // status only repeated the verb ("Failed · Failed 4 months ago").
             const spellStatus =
               !isTerminalDeployStatus(d.status) ||
               (deployStatusVariant(d.status) === "destructive" &&
-                !d.failureReason);
+                !d.failureReason &&
+                d.preDeployStatus !== "failed");
             // Below the table the row's action sits on its last line.
             const reasonClass = cn(
               "col-start-2 line-clamp-2 break-words text-pretty",
@@ -367,7 +368,7 @@ export function DeploysListPage({
                       className={cn(
                         "flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs whitespace-nowrap text-muted-foreground @2xl/deploys:shrink-0",
                         // One dot between neighbours, whichever are present.
-                        "[&>*:not(:first-child)]:before:mr-1.5 [&>*:not(:first-child)]:before:inline-block [&>*:not(:first-child)]:before:text-muted-foreground [&>*:not(:first-child)]:before:content-['·']",
+                        META_SEPARATED_CLASS,
                       )}
                     >
                       {/* Render's list links the short SHA to the commit's
@@ -533,7 +534,6 @@ export function DeploysListPage({
 
   return (
     <DeploysListFrame
-      title={t(titleKey)}
       count={
         count !== null ? (
           <p

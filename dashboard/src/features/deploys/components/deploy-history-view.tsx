@@ -18,14 +18,12 @@ export function DeployHistoryView({
   serviceId,
   search,
   replaceSearch,
-  titleKey,
   base = "/services",
 }: {
   serviceId: string;
   search: DeployListSearch;
   /** Writes the next search with `replace`, so typing adds no history entries. */
   replaceSearch: (next: DeployListSearch) => void;
-  titleKey?: "deploys.listTitle" | "deploys.buildsTitle";
   /** The tree the service's own Settings link stays in. */
   base?: ServiceBase;
 }) {
@@ -37,18 +35,15 @@ export function DeployHistoryView({
       // Filters belong to one service's history.
       key={serviceId}
       serviceId={serviceId}
-      titleKey={titleKey}
       urlFilters={deployListFiltersFromSearch(search)}
       onFiltersChange={(filters) =>
         replaceSearch(deployListFiltersToSearch(filters))
       }
     />
   );
-  // `service-wide-layout` opts the tab into the layout's wide measure.
-  if (!autoDeployOff(service))
-    return <div className="service-wide-layout">{list}</div>;
+  if (!autoDeployOff(service)) return list;
   return (
-    <div className="service-wide-layout space-y-4">
+    <div className="space-y-4">
       <AutoDeployOffBanner
         serviceId={serviceId}
         branch={service?.branch ?? null}

@@ -99,7 +99,10 @@ export function MetricSection({
   ) : null;
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between gap-2">
+      {/* Wraps rather than squeezes: on a phone a wide headerExtra (a count
+          and a Group by select) drops under the title instead of breaking
+          "requests" mid-word and clipping the select's value. */}
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         {/* The body's overflow-wrap:anywhere would let a wide headerExtra
             squeeze a one-word title to a letter per line; words stay whole. */}
         <div className="text-sm font-medium text-foreground [overflow-wrap:normal]">

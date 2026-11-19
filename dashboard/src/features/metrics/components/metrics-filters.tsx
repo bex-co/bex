@@ -47,7 +47,9 @@ export function MetricsFilters({
   const rangeBound = useMetricsRetentionBound(resource);
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    // One row on a phone too: the two selects share the width beside the
+    // timeline toggle, which wrapped alone onto a second row.
+    <div className="flex flex-wrap items-center gap-3 max-sm:flex-nowrap max-sm:gap-2">
       <Select
         value={eventFilter}
         onValueChange={(value) =>
@@ -56,7 +58,7 @@ export function MetricsFilters({
       >
         <SelectTrigger
           size="sm"
-          className="w-40"
+          className="w-40 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1"
           aria-label={t("metrics.eventsFilterLabel")}
         >
           <SelectValue />
@@ -79,12 +81,14 @@ export function MetricsFilters({
         range={range}
         onRangeChange={onRangeChange}
         bound={rangeBound}
+        // Shares the phone row with the events select and the toggle.
+        triggerClassName="max-sm:w-auto max-sm:min-w-0 max-sm:flex-1"
       />
 
       <Button
         size="sm"
         variant={timelineShown ? "default" : "outline"}
-        className="ml-auto"
+        className="ml-auto max-lg:min-w-11 pointer-coarse:min-w-11"
         aria-pressed={timelineShown}
         aria-label={t("metrics.eventsToggle")}
         title={t("metrics.eventsToggle")}

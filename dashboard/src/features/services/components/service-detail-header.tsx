@@ -148,7 +148,7 @@ export function ServiceDetailHeader({
       {/* The band is full-bleed; its content ends on the same right edge as
           the widest tab's content, so the actions sit above what they act
           on instead of in a far corner of a wide screen. */}
-      <div className="max-w-7xl space-y-2 max-sm:space-y-1.5">
+      <div className="mx-auto max-w-7xl space-y-2 max-sm:space-y-1.5">
         <div className="flex items-center justify-between gap-2">
           <div className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase">
             <TypeIcon className="size-3.5" />
@@ -865,7 +865,7 @@ export function ServiceDetailHeaderSkeleton() {
       className="border-b px-4 py-3 max-sm:pb-2 sm:px-6"
       data-skeleton-region="service-header"
     >
-      <div className="max-w-7xl space-y-2 max-sm:space-y-1.5">
+      <div className="mx-auto max-w-7xl space-y-2 max-sm:space-y-1.5">
         <Skeleton className="h-4 w-24" />
         <div className="flex flex-wrap items-center justify-between gap-3 md:max-lg:grid md:max-lg:grid-cols-[minmax(0,1fr)_auto] md:max-lg:gap-y-2 lg:flex-nowrap lg:items-start">
           <div className="flex min-w-0 flex-wrap items-center gap-2 md:max-lg:contents">

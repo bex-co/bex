@@ -5,6 +5,7 @@ import {
   Cpu,
   FileText,
   Globe2,
+  GitBranch,
   Hammer,
   HeartPulse,
   KeyRound,
@@ -41,13 +42,15 @@ const SECTION_ITEMS: Record<NavigableSettingsSectionId, SectionItem> = {
     labelKey: "services.deployTitle",
     icon: Rocket,
   },
+  // The section holds both the Build and the Deploy cards; its entry names
+  // both, as Render's does, so Deploy is reachable from the index.
   build: {
-    labelKey: "services.buildTitle",
+    labelKey: "services.buildDeployNav",
     icon: Hammer,
   },
   source: {
     labelKey: "services.sourceTitle",
-    icon: Hammer,
+    icon: GitBranch,
   },
   runtime: {
     labelKey: "services.runtimeTitle",

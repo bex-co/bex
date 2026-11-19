@@ -113,10 +113,6 @@ const jaServices: Record<string, TranslationEntry> = {
     description:
       "Link from an SSH-unavailable state on a Free service to its instance-type page (w4/143)",
   },
-  "services.shellTitle": {
-    message: "シェル",
-    description: "Running-instance SSH connection page title",
-  },
   "services.shellDescription": {
     message: "稼働中のサービスインスタンスのシェルを、ターミナルから開きます。",
     description: "Running-instance SSH connection page description",
@@ -1629,6 +1625,11 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "有料",
     description: "Plan-picker section label for the paid tier ladder",
   },
+  "services.planCurrent": {
+    message: "現在",
+    description:
+      "Plan picker: badge on the instance type the service is on now",
+  },
   "services.planPickerCancel": {
     message: "キャンセル",
     description: "Plan-picker footer button: discard the selection",
@@ -2396,6 +2397,11 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "ビルド",
     description:
       "Settings tab: Build card title, Render's split Build section (w5/m52)",
+  },
+  "services.buildDeployNav": {
+    message: "ビルドとデプロイ",
+    description:
+      "Settings section index: the one entry for the Build and Deploy cards, which the page renders as one section (Render names it Build & Deploy)",
   },
   "services.buildDescription": {
     message: "bex がリポジトリからサービスをビルドする方法を設定します。",
@@ -4335,10 +4341,6 @@ const jaServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail nav item (persistent disk page); Render's label is singular",
   },
-  "services.diskTitle": {
-    message: "ディスク",
-    description: "Disk tab card title",
-  },
   "services.diskDescription": {
     message:
       "SSD をアタッチすると、デプロイをまたいでサービスのファイルシステムのデータを保持できます。ディスクの料金は月額 $0.175/GB です。",
@@ -5629,10 +5631,6 @@ const jaServices: Record<string, TranslationEntry> = {
   "services.outboundIpsCopyError": {
     message: "コピーできませんでした",
     description: "Toast when clipboard write fails for an outbound IP (w8/010)",
-  },
-  "services.environmentPageTitle": {
-    message: "環境",
-    description: "Service Environment page heading",
   },
   "services.environmentPageDescription": {
     message:

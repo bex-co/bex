@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatTimeOfDay } from "@/common/lib/format";
+import { formatAxisTime, formatTimeOfDay } from "@/common/lib/format";
 import {
   axisTickValues,
   formatAxisTickLabels,
@@ -11,8 +11,9 @@ import {
   EmptyChart,
 } from "@/features/metrics/components/svg-line-chart";
 import {
-  CHART_WIDTH as WIDTH,
-  CHART_HEIGHT as HEIGHT,
+  CHART_FRAME_STYLE,
+  axisTimeTicks,
+  useChartBox,
   CHART_PAD as PAD,
   axisLeftPad,
   tickLabelX,
@@ -20,6 +21,10 @@ import {
   frameTooltipRows,
   type SeriesInput,
 } from "@/features/metrics/components/chart-layout";
+import {
+  AXIS_LABEL_CLASS,
+  ChartTimeAxis,
+} from "@/features/metrics/components/chart-time-axis";
 import {
   ChartEventLines,
   ChartEventStrip,
@@ -61,6 +66,9 @@ export function SvgBarChart({
 }: SvgBarChartProps) {
   const { t, i18n } = useTranslations();
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  // The SVG draws in its own measured pixels (see useChartBox).
+  const { ref: svgRef, box } = useChartBox<SVGSVGElement>();
+  const { width: WIDTH, height: HEIGHT } = box;
 
   const frames = useMemo(() => groupPointsByTime(series), [series]);
   // The tick labels' widths size the gutter every slot is measured from.
@@ -77,23 +85,40 @@ export function SvgBarChart({
     };
   }, [frames, unit]);
 
-  // Bars are slot-positioned by index, so the marker x-mapping interpolates a
+  // Bars are slot-positioned by index, so a time's x interpolates a
   // fractional index from the frame times (frames share one query step, so
-  // index is linear in time) and lands on that slot's center.
-  const eventClusters = useMemo(() => {
-    if (!markers?.length || !markersServiceId || frames.length === 0) {
-      return [];
-    }
+  // index is linear in time) and lands on that slot's center — for event
+  // markers and time ticks alike.
+  const xForT = useMemo(() => {
+    if (frames.length === 0) return null;
     const innerWidth = WIDTH - left - PAD.right;
     const slot = innerWidth / frames.length;
     const t0 = frames[0].time;
     const tN = frames[frames.length - 1].time;
-    const xForT = (t: number) =>
+    return (t: number) =>
       tN === t0
         ? left + innerWidth / 2
         : left + (((t - t0) / (tN - t0)) * (frames.length - 1) + 0.5) * slot;
-    return clusterMarkers(markers, xForT, left, WIDTH - PAD.right);
-  }, [markers, markersServiceId, frames, left]);
+  }, [frames, left, WIDTH]);
+
+  const eventClusters = useMemo(
+    () =>
+      markers?.length && markersServiceId && xForT
+        ? clusterMarkers(markers, xForT, left, WIDTH - PAD.right)
+        : [],
+    [markers, markersServiceId, xForT, left, WIDTH],
+  );
+
+  // Only once measured: the labels read the browser's timezone. Memoized,
+  // so hovering a bar does not re-lay the axis.
+  const xTicks = useMemo(() => {
+    if (!xForT || !box.measured) return [];
+    const t0 = frames[0].time;
+    const tN = frames[frames.length - 1].time;
+    return axisTimeTicks(t0, tN, xForT, WIDTH, (t, step) =>
+      formatAxisTime(t, tN - t0, i18n.language, step),
+    );
+  }, [xForT, box.measured, frames, WIDTH, i18n.language]);
 
   if (frames.length === 0) {
     return <EmptyChart />;
@@ -114,11 +139,14 @@ export function SvgBarChart({
         <ChartEventStrip
           clusters={eventClusters}
           serviceId={markersServiceId}
+          width={WIDTH}
         />
       )}
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        className="w-full"
+        className="block w-full"
+        style={CHART_FRAME_STYLE}
         role="img"
         aria-label={t("metrics.barChartLabel", { count: frames.length })}
       >
@@ -141,7 +169,7 @@ export function SvgBarChart({
                 y={y}
                 textAnchor="end"
                 dominantBaseline="middle"
-                className="fill-muted-foreground text-[9px]"
+                className={AXIS_LABEL_CLASS}
               >
                 {tick.label}
               </text>
@@ -149,9 +177,11 @@ export function SvgBarChart({
           );
         })}
 
+        <ChartTimeAxis ticks={xTicks} height={HEIGHT} />
+
         {/* Event markers' vertical lines, under the bars. */}
         {eventClusters.length > 0 && (
-          <ChartEventLines clusters={eventClusters} />
+          <ChartEventLines clusters={eventClusters} height={HEIGHT} />
         )}
 
         {frames.map((frame, i) => {

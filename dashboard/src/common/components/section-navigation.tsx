@@ -32,10 +32,14 @@ export interface SectionNavigationItem {
 /**
  * The grid: one column of content, plus the rail column when wide. The narrow
  * column is an explicit minmax(0,1fr): an implicit `auto` column grows to the
- * tab bar's full scroll width and pushes the whole page off-screen.
+ * tab bar's full scroll width and pushes the whole page off-screen. When
+ * wide, the content keeps a form's reading measure (48rem) and the rail
+ * sits at the page's right edge, under the header's actions; the rail is
+ * wide enough for its longest entry on one line
+ * ("Image registry credential" wrapped at 13rem).
  */
 export const SECTIONED_GRID_CLASS =
-  "grid w-full grid-cols-[minmax(0,1fr)] items-start gap-6 @4xl/page:grid-cols-[minmax(0,1fr)_13rem] @4xl/page:gap-x-10";
+  "grid w-full grid-cols-[minmax(0,1fr)] items-start gap-6 @4xl/page:grid-cols-[minmax(0,48rem)_15rem] @4xl/page:justify-between @4xl/page:gap-x-10";
 
 /** The content column, beside the rail when wide. It is a container too, so
  *  a card inside lays itself out by the column it actually has. */
@@ -66,7 +70,7 @@ export const SECTION_NAVIGATION_ITEMS_CLASS =
 
 /** A pill in the bar; a full-width row in the rail. Current: filled. */
 const LINK_CLASS =
-  "flex h-8 shrink-0 items-center gap-2 rounded-full px-3 text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground aria-[current=location]:bg-accent aria-[current=location]:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset @4xl/page:h-auto @4xl/page:rounded-md @4xl/page:py-2 @4xl/page:whitespace-normal @4xl/page:hover:bg-accent";
+  "flex h-8 shrink-0 items-center gap-2 rounded-full px-3 max-lg:h-11 pointer-coarse:h-11 text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground aria-[current=location]:bg-accent aria-[current=location]:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset @4xl/page:h-auto @4xl/page:rounded-md @4xl/page:py-2 @4xl/page:whitespace-normal @4xl/page:hover:bg-accent";
 
 /** Fade the bar's clipped edge(s) so overflow reads as "more this way". */
 const FADE_CLASS: Record<"start" | "end" | "both", string> = {

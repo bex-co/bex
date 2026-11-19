@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useLayoutEffect, useState } from "react";
 import { formatMetricShort } from "@/features/metrics/lib/format";
 import type { ChartPoint } from "@/features/metrics/types";
 import type { TooltipRow } from "@/features/metrics/components/svg-line-chart";
@@ -8,7 +8,16 @@ import type { TooltipRow } from "@/features/metrics/components/svg-line-chart";
 // than duplicated per file) is what keeps them the same size.
 export const CHART_WIDTH = 600;
 export const CHART_HEIGHT = 180;
-export const CHART_PAD = { top: 8, right: 8, bottom: 20, left: 44 };
+// `left` is the gutter's floor, wide enough for the common axis labels
+// ("512 MiB", "0.110%", "169ms") at the axis font, so charts stacked in one
+// card start their plots on the same x and their time axes line up; only a
+// longer label widens one chart's gutter.
+export const CHART_PAD = { top: 8, right: 8, bottom: 20, left: 56 };
+/** A chart never gets shorter than this, however narrow its card. */
+export const CHART_MIN_HEIGHT = 140;
+/** Nor taller than this, however wide: stacked charts stay comparable on
+ *  one screen instead of each filling it. */
+export const CHART_MAX_HEIGHT = 200;
 
 /**
  * The populated chart is a width-100% SVG with a CHART_WIDTH×CHART_HEIGHT
@@ -18,7 +27,147 @@ export const CHART_PAD = { top: 8, right: 8, bottom: 20, left: 44 };
  */
 export const CHART_FRAME_STYLE = {
   aspectRatio: `${CHART_WIDTH} / ${CHART_HEIGHT}`,
+  minHeight: CHART_MIN_HEIGHT,
+  maxHeight: CHART_MAX_HEIGHT,
 } as const;
+
+/** The size a chart's SVG box draws in. */
+export interface ChartBox {
+  width: number;
+  height: number;
+  /** False until the browser measured the box (server render, first paint). */
+  measured: boolean;
+}
+
+const UNMEASURED_BOX: ChartBox = {
+  width: CHART_WIDTH,
+  height: CHART_HEIGHT,
+  measured: false,
+};
+
+/**
+ * The chart SVG's own CSS box, in pixels. The box itself is sized by CSS
+ * (CHART_FRAME_STYLE, the same as every placeholder frame, so nothing moves
+ * when it is measured); the chart draws its geometry in these pixels, so tick
+ * labels stay at the axis font on a phone instead of shrinking with a scaled
+ * 600-wide canvas to an unreadable few pixels. Unmeasured (server render, a
+ * test without ResizeObserver) it is the nominal 600×180 canvas.
+ */
+export function useChartBox<T extends Element>() {
+  // A callback ref: the SVG mounts only once there is data, which can be
+  // long after the chart component itself mounted on an empty frame.
+  const [el, ref] = useState<T | null>(null);
+  const [box, setBox] = useState<ChartBox>(UNMEASURED_BOX);
+  useLayoutEffect(() => {
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const apply = (width: number, height: number) => {
+      const w = Math.round(width);
+      const h = Math.round(height);
+      if (w <= 0 || h <= 0) return;
+      setBox((cur) =>
+        cur.measured && cur.width === w && cur.height === h
+          ? cur
+          : { width: w, height: h, measured: true },
+      );
+    };
+    const rect = el.getBoundingClientRect();
+    apply(rect.width, rect.height);
+    const observer = new ResizeObserver((entries) => {
+      const r = entries[0]?.contentRect;
+      if (r) apply(r.width, r.height);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [el]);
+  return { ref, box };
+}
+
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+// Round steps a time axis may tick on, finest first.
+const TIME_STEPS = [
+  5 * MINUTE,
+  10 * MINUTE,
+  15 * MINUTE,
+  30 * MINUTE,
+  HOUR,
+  2 * HOUR,
+  3 * HOUR,
+  6 * HOUR,
+  12 * HOUR,
+  DAY,
+  2 * DAY,
+  7 * DAY,
+];
+// Clear space between two neighbouring time labels.
+const TIME_LABEL_GAP = 16;
+
+/** The multiples of `step` in local wall-clock time within [minT, maxT]. */
+function alignedTimes(minT: number, maxT: number, step: number): number[] {
+  // Local wall clock = instant - timezone offset; whole-hour and whole-day
+  // steps then land on the hour and on midnight where the viewer is.
+  const offset = new Date(minT).getTimezoneOffset() * MINUTE;
+  const times: number[] = [];
+  for (
+    let t = Math.ceil((minT - offset) / step) * step + offset;
+    t <= maxT;
+    t += step
+  ) {
+    times.push(t);
+  }
+  return times;
+}
+
+/** One labelled tick on a chart's time axis. */
+export interface TimeTick {
+  x: number;
+  label: string;
+}
+
+/**
+ * The time axis: ticks on round boundaries (on the hour, every 6 hours, at
+ * midnight…), the finest step whose labels — measured at the axis font —
+ * keep a clear gap between neighbours, so labels never run together on a
+ * phone or in a longer locale. A label that would cross the canvas edge is
+ * dropped rather than clamped against its neighbour.
+ */
+export function axisTimeTicks(
+  minT: number,
+  maxT: number,
+  xFor: (t: number) => number,
+  width: number,
+  format: (t: number, stepMs: number) => string,
+): TimeTick[] {
+  if (!(maxT > minT)) return [];
+  const pxPerMs = (xFor(maxT) - xFor(minT)) / (maxT - minT);
+  for (const [i, step] of TIME_STEPS.entries()) {
+    const last = i === TIME_STEPS.length - 1;
+    const spacing = step * pxPerMs;
+    const times = alignedTimes(minT, maxT, step);
+    if (times.length === 0) continue;
+    // One label's width bounds the widest from below, so a step too fine
+    // for it is rejected before the whole axis is formatted and measured
+    // (a 30-day range is ~8,600 five-minute ticks).
+    if (
+      !last &&
+      spacing < tickLabelWidth(format(times[0], step)) + TIME_LABEL_GAP
+    ) {
+      continue;
+    }
+    const labels = times.map((t) => format(t, step));
+    const widths = labels.map(tickLabelWidth);
+    if (!last && spacing < Math.max(...widths) + TIME_LABEL_GAP) continue;
+    return times.flatMap((t, j) => {
+      const x = xFor(t);
+      const half = widths[j] / 2;
+      return x - half >= 0 && x + half <= width
+        ? [{ x, label: labels[j] }]
+        : [];
+    });
+  }
+  return [];
+}
 
 /**
  * A service chart section keeps a fixed 24px event lane above its plot, empty
@@ -34,8 +183,9 @@ export function useEventLane() {
 }
 
 // Tick labels are end-anchored TICK_LABEL_GAP left of the plot, at the
-// 9px axis font, and keep TICK_INSET clear of the canvas edge.
-const TICK_FONT_PX = 9;
+// 11px axis font (real pixels: the chart draws in its measured box), and
+// keep TICK_INSET clear of the canvas edge.
+const TICK_FONT_PX = 11;
 const TICK_LABEL_GAP = 6;
 const TICK_INSET = 4;
 let measureCtx: CanvasRenderingContext2D | null | undefined;

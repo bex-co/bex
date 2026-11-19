@@ -460,6 +460,11 @@ const enMetrics: Record<string, TranslationEntry> = {
     message: "Instances",
     description: "Application metrics instance multi-select label",
   },
+  "metrics.instanceFilterAll": {
+    message: "All",
+    description:
+      "Instances filter trigger's value when no instance is picked (every instance is shown)",
+  },
   "metrics.instanceShowAll": {
     message: "Show all",
     description:

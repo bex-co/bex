@@ -44,7 +44,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
-import { Skeleton } from "@/common/components/ui/skeleton";
+import {
+  ENV_ROW_ACTIONS_CLASS,
+  ENV_ROW_CLASS,
+  EnvRowsSkeleton,
+} from "@/features/services/components/env-rows-skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   hasGraphQLErrorCode,
@@ -1151,7 +1155,7 @@ function EnvironmentSection({
           </div>
         ) : null}
         {loading ? (
-          <RowsSkeleton />
+          <EnvRowsSkeleton />
         ) : (
           <div className="divide-y">
             {children}
@@ -1213,7 +1217,7 @@ function SensitiveViewItem({
   const { t } = useTranslations();
   const visible = value !== undefined;
   return (
-    <div className="grid min-w-0 gap-3 py-4 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center">
+    <div className={ENV_ROW_CLASS}>
       {readOnlyNote ? (
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <code className="min-w-0 break-all text-sm font-medium">{name}</code>
@@ -1237,7 +1241,7 @@ function SensitiveViewItem({
       >
         {visible ? value : MASKED_VALUE}
       </code>
-      <div className="flex flex-wrap justify-end gap-1">
+      <div className={ENV_ROW_ACTIONS_CLASS}>
         <PermissionTooltip
           reason={!visible && revealDisabled ? revealReason : undefined}
         >
@@ -1633,19 +1637,6 @@ function EmptyCopy({
       <p className="font-medium">{title}</p>
       <p className="text-muted-foreground mt-1 text-sm">{body}</p>
       {action ? <div className="mt-3 flex justify-center">{action}</div> : null}
-    </div>
-  );
-}
-
-function RowsSkeleton() {
-  return (
-    <div className="space-y-3">
-      {[0, 1, 2].map((index) => (
-        <div key={index} className="flex gap-3">
-          <Skeleton className="h-9 flex-1" />
-          <Skeleton className="h-9 flex-1" />
-        </div>
-      ))}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { ServiceTabDescription } from "@/features/services/components/service-tab-description";
 import { Link } from "@tanstack/react-router";
 import { KeyRound, SquareTerminal, Terminal } from "lucide-react";
 import { ConnectionField } from "@/common/components/connection-field";
@@ -38,12 +39,9 @@ export function ServiceShellPage({ serviceId }: { serviceId: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h2 className="text-xl font-semibold">{t("services.shellTitle")}</h2>
-        <p className="text-muted-foreground text-sm">
-          {t("services.shellDescription")}
-        </p>
-      </div>
+      <ServiceTabDescription>
+        {t("services.shellDescription")}
+      </ServiceTabDescription>
 
       {loading && !service ? <ServiceShellCardsSkeleton /> : null}
 
@@ -68,7 +66,9 @@ export function ServiceShellPage({ serviceId }: { serviceId: string }) {
       ) : null}
 
       {loading && !service ? null : (
-        <Card>
+        // A message, not a workspace: it keeps a reading measure instead of a
+        // card stretched half empty across a wide screen.
+        <Card className="max-w-3xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <SquareTerminal className="size-4" />

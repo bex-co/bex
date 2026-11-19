@@ -52,15 +52,22 @@ import { ServiceEnvPage } from "@/routes/services.$serviceId.env";
 // w4/409: the detail header already gives the page its one h1 (the service
 // name); the Environment tab's own title is a section heading.
 describe("ServiceEnvPage heading structure", () => {
-  it("titles the page with an h2 and adds no h1", () => {
+  it("leaves the tab's title to the layout and adds no h1", () => {
     useServer.mockReturnValue({
       service: { id: "srv-1", name: "qa-service", environmentId: "env-qa" },
       loading: false,
       refetch,
     });
     const { container } = render(<ServiceEnvPage serviceId="srv-1" />);
+    // The detail layout's tab heading names the page (one h2 per tab);
+    // the page itself opens with its description.
     expect(
-      screen.getByRole("heading", { level: 2, name: "Environment" }),
+      screen.queryByRole("heading", { level: 2, name: "Environment" }),
+    ).toBeNull();
+    expect(
+      screen.getByText(
+        "Manage service-specific variables, secret files, and linked environment groups.",
+      ),
     ).toBeInTheDocument();
     expect(container.querySelectorAll("h1")).toHaveLength(0);
   });

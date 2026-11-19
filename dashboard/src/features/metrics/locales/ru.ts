@@ -503,6 +503,11 @@ const ruMetrics: Record<string, TranslationEntry> = {
     message: "Инстансы",
     description: "Application metrics instance multi-select label",
   },
+  "metrics.instanceFilterAll": {
+    message: "Все",
+    description:
+      "Instances filter trigger's value when no instance is picked (every instance is shown)",
+  },
   "metrics.instanceShowAll": {
     message: "Показать все",
     description:

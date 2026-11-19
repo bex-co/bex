@@ -113,10 +113,6 @@ const esServices: Record<string, TranslationEntry> = {
     description:
       "Link from an SSH-unavailable state on a Free service to its instance-type page (w4/143)",
   },
-  "services.shellTitle": {
-    message: "Shell",
-    description: "Running-instance SSH connection page title",
-  },
   "services.shellDescription": {
     message:
       "Abre un shell en una instancia en ejecución del servicio desde tu terminal.",
@@ -1636,6 +1632,11 @@ const esServices: Record<string, TranslationEntry> = {
     message: "De pago",
     description: "Plan-picker section label for the paid tier ladder",
   },
+  "services.planCurrent": {
+    message: "Actual",
+    description:
+      "Plan picker: badge on the instance type the service is on now",
+  },
   "services.planPickerCancel": {
     message: "Cancelar",
     description: "Plan-picker footer button: discard the selection",
@@ -2408,6 +2409,11 @@ const esServices: Record<string, TranslationEntry> = {
     message: "Build",
     description:
       "Settings tab: Build card title, Render's split Build section (w5/m52)",
+  },
+  "services.buildDeployNav": {
+    message: "Build y despliegue",
+    description:
+      "Settings section index: the one entry for the Build and Deploy cards, which the page renders as one section (Render names it Build & Deploy)",
   },
   "services.buildDescription": {
     message:
@@ -4364,10 +4370,6 @@ const esServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail nav item (persistent disk page); Render's label is singular",
   },
-  "services.diskTitle": {
-    message: "Disco",
-    description: "Disk tab card title",
-  },
   "services.diskDescription": {
     message:
       "Conecta un SSD para conservar los datos del sistema de archivos de tu servicio entre despliegues. Los discos se cobran a $0.175/GB al mes.",
@@ -5678,10 +5680,6 @@ const esServices: Record<string, TranslationEntry> = {
   "services.outboundIpsCopyError": {
     message: "No se pudo copiar",
     description: "Toast when clipboard write fails for an outbound IP (w8/010)",
-  },
-  "services.environmentPageTitle": {
-    message: "Entorno",
-    description: "Service Environment page heading",
   },
   "services.environmentPageDescription": {
     message:

@@ -1,15 +1,16 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatTimeOfDay } from "@/common/lib/format";
+import { formatAxisTime, formatTimeOfDay } from "@/common/lib/format";
 import {
   axisTickValues,
   formatAxisTickLabels,
 } from "@/features/metrics/lib/format";
 import {
-  CHART_WIDTH as WIDTH,
-  CHART_HEIGHT as HEIGHT,
+  CHART_FRAME_STYLE,
   axisLeftPad,
+  axisTimeTicks,
   chartFrameStyle,
+  useChartBox,
   tickLabelX,
   CHART_PAD as PAD,
   groupPointsByTime,
@@ -18,6 +19,10 @@ import {
   type ChartFrame,
   useEventLane,
 } from "@/features/metrics/components/chart-layout";
+import {
+  AXIS_LABEL_CLASS,
+  ChartTimeAxis,
+} from "@/features/metrics/components/chart-time-axis";
 import {
   ChartEventLines,
   ChartEventStrip,
@@ -60,11 +65,13 @@ export function SvgLineChart({
 }: SvgLineChartProps) {
   const { t, i18n } = useTranslations();
   const [activeFrame, setActiveFrame] = useState<number | null>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
+  // The SVG draws in its own measured pixels (see useChartBox).
+  const { ref: svgRef, box } = useChartBox<SVGSVGElement>();
+  const { width: WIDTH, height: HEIGHT } = box;
 
   const geo = useMemo(
-    () => buildGeometry(series, referenceValue, unit),
-    [series, referenceValue, unit],
+    () => buildGeometry(series, referenceValue, unit, WIDTH, HEIGHT),
+    [series, referenceValue, unit, WIDTH, HEIGHT],
   );
 
   const eventClusters = useMemo(
@@ -72,7 +79,20 @@ export function SvgLineChart({
       geo && markers?.length && markersServiceId
         ? clusterMarkers(markers, geo.xForT, geo.left, WIDTH - PAD.right)
         : [],
-    [geo, markers, markersServiceId],
+    [geo, markers, markersServiceId, WIDTH],
+  );
+
+  // The time axis only once measured: its labels read the browser's
+  // timezone, so the server render must not carry them. Memoized, so the
+  // crosshair's re-renders do not re-lay the axis.
+  const xTicks = useMemo(
+    () =>
+      geo && box.measured
+        ? axisTimeTicks(geo.minT, geo.maxT, geo.xForT, WIDTH, (t, step) =>
+            formatAxisTime(t, geo.maxT - geo.minT, i18n.language, step),
+          )
+        : [],
+    [geo, box.measured, WIDTH, i18n.language],
   );
 
   if (!geo) {
@@ -81,9 +101,8 @@ export function SvgLineChart({
 
   const { frames, xForT, yFor, yTicks, paths, referenceY, left } = geo;
 
-  function nearestFrameForClientX(clientX: number): number {
-    const svg = svgRef.current;
-    if (!svg || !geo) return 0;
+  function nearestFrameForClientX(clientX: number, svg: SVGSVGElement): number {
+    if (!geo) return 0;
     const rect = svg.getBoundingClientRect();
     const relX = ((clientX - rect.left) / rect.width) * WIDTH;
     let best = 0;
@@ -106,16 +125,20 @@ export function SvgLineChart({
         <ChartEventStrip
           clusters={eventClusters}
           serviceId={markersServiceId}
+          width={WIDTH}
         />
       )}
       <svg
         ref={svgRef}
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        className="w-full"
+        className="block w-full"
+        style={CHART_FRAME_STYLE}
         role="img"
         aria-label={t("metrics.lineChartLabel", { count: frames.length })}
         tabIndex={0}
-        onPointerMove={(e) => setActiveFrame(nearestFrameForClientX(e.clientX))}
+        onPointerMove={(e) =>
+          setActiveFrame(nearestFrameForClientX(e.clientX, e.currentTarget))
+        }
         onPointerLeave={() => setActiveFrame(null)}
         onKeyDown={(e) => {
           if (e.key === "ArrowRight") {
@@ -145,12 +168,14 @@ export function SvgLineChart({
               y={t.y}
               textAnchor="end"
               dominantBaseline="middle"
-              className="fill-muted-foreground text-[9px]"
+              className={AXIS_LABEL_CLASS}
             >
               {t.label}
             </text>
           </g>
         ))}
+
+        <ChartTimeAxis ticks={xTicks} height={HEIGHT} />
 
         {/* Reference (e.g. limit): dashed, recessive, above gridlines. */}
         {referenceY != null && (
@@ -167,7 +192,7 @@ export function SvgLineChart({
 
         {/* Event markers' vertical lines, under the data like the reference. */}
         {eventClusters.length > 0 && (
-          <ChartEventLines clusters={eventClusters} />
+          <ChartEventLines clusters={eventClusters} height={HEIGHT} />
         )}
 
         {/* Area wash (~10% opacity, single series only) then the 2px lines. */}
@@ -325,6 +350,9 @@ interface LineGeometry {
   referenceY: number | null;
   /** The plot's left gutter, sized for its tick labels. */
   left: number;
+  /** The time domain the x axis spans. */
+  minT: number;
+  maxT: number;
 }
 
 /**
@@ -337,6 +365,8 @@ function buildGeometry(
   seriesList: LineSeriesInput[],
   referenceValue: number | undefined,
   unit: string,
+  WIDTH: number,
+  HEIGHT: number,
 ): LineGeometry | null {
   const drawn = seriesList.filter((s) => s.points.length > 0);
   const allPoints = drawn.flatMap((s) => s.points);
@@ -408,5 +438,7 @@ function buildGeometry(
     referenceY:
       showReference && referenceValue != null ? yFor(referenceValue) : null,
     left,
+    minT,
+    maxT,
   };
 }

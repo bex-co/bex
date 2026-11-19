@@ -113,10 +113,6 @@ const deServices: Record<string, TranslationEntry> = {
     description:
       "Link from an SSH-unavailable state on a Free service to its instance-type page (w4/143)",
   },
-  "services.shellTitle": {
-    message: "Shell",
-    description: "Running-instance SSH connection page title",
-  },
   "services.shellDescription": {
     message:
       "Öffne von deinem Terminal aus eine Shell auf einer laufenden Service-Instanz.",
@@ -1645,6 +1641,11 @@ const deServices: Record<string, TranslationEntry> = {
     message: "Kostenpflichtig",
     description: "Plan-picker section label for the paid tier ladder",
   },
+  "services.planCurrent": {
+    message: "Aktuell",
+    description:
+      "Plan picker: badge on the instance type the service is on now",
+  },
   "services.planPickerCancel": {
     message: "Abbrechen",
     description: "Plan-picker footer button: discard the selection",
@@ -2416,6 +2417,11 @@ const deServices: Record<string, TranslationEntry> = {
     message: "Build",
     description:
       "Settings tab: Build card title, Render's split Build section (w5/m52)",
+  },
+  "services.buildDeployNav": {
+    message: "Build & Deployment",
+    description:
+      "Settings section index: the one entry for the Build and Deploy cards, which the page renders as one section (Render names it Build & Deploy)",
   },
   "services.buildDescription": {
     message: "Konfiguriere, wie bex deinen Service aus deinem Repository baut.",
@@ -4372,10 +4378,6 @@ const deServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail nav item (persistent disk page); Render's label is singular",
   },
-  "services.diskTitle": {
-    message: "Disk",
-    description: "Disk tab card title",
-  },
   "services.diskDescription": {
     message:
       "Binde eine SSD ein, um die Dateisystemdaten deines Services über Deployments hinweg zu erhalten. Disks kosten 0,175 $/GB pro Monat.",
@@ -5682,10 +5684,6 @@ const deServices: Record<string, TranslationEntry> = {
   "services.outboundIpsCopyError": {
     message: "Kopieren fehlgeschlagen",
     description: "Toast when clipboard write fails for an outbound IP (w8/010)",
-  },
-  "services.environmentPageTitle": {
-    message: "Umgebung",
-    description: "Service Environment page heading",
   },
   "services.environmentPageDescription": {
     message:

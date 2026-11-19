@@ -286,7 +286,12 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
       expect(field.firstElementChild).toHaveClass("h-5");
     }
     const heading = source?.querySelector('[data-slot="card-header"]');
-    expect(heading?.lastElementChild).toHaveClass("h-8", "w-full");
+    // Edit sits in the header's action slot, as on the loaded card.
+    expect(
+      heading?.querySelector(
+        '[data-slot="card-action"] [data-slot="skeleton"]',
+      ),
+    ).toHaveClass("h-8", "w-14");
     expect(heading?.querySelector(".space-y-1\\.5")?.children[0]).toHaveClass(
       "h-4",
     );

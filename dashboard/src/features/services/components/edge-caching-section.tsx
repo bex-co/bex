@@ -1,3 +1,4 @@
+import { RadioDot } from "@/common/components/radio-dot";
 import { useState } from "react";
 import {
   Card,
@@ -112,17 +113,7 @@ export function EdgeCachingSection({
                       : "border-border enabled:hover:border-muted-foreground/50",
                   )}
                 >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border",
-                      checked ? "border-primary" : "border-muted-foreground/50",
-                    )}
-                  >
-                    {checked ? (
-                      <span className="bg-primary size-2 rounded-full" />
-                    ) : null}
-                  </span>
+                  <RadioDot checked={checked} className="mt-0.5" />
                   <span>
                     <span className="block text-sm font-medium">
                       {t(option.labelKey)}

@@ -1,3 +1,4 @@
+import { cn } from "@/common/lib/utils/utils";
 import { useState } from "react";
 import { Pencil } from "lucide-react";
 import {
@@ -62,6 +63,9 @@ interface RangeSelectProps {
    * presets and in the picker.
    */
   bound?: RangeBound;
+  /** Extra trigger classes from a host row (e.g. the Metrics filters,
+   *  which share their row's width on a phone). */
+  triggerClassName?: string;
 }
 
 /**
@@ -78,6 +82,7 @@ export function RangeSelect({
   onRangeChange,
   ariaLabel,
   bound,
+  triggerClassName,
 }: RangeSelectProps) {
   const { t, i18n } = useTranslations();
   // The window reads the viewer's clock, which the SSR pass doesn't have, so
@@ -128,7 +133,10 @@ export function RangeSelect({
       >
         <SelectTrigger
           size="sm"
-          className={customWindow ? "w-auto min-w-40 max-w-80" : "w-40"}
+          className={cn(
+            customWindow ? "w-auto min-w-40 max-w-80" : "w-40",
+            triggerClassName,
+          )}
           aria-label={ariaLabel ?? t("metrics.rangeLabel")}
           title={customWindow ?? undefined}
         >

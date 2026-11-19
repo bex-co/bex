@@ -620,7 +620,8 @@ describe("DeploysListPage", () => {
     expect(
       skeleton.container.querySelector("[data-testid='deploys-count-slot']"),
     ).not.toBeNull();
-    expect(skeleton.container.querySelector("h2")).toHaveTextContent("Deploys");
+    // The tab's name is the detail layout's heading, not the list's.
+    expect(skeleton.container.querySelector("h2")).toBeNull();
   });
 
   it("frames an image-backed service's rows without a commit line (w4/702)", async () => {

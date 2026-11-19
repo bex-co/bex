@@ -113,10 +113,6 @@ const ruServices: Record<string, TranslationEntry> = {
     description:
       "Link from an SSH-unavailable state on a Free service to its instance-type page (w4/143)",
   },
-  "services.shellTitle": {
-    message: "Оболочка",
-    description: "Running-instance SSH connection page title",
-  },
   "services.shellDescription": {
     message:
       "Откройте оболочку на работающем инстансе сервиса из вашего терминала.",
@@ -1626,6 +1622,11 @@ const ruServices: Record<string, TranslationEntry> = {
     message: "Платные",
     description: "Plan-picker section label for the paid tier ladder",
   },
+  "services.planCurrent": {
+    message: "Текущий",
+    description:
+      "Plan picker: badge on the instance type the service is on now",
+  },
   "services.planPickerCancel": {
     message: "Отменить",
     description: "Plan-picker footer button: discard the selection",
@@ -2391,6 +2392,11 @@ const ruServices: Record<string, TranslationEntry> = {
     message: "Сборка",
     description:
       "Settings tab: Build card title, Render's split Build section (w5/m52)",
+  },
+  "services.buildDeployNav": {
+    message: "Сборка и деплой",
+    description:
+      "Settings section index: the one entry for the Build and Deploy cards, which the page renders as one section (Render names it Build & Deploy)",
   },
   "services.buildDescription": {
     message: "Настройте, как bex собирает ваш сервис из репозитория.",
@@ -4339,10 +4345,6 @@ const ruServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail nav item (persistent disk page); Render's label is singular",
   },
-  "services.diskTitle": {
-    message: "Диск",
-    description: "Disk tab card title",
-  },
   "services.diskDescription": {
     message:
       "Подключите SSD, чтобы данные файловой системы сервиса сохранялись между деплоями. Диски тарифицируются по $0.175 за ГБ в месяц.",
@@ -5659,10 +5661,6 @@ const ruServices: Record<string, TranslationEntry> = {
   "services.outboundIpsCopyError": {
     message: "Не удалось скопировать",
     description: "Toast when clipboard write fails for an outbound IP (w8/010)",
-  },
-  "services.environmentPageTitle": {
-    message: "Окружение",
-    description: "Service Environment page heading",
   },
   "services.environmentPageDescription": {
     message:
