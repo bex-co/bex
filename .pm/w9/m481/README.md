@@ -1,6 +1,6 @@
 # w9 · m481 — An API key acts with its creator's current member role in its workspace, as on Render, so Terraform manages webhooks, registry credentials, owner notification settings and protected environments
 
-**Worker:** worker9 **Goal:** a bex API key acts with exactly its creator's current role in the workspace it was minted in, following that role up and down, never more, as Render's keys do; an Admin's key passes the four Admin-only writes Render's Terraform provider makes, and a Developer's key still cannot. **Status:** blocked (t001–t007 and t009–t011 done; t008 done on dev-9, its production step waits for a pin that carries commit `7a477c32d`; then t012)
+**Worker:** worker9 **Goal:** a bex API key acts with exactly its creator's current role in the workspace it was minted in, following that role up and down, never more, as Render's keys do; an Admin's key passes the four Admin-only writes Render's Terraform provider makes, and a Developer's key still cannot. **Status:** todo (t001–t007 and t009–t011 done; t008 done on dev-9, and production pin `4b2cebd0bd03` carries commit `7a477c32d`; t008 step 4 as the QA user next, then t012)
 
 ## Tasks (in order)
 
@@ -35,21 +35,29 @@ Total: **12 tasks, about 9h45m**.
 - **As a Developer's key:** each of those four writes is 403.
 - **After a demotion:** once the Admin is demoted to Developer, their key is refused all four on its next request. A failed or pending tuple write does not change that, and tests prove it (I1).
 - **GraphQL and MCP** answer the same for the same keys.
-- **Render's Terraform provider on dev-9:** run with an Admin's key as minted (no hand-written OpenFGA grant), `render_webhook`, `render_notification_setting` and `render_project` get past their first step, and the supplementary `render_registry_credential` apply passes. [terraform-compatibility-checklist.md](../../../../docs/terraform-compatibility-checklist.md) class 3 is closed.
+- **Render's Terraform provider on dev-9:** run with an Admin's key as minted (no hand-written OpenFGA grant), `render_webhook`, `render_notification_setting` and `render_project` get past their first step, and the supplementary `render_registry_credential` apply passes. [terraform-compatibility-checklist.md](../../../docs/terraform-compatibility-checklist.md) class 3 is closed.
 - **On production as the QA user**, once the pin carries this milestone: a freshly minted key creates a webhook and a registry credential and patches owner notification settings, then everything is restored and deleted.
 - **Docs:** ADR024, ADR012 §8e and ADR018 record the rule and its security reasoning, and the security lineage records the review.
 
 ## Source + Goal linkage
 
-- **Source:** promoted from [w9/107](../../done/107.md) (2026-11-18), found by w9/m474's re-recording of Render's Terraform provider suite ([checklist](../../../../docs/terraform-compatibility-checklist.md), class 3).
+- **Source:** promoted from [w9/107](../done/107.md) (2026-11-18), found by w9/m474's re-recording of Render's Terraform provider suite ([checklist](../../../docs/terraform-compatibility-checklist.md), class 3).
   - Render ([render.com/docs/api-keys](https://render.com/docs/api-keys), read 2026-11-18): "Your member role in the selected workspace determines which permissions you can grant an API key", "Enable all" grants "every permission your member role allows", classic keys "have the same permissions as your member role in every workspace you belong to", and the FAQ "What happens to an API key if my member role changes?" answers "Your key's access adjusts to match your new member role". The Workspaces permissions include "Create, update, and delete webhooks" and "Update notification settings". The Projects permissions include "Configure protected environments".
   - bex (main `2551d3dce`): `lego/backend/internal/tenancy/tenancy.go:612` `BindKey` → `internal/authz/authz.go:241` `GrantWorkspaceMember` always writes `developer`. `internal/webhooks/service.go:531` (create) and `:936` (repoint) call `AuthorizeMintClass`, which refuses every non-human caller (`internal/core/base.go:1170`, w4/079). The four writes are `RelCanManage` (Admin) in `deploy/gitops/authz/model.fga`.
 - **Open questions settled here:**
   - **Snapshot or follow:** the key follows its creator's role, because Render's FAQ says so.
   - **Fine-grained per-resource permissions:** not needed to reach the Done-when. They are Render's scoped-key variant, filed as a follow-up in t009 (ADR008: ship the parity-sufficient option).
   - **w4/079's mint-class rule:** it admits an API key with a recorded human creator for webhooks only (t005). w4/079 was about delegated third-party OAuth tokens, which stay refused.
-- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)). Render's Terraform provider is a client bex must serve ([ADR018](../../../../docs/ADR018-render-parity.md) "Terraform provider" row).
+- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)). Render's Terraform provider is a client bex must serve ([ADR018](../../../docs/ADR018-render-parity.md) "Terraform provider" row).
 - **Expected outcome:** an Admin applies Render Terraform configurations that hold webhooks, registry credentials, owner notification settings and protected environments, unmodified, with a bex API key.
 - **Why now:** this is the class-3 failure behind several of the checklist's remaining `[ ]` rows: webhook, registrycredential, notifications, and every service or datastore test that configures a protected environment. w9/m474 just graded it, and w9/105 and w9/106 already cleared the other first-step failures.
 - **Render parity:** included (t009). The change is customer-facing on REST, GraphQL, MCP and the dashboard's API keys page.
 - **Security:** this changes what a credential may do, so t007 reviews it in the security lineage, and the boundary above is every task's acceptance floor.
+
+## Unblocked (2026-11-19, `/loopx w9` worker)
+
+- **Affected:** t008 (step 4), t012. **Source:** verified evidence, no user decision.
+- **Finding:** the newest pin on `origin/main`, `19faf35f3` (`chore(deploy): pin platform images to 4b2cebd0bd03`, 2026-11-19 09:13Z), carries this milestone's commit: `git merge-base --is-ancestor 7a477c32d 4b2cebd0bd03` holds. Production's `bex-system/bex-api` runs the pinned `bex-operator@sha256:4407341b60d6…` (2/2 ready, pods started 09:18Z). w9/m492, w9/m493 and w9/m472 closed on the same pin.
+- **w9/m496 on the same pin:** the pin also carries `e09ea5065` (scoped API keys), which builds on I1–I5. A key minted with no `permissions` holds All (`tenant_members.key_permissions` NULL), so t008 step 4's expectations do not change; the run mints its key that way.
+- **Status:** pending verification. A deployed bex-api is not proof that the definition of done holds on production.
+- **Next:** run t008 step 4 as the QA user with a freshly minted key, write the record into t008, revoke the key and log the session out, then t012.
