@@ -78,7 +78,9 @@ export function ComputePlanSectionSkeleton({
     >
       <ComputePlanRowFrame
         summary={<Skeleton className="h-5 w-56 max-w-full" />}
-        action={<Skeleton className="h-8 w-[4.25rem]" />}
+        action={
+          <Skeleton className="h-8 w-[4.25rem] max-lg:h-11 pointer-coarse:h-11" />
+        }
       />
     </ComputePlanSectionFrame>
   );
