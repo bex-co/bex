@@ -483,6 +483,11 @@ const koWebhooks: Record<string, TranslationEntry> = {
     message: "Cron Job 실행",
     description: "Event-picker group — cron job run events",
   },
+  "webhooks.group.maintenance": {
+    message: "유지 보수",
+    description:
+      "Event-picker group — Render maintenance events (shown only when already stored on an edited webhook, w4/709)",
+  },
   "webhooks.group.maintenanceMode": {
     message: "유지 보수 모드",
     description: "Event-picker group — maintenance mode events",
@@ -631,6 +636,16 @@ const koWebhooks: Record<string, TranslationEntry> = {
     message: "Cron Job 실행 종료됨",
     description: "Event label — cron_job_run_ended",
   },
+  "webhooks.event.maintenance_started": {
+    message: "유지 보수 시작됨",
+    description:
+      "Event label — maintenance_started (Render enum value accepted for compatibility, never emitted by bex, w4/709)",
+  },
+  "webhooks.event.maintenance_ended": {
+    message: "유지 보수 종료됨",
+    description:
+      "Event label — maintenance_ended (Render enum value accepted for compatibility, never emitted by bex, w4/709)",
+  },
   "webhooks.event.maintenance_mode_enabled": {
     message: "유지 보수 모드 활성화됨",
     description: "Event label — maintenance_mode_enabled",
@@ -690,6 +705,11 @@ const koWebhooks: Record<string, TranslationEntry> = {
   "webhooks.event.postgres_cluster_leader_changed": {
     message: "Postgres 클러스터 리더 변경됨",
     description: "Event label — postgres_cluster_leader_changed",
+  },
+  "webhooks.event.postgres_connection_pool_changed": {
+    message: "Postgres 커넥션 풀 설정 변경됨",
+    description:
+      "Event label — postgres_connection_pool_changed (Render enum value accepted for compatibility, never emitted by bex, w4/709)",
   },
   "webhooks.event.postgres_connection_pool_enabled_changed": {
     message: "Postgres 커넥션 풀 변경됨",

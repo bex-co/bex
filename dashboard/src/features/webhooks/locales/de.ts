@@ -494,6 +494,11 @@ const deWebhooks: Record<string, TranslationEntry> = {
     message: "Cron-Job-Ausführung",
     description: "Event-picker group — cron job run events",
   },
+  "webhooks.group.maintenance": {
+    message: "Wartung",
+    description:
+      "Event-picker group — Render maintenance events (shown only when already stored on an edited webhook, w4/709)",
+  },
   "webhooks.group.maintenanceMode": {
     message: "Wartungsmodus",
     description: "Event-picker group — maintenance mode events",
@@ -642,6 +647,16 @@ const deWebhooks: Record<string, TranslationEntry> = {
     message: "Cron-Job-Ausführung beendet",
     description: "Event label — cron_job_run_ended",
   },
+  "webhooks.event.maintenance_started": {
+    message: "Wartung gestartet",
+    description:
+      "Event label — maintenance_started (Render enum value accepted for compatibility, never emitted by bex, w4/709)",
+  },
+  "webhooks.event.maintenance_ended": {
+    message: "Wartung beendet",
+    description:
+      "Event label — maintenance_ended (Render enum value accepted for compatibility, never emitted by bex, w4/709)",
+  },
   "webhooks.event.maintenance_mode_enabled": {
     message: "Wartungsmodus aktiviert",
     description: "Event label — maintenance_mode_enabled",
@@ -701,6 +716,11 @@ const deWebhooks: Record<string, TranslationEntry> = {
   "webhooks.event.postgres_cluster_leader_changed": {
     message: "Postgres-Cluster-Leader geändert",
     description: "Event label — postgres_cluster_leader_changed",
+  },
+  "webhooks.event.postgres_connection_pool_changed": {
+    message: "Postgres-Connection-Pool-Konfiguration geändert",
+    description:
+      "Event label — postgres_connection_pool_changed (Render enum value accepted for compatibility, never emitted by bex, w4/709)",
   },
   "webhooks.event.postgres_connection_pool_enabled_changed": {
     message: "Postgres-Connection-Pool geändert",

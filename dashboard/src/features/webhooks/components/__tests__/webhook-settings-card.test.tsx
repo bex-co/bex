@@ -296,6 +296,76 @@ describe("WebhookSettingsCard (w1/m49/t005)", () => {
       screen.queryByRole("button", { name: "Delete" }),
     ).not.toBeInTheDocument();
   });
+
+  // w4/709: a webhook created with an unemitted Render event type shows that
+  // type checked while editing and never drops it when other fields or events
+  // are edited.
+  it("shows a stored never-firing Render type as checked and preserves it on save", async () => {
+    const user = userEvent.setup();
+    renderCard({
+      ...ENDPOINT,
+      eventTypes: ["deploy_ended", "maintenance_started"],
+    });
+
+    const maintenance = await screen.findByRole("checkbox", {
+      name: "Maintenance Started",
+    });
+    expect(maintenance).toBeChecked();
+    expect(
+      screen.queryByRole("checkbox", { name: "Maintenance Ended" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("event-count")).toHaveTextContent(
+      "2 events selected",
+    );
+
+    // Checking a third event reaches eventTypes.length (3) while
+    // service_suspended is still unchecked — must stay explicit and keep
+    // maintenance_started rather than compacting to [].
+    await user.click(screen.getByRole("checkbox", { name: "Deploy Started" }));
+    const save = screen.getByRole("button", { name: "Save changes" });
+    expect(save).toBeEnabled();
+    await user.click(save);
+
+    expect(update).toHaveBeenCalledTimes(1);
+    const [, patch] = update.mock.calls[0];
+    expect(patch.eventTypes).toEqual(
+      expect.arrayContaining([
+        "deploy_started",
+        "deploy_ended",
+        "maintenance_started",
+      ]),
+    );
+    expect(patch.eventTypes).toHaveLength(3);
+  });
+
+  it("preserves a stored API-only event type when adding another event", async () => {
+    const user = userEvent.setup();
+    renderCard({
+      ...ENDPOINT,
+      eventTypes: ["deploy_ended", "edge_cache_enabled"],
+    });
+
+    expect(
+      await screen.findByRole("checkbox", { name: "Deploy Ended" }),
+    ).toBeChecked();
+    expect(
+      screen.queryByRole("checkbox", { name: "Edge Cache Enabled" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("checkbox", { name: "Deploy Started" }));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(update).toHaveBeenCalledTimes(1);
+    const [, patch] = update.mock.calls[0];
+    expect(patch.eventTypes).toEqual(
+      expect.arrayContaining([
+        "deploy_started",
+        "deploy_ended",
+        "edge_cache_enabled",
+      ]),
+    );
+    expect(patch.eventTypes).toHaveLength(3);
+  });
 });
 
 // w4/271: the form shows the Name/URL the server stored (trimmed) once a save

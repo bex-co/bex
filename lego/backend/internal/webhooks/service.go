@@ -197,6 +197,13 @@ const (
 	TypeAgentSessionTurnSucceeded = "agent_session_turn_succeeded"
 	TypeAgentSessionTurnFailed    = "agent_session_turn_failed"
 	TypeAgentSessionNeedsInput    = "agent_session_needs_input"
+	// Render's pinned OpenAPI event-type enum values that bex does not emit
+	// (docs/render-artifacts/webhooks-api.md, w4/709): accepted and preserved
+	// in a webhook's eventFilter so Render Terraform/CLI/API configurations
+	// apply without 400, but never advertised in EventTypes or emitted.
+	TypeMaintenanceStarted            = "maintenance_started"
+	TypeMaintenanceEnded              = "maintenance_ended"
+	TypePostgresConnectionPoolChanged = "postgres_connection_pool_changed"
 )
 
 // agentTurnEvents maps the phase an agent session turn ended in (the
@@ -243,11 +250,12 @@ var legacyEventTypeAliases = map[string]string{
 }
 
 // AcceptedEventTypes is every spelling a subscription filter may name: the
-// vocabulary plus the legacy aliases normalizeEventTypes rewrites. REST's
-// request validator widens Render's pinned event enum with it, so the bex
-// extensions (agent session turns) subscribe on REST as on GraphQL and MCP.
+// emitted vocabulary, Render's pinned enum values bex does not emit (w4/709),
+// plus the legacy aliases normalizeEventTypes rewrites. REST's request
+// validator widens Render's pinned event enum with it, so the bex extensions
+// (agent session turns) subscribe on REST as on GraphQL and MCP.
 func AcceptedEventTypes() []string {
-	return append(slices.Clone(EventTypes), slices.Sorted(maps.Keys(legacyEventTypeAliases))...)
+	return append(slices.Clone(subscribableEventTypes), slices.Sorted(maps.Keys(legacyEventTypeAliases))...)
 }
 
 // autoDeployVerb and the edge-cache toggle verbs (core.EdgeCacheToggleVerbs)
@@ -314,10 +322,10 @@ var auditVerbs = func() []string {
 	return verbs
 }()
 
-// EventTypes is the full subscribable vocabulary, sorted — what Create
-// validates against and what webhookEventTypes serves. The dashboard's picker
-// lists it minus the edge-cache types, which Render's picker leaves to its API
-// (w9/m345).
+// EventTypes is the full advertised (emitted) vocabulary, sorted — what
+// GET /v1/webhooks/event-types, GraphQL webhookEventTypes, and MCP
+// list_webhook_endpoints serve. The dashboard's picker lists it minus the
+// edge-cache types, which Render's picker leaves to its API (w9/m345).
 var EventTypes = func() []string {
 	set := map[string]bool{TypeDeployStarted: true, TypeDeployEnded: true}
 	set[TypeAutoDeployEnabled] = true
@@ -334,6 +342,30 @@ var EventTypes = func() []string {
 		set[t] = true
 	}
 	set[TypeAgentSessionNeedsInput] = true
+	return slices.Sorted(maps.Keys(set))
+}()
+
+// renderUnemittedEventTypes are the values in Render's pinned OpenAPI event
+// enum that bex does not emit (w4/709). They are accepted in eventFilter so
+// Render configurations apply cleanly, without entering the advertised
+// EventTypes vocabulary.
+var renderUnemittedEventTypes = []string{
+	TypeMaintenanceEnded,
+	TypeMaintenanceStarted,
+	TypePostgresConnectionPoolChanged,
+}
+
+// subscribableEventTypes is every canonical event type a webhook's eventFilter
+// may store, in canonical sorted order: the emitted EventTypes plus
+// renderUnemittedEventTypes (w4/709).
+var subscribableEventTypes = func() []string {
+	set := make(map[string]bool, len(EventTypes)+len(renderUnemittedEventTypes))
+	for _, t := range EventTypes {
+		set[t] = true
+	}
+	for _, t := range renderUnemittedEventTypes {
+		set[t] = true
+	}
 	return slices.Sorted(maps.Keys(set))
 }()
 
@@ -1103,9 +1135,11 @@ func normalizeName(raw string) (string, error) {
 	return name, nil
 }
 
-// normalizeEventTypes validates and de-duplicates a subscription against the
-// vocabulary, preserving EventTypes' canonical order. Empty is stored as the
-// compact Render representation of an all-current-and-future-events subscription.
+// normalizeEventTypes validates and de-duplicates a subscription against
+// subscribableEventTypes (the emitted vocabulary plus Render's unemitted
+// OpenAPI enum values, w4/709), preserving canonical sorted order. Empty is
+// stored as the compact Render representation of an all-current-and-future-
+// events subscription.
 func normalizeEventTypes(types []string) ([]string, error) {
 	if len(types) == 0 {
 		return []string{}, nil
@@ -1115,14 +1149,14 @@ func normalizeEventTypes(types []string) ([]string, error) {
 		if canonical, ok := legacyEventTypeAliases[t]; ok {
 			t = canonical
 		}
-		if !slices.Contains(EventTypes, t) {
+		if !slices.Contains(subscribableEventTypes, t) {
 			return nil, core.NewBadRequestError(WebhookEventFilterInvalidCode,
 				fmt.Sprintf("unknown event type %q", t), map[string]any{"field": "eventTypes"})
 		}
 		asked[t] = true
 	}
 	out := make([]string, 0, len(asked))
-	for _, t := range EventTypes {
+	for _, t := range subscribableEventTypes {
 		if asked[t] {
 			out = append(out, t)
 		}

@@ -16,6 +16,7 @@ import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { disabledReasonText } from "@/features/webhooks/lib/disabled-reason";
+import { editablePickerEventTypes } from "@/features/webhooks/event-catalog";
 import { WebhookEventPickerField } from "@/features/webhooks/components/webhook-event-picker-field";
 import { useDeleteWebhook } from "@/features/webhooks/hooks/use-delete-webhook";
 import { useSetWebhookEnabled } from "@/features/webhooks/hooks/use-set-webhook-enabled";
@@ -140,9 +141,13 @@ export function WebhookSettingsCard({
     fallbackMessage: t("webhooks.updateError"),
     clearMutationError: clearError,
   });
+  const editableEventTypes = useMemo(
+    () => editablePickerEventTypes(eventTypes, endpoint.eventTypes),
+    [endpoint.eventTypes, eventTypes],
+  );
   const pickerValue = useMemo(
-    () => (allEvents ? new Set(eventTypes) : checked),
-    [allEvents, checked, eventTypes],
+    () => (allEvents ? new Set(editableEventTypes) : checked),
+    [allEvents, checked, editableEventTypes],
   );
   const targetEventTypes = allEvents ? [] : [...checked];
 
@@ -157,7 +162,7 @@ export function WebhookSettingsCard({
     const valid = validate({
       name,
       url,
-      selectedEventCount: allEvents ? eventTypes.length : checked.size,
+      selectedEventCount: allEvents ? editableEventTypes.length : checked.size,
       existingNames: endpoints
         .filter((candidate) => candidate.id !== endpoint.id)
         .map((candidate) => candidate.name),
@@ -305,14 +310,15 @@ export function WebhookSettingsCard({
         <CardContent className="space-y-4">
           <div ref={eventsRef} tabIndex={-1} aria-invalid={!!errors.events}>
             <WebhookEventPickerField
-              eventTypes={eventTypes}
+              eventTypes={editableEventTypes}
               loading={typesLoading}
               error={typesError}
               retry={retryTypes}
               value={pickerValue}
               onChange={(next) => {
                 const selectedAll =
-                  eventTypes.length > 0 && next.size === eventTypes.length;
+                  editableEventTypes.length > 0 &&
+                  editableEventTypes.every((type) => next.has(type));
                 setAllEvents(selectedAll);
                 setChecked(selectedAll ? new Set() : next);
                 clearField("events");

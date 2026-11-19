@@ -39,6 +39,7 @@ const GROUPS: Record<string, string[]> = {
     "plan_changed",
     "branch_changed",
   ],
+  maintenance: ["maintenance_started", "maintenance_ended"],
   maintenanceMode: ["maintenance_mode_enabled", "maintenance_mode_uri_updated"],
   disk: [
     "disk_created",
@@ -55,6 +56,7 @@ const GROUPS: Record<string, string[]> = {
     "postgres_credentials_deleted",
     "postgres_ha_status_changed",
     "postgres_cluster_leader_changed",
+    "postgres_connection_pool_changed",
     "postgres_connection_pool_enabled_changed",
     "postgres_disk_size_changed",
     "postgres_disk_autoscaling_enabled_changed",
@@ -113,6 +115,22 @@ const API_ONLY = new Set<string>([
 /** The picker's vocabulary: the served types minus the API-only ones. */
 export function pickerEventTypes(served: string[]): string[] {
   return served.filter((type) => !API_ONLY.has(type));
+}
+
+/**
+ * The picker's vocabulary when editing an existing webhook: the offered
+ * emitted types plus any stored never-firing Render type (w4/709), while
+ * keeping API-only types out of the picker as Render does (w9/m345).
+ */
+export function editablePickerEventTypes(
+  pickerTypes: string[],
+  stored: string[],
+): string[] {
+  const offered = new Set(pickerTypes);
+  const extras = stored.filter(
+    (type) => !offered.has(type) && !API_ONLY.has(type),
+  );
+  return extras.length === 0 ? pickerTypes : [...pickerTypes, ...extras];
 }
 
 const EVENT_GROUP: ReadonlyMap<string, string> = new Map(

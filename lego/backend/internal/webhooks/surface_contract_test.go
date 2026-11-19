@@ -20,6 +20,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -278,5 +280,167 @@ func TestGraphQLWebhookSecretFollowsTheManagerBoundary(t *testing.T) {
 	}
 	if one, listed := secretOf(memberCtx); one != nil || listed != nil {
 		t.Fatalf("member secret = %v / %v, want null", one, listed)
+	}
+}
+
+// w4/709: unemitted values from Render's pinned event enum (maintenance_started,
+// maintenance_ended, postgres_connection_pool_changed) are accepted, stored,
+// and read back in canonical order across REST, GraphQL, and MCP without
+// entering the advertised event-type lists; truly unknown values still 400.
+func TestUnemittedRenderEventTypesAcceptedAcrossRESTGraphQLAndMCP(t *testing.T) {
+	svc, _ := newTestService()
+	ctx := context.Background()
+
+	// 1. REST: POST accepts mixed emitted + unemitted in canonical order, GET
+	// and PATCH preserve them, unknown values still 400, and /event-types stays
+	// emitted-only.
+	createdRR := webhookREST(t, svc, http.MethodPost, "/v1/webhooks",
+		`{"ownerId":"default","name":"render-cfg","url":"https://hooks.example.com/r","enabled":true,"eventFilter":["maintenance_started","deploy_ended"]}`)
+	if createdRR.Code != http.StatusCreated {
+		t.Fatalf("REST create = %d %s", createdRR.Code, createdRR.Body.String())
+	}
+	var restCreated endpointWire
+	if err := json.Unmarshal(createdRR.Body.Bytes(), &restCreated); err != nil {
+		t.Fatal(err)
+	}
+	wantInitial := []string{TypeDeployEnded, TypeMaintenanceStarted}
+	if !slices.Equal(restCreated.EventFilter, wantInitial) {
+		t.Fatalf("REST create eventFilter = %v, want %v", restCreated.EventFilter, wantInitial)
+	}
+
+	getRR := webhookREST(t, svc, http.MethodGet, "/v1/webhooks/"+restCreated.ID, "")
+	if getRR.Code != http.StatusOK {
+		t.Fatalf("REST get = %d %s", getRR.Code, getRR.Body.String())
+	}
+	var restGot endpointWire
+	if err := json.Unmarshal(getRR.Body.Bytes(), &restGot); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(restGot.EventFilter, wantInitial) {
+		t.Fatalf("REST get eventFilter = %v, want %v", restGot.EventFilter, wantInitial)
+	}
+
+	badRR := webhookREST(t, svc, http.MethodPost, "/v1/webhooks",
+		`{"ownerId":"default","name":"bad-type","url":"https://hooks.example.com/bad","enabled":true,"eventFilter":["not_a_type"]}`)
+	if badRR.Code != http.StatusBadRequest || !strings.Contains(badRR.Body.String(), WebhookEventFilterInvalidCode) {
+		t.Fatalf("REST unknown event = %d %s", badRR.Code, badRR.Body.String())
+	}
+
+	vocabRR := webhookREST(t, svc, http.MethodGet, "/v1/webhooks/event-types", "")
+	if vocabRR.Code != http.StatusOK {
+		t.Fatalf("REST event-types = %d %s", vocabRR.Code, vocabRR.Body.String())
+	}
+	var restVocab []string
+	if err := json.Unmarshal(vocabRR.Body.Bytes(), &restVocab); err != nil {
+		t.Fatal(err)
+	}
+	for _, unemitted := range renderUnemittedEventTypes {
+		if slices.Contains(restVocab, unemitted) {
+			t.Errorf("GET /v1/webhooks/event-types advertises unemitted %q", unemitted)
+		}
+	}
+
+	// 2. GraphQL: reads back REST's unemitted filter, updates it to include all
+	// three unemitted Render types, and keeps webhookEventTypes emitted-only.
+	schema := webhookGraphQLSchema(t, svc)
+	gqlRead := graphql.Do(graphql.Params{
+		Schema: schema, Context: ctx,
+		RequestString: fmt.Sprintf(`{ webhookEndpoint(id:%q) { eventTypes } webhookEventTypes }`, restCreated.ID),
+	})
+	if len(gqlRead.Errors) != 0 {
+		t.Fatalf("GraphQL read errors: %v", gqlRead.Errors)
+	}
+	raw, _ := json.Marshal(gqlRead.Data)
+	var gqlData struct {
+		Endpoint   struct{ EventTypes []string } `json:"webhookEndpoint"`
+		EventTypes []string                      `json:"webhookEventTypes"`
+	}
+	if err := json.Unmarshal(raw, &gqlData); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(gqlData.Endpoint.EventTypes, wantInitial) {
+		t.Fatalf("GraphQL read eventTypes = %v, want %v", gqlData.Endpoint.EventTypes, wantInitial)
+	}
+	for _, unemitted := range renderUnemittedEventTypes {
+		if slices.Contains(gqlData.EventTypes, unemitted) {
+			t.Errorf("GraphQL webhookEventTypes advertises unemitted %q", unemitted)
+		}
+	}
+
+	gqlPatch := graphql.Do(graphql.Params{
+		Schema: schema, Context: ctx,
+		RequestString: fmt.Sprintf(`mutation { updateWebhookEndpoint(id:%q, eventTypes:["postgres_connection_pool_changed","maintenance_ended","deploy_ended","maintenance_started"]) { eventTypes } }`, restCreated.ID),
+	})
+	if len(gqlPatch.Errors) != 0 {
+		t.Fatalf("GraphQL update errors: %v", gqlPatch.Errors)
+	}
+	wantAll := []string{TypeDeployEnded, TypeMaintenanceEnded, TypeMaintenanceStarted, TypePostgresConnectionPoolChanged}
+	raw, _ = json.Marshal(gqlPatch.Data)
+	var gqlPatched struct {
+		Endpoint struct{ EventTypes []string } `json:"updateWebhookEndpoint"`
+	}
+	if err := json.Unmarshal(raw, &gqlPatched); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(gqlPatched.Endpoint.EventTypes, wantAll) {
+		t.Fatalf("GraphQL update eventTypes = %v, want %v", gqlPatched.Endpoint.EventTypes, wantAll)
+	}
+
+	// 3. MCP: reads back the endpoint with unemitted types, creates/updates one,
+	// and keeps list_webhook_endpoints.eventTypes emitted-only.
+	client := webhookMCPClient(t, ctx, svc)
+	listed, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "list_webhook_endpoints"})
+	if err != nil || listed.IsError {
+		t.Fatalf("MCP list: err=%v result=%+v", err, listed)
+	}
+	raw, _ = json.Marshal(listed.StructuredContent)
+	var mcpList listEndpointsResult
+	if err := json.Unmarshal(raw, &mcpList); err != nil {
+		t.Fatal(err)
+	}
+	if len(mcpList.Endpoints) != 1 || !slices.Equal(mcpList.Endpoints[0].EventFilter, wantAll) {
+		t.Fatalf("MCP list endpoints = %+v, want %v", mcpList.Endpoints, wantAll)
+	}
+	for _, unemitted := range renderUnemittedEventTypes {
+		if slices.Contains(mcpList.EventTypes, unemitted) {
+			t.Errorf("MCP list_webhook_endpoints.eventTypes advertises unemitted %q", unemitted)
+		}
+	}
+
+	mcpCreatedRes, err := client.CallTool(ctx, &mcp.CallToolParams{
+		Name: "create_webhook_endpoint",
+		Arguments: map[string]any{
+			"name":       "mcp-render-cfg",
+			"url":        "https://hooks.example.com/mcp",
+			"eventTypes": []string{TypeMaintenanceStarted, TypeDeployEnded},
+			"enabled":    true,
+		},
+	})
+	if err != nil || mcpCreatedRes.IsError {
+		t.Fatalf("MCP create: err=%v result=%+v", err, mcpCreatedRes)
+	}
+	raw, _ = json.Marshal(mcpCreatedRes.StructuredContent)
+	var mcpCreated endpointWire
+	if err := json.Unmarshal(raw, &mcpCreated); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(mcpCreated.EventFilter, wantInitial) {
+		t.Fatalf("MCP create eventFilter = %v, want %v", mcpCreated.EventFilter, wantInitial)
+	}
+
+	// PATCH on REST preserves the unemitted filter when updating another field,
+	// and accepts replacing the filter with unemitted values.
+	patchRR := webhookREST(t, svc, http.MethodPatch, "/v1/webhooks/"+mcpCreated.ID,
+		`{"eventFilter":["postgres_connection_pool_changed","maintenance_started"]}`)
+	if patchRR.Code != http.StatusOK {
+		t.Fatalf("REST patch = %d %s", patchRR.Code, patchRR.Body.String())
+	}
+	var restPatched endpointWire
+	if err := json.Unmarshal(patchRR.Body.Bytes(), &restPatched); err != nil {
+		t.Fatal(err)
+	}
+	wantPatched := []string{TypeMaintenanceStarted, TypePostgresConnectionPoolChanged}
+	if !slices.Equal(restPatched.EventFilter, wantPatched) {
+		t.Fatalf("REST patch eventFilter = %v, want %v", restPatched.EventFilter, wantPatched)
 	}
 }

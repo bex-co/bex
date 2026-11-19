@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   catalogEntries,
+  editablePickerEventTypes,
   eventLabelKey,
   pickerEventTypes,
 } from "../event-catalog";
@@ -23,7 +24,13 @@ const fixture = JSON.parse(
     `${process.cwd()}/../docs/render-artifacts/fixtures/render-webhook-vocabulary-2026-11-02.json`,
     "utf8",
   ),
-) as { bexSupported: string[]; renderDashboard: string[] };
+) as {
+  bexSupported: string[];
+  renderDashboard: string[];
+  renderOpenAPI: string[];
+  antiGoalUnsupported: string[];
+  sourceBoundUnsupported: string[];
+};
 
 describe("webhook event vocabulary", () => {
   it("labels every served type in the picker catalog across every locale", () => {
@@ -84,5 +91,66 @@ describe("webhook event vocabulary", () => {
       entry.events.map((event) => event.type),
     );
     expect(listed.filter((type) => edgeCache.includes(type))).toEqual([]);
+  });
+
+  // w4/709: unemitted Render OpenAPI enum values are never advertised in the
+  // create picker, but are labeled across all locales and surfaced in the
+  // edit picker when already stored on a webhook.
+  it("keeps unemitted Render enum values out of the create picker and labels them when stored", () => {
+    const locales = {
+      de: deWebhooks,
+      en: enWebhooks,
+      es: esWebhooks,
+      ja: jaWebhooks,
+      ko: koWebhooks,
+      pt: ptWebhooks,
+      ru: ruWebhooks,
+      zh: zhWebhooks,
+    };
+    const unemitted = [
+      ...fixture.antiGoalUnsupported,
+      ...fixture.sourceBoundUnsupported,
+    ];
+    expect(unemitted.length).toBeGreaterThan(0);
+
+    const picker = pickerEventTypes(fixture.bexSupported);
+    for (const type of unemitted) {
+      expect(fixture.renderOpenAPI).toContain(type);
+      expect(fixture.bexSupported).not.toContain(type);
+      expect(picker).not.toContain(type);
+
+      const key = eventLabelKey(type);
+      expect(key).toBe(`webhooks.event.${type}`);
+      for (const messages of Object.values(locales)) {
+        expect(key! in messages).toBe(true);
+      }
+    }
+
+    const edited = editablePickerEventTypes(picker, [
+      "deploy_ended",
+      "maintenance_started",
+      "edge_cache_enabled",
+    ]);
+    expect(edited).toContain("maintenance_started");
+    expect(edited).not.toContain("maintenance_ended");
+    expect(edited).not.toContain("edge_cache_enabled");
+
+    const editedEntries = catalogEntries(edited);
+    expect(
+      editedEntries.find((entry) => entry.groupKey === "other"),
+    ).toBeUndefined();
+    const maintenance = editedEntries.find(
+      (entry) => entry.groupKey === "maintenance",
+    );
+    expect(maintenance?.events.map((event) => event.type)).toEqual([
+      "maintenance_started",
+    ]);
+
+    const allStoredEntries = catalogEntries(
+      editablePickerEventTypes(picker, unemitted),
+    );
+    expect(
+      allStoredEntries.find((entry) => entry.groupKey === "other"),
+    ).toBeUndefined();
   });
 });

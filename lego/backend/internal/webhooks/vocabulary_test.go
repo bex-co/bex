@@ -18,6 +18,7 @@ package webhooks
 
 import (
 	"encoding/json"
+	"errors"
 	"maps"
 	"os"
 	"path/filepath"
@@ -25,6 +26,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 type renderVocabularyFixture struct {
@@ -139,5 +142,45 @@ func TestBexWebhookVocabularyHasOneTruthfulDispositionPerValue(t *testing.T) {
 	}
 	if len(dispositioned) != len(aliasValues)+len(fixture.AntiGoalUnsupported)+len(fixture.SourceBoundUnsupported)+len(planned) {
 		t.Fatal("unsupported disposition categories overlap")
+	}
+}
+
+// w4/709: accepting a filter value is distinct from advertising it. Every
+// value of Render's pinned OpenAPI event enum must be accepted and stored in
+// canonical order so Render configs apply without 400, while EventTypes stays
+// scoped to the emitted vocabulary.
+func TestNormalizeEventTypesAcceptsEveryPinnedRenderEnumValue(t *testing.T) {
+	fixture := loadRenderVocabularyFixture(t)
+
+	got, err := normalizeEventTypes(fixture.RenderOpenAPI)
+	if err != nil {
+		t.Fatalf("normalizeEventTypes(renderOpenAPI) = %v, want nil", err)
+	}
+	want := sortedSet(fixture.RenderOpenAPI)
+	if !slices.Equal(got, want) {
+		t.Fatalf("normalizeEventTypes(renderOpenAPI) = %v, want %v", got, want)
+	}
+
+	accepted := AcceptedEventTypes()
+	for _, value := range fixture.RenderOpenAPI {
+		if !slices.Contains(accepted, value) {
+			t.Errorf("AcceptedEventTypes() lacks pinned Render enum value %q", value)
+		}
+	}
+
+	// Unemitted Render types stay out of the advertised EventTypes vocabulary.
+	for _, unemitted := range sortedSet(fixture.AntiGoalUnsupported, fixture.SourceBoundUnsupported) {
+		if slices.Contains(EventTypes, unemitted) {
+			t.Errorf("EventTypes advertises unemitted Render type %q", unemitted)
+		}
+	}
+
+	// Values outside both the pinned OpenAPI enum and bex extensions still 400.
+	for _, bad := range []string{"not_a_type", "instance_type_changed"} {
+		_, err := normalizeEventTypes([]string{bad})
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != WebhookEventFilterInvalidCode || !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("normalizeEventTypes(%q) = %v, want %s wrapping ErrBadRequest", bad, err, WebhookEventFilterInvalidCode)
+		}
 	}
 }

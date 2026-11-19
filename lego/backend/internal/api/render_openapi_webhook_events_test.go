@@ -36,6 +36,7 @@ func TestRenderValidatorAcceptsBexWebhookEventTypes(t *testing.T) {
 	}{
 		{"agent turn events", `["agent_session_turn_succeeded","agent_session_turn_failed"]`, http.StatusNoContent},
 		{"render event", `["deploy_ended"]`, http.StatusNoContent},
+		{"unemitted render events", `["deploy_ended","maintenance_started","maintenance_ended","postgres_connection_pool_changed"]`, http.StatusNoContent},
 		{"legacy alias", `["disk_attached"]`, http.StatusNoContent},
 		{"unknown event", `["not_an_event"]`, http.StatusBadRequest},
 	}
