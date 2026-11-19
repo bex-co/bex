@@ -101,6 +101,9 @@ for cm in builtin lua; do
   printf '%s %s %s\n' "$1" "$cm" "${out:-ERROR}"
 done
 EVAL
+# The image runs as argocd (uid 999), and on a Linux host the bind mount keeps
+# mktemp's 0700, so the runner's own uid is the only one that can read it.
+chmod -R a+rX "$tmp"
 docker run --rm -v "$tmp:/w:ro" --entrypoint sh "$image" -c \
   'ls /w/cases | sed "s/[.]yaml$//" | xargs -P 8 -n 1 sh /w/health.sh' >"$tmp/out"
 
