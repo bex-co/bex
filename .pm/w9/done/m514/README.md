@@ -1,6 +1,6 @@
 # w9 · m514 — A Viewer, Contributor or Billing member mints an API key capped at their role, and manages their own keys, as on Render
 
-**Worker:** worker9 **Goal:** every member role can mint an API key in its workspace, as on Render; the key acts with exactly its creator's current role and chosen grant (never more than their intersection, m481 and m496 unchanged); and a member below Developer lists, edits and revokes the keys they minted there, on REST, GraphQL, MCP and the dashboard. **Status:** blocked (t001–t005, t007–t009 done; t006 done on dev-9, its production step waits for a production pin carrying `6253c7faf`)
+**Worker:** worker9 **Goal:** every member role can mint an API key in its workspace, as on Render; the key acts with exactly its creator's current role and chosen grant (never more than their intersection, m481 and m496 unchanged); and a member below Developer lists, edits and revokes the keys they minted there, on REST, GraphQL, MCP and the dashboard. **Status:** done (t001–t005, t007–t009 shipped in `6253c7faf`; t006 checked on dev-9 and, on 2026-11-19, on production pin `c624a4f217ff`; t010 closed it)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | Own keys: a member below Developer lists, edits and revokes the keys they minted in the workspace, and no other — **DONE** | 1h | t002 |
 | [t004](done/t004.md) | Dashboard: the API keys panel works for every member role — **DONE** | 1h30m | t003 |
 | [t005](done/t005.md) | Security review of the widened mint boundary, recorded in the security lineage — **DONE** | 45m | t003 |
-| [t006](t006.md) | Live check on dev-9 and production | 1h30m | t004, t005 |
+| [t006](done/t006.md) | Live check on dev-9 and production — **DONE** | 1h30m | t004, t005 |
 | [t007](done/t007.md) | Render parity — **DONE** | 30m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
-| [t010](t010.md) | Closeout | 10m | t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t009 |
 
 Total: **10 tasks, about 8h**.
 
@@ -48,3 +48,9 @@ Total: **10 tasks, about 8h**.
 - **Why now:** m481 (a key acts with its creator's current role) and m496 (a chosen grant capped by that role) closed on production on 2026-11-19, so the ceiling a below-Developer key needs exists and has been reviewed; this was the remaining mint-side gap ADR018's API keys row names.
 - **Render parity:** included (t007). The change is customer-facing on REST, GraphQL, MCP and the dashboard's API keys panel.
 - **Security:** this widens who may hold a credential, so t005 reviews it in the security lineage, and the boundary above is every task's acceptance floor.
+
+## Unblock and closeout (2026-11-19)
+
+- **Finding (verified evidence):** the self-clearing gate holds. The pin `c81d2d447bd8` and the newer `c624a4f217ff` (`99bbc4239`) both carry `6253c7faf`, this milestone's commit (`git merge-base --is-ancestor 6253c7faf <pin>`), and production's `bex-system/bex-api` ran the `c624a4f217ff` image (`bex-operator@sha256:c588e4d2713c…`, both replicas ready).
+- **t006's production step** then ran as the QA user in `bex-canary`: a Read only key minted (201, 21 Read grants), listed (200), refused a key mint and the key list (403 `api_key_permission_denied`), revoked (204, then 401), and the session logged out. The below-Developer journey ran on dev-9 only, because production has one QA identity, an Admin; see [t006](done/t006.md).
+- **t010** confirmed every Definition-of-done bullet against t006's record and closed the milestone ([t010](done/t010.md)).
