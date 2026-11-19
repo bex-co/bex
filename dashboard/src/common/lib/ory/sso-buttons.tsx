@@ -1,5 +1,6 @@
 import {
   Children,
+  isValidElement,
   useEffect,
   useRef,
   useState,
@@ -7,9 +8,16 @@ import {
   type Ref,
 } from "react";
 import { useIntl, type IntlShape } from "react-intl";
-import type { UiNode } from "@ory/client-fetch";
 import {
+  isUiNodeInputAttributes,
+  isUiNodeScriptAttributes,
+  type UiNode,
+} from "@ory/client-fetch";
+import {
+  OryFormSsoForm,
   uiTextToFormattedMessage,
+  useOryFlow,
+  type OryCardContentProps,
   type OryFormSsoRootProps,
   type OryNodeSettingsButton,
   type OryNodeSsoButtonProps,
@@ -19,6 +27,7 @@ import { SsoProviderLogo } from "@/common/components/sso-provider-logos";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   arrangeSsoProviders,
+  isSsoNode,
   ssoProviderOf,
   ssoRowColumns,
 } from "@/common/lib/ory/sso-providers";
@@ -197,6 +206,80 @@ export function SsoButtonRows({ nodes, children }: OryFormSsoRootProps) {
       )}
     </div>
   );
+}
+
+/** Ory's `isNodeVisible`: every node but scripts and hidden inputs. */
+function isVisibleNode(node: UiNode): boolean {
+  if (isUiNodeScriptAttributes(node.attributes)) return false;
+  return !(
+    isUiNodeInputAttributes(node.attributes) &&
+    node.attributes.type === "hidden"
+  );
+}
+
+/** Render's "Or continue with": a rule each side of the words. */
+function ContinueWithDivider() {
+  const { t } = useTranslations();
+  return (
+    <div
+      className="flex items-center gap-3 text-sm text-interface-foreground-default-tertiary"
+      data-testid="sso-continue-with"
+    >
+      <hr
+        aria-hidden="true"
+        className="flex-1 border-interface-border-default-primary"
+      />
+      <span>{t("auth.ssoContinueWith")}</span>
+      <hr
+        aria-hidden="true"
+        className="flex-1 border-interface-border-default-primary"
+      />
+    </div>
+  );
+}
+
+function isSsoForm(part: ReactNode): boolean {
+  return isValidElement(part) && part.type === OryFormSsoForm;
+}
+
+/**
+ * Login and sign-up's card body (`Card.Content`) in Render's order: the
+ * e-mail form and its submit button first, then "Or continue with" and the
+ * provider buttons. Ory's identifier and method-choice cards hand it their
+ * provider form (`OryFormSsoForm`, its own `<form>`) before the e-mail form;
+ * this moves it last, so the tab order follows what the page shows. A card
+ * with nothing above the providers draws no divider, as Ory's does not.
+ */
+export function AuthCardContent({ children }: OryCardContentProps) {
+  const {
+    flow: { ui },
+  } = useOryFlow();
+  const parts = Children.toArray(children);
+  const sso = parts.filter(isSsoForm);
+  const visible = ui.nodes.filter(isVisibleNode);
+  const divider =
+    sso.length > 0 &&
+    visible.some(isSsoNode) &&
+    visible.some((node) => !isSsoNode(node));
+  return (
+    <>
+      {parts.filter((part) => !isSsoForm(part))}
+      {divider ? <ContinueWithDivider key="continue-with" /> : null}
+      {sso}
+    </>
+  );
+}
+
+/**
+ * Ory's divider (`Card.Divider`), except on the identifier card, where Ory
+ * draws it only between its provider buttons and the e-mail form:
+ * `AuthCardContent` moves the buttons below the form under "Or continue
+ * with", so there it would only rule off the top of the form.
+ */
+export function AuthCardDivider() {
+  const { formState } = useOryFlow();
+  if (formState.current === "provide_identifier") return null;
+  return <hr className="border-interface-border-default-primary" />;
 }
 
 /** Ory's trash icon (`theme/default/assets/icons/trash.svg`). */

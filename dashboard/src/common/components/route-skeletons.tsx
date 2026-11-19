@@ -1726,11 +1726,12 @@ export function AuthWidgetSkeleton({
 }
 
 /**
- * The login or sign-up card: the installation's provider buttons as
- * `sso-buttons.tsx` lays them out (Render's first row, then the "More options"
- * line when it hides GitLab and Bitbucket) over a divider, the labelled fields
- * and the submit button 32 px apart, and the footer link. The subtitle wraps
- * to two lines below `sm` when the card names a social provider ("…or a social
+ * The login or sign-up card, in Render's order as `sso-buttons.tsx` lays it
+ * out: the labelled fields and the submit button 32 px apart, then "Or
+ * continue with" (its words between two rules) and the installation's
+ * provider buttons (Render's first row, then the "More options" line when it
+ * hides GitLab and Bitbucket), and the footer link. The subtitle wraps to two
+ * lines below `sm` when the card names a social provider ("…or a social
  * provider"). `ssoProviders` is `loadSsoProviders`' answer; null (not known)
  * draws no providers.
  */
@@ -1746,25 +1747,29 @@ function OryAuthCardSkeleton({
   const hasSso = providers.length > 0;
   return (
     <OryCardSkeleton subtitleClassName={hasSso ? "h-12 sm:h-6" : "h-6"} footer>
+      <div className="grid gap-8">{children}</div>
       {hasSso ? (
-        <div data-skeleton-sso={primary.length} className="grid gap-3">
-          <div className={cn("grid gap-3", ssoRowColumns(primary.length))}>
-            {primary.map((provider) => (
-              <Skeleton key={provider} className="h-9 w-full" />
-            ))}
+        <>
+          <div data-skeleton-sso-divider className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <Skeleton className="h-5 w-28" />
+            <div className="h-px flex-1 bg-border" />
           </div>
-          {more.length > 0 ? (
-            <Skeleton
-              data-skeleton-sso-more
-              className="h-5 w-24 justify-self-center"
-            />
-          ) : null}
-        </div>
+          <div data-skeleton-sso={primary.length} className="grid gap-3">
+            <div className={cn("grid gap-3", ssoRowColumns(primary.length))}>
+              {primary.map((provider) => (
+                <Skeleton key={provider} className="h-9 w-full" />
+              ))}
+            </div>
+            {more.length > 0 ? (
+              <Skeleton
+                data-skeleton-sso-more
+                className="h-5 w-24 justify-self-center"
+              />
+            ) : null}
+          </div>
+        </>
       ) : null}
-      <div className="grid gap-8">
-        {hasSso ? <div className="h-px w-full bg-border" /> : null}
-        {children}
-      </div>
     </OryCardSkeleton>
   );
 }

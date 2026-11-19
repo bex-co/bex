@@ -63,15 +63,18 @@ export function ssoRowColumns(count: number): string {
   return count === 2 ? "grid-cols-2" : "grid-cols-1";
 }
 
+/** A social sign-in node: Kratos's `oidc` and `saml` groups. */
+export function isSsoNode(node: UiNode): boolean {
+  return node.group === "oidc" || node.group === "saml";
+}
+
 /**
  * The provider id of a social sign-in button node, or undefined for any other
  * node: `provider` on login and sign-up, `link` and `unlink` in settings. The
  * skeletons count with it and the ready card lays out with it.
  */
 export function ssoProviderOf(node: UiNode | undefined): string | undefined {
-  if (!node || (node.group !== "oidc" && node.group !== "saml")) {
-    return undefined;
-  }
+  if (!node || !isSsoNode(node)) return undefined;
   if (!isUiNodeInputAttributes(node.attributes)) return undefined;
   const { name, value } = node.attributes;
   if (name !== "provider" && name !== "link" && name !== "unlink") {

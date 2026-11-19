@@ -580,6 +580,11 @@ const deAuth: Record<string, TranslationEntry> = {
     description:
       "Login and sign-up: reveals the GitLab and Bitbucket sign-in buttons, as Render's More options does",
   },
+  "auth.ssoContinueWith": {
+    message: "Oder weiter mit",
+    description:
+      "Login and sign-up: the divider between the email form and the social sign-in buttons below it, as Render's Or continue with",
+  },
   "auth.settingsGuardEmailChangeRefused": {
     message:
       "Du kannst deine E-Mail-Adresse nicht ändern, solange du zu einem Workspace gehörst, der die Google-Anmeldung erfordert. Verlasse zuerst diese Workspaces: {workspaces}.",

@@ -575,6 +575,11 @@ const jaAuth: Record<string, TranslationEntry> = {
     description:
       "Login and sign-up: reveals the GitLab and Bitbucket sign-in buttons, as Render's More options does",
   },
+  "auth.ssoContinueWith": {
+    message: "または次の方法で続行",
+    description:
+      "Login and sign-up: the divider between the email form and the social sign-in buttons below it, as Render's Or continue with",
+  },
   "auth.settingsGuardEmailChangeRefused": {
     message:
       "Google ログインが必須のワークスペースに所属している間は、メールアドレスを変更できません。先に次のワークスペースから退出してください: {workspaces}。",

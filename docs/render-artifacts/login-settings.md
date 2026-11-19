@@ -72,6 +72,7 @@ Read 2026-11-17 from [render.com/docs/login-settings](https://render.com/docs/lo
 - The login methods, in this order: "Any of the following account providers:" Google, GitHub, GitLab, Bitbucket; then "Email and password"; then "SAML SSO (requires a Scale or Enterprise plan)".
 - In Account Settings, the Account Security section lets you "Add or remove connected login methods."
 - "Multiple Render accounts can't use the same provider account to log in."
+- Its login and sign-up pages (dashboard.render.com/login and /register, read again 2026-11-18 for `w7/091`) lead with the form: Email, Password, "Forgot password?", "Sign in" (or "Create account"), then a divider reading "Or continue with", then GitHub · Google (· SSO on login) and "More options".
 - "You can use a Git provider for deployment without using it for login (or vice versa)." "If you connect a Git provider for both login and deployment, you must use the same account for both."
 
 What the page does not say:

@@ -8,6 +8,7 @@ import {
   within,
 } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
+import type { LoginFlow, RegistrationFlow } from "@ory/client-fetch";
 import {
   OryLocales,
   type OryFormSsoRootProps,
@@ -16,8 +17,10 @@ import {
   type OrySettingsSsoProps,
   type UiNodeInput,
 } from "@ory/elements-react";
+import { Login, Registration } from "@ory/elements-react/theme";
 import i18n, { ensureLanguage } from "@/i18n/init";
 import { SUPPORTED_LANGUAGES } from "@/i18n/config";
+import { KRATOS_PUBLIC_URL, oryConfig } from "@/common/lib/ory/config";
 import {
   LoginWidgetSkeleton,
   RegistrationWidgetSkeleton,
@@ -342,7 +345,256 @@ describe("the login and sign-up skeletons draw the ready card's provider rows", 
   it("draws no provider row when Kratos did not say which it offers", () => {
     const { container } = render(<LoginWidgetSkeleton ssoProviders={null} />);
     expect(container.querySelector("[data-skeleton-sso]")).toBeNull();
+    expect(container.querySelector("[data-skeleton-sso-divider]")).toBeNull();
   });
+});
+
+/** A non-provider node as Kratos v26.2.0 sends it. */
+function flowNode(
+  group: string,
+  name: string,
+  type: string,
+  value = "",
+  label?: { id: number; text: string },
+) {
+  return {
+    type: "input",
+    group,
+    attributes: { name, type, value, node_type: "input", disabled: false },
+    messages: [],
+    meta: label ? { label: { ...label, type: "info" } } : {},
+  };
+}
+
+const FLOW_TIMES = {
+  expires_at: new Date("2030-01-01T00:00:00Z"),
+  issued_at: new Date("2026-11-18T00:00:00Z"),
+};
+
+/** A login flow as Kratos v26.2.0 mints it: e-mail and password, and the
+ *  installation's providers (by provider id, as Kratos lists them).
+ *  `refresh` asks for a re-authentication, which Ory shows as a method
+ *  choice. */
+function loginFlow(providers: string[], refresh = false): LoginFlow {
+  return {
+    id: "login-1",
+    type: "browser",
+    state: "choose_method",
+    refresh,
+    requested_aal: "aal1",
+    ...FLOW_TIMES,
+    request_url: `${KRATOS_PUBLIC_URL}/self-service/login/browser`,
+    ui: {
+      action: `${KRATOS_PUBLIC_URL}/self-service/login?flow=login-1`,
+      method: "POST",
+      nodes: [
+        flowNode("default", "csrf_token", "hidden", "csrf-1"),
+        ...providers.map((provider) => oidcNode(provider)),
+        flowNode("default", "identifier", "text", "", {
+          id: 1070004,
+          text: "E-Mail",
+        }),
+        flowNode("password", "password", "password", "", {
+          id: 1070001,
+          text: "Password",
+        }),
+        flowNode("password", "method", "submit", "password", {
+          id: 1010022,
+          text: "Sign in with password",
+        }),
+      ],
+    },
+  } as unknown as LoginFlow;
+}
+
+/** Sign-up's first step as Kratos v26.2.0 mints it: the profile (e-mail and
+ *  name) and the installation's providers. */
+function registrationFlow(providers: string[]): RegistrationFlow {
+  return {
+    id: "registration-1",
+    type: "browser",
+    state: "choose_method",
+    ...FLOW_TIMES,
+    request_url: `${KRATOS_PUBLIC_URL}/self-service/registration/browser`,
+    ui: {
+      action: `${KRATOS_PUBLIC_URL}/self-service/registration?flow=registration-1`,
+      method: "POST",
+      nodes: [
+        flowNode("default", "csrf_token", "hidden", "csrf-1"),
+        ...providers.map((provider) => oidcNode(provider, SIGN_UP)),
+        flowNode("profile", "traits.email", "email", "", {
+          id: 1070002,
+          text: "E-Mail",
+        }),
+        flowNode("profile", "traits.name", "text", "", {
+          id: 1070002,
+          text: "Name",
+        }),
+        flowNode("profile", "method", "submit", "profile", {
+          id: 1040001,
+          text: "Sign up",
+        }),
+      ],
+    },
+  } as unknown as RegistrationFlow;
+}
+
+const ALL_PROVIDERS = ["bitbucket", "github", "gitlab", "google"];
+const CONTINUE_WITH = "— or continue with —";
+
+/** The card's controls and "Or continue with", in document order, which is
+ *  the order a keyboard tabs through them. */
+function cardOrder(container: HTMLElement): string[] {
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(
+      'input:not([type="hidden"]), button, [data-testid="sso-continue-with"]',
+    ),
+  ).map((element) => {
+    if (element.dataset.testid === "sso-continue-with") return CONTINUE_WITH;
+    if (element instanceof HTMLInputElement) return `input ${element.name}`;
+    return element.textContent || (element.getAttribute("aria-label") ?? "");
+  });
+}
+
+function renderLogin(flow: LoginFlow, locale = "en") {
+  return render(
+    <Login
+      flow={flow}
+      config={{ ...oryConfig, intl: { locale } }}
+      components={oryAuthFormOverrides}
+    />,
+  );
+}
+
+describe("login and sign-up put the providers below the e-mail form, as on Render", () => {
+  it("login: e-mail, password and submit, then Or continue with and the providers", () => {
+    const { container } = renderLogin(loginFlow(ALL_PROVIDERS));
+
+    expect(cardOrder(container)).toEqual([
+      "input identifier",
+      "input password",
+      "Show password",
+      "Sign in with password",
+      CONTINUE_WITH,
+      "GitHub",
+      "Google",
+      "More options",
+    ]);
+    // Ory's own rule between its providers and the form is gone: the only
+    // rules are the two either side of "Or continue with".
+    const rules = container.querySelectorAll("hr");
+    expect(rules).toHaveLength(2);
+    rules.forEach((rule) =>
+      expect(screen.getByTestId("sso-continue-with")).toContainElement(rule),
+    );
+    // The providers keep their own form, and the e-mail form comes first.
+    const forms = container.querySelectorAll("form");
+    expect(forms).toHaveLength(2);
+    expect(forms[0]).toContainElement(
+      screen.getByRole("button", { name: "Sign in with password" }),
+    );
+    expect(forms[1]).toContainElement(
+      screen.getByRole("button", { name: "Sign in with GitHub" }),
+    );
+  });
+
+  it("sign-up: e-mail, name and Sign up, then Or continue with and the providers", () => {
+    const { container } = render(
+      <Registration
+        flow={registrationFlow(["github", "google"])}
+        config={{ ...oryConfig, intl: { locale: "en" } }}
+        components={oryAuthFormOverrides}
+      />,
+    );
+
+    expect(cardOrder(container)).toEqual([
+      "input traits.email",
+      "input traits.name",
+      "Sign up",
+      CONTINUE_WITH,
+      "GitHub",
+      "Google",
+    ]);
+    expect(container.querySelectorAll("hr")).toHaveLength(2);
+  });
+
+  it("draws neither providers nor Or continue with when the installation offers none", () => {
+    const { container } = renderLogin(loginFlow([]));
+
+    expect(cardOrder(container)).toEqual([
+      "input identifier",
+      "input password",
+      "Show password",
+      "Sign in with password",
+    ]);
+    expect(container.querySelector("hr")).toBeNull();
+  });
+
+  it("a method choice keeps Ory's rule above the methods and puts the providers after them", () => {
+    const { container } = renderLogin(loginFlow(["github"], true));
+
+    const order = cardOrder(container);
+    expect(order.slice(-2)).toEqual([CONTINUE_WITH, "GitHub"]);
+    const [oryRule] = Array.from(container.querySelectorAll("hr"));
+    expect(oryRule).toBeDefined();
+    expect(screen.getByTestId("sso-continue-with")).not.toContainElement(
+      oryRule!,
+    );
+    expect(
+      oryRule!.compareDocumentPosition(screen.getByTestId("sso-continue-with")),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it.each(SUPPORTED_LANGUAGES)(
+    "%s: Or continue with is in the page's language",
+    async (lang) => {
+      await ensureLanguage(lang);
+      await i18n.changeLanguage(lang);
+      renderLogin(loginFlow(["github", "google"]), lang);
+
+      const divider = screen.getByTestId("sso-continue-with");
+      expect(divider).toHaveTextContent(i18n.t("auth.ssoContinueWith"));
+      if (lang !== "en") {
+        expect(divider).not.toHaveTextContent("Or continue with");
+      }
+    },
+  );
+
+  it.each([
+    ["none", []],
+    ["all four", ALL_PROVIDERS],
+  ])(
+    "the skeletons draw the same order with %s providers",
+    (_, providers) => {
+      const { container: ready, unmount } = renderLogin(loginFlow(providers));
+      const readyDivider = !!ready.querySelector(
+        '[data-testid="sso-continue-with"]',
+      );
+      unmount();
+
+      for (const Skeleton of [
+        LoginWidgetSkeleton,
+        RegistrationWidgetSkeleton,
+      ]) {
+        const { container, unmount } = render(
+          <Skeleton ssoProviders={providers} />,
+        );
+        const divider = container.querySelector("[data-skeleton-sso-divider]");
+        expect(!!divider).toBe(readyDivider);
+        if (divider) {
+          // The fields and submit come first, the providers after the divider.
+          const fields = divider.previousElementSibling!;
+          expect(
+            fields.querySelectorAll('[data-slot="skeleton"]').length,
+          ).toBeGreaterThan(0);
+          expect(divider.nextElementSibling).toHaveAttribute(
+            "data-skeleton-sso",
+          );
+        }
+        unmount();
+      }
+    },
+  );
 });
 
 function settingsButton(

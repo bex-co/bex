@@ -553,6 +553,11 @@ const zhAuth: Record<string, TranslationEntry> = {
     description:
       "Login and sign-up: reveals the GitLab and Bitbucket sign-in buttons, as Render's More options does",
   },
+  "auth.ssoContinueWith": {
+    message: "或通过以下方式继续",
+    description:
+      "Login and sign-up: the divider between the email form and the social sign-in buttons below it, as Render's Or continue with",
+  },
   "auth.settingsGuardEmailChangeRefused": {
     message:
       "你属于要求使用 Google 登录的工作区，因此无法更改邮箱地址。请先离开这些工作区：{workspaces}。",

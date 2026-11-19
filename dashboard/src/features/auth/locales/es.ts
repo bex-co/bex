@@ -580,6 +580,11 @@ const esAuth: Record<string, TranslationEntry> = {
     description:
       "Login and sign-up: reveals the GitLab and Bitbucket sign-in buttons, as Render's More options does",
   },
+  "auth.ssoContinueWith": {
+    message: "O continúa con",
+    description:
+      "Login and sign-up: the divider between the email form and the social sign-in buttons below it, as Render's Or continue with",
+  },
   "auth.settingsGuardEmailChangeRefused": {
     message:
       "No puedes cambiar tu dirección de correo electrónico mientras pertenezcas a un espacio de trabajo que exige iniciar sesión con Google. Sal primero de estos espacios de trabajo: {workspaces}.",

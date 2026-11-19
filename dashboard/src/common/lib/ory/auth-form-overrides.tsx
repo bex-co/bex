@@ -9,6 +9,8 @@ import { oryHideCardLogo } from "@/common/lib/ory/config";
 import { OryMessageContent } from "@/common/lib/ory/ory-message-content";
 import { OryToast } from "@/common/lib/ory/ory-toast";
 import {
+  AuthCardContent,
+  AuthCardDivider,
   SettingsSsoAccounts,
   SsoButtonRows,
   SsoLinkButton,
@@ -310,14 +312,19 @@ export const orySettingsFormOverrides: OryFlowComponentOverrides = {
  * Auth-flow component overrides: hide the redundant card logo, fix the
  * duplicate password id, restore empty-submit browser validation, and lay the
  * social sign-in buttons out as Render does, each with its logo and name
- * (w7/m468, `sso-buttons.tsx`).
+ * (w7/m468), below the e-mail form under "Or continue with" (w7/091,
+ * `sso-buttons.tsx`).
  *
  * Intentionally avoids importing `@ory/elements-react/theme` (Vitest cannot
  * resolve its extensionless session-provider import; the app Vite config can).
  */
 // eslint-disable-next-line react-refresh/only-export-components -- Ory override map, not a component
 export const oryAuthFormOverrides: OryFlowComponentOverrides = {
-  ...oryHideCardLogo,
+  Card: {
+    ...oryHideCardLogo.Card,
+    Content: AuthCardContent,
+    Divider: AuthCardDivider,
+  },
   Form: {
     Root: AuthFormRoot,
     SsoRoot: SsoButtonRows,

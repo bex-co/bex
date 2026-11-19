@@ -566,6 +566,11 @@ const enAuth: Record<string, TranslationEntry> = {
     description:
       "Login and sign-up: reveals the GitLab and Bitbucket sign-in buttons, as Render's More options does",
   },
+  "auth.ssoContinueWith": {
+    message: "Or continue with",
+    description:
+      "Login and sign-up: the divider between the email form and the social sign-in buttons below it, as Render's Or continue with",
+  },
   "auth.settingsGuardEmailChangeRefused": {
     message:
       "You can't change your email address while you belong to a workspace that requires Google login. Leave these workspaces first: {workspaces}.",

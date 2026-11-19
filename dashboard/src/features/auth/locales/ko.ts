@@ -564,6 +564,11 @@ const koAuth: Record<string, TranslationEntry> = {
     description:
       "Login and sign-up: reveals the GitLab and Bitbucket sign-in buttons, as Render's More options does",
   },
+  "auth.ssoContinueWith": {
+    message: "또는 다음으로 계속",
+    description:
+      "Login and sign-up: the divider between the email form and the social sign-in buttons below it, as Render's Or continue with",
+  },
   "auth.settingsGuardEmailChangeRefused": {
     message:
       "Google 로그인을 요구하는 워크스페이스에 속해 있는 동안에는 이메일 주소를 변경할 수 없습니다. 먼저 다음 워크스페이스에서 나가세요: {workspaces}.",
