@@ -1,6 +1,6 @@
 # w8 · m102 — Supply pigz for native asset builds
 
-**Worker:** worker8 **Goal:** native build scripts can compress their assets with the documented build-time pigz tool and publish correct gzip bytes without tenant installation workarounds. **Status:** blocked — common qualification/adoption dependency; original hosted acceptance remains open
+**Worker:** worker8 **Goal:** native build scripts can compress their assets with the documented build-time pigz tool and publish correct gzip bytes without tenant installation workarounds. **Status:** blocked — m91 gate cleared; the 2026-11-19 unblock worker hung before acceptance (board move in stash `loopx/w8/m102`); original hosted acceptance remains open
 
 ## Tasks (in order)
 
@@ -46,3 +46,11 @@ The explicit2026-10-29 user choice of one common Bookworm tools foundation overr
 **Blocked on w8/m91/t007, owned by the native build worker.** The common supplier and meaningful generated behavior/error harnesses are implemented. The current source audit and historical simplify/utility evidence are mapped in [the shared evidence-to-task record](../m91/evidence/original28-free-contract-20261102/capsule/EVIDENCE-TO-TASK-MAP.json); [ADR060](../../../../docs/ADR060-build-worker-reliability-and-performance.md#d7-addendum--shared-native-utility-versions-and-limits-w8m91-2026-11-01) now records chosen versions, phase/ABI and feature limits. This finishes the independent source/documentation preparation, not this milestone's acceptance.
 
 Release this dependency after complete current-source common qualification on both architectures, the remaining runtime/companion/legacy/exact-donor cases, actual pre-deploy/required phase checks and reviewed production adoption. Then the same worker must run this milestone's unchanged original two-client hosted cases, shared readbacks, logs and exact cleanup/baseline/quota checks. The new e6a2386 AMD64 cohort passes; ARM64 is still running at this disposition. No original DoD or task acceptance is removed, and no task is marked done merely because supplier code or a test harness exists. No new architecture decision or user permission is needed.
+
+## Drain disposition — 2026-11-19 (worker hang)
+
+The m91 gate holds: m91 is done, and the common image `sha256:4b809600…` serves production on pin `dff52c596d13`. Siblings m97–m101 shipped on that image.
+
+The unblock worker re-verified the gate and prepared both clients' pigz builds, but recorded no acceptance result. At 16:33 UTC its result for a trivial `rm` never returned, the same hang seen on m96. Before that call it had already confirmed that its three QA sessions answer 401. The orchestrator deleted those jars, confirmed that no m102 fixture is live in bex-canary, and stopped the worker. Its board move is kept in stash `loopx/w8/m102` (record only, no source changes).
+
+**Gate:** `worker did not reach a verified outcome: hung before acceptance, nothing committed; needs a fresh worker to /pm unblock and run t001–t006 as m97–m101 did`.
