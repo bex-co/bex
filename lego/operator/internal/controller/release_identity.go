@@ -634,6 +634,9 @@ func prepareAppReleaseDecision(app *appv1alpha1.App, view *appv1alpha1.AppSpec) 
 		// that coalesces mid-build (above) can label the running build's resolved
 		// artifact correctly (ADR060 §D1a).
 		app.Status.ReleaseArtifactFingerprint = desired.artifact
+		// And its saved settings, which a static site's saved-change status
+		// compares a later save with (staticSaveWaits).
+		app.Status.ReleaseSettingsFingerprint = releaseSettingsFingerprint(app.Spec)
 		app.Status.ReleaseGeneration = requestedReleaseGeneration(app)
 		if app.ActiveReleaseConfig() != nil {
 			app.Status.SelectedReleaseGeneration = app.Status.ReleaseGeneration
@@ -748,6 +751,7 @@ func redispatchSurvivor(app *appv1alpha1.App) appReleaseDecision {
 	if releaseChanged {
 		app.Status.ReleaseFingerprint = desired.release
 		app.Status.ReleaseArtifactFingerprint = desired.artifact
+		app.Status.ReleaseSettingsFingerprint = releaseSettingsFingerprint(app.Spec)
 		app.Status.ReleaseGeneration = survivor
 	}
 	return appReleaseDecision{

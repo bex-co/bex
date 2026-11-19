@@ -2157,6 +2157,15 @@ type AppStatus struct {
 	// +optional
 	ReleaseFingerprint string `json:"releaseFingerprint,omitempty"`
 
+	// ReleaseSettingsFingerprint is the saved-settings identity of the release
+	// ReleaseFingerprint names, recorded when it was dispatched: its release
+	// identity without the stamps a deploy or a rebuilding save writes (the
+	// restart stamp, the commit). A static site's saved change waits for a
+	// deploy only while its saved settings differ from these (w8/339). Empty
+	// for a release an older operator dispatched.
+	// +optional
+	ReleaseSettingsFingerprint string `json:"releaseSettingsFingerprint,omitempty"`
+
 	// ReleaseGeneration is the App metadata generation that initiated the current
 	// release attempt. Later operational generations retain this value, keeping
 	// build/pre-deploy Jobs, pod revision labels, and deploy history attached to

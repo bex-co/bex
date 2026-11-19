@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -98,6 +99,27 @@ var _ = Describe("A static site's first deploy with a save during its build (w8/
 			mutate(&app.Spec)
 			metav1.SetMetaDataAnnotation(&app.ObjectMeta, appv1alpha1.AnnotationPendingSourceGeneration, strconv.FormatInt(app.Generation+1, 10))
 		})
+	}
+	// saveDirectory is a root or publish directory save. bex-api stamps a
+	// rebuild on each (SetRootDir, SetPublishPath), so a set-and-clear leaves a
+	// spec that differs from its release only in spec.restartedAt (w8/339).
+	stamps := 0
+	saveDirectory := func(nn types.NamespacedName, mutate func(*appv1alpha1.AppSpec)) {
+		GinkgoHelper()
+		stamps++
+		save(nn, func(s *appv1alpha1.AppSpec) {
+			mutate(s)
+			s.RestartedAt = fmt.Sprintf("2026-11-19T09:00:%02dZ", stamps)
+		})
+	}
+	// undeployed is the saved-configuration status the dashboard's "saved
+	// changes aren't live yet" banner reads.
+	undeployed := func(nn types.NamespacedName) (bool, string) {
+		GinkgoHelper()
+		_, err := r.reconcileSavedConfigurationStatus(ctx, reconcile.Request{NamespacedName: nn})
+		Expect(err).NotTo(HaveOccurred())
+		app := envtestApp(nn)
+		return app.Status.UndeployedChanges, app.Status.UndeployedChangesReason
 	}
 	// operational is a save that rolls no release (an IP rule, a rename).
 	operational := func(nn types.NamespacedName, mutate func(*appv1alpha1.AppSpec)) {
@@ -218,9 +240,9 @@ var _ = Describe("A static site's first deploy with a save during its build (w8/
 		build1(nn)
 
 		By("saving rootDir sub, then clearing it, while gen-1 builds")
-		save(nn, func(s *appv1alpha1.AppSpec) { s.RootDir = "sub" })
+		saveDirectory(nn, func(s *appv1alpha1.AppSpec) { s.RootDir = "sub" })
 		pass(nn)
-		save(nn, func(s *appv1alpha1.AppSpec) { s.RootDir = "" })
+		saveDirectory(nn, func(s *appv1alpha1.AppSpec) { s.RootDir = "" })
 		pass(nn)
 
 		finishFirst(nn)
@@ -230,6 +252,63 @@ var _ = Describe("A static site's first deploy with a save during its build (w8/
 		Expect(envtestApp(nn).Status.PendingReleaseGeneration).To(BeZero())
 		_, err := buildJobFor(nn.Name, "gen-2")
 		Expect(err).To(HaveOccurred(), "a save must not build until a deploy requests it")
+		different, reason := undeployed(nn)
+		Expect(different).To(BeFalse(), "the saves net out: nothing waits for a deploy (w8/339), reason %q", reason)
+	})
+
+	// w8/339: production's set-and-clear during a later deploy's build read
+	// "saved" too, until the next deploy.
+	It("reads no undeployed change after a root directory set and cleared during a later deploy's build", func() {
+		nn := create("m460-rootdir-later")
+		build1(nn)
+		finishFirst(nn)
+		passes(nn, 3)
+		expectLive(nn)
+
+		gen := deploy(nn, "2026-11-19T08:00:00Z")
+		passes(nn, 3)
+		_, err := buildJobFor(nn.Name, "gen-"+strconv.FormatInt(gen, 10))
+		Expect(err).NotTo(HaveOccurred(), "precondition: the deploy builds")
+
+		By("saving rootDir sub, then clearing it, while it builds")
+		saveDirectory(nn, func(s *appv1alpha1.AppSpec) { s.RootDir = "sub" })
+		pass(nn)
+		saveDirectory(nn, func(s *appv1alpha1.AppSpec) { s.RootDir = "" })
+		pass(nn)
+
+		completeBuildJob(nn.Name, "gen-"+strconv.FormatInt(gen, 10))
+		passes(nn, 2)
+		rev := "rev-" + strconv.FormatInt(gen, 10)
+		completeEnvtestJob(publishJob(nn.Name, rev), metav1.Now())
+		passes(nn, 3)
+		app := envtestApp(nn)
+		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning), "status: %+v", app.Status)
+		Expect(app.Status.ActiveRevision).To(Equal(rev))
+		different, reason := undeployed(nn)
+		Expect(different).To(BeFalse(), "the saves net out: nothing waits for a deploy, reason %q", reason)
+	})
+
+	// The same stamp rides a publish directory save, so one saved and then
+	// reverted nets out too; a directory that stays saved still waits.
+	It("reads no undeployed change after a publish directory saved and reverted during the build", func() {
+		nn := create("m460-publish-revert")
+		build1(nn)
+		saveDirectory(nn, func(s *appv1alpha1.AppSpec) { s.PublishPath = "out2" })
+		pass(nn)
+		saveDirectory(nn, func(s *appv1alpha1.AppSpec) { s.PublishPath = "out" })
+		pass(nn)
+		finishFirst(nn)
+		passes(nn, 3)
+		expectLive(nn)
+		different, reason := undeployed(nn)
+		Expect(different).To(BeFalse(), "out, out2, out nets out, reason %q", reason)
+
+		By("a publish directory that stays saved waits for a deploy")
+		saveDirectory(nn, func(s *appv1alpha1.AppSpec) { s.PublishPath = "out2" })
+		pass(nn)
+		different, reason = undeployed(nn)
+		Expect(different).To(BeTrue())
+		Expect(reason).To(Equal(appv1alpha1.UndeployedReasonSaved))
 	})
 
 	It("publishes the directory it started with, and the next deploy publishes the saved one", func() {
@@ -237,7 +316,7 @@ var _ = Describe("A static site's first deploy with a save during its build (w8/
 		build1(nn)
 
 		By("saving publish directory out2 while gen-1 builds")
-		save(nn, func(s *appv1alpha1.AppSpec) { s.PublishPath = "out2" })
+		saveDirectory(nn, func(s *appv1alpha1.AppSpec) { s.PublishPath = "out2" })
 		pass(nn)
 
 		finishFirst(nn)
@@ -248,11 +327,9 @@ var _ = Describe("A static site's first deploy with a save during its build (w8/
 		Expect(res.RequeueAfter).NotTo(Equal(pendingReleaseRequeue))
 
 		By("the saved directory waits for a deploy, and reads as an undeployed change")
-		_, err := r.reconcileSavedConfigurationStatus(ctx, reconcile.Request{NamespacedName: nn})
-		Expect(err).NotTo(HaveOccurred())
-		app := envtestApp(nn)
-		Expect(app.Status.UndeployedChanges).To(BeTrue())
-		Expect(app.Status.UndeployedChangesReason).To(Equal(appv1alpha1.UndeployedReasonSaved))
+		different, reason := undeployed(nn)
+		Expect(different).To(BeTrue())
+		Expect(reason).To(Equal(appv1alpha1.UndeployedReasonSaved))
 
 		By("bex deploys create publishes out2")
 		gen := deploy(nn, "2026-11-17T08:00:00Z")
@@ -263,12 +340,11 @@ var _ = Describe("A static site's first deploy with a save during its build (w8/
 		Expect(publishedPath(nn.Name, rev)).To(Equal("out2"))
 		completeEnvtestJob(publishJob(nn.Name, rev), metav1.Now())
 		passes(nn, 3)
-		app = envtestApp(nn)
+		app := envtestApp(nn)
 		Expect(app.Status.ActiveRevision).To(Equal(rev))
 		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
-		_, err = r.reconcileSavedConfigurationStatus(ctx, reconcile.Request{NamespacedName: nn})
-		Expect(err).NotTo(HaveOccurred())
-		Expect(envtestApp(nn).Status.UndeployedChanges).To(BeFalse(), "the deploy shipped the saved directory")
+		different, _ = undeployed(nn)
+		Expect(different).To(BeFalse(), "the deploy shipped the saved directory")
 	})
 
 	It("enforces an IP rule saved during the build, before and after the deploy settles", func() {
@@ -278,7 +354,7 @@ var _ = Describe("A static site's first deploy with a save during its build (w8/
 		Expect(ipRuleRouted(nn)).To(BeFalse())
 
 		By("saving an IP rule together with a publish directory while gen-1 builds")
-		save(nn, func(s *appv1alpha1.AppSpec) {
+		saveDirectory(nn, func(s *appv1alpha1.AppSpec) {
 			s.PublishPath = "out2"
 			s.IPAllowListEntries = []appv1alpha1.IPAllowEntry{{CIDR: cidr, Description: "doc"}}
 		})
@@ -319,7 +395,7 @@ var _ = Describe("A static site's first deploy with a save during its build (w8/
 				&client.DeleteOptions{PropagationPolicy: &background})
 		})
 		build1(nn)
-		save(nn, func(s *appv1alpha1.AppSpec) { s.RootDir = "sub" })
+		saveDirectory(nn, func(s *appv1alpha1.AppSpec) { s.RootDir = "sub" })
 		pass(nn)
 		completeBuildJob(name, "gen-1")
 		passes(nn, 2)
@@ -442,7 +518,7 @@ var _ = Describe("A static site's first deploy with a save during its build (w8/
 			passes(nn, 4)
 			Expect(envtestApp(nn).Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
 
-			save(nn, func(s *appv1alpha1.AppSpec) { s.PublishPath = "public" })
+			saveDirectory(nn, func(s *appv1alpha1.AppSpec) { s.PublishPath = "public" })
 			pass(nn)
 			operational(nn, func(s *appv1alpha1.AppSpec) {
 				s.IPAllowListEntries = []appv1alpha1.IPAllowEntry{{CIDR: cidr, Description: "doc"}}
@@ -463,7 +539,7 @@ var _ = Describe("A static site's first deploy with a save during its build (w8/
 			pass(nn)
 			Expect(envtestApp(nn).Status.Phase).To(Equal(appv1alpha1.PhaseDeploying), "precondition: the clone ended, the upload runs")
 
-			save(nn, func(s *appv1alpha1.AppSpec) { s.PublishPath = "public" })
+			saveDirectory(nn, func(s *appv1alpha1.AppSpec) { s.PublishPath = "public" })
 			pass(nn)
 			completeEnvtestJob(publishJob(nn.Name, "rev-1"), metav1.Now())
 			passes(nn, 4)

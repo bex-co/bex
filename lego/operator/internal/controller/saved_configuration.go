@@ -126,12 +126,21 @@ func (r *AppReconciler) reconcileSavedConfigurationStatus(ctx context.Context, r
 // different release than its current one, saved without a deploy (a Render
 // Update Service PATCH) after that release was requested: the publish
 // directory or root directory saved during its first build, for one (w8/m460).
-// A save that nets out to the release's own settings waits for nothing. Only a
-// release-v2 fingerprint can be compared.
+// A save that nets out to the release's own settings waits for nothing. bex-api
+// stamps a rebuild on every root or publish directory save, so the settings are
+// compared without the stamps (releaseSettingsFingerprint): a set-and-clear
+// nets out too, as it does for a web service's record (w8/339). A release an
+// older operator dispatched has no settings fingerprint and compares its whole
+// identity. Only a release-v2 fingerprint can be compared.
 func staticSaveWaits(app *appv1alpha1.App) bool {
+	if !releaseHasServed(app) || !sourceUpdatePending(app) {
+		return false
+	}
+	if settings := app.Status.ReleaseSettingsFingerprint; settings != "" {
+		return strings.HasPrefix(settings, releaseIdentityVersion+":") && releaseSettingsFingerprint(app.Spec) != settings
+	}
 	fp := app.Status.ReleaseFingerprint
-	return releaseHasServed(app) && sourceUpdatePending(app) &&
-		strings.HasPrefix(fp, releaseIdentityVersion+":") && desiredAppReleaseIdentity(app.Spec).release != fp
+	return strings.HasPrefix(fp, releaseIdentityVersion+":") && desiredAppReleaseIdentity(app.Spec).release != fp
 }
 
 // recordUndeployedChanges writes the saved-configuration status when it moved.

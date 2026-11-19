@@ -1915,6 +1915,15 @@ spec:
                   the release that caused them.
                 format: int64
                 type: integer
+              releaseSettingsFingerprint:
+                description: |-
+                  ReleaseSettingsFingerprint is the saved-settings identity of the release
+                  ReleaseFingerprint names, recorded when it was dispatched: its release
+                  identity without the stamps a deploy or a rebuilding save writes (the
+                  restart stamp, the commit). A static site's saved change waits for a
+                  deploy only while its saved settings differ from these (w8/339). Empty
+                  for a release an older operator dispatched.
+                type: string
               releaseStart:
                 description: |-
                   ReleaseStart is when the operator dispatched a release generation: the
