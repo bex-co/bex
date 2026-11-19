@@ -1,6 +1,6 @@
 # w3 · m486 — Purging a service's edge cache, or switching between its two caching profiles, restarts no instance, as on Render
 
-**Worker:** worker3 **Goal:** a manual purge and a switch between `origin-controlled` and `origin-controlled-all` empty or re-scope the edge cache while every instance keeps running, as on Render, where the cache lives on its CDN; a disk-bearing caching service no longer goes down on a purge. **Status:** in progress (t001–t005 and t007–t009 done; t006 waits for a production deploy)
+**Worker:** worker3 **Goal:** a manual purge and a switch between `origin-controlled` and `origin-controlled-all` empty or re-scope the edge cache while every instance keeps running, as on Render, where the cache lives on its CDN; a disk-bearing caching service no longer goes down on a purge. **Status:** blocked (t001–t005 and t007–t009 done; t006 waits for a production deploy carrying `c6bab1b92`)
 
 ## Tasks (in order)
 
@@ -65,3 +65,9 @@ Checked against the shipped code and its tests; the production behavior is t006'
 | `edge_cache_enabled` / `edge_cache_disabled` / `edge_cache_purged` | events | unchanged | matched (w9/m345) |
 
 No new drift to file: the one divergence is `w3/m489`'s, and ADR018's Edge caching row records it with this date.
+
+## Blocked (2026-11-18)
+
+- **Gate (clears by itself):** a production deploy carrying `c6bab1b92` (the implementation). `deploy.yml` deploys at most every 6 hours; the last pin, `e5ace7826` (2026-11-18 21:22Z), makes the earliest one about 2026-11-19 03:30Z plus its tests and build. The check: the newest `chore(deploy): pin platform images to <sha>` commit on `origin/main` with `git merge-base --is-ancestor c6bab1b92 <sha>`. No user action is needed.
+- **Then:** run t006 as written (a caching fixture in `bex-canary`; pod UIDs and `restartCount` across a REST purge and a dashboard profile switch; time from purge to `MISS` and back to `HIT`; the count of caching services and of those with a disk), write the record here, then t010.
+- **Expect on that deploy:** `w6/m484` has not landed, so the operator image the deploy moves still rolls every caching service once, onto the controlled shape. Purges after that roll none; measure on the fixture after the deploy settles. The sidecar logs `edge-cache: purged (app.bex.co/cache-purged-at=…)` for each purge it applies.
