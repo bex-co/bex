@@ -52,6 +52,10 @@ type DatabaseInstanceType struct {
 	ReadReplicaMinStorageGB   int32
 	// SupportsHighAvailability is the catalog's HA predicate for this plan.
 	SupportsHighAvailability bool
+	// MaxConnections is the plan's connection limit (tiers.Postgres, Render's
+	// 100/200/400/500 by RAM), the "Limit" Render's Active Connections chart
+	// reads beside its title (w6/138).
+	MaxConnections int32
 	// MonthlyUSD is the always-on monthly price from the one price sheet
 	// (pricing.yaml, which bex.co/pricing and billing also read), "" for an
 	// unlisted tier. The plan picker showed none, so a paid datastore was
@@ -84,6 +88,7 @@ func (s *Service) InstanceTypes(ctx context.Context) ([]DatabaseInstanceType, er
 			SupportsConnectionPooling: t.SupportsConnectionPooling(),
 			MaxReadReplicas:           t.MaxReadReplicas(),
 			ReadReplicaMinStorageGB:   tiers.PostgresReadReplicaMinStorageGB,
+			MaxConnections:            t.MaxConnections,
 		}
 	}
 	return out, nil

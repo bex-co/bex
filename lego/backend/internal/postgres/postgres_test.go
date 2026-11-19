@@ -50,6 +50,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -825,13 +826,30 @@ func TestGraphQLPostgres(t *testing.T) {
 
 	// databaseInstanceTypes surfaces the shared Postgres catalog (w5/m8) — the
 	// create dialog's plan picker source, never a hardcoded ladder.
-	tt := run(`{ databaseInstanceTypes { id name cpu memory storageGB } }`)["databaseInstanceTypes"].([]any)
+	tt := run(`{ databaseInstanceTypes { id name cpu memory storageGB maxConnections } }`)["databaseInstanceTypes"].([]any)
 	if len(tt) == 0 {
 		t.Fatal("databaseInstanceTypes want >=1")
 	}
 	first := tt[0].(map[string]any)
 	if first["id"] != "free" || first["name"] != "Free" {
 		t.Fatalf("first tier = %+v, want free/Free", first)
+	}
+	// w6/138: every plan carries the connection limit its server enforces
+	// (tiers.Postgres), the "Limit" beside Render's Active Connections chart.
+	for _, raw := range tt {
+		it := raw.(map[string]any)
+		id, _ := it["id"].(string)
+		tier, ok := tiers.Postgres.ByID(id)
+		if !ok {
+			t.Fatalf("databaseInstanceTypes lists %q, which tiers.Postgres does not", id)
+		}
+		if got, _ := it["maxConnections"].(int); got != int(tier.MaxConnections) || got <= 0 {
+			t.Errorf("%s maxConnections = %v, want tiers' %d", id, it["maxConnections"], tier.MaxConnections)
+		}
+		// Render's figure for every plan under 8 GB of RAM.
+		if id == "basic-1gb" && it["maxConnections"] != 100 {
+			t.Errorf("basic-1gb maxConnections = %v, want Render's 100", it["maxConnections"])
+		}
 	}
 }
 

@@ -1220,6 +1220,7 @@ type DatabaseExport {
 type DatabaseInstanceType {
   cpu: String
   id: String
+  maxConnections: Int!
   maxReadReplicas: Int
   maxStorageGB: Int
   memory: String

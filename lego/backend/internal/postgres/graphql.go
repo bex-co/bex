@@ -260,6 +260,9 @@ var databaseInstanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// write paths enforce, so the dashboard never re-derives it from cpu.
 		"supportsHighAvailability": gqlutil.BoolField(func(t DatabaseInstanceType) any { return t.SupportsHighAvailability }),
 		"monthlyUsd":               gqlutil.StrField(func(t DatabaseInstanceType) any { return t.MonthlyUSD }),
+		// The plan's connection limit, which Render's Active Connections chart
+		// reads beside its title, as the Key Value one does (w6/138).
+		"maxConnections": gqlutil.Typed(graphql.NewNonNull(graphql.Int), func(t DatabaseInstanceType) any { return t.MaxConnections }),
 	},
 })
 
