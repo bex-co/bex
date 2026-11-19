@@ -54,7 +54,7 @@ var (
 	ErrInvalidAccessKey = errors.New("the access key id is not valid")
 	// ErrSecretStoreUnavailable is an OpenBao failure on the key path. It is
 	// never an authentication failure: SDKs retry a 503 and do not retry a 403.
-	ErrSecretStoreUnavailable = errors.New("the secret store is unavailable")
+	ErrSecretStoreUnavailable = core.Unavailable("the secret store is unavailable")
 	// ErrAccessKeyLimit refuses a key past its cap (MaxPersistentAccessKeys per
 	// workspace, MaxEphemeralAccessKeys per creator).
 	ErrAccessKeyLimit = errors.New("access key limit reached")

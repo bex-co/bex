@@ -52,22 +52,18 @@ func newObjectStorageAdmin(base *core.Base, svc *objectstorage.Service, keys *ob
 // accessKeyWire is a key as REST and GraphQL show it. The secret is in the
 // create answer alone.
 type accessKeyWire struct {
-	ID         string     `json:"id"`
-	Name       string     `json:"name"`
-	Permission string     `json:"permission"`
-	CreatedBy  string     `json:"createdBy"`
-	CreatedAt  time.Time  `json:"createdAt"`
-	ExpiresAt  *time.Time `json:"expiresAt"`
-	LastUsedAt *time.Time `json:"lastUsedAt"`
+	ID         string  `json:"id"`
+	Name       string  `json:"name"`
+	Permission string  `json:"permission"`
+	CreatedBy  string  `json:"createdBy"`
+	CreatedAt  string  `json:"createdAt"`
+	ExpiresAt  *string `json:"expiresAt"`
+	LastUsedAt *string `json:"lastUsedAt"`
 	// Status is active, expired, revoked or broken (revoked because its secret
 	// was lost with an OpenBao restore).
 	Status string `json:"status"`
-}
-
-type createdAccessKeyWire struct {
-	accessKeyWire
-	// Secret is shown once, here.
-	Secret string `json:"secret"`
+	// Secret is shown once, in the create answer, and is empty in every other.
+	Secret string `json:"secret,omitempty"`
 }
 
 func (a *objectStorageAdmin) keyWire(k store.ObjectAccessKey) accessKeyWire {
@@ -81,39 +77,33 @@ func (a *objectStorageAdmin) keyWire(k store.ObjectAccessKey) accessKeyWire {
 		status = "expired"
 	}
 	return accessKeyWire{
-		ID: k.ID, Name: k.Name, Permission: k.Permission, CreatedBy: k.CreatedBy, CreatedAt: k.CreatedAt.UTC(),
-		ExpiresAt: utcPtr(k.ExpiresAt), LastUsedAt: utcPtr(k.LastUsedAt), Status: status,
+		ID: k.ID, Name: k.Name, Permission: k.Permission, CreatedBy: k.CreatedBy, CreatedAt: k.CreatedAt.UTC().Format(time.RFC3339),
+		ExpiresAt: rfc3339Ptr(k.ExpiresAt), LastUsedAt: rfc3339Ptr(k.LastUsedAt), Status: status,
 	}
 }
 
-// rfc3339Or is a time for GraphQL: its RFC 3339 text, or null when absent.
-func rfc3339Or(t *time.Time) any {
+// rfc3339Ptr is a time as its RFC 3339 text in UTC, nil when absent: the wire
+// carries times as text so every adapter shows the same one.
+func rfc3339Ptr(t *time.Time) *string {
 	if t == nil {
 		return nil
 	}
-	return t.Format(time.RFC3339)
-}
-
-func utcPtr(t *time.Time) *time.Time {
-	if t == nil {
-		return nil
-	}
-	u := t.UTC()
-	return &u
+	text := t.UTC().Format(time.RFC3339)
+	return &text
 }
 
 // bucketInfoWire is what `bex s3 info` reads: the facts S3 cannot answer.
 type bucketInfoWire struct {
-	ID         string     `json:"id"`
-	Name       string     `json:"name"`
-	Region     string     `json:"region"`
-	System     bool       `json:"system"`
-	Public     bool       `json:"public"`
-	PublicHost string     `json:"publicHost"`
-	Objects    int64      `json:"objects"`
-	Bytes      int64      `json:"bytes"`
-	ObservedAt *time.Time `json:"observedAt"`
-	CreatedAt  time.Time  `json:"createdAt"`
+	ID         string  `json:"id"`
+	Name       string  `json:"name"`
+	Region     string  `json:"region"`
+	System     bool    `json:"system"`
+	Public     bool    `json:"public"`
+	PublicHost string  `json:"publicHost"`
+	Objects    int64   `json:"objects"`
+	Bytes      int64   `json:"bytes"`
+	ObservedAt *string `json:"observedAt"`
+	CreatedAt  string  `json:"createdAt"`
 }
 
 type bucketPublicWire struct {
@@ -203,38 +193,40 @@ func (a *objectStorageAdmin) keysEnabled() error {
 // a durable credential is a mint-class verb (ADR012 § 7): a human only, with the
 // mint class on an OAuth token, so an API key or a delegated third-party token
 // cannot make one. The caller then needs can_create, as writing objects does.
-func (a *objectStorageAdmin) CreateAccessKey(ctx context.Context, ownerID string, req createAccessKeyRequest) (createdAccessKeyWire, error) {
+func (a *objectStorageAdmin) CreateAccessKey(ctx context.Context, ownerID string, req createAccessKeyRequest) (accessKeyWire, error) {
 	if err := a.keysEnabled(); err != nil {
-		return createdAccessKeyWire{}, err
+		return accessKeyWire{}, err
 	}
 	if err := a.base.AuthorizeMintClass(ctx); err != nil {
-		return createdAccessKeyWire{}, err
+		return accessKeyWire{}, err
 	}
 	workspaceID, err := a.base.AuthorizeWorkspaceAs(ctx, objectstorage.AuditVerbCreateAccessKey, core.RelCanCreate, ownerID)
 	if err != nil {
-		return createdAccessKeyWire{}, err
+		return accessKeyWire{}, err
 	}
 	// A key is always the caller's: the person it acts as. A caller with no
 	// identity of their own cannot make one.
 	caller, ok := core.IdentityFrom(ctx)
 	if !ok || caller.Subject == "" {
-		return createdAccessKeyWire{}, core.ErrForbidden
+		return accessKeyWire{}, core.ErrForbidden
 	}
 	name, err := core.TrimmedLabel(req.Name)
 	if err != nil {
-		return createdAccessKeyWire{}, err
+		return accessKeyWire{}, err
 	}
 	if req.ExpiresInSeconds < 0 {
-		return createdAccessKeyWire{}, fmt.Errorf("%w: expiresInSeconds must not be negative", objectstorage.ErrAccessKeyInvalidInput)
+		return accessKeyWire{}, fmt.Errorf("%w: expiresInSeconds must not be negative", objectstorage.ErrAccessKeyInvalidInput)
 	}
 	created, err := a.keys.Create(ctx, objectstorage.CreateKeyInput{
 		WorkspaceID: workspaceID, CreatedBy: caller.Subject, Name: name, Permission: req.Permission,
 		Lifetime: time.Duration(req.ExpiresInSeconds) * time.Second, SignIn: core.KeySignInStamp(ctx),
 	})
 	if err != nil {
-		return createdAccessKeyWire{}, err
+		return accessKeyWire{}, err
 	}
-	return createdAccessKeyWire{accessKeyWire: a.keyWire(created.Key), Secret: created.Secret}, nil
+	out := a.keyWire(created.Key)
+	out.Secret = created.Secret
+	return out, nil
 }
 
 // ListAccessKeys lists the workspace's keys, which any member may read.
@@ -288,7 +280,7 @@ func (a *objectStorageAdmin) BucketInfo(ctx context.Context, ownerID, name strin
 	if err != nil {
 		return bucketInfoWire{}, err
 	}
-	out := bucketInfoWire{ID: b.ID, Name: b.Name, Region: b.Region, System: b.System, Public: b.Public, CreatedAt: b.CreatedAt.UTC()}
+	out := bucketInfoWire{ID: b.ID, Name: b.Name, Region: b.Region, System: b.System, Public: b.Public, CreatedAt: b.CreatedAt.UTC().Format(time.RFC3339)}
 	if host, err := objectstorage.PublicDomain(b, a.baseDomain); err == nil {
 		out.PublicHost = host
 	}
@@ -298,8 +290,7 @@ func (a *objectStorageAdmin) BucketInfo(ctx context.Context, ownerID, name strin
 	}
 	if ok {
 		out.Objects, out.Bytes = usage.Objects, usage.Bytes
-		at := usage.ObservedAt.UTC()
-		out.ObservedAt = &at
+		out.ObservedAt = rfc3339Ptr(&usage.ObservedAt)
 	}
 	return out, nil
 }
@@ -444,9 +435,9 @@ var accessKeyFields = graphql.Fields{
 	"name":       gqlutil.ReqStrField(func(k accessKeyWire) any { return k.Name }),
 	"permission": gqlutil.ReqStrField(func(k accessKeyWire) any { return k.Permission }),
 	"createdBy":  gqlutil.ReqStrField(func(k accessKeyWire) any { return k.CreatedBy }),
-	"createdAt":  gqlutil.ReqStrField(func(k accessKeyWire) any { return k.CreatedAt.Format(time.RFC3339) }),
-	"expiresAt":  gqlutil.StrField(func(k accessKeyWire) any { return rfc3339Or(k.ExpiresAt) }),
-	"lastUsedAt": gqlutil.StrField(func(k accessKeyWire) any { return rfc3339Or(k.LastUsedAt) }),
+	"createdAt":  gqlutil.ReqStrField(func(k accessKeyWire) any { return k.CreatedAt }),
+	"expiresAt":  gqlutil.StrField(func(k accessKeyWire) any { return k.ExpiresAt }),
+	"lastUsedAt": gqlutil.StrField(func(k accessKeyWire) any { return k.LastUsedAt }),
 	"status":     gqlutil.ReqStrField(func(k accessKeyWire) any { return k.Status }),
 }
 
@@ -457,14 +448,14 @@ var accessKeyGQLType = graphql.NewObject(graphql.ObjectConfig{Name: "ObjectAcces
 var createdAccessKeyGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "CreatedObjectAccessKey",
 	Fields: graphql.Fields{
-		"id":         gqlutil.ReqStrField(func(k createdAccessKeyWire) any { return k.ID }),
-		"name":       gqlutil.ReqStrField(func(k createdAccessKeyWire) any { return k.Name }),
-		"permission": gqlutil.ReqStrField(func(k createdAccessKeyWire) any { return k.Permission }),
-		"createdBy":  gqlutil.ReqStrField(func(k createdAccessKeyWire) any { return k.CreatedBy }),
-		"createdAt":  gqlutil.ReqStrField(func(k createdAccessKeyWire) any { return k.CreatedAt.Format(time.RFC3339) }),
-		"expiresAt":  gqlutil.StrField(func(k createdAccessKeyWire) any { return rfc3339Or(k.ExpiresAt) }),
-		"status":     gqlutil.ReqStrField(func(k createdAccessKeyWire) any { return k.Status }),
-		"secret":     gqlutil.ReqStrField(func(k createdAccessKeyWire) any { return k.Secret }),
+		"id":         gqlutil.ReqStrField(func(k accessKeyWire) any { return k.ID }),
+		"name":       gqlutil.ReqStrField(func(k accessKeyWire) any { return k.Name }),
+		"permission": gqlutil.ReqStrField(func(k accessKeyWire) any { return k.Permission }),
+		"createdBy":  gqlutil.ReqStrField(func(k accessKeyWire) any { return k.CreatedBy }),
+		"createdAt":  gqlutil.ReqStrField(func(k accessKeyWire) any { return k.CreatedAt }),
+		"expiresAt":  gqlutil.StrField(func(k accessKeyWire) any { return k.ExpiresAt }),
+		"status":     gqlutil.ReqStrField(func(k accessKeyWire) any { return k.Status }),
+		"secret":     gqlutil.ReqStrField(func(k accessKeyWire) any { return k.Secret }),
 	},
 })
 
@@ -477,10 +468,10 @@ var bucketInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"system":     gqlutil.ReqBoolField(func(b bucketInfoWire) any { return b.System }),
 		"public":     gqlutil.ReqBoolField(func(b bucketInfoWire) any { return b.Public }),
 		"publicHost": gqlutil.StrField(func(b bucketInfoWire) any { return b.PublicHost }),
-		"objects":    gqlutil.Typed(graphql.NewNonNull(graphql.Float), func(b bucketInfoWire) any { return float64(b.Objects) }),
-		"bytes":      gqlutil.Typed(graphql.NewNonNull(graphql.Float), func(b bucketInfoWire) any { return float64(b.Bytes) }),
-		"observedAt": gqlutil.StrField(func(b bucketInfoWire) any { return rfc3339Or(b.ObservedAt) }),
-		"createdAt":  gqlutil.ReqStrField(func(b bucketInfoWire) any { return b.CreatedAt.Format(time.RFC3339) }),
+		"objects":    gqlutil.Typed(graphql.NewNonNull(graphql.Float), func(b bucketInfoWire) any { return b.Objects }),
+		"bytes":      gqlutil.Typed(graphql.NewNonNull(graphql.Float), func(b bucketInfoWire) any { return b.Bytes }),
+		"observedAt": gqlutil.StrField(func(b bucketInfoWire) any { return b.ObservedAt }),
+		"createdAt":  gqlutil.ReqStrField(func(b bucketInfoWire) any { return b.CreatedAt }),
 	},
 })
 

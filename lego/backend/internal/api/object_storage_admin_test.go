@@ -23,136 +23,17 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync"
 	"testing"
-	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/objectstorage"
+	"github.com/bex-co/bex/lego/backend/internal/objectstorage/fakekeys"
 	"github.com/bex-co/bex/lego/backend/internal/objectstorage/fakes3"
-	"github.com/bex-co/bex/lego/backend/internal/secrets"
-	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// memKeyRepo is an in-memory objectstorage.AccessKeyRepository.
-type memKeyRepo struct {
-	mu   sync.Mutex
-	keys map[string]store.ObjectAccessKey
-}
-
-func newMemKeyRepo() *memKeyRepo { return &memKeyRepo{keys: map[string]store.ObjectAccessKey{}} }
-
-func (m *memKeyRepo) CreateObjectAccessKey(_ context.Context, in store.ObjectAccessKey, _, _ int) (store.ObjectAccessKey, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	in.CreatedAt = time.Now()
-	m.keys[in.ID] = in
-	return in, nil
-}
-
-func (m *memKeyRepo) GetObjectAccessKey(_ context.Context, id string) (store.ObjectAccessKey, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if k, ok := m.keys[id]; ok {
-		return k, nil
-	}
-	return store.ObjectAccessKey{}, store.ErrNotFound
-}
-
-func (m *memKeyRepo) ListObjectAccessKeys(_ context.Context, ws string) ([]store.ObjectAccessKey, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	var out []store.ObjectAccessKey
-	for _, k := range m.keys {
-		if k.WorkspaceID == ws {
-			out = append(out, k)
-		}
-	}
-	return out, nil
-}
-
-func (m *memKeyRepo) RevokeObjectAccessKey(_ context.Context, ws, id string) (store.ObjectAccessKey, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	k, ok := m.keys[id]
-	if !ok || k.WorkspaceID != ws || k.RevokedAt != nil {
-		return store.ObjectAccessKey{}, store.ErrNotFound
-	}
-	now := time.Now()
-	k.RevokedAt = &now
-	m.keys[id] = k
-	return k, nil
-}
-
-func (m *memKeyRepo) MarkObjectAccessKeyBroken(context.Context, string) error       { return nil }
-func (m *memKeyRepo) TouchObjectAccessKey(context.Context, string, time.Time) error { return nil }
-func (m *memKeyRepo) DeleteObjectAccessKey(_ context.Context, id string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	delete(m.keys, id)
-	return nil
-}
-
-func (m *memKeyRepo) DeleteObjectAccessKeysOf(_ context.Context, by, ws string) ([]store.ObjectAccessKey, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	var out []store.ObjectAccessKey
-	for id, k := range m.keys {
-		if k.CreatedBy == by && (ws == "" || k.WorkspaceID == ws) {
-			out = append(out, k)
-			delete(m.keys, id)
-		}
-	}
-	return out, nil
-}
-
-func (m *memKeyRepo) DeleteObjectAccessKeysOfWorkspace(_ context.Context, ws string) ([]store.ObjectAccessKey, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	var out []store.ObjectAccessKey
-	for id, k := range m.keys {
-		if k.WorkspaceID == ws {
-			out = append(out, k)
-			delete(m.keys, id)
-		}
-	}
-	return out, nil
-}
-
-func (m *memKeyRepo) DeleteEndedObjectAccessKeys(context.Context, time.Time) ([]store.ObjectAccessKey, error) {
-	return nil, nil
-}
-
-type memKV struct {
-	mu sync.Mutex
-	m  map[string]map[string]string
-}
-
-func (k *memKV) slot(ctx context.Context, p string) string {
-	return secrets.TenantFromContext(ctx) + "|" + p
-}
-func (k *memKV) Get(ctx context.Context, p string) (map[string]string, error) {
-	k.mu.Lock()
-	defer k.mu.Unlock()
-	return k.m[k.slot(ctx, p)], nil
-}
-func (k *memKV) Put(ctx context.Context, p string, d map[string]string) error {
-	k.mu.Lock()
-	defer k.mu.Unlock()
-	k.m[k.slot(ctx, p)] = d
-	return nil
-}
-func (k *memKV) Delete(ctx context.Context, p string) error {
-	k.mu.Lock()
-	defer k.mu.Unlock()
-	delete(k.m, k.slot(ctx, p))
-	return nil
-}
-func (k *memKV) List(context.Context, string) ([]string, error) { return nil, nil }
-
-func newAdminForTest() (*objectStorageAdmin, *memKeyRepo, *memKV) {
-	repo, kv := newMemKeyRepo(), &memKV{m: map[string]map[string]string{}}
+func newAdminForTest() (*objectStorageAdmin, *fakekeys.Repo, *fakekeys.KV) {
+	repo, kv := fakekeys.NewRepo(), fakekeys.NewKV()
 	keys := objectstorage.NewAccessKeys(repo, kv)
 	return newObjectStorageAdmin(&core.Base{}, objectstorage.NewService(nil, nil), keys, "onbex.co"), repo, kv
 }
@@ -172,7 +53,7 @@ func TestObjectAdminCreatesListsAndRevokesAKeyAndShowsTheSecretOnce(t *testing.T
 	if len(created.Secret) != objectstorage.KeySecretLength || created.CreatedBy != "usr-alice" || created.Status != "active" {
 		t.Fatalf("created = %+v", created)
 	}
-	if row := repo.keys[created.ID]; row.CreatedSignIn != core.SignInGoogle {
+	if row := repo.Keys[created.ID]; row.CreatedSignIn != core.SignInGoogle {
 		t.Errorf("the key carries the sign-in %q, want the creator's Google stamp", row.CreatedSignIn)
 	}
 	listed, err := a.ListAccessKeys(ctx, "tea-aaaaaaaaaaaaaaaaaaaa")
@@ -190,8 +71,8 @@ func TestObjectAdminCreatesListsAndRevokesAKeyAndShowsTheSecretOnce(t *testing.T
 	if len(listed) != 1 || listed[0].Status != "revoked" {
 		t.Errorf("list after revoke = %+v, want the key revoked", listed)
 	}
-	if len(kv.m) != 0 {
-		t.Errorf("OpenBao still holds %d secrets after the revoke", len(kv.m))
+	if kv.Len() != 0 {
+		t.Errorf("OpenBao still holds %d secrets after the revoke", kv.Len())
 	}
 }
 
@@ -214,8 +95,8 @@ func TestAnAPIKeyAndAThirdPartyTokenCannotCreateOrRevokeAKey(t *testing.T) {
 			t.Errorf("%s: RevokeAccessKey = %v, want ErrForbidden", name, err)
 		}
 	}
-	if len(repo.keys) != 0 {
-		t.Errorf("a refused caller left %d keys", len(repo.keys))
+	if len(repo.Keys) != 0 {
+		t.Errorf("a refused caller left %d keys", len(repo.Keys))
 	}
 }
 
@@ -254,7 +135,7 @@ func TestObjectAdminListsNoKeysAsAnEmptyArray(t *testing.T) {
 
 // fakeAPIKeys is the API-key half of credentialDisposal.
 func TestCredentialDisposalDisposesS3KeysWithTheMembersOtherKeys(t *testing.T) {
-	repo, kv := newMemKeyRepo(), &memKV{m: map[string]map[string]string{}}
+	repo, kv := fakekeys.NewRepo(), fakekeys.NewKV()
 	keys := objectstorage.NewAccessKeys(repo, kv)
 	ctx := context.Background()
 	mine, err := keys.Create(ctx, objectstorage.CreateKeyInput{WorkspaceID: "tea-a", CreatedBy: "usr-bob", Name: "m", Permission: "read"})
@@ -272,20 +153,20 @@ func TestCredentialDisposalDisposesS3KeysWithTheMembersOtherKeys(t *testing.T) {
 	if err != nil || len(got) != 1 || got[0] != mine.Key.ID {
 		t.Fatalf("CleanupSubjectInWorkspace = %v, %v, want only bob's key in tea-a", got, err)
 	}
-	if _, ok := repo.keys[other.Key.ID]; !ok {
+	if _, ok := repo.Keys[other.Key.ID]; !ok {
 		t.Error("leaving one workspace disposed of the person's key in another")
 	}
-	if _, ok := repo.keys[theirs.Key.ID]; !ok {
+	if _, ok := repo.Keys[theirs.Key.ID]; !ok {
 		t.Error("another member's key was disposed of")
 	}
 	if err := d.CleanupSubject(ctx, "usr-bob"); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := repo.keys[other.Key.ID]; ok {
+	if _, ok := repo.Keys[other.Key.ID]; ok {
 		t.Error("an account's deletion left the person's key in another workspace")
 	}
-	if len(kv.m) != 1 {
-		t.Errorf("OpenBao holds %d secrets, want only carol's", len(kv.m))
+	if kv.Len() != 1 {
+		t.Errorf("OpenBao holds %d secrets, want only carol's", kv.Len())
 	}
 	if newCredentialDisposal(nil, nil) != nil {
 		t.Error("a disposal with nothing to dispose of must be nil")

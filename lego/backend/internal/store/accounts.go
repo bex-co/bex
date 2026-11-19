@@ -391,6 +391,11 @@ func (s *PGStore) CleanupAccountSubject(ctx context.Context, subject, marker str
 		deletes := []string{
 			`DELETE FROM notification_settings WHERE subject = $1`,
 			`DELETE FROM ssh_keys WHERE subject = $1`,
+			// S3 access keys the subject made (ADR112 D3). The credential cleanup
+			// that runs first deletes them with their OpenBao secrets; a row it
+			// left is deleted here, never anonymized: a key whose creator is gone
+			// is a credential nobody owns.
+			`DELETE FROM object_access_keys WHERE created_by = $1`,
 			`DELETE FROM github_connect_transactions WHERE subject = $1`,
 			// The claim selector's pending choices (ADR078 §3a) are the same
 			// class as the connect transaction above: in-flight, subject-bound

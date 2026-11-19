@@ -197,9 +197,10 @@ func (s *PGStore) DeleteObjectAccessKeysOfWorkspace(ctx context.Context, workspa
 }
 
 // DeleteEndedObjectAccessKeys deletes the keys that were revoked or expired
-// before cutoff and returns them, for the sweep to remove their secrets.
+// before cutoff, and the keys of a workspace whose tenant row is gone (a delete's
+// purge that failed), and returns them, for the sweep to remove their secrets.
 func (s *PGStore) DeleteEndedObjectAccessKeys(ctx context.Context, cutoff time.Time) ([]ObjectAccessKey, error) {
-	return s.deleteObjectAccessKeys(ctx, `revoked_at < $1 OR expires_at < $1`, cutoff)
+	return s.deleteObjectAccessKeys(ctx, `revoked_at < $1 OR expires_at < $1 OR NOT EXISTS (SELECT 1 FROM tenants t WHERE t.id = object_access_keys.workspace_id)`, cutoff)
 }
 
 func (s *PGStore) deleteObjectAccessKeys(ctx context.Context, where string, args ...any) ([]ObjectAccessKey, error) {
