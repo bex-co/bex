@@ -98,9 +98,10 @@ spec:
           # `kubectl port-forward pod/<manager> 6060`.
           - --pprof-bind-address=127.0.0.1:6060
         image: controller:latest
-        # The Argo override pins the mutable :latest tag, so a running pod must
-        # re-pull to pick up a new push; the deploy workflow rollout-restarts this
-        # Deployment, and Always makes that restart fetch the fresh image.
+        # Production's Argo override pins an immutable digest, so a new push rolls
+        # this Deployment through its template and the deploy workflow only waits
+        # for it (scripts/operator-pins.sh operator, w5/196). Always keeps a
+        # restart of a mutable tag (config/default's :latest) re-pulling.
         imagePullPolicy: Always
         name: manager
         env:

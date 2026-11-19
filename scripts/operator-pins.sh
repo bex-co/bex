@@ -12,8 +12,22 @@
 #       <digest>, which every deploy did before: $PROXY_PIN unset, failing, or
 #       answering anything but one of the two digests. Only a pin line that is
 #       missing or repeated fails, since the write-back would target the wrong
-#       shape. Appends KV_SNI_PROXY_IMAGE= and PG_SNI_PROXY_IMAGE= (image@digest)
-#       to $GITHUB_ENV when it is set.
+#       shape. Appends OPERATOR_IMAGE=, KV_SNI_PROXY_IMAGE= and
+#       PG_SNI_PROXY_IMAGE= (image@digest) to $GITHUB_ENV when it is set.
+#
+#   operator-pins.sh operator
+#       Waits until the operator Deployment's template carries the image the
+#       write-back pinned for controller= ($OPERATOR_IMAGE), then for its
+#       rollout. Argo CD rolls the operator on every pin commit, so the deploy
+#       does not restart it as well (w5/196): that re-pulled the same digest,
+#       a second leader handover and a second sweep of every App. It restarts
+#       the operator once only when the rollout has not converged within
+#       OPERATOR_SETTLE_SECONDS (default 180), which resets crash backoff, or
+#       when an input the manager reads only at start changed since the last
+#       deploy: a Secret or ConfigMap its pod template reads through env or
+#       envFrom, recorded by uid and resourceVersion in the Deployment's
+#       bex.co/start-inputs annotation. Mounted volumes refresh in place.
+#       OPERATOR_WAIT_SECONDS (default 600) bounds the image wait.
 #
 #   operator-pins.sh wait
 #       Waits until each SNI proxy DaemonSet's template carries the image the
@@ -66,6 +80,9 @@ write() {
   [ "$(pin_lines "$file" controller "$image" | grep -c .)" -eq 1 ] &&
     grep -qF -- "- controller=${image}@${digest}" "$file" ||
     die "expected exactly one controller=${image}@${digest} pin in $file"
+  if [ -n "${GITHUB_ENV:-}" ]; then
+    echo "OPERATOR_IMAGE=${image}@${digest}" >>"$GITHUB_ENV"
+  fi
 
   local proxy lines current answer
   for proxy in "${proxies[@]}"; do
@@ -161,28 +178,96 @@ wait_for_new_pods() {
   exit 1
 }
 
+# Waits until <kind> <name>'s template image (read by <jsonpath>) is
+# <expected>, polling every <poll> seconds for up to <seconds>, and exits
+# naming what it found otherwise.
+await_template_image() { # <kind> <name> <jsonpath> <expected> <seconds> <poll>
+  local expected="$4" deadline=$((SECONDS + $5)) actual=""
+  while :; do
+    actual="$(kubectl -n bex-system get "$1" "$2" -o jsonpath="$3" 2>/dev/null || true)"
+    [ "${actual}" = "${expected}" ] && break
+    ((SECONDS < deadline)) || break
+    sleep "$6"
+  done
+  if [ "${actual}" != "${expected}" ]; then
+    echo "$2 image is ${actual:-missing}, want ${expected}" >&2
+    exit 1
+  fi
+}
+
 wait_for_proxies() {
-  local wait_seconds="${SNI_PROXY_WAIT_SECONDS:-600}"
-  local proxy daemonset var expected actual deadline
+  local proxy daemonset var expected
   for proxy in pg-sni-proxy kv-sni-proxy; do
     daemonset="bex-${proxy}"
     var="$(image_var "$proxy")"
     expected="${!var:-}"
     [ -n "$expected" ] || die "no image was pinned for ${daemonset} (\$${var} is empty): did the write-back run?"
-    deadline=$((SECONDS + wait_seconds))
-    actual=""
-    while :; do
-      actual="$(kubectl -n bex-system get daemonset "${daemonset}" -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)"
-      [ "${actual}" = "${expected}" ] && break
-      ((SECONDS < deadline)) || break
-      sleep "${SNI_PROXY_POLL_SECONDS:-5}"
-    done
-    if [ "${actual}" != "${expected}" ]; then
-      echo "${daemonset} image is ${actual:-missing}, want ${expected}" >&2
-      exit 1
-    fi
+    await_template_image daemonset "$daemonset" '{.spec.template.spec.containers[0].image}' "$expected" \
+      "${SNI_PROXY_WAIT_SECONDS:-600}" "${SNI_PROXY_POLL_SECONDS:-5}"
     wait_for_new_pods "${daemonset}"
   done
+}
+
+operator=bex-controller-manager
+inputs_annotation=bex.co/start-inputs
+
+# The Secrets and ConfigMaps the operator Deployment <json> reads through env
+# or envFrom, as sorted comma-separated `<kind>/<name>=<uid>:<resourceVersion>`
+# (`=absent` for a missing optional one). Fails when one cannot be read.
+start_inputs() {
+  local refs ref state
+  refs="$(jq -r '
+    .spec.template.spec | [(.containers // [])[], (.initContainers // [])[]]
+    | [.[] | ((.env // [])[] | .valueFrom // empty
+          | (.secretKeyRef // empty | "secret/\(.name)"), (.configMapKeyRef // empty | "configmap/\(.name)")),
+        ((.envFrom // [])[]
+          | (.secretRef // empty | "secret/\(.name)"), (.configMapRef // empty | "configmap/\(.name)"))]
+    | unique[]' <<<"$1")" || return 1
+  for ref in $refs; do
+    state="$(kubectl -n bex-system get "$ref" --ignore-not-found \
+      -o jsonpath='{.metadata.uid}:{.metadata.resourceVersion}')" || return 1
+    printf '%s=%s\n' "$ref" "${state:-absent}"
+  done | paste -sd, -
+}
+
+roll_operator() {
+  local expected="${OPERATOR_IMAGE:-}"
+  [ -n "$expected" ] || die "no image was pinned for ${operator} (\$OPERATOR_IMAGE is empty): did the write-back run?"
+  await_template_image deployment "$operator" '{.spec.template.spec.containers[?(@.name=="manager")].image}' \
+    "$expected" "${OPERATOR_WAIT_SECONDS:-600}" "${OPERATOR_POLL_SECONDS:-5}"
+
+  local reason="" deployment="" inputs="" recorded="" inputs_read=1
+  if ! kubectl -n bex-system rollout status "deployment/${operator}" --timeout="${OPERATOR_SETTLE_SECONDS:-180}s"; then
+    reason="its rollout has not converged"
+  fi
+  deployment="$(kubectl -n bex-system get deployment "$operator" -o json)" &&
+    recorded="$(jq -r --arg key "$inputs_annotation" '.metadata.annotations[$key] // ""' <<<"$deployment")" &&
+    inputs="$(start_inputs "$deployment")" || inputs_read=0
+  if [ -z "$reason" ]; then
+    if [ "$inputs_read" -eq 0 ]; then
+      reason="its start inputs could not be read"
+    elif [ -z "$recorded" ] && [ -n "$inputs" ]; then
+      reason="no deploy has recorded its start inputs yet"
+    elif [ "$inputs" != "$recorded" ]; then
+      # Names only: the uid and resourceVersion stay out of the public log.
+      reason="a Secret or ConfigMap it reads at start changed: $(comm -3 \
+        <(tr , '\n' <<<"$recorded" | sort) <(tr , '\n' <<<"$inputs" | sort) |
+        tr -d '\t' | cut -d= -f1 | sort -u | paste -sd' ' -)"
+    fi
+  fi
+
+  if [ -n "$reason" ]; then
+    echo "restarting ${operator} once: ${reason}"
+    kubectl -n bex-system rollout restart "deployment/${operator}"
+    kubectl -n bex-system rollout status "deployment/${operator}" --timeout=300s ||
+      die "${operator} did not converge after its restart"
+  else
+    echo "${operator} runs ${expected} from Argo's rollout and its start inputs are unchanged: not restarted"
+  fi
+  # Every running pod started after these inputs were written: record them.
+  if [ "$inputs_read" -eq 1 ] && [ "$inputs" != "$recorded" ]; then
+    kubectl -n bex-system annotate deployment "$operator" --overwrite "${inputs_annotation}=${inputs}"
+  fi
 }
 
 case "${1:-}" in
@@ -194,7 +279,11 @@ case "${1:-}" in
     [ "$#" -eq 1 ] || die "usage: operator-pins.sh wait"
     wait_for_proxies
     ;;
+  operator)
+    [ "$#" -eq 1 ] || die "usage: operator-pins.sh operator"
+    roll_operator
+    ;;
   *)
-    die "usage: operator-pins.sh write <bex.yaml> <image> <digest> | wait"
+    die "usage: operator-pins.sh write <bex.yaml> <image> <digest> | wait | operator"
     ;;
 esac

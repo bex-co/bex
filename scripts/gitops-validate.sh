@@ -218,6 +218,17 @@ for required in \
     fail=1
   }
 done
+# Argo rolls the operator onto its digest pin; the deploy waits for that and
+# restarts it only when the rollout stalls or a start-time input changed. An
+# unconditional restart is a second leader handover and fleet sweep (w5/196).
+grep -qF 'bash scripts/operator-pins.sh operator' .github/workflows/deploy.yml || {
+  echo "FAIL: deploy workflow no longer waits for the operator's digest pin (scripts/operator-pins.sh operator)" >&2
+  fail=1
+}
+if grep -nE 'rollout restart .*(deploy|deployment)/bex-controller-manager' .github/workflows/deploy.yml; then
+  echo "FAIL: deploy workflow restarts the operator after Argo rolled its pin; use scripts/operator-pins.sh operator (w5/196)" >&2
+  fail=1
+fi
 for required in \
   'for proxy in pg-sni-proxy kv-sni-proxy; do' \
   '>>"$GITHUB_ENV"' \

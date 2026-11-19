@@ -7,8 +7,9 @@
 # deploy the workflow (.github/workflows/deploy.yml, "pin image digests in GitOps")
 # rewrites it to the exact immutable `@sha256:<digest>` docker just pushed and commits
 # it back to main [skip ci] — so the RUNNING Deployment is content-addressed, never a
-# mutable tag. Argo then rolls pods automatically when the digest changes; the deploy
-# workflow's rollout-restart is now just a fast-path belt-and-suspenders.
+# mutable tag. Argo then rolls pods automatically when the digest changes. The deploy
+# workflow waits for that rollout instead of restarting the operator on top of it
+# (scripts/operator-pins.sh operator, w5/196).
 # NOTE: if the GHCR package is private, add an imagePullSecret in bex-system (or make
 # the package public) so app-cluster nodes can pull it.
 #

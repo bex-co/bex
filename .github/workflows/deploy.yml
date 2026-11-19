@@ -1362,21 +1362,27 @@ jobs:
           echo "bex operator running. Deploy an App: kubectl apply -f examples/whoami-app.yaml"
 
       # --- 5. roll bex onto the freshly-pushed image ---
-      # The Argo image override pins the mutable :latest tag (deploy/gitops/base/
-      # bex.yaml), so pushing a new :latest does NOT change the Deployment spec —
-      # Kubernetes sees no diff and never rolls the pods, which keep the image they
-      # pulled on a prior deploy. Force a fresh pull (both Deployments declare
-      # imagePullPolicy: Always) so every push actually takes effect. Idempotent:
-      # on a no-op deploy this just recreates identical pods.
-      # if: always() — rollout restart is the primary deploy fast-path; it must
-      # run even when earlier idempotent steps fail (e.g. kubelet TLS cert expiry
-      # blocking exec/port-forward). Argo also deploys via the digest pin (slower).
+      # The write-back above pins controller= to the digest just pushed
+      # (deploy/gitops/base/bex.yaml), so Argo rolls the operator and bex-api
+      # onto it from the pin commit. The operator is not restarted on top of
+      # that: the restart re-pulled the same digest, a second leader handover
+      # and a second sweep of every App that cut off the first (w5/196, 25
+      # pairs in 71 h). operator-pins.sh waits until Argo has put the pinned
+      # digest in the operator's template and its rollout is done, and
+      # restarts it once only when that rollout does not converge or a Secret
+      # or ConfigMap it reads at start changed since the last deploy.
+      # bex-api is still restarted: steps above rewrite Secrets it reads only
+      # at start (bex-control-plane, bex-smtp). Waiting for the operator first
+      # means Argo has applied the pin, so the restart rolls the new digest.
+      # if: always(): the rollout must be checked even when earlier idempotent
+      # steps fail (e.g. kubelet TLS cert expiry blocking exec/port-forward).
       - name: roll bex onto the freshly-pushed image
         if: ${{ always() && steps.app_kubeconfig.outcome == 'success' && env.SUPERSEDED != 'true' }}
         run: |
+          bash scripts/operator-pins.sh operator \
+            || { echo "operator not on its pin — Argo status:"; kubectl -n argocd get applications; exit 1; }
           kubectl -n bex-system rollout status deploy/bex-api --timeout=300s
-          kubectl -n bex-system rollout restart deploy/bex-controller-manager deploy/bex-api
-          kubectl -n bex-system rollout status deploy/bex-controller-manager --timeout=300s
+          kubectl -n bex-system rollout restart deploy/bex-api
           kubectl -n bex-system rollout status deploy/bex-api --timeout=300s
           # bex-api owns schema migration. Once its new pods are Ready, reconcile
           # the existing gateway role to THIS release's exact dbrole.sql without

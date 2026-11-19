@@ -2,7 +2,10 @@
 # Unit test for scripts/operator-pins.sh (w6/m470): the write-back keeps an SNI
 # proxy pin only when proxy-pin answers that its binary is byte-identical,
 # moves it on every other answer, and the wait expects each DaemonSet's own
-# pinned image. proxy-pin and kubectl are shell fakes; nothing leaves the host.
+# pinned image. The operator mode (w5/196) waits for Argo's rollout of the
+# pinned digest and restarts the operator only when that rollout does not
+# converge or an input it reads at start changed. proxy-pin and kubectl are
+# shell fakes; nothing leaves the host.
 set -euo pipefail
 
 SCRIPT="$(cd "$(dirname "$0")" && pwd)/operator-pins.sh"
@@ -80,7 +83,8 @@ write_case() {
     cat "$tmp/diff" >&2
     return
   fi
-  local want_env="KV_SNI_PROXY_IMAGE=${IMAGE}@${want_kv}
+  local want_env="OPERATOR_IMAGE=${IMAGE}@${NEW}
+KV_SNI_PROXY_IMAGE=${IMAGE}@${want_kv}
 PG_SNI_PROXY_IMAGE=${IMAGE}@${want_pg}"
   if [ "$(cat "$tmp/env")" != "$want_env" ]; then
     fail "$label: GITHUB_ENV is '$(cat "$tmp/env")', want '$want_env'"
@@ -348,6 +352,180 @@ pods_case "a pod the DaemonSet does not own does not count" 1 || true
 wait_setup "$moved" "$moved" "$moved" "$moved"
 kv_state 8 8 8 2 1 2 -- "a 8 True name=first" "a 8 True name=second"
 pods_case "two Ready pods on one node count as one node" 1 || true
+
+# --- operator ----------------------------------------------------------------
+# A fake kubectl for the operator Deployment, all state under $FAKE_OP:
+#   image (+ image.next after image.after polls)  the manager's template image
+#   deployment.json                               what `get -o json` answers
+#   secret_<name> / configmap_<name>              an input's "<uid>:<rv>" (absent: no file)
+#   read-fails                                    every input read fails
+#   status-rcs                                    exit codes of successive rollout statuses (default 0)
+# Every call is appended to $FAKE_OP/calls.
+mkdir -p "$tmp/opbin"
+cat >"$tmp/opbin/kubectl" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$FAKE_OP/calls"
+case "$*" in
+  "-n bex-system get deployment bex-controller-manager -o jsonpath="*)
+    if [ -f "$FAKE_OP/image.next" ]; then
+      polls=$(($(cat "$FAKE_OP/image.polls" 2>/dev/null || echo 0) + 1))
+      echo "$polls" >"$FAKE_OP/image.polls"
+      [ "$polls" -le "$(cat "$FAKE_OP/image.after")" ] || mv "$FAKE_OP/image.next" "$FAKE_OP/image"
+    fi
+    cat "$FAKE_OP/image" 2>/dev/null || exit 1
+    ;;
+  "-n bex-system get deployment bex-controller-manager -o json")
+    cat "$FAKE_OP/deployment.json"
+    ;;
+  "-n bex-system get secret/"* | "-n bex-system get configmap/"*)
+    [ ! -f "$FAKE_OP/read-fails" ] || { echo "the server is currently unable to handle the request" >&2; exit 1; }
+    cat "$FAKE_OP/${4/\//_}" 2>/dev/null || true
+    ;;
+  "-n bex-system rollout status deployment/bex-controller-manager --timeout="*)
+    n=$(($(cat "$FAKE_OP/status.n" 2>/dev/null || echo 0) + 1))
+    echo "$n" >"$FAKE_OP/status.n"
+    rc="$(sed -n "${n}p" "$FAKE_OP/status-rcs" 2>/dev/null)"
+    exit "${rc:-0}"
+    ;;
+  "-n bex-system rollout restart deployment/bex-controller-manager") ;;
+  "-n bex-system annotate deployment bex-controller-manager --overwrite bex.co/start-inputs="*) ;;
+  *) echo "unexpected kubectl $*" >&2; exit 2 ;;
+esac
+EOF
+chmod +x "$tmp/opbin/kubectl"
+
+pinned="${IMAGE}@${NEW}" previous="${IMAGE}@${OLD}"
+uid=0f5c6a8e-2b1d-4e44-9a7c-6d1e8f0b3a21
+# The production manager's env (lego/operator/config/manager/manager.yaml):
+# plain values, a fieldRef and one optional secretKeyRef.
+manager_spec='{"containers":[{"name":"manager","image":"x","env":[
+  {"name":"POD_NAME","valueFrom":{"fieldRef":{"fieldPath":"metadata.name"}}},
+  {"name":"BEX_RUNTIME"},
+  {"name":"BEX_DISK_SNAPSHOT_S3_SECRET","value":"bex-disk-snapshot"},
+  {"name":"BEX_DISK_SNAPSHOT_AGE_PUBLIC_KEY","valueFrom":{"secretKeyRef":{"name":"bex-disk-snapshot","key":"BEX_DISK_SNAPSHOT_AGE_PUBLIC_KEY","optional":true}}}]}]}'
+
+# op_setup <running image> <recorded inputs, "-" for none> [pod spec json]
+# Resets $FAKE_OP to an operator Deployment running <image>.
+op_setup() {
+  rm -rf "$tmp/op" && mkdir "$tmp/op"
+  printf '%s' "$1" >"$tmp/op/image"
+  jq -n --arg rec "$2" --argjson spec "${3:-$manager_spec}" '{
+    metadata: {annotations: (if $rec == "-" then {} else {"bex.co/start-inputs": $rec} end)},
+    spec: {template: {spec: $spec}}}' >"$tmp/op/deployment.json"
+}
+
+# op_run <label> <want rc>: runs the operator mode against $FAKE_OP.
+op_run() {
+  local got=0
+  PATH="$tmp/opbin:$PATH" FAKE_OP="$tmp/op" OPERATOR_IMAGE="${OP_PINNED-$pinned}" \
+    OPERATOR_WAIT_SECONDS=2 OPERATOR_POLL_SECONDS=0.1 "$SCRIPT" operator >"$tmp/out" 2>&1 || got=$?
+  if [ "$got" -ne "$2" ]; then
+    fail "$1: exit $got, want $2: $(cat "$tmp/out")"
+    return 1
+  fi
+}
+
+restarts() { grep -c '^-n bex-system rollout restart ' "$tmp/op/calls" || true; }
+statuses() { grep -c '^-n bex-system rollout status ' "$tmp/op/calls" || true; }
+# The value the run recorded, or "-" when it recorded none.
+recorded() {
+  local line
+  line="$(grep '^-n bex-system annotate ' "$tmp/op/calls" || true)"
+  [ -n "$line" ] && printf '%s' "${line#*bex.co/start-inputs=}" || printf -- '-'
+}
+
+# op_case <label> <want rc> <want restarts> <want record>
+op_case() {
+  op_run "$1" "$2" || return 0
+  local got_restarts got_record
+  got_restarts="$(restarts)" got_record="$(recorded)"
+  if [ "$got_restarts" != "$3" ]; then
+    fail "$1: $got_restarts restart(s), want $3: $(cat "$tmp/out")"
+  elif [ "$got_record" != "$4" ]; then
+    fail "$1: recorded '$got_record', want '$4'"
+  else
+    echo "ok: $1"
+  fi
+}
+
+current="secret/bex-disk-snapshot=${uid}:41"
+
+op_setup "$pinned" "$current" && printf '%s' "${uid}:41" >"$tmp/op/secret_bex-disk-snapshot"
+op_case "Argo already rolled the pin and no start input changed: no restart" 0 0 -
+if [ "$(statuses)" = 1 ] && grep -q 'not restarted' "$tmp/out"; then
+  echo "ok: the unrestarted rollout is still awaited once, and the log says why it stands"
+else
+  fail "want one rollout status and a 'not restarted' line: $(cat "$tmp/out")"
+fi
+
+op_setup "$previous" "$current" && printf '%s' "${uid}:41" >"$tmp/op/secret_bex-disk-snapshot"
+printf '%s' "$pinned" >"$tmp/op/image.next" && echo 3 >"$tmp/op/image.after"
+op_case "the template reaches the pin after Argo syncs: no restart" 0 0 -
+
+op_setup "$previous" "$current"
+op_case "a template that never gets the pin fails without a restart" 1 0 -
+grep -qxF "bex-controller-manager image is ${previous}, want ${pinned}" "$tmp/out" &&
+  echo "ok: a timed-out wait names the Deployment, its image and the pin" ||
+  fail "a timed-out wait does not name the Deployment: $(cat "$tmp/out")"
+
+op_setup "$pinned" "$current" && : >"$tmp/op/calls"
+OP_PINNED="" op_run "no pin recorded for the operator fails at once" 1 &&
+  if [ "$(grep -c . "$tmp/op/calls")" -eq 0 ]; then
+    echo "ok: no pin recorded for the operator fails at once"
+  else
+    fail "an empty OPERATOR_IMAGE still called kubectl"
+  fi
+
+op_setup "$pinned" "$current" && printf '%s' "${uid}:42" >"$tmp/op/secret_bex-disk-snapshot"
+op_case "a Secret it reads at start was rewritten: one restart, then the new record" 0 1 "secret/bex-disk-snapshot=${uid}:42"
+if grep -q 'changed: secret/bex-disk-snapshot$' "$tmp/out" && ! grep -q "$uid" "$tmp/out"; then
+  echo "ok: the restart names the changed Secret, not its uid or resourceVersion"
+else
+  fail "the restart's reason is not the Secret's name alone: $(cat "$tmp/out")"
+fi
+if [ "$(sed -n '$p' "$tmp/op/calls")" = "-n bex-system annotate deployment bex-controller-manager --overwrite bex.co/start-inputs=secret/bex-disk-snapshot=${uid}:42" ] &&
+  [ "$(statuses)" = 2 ]; then
+  echo "ok: the new record lands only after the restarted rollout converged"
+else
+  fail "the record was not written last, after a second rollout status: $(cat "$tmp/op/calls")"
+fi
+
+op_setup "$pinned" "$current" && printf '%s' "1d2e3f40-0000-4000-8000-000000000000:41" >"$tmp/op/secret_bex-disk-snapshot"
+op_case "a Secret it reads at start was deleted and created again: one restart" 0 1 "secret/bex-disk-snapshot=1d2e3f40-0000-4000-8000-000000000000:41"
+
+op_setup "$pinned" "$current"
+op_case "a Secret it reads at start was deleted: one restart, recorded absent" 0 1 "secret/bex-disk-snapshot=absent"
+
+op_setup "$pinned" "secret/bex-disk-snapshot=absent"
+op_case "an optional Secret still absent: no restart" 0 0 -
+
+op_setup "$pinned" - && printf '%s' "${uid}:41" >"$tmp/op/secret_bex-disk-snapshot"
+op_case "no deploy recorded its start inputs yet: one restart, then the record" 0 1 "$current"
+grep -q 'no deploy has recorded its start inputs yet' "$tmp/out" &&
+  echo "ok: the first record's restart says why" || fail "the first record's restart gives no reason: $(cat "$tmp/out")"
+
+op_setup "$pinned" - '{"containers":[{"name":"manager","env":[{"name":"A","value":"b"}]}]}'
+op_case "no Secret or ConfigMap read at start: nothing to record, no restart" 0 0 -
+
+op_setup "$pinned" "$current" && printf '%s' "${uid}:41" >"$tmp/op/secret_bex-disk-snapshot" && printf '1\n0\n' >"$tmp/op/status-rcs"
+op_case "a rollout that has not converged: one restart, nothing new to record" 0 1 -
+
+op_setup "$pinned" - && printf '%s' "${uid}:41" >"$tmp/op/secret_bex-disk-snapshot" && printf '1\n0\n' >"$tmp/op/status-rcs"
+op_case "a rollout that has not converged with no record yet: one restart, then the record" 0 1 "$current"
+
+op_setup "$pinned" - && printf '%s' "${uid}:41" >"$tmp/op/secret_bex-disk-snapshot" && printf '1\n1\n' >"$tmp/op/status-rcs"
+op_case "a rollout that converges neither before nor after its restart fails, recording nothing" 1 1 -
+
+op_setup "$pinned" "$current" && : >"$tmp/op/read-fails"
+op_case "start inputs that cannot be read: one restart, recording nothing" 0 1 -
+
+# Every container's env and envFrom count, init containers included, each
+# Secret or ConfigMap once, in one sorted record.
+op_setup "$pinned" - '{"initContainers":[{"name":"init","env":[{"name":"T","valueFrom":{"secretKeyRef":{"name":"zeta","key":"t"}}}]}],
+  "containers":[{"name":"manager","envFrom":[{"configMapRef":{"name":"cfg"}},{"secretRef":{"name":"alpha"}}],
+    "env":[{"name":"C","valueFrom":{"configMapKeyRef":{"name":"cfg","key":"c"}}},{"name":"Z","valueFrom":{"secretKeyRef":{"name":"zeta","key":"z"}}}]}]}'
+printf 'u1:1' >"$tmp/op/configmap_cfg" && printf 'u2:2' >"$tmp/op/secret_alpha" && printf 'u3:3' >"$tmp/op/secret_zeta"
+op_case "env, envFrom and init containers all count as start inputs" 0 1 "configmap/cfg=u1:1,secret/alpha=u2:2,secret/zeta=u3:3"
 
 if [ "$fails" -eq 0 ]; then
   echo "PASS: operator-pins.sh"

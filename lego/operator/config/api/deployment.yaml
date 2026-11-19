@@ -46,8 +46,8 @@ spec:
           # Same image as the operator; Argo's image override (controller=...)
           # rewrites this tag. The command selects the api binary.
           image: controller:latest
-          # See manager.yaml: :latest is mutable, so the deploy workflow
-          # rollout-restarts this Deployment and Always re-pulls the new image.
+          # See manager.yaml. The deploy workflow still restarts this one after
+          # Argo's rollout: it reads Secrets the deploy rewrites at start.
           imagePullPolicy: Always
           command: ["/api"]
           env:
