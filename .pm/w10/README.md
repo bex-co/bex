@@ -56,6 +56,7 @@ Develop against `.pm/w10/dev-10/`, this worker's own isolated stack on the share
 - [ ] **020** — [`bex agent automations apply` refuses `overlapPolicy`, which `list` returns (minor)](020.md) ← agent-automation runs 2026-11-15..18
 - [ ] **021** — [The bex CLI session expires within hours and long-running scripts fail with 401 (minor)](021.md) ← agent-automation runs 2026-11-15..18
 - [ ] **022** — [A session waiting for a sandbox machine loses its wait when its bex-api replica restarts](022.md) ← w10/m497 (its one stated limit), 2026-11-18
+- [ ] **023** — [The dashboard composer cannot choose the sandbox size, and a workspace cannot set a default one](023.md) ← w10/017 (its stated gap), 2026-11-18
 
 - [ ] **012** — moved to **w21/m336** (2026-11-11): Billing lifecycle worker fails every tick with "no rows in result set" (11 workspaces stuck `enforcing`) → [`../w21/done/m336/`](../w21/done/m336/README.md)
 
