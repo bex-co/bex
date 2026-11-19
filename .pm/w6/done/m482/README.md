@@ -1,6 +1,6 @@
 # w6 · m482 — An ssh-gateway release gives open SSH and Shell sessions an hour, as Render's SSH maintenance does
 
-**Worker:** worker6 **Goal:** a production deploy that restarts `bex-ssh-gateway` leaves every open SSH and dashboard Shell session working until the user ends it, its instance stops, its access is revoked, or an hour has passed since the gateway began draining; new connections reach only the new pods. **Status:** blocked (t001–t005, t007–t009 done and shipped; the drain is live on production since pin `826d32e42`, and t006's probes hold an SSH and a Web Shell session on a `bex-canary` fixture since 2026-11-19 14:15Z; t006 reads them across the next deploy that restarts the gateway, then t010)
+**Worker:** worker6 **Goal:** a production deploy that restarts `bex-ssh-gateway` leaves every open SSH and dashboard Shell session working until the user ends it, its instance stops, its access is revoked, or an hour has passed since the gateway began draining; new connections reach only the new pods. **Status:** done (2026-11-19: on production, SSH and Shell sessions held across deploys `c81d2d447bd8` and `c624a4f217ff` kept echoing and ended an hour after their old pod's SIGTERM; new connections all answered; fixture, probes and keys deleted)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | t003 | [The Deployment, PDB and deploy.yml let an old pod drain for an hour without holding the deploy](done/t003.md) — **DONE** | 45m | t001 |
 | t004 | [Tests: a session open at SIGTERM keeps working, revocation still ends it, the hour closes it](done/t004.md) — **DONE** | 1h | t001, t002 |
 | t005 | [Record the rule in ADR035](done/t005.md) — **DONE** | 20m | t003 |
-| t006 | [Ship and verify on production](t006.md) | 45m | t004, t005 |
+| t006 | [Ship and verify on production](done/t006.md) — **DONE** | 45m | t004, t005 |
 | t007 | [Render parity](done/t007.md) — **DONE** | 20m | t006 |
 | t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
 | t009 | [Test coverage](done/t009.md) — **DONE** | 30m | t007 |
-| t010 | [Closeout](t010.md) | 10m | t008, t009 |
+| t010 | [Closeout](done/t010.md) — **DONE** | 10m | t008, t009 |
 
 ## Definition of done
 
@@ -43,3 +43,9 @@
 - **What production already shows (read-only, 14:05Z).** `bex-ssh-gateway` reads `maxUnavailable 0`, `maxSurge 1`, `terminationGracePeriodSeconds 3660`. `deploy.yml`'s gateway step returned 11 s after `rollout restart` on 09:18:37Z and 6 s after it on 11:36:03Z, each while "1 old replicas are pending termination" (deploy jobs 135456050272 and 135529544614). kube-state-metrics shows the drain-capable old pods gone about a minute after deletion, so an idle gateway exits at once. No session was held across either deploy, so that still proves nothing about a held session.
 - **Remaining gate:** none needs a person. The sessions must be open before a deploy, and the next one cannot start before 17:30Z (`deploy.yml` waits 6 h after the 11:30Z pin), so t006 armed self-recording probes instead of holding a terminal (t006 § Progress 2026-11-19). The next deploy writes its pin back about five minutes before it restarts the gateway, so the workstream line's pin gate on `a91e9aeb3` (the first pin after it) clears with it.
 - **Next (the worker after that pin):** read both probe pods' logs across the gateway restart, as t006 lists, and check them against the first two definition-of-done items; then delete the fixture, the probes and both keys, and close with t010.
+
+## Unblock record (2026-11-19 19:45Z, verified evidence)
+
+- **Affected:** t006, then t010. **Source:** verified evidence, no new decision; scope and definition of done unchanged.
+- **The pin gate cleared, and both deploys restarted the gateway.** Pins `aefb144dc` (`c81d2d447bd8`, 18:04Z) and `99bbc4239` (`c624a4f217ff`, 18:51Z) both contain `a91e9aeb3`. Their deploy jobs (135770405961, 135799925499) ran `rollout restart deploy/bex-ssh-gateway` at 18:07:39Z and 18:55:19Z, while t006's probes still held their sessions.
+- **Next:** t006 reads the probes across both restarts, deletes the probes, the fixture and both keys, then t010 closes the milestone. Results are in t006 § Result.
