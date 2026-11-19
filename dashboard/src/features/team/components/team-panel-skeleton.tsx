@@ -20,6 +20,7 @@ import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { TableActionsHead } from "@/common/components/panel-states";
+import { useRootContext } from "@/common/hooks/use-root-context";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { ROLES, type Role } from "@/features/team/types";
@@ -28,8 +29,25 @@ import { ROLES, type Role } from "@/features/team/types";
 // identity id. Rendered transparent in the same classes as MemberRow, so the
 // row wraps exactly as the loaded one does on a narrow screen (w9/082: the
 // bars this replaced drew a 174px card that loaded at 379px, 741px on mobile).
+// Only drawn without a session: the row is the caller's own, so it lays out
+// their email and identity id (w7/095: a 36-character email wraps at 390).
 const PLACEHOLDER_EMAIL = "member@example.com";
 const PLACEHOLDER_SUBJECT = "00000000-0000-0000-0000-000000000000";
+
+// Kratos identity traits are schema-defined (`traits: any`); bex's schema is
+// `{ email, name? }`, as UserNav reads it.
+type IdentityTraits = { email?: string };
+
+/** The caller's own row text from the session: the email MemberRow names
+ *  them by and the identity id it prints below (their member `subject`). */
+function useOwnIdentity(): { email: string; subject: string } {
+  const identity = useRootContext().session?.identity;
+  const traits = identity?.traits as IdentityTraits | undefined;
+  return {
+    email: traits?.email || PLACEHOLDER_EMAIL,
+    subject: identity?.id || PLACEHOLDER_SUBJECT,
+  };
+}
 
 /** The caller's own role, as their row names it, from the capabilities'
  *  role once it is one of the team's roles. */
@@ -47,6 +65,7 @@ function ownRole(role: string | null): Role {
 export function TeamMembersSkeleton({ canManage }: { canManage: boolean }) {
   const { t } = useTranslations();
   const { role } = useCapabilities();
+  const own = useOwnIdentity();
   return (
     <div className="space-y-6" aria-hidden data-testid="team-members-skeleton">
       <div className="relative max-w-sm">
@@ -75,14 +94,14 @@ export function TeamMembersSkeleton({ canManage }: { canManage: boolean }) {
             <TableCell className="w-full max-w-0">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="min-w-0 max-w-full break-words text-transparent">
-                  {PLACEHOLDER_EMAIL}
+                  {own.email}
                 </span>
                 <Badge variant="secondary" className="shrink-0">
                   <span className="text-transparent">{t("team.you")}</span>
                 </Badge>
               </div>
               <div className="truncate font-mono text-xs text-transparent">
-                {PLACEHOLDER_SUBJECT}
+                {own.subject}
               </div>
             </TableCell>
             <TableCell>

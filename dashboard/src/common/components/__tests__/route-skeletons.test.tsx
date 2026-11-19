@@ -7,7 +7,7 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   AccountSettingsPageSkeleton,
   AuthWidgetSkeleton,
@@ -31,6 +31,12 @@ import {
   WebhookSettingsSkeleton,
   WorkspaceSettingsPageSkeleton,
 } from "@/common/components/route-skeletons";
+
+// The Settings frame's Team row reads the root route's session (w7/095), and
+// several frames here render without a router.
+vi.mock("@/common/hooks/use-root-context", () => ({
+  useRootContext: () => ({ session: null }),
+}));
 
 function regions(container: HTMLElement): string[] {
   return [...container.querySelectorAll<HTMLElement>("[data-skeleton-region]")]

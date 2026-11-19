@@ -70,6 +70,12 @@ vi.mock("@/features/team/components/invite-member-dialog", () => ({
   InviteMemberDialog: () => <div data-testid="invite-dialog" />,
 }));
 
+// The loading frame lays out the caller's own row from the root route's
+// session (w7/095); the panel renders here without a router.
+vi.mock("@/common/hooks/use-root-context", () => ({
+  useRootContext: () => ({ session: null }),
+}));
+
 beforeEach(() => {
   teamState.members = [];
   teamState.invites = [];
