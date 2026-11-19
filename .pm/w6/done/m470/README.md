@@ -1,6 +1,6 @@
 # w6 · m470 — An operator deploy that leaves the SNI proxies' code alone keeps every external datastore connection
 
-**Worker:** worker6 **Goal:** `bex-kv-sni-proxy` and `bex-pg-sni-proxy` roll only when their own binary (or their DaemonSet template) changes, not on every operator deploy, so external TLS clients of Key Value stores and Postgres databases survive the platform's routine releases, as on Render. **Status:** blocked (t001–t005, t007, t008 done; t006's moved-pin checks passed on production, and `19faf35f3` kept both pins and both DaemonSets; its re-armed held clients wait for the next deploy that keeps both pins, then t009)
+**Worker:** worker6 **Goal:** `bex-kv-sni-proxy` and `bex-pg-sni-proxy` roll only when their own binary (or their DaemonSet template) changes, not on every operator deploy, so external TLS clients of Key Value stores and Postgres databases survive the platform's routine releases, as on Render. **Status:** done
 
 ## Tasks (in order)
 
@@ -11,10 +11,10 @@
 | t003 | [deploy.yml keeps an SNI pin while its binary is byte-identical, and waits for the digest it pinned](done/t003.md) — **DONE** | 1h30m | t001, t002 |
 | t004 | [Prove it against GHCR and the rendered manifests](done/t004.md) — **DONE** | 45m | t003 |
 | t005 | [Record the rule in ADR021 and ADR009](done/t005.md) — **DONE** | 30m | t003 |
-| t006 | [Ship and verify on production](t006.md) | 1h30m | t004, t005 |
+| t006 | [Ship and verify on production](done/t006.md) — **DONE** | 1h30m | t004, t005 |
 | t007 | [Simplify](done/t007.md) — **DONE** | 15m | t006 |
 | t008 | [Test coverage](done/t008.md) — **DONE** | 30m | t006 |
-| t009 | [Closeout](t009.md) | 10m | t007, t008 |
+| t009 | [Closeout](done/t009.md) — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
@@ -66,7 +66,7 @@
 ## Unblock check — 2026-11-18 23:35Z (the gate cleared; the next one is a deploy that keeps both pins)
 
 - **Affected:** t006, then t009. **Source:** verified evidence, no user decision. Three production pins contain `d41bbb9c2`: `054f29128f64` (pin `0070f86ab`, 08:13Z), `1ec5007be0fa` (`c7f44bd87`, 14:44Z) and `1db506777e17` (`e5ace7826`, 21:22Z).
-- **Result, DoD bullets 1 and 3 (met):** each of the three write-backs moved both SNI pins, and each was right to. `proxy-pin` read different `/kv-sni-proxy` and `/pg-sni-proxy` bytes every time, because each producer carried a non-test change to `lego/types/v1alpha1`: `936b61bab` (w6/m467), then w2's OIDC commits and `1ec5007be`, then `caf484f6e` and `d6366d33e`. The wait step waited for the new digest and passed in runs 44322231072 and 44395683569. Details: [t006 § Progress](t006.md#progress-2026-11-18-2335z-three-deploys-after-the-ship-steps-1-2-and-4-done-step-3-holding).
+- **Result, DoD bullets 1 and 3 (met):** each of the three write-backs moved both SNI pins, and each was right to. `proxy-pin` read different `/kv-sni-proxy` and `/pg-sni-proxy` bytes every time, because each producer carried a non-test change to `lego/types/v1alpha1`: `936b61bab` (w6/m467), then w2's OIDC commits and `1ec5007be`, then `caf484f6e` and `d6366d33e`. The wait step waited for the new digest and passed in runs 44322231072 and 44395683569. Details: [t006 § Progress](done/t006.md#progress-2026-11-18-2335z-three-deploys-after-the-ship-steps-1-2-and-4-done-step-3-holding).
 - **The failed wait in run 44262293900 is not this milestone's step.** It found the pinned image at once. Then `rollout status` hit its unchanged 300 s limit, because platform node `jfc55` was under `DiskPressure` from 08:15Z to 08:19Z, and its kubelet evicted each new SNI pod until about 08:24Z. No fix is needed here. Node disk pressure is a separate, recurring cluster issue.
 - **Deviation found:** the shipping commit's own Argo sync rendered the bare `kv-sni-proxy:latest` and `pg-sni-proxy:latest` for about 3 minutes (06:53:22Z–06:56:11Z). `bex-operator` refreshed `main` before the root app updated the Application spec that adds the two pins, so node `m82n5` had both SNI pods in `ImagePullBackOff`. This cannot recur for these pins. ADR021 § 10 now records the two-step rule for any future placeholder.
 - **Still open:** DoD bullet 2. No deploy so far could hold, so the held clients are now in place in `bex-canary`. Pod `m470-t006-kv-client` holds `client_id=258295` to `red-dbpf5q5me2kc73f2l0og.kv.bex.co:6379`, and pod `m470-t006-pg-client` holds `pg_backend_pid=187` to the free probe `dpg-dbv37l06mruc7390oomg.db.bex.co:5432`. Both connected at about 23:27Z, over TLS through the edge LB.
@@ -77,10 +77,18 @@
 - **Affected:** t006, then t009. **Source:** verified evidence, no user decision. Three production pins came after `e5ace7826`: `826d32e42` (`7af50a28168d`, 03:48Z), `19faf35f3` (`4b2cebd0bd03`, 09:13Z) and `a91e9aeb3` (`dff52c596d13`, 11:30Z).
 - **Write-backs.**
   - `826d32e42` and `a91e9aeb3` moved both SNI pins, each for non-test `lego/types/v1alpha1` changes: `568b388ce` … `e1c7d08cc`, then `cf5f56884`, `a7cb94de2` and `4a08adc46`.
-  - `19faf35f3` logged `kept` for both. Both DaemonSets kept their generation, revision and pods across it: the six pods from 03:50Z ran until 11:34Z. This is the first deploy to keep both pins, and it holds the DaemonSet half of DoD bullet 2. Details: [t006 § Progress](t006.md#progress-2026-11-19-1300z-three-more-deploys-one-kept-both-pins-but-no-client-was-held-across-it).
+  - `19faf35f3` logged `kept` for both. Both DaemonSets kept their generation, revision and pods across it: the six pods from 03:50Z ran until 11:34Z. This is the first deploy to keep both pins, and it holds the DaemonSet half of DoD bullet 2. Details: [t006 § Progress](done/t006.md#progress-2026-11-19-1300z-three-more-deploys-one-kept-both-pins-but-no-client-was-held-across-it).
 - **The held clients did not reach it.** Both exited with `Error` at 23:40:18Z and 23:40:24Z on 2026-11-18, 13 minutes after connecting and before any of these deploys.
   - No SNI pod restarted at that time. A tenant node joining at 23:38:46Z is the only coincident event found; it is a correlation, not a cause.
   - Their pods were deleted at about 03:14Z. So DoD bullet 2's held-client half is still open. The dispatcher's rule applies: re-park, do not force.
 - **Re-armed at 12:57Z, now reconnecting.** The probes now reconnect after a closed connection and log each one as `conn=<n>`. So they outlive node churn and the 24 h stream cap, and the check reads the log, not the pod phase. They hold `client_id=280163` and `pg_backend_pid=23773` (via `bex-pg-sni-proxy-t64mc`).
 - **Gate (clears by itself, then worker).** The held-client deploy is the first production pin after `a91e9aeb3` whose write-back logs `kept` for both SNI pins. It is not the next one: `9fac4888a` and `05dbc4a35` changed `lego/types/v1alpha1` after `dff52c596d13`, and local builds show both binaries differ, so the first pin after 17:30Z on 2026-11-19 moves both. The worker then reads both probe logs across that kept deploy (t006 § Progress "Next"), deletes the probes, and closes t009.
 - **Ordering.** w6/m515 changes both SNI binaries, so it ships only after that record, or once m470 is in `done/` (m515 README § Sequencing constraint).
+
+## Unblock check — 2026-11-19 19:40Z (the gate cleared; criterion 2 met; closed)
+
+- **Affected:** t006, t009. **Source:** verified evidence, no user decision. Two production pins came after `a91e9aeb3`: `aefb144dc` (`c81d2d447bd8`, 18:04Z) and `99bbc4239` (`c624a4f217ff`, 18:51Z).
+- **Write-backs.** `aefb144dc` moved both SNI pins for `05dbc4a35`, `9fac4888a` and `fdf910308` (`lego/types/v1alpha1`), as predicted. `99bbc4239` logged `kept` for both: no commit between the two producers touches a linked package.
+- **Result, DoD bullet 2 (met).** Both reconnecting probes held one connection across `99bbc4239`: kv `conn=2` `client_id=288604` and pg `conn=2` `pg_backend_pid=32855` (through `bex-pg-sni-proxy-224r9`), from 18:10Z to 19:36Z, with no `FAIL` between the 18:51:25Z write-back and the 18:55:33Z wait. Both DaemonSets kept generation (kv 816, pg 899), revision (817, 900) and the six pods from 18:08:51–18:09:23Z. Details: [t006 § Progress](done/t006.md#progress-2026-11-19-1940z-a-kept-deploy-with-both-clients-held-across-it-criterion-2-met-probes-deleted).
+- **Cleanup.** Both client pods, the ConfigMap and both Secrets are deleted. `dpg-dbv37l06mruc7390oomg` answered `DELETE` 204, then `GET` 404.
+- **Closed.** Every DoD bullet holds (t009). w6/m515's ship precondition, this held-client record, now holds.

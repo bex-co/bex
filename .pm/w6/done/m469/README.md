@@ -65,5 +65,5 @@
 - **Bullet 2:** probe client `m469-t005-client` held `client_id=25` through `red-dbv30j86mruc7390onu0:6379` from 23:11:16Z to 10:56:10Z, across both deploys and a third manager roll at 06:40Z, answering `+PONG` every minute. The probe's proxy stayed on `62e7ab56…`, ReplicaSet `-6b44c79465`, while the manager moved to `7ce6ae1e…`, then `4407341b…`.
 - **Bullet 3:** t001, t002 and t007's tests (unchanged).
 - **Bullet 4:** on production, enabling internal authentication on the probe rolled its proxy once, onto the held `62e7ab56…` rather than the manager's `4407341b…`, and the held unauthenticated client read EOF within 26 s. The Valkey pod did not restart. The plan-change half is covered by envtest only (t005 notes why).
-- **Bullets 5 and 6:** w6/141, now [w6/m470](../../blocked/m470/README.md), and ADR021 § 10.
+- **Bullets 5 and 6:** w6/141, now [w6/m470](../m470/README.md), and ADR021 § 10.
 - **Probes removed:** the store (`DELETE` 204, then `GET` 404) and pod `m469-t005-client`. w6/m512 (draining on `SIGTERM`) may now ship: its precondition, this held-client deploy being recorded, holds.
