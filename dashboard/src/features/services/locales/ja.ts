@@ -4813,6 +4813,26 @@ const jaServices: Record<string, TranslationEntry> = {
     message: "デプロイ終了",
     description: "Service activity type: deploy finished",
   },
+  "services.eventsTypeZeroDowntimeRedeployStarted": {
+    message: "ゼロダウンタイム再デプロイ開始",
+    description:
+      "Service activity type: a Bex-initiated zero-downtime deploy started for a service",
+  },
+  "services.eventsTypeZeroDowntimeRedeployEnded": {
+    message: "ゼロダウンタイム再デプロイ終了",
+    description:
+      "Service activity type: a Bex-initiated zero-downtime deploy completed for a service",
+  },
+  "services.eventsRedeployTrigger.node_replacement": {
+    message: "ノードの入れ替え",
+    description:
+      "zero_downtime_redeploy_started trigger: drain-guard rolled the service off a node being replaced",
+  },
+  "services.eventsRedeployTrigger.node_consolidation": {
+    message: "オートスケーリングによるノード削除",
+    description:
+      "zero_downtime_redeploy_started trigger: drain-guard rolled the service off a node marked for Cluster Autoscaler scale-down",
+  },
   "services.eventsTypePipelineMinutesExhausted": {
     message: "パイプライン時間を使い切りました",
     description:

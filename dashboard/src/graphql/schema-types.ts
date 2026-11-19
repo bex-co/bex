@@ -6045,6 +6045,7 @@ export type ServiceEventDetails = {
   projectTo: Maybe<Scalars['String']['output']>;
   reason: Maybe<BuildDeployEndReason>;
   reasonCode: Maybe<Scalars['String']['output']>;
+  redeployTrigger: Maybe<Scalars['String']['output']>;
   restartReason: Maybe<Scalars['String']['output']>;
   resumedByUser: Maybe<EventUser>;
   sizeGB: Maybe<Scalars['Int']['output']>;

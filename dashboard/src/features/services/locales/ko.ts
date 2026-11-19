@@ -4780,6 +4780,26 @@ const koServices: Record<string, TranslationEntry> = {
     message: "배포 종료됨",
     description: "Service activity type: deploy finished",
   },
+  "services.eventsTypeZeroDowntimeRedeployStarted": {
+    message: "무중단 재배포 시작됨",
+    description:
+      "Service activity type: a Bex-initiated zero-downtime deploy started for a service",
+  },
+  "services.eventsTypeZeroDowntimeRedeployEnded": {
+    message: "무중단 재배포 종료됨",
+    description:
+      "Service activity type: a Bex-initiated zero-downtime deploy completed for a service",
+  },
+  "services.eventsRedeployTrigger.node_replacement": {
+    message: "노드 교체됨",
+    description:
+      "zero_downtime_redeploy_started trigger: drain-guard rolled the service off a node being replaced",
+  },
+  "services.eventsRedeployTrigger.node_consolidation": {
+    message: "오토스케일링으로 노드 제거됨",
+    description:
+      "zero_downtime_redeploy_started trigger: drain-guard rolled the service off a node marked for Cluster Autoscaler scale-down",
+  },
   "services.eventsTypePipelineMinutesExhausted": {
     message: "파이프라인 시간 소진",
     description:

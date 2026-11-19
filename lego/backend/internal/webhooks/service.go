@@ -39,8 +39,8 @@ limitations under the License.
 // Render's webhook event names (verified live, render.com/docs/webhooks
 // 2026-07-18), scoped to transitions bex can record truthfully: deploy rows,
 // audited API intent, and typed observed/Git facts. Unsupported provider
-// maintenance, artifact, zero-downtime-redeploy, workflow and preview events
-// have no durable bex source, so they are omitted, not faked.
+// maintenance, artifact, workflow and preview events have no durable bex
+// source, so they are omitted, not faked.
 //
 // # Delivery semantics (w3/m11/t003, matching Render's documented behavior)
 //
@@ -169,6 +169,10 @@ const (
 	TypeCommitIgnored         = "commit_ignored"
 	TypeAutoscalingStarted    = "autoscaling_started"
 	TypeAutoscalingEnded      = "autoscaling_ended"
+	// Platform-initiated zero-downtime handovers triggered by drain-guard before
+	// a node roll or Cluster Autoscaler scale-down (w4/m504).
+	TypeZeroDowntimeRedeployStarted = "zero_downtime_redeploy_started"
+	TypeZeroDowntimeRedeployEnded   = "zero_downtime_redeploy_ended"
 	// Edge caching (w9/m345): apps.SetCacheProfile turning the cache on or off,
 	// a plan change to or from Free doing so (apps.SetPlanEdgeCache, w9/088),
 	// and apps.PurgeCache. Render's dashboard picker leaves the three out; its
@@ -245,27 +249,29 @@ func AcceptedEventTypes() []string {
 const autoDeployVerb = core.AuditVerbSetAutoDeploy
 
 var factEvents = map[string]string{
-	string(store.EventFactImagePullFailed):          TypeImagePullFailed,
-	string(store.EventFactServiceSuspended):         TypeServiceSuspended,
-	string(store.EventFactServiceResumed):           TypeServiceResumed,
-	string(store.EventFactServiceHibernated):        TypeServiceHibernated,
-	string(store.EventFactServiceWoken):             TypeServiceWoken,
-	string(store.EventFactServerFailed):             TypeServerFailed,
-	string(store.EventFactServerHardwareFailure):    TypeServerHardwareFailure,
-	string(store.EventFactServerAvailable):          TypeServerAvailable,
-	string(store.EventFactBranchChanged):            TypeBranchChanged,
-	string(store.EventFactCommitIgnored):            TypeCommitIgnored,
-	string(store.EventFactAutoscalingStarted):       TypeAutoscalingStarted,
-	string(store.EventFactAutoscalingEnded):         TypeAutoscalingEnded,
-	string(store.EventFactBranchDeleted):            TypeBranchDeleted,
-	string(store.EventFactBuildStarted):             TypeBuildStarted,
-	string(store.EventFactBuildEnded):               TypeBuildEnded,
-	string(store.EventFactPreDeployStarted):         TypePreDeployStarted,
-	string(store.EventFactPreDeployEnded):           TypePreDeployEnded,
-	string(store.EventFactJobRunEnded):              TypeJobRunEnded,
-	string(store.EventFactCronRunStarted):           TypeCronJobRunStarted,
-	string(store.EventFactCronRunEnded):             TypeCronJobRunEnded,
-	string(store.EventFactPipelineMinutesExhausted): TypePipelineMinutesExhausted,
+	string(store.EventFactImagePullFailed):             TypeImagePullFailed,
+	string(store.EventFactServiceSuspended):            TypeServiceSuspended,
+	string(store.EventFactServiceResumed):              TypeServiceResumed,
+	string(store.EventFactServiceHibernated):           TypeServiceHibernated,
+	string(store.EventFactServiceWoken):                TypeServiceWoken,
+	string(store.EventFactServerFailed):                TypeServerFailed,
+	string(store.EventFactServerHardwareFailure):       TypeServerHardwareFailure,
+	string(store.EventFactServerAvailable):             TypeServerAvailable,
+	string(store.EventFactBranchChanged):               TypeBranchChanged,
+	string(store.EventFactCommitIgnored):               TypeCommitIgnored,
+	string(store.EventFactAutoscalingStarted):          TypeAutoscalingStarted,
+	string(store.EventFactAutoscalingEnded):            TypeAutoscalingEnded,
+	string(store.EventFactZeroDowntimeRedeployStarted): TypeZeroDowntimeRedeployStarted,
+	string(store.EventFactZeroDowntimeRedeployEnded):   TypeZeroDowntimeRedeployEnded,
+	string(store.EventFactBranchDeleted):               TypeBranchDeleted,
+	string(store.EventFactBuildStarted):                TypeBuildStarted,
+	string(store.EventFactBuildEnded):                  TypeBuildEnded,
+	string(store.EventFactPreDeployStarted):            TypePreDeployStarted,
+	string(store.EventFactPreDeployEnded):              TypePreDeployEnded,
+	string(store.EventFactJobRunEnded):                 TypeJobRunEnded,
+	string(store.EventFactCronRunStarted):              TypeCronJobRunStarted,
+	string(store.EventFactCronRunEnded):                TypeCronJobRunEnded,
+	string(store.EventFactPipelineMinutesExhausted):    TypePipelineMinutesExhausted,
 
 	// Managed-datastore facts (w3/m82). They live in datastore_event_facts
 	// rather than service_event_facts, but the composed feed the dispatcher

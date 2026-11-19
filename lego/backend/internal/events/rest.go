@@ -102,8 +102,9 @@ type renderDetails struct {
 	// deploy, bex's build being its deploy's own.
 	BuildID string `json:"buildId,omitempty"`
 	// Trigger is a deploy's *renderTrigger (deploy_started,
-	// pipeline_minutes_exhausted) or an edge-cache event's
-	// *renderEdgeCacheTrigger: Render's two trigger objects share the key.
+	// pipeline_minutes_exhausted), an edge-cache event's
+	// *renderEdgeCacheTrigger, or zero_downtime_redeploy_started's trigger
+	// string: Render's event members share the key.
 	Trigger any `json:"trigger,omitempty"`
 	// Deploy enrichment for dashboard (w1/m47)
 	Image         string `json:"image,omitempty"`
@@ -442,6 +443,10 @@ func toRenderEvent(e Event) renderEvent {
 	case TypeAutoscalingStarted, TypeAutoscalingEnded:
 		d.FromInstances = e.Details.FromCount
 		d.ToInstances = e.Details.ToCount
+	case TypeZeroDowntimeRedeployStarted:
+		if e.Details.RedeployTrigger != "" {
+			d.Trigger = e.Details.RedeployTrigger
+		}
 	case TypeCronJobRunStarted:
 		d.CronJobRunID = e.Details.CronJobRunID
 	case TypeCronJobRunEnded:

@@ -717,6 +717,43 @@ func TestCronWebhookEventsComeFromObservedFactsNotIntentVerbs(t *testing.T) {
 	}
 }
 
+func TestZeroDowntimeRedeployWebhookSubscriptionAndProjection(t *testing.T) {
+	ctx := context.Background()
+	svc, _ := newTestService()
+	ep, err := svc.Create(ctx, CreateRequest{
+		Name:       "zdr",
+		URL:        "https://example.com/hook",
+		EventTypes: []string{TypeZeroDowntimeRedeployStarted, TypeZeroDowntimeRedeployEnded},
+		Enabled:    true,
+	})
+	if err != nil {
+		t.Fatalf("Create webhook with zero_downtime_redeploy_* filter: %v", err)
+	}
+	if !slices.Contains(ep.EventTypes, TypeZeroDowntimeRedeployStarted) ||
+		!slices.Contains(ep.EventTypes, TypeZeroDowntimeRedeployEnded) {
+		t.Fatalf("saved eventTypes = %v, want both zero_downtime_redeploy_* types", ep.EventTypes)
+	}
+	for factType, want := range map[store.ServiceEventFactType]string{
+		store.EventFactZeroDowntimeRedeployStarted: TypeZeroDowntimeRedeployStarted,
+		store.EventFactZeroDowntimeRedeployEnded:   TypeZeroDowntimeRedeployEnded,
+	} {
+		row := store.WebhookEventRow{
+			Key:         "zdr:srv-1:node-a-2:" + string(factType),
+			Source:      store.EventSourceFact,
+			FactType:    string(factType),
+			ServiceID:   "srv-1",
+			ServiceName: "web",
+		}
+		gotType, data, ok := project(row)
+		if !ok || gotType != want {
+			t.Errorf("project(%s) = (%q, %v), want %q", factType, gotType, ok, want)
+		}
+		if data.ServiceID != "srv-1" || data.ServiceName != "web" || !strings.HasPrefix(data.ID, "evt-") {
+			t.Errorf("project(%s) data = %+v, want evt- id + srv-1/web", factType, data)
+		}
+	}
+}
+
 // TestObservedDatastoreFactsProjectToTheAdvertisedVocabulary is w3/m82 t004's
 // dispatch half: the datastore facts the reconciler records reach the outbound
 // feed under EventSourceFact just like an App's, so each must be subscribable

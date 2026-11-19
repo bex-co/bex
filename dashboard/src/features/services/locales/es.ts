@@ -4862,6 +4862,26 @@ const esServices: Record<string, TranslationEntry> = {
     message: "Despliegue finalizado",
     description: "Service activity type: deploy finished",
   },
+  "services.eventsTypeZeroDowntimeRedeployStarted": {
+    message: "Redespliegue sin interrupciones iniciado",
+    description:
+      "Service activity type: a Bex-initiated zero-downtime deploy started for a service",
+  },
+  "services.eventsTypeZeroDowntimeRedeployEnded": {
+    message: "Redespliegue sin interrupciones finalizado",
+    description:
+      "Service activity type: a Bex-initiated zero-downtime deploy completed for a service",
+  },
+  "services.eventsRedeployTrigger.node_replacement": {
+    message: "Nodo reemplazado",
+    description:
+      "zero_downtime_redeploy_started trigger: drain-guard rolled the service off a node being replaced",
+  },
+  "services.eventsRedeployTrigger.node_consolidation": {
+    message: "Nodo eliminado por autoescalado",
+    description:
+      "zero_downtime_redeploy_started trigger: drain-guard rolled the service off a node marked for Cluster Autoscaler scale-down",
+  },
   "services.eventsTypePipelineMinutesExhausted": {
     message: "Minutos de pipeline agotados",
     description:

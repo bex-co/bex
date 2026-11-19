@@ -552,6 +552,16 @@ const koWebhooks: Record<string, TranslationEntry> = {
     message: "배포 종료됨",
     description: "Event label — deploy_ended",
   },
+  "webhooks.event.zero_downtime_redeploy_started": {
+    message: "무중단 재배포 시작됨",
+    description:
+      "Event label — zero_downtime_redeploy_started: a Bex-initiated zero-downtime deploy started for a service",
+  },
+  "webhooks.event.zero_downtime_redeploy_ended": {
+    message: "무중단 재배포 종료됨",
+    description:
+      "Event label — zero_downtime_redeploy_ended: a Bex-initiated zero-downtime deploy completed for a service",
+  },
   "webhooks.event.image_pull_failed": {
     message: "이미지 가져오기 실패",
     description: "Event label — image_pull_failed",

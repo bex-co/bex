@@ -623,6 +623,7 @@ func (r *Reconciler) recordObservations(ctx context.Context, d DesiredApp, cur *
 		log.Printf("controlplane: record observed service state %s: %v", d.ID, err)
 	}
 	r.recordAutoscalingFacts(ctx, d.ID, cur.Status.Autoscaling)
+	r.recordPlatformRedeployFacts(ctx, d.ID, cur.Status.PlatformRedeploy)
 	r.recordCronRunFacts(ctx, d.ID, cur.Status.Runs)
 }
 
@@ -2634,6 +2635,42 @@ func (r *Reconciler) recordAutoscalingFacts(ctx context.Context, appID string, t
 	for _, fact := range facts {
 		if _, err := r.Store.InsertServiceEventFact(ctx, fact); err != nil {
 			log.Printf("controlplane: record autoscaling fact %s: %v", fact.SourceKey, err)
+		}
+	}
+}
+
+func (r *Reconciler) recordPlatformRedeployFacts(ctx context.Context, appID string, transition *appv1alpha1.PlatformRedeployStatus) {
+	if transition == nil || transition.TransitionID == "" {
+		return
+	}
+	startedAt, err := time.Parse(time.RFC3339Nano, transition.StartedAt)
+	if err != nil {
+		return
+	}
+	trigger := transition.Trigger
+	if trigger != EventReasonNodeReplacement && trigger != EventReasonNodeConsolidation {
+		trigger = EventReasonNodeReplacement
+	}
+	facts := []ServiceEventFact{{
+		SourceKey:  fmt.Sprintf("zdr:%s:%s:started", appID, transition.TransitionID),
+		AppID:      appID,
+		Type:       EventFactZeroDowntimeRedeployStarted,
+		At:         startedAt,
+		ReasonCode: trigger,
+	}}
+	if transition.State == appv1alpha1.PlatformRedeployStateEnded {
+		if finishedAt, parseErr := time.Parse(time.RFC3339Nano, transition.FinishedAt); parseErr == nil {
+			facts = append(facts, ServiceEventFact{
+				SourceKey: fmt.Sprintf("zdr:%s:%s:ended", appID, transition.TransitionID),
+				AppID:     appID,
+				Type:      EventFactZeroDowntimeRedeployEnded,
+				At:        finishedAt,
+			})
+		}
+	}
+	for _, fact := range facts {
+		if _, err := r.Store.InsertServiceEventFact(ctx, fact); err != nil {
+			log.Printf("controlplane: record platform redeploy fact %s: %v", fact.SourceKey, err)
 		}
 	}
 }

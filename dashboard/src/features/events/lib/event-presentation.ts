@@ -20,13 +20,15 @@ export function eventIconClass(
   }
   if (
     factStatus === "succeeded" ||
-    (type === "deploy_ended" && status === "live")
+    (type === "deploy_ended" && status === "live") ||
+    type === "zero_downtime_redeploy_ended"
   ) {
     // The Live badge's own green, so a success reads in one colour.
     return "bg-primary/10 text-primary";
   }
   if (
     type === "deploy_started" ||
+    type === "zero_downtime_redeploy_started" ||
     type === "build_started" ||
     type === "pre_deploy_started"
   ) {

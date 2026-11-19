@@ -1807,7 +1807,47 @@ type RolloutFailureStatus struct {
 const (
 	AutoscalingTransitionStarted = "Started"
 	AutoscalingTransitionEnded   = "Ended"
+
+	PlatformRedeployStateStarted = "Started"
+	PlatformRedeployStateEnded   = "Ended"
+
+	PlatformRedeployTriggerNodeReplacement   = "node_replacement"
+	PlatformRedeployTriggerNodeConsolidation = "node_consolidation"
 )
+
+// PlatformRedeployStatus is the typed, mechanism-only handoff for one
+// drain-guard zero-downtime handover off a node about to be replaced or
+// consolidated. The backend observes it through the App status subresource and
+// persists zero_downtime_redeploy_started/_ended facts; the operator remains
+// database-free.
+type PlatformRedeployStatus struct {
+	// TransitionID is stable for the lifetime of this handover, keyed on the
+	// evacuated node and the Deployment generation that carried the change.
+	// +required
+	TransitionID string `json:"transitionId"`
+	// Node is the drained node's name (the drain-guard.bex.co/evacuated-from
+	// pod-template annotation value).
+	// +required
+	Node string `json:"node"`
+	// Generation is the Deployment generation that carried this evacuation
+	// annotation value.
+	// +required
+	Generation int64 `json:"generation"`
+	// Trigger classifies why the node was vacated: node_replacement (CAPI
+	// Machine deletion) or node_consolidation (Cluster Autoscaler scale-down).
+	// +kubebuilder:validation:Enum=node_replacement;node_consolidation
+	// +required
+	Trigger string `json:"trigger"`
+	// State is Started while the replacement rolls out and Ended once the
+	// rollout of Generation completes or the old pod is gone after hold expiry.
+	// +kubebuilder:validation:Enum=Started;Ended
+	// +required
+	State string `json:"state"`
+	// +required
+	StartedAt string `json:"startedAt"`
+	// +optional
+	FinishedAt string `json:"finishedAt,omitempty"`
+}
 
 // AutoscalingStatus is the typed, mechanism-only handoff for one autoscaler
 // replica transition. The backend observes it through the App status
@@ -1979,6 +2019,12 @@ type AppStatus struct {
 	// Scale changes never populate it.
 	// +optional
 	Autoscaling *AutoscalingStatus `json:"autoscaling,omitempty"`
+
+	// PlatformRedeploy is the latest drain-guard handover transition, mirrored
+	// by the backend into zero_downtime_redeploy_started/_ended event facts
+	// (w4/m504).
+	// +optional
+	PlatformRedeploy *PlatformRedeployStatus `json:"platformRedeploy,omitempty"`
 
 	// Disk is the observed state of the attached persistent disk; nil when
 	// spec.disk is unset. See the DiskReady condition for why a size is still

@@ -564,6 +564,16 @@ const ptWebhooks: Record<string, TranslationEntry> = {
     message: "Deploy concluído",
     description: "Event label — deploy_ended",
   },
+  "webhooks.event.zero_downtime_redeploy_started": {
+    message: "Reimplantação sem tempo de inatividade iniciada",
+    description:
+      "Event label — zero_downtime_redeploy_started: a Bex-initiated zero-downtime deploy started for a service",
+  },
+  "webhooks.event.zero_downtime_redeploy_ended": {
+    message: "Reimplantação sem tempo de inatividade concluída",
+    description:
+      "Event label — zero_downtime_redeploy_ended: a Bex-initiated zero-downtime deploy completed for a service",
+  },
   "webhooks.event.image_pull_failed": {
     message: "Falha ao baixar a imagem",
     description: "Event label — image_pull_failed",

@@ -566,6 +566,16 @@ const esWebhooks: Record<string, TranslationEntry> = {
     message: "Despliegue finalizado",
     description: "Event label — deploy_ended",
   },
+  "webhooks.event.zero_downtime_redeploy_started": {
+    message: "Redespliegue sin interrupciones iniciado",
+    description:
+      "Event label — zero_downtime_redeploy_started: a Bex-initiated zero-downtime deploy started for a service",
+  },
+  "webhooks.event.zero_downtime_redeploy_ended": {
+    message: "Redespliegue sin interrupciones finalizado",
+    description:
+      "Event label — zero_downtime_redeploy_ended: a Bex-initiated zero-downtime deploy completed for a service",
+  },
   "webhooks.event.image_pull_failed": {
     message: "Falló la descarga de la imagen",
     description: "Event label — image_pull_failed",

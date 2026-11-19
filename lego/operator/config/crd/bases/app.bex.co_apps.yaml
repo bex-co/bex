@@ -1704,6 +1704,56 @@ spec:
                 - Canceled
                 - Failed
                 type: string
+              platformRedeploy:
+                description: |-
+                  PlatformRedeploy is the latest drain-guard handover transition, mirrored
+                  by the backend into zero_downtime_redeploy_started/_ended event facts
+                  (w4/m504).
+                properties:
+                  finishedAt:
+                    type: string
+                  generation:
+                    description: |-
+                      Generation is the Deployment generation that carried this evacuation
+                      annotation value.
+                    format: int64
+                    type: integer
+                  node:
+                    description: |-
+                      Node is the drained node's name (the drain-guard.bex.co/evacuated-from
+                      pod-template annotation value).
+                    type: string
+                  startedAt:
+                    type: string
+                  state:
+                    description: |-
+                      State is Started while the replacement rolls out and Ended once the
+                      rollout of Generation completes or the old pod is gone after hold expiry.
+                    enum:
+                    - Started
+                    - Ended
+                    type: string
+                  transitionId:
+                    description: |-
+                      TransitionID is stable for the lifetime of this handover, keyed on the
+                      evacuated node and the Deployment generation that carried the change.
+                    type: string
+                  trigger:
+                    description: |-
+                      Trigger classifies why the node was vacated: node_replacement (CAPI
+                      Machine deletion) or node_consolidation (Cluster Autoscaler scale-down).
+                    enum:
+                    - node_replacement
+                    - node_consolidation
+                    type: string
+                required:
+                - generation
+                - node
+                - startedAt
+                - state
+                - transitionId
+                - trigger
+                type: object
               preDeploy:
                 description: |-
                   PreDeploy is the outcome of the pre-deploy command for the revision the

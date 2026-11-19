@@ -7,6 +7,7 @@
 - The deleting Machine reports that it is waiting for a pre-drain hook (`kubectl -n bex-capi get machine <m> -o yaml`, `Deleting` condition). The hook is `pre-drain.delete.hook.machine.cluster.x-k8s.io/bex-drain-guard: bex-drain-guard`.
 - The node is cordoned before CAPI drains it.
 - Each handed-over App's Deployment gains `drain-guard.bex.co/evacuated-from: <node>` on its pod template. The annotation stays there, like `kubectl rollout restart`'s, and is harmless.
+- The App reconciler records the handover on `App.status.platformRedeploy` (`Started` → `Ended`), and bex-api records one `zero_downtime_redeploy_started` (`trigger: node_replacement` for a Machine roll, `node_consolidation` for a CA scale-down) and one `zero_downtime_redeploy_ended` on the service's Events feed, REST/GraphQL/MCP and subscribed webhooks (`w4/m504`). Disk-attached (`Recreate`) services record neither.
 - drain-guard logs in this order: `cordoned the node`, `starting a replacement off the node`, then `releasing the pre-drain hook: <reason>`.
 
 ```bash

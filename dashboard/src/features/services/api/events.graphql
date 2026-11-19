@@ -153,6 +153,8 @@ query ServiceEvents(
       # rollback or manual_deploy.
       autoDeployDisabledReason
       domain
+      # zero_downtime_redeploy_started (w4/m504): node_replacement | node_consolidation.
+      redeployTrigger
       trigger {
         firstBuild
         envUpdated

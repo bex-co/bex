@@ -75,6 +75,8 @@ func TestRenderEventDetailsMatchTheirMember(t *testing.T) {
 		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeBranchDeleted, BranchFrom: "feature"}, missing: []string{"newBranch"}},
 		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeAutoscalingStarted, FromCount: &two, ToCount: &three}},
 		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeAutoscalingEnded, FromCount: &three, ToCount: &two}},
+		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeZeroDowntimeRedeployStarted, ReasonCode: store.EventReasonNodeReplacement}},
+		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeZeroDowntimeRedeployEnded}},
 		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: "apps.Suspend", Caller: "usr-1"}, missing: []string{"suspendedByUser/email"}},
 		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: "apps.Resume", Caller: "usr-1"}, missing: []string{"resumedByUser/email"}},
 		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: "apps.Restart", Caller: "usr-1"}},

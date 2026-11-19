@@ -563,6 +563,16 @@ const deWebhooks: Record<string, TranslationEntry> = {
     message: "Deployment beendet",
     description: "Event label — deploy_ended",
   },
+  "webhooks.event.zero_downtime_redeploy_started": {
+    message: "Unterbrechungsfreies Redeployment gestartet",
+    description:
+      "Event label — zero_downtime_redeploy_started: a Bex-initiated zero-downtime deploy started for a service",
+  },
+  "webhooks.event.zero_downtime_redeploy_ended": {
+    message: "Unterbrechungsfreies Redeployment beendet",
+    description:
+      "Event label — zero_downtime_redeploy_ended: a Bex-initiated zero-downtime deploy completed for a service",
+  },
   "webhooks.event.image_pull_failed": {
     message: "Image-Pull fehlgeschlagen",
     description: "Event label — image_pull_failed",

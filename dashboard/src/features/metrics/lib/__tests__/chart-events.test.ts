@@ -134,6 +134,34 @@ describe("catalogued event types (w21/017)", () => {
     expect(marker.labelKey).toBe("metrics.eventServerRestarted");
     expect(marker.typeLabelKey).toBeUndefined();
   });
+
+  it("marks zero_downtime_redeploy_started as start and _ended as success with catalog labels", () => {
+    const markers = toChartEventMarkers(
+      [
+        event({
+          id: "evt-1",
+          type: "zero_downtime_redeploy_started",
+          timestamp: "2026-07-17T10:15:00Z",
+        }),
+        event({
+          id: "evt-2",
+          type: "zero_downtime_redeploy_ended",
+          timestamp: "2026-07-17T10:16:00Z",
+        }),
+      ],
+      WINDOW_START,
+      WINDOW_END,
+    );
+    expect(markers).toHaveLength(2);
+    expect(markers[0].kind).toBe("start");
+    expect(markers[0].typeLabelKey).toBe(
+      "services.eventsTypeZeroDowntimeRedeployStarted",
+    );
+    expect(markers[1].kind).toBe("success");
+    expect(markers[1].typeLabelKey).toBe(
+      "services.eventsTypeZeroDowntimeRedeployEnded",
+    );
+  });
 });
 
 describe("clusterMarkers", () => {

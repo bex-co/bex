@@ -73,6 +73,7 @@ import {
   autoDeployDisabledReasonKey,
   eventReasonKey,
   memoryLimitLabel,
+  redeployTriggerKey,
 } from "@/features/services/lib/event-reason";
 import { DeployFailureReason } from "@/features/deploys/components/deploy-failure-reason";
 import { toDeployReasonTemplate } from "@/features/deploys/lib/deploy-reason";
@@ -517,6 +518,10 @@ function EventRow({
     type === "auto_deploy_disabled"
       ? autoDeployDisabledReasonKey(details?.autoDeployDisabledReason)
       : null;
+  const redeployTrigger =
+    type === "zero_downtime_redeploy_started"
+      ? redeployTriggerKey(details?.redeployTrigger)
+      : null;
   // service_moved placement pair (w6/m134). A dimension renders only when it
   // actually changed; an absent side reads as the placement-none placeholder.
   const projectFrom = details?.projectFrom ?? null;
@@ -684,6 +689,9 @@ function EventRow({
         ) : null}
         {autoDeployReason ? (
           <p>{t(autoDeployReason as Parameters<typeof t>[0])}</p>
+        ) : null}
+        {redeployTrigger ? (
+          <p>{t(redeployTrigger as Parameters<typeof t>[0])}</p>
         ) : null}
         {branchFrom && branchTo ? (
           <p>

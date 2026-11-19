@@ -70,32 +70,38 @@ const (
 	// refused deploy, recorded by the reconciler from the same Build condition
 	// that closes the deploy build_failed.
 	EventFactPipelineMinutesExhausted ServiceEventFactType = "pipeline_minutes_exhausted"
+	// Platform-initiated zero-downtime handovers triggered by drain-guard before
+	// a node roll or Cluster Autoscaler scale-down (w4/m504).
+	EventFactZeroDowntimeRedeployStarted ServiceEventFactType = "zero_downtime_redeploy_started"
+	EventFactZeroDowntimeRedeployEnded   ServiceEventFactType = "zero_downtime_redeploy_ended"
 )
 
 var serviceEventFactTypes = map[ServiceEventFactType]bool{
-	EventFactImagePullFailed:           true,
-	EventFactServiceSuspended:          true,
-	EventFactServiceResumed:            true,
-	EventFactServiceHibernated:         true,
-	EventFactServiceWoken:              true,
-	EventFactServerFailed:              true,
-	EventFactServerHardwareFailure:     true,
-	EventFactServerAvailable:           true,
-	EventFactBranchChanged:             true,
-	EventFactBranchDeleted:             true,
-	EventFactCommitIgnored:             true,
-	EventFactAutoscalingStarted:        true,
-	EventFactAutoscalingEnded:          true,
-	EventFactBuildStarted:              true,
-	EventFactBuildEnded:                true,
-	EventFactPreDeployStarted:          true,
-	EventFactPreDeployEnded:            true,
-	EventFactJobRunEnded:               true,
-	EventFactCronRunStarted:            true,
-	EventFactCronRunEnded:              true,
-	EventFactServiceDiskUsageHigh:      true,
-	EventFactServiceDiskUsageRecovered: true,
-	EventFactPipelineMinutesExhausted:  true,
+	EventFactImagePullFailed:             true,
+	EventFactServiceSuspended:            true,
+	EventFactServiceResumed:              true,
+	EventFactServiceHibernated:           true,
+	EventFactServiceWoken:                true,
+	EventFactServerFailed:                true,
+	EventFactServerHardwareFailure:       true,
+	EventFactServerAvailable:             true,
+	EventFactBranchChanged:               true,
+	EventFactBranchDeleted:               true,
+	EventFactCommitIgnored:               true,
+	EventFactAutoscalingStarted:          true,
+	EventFactAutoscalingEnded:            true,
+	EventFactBuildStarted:                true,
+	EventFactBuildEnded:                  true,
+	EventFactPreDeployStarted:            true,
+	EventFactPreDeployEnded:              true,
+	EventFactJobRunEnded:                 true,
+	EventFactCronRunStarted:              true,
+	EventFactCronRunEnded:                true,
+	EventFactServiceDiskUsageHigh:        true,
+	EventFactServiceDiskUsageRecovered:   true,
+	EventFactPipelineMinutesExhausted:    true,
+	EventFactZeroDowntimeRedeployStarted: true,
+	EventFactZeroDowntimeRedeployEnded:   true,
 }
 
 // Closed lifecycle-step outcomes for a *_ended fact's Status column — the same
@@ -134,21 +140,27 @@ const (
 	// earlyExit reason of Render's "Server Failed" event (w8/m158). A crash
 	// and a memory kill of a running service use non_zero_exit and oom_killed.
 	EventReasonEarlyExit = "early_exit"
+	// Why drain-guard handed an App off a node (w4/m504), mapped to Render's
+	// zero_downtime_redeploy_started details.trigger.
+	EventReasonNodeReplacement   = appv1alpha1.PlatformRedeployTriggerNodeReplacement
+	EventReasonNodeConsolidation = appv1alpha1.PlatformRedeployTriggerNodeConsolidation
 )
 
 var serviceEventReasonCodes = map[string]bool{
-	"":                          true,
-	EventReasonImagePullBackoff: true,
-	EventReasonReadinessFailed:  true,
-	EventReasonRootDirectory:    true,
-	EventReasonBuildFilter:      true,
-	EventReasonSkipPhrase:       true,
-	EventReasonSuperseded:       true,
-	EventReasonNonZeroExit:      true,
-	EventReasonOOMKilled:        true,
-	EventReasonEvicted:          true,
-	EventReasonTimedOut:         true,
-	EventReasonEarlyExit:        true,
+	"":                           true,
+	EventReasonImagePullBackoff:  true,
+	EventReasonReadinessFailed:   true,
+	EventReasonRootDirectory:     true,
+	EventReasonBuildFilter:       true,
+	EventReasonSkipPhrase:        true,
+	EventReasonSuperseded:        true,
+	EventReasonNonZeroExit:       true,
+	EventReasonOOMKilled:         true,
+	EventReasonEvicted:           true,
+	EventReasonTimedOut:          true,
+	EventReasonEarlyExit:         true,
+	EventReasonNodeReplacement:   true,
+	EventReasonNodeConsolidation: true,
 }
 
 // ServiceEventFact is a closed, non-secret event record. SourceKey is a stable

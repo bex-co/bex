@@ -4673,6 +4673,26 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "部署已完成",
     description: "Service activity type: deploy finished",
   },
+  "services.eventsTypeZeroDowntimeRedeployStarted": {
+    message: "零停机重新部署已开始",
+    description:
+      "Service activity type: a Bex-initiated zero-downtime deploy started for a service",
+  },
+  "services.eventsTypeZeroDowntimeRedeployEnded": {
+    message: "零停机重新部署已完成",
+    description:
+      "Service activity type: a Bex-initiated zero-downtime deploy completed for a service",
+  },
+  "services.eventsRedeployTrigger.node_replacement": {
+    message: "节点已替换",
+    description:
+      "zero_downtime_redeploy_started trigger: drain-guard rolled the service off a node being replaced",
+  },
+  "services.eventsRedeployTrigger.node_consolidation": {
+    message: "自动扩缩容移除节点",
+    description:
+      "zero_downtime_redeploy_started trigger: drain-guard rolled the service off a node marked for Cluster Autoscaler scale-down",
+  },
   "services.eventsTypePipelineMinutesExhausted": {
     message: "流水线分钟数已用尽",
     description:

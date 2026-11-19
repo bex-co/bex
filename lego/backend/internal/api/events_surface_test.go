@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -833,5 +834,109 @@ func TestServiceMovedEventCarriesPlacementDetails(t *testing.T) {
 			m.Event.Details["environmentTo"] != r.Event.Details["environmentTo"] {
 			t.Errorf("event %d diverges REST vs MCP: %+v vs %+v", i, r.Event, m.Event)
 		}
+	}
+}
+
+// TestZeroDowntimeRedeploySurfaceParity pins w4/m504: both drain-guard handover
+// types read identically across REST list (including type= filter), REST
+// retrieve, GraphQL serviceEvents/serviceEvent (details.redeployTrigger) and
+// MCP list_events/get_service_event.
+func TestZeroDowntimeRedeploySurfaceParity(t *testing.T) {
+	at := time.Date(2026, 11, 19, 1, 0, 0, 0, time.UTC)
+	startedRow := store.ServiceEventRow{
+		Key: "zdr:web:node-a-2:started", At: at.Add(-time.Minute),
+		Source: store.EventSourceFact, FactType: string(store.EventFactZeroDowntimeRedeployStarted),
+		ReasonCode: store.EventReasonNodeReplacement,
+	}
+	endedRow := store.ServiceEventRow{
+		Key: "zdr:web:node-a-2:ended", At: at,
+		Source: store.EventSourceFact, FactType: string(store.EventFactZeroDowntimeRedeployEnded),
+	}
+	fake := &fakeEventStore{rows: []store.ServiceEventRow{endedRow, startedRow}}
+	base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true}}
+	h, srv := serverWith(t, base, Deps{EventStore: fake})
+
+	// REST list with type= filter (validates Render's enum accepts both).
+	res := do(t, h, "GET",
+		"/v1/services/web/events?type=zero_downtime_redeploy_started,zero_downtime_redeploy_ended&startTime=2026-11-01T00:00:00Z",
+		testToken, "")
+	if res.Code != http.StatusOK {
+		t.Fatalf("REST list: %d %s", res.Code, res.Body.String())
+	}
+	var rest []restEvent
+	if err := json.Unmarshal(res.Body.Bytes(), &rest); err != nil {
+		t.Fatalf("decode REST list: %v", err)
+	}
+	if len(rest) != 2 {
+		t.Fatalf("REST list = %d events, want 2", len(rest))
+	}
+	if rest[0].Event.Type != events.TypeZeroDowntimeRedeployEnded || len(rest[0].Event.Details) != 0 {
+		t.Errorf("REST ended = %+v, want type=%s details={}", rest[0].Event, events.TypeZeroDowntimeRedeployEnded)
+	}
+	if rest[1].Event.Type != events.TypeZeroDowntimeRedeployStarted ||
+		rest[1].Event.Details["trigger"] != store.EventReasonNodeReplacement ||
+		len(rest[1].Event.Details) != 1 {
+		t.Errorf("REST started = %+v, want type=%s details={trigger:node_replacement}", rest[1].Event, events.TypeZeroDowntimeRedeployStarted)
+	}
+
+	// REST single retrieve by ID.
+	for _, r := range rest {
+		got := do(t, h, "GET", "/v1/events/"+r.Event.ID, testToken, "")
+		if got.Code != http.StatusOK {
+			t.Fatalf("REST get %s: %d %s", r.Event.ID, got.Code, got.Body.String())
+		}
+		var one wireEvent
+		if err := json.Unmarshal(got.Body.Bytes(), &one); err != nil {
+			t.Fatal(err)
+		}
+		if one.ID != r.Event.ID || one.Type != r.Event.Type || one.Details["trigger"] != r.Event.Details["trigger"] {
+			t.Errorf("REST retrieve = %+v, want %+v", one, r.Event)
+		}
+	}
+
+	// GraphQL list and single retrieve.
+	gqlList := gql(t, h, `{ serviceEvents(serviceId: "web", type: "zero_downtime_redeploy_started,zero_downtime_redeploy_ended", startTime: "2026-11-01T00:00:00Z") { id type timestamp details { redeployTrigger } } }`)["serviceEvents"].([]any)
+	if len(gqlList) != 2 {
+		t.Fatalf("GraphQL list = %d, want 2", len(gqlList))
+	}
+	gqlEnded := gqlList[0].(map[string]any)
+	gqlStarted := gqlList[1].(map[string]any)
+	if gqlEnded["id"] != rest[0].Event.ID || gqlEnded["details"].(map[string]any)["redeployTrigger"] != "" {
+		t.Errorf("GraphQL ended = %v", gqlEnded)
+	}
+	if gqlStarted["id"] != rest[1].Event.ID || gqlStarted["details"].(map[string]any)["redeployTrigger"] != store.EventReasonNodeReplacement {
+		t.Errorf("GraphQL started = %v", gqlStarted)
+	}
+	gqlOne := gql(t, h, fmt.Sprintf(`{ serviceEvent(id: %q) { id type details { redeployTrigger } } }`, rest[1].Event.ID))["serviceEvent"].(map[string]any)
+	if gqlOne["id"] != rest[1].Event.ID || gqlOne["details"].(map[string]any)["redeployTrigger"] != store.EventReasonNodeReplacement {
+		t.Errorf("GraphQL serviceEvent = %v", gqlOne)
+	}
+
+	// MCP list_events (Render text format: bare JSON array + "\n\n cursor: …")
+	// and get_service_event.
+	mcpRes, err := mcpSessionAs(t, srv, "user-x").CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "list_events",
+		Arguments: map[string]any{
+			"serviceId":  "web",
+			"eventTypes": []string{events.TypeZeroDowntimeRedeployStarted, events.TypeZeroDowntimeRedeployEnded},
+			"startTime":  "2026-11-01T00:00:00Z",
+		},
+	})
+	if err != nil || mcpRes.IsError || len(mcpRes.Content) == 0 {
+		t.Fatalf("MCP list_events: res=%+v err=%v", mcpRes, err)
+	}
+	arrayPart, _, _ := strings.Cut(mcpRes.Content[0].(*mcp.TextContent).Text, "\n\n")
+	var mcpList []wireEvent
+	if err := json.Unmarshal([]byte(arrayPart), &mcpList); err != nil {
+		t.Fatalf("decode MCP list_events %q: %v", arrayPart, err)
+	}
+	if len(mcpList) != 2 || mcpList[0].ID != rest[0].Event.ID || mcpList[1].ID != rest[1].Event.ID ||
+		mcpList[1].Details["trigger"] != store.EventReasonNodeReplacement {
+		t.Errorf("MCP list_events = %+v, want match REST %+v", mcpList, rest)
+	}
+	mcpOne := callGetServiceEvent(t, srv, rest[1].Event.ID)
+	if mcpOne.ID != rest[1].Event.ID || mcpOne.Type != events.TypeZeroDowntimeRedeployStarted ||
+		mcpOne.Details["trigger"] != store.EventReasonNodeReplacement {
+		t.Errorf("MCP get_service_event = %+v, want match REST %+v", mcpOne, rest[1].Event)
 	}
 }

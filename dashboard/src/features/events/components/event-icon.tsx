@@ -32,6 +32,8 @@ import {
 
 const EVENT_ICONS: Record<string, LucideIcon> = {
   deploy_started: Rocket,
+  zero_downtime_redeploy_started: RefreshCcw,
+  zero_downtime_redeploy_ended: CheckCircle2,
   build_started: Hammer,
   pre_deploy_started: Terminal,
   branch_deleted: GitBranch,

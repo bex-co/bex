@@ -110,6 +110,18 @@ function describeEvent(
   switch (type) {
     case "deploy_started":
       return { kind: "start", labelKey: "metrics.eventDeployStarted" };
+    case "zero_downtime_redeploy_started":
+      return {
+        kind: "start",
+        labelKey: "metrics.eventsChanged",
+        typeLabelKey: serviceEventLabelKey(type),
+      };
+    case "zero_downtime_redeploy_ended":
+      return {
+        kind: "success",
+        labelKey: "metrics.eventsChanged",
+        typeLabelKey: serviceEventLabelKey(type),
+      };
     case "build_started":
       return { kind: "start", labelKey: "metrics.eventBuildStarted" };
     case "pre_deploy_started":

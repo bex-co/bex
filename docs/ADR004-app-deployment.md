@@ -594,6 +594,8 @@ drain-guard runs as its own ServiceAccount, never the operator's. It is the only
 
 drain-guard watches the workload cluster's Nodes. When the taint lands on a guarded Machine's node, it applies the same evacuation annotation and rechecks until no App there is at risk. It does not cordon, because CA's taint already keeps the replacement off the node. A replacement that is not Ready by the end of the delay is evicted as before, so the delay can slow a consolidation but never stop one. This is the path that evicted `beancount-cms-v2` in the section above, now with a Ready replacement waiting.
 
+**Tenant visibility (`w4/m504`, 2026-11-19).** When a non-`Recreate` App Deployment gains a new `drain-guard.bex.co/evacuated-from` value, the App reconciler records the transition on `App.status.platformRedeploy` (keyed by node and Deployment generation; trigger `node_replacement` for a CAPI Machine roll or `node_consolidation` when the node carries `ToBeDeletedByClusterAutoscaler`), and ends it once that generation's rollout completes or the old pod is gone after hold expiry. The control-plane reconciler projects it into idempotent `zero_downtime_redeploy_started` and `zero_downtime_redeploy_ended` service events on REST, GraphQL, MCP, outbound webhooks and the dashboard. Disk-attached (`Recreate`) services record neither.
+
 ## Gotchas
 
 - **Apps are imperative by design** — the `App` CR lives only in the app cluster's etcd, _not_ in git and not in `deploy/gitops/` (that's platform-only). Losing the node loses the CR; see [`docs/ADR003-control-plane.md`](ADR003-control-plane.md) for the planned Postgres source of truth.

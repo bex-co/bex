@@ -312,6 +312,10 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"displayNameFrom": gqlutil.StrField(func(d Details) any { return d.DisplayNameFrom }),
 		"displayNameTo":   gqlutil.StrField(func(d Details) any { return d.DisplayNameTo }),
 		"domain":          gqlutil.StrField(func(d Details) any { return d.Domain }),
+		// zero_downtime_redeploy_started (w4/m504): Render's string trigger
+		// (node_replacement | node_consolidation); GraphQL's trigger field is
+		// the DeployTrigger object.
+		"redeployTrigger": gqlutil.StrField(func(d Details) any { return d.RedeployTrigger }),
 	},
 })
 

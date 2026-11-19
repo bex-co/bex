@@ -565,6 +565,16 @@ const ruWebhooks: Record<string, TranslationEntry> = {
     message: "Деплой завершён",
     description: "Event label — deploy_ended",
   },
+  "webhooks.event.zero_downtime_redeploy_started": {
+    message: "Начат повторный деплой без простоя",
+    description:
+      "Event label — zero_downtime_redeploy_started: a Bex-initiated zero-downtime deploy started for a service",
+  },
+  "webhooks.event.zero_downtime_redeploy_ended": {
+    message: "Завершён повторный деплой без простоя",
+    description:
+      "Event label — zero_downtime_redeploy_ended: a Bex-initiated zero-downtime deploy completed for a service",
+  },
   "webhooks.event.image_pull_failed": {
     message: "Не удалось загрузить образ",
     description: "Event label — image_pull_failed",

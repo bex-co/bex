@@ -27,6 +27,8 @@ export const SERVICE_EVENT_GROUPS: ServiceEventGroup[] = [
     types: [
       "deploy_started",
       "deploy_ended",
+      "zero_downtime_redeploy_started",
+      "zero_downtime_redeploy_ended",
       "build_started",
       "build_ended",
       "pre_deploy_started",
@@ -126,6 +128,9 @@ export const SERVICE_EVENT_TYPES = [
 const LABEL_KEYS: Record<string, string> = {
   deploy_started: "services.eventsTypeDeployStarted",
   deploy_ended: "services.eventsTypeDeployFinished",
+  zero_downtime_redeploy_started:
+    "services.eventsTypeZeroDowntimeRedeployStarted",
+  zero_downtime_redeploy_ended: "services.eventsTypeZeroDowntimeRedeployEnded",
   build_started: "services.eventsTypeBuildStarted",
   build_ended: "services.eventsTypeBuildEnded",
   pre_deploy_started: "services.eventsTypePreDeployStarted",

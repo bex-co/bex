@@ -4846,6 +4846,26 @@ const ruServices: Record<string, TranslationEntry> = {
     message: "Деплой завершён",
     description: "Service activity type: deploy finished",
   },
+  "services.eventsTypeZeroDowntimeRedeployStarted": {
+    message: "Начат повторный деплой без простоя",
+    description:
+      "Service activity type: a Bex-initiated zero-downtime deploy started for a service",
+  },
+  "services.eventsTypeZeroDowntimeRedeployEnded": {
+    message: "Завершён повторный деплой без простоя",
+    description:
+      "Service activity type: a Bex-initiated zero-downtime deploy completed for a service",
+  },
+  "services.eventsRedeployTrigger.node_replacement": {
+    message: "Узел заменён",
+    description:
+      "zero_downtime_redeploy_started trigger: drain-guard rolled the service off a node being replaced",
+  },
+  "services.eventsRedeployTrigger.node_consolidation": {
+    message: "Узел удалён автомасштабированием",
+    description:
+      "zero_downtime_redeploy_started trigger: drain-guard rolled the service off a node marked for Cluster Autoscaler scale-down",
+  },
   "services.eventsTypePipelineMinutesExhausted": {
     message: "Минуты пайплайна исчерпаны",
     description:

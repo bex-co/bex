@@ -1,21 +1,21 @@
 # w4 · m504 — A node roll's drain-guard handover records Render's `zero_downtime_redeploy_started` and `_ended`
 
-**Worker:** worker4 **Goal:** every App drain-guard hands over before a node roll or a Cluster Autoscaler scale-down shows one `zero_downtime_redeploy_started` and one `zero_downtime_redeploy_ended` on REST, GraphQL, MCP, webhooks and the dashboard, as Render records its own platform-initiated zero-downtime redeploys. **Status:** todo
+**Worker:** worker4 **Goal:** every App drain-guard hands over before a node roll or a Cluster Autoscaler scale-down shows one `zero_downtime_redeploy_started` and one `zero_downtime_redeploy_ended` on REST, GraphQL, MCP, webhooks and the dashboard, as Render records its own platform-initiated zero-downtime redeploys. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | The operator records each drain-guard handover on the App's status | 60m | — |
-| t002 | Project the handover into service event facts | 40m | t001 |
-| t003 | Serve the pair on REST, GraphQL, MCP and webhooks | 45m | t002 |
-| t004 | Show the pair in the dashboard's Events feed and webhook picker | 35m | t003 |
-| t005 | Correct the docs that call the pair an anti-goal | 25m | t003 |
-| t006 | Verify a node roll on the local CAPD cluster | 45m | t004, t005 |
-| t007 | Render parity | 20m | t006 |
-| t008 | Simplify | 15m | t007 |
-| t009 | Test coverage | 30m | t007 |
-| t010 | Closeout | 10m | t008, t009 |
+| t001 | The operator records each drain-guard handover on the App's status — **DONE** | 60m | — |
+| t002 | Project the handover into service event facts — **DONE** | 40m | t001 |
+| t003 | Serve the pair on REST, GraphQL, MCP and webhooks — **DONE** | 45m | t002 |
+| t004 | Show the pair in the dashboard's Events feed and webhook picker — **DONE** | 35m | t003 |
+| t005 | Correct the docs that call the pair an anti-goal — **DONE** | 25m | t003 |
+| t006 | Verify a node roll on the local CAPD cluster — **DONE** | 45m | t004, t005 |
+| t007 | Render parity — **DONE** | 20m | t006 |
+| t008 | Simplify — **DONE** | 15m | t007 |
+| t009 | Test coverage — **DONE** | 30m | t007 |
+| t010 | Closeout — **DONE** | 10m | t008, t009 |
 
 ## Definition of done
 

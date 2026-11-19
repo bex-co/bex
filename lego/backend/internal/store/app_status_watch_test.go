@@ -254,7 +254,7 @@ func TestStatusFingerprintNamesEveryStatusField(t *testing.T) {
 	fingerprinted := map[string]bool{
 		"Phase": true, "Conditions": true, "BuildRun": true, "BuildHold": true, "PreDeploy": true,
 		"ReleaseStart": true, "ReleaseGeneration": true, "ActiveRevision": true, "RolloutFailure": true,
-		"InstanceExits": true, "Runs": true, "Autoscaling": true, "ManualRunHandledAt": true, "CancelRunRecorded": true,
+		"InstanceExits": true, "Runs": true, "Autoscaling": true, "PlatformRedeploy": true, "ManualRunHandledAt": true, "CancelRunRecorded": true,
 	}
 	ignored := map[string]string{
 		"ObservedGeneration":         "a spec write moves it; the conditions' own generation carries the verdict",

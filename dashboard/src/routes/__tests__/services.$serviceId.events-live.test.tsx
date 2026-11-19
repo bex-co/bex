@@ -101,6 +101,7 @@ function event(id: string, type: string, offset: number, status = "") {
       displayNameTo: null,
       autoDeployDisabledReason: null,
       domain: null,
+      redeployTrigger: null,
       failureReasonTemplate: null,
       stallReasonTemplate: null,
       cancelReasonTemplate: null,

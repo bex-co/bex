@@ -1437,4 +1437,47 @@ describe("ServiceEventsPage — a deploy's trigger is named the way the Deploys 
     expect(await screen.findByText("Deploy Hook")).toBeInTheDocument();
     expect(screen.queryByText("Manual deploy")).not.toBeInTheDocument();
   });
+
+  it("renders zero_downtime_redeploy_started with its trigger cause and zero_downtime_redeploy_ended", async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          {
+            id: "evt-zdr-end",
+            type: "zero_downtime_redeploy_ended",
+            timestamp: "2026-11-19T01:01:00Z",
+            cursor: "c-3",
+            details: {},
+          },
+          {
+            id: "evt-zdr-start-ca",
+            type: "zero_downtime_redeploy_started",
+            timestamp: "2026-11-19T01:00:30Z",
+            cursor: "c-2",
+            details: { redeployTrigger: "node_consolidation" },
+          },
+          {
+            id: "evt-zdr-start-rep",
+            type: "zero_downtime_redeploy_started",
+            timestamp: "2026-11-19T01:00:00Z",
+            cursor: "c-1",
+            details: { redeployTrigger: "node_replacement" },
+          },
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(
+      await screen.findByText("Zero-downtime redeploy ended"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Zero-downtime redeploy started"),
+    ).toHaveLength(2);
+    expect(screen.getByText("Node replaced")).toBeInTheDocument();
+    expect(screen.getByText("Node removed by autoscaling")).toBeInTheDocument();
+  });
 });

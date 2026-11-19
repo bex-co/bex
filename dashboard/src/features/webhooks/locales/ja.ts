@@ -555,6 +555,16 @@ const jaWebhooks: Record<string, TranslationEntry> = {
     message: "デプロイ終了",
     description: "Event label — deploy_ended",
   },
+  "webhooks.event.zero_downtime_redeploy_started": {
+    message: "ゼロダウンタイム再デプロイ開始",
+    description:
+      "Event label — zero_downtime_redeploy_started: a Bex-initiated zero-downtime deploy started for a service",
+  },
+  "webhooks.event.zero_downtime_redeploy_ended": {
+    message: "ゼロダウンタイム再デプロイ終了",
+    description:
+      "Event label — zero_downtime_redeploy_ended: a Bex-initiated zero-downtime deploy completed for a service",
+  },
   "webhooks.event.image_pull_failed": {
     message: "イメージ取得失敗",
     description: "Event label — image_pull_failed",

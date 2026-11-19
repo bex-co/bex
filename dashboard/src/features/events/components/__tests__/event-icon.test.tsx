@@ -5,6 +5,8 @@ import { EventIcon } from "../event-icon";
 describe("EventIcon", () => {
   it.each([
     ["deploy_started", "rocket"],
+    ["zero_downtime_redeploy_started", "refresh-ccw"],
+    ["zero_downtime_redeploy_ended", "circle-check"],
     ["build_started", "hammer"],
     ["pre_deploy_started", "terminal"],
     ["branch_deleted", "git-branch"],

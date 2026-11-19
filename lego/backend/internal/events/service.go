@@ -214,6 +214,10 @@ const (
 	TypeCommitIgnored         = "commit_ignored"
 	TypeAutoscalingStarted    = "autoscaling_started"
 	TypeAutoscalingEnded      = "autoscaling_ended"
+	// Platform-initiated zero-downtime handovers triggered by drain-guard before
+	// a node roll or Cluster Autoscaler scale-down (w4/m504), Render's spellings.
+	TypeZeroDowntimeRedeployStarted = "zero_downtime_redeploy_started"
+	TypeZeroDowntimeRedeployEnded   = "zero_downtime_redeploy_ended"
 	// A service disk crossing 80% of its size, and dropping back below
 	// (w2/m255), Render's spellings.
 	TypeServiceDiskUsageHigh      = "service_disk_usage_high"
@@ -540,6 +544,8 @@ var (
 		TypeServiceDiskUsageHigh,
 		TypeServiceDiskUsageRecovered,
 		TypePipelineMinutesExhausted,
+		TypeZeroDowntimeRedeployStarted,
+		TypeZeroDowntimeRedeployEnded,
 	}
 )
 
@@ -595,7 +601,8 @@ func pushDownOne(eventType string) store.ServiceEventFilter {
 		TypeCommitIgnored, TypeAutoscalingStarted, TypeAutoscalingEnded,
 		TypeBuildStarted, TypeBuildEnded, TypePreDeployStarted, TypePreDeployEnded,
 		TypeJobRunEnded, TypeCronJobRunStarted, TypeCronJobRunEnded,
-		TypeServiceDiskUsageHigh, TypeServiceDiskUsageRecovered, TypePipelineMinutesExhausted:
+		TypeServiceDiskUsageHigh, TypeServiceDiskUsageRecovered, TypePipelineMinutesExhausted,
+		TypeZeroDowntimeRedeployStarted, TypeZeroDowntimeRedeployEnded:
 		return store.ServiceEventFilter{FactTypes: []string{eventType}}
 	}
 	var f store.ServiceEventFilter
@@ -957,6 +964,11 @@ type Details struct {
 	// Trigger, and DeployID is Render's buildId there (bex's build is its
 	// deploy's own, as on deploy_ended's reason).
 	EdgeCacheTrigger *EdgeCacheTrigger
+	// zero_downtime_redeploy_started (w4/m504): why drain-guard handed the
+	// service off its node (node_replacement | node_consolidation); mapped to
+	// Render's string details.trigger on REST/MCP and details.redeployTrigger on
+	// GraphQL.
+	RedeployTrigger string
 	// render is the Render details REST and MCP send for the event's type. Only
 	// the copy GraphQL's ServiceEventDetails resolves over carries it, so the
 	// members REST derives per type read the same values there (w4/655).
@@ -1505,6 +1517,11 @@ func view(r store.ServiceEventRow, service string) Event {
 			// started (w4/639, Render's required Build Started trigger); the
 			// store joins that deploy's row.
 			ev.Details.Trigger = deployTrigger(r)
+		case TypeZeroDowntimeRedeployStarted:
+			ev.Details.RedeployTrigger = r.ReasonCode
+			ev.Details.ReasonCode = ""
+		case TypeZeroDowntimeRedeployEnded:
+			ev.Details.ReasonCode = ""
 		}
 	}
 	return ev

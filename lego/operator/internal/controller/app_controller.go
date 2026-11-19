@@ -3050,6 +3050,7 @@ func (r *AppReconciler) reconcileKubernetesRuntime(ctx context.Context, app *app
 	}
 
 	if plan.parked {
+		r.reconcilePlatformRedeploy(ctx, app, dep, time.Now().UTC())
 		return r.parkKubernetes(ctx, app, image, hosts, plan.autoHibernating, plan.hibernateHold)
 	}
 	// A stopped Deployment at zero reads as a complete rollout; reporting it
@@ -3593,6 +3594,7 @@ func (r *AppReconciler) reportKubernetesRunning(ctx context.Context, app *appv1a
 	}
 	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
 	completeAutoscalingTransition(app, dep.Status.Replicas, dep.Status.ReadyReplicas, time.Now())
+	r.reconcilePlatformRedeploy(ctx, app, dep, time.Now().UTC())
 	// A port change, or a held web image release (w4/m320), routes to its
 	// first ready pod of the written template while the old ones are held
 	// (w4/428), then completes as any rollout does. The public route stays on
@@ -3967,6 +3969,9 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 	app.Status.URLs = nil
 	app.Status.ObservedGeneration = app.Generation
 
+	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
+	r.reconcilePlatformRedeploy(ctx, app, dep, time.Now().UTC())
+
 	if app.Spec.Suspended {
 		app.Status.Phase = appv1alpha1.PhaseHibernated
 		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
@@ -3979,7 +3984,6 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 		return ctrl.Result{}, nil
 	}
 
-	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
 	// End a scaling transition the way the web path does. Without this a
 	// worker's transition stayed Started forever, and applyAutoscaling keeps
 	// returning the recorded ToReplicas without reading metrics while one is
@@ -8006,6 +8010,7 @@ func (r *AppReconciler) convergeServingRuntime(ctx context.Context, app *appv1al
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	r.reconcilePlatformRedeploy(ctx, app, plan.prior.dep, time.Now().UTC())
 	if plan.parked {
 		return r.parkKubernetes(ctx, app, app.Status.Image, hosts, plan.autoHibernating, plan.hibernateHold)
 	}
@@ -8013,6 +8018,9 @@ func (r *AppReconciler) convergeServingRuntime(ctx context.Context, app *appv1al
 	res, err := r.runningRequeue(ctx, app, plan.autoscaleRequeue)
 	if err != nil {
 		return res, err
+	}
+	if platformRedeployInProgress(app) {
+		res.RequeueAfter = soonerRequeue(res.RequeueAfter, 5*time.Second)
 	}
 	if plan.replicas > 0 && !serving && r.ActivatorService != "" && autoSleepEligible(app) {
 		res.RequeueAfter = soonerRequeue(res.RequeueAfter, wakeReadyPoll)

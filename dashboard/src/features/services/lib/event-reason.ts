@@ -59,3 +59,24 @@ export function autoDeployDisabledReasonKey(
     ? `services.eventsAutoDeployDisabledReason.${reason}`
     : null;
 }
+
+/**
+ * Triggers for a drain-guard zero-downtime redeploy (w4/m504).
+ */
+export const REDEPLOY_TRIGGERS = [
+  "node_replacement",
+  "node_consolidation",
+] as const;
+
+/**
+ * The translation key for zero_downtime_redeploy_started's trigger, or null
+ * when unrecognized (the row keeps its title).
+ */
+export function redeployTriggerKey(
+  trigger: string | null | undefined,
+): string | null {
+  return trigger &&
+    (REDEPLOY_TRIGGERS as readonly string[]).includes(trigger)
+    ? `services.eventsRedeployTrigger.${trigger}`
+    : null;
+}

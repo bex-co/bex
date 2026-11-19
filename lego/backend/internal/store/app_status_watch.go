@@ -216,11 +216,12 @@ func statusFingerprint(s *appv1alpha1.AppStatus) uint64 {
 		InstanceExits      []appv1alpha1.InstanceExit
 		Runs               []appv1alpha1.CronRun
 		Autoscaling        *appv1alpha1.AutoscalingStatus
+		PlatformRedeploy   *appv1alpha1.PlatformRedeployStatus
 		ManualRunHandledAt string
 		CancelRunRecorded  string
 	}{
 		s.Phase, conditions, s.BuildRun, s.BuildHold, s.PreDeploy, s.ReleaseStart, s.ReleaseGeneration,
-		s.ActiveRevision, s.RolloutFailure, s.InstanceExits, s.Runs, s.Autoscaling,
+		s.ActiveRevision, s.RolloutFailure, s.InstanceExits, s.Runs, s.Autoscaling, s.PlatformRedeploy,
 		s.ManualRunHandledAt, s.CancelRunRecorded,
 	})
 	if err != nil {
