@@ -102,7 +102,11 @@ jobs:
         run: rm -rf -- "$RUNNER_TEMP/bex-ssh"
       - name: inventory service-disk binding and capacity metadata (read-only)
         if: inputs.operation == 'inventory' || inputs.operation == 'rollout'
-        run: bash scripts/service-disk-inventory.sh
+        # A public log (w5/m501, ADR019 §Decision 5): tenant namespaces,
+        # service names and ids print as keyed hashes.
+        run: |
+          set -o pipefail
+          bash scripts/service-disk-inventory.sh | python3 scripts/lib/public_log.py
       - name: upgrade only CSI and verify every controller/node driver pod
         if: inputs.operation == 'rollout'
         run: bash scripts/install-hcloud-csi.sh rollout

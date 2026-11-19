@@ -92,9 +92,12 @@ jobs:
           # The explicit authorization for the live wrapper to create its
           # disposable workspace, principals and tuples.
           BEX_LIVE_VERIFY: "1"
+        # The MEASURE lines name nodes and their addresses, and this log is
+        # public (w5/m501, ADR019 §Decision 5): keyed hashes instead.
         run: |
+          set -o pipefail
           BEX_VERIFY_PROBE="scripts/measure-sandbox-${BEX_MEASURE_LEG}.sh" \
-            bash scripts/verify-sandbox-isolation-live.sh
+            bash scripts/verify-sandbox-isolation-live.sh 2>&1 | python3 scripts/lib/public_log.py
       - name: Scrub app kubeconfig
         if: always()
         run: rm -f -- "$RUNNER_TEMP/app.kubeconfig"

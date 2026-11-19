@@ -58,6 +58,10 @@ jobs:
           sparse-checkout: |
             /*
             !/.pm/
+      # This log is public (w5/m501, ADR019 §Decision 5): mask the source
+      # KeyValue typed into the dispatch before any step's env prints it.
+      - name: Mask tenant inputs
+        run: python3 scripts/lib/public_log.py mask-inputs source_namespace keyvalue_id
       - uses: azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e # v5.2.0
         with:
           version: v1.36.1

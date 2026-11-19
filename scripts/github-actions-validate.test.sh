@@ -260,6 +260,64 @@ assert "second job is checked on its own" 1 "$(printf 'jobs:\n  a:\n    runs-on:
   "ci.yml:b"
 unset BOUNDED_JOBS_CHECK
 
+# --- w5/m501 check 11: a production job's log is public ----------------------
+# The deleted run 44033022163 printed `kubectl get pods -A -o wide` and
+# `describe nodes` straight to this public repository's log.
+export PUBLIC_LOG_CHECK=1
+prod_job() {
+  printf 'jobs:\n  x:\n    runs-on: %s\n    environment: production-cluster\n    steps:\n%s' "$ARM" "$1"
+}
+assert "production kubectl get pods -A to the log fails" 1 "$(prod_job "      - run: kubectl get pods -A")" \
+  'ci.yml:6: job x: `kubectl get` prints to this public log'
+assert "production describe nodes fails" 1 "$(prod_job "      - run: |
+          set -e
+          kubectl describe nodes | grep -E 'Allocated'")" 'ci.yml:8: job x: `kubectl describe`'
+assert "production node list in a pipeline that prints fails" 1 "$(prod_job "      - run: kubectl get nodes -o wide | sort")" '`kubectl get`'
+assert "production kubectl wait on every node fails" 1 "$(prod_job "      - run: kubectl wait --for=condition=Ready node --all")" '`kubectl wait`'
+assert "-o wide in a platform namespace fails" 1 "$(prod_job "      - run: kubectl -n auth get pods -o wide")" '`kubectl get`'
+assert "describe pod in a platform namespace fails" 1 "$(prod_job "      - run: kubectl -n bex-system describe pods -l app=x")" '`kubectl describe`'
+assert "a tenant namespace by variable fails" 1 "$(prod_job "      - run: kubectl -n \"\$NS\" get events")" '`kubectl get`'
+assert "a continued command line is one command" 1 "$(prod_job "      - run: |
+          kubectl get pods \\
+            -A --field-selector=status.phase=Pending")" 'ci.yml:7: job x'
+assert "the admin.conf fetch makes a job production" 1 "$(body "      - env:
+          BEX_SSH_KNOWN_HOSTS: \${{ secrets.BEX_SSH_KNOWN_HOSTS }}
+        run: |
+          bash scripts/fetch-app-kubeconfig.sh \"\$RUNNER_TEMP/app.kubeconfig\"
+          kubectl get pods -A
+          rm -f -- \"\$RUNNER_TEMP/app.kubeconfig\"")" '`kubectl get`'
+assert "-o before the resource still reads nodes" 1 "$(prod_job "      - run: kubectl -n bex-system get -o name nodes")" '`kubectl get`'
+assert "-o before the verb still describes pods" 1 "$(prod_job "      - run: kubectl -o yaml -n auth describe pods")" '`kubectl describe`'
+assert "a platform component's logs fail (they carry what tenants sent)" 1 "$(prod_job "      - run: kubectl -n bex-system logs deploy/bex-api --tail=30")" '`kubectl logs`'
+assert "stdout sent to stderr still reaches the log" 1 "$(prod_job "      - run: kubectl get pods -A >&2")" '`kubectl get`'
+assert "a --public-log script called without it fails" 1 "$(prod_job "      - run: bash scripts/cluster-diagnose.sh \"\$SID\"")" \
+  'scripts/cluster-diagnose.sh supports --public-log'
+assert "redacted, captured, redirected and platform reads pass" 0 "$(prod_job "      - run: |
+          set -o pipefail
+          kubectl get pods -A | python3 scripts/lib/public_log.py
+          kubectl get nodes -o wide \\
+            | grep -v NotReady | python3 scripts/lib/public_log.py
+          n=\"\$(kubectl get pods -A -o name | wc -l)\"
+          for p in \$(kubectl get pods -A -o name); do :; done
+          kubectl wait --for=condition=Ready node --all --timeout=600s >/dev/null
+          kubectl get pods -A -o name | grep -q .
+          kubectl -n argocd get applications
+          kubectl -n auth describe deploy openfga | tail -20
+          kubectl -n bex-system logs deploy/bex-api --tail=30 | python3 scripts/lib/public_log.py
+          kubectl get pods -A 2>&1 | python3 scripts/lib/public_log.py
+          kubectl apply -f manifest.yaml
+          bash scripts/cluster-diagnose.sh \"\$SID\" --public-log")"
+assert "a reviewed public-log comment passes" 0 "$(prod_job "      - run: |
+          # public-log: fixture namespaces only, created by this job
+          # (the sweep below deletes them)
+          kubectl get ns -o name")"
+assert "a review comment covers only the next command" 1 "$(prod_job "      - run: |
+          # public-log: fixture namespaces only
+          kubectl get ns -o name
+          kubectl get pods -A")" 'ci.yml:9: job x'
+assert "a job without production credentials is not checked" 0 "$(job_body "$ARM" "      - run: kubectl get pods -A")"
+unset PUBLIC_LOG_CHECK
+
 # --- w1/m68 F3: host-key pin coverage for admin.conf fetchers ---------------
 # RED: a workflow that fetches admin.conf over SSH without wiring the pin. This
 # is exactly the shape openbao-restore-drill.yml had — the whole reason m66's

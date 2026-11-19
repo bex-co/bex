@@ -104,8 +104,16 @@ jobs:
         run: |
           args=(--since "$SINCE" --limit "$LIMIT")
           [ "$MODE" = apply ] && args+=(--apply)
-          kubectl -n bex-system exec deploy/bex-api -c api -- /api platform-rebuild "${args[@]}" | tee "$RUNNER_TEMP/rebuild.json"
-          jq -r '"applied=\(.applied) done=\(.done) pending=\(.planned|length) triggered=\(.triggered|length) failed=\(.failed|length)"' "$RUNNER_TEMP/rebuild.json" >>"$GITHUB_STEP_SUMMARY"
+          kubectl -n bex-system exec deploy/bex-api -c api -- /api platform-rebuild "${args[@]}" >"$RUNNER_TEMP/rebuild.json"
+          # The result names every eligible service in every workspace, and
+          # this log is public (w5/m501, ADR019 §Decision 5): print the counts
+          # and each item's runtime, with the namespace as a keyed hash; the
+          # service names, commits and errors are one local command away
+          # (plan mode only reads: kubectl -n bex-system exec deploy/bex-api
+          # -c api -- /api platform-rebuild --since <time>).
+          jq -r '"applied=\(.applied) done=\(.done) pending=\(.planned|length) triggered=\(.triggered|length) failed=\(.failed|length)"' "$RUNNER_TEMP/rebuild.json" | tee -a "$GITHUB_STEP_SUMMARY"
+          jq -r '("triggered", "failed") as $k | (.[$k] // [])[] | "\($k) \(.namespace) \(.type // "-") \(.runtime // "-") \(.builder // "-")"' "$RUNNER_TEMP/rebuild.json" \
+            | python3 scripts/lib/public_log.py
 
       - name: scrub kubeconfig
         if: always()

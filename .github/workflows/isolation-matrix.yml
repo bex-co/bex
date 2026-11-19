@@ -210,10 +210,12 @@ jobs:
       - name: Audit for leftover fixtures
         if: always()
         run: |
-          echo "probe namespaces still present:"
-          kubectl get ns -o name | grep -E 'probe|m35-[ab]-' || echo "  none"
-          echo "verify-iso Apps still present:"
-          kubectl get apps.app.bex.co -A -o name | grep -E 'verify-iso|egress-probe' || echo "  none"
+          # The name patterns are the fixtures', but a tenant may pick one
+          # too, and this log is public (w5/m501): keyed hashes.
+          ns_left="$(kubectl get ns -o name | grep -E 'probe|m35-[ab]-' || true)"
+          apps_left="$(kubectl get apps.app.bex.co -A -o name | grep -E 'verify-iso|egress-probe' || true)"
+          printf 'probe namespaces still present:\n%s\nverify-iso Apps still present:\n%s\n' \
+            "${ns_left:-  none}" "${apps_left:-  none}" | python3 scripts/lib/public_log.py
           # A sandbox-leg workspace's namespaces carry its tea- id, not its
           # m35- name, so the namespace grep above never saw the 2026-11-15
           # leak (w9/119); read the fixture rows themselves. The next run's

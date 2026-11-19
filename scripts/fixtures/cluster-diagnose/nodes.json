@@ -1,0 +1,17 @@
+{"kind": "List", "items": [
+ {"metadata": {"name": "bex-tenant-0-abcde-fghij", "creationTimestamp": "2026-11-10T00:00:00Z",
+   "labels": {"nodepool": "tenant", "kubernetes.io/hostname": "bex-tenant-0-abcde-fghij"}},
+  "spec": {"providerID": "hcloud://123456789"},
+  "status": {"addresses": [{"type": "InternalIP", "address": "10.10.0.17"}, {"type": "ExternalIP", "address": "203.0.113.17"}, {"type": "ExternalIP", "address": "2001:db8::17"}],
+   "conditions": [{"type": "MemoryPressure", "status": "True"}, {"type": "Ready", "status": "True"}],
+   "nodeInfo": {"kubeletVersion": "v1.34.9"}}},
+ {"metadata": {"name": "bex-control-plane-kkkkk", "creationTimestamp": "2026-11-01T00:00:00Z",
+   "labels": {"node-role.kubernetes.io/control-plane": ""}},
+  "spec": {"taints": [{"key": "node-role.kubernetes.io/control-plane", "effect": "NoSchedule"}]},
+  "status": {"addresses": [{"type": "InternalIP", "address": "10.10.0.4"}, {"type": "ExternalIP", "address": "198.51.100.4"}],
+   "conditions": [{"type": "Ready", "status": "True"}], "nodeInfo": {"kubeletVersion": "v1.34.9"}}},
+ {"metadata": {"name": "bex-gpu-aaaaa-bbbbb", "creationTimestamp": "2026-11-18T00:00:00Z", "labels": {"nodepool": "gpu"}},
+  "spec": {"unschedulable": true, "taints": [{"key": "node.kubernetes.io/unreachable", "effect": "NoExecute"}]},
+  "status": {"addresses": [{"type": "ExternalIP", "address": "203.0.113.50"}],
+   "conditions": [{"type": "Ready", "status": "Unknown"}], "nodeInfo": {"kubeletVersion": "v1.34.9"}}}
+]}

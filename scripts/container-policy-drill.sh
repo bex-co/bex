@@ -10,9 +10,21 @@
 # list and admission write nothing (admission uses server-side dry runs while
 # impersonating the operator). migrate without CONFIRM is bex-api's own dry
 # run; with CONFIRM equal to SERVICE_ID it applies to exactly that service.
+#
+# --public-log (the workflow, whose log this public repository publishes;
+# w5/m501, ADR019 §Decision 5) leaves the tenant's image and repository out of
+# the list. The workflow pipes the rest through scripts/lib/public_log.py,
+# which hashes namespaces, service names and ids.
 set -euo pipefail
 
-mode="${1:?usage: container-policy-drill.sh list|migrate|admission}"
+usage="usage: container-policy-drill.sh list|migrate|admission [--public-log]"
+mode="${1:?$usage}"
+public=0
+case "${2:-}" in
+  "") ;;
+  --public-log) public=1 ;;
+  *) echo "$usage" >&2; exit 2 ;;
+esac
 : "${NS:?NS (tenant namespace) is required}"
 [[ "$NS" =~ ^tea-[a-z0-9]+$ ]] || { echo "NS must be a tenant namespace (tea-...)" >&2; exit 1; }
 OPERATOR="system:serviceaccount:bex-system:bex-controller-manager"
@@ -21,8 +33,10 @@ section() { printf '\n=== %s\n' "$*"; }
 
 list() {
   section "Apps in $NS by container policy"
+  local origin=''
+  [ "$public" = 1 ] || origin='IMAGE:.spec.image,REPO:.spec.repo,'
   kubectl -n "$NS" get apps.app.bex.co \
-    -o custom-columns='APP:.metadata.name,SERVICE:.metadata.labels.bex\.co/app-id,POLICY:.spec.containerPolicy,IMAGE:.spec.image,REPO:.spec.repo,BUILDER:.spec.builder,TYPE:.spec.type,SUSPENDED:.spec.suspended,PHASE:.status.phase'
+    -o custom-columns="APP:.metadata.name,SERVICE:.metadata.labels.bex\\.co/app-id,POLICY:.spec.containerPolicy,${origin}BUILDER:.spec.builder,TYPE:.spec.type,SUSPENDED:.spec.suspended,PHASE:.status.phase"
 }
 
 migrate() {

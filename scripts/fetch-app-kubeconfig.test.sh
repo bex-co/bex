@@ -87,6 +87,18 @@ grep -q "still do not match" "$work/stderr" && fail "blamed the pin for a refuse
 
 echo "ok: retries only mid-roll host-key failures, bounded, and names a stale pin"
 
+# --- control-plane addresses stay out of public Actions logs (w5/m501) --------
+# Under GitHub Actions every discovered address is masked on stderr before
+# anything prints it; a local run prints them as they are.
+run env SSH_OK_AFTER=0 GITHUB_ACTIONS=true || fail "a CI fetch should succeed"
+for ip in 10.0.0.1 10.0.0.2; do
+  grep -qx "::add-mask::$ip" "$work/stderr" || fail "CI run did not mask control-plane address $ip"
+done
+grep -qE "via CP 10\.0\.0\.[12]\)" "$work/stdout" || fail "the success line lost its control plane (the runner masks it)"
+run env SSH_OK_AFTER=0 GITHUB_ACTIONS= || fail "a local fetch should succeed"
+grep -q '::add-mask::' "$work/stderr" "$work/stdout" && fail "a local run must not emit workflow commands"
+echo "ok: CI runs mask the control-plane addresses before printing them"
+
 # --- the repository-root .env fallback (w21/097) ----------------------------
 # The script resolves .env from its own location, so run a copy of it inside a
 # fake repository (never the developer's real .env) from an unrelated cwd that

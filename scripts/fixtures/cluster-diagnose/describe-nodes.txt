@@ -1,0 +1,25 @@
+Name:               bex-tenant-0-abcde-fghij
+Roles:              <none>
+Addresses:
+  InternalIP:  10.10.0.17
+  ExternalIP:  203.0.113.17
+Allocated resources:
+  (Total limits may be over 100 percent, i.e., overcommitted.)
+  Resource           Requests      Limits
+  --------           --------      ------
+  cpu                3967m (99%)   7900m (197%)
+  memory             7138Mi (93%)  10714Mi (140%)
+  ephemeral-storage  22Gi (32%)    144Gi (214%)
+  hugepages-2Mi      0 (0%)        0 (0%)
+Events:              <none>
+
+
+Name:               bex-control-plane-kkkkk
+Addresses:
+  InternalIP:  10.10.0.4
+Allocated resources:
+  Resource           Requests    Limits
+  --------           --------    ------
+  cpu                991m (24%)  1450m (36%)
+  memory             470Mi (6%)  1610Mi (21%)
+Events:              <none>

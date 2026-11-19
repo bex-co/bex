@@ -1,0 +1,6 @@
+{"kind": "List", "items": [
+ {"metadata": {"namespace": "bex-capi", "name": "cluster-autoscaler-status"},
+  "data": {"status": "autoscalerStatus: Running\nclusterWide:\n  health:\n    status: Healthy\nnodeGroups:\n- name: MachineDeployment/bex-capi/bex-tenant-0\n  scaleDown:\n    status: CandidatesPresent\n    candidates: bex-tenant-0-abcde-fghij (203.0.113.17)\n"}},
+ {"metadata": {"namespace": "tea-c0ffee00000000000002", "name": "cluster-autoscaler-status"},
+  "data": {"status": "TENANT-CONFIGMAP acme-billing"}}
+]}

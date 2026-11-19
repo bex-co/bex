@@ -1,0 +1,16 @@
+{"kind": "List", "items": [
+ {"metadata": {"namespace": "tea-c0ffee00000000000001", "name": "tea-c0ffee00000000000001-secret-shop-5d8f7c9b4-x2x9z",
+   "creationTimestamp": "2026-11-18T10:00:00Z", "labels": {"bex.co/app-id": "srv-c0ffee0000000000000a"}},
+  "spec": {"nodeName": "bex-tenant-0-abcde-fghij", "containers": [{"name": "secret-shop", "image": "ghcr.io/acme/secret-shop:v1"}]},
+  "status": {"phase": "Running", "podIP": "10.244.3.7", "hostIP": "10.10.0.17",
+   "conditions": [{"type": "Ready", "status": "False", "reason": "ContainersNotReady", "message": "containers with unready status: [secret-shop]"}],
+   "containerStatuses": [{"name": "secret-shop", "ready": false, "restartCount": 7, "image": "ghcr.io/acme/secret-shop:v1",
+     "state": {"waiting": {"reason": "CrashLoopBackOff", "message": "back-off 5m0s restarting failed container=secret-shop"}},
+     "lastState": {"terminated": {"reason": "OOMKilled", "exitCode": 137, "message": "secret-shop ran out of memory"}}}]}},
+ {"metadata": {"namespace": "tea-c0ffee00000000000001", "name": "tea-c0ffee00000000000001-secret-shop-5d8f7c9b4-pend1",
+   "creationTimestamp": "2026-11-18T11:00:00Z", "labels": {"bex.co/app-id": "srv-c0ffee0000000000000a"}},
+  "spec": {"containers": [{"name": "secret-shop"}]},
+  "status": {"phase": "Pending",
+   "conditions": [{"type": "PodScheduled", "status": "False", "reason": "Unschedulable",
+     "message": "0/3 nodes are available: 1 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: }, 2 Insufficient cpu."}]}}
+]}

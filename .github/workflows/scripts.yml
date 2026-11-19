@@ -107,6 +107,12 @@ jobs:
       # never retries, and HCLOUD_TOKEN stays off curl's argv.
       - name: Kubeconfig fetch self-test (mid-roll retry, .env fallback, pin tiers, token off argv)
         run: bash scripts/fetch-app-kubeconfig.test.sh
+      # w5/m501: what a production job prints to this public repository's
+      # logs — cluster diagnose's --public-log view and the redactor every
+      # production job pipes through — carries no tenant identifier, node
+      # name or address; stub kubectl, synthetic fixtures.
+      - name: Public-log redaction self-test (cluster diagnose, public_log.py)
+        run: bash scripts/cluster-diagnose.test.sh
       # w21: a worker Machine Hetzner refused a server for (a stock-out) is retried
       # by the fleet-rollout wait instead of wedging the app-cluster workflow.
       - name: CAPI fleet wait server-create retry self-test
@@ -324,6 +330,8 @@ jobs:
           scripts/build-cache-s3-credentials.sh scripts/build-cache-s3-credentials.test.sh
           scripts/wrangler-r2-contract.sh
           scripts/request-logs-liveness.sh
+          scripts/cluster-diagnose.sh scripts/cluster-diagnose.test.sh
+          scripts/disk-snapshot-drill.sh scripts/container-policy-drill.sh
           scripts/lib/canary-api.sh scripts/tenant-view-liveness.sh scripts/tenant-view-liveness.test.sh
           scripts/cli-release-staleness.sh scripts/cli-release-staleness.test.sh
           scripts/deploy-canary.sh

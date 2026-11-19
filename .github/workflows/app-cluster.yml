@@ -168,6 +168,7 @@ jobs:
             caph-system \
             capi-kubeadm-bootstrap-system \
             capi-kubeadm-control-plane-system; do
+            # public-log: the loop's literal platform namespaces, their controller Deployments
             kubectl -n "$ns" wait --for=condition=Available deploy --all --timeout=300s
           done
 
@@ -302,10 +303,13 @@ jobs:
       - name: install hcloud CSI
         run: bash scripts/install-hcloud-csi.sh bootstrap
 
+      # This log is public (w5/m501, ADR019 §Decision 5): node names and
+      # addresses print as keyed hashes, beside each node's pool and readiness.
       - name: wait for app cluster nodes Ready
         run: |
-          kubectl wait --for=condition=Ready node --all --timeout=600s
-          kubectl get nodes -o wide
+          set -o pipefail
+          kubectl wait --for=condition=Ready node --all --timeout=600s >/dev/null
+          kubectl get nodes -L nodepool | python3 scripts/lib/public_log.py
 
       - name: summary
         run: |

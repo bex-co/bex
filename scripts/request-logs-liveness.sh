@@ -160,7 +160,9 @@ for type in $STREAM_TYPES; do
     echo "RESULT type=$type status=dark"
     echo "FAIL[$type]: type=$type streams exist, but NONE in a tenant (tea-<xid>) namespace."
     echo "      Namespaces producing $type lines in the last $WINDOW:"
-    echo "$namespaces" | sed 's/^/        /'
+    # Platform buckets by definition, but a workspace's -sandbox namespace
+    # would land here too: keyed hashes for anything tenant-shaped.
+    echo "$namespaces" | python3 "$(dirname "$0")/lib/public_log.py" | sed 's/^/        /'
     echo "      This is the w6/m131 / w3/m36 failure mode: the shared/platform"
     echo "      buckets (\`default\`, \`dashboard\`) keep flowing while every"
     echo "      tenant line is dropped, so aggregate volume looks healthy."
@@ -173,8 +175,9 @@ for type in $STREAM_TYPES; do
   count="$(echo "$tenant_ns" | wc -l | tr -d ' ')"
   echo "RESULT type=$type status=live"
   echo "PASS[$type]: the $type-log pipeline is live and attributing tenant lines."
-  echo "      $count tenant namespace(s) produced type=$type streams in the last $WINDOW:"
-  echo "$tenant_ns" | sed 's/^/        /'
+  # The count, not the list: which workspaces are active is tenant data, and
+  # this probe's log is public (w5/m501, ADR019 §Decision 5).
+  echo "      $count tenant namespace(s) produced type=$type streams in the last $WINDOW."
   echo
 done
 

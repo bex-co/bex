@@ -1,0 +1,10 @@
+{"kind": "List", "items": [
+ {"kind": "Deployment", "metadata": {"namespace": "tea-c0ffee00000000000001", "name": "tea-c0ffee00000000000001-secret-shop"},
+  "spec": {"replicas": 2}, "status": {"readyReplicas": 0, "availableReplicas": 0, "updatedReplicas": 2,
+   "conditions": [{"type": "Available", "status": "False", "reason": "MinimumReplicasUnavailable", "message": "Deployment does not have minimum availability."},
+                  {"type": "Progressing", "status": "True", "reason": "ReplicaSetUpdated", "message": "ReplicaSet \"tea-c0ffee00000000000001-secret-shop-5d8f7c9b4\" is progressing."}]}},
+ {"kind": "ReplicaSet", "metadata": {"namespace": "tea-c0ffee00000000000001", "name": "tea-c0ffee00000000000001-secret-shop-5d8f7c9b4",
+   "annotations": {"deployment.kubernetes.io/revision": "12"}}, "spec": {"replicas": 2}, "status": {"replicas": 2, "readyReplicas": 0}},
+ {"kind": "ReplicaSet", "metadata": {"namespace": "tea-c0ffee00000000000001", "name": "tea-c0ffee00000000000001-secret-shop-6b7c8d9e0",
+   "annotations": {"deployment.kubernetes.io/revision": "11"}}, "spec": {"replicas": 0}, "status": {"replicas": 0}}
+]}

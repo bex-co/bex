@@ -1,0 +1,20 @@
+{"kind": "List", "items": [
+ {"metadata": {"namespace": "tea-c0ffee00000000000001", "name": "tea-c0ffee00000000000001-secret-shop-5d8f7c9b4-pend1", "creationTimestamp": "2026-11-18T11:00:00Z"},
+  "spec": {}, "status": {"phase": "Pending", "conditions": [{"type": "PodScheduled", "status": "False", "reason": "Unschedulable",
+   "message": "0/3 nodes are available: 1 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: }, 2 Insufficient cpu."}]}},
+ {"metadata": {"namespace": "tea-c0ffee00000000000002", "name": "tea-c0ffee00000000000002-acme-billing-7d9f8-abc12", "creationTimestamp": "2026-11-18T11:10:00Z"},
+  "spec": {}, "status": {"phase": "Pending", "conditions": [{"type": "PodScheduled", "status": "False", "reason": "Unschedulable",
+   "message": "0/3 nodes are available: persistentvolumeclaim \"disk-tea-c0ffee00000000000002-acme-billing\" not found."}]}},
+ {"metadata": {"namespace": "bex-build", "name": "bld-tea-c0ffee00000000000001-secret-shop-gen-3-abcde", "creationTimestamp": "2026-11-18T11:20:00Z"},
+  "spec": {"nodeName": "bex-gpu-aaaaa-bbbbb"}, "status": {"phase": "Pending",
+   "containerStatuses": [{"name": "build", "state": {"waiting": {"reason": "ContainerCreating"}}}]}},
+ {"metadata": {"namespace": "default", "name": "hello-private-7c9d-abc12", "creationTimestamp": "2026-11-18T11:25:00Z"},
+  "spec": {}, "status": {"phase": "Pending"}},
+ {"metadata": {"namespace": "acme-handmade", "name": "acme-worker-0", "creationTimestamp": "2026-11-18T11:26:00Z"},
+  "spec": {}, "status": {"phase": "Pending"}},
+ {"metadata": {"namespace": "tea-c0ffee00000000000002-sandbox", "name": "0a1b2c3d-0000-4000-8000-000000000001-0", "creationTimestamp": "2026-11-18T11:27:00Z"},
+  "spec": {}, "status": {"phase": "Pending"}},
+ {"metadata": {"namespace": "bex-system", "name": "bex-api-6d5f8c7b9-xyz12", "creationTimestamp": "2026-11-18T11:28:00Z"},
+  "spec": {}, "status": {"phase": "Pending", "conditions": [{"type": "PodScheduled", "status": "False", "reason": "Unschedulable",
+   "message": "0/3 nodes are available: 3 node(s) didn't match Pod's node affinity/selector."}]}}
+]}

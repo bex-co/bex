@@ -651,6 +651,22 @@ if [ -n "$unbounded_ci_jobs" ]; then
   exit 1
 fi
 
+# 11. Public production logs (w5/m501, ADR019 §Decision 5). This repository is
+# public, so every run log is too: a job holding production credentials prints
+# no raw kubectl read of tenant or node state, and calls a script that offers
+# --public-log with it. The rules are in scripts/lib/public_log_check.py. A
+# fixture run applies the check only when the self-test sets PUBLIC_LOG_CHECK=1.
+public_log_violations=""
+if [ "$canonical_tree" -eq 1 ] || [ "${PUBLIC_LOG_CHECK:-0}" = 1 ]; then
+  public_log_violations="$(python3 -B scripts/lib/public_log_check.py "$WORKFLOWS_DIR")" \
+    || { echo "FAIL: check 11 (scripts/lib/public_log_check.py) could not run" >&2; exit 1; }
+fi
+if [ -n "$public_log_violations" ]; then
+  echo "FAIL: a production job prints raw cluster state into this public repository's Actions log (check 11, w5/m501, ADR019 §Decision 5):" >&2
+  printf '%s\n' "$public_log_violations" >&2
+  exit 1
+fi
+
 # The remaining checks pin the canonical tree's reviewed inventory + deploy.yml
 # wiring; they don't apply to a fixture dir, so stop here under an override.
 if [ "$canonical_tree" -eq 0 ]; then

@@ -1,0 +1,4 @@
+{"kind": "List", "items": [
+ {"metadata": {"namespace": "bex-capi", "name": "cluster-autoscaler-clusterapi-6c7d8-qwert", "labels": {"app.kubernetes.io/instance": "cluster-autoscaler"}}},
+ {"metadata": {"namespace": "tea-c0ffee00000000000002", "name": "tea-c0ffee00000000000002-autoscaler-5f6g7-zxcvb", "labels": {"app.kubernetes.io/instance": "cluster-autoscaler"}}}
+]}

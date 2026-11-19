@@ -6,13 +6,27 @@
 #   NS=tea-... SERVICE_ID=srv-... bash scripts/disk-snapshot-drill.sh diagnose
 #   NS=tea-... SERVICE_ID=srv-... CONFIRM=srv-... bash scripts/disk-snapshot-drill.sh snapshot
 #
+# --public-log (the workflow, whose log this public repository publishes;
+# w5/m501, ADR019 §Decision 5) leaves out text the tenant's service can write:
+# the App's condition messages and the namespace's event messages. The
+# workflow then pipes everything through scripts/lib/public_log.py, which
+# hashes namespaces, names and node addresses. A snapshot's own backup pod
+# (exit, events, log) is the platform's disk-snapshot binary and stays.
+#
 # diagnose only reads. snapshot creates one Job from the App's own dskbak-
 # CronJob (the operator-authored, admission-validated template) and waits for
 # it, printing where its pod ran beside the service's pod — an RWO volume can
 # only attach on the node already holding it.
 set -euo pipefail
 
-mode="${1:?usage: disk-snapshot-drill.sh diagnose|snapshot}"
+usage="usage: disk-snapshot-drill.sh diagnose|snapshot [--public-log]"
+mode="${1:?$usage}"
+public=0
+case "${2:-}" in
+  "") ;;
+  --public-log) public=1 ;;
+  *) echo "$usage" >&2; exit 2 ;;
+esac
 : "${NS:?NS (tenant namespace) is required}"
 : "${SERVICE_ID:?SERVICE_ID (srv-...) is required}"
 [[ "$NS" =~ ^tea-[a-z0-9]+$ ]] || { echo "NS must be a tenant namespace (tea-...)" >&2; exit 1; }
@@ -32,8 +46,13 @@ where_pods() {
 
 diagnose() {
   section "App $app"
-  kubectl -n "$NS" get apps.app.bex.co "$app" \
-    -o jsonpath='{range .status.conditions[*]}{.type}={.status} {.reason}: {.message}{"\n"}{end}'
+  local conditions='{range .status.conditions[*]}{.type}={.status} {.reason}: {.message}{"\n"}{end}'
+  local events='TIME:.lastTimestamp,KIND:.involvedObject.kind,OBJECT:.involvedObject.name,REASON:.reason,MESSAGE:.message'
+  if [ "$public" = 1 ]; then
+    conditions='{range .status.conditions[*]}{.type}={.status} {.reason}{"\n"}{end}'
+    events='TIME:.lastTimestamp,KIND:.involvedObject.kind,OBJECT:.involvedObject.name,REASON:.reason'
+  fi
+  kubectl -n "$NS" get apps.app.bex.co "$app" -o jsonpath="$conditions"
   section "service pods (the volume is attached where these run)"
   where_pods "app.bex.co/app=$app,app.kubernetes.io/name!=disk-backup"
   section "PVC and attachment"
@@ -55,8 +74,7 @@ diagnose() {
   section "backup pods"
   where_pods "$backup_selector"
   section "recent events for the backup and the volume"
-  kubectl -n "$NS" get events --sort-by=.lastTimestamp \
-    -o custom-columns='TIME:.lastTimestamp,KIND:.involvedObject.kind,OBJECT:.involvedObject.name,REASON:.reason,MESSAGE:.message' \
+  kubectl -n "$NS" get events --sort-by=.lastTimestamp -o custom-columns="$events" \
     | grep -E "TIME|dskbak|disk-|$app" | tail -40 || true
   section "latest backup pod log (tail)"
   latest="$(kubectl -n "$NS" get pods -l "$backup_selector" --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1:].metadata.name}' 2>/dev/null || true)"

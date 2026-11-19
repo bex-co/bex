@@ -52,6 +52,10 @@ jobs:
           sparse-checkout: |
             /*
             !/.pm/
+      # This log is public (w5/m501, ADR019 §Decision 5): mask the tenant
+      # identifiers typed into the dispatch before any step's env prints them.
+      - name: Mask tenant inputs
+        run: python3 scripts/lib/public_log.py mask-inputs namespace service_id confirm
       - uses: azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e # v5.2.0
         with:
           version: v1.36.1
@@ -83,7 +87,9 @@ jobs:
         env:
           NS: ${{ inputs.namespace }}
           SERVICE_ID: ${{ inputs.service_id }}
-        run: bash scripts/disk-snapshot-drill.sh diagnose
+        run: |
+          set -o pipefail
+          bash scripts/disk-snapshot-drill.sh diagnose --public-log 2>&1 | python3 scripts/lib/public_log.py
 
       - name: Snapshot now
         if: inputs.mode == 'snapshot'
@@ -91,7 +97,9 @@ jobs:
           NS: ${{ inputs.namespace }}
           SERVICE_ID: ${{ inputs.service_id }}
           CONFIRM: ${{ inputs.confirm }}
-        run: bash scripts/disk-snapshot-drill.sh snapshot
+        run: |
+          set -o pipefail
+          bash scripts/disk-snapshot-drill.sh snapshot --public-log 2>&1 | python3 scripts/lib/public_log.py
 
       - name: final credential scrub
         if: always()

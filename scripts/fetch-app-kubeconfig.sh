@@ -115,6 +115,12 @@ attempt=1
 while :; do
   CP_IPS=$(discover)
   [ -n "$CP_IPS" ] || { echo "no running control-plane servers found for $CLUSTER" >&2; exit 1; }
+  # This repository's Actions logs are public, and node addresses stay out of
+  # them (w5/m501, ADR019 §Decision 5): register each address as a mask before
+  # anything can print it. Stderr, so a caller that silences stdout keeps it.
+  if [ "${GITHUB_ACTIONS:-}" = true ]; then
+    while IFS= read -r CP_IP; do echo "::add-mask::$CP_IP" >&2; done <<< "$CP_IPS"
+  fi
   hostkey_failed_ips=""
   while IFS= read -r CP_IP; do
     if ssh -o BatchMode=yes -o ConnectTimeout=8 \

@@ -1,0 +1,17 @@
+{"kind": "List", "items": [
+ {"kind": "MachineDeployment", "metadata": {"name": "bex-tenant-0"}, "spec": {"replicas": 7},
+  "status": {"replicas": 6, "readyReplicas": 6, "availableReplicas": 6, "upToDateReplicas": 6, "phase": "ScalingUp"}},
+ {"kind": "Machine", "metadata": {"name": "bex-tenant-0-abcde-fghij", "creationTimestamp": "2026-11-10T00:00:00Z",
+   "labels": {"cluster.x-k8s.io/deployment-name": "bex-tenant-0"}},
+  "spec": {"version": "v1.34.9", "providerID": "hcloud://123456789"},
+  "status": {"phase": "Running", "nodeRef": {"name": "bex-tenant-0-abcde-fghij"}, "addresses": [{"type": "ExternalIP", "address": "203.0.113.17"}],
+   "conditions": [{"type": "Ready", "status": "True"}, {"type": "Updating", "status": "False", "reason": "NotUpdating"}]}},
+ {"kind": "Machine", "metadata": {"name": "bex-gpu-aaaaa-bbbbb", "creationTimestamp": "2026-11-18T00:00:00Z",
+   "labels": {"cluster.x-k8s.io/deployment-name": "bex-gpu"}},
+  "spec": {"version": "v1.34.9"},
+  "status": {"phase": "Provisioned", "nodeRef": {"name": "bex-gpu-aaaaa-bbbbb"},
+   "conditions": [{"type": "NodeHealthy", "status": "False", "reason": "NodeConditionsFailed", "message": "Node bex-gpu-aaaaa-bbbbb at 203.0.113.50 is unreachable"}]}},
+ {"kind": "Machine", "metadata": {"name": "bex-control-plane-kkkkk", "creationTimestamp": "2026-11-01T00:00:00Z",
+   "labels": {"cluster.x-k8s.io/control-plane": ""}},
+  "spec": {"version": "v1.34.9"}, "status": {"phase": "Running", "nodeRef": {"name": "bex-control-plane-kkkkk"}}}
+]}

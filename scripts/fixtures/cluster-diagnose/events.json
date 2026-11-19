@@ -1,0 +1,12 @@
+{"kind": "List", "items": [
+ {"type": "Warning", "reason": "Unhealthy", "count": 41, "lastTimestamp": "2026-11-18T11:30:00Z",
+  "message": "Liveness probe failed: HTTP probe failed with statuscode: 500 body: secret-shop internal error at 203.0.113.99"},
+ {"type": "Warning", "reason": "Failed", "count": 2, "lastTimestamp": "2026-11-18T11:31:00Z",
+  "message": "Failed to pull image \"ghcr.io/acme/secret-shop:v1\": not found"},
+ {"type": "Warning", "reason": "FailedScheduling", "count": 9, "lastTimestamp": "2026-11-18T11:32:00Z",
+  "message": "0/3 nodes are available: 1 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: }, 2 Insufficient cpu. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod."},
+ {"type": "Normal", "reason": "TriggeredScaleUp", "count": 1, "lastTimestamp": "2026-11-18T11:33:00Z",
+  "message": "pod triggered scale-up: [{MachineDeployment/bex-capi/bex-tenant-0 6->7 (max: 8)}]"},
+ {"type": "Normal", "reason": "Scheduled", "count": 1, "lastTimestamp": "2026-11-18T10:00:01Z",
+  "message": "Successfully assigned tea-c0ffee00000000000001/tea-c0ffee00000000000001-secret-shop-5d8f7c9b4-x2x9z to bex-tenant-0-abcde-fghij"}
+]}
