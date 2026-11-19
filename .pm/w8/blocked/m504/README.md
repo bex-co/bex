@@ -63,6 +63,13 @@ Production pin `dff52c596d13`, `https://api.bex.co/v1/`, bex CLI v0.7.0 (Render 
 - **Gate 2, the private case:** a Starter private service in `bex-canary` costs money. A replay under the free-plans-only rule records it as unverified again. To verify it live, the user has to allow one Starter private service for a few minutes (`/unblock w8`).
 - **Next:** replay step 4's web case and check that the switched deploy's log reads `==> Detected HTTP on port 80; serving it`. Then run or record the private case as Gate 2 allows, and close the milestone.
 
+## Unblocked, gate 1 (2026-11-19, `/loopx w8` worker)
+
+- **Affected:** t007. **Source:** verified evidence, no user decision.
+- **Finding:** the newest pin on `origin/main`, `aefb144dc` (`chore(deploy): pin platform images to c81d2d447bd8`, 2026-11-19 18:04Z), carries t008's fix: `git merge-base --is-ancestor 9fac4888a c81d2d447bd8` holds, and so does w8/m461's `0d5ef6256`.
+- **Still open:** Gate 2. No user OK for a paid Starter private service has been given, so the private case stays unverified on production and the milestone stays in `blocked/`.
+- **Next:** t007 replays step 4's free web case in `bex-canary` and checks the switched deploy's log for `==> Detected HTTP on port 80; serving it`.
+
 ## Render parity
 
 | Surface | Before the switched deploy | After it | Result |
