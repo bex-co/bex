@@ -62,9 +62,14 @@ export function PlanPicker({
                   : "border-border",
               )}
             >
-              <div className="mb-2 flex items-baseline justify-between gap-2">
-                <span className="text-lg font-semibold">{t(plan.nameKey)}</span>
-                <span className="text-muted-foreground text-right text-sm font-medium">
+              {/* w7/088: the name never breaks inside a word. A price too
+                  long to sit beside it ("$349.30/mo per organization" in a
+                  ~220 px dialog card) wraps under the name instead. */}
+              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
+                <span className="shrink-0 whitespace-nowrap text-lg font-semibold">
+                  {t(plan.nameKey)}
+                </span>
+                <span className="text-muted-foreground text-sm font-medium">
                   {t(plan.billingKey)}
                 </span>
               </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PlanPicker } from "@/features/workspaces/components/plan-picker";
 
@@ -53,6 +53,27 @@ describe("PlanPicker", () => {
       expect(screen.getByRole("radio", { name: plan })).not.toHaveTextContent(
         "per organization",
       );
+    }
+  });
+
+  // w7/088: in the change-plan dialog's ~220 px cards the "per organization"
+  // price squeezed the name to "Sca / le" and "Enter / prise". The name never
+  // shrinks or breaks; the header row wraps so the price drops under it.
+  it("keeps each plan name whole and lets a long price wrap under it", () => {
+    render(<PlanPicker selected="hobby" onSelect={vi.fn()} />);
+
+    for (const [name, price] of [
+      ["Hobby", "$0/mo"],
+      ["Pro", "$17.50/mo"],
+      ["Scale", "$349.30/mo per organization"],
+      ["Enterprise", "Custom terms per organization"],
+    ]) {
+      const card = screen.getByRole("radio", { name: new RegExp(name) });
+      const nameEl = within(card).getByText(name, { exact: true });
+      expect(nameEl).toHaveClass("shrink-0", "whitespace-nowrap");
+      const header = nameEl.parentElement;
+      expect(header).toHaveClass("flex-wrap");
+      expect(within(header!).getByText(price)).not.toHaveClass("text-right");
     }
   });
 
