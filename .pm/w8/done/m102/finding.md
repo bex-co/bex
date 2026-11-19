@@ -2,7 +2,7 @@
 
 Why: a documented native build utility cannot compress the asset that the service is meant to publish.
 
-**Severity:** major. **Ownership:** operator shared native build-image assembly. Ordinary functional CLI sweep423, 2026-10-17. Published Bex 0.3.2/a6350da0 and unchanged Render 2.27.0/a764810a7682, isolated human-QA bex-canary/tea-daif693dqjvc73e7as3g, noninteractive JSON, api.bex.co/v1. Source and serving revision are recorded in the evidence; serving SHA/OCI is unobserved. [Complete evidence](evidence/cli-sweep423/README.md).
+**Severity:** major. **Ownership:** operator shared native build-image assembly. Ordinary functional CLI sweep423, 2026-10-17. Published Bex 0.3.2/a6350da0 and unchanged Render 2.27.0/a764810a7682, isolated human-QA bex-canary/tea-daif693dqjvc73e7as3g, noninteractive JSON, api.bex.co/v1. Source and serving revision are recorded in the evidence; serving SHA/OCI is unobserved. Complete evidence (sweep 423, purged 2026-11-04).
 
 ## Reproduce and isolate
 

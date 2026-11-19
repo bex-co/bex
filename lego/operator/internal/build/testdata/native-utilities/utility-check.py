@@ -1,6 +1,6 @@
 """Offline generated-image behavior regressions; no hosting or publication claim."""
 from pathlib import Path
-import base64,gettext,gzip,io,json,os,runpy,shlex,shutil,struct,subprocess,sys,tempfile,zipfile,zlib,hashlib
+import base64,gettext,gzip,http.client,io,json,os,runpy,shlex,shutil,socket,struct,subprocess,sys,tempfile,time,zipfile,zlib,hashlib
 ROOT=Path(__file__).resolve().parent
 PHASE=sys.argv[1]
 def sha(b):return hashlib.sha256(b).hexdigest()
@@ -234,14 +234,60 @@ def extra_cases():
     assert all(v.compress_type==0 for v in z.infolist()) if label=='stored' else any(v.compress_type==8 for v in z.infolist())
    if PHASE=='build':shutil.copyfile(zipdir/(label+'.zip'),ROOT/'public'/(label+'.zip'))
   run(['zip','-q','bad.zip','absent.txt'],cwd=zipdir,fails=True);results.append('ZIP independent exact empty/binary/Unicode/space members+CRC32/stored+deflated methods and missing input failure')
-  # Build-only pigz, independent runtime/static artifact checks require no pigz.
+  # pigz is build-only, as Render lists it: it runs at build, and every phase reads the retained artifacts back with Python's zlib alone.
   compressed_dir=ROOT/'public';payloads={'empty':b'','binary':bytes(range(256))*64,'unicode':('Crème 雪\n'*100).encode()}
+  m102=next(x for x in json.loads((ROOT/'original-cases.json').read_text()) if x['mid']==102);pref=m102['validation_reference'];pz=ROOT/'qa-pigz'
+  original=payloads['m102-original']=(pref['input']['unit']*pref['input']['repetitions']).encode()
+  # pigz 2.6 on zlib 1.2.13 emits these bytes for m102's input on linux/amd64 (production, w8/m102) and linux/arm64.
+  frozen='8aecad5d82730581c6039f179160de01f9f1a3c9f03745548e701394d3d540ee'
+  frozen_proof={'bytes':130,'sha256':frozen,'header_hex':'1f8b0800000000000003','CRC32':zlib.crc32(original),'ISIZE':len(original),'inflated_bytes':len(original),'inflated_sha256':pref['input']['sha256']}
+  def pigz(*a,cwd=d,data=None,env=None,name='pigz'):r=subprocess.run([name,*a],cwd=cwd,input=data,capture_output=True,env=env,timeout=90);return r.returncode,r.stdout,r.stderr.decode()
+  if PHASE=='build':
+   # m102's own program through its original argv, outside the original build: the frozen production bytes and the program's own build proof.
+   pz.mkdir()
+   for n,s in json.loads(gzip.decompress(base64.b64decode(m102['commands']['initial']['build'].split("b64decode('",1)[1].split("'",1)[0]))).items():(pz/n).write_text(s,encoding='utf-8')
+   for n in pref['files']:shutil.copyfile(ROOT/'source-carrier'/n,pz/n)
+   assert json.loads(run([sys.executable,'qa-pigz-app.py','before'],cwd=pz).decode().split('QA_PIGZ_BEFORE ',1)[1])['pigz_path']=='/usr/bin/pigz'
+   code,out,_=pigz('-n','-p','2','-c','qa-pigz-input.txt',cwd=pz);(pz/'qa-pigz-output.gz').write_bytes(out);assert code==0 and sha(out)==frozen
+   got=json.loads(run([sys.executable,'qa-pigz-app.py','build'],cwd=pz).decode().split('QA_PIGZ_AFTER ',1)[1])
+   assert got['build_compressor_version']=='pigz 2.6' and got['gzip']==frozen_proof
+   for name,data in payloads.items():(compressed_dir/(name+'.gz')).write_bytes(pigz('-n','-p','2','-c',data=data)[1])
+   # In place, a Unicode, space-containing name keeps its mode and time, and the header stores both (FLG.FNAME, MTIME); -d -N restores name, time and mode.
+   f=d/'two words 雪.txt';f.write_bytes(original);f.chmod(0o640);os.utime(f,(1700000000,1700000000));assert pigz(f.name)[0]==0 and not f.exists()
+   z=d/(f.name+'.gz');raw=z.read_bytes();assert (raw[3],struct.unpack('<I',raw[4:8])[0],raw[10:].split(b'\0',1)[0],z.stat().st_mode&0o777,int(z.stat().st_mtime))==(8,1700000000,f.name.encode(),0o640,1700000000)
+   z.rename(d/'renamed.gz');assert pigz('-d','-N','renamed.gz')[0]==0 and not (d/'renamed.gz').exists() and (f.read_bytes(),f.stat().st_mode&0o777,int(f.stat().st_mtime))==(original,0o640,1700000000)
+   # The output does not depend on the thread count: a 14-block input gives the same bytes on 1, 2, 4 and 8 threads; -i (independent blocks) differs and still inflates.
+   big=original+b''.join(hashlib.sha256(i.to_bytes(4,'big')).digest() for i in range(12800))+original;outs={pigz('-b','32','-p',p,'-c',data=big)[1] for p in '1248'}
+   assert len(outs)==1 and zlib.decompress(next(iter(outs)),wbits=31)==big;indep=pigz('-i','-b','32','-p','4','-c',data=big)[1];assert indep not in outs and zlib.decompress(indep,wbits=31)==big
+   # zlib (-z, Adler-32 trailer), single-entry ZIP (-K) and zopfli (-11) formats, concatenated members, unpigz, and options read from PIGZ.
+   zl=pigz('-z','-c',data=original)[1];assert zl[:2]==b'\x78\x5e' and zlib.decompress(zl)==original and struct.unpack('>I',zl[-4:])[0]==zlib.adler32(original)
+   (d/'member.txt').write_bytes(original);assert pigz('-K','-k','member.txt')[0]==0
+   with zipfile.ZipFile(d/'member.txt.zip') as archive:assert [(v.filename,v.compress_type,v.CRC,v.file_size) for v in archive.infolist()]==[('member.txt',8,zlib.crc32(original),len(original))] and archive.read('member.txt')==original
+   z11=pigz('-11','-n','-c',data=original)[1];assert len(z11)<len(out) and zlib.decompress(z11,wbits=31)==original
+   two=pigz('-c',data='雪 '.encode())[1]+pigz('-c',data=b'two words\n')[1];assert pigz('-d','-c',data=two)[1]==gzip.decompress(two)=='雪 two words\n'.encode() and pigz('-c',data=out,name='unpigz')[1]==original
+   assert pigz('-c','qa-pigz-input.txt',cwd=pz,env=dict(os.environ,PIGZ='-n -p 2'))[1]==out!=pigz('-c','qa-pigz-input.txt',cwd=pz)[1]
+   # Exit 1 for corrupt, truncated or missing input and for an existing output, which stays until -f; 22 (EINVAL) for an unknown option.
+   assert pigz('-d','-c',data=b'invalid gzip')[0::2]==(1,'pigz: skipping: <stdin> unrecognized format\n') and pigz('-t',data=out[:60])[0::2]==(1,'pigz: skipping: <stdin>: corrupted -- incomplete deflate data\n') and pigz('-t',data=out)[0]==0
+   assert pigz('absent.txt')[0::2]==(1,'pigz: skipping: absent.txt does not exist\n') and pigz('--bex-unknown-option')[0::2]==(22,'pigz: abort: invalid option: --bex-unknown-option\n')
+   (d/'e.txt').write_bytes(b'first\n');assert pigz('e.txt')[0]==0;(d/'e.txt').write_bytes(b'second\n')
+   assert pigz('e.txt')[0::2]==(1,'pigz: skipping: e.txt.gz exists\n') and gzip.decompress((d/'e.txt.gz').read_bytes())==b'first\n' and pigz('-f','e.txt')[0]==0 and gzip.decompress((d/'e.txt.gz').read_bytes())==b'second\n'
   for name,data in payloads.items():
-   f=compressed_dir/(name+'.gz')
-   if PHASE=='build':f.write_bytes(run(['pigz','-n','-p','2','-c'],data=data))
-   raw=f.read_bytes();assert raw[:3]==b'\x1f\x8b\x08' and raw[3]==0 and raw[4:8]==b'\0'*4;assert struct.unpack('<II',raw[-8:])==(zlib.crc32(data)&0xffffffff,len(data));assert gzip.decompress(raw)==data
-  if PHASE=='build':run(['pigz','-d','-c'],data=b'invalid gzip',fails=True)
-  results.append('pigz build-only empty/binary/Unicode/error + exact gzip header/CRC32/ISIZE/independent inflation and retained artifacts')
+   raw=(compressed_dir/(name+'.gz')).read_bytes();assert raw[:10]==bytes.fromhex('1f8b0800000000000003') and struct.unpack('<II',raw[-8:])==(zlib.crc32(data),len(data)) and zlib.decompress(raw,wbits=31)==data
+  assert sha((compressed_dir/'m102-original.gz').read_bytes())==frozen
+  if PHASE=='runtime':
+   # m102's own server serves the built bytes with no pigz on PATH.
+   with socket.socket() as s:s.bind(('127.0.0.1',0));port=s.getsockname()[1]
+   server=subprocess.Popen([sys.executable,'qa-pigz-app.py','serve'],cwd=pz,env={'PATH':'/nonexistent','PORT':str(port)},stdout=subprocess.DEVNULL)
+   def get(path):c=http.client.HTTPConnection('127.0.0.1',port,timeout=5);c.request('GET',path);r=c.getresponse();return r.status,r.getheader('Content-Type'),r.read()
+   try:
+    for _ in range(150):
+     try:asset=get('/asset.gz');break
+     except OSError:time.sleep(.03)
+    else:raise RuntimeError('qa-pigz-app.py serve did not listen')
+    inspect=get('/inspect')
+   finally:server.terminate();server.wait(timeout=5)
+   proof=json.loads(inspect[2]);assert asset[:2]==(200,'application/gzip') and sha(asset[2])==frozen and inspect[:2]==(200,'application/json') and proof['runtime']['gzip']==proof['build']['gzip']==frozen_proof and proof['build']['build_compressor_version']=='pigz 2.6'
+  results.append('pigz (build only): m102 original program via its own argv, frozen 2.6 bytes and build proof; empty/binary/Unicode and original artifacts with exact header/CRC32/ISIZE/inflation at every phase; in-place name/mode/time and -N restore; output independent of thread count, -i; zlib/ZIP/zopfli formats, concatenated members, unpigz, PIGZ options; exit 1 for corrupt/truncated/missing input and an existing output kept until -f, 22 for an unknown option; the runtime serves the built bytes with no pigz on PATH')
  return results
 (ROOT/'public').mkdir(exist_ok=True)
 checks=extra_cases()

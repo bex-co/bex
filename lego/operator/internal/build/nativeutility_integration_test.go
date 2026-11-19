@@ -198,6 +198,7 @@ func nativeUtilityCases() []nativeUtilityCase {
 		{"typescript", "99", "tsc: command not found", nativeNodeRuntime},
 		{"swig", "100", "swig: command not found", nativePythonRuntime},
 		{"webpack", "101", "webpack: command not found", nativeNodeRuntime},
+		{"pigz", "102", "pigz: command not found", nativePythonRuntime},
 		{"python-metadata", "103", "No module named 'setuptools'", nativeNodeRuntime},
 		{"python-pip", "103", "No module named pip", nativeNodeRuntime},
 		{"python-headers", "103", "Python.h: No such file or directory", nativeNodeRuntime},
@@ -342,6 +343,10 @@ func nativeUtilityRemovalLayer(removed, name string) string {
 		// its CLI stay, so the original build fails at its webpack step, after
 		// the before proof.
 		command = `webpack --version && rm /usr/bin/webpack && test ! -e /usr/bin/webpack && hash -r && ! command -v webpack && /opt/bex/native-node-tools/node /opt/bex/native-node-tools/node_modules/webpack/bin/webpack.js --version && test -f /opt/bex/native-node-tools/node_modules/webpack-cli/bin/cli.js`
+	case "pigz":
+		// Only the pigz name goes; its unpigz hard link, zlib and gzip stay,
+		// so the original build fails at its pigz step, after the before proof.
+		command = `pigz --version && rm /usr/bin/pigz && test ! -e /usr/bin/pigz && hash -r && ! command -v pigz && printf 'zlib stays\n' | gzip -c | unpigz -c | grep -qx 'zlib stays' && ldconfig -p | grep -q 'libz\.so\.1'`
 	case "python-metadata":
 		command = pythonControls + " && rm -r /usr/lib/python3/dist-packages/setuptools && test ! -e /usr/lib/python3/dist-packages/setuptools && /usr/bin/python3 -m pip --version && test -f /usr/include/python3.11/Python.h"
 	case "python-pip":
