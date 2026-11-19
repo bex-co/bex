@@ -246,9 +246,10 @@ func TestFlavorsSharingASecretRefuseEachOthersTickets(t *testing.T) {
 	}
 }
 
-// A ticket the previous release minted (body-only MAC) still opens across the
-// deploy, until w5/191 removes the fallback.
-func TestOpenAcceptsTheBodyOnlyMACOfThePreviousRelease(t *testing.T) {
+// A body-only MAC, the form every flavor signed before w5/187, is refused
+// under the right secret and for an otherwise valid body: only the
+// flavor-bound MAC verifies. The previous release's fallback is gone (w5/191).
+func TestOpenRefusesABodyOnlyMAC(t *testing.T) {
 	c := New("disk snapshot key")
 	payload, err := json.Marshal(claims{Subject: "user-1", ExpiresAt: 42})
 	if err != nil {
@@ -256,26 +257,11 @@ func TestOpenAcceptsTheBodyOnlyMACOfThePreviousRelease(t *testing.T) {
 	}
 	body := base64.RawURLEncoding.EncodeToString(payload)
 	var got claims
-	if err := c.Open(secret, body+"."+mac(secret, body), &got); err != nil || got.Subject != "user-1" {
-		t.Fatalf("a previous-release ticket = %+v / %v, want it opened", got, err)
+	if err := c.Open(secret, body+"."+mac(secret, body), &got); !errors.Is(err, ErrSignature) {
+		t.Fatalf("a body-only MAC = %+v / %v, want ErrSignature", got, err)
 	}
-}
-
-// A current ticket re-wrapped so its flavor-bound message reads as a body
-// ("<flavor>\n<body>.<mac>") must not pass the previous-release fallback. With
-// a flavor name made only of base64 characters (here "ICAg", three spaces) the
-// re-wrapped body even decodes to valid JSON, so the signature check is the
-// only thing refusing it.
-func TestOpenRefusesACurrentTicketRewrappedAsAPreviousReleaseOne(t *testing.T) {
-	c := New("ICAg")
-	token, err := c.Sign(secret, claims{Subject: "user-1", ExpiresAt: 42})
-	if err != nil {
-		t.Fatalf("Sign: %v", err)
-	}
-	body, sig, _ := strings.Cut(token, ".")
-	var got claims
-	if err := c.Open(secret, "ICAg\n"+body+"."+sig, &got); !errors.Is(err, ErrSignature) {
-		t.Fatalf("re-wrapped ticket = %+v / %v, want ErrSignature", got, err)
+	if got != (claims{}) {
+		t.Errorf("a refused body-only ticket decoded %+v", got)
 	}
 }
 

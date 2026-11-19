@@ -147,7 +147,7 @@ func TestByIDVerbsReachNonDefaultWorkspaceSandbox(t *testing.T) {
 		t.Fatalf("ConnectFile = %+v, %v; want a token minted for the tea-b sandbox", file, err)
 	}
 	var claims fileConnectClaims
-	if err := fileConnectCodec.Open(svc.Exec.fileConnectKey(), file.Token, &claims); err != nil || claims.Workspace != "tea-b" {
+	if err := fileConnectCodec.Open(svc.Exec.Secret, file.Token, &claims); err != nil || claims.Workspace != "tea-b" {
 		t.Fatalf("file token claims = %+v, %v; want workspace tea-b", claims, err)
 	}
 	if err := svc.Terminate(ctx, "sbx-b"); err != nil {

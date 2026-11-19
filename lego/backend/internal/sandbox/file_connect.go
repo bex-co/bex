@@ -17,8 +17,6 @@ package sandbox
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -41,7 +39,6 @@ import (
 const (
 	ConnectFileUploadPattern   = "PUT /v1/sandboxes/{id}/files/upload/{executionId}"
 	ConnectFileDownloadPattern = "GET /v1/sandboxes/{id}/files/download/{executionId}"
-	fileConnectKeyLabel        = "bex sandbox file connect token v1"
 )
 
 var fileConnectCodec = hmacticket.New("sandbox file connect token")
@@ -67,15 +64,6 @@ type fileConnectClaims struct {
 	IssuedAt     int64  `json:"iat"`
 	ExpiresAt    int64  `json:"exp"`
 	Nonce        string `json:"nonce"`
-}
-
-func (c *ExecConfig) fileConnectKey() []byte {
-	if c == nil || len(c.Secret) == 0 {
-		return nil
-	}
-	mac := hmac.New(sha256.New, c.Secret)
-	mac.Write([]byte(fileConnectKeyLabel))
-	return mac.Sum(nil)
 }
 
 func (s *Service) fileAvailabilityError() error {
@@ -168,8 +156,8 @@ func (s *Service) authorizeFileTarget(ctx context.Context, verb string, req File
 }
 
 // ConnectFile mints a short-lived, single-use token for one exact file path.
-// Only the returned transfer URI accepts it; run and gateway tickets use
-// different signing keys even when all features share the configured secret.
+// Only the returned transfer URI accepts it; run and gateway tickets share
+// the configured secret, and each flavor's name in the MAC keeps them apart.
 func (s *Service) ConnectFile(ctx context.Context, req FileConnectRequest, baseURL string) (ConnectResponse, error) {
 	ws, raw, err := s.authorizeFileTarget(ctx, AuditVerbConnectFile, req)
 	if err != nil {
@@ -189,7 +177,7 @@ func (s *Service) ConnectFile(ctx context.Context, req FileConnectRequest, baseU
 	if err := hmacticket.EnsureNonce(&claims.Nonce); err != nil {
 		return ConnectResponse{}, err
 	}
-	token, err := fileConnectCodec.Sign(s.Exec.fileConnectKey(), claims)
+	token, err := fileConnectCodec.Sign(s.Exec.Secret, claims)
 	if err != nil {
 		return ConnectResponse{}, err
 	}
@@ -207,7 +195,7 @@ func (s *Service) ConnectFile(ctx context.Context, req FileConnectRequest, baseU
 
 func (s *Service) verifyFileConnectToken(ctx context.Context, r *http.Request) (fileConnectClaims, error) {
 	var claims fileConnectClaims
-	if err := fileConnectCodec.Open(s.Exec.fileConnectKey(), bearerToken(r), &claims); err != nil {
+	if err := fileConnectCodec.Open(s.Exec.Secret, bearerToken(r), &claims); err != nil {
 		return claims, &connectStatusError{http.StatusUnauthorized, "invalid sandbox file connect token"}
 	}
 	now := s.Now()

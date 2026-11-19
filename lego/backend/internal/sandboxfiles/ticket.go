@@ -19,8 +19,6 @@ limitations under the License.
 package sandboxfiles
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
 	"fmt"
 	"path"
 	"strings"
@@ -62,25 +60,16 @@ var (
 	ErrExpired   = codec.Expired()
 )
 
-func key(secret []byte) []byte {
-	if len(secret) == 0 {
-		return nil
-	}
-	h := hmac.New(sha256.New, secret)
-	_, _ = h.Write([]byte("bex sandbox file gateway ticket v1"))
-	return h.Sum(nil)
-}
-
 func Mint(secret []byte, claims Claims) (string, error) {
 	if err := hmacticket.EnsureNonce(&claims.Nonce); err != nil {
 		return "", err
 	}
-	return codec.Sign(key(secret), claims)
+	return codec.Sign(secret, claims)
 }
 
 func Verify(secret []byte, token string, now time.Time) (Claims, error) {
 	var c Claims
-	if err := codec.Open(key(secret), token, &c); err != nil {
+	if err := codec.Open(secret, token, &c); err != nil {
 		return Claims{}, err
 	}
 	if c.Subject == "" || c.Workspace == "" || c.SandboxID == "" || c.Namespace != c.Workspace+"-sandbox" ||

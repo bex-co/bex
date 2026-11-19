@@ -18,8 +18,6 @@ package sandbox
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -57,13 +55,12 @@ const (
 	// connectTokenMaxTTL caps the token lifetime: the client redeems it
 	// immediately, and a longer window only widens a leaked token's use.
 	connectTokenMaxTTL = 60 * time.Second
-	// connectKeyLabel domain-separates the connect-token key from the
-	// gateway exec-ticket key derived from the same BEX_SANDBOX_EXEC_SECRET.
-	// A connect token therefore never verifies as a gateway ticket, and a
-	// gateway ticket never redeems here, even though one secret is configured.
-	connectKeyLabel = "bex sandbox run connect token v1"
 )
 
+// connectCodec signs with BEX_SANDBOX_EXEC_SECRET, as the gateway exec ticket
+// and both file tokens do. Its flavor name, bound into every MAC, keeps them
+// apart: a connect token never verifies as a gateway ticket, and a gateway
+// ticket never redeems here.
 var connectCodec = hmacticket.New("sandbox connect token")
 
 // connectClaims is the signed body of a run connect token. Every field the
@@ -108,16 +105,6 @@ type ConnectResponse struct {
 	Method      string    `json:"method"`
 	Token       string    `json:"token"`
 	URI         string    `json:"uri"`
-}
-
-// connectKey derives the connect-token signing key from the gateway secret.
-func (c *ExecConfig) connectKey() []byte {
-	if c == nil || len(c.Secret) == 0 {
-		return nil
-	}
-	mac := hmac.New(sha256.New, c.Secret)
-	mac.Write([]byte(connectKeyLabel))
-	return mac.Sum(nil)
 }
 
 // nonces returns the single-use guard for connect tokens. Production wires a
@@ -178,7 +165,7 @@ func (s *Service) ConnectRun(ctx context.Context, req ConnectRequest, baseURL st
 	if err := hmacticket.EnsureNonce(&claims.Nonce); err != nil {
 		return ConnectResponse{}, err
 	}
-	token, err := connectCodec.Sign(s.Exec.connectKey(), claims)
+	token, err := connectCodec.Sign(s.Exec.Secret, claims)
 	if err != nil {
 		return ConnectResponse{}, err
 	}
@@ -225,7 +212,7 @@ func (s *Service) verifyConnectToken(ctx context.Context, token, sandboxID, exec
 	if token == "" {
 		return claims, &connectStatusError{http.StatusUnauthorized, "a sandbox run connect token is required as the Bearer credential"}
 	}
-	if err := connectCodec.Open(s.Exec.connectKey(), token, &claims); err != nil {
+	if err := connectCodec.Open(s.Exec.Secret, token, &claims); err != nil {
 		return claims, &connectStatusError{http.StatusUnauthorized, "invalid sandbox run connect token"}
 	}
 	now := s.Now()

@@ -186,7 +186,9 @@ func (c *Codec) Open(secret []byte, token string, claims any) error {
 	if !ok || body == "" || signature == "" {
 		return c.Malformed()
 	}
-	if !c.signedBy(secret, body, signature) {
+	// Only the flavor-bound MAC verifies; the body-only MAC every flavor
+	// signed before w5/187 is refused (its one-release fallback ended in w5/191).
+	if !hmac.Equal([]byte(signature), []byte(c.mac(secret, body))) {
 		return c.Signature()
 	}
 	payload, err := base64.RawURLEncoding.DecodeString(body)
@@ -245,21 +247,6 @@ func EnsureNonce(n *string) error {
 // defeating single-use (codex #8).
 func NonceExpiry(expiresAt int64) time.Time {
 	return time.Unix(expiresAt, 0).Add(ClockSkew)
-}
-
-// signedBy reports whether signature is body's MAC under this flavor, or the
-// body-only MAC every flavor signed before w5/187. The second form keeps the
-// tickets the previous release minted valid for their lifetime across the
-// deploy (a disk snapshot key lives 24 hours). It is refused for a body that
-// holds a newline: every current MAC covers "<flavor>\n<body>", so without
-// that check a current ticket re-wrapped as "<flavor>\n<body>.<mac>" would
-// pass as a previous-release one (base64 decoding skips the newline). w5/191
-// removes the fallback.
-func (c *Codec) signedBy(secret []byte, body, signature string) bool {
-	if hmac.Equal([]byte(signature), []byte(c.mac(secret, body))) {
-		return true
-	}
-	return !strings.ContainsRune(body, '\n') && hmac.Equal([]byte(signature), []byte(mac(secret, body)))
 }
 
 func (c *Codec) mac(secret []byte, body string) string {
