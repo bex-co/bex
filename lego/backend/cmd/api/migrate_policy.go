@@ -37,7 +37,9 @@ import (
 //	kubectl -n bex-system exec deploy/bex-api -- /api migrate-container-policy --all-native [--apply]
 //	kubectl -n bex-system exec deploy/bex-api -- /api migrate-container-policy --all [--apply]
 //
-// Without --apply it prints the plan and writes nothing.
+// Without --apply it prints the plan and writes nothing. A service that runs
+// nothing (no release has served) reads "rollout": false: its policy is saved
+// for its next deploy instead of rolling it (w32/044).
 const migrateContainerPolicyCommand = "migrate-container-policy"
 
 // migrateContainerPolicyBulkFlags maps each bulk flag to the services it
@@ -97,7 +99,11 @@ func runMigrateContainerPolicy(ctx context.Context, cpDBURI string, base *core.B
 	svc := &apps.Service{Base: base, Store: store.NewPGStore(pool)}
 	logApplied := func(m apps.ContainerPolicyMigration) {
 		if m.Applied {
-			log.Printf("bex-api: migrated %s (%s) from container policy %q to %q", m.ServiceID, m.Workspace, m.From, m.To)
+			how := "rolled once"
+			if !m.Rollout {
+				how = "saved for its next deploy"
+			}
+			log.Printf("bex-api: migrated %s (%s) from container policy %q to %q, %s", m.ServiceID, m.Workspace, m.From, m.To, how)
 		}
 	}
 	enc := json.NewEncoder(out)

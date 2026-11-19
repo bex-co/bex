@@ -19,9 +19,11 @@ package apps
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
@@ -30,6 +32,7 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
+// migratableApp is a Running image service whose release serves.
 func migratableApp(policy string, mutate ...func(*appv1alpha1.App)) *appv1alpha1.App {
 	a := sampleApp("clickhouse")
 	a.Namespace = "tea-qa"
@@ -37,6 +40,7 @@ func migratableApp(policy string, mutate ...func(*appv1alpha1.App)) *appv1alpha1
 		store.LabelManagedBy: store.ManagedByValue, core.LabelAppID: "srv-ch", core.LabelTenant: "tea-qa",
 	}
 	a.Spec.ContainerPolicy = policy
+	a.Status.ActiveRevision = "rev-1"
 	for _, m := range mutate {
 		m(a)
 	}
@@ -63,7 +67,10 @@ func TestMigrateContainerPolicyPlansThenRollsOnce(t *testing.T) {
 			if len(rec.policyCalls) != 0 || len(rec.deployCalls) != 0 || policyOf(t, cl) != from {
 				t.Fatal("dry run wrote")
 			}
-			if plan, err = svc.MigrateContainerPolicy(t.Context(), "srv-ch", true); err != nil || !plan.Applied {
+			if !plan.Rollout {
+				t.Fatalf("dry run of a serving service = %+v, want a rollout", plan)
+			}
+			if plan, err = svc.MigrateContainerPolicy(t.Context(), "srv-ch", true); err != nil || !plan.Applied || !plan.Rollout {
 				t.Fatalf("apply = %+v, %v", plan, err)
 			}
 			if got := policyOf(t, cl); got != appv1alpha1.ContainerPolicyRenderV1 {
@@ -90,6 +97,12 @@ func TestMigrateContainerPolicyRefusals(t *testing.T) {
 		{"deploy in flight", migratableApp("", func(a *appv1alpha1.App) { a.Status.Phase = appv1alpha1.PhaseDeploying }), core.ErrConflict},
 		{"never deployed", migratableApp("", func(a *appv1alpha1.App) { a.Status.Phase = appv1alpha1.PhasePending }), core.ErrConflict},
 		{"change not yet applied", migratableApp("", func(a *appv1alpha1.App) { a.Generation = 3; a.Status.ObservedGeneration = 2 }), core.ErrConflict},
+		// The operator's last pass, which stamped Ready, read an older
+		// generation: the newest change is still unobserved.
+		{"change not yet observed", migratableApp("", func(a *appv1alpha1.App) {
+			a.Generation, a.Status.ObservedGeneration = 4, 2
+			a.Status.Conditions = []metav1.Condition{readyCondition(metav1.ConditionTrue, "PriorReleaseServing", 3)}
+		}), core.ErrConflict},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			rec := &recordingStore{}
@@ -386,6 +399,151 @@ func TestMigrateContainerPoliciesRestoresARowRefusedUnderTheLock(t *testing.T) {
 	}
 	if got := policyOfApp(t, svc.Client, "a-raced"); got != appv1alpha1.ContainerPolicyStrictV1 {
 		t.Fatalf("raced CR policy = %q", got)
+	}
+}
+
+func readyCondition(status metav1.ConditionStatus, reason string, observed int64) metav1.Condition {
+	return metav1.Condition{Type: appv1alpha1.ConditionReady, Status: status, Reason: reason, ObservedGeneration: observed}
+}
+
+// settled gives a its operator status: generation gen, the Ready condition the
+// operator's last pass stamped for it, and status.observedGeneration observed
+// (zero: never stamped).
+func settled(gen, observed int64, phase appv1alpha1.AppPhase, active string, ready metav1.Condition) func(*appv1alpha1.App) {
+	return func(a *appv1alpha1.App) {
+		a.Generation = gen
+		a.Status.Phase, a.Status.ObservedGeneration, a.Status.ActiveRevision = phase, observed, active
+		a.Status.Conditions = []metav1.Condition{ready}
+	}
+}
+
+// w32/044: the services w32/040's production `--all` refused as a change still
+// being applied, with nothing in flight, and the one it would have started.
+// The operator settles a failed release by stamping only the Ready
+// condition's observed generation, so each of these is settled. A service
+// that runs nothing (its first release failed, or was canceled) gets the
+// policy saved for its next deploy with no rollout; one still serving a
+// prior release after a failed build rolls once, as any serving service does.
+func TestMigrateContainerPoliciesAllMovesServicesAFailedReleaseLeftBehind(t *testing.T) {
+	failed := func(reason string, gen int64) metav1.Condition {
+		return readyCondition(metav1.ConditionFalse, reason, gen)
+	}
+	apps := []*appv1alpha1.App{
+		// A native service whose only deploy failed at build (w32/043).
+		nativeApp("a-build-failed", "", settled(1, 0, appv1alpha1.PhaseFailed, "", failed("BuildFailedUserError", 1))),
+		// Image services whose only, or latest, rollout failed and stopped.
+		namedApp("b-quota", "", settled(1, 0, appv1alpha1.PhaseFailed, "", failed("RolloutBlockedByQuota", 1))),
+		namedApp("c-deadline", "", settled(3, 0, appv1alpha1.PhaseFailed, "", failed("ProgressDeadlineExceeded", 3))),
+		// A legacy auto-built service still serving its prior release after
+		// its newest build failed.
+		namedApp("d-prior-release", "", func(a *appv1alpha1.App) {
+			a.Spec.Image, a.Spec.Repo, a.Spec.Builder = "", "https://github.com/example/app", "auto"
+			a.Annotations = map[string]string{appv1alpha1.AnnotationReleaseGeneration: "730"}
+			a.Status.ReleaseGeneration = 730
+		}, settled(730, 729, appv1alpha1.PhaseRunning, "rev-729", readyCondition(metav1.ConditionTrue, "PriorReleaseServing", 730))),
+		// An image service canceled before its first release served, its
+		// Deployment at zero.
+		namedApp("e-canceled", "", func(a *appv1alpha1.App) {
+			a.Annotations = map[string]string{
+				appv1alpha1.AnnotationReleaseGeneration: "2", appv1alpha1.AnnotationCanceledReleaseGeneration: "2",
+			}
+		}, settled(2, 2, appv1alpha1.PhaseCanceled, "", failed("BuildCanceled", 2))),
+		// Not settled: the operator has not read the newest write yet.
+		namedApp("f-unobserved", "", settled(5, 4, appv1alpha1.PhaseRunning, "rev-4", readyCondition(metav1.ConditionTrue, "Deployed", 4))),
+	}
+	holds := map[string]bool{"a-build-failed": true, "b-quota": true, "c-deadline": true, "e-canceled": true}
+	for _, apply := range []bool{false, true} {
+		rec := &recordingStore{}
+		svc, cl := newTenantStoreService(fakeWorkspace{}, rec, deepCopies(apps)...)
+		lines := map[string]ContainerPolicyMigrationLine{}
+		summary, err := svc.MigrateContainerPolicies(t.Context(), MigrationScopeAll, apply, func(l ContainerPolicyMigrationLine) { lines[l.ServiceID] = l })
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, a := range apps[:5] {
+			l := lines["srv-"+a.Name]
+			if l.Refused != "" || l.Applied != apply || l.Rollout == holds[a.Name] {
+				t.Errorf("apply=%t: %s = %+v, want migrated with rollout %t", apply, a.Name, l, !holds[a.Name])
+			}
+		}
+		if l := lines["srv-f-unobserved"]; l.Refused == "" || l.Applied {
+			t.Errorf("apply=%t: an unobserved change was not refused: %+v", apply, l)
+		}
+		if !apply {
+			if summary != (ContainerPolicyMigrationSummary{Planned: 5, Refused: 1}) || len(rec.policyCalls) != 0 || len(rec.deployCalls) != 0 {
+				t.Fatalf("dry run: summary %+v, row writes %v, deploys %d", summary, rec.policyCalls, len(rec.deployCalls))
+			}
+			continue
+		}
+		if summary != (ContainerPolicyMigrationSummary{Migrated: 5, Refused: 1}) {
+			t.Fatalf("summary = %+v", summary)
+		}
+		// One rollout, the serving service's, and its release stamp.
+		if len(rec.deployCalls) != 1 || rec.deployCalls[0].AppID != "srv-d-prior-release" || rec.deployCalls[0].Trigger != store.TriggerSettingsChange {
+			t.Fatalf("deploys %+v, want one settings_change for the service still serving", rec.deployCalls)
+		}
+		for _, a := range apps[:5] {
+			var got appv1alpha1.App
+			if err := cl.Get(t.Context(), client.ObjectKey{Namespace: "tea-qa", Name: a.Name}, &got); err != nil {
+				t.Fatal(err)
+			}
+			if got.Spec.ContainerPolicy != appv1alpha1.ContainerPolicyRenderV1 {
+				t.Errorf("%s: CR policy %q", a.Name, got.Spec.ContainerPolicy)
+			}
+			release, pending := got.Annotations[appv1alpha1.AnnotationReleaseGeneration], got.Annotations[appv1alpha1.AnnotationPendingSourceGeneration]
+			if !holds[a.Name] {
+				if release != "731" || pending != "" {
+					t.Errorf("%s: release stamp %q, pending %q, want release 731", a.Name, release, pending)
+				}
+				continue
+			}
+			// Held for the next deploy: no release stamped, and the one a
+			// canceled release carries is left naming it, so the operator
+			// keeps that release canceled.
+			if want := a.Annotations[appv1alpha1.AnnotationReleaseGeneration]; release != want || pending != fmt.Sprint(a.Generation+1) {
+				t.Errorf("%s: release stamp %q (want %q), pending %q (want %d)", a.Name, release, want, pending, a.Generation+1)
+			}
+		}
+		if policyOfApp(t, cl, "f-unobserved") != "" {
+			t.Error("the unobserved service moved")
+		}
+	}
+}
+
+// The migration decides between a rollout and a save from the release it
+// read; if a release serves by the time it holds the lock, it refuses and
+// restores the row rather than save a policy the serving release would not
+// take up.
+func TestMigrateContainerPolicyRefusesWhenTheReleaseChangesUnderTheLock(t *testing.T) {
+	rec := &recordingStore{}
+	canceled := namedApp("canceled", appv1alpha1.ContainerPolicyStrictV1,
+		settled(2, 2, appv1alpha1.PhaseCanceled, "", readyCondition(metav1.ConditionFalse, "BuildCanceled", 2)))
+	svc, cl := newTenantStoreService(fakeWorkspace{}, rec, canceled)
+	served := false
+	svc.Client = interceptor.NewClient(cl.(client.WithWatch), interceptor.Funcs{
+		Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, p client.Patch, opts ...client.PatchOption) error {
+			if !served {
+				served = true
+				var live appv1alpha1.App
+				if err := c.Get(ctx, client.ObjectKeyFromObject(obj), &live); err != nil {
+					return err
+				}
+				live.Status.ActiveRevision = "rev-3"
+				if err := c.Update(ctx, &live); err != nil {
+					return err
+				}
+			}
+			return c.Patch(ctx, obj, p, opts...)
+		},
+	})
+	if _, err := svc.MigrateContainerPolicy(t.Context(), "srv-canceled", true); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("err = %v, want a conflict", err)
+	}
+	if want := []string{"srv-canceled=render-v1", "srv-canceled=strict-v1"}; !slices.Equal(rec.policyCalls, want) || len(rec.deployCalls) != 0 {
+		t.Fatalf("row writes %v (want %v), deploys %d", rec.policyCalls, want, len(rec.deployCalls))
+	}
+	if got := policyOfApp(t, svc.Client, "canceled"); got != appv1alpha1.ContainerPolicyStrictV1 {
+		t.Fatalf("CR policy = %q", got)
 	}
 }
 

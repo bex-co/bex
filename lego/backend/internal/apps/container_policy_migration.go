@@ -22,16 +22,19 @@ import (
 	"fmt"
 	"slices"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // ContainerPolicyMigration is the plan, or the outcome, of moving one existing
-// service onto render-v1.
+// service onto render-v1. Rollout says the move rolls the service once; false
+// on a service that runs nothing, whose next deploy takes the policy up.
 type ContainerPolicyMigration struct {
 	ServiceID    string   `json:"serviceId"`
 	Workspace    string   `json:"workspace"`
@@ -39,6 +42,7 @@ type ContainerPolicyMigration struct {
 	To           string   `json:"to"`
 	Capabilities []string `json:"capabilities"`
 	NoOp         bool     `json:"noOp"`
+	Rollout      bool     `json:"rollout"`
 	Applied      bool     `json:"applied"`
 }
 
@@ -50,8 +54,12 @@ type ContainerPolicyMigration struct {
 // MigrateContainerPolicies. Without apply it only plans.
 // Applied, it persists the row and rolls the service once as a tracked
 // settings_change deploy, under the App's optimistic lock; a refusal found
-// under the lock restores the row. No ownership step is needed: a policy
-// change keeps the pod's UID mapping (t002).
+// under the lock restores the row. A service that runs nothing (no release
+// has served: its first failed or was canceled) is not rolled, since that
+// would start what its owner never got running or stopped: the policy is
+// saved for its next deploy, as Render's Update Service saves a setting
+// (w32/044). No ownership step is needed: a policy change keeps the pod's
+// UID mapping (t002).
 func (s *Service) MigrateContainerPolicy(ctx context.Context, serviceID string, apply bool) (ContainerPolicyMigration, error) {
 	a, err := s.appByServiceID(ctx, serviceID)
 	if err != nil {
@@ -73,6 +81,7 @@ func (s *Service) MigrateContainerPolicy(ctx context.Context, serviceID string, 
 	if err := containerPolicyMigratable(a, carrier); err != nil {
 		return plan, err
 	}
+	plan.Rollout = releaseServed(a)
 	if !apply {
 		return plan, nil
 	}
@@ -83,9 +92,16 @@ func (s *Service) MigrateContainerPolicy(ctx context.Context, serviceID string, 
 	if err := s.Store.SetAppContainerPolicy(ctx, id, appv1alpha1.ContainerPolicyRenderV1); err != nil {
 		return plan, err
 	}
-	err = s.rollouts().PatchLocked(ctx, s.Client, a, store.TriggerSettingsChange, func(a *appv1alpha1.App) error {
+	patchCtx := ctx
+	if !plan.Rollout {
+		patchCtx = rollout.WithSaveOnly(ctx)
+	}
+	err = s.rollouts().PatchLocked(patchCtx, s.Client, a, store.TriggerSettingsChange, func(a *appv1alpha1.App) error {
 		if err := containerPolicyMigratable(a, carrier); err != nil {
 			return err
+		}
+		if releaseServed(a) != plan.Rollout {
+			return fmt.Errorf("%w: the service's release changed while migrating; migrate it again", core.ErrConflict)
 		}
 		a.Spec.ContainerPolicy = appv1alpha1.ContainerPolicyRenderV1
 		resourcemeta.Touch(a, s.Now())
@@ -246,8 +262,30 @@ func containerPolicyMigratable(a, carrier *appv1alpha1.App) error {
 	case appv1alpha1.PhasePending, appv1alpha1.PhaseBuilding, appv1alpha1.PhaseDeploying:
 		return fmt.Errorf("%w: a deploy is in progress; migrate once it settles", core.ErrConflict)
 	}
-	if a.Generation != a.Status.ObservedGeneration {
+	if !operatorObserved(a) {
 		return fmt.Errorf("%w: a change is still being applied; migrate once it settles", core.ErrConflict)
 	}
 	return nil
+}
+
+// operatorObserved reports that the operator has settled the App's current
+// generation. A pass that serves it stamps status.observedGeneration; one
+// that settles a failed release (AppReconciler.fail), or a failed build or
+// rollout over a release that still serves, stamps only the Ready
+// condition's, so status.observedGeneration alone read such a service as a
+// change still being applied for good (w32/044).
+func operatorObserved(a *appv1alpha1.App) bool {
+	if a.Status.ObservedGeneration == a.Generation {
+		return true
+	}
+	ready := meta.FindStatusCondition(a.Status.Conditions, appv1alpha1.ConditionReady)
+	return ready != nil && ready.ObservedGeneration == a.Generation
+}
+
+// releaseServed reports that some release of the App has served, the
+// operator's own test (releaseHasServed: only a release that served records
+// its revision active). Without one the service runs nothing: its first
+// release failed and was stopped, or was canceled.
+func releaseServed(a *appv1alpha1.App) bool {
+	return a.Status.ActiveRevision != ""
 }
