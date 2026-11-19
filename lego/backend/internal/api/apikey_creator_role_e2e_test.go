@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -354,6 +355,7 @@ func TestAPIKeyActsWithItsCreatorsRoleE2E(t *testing.T) {
 	if rec := rest(keyOf(keyA), http.MethodGet, "/v1/services?ownerId="+other.ID, ""); rec.Code != http.StatusForbidden {
 		t.Errorf("the key listed its creator's other workspace: %d %s", rec.Code, rec.Body)
 	}
+	requireOneWorkspaceKey(t, srv, rest, session(admin), keyOf(keyA), ws.ID, other.ID)
 
 	// I1 under a failed revoke: the key's own tuple cannot move, the Admin is
 	// demoted anyway. The key's row and queued intent follow at once; its
@@ -422,5 +424,80 @@ func TestAPIKeyActsWithItsCreatorsRoleE2E(t *testing.T) {
 		if tupleHeld(keyA, role) {
 			t.Errorf("the revoked key still holds %s", role)
 		}
+	}
+}
+
+// requireOneWorkspaceKey is w9/118's decision held on every surface: bex mints
+// no classic key. Render has minted only single-workspace keys since
+// 2026-11-18 ("Newly created Render API keys are now scoped to a single
+// workspace", render.com/changelog; "Can scoped API keys access multiple
+// workspaces? No.", render.com/docs/api-keys). So a key whose creator belongs
+// to two workspaces lists only the one it was minted in and is refused the
+// other on REST, GraphQL and MCP, while the creator lists both.
+func requireOneWorkspaceKey(t *testing.T, srv *Server, rest func(core.Identity, string, string, string) *httptest.ResponseRecorder, creator, key core.Identity, home, other string) {
+	t.Helper()
+	restOwners := func(id core.Identity) []string {
+		rec := rest(id, http.MethodGet, "/v1/owners", "")
+		var list []struct{ Owner struct{ ID string } }
+		if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &list) != nil {
+			t.Fatalf("REST GET /v1/owners as %s = %d %s", id.Subject, rec.Code, rec.Body)
+		}
+		ids := []string{}
+		for _, o := range list {
+			ids = append(ids, o.Owner.ID)
+		}
+		return ids
+	}
+	graphqlWorkspaces := func(id core.Identity) []string {
+		answer := graphqlDo(t, srv, id, `{ workspaces { id } }`)
+		data, _ := answer["data"].(map[string]any)
+		list, ok := data["workspaces"].([]any)
+		if !ok || answer["errors"] != nil {
+			t.Fatalf("GraphQL workspaces as %s = %v", id.Subject, answer)
+		}
+		ids := []string{}
+		for _, w := range list {
+			ids = append(ids, w.(map[string]any)["id"].(string))
+		}
+		return ids
+	}
+	mcpWorkspaces := func(id core.Identity) []string {
+		res := mcpCall(t, srv, id, "list_workspaces", map[string]any{})
+		var list []struct{ ID string }
+		if res.IsError || json.Unmarshal([]byte(mcpText(res)), &list) != nil {
+			t.Fatalf("MCP list_workspaces as %s = %s", id.Subject, mcpText(res))
+		}
+		ids := []string{}
+		for _, o := range list {
+			ids = append(ids, o.ID)
+		}
+		return ids
+	}
+	for surface, list := range map[string]func(core.Identity) []string{
+		"REST GET /v1/owners": restOwners, "GraphQL workspaces": graphqlWorkspaces, "MCP list_workspaces": mcpWorkspaces,
+	} {
+		if got := list(creator); !slices.Contains(got, home) || !slices.Contains(got, other) {
+			t.Fatalf("%s: the creator lists %v, want both %s and %s; the test proves nothing", surface, got, home, other)
+		}
+		if got := list(key); !slices.Equal(got, []string{home}) {
+			t.Errorf("%s: the key lists %v, want only the workspace it was minted in (%s)", surface, got, home)
+		}
+	}
+
+	// Naming the creator's other workspace is refused on each surface.
+	if rec := rest(key, http.MethodGet, "/v1/owners/"+other, ""); rec.Code != http.StatusForbidden && rec.Code != http.StatusNotFound {
+		t.Errorf("REST GET /v1/owners/{other} as the key = %d %s, want 403 or 404", rec.Code, rec.Body)
+	}
+	if rec := rest(key, http.MethodGet, "/v1/owners/"+home, ""); rec.Code != http.StatusOK {
+		t.Errorf("REST GET /v1/owners/{home} as the key = %d %s, want 200", rec.Code, rec.Body)
+	}
+	if code := graphqlCode(graphqlDo(t, srv, key, fmt.Sprintf(`{ workspace(id: %q) { id } }`, other))); code != "FORBIDDEN" && code != "NOT_FOUND" {
+		t.Errorf("GraphQL workspace(other) as the key = %q, want FORBIDDEN or NOT_FOUND", code)
+	}
+	if res := mcpCall(t, srv, key, "list_services", map[string]any{"workspaceId": other}); !res.IsError {
+		t.Errorf("MCP list_services in the other workspace as the key answered %s, want a refusal", mcpText(res))
+	}
+	if res := mcpCall(t, srv, key, "list_services", map[string]any{"workspaceId": home}); res.IsError {
+		t.Errorf("MCP list_services in its own workspace as the key = %s, want allowed", mcpText(res))
 	}
 }
