@@ -442,6 +442,9 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"turnOrigins": &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(agentSessionTurnOriginGQLType)),
 			Description: "Which turns PR feedback started (a review, a comment or a failed CI run); only on a single-session read.",
 			Resolve:     gqlutil.Field(func(v View) any { return v.TurnOrigins })},
+		"waitingFor":   &graphql.Field{Type: graphql.String, Description: waitingForDescription, Resolve: gqlutil.OptionalStrField(func(v View) any { return v.WaitingFor }).Resolve},
+		"waitingSince": &graphql.Field{Type: graphql.String, Description: waitingSinceDescription, Resolve: gqlutil.TimeField(func(v View) any { return v.WaitingSince }).Resolve},
+		"failureCause": &graphql.Field{Type: graphql.String, Description: failureCauseDescription, Resolve: gqlutil.OptionalStrField(func(v View) any { return v.FailureCause }).Resolve},
 	},
 })
 

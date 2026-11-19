@@ -124,6 +124,9 @@ spec:
          (variables.target.roleRef.name == 'bex-tenant-ssh-gateway' &&
           variables.target.subjects[0].name == 'bex-ssh-gateway' &&
           variables.target.subjects[0].namespace == 'bex-system') ||
+         (variables.target.roleRef.name == 'bex-tenant-sandbox-api' &&
+          variables.target.subjects[0].name == 'bex-api' &&
+          variables.target.subjects[0].namespace == 'bex-system') ||
          (variables.target.roleRef.name == 'bex-tenant-sandbox-server' &&
           variables.target.subjects[0].name == 'opensandbox-server' &&
           variables.target.subjects[0].namespace == 'opensandbox-system') ||
@@ -160,12 +163,12 @@ spec:
     - expression: >-
         request.resource.resource != 'rolebindings' ||
         (request.operation == 'DELETE' ?
-          variables.target.metadata.name in ['bex-tenant-operator', 'bex-tenant-api', 'bex-tenant-ssh-gateway', 'bex-tenant-sandbox-server', 'bex-tenant-sandbox-controller', 'bex-operator-snapshot-pull'] :
+          variables.target.metadata.name in ['bex-tenant-operator', 'bex-tenant-api', 'bex-tenant-ssh-gateway', 'bex-tenant-sandbox-server', 'bex-tenant-sandbox-controller', 'bex-operator-snapshot-pull', 'bex-tenant-sandbox-api'] :
           (variables.exactRoleBinding &&
            ((variables.regime == 'hosting' &&
             variables.target.roleRef.name in ['bex-tenant-operator', 'bex-tenant-api', 'bex-tenant-ssh-gateway']) ||
             (variables.regime == 'sandbox' &&
-             variables.target.roleRef.name in ['bex-tenant-sandbox-server', 'bex-tenant-sandbox-controller', 'bex-tenant-ssh-gateway', 'bex-operator-snapshot-pull']))))
+             variables.target.roleRef.name in ['bex-tenant-sandbox-server', 'bex-tenant-sandbox-controller', 'bex-tenant-ssh-gateway', 'bex-operator-snapshot-pull', 'bex-tenant-sandbox-api']))))
       reason: Forbidden
       message: bex-api may create or update only exact regime bindings and delete only known managed projections
 ---

@@ -2430,9 +2430,22 @@ sandbox_bind_roles="$(yq -N \
   'select(.kind == "ClusterRole" and .metadata.name == "bex-api-namespaces") |
     .rules[] | select(.verbs[]? == "bind") | .resourceNames[]' \
   deploy/gitops/base/bex-api-namespace-rbac.yaml | sort)"
-expected_sandbox_bind_roles=$'bex-operator-snapshot-pull\nbex-tenant-api\nbex-tenant-operator\nbex-tenant-sandbox-controller\nbex-tenant-sandbox-server\nbex-tenant-ssh-gateway'
+expected_sandbox_bind_roles=$'bex-operator-snapshot-pull\nbex-tenant-api\nbex-tenant-operator\nbex-tenant-sandbox-api\nbex-tenant-sandbox-controller\nbex-tenant-sandbox-server\nbex-tenant-ssh-gateway'
 [ "$sandbox_bind_roles" = "$expected_sandbox_bind_roles" ] \
   || { echo "FAIL: namespace reconciler bind allowlist is '$sandbox_bind_roles'" >&2; fail=1; }
+# bex-api's sandbox-namespace read (w10/m497) stays pods get/list and is bound
+# only per namespace: never a ClusterRoleBinding.
+sandbox_api_rules="$(yq -N \
+  'select(.kind == "ClusterRole" and .metadata.name == "bex-tenant-sandbox-api") |
+    .rules[] | [(.apiGroups | join(",")), (.resources | sort | join(",")), (.verbs | sort | join(","))] | join(":")' \
+  deploy/gitops/base/tenant-namespace-clusterroles.yaml | sed '/^$/d')"
+[ "$sandbox_api_rules" = ":pods:get,list" ] \
+  || { echo "FAIL: bex-tenant-sandbox-api grants '$sandbox_api_rules', want pods get,list only" >&2; fail=1; }
+if yq -e 'select(.kind == "ClusterRoleBinding" and .roleRef.name == "bex-tenant-sandbox-api")' \
+  - <<<"$(kubectl kustomize deploy/gitops/base)" >/dev/null 2>&1; then
+  echo "FAIL: bex-tenant-sandbox-api received a ClusterRoleBinding" >&2
+  fail=1
+fi
 namespace_rolebinding_verbs="$(yq -N \
   'select(.kind == "ClusterRole" and .metadata.name == "bex-api-namespaces") |
     .rules[] | select(.resources[]? == "rolebindings") | .verbs[]' \
@@ -2495,7 +2508,8 @@ for required_guard in \
   "variables.target.metadata.name == variables.target.roleRef.name" \
   "variables.target.roleRef.name == 'bex-tenant-operator'" \
   "variables.target.roleRef.name == 'bex-tenant-sandbox-server'" \
-  "variables.target.roleRef.name in ['bex-tenant-sandbox-server', 'bex-tenant-sandbox-controller', 'bex-tenant-ssh-gateway', 'bex-operator-snapshot-pull']" \
+  "variables.target.roleRef.name in ['bex-tenant-sandbox-server', 'bex-tenant-sandbox-controller', 'bex-tenant-ssh-gateway', 'bex-operator-snapshot-pull', 'bex-tenant-sandbox-api']" \
+  "variables.target.roleRef.name == 'bex-tenant-sandbox-api' &&" \
   "variables.target.subjects[0].name == 'opensandbox-controller-manager'"; do
   grep -qF "$required_guard" deploy/gitops/base/bex-api-namespace-admission.yaml \
     || { echo "FAIL: NamespaceReconciler admission guard lost: $required_guard" >&2; fail=1; }

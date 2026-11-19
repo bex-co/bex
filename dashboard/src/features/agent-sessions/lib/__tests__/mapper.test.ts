@@ -2,8 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   agentSessionDurationMs,
   agentSessionStatusPhraseKey,
+  agentSessionWaitMs,
+  formatDurationShort,
   isSandboxCapacityFailure,
+  sandboxStartFailureCause,
   SANDBOX_CAPACITY_LIMIT,
+  SANDBOX_START_FAILED,
   isSteerablePhase,
   isTerminalPhase,
   toAgentSessionTicket,
@@ -17,9 +21,11 @@ import type {
 } from "@/graphql/definitions";
 import {
   AGENT_SESSION_PR_STATES,
+  SANDBOX_START_FAILURE_CAUSES,
   TURN_RETENTION_LOST_REASONS,
   TURN_RETENTION_STATES,
   type AgentSessionPhase,
+  type AgentSessionView,
 } from "@/features/agent-sessions/types";
 import {
   goStringConstant,
@@ -70,6 +76,9 @@ function wire(
     deliveryMode: null,
     failureReason: null,
     failureReasonCode: null,
+    failureCause: null,
+    waitingFor: null,
+    waitingSince: null,
     createdAt: "2026-08-02T00:00:00.000Z",
     updatedAt: "2026-08-02T00:00:00.000Z",
     canceledAt: null,
@@ -361,6 +370,182 @@ describe("agentSessionStatusPhraseKey", () => {
         "agentSessions.statusPhrase.working",
       );
     }
+  });
+});
+
+// w10/m497: a turn the sandbox pool has no room for waits for a machine; a
+// start that still fails names its cause.
+describe("waiting for a sandbox machine and a start failure's cause", () => {
+  const since = "2026-11-18T12:00:00Z";
+
+  it("projects the wait while the session can still start", () => {
+    for (const phase of ["creating", "redispatching"] as const) {
+      expect(
+        toAgentSessionView(
+          wire({ phase, waitingFor: "sandbox_capacity", waitingSince: since }),
+        ),
+      ).toMatchObject({ waitingFor: "sandbox_capacity", waitingSince: since });
+    }
+    expect(toAgentSessionView(wire())).toMatchObject({
+      waitingFor: null,
+      waitingSince: null,
+      failureCause: null,
+    });
+  });
+
+  it("reads a wait it does not know, or one on a settled session, as none", () => {
+    expect(
+      toAgentSessionView(
+        wire({ phase: "creating", waitingFor: "gpu", waitingSince: since }),
+      ),
+    ).toMatchObject({ waitingFor: null, waitingSince: null });
+    for (const phase of ["completed", "failed", "canceled"] as const) {
+      expect(
+        toAgentSessionView(
+          wire({ phase, waitingFor: "sandbox_capacity", waitingSince: since }),
+        ),
+      ).toMatchObject({ waitingFor: null, waitingSince: null });
+    }
+    // A partial cache entry that predates the fields.
+    expect(
+      toAgentSessionView(
+        wire({ waitingFor: undefined, waitingSince: undefined }),
+      ),
+    ).toMatchObject({ waitingFor: null, waitingSince: null });
+  });
+
+  it("keeps each cause bex-api names and drops a word it does not know", () => {
+    for (const cause of SANDBOX_START_FAILURE_CAUSES) {
+      expect(
+        toAgentSessionView(
+          wire({
+            phase: "failed",
+            failureReasonCode: SANDBOX_START_FAILED,
+            failureCause: cause,
+          }),
+        ).failureCause,
+      ).toBe(cause);
+    }
+    expect(
+      toAgentSessionView(
+        wire({
+          phase: "failed",
+          failureReasonCode: SANDBOX_START_FAILED,
+          failureCause: "solar_flare",
+        }),
+      ).failureCause,
+    ).toBeNull();
+  });
+
+  it("names a failed start's cause, a platform issue when none is known, and nothing for any other failure", () => {
+    const failed = (over: Partial<AgentSessionView>) =>
+      agentSessionView({ phase: "failed", ...over });
+    expect(
+      sandboxStartFailureCause(
+        failed({
+          failureReasonCode: SANDBOX_START_FAILED,
+          failureCause: "quota",
+        }),
+      ),
+    ).toBe("quota");
+    expect(
+      sandboxStartFailureCause(
+        failed({ failureReasonCode: SANDBOX_START_FAILED }),
+      ),
+    ).toBe("unknown");
+    expect(
+      sandboxStartFailureCause(
+        failed({
+          failureReasonCode: SANDBOX_CAPACITY_LIMIT,
+          failureCause: "pool_full",
+        }),
+      ),
+    ).toBeNull();
+    expect(sandboxStartFailureCause(failed({}))).toBeNull();
+    expect(
+      sandboxStartFailureCause(
+        agentSessionView({
+          phase: "running",
+          failureReasonCode: SANDBOX_START_FAILED,
+          failureCause: "pool_full",
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it("is never a capacity failure, so it offers no upgrade", () => {
+    expect(
+      isSandboxCapacityFailure(
+        agentSessionView({
+          phase: "failed",
+          failureReasonCode: SANDBOX_START_FAILED,
+          failureCause: "pool_full",
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it("uses bex-api's start-failure code", () => {
+    expect(SANDBOX_START_FAILED).toBe(
+      goStringConstant(
+        "lego/backend/internal/sandbox/service.go",
+        "CodeSandboxStartFailed",
+      ),
+    );
+  });
+
+  it("says Waiting for a sandbox machine instead of Working… while it waits", () => {
+    expect(
+      agentSessionStatusPhraseKey({
+        phase: "creating",
+        prNumber: null,
+        waitingFor: "sandbox_capacity",
+      }),
+    ).toBe("agentSessions.statusPhrase.waitingForSandbox");
+    expect(
+      agentSessionStatusPhraseKey({
+        phase: "creating",
+        prNumber: null,
+        waitingFor: null,
+      }),
+    ).toBe("agentSessions.statusPhrase.working");
+    // A settled session's own phrase wins over a stale wait.
+    expect(
+      agentSessionStatusPhraseKey({
+        phase: "failed",
+        prNumber: null,
+        waitingFor: "sandbox_capacity",
+      }),
+    ).toBe("agentSessions.phase.failed");
+  });
+
+  it("measures the time waited from waitingSince", () => {
+    const at = Date.parse(since);
+    expect(
+      agentSessionWaitMs(
+        { waitingFor: "sandbox_capacity", waitingSince: since },
+        at + 192_000,
+      ),
+    ).toBe(192_000);
+    // A clock a little behind the server's never reads negative.
+    expect(
+      agentSessionWaitMs(
+        { waitingFor: "sandbox_capacity", waitingSince: since },
+        at - 5_000,
+      ),
+    ).toBe(0);
+    expect(
+      agentSessionWaitMs({ waitingFor: null, waitingSince: since }, at),
+    ).toBeNull();
+    expect(
+      agentSessionWaitMs(
+        { waitingFor: "sandbox_capacity", waitingSince: "not a time" },
+        at,
+      ),
+    ).toBeNull();
+    expect(formatDurationShort(42_000)).toBe("42s");
+    expect(formatDurationShort(192_000)).toBe("3m 12s");
+    expect(formatDurationShort(3_725_000)).toBe("1h 2m");
   });
 });
 

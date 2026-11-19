@@ -129,6 +129,7 @@ type AgentAutomationRun {
   fireAt: String
   missedTicks: Int!
   outcome: String!
+  session: AgentAutomationRunSession
   sessionId: String
   settledAt: String
 }
@@ -137,6 +138,14 @@ type AgentAutomationRunList {
   automationId: String!
   nextCursor: String
   runs: [AgentAutomationRun!]!
+}
+
+type AgentAutomationRunSession {
+  failureCause: String
+  failureReasonCode: String
+  state: String!
+  waitingFor: String
+  waitingSince: String
 }
 
 type AgentAutomationSchedule {
@@ -356,6 +365,7 @@ type AgentSession {
   depth: Int!
   environmentBuildId: String
   expiresAt: String
+  failureCause: String
   failureReason: String
   failureReasonCode: String
   headSha: String
@@ -388,6 +398,8 @@ type AgentSession {
   turns: Int
   updatedAt: String!
   url: String
+  waitingFor: String
+  waitingSince: String
 }
 
 type AgentSessionCapabilities {

@@ -378,7 +378,65 @@ A full dev-5 end-to-end run measured the failure path, not just the happy path, 
 
 A failed session carries `failureReasonCode` beside `failureReason` on REST, GraphQL and MCP, so a client acts on the cause without matching the sentence. The one code today is `SANDBOX_CAPACITY_LIMIT` (`sandbox.CodeSandboxCapacityLimit`), recorded when a dispatch is refused at the workspace's sandbox limit; the dashboard's upgrade callout decides by it alone. Only the dispatch abandonment writes a code, in the same statement as its sentence; every other write that clears or replaces the sentence clears it (`agent_sessions.failure_reason_code`, migration 0144, which backfills older capacity failures from `failure_reason` or, before w5/m80, `status`). REST and MCP omit the key when it is empty, and GraphQL answers null.
 
-**Capacity only when it is capacity (w9/074, 2026-11-04).** The OpenSandbox server's pod-ready timeout used to map to `SANDBOX_CAPACITY_LIMIT` unconditionally. On 2026-11-04 a sandbox node joined without gVisor and every agent session failed as "capacity reached (plan limit)", while the workspace was nearly idle. bex-api still cannot see the pod, but it now checks what it can: when the workspace's live sandboxes, times this template's CPU and memory limits, still fit under the plan's limits (`store.SandboxComputeLimits`), the quota cannot have refused the pod. The timeout is then `SANDBOX_START_FAILED` (503, "the cause is on bex's side, not your plan"), recorded as the session's code with "sandbox did not start (platform issue)". A plan lookup or sandbox list that fails keeps the capacity answer. The dashboard's upgrade callout still decides only by `SANDBOX_CAPACITY_LIMIT`, so a platform failure no longer offers an upgrade. The root cause of a stuck pod stays in `w10/008`.
+**Capacity only when it is capacity (w9/074, 2026-11-04).** The OpenSandbox server's pod-ready timeout used to map to `SANDBOX_CAPACITY_LIMIT` unconditionally. On 2026-11-04 a sandbox node joined without gVisor and every agent session failed as "capacity reached (plan limit)", while the workspace was nearly idle. bex-api still cannot see the pod, but it now checks what it can: when the workspace's live sandboxes, times this template's CPU and memory limits, still fit under the plan's limits (`store.SandboxComputeLimits`), the quota cannot have refused the pod. The timeout is then `SANDBOX_START_FAILED` (503, "the cause is on bex's side, not your plan"), recorded as the session's code with "sandbox did not start (platform issue)". A plan lookup or sandbox list that fails keeps the capacity answer. The dashboard's upgrade callout still decides only by `SANDBOX_CAPACITY_LIMIT`, so a platform failure no longer offers an upgrade. The root cause of a stuck pod stays in `w10/008`. _Amended by w10/m497 below: bex-api now reads the pod, so the start failure names its cause, and a full pool waits instead of failing._
+
+### w10/m497 — a full sandbox pool waits for a machine; every other start failure names its cause (2026-11-18)
+
+On 2026-11-17 and 18, seven sessions failed with `SANDBOX_START_FAILED` while the workspace's quota had room. Their pods sat `Unschedulable` (`Insufficient memory`) on the one `cpx42` sandbox node for the OpenSandbox server's 300 s wait, and the server deleted them. Devin never fails a session for its own capacity. A session "waiting for capacity" keeps its messages and starts by itself, and since 2026-09-30 "sessions on an outpost now wait for the outpost's machine to come online instead of failing" ([release notes](https://docs.devin.ai/release-notes/overview), read 2026-11-18). bex now does the same.
+
+**Cause source: bex-api reads the pod, while the create waits.**
+
+- A new ClusterRole, `bex-tenant-sandbox-api`, grants core `pods` `get` and `list` and nothing else: no watch, logs, exec, events or Secrets. The NamespaceReconciler binds it to `bex-system/bex-api` in each `<ws>-sandbox` namespace. The namespace admission policy admits exactly that binding, and `scripts/gitops-validate.sh` pins the role's rules.
+- No new trust: a sandbox pod's spec holds only what bex-api itself wrote into it. This is the hosting namespace's `bex-tenant-api` pod read without its Secrets rule, so ADR028's "no cluster-wide Secrets for bex-api" holds unchanged.
+- **The read happens during the create.** The server deletes the pod when its wait ends, so a read after the 504 finds nothing. bex-api lists the attempt's pod by its own labels (`bex.co/agent-session` and `bex.co/agent-dispatch-turn`; a Render sandbox by `bex.co/sandbox-id`) every 10 s from the tenth second until the create answers. The last observation names the cause.
+- **Rejected sources:**
+  - OpenSandbox's own GET reports only `Pending` and "Sandbox is being created".
+  - Events are not needed: the pod's conditions and container states carry every cause below, so the least privilege leaves them out.
+- The quota check reads the namespace's two ResourceQuotas with the `resourcequotas` `get` the NamespaceReconciler already holds.
+
+**Cause vocabulary.** `failureCause` sits beside `failureReasonCode: SANDBOX_START_FAILED` and nowhere else. The code itself is unchanged.
+
+| Cause | What bex-api saw | Failure reason |
+| --- | --- | --- |
+| `pool_full` | `PodScheduled=False`, reason `Unschedulable`: no sandbox machine has room (`Insufficient cpu`, `Insufficient memory`, …) or none is ready | "No sandbox machine had room for this session for 60 minutes, so it did not start. Send the message again to retry." |
+| `image_pull` | a container or init container waiting `ErrImagePull`, `ImagePullBackOff`, `InvalidImageName` or `ErrImageNeverPull` | "The sandbox image could not be pulled, so the session did not start. Try again, and contact support if it keeps failing." |
+| `runtime` | scheduled, but the pod sandbox never started (`PodReadyToStartContainers=False`, which is what `FailedCreatePodSandBox` and a missing `RuntimeClass` handler leave), a container waiting `CreateContainerError`, `CreateContainerConfigError` or `RunContainerError`, or the pod `Failed` | "The sandbox runtime could not start this session's machine. Try again, and contact support if it keeps failing." |
+| `quota` | no pod at all, and a namespace ResourceQuota with less room than one sandbox pod charges at most (`store.SandboxPodQuotaMax`) | "The workspace's sandbox quota refused this session's machine. Stop a running sandbox or session, then try again." |
+| `unknown` | anything else, or a read that was refused or failed | "sandbox did not start (platform issue)", as before |
+
+`SANDBOX_CAPACITY_LIMIT` keeps its plan-limit meaning (w9/074). A pod that was scheduled, or that waited for scheduling, was admitted by the quota, so `pool_full`, `image_pull` and `runtime` skip the plan-limit check. Only `quota` and `unknown` still run it. A Render sandbox create (`POST /v1/sandboxes`) answers the same 503 `SANDBOX_START_FAILED` with the same words and `params.cause`. Render documents no capacity answer for a sandbox create, so the extra parameter is an extension.
+
+**The wait: only `pool_full`, for up to an hour.**
+
+- **Attempts.** Each attempt is one OpenSandbox create. Its own 300 s wait holds the pod in the scheduler's queue, so the session starts as soon as room frees during it. An attempt that ends `pool_full` is followed by another after 15 s (`sandboxWaitBackoff`). Before each new attempt, bex-api ends any sandbox of this turn that survived (`CleanupAgentDispatches` by the turn's labels), so a wait never leaves two sandboxes for one turn. w1/m405's t002 has not shipped; this is the same guarantee, built on the turn label.
+- **Bound.** One hour (`sandboxWaitBound`), and never more than the turn ceiling (`BEX_AGENT_TURN_TIMEOUT`: 4 h in production, 30 min by default). The routines' turns on the interim node ran from 8 to 68 minutes (ADR105 § Until the AX42-1 arrives), so an hour lets a burst of hourly starts drain behind the turns already running. A pool still full after that is undersized: the alert below fires, and the turn fails with cause `pool_full` and words that say how long it waited.
+- **Every other cause fails at once** with its own words. A retry would not change an image that does not pull, a runtime that does not start or a quota that refuses.
+- **Keep-alive.** Before every attempt, one transaction (`MarkAgentDispatchWaiting`) checks that the session is still unbound on this turn, in `creating` or `redispatching`, and not archived. It stamps `agent_sessions.sandbox_wait_since` once and moves the dispatch's `next_check_at` to 15 minutes ahead. The dispatch's 15-minute background ceiling (`dispatchTimeout`) restarts with each attempt of a waiting dispatch and is not lifted for any other.
+- **Recovery.** A waiting dispatch is never due, so neither dispatch recovery nor the legacy repair in `ListAgentDispatchesDue` abandons it. Only the replica that accepted the turn waits, and recovery only abandons, so no restart or rollout doubles a wait. One limit stands: if that replica itself exits mid-wait, its dispatch becomes due within 15 minutes of its last attempt, and recovery abandons it as interrupted ("Send the prompt again to retry"), as it does any dispatch in flight. Handing a wait to another replica needs the dispatch's inputs stored, and is filed as its own follow-up, w10/022.
+- **Cancel, Delete and Archive end the wait at once.**
+  - Cancel takes the session out of `creating`. Delete needs a finished session, so Cancel comes first. Archive stamps `archived_at`.
+  - A watcher on the session row cancels the attempt in flight within 10 s, and the next attempt's check refuses.
+  - A create that already answered binds nothing: `RecordAgentSessionDispatch`'s CAS refuses a canceled session and tears its sandbox down.
+  - An archived waiting session fails with "The session was archived while it waited for a sandbox machine, so it did not start."
+- **Boundary with w1/m405.** Transient create faults stay in w1/m405: a dropped connection, a 502/503/504, `SANDBOX_RUNTIME_UNAVAILABLE`, and the server's `KUBERNETES::API_ERROR` 500s. w1/m405's definition of done keeps `SANDBOX_START_FAILED` failing at once, and this milestone changes exactly one case of it: `pool_full`, which waits. When w1/m405 retries a transient fault, it wraps the same create this wait repeats.
+
+**Surfaces.**
+
+- The session view (REST, GraphQL, MCP) gains three fields:
+  - `waitingFor: "sandbox_capacity"` while the session waits; absent otherwise, and GraphQL null.
+  - `waitingSince`, when the wait began.
+  - `failureCause`, beside `SANDBOX_START_FAILED` only.
+- The phase stays `creating` (or `redispatching`) and `state` stays `working`, so clients keep polling and an automation's overlap rule still counts the session as working.
+- The dashboard's session page and list, and `bex agent get`, `logs` and `run`, show "Waiting for a sandbox machine" with the time waited. A failure shows the cause's words, in all eight locales. The upgrade callout still keys only on `SANDBOX_CAPACITY_LIMIT`.
+- An automation run's activity (`GET /v1/agent-automations/{id}/runs`, GraphQL `agentAutomationRuns`, MCP `list_agent_automation_runs`) carries its session's `state`, `waitingFor`, `waitingSince`, `failureReasonCode` and `failureCause`. The dashboard's run history then reads "Waiting for a sandbox machine", or "Didn't start" with the cause, apart from `failed_create`. A session that fails to start is a `started` run, so it never counts toward the `repeated_failures` pause (ADR101 D7).
+
+**Signal.** Three series feed the alert, documented beside ADR105's pool-size decision:
+
+- `bex_agent_session_sandbox_waiting{cause}`, a gauge of the sessions waiting now, per replica. Sum it across replicas.
+- `bex_agent_session_sandbox_wait_seconds{outcome}`, a histogram of each wait, labelled `started`, `gave_up` or `ended`.
+- A new `waiting` outcome on `bex_agent_session_provision_seconds`, for each attempt that ended `pool_full`.
+
+`AgentSandboxPoolFull` fires when sessions have been waiting for 15 minutes. `AgentSessionProvisionFailing`'s denominator leaves the `waiting` attempts out, so a burst of waits neither hides nor raises its failure ratio.
 
 ### w5/m81 — lifecycle latency instrumentation (2026-08-27)
 

@@ -4693,7 +4693,7 @@ dashboards:
                 },
                 {
                  "refId": "B",
-                 "expr": "sum(rate(bex_agent_session_provision_seconds_count{outcome=\"failed\"}[1h])) / sum(rate(bex_agent_session_provision_seconds_count[1h]))",
+                 "expr": "sum(rate(bex_agent_session_provision_seconds_count{outcome=\"failed\"}[1h])) / sum(rate(bex_agent_session_provision_seconds_count{outcome!=\"waiting\"}[1h]))",
                  "legendFormat": "failure ratio"
                 }
               ]
@@ -5603,6 +5603,35 @@ dashboards:
                  "refId": "C",
                  "expr": "vector(1)",
                  "legendFormat": "alert threshold"
+                }
+              ]
+            },
+            {
+             "id": 40,
+             "type": "timeseries",
+             "title": "Agent sessions waiting for a sandbox machine",
+             "description": "Agent sessions whose sandbox the pool cannot place wait for a machine for up to an hour instead of failing (ADR047 § w10/m497). The count is summed over the bex-api replicas; AgentSandboxPoolFull fires when it stays above zero for 15 minutes, the evidence for ADR105's pool-size decision. Beside it, the p95 of each wait by how it ended: started (placed), gave_up (the hour passed, SANDBOX_START_FAILED cause pool_full) or ended (canceled, archived, or another start failure).",
+             "gridPos": { "h": 9, "w": 24, "x": 0, "y": 170 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "short", "min": 0 },
+               "overrides": [
+                  {
+                   "matcher": { "id": "byFrameRefID", "options": "B" },
+                   "properties": [{ "id": "unit", "value": "s" }]
+                  }
+                ]
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum(bex_agent_session_sandbox_waiting)",
+                 "legendFormat": "sessions waiting"
+                },
+                {
+                 "refId": "B",
+                 "expr": "histogram_quantile(0.95, sum by (le, outcome) (rate(bex_agent_session_sandbox_wait_seconds_bucket[1h])))",
+                 "legendFormat": "wait p95 ({{outcome}})"
                 }
               ]
             }

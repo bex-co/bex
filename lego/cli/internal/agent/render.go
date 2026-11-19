@@ -23,6 +23,7 @@ import (
 	"io"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -108,6 +109,59 @@ func failureCode(s session) string {
 		return s.Outcome.FailureReasonCode
 	}
 	return s.FailureReasonCode
+}
+
+// failureLabel is the failure code with a failed start's cause:
+// "SANDBOX_START_FAILED (pool_full)".
+func failureLabel(s session) string {
+	code := failureCode(s)
+	if code != "" && s.FailureCause != "" {
+		return code + " (" + s.FailureCause + ")"
+	}
+	return code
+}
+
+// waitingFor says what a session waits for and for how long, to follow
+// "waiting" (ADR047 § w10/m497); "" when it does not wait.
+func waitingFor(s session, now time.Time) string {
+	if s.WaitingFor == "" {
+		return ""
+	}
+	line := "for a sandbox machine"
+	if s.WaitingSince != nil {
+		line += " for " + now.Sub(*s.WaitingSince).Round(time.Second).String()
+	}
+	return line + ": the sandbox pool is full, and the session starts by itself when a machine frees"
+}
+
+// waitingNotice prints a waiting session's line once per wait, as a poll
+// reads it.
+type waitingNotice struct {
+	w    io.Writer
+	now  func() time.Time
+	seen map[string]bool
+}
+
+func (n *waitingNotice) observe(s session) {
+	if n == nil {
+		return
+	}
+	line := waitingFor(s, n.now())
+	if line == "" {
+		return
+	}
+	key := s.ID
+	if s.WaitingSince != nil {
+		key += "@" + s.WaitingSince.String()
+	}
+	if n.seen[key] {
+		return
+	}
+	if n.seen == nil {
+		n.seen = map[string]bool{}
+	}
+	n.seen[key] = true
+	_, _ = fmt.Fprintf(n.w, "%s waiting %s\n", s.ID, line)
 }
 
 // costUSD is the session's total cost so far, "" when none is reported.
@@ -220,6 +274,7 @@ func writeSession(w io.Writer, s session) {
 		pr += " (" + s.PRState + ")"
 	}
 	row("PR", pr)
+	row("Waiting", waitingFor(s, time.Now()))
 	row("Delivery", o.DeliveryNote)
 	if t := s.stopped; t != nil {
 		label := "Changes"
@@ -236,7 +291,7 @@ func writeSession(w io.Writer, s session) {
 			row("Cost", "$"+c.ModelUSD)
 		}
 	}
-	if code := failureCode(s); code != "" || s.FailureReason != "" {
+	if code := failureLabel(s); code != "" || s.FailureReason != "" {
 		row("Failure", strings.TrimSpace(strings.TrimSuffix(code+": "+s.FailureReason, ": ")))
 	}
 	_ = tw.Flush()

@@ -83,6 +83,25 @@ rules:
     resources: ["pods/exec"]
     verbs: ["create"]
 ---
+# bex-api's read of a sandbox pod's state (w10/m497, ADR047 § w10/m497). The
+# OpenSandbox server deletes a pod it could not start when its 300 s wait ends,
+# and its 504 says only "Pending", so bex-api reads the pod itself while the
+# create waits: its PodScheduled condition (a full pool), its containers'
+# waiting reasons (an image pull, the runtime) and whether its pod sandbox
+# started. Read-only and pods alone: no watch, logs, exec, events or Secrets.
+# A sandbox pod's spec holds only what bex-api itself wrote into it. The
+# NamespaceReconciler binds this to bex-api per `<ws>-sandbox` only (never
+# cluster-wide, never a hosting namespace, which binds bex-tenant-api), and
+# scripts/gitops-validate.sh pins these rules.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: bex-tenant-sandbox-api
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
 # The OpenSandbox lifecycle server (m32 t002, opensandbox-system) drives
 # BatchSandboxes and the pods/services/configmaps/PVCs they spawn INSIDE each
 # workspace's `<ws>-sandbox` namespace. The NamespaceReconciler binds this to the

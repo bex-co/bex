@@ -358,6 +358,31 @@ const deAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Detail page — CTA on a capacity failure; opens the change-plan dialog",
   },
+  "agentSessions.failureCause.pool_full": {
+    message: "Keine Sandbox-Maschine hatte Platz",
+    description:
+      "Failed-start cause line (session callout, automation runs) — no sandbox machine had room for the session's machine for the whole wait (w10/m497)",
+  },
+  "agentSessions.failureCause.image_pull": {
+    message: "Das Sandbox-Image konnte nicht geladen werden",
+    description:
+      "Failed-start cause line — the sandbox's container image did not pull (w10/m497)",
+  },
+  "agentSessions.failureCause.runtime": {
+    message: "Die Sandbox-Runtime konnte nicht starten",
+    description:
+      "Failed-start cause line — the sandbox runtime did not start the session's machine (w10/m497)",
+  },
+  "agentSessions.failureCause.quota": {
+    message: "Das Sandbox-Kontingent des Workspace hat sie abgelehnt",
+    description:
+      "Failed-start cause line — the workspace's sandbox quota refused the session's machine (w10/m497)",
+  },
+  "agentSessions.failureCause.unknown": {
+    message: "Plattformproblem",
+    description:
+      "Failed-start cause line — the sandbox did not start for a cause on bex's side that bex-api could not name (w10/m497)",
+  },
   "agentSessions.provisioning": {
     message: "Sandbox wird gestartet…",
     description:
@@ -1073,6 +1098,11 @@ const deAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.statusPhrase.working": {
     message: "Arbeitet…",
     description: "Sidebar status phrase — session still converging",
+  },
+  "agentSessions.statusPhrase.waitingForSandbox": {
+    message: "Wartet auf eine Sandbox-Maschine",
+    description:
+      "Session status (header, list rows, sidebar, conversation, automation runs) — the turn waits because no sandbox machine has room for it yet (w10/m497); the time waited follows where there is room",
   },
   "agentSessions.menuMore": {
     message: "Weitere Aktionen",

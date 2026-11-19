@@ -168,6 +168,26 @@ var agentAutomationRunGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"error":        gqlutil.OptionalStrField(func(v AgentAutomationRun) any { return v.Error }),
 		"createdAt":    gqlutil.TimeField(func(v AgentAutomationRun) any { return v.CreatedAt }),
 		"settledAt":    gqlutil.TimeField(func(v AgentAutomationRun) any { return v.SettledAt }),
+		"session": &graphql.Field{Type: agentAutomationRunSessionGQLType,
+			Description: "Where the session the run started stands: waiting for a sandbox machine, or a start that failed and why; null when the run started none or its session was deleted.",
+			Resolve: gqlutil.Field(func(v AgentAutomationRun) any {
+				if v.Session == nil {
+					return nil
+				}
+				return *v.Session
+			})},
+	},
+})
+
+var agentAutomationRunSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "AgentAutomationRunSession",
+	Description: "An automation run's session as the run's activity shows it (ADR047 § w10/m497).",
+	Fields: graphql.Fields{
+		"state":             gqlutil.ReqStrField(func(v AgentAutomationRunSession) any { return v.State }),
+		"failureReasonCode": gqlutil.OptionalStrField(func(v AgentAutomationRunSession) any { return v.FailureReasonCode }),
+		"waitingFor":        &graphql.Field{Type: graphql.String, Description: waitingForDescription, Resolve: gqlutil.OptionalStrField(func(v AgentAutomationRunSession) any { return v.WaitingFor }).Resolve},
+		"waitingSince":      &graphql.Field{Type: graphql.String, Description: waitingSinceDescription, Resolve: gqlutil.TimeField(func(v AgentAutomationRunSession) any { return v.WaitingSince }).Resolve},
+		"failureCause":      &graphql.Field{Type: graphql.String, Description: failureCauseDescription, Resolve: gqlutil.OptionalStrField(func(v AgentAutomationRunSession) any { return v.FailureCause }).Resolve},
 	},
 })
 

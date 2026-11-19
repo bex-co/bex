@@ -74,6 +74,13 @@ fragment AgentSessionFields on AgentSession {
   deliveryMode
   failureReason
   failureReasonCode
+  # Beside SANDBOX_START_FAILED only: pool_full, image_pull, runtime, quota or
+  # unknown (w10/m497).
+  failureCause
+  # "sandbox_capacity" while the turn waits for a sandbox machine because the
+  # pool is full, with when the wait began; null otherwise (w10/m497).
+  waitingFor
+  waitingSince
   deliveryNote
   createdAt
   updatedAt

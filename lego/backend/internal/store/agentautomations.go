@@ -96,6 +96,20 @@ type AgentAutomationRun struct {
 	ClaimedUntil *time.Time
 	CreatedAt    time.Time
 	SettledAt    *time.Time
+	// Session is the state of the session the run started, read by ListRuns
+	// only; nil when the run started none or its session is gone.
+	Session *AgentAutomationRunSession
+}
+
+// AgentAutomationRunSession is what a run's activity shows of the session it
+// started (ADR047 § w10/m497): its phase, whether it waits for a sandbox
+// machine, and a failed start's code and cause.
+type AgentAutomationRunSession struct {
+	Phase             string
+	SandboxID         string
+	FailureReasonCode string
+	FailureCause      string
+	SandboxWaitSince  *time.Time
 }
 
 // ClaimedRun is a run the caller now owns until its lease ends, with the
@@ -145,9 +159,15 @@ func scanAgentAutomation(row pgx.Row) (AgentAutomation, error) {
 
 func scanAgentAutomationRun(row pgx.Row) (AgentAutomationRun, error) {
 	var r AgentAutomationRun
-	err := row.Scan(&r.AutomationID, &r.FireAt, &r.Outcome, &r.SessionID, &r.MissedTicks, &r.Error,
-		&r.ClaimedUntil, &r.CreatedAt, &r.SettledAt)
+	err := row.Scan(agentAutomationRunDest(&r)...)
 	return r, err
+}
+
+// agentAutomationRunDest is the scan destinations of
+// agentAutomationRunColumns, in order.
+func agentAutomationRunDest(r *AgentAutomationRun) []any {
+	return []any{&r.AutomationID, &r.FireAt, &r.Outcome, &r.SessionID, &r.MissedTicks, &r.Error,
+		&r.ClaimedUntil, &r.CreatedAt, &r.SettledAt}
 }
 
 func collectWith[T any](scan func(pgx.Row) (T, error)) func(pgx.Rows, error) ([]T, error) {
@@ -481,11 +501,27 @@ func (s *PGStore) ListRuns(ctx context.Context, automationID string, cursor time
 	if !textBindable(automationID) {
 		return nil, nil
 	}
-	return collectWith(scanAgentAutomationRun)(s.Pool.Query(ctx, `
-		SELECT `+agentAutomationRunColumns+` FROM agent_automation_runs
+	return collectWith(scanAgentAutomationRunWithSession)(s.Pool.Query(ctx, `
+		SELECT `+agentAutomationRunColumns+`, g.phase, g.sandbox_id, g.failure_reason_code, g.failure_cause, g.sandbox_wait_since
+		FROM agent_automation_runs r
+		LEFT JOIN LATERAL (
+			SELECT phase, sandbox_id, failure_reason_code, failure_cause, sandbox_wait_since
+			FROM agent_sessions WHERE id = r.session_id) g ON true
 		WHERE automation_id=$1 AND ($2::timestamptz IS NULL OR fire_at < $2)
 		ORDER BY fire_at DESC LIMIT $3`,
 		automationID, nullTime(cursor), clampLimit(limit)))
+}
+
+// scanAgentAutomationRunWithSession scans a run and the state of its session.
+func scanAgentAutomationRunWithSession(row pgx.Row) (AgentAutomationRun, error) {
+	var r AgentAutomationRun
+	var phase, sandboxID, code, cause *string
+	var since *time.Time
+	err := row.Scan(append(agentAutomationRunDest(&r), &phase, &sandboxID, &code, &cause, &since)...)
+	if err == nil && phase != nil {
+		r.Session = &AgentAutomationRunSession{Phase: *phase, SandboxID: *sandboxID, FailureReasonCode: *code, FailureCause: *cause, SandboxWaitSince: since}
+	}
+	return r, err
 }
 
 // LatestStartedSessionPhase returns the session of the automation's most

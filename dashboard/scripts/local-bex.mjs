@@ -3311,6 +3311,39 @@ function agentSessionsFor(ownerId = WORKSPACE_DEFAULT) {
       updatedAt: agoISO(1),
     },
     {
+      // Waiting for a sandbox machine (w10/m497): the sandbox pool had no
+      // room, so the turn waits and starts by itself when a machine frees.
+      ...base,
+      id: "ags-demo00000000000000008",
+      repo: "bex-co/bex-checkout-api",
+      branch: "bex-agent/flaky-test",
+      agentConfig: cfg("Find and fix the flaky checkout test."),
+      phase: "creating",
+      status: "",
+      turns: 1,
+      waitingFor: "sandbox_capacity",
+      waitingSince: agoISO(3),
+      createdAt: agoISO(3),
+      updatedAt: agoISO(3),
+    },
+    {
+      // A sandbox the pool never had room for, within the wait's hour.
+      ...base,
+      id: "ags-demo00000000000000009",
+      repo: "bex-co/bex-checkout-api",
+      branch: "bex-agent/nightly-deps",
+      agentConfig: cfg("Update the dependencies and open a PR."),
+      phase: "failed",
+      status: "failed",
+      failureReason:
+        "No sandbox machine had room for this session for 60 minutes, so it did not start. Send the message again to retry.",
+      failureReasonCode: "SANDBOX_START_FAILED",
+      failureCause: "pool_full",
+      turns: 1,
+      createdAt: agoISO(70),
+      updatedAt: agoISO(5),
+    },
+    {
       ...base,
       id: "ags-demo00000000000000003",
       repo: "bex-co/bex-hello-go-live",

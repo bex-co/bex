@@ -130,6 +130,7 @@ func (a *api) readSession(ctx context.Context, id string, p *poller) (session, [
 	s, raw, err := a.session(ctx, id)
 	if err == nil {
 		p.failures = 0
+		a.waiting.observe(s)
 		return s, raw, true, nil
 	}
 	if p.tolerate(ctx, err) {

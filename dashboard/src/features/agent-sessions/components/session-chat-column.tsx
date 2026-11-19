@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Loader2 } from "lucide-react";
+import { Hourglass, Loader2 } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { SessionDetailHeader } from "@/features/agent-sessions/components/session-detail-header";
 import { DeliveryNoteCallout } from "@/features/agent-sessions/components/delivery-note-callout";
@@ -13,6 +13,7 @@ import { SessionConversation } from "@/features/agent-sessions/components/sessio
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation";
 import { ConversationSkeleton } from "@/features/agent-sessions/components/conversation-skeleton";
 import { ChildSessionCards } from "@/features/agent-sessions/components/child-session-cards";
+import { SandboxWaitStatus } from "@/features/agent-sessions/components/sandbox-wait-status";
 import type {
   AgentSessionListSearch,
   AgentSessionView,
@@ -43,7 +44,9 @@ export interface SessionChatColumnProps {
  *   the attach-ticket verb would 409 NOT_ATTACHABLE — mounting the stream there
  *   would render a spurious error. Until a sandbox id appears (via the header's
  *   phase polling) a placeholder is shown instead: a provisioning spinner while
- *   non-terminal, or just the failure/PR footer once terminal.
+ *   non-terminal (or, while the sandbox pool is full, how long the turn has
+ *   waited for a machine: w10/m497), or just the failure/PR footer once
+ *   terminal.
  * - **Optimistic redispatch echo.** The idle→redispatch steer path echoes while
  *   provisioning. It hides as soon as the durable turn count advances; gateway
  *   replay then projects the persisted prompt as a `data-user-prompt` part.
@@ -156,8 +159,17 @@ export function SessionChatColumn({
             role="status"
             className="text-muted-foreground flex items-center gap-2 text-sm"
           >
-            <Loader2 aria-hidden className="size-4 shrink-0 animate-spin" />
-            {t("agentSessions.provisioning")}
+            {session.waitingFor ? (
+              <>
+                <Hourglass aria-hidden className="size-4 shrink-0" />
+                <SandboxWaitStatus session={session} />
+              </>
+            ) : (
+              <>
+                <Loader2 aria-hidden className="size-4 shrink-0 animate-spin" />
+                {t("agentSessions.provisioning")}
+              </>
+            )}
           </div>
         )
       }

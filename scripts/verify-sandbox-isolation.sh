@@ -268,7 +268,7 @@ preflight_cluster() {
         fail "$namespace still has legacy broad policy $resource"
       fi
     done
-    for resource in bex-tenant-sandbox-server bex-tenant-sandbox-controller bex-tenant-ssh-gateway; do
+    for resource in bex-tenant-sandbox-server bex-tenant-sandbox-controller bex-tenant-ssh-gateway bex-tenant-sandbox-api; do
       kubectl -n "$namespace" get rolebinding "$resource" >/dev/null 2>&1 \
         || fail "$namespace is missing RoleBinding $resource"
     done
@@ -298,6 +298,14 @@ preflight_cluster() {
     || fail "isolated SSH gateway lacks its sandbox-namespace pods/exec grant"
   [ "$(kubectl auth can-i create pods --subresource=exec -n opensandbox-system --as "$gateway_as")" = no ] \
     || fail "isolated SSH gateway has pods/exec authority in opensandbox-system"
+  # bex-api reads a create's pod while it waits (w10/m497): pods get/list in
+  # the sandbox namespace, and still no Secret or exec there.
+  [ "$(kubectl auth can-i list pods -n "$namespace_a" --as "$bex_api_as")" = yes ] \
+    || fail "bex-api lacks its sandbox-namespace pod read (bex-tenant-sandbox-api)"
+  [ "$(kubectl auth can-i get secrets -n "$namespace_a" --as "$bex_api_as")" = no ] \
+    || fail "bex-api can read Secrets in a sandbox namespace"
+  [ "$(kubectl auth can-i create pods --subresource=exec -n "$namespace_a" --as "$bex_api_as")" = no ] \
+    || fail "bex-api has pods/exec authority in a sandbox namespace"
   [ "$(kubectl auth can-i create ciliumnetworkpolicies.cilium.io -n "$namespace_a" --as "$bex_api_as")" = yes ] \
     || fail "bex-api lacks the admission-confined per-session Cilium policy grant"
 

@@ -208,6 +208,70 @@ describe("SessionList", () => {
     );
   });
 
+  // w10/m497: a turn the sandbox pool has no room for says it waits for a
+  // machine, with the time waited, in the status phrase's place on the same
+  // one-line meta row.
+  describe("a session waiting for a sandbox machine", () => {
+    const since = "2026-11-18T12:00:00Z";
+    const waiting = () =>
+      view({
+        phase: "creating",
+        task: "wait for it",
+        waitingFor: "sandbox_capacity",
+        waitingSince: since,
+      });
+
+    it("reads Waiting for a sandbox machine with the time waited on recents", () => {
+      const now = vi
+        .spyOn(Date, "now")
+        .mockReturnValue(Date.parse(since) + 192_000);
+      try {
+        render(<SessionList loading={false} sessions={[waiting()]} />);
+        expect(metaText()).toMatch(
+          /^Waiting for a sandbox machine · 3m 12s · acme\/widgets · .+$/,
+        );
+        expect(screen.queryByText(/Working…/)).not.toBeInTheDocument();
+        const meta = screen.getAllByTestId("agent-session-meta")[0];
+        expect(meta).toHaveClass("block", "truncate");
+        expect(meta).toContainElement(screen.getByTestId("sandbox-wait"));
+      } finally {
+        now.mockRestore();
+      }
+    });
+
+    it("keeps Working… for a session that is starting without a wait", () => {
+      render(
+        <SessionList
+          loading={false}
+          sessions={[view({ phase: "creating", task: "go" })]}
+        />,
+      );
+      expect(metaText()).toMatch(/^Working… · /);
+      expect(screen.queryByTestId("sandbox-wait")).toBeNull();
+    });
+
+    it("leads the table row's meta line with the wait beside the Creating chip", () => {
+      const now = vi
+        .spyOn(Date, "now")
+        .mockReturnValue(Date.parse(since) + 42_000);
+      try {
+        render(
+          <SessionList
+            loading={false}
+            archiveFilter="all"
+            sessions={[waiting()]}
+          />,
+        );
+        expect(metaText()).toBe(
+          "Waiting for a sandbox machine · 42s · acme/widgets · bex-agent/fix · claude",
+        );
+        expect(screen.getByText("Creating")).toBeInTheDocument();
+      } finally {
+        now.mockRestore();
+      }
+    });
+  });
+
   it("keeps phase chips on the denser Archived/All table", () => {
     const cases: Array<[AgentSessionPhase, string]> = [
       ["creating", "Creating"],

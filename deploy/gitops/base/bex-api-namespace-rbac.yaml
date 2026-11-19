@@ -59,6 +59,9 @@ rules:
       - bex-tenant-ssh-gateway
       - bex-tenant-sandbox-server
       - bex-tenant-sandbox-controller
+      # w10/m497: bex-api's read-only pod read in `<ws>-sandbox`, which names
+      # a sandbox create's pod-ready timeout (pods get/list only).
+      - bex-tenant-sandbox-api
       # w3/m42: the operator's per-sandbox-namespace snapshot resume-pull
       # Secret grant (get/create/update/patch; update/patch backfill the
       # protected-from-tenant-mount label, w2/m82) — bound by the

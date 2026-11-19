@@ -118,6 +118,9 @@
             "string"
           ]
         },
+        "failureCause": {
+          "type": "string"
+        },
         "failureReason": {
           "type": "string"
         },
@@ -572,6 +575,15 @@
         },
         "url": {
           "type": "string"
+        },
+        "waitingFor": {
+          "type": "string"
+        },
+        "waitingSince": {
+          "type": [
+            "null",
+            "string"
+          ]
         }
       },
       "required": [
@@ -713,6 +725,9 @@
             "string"
           ]
         },
+        "failureCause": {
+          "type": "string"
+        },
         "failureReason": {
           "type": "string"
         },
@@ -1167,6 +1182,15 @@
         },
         "url": {
           "type": "string"
+        },
+        "waitingFor": {
+          "type": "string"
+        },
+        "waitingSince": {
+          "type": [
+            "null",
+            "string"
+          ]
         }
       },
       "required": [
@@ -1431,6 +1455,9 @@
             "string"
           ]
         },
+        "failureCause": {
+          "type": "string"
+        },
         "failureReason": {
           "type": "string"
         },
@@ -1885,6 +1912,15 @@
         },
         "url": {
           "type": "string"
+        },
+        "waitingFor": {
+          "type": "string"
+        },
+        "waitingSince": {
+          "type": [
+            "null",
+            "string"
+          ]
         }
       },
       "required": [
@@ -2673,6 +2709,9 @@
             "string"
           ]
         },
+        "failureCause": {
+          "type": "string"
+        },
         "failureReason": {
           "type": "string"
         },
@@ -3127,6 +3166,15 @@
         },
         "url": {
           "type": "string"
+        },
+        "waitingFor": {
+          "type": "string"
+        },
+        "waitingSince": {
+          "type": [
+            "null",
+            "string"
+          ]
         }
       },
       "required": [
@@ -4507,6 +4555,9 @@
             "string"
           ]
         },
+        "failureCause": {
+          "type": "string"
+        },
         "failureReason": {
           "type": "string"
         },
@@ -4961,6 +5012,15 @@
         },
         "url": {
           "type": "string"
+        },
+        "waitingFor": {
+          "type": "string"
+        },
+        "waitingSince": {
+          "type": [
+            "null",
+            "string"
+          ]
         }
       },
       "required": [
@@ -5618,6 +5678,9 @@
                   "string"
                 ]
               },
+              "failureCause": {
+                "type": "string"
+              },
               "failureReason": {
                 "type": "string"
               },
@@ -6072,6 +6135,15 @@
               },
               "url": {
                 "type": "string"
+              },
+              "waitingFor": {
+                "type": "string"
+              },
+              "waitingSince": {
+                "type": [
+                  "null",
+                  "string"
+                ]
               }
             },
             "required": [
@@ -6385,6 +6457,9 @@
             "null",
             "string"
           ]
+        },
+        "failureCause": {
+          "type": "string"
         },
         "failureReason": {
           "type": "string"
@@ -6840,6 +6915,15 @@
         },
         "url": {
           "type": "string"
+        },
+        "waitingFor": {
+          "type": "string"
+        },
+        "waitingSince": {
+          "type": [
+            "null",
+            "string"
+          ]
         }
       },
       "required": [
@@ -6921,6 +7005,36 @@
               },
               "outcome": {
                 "type": "string"
+              },
+              "session": {
+                "additionalProperties": false,
+                "properties": {
+                  "failureCause": {
+                    "type": "string"
+                  },
+                  "failureReasonCode": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "waitingFor": {
+                    "type": "string"
+                  },
+                  "waitingSince": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  }
+                },
+                "required": [
+                  "state"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
               },
               "sessionId": {
                 "type": "string"
@@ -8127,6 +8241,9 @@
                   "string"
                 ]
               },
+              "failureCause": {
+                "type": "string"
+              },
               "failureReason": {
                 "type": "string"
               },
@@ -8581,6 +8698,15 @@
               },
               "url": {
                 "type": "string"
+              },
+              "waitingFor": {
+                "type": "string"
+              },
+              "waitingSince": {
+                "type": [
+                  "null",
+                  "string"
+                ]
               }
             },
             "required": [
@@ -9663,6 +9789,9 @@
             "string"
           ]
         },
+        "failureCause": {
+          "type": "string"
+        },
         "failureReason": {
           "type": "string"
         },
@@ -10117,6 +10246,15 @@
         },
         "url": {
           "type": "string"
+        },
+        "waitingFor": {
+          "type": "string"
+        },
+        "waitingSince": {
+          "type": [
+            "null",
+            "string"
+          ]
         }
       },
       "required": [
@@ -10181,6 +10319,36 @@
         },
         "outcome": {
           "type": "string"
+        },
+        "session": {
+          "additionalProperties": false,
+          "properties": {
+            "failureCause": {
+              "type": "string"
+            },
+            "failureReasonCode": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "waitingFor": {
+              "type": "string"
+            },
+            "waitingSince": {
+              "type": [
+                "null",
+                "string"
+              ]
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
         },
         "sessionId": {
           "type": "string"
@@ -10418,6 +10586,9 @@
             "string"
           ]
         },
+        "failureCause": {
+          "type": "string"
+        },
         "failureReason": {
           "type": "string"
         },
@@ -10872,6 +11043,15 @@
         },
         "url": {
           "type": "string"
+        },
+        "waitingFor": {
+          "type": "string"
+        },
+        "waitingSince": {
+          "type": [
+            "null",
+            "string"
+          ]
         }
       },
       "required": [
@@ -11336,6 +11516,9 @@
             "string"
           ]
         },
+        "failureCause": {
+          "type": "string"
+        },
         "failureReason": {
           "type": "string"
         },
@@ -11790,6 +11973,15 @@
         },
         "url": {
           "type": "string"
+        },
+        "waitingFor": {
+          "type": "string"
+        },
+        "waitingSince": {
+          "type": [
+            "null",
+            "string"
+          ]
         }
       },
       "required": [
@@ -12074,6 +12266,9 @@
             "string"
           ]
         },
+        "failureCause": {
+          "type": "string"
+        },
         "failureReason": {
           "type": "string"
         },
@@ -12528,6 +12723,15 @@
         },
         "url": {
           "type": "string"
+        },
+        "waitingFor": {
+          "type": "string"
+        },
+        "waitingSince": {
+          "type": [
+            "null",
+            "string"
+          ]
         }
       },
       "required": [
@@ -12763,6 +12967,9 @@
             "string"
           ]
         },
+        "failureCause": {
+          "type": "string"
+        },
         "failureReason": {
           "type": "string"
         },
@@ -13217,6 +13424,15 @@
         },
         "url": {
           "type": "string"
+        },
+        "waitingFor": {
+          "type": "string"
+        },
+        "waitingSince": {
+          "type": [
+            "null",
+            "string"
+          ]
         }
       },
       "required": [
@@ -13644,6 +13860,9 @@
             "string"
           ]
         },
+        "failureCause": {
+          "type": "string"
+        },
         "failureReason": {
           "type": "string"
         },
@@ -14098,6 +14317,15 @@
         },
         "url": {
           "type": "string"
+        },
+        "waitingFor": {
+          "type": "string"
+        },
+        "waitingSince": {
+          "type": [
+            "null",
+            "string"
+          ]
         }
       },
       "required": [

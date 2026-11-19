@@ -10,6 +10,7 @@ import type {
 } from "@/graphql/definitions";
 import {
   parseAgentSessionPrState,
+  SANDBOX_START_FAILURE_CAUSES,
   TURN_RETENTION_LOST_REASONS,
   TURN_RETENTION_STATES,
   type AgentSessionConfigView,
@@ -17,8 +18,10 @@ import {
   type AgentSessionPhase,
   type AgentSessionTicket,
   type AgentSessionView,
+  type AgentSessionWaitingFor,
   type InterruptedTurns,
   type QueuedMessageView,
+  type SandboxStartFailureCause,
   type SteerResult,
   type TurnEndView,
   type TurnRetentionView,
@@ -48,11 +51,35 @@ export function isSteerablePhase(phase: string): boolean {
   return STEERABLE_PHASES.has(phase as AgentSessionPhase);
 }
 
+/** The one thing a session waits for today (ADR047 § w10/m497). */
+export const SANDBOX_CAPACITY: AgentSessionWaitingFor = "sandbox_capacity";
+
+/**
+ * What a session waits for, when this build knows it and the session can
+ * still start: a settled session waits for nothing, whatever a stale read says.
+ */
+export function parseAgentSessionWaitingFor(
+  value: string | null | undefined,
+  phase: string,
+): AgentSessionWaitingFor | null {
+  return value === SANDBOX_CAPACITY && !isTerminalPhase(phase)
+    ? SANDBOX_CAPACITY
+    : null;
+}
+
+/** A start-failure cause this build knows, or null (a newer bex-api's word). */
+export function parseSandboxStartFailureCause(
+  value: string | null | undefined,
+): SandboxStartFailureCause | null {
+  return SANDBOX_START_FAILURE_CAUSES.find((cause) => cause === value) ?? null;
+}
+
 /** Projects one wire `AgentSession` onto its normalized view. */
 export function toAgentSessionView(
   wire: AgentSessionFieldsFragment,
 ): AgentSessionView {
   const phase = wire.phase as AgentSessionPhase;
+  const waitingFor = parseAgentSessionWaitingFor(wire.waitingFor, phase);
   // agentConfig is non-null in a fully-materialized wire session, but a partial
   // cache entry (e.g. a create/steer mutation result read back mid-flight, before
   // the full fragment lands) can omit it. Default it rather than throw — a missing
@@ -96,6 +123,9 @@ export function toAgentSessionView(
       (wire.deliveryMode as AgentSessionDeliveryMode | null) ?? null,
     failureReason: wire.failureReason ?? null,
     failureReasonCode: wire.failureReasonCode ?? null,
+    failureCause: parseSandboxStartFailureCause(wire.failureCause),
+    waitingFor,
+    waitingSince: waitingFor ? (wire.waitingSince ?? null) : null,
     deliveryNote: wire.deliveryNote || null,
     createdAt: wire.createdAt,
     updatedAt: wire.updatedAt,
@@ -404,6 +434,13 @@ export function agentSessionFailureReason(
 /** bex-api's `sandbox.CodeSandboxCapacityLimit`, a session failure's code. */
 export const SANDBOX_CAPACITY_LIMIT = "SANDBOX_CAPACITY_LIMIT";
 
+/**
+ * bex-api's `sandbox.CodeSandboxStartFailed`: the sandbox did not start for a
+ * cause on bex's side, named by `failureCause` (w10/m497). Never a plan limit,
+ * so it never offers an upgrade.
+ */
+export const SANDBOX_START_FAILED = "SANDBOX_START_FAILED";
+
 /** The failure code of a turn whose repository setup step failed (ADR109 D5). */
 export const AGENT_SESSION_SETUP_FAILED = "AGENT_SESSION_SETUP_FAILED";
 
@@ -431,24 +468,46 @@ export function isSandboxCapacityFailure(
   );
 }
 
+/**
+ * Why a failed session's sandbox did not start, beside `SANDBOX_START_FAILED`
+ * (w10/m497); null for every other failure. A start failure with no cause this
+ * build knows (recorded before causes were, or a newer word) is a platform
+ * issue, which is what that code has always meant.
+ */
+export function sandboxStartFailureCause(
+  view: Pick<AgentSessionView, "phase" | "failureReasonCode" | "failureCause">,
+): SandboxStartFailureCause | null {
+  if (view.phase !== "failed") return null;
+  return view.failureReasonCode === SANDBOX_START_FAILED
+    ? (view.failureCause ?? "unknown")
+    : null;
+}
+
 /** The i18n keys a status phrase resolves to; the settled phases reuse the
  *  phase chip's own copy rather than restating it. */
 export type AgentSessionStatusPhraseKey =
   | "agentSessions.statusPhrase.prReady"
   | "agentSessions.statusPhrase.working"
+  | "agentSessions.statusPhrase.waitingForSandbox"
   | "agentSessions.phase.completed"
   | "agentSessions.phase.failed"
   | "agentSessions.phase.canceled";
 
 /**
  * Phase + PR presence → the sidebar's human status phrase (Devin's "PR is
- * ready • 1" shape). The two that aren't just the phase restated: a completed
- * session carrying a PR reads "PR is ready", and every still-converging phase
- * (creating/running/resuming/redispatching) collapses to "Working…".
+ * ready • 1" shape). The ones that aren't just the phase restated: a completed
+ * session carrying a PR reads "PR is ready", a session waiting for a sandbox
+ * machine says so (w10/m497, Devin's "waiting for machine capacity"), and every
+ * other still-converging phase (creating/running/resuming/redispatching)
+ * collapses to "Working…".
  */
 export function agentSessionStatusPhraseKey(
-  view: Pick<AgentSessionView, "phase" | "prNumber">,
+  view: Pick<AgentSessionView, "phase" | "prNumber"> &
+    Partial<Pick<AgentSessionView, "waitingFor">>,
 ): AgentSessionStatusPhraseKey {
+  if (view.waitingFor && !isTerminalPhase(view.phase)) {
+    return "agentSessions.statusPhrase.waitingForSandbox";
+  }
   switch (view.phase) {
     case "completed":
       return view.prNumber != null && view.prNumber !== 0
@@ -462,6 +521,30 @@ export function agentSessionStatusPhraseKey(
     default:
       return "agentSessions.statusPhrase.working";
   }
+}
+
+/** Compact `h/m/s` elapsed label ("1h 4m", "12m 8s", "3s"). */
+export function formatDurationShort(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const hours = Math.floor(total / 3600);
+  const mins = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  if (hours > 0) return `${hours}h ${mins}m`;
+  if (mins > 0) return `${mins}m ${secs}s`;
+  return `${secs}s`;
+}
+
+/**
+ * How long a session has waited for a sandbox machine at `nowMs`, or null
+ * when it does not wait or the wait's start is unreadable (w10/m497).
+ */
+export function agentSessionWaitMs(
+  view: Pick<AgentSessionView, "waitingFor" | "waitingSince">,
+  nowMs: number,
+): number | null {
+  if (!view.waitingFor || !view.waitingSince) return null;
+  const since = Date.parse(view.waitingSince);
+  return Number.isNaN(since) ? null : Math.max(0, nowMs - since);
 }
 
 /**

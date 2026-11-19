@@ -102,6 +102,26 @@ export interface AgentSessionListSearch {
   prState?: AgentSessionPrState;
 }
 
+/** What a waiting session waits for (ADR047 § w10/m497): today only a machine. */
+export type AgentSessionWaitingFor = "sandbox_capacity";
+
+/**
+ * Why a sandbox did not start, beside `SANDBOX_START_FAILED` (ADR047 §
+ * w10/m497): the pool had no room, the image did not pull, the runtime did not
+ * start the machine, the workspace's quota refused it, or bex-api could not
+ * tell. The const list is the single source for the wire mapping.
+ */
+export const SANDBOX_START_FAILURE_CAUSES = [
+  "pool_full",
+  "image_pull",
+  "runtime",
+  "quota",
+  "unknown",
+] as const;
+
+export type SandboxStartFailureCause =
+  (typeof SANDBOX_START_FAILURE_CAUSES)[number];
+
 /** How a turn's sandbox was obtained (backend Delivery* constants). */
 export type AgentSessionDeliveryMode = "resume" | "redispatch";
 
@@ -214,6 +234,19 @@ export interface AgentSessionView {
    * `SANDBOX_CAPACITY_LIMIT` (w5/m132). Decide by this, never by the wording.
    */
   failureReasonCode: string | null;
+  /**
+   * Why a failed start failed, beside `SANDBOX_START_FAILED` only (w10/m497);
+   * null otherwise, and for a cause this dashboard does not know.
+   */
+  failureCause: SandboxStartFailureCause | null;
+  /**
+   * What the turn waits for before it can start (w10/m497): a sandbox machine,
+   * while the pool has no room. The phase stays creating or redispatching and
+   * the state working. Null while nothing holds the turn up.
+   */
+  waitingFor: AgentSessionWaitingFor | null;
+  /** RFC 3339: when the wait began; null when the session does not wait. */
+  waitingSince: string | null;
   /**
    * Set on a completed session whose work the agent left undelivered — an
    * uncommitted tree, unpushed commits, or a pushed branch with no PR (ADR090

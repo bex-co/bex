@@ -49,6 +49,9 @@ type api struct {
 	// carry their own authority and must never see the bex bearer.
 	download *http.Client
 	sleep    func(context.Context, time.Duration) error
+	// waiting tells, once per wait, that a session read while polling waits
+	// for a sandbox machine; nil says nothing.
+	waiting *waitingNotice
 }
 
 func defaultAPI() (*api, error) {

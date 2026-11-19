@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SessionChatColumn } from "@/features/agent-sessions/components/session-chat-column";
 import type {
@@ -135,6 +135,48 @@ describe("SessionChatColumn provisioning gate (w2/m64)", () => {
     expect(screen.getByText("Starting the sandbox…")).toBeInTheDocument();
     expect(screen.queryByTestId("conversation")).not.toBeInTheDocument();
   });
+});
+
+// w10/m497: a turn the sandbox pool has no room for waits for a machine, and
+// the placeholder says so, with the time waited, instead of "Starting the
+// sandbox…", in the same status line.
+describe("SessionChatColumn waiting for a sandbox machine (w10/m497)", () => {
+  const since = "2026-11-18T12:00:00Z";
+
+  it.each(["creating", "redispatching"] as const)(
+    "says a %s session waits for a machine, and for how long",
+    (phase) => {
+      const now = vi
+        .spyOn(Date, "now")
+        .mockReturnValue(Date.parse(since) + 3_725_000);
+      try {
+        render(
+          column(
+            view(phase, {
+              sandboxId: null,
+              turns: phase === "creating" ? 1 : 2,
+              waitingFor: "sandbox_capacity",
+              waitingSince: since,
+            }),
+          ),
+        );
+        const status = screen.getByRole("status");
+        expect(status).toHaveTextContent(
+          "Waiting for a sandbox machine · 1h 2m",
+        );
+        expect(status).toHaveClass("flex", "items-center", "gap-2", "text-sm");
+        // The time ticks without being announced: it is a timer, not a
+        // change of the status region's text.
+        expect(within(status).getByRole("timer")).toHaveTextContent("1h 2m");
+        expect(
+          screen.queryByText("Starting the sandbox…"),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByTestId("conversation")).not.toBeInTheDocument();
+      } finally {
+        now.mockRestore();
+      }
+    },
+  );
 });
 
 describe("SessionChatColumn archived gate (ADR065 D1)", () => {

@@ -56,6 +56,7 @@ type fakeAPI struct {
 	transcript map[string][]string
 	files      map[string][]attachmentFixture
 	raw        map[string]string           // session id -> a GET answer served verbatim
+	waiting    map[string]string           // session id -> waitingSince while it is working: it waits for a sandbox machine
 	turns      map[string][]map[string]any // session id -> the turns a transcript page lists, when not the default two
 	// The end of a turn: once a GET has served a session as settled, tailRows
 	// join its transcript and the next transcript reads answer failTail.
@@ -90,7 +91,7 @@ func newFakeAPI(t *testing.T) *fakeAPI {
 		t: t, script: map[string][]string{}, gets: map[string]int{}, owner: map[string]string{},
 		ssh: map[string]string{}, failGets: map[string]int{}, transcript: map[string][]string{},
 		files: map[string][]attachmentFixture{}, settled: map[string]bool{}, tailRows: map[string][]string{},
-		raw: map[string]string{}, turns: map[string][]map[string]any{},
+		raw: map[string]string{}, turns: map[string][]map[string]any{}, waiting: map[string]string{},
 	}
 	f.storage = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "" {
@@ -199,6 +200,9 @@ func (f *fakeAPI) view(id, state string) map[string]any {
 	}
 	if ssh := f.ssh[id]; ssh != "" {
 		v["sshAddress"] = ssh
+	}
+	if since := f.waiting[id]; since != "" && state == stateWorking {
+		v["phase"], v["waitingFor"], v["waitingSince"] = "creating", "sandbox_capacity", since
 	}
 	return v
 }

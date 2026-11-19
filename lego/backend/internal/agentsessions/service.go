@@ -50,6 +50,9 @@ type Store interface {
 	ListAgentDispatchesDue(context.Context, time.Time) ([]store.AgentDispatch, error)
 	AbandonAgentDispatch(context.Context, store.AgentDispatch, time.Time, store.AgentSessionFailure) (store.TerminalTurnFact, error)
 	DeferAgentDispatchCleanup(context.Context, store.AgentDispatch, time.Time) error
+	// MarkAgentDispatchWaiting keeps a dispatch waiting for room on the
+	// sandbox pool alive (ADR047 § w10/m497).
+	MarkAgentDispatchWaiting(ctx context.Context, d store.AgentDispatch, now, next time.Time) (time.Time, bool, error)
 	GetAgentSession(context.Context, string) (store.AgentSession, error)
 	// SetAgentSessionAppliedSecrets records the names (and sources) the
 	// latest dispatch applied (ADR098 D9).
@@ -408,12 +411,18 @@ func (s *Service) runBackground(fn func()) {
 // detach runs fn on a context that outlives the request — values preserved so
 // audit/tracing survive, cancellation dropped so writing the HTTP response does
 // not abort provisioning — under a hard provisioning ceiling.
+//
+// The ceiling is a timer rather than a context deadline so that a dispatch
+// waiting for room on the sandbox pool, and only that one, can restart it once
+// per create (restartDispatchCeiling, ADR047 § w10/m497).
 func (s *Service) detach(ctx context.Context, fn func(context.Context)) {
 	bg := context.WithoutCancel(ctx)
 	s.runBackground(func() {
-		ctx, cancel := context.WithTimeout(bg, dispatchTimeout)
-		defer cancel()
-		fn(ctx)
+		ctx, cancel := context.WithCancelCause(bg)
+		defer cancel(nil)
+		ceiling := time.AfterFunc(dispatchTimeout, func() { cancel(context.DeadlineExceeded) })
+		defer ceiling.Stop()
+		fn(context.WithValue(ctx, dispatchCeilingKey{}, ceiling))
 	})
 }
 
@@ -900,8 +909,11 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 	provisionStart := time.Now()
 	boot, err := s.bootSandbox(ctx, record, spec, repoEnv)
 	sb, image, retained := boot.Sandbox, boot.image, boot.retained
+	// A wait for room on the pool is its own series (sandbox_wait_seconds);
+	// the provision is the rest.
+	provisioned := time.Since(provisionStart) - boot.waited
 	if err != nil {
-		s.Metrics.observeProvision(provisionFailed, time.Since(provisionStart))
+		s.Metrics.observeProvision(provisionFailed, provisioned)
 		// Log the underlying reason: dispatch failures were previously invisible
 		// (the row records only "sandbox create failed" and the 500 body is
 		// unreadable cross-origin), which hid a real create failure during the
@@ -912,16 +924,22 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 		// failure: too many live sandboxes for the workspace's quota).
 		failure := store.AgentSessionFailure{Reason: "sandbox create failed"}
 		switch {
+		case errors.Is(err, errWaitEnded):
+			// Only an archived session is still unsettled to take it; a
+			// canceled or newer one keeps its own state.
+			failure = archivedWhileWaiting
 		case sandbox.IsCapacityLimit(err):
 			failure = store.AgentSessionFailure{Reason: sandbox.CapacityFailureReason, Code: sandbox.CodeSandboxCapacityLimit}
 		case sandbox.IsStartFailure(err):
-			failure = store.AgentSessionFailure{Reason: sandbox.StartFailureReason, Code: sandbox.CodeSandboxStartFailed}
+			// The start's cause and its words (ADR047 § w10/m497).
+			cause := sandbox.StartCauseOf(err)
+			failure = store.AgentSessionFailure{Reason: sandbox.StartFailureWords(cause, waitedOf(err)), Code: sandbox.CodeSandboxStartFailed, Cause: string(cause)}
 		}
 		s.abandonDispatch(ctx, record, spec.turn, failure)
 		s.settleDispatchTurn(ctx, record.ID, spec.turn, "sandbox provisioning failed")
 		return store.AgentSession{}, err
 	}
-	s.Metrics.observeProvision(provisionRunning, time.Since(provisionStart))
+	s.Metrics.observeProvision(provisionRunning, provisioned)
 	s.recordEnvironmentBuild(ctx, record, buildOf(image, retained))
 	if err := s.copyAttachments(ctx, ws, record.ID, sb.ID, inputs); err != nil {
 		log.Printf("agent-session dispatch: attachment copy failed (session=%s): %v", record.ID, err)
@@ -970,28 +988,34 @@ type bootedSandbox struct {
 	sandbox.Sandbox
 	image    sandbox.AgentImage
 	retained *store.AgentRetainedImage
+	// waited is how long the dispatch waited for room on the sandbox pool,
+	// set whether or not the sandbox started.
+	waited time.Duration
 }
 
 // createSessionSandbox creates the dispatch's sandbox from image with env.
-func (s *Service) createSessionSandbox(ctx context.Context, record store.AgentSession, spec dispatchSpec, image sandbox.AgentImage, env map[string]string) (sandbox.Sandbox, error) {
+// poolFull is called once if the create sees its pod waiting for room.
+func (s *Service) createSessionSandbox(ctx context.Context, record store.AgentSession, spec dispatchSpec, image sandbox.AgentImage, env map[string]string, poolFull func()) (sandbox.Sandbox, error) {
 	return s.Sandbox.CreateAgentSessionSandbox(ctx, sandbox.AgentSessionSandbox{
 		WorkspaceID: record.WorkspaceID, Template: spec.template, SessionID: record.ID, Repository: record.Repo, Branch: record.Branch,
 		ModelEndpoint: spec.modelEndpoint, ModelAPIKey: spec.modelAPIKey, Egress: spec.egress, DriverEnv: env, Image: image,
+		PoolFull: poolFull,
 	})
 }
 
 // bootSandbox creates the dispatch's sandbox: from the retained disk it
-// claimed, else from a fresh image (ADR047 D12). A sandbox that cannot start
-// from the disk, for any reason but the capacity limit, which a fresh one
-// meets as well, is retried once from a fresh sandbox, which never fails the
-// turn for the optimization, and the turn says so in its note. The disk is
-// then released as unusable. If the fresh sandbox does not start either, the
-// disk was not at fault: it stays claimed, and the dispatch lets it go.
+// claimed, else from a fresh image (ADR047 D12). Either waits while the pool
+// has no room (createWaitingForRoom). A sandbox that cannot start from the
+// disk, for any reason but the capacity limit or a full pool, which a fresh
+// one meets as well, is retried once from a fresh sandbox, which never fails
+// the turn for the optimization, and the turn says so in its note. The disk
+// is then released as unusable. If the fresh sandbox does not start either,
+// the disk was not at fault: it stays claimed, and the dispatch lets it go.
 func (s *Service) bootSandbox(ctx context.Context, record store.AgentSession, spec dispatchSpec, repoEnv store.AgentRepoEnvironment) (bootedSandbox, error) {
 	image, env := s.dispatchImage(ctx, repoEnv, spec)
-	sb, err := s.createSessionSandbox(ctx, record, spec, image, env)
-	if err == nil || spec.retained == nil || sandbox.IsCapacityLimit(err) || ctx.Err() != nil {
-		return bootedSandbox{Sandbox: sb, image: image, retained: spec.retained}, err
+	sb, waited, err := s.createWaitingForRoom(ctx, record, spec, image, env)
+	if err == nil || spec.retained == nil || sandbox.IsCapacityLimit(err) || sandbox.IsPoolFull(err) || errors.Is(err, errWaitEnded) || ctx.Err() != nil {
+		return bootedSandbox{Sandbox: sb, image: image, retained: spec.retained, waited: waited}, err
 	}
 	log.Printf("agent-session dispatch: sandbox from the retained disk failed, retrying fresh (session=%s image=%s): %v", record.ID, spec.retained.ID, err)
 	retained := spec.retained
@@ -1005,14 +1029,15 @@ func (s *Service) bootSandbox(ctx context.Context, record store.AgentSession, sp
 	note := notRestoredNote(retained.Turn)
 	spec.env = withEnv(spec.env, envCheckoutNote, note)
 	image, env = s.dispatchImage(ctx, repoEnv, spec)
-	if sb, err = s.createSessionSandbox(ctx, record, spec, image, env); err != nil {
-		return bootedSandbox{}, err
+	sb, again, err := s.createWaitingForRoom(ctx, record, spec, image, env)
+	if err != nil {
+		return bootedSandbox{waited: waited + again}, err
 	}
 	s.Retention.release(ctx, s.Now, retained.ID, store.RetainedReleaseUnusable)
 	if noteErr := s.Retention.Store.SetAgentSessionTurnStartNote(ctx, record.ID, spec.turn, note); noteErr != nil {
 		log.Printf("agent-session dispatch: record the fresh start failed (session=%s): %v", record.ID, noteErr)
 	}
-	return bootedSandbox{Sandbox: sb, image: image}, nil
+	return bootedSandbox{Sandbox: sb, image: image, waited: waited + again}, nil
 }
 
 // dispatchImage is the image a dispatch's sandbox boots from and the driver
@@ -2387,6 +2412,7 @@ func viewOf(record store.AgentSession) (View, error) {
 		CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt, CanceledAt: record.CanceledAt,
 		ArchivedAt: record.ArchivedAt, SecretNames: record.SecretNames, AppliedSecrets: appliedSecretsOf(record.AppliedSecrets), EnvironmentBuildID: record.EnvironmentBuildID, AutomationID: record.AutomationID, CreatedBy: record.CreatedBy,
 		ParentSessionID: record.ParentSessionID, RootSessionID: record.RootSessionID, Depth: record.Depth}
+	view.WaitingFor, view.WaitingSince, view.FailureCause = startState(record.Phase, record.SandboxID, record.SandboxWaitSince, record.FailureReasonCode, record.FailureCause)
 	if record.MaxSpendMicroUSD != nil {
 		view.MaxSpendUSD = microUSDDecimal(*record.MaxSpendMicroUSD)
 	}

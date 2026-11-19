@@ -87,7 +87,7 @@ func TestPodReadyTimeoutAtTheLimitStaysACapacityRefusal(t *testing.T) {
 }
 
 func TestStartFailureCodeIsRecognized(t *testing.T) {
-	if !IsStartFailure(fmt.Errorf("wrapped: %w", sandboxStartError())) || IsStartFailure(sandboxCapacityError()) {
+	if !IsStartFailure(fmt.Errorf("wrapped: %w", sandboxStartError(StartCauseUnknown))) || IsStartFailure(sandboxCapacityError()) {
 		t.Fatal("IsStartFailure must match only the start-failure code")
 	}
 }

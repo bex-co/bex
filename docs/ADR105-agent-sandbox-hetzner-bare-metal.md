@@ -226,6 +226,7 @@ Since 09:30 UTC, three machines in other pools (two `cx33`, one `cx43`) have fai
 - **cpx62** is the option for more concurrency: a trust tier above T0, or the schedule left as it is.
 - **Unit economics.** § Unit economics carries the three options as rows beside the dedicated servers. With the `cx` line out of stock, every cloud option costs more per slot than the AX42-1: $0.0299 to $0.0374 a slot-hour against $0.0125.
 - **Choice:** cpx42, the user's decision on 2026-11-12 (§ What the interim setup measured).
+- **The signal for growing the pool (w10/m497, 2026-11-18).** On 2026-11-17 and 18, seven sessions failed because their pods could not be placed on the cpx42 for lack of memory (requests at 99.9% of allocatable). Such a session now waits up to an hour for a machine instead of failing ([ADR047 § w10/m497](ADR047-cloud-coding-agent-sessions.md#w10m497--a-full-sandbox-pool-waits-for-a-machine-every-other-start-failure-names-its-cause-2026-11-18)). Waiting changes no capacity, so the pool's size stays this decision. Its evidence is the `AgentSandboxPoolFull` alert, which fires when sessions have waited 15 minutes, `bex_agent_session_sandbox_waiting` and `bex_agent_session_sandbox_wait_seconds{outcome}` (the `gave_up` count is the sessions the pool still failed). They sit on the bex-api dashboard's "Agent sessions waiting for a sandbox machine" panel.
 
 **Independent of the choice:**
 

@@ -21,6 +21,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -50,7 +51,26 @@ type CompletionMetrics struct {
 	// retentions counts the saves of a stopped turn's disk by bounded result
 	// (ADR047 D12, w22/m413).
 	retentions *prometheus.CounterVec
+	// sandboxWaiting is how many of this replica's dispatches wait for room
+	// on the sandbox pool now, and sandboxWait how long each wait lasted, by
+	// how it ended (ADR047 § w10/m497). Only a full pool waits, so the cause
+	// label is always pool_full; it names what the sessions wait on.
+	sandboxWaiting *prometheus.GaugeVec
+	sandboxWait    *prometheus.HistogramVec
 }
+
+// waitOutcome is how a dispatch's wait for a sandbox machine ended.
+type waitOutcome string
+
+const (
+	// waitOutcomeStarted is a wait that ended with the sandbox placed.
+	waitOutcomeStarted waitOutcome = "started"
+	// waitOutcomeGaveUp is a wait that reached its bound.
+	waitOutcomeGaveUp waitOutcome = "gave_up"
+	// waitOutcomeEnded is a wait the session left (a cancel, an archive) or
+	// that ended in another start failure.
+	waitOutcomeEnded waitOutcome = "ended"
+)
 
 // retentionResult is the bounded result label of a stopped turn's save.
 type retentionResult string
@@ -70,6 +90,9 @@ type provisionOutcome string
 const (
 	provisionRunning provisionOutcome = "running"
 	provisionFailed  provisionOutcome = "failed"
+	// provisionWaiting is a create that ended because the pool had no room,
+	// after which the dispatch waits and creates again (ADR047 § w10/m497).
+	provisionWaiting provisionOutcome = "waiting"
 )
 
 // turnOutcome is the bounded terminal-outcome label on turn metrics. It never
@@ -140,9 +163,40 @@ func NewCompletionMetrics(reg prometheus.Registerer) *CompletionMetrics {
 			Name: "bex_agent_session_retentions_total",
 			Help: "Saves of a stopped agent turn's disk as a retained image, by bounded result.",
 		}, []string{"result"}),
+		sandboxWaiting: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "bex_agent_session_sandbox_waiting",
+			Help: "Agent-session dispatches on this replica waiting for room on the sandbox pool now, by cause; sum across replicas.",
+		}, []string{"cause"}),
+		sandboxWait: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Name: "bex_agent_session_sandbox_wait_seconds",
+			Help: "How long an agent-session dispatch waited for room on the sandbox pool, by how the wait ended (started, gave_up, ended).",
+			// One create's 300 s wait through the hour bound.
+			Buckets: []float64{30, 60, 120, 300, 600, 900, 1200, 1800, 2700, 3600},
+		}, []string{"outcome"}),
 	}
-	reg.MustRegister(m.statusReads, m.convergences, m.turnOutcomes, m.turnDuration, m.provisionLatency, m.retentions)
+	reg.MustRegister(m.statusReads, m.convergences, m.turnOutcomes, m.turnDuration, m.provisionLatency, m.retentions, m.sandboxWaiting, m.sandboxWait)
 	return m
+}
+
+// waitBegan and waitOver count a dispatch into and out of the sessions
+// waiting for a sandbox machine.
+func (m *CompletionMetrics) waitBegan() {
+	if m != nil {
+		m.sandboxWaiting.WithLabelValues(string(sandbox.StartCausePoolFull)).Inc()
+	}
+}
+
+func (m *CompletionMetrics) waitOver() {
+	if m != nil {
+		m.sandboxWaiting.WithLabelValues(string(sandbox.StartCausePoolFull)).Dec()
+	}
+}
+
+// observeWait records how long a wait for a sandbox machine lasted.
+func (m *CompletionMetrics) observeWait(outcome waitOutcome, d time.Duration) {
+	if m != nil {
+		m.sandboxWait.WithLabelValues(string(outcome)).Observe(d.Seconds())
+	}
 }
 
 // observeProvision records how long a session's sandbox took to reach Running

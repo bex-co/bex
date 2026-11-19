@@ -541,7 +541,7 @@ func turnSummary(s session) string {
 	if cost := costUSD(s); cost != "" {
 		parts = append(parts, "$"+cost)
 	}
-	if why := firstNonEmpty(failureCode(s), clip(firstLine(s.FailureReason), 80)); why != "" {
+	if why := firstNonEmpty(failureLabel(s), clip(firstLine(s.FailureReason), 80)); why != "" {
 		parts = append(parts, why)
 	}
 	return strings.Join(parts, " · ") + " ──"

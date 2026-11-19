@@ -234,9 +234,18 @@ type AgentSession struct {
 	// acts on it, such as SANDBOX_CAPACITY_LIMIT; empty otherwise (w5/m132). Only
 	// AbandonAgentDispatch writes one; every other failure write clears it.
 	FailureReasonCode string
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-	CanceledAt        *time.Time
+	// FailureCause is a start failure's cause beside SANDBOX_START_FAILED
+	// (pool_full, image_pull, runtime, quota or unknown; ADR047 §
+	// w10/m497); empty otherwise. Written with the code, cleared with it.
+	FailureCause string
+	// SandboxWaitSince is when the current turn's dispatch began waiting for
+	// room on the sandbox pool; nil when it is not waiting. Only
+	// MarkAgentDispatchWaiting sets it; binding, abandoning and the next turn
+	// clear it.
+	SandboxWaitSince *time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	CanceledAt       *time.Time
 	// ArchivedAt is the ADR065 D1 archive flag: LIST-state, orthogonal to phase.
 	// NULL ⇒ the session is in the working set; set ⇒ it is archived (hidden from
 	// the default list, mutation verbs refused) but still viewable.
@@ -383,17 +392,23 @@ const agentSessionColumns = `id, workspace_id, repo, branch, agent_config, sandb
 	failure_reason, failure_reason_code, created_at, updated_at, canceled_at,
 	archived_at, title, tags, max_spend_microusd, secret_names, coalesce(automation_id, ''),
 	coalesce(parent_session_id, ''), coalesce(root_session_id, ''), depth, created_by, takeover_pr_number, takeover_head_ref,
-	applied_secrets, pr_state, pr_state_at, environment_build_id`
+	applied_secrets, pr_state, pr_state_at, environment_build_id, failure_cause, sandbox_wait_since`
 
 func scanAgentSession(row pgx.Row) (AgentSession, error) {
 	var s AgentSession
-	err := row.Scan(&s.ID, &s.WorkspaceID, &s.Repo, &s.Branch, &s.AgentConfig,
+	err := row.Scan(agentSessionDest(&s)...)
+	return s, err
+}
+
+// agentSessionDest is the scan destinations of agentSessionColumns, in order,
+// for every reader of them.
+func agentSessionDest(s *AgentSession) []any {
+	return []any{&s.ID, &s.WorkspaceID, &s.Repo, &s.Branch, &s.AgentConfig,
 		&s.SandboxID, &s.Phase, &s.Status, &s.HeadSHA, &s.PRURL, &s.PRNumber,
 		&s.Turns, &s.DeliveryMode, &s.DeliveryNote, &s.FailureReason, &s.FailureReasonCode,
 		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt, &s.ArchivedAt, &s.Title, &s.Tags, &s.MaxSpendMicroUSD, &s.SecretNames, &s.AutomationID,
 		&s.ParentSessionID, &s.RootSessionID, &s.Depth, &s.CreatedBy, &s.TakeoverPR, &s.TakeoverHeadRef,
-		&s.AppliedSecrets, &s.PRState, &s.PRStateAt, &s.EnvironmentBuildID)
-	return s, err
+		&s.AppliedSecrets, &s.PRState, &s.PRStateAt, &s.EnvironmentBuildID, &s.FailureCause, &s.SandboxWaitSince}
 }
 
 // CreateAgentSession mints the only valid agent-session id kind and persists
@@ -543,12 +558,7 @@ func (s *PGStore) FindAgentSessionByIdempotencyKey(ctx context.Context, workspac
 		SELECT `+agentSessionColumns+`, idempotency_hash FROM agent_sessions
 		WHERE workspace_id=$1 AND idempotency_key=$2 AND created_at > now() - $3::interval`,
 		workspaceID, key, AgentSessionIdempotencyWindow.String())
-	err := row.Scan(&out.ID, &out.WorkspaceID, &out.Repo, &out.Branch, &out.AgentConfig,
-		&out.SandboxID, &out.Phase, &out.Status, &out.HeadSHA, &out.PRURL, &out.PRNumber,
-		&out.Turns, &out.DeliveryMode, &out.DeliveryNote, &out.FailureReason, &out.FailureReasonCode,
-		&out.CreatedAt, &out.UpdatedAt, &out.CanceledAt, &out.ArchivedAt, &out.Title, &out.Tags, &out.MaxSpendMicroUSD, &out.SecretNames, &out.AutomationID,
-		&out.ParentSessionID, &out.RootSessionID, &out.Depth, &out.CreatedBy, &out.TakeoverPR, &out.TakeoverHeadRef,
-		&out.AppliedSecrets, &out.PRState, &out.PRStateAt, &out.EnvironmentBuildID, &hash)
+	err := row.Scan(append(agentSessionDest(&out), &hash)...)
 	if err != nil {
 		return AgentSession{}, "", classify("agent session", err)
 	}
@@ -665,7 +675,7 @@ func (s *PGStore) beginAgentSessionTurn(ctx context.Context, origin turnOrigin, 
 		out, err = scanAgentSession(tx.QueryRow(ctx, `
 			UPDATE agent_sessions
 			SET sandbox_id='', phase=$2, status=$3, turns=turns+1,
-			    failure_reason='', failure_reason_code='', updated_at=now(),
+			    failure_reason='', failure_reason_code='', failure_cause='', sandbox_wait_since=NULL, updated_at=now(),
 			    secret_names=COALESCE($4::text[], secret_names)
 			WHERE id=$1
 			RETURNING `+agentSessionColumns, id, phase, status, secretNames))
@@ -1134,7 +1144,7 @@ func (s *PGStore) SetAgentSessionFailure(ctx context.Context, id, sandboxID, rea
 	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
 		UPDATE agent_sessions
 		SET sandbox_id = CASE WHEN $2 <> '' THEN $2 ELSE sandbox_id END,
-		    phase='failed', status='failed', failure_reason=$3, failure_reason_code='', updated_at=now()
+		    phase='failed', status='failed', failure_reason=$3, failure_reason_code='', failure_cause='', updated_at=now()
 		WHERE id=$1
 		RETURNING `+agentSessionColumns, id, sandboxID, reason))
 	if err != nil {
@@ -1363,7 +1373,7 @@ func (s *PGStore) RecordAgentSessionDispatch(ctx context.Context, id, sandboxID,
 		}
 		var err error
 		out, err = scanAgentSession(tx.QueryRow(ctx, `UPDATE agent_sessions
-			SET sandbox_id=$2, phase=$3, status=$4, delivery_mode=$5, failure_reason='', failure_reason_code='', updated_at=now()
+			SET sandbox_id=$2, phase=$3, status=$4, delivery_mode=$5, failure_reason='', failure_reason_code='', failure_cause='', sandbox_wait_since=NULL, updated_at=now()
 			WHERE id=$1 RETURNING `+agentSessionColumns, id, sandboxID, phase, status, deliveryMode))
 		if err != nil {
 			return err
@@ -1429,7 +1439,7 @@ func finalizeAgentSessionTx(ctx context.Context, tx pgx.Tx, id, phase, headSHA, 
 		SET phase=$2, status=$3,
 		    head_sha = CASE WHEN $4 <> '' THEN $4 ELSE head_sha END,
 		    delivery_note=$5,
-		    failure_reason=$6, failure_reason_code='', updated_at=now()
+		    failure_reason=$6, failure_reason_code='', failure_cause='', updated_at=now()
 		WHERE id=$1 AND phase IN ('creating','running','resuming','redispatching')
 		RETURNING `+agentSessionColumns,
 		id, phase, phase, headSHA, deliveryNote, failureReason))

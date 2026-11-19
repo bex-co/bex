@@ -34,6 +34,7 @@ function run(over: Partial<AutomationRunRow>): AutomationRunRow {
     error: null,
     createdAt: "2026-11-07T09:00:00Z",
     settledAt: null,
+    session: null,
     ...over,
   } as AutomationRunRow;
 }
@@ -109,6 +110,82 @@ describe("RunHistoryCard", () => {
       within(rows[4]).getByText("creator lost access"),
     ).toBeInTheDocument();
     expect(within(rows[1]).queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  // w10/m497: a started run's session that waits for a sandbox machine reads
+  // as queued, and one whose sandbox did not start reads apart from a broken
+  // template, with the start's cause where the error goes.
+  it("shows a waiting session and a start that failed apart from a failed create", () => {
+    const session = (
+      over: Partial<NonNullable<AutomationRunRow["session"]>>,
+    ): AutomationRunRow["session"] => ({
+      __typename: "AgentAutomationRunSession",
+      state: "working",
+      waitingFor: null,
+      waitingSince: null,
+      failureReasonCode: null,
+      failureCause: null,
+      ...over,
+    });
+    render(
+      <RunHistoryCard
+        runs={runs([
+          run({
+            fireAt: "2026-11-07T09:03:00Z",
+            sessionId: "ags-wait",
+            session: session({
+              waitingFor: "sandbox_capacity",
+              waitingSince: "2026-11-07T09:03:05Z",
+            }),
+          }),
+          run({
+            fireAt: "2026-11-07T09:02:00Z",
+            sessionId: "ags-pool",
+            session: session({
+              state: "failed",
+              failureReasonCode: "SANDBOX_START_FAILED",
+              failureCause: "pool_full",
+            }),
+          }),
+          run({
+            fireAt: "2026-11-07T09:01:00Z",
+            outcome: "failed_create",
+            error: "template invalid",
+          }),
+          run({
+            fireAt: "2026-11-07T09:00:00Z",
+            sessionId: "ags-ok",
+            session: session({ state: "succeeded" }),
+          }),
+        ])}
+      />,
+    );
+    const rows = screen.getAllByRole("row").slice(1);
+    const badge = (i: number) =>
+      within(rows[i]).getByText(/./, { selector: "[data-outcome]" });
+
+    expect(badge(0)).toHaveTextContent("Waiting for a sandbox machine");
+    expect(badge(0)).toHaveAttribute("data-run-session", "waiting");
+    expect(
+      within(rows[0]).getByRole("link", { name: "Open session" }),
+    ).toHaveAttribute("href", "/agents/ags-wait");
+    expect(within(rows[0]).queryByTestId("run-start-cause")).toBeNull();
+
+    expect(badge(1)).toHaveTextContent("Didn't start");
+    expect(badge(1)).toHaveAttribute("data-run-session", "did_not_start");
+    expect(within(rows[1]).getByTestId("run-start-cause")).toHaveTextContent(
+      "No sandbox machine had room",
+    );
+
+    // A broken template keeps its own word, badge and error.
+    expect(badge(2)).toHaveTextContent("Failed");
+    expect(badge(2)).not.toHaveAttribute("data-run-session");
+    expect(badge(2).className).not.toBe(badge(1).className);
+    expect(within(rows[2]).getByText("template invalid")).toBeInTheDocument();
+
+    // A session that started reads as the run's outcome alone.
+    expect(badge(3)).toHaveTextContent("Started");
+    expect(badge(3)).not.toHaveAttribute("data-run-session");
   });
 
   it("pages with a cursor button only while more runs exist", async () => {

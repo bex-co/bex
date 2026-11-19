@@ -54,7 +54,7 @@ func TestCreateOutcomeSeparatesRefusalsFromSubstrateFailures(t *testing.T) {
 		{"workspace at its cap", (&Service{}).workspaceConcurrencyError(100, 100), outcomeRejected},
 		{"no group store", (&Service{}).requireGroups(), outcomeUnavailable},
 		// The platform-side start failure is also a 503, and must stay a failure.
-		{"sandbox did not start", sandboxStartError(), outcomeFailed},
+		{"sandbox did not start", sandboxStartError(StartCauseUnknown), outcomeFailed},
 		{"unexplained runtime error", errors.New("connection reset by peer"), outcomeFailed},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -148,7 +148,7 @@ func TestAgentSessionCreatesStayOutOfTheSandboxSurfaceSignal(t *testing.T) {
 
 	// The shared inner path the agent-session dispatch uses does not.
 	if _, err := svc.createResolved(callerCtx(), "tea-a", "node", svc.Templates["node"],
-		PlanStandard, 0, &NetworkPolicy{Default: NetworkPolicyDenyAll}, nil, nil); err != nil {
+		PlanStandard, 0, &NetworkPolicy{Default: NetworkPolicyDenyAll}, nil, nil, nil); err != nil {
 		t.Fatalf("createResolved: %v", err)
 	}
 	if got := testutil.ToFloat64(svc.Metrics.creates.WithLabelValues(outcomeSucceeded)); got != 1 {

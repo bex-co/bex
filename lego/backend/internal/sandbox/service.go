@@ -41,6 +41,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -161,6 +162,11 @@ type Service struct {
 	// (w32/m283). allow-all and deny-all need none (static platform policies
 	// select them by label). nil refuses allow-list creates by name.
 	SandboxEgress SandboxEgress
+	// Pods reads a create's pod in the workspace's sandbox namespace while
+	// the create waits, so a pod-ready timeout names its cause (ADR047 §
+	// w10/m497): bex-tenant-sandbox-api's pods get/list there, and the
+	// namespace's ResourceQuotas. nil names every timeout's cause unknown.
+	Pods client.Reader
 	// Metrics reports /v1/sandboxes lifecycle outcomes (w5/m95). nil is a
 	// working no-op, so a Service built without a registry needs no guard.
 	Metrics *Metrics
@@ -536,10 +542,17 @@ const CodeSandboxStartFailed = "SANDBOX_START_FAILED"
 // CodeSandboxStartFailed.
 const StartFailureReason = "sandbox did not start (platform issue)"
 
-func sandboxStartError() error {
-	return core.NewUnavailableError(CodeSandboxStartFailed,
-		"the sandbox did not become ready within the platform's wait, and this workspace's sandbox capacity is not exhausted, so the cause is on bex's side, not your plan; retry in a few minutes and contact support if it keeps failing",
-		nil)
+// sandboxStartError is the platform-side start failure for cause, carried as
+// params.cause (ADR047 § w10/m497).
+func sandboxStartError(cause StartCause) error {
+	message := "the sandbox did not become ready within the platform's wait, and this workspace's sandbox capacity is not exhausted, so the cause is on bex's side, not your plan; retry in a few minutes and contact support if it keeps failing"
+	switch cause {
+	case StartCausePoolFull:
+		message = "the sandbox did not start within the platform's wait because no sandbox machine had room for it; retry in a few minutes"
+	case StartCauseImagePull, StartCauseRuntime, StartCauseQuota:
+		message = startCauseWords[cause]
+	}
+	return core.NewUnavailableError(CodeSandboxStartFailed, message, map[string]any{startCauseParam: string(cause)})
 }
 
 // IsStartFailure reports whether err is (or wraps) the platform-side start
@@ -549,18 +562,25 @@ func IsStartFailure(err error) bool {
 	return errors.As(err, &coded) && coded.Code == CodeSandboxStartFailed
 }
 
-// podReadyTimeoutError names the cause of the server's pod-ready timeout as far
-// as bex-api can defend it. bex-api cannot see the pod, but it knows the
-// workspace's plan limits and its live sandboxes: when they leave room for this
-// sandbox, the quota did not refuse it and blaming the plan would send the
-// customer to an upgrade that fixes nothing (w9/074: a node without gVisor
-// failed every session as "capacity reached"). Anything bex-api cannot read
-// keeps the capacity answer it gave before.
-func (s *Service) podReadyTimeoutError(ctx context.Context, key, workspace, cpu, mem string) error {
+// podReadyTimeoutError names the cause of the server's pod-ready timeout.
+// cause is what the pod showed while the create waited (startWatch). A pod
+// the scheduler saw, or one placed on a machine, was admitted by the quota,
+// so a full pool, an image pull and the runtime never blame the plan. Without
+// one of those, bex-api falls back on the workspace's plan limits and its live
+// sandboxes: when they leave room for this sandbox, the quota did not refuse
+// it and blaming the plan would send the customer to an upgrade that fixes
+// nothing (w9/074: a node without gVisor failed every session as "capacity
+// reached"). Anything bex-api cannot read keeps the capacity answer it gave
+// before.
+func (s *Service) podReadyTimeoutError(ctx context.Context, key, workspace, cpu, mem string, cause StartCause) error {
+	switch cause {
+	case StartCausePoolFull, StartCauseImagePull, StartCauseRuntime:
+		return sandboxStartError(cause)
+	}
 	if s.capacityExhausted(ctx, key, workspace, cpu, mem) {
 		return sandboxCapacityError()
 	}
-	return sandboxStartError()
+	return sandboxStartError(cause)
 }
 
 func (s *Service) capacityExhausted(ctx context.Context, key, workspace, cpu, mem string) bool {
@@ -923,7 +943,7 @@ func (s *Service) createWithID(ctx context.Context, ws, publicID, name string, t
 		metadataEgress:      string(policy.Default),
 	}
 	if policy.Default != NetworkPolicyAllowList {
-		return s.createResolved(ctx, ws, name, tmpl, plan, timeout, policy, env, extra)
+		return s.createResolved(ctx, ws, name, tmpl, plan, timeout, policy, env, extra, nil)
 	}
 	// An allow-list's per-sandbox policy exists before the Pod does, so the Pod
 	// is never selected by anything looser than its own rules.
@@ -934,7 +954,7 @@ func (s *Service) createWithID(ctx context.Context, ws, publicID, name string, t
 	if err := s.SandboxEgress.Apply(ctx, namespace, publicID, ruleDomains(policy.Rules)); err != nil {
 		return Sandbox{}, err
 	}
-	box, err := s.createResolved(ctx, ws, name, tmpl, plan, timeout, policy, env, extra)
+	box, err := s.createResolved(ctx, ws, name, tmpl, plan, timeout, policy, env, extra, nil)
 	if err != nil {
 		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), egressCleanupTimeout)
 		defer cancel()
@@ -968,8 +988,10 @@ func (s *Service) withRules(ctx context.Context, workspace string, box Sandbox) 
 }
 
 // createResolved starts a sandbox whose timeout is already resolved in
-// Render's semantics (0 = no timeout; see resolveTimeout).
-func (s *Service) createResolved(ctx context.Context, workspace, template string, tmpl Template, plan Plan, timeout int, policy *NetworkPolicy, env, extraMetadata map[string]string) (Sandbox, error) {
+// Render's semantics (0 = no timeout; see resolveTimeout). poolFull, when set,
+// is called once while the create waits, as soon as its pod is seen waiting
+// for room on the sandbox pool.
+func (s *Service) createResolved(ctx context.Context, workspace, template string, tmpl Template, plan Plan, timeout int, policy *NetworkPolicy, env, extraMetadata map[string]string, poolFull func()) (Sandbox, error) {
 	cpu, mem := tmpl.CPU, tmpl.Memory
 	if cpu == "" {
 		cpu = "500m"
@@ -1011,13 +1033,16 @@ func (s *Service) createResolved(ctx context.Context, workspace, template string
 		env = merged
 	}
 	limits := osResourceLimits{CPU: cpu, Memory: mem, EphemeralStorage: tmpl.EphemeralStorage}
+	watch := s.watchStart(ctx, workspace, startSelector(metadata), poolFull)
 	raw, err := s.Client.Create(ctx, key, tmpl.Image, entry, limits, openSandboxTimeout(timeout), env, metadata)
 	if err != nil {
 		if errors.Is(err, errPodReadyTimeout) {
-			return Sandbox{}, s.podReadyTimeoutError(ctx, key, workspace, cpu, mem)
+			return Sandbox{}, s.podReadyTimeoutError(ctx, key, workspace, cpu, mem, watch.cause(ctx))
 		}
+		watch.end()
 		return Sandbox{}, err
 	}
+	watch.end()
 	if raw.Metadata == nil {
 		raw.Metadata = make(map[string]string, len(metadata))
 	}
@@ -1070,6 +1095,10 @@ type AgentSessionSandbox struct {
 	Egress        sessionegress.Egress
 	DriverEnv     map[string]string
 	Image         AgentImage
+	// PoolFull, when set, is called once while the create waits, as soon as
+	// the pod is seen waiting for room on the sandbox pool (ADR047 §
+	// w10/m497), so the session can say it is waiting before the create ends.
+	PoolFull func()
 }
 
 // CreateAgentSessionSandbox is the narrow trusted lifecycle seam used by the
@@ -1097,7 +1126,7 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, s
 	env[ModelAPIKeyEnvVar] = spec.ModelAPIKey
 	return s.createAgentSandbox(ctx, agentSandbox{
 		workspaceID: spec.WorkspaceID, template: spec.Template, principal: spec.SessionID,
-		repository: spec.Repository, branch: spec.Branch, env: env, image: spec.Image,
+		repository: spec.Repository, branch: spec.Branch, env: env, image: spec.Image, poolFull: spec.PoolFull,
 		// Setup policy belongs to the session, not this attempt. A late
 		// failure must not delete a newer generation's policy; durable
 		// dispatch recovery removes this attempt's sandbox independently.
@@ -1129,6 +1158,7 @@ type agentSandbox struct {
 	env                                                  map[string]string
 	image                                                AgentImage
 	prepareEgress                                        func(namespace string) error
+	poolFull                                             func()
 }
 
 func (s *Service) createAgentSandbox(ctx context.Context, a agentSandbox) (Sandbox, error) {
@@ -1168,7 +1198,7 @@ func (s *Service) createAgentSandbox(ctx context.Context, a agentSandbox) (Sandb
 	// (EnterAgentSessionPhase), which already holds them, so nothing needs to
 	// round-trip through a label.
 	// Agent-session sandboxes keep the 86400 s bound on every plan (w5/m99).
-	return s.createResolved(ctx, a.workspaceID, template, tmpl, plan, defaultSandboxTimeout, policy, a.env, bindings)
+	return s.createResolved(ctx, a.workspaceID, template, tmpl, plan, defaultSandboxTimeout, policy, a.env, bindings, a.poolFull)
 }
 
 // EnterAgentSessionPhase narrows one exact session sandbox from setup registry

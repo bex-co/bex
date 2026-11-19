@@ -20,6 +20,7 @@ import {
   agentSessionFailureReason,
   isSandboxCapacityFailure,
   isRepoSetupFailure,
+  sandboxStartFailureCause,
 } from "@/features/agent-sessions/lib/mapper";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
 import { REPO_ENVIRONMENTS_ANCHOR } from "@/features/agent-environment/lib/repo-environments";
@@ -45,7 +46,10 @@ export interface FailureCalloutProps {
  * (`isSandboxCapacityFailure`) leads with an **Upgrade plan** action instead,
  * and a failed repository setup step (ADR109 D5) keeps its recorded reason —
  * which names the step and its exit code — and leads to the repository's
- * environment in settings, where the step is fixed.
+ * environment in settings, where the step is fixed. A sandbox that did not
+ * start (`SANDBOX_START_FAILED`, w10/m497) names its cause in a line above the
+ * reason: the pool, the image, the runtime, the quota or the platform. It is
+ * never a plan limit, so it offers no upgrade.
  * Retry rides the same fast, accept-then-provision path, so the button releases
  * as soon as the new turn is accepted; the header refetch then surfaces the
  * redispatching phase.
@@ -63,6 +67,7 @@ export function FailureCallout({ session, onRetried }: FailureCalloutProps) {
   // case). Any other failure keeps the recorded reason + Retry.
   const capacity = isSandboxCapacityFailure(session);
   const setupFailed = isRepoSetupFailure(session);
+  const startCause = sandboxStartFailureCause(session);
   // The model mint's typed refusals (ADR091 D5, D10.3) read in the user's
   // language rather than as the server's English sentence.
   const spendKey = SPEND_FAILURE_KEYS[session.failureReasonCode ?? ""];
@@ -112,6 +117,15 @@ export function FailureCallout({ session, onRetried }: FailureCalloutProps) {
             : t("agentSessions.failureTitle")}
       </AlertTitle>
       <AlertDescription className="flex flex-col items-start gap-2">
+        {startCause ? (
+          <span
+            className="font-medium"
+            data-testid="failure-cause"
+            data-cause={startCause}
+          >
+            {t(`agentSessions.failureCause.${startCause}`)}
+          </span>
+        ) : null}
         <span>{reason}</span>
         {setupFailed ? (
           <span>{t("agentSessions.failureSetupHint")}</span>

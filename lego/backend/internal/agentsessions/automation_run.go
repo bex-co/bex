@@ -36,6 +36,23 @@ type AgentAutomationRun struct {
 	Error        string     `json:"error,omitempty"`
 	CreatedAt    time.Time  `json:"createdAt"`
 	SettledAt    *time.Time `json:"settledAt,omitempty"`
+	// Session is where the session the run started stands, so a run whose
+	// session waits for a sandbox machine reads as queued, not dropped, and
+	// one whose session did not start reads apart from a failed create
+	// (ADR047 § w10/m497). Absent when the run started none or its session
+	// was deleted.
+	Session *AgentAutomationRunSession `json:"session,omitempty"`
+}
+
+// AgentAutomationRunSession is a run's session as the run's activity shows
+// it: its coarse state, what it waits for and since when, and a failed
+// start's code and cause, with the session view's names and meanings.
+type AgentAutomationRunSession struct {
+	State             string     `json:"state"`
+	WaitingFor        string     `json:"waitingFor,omitempty"`
+	WaitingSince      *time.Time `json:"waitingSince,omitempty"`
+	FailureReasonCode string     `json:"failureReasonCode,omitempty"`
+	FailureCause      string     `json:"failureCause,omitempty"`
 }
 
 // AgentAutomationRunList is a newest-first page of runs. NextCursor is the
@@ -116,10 +133,16 @@ func (s *Service) AgentAutomationRuns(ctx context.Context, ownerID, ref, cursor 
 }
 
 func automationRunView(r store.AgentAutomationRun) AgentAutomationRun {
-	return AgentAutomationRun{
+	view := AgentAutomationRun{
 		AutomationID: r.AutomationID, FireAt: r.FireAt, Outcome: r.Outcome, SessionID: r.SessionID,
 		MissedTicks: r.MissedTicks, Error: r.Error, CreatedAt: r.CreatedAt, SettledAt: r.SettledAt,
 	}
+	if g := r.Session; g != nil {
+		session := AgentAutomationRunSession{State: stateOf(g.Phase), FailureReasonCode: g.FailureReasonCode}
+		session.WaitingFor, session.WaitingSince, session.FailureCause = startState(g.Phase, g.SandboxID, g.SandboxWaitSince, g.FailureReasonCode, g.FailureCause)
+		view.Session = &session
+	}
+	return view
 }
 
 // storedRun re-reads a run row (its settled state).

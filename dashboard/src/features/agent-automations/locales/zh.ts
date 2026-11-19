@@ -386,6 +386,11 @@ const zhAgentAutomations: Record<string, TranslationEntry> = {
     description:
       "Run outcome: the creator was no longer allowed to start the session",
   },
+  "agentAutomations.outcome.didNotStart": {
+    message: "未能启动",
+    description:
+      "Run outcome: the run started a session whose sandbox did not start for a cause on bex's side (w10/m497); the cause shows in the Error column. Not a failed create",
+  },
   "agentAutomations.outcome.unknown": {
     message: "未知",
     description: "Run outcome this version does not know",

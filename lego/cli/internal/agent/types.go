@@ -53,11 +53,17 @@ type session struct {
 	PRState           string      `json:"prState"`
 	FailureReason     string      `json:"failureReason"`
 	FailureReasonCode string      `json:"failureReasonCode"`
-	SSHAddress        string      `json:"sshAddress"`
-	CreatedAt         time.Time   `json:"createdAt"`
-	Outcome           *outcome    `json:"outcome"`
-	ParentSessionID   string      `json:"parentSessionId"`
-	Depth             int         `json:"depth"`
+	// FailureCause is a failed start's cause beside SANDBOX_START_FAILED;
+	// WaitingFor and WaitingSince say a working session waits for a sandbox
+	// machine and since when (ADR047 § w10/m497).
+	FailureCause    string     `json:"failureCause"`
+	WaitingFor      string     `json:"waitingFor"`
+	WaitingSince    *time.Time `json:"waitingSince"`
+	SSHAddress      string     `json:"sshAddress"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	Outcome         *outcome   `json:"outcome"`
+	ParentSessionID string     `json:"parentSessionId"`
+	Depth           int        `json:"depth"`
 	// Queued is the message a steer queued instead of starting a turn
 	// (ADR047 D12); PendingMessages is how many wait to run on a session read.
 	Queued          *queuedMessage `json:"queuedMessage"`

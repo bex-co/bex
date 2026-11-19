@@ -808,7 +808,8 @@ func (f *fakeStore) RecordAgentSessionDispatch(_ context.Context, id, sandboxID,
 		row.SandboxID = sandboxID
 	}
 	row.Phase, row.Status, row.DeliveryMode = phase, status, deliveryMode
-	row.FailureReason, row.FailureReasonCode = "", ""
+	row.FailureReason, row.FailureReasonCode, row.FailureCause = "", "", ""
+	row.SandboxWaitSince = nil
 	row.UpdatedAt = row.UpdatedAt.Add(time.Second)
 	f.rows[id] = row
 	if turns := f.turns[id]; turns != nil {
@@ -929,6 +930,13 @@ type fakeLifecycle struct {
 	// create, before it answers (ADR047 D12 tests).
 	imageCreateErr error
 	onCreate       func(sandbox.AgentSessionSandbox)
+	// createQueue answers the next creates in order, before createErr: a
+	// nil entry creates, an error fails that create (a full pool's also
+	// calls the spec's PoolFull, as the pod read does). cleanups counts
+	// CleanupAgentDispatches calls (ADR047 § w10/m497).
+	createQueue    []error
+	createAttempts int
+	cleanups       int
 	inventory      func(context.Context) (sandbox.InventoryCounts, error)
 	cleanupErr     error
 	// interrupts records InterruptSessionTurn calls (session, sandbox, turn).
@@ -942,10 +950,20 @@ func (f *fakeLifecycle) InterruptSessionTurn(_ context.Context, _, sessionID, sa
 }
 
 func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, spec sandbox.AgentSessionSandbox) (sandbox.Sandbox, error) {
+	f.createAttempts++
 	if f.onCreate != nil {
 		f.onCreate(spec)
 	}
-	if f.createErr != nil {
+	if len(f.createQueue) > 0 {
+		next := f.createQueue[0]
+		f.createQueue = f.createQueue[1:]
+		if next != nil {
+			if sandbox.IsPoolFull(next) && spec.PoolFull != nil {
+				spec.PoolFull()
+			}
+			return sandbox.Sandbox{}, next
+		}
+	} else if f.createErr != nil {
 		return sandbox.Sandbox{}, f.createErr
 	}
 	if f.imageCreateErr != nil && spec.Image.ID != "" {
@@ -2171,7 +2189,8 @@ func (f *fakeStore) AbandonAgentDispatch(ctx context.Context, d store.AgentDispa
 	if row.Turns == d.Turn && row.SandboxID == "" && (row.Phase == PhaseCreating || row.Phase == PhaseRedispatching) {
 		row.Phase = PhaseFailed
 		row.Status = PhaseFailed
-		row.FailureReason, row.FailureReasonCode = failure.Reason, failure.Code
+		row.FailureReason, row.FailureReasonCode, row.FailureCause = failure.Reason, failure.Code, failure.Cause
+		row.SandboxWaitSince = nil
 		row.UpdatedAt = now
 		f.rows[row.ID] = row
 		fact = store.TerminalTurnFact{Turn: d.Turn, TerminalAt: now}
@@ -2192,6 +2211,27 @@ func (f *fakeStore) AbandonAgentDispatch(ctx context.Context, d store.AgentDispa
 	}
 	return store.TerminalTurnFact{}, nil
 }
+func (f *fakeStore) MarkAgentDispatchWaiting(_ context.Context, d store.AgentDispatch, now, next time.Time) (time.Time, bool, error) {
+	f.rowMu.Lock()
+	defer f.rowMu.Unlock()
+	row, ok := f.rows[d.SessionID]
+	if !ok || row.Turns != d.Turn || row.SandboxID != "" || row.ArchivedAt != nil ||
+		(row.Phase != PhaseCreating && row.Phase != PhaseRedispatching) {
+		return time.Time{}, false, nil
+	}
+	key := dispatchKey(d.SessionID, d.Turn)
+	intent, ok := f.dispatches[key]
+	if !ok || intent.abandoned {
+		return time.Time{}, false, nil
+	}
+	intent.next = next
+	f.dispatches[key] = intent
+	if row.SandboxWaitSince == nil {
+		row.SandboxWaitSince = &now
+		f.rows[row.ID] = row
+	}
+	return *row.SandboxWaitSince, true, nil
+}
 func (f *fakeStore) DeferAgentDispatchCleanup(_ context.Context, d store.AgentDispatch, next time.Time) error {
 	key := dispatchKey(d.SessionID, d.Turn)
 	intent := f.dispatches[key]
@@ -2200,6 +2240,7 @@ func (f *fakeStore) DeferAgentDispatchCleanup(_ context.Context, d store.AgentDi
 	return nil
 }
 func (f *fakeLifecycle) CleanupAgentDispatches(context.Context, []store.AgentDispatch) error {
+	f.cleanups++
 	if f.cleanupErr != nil {
 		return f.cleanupErr
 	}

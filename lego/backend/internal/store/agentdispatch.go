@@ -72,10 +72,12 @@ func (s *PGStore) ListAgentDispatchesDue(ctx context.Context, now time.Time) ([]
 }
 
 // AgentSessionFailure is why a dispatch failed: a sentence for the reader and,
-// when a client acts on the cause, a stable code (w5/m132).
+// when a client acts on the cause, a stable code (w5/m132), and beside
+// SANDBOX_START_FAILED the start's cause (ADR047 § w10/m497).
 type AgentSessionFailure struct {
 	Reason string
 	Code   string
+	Cause  string
 }
 
 // AbandonAgentDispatch serializes against binding and atomically settles only
@@ -127,8 +129,8 @@ func (s *PGStore) AbandonAgentDispatch(ctx context.Context, d AgentDispatch, now
 		if tag.RowsAffected() == 0 {
 			return ErrNotFound
 		}
-		tag, err = tx.Exec(ctx, `UPDATE agent_sessions SET phase='failed', status='failed', failure_reason=$3, failure_reason_code=$4, updated_at=$5
-    WHERE id=$1 AND turns=$2 AND sandbox_id='' AND phase IN ('creating','redispatching')`, d.SessionID, d.Turn, failure.Reason, failure.Code, now)
+		tag, err = tx.Exec(ctx, `UPDATE agent_sessions SET phase='failed', status='failed', failure_reason=$3, failure_reason_code=$4, failure_cause=$6, sandbox_wait_since=NULL, updated_at=$5
+    WHERE id=$1 AND turns=$2 AND sandbox_id='' AND phase IN ('creating','redispatching')`, d.SessionID, d.Turn, failure.Reason, failure.Code, now, failure.Cause)
 		if err != nil {
 			return err
 		}
@@ -167,6 +169,48 @@ func (s *PGStore) AbandonAgentDispatch(ctx context.Context, d AgentDispatch, now
 		return TerminalTurnFact{}, nil
 	}
 	return fact, nil
+}
+
+// MarkAgentDispatchWaiting records that d's dispatch waits for room on the
+// sandbox pool and keeps it alive (ADR047 § w10/m497): it stamps the
+// session's sandbox_wait_since once and moves the dispatch's next_check_at to
+// next, so neither recovery nor the legacy repair abandons a dispatch that is
+// still waiting. It returns when the wait began. ok is false, and nothing is
+// written, when the wait must end: the session is no longer unbound on d's
+// turn in creating or redispatching (a cancel, a delete, a newer turn), it was
+// archived, or the dispatch was abandoned.
+func (s *PGStore) MarkAgentDispatchWaiting(ctx context.Context, d AgentDispatch, now, next time.Time) (since time.Time, ok bool, err error) {
+	err = s.withTx(ctx, func(tx pgx.Tx) error {
+		// Lock in the same order as binding and abandonment: session, then intent.
+		var current *time.Time
+		err := tx.QueryRow(ctx, `SELECT sandbox_wait_since FROM agent_sessions
+			WHERE id=$1 AND turns=$2 AND sandbox_id='' AND phase IN ('creating','redispatching') AND archived_at IS NULL
+			FOR UPDATE`, d.SessionID, d.Turn).Scan(&current)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		tag, err := tx.Exec(ctx, `UPDATE agent_session_dispatches SET next_check_at=$3
+			WHERE session_id=$1 AND turn=$2 AND NOT abandoned`, d.SessionID, d.Turn, next)
+		if err != nil || tag.RowsAffected() == 0 {
+			return err
+		}
+		if current != nil {
+			since, ok = *current, true
+			return nil
+		}
+		if _, err := tx.Exec(ctx, `UPDATE agent_sessions SET sandbox_wait_since=$2, updated_at=$2 WHERE id=$1`, d.SessionID, now); err != nil {
+			return err
+		}
+		since, ok = now, true
+		return nil
+	})
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	return since, ok, nil
 }
 
 func (s *PGStore) DeferAgentDispatchCleanup(ctx context.Context, d AgentDispatch, next time.Time) error {

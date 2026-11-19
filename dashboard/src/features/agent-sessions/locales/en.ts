@@ -362,6 +362,31 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Detail page — CTA on a capacity failure; opens the change-plan dialog",
   },
+  "agentSessions.failureCause.pool_full": {
+    message: "No sandbox machine had room",
+    description:
+      "Failed-start cause line (session callout, automation runs) — no sandbox machine had room for the session's machine for the whole wait (w10/m497)",
+  },
+  "agentSessions.failureCause.image_pull": {
+    message: "The sandbox image could not be pulled",
+    description:
+      "Failed-start cause line — the sandbox's container image did not pull (w10/m497)",
+  },
+  "agentSessions.failureCause.runtime": {
+    message: "The sandbox runtime could not start",
+    description:
+      "Failed-start cause line — the sandbox runtime did not start the session's machine (w10/m497)",
+  },
+  "agentSessions.failureCause.quota": {
+    message: "The workspace's sandbox quota refused it",
+    description:
+      "Failed-start cause line — the workspace's sandbox quota refused the session's machine (w10/m497)",
+  },
+  "agentSessions.failureCause.unknown": {
+    message: "Platform issue",
+    description:
+      "Failed-start cause line — the sandbox did not start for a cause on bex's side that bex-api could not name (w10/m497)",
+  },
   "agentSessions.provisioning": {
     message: "Starting the sandbox…",
     description:
@@ -1067,6 +1092,11 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.statusPhrase.working": {
     message: "Working…",
     description: "Sidebar status phrase — session still converging",
+  },
+  "agentSessions.statusPhrase.waitingForSandbox": {
+    message: "Waiting for a sandbox machine",
+    description:
+      "Session status (header, list rows, sidebar, conversation, automation runs) — the turn waits because no sandbox machine has room for it yet (w10/m497); the time waited follows where there is room",
   },
   "agentSessions.menuMore": {
     message: "More actions",

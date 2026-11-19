@@ -2,6 +2,13 @@
 // viewer may take (ADR101 D4, D9). Pure so the list, the detail page and the
 // tests share one decision.
 
+import {
+  parseSandboxStartFailureCause,
+  SANDBOX_CAPACITY,
+  sandboxStartFailureCause,
+} from "@/features/agent-sessions/lib/mapper";
+import type { SandboxStartFailureCause } from "@/features/agent-sessions/types";
+
 export type OutcomeBadgeVariant =
   "success" | "secondary" | "outline" | "destructive";
 
@@ -43,6 +50,42 @@ export function outcomeDisplay(outcome: string): OutcomeDisplay & {
         variant: "outline",
         known: false,
       };
+}
+
+/**
+ * Where a started run's session stands when that, not the run's outcome, is
+ * the news (ADR047 § w10/m497): it waits for a sandbox machine, so the run is
+ * queued, not dropped; or its sandbox did not start for a cause on bex's side
+ * (`SANDBOX_START_FAILED`), which is not a broken template (`failed_create`).
+ */
+export type RunSessionStatus =
+  | { kind: "waiting" }
+  | { kind: "did_not_start"; cause: SandboxStartFailureCause };
+
+export function runSessionStatus(run: {
+  outcome: string;
+  session?: {
+    state: string;
+    waitingFor?: string | null;
+    failureReasonCode?: string | null;
+    failureCause?: string | null;
+  } | null;
+}): RunSessionStatus | null {
+  const session = run.session;
+  if (run.outcome !== "started" || !session) return null;
+  if (session.state === "working" && session.waitingFor === SANDBOX_CAPACITY) {
+    return { kind: "waiting" };
+  }
+  // The session page's own rule; a failed state is the failed phase.
+  const cause =
+    session.state === "failed"
+      ? sandboxStartFailureCause({
+          phase: "failed",
+          failureReasonCode: session.failureReasonCode ?? null,
+          failureCause: parseSandboxStartFailureCause(session.failureCause),
+        })
+      : null;
+  return cause ? { kind: "did_not_start", cause } : null;
 }
 
 /** The platform's pause reasons (ADR101 D3, D4): badge text and detail explanation. */

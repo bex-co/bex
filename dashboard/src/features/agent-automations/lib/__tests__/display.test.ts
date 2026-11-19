@@ -6,6 +6,7 @@ import {
   pauseToggleKind,
   pausedExplainKey,
   pausedReasonKey,
+  runSessionStatus,
 } from "@/features/agent-automations/lib/display";
 
 describe("outcomeDisplay (ADR101 D3/D7)", () => {
@@ -23,6 +24,87 @@ describe("outcomeDisplay (ADR101 D3/D7)", () => {
 
   it("marks an outcome it doesn't know so the caller shows the raw word", () => {
     expect(outcomeDisplay("brand_new")).toMatchObject({ known: false });
+  });
+});
+
+// w10/m497: a started run's session waits for a sandbox machine (queued, not
+// dropped) or did not start for a platform cause (not a broken template).
+describe("runSessionStatus", () => {
+  const session = (over: object = {}) => ({
+    state: "working",
+    waitingFor: null,
+    waitingSince: null,
+    failureReasonCode: null,
+    failureCause: null,
+    ...over,
+  });
+
+  it("reads a started run whose session waits for a machine as waiting", () => {
+    expect(
+      runSessionStatus({
+        outcome: "started",
+        session: session({
+          waitingFor: "sandbox_capacity",
+          waitingSince: "2026-11-18T12:00:00Z",
+        }),
+      }),
+    ).toEqual({ kind: "waiting" });
+  });
+
+  it("reads a started run whose sandbox did not start as did-not-start, with the cause", () => {
+    const failed = (failureCause: string | null) =>
+      runSessionStatus({
+        outcome: "started",
+        session: session({
+          state: "failed",
+          failureReasonCode: "SANDBOX_START_FAILED",
+          failureCause,
+        }),
+      });
+    expect(failed("pool_full")).toEqual({
+      kind: "did_not_start",
+      cause: "pool_full",
+    });
+    expect(failed("image_pull")).toMatchObject({ cause: "image_pull" });
+    // No cause, or one this build does not know: a platform issue.
+    expect(failed(null)).toMatchObject({ cause: "unknown" });
+    expect(failed("solar_flare")).toMatchObject({ cause: "unknown" });
+  });
+
+  it("is nothing for any other run or session", () => {
+    // A broken template never started a session.
+    expect(
+      runSessionStatus({ outcome: "failed_create", session: null }),
+    ).toBeNull();
+    expect(runSessionStatus({ outcome: "started", session: null })).toBeNull();
+    expect(
+      runSessionStatus({ outcome: "started", session: session() }),
+    ).toBeNull();
+    expect(
+      runSessionStatus({
+        outcome: "started",
+        session: session({ state: "failed", failureReasonCode: "OTHER" }),
+      }),
+    ).toBeNull();
+    expect(
+      runSessionStatus({
+        outcome: "started",
+        session: session({
+          state: "failed",
+          failureReasonCode: "SANDBOX_CAPACITY_LIMIT",
+        }),
+      }),
+    ).toBeNull();
+    // A wait the session no longer has once it settled.
+    expect(
+      runSessionStatus({
+        outcome: "started",
+        session: session({
+          state: "succeeded",
+          waitingFor: "sandbox_capacity",
+        }),
+      }),
+    ).toBeNull();
   });
 });
 

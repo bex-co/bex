@@ -7,6 +7,7 @@ import type {
   AgentSessionView,
 } from "@/features/agent-sessions/types";
 import { agentSessionView } from "@/test/mocks/agent-session";
+import i18n from "@/i18n/init";
 
 const steer = vi.fn();
 vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
@@ -284,6 +285,123 @@ describe("FailureCallout", () => {
       screen.queryByRole("button", { name: "Upgrade plan" }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("sandbox capacity reached")).toBeInTheDocument();
+  });
+
+  // w10/m497: a sandbox that did not start names its cause above the reason
+  // bex-api wrote for it; a platform cause is never a plan limit.
+  describe("a sandbox that did not start", () => {
+    it.each([
+      [
+        "pool_full",
+        "No sandbox machine had room for this session for 60 minutes, so it did not start. Send the message again to retry.",
+        "No sandbox machine had room",
+      ],
+      [
+        "image_pull",
+        "The sandbox image could not be pulled, so the session did not start. Try again, and contact support if it keeps failing.",
+        "The sandbox image could not be pulled",
+      ],
+      [
+        "runtime",
+        "The sandbox runtime could not start this session's machine. Try again, and contact support if it keeps failing.",
+        "The sandbox runtime could not start",
+      ],
+      [
+        "quota",
+        "The workspace's sandbox quota refused this session's machine. Stop a running sandbox or session, then try again.",
+        "The workspace's sandbox quota refused it",
+      ],
+      ["unknown", "sandbox did not start (platform issue)", "Platform issue"],
+    ] as const)(
+      "names the %s cause over its reason, with Retry and no upgrade",
+      (cause, failureReason, line) => {
+        render(
+          <FailureCallout
+            session={view("failed", {
+              failureReason,
+              failureReasonCode: "SANDBOX_START_FAILED",
+              failureCause: cause,
+            })}
+          />,
+        );
+        expect(screen.getByText("Session failed")).toBeInTheDocument();
+        const causeLine = screen.getByTestId("failure-cause");
+        expect(causeLine).toHaveTextContent(line);
+        expect(causeLine).toHaveAttribute("data-cause", cause);
+        // The reason is shown as before, after the cause.
+        const reason = screen.getByText(failureReason);
+        expect(
+          causeLine.compareDocumentPosition(reason) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(
+          screen.queryByRole("button", { name: "Upgrade plan" }),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByText("Out of sandbox capacity")).toBeNull();
+        expect(
+          screen.getByRole("button", { name: "Retry" }),
+        ).toBeInTheDocument();
+      },
+    );
+
+    it("reads a start failure recorded before causes as a platform issue", () => {
+      render(
+        <FailureCallout
+          session={view("failed", {
+            failureReason: "sandbox did not start (platform issue)",
+            failureReasonCode: "SANDBOX_START_FAILED",
+          })}
+        />,
+      );
+      expect(screen.getByTestId("failure-cause")).toHaveTextContent(
+        "Platform issue",
+      );
+      expect(
+        screen.queryByRole("button", { name: "Upgrade plan" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("draws no cause line for any other failure, the capacity limit included", () => {
+      const { rerender } = render(
+        <FailureCallout
+          session={view("failed", { failureReason: "agent turn failed" })}
+        />,
+      );
+      expect(screen.queryByTestId("failure-cause")).toBeNull();
+      // A cause on a code other than SANDBOX_START_FAILED is not one.
+      rerender(
+        <FailureCallout
+          session={view("failed", {
+            failureReasonCode: "SANDBOX_CAPACITY_LIMIT",
+            failureCause: "pool_full",
+          })}
+        />,
+      );
+      expect(screen.queryByTestId("failure-cause")).toBeNull();
+      expect(screen.getByText("Out of sandbox capacity")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Upgrade plan" }),
+      ).toBeInTheDocument();
+    });
+
+    it("names the cause in the viewer's language", async () => {
+      await i18n.changeLanguage("zh");
+      try {
+        render(
+          <FailureCallout
+            session={view("failed", {
+              failureReasonCode: "SANDBOX_START_FAILED",
+              failureCause: "image_pull",
+            })}
+          />,
+        );
+        expect(screen.getByTestId("failure-cause")).toHaveTextContent(
+          "无法拉取沙箱镜像",
+        );
+      } finally {
+        await i18n.changeLanguage("en");
+      }
+    });
   });
 
   it("toasts an error and does not converge when the retry is rejected", async () => {

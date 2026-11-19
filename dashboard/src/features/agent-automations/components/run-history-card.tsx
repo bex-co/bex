@@ -22,13 +22,20 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { AutomationLoadError } from "@/features/agent-automations/components/automation-load-state";
 import { OutcomeBadge } from "@/features/agent-automations/components/outcome-badge";
 import type { UseAutomationRunsResult } from "@/features/agent-automations/hooks/use-agent-automation-runs";
+import {
+  runSessionStatus,
+  type RunSessionStatus,
+} from "@/features/agent-automations/lib/display";
 
 const SKELETON_ROWS = 3;
 
 /**
  * The run history (ADR101 D3, D7): fire time, outcome, the session it started,
- * ticks skipped while the scheduler was down, and the error. `runs` null is
- * the pending state: the same card and table header, bars for the rows.
+ * ticks skipped while the scheduler was down, and the error. A started run
+ * whose session waits for a sandbox machine, or whose sandbox did not start,
+ * says so in the outcome, with the start's cause as its error (w10/m497).
+ * `runs` null is the pending state: the same card and table header, bars for
+ * the rows.
  */
 export function RunHistoryCard({
   runs,
@@ -94,39 +101,38 @@ export function RunHistoryCard({
                   </TableCell>
                 </TableRow>
               ) : (
-                runs.runs.map((run) => (
-                  <TableRow key={run.fireAt} data-outcome={run.outcome}>
-                    <TableCell className="whitespace-nowrap">
-                      <LocalDateTime value={run.fireAt} />
-                    </TableCell>
-                    <TableCell>
-                      <OutcomeBadge outcome={run.outcome} />
-                    </TableCell>
-                    <TableCell>
-                      {run.sessionId ? (
-                        <Link
-                          to="/agents/$agentSessionId"
-                          params={{ agentSessionId: run.sessionId }}
-                          className="underline underline-offset-2"
-                        >
-                          {t("agentAutomations.runs.openSession")}
-                        </Link>
-                      ) : (
-                        "—"
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {run.missedTicks > 0 ? run.missedTicks : "—"}
-                    </TableCell>
-                    <TableCell className="max-w-xs break-words whitespace-normal">
-                      {run.error ? (
-                        <span className="text-destructive">{run.error}</span>
-                      ) : (
-                        "—"
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
+                runs.runs.map((run) => {
+                  const status = runSessionStatus(run);
+                  return (
+                    <TableRow key={run.fireAt} data-outcome={run.outcome}>
+                      <TableCell className="whitespace-nowrap">
+                        <LocalDateTime value={run.fireAt} />
+                      </TableCell>
+                      <TableCell>
+                        <OutcomeBadge outcome={run.outcome} status={status} />
+                      </TableCell>
+                      <TableCell>
+                        {run.sessionId ? (
+                          <Link
+                            to="/agents/$agentSessionId"
+                            params={{ agentSessionId: run.sessionId }}
+                            className="underline underline-offset-2"
+                          >
+                            {t("agentAutomations.runs.openSession")}
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {run.missedTicks > 0 ? run.missedTicks : "—"}
+                      </TableCell>
+                      <TableCell className="max-w-xs break-words whitespace-normal">
+                        <RunError error={run.error} status={status} />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -146,5 +152,31 @@ export function RunHistoryCard({
         ) : null}
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * A run's error, or, for a started run whose session's sandbox did not start,
+ * why (w10/m497): the run itself did not fail, so it carries no error of its
+ * own.
+ */
+function RunError({
+  error,
+  status,
+}: {
+  error?: string | null;
+  status: RunSessionStatus | null;
+}) {
+  const { t } = useTranslations();
+  if (error) return <span className="text-destructive">{error}</span>;
+  if (status?.kind !== "did_not_start") return "—";
+  return (
+    <span
+      className="text-destructive"
+      data-testid="run-start-cause"
+      data-cause={status.cause}
+    >
+      {t(`agentSessions.failureCause.${status.cause}`)}
+    </span>
   );
 }

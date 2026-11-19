@@ -1615,6 +1615,70 @@ tests:
         alertname: AgentSessionProvisionFailing
         exp_alerts: []
 
+  # Creates that ended for want of room are waits, not failures: a busy pool
+  # whose sessions all start in the end does not read as a failing substrate.
+  - name: waits on a full pool are not provision failures
+    interval: 1m
+    input_series:
+      - series: 'bex_agent_session_provision_seconds_count{outcome="waiting",job="bex-api",instance="prod-a"}'
+        values: "0+3x200"
+      - series: 'bex_agent_session_provision_seconds_count{outcome="failed",job="bex-api",instance="prod-a"}'
+        values: "0+1x200"
+      - series: 'bex_agent_session_provision_seconds_count{outcome="running",job="bex-api",instance="prod-a"}'
+        values: "0+1x200"
+    alert_rule_test:
+      # Half the real provisions failed, whatever the waits.
+      - eval_time: 90m
+        alertname: AgentSessionProvisionFailing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "50% of agent-session sandbox provisions are failing"
+              description: "More than a quarter of agent-session sandbox creations failed to reach Running in the last hour, so users are accepting a session that never boots (ADR047 accept-fast/provision-async). Check the OpenSandbox substrate first: kubectl -n opensandbox-system get pods, node capacity on the sandbox pool, and image-pull health for BEX_AGENT_SESSION_IMAGE. bex_agent_session_provision_seconds{outcome} separates a slow provision from a failed one. Runbook: docs/ADR047-cloud-coding-agent-sessions.md"
+
+  - name: only waits on a full pool never read as failing provisions
+    interval: 1m
+    input_series:
+      - series: 'bex_agent_session_provision_seconds_count{outcome="waiting",job="bex-api",instance="prod-a"}'
+        values: "0+5x200"
+      - series: 'bex_agent_session_provision_seconds_count{outcome="running",job="bex-api",instance="prod-a"}'
+        values: "0+1x200"
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: AgentSessionProvisionFailing
+        exp_alerts: []
+
+  # Sessions waiting for a sandbox machine for 15 minutes page, summed across
+  # the replicas that wait; a wait shorter than that stays silent.
+  - name: sessions waiting 15 minutes for a sandbox machine page
+    interval: 1m
+    input_series:
+      - series: 'bex_agent_session_sandbox_waiting{cause="pool_full",job="bex-api",instance="prod-a"}'
+        values: "0 1x40"
+      - series: 'bex_agent_session_sandbox_waiting{cause="pool_full",job="bex-api",instance="prod-b"}'
+        values: "0x10 1x30"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: AgentSandboxPoolFull
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: AgentSandboxPoolFull
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "2 agent sessions are waiting for a sandbox machine"
+              description: "The sandbox node pool has had no room for at least one agent session for 15 minutes, so sessions and automation runs are queued instead of running; each gives up after an hour with SANDBOX_START_FAILED cause pool_full. Check the sandbox pool's memory and CPU requests (kubectl describe node -l bex.co/pool=sandbox) and which sessions hold it. Growing the pool is ADR105's cost decision. bex_agent_session_sandbox_wait_seconds{outcome} shows how long waits last and how many gave up. Runbook: docs/ADR105-agent-sandbox-hetzner-bare-metal.md#until-the-ax42-1-arrives-the-cloud-sandbox-node-2026-11-12"
+
+  - name: a short wait for a sandbox machine stays silent
+    interval: 1m
+    input_series:
+      - series: 'bex_agent_session_sandbox_waiting{cause="pool_full",job="bex-api",instance="prod-a"}'
+        values: "0 1x10 0x40"
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: AgentSandboxPoolFull
+        exp_alerts: []
+
   - name: a quiet hour with one failed provision stays under the traffic floor
     interval: 1m
     input_series:

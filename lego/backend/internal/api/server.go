@@ -1458,6 +1458,10 @@ func sandboxService(base *core.Base, d Deps, resolver core.EnvironmentResolver) 
 		MaxActive:           d.SandboxMaxActive,
 		Storage:             d.SandboxStorage,
 		MaxStorageBytes:     d.SandboxMaxStorageBytes,
+
+		// The pod-ready timeout's cause (ADR047 § w10/m497): the Kubernetes
+		// client reads the create's pod through bex-tenant-sandbox-api.
+		Pods: base.Client,
 	}
 }
 

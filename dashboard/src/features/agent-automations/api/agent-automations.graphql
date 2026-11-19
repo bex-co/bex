@@ -109,6 +109,16 @@ query AgentAutomationRuns(
       error
       createdAt
       settledAt
+      # The session the run started, as it stands now (w10/m497): waiting for
+      # a sandbox machine, or failed to start and why. Null when the run
+      # started none or its session was deleted.
+      session {
+        state
+        waitingFor
+        waitingSince
+        failureReasonCode
+        failureCause
+      }
     }
   }
 }

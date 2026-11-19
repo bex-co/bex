@@ -356,6 +356,31 @@ const koAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Detail page — CTA on a capacity failure; opens the change-plan dialog",
   },
+  "agentSessions.failureCause.pool_full": {
+    message: "여유 있는 샌드박스 머신이 없었습니다",
+    description:
+      "Failed-start cause line (session callout, automation runs) — no sandbox machine had room for the session's machine for the whole wait (w10/m497)",
+  },
+  "agentSessions.failureCause.image_pull": {
+    message: "샌드박스 이미지를 가져올 수 없었습니다",
+    description:
+      "Failed-start cause line — the sandbox's container image did not pull (w10/m497)",
+  },
+  "agentSessions.failureCause.runtime": {
+    message: "샌드박스 런타임이 시작하지 못했습니다",
+    description:
+      "Failed-start cause line — the sandbox runtime did not start the session's machine (w10/m497)",
+  },
+  "agentSessions.failureCause.quota": {
+    message: "워크스페이스의 샌드박스 할당량이 거부했습니다",
+    description:
+      "Failed-start cause line — the workspace's sandbox quota refused the session's machine (w10/m497)",
+  },
+  "agentSessions.failureCause.unknown": {
+    message: "플랫폼 문제",
+    description:
+      "Failed-start cause line — the sandbox did not start for a cause on bex's side that bex-api could not name (w10/m497)",
+  },
   "agentSessions.provisioning": {
     message: "샌드박스를 시작하는 중…",
     description:
@@ -979,6 +1004,11 @@ const koAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.statusPhrase.working": {
     message: "작업 중…",
     description: "Sidebar status phrase — session still converging",
+  },
+  "agentSessions.statusPhrase.waitingForSandbox": {
+    message: "샌드박스 머신을 기다리는 중",
+    description:
+      "Session status (header, list rows, sidebar, conversation, automation runs) — the turn waits because no sandbox machine has room for it yet (w10/m497); the time waited follows where there is room",
   },
   "agentSessions.menuMore": {
     message: "더 많은 작업",

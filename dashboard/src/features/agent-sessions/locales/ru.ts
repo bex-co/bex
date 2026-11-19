@@ -356,6 +356,31 @@ const ruAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Detail page — CTA on a capacity failure; opens the change-plan dialog",
   },
+  "agentSessions.failureCause.pool_full": {
+    message: "Ни на одной машине для песочниц не нашлось места",
+    description:
+      "Failed-start cause line (session callout, automation runs) — no sandbox machine had room for the session's machine for the whole wait (w10/m497)",
+  },
+  "agentSessions.failureCause.image_pull": {
+    message: "Не удалось загрузить образ песочницы",
+    description:
+      "Failed-start cause line — the sandbox's container image did not pull (w10/m497)",
+  },
+  "agentSessions.failureCause.runtime": {
+    message: "Среда выполнения песочницы не смогла запуститься",
+    description:
+      "Failed-start cause line — the sandbox runtime did not start the session's machine (w10/m497)",
+  },
+  "agentSessions.failureCause.quota": {
+    message: "Квота песочниц рабочего пространства не позволила запуск",
+    description:
+      "Failed-start cause line — the workspace's sandbox quota refused the session's machine (w10/m497)",
+  },
+  "agentSessions.failureCause.unknown": {
+    message: "Проблема платформы",
+    description:
+      "Failed-start cause line — the sandbox did not start for a cause on bex's side that bex-api could not name (w10/m497)",
+  },
   "agentSessions.provisioning": {
     message: "Запуск песочницы…",
     description:
@@ -1184,6 +1209,11 @@ const ruAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.statusPhrase.working": {
     message: "Работает…",
     description: "Sidebar status phrase — session still converging",
+  },
+  "agentSessions.statusPhrase.waitingForSandbox": {
+    message: "Ожидание машины для песочницы",
+    description:
+      "Session status (header, list rows, sidebar, conversation, automation runs) — the turn waits because no sandbox machine has room for it yet (w10/m497); the time waited follows where there is room",
   },
   "agentSessions.menuMore": {
     message: "Другие действия",

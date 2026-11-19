@@ -1664,20 +1664,41 @@ groups:
       # provisions per hour) is what keeps a quiet hour with one
       # failure from paging — no vector(0) coercion, so an idle hour
       # produces no series at all rather than a fake healthy zero.
+      #
+      # A create that ended because the sandbox pool had no room is
+      # outcome="waiting": the dispatch waits and creates again (ADR047 §
+      # w10/m497), so it is neither a failure nor a provision of its own
+      # here. AgentSandboxPoolFull below says when the pool is full.
       - alert: AgentSessionProvisionFailing
         expr: |
           (
             sum(rate(bex_agent_session_provision_seconds_count{outcome="failed"}[1h]))
-            / sum(rate(bex_agent_session_provision_seconds_count[1h]))
+            / sum(rate(bex_agent_session_provision_seconds_count{outcome!="waiting"}[1h]))
           ) > 0.25
           and
-          sum(rate(bex_agent_session_provision_seconds_count[1h])) > 0.0028
+          sum(rate(bex_agent_session_provision_seconds_count{outcome!="waiting"}[1h])) > 0.0028
         for: 15m
         labels:
           severity: warning
         annotations:
           summary: "{{ $value | humanizePercentage }} of agent-session sandbox provisions are failing"
           description: "More than a quarter of agent-session sandbox creations failed to reach Running in the last hour, so users are accepting a session that never boots (ADR047 accept-fast/provision-async). Check the OpenSandbox substrate first: kubectl -n opensandbox-system get pods, node capacity on the sandbox pool, and image-pull health for BEX_AGENT_SESSION_IMAGE. bex_agent_session_provision_seconds{outcome} separates a slow provision from a failed one. Runbook: docs/ADR047-cloud-coding-agent-sessions.md"
+
+      # w10/m497 (ADR047 § w10/m497, ADR105 § Until the AX42-1 arrives). An
+      # agent session whose sandbox the pool cannot place waits for a machine
+      # for up to an hour instead of failing. Sessions waiting for 15 minutes
+      # mean the sandbox pool is full for longer than the turns already
+      # running take to end: that is the evidence for the pool-size decision,
+      # which is the user's (ADR105). The gauge is per replica, so it is
+      # summed; no traffic floor, since every wait is a session not running.
+      - alert: AgentSandboxPoolFull
+        expr: sum(bex_agent_session_sandbox_waiting) > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value }} agent sessions are waiting for a sandbox machine"
+          description: "The sandbox node pool has had no room for at least one agent session for 15 minutes, so sessions and automation runs are queued instead of running; each gives up after an hour with SANDBOX_START_FAILED cause pool_full. Check the sandbox pool's memory and CPU requests (kubectl describe node -l bex.co/pool=sandbox) and which sessions hold it. Growing the pool is ADR105's cost decision. bex_agent_session_sandbox_wait_seconds{outcome} shows how long waits last and how many gave up. Runbook: docs/ADR105-agent-sandbox-hetzner-bare-metal.md#until-the-ax42-1-arrives-the-cloud-sandbox-node-2026-11-12"
 
       # The Completer's status reads failing for a reason that is neither a
       # gone sandbox nor a transient one: exec unconfigured, the gateway

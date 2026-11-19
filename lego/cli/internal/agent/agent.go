@@ -288,6 +288,7 @@ func (d deps) start(c *cobra.Command) (*invocation, context.CancelFunc, error) {
 		parent = context.Background()
 	}
 	ctx, cancel := signal.NotifyContext(parent, os.Interrupt, syscall.SIGTERM)
+	a.waiting = &waitingNotice{w: c.ErrOrStderr(), now: time.Now}
 	return &invocation{ctx: ctx, api: a, format: f, out: c.OutOrStdout(), errOut: c.ErrOrStderr()}, cancel, nil
 }
 
@@ -977,6 +978,11 @@ func logsCommand(d deps) *cobra.Command {
 				return err
 			}
 			p.flush()
+			// A turn still waiting for a sandbox machine has nothing to
+			// print yet: say why (ADR047 § w10/m497). Best effort.
+			if s, _, err := inv.api.session(inv.ctx, args[0]); err == nil {
+				inv.api.waiting.observe(s)
+			}
 			return nil
 		},
 	}
@@ -1268,7 +1274,7 @@ func timeoutExit(sessions []session, timeout time.Duration) error {
 }
 
 func failedSessionExit(s *session) error {
-	reason := firstNonEmpty(s.FailureReasonCode, "failed")
+	reason := firstNonEmpty(failureLabel(*s), "failed")
 	if s.FailureReason != "" {
 		reason += ": " + s.FailureReason
 	}

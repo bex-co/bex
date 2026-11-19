@@ -9,6 +9,7 @@ import {
   Code2,
   ExternalLink,
   GitBranch,
+  Hourglass,
   Loader2,
   MoreHorizontal,
   PackageCheck,
@@ -47,6 +48,7 @@ import { agentSessionErrorMessage } from "@/features/agent-sessions/lib/errors";
 import {
   agentSessionDisplayName,
   agentSessionDurationMs,
+  formatDurationShort,
 } from "@/features/agent-sessions/lib/mapper";
 import type {
   AgentSessionListSearch,
@@ -57,17 +59,7 @@ import {
   AgentSessionPrLink,
 } from "@/features/agent-sessions/components/session-list";
 import { EditTagsDialog } from "@/features/agent-sessions/components/edit-tags-dialog";
-
-/** Compact `h/m/s` elapsed label ("1h 4m", "12m 8s", "3s"). */
-function formatDurationShort(ms: number): string {
-  const total = Math.max(0, Math.floor(ms / 1000));
-  const hours = Math.floor(total / 3600);
-  const mins = Math.floor((total % 3600) / 60);
-  const secs = total % 60;
-  if (hours > 0) return `${hours}h ${mins}m`;
-  if (mins > 0) return `${mins}m ${secs}s`;
-  return `${secs}s`;
-}
+import { SandboxWaitStatus } from "@/features/agent-sessions/components/sandbox-wait-status";
 
 export interface SessionDetailHeaderProps {
   session: AgentSessionView;
@@ -81,7 +73,8 @@ export interface SessionDetailHeaderProps {
  * The full-page chat header (ADR047 D9, w3/m44): a compact top bar with a
  * back-to-sessions link, the phase chip + the session's derived name (w1/m90 —
  * its repo, or its prompt when the session is repo-less), a compact meta row
- * (branch when there is one, ticking duration, turns, model cost — ADR091 D6),
+ * (the wait for a sandbox machine while the pool is full (w10/m497), branch
+ * when there is one, ticking duration, turns, model cost — ADR091 D6),
  * an inline draft-PR badge `#N`, the Open in Zed action (w2/m65), a "…"
  * overflow menu (open PR), and cancel-with-confirm. The duration ticks live
  * while the session is non-terminal; once terminal it pins to the session's
@@ -254,6 +247,14 @@ export function SessionDetailHeader({
             narrow screen the metadata scrolls sideways instead of wrapping to
             a second line and shifting the page on load. */}
         <div className="text-muted-foreground mt-0.5 flex h-4 items-center gap-x-3 overflow-x-auto text-xs whitespace-nowrap scrollbar-none [&>*]:shrink-0">
+          {/* The turn waits for a sandbox machine (w10/m497): first, so a
+              narrow screen shows it before the line scrolls. */}
+          {session.waitingFor ? (
+            <span className="text-foreground inline-flex items-center gap-1">
+              <Hourglass aria-hidden className="size-3" />
+              <SandboxWaitStatus session={session} />
+            </span>
+          ) : null}
           {/* A repo-less (chat-only) session has no branch — drop the whole
               element, icon included, rather than leaving an orphan GitBranch
               floating next to nothing (w1/m90 t002). */}

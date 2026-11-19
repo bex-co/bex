@@ -292,6 +292,11 @@ type View struct {
 	// accepted now, so a finished-but-open session is never ambiguous.
 	State     string `json:"state"`
 	Steerable bool   `json:"steerable"`
+	// WaitingFor says what a working session waits for before its turn can
+	// start: "sandbox_capacity" while no sandbox machine has room for it
+	// (ADR047 § w10/m497); absent otherwise. WaitingSince is when it began.
+	WaitingFor   string     `json:"waitingFor,omitempty"`
+	WaitingSince *time.Time `json:"waitingSince,omitempty"`
 	// MaxSpendUSD is the session's maxSpendUSD ceiling as a decimal string, or
 	// absent when it has none (ADR094 D8).
 	MaxSpendUSD string `json:"maxSpendUSD,omitempty"`
@@ -348,10 +353,14 @@ type View struct {
 	// acts on it: SANDBOX_CAPACITY_LIMIT for a dispatch refused at the
 	// workspace's sandbox limit (w5/m132). Clients decide by it, never by the
 	// sentence's wording.
-	FailureReasonCode string     `json:"failureReasonCode,omitempty"`
-	CreatedAt         time.Time  `json:"createdAt"`
-	UpdatedAt         time.Time  `json:"updatedAt"`
-	CanceledAt        *time.Time `json:"canceledAt,omitempty"`
+	FailureReasonCode string `json:"failureReasonCode,omitempty"`
+	// FailureCause is a failed start's cause, beside SANDBOX_START_FAILED
+	// only: pool_full, image_pull, runtime, quota or unknown (ADR047 §
+	// w10/m497).
+	FailureCause string     `json:"failureCause,omitempty"`
+	CreatedAt    time.Time  `json:"createdAt"`
+	UpdatedAt    time.Time  `json:"updatedAt"`
+	CanceledAt   *time.Time `json:"canceledAt,omitempty"`
 	// SSHAddress is the Render-shaped `ags-<xid>@<BEX_SSH_HOST>` an editor uses to
 	// open the session's sandbox over SSH (ADR054 D5 — "Open in Zed"). Present only
 	// when BEX_SSH_HOST is configured AND the sandbox is live (the exact condition

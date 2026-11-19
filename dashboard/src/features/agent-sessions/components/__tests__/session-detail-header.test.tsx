@@ -339,6 +339,69 @@ describe("SessionDetailHeader", () => {
     expect(recovered).toEqual([]);
   });
 
+  // w10/m497: a turn the sandbox pool has no room for waits for a machine,
+  // and the header says so with the time waited, as Devin's "waiting for
+  // machine capacity" notice. It leads the one-line meta row, so it shifts
+  // nothing and a narrow screen shows it before the line scrolls.
+  describe("waiting for a sandbox machine", () => {
+    const since = "2026-11-18T12:00:00Z";
+    const waiting = (over: Partial<AgentSessionView> = {}) =>
+      view({
+        phase: "creating",
+        turns: 1,
+        waitingFor: "sandbox_capacity",
+        waitingSince: since,
+        ...over,
+      });
+
+    it("leads the meta line with the wait and the time waited", () => {
+      const now = vi
+        .spyOn(Date, "now")
+        .mockReturnValue(Date.parse(since) + 192_000);
+      try {
+        render(<SessionDetailHeader session={waiting()} />);
+        const wait = screen.getByTestId("sandbox-wait");
+        expect(wait).toHaveTextContent(
+          "Waiting for a sandbox machine · 3m 12s",
+        );
+        const row = screen.getByText("1 turn").parentElement!;
+        expect(row.firstElementChild).toContainElement(wait);
+        expect(row).toHaveClass("h-4", "whitespace-nowrap", "overflow-x-auto");
+        // The phase is still creating: the chip keeps its word.
+        expect(screen.getByText("Creating")).toBeInTheDocument();
+      } finally {
+        now.mockRestore();
+      }
+    });
+
+    it("says nothing of a wait for a session that is not waiting", () => {
+      render(<SessionDetailHeader session={view({ phase: "creating" })} />);
+      expect(screen.queryByTestId("sandbox-wait")).toBeNull();
+      expect(
+        screen.queryByText(/Waiting for a sandbox machine/),
+      ).not.toBeInTheDocument();
+    });
+
+    it("says it waits without a time when the wait's start is unreadable", () => {
+      render(<SessionDetailHeader session={waiting({ waitingSince: null })} />);
+      expect(screen.getByTestId("sandbox-wait")).toHaveTextContent(
+        /^Waiting for a sandbox machine$/,
+      );
+    });
+
+    it("hydrates the ticking time waited without a mismatch", () => {
+      const { html, recovered } = hydrateAcrossBoundary(
+        <SessionDetailHeader session={waiting()} />,
+        {
+          serverNow: Date.parse(since) + 61_000,
+          clientNow: Date.parse(since) + 64_000,
+        },
+      );
+      expect(html).toContain("Waiting for a sandbox machine");
+      expect(recovered).toEqual([]);
+    });
+  });
+
   it("shows plural turns for multi-turn sessions", () => {
     render(<SessionDetailHeader session={view({ turns: 3 })} />);
     expect(screen.getByText("3 turns")).toBeInTheDocument();

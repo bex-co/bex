@@ -1217,8 +1217,9 @@ func rbacSubject(name string) rbacv1.Subject {
 // namespace-create so there is no manual per-workspace RoleBinding churn.
 //
 // A sandbox namespace (`<ws>-sandbox`) is driven by the OpenSandbox lifecycle
-// server and controller, not the operator, bex-api's pod reads, or the SSH
-// gateway. The hosting namespace binds operator + bex-api + ssh-gateway.
+// server and controller, not the operator. bex-api gets only a read of the
+// pods there (bex-tenant-sandbox-api), never the hosting role's Secrets. The
+// hosting namespace binds operator + bex-api + ssh-gateway.
 func tenantRoleBindings(namespace, regime string) []*rbacv1.RoleBinding {
 	switch regime {
 	case RegimeHosting:
@@ -1236,6 +1237,10 @@ func tenantRoleBindings(namespace, regime string) []*rbacv1.RoleBinding {
 			// for running-instance SSH, now bound in the sandbox regime too so
 			// pods/exec stays confined to the gateway (never bex-api, Option A).
 			tenantRoleBinding(namespace, "bex-tenant-ssh-gateway", sshGatewaySA),
+			// bex-api reads a sandbox create's pod while the create waits, so a
+			// pod-ready timeout names its cause (w10/m497): pods get/list
+			// only, never the hosting role's Secrets.
+			tenantRoleBinding(namespace, "bex-tenant-sandbox-api", apiSA),
 			// Sandbox hibernation resume-pull (w3/m42 t002, ADR042 D5): the
 			// operator's SandboxNamespaceRegistryReconciler mints the per-workspace
 			// `bex-snapshot-pull` Secret here — get/create/update/patch (label

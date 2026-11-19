@@ -159,6 +159,8 @@ export type AgentAutomationRun = {
   fireAt: Maybe<Scalars['String']['output']>;
   missedTicks: Scalars['Int']['output'];
   outcome: Scalars['String']['output'];
+  /** Where the session the run started stands: waiting for a sandbox machine, or a start that failed and why; null when the run started none or its session was deleted. */
+  session: Maybe<AgentAutomationRunSession>;
   sessionId: Maybe<Scalars['String']['output']>;
   settledAt: Maybe<Scalars['String']['output']>;
 };
@@ -168,6 +170,19 @@ export type AgentAutomationRunList = {
   automationId: Scalars['String']['output'];
   nextCursor: Maybe<Scalars['String']['output']>;
   runs: Array<AgentAutomationRun>;
+};
+
+/** An automation run's session as the run's activity shows it (ADR047 § w10/m497). */
+export type AgentAutomationRunSession = {
+  __typename: 'AgentAutomationRunSession';
+  /** A failed start's cause, beside failureReasonCode SANDBOX_START_FAILED only: pool_full, image_pull, runtime, quota or unknown. */
+  failureCause: Maybe<Scalars['String']['output']>;
+  failureReasonCode: Maybe<Scalars['String']['output']>;
+  state: Scalars['String']['output'];
+  /** What a working session waits for before its turn can start: sandbox_capacity while no sandbox machine has room for it; null otherwise. */
+  waitingFor: Maybe<Scalars['String']['output']>;
+  /** When the session began waiting for what waitingFor names; null when it does not wait. */
+  waitingSince: Maybe<Scalars['String']['output']>;
 };
 
 /** When an automation fires (ADR101 D2). */
@@ -468,6 +483,8 @@ export type AgentSession = {
   /** The repository environment build (arb-…) the latest turn's sandbox booted from; null when it ran the setup steps. */
   environmentBuildId: Maybe<Scalars['String']['output']>;
   expiresAt: Maybe<Scalars['String']['output']>;
+  /** A failed start's cause, beside failureReasonCode SANDBOX_START_FAILED only: pool_full, image_pull, runtime, quota or unknown. */
+  failureCause: Maybe<Scalars['String']['output']>;
   failureReason: Maybe<Scalars['String']['output']>;
   failureReasonCode: Maybe<Scalars['String']['output']>;
   headSha: Maybe<Scalars['String']['output']>;
@@ -508,6 +525,10 @@ export type AgentSession = {
   turns: Maybe<Scalars['Int']['output']>;
   updatedAt: Scalars['String']['output'];
   url: Maybe<Scalars['String']['output']>;
+  /** What a working session waits for before its turn can start: sandbox_capacity while no sandbox machine has room for it; null otherwise. */
+  waitingFor: Maybe<Scalars['String']['output']>;
+  /** When the session began waiting for what waitingFor names; null when it does not wait. */
+  waitingSince: Maybe<Scalars['String']['output']>;
 };
 
 export type AgentSessionCapabilities = {

@@ -30,6 +30,7 @@ import type {
   AgentSessionView,
 } from "@/features/agent-sessions/types";
 import { AgentSessionsEmptyState } from "@/features/agent-sessions/components/empty-state";
+import { SandboxWaitStatus } from "@/features/agent-sessions/components/sandbox-wait-status";
 import {
   agentSessionStatusPhraseKey,
   sessionTitleShort,
@@ -384,7 +385,13 @@ export function SessionList({
                 </span>
                 <MetaLine
                   parts={[
-                    t(agentSessionStatusPhraseKey(s)),
+                    // A turn waiting for a sandbox machine says so, with the
+                    // time it has waited (w10/m497), in the phrase's place.
+                    s.waitingFor ? (
+                      <SandboxWaitStatus session={s} />
+                    ) : (
+                      t(agentSessionStatusPhraseKey(s))
+                    ),
                     s.repo,
                     s.createdBy && (
                       <SessionCreatorLabel subject={s.createdBy} />
@@ -450,6 +457,9 @@ export function SessionList({
                   <MetaLine
                     className="font-normal"
                     parts={[
+                      // The phase chip still reads its starting phase; the
+                      // line says why it has not started (w10/m497).
+                      s.waitingFor && <SandboxWaitStatus session={s} />,
                       s.repo,
                       s.branch && <span className="font-mono">{s.branch}</span>,
                       s.agentConfig.agent && (

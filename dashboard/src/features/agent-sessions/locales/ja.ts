@@ -356,6 +356,31 @@ const jaAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Detail page — CTA on a capacity failure; opens the change-plan dialog",
   },
+  "agentSessions.failureCause.pool_full": {
+    message: "空きのあるサンドボックスマシンがありませんでした",
+    description:
+      "Failed-start cause line (session callout, automation runs) — no sandbox machine had room for the session's machine for the whole wait (w10/m497)",
+  },
+  "agentSessions.failureCause.image_pull": {
+    message: "サンドボックスのイメージを取得できませんでした",
+    description:
+      "Failed-start cause line — the sandbox's container image did not pull (w10/m497)",
+  },
+  "agentSessions.failureCause.runtime": {
+    message: "サンドボックスのランタイムが起動できませんでした",
+    description:
+      "Failed-start cause line — the sandbox runtime did not start the session's machine (w10/m497)",
+  },
+  "agentSessions.failureCause.quota": {
+    message: "ワークスペースのサンドボックスのクォータで拒否されました",
+    description:
+      "Failed-start cause line — the workspace's sandbox quota refused the session's machine (w10/m497)",
+  },
+  "agentSessions.failureCause.unknown": {
+    message: "プラットフォームの問題",
+    description:
+      "Failed-start cause line — the sandbox did not start for a cause on bex's side that bex-api could not name (w10/m497)",
+  },
   "agentSessions.provisioning": {
     message: "サンドボックスを起動しています…",
     description:
@@ -985,6 +1010,11 @@ const jaAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.statusPhrase.working": {
     message: "作業中…",
     description: "Sidebar status phrase — session still converging",
+  },
+  "agentSessions.statusPhrase.waitingForSandbox": {
+    message: "サンドボックスマシンを待っています",
+    description:
+      "Session status (header, list rows, sidebar, conversation, automation runs) — the turn waits because no sandbox machine has room for it yet (w10/m497); the time waited follows where there is room",
   },
   "agentSessions.menuMore": {
     message: "その他の操作",

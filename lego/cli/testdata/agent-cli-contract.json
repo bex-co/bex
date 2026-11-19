@@ -20,6 +20,9 @@
     "prUrl": "https://github.com/acme/api/pull/412",
     "failureReason": "",
     "failureReasonCode": "",
+    "failureCause": "",
+    "waitingFor": "",
+    "waitingSince": null,
     "sshAddress": "ags-d0abc123def456ghij78@ssh.bex.co",
     "createdAt": "2026-11-05T10:00:00Z",
     "outcome": {

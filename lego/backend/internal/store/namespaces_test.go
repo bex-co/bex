@@ -427,9 +427,10 @@ func TestTenantRoleBindingsStampedPerNamespace(t *testing.T) {
 		}
 	}
 
-	// Sandbox namespace binds the OpenSandbox server/controller roles and the
-	// isolated SSH gateway's pods/exec role. The operator and bex-api never touch
-	// a sandbox namespace; lifecycle SAs live in opensandbox-system.
+	// Sandbox namespace binds the OpenSandbox server/controller roles, the
+	// isolated SSH gateway's pods/exec role and bex-api's pod read. The
+	// operator and bex-api's Secret-bearing role never touch a sandbox
+	// namespace; lifecycle SAs live in opensandbox-system.
 	sandbox := SandboxNamespace(tn.ID)
 	srvRB, ok := binding(sandbox, "bex-tenant-sandbox-server")
 	if !ok {
@@ -464,10 +465,20 @@ func TestTenantRoleBindingsStampedPerNamespace(t *testing.T) {
 		snapRB.Subjects[0].Name != "bex-controller-manager" || snapRB.Subjects[0].Namespace != "bex-system" {
 		t.Errorf("sandbox snapshot-pull binding missing/wrong: ok=%v ref=%+v subjects=%+v", ok, snapRB.RoleRef, snapRB.Subjects)
 	}
+	// bex-api reads a create's pod while it waits (w10/m497), through the
+	// pods-only role.
+	apiRB, ok := binding(sandbox, "bex-tenant-sandbox-api")
+	if !ok || apiRB.RoleRef.Name != "bex-tenant-sandbox-api" || len(apiRB.Subjects) != 1 ||
+		apiRB.Subjects[0].Name != "bex-api" || apiRB.Subjects[0].Namespace != "bex-system" {
+		t.Errorf("sandbox bex-api pod-read binding missing/wrong: ok=%v ref=%+v subjects=%+v", ok, apiRB.RoleRef, apiRB.Subjects)
+	}
 	for _, name := range []string{"bex-tenant-operator", "bex-tenant-api"} {
 		if _, ok := binding(sandbox, name); ok {
 			t.Errorf("sandbox must NOT bind %s", name)
 		}
+	}
+	if _, ok := binding(host, "bex-tenant-sandbox-api"); ok {
+		t.Error("hosting must NOT bind bex-tenant-sandbox-api")
 	}
 	if _, ok := binding(host, "bex-operator-snapshot-pull"); ok {
 		t.Error("hosting must NOT bind bex-operator-snapshot-pull")
