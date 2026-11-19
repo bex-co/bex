@@ -1,6 +1,6 @@
 # w5 · m370 — A spec change takes effect in seconds: the operator's App work queue is measured, alerted on and kept short
 
-**Worker:** worker5 **Goal:** the operator's App controller queue is visible on obs.bex.co, an alert fires when it backs up, and the cause of the intermittent minute-long lag is found and fixed, so a settings change such as maintenance mode reaches the cluster within seconds. **Status:** todo (t001 to t006 done; t007 reads production after the deploy that carries t003, see § Findings)
+**Worker:** worker5 **Goal:** the operator's App controller queue is visible on obs.bex.co, an alert fires when it backs up, and the cause of the intermittent minute-long lag is found and fixed, so a settings change such as maintenance mode reaches the cluster within seconds. **Status:** blocked (t001 to t006 done and shipped; t007 waits for production to run `500c5974b` for 24 h, see § Findings)
 
 ## Tasks (in order)
 
@@ -20,7 +20,7 @@ Total: **7 tasks, about 5h35m**.
 
 1. `workqueue_queue_duration_seconds`, `workqueue_work_duration_seconds`, `workqueue_depth` and `controller_runtime_reconcile_time_seconds` for the App controller (`name`/`controller` = `app`) are stored by Prometheus and paneled on the ADR088 dashboard at obs.bex.co.
 2. On production (re-scoped 2026-11-19 from the mock cluster, see § Findings), the App queue's 24 h p95 wait is 5 s or less after t003, and an App whose spec change or deploy is in flight when the operator restarts is not queued behind the restart's fleet sweep (t002 records the before).
-3. On production, after the deploy: a 24 h reading of the queue wait is recorded in § Findings and appended to [w21/012](../../w21/done/012.md); turning maintenance mode on and then off on a Starter web service in `bex-canary` flips the public host within 15 s, in 5 of 5 tries (round 181 measured 80 s and 55 s).
+3. On production, after the deploy: a 24 h reading of the queue wait is recorded in § Findings and appended to [w21/012](../../../w21/done/012.md); turning maintenance mode on and then off on a Starter web service in `bex-canary` flips the public host within 15 s, in 5 of 5 tries (round 181 measured 80 s and 55 s).
 4. `BexOperatorReconcileQueueSlow` and its promtool test pass in `scripts/gitops-validate.sh`.
 5. Every fixture is deleted and each GET answers 404.
 
@@ -28,8 +28,8 @@ Total: **7 tasks, about 5h35m**.
 
 - **Source:** `/pm-brainstorm for w5` round 9, item 2 (2026-11-12), filed by `/pmx 1,2,3,4` with w5 chosen. Re-checked at filing against `origin/main` `98b3587a8`.
 - **Evidence:**
-  - [w4/603](../../w4/603.md): enabling maintenance mode took ~80 s to repoint the host's Ingress and disabling it ~55 s, while the same two changes minutes later took 11 s and 7 s. (w4/603's own fix, the activator's wrong 503 during the lag, stays with w4.)
-  - [w21/012](../../w21/done/012.md) addendum (round 181): an image deploy sat `queued` 3 m 06 s; "bex-api's projection to the App CR was fast while the operator's reconcile of that App lagged by a minute or more, intermittently … the operator's workqueue is the first thing to read once logs are available". The note's earlier Blueprint deploys sat `queued` for 20–35 minutes.
+  - [w4/603](../../../w4/603.md): enabling maintenance mode took ~80 s to repoint the host's Ingress and disabling it ~55 s, while the same two changes minutes later took 11 s and 7 s. (w4/603's own fix, the activator's wrong 503 during the lag, stays with w4.)
+  - [w21/012](../../../w21/done/012.md) addendum (round 181): an image deploy sat `queued` 3 m 06 s; "bex-api's projection to the App CR was fast while the operator's reconcile of that App lagged by a minute or more, intermittently … the operator's workqueue is the first thing to read once logs are available". The note's earlier Blueprint deploys sat `queued` for 20–35 minutes.
   - Nothing can read it today: the `bex-operator` scrape job (`deploy/gitops/base/prometheus.yaml:556-570`) keeps only `bex_(build|datastore).*`, and its comment says to add a family "when something actually consumes it". This milestone's alert and panel are those consumers.
   - Production runs `BEX_APP_RECONCILE_WORKERS=2` for every App in every workspace (`lego/operator/config/manager/manager.yaml:181`, read at `cmd/manager/main.go:409`). Builds are observed non-blocking every 5 s (`app_controller.go:1059`), and `app_controller.go` has 48 `RequeueAfter` sites; the controller is `Named("app")` with a generation-or-deletion predicate (`app_controller.go:7714-7740`).
 - **Goal linkage:** GOAL item 2 (basic observability for operation); Render parity first (ADR008) in effect, since a Render setting takes effect promptly.
@@ -55,7 +55,7 @@ Total: **7 tasks, about 5h35m**.
 - **Or measure production instead.** t001's series reach Prometheus with the next production deploy. The Builds dashboard's operator panels (obs.bex.co, ADR088 ops gate) then show the queue wait, depth, reconcile time and busy workers under the real fleet, which is the evidence t002 exists to find. Reading them needs a worker with the ops-workspace gate, or the user pasting the panels.
 - **Either path unblocks t002 and t003;** t005–t007 follow.
 
-### 2026-11-16 — production readings from [w21/m421](../../w21/done/m421/README.md) (loopx w21; no change to this milestone's verdict or tasks)
+### 2026-11-16 — production readings from [w21/m421](../../../w21/done/m421/README.md) (loopx w21; no change to this milestone's verdict or tasks)
 
 w21/m421 read the operator's queue on production with the series t001 and t004 here shipped, and found and fixed its causes, so these numbers bear on this milestone's definition of done:
 
@@ -84,10 +84,15 @@ Production Prometheus (3 days kept), Loki and the operator's own `/metrics`, pin
   3. **Every deploy restarts the operator twice.** 50 pod creations in 71 h came in 25 pairs one to three minutes apart: Argo rolls the new digest, then `deploy.yml`'s "roll bex onto the freshly-pushed image" step runs `kubectl rollout restart deploy/bex-controller-manager` (the second ReplicaSet differs only in `kubectl.kubernetes.io/restartedAt`). The step's comment predates digest pinning. The first manager's sweep is cut off by the second's start.
 - **So a toggle made at a rollout waits up to about 17 s plus about 75 s, while one made minutes later takes seconds.** Round 181's 80 s and 55 s (w4/603, 2026-11-12 09:09 to 09:12) were not at a rollout: the operator's last handover that morning was at 07:26 (Loki). They were the CPU throttling w21/m421 fixed on 2026-11-16, when the queue's p95 was 95 to 145 s all day. The restart windows are what is left after that fix.
 - **Readers of the Builds panels:** `resets()` on the App controller's histograms counts about one per hour per pod. That is controller-runtime's native-histogram reset (`NativeHistogramMinResetDuration` 1 h), not a restart; `controller_runtime_reconcile_total` does not reset with it, and `rate()`/`increase()` are unaffected.
-- **Load:** none generated beyond the one Starter fixture (`m370-toggle`, deleted with the closeout). The fleet's own restarts were the reproduction.
+- **Load:** none generated beyond the one Starter fixture (`m370-toggle`, deleted at the end of the run: DELETE 204, then GET 404). The fleet's own restarts were the reproduction.
 
 ### 2026-11-19 — t003, t005, t006 (loopx w5)
 
 - **t003, the fix for what t002 measured.** (1) The stopping manager hands its lease back (`withLeaderElection`, `LeaderElectionReleaseOnCancel`), so the next one leads within the election's 2 s retry period instead of after the 15 s lease; envtest measures 15.3 s without it. (2) An App that is mid-change when a manager starts (deleting, an unobserved generation, a build or rollout in flight) is queued at the default priority, ahead of the start's `LowPriority` sweep (`inFlightFirstAtStart`, `internal/controller/startup_priority.go`). On production's fleet today that is 4 of 29 Apps (three failed releases whose generation stays unobserved, one failed rollout behind a serving release), so a real change waits behind at most a few passes. `BEX_APP_RECONCILE_WORKERS` stays 2: with changes out of the sweep, its length no longer reaches a tenant.
-- **Not changed here:** the second operator restart per deploy, filed as [w5/196](../196.md).
+- **Not changed here:** the second operator restart per deploy, filed as [w5/196](../../196.md).
 - **t005:** one comment applied; the envtest lookup's third copy kept (no shared test package). **t006:** the tests above fail against the pre-milestone code; `BexOperatorQueueMetricsMissing` makes an absent queue series loud, with promtool cases for absent and present.
+
+### 2026-11-19 — parked for t007 (loopx w5)
+
+- **Gate:** production's pin must carry `500c5974b` (t003), and 24 hours of readings after that roll (`date gate: 2026-11-20T15:00Z`; the deploy started 13:53Z, and a full deploy takes about 30 minutes).
+- **Then t007** (its § Context says how): the 24 h queue reading over a window that starts after the roll, the handovers in Loki (about 2 s once the stopping pod runs t003's binary), a maintenance toggle through an operator rollout within 15 s, the five toggle pairs of DoD 3, the w21/012 append, and the fixtures deleted (GET 404).
