@@ -1,0 +1,5 @@
+displayName: bex S3 metadata names
+type: middleware
+import: github.com/bex-co/bex-s3-metadata-case
+summary: Writes x-amz-meta-* response header names in lowercase, as S3 does.
+testData: {}

@@ -1278,9 +1278,9 @@ kubectl kustomize lego/operator/config/prod >"$tmp/bex-operator-prod.yaml"
 echo "==> Traefik mounts the current ConfigMap of every local plugin"
 # Each generated ConfigMap is "<volume>-<hash>"; Traefik mounts it under the
 # volume of the same base name (WebSocket/arrival meter, client-identity
-# sanitizer w8/m123).
+# sanitizer w8/m123, the S3 route's metadata-name case w21/113).
 plugin_cms="$(kubectl kustomize deploy/gitops/charts/traefik-plugins | yq -N 'select(.kind == "ConfigMap") | .metadata.name')"
-for want in bex-websocket-egress-plugin bex-client-ip-headers-plugin; do
+for want in bex-websocket-egress-plugin bex-client-ip-headers-plugin bex-s3-metadata-case-plugin; do
   if ! grep -qE "^$want-[a-z0-9]+$" <<<"$plugin_cms"; then
     echo "FAIL: charts/traefik-plugins generates no $want ConfigMap" >&2
     fail=1

@@ -20,6 +20,11 @@ deployment:
       configMap:
         # Content-hashed like the egress plugin above (w8/m123).
         name: bex-client-ip-headers-plugin-g57kf42ckt
+    - name: bex-s3-metadata-case-plugin
+      configMap:
+        # Content-hashed like the two above (w21/113): the S3 gateway's route
+        # runs it to send user-metadata names in lowercase.
+        name: bex-s3-metadata-case-plugin-k6d529fbhb
 # A second pod cannot bind the same host ports on the pinned edge node, so a
 # rolling update deadlocks with the new pod Pending. Recreate gives restarts
 # a deterministic metering-counter reset and a brief, explicit edge
@@ -40,6 +45,11 @@ experimental:
       moduleName: github.com/bex-co/bex-client-ip-headers
       mountPath: /plugins-local/src/github.com/bex-co/bex-client-ip-headers
       volumeName: bex-client-ip-headers-plugin
+    bexS3MetadataCase:
+      type: localPath
+      moduleName: github.com/bex-co/bex-s3-metadata-case
+      mountPath: /plugins-local/src/github.com/bex-co/bex-s3-metadata-case
+      volumeName: bex-s3-metadata-case-plugin
 # w1/m19 t003: platform pool
 nodeSelector:
   bex.co/pool: platform

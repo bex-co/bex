@@ -287,6 +287,17 @@ jobs:
           mkdir -p "$gopath/src/$module"
           cp "$plugin/clientipheaders.go" "$plugin/originserver_test.go" "$gopath/src/$module/"
           cd "$gopath" && GOPATH="$gopath" GO111MODULE=off timeout 300 "$RUNNER_TEMP/bin/yaegi" test "$module"
+      # The S3 metadata-name plugin is small enough that all of its tests run
+      # under Yaegi, its interpreted writer handed to compiled net/http code
+      # as Traefik hands it (w21/113).
+      - name: Traefik S3 metadata plugin under Yaegi
+        run: |
+          plugin=deploy/gitops/charts/traefik-plugins/s3metadatacase
+          gopath="$RUNNER_TEMP/yaegi-s3"
+          module="$(awk '/^module/ {print $2}' "$plugin/go.mod")"
+          mkdir -p "$gopath/src/$module"
+          cp "$plugin/s3metadatacase.go" "$plugin/s3metadatacase_test.go" "$gopath/src/$module/"
+          cd "$gopath" && GOPATH="$gopath" GO111MODULE=off timeout 300 "$RUNNER_TEMP/bin/yaegi" test "$module"
       - name: app log severity parsing in the pinned Alloy image
         run: python3 -m unittest scripts/test_log_shipper.py -v
       - name: log delivery failure and recovery in pinned Alloy and Loki
