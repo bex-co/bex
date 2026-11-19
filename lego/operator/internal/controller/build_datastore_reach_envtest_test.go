@@ -142,6 +142,100 @@ var _ = Describe("Build reach to the workspace's own datastores (w8/m129)", func
 	})
 })
 
+// w9/m495 end to end: a Blueprint's web service whose buildCommand queries a
+// sibling private service through fromService hostport (a literal
+// `<slug>:<port>` in spec.env). The build Job can resolve the bare slug from
+// the build namespace, its pods may reach the sibling's serving pods while it
+// runs, and every per-build policy is gone when it ends.
+var _ = Describe("Build reach to the workspace's own services (w9/m495)", func() {
+	ctx := context.Background()
+	const (
+		name    = "srv-m495-site"
+		sibling = "srv-m495-cms"
+		ws      = "tea-m495m495m495m495m495"
+		buildNS = "m495-builds"
+	)
+	nn := types.NamespacedName{Name: name, Namespace: ws}
+
+	It("grants the build its sibling service and revokes every half when it ends", func() {
+		for _, ns := range []string{ws, buildNS} {
+			_ = k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
+		}
+		cms := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: sibling, Namespace: ws, Labels: map[string]string{labelWorkspace: ws}},
+			Spec: appv1alpha1.AppSpec{Image: "ghcr.io/acme/cms:1", Type: appv1alpha1.TypePrivateService,
+				Tier: "starter", Subdomain: "cms-x9z2"},
+		}
+		Expect(k8sClient.Create(ctx, cms)).To(Succeed())
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ws, Labels: map[string]string{labelWorkspace: ws}},
+			Spec: appv1alpha1.AppSpec{
+				Repo: "https://github.com/acme/site", Branch: "main", Builder: "dockerfile", Port: 3000,
+				Env: []appv1alpha1.EnvVar{{Name: "CMS_HOSTPORT", Value: "cms-x9z2:10000"}},
+			},
+		}
+		Expect(k8sClient.Create(ctx, app)).To(Succeed())
+		r := &AppReconciler{Client: k8sClient, Scheme: k8sClient.Scheme(),
+			Mode: ModeKubernetes, Registry: "zot.test:5000", BuildNamespace: buildNS}
+		DeferCleanup(func() {
+			a := &appv1alpha1.App{}
+			if k8sClient.Get(ctx, nn, a) == nil {
+				Expect(k8sClient.Delete(ctx, a)).To(Succeed())
+				r.Registry = ""
+				for range 3 {
+					_, _ = r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+				}
+			}
+			_ = k8sClient.Delete(ctx, cms)
+			_ = k8sClient.Delete(ctx, &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: build.JobName(name, "gen-1"), Namespace: buildNS}})
+		})
+		reconcileN := func(n int) {
+			for range n {
+				_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+				Expect(err).NotTo(HaveOccurred())
+			}
+		}
+		egressKey := client.ObjectKey{Namespace: buildNS, Name: buildEgressPolicyName(name)}
+		policyKeys := []client.ObjectKey{egressKey,
+			{Namespace: ws, Name: buildIngressPolicyName(name)},
+			{Namespace: ws, Name: buildServiceIngressPolicyName(name)}}
+
+		By("dispatching a build that resolves the bare slug through the App namespace")
+		reconcileN(3)
+		job := &batchv1.Job{}
+		Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: buildNS, Name: build.JobName(name, "gen-1")}, job)).To(Succeed())
+		Expect(job.Spec.Template.Spec.DNSConfig).NotTo(BeNil())
+		Expect(job.Spec.Template.Spec.DNSConfig.Searches).To(Equal([]string{ws + ".svc.cluster.local"}))
+
+		By("granting the build pods the sibling's serving pods, any TCP port, in this workspace only")
+		egress := &networkingv1.NetworkPolicy{}
+		Expect(k8sClient.Get(ctx, egressKey, egress)).To(Succeed())
+		Expect(job.Spec.Template.Labels).To(Equal(mergeLabels(job.Spec.Template.Labels, egress.Spec.PodSelector.MatchLabels)),
+			"the egress policy must select the build Job's own pods")
+		Expect(egress.Spec.Egress).To(HaveLen(2), "datastore ports + the workspace's services")
+		serviceRule := egress.Spec.Egress[1]
+		Expect(serviceRule.To).To(HaveLen(1))
+		Expect(serviceRule.To[0].NamespaceSelector.MatchLabels).To(Equal(map[string]string{corev1.LabelMetadataName: ws}))
+		Expect(serviceRule.To[0].PodSelector.MatchExpressions).To(ContainElement(metav1.LabelSelectorRequirement{
+			Key: labelApp, Operator: metav1.LabelSelectorOpIn, Values: []string{sibling}}))
+		Expect(serviceRule.Ports).To(HaveLen(1))
+		Expect(serviceRule.Ports[0].Port).To(BeNil(), "a service listens on the port it chose")
+		Expect(*serviceRule.Ports[0].Protocol).To(Equal(corev1.ProtocolTCP))
+		serviceIngress := &networkingv1.NetworkPolicy{}
+		Expect(k8sClient.Get(ctx, policyKeys[2], serviceIngress)).To(Succeed())
+		Expect(serviceIngress.Spec.PodSelector).To(Equal(*serviceRule.To[0].PodSelector))
+		Expect(serviceIngress.Spec.Ingress[0].From[0].NamespaceSelector.MatchLabels).To(Equal(map[string]string{corev1.LabelMetadataName: buildNS}))
+		Expect(serviceIngress.Spec.Ingress[0].From[0].PodSelector.MatchLabels).To(Equal(egress.Spec.PodSelector.MatchLabels))
+
+		By("revoking every half when the build ends")
+		completeEnvtestJob(job, metav1.Now())
+		reconcileN(2)
+		for _, key := range policyKeys {
+			Expect(apierrors.IsNotFound(k8sClient.Get(ctx, key, &networkingv1.NetworkPolicy{}))).To(BeTrue(), key.String())
+		}
+	})
+})
+
 // mergeLabels returns base with extra laid over it; equal to base exactly when
 // extra is a subset of base.
 func mergeLabels(base, extra map[string]string) map[string]string {

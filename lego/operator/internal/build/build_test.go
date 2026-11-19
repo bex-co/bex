@@ -21,6 +21,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -1015,6 +1016,29 @@ func TestBuildJobWorkspaceLabel(t *testing.T) {
 	if j.Spec.Template.Labels["app.bex.co/workspace"] != "tea-abc" ||
 		j.Spec.Template.Labels["app.bex.co/app"] != o.Name {
 		t.Errorf("pod identity labels = %v", j.Spec.Template.Labels)
+	}
+}
+
+// w9/m495: fromService host/hostport inject a bare `<slug>`, which resolves
+// only through the App namespace's search path (ADR041 D2). A build in the
+// shared build namespace gets that path appended to its own; a build in the
+// App's namespace, or with no App namespace, keeps the cluster default.
+func TestBuildJobSearchesTheAppNamespace(t *testing.T) {
+	for _, builder := range []string{BuilderDockerfile, BuilderNative} {
+		o := opts()
+		o.Builder, o.Namespace, o.AppNamespace = builder, "bex-build", "tea-abc"
+		dns := BuildJob(o, o.ImageRef()).Spec.Template.Spec.DNSConfig
+		if dns == nil || !slices.Equal(dns.Searches, []string{"tea-abc.svc.cluster.local"}) ||
+			len(dns.Nameservers) != 0 || len(dns.Options) != 0 {
+			t.Errorf("%s: dnsConfig = %+v, want exactly the App namespace's search domain", builder, dns)
+		}
+	}
+	for name, appNs := range map[string]string{"same namespace": "default", "no App namespace": ""} {
+		o := opts()
+		o.AppNamespace = appNs
+		if dns := BuildJob(o, o.ImageRef()).Spec.Template.Spec.DNSConfig; dns != nil {
+			t.Errorf("%s: dnsConfig = %+v, want the cluster default", name, dns)
+		}
 	}
 }
 

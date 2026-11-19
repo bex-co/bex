@@ -1286,6 +1286,19 @@ func buildctlRecipeArgs(o Options, dockerfileDir string) []string {
 	return args
 }
 
+// appNamespaceDNS gives a build that runs outside its App's namespace that
+// namespace's DNS search path, so the bare `<slug>` a fromService host/hostport
+// injects resolves in the build as it does at runtime (docs/ADR041 D2,
+// w9/m495). BuildKit's RUN steps inherit the pod's resolv.conf. It adds a name
+// only: what the build may reach is decided by the operator's build-reach
+// NetworkPolicies.
+func appNamespaceDNS(o Options) *corev1.PodDNSConfig {
+	if o.AppNamespace == "" || o.AppNamespace == o.Namespace {
+		return nil
+	}
+	return &corev1.PodDNSConfig{Searches: []string{o.AppNamespace + ".svc.cluster.local"}}
+}
+
 func BuildJob(o Options, image string) *batchv1.Job {
 	buildkitImage := cmp.Or(o.BuildkitImage, defaultBuildkitImage)
 	gitImage := cmp.Or(o.GitImage, defaultGitImage)
@@ -1508,6 +1521,7 @@ fi
 			clone,
 		},
 		Containers: []corev1.Container{pusher},
+		DNSConfig:  appNamespaceDNS(o),
 	}
 	// After the clone, so a build that fails on tenant input (a bad ref) does
 	// not first spend time pulling a cache it will never use.

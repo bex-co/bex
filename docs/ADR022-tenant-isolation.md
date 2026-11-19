@@ -211,13 +211,45 @@ The original w7/m2 text follows; its "all Linux capabilities dropped" now descri
 | A build pod forges another App's labels | Only the operator (Job templates) and kpack (from operator-written Images) create pods in `bex-build`. bex-api has no create verb there, and tenants have no Kubernetes identity. The App UID is server-minted. `bex-build-job-shape` admission pins every Job author's template. | Closed |
 | Tenant RUN steps spoof another pod's IP with `NET_RAW`/`NET_ADMIN` | Those capabilities stay in the pod's user and network namespaces. Cilium derives identity from pod labels, not packet contents, and drops egress whose source IP is not the endpoint's own. | Closed (Cilium invariant; `verify-build-isolation.sh` remains the live check) |
 | A build reaches its own workspace's protected-environment datastores | The isolation-aware selector mirrors `allow-same-namespace`. | Closed |
-| A build reaches own-workspace non-datastore services | Port-limited to 5432/6379/6380, so only a tenant's own pod listening on those ports in its own workspace is reachable. That is within the approved boundary (own workspace). Private services on other ports stay unreachable from builds. | Accepted (own workspace) |
+| A build reaches own-workspace non-datastore services | Port-limited to 5432/6379/6380, so only a tenant's own pod listening on those ports in its own workspace is reachable. That is within the approved boundary (own workspace). **Superseded 2026-11-19 (w9/m495):** builds now reach the workspace's own paid web and private services on every TCP port, by design; see [§ Build reach to the owning workspace's services](#build-reach-to-the-owning-workspaces-services-w9m495-2026-11-19). | Accepted (own workspace) |
 | A build reaches platform namespaces, nodes or metadata | No peer names them. `allow-required-egress` still excludes private ranges, and `deny-build-node-and-metadata-egress` is a Cilium deny that overrides any allow. | Unchanged |
 | The credential leaks through logs or the image | The operator never logs values; errors name variables and Secrets only. A native build mounts the value as a BuildKit secret, so it is not in any layer. A Dockerfile build gets it as a build arg, which Docker records in image history when a `RUN` uses it. That is Render's documented build-arg translation, and it already applied to the service's own Secret env (w1/m178). The image lives in the App's own ACL-scoped Zot repository. A build command that echoes the value prints it into the workspace's own build log, as on Render. | Accepted (Render parity, same workspace) |
 | A stale grant outlives the build | Both policies select only this App lifetime's build pods, so they grant nothing while no build runs. They are removed at the terminal observation (best-effort, retried on the next terminal pass), and the finalizer removes them with the App. | Accepted |
 | Same-named Apps in two workspaces collide on the build-namespace policy name | Service ids are globally unique. On collision `checkOwnedArtifact` refuses to overwrite another lifetime's policy and the build fails closed. | Closed |
 
-**Residuals.** Two things are left open. First, private-service reach from a build (`fromService` `host`/`hostport` to a web or private service) is not granted; only datastores are. Second, kpack builds stay credential-less (w1/121). Both are recorded in ADR018.
+**Residuals.** Two things were left open. First, private-service reach from a build (`fromService` `host`/`hostport` to a web or private service) was not granted; only datastores were. w9/m495 closed it (next section). Second, kpack builds stay credential-less (w1/121), and get no build reach either. That one is recorded in ADR018.
+
+## Build reach to the owning workspace's services (w9/m495, 2026-11-19)
+
+**Decision source.** The same 2026-10-29 user decision as the datastore reach ([w8/m129 unblock record](../.pm/w8/done/m129/README.md)): a build may reach only its own workspace's databases **and services**, and never another workspace. w8/m129 shipped only the datastore half and recorded the service half as an open gap in ADR018, not as a signed-off divergence. Render parity requires closing it.
+
+**Why.** On Render a build is on the workspace's private network: the free-plan migrate-in-build recipe dials the database's internal hostname. A service can listen there on "almost any port" ([render.com/docs/private-network](https://render.com/docs/private-network)). So a Blueprint whose `buildCommand` queries a sibling private CMS or API through `fromService` `host`/`hostport` (a static generator, Next.js, Astro or Gatsby on a web service) builds on Render. On bex it failed twice over. The policies opened only datastore ports, and the bare `<slug>` that `fromService` injects ([ADR041](ADR041-service-addresses.md) D3) did not even resolve from `bex-build`, because it resolves only through the App namespace's DNS search path (D2).
+
+**Mechanism.** The datastore grant above is unchanged. The service grant sits beside it, converged and revoked with it on the same passes (`reconcileBuildReach`, `endBuildReach`, `revokeBuildReach` in `lego/operator/internal/controller/build_datastore_reach.go`):
+
+1. **Eligible targets.** The operator lists the Apps in the build's own canonical workspace namespace that receive private traffic (`AppSpec.ReceivesPrivateTraffic`: a paid `web_service`, including the empty type, or a `private_service`). The target selector is the isolation-aware selector of the datastore grant, AND `app.bex.co/app In [those names]`, AND `app.bex.co/app-id Exists`. The last term is the stable Services' own selector (`privateServiceProjection`): it matches serving pods only, never a pre-deploy, build or disk-backup Job pod, which carry `app.bex.co/app` alone. Workers, cron jobs, static sites and free web services are never targets, because on Render they receive no private traffic. The list is re-read on every build pass, so a sibling created during a build is admitted on the next pass, and one deleted is dropped.
+2. **Any TCP port.** A service listens wherever it chose: `PORT` (10000 by default), a configured port, or every port its image declares ([ADR089](ADR089-render-container-compatibility.md)). The service rule therefore names `protocol: TCP` with no port. UDP and SCTP stay closed.
+3. **Policies.** `bex-build/bld-<app>-datastore-egress` keeps its name, so an in-flight build's grant is still revoked across the upgrade. It gains a second egress rule, to the same single namespace (`kubernetes.io/metadata.name`), selecting the service targets on any TCP port. A new workspace-side half, `<ws>/<app>-build-service-ingress`, selects the same service targets and admits only this App lifetime's build pods from the build namespace, on any TCP port. Like `<app>-build-ingress`, the App owns it through a controller reference. When the workspace has no eligible service, the egress rule is omitted and the service ingress is deleted.
+4. **Static sites.** A static site's own build gets no service reach: Render's static sites are not on the private network. Its m129 datastore reach is unchanged.
+5. **Name resolution.** A build Job that runs outside its App namespace gets `dnsConfig.searches: [<App namespace>.svc.cluster.local]`, appended after the cluster's own search path (`build.appNamespaceDNS`). BuildKit's `RUN` steps inherit the pod's resolv.conf, so the bare `<slug>` resolves in the build as it does at runtime. This adds a name only. Reach is still decided by the policies, and DNS already answers any namespace's FQDN.
+
+**Threat review.**
+
+| Threat | Analysis | Verdict |
+| --- | --- | --- |
+| A build in workspace A reaches a service in workspace B | Unchanged by construction: every egress peer names exactly one namespace, A's own, by the API-server-owned `kubernetes.io/metadata.name`. Both workspace-side halves live in A's namespace and are keyed to A's App UID. B's namespace holds no grant naming A's build. Neither side can name B, and the DNS search domain names A's namespace only. | Closed (`TestBuildServiceReachIsOwnWorkspaceAndScopeOnly` evaluates both directions) |
+| A build crosses an isolated environment | The service targets start from the datastore grant's isolation-aware selector. An ordinary build matches only pods without `app.bex.co/network-isolation`, and an isolated build only pods of its own `environment-id`. A service whose environment becomes isolated gets the label in place (`relabelAppPods`) and drops out of the selector without a roll. | Closed |
+| A build reaches a non-service pod in its own workspace on an arbitrary port (a datastore's admin port, the Key Value internal proxy, a pre-deploy or backup Job) | The service rule matches only pods that carry `app.bex.co/app` naming an eligible App and `app.bex.co/app-id`. Datastore, proxy and Job pods carry neither pairing, so they keep the datastore ports only, as before. | Closed |
+| A build reaches a worker, cron job or free web service | They are never listed. A free web service is also behind `deny-free-plan-private-ingress`, whose `ingressDeny` from any `app.bex.co/workspace` endpoint covers build pods, which carry that label. | Closed (Render: they receive no private traffic) |
+| A tenant labels its own pod to become a target | Tenants have no Kubernetes identity. Pod labels are set by the operator from the App CR (`appPodLabels`), and bex-api writes the App CR. A tenant can only create a paid web or private service, which is a legitimate target. | Closed |
+| A build pod forges another App's labels, or spoofs an IP | Unchanged from the datastore review: only operator- and kpack-authored pods run in `bex-build`, `bex-build-job-shape` pins every Job template, and Cilium derives identity from labels and drops spoofed sources. | Closed |
+| A build reaches the platform, nodes or metadata | No peer names them. `deny-build-node-and-metadata-egress` still overrides any allow. | Unchanged |
+| A build exfiltrates from, or writes to, a sibling service | It is the same workspace's code, with the same reach the workspace's own runtime pods already have through `allow-same-namespace`. That is the approved boundary, and it matches Render's private network. | Accepted (own workspace, Render parity) |
+| A stale grant outlives the build | All three policies select only this App lifetime's build pods. They are revoked at the terminal observation, the finalizer reclaims the build-namespace half, and the App owns both workspace halves. Revocation on cancel stays w9/124. | Accepted |
+
+**Invariants.** (1) Every build-reach peer names exactly the App's own canonical workspace namespace. (2) Every target selector carries the isolation term. (3) The service rule is TCP-only and selects serving pods of paid web and private services only. (4) The legacy shared namespace and same-namespace builds get no grant (`buildReachEligible`). (5) Protected operator Secrets are still never projected into a build. `TestBuildServiceReachIsOwnWorkspaceAndScopeOnly`, `TestBuildServiceReachFollowsTheWorkspacesServices`, `TestBuildJobSearchesTheAppNamespace` and the w9/m495 envtest pin them.
+
+**Residuals.** kpack builds get no build reach (w1/121). A canceled build's policies stay until the next terminal pass or App deletion (w9/124). Both grant nothing while no build of that App lifetime runs.
 
 ## Datastore pod labels
 
@@ -227,23 +259,26 @@ The original w7/m2 text follows; its "all Linux capabilities dropped" now descri
 
 ## Reachability matrix (t005)
 
-| Probe                                          | Direction | Expected |
-| ---------------------------------------------- | --------- | -------- |
-| workspace-A pod → workspace-B pod              | deny      | BLOCKED  |
-| workspace-A pod → workspace-B Postgres         | deny      | BLOCKED  |
-| workspace-A pod → workspace-B Valkey           | deny      | BLOCKED  |
-| workspace-A pod → bex-api :8091                | deny      | BLOCKED  |
-| workspace-A pod → OpenBao :8200                | deny      | BLOCKED  |
-| workspace-A pod → Prometheus :9090             | deny      | BLOCKED  |
-| workspace-A pod → zot :5000                    | deny      | BLOCKED  |
-| workspace-A pod → `169.254.169.254` (metadata) | deny      | BLOCKED  |
-| workspace-A pod → node IP `:10250` (kubelet)   | deny      | BLOCKED  |
-| workspace-A pod → workspace-A private svc      | allow     | PASSES   |
-| workspace-A pod → its own Postgres             | allow     | PASSES   |
-| workspace-A pod → https://example.com          | allow     | PASSES   |
-| Traefik → workspace-A pod via Ingress URL      | allow     | PASSES   |
-| workspace-A build → its own Postgres (w8/m129) | allow     | PASSES   |
-| workspace-A build → workspace-B Postgres       | deny      | BLOCKED  |
+| Probe                                                 | Direction | Expected |
+| ----------------------------------------------------- | --------- | -------- |
+| workspace-A pod → workspace-B pod                     | deny      | BLOCKED  |
+| workspace-A pod → workspace-B Postgres                | deny      | BLOCKED  |
+| workspace-A pod → workspace-B Valkey                  | deny      | BLOCKED  |
+| workspace-A pod → bex-api :8091                       | deny      | BLOCKED  |
+| workspace-A pod → OpenBao :8200                       | deny      | BLOCKED  |
+| workspace-A pod → Prometheus :9090                    | deny      | BLOCKED  |
+| workspace-A pod → zot :5000                           | deny      | BLOCKED  |
+| workspace-A pod → `169.254.169.254` (metadata)        | deny      | BLOCKED  |
+| workspace-A pod → node IP `:10250` (kubelet)          | deny      | BLOCKED  |
+| workspace-A pod → workspace-A private svc             | allow     | PASSES   |
+| workspace-A pod → its own Postgres                    | allow     | PASSES   |
+| workspace-A pod → https://example.com                 | allow     | PASSES   |
+| Traefik → workspace-A pod via Ingress URL             | allow     | PASSES   |
+| workspace-A build → its own Postgres (w8/m129)        | allow     | PASSES   |
+| workspace-A build → workspace-B Postgres              | deny      | BLOCKED  |
+| workspace-A build → its own private service (w9/m495) | allow     | PASSES   |
+| workspace-A build → workspace-B private service       | deny      | BLOCKED  |
+| workspace-A build → an isolated environment's service | deny      | BLOCKED  |
 
 The metadata + node DENY probes and the external-egress ALLOW counter-probe are asserted by `scripts/verify-tenant-isolation.sh` (w7/m4); its egress-probe pod carries a per-App policy so it faithfully models a real tenant pod under the CNP.
 
@@ -288,7 +323,7 @@ clone init container -> BuildKit init container -> Skopeo push init container ->
 
 BuildKit runs as root inside a Kubernetes Pod user namespace (`hostUsers: false`) with the Kubernetes 1.34 `UserNamespacesSupport` gate and containerd 2.3/runc 1.5 production prerequisites. Namespaced capabilities let the OCI worker mount snapshots without host privilege. Its default OCI process sandbox is enabled; `--oci-worker-no-process-sandbox` is forbidden by tests. Dockerfile `RUN` processes therefore cannot see or ptrace the BuildKit daemon PID. An unconfined seccomp/AppArmor profile remains limited to the BuildKit container inside that Pod user namespace; clone, push, sign, publish, and pre-deploy containers retain restricted contexts.
 
-Every direct execution Pod also disables service-account-token automount, carries App/workspace labels, selects `bex.co/pool=tenant`, and runs in `bex-build` behind ingress/egress default-deny. **Amended 2026-10-29 (w8/m129):** the default-deny keeps one operator-generated exception. While a native or Dockerfile build runs, its own pods may reach datastore ports in the App's own workspace namespace, and nothing else. See [§ Build reach to the owning workspace's datastores](#build-reach-to-the-owning-workspaces-datastores-w8m129-2026-10-29). Static publish and pre-deploy use the same common hardening source. kpack's generated build identity disables token automount and carries the same labels/tenant placement through its supported pod-template fields.
+Every direct execution Pod also disables service-account-token automount, carries App/workspace labels, selects `bex.co/pool=tenant`, and runs in `bex-build` behind ingress/egress default-deny. **Amended 2026-10-29 (w8/m129):** the default-deny keeps one operator-generated exception. While a native or Dockerfile build runs, its own pods may reach datastore ports in the App's own workspace namespace, and nothing else. See [§ Build reach to the owning workspace's datastores](#build-reach-to-the-owning-workspaces-datastores-w8m129-2026-10-29). **Amended 2026-11-19 (w9/m495):** the same exception also admits the workspace's own paid web and private services on any TCP port ([§ Build reach to the owning workspace's services](#build-reach-to-the-owning-workspaces-services-w9m495-2026-11-19)). Static publish and pre-deploy use the same common hardening source. kpack's generated build identity disables token automount and carries the same labels/tenant placement through its supported pod-template fields.
 
 Repository-backed Docker services may bind a workspace credential for a private `FROM` (w6/m34). The operator copies only that docker config plus the BuildKit HTTP-registry resolver config into a deterministic build Secret; it is no longer merged with the output credential. Native, buildpack, and direct static-site sources reject this field. The App finalizer deletes the derived Secret.
 

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -43,9 +44,11 @@ import (
 //   - the build receives every spec.env SecretKeyRef (fromDatabase, Key Value
 //     fromService) through the App-owned merged env Secret it already mounts,
 //     never as a literal in the Job spec (readBuildEnvRefs);
-//   - a pair of operator-owned NetworkPolicies opens exactly one path: this
-//     App's build pods → datastore ports in the App's own workspace namespace
-//     (reconcileBuildDatastoreReach).
+//   - operator-owned NetworkPolicies open exactly one path: this App's build
+//     pods → its own workspace namespace, on datastore ports and, since
+//     w9/m495, to the workspace's own paid web and private services on any
+//     TCP port, so fromService host/hostport works in the build as at runtime
+//     (reconcileBuildReach).
 
 // errBuildEnvRefPending marks a referenced connection Secret that does not
 // exist yet — a Blueprint's database is still being created. The build waits
@@ -138,6 +141,50 @@ func buildReachPorts() []networkingv1.NetworkPolicyPort {
 	return ports
 }
 
+// buildServicePorts is every TCP port: a service listens where it chose (PORT,
+// a configured port, or every port its image declares — ADR089), and Render's
+// private network carries "almost any port" (w9/m495).
+func buildServicePorts() []networkingv1.NetworkPolicyPort {
+	tcp := corev1.ProtocolTCP
+	return []networkingv1.NetworkPolicyPort{{Protocol: &tcp}}
+}
+
+// buildReachServices names the Apps in app's namespace its build may dial on
+// any TCP port: those that receive private-network traffic
+// (ReceivesPrivateTraffic: a paid web or private service). Workers, cron jobs,
+// static sites and free web services receive none, as on Render. A static
+// site's own build gets none either: Render's static sites are not on the
+// private network.
+func (r *AppReconciler) buildReachServices(ctx context.Context, app *appv1alpha1.App) ([]string, error) {
+	if app.Spec.Type == appv1alpha1.TypeStaticSite {
+		return nil, nil
+	}
+	var apps appv1alpha1.AppList
+	if err := r.List(ctx, &apps, client.InNamespace(app.Namespace)); err != nil {
+		return nil, fmt.Errorf("listing the workspace's services: %w", err)
+	}
+	var names []string
+	for _, a := range apps.Items {
+		if a.DeletionTimestamp.IsZero() && a.Spec.ReceivesPrivateTraffic() {
+			names = append(names, a.Name)
+		}
+	}
+	slices.Sort(names) // a stable spec, so an unchanged set writes nothing
+	return names, nil
+}
+
+// buildServiceTargets narrows buildReachTargets to the serving pods of
+// services: labelApp names the App, and labelAppID marks a runtime pod, as the
+// stable Services select them (privateServiceProjection) — Job pods
+// (pre-deploy, build, disk backup) carry labelApp alone.
+func buildServiceTargets(app *appv1alpha1.App, services []string) metav1.LabelSelector {
+	targets := buildReachTargets(app)
+	targets.MatchExpressions = append(targets.MatchExpressions,
+		metav1.LabelSelectorRequirement{Key: labelApp, Operator: metav1.LabelSelectorOpIn, Values: services},
+		metav1.LabelSelectorRequirement{Key: labelAppID, Operator: metav1.LabelSelectorOpExists})
+	return targets
+}
+
 // buildReachTargets selects the workspace pods a build may reach, honoring a
 // protected environment exactly as allow-same-namespace does: an ordinary
 // App's build reaches only pods outside every isolated environment, and an
@@ -153,12 +200,16 @@ func buildReachTargets(app *appv1alpha1.App) metav1.LabelSelector {
 }
 
 // buildEgressPolicyName is the bex-build half: this App's build pods may leave
-// toward its workspace namespace. buildIngressPolicyName is the workspace
-// half: the workspace's datastores admit exactly those pods.
-func buildEgressPolicyName(app string) string  { return build.JobName(app, "datastore-egress") }
-func buildIngressPolicyName(app string) string { return app + "-build-ingress" }
+// toward its workspace namespace (the name predates service reach and stays,
+// so a running build's grant is revoked across an upgrade).
+// buildIngressPolicyName is the workspace half for datastore ports, and
+// buildServiceIngressPolicyName for the workspace's services: each admits
+// exactly those pods.
+func buildEgressPolicyName(app string) string         { return build.JobName(app, "datastore-egress") }
+func buildIngressPolicyName(app string) string        { return app + "-build-ingress" }
+func buildServiceIngressPolicyName(app string) string { return app + "-build-service-ingress" }
 
-// buildReachEligible reports whether app may receive build→datastore reach. The
+// buildReachEligible reports whether app may receive build reach. The
 // build must run outside the App namespace (a same-namespace build already has
 // allow-same-namespace), and the App namespace must be the workspace's own
 // canonical namespace — the one the operator admission policy also requires
@@ -170,28 +221,47 @@ func buildReachEligible(app *appv1alpha1.App, buildNs string) bool {
 	return buildNs != "" && buildNs != app.Namespace && ws != "" && app.Namespace == ws && app.UID != ""
 }
 
-// reconcileBuildDatastoreReach converges the two policies that let this App's
-// build pods reach datastore ports in the App's own workspace namespace, and
-// nothing else:
+// buildReachGrant is one workspace-side half: the pods it opens and on which
+// ports, admitted by the ingress policy named ingress.
+type buildReachGrant struct {
+	ingress string
+	targets metav1.LabelSelector
+	ports   []networkingv1.NetworkPolicyPort
+}
+
+// reconcileBuildReach converges the policies that let this App's build pods
+// reach its own workspace namespace, and nothing else:
 //
-//   - in buildNs, an egress policy selecting only this App lifetime's build
-//     pods (name, UID, component and workspace — all operator-set) toward the
-//     App namespace, matched by the API-server-owned kubernetes.io/metadata.name
-//     label;
-//   - in the App namespace, an ingress policy admitting only those same pods
-//     from buildNs, owned by the App so it goes with it.
+//   - datastore ports (5432/6379/6380) on any pod in the build's isolation
+//     scope (w8/m129);
+//   - every TCP port on the serving pods of the workspace's paid web and
+//     private services in that scope (w9/m495).
+//
+// In buildNs, one egress policy selects only this App lifetime's build pods
+// (name, UID, component and workspace — all operator-set) with one rule per
+// grant, toward the App namespace matched by the API-server-owned
+// kubernetes.io/metadata.name label. In the App namespace, one ingress policy
+// per grant, owned by the App so it goes with it, admits only those same pods
+// from buildNs.
 //
 // Both sides must allow a connection, so a build can reach another workspace
-// only if both policies named it — and neither can: the egress peer is a
-// single namespace equal to the workspace, and the ingress policy lives in
-// that namespace. allow=false (or an ineligible App) removes both.
-func (r *AppReconciler) reconcileBuildDatastoreReach(ctx context.Context, app *appv1alpha1.App, buildNs string, allow bool) error {
+// only if both policies named it — and neither can: every egress peer is a
+// single namespace equal to the workspace, and the ingress policies live in
+// that namespace. allow=false (or an ineligible App) removes them all.
+func (r *AppReconciler) reconcileBuildReach(ctx context.Context, app *appv1alpha1.App, buildNs string, allow bool) error {
 	if !allow || !buildReachEligible(app, buildNs) {
-		return r.revokeBuildDatastoreReach(ctx, app, buildNs)
+		return r.revokeBuildReach(ctx, app, buildNs)
+	}
+	services, err := r.buildReachServices(ctx, app)
+	if err != nil {
+		return err
 	}
 	sources := build.AppBuildPodLabels(app.Name, string(app.UID), app.Labels[labelWorkspace])
-	targets := buildReachTargets(app)
-	ports := buildReachPorts()
+	grants := []buildReachGrant{{ingress: buildIngressPolicyName(app.Name), targets: buildReachTargets(app), ports: buildReachPorts()}}
+	if len(services) > 0 {
+		grants = append(grants, buildReachGrant{ingress: buildServiceIngressPolicyName(app.Name),
+			targets: buildServiceTargets(app, services), ports: buildServicePorts()})
+	}
 
 	egress := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: buildEgressPolicyName(app.Name), Namespace: buildNs}}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.buildPlaneClient(), egress, func() error {
@@ -199,71 +269,92 @@ func (r *AppReconciler) reconcileBuildDatastoreReach(ctx context.Context, app *a
 			return err
 		}
 		egress.Labels = artifactLabels(app, "execution-network-policy")
+		rules := make([]networkingv1.NetworkPolicyEgressRule, 0, len(grants))
+		for _, g := range grants {
+			rules = append(rules, networkingv1.NetworkPolicyEgressRule{
+				To: []networkingv1.NetworkPolicyPeer{{
+					NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{corev1.LabelMetadataName: app.Namespace}},
+					PodSelector:       &g.targets,
+				}},
+				Ports: g.ports,
+			})
+		}
 		egress.Spec = networkingv1.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{MatchLabels: sources},
 			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
-			Egress: []networkingv1.NetworkPolicyEgressRule{{
-				To: []networkingv1.NetworkPolicyPeer{{
-					NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{corev1.LabelMetadataName: app.Namespace}},
-					PodSelector:       &targets,
-				}},
-				Ports: ports,
-			}},
+			Egress:      rules,
 		}
 		return nil // cross-namespace owner references are invalid; the finalizer reclaims it
 	}); err != nil {
-		return fmt.Errorf("build datastore egress policy: %w", err)
+		return fmt.Errorf("build reach egress policy: %w", err)
 	}
 
-	ingress := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: buildIngressPolicyName(app.Name), Namespace: app.Namespace}}
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, ingress, func() error {
-		ingress.Labels = artifactLabels(app, "build-network-policy")
-		ingress.Spec = networkingv1.NetworkPolicySpec{
-			PodSelector: targets,
-			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
-			Ingress: []networkingv1.NetworkPolicyIngressRule{{
-				From: []networkingv1.NetworkPolicyPeer{{
-					NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{corev1.LabelMetadataName: buildNs}},
-					PodSelector:       &metav1.LabelSelector{MatchLabels: sources},
+	for _, g := range grants {
+		ingress := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: g.ingress, Namespace: app.Namespace}}
+		if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, ingress, func() error {
+			ingress.Labels = artifactLabels(app, "build-network-policy")
+			ingress.Spec = networkingv1.NetworkPolicySpec{
+				PodSelector: g.targets,
+				PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
+				Ingress: []networkingv1.NetworkPolicyIngressRule{{
+					From: []networkingv1.NetworkPolicyPeer{{
+						NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{corev1.LabelMetadataName: buildNs}},
+						PodSelector:       &metav1.LabelSelector{MatchLabels: sources},
+					}},
+					Ports: g.ports,
 				}},
-				Ports: ports,
-			}},
+			}
+			// Refuses an object another owner controls rather than adopting it.
+			return controllerutil.SetControllerReference(app, ingress, r.Scheme)
+		}); err != nil {
+			return fmt.Errorf("build reach ingress policy %s: %w", g.ingress, err)
 		}
-		// Refuses an object another owner controls rather than adopting it.
-		return controllerutil.SetControllerReference(app, ingress, r.Scheme)
-	}); err != nil {
-		return fmt.Errorf("build datastore ingress policy: %w", err)
+	}
+	if len(services) == 0 {
+		return r.deleteBuildIngress(ctx, app, buildServiceIngressPolicyName(app.Name))
 	}
 	return nil
 }
 
-// endBuildDatastoreReach revokes the grant once the observed build is over
-// (succeeded or failed). Best-effort: the policies select only this App
-// lifetime's build pods, so a leftover grants nothing while no build runs, and
-// the next terminal pass or the finalizer retries.
-func (r *AppReconciler) endBuildDatastoreReach(ctx context.Context, app *appv1alpha1.App, buildNs string, phase build.Phase) {
+// endBuildReach revokes the grant once the observed build is over (succeeded
+// or failed). Best-effort: the policies select only this App lifetime's build
+// pods, so a leftover grants nothing while no build runs, and the next
+// terminal pass or the finalizer retries.
+func (r *AppReconciler) endBuildReach(ctx context.Context, app *appv1alpha1.App, buildNs string, phase build.Phase) {
 	if phase != build.PhaseSucceeded && phase != build.PhaseFailed {
 		return
 	}
-	if err := r.reconcileBuildDatastoreReach(ctx, app, buildNs, false); err != nil {
-		logf.FromContext(ctx).Error(err, "revoking build datastore reach", "app", app.Name)
+	if err := r.reconcileBuildReach(ctx, app, buildNs, false); err != nil {
+		logf.FromContext(ctx).Error(err, "revoking build reach", "app", app.Name)
 	}
 }
 
-// revokeBuildDatastoreReach removes both halves. Each delete is ownership-gated:
-// the build namespace is shared, and a same-named App in another workspace
-// must keep its own policy.
-func (r *AppReconciler) revokeBuildDatastoreReach(ctx context.Context, app *appv1alpha1.App, buildNs string) error {
-	owned := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
+// buildReachIdentity is the App lifetime every build-reach policy belongs to.
+func buildReachIdentity(app *appv1alpha1.App) execution.ArtifactIdentity {
+	return execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
 		Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace}
+}
+
+// deleteBuildIngress removes one workspace-side half this App lifetime owns.
+func (r *AppReconciler) deleteBuildIngress(ctx context.Context, app *appv1alpha1.App, name string) error {
+	if _, err := deleteOwnedObject(ctx, r.Client, app.Namespace, name, &networkingv1.NetworkPolicy{}, buildReachIdentity(app)); err != nil {
+		return fmt.Errorf("removing build reach ingress policy %s: %w", name, err)
+	}
+	return nil
+}
+
+// revokeBuildReach removes every half. Each delete is ownership-gated: the
+// build namespace is shared, and a same-named App in another workspace must
+// keep its own policy.
+func (r *AppReconciler) revokeBuildReach(ctx context.Context, app *appv1alpha1.App, buildNs string) error {
 	var errs []error
 	if buildNs != "" && buildNs != app.Namespace {
-		if _, err := deleteOwnedObject(ctx, r.buildPlaneClient(), buildNs, buildEgressPolicyName(app.Name), &networkingv1.NetworkPolicy{}, owned); err != nil {
-			errs = append(errs, fmt.Errorf("removing build datastore egress policy: %w", err))
+		if _, err := deleteOwnedObject(ctx, r.buildPlaneClient(), buildNs, buildEgressPolicyName(app.Name), &networkingv1.NetworkPolicy{}, buildReachIdentity(app)); err != nil {
+			errs = append(errs, fmt.Errorf("removing build reach egress policy: %w", err))
 		}
 	}
-	if _, err := deleteOwnedObject(ctx, r.Client, app.Namespace, buildIngressPolicyName(app.Name), &networkingv1.NetworkPolicy{}, owned); err != nil {
-		errs = append(errs, fmt.Errorf("removing build datastore ingress policy: %w", err))
+	for _, name := range []string{buildIngressPolicyName(app.Name), buildServiceIngressPolicyName(app.Name)} {
+		errs = append(errs, r.deleteBuildIngress(ctx, app, name))
 	}
 	return errors.Join(errs...)
 }

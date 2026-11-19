@@ -332,7 +332,7 @@ func TestBuildDatastoreReachIsOwnWorkspaceOnly(t *testing.T) {
 	isolated.Labels[labelNetworkIsolation] = "evm-prod"
 	r, cl := reachReconciler(t, appA, appB, isolated)
 	for _, app := range []*appv1alpha1.App{appA, appB, isolated} {
-		if err := r.reconcileBuildDatastoreReach(ctx, app, reachBuildNs, true); err != nil {
+		if err := r.reconcileBuildReach(ctx, app, reachBuildNs, true); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -396,6 +396,205 @@ func TestBuildDatastoreReachIsOwnWorkspaceOnly(t *testing.T) {
 	}
 }
 
+// reachService is a sibling of type typ and tier in ws's namespace, the way a
+// Blueprint's fromService host/hostport target exists beside the building App.
+func reachService(name, ws, typ, tier string) *appv1alpha1.App {
+	return &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name, Namespace: ws, UID: types.UID("uid-" + name + "-" + ws),
+			Labels: map[string]string{labelWorkspace: ws, labelAppID: "id-" + name},
+		},
+		Spec: appv1alpha1.AppSpec{Image: "ghcr.io/acme/" + name, Type: typ, Tier: tier},
+	}
+}
+
+// servingPod is a runtime pod of app as the operator labels it — taken from the
+// real template labels, so the policy and the pod cannot drift apart. An
+// isolated environment's pods also carry the isolation label, which reaches
+// them in place (relabelAppPods).
+func servingPod(app *appv1alpha1.App) endpoint {
+	pod := appPodLabels(app, false)
+	if env := app.Labels[labelNetworkIsolation]; env != "" {
+		pod = maps.Clone(pod)
+		pod[labelNetworkIsolation] = env
+	}
+	return endpoint{ns: app.Namespace, labels: pod}
+}
+
+// w9/m495: fromService host/hostport work in the build as at runtime. A build
+// reaches its own workspace's paid web and private services on any TCP port,
+// within its isolation scope, and nothing a Render build could not: not
+// another workspace, not another isolated environment, not a worker, cron job
+// or free web service (they receive no private traffic), not a Job pod, not
+// the platform. A static site's build gets none (not on the private network).
+func TestBuildServiceReachIsOwnWorkspaceAndScopeOnly(t *testing.T) {
+	ctx := context.Background()
+	appA, appB := reachApp("srv-a", wsA), reachApp("srv-b", wsB)
+	isolated := reachApp("guarded", wsA)
+	isolated.Labels[labelNetworkIsolation] = "evm-prod"
+	isolated.Labels[labelEnvironment] = "evm-prod"
+	site := reachApp("site-a", wsA)
+	site.Spec.Type = appv1alpha1.TypeStaticSite
+
+	cms := reachService("cms-a", wsA, appv1alpha1.TypePrivateService, "starter")
+	web := reachService("web-a", wsA, appv1alpha1.TypeWebService, "standard")
+	defaultTyped := reachService("legacy-a", wsA, "", "starter")
+	freeWeb := reachService("free-a", wsA, appv1alpha1.TypeWebService, "free")
+	worker := reachService("worker-a", wsA, appv1alpha1.TypeBackgroundWorker, "starter")
+	cron := reachService("cron-a", wsA, appv1alpha1.TypeCronJob, "starter")
+	prodAPI := reachService("api-prod", wsA, appv1alpha1.TypePrivateService, "starter")
+	prodAPI.Labels[labelEnvironment] = "evm-prod"
+	prodAPI.Labels[labelNetworkIsolation] = "evm-prod"
+	cmsB := reachService("cms-b", wsB, appv1alpha1.TypePrivateService, "starter")
+
+	r, cl := reachReconciler(t, appA, appB, isolated, site, cms, web, defaultTyped, freeWeb, worker, cron, prodAPI, cmsB)
+	for _, app := range []*appv1alpha1.App{appA, appB, isolated, site} {
+		if err := r.reconcileBuildReach(ctx, app, reachBuildNs, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	policies := listPolicies(t, cl)
+
+	predeploy := endpoint{ns: wsA, labels: map[string]string{labelApp: cms.Name, labelWorkspace: wsA, execution.LabelComponent: "predeploy"}}
+	kvProxy := endpoint{ns: wsA, labels: map[string]string{labelKeyValueInternalProxy: "red-one", labelWorkspace: wsA}}
+	pgA := endpoint{ns: wsA, labels: map[string]string{"app.bex.co/component": "database", labelWorkspace: wsA}}
+	platform := endpoint{ns: "bex-system", labels: map[string]string{"control-plane": "controller-manager", labelApp: cms.Name, labelAppID: "id-cms-a"}}
+	strangerBuild := endpoint{ns: reachBuildNs, labels: map[string]string{
+		appv1alpha1.LabelBuild: appA.Name, execution.LabelAppUID: "uid-forged", execution.LabelComponent: "build", labelWorkspace: wsA}}
+	publish := endpoint{ns: reachBuildNs, labels: map[string]string{
+		labelApp: appA.Name, execution.LabelAppUID: string(appA.UID), execution.LabelComponent: "publish", labelWorkspace: wsA}}
+
+	for _, tc := range []struct {
+		name      string
+		src, dst  endpoint
+		port      int
+		wantAllow bool
+	}{
+		{"A build → A private service on PORT's default", buildPod(appA), servingPod(cms), appv1alpha1.DefaultPort, true},
+		{"A build → A private service on a custom port", buildPod(appA), servingPod(cms), 3000, true},
+		{"A build → A private service on an image-declared port", buildPod(appA), servingPod(cms), 8080, true},
+		{"A build → A paid web service", buildPod(appA), servingPod(web), appv1alpha1.DefaultPort, true},
+		{"A build → A service of the empty (web) type", buildPod(appA), servingPod(defaultTyped), 3000, true},
+		{"A build → A free web service (receives no private traffic)", buildPod(appA), servingPod(freeWeb), appv1alpha1.DefaultPort, false},
+		{"A build → A background worker", buildPod(appA), servingPod(worker), appv1alpha1.DefaultPort, false},
+		{"A build → A cron job's run pod", buildPod(appA), servingPod(cron), appv1alpha1.DefaultPort, false},
+		{"A build → A private service's pre-deploy pod", buildPod(appA), predeploy, appv1alpha1.DefaultPort, false},
+		{"A build → A Key Value proxy off its datastore ports", buildPod(appA), kvProxy, appv1alpha1.DefaultPort, false},
+		{"A build → A Postgres off its datastore ports", buildPod(appA), pgA, appv1alpha1.DefaultPort, false},
+		{"A build → B private service (cross-workspace)", buildPod(appA), servingPod(cmsB), appv1alpha1.DefaultPort, false},
+		{"B build → A private service (cross-workspace)", buildPod(appB), servingPod(cms), appv1alpha1.DefaultPort, false},
+		{"B build → B private service", buildPod(appB), servingPod(cmsB), appv1alpha1.DefaultPort, true},
+		{"A build → A isolated environment's service", buildPod(appA), servingPod(prodAPI), appv1alpha1.DefaultPort, false},
+		{"isolated build → its environment's service", buildPod(isolated), servingPod(prodAPI), appv1alpha1.DefaultPort, true},
+		{"isolated build → the workspace's ordinary service", buildPod(isolated), servingPod(cms), appv1alpha1.DefaultPort, false},
+		{"static site build → A private service", buildPod(site), servingPod(cms), appv1alpha1.DefaultPort, false},
+		{"static site build → A Postgres (datastore reach unchanged)", buildPod(site), pgA, pgPort, true},
+		{"A build → a platform pod carrying a service's labels", buildPod(appA), platform, 8090, false},
+		{"a build pod with another App lifetime's UID → A private service", strangerBuild, servingPod(cms), appv1alpha1.DefaultPort, false},
+		{"A's publish pod → A private service", publish, servingPod(cms), appv1alpha1.DefaultPort, false},
+	} {
+		if got := policyAllows(t, policies, tc.src, tc.dst, tc.port); got != tc.wantAllow {
+			t.Errorf("%s: allowed=%v, want %v", tc.name, got, tc.wantAllow)
+		}
+	}
+
+	// Structural pins: TCP only, and every workspace-side half lives in its
+	// own App's workspace namespace.
+	for _, np := range policies {
+		var ports []networkingv1.NetworkPolicyPort
+		for _, rule := range np.Spec.Egress {
+			ports = append(ports, rule.Ports...)
+		}
+		for _, rule := range np.Spec.Ingress {
+			ports = append(ports, rule.Ports...)
+		}
+		for _, p := range ports {
+			if p.Protocol == nil || *p.Protocol != corev1.ProtocolTCP {
+				t.Errorf("%s/%s: build reach must be TCP only, got %+v", np.Namespace, np.Name, p)
+			}
+		}
+		if np.Namespace != reachBuildNs && np.Labels[labelWorkspace] != np.Namespace {
+			t.Errorf("%s/%s: an ingress grant must live in its own App's workspace namespace", np.Namespace, np.Name)
+		}
+	}
+	// The static site got its datastore half only.
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: wsA, Name: buildServiceIngressPolicyName(site.Name)}, &networkingv1.NetworkPolicy{}); !apierrors.IsNotFound(err) {
+		t.Errorf("a static site's build got a service grant: err = %v", err)
+	}
+}
+
+// The service half follows the workspace: it appears only while a service can
+// receive the build's traffic, goes when the last one does, and revocation
+// removes every half.
+func TestBuildServiceReachFollowsTheWorkspacesServices(t *testing.T) {
+	ctx := context.Background()
+	app := reachApp("mysite", wsA)
+	r, cl := reachReconciler(t, app)
+	serviceIngress := client.ObjectKey{Namespace: wsA, Name: buildServiceIngressPolicyName(app.Name)}
+	egressRules := func() int {
+		var np networkingv1.NetworkPolicy
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: reachBuildNs, Name: buildEgressPolicyName(app.Name)}, &np); err != nil {
+			t.Fatal(err)
+		}
+		return len(np.Spec.Egress)
+	}
+
+	if err := r.reconcileBuildReach(ctx, app, reachBuildNs, true); err != nil {
+		t.Fatal(err)
+	}
+	if n := egressRules(); n != 1 {
+		t.Fatalf("no service to reach: %d egress rules, want the datastore rule alone", n)
+	}
+	if err := cl.Get(ctx, serviceIngress, &networkingv1.NetworkPolicy{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("no service to reach, yet a service ingress exists: err = %v", err)
+	}
+
+	cms := reachService("cms", wsA, appv1alpha1.TypePrivateService, "starter")
+	if err := cl.Create(ctx, cms); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.reconcileBuildReach(ctx, app, reachBuildNs, true); err != nil {
+		t.Fatal(err)
+	}
+	if n := egressRules(); n != 2 {
+		t.Fatalf("a private service exists: %d egress rules, want datastore + service", n)
+	}
+	np := &networkingv1.NetworkPolicy{}
+	if err := cl.Get(ctx, serviceIngress, np); err != nil {
+		t.Fatal(err)
+	}
+	if ref := metav1.GetControllerOf(np); ref == nil || ref.UID != app.UID {
+		t.Fatalf("the service ingress must be owned by the building App: %+v", ref)
+	}
+
+	if err := cl.Delete(ctx, cms); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.reconcileBuildReach(ctx, app, reachBuildNs, true); err != nil {
+		t.Fatal(err)
+	}
+	if n := egressRules(); n != 1 {
+		t.Fatalf("the last service went: %d egress rules, want the datastore rule alone", n)
+	}
+	if err := cl.Get(ctx, serviceIngress, &networkingv1.NetworkPolicy{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("the last service went, yet the service ingress stayed: err = %v", err)
+	}
+
+	if err := cl.Create(ctx, reachService("cms2", wsA, appv1alpha1.TypePrivateService, "starter")); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.reconcileBuildReach(ctx, app, reachBuildNs, true); err != nil {
+		t.Fatal(err)
+	}
+	if n := len(listPolicies(t, cl)); n != 3 {
+		t.Fatalf("grant created %d policies, want egress + datastore ingress + service ingress", n)
+	}
+	r.endBuildReach(ctx, app, reachBuildNs, build.PhaseSucceeded)
+	if n := len(listPolicies(t, cl)); n != 0 {
+		t.Fatalf("the build ended but %d policies remain", n)
+	}
+}
+
 func TestBuildDatastoreReachRevocationAndEligibility(t *testing.T) {
 	ctx := context.Background()
 	app := reachApp("mysite", wsA)
@@ -406,13 +605,13 @@ func TestBuildDatastoreReachRevocationAndEligibility(t *testing.T) {
 		Labels: map[string]string{labelApp: "mysite", execution.LabelAppUID: "uid-other"},
 	}}
 	r, cl := reachReconciler(t, app, foreign)
-	if err := r.reconcileBuildDatastoreReach(ctx, app, reachBuildNs, true); err == nil {
+	if err := r.reconcileBuildReach(ctx, app, reachBuildNs, true); err == nil {
 		t.Fatal("the grant must refuse to take over another App lifetime's policy")
 	}
 	if err := cl.Delete(ctx, foreign); err != nil {
 		t.Fatal(err)
 	}
-	if err := r.reconcileBuildDatastoreReach(ctx, app, reachBuildNs, true); err != nil {
+	if err := r.reconcileBuildReach(ctx, app, reachBuildNs, true); err != nil {
 		t.Fatal(err)
 	}
 	if n := len(listPolicies(t, cl)); n != 2 {
@@ -426,14 +625,14 @@ func TestBuildDatastoreReachRevocationAndEligibility(t *testing.T) {
 		t.Fatalf("the workspace-side policy must be owned by the App so it goes with it: %+v", ref)
 	}
 
-	if err := r.reconcileBuildDatastoreReach(ctx, app, reachBuildNs, false); err != nil {
+	if err := r.reconcileBuildReach(ctx, app, reachBuildNs, false); err != nil {
 		t.Fatal(err)
 	}
 	if n := len(listPolicies(t, cl)); n != 0 {
 		t.Fatalf("revoke left %d policies", n)
 	}
 	// Idempotent once gone.
-	if err := r.reconcileBuildDatastoreReach(ctx, app, reachBuildNs, false); err != nil {
+	if err := r.reconcileBuildReach(ctx, app, reachBuildNs, false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -444,7 +643,7 @@ func TestBuildDatastoreReachRevocationAndEligibility(t *testing.T) {
 		a := reachApp("mysite", wsA)
 		mutate(a)
 		r, cl := reachReconciler(t)
-		if err := r.reconcileBuildDatastoreReach(ctx, a, reachBuildNs, true); err != nil {
+		if err := r.reconcileBuildReach(ctx, a, reachBuildNs, true); err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
 		if n := len(listPolicies(t, cl)); n != 0 {
@@ -453,7 +652,7 @@ func TestBuildDatastoreReachRevocationAndEligibility(t *testing.T) {
 	}
 	// Same-namespace builds already have allow-same-namespace: nothing to add.
 	r, cl = reachReconciler(t, app)
-	if err := r.reconcileBuildDatastoreReach(ctx, app, wsA, true); err != nil {
+	if err := r.reconcileBuildReach(ctx, app, wsA, true); err != nil {
 		t.Fatal(err)
 	}
 	if n := len(listPolicies(t, cl)); n != 0 {

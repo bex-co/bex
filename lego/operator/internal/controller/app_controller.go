@@ -1383,7 +1383,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	// The build exists now: the hold before it is over (status.buildHold). Every
 	// branch below writes status, the waiting ones told explicitly.
 	holdEnded := endBuildHold(app, time.Now())
-	r.endBuildDatastoreReach(ctx, app, buildNs, obs.Phase)
+	r.endBuildReach(ctx, app, buildNs, obs.Phase)
 	r.endBuildManagedOIDC(ctx, app, buildNs, obs.Phase)
 	switch obs.Phase {
 	case build.PhaseSucceeded:
@@ -1841,7 +1841,8 @@ func effectiveBuilder(spec appv1alpha1.AppSpec) string {
 
 // prepareSourceBuildEnv assembles what a source build receives beside its
 // source: the literal env, the projected Secret inputs, and — for native and
-// Dockerfile builds — reach to the workspace's own datastores (w8/m129). A
+// Dockerfile builds — reach to the workspace's own datastores (w8/m129) and
+// services (w9/m495). A
 // non-empty wait holds the dispatch as BuildQueued: a linked datastore is still
 // being created, and the build's `migrate` must not run before it exists.
 func (r *AppReconciler) prepareSourceBuildEnv(ctx context.Context, app *appv1alpha1.App, buildNs, builder string) ([]corev1.EnvVar, buildInputs, string, error) {
@@ -1852,8 +1853,8 @@ func (r *AppReconciler) prepareSourceBuildEnv(ctx context.Context, app *appv1alp
 			return nil, buildInputs{}, "", err
 		}
 		// kpack cannot mount the env Secret (w1/121), so its build gets no
-		// datastore credentials and no datastore reach either.
-		return projected, buildInputs{}, "", r.reconcileBuildDatastoreReach(ctx, app, buildNs, false)
+		// datastore credentials and no build reach either.
+		return projected, buildInputs{}, "", r.reconcileBuildReach(ctx, app, buildNs, false)
 	}
 	db, err := r.buildDatabasePending(ctx, app, buildEnvRefs(app))
 	if err != nil {
@@ -1886,10 +1887,10 @@ func (r *AppReconciler) prepareSourceBuildEnv(ctx context.Context, app *appv1alp
 			return nil, buildInputs{}, "", err
 		}
 	}
-	// The build may reach its own workspace's datastores and nothing else
-	// (docs/ADR022-tenant-isolation.md § Build reach); revoked at the build's
-	// terminal observation in buildFromSource.
-	if err := r.reconcileBuildDatastoreReach(ctx, app, buildNs, true); err != nil {
+	// The build may reach its own workspace's datastores and services and
+	// nothing else (docs/ADR022-tenant-isolation.md § Build reach); revoked at
+	// the build's terminal observation in buildFromSource.
+	if err := r.reconcileBuildReach(ctx, app, buildNs, true); err != nil {
 		return nil, buildInputs{}, "", err
 	}
 	return literals, inputs, "", nil
