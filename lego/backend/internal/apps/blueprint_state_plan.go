@@ -361,6 +361,9 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 		// a false no-op; field paths are safe and values remain omitted.
 		action.Operation = BlueprintPlanUpdate
 		action.ChangedFields = blueprintDeclaredFieldChanges(resource.Fields)
+		if err := r.planEnvGroupMove(ctx, &action, resource.Name); err != nil {
+			return BlueprintPlanAction{}, err
+		}
 		return action, nil
 	}
 	action.Operation = BlueprintPlanNoop
@@ -432,6 +435,44 @@ func (r *blueprintActionResolver) planMoves(ctx context.Context, action *Bluepri
 	if moves := placements.moves(grouping, ungrouped, isolation, labels); len(moves) > 0 {
 		addChangedFields(action, moves...)
 	}
+	return nil
+}
+
+// planEnvGroupMove names the environment move the apply makes for an existing
+// group declared under a projects[].environments[] nesting
+// (applyStackEnvGroups' SetGroupEnvironment), as planMoves does for the
+// kinds the regroup moves. A group declared at the top level keeps its scope,
+// so nothing is named; a grouping the apply has yet to create is always a
+// move. The group's current environment comes from the EnvGroupPlacements
+// seam; when it is unavailable the move is named, as a move the plan cannot
+// prove absent must not pass as a value-only update.
+func (r *blueprintActionResolver) planEnvGroupMove(ctx context.Context, action *BlueprintPlanAction, name string) error {
+	group, ok := parsedBlueprintEnvGroup(r.parsed, name)
+	if !ok || group.grouping == "" {
+		return nil
+	}
+	if r.service == nil {
+		return nil
+	}
+	if _, scoped := r.service.Tenant(ctx); r.service.BlueprintGroups == nil || !scoped {
+		return nil
+	}
+	placements, err := r.service.blueprintEnvironmentPlacements(ctx, r.snap, r.parsed.groupings)
+	if err != nil {
+		return err
+	}
+	current, unknown := "", true
+	if r.service.EnvGroupPlacements != nil {
+		byName, err := r.service.EnvGroupPlacements(ctx)
+		if err != nil {
+			return err
+		}
+		current, unknown = byName[name], false
+	}
+	if target := placements.targets[group.grouping]; !unknown && target.environmentID == current && target.environmentID != "" {
+		return nil // stays put
+	}
+	addChangedFields(action, "environment")
 	return nil
 }
 
@@ -509,6 +550,15 @@ func parsedBlueprintKeyValue(st parsedStack, name string) (parsedKeyValue, bool)
 		}
 	}
 	return parsedKeyValue{}, false
+}
+
+func parsedBlueprintEnvGroup(st parsedStack, name string) (parsedEnvGroup, bool) {
+	for _, group := range st.envGroups {
+		if group.name == name {
+			return group, true
+		}
+	}
+	return parsedEnvGroup{}, false
 }
 
 // blueprintPlanFieldChanges reports which of a manifest's declared fields
