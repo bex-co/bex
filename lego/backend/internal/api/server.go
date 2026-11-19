@@ -1365,6 +1365,9 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// tokens live an hour, so every deploy-initiating seam must remint, never
 	// build with the previous deploy's token.
 	srv.Deploys.CloneSecrets = srv.Apps.ReconcilerCloneSecreter()
+	// So does an environment or env-group write whose release builds
+	// (w32/047): the Tracker they share mints before its generation bump.
+	rollouts.CloneSecrets = srv.Apps.ReconcilerCloneSecreter()
 	// A protected environment restricts variables and secret files to Admins (w8/193).
 	secretsSvc.Protection = srv.Apps.ProtectionGuard()
 	srv.Deploys.PullSecrets = srv.Apps.DeployPullSecretPreparer()

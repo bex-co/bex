@@ -1542,6 +1542,20 @@ func TestAuditNeverCarriesSecretValues(t *testing.T) {
 	}
 }
 
+// w32/047: an environment or env-group write whose release builds clones with
+// a token minted at the write, as a deploy trigger's build does. Both share
+// one Tracker, wired to the deploy triggers' mint.
+func TestEnvironmentWritesMintTheDeployTriggersCloneCredential(t *testing.T) {
+	srv := NewServer(&core.Base{Client: fakeClient(), Namespace: "default"}, Deps{})
+	tracker := srv.Secrets.Rollout
+	if tracker == nil || tracker.CloneSecrets == nil || srv.EnvGroups.Rollout != tracker {
+		t.Fatalf("secrets tracker %+v, env-group tracker %p: want one shared Tracker with the clone credential mint", tracker, srv.EnvGroups.Rollout)
+	}
+	if !reflect.DeepEqual(tracker.CloneSecrets, srv.Deploys.CloneSecrets) {
+		t.Fatalf("tracker mint %#v, deploy triggers' %#v: want the same bridge", tracker.CloneSecrets, srv.Deploys.CloneSecrets)
+	}
+}
+
 // --- Parity / wiring: every feature registers into the single roots ---
 
 func TestSurfaceParityAndWiring(t *testing.T) {

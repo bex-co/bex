@@ -6170,12 +6170,13 @@ func (s *Service) patchUntracked(ctx context.Context, a *appv1alpha1.App, mutate
 // Deriving it from Store rather than wiring a separate field is what keeps a
 // second composition root (cmd/ssh-gateway, the workspace purger) from silently
 // building an untracked Service. A nil Store (CR-only mode) yields a tracker
-// that records nothing.
+// that records nothing. A rolling write mints the clone credential the way a
+// deploy trigger does (w32/047).
 func (s *Service) rollouts() *rollout.Tracker {
 	if s.Store == nil {
 		return nil
 	}
-	return &rollout.Tracker{Store: s.Store}
+	return &rollout.Tracker{Store: s.Store, CloneSecrets: s.ReconcilerCloneSecreter()}
 }
 
 // routesFromViews / headersFromViews convert surface input (neutral views) into

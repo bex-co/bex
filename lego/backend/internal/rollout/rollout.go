@@ -105,6 +105,60 @@ func (t *Tracker) history(a *appv1alpha1.App) (liveDeployStore, string) {
 // not recorded — the pre-w6/m51 behavior.
 type Tracker struct {
 	Store DeployStore
+	// CloneSecrets refreshes a repo-backed App's private-repo clone credential
+	// before a write that rolls a release which may build (w32/047). A GitHub
+	// installation token lives an hour, so a release whose build runs on the
+	// last deploy trigger's token fails at checkout. nil: no refresh (GitHub
+	// off, or a Tracker built for a test).
+	CloneSecrets CloneCredential
+}
+
+// CloneCredential is the clone-credential mint every deploy trigger uses
+// (apps.Service's bridge, wired in the composition root).
+type CloneCredential interface {
+	// EnsureAppCloneSecret writes a fresh installation token into a's clone
+	// Secret and answers its name, or "" when no GitHub connection grants
+	// a's repo (a public repo, or GitHub off). An error is a GitHub failure a
+	// write must not swallow into a stale or absent credential.
+	EnsureAppCloneSecret(ctx context.Context, a *appv1alpha1.App) (string, error)
+}
+
+// cloneRefresh mints a write's clone credential once, even when a locked
+// patch runs its mutation again after losing a race. It mints again only
+// when the retry found another repo.
+type cloneRefresh struct {
+	repo, secret string
+}
+
+// refresh mints a's clone credential, before the patch that bumps its
+// generation, when the write rolls a release that may build: a repo-backed App
+// whose release does not rerun an existing artifact (SelectReleaseImage). A
+// settings_change, a config_change with no live build to rerun and an
+// env-group release are each a deploy, and each builds with the token in
+// a.Spec.CloneSecret, exactly as a deploy trigger's build does.
+func (t *Tracker) refresh(ctx context.Context, c *cloneRefresh, before Snapshot, a *appv1alpha1.App) error {
+	if t == nil || t.CloneSecrets == nil || !before.rolls || a.Spec.Repo == "" || rerunsArtifact(before, a) {
+		return nil
+	}
+	if c.repo != a.Spec.Repo {
+		secret, err := t.CloneSecrets.EnsureAppCloneSecret(ctx, a)
+		if err != nil {
+			return err
+		}
+		c.repo, c.secret = a.Spec.Repo, secret
+	}
+	if c.secret != "" {
+		a.Spec.CloneSecret = c.secret
+	}
+	return nil
+}
+
+// rerunsArtifact reports whether the release a's patch opens reruns an
+// existing artifact rather than building: an environment "Save and deploy"
+// selects the build serving now (SelectServedBuild), so no checkout runs.
+func rerunsArtifact(before Snapshot, a *appv1alpha1.App) bool {
+	ref := a.Spec.ReleaseConfig
+	return ref != nil && ref.Generation == before.generation+1 && ref.Image != ""
 }
 
 // Snapshot is an App CR's identity taken immediately BEFORE a spec mutation:
@@ -210,6 +264,9 @@ func (s *Snapshot) Stamp(a *appv1alpha1.App) bool {
 // goes through it, so none of them can quietly become a rollout nothing
 // recorded — the bug w6/m51 was filed for.
 //
+// A rolling patch of a repo-backed App refreshes its clone credential first
+// (refresh); a mint failure fails the write before anything is patched.
+//
 // A nil Tracker still applies the patch; it just records nothing.
 func (t *Tracker) Patch(ctx context.Context, cl client.Client, a *appv1alpha1.App, trigger string, mutate func(*appv1alpha1.App) error) error {
 	before := beforeIn(ctx, a)
@@ -218,6 +275,9 @@ func (t *Tracker) Patch(ctx context.Context, cl client.Client, a *appv1alpha1.Ap
 		return err
 	}
 	tracked := before.Stamp(a)
+	if err := t.refresh(ctx, &cloneRefresh{}, before, a); err != nil {
+		return err
+	}
 	if err := cl.Patch(ctx, a, base); err != nil {
 		return err
 	}
@@ -236,6 +296,7 @@ const lockedPatchAttempts = 5
 // the patch that lands.
 func (t *Tracker) PatchLocked(ctx context.Context, cl client.Client, a *appv1alpha1.App, trigger string, mutate func(*appv1alpha1.App) error) error {
 	var before Snapshot
+	var clone cloneRefresh
 	tracked := false
 	if err := PatchAppLocked(ctx, cl, a, func(a *appv1alpha1.App) error {
 		before = beforeIn(ctx, a)
@@ -243,7 +304,7 @@ func (t *Tracker) PatchLocked(ctx context.Context, cl client.Client, a *appv1alp
 			return err
 		}
 		tracked = before.Stamp(a)
-		return nil
+		return t.refresh(ctx, &clone, before, a)
 	}); err != nil {
 		return err
 	}

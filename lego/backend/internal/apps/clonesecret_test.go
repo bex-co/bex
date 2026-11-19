@@ -95,8 +95,13 @@ func ghService(gh CloneTokenSource, apps ...*appv1alpha1.App) (*Service, client.
 
 func cloneSecretValue(t *testing.T, cl client.Client, name string) (string, bool) {
 	t.Helper()
+	return cloneSecretIn(t, cl, "default", name)
+}
+
+func cloneSecretIn(t *testing.T, cl client.Client, namespace, name string) (string, bool) {
+	t.Helper()
 	var sec corev1.Secret
-	err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: name}, &sec)
+	err := cl.Get(context.Background(), client.ObjectKey{Namespace: namespace, Name: name}, &sec)
 	if apierrors.IsNotFound(err) {
 		return "", false
 	}
@@ -356,4 +361,85 @@ func TestCreateStillAcceptsSourcesValidateRepoHasNoOpinionAbout(t *testing.T) {
 			t.Fatalf("create with GitHub unwired: %v", err)
 		}
 	})
+}
+
+// TestARollingSettingsChangeRefreshesTheCloneSecret is w32/047. On production
+// the container policy migration rolled a private-repo service whose newest
+// commit had no built image, and its settings_change build failed at checkout
+// with `Invalid username or token`: it cloned with the token the last deploy
+// trigger had minted three days earlier. A Settings save that changes the
+// release shared the same write. Both now mint a fresh token at the write.
+func TestARollingSettingsChangeRefreshesTheCloneSecret(t *testing.T) {
+	staleSecret := func(namespace, name string) *corev1.Secret {
+		return &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+			StringData: map[string]string{"token": "ghs_stale"},
+		}
+	}
+	t.Run("container policy migration", func(t *testing.T) {
+		rec := &recordingStore{}
+		svc, cl := newTenantStoreService(fakeWorkspace{}, rec, nativeApp("legacy", "", func(a *appv1alpha1.App) {
+			a.Spec.CloneSecret = "legacy-clone"
+		}))
+		gh := &fakeCloneTokens{token: "ghs_fresh", ok: true}
+		svc.GitHub = gh
+		if err := cl.Create(t.Context(), staleSecret("tea-qa", "legacy-clone")); err != nil {
+			t.Fatal(err)
+		}
+		plan, err := svc.MigrateContainerPolicy(t.Context(), "srv-legacy", true)
+		if err != nil || !plan.Applied || !plan.Rollout {
+			t.Fatalf("apply = %+v, %v; want a rolling migration", plan, err)
+		}
+		if gh.calls != 1 || gh.lastWorkspace != "tea-qa" || gh.lastRepo != "https://github.com/example/app" {
+			t.Fatalf("clone tokens minted %d (workspace %q, repo %q), want one for the service's own repo and workspace", gh.calls, gh.lastWorkspace, gh.lastRepo)
+		}
+		if token, ok := cloneSecretIn(t, cl, "tea-qa", "legacy-clone"); !ok || token != "ghs_fresh" {
+			t.Fatalf("clone secret token = %q (found %v), want the fresh one", token, ok)
+		}
+		if len(rec.deployCalls) != 1 || rec.deployCalls[0].Trigger != store.TriggerSettingsChange {
+			t.Fatalf("deploys %+v, want one settings_change", rec.deployCalls)
+		}
+	})
+	t.Run("settings save", func(t *testing.T) {
+		rec := &recordingStore{}
+		svc, cl := newService(rec, managedRepoApp("web"))
+		gh := &fakeCloneTokens{token: "ghs_fresh", ok: true}
+		svc.GitHub = gh
+		if err := cl.Create(t.Context(), staleSecret("default", "web-clone")); err != nil {
+			t.Fatal(err)
+		}
+		build := "go build -tags prod -o app ."
+		if _, err := svc.SetCommands(t.Context(), "web", &build, nil); err != nil {
+			t.Fatal(err)
+		}
+		if gh.calls != 1 {
+			t.Fatalf("clone tokens minted %d, want one at the save", gh.calls)
+		}
+		if token, ok := cloneSecretValue(t, cl, "web-clone"); !ok || token != "ghs_fresh" {
+			t.Fatalf("clone secret token = %q (found %v), want the fresh one", token, ok)
+		}
+		if a := getApp(t, cl, "web"); a.Spec.CloneSecret != "web-clone" || a.Spec.BuildCommand != build {
+			t.Fatalf("spec cloneSecret %q buildCommand %q, want the minted Secret beside the saved command", a.Spec.CloneSecret, a.Spec.BuildCommand)
+		}
+		if len(rec.deployCalls) != 1 || rec.deployCalls[0].Trigger != store.TriggerSettingsChange {
+			t.Fatalf("deploys %+v, want one settings_change", rec.deployCalls)
+		}
+	})
+}
+
+// A mint failure fails the migration loudly and leaves the service as it was,
+// its saved policy restored, as a failed deploy trigger leaves it.
+func TestAContainerPolicyMigrationFailsWhenTheCloneTokenCannotBeMinted(t *testing.T) {
+	rec := &recordingStore{}
+	svc, cl := newTenantStoreService(fakeWorkspace{}, rec, nativeApp("legacy", ""))
+	svc.GitHub = &fakeCloneTokens{err: errors.New("github down")}
+	if _, err := svc.MigrateContainerPolicy(t.Context(), "srv-legacy", true); err == nil {
+		t.Fatal("a migration whose clone token could not be minted reported success")
+	}
+	if got := policyOfApp(t, cl, "legacy"); got != "" {
+		t.Fatalf("CR policy = %q, want it unchanged", got)
+	}
+	if len(rec.policyCalls) != 2 || rec.policyCalls[1] != "srv-legacy=" || len(rec.deployCalls) != 0 {
+		t.Fatalf("row writes %v, deploys %+v; want the policy restored and no deploy", rec.policyCalls, rec.deployCalls)
+	}
 }

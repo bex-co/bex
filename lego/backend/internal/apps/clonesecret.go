@@ -151,9 +151,16 @@ func (b reconcilerBridge) EnsureCloneSecret(ctx context.Context, namespace, appN
 	return b.svc.mintCloneSecret(ctx, namespace, appName, workspaceID, repo)
 }
 
+// EnsureAppCloneSecret is the rollout.CloneCredential side: the mint a write
+// that rolls a release runs before its generation bump (w32/047).
+func (b reconcilerBridge) EnsureAppCloneSecret(ctx context.Context, a *appv1alpha1.App) (string, error) {
+	return b.svc.ensureCloneSecret(ctx, a)
+}
+
 // ReconcilerCloneSecreter returns a store.CloneSecreter backed by this Service
-// for injection into the control-plane reconciler (w2/m11). It has no ctx and
-// no error return, so the TestAuthzGuardsEveryVerb sweep skips it.
+// for injection into the control-plane reconciler (w2/m11), the deploy
+// triggers and every rollout.Tracker. It has no ctx and no error return, so
+// the TestAuthzGuardsEveryVerb sweep skips it.
 func (s *Service) ReconcilerCloneSecreter() reconcilerBridge {
 	return reconcilerBridge{s}
 }

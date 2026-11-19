@@ -261,21 +261,23 @@ func TestARollingWriteOnASuspendedServiceIsHeldForTheNextDeploy(t *testing.T) {
 	}
 }
 
+// trackerPatches runs a settings_change write through Patch and PatchLocked.
+var trackerPatches = map[string]func(*Tracker, context.Context, client.Client, *appv1alpha1.App, func(*appv1alpha1.App) error) error{
+	"Patch": func(tr *Tracker, ctx context.Context, cl client.Client, a *appv1alpha1.App, m func(*appv1alpha1.App) error) error {
+		return tr.Patch(ctx, cl, a, store.TriggerSettingsChange, m)
+	},
+	"PatchLocked": func(tr *Tracker, ctx context.Context, cl client.Client, a *appv1alpha1.App, m func(*appv1alpha1.App) error) error {
+		return tr.PatchLocked(ctx, cl, a, store.TriggerSettingsChange, m)
+	},
+}
+
 // TestASaveOnlyRollingWriteIsHeldForTheNextDeploy is w8/m135: under
 // WithSaveOnly (Render's Update Service), a release-rolling write is saved and
 // held exactly like a suspended one — no row, no release stamp, the pending
 // marker set — through both Patch and PatchLocked, while an operational write
 // marks nothing pending.
 func TestASaveOnlyRollingWriteIsHeldForTheNextDeploy(t *testing.T) {
-	patches := map[string]func(*Tracker, context.Context, client.Client, *appv1alpha1.App, func(*appv1alpha1.App) error) error{
-		"Patch": func(tr *Tracker, ctx context.Context, cl client.Client, a *appv1alpha1.App, m func(*appv1alpha1.App) error) error {
-			return tr.Patch(ctx, cl, a, store.TriggerSettingsChange, m)
-		},
-		"PatchLocked": func(tr *Tracker, ctx context.Context, cl client.Client, a *appv1alpha1.App, m func(*appv1alpha1.App) error) error {
-			return tr.PatchLocked(ctx, cl, a, store.TriggerSettingsChange, m)
-		},
-	}
-	for name, patch := range patches {
+	for name, patch := range trackerPatches {
 		t.Run(name, func(t *testing.T) {
 			cl, a := lockedPatchFixture(t, interceptor.Funcs{})
 			ds := &fakeDeployStore{}
@@ -359,5 +361,169 @@ func TestStagedGroupLinkRoundTrips(t *testing.T) {
 	StageGroupLink(a, "evg-1-env", "evg-1-files", true)
 	if a.Annotations[appv1alpha1.AnnotationPendingGroupLinks] != "" {
 		t.Fatalf("unlink then relink of a mounted group left %v staged", a.Annotations)
+	}
+}
+
+// fakeCloneCredential is a CloneCredential that records the repo of each mint
+// and how many App patches had landed when it ran.
+type fakeCloneCredential struct {
+	err     error
+	patches *int
+	mints   []string
+	// patchesAtMint is *patches at each mint.
+	patchesAtMint []int
+}
+
+func (f *fakeCloneCredential) EnsureAppCloneSecret(_ context.Context, a *appv1alpha1.App) (string, error) {
+	if f.err != nil {
+		return "", f.err
+	}
+	f.mints = append(f.mints, a.Spec.Repo)
+	f.patchesAtMint = append(f.patchesAtMint, *f.patches)
+	return appv1alpha1.CloneSecretName(a.Name), nil
+}
+
+// repoPatchFixture is lockedPatchFixture for a repo-backed service whose App
+// names no clone Secret yet, counting the App patches that reach the API
+// server.
+func repoPatchFixture(t *testing.T) (client.Client, *appv1alpha1.App, *fakeCloneCredential) {
+	t.Helper()
+	patches := 0
+	cl, a := lockedPatchFixture(t, interceptor.Funcs{
+		Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+			patches++
+			return c.Patch(ctx, obj, patch, opts...)
+		},
+	})
+	a.Spec.Image, a.Spec.Repo = "", "https://github.com/acme/private"
+	if err := cl.Update(context.Background(), a); err != nil {
+		t.Fatal(err)
+	}
+	return cl, a, &fakeCloneCredential{patches: &patches}
+}
+
+// TestARollingWriteMintsTheCloneCredentialBeforeItsPatch is w32/047: a
+// settings_change on a private-repo service whose release must build cloned
+// with the last deploy trigger's installation token, expired an hour after it
+// was minted, and its build failed at checkout. A rolling write now mints the
+// credential before the patch that bumps the generation, as a deploy trigger
+// does, and names its Secret in the same patch.
+func TestARollingWriteMintsTheCloneCredentialBeforeItsPatch(t *testing.T) {
+	for name, patch := range trackerPatches {
+		t.Run(name, func(t *testing.T) {
+			cl, a, cc := repoPatchFixture(t)
+			ds := &fakeDeployStore{}
+			if err := patch(&Tracker{Store: ds, CloneSecrets: cc}, context.Background(), cl, a, func(a *appv1alpha1.App) error {
+				a.Spec.BuildCommand = "make build"
+				return nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+			if len(cc.mints) != 1 || cc.mints[0] != "https://github.com/acme/private" || cc.patchesAtMint[0] != 0 {
+				t.Fatalf("mints %v with %v patches landed, want one mint of the repo before any patch", cc.mints, cc.patchesAtMint)
+			}
+			live := &appv1alpha1.App{}
+			if err := cl.Get(context.Background(), client.ObjectKeyFromObject(a), live); err != nil {
+				t.Fatal(err)
+			}
+			if live.Spec.CloneSecret != "web-clone" || live.Spec.BuildCommand != "make build" {
+				t.Fatalf("live spec cloneSecret %q buildCommand %q, want the minted Secret in the rolling patch", live.Spec.CloneSecret, live.Spec.BuildCommand)
+			}
+			if len(ds.created) != 1 || ds.created[0].Trigger != store.TriggerSettingsChange {
+				t.Fatalf("deploy rows %+v, want one settings_change", ds.created)
+			}
+		})
+	}
+}
+
+// A write that builds nothing mints nothing: a deploy trigger's token reaches
+// the build of every release that does build.
+func TestAWriteThatBuildsNothingMintsNoCloneCredential(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		ctx    context.Context
+		before func(*appv1alpha1.App)
+		mutate func(*appv1alpha1.App)
+		// rolls: the write still stamps a release, which builds nothing.
+		rolls bool
+	}{
+		{name: "operational", ctx: context.Background(), mutate: func(a *appv1alpha1.App) { a.Spec.Replicas = 3 }},
+		{name: "save only", ctx: WithSaveOnly(context.Background()), mutate: func(a *appv1alpha1.App) { a.Spec.BuildCommand = "make build" }},
+		{name: "suspended", ctx: context.Background(),
+			before: func(a *appv1alpha1.App) { a.Spec.Suspended = true },
+			mutate: func(a *appv1alpha1.App) { a.Spec.BuildCommand = "make build" }},
+		{name: "image-backed", ctx: context.Background(),
+			before: func(a *appv1alpha1.App) { a.Spec.Repo, a.Spec.Image = "", "web:v1" },
+			mutate: func(a *appv1alpha1.App) { a.Spec.HealthCheckPath = "/healthz" }, rolls: true},
+		// An environment "Save and deploy" reruns the build serving now.
+		{name: "reruns the served build", ctx: context.Background(), mutate: func(a *appv1alpha1.App) {
+			a.Spec.RestartedAt = "restart"
+			SelectReleaseImage(a, "registry/web@sha256:abc")
+		}, rolls: true},
+	} {
+		for name, patch := range trackerPatches {
+			t.Run(tc.name+"/"+name, func(t *testing.T) {
+				cl, a, cc := repoPatchFixture(t)
+				if tc.before != nil {
+					tc.before(a)
+					if err := cl.Update(context.Background(), a); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if err := patch(&Tracker{Store: &fakeDeployStore{}, CloneSecrets: cc}, tc.ctx, cl, a, func(a *appv1alpha1.App) error {
+					tc.mutate(a)
+					return nil
+				}); err != nil {
+					t.Fatal(err)
+				}
+				if _, stamped := a.Annotations[appv1alpha1.AnnotationReleaseGeneration]; stamped != tc.rolls {
+					t.Fatalf("release stamped = %v, want %v", stamped, tc.rolls)
+				}
+				if len(cc.mints) != 0 || a.Spec.CloneSecret != "" {
+					t.Fatalf("mints %v, cloneSecret %q; want none", cc.mints, a.Spec.CloneSecret)
+				}
+			})
+		}
+	}
+}
+
+// A mint failure fails the write before anything is patched or recorded, as
+// a deploy trigger's does: a private repo never builds on a stale credential.
+func TestACloneCredentialMintFailureFailsTheWrite(t *testing.T) {
+	for name, patch := range trackerPatches {
+		t.Run(name, func(t *testing.T) {
+			cl, a, cc := repoPatchFixture(t)
+			cc.err = errors.New("github down")
+			ds := &fakeDeployStore{}
+			err := patch(&Tracker{Store: ds, CloneSecrets: cc}, context.Background(), cl, a, func(a *appv1alpha1.App) error {
+				a.Spec.BuildCommand = "make build"
+				return nil
+			})
+			if !errors.Is(err, cc.err) || *cc.patches != 0 || len(ds.created) != 0 {
+				t.Fatalf("err %v after %d patches and %d rows, want the mint's error and nothing written", err, *cc.patches, len(ds.created))
+			}
+		})
+	}
+}
+
+// A locked write that loses the App race runs its mutation again but mints
+// once.
+func TestALockedWriteMintsOnceAcrossARetry(t *testing.T) {
+	cl, read, cc := repoPatchFixture(t)
+	winner := read.DeepCopy()
+	winner.Spec.FilesFromSecrets = []string{"web-files"}
+	if err := cl.Update(context.Background(), winner); err != nil {
+		t.Fatal(err)
+	}
+	runs := 0
+	if err := (&Tracker{Store: &fakeDeployStore{}, CloneSecrets: cc}).PatchLocked(context.Background(), cl, read, store.TriggerSettingsChange, func(a *appv1alpha1.App) error {
+		runs++
+		a.Spec.BuildCommand = "make build"
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if runs != 2 || len(cc.mints) != 1 || read.Spec.CloneSecret != "web-clone" {
+		t.Fatalf("%d runs, mints %v, cloneSecret %q; want two runs, one mint, the Secret named", runs, cc.mints, read.Spec.CloneSecret)
 	}
 }
