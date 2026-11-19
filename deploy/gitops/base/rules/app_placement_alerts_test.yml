@@ -1,0 +1,77 @@
+# w5/195: an App outside its workspace's namespace is reported, an estate
+# with none stays quiet, and a failing App listing says the guard is blind.
+rule_files:
+  - alerting_rules.yml
+evaluation_interval: 1m
+tests:
+  - name: a hand-applied App in default fires after 30 minutes
+    interval: 1m
+    input_series:
+      - series: bex_app_placement_outside_workspace{job="bex-operator",namespace="default",name="hello-static",workspace=""}
+        values: 1x60
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: AppOutsideWorkspace
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: AppOutsideWorkspace
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: bex-operator
+              namespace: default
+              name: hello-static
+            exp_annotations:
+              summary: "App default/hello-static is outside its workspace's namespace"
+              description: "This App CR's namespace is not its app.bex.co/workspace label (workspace \"\", empty when it has none), so bex-api, the dashboard, billing and quotas never see it while the operator may still serve it on the platform domain. Find where it came from: kubectl -n default get app hello-static -o yaml (a kubectl.kubernetes.io/last-applied-configuration annotation means a hand apply). Check its Ingress hosts and request logs for anything that still depends on it and save the manifest, then delete the App; its finalizer removes the Ingress, Service and published content. Context: .pm/w5/done/195.md."
+  - name: an App labeled for another workspace fires too
+    interval: 1m
+    input_series:
+      - series: bex_app_placement_outside_workspace{job="bex-operator",namespace="tea-ws1",name="web",workspace="tea-ws2"}
+        values: 1x60
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: AppOutsideWorkspace
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: bex-operator
+              namespace: tea-ws1
+              name: web
+              workspace: tea-ws2
+            exp_annotations:
+              summary: "App tea-ws1/web is outside its workspace's namespace"
+              description: "This App CR's namespace is not its app.bex.co/workspace label (workspace \"tea-ws2\", empty when it has none), so bex-api, the dashboard, billing and quotas never see it while the operator may still serve it on the platform domain. Find where it came from: kubectl -n tea-ws1 get app web -o yaml (a kubectl.kubernetes.io/last-applied-configuration annotation means a hand apply). Check its Ingress hosts and request logs for anything that still depends on it and save the manifest, then delete the App; its finalizer removes the Ingress, Service and published content. Context: .pm/w5/done/195.md."
+  - name: an App deleted within the half hour does not fire
+    interval: 1m
+    input_series:
+      - series: bex_app_placement_outside_workspace{job="bex-operator",namespace="default",name="whoami",workspace=""}
+        values: 1x20 _x40
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: AppOutsideWorkspace
+        exp_alerts: []
+  - name: a failing App listing fires the observation alert
+    interval: 1m
+    input_series:
+      - series: bex_app_placement_observe_errors_total{job="bex-operator"}
+        values: 0+4x60
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: AppPlacementObservationFailing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: bex-operator
+            exp_annotations:
+              summary: "App placement observation is failing"
+              description: "The operator could not list App CRs for bex_app_placement_outside_workspace, so AppOutsideWorkspace cannot be trusted. Check the operator's RBAC for apps.app.bex.co and its API connectivity."
+  - name: a listing that recovered stays quiet
+    interval: 1m
+    input_series:
+      - series: bex_app_placement_observe_errors_total{job="bex-operator"}
+        values: 0+1x10 10x50
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: AppPlacementObservationFailing
+        exp_alerts: []

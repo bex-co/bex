@@ -523,6 +523,26 @@ groups:
         annotations:
           summary: "Datastore readiness observation is failing"
           description: "bex_datastore_ready is incomplete, so DatastoreStuckProvisioning cannot be trusted. Check the operator's RBAC for databases/keyvalues and its API connectivity."
+      # w5/195: under ADR043 every App lives in its workspace's namespace,
+      # and the API, dashboard, billing, quotas and isolation policies find
+      # Apps only there. A hand-applied App in `default` served on the
+      # platform domain for four months and nothing listed it.
+      - alert: AppOutsideWorkspace
+        expr: bex_app_placement_outside_workspace == 1
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "App {{ $labels.namespace }}/{{ $labels.name }} is outside its workspace's namespace"
+          description: "This App CR's namespace is not its app.bex.co/workspace label (workspace \"{{ $labels.workspace }}\", empty when it has none), so bex-api, the dashboard, billing and quotas never see it while the operator may still serve it on the platform domain. Find where it came from: kubectl -n {{ $labels.namespace }} get app {{ $labels.name }} -o yaml (a kubectl.kubernetes.io/last-applied-configuration annotation means a hand apply). Check its Ingress hosts and request logs for anything that still depends on it and save the manifest, then delete the App; its finalizer removes the Ingress, Service and published content. Context: .pm/w5/done/195.md."
+      - alert: AppPlacementObservationFailing
+        expr: increase(bex_app_placement_observe_errors_total[15m]) > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "App placement observation is failing"
+          description: "The operator could not list App CRs for bex_app_placement_outside_workspace, so AppOutsideWorkspace cannot be trusted. Check the operator's RBAC for apps.app.bex.co and its API connectivity."
       # w4/m357: a public datastore is Ready and serving while it waits
       # for its publicly trusted certificate, so readiness never sees a
       # stall. A Postgres keeps its private CA (the copied URL carries

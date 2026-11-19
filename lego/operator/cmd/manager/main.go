@@ -337,6 +337,9 @@ func main() {
 	// on. Uncached, like the ClusterBuilder collector, so a scrape never depends
 	// on informer state.
 	controller.RegisterDatastoreMetrics(uncachedClient)
+	// Apps outside their workspace's namespace (w5/195): a hand-applied App is
+	// invisible to the API, billing and quotas, so only this names it.
+	controller.RegisterAppPlacementMetrics(uncachedClient)
 
 	setupDatastoreReconcilers(mgr, uncachedClient, appsNamespace)
 	// +kubebuilder:scaffold:builder

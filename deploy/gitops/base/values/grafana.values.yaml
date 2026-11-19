@@ -4267,6 +4267,41 @@ dashboards:
                  "legendFormat": "pods failing to pull"
                 }
               ]
+            },
+            {
+             "id": 34,
+             "type": "timeseries",
+             "title": "Apps outside a workspace namespace",
+             "description": "App CRs whose namespace is not their app.bex.co/workspace label, an unlabeled App included (w5/195): bex-api, the dashboard, billing and quotas never see them, yet the operator may serve them on the platform domain. AppOutsideWorkspace (warning) fires at >0 for 30m (red line) and names each App. Observation errors mean the operator's App listing failed (AppPlacementObservationFailing), so a 0 above is not clean. Reads 0 only while the operator is scraped; No data when it is not.",
+             "gridPos": { "h": 8, "w": 12, "x": 12, "y": 156 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "short",
+                 "min": 0,
+                 "custom": { "thresholdsStyle": { "mode": "line" } },
+                 "thresholds": {
+                   "mode": "absolute",
+                   "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 1 }
+                    ]
+                  }
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "count(bex_app_placement_outside_workspace == 1) or (count(up{job=\"bex-operator\"} == 1) * 0)",
+                 "legendFormat": "Apps outside a workspace namespace"
+                },
+                {
+                 "refId": "B",
+                 "expr": "increase(bex_app_placement_observe_errors_total[15m])",
+                 "legendFormat": "observation errors (15m)"
+                }
+              ]
             }
           ]
         }

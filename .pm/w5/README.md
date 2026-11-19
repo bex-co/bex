@@ -23,7 +23,7 @@ User selection 2026-11-18: all five items of the tenth `/pm-brainstorm for w5` p
 - [ ] **197** — [A logs read with no `startTime` reads the last hour, as Render documents, not the last seven days](197.md) (~1h) ← w5/m503 t004: Render's List logs defaults `startTime` to `now() - 1 hour`
 - [ ] **198** — [A text search over many hours of a busy service still spends its whole 18 s scan budget](198.md) (>1h) ← w5/m503 t002: the shape left above 5 s
 - [x] **194** — [The disk meter never re-meters an hour behind its newest row, so a single disk's missed hour is skipped for good](done/194.md) (~1h) ← round 10 item 4; `UsageHourNearlyUnmeterable` (disk), 2026-11-17 06:00Z — **DONE 2026-11-19**: a disk pass starts at the disk source's oldest hole inside the catch-up window and re-meters forward from it; 2026-11-17 06:00Z (two `bex` disks, 57,600 GB-seconds) stays an accepted undercount
-- [ ] **195** — [An App outside every workspace (`default/hello-static`) still serves on the platform domain](195.md) (~45m) ← round 10 item 5
+- [x] **195** — [An App outside every workspace (`default/hello-static`) still serves on the platform domain](done/195.md) (~45m) ← round 10 item 5 — **DONE 2026-11-19**: the w1/m21 smoke-test App is deleted (no referrer or scheduled client in 30 days of request logs; manifest and content saved off-repo first), production holds no App outside its workspace's namespace, and `AppOutsideWorkspace` names any that appears
 
 ## Approved queue — 2026-11-12 (brainstorm round 9)
 
