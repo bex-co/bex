@@ -611,8 +611,7 @@ const deLogs: Record<string, TranslationEntry> = {
   },
   "logs.viewValueTypeHint": {
     message: "Wert eingeben, dann Enter drücken",
-    description:
-      "Placeholder of a typed filter value (instance, search text, status code, host, path)",
+    description: "Placeholder of a typed filter value (Text Search's terms)",
   },
   "logs.viewValueRemove": {
     message: "{value} entfernen",
@@ -622,7 +621,7 @@ const deLogs: Record<string, TranslationEntry> = {
   "logs.viewValueSearch": {
     message: "Suchen oder einen Wert eingeben",
     description:
-      "Placeholder of the search box in a filter's value picker fed by the project's logs (Instance)",
+      "Placeholder of the search box in a filter's value picker fed by the project's logs (Level, Instance, Method, Status Code, Host, Path)",
   },
   "logs.viewValueAdd": {
     message: "„{value}“ hinzufügen",

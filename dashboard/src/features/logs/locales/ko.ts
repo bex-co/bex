@@ -592,8 +592,7 @@ const koLogs: Record<string, TranslationEntry> = {
   },
   "logs.viewValueTypeHint": {
     message: "값을 입력한 뒤 Enter를 누르세요",
-    description:
-      "Placeholder of a typed filter value (instance, search text, status code, host, path)",
+    description: "Placeholder of a typed filter value (Text Search's terms)",
   },
   "logs.viewValueRemove": {
     message: "{value} 제거",
@@ -603,7 +602,7 @@ const koLogs: Record<string, TranslationEntry> = {
   "logs.viewValueSearch": {
     message: "검색하거나 값을 입력하세요",
     description:
-      "Placeholder of the search box in a filter's value picker fed by the project's logs (Instance)",
+      "Placeholder of the search box in a filter's value picker fed by the project's logs (Level, Instance, Method, Status Code, Host, Path)",
   },
   "logs.viewValueAdd": {
     message: "“{value}” 추가",

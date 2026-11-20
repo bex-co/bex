@@ -1,8 +1,6 @@
 import type { en } from "@/i18n";
 import { SavedSearchType } from "@/graphql/definitions";
 import {
-  LOG_LEVELS,
-  LOG_METHODS,
   LOG_TYPE_APP,
   LOG_TYPE_REQUEST,
   STRUCTURED_LABEL_KEYS,
@@ -101,18 +99,25 @@ export interface ViewOption {
 
 /**
  * How a field's values are picked: from the project's environments or
- * resources, from a fixed list, from the values the project's logs hold
- * (an instance), or typed (a search term, a status code, a host or a path).
+ * resources, from Resource Type's fixed list, from the values the project's
+ * logs hold (a level, an instance, a method, a status code, a host or a path),
+ * or typed (a search term).
  */
 export type ViewValueKind =
   "environment" | "resource" | "options" | "discovered" | "timeRange" | "text";
 
 /**
  * The log label a `discovered` field's values are read from, across the
- * project's view (w3/079), as Render's editor reads `logValues` for it.
+ * project's view (w3/079, w3/084), as Render's editor reads `logValues` for
+ * each line field.
  */
 const VIEW_FIELD_LOG_LABELS: Partial<Record<ViewField, string>> = {
+  LEVEL: "level",
   INSTANCE: "instance",
+  METHOD: "method",
+  STATUS_CODE: "statusCode",
+  HOST: "host",
+  PATH: "path",
 };
 
 export function viewValueKind(field: ViewField): ViewValueKind {
@@ -123,8 +128,6 @@ export function viewValueKind(field: ViewField): ViewValueKind {
     case "RESOURCE":
       return "resource";
     case "RESOURCE_TYPE":
-    case "LEVEL":
-    case "METHOD":
       return "options";
     case "TIME_RANGE":
       return "timeRange";
@@ -158,18 +161,9 @@ export function instanceChoiceLabel(
   return owner ? `${owner.label} · ${shortInstance(instance)}` : instance;
 }
 
-/** The fixed values of an `options` field. */
+/** The fixed values of an `options` field: Resource Type's. */
 export function viewFieldOptions(field: ViewField): readonly ViewOption[] {
-  switch (field) {
-    case "RESOURCE_TYPE":
-      return VIEW_RESOURCE_TYPE_OPTIONS;
-    case "LEVEL":
-      return LOG_LEVELS.map((value) => ({ value }));
-    case "METHOD":
-      return LOG_METHODS.map((value) => ({ value }));
-    default:
-      return [];
-  }
+  return field === "RESOURCE_TYPE" ? VIEW_RESOURCE_TYPE_OPTIONS : [];
 }
 
 /** A field that takes exactly one value: an environment, a time range. */

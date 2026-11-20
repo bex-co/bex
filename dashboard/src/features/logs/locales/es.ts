@@ -625,8 +625,7 @@ const esLogs: Record<string, TranslationEntry> = {
   },
   "logs.viewValueTypeHint": {
     message: "Escribe un valor y pulsa Enter",
-    description:
-      "Placeholder of a typed filter value (instance, search text, status code, host, path)",
+    description: "Placeholder of a typed filter value (Text Search's terms)",
   },
   "logs.viewValueRemove": {
     message: "Quitar {value}",
@@ -636,7 +635,7 @@ const esLogs: Record<string, TranslationEntry> = {
   "logs.viewValueSearch": {
     message: "Busca o escribe un valor",
     description:
-      "Placeholder of the search box in a filter's value picker fed by the project's logs (Instance)",
+      "Placeholder of the search box in a filter's value picker fed by the project's logs (Level, Instance, Method, Status Code, Host, Path)",
   },
   "logs.viewValueAdd": {
     message: "Añadir «{value}»",

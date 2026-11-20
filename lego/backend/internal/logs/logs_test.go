@@ -1291,9 +1291,11 @@ func TestSubscriptionWorkspaceCapPreservesAnotherTenantsCapacity(t *testing.T) {
 // TestLogLabelValuesHostAndPathForMetricsFilters pins the discovery the metrics
 // Network card's Host/Path filters reuse (w5/m58): `host` resolves from the App's
 // own URLs even with no store wired (so the Host dropdown always populates),
-// while `path` is deliberately NOT a discoverable label — a high-cardinality line
-// field, not a Loki stream label — so the metrics UI uses a free-text Path filter
-// rather than a fabricated dropdown, exactly as the Logs tab does.
+// while `path` is deliberately NOT a discoverable label of one resource's read —
+// a high-cardinality line field, not a Loki stream label, and outside Render's
+// six — so the metrics UI uses a free-text Path filter rather than a fabricated
+// dropdown, exactly as the Logs tab does. Only a project view's pickers sample
+// it (w3/084, path_values_test.go).
 func TestLogLabelValuesHostAndPathForMetricsFilters(t *testing.T) {
 	app := sampleApp("web")
 	app.Status.URLs = []string{"https://web.onbex.co", "https://www.example.com"}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SavedSearchType } from "@/graphql/definitions";
 import {
+  VIEW_FIELDS,
   VIEW_FIELDS_BY_TYPE,
   documentFromRows,
   freeViewName,
@@ -203,10 +204,29 @@ describe("the view filter document", () => {
     expect(moved.key).toBe(rows[1].key);
   });
 
-  it("picks Instance from the project's logs and names each by its resource (w3/079)", () => {
-    expect(viewValueKind("INSTANCE")).toBe("discovered");
-    expect(viewFieldLogLabel("INSTANCE")).toBe("instance");
-    expect(viewFieldLogLabel("TEXT_SEARCH")).toBeUndefined();
+  it("picks every line field from the project's logs and names an instance by its resource (w3/079, w3/084)", () => {
+    // Render's editor lists logValues for each line field; only Text Search
+    // is typed.
+    expect(
+      Object.fromEntries(
+        VIEW_FIELDS.map((field) => [
+          field,
+          [viewValueKind(field), viewFieldLogLabel(field)],
+        ]),
+      ),
+    ).toEqual({
+      ENVIRONMENT: ["environment", undefined],
+      RESOURCE: ["resource", undefined],
+      RESOURCE_TYPE: ["options", undefined],
+      LEVEL: ["discovered", "level"],
+      INSTANCE: ["discovered", "instance"],
+      TEXT_SEARCH: ["text", undefined],
+      METHOD: ["discovered", "method"],
+      STATUS_CODE: ["discovered", "statusCode"],
+      HOST: ["discovered", "host"],
+      PATH: ["discovered", "path"],
+      TIME_RANGE: ["timeRange", undefined],
+    });
     expect(viewLogType(SavedSearchType.ApplicationLogs)).toBe("app");
     expect(viewLogType(SavedSearchType.RequestLogs)).toBe("request");
 

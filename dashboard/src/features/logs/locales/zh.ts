@@ -578,8 +578,7 @@ const zhLogs: Record<string, TranslationEntry> = {
   },
   "logs.viewValueTypeHint": {
     message: "输入一个值，然后按 Enter",
-    description:
-      "Placeholder of a typed filter value (instance, search text, status code, host, path)",
+    description: "Placeholder of a typed filter value (Text Search's terms)",
   },
   "logs.viewValueRemove": {
     message: "移除 {value}",
@@ -589,7 +588,7 @@ const zhLogs: Record<string, TranslationEntry> = {
   "logs.viewValueSearch": {
     message: "搜索或输入一个值",
     description:
-      "Placeholder of the search box in a filter's value picker fed by the project's logs (Instance)",
+      "Placeholder of the search box in a filter's value picker fed by the project's logs (Level, Instance, Method, Status Code, Host, Path)",
   },
   "logs.viewValueAdd": {
     message: "添加“{value}”",

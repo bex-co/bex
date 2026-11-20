@@ -640,11 +640,12 @@ function ValuesTrigger({
 }
 
 /**
- * Values picked from what the project's logs hold (w3/079), as Render's
- * editor lists `logValues` for the field: the label's values across the
- * view's resources, read once the row shows, many at a time. The search box
- * narrows the list, and a value the logs no longer hold (an instance that
- * has gone) is added as typed.
+ * Values picked from what the project's logs hold (w3/079, w3/084), as
+ * Render's editor lists `logValues` for Level, Instance, Method, Status Code,
+ * Host and Path: the label's values across the view's resources, read once
+ * the row shows, many at a time. The search box narrows the list, and a value
+ * the logs do not hold (an instance that has gone, a status class such as
+ * `5xx`, a path not yet requested) is added as typed.
  */
 function DiscoveredValues({
   projectId,
@@ -779,9 +780,9 @@ function DiscoveredValues({
 }
 
 /**
- * Values that are typed rather than picked (a search term, a status code, a
- * host, a path): Enter or a comma adds the text as a value, each value a chip
- * with its own remove button.
+ * Values that are typed rather than picked (Text Search's terms): Enter or a
+ * comma adds the text as a value, each value a chip with its own remove
+ * button.
  */
 function TypedValues({
   values,

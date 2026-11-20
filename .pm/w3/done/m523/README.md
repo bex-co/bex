@@ -84,7 +84,7 @@ Compared against Render's dashboard bundle (§ Render's Edit view below, and the
 | `/v1/logs/subscribe?project=` (a Bex extension) | the view's live tail follows the same document | the same negation, per producer (pods, datastore pods, the request poll) | matches |
 | `createSavedSearch` / `updateSavedSearch` | the modal saves `IS_NOT` on the eight negatable fields | stored after the shared validator; refused on the other three | matches |
 | Edit view modal: operators | `is one of` / `is not one of` on Resource, Resource Type and the six line fields; `is` on Environment and Time Range; `contains` on Text Search | the same, but Text Search's operator reads `is` | drift: Text Search's `contains` label and `TEXT_SEARCH`/`CONTAINS` spelling, filed by t001 as [w3/083](../083.md) |
-| Edit view modal: values | Level, Instance, Method, Status Code, Host and Path list the project's values (`logValues(label, logQuery: {project})`) | Instance, Status Code, Host and Path typed; Level and Method fixed lists | drift: Instance is [w3/079](../079.md); the other five filed as [w3/084](../../084.md) |
+| Edit view modal: values | Level, Instance, Method, Status Code, Host and Path list the project's values (`logValues(label, logQuery: {project})`) | Instance, Status Code, Host and Path typed; Level and Method fixed lists | drift: Instance is [w3/079](../079.md); the other five filed as [w3/084](../084.md) |
 | Saved document shape | `timeRange.relative` and `display` beside `filters` | a `TIME_RANGE` row, no `display` | drift: [w3/083](../083.md) |
 | REST `GET /v1/logs`, MCP `list_logs` | no operator on log filters | unchanged | matches |
 

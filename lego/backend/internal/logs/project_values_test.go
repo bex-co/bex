@@ -25,9 +25,11 @@ import (
 	"testing"
 
 	"github.com/graphql-go/graphql"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/savedsearch"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // The project-scoped label-values read (w3/079): Render's logValues(input:
@@ -40,6 +42,8 @@ type storeLabels struct {
 	mu     sync.Mutex
 	values map[string]map[string][]string
 	asked  []string
+	// pathTypes is each path read's log types.
+	pathTypes [][]string
 }
 
 func (f *storeLabels) source(_ context.Context, _ string, label string, q LogQuery) ([]string, error) {
@@ -47,6 +51,9 @@ func (f *storeLabels) source(_ context.Context, _ string, label string, q LogQue
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.asked = append(f.asked, stream+"/"+label)
+	if label == LabelPath {
+		f.pathTypes = append(f.pathTypes, q.Types)
+	}
 	return f.values[stream][lokiLabelFor(label)], nil
 }
 
@@ -56,10 +63,13 @@ func (f *storeLabels) source(_ context.Context, _ string, label string, q LogQue
 func projectValuesFixture() (*Service, *fakeProject, *storeLabels) {
 	svc, project := projectFixture()
 	store := &storeLabels{values: map[string]map[string][]string{
-		projectWeb:  {"pod": {"web-1", "web-0"}, "method": {"GET", "POST"}, "level": {"info"}},
+		projectWeb: {
+			"pod": {"web-1", "web-0"}, "method": {"GET", "POST"}, "level": {"info"},
+			"status": {"404", "200"}, "path": {"/orders", "/"},
+		},
 		projectCron: {"pod": {"nightly-1"}, "method": {}, "level": {"error"}},
 		postgresID:  {"pod": {postgresID + "-1"}, "level": {"LOG"}},
-		"elsewhere": {"pod": {"elsewhere-1"}, "method": {"DELETE"}},
+		"elsewhere": {"pod": {"elsewhere-1"}, "method": {"DELETE"}, "status": {"500"}, "path": {"/admin"}},
 	}}
 	svc.LabelValues = store.source
 	return svc, project, store
@@ -167,6 +177,49 @@ func TestProjectValuesReadEveryDiscoverableLabel(t *testing.T) {
 	}
 }
 
+// The Request Logs view's own pickers (w3/084): Status Code from the web
+// services' streams, Host from their URLs, and Path, a request line's field
+// Render's public label enum lacks, from their request lines alone. None of
+// a service outside the project's.
+func TestProjectValuesReadTheRequestFields(t *testing.T) {
+	svc, _, store := projectValuesFixture()
+	ctx := context.Background()
+	var web appv1alpha1.App
+	if err := svc.Base.Client.Get(ctx, client.ObjectKey{Namespace: "default", Name: projectWeb}, &web); err != nil {
+		t.Fatal(err)
+	}
+	web.Status.URLs = []string{"https://web.onbex.co", "https://shop.example.com"}
+	if err := svc.Base.Client.Update(ctx, &web); err != nil {
+		t.Fatal(err)
+	}
+	for label, want := range map[string][]string{
+		LabelStatusCode: {"200", "404"},
+		LabelHost:       {"shop.example.com", "web.onbex.co"},
+		LabelPath:       {"/", "/orders"},
+	} {
+		got, errs := runProjectValues(t, svc, ctx, `project:"prj-observed", label:"`+label+`", type:"request"`)
+		if errs != nil {
+			t.Fatalf("%s: %v", label, errs)
+		}
+		if !slices.Equal(got, want) {
+			t.Errorf("%s = %v, want %v", label, got, want)
+		}
+	}
+	if len(store.pathTypes) != 1 || !slices.Equal(store.pathTypes[0], []string{LogTypeRequest}) {
+		t.Fatalf("path reads took types %v, want the web service's request lines", store.pathTypes)
+	}
+
+	// Application Logs, the view a read with no type names, has no path to
+	// discover: its store is not asked for one.
+	store.pathTypes = nil
+	for _, args := range []string{`project:"prj-observed", label:"path"`, `project:"prj-observed", label:"path", type:"app"`} {
+		got, errs := runProjectValues(t, svc, ctx, args)
+		if errs != nil || len(got) != 0 || len(store.pathTypes) != 0 {
+			t.Fatalf("%s = %v (%v), store asked %v", args, got, errs, store.pathTypes)
+		}
+	}
+}
+
 // Authorization: a caller without log access reads no value and learns of no
 // resource, and a resource that is gone by the read is dropped quietly.
 func TestProjectValuesNameNothingTheCallerCannotRead(t *testing.T) {
@@ -209,6 +262,8 @@ func TestProjectValuesRefusals(t *testing.T) {
 		want string
 	}{
 		{`project:"prj-observed", label:"pod"`, `unknown log label "pod"`},
+		// One resource's read keeps Render's six labels, as REST and MCP do.
+		{`resource:"web", label:"path"`, `unknown log label "path"`},
 		{`project:"prj-observed", resource:"web", label:"instance"`, "logLabelValues takes exactly one of resource and project"},
 		{`label:"instance"`, "logLabelValues takes exactly one of resource and project"},
 		{`resource:"web", label:"instance", filterDocument:{filters: [], version: 1}`, "filterDocument applies to a project read"},

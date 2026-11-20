@@ -240,12 +240,14 @@ const AuditVerbLogLabelValues = "logs.LogLabelValues"
 // view's, resolved and authorized as a page read resolves it, so it reads at
 // most maxProjectLogResources resources and names none the caller may not
 // read. Each resource then answers its own LogLabelValues, eight at a time,
-// so an instance keeps its resource's id as its prefix. A datastore, whose
-// lines carry only an instance and a level, adds nothing to another label,
-// and a resource that refuses or is gone by its read adds nothing either.
+// so an instance keeps its resource's id as its prefix. It answers Render's
+// six labels and `path` (w3/084), which a web service's request lines carry.
+// A datastore, whose lines carry only an instance and a level, adds nothing to
+// another label, and a resource that refuses or is gone by its read adds
+// nothing either.
 func (s *Service) queryProjectLabelValues(ctx context.Context, project string, rawDoc any, label string, q LogQuery) ([]string, error) {
 	ctx = core.WithRequestMemo(core.WithAuditVerb(ctx, AuditVerbLogLabelValues))
-	if err := checkDiscoverableLabel(label); err != nil {
+	if err := checkLabel(label, projectDiscoverableLabels); err != nil {
 		return nil, err
 	}
 	v, err := newProjectView(project, rawDoc, &q)
@@ -268,7 +270,7 @@ func (s *Service) queryProjectLabelValues(ctx context.Context, project string, r
 			continue
 		}
 		g.Go(func() error {
-			reads[i], errs[i] = s.LogLabelValues(ctx, label, q.forResource(r.ID))
+			reads[i], errs[i] = s.labelValues(ctx, label, q.forResource(r.ID), projectDiscoverableLabels)
 			return nil
 		})
 	}

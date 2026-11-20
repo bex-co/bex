@@ -76,14 +76,17 @@ vi.mock("@/features/keyvalue/hooks/use-key-values", () => ({
   },
 }));
 
-// The Instance picker's project-wide read (w3/079): what the project's logs
-// hold, by the call's project, label and log type.
+// The line fields' project-wide read (w3/079, w3/084): what the project's
+// logs hold, by the call's project, label and log type. `answer` is every
+// label's unless `byLabel` names it.
+type DiscoveryAnswer = {
+  values: string[];
+  status: "loading" | "ready" | "failed";
+};
 const discovery = vi.hoisted(() => ({
   calls: [] as string[][],
-  answer: {
-    values: [] as string[],
-    status: "ready" as "loading" | "ready" | "failed",
-  },
+  answer: { values: [], status: "ready" } as DiscoveryAnswer,
+  byLabel: {} as Record<string, DiscoveryAnswer>,
 }));
 vi.mock("@/features/logs/hooks/use-log-label-values", () => ({
   useProjectLogLabelDiscovery: (
@@ -92,7 +95,7 @@ vi.mock("@/features/logs/hooks/use-log-label-values", () => ({
     logType: string,
   ) => {
     discovery.calls.push([project, label, logType]);
-    return discovery.answer;
+    return discovery.byLabel[label] ?? discovery.answer;
   },
 }));
 
@@ -128,6 +131,7 @@ beforeEach(() => {
   for (const fn of [mutations.create, mutations.update]) fn.mockReset();
   discovery.calls = [];
   discovery.answer = { values: [WEB_A, WEB_B, DB_A], status: "ready" };
+  discovery.byLabel = {};
 });
 
 /** The rows a project's Instance row starts from: one, moved to Instance. */
@@ -142,8 +146,8 @@ async function instanceRow(
 }
 
 /** The open picker's listed values, as they read. */
-const pickerOptions = () =>
-  within(screen.getByRole("listbox", { name: "Values for Instance" }))
+const pickerOptions = (field = "Instance") =>
+  within(screen.getByRole("listbox", { name: `Values for ${field}` }))
     .getAllByRole("option")
     .map((option) => option.textContent);
 
@@ -435,6 +439,100 @@ describe("EditViewDialog", () => {
     );
     expect(screen.getByRole("status")).toHaveTextContent(
       "None in the project's logs from the last 7 days. Type a value to add it.",
+    );
+  });
+
+  it("lists what a Request Logs view's logs hold for Level, Method, Status Code, Host and Path, and still takes a typed value (w3/084)", async () => {
+    const user = userEvent.setup();
+    mutations.update.mockResolvedValue(view());
+    discovery.byLabel = {
+      level: { values: ["error", "info", "warning"], status: "ready" },
+      method: { values: ["GET", "POST"], status: "ready" },
+      statusCode: { values: ["200", "404", "500"], status: "ready" },
+      host: {
+        values: ["shop.example.com", "storefront.onbex.co"],
+        status: "ready",
+      },
+      path: { values: ["/", "/healthz", "/orders"], status: "ready" },
+    };
+    const { dialog } = open({
+      kind: "edit",
+      view: {
+        ...view({
+          filters: [
+            { field: "LEVEL", operator: "IS", values: ["error"] },
+            { field: "METHOD", operator: "IS", values: ["GET"] },
+            { field: "STATUS_CODE", operator: "IS", values: ["500"] },
+            { field: "HOST", operator: "IS", values: ["shop.example.com"] },
+            { field: "PATH", operator: "IS_NOT", values: ["/healthz"] },
+          ],
+          version: 1,
+        }),
+        type: SavedSearchType.RequestLogs,
+      },
+    });
+    for (const label of ["level", "method", "statusCode", "host", "path"]) {
+      expect(discovery.calls).toContainEqual(["prj-1", label, "request"]);
+    }
+    // Each field's values are a picker, none a text box.
+    expect(
+      within(dialog).queryByRole("textbox", { name: /^Values for/ }),
+    ).toBeNull();
+
+    const pick = async (field: string, listed: string[], choose: string) => {
+      await user.click(
+        within(dialog).getByRole("button", { name: `Values for ${field}` }),
+      );
+      expect(pickerOptions(field)).toEqual(listed);
+      await user.click(screen.getByRole("option", { name: choose }));
+      await user.keyboard("{Escape}");
+    };
+    await pick("Level", ["error", "info", "warning"], "warning");
+    await pick("Method", ["GET", "POST"], "POST");
+    await pick(
+      "Request host",
+      ["shop.example.com", "storefront.onbex.co"],
+      "storefront.onbex.co",
+    );
+    await pick("Request path", ["/", "/healthz", "/orders"], "/orders");
+    expect(
+      within(dialog).getByRole("button", { name: "Values for Request path" }),
+    ).toHaveTextContent("/healthz, /orders");
+
+    // A status class the logs cannot list is typed.
+    await user.click(
+      within(dialog).getByRole("button", { name: "Values for Status code" }),
+    );
+    expect(pickerOptions("Status code")).toEqual(["200", "404", "500"]);
+    await user.type(
+      screen.getByPlaceholderText("Search, or type a value"),
+      "4xx",
+    );
+    await user.click(screen.getByRole("option", { name: "Add “4xx”" }));
+    await user.keyboard("{Escape}");
+
+    await user.click(within(dialog).getByRole("button", { name: "Done" }));
+    expect(mutations.update).toHaveBeenCalledWith(
+      "svs-app",
+      "Application Logs",
+      {
+        filters: [
+          { field: "LEVEL", operator: "IS", values: ["error", "warning"] },
+          { field: "METHOD", operator: "IS", values: ["GET", "POST"] },
+          { field: "STATUS_CODE", operator: "IS", values: ["500", "4xx"] },
+          {
+            field: "HOST",
+            operator: "IS",
+            values: ["shop.example.com", "storefront.onbex.co"],
+          },
+          {
+            field: "PATH",
+            operator: "IS_NOT",
+            values: ["/healthz", "/orders"],
+          },
+        ],
+        version: 1,
+      },
     );
   });
 

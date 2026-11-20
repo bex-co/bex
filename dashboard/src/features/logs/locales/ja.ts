@@ -594,8 +594,7 @@ const jaLogs: Record<string, TranslationEntry> = {
   },
   "logs.viewValueTypeHint": {
     message: "値を入力して Enter を押してください",
-    description:
-      "Placeholder of a typed filter value (instance, search text, status code, host, path)",
+    description: "Placeholder of a typed filter value (Text Search's terms)",
   },
   "logs.viewValueRemove": {
     message: "{value} を削除",
@@ -605,7 +604,7 @@ const jaLogs: Record<string, TranslationEntry> = {
   "logs.viewValueSearch": {
     message: "検索するか値を入力",
     description:
-      "Placeholder of the search box in a filter's value picker fed by the project's logs (Instance)",
+      "Placeholder of the search box in a filter's value picker fed by the project's logs (Level, Instance, Method, Status Code, Host, Path)",
   },
   "logs.viewValueAdd": {
     message: "「{value}」を追加",

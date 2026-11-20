@@ -17,9 +17,11 @@ limitations under the License.
 package logs
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -304,6 +306,8 @@ func sortedEntries(entries []LogEntry) []LogEntry {
 // Loki's /label/<name>/values API scoped to the query's stream selector — so the
 // values a caller discovers are only ever those of the App they asked about
 // (tenancy: an unscoped label-values call would enumerate every tenant's pods).
+// `path`, a line field, is read from a sample of the same streams' request
+// lines instead (lokiPathValues).
 func NewLokiLabelValuesSource(base string, hc *http.Client) LogLabelValuesSource {
 	if hc == nil {
 		hc = core.UpstreamClient
@@ -313,6 +317,9 @@ func NewLokiLabelValuesSource(base string, hc *http.Client) LogLabelValuesSource
 		start, end := lokiRange(q, time.Now())
 		if start.After(end) {
 			return nil, nil
+		}
+		if label == LabelPath {
+			return lokiPathValues(ctx, hc, base, namespace, q, start, end)
 		}
 		// Selector only: Loki's label-values API takes a stream selector, not a
 		// line pipeline, so the line filters (text/path/host) don't apply here.
@@ -589,9 +596,14 @@ func lokiPipelineFor(q LogQuery) string {
 	if len(q.Path) == 0 && len(q.Host) == 0 {
 		return pipeline
 	}
-	// One `json` stage extracting only the two fields we filter on (not the whole
-	// line — the access log has ~20 fields), then a label filter per field.
-	pipeline += ` | json request_path="RequestPath", request_host="RequestHost"`
+	return pipeline + lokiRequestFieldStages(q)
+}
+
+// lokiRequestFieldStages is one `json` stage extracting only a request line's
+// path and host (not the whole line — the access log has ~20 fields), then a
+// label filter per field the query filters on.
+func lokiRequestFieldStages(q LogQuery) string {
+	pipeline := ` | json request_path="RequestPath", request_host="RequestHost"`
 	if m := labelMatcher("request_path", q.Path, q.negates(LabelPath)); m != "" {
 		pipeline += " | " + m
 	}
@@ -599,6 +611,68 @@ func lokiPipelineFor(q LogQuery) string {
 		pipeline += " | " + m
 	}
 	return pipeline
+}
+
+// Path discovery (w3/084) reads a sample: a path is not a stream label (the
+// cardinality budget keeps it in the access line), so Loki's label-values API
+// cannot list it. lokiPathSample is how many of the newest request lines in
+// the window are read, each projected to its path alone, so the read costs
+// about a path's bytes a line and stays under Loki's default
+// max_entries_limit_per_query (5000). maxPathValues bounds the answer to the
+// sample's most frequent paths, so a service whose paths carry ids
+// (`/users/123`) lists its common routes rather than a thousand one-off ids.
+const (
+	lokiPathSample = 1000
+	maxPathValues  = 100
+)
+
+// lokiPathValuesQuery is path discovery's LogQL: the query's streams and its
+// path and host filters, then the path of every line that has one.
+func lokiPathValuesQuery(namespace string, q LogQuery) string {
+	return lokiSelectorFor(namespace, q) + lokiRequestFieldStages(q) + ` | request_path!="" | line_format "{{.request_path}}"`
+}
+
+// lokiPathValues lists the paths of the newest lokiPathSample request lines
+// in [start, end]: the maxPathValues seen most often, sorted.
+func lokiPathValues(ctx context.Context, hc *http.Client, base, namespace string, q LogQuery, start, end time.Time) ([]string, error) {
+	u := fmt.Sprintf("%s/loki/api/v1/query_range?%s", base, url.Values{
+		"query":     {lokiPathValuesQuery(namespace, q)},
+		"start":     {strconv.FormatInt(start.UnixNano(), 10)},
+		"end":       {lokiEndParam(q, end)},
+		"limit":     {strconv.Itoa(lokiPathSample)},
+		"direction": {DirectionBackward},
+	}.Encode())
+	var lr lokiRangeResponse
+	if err := lokiGet(ctx, hc, u, &lr); err != nil {
+		return nil, err
+	}
+	if lr.Status != "" && lr.Status != "success" {
+		return nil, fmt.Errorf("loki status %q", lr.Status)
+	}
+	counts := map[string]int{}
+	for _, st := range lr.Data.Result {
+		for _, pair := range st.Values {
+			if len(pair) == 2 && pair[1] != "" {
+				counts[pair[1]]++
+			}
+		}
+	}
+	return mostFrequent(counts, maxPathValues), nil
+}
+
+// mostFrequent is the n values counted most often, sorted; of values counted
+// equally, the first in order are kept.
+func mostFrequent(counts map[string]int, n int) []string {
+	values := slices.Collect(maps.Keys(counts))
+	slices.SortFunc(values, func(a, b string) int {
+		if c := cmp.Compare(counts[b], counts[a]); c != 0 {
+			return c
+		}
+		return strings.Compare(a, b)
+	})
+	values = values[:min(n, len(values))]
+	slices.Sort(values)
+	return values
 }
 
 // labelMatcher renders one LogQL matcher for a Render filter's value set. Render's

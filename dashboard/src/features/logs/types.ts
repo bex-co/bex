@@ -216,5 +216,5 @@ export function hasActiveLogFilters(f: LogFilters): boolean {
 export const LOG_LEVELS = ["debug", "info", "warning", "error"] as const;
 
 /** The request methods a method filter offers before discovery answers (the
- *  service Logs tab), and a project view's Method field (w3/m507). */
+ *  service Logs tab). */
 export const LOG_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;

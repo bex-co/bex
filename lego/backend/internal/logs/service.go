@@ -125,6 +125,12 @@ const (
 // adapter's job (see NewLokiLabelValuesSource).
 var DiscoverableLabels = []string{LabelHost, LabelInstance, LabelLevel, LabelMethod, LabelStatusCode, LabelType}
 
+// projectDiscoverableLabels is what a project view's value discovery accepts
+// (w3/084): Render's six and `path`, which its Edit view lists from the same
+// logValues read. Render's public label-values enum has no path, so REST and
+// MCP keep DiscoverableLabels.
+var projectDiscoverableLabels = []string{LabelHost, LabelInstance, LabelLevel, LabelMethod, LabelPath, LabelStatusCode, LabelType}
+
 // Render defaults the logs `limit` to 20 and caps it at 100; bex matches so a
 // Render client sees identical paging. defaultLogTail caps the MCP list_logs
 // read when the caller gives no limit.
@@ -169,12 +175,13 @@ type PodLogStream func(ctx context.Context, namespace, pod, container string, si
 type LogHistorySource func(ctx context.Context, namespace string, q LogQuery) ([]LogEntry, error)
 
 // LogLabelValuesSource discovers the values one stream label takes among the logs
-// a LogQuery selects — the backend of `list_log_label_values`. label is the store's
-// label name (already mapped from Render's vocabulary by lokiLabelFor), and the
-// query is scoped to one App, so a caller can never enumerate another tenant's
-// pods or hostnames. nil => the discovery verb reports core.ErrLogStoreUnavailable
-// for the store-backed labels. Injected from BEX_LOKI_URL via
-// NewLokiLabelValuesSource, the logs sibling of MetricsFilterValuesSource.
+// a LogQuery selects — the backend of `list_log_label_values`. label is Render's
+// name for it (the store maps it onto its own, lokiLabelFor), or `path`, a
+// request line's field, for a project view's discovery; the query is scoped to
+// one App, so a caller can never enumerate another tenant's pods or hostnames.
+// nil => the discovery verb reports core.ErrLogStoreUnavailable for the
+// store-backed labels. Injected from BEX_LOKI_URL via NewLokiLabelValuesSource,
+// the logs sibling of MetricsFilterValuesSource.
 type LogLabelValuesSource func(ctx context.Context, namespace, label string, q LogQuery) ([]string, error)
 
 // LogEntry is one log line in Render's log shape: a timestamp, the message, and
@@ -1302,6 +1309,12 @@ func (q LogQuery) filter(entries []LogEntry) []LogEntry {
 // stream label — the cardinality budget keeps it in the line), so it resolves even
 // without the store.
 func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) ([]string, error) {
+	return s.labelValues(ctx, label, q, DiscoverableLabels)
+}
+
+// labelValues is LogLabelValues over the labels admitted: Render's six for its
+// public read, and Path besides for a project view's pickers (w3/084).
+func (s *Service) labelValues(ctx context.Context, label string, q LogQuery, admitted []string) ([]string, error) {
 	if core.IsDatastoreResource(q.App) {
 		return s.datastoreLogLabelValues(ctx, label, q)
 	}
@@ -1315,7 +1328,7 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 		return nil, err
 	}
 	q.scopeToApp(app)
-	if err := checkDiscoverableLabel(label); err != nil {
+	if err := checkLabel(label, admitted); err != nil {
 		return nil, err
 	}
 	if label == LabelHost {
@@ -1346,6 +1359,11 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 		// discover (w8/m138 t012).
 		return []string{}, nil
 	}
+	if label == LabelPath && !q.wants(LogTypeRequest) {
+		// Only a request line has a path: an app or build read, or a plan
+		// without request logs, has none.
+		return []string{}, nil
+	}
 	// app.Namespace is the App's `<ws>` namespace under ADR043 (see QueryLogs);
 	// the discoverable stream labels live there, not in the shared s.Namespace.
 	var values []string
@@ -1365,12 +1383,12 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 	return slices.Compact(slices.Sorted(slices.Values(values))), nil
 }
 
-// checkDiscoverableLabel refuses a label outside DiscoverableLabels by name:
-// naming the offending label beats an empty list, which a client would read
-// as "this service has no such values".
-func checkDiscoverableLabel(label string) error {
-	if !slices.Contains(DiscoverableLabels, label) {
-		return fmt.Errorf("%w: unknown log label %q (want %s)", core.ErrBadRequest, label, strings.Join(DiscoverableLabels, "|"))
+// checkLabel refuses a label outside admitted by name: naming the offending
+// label beats an empty list, which a client would read as "this service has
+// no such values".
+func checkLabel(label string, admitted []string) error {
+	if !slices.Contains(admitted, label) {
+		return fmt.Errorf("%w: unknown log label %q (want %s)", core.ErrBadRequest, label, strings.Join(admitted, "|"))
 	}
 	return nil
 }
