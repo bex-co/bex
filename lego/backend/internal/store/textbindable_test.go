@@ -50,7 +50,7 @@ func TestRegistryCredentialRoutesTreatMalformedIDsAsAbsent(t *testing.T) {
 		if _, err := s.GetRegistryCredential(ctx, "tea-a", id); !errors.Is(err, ErrNotFound) {
 			t.Errorf("Get(%q) = %v, want ErrNotFound", id, err)
 		}
-		if _, err := s.UpdateRegistryCredential(ctx, "tea-a", id, "n", "u", nil); !errors.Is(err, ErrNotFound) {
+		if _, err := s.UpdateRegistryCredential(ctx, "tea-a", id, "n", "u", nil, nil); !errors.Is(err, ErrNotFound) {
 			t.Errorf("Update(%q) = %v, want ErrNotFound", id, err)
 		}
 		if err := s.TouchRegistryCredential(ctx, "tea-a", id); !errors.Is(err, ErrNotFound) {

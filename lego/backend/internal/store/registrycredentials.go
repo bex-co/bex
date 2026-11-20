@@ -160,22 +160,37 @@ func (s *PGStore) GetRegistryCredentialsByIDs(ctx context.Context, workspaceID s
 	return out, rows.Err()
 }
 
-// UpdateRegistryCredential changes name/username/expiresAt in place (a
-// rotated secret is a separate OpenBao write the caller makes itself — this
-// method never touches secret material). Nil expiresAt clears any existing
-// expiry.
-func (s *PGStore) UpdateRegistryCredential(ctx context.Context, workspaceID, id, name, username string, expiresAt *time.Time) (RegistryCredential, error) {
+// UpdateRegistryCredential changes name/username/expiresAt in place. Nil
+// expiresAt clears any existing expiry. This method never touches secret
+// material: a rotated secret is the caller's own OpenBao write, passed as
+// write and run while the updated row is locked and uncommitted. write's
+// error rolls the row back, so the new username and expiry commit only
+// once the secret they pair with is stored, and concurrent updates of one
+// credential serialize on the row lock (the UpsertAgentEnvironmentLocked
+// pattern). A nil write commits the metadata alone.
+func (s *PGStore) UpdateRegistryCredential(ctx context.Context, workspaceID, id, name, username string, expiresAt *time.Time, write func(context.Context) error) (RegistryCredential, error) {
 	if !textBindable(id) {
 		return RegistryCredential{}, classify("registry credential", pgx.ErrNoRows)
 	}
-	c, err := scanRegistryCredential(s.Pool.QueryRow(ctx,
-		`UPDATE registry_credentials SET name = $3, username = $4, expires_at = $5, updated_at = now()
-		 WHERE id = $1 AND workspace_id = $2
-		 RETURNING `+registryCredentialColumns,
-		id, workspaceID, name, username, expiresAt,
-	))
+	var c RegistryCredential
+	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		var err error
+		c, err = scanRegistryCredential(tx.QueryRow(ctx,
+			`UPDATE registry_credentials SET name = $3, username = $4, expires_at = $5, updated_at = now()
+			 WHERE id = $1 AND workspace_id = $2
+			 RETURNING `+registryCredentialColumns,
+			id, workspaceID, name, username, expiresAt,
+		))
+		if err != nil {
+			return classify("registry credential", err)
+		}
+		if write == nil {
+			return nil
+		}
+		return write(ctx)
+	})
 	if err != nil {
-		return RegistryCredential{}, classify("registry credential", err)
+		return RegistryCredential{}, err
 	}
 	return c, nil
 }

@@ -97,7 +97,9 @@ func (f *fakeStore) GetRegistryCredentialsByIDs(_ context.Context, workspaceID s
 	return out, nil
 }
 
-func (f *fakeStore) UpdateRegistryCredential(_ context.Context, workspaceID, id, name, username string, expiresAt *time.Time) (store.RegistryCredential, error) {
+// UpdateRegistryCredential commits the row only after write succeeds, like
+// PGStore's transaction: write's error leaves the stored row untouched.
+func (f *fakeStore) UpdateRegistryCredential(ctx context.Context, workspaceID, id, name, username string, expiresAt *time.Time, write func(context.Context) error) (store.RegistryCredential, error) {
 	c, ok := f.rows[id]
 	if !ok || c.WorkspaceID != workspaceID {
 		return store.RegistryCredential{}, store.ErrNotFound
@@ -106,6 +108,11 @@ func (f *fakeStore) UpdateRegistryCredential(_ context.Context, workspaceID, id,
 	c.Username = username
 	c.ExpiresAt = expiresAt
 	c.UpdatedAt = time.Now().UTC()
+	if write != nil {
+		if err := write(ctx); err != nil {
+			return store.RegistryCredential{}, err
+		}
+	}
 	f.rows[id] = c
 	return c, nil
 }
@@ -412,6 +419,54 @@ func TestUpdateRejectsEmptySecretOrUsername(t *testing.T) {
 	}
 	if secret, _ := kv.Get(ctx, secretPath(core.DefaultTenant, created.ID)); secret["password"] != "hunter3" {
 		t.Error("non-empty token did not rotate the secret")
+	}
+}
+
+// An update whose OpenBao write fails must not save the new username and
+// expiry next to the old token: the 500 says nothing changed, and the next
+// deploy would build its pull secret from the mismatched pair.
+func TestUpdateRollsBackMetadataOnSecretWriteFailure(t *testing.T) {
+	s, st, kv := newTestService()
+	ctx := context.Background()
+	expires := time.Now().Add(time.Hour).UTC().Truncate(time.Second)
+	created, err := s.Create(ctx, CreateRequest{Host: "ghcr.io", Name: "prod-pull", Username: "alice", Secret: "hunter2", ExpiresAt: &expires})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	before, err := st.GetRegistryCredential(ctx, core.DefaultTenant, created.ID)
+	if err != nil {
+		t.Fatalf("GetRegistryCredential: %v", err)
+	}
+
+	kv.failPut = errors.New("openbao down")
+	name, username, token := "ci pull", "ci-bot", "ci-bot-pat"
+	later := expires.Add(12 * time.Hour)
+	req := UpdateRequest{Name: &name, Username: &username, Secret: &token, ExpiresAtSet: true, ExpiresAt: &later}
+	if _, err := s.Update(ctx, created.ID, req); err == nil || !errors.Is(err, kv.failPut) {
+		t.Fatalf("Update with a failing secret write = %v, want the OpenBao error", err)
+	}
+	after, err := st.GetRegistryCredential(ctx, core.DefaultTenant, created.ID)
+	if err != nil {
+		t.Fatalf("GetRegistryCredential: %v", err)
+	}
+	if !reflect.DeepEqual(after, before) {
+		t.Errorf("failed secret write left changed metadata:\n before=%+v\n after=%+v", before, after)
+	}
+	if secret, _ := kv.Get(ctx, secretPath(core.DefaultTenant, created.ID)); secret["password"] != "hunter2" {
+		t.Errorf("failed secret write changed the stored token: %+v", secret)
+	}
+
+	// Retrying once OpenBao is back saves the new pair together.
+	kv.failPut = nil
+	if _, err := s.Update(ctx, created.ID, req); err != nil {
+		t.Fatalf("retried Update: %v", err)
+	}
+	got, _ := st.GetRegistryCredential(ctx, core.DefaultTenant, created.ID)
+	if got.Name != name || got.Username != username || got.ExpiresAt == nil || !got.ExpiresAt.Equal(later) {
+		t.Errorf("retried update metadata = %+v", got)
+	}
+	if secret, _ := kv.Get(ctx, secretPath(core.DefaultTenant, created.ID)); secret["password"] != token {
+		t.Errorf("retried update did not rotate the token: %+v", secret)
 	}
 }
 

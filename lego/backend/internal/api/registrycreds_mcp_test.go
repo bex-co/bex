@@ -96,13 +96,18 @@ func (f *fakeRCStore) GetRegistryCredentialsByIDs(_ context.Context, workspaceID
 	return out, nil
 }
 
-func (f *fakeRCStore) UpdateRegistryCredential(_ context.Context, workspaceID, id, name, username string, expiresAt *time.Time) (store.RegistryCredential, error) {
+func (f *fakeRCStore) UpdateRegistryCredential(ctx context.Context, workspaceID, id, name, username string, expiresAt *time.Time, write func(context.Context) error) (store.RegistryCredential, error) {
 	c, ok := f.rows[id]
 	if !ok || c.WorkspaceID != workspaceID {
 		return store.RegistryCredential{}, store.ErrNotFound
 	}
 	c.Name, c.Username, c.ExpiresAt = name, username, expiresAt
 	c.UpdatedAt = time.Now().UTC()
+	if write != nil {
+		if err := write(ctx); err != nil {
+			return store.RegistryCredential{}, err
+		}
+	}
 	f.rows[id] = c
 	return c, nil
 }

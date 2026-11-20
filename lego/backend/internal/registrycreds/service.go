@@ -54,7 +54,7 @@ type CredentialStore interface {
 	GetRegistryCredential(ctx context.Context, workspaceID, id string) (store.RegistryCredential, error)
 	GetRegistryCredentialByID(ctx context.Context, id string) (store.RegistryCredential, error)
 	GetRegistryCredentialsByIDs(ctx context.Context, workspaceID string, ids []string) ([]store.RegistryCredential, error)
-	UpdateRegistryCredential(ctx context.Context, workspaceID, id, name, username string, expiresAt *time.Time) (store.RegistryCredential, error)
+	UpdateRegistryCredential(ctx context.Context, workspaceID, id, name, username string, expiresAt *time.Time, write func(context.Context) error) (store.RegistryCredential, error)
 	TouchRegistryCredential(ctx context.Context, workspaceID, id string) error
 	DeleteRegistryCredential(ctx context.Context, workspaceID, id string) error
 }
@@ -357,14 +357,21 @@ func (s *Service) Update(ctx context.Context, id string, req UpdateRequest) (Cre
 	if req.ExpiresAtSet {
 		expiresAt = req.ExpiresAt
 	}
-	updated, err := s.Store.UpdateRegistryCredential(ctx, workspaceID, id, name, username, expiresAt)
+	// The token is written inside the metadata update, before it commits: a
+	// failed OpenBao write rolls the row back, so the error never hides a
+	// saved username or expiry paired with the old token.
+	var rotate func(context.Context) error
+	if req.Secret != nil {
+		rotate = func(ctx context.Context) error {
+			if err := s.Secret.Put(ctx, secretPath(workspaceID, id), map[string]string{"password": *req.Secret}); err != nil {
+				return fmt.Errorf("rotate registry credential secret: %w", err)
+			}
+			return nil
+		}
+	}
+	updated, err := s.Store.UpdateRegistryCredential(ctx, workspaceID, id, name, username, expiresAt, rotate)
 	if err != nil {
 		return CredentialView{}, mapStoreErr(err)
-	}
-	if req.Secret != nil {
-		if err := s.Secret.Put(ctx, secretPath(workspaceID, id), map[string]string{"password": *req.Secret}); err != nil {
-			return CredentialView{}, fmt.Errorf("rotate registry credential secret: %w", err)
-		}
 	}
 	return toView(updated, s.Now()), nil
 }

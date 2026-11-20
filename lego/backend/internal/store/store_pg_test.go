@@ -797,9 +797,35 @@ func assertRegistryCredentials(ctx context.Context, t *testing.T, s *PGStore, te
 		t.Errorf("get scoped to the wrong workspace: want ErrNotFound, got %v", err)
 	}
 
-	updated, err := s.UpdateRegistryCredential(ctx, ten.ID, c.ID, "GHCR alice", "alice2", &expires)
+	updated, err := s.UpdateRegistryCredential(ctx, ten.ID, c.ID, "GHCR alice", "alice2", &expires, nil)
 	if err != nil || updated.Name != "GHCR alice" || updated.Username != "alice2" || updated.ExpiresAt == nil || !updated.ExpiresAt.Equal(expires) {
 		t.Fatalf("update = %+v (err %v)", updated, err)
+	}
+
+	// The caller's secret write runs before the commit, and its failure rolls
+	// the row back, updated_at included: a failed rotation never saves a new
+	// username beside the old token.
+	writeErr := errors.New("openbao down")
+	later := expires.Add(12 * time.Hour)
+	if _, err := s.UpdateRegistryCredential(ctx, ten.ID, c.ID, "ci pull", "ci-bot", &later, func(ctx context.Context) error {
+		seen, err := s.GetRegistryCredential(ctx, ten.ID, c.ID)
+		if err != nil || seen.Username != "alice2" {
+			t.Errorf("row seen during the secret write = %+v (err %v), want the committed alice2", seen, err)
+		}
+		return writeErr
+	}); !errors.Is(err, writeErr) {
+		t.Fatalf("update with a failing secret write = %v, want %v", err, writeErr)
+	}
+	if got, err := s.GetRegistryCredential(ctx, ten.ID, c.ID); err != nil || got.Name != updated.Name || got.Username != updated.Username ||
+		got.ExpiresAt == nil || !got.ExpiresAt.Equal(*updated.ExpiresAt) || !got.UpdatedAt.Equal(updated.UpdatedAt) {
+		t.Fatalf("after a failed secret write = %+v (err %v), want unchanged %+v", got, err, updated)
+	}
+	wrote := false
+	if rotated, err := s.UpdateRegistryCredential(ctx, ten.ID, c.ID, "GHCR alice", "alice3", &expires, func(context.Context) error {
+		wrote = true
+		return nil
+	}); err != nil || !wrote || rotated.Username != "alice3" {
+		t.Fatalf("update with a secret write = %+v (wrote %v, err %v)", rotated, wrote, err)
 	}
 
 	if err := s.TouchRegistryCredential(ctx, ten.ID, c.ID); err != nil {
