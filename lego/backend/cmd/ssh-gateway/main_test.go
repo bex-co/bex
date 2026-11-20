@@ -213,11 +213,12 @@ func TestMetricsHandlerServesHealthAndPrometheus(t *testing.T) {
 	if got := probe("/readyz"); got != http.StatusOK {
 		t.Fatalf("readyz = %d, want 200 while the listeners accept", got)
 	}
-	// A draining pod (w6/m482) is no longer ready, so no Service endpoint
-	// sends it new connections; it stays live, so the kubelet never kills it.
+	// A terminating pod (w6/m482, w6/152) is no longer ready, so no Service
+	// endpoint sends it new connections; it stays live, so the kubelet never
+	// kills it.
 	ready = false
 	if got := probe("/readyz"); got != http.StatusServiceUnavailable {
-		t.Fatalf("readyz = %d, want 503 once the listeners closed", got)
+		t.Fatalf("readyz = %d, want 503 once SIGTERM arrived", got)
 	}
 	if got := probe("/healthz"); got != http.StatusOK {
 		t.Fatalf("healthz = %d, want 200 while draining", got)

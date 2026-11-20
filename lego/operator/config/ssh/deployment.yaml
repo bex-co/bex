@@ -11,7 +11,8 @@ spec:
   # A release brings each new pod up before it stops an old one, and the old
   # pod then drains (w6/m482, docs/ADR035-ssh.md § Sessions across a gateway
   # release): `rollout status` returns once the new pods are available, while
-  # the old ones keep their open sessions for up to BEX_SSH_SHUTDOWN_TIMEOUT.
+  # the old ones keep accepting for BEX_SSH_ACCEPT_WINDOW and then keep their
+  # open sessions for up to BEX_SSH_SHUTDOWN_TIMEOUT.
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -27,9 +28,10 @@ spec:
         app.kubernetes.io/component: ssh-gateway
     spec:
       serviceAccountName: ssh-gateway
-      # The drain bound (BEX_SSH_SHUTDOWN_TIMEOUT, 1h) plus a margin for the
-      # 10 s the ended sessions get to say why, so the kubelet never SIGKILLs
-      # a pod that is still draining (scripts/gitops-validate.sh checks it).
+      # The accept window (BEX_SSH_ACCEPT_WINDOW, 10s) plus the drain bound
+      # (BEX_SSH_SHUTDOWN_TIMEOUT, 1h) plus a margin for the 10 s the ended
+      # sessions get to say why, so the kubelet never SIGKILLs a pod that is
+      # still draining (scripts/gitops-validate.sh checks it).
       terminationGracePeriodSeconds: 3660
       nodeSelector:
         bex.co/pool: platform
@@ -92,11 +94,18 @@ spec:
             - name: BEX_SSH_MAX_SESSIONS_PER_IDENTITY
               value: "5"
             # How long a terminating gateway keeps its open SSH, Shell and agent
-            # sessions after SIGTERM closed its listeners (w6/m482): Render gives
+            # sessions after its listeners closed (w6/m482): Render gives
             # existing SSH connections one hour before its own maintenance
             # closes them (render.com/docs/ssh). Below the grace period above.
             - name: BEX_SSH_SHUTDOWN_TIMEOUT
               value: 1h
+            # How long a terminating gateway keeps accepting new connections
+            # after SIGTERM, with /readyz already 503 (w6/152). Traefik keeps
+            # routing new SSH flows to the old pod until it has seen the
+            # EndpointSlice change, a few seconds; a listener closed at SIGTERM
+            # failed them before the banner. The bound above starts after it.
+            - name: BEX_SSH_ACCEPT_WINDOW
+              value: 10s
             # Traefik's ssh IngressRouteTCP forwards every connection wrapped in
             # a PROXY protocol v2 header (config/ssh/ingressroutetcp.yaml). The
             # gateway MUST be told which immediate peers may assert that header,
@@ -221,8 +230,9 @@ spec:
             - name: agent-egress
               containerPort: 8085
               protocol: TCP
-          # /readyz fails once SIGTERM closed the listeners, so a draining pod
-          # is no Service endpoint at all; /healthz stays OK while it drains.
+          # /readyz fails from SIGTERM on, so a terminating pod is no Service
+          # endpoint at all while it still accepts for BEX_SSH_ACCEPT_WINDOW;
+          # /healthz stays OK while it drains.
           readinessProbe:
             httpGet:
               path: /readyz

@@ -96,18 +96,21 @@ func newKeyGrantGate(secret, apiURL string) *sshgateway.KeyGrantGate {
 }
 
 func main() {
-	// Two lifetimes (w6/m482, docs/ADR035-ssh.md § Sessions across a gateway
-	// release). ctx is the listeners': SIGTERM ends it, so a release's old pod
-	// stops accepting. sessionCtx is the open sessions': they keep running until
-	// they end on their own or the drain bound passes, and a second signal ends
-	// them at once.
+	// Three lifetimes (w6/m482, w6/152, docs/ADR035-ssh.md § Sessions across a
+	// gateway release). readyCtx is readiness': SIGTERM ends it at once, so the
+	// pod leaves every route. ctx is the listeners': it ends BEX_SSH_ACCEPT_WINDOW
+	// later, so a connection the edge still routes here meanwhile is served.
+	// sessionCtx is the open sessions': they keep running until they end on
+	// their own or the drain bound passes, and a second signal ends them at once.
 	ctx, stopListening := context.WithCancel(context.Background())
 	defer stopListening()
+	readyCtx, stopReady := context.WithCancel(ctx)
+	defer stopReady()
 	sessionCtx, endSessions := context.WithCancelCause(context.Background())
 	defer endSessions(nil)
 	signals := make(chan os.Signal, 2)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
-	go drainOnSignal(signals, stopListening, endSessions)
+	go drainOnSignal(signals, durationEnv("BEX_SSH_ACCEPT_WINDOW", 10*time.Second), stopReady, stopListening, endSessions)
 	// A listener that fails ends the process at once, as before: a pod that
 	// stops accepting while Kubernetes still routes to it must not linger.
 	stop := func() {
@@ -460,9 +463,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("ssh gateway: listen %s: %v", addr, err)
 	}
-	// /readyz turns 503 once the listeners close, so a draining pod leaves every
-	// Service endpoint (serving=false), not only the ready set.
-	metricsServer := &http.Server{Handler: metricsHandler(registry, func() bool { return ctx.Err() == nil }), ReadHeaderTimeout: 5 * time.Second}
+	// /readyz turns 503 at SIGTERM, so a terminating pod leaves every Service
+	// endpoint (serving=false), not only the ready set, while it still accepts.
+	metricsServer := &http.Server{Handler: metricsHandler(registry, func() bool { return readyCtx.Err() == nil }), ReadHeaderTimeout: 5 * time.Second}
 	metricsAddr := env.Or("BEX_SSH_METRICS_ADDR", ":9090")
 	metricsListener, err := net.Listen("tcp", metricsAddr)
 	if err != nil {
@@ -596,11 +599,27 @@ var errListenerFailed = errors.New("a gateway listener failed")
 // their end reason and write their audit row before the process exits.
 const drainGrace = 10 * time.Second
 
-// drainOnSignal stops the listeners on the first SIGTERM or SIGINT and ends
-// every open session on the second (w6/m482).
-func drainOnSignal(signals <-chan os.Signal, stopListening context.CancelFunc, endSessions context.CancelCauseFunc) {
-	log.Printf("ssh gateway: %v: closing the listeners; open sessions keep running", <-signals)
-	stopListening()
+// drainOnSignal runs a release's steps (w6/m482, w6/152). The first SIGTERM or
+// SIGINT turns readiness off at once and leaves the listeners accepting for
+// window: Traefik and the Services' load balancing keep sending a terminating
+// pod new connections until they have seen its endpoint leave, which takes a
+// few seconds, and a closed listener there fails them before the SSH banner.
+// Then it closes the listeners, and the open sessions keep running. A second
+// signal, during the window or after it, ends every open session at once.
+func drainOnSignal(signals <-chan os.Signal, window time.Duration, stopReady, stopListening context.CancelFunc, endSessions context.CancelCauseFunc) {
+	first := <-signals
+	stopReady()
+	log.Printf("ssh gateway: %v: not ready; accepting new connections for %s while the endpoint leaves the routes", first, window)
+	select {
+	case <-time.After(window):
+		log.Printf("ssh gateway: closing the listeners; open sessions keep running")
+		stopListening()
+	case second := <-signals:
+		log.Printf("ssh gateway: second %v: closing the listeners and ending every open session", second)
+		stopListening()
+		endSessions(sshgateway.ErrGatewayShutdown)
+		return
+	}
 	log.Printf("ssh gateway: second %v: ending every open session", <-signals)
 	endSessions(sshgateway.ErrGatewayShutdown)
 }
@@ -790,7 +809,7 @@ func connectionSource(addr net.Addr) string {
 func healthzOK(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }
 
 // metricsHandler serves Prometheus, liveness (/healthz, always OK) and
-// readiness (/readyz, 503 once ready reports false: the listeners closed).
+// readiness (/readyz, 503 once ready reports false: SIGTERM arrived).
 func metricsHandler(gatherer prometheus.Gatherer, ready func() bool) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /metrics", promhttp.HandlerFor(gatherer, promhttp.HandlerOpts{}))

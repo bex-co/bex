@@ -301,34 +301,131 @@ func TestDrainReturnsWhenTheSessionsEndEarly(t *testing.T) {
 	}
 }
 
-// The first SIGTERM only closes the listeners; the second ends the sessions.
-func TestDrainOnSignalClosesListenersFirstAndSessionsOnTheSecond(t *testing.T) {
-	signals := make(chan os.Signal, 2)
-	listenCtx, stopListening := context.WithCancel(context.Background())
-	defer stopListening()
-	sessionCtx, endSessions := context.WithCancelCause(context.Background())
-	defer endSessions(nil)
-	go drainOnSignal(signals, stopListening, endSessions)
+// lifetimes are the three main runs drainOnSignal over.
+type lifetimes struct {
+	signals                 chan os.Signal
+	ready, listen, sessions context.Context
+	endSessions             context.CancelCauseFunc
+}
 
-	signals <- syscall.SIGTERM
+func signalLifetimes(t *testing.T, window time.Duration) lifetimes {
+	t.Helper()
+	l := lifetimes{signals: make(chan os.Signal, 2)}
+	var stopListening, stopReady context.CancelFunc
+	l.listen, stopListening = context.WithCancel(context.Background())
+	t.Cleanup(stopListening)
+	l.ready, stopReady = context.WithCancel(l.listen)
+	t.Cleanup(stopReady)
+	l.sessions, l.endSessions = context.WithCancelCause(context.Background())
+	t.Cleanup(func() { l.endSessions(nil) })
+	go drainOnSignal(l.signals, window, stopReady, stopListening, l.endSessions)
+	return l
+}
+
+func waitDone(t *testing.T, ctx context.Context, what string) {
+	t.Helper()
 	select {
-	case <-listenCtx.Done():
-	case <-time.After(2 * time.Second):
-		t.Fatal("SIGTERM did not close the listeners")
+	case <-ctx.Done():
+	case <-time.After(5 * time.Second):
+		t.Fatal(what)
+	}
+}
+
+// The first SIGTERM turns readiness off at once and closes the listeners only
+// after the window (w6/152); the second ends the sessions.
+func TestDrainOnSignalClosesListenersAfterTheWindowAndSessionsOnTheSecond(t *testing.T) {
+	const window = 300 * time.Millisecond
+	l := signalLifetimes(t, window)
+
+	l.signals <- syscall.SIGTERM
+	sent := time.Now()
+	waitDone(t, l.ready, "SIGTERM did not turn readiness off")
+	if l.listen.Err() != nil {
+		t.Fatal("SIGTERM closed the listeners at once, before the window")
+	}
+	waitDone(t, l.listen, "the listeners stayed open past the window")
+	if elapsed := time.Since(sent); elapsed < window {
+		t.Fatalf("the listeners closed %s after SIGTERM, inside the %s window", elapsed, window)
 	}
 	time.Sleep(20 * time.Millisecond)
-	if sessionCtx.Err() != nil {
+	if l.sessions.Err() != nil {
 		t.Fatal("the first SIGTERM ended the open sessions")
 	}
 
-	signals <- syscall.SIGTERM
-	select {
-	case <-sessionCtx.Done():
-	case <-time.After(2 * time.Second):
-		t.Fatal("a second SIGTERM did not end the open sessions")
-	}
-	if cause := context.Cause(sessionCtx); !errors.Is(cause, sshgateway.ErrGatewayShutdown) {
+	l.signals <- syscall.SIGTERM
+	waitDone(t, l.sessions, "a second SIGTERM did not end the open sessions")
+	if cause := context.Cause(l.sessions); !errors.Is(cause, sshgateway.ErrGatewayShutdown) {
 		t.Fatalf("sessions ended with cause %v, want ErrGatewayShutdown", cause)
+	}
+}
+
+// A second signal inside the window does not wait for it: the listeners close
+// and the open sessions end at once.
+func TestASecondSignalInsideTheWindowEndsEverythingAtOnce(t *testing.T) {
+	l := signalLifetimes(t, time.Hour)
+	l.signals <- syscall.SIGTERM
+	waitDone(t, l.ready, "SIGTERM did not turn readiness off")
+	l.signals <- syscall.SIGINT
+	waitDone(t, l.listen, "a second signal inside the window left the listeners open")
+	waitDone(t, l.sessions, "a second signal inside the window left the sessions open")
+	if cause := context.Cause(l.sessions); !errors.Is(cause, sshgateway.ErrGatewayShutdown) {
+		t.Fatalf("sessions ended with cause %v, want ErrGatewayShutdown", cause)
+	}
+}
+
+// w6/152, the whole release path: Traefik keeps routing new connections to a
+// terminating pod for a few seconds after its SIGTERM. A fresh SSH connection
+// made in the window after SIGTERM completes its handshake and runs a session,
+// as does a request to an auxiliary listener, while readiness is already off;
+// once the window has passed both listeners refuse, and the session opened in
+// it keeps running under the drain.
+func TestANewConnectionInTheWindowAfterSIGTERMIsServedAndRefusedAfterIt(t *testing.T) {
+	gateway, listener, dial := newTestGateway(t)
+	addr := listener.Addr().String()
+	const window = time.Second
+	l := signalLifetimes(t, window)
+	auxAddr, auxDrainer, _, _ := startTestAux(t, http.NewServeMux())
+	served := make(chan error, 1)
+	go func() {
+		served <- serve(l.listen, l.sessions, l.endSessions, gateway, listener, time.Minute, []func(context.Context) error{auxDrainer})
+	}()
+
+	l.signals <- syscall.SIGTERM
+	sent := time.Now()
+	waitDone(t, l.ready, "SIGTERM did not turn readiness off")
+	echo, err := dial()
+	if err != nil {
+		t.Fatalf("a new SSH connection in the window after SIGTERM failed: %v", err)
+	}
+	if err := echo("in the window"); err != nil {
+		t.Fatalf("the session opened in the window: %v", err)
+	}
+	response, err := http.Get("http://" + auxAddr + "/healthz")
+	if err != nil {
+		t.Fatalf("a new request to an auxiliary listener in the window failed: %v", err)
+	}
+	_ = response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("auxiliary listener in the window = %d, want 200", response.StatusCode)
+	}
+	waitDone(t, l.listen, "the listeners stayed open past the window")
+	if elapsed := time.Since(sent); elapsed < window {
+		t.Fatalf("the listeners closed %s after SIGTERM, inside the %s window", elapsed, window)
+	}
+	waitDialable(t, addr, false)
+	waitDialable(t, auxAddr, false)
+	if err := echo("after the window"); err != nil {
+		t.Fatalf("closing the listeners cut the session opened in the window: %v", err)
+	}
+
+	l.signals <- syscall.SIGTERM
+	select {
+	case err := <-served:
+		if err != nil {
+			t.Fatalf("serve = %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("serve did not return after the second signal")
 	}
 }
 
@@ -345,10 +442,11 @@ func newSigner(t *testing.T) ssh.Signer {
 	return signer
 }
 
-// The whole release path, as main runs it: an SSH session open at SIGTERM
-// keeps exchanging data while the gateway refuses new connections, and ends
-// at the drain bound, after which serve returns and the process may exit.
-func TestSIGTERMKeepsAnOpenSSHSessionUntilTheBound(t *testing.T) {
+// newTestGateway builds a native SSH gateway over an echo executor and its
+// loopback listener. dial opens a fresh SSH connection and shell session to it
+// and returns a function that sends one line and checks it comes back.
+func newTestGateway(t *testing.T) (*nativessh.Server, net.Listener, func() (func(string) error, error)) {
+	t.Helper()
 	clientSigner := newSigner(t)
 	st := &gatewaytest.FakeStore{Key: store.SSHKey{Subject: "user-1", Fingerprint: ssh.FingerprintSHA256(clientSigner.PublicKey())}}
 	gateway := &nativessh.Server{
@@ -359,6 +457,48 @@ func TestSIGTERMKeepsAnOpenSSHSessionUntilTheBound(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	config := &ssh.ClientConfig{
+		User: "srv-abcdeabcdeabcdeabcde", Auth: []ssh.AuthMethod{ssh.PublicKeys(clientSigner)},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(), Timeout: 2 * time.Second,
+	}
+	dial := func() (func(string) error, error) {
+		client, err := ssh.Dial("tcp", listener.Addr().String(), config)
+		if err != nil {
+			return nil, err
+		}
+		t.Cleanup(func() { _ = client.Close() })
+		session, err := client.NewSession()
+		if err != nil {
+			return nil, err
+		}
+		stdin, _ := session.StdinPipe()
+		stdout, _ := session.StdoutPipe()
+		if err := session.Shell(); err != nil {
+			return nil, err
+		}
+		lines := bufio.NewReader(stdout)
+		return func(line string) error {
+			if _, err := io.WriteString(stdin, line+"\n"); err != nil {
+				return err
+			}
+			got, err := lines.ReadString('\n')
+			if err != nil {
+				return err
+			}
+			if strings.TrimSpace(got) != line {
+				return errors.New("echo " + got)
+			}
+			return nil
+		}, nil
+	}
+	return gateway, listener, dial
+}
+
+// The whole release path, as main runs it: an SSH session open at SIGTERM
+// keeps exchanging data while the gateway refuses new connections, and ends
+// at the drain bound, after which serve returns and the process may exit.
+func TestSIGTERMKeepsAnOpenSSHSessionUntilTheBound(t *testing.T) {
+	gateway, listener, dial := newTestGateway(t)
 	addr := listener.Addr().String()
 	listenCtx, sigterm := context.WithCancel(context.Background())
 	defer sigterm()
@@ -368,37 +508,9 @@ func TestSIGTERMKeepsAnOpenSSHSessionUntilTheBound(t *testing.T) {
 	served := make(chan error, 1)
 	go func() { served <- serve(listenCtx, sessionCtx, endSessions, gateway, listener, bound, nil) }()
 
-	config := &ssh.ClientConfig{
-		User: "srv-abcdeabcdeabcdeabcde", Auth: []ssh.AuthMethod{ssh.PublicKeys(clientSigner)},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), Timeout: 2 * time.Second,
-	}
-	client, err := ssh.Dial("tcp", addr, config)
+	echo, err := dial()
 	if err != nil {
 		t.Fatal(err)
-	}
-	defer client.Close()
-	session, err := client.NewSession()
-	if err != nil {
-		t.Fatal(err)
-	}
-	stdin, _ := session.StdinPipe()
-	stdout, _ := session.StdoutPipe()
-	if err := session.Shell(); err != nil {
-		t.Fatal(err)
-	}
-	lines := bufio.NewReader(stdout)
-	echo := func(line string) error {
-		if _, err := io.WriteString(stdin, line+"\n"); err != nil {
-			return err
-		}
-		got, err := lines.ReadString('\n')
-		if err != nil {
-			return err
-		}
-		if strings.TrimSpace(got) != line {
-			return errors.New("echo " + got)
-		}
-		return nil
 	}
 	if err := echo("before SIGTERM"); err != nil {
 		t.Fatal(err)
@@ -421,7 +533,7 @@ func TestSIGTERMKeepsAnOpenSSHSessionUntilTheBound(t *testing.T) {
 	if err := echo("after the bound"); err == nil {
 		t.Fatal("the session outlived the drain bound")
 	}
-	if ended := st.EndedSessions(); len(ended) != 1 || !strings.HasSuffix(ended[0], ":failed") {
+	if ended := gateway.Store.(*gatewaytest.FakeStore).EndedSessions(); len(ended) != 1 || !strings.HasSuffix(ended[0], ":failed") {
 		t.Fatalf("session audit result = %v, want one entry ending :failed", ended)
 	}
 }

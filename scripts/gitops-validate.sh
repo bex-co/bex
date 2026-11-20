@@ -2885,25 +2885,36 @@ if [ -n "$ssh_proxy_version" ] && [ "$ssh_proxy_version" != "null" ]; then
   fi
 fi
 
-# w6/m482: a terminating gateway keeps its open sessions for
-# BEX_SSH_SHUTDOWN_TIMEOUT (Render's one hour) and then gives the ended ones
-# 10 s to say why. The pod's grace period must cover both, or the kubelet
-# SIGKILLs a draining pod and cuts every session it holds; the roll must start
-# each new pod before it stops an old one; and readiness must be the probe
-# that fails once the listeners close.
+# w6/m482, w6/152: a terminating gateway keeps accepting for
+# BEX_SSH_ACCEPT_WINDOW while Traefik still routes new connections to it, then
+# keeps its open sessions for BEX_SSH_SHUTDOWN_TIMEOUT (Render's one hour) and
+# gives the ended ones 10 s to say why. The window must be set, and the pod's
+# grace period must cover all three, or the kubelet SIGKILLs a draining pod and
+# cuts every session it holds; the roll must start each new pod before it
+# stops an old one; and readiness must be the probe that fails at SIGTERM.
 ssh_deploy=lego/operator/config/ssh/deployment.yaml
-ssh_shutdown="$(yq -N '.spec.template.spec.containers[] | select(.name == "ssh-gateway") | .env[]? | select(.name == "BEX_SSH_SHUTDOWN_TIMEOUT") | .value' "$ssh_deploy")"
+ssh_env() { yq -N ".spec.template.spec.containers[] | select(.name == \"ssh-gateway\") | .env[]? | select(.name == \"$1\") | .value" "$ssh_deploy"; }
+# A whole number of s, m or h in seconds; nothing for any other spelling.
+ssh_seconds() {
+  [[ "$1" =~ ^([0-9]+)([smh])$ ]] || return 0
+  case "${BASH_REMATCH[2]}" in
+    s) echo $(( 10#${BASH_REMATCH[1]} )) ;;
+    m) echo $(( 10#${BASH_REMATCH[1]} * 60 )) ;;
+    h) echo $(( 10#${BASH_REMATCH[1]} * 3600 )) ;;
+  esac
+}
+ssh_shutdown="$(ssh_env BEX_SSH_SHUTDOWN_TIMEOUT)"
+ssh_window="$(ssh_env BEX_SSH_ACCEPT_WINDOW)"
 ssh_grace="$(yq -N '.spec.template.spec.terminationGracePeriodSeconds' "$ssh_deploy")"
 ssh_unavailable="$(yq -N '.spec.strategy.rollingUpdate.maxUnavailable' "$ssh_deploy")"
 ssh_ready_path="$(yq -N '.spec.template.spec.containers[] | select(.name == "ssh-gateway") | .readinessProbe.httpGet.path' "$ssh_deploy")"
-case "$ssh_shutdown" in
-  *h) ssh_shutdown_s=$(( ${ssh_shutdown%h} * 3600 )) ;;
-  *m) ssh_shutdown_s=$(( ${ssh_shutdown%m} * 60 )) ;;
-  *s) ssh_shutdown_s=${ssh_shutdown%s} ;;
-  *) ssh_shutdown_s="" ;;
-esac
-if ! [[ "$ssh_shutdown_s" =~ ^[0-9]+$ ]] || ! [[ "$ssh_grace" =~ ^[0-9]+$ ]] || [ "$ssh_grace" -lt $(( ssh_shutdown_s + 30 )) ]; then
-  echo "FAIL: ssh-gateway terminationGracePeriodSeconds='$ssh_grace' must be at least BEX_SSH_SHUTDOWN_TIMEOUT='$ssh_shutdown' plus 30 s, or the kubelet kills a draining gateway mid-session (w6/m482)" >&2
+ssh_shutdown_s="$(ssh_seconds "$ssh_shutdown")"
+ssh_window_s="$(ssh_seconds "$ssh_window")"
+if ! [[ "$ssh_window_s" =~ ^[0-9]+$ ]] || [ "$ssh_window_s" -lt 1 ]; then
+  echo "FAIL: ssh-gateway BEX_SSH_ACCEPT_WINDOW='$ssh_window' must be a positive duration in whole s, m or h, or a new connection Traefik routes to a terminating gateway is closed before the SSH banner (w6/152)" >&2
+  fail=1
+elif ! [[ "$ssh_shutdown_s" =~ ^[0-9]+$ ]] || ! [[ "$ssh_grace" =~ ^[0-9]+$ ]] || [ "$ssh_grace" -lt $(( ssh_window_s + ssh_shutdown_s + 30 )) ]; then
+  echo "FAIL: ssh-gateway terminationGracePeriodSeconds='$ssh_grace' must be at least BEX_SSH_ACCEPT_WINDOW='$ssh_window' plus BEX_SSH_SHUTDOWN_TIMEOUT='$ssh_shutdown' plus 30 s, or the kubelet kills a draining gateway mid-session (w6/m482, w6/152)" >&2
   fail=1
 fi
 if [ "$ssh_unavailable" != "0" ] || [ "$ssh_ready_path" != "/readyz" ]; then
