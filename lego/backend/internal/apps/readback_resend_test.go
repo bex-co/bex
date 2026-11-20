@@ -18,6 +18,7 @@ package apps
 
 import (
 	"encoding/json"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -169,7 +170,8 @@ func TestEveryServiceShapeReadsBackReSendable(t *testing.T) {
 			// The one spelling the client itself translates: a read publishes a
 			// prebuilt image as top-level `imagePath`, while create takes
 			// Render's nested `image` object (pkg/service/clone.go does the same
-			// mapping). Everything else is echoed verbatim.
+			// mapping). Everything else is echoed verbatim, the Auto-Deploy
+			// pair one field at a time.
 			if path, ok := read["imagePath"].(string); ok && path != "" {
 				clone["image"] = map[string]any{"imagePath": path, "ownerId": ""}
 			}
@@ -181,15 +183,23 @@ func TestEveryServiceShapeReadsBackReSendable(t *testing.T) {
 				clone[key] = value
 				echoed = append(echoed, key)
 			}
-			body, err := json.Marshal(clone)
-			if err != nil {
-				t.Fatal(err)
-			}
-			rec = httptest.NewRecorder()
-			validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(string(body))))
-			if rec.Code != http.StatusOK && rec.Code != http.StatusCreated {
-				t.Fatalf("re-sending this shape's own read as a create = %d: %s\nechoed keys: %v",
-					rec.Code, rec.Body.String(), echoed)
+			// A read publishes both Auto-Deploy fields, and Render refuses a
+			// request carrying both (w8/347), so a client sends one of the
+			// pair: the pinned CLI's clone copies autoDeploy alone. Re-send
+			// each one alone.
+			for _, drop := range []string{"autoDeployTrigger", "autoDeploy"} {
+				send := maps.Clone(clone)
+				delete(send, drop)
+				body, err := json.Marshal(send)
+				if err != nil {
+					t.Fatal(err)
+				}
+				rec = httptest.NewRecorder()
+				validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(string(body))))
+				if rec.Code != http.StatusOK && rec.Code != http.StatusCreated {
+					t.Fatalf("re-sending this shape's own read as a create, without %s = %d: %s\nechoed keys: %v",
+						drop, rec.Code, rec.Body.String(), echoed)
+				}
 			}
 		})
 	}

@@ -121,9 +121,10 @@ type patchServiceRequest struct {
 	// to a tri-state so the Settings → Build & Deploy toggle can flip it (w2/m9).
 	AutoDeploy string `json:"autoDeploy"`
 	// AutoDeployTrigger is Render's newer autoDeployTrigger enum for the same
-	// toggle (off|commit|checksPass, w5/m53). It takes precedence over autoDeploy
-	// when both are sent (Render's precedence); "checksPass" gates the deploy on
-	// the commit's GitHub checks (w1/m181, checks_pass.go); "" => absent.
+	// toggle (off|commit|checksPass, w5/m53). A request carrying it and
+	// autoDeploy is refused, as Render's is (errAutoDeployBoth, w8/347);
+	// "checksPass" gates the deploy on the commit's GitHub checks (w1/m181,
+	// checks_pass.go); "" => absent.
 	AutoDeployTrigger string `json:"autoDeployTrigger"`
 	// NotifyOnFail is Render's exact per-service notifyOnFail enum (default |
 	// notify | ignore, docs/render-artifacts/notify-on-fail.md). A pointer so
@@ -201,8 +202,8 @@ type createServiceRequest struct {
 	Branch        string    `json:"branch"`
 	EnvironmentID string    `json:"environmentId"`
 	AutoDeploy    string    `json:"autoDeploy"` // Render's "yes"|"no"; "" => default
-	// AutoDeployTrigger is Render's off|commit|checksPass enum (w5/m53); takes
-	// precedence over autoDeploy when both sent; "checksPass" rejected; "" => default.
+	// AutoDeployTrigger is Render's off|commit|checksPass enum (w5/m53); sent
+	// with autoDeploy it is refused (errAutoDeployBoth, w8/347); "" => default.
 	AutoDeployTrigger string `json:"autoDeployTrigger"`
 	// NotifyOnFail is Render's exact per-service notifyOnFail enum (default |
 	// notify | ignore); "" => default (docs/render-artifacts/notify-on-fail.md).
@@ -738,8 +739,9 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 			return CreateRequest{}, err
 		}
 	}
-	// Auto-Deploy: autoDeployTrigger (off|commit|checksPass) wins over the
-	// legacy autoDeploy enum when both are sent (w5/m53, w1/m181).
+	// Auto-Deploy: autoDeployTrigger (off|commit|checksPass) or the legacy
+	// autoDeploy enum, never both (w8/347); refused before Create, so a dryRun
+	// refuses it too.
 	autoDeploy, checksPass, err := parseAutoDeploy(r.AutoDeploy, r.AutoDeployTrigger)
 	if err != nil {
 		return CreateRequest{}, err
@@ -834,20 +836,42 @@ func parseTrigger(s string) (autoDeploy, checksPass *bool, err error) {
 	}
 }
 
+// errAutoDeployBoth refuses a request that carries both Auto-Deploy fields.
+// Render's API does: "You can't set both `autoDeploy` and `autoDeployTrigger`
+// in the same request." (pinned OpenAPI components.schemas.autoDeploy, w8/347).
+// REST, GraphQL createService and MCP update_service share it. A Blueprint
+// keeps Render's Blueprint rule instead, where autoDeployTrigger takes
+// precedence (manifestStartAndAutoDeploy).
+var errAutoDeployBoth = fmt.Errorf("%w: you can't set both autoDeploy and autoDeployTrigger in the same request; use autoDeployTrigger", core.ErrBadRequest)
+
 // parseAutoDeploy resolves Render's two Auto-Deploy fields into one tri-state
-// *bool: autoDeployTrigger takes precedence over the legacy autoDeploy enum when
-// both are present (Render's documented precedence), validating the trigger.
+// *bool, validating whichever one is sent; both at once is errAutoDeployBoth.
 //
 // The legacy enum knows no checks gate, so it leaves the gate as it is
 // (checksPass nil) on every surface; only autoDeployTrigger sets it.
 func parseAutoDeploy(autoDeploy, trigger string) (enabled, checksPass *bool, err error) {
-	enabled, checksPass, err = parseTrigger(trigger)
-	if err != nil || enabled != nil {
-		return enabled, checksPass, err
+	if autoDeploy != "" && trigger != "" {
+		return nil, nil, errAutoDeployBoth
+	}
+	if trigger != "" {
+		return parseTrigger(trigger)
 	}
 	legacy := parseYesNo(autoDeploy)
 	if legacy == nil && autoDeploy != "" {
 		return nil, nil, fmt.Errorf("%w: autoDeploy must be yes or no", core.ErrBadRequest)
+	}
+	return legacy, nil, nil
+}
+
+// parseAutoDeployBool is parseAutoDeploy for the surfaces whose legacy
+// autoDeploy is a boolean (GraphQL createService, MCP update_service): nil
+// legacy and "" trigger are absent.
+func parseAutoDeployBool(legacy *bool, trigger string) (enabled, checksPass *bool, err error) {
+	if legacy != nil && trigger != "" {
+		return nil, nil, errAutoDeployBoth
+	}
+	if trigger != "" {
+		return parseTrigger(trigger)
 	}
 	return legacy, nil, nil
 }
@@ -1132,8 +1156,9 @@ func (req patchServiceRequest) resolveFields(r *http.Request) (patchFields, erro
 		return patchFields{}, registryErr
 	}
 	f.registryCredentialID = registryCredentialID
-	// Auto-Deploy: autoDeployTrigger (off|commit|checksPass) wins over the
-	// legacy autoDeploy enum when both are sent (w5/m53, w1/m181).
+	// Auto-Deploy: autoDeployTrigger (off|commit|checksPass) or the legacy
+	// autoDeploy enum, never both (w8/347); refused before any op runs, so
+	// the service keeps what it held.
 	autoDeploy, checksPass, autoDeployErr := parseAutoDeploy(req.AutoDeploy, req.AutoDeployTrigger)
 	if autoDeployErr != nil {
 		return patchFields{}, autoDeployErr

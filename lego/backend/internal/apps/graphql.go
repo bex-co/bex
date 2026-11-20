@@ -788,14 +788,11 @@ func gqlCreateRequest(args map[string]any) (CreateRequest, error) {
 	if err != nil {
 		return CreateRequest{}, err
 	}
-	// autoDeployTrigger (off|commit|checksPass) wins over the boolean
-	// autoDeploy, as on REST (w1/m181).
-	autoDeploy, checksPass, err := parseTrigger(gqlutil.Str(args, "autoDeployTrigger"))
+	// autoDeployTrigger (off|commit|checksPass) or the boolean autoDeploy,
+	// never both, as on REST (w1/m181, w8/347).
+	autoDeploy, checksPass, err := parseAutoDeployBool(gqlutil.BoolPtr(args, "autoDeploy"), gqlutil.Str(args, "autoDeployTrigger"))
 	if err != nil {
 		return CreateRequest{}, err
-	}
-	if autoDeploy == nil {
-		autoDeploy = gqlutil.BoolPtr(args, "autoDeploy")
 	}
 	return CreateRequest{
 		OwnerID:                 gqlutil.Str(args, "ownerId"),
@@ -1564,8 +1561,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// like every create surface (w8/152).
 				"region":     gqlutil.Arg(graphql.String),
 				"autoDeploy": gqlutil.Arg(graphql.Boolean),
-				// autoDeployTrigger: off | commit | checksPass (w1/m181); wins
-				// over autoDeploy when both are sent.
+				// autoDeployTrigger: off | commit | checksPass (w1/m181); sent
+				// with autoDeploy it is refused, as on REST (w8/347).
 				"autoDeployTrigger": gqlutil.Arg(graphql.String),
 				// notifyOnFail is Render's per-service deploy-failure notification
 				// override (default | notify | ignore); omitted => "default".

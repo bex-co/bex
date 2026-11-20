@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"slices"
 	"strings"
 	"testing"
@@ -82,17 +84,19 @@ func TestParseTrigger(t *testing.T) {
 	}
 }
 
-// TestParseAutoDeployPrecedence: autoDeployTrigger wins over the legacy
-// autoDeploy enum when both are sent (Render's precedence); the legacy enum
-// alone leaves the checks gate as it is, on every surface.
-func TestParseAutoDeployPrecedence(t *testing.T) {
+// TestParseAutoDeployRefusesBoth (w8/347): Render's API refuses a request
+// carrying both Auto-Deploy fields ("You can't set both `autoDeploy` and
+// `autoDeployTrigger` in the same request.", pinned OpenAPI), whatever the
+// values; either one alone maps as before, and the legacy enum alone leaves
+// the checks gate as it is, on every surface.
+func TestParseAutoDeployRefusesBoth(t *testing.T) {
 	for _, c := range []struct {
 		legacy, trigger     string
 		enabled, checksPass *bool
 	}{
-		{"no", "commit", boolPtr(true), boolPtr(false)},
-		{"yes", "off", boolPtr(false), boolPtr(false)},
-		{"no", "checksPass", boolPtr(true), boolPtr(true)},
+		{"", "commit", boolPtr(true), boolPtr(false)},
+		{"", "off", boolPtr(false), boolPtr(false)},
+		{"", "checksPass", boolPtr(true), boolPtr(true)},
 		{"yes", "", boolPtr(true), nil},
 		{"no", "", boolPtr(false), nil},
 		{"", "", nil, nil},
@@ -102,9 +106,125 @@ func TestParseAutoDeployPrecedence(t *testing.T) {
 			t.Errorf("parseAutoDeploy(%q, %q) = %v/%v, %v; want %v/%v", c.legacy, c.trigger, deref(enabled), deref(checksPass), err, deref(c.enabled), deref(c.checksPass))
 		}
 	}
+	for _, both := range [][2]string{{"no", "commit"}, {"yes", "off"}, {"no", "checksPass"}, {"yes", "commit"}, {"maybe", "sometimes"}} {
+		enabled, checksPass, err := parseAutoDeploy(both[0], both[1])
+		if !errors.Is(err, errAutoDeployBoth) || enabled != nil || checksPass != nil {
+			t.Errorf("parseAutoDeploy(%q, %q) = %v/%v, %v; want errAutoDeployBoth", both[0], both[1], deref(enabled), deref(checksPass), err)
+		}
+	}
+	if !errors.Is(errAutoDeployBoth, core.ErrBadRequest) {
+		t.Error("errAutoDeployBoth must be a 400 (core.ErrBadRequest)")
+	}
 	if _, _, err := parseAutoDeploy("maybe", ""); err == nil {
 		t.Error("parseAutoDeploy(maybe) should reject an invalid legacy value")
 	}
+}
+
+// TestAutoDeployBothFieldsRefusedOnEverySurface (w8/347): REST create (with
+// and without dryRun) and PATCH, GraphQL createService and MCP update_service
+// answer a request carrying both autoDeploy and autoDeployTrigger with a 400
+// naming both, and write nothing; either field alone still lands.
+func TestAutoDeployBothFieldsRefusedOnEverySurface(t *testing.T) {
+	ctx := context.Background()
+	gitApp := func() *appv1alpha1.App {
+		return &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default"},
+			Spec:       appv1alpha1.AppSpec{Repo: "https://github.com/x/app", AutoDeploy: true},
+		}
+	}
+	refusedBoth := func(t *testing.T, rec *httptest.ResponseRecorder) {
+		t.Helper()
+		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), `"id":"bad_request"`) ||
+			!strings.Contains(rec.Body.String(), "autoDeploy and autoDeployTrigger") {
+			t.Errorf("both fields => 400 bad_request naming both, got %d: %s", rec.Code, rec.Body)
+		}
+	}
+
+	t.Run("REST PATCH", func(t *testing.T) {
+		svc, cl := newService(nil, gitApp())
+		before := getApp(t, cl, "web").ResourceVersion
+		for _, body := range []string{`{"autoDeploy":"no","autoDeployTrigger":"commit"}`, `{"autoDeploy":"no","autoDeployTrigger":"commit","dryRun":true}`} {
+			refusedBoth(t, serveRESTPatch(t, svc, "web", body))
+		}
+		if a := getApp(t, cl, "web"); a.ResourceVersion != before || !a.Spec.AutoDeploy {
+			t.Errorf("a refused PATCH wrote: resourceVersion %s -> %s, autoDeploy %v", before, a.ResourceVersion, a.Spec.AutoDeploy)
+		}
+		for _, c := range []struct {
+			body string
+			want bool
+		}{{`{"autoDeploy":"no"}`, false}, {`{"autoDeployTrigger":"commit"}`, true}, {`{"autoDeployTrigger":"off"}`, false}, {`{"autoDeploy":"yes"}`, true}} {
+			if rec := serveRESTPatch(t, svc, "web", c.body); rec.Code != http.StatusOK {
+				t.Fatalf("PATCH %s => 200, got %d: %s", c.body, rec.Code, rec.Body)
+			}
+			if got := getApp(t, cl, "web").Spec.AutoDeploy; got != c.want {
+				t.Errorf("after PATCH %s autoDeploy = %v, want %v", c.body, got, c.want)
+			}
+		}
+	})
+
+	t.Run("REST create", func(t *testing.T) {
+		svc, cl := newService(nil)
+		const both = `"autoDeploy":"no","autoDeployTrigger":"commit"`
+		for _, body := range []string{
+			`{"name":"web","repo":"https://github.com/x/app",` + both + `}`,
+			`{"name":"web","repo":"https://github.com/x/app",` + both + `,"dryRun":true}`,
+		} {
+			refusedBoth(t, serveRESTStrict(t, svc, http.MethodPost, "/v1/services", body))
+		}
+		var list appv1alpha1.AppList
+		if err := cl.List(ctx, &list); err != nil || len(list.Items) != 0 {
+			t.Fatalf("a refused create left %d services (%v)", len(list.Items), err)
+		}
+		for _, c := range []struct {
+			name, field string
+			want        bool
+		}{{"legacy", `"autoDeploy":"no"`, false}, {"trigger", `"autoDeployTrigger":"off"`, false}, {"commit", `"autoDeployTrigger":"commit"`, true}} {
+			body := `{"name":"` + c.name + `","repo":"https://github.com/x/app",` + c.field + `}`
+			if rec := serveRESTStrict(t, svc, http.MethodPost, "/v1/services", body); rec.Code != http.StatusCreated {
+				t.Fatalf("create %s => 201, got %d: %s", c.field, rec.Code, rec.Body)
+			}
+			if got := getApp(t, cl, c.name).Spec.AutoDeploy; got != c.want {
+				t.Errorf("create %s: autoDeploy = %v, want %v", c.field, got, c.want)
+			}
+		}
+	})
+
+	t.Run("GraphQL createService", func(t *testing.T) {
+		base := func() map[string]any { return map[string]any{"name": "web", "repo": "https://github.com/x/app"} }
+		in := base()
+		in["autoDeploy"], in["autoDeployTrigger"] = false, "commit"
+		if _, err := gqlCreateRequest(in); !errors.Is(err, errAutoDeployBoth) {
+			t.Errorf("createService(autoDeploy, autoDeployTrigger) = %v, want errAutoDeployBoth", err)
+		}
+		in = base()
+		in["autoDeploy"] = false
+		if req, err := gqlCreateRequest(in); err != nil || deref(req.AutoDeploy) != false {
+			t.Errorf("createService(autoDeploy: false) = %v, %v; want false", deref(req.AutoDeploy), err)
+		}
+		in = base()
+		in["autoDeployTrigger"] = "off"
+		if req, err := gqlCreateRequest(in); err != nil || deref(req.AutoDeploy) != false {
+			t.Errorf("createService(autoDeployTrigger: off) = %v, %v; want false", deref(req.AutoDeploy), err)
+		}
+	})
+
+	t.Run("MCP update_service", func(t *testing.T) {
+		svc, cl := newService(nil, gitApp())
+		before := getApp(t, cl, "web").ResourceVersion
+		_, err := svc.applyServicePatch(ctx, updateServiceArgs{ServiceID: "web", AutoDeploy: boolPtr(false), AutoDeployTrigger: sp("commit")})
+		if !errors.Is(err, errAutoDeployBoth) {
+			t.Errorf("update_service(autoDeploy, autoDeployTrigger) = %v, want errAutoDeployBoth", err)
+		}
+		if a := getApp(t, cl, "web"); a.ResourceVersion != before || !a.Spec.AutoDeploy {
+			t.Errorf("a refused update_service wrote: resourceVersion %s -> %s, autoDeploy %v", before, a.ResourceVersion, a.Spec.AutoDeploy)
+		}
+		if _, err := svc.applyServicePatch(ctx, updateServiceArgs{ServiceID: "web", AutoDeploy: boolPtr(false)}); err != nil || getApp(t, cl, "web").Spec.AutoDeploy {
+			t.Errorf("update_service(autoDeploy: false) = %v; autoDeploy %v, want false", err, getApp(t, cl, "web").Spec.AutoDeploy)
+		}
+		if _, err := svc.applyServicePatch(ctx, updateServiceArgs{ServiceID: "web", AutoDeployTrigger: sp("commit")}); err != nil || !getApp(t, cl, "web").Spec.AutoDeploy {
+			t.Errorf("update_service(autoDeployTrigger: commit) = %v; autoDeploy %v, want true", err, getApp(t, cl, "web").Spec.AutoDeploy)
+		}
+	})
 }
 
 func boolPtr(b bool) *bool { return &b }

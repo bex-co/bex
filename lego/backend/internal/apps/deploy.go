@@ -3373,6 +3373,8 @@ func manifestStartAndAutoDeploy(a bexService) (string, *bool, *bool, error) {
 		startCommand = a.DockerCommand
 	}
 
+	// Render's Blueprint spec: "If you include both, autoDeployTrigger takes
+	// precedence", unlike its API, which refuses both (errAutoDeployBoth).
 	autoDeploy := a.AutoDeploy
 	var checksPass *bool
 	if a.AutoDeployTrigger != "" {

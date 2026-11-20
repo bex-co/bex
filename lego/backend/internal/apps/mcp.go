@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"k8s.io/utils/ptr"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
@@ -104,7 +105,7 @@ type updateServiceArgs struct {
 	Port                    *int32                   `json:"port,omitempty" jsonschema:"the port the container listens on, which the platform injects as PORT and targets with the Service, Ingress and health probe (1-65535). Changing it rolls the pods. web_service and private_service only — a worker or cron job has no listener, and a static site is served on the platform's own port. A PORT environment variable on the service, as on Render, overrides this setting. 0 clears the port of a service whose image supplies its ports (imagePorts on the service), so it serves the image's declared port again; any other service refuses 0"`
 	MaxShutdownDelaySeconds *int32                   `json:"maxShutdownDelaySeconds,omitempty" jsonschema:"seconds after SIGTERM before Kubernetes sends SIGKILL (1-300; default 30); web, private, and background-worker services"`
 	AutoDeploy              *bool                    `json:"autoDeploy,omitempty" jsonschema:"true = a signed git push to the tracked branch redeploys (Render's Auto-Deploy); false = only explicit deploys. Setting it does not itself redeploy"`
-	AutoDeployTrigger       *string                  `json:"autoDeployTrigger,omitempty" jsonschema:"Render's Auto-Deploy enum: off, commit (deploy on push), or checksPass (deploy a pushed commit once all its GitHub checks pass; needs the GitHub App's Checks: read). Wins over autoDeploy when both are sent"`
+	AutoDeployTrigger       *string                  `json:"autoDeployTrigger,omitempty" jsonschema:"Render's Auto-Deploy enum: off, commit (deploy on push), or checksPass (deploy a pushed commit once all its GitHub checks pass; needs the GitHub App's Checks: read). Can't be sent with autoDeploy, as on Render's API"`
 	BuildFilter             *buildFilterArg          `json:"buildFilter,omitempty" jsonschema:"Render's Build Filters: repository-root-relative globs (paths/ignoredPaths) deciding whether a git push triggers an auto-deploy; ignored wins over included. Pass empty paths and ignoredPaths to clear the filter"`
 	NotifyOnFail            *string                  `json:"notifyOnFail,omitempty" jsonschema:"deploy-failure notification override: default (defer to each member's own preference), notify (always email every member on a failed deploy), or ignore (never email anyone for this service). Governs failure mail only"`
 	NotificationsToSend     *string                  `json:"notificationsToSend,omitempty" jsonschema:"service notification policy: default (inherit workspace/member preferences, failure-only), failure, all, or none"`
@@ -896,11 +897,9 @@ func (s *Service) applyServicePatch(ctx context.Context, in updateServiceArgs) (
 	if err != nil {
 		return AppView{}, err
 	}
-	autoDeploy, checksPass := in.AutoDeploy, (*bool)(nil)
-	if in.AutoDeployTrigger != nil {
-		if autoDeploy, checksPass, err = parseTrigger(*in.AutoDeployTrigger); err != nil {
-			return AppView{}, err
-		}
+	autoDeploy, checksPass, err := parseAutoDeployBool(in.AutoDeploy, ptr.Deref(in.AutoDeployTrigger, ""))
+	if err != nil {
+		return AppView{}, err
 	}
 
 	p := ServicePatch{
