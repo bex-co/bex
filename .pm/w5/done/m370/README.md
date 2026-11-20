@@ -89,7 +89,7 @@ Production Prometheus (3 days kept), Loki and the operator's own `/metrics`, pin
 ### 2026-11-19 — t003, t005, t006 (loopx w5)
 
 - **t003, the fix for what t002 measured.** (1) The stopping manager hands its lease back (`withLeaderElection`, `LeaderElectionReleaseOnCancel`), so the next one leads within the election's 2 s retry period instead of after the 15 s lease; envtest measures 15.3 s without it. (2) An App that is mid-change when a manager starts (deleting, an unobserved generation, a build or rollout in flight) is queued at the default priority, ahead of the start's `LowPriority` sweep (`inFlightFirstAtStart`, `internal/controller/startup_priority.go`). On production's fleet today that is 4 of 29 Apps (three failed releases whose generation stays unobserved, one failed rollout behind a serving release), so a real change waits behind at most a few passes. `BEX_APP_RECONCILE_WORKERS` stays 2: with changes out of the sweep, its length no longer reaches a tenant.
-- **Not changed here:** the second operator restart per deploy, filed as [w5/196](../../blocked/196.md).
+- **Not changed here:** the second operator restart per deploy, filed as [w5/196](../196.md).
 - **t005:** one comment applied; the envtest lookup's third copy kept (no shared test package). **t006:** the tests above fail against the pre-milestone code; `BexOperatorQueueMetricsMissing` makes an absent queue series loud, with promtool cases for absent and present.
 
 ### 2026-11-19 — parked for t007 (loopx w5)
