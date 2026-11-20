@@ -53,6 +53,8 @@ func TestCreateBlueprintAnswersItsFetchFailureReason(t *testing.T) {
 		{"ambiguous filename", "", ErrBlueprintFilenameAmbiguous, core.ErrBadRequest, BlueprintFetchAmbiguousFilename, LegacyBlueprintFilename},
 		{"rate limited", "", fmt.Errorf("github: limited: %w", &github.APIError{Status: 429}), core.ErrUnavailable, BlueprintFetchRateLimited, "rate-limiting"},
 		{"github unreachable", "", fmt.Errorf("github: boom: %w", &github.APIError{Status: 500}), core.ErrUnavailable, BlueprintFetchUnavailable, "Could not reach GitHub"},
+		// w8/344: a host bex reads no Blueprint from is named, not called a path.
+		{"unsupported host", "", core.NewBadRequestError(github.CodeBlueprintHostUnsupported, "bex reads a Blueprint from a public repository on github.com, gitlab.com or bitbucket.org, as Render does; codeberg.org is not one of them", nil), core.ErrBadRequest, BlueprintFetchRepoNotFound, "codeberg.org is not one"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := newBlueprintService(newFakeBlueprintStore(), fakeWorkspace{"user-a": "tea-a"})

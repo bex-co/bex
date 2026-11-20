@@ -128,9 +128,8 @@ func (s *Service) publicGitDefaultBranch(ctx context.Context, repoURL string) (s
 // publicGitDefaultBranch: notFound, or the HEAD branch when there is one.
 func (s *Service) readPublicGitHead(ctx context.Context, endpoint string) cachedPublicCommit {
 	answer, err := s.getPublicGitAdvertisement(ctx, endpoint)
-	var dns *net.DNSError
 	switch {
-	case errors.As(err, &dns) && dns.IsNotFound:
+	case publicGitRefused(answer, err):
 		return cachedPublicCommit{notFound: true}
 	case err != nil:
 		log.Printf("github: public Git repository check of %s had no answer: %v", endpoint, err)
@@ -145,13 +144,26 @@ func (s *Service) readPublicGitHead(ctx context.Context, endpoint string) cached
 			branch = "" // HEAD names no branch to build
 		}
 		return cachedPublicCommit{branch: branch}
-	case answer.status == http.StatusOK && dumbPublicGitRefs(answer.body):
-		return cachedPublicCommit{} // cloneable, with no HEAD symref to read
-	case answer.status == http.StatusOK, answer.status == http.StatusUnauthorized, answer.status == http.StatusForbidden,
-		answer.status == http.StatusNotFound, answer.status == http.StatusGone:
-		return cachedPublicCommit{notFound: true}
 	}
-	return cachedPublicCommit{}
+	return cachedPublicCommit{} // dumb HTTP refs (cloneable, no HEAD symref), or no answer
+}
+
+// publicGitRefused reports whether one advertisement read is an answer no
+// clone gets past: a host name that does not exist, 401, 403, 404 or 410, or
+// a 200 that is neither an advertisement nor a dumb-HTTP refs listing. A
+// timeout, a reset, a 5xx or a 429 is no answer, never a refusal.
+func publicGitRefused(answer publicGitAnswer, err error) bool {
+	if err != nil {
+		var dns *net.DNSError
+		return errors.As(err, &dns) && dns.IsNotFound
+	}
+	switch answer.status {
+	case http.StatusOK:
+		return !answer.advertisement() && !dumbPublicGitRefs(answer.body)
+	case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusGone:
+		return true
+	}
+	return false
 }
 
 // dumbPublicGitRefs reports whether body is a dumb-HTTP info/refs listing,
@@ -239,17 +251,23 @@ func (a publicGitAnswer) advertisement() bool {
 	return a.status == http.StatusOK && a.media == publicGitAdvertisementType
 }
 
+// anonymousGitClient is the SSRF-safe anonymous client, or the test seam's,
+// with no cookie jar, the public-read timeout and checkRedirect's policy.
+func (s *Service) anonymousGitClient(checkRedirect func(*http.Request, []*http.Request) error) *http.Client {
+	client := *anonymousPublicGitClient
+	if s.publicGitHTTPClient != nil {
+		client = *s.publicGitHTTPClient
+		client.Timeout = publicCommitResolveTimeout
+	}
+	client.Jar = nil
+	client.CheckRedirect = checkRedirect
+	return &client
+}
+
 // getPublicGitAdvertisement makes the request a clone's discovery makes,
 // anonymously. A non-nil error is a host that gave no complete answer.
 func (s *Service) getPublicGitAdvertisement(ctx context.Context, endpoint string) (publicGitAnswer, error) {
-	client := anonymousPublicGitClient
-	if s.publicGitHTTPClient != nil {
-		copy := *s.publicGitHTTPClient
-		copy.Timeout = publicCommitResolveTimeout
-		copy.CheckRedirect = publicGitRedirect
-		copy.Jar = nil
-		client = &copy
-	}
+	client := s.anonymousGitClient(publicGitRedirect)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return publicGitAnswer{}, err

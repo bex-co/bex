@@ -1158,7 +1158,7 @@ func (t tokenSource) RepoGranted(ctx context.Context, workspaceID, repoURL strin
 // App installation grants it (w10/m490): the id its pushes are matched by.
 // 0 for a repository read anonymously, whose pushes never reach bex signed.
 func (t tokenSource) ValidateRepo(ctx context.Context, workspaceID, repoURL string) (defaultBranch string, repoID int64, err error) {
-	if !strings.HasPrefix(core.CanonicalRepo(repoURL), "github.com/") {
+	if !onGitHub(repoURL) {
 		defaultBranch, err = t.s.publicGitDefaultBranch(ctx, repoURL)
 		return defaultBranch, 0, err
 	}
@@ -1375,7 +1375,7 @@ func (s *Service) resolveCommit(ctx context.Context, workspaceID, repoURL, ref s
 	if ref == "" {
 		return store.CommitInfo{}, false, nil
 	}
-	if !strings.HasPrefix(core.CanonicalRepo(repoURL), "github.com/") {
+	if !onGitHub(repoURL) {
 		return s.resolvePublicGitCommit(ctx, repoURL, ref)
 	}
 	if !s.configured() {
@@ -1589,6 +1589,15 @@ var (
 )
 
 func (s *Service) resolveBlueprintCommit(ctx context.Context, workspaceID, repoURL, branch string) (string, error) {
+	if !onGitHub(repoURL) {
+		// Another host's repository is read from that host (w8/344), never
+		// from github.com under the same owner/repo.
+		src, err := parsePublicBlueprintSource(repoURL)
+		if err != nil {
+			return "", err
+		}
+		return s.resolvePublicBlueprintCommit(ctx, src, branch)
+	}
 	owner, repo, token, err := s.blueprintRepoToken(ctx, workspaceID, repoURL)
 	if err != nil {
 		return "", err
@@ -1614,6 +1623,13 @@ func (s *Service) resolveBlueprintCommit(ctx context.Context, workspaceID, repoU
 func (s *Service) fetchBlueprintFileAtCommit(ctx context.Context, workspaceID, repoURL, commitSHA, filePath string) (string, error) {
 	if !validCommitSHA(commitSHA) {
 		return "", fmt.Errorf("github: refusing to fetch blueprint file at an empty or malformed commit id")
+	}
+	if !onGitHub(repoURL) {
+		src, err := parsePublicBlueprintSource(repoURL)
+		if err != nil {
+			return "", err
+		}
+		return s.readPublicBlueprintFile(ctx, src, commitSHA, filePath)
 	}
 	owner, repo, token, err := s.blueprintRepoToken(ctx, workspaceID, repoURL)
 	if err != nil {
@@ -1655,32 +1671,36 @@ const rawContentBaseURL = "https://raw.githubusercontent.com"
 // raw CDN, through the anonymous SSRF-guarded client, with the blueprint size
 // limit. A 404 answers as the contents API's not-found does.
 func (s *Service) readPublicRawFile(ctx context.Context, owner, repo, commitSHA, filePath string) (string, error) {
-	client := anonymousPublicGitClient
-	if s.publicGitHTTPClient != nil {
-		client = s.publicGitHTTPClient
-	}
 	target := rawContentBaseURL + "/" + url.PathEscape(owner) + "/" + url.PathEscape(repo) + "/" + commitSHA + "/" + escapeRepoPath(filePath)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
-	if err != nil {
-		return "", err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("github: raw file: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBlueprintFileBytes+1))
+	status, body, err := getRawBlueprintFile(ctx, s.anonymousGitClient(publicGitRedirect), target)
 	switch {
 	case err != nil:
-		return "", fmt.Errorf("github: raw file: read response: %w", err)
-	case resp.StatusCode == http.StatusNotFound:
-		return "", fmt.Errorf("github: file %q not found at ref %q: %w", filePath, commitSHA, &APIError{Status: resp.StatusCode})
-	case resp.StatusCode != http.StatusOK:
-		return "", &APIError{Status: resp.StatusCode}
+		return "", fmt.Errorf("github: raw file: %w", err)
+	case status == http.StatusNotFound:
+		return "", fmt.Errorf("github: file %q not found at ref %q: %w", filePath, commitSHA, &APIError{Status: status})
+	case status != http.StatusOK:
+		return "", &APIError{Status: status}
 	case len(body) > maxBlueprintFileBytes:
 		return "", fmt.Errorf("%w: file %q at ref %q", errFileTooLarge, filePath, commitSHA)
 	}
 	return string(body), nil
+}
+
+// getRawBlueprintFile GETs one raw file: its status and at most
+// maxBlueprintFileBytes+1 bytes of its body, so a caller can tell an
+// oversized file. A non-nil error is a host that gave no complete answer.
+func getRawBlueprintFile(ctx context.Context, client *http.Client, target string) (int, []byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	if err != nil {
+		return 0, nil, err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBlueprintFileBytes+1))
+	return resp.StatusCode, body, err
 }
 
 // escapeRepoPath escapes each segment of a repository path, keeping its slashes.

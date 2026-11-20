@@ -351,6 +351,12 @@ func classifyBlueprintFetchError(err error, requestedPath, branch string) (Bluep
 		return BlueprintFetchRepoNotFound,
 			"Repository not found, or bex's GitHub app cannot access it."
 	}
+	// A repository on a host bex reads no Blueprint from (w8/344): its
+	// message names the host from the caller's own URL.
+	var coded *core.CodedError
+	if errors.As(err, &coded) && coded.Code == github.CodeBlueprintHostUnsupported {
+		return BlueprintFetchRepoNotFound, coded.Error()
+	}
 	// approvedBlueprintPath's refusals are the only ErrBadRequest that reaches
 	// here, and they are about the caller's path, not the repository.
 	if errors.Is(err, core.ErrBadRequest) {
