@@ -1,6 +1,6 @@
 # w8 · m529 — A restart or rollback pulls its release's image with that release's own registry credential
 
-**Worker:** worker8 **Goal:** the registry credential travels with the release, as the image does. A Restart reruns the serving release with the credential it went live with, a rollback runs its target with the target's, and a later image switch to another credential, failed or merely saved, never changes what the serving release pulls with. **Status:** todo (t001–t007 done; t008 waits for a production roll)
+**Worker:** worker8 **Goal:** the registry credential travels with the release, as the image does. A Restart reruns the serving release with the credential it went live with, a rollback runs its target with the target's, and a later image switch to another credential, failed or merely saved, never changes what the serving release pulls with. **Status:** blocked (t001–t007 done; t008 waits for a production pin carrying `8d58c09bc`)
 
 ## Tasks (in order)
 
@@ -31,17 +31,17 @@ Total: **8 tasks, about 5h10m**.
 
 ## Source + Goal linkage
 
-- **Source:** [w8/353](../done/353.md), filed by the `cli-qa` routine run 14 (`f71b51ca8`, run `r14-f377`). It reproduced on two fresh fixtures on production on 2026-11-20: after an image switch failed on a bad Docker Hub credential, `bex restart` pulled the served `nginx@sha256:65645c7b…` with the failed deploy's credential and failed with Docker Hub's 401. Clearing the saved binding made the same restart go live in 21 s.
+- **Source:** [w8/353](../../done/353.md), filed by the `cli-qa` routine run 14 (`f71b51ca8`, run `r14-f377`). It reproduced on two fresh fixtures on production on 2026-11-20: after an image switch failed on a bad Docker Hub credential, `bex restart` pulled the served `nginx@sha256:65645c7b…` with the failed deploy's credential and failed with Docker Hub's 401. Clearing the saved binding made the same restart go live in 21 s.
 - **Cause (traced):**
   - Every deploy trigger re-materializes the saved credential into one per-App Secret, `<app>-registry-pull` (`lego/types/v1alpha1/secretnames.go:48`, `lego/backend/internal/registrycreds/pullsecret.go:132`, called from `lego/backend/internal/deploys/service.go:944`). The trigger also writes `spec.externalRegistryPullSecret`. The projector sets that field on a save alone (`lego/backend/internal/store/reconciler.go:2986` and `:3039`).
   - Restart and rollback select the target's image, port, shutdown delay and pre-deploy command (`targetReleaseConfig`, `lego/backend/internal/deploys/rollback_config.go:46`). The release record (`ReleaseRecordSpec`, `lego/types/v1alpha1/releasesnapshots.go:101`) has no registry binding.
   - The operator gives every pod it builds `app.Spec.ExternalRegistryPullSecret`, whichever release that pod runs (`imagePullSecrets`, `lego/operator/internal/controller/app_controller.go:2436`). The Deployment, the pre-deploy step Job (`:7631`) and the cron pod (`:6179`) all do this. The image metadata read uses the same field (`externalImageAuthHeader`, `image_network.go:124`).
   - Two failure modes follow. A serving release with no credential is restarted with the new credential, which is the production repro. A serving release with credential A has its Secret's contents overwritten with B by the next trigger, so any re-pull (restart, eviction, node drain, wake on a node without the image) uses B.
-- **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first)). Render's Restart keeps "the exact same Git commit and configuration as the running instance" (w4/m433), and a failed deploy leaves the previous release serving and recoverable. Render rolls back to the target's image tag or digest (`render.com/docs/rollbacks`); t002 checks what it documents about that pull's credential.
+- **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first)). Render's Restart keeps "the exact same Git commit and configuration as the running instance" (w4/m433), and a failed deploy leaves the previous release serving and recoverable. Render rolls back to the target's image tag or digest (`render.com/docs/rollbacks`); t002 checks what it documents about that pull's credential.
 - **Expected outcome:** one failed or saved-only image switch with a bad or foreign credential no longer breaks the recovery verb. Restart, rollback, eviction and wake keep pulling the serving release with the credential it went live with.
 - **Why now:** this is a major bug on production. The serving instance is one reschedule away from an outage after any failed credential switch, and Restart, the documented recovery, fails until the user clears the binding by hand.
 - **Render parity task included:** Restart and rollback are tenant-facing verbs on REST, GraphQL, MCP, the CLI and the dashboard. No field changes, but each surface's outcome changes.
-- **Related, not in scope:** [w8/354](../354.md) (the error text for an unknown credential) and [w8/355](../355.md) (a credential create without `ownerId`).
+- **Related, not in scope:** [w8/354](../../354.md) (the error text for an unknown credential) and [w8/355](../../355.md) (a credential create without `ownerId`).
 
 ## Results (t001–t007, 2026-11-20)
 
