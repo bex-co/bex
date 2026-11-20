@@ -360,7 +360,7 @@ describe("LogLineList Display (w3/088)", () => {
     );
     expect(isOneLine(long)).toBe(true);
     expect(container.textContent).toContain("TAIL");
-    expect(handle.current!.text()).toBe(long);
+    expect(handle.current!.text()).toBe(`2026-11-19T10:36:01.709Z ${long}`);
   });
 });
 
@@ -375,11 +375,13 @@ describe("LogLineList handle (w3/m509)", () => {
     expect(container.querySelectorAll("[data-index]").length).toBeLessThan(120);
     const text = handle.current!.text().split("\n");
     expect(text).toHaveLength(1000);
-    expect(text[0]).toMatch(/^\d\d:\d\d:\d\d [AP]M line 0$/);
+    expect(text[0]).toBe("2026-11-19T10:36:01.709Z line 0");
     expect(text[999]).toMatch(/line 999$/);
   });
 
-  it("copies in the order shown, without the time when the list hides it", () => {
+  // Render's Copy logs (w3/090): the record's own timestamp whether or not
+  // the list shows its clock, and no date row.
+  it("copies in the order shown, with each record's timestamp even when the list hides it", () => {
     const handle = createRef<LogLineListHandle>();
     render(
       <LogLineList
@@ -389,7 +391,9 @@ describe("LogLineList handle (w3/m509)", () => {
         handleRef={handle}
       />,
     );
-    expect(handle.current!.text()).toBe("line 1\nline 0");
+    expect(handle.current!.text()).toBe(
+      "2026-11-19T10:36:01.709Z line 1\n2026-11-19T10:36:01.709Z line 0",
+    );
   });
 
   it("jumps to the top and back to the newest line at the bottom", async () => {

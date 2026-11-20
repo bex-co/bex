@@ -136,7 +136,8 @@ const fromBottom = (el: HTMLElement) =>
 export interface LogLineListHandle {
   /** Home and End: the list's first or last row. */
   jump: (edge: "top" | "bottom") => void;
-  /** The rows shown, as Options ▸ Copy logs writes them. */
+  /** The records shown, in Render's copied format (`logRowsText`): what
+   *  Options ▸ Copy logs writes. */
   text: () => string;
 }
 
@@ -291,7 +292,7 @@ function shownWhileHeld(lines: LogLine[], view: HeldView): LogLine[] {
  * copying works within the on-screen window, but a drag-select can no longer
  * span rows that have scrolled out of the DOM. The whole buffer is copied
  * through the handle's `text()` instead (Options ▸ Copy logs, `⌘/Ctrl ⇧ C`,
- * w3/m509), which writes every row shown, not only the mounted window.
+ * w3/m509), which writes every record shown, not only the mounted window.
  */
 export function LogLineList({
   lines,
@@ -621,26 +622,12 @@ export function LogLineList({
         if ((edge === "top") === descending) setPinned(true);
       },
       text: () =>
-        logRowsText(rows, {
-          time: showTimestamps
-            ? (timestamp) => formatClockTime(timestamp, language)
-            : null,
-          day: dayLabel,
-          resource: resourceLabels
-            ? (id) => resourceLabels.get(id)?.name
-            : undefined,
-        }),
+        logRowsText(
+          rows,
+          resourceLabels ? (id) => resourceLabels.get(id)?.name : undefined,
+        ),
     }),
-    [
-      rows,
-      descending,
-      endSettling,
-      scrollToEdge,
-      showTimestamps,
-      language,
-      dayLabel,
-      resourceLabels,
-    ],
+    [rows, descending, endSettling, scrollToEdge, resourceLabels],
   );
 
   // A descending list ends at its oldest loaded line, so it says the log ends

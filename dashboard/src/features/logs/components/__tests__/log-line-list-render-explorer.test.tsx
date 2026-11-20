@@ -119,7 +119,7 @@ describe("held lines while scrolled away from a live tail (w3/m528 t003)", () =>
     // the newest.
     expect(handle.current!.text()).toBe(
       range(0, 200)
-        .map((l) => l.message)
+        .map((l) => `${l.timestamp} ${l.message}`)
         .join("\n"),
     );
     expect(
@@ -192,12 +192,12 @@ describe("held lines while scrolled away from a live tail (w3/m528 t003)", () =>
     const button = heldButton("15+ new logs")!;
     expect(button.className).toContain("top-4");
     // The newest lines would land at the top: none has.
-    expect(handle.current!.text().split("\n")[0]).toBe("line 59");
+    expect(handle.current!.text().split("\n")[0]).toMatch(/ line 59$/);
     expect(
       screen.getByRole("button", { name: "Return to Top" }),
     ).toBeInTheDocument();
     fireEvent.click(button);
-    expect(handle.current!.text().split("\n")[0]).toBe("line 71");
+    expect(handle.current!.text().split("\n")[0]).toMatch(/ line 71$/);
     await settle();
   });
 

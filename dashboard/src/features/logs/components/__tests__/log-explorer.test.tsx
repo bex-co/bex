@@ -55,6 +55,10 @@ const lines: LogLine[] = ["first", "second"].map((message, i) => ({
   path: "",
 }));
 
+// Copy logs writes Render's format (w3/090): each record's own timestamp,
+// then its text, whatever the list shows of the time.
+const COPIED = "2026-11-19T10:00:00Z first\n2026-11-19T10:00:01Z second";
+
 const writeText = vi.fn<(text: string) => Promise<void>>();
 beforeEach(() => {
   writeText.mockReset().mockResolvedValue(undefined);
@@ -196,12 +200,13 @@ describe("log explorer shortcuts (w3/m509)", () => {
     await act(async () => {
       fireEvent.keyDown(window, { key: "C", metaKey: true, shiftKey: true });
     });
-    expect(writeText).toHaveBeenCalledWith("first\nsecond");
+    expect(writeText).toHaveBeenCalledWith(COPIED);
     await act(async () => {
       fireEvent.keyDown(window, { key: "c", ctrlKey: true, shiftKey: true });
     });
     expect(writeText).toHaveBeenCalledTimes(2);
-    expect(await screen.findAllByText("Logs copied")).not.toHaveLength(0);
+    // Render's toast wording (w3/090).
+    expect(await screen.findAllByText("Copied logs")).not.toHaveLength(0);
   });
 
   it("does not copy on a plain ⌘C, which copies the selection", () => {
@@ -249,7 +254,7 @@ describe("log explorer Options (w3/m509)", () => {
     ).toHaveTextContent("Ctrl+Shift+C");
     await user.click(screen.getByRole("menuitem", { name: /Copy logs/ }));
     // user-event puts its own clipboard in place of the page's.
-    expect(await navigator.clipboard.readText()).toBe("first\nsecond");
+    expect(await navigator.clipboard.readText()).toBe(COPIED);
 
     await open();
     await user.click(screen.getByRole("menuitemradio", { name: "Descending" }));

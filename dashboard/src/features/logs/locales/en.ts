@@ -681,12 +681,12 @@ const enLogs: Record<string, TranslationEntry> = {
       "Log line level gutter (w3/m509): accessible name and hover text of the level icon leading a log row; {level} is the line's level word (info, warning, error, \u2026)",
   },
   "logs.copied": {
-    message: "Logs copied",
+    message: "Copied logs",
     description:
       "Log explorer (w3/m509): toast after Options > Copy logs wrote the lines shown to the clipboard",
   },
   "logs.copyFailed": {
-    message: "Couldn't copy the logs",
+    message: "Couldn't copy logs",
     description:
       "Log explorer (w3/m509): toast when the clipboard refused the copied logs",
   },

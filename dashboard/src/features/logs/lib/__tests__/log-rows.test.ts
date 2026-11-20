@@ -101,57 +101,72 @@ describe("shortInstance", () => {
   });
 });
 
-describe("logRowsText (w3/m509)", () => {
-  const format = {
-    time: (timestamp: string) => timestamp.slice(11, 19),
-    day: (day: number) => new Date(day).toISOString().slice(0, 10),
-  };
+// Render's Copy logs writes each record with `Dn` (w3/090, its dashboard
+// bundle read by w3/m528): `${timestamp} ${En(line)}`, the record's own
+// timestamp, then `[resource] METHOD STATUS host+path text`; no date rows and
+// no instance.
+describe("logRowsText (w3/090)", () => {
+  const app = line("a", "2026-11-18T23:59:58.123456789Z", {
+    instance: "srv-abc-0123456789abcdefghij",
+    resource: "srv-abc",
+    message: "\u001b[32mready\u001b[0m",
+    spans: parseAnsi("\u001b[32mready\u001b[0m"),
+  });
+  const request = line("b", "2026-11-19T00:00:01Z", {
+    type: "request",
+    instance: "srv-abc-0123456789abcdefghij",
+    resource: "srv-def",
+    method: "GET",
+    statusCode: "404",
+    host: "example.com",
+    path: "/missing",
+    message: 'clientIP="198.51.100.3"',
+  });
 
-  it("writes each row as it reads, in the order shown", () => {
-    const rows = logListRows(
-      [
-        line("a", "2026-11-18T23:59:58Z", {
-          instance: "srv-abc-0123456789abcdefghij",
-          resource: "srv-abc",
-          message: "\u001b[32mready\u001b[0m",
-          spans: parseAnsi("\u001b[32mready\u001b[0m"),
-        }),
-        line("b", "2026-11-19T00:00:01Z", {
-          type: "request",
-          method: "GET",
-          statusCode: "404",
-          host: "example.com",
-          path: "/missing",
-          message: 'clientIP="198.51.100.3"',
-        }),
-      ],
-      "desc",
+  it("writes an app line as its timestamp and text, its styling stripped, with no instance", () => {
+    expect(logRowsText(logListRows([app], "asc"))).toBe(
+      "2026-11-18T23:59:58.123456789Z ready",
     );
-    expect(logRowsText(rows, { ...format, resource: () => "storefront" })).toBe(
+  });
+
+  it("writes a request line's method, status, host and path after its timestamp", () => {
+    expect(logRowsText(logListRows([request], "asc"))).toBe(
+      '2026-11-19T00:00:01Z GET 404 example.com/missing clientIP="198.51.100.3"',
+    );
+  });
+
+  it("names a project view line's resource, by id when the view does not name it", () => {
+    const names = new Map([["srv-abc", "storefront"]]);
+    expect(
+      logRowsText(logListRows([app, request], "asc"), (id) => names.get(id)),
+    ).toBe(
       [
-        "2026-11-19",
-        '00:00:01 GET 404 example.com/missing clientIP="198.51.100.3"',
-        "2026-11-18",
-        "23:59:58 [storefront] [01234] ready",
+        "2026-11-18T23:59:58.123456789Z [storefront] ready",
+        '2026-11-19T00:00:01Z [srv-def] GET 404 example.com/missing clientIP="198.51.100.3"',
       ].join("\n"),
     );
   });
 
-  it("leaves out the time when the list hides it, and the resource when it names none", () => {
-    const rows = logListRows(
-      [line("a", "2026-11-18T10:00:00Z", { resource: "srv-abc" })],
-      "asc",
-    );
-    expect(logRowsText(rows, { ...format, time: null })).toBe("a");
+  it("writes one line per record in the order shown, with no date rows", () => {
+    const rows = logListRows([app, request], "desc");
+    // The list shows a date row over each day; the copy has none.
+    expect(rows.filter((row) => row.kind === "day")).toHaveLength(2);
+    expect(logRowsText(rows).split("\n")).toEqual([
+      '2026-11-19T00:00:01Z GET 404 example.com/missing clientIP="198.51.100.3"',
+      "2026-11-18T23:59:58.123456789Z ready",
+    ]);
   });
 
-  it("copies a long message whole", () => {
+  it("copies a long message whole, and a line without a time as its text", () => {
     const long = "y".repeat(2000);
-    const rows = logListRows(
-      [line("a", "2026-11-18T10:00:00Z", { message: long })],
-      "asc",
-    );
-    expect(logRowsText(rows, { ...format, time: null })).toBe(long);
+    expect(
+      logRowsText(
+        logListRows(
+          [line("a", "2026-11-18T10:00:00Z", { message: long }), line("x", "")],
+          "asc",
+        ),
+      ),
+    ).toBe(`2026-11-18T10:00:00Z ${long}\nx`);
   });
 });
 

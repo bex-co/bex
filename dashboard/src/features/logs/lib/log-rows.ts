@@ -91,66 +91,48 @@ export function shortInstance(instance: string): string {
   return suffix.length === 5 ? suffix : instance;
 }
 
-/** How the copied text names what a row shows beside its message. */
-export interface LogRowsTextFormat {
-  /** The row's clock, or null when the list hides timestamps. */
-  time: ((timestamp: string) => string) | null;
-  day: (day: number) => string;
-  /** A project view's resource name for a line, when the list names them. */
-  resource?: (id: string) => string | undefined;
-}
-
 /**
  * The rows as Options ▸ Copy logs writes them (Render's "Copy all currently
- * displayed logs", `⌘/Ctrl ⇧ C`): one text line per row, in the order shown,
- * as the row reads — date separator, time, `[resource]`, `[instance]`, a
- * request's method, status, host and path, then the whole message without
- * its terminal styling, even on a row Options ▸ Display shows on one line.
+ * displayed logs", `⌘/Ctrl ⇧ C`; its `Dn`, read from Render's dashboard bundle
+ * by w3/m528): one text line per record, in the order shown, each the
+ * record's own RFC 3339 timestamp and then what Copy log line writes
+ * (`logLineText`). No date rows and no instance, and the timestamp whether or
+ * not the list shows its clock. `resource` names a project view's resource
+ * for a line, by id.
  */
 export function logRowsText(
   rows: readonly LogListRow[],
-  format: LogRowsTextFormat,
+  resource?: (id: string) => string | undefined,
 ): string {
   return rows
-    .map((row) => {
-      if (row.kind === "day") return format.day(row.day);
+    .flatMap((row) => {
+      if (row.kind === "day") return [];
       const { line } = row;
-      const parts: string[] = [];
-      const time = format.time?.(line.timestamp);
-      if (time) parts.push(time);
-      if (format.resource && line.resource) {
-        parts.push(`[${format.resource(line.resource) ?? line.resource}]`);
-      }
-      if (line.instance) parts.push(`[${shortInstance(line.instance)}]`);
-      parts.push(...lineBody(line));
-      return parts.join(" ");
+      const name =
+        resource && line.resource
+          ? (resource(line.resource) ?? line.resource)
+          : undefined;
+      return [
+        [line.timestamp, logLineText(line, name)].filter(Boolean).join(" "),
+      ];
     })
     .join("\n");
 }
 
-/** A line's request method, status, host and path, then its whole message
- *  without its terminal styling: what both copies write after the tags. */
-function lineBody(line: LogLine): string[] {
-  const parts: string[] = [];
-  if (line.type === LOG_TYPE_REQUEST) {
-    if (line.method) parts.push(line.method);
-    if (line.statusCode) parts.push(line.statusCode);
-    if (line.host || line.path) parts.push(`${line.host}${line.path}`);
-  }
-  parts.push(shownMessage(line));
-  return parts;
-}
-
 /**
  * One line as the row menu's Copy log line writes it (Render's `En`, w3/m528):
- * `[resource] METHOD STATUS host+path`, then the message without its terminal
- * styling, with the parts the line has. No time and no instance: Render's
- * label is a project view's resource name, absent on one resource's log.
+ * `[resource] METHOD STATUS host+path`, then the whole message without its
+ * terminal styling, with the parts the line has. No time and no instance:
+ * Render's label is a project view's resource name, absent on one resource's
+ * log.
  */
 export function logLineText(line: LogLine, resource?: string): string {
-  return [resource ? `[${resource}]` : "", ...lineBody(line)]
-    .filter(Boolean)
-    .join(" ");
+  const parts = [resource ? `[${resource}]` : ""];
+  if (line.type === LOG_TYPE_REQUEST) {
+    parts.push(line.method, line.statusCode, `${line.host}${line.path}`);
+  }
+  parts.push(shownMessage(line));
+  return parts.filter(Boolean).join(" ");
 }
 
 /** The held-lines button's count for `count` held lines (Render's
