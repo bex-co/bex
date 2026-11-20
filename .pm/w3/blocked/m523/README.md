@@ -1,6 +1,6 @@
 # w3 · m523 — A project log view reads `is not one of` on Level, Instance, Method, Status Code, Host and Path, as Render's Edit view offers
 
-**Worker:** worker3 **Goal:** a project's Application Logs and Request Logs views take Render's `IS_NOT` on every line field Render's Edit view offers it on (Level, Instance, Method, Status Code, Host, Path). The log query reads the complement on the store, the pod-log and datastore paths and the live tail, the validator accepts the operator, and the Edit view modal offers `is not one of` there. A view such as "everything but info" reads instead of being refused. **Status:** todo — t001–t005 and t007–t009 done; t006 verified on dev-3, its production walk next (§ Verification record)
+**Worker:** worker3 **Goal:** a project's Application Logs and Request Logs views take Render's `IS_NOT` on every line field Render's Edit view offers it on (Level, Instance, Method, Status Code, Host, Path). The log query reads the complement on the store, the pod-log and datastore paths and the live tail, the validator accepts the operator, and the Edit view modal offers `is not one of` there. A view such as "everything but info" reads instead of being refused. **Status:** blocked — t001–t005 and t007–t009 done and shipped in `9f497080c`; t006 is verified on dev-3, and its production walk waits for a production pin carrying `9f497080c` (§ Gate)
 
 ## Tasks (in order)
 
@@ -25,7 +25,7 @@ Total: **10 tasks, about 6h30m**.
 2. **Every negatable field.** `IS_NOT` on `INSTANCE`, `METHOD`, `STATUS_CODE` (a `4xx` class too), `HOST` and `PATH` reads the complement of what `IS` reads, on both surfaces. `*` wildcards and `/regex/` values negate the same way. A negated value that matches nothing excludes nothing. An `INSTANCE IS_NOT` that resolves in one resource and not in another narrows only the first.
 3. **The rest stays as Render has it.** `ENVIRONMENT` and the time range take `IS` only. Text Search takes Render's `contains` only. `IS_NOT` on any of them is refused by name, as before.
 4. **The editor.** The Edit view modal offers `is one of` / `is not one of` on Level, Instance, Method, Status Code, Host and Path, as it already does on Resource and Resource Type. A stored `IS_NOT` row reopens as `is not one of`.
-5. **Recorded.** ADR010 § Project views no longer lists the refusal, and the ADR018 Projects row and the [capture](../../../docs/render-artifacts/project-observability.md) name Render's operators per field.
+5. **Recorded.** ADR010 § Project views no longer lists the refusal, and the ADR018 Projects row and the [capture](../../../../docs/render-artifacts/project-observability.md) name Render's operators per field.
 6. **Live.** On dev-3, and on production once a pin carries the milestone, as the QA user in `bex-canary`, at 1440 and 390: a view edited to `Level is not one of info` reads no info line, in history and live.
 
 ## Verification record (t006)
@@ -44,20 +44,20 @@ Total: **10 tasks, about 6h30m**.
 
 ### Production
 
-Waits for a production pin carrying the milestone's commit (§ Gate, added when it parks).
+Waits for a production pin carrying `9f497080c` (§ Gate).
 
 ## Render parity (t007, 2026-11-19)
 
-Compared against Render's dashboard bundle (§ Render's Edit view below, and the [capture](../../../docs/render-artifacts/project-observability.md#operators-per-field-read-from-the-bundle-2026-11-19-w3m523)). Render's public API has no saved-search or project-log operation and no operator on its log filters.
+Compared against Render's dashboard bundle (§ Render's Edit view below, and the [capture](../../../../docs/render-artifacts/project-observability.md#operators-per-field-read-from-the-bundle-2026-11-19-w3m523)). Render's public API has no saved-search or project-log operation and no operator on its log filters.
 
 | Surface | Render | bex | Verdict |
 | --- | --- | --- | --- |
 | GraphQL `logs(project, filterDocument)` | its `logs(query: {project, filterDocument})` reads the view's document | `IS_NOT` on Level, Instance, Method, Status Code, Host and Path reads the complement of `IS`, a line without the label included; `IS_NOT` on Environment, Text Search or Time Range is refused by name | matches |
 | `/v1/logs/subscribe?project=` (a Bex extension) | the view's live tail follows the same document | the same negation, per producer (pods, datastore pods, the request poll) | matches |
 | `createSavedSearch` / `updateSavedSearch` | the modal saves `IS_NOT` on the eight negatable fields | stored after the shared validator; refused on the other three | matches |
-| Edit view modal: operators | `is one of` / `is not one of` on Resource, Resource Type and the six line fields; `is` on Environment and Time Range; `contains` on Text Search | the same, but Text Search's operator reads `is` | drift: Text Search's `contains` label and `TEXT_SEARCH`/`CONTAINS` spelling, filed by t001 as [w3/083](../083.md) |
-| Edit view modal: values | Level, Instance, Method, Status Code, Host and Path list the project's values (`logValues(label, logQuery: {project})`) | Instance, Status Code, Host and Path typed; Level and Method fixed lists | drift: Instance is [w3/079](../079.md); the other five filed as [w3/084](../084.md) |
-| Saved document shape | `timeRange.relative` and `display` beside `filters` | a `TIME_RANGE` row, no `display` | drift: [w3/083](../083.md) |
+| Edit view modal: operators | `is one of` / `is not one of` on Resource, Resource Type and the six line fields; `is` on Environment and Time Range; `contains` on Text Search | the same, but Text Search's operator reads `is` | drift: Text Search's `contains` label and `TEXT_SEARCH`/`CONTAINS` spelling, filed by t001 as [w3/083](../../083.md) |
+| Edit view modal: values | Level, Instance, Method, Status Code, Host and Path list the project's values (`logValues(label, logQuery: {project})`) | Instance, Status Code, Host and Path typed; Level and Method fixed lists | drift: Instance is [w3/079](../../079.md); the other five filed as [w3/084](../../084.md) |
+| Saved document shape | `timeRange.relative` and `display` beside `filters` | a `TIME_RANGE` row, no `display` | drift: [w3/083](../../083.md) |
 | REST `GET /v1/logs`, MCP `list_logs` | no operator on log filters | unchanged | matches |
 
 ## Simplify (t008, 2026-11-19)
@@ -84,15 +84,21 @@ The note asked for Render's operator set per field before shipping. The triage r
 
 So the line fields Render negates are six, not the note's seven: Text Search is `contains` only. The bundle also shows that bex's document diverges from Render's in three places: `TEXT` where Render has `TEXT_SEARCH` with `CONTAINS`, a `TIME_RANGE` filter row where Render has top-level `timeRange.relative`, and no `display` block. Those change what a stored document looks like, which is a migration of stored views, not a negation. t001 files them as their own w3 item.
 
+## Gate (2026-11-19)
+
+**Clears by itself; no decision needed.** t006's production half needs a production deploy carrying `9f497080c` (`feat(logs): a project log view reads … (w3/m523 t001-t005, t007-t009)`): bex-api for the reads and the tail, the dashboard for the editor. Check: the newest `chore(deploy): pin platform images to <sha>` on `main` passes `git merge-base --is-ancestor 9f497080c <sha>`, and production's `bex-api` and `dashboard` Deployments run the digests that pin names.
+
+**Next (t006, then t010):** sign in as the QA user (`bash scripts/qa-login.sh`). In `bex-canary`, use or create a project with a web service that logs at more than one level (info, warn, an unstructured line) and serves a 404, a cron job and a Postgres. At 1440 and 390: edit its Application Logs view to `Level is not one of info` and check that history and Live tail show no info line (warnings, errors and level-less lines stay); edit its Request Logs view to `Status Code is not one of 2xx` and `Path is not one of /healthz` and check that only the other requests show, in history and live; reopen Edit view and check both rows read `is not one of`. Compare pending and ready at both widths. Set the views back to their filters before the walk, record the evidence here, delete any fixture with by-id `GET` 404 evidence, log out, and close the milestone (t010).
+
 ## Source + Goal linkage
 
-- **Source:** inbox note [w3/076](../done/076.md), filed from w3/m505 on 2026-11-19 (`IS_NOT` on a line field refused, its Render parity row). Promoted by `/loopx w3` on 2026-11-19.
+- **Source:** inbox note [w3/076](../../done/076.md), filed from w3/m505 on 2026-11-19 (`IS_NOT` on a line field refused, its Render parity row). Promoted by `/loopx w3` on 2026-11-19.
 - **Triage evidence (2026-11-19, `a767dc133`):**
   - **The refusal.** `Filter.validate` refuses `IS_NOT` on every field but `RESOURCE` and `RESOURCE_TYPE` (`lego/backend/internal/savedsearch/document.go:180`). `newProjectView` copies a line field's values into `LogQuery` without the operator (`lego/backend/internal/logs/project.go:110`).
   - **No negation in the log query.** `LogQuery`'s structured filters are value sets that only select (`lego/backend/internal/logs/service.go:309`). They are read in six places, and each needs the negated form: the Loki stream selector (`loki.go:499`–`511`: level, instance, method, status code with its classes), the `json` stage for path and host (`loki.go:589`), the text prefilter (`textprefilter.go:71`), the pod-line level matcher and `keep` (`service.go:1258`, `:874`), the pod selection `keepPod` with `translateInstanceFilter` (`service.go:734`, `:2431`), and the live-tail routing `liveSubscribable` (`service.go:536`).
   - **The editor.** `viewFieldOperators` offers `IS_NOT` only on Resource and Resource Type (`dashboard/src/features/logs/lib/view-filters.ts:141`).
   - Render's operators per field: § Render's Edit view above.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)), project observability ([ADR010 § Project views](../../../docs/ADR010-observability.md#project-views-one-stream-for-a-whole-project-w3m505-2026-11-19)). It finishes the filter set of [w3/m505](../done/m505/README.md) and the editor of [w3/m507](../done/m507/README.md).
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)), project observability ([ADR010 § Project views](../../../../docs/ADR010-observability.md#project-views-one-stream-for-a-whole-project-w3m505-2026-11-19)). It finishes the filter set of [w3/m505](../../done/m505/README.md) and the editor of [w3/m507](../../done/m507/README.md).
 - **Expected outcome:** a team keeps an "everything but info" or "not the health checks" (`PATH is not one of /healthz`) view and reads it like any other. A view written on Render with these operators reads on bex.
 - **Why now:** m507 shipped the editor, so a user can now see the six fields Render offers `is not one of` on and cannot pick it. The stores and the tail each read the same `LogQuery`, so the six paths change together.
 - **Render parity included:** the change reaches GraphQL `logs(project, filterDocument)`, the project tail and the dashboard. REST and MCP keep their filters, which have no operator, as Render's public API does.
