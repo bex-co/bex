@@ -17,11 +17,13 @@ limitations under the License.
 package environments
 
 import (
+	"context"
 	"errors"
 	"slices"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -87,6 +89,54 @@ func TestChangeResourcesRefusalsChangeNothing(t *testing.T) {
 	foreign := ids.New(ids.Postgres)
 	if _, err := svc.ChangeResources(ctxAs("user-a"), e.ID, []string{foreign}, true); !errors.Is(err, core.ErrForbidden) {
 		t.Errorf("foreign id: err = %v, want forbidden", err)
+	}
+}
+
+// noReversalStore places services in an environment but cannot take them out,
+// so reversing an add fails.
+type noReversalStore struct{ *fakeStore }
+
+func (s noReversalStore) ChangeEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceIDs []string, add bool, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
+	if !add {
+		return nil, errors.New("store unavailable")
+	}
+	return s.fakeStore.ChangeEnvironmentServices(ctx, environmentID, projectID, tenantID, serviceIDs, add, exit)
+}
+
+// A request that fails partway reverses only the members it changed, never one
+// it did not name; when the reversal fails too, the answer is the
+// partial-membership conflict naming what may still be changed.
+func TestChangeResourcesFailureReversesOnlyWhatItChanged(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "stack"})
+	web, api, group := ids.New(ids.Service), ids.New(ids.Service), ids.New(ids.EnvGroup)
+	groups := &failingEnvGroupIndex{refuse: group}
+	groups.groups = []envgroups.EnvGroupView{{ID: group, OwnerID: "tea-a"}}
+	svc := newService(st)
+	svc.EnvGroups = groups
+	e, _ := svc.Create(ctxAs("user-a"), "prj-1", "staging")
+	if _, err := svc.ChangeResources(ctxAs("user-a"), e.ID, []string{api}, true); err != nil {
+		t.Fatal(err)
+	}
+
+	// The group's join fails after web joined: web leaves again, api stays.
+	_, err := svc.ChangeResources(ctxAs("user-a"), e.ID, []string{web, group}, true)
+	var coded *core.CodedError
+	if err == nil || errors.As(err, &coded) {
+		t.Fatalf("failed add = %v, want the group's own failure", err)
+	}
+	if got, _ := svc.Get(ctxAs("user-a"), e.ID); !slices.Equal(got.ServiceIDs, []string{api}) || len(got.EnvGroupIDs) != 0 {
+		t.Fatalf("after the reversal: services %v, groups %v; want only %s", got.ServiceIDs, got.EnvGroupIDs, api)
+	}
+
+	// The same failure with a reversal that fails names the member still in.
+	svc.Store = noReversalStore{st}
+	_, err = svc.ChangeResources(ctxAs("user-a"), e.ID, []string{web, group}, true)
+	if !errors.As(err, &coded) || coded.Code != "ENVIRONMENT_MEMBERSHIP_PARTIAL" || !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("failed add with a failed reversal = %v, want the partial-membership conflict", err)
+	}
+	if changed, _ := coded.Params["changedIds"].([]string); !slices.Equal(changed, []string{web}) || coded.Params["failedId"] != group {
+		t.Fatalf("partial outcome = %v, want %s changed and %s failed", coded.Params, web, group)
 	}
 }
 

@@ -19,6 +19,7 @@ package environments
 import (
 	"context"
 	"fmt"
+	"log"
 	"slices"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -74,14 +75,18 @@ func classifyResources(resourceIDs []string) (resourceKinds, error) {
 }
 
 // ChangeResources adds (or removes) the listed resources to (from) the
-// environment, leaving every other member as it is. A malformed id refuses the
-// whole request before anything changes; the kinds then apply in turn, and a
-// failure restores the kinds already changed so the request is all-or-nothing
-// as far as the individual membership verbs allow.
+// environment, leaving every other member as it is — including one another
+// request placed while this one runs, so each kind applies as a delta on the
+// named ids, never as a full list computed from an earlier read. A malformed
+// id refuses the whole request before anything changes; the kinds then apply
+// in turn, and a failure reverses what this request changed in the kinds
+// already applied, newest first, so the request is all-or-nothing. When a
+// reversal fails too, the answer is ENVIRONMENT_MEMBERSHIP_PARTIAL naming the
+// members that may still be changed.
 func (s *Service) ChangeResources(ctx context.Context, id string, resourceIDs []string, add bool) (EnvironmentView, error) {
 	// Authorization and existence first: a caller who may not touch the
 	// environment learns nothing about its id format rules.
-	current, err := s.Get(ctx, id)
+	viewCtx, e, err := s.viewableEnvironment(ctx, id)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
@@ -92,44 +97,62 @@ func (s *Service) ChangeResources(ctx context.Context, id string, resourceIDs []
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	type step struct {
-		now, requested []string
-		set            func(context.Context, string, []string) (EnvironmentView, error)
+	kinds := []memberKind{
+		{requested: want.services, services: true},
+		{requested: want.databases, idx: s.databases()},
+		{requested: want.keyValues, idx: s.keyValues()},
+		{requested: want.envGroups, idx: s.envGroups()},
 	}
-	steps := []step{
-		{current.ServiceIDs, want.services, s.SetServices},
-		{current.DatabaseIDs, want.databases, s.SetDatabases},
-		{current.KeyValueIDs, want.keyValues, s.SetKeyValues},
-		{current.EnvGroupIDs, want.envGroups, s.SetEnvGroups},
-	}
-	var applied []step
-	view := current
-	for _, st := range steps {
-		if len(st.requested) == 0 {
+	var done []memberKind
+	for _, k := range kinds {
+		if len(k.requested) == 0 {
 			continue
 		}
-		next := slices.Clone(st.now)
-		for _, rid := range st.requested {
-			has := slices.Contains(next, rid)
-			switch {
-			case add && !has:
-				next = append(next, rid)
-			case !add && has:
-				next = slices.DeleteFunc(next, func(m string) bool { return m == rid })
-			}
-		}
-		if slices.Equal(next, st.now) {
-			continue
-		}
-		v, err := st.set(ctx, id, next)
+		var failed string
+		k.changed, failed, err = s.changeKind(ctx, k, id, k.requested, add)
+		done = append(done, k)
 		if err != nil {
-			for _, done := range slices.Backward(applied) {
-				_, _ = done.set(ctx, id, done.now) // best effort: put the earlier kinds back
+			// Reverse only the members this request changed: the others may
+			// have been placed by a concurrent request since.
+			var kept []string
+			for _, d := range slices.Backward(done) {
+				if len(d.changed) == 0 {
+					continue
+				}
+				if _, _, undoErr := s.changeKind(ctx, d, id, d.changed, !add); undoErr != nil {
+					log.Printf("environments: reversing %v in %s: %v", d.changed, e.ID, undoErr)
+					kept = append(kept, d.changed...)
+				}
 			}
-			return EnvironmentView{}, err
+			return EnvironmentView{}, membershipInterrupted(e.ID, kept, failed, err)
 		}
-		view = v
-		applied = append(applied, st)
 	}
-	return view, nil
+	return s.toFullView(viewCtx, e)
+}
+
+// memberKind is one member kind of a ChangeResources request: the ids it names
+// and, once applied, the members it changed.
+type memberKind struct {
+	requested, changed []string
+	// services marks the kind with its own store verb; idx serves the
+	// label-backed kinds (nil when that kind is unwired).
+	services bool
+	idx      resourceIndex
+}
+
+// changeKind adds (add) or removes only memberIDs of k's kind, leaving every
+// other member as it is. It returns the members it changed — on failure too,
+// with the member it stopped at when one member's change failed — which a
+// reversal passes back with add flipped.
+func (s *Service) changeKind(ctx context.Context, k memberKind, id string, memberIDs []string, add bool) ([]string, string, error) {
+	if k.services {
+		changed, err := s.changeServices(ctx, id, memberIDs, add)
+		return changed, "", err
+	}
+	mode := removeMembers
+	if add {
+		mode = addMembers
+	}
+	_, _, changed, failed, err := s.changeMembers(ctx, k.idx, id, memberIDs, mode)
+	return changed, failed, err
 }

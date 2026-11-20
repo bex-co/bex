@@ -59,6 +59,9 @@ type EnvironmentStore interface {
 	RenameEnvironment(ctx context.Context, id, name string) error
 	DeleteEnvironment(ctx context.Context, id string) error
 	SetEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceNames []string, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error)
+	// ChangeEnvironmentServices adds or removes only the named services; every
+	// other member keeps its placement.
+	ChangeEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceIDs []string, add bool, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error)
 	ListEnvironmentServices(ctx context.Context, environmentID, projectID string) ([]string, error)
 	ListWorkspaceEnvironmentServices(ctx context.Context, tenantID string) (map[string][]string, error)
 	// SetEnvironmentACL replaces the protected-environment ACL triple (w6/m19).
@@ -591,14 +594,7 @@ func (s *Service) ListWorkspace(ctx context.Context, workspaceID string) ([]Envi
 
 // Get returns a single environment by id.
 func (s *Service) Get(ctx context.Context, id string) (EnvironmentView, error) {
-	ctx, err := s.scopeEnvironment(ctx, id)
-	if err != nil {
-		return EnvironmentView{}, err
-	}
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return EnvironmentView{}, err
-	}
-	e, err := s.requireEnvironment(ctx, core.RelCanView, id)
+	ctx, e, err := s.viewableEnvironment(ctx, id)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
@@ -611,18 +607,22 @@ func (s *Service) Get(ctx context.Context, id string) (EnvironmentView, error) {
 // which lists every database, Key Value and env group of the workspace to
 // report membership the caller would discard (w4/m206).
 func (s *Service) OwnerWorkspace(ctx context.Context, id string) (string, error) {
+	_, e, err := s.viewableEnvironment(ctx, id)
+	return e.TenantID, err
+}
+
+// viewableEnvironment is Get's scoping and authorization without the view: the
+// environment-scoped context and the environment.
+func (s *Service) viewableEnvironment(ctx context.Context, id string) (context.Context, store.Environment, error) {
 	ctx, err := s.scopeEnvironment(ctx, id)
 	if err != nil {
-		return "", err
+		return ctx, store.Environment{}, err
 	}
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return "", err
+		return ctx, store.Environment{}, err
 	}
 	e, err := s.requireEnvironment(ctx, core.RelCanView, id)
-	if err != nil {
-		return "", err
-	}
-	return e.TenantID, nil
+	return ctx, e, err
 }
 
 // Create creates a new environment under the named project, authorized once in
@@ -1212,9 +1212,61 @@ func forEachMember(ctx context.Context, idx resourceIndex, e store.Environment, 
 // environment's networkIsolationEnabled) on services now in it — the
 // operator's signal for environment-scoped NetworkPolicy (t004).
 func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []string) (EnvironmentView, error) {
-	ctx, err := s.scopeEnvironment(ctx, id)
+	ctx, e, moves, err := s.moveServices(ctx, id, func(ctx context.Context, e store.Environment, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
+		return s.Store.SetEnvironmentServices(ctx, e.ID, e.ProjectID, e.TenantID, serviceIDs, exit)
+	})
 	if err != nil {
 		return EnvironmentView{}, err
+	}
+	sids, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	// A replacement re-stamps every member, not only the arrivals.
+	if err := s.syncServiceLayers(ctx, e, servicesLeaving(moves, e.ID), sids); err != nil {
+		return EnvironmentView{}, err
+	}
+	return s.view(ctx, e, sids)
+}
+
+// changeServices adds (add) or removes only the named services, so a member
+// another request placed meanwhile keeps its placement and its environment
+// rules. It returns the services whose membership changed, which a reversal
+// passes back with add flipped; a failure after the store write still names
+// them, since that write stands.
+func (s *Service) changeServices(ctx context.Context, id string, serviceIDs []string, add bool) ([]string, error) {
+	ctx, e, moves, err := s.moveServices(ctx, id, func(ctx context.Context, e store.Environment, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
+		return s.Store.ChangeEnvironmentServices(ctx, e.ID, e.ProjectID, e.TenantID, serviceIDs, add, exit)
+	})
+	if err != nil {
+		return nil, err
+	}
+	leaving := servicesLeaving(moves, e.ID)
+	var arriving, changed []string
+	for _, mv := range moves {
+		if mv.EnvironmentTo == nil || *mv.EnvironmentTo != e.ID {
+			continue
+		}
+		// A member whose stale project the add re-stamped is stamped again
+		// here, but it was a member already: reversing the add must not
+		// take it out.
+		arriving = append(arriving, mv.ServiceID)
+		if mv.EnvironmentFrom == nil || *mv.EnvironmentFrom != e.ID {
+			changed = append(changed, mv.ServiceID)
+		}
+	}
+	changed = append(changed, leaving...)
+	return changed, s.syncServiceLayers(ctx, e, leaving, arriving)
+}
+
+// moveServices runs one service-placement write on environment id behind the
+// membership verbs' shared authorization, exit guard and move audit. It returns
+// the environment-scoped context and environment the caller's fan-out uses,
+// and the write's per-service diff.
+func (s *Service) moveServices(ctx context.Context, id string, write func(context.Context, store.Environment, core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error)) (context.Context, store.Environment, []core.ServicePlacementChange, error) {
+	ctx, err := s.scopeEnvironment(ctx, id)
+	if err != nil {
+		return ctx, store.Environment{}, nil, err
 	}
 	// The per-service move rows below are the action's record (Render's
 	// MoveEnvironmentResourceEvent): its authorizations, and the per-service
@@ -1222,18 +1274,18 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []strin
 	// recorded four rows (w4/m321). Denials still record.
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
-		return EnvironmentView{}, err
+		return ctx, store.Environment{}, nil, err
 	}
 	e, err := s.requireEnvironment(ctx, core.RelCanCreate, id)
 	if err != nil {
-		return EnvironmentView{}, err
+		return ctx, store.Environment{}, nil, err
 	}
 	// Replacing membership can remove the projected isolation and inbound-IP
 	// layers from existing members. ACL-bearing environments are administrator-
 	// governed, so authorize before the store mutation (which is otherwise
 	// irreversible if the later CR projection fails).
 	if err := s.authorizeMembershipChange(ctx, e); err != nil {
-		return EnvironmentView{}, err
+		return ctx, store.Environment{}, nil, err
 	}
 	// Services pulled in from another environment leave it: each ACL-bearing
 	// one needs its own fresh can_manage, checked on the diff the store holds
@@ -1241,47 +1293,50 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []strin
 	// (w4/m232).
 	exit, err := s.loadExitGuard(ctx, e.TenantID)
 	if err != nil {
-		return EnvironmentView{}, err
+		return ctx, store.Environment{}, nil, err
 	}
-	moves, err := s.Store.SetEnvironmentServices(ctx, e.ID, e.ProjectID, e.TenantID, serviceIDs, exit)
+	moves, err := write(ctx, e, exit)
 	if err != nil {
-		return EnvironmentView{}, store.MapError(err)
+		return ctx, store.Environment{}, nil, store.MapError(err)
 	}
 	// The store transaction IS the authoritative membership change, so the
 	// per-service move facts are recorded here — before the k8s-side label
 	// fan-out, whose failure would not un-move anything (w6/m134).
 	s.RecordServiceMoves(ctx, core.AuditVerbEnvironmentServiceMoved, moves)
-	sids, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
-	if err != nil {
-		return EnvironmentView{}, err
-	}
-	// Leavers, from the same in-transaction diff (w6/m134): a service left THIS
-	// environment iff its environment went from e.ID to nothing (the assign
-	// UPDATE only ever points environment_id here, never elsewhere). Unlike the
-	// pre-diff before/after list comparison this also reaches rows whose stale
-	// project_id hid them from ListEnvironmentServices, and it cannot race a
-	// concurrent membership change between two reads.
+	return ctx, e, moves, nil
+}
+
+// servicesLeaving is the services a placement diff took out of environmentID,
+// from the same in-transaction diff (w6/m134): a service left it iff its
+// environment went from environmentID to nothing (the assign UPDATEs only ever
+// point environment_id here, never elsewhere). Unlike a before/after list
+// comparison this also reaches rows whose stale project_id hid them from
+// ListEnvironmentServices, and it cannot race a concurrent membership change
+// between two reads.
+func servicesLeaving(moves []core.ServicePlacementChange, environmentID string) []string {
 	var leaving []string
 	for _, mv := range moves {
-		if mv.EnvironmentFrom != nil && *mv.EnvironmentFrom == e.ID && mv.EnvironmentTo == nil {
+		if mv.EnvironmentFrom != nil && *mv.EnvironmentFrom == environmentID && mv.EnvironmentTo == nil {
 			leaving = append(leaving, mv.ServiceID)
 		}
 	}
+	return leaving
+}
+
+// syncServiceLayers projects e's environment rules onto its services: leaving
+// loses the isolation label and the inbound-IP layer (w4/m28), members carry
+// e's current ones.
+func (s *Service) syncServiceLayers(ctx context.Context, e store.Environment, leaving, members []string) error {
 	if err := s.applyAppEnvironmentLabels(ctx, leaving, "", false); err != nil {
-		return EnvironmentView{}, err
+		return err
 	}
-	if err := s.applyAppEnvironmentLabels(ctx, sids, e.ID, e.NetworkIsolationEnabled); err != nil {
-		return EnvironmentView{}, err
+	if err := s.applyAppEnvironmentLabels(ctx, members, e.ID, e.NetworkIsolationEnabled); err != nil {
+		return err
 	}
-	// Inbound-IP layer sync (w4/m28): leavers lose the environment layer,
-	// members carry the environment's current rules.
 	if err := s.applyAppAllowLists(ctx, leaving, nil); err != nil {
-		return EnvironmentView{}, err
+		return err
 	}
-	if err := s.applyAppAllowLists(ctx, sids, core.EnvironmentLayerCIDRs(e.IPAllowList)); err != nil {
-		return EnvironmentView{}, err
-	}
-	return s.view(ctx, e, sids)
+	return s.applyAppAllowLists(ctx, members, core.EnvironmentLayerCIDRs(e.IPAllowList))
 }
 
 // SetDatabases replaces the full list of managed Postgres databases in an
@@ -1319,22 +1374,47 @@ func (s *Service) SetEnvGroups(ctx context.Context, id string, envGroupIDs []str
 // before any membership changes; unknown and foreign ids receive the same
 // refusal. The diff then re-stamps only members that actually changed.
 func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id string, wantIDs []string) (EnvironmentView, error) {
+	ctx, e, changed, failed, err := s.changeMembers(ctx, idx, id, wantIDs, replaceMembers)
+	if err != nil {
+		return EnvironmentView{}, membershipInterrupted(e.ID, changed, failed, err)
+	}
+	return s.toFullView(ctx, e)
+}
+
+// membershipMode is what a membership write does with the ids it names.
+type membershipMode int
+
+const (
+	// replaceMembers makes the named ids the kind's whole membership.
+	replaceMembers membershipMode = iota
+	// addMembers places the named ids in the environment and touches no other.
+	addMembers
+	// removeMembers takes the named ids out and touches no other; a named id
+	// that is not a member is no change.
+	removeMembers
+)
+
+// changeMembers applies one membership write to environment id's idx members.
+// It returns the environment-scoped context and environment, the members
+// changed, and on failure the member it stopped at: members change one at a
+// time and an earlier change is not undone here when a later one fails.
+func (s *Service) changeMembers(ctx context.Context, idx resourceIndex, id string, memberIDs []string, mode membershipMode) (context.Context, store.Environment, []string, string, error) {
 	ctx, err := s.scopeEnvironment(ctx, id)
 	if err != nil {
-		return EnvironmentView{}, err
+		return ctx, store.Environment{}, nil, "", err
 	}
 	if err := s.AuthorizeTarget(ctx, core.RelCanCreate, core.EnvironmentTarget(ids.EnvironmentPublicID(id))); err != nil {
-		return EnvironmentView{}, err
+		return ctx, store.Environment{}, nil, "", err
 	}
 	e, err := s.requireEnvironment(ctx, core.RelCanCreate, id)
 	if err != nil {
-		return EnvironmentView{}, err
+		return ctx, store.Environment{}, nil, "", err
 	}
 	if idx == nil {
-		return EnvironmentView{}, ErrEnvironmentsUnavailable
+		return ctx, e, nil, "", ErrEnvironmentsUnavailable
 	}
 	if err := s.authorizeMembershipChange(ctx, e); err != nil {
-		return EnvironmentView{}, err
+		return ctx, e, nil, "", err
 	}
 	// Act inside the environment's OWN workspace: env group writes authorize
 	// against the context workspace, while the Database/KeyValue seams resolve
@@ -1343,72 +1423,83 @@ func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id 
 	ctx = core.WithWorkspace(ctx, e.TenantID)
 	existing, err := idx.list(ctx, e.TenantID)
 	if err != nil {
-		return EnvironmentView{}, err
+		return ctx, e, nil, "", err
 	}
 	known := make(map[string]bool, len(existing))
 	for _, r := range existing {
 		known[r.id] = true
 	}
-	want := make(map[string]bool, len(wantIDs))
-	for _, wid := range wantIDs {
-		if !known[wid] {
-			return EnvironmentView{}, fmt.Errorf("%w: %q does not belong to workspace %q", core.ErrForbidden, wid, e.TenantID)
+	named := make(map[string]bool, len(memberIDs))
+	for _, mid := range memberIDs {
+		// Removing what is not a member changes nothing, so it refuses nothing.
+		if !known[mid] && mode != removeMembers {
+			return ctx, e, nil, "", fmt.Errorf("%w: %q does not belong to workspace %q", core.ErrForbidden, mid, e.TenantID)
 		}
-		want[wid] = true
+		named[mid] = true
+	}
+	joins := func(r environmentResource) bool {
+		return mode != removeMembers && named[r.id] && r.environmentID != e.ID
+	}
+	leaves := func(r environmentResource) bool {
+		if r.environmentID != e.ID {
+			return false
+		}
+		return mode == removeMembers && named[r.id] || mode == replaceMembers && !named[r.id]
 	}
 	// A member pulled in from another environment leaves it. Authorize every
 	// such source before the first change, so a refusal changes nothing; each
 	// join then refuses a resource that moved since it was listed (w4/m232).
 	var sources []string
 	for _, r := range existing {
-		if want[r.id] && r.environmentID != "" && r.environmentID != e.ID {
+		if joins(r) && r.environmentID != "" {
 			sources = append(sources, r.environmentID)
 		}
 	}
 	exit, err := s.loadExitGuard(ctx, e.TenantID)
 	if err != nil {
-		return EnvironmentView{}, err
+		return ctx, e, nil, "", err
 	}
 	if err := exit(sources...); err != nil {
-		return EnvironmentView{}, err
+		return ctx, e, nil, "", err
 	}
-	// Members change one at a time and an earlier change is not undone when a
-	// later one fails, so a failure after the first change says exactly how far
-	// the replacement got (w4/m206).
 	var changed []string
 	for _, r := range existing {
 		var err error
 		switch {
-		case r.environmentID == e.ID && !want[r.id]:
+		case leaves(r):
 			err = idx.leave(ctx, r.id, e.ID)
-		case r.environmentID != e.ID && want[r.id]:
+		case joins(r):
 			err = idx.join(ctx, e, r.id, r.environmentID)
 		default:
 			continue
 		}
 		if err != nil {
-			return EnvironmentView{}, membershipInterrupted(e.ID, changed, r.id, err)
+			return ctx, e, changed, r.id, err
 		}
 		changed = append(changed, r.id)
 	}
-	return s.toFullView(ctx, e)
+	return ctx, e, changed, "", nil
 }
 
-// membershipInterrupted reports a membership replacement that stopped partway.
+// membershipInterrupted reports a membership change that stopped partway.
 // With nothing changed yet the cause stands alone. Otherwise the refusal is a
-// conflict naming the members already changed and the one that failed: the
-// environment holds neither the old nor the requested membership, and the
-// caller must read it before writing again.
+// conflict naming the members still changed and, when one member's change
+// failed, that member: the environment holds neither the old nor the requested
+// membership, and the caller must read it before writing again.
 func membershipInterrupted(environmentID string, changed []string, failed string, cause error) error {
 	if len(changed) == 0 {
 		return cause
 	}
 	// The cause may carry internal detail, so it is logged, not returned.
-	log.Printf("environments: membership of %s stopped at %s after changing %v: %v", environmentID, failed, changed, cause)
+	log.Printf("environments: membership of %s stopped at %q after changing %v: %v", environmentID, failed, changed, cause)
+	params := map[string]any{"environmentId": ids.EnvironmentPublicID(environmentID), "changedIds": changed}
+	if failed != "" {
+		params["failedId"] = failed
+	}
 	return core.NewConflictError(
 		"ENVIRONMENT_MEMBERSHIP_PARTIAL",
 		"Only part of this change was applied before it failed. Reload to see the current placement before trying again.",
-		map[string]any{"environmentId": ids.EnvironmentPublicID(environmentID), "changedIds": changed, "failedId": failed},
+		params,
 	)
 }
 

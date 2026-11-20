@@ -144,6 +144,27 @@ func (f *fakeStore) DeleteEnvironment(_ context.Context, id string) error {
 func (f *fakeStore) SetEnvironmentServices(_ context.Context, environmentID, projectID, _ string, serviceNames []string, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	return f.setServicesLocked(environmentID, projectID, serviceNames, exit)
+}
+
+// ChangeEnvironmentServices applies the delta to the membership as it stands
+// under the lock, as the PG store's row locks do.
+func (f *fakeStore) ChangeEnvironmentServices(_ context.Context, environmentID, projectID, _ string, serviceIDs []string, add bool, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var next []string
+	for n := range f.assign[environmentID] {
+		if add || !slices.Contains(serviceIDs, n) {
+			next = append(next, n)
+		}
+	}
+	if add {
+		next = append(next, serviceIDs...)
+	}
+	return f.setServicesLocked(environmentID, projectID, next, exit)
+}
+
+func (f *fakeStore) setServicesLocked(environmentID, projectID string, serviceNames []string, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
 	m := map[string]bool{}
 	var changes []core.ServicePlacementChange
 	var pulled []string // environments incoming services leave

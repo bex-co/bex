@@ -89,6 +89,10 @@ func (*datastorePlacementStore) SetEnvironmentServices(context.Context, string, 
 	return nil, errors.New("unexpected SetEnvironmentServices")
 }
 
+func (*datastorePlacementStore) ChangeEnvironmentServices(context.Context, string, string, string, []string, bool, core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
+	return nil, errors.New("unexpected ChangeEnvironmentServices")
+}
+
 func (*datastorePlacementStore) ListEnvironmentServices(context.Context, string, string) ([]string, error) {
 	return nil, nil
 }
