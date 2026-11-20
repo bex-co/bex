@@ -206,7 +206,7 @@ func TestGraphQLValueErrorsNeverEchoTheModelKey(t *testing.T) {
 		if tc.input != nil {
 			body.Variables = map[string]any{"input": tc.input}
 		}
-		_, _, _, result := srv.executeGraphQL(context.Background(), body)
+		_, _, _, result := srv.executeGraphQL(context.Background(), body, &gqlBudget{})
 		if len(result.Errors) == 0 {
 			t.Errorf("%s: no error", name)
 			continue

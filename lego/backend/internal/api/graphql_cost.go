@@ -18,6 +18,7 @@ package api
 
 import (
 	"fmt"
+	"iter"
 	"time"
 
 	"github.com/graphql-go/graphql/language/ast"
@@ -93,6 +94,149 @@ const (
 	gqlMaxSameResponseName = 10
 )
 
+// Budgets one request's documents share: a batch's members draw on one
+// budget, in order, as they share one execution deadline, and a document
+// that would overdraw it is refused before graphql-go reads it. The rate
+// limiter charges a batch one token per member, so these bound the
+// validation one token buys. Each budget sits far above what bex's clients
+// send (2026-11-20): only the dashboard batches, at most 32 documents (94 KB
+// if all 32 were its largest), with at most 18 bytes of argument values in a
+// document (the mobile app sends 274, one document at a time), at most 52
+// overlap steps a document and no argument values compared.
+const (
+	// gqlMaxRequestDocumentBytes caps the documents' text together.
+	gqlMaxRequestDocumentBytes = 128 << 10
+	// gqlMaxRequestValueBytes caps the argument and variable default values
+	// written into the documents. graphql-go prints an invalid value twice
+	// to name it, at up to 16 µs a byte for a nested one: one 32 KB value
+	// took a second. A value passed as a variable is not printed.
+	gqlMaxRequestValueBytes = 8 << 10
+	// gqlMaxRequestOverlapSteps caps the steps graphql-go's overlap check
+	// takes, as gqlOverlap counts them.
+	gqlMaxRequestOverlapSteps = 20000
+	// gqlMaxRequestOverlapArgumentBytes caps the argument values the overlap
+	// check prints to compare two fields.
+	gqlMaxRequestOverlapArgumentBytes = 1 << 10
+)
+
+// gqlBudget is what one request's documents have spent of the request budgets.
+type gqlBudget struct {
+	documentBytes, valueBytes, overlapSteps, overlapArgumentBytes int
+}
+
+// spendDocument charges a document's text, before it is parsed.
+func (b *gqlBudget) spendDocument(query string) error {
+	b.documentBytes += len(query)
+	if b.documentBytes > gqlMaxRequestDocumentBytes {
+		return fmt.Errorf("query rejected: the request's documents are larger than %d bytes together", gqlMaxRequestDocumentBytes)
+	}
+	return nil
+}
+
+// spendValues charges the argument and variable default values written
+// into a document: every one graphql-go may print, with no expansion of
+// fragments, as graphql-go reads each definition once.
+func (b *gqlBudget) spendValues(fragments map[string]*ast.FragmentDefinition, ops []*ast.OperationDefinition) error {
+	for _, v := range graphqlWrittenValues(fragments, ops) {
+		// graphql-go never prints a variable to name an invalid value.
+		if _, variable := v.(*ast.Variable); !variable {
+			b.valueBytes += gqlValueBytes(v)
+		}
+	}
+	if b.valueBytes > gqlMaxRequestValueBytes {
+		return fmt.Errorf("query rejected: the request's argument and default values are larger than %d bytes together; pass large inputs as variables", gqlMaxRequestValueBytes)
+	}
+	return nil
+}
+
+// spendOverlap charges steps and argument bytes of graphql-go's overlap check.
+func (b *gqlBudget) spendOverlap(steps, argumentBytes int) error {
+	b.overlapSteps += steps
+	b.overlapArgumentBytes += argumentBytes
+	if b.overlapSteps > gqlMaxRequestOverlapSteps {
+		return fmt.Errorf("query rejected: the request's fields that share a response name take more than %d steps to compare", gqlMaxRequestOverlapSteps)
+	}
+	if b.overlapArgumentBytes > gqlMaxRequestOverlapArgumentBytes {
+		return fmt.Errorf("query rejected: the request's fields that share a response name compare more than %d bytes of argument values", gqlMaxRequestOverlapArgumentBytes)
+	}
+	return nil
+}
+
+// gqlValueBytes is a value's length as written in the document.
+func gqlValueBytes(v ast.Value) int {
+	if v == nil || v.GetLoc() == nil {
+		return 0
+	}
+	return v.GetLoc().End - v.GetLoc().Start
+}
+
+// graphqlWrittenValues yields every value written into a document's
+// operations and fragments, with a name for it: each variable's default
+// ("$name") and each field's and directive's argument, without following
+// fragment spreads.
+func graphqlWrittenValues(fragments map[string]*ast.FragmentDefinition, ops []*ast.OperationDefinition) iter.Seq2[string, ast.Value] {
+	return func(yield func(string, ast.Value) bool) {
+		arguments := func(args []*ast.Argument) bool {
+			for _, a := range args {
+				name := ""
+				if a.Name != nil {
+					name = a.Name.Value
+				}
+				if !yield(name, a.Value) {
+					return false
+				}
+			}
+			return true
+		}
+		directives := func(directives []*ast.Directive) bool {
+			for _, d := range directives {
+				if !arguments(d.Arguments) {
+					return false
+				}
+			}
+			return true
+		}
+		var selections func(set *ast.SelectionSet) bool
+		selections = func(set *ast.SelectionSet) bool {
+			if set == nil {
+				return true
+			}
+			for _, sel := range set.Selections {
+				switch s := sel.(type) {
+				case *ast.Field:
+					if !arguments(s.Arguments) || !directives(s.Directives) || !selections(s.SelectionSet) {
+						return false
+					}
+				case *ast.InlineFragment:
+					if !directives(s.Directives) || !selections(s.SelectionSet) {
+						return false
+					}
+				case *ast.FragmentSpread:
+					if !directives(s.Directives) {
+						return false
+					}
+				}
+			}
+			return true
+		}
+		for _, op := range ops {
+			for _, def := range op.VariableDefinitions {
+				if def.DefaultValue != nil && def.Variable != nil && def.Variable.Name != nil && !yield("$"+def.Variable.Name.Value, def.DefaultValue) {
+					return
+				}
+			}
+			if !directives(op.Directives) || !selections(op.SelectionSet) {
+				return
+			}
+		}
+		for _, frag := range fragments {
+			if !directives(frag.Directives) || !selections(frag.SelectionSet) {
+				return
+			}
+		}
+	}
+}
+
 // checkGraphQLText refuses, before the document is parsed, one larger than
 // gqlMaxDocumentBytes or with a value nested deeper than gqlMaxValueDepth.
 // Values appear only between parentheses (arguments and variable
@@ -146,7 +290,10 @@ func parseGraphQL(query string) (*ast.Document, error) {
 // graphqlDefinitions splits a document into its operations and its named
 // fragments. A fragment name defined twice is refused, as graphql-go refuses
 // it: the map would keep one definition, and the gates would never read the
-// other, which graphql-go still validates.
+// other, which graphql-go still validates. So is a type system definition,
+// which the GraphQL spec's ExecutableDefinitions rule refuses and graphql-go
+// does not: it validated the definition, printing its invalid values and
+// nesting its types, then ignored it.
 func graphqlDefinitions(doc *ast.Document) (fragments map[string]*ast.FragmentDefinition, ops []*ast.OperationDefinition, err error) {
 	fragments = map[string]*ast.FragmentDefinition{}
 	for _, def := range doc.Definitions {
@@ -161,9 +308,31 @@ func graphqlDefinitions(doc *ast.Document) (fragments map[string]*ast.FragmentDe
 				return nil, nil, fmt.Errorf(`There can only be one fragment named "%s".`, d.Name.Value)
 			}
 			fragments[d.Name.Value] = d
+		default:
+			return nil, nil, fmt.Errorf("The %s definition is not executable.", definitionName(def))
 		}
 	}
 	return fragments, ops, nil
+}
+
+// definitionName names a type system definition as graphql-js's
+// ExecutableDefinitions rule does: quoted, or "schema" for a schema definition.
+func definitionName(def ast.Node) string {
+	var name *ast.Name
+	switch d := def.(type) {
+	case interface{ GetName() *ast.Name }:
+		name = d.GetName()
+	case *ast.DirectiveDefinition:
+		name = d.Name
+	case *ast.TypeExtensionDefinition:
+		if d.Definition != nil {
+			name = d.Definition.Name
+		}
+	}
+	if name == nil {
+		return "schema"
+	}
+	return `"` + name.Value + `"`
 }
 
 // parseGraphQLDocument splits a query into operations and named fragments.
@@ -184,7 +353,16 @@ func parseGraphQLDocument(query string) (fragments map[string]*ast.FragmentDefin
 // the client expects. Fragment spreads are resolved (with cycle detection) so
 // cost can't be hidden behind fragments.
 func validateGraphQLComplexity(query string) error {
+	return validateGraphQLDocument(query, &gqlBudget{})
+}
+
+// validateGraphQLDocument is validateGraphQLComplexity drawing on budget,
+// one document of a request whose documents share it.
+func validateGraphQLDocument(query string, budget *gqlBudget) error {
 	if err := checkGraphQLText(query); err != nil {
+		return err
+	}
+	if err := budget.spendDocument(query); err != nil {
 		return err
 	}
 	doc, err := parseGraphQL(query)
@@ -195,12 +373,13 @@ func validateGraphQLComplexity(query string) error {
 	if err != nil {
 		return err
 	}
-	return validateGraphQLComplexityParsed(fragments, ops)
+	return validateGraphQLComplexityParsed(fragments, ops, budget)
 }
 
 // validateGraphQLComplexityParsed is the AST form used when the document was
-// already parsed for telemetry / scope (one parse per request).
-func validateGraphQLComplexityParsed(fragments map[string]*ast.FragmentDefinition, ops []*ast.OperationDefinition) error {
+// already parsed for telemetry / scope (one parse per request). It charges
+// the document's values and overlap check to budget.
+func validateGraphQLComplexityParsed(fragments map[string]*ast.FragmentDefinition, ops []*ast.OperationDefinition, budget *gqlBudget) error {
 	if len(ops) > gqlMaxOperations {
 		return fmt.Errorf("query rejected: too many operations (%d > %d)", len(ops), gqlMaxOperations)
 	}
@@ -227,7 +406,13 @@ func validateGraphQLComplexityParsed(fragments map[string]*ast.FragmentDefinitio
 	if unused != "" {
 		return fmt.Errorf(`Fragment "%s" is never used.`, unused)
 	}
-	return nil
+	// The walk above bounds what the two below read: every fragment is
+	// spread, none in a cycle, and the fields and spreads are within budget
+	// along every spread path.
+	if err := budget.spendValues(fragments, ops); err != nil {
+		return err
+	}
+	return countGraphQLOverlap(fragments, ops, budget)
 }
 
 // gqlCost walks a document's selection sets against the budgets. A named

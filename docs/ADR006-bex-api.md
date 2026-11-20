@@ -371,6 +371,8 @@ mutation {
 
 **Execution budget and batches (w4/m140, w4/m211).** Each GraphQL document runs inside a 25 s execution budget that sits 5 s inside the 30 s HTTP write deadline, so a timeout is always answered rather than cut off at the edge: a read gets `QUERY_TIMEOUT`, a mutation `WRITE_OUTCOME_UNKNOWN` (not rolled back; read before writing again). A JSON-array body (Apollo's `BatchHttpLink`, up to 32 members, one auth admission) runs its members in order under **one shared** 25 s deadline, because the write deadline covers the whole response, not each member. Every member gets a result slot in input order: members that finished keep their results; the member running when the budget ends gets the timeout code above; a member that was never dispatched answers `OPERATION_NOT_STARTED` ("this operation did not start…"), which did nothing but says earlier members may have committed. The dispatch check runs immediately before execution, because graphql-go starts resolving before it observes an expired context. No member is retried or replayed. Render's dashboard API publishes no batch timing or atomicity contract, so this is bex's own.
 
+**A batch costs what its members would cost sent alone (w7, 2026-11-20).** Each member costs one rate-limit token: the limiter charges the request one, and a batch of _n_ takes _n_ − 1 more from the caller's and the workspace's buckets before any member runs, or is refused whole with the GraphQL 429 below. The members also share one validation budget, because graphql-go validates without watching the deadline: 128 KiB of document text, 8 KiB of argument and variable default values written into the documents (graphql-go prints an invalid one twice, slowly; a variable is never printed), and a bound on the work of graphql-go's overlap check, which bex counts before graphql-go runs it. A member past the budget answers `query rejected: the request's …` in its own slot. A single document draws on the same budget, and a document carrying a type system definition is refused as the GraphQL spec's ExecutableDefinitions rule requires (graphql-go validated it, then ignored it). The dashboard's heaviest possible batch, 32 copies of its costliest document on each budget, fits every one: 94 KB of text (a metrics page sends about 10 KB), 576 bytes of values and under a tenth of the overlap bound.
+
 ## Managed Postgres (Render `/v1/postgres` compatible)
 
 CRUD + connection-info for the `Database` CR, shaped to Render's Postgres API (see [ADR009-postgresql-management.md](ADR009-postgresql-management.md)):
@@ -688,6 +690,8 @@ bex matches this contract with a per-caller token-bucket at the shared mux, keye
 | REST | Standard JSON body above + `Retry-After` |
 | GraphQL | `{"data": null, "errors": [{"message": "rate limit exceeded", "extensions": {"code": "RATE_LIMITED"}}]}` + `Retry-After` |
 | MCP (HTTP) | Same as REST (HTTP-level 429) + `Retry-After` |
+
+A GraphQL batch (a JSON array body) is charged one token per member, as if each were sent alone.
 
 Exemptions: `GET /healthz` (liveness), `POST /v1/webhooks/git` (HMAC-authed), and `/v1/deploy-hooks/{token}` (secret-URL-authed) are outside the authenticated rate-limit gate. Deploy hooks enforce their own fixed per-token budget of six/minute with a burst of two and the same 429 + `Retry-After` contract.
 

@@ -80,40 +80,41 @@ func NewRateLimiter(rpm float64, burst int) *RateLimiter {
 // It must run inside the auth middleware so the caller Identity is in ctx.
 func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		keys := []struct {
-			lim *core.KeyedRateLimiter[string]
-			key string
-		}{{rl.KeyedRateLimiter, rl.callerKey(r)}}
-		if workspace := rl.workspaceKey(r); workspace != "" {
-			keys = append(keys, struct {
-				lim *core.KeyedRateLimiter[string]
-				key string
-			}{rl.workspace, workspace})
+		if rl.admit(w, r, 1) {
+			next.ServeHTTP(w, r)
 		}
-		reservations := make([]*rate.Reservation, 0, len(keys))
-		buckets := make([]*rate.Limiter, 0, len(keys))
-		for _, key := range keys {
-			bucket := key.lim.Bucket(key.key)
-			buckets = append(buckets, bucket)
-			res := bucket.Reserve()
-			reservations = append(reservations, res)
-			if d := res.Delay(); d > 0 {
-				for _, reservation := range reservations {
-					reservation.Cancel()
-				}
-				retryAfter := int(math.Ceil(d.Seconds()))
-				if retryAfter < 1 {
-					retryAfter = 1
-				}
-				w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
-				core.SetRateLimitHeaders(w.Header(), time.Now(), true, buckets...)
-				writeTooManyRequests(w, r)
-				return
-			}
-		}
-		core.SetRateLimitHeaders(w.Header(), time.Now(), false, buckets...)
-		next.ServeHTTP(w, r)
 	})
+}
+
+// admit takes n tokens from the caller's bucket and, when it has one, the
+// caller's workspace bucket. When either cannot give them now it takes
+// none, answers 429 with Retry-After, and returns false. n is capped at the
+// burst, the most a full bucket holds.
+func (rl *RateLimiter) admit(w http.ResponseWriter, r *http.Request, n int) bool {
+	buckets := []*rate.Limiter{rl.Bucket(rl.callerKey(r))}
+	if workspace := rl.workspaceKey(r); workspace != "" {
+		buckets = append(buckets, rl.workspace.Bucket(workspace))
+	}
+	reservations := make([]*rate.Reservation, 0, len(buckets))
+	for _, bucket := range buckets {
+		res := bucket.ReserveN(time.Now(), min(n, bucket.Burst()))
+		reservations = append(reservations, res)
+		if d := res.Delay(); d > 0 {
+			for _, reservation := range reservations {
+				reservation.Cancel()
+			}
+			retryAfter := int(math.Ceil(d.Seconds()))
+			if retryAfter < 1 {
+				retryAfter = 1
+			}
+			w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
+			core.SetRateLimitHeaders(w.Header(), time.Now(), true, buckets...)
+			writeTooManyRequests(w, r)
+			return false
+		}
+	}
+	core.SetRateLimitHeaders(w.Header(), time.Now(), false, buckets...)
+	return true
 }
 
 func (rl *RateLimiter) workspaceKey(r *http.Request) string {

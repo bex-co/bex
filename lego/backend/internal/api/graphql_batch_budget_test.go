@@ -203,3 +203,126 @@ func TestGraphQLBatchControls(t *testing.T) {
 		}
 	})
 }
+
+// graphqlBatch is a JSON array of one GraphQL request body per document.
+func graphqlBatch(docs ...string) string {
+	parts := make([]string, len(docs))
+	for i, doc := range docs {
+		b, _ := json.Marshal(graphqlRequestBody{Query: doc})
+		parts[i] = string(b)
+	}
+	return "[" + strings.Join(parts, ",") + "]"
+}
+
+// A batch costs one rate-limit token per member, as its members would sent
+// one by one: one 32-member POST bought 32 documents' work for one token.
+func TestGraphQLBatchCostsATokenPerMember(t *testing.T) {
+	srv, _ := budgetServer(t, time.Second)
+	srv.RateLimiter = NewRateLimiter(1, 40) // one a minute: nothing refills mid-test
+	h := srv.RateLimiter.Middleware(srv.graphqlHandler())
+	id := core.Identity{Subject: "batcher", Method: "oauth2"}
+	post := func(body string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(http.MethodPost, "/graphql", strings.NewReader(body))
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, r.WithContext(core.WithIdentity(r.Context(), id)))
+		return rec
+	}
+	ping := `{"query":"{ ping }"}`
+	batch := "[" + strings.TrimSuffix(strings.Repeat(ping+",", 32), ",") + "]"
+
+	rec := post(batch)
+	var results []wireResult
+	if err := json.Unmarshal(rec.Body.Bytes(), &results); rec.Code != http.StatusOK || err != nil || len(results) != 32 || results[31].Data["ping"] != "pong" {
+		t.Fatalf("first batch = %d %.200s, want 32 answers", rec.Code, rec.Body)
+	}
+	if got := rec.Header().Get("RateLimit-Remaining"); got != "8" {
+		t.Errorf("RateLimit-Remaining after a 32-member batch = %q, want 8 of 40", got)
+	}
+	// 8 tokens left: the next 32-member batch is refused whole, before any
+	// member runs. It keeps only the token every request is charged.
+	rec = post(batch)
+	if rec.Code != http.StatusTooManyRequests || rec.Header().Get("Retry-After") == "" || !strings.Contains(rec.Body.String(), "RATE_LIMITED") {
+		t.Fatalf("second batch = %d %v %s, want 429 RATE_LIMITED with Retry-After", rec.Code, rec.Header(), rec.Body)
+	}
+	// A single document and a one-member batch still cost one token each.
+	for _, body := range []string{ping, "[" + ping + "]"} {
+		if rec = post(body); rec.Code != http.StatusOK {
+			t.Fatalf("%s = %d %s", body, rec.Code, rec.Body)
+		}
+	}
+	if got := rec.Header().Get("RateLimit-Remaining"); got != "5" {
+		t.Errorf("RateLimit-Remaining = %q, want 5: the refused batch took one token", got)
+	}
+}
+
+// The batches here kept graphql-go's validation busy for half a minute or
+// more per request: their members' costs added up, one token each. A
+// batch's members now draw on one validation budget; the members past it
+// are refused before graphql-go reads them, in their own result slots.
+func TestGraphQLBatchValidationIsBounded(t *testing.T) {
+	srv, _ := scopedKeyServer(t)
+	// An invalid argument value nested 9 deep, of about n bytes: graphql-go
+	// prints it twice to name it, at about 16 µs a byte.
+	invalidValue := func(n int) string {
+		obj := strings.Repeat("{a:", 9) + "1" + strings.Repeat("}", 9) + ","
+		return "{ __type(name: [" + strings.Repeat(obj, n/len(obj)) + "]) { name } }"
+	}
+	repeat := func(n int, doc string) []string {
+		docs := make([]string, n)
+		for i := range docs {
+			docs[i] = doc
+		}
+		return docs
+	}
+	// 30 KB and 10,000 errors.
+	manyErrors := "{ __typename\n" + strings.Repeat("@a\n", 10000) + "}"
+	// A response name repeated 10 times at each of three levels, the leaves
+	// with a variable argument: 2.8 s alone.
+	overlap := "query($v: Int) { " + strings.Repeat("__schema { "+strings.Repeat("types { "+strings.Repeat("name(a: $v) ", 10)+"} ", 10)+"} ", 10) + "}"
+	for _, tc := range []struct {
+		name string
+		docs []string
+		// refused is how many members the budget refuses, with this message.
+		refused int
+		want    string
+	}{{
+		name:    "32 invalid 4 KB values",
+		docs:    repeat(32, invalidValue(4000)),
+		refused: 30,
+		want:    "query rejected: the request's argument and default values are larger than 8192 bytes together; pass large inputs as variables",
+	}, {
+		name:    "an 8 KB invalid value and 30 KB documents of errors",
+		docs:    append([]string{invalidValue(8000)}, repeat(5, manyErrors)...),
+		refused: 1,
+		want:    "query rejected: the request's documents are larger than 131072 bytes together",
+	}, {
+		name:    "overlapping documents",
+		docs:    repeat(9, overlap),
+		refused: 9,
+		want:    "query rejected: the request's fields that share a response name compare more than 1024 bytes of argument values",
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/graphql", strings.NewReader(graphqlBatch(tc.docs...)))
+			start := time.Now()
+			finishesWithin(t, tc.name, func() { srv.serveGraphQL(rec, req) })
+			// About 0.4 s on a laptop for the slowest; the slack is for CI.
+			if took := time.Since(start); took > 2*time.Second {
+				t.Errorf("took %v, want about a second at most", took)
+			}
+			var results []wireResult
+			if err := json.Unmarshal(rec.Body.Bytes(), &results); err != nil || len(results) != len(tc.docs) {
+				t.Fatalf("%d results (%v), want one per member", len(results), err)
+			}
+			refused := 0
+			for _, r := range results {
+				if len(r.Errors) > 0 && r.Errors[0].Message == tc.want {
+					refused++
+				}
+			}
+			if refused != tc.refused {
+				t.Errorf("%d members refused with %q, want %d", refused, tc.want, tc.refused)
+			}
+		})
+	}
+}

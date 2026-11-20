@@ -88,78 +88,8 @@ func invalidGraphQLText(fragments map[string]*ast.FragmentDefinition, ops []*ast
 			return "$" + name, true
 		}
 	}
-	for _, op := range ops {
-		for _, def := range op.VariableDefinitions {
-			if def.DefaultValue != nil && !validTextLiteral(def.DefaultValue) && def.Variable != nil && def.Variable.Name != nil {
-				return "$" + def.Variable.Name.Value, true
-			}
-		}
-		if name, bad := invalidDirectiveText(op.Directives); bad {
-			return name, true
-		}
-		if name, bad := invalidSelectionText(op.SelectionSet); bad {
-			return name, true
-		}
-	}
-	for _, frag := range fragments {
-		if name, bad := invalidDirectiveText(frag.Directives); bad {
-			return name, true
-		}
-		if name, bad := invalidSelectionText(frag.SelectionSet); bad {
-			return name, true
-		}
-	}
-	return "", false
-}
-
-func invalidSelectionText(set *ast.SelectionSet) (string, bool) {
-	if set == nil {
-		return "", false
-	}
-	for _, sel := range set.Selections {
-		switch s := sel.(type) {
-		case *ast.Field:
-			if name, bad := invalidArgumentText(s.Arguments); bad {
-				return name, true
-			}
-			if name, bad := invalidDirectiveText(s.Directives); bad {
-				return name, true
-			}
-			if name, bad := invalidSelectionText(s.SelectionSet); bad {
-				return name, true
-			}
-		case *ast.InlineFragment:
-			if name, bad := invalidDirectiveText(s.Directives); bad {
-				return name, true
-			}
-			if name, bad := invalidSelectionText(s.SelectionSet); bad {
-				return name, true
-			}
-		case *ast.FragmentSpread:
-			if name, bad := invalidDirectiveText(s.Directives); bad {
-				return name, true
-			}
-		}
-	}
-	return "", false
-}
-
-func invalidDirectiveText(directives []*ast.Directive) (string, bool) {
-	for _, d := range directives {
-		if name, bad := invalidArgumentText(d.Arguments); bad {
-			return name, true
-		}
-	}
-	return "", false
-}
-
-func invalidArgumentText(args []*ast.Argument) (string, bool) {
-	for _, arg := range args {
-		if !validTextLiteral(arg.Value) {
-			name := ""
-			if arg.Name != nil {
-				name = arg.Name.Value
-			}
+	for name, v := range graphqlWrittenValues(fragments, ops) {
+		if !validTextLiteral(v) {
 			return name, true
 		}
 	}

@@ -393,7 +393,7 @@ func TestGraphQLSensitiveNestedSelection(t *testing.T) {
 			if !ok {
 				t.Fatalf("parse %d-spread chain", n)
 			}
-			if err := validateGraphQLComplexityParsed(fragments, ops); (err == nil) != (n <= gqlMaxSpreads) {
+			if err := validateGraphQLComplexityParsed(fragments, ops, &gqlBudget{}); (err == nil) != (n <= gqlMaxSpreads) {
 				t.Fatalf("cost gate on a %d-spread chain: %v", n, err)
 			}
 			if got := graphQLSelectsSensitiveNested(fragments, ops, ""); got != want {

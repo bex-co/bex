@@ -40,7 +40,8 @@ import (
 // bex gate and never reads the request context, so the execution deadline does
 // not bound it. Each document here kept it busy for seconds to hours (the
 // first two are the 20,000-fragment and 20,000-link documents measured at
-// 4m52s and 11.5s); each is now refused by a gate or answered within a second.
+// 4m52s and 11.5s, the three after the fragment ones at 26 s, 2.8 s and 1 s);
+// each is now refused by a gate or answered within a second.
 func TestGraphQLValidationIsBounded(t *testing.T) {
 	srv, _ := scopedKeyServer(t)
 	repeat := func(n int, format string) string {
@@ -52,6 +53,13 @@ func TestGraphQLValidationIsBounded(t *testing.T) {
 	}
 	unknownFields := strings.Repeat("x\n", 15000)
 	manyErrors := "{ __typename\n" + strings.Repeat("@a\n", 10000) + "}"
+	// A response name selected 10 times at each of three levels: graphql-go
+	// compares the leaves' arguments a million times, printing them each time.
+	threeLevels := func(leaf string) string {
+		return "{ " + strings.Repeat("__schema { "+strings.Repeat("types { "+strings.Repeat(leaf+" ", 10)+"} ", 10)+"} ", 10) + "}"
+	}
+	// An invalid value nested 9 deep, which graphql-go prints twice.
+	nestedValue := "[" + strings.Repeat(strings.Repeat("{a:", 9)+"1"+strings.Repeat("}", 9)+",", 850) + "]"
 	for _, tc := range []struct {
 		name, doc string
 		// want is the first error's message; errors, when set, how many.
@@ -85,6 +93,29 @@ func TestGraphQLValidationIsBounded(t *testing.T) {
 		doc:  "{ ...F }\nfragment F on Query { __typename }\nfragment F on Query { " + unknownFields + "}",
 		want: `There can only be one fragment named "F".`,
 	}, {
+		name: "a response name repeated at three levels, with an argument",
+		doc:  threeLevels("name(a: {b: 1, c: 2})"),
+		want: "query rejected: the request's argument and default values are larger than 8192 bytes together; pass large inputs as variables",
+	}, {
+		name: "a response name repeated at three levels, with a variable argument",
+		doc:  "query($v: Int) " + threeLevels("name(a: $v)"),
+		want: "query rejected: the request's fields that share a response name compare more than 1024 bytes of argument values",
+	}, {
+		name: "an invalid value nested 9 deep",
+		doc:  "{ __type(name: " + nestedValue + ") { name } }",
+		want: "query rejected: the request's argument and default values are larger than 8192 bytes together; pass large inputs as variables",
+	}, {
+		// graphql-go validated a type definition, printing its invalid
+		// values, then ignored it. Its values sit outside parentheses, where
+		// the nesting gate does not look.
+		name: "a type definition with an invalid directive value",
+		doc:  "{ __typename } type T @deprecated(reason: " + nestedValue + ") { a: Int }",
+		want: `The "T" definition is not executable.`,
+	}, {
+		name: "an input default nested 10,000 deep",
+		doc:  "{ __typename } input T { a: String = " + strings.Repeat("[", 10000) + strings.Repeat("]", 10000) + " }",
+		want: `The "T" definition is not executable.`,
+	}, {
 		name: "a list nested 2,000 deep",
 		doc:  "{ __type(name: " + strings.Repeat("[", 2000) + strings.Repeat("]", 2000) + ") { name } }",
 		want: fmt.Sprintf("query rejected: a value nests lists and objects deeper than %d", gqlMaxValueDepth),
@@ -105,7 +136,7 @@ func TestGraphQLValidationIsBounded(t *testing.T) {
 			var result *graphql.Result
 			start := time.Now()
 			finishesWithin(t, tc.name, func() {
-				_, _, _, result = srv.executeGraphQL(context.Background(), graphqlRequestBody{Query: tc.doc})
+				_, _, _, result = srv.executeGraphQL(context.Background(), graphqlRequestBody{Query: tc.doc}, &gqlBudget{})
 			})
 			if took := time.Since(start); took > time.Second {
 				t.Errorf("took %v, want under a second", took)
@@ -119,7 +150,7 @@ func TestGraphQLValidationIsBounded(t *testing.T) {
 		})
 	}
 	// The 10,000 errors are each on their own line.
-	_, _, _, result := srv.executeGraphQL(context.Background(), graphqlRequestBody{Query: manyErrors})
+	_, _, _, result := srv.executeGraphQL(context.Background(), graphqlRequestBody{Query: manyErrors}, &gqlBudget{})
 	if loc := result.Errors[9999].Locations; len(loc) != 1 || loc[0].Line != 10001 || loc[0].Column != 1 {
 		t.Errorf("the last error's location = %v, want line 10001, column 1", loc)
 	}
@@ -186,6 +217,20 @@ func TestGraphQLDocumentBudgets(t *testing.T) {
 		fragmentSpreadChain(gqlMaxSpreads, "id"):   "",
 		fragmentSpreadChain(gqlMaxSpreads+1, "id"): "spreads fragments more than",
 		strings.Replace(fragmentSpreadChain(gqlMaxSpreads/2+1, "id"), "{ ...F1 }", "{ ... on Service { ...F1 } ...F1 }", 1): "spreads fragments more than",
+		// Argument and default values, written into the document.
+		"{ __type(name: \"" + strings.Repeat("x", gqlMaxRequestValueBytes-2) + "\") { name } }":                                                          "",
+		"{ __type(name: \"" + strings.Repeat("x", gqlMaxRequestValueBytes-1) + "\") { name } }":                                                          "argument and default values are larger than",
+		"query($a: String = \"" + strings.Repeat("x", gqlMaxRequestValueBytes-1) + "\") { __typename }":                                                  "argument and default values are larger than",
+		"{ __typename @skip(if: " + strings.Repeat("[", 8) + "\"" + strings.Repeat("x", gqlMaxRequestValueBytes) + "\"" + strings.Repeat("]", 8) + ") }": "argument and default values are larger than",
+		"query($a: String) { __type(name: $a) { name } }":                                                                                                "",
+		// Argument values the overlap check compares: two fields, once.
+		"{ __typename(a: \"" + strings.Repeat("x", gqlMaxRequestOverlapArgumentBytes/2-2) + "\") __typename(a: \"" + strings.Repeat("x", gqlMaxRequestOverlapArgumentBytes/2-2) + "\") }": "",
+		"{ __typename(a: \"" + strings.Repeat("x", gqlMaxRequestOverlapArgumentBytes/2-1) + "\") __typename(a: \"" + strings.Repeat("x", gqlMaxRequestOverlapArgumentBytes/2-2) + "\") }": "compare more than",
+		// Type system definitions are not executable.
+		"{ __typename } type T { a: Int }":            `The "T" definition is not executable.`,
+		"{ __typename } extend type Query { a: Int }": `The "Query" definition is not executable.`,
+		"{ __typename } directive @d on FIELD":        `The "d" definition is not executable.`,
+		"{ __typename } schema { query: Query }":      "The schema definition is not executable.",
 		// Every fragment is read, once.
 		"{ __typename } fragment F on Query { __typename }":                        `Fragment "F" is never used.`,
 		"{ ...F } fragment F on Query { __typename } fragment G on Query { ...F }": `Fragment "G" is never used.`,
@@ -201,11 +246,53 @@ func TestGraphQLDocumentBudgets(t *testing.T) {
 	}
 }
 
+// TestGraphQLOverlapCountsTheCheck pins countGraphQLOverlap's steps to the
+// ones graphql-go's overlap check takes on small documents, traced by hand,
+// and the budget's edge: one comparison past it refuses the document.
+func TestGraphQLOverlapCountsTheCheck(t *testing.T) {
+	for doc, steps := range map[string]int{
+		"{ __typename }": 0,
+		// One comparison.
+		"{ __typename __typename }": 1,
+		// 45 pairs among 10.
+		"{ " + strings.Repeat("__typename ", 10) + "}": 45,
+		// The pair, then each level below it: a step for the one response
+		// name of each sub-selection and a comparison under it.
+		"{ a: __schema { types { name } } a: __schema { types { name } } }": 5,
+		// An inline fragment's fields are compared in the selection set that
+		// holds it and again in its own.
+		"{ ... on Query { __typename __typename } }": 2,
+		// Each spread against the selection set's fields (a step, and one
+		// for the set's no response names), and the two fragments' fields
+		// against each other (a step, one for the name, a comparison).
+		"{ ...F ...G } fragment F on Query { __typename } fragment G on Query { __typename }": 5,
+		// A fragment's fields against the fragment it spreads, at the spread
+		// (a step for F, none for the set's names, a step for G, one for
+		// the name, the comparison) and again in F's own selection set.
+		"{ ...F } fragment F on Query { __typename ...G } fragment G on Query { __typename }": 7,
+	} {
+		fragments, ops := parsedGraphQL(t, doc)
+		b := &gqlBudget{}
+		if err := countGraphQLOverlap(fragments, ops, b); err != nil || b.overlapSteps != steps {
+			t.Errorf("%s: %d steps (%v), want %d", doc, b.overlapSteps, err, steps)
+		}
+		b = &gqlBudget{overlapSteps: gqlMaxRequestOverlapSteps - steps}
+		if err := countGraphQLOverlap(fragments, ops, b); err != nil {
+			t.Errorf("%s at the budget's edge: %v", doc, err)
+		}
+		b.overlapSteps = gqlMaxRequestOverlapSteps - steps + 1
+		if err := countGraphQLOverlap(fragments, ops, b); (err == nil) != (steps == 0) {
+			t.Errorf("%s a step past the budget: err = %v", doc, err)
+		}
+	}
+}
+
 // TestGraphQLClientDocumentsPassTheGates: every operation the dashboard and
 // the mobile app send, and the introspection query codegen and GraphiQL send,
-// passes the gates. A client document is its operation with every fragment it
-// spreads, from any file, and Apollo adds __typename to each selection set
-// below the operation's.
+// passes the gates, and so does any batch the dashboard sends: 32 times its
+// most expensive document on each request budget fits it. A client document
+// is its operation with every fragment it spreads, from any file, and Apollo
+// adds __typename to each selection set below the operation's.
 func TestGraphQLClientDocumentsPassTheGates(t *testing.T) {
 	comment := regexp.MustCompile(`#[^\n\r]*`)
 	fragments := map[string]*ast.FragmentDefinition{}
@@ -244,6 +331,8 @@ func TestGraphQLClientDocumentsPassTheGates(t *testing.T) {
 	if len(ops) < 100 {
 		t.Fatalf("read %d client operations, want the dashboard's and the mobile app's", len(ops))
 	}
+	// The most one dashboard document spends of each request budget.
+	var most gqlBudget
 	for _, def := range fragments {
 		addTypename(def.SelectionSet)
 	}
@@ -258,8 +347,29 @@ func TestGraphQLClientDocumentsPassTheGates(t *testing.T) {
 			defs = append(defs, fragments[name])
 		}
 		text, _ := printer.Print(&ast.Document{Kind: kinds.Document, Definitions: defs}).(string)
-		if err := validateGraphQLComplexity(text); err != nil {
+		b := &gqlBudget{}
+		if err := validateGraphQLDocument(text, b); err != nil {
 			t.Errorf("%s: operation %s refused: %v", where[op], op.Name.Value, err)
+		}
+		// Only the dashboard batches (Apollo's BatchHttpLink, at most 32).
+		if strings.Contains(where[op], "/dashboard/") {
+			most.documentBytes = max(most.documentBytes, b.documentBytes)
+			most.valueBytes = max(most.valueBytes, b.valueBytes)
+			most.overlapSteps = max(most.overlapSteps, b.overlapSteps)
+			most.overlapArgumentBytes = max(most.overlapArgumentBytes, b.overlapArgumentBytes)
+		}
+	}
+	for _, c := range []struct {
+		name      string
+		most, max int
+	}{
+		{"document bytes", most.documentBytes, gqlMaxRequestDocumentBytes},
+		{"value bytes", most.valueBytes, gqlMaxRequestValueBytes},
+		{"overlap steps", most.overlapSteps, gqlMaxRequestOverlapSteps},
+		{"overlap argument bytes", most.overlapArgumentBytes, gqlMaxRequestOverlapArgumentBytes},
+	} {
+		if 32*c.most > c.max {
+			t.Errorf("a dashboard batch can spend 32 × %d %s, over the request's %d", c.most, c.name, c.max)
 		}
 	}
 	if err := validateGraphQLComplexity(testutil.IntrospectionQuery); err != nil {

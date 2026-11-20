@@ -1961,7 +1961,9 @@ type graphqlRequestBody struct {
 //
 // Bodies may be a single operation object or a JSON array of operations (the
 // Apollo BatchHttpLink shape). A batch shares one auth admission slot — which
-// is what stops the Metrics page's fan-out from shedding the session (w4/m100).
+// is what stops the Metrics page's fan-out from shedding the session (w4/m100)
+// — but each member costs a rate-limit token, as it would sent alone, and the
+// members share one validation budget (gqlBudget).
 func (s *Server) serveGraphQL(w http.ResponseWriter, r *http.Request) (operation, opType, outcome string) {
 	operation, opType = gqlOperationOther, gqlTypeQuery
 	raw, err := io.ReadAll(io.LimitReader(r.Body, 1<<20+1))
@@ -1986,6 +1988,11 @@ func (s *Server) serveGraphQL(w http.ResponseWriter, r *http.Request) (operation
 			core.WriteErrStatus(w, http.StatusBadRequest, "bad request")
 			return operation, opType, gqlOutcomeInvalid
 		}
+		// The limiter charged the request one token; each further member
+		// costs one more, before any of them runs.
+		if len(bodies) > 1 && s.RateLimiter != nil && !s.RateLimiter.admit(w, r, len(bodies)-1) {
+			return operation, opType, gqlOutcomeRejected
+		}
 		// One execution deadline for the whole array: the HTTP write deadline
 		// covers the response, not each member, so per-member budgets could sum
 		// past it and lose every result to an edge 502 (w4/m211). Each member
@@ -1993,8 +2000,9 @@ func (s *Server) serveGraphQL(w http.ResponseWriter, r *http.Request) (operation
 		ctx, cancel := context.WithTimeout(r.Context(), s.execBudget())
 		defer cancel()
 		results := make([]*graphql.Result, len(bodies))
+		budget := &gqlBudget{}
 		for i := range bodies {
-			op, typ, out, result := s.executeGraphQL(ctx, bodies[i])
+			op, typ, out, result := s.executeGraphQL(ctx, bodies[i], budget)
 			results[i] = result
 			if i == 0 {
 				operation, opType, outcome = op, typ, out
@@ -2011,19 +2019,23 @@ func (s *Server) serveGraphQL(w http.ResponseWriter, r *http.Request) (operation
 		core.WriteErrStatus(w, http.StatusBadRequest, "bad request")
 		return operation, opType, gqlOutcomeInvalid
 	}
-	operation, opType, outcome, result := s.executeGraphQL(r.Context(), body)
+	operation, opType, outcome, result := s.executeGraphQL(r.Context(), body, &gqlBudget{})
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(result)
 	return operation, opType, outcome
 }
 
-// executeGraphQL runs one document against the compiled schema.
-func (s *Server) executeGraphQL(parent context.Context, body graphqlRequestBody) (operation, opType, outcome string, result *graphql.Result) {
+// executeGraphQL runs one document against the compiled schema, drawing its
+// validation on budget, which the request's other documents share.
+func (s *Server) executeGraphQL(parent context.Context, body graphqlRequestBody, budget *gqlBudget) (operation, opType, outcome string, result *graphql.Result) {
 	operation, opType = gqlOperationOther, gqlTypeQuery
 	if strings.TrimSpace(body.Query) == "" {
 		return operation, opType, gqlOutcomeInvalid, graphqlErrorResult(errors.New("query is required"))
 	}
 	if err := checkGraphQLText(body.Query); err != nil {
+		return operation, opType, gqlOutcomeInvalid, graphqlErrorResult(err)
+	}
+	if err := budget.spendDocument(body.Query); err != nil {
 		return operation, opType, gqlOutcomeInvalid, graphqlErrorResult(err)
 	}
 	// One parse feeds telemetry dims, the cost gate, the scope check and
@@ -2036,7 +2048,7 @@ func (s *Server) executeGraphQL(parent context.Context, body graphqlRequestBody)
 		}
 		operation, opType = graphqlOperationDimsFrom(fragments, ops, body.OperationName)
 		// Cost gate (w1/m65 F9): reject an over-budget document before execution.
-		if err := validateGraphQLComplexityParsed(fragments, ops); err != nil {
+		if err := validateGraphQLComplexityParsed(fragments, ops, budget); err != nil {
 			return operation, opType, gqlOutcomeInvalid, graphqlErrorResult(err)
 		}
 		if err := s.requireGraphQLScopeFrom(parent, fragments, ops, body.OperationName); err != nil {

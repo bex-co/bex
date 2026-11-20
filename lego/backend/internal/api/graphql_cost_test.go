@@ -220,13 +220,13 @@ func TestGraphQLFragmentFanOutIsLinear(t *testing.T) {
 		} {
 			fragments, ops := parsedGraphQL(t, fragmentFanOut("%s", "Query", n, leaf))
 			var err error
-			finishesWithin(t, "cost gate, leaf "+leaf, func() { err = validateGraphQLComplexityParsed(fragments, ops) })
+			finishesWithin(t, "cost gate, leaf "+leaf, func() { err = validateGraphQLComplexityParsed(fragments, ops, &gqlBudget{}) })
 			if err == nil || !strings.Contains(err.Error(), want) {
 				t.Errorf("leaf %s: err = %v, want %q", leaf, err, want)
 			}
 		}
 		fragments, ops := parsedGraphQL(t, `query { ...A } fragment A on Query { ...B } fragment B on Query { id ...A }`)
-		if err := validateGraphQLComplexityParsed(fragments, ops); err == nil || !strings.Contains(err.Error(), "fragment cycle") {
+		if err := validateGraphQLComplexityParsed(fragments, ops, &gqlBudget{}); err == nil || !strings.Contains(err.Error(), "fragment cycle") {
 			t.Errorf("fragment cycle: err = %v", err)
 		}
 	})
