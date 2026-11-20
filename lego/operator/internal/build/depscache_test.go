@@ -515,6 +515,7 @@ func TestXDGBuildctlKeysTheDependenciesToTheToolchain(t *testing.T) {
 		t.Helper()
 		r := newWrapperRig(t, dockerfile)
 		writeFile(t, filepath.Join(r.xin, xdgCacheObject), "archive")
+		writeFile(t, filepath.Join(r.xin, "transfer"), "0 7 1\n")
 		if out, err := r.run(wrapperBuildArgs); err != nil {
 			t.Fatalf("wrapper: %v\n%s", err, out)
 		}

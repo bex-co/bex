@@ -103,10 +103,11 @@ func withXDGCache(c corev1.Container, o Options, mounts ...corev1.VolumeMount) c
 	return c
 }
 
-// s3CacheScript is one S3 cache phase's script: its layer-cache body, and on a
-// native build the archive's transfer started in the background beside it.
-// The body runs in a subshell, which confines its early exits to its own half,
-// and the script waits for both. Both halves share the phase's one deadline.
+// s3CacheScript is the purge or save phase's script: its layer-cache body, and
+// on a native build the archive's transfer started in the background beside
+// it. The body runs in a subshell, which confines its early exits to its own
+// half, and the script waits for both. Both halves share the phase's one
+// deadline. The restore's is s3CacheRestoreScript.
 func s3CacheScript(o Options, layer, xdg string) string {
 	if !o.xdgCache() {
 		return s3CachePrelude + layer
@@ -121,23 +122,18 @@ const xdgCacheOutcome = `bex_xdg_t0=$(date +%s)
 bex_xdg() { bex_outcome ` + xdgCacheKind + ` "$1" "${2:-0}" "$(( $(date +%s) - bex_xdg_t0 ))"; }
 `
 
-// xdgCacheRestore fetches the archive into /xdg-in, in the background. A
-// listing comes first: it tells a first build (miss) from an unreachable
-// store (error), and an archive over the bound is never downloaded. The
-// transfer's size and seconds go beside it for the build log's Render line.
-// aws-cli exits 1 for a listing that matches nothing.
-const xdgCacheRestore = xdgCacheOutcome + `bex_s3_ls() {
-  bex_left=$(( bex_deadline - $(date +%s) ))
-  [ "$bex_left" -gt 0 ] || return 124
-  timeout "$bex_left" aws --endpoint-url "$BEX_CACHE_ENDPOINT" s3 ls "$1" 2>/dev/null
-}
-(
-bex_listing=$(bex_s3_ls "$BEX_XDG_URI")
+// xdgCacheList asks the store for the archive before cache-restore says or
+// fetches anything, beside the layout's listing (s3CacheListLayer). The
+// listing tells a first build (miss) from an unreachable store (error), and
+// an archive over the bound is never fetched. One within it is named by its
+// size in bex_xdg_get, which xdgCacheFetch fetches.
+const xdgCacheList = xdgCacheOutcome + `bex_listing=$(bex_s3_ls "$BEX_XDG_URI")
 bex_rc=$?
 bex_bytes=$(printf '%s\n' "$bex_listing" | while read -r bex_d bex_t bex_n bex_name; do
   [ "$bex_name" = ` + xdgCacheObject + ` ] && echo "$bex_n"
 done | head -n 1)
 case $bex_bytes in ''|*[!0-9]*) bex_bytes= ;; esac
+bex_xdg_get=
 if [ "$bex_rc" -gt 1 ]; then
   bex_xdg ` + CacheError + `
 elif [ -z "$bex_bytes" ]; then
@@ -145,17 +141,39 @@ elif [ -z "$bex_bytes" ]; then
 elif [ "$bex_bytes" -gt "$BEX_XDG_MAX_BYTES" ]; then
   bex_xdg ` + CacheSkipped + ` "$bex_bytes"
 else
-  echo "==> Downloading cache..." >&2
+  bex_xdg_get=$bex_bytes
+fi
+`
+
+// xdgCacheFetch fetches the listed archive into /xdg-in, in the background
+// beside the layout, and keeps it only when it arrived at its listed size.
+const xdgCacheFetch = `if [ -n "$bex_xdg_get" ]; then
+  (
   if bex_s3 cp "$BEX_XDG_URI" ` + xdgInMount + `/` + xdgCacheObject + ` --no-progress &&
-    [ "$(wc -c < ` + xdgInMount + `/` + xdgCacheObject + ` | tr -d ' ')" = "$bex_bytes" ]; then
-    printf '%s %s\n' "$bex_bytes" "$(( $(date +%s) - bex_xdg_t0 ))" > ` + xdgInMount + `/transfer
-    bex_xdg ` + CacheHit + ` "$bex_bytes"
+    [ "$(wc -c < ` + xdgInMount + `/` + xdgCacheObject + ` | tr -d ' ')" = "$bex_xdg_get" ]; then
+    bex_xdg ` + CacheHit + ` "$bex_xdg_get"
   else
     rm -f ` + xdgInMount + `/` + xdgCacheObject + `
     bex_xdg ` + CacheError + `
   fi
+  ) &
 fi
-) &
+`
+
+// xdgCacheRestored leaves the buildkit phase what Render's second line
+// needs, once the layout and the archive are both in:
+// "<layout bytes> <archive bytes> <seconds>" in /xdg-in/transfer, a size 0
+// for either that did not arrive whole, the seconds the whole restore took.
+// The wrapper adds the seed's own seconds as the line's extraction
+// (xdgBuildctl). It is written whenever the store held a cache to fetch or
+// could not say, so a restore that came to nothing still says it builds
+// clean, and a first build writes nothing.
+const xdgCacheRestored = `bex_layout=0 bex_archive=0
+[ ! -s ` + cacheInMount + `/index.json ] || bex_layout=$(du -sb ` + cacheInMount + ` | cut -f1)
+[ ! -f ` + xdgInMount + `/` + xdgCacheObject + ` ] || bex_archive=$bex_xdg_get
+if [ "$bex_layer_rc" != 1 ] || [ -n "$bex_xdg_get" ]; then
+  printf '%s %s %s\n' "$bex_layout" "$bex_archive" "$(( $(date +%s) - bex_t0 ))" > ` + xdgInMount + `/transfer
+fi
 `
 
 // xdgCachePurge deletes the archive before a clear-cache rebuild, which
@@ -292,8 +310,15 @@ COPY --from=bex-xdg-save /bex-xdg-out/ /
 // buildctl's. A build seeds the cache mounts when cache-restore fetched an
 // archive, runs the image's solve exactly as asked, and then archives the
 // mounts into /xdg-out. Seed and export are best-effort, quiet and bounded:
-// their output never reaches the build log, which shows Render's restore line
-// instead, and only the image's solve decides the phase's exit status.
+// their output never reaches the build log, and only the image's solve
+// decides the phase's exit status.
+//
+// Before the image's solve it prints Render's second restore line from the
+// totals cache-restore left (xdgCacheRestored): the layout and the archive
+// together, the restore's seconds, and the seed's own as the extraction. An
+// archive the seed could not unpack counts for nothing; when nothing that
+// arrived is usable, the line is "bex: no usable build cache; building
+// clean" instead.
 //
 // The final stage's base is the last FROM naming an image alone: the
 // resolver may put a stage ahead of it, and every such stage is named. Once
@@ -324,19 +349,21 @@ bex_xdg() {
     --opt build-arg:BEX_DEPS_KEY="$bex_deps_key" "$@" 2>&1
 }
 bex_number() { case $1 in ''|*[!0-9]*) return 1 ;; esac; }
-bex_size() {
-  awk -v b="$1" 'BEGIN { split("B KB MB GB TB", u, " "); i = 1
-    while (b >= 1000 && i < 5) { b /= 1000; i++ }
-    if (i == 1) printf "%dB", b; else if (b < 10) printf "%.1f%s", b, u[i]; else printf "%d%s", b, u[i] }'
-}
-if [ -n "$bex_base" ] && [ -f ` + xdgInMount + `/` + xdgCacheObject + ` ]; then
-  bex_took=$(bex_xdg bex-xdg-seed --local context=` + xdgInMount + ` | sed -n 's/.* bex-xdg-seed: restored in \([0-9][0-9]*\)s$/\1/p' | tail -n 1)
-  bex_bytes= bex_secs=
-  [ -f ` + xdgInMount + `/transfer ] && read -r bex_bytes bex_secs < ` + xdgInMount + `/transfer
-  rm -f ` + xdgInMount + `/` + xdgCacheObject + `
-  buildctl "$bex_addr" prune --filter type==source.local >/dev/null 2>&1 || :
-  if bex_number "$bex_took" && bex_number "$bex_bytes" && bex_number "$bex_secs"; then
-    echo "==> Transferred $(bex_size "$bex_bytes") in ${bex_secs}s. Extraction took ${bex_took}s."
+` + cacheSizeFunc + `if [ -f ` + xdgInMount + `/transfer ]; then
+  bex_took=0
+  read -r bex_layout bex_archive bex_secs < ` + xdgInMount + `/transfer
+  if [ -f ` + xdgInMount + `/` + xdgCacheObject + ` ]; then
+    bex_took=
+    if [ -n "$bex_base" ]; then
+      bex_took=$(bex_xdg bex-xdg-seed --local context=` + xdgInMount + ` | sed -n 's/.* bex-xdg-seed: restored in \([0-9][0-9]*\)s$/\1/p' | tail -n 1)
+      buildctl "$bex_addr" prune --filter type==source.local >/dev/null 2>&1 || :
+    fi
+    rm -f ` + xdgInMount + `/` + xdgCacheObject + `
+  fi
+  bex_number "$bex_took" || bex_archive=0 bex_took=0
+  if bex_number "$bex_layout" && bex_number "$bex_archive" && bex_number "$bex_secs" &&
+    [ $(( bex_layout + bex_archive )) -gt 0 ]; then
+    echo "==> Transferred $(bex_size $(( bex_layout + bex_archive ))) in ${bex_secs}s. Extraction took ${bex_took}s."
   else
     echo "bex: no usable build cache; building clean"
   fi

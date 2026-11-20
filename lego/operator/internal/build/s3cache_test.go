@@ -22,7 +22,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -628,6 +630,105 @@ func TestS3CacheScriptsRoundTripALayoutUnchanged(t *testing.T) {
 	}
 }
 
+// renderTransferred is Render's second restore line as its build logs print
+// it after "==> Downloading cache...", on native and Docker builds alike: the
+// size in Render's units, then the transfer's and the extraction's seconds.
+var renderTransferred = regexp.MustCompile(`^==> Transferred [0-9]+(\.[0-9])?(B|KB|MB|GB|TB) in [0-9]+s\. Extraction took [0-9]+s\.$`)
+
+// dirBytes is what the rig's du reports for dir: its regular files' bytes.
+func dirBytes(t *testing.T, dir string) int64 {
+	t.Helper()
+	var n int64
+	err := filepath.WalkDir(dir, func(_ string, d os.DirEntry, err error) error {
+		if err != nil || !d.Type().IsRegular() {
+			return err
+		}
+		info, err := d.Info()
+		n += info.Size()
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
+func TestS3CacheRestoreSaysRendersRestoreLinesOnADockerfileBuild(t *testing.T) {
+	// Render's Docker build log says when it restores a build cache, after the
+	// clone and before BuildKit's first step: "==> Downloading cache..." and
+	// "==> Transferred 149MB in 9s. Extraction took 0s.". cache-restore is the
+	// phase between the two.
+	spec := s3Spec(s3CacheOpts())
+	names := make([]string, 0, len(spec.InitContainers))
+	for _, c := range spec.InitContainers {
+		names = append(names, c.Name)
+	}
+	if i := slices.Index(names, cacheRestorePhase); i < 1 || i > slices.Index(names, "buildkit") {
+		t.Fatalf("cache-restore does not run between the clone and BuildKit: %v", names)
+	}
+
+	r := newCacheScriptRig(t)
+	restore, save := s3Phases(t, false)
+
+	// A first build says neither line, as on Render, and fetches nothing.
+	if out, err := r.run(restore); err != nil || out != "" {
+		t.Errorf("first build: err=%v\n%s", err, out)
+	}
+	if calls := r.calls(); len(calls) != 1 || !strings.HasPrefix(calls[0], "ls ") {
+		t.Errorf("a first build did more than ask the store: %q", calls)
+	}
+
+	layer := r.writeLayout(r.out)
+	if _, err := r.run(save); err != nil {
+		t.Fatal(err)
+	}
+	out, err := r.run(restore)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSuffix(out, "\n"), "\n")
+	size := strconv.FormatInt(dirBytes(t, r.in), 10) + "B in "
+	if len(lines) != 2 || lines[0] != "==> Downloading cache..." || !renderTransferred.MatchString(lines[1]) ||
+		!strings.HasPrefix(lines[1], "==> Transferred "+size) || !strings.HasSuffix(lines[1], " Extraction took 0s.") {
+		t.Errorf("a warm restore's log, want Render's two lines with the layout's size:\n%s", out)
+	}
+
+	// A layout that does not arrive whole is no cache: the log says so. Each
+	// build pod's /cache-in starts empty.
+	blob := filepath.Join(r.store, "bex-build-cache", "tea-w1", "uid-hello", "layer-cache", "blobs", "sha256", layer)
+	if err := os.Remove(blob); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(r.in); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(r.in, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if out, _ := r.run(restore); out != "==> Downloading cache...\nbex: no usable build cache; building clean\n" {
+		t.Errorf("an incomplete layout's log:\n%s", out)
+	}
+	// Nor does a store that cannot be asked offer one.
+	if out, _ := r.run(restore, "FAKE_S3_FAIL=ls", "FAKE_S3_FAIL_RC=255"); out != "bex: no usable build cache; building clean\n" {
+		t.Errorf("an unreachable store's log:\n%s", out)
+	}
+}
+
+func TestCacheSizeSpellsRendersUnits(t *testing.T) {
+	if _, err := exec.LookPath("sh"); err != nil {
+		t.Skip("sh unavailable")
+	}
+	for bytes, want := range map[string]string{
+		"0": "0B", "999": "999B", "1000": "1.0KB", "2048": "2.0KB", "5399": "5.3KB", "62000": "62KB",
+		"2700000": "2.7MB", "149000000": "149MB", "999999999": "999MB", "7000000000": "7.0GB", "12000000000000": "12TB",
+	} {
+		out, err := exec.Command("sh", "-c", cacheSizeFunc+`bex_size "$1"`, "bex", bytes).CombinedOutput()
+		if got := strings.TrimSpace(string(out)); err != nil || got != want {
+			t.Errorf("bex_size %s = %q (%v), want %q", bytes, got, err, want)
+		}
+	}
+}
+
 func TestS3CacheRestoreOffersNoLayoutWithAMissingBlob(t *testing.T) {
 	// The bucket's expiry removes an old, unchanged blob while the index,
 	// rewritten every build, survives. Offering that layout would hand BuildKit
@@ -662,16 +763,6 @@ func TestS3CacheScriptsNeverFailTheBuild(t *testing.T) {
 	restore, save := s3Phases(t, false)
 	purge, _ := s3Phases(t, true)
 
-	if err := os.WriteFile(filepath.Join(r.in, "index.json"), []byte("{}"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if out, err := r.run(restore, "FAKE_S3_FAIL=sync"); err != nil || r.outcomeLine() != CacheError {
-		t.Errorf("failed restore: err=%v outcome=%q\n%s", err, r.outcomeLine(), out)
-	}
-	if entries, _ := os.ReadDir(r.in); len(entries) != 0 {
-		t.Error("a failed restore left a partial layout behind")
-	}
-
 	r.writeLayout(r.out)
 	if out, err := r.run(save, "FAKE_S3_FAIL=sync"); err != nil || r.outcomeLine() != CacheError {
 		t.Errorf("failed save: err=%v outcome=%q\n%s", err, r.outcomeLine(), out)
@@ -680,12 +771,28 @@ func TestS3CacheScriptsNeverFailTheBuild(t *testing.T) {
 		t.Error("a save whose blobs failed still published its index")
 	}
 
+	// A stored layout whose download fails part-way: nothing of it is offered.
+	if _, err := r.run(save); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(r.in, "index.json"), "{}")
+	if out, err := r.run(restore, "FAKE_S3_FAIL=sync"); err != nil || r.outcomeLine() != CacheError {
+		t.Errorf("failed restore: err=%v outcome=%q\n%s", err, r.outcomeLine(), out)
+	}
+	if entries, _ := os.ReadDir(r.in); len(entries) != 0 {
+		t.Error("a failed restore left a partial layout behind")
+	}
+
 	if out, err := r.run(purge, "FAKE_S3_FAIL=rm"); err != nil || r.outcomeLine() != CacheError {
 		t.Errorf("failed purge: err=%v outcome=%q\n%s", err, r.outcomeLine(), out)
 	}
-	// No credential at all: aws fails, the phase still exits 0.
-	if out, err := r.run(restore, "FAKE_S3_FAIL=sync"); err != nil {
-		t.Errorf("restore without a store failed the build: %v\n%s", err, out)
+	// No credential at all: aws cannot even list, the phase still exits 0 and
+	// fetches nothing.
+	if out, err := r.run(restore, "FAKE_S3_FAIL=ls", "FAKE_S3_FAIL_RC=253"); err != nil || r.outcomeLine() != CacheError {
+		t.Errorf("restore without a store: err=%v outcome=%q\n%s", err, r.outcomeLine(), out)
+	}
+	if calls := r.calls(); len(calls) != 1 || !strings.HasPrefix(calls[0], "ls ") {
+		t.Errorf("a store that cannot list was still asked for the layout: %q", calls)
 	}
 }
 

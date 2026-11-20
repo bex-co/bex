@@ -144,24 +144,50 @@ const (
 // s3CachePrelude defines the helpers every S3 cache phase shares. bex_s3 runs
 // one aws-cli transfer against the store with all of its output discarded: a
 // third-party CLI's error text is the wrong thing to stream into a tenant's
-// build log, and nothing it prints is needed to decide the outcome. Every call
-// shares one phase-wide deadline, so the phase as a whole is bounded no matter
-// how many transfers it makes (cacheCommandTimeout). bex_outcome appends one
-// line per cache kind the phase carries: the layer cache's "<outcome>
-// [bytes]", and on a native build an xdg line beside it (xdgCacheOutcome).
+// build log, and nothing it prints is needed to decide the outcome. bex_s3_ls
+// lists one key, printing the listing: aws-cli exits 1 for a listing that
+// matches nothing, a first build, and anything above 1 is a store that could
+// not be asked. Every call shares one phase-wide deadline, so the phase as a
+// whole is bounded no matter how many transfers it makes
+// (cacheCommandTimeout). bex_outcome appends one line per cache kind the phase
+// carries: the layer cache's "<outcome> [bytes]", and on a native build an
+// xdg line beside it (xdgCacheOutcome).
 const s3CachePrelude = `bex_deadline=$(( $(date +%s) + $BEX_CACHE_BUDGET_SECONDS ))
 bex_s3() {
   bex_left=$(( bex_deadline - $(date +%s) ))
   [ "$bex_left" -gt 0 ] || return 124
   timeout "$bex_left" aws --endpoint-url "$BEX_CACHE_ENDPOINT" s3 "$@" --only-show-errors >/dev/null 2>&1
 }
+bex_s3_ls() {
+  bex_left=$(( bex_deadline - $(date +%s) ))
+  [ "$bex_left" -gt 0 ] || return 124
+  timeout "$bex_left" aws --endpoint-url "$BEX_CACHE_ENDPOINT" s3 ls "$1" 2>/dev/null
+}
 bex_outcome() { printf '%s\n' "$*" >> ` + terminationLog + `; }
 `
 
-// s3CacheRestoreLayer downloads the App's layout into /cache-in. The layout arrives
-// exactly as BuildKit exported it, index.json included, so its
-// org.opencontainers.image.ref.name=latest annotation survives the round trip
-// without the re-tagging the registry backend needs (cacheLayoutTag).
+// s3CacheListLayer asks the store whether it holds this App lifetime's
+// layout before cache-restore says or fetches anything. index.json is the
+// key to ask for: cache-save stores it after the blobs it names.
+const s3CacheListLayer = `bex_t0=$(date +%s)
+bex_s3_ls "${BEX_CACHE_URI}index.json" >/dev/null
+bex_layer_rc=$?
+`
+
+// s3CacheDownloading is the first of Render's two restore lines, said once,
+// before anything is fetched, and only when the store holds a cache to fetch:
+// the layout, or on a native build the archive (xdgCacheList). A first build
+// says nothing, as on Render.
+const s3CacheDownloading = `if [ "$bex_layer_rc" = 0 ] || [ -n "${bex_xdg_get:-}" ]; then
+  echo "==> Downloading cache..." >&2
+fi
+`
+
+// s3CacheRestoreLayer downloads the App's layout into /cache-in, when the
+// listing found one. The layout arrives exactly as BuildKit exported it,
+// index.json included, so its org.opencontainers.image.ref.name=latest
+// annotation survives the round trip without the re-tagging the registry
+// backend needs (cacheLayoutTag).
 //
 // A layout is offered to BuildKit only when every blob it names arrived: the
 // bucket's 30-day expiry removes an unchanged blob that cache-save never
@@ -171,19 +197,19 @@ bex_outcome() { printf '%s\n' "$*" >> ` + terminationLog + `; }
 // layout BuildKit writes: index.json names the cache manifest, which names the
 // cache config and every layer. Only "digest" fields count: each layer also
 // carries its uncompressed diff ID, a sha256 that is never a blob.
-const s3CacheRestoreLayer = `bex_clear() { rm -rf ` + cacheInMount + `/* ` + cacheInMount + `/.[!.]*; }
-bex_cold() {
-  bex_clear
+//
+// It runs in a subshell of its own, so its early exits end only its half, and
+// it says nothing: what the restore came to is said once both halves are in
+// (s3CacheRestored, xdgCacheRestored).
+const s3CacheRestoreLayer = `bex_cold() {
+  rm -rf ` + cacheInMount + `/* ` + cacheInMount + `/.[!.]*
   bex_outcome "$1"
-  echo "bex: no usable build cache; building clean" >&2
   exit 0
 }
+[ "$bex_layer_rc" -le 1 ] || bex_cold ` + CacheError + `
+[ "$bex_layer_rc" = 0 ] || bex_cold ` + CacheMiss + `
 bex_s3 sync "$BEX_CACHE_URI" ` + cacheInMount + ` --no-progress || bex_cold ` + CacheError + `
-if [ ! -s ` + cacheInMount + `/index.json ]; then
-  bex_clear
-  bex_outcome ` + CacheMiss + `
-  exit 0
-fi
+[ -s ` + cacheInMount + `/index.json ] || bex_cold ` + CacheMiss + `
 bex_digests() { grep -ao '"digest": *"sha256:[0-9a-f]\{64\}"' "$1" | grep -o '[0-9a-f]\{64\}'; }
 for bex_ref in $(bex_digests ` + cacheInMount + `/index.json); do
   [ -f ` + cacheInMount + `/blobs/sha256/$bex_ref ] || bex_cold ` + CacheIncomplete + `
@@ -193,6 +219,51 @@ for bex_ref in $(bex_digests ` + cacheInMount + `/index.json); do
 done
 bex_outcome ` + CacheHit + ` "$(du -sb ` + cacheInMount + ` | cut -f1)"
 `
+
+// cacheSizeFunc defines bex_size, which spells a byte count as Render's
+// restore line does: bytes, then KB, MB, GB or TB in steps of 1000, with one
+// decimal below 10 ("512B", "2.7MB", "149MB"). It is shell arithmetic alone,
+// so the aws-cli image that prints a Dockerfile build's line and the BuildKit
+// image that prints a native build's run it alike.
+const cacheSizeFunc = `bex_size() {
+  bex_v=$1 bex_d=0 bex_u=B
+  for bex_n in KB MB GB TB; do
+    [ "$bex_v" -ge 1000 ] || break
+    bex_d=$(( bex_v % 1000 / 100 ))
+    bex_v=$(( bex_v / 1000 ))
+    bex_u=$bex_n
+  done
+  if [ "$bex_u" = B ] || [ "$bex_v" -ge 10 ]; then echo "$bex_v$bex_u"; else echo "$bex_v.$bex_d$bex_u"; fi
+}
+`
+
+// s3CacheRestored ends a Dockerfile build's restore with Render's second
+// line, before BuildKit's first step: the layout's size and the seconds the
+// restore took. BuildKit reads the layout where it lies, so nothing is
+// extracted, and Render's own Docker builds read "Extraction took 0s." too.
+// A listed layout that did not arrive whole, or a store that could not be
+// listed, says the build runs clean instead.
+const s3CacheRestored = cacheSizeFunc + `if [ -s ` + cacheInMount + `/index.json ]; then
+  echo "==> Transferred $(bex_size "$(du -sb ` + cacheInMount + ` | cut -f1)") in $(( $(date +%s) - bex_t0 ))s. Extraction took 0s." >&2
+elif [ "$bex_layer_rc" != 1 ]; then
+  echo "bex: no usable build cache; building clean" >&2
+fi
+`
+
+// s3CacheRestoreScript is cache-restore's script. It lists what the store
+// holds for this App lifetime, says Render's "==> Downloading cache..." when
+// that is anything, and fetches the layout and, on a native build, the
+// $XDG_CACHE_HOME archive side by side under the phase's one deadline. A
+// Dockerfile build's restore then prints Render's second line itself; a
+// native build's buildkit phase prints it once the seed solve has unpacked
+// the archive, from the totals this phase leaves it (xdgCacheRestored).
+func s3CacheRestoreScript(o Options) string {
+	if !o.xdgCache() {
+		return s3CachePrelude + s3CacheListLayer + s3CacheDownloading + "(\n" + s3CacheRestoreLayer + ")\n" + s3CacheRestored
+	}
+	return s3CachePrelude + s3CacheListLayer + xdgCacheList + s3CacheDownloading + xdgCacheFetch +
+		"(\n" + s3CacheRestoreLayer + ")\nwait\n" + xdgCacheRestored
+}
 
 // s3CachePurgeLayer deletes the App's layer cache before a clear-cache rebuild,
 // which then neither restores nor imports (w7/m88). Best-effort for the same
@@ -245,7 +316,7 @@ bex_outcome ` + CacheSaved + ` "$bex_bytes"
 // s3CacheRestoreContainer is the S3 twin of cacheRestoreContainer. A native
 // build's also fetches its $XDG_CACHE_HOME archive, beside the layout.
 func s3CacheRestoreContainer(o Options) corev1.Container {
-	c := s3CachePhase(o, cacheRestorePhase, s3CacheScript(o, s3CacheRestoreLayer, xdgCacheRestore),
+	c := s3CachePhase(o, cacheRestorePhase, s3CacheRestoreScript(o),
 		corev1.VolumeMount{Name: cacheInVolume, MountPath: cacheInMount})
 	return withXDGCache(c, o, corev1.VolumeMount{Name: xdgInVolume, MountPath: xdgInMount})
 }

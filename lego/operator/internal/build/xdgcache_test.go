@@ -313,13 +313,80 @@ func TestXDGCacheArchiveRoundTripsBesideTheLayout(t *testing.T) {
 	if got, _ := os.ReadFile(filepath.Join(r.xin, xdgCacheObject)); string(got) != "archive bytes" {
 		t.Errorf("fetched archive = %q", got)
 	}
-	// The transfer's size and seconds, for the build log's Render line.
+	// Both caches' sizes and the restore's seconds, for the build log's Render
+	// line, which the buildkit phase prints once the seed has run.
 	transfer, _ := os.ReadFile(filepath.Join(r.xin, "transfer"))
-	if fields := strings.Fields(string(transfer)); len(fields) != 2 || fields[0] != "13" {
-		t.Errorf("transfer stats = %q", transfer)
+	if fields := strings.Fields(string(transfer)); len(fields) != 3 || fields[0] != strconv.FormatInt(dirBytes(t, r.in), 10) || fields[1] != "13" {
+		t.Errorf("transfer stats = %q, want the layout's bytes, the archive's 13 and the seconds", transfer)
 	}
-	if !strings.Contains(out, "==> Downloading cache...") {
-		t.Errorf("restore did not say it is downloading the cache, as Render does:\n%s", out)
+	if strings.Count(out, "==> Downloading cache...") != 1 || strings.Contains(out, "==> Transferred") {
+		t.Errorf("restore did not say once that it is downloading the cache, as Render does:\n%s", out)
+	}
+}
+
+func TestXDGCacheRestoreLinesCoverTheLayoutAndTheArchiveTogether(t *testing.T) {
+	// Render's one build cache gets one pair of restore lines. A native build
+	// restores two things into it, the layout and the archive, so the pair
+	// counts both: "Downloading" once, and one size for what arrived.
+	for _, tc := range []struct {
+		name    string
+		archive bool
+		seeded  string // the wrapper's extraction, the seed's own seconds
+	}{
+		{name: "layout and archive", archive: true, seeded: "4"},
+		// A build that left $XDG_CACHE_HOME empty stores no archive; its
+		// layout is still a cache restored, and nothing is extracted.
+		{name: "layout alone", seeded: "0"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := newCacheScriptRig(t)
+			restore, save := xdgPhases(t, false)
+			r.writeLayout(r.out)
+			if tc.archive {
+				writeFile(t, filepath.Join(r.xout, xdgCacheObject), "archive bytes")
+			} else {
+				writeFile(t, filepath.Join(r.xout, "skipped"), "0\n")
+			}
+			if out, err := r.run(save); err != nil {
+				t.Fatalf("save: %v\n%s", err, out)
+			}
+			out, err := r.run(restore)
+			if err != nil || out != "==> Downloading cache...\n" {
+				t.Fatalf("restore: err=%v, want Render's first line alone:\n%s", err, out)
+			}
+
+			w := newWrapperRig(t, "FROM "+wrapperBase+"\n")
+			for _, f := range []string{"transfer", xdgCacheObject} {
+				if b, err := os.ReadFile(filepath.Join(r.xin, f)); err == nil {
+					writeFile(t, filepath.Join(w.xin, f), string(b))
+				}
+			}
+			out, err = w.run(wrapperBuildArgs)
+			if err != nil {
+				t.Fatalf("wrapper: %v\n%s", err, out)
+			}
+			line, _, _ := strings.Cut(out, "\n")
+			total := dirBytes(t, r.in)
+			if tc.archive {
+				total += int64(len("archive bytes"))
+			}
+			if !renderTransferred.MatchString(line) || !strings.HasPrefix(line, "==> Transferred "+strconv.FormatInt(total, 10)+"B in ") ||
+				!strings.HasSuffix(line, " Extraction took "+tc.seeded+"s.") {
+				t.Errorf("the build log opens with %q, want Render's line for %d bytes:\n%s", line, total, out)
+			}
+			if seeded := slices.ContainsFunc(w.calls(), func(c string) bool { return callTarget(c) == "bex-xdg-seed" }); seeded != tc.archive {
+				t.Errorf("seed solve ran: %v, want %v", seeded, tc.archive)
+			}
+		})
+	}
+	// A first build says nothing, in either phase.
+	r := newCacheScriptRig(t)
+	restore, _ := xdgPhases(t, false)
+	if out, err := r.run(restore); err != nil || out != "" {
+		t.Errorf("first build's restore: err=%v\n%s", err, out)
+	}
+	if entries, _ := os.ReadDir(r.xin); len(entries) != 0 {
+		t.Errorf("a first build left the wrapper %v", entries)
 	}
 }
 
@@ -330,10 +397,13 @@ func TestXDGCacheRestoreFetchesNothingItCannotUse(t *testing.T) {
 		store   string // the stored archive, "" for none
 		env     []string
 		outcome string
+		// tried: the restore leaves the wrapper a record of nothing usable, so
+		// the build log says it builds clean; a first build leaves none.
+		tried bool
 	}{
 		{name: "first build", outcome: "miss 0"},
-		{name: "store unreachable", store: "archive", env: []string{"FAKE_S3_FAIL=ls", "FAKE_S3_FAIL_RC=255"}, outcome: "error 0"},
-		{name: "download fails", store: "archive", env: []string{"FAKE_S3_FAIL=cp"}, outcome: "error 0"},
+		{name: "store unreachable", store: "archive", env: []string{"FAKE_S3_FAIL=ls", "FAKE_S3_FAIL_RC=255"}, outcome: "error 0", tried: true},
+		{name: "download fails", store: "archive", env: []string{"FAKE_S3_FAIL=cp"}, outcome: "error 0", tried: true},
 		{name: "over the bound", store: "an archive over the bound", env: []string{"BEX_XDG_MAX_BYTES=10"}, outcome: "skipped 25"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -347,8 +417,12 @@ func TestXDGCacheRestoreFetchesNothingItCannotUse(t *testing.T) {
 			if got := r.xdgOutcome(); got != tc.outcome {
 				t.Errorf("outcome = %q, want %q", got, tc.outcome)
 			}
-			if entries, _ := os.ReadDir(r.xin); len(entries) != 0 {
-				t.Errorf("an unusable archive was left for the seed: %v", entries)
+			if _, err := os.Stat(filepath.Join(r.xin, xdgCacheObject)); err == nil {
+				t.Error("an unusable archive was left for the seed")
+			}
+			transfer, err := os.ReadFile(filepath.Join(r.xin, "transfer"))
+			if fields := strings.Fields(string(transfer)); tc.tried != (err == nil) || tc.tried && (len(fields) != 3 || fields[0] != "0" || fields[1] != "0") {
+				t.Errorf("transfer record = %q (%v), want one of nothing usable: %v", transfer, err, tc.tried)
 			}
 		})
 	}
@@ -539,7 +613,7 @@ const wrapperBase = "golang:1.27-bookworm@sha256:4fa7c968ba93f1635670522dbb01a2c
 func TestXDGBuildctlSeedsAroundTheImagesOwnSolve(t *testing.T) {
 	r := newWrapperRig(t, "# syntax=docker/dockerfile:1.7\nFROM "+wrapperBase+"\nRUN true\n")
 	writeFile(t, filepath.Join(r.xin, xdgCacheObject), "archive")
-	writeFile(t, filepath.Join(r.xin, "transfer"), "35000000 8\n")
+	writeFile(t, filepath.Join(r.xin, "transfer"), "1000000 34000000 8\n")
 	out, err := r.run(wrapperBuildArgs)
 	if err != nil {
 		t.Fatalf("wrapper: %v\n%s", err, out)
@@ -567,7 +641,8 @@ func TestXDGBuildctlSeedsAroundTheImagesOwnSolve(t *testing.T) {
 	if !strings.Contains(calls[1], "--filter type==source.local") {
 		t.Errorf("the seed's copy of the archive is not pruned: %s", calls[1])
 	}
-	// Render's restore line, and nothing of the seed's own transcript.
+	// Render's restore line, the layout and the archive together, and nothing
+	// of the seed's own transcript.
 	if !strings.Contains(out, "==> Transferred 35MB in 8s. Extraction took 4s.\n") || strings.Contains(out, "bex-xdg-seed") {
 		t.Errorf("build log:\n%s", out)
 	}
@@ -585,7 +660,7 @@ func TestXDGBuildctlNamesRendersSizes(t *testing.T) {
 	} {
 		r := newWrapperRig(t, "FROM "+wrapperBase+"\n")
 		writeFile(t, filepath.Join(r.xin, xdgCacheObject), "archive")
-		writeFile(t, filepath.Join(r.xin, "transfer"), size+" 7\n")
+		writeFile(t, filepath.Join(r.xin, "transfer"), "0 "+size+" 7\n")
 		out, err := r.run(wrapperBuildArgs)
 		if err != nil || !strings.Contains(out, "==> Transferred "+want+" in 7s.") {
 			t.Errorf("%s bytes: %v\n%s", size, err, out)
@@ -613,8 +688,26 @@ func TestXDGBuildctlNeverLetsTheCacheDecideTheBuild(t *testing.T) {
 	t.Run("an archive that does not unpack", func(t *testing.T) {
 		r := newWrapperRig(t, "FROM "+wrapperBase+"\n")
 		writeFile(t, filepath.Join(r.xin, xdgCacheObject), "archive")
-		writeFile(t, filepath.Join(r.xin, "transfer"), "7 1\n")
+		writeFile(t, filepath.Join(r.xin, "transfer"), "0 7 1\n")
 		out, err := r.run(wrapperBuildArgs, "FAKE_SEED=unusable")
+		if err != nil || !strings.Contains(out, "bex: no usable build cache; building clean") || strings.Contains(out, "==> Transferred") {
+			t.Errorf("err=%v\n%s", err, out)
+		}
+	})
+	t.Run("an archive that does not unpack beside a layout", func(t *testing.T) {
+		// The layout still serves the build: the line counts it alone.
+		r := newWrapperRig(t, "FROM "+wrapperBase+"\n")
+		writeFile(t, filepath.Join(r.xin, xdgCacheObject), "archive")
+		writeFile(t, filepath.Join(r.xin, "transfer"), "2700000 7 3\n")
+		out, err := r.run(wrapperBuildArgs, "FAKE_SEED=unusable")
+		if err != nil || !strings.Contains(out, "==> Transferred 2.7MB in 3s. Extraction took 0s.\n") || strings.Contains(out, "no usable") {
+			t.Errorf("err=%v\n%s", err, out)
+		}
+	})
+	t.Run("a restore that came to nothing", func(t *testing.T) {
+		r := newWrapperRig(t, "FROM "+wrapperBase+"\n")
+		writeFile(t, filepath.Join(r.xin, "transfer"), "0 0 2\n")
+		out, err := r.run(wrapperBuildArgs)
 		if err != nil || !strings.Contains(out, "bex: no usable build cache; building clean") || strings.Contains(out, "==> Transferred") {
 			t.Errorf("err=%v\n%s", err, out)
 		}
