@@ -4776,15 +4776,20 @@ func wildcardIngressName(appName string) string {
 	return appv1alpha1.ChildIngressName(appName, appv1alpha1.WildcardIngressSuffix)
 }
 
-// httpsRedirectSpec is the Traefik RedirectScheme every tenant host's Ingress
+// httpsRedirectSpec is the HTTP-to-HTTPS redirect every tenant host's Ingress
 // leads its middleware chain with (BEX_HTTPS_REDIRECT, w8/m118): Render
-// redirects every HTTP request to HTTPS, permanently. Traefik mints a
+// redirects every HTTP request to HTTPS, with 301 for GET and HEAD and 307
+// for every other method (w8/357). Traefik's redirectScheme answers those
+// with 308, so the edge plugin's redirect instance sends them
+// (deploy/gitops/charts/traefik-plugins/clientipheaders). Traefik mints a
 // plain-HTTP router and a TLS sibling from each Ingress rule and applies the
 // chain to both; a request already on https passes through. The `web`
 // entrypoint deliberately has no global redirect, so cert-manager's HTTP-01
 // solver — its own Ingress, without the App's middlewares — still answers on
 // :80.
-var httpsRedirectSpec = map[string]any{"redirectScheme": map[string]any{"scheme": "https", "permanent": true}}
+var httpsRedirectSpec = map[string]any{traefikPluginKey: map[string]any{
+	"bexClientIPHeaders": map[string]any{"httpsRedirect": true},
+}}
 
 func httpsRedirectName(app *appv1alpha1.App) string { return app.Name + "-https" }
 

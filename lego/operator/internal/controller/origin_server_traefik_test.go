@@ -139,18 +139,34 @@ func startOriginServerTraefik(t *testing.T, originPort int) string {
 	app := &appv1alpha1.App{}
 	app.Name = "probe"
 	names, specs := edgeCompressionMiddlewares(app)
-	middlewares := map[string]any{"client-ip": map[string]any{traefikPluginKey: map[string]any{"bexClientIPHeaders": map[string]any{}}}}
+	middlewares := map[string]any{"client-ip": entrypointSanitizerSpec}
 	for i, name := range names {
 		middlewares[name] = specs[i]
 	}
 	middlewares["probe-ws-egress"] = websocketMeterSpec(app)
 	middlewares["probe-origin-server"] = originServerSpec
-	plugins := []struct{ name, dir, module string }{
-		{"bexClientIPHeaders", "clientipheaders", "github.com/bex-co/bex-client-ip-headers"},
-		{"bexWebsocketEgress", "websocketegress", "github.com/bex-co/bex-websocket-egress"},
-	}
-	dockerArgs := make([]string, 0, 2*len(plugins))
-	traefikArgs := make([]string, 0, len(plugins)+1)
+	dockerArgs, traefikArgs := edgePluginArgs(t, clientIPHeadersPlugin, edgePlugin{"bexWebsocketEgress", "websocketegress", "github.com/bex-co/bex-websocket-egress"})
+	base, _ := runEdgeTraefik(t, originPort, edgeTraefikConfig{
+		label: "origin-server", chain: append(names, "probe-ws-egress", "probe-origin-server"), middlewares: middlewares, readyPath: "/",
+		dockerArgs:  dockerArgs,
+		traefikArgs: append(traefikArgs, "--entrypoints.web.http.middlewares=client-ip@file"),
+	})
+	return base
+}
+
+// edgePlugin is one local Traefik plugin under deploy/gitops/charts/traefik-plugins.
+type edgePlugin struct{ name, dir, module string }
+
+var clientIPHeadersPlugin = edgePlugin{"bexClientIPHeaders", "clientipheaders", "github.com/bex-co/bex-client-ip-headers"}
+
+// entrypointSanitizerSpec is the client-identity instance production runs on
+// every tenant entrypoint (traefik.values.yaml's bex-client-ip-headers).
+var entrypointSanitizerSpec = map[string]any{traefikPluginKey: map[string]any{"bexClientIPHeaders": map[string]any{}}}
+
+// edgePluginArgs mounts plugins into the Traefik container and loads them as
+// the deployed release does.
+func edgePluginArgs(t *testing.T, plugins ...edgePlugin) (dockerArgs, traefikArgs []string) {
+	t.Helper()
 	for _, p := range plugins {
 		src, err := filepath.Abs("../../../../deploy/gitops/charts/traefik-plugins/" + p.dir)
 		if err != nil {
@@ -159,11 +175,7 @@ func startOriginServerTraefik(t *testing.T, originPort int) string {
 		dockerArgs = append(dockerArgs, "-v", src+":/plugins-local/src/"+p.module+":ro")
 		traefikArgs = append(traefikArgs, "--experimental.localPlugins."+p.name+".moduleName="+p.module)
 	}
-	return runEdgeTraefik(t, originPort, edgeTraefikConfig{
-		label: "origin-server", chain: append(names, "probe-ws-egress", "probe-origin-server"), middlewares: middlewares, readyPath: "/",
-		dockerArgs:  dockerArgs,
-		traefikArgs: append(traefikArgs, "--entrypoints.web.http.middlewares=client-ip@file"),
-	})
+	return dockerArgs, traefikArgs
 }
 
 func assertEventStreamUnbuffered(t *testing.T, base string) {

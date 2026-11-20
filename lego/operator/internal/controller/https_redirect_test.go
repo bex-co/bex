@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -32,10 +33,11 @@ import (
 )
 
 // w8/m118: Render redirects every HTTP request to HTTPS. A web service's
-// Ingress leads its middleware chain with an owned RedirectScheme, permanent,
-// to https — Traefik applies the chain to the plain-HTTP router and its TLS
-// sibling alike, and passes a request already on https through. A cluster that
-// turns the redirect off (BEX_HTTPS_REDIRECT=false) loses the middleware.
+// Ingress leads its middleware chain with an owned instance of the edge
+// plugin's redirect, which sends Render's codes (w8/357) — Traefik applies
+// the chain to the plain-HTTP router and its TLS sibling alike, and passes a
+// request already on https through. A cluster that turns the redirect off
+// (BEX_HTTPS_REDIRECT=false) loses the middleware.
 func TestWebServiceIngressRedirectsHTTPToHTTPS(t *testing.T) {
 	scheme := newIPAllowListScheme()
 	app := appWithAllowList("plain", nil, appv1alpha1.TypeWebService)
@@ -69,9 +71,10 @@ func TestWebServiceIngressRedirectsHTTPToHTTPS(t *testing.T) {
 	if err != nil {
 		t.Fatalf("the HTTPS redirect middleware was not created: %v", err)
 	}
-	spec, _, _ := unstructured.NestedMap(mw.Object, "spec", "redirectScheme")
-	if spec["scheme"] != "https" || spec["permanent"] != true {
-		t.Errorf("redirectScheme = %v, want scheme https, permanent", spec)
+	if spec, _, _ := unstructured.NestedMap(mw.Object, "spec"); !reflect.DeepEqual(spec, map[string]any{
+		"plugin": map[string]any{"bexClientIPHeaders": map[string]any{"httpsRedirect": true}},
+	}) {
+		t.Errorf("redirect spec = %v, want only the edge plugin's httpsRedirect instance", spec)
 	}
 	if owners := mw.GetOwnerReferences(); len(owners) != 1 || owners[0].Name != "plain" || owners[0].Controller == nil || !*owners[0].Controller {
 		t.Errorf("owners = %+v, want the App as controller", owners)
@@ -119,5 +122,37 @@ func TestEveryAppIngressRedirectsAndDropsTheRedirectWithItsHosts(t *testing.T) {
 	o.SetGroupVersionKind(traefikHTTPMiddlewareGVK)
 	if err := cl.Get(ctx, types.NamespacedName{Name: "sleepy-https", Namespace: "default"}, o); !apierrors.IsNotFound(err) {
 		t.Errorf("with no hosts the redirect must go, got %v", err)
+	}
+}
+
+// w8/357: the RedirectScheme an earlier operator wrote, with or without its
+// projection record, becomes the plugin instance alone. Traefik refuses a
+// Middleware that names two kinds, which would take the App's routes down.
+func TestAnEarlierRedirectSchemeBecomesThePluginRedirect(t *testing.T) {
+	earlier := map[string]any{"redirectScheme": map[string]any{"scheme": "https", "permanent": true}}
+	for _, projected := range []string{`{"redirectScheme":{"permanent":true,"scheme":"https"}}`, ""} {
+		scheme := newIPAllowListScheme()
+		app := appWithAllowList("web", nil, appv1alpha1.TypeWebService)
+		mw := &unstructured.Unstructured{Object: map[string]any{"spec": earlier}}
+		mw.SetGroupVersionKind(traefikHTTPMiddlewareGVK)
+		mw.SetName("web-https")
+		mw.SetNamespace("default")
+		if projected != "" {
+			mw.SetAnnotations(map[string]string{annotationProjectedSpec: projected})
+		}
+		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, mw).Build()
+		r := &AppReconciler{Client: cl, Scheme: scheme, Mode: ModeKubernetes, BaseDomain: "onbex.co", ClusterIssuer: "letsencrypt-prod", HTTPSRedirect: true}
+		ctx := context.Background()
+		if err := r.reconcileIngress(ctx, app, []string{"web.onbex.co"}, "web", 8080, nil); err != nil {
+			t.Fatal(err)
+		}
+		got := &unstructured.Unstructured{}
+		got.SetGroupVersionKind(traefikHTTPMiddlewareGVK)
+		if err := cl.Get(ctx, types.NamespacedName{Name: "web-https", Namespace: "default"}, got); err != nil {
+			t.Fatal(err)
+		}
+		if spec, _, _ := unstructured.NestedMap(got.Object, "spec"); !reflect.DeepEqual(spec, httpsRedirectSpec) {
+			t.Errorf("projected %q: spec = %v, want only %v", projected, spec, httpsRedirectSpec)
+		}
 	}
 }

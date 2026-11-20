@@ -37,6 +37,10 @@
 // to clients. It moves the value to X-Render-Origin-Server, and names "Render"
 // there when the app sent none. Static sites and platform hosts carry no
 // such instance, as Render's static sites carry no such header.
+//
+// A third, configured with httpsRedirect, leads every tenant host's route
+// and the unknown-host fallback (w8/357): it redirects plain HTTP to HTTPS
+// with Render's status codes, which Traefik's own redirectScheme cannot send.
 package bex_client_ip_headers
 
 import (
@@ -48,6 +52,7 @@ import (
 	"mime"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -83,6 +88,9 @@ type Config struct {
 	// OriginServer makes this instance the per-web-service Server rename
 	// (w8/321) instead of the entrypoint's request sanitizer.
 	OriginServer bool `json:"originServer,omitempty"`
+	// HTTPSRedirect makes this instance a route's HTTP-to-HTTPS redirect
+	// (w8/357) instead.
+	HTTPSRedirect bool `json:"httpsRedirect,omitempty"`
 }
 
 func CreateConfig() *Config { return &Config{} }
@@ -93,6 +101,9 @@ type sanitizer struct {
 }
 
 func New(_ context.Context, next http.Handler, config *Config, _ string) (http.Handler, error) {
+	if config != nil && config.HTTPSRedirect {
+		return &httpsRedirect{next: next}, nil
+	}
 	if config != nil && config.OriginServer {
 		return &originServer{next: next}, nil
 	}
@@ -172,6 +183,56 @@ func peerIP(remoteAddr string) net.IP {
 		return v4
 	}
 	return ip
+}
+
+// httpsRedirect sends a plain-HTTP request to the same URL on https with
+// Render's codes (captured 2026-11-20): 301 for GET and HEAD, and a
+// temporary 307 for every other method, which keeps the method and body and
+// is not cached. Render's answer is Go's http.Redirect, body included.
+// Traefik's redirectScheme answers every method but GET with 308.
+//
+// Like that middleware, it reads the scheme from the TLS state, overridden
+// by X-Forwarded-Proto, which Traefik's entrypoint sets itself in place of
+// an untrusted caller's. The Location drops any port, so HTTPS whose Host
+// names a port other than 443 redirects too.
+type httpsRedirect struct{ next http.Handler }
+
+func (h *httpsRedirect) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	host, port := r.Host, ""
+	if i := strings.LastIndexByte(host, ':'); i > strings.LastIndexByte(host, ']') {
+		host, port = host[:i], host[i+1:]
+	}
+	if !plainHTTP(r) && (port == "" || port == "443") {
+		h.next.ServeHTTP(w, r)
+		return
+	}
+	uri := r.RequestURI
+	if !strings.HasPrefix(uri, "/") { // absolute-form: keep its path and query
+		uri = r.URL.RequestURI()
+	}
+	target := "https://" + host + uri
+	if u, err := url.Parse(target); err == nil {
+		target = u.String()
+	}
+	code := http.StatusTemporaryRedirect
+	if r.Method == http.MethodGet || r.Method == http.MethodHead {
+		code = http.StatusMovedPermanently
+	}
+	// Traefik's entrypoint pre-sets a nil Content-Type to stop net/http's
+	// sniffing, which http.Redirect would take for one already chosen and
+	// leave out its own, with its body.
+	delete(w.Header(), "Content-Type")
+	http.Redirect(w, r, target, code)
+}
+
+func plainHTTP(r *http.Request) bool {
+	switch strings.ToLower(r.Header.Get("X-Forwarded-Proto")) {
+	case "http", "ws":
+		return true
+	case "https", "wss":
+		return false
+	}
+	return r.TLS == nil
 }
 
 // originServerHeader is where Render's edge puts a web service's own Server

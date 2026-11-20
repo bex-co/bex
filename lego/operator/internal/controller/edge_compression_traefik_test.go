@@ -19,6 +19,7 @@ package controller
 import (
 	"bufio"
 	"bytes"
+	"cmp"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
@@ -95,7 +96,7 @@ func TestEdgeCompressionOnTheDeployedTraefik(t *testing.T) {
 	for i, name := range names {
 		middlewares[name] = specs[i]
 	}
-	base := runEdgeTraefik(t, startEdgeOrigin(t, origin), edgeTraefikConfig{
+	base, _ := runEdgeTraefik(t, startEdgeOrigin(t, origin), edgeTraefikConfig{
 		label: "edge-compress", chain: names, middlewares: middlewares, readyPath: "/text",
 	})
 
@@ -225,22 +226,36 @@ func startEdgeOrigin(t *testing.T, handler http.Handler) int {
 
 // edgeTraefikConfig is one actual-proxy gate's Traefik: the router's
 // middleware chain, their definitions, and any extra docker or Traefik
-// arguments (a local plugin's mount and flags).
+// arguments (a local plugin's mount and flags). readyPath answers
+// readyStatus, 200 when unset, once the router serves. tls adds a websecure
+// entrypoint whose TLS router carries the same chain, as Traefik's TLS
+// sibling of each Ingress rule does.
 type edgeTraefikConfig struct {
 	label                   string
 	chain                   []string
 	middlewares             map[string]any
 	dockerArgs, traefikArgs []string
 	readyPath               string
+	readyStatus             int
+	tls                     bool
 }
 
 // runEdgeTraefik runs the deployed Traefik release in Docker, routing every
-// path through cfg's chain to the origin port, and returns its base URL once
-// cfg.readyPath answers 200.
-func runEdgeTraefik(t *testing.T, originPort int, cfg edgeTraefikConfig) string {
+// path through cfg's chain to the origin port, and returns its plain-HTTP
+// base URL, and with cfg.tls its HTTPS one, once cfg.readyPath is routed.
+func runEdgeTraefik(t *testing.T, originPort int, cfg edgeTraefikConfig) (base, tlsBase string) {
 	t.Helper()
+	router := func(entryPoint string) map[string]any {
+		return map[string]any{"rule": "PathPrefix(`/`)", "service": "origin", "middlewares": cfg.chain, "entryPoints": []string{entryPoint}}
+	}
+	routers := map[string]any{"web": router("web")}
+	if cfg.tls {
+		secure := router("websecure")
+		secure["tls"] = map[string]any{}
+		routers["websecure"] = secure
+	}
 	routing := map[string]any{
-		"routers": map[string]any{"web": map[string]any{"rule": "PathPrefix(`/`)", "service": "origin", "middlewares": cfg.chain}},
+		"routers": routers,
 		"services": map[string]any{"origin": map[string]any{"loadBalancer": map[string]any{"servers": []any{
 			map[string]any{"url": fmt.Sprintf("http://host.docker.internal:%d", originPort)}}}}},
 	}
@@ -257,19 +272,27 @@ func runEdgeTraefik(t *testing.T, originPort int, cfg edgeTraefikConfig) string 
 	args := make([]string, 0, 16+len(cfg.dockerArgs)+len(cfg.traefikArgs))
 	args = append(args, "run", "-d", "--rm", "--name", name, "--add-host", "host.docker.internal:host-gateway",
 		"-p", fmt.Sprintf("%d:8000", port), "-v", dir+":/dynamic:ro")
+	traefikArgs := []string{"--entrypoints.web.address=:8000"}
+	if cfg.tls {
+		tlsPort := freePort(t)
+		args = append(args, "-p", fmt.Sprintf("%d:8443", tlsPort))
+		traefikArgs = append(traefikArgs, "--entrypoints.websecure.address=:8443")
+		tlsBase = fmt.Sprintf("https://127.0.0.1:%d", tlsPort)
+	}
 	args = append(args, cfg.dockerArgs...)
-	args = append(args, edgeTraefikImage, "--entrypoints.web.address=:8000", "--providers.file.filename=/dynamic/dynamic.yml",
+	args = append(args, edgeTraefikImage, "--providers.file.filename=/dynamic/dynamic.yml",
 		// The configuration never changes, so no inotify watch, which a host
 		// out of inotify instances cannot give.
 		"--providers.file.watch=false")
+	args = append(args, traefikArgs...)
 	args = append(args, cfg.traefikArgs...)
 	if out, err := exec.Command("docker", args...).CombinedOutput(); err != nil {
 		t.Fatalf("docker run: %v\n%s", err, out)
 	}
 	t.Cleanup(func() { _ = exec.Command("docker", "rm", "-f", name).Run() })
-	base := fmt.Sprintf("http://127.0.0.1:%d", port)
-	waitForRoute(t, name, base+cfg.readyPath)
-	return base
+	base = fmt.Sprintf("http://127.0.0.1:%d", port)
+	waitForRoute(t, name, base+cfg.readyPath, cmp.Or(cfg.readyStatus, http.StatusOK))
+	return base, tlsBase
 }
 
 func freePort(t *testing.T) int {
@@ -282,14 +305,17 @@ func freePort(t *testing.T) int {
 	return l.Addr().(*net.TCPAddr).Port
 }
 
-// waitForRoute waits until Traefik serves the router, failing with its log.
-func waitForRoute(t *testing.T, container, url string) {
+// waitForRoute waits until Traefik serves the router, which answers url
+// with status, failing with its log.
+func waitForRoute(t *testing.T, container, url string, status int) {
 	t.Helper()
+	// The answer itself, not where a redirect leads.
+	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	deadline := time.Now().Add(60 * time.Second)
 	for time.Now().Before(deadline) {
-		if resp, err := http.Get(url); err == nil {
+		if resp, err := client.Get(url); err == nil {
 			_ = resp.Body.Close()
-			if resp.StatusCode == http.StatusOK {
+			if resp.StatusCode == status {
 				return
 			}
 		}
