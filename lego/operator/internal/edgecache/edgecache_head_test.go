@@ -278,3 +278,134 @@ func TestABareHeadReadsTheEdgesGzipGetThroughEitherReplica(t *testing.T) {
 		t.Fatalf("app hits = %d, want one fill per path for the whole tier", app.hits.Load())
 	}
 }
+
+// w3/077. A HEAD-first fill stores the page under the HEAD's own encoding
+// preference, identity for a bare client, and Traefik turns that client's next
+// bare GET into a gzip one, which looked up the gzip key and went to the app:
+// on production pin dff52c596d13 a bare `curl -sI` then a bare `curl -s` of a
+// new path read MISS, then MISS, and nginx logged a second GET. Cloudflare,
+// Render's CDN, keeps one object for the URL, and the GET reads HIT there.
+
+func TestTheEdgesGzipGetReadsThePageABareHeadFilled(t *testing.T) {
+	clock := time.Unix(1_800_000_000, 0)
+	o := &codingOrigin{}
+	h := newCacheOver(t, o, Config{Profile: ProfileStatic, MaxBytes: 1 << 20, MaxObjectBytes: 1 << 16, Now: func() time.Time { return clock }})
+	if w := get(h, "HEAD", "http://app.test/x.css", nil); w.Code != http.StatusOK || w.Header().Get(StatusHeader) != statusMiss {
+		t.Fatalf("a bare HEAD of a new path = %d %s, want the fill", w.Code, w.Header().Get(StatusHeader))
+	}
+	clock = clock.Add(7 * time.Second)
+	w := get(h, "GET", "http://app.test/x.css", edgeGzip)
+	if w.Code != http.StatusOK || w.Body.String() != "body:/x.css" || w.Header().Get(StatusHeader) != statusHit {
+		t.Fatalf("the edge's GET = %d %s %q, want the stored page as a HIT", w.Code, w.Header().Get(StatusHeader), w.Body.String())
+	}
+	if got := w.Header().Values("Age"); len(got) != 1 || got[0] != "7" {
+		t.Errorf("the GET's Age = %v, want [7]", got)
+	}
+	if got := w.Header().Get("Content-Length"); got != strconv.Itoa(len("body:/x.css")) || !unencoded(w.Header()) {
+		t.Errorf("the GET's Content-Length %q, Content-Encoding %q, want the identity page's", got, w.Header().Values("Content-Encoding"))
+	}
+	w = get(h, "GET", "http://app.test/x.css", map[string]string{"Accept-Encoding": "gzip", "If-None-Match": `"v1"`})
+	if w.Code != http.StatusNotModified || w.Body.Len() != 0 || w.Header().Get(StatusHeader) != statusHit || w.Header().Get("Age") != "7" {
+		t.Fatalf("a conditional gzip GET = %d %s Age %q with %d body bytes, want a 304 HIT", w.Code, w.Header().Get(StatusHeader), w.Header().Get("Age"), w.Body.Len())
+	}
+	if got, want := o.requests(), []string{"GET identity"}; !slices.Equal(got, want) {
+		t.Fatalf("the app saw %q, want %q: the HEAD's fill answers the GETs too", got, want)
+	}
+}
+
+// A gzip page answers no client that does not take gzip: Traefik decompresses
+// only the GETs it added gzip to, so a bare GET past it, or an identity GET,
+// reading the gzip key's page would get bytes it cannot read.
+func TestABareGetNeverReadsAGzipPage(t *testing.T) {
+	o := &codingOrigin{}
+	srv := serveCache(t, o)
+	if resp, _ := send(t, srv, "GET", "/x.css", edgeGzip); resp.Header.Get("Content-Encoding") != "gzip" || resp.Header.Get(StatusHeader) != statusMiss {
+		t.Fatalf("the edge's GET = %s %q, want the app's gzip page as the fill", resp.Header.Get(StatusHeader), resp.Header.Get("Content-Encoding"))
+	}
+	for _, c := range []struct {
+		header map[string]string
+		want   string
+	}{
+		{nil, statusMiss},
+		{map[string]string{"Accept-Encoding": "identity"}, statusHit},
+		{map[string]string{"Accept-Encoding": "br"}, statusHit},
+	} {
+		resp, body := send(t, srv, "GET", "/x.css", c.header)
+		if body != "body:/x.css" || resp.Header.Get(StatusHeader) != c.want || resp.Header.Values("Content-Encoding") != nil {
+			t.Fatalf("a GET with %v = %s %q Content-Encoding %q, want the identity page as a %s", c.header, resp.Header.Get(StatusHeader), body, resp.Header.Values("Content-Encoding"), c.want)
+		}
+	}
+	if got, want := o.requests(), []string{"GET gzip", "GET identity"}; !slices.Equal(got, want) {
+		t.Fatalf("the app saw %q, want %q: the identity page is filled once, from its own key", got, want)
+	}
+}
+
+// A client that refused identity never reads the identity page another
+// client's fill stored (RFC 9110 §12.5.3); one that names identity beside its
+// *;q=0 does.
+func TestAClientThatRefusesIdentityNeverReadsTheIdentityPage(t *testing.T) {
+	for accept, want := range map[string]string{
+		"gzip, identity;q=0":          statusMiss,
+		"gzip, *;q=0":                 statusMiss,
+		"gzip, identity;q=0.1, *;q=0": statusHit,
+		"gzip;q=0.5":                  statusHit,
+	} {
+		t.Run(accept, func(t *testing.T) {
+			o := &codingOrigin{}
+			h := newCacheOver(t, o, Config{Profile: ProfileStatic, MaxBytes: 1 << 20, MaxObjectBytes: 1 << 16})
+			get(h, "HEAD", "http://app.test/x.css", nil)
+			w := get(h, "GET", "http://app.test/x.css", map[string]string{"Accept-Encoding": accept})
+			if got := w.Header().Get(StatusHeader); got != want {
+				t.Fatalf("a GET with Accept-Encoding %q after a bare HEAD's fill = %s, want %s", accept, got, want)
+			}
+			if want == statusMiss && w.Header().Get("Content-Encoding") != "gzip" {
+				t.Fatalf("its MISS reads Content-Encoding %q, want the app's gzip page", w.Header().Get("Content-Encoding"))
+			}
+		})
+	}
+}
+
+func TestAcceptsIdentity(t *testing.T) {
+	for header, want := range map[string]bool{
+		"":                       true,
+		"gzip":                   true,
+		"gzip, br":               true,
+		"identity":               true,
+		"identity;q=0":           false,
+		"IDENTITY; q=0.0":        false,
+		"gzip, identity;q=0":     false,
+		"*;q=0":                  false,
+		"gzip, *;q=0":            false,
+		"*;q=0, identity":        true,
+		"identity;q=0.5, *;q=0":  true,
+		"*":                      true,
+		"gzip;q=0, identity;q=1": true,
+	} {
+		if got := acceptsIdentity(header); got != want {
+			t.Errorf("acceptsIdentity(%q) = %v, want %v", header, got, want)
+		}
+	}
+}
+
+// In a tier, a bare HEAD's fill and the edge's gzip GET of the same path reach
+// one owner, so the GET reads the HEAD's page at either replica.
+func TestTheEdgesGzipGetReadsABareHeadsFillThroughEitherReplica(t *testing.T) {
+	app := &recorder{}
+	a, b := newTier(t, app)
+	const paths = 16
+	for i := range paths {
+		path := fmt.Sprintf("/g%d.css", i)
+		if resp, _ := send(t, a.srv, "HEAD", path, nil); resp.Header.Get(StatusHeader) != statusMiss {
+			t.Fatalf("a bare HEAD of %s = %s, want the fill", path, resp.Header.Get(StatusHeader))
+		}
+		for _, rep := range []*replica{a, b} {
+			resp, body := send(t, rep.srv, "GET", path, edgeGzip)
+			if body != "body:"+path || resp.Header.Get(StatusHeader) != statusHit || len(resp.Header.Values("Age")) != 1 {
+				t.Fatalf("the edge's GET of %s = %s %q Age %v, want the stored page as a HIT", path, resp.Header.Get(StatusHeader), body, resp.Header.Values("Age"))
+			}
+		}
+	}
+	if app.hits.Load() != paths {
+		t.Fatalf("app hits = %d, want one fill per path for the whole tier", app.hits.Load())
+	}
+}

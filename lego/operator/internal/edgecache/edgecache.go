@@ -25,10 +25,14 @@ limitations under the License.
 //     response without Set-Cookie, with a Vary of at most Accept-Encoding,
 //     not an event stream, and a status Render caches (200, 206, 301, 302,
 //     303, 404, 410).
-//   - HEAD (w3/075): a HEAD is answered from a stored GET, of its own encoding
-//     preference or, when that page is not encoded, of the other one; a miss
-//     is filled with a GET whose header fields alone the client gets, as
-//     Cloudflare, Render's CDN, fills one.
+//   - Encodings (w3/075, w3/077): a page is stored per encoding preference,
+//     whether its client takes gzip. A request whose own page is missing reads
+//     the one stored under the other preference when that page is not encoded
+//     and the client takes identity, as Cloudflare, Render's CDN, keeps one
+//     object per URL.
+//   - HEAD (w3/075): a HEAD is answered from a stored GET; a miss is filled
+//     with a GET whose header fields alone the client gets, as Cloudflare
+//     fills one.
 //   - TTL: CDN-Cache-Control beats Cache-Control, s-maxage beats max-age;
 //     no-store, private and no-cache disable caching, and without a directive
 //     the status's default applies (200/206/301: 120 minutes, 302/303: 20
@@ -434,7 +438,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // on a miss.
 func (h *Handler) serve(w http.ResponseWriter, r *http.Request, key string) {
 	e, body, expired := h.lookup(key)
-	if e == nil && r.Method == http.MethodHead {
+	if e == nil {
 		e, body = h.unencodedVariant(r)
 	}
 	if e != nil {
@@ -520,19 +524,41 @@ func (h *Handler) requestEligible(r *http.Request) bool {
 // acceptsGzip reports a client that takes gzip: a gzip (or *) coding with a
 // nonzero quality.
 func acceptsGzip(header string) bool {
-	for part := range strings.SplitSeq(header, ",") {
-		coding, params, _ := strings.Cut(strings.TrimSpace(part), ";")
-		if c := strings.ToLower(strings.TrimSpace(coding)); c != "gzip" && c != "*" {
-			continue
+	for member := range strings.SplitSeq(header, ",") {
+		if coding, q := weighted(member); (coding == "gzip" || coding == "*") && q != 0 {
+			return true
 		}
-		if q, ok := strings.CutPrefix(strings.TrimSpace(params), "q="); ok {
-			if v, err := strconv.ParseFloat(q, 64); err == nil && v == 0 {
-				continue
-			}
-		}
-		return true
 	}
 	return false
+}
+
+// acceptsIdentity reports a client that takes a page with no content coding:
+// every client but one that refused it, by identity;q=0 or, with no identity
+// member of its own, by *;q=0 (RFC 9110 §12.5.3).
+func acceptsIdentity(header string) bool {
+	star := true
+	for member := range strings.SplitSeq(header, ",") {
+		switch coding, q := weighted(member); coding {
+		case "identity":
+			return q != 0
+		case "*":
+			star = q != 0
+		}
+	}
+	return star
+}
+
+// weighted is one Accept-Encoding member's coding, lower-cased, and its
+// quality: 1 unless a q parameter parses to another.
+func weighted(member string) (string, float64) {
+	coding, params, _ := strings.Cut(strings.TrimSpace(member), ";")
+	q := 1.0
+	if v, ok := strings.CutPrefix(strings.TrimSpace(params), "q="); ok {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			q = f
+		}
+	}
+	return strings.ToLower(strings.TrimSpace(coding)), q
 }
 
 // resourceKey names what r asks for, whatever encodings it takes. The tier
@@ -551,16 +577,22 @@ func variantKey(resource string, gzip bool) string {
 	return resource + "\x00" + strconv.FormatBool(gzip)
 }
 
-// unencodedVariant answers a HEAD that missed its own key from the page stored
-// for the same resource under the other encoding preference, when that page
-// is not encoded: its header fields are then the ones a GET of r's own
-// preference would carry (RFC 9110 §9.3.2), and it states no encoding r did
-// not accept. The edge needs it (w3/075): Traefik adds Accept-Encoding: gzip
-// to a GET that came without one but passes a HEAD as it came, so a client's
-// bare GET fills the gzip key and its bare HEAD asks for the other. It returns
-// nil when there is no such page.
+// unencodedVariant answers a request that missed its own key from the page
+// stored for the same resource under the other encoding preference, when that
+// page is not encoded and r takes identity: the page then suits r as well as
+// one of its own preference would (RFC 9110 §12.5.3), and states no encoding r
+// did not accept. A gzip page never answers a client that does not take gzip.
+// The edge needs it both ways: Traefik adds Accept-Encoding: gzip to a GET that
+// came without one but passes a HEAD as it came, so a bare client's GET fills
+// the gzip key and its HEAD asks for the other (w3/075), and a HEAD's fill
+// stores the identity key that client's next GET does not ask for (w3/077).
+// It returns nil when there is no such page.
 func (h *Handler) unencodedVariant(r *http.Request) (*entry, *os.File) {
-	e, body, _ := h.lookup(variantKey(resourceKey(r), !acceptsGzip(r.Header.Get("Accept-Encoding"))))
+	accept := r.Header.Get("Accept-Encoding")
+	if !acceptsIdentity(accept) {
+		return nil, nil
+	}
+	e, body, _ := h.lookup(variantKey(resourceKey(r), !acceptsGzip(accept)))
 	if e == nil || unencoded(e.header) {
 		return e, body
 	}

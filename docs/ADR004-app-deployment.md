@@ -508,6 +508,11 @@ A web service on a paid plan whose `spec.cacheProfile` is `origin-controlled` or
 - A HEAD miss goes to the app as a GET with the HEAD's own encoding preference. The page is stored, and the HEAD gets its header fields with `MISS` (or a `304 MISS` for a matching validator), so the next HEAD reads `HIT`. A page the cache does not keep (a `Set-Cookie`, a `private` page, one past the object cap) is answered with its header fields, and its body is not read.
 - The tier routes a request to its owner by host and target, not by encoding preference, so both of a URL's pages live on one replica and a HEAD at either replica finds the GET's page.
 
+**A GET reads the page a HEAD filled (w3/077).** Cloudflare keeps one object per URL, so after a HEAD-first fill a client's next GET reads `HIT`. bex's HEAD fill stores the page under the HEAD's own encoding preference, which is identity for a bare client, and Traefik turns that client's next bare GET into a gzip one. Until w3/077 only a HEAD read the other key's page, so that GET went to the app. On production pin `dff52c596d13`, a bare `curl -sI` then a bare `curl -s` of a new path read `MISS`, then `MISS`, and nginx logged a second `GET`.
+
+- A GET or HEAD whose own key has no page reads the page stored for the same URL under the other encoding preference, provided that page names no `Content-Encoding` beyond `identity` and the client did not refuse identity (`identity;q=0`, or `*;q=0` with no `identity` member of its own, RFC 9110 §12.5.3).
+- A gzip page never answers a client that does not take gzip, GET or HEAD, because Traefik decompresses only the GETs it added gzip to.
+
 ## Deploy image digest (w8/m122)
 
 An image deploy reports Render's `image.sha`, "the SHA that the image reference was resolved to", on REST and MCP (`image.sha`), GraphQL (`Deploy.imageSha`) and the dashboard deploy header (short form, full value on hover, copy). Render's pinned CLI prints it after `SHA:` in its deploy list.
