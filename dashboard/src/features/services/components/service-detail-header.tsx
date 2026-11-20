@@ -857,7 +857,13 @@ function HeaderFacts({
   );
 }
 
-/** Placeholder header shown while `server(id)` is still loading. */
+/**
+ * Placeholder header shown while `server(id)` is still loading. Each slot is
+ * the ready element's height: the name is `text-xl` (28px), a badge 22px, and
+ * a control (an action button, a copy button) 32px, growing to 44px where the
+ * page's touch rule grows the ready one (`data-touch-spacer`, style.css), so
+ * the band ends on the same line in both states (w3/085).
+ */
 export function ServiceDetailHeaderSkeleton() {
   return (
     <div
@@ -869,30 +875,36 @@ export function ServiceDetailHeaderSkeleton() {
         <Skeleton className="h-4 w-24" />
         <div className="flex flex-wrap items-center justify-between gap-3 md:max-lg:grid md:max-lg:grid-cols-[minmax(0,1fr)_auto] md:max-lg:gap-y-2 lg:flex-nowrap lg:items-start">
           <div className="flex min-w-0 flex-wrap items-center gap-2 md:max-lg:contents">
-            <Skeleton className="h-6 w-48 max-w-[50vw]" />
+            <Skeleton className="h-7 w-48 max-w-[50vw]" />
             <div className="contents sm:flex sm:items-center sm:gap-2 md:max-lg:col-span-2 md:max-lg:row-start-2">
               <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-5 w-16 rounded-full" />
-              <Skeleton className="h-5 w-20 rounded-full" />
+              <Skeleton className="h-[22px] w-16 rounded-full" />
+              <Skeleton className="h-[22px] w-20 rounded-full" />
             </div>
           </div>
           <div className="flex items-center gap-2 md:max-lg:col-start-2 md:max-lg:row-start-1">
-            <Skeleton className="h-8 w-24 max-md:h-11" />
-            <Skeleton className="h-8 w-28 max-md:h-11" />
+            <Skeleton data-touch-spacer="" className="h-8 w-24" />
+            <Skeleton data-touch-spacer="" className="h-8 w-28" />
           </div>
         </div>
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 max-sm:pt-1.5 sm:flex sm:flex-wrap sm:gap-x-6 sm:gap-y-0.5">
-          <div className="flex h-7 items-center gap-1.5 max-lg:hidden">
+          <div
+            data-skeleton-item="service-id"
+            className="flex items-center gap-1.5 max-lg:hidden"
+          >
             <Skeleton className="h-4 w-64" />
-            <Skeleton className="size-7" />
+            <Skeleton data-touch-spacer="" className="size-8" />
           </div>
-          <div className="flex h-7 items-center gap-1.5 max-sm:hidden">
+          <div className="flex h-[22px] items-center gap-1.5 max-sm:hidden">
             <Skeleton className="h-4 w-48" />
-            <Skeleton className="h-5 w-20 rounded-full" />
+            <Skeleton className="h-[22px] w-20 rounded-full" />
           </div>
-          <div className="flex h-7 items-center gap-1.5 max-sm:h-8">
+          <div
+            data-skeleton-item="service-url"
+            className="flex items-center gap-1.5"
+          >
             <Skeleton className="h-4 w-56" />
-            <Skeleton className="size-7" />
+            <Skeleton data-touch-spacer="" className="size-8" />
           </div>
           <Skeleton className="h-4 w-14 sm:ml-auto lg:hidden" />
         </div>

@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-router";
 import {
   ServiceDetailHeader,
+  ServiceDetailHeaderSkeleton,
   type ServiceDetailHeaderProps,
 } from "@/features/services/components/service-detail-header";
 import type { ServiceView } from "@/features/services/types";
@@ -1066,6 +1067,52 @@ describe("open ports beside the Service Address (w6/m148)", () => {
 
       await user.click(await screen.findByRole("button", { name: "Connect" }));
       expect(screen.queryByText("Open ports")).not.toBeInTheDocument();
+    },
+  );
+});
+
+// w3/085: the pending header drew its Service ID and URL rows 28px tall
+// (`h-7` rows, `size-7` copy squares) where each ready row is as tall as its
+// 32px copy button, so at 1440 the header grew 4px when the service read
+// landed and every tab under it moved down. Below `lg` (or on a coarse
+// pointer) the touch rule grows that button to 44px, so the square has to
+// grow with it. The skeleton is read against the buttons the ready header
+// renders: a resized copy button fails here until its slot follows.
+describe("ServiceDetailHeaderSkeleton second row", () => {
+  const SIZE = /^(?:size|h|min-h|max-h)-/;
+  const sizes = (el: Element) =>
+    el
+      .getAttribute("class")
+      ?.split(/\s+/)
+      .filter((c) => SIZE.test(c)) ?? [];
+
+  it.each([
+    ["service-id", "Copy service ID"],
+    ["service-url", "Copy service URL"],
+  ])(
+    "draws the %s row at its ready copy button's height",
+    async (slot, label) => {
+      renderHeader(svc());
+      const button = await screen.findByRole("button", { name: label });
+      // The ready row sets no height: its copy button is its tallest item.
+      expect(sizes(button.parentElement!)).toEqual([]);
+      expect(sizes(button)).toEqual(["size-8"]);
+
+      const { container } = render(<ServiceDetailHeaderSkeleton />);
+      const row = container.querySelector(`[data-skeleton-item="${slot}"]`);
+      expect(row).not.toBeNull();
+      // No fixed height of its own, which would hold the row at a size the
+      // square no longer has.
+      expect(sizes(row!)).toEqual([]);
+      const square = row!.lastElementChild!;
+      expect(sizes(square)).toEqual(sizes(button));
+      // The ready button is a `button.size-8` in the page's touch region, so
+      // it grows to 44px below `lg`; the square must take the same rule.
+      expect(square).toHaveAttribute("data-touch-spacer");
+      // Nothing else in the row is taller than the square.
+      for (const child of Array.from(row!.children).slice(0, -1)) {
+        expect(sizes(child)).toEqual(["h-4"]);
+      }
     },
   );
 });
