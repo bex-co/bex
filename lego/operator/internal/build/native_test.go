@@ -389,6 +389,12 @@ func prepareNativeEnv(t *testing.T, o Options, secrets []corev1.EnvVar) string {
 // heredoc) and RUN locally, with the secret mount pointed at bundle.
 func runNativeBuildShell(t *testing.T, o Options, bundle string) ([]byte, error) {
 	t.Helper()
+	return nativeBuildShell(t, o, bundle).CombinedOutput()
+}
+
+// nativeBuildShell is runNativeBuildShell's command, not yet run.
+func nativeBuildShell(t *testing.T, o Options, bundle string) *exec.Cmd {
+	t.Helper()
 	loader := filepath.Join(t.TempDir(), "load-env")
 	var heredoc []string
 	inHeredoc := false
@@ -413,11 +419,11 @@ func runNativeBuildShell(t *testing.T, o Options, bundle string) ([]byte, error)
 				t.Fatal(err)
 			}
 			args[2] = strings.Replace(args[2], nativeEnvLoaderPath, loader, 1)
-			return exec.Command(args[0], args[1:]...).CombinedOutput()
+			return exec.Command(args[0], args[1:]...)
 		}
 	}
 	t.Fatal("missing native RUN")
-	return nil, nil
+	return nil
 }
 
 // The w4/m163 regression: a native build command could not read a saved secret
@@ -743,6 +749,59 @@ func TestNativeEnvironmentRejectsInvalidBase64(t *testing.T) {
 	out, err := runNativeBuildShell(t, o, bundle)
 	if err == nil || len(out) != 0 {
 		t.Fatalf("invalid bundle must fail silently before build: err=%v, output=%q", err, out)
+	}
+}
+
+// w8/356: BuildKit printed a RUN's stderr and stdout as two batches, so the
+// build log showed a burst of stderr lines before the stdout written between
+// them, and glued a newline-less stdout tail to a later stderr line. The env
+// loader the RUN sources first sends stderr to stdout, so the command writes
+// one stream in its own order. Its exit status, set -e and its own
+// redirections are unchanged.
+func TestNativeBuildCommandWritesOneStreamInOrder(t *testing.T) {
+	for _, tc := range []struct {
+		name, command, stdout string
+		exit                  int
+	}{
+		{"interleaved burst", `for i in 1 2 3; do echo out-$i; echo err-$i >&2; done; printf partial; echo err-final >&2; exit 4`,
+			"out-1\nerr-1\nout-2\nerr-2\nout-3\nerr-3\npartialerr-final\n", 4},
+		{"set -e", "set -e; echo before; false; echo after", "before\n", 1},
+		{"own capture of stderr", `x=$( { echo e >&2; echo o; } 2>&1 >/dev/null ); echo "captured:$x"`, "captured:e\n", 0},
+		{"shell's own error", "bex-w8-356-missing; echo after", ": bex-w8-356-missing: command not found\nafter\n", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			o := nativeOptions()
+			o.BuildEnv, o.BuildCommand = nil, tc.command
+			cmd := nativeBuildShell(t, o, prepareNativeEnv(t, o, nil))
+			var stdout, stderr strings.Builder
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			if err := cmd.Run(); cmd.ProcessState == nil {
+				t.Fatal(err)
+			}
+			if got := stdout.String(); !strings.HasSuffix(got, tc.stdout) || stderr.Len() != 0 || cmd.ProcessState.ExitCode() != tc.exit {
+				t.Errorf("stdout %q (want it to end %q), stderr %q (want none), exit %d (want %d)",
+					got, tc.stdout, stderr.String(), cmd.ProcessState.ExitCode(), tc.exit)
+			}
+		})
+	}
+
+	// Every native build sources the same loader first, and nothing but its
+	// no-op revision lines runs before stderr joins stdout.
+	cases := map[string]Options{"static": publishCheckOptions("dist")}
+	for runtime := range nativeToolchains {
+		o := nativeOptions()
+		o.Runtime = runtime
+		cases[runtime] = o
+	}
+	for name, o := range cases {
+		df := nativeDockerfile(o)
+		head, _, ok := strings.Cut(loaderOf(t, df), nativeOneStream)
+		for line := range strings.Lines(head) {
+			ok = ok && strings.HasPrefix(line, ": ")
+		}
+		if run, _ := buildRunLine(t, df); !ok || !strings.Contains(run, " "+strings.TrimSuffix(shellJSON(nativeEnvLoaderPrefix), `"]`)) {
+			t.Errorf("%s: stderr does not join stdout before the build command:\n%s", name, df)
+		}
 	}
 }
 

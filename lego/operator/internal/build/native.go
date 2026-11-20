@@ -422,6 +422,18 @@ const (
 	nativeEnvLoaderPrefix = ". " + nativeEnvLoaderPath + "\n"
 )
 
+// nativeOneStream opens the env loader after its no-op revision lines, so the
+// RUN's shell writes its stderr to its stdout before anything else runs
+// (w8/356). BuildKit carries a step's two streams apart and prints each in
+// batches as they reach it, so a burst of the build command's stderr came out
+// ahead of the stdout written between it, and a stdout tail with no newline
+// was glued to a later stderr line. One descriptor keeps both in the order the
+// command wrote them, as a terminal shows them; the step's exit status is
+// still the command's. Nothing reads a build step's stderr apart: the build
+// pod's log is one stream. The RUN line itself stays the tenant's command
+// behind one source line (w8/052).
+const nativeOneStream = "exec 2>&1\n"
+
 // nativeLiteralEnvPrefix names the preparer's carrier for literal i; the
 // BEX_NATIVE_ prefix is refused as a user name, so carriers cannot collide.
 const nativeLiteralEnvPrefix = "BEX_NATIVE_LITERAL_"
@@ -432,7 +444,7 @@ func nativeDockerfile(o Options) string {
 	// decoded variable cannot overwrite: a decoded PATH is exported mid-loop
 	// and must reach the command exactly, not stop the next decode (w8/m61).
 	depsMount, depsSeed, depsSave := nativeDepsRecipe(o.depsCache())
-	loader := fmt.Sprintf(": bex-native-env-rev=%s\n: bex-native-release=%s\n", nativeEnvRevision(o), nativeReleaseRevision(o)) + depsSeed + assembleFiles + `decoder="$(command -v base64)" || exit 1
+	loader := fmt.Sprintf(": bex-native-env-rev=%s\n: bex-native-release=%s\n", nativeEnvRevision(o), nativeReleaseRevision(o)) + nativeOneStream + depsSeed + assembleFiles + `decoder="$(command -v base64)" || exit 1
 eval "bex_decode() { '$decoder' -d; }"
 while IFS= read -r record; do
   [ -n "$record" ] || continue
