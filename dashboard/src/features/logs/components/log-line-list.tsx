@@ -578,8 +578,9 @@ export function LogLineList({
   }, [rows, pinned, scrollToNewest]);
 
   // View in context (w3/m528): the marked line goes to the middle of the
-  // panel once, as soon as it is loaded; until then older pages are read.
-  // After that the reader's scrolling is left alone.
+  // panel once, as soon as it and the lines on its older side are loaded;
+  // until then older pages are read. After that the reader's scrolling is
+  // left alone.
   const placedMark = useRef<string | undefined>(undefined);
   useLayoutEffect(() => {
     if (!markedKey || placedMark.current === markedKey) return;
@@ -595,12 +596,36 @@ export function LogLineList({
     if (!markedKey || placedMark.current === markedKey || !laidOut) return;
     const index = rows.findIndex((row) => row.key === markedKey);
     if (index < 0) return;
+    const el = viewportRef.current;
+    // Centring needs half a panel of lines on the mark's older side (above
+    // it ascending, below it descending). Placed before they are read, the
+    // mark would sit at that edge, and the older page the edge then asks for
+    // keeps the reader where they are, so they are read first.
+    if (el && hasMore) {
+      const mark = virtualizer.measurementsCache[index];
+      const olderSide = descending
+        ? virtualizer.getTotalSize() - LIST_INSET - mark.end
+        : mark.start - LIST_INSET;
+      if (olderSide < (el.clientHeight - mark.size) / 2) {
+        if (!loadingOlder) loadOlderRef.current?.();
+        return;
+      }
+    }
     placedMark.current = markedKey;
     virtualizer.scrollToIndex(index, { align: "center" });
     // A short list does not scroll, and so sends no scroll event: the pin is
     // read from where the list now is.
-    if (viewportRef.current) recordPin(viewportRef.current);
-  }, [markedKey, rows, laidOut, virtualizer, recordPin]);
+    if (el) recordPin(el);
+  }, [
+    markedKey,
+    rows,
+    laidOut,
+    hasMore,
+    loadingOlder,
+    descending,
+    virtualizer,
+    recordPin,
+  ]);
 
   const dayLabel = useCallback(
     (day: number) =>

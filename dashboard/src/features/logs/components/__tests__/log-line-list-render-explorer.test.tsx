@@ -498,11 +498,12 @@ describe("View in context's marked line (w3/m528 t006)", () => {
   });
 
   it("reads older pages until the marked line is loaded", () => {
+    // Line 30 arrives with 30 rows above it, room to centre it: no more pages.
     const onLoadOlder = vi.fn();
     const { rerender } = render(
       <LogLineList
         lines={range(50, 100)}
-        markedKey="k10"
+        markedKey="k30"
         hasMore
         onLoadOlder={onLoadOlder}
       />,
@@ -511,7 +512,7 @@ describe("View in context's marked line (w3/m528 t006)", () => {
     rerender(
       <LogLineList
         lines={range(50, 100)}
-        markedKey="k10"
+        markedKey="k30"
         hasMore
         loadingOlder
         onLoadOlder={onLoadOlder}
@@ -521,7 +522,7 @@ describe("View in context's marked line (w3/m528 t006)", () => {
     rerender(
       <LogLineList
         lines={range(0, 100)}
-        markedKey="k10"
+        markedKey="k30"
         hasMore
         onLoadOlder={onLoadOlder}
       />,
@@ -553,6 +554,99 @@ describe("View in context's marked line (w3/m528 t006)", () => {
       screen.getByRole("button", { name: "Return to Bottom" }),
     ).toBeInTheDocument();
     await settle();
+  });
+
+  // Found in production (pin 820edf28d22d): a closed window logging a line a
+  // second puts its mark 600 lines, six pages, from the newest, so the mark
+  // was the oldest line of the page that brought it in. Centred at once, it
+  // sat on the panel's edge, and the older page that edge asked for kept it
+  // there (off the panel at 390 once the wrapped rows were measured).
+  it("reads the older page before centring a mark that is the oldest line read so far", async () => {
+    const onLoadOlder = vi.fn();
+    const { container, rerender } = render(
+      <LogLineList
+        lines={range(40, 100)}
+        markedKey="k40"
+        hasMore
+        onLoadOlder={onLoadOlder}
+      />,
+    );
+    const viewport = viewportOf(container);
+    expect(onLoadOlder).toHaveBeenCalledTimes(1);
+    rerender(
+      <LogLineList
+        lines={range(40, 100)}
+        markedKey="k40"
+        hasMore
+        loadingOlder
+        onLoadOlder={onLoadOlder}
+      />,
+    );
+    rerender(
+      <LogLineList
+        lines={range(0, 100)}
+        markedKey="k40"
+        hasMore
+        onLoadOlder={onLoadOlder}
+      />,
+    );
+    act(() => viewport.dispatchEvent(new Event("scroll")));
+    expect(viewport.scrollTop).toBe(
+      12 + 40 * 24 + 12 - VIRTUAL_VIEWPORT_HEIGHT / 2,
+    );
+    expect(onLoadOlder).toHaveBeenCalledTimes(1);
+    expect(container.querySelector("[data-marked]")).toHaveTextContent(
+      "line 40",
+    );
+    await settle();
+  });
+
+  it("reads the older page first in descending order too, where it lands below the mark", async () => {
+    const onLoadOlder = vi.fn();
+    const { container, rerender } = render(
+      <LogLineList
+        lines={range(40, 100)}
+        order="desc"
+        markedKey="k40"
+        hasMore
+        onLoadOlder={onLoadOlder}
+      />,
+    );
+    const viewport = viewportOf(container);
+    expect(onLoadOlder).toHaveBeenCalledTimes(1);
+    rerender(
+      <LogLineList
+        lines={range(0, 100)}
+        order="desc"
+        markedKey="k40"
+        hasMore
+        onLoadOlder={onLoadOlder}
+      />,
+    );
+    act(() => viewport.dispatchEvent(new Event("scroll")));
+    // Newest first: line 40 is row 59 of 100.
+    expect(viewport.scrollTop).toBe(
+      12 + 59 * 24 + 12 - VIRTUAL_VIEWPORT_HEIGHT / 2,
+    );
+    expect(onLoadOlder).toHaveBeenCalledTimes(1);
+    await settle();
+  });
+
+  it("centres a mark near the oldest line when there is nothing older to read", () => {
+    const onLoadOlder = vi.fn();
+    const { container } = render(
+      <LogLineList
+        lines={range(0, 100)}
+        markedKey="k2"
+        onLoadOlder={onLoadOlder}
+      />,
+    );
+    // As near the middle as the list allows: its top.
+    expect(viewportOf(container).scrollTop).toBe(0);
+    expect(container.querySelector("[data-marked]")).toHaveTextContent(
+      "line 2",
+    );
+    expect(onLoadOlder).not.toHaveBeenCalled();
   });
 
   it("reads each older page through the explorer's current loader", () => {
