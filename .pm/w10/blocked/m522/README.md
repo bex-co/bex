@@ -1,6 +1,6 @@
 # w10 · m522 — An agent session's `gh` comments, reviews, labels and re-runs CI on its repository, as Devin's can, while pull requests stay with the `bex` tools
 
-**Worker:** worker10 **Goal:** in a repo session, `gh` writes what Devin's `gh` token lets Devin write on the repository it works on: comments and review replies on pull requests, reviews, labels and requested reviewers, issues, and re-running or cancelling Actions runs. Each write goes through the gateway `github-api` route with a token minted for that call and narrowed to the repository, with no token in the sandbox. Opening or changing a pull request itself, approving one, and anything that changes code, refs or settings stay refused, naming the `bex` tools, so the session's one pull-request path and its branch confinement hold. **Status:** in progress (t001–t004 and t006–t008 done 2026-11-19; t005, the live check, waits for a deploy that carries the milestone)
+**Worker:** worker10 **Goal:** in a repo session, `gh` writes what Devin's `gh` token lets Devin write on the repository it works on: comments and review replies on pull requests, reviews, labels and requested reviewers, issues, and re-running or cancelling Actions runs. Each write goes through the gateway `github-api` route with a token minted for that call and narrowed to the repository, with no token in the sandbox. Opening or changing a pull request itself, approving one, and anything that changes code, refs or settings stay refused, naming the `bex` tools, so the session's one pull-request path and its branch confinement hold. **Status:** blocked (t001–t004, t006–t008 done; t005 waits for a production pin carrying `6522a3916`)
 
 ## Tasks (in order)
 
@@ -29,15 +29,15 @@ Total: **9 tasks, about 7h15m**.
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w10/025](../done/025.md), filed by w10/m513's worker from its Devin comparison (t007) on 2026-11-19, promoted by `/loopx w10` on 2026-11-19.
+- **Source:** inbox note [w10/025](../../done/025.md), filed by w10/m513's worker from its Devin comparison (t007) on 2026-11-19, promoted by `/loopx w10` on 2026-11-19.
 - **Triage evidence (2026-11-19, `aef913d70`):**
   - **Every write is refused.** The route answers every REST method but `GET`/`HEAD` (`lego/backend/internal/sshgateway/agentcred/githubapi.go:283`) and every GraphQL mutation (`:328`) with `readOnlyRefusal` (`:293`), and its token is read-only (`lego/backend/internal/github/client.go:270`).
   - **The `bex` tools cover only part of it.** `reply_on_pull_request` posts one conversation comment on the session's own recorded pull request (`agentsession/pullrequest_comment.go:102`, body only). Nothing re-runs or cancels CI, replies in a review thread, reviews, labels or opens an issue.
   - **No App gate in production.** The production GitHub App (`bex-co`) and all five of its installations already grant `actions`, `issues`, `pull_requests` and `statuses` write (read 2026-11-19 through the App JWT), so production needs no permission change. The self-hosters' manifest in ADR026 § 2 lists `actions:read` and no `issues`, so a self-hosted App gains them by the usual permission change and installation approval.
   - **No self-steer loop.** PR feedback ignores every author whose type is not `User` (`pr_feedback.go:380`), and a write with the installation token posts as the App's bot.
 - **Reference product (Devin):** "Devin's machine can carry a GitHub CLI (`gh`) token that lets Devin use GitHub features directly through the GitHub API" ([Security profiles](https://docs.devin.ai/product-guides/security-profiles), read 2026-11-19). Devin's GitHub App holds pull requests write ("create new PRs"), Actions write ("…and to rerun workflows"), issues write ("open new issues"), commit statuses write and contents write ([GitHub integration](https://docs.devin.ai/integrations/gh), read 2026-11-19). DoD 1 matches those writes on the session's repository. bex keeps two hardenings Devin does not document, and t001 records each in ADR090 with its reason. Pull requests are opened and changed only by `open_or_update_draft_pr`, because ADR090 D3 records the PR and its footer there. Code and refs move only through the Git proxy, which accepts only the session branch. t006 files any write Devin allows that this milestone refuses (approvals, workflow dispatch, commit statuses, PR state changes) as its own item if it matters.
-- **Open question in the note, settled under the Devin rule:** the note asked the user which writes `gh` may make. Under [ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md)'s reference-product rule (Devin, user preference 2026-10-30), the parity-sufficient answer is Devin's writes minus the two hardenings above. That needs no decision, so it is not a gate. A user who wants the stricter variant (no `gh` writes at all) has w10/026, the workspace switch that removes `gh`.
-- **Goal linkage:** ADR008 pillar 5, cloud coding agents ([ADR047](../../../docs/ADR047-cloud-coding-agent-sessions.md), [ADR090](../../../docs/ADR090-agent-owned-delivery.md)). It continues [w10/m513](../done/m513/README.md), which gave `gh` its reads.
+- **Open question in the note, settled under the Devin rule:** the note asked the user which writes `gh` may make. Under [ADR047](../../../../docs/ADR047-cloud-coding-agent-sessions.md)'s reference-product rule (Devin, user preference 2026-10-30), the parity-sufficient answer is Devin's writes minus the two hardenings above. That needs no decision, so it is not a gate. A user who wants the stricter variant (no `gh` writes at all) has w10/026, the workspace switch that removes `gh`.
+- **Goal linkage:** ADR008 pillar 5, cloud coding agents ([ADR047](../../../../docs/ADR047-cloud-coding-agent-sessions.md), [ADR090](../../../../docs/ADR090-agent-owned-delivery.md)). It continues [w10/m513](../../done/m513/README.md), which gave `gh` its reads.
 - **Expected outcome:** an agent that finds a flaky failure re-runs it and reads the result. An agent answers a reviewer in the review thread where the question was asked. A routine labels its pull request or opens an issue for what it found but did not fix. None of this needs a person or a new `bex` tool.
 - **Why now:** w10/m513 made `gh` the agent's natural GitHub client, and the refusals now meet agents mid-task: the beancount-io routines (`beancount-rt-flaky-test-fixer` and the others) could confirm a flake only by re-running CI. Production's App already holds every permission needed.
 - **Render parity included (reference product: Devin):** the sandbox's `gh` is a cloud coding-agent surface. t006 walks every admitted and refused write against Devin's `gh` token and App permissions. No REST, GraphQL, MCP or dashboard field changes.
@@ -108,8 +108,8 @@ Re-read [Security profiles](https://docs.devin.ai/product-guides/security-profil
 | Open, comment on, edit and close issues | Same | none |
 | Re-run and cancel workflow runs | Same, runs and jobs | none |
 | Create pull requests and edit their title and body | Through `open_or_update_draft_pr`, which records the PR and its footer | none an agent needs: the tool does both |
-| Mark ready, merge, close a pull request | Refused | filed as [w10/034](../034.md) |
-| Dispatch a workflow (Actions write) | Refused | filed as [w10/033](../033.md), for the session's own branch |
+| Mark ready, merge, close a pull request | Refused | filed as [w10/034](../../034.md) |
+| Dispatch a workflow (Actions write) | Refused | filed as [w10/033](../../033.md), for the session's own branch |
 | Approve a pull request | Refused | not filed: Devin documents no approvals, and an App approval satisfies required reviews |
 | Set commit statuses, check runs | Refused | not filed: a session's CI results come from the repository's own workflows; nothing in bex reports through statuses |
 | Push code, create branches and tags (contents, workflows) | Only `git push` of the session branch through the Git proxy | none an agent needs (ADR047's branch confinement) |
@@ -117,3 +117,11 @@ Re-read [Security profiles](https://docs.devin.ai/product-guides/security-profil
 | Any repository of the installation | The session's repository only | not filed: a session works on one repository (ADR047); w10/026 and w10/027 already cover the `gh` switch and the shells |
 
 No REST, GraphQL, MCP or dashboard field changed. ADR018 has no `gh` row, so it is unchanged.
+
+## Gate (2026-11-19)
+
+Everything implementable shipped in `6522a3916`. t005's live check needs production to run it: the newest `chore(deploy): pin platform images to <sha>` on `origin/main` must contain `6522a3916`, so bex-api serves the write verb and the gateway and the agent image carry the route and the overlay. Nothing else gates it: production's `bex-co` App and all five installations already grant `actions`, `issues` and `pull_requests` write.
+
+- **Then (t005), one short session:** the sandbox node is near capacity (w9/m349), so run one session on a QA repository that has a failed workflow run (never a customer's or `bex-co/bex`), in a workspace with a GitHub connection. Have it open its draft pull request with `open_or_update_draft_pr`, then run `gh pr comment <n> --body …`, `gh pr edit <n> --add-label <label>`, `gh run rerun <failed run> --failed`, `gh pr create …` and `gh pr merge <n>`.
+- **Check:** on GitHub, the comment and label are by the App's bot and the run has a new attempt; no pull request was created or merged; both refusals name `open_or_update_draft_pr` and `reply_on_pull_request`; the session got no steer from its own comment; `audit_events` has `agentsessions.MintGitHubWriteCredential` rows for the writes. Record the session id and run id in this README, remove the label, archive the session, then t009 closes the milestone.
+- **No user action** is needed. Use `/unblock w10` only if t005 finds this milestone's own defect.
