@@ -1,6 +1,13 @@
 import type { en } from "@/i18n";
 import { SavedSearchType } from "@/graphql/definitions";
-import { LOG_LEVELS, LOG_METHODS, STRUCTURED_LABEL_KEYS } from "../types";
+import {
+  LOG_LEVELS,
+  LOG_METHODS,
+  LOG_TYPE_APP,
+  LOG_TYPE_REQUEST,
+  STRUCTURED_LABEL_KEYS,
+} from "../types";
+import { shortInstance } from "./log-rows";
 
 /**
  * The Edit view modal's model of a saved search's filter document (w3/m507):
@@ -90,13 +97,22 @@ export interface ViewOption {
 
 /**
  * How a field's values are picked: from the project's environments or
- * resources, from a fixed list, or typed (an instance, a search term, a
- * status code, a host or a path).
+ * resources, from a fixed list, from the values the project's logs hold
+ * (an instance), or typed (a search term, a status code, a host or a path).
  */
 export type ViewValueKind =
-  "environment" | "resource" | "options" | "timeRange" | "text";
+  "environment" | "resource" | "options" | "discovered" | "timeRange" | "text";
+
+/**
+ * The log label a `discovered` field's values are read from, across the
+ * project's view (w3/079), as Render's editor reads `logValues` for it.
+ */
+const VIEW_FIELD_LOG_LABELS: Partial<Record<ViewField, string>> = {
+  INSTANCE: "instance",
+};
 
 export function viewValueKind(field: ViewField): ViewValueKind {
+  if (VIEW_FIELD_LOG_LABELS[field]) return "discovered";
   switch (field) {
     case "ENVIRONMENT":
       return "environment";
@@ -111,6 +127,31 @@ export function viewValueKind(field: ViewField): ViewValueKind {
     default:
       return "text";
   }
+}
+
+/** The log label a `discovered` field reads its values from. */
+export function viewFieldLogLabel(field: ViewField): string | undefined {
+  return VIEW_FIELD_LOG_LABELS[field];
+}
+
+/** The log type a view of this type reads: its lines' `type`. */
+export function viewLogType(
+  type: SavedSearchType,
+): typeof LOG_TYPE_APP | typeof LOG_TYPE_REQUEST {
+  return type === SavedSearchType.RequestLogs ? LOG_TYPE_REQUEST : LOG_TYPE_APP;
+}
+
+/**
+ * How the Instance picker names an instance: its resource's name and the
+ * short instance a log line shows (`storefront · 01234`), when its id starts
+ * with one of the resources' ids; otherwise the id itself.
+ */
+export function instanceChoiceLabel(
+  instance: string,
+  resources: readonly { value: string; label: string }[],
+): string {
+  const owner = resources.find((r) => instance.startsWith(`${r.value}-`));
+  return owner ? `${owner.label} · ${shortInstance(instance)}` : instance;
 }
 
 /** The fixed values of an `options` field. */

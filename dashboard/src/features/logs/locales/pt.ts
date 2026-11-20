@@ -535,6 +535,33 @@ const ptLogs: Record<string, TranslationEntry> = {
     description:
       "Accessible name of a typed filter value's remove button; value is the value",
   },
+  "logs.viewValueSearch": {
+    message: "Pesquise ou digite um valor",
+    description:
+      "Placeholder of the search box in a filter's value picker fed by the project's logs (Instance)",
+  },
+  "logs.viewValueAdd": {
+    message: "Adicionar “{value}”",
+    description:
+      "Picker item that adds the typed text as a filter value; value is the typed text",
+  },
+  "logs.viewValuesLoading": {
+    message: "Lendo os logs do projeto…",
+    description:
+      "Value picker status while the project's logs are read for the field's values",
+  },
+  "logs.viewValuesUnavailable": {
+    message:
+      "Não foi possível ler os logs do projeto. Digite um valor para adicioná-lo.",
+    description:
+      "Value picker status when the project's logs could not be read for the field's values",
+  },
+  "logs.viewValuesNoneSeen": {
+    message:
+      "Nenhum nos logs do projeto dos últimos 7 dias. Digite um valor para adicioná-lo.",
+    description:
+      "Value picker status when the project's logs hold no value of the field in the last 7 days",
+  },
   "logs.viewFieldEnvironment": {
     message: "Ambiente",
     description: "Filter field Environment in the Edit view modal",

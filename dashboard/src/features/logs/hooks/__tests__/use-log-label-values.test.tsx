@@ -11,6 +11,7 @@ import { RESOURCE_POLL_INTERVAL_MS } from "@/common/lib/polling";
 import {
   discoveryStartTime,
   useLogLabelDiscovery,
+  useProjectLogLabelDiscovery,
 } from "../use-log-label-values";
 
 // w4/178: discovery refreshes while the page stays open, keeps its last
@@ -168,5 +169,58 @@ describe("useLogLabelDiscovery window", () => {
         startTime: "2026-11-12T13:00:00.000Z",
       });
     }
+  });
+});
+
+// w3/079: the Edit view's Instance picker reads the project's values once,
+// over the same seven days, for the view's log type.
+describe("useProjectLogLabelDiscovery", () => {
+  function ProjectProbe() {
+    const { values, status } = useProjectLogLabelDiscovery(
+      "prj-1",
+      "instance",
+      "request",
+    );
+    return (
+      <p data-testid="probe">
+        {status}:{values.join(",")}
+      </p>
+    );
+  }
+
+  function mountProject(client: ApolloClient) {
+    render(
+      <ApolloProvider client={client}>
+        <ProjectProbe />
+      </ApolloProvider>,
+    );
+  }
+
+  it("reads the project's values for the view's log type, once", async () => {
+    vi.setSystemTime(new Date("2026-11-19T12:34:56Z"));
+    const { client, calls, variables } = transport([
+      { values: ["srv-1-a", "dpg-2-b"] },
+    ]);
+    mountProject(client);
+    expect(probe()).toBe("loading:");
+    await tick(0);
+    expect(probe()).toBe("ready:srv-1-a,dpg-2-b");
+    expect(variables).toEqual([
+      {
+        project: "prj-1",
+        label: "instance",
+        type: "request",
+        startTime: "2026-11-12T13:00:00.000Z",
+      },
+    ]);
+    await tick(RESOURCE_POLL_INTERVAL_MS * 3);
+    expect(calls()).toBe(1);
+  });
+
+  it("reports a read that failed", async () => {
+    const { client } = transport([{ fail: true }]);
+    mountProject(client);
+    await tick(0);
+    expect(probe()).toBe("failed:");
   });
 });

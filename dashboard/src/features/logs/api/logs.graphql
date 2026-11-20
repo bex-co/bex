@@ -103,6 +103,26 @@ query LogLabelValues($label: String!, $resource: String!, $startTime: String) {
   logLabelValues(label: $label, resource: $resource, startTime: $startTime)
 }
 
+# The same discovery across a project's view (w3/079), as Render's
+# `logValues(input: {label, logQuery: {project, …}})` feeds its Edit view's value
+# pickers: the server resolves the project's resources for the view type (`app`
+# for Application Logs, `request` for Request Logs), at most 20 of them and only
+# those the caller may read, and lists the values their logs hold. An instance
+# keeps its resource's id as its prefix, so the picker names its resource.
+query ProjectLogLabelValues(
+  $label: String!
+  $project: String!
+  $type: String
+  $startTime: String
+) {
+  logLabelValues(
+    label: $label
+    project: $project
+    type: $type
+    startTime: $startTime
+  )
+}
+
 # How far back one resource's logs reach on its workspace plan (w9/m389, a Bex
 # extension): bex-api floors every log read at the plan's window (Hobby 7 days, Pro
 # 14, Scale and Enterprise 30, as on Render). `visibleFrom` is the floor an upgrade

@@ -5,10 +5,14 @@ import {
   documentFromRows,
   freeViewName,
   incompleteRows,
+  instanceChoiceLabel,
   newFilterRow,
   rowsFromDocument,
   viewFieldIsSingle,
+  viewFieldLogLabel,
   viewFieldOperators,
+  viewLogType,
+  viewValueKind,
   withField,
 } from "../view-filters";
 
@@ -137,6 +141,30 @@ describe("the view filter document", () => {
     );
     expect(moved).toMatchObject({ field: "LEVEL", operator: "IS", values: [] });
     expect(moved.key).toBe(rows[1].key);
+  });
+
+  it("picks Instance from the project's logs and names each by its resource (w3/079)", () => {
+    expect(viewValueKind("INSTANCE")).toBe("discovered");
+    expect(viewFieldLogLabel("INSTANCE")).toBe("instance");
+    expect(viewFieldLogLabel("TEXT")).toBeUndefined();
+    expect(viewLogType(SavedSearchType.ApplicationLogs)).toBe("app");
+    expect(viewLogType(SavedSearchType.RequestLogs)).toBe("request");
+
+    const resources = [
+      { value: "srv-web", label: "storefront" },
+      { value: "srv-web2", label: "storefront-2" },
+    ];
+    expect(instanceChoiceLabel("srv-web-0123456789abcdefghij", resources)).toBe(
+      "storefront · 01234",
+    );
+    // srv-web's id begins srv-web2's, but only the whole id and its dash
+    // name an instance's resource.
+    expect(
+      instanceChoiceLabel("srv-web2-0123456789abcdefghij", resources),
+    ).toBe("storefront-2 · 01234");
+    expect(
+      instanceChoiceLabel("srv-gone-0123456789abcdefghij", resources),
+    ).toBe("srv-gone-0123456789abcdefghij");
   });
 
   it("numbers a new view's name when the project already has it", () => {

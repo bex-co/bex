@@ -76,6 +76,30 @@ vi.mock("@/features/keyvalue/hooks/use-key-values", () => ({
   },
 }));
 
+// The Instance picker's project-wide read (w3/079): what the project's logs
+// hold, by the call's project, label and log type.
+const discovery = vi.hoisted(() => ({
+  calls: [] as string[][],
+  answer: {
+    values: [] as string[],
+    status: "ready" as "loading" | "ready" | "failed",
+  },
+}));
+vi.mock("@/features/logs/hooks/use-log-label-values", () => ({
+  useProjectLogLabelDiscovery: (
+    project: string,
+    label: string,
+    logType: string,
+  ) => {
+    discovery.calls.push([project, label, logType]);
+    return discovery.answer;
+  },
+}));
+
+const WEB_A = "srv-web-0123456789abcdefghij";
+const WEB_B = "srv-web-klmnopqrstuv01234567";
+const DB_A = "dpg-db-89abcdefghijklmnopqr";
+
 const view = (
   filters: Record<string, unknown> = { filters: [], version: 1 },
 ): SavedSearch => ({
@@ -102,7 +126,26 @@ function open(target: EditViewTarget) {
 
 beforeEach(() => {
   for (const fn of [mutations.create, mutations.update]) fn.mockReset();
+  discovery.calls = [];
+  discovery.answer = { values: [WEB_A, WEB_B, DB_A], status: "ready" };
 });
+
+/** The rows a project's Instance row starts from: one, moved to Instance. */
+async function instanceRow(
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: HTMLElement,
+) {
+  await user.click(within(dialog).getByRole("button", { name: "Add filter" }));
+  await user.click(within(dialog).getByRole("combobox", { name: "Field" }));
+  await user.click(screen.getByRole("option", { name: "Instance" }));
+  return within(dialog).getByRole("button", { name: "Values for Instance" });
+}
+
+/** The open picker's listed values, as they read. */
+const pickerOptions = () =>
+  within(screen.getByRole("listbox", { name: "Values for Instance" }))
+    .getAllByRole("option")
+    .map((option) => option.textContent);
 
 describe("EditViewDialog", () => {
   it("shows Render's editor for a view and saves its name and filters on Done", async () => {
@@ -215,6 +258,122 @@ describe("EditViewDialog", () => {
         ],
         version: 1,
       },
+    );
+  });
+
+  it("lists the instances the project's logs hold, each named with its resource, and adds one that has gone as typed (w3/079)", async () => {
+    const user = userEvent.setup();
+    mutations.update.mockResolvedValue(view());
+    const { dialog } = open({ kind: "edit", view: view() });
+    const trigger = await instanceRow(user, dialog);
+    expect(discovery.calls).toContainEqual(["prj-1", "instance", "app"]);
+
+    await user.click(trigger);
+    expect(pickerOptions()).toEqual([
+      "storefront · 01234",
+      "storefront · klmno",
+      "orders-db · 89abc",
+    ]);
+    await user.click(screen.getByRole("option", { name: "orders-db · 89abc" }));
+    expect(
+      screen.getByRole("option", { name: "orders-db · 89abc" }),
+    ).toHaveAttribute("aria-checked", "true");
+
+    // The search narrows the list by resource name or id ...
+    const search = screen.getByPlaceholderText("Search, or type a value");
+    await user.type(search, "storefront");
+    expect(pickerOptions()).toEqual([
+      "storefront · 01234",
+      "storefront · klmno",
+      "Add “storefront”",
+    ]);
+    // ... and a value the logs no longer hold is added as typed.
+    const gone = "srv-web-vvvvvvvvvvvvvvvvvvvv";
+    await user.clear(search);
+    await user.type(search, gone);
+    await user.click(screen.getByRole("option", { name: `Add “${gone}”` }));
+    expect(search).toHaveValue("");
+    expect(pickerOptions()).toContain("storefront · vvvvv");
+    await user.keyboard("{Escape}");
+    expect(trigger).toHaveTextContent("orders-db · 89abc, storefront · vvvvv");
+
+    await user.click(within(dialog).getByRole("button", { name: "Done" }));
+    expect(mutations.update).toHaveBeenCalledWith(
+      "svs-app",
+      "Application Logs",
+      {
+        filters: [{ field: "INSTANCE", operator: "IS", values: [DB_A, gone] }],
+        version: 1,
+      },
+    );
+  });
+
+  it("keeps a stored instance the logs no longer hold, unchecks it, and reads a Request Logs view's instances", async () => {
+    const user = userEvent.setup();
+    mutations.update.mockResolvedValue(view());
+    // Request Logs reads the web services alone.
+    discovery.answer = { values: [WEB_A, WEB_B], status: "ready" };
+    const gone = "srv-web-vvvvvvvvvvvvvvvvvvvv";
+    const { dialog } = open({
+      kind: "edit",
+      view: {
+        ...view({
+          filters: [{ field: "INSTANCE", operator: "IS_NOT", values: [gone] }],
+          version: 1,
+        }),
+        type: SavedSearchType.RequestLogs,
+      },
+    });
+    expect(discovery.calls).toContainEqual(["prj-1", "instance", "request"]);
+    const trigger = within(dialog).getByRole("button", {
+      name: "Values for Instance",
+    });
+    expect(trigger).toHaveTextContent("storefront · vvvvv");
+    await user.click(trigger);
+    expect(pickerOptions()).toEqual([
+      "storefront · 01234",
+      "storefront · klmno",
+      "storefront · vvvvv",
+    ]);
+    await user.click(
+      screen.getByRole("option", { name: "storefront · vvvvv" }),
+    );
+    await user.click(
+      screen.getByRole("option", { name: "storefront · 01234" }),
+    );
+    await user.keyboard("{Escape}");
+    await user.click(within(dialog).getByRole("button", { name: "Done" }));
+    expect(mutations.update).toHaveBeenCalledWith(
+      "svs-app",
+      "Application Logs",
+      {
+        filters: [{ field: "INSTANCE", operator: "IS_NOT", values: [WEB_A] }],
+        version: 1,
+      },
+    );
+  });
+
+  it("says when the project's logs cannot be read or hold no instance, and still takes a typed one", async () => {
+    const user = userEvent.setup();
+    discovery.answer = { values: [], status: "failed" };
+    const { dialog } = open({ kind: "edit", view: view() });
+    await user.click(await instanceRow(user, dialog));
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Couldn't read the project's logs. Type a value to add it.",
+    );
+    await user.type(
+      screen.getByPlaceholderText("Search, or type a value"),
+      `${WEB_A}{Enter}`,
+    );
+    expect(pickerOptions()).toEqual(["storefront · 01234"]);
+    await user.keyboard("{Escape}");
+
+    discovery.answer = { values: [], status: "ready" };
+    await user.click(
+      within(dialog).getByRole("button", { name: "Values for Instance" }),
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "None in the project's logs from the last 7 days. Type a value to add it.",
     );
   });
 

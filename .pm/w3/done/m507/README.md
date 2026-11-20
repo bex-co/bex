@@ -66,7 +66,7 @@ Compared 2026-11-19 against the capture ([project-observability.md](../../../../
 | --- | --- | --- | --- |
 | Create | New View → TYPE menu (Application Logs, Request Logs, Workflow Runs) | `createSavedSearch(projectId, type, name, filters)`; the menu offers Application Logs and Request Logs | matched; Workflow Runs is an ADR018 non-goal, Service Metrics joins with w3/m508 |
 | What New View opens | not captured | the Edit view modal titled "New view" with the type's name, created on Done | bex's choice, ADR032 |
-| Edit | Edit view: Name, Filters rows (Field, Operator, Values, trash), add, the shared notice, Close, Done | the same parts and notice; `updateSavedSearch(id, name, filters)` | matched; Instance, Text, Status Code, Host and Path values are typed where Render's are dropdowns: filed as [w3/079](../../079.md) |
+| Edit | Edit view: Name, Filters rows (Field, Operator, Values, trash), add, the shared notice, Close, Done | the same parts and notice; `updateSavedSearch(id, name, filters)` | matched; Instance, Text, Status Code, Host and Path values are typed where Render's are dropdowns: filed as [w3/079](../079.md) |
 | Operators | `is` for Environment; `is one of` / `is not one of` for Resource Type | the same; Resource also takes both; line fields `is` only | `IS_NOT` on line fields waits on w3/076 (already filed) |
 | Duplicate | header button on every view | `duplicateSavedSearch(id)`, copy named `<name> (copy)`, opened | copy name unverified (not captured): bex's choice |
 | Delete | trash button on every view, defaults too | `deleteSavedSearch(id)` behind `sudo delete view <name>`; lands on the first remaining log view | confirmation is the dashboard's destructive rule; Render's prompt was not captured |

@@ -5361,13 +5361,15 @@ export type QueryLogLabelValuesArgs = {
   build?: InputMaybe<Array<Scalars['String']['input']>>;
   direction?: InputMaybe<Scalars['String']['input']>;
   endTime?: InputMaybe<Scalars['String']['input']>;
+  filterDocument?: InputMaybe<Scalars['JSONObject']['input']>;
   host?: InputMaybe<Array<Scalars['String']['input']>>;
   instance?: InputMaybe<Array<Scalars['String']['input']>>;
   label: Scalars['String']['input'];
   level?: InputMaybe<Array<Scalars['String']['input']>>;
   method?: InputMaybe<Array<Scalars['String']['input']>>;
   path?: InputMaybe<Array<Scalars['String']['input']>>;
-  resource: Scalars['String']['input'];
+  project?: InputMaybe<Scalars['String']['input']>;
+  resource?: InputMaybe<Scalars['String']['input']>;
   startTime?: InputMaybe<Scalars['String']['input']>;
   statusCode?: InputMaybe<Array<Scalars['String']['input']>>;
   text?: InputMaybe<Scalars['String']['input']>;

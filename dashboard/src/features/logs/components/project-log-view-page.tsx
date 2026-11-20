@@ -1,9 +1,8 @@
 import { ProjectLogViewPageSkeleton } from "@/common/components/route-skeletons";
-import { SavedSearchType } from "@/graphql/definitions";
 import { DEFAULT_LOG_RANGE } from "../lib/log-search";
 import type { ProjectLogSearch } from "../lib/project-log-search";
 import type { ProjectLogViewType } from "../lib/project-log-views";
-import { LOG_TYPE_APP, LOG_TYPE_REQUEST } from "../types";
+import { viewLogType } from "../lib/view-filters";
 import { type EventSourceFactory } from "../hooks/use-live-logs";
 import { ProjectLogViewer } from "./project-log-viewer";
 import { ProjectViewPage } from "./project-view-page";
@@ -41,11 +40,7 @@ export function ProjectLogViewPage({
         <ProjectLogViewer
           key={viewId}
           scope={scope}
-          logType={
-            viewType === SavedSearchType.RequestLogs
-              ? LOG_TYPE_REQUEST
-              : LOG_TYPE_APP
-          }
+          logType={viewLogType(viewType)}
           range={range}
           onRangeChange={onRangeChange}
           createEventSource={createEventSource}

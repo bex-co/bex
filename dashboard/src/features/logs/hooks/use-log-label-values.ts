@@ -5,7 +5,10 @@ import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
 } from "@/common/lib/polling";
-import { LogLabelValuesDocument } from "@/graphql/definitions";
+import {
+  LogLabelValuesDocument,
+  ProjectLogLabelValuesDocument,
+} from "@/graphql/definitions";
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -101,4 +104,39 @@ export function useLogLabelValues(
   options: { skip?: boolean } = {},
 ): string[] {
   return useLogLabelDiscovery(resource, label, options).values;
+}
+
+/** A project-wide discovery read: its values once it has answered. */
+export interface ProjectLogLabelDiscovery {
+  values: string[];
+  /** loading until the first answer; failed when the read errored (no store, a scope over the cap). */
+  status: "loading" | "ready" | "failed";
+}
+
+/**
+ * The values one log label takes across a project's view (w3/079): bex-api's
+ * `logLabelValues(project, type)`, as Render's `logValues(input: {label,
+ * logQuery: {project}})` feeds its Edit view's value pickers. `logType` picks
+ * the view's resources (`app` for Application Logs, `request` for Request
+ * Logs); the server reads at most 20 of them, only those the caller may read.
+ * One read while a picker is shown, over the same seven days a resource's
+ * discovery covers; a reopened picker shows the cached answer and refreshes.
+ */
+export function useProjectLogLabelDiscovery(
+  project: string,
+  label: string,
+  logType: string,
+): ProjectLogLabelDiscovery {
+  const startTime = discoveryStartTime(useNow(HOUR_MS));
+  const { data, loading, error } = useQuery(ProjectLogLabelValuesDocument, {
+    variables: { project, label, type: logType, startTime },
+    fetchPolicy: "cache-and-network",
+  });
+  if (data?.logLabelValues) {
+    return {
+      values: data.logLabelValues.filter((v): v is string => v != null),
+      status: "ready",
+    };
+  }
+  return { values: [], status: error && !loading ? "failed" : "loading" };
 }

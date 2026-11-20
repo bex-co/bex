@@ -500,6 +500,31 @@ const zhLogs: Record<string, TranslationEntry> = {
     description:
       "Accessible name of a typed filter value's remove button; value is the value",
   },
+  "logs.viewValueSearch": {
+    message: "搜索或输入一个值",
+    description:
+      "Placeholder of the search box in a filter's value picker fed by the project's logs (Instance)",
+  },
+  "logs.viewValueAdd": {
+    message: "添加“{value}”",
+    description:
+      "Picker item that adds the typed text as a filter value; value is the typed text",
+  },
+  "logs.viewValuesLoading": {
+    message: "正在读取项目日志…",
+    description:
+      "Value picker status while the project's logs are read for the field's values",
+  },
+  "logs.viewValuesUnavailable": {
+    message: "无法读取项目日志。输入一个值即可添加。",
+    description:
+      "Value picker status when the project's logs could not be read for the field's values",
+  },
+  "logs.viewValuesNoneSeen": {
+    message: "过去 7 天的项目日志中没有。输入一个值即可添加。",
+    description:
+      "Value picker status when the project's logs hold no value of the field in the last 7 days",
+  },
   "logs.viewFieldEnvironment": {
     message: "环境",
     description: "Filter field Environment in the Edit view modal",

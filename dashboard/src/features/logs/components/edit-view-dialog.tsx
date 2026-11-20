@@ -1,6 +1,19 @@
-import { useId, useMemo, useState, type KeyboardEvent } from "react";
-import { ChevronDown, Loader2, Plus, Trash2 } from "lucide-react";
+import {
+  useId,
+  useMemo,
+  useState,
+  type ComponentProps,
+  type KeyboardEvent,
+} from "react";
+import { Check, ChevronDown, Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
+import {
+  Command,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/common/components/ui/command";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +30,11 @@ import {
 } from "@/common/components/ui/dropdown-menu";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/common/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -42,17 +60,21 @@ import type { SavedSearch } from "@/features/projects/hooks/use-saved-searches";
 import { useSavedSearchMutations } from "@/features/projects/hooks/use-saved-search-mutations";
 import { SavedSearchType } from "@/graphql/definitions";
 import { RANGE_LABEL_KEYS, RANGE_PRESETS } from "@/features/metrics/lib/range";
+import { useProjectLogLabelDiscovery } from "../hooks/use-log-label-values";
 import {
   VIEW_FIELD_LABEL_KEYS,
   VIEW_FIELDS_BY_TYPE,
   documentFromRows,
   incompleteRows,
   canAddFilterRow,
+  instanceChoiceLabel,
   newFilterRow,
   rowsFromDocument,
   viewFieldIsSingle,
+  viewFieldLogLabel,
   viewFieldOperators,
   viewFieldOptions,
+  viewLogType,
   viewValueKind,
   withField,
   type ViewField,
@@ -221,6 +243,7 @@ function EditViewForm({
             {rows.map((row) => (
               <FilterRow
                 key={row.key}
+                projectId={projectId}
                 row={row}
                 type={type}
                 usedFields={rows
@@ -318,6 +341,7 @@ function useValueChoices(
 }
 
 function FilterRow({
+  projectId,
   row,
   type,
   usedFields,
@@ -326,6 +350,7 @@ function FilterRow({
   onChange,
   onRemove,
 }: {
+  projectId: string;
   row: ViewFilterRow;
   type: SavedSearchType;
   usedFields: ViewField[];
@@ -389,7 +414,9 @@ function FilterRow({
       </Select>
       <div className="min-w-48 flex-1 space-y-1">
         <ValuesPicker
+          projectId={projectId}
           row={row}
+          type={type}
           choices={choices}
           label={t("logs.viewFilterValuesFor", { field: fieldLabel })}
           invalid={missingValues}
@@ -438,14 +465,18 @@ function withStale(options: ValueChoice[], values: string[]): ValueChoice[] {
 }
 
 function ValuesPicker({
+  projectId,
   row,
+  type,
   choices,
   label,
   invalid,
   errorId,
   onValues,
 }: {
+  projectId: string;
   row: ViewFilterRow;
+  type: SavedSearchType;
   choices: ValueChoices;
   label: string;
   invalid: boolean;
@@ -504,27 +535,12 @@ function ValuesPicker({
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full justify-between font-normal"
+          <ValuesTrigger
+            chosen={row.values.map(labelOf)}
             aria-label={label}
             aria-invalid={invalid}
             aria-describedby={describedBy}
-          >
-            <span
-              className={
-                row.values.length > 0
-                  ? "min-w-0 truncate"
-                  : "min-w-0 truncate text-muted-foreground"
-              }
-            >
-              {row.values.length > 0
-                ? row.values.map(labelOf).join(", ")
-                : t("logs.viewValuesPlaceholder")}
-            </span>
-            <ChevronDown className="opacity-50" />
-          </Button>
+          />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="max-h-72 overflow-y-auto">
           {shown.length === 0 ? (
@@ -555,6 +571,27 @@ function ValuesPicker({
     );
   }
 
+  const logLabel = viewFieldLogLabel(row.field);
+  if (kind === "discovered" && logLabel) {
+    return (
+      <DiscoveredValues
+        projectId={projectId}
+        logLabel={logLabel}
+        logType={viewLogType(type)}
+        values={row.values}
+        labelOf={
+          row.field === "INSTANCE"
+            ? (value) => instanceChoiceLabel(value, choices.resources)
+            : (value) => value
+        }
+        label={label}
+        invalid={invalid}
+        describedBy={describedBy}
+        onValues={onValues}
+      />
+    );
+  }
+
   return (
     <TypedValues
       values={row.values}
@@ -567,9 +604,180 @@ function ValuesPicker({
 }
 
 /**
- * Values that are typed rather than picked (an instance, a search term, a
- * status code, a host, a path): Enter or a comma adds the text as a value,
- * each value a chip with its own remove button.
+ * A many-value picker's trigger: the chosen values' names, or the
+ * placeholder. The menu or popover trigger it sits in passes its props on.
+ */
+function ValuesTrigger({
+  chosen,
+  ...props
+}: { chosen: string[] } & ComponentProps<typeof Button>) {
+  const { t } = useTranslations();
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      className="w-full justify-between font-normal"
+      {...props}
+    >
+      <span
+        className={
+          chosen.length > 0
+            ? "min-w-0 truncate"
+            : "min-w-0 truncate text-muted-foreground"
+        }
+      >
+        {chosen.length > 0
+          ? chosen.join(", ")
+          : t("logs.viewValuesPlaceholder")}
+      </span>
+      <ChevronDown className="opacity-50" />
+    </Button>
+  );
+}
+
+/**
+ * Values picked from what the project's logs hold (w3/079), as Render's
+ * editor lists `logValues` for the field: the label's values across the
+ * view's resources, read once the row shows, many at a time. The search box
+ * narrows the list, and a value the logs no longer hold (an instance that
+ * has gone) is added as typed.
+ */
+function DiscoveredValues({
+  projectId,
+  logLabel,
+  logType,
+  values,
+  labelOf,
+  label,
+  invalid,
+  describedBy,
+  onValues,
+}: {
+  projectId: string;
+  logLabel: string;
+  logType: string;
+  values: string[];
+  /** How a value reads in the list and on the trigger. */
+  labelOf: (value: string) => string;
+  label: string;
+  invalid: boolean;
+  describedBy: string | undefined;
+  onValues: (values: string[]) => void;
+}) {
+  const { t } = useTranslations();
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState("");
+  const discovery = useProjectLogLabelDiscovery(projectId, logLabel, logType);
+  // A chosen value the logs no longer hold stays listed, so it can be
+  // unchecked.
+  const options = [
+    ...discovery.values,
+    ...values.filter((v) => !discovery.values.includes(v)),
+  ];
+  const typed = draft.trim();
+  const needle = typed.toLowerCase();
+  const shown = needle
+    ? options.filter(
+        (v) =>
+          v.toLowerCase().includes(needle) ||
+          labelOf(v).toLowerCase().includes(needle),
+      )
+    : options;
+  const canAdd = typed !== "" && !options.includes(typed);
+  const toggle = (value: string) =>
+    onValues(
+      values.includes(value)
+        ? values.filter((v) => v !== value)
+        : [...values, value],
+    );
+  const status =
+    discovery.status === "loading"
+      ? t("logs.viewValuesLoading")
+      : discovery.status === "failed"
+        ? t("logs.viewValuesUnavailable")
+        : discovery.values.length === 0
+          ? t("logs.viewValuesNoneSeen")
+          : null;
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setDraft("");
+      }}
+    >
+      <PopoverTrigger asChild>
+        <ValuesTrigger
+          chosen={values.map(labelOf)}
+          aria-label={label}
+          aria-invalid={invalid}
+          aria-describedby={describedBy}
+        />
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        aria-label={label}
+        className="w-(--radix-popover-trigger-width) min-w-64 p-0"
+      >
+        <Command shouldFilter={false} label={label}>
+          <CommandInput
+            value={draft}
+            onValueChange={setDraft}
+            placeholder={t("logs.viewValueSearch")}
+          />
+          {status ? (
+            <p
+              role="status"
+              className="px-3 pt-2 text-sm text-muted-foreground"
+            >
+              {status}
+            </p>
+          ) : null}
+          <CommandList label={label}>
+            <CommandGroup>
+              {shown.map((value) => {
+                const checked = values.includes(value);
+                return (
+                  <CommandItem
+                    key={value}
+                    value={value}
+                    title={value}
+                    aria-checked={checked}
+                    onSelect={() => toggle(value)}
+                  >
+                    <Check className={checked ? undefined : "invisible"} />
+                    <span className="min-w-0 truncate">{labelOf(value)}</span>
+                  </CommandItem>
+                );
+              })}
+              {canAdd ? (
+                <CommandItem
+                  // Not a value: the typed text is what it adds.
+                  value={"\u0000add"}
+                  onSelect={() => {
+                    onValues([...values, typed]);
+                    setDraft("");
+                  }}
+                >
+                  <Plus />
+                  <span className="min-w-0 truncate">
+                    {t("logs.viewValueAdd", { value: typed })}
+                  </span>
+                </CommandItem>
+              ) : null}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/**
+ * Values that are typed rather than picked (a search term, a status code, a
+ * host, a path): Enter or a comma adds the text as a value, each value a chip
+ * with its own remove button.
  */
 function TypedValues({
   values,

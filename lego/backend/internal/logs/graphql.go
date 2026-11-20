@@ -167,6 +167,12 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 
 	valuesArgs := logFilterArgs()
 	valuesArgs["label"] = gqlutil.ReqArg(graphql.String)
+	// project + filterDocument (w3/079): the values a label takes across a
+	// project's view, as Render's logValues(input: {label, logQuery:
+	// {project, …}}) reads them for its Edit view's value pickers.
+	valuesArgs["resource"] = gqlutil.Arg(graphql.String)
+	valuesArgs["project"] = gqlutil.Arg(graphql.String)
+	valuesArgs["filterDocument"] = gqlutil.Arg(gqlutil.JSONObject)
 
 	return graphql.Fields{
 		"logs": &graphql.Field{
@@ -181,12 +187,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				if n, ok := p.Args["limit"].(int); ok {
 					q.Limit = int64(n)
 				}
-				project, _ := p.Args["project"].(string)
-				if (project == "") == (q.App == "") {
-					return nil, fmt.Errorf("%w: logs takes exactly one of resource and project", core.ErrBadRequest)
-				}
-				if p.Args["filterDocument"] != nil && project == "" {
-					return nil, fmt.Errorf("%w: filterDocument applies to a project read", core.ErrBadRequest)
+				project, err := projectArg(p, q.App)
+				if err != nil {
+					return nil, err
 				}
 				if err := s.renderWindow(&q); err != nil {
 					return nil, err
@@ -220,14 +223,34 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				if err != nil {
 					return nil, err
 				}
+				project, err := projectArg(p, q.App)
+				if err != nil {
+					return nil, err
+				}
 				if err := s.renderWindow(&q); err != nil {
 					return nil, err
 				}
 				label := gqlutil.Str(p.Args, "label")
+				if project != "" {
+					return s.queryProjectLabelValues(p.Context, project, p.Args["filterDocument"], label, q)
+				}
 				return s.LogLabelValues(p.Context, label, q)
 			},
 		},
 	}
+}
+
+// projectArg is a read's `project`: it reads exactly one of a resource and a
+// project, and a filterDocument only with a project.
+func projectArg(p graphql.ResolveParams, resource string) (string, error) {
+	project, _ := p.Args["project"].(string)
+	if (project == "") == (resource == "") {
+		return "", fmt.Errorf("%w: %s takes exactly one of resource and project", core.ErrBadRequest, p.Info.FieldName)
+	}
+	if p.Args["filterDocument"] != nil && project == "" {
+		return "", fmt.Errorf("%w: filterDocument applies to a project read", core.ErrBadRequest)
+	}
+	return project, nil
 }
 
 // logListResult is a page as the LogList fields.

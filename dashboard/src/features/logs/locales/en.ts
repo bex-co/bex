@@ -521,6 +521,32 @@ const enLogs: Record<string, TranslationEntry> = {
     description:
       "Accessible name of a typed filter value's remove button; value is the value",
   },
+  "logs.viewValueSearch": {
+    message: "Search, or type a value",
+    description:
+      "Placeholder of the search box in a filter's value picker fed by the project's logs (Instance)",
+  },
+  "logs.viewValueAdd": {
+    message: "Add “{value}”",
+    description:
+      "Picker item that adds the typed text as a filter value; value is the typed text",
+  },
+  "logs.viewValuesLoading": {
+    message: "Reading the project's logs…",
+    description:
+      "Value picker status while the project's logs are read for the field's values",
+  },
+  "logs.viewValuesUnavailable": {
+    message: "Couldn't read the project's logs. Type a value to add it.",
+    description:
+      "Value picker status when the project's logs could not be read for the field's values",
+  },
+  "logs.viewValuesNoneSeen": {
+    message:
+      "None in the project's logs from the last 7 days. Type a value to add it.",
+    description:
+      "Value picker status when the project's logs hold no value of the field in the last 7 days",
+  },
   "logs.viewFieldEnvironment": {
     message: "Environment",
     description: "Filter field Environment in the Edit view modal",

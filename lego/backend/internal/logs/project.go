@@ -230,6 +230,62 @@ func (s *Service) queryProjectLogPage(ctx context.Context, project string, rawDo
 	return page, resources, err
 }
 
+// AuditVerbLogLabelValues is the verb a project view's value discovery
+// records: each read is a LogLabelValues of one resource.
+const AuditVerbLogLabelValues = "logs.LogLabelValues"
+
+// queryProjectLabelValues lists the values one label takes across a project
+// view's resources (w3/079): Render's logValues(input: {label, logQuery:
+// {project, …}}), which feeds its Edit view's value pickers. The scope is the
+// view's, resolved and authorized as a page read resolves it, so it reads at
+// most maxProjectLogResources resources and names none the caller may not
+// read. Each resource then answers its own LogLabelValues, eight at a time,
+// so an instance keeps its resource's id as its prefix. A datastore, whose
+// lines carry only an instance and a level, adds nothing to another label,
+// and a resource that refuses or is gone by its read adds nothing either.
+func (s *Service) queryProjectLabelValues(ctx context.Context, project string, rawDoc any, label string, q LogQuery) ([]string, error) {
+	ctx = core.WithRequestMemo(core.WithAuditVerb(ctx, AuditVerbLogLabelValues))
+	if err := checkDiscoverableLabel(label); err != nil {
+		return nil, err
+	}
+	v, err := newProjectView(project, rawDoc, &q)
+	if err != nil {
+		return nil, err
+	}
+	if err := q.validate(); err != nil {
+		return nil, err
+	}
+	_, resources, err := s.resolveProjectView(ctx, v, nil)
+	if err != nil {
+		return nil, err
+	}
+	reads := make([][]string, len(resources))
+	errs := make([]error, len(resources))
+	var g errgroup.Group
+	g.SetLimit(maxConcurrentLogReads)
+	for i, r := range resources {
+		if core.IsDatastoreResource(r.ID) && !slices.Contains(datastoreLogLabels, label) {
+			continue
+		}
+		g.Go(func() error {
+			reads[i], errs[i] = s.LogLabelValues(ctx, label, q.forResource(r.ID))
+			return nil
+		})
+	}
+	_ = g.Wait()
+	values := []string{}
+	for i, err := range errs {
+		switch {
+		case err == nil:
+			values = append(values, reads[i]...)
+		case errors.Is(err, core.ErrForbidden) || errors.Is(err, core.ErrNotFound):
+		default:
+			return nil, err
+		}
+	}
+	return slices.Compact(slices.Sorted(slices.Values(values))), nil
+}
+
 func resourceIDs(rs []savedsearch.Resource) []string {
 	out := make([]string, len(rs))
 	for i, r := range rs {

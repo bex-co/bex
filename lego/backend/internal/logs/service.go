@@ -1315,10 +1315,8 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 		return nil, err
 	}
 	q.scopeToApp(app)
-	if !slices.Contains(DiscoverableLabels, label) {
-		// Naming the offending label beats an empty list, which a client would read
-		// as "this service has no such values".
-		return nil, fmt.Errorf("%w: unknown log label %q (want %s)", core.ErrBadRequest, label, strings.Join(DiscoverableLabels, "|"))
+	if err := checkDiscoverableLabel(label); err != nil {
+		return nil, err
 	}
 	if label == LabelHost {
 		// `host` is not a stream label (the cardinality budget keeps it in the line),
@@ -1367,17 +1365,31 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 	return slices.Compact(slices.Sorted(slices.Values(values))), nil
 }
 
+// checkDiscoverableLabel refuses a label outside DiscoverableLabels by name:
+// naming the offending label beats an empty list, which a client would read
+// as "this service has no such values".
+func checkDiscoverableLabel(label string) error {
+	if !slices.Contains(DiscoverableLabels, label) {
+		return fmt.Errorf("%w: unknown log label %q (want %s)", core.ErrBadRequest, label, strings.Join(DiscoverableLabels, "|"))
+	}
+	return nil
+}
+
+// datastoreLogLabels are the labels a managed datastore's lines carry: an
+// instance, and a level (a Postgres record's severity, a Valkey line's marker
+// — w5/m139).
+var datastoreLogLabels = []string{LabelInstance, LabelLevel}
+
 // datastoreLogLabelValues discovers a managed datastore's instance and level
-// values: both datastores' lines carry a level (a Postgres record's severity,
-// a Valkey line's marker — w5/m139), which only the store indexes.
+// values (datastoreLogLabels); only the store indexes the level.
 func (s *Service) datastoreLogLabelValues(ctx context.Context, label string, q LogQuery) ([]string, error) {
 	// Store-read values, or pod names, which carry no time.
 	target, err := s.datastoreTarget(ctx, &q, true)
 	if err != nil {
 		return nil, err
 	}
-	if label != LabelInstance && label != LabelLevel {
-		return nil, fmt.Errorf("%w: managed datastore log label %q is unsupported (want %s|%s)", core.ErrBadRequest, label, LabelInstance, LabelLevel)
+	if !slices.Contains(datastoreLogLabels, label) {
+		return nil, fmt.Errorf("%w: managed datastore log label %q is unsupported (want %s)", core.ErrBadRequest, label, strings.Join(datastoreLogLabels, "|"))
 	}
 	if s.LabelValues != nil {
 		values, err := s.LabelValues(ctx, target.namespace, label, q.normalized())

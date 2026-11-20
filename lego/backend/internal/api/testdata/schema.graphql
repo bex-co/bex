@@ -2561,7 +2561,7 @@ type Query {
   keyValueIpAllowList(id: String!): [String]
   keyValueLogs(cursor: String, direction: String, endTime: String, id: String!, instance: [String], limit: Int, startTime: String, text: String): [KeyValueLogEntry]
   keyValues(cursor: String, limit: Int, ownerId: String): [KeyValue]
-  logLabelValues(build: [String!], direction: String, endTime: String, host: [String!], instance: [String!], label: String!, level: [String!], method: [String!], path: [String!], resource: String!, startTime: String, statusCode: [String!], text: String, textMode: String, type: String): [String!]
+  logLabelValues(build: [String!], direction: String, endTime: String, filterDocument: JSONObject, host: [String!], instance: [String!], label: String!, level: [String!], method: [String!], path: [String!], project: String, resource: String, startTime: String, statusCode: [String!], text: String, textMode: String, type: String): [String!]
   logRetention(resource: String!): LogRetention
   logs(build: [String!], deployId: String, direction: String, endTime: String, filterDocument: JSONObject, host: [String!], instance: [String!], level: [String!], limit: Int, method: [String!], path: [String!], project: String, resource: String, startTime: String, statusCode: [String!], text: String, textMode: String, type: String): LogList
   metrics(query: MetricsQueryInput!): [MetricSeries]
