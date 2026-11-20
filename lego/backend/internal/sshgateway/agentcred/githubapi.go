@@ -47,8 +47,9 @@ import (
 //     a node by id, the rate limit or the schema;
 //   - admits the writes in githubAPIWrites (REST) and githubAPIMutations
 //     (GraphQL) on that repository: comments and replies, reviews that do not
-//     approve, labels, assignees, requested reviewers, issues, and re-running
-//     or cancelling Actions runs;
+//     approve, labels, assignees, requested reviewers, issues, re-running or
+//     cancelling Actions runs, and dispatching a workflow on the session
+//     branch;
 //   - refuses every other write in GitHub's error shape, with a message naming
 //     the bex MCP tools, which stay the session's one pull-request path, and
 //     the session branch, which stays its one code path;
@@ -153,7 +154,7 @@ func (b *Broker) serveGitHubAPI(w http.ResponseWriter, r *http.Request, namespac
 		if access.graphql {
 			write, status, refusal = graphQLRefusal(body, repository)
 		} else {
-			status, refusal = restWriteBodyRefusal(*access.write, body, repository)
+			status, refusal = restWriteBodyRefusal(*access.write, body, repository, verified.Branch)
 		}
 		if refusal != "" {
 			b.refuseGitHubAPI(w, claimed, "rejected_target", status, refusal)
@@ -353,12 +354,16 @@ type githubAPIWrite struct {
 	route string
 	// review marks a review submission, whose event may not approve.
 	review bool
+	// dispatch marks a workflow dispatch, whose ref must be the session
+	// branch (w10/033).
+	dispatch bool
 }
 
 // githubAPIWrites are the REST writes admitted on the session's repository:
 // issue and pull-request comments, review comments and their replies,
 // reviews, reactions, labels, assignees and requested reviewers, new issues,
-// and re-running or cancelling a run. `PATCH issues/#` is not among them:
+// re-running or cancelling a run, and dispatching a workflow, by id or file
+// name, on the session branch. `PATCH issues/#` is not among them:
 // GitHub treats a pull request as an issue there, so it could retitle,
 // rewrite or close one. gh's own `issue edit` and `issue close` send GraphQL,
 // where GitHub resolves the id as an issue.
@@ -379,6 +384,7 @@ var githubAPIWrites = []githubAPIWrite{
 	{route: "POST actions/runs/#/rerun"}, {route: "POST actions/runs/#/rerun-failed-jobs"},
 	{route: "POST actions/runs/#/cancel"}, {route: "POST actions/runs/#/force-cancel"},
 	{route: "POST actions/jobs/#/rerun"},
+	{route: "POST actions/workflows/*/dispatches", dispatch: true},
 }
 
 // matchGitHubAPIWrite is the admitted write a method and the path segments
@@ -404,9 +410,15 @@ func segmentMatches(pattern, segment string) bool {
 }
 
 // restWriteBodyRefusal checks an admitted REST write's body: empty or one JSON
-// value whose objects repeat no key, and for a review, an event that does not
-// approve.
-func restWriteBodyRefusal(write githubAPIWrite, body []byte, repository string) (int, string) {
+// value whose objects repeat no key, for a review, an event that does not
+// approve, and for a dispatch, the session branch as its ref.
+func restWriteBodyRefusal(write githubAPIWrite, body []byte, repository, branch string) (int, string) {
+	if write.dispatch {
+		if !dispatchesOnTheBranch(body, branch) {
+			return http.StatusForbidden, dispatchRefusal(repository, branch)
+		}
+		return 0, ""
+	}
 	if len(bytes.TrimSpace(body)) == 0 {
 		return 0, ""
 	}
@@ -420,6 +432,43 @@ func restWriteBodyRefusal(write githubAPIWrite, body []byte, repository string) 
 		}
 	}
 	return 0, ""
+}
+
+// dispatchesOnTheBranch admits a workflow dispatch body (w10/033): one JSON
+// object, repeating no key, whose ref is the session branch, by name or as
+// refs/heads/<branch>, beside at most an inputs object and gh's
+// return_run_details flag. GitHub then runs the workflow file and the code the
+// session pushed to that branch, as a push or pull_request run on it already
+// does, and an environment's deployment-branch rules hold for it as for them.
+// Any other ref, a tag or the default branch, could start a run of code the
+// session did not write, with the inputs it chose.
+func dispatchesOnTheBranch(body []byte, branch string) bool {
+	var fields map[string]json.RawMessage
+	if !uniqueKeyJSON(body) || json.Unmarshal(body, &fields) != nil {
+		return false
+	}
+	var ref string
+	if json.Unmarshal(fields["ref"], &ref) != nil || (ref != branch && ref != "refs/heads/"+branch) {
+		return false
+	}
+	for name, raw := range fields {
+		switch name {
+		case "ref":
+		case "inputs":
+			var inputs map[string]json.RawMessage
+			if json.Unmarshal(raw, &inputs) != nil || inputs == nil {
+				return false
+			}
+		case "return_run_details":
+			var flag bool
+			if json.Unmarshal(raw, &flag) != nil {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // notApproval admits a review input whose event is absent, null or anything
@@ -485,9 +534,16 @@ func uniqueKeyJSON(raw []byte) bool {
 // write here, and the bex tools and the session branch for the rest.
 func writeRefusal(repository string) string {
 	return "bex: gh in this session reads " + repository + " and writes to it only to comment and reply, review without approving, " +
-		"label, assign, request reviewers, open, edit and close issues, and re-run or cancel Actions runs. " +
+		"label, assign, request reviewers, open, edit and close issues, re-run or cancel Actions runs, and dispatch a workflow on your session branch. " +
 		"Open or update the pull request with the open_or_update_draft_pr tool of the bex MCP server, reply on it with reply_on_pull_request, " +
 		"and change code only by pushing your session branch."
+}
+
+// dispatchRefusal answers a workflow dispatch whose body is not one on the
+// session branch: the command that is, then what else gh can write here.
+func dispatchRefusal(repository, branch string) string {
+	return "bex: gh in this session dispatches a workflow only on your session branch, as `gh workflow run <workflow> --ref " + branch + "`. " +
+		strings.TrimPrefix(writeRefusal(repository), "bex: ")
 }
 
 func otherRepositoryRefusal(repository string) string {

@@ -360,11 +360,11 @@ test("the repo overlay says what gh reads and writes, and that pull requests sta
   );
   assert.match(
     text,
-    /opens, edits and closes issues, and re-runs or cancels CI \(`gh run rerun --failed`, `gh run cancel`\)/,
+    /opens, edits and closes issues, re-runs or cancels CI \(`gh run rerun --failed`, `gh run cancel`\), and runs a workflow on your branch \(`gh workflow run <workflow> --ref bex-agent\/ags-abc`\), never on another ref\./,
   );
   assert.match(
     text,
-    /It cannot open, edit, approve, merge or close a pull request, dispatch a workflow, or change code, branches or settings, and it reaches no other repository\. Your pull request itself stays with the `open_or_update_draft_pr` and `reply_on_pull_request` tools/,
+    /It cannot open, edit, approve, merge or close a pull request, or change code, branches or settings, and it reaches no other repository\. Your pull request itself stays with the `open_or_update_draft_pr` and `reply_on_pull_request` tools/,
   );
   assert.doesNotMatch(text, /cannot write/);
   assert.doesNotMatch(text, /not authenticated/);

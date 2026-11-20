@@ -596,6 +596,63 @@
   ]
  },
  {
+  "command": "gh workflow run lint.yml --ref bex-agent/task-1",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "GET",
+    "path": "/repos/octo/repo/actions/workflows/lint.yml",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/repos/octo/repo/actions/workflows/925645/dispatches",
+    "body": "{\"inputs\":{},\"ref\":\"bex-agent/task-1\",\"return_run_details\":true}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh workflow run lint.yml --ref refs/heads/bex-agent/task-1 -f reason=flake",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "GET",
+    "path": "/repos/octo/repo/actions/workflows/lint.yml",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/repos/octo/repo/actions/workflows/925645/dispatches",
+    "body": "{\"inputs\":{\"reason\":\"flake\"},\"ref\":\"refs/heads/bex-agent/task-1\",\"return_run_details\":true}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh workflow run lint.yml",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\":\"\\n\\tfragment repo on Repository {\\n\\t\\tid\\n\\t\\tdatabaseId\\n\\t\\tname\\n\\t\\towner { login }\\n\\t\\tsshUrl\\n\\t\\thasIssuesEnabled\\n\\t\\tdescription\\n\\t\\thasWikiEnabled\\n\\t\\tviewerPermission\\n\\t\\tdefaultBranchRef {\\n\\t\\t\\tname\\n\\t\\t}\\n\\t}\\n\\n\\tquery RepositoryInfo($owner: String!, $name: String!) {\\n\\t\\trepository(owner: $owner, name: $name) {\\n\\t\\t\\t...repo\\n\\t\\t\\tparent {\\n\\t\\t\\t\\t...repo\\n\\t\\t\\t}\\n\\t\\t\\tmergeCommitAllowed\\n\\t\\t\\trebaseMergeAllowed\\n\\t\\t\\tsquashMergeAllowed\\n\\t\\t}\\n\\t}\",\"variables\":{\"name\":\"repo\",\"owner\":\"octo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "GET",
+    "path": "/repos/octo/repo/actions/workflows/lint.yml",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/repos/octo/repo/actions/workflows/925645/dispatches",
+    "body": "{\"inputs\":{},\"ref\":\"trunk\",\"return_run_details\":true}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
   "command": "gh issue close 15000 (a pull request)",
   "admitted": false,
   "requests": [

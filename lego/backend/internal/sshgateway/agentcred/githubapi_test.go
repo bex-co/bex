@@ -251,7 +251,7 @@ func graphQLBody(t *testing.T, query string, variables map[string]any) string {
 }
 
 // w10/m522 DoD 3: opening or changing a pull request, approving one, merging,
-// dispatching a workflow, and every code, ref, release, status or settings
+// dispatching a workflow on another ref, and every code, ref, release, status or settings
 // write, on this repository or another, is refused before any mint with a
 // message saying what gh can write and naming the bex tools. A GraphQL
 // document that mixes an admitted mutation with a refused one is refused
@@ -428,6 +428,82 @@ func TestGitHubAPIRouteChecksAWriteBodyAsGitHubReadsIt(t *testing.T) {
 	}
 }
 
+// w10/033: a workflow dispatch, by id or file name, whose ref is the session
+// branch, by name or as refs/heads/<branch>, reaches GitHub as sent with the
+// write token, as `gh workflow run <workflow> --ref <branch>` sends it. Any
+// other ref, a missing ref, a repeated key or a field GitHub could read
+// another way is refused before any mint, naming the command that works and
+// the bex tools.
+func TestGitHubAPIRouteDispatchesAWorkflowOnlyOnTheSessionBranch(t *testing.T) {
+	broker, repoURL, gh, seen := githubAPIHarness(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"workflow_run_id":1}`)
+	})
+	dispatches := repoURL + "/github-api/repos/octo/repo/actions/workflows/"
+	for i, admitted := range []struct{ workflow, body string }{
+		{"925645", `{"inputs":{},"ref":"bex-agent/task-1","return_run_details":true}`},
+		{"925645", `{"inputs":{"reason":"flake"},"ref":"refs/heads/bex-agent/task-1","return_run_details":true}`},
+		{"e2e.yml", `{"ref":"bex-agent/task-1"}`},
+		{"e2e.yml", `{"ref":"bex-agent\/task-1","return_run_details":false,"inputs":{"suite":{"nested":[1]}}}`},
+	} {
+		rec := githubAPIRequest(broker, http.MethodPost, dispatches+admitted.workflow+"/dispatches", admitted.body)
+		if rec.Code != http.StatusOK || seen.calls != i+1 || seen.body != admitted.body || seen.authorization != "Bearer ghs_gateway_api_write" ||
+			seen.path != "/repos/octo/repo/actions/workflows/"+admitted.workflow+"/dispatches" {
+			t.Fatalf("%s = %d %q; GitHub saw %s %q with %q", admitted.body, rec.Code, rec.Body.String(), seen.path, seen.body, seen.authorization)
+		}
+		assertNoToken(t, rec)
+	}
+	calls, mints := seen.calls, gh.apiWriteCalls
+	for _, body := range []string{
+		`{"ref":"main"}`,
+		`{"inputs":{},"ref":"trunk","return_run_details":true}`,
+		`{"ref":"bex-agent/task-2"}`,
+		`{"ref":"refs/tags/bex-agent/task-1"}`,
+		`{"ref":"heads/bex-agent/task-1"}`,
+		`{"ref":"refs/heads/bex-agent/task-1/x"}`,
+		`{"ref":"Bex-Agent/Task-1"}`,
+		`{"ref":"bex-agent/task-1 "}`,
+		`{"ref":"bex-agent/task-1","ref":"main"}`,
+		`{"ref":"main","ref":"bex-agent/task-1"}`,
+		`{"ref":"bex-agent/task-1","\u0072ef":"main"}`,
+		`{"ref":"bex-agent/task-1","sha":"0000000000000000000000000000000000000000"}`,
+		`{"ref":"bex-agent/task-1","inputs":"x"}`,
+		`{"ref":"bex-agent/task-1","inputs":null}`,
+		`{"ref":"bex-agent/task-1","inputs":{"a":1,"a":2}}`,
+		`{"ref":"bex-agent/task-1","return_run_details":"yes"}`,
+		`{"ref":["bex-agent/task-1"]}`,
+		`{"ref":null}`,
+		`{"inputs":{}}`,
+		`{}`,
+		`[{"ref":"bex-agent/task-1"}]`,
+		`{"ref":"bex-agent/task-1"} {"ref":"main"}`,
+		`null`,
+		``,
+	} {
+		rec := githubAPIRequest(broker, http.MethodPost, dispatches+"925645/dispatches", body)
+		assertWriteRefusal(t, body, rec)
+		if msg := githubAPIMessage(t, rec); !strings.Contains(msg, "`gh workflow run <workflow> --ref bex-agent/task-1`") || !strings.Contains(msg, "dispatch a workflow on your session branch") {
+			t.Errorf("%s refusal does not name the command that works: %q", body, msg)
+		}
+	}
+	// A query string, another repository or another dispatch-like path is
+	// refused before its body is read.
+	for _, target := range []string{
+		dispatches + "925645/dispatches?ref=main",
+		repoURL + "/github-api/repos/other/repo/actions/workflows/925645/dispatches",
+		dispatches + "925645/dispatches/1",
+		dispatches + "/dispatches",
+	} {
+		rec := githubAPIRequest(broker, http.MethodPost, target, `{"ref":"bex-agent/task-1"}`)
+		if rec.Code != http.StatusForbidden && rec.Code != http.StatusBadRequest {
+			t.Errorf("%s = %d %q, want refused", target, rec.Code, rec.Body.String())
+		}
+	}
+	if seen.calls != calls || gh.apiWriteCalls != mints || gh.apiCalls != 0 {
+		t.Fatalf("a refused dispatch reached GitHub (upstream %d, write mints %d, read mints %d)", seen.calls-calls, gh.apiWriteCalls-mints, gh.apiCalls)
+	}
+}
+
 // A gateway without the write verb still reads, and answers a write 503
 // instead of minting a read token for it.
 func TestGitHubAPIRouteWithoutTheWriteVerbStillReads(t *testing.T) {
@@ -448,8 +524,10 @@ func TestGitHubAPIRouteWithoutTheWriteVerbStillReads(t *testing.T) {
 
 // recordedGhCommand is one command of testdata/gh-2.105.0-requests.json: the
 // requests gh 2.105.0 sent for it through http_unix_socket, recorded on
-// 2026-11-19 against a socket that forwarded reads to GitHub and answered
-// every write itself, with the repository renamed octo/repo. want is read
+// 2026-11-19 (and its gh workflow run commands on the session branch on
+// 2026-11-20, w10/033) against a socket that forwarded reads to GitHub and
+// answered every write itself, with the repository renamed octo/repo and the
+// session branch bex-agent/task-1, the harness's. want is read
 // (admitted, read token), write (admitted, write token) or refused.
 type recordedGhCommand struct {
 	Command  string `json:"command"`
