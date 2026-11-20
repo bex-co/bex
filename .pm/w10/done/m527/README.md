@@ -1,6 +1,6 @@
 # w10 · m527 — A workspace admin chooses which platform models its members may pick, as Devin's admins choose the agents and models on offer
 
-**Worker:** worker10 **Goal:** a workspace on the platform model route can turn catalog models off. Every member picker and the capabilities read offer only the models left on. A create, a message or an automation naming a turned-off model is refused with `AGENT_SESSION_MODEL_NOT_OFFERED`. A session or automation already on one runs the workspace default from its next turn. The catalog default can never be turned off. REST, GraphQL, MCP, the CLI and Settings → Agents read and write the list. **Status:** blocked (t001–t005, t007–t009 done 2026-11-20 and shipped in `68e848a93`; t006, the production check, waits for a deploy carrying it, then t010 closes)
+**Worker:** worker10 **Goal:** a workspace on the platform model route can turn catalog models off. Every member picker and the capabilities read offer only the models left on. A create, a message or an automation naming a turned-off model is refused with `AGENT_SESSION_MODEL_NOT_OFFERED`. A session or automation already on one runs the workspace default from its next turn. The catalog default can never be turned off. REST, GraphQL, MCP, the CLI and Settings → Agents read and write the list. **Status:** done (t001–t010; shipped in `68e848a93`, live on pin `820edf28d22d`, 2026-11-20)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | Backend: one offered-model set drives create, message, automation save and fire, the capabilities read, the default model and the next turn's fallback — **DONE** | 1h15m | t002 |
 | [t004](done/t004.md) | CLI: `bex agent env set` changes the list, `bex agent env` shows it, `bex agent models` lists only offered models — **DONE** | 45m | t002 |
 | [t005](done/t005.md) | Dashboard: a model list in Settings → Agents, the default-model picker limited to it, and the skeleton matching — **DONE** | 1h30m | t002 |
-| [t006](t006.md) | Live check on production: a turned-off model leaves every picker, is refused on create, and a session on it runs the default from its next turn | 45m | t003, t004, t005 |
+| [t006](done/t006.md) | Live check on production: a turned-off model leaves every picker, is refused on create, and a session on it runs the default from its next turn — **DONE** | 45m | t003, t004, t005 |
 | [t007](done/t007.md) | Render parity (Devin) — **DONE** | 30m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 20m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
-| [t010](t010.md) | Closeout | 10m | t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t009 |
 
 Total: **10 tasks, about 8h15m**.
 
@@ -62,6 +62,26 @@ Total: **10 tasks, about 8h15m**.
   - **A model added later:** Devin offers "allow all models" or "allowlist specific models", a "curated list of approved models", and the page does not say how a new model is treated. bex's list is an opt-out, so a new catalog model starts on. Filed as [w10/036](../../036.md).
   - **Filter by provider:** Devin Desktop can "filter by specific models or by provider". bex filters by model only. Filed as [w10/037](../../037.md).
   - **Not filed:** group-level lists, because a bex workspace has no member groups (members have roles only), so there is nothing to bind such a list to. Devin's enterprise defaults have no counterpart, because the workspace is bex's top tenancy level.
+
+## Unblock record (2026-11-20)
+
+- **Affected:** t006, then t010.
+- **Source:** verified evidence. The newest `chore(deploy): pin platform images to <sha>` on `origin/main` is `7474e1c6a` (pin `820edf28d22d`), and `git merge-base --is-ancestor 68e848a93 820edf28d22d` holds. Production's `bex-api` Pods run `bex-operator@sha256:ca059b40…` and the dashboard `bex-dashboard@sha256:1504900e…`, the digests that pin set (read-only `kubectl`, context `hetzner-prod`).
+- **Gate:** the pin gate (``pin must carry `68e848a93` ``) has cleared by itself. No user decision was needed and none is left.
+- **Next:** t006 as written, as the QA user in `tian-personal`, with one short `anthropic/claude-haiku-5.5` session (never Opus; the sandbox node is near capacity, w9/m349), the list set back to the whole catalog and the session deleted. Then t010 closes the milestone if DoD 6 holds.
+
+## Live check (t006, production, 2026-11-20)
+
+Workspace `tian-personal` (`tea-da2isimlm39c739m4ofg`, the QA account's, whose GitHub connection is the `puncsky` installation), 23:00–23:08Z, pin `820edf28d22d`: both `bex-api` Pods ran `bex-operator@sha256:ca059b40…` and the dashboard `bex-dashboard@sha256:1504900e…`, the digests that pin set (read-only `kubectl`). The CLI was built from `main` (`ac229ac8e`), because the released v0.2.1 has no `--models`; the dashboard was signed in through `scripts/qa-login.sh` (the same account, `puncsky@gmail.com`). Before the check the list was the whole catalog and the workspace default unset, so the workspace default is the catalog default `deepseek/deepseek-v4.1-flash-1017`.
+
+- **Opus off.** `bex agent env set --models deepseek/deepseek-v4.1-flash-1017,anthropic/claude-haiku-5.5,anthropic/claude-sonnet-5.5` saved it (`updatedAt` 23:00:36.818Z). `bex agent env` printed the three models with the default marked "always on" and `Models off  anthropic/claude-opus-5.5 (turned off by an admin)`. REST `GET /v1/agent-environment?ownerId=…`, GraphQL `agentEnvironment` and MCP `get_agent_environment` all read the three as `enabledModels` beside the four-model `models`.
+- **Not offered.** `bex agent models` listed three models claude can run, without Opus. The dashboard composer's Model picker on `/agents` offered `deepseek/deepseek-v4.1-flash-1017 (default)`, `anthropic/claude-haiku-5.5` and `anthropic/claude-sonnet-5.5`. `bex agent run --model anthropic/claude-opus-5.5` exited 1 with "400 AGENT_SESSION_MODEL_NOT_OFFERED: anthropic/claude-opus-5.5 is turned off in this workspace, whose members may choose deepseek/deepseek-v4.1-flash-1017, anthropic/claude-haiku-5.5, anthropic/claude-sonnet-5.5; a workspace admin can turn it on in Settings → Agents", and the workspace still had no session.
+- **The catalog default stays on.** `bex agent env set --models anthropic/claude-haiku-5.5,anthropic/claude-sonnet-5.5` and the same REST `PATCH` were refused with `400 AGENT_ENVIRONMENT_MODELS_INVALID` ("enabledModels must keep deepseek/deepseek-v4.1-flash-1017, the platform catalog's default, on"; params `field: enabledModels`, `model` the default, `models` the catalog). `updatedAt` stayed 23:00:36Z, so nothing was written.
+- **Session.** `bex agent run --repo puncsky/qa-20261120-m527-models --model anthropic/claude-haiku-5.5 --max-spend 1 --wait` (a new private fixture) started `ags-dc0d3frcd0vs73c889cg`. Turn 1 answered "ok", and `bex agent cost` shows its two requests on `anthropic/claude-haiku-5.5` (23:05:59Z).
+- **Haiku off, next turn on the default.** Settings → Agents listed "Models members can choose" with the default's switch on and disabled ("The platform's default model always stays on"), Opus off and the rest on. Switching Haiku off saved at once (REST `enabledModels` `deepseek/deepseek-v4.1-flash-1017`, `anthropic/claude-sonnet-5.5`, `updatedAt` 23:06:53.439Z). `bex agent send` with no `--model` ran turn 2 (23:07:05–23:07:34Z). `bex agent cost` shows turn 1 on `anthropic/claude-haiku-5.5` and turn 2's two requests on `deepseek/deepseek-v4.1-flash-1017`. The session read (`bex agent get`, REST `GET /v1/agent-sessions/{id}`) reports `agentConfig.model` `deepseek/deepseek-v4.1-flash-1017`. $0.03 in all.
+- **Cleanup.** `bex agent env set --models` with the four catalog models restored the whole catalog (`updatedAt` 23:07:55Z), and REST, GraphQL, MCP and `bex agent models` read all four. The session is deleted (`404 AGENT_SESSION_NOT_FOUND`; no sandbox Pod is left). It pushed no branch and opened no pull request. The fixture repository is deleted (`404`). The dashboard's workspace selection is back on `bex`, and this run's QA browser session is logged out (`--logout`: `ok logged-out`). No OAuth grant or consent session was revoked.
+
+The Definition of done holds. Items 1–5 hold in t002–t005 and t009's tests and t007's surface check (`TestEnabledModelsOnEverySurface`, `TestEnabledModelsRefusalsOnEverySurface`), and item 1's CLI, REST, GraphQL, MCP and Settings → Agents reads and writes, item 2's refusal, item 3's `bex agent models`, composer and create refusal, and item 4's next-turn fallback held live above. Item 6 holds here. t010 closed the milestone on 2026-11-20.
 
 ## Source + Goal linkage
 
