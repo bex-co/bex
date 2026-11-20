@@ -131,9 +131,12 @@ func (r *AppReconciler) reconcileSavedConfigurationStatus(ctx context.Context, r
 // compared without the stamps (releaseSettingsFingerprint): a set-and-clear
 // nets out too, as it does for a web service's record (w8/339). A release an
 // older operator dispatched has no settings fingerprint and compares its whole
-// identity. Only a release-v2 fingerprint can be compared.
+// identity. Only a release-v2 fingerprint can be compared. A release that
+// restores a retained publication published none of the saved settings, so a
+// save still waits after its request consumed the pending marker: a Restart
+// keeps the served settings fingerprint (w32/049).
 func staticSaveWaits(app *appv1alpha1.App) bool {
-	if !releaseHasServed(app) || !sourceUpdatePending(app) {
+	if !releaseHasServed(app) || (!sourceUpdatePending(app) && !restoredPublicationAdopted(app)) {
 		return false
 	}
 	if settings := app.Status.ReleaseSettingsFingerprint; settings != "" {

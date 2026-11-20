@@ -56,6 +56,24 @@ func staticRestoreSelection(app *appv1alpha1.App) *appv1alpha1.ReleaseConfigRefe
 	return nil
 }
 
+// restoresServedPublication reports a release that restores the publication
+// serving now: a static site's Restart (w32/049). It copies the served files,
+// so the served release's settings stay the ones served.
+func restoresServedPublication(app *appv1alpha1.App) bool {
+	ref := staticRestoreSelection(app)
+	return ref != nil && releaseHasServed(app) &&
+		ref.StaticPrefix == identity.ServedStaticPrefix(app.Status.StaticPrefix, app.Name, app.Status.ActiveRevision)
+}
+
+// restoredPublicationAdopted reports that the adopted release restores a
+// retained publication (a static Rollback or Restart). Its deploy request
+// consumed the pending-save marker, but not the saved settings it never
+// published.
+func restoredPublicationAdopted(app *appv1alpha1.App) bool {
+	ref := staticRestoreSelection(app)
+	return ref != nil && ref.Generation == app.Status.ReleaseGeneration
+}
+
 // recordStaticPublications records where the just-published revision lives,
 // and backfills the outgoing served revision when it predates these records:
 // its prefix is exactly what the static-server serves, so it is known rather

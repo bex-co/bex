@@ -659,9 +659,11 @@ func (s *Service) Rebuild(ctx context.Context, service string) (DeployView, erro
 }
 
 // Restart selects the live release's artifact and configuration without changing
-// saved settings. For a legacy repo deploy with no resolved artifact, it retains
-// the existing commit-pinned rebuild fallback; this cannot promise historical
-// configuration that was never recorded.
+// saved settings; a static site's is its retained publication, re-served with
+// no build (w32/049). For a legacy repo deploy with no resolved artifact, or a
+// static release with no retained publication, it retains the existing
+// commit-pinned rebuild fallback; this cannot promise historical configuration
+// that was never recorded.
 //
 // Authorization is lifecycle, like a parameter-free trigger: the commit is the
 // one already running, not content the caller selects, so a contributor can

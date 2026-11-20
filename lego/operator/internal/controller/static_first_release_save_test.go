@@ -150,6 +150,78 @@ func TestStaticSaveWaits(t *testing.T) {
 	}
 }
 
+// w32/049: a static Restart restores the publication serving now (bex-api
+// selects its retained prefix). Its request consumes the pending-save marker,
+// but the restored release published none of the saved settings, so it keeps
+// the served settings fingerprint and the save keeps waiting until a deploy
+// publishes it.
+func TestStaticRestartKeepsTheServedSettings(t *testing.T) {
+	spec := appv1alpha1.AppSpec{
+		Type: appv1alpha1.TypeStaticSite, Repo: "https://github.com/bex-co/bex", Branch: "main",
+		RootDir: "examples/static-site", BuildCommand: "mkdir -p dist && echo QA128F-PUB > dist/marker.txt", PublishPath: "dist",
+	}
+	served := releaseSettingsFingerprint(spec)
+	// Serving release 2 from site/rev-2/; release 3 is a save of a bad root
+	// directory, waiting for a deploy.
+	saved := func() *appv1alpha1.App {
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "site", Generation: 3, Annotations: map[string]string{
+				appv1alpha1.AnnotationReleaseGeneration:       "2",
+				appv1alpha1.AnnotationPendingSourceGeneration: "3",
+			}},
+			Spec: spec,
+			Status: appv1alpha1.AppStatus{
+				Phase: appv1alpha1.PhaseRunning, ReleaseGeneration: 2, ActiveRevision: "rev-2", StaticPrefix: "site/rev-2/",
+				ReleaseFingerprint: desiredAppReleaseIdentity(spec).release, ReleaseSettingsFingerprint: served,
+			},
+		}
+		app.Spec.RootDir, app.Spec.RestartedAt = "examples/nope-128f", "2026-11-20T00:49:00Z"
+		return app
+	}
+	restore := func(app *appv1alpha1.App, prefix string) {
+		app.Generation = 4
+		app.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "4"
+		app.Spec.RestartedAt = "2026-11-20T00:51:44Z"
+		app.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: 4, Image: "zot/site:gen-2@sha256:bb", StaticPrefix: prefix}
+		if d := prepareAppReleaseDecision(app, nil); !d.releaseChanged || app.Status.ReleaseGeneration != 4 {
+			t.Fatalf("decision = %+v (release %d), want the restore adopted as release 4", d, app.Status.ReleaseGeneration)
+		}
+	}
+
+	app := saved()
+	if !staticSaveWaits(app) {
+		t.Fatal("the save must wait before the restart")
+	}
+	restore(app, "site/rev-2/")
+	if app.Status.ReleaseSettingsFingerprint != served {
+		t.Fatal("a restart that re-serves the served publication must keep the served settings")
+	}
+	if !staticSaveWaits(app) {
+		t.Fatal("the save must still wait while the restart copies the served publication")
+	}
+	app.Status.ActiveRevision, app.Status.StaticPrefix = "rev-4", "site/rev-4/"
+	if !staticSaveWaits(app) || undeployedChangesReason(app, true, false) != appv1alpha1.UndeployedReasonSaved {
+		t.Fatal("the save must still read as a saved, undeployed change once the restart serves")
+	}
+
+	// The next deploy publishes the save.
+	app.Generation = 5
+	app.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "5"
+	app.Spec.ReleaseConfig, app.Spec.RestartedAt = nil, "2026-11-20T00:58:00Z"
+	prepareAppReleaseDecision(app, nil)
+	if staticSaveWaits(app) || app.Status.ReleaseSettingsFingerprint != releaseSettingsFingerprint(app.Spec) {
+		t.Fatal("a deploy that publishes the save must record its settings and end the wait")
+	}
+
+	// Control: a rollback to another release's publication, whose settings
+	// are not recorded, records the saved ones as before w32/049.
+	app = saved()
+	restore(app, "site/rev-1/")
+	if app.Status.ReleaseSettingsFingerprint != releaseSettingsFingerprint(app.Spec) {
+		t.Fatal("a rollback to another publication must record the saved settings")
+	}
+}
+
 // A dispatch records its release's saved settings next to its identity, and a
 // deploy that only restamps them records the same settings (w8/339).
 func TestDispatchRecordsReleaseSettings(t *testing.T) {

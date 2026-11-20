@@ -173,13 +173,15 @@ func (s *Service) openSelectedRelease(ctx context.Context, a *appv1alpha1.App, s
 	})
 }
 
-// restartSelectedRelease restarts the artifact and configuration serving now.
-// Old records without a resolved image retain the established commit-pinned
-// fallback (nil, nil). Refusals and the started notification name service, the
-// caller's selector, as Trigger's do; a.Name is the internal tenant-prefixed CR
-// name (w8/128).
+// restartSelectedRelease restarts the artifact and configuration serving now:
+// a runtime release's image and configuration record, or a static site's
+// retained publication (w32/049). A release neither selects (an old record
+// without a resolved image, a static release with no retained publication)
+// retains the established commit-pinned fallback (nil, nil). Refusals and the
+// started notification name service, the caller's selector, as Trigger's do;
+// a.Name is the internal tenant-prefixed CR name (w8/128).
 func (s *Service) restartSelectedRelease(ctx context.Context, service string, a *appv1alpha1.App) (*DeployView, error) {
-	if s.Store == nil || appStoreID(a) == "" || a.Spec.Type == appv1alpha1.TypeStaticSite {
+	if s.Store == nil || appStoreID(a) == "" {
 		return nil, nil
 	}
 	if err := s.validateTrigger(service, a, TriggerParams{restart: true}); err != nil {
@@ -187,7 +189,7 @@ func (s *Service) restartSelectedRelease(ctx context.Context, service string, a 
 	}
 	// This unlocked read only picks snapshot Restart over the legacy fallback;
 	// the release actually restarted is selected again under the lock.
-	if target, err := s.servingDeploy(ctx, service, a); err != nil || target.ResolvedImage == "" {
+	if selectable, err := s.restartSelectable(ctx, service, a); !selectable || err != nil {
 		return nil, err
 	}
 	d, err := s.openSelectedRelease(ctx, a, func(a *appv1alpha1.App) (store.Deploy, *appv1alpha1.ReleaseConfigReference, error) {
@@ -207,9 +209,27 @@ func (s *Service) restartSelectedRelease(ctx context.Context, service string, a 
 	return &result, nil
 }
 
+// restartSelectable reports whether Restart can select the release serving
+// now; false keeps the legacy commit-pinned fallback.
+func (s *Service) restartSelectable(ctx context.Context, service string, a *appv1alpha1.App) (bool, error) {
+	if a.Spec.Type != appv1alpha1.TypeStaticSite {
+		target, err := s.servingDeploy(ctx, service, a)
+		return err == nil && target.ResolvedImage != "", err
+	}
+	target, selected, err := s.staticRestartSelection(ctx, service, a)
+	if err == nil && selected == nil && target.ID != "" {
+		logf.FromContext(ctx).Info("static restart rebuilds the live commit with the saved settings: the serving release has no retained publication",
+			"app", a.Name, "deploy", target.ID, "generation", target.Generation)
+	}
+	return selected != nil, err
+}
+
 // restartSelection selects the serving release's row and immutable runtime
 // inputs, or a nil selection for the legacy commit-pinned fallback.
 func (s *Service) restartSelection(ctx context.Context, service string, a *appv1alpha1.App) (store.Deploy, *appv1alpha1.ReleaseConfigReference, error) {
+	if a.Spec.Type == appv1alpha1.TypeStaticSite {
+		return s.staticRestartSelection(ctx, service, a)
+	}
 	target, err := s.servingDeploy(ctx, service, a)
 	if err != nil || target.ResolvedImage == "" {
 		return target, nil, err
@@ -220,6 +240,26 @@ func (s *Service) restartSelection(ctx context.Context, service string, a *appv1
 		err = unresolvedServing(service, a, "its configuration record is unavailable", retryShortly)
 	}
 	return target, selected, err
+}
+
+// staticRestartSelection selects a static site's serving release and its
+// retained publication, the selection Rollback makes for a target
+// (staticReleaseSelection, w4/m197). Render's Restart keeps "the exact same Git
+// commit and configuration as the running instance", so the copy re-serves
+// what is live: nothing builds, and the saved build command, root directory and
+// publish directory wait for the next deploy (w32/049). A nil selection (a
+// release published before w4/m197, or past the retained window) keeps the
+// commit-pinned fallback.
+func (s *Service) staticRestartSelection(ctx context.Context, service string, a *appv1alpha1.App) (store.Deploy, *appv1alpha1.ReleaseConfigReference, error) {
+	target, err := s.servingDeploy(ctx, service, a)
+	if err != nil || target.ID == "" {
+		return target, nil, err
+	}
+	prefix, err := s.retainedStaticPublication(ctx, a, target)
+	if err != nil || prefix == "" {
+		return target, nil, err
+	}
+	return target, &appv1alpha1.ReleaseConfigReference{Image: target.ResolvedImage, StaticPrefix: prefix}, nil
 }
 
 // servingDeploy is the deploy row of the release serving traffic, named by
@@ -257,6 +297,15 @@ func (s *Service) servingDeploy(ctx context.Context, service string, a *appv1alp
 		return store.Deploy{}, err
 	}
 	if d.Status == store.DeployLive {
+		return d, nil
+	}
+	if a.Spec.Type == appv1alpha1.TypeStaticSite {
+		// A static release restarts from its publication record, named by its
+		// generation alone: a direct (no-build) publish has no image, and a
+		// built one's is only the restart row's provenance (w32/049).
+		if a.Status.ReleaseGeneration == generation {
+			d.ResolvedImage = a.Status.Image
+		}
 		return d, nil
 	}
 	if a.Status.ReleaseGeneration != generation || a.Status.Image == "" {
