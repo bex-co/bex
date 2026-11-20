@@ -107,7 +107,7 @@ Compared with the capture ([project-observability.md](../../../../docs/render-ar
 | `↑`/`↓`, `Page Up`/`Page Down` | scroll | the focused list scrolls (↑/↓ move its row cursor) | matched |
 | `Shift+L` | clears logs, live tail only | clears while Live is on (service, datastore, project); Show earlier lines, pausing or new filters bring them back | matched; Render's way back unverified |
 | Not while typing | — (docs silent) | no shortcut fires in a field; `Esc` still leaves full screen | unverified (Render does not document it); the milestone's own requirement |
-| Row menu (…), New logs toast, "Return to Bottom" wording, Theme Settings link | shown in the capture | not built | drift, filed as [w3/081](../../081.md) |
+| Row menu (…), New logs toast, "Return to Bottom" wording, Theme Settings link | shown in the capture | not built | drift, filed as [w3/081](../081.md) |
 
 ADR018's Logs table gained the row "Log explorer display and shortcuts" with the same unverified points and the w3/081 drift.
 
