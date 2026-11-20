@@ -368,7 +368,7 @@ var projectMetricResourceGQLType = graphql.NewObject(graphql.ObjectConfig{
 var projectMetricsGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ProjectMetrics",
 	Fields: graphql.Fields{
-		// series carry `resource` (RESOURCE), `statusCode` (STATUS_CODE) or no
+		// series carry `resource` (RESOURCE), the code under `STATUS_CODE` (STATUS_CODE) or no
 		// label (NONE), and `quantile` beside `resource` for several percentiles.
 		"series": gqlutil.Typed(
 			graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(metricSeriesGQLType))),
@@ -416,7 +416,8 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 						return nil, err
 					}
 					for _, r := range qs {
-						out = append(out, metricSeriesResult{MetricSeries: r.MetricSeries, Quantile: r.Quantile, HasQuantile: r.HasQuantile})
+						ser := nameStatusCodeLabel(r.MetricSeries, q.GroupBy, graphqlStatusCodeLabel)
+						out = append(out, metricSeriesResult{MetricSeries: ser, Quantile: r.Quantile, HasQuantile: r.HasQuantile})
 					}
 				}
 				return out, nil

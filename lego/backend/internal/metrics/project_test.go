@@ -216,7 +216,7 @@ func TestProjectMetricsGroupBy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if labels := seriesLabels(byCode.Series, "statusCode"); labels != "200,500" || byCode.Series[0].Points[0].Value != 12 || byCode.Series[1].Points[0].Value != 4 {
+	if labels := seriesLabels(byCode.Series, "STATUS_CODE"); labels != "200,500" || byCode.Series[0].Points[0].Value != 12 || byCode.Series[1].Points[0].Value != 4 {
 		t.Errorf("STATUS_CODE should add each code across the four resources: %+v", byCode.Series)
 	}
 	for _, tc := range []struct{ metric, groupBy, want string }{

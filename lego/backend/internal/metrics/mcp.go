@@ -259,7 +259,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 					var withQuantiles []QuantileSeries
 					withQuantiles, err = s.MetricsWithQuantiles(ctx, q)
 					for i := range withQuantiles {
-						series = append(series, renderStatusCodeLabel(withQuantiles[i].MetricSeries, q.GroupBy))
+						series = append(series, nameStatusCodeLabel(withQuantiles[i].MetricSeries, q.GroupBy, restStatusCodeLabel))
 					}
 				}
 				if err != nil {

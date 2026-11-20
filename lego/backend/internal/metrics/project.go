@@ -329,7 +329,7 @@ func groupProjectSeries(groupBy string, reads []projectRead) []QuantileSeries {
 		byCode := map[string][]MetricSeries{}
 		for _, rd := range reads {
 			for _, ser := range rd.series {
-				code := ser.Labels["code"]
+				code := ser.Labels[sourceStatusCodeLabel]
 				byCode[code] = append(byCode[code], ser.MetricSeries)
 			}
 		}
@@ -339,7 +339,7 @@ func groupProjectSeries(groupBy string, reads []projectRead) []QuantileSeries {
 		}
 		sort.Strings(codes)
 		for _, code := range codes {
-			if sum, ok := sumSeries(map[string]string{"statusCode": code}, byCode[code]); ok {
+			if sum, ok := sumSeries(map[string]string{graphqlStatusCodeLabel: code}, byCode[code]); ok {
 				out = append(out, QuantileSeries{MetricSeries: sum})
 			}
 		}

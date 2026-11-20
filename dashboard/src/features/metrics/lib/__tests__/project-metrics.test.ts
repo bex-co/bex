@@ -86,7 +86,7 @@ describe("projectChartLines", () => {
 
   it("names a status-code line by its code and an ungrouped line not at all", () => {
     const byCode = projectChartLines(
-      [series({ statusCode: "200" }), series({ statusCode: "500" })],
+      [series({ STATUS_CODE: "200" }), series({ STATUS_CODE: "500" })],
       legend,
       new Set(),
       "var(--chart-1)",

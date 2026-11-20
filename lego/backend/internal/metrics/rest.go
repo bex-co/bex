@@ -304,7 +304,7 @@ func (s *Service) metricQuery(w http.ResponseWriter, r *http.Request, metric str
 			return
 		}
 		for _, ser := range series {
-			all = append(all, renderStatusCodeLabel(ser.MetricSeries, q.GroupBy))
+			all = append(all, nameStatusCodeLabel(ser.MetricSeries, q.GroupBy, restStatusCodeLabel))
 		}
 	}
 	core.WriteJSON(w, http.StatusOK, toRenderMetrics(all))

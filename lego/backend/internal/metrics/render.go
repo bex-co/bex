@@ -60,16 +60,25 @@ func toRenderMetricSeries(s MetricSeries) renderMetricSeries {
 	return renderMetricSeries{Labels: labels, Unit: s.Unit, Values: values}
 }
 
-// renderStatusCodeLabel renames a per-status breakdown's label to Render's
-// vocabulary: statusCode (its aggregateBy value and filters/http field), where
-// the sources label it code. REST and MCP get_metrics both apply it.
-func renderStatusCodeLabel(s MetricSeries, groupBy string) MetricSeries {
+// A per-status breakdown's label. The sources label it code; each surface
+// spells it as Render's same surface does (w3/080). REST and MCP say
+// statusCode, Render's aggregateBy value and filters/http field. GraphQL says
+// STATUS_CODE, the MetricQueryFilter value Render's dashboard finds the label
+// by (docs/render-artifacts/metrics-page.md § Status-code label).
+const (
+	sourceStatusCodeLabel  = "code"
+	restStatusCodeLabel    = "statusCode"
+	graphqlStatusCodeLabel = "STATUS_CODE"
+)
+
+// nameStatusCodeLabel renames a per-status breakdown's source label to name.
+func nameStatusCodeLabel(s MetricSeries, groupBy, name string) MetricSeries {
 	if groupBy != groupByStatus {
 		return s
 	}
-	if code, ok := s.Labels["code"]; ok {
-		delete(s.Labels, "code")
-		s.SetLabel("statusCode", code)
+	if code, ok := s.Labels[sourceStatusCodeLabel]; ok {
+		delete(s.Labels, sourceStatusCodeLabel)
+		s.SetLabel(name, code)
 	}
 	return s
 }

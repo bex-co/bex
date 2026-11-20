@@ -484,9 +484,12 @@ export function NetworkMetricsCard({
   );
 }
 
-/** The grouped series' display name: its status code, method or host label. */
+/**
+ * The grouped series' display name: its status code, method or host label.
+ * GraphQL names a status code `STATUS_CODE`, as Render's GraphQL does (w3/080).
+ */
 function groupLabel(labels: Record<string, string>): string {
-  return labels["code"] ?? labels["method"] ?? labels["host"] ?? "";
+  return labels["STATUS_CODE"] ?? labels["method"] ?? labels["host"] ?? "";
 }
 
 /** "0.9" → "p90": the overlaid latency line's legend name (percentile "All"). */

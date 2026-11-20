@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -83,6 +84,70 @@ func TestRESTAggregateByStatusCodeBreaksRequestsDown(t *testing.T) {
 	rec = serveREST(svc, "/v1/metrics/http-requests?resource=web")
 	if got := seriesFrom(t, rec.Body.Bytes()); len(got) != 1 {
 		t.Errorf("no aggregateBy = %d series, want 1", len(got))
+	}
+}
+
+// w3/080: one status breakdown, four surfaces, each naming the code as
+// Render's same surface does: statusCode on REST and MCP (Render's aggregateBy
+// value), STATUS_CODE on GraphQL metrics and projectMetrics (the
+// MetricQueryFilter value Render's dashboard reads the label by). None
+// answers the sources' code; GraphQL metrics did until w3/080.
+func TestStatusCodeBreakdownLabelOnEverySurface(t *testing.T) {
+	svc, _ := projectFixture(t)
+	ctx := context.Background()
+
+	// codesUnder joins each series' value for field, and fails on a series that
+	// carries the source's code or the other surface's spelling.
+	codesUnder := func(surface, field, other string, series []renderMetricSeries) string {
+		t.Helper()
+		var codes []string
+		for _, s := range series {
+			if labelValue(s.Labels, "code") != "" || labelValue(s.Labels, other) != "" {
+				t.Errorf("%s series labels = %+v, want %s and neither code nor %s", surface, s.Labels, field, other)
+			}
+			codes = append(codes, labelValue(s.Labels, field))
+		}
+		return strings.Join(codes, ",")
+	}
+
+	rest := seriesFrom(t, serveREST(svc, "/v1/metrics/http-requests?resource=web&aggregateBy=statusCode").Body.Bytes())
+	if got := codesUnder("REST", "statusCode", "STATUS_CODE", rest); got != "200,500" {
+		t.Errorf("REST aggregateBy=statusCode codes = %q, want 200,500", got)
+	}
+
+	res, err := mcpSession(t, svc).CallTool(ctx, &mcp.CallToolParams{Name: "get_metrics", Arguments: map[string]any{
+		"resourceId": "web", "metricTypes": []string{"http_request_count"}, "aggregateHttpRequestCountsBy": "statusCode",
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := codesUnder("MCP", "statusCode", "STATUS_CODE", decodeGetMetrics(t, res).series()); got != "200,500" {
+		t.Errorf("MCP aggregateHttpRequestCountsBy=statusCode codes = %q, want 200,500", got)
+	}
+
+	schema, err := gqlSchema(svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gql := graphql.Do(graphql.Params{Schema: schema, Context: ctx, RequestString: `{
+		metrics(query: {filters: [{field: "RESOURCE", values: ["web"]}], name: "HTTP_REQUESTS", aggregateBy: ["STATUS_CODE"]}) { labels { field value } }
+		projectMetrics(query: {project: "prj-x", name: "HTTP_REQUESTS", groupBy: "STATUS_CODE"}) { series { labels { field value } } }
+	}`})
+	if len(gql.Errors) > 0 {
+		t.Fatalf("gql: %v", gql.Errors)
+	}
+	var data struct {
+		Metrics        []renderMetricSeries
+		ProjectMetrics struct{ Series []renderMetricSeries }
+	}
+	if raw, err := json.Marshal(gql.Data); err != nil || json.Unmarshal(raw, &data) != nil {
+		t.Fatalf("decode %+v: %v", gql.Data, err)
+	}
+	if got := codesUnder("GraphQL metrics", "STATUS_CODE", "statusCode", data.Metrics); got != "200,500" {
+		t.Errorf("GraphQL metrics aggregateBy STATUS_CODE codes = %q, want 200,500", got)
+	}
+	if got := codesUnder("GraphQL projectMetrics", "STATUS_CODE", "statusCode", data.ProjectMetrics.Series); got != "200,500" {
+		t.Errorf("GraphQL projectMetrics groupBy STATUS_CODE codes = %q, want 200,500", got)
 	}
 }
 

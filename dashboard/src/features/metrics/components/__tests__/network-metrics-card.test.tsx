@@ -592,12 +592,12 @@ describe("NetworkMetricsCard", () => {
           series: [
             {
               unit: "count",
-              labels: { code: "200" },
+              labels: { STATUS_CODE: "200" },
               points: [{ timestamp: "2026-07-06T09:00:00Z", value: 3 }],
             },
             {
               unit: "count",
-              labels: { code: "500" },
+              labels: { STATUS_CODE: "500" },
               points: [{ timestamp: "2026-07-06T09:00:00Z", value: 1 }],
             },
           ],
@@ -620,6 +620,52 @@ describe("NetworkMetricsCard", () => {
     expect(
       screen.getByRole("img", { name: /Bar chart with 1 data point$/ }),
     ).toBeInTheDocument();
+  });
+
+  it("groups requests by status code and legends each series with its GraphQL STATUS_CODE label (w3/080)", async () => {
+    const user = userEvent.setup();
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      if (
+        metric === "http_requests" &&
+        opts &&
+        "groupBy" in opts &&
+        opts.groupBy === "status"
+      ) {
+        return {
+          series: [
+            {
+              unit: "count",
+              labels: { STATUS_CODE: "201", resource: "srv-web" },
+              points: [{ timestamp: "2026-07-06T09:00:00Z", value: 3 }],
+            },
+            {
+              unit: "count",
+              labels: { STATUS_CODE: "503", resource: "srv-web" },
+              points: [{ timestamp: "2026-07-06T09:00:00Z", value: 1 }],
+            },
+          ],
+          loading: false,
+          unavailable: false,
+          storeUnavailable: false,
+          throttled: false,
+          degradedSources: [],
+          error: undefined,
+        };
+      }
+      return emptyResult();
+    });
+
+    renderCard();
+    await user.click(screen.getByLabelText("Group by"));
+    await user.click(screen.getByRole("option", { name: "Status code" }));
+
+    expect(mockUseMetrics).toHaveBeenCalledWith(
+      "beancount-cms",
+      "http_requests",
+      expect.objectContaining({ groupBy: "status" }),
+    );
+    expect(screen.getByText("201")).toBeInTheDocument();
+    expect(screen.getByText("503")).toBeInTheDocument();
   });
 
   it("groups requests by host and legends each series with its host (w5/m140)", async () => {

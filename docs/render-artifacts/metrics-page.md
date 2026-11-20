@@ -204,3 +204,17 @@ No Render database was available to compare against (a Render account is `w10/bl
 ### Series growth
 
 The new series are the network pair per Postgres instance pod and the transaction pair per tenant database per instance pod. Production head series before the rollout: 121,049 (2026-11-17T01:55Z), with 4 tenant Postgres instance pods holding one tenant database each, so about 16 new series. The measured growth after the rollout is recorded in w7/m430.
+
+## Status-code label (w3/080, 2026-11-20)
+
+A per-status breakdown of Total Requests named its code differently on each bex surface: REST and MCP `statusCode`, GraphQL `projectMetrics` `statusCode`, and GraphQL `metrics` the sources' own `code`. Render's GraphQL label had not been captured.
+
+**Read from Render's public dashboard bundle, without sign-in.** `https://dashboard.render.com/` loads `assets/index-*.js`; following its `./*.js` imports fetches about 450 chunks (the method of [project-observability.md § Operators per field](project-observability.md#operators-per-field-read-from-the-bundle-2026-11-19-w3m523)). The hashes change with every Render deploy, so find the chunks by name.
+
+- A GraphQL `MetricSeries` carries `labels: [MetricResultLabel {field, value}]`, and `field` is the `MetricQueryFilter` enum (`BUILD | CUSTOM | … | HOST | INSTANCE | … | RESOURCE | … | STATUS_CODE | TASK_NAME | TASK_STATE | …`, in `git-*.js`). The same enum names the filters and `aggregateBy` entries of `MetricsQueryInput` and the `outputFilters` of `metricsFilters`.
+- The service Metrics page colors a status line by `labels.find(l => l.field === STATUS_CODE)?.value` (`ServiceMetrics-*.js`), and sorts a `STATUS_CODE` breakdown by its first label's value.
+- The project Service Metrics page keys a series by its `RESOURCE` and `INSTANCE` labels (`ProjectMetrics-*.js`), and its request group-by is `RESOURCE | STATUS_CODE`.
+
+**bex's choice.** Each surface names the code as Render's same surface does. REST `aggregateBy=statusCode` and MCP `aggregateHttpRequestCountsBy: statusCode` label it `statusCode`, Render's REST vocabulary (its `aggregateBy` value and `filters/http` field). GraphQL `metrics(aggregateBy: ["STATUS_CODE"])` and `projectMetrics(groupBy: "STATUS_CODE")` label it `STATUS_CODE`. No surface answers `code`. `TestStatusCodeBreakdownLabelOnEverySurface` pins all four.
+
+**Still apart.** bex's other GraphQL labels keep REST's spelling (`resource`, `instance`, `host`, `method`), where Render's GraphQL uses the same enum (`RESOURCE`, `INSTANCE`, …): [w3/087](../../.pm/w3/087.md).

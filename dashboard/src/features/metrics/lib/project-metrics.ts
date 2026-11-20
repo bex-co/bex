@@ -85,7 +85,7 @@ export function projectChartLines(
       });
       return;
     }
-    const code = s.labels["statusCode"];
+    const code = s.labels["STATUS_CODE"];
     lines.push(
       code !== undefined
         ? { points: s.points, color: seriesColor(i), label: code }
