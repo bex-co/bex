@@ -8,7 +8,7 @@
 - a paused view that offers "New logs in Live Tail" when new lines arrive;
 - an Options menu that ends with a Theme Settings link to an Appearance section in account Settings.
 
-**Status:** todo (t001–t008 and t010–t012 done; t009's walk on the tree done, its production walk waits for a pin carrying the milestone)
+**Status:** blocked — t001–t008 and t010–t012 done, shipped in `c4c67370b`; t009's walk on the tree passed (§ Verification record); its production walk waits for a pin carrying `c4c67370b`, then t013 closes
 
 ## Tasks (in order)
 
@@ -42,7 +42,7 @@ Total: **13 tasks, about 9h**.
 4. **New logs in Live Tail.** With Live off (bex's counterpart of a Render relative range, per t001), a new line matching the explorer's filters brings up a centred "New logs in Live Tail" button. It has a refresh icon, the tooltip "Switch to Live Tail" and a Dismiss (×) button. Clicking it turns Live on. Dismissing it hides it until Live, the range or a filter changes. What the paused view shows does not change underneath the reader.
 5. **Theme Settings.** Account Settings (`/settings`) has an Appearance section (`#appearance`) with Render's Dashboard Theme choice, the same setting the account menu's theme submenu changes. Every explorer's Options menu ends with **Theme Settings** (a settings icon) linking to `/settings#appearance`.
 6. **Each with a test**, failing when the behaviour is reverted. Every new string is translated into all eight languages.
-7. **Recorded.** The [capture](../../../docs/render-artifacts/project-observability.md) § The view page and the [ADR018](../../../docs/ADR018-render-parity.md) Logs row "Log explorer display and shortcuts" describe what Render does and what bex does. Every remaining difference is either named with its follow-up item or listed under ADR018's recorded divergences. The ADR018 line "Not built, filed as w3/081" is gone.
+7. **Recorded.** The [capture](../../../../docs/render-artifacts/project-observability.md) § The view page and the [ADR018](../../../../docs/ADR018-render-parity.md) Logs row "Log explorer display and shortcuts" describe what Render does and what bex does. Every remaining difference is either named with its follow-up item or listed under ADR018's recorded divergences. The ADR018 line "Not built, filed as w3/081" is gone.
 8. **Live.** In a real browser at 1440 and 390, on the tree and then on production once a pin carries the milestone, every piece above works in the service Logs tab, and the parts each explorer has work in a Postgres Logs tab, a project's Application Logs view and a deploy's log.
 
 ## Render's explorer, read from its dashboard bundle (2026-11-20)
@@ -61,7 +61,7 @@ The note asked for the row menu's items to be read in a Render workspace. Like w
 
 ## Mapping onto bex's Live switch (t001, 2026-11-20)
 
-The bundle was re-read on 2026-11-20 (`Logs-DOHYAXbe.js`, `UserSettings-3jrn6Tc2.js`, unchanged since the triage) and the findings are in the [capture](../../../docs/render-artifacts/project-observability.md#the-view-page). Render makes Live tail one of its time ranges; bex keeps a Live switch beside the range, so:
+The bundle was re-read on 2026-11-20 (`Logs-DOHYAXbe.js`, `UserSettings-3jrn6Tc2.js`, unchanged since the triage) and the findings are in the [capture](../../../../docs/render-artifacts/project-observability.md#the-view-page). Render makes Live tail one of its time ranges; bex keeps a Live switch beside the range, so:
 
 - **Render's Live tail range is bex's Live on, and a Render relative range (`1h` … `30d`) is bex's Live off on a preset range.** A custom range is a custom range in both. Render offers New logs in Live Tail only on a relative range, so bex offers it only with Live off on a preset range, never on a custom one (a View in context link opens a custom range and must not invite a jump away from the marked line).
 - **Held lines** apply to every explorer whose Live tail streams runtime lines while Live is on: the service Logs tab, a Postgres or Key Value Logs tab and a project's Application Logs and Request Logs views (Render's `isRuntimeServiceLogs`). A deploy's log follows a build and keeps adding lines, as Render's build log does. A paused explorer has nothing arriving, so it holds nothing.
@@ -93,8 +93,8 @@ t010 folds these into ADR018 and files each difference as its own item:
 
 ## Source + Goal linkage
 
-- **Source:** promoted from [w3/081](../done/081.md) 2026-11-20 by `/loopx w3`. That note was w3/m509's parity check (2026-11-19) against [project-observability.md](../../../docs/render-artifacts/project-observability.md) § The view page and the [ADR018](../../../docs/ADR018-render-parity.md) Logs row "Log explorer display and shortcuts".
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)). The log explorer is the surface every bex customer reads most, and these are the pieces of Render's that bex's still lacks.
+- **Source:** promoted from [w3/081](../../done/081.md) 2026-11-20 by `/loopx w3`. That note was w3/m509's parity check (2026-11-19) against [project-observability.md](../../../../docs/render-artifacts/project-observability.md) § The view page and the [ADR018](../../../../docs/ADR018-render-parity.md) Logs row "Log explorer display and shortcuts".
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)). The log explorer is the surface every bex customer reads most, and these are the pieces of Render's that bex's still lacks.
 - **Expected outcome:** a Render user's habits carry over to bex's explorer. They can copy one line, jump from a filtered search to its surrounding lines, open a Shell on the instance that wrote a line, read a busy tail without it moving under them, and see that a paused view has new lines.
 - **Why now:** w3/m505–m509 just rebuilt every explorer on one line list and one options menu (`LogLineList`, `LogOptionsMenu`), so each piece lands once for all five explorers. The triage read Render's bundle, so nothing waits on a Render workspace.
 - **Render parity task included:** this changes a customer-facing dashboard surface. Render's public API and MCP have no log explorer, so the check is dashboard-only.
