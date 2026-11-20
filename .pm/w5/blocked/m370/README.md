@@ -1,6 +1,6 @@
 # w5 · m370 — A spec change takes effect in seconds: the operator's App work queue is measured, alerted on and kept short
 
-**Worker:** worker5 **Goal:** the operator's App controller queue is visible on obs.bex.co, an alert fires when it backs up, and the cause of the intermittent minute-long lag is found and fixed, so a settings change such as maintenance mode reaches the cluster within seconds. **Status:** blocked (t001 to t006 done and shipped; t007 waits for production to run `500c5974b` for 24 h, see § Findings)
+**Worker:** worker5 **Goal:** the operator's App controller queue is visible on obs.bex.co, an alert fires when it backs up, and the cause of the intermittent minute-long lag is found and fixed, so a settings change such as maintenance mode reaches the cluster within seconds. **Status:** blocked (t001 to t006 done and shipped; t007's handovers, toggles and fixture cleanup done 2026-11-20; its 24 h queue reading waits for 2026-11-20T18:10Z, a day after the operator first ran `500c5974b`, see § Findings)
 
 ## Tasks (in order)
 
@@ -96,3 +96,32 @@ Production Prometheus (3 days kept), Loki and the operator's own `/metrics`, pin
 
 - **Gate:** production's pin must carry `500c5974b` (t003), and 24 hours of readings after that roll (`date gate: 2026-11-20T15:00Z`; the deploy started 13:53Z, and a full deploy takes about 30 minutes).
 - **Then t007** (its § Context says how): the 24 h queue reading over a window that starts after the roll, the handovers in Loki (about 2 s once the stopping pod runs t003's binary), a maintenance toggle through an operator rollout within 15 s, the five toggle pairs of DoD 3, the w21/012 append, and the fixtures deleted (GET 404).
+
+### 2026-11-20 — gate check (loopx w5, `/pm unblock`)
+
+- **Affected:** t007. **Source:** verified evidence; no user decision.
+- **The gate's checkable forms hold:** production's pin `12716d1d7097` carries `500c5974b` (`git merge-base --is-ancestor`), and 2026-11-20T15:00Z has passed.
+- **The 24 h it stood for does not yet exist.** The date was counted from the fix's commit (13:53Z). The first pin carrying it, `c81d2d447bd8`, rolled the operator at 18:07Z on the old image (that pod's container digest is the previous pin's), and the first pod running t003's binary was created at 18:08:52Z and led from 18:09:37Z. A full day after it ends 2026-11-20T18:10Z.
+- **So the item stays parked** for the 24 h reading alone (`date gate: 2026-11-20T18:15Z`). The rest of t007 was done in this run (below).
+
+### 2026-11-20 — t007's readings so far (loopx w5)
+
+Production Prometheus and Loki through `scripts/fetch-app-kubeconfig.sh` and port-forwards, as t002 read them. 26 Apps besides the fixture.
+
+- **Queue, the 20.95 h that exist (2026-11-19T18:10Z to 2026-11-20T15:07Z, 9 operator starts):**
+  - App queue wait p50 0.00005 s, p95 0.37 s, p99 7.2 s over 59,176 passes. Reconcile p50 0.10 s, p95 1.15 s. 0.20 of 2 workers busy on average.
+  - Split at each operator pod's creation as t002 did: the 10 minutes after a start hold 7% of the passes (4,163) and 98% of the waits over 10 s (221 of 226). Inside them p95 15 s and p99 83 s; outside them p95 0.087 s, with 0.009% of passes over 10 s (5 of 55,013; t002 measured 0.06 s and 0.034%).
+  - Each start still makes 16 to 32 passes wait over 10 s (t002: 13 to 85). The startup sweep of settled Apps at `LowPriority` is as long as before, which t003 chose to keep. `bex:operator_app_queue_wait_seconds:p95` reads 53 to 82 s for 4 to 6 minutes after each start, and `BexOperatorReconcileQueueSlow` goes pending then without firing (its `for` is 10 minutes).
+- **Handovers (Loki, `Wait completed, proceeding to shutdown the manager` to the next pod's `Successfully acquired lease`):**
+  - All 10 from a stopping pod on t003's binary took 0.05 to 3.3 s (median 1.8 s): 18:53, 18:54, 19:51, 19:54, 21:13, 21:15 and 22:00 on 11-19, then 04:25, 08:50 and 15:25 on 11-20.
+  - The two at 18:07 and 18:09 on 11-19 stopped the old binary and took 21.4 s and 18.2 s (t002: 14.3 to 20.7 s).
+  - Since 22:00Z on 11-19, each deploy has started the operator once (w5/196).
+- **Five toggle pairs (DoD 3), 15:04Z to 15:05Z:** on a new Starter image web service in `bex-canary` (`m370-toggle`), measured from the PATCH's start. Enabling flipped the public host in 3.8, 9.3, 4.5, 3.5 and 3.3 s, and disabling in 1.3, 1.7, 1.0, 1.3 and 8.7 s: 5 of 5 within 15 s. The two slowest were an 8.2 s PATCH and a 6.0 s flip after the PATCH answered.
+- **Through an operator rollout (DoD 2, t003's second half):**
+  - The deploy of pin `11b1e8f85f06` started a new operator pod at 15:25:23Z. The old leader stopped at 15:25:59.2Z and the new one led at 15:26:02.5Z (3.3 s). Its App workers started at 15:26:02.8Z, and its sweep held both workers until about 15:27:25Z (depth 21 at 15:26:15Z).
+  - From the new pod's creation through 15:28:24Z, the fixture's maintenance mode was toggled 62 times. Every flip came within 15 s, with no PATCH answering anything but 200. The 23 toggles inside the leaderless gap and the sweep took at most 9.6 s to enable and 12.2 s to disable; outside that window the slowest flip was 6.1 s.
+  - The toggled App was the first one the new leader reconciled, 0.4 s after its workers started. It then had a pass every 1 to 12 s while the sweep ran.
+  - Its slowest flip (12.2 s at 15:26:51Z) came while both workers were in long passes of sweep Apps (three such passes ended between 15:26:57Z and 15:27:02Z). A change goes ahead of the sweep but still waits for one of the two workers to come free.
+  - Only enabling depends on the operator: disabling is answered by the activator from its own watch while the Ingress still points at it (`hold.proxyNow`, w4/603).
+- **Fixture deleted:** DELETE 204, then GET 404; no App CR is left and the host answers 404. The QA session was logged out.
+- **Left for t007:** the 24 h reading over 2026-11-19T18:10Z to 2026-11-20T18:10Z (the queries above, and DoD 2's p95 of 5 s or less), recorded here and appended to [w21/012](../../../w21/done/012.md). The milestone then closes.
