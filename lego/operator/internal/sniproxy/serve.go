@@ -128,6 +128,27 @@ func Serve(
 	}
 }
 
+// HardStopOnManagerExit waits for the proxy's controller manager to return on
+// exited. If stopping, the release's signal, is already done, the manager
+// stopped with the same signal that starts Serve's drain, and the drain is left
+// to run (w6/m515). A manager that exits on its own would leave the routing
+// table frozen, so Serve is hard-stopped, after onErr reports a non-nil error.
+func HardStopOnManagerExit(
+	stopping context.Context,
+	exited <-chan error,
+	hardStop context.CancelFunc,
+	onErr func(error),
+) {
+	err := <-exited
+	if stopping.Err() != nil {
+		return
+	}
+	if err != nil && onErr != nil {
+		onErr(err)
+	}
+	hardStop()
+}
+
 // draining reports whether drain has closed; a nil drain never does.
 func draining(drain <-chan struct{}) bool {
 	select {

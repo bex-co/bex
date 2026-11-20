@@ -263,16 +263,9 @@ func main() {
 		logger.Error(err, "listen")
 		os.Exit(1)
 	}
-	go func() {
-		err := <-managerErrors
-		if stopping.Err() != nil {
-			return // stopped by the signal, which drains
-		}
-		if err != nil {
-			logger.Error(err, "manager exited")
-		}
-		cancel() // a manager that exits on its own stops Serve at once
-	}()
+	go sniproxy.HardStopOnManagerExit(stopping, managerErrors, cancel, func(err error) {
+		logger.Error(err, "manager exited")
+	})
 	// Serve admits each connection through the global cap BEFORE dispatching a
 	// handler goroutine, shedding overload at accept time (finding 6), and
 	// returns once a drain's last stream has ended.

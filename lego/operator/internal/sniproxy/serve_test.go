@@ -297,6 +297,82 @@ func TestAZeroBoundClosesEveryStreamAtOnce(t *testing.T) {
 	h.requireNoSlotsHeld()
 }
 
+// The release's signal stops the manager and starts the drain at once, as in
+// both mains. The manager's return must not hard-stop Serve: the open stream
+// still reads the reply the backend writes after the signal.
+func TestAManagerStoppedByTheSignalLeavesTheDrainRunning(t *testing.T) {
+	stopping, signal := context.WithCancel(t.Context())
+	defer signal()
+	h := startDrainHarness(t, Drain{Start: stopping.Done(), Timeout: time.Minute})
+	exited := make(chan error, 1)
+	go func() { <-stopping.Done(); exited <- nil }() // mgr.Start(stopping)
+	watched := make(chan struct{})
+	go func() {
+		defer close(watched)
+		HardStopOnManagerExit(stopping, exited, h.cancel, func(err error) {
+			t.Errorf("a manager stopped by the signal reported %v", err)
+		})
+	}()
+	client, backend := h.relayed()
+
+	signal()
+	select {
+	case <-watched:
+	case <-time.After(5 * time.Second):
+		t.Fatal("HardStopOnManagerExit never saw the manager return")
+	}
+	select {
+	case <-h.served:
+		t.Fatal("the manager's return on the signal hard-stopped the drain")
+	case <-time.After(100 * time.Millisecond):
+	}
+	if _, err := io.WriteString(backend, "reply\n"); err != nil {
+		t.Fatal(err)
+	}
+	_ = client.SetReadDeadline(time.Now().Add(5 * time.Second))
+	reply := make([]byte, len("reply\n"))
+	if _, err := io.ReadFull(client, reply); err != nil {
+		t.Fatalf("the drained stream lost its reply: %v", err)
+	}
+	_ = client.Close()
+	h.waitServed()
+	h.requireNoSlotsHeld()
+}
+
+// A manager that exits with no signal stops watching KeyValue and Database
+// changes, so Serve stops at once and closes every stream, and the manager's
+// error, if it has one, is reported.
+func TestAManagerThatExitsOnItsOwnStopsServeAtOnce(t *testing.T) {
+	for name, exitErr := range map[string]error{"with an error": errors.New("lost the API server"), "cleanly": nil} {
+		t.Run(name, func(t *testing.T) {
+			stopping := t.Context()
+			h := startDrainHarness(t, Drain{Start: stopping.Done(), Timeout: time.Hour})
+			client, _ := h.relayed()
+			exited := make(chan error, 1)
+			reported := make(chan error, 1)
+			go HardStopOnManagerExit(stopping, exited, h.cancel, func(err error) { reported <- err })
+
+			exited <- exitErr
+			requireClosed(t, client, time.Second)
+			h.waitServed()
+			h.requireNoSlotsHeld()
+			select {
+			case got := <-reported:
+				if exitErr == nil {
+					t.Fatalf("a clean exit reported %v", got)
+				}
+				if got != exitErr {
+					t.Fatalf("reported %v, want %v", got, exitErr)
+				}
+			default:
+				if exitErr != nil {
+					t.Fatalf("the manager's error %v was not reported", exitErr)
+				}
+			}
+		})
+	}
+}
+
 func TestDrainSecondsIsWholeSecondsAndFailsClosed(t *testing.T) {
 	const name = "BEX_TEST_PROXY_DRAIN_SECONDS"
 	for raw, want := range map[string]time.Duration{"": 0, "0": 0, "30": 30 * time.Second, "3600": time.Hour} {

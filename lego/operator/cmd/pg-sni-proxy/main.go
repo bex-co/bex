@@ -410,16 +410,9 @@ func main() {
 		log.Error(err, "failed to listen", "addr", addr)
 		os.Exit(1)
 	}
-	go func() {
-		err := <-mgrErrCh
-		if stopping.Err() != nil {
-			return // stopped by the signal, which drains
-		}
-		if err != nil {
-			log.Error(err, "manager exited")
-		}
-		cancel() // a manager that exits on its own stops Serve at once
-	}()
+	go sniproxy.HardStopOnManagerExit(stopping, mgrErrCh, cancel, func(err error) {
+		log.Error(err, "manager exited")
+	})
 
 	// Serve admits each connection through the global cap BEFORE dispatching a
 	// handler goroutine, shedding overload at accept time (finding 6), and
