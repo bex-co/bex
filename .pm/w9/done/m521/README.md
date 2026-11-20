@@ -1,6 +1,6 @@
 # w9 · m521 — A new Key Value's connection strings take Render's shapes: a credential-free internal URL and the external URL from the first read, a `REDISCLI_AUTH=… valkey-cli` command, and the store id as the user
 
-**Worker:** worker9 **Goal:** a client that reads a new Key Value's connection info, straight after the create as Render's Terraform provider does, gets the three strings Render answers, in Render's shapes, and each one connects once the store is available. **Status:** blocked (t001–t005, t007–t009 done; t006 waits for a production pin carrying `58c64788f`)
+**Worker:** worker9 **Goal:** a client that reads a new Key Value's connection info, straight after the create as Render's Terraform provider does, gets the three strings Render answers, in Render's shapes, and each one connects once the store is available. **Status:** done
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | The CLI command reads ` REDISCLI_AUTH=<password> valkey-cli --user … -h … -p … --tls`, and `bex kv-cli` still connects — **DONE** | 45m | t002 |
 | [t004](done/t004.md) | The credentialed strings name the store id as the user, with no running store restarted — **DONE** | 2h | t003 |
 | [t005](done/t005.md) | Recheck `keyvalue` and `redis` with the Terraform harness on dev-9 and grade class 10 — **DONE** | 1h | t001, t004 |
-| [t006](t006.md) | Production check on a pin that carries the milestone | 45m | t005 |
+| [t006](done/t006.md) | Production check on a pin that carries the milestone — **DONE** | 45m | t005 |
 | [t007](done/t007.md) | Render parity — **DONE** | 30m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 20m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
-| [t010](t010.md) | Closeout | 15m | t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 15m | t009 |
 
 Total: **10 tasks, about 8h45m**.
 
@@ -61,3 +61,10 @@ Total: **10 tasks, about 8h45m**.
 - **valkey-cli 8.1.1** sends a TLS server name only with `--sni` (`src/cli_common.c:111`, flag `src/valkey-cli.c:2799`). It reads `REDISCLI_AUTH` (`src/valkey-cli.c:87`). bex's shared edge needs the server name, so `--sni` stays in bex's command.
 - **The Render CLI's `kv-cli`** (`render-oss/cli` `pkg/tui/views/rediscli.go`, `loadDataRedisCLI`) splits `cliCommand` on spaces. It runs everything after `redis-cli`/`valkey-cli` as arguments and sets the process environment to exactly the words before it, so it relies on the `REDISCLI_AUTH=…` prefix. It falls back to `redis-cli` when `valkey-cli` is not installed. t003 rechecks it.
 - **Out of scope here, for t007 to weigh.** Render answers an external string even for a store with `ipAllowList: []`: the endpoint exists and the list admits nothing. A private bex store (`spec.public` false, w4/m116, w4/m315) has no external endpoint and no external string.
+
+## Unblock record (2026-11-19)
+
+- **Affected:** w9/m521 t006 (then t010).
+- **Source:** verified evidence. The gate cleared by itself: the newest `chore(deploy): pin platform images to 3e53abbe3bc3` (`a47204c7e`) carries `58c64788f` (`git merge-base --is-ancestor 58c64788f 3e53abbe3bc3` exits 0). On the production app cluster, `bex-api` (both pods), `bex-controller-manager` and every `bex-kv-sni-proxy` pod run `ghcr.io/bex-co/bex-operator@sha256:3cfea3ac…`, the digest that pin writes into `deploy/gitops/base/bex.yaml`.
+- **Next:** t006 on production as the QA user, then t010. No gate remains.
+- **Closed 2026-11-19:** t006 passed on production ([t006](done/t006.md)), and t010 closed the milestone.
