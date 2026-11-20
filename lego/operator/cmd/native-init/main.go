@@ -39,6 +39,9 @@ limitations under the License.
 // once; as PID 1 that ends whatever it left running, exactly as the container
 // always has. The status is the command's own, or 128 plus the signal that
 // killed it.
+//
+// Before the command starts, native-init links each secret file mounted at
+// /etc/secrets from the working directory, the service root (linkSecretFiles).
 package main
 
 import (
@@ -59,14 +62,15 @@ var forwarded = []os.Signal{
 }
 
 func main() {
-	os.Exit(run(os.Args[1:], os.Stderr))
+	os.Exit(run(os.Args[1:], secretFilesDir, os.Stderr))
 }
 
-func run(argv []string, stderr io.Writer) int {
+func run(argv []string, secrets string, stderr io.Writer) int {
 	if len(argv) == 0 {
 		_, _ = fmt.Fprintln(stderr, "native-init: no command to run")
 		return 2
 	}
+	linkSecretFiles(secrets, ".", stderr)
 	// PID 1 adopts orphans already; anywhere else they are claimed.
 	asInit := os.Getpid() == 1
 	if !asInit {

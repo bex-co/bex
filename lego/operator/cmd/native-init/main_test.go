@@ -34,14 +34,17 @@ import (
 // The test binary doubles as native-init, so every case runs real processes.
 func TestMain(m *testing.M) {
 	if os.Getenv("BEX_NATIVE_INIT_UNDER_TEST") == "1" {
-		os.Exit(run(os.Args[1:], os.Stderr))
+		os.Exit(run(os.Args[1:], os.Getenv("BEX_NATIVE_INIT_TEST_SECRETS"), os.Stderr))
 	}
 	os.Exit(m.Run())
 }
 
+// nativeInit runs native-init with no secret files mounted, unless the caller
+// names a directory in BEX_NATIVE_INIT_TEST_SECRETS after it.
 func nativeInit(args ...string) *exec.Cmd {
 	cmd := exec.Command(os.Args[0], args...)
-	cmd.Env = append(os.Environ(), "BEX_NATIVE_INIT_UNDER_TEST=1", "QA_MARKER=kept as is")
+	cmd.Env = append(os.Environ(), "BEX_NATIVE_INIT_UNDER_TEST=1", "QA_MARKER=kept as is",
+		"BEX_NATIVE_INIT_TEST_SECRETS=/nonexistent/bex-native-init/secrets")
 	return cmd
 }
 
