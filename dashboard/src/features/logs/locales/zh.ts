@@ -562,6 +562,10 @@ const zhLogs: Record<string, TranslationEntry> = {
     message: "不属于",
     description: "Filter operator IS_NOT",
   },
+  "logs.viewOperatorContains": {
+    message: "包含",
+    description: "Filter operator CONTAINS, Text Search's only operator",
+  },
   "logs.viewValuesPlaceholder": {
     message: "选择值",
     description:

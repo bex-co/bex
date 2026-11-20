@@ -168,7 +168,13 @@ func TestProjectViewFiltersNarrowTheScope(t *testing.T) {
 		{`{filters: [{field: "ENVIRONMENT", operator: "IS", values: ["evm-c185th5c2rvvnhbfiltg"]}], version: 1}`, "web:web first|" + projectPG + "|web:web second"},
 		{`{filters: [{field: "RESOURCE_TYPE", operator: "IS_NOT", values: ["SERVICE", "POSTGRES"]}], version: 1}`, "nightly:cron ran"},
 		{`{filters: [{field: "RESOURCE", operator: "IS", values: ["` + postgresID + `"]}], version: 1}`, projectPG},
+		// Text Search in Render's spelling (w3/083) and in bex's earlier one.
+		{`{filters: [{field: "TEXT_SEARCH", operator: "CONTAINS", values: ["second"]}], version: 1}`, "web:web second"},
 		{`{filters: [{field: "TEXT", operator: "IS", values: ["second"]}], version: 1}`, "web:web second"},
+		// The view's range is the page's to apply, in either shape, and
+		// Render's display options do not narrow the lines.
+		{`{filters: [{field: "RESOURCE", operator: "IS", values: ["` + postgresID + `"]}], version: 1, timeRange: {relative: "4h"}, display: {requestGroupBy: "RESOURCE"}}`, projectPG},
+		{`{filters: [{field: "RESOURCE", operator: "IS", values: ["` + postgresID + `"]}, {field: "TIME_RANGE", operator: "IS", values: ["4h"]}], version: 1}`, projectPG},
 	} {
 		list, errs := runProjectQuery(t, svc, context.Background(), `project:"prj-observed", direction:"forward", filterDocument:`+tc.doc)
 		if errs != nil {
@@ -253,7 +259,10 @@ func TestProjectReadRefusals(t *testing.T) {
 		{`project:"prj-observed", type:"build"`, "a project log view reads type=app or type=request"},
 		{`project:"prj-observed", filterDocument:{filters: [], version: 2}`, "version 2 is not supported"},
 		{`project:"prj-observed", filterDocument:{filters: [{field: "METHOD", operator: "IS", values: ["GET"]}], version: 1}`, `filter field "METHOD" is not a field of a APPLICATION_LOGS view`},
-		{`project:"prj-observed", filterDocument:{filters: [{field: "TEXT", operator: "IS_NOT", values: ["error"]}], version: 1}`, `"TEXT" does not support operator IS_NOT`},
+		{`project:"prj-observed", filterDocument:{filters: [{field: "TEXT_SEARCH", operator: "IS_NOT", values: ["error"]}], version: 1}`, `"TEXT_SEARCH" does not support operator IS_NOT`},
+		{`project:"prj-observed", filterDocument:{filters: [{field: "TEXT", operator: "IS_NOT", values: ["error"]}], version: 1}`, `"TEXT_SEARCH" does not support operator IS_NOT`},
+		{`project:"prj-observed", text:"x", filterDocument:{filters: [{field: "TEXT_SEARCH", operator: "CONTAINS", values: ["y"]}], version: 1}`, "the view already filters on TEXT_SEARCH"},
+		{`project:"prj-observed", filterDocument:{filters: [], version: 1, timeRange: {relative: "90d"}}`, `timeRange.relative has an invalid value "90d"`},
 		{`project:"prj-observed", filterDocument:{filters: [{field: "ENVIRONMENT", operator: "IS_NOT", values: ["evm-c185th5c2rvvnhbfiltg"]}], version: 1}`, `"ENVIRONMENT" does not support operator IS_NOT`},
 		{`project:"prj-observed", filterDocument:{filters: [{field: "TIME_RANGE", operator: "IS_NOT", values: ["4h"]}], version: 1}`, `"TIME_RANGE" does not support operator IS_NOT`},
 		{`project:"prj-observed", level:["error"], filterDocument:{filters: [{field: "LEVEL", operator: "IS", values: ["warning"]}], version: 1}`, "the view already filters on LEVEL"},

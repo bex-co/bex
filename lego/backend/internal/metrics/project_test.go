@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -193,6 +195,22 @@ func TestProjectMetricsFollowTheViewDocument(t *testing.T) {
 	}
 	if labels := seriesLabels(got.Series, LabelResource); labels != named("web,jobs") {
 		t.Errorf("series = %s, want the environment's services but api", labels)
+	}
+	// The view's range in Render's shape (w3/083) or bex's earlier
+	// TIME_RANGE row, and Render's display options, leave the scope as it is.
+	for _, extra := range []map[string]any{
+		{"timeRange": map[string]any{"relative": "7d"}, "display": map[string]any{"requestGroupBy": "STATUS_CODE"}},
+		{"filters": append(slices.Clone(doc["filters"].([]any)), map[string]any{"field": "TIME_RANGE", "operator": "IS", "values": []any{"7d"}})},
+	} {
+		shaped := maps.Clone(doc)
+		maps.Copy(shaped, extra)
+		got, err := svc.projectMetrics(context.Background(), ProjectMetricQuery{Project: "prj-x", Metric: MetricMemory, FilterDocument: shaped})
+		if err != nil {
+			t.Fatalf("%v: %v", shaped, err)
+		}
+		if labels := seriesLabels(got.Series, LabelResource); labels != named("web,jobs") {
+			t.Errorf("%v: series = %s, want the environment's services but api", shaped, labels)
+		}
 	}
 	bad := map[string]any{"version": 1, "filters": []any{map[string]any{"field": "LEVEL", "operator": "IS", "values": []any{"error"}}}}
 	if _, err := svc.projectMetrics(context.Background(), ProjectMetricQuery{Project: "prj-x", Metric: MetricCPU, FilterDocument: bad}); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "LEVEL") {

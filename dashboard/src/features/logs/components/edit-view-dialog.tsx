@@ -167,7 +167,10 @@ function EditViewForm({
     setAttempted(true);
     if (!isValidLabel(name) || incomplete.size > 0 || saving) return;
     setFailure(null);
-    const filters = documentFromRows(rows);
+    const filters = documentFromRows(
+      rows,
+      target.kind === "edit" ? target.view.filters : undefined,
+    );
     try {
       const saved =
         target.kind === "edit"
@@ -449,6 +452,7 @@ function operatorLabel(
   operator: ViewOperator,
   single: boolean,
 ): string {
+  if (operator === "CONTAINS") return t("logs.viewOperatorContains");
   if (operator === "IS_NOT") return t("logs.viewOperatorIsNotOneOf");
   return single ? t("logs.viewOperatorIs") : t("logs.viewOperatorIsOneOf");
 }

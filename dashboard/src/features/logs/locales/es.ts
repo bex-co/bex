@@ -609,6 +609,10 @@ const esLogs: Record<string, TranslationEntry> = {
     message: "no es uno de",
     description: "Filter operator IS_NOT",
   },
+  "logs.viewOperatorContains": {
+    message: "contiene",
+    description: "Filter operator CONTAINS, Text Search's only operator",
+  },
   "logs.viewValuesPlaceholder": {
     message: "Selecciona valores",
     description:

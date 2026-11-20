@@ -17,6 +17,7 @@ limitations under the License.
 package savedsearch
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -40,6 +41,14 @@ func TestParseAcceptsRenderShapedDocuments(t *testing.T) {
 			{"field": "RESOURCE", "operator": "IS", "values": ["srv-c185th5c2rvvnhbfiltg", "dpg-c185th5c2rvvnhbfiltg", "red-c185th5c2rvvnhbfiltg"]},
 			{"field": "LEVEL", "operator": "IS", "values": ["error", "warning"]},
 			{"field": "INSTANCE", "operator": "IS", "values": ["srv-c185th5c2rvvnhbfiltg-abcde"]},
+			{"field": "TEXT_SEARCH", "operator": "CONTAINS", "values": ["timeout"]}],
+			"timeRange": {"relative": "4h"}, "version": 1}`},
+		// Render's whole document: a metrics view's display options, kept.
+		{TypeMetrics, `{"version": 1, "filters": [], "timeRange": {"relative": "7d"},
+			"display": {"aggregationMethod": "AVG", "requestGroupBy": "STATUS_CODE", "groupBy": "RESOURCE", "rootTasksOnly": false}}`},
+		{TypeApplicationLogs, `{"version": 1, "filters": [], "timeRange": {}, "display": null}`},
+		// bex's own spellings before w3/083 still read.
+		{TypeApplicationLogs, `{"filters": [
 			{"field": "TEXT", "operator": "IS", "values": ["timeout"]},
 			{"field": "TIME_RANGE", "operator": "IS", "values": ["4h"]}], "version": 1}`},
 		{TypeRequestLogs, `{"filters": [
@@ -84,13 +93,24 @@ func TestParseRefusesByName(t *testing.T) {
 		{TypeApplicationLogs, `{"version": 1} {}`, "trailing data"},
 		{TypeApplicationLogs, `[]`, "not a filter document"},
 		{TypeApplicationLogs, `{"filters": [{"field": "METHOD", "operator": "IS", "values": ["GET"]}], "version": 1}`, `filter field "METHOD" is not a field of a APPLICATION_LOGS view`},
-		{TypeRequestLogs, `{"filters": [{"field": "TEXT", "operator": "IS", "values": ["x"]}], "version": 1}`, `filter field "TEXT" is not a field of a REQUEST_LOGS view`},
+		{TypeRequestLogs, `{"filters": [{"field": "TEXT", "operator": "IS", "values": ["x"]}], "version": 1}`, `filter field "TEXT_SEARCH" is not a field of a REQUEST_LOGS view`},
 		{TypeMetrics, `{"filters": [{"field": "LEVEL", "operator": "IS", "values": ["error"]}], "version": 1}`, `filter field "LEVEL" is not a field of a METRICS view`},
 		{TypeApplicationLogs, `{"filters": [{"field": "LEVEL", "operator": "IS", "values": ["error"]}, {"field": "LEVEL", "operator": "IS", "values": ["info"]}], "version": 1}`, `"LEVEL" appears more than once`},
-		{TypeApplicationLogs, `{"filters": [{"field": "LEVEL", "operator": "CONTAINS", "values": ["error"]}], "version": 1}`, `unknown operator "CONTAINS"`},
+		{TypeApplicationLogs, `{"filters": [{"field": "LEVEL", "operator": "MATCHES", "values": ["error"]}], "version": 1}`, `unknown operator "MATCHES"`},
+		{TypeApplicationLogs, `{"filters": [{"field": "LEVEL", "operator": "CONTAINS", "values": ["error"]}], "version": 1}`, `"LEVEL" does not support operator CONTAINS`},
+		{TypeApplicationLogs, `{"filters": [{"field": "TEXT_SEARCH", "operator": "IS", "values": ["timeout"]}], "version": 1}`, `"TEXT_SEARCH" does not support operator IS`},
+		{TypeRequestLogs, `{"filters": [{"field": "TEXT_SEARCH", "operator": "CONTAINS", "values": ["x"]}], "version": 1}`, `filter field "TEXT_SEARCH" is not a field of a REQUEST_LOGS view`},
+		{TypeApplicationLogs, `{"filters": [{"field": "TEXT", "operator": "IS", "values": ["a"]}, {"field": "TEXT_SEARCH", "operator": "CONTAINS", "values": ["b"]}], "version": 1}`, `"TEXT_SEARCH" appears more than once`},
+		{TypeApplicationLogs, `{"filters": [{"field": "TIME_RANGE", "operator": "IS", "values": ["4h"]}], "timeRange": {"relative": "1h"}, "version": 1}`, `"TIME_RANGE" appears more than once, or beside timeRange`},
+		{TypeApplicationLogs, `{"filters": [], "timeRange": {"relative": "90d"}, "version": 1}`, `timeRange.relative has an invalid value "90d"`},
+		{TypeApplicationLogs, `{"filters": [], "timeRange": {"relative": "4h", "absolute": "x"}, "version": 1}`, `unknown field "absolute"`},
+		{TypeMetrics, `{"filters": [], "display": ["RESOURCE"], "version": 1}`, "display must be a JSON object"},
+		{TypeMetrics, `{"filters": [], "display": {"groupBy": "\u0000"}, "version": 1}`, "display must be a JSON object of valid text"},
+		{TypeMetrics, `{"filters": [], "display": {"groupBy": "` + strings.Repeat("x", maxDisplayBytes) + `"}, "version": 1}`, "at most 4096 bytes"},
 		{TypeApplicationLogs, `{"filters": [{"field": "ENVIRONMENT", "operator": "IS_NOT", "values": ["` + env + `"]}], "version": 1}`, `"ENVIRONMENT" does not support operator IS_NOT`},
 		{TypeRequestLogs, `{"filters": [{"field": "ENVIRONMENT", "operator": "IS_NOT", "values": ["` + env + `"]}], "version": 1}`, `"ENVIRONMENT" does not support operator IS_NOT`},
-		{TypeApplicationLogs, `{"filters": [{"field": "TEXT", "operator": "IS_NOT", "values": ["timeout"]}], "version": 1}`, `"TEXT" does not support operator IS_NOT`},
+		{TypeApplicationLogs, `{"filters": [{"field": "TEXT_SEARCH", "operator": "IS_NOT", "values": ["timeout"]}], "version": 1}`, `"TEXT_SEARCH" does not support operator IS_NOT`},
+		{TypeApplicationLogs, `{"filters": [{"field": "TEXT", "operator": "IS_NOT", "values": ["timeout"]}], "version": 1}`, `"TEXT_SEARCH" does not support operator IS_NOT`},
 		{TypeApplicationLogs, `{"filters": [{"field": "TIME_RANGE", "operator": "IS_NOT", "values": ["4h"]}], "version": 1}`, `"TIME_RANGE" does not support operator IS_NOT`},
 		{TypeMetrics, `{"filters": [{"field": "TIME_RANGE", "operator": "IS_NOT", "values": ["4h"]}], "version": 1}`, `"TIME_RANGE" does not support operator IS_NOT`},
 		{TypeApplicationLogs, `{"filters": [{"field": "LEVEL", "operator": "IS", "values": []}], "version": 1}`, `"LEVEL" needs at least one value`},
@@ -98,10 +118,11 @@ func TestParseRefusesByName(t *testing.T) {
 		{TypeApplicationLogs, `{"filters": [{"field": "ENVIRONMENT", "operator": "IS", "values": ["prj-c185th5c2rvvnhbfiltg"]}], "version": 1}`, `"ENVIRONMENT" has an invalid value`},
 		{TypeApplicationLogs, `{"filters": [{"field": "RESOURCE", "operator": "IS", "values": ["evg-c185th5c2rvvnhbfiltg"]}], "version": 1}`, `"RESOURCE" has an invalid value`},
 		{TypeApplicationLogs, `{"filters": [{"field": "RESOURCE_TYPE", "operator": "IS", "values": ["STATIC_SITE"]}], "version": 1}`, `"RESOURCE_TYPE" has an invalid value "STATIC_SITE"`},
-		{TypeApplicationLogs, `{"filters": [{"field": "TIME_RANGE", "operator": "IS", "values": ["90d"]}], "version": 1}`, `"TIME_RANGE" has an invalid value "90d"`},
-		{TypeApplicationLogs, `{"filters": [{"field": "TEXT", "operator": "IS", "values": [""]}], "version": 1}`, `"TEXT" has an empty, invalid or over-long value`},
-		{TypeApplicationLogs, `{"filters": [{"field": "TEXT", "operator": "IS", "values": ["` + strings.Repeat("x", maxValueBytes+1) + `"]}], "version": 1}`, `"TEXT" has an empty, invalid or over-long value`},
-		{TypeApplicationLogs, `{"filters": [{"field": "TEXT", "operator": "IS", "values": [` + strings.Repeat(`"x",`, maxValues) + `"x"]}], "version": 1}`, `"TEXT" takes at most 50 values`},
+		{TypeApplicationLogs, `{"filters": [{"field": "TIME_RANGE", "operator": "IS", "values": ["90d"]}], "version": 1}`, `timeRange.relative has an invalid value "90d"`},
+		{TypeApplicationLogs, `{"filters": [{"field": "TIME_RANGE", "operator": "IS", "values": ["4h", "1h"]}], "version": 1}`, `"TIME_RANGE" takes exactly one value`},
+		{TypeApplicationLogs, `{"filters": [{"field": "TEXT_SEARCH", "operator": "CONTAINS", "values": [""]}], "version": 1}`, `"TEXT_SEARCH" has an empty, invalid or over-long value`},
+		{TypeApplicationLogs, `{"filters": [{"field": "TEXT_SEARCH", "operator": "CONTAINS", "values": ["` + strings.Repeat("x", maxValueBytes+1) + `"]}], "version": 1}`, `"TEXT_SEARCH" has an empty, invalid or over-long value`},
+		{TypeApplicationLogs, `{"filters": [{"field": "TEXT_SEARCH", "operator": "CONTAINS", "values": [` + strings.Repeat(`"x",`, maxValues) + `"x"]}], "version": 1}`, `"TEXT_SEARCH" takes at most 50 values`},
 	} {
 		_, err := Parse([]byte(tc.raw), tc.viewType)
 		if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), tc.want) {
@@ -118,8 +139,58 @@ func TestParseValueTakesADecodedObject(t *testing.T) {
 	if values, negated := doc.Values(FieldLevel); len(values) != 1 || values[0] != "error" || negated {
 		t.Fatalf("LEVEL = %v (negated %v)", values, negated)
 	}
-	if values, _ := doc.Values(FieldText); values != nil {
+	if values, _ := doc.Values(FieldTextSearch); values != nil {
 		t.Fatalf("an absent field reads %v", values)
+	}
+}
+
+// bex's pre-w3/083 document reads as Render's: TEXT with IS is TEXT_SEARCH
+// with CONTAINS, and a TIME_RANGE row is the top-level timeRange. Render's
+// own document, display included, comes back as it was written.
+func TestParseReturnsRenderShape(t *testing.T) {
+	for _, tc := range []struct {
+		name, viewType, raw, want string
+	}{
+		{"bex's earlier spellings", TypeApplicationLogs, `{"filters": [
+			{"field": "TIME_RANGE", "operator": "IS", "values": ["4h"]},
+			{"field": "LEVEL", "operator": "IS_NOT", "values": ["info"]},
+			{"field": "TEXT", "operator": "IS", "values": ["timeout", "refused"]}], "version": 1}`,
+			`{"filters":[{"field":"LEVEL","operator":"IS_NOT","values":["info"]},{"field":"TEXT_SEARCH","operator":"CONTAINS","values":["timeout","refused"]}],"version":1,"timeRange":{"relative":"4h"}}`},
+		{"a metrics view's earlier range", TypeMetrics, `{"filters": [{"field": "TIME_RANGE", "operator": "IS", "values": ["7d"]}], "version": 1}`,
+			`{"filters":[],"version":1,"timeRange":{"relative":"7d"}}`},
+		{"Render's document", TypeMetrics, `{"version": 1, "filters": [{"field": "RESOURCE_TYPE", "operator": "IS", "values": ["SERVICE"]}],
+			"timeRange": {"relative": "24h"}, "display": {"requestGroupBy": "STATUS_CODE", "rootTasksOnly": false, "zoom": 1.5}}`,
+			`{"filters":[{"field":"RESOURCE_TYPE","operator":"IS","values":["SERVICE"]}],"version":1,"timeRange":{"relative":"24h"},"display":{"requestGroupBy":"STATUS_CODE","rootTasksOnly":false,"zoom":1.5}}`},
+		{"an unset range and display", TypeApplicationLogs, `{"version": 1, "filters": [], "timeRange": {}, "display": null}`,
+			`{"filters":[],"version":1}`},
+		{"Render's empty default", TypeRequestLogs, `{"filters": [], "version": 1}`, `{"filters":[],"version":1}`},
+	} {
+		doc, err := Parse([]byte(tc.raw), tc.viewType)
+		if err != nil {
+			t.Errorf("%s: %v", tc.name, err)
+			continue
+		}
+		raw, err := json.Marshal(doc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(raw) != tc.want {
+			t.Errorf("%s: stored as %s, want %s", tc.name, raw, tc.want)
+		}
+		// Render's shape parses back to itself.
+		again, err := Parse(raw, tc.viewType)
+		if err != nil {
+			t.Errorf("%s: the stored document %s does not parse: %v", tc.name, raw, err)
+		} else if back, _ := json.Marshal(again); string(back) != tc.want {
+			t.Errorf("%s: re-parsed as %s, want %s", tc.name, back, tc.want)
+		}
+	}
+	doc, err := Parse([]byte(`{"filters": [{"field": "TEXT", "operator": "IS", "values": ["timeout"]}], "version": 1}`), TypeApplicationLogs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if values, negated := doc.Values(FieldTextSearch); len(values) != 1 || values[0] != "timeout" || negated {
+		t.Fatalf("an earlier TEXT filter reads as TEXT_SEARCH %v (negated %v)", values, negated)
 	}
 }
 

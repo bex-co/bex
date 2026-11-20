@@ -161,7 +161,7 @@ func TestSavedSearchesFollowTheProjectsViewPermission(t *testing.T) {
 		t.Fatalf("WORKFLOW_RUNS views: %v, want a bad request", err)
 	}
 	one, err := svc.SavedSearch(ctx, views[0].ID)
-	if err != nil || one.ID != views[0].ID || string(one.Filters) != `{"filters": [], "version": 1}` {
+	if err != nil || one.ID != views[0].ID || string(one.Filters) != `{"filters":[],"version":1}` {
 		t.Fatalf("SavedSearch = %+v, %v", one, err)
 	}
 
@@ -363,6 +363,50 @@ func TestProjectEditorManagesViews(t *testing.T) {
 	}
 }
 
+// A view's document is stored and served in Render's shape (w3/083): a write
+// in bex's earlier spellings is stored as Render's, a row still holding them
+// (one an older replica wrote while migration 0316 rolled out) reads as
+// Render's, and Render's display options survive an edit and a duplicate.
+func TestViewDocumentsAreRendersShape(t *testing.T) {
+	st := newViewStore(ownProject)
+	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st}
+	ctx := ctxAs("editor")
+	const rendered = `{"filters":[{"field":"TEXT_SEARCH","operator":"CONTAINS","values":["timeout"]}],"version":1,"timeRange":{"relative":"4h"}}`
+
+	legacy, err := svc.CreateSavedSearch(ctx, ownProject.ID, savedsearch.TypeApplicationLogs, "Timeouts", map[string]any{
+		"version": 1, "filters": []any{
+			map[string]any{"field": "TEXT", "operator": "IS", "values": []any{"timeout"}},
+			map[string]any{"field": "TIME_RANGE", "operator": "IS", "values": []any{"4h"}},
+		},
+	})
+	if err != nil || string(legacy.Filters) != rendered {
+		t.Fatalf("a document in bex's earlier spellings is stored as %s (%v), want %s", legacy.Filters, err, rendered)
+	}
+	if stored := st.views[len(st.views)-1].Filters; string(stored) != rendered {
+		t.Fatalf("the store holds %s, want Render's %s", stored, rendered)
+	}
+
+	st.views[0].Filters = json.RawMessage(`{"version": 1, "filters": [{"field": "TEXT", "operator": "IS", "values": ["timeout"]}, {"field": "TIME_RANGE", "operator": "IS", "values": ["4h"]}]}`)
+	if got, err := svc.SavedSearch(ctx, st.views[0].ID); err != nil || string(got.Filters) != rendered {
+		t.Fatalf("a row in bex's earlier spellings reads %s (%v), want %s", got.Filters, err, rendered)
+	}
+	if list, err := svc.SavedSearches(ctx, ownProject.ID, savedsearch.TypeApplicationLogs); err != nil || string(list[0].Filters) != rendered {
+		t.Fatalf("the list serves %+v (%v), want %s", list, err, rendered)
+	}
+
+	metrics := "svs-prj-own-" + savedsearch.TypeMetrics
+	withDisplay := map[string]any{"version": 1, "filters": []any{}, "timeRange": map[string]any{"relative": "7d"},
+		"display": map[string]any{"aggregationMethod": "AVG", "requestGroupBy": "STATUS_CODE"}}
+	const displayed = `{"filters":[],"version":1,"timeRange":{"relative":"7d"},"display":{"aggregationMethod":"AVG","requestGroupBy":"STATUS_CODE"}}`
+	edited, err := svc.UpdateSavedSearch(ctx, metrics, SavedSearchEdit{Filters: withDisplay})
+	if err != nil || string(edited.Filters) != displayed {
+		t.Fatalf("Render's document is stored as %s (%v), want %s", edited.Filters, err, displayed)
+	}
+	if copied, err := svc.DuplicateSavedSearch(ctx, metrics); err != nil || string(copied.Filters) != displayed {
+		t.Fatalf("its duplicate holds %s (%v), want %s", copied.Filters, err, displayed)
+	}
+}
+
 // A viewer reads the views but every write is refused before it lands, and a
 // project in another workspace is refused as its own read is.
 func TestViewWritesNeedTheProjectsEditPermission(t *testing.T) {
@@ -447,7 +491,7 @@ func TestViewWritesRefuseByName(t *testing.T) {
 			t.Errorf("%s: %v, want a bad request", label, err)
 		}
 	}
-	if got, _ := svc.SavedSearch(ctx, logs); got.Name != "Application Logs" || string(got.Filters) != `{"filters": [], "version": 1}` {
+	if got, _ := svc.SavedSearch(ctx, logs); got.Name != "Application Logs" || string(got.Filters) != `{"filters":[],"version":1}` {
 		t.Fatalf("a refused edit changed the view: %+v (%s)", got, got.Filters)
 	}
 	// Render's editor negates a line field (w3/m523), and so a view stores it.

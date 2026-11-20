@@ -102,7 +102,7 @@ func newProjectView(project string, rawDoc any, q *LogQuery) (projectView, error
 	}{
 		{savedsearch.FieldLevel, LabelLevel, &q.Level},
 		{savedsearch.FieldInstance, LabelInstance, &q.Instance},
-		{savedsearch.FieldText, "", &q.Search}, // Validate refuses IS_NOT on TEXT
+		{savedsearch.FieldTextSearch, "", &q.Search}, // Validate takes only CONTAINS on TEXT_SEARCH
 		{savedsearch.FieldMethod, LabelMethod, &q.Method},
 		{savedsearch.FieldStatusCode, LabelStatusCode, &q.StatusCode},
 		{savedsearch.FieldHost, LabelHost, &q.Host},

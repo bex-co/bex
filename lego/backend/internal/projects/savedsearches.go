@@ -126,10 +126,16 @@ func checkViewType(searchType string) error {
 	return fmt.Errorf("%w: unknown saved search type %q (want one of %v)", core.ErrBadRequest, searchType, savedsearch.Types)
 }
 
+// savedSearchView is a stored view as the API serves it, its document in
+// Render's shape (w3/083): one an older replica wrote in bex's earlier
+// spellings while migration 0316 rolled out reads as Render's too. A
+// document that no longer parses is served as stored.
 func savedSearchView(r store.SavedSearch) SavedSearchView {
 	filters := r.Filters
 	if len(filters) == 0 {
 		filters, _ = json.Marshal(savedsearch.Default())
+	} else if doc, err := savedsearch.Parse(filters, r.Type); err == nil {
+		filters, _ = json.Marshal(doc)
 	}
 	return SavedSearchView{ID: r.ID, Name: r.Name, Type: r.Type, Filters: filters}
 }

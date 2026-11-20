@@ -624,6 +624,10 @@ const ruLogs: Record<string, TranslationEntry> = {
     message: "не одно из",
     description: "Filter operator IS_NOT",
   },
+  "logs.viewOperatorContains": {
+    message: "содержит",
+    description: "Filter operator CONTAINS, Text Search's only operator",
+  },
   "logs.viewValuesPlaceholder": {
     message: "Выберите значения",
     description:

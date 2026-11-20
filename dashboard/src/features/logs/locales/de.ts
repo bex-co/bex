@@ -595,6 +595,10 @@ const deLogs: Record<string, TranslationEntry> = {
     message: "ist keines von",
     description: "Filter operator IS_NOT",
   },
+  "logs.viewOperatorContains": {
+    message: "enthält",
+    description: "Filter operator CONTAINS, Text Search's only operator",
+  },
   "logs.viewValuesPlaceholder": {
     message: "Werte wählen",
     description:

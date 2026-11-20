@@ -41,25 +41,84 @@ describe("the view filter document", () => {
     expect(documentFromRows(rows)).toEqual(doc);
   });
 
+  it("reads and saves Render's document, its range and display (w3/083)", () => {
+    const doc = {
+      filters: [
+        { field: "LEVEL", operator: "IS", values: ["error"] },
+        { field: "TEXT_SEARCH", operator: "CONTAINS", values: ["timeout"] },
+      ],
+      version: 1,
+      timeRange: { relative: "4h" },
+      display: { aggregationMethod: "AVG", requestGroupBy: "STATUS_CODE" },
+    };
+    const rows = rowsFromDocument(doc, SavedSearchType.ApplicationLogs);
+    expect(
+      rows.map(({ field, operator, values }) => [field, operator, values]),
+    ).toEqual([
+      ["LEVEL", "IS", ["error"]],
+      ["TEXT_SEARCH", "CONTAINS", ["timeout"]],
+      ["TIME_RANGE", "IS", ["4h"]],
+    ]);
+    expect(documentFromRows(rows, doc)).toEqual(doc);
+    // A view with no range saves none, and a new view has no display.
+    expect(documentFromRows(rows.slice(0, 1))).toEqual({
+      filters: [{ field: "LEVEL", operator: "IS", values: ["error"] }],
+      version: 1,
+    });
+  });
+
+  it("reads bex's earlier document and saves it in Render's shape", () => {
+    const rows = rowsFromDocument(
+      {
+        filters: [
+          { field: "TIME_RANGE", operator: "IS", values: ["7d"] },
+          { field: "TEXT", operator: "IS", values: ["timeout"] },
+        ],
+        version: 1,
+      },
+      SavedSearchType.ApplicationLogs,
+    );
+    expect(
+      rows.map(({ field, operator, values }) => [field, operator, values]),
+    ).toEqual([
+      ["TEXT_SEARCH", "CONTAINS", ["timeout"]],
+      ["TIME_RANGE", "IS", ["7d"]],
+    ]);
+    expect(documentFromRows(rows)).toEqual({
+      filters: [
+        { field: "TEXT_SEARCH", operator: "CONTAINS", values: ["timeout"] },
+      ],
+      version: 1,
+      timeRange: { relative: "7d" },
+    });
+  });
+
   it("keeps only what this view type's editor can show", () => {
     const rows = rowsFromDocument(
       {
         filters: [
           { field: "METHOD", operator: "IS", values: ["GET"] },
           { field: "LEVEL", operator: "MATCHES", values: ["error"] },
+          { field: "LEVEL", operator: "CONTAINS", values: ["error"] },
           { field: "BOGUS", operator: "IS", values: ["x"] },
-          { field: "TEXT", operator: "IS", values: ["timeout", 7] },
+          { field: "TEXT_SEARCH", operator: "IS", values: ["x"] },
+          {
+            field: "TEXT_SEARCH",
+            operator: "CONTAINS",
+            values: ["timeout", 7],
+          },
           "not a filter",
         ],
         version: 1,
+        timeRange: { relative: 4 },
       },
       SavedSearchType.ApplicationLogs,
     );
     expect(rows).toEqual([
       {
         key: expect.any(String),
-        field: "TEXT",
-        operator: "IS",
+        field: "TEXT_SEARCH",
+        operator: "CONTAINS",
         values: ["timeout"],
       },
     ]);
@@ -78,7 +137,7 @@ describe("the view filter document", () => {
       "RESOURCE_TYPE",
       "LEVEL",
       "INSTANCE",
-      "TEXT",
+      "TEXT_SEARCH",
       "TIME_RANGE",
     ]);
     expect(VIEW_FIELDS_BY_TYPE[SavedSearchType.RequestLogs]).toEqual([
@@ -97,8 +156,8 @@ describe("the view filter document", () => {
 
   it("negates every field Render's editor negates", () => {
     // Render's Edit view: `is one of` / `is not one of` on the scope fields
-    // and the line fields, `is` on Environment and Time Range, and Text
-    // Search's term (w3/m523).
+    // and the line fields, `is` on Environment and Time Range, and
+    // `contains` on Text Search (w3/m523, w3/083).
     for (const field of [
       "RESOURCE",
       "RESOURCE_TYPE",
@@ -111,9 +170,10 @@ describe("the view filter document", () => {
     ] as const) {
       expect(viewFieldOperators(field)).toEqual(["IS", "IS_NOT"]);
     }
-    for (const field of ["ENVIRONMENT", "TEXT", "TIME_RANGE"] as const) {
+    for (const field of ["ENVIRONMENT", "TIME_RANGE"] as const) {
       expect(viewFieldOperators(field)).toEqual(["IS"]);
     }
+    expect(viewFieldOperators("TEXT_SEARCH")).toEqual(["CONTAINS"]);
     expect(viewFieldIsSingle("ENVIRONMENT")).toBe(true);
     expect(viewFieldIsSingle("TIME_RANGE")).toBe(true);
     expect(viewFieldIsSingle("RESOURCE")).toBe(false);
@@ -146,7 +206,7 @@ describe("the view filter document", () => {
   it("picks Instance from the project's logs and names each by its resource (w3/079)", () => {
     expect(viewValueKind("INSTANCE")).toBe("discovered");
     expect(viewFieldLogLabel("INSTANCE")).toBe("instance");
-    expect(viewFieldLogLabel("TEXT")).toBeUndefined();
+    expect(viewFieldLogLabel("TEXT_SEARCH")).toBeUndefined();
     expect(viewLogType(SavedSearchType.ApplicationLogs)).toBe("app");
     expect(viewLogType(SavedSearchType.RequestLogs)).toBe("request");
 

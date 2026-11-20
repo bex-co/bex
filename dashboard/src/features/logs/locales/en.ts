@@ -590,6 +590,10 @@ const enLogs: Record<string, TranslationEntry> = {
     message: "is not one of",
     description: "Filter operator IS_NOT",
   },
+  "logs.viewOperatorContains": {
+    message: "contains",
+    description: "Filter operator CONTAINS, Text Search's only operator",
+  },
   "logs.viewValuesPlaceholder": {
     message: "Select values",
     description:

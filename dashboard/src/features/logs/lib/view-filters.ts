@@ -11,15 +11,16 @@ import { shortInstance } from "./log-rows";
 
 /**
  * The Edit view modal's model of a saved search's filter document (w3/m507):
- * Render's `{filters: [{field, operator, values}], version: 1}`, edited as
- * rows. bex-api's `internal/savedsearch` validates every document it stores;
+ * Render's `{version: 1, filters: [{field, operator, values}], timeRange:
+ * {relative}, display}` (w3/083), edited as rows, the time range as one of
+ * them. bex-api's `internal/savedsearch` validates every document it stores;
  * these tables are the editor's half of the same rules, so it only offers
  * what the server takes.
  */
 
 export const VIEW_FILTER_VERSION = 1;
 
-export type ViewOperator = "IS" | "IS_NOT";
+export type ViewOperator = "IS" | "IS_NOT" | "CONTAINS";
 
 export const VIEW_FIELDS = [
   "ENVIRONMENT",
@@ -27,14 +28,17 @@ export const VIEW_FIELDS = [
   "RESOURCE_TYPE",
   "LEVEL",
   "INSTANCE",
-  "TEXT",
+  "TEXT_SEARCH",
   "METHOD",
   "STATUS_CODE",
   "HOST",
   "PATH",
   "TIME_RANGE",
 ] as const;
+/** A row's field. `TIME_RANGE` is the editor's row for the document's
+ *  top-level `timeRange`, never a filter of its own. */
 export type ViewField = (typeof VIEW_FIELDS)[number];
+type FilterField = Exclude<ViewField, "TIME_RANGE">;
 
 /** Which fields each view type's editor offers, in Render's order (the capture's table). */
 export const VIEW_FIELDS_BY_TYPE: Record<SavedSearchType, ViewField[]> = {
@@ -44,7 +48,7 @@ export const VIEW_FIELDS_BY_TYPE: Record<SavedSearchType, ViewField[]> = {
     "RESOURCE_TYPE",
     "LEVEL",
     "INSTANCE",
-    "TEXT",
+    "TEXT_SEARCH",
     "TIME_RANGE",
   ],
   [SavedSearchType.RequestLogs]: [
@@ -73,7 +77,7 @@ export const VIEW_FIELD_LABEL_KEYS: Record<ViewField, keyof typeof en> = {
   RESOURCE_TYPE: "logs.viewFieldResourceType",
   LEVEL: STRUCTURED_LABEL_KEYS.level,
   INSTANCE: STRUCTURED_LABEL_KEYS.instance,
-  TEXT: "logs.viewFieldText",
+  TEXT_SEARCH: "logs.viewFieldText",
   METHOD: STRUCTURED_LABEL_KEYS.method,
   STATUS_CODE: STRUCTURED_LABEL_KEYS.statusCode,
   HOST: STRUCTURED_LABEL_KEYS.host,
@@ -173,22 +177,23 @@ export function viewFieldIsSingle(field: ViewField): boolean {
   return field === "ENVIRONMENT" || field === "TIME_RANGE";
 }
 
-/** The fields Render's editor offers no `is not` on (w3/m523). */
-const UNNEGATABLE_FIELDS: readonly ViewField[] = [
-  "ENVIRONMENT",
-  "TEXT",
-  "TIME_RANGE",
-];
-
 /**
  * The operators a field takes, as Render's Edit view offers them (w3/m523):
- * Environment and Time Range take `is` and one value, Text Search takes its
- * term, and every other field, Level, Instance, Method, Status Code, Host
- * and Path as well as Resource and Resource Type, takes `is one of` /
+ * Environment and Time Range take `is` and one value, Text Search takes
+ * `contains`, and every other field, Level, Instance, Method, Status Code,
+ * Host and Path as well as Resource and Resource Type, takes `is one of` /
  * `is not one of`.
  */
 export function viewFieldOperators(field: ViewField): ViewOperator[] {
-  return UNNEGATABLE_FIELDS.includes(field) ? ["IS"] : ["IS", "IS_NOT"];
+  switch (field) {
+    case "ENVIRONMENT":
+    case "TIME_RANGE":
+      return ["IS"];
+    case "TEXT_SEARCH":
+      return ["CONTAINS"];
+    default:
+      return ["IS", "IS_NOT"];
+  }
 }
 
 /** One condition row in the editor. `key` keys the row in the list only. */
@@ -200,8 +205,12 @@ export interface ViewFilterRow {
 }
 
 export interface ViewFilterDocument extends Record<string, unknown> {
-  filters: { field: ViewField; operator: ViewOperator; values: string[] }[];
+  filters: { field: FilterField; operator: ViewOperator; values: string[] }[];
   version: number;
+  /** The view's default range: one preset. */
+  timeRange?: { relative: string };
+  /** A metrics view's display options, Render's, kept as written. */
+  display?: Record<string, unknown>;
 }
 
 let rowCounter = 0;
@@ -210,50 +219,104 @@ function rowKey(): string {
   return `filter-${rowCounter}`;
 }
 
-function isViewField(value: unknown): value is ViewField {
-  return (VIEW_FIELDS as readonly unknown[]).includes(value);
+function isFilterField(value: unknown): value is FilterField {
+  return value !== "TIME_RANGE" && VIEW_FIELDS.some((f) => f === value);
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function stringValues(values: unknown): string[] {
+  return Array.isArray(values)
+    ? values.filter((v): v is string => typeof v === "string")
+    : [];
+}
+
+/**
+ * A view document's default range, the preset of its top-level
+ * `timeRange.relative`, or of a `TIME_RANGE` row in bex's earlier shape.
+ * Undefined when it names none.
+ */
+export function documentTimeRange(
+  doc: Record<string, unknown> | undefined,
+): string | undefined {
+  const range = doc?.timeRange;
+  if (isObject(range) && typeof range.relative === "string" && range.relative) {
+    return range.relative;
+  }
+  const filters = doc?.filters;
+  if (!Array.isArray(filters)) return undefined;
+  for (const raw of filters) {
+    if (isObject(raw) && raw.field === "TIME_RANGE" && raw.operator === "IS") {
+      return stringValues(raw.values)[0];
+    }
+  }
+  return undefined;
 }
 
 /**
  * The rows of a stored document, keeping only what the editor can show: a
- * field of this view's type, a known operator and string values. bex-api
- * validated the document when it stored it, so nothing is normally dropped.
+ * field of this view's type, one of the field's operators and string values,
+ * then the time range as its own row. bex-api validated the document when it
+ * stored it, so nothing is normally dropped. A view bex stored before w3/083
+ * may still spell Text Search `TEXT` with `IS`, and its range as a
+ * `TIME_RANGE` row; bex-api reads both, and so does the editor.
  */
 export function rowsFromDocument(
   doc: Record<string, unknown> | undefined,
   type: SavedSearchType,
 ): ViewFilterRow[] {
   const filters = doc?.filters;
-  if (!Array.isArray(filters)) return [];
   const allowed = VIEW_FIELDS_BY_TYPE[type];
   const rows: ViewFilterRow[] = [];
-  for (const raw of filters) {
-    if (!raw || typeof raw !== "object") continue;
-    const { field, operator, values } = raw as Record<string, unknown>;
-    if (!isViewField(field) || !allowed.includes(field)) continue;
-    if (operator !== "IS" && operator !== "IS_NOT") continue;
+  for (const raw of Array.isArray(filters) ? filters : []) {
+    if (!isObject(raw)) continue;
+    const legacyText = raw.field === "TEXT";
+    const field = legacyText ? "TEXT_SEARCH" : raw.field;
+    const operator =
+      legacyText && raw.operator === "IS" ? "CONTAINS" : raw.operator;
+    if (!isFilterField(field) || !allowed.includes(field)) continue;
+    if (!viewFieldOperators(field).some((op) => op === operator)) continue;
     rows.push({
       key: rowKey(),
       field,
-      operator,
-      values: Array.isArray(values)
-        ? values.filter((v): v is string => typeof v === "string")
-        : [],
+      operator: operator as ViewOperator,
+      values: stringValues(raw.values),
+    });
+  }
+  // Every view type takes a time range.
+  const range = documentTimeRange(doc);
+  if (range) {
+    rows.push({
+      key: rowKey(),
+      field: "TIME_RANGE",
+      operator: "IS",
+      values: [range],
     });
   }
   return rows;
 }
 
-/** The document a set of rows saves as. */
-export function documentFromRows(rows: ViewFilterRow[]): ViewFilterDocument {
-  return {
-    filters: rows.map(({ field, operator, values }) => ({
-      field,
-      operator,
-      values,
-    })),
-    version: VIEW_FILTER_VERSION,
-  };
+/**
+ * The document a set of rows saves as, in Render's shape: the Time Range row
+ * is the top-level `timeRange`, and the stored document's `display` (a
+ * metrics view's display options, which the editor does not show) is kept.
+ */
+export function documentFromRows(
+  rows: ViewFilterRow[],
+  stored?: Record<string, unknown>,
+): ViewFilterDocument {
+  const doc: ViewFilterDocument = { filters: [], version: VIEW_FILTER_VERSION };
+  for (const { field, operator, values } of rows) {
+    if (field === "TIME_RANGE") {
+      if (values[0]) doc.timeRange = { relative: values[0] };
+    } else {
+      doc.filters.push({ field, operator, values });
+    }
+  }
+  if (isObject(stored?.display)) doc.display = stored.display;
+  return doc;
 }
 
 /**

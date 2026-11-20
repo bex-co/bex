@@ -8,6 +8,7 @@ import {
 } from "@/features/metrics/lib/range";
 import { SavedSearchType } from "@/graphql/definitions";
 import type { LogLine } from "../types";
+import { documentTimeRange } from "./view-filters";
 import {
   logContextSearch,
   parseRangeAlias,
@@ -109,25 +110,13 @@ export function projectLogContextHref(
 }
 
 /**
- * A saved search's `TIME_RANGE` filter (`IS` one preset): the view's own
- * default range when the URL names none. null when the view sets none, or
- * one bex has no preset for.
+ * A saved search's own default range when the URL names none: its
+ * `timeRange.relative` (Render's shape, w3/083), or the `TIME_RANGE` row a
+ * view bex stored before then holds. null when the view sets none, or one
+ * bex has no preset for.
  */
 export function viewTimeRange(
   filterDocument: Record<string, unknown> | undefined,
 ): RangePreset | null {
-  const filters = filterDocument?.filters;
-  if (!Array.isArray(filters)) return null;
-  for (const filter of filters) {
-    if (
-      filter &&
-      typeof filter === "object" &&
-      (filter as { field?: unknown }).field === "TIME_RANGE" &&
-      (filter as { operator?: unknown }).operator === "IS"
-    ) {
-      const values = (filter as { values?: unknown }).values;
-      return Array.isArray(values) ? parseRangePreset(values[0]) : null;
-    }
-  }
-  return null;
+  return parseRangePreset(documentTimeRange(filterDocument));
 }

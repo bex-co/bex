@@ -578,6 +578,10 @@ const jaLogs: Record<string, TranslationEntry> = {
     message: "次のいずれでもない",
     description: "Filter operator IS_NOT",
   },
+  "logs.viewOperatorContains": {
+    message: "次を含む",
+    description: "Filter operator CONTAINS, Text Search's only operator",
+  },
   "logs.viewValuesPlaceholder": {
     message: "値を選択",
     description:

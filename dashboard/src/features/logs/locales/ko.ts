@@ -576,6 +576,10 @@ const koLogs: Record<string, TranslationEntry> = {
     message: "다음 중 하나가 아님",
     description: "Filter operator IS_NOT",
   },
+  "logs.viewOperatorContains": {
+    message: "포함",
+    description: "Filter operator CONTAINS, Text Search's only operator",
+  },
   "logs.viewValuesPlaceholder": {
     message: "값 선택",
     description:

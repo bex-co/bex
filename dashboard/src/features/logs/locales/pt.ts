@@ -609,6 +609,10 @@ const ptLogs: Record<string, TranslationEntry> = {
     message: "não é um de",
     description: "Filter operator IS_NOT",
   },
+  "logs.viewOperatorContains": {
+    message: "contém",
+    description: "Filter operator CONTAINS, Text Search's only operator",
+  },
   "logs.viewValuesPlaceholder": {
     message: "Selecione valores",
     description:

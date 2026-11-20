@@ -9,7 +9,7 @@ import { parseRangePreset } from "@/features/metrics/lib/range";
 
 // A project's observability view page (w3/m505): the view comes from the
 // project's saved searches by the URL's id, its name heads the page, its
-// filter document is the scope, and its TIME_RANGE the default range.
+// filter document is the scope, and its timeRange the default range.
 
 const savedSearches: {
   views: SavedSearch[];
@@ -77,8 +77,9 @@ const view = (
 ): SavedSearch => ({ __typename: "SavedSearch", id, name, type, filters });
 
 const APP_FILTERS = {
-  filters: [{ field: "TIME_RANGE", operator: "IS", values: ["4h"] }],
+  filters: [],
   version: 1,
+  timeRange: { relative: "4h" },
 };
 
 beforeEach(() => {
@@ -150,7 +151,7 @@ describe("ProjectLogViewPage", () => {
       />,
     );
     expect(viewerProps.at(-1)!.logType).toBe("request");
-    // No TIME_RANGE: the Logs tab's one-hour default, Render's r=1h.
+    // No timeRange: the Logs tab's one-hour default, Render's r=1h.
     expect(viewerProps.at(-1)!.range.id).toBe("1h");
   });
 

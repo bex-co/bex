@@ -261,6 +261,67 @@ describe("EditViewDialog", () => {
     );
   });
 
+  it("labels Text Search's operator contains, and saves a view in bex's earlier spellings in Render's shape (w3/083)", async () => {
+    const user = userEvent.setup();
+    mutations.update.mockResolvedValue(view());
+    const { dialog } = open({
+      kind: "edit",
+      view: view({
+        filters: [
+          { field: "TEXT", operator: "IS", values: ["timeout"] },
+          { field: "TIME_RANGE", operator: "IS", values: ["4h"] },
+        ],
+        version: 1,
+      }),
+    });
+    const [textOperator, rangeOperator] = within(dialog).getAllByRole(
+      "combobox",
+      { name: "Operator" },
+    );
+    expect(textOperator).toHaveTextContent("contains");
+    expect(textOperator).toBeDisabled();
+    expect(rangeOperator).toHaveTextContent("is");
+    expect(
+      within(dialog).getByRole("button", { name: "Remove timeout" }),
+    ).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: "Done" }));
+    expect(mutations.update).toHaveBeenCalledWith(
+      "svs-app",
+      "Application Logs",
+      {
+        filters: [
+          { field: "TEXT_SEARCH", operator: "CONTAINS", values: ["timeout"] },
+        ],
+        version: 1,
+        timeRange: { relative: "4h" },
+      },
+    );
+  });
+
+  it("keeps a Render view's range and display options when it saves", async () => {
+    const user = userEvent.setup();
+    mutations.update.mockResolvedValue(view());
+    const stored = {
+      version: 1,
+      filters: [
+        { field: "TEXT_SEARCH", operator: "CONTAINS", values: ["timeout"] },
+      ],
+      timeRange: { relative: "24h" },
+      display: { requestGroupBy: "STATUS_CODE" },
+    };
+    const { dialog } = open({ kind: "edit", view: view(stored) });
+    expect(
+      within(dialog).getAllByRole("combobox", { name: "Operator" })[0],
+    ).toHaveTextContent("contains");
+    await user.click(within(dialog).getByRole("button", { name: "Done" }));
+    expect(mutations.update).toHaveBeenCalledWith(
+      "svs-app",
+      "Application Logs",
+      stored,
+    );
+  });
+
   it("lists the instances the project's logs hold, each named with its resource, and adds one that has gone as typed (w3/079)", async () => {
     const user = userEvent.setup();
     mutations.update.mockResolvedValue(view());

@@ -69,7 +69,7 @@ describe("project log view search", () => {
     expect(projectLogRange({}, fallback)).toBe(fallback);
   });
 
-  it("reads a view's TIME_RANGE filter as its default range", () => {
+  it("reads a view's timeRange, or its earlier TIME_RANGE row, as its default range", () => {
     expect(
       viewTimeRange({
         filters: [
@@ -79,6 +79,21 @@ describe("project log view search", () => {
         version: 1,
       })?.id,
     ).toBe("7d");
+    // Render's shape (w3/083).
+    expect(
+      viewTimeRange({ filters: [], version: 1, timeRange: { relative: "24h" } })
+        ?.id,
+    ).toBe("24h");
+    expect(
+      viewTimeRange({
+        filters: [],
+        version: 1,
+        timeRange: { relative: "90d" },
+      }),
+    ).toBeNull();
+    expect(
+      viewTimeRange({ filters: [], version: 1, timeRange: {} }),
+    ).toBeNull();
     expect(viewTimeRange({ filters: [], version: 1 })).toBeNull();
     expect(
       viewTimeRange({

@@ -30,7 +30,7 @@ export interface ProjectViewBody {
  * Render's `/project/{prj}/observability/…?savedSearchId=…&r=…`. The view is
  * found in the project's saved searches by its URL id and type; its name
  * heads the page with its Edit view, Duplicate and Delete (w3/m507), and its
- * `TIME_RANGE` filter is the range when the URL names none. A missing view and
+ * `timeRange` is the range when the URL names none. A missing view and
  * a failed read are told apart, and the page holds `skeleton` while the views
  * load and while the view it deletes leaves.
  */
