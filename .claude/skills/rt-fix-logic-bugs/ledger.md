@@ -8,6 +8,8 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 
 ## Skipped
 
+- 2026-11-20 blueprint-plan/database admission-conflict attribution — audited, holds: the conflict names the manifest field that caused it (enableDiskAutoscaling remapped, undeclared cause falls back to a declared plan); pinned by TestBlueprintDatabaseConflictNamesTheDeclaringField
+- 2026-11-20 blueprint-plan/service probe-set completeness — audited, holds: every applier name is an ownership-policy row, the inline names are declared-gated, buildSource is explicitly probed; pinned dynamically by TestBlueprintPlanAndApplyAgree and the generated-live-spec matrix
 - 2026-11-19 authz/router-key verbs vs dispatch-mint — audited, holds: Service.call requires a verified-email Kratos session before any upstream call, stricter than the class gate the dispatch comment claims; pinned by TestDeniedRequestsNeverReachUpstream including the machine case
 - 2026-11-19 authz/mint-gate pairing — audited, holds: every AuthorizeMintClass site pairs with a relation Authorize; postgres CreateCredential is deliberately echo-less, its password readable only through sensitive-gated connection info
 - 2026-11-19 authz/MintClass display vs AuthorizeMintClass verb — audited, holds: the display predicate is read-only and the verb re-checks the live registry; nil-resolver and stale-stamp deltas both fail closed
