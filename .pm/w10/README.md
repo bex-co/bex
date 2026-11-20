@@ -77,6 +77,7 @@ Develop against `.pm/w10/dev-10/`, this worker's own isolated stack on the share
 - [ ] **035** — [`gh` can be turned off only for the whole workspace, while a Devin security profile also binds to the automations default, one automation or one session](035.md) ← w10/m524 t008 (Devin comparison), 2026-11-19
 - [ ] **036** — [A model added to the platform catalog starts on in a workspace whose admins narrowed its model list](036.md) ← w10/m527 t007 (Devin comparison), 2026-11-20
 - [ ] **037** — [A workspace admin cannot allow the platform catalog's models by provider](037.md) ← w10/m527 t007 (Devin comparison), 2026-11-20
+- [ ] **038** — [A JVM HTTP client that installs no `java.net.Authenticator` gets 407 from the egress proxy on a `full`-tier session](038.md) ← w10/032 (its remaining gap), 2026-11-20
 
 - [ ] **012** — moved to **w21/m336** (2026-11-11): Billing lifecycle worker fails every tick with "no rows in result set" (11 workspaces stuck `enforcing`) → [`../w21/done/m336/`](../w21/done/m336/README.md)
 
