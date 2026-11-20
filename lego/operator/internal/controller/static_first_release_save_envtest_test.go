@@ -311,6 +311,86 @@ var _ = Describe("A static site's first deploy with a save during its build (w8/
 		Expect(reason).To(Equal(appv1alpha1.UndeployedReasonSaved))
 	})
 
+	// w32/053: production's bad branch (and failing build command) read false
+	// once its deploy failed, though rev-1 still served the old settings, and
+	// putting the live setting back read saved. A web service read both right.
+	Context("after a deploy that never published (w32/053)", func() {
+		// liveSite is the repro's step 1: rev-1 serves, nothing waits.
+		liveSite := func(name string) (types.NamespacedName, appv1alpha1.AppSpec) {
+			GinkgoHelper()
+			nn := create(name)
+			build1(nn)
+			finishFirst(nn)
+			passes(nn, 3)
+			expectLive(nn)
+			different, _ := undeployed(nn)
+			Expect(different).To(BeFalse(), "A: nothing waits")
+			return nn, envtestApp(nn).Spec
+		}
+		expectSaved := func(nn types.NamespacedName, why string) {
+			GinkgoHelper()
+			different, reason := undeployed(nn)
+			Expect(different).To(BeTrue(), why)
+			Expect(reason).To(Equal(appv1alpha1.UndeployedReasonSaved))
+		}
+		// putBack is step 4: every saved setting the live release's again.
+		putBack := func(nn types.NamespacedName, live appv1alpha1.AppSpec) {
+			GinkgoHelper()
+			save(nn, func(s *appv1alpha1.AppSpec) { s.Branch, s.BuildCommand = live.Branch, live.BuildCommand })
+			pass(nn)
+			different, reason := undeployed(nn)
+			Expect(different).To(BeFalse(), "D: the saved settings are the live release's, reason %q", reason)
+			Expect(envtestApp(nn).Status.ActiveRevision).To(Equal("rev-1"))
+		}
+
+		for _, tc := range []struct {
+			name string
+			bad  func(*appv1alpha1.AppSpec)
+		}{
+			{"branch", func(s *appv1alpha1.AppSpec) { s.Branch = "qa-no-such-branch-4aa5" }},
+			{"build command", func(s *appv1alpha1.AppSpec) { s.BuildCommand = "echo QA4AA5 fail; exit 3" }},
+		} {
+			It("reads a saved "+tc.name+" whose build failed as undeployed, and the live one put back as deployed", func() {
+				nn, live := liveSite("w32-053-" + strings.ReplaceAll(tc.name, " ", "-"))
+				save(nn, tc.bad)
+				pass(nn)
+				expectSaved(nn, "B: the save waits for a deploy")
+
+				gen := strconv.FormatInt(deploy(nn, "2026-11-20T02:41:00Z"), 10)
+				passes(nn, 3)
+				failBuildJob(nn.Name, "gen-"+gen)
+				// The pass that observes the failure returns it.
+				for range 3 {
+					_, _ = r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+				}
+				app := envtestApp(nn)
+				Expect(app.Status.ActiveRevision).To(Equal("rev-1"), "status: %+v", app.Status)
+				Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning), "rev-1 keeps serving")
+				expectSaved(nn, "C: the saved "+tc.name+" never served")
+
+				putBack(nn, live)
+			})
+		}
+
+		It("reads a saved branch whose deploy was canceled as undeployed, and the live one put back as deployed", func() {
+			nn, live := liveSite("w32-053-cancel")
+			save(nn, func(s *appv1alpha1.AppSpec) { s.Branch = "next" })
+			pass(nn)
+			gen := deploy(nn, "2026-11-20T02:41:00Z")
+			passes(nn, 3)
+			_, err := buildJobFor(nn.Name, "gen-"+strconv.FormatInt(gen, 10))
+			Expect(err).NotTo(HaveOccurred(), "precondition: the deploy builds")
+			update(nn, func(app *appv1alpha1.App) {
+				metav1.SetMetaDataAnnotation(&app.ObjectMeta, appv1alpha1.AnnotationCanceledReleaseGeneration, strconv.FormatInt(gen, 10))
+			})
+			passes(nn, 3)
+			Expect(envtestApp(nn).Status.ActiveRevision).To(Equal("rev-1"))
+			expectSaved(nn, "the canceled deploy published nothing")
+
+			putBack(nn, live)
+		})
+	})
+
 	It("publishes the directory it started with, and the next deploy publishes the saved one", func() {
 		nn := create("m460-publish")
 		build1(nn)

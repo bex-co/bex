@@ -280,6 +280,7 @@ func TestStatusFingerprintNamesEveryStatusField(t *testing.T) {
 		"StaticPrefix":               "operator bookkeeping",
 		"ReleaseFingerprint":         "operator bookkeeping",
 		"ReleaseSettingsFingerprint": "operator bookkeeping",
+		"ServedSettingsFingerprint":  "operator bookkeeping",
 		"ReleaseArtifactFingerprint": "operator bookkeeping",
 		"RegistryWait":               "operator bookkeeping; the wait's verdict arrives through the phase and conditions",
 		"ConfigSnapshotGeneration":   "read by service views, not recorded",

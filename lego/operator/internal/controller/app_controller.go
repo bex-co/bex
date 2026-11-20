@@ -4984,11 +4984,20 @@ func (r *AppReconciler) failPublish(ctx context.Context, app *appv1alpha1.App, e
 // recordStaticRevision makes rev the served revision. Only a pass that just
 // published it may write status.staticPrefix: an already-active App with an
 // empty prefix still serves the legacy prefix (ADR074 dual-read).
+//
+// It also records the settings rev was released with, which a save after a
+// later failed or canceled release compares with (staticSaveWaits, w32/053).
+// A publication an older operator recorded takes them from its release while
+// that release is the one serving, unless a cancel left the canceled
+// release's settings there.
 func recordStaticRevision(app *appv1alpha1.App, rev string, published bool) {
 	app.Status.ActiveRevision = rev
 	if published {
 		app.Status.StaticPrefix = appIdentity(app).StaticPrefix(rev)
 		clearPublishVerdict(app)
+	}
+	if published || (app.Status.ServedSettingsFingerprint == "" && !latestRequestCanceled(app)) {
+		app.Status.ServedSettingsFingerprint = app.Status.ReleaseSettingsFingerprint
 	}
 }
 

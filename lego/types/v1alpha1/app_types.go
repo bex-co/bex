@@ -2166,6 +2166,15 @@ type AppStatus struct {
 	// +optional
 	ReleaseSettingsFingerprint string `json:"releaseSettingsFingerprint,omitempty"`
 
+	// ServedSettingsFingerprint is the ReleaseSettingsFingerprint of the static
+	// publication serving now, recorded when it published. A later release that
+	// fails or is canceled leaves it in place, so a static site's saved change
+	// after that release is compared with what still serves (w32/053). Empty
+	// for a publication an older operator recorded, and for other service
+	// types.
+	// +optional
+	ServedSettingsFingerprint string `json:"servedSettingsFingerprint,omitempty"`
+
 	// ReleaseGeneration is the App metadata generation that initiated the current
 	// release attempt. Later operational generations retain this value, keeping
 	// build/pre-deploy Jobs, pod revision labels, and deploy history attached to

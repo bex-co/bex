@@ -636,10 +636,13 @@ func prepareAppReleaseDecision(app *appv1alpha1.App, view *appv1alpha1.AppSpec) 
 		app.Status.ReleaseArtifactFingerprint = desired.artifact
 		// And its saved settings, which a static site's saved-change status
 		// compares a later save with (staticSaveWaits). A static Restart
-		// re-serves the served publication, so it keeps the served settings:
-		// a save it did not deploy still waits (w32/049).
+		// re-serves the served publication, so it carries the served settings:
+		// a save it did not deploy still waits (w32/049), and so does one a
+		// failed release dispatched before it (w32/053).
 		if !restoresServedPublication(app) {
 			app.Status.ReleaseSettingsFingerprint = releaseSettingsFingerprint(app.Spec)
+		} else if served := app.Status.ServedSettingsFingerprint; served != "" {
+			app.Status.ReleaseSettingsFingerprint = served
 		}
 		app.Status.ReleaseGeneration = requestedReleaseGeneration(app)
 		if app.ActiveReleaseConfig() != nil {

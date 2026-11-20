@@ -17,8 +17,10 @@ limitations under the License.
 package controller
 
 import (
+	"strconv"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -219,6 +221,180 @@ func TestStaticRestartKeepsTheServedSettings(t *testing.T) {
 	restore(app, "site/rev-1/")
 	if app.Status.ReleaseSettingsFingerprint != releaseSettingsFingerprint(app.Spec) {
 		t.Fatal("a rollback to another publication must record the saved settings")
+	}
+}
+
+// w32/053: a deploy whose build or publication failed, or that was canceled,
+// published none of the settings it was dispatched with, and its request
+// consumed the pending-save marker. The saved settings are then compared with
+// the publication still serving: a save that never went live waits, and one
+// put back to the live settings waits for nothing.
+func TestStaticSaveAfterAnUnpublishedRelease(t *testing.T) {
+	spec := appv1alpha1.AppSpec{
+		Type: appv1alpha1.TypeStaticSite, Repo: "https://github.com/bex-co/bex", Branch: "main",
+		RootDir: "examples/static-site", BuildCommand: "mkdir -p out2 && echo QA4AA5-S2 > out2/index.html", PublishPath: "out2",
+	}
+	served := releaseSettingsFingerprint(spec)
+	badBranch := func(s *appv1alpha1.AppSpec) { s.Branch = "qa-no-such-branch-4aa5" }
+	// failedDeploy is the repro's steps 1-3: release 1 serves rev-1; the bad
+	// branch is saved (generation 2) and deployed (generation 3), and release
+	// 3 is adopted and dispatched. fail records its verdict; nil leaves it
+	// building.
+	failedDeploy := func(t *testing.T, fail func(*appv1alpha1.App)) *appv1alpha1.App {
+		t.Helper()
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "site", Generation: 3, Annotations: map[string]string{
+				appv1alpha1.AnnotationReleaseGeneration:       "3",
+				appv1alpha1.AnnotationPendingSourceGeneration: "2",
+			}},
+			Spec: spec,
+			Status: appv1alpha1.AppStatus{
+				Phase: appv1alpha1.PhaseRunning, ReleaseGeneration: 1, ActiveRevision: "rev-1", StaticPrefix: "site/rev-1/",
+				ReleaseFingerprint: desiredAppReleaseIdentity(spec).release, ReleaseSettingsFingerprint: served,
+				ServedSettingsFingerprint: served,
+			},
+		}
+		badBranch(&app.Spec)
+		app.Spec.RestartedAt = "2026-11-20T02:41:00Z"
+		if d := prepareAppReleaseDecision(app, nil); !d.releaseChanged || app.Status.ReleaseGeneration != 3 {
+			t.Fatalf("decision = %+v (release %d), want release 3 dispatched", d, app.Status.ReleaseGeneration)
+		}
+		app.Status.Phase = appv1alpha1.PhaseBuilding
+		if fail != nil {
+			app.Status.Phase = appv1alpha1.PhaseRunning
+			fail(app)
+		}
+		return app
+	}
+	buildFailed := func(app *appv1alpha1.App) {
+		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+			Type: appv1alpha1.ConditionBuild, Status: metav1.ConditionFalse, Reason: appv1alpha1.ReasonBuildFailedUserError,
+			ObservedGeneration: app.Status.ReleaseGeneration,
+		})
+		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: reasonPriorReleaseServing,
+			ObservedGeneration: app.Generation,
+		})
+	}
+	// saveAgain is a later save without a deploy (bex services update).
+	saveAgain := func(app *appv1alpha1.App, mutate func(*appv1alpha1.AppSpec)) {
+		app.Generation++
+		app.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] = strconv.FormatInt(app.Generation, 10)
+		mutate(&app.Spec)
+		prepareAppReleaseDecision(app, nil)
+	}
+	live := func(s *appv1alpha1.AppSpec) { s.Branch, s.BuildCommand = spec.Branch, spec.BuildCommand }
+
+	for _, tc := range []struct {
+		name string
+		fail func(*appv1alpha1.App)
+	}{
+		{"its build failed", buildFailed},
+		{"its publication failed", func(app *appv1alpha1.App) {
+			meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+				Type: appv1alpha1.ConditionRollout, Status: metav1.ConditionFalse, Reason: reasonPublishFailed,
+				ObservedGeneration: app.Status.ReleaseGeneration,
+			})
+		}},
+		{"it failed outright", func(app *appv1alpha1.App) { app.Status.Phase = appv1alpha1.PhaseFailed }},
+		{"its deploy was canceled", func(app *appv1alpha1.App) {
+			app.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration] = "3"
+			prepareAppReleaseDecision(app, nil)
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := failedDeploy(t, tc.fail)
+			if !staticSaveWaits(app) || undeployedChangesReason(app, true, false) != appv1alpha1.UndeployedReasonSaved {
+				t.Fatal("C: the saved branch never served, so it still waits as a saved change")
+			}
+			saveAgain(app, live)
+			if staticSaveWaits(app) {
+				t.Fatal("D: every saved setting is the live release's again, so nothing waits")
+			}
+			saveAgain(app, func(s *appv1alpha1.AppSpec) { s.BuildCommand = "echo QA4AA5 fail; exit 3" })
+			if !staticSaveWaits(app) {
+				t.Fatal("a later save that differs from the live release waits")
+			}
+		})
+	}
+
+	t.Run("the deploy in flight carries the saved settings", func(t *testing.T) {
+		if staticSaveWaits(failedDeploy(t, nil)) {
+			t.Fatal("a building release of the saved settings leaves nothing waiting")
+		}
+	})
+	t.Run("an earlier release's failure does not condemn the one building", func(t *testing.T) {
+		app := failedDeploy(t, buildFailed)
+		app.Generation, app.Annotations[appv1alpha1.AnnotationReleaseGeneration] = 4, "4"
+		app.Spec.RestartedAt = "2026-11-20T02:50:00Z"
+		prepareAppReleaseDecision(app, nil)
+		app.Status.Phase = appv1alpha1.PhaseBuilding
+		if staticReleaseEndedUnpublished(app) || staticSaveWaits(app) {
+			t.Fatal("release 4 is building the saved settings; release 3's verdict is not its own")
+		}
+	})
+	t.Run("a newer deploy requested is on its way", func(t *testing.T) {
+		app := failedDeploy(t, buildFailed)
+		app.Generation, app.Annotations[appv1alpha1.AnnotationReleaseGeneration] = 4, "4"
+		if staticReleaseEndedUnpublished(app) || staticSaveWaits(app) {
+			t.Fatal("a deploy not yet adopted carries the saved settings")
+		}
+	})
+	t.Run("a publication an older operator recorded keeps today's comparison", func(t *testing.T) {
+		app := failedDeploy(t, buildFailed)
+		app.Status.ServedSettingsFingerprint = ""
+		if staticSaveWaits(app) {
+			t.Fatal("with no served settings, the consumed marker leaves nothing to compare")
+		}
+	})
+	// w32/049 builds on this: a Restart after the failed deploy re-serves the
+	// served publication, so it carries the served settings, not the failed
+	// release's, and the saved branch keeps waiting once it serves.
+	t.Run("a restart after it keeps the served settings", func(t *testing.T) {
+		app := failedDeploy(t, buildFailed)
+		app.Generation, app.Annotations[appv1alpha1.AnnotationReleaseGeneration] = 4, "4"
+		app.Spec.RestartedAt = "2026-11-20T02:52:00Z"
+		app.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: 4, StaticPrefix: "site/rev-1/"}
+		if d := prepareAppReleaseDecision(app, nil); !d.releaseChanged || app.Status.ReleaseSettingsFingerprint != served {
+			t.Fatalf("decision = %+v, want the restart adopted with the served settings", d)
+		}
+		recordStaticRevision(app, "rev-4", true)
+		app.Status.Phase = appv1alpha1.PhaseRunning
+		if app.Status.ServedSettingsFingerprint != served || !staticSaveWaits(app) {
+			t.Fatal("the restart serves the live settings; the saved branch still waits")
+		}
+	})
+}
+
+// A publication records the settings its release was dispatched with, and a
+// served release an older operator published takes them on its next pass,
+// except while a cancel left the canceled release's settings in status.
+func TestRecordStaticRevisionRecordsServedSettings(t *testing.T) {
+	served := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "site", Annotations: map[string]string{appv1alpha1.AnnotationReleaseGeneration: "2"}},
+		Status:     appv1alpha1.AppStatus{ReleaseGeneration: 2, ReleaseSettingsFingerprint: "release-v2:two"},
+	}
+	for _, tc := range []struct {
+		name      string
+		edit      func(*appv1alpha1.App)
+		published bool
+		want      string
+	}{
+		{"a publication", func(a *appv1alpha1.App) { a.Status.ServedSettingsFingerprint = "release-v2:one" }, true, "release-v2:two"},
+		{"an older operator's served release", func(*appv1alpha1.App) {}, false, "release-v2:two"},
+		{"a recorded publication stays as recorded", func(a *appv1alpha1.App) { a.Status.ServedSettingsFingerprint = "release-v2:one" }, false, "release-v2:one"},
+		{"a cancel left the canceled release's settings", func(a *appv1alpha1.App) {
+			a.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration] = "2"
+		}, false, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := served.DeepCopy()
+			tc.edit(app)
+			recordStaticRevision(app, "rev-2", tc.published)
+			if got := app.Status.ServedSettingsFingerprint; got != tc.want {
+				t.Fatalf("servedSettingsFingerprint = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }
 

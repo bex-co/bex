@@ -135,15 +135,58 @@ func (r *AppReconciler) reconcileSavedConfigurationStatus(ctx context.Context, r
 // restores a retained publication published none of the saved settings, so a
 // save still waits after its request consumed the pending marker: a Restart
 // keeps the served settings fingerprint (w32/049).
+//
+// A release that ended without publishing (its build or publication failed,
+// or its deploy was canceled) served none of the settings it was dispatched
+// with either, and its request consumed the marker too. Until the next deploy,
+// the saved settings are compared with the publication still serving
+// (status.servedSettingsFingerprint), as a web service's are with its serving
+// release's record: a saved change that never went live still waits, and one
+// reverted to the live settings waits for nothing (w32/053). A publication an
+// older operator recorded has no served settings and keeps the comparison
+// below.
 func staticSaveWaits(app *appv1alpha1.App) bool {
-	if !releaseHasServed(app) || (!sourceUpdatePending(app) && !restoredPublicationAdopted(app)) {
+	if !releaseHasServed(app) {
+		return false
+	}
+	if served := app.Status.ServedSettingsFingerprint; served != "" && staticReleaseEndedUnpublished(app) {
+		return savedSettingsDiffer(app.Spec, served)
+	}
+	if !sourceUpdatePending(app) && !restoredPublicationAdopted(app) {
 		return false
 	}
 	if settings := app.Status.ReleaseSettingsFingerprint; settings != "" {
-		return strings.HasPrefix(settings, releaseIdentityVersion+":") && releaseSettingsFingerprint(app.Spec) != settings
+		return savedSettingsDiffer(app.Spec, settings)
 	}
 	fp := app.Status.ReleaseFingerprint
 	return strings.HasPrefix(fp, releaseIdentityVersion+":") && desiredAppReleaseIdentity(app.Spec).release != fp
+}
+
+// savedSettingsDiffer reports whether spec's saved settings differ from a
+// recorded settings fingerprint. Only a release-v2 fingerprint can be compared.
+func savedSettingsDiffer(spec appv1alpha1.AppSpec, settings string) bool {
+	return strings.HasPrefix(settings, releaseIdentityVersion+":") && releaseSettingsFingerprint(spec) != settings
+}
+
+// staticReleaseEndedUnpublished reports that the newest release a deploy
+// requested ended without publishing, so the served site still serves the
+// publication before it: its deploy was canceled, or the operator adopted it
+// and its build or its publication failed. A newer deploy already requested is
+// on its way, not ended. Only verdicts recorded for the adopted release count,
+// so a failure an earlier release left behind never condemns a later one.
+func staticReleaseEndedUnpublished(app *appv1alpha1.App) bool {
+	if canceledReleaseIsLatest(app) {
+		return true
+	}
+	release := app.Status.ReleaseGeneration
+	if releaseUnadopted(app) || release <= successfulReleaseGeneration(app) {
+		return false
+	}
+	if app.Status.Phase == appv1alpha1.PhaseFailed || terminalBuildFailureRecorded(app) {
+		return true
+	}
+	c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout)
+	return c != nil && c.Status == metav1.ConditionFalse && c.ObservedGeneration == release
 }
 
 // recordUndeployedChanges writes the saved-configuration status when it moved.

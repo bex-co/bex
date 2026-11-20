@@ -2069,6 +2069,15 @@ spec:
                   saved configuration (w8/m119).
                 format: int64
                 type: integer
+              servedSettingsFingerprint:
+                description: |-
+                  ServedSettingsFingerprint is the ReleaseSettingsFingerprint of the static
+                  publication serving now, recorded when it published. A later release that
+                  fails or is canceled leaves it in place, so a static site's saved change
+                  after that release is compared with what still serves (w32/053). Empty
+                  for a publication an older operator recorded, and for other service
+                  types.
+                type: string
               servingNetwork:
                 description: ServingNetwork retains the active release's ports while
                   a candidate starts.
