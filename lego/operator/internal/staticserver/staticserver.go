@@ -1220,16 +1220,17 @@ var renderExtensionTypes = map[string]string{
 	".webmanifest": "binary/octet-stream",
 }
 
-// defaultCacheControl is the browser/CDN policy for every successful response
-// and the 404.html page (w8/322) without a matching custom Cache-Control rule
-// (w4/m160). Revision prefixes
-// keep origin objects immutable, but browsers key responses by public URL,
-// which survives a republish — so any filename must revalidate, hashed-looking
-// or not. Owners with content-addressed assets opt into long freshness through
-// a header rule. Responses already cached under the pre-m160 one-year
-// immutable policy are not recalled: they stay until eviction, a forced reload,
-// or a new asset URL.
-const defaultCacheControl = "public, max-age=0, must-revalidate"
+// defaultCacheControl is the browser/CDN policy for every successful response,
+// its 304, and the 404.html page (w8/322) without a matching custom
+// Cache-Control rule: Render's static-site value, captured 2026-11-20 on five
+// Render sites (w8/358). Revision prefixes keep origin objects immutable, but
+// browsers key responses by public URL, which survives a republish, so
+// max-age=0 makes a browser revalidate any filename, hashed-looking or not
+// (w4/m160), and the ETag changes with the bytes. s-maxage=300 lets a shared
+// cache in front of a custom domain keep a response five minutes, as on
+// Render; bex puts no shared cache in front of static sites. Owners with
+// content-addressed assets opt into long freshness through a header rule.
+const defaultCacheControl = "public, max-age=0, s-maxage=300"
 
 // defaultStrictTransportSecurity is what Render's static sites send on every
 // successful response and the 404.html page (w8/194, w8/322): HTTPS only, ten

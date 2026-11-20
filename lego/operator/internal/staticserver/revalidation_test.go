@@ -24,10 +24,12 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// revalidate is the success policy every response without a matching custom
-// Cache-Control rule must carry (w4/m160). Pinned literally: it is the wire
-// contract browsers act on, not an implementation detail.
-const revalidate = "public, max-age=0, must-revalidate"
+// renderCacheControl is the success policy every response without a matching
+// custom Cache-Control rule must carry: Render's static-site default (w8/358),
+// which still makes browsers revalidate every view (w4/m160). Pinned
+// literally: it is the wire contract browsers and shared caches act on, not an
+// implementation detail.
+const renderCacheControl = "public, max-age=0, s-maxage=300"
 
 // publishResolver serves one host whose active revision a test can swap, like
 // the real resolver after an atomic publication.
@@ -63,8 +65,8 @@ func TestRepublishedURLServesNewBytesAndRevalidates(t *testing.T) {
 			if rec.Code != http.StatusOK {
 				t.Fatalf("%s %s => %d, want 200", method, step.rev, rec.Code)
 			}
-			if cc := rec.Header().Get("Cache-Control"); cc != revalidate {
-				t.Errorf("%s %s cache-control = %q, want %q", method, step.rev, cc, revalidate)
+			if cc := rec.Header().Get("Cache-Control"); cc != renderCacheControl {
+				t.Errorf("%s %s cache-control = %q, want %q", method, step.rev, cc, renderCacheControl)
 			}
 			if method == http.MethodGet && rec.Body.String() != step.body {
 				t.Errorf("%s body = %q, want %q", step.rev, rec.Body.String(), step.body)
@@ -117,8 +119,8 @@ func TestSuccessResponsesDefaultToRevalidation(t *testing.T) {
 			if rec.Code != http.StatusOK {
 				t.Fatalf("%s %s (%s) => %d, want 200", method, p, name, rec.Code)
 			}
-			if cc := rec.Header().Get("Cache-Control"); cc != revalidate {
-				t.Errorf("%s %s (%s) cache-control = %q, want %q", method, p, name, cc, revalidate)
+			if cc := rec.Header().Get("Cache-Control"); cc != renderCacheControl {
+				t.Errorf("%s %s (%s) cache-control = %q, want %q", method, p, name, cc, renderCacheControl)
 			}
 		}
 	}

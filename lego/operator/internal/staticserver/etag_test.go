@@ -51,8 +51,10 @@ func TestEveryServePathCarriesTheGeneratedETag(t *testing.T) {
 		if rec.Code != http.StatusOK || rec.Body.String() != tc.served || rec.Header().Get("ETag") != want {
 			t.Fatalf("GET %s => %d %q ETag %q, want 200 %q ETag %q", tc.path, rec.Code, rec.Body, rec.Header().Get("ETag"), tc.served, want)
 		}
-		if again := doWith(h, http.MethodGet, tc.path, http.Header{"If-None-Match": {want}}); again.Code != http.StatusNotModified || again.Body.Len() != 0 {
-			t.Errorf("GET %s If-None-Match => %d (%d bytes), want bodyless 304", tc.path, again.Code, again.Body.Len())
+		// Render's 304 repeats the default policy (w8/358), as RFC 9110 asks.
+		if again := doWith(h, http.MethodGet, tc.path, http.Header{"If-None-Match": {want}}); again.Code != http.StatusNotModified || again.Body.Len() != 0 ||
+			again.Header().Get("Cache-Control") != renderCacheControl {
+			t.Errorf("GET %s If-None-Match => %d (%d bytes) Cache-Control %q, want bodyless 304 with %q", tc.path, again.Code, again.Body.Len(), again.Header().Get("Cache-Control"), renderCacheControl)
 		}
 	}
 }

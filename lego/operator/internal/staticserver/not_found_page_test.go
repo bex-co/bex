@@ -48,7 +48,7 @@ func TestMissServes404HTMLWithStatus404(t *testing.T) {
 		// The page goes out with a published file's headers, as on Render
 		// (w8/322), but no validator.
 		hdr := rec.Header()
-		if hdr.Get("X-Site") != "yes" || hdr.Get("Etag") != "" || hdr.Get("Cache-Control") != defaultCacheControl ||
+		if hdr.Get("X-Site") != "yes" || hdr.Get("Etag") != "" || hdr.Get("Cache-Control") != renderCacheControl ||
 			hdr.Get("Strict-Transport-Security") != defaultStrictTransportSecurity || hdr.Get("X-Content-Type-Options") != "nosniff" {
 			t.Errorf("GET %s headers = %v, want the site's rules, HSTS, the cache policy, nosniff and no validator", p, hdr)
 		}
