@@ -578,11 +578,12 @@ func publicAppMeterClient(t *testing.T, app store.App, crName, backend string, h
 }
 
 // isEgressHealthQuery tells a fake Prometheus an egress health product from a
-// byte read: every health product takes a min_over_time, and no byte read
-// does (the HTTP byte read names up{job="traefik"} too, for its new-series
-// guard, w6/m455).
+// byte read: every health product rejects a counter reset, and no byte read
+// does. A byte read names up{job="traefik"} for its new-series guard
+// (w6/m455), and an SNI source's reads a process start's min_over_time
+// (w6/155).
 func isEgressHealthQuery(query string) bool {
-	return strings.Contains(query, "min_over_time(")
+	return strings.Contains(query, "resets(")
 }
 
 func TestQueryEgressBytesUsesExactRoutersForSharedBackend(t *testing.T) {

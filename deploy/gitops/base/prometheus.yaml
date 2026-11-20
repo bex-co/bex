@@ -731,7 +731,9 @@ spec:
                     regex: bex_(app_direct_egress_bytes_total|egress_meter_.*)
                     action: keep
               # Public Postgres front doors: backend→client bytes are counted
-              # inside the SNI splice, labeled by the parent Database id.
+              # inside the SNI splice, labeled by the parent Database id. The
+              # egress meter reads the bytes, health, process start and drained
+              # gauge of each pod (egressquery.targetHealth, w6/155).
               - job_name: bex-pg-proxy
                 scrape_interval: 15s
                 kubernetes_sd_configs:
@@ -749,7 +751,7 @@ spec:
                     target_label: pod
                 metric_relabel_configs:
                   - source_labels: [__name__]
-                    regex: bex_pg_proxy_(egress_bytes_total|healthy|process_start_time_seconds|connections_rejected_total)
+                    regex: bex_pg_proxy_(egress_bytes_total|healthy|process_start_time_seconds|drained|connections_rejected_total)
                     action: keep
               - job_name: bex-kv-proxy
                 scrape_interval: 15s
@@ -768,7 +770,7 @@ spec:
                     target_label: pod
                 metric_relabel_configs:
                   - source_labels: [__name__]
-                    regex: bex_kv_proxy_(egress_bytes_total|healthy|process_start_time_seconds|connections_rejected_total)
+                    regex: bex_kv_proxy_(egress_bytes_total|healthy|process_start_time_seconds|drained|connections_rejected_total)
                     action: keep
               # kubelet /metrics (NOT cadvisor): only kubelet_volume_stats_* — the
               # PVC used/capacity bytes behind the PersistentVolumeFillingUp alert.

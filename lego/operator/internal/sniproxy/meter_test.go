@@ -166,7 +166,9 @@ func TestAnOpenStreamsBytesAreCountedAsTheyReachTheClient(t *testing.T) {
 // w6/151: a drained proxy exits just after a Prometheus scrape that began once
 // its last stream had ended, so that scrape read every byte it counted. A
 // scrape from before the drain ended, or the kubelet's readiness probe on the
-// same path without Prometheus's header, never stands in for it.
+// same path without Prometheus's header, never stands in for it. That scrape
+// reads the drained gauge at 1, and every scrape before the drain ended at 0
+// (w6/155): the egress meter bills a pod that exits only on that proof.
 func TestAwaitFinalScrapeReturnsJustAfterAScrapeReadTheLastBytes(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	meter := NewByteMeter(registry, "final_proxy", "postgres")
@@ -194,8 +196,11 @@ func TestAwaitFinalScrapeReturnsJustAfterAScrapeReadTheLastBytes(t *testing.T) {
 		return string(body)
 	}
 
+	const running, drained = `bex_final_proxy_drained{resource_kind="postgres"} 0`, `bex_final_proxy_drained{resource_kind="postgres"} 1`
 	meter.Add("dpg-one", "postgres", 4096)
-	read(true)
+	if body := read(true); !strings.Contains(body, running) {
+		t.Fatalf("a scrape before the drain ended does not read %q:\n%s", running, body)
+	}
 	if meter.AwaitFinalScrape(50 * time.Millisecond) {
 		t.Fatal("a scrape from before the call released the wait")
 	}
@@ -215,7 +220,11 @@ func TestAwaitFinalScrapeReturnsJustAfterAScrapeReadTheLastBytes(t *testing.T) {
 		t.Fatalf("returned after %v, before the scrape: the readiness probe stood in for it", waited)
 	}
 	const series = `bex_final_proxy_egress_bytes_total{resource_id="dpg-one",resource_kind="postgres"} 6000`
-	if body := <-scraped; !strings.Contains(body, series) {
+	body := <-scraped
+	if !strings.Contains(body, series) {
 		t.Fatalf("the scrape that released the wait did not read the last bytes:\n%s", body)
+	}
+	if !strings.Contains(body, drained) {
+		t.Fatalf("the scrape that released the wait does not read %q:\n%s", drained, body)
 	}
 }

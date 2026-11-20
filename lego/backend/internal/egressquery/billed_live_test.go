@@ -188,6 +188,63 @@ func replayRecordedHours(t *testing.T, base string, spec Spec, id, requests stri
 		spec.Source, guarded, guardedBytes)
 }
 
+// TestTargetHealthOnRecordedHours replays the SNI sources' per-pod health
+// (targetHealth, w6/155) on every whole hour a live Prometheus still holds,
+// read-only, each source's whole fleet read as one store. It logs every hour
+// the rule fails, with each failing pod and the terms it meets, and the hours
+// it passes. It fails if a pod the rule calls new had a process sample in
+// the hour before: that pod was a restart, whose earlier process may have
+// counted bytes no scrape read.
+//
+// Run it with a port-forward to the production Prometheus:
+//
+//	BEX_TEST_EGRESS_PROM_URL=http://127.0.0.1:19090 go test ./internal/egressquery -run TargetHealthOnRecordedHours -v -timeout 60m
+func TestTargetHealthOnRecordedHours(t *testing.T) {
+	base := os.Getenv("BEX_TEST_EGRESS_PROM_URL")
+	if base == "" {
+		t.Skip("set BEX_TEST_EGRESS_PROM_URL to replay the SNI sources' per-pod health on a live Prometheus's recorded hours")
+	}
+	specs := append(Datastore("fleet", "postgres", true), Datastore("fleet", "key_value", true)...)
+	for _, spec := range specs {
+		spec.Matchers = fmt.Sprintf(`resource_id=~".+",resource_kind=%q`, map[Source]string{Postgres: "postgres", KeyValue: "key_value"}[spec.Source])
+		t.Run(string(spec.Source), func(t *testing.T) {
+			terms := newTargetTerms(spec, 3600, 192)
+			named := []struct{ name, expr string }{
+				{"healthy", terms.healthy}, {"old", terms.old}, {"born", terms.born}, {"full", terms.full},
+				{"covered", terms.covered}, {"alive", terms.alive}, {"drained", terms.drained},
+			}
+			now := time.Now().UTC()
+			lowest := mustInstant(t, base, "min(prometheus_tsdb_lowest_timestamp_seconds)", now)
+			from := time.Unix(int64(lowest), 0).UTC().Truncate(time.Hour).Add(2 * time.Hour)
+			var hours, healthy int
+			for end := from; !end.After(now.Truncate(time.Hour)); end = end.Add(time.Hour) {
+				hours++
+				at := end.Format(time.RFC3339)
+				for _, s := range liveVector(t, base, fmt.Sprintf("%s and on(pod) count_over_time(%s[3600s] offset 3600s)", terms.born, spec.ProcessMetric), end) {
+					t.Errorf("%s: %s is new to the rule, but its pod had a process in the hour before", at, s.metric["pod"])
+				}
+				if mustInstant(t, base, Health(spec, 3600), end) == 1 {
+					healthy++
+					continue
+				}
+				met := map[string][]string{}
+				for _, term := range named {
+					for _, s := range liveVector(t, base, term.expr, end) {
+						met[s.metric["pod"]] = append(met[s.metric["pod"]], term.name)
+					}
+				}
+				for _, s := range liveVector(t, base, fmt.Sprintf("%s unless on(instance, pod) %s", terms.targets, terms.good()), end) {
+					t.Logf("%s: %s fails, meeting only %v", at, s.metric["pod"], met[s.metric["pod"]])
+				}
+				if resets := mustInstant(t, base, fmt.Sprintf("sum(resets(%s{%s}[3600s])) or vector(0)", spec.Counter, spec.Matchers), end); resets > 0 {
+					t.Logf("%s: the counter reset %.0f times", at, resets)
+				}
+			}
+			t.Logf("%s: %d hours ending %s..%s, %d pass the per-pod health", spec.Source, hours, from.Format(time.RFC3339), now.Truncate(time.Hour).Format(time.RFC3339), healthy)
+		})
+	}
+}
+
 type liveSample struct {
 	metric map[string]string
 	value  float64

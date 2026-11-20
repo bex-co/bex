@@ -53,6 +53,13 @@ type Spec struct {
 	// delete a series while their process lives (w6/133). The direct meter is
 	// not: it restores a checkpointed counter after a restart.
 	NewSeriesFromZero bool
+	// DrainedMetric is a gauge each scrape target's process sets to 1 once it
+	// counts nothing more: a drained SNI proxy sets it after its last stream
+	// ends, and its last scrape reads it (w6/155). A source with one names an
+	// exporter that is one process per target, with counters from zero, so
+	// Health judges each target on its own (targetHealth) and Billed counts a
+	// target's series from zero when its process started inside the window.
+	DrainedMetric string
 }
 
 func App(appID string, routers []string, direct bool) []Spec {
@@ -88,12 +95,14 @@ func Datastore(resourceID, kind string, public bool) []Spec {
 			Source: Postgres, Counter: "bex_pg_proxy_egress_bytes_total", Matchers: fmt.Sprintf(`resource_id=%q,resource_kind="postgres"`, resourceID),
 			Job: "bex-pg-proxy", HealthMetric: `bex_pg_proxy_healthy{resource_kind="postgres"}`,
 			ProcessMetric: `bex_pg_proxy_process_start_time_seconds{resource_kind="postgres"}`, NewSeriesFromZero: true,
+			DrainedMetric: `bex_pg_proxy_drained{resource_kind="postgres"}`,
 		}}
 	case "key_value":
 		return []Spec{{
 			Source: KeyValue, Counter: "bex_kv_proxy_egress_bytes_total", Matchers: fmt.Sprintf(`resource_id=%q,resource_kind="key_value"`, resourceID),
 			Job: "bex-kv-proxy", HealthMetric: `bex_kv_proxy_healthy{resource_kind="key_value"}`,
 			ProcessMetric: `bex_kv_proxy_process_start_time_seconds{resource_kind="key_value"}`, NewSeriesFromZero: true,
+			DrainedMetric: `bex_kv_proxy_drained{resource_kind="key_value"}`,
 		}}
 	default:
 		return nil
@@ -115,6 +124,9 @@ func Health(spec Spec, seconds int64) string {
 	}
 	if spec.Source == Direct {
 		return directHealth(spec, seconds, expected)
+	}
+	if spec.DrainedMetric != "" {
+		return targetHealth(spec, seconds, expected)
 	}
 	up := fmt.Sprintf(`up{job=%q}`, spec.Job)
 	parts := []string{
@@ -171,6 +183,80 @@ func directHealth(spec Spec, seconds, expected int64) string {
 	}, " * ")
 }
 
+// targetHealth judges an SNI proxy source one scrape target, one pod, at a
+// time (w6/155). Judged as one fleet, every public store's hour failed when a
+// pod started or exited in it: a roll starts a new pod on each node, which
+// failed the process-start term, and an old pod that exited before minute 48
+// had too few samples. What a process-local counter can lose is what it
+// counted after its process's last scrape, so a pod passes when nothing it
+// counted in the window escaped a scrape:
+//
+//   - A pod that ran as one process from before the window and is still up
+//     at its end is judged as every pod was before: up at every scrape, with
+//     80% of the window's samples for its up and health series.
+//   - A pod that ran from before the window and drained in it passes when its
+//     last successful scrape read the drained gauge at 1, so its counters did
+//     not move after that scrape, and it has 80% of the samples from the
+//     window's start to its last scrape. A failed scrape after the drained
+//     one, of a target that outlived its process, loses nothing.
+//   - A new pod counts from zero (Billed): one process that started inside
+//     the window, in a pod that had no scrape in the 30 s before the window
+//     while its job had one. A restarted container is never new: its process
+//     start changed in the window or its pod was scraped just before. A new
+//     pod passes when it is up at its last scrape at the window's end, or
+//     drained.
+//
+// Every pod's health gauge reads 1 at every scrape, and a reset in the
+// store's counter still fails the hour. A pod that vanished without a drained
+// scrape, or whose scrapes stopped before the window's end, fails it. A
+// window with no target has no answer, as before.
+func targetHealth(spec Spec, seconds, expected int64) string {
+	t := newTargetTerms(spec, seconds, expected)
+	return strings.Join([]string{
+		fmt.Sprintf(`(count(%s) > bool 0)`, t.targets),
+		fmt.Sprintf(`((count(%s unless on(instance, pod) %s) or vector(0)) == bool 0)`, t.targets, t.good()),
+		fmt.Sprintf(`((sum(resets(%s{%s}[%ds])) or vector(0)) == bool 0)`, spec.Counter, spec.Matchers, seconds),
+	}, " * ")
+}
+
+// targetTerms are targetHealth's conditions, each a filter that keeps the
+// targets, by instance and pod, that meet it.
+type targetTerms struct {
+	targets, healthy, old, born, full, covered, alive, drained string
+}
+
+func newTargetTerms(spec Spec, seconds, expected int64) targetTerms {
+	up := fmt.Sprintf(`up{job=%q}`, spec.Job)
+	// per reads one value per target from a range function over series.
+	per := func(agg, fn, series string, window int64) string {
+		return fmt.Sprintf(`%s by (instance, pod) (%s(%s[%ds]))`, agg, fn, series, window)
+	}
+	start := fmt.Sprintf(`(time() - %d)`, seconds)
+	before := fmt.Sprintf(`count_over_time(%s[%ds] offset %ds)`, up, newSeriesGuard, seconds)
+	samples := per("min", "count_over_time", up, seconds)
+	// The timestamp of each target's last scrape, a failed one included.
+	last := fmt.Sprintf(`max by (instance, pod) (max_over_time(timestamp(%s)[%ds:15s]))`, up, seconds)
+	return targetTerms{
+		targets: fmt.Sprintf(`group by (instance, pod) (count_over_time(%s[%ds]))`, up, seconds),
+		healthy: fmt.Sprintf(`(%s == 1)`, per("min", "min_over_time", spec.HealthMetric, seconds)),
+		old:     fmt.Sprintf(`(%s < %s)`, per("max", "max_over_time", spec.ProcessMetric, seconds), start),
+		born: fmt.Sprintf(`((%s >= %s) and on(instance, pod) (%s == 0) unless on(pod) %s and on() %s)`,
+			per("min", "min_over_time", spec.ProcessMetric, seconds), start, per("max", "changes", spec.ProcessMetric, seconds), before, before),
+		full: fmt.Sprintf(`((%s == 1) and on(instance, pod) (%s >= %d) and on(instance, pod) (%s >= %d))`,
+			per("min", "min_over_time", up, seconds), samples, expected, per("min", "count_over_time", spec.HealthMetric, seconds), expected),
+		covered: fmt.Sprintf(`(%s >= on(instance, pod) ((%s - %s) * 8 / 150))`, samples, last, start),
+		alive:   fmt.Sprintf(`(%s == 1)`, per("max", "last_over_time", up, newSeriesGuard)),
+		drained: fmt.Sprintf(`(%s == 1)`, per("max", "last_over_time", spec.DrainedMetric, seconds)),
+	}
+}
+
+// good keeps every target that passes.
+func (t targetTerms) good() string {
+	and := func(terms ...string) string { return "(" + strings.Join(terms, " and on(instance, pod) ") + ")" }
+	return and(t.healthy, fmt.Sprintf(`(%s or %s or %s)`,
+		and(t.old, t.alive, t.full), and(t.old, t.drained, t.covered), and(t.born, "("+t.alive+" or "+t.drained+")")))
+}
+
 func Increase(spec Spec, seconds int64) string {
 	return fmt.Sprintf(`sum(increase(%s{%s}[%ds]))`, spec.Counter, spec.Matchers, seconds)
 }
@@ -196,6 +282,13 @@ const newSeriesGuard = 30
 // what Increase bills. A series gone stale before the window ends (a deleted
 // service) still counts through its last sample. The health gate is
 // unchanged: a reset anywhere in the window still skips the whole source.
+//
+// For a source with a DrainedMetric, a series is also new when every sample
+// its target gave in the window came from a process that started inside the
+// window (w6/155): the SNI proxies' counters live in process memory, so every
+// series such a process holds started from zero after the window began. That
+// is how a pod a roll starts inside the hour bills what it served before its
+// first scrape.
 func Billed(spec Spec, seconds int64) string {
 	if !spec.NewSeriesFromZero {
 		return Increase(spec, seconds)
@@ -208,8 +301,13 @@ func Billed(spec Spec, seconds int64) string {
 // newSeries selects, at its last value, every series Billed counts from zero.
 func newSeries(spec Spec, seconds int64) string {
 	series := fmt.Sprintf(`%s{%s}`, spec.Counter, spec.Matchers)
-	return fmt.Sprintf(`((last_over_time(%[1]s[%[2]ds]) unless last_over_time(%[1]s[%[3]ds] offset %[2]ds)) and on(instance) (max_over_time(up{job=%[4]q}[%[3]ds] offset %[2]ds) == 1))`,
+	guarded := fmt.Sprintf(`((last_over_time(%[1]s[%[2]ds]) unless last_over_time(%[1]s[%[3]ds] offset %[2]ds)) and on(instance) (max_over_time(up{job=%[4]q}[%[3]ds] offset %[2]ds) == 1))`,
 		series, seconds, newSeriesGuard, spec.Job)
+	if spec.DrainedMetric == "" {
+		return guarded
+	}
+	return fmt.Sprintf(`(%s or (last_over_time(%s[%ds]) and on(instance, pod) (min_over_time(%s[%ds]) >= (time() - %d))))`,
+		guarded, series, seconds, spec.ProcessMetric, seconds, seconds)
 }
 
 // CompletedHoursIncrease is the sum of Billed over each whole UTC hour in the

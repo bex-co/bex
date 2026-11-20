@@ -34,34 +34,41 @@ type ByteMeter struct {
 	responseBytes *prometheus.CounterVec
 	rejected      *prometheus.CounterVec
 	healthy       prometheus.Gauge
+	drained       prometheus.Gauge
 	// marks numbers AwaitFinalScrape's calls, and scraped is the latest mark a
 	// Prometheus scrape began after (w6/151).
 	marks, scraped atomic.Uint64
 }
 
 func NewByteMeter(registry prometheus.Registerer, subsystem, resourceKind string) *ByteMeter {
+	const namespace = "bex"
 	meter := &ByteMeter{
 		responseBytes: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "bex", Subsystem: subsystem, Name: "egress_bytes_total",
+			Namespace: namespace, Subsystem: subsystem, Name: "egress_bytes_total",
 			Help: "Bytes copied from a managed datastore backend to a public client.",
 		}, []string{"resource_id", "resource_kind"}),
 		rejected: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: "bex", Subsystem: subsystem, Name: "connections_rejected_total",
+			Namespace: namespace, Subsystem: subsystem, Name: "connections_rejected_total",
 			Help: "Connections shed by the admission limiter, by reason (global|source|handshake|resource).",
 		}, []string{"reason"}),
 		healthy: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: "bex", Subsystem: subsystem, Name: "healthy",
+			Namespace: namespace, Subsystem: subsystem, Name: "healthy",
 			Help:        "1 when the public SNI proxy routing table and metrics listener are ready.",
+			ConstLabels: prometheus.Labels{"resource_kind": resourceKind},
+		}),
+		drained: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: namespace, Subsystem: subsystem, Name: "drained",
+			Help:        "1 once a drain has ended every stream, so this process counts no more bytes.",
 			ConstLabels: prometheus.Labels{"resource_kind": resourceKind},
 		}),
 	}
 	processStart := prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "bex", Subsystem: subsystem, Name: "process_start_time_seconds",
+		Namespace: namespace, Subsystem: subsystem, Name: "process_start_time_seconds",
 		Help:        "Unix time when this process-local proxy counter started.",
 		ConstLabels: prometheus.Labels{"resource_kind": resourceKind},
 	})
 	processStart.Set(float64(time.Now().Unix()))
-	registry.MustRegister(meter.responseBytes, meter.rejected, meter.healthy, processStart)
+	registry.MustRegister(meter.responseBytes, meter.rejected, meter.healthy, meter.drained, processStart)
 	return meter
 }
 
@@ -121,14 +128,17 @@ func (m *ByteMeter) Handler(gatherer prometheus.Gatherer) http.Handler {
 	})
 }
 
-// AwaitFinalScrape returns true once a Prometheus scrape that began after the
-// call has been served, or false after wait. A drained proxy calls it after
-// Serve returns, so it exits just after a scrape that read every byte it
-// counted, those of its last streams and of the streams its bound closed
-// included (w6/151). Prometheus then has a whole interval to drop the target
-// before its next scrape, which would read up 0 from the exited pod and fail
-// the hour's egress health for every store.
+// AwaitFinalScrape sets the drained gauge, then returns true once a
+// Prometheus scrape that began after the call has been served, or false after
+// wait. A drained proxy calls it after Serve returns, so it exits just after a
+// scrape that read every byte it counted, those of its last streams and of the
+// streams its bound closed included (w6/151). That scrape reads the gauge at
+// 1, which is how the egress meter tells this exit from a crash and bills the
+// hour (egressquery.targetHealth, w6/155). Prometheus then has a whole
+// interval to drop the target before its next scrape, which reads up 0 from
+// the exited pod.
 func (m *ByteMeter) AwaitFinalScrape(wait time.Duration) bool {
+	m.drained.Set(1)
 	mark := m.marks.Add(1)
 	deadline := time.Now().Add(wait)
 	for m.scraped.Load() < mark {
