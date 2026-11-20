@@ -161,7 +161,10 @@ func TestADrainingProxyRelaysTheResultOfARunningQuery(t *testing.T) {
 // The shipped DaemonSet sets the drain bound this binary reads, pauses before
 // SIGTERM so the old pod's endpoint leaves the nodes' service rules while it
 // still accepts, and gives the pod a grace period that outlasts both, so the
-// kubelet never kills a draining stream.
+// kubelet never kills a draining stream. The bound stays within the idle
+// timeout, which closes an idle stream anyway (w6/m518): a longer one would
+// only keep old pods on their nodes for streams that are closed once either
+// way.
 func TestTheDaemonSetGivesTheDrainItsBound(t *testing.T) {
 	raw, err := os.ReadFile("../../config/pg-sni-proxy/daemonset.yaml")
 	if err != nil {
@@ -172,16 +175,25 @@ func TestTheDaemonSetGivesTheDrainItsBound(t *testing.T) {
 		t.Fatal(err)
 	}
 	var bound time.Duration
+	idle := defaultIdleTimeout
 	for _, env := range ds.Spec.Template.Spec.Containers[0].Env {
-		if env.Name == drainSecondsEnv {
+		switch env.Name {
+		case drainSecondsEnv:
 			t.Setenv(env.Name, env.Value)
 			if bound, err = sniproxy.DrainSeconds(drainSecondsEnv); err != nil {
+				t.Fatal(err)
+			}
+		case idleTimeoutEnv:
+			if idle, err = time.ParseDuration(env.Value); err != nil {
 				t.Fatal(err)
 			}
 		}
 	}
 	if bound <= 0 {
 		t.Fatalf("the DaemonSet does not set %s to a positive bound", drainSecondsEnv)
+	}
+	if bound > idle {
+		t.Fatalf("%s = %v, want at most the %v idle timeout", drainSecondsEnv, bound, idle)
 	}
 	var pause time.Duration
 	if lifecycle := ds.Spec.Template.Spec.Containers[0].Lifecycle; lifecycle != nil &&
@@ -191,8 +203,11 @@ func TestTheDaemonSetGivesTheDrainItsBound(t *testing.T) {
 	if pause <= 0 {
 		t.Fatal("the DaemonSet does not pause before SIGTERM, so a client routed to the old pod is refused")
 	}
-	grace := ds.Spec.Template.Spec.TerminationGracePeriodSeconds
-	if grace == nil || time.Duration(*grace)*time.Second <= pause+bound {
+	var grace time.Duration
+	if seconds := ds.Spec.Template.Spec.TerminationGracePeriodSeconds; seconds != nil {
+		grace = time.Duration(*seconds) * time.Second
+	}
+	if grace <= pause+bound {
 		t.Fatalf("terminationGracePeriodSeconds = %v, want more than the %v pause plus the %v drain", grace, pause, bound)
 	}
 }

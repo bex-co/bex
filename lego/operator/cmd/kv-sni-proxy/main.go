@@ -71,6 +71,9 @@ const (
 	// drainSecondsEnv bounds the drain a release's SIGTERM starts, in whole
 	// seconds; unset or 0 closes every stream at once (w6/m515).
 	drainSecondsEnv = "BEX_KV_PROXY_DRAIN_SECONDS"
+	// idleTimeoutEnv is how long a relayed stream may stall before it closes
+	// (a Go duration); the drain bound never exceeds it (w6/m518).
+	idleTimeoutEnv = "BEX_KV_PROXY_IDLE_TIMEOUT"
 )
 
 var scheme = runtime.NewScheme()
@@ -208,7 +211,7 @@ func main() {
 	limiter.SetHandshakeLimit(
 		sniproxy.EnvInt(logger, "BEX_KV_PROXY_MAX_HANDSHAKES_PER_NETWORK", defaultMaxHandshakesPerNetwork),
 	)
-	idleTimeout := sniproxy.EnvDuration(logger, "BEX_KV_PROXY_IDLE_TIMEOUT", defaultIdleTimeout)
+	idleTimeout := sniproxy.EnvDuration(logger, idleTimeoutEnv, defaultIdleTimeout)
 	maxLifetime := sniproxy.EnvDuration(logger, "BEX_KV_PROXY_MAX_LIFETIME", defaultMaxLifetime)
 	drainTimeout, err := sniproxy.DrainSeconds(drainSecondsEnv)
 	if err != nil {

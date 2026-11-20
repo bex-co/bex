@@ -1,6 +1,6 @@
 # w6 · m518 — An SNI-proxy roll relays its external clients for up to the proxies' idle timeout, and nothing waits on that drain
 
-**Worker:** worker6 **Goal:** when a deploy changes `/kv-sni-proxy` or `/pg-sni-proxy`, each node's old pod relays its open external Key Value and Postgres streams for up to the proxies' 1 h idle timeout, not w6/m515's 30 s. Neither the deploy's wait nor the platform's health signal waits on that drain: each passes once every node runs a Ready pod of the new revision. **Status:** blocked (t001 and t002 done; t003 onward wait for w6/m515 t006)
+**Worker:** worker6 **Goal:** when a deploy changes `/kv-sni-proxy` or `/pg-sni-proxy`, each node's old pod relays its open external Key Value and Postgres streams for up to the proxies' 1 h idle timeout, not w6/m515's 30 s. Neither the deploy's wait nor the platform's health signal waits on that drain: each passes once every node runs a Ready pod of the new revision. **Status:** todo (t001–t005, t007 and t008 done; t006 next: ship, then the production check across the next pin that moves an SNI pin)
 
 ## Tasks (in order)
 
@@ -8,12 +8,12 @@
 | --- | --- | --- | --- |
 | t001 | [The deploy's SNI wait passes once each node's new pod is Ready](done/t001.md) | 1h | — | — **DONE**
 | t002 | [The `bex-operator` Application stays Healthy while an old SNI pod drains](done/t002.md) | 2h | t001 | — **DONE**
-| t003 | [Both SNI proxies drain for the longer bound](t003.md) | 45m | t002, w6/m515 t006 |
-| t004 | [Prove it on the local cluster](t004.md) | 1h30m | t003 |
-| t005 | [Record it in ADR021 § 10, ADR009 and the operator guide](t005.md) | 30m | t003 |
+| t003 | [Both SNI proxies drain for the longer bound](done/t003.md) | 45m | t002, w6/m515 t006 | — **DONE**
+| t004 | [Prove it on the local cluster](done/t004.md) | 1h30m | t003 | — **DONE**
+| t005 | [Record it in ADR021 § 10, ADR009 and the operator guide](done/t005.md) | 30m | t003 | — **DONE**
 | t006 | [Ship and verify on production](t006.md) | 1h30m | t004, t005 |
-| t007 | [Simplify](t007.md) | 15m | t006 |
-| t008 | [Test coverage](t008.md) | 30m | t006 |
+| t007 | [Simplify](done/t007.md) | 15m | t006 | — **DONE**
+| t008 | [Test coverage](done/t008.md) | 30m | t006 | — **DONE**
 | t009 | [Closeout](t009.md) | 10m | t007, t008 |
 
 ## Definition of done
@@ -27,7 +27,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** promoted from inbox note [w6/146](../../done/146.md) on 2026-11-19 by `/loopx w6`. w6/m515 t005 filed it as the longer-bound variant that milestone's Design weighed.
+- **Source:** promoted from inbox note [w6/146](../done/146.md) on 2026-11-19 by `/loopx w6`. w6/m515 t005 filed it as the longer-bound variant that milestone's Design weighed.
 - **Goal linkage:** ADR008 § Render parity first.
   - Render breaks a datastore's connections for its own infrastructure only in service-affecting maintenance, which "usually occur[s] no more than once every three months", announced by email ([platform maintenance](https://render.com/docs/platform-maintenance), read 2026-11-19).
   - bex closes every external Key Value and Postgres stream without notice on each deploy that changes an SNI binary. After w6/m515 that close comes 30 s after the old pod's `SIGTERM`. No ADR018 row signs it off.
@@ -66,7 +66,7 @@
 
 - **t003 and every later task wait for w6/m515.** The drain itself is w6/m515's code, in stash `loopx/w6/m515` until w6/m470 t006 records its held-client deploy. Ship t003 only after w6/m515 t006 has recorded its production check, or w6/m515 is in `done/`. That check reads held idle clients closing at the 30 s bound, and a longer bound shipped first would change what it reads.
 - **t001 and t002 may ship before**, but only if they change neither SNI binary (the packages w6/m470 § "Do not change the SNI binaries" lists) nor either DaemonSet template, because either change rolls both DaemonSets and spends the kept-pin deploy w6/m470 waits for. Anything that does change one waits with t003.
-- **ADR021 § 10 changes in the stash.** w6/m515's stash rewrites § 10 and links this work as `../.pm/w6/146.md`. That note is now [w6/146](../../done/146.md), so the link moves to this milestone when the stash is applied (`bash scripts/docs-links-validate.sh` reports it). t005 edits the section w6/m515 lands, not today's.
+- **ADR021 § 10 changes in the stash.** w6/m515's stash rewrites § 10 and links this work as `../.pm/w6/146.md`. That note is now [w6/146](../done/146.md), so the link moves to this milestone when the stash is applied (`bash scripts/docs-links-validate.sh` reports it). t005 edits the section w6/m515 lands, not today's.
 
 ## Progress — 2026-11-19 (t001 and t002 shipped; parked on w6/m515)
 
@@ -77,3 +77,11 @@
   - Option 2 and its keep-the-labels variant were rejected on the DaemonSet controller's code, and option 3 is not needed. The health signal sets no maximum, so t003 can take the 3,600 s target ([t002](done/t002.md#choice-2026-11-19-option-1-an-argo-health-check-that-reads-a-signal-the-operator-writes)).
 - **Neither changes an SNI binary or a DaemonSet template.** `go list -deps` shows neither binary links the new code, and `config/prod` renders both DaemonSets byte-identical to `3d8835416`. So the shipping deploy keeps both SNI pins, as w6/m470 needs.
 - **Gate.** t003 changes both DaemonSets. It ships after w6/m515 t006 records its production check, or once m515 is in `done/` (§ Sequencing constraint). m515 itself waits for w6/m470 t006. Next: apply w6/m515's stash, then t003 on top of it, then t004–t009.
+
+## Unblock record — 2026-11-20 (verified evidence, `/loopx w6`)
+
+- **Affected:** t003–t009.
+- **Source: verified evidence.** w6/m515 is in `done/` (`17e8848c0`), and its [t006](../done/m515/done/t006.md#step-2-the-sni-moving-deploy-2026-11-20-pin-a47204c7e) recorded the production check this milestone waited for: across pin `a47204c7e` (producer `3e53abbe3bc3`), held external clients on both proxies got their replies after `SIGTERM` and closed at the 30 s bound. Both gates in § Sequencing constraint hold.
+- **The stash is gone.** w6/m515 shipped its drain as `495d04b86`, so t003 edits `main`'s DaemonSets directly, and ADR021 § 10's link to this milestone already points here. Its t008 (`17e8848c0`, `sniproxy.HardStopOnManagerExit`) changes both SNI binaries, so the first pin that carries it moves both SNI pins whatever t003 does.
+- **Rollout consequence.** `bex-operator` tracks `main`, so t003's template change rolls both DaemonSets at push, on the running image, and those old pods still drain for 30 s (w6/m515 t006 § Step 1, Deviation). The first pin that carries t003 and `17e8848c0` then rolls them by image, and its old pods drain for the new bound: that is t006's held-client deploy.
+- **Next:** t003 at 3,600 s, t004 on the local cluster, t005, ship, then t006 across that pin.
