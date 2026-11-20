@@ -1,6 +1,6 @@
 # w3 · m505 — A project's Application Logs and Request Logs show every resource in one view, as on Render
 
-**Worker:** worker3 **Goal:** a project gets Render's Observability group: Application Logs and Request Logs views, each a saved search, that read every service, cron job, Postgres and Key Value of the project (or one environment) in one time-ordered stream, each line naming its resource. **Status:** blocked — t001–t007 and t009–t012 done and shipped in `405547eb5`; t008 is verified on dev-3, and its production walk on pin `1c63b6fe0a34` held except pending and ready at 390, fixed in `2e5281afb`; the 390 re-check waits for a production pin carrying `2e5281afb` (§ Gate (2026-11-19, after the production walk))
+**Worker:** worker3 **Goal:** a project gets Render's Observability group: Application Logs and Request Logs views, each a saved search, that read every service, cron job, Postgres and Key Value of the project (or one environment) in one time-ordered stream, each line naming its resource. **Status:** done — t001–t007 and t009–t012 shipped in `405547eb5`, the 390 fix in `2e5281afb`; t008 verified on dev-3 and on production (pins `1c63b6fe0a34` and `98e053468f52`), closed 2026-11-20 (§ Closeout (t013, 2026-11-20))
 
 ## Tasks (in order)
 
@@ -13,12 +13,12 @@
 | [t005](done/t005.md) | Live tail for a project scope — **DONE** | 1h | t004 |
 | [t006](done/t006.md) | Dashboard: the project Observability group and its log view pages — **DONE** | 2h30m | t004 |
 | [t007](done/t007.md) | Request Logs Pro gate and the partial, unavailable and empty states — **DONE** | 45m | t006 |
-| [t008](t008.md) | Verify on dev-3 and on production | 45m | t005, t007 |
+| [t008](done/t008.md) | Verify on dev-3 and on production — **DONE** | 45m | t005, t007 |
 | [t009](done/t009.md) | ADR018 Projects row, ADR010 and the dashboard guide — **DONE** | 30m | t008 |
 | [t010](done/t010.md) | Render parity — **DONE** | 20m | t009 |
 | [t011](done/t011.md) | Simplify — **DONE** | 15m | t010 |
 | [t012](done/t012.md) | Test coverage — **DONE** | 30m | t010 |
-| [t013](t013.md) | Closeout | 10m | t011, t012 |
+| [t013](done/t013.md) | Closeout — **DONE** | 10m | t011, t012 |
 
 ## Definition of done
 
@@ -137,3 +137,37 @@ The Hobby refusal was not walked on production: the QA user's Hobby workspace ha
 ## Gate (2026-11-19, after the production walk)
 
 **Clears by itself; no decision needed.** The 390 check repeats once production runs `2e5281afb`. Check: the newest `chore(deploy): pin platform images to <sha>` on `main` passes `git merge-base --is-ancestor 2e5281afb <sha>`. Then, as the QA user in `bex-canary`, create a project with a web service that logs (as above; the cron job and the Postgres are not needed for this check). Compare pending (slow the `SavedSearches` read) and ready for Application Logs and Request Logs at 390 and 1440: the toolbar, the note line, and the panel's top and bottom must match. If w3/m507 is on that pin by then, its header actions show in both states. Delete the fixture by id, log out, record it here, and run t013. Every other definition-of-done item already holds on production (above).
+
+## Unblock (2026-11-20)
+
+- **Affected:** t008 step 3 (the pending and ready re-check at 390 and 1440 on production), then t013.
+- **Source:** verified evidence. The newest production pin on `origin/main`, `c8c774658` (`chore(deploy): pin platform images to 98e053468f52`, 2026-11-19 21:57Z), carries `2e5281afb`: `git merge-base --is-ancestor 2e5281afb 98e053468f52` succeeds. Production's `bex-api` runs `bex-operator@sha256:1ec4a7c2…` and the `dashboard` Deployment `bex-dashboard@sha256:ab9dafdb…`, the digests that pin names. w3/m507's `bb151b367` is on that pin too, so its header actions are part of this comparison.
+- **Remaining gates:** none. t008's remaining step is § Gate (2026-11-19, after the production walk) above.
+
+## Production re-check of pending and ready (t008 step 3, 2026-11-20)
+
+Pin `98e053468f52`, as the QA user in `bex-canary`. The fixture project `qa-20261120-m505` (`prj-dbvotmp50n7c739b9vf0`, environment production `evm-dbvotmp50n7c739b9vfg`) held a busybox web service `qa-20261120-m505-web` (`srv-dbvotok3j89c738ag2lg`, a line every 7 s and `httpd` on `$PORT`), created over REST; seven `curl` requests gave Request Logs its lines. Each check opened the project's Overview, delayed the `SavedSearches` GraphQL read by 7 s, and clicked the sidebar's view link (at 390 through Toggle Sidebar), so the route's pending frame (`data-route-skeleton="project-log-view"`) showed; pending was read 2.5 s after the click and ready once the lines had drawn. Rows are top–bottom in CSS px.
+
+| view, width | header | toolbar (search · range · Live) | note line | panel | result |
+| --- | --- | --- | --- | --- | --- |
+| Application Logs, 1440 | 72–124 both | 148–184 (148–184 · 150–182 · 150–182) both | 200–216 both | 232–868 both | holds |
+| Application Logs, 390 | 64–160 both | 184–272 (184–220 · 234–266 · 228–272) both | 288–320 both | 336–812 both | holds |
+| Request Logs, 1440 | 72–124 both | 148–184, as above, both | 200–216 both | 232–868 both | holds |
+| Request Logs, 390 | 64–160 both | 184–272, as above, both | 288–320 both | 336–812 both | holds |
+
+- w3/m507 is on this pin. Its Edit view, Duplicate and Delete buttons sat at the same boxes in both states, disabled while pending (at 1440 `92–124`, at 390 on their own row `128–160`).
+- The panel region ended on the same line in both states. Pending, the skeleton drew its footer bar there. Ready, "Live — streaming new lines" sat at `852–868` under the lines' box (`232–844`) at 1440, and at `796–812` under `336–788` at 390.
+- Only the view's name differed: the pending bar is `h-6` with a fixed width, and the ready title is the name's text line (24 px against 28 px inside the same header row, which did not move).
+- The ready pages drew `[qa-20261120-m505-web]` lines: the ticks and `httpd`'s request lines in Application Logs, and `GET`/`HEAD` with `404` chips, host and path in Request Logs.
+
+**Cleanup.** The service was deleted (`DELETE` 204), then the project (`deleteProject`). By-id `GET` answered 404 for the service, the project and the environment, and `savedSearch` for the project's Application Logs view answered `NOT_FOUND`; the app cluster kept no App or Deployment of it. The QA session was logged out (the page's cookie then answered 401), and the session jar, the screenshots and the fetched kubeconfig were deleted.
+
+## Closeout (t013, 2026-11-20)
+
+- **Three default saved searches** through GraphQL: dev-3 and production (§ Production walk), on both pins.
+- **Every resource in one view, with an environment filter and the live tail:**
+  - Web service, cron job and Postgres lines interleaved with their names and instances on production (§ Production walk). The environment documents and the tail held there too.
+  - Key Value: dev-3's `resources` named `session-cache`, and the staging document kept it. Neither walk saw a Key Value line in its window. Its line rendering is covered by `log-line-list-resources.test.tsx`.
+- **Request Logs** read the web service's request lines on production on both pins. The Hobby refusal stands on dev-3 and `TestProjectRequestLogsFollowThePlan`.
+- **An unreadable resource contributes nothing:** the tests in § Test coverage.
+- **Pending and ready match at 1440 and 390** on production pin `98e053468f52` for both views (above).
