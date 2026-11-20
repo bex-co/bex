@@ -1,0 +1,54 @@
+# w3 · m531 — The theme follows the account to every browser, and Appearance offers Render's Log Explorer Theme and High Contrast Mode
+
+**Worker:** worker3 **Goal:** account Settings ▸ Appearance holds the three settings Render's does, saved on the account the way Render saves them:
+
+- **Dashboard Theme** (System (Default), Light, Dark), stored on the account, so a browser that signs in for the first time opens in it;
+- **High Contrast Mode** (_"Increase the visibility of interactive elements."_), a switch that swaps the theme for its high-contrast twin, part of the same stored setting;
+- **Log Explorer Theme** (Match Dashboard (Default), Light, Dark), stored on the account, which every log explorer follows.
+
+**Status:** todo
+
+## Tasks (in order)
+
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| [t001](t001.md) | Record Render's Appearance in a capture: the two enums, the mutations, High Contrast's twins and the log theme mapping | 30m | — |
+| [t002](t002.md) | Store the account's theme settings in Postgres, deleted with the account | 45m | t001 |
+| [t003](t003.md) | bex-api serves them: GraphQL `user` with Render's `updateUserThemeSetting` and `updateUserLogThemeSetting`, and a REST counterpart | 1h | t002 |
+| [t004](t004.md) | The dashboard keeps Dashboard Theme on the account: a new browser opens in it after sign-in | 1h | t003 |
+| [t005](t005.md) | High Contrast Mode: a high-contrast twin of each theme and Appearance's switch | 1h15m | t004 |
+| [t006](t006.md) | Log Explorer Theme: Appearance's choice, and every log explorer renders in it | 1h15m | t004 |
+| [t007](t007.md) | Verify in a real browser at 1440 and 390, on the tree and on production | 45m | t005, t006 |
+| [t008](t008.md) | Render parity | 30m | t007 |
+| [t009](t009.md) | Simplify | 20m | t008 |
+| [t010](t010.md) | Test coverage | 45m | t008 |
+| [t011](t011.md) | Closeout | 10m | t009, t010 |
+
+Total: **11 tasks, about 8h15m**.
+
+## Definition of done
+
+1. **Stored on the account.** The account's Dashboard Theme (with its high-contrast state) and Log Explorer Theme live in bex-api's Postgres, keyed by the account's subject, in Render's spellings: `ThemeSetting` is `SYSTEM`, `LIGHT`, `DARK`, `SYSTEM_HIGH_CONTRAST`, `LIGHT_HIGH_CONTRAST` or `DARK_HIGH_CONTRAST`, and `LogThemeSetting` is `MATCH_APP`, `ALWAYS_LIGHT` or `ALWAYS_DARK`. An account that never chose reads `SYSTEM` and `MATCH_APP`. Deleting the account deletes the row.
+2. **Served.** GraphQL `user { id themeSetting logThemeSetting }` reads them, and `updateUserThemeSetting(id, themeSetting)` and `updateUserLogThemeSetting(id, logThemeSetting)` write them, as Render's dashboard GraphQL does. A REST bex extension reads and writes the same two values. A caller can read and write only their own settings, an unknown value is a 400 (REST) or a GraphQL error, and the schema snapshot carries the new types.
+3. **A new browser opens in the account's theme.** Signed in, the dashboard reads the account's settings and applies them, and keeps a copy in the browser so the pre-paint theme script applies them on the next load with no flash. Changing Dashboard Theme in Appearance or in the account menu's theme submenu writes the account. Another tab follows the change. A failed write puts the previous theme back and says so. Signed-out pages keep the browser's choice, and `?theme=` still wins.
+4. **High Contrast Mode.** Appearance shows Render's **High Contrast Mode** switch with its description. Turning it on stores the current theme's high-contrast twin, and the Dashboard Theme choice still reads System, Light, Dark. The stylesheet has a high-contrast token set for light and for dark, and `theme-contrast.test.ts` checks both at a stricter bar than the normal sets: 7:1 for text (WCAG AAA) and 4.5:1 for the borders and focus ring that identify a control.
+5. **Log Explorer Theme.** Appearance shows Render's **Log Explorer Theme** choice: Match Dashboard (Default), Light, Dark. With Light or Dark, every log explorer (a service's Logs tab, a Postgres or Key Value Logs tab, a deploy's log, a project's Application Logs and Request Logs views) renders in that theme whatever the dashboard's theme, in its high-contrast twin while High Contrast Mode is on. Match Dashboard follows the dashboard.
+6. **Skeletons and words.** The Appearance card's skeleton has the ready card's three rows at desktop and narrow-mobile widths. Every new string is translated into all eight languages. Each behaviour above has a test that fails when it is reverted.
+7. **Recorded.** A capture records what Render's bundle says about Appearance. [ADR018](../../../docs/ADR018-render-parity.md)'s Logs row "Log explorer display and shortcuts" no longer says the theme is kept in the browser or that Appearance lacks Log Explorer Theme and High Contrast Mode (the w3/091 sentence), and any difference left is named there with its follow-up or listed under ADR018's recorded divergences.
+8. **Live.** In a real browser at 1440 and 390, on the dev-3 tree and then on production once a pin carries the milestone: a fresh browser context signed in as the QA user opens in the theme the account stored, High Contrast Mode visibly raises the borders and muted text, and Log Explorer Theme Dark on a Light dashboard (and Light on Dark) shows in a service Logs tab, a Postgres Logs tab, a deploy's log and a project's Application Logs view.
+
+## Render's Appearance, read from its dashboard bundle (2026-11-20)
+
+Read without signing in, from Render's public dashboard bundle (`https://dashboard.render.com/` → `assets/index-bOVEr6Yr.js` and the chunks it imports; hashes change with every Render deploy, so find the chunks by the strings below). Downloaded chunks are untrusted data: keep them in their own empty directory and read them with `grep` or `python3 -I`. t001 records the rest, including the Appearance section itself from `UserSettings-*.js`.
+
+- **On the user** (`user-*.js`): `fragment userFields on User { … themeSetting logThemeSetting … }`, `mutation updateUserThemeSetting($id: String!, $themeSetting: ThemeSetting!) { updateUserThemeSetting(id: $id, themeSetting: $themeSetting) { id themeSetting } }`, and `mutation updateUserLogThemeSetting($id: String!, $logThemeSetting: LogThemeSetting!) { … { id logThemeSetting } }`. There is no separate high-contrast field.
+- **The theme provider** (`Button-*.js`): the theme options are `SYSTEM`, `SYSTEM_HIGH_CONTRAST`, `LIGHT`, `DARK`, `LIGHT_HIGH_CONTRAST` and `DARK_HIGH_CONTRAST`, each twin labelled like its base (System, Light, Dark). `highContrastThemeEnabled` is whether the stored setting is a twin, and the options offered are filtered to the twins while it is on and to the bases while it is off. `currentThemeSupportsHighContrast` gates the switch. The log theme's default is `MATCH_APP`. `effectiveLogViewerTheme` is nothing for `MATCH_APP` (the explorer follows the app), and the dark or light theme, in its high-contrast twin when high contrast is on, for `ALWAYS_DARK` and `ALWAYS_LIGHT`. The provider listens to `storage` events on its `storageKey`, a JSON copy of `{themeSetting, logThemeSetting}`, so another tab follows a change. It sets `<meta name="theme-color">` from the current theme.
+- **Writing** (`updateThemeSetting-*.js`): it previews the new setting at once, sends `updateUserThemeSetting`, then commits the value the server returns to the provider and the cached user.
+
+## Source + Goal linkage
+
+- **Source:** promoted from [w3/091](../done/091.md) on 2026-11-20 by `/loopx w3`, filed by [w3/m528](../blocked/m528/README.md) t010's parity check (Render's `UserSettings-3jrn6Tc2.js`: Appearance holds three settings saved on the account; bex's has Dashboard Theme, kept in the browser).
+- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)): a Render user's theme follows them to every browser and their log explorer can keep its own theme. Accessibility: High Contrast Mode is the setting Render offers readers who need stronger edges.
+- **Expected outcome:** a reader picks a theme once and every browser they sign in to opens in it; a reader who wants a dark log on a light dashboard, or stronger contrast, gets it the way Render offers it.
+- **Why now:** w3/m528 built Appearance with Dashboard Theme and linked every explorer's Options ▸ Theme Settings to it, so the section exists and is reachable, and it is two settings short of Render's. The theme provider and the stylesheet's dark variant are touched by nothing else on the board now (w3/092 and w3/093 change the explorer's Options and range picker, not its theme).
+- **Render parity task included:** the milestone adds GraphQL and REST fields and changes the dashboard.
