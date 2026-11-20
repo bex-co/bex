@@ -192,8 +192,8 @@ describe("useMetrics", () => {
           {
             unit: "bytes",
             labels: [
-              { field: "resource", value: "beancount-cms-v2" },
-              { field: "instance", value: "web-1" },
+              { field: "RESOURCE", value: "beancount-cms-v2" },
+              { field: "INSTANCE", value: "web-1" },
               null, // a malformed label must not crash the mapping
             ],
             values: [
@@ -213,7 +213,7 @@ describe("useMetrics", () => {
     expect(result.current.series).toEqual([
       {
         unit: "bytes",
-        labels: { resource: "beancount-cms-v2", instance: "web-1" },
+        labels: { RESOURCE: "beancount-cms-v2", INSTANCE: "web-1" },
         points: [{ timestamp: "2026-07-06T09:00:00Z", value: 1024 }],
       },
     ]);

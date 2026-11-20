@@ -450,7 +450,7 @@ func TestManagedServiceIDMetricsAcrossRESTGraphQLAndMCP(t *testing.T) {
 	var gqlResource string
 	for _, label := range gqlSeries[0].(map[string]any)["labels"].([]any) {
 		fields := label.(map[string]any)
-		if fields["field"] == "resource" {
+		if fields["field"] == "RESOURCE" {
 			gqlResource, _ = fields["value"].(string)
 		}
 	}

@@ -234,7 +234,7 @@ func TestProjectMetricsGroupBy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if labels := seriesLabels(byCode.Series, "STATUS_CODE"); labels != "200,500" || byCode.Series[0].Points[0].Value != 12 || byCode.Series[1].Points[0].Value != 4 {
+	if labels := seriesLabels(byCode.Series, sourceStatusCodeLabel); labels != "200,500" || byCode.Series[0].Points[0].Value != 12 || byCode.Series[1].Points[0].Value != 4 {
 		t.Errorf("STATUS_CODE should add each code across the four resources: %+v", byCode.Series)
 	}
 	for _, tc := range []struct{ metric, groupBy, want string }{
@@ -349,7 +349,7 @@ func TestGraphQLProjectMetrics(t *testing.T) {
 		// what matters is the labels: resource and quantile per series.
 		first := series[0].(map[string]any)
 		labels := fmt.Sprint(first["labels"])
-		if !strings.Contains(labels, "resource") || !strings.Contains(labels, "quantile") {
+		if !strings.Contains(labels, "RESOURCE") || !strings.Contains(labels, "quantile") {
 			t.Errorf("a latency series names its resource and percentile: %s", labels)
 		}
 	}

@@ -222,9 +222,16 @@ func readActivitySurfaces(t *testing.T, svc *Service, kind, resource, metric, re
 		r := surfaceRead{series: []string{}}
 		for _, raw := range res.Data.(map[string]any)["datastoreMetrics"].([]any) {
 			s := raw.(map[string]any)
+			// GraphQL names these two by Render's MetricQueryFilter (w3/087,
+			// TestGraphQLMetricLabelNames); read back in REST's names to compare.
+			restName := map[string]string{"RESOURCE": LabelResource, "INSTANCE": "instance"}
 			labels := map[string]string{}
 			for _, l := range s["labels"].([]any) {
-				labels[l.(map[string]any)["field"].(string)] = l.(map[string]any)["value"].(string)
+				field := l.(map[string]any)["field"].(string)
+				if name, ok := restName[field]; ok {
+					field = name
+				}
+				labels[field] = l.(map[string]any)["value"].(string)
 			}
 			var values []float64
 			for _, v := range s["values"].([]any) {

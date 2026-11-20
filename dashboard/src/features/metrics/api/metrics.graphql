@@ -39,7 +39,7 @@ query MonthToDateBandwidth($resourceId: String!) {
 
 # One chart of a project's Service Metrics view (w3/m508, a Bex extension):
 # every resource the view's filter document keeps, read in one request. Series
-# carry `resource` (groupBy RESOURCE, the default), `statusCode` (STATUS_CODE)
+# carry `RESOURCE` (groupBy RESOURCE, the default), `STATUS_CODE` (STATUS_CODE)
 # or no label (NONE). `resources` is every resource of the view the caller may
 # read, in the project's order, each CHARTED, NOT_CHARTED (the chart has no
 # series for its type) or FAILED (its read failed; it adds nothing).

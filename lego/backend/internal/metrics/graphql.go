@@ -175,7 +175,7 @@ type metricSeriesResult struct {
 }
 
 // metricSeriesGQLType projects MetricSeries; labels are exposed as Render's
-// sorted {field,value} array (reusing the REST mapper).
+// sorted {field,value} array, named as Render's GraphQL names them.
 var metricSeriesGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "MetricSeries",
 	Fields: graphql.Fields{
@@ -183,7 +183,7 @@ var metricSeriesGQLType = graphql.NewObject(graphql.ObjectConfig{
 			return p.Source.(metricSeriesResult).Unit, nil
 		}},
 		"labels": &graphql.Field{Type: graphql.NewList(metricLabelGQLType), Resolve: func(p graphql.ResolveParams) (any, error) {
-			return toRenderMetricSeries(p.Source.(metricSeriesResult).MetricSeries).Labels, nil
+			return toGraphQLLabels(p.Source.(metricSeriesResult).MetricSeries), nil
 		}},
 		"values": &graphql.Field{Type: graphql.NewList(metricValueGQLType), Resolve: func(p graphql.ResolveParams) (any, error) {
 			return p.Source.(metricSeriesResult).Points, nil
@@ -368,8 +368,9 @@ var projectMetricResourceGQLType = graphql.NewObject(graphql.ObjectConfig{
 var projectMetricsGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ProjectMetrics",
 	Fields: graphql.Fields{
-		// series carry `resource` (RESOURCE), the code under `STATUS_CODE` (STATUS_CODE) or no
-		// label (NONE), and `quantile` beside `resource` for several percentiles.
+		// series carry `RESOURCE` (group by RESOURCE), `STATUS_CODE` (STATUS_CODE)
+		// or no label (NONE), and `quantile` beside `RESOURCE` for several
+		// percentiles.
 		"series": gqlutil.Typed(
 			graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(metricSeriesGQLType))),
 			func(m ProjectMetrics) any {
@@ -416,8 +417,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 						return nil, err
 					}
 					for _, r := range qs {
-						ser := nameStatusCodeLabel(r.MetricSeries, q.GroupBy, graphqlStatusCodeLabel)
-						out = append(out, metricSeriesResult{MetricSeries: ser, Quantile: r.Quantile, HasQuantile: r.HasQuantile})
+						out = append(out, metricSeriesResult{MetricSeries: r.MetricSeries, Quantile: r.Quantile, HasQuantile: r.HasQuantile})
 					}
 				}
 				return out, nil

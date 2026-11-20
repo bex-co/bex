@@ -70,9 +70,9 @@ describe("projectChartLines", () => {
   it("draws one named line per resource in its hue, none for a hidden one", () => {
     const lines = projectChartLines(
       [
-        series({ resource: "srv-web" }),
-        series({ resource: "srv-api" }),
-        series({ resource: "srv-cron" }),
+        series({ RESOURCE: "srv-web" }),
+        series({ RESOURCE: "srv-api" }),
+        series({ RESOURCE: "srv-cron" }),
       ],
       legend,
       new Set(["srv-api"]),
@@ -109,7 +109,7 @@ describe("projectChartNotes", () => {
   it("names a failed read, a type the chart does not draw and a resource with no data", () => {
     const notes = projectChartNotes(
       RESOURCES,
-      [series({ resource: "srv-web" }), series({ resource: "srv-api" })],
+      [series({ RESOURCE: "srv-web" }), series({ RESOURCE: "srv-api" })],
       "RESOURCE",
       new Set(),
     );
@@ -124,7 +124,7 @@ describe("projectChartNotes", () => {
     expect(
       projectChartNotes(
         RESOURCES,
-        [series({ resource: "srv-web" })],
+        [series({ RESOURCE: "srv-web" })],
         "RESOURCE",
         new Set(["srv-jobs", "srv-api", "srv-cron"]),
       ),

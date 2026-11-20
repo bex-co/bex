@@ -20,8 +20,10 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -148,6 +150,146 @@ func TestStatusCodeBreakdownLabelOnEverySurface(t *testing.T) {
 	}
 	if got := codesUnder("GraphQL projectMetrics", "STATUS_CODE", "statusCode", data.ProjectMetrics.Series); got != "200,500" {
 		t.Errorf("GraphQL projectMetrics groupBy STATUS_CODE codes = %q, want 200,500", got)
+	}
+}
+
+// labelFields is a series' label fields, sorted and comma-joined.
+func labelFields(series []renderMetricSeries) []string {
+	out := make([]string, 0, len(series))
+	for _, s := range series {
+		fields := make([]string, 0, len(s.Labels))
+		for _, l := range s.Labels {
+			fields = append(fields, l.Field)
+		}
+		sort.Strings(fields)
+		out = append(out, strings.Join(fields, ","))
+	}
+	return out
+}
+
+// w3/087: Render's GraphQL MetricResultLabel.field is its MetricQueryFilter
+// enum, and its dashboard finds a series' labels by it, so GraphQL names a
+// series' resource, instance, host, method and status code RESOURCE, INSTANCE,
+// HOST, METHOD and STATUS_CODE on metrics, datastoreMetrics and projectMetrics
+// alike. The labels the enum has no value for (quantile, aggregate, direction,
+// degraded_sources) are Bex extensions and keep their names. REST and MCP keep
+// the lowercase names Render's REST uses.
+func TestGraphQLMetricLabelNames(t *testing.T) {
+	svc, _ := projectFixture(t)
+	point := []MetricPoint{{Timestamp: fixedClock().Format(time.RFC3339), Value: 1}}
+	statusOrTotal := svc.RequestMetrics
+	requests := func(ctx context.Context, req RequestMetricsRequest) ([]MetricSeries, error) {
+		switch {
+		case req.Metric == MetricBandwidth:
+			return []MetricSeries{{Labels: map[string]string{LabelDegradedSources: "direct"}, Unit: unitBytes, Points: point}}, nil
+		case req.GroupBy == groupByMethod:
+			return []MetricSeries{{Labels: map[string]string{groupByMethod: "GET"}, Unit: unitCount, Points: point}}, nil
+		case req.GroupBy == groupByHost:
+			return []MetricSeries{{Labels: map[string]string{groupByHost: "a.example"}, Unit: unitCount, Points: point}}, nil
+		}
+		return statusOrTotal(ctx, req)
+	}
+	svc.RequestMetrics, svc.RequestLogMetrics = requests, requests
+
+	stores := newService(nil, nil, sampleDatabase("pg", false))
+	stores.DatastoreActivity = func(context.Context, DatastoreActivityRequest) ([]MetricSeries, error) {
+		return []MetricSeries{
+			{Labels: map[string]string{LabelResource: "pg", "instance": "pg-1", LabelDirection: directionRead}, Unit: unitBytes, Points: point},
+			{Labels: map[string]string{LabelResource: "pg", "instance": "pg-1", LabelDirection: directionWrite}, Unit: unitBytes, Points: point},
+		}, nil
+	}
+
+	web := `filters: [{field: "RESOURCE", values: ["web"]}]`
+	for _, tc := range []struct {
+		name     string
+		svc      *Service
+		graphql  string // a query whose one field answers [MetricSeries] or {series}
+		rest     string // the same read on REST, "" where REST has none
+		gql, raw string // each series' label fields on GraphQL and REST
+	}{
+		{"per-instance CPU", svc, `metrics(query: {` + web + `, name: "CPU"})`, "/v1/metrics/cpu?resource=web", "INSTANCE,RESOURCE", "instance,resource"},
+		{"replica aggregate", svc, `metrics(query: {` + web + `, name: "CPU", aggregateAllMethod: "AVG"})`, "/v1/metrics/cpu?resource=web&aggregateAllMethod=AVG", "RESOURCE,aggregate", "aggregate,resource"},
+		{"status code breakdown", svc, `metrics(query: {` + web + `, name: "HTTP_REQUESTS", aggregateBy: ["STATUS_CODE"]})`, "/v1/metrics/http-requests?resource=web&aggregateBy=statusCode", "RESOURCE,STATUS_CODE", "resource,statusCode"},
+		{"host breakdown", svc, `metrics(query: {` + web + `, name: "HTTP_REQUESTS", aggregateBy: ["HOST"]})`, "/v1/metrics/http-requests?resource=web&aggregateBy=host", "HOST,RESOURCE", "host,resource"},
+		{"method breakdown", svc, `metrics(query: {` + web + `, name: "HTTP_REQUESTS", aggregateBy: ["METHOD"]})`, "", "METHOD,RESOURCE", ""},
+		{"percentile overlay", svc, `metrics(query: {` + web + `, name: "HTTP_LATENCY", parameters: [{quantile: 0.5}, {quantile: 0.9}]})`, "/v1/metrics/http-latency?resource=web&quantile=0.5&quantile=0.9", "RESOURCE,quantile", "quantile,resource"},
+		{"degraded bandwidth", svc, `metrics(query: {` + web + `, name: "BANDWIDTH"})`, "/v1/metrics/bandwidth?resource=web", "RESOURCE,degraded_sources", "degraded_sources,resource"},
+		{"datastore read and write", stores, `datastoreMetrics(query: {resource: "pg", name: "NETWORK_ACTIVITY"})`, "/v1/metrics/network-activity?resource=pg&kind=database", "INSTANCE,RESOURCE,direction", "direction,instance,resource"},
+		{"project by resource", svc, `projectMetrics(query: {project: "prj-x", name: "CPU"}) { series`, "", "RESOURCE", ""},
+		{"project by status code", svc, `projectMetrics(query: {project: "prj-x", name: "HTTP_REQUESTS", groupBy: "STATUS_CODE"}) { series`, "", "STATUS_CODE", ""},
+		{"project percentiles", svc, `projectMetrics(query: {project: "prj-x", name: "HTTP_LATENCY", parameters: [{quantile: 0.5}, {quantile: 0.9}]}) { series`, "", "RESOURCE,quantile", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			schema, err := gqlSchema(tc.svc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			query := "{ " + tc.graphql + " { labels { field value } } }"
+			if strings.HasSuffix(tc.graphql, "{ series") {
+				query = "{ " + tc.graphql + " { labels { field value } } } }"
+			}
+			res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: query})
+			if len(res.Errors) > 0 {
+				t.Fatalf("gql %s: %v", query, res.Errors)
+			}
+			var data map[string]json.RawMessage
+			if raw, err := json.Marshal(res.Data); err != nil || json.Unmarshal(raw, &data) != nil {
+				t.Fatalf("decode %+v: %v", res.Data, err)
+			}
+			var series []renderMetricSeries
+			for _, raw := range data {
+				var project struct{ Series []renderMetricSeries }
+				if json.Unmarshal(raw, &series) != nil && json.Unmarshal(raw, &project) == nil {
+					series = project.Series
+				}
+			}
+			assertEveryFields(t, "GraphQL", labelFields(series), tc.gql)
+
+			if tc.rest == "" {
+				return
+			}
+			rec := serveREST(tc.svc, tc.rest)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("REST %s = %d %s", tc.rest, rec.Code, rec.Body)
+			}
+			assertEveryFields(t, "REST", labelFields(seriesFrom(t, rec.Body.Bytes())), tc.raw)
+		})
+	}
+
+	// MCP keeps REST's names, as Render's MCP server forwards REST's series.
+	for _, tc := range []struct {
+		args map[string]any
+		want string
+	}{
+		{map[string]any{"resourceId": "web", "metricTypes": []string{"cpu_usage"}}, "instance,resource instance,resource"},
+		{map[string]any{"resourceId": "web", "metricTypes": []string{"http_request_count"}, "aggregateHttpRequestCountsBy": "host"}, "host,resource"},
+	} {
+		res, err := mcpSession(t, svc).CallTool(context.Background(), &mcp.CallToolParams{Name: "get_metrics", Arguments: tc.args})
+		if err != nil || res.IsError {
+			t.Fatalf("MCP get_metrics %v: %v %s", tc.args, err, mustJSON(res.Content))
+		}
+		if got := strings.Join(labelFields(decodeGetMetrics(t, res).series()), " "); got != tc.want {
+			t.Errorf("MCP get_metrics %v label fields = %q, want %q", tc.args, got, tc.want)
+		}
+	}
+}
+
+func mustJSON(v any) string {
+	b, _ := json.Marshal(v)
+	return string(b)
+}
+
+// assertEveryFields fails unless there is a series and each one's label fields are want.
+func assertEveryFields(t *testing.T, surface string, got []string, want string) {
+	t.Helper()
+	if len(got) == 0 {
+		t.Fatalf("%s answered no series, want each labeled %s", surface, want)
+	}
+	for _, fields := range got {
+		if fields != want {
+			t.Errorf("%s series label fields = %v, want each %s", surface, got, want)
+			return
+		}
 	}
 }
 

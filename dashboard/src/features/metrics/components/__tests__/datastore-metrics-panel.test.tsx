@@ -5,10 +5,7 @@ import { DatastoreMetricsPanel } from "../datastore-metrics-panel";
 import { DatastoreMetricsSkeleton } from "@/common/components/route-skeletons";
 import { useDatastoreMetrics } from "@/features/metrics/hooks/use-datastore-metrics";
 import { useMetricsRetentionBound } from "@/features/metrics/hooks/use-metrics-retention";
-import {
-  RANGE_PRESETS,
-  type RangeBound,
-} from "@/features/metrics/lib/range";
+import { RANGE_PRESETS, type RangeBound } from "@/features/metrics/lib/range";
 
 vi.mock("@/features/metrics/hooks/use-datastore-metrics", () => ({
   useDatastoreMetrics: vi.fn(),
@@ -44,7 +41,7 @@ function emptyResult() {
 }
 
 function seriesResult(unit: string, values: number[], instance?: string) {
-  const labels: Record<string, string> = instance ? { instance } : {};
+  const labels: Record<string, string> = instance ? { INSTANCE: instance } : {};
   return {
     series: [
       {
@@ -76,7 +73,7 @@ function directionResult(
       // Write first: the panel orders read before write itself.
       ["write", "read"].map((direction) => ({
         unit,
-        labels: { instance, direction },
+        labels: { INSTANCE: instance, direction },
         points: [
           { timestamp: new Date(1_751_800_000_000).toISOString(), value: 4 },
         ],

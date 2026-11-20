@@ -74,7 +74,7 @@ function result(
 
 const lineFor = (id: string, unit = "cpu") => ({
   unit,
-  labels: { resource: id },
+  labels: { RESOURCE: id },
   points: [
     { timestamp: "2026-11-19T10:00:00Z", value: 0.1 },
     { timestamp: "2026-11-19T10:01:00Z", value: 0.2 },

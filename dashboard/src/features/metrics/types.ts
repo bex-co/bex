@@ -96,7 +96,12 @@ export interface ChartPoint {
 
 export interface ChartSeries {
   unit: string;
-  /** Render's {field, value} labels, e.g. instance/resource. */
+  /**
+   * Render's {field, value} labels, keyed by field. GraphQL names them by
+   * Render's MetricQueryFilter enum (`RESOURCE`, `INSTANCE`, `HOST`, `METHOD`,
+   * `STATUS_CODE`); `quantile`, `aggregate`, `direction` and
+   * `degraded_sources` are Bex extensions (w3/087).
+   */
   labels: Record<string, string>;
   points: ChartPoint[];
 }

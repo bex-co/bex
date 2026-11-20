@@ -152,7 +152,7 @@ export function ApplicationMetricsCard({
   const availableInstances = useMemo(() => {
     const fromSeries = new Set<string>();
     for (const s of inventorySeries) {
-      const id = s.labels["instance"];
+      const id = s.labels["INSTANCE"];
       if (id) fromSeries.add(id);
     }
     return new Set([...liveInstances, ...fromSeries]);
@@ -452,7 +452,7 @@ function ResourceSection({
       result.series.map((s, i) => ({
         points: s.points,
         color: seriesColor(i),
-        label: s.labels["instance"],
+        label: s.labels["INSTANCE"],
       })),
     [result.series],
   );

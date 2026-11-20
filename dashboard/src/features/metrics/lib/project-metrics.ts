@@ -74,7 +74,7 @@ export function projectChartLines(
   const byId = new Map(legend.map((entry) => [entry.id, entry]));
   const lines: LineSeriesInput[] = [];
   series.forEach((s, i) => {
-    const resource = s.labels["resource"];
+    const resource = s.labels["RESOURCE"];
     if (resource !== undefined) {
       if (hidden.has(resource)) return;
       const entry = byId.get(resource);
@@ -118,7 +118,7 @@ export function projectChartNotes(
 ): ProjectChartNotes {
   const drawn = new Set(
     series.flatMap((s) =>
-      s.labels["resource"] !== undefined ? [s.labels["resource"]] : [],
+      s.labels["RESOURCE"] !== undefined ? [s.labels["RESOURCE"]] : [],
     ),
   );
   const notes: ProjectChartNotes = { failed: [], notCharted: [], noData: [] };

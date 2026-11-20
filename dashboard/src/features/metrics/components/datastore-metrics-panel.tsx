@@ -42,7 +42,7 @@ function toLineSeries(series: ChartSeries[]): LineSeriesInput[] {
   return series.map((s, i) => ({
     points: s.points,
     color: seriesColor(i),
-    label: s.labels["instance"],
+    label: s.labels["INSTANCE"],
   }));
 }
 
@@ -55,13 +55,13 @@ function toDirectionSeries(
   series: ChartSeries[],
   t: Translate,
 ): LineSeriesInput[] {
-  const instances = new Set(series.map((s) => s.labels["instance"]));
+  const instances = new Set(series.map((s) => s.labels["INSTANCE"]));
   const rank = (s: ChartSeries) => (s.labels["direction"] === "write" ? 1 : 0);
   return [...series]
     .sort(
       (a, b) =>
-        (a.labels["instance"] ?? "").localeCompare(
-          b.labels["instance"] ?? "",
+        (a.labels["INSTANCE"] ?? "").localeCompare(
+          b.labels["INSTANCE"] ?? "",
         ) || rank(a) - rank(b),
     )
     .map((s, i) => {
@@ -74,7 +74,7 @@ function toDirectionSeries(
         label:
           instances.size > 1
             ? t("metrics.seriesInstanceDirection", {
-                instance: s.labels["instance"] ?? "",
+                instance: s.labels["INSTANCE"] ?? "",
                 direction,
               })
             : direction,

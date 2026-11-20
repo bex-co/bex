@@ -129,7 +129,7 @@ const withSeries = (...values: number[]): UseMetricsResult => ({
   ...emptyResult(),
   series: [
     {
-      labels: { instance: "web-0" },
+      labels: { INSTANCE: "web-0" },
       unit: "percentage",
       points: points(...values),
     },

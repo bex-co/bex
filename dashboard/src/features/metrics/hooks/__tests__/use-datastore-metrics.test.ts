@@ -108,7 +108,7 @@ describe("useDatastoreMetrics", () => {
         datastoreMetrics: [
           {
             unit: "bytes",
-            labels: [{ field: "instance", value: "pg-1" }],
+            labels: [{ field: "INSTANCE", value: "pg-1" }],
             values: [{ time: "2026-07-06T09:00:00Z", value: 1024 }],
           },
           null,
@@ -123,7 +123,7 @@ describe("useDatastoreMetrics", () => {
     expect(result.current.series).toEqual([
       {
         unit: "bytes",
-        labels: { instance: "pg-1" },
+        labels: { INSTANCE: "pg-1" },
         points: [{ timestamp: "2026-07-06T09:00:00Z", value: 1024 }],
       },
     ]);

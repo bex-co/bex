@@ -635,12 +635,12 @@ describe("NetworkMetricsCard", () => {
           series: [
             {
               unit: "count",
-              labels: { STATUS_CODE: "201", resource: "srv-web" },
+              labels: { STATUS_CODE: "201", RESOURCE: "srv-web" },
               points: [{ timestamp: "2026-07-06T09:00:00Z", value: 3 }],
             },
             {
               unit: "count",
-              labels: { STATUS_CODE: "503", resource: "srv-web" },
+              labels: { STATUS_CODE: "503", RESOURCE: "srv-web" },
               points: [{ timestamp: "2026-07-06T09:00:00Z", value: 1 }],
             },
           ],
@@ -681,12 +681,12 @@ describe("NetworkMetricsCard", () => {
           series: [
             {
               unit: "count",
-              labels: { host: "a.example.com" },
+              labels: { HOST: "a.example.com" },
               points: [{ timestamp: "2026-07-06T09:00:00Z", value: 3 }],
             },
             {
               unit: "count",
-              labels: { host: "b.example.com" },
+              labels: { HOST: "b.example.com" },
               points: [{ timestamp: "2026-07-06T09:00:00Z", value: 1 }],
             },
           ],
@@ -712,6 +712,42 @@ describe("NetworkMetricsCard", () => {
     );
     expect(screen.getByText("a.example.com")).toBeInTheDocument();
     expect(screen.getByText("b.example.com")).toBeInTheDocument();
+  });
+
+  it("legends a method breakdown by each series' METHOD label (w3/087)", async () => {
+    const user = userEvent.setup();
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      if (
+        metric === "http_requests" &&
+        opts &&
+        "groupBy" in opts &&
+        opts.groupBy === "method"
+      ) {
+        return {
+          ...emptyResult(),
+          series: [
+            {
+              unit: "count",
+              labels: { METHOD: "GET", RESOURCE: "srv-web" },
+              points: [{ timestamp: "2026-07-06T09:00:00Z", value: 3 }],
+            },
+            {
+              unit: "count",
+              labels: { METHOD: "POST", RESOURCE: "srv-web" },
+              points: [{ timestamp: "2026-07-06T09:00:00Z", value: 1 }],
+            },
+          ],
+        };
+      }
+      return emptyResult();
+    });
+
+    renderCard();
+    await user.click(screen.getByLabelText("Group by"));
+    await user.click(screen.getByRole("option", { name: "Method" }));
+
+    expect(screen.getByText("GET")).toBeInTheDocument();
+    expect(screen.getByText("POST")).toBeInTheDocument();
   });
 
   it("shows the request-log store's unavailable state for a host breakdown with no store", async () => {

@@ -46,7 +46,7 @@ function emptyResult() {
 
 /** A stepped series with real timestamps (the chart maps x by time). */
 function seriesResult(unit: string, values: number[], instance?: string) {
-  const labels: Record<string, string> = instance ? { instance } : {};
+  const labels: Record<string, string> = instance ? { INSTANCE: instance } : {};
   return {
     series: [
       {
@@ -74,7 +74,7 @@ function multiSeriesResult(
   return {
     series: Object.entries(perInstance).map(([instance, values]) => ({
       unit,
-      labels: { instance },
+      labels: { INSTANCE: instance },
       points: values.map((value, i) => ({
         timestamp: new Date(1_751_800_000_000 + i * 60_000).toISOString(),
         value,
@@ -659,7 +659,7 @@ describe("summarizeLimits", () => {
   function limitSeries(instance: string, value: number) {
     return {
       unit: "bytes",
-      labels: { instance },
+      labels: { INSTANCE: instance },
       points: [
         {
           timestamp: new Date(1_751_800_000_000).toISOString(),
@@ -791,7 +791,7 @@ describe("ApplicationMetricsCard usage header across instances (w4/258)", () => 
         const all = cpu("old-first", "percentage");
         return {
           ...all,
-          series: all.series.filter((s) => s.labels.instance === instances[0]),
+          series: all.series.filter((s) => s.labels.INSTANCE === instances[0]),
         };
       }
       return cpu("old-first", "percentage");

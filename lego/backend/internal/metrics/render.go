@@ -60,27 +60,57 @@ func toRenderMetricSeries(s MetricSeries) renderMetricSeries {
 	return renderMetricSeries{Labels: labels, Unit: s.Unit, Values: values}
 }
 
-// A per-status breakdown's label. The sources label it code; each surface
-// spells it as Render's same surface does (w3/080). REST and MCP say
-// statusCode, Render's aggregateBy value and filters/http field. GraphQL says
-// STATUS_CODE, the MetricQueryFilter value Render's dashboard finds the label
-// by (docs/render-artifacts/metrics-page.md § Status-code label).
+// A per-status breakdown's label. The sources label it code, and REST and MCP
+// rename it statusCode, Render's aggregateBy value and filters/http field
+// (w3/080). GraphQL names it STATUS_CODE with its other labels
+// (graphqlLabelFields).
 const (
-	sourceStatusCodeLabel  = "code"
-	restStatusCodeLabel    = "statusCode"
-	graphqlStatusCodeLabel = "STATUS_CODE"
+	sourceStatusCodeLabel = "code"
+	restStatusCodeLabel   = "statusCode"
 )
 
-// nameStatusCodeLabel renames a per-status breakdown's source label to name.
-func nameStatusCodeLabel(s MetricSeries, groupBy, name string) MetricSeries {
+// restStatusCode renames a per-status breakdown's source label to REST's
+// statusCode.
+func restStatusCode(s MetricSeries, groupBy string) MetricSeries {
 	if groupBy != groupByStatus {
 		return s
 	}
 	if code, ok := s.Labels[sourceStatusCodeLabel]; ok {
 		delete(s.Labels, sourceStatusCodeLabel)
-		s.SetLabel(name, code)
+		s.SetLabel(restStatusCodeLabel, code)
 	}
 	return s
+}
+
+// graphqlLabelFields is how GraphQL names each label Render's MetricQueryFilter
+// enum has a value for. Render's GraphQL MetricResultLabel.field is that enum,
+// and its dashboard finds a series' resource, instance, host and status code by
+// it, as in labels.find(l => l.field === "INSTANCE") (w3/080, w3/087;
+// docs/render-artifacts/metrics-page.md § GraphQL label names). REST and MCP
+// keep the lowercase names, as Render's REST does. The labels not listed
+// (quantile, aggregate, direction, degraded_sources) are Bex extensions with no
+// value in the enum and keep their names on every surface (ADR010 § Series
+// label names).
+var graphqlLabelFields = map[string]string{
+	LabelResource:         filterFieldResource,
+	"instance":            filterFieldInstance,
+	groupByHost:           filterFieldHost,
+	groupByMethod:         filterFieldMethod,
+	sourceStatusCodeLabel: filterFieldStatusCode,
+}
+
+// toGraphQLLabels is a series' labels as GraphQL answers them: renamed by
+// graphqlLabelFields and sorted by field, so output is stable.
+func toGraphQLLabels(s MetricSeries) []renderMetricLabel {
+	labels := make([]renderMetricLabel, 0, len(s.Labels))
+	for field, value := range s.Labels {
+		if name, ok := graphqlLabelFields[field]; ok {
+			field = name
+		}
+		labels = append(labels, renderMetricLabel{Field: field, Value: value})
+	}
+	sort.Slice(labels, func(i, j int) bool { return labels[i].Field < labels[j].Field })
+	return labels
 }
 
 // toRenderMetrics maps series onto Render's metrics response array. Always a
