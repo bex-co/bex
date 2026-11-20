@@ -200,7 +200,8 @@ const enAgentSessions: Record<string, TranslationEntry> = {
       "Mention picker — empty state when the fuzzy filter matches nothing",
   },
   "agentSessions.mentionReposEmpty": {
-    message: "No repositories — connect GitHub in workspace settings first.",
+    message:
+      "No repositories yet. Connect a GitHub account, or give the bex GitHub App access to a repository.",
     description:
       "Mention picker — empty state when no installation repos exist",
   },

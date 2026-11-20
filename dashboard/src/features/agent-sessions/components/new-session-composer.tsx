@@ -149,7 +149,11 @@ export function NewSessionComposer() {
   const noRepos = !reposLoading && repos.length === 0;
   // Repo-backed create needs GitHub; chat-only sessions do not.
   const githubMissing = capabilities ? !capabilities.github.connected : noRepos;
-  const showGitHubCallout = githubMissing && Boolean(repo);
+  // Sticky once the person found the repository list empty: clicking the
+  // callout moves focus out of the editor, which closes that list.
+  const [reachedForRepo, setReachedForRepo] = useState(false);
+  const onReposEmpty = useCallback(() => setReachedForRepo(true), []);
+  const showGitHubCallout = githubMissing && (Boolean(repo) || reachedForRepo);
   const showExamples = !noRepos && sessions.length === 0;
   const platformUnavailable = capabilities?.enabled === false;
   const form = useForm<ComposerValues>({
@@ -367,6 +371,7 @@ export function NewSessionComposer() {
               reposLoading={reposLoading}
               ariaLabel={t("agentSessions.taskLabel")}
               placeholder={t("agentSessions.taskPlaceholder")}
+              onReposEmpty={onReposEmpty}
               onChange={(nextDocument) => {
                 setComposerDocument(nextDocument);
               }}

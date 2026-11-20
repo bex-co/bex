@@ -50,6 +50,11 @@ export interface InlineMentionEditorProps {
   onChange: (document: ComposerDocument) => void;
   /** Enter (without Shift) submits the prompt, chat-composer style. */
   onSubmit: () => void;
+  /**
+   * The person opened the repository list and it has no rows (loaded), so the
+   * composer can offer the GitHub connection where they reached for a repo.
+   */
+  onReposEmpty?: () => void;
 }
 
 export interface InlineMentionEditorHandle {
@@ -66,6 +71,7 @@ type BaseSuggestionProps = SuggestionProps<MentionOption, MentionOption>;
 type MentionMenuProps = BaseSuggestionProps & {
   source: MentionSource;
   reposLoading: boolean;
+  onReposEmpty?: () => void;
 };
 
 const mentionPluginKey = new PluginKey("agent-composer-mention");
@@ -81,6 +87,7 @@ class EditorRuntime {
     public onChange: (document: ComposerDocument) => void,
     public onSubmit: () => void,
     public t: Translate,
+    public onReposEmpty?: () => void,
   ) {}
 
   update(
@@ -90,6 +97,7 @@ class EditorRuntime {
     onChange: (document: ComposerDocument) => void,
     onSubmit: () => void,
     t: Translate,
+    onReposEmpty?: () => void,
   ) {
     this.source = source;
     this.reposLoading = reposLoading;
@@ -97,6 +105,7 @@ class EditorRuntime {
     this.onChange = onChange;
     this.onSubmit = onSubmit;
     this.t = t;
+    this.onReposEmpty = onReposEmpty;
   }
 }
 
@@ -109,7 +118,15 @@ export const InlineMentionEditor = forwardRef<
   InlineMentionEditorHandle,
   InlineMentionEditorProps
 >(function InlineMentionEditor(
-  { source, reposLoading, ariaLabel, placeholder, onChange, onSubmit },
+  {
+    source,
+    reposLoading,
+    ariaLabel,
+    placeholder,
+    onChange,
+    onSubmit,
+    onReposEmpty,
+  },
   ref,
 ) {
   const { t } = useTranslations();
@@ -122,12 +139,30 @@ export const InlineMentionEditor = forwardRef<
         onChange,
         onSubmit,
         t,
+        onReposEmpty,
       ),
   );
 
   useEffect(() => {
-    runtime.update(source, reposLoading, placeholder, onChange, onSubmit, t);
-  }, [onChange, onSubmit, placeholder, reposLoading, runtime, source, t]);
+    runtime.update(
+      source,
+      reposLoading,
+      placeholder,
+      onChange,
+      onSubmit,
+      t,
+      onReposEmpty,
+    );
+  }, [
+    onChange,
+    onReposEmpty,
+    onSubmit,
+    placeholder,
+    reposLoading,
+    runtime,
+    source,
+    t,
+  ]);
 
   const suggestion: Omit<
     SuggestionOptions<MentionOption, MentionOption>,
@@ -173,6 +208,7 @@ export const InlineMentionEditor = forwardRef<
         ...props,
         source: runtime.source,
         reposLoading: runtime.reposLoading,
+        onReposEmpty: runtime.onReposEmpty,
       });
 
       return {
@@ -394,7 +430,7 @@ function insertMention(
 
 const MentionSuggestionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
   function MentionSuggestionMenu(
-    { editor, query, items, command, source, reposLoading },
+    { editor, query, items, command, source, reposLoading, onReposEmpty },
     ref,
   ) {
     const { t } = useTranslations();
@@ -405,6 +441,14 @@ const MentionSuggestionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
         ? Math.min(highlightState.index, Math.max(items.length - 1, 0))
         : 0;
     const state = mentionStateFromQuery(query);
+    const reposEmpty =
+      state.category === "repos" && source.repos.length === 0 && !reposLoading;
+
+    // Without GitHub no repo can be listed, so an empty list is where the
+    // composer offers the connection.
+    useEffect(() => {
+      if (reposEmpty) onReposEmpty?.();
+    }, [onReposEmpty, reposEmpty]);
 
     function setHighlight(index: number) {
       setHighlightState({ query, index });

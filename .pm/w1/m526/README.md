@@ -1,6 +1,6 @@
 # w1 · m526 — Connect and disconnect several GitHub accounts from every starting point
 
-**Worker:** worker1 **Goal:** a user who administers several GitHub accounts and orgs can connect each one to a workspace, disconnect it, and connect it again from every place the product offers GitHub, through one "Connect GitHub account" action that works whether or not the bex GitHub App is already installed on that account; walked live on production. **Status:** blocked (t001–t009 done; t010 waits for the production pin to carry `67e156851`)
+**Worker:** worker1 **Goal:** a user who administers several GitHub accounts and orgs can connect each one to a workspace, disconnect it, and connect it again from every place the product offers GitHub, through one "Connect GitHub account" action that works whether or not the bex GitHub App is already installed on that account; walked live on production. **Status:** todo (t001–t009 and t012 done; t010 walk 1 on pin `12716d1d7097` passed every cell except the agent composer row, which t012 fixes, and the BlockEdenHQ first install, which needs the user's GitHub sudo-mode 2FA)
 
 ## Tasks (in order)
 
@@ -15,7 +15,8 @@
 | t007 | Render parity — **DONE** | 30m | t003, t005, t006 |
 | t008 | Simplify — **DONE** | 30m | t007 |
 | t009 | Test coverage — **DONE** | 60m | t007 |
-| t010 | Production walk: connect, disconnect and reconnect several GitHub accounts at every starting point | 2h | t008, t009 |
+| t012 | Agent composer: a workspace without GitHub offers the connect action once the person reaches for a repository — **DONE** | 45m | t009 |
+| t010 | Production walk: connect, disconnect and reconnect several GitHub accounts at every starting point | 2h | t008, t009, t012 |
 | t011 | Closeout | 15m | t010 |
 
 ## Definition of done
@@ -45,7 +46,7 @@
 Reproduced in a headed Playwright browser, signed in to `dashboard.bex.co` as `puncsky@gmail.com` and to GitHub as `puncsky`.
 
 1. **An already-installed account dead-ends through "Connect another account".**
-   - GitHub's install page (`/apps/bex-co/installations/select_target`) shows **Configure** for `puncsky` (`/settings/installations/154851602`) and `bex-co`, and drops the signed `state`. This is the known GitHub behaviour recorded in [ADR078 §3a](../../../../docs/ADR078-github-workspace-connections.md).
+   - GitHub's install page (`/apps/bex-co/installations/select_target`) shows **Configure** for `puncsky` (`/settings/installations/154851602`) and `bex-co`, and drops the signed `state`. This is the known GitHub behaviour recorded in [ADR078 §3a](../../../docs/ADR078-github-workspace-connections.md).
    - Only "Claim installed account" completes for these accounts, and the source-picker Credentials menu (`dashboard/src/features/git/components/git-credentials-menu.tsx`) says nothing about it.
    - The `git.claimHint` hint went only into the Settings card, in `43fa31f34` (w2/m162). The menu had existed since w8/m31.
    - The same dead end follows several common steps:
@@ -82,9 +83,9 @@ Production state at filing: the `bex` workspace is connected to `bex-co`, `puncs
   - The user reported (in Chinese) that "Credentials → + Connect another account" would not connect their own `puncsky` GitHub account; only `bex-co` could be connected.
   - A multi-account walk and a root-cause pass followed; see Findings.
   - The user then asked `/pm` (in Chinese) to put the fix in w1 and to finish with a product check: deploy to production, walk connect and disconnect again at every starting point, and make sure users can connect and disconnect several GitHub accounts correctly.
-- **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first), the Git connections row of [ADR018](../../../../docs/ADR018-render-parity.md)).
+- **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first), the Git connections row of [ADR018](../../../docs/ADR018-render-parity.md)).
   - On Render, one credentials control reaches every account the user has installed the App on, without reinstalling.
-  - bex binds installations to workspaces ([ADR078 §1](../../../../docs/ADR078-github-workspace-connections.md), a recorded divergence of mechanism), but it must reach the same observable outcome.
+  - bex binds installations to workspaces ([ADR078 §1](../../../docs/ADR078-github-workspace-connections.md), a recorded divergence of mechanism), but it must reach the same observable outcome.
 - **Expected outcome:**
   - A user with several GitHub accounts connects, disconnects and reconnects any of them from wherever they meet GitHub in the product.
   - The user never has to know that GitHub drops `state` for an installed account.
@@ -97,3 +98,12 @@ Production state at filing: the `bex` workspace is connected to `bex-co`, `puncs
   - **"Configure in GitHub" stays the generic `github.com/apps/<slug>/installations/new` link.** It matches Render's deep link per ADR078.
   - **The mobile agent composer is unchanged.** It has no connect action and says "Connect GitHub on desktop".
   - **Other git providers (GitLab and others) are out of scope.** GitLab and Bitbucket integration are also recorded anti-goals in `.pm/DO_NOT_DO.md`.
+
+## Unblock (2026-11-20)
+
+- **Affected:** t010, then t011.
+- **Source:** verified evidence (`/loopx w1` dispatch, gate check).
+  - The newest `chore(deploy): pin platform images to …` on origin/main is `4e37ec03f`, which pins `12716d1d7097`. It came from deploy run https://github.com/bex-co/bex/actions/runs/44701654499, and every job in that run was green.
+  - `git merge-base --is-ancestor 67e156851 12716d1d7097` holds, so production carries t001–t009.
+- **Gate:** the `pin must carry` gate is cleared. The remaining work needs only the headed Playwright browser's bex and GitHub sessions. A GitHub sign-in or 2FA prompt, if one appears, needs the user.
+- **Next:** t010's production walk, then t011's closeout if every matrix cell passes. First confirm that the live dashboard serves the new code: the Credentials menu shows a single connect action and no "Claim installed account" button.

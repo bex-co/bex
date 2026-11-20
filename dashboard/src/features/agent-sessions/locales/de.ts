@@ -198,7 +198,7 @@ const deAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.mentionReposEmpty": {
     message:
-      "Keine Repositories — verbinde zuerst GitHub in den Workspace-Einstellungen.",
+      "Noch keine Repositories. Verbinde ein GitHub-Konto oder gib der bex GitHub App Zugriff auf ein Repository.",
     description:
       "Mention picker — empty state when no installation repos exist",
   },

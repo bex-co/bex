@@ -196,7 +196,7 @@ const esAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.mentionReposEmpty": {
     message:
-      "No hay repositorios: primero conecta GitHub en la configuración del espacio de trabajo.",
+      "Aún no hay repositorios. Conecta una cuenta de GitHub o da a la GitHub App de bex acceso a un repositorio.",
     description:
       "Mention picker — empty state when no installation repos exist",
   },

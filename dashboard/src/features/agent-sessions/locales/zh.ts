@@ -200,7 +200,8 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
       "Mention picker — empty state when the fuzzy filter matches nothing",
   },
   "agentSessions.mentionReposEmpty": {
-    message: "没有仓库——请先在工作区设置中连接 GitHub。",
+    message:
+      "还没有仓库。请连接一个 GitHub 账号，或授权 bex GitHub App 访问某个仓库。",
     description:
       "Mention picker — empty state when no installation repos exist",
   },

@@ -1172,6 +1172,59 @@ describe("NewSessionComposer", () => {
     ).toHaveLength(1);
   });
 
+  // w1/m526 t012: with no GitHub connection no repo can ever be picked, so
+  // the empty repository list is where the person meets the connection.
+  it("offers Connect GitHub once the person opens an empty repository list without GitHub", async () => {
+    reposState.repos = [];
+    capabilitiesState.capabilities.github.connected = false;
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    expect(
+      screen.queryByTestId("agent-composer-github-empty"),
+    ).not.toBeInTheDocument();
+
+    await user.click(attachmentControl());
+    await user.click(
+      await screen.findByRole("option", { name: /Repositories/ }),
+    );
+    expect(
+      await screen.findByText(
+        "No repositories yet. Connect a GitHub account, or give the bex GitHub App access to a repository.",
+      ),
+    ).toBeInTheDocument();
+
+    const callout = await screen.findByTestId("agent-composer-github-empty");
+    expect(
+      within(callout).getByRole("link", { name: "GitHub settings" }),
+    ).toHaveAttribute("href", "/settings#integrations");
+    await user.click(
+      within(callout).getByRole("button", { name: "Connect GitHub account" }),
+    );
+    expect(connectGit).toHaveBeenCalledTimes(1);
+    expect(connectGitOptions).toHaveBeenCalledWith({ newTab: true });
+    // Reaching for a repo never blocks a chat-only start.
+    expect(screen.getByRole("button", { name: "Start session" })).toBeEnabled();
+  });
+
+  it("keeps the GitHub callout away from an empty repository list when GitHub is connected", async () => {
+    reposState.repos = [];
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+
+    await user.click(attachmentControl());
+    await user.click(
+      await screen.findByRole("option", { name: /Repositories/ }),
+    );
+    expect(
+      await screen.findByText(/^No repositories yet\./),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("agent-composer-github-empty"),
+    ).not.toBeInTheDocument();
+  });
+
   it("lets chat-only sessions start without a GitHub banner when there are no repos", async () => {
     reposState.repos = [];
     const user = userEvent.setup();

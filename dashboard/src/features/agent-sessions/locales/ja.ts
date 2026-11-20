@@ -196,7 +196,7 @@ const jaAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.mentionReposEmpty": {
     message:
-      "リポジトリがありません。まずワークスペース設定で GitHub を接続してください。",
+      "リポジトリはまだありません。GitHub アカウントを接続するか、bex GitHub App にリポジトリへのアクセスを許可してください。",
     description:
       "Mention picker — empty state when no installation repos exist",
   },

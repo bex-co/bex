@@ -196,7 +196,7 @@ const koAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.mentionReposEmpty": {
     message:
-      "저장소가 없습니다. 먼저 워크스페이스 설정에서 GitHub를 연결하세요.",
+      "아직 저장소가 없습니다. GitHub 계정을 연결하거나 bex GitHub App에 저장소 접근 권한을 부여하세요.",
     description:
       "Mention picker — empty state when no installation repos exist",
   },

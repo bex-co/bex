@@ -196,7 +196,7 @@ const ruAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.mentionReposEmpty": {
     message:
-      "Репозиториев нет — сначала подключите GitHub в настройках рабочего пространства.",
+      "Репозиториев пока нет. Подключите аккаунт GitHub или откройте приложению bex GitHub App доступ к репозиторию.",
     description:
       "Mention picker — empty state when no installation repos exist",
   },
