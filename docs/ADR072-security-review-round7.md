@@ -69,6 +69,7 @@ The severity profile keeps falling (round 5: 8 high / 7 medium; round 6: 2 high 
 - **GitHub installations.** GitHub's installation ids are enumerable integers, so a 403 would confirm a binding exists.
 - **Sandboxes.** OpenSandbox keys are per workspace and bex keeps no sandbox table, so ownership is only discoverable within the caller's own workspaces.
 - **Caller-owned rows.** Push notifications, device subscriptions, GitHub claim selections and SSH keys exist only for their own subject.
+- **A workspace read by its own id (w8/349).** Render documents 404 and no 403 for retrieve-workspace and list-workspace-members, so `GET /v1/owners/{ownerId}`, its `/members` and `/limits`, and GraphQL `workspace(id)` and `workspaceLimits(ownerId)` answer a workspace the caller is not in with the 404 an unknown id gets ([ADR006](ADR006-bex-api.md#which-workspace-a-request-acts-in-w6m14)).
 
 `internal/api/byid_resolution_guard_test.go` enforces the routing. Each by-id REST family's routing helper must itself call its resolver. The source is parsed, so neither a comment nor another family's call satisfies the check. Every id kind must name the family that resolves it, or say why none does.
 

@@ -383,7 +383,12 @@ func TestOwnersREST_NoMutations(t *testing.T) {
 	}
 }
 
-func TestOwnersREST_CrossTenantForbidden(t *testing.T) {
+// A workspace the caller is not in reads exactly as one that does not exist
+// (w8/349): Render documents 404 and no 403 for retrieve-workspace and
+// list-workspace-members, and bex's limits read and the GraphQL workspace
+// reads give the same answer, so none of them tells a non-member that the
+// workspace exists.
+func TestOwnersREST_ForeignWorkspaceReadsAsUnknown(t *testing.T) {
 	st := newFakeWSStore()
 	foreign, err := st.CreateWorkspace(context.Background(), "someone-elses", "hobby", "eve")
 	if err != nil {
@@ -393,13 +398,45 @@ func TestOwnersREST_CrossTenantForbidden(t *testing.T) {
 	base.Authz = &fakeMembershipChecker{memberOf: map[string]string{foreign.ID: "eve"}}
 	h, _ := serverWith(t, base, Deps{WorkspaceStore: st})
 
-	rec := do(t, h, "GET", "/v1/owners/"+foreign.ID, testToken, "")
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("cross-tenant GET /v1/owners/%s: got %d, want 403", foreign.ID, rec.Code)
+	ids := []string{foreign.ID, "tea-zzzzzzzzzzzzzzzzzzzz", "usr-zzzzzzzzzzzzzzzzzzzz"}
+	for _, suffix := range []string{"", "/members", "/limits"} {
+		var first string
+		for _, id := range ids {
+			rec := do(t, h, "GET", "/v1/owners/"+id+suffix, testToken, "")
+			if rec.Code != http.StatusNotFound {
+				t.Errorf("GET /v1/owners/%s%s: got %d %s, want 404", id, suffix, rec.Code, rec.Body)
+			}
+			if first == "" {
+				first = rec.Body.String()
+			} else if rec.Body.String() != first {
+				t.Errorf("GET /v1/owners/%s%s = %s, want the foreign id's body %s", id, suffix, rec.Body, first)
+			}
+		}
 	}
-	rec = do(t, h, "GET", "/v1/owners/"+foreign.ID+"/members", testToken, "")
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("cross-tenant members: got %d, want 403", rec.Code)
+
+	for _, query := range []string{`{ workspace(id: %q) { id } }`, `{ workspaceLimits(ownerId: %q) { services { used } } }`} {
+		var first string
+		for _, id := range ids {
+			body, _ := json.Marshal(map[string]string{"query": fmt.Sprintf(query, id)})
+			var out struct {
+				Errors []struct {
+					Message    string         `json:"message"`
+					Extensions map[string]any `json:"extensions"`
+				} `json:"errors"`
+			}
+			if err := json.Unmarshal(do(t, h, "POST", "/graphql", testToken, string(body)).Body.Bytes(), &out); err != nil {
+				t.Fatal(err)
+			}
+			if len(out.Errors) != 1 || out.Errors[0].Extensions["code"] != core.NotFoundCode {
+				t.Errorf("%s for %s: errors %+v, want one %s", query, id, out.Errors, core.NotFoundCode)
+				continue
+			}
+			if first == "" {
+				first = out.Errors[0].Message
+			} else if out.Errors[0].Message != first {
+				t.Errorf("%s for %s = %q, want the foreign id's %q", query, id, out.Errors[0].Message, first)
+			}
+		}
 	}
 }
 

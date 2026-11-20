@@ -757,14 +757,14 @@ const ownIDPrefix = "own-"
 
 // GetWorkspace retrieves one workspace by id — GET /v1/owners/{ownerId}. An
 // own--prefixed id resolves to the caller's default workspace (see ownIDPrefix);
-// otherwise it authorizes can_view on the exact workspace, so a workspace the
-// caller isn't a member of is ErrForbidden (adapters render 403/404) and an
-// unknown tea- id is ErrNotFound.
+// otherwise it authorizes can_view on the exact workspace, and an unknown id
+// and a workspace the caller is not in both answer errWorkspaceNotFound
+// (authorizeWorkspaceRead).
 func (s *Service) GetWorkspace(ctx context.Context, ownerID string) (WorkspaceView, error) {
 	if strings.HasPrefix(ownerID, ownIDPrefix) {
 		return s.defaultWorkspace(ctx)
 	}
-	ownerID, err := s.AuthorizeWorkspace(ctx, core.RelCanView, ownerID)
+	ownerID, err := s.authorizeWorkspaceRead(ctx, ownerID)
 	if err != nil {
 		return WorkspaceView{}, err
 	}
@@ -773,9 +773,38 @@ func (s *Service) GetWorkspace(ctx context.Context, ownerID string) (WorkspaceVi
 	}
 	t, err := s.Store.GetTenant(ctx, ownerID)
 	if err != nil {
-		return WorkspaceView{}, mapStoreErr(err)
+		return WorkspaceView{}, workspaceReadErr(err)
 	}
 	return view(t, "admin"), nil
+}
+
+// errWorkspaceNotFound is what a read of a workspace by its own id answers
+// for an id that names no workspace and for one the caller is not in.
+var errWorkspaceNotFound = core.NotFound("workspace")
+
+// authorizeWorkspaceRead is AuthorizeWorkspace(can_view) for a verb that reads
+// the workspace ownerID names: Render's retrieve-workspace and
+// list-workspace-members document 404 and no 403 (w8/349). The plain refusal
+// (no membership, or no such workspace) answers errWorkspaceNotFound, so the
+// answer never tells a non-member that the workspace exists. A member's named
+// refusal (a 2FA or Google-login requirement) and a narrowed token's
+// insufficient scope keep their 403. An empty ownerID names no workspace: it
+// resolves the caller's own, whose refusal stays a 403.
+func (s *Service) authorizeWorkspaceRead(ctx context.Context, ownerID string) (string, error) {
+	resolved, err := s.AuthorizeWorkspace(ctx, core.RelCanView, ownerID)
+	if ownerID != "" && err == core.ErrForbidden {
+		return resolved, errWorkspaceNotFound
+	}
+	return resolved, err
+}
+
+// workspaceReadErr is mapStoreErr for authorizeWorkspaceRead's verbs: a
+// missing row answers what a refused read does.
+func workspaceReadErr(err error) error {
+	if errors.Is(err, store.ErrNotFound) {
+		return errWorkspaceNotFound
+	}
+	return mapStoreErr(err)
 }
 
 // defaultWorkspace returns the caller's resolved tenant via core.Base.Tenant —
@@ -1078,20 +1107,20 @@ func (s *Service) memberSubject(ctx context.Context, ownerID, userID string) (st
 
 // ListMembers lists a workspace's members — GET /v1/owners/{ownerId}/members.
 // Any member may list members (every m1/m2 role includes can_view). An unknown
-// workspace id is ErrNotFound; a workspace the caller isn't a member of is
-// ErrForbidden.
+// workspace id and one the caller isn't a member of both answer
+// errWorkspaceNotFound (authorizeWorkspaceRead).
 func (s *Service) ListMembers(ctx context.Context, ownerID string) ([]MemberView, error) {
-	ownerID, err := s.AuthorizeWorkspace(ctx, core.RelCanView, ownerID)
+	ownerID, err := s.authorizeWorkspaceRead(ctx, ownerID)
 	if err != nil {
 		return nil, err
 	}
 	if s.Store == nil {
 		return nil, core.ErrWorkspacesUnavailable
 	}
-	// Confirm the workspace exists — a foreign/unknown id is ErrNotFound, not a
+	// Confirm the workspace exists — an unknown id is not found, not a
 	// silently empty member list.
 	if _, err := s.Store.GetTenant(ctx, ownerID); err != nil {
-		return nil, mapStoreErr(err)
+		return nil, workspaceReadErr(err)
 	}
 	rows, err := s.Store.ListTenantMembers(ctx, ownerID)
 	if err != nil {

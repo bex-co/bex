@@ -112,17 +112,67 @@ func TestGetWorkspace_TeaID(t *testing.T) {
 		t.Fatalf("GetWorkspace(tea-): %+v %v", got, err)
 	}
 
-	// Cross-tenant: a deny-all checker (the caller isn't a member) is forbidden,
-	// not a leaked lookup.
-	denied := &Service{Base: &core.Base{Authz: &fakeChecker{allow: false}}, Store: st}
-	if _, err := denied.GetWorkspace(ctxAs("user-b"), w.ID); !errors.Is(err, core.ErrForbidden) {
-		t.Fatalf("cross-tenant get: want ErrForbidden, got %v", err)
-	}
-
 	// Unknown id (authorized, since nil identity check happens after the gate):
 	// not found, not a zero-value workspace.
 	if _, err := svc.GetWorkspace(ctxAs("user-a"), "tea-missing"); !errors.Is(err, core.ErrNotFound) {
 		t.Fatalf("unknown id: want ErrNotFound, got %v", err)
+	}
+}
+
+// A workspace the caller is not in reads exactly as one that does not exist,
+// on every verb that reads a workspace by its own id (w8/349): Render's
+// retrieve-workspace and list-workspace-members document 404 and no 403.
+func TestWorkspaceReadsAnswerAForeignIDAsAnUnknownOne(t *testing.T) {
+	st := newFakeStore()
+	w, err := allowSvc(st, &fakeGranter{}, nil, nil).Create(ctxAs("user-a"), "acme", "hobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A deny-all checker: OpenFGA holds no tuple for user-b on either id.
+	denied := &Service{Base: &core.Base{Authz: &fakeChecker{allow: false}}, Store: st}
+	// An allow-all one whose store has no such row: the unknown id that
+	// reaches the store.
+	allowed := allowSvc(st, &fakeGranter{}, nil, nil)
+	reads := map[string]func(*Service, string) error{
+		"GetWorkspace":   func(s *Service, id string) error { _, err := s.GetWorkspace(ctxAs("user-b"), id); return err },
+		"ListMembers":    func(s *Service, id string) error { _, err := s.ListMembers(ctxAs("user-b"), id); return err },
+		"ResourceLimits": func(s *Service, id string) error { _, err := s.ResourceLimits(ctxAs("user-b"), id); return err },
+	}
+	for verb, read := range reads {
+		foreign := read(denied, w.ID)
+		for name, err := range map[string]error{
+			"foreign":            foreign,
+			"unknown":            read(denied, "tea-zzzzzzzzzzzzzzzzzzzz"),
+			"unknown in store":   read(allowed, "tea-zzzzzzzzzzzzzzzzzzzz"),
+			"not a workspace id": read(denied, "usr-zzzzzzzzzzzzzzzzzzzz"),
+		} {
+			if !errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden) {
+				t.Errorf("%s(%s): %v, want not found and not forbidden", verb, name, err)
+			} else if err.Error() != foreign.Error() {
+				t.Errorf("%s(%s) = %q, want the foreign id's answer %q", verb, name, err, foreign)
+			}
+		}
+	}
+}
+
+// Only the plain refusal reads as not found: a narrowed token keeps its
+// insufficient-scope 403 whether or not the workspace exists, and a read that
+// names no workspace resolves the caller's own, whose refusal stays a 403.
+func TestWorkspaceReadsKeepNamedRefusals(t *testing.T) {
+	st := newFakeStore()
+	w, _ := allowSvc(st, &fakeGranter{}, nil, nil).Create(ctxAs("user-a"), "acme", "hobby")
+	narrowed := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2", Human: true})
+	svc := allowSvc(st, &fakeGranter{}, nil, nil)
+	for _, id := range []string{w.ID, "tea-zzzzzzzzzzzzzzzzzzzz"} {
+		_, err := svc.GetWorkspace(narrowed, id)
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != core.InsufficientScopeCode {
+			t.Errorf("narrowed token GetWorkspace(%s): %v, want %s", id, err, core.InsufficientScopeCode)
+		}
+	}
+	denied := &Service{Base: &core.Base{Authz: &fakeChecker{allow: false}}, Store: st}
+	if _, err := denied.ListMembers(ctxAs("user-b"), ""); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("ListMembers with no id: %v, want ErrForbidden", err)
 	}
 }
 
@@ -201,17 +251,6 @@ func TestListMembers_UnknownWorkspaceNotFound(t *testing.T) {
 	svc := allowSvc(newFakeStore(), &fakeGranter{}, nil, nil)
 	if _, err := svc.ListMembers(ctxAs("user-a"), "tea-missing"); !errors.Is(err, core.ErrNotFound) {
 		t.Fatalf("want ErrNotFound, got %v", err)
-	}
-}
-
-func TestListMembers_NonMemberForbidden(t *testing.T) {
-	st := newFakeStore()
-	svc := allowSvc(st, &fakeGranter{}, nil, nil)
-	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
-
-	denied := &Service{Base: &core.Base{Authz: &fakeChecker{allow: false}}, Store: st}
-	if _, err := denied.ListMembers(ctxAs("user-b"), w.ID); !errors.Is(err, core.ErrForbidden) {
-		t.Fatalf("want ErrForbidden, got %v", err)
 	}
 }
 

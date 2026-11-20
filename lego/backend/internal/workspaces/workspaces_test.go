@@ -1356,17 +1356,6 @@ func TestResourceLimits_PaidPlanGetsTheGenerousCeiling(t *testing.T) {
 	}
 }
 
-func TestResourceLimits_ForbiddenForNonMember(t *testing.T) {
-	st := newFakeStore()
-	svc := allowSvc(st, &fakeGranter{}, nil, nil)
-	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
-
-	denied := &Service{Base: &core.Base{Authz: &fakeChecker{allow: false}}, Store: st}
-	if _, err := denied.ResourceLimits(ctxAs("user-b"), w.ID); !errors.Is(err, core.ErrForbidden) {
-		t.Fatalf("non-member: want forbidden, got %v", err)
-	}
-}
-
 // --- plan rules (store) ----------------------------------------------------
 
 func TestPlanLimitsAndGuards(t *testing.T) {

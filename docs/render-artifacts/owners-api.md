@@ -98,6 +98,8 @@ Path param `ownerId` (string, required) — _"The ID of the user or team."_ Verb
 
 Response `200` → a single `owner` object (no envelope). Errors: `401`, `404`, `406`, `410`, `429`, `500`, `503`.
 
+**Shipped behavior (w8/349):** an id that names no workspace and a workspace the caller is not in both answer the same `404` (`{"code":"NOT_FOUND","id":"not_found","message":"workspace not found",…}`), here and on `/members`; neither route lists a `403`. The pinned CLI's fake answers an unknown owner the same way (`internal/fakes/renderapi/server.go`).
+
 ## `GET /v1/owners/{ownerId}/members` — List workspace members
 
 _"Retrieves the list of users belonging to the workspace with the provided ID."_ Path param `ownerId` — _"The ID of the team."_

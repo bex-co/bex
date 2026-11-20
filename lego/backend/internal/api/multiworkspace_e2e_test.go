@@ -297,8 +297,15 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 	if rec := call(carl, "POST", "/v1/workspaces/"+wsB.ID+"/members", `{"email":"x@example.com","role":"viewer"}`); rec.Code != http.StatusForbidden {
 		t.Errorf("carl (viewer of bravo) invite a member: %d %s, want 403 — can_manage must NOT hold for a viewer", rec.Code, rec.Body.String())
 	}
-	if rec := call(erin, "GET", "/v1/owners/"+wsB.ID+"/members", ""); rec.Code != http.StatusForbidden {
-		t.Errorf("erin (non-member) GET bravo members: %d %s, want 403", rec.Code, rec.Body.String())
+	// erin is in no workspace with bravo, and OpenFGA's real refusal reads as
+	// an id that names no workspace at all (w8/349): one 404, same body.
+	for _, suffix := range []string{"", "/members"} {
+		foreign := call(erin, "GET", "/v1/owners/"+wsB.ID+suffix, "")
+		unknown := call(erin, "GET", "/v1/owners/tea-zzzzzzzzzzzzzzzzzzzz"+suffix, "")
+		if foreign.Code != http.StatusNotFound || unknown.Code != http.StatusNotFound || foreign.Body.String() != unknown.Body.String() {
+			t.Errorf("erin (non-member) GET bravo%s: %d %s; an unknown id: %d %s — want one identical 404",
+				suffix, foreign.Code, foreign.Body.String(), unknown.Code, unknown.Body.String())
+		}
 	}
 
 	// (8) w7/m61 — the INSIDER role ladder against the REAL model, one verb per
