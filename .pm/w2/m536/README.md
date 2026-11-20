@@ -6,7 +6,7 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Run focused adversarial security review of the credential control plane, OpenBao custody, and TLS-intercepting broker (`docs/ADR120-security-review-sandbox-credentials.md`) and fix any findings | 1h30m | `w2/m533`, `w2/m535` |
+| t001 | Run focused adversarial security review of the credential control plane, OpenBao custody, and TLS-intercepting broker (`docs/ADR<next>-security-review-sandbox-credentials.md`) and fix any findings | 1h30m | `w2/m533`, `w2/m535` |
 | t002 | Add pinned Render CLI contract tests (`lego/cli/testdata/sandbox-credentials-contract.json` + `sandbox_credentials_contract_test.go`) | 45m | t001 |
 | t003 | Extend `scripts/render-sdk-compat.sh` with Render Python SDK credential round-trips and add a broker-isolation leg to `isolation-matrix.yml` | 1h | t001 |
 | t004 | Run full production walk on `api.bex.co` with unmodified `bex`/`render` CLI, Render SDK, and real sandbox Pods, then dispose all fixtures | 1h | t002, t003 |
