@@ -69,7 +69,13 @@ type Claims struct {
 	// counter at mint time, ADR051). It is optional — omitted/zero on legacy
 	// tickets — and lets the transcript tee/recorder stamp each part with its
 	// turn so the headless recorder's per-turn idempotency guard is meaningful.
-	Turn      int    `json:"trn,omitempty"`
+	Turn int `json:"trn,omitempty"`
+	// KeyAction is the API-key action (core.KeyAction) the ticket was minted
+	// under when its subject is a bex API key, "" for a person (w9/125). The
+	// gateway asks bex-api at redemption and on every revalidation tick
+	// whether the key's grant still covers it, and ends the stream when it
+	// does not.
+	KeyAction string `json:"ka,omitempty"`
 	IssuedAt  int64  `json:"iat"`
 	ExpiresAt int64  `json:"exp"`
 	Nonce     string `json:"jti"`

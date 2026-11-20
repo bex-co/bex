@@ -131,6 +131,9 @@ assert "ssh-gateway asks the host bex-api whether an SSH key's owner is verified
   "grep -A1 'name: BEX_IDENTITY_VERIFICATION_API_URL' scripts/dev-env/agent/ssh-gateway.yaml | grep -q '__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/identity-email-verification'"
 assert "ssh-gateway asks the host bex-api about workspace two-factor" \
   "grep -A1 'name: BEX_WORKSPACE_TWO_FACTOR_API_URL' scripts/dev-env/agent/ssh-gateway.yaml | grep -q '__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/workspace-two-factor'"
+# w9/125: the API key grant verb likewise, or every native SSH login is refused.
+assert "ssh-gateway asks the host bex-api about API key grants" \
+  "grep -A1 'name: BEX_API_KEY_GRANT_API_URL' scripts/dev-env/agent/ssh-gateway.yaml | grep -q '__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/api-key-grant'"
 assert "local sandboxes co-locate with the gateway on the control-plane node" \
   "grep -q 'node-role.kubernetes.io/control-plane' scripts/dev-env/agent/batchsandbox-template.local.yaml"
 assert "agent-stub refreshes both gateway forwards after its rollout" \

@@ -1855,6 +1855,11 @@ func (s *Service) ResolveSSHSession(ctx context.Context, username string) (SSHIn
 // makes reuse a no-op on a given gateway replica.
 const shellTicketTTL = 90 * time.Second
 
+// ShellKeyAction is what a bex API key's shell ticket names (w9/125): the
+// action its mint needs (the api package's keyPermissionOps), which the
+// gateway then holds the shell to for as long as it runs.
+const ShellKeyAction = core.KeyServicesJobs
+
 // ShellSessionView is the minted exec ticket the dashboard terminal presents to
 // the gateway WebSocket to open a Browser Web Shell (docs/ADR035-ssh.md
 // § Browser Web Shell). It carries no terminal content and no SSH key.
@@ -1913,6 +1918,7 @@ func (s *Service) CreateShellSession(ctx context.Context, name, instanceID strin
 		Subject:    id.Subject,
 		ServiceID:  v.ID,
 		InstanceID: instanceID,
+		KeyAction:  core.KeyStreamAction(ctx, ShellKeyAction),
 		IssuedAt:   now.Unix(),
 		ExpiresAt:  expires.Unix(),
 	})

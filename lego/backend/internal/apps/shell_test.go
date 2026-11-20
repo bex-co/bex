@@ -63,6 +63,32 @@ func TestCreateShellSessionMintsVerifiableTicket(t *testing.T) {
 	}
 }
 
+// w9/125: a bex API key's shell ticket names the action its mint needed, so
+// the gateway holds the shell to the key's grant; a person's names none, and
+// the gateway never asks about it.
+func TestCreateShellSessionMarksOnlyAnAPIKeysTicket(t *testing.T) {
+	for name, tc := range map[string]struct {
+		id   core.Identity
+		want string
+	}{
+		"api key":              {core.Identity{Subject: "key-1", ClientID: "key-1", Method: core.MethodOAuth2}, string(ShellKeyAction)},
+		"person":               {core.Identity{Subject: "user-1", Method: core.MethodSession}, ""},
+		"person's oauth token": {core.Identity{Subject: "user-1", ClientID: "cli", Method: core.MethodOAuth2, Human: true, CanonicalScopes: "bex.read bex.sensitive bex.write"}, ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			svc := shellService()
+			view, err := svc.CreateShellSession(core.WithIdentity(context.Background(), tc.id), sshServiceID, "")
+			if err != nil {
+				t.Fatalf("CreateShellSession: %v", err)
+			}
+			claims, err := shellticket.Verify(svc.ShellTicketSecret, view.Ticket, time.Now())
+			if err != nil || claims.KeyAction != tc.want || claims.Subject != tc.id.Subject {
+				t.Fatalf("claims = %+v, %v; want KeyAction %q for %s", claims, err, tc.want, tc.id.Subject)
+			}
+		})
+	}
+}
+
 func TestCreateShellSessionPinsInstance(t *testing.T) {
 	svc := shellService()
 	instanceID := ids.DeriveServiceInstance(sshServiceID, "web-rs-pod01")

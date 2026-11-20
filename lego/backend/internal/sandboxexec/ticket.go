@@ -98,9 +98,15 @@ type Claims struct {
 	// can_view_sensitive relation at redemption and on every live-stream
 	// revalidation, instead of re-deriving the binding from cluster state.
 	AgentSessionID string `json:"ags,omitempty"`
-	IssuedAt       int64  `json:"iat"` // unix seconds
-	ExpiresAt      int64  `json:"exp"` // unix seconds
-	Nonce          string `json:"jti"` // unique id for best-effort single-use
+	// KeyAction is the API-key action (core.KeyAction) a caller's exec was
+	// minted under when the caller is a bex API key, "" for a person and for
+	// bex-api's own system execs (w9/125). The gateway asks bex-api at
+	// redemption and on every revalidation tick whether the key's grant still
+	// covers it, and ends the stream when it does not.
+	KeyAction string `json:"ka,omitempty"`
+	IssuedAt  int64  `json:"iat"` // unix seconds
+	ExpiresAt int64  `json:"exp"` // unix seconds
+	Nonce     string `json:"jti"` // unique id for best-effort single-use
 }
 
 // Mint returns a signed, URL-safe ticket for claims, filling a fresh Nonce when

@@ -193,6 +193,11 @@ type Server struct {
 	// (round-6 #11); nil skips the re-check (unit tests exercising transport
 	// behavior — cmd/ssh-gateway always wires it).
 	Revalidator SessionRevalidator
+	// KeyGrants holds an attach a bex API key opened (its ticket's
+	// KeyAction) to the key's current grant at redemption and on every
+	// revalidation tick (w9/125). nil refuses every key's ticket; a person's
+	// never asks.
+	KeyGrants *sshgateway.KeyGrantGate
 	// AllowedOrigins is the browser origin allowlist for CORS. The endpoint
 	// publishes under the api origin but is consumed cross-subdomain by the
 	// dashboard (dashboard.bex.co -> api.bex.co), so the gateway must echo the
@@ -390,12 +395,10 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 	// ticket is also a spent one: the mint-time authorization/lifecycle decision
 	// must still hold NOW — a member revoked (or a session canceled) inside the
 	// ticket's TTL window is refused here instead of getting one last read/turn.
-	if s.Revalidator != nil {
-		if err := s.Revalidator.RevalidateAttach(r.Context(), claims.Subject, claims.SessionID, claims.Action); err != nil {
-			s.Metrics.Authentication("rejected_authz")
-			http.Error(w, "no longer authorized for this session", http.StatusForbidden)
-			return
-		}
+	if err := s.revalidate(r.Context(), claims); err != nil {
+		s.Metrics.Authentication("rejected_authz")
+		http.Error(w, "no longer authorized for this session", http.StatusForbidden)
+		return
 	}
 	if acquired, scope := s.Limits.Acquire(claims.Subject); !acquired {
 		s.Metrics.LimitRejected(scope)
@@ -444,12 +447,8 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 	// until the driver finishes or the session cap.
 	timedCtx, cancelTimeout := context.WithTimeout(r.Context(), s.SessionTimeout)
 	defer cancelTimeout()
-	revalidator := s.Revalidator
 	ctx, cancelExec := sshgateway.WithRevalidation(timedCtx, s.RevalidateInterval, func(c context.Context) error {
-		if revalidator == nil {
-			return nil
-		}
-		return revalidator.RevalidateAttach(c, claims.Subject, claims.SessionID, claims.Action)
+		return s.revalidate(c, claims)
 	})
 	defer cancelExec()
 	// Report a watchdog-ended stream through the shared session vocabulary
@@ -498,6 +497,18 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.streamAgentAttach(ctx, sse, podIP, ipErr, claims.SessionID, claims.Turn)
+}
+
+// revalidate is the redemption check, re-run on every watchdog tick: the
+// subject's relation on the session and its lifecycle (Revalidator), then,
+// for a ticket a bex API key minted, the key's current grant (w9/125).
+func (s *Server) revalidate(ctx context.Context, claims agentsessionticket.Claims) error {
+	if s.Revalidator != nil {
+		if err := s.Revalidator.RevalidateAttach(ctx, claims.Subject, claims.SessionID, claims.Action); err != nil {
+			return err
+		}
+	}
+	return s.KeyGrants.RequireTicket(ctx, claims.Subject, claims.KeyAction)
 }
 
 // streamAgentAttach replays the durable transcript to the client, then — if the

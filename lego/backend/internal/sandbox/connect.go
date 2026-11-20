@@ -80,9 +80,14 @@ type connectClaims struct {
 	// redeem's rows record (core.Identity.AuditMethod, w9/102): an API key's
 	// command is the key's, not the platform's.
 	MinterMethod string `json:"mth,omitempty"`
-	IssuedAt     int64  `json:"iat"`
-	ExpiresAt    int64  `json:"exp"`
-	Nonce        string `json:"nonce"`
+	// KeyAction is the action a bex API key minted the token under, "" for a
+	// person (w9/125). The redemption's identity is the token's, not the
+	// key's, so the gateway ticket it mints takes the mark from here and the
+	// gateway holds the stream to the key's grant.
+	KeyAction string `json:"ka,omitempty"`
+	IssuedAt  int64  `json:"iat"`
+	ExpiresAt int64  `json:"exp"`
+	Nonce     string `json:"nonce"`
 }
 
 // ConnectRequest is the mint input: OwnerID binds the workspace (Render's
@@ -159,6 +164,7 @@ func (s *Service) ConnectRun(ctx context.Context, req ConnectRequest, baseURL st
 		Command:      req.Command,
 		Unbound:      req.Command == "",
 		MinterMethod: idn.CallerMethod(),
+		KeyAction:    core.KeyStreamAction(ctx, ExecKeyAction),
 		IssuedAt:     now.Unix(),
 		ExpiresAt:    now.Add(ttl).Unix(),
 	}
@@ -285,7 +291,7 @@ func (s *Service) ConnectStreamHandler() http.Handler {
 			}
 		}
 		r = allowLongResume(w, r.WithContext(ctx))
-		if err := s.StreamExec(r.Context(), ExecRequest{OwnerID: claims.Workspace, SandboxID: claims.SandboxID, Command: claims.Command, ExecutionID: claims.ExecutionID}, w, flush); err != nil {
+		if err := s.StreamExec(r.Context(), ExecRequest{OwnerID: claims.Workspace, SandboxID: claims.SandboxID, Command: claims.Command, ExecutionID: claims.ExecutionID, KeyAction: claims.KeyAction}, w, flush); err != nil {
 			core.WriteErr(w, err)
 		}
 	})

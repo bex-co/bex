@@ -54,9 +54,14 @@ type Claims struct {
 	Subject    string `json:"sub"`            // authenticated caller (Kratos identity id)
 	ServiceID  string `json:"svc"`            // public srv-… id the session targets
 	InstanceID string `json:"inst,omitempty"` // optional specific srv-…-<suffix> replica
-	IssuedAt   int64  `json:"iat"`            // unix seconds
-	ExpiresAt  int64  `json:"exp"`            // unix seconds
-	Nonce      string `json:"jti"`            // unique id for best-effort single-use
+	// KeyAction is the API-key action (core.KeyAction) the ticket was minted
+	// under when its subject is a bex API key, "" for a person (w9/125). The
+	// gateway asks bex-api at connect and on every revalidation tick whether
+	// the key's grant still covers it, and ends the shell when it does not.
+	KeyAction string `json:"ka,omitempty"`
+	IssuedAt  int64  `json:"iat"` // unix seconds
+	ExpiresAt int64  `json:"exp"` // unix seconds
+	Nonce     string `json:"jti"` // unique id for best-effort single-use
 }
 
 // Mint returns a signed, URL-safe ticket string for claims. When Nonce is empty

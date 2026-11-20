@@ -49,6 +49,9 @@ const (
 	permissionSubject     = "bex.subject"
 	permissionTarget      = "bex.target"
 	permissionFingerprint = "bex.fingerprint"
+	// permissionKeyAction is the action a connection whose key's owner is a
+	// bex API key is held to (w9/125); absent for a person's connection.
+	permissionKeyAction = "bex.key-action"
 )
 
 // Store is the native SSH transport's deliberately small database authority:
@@ -137,6 +140,15 @@ type Server struct {
 	// EndShellEvent rows (w9/m451, sshgateway.RecordShellEvent). nil records
 	// none.
 	Audit core.AuditSink
+
+	// KeyGrants asks, when a key authenticates, whether its owner is a bex
+	// API key (one enrolled before enrollment was refused to machine
+	// callers, ADR072 F3) and whether that key's grant covers the target;
+	// such a connection asks again on every channel and revalidation tick,
+	// so a narrowing ends it (w9/125). A person's connection asks once, at
+	// authentication. nil skips the check (unit tests exercising transport
+	// behavior — cmd/ssh-gateway always wires it).
+	KeyGrants *sshgateway.KeyGrantGate
 
 	// mu guards the drain state (w6/m482): the listener Serve accepts on, which
 	// Shutdown closes, and the open connections Shutdown waits for.
@@ -300,6 +312,14 @@ func (s *Server) config(ctx context.Context) (*ssh.ServerConfig, error) {
 			}
 			s.Metrics.Authentication("rejected_target")
 			return nil, errors.New("public key rejected")
+		}
+		keyAction, err := s.keyOwnerAction(authCtx, subject, conn.User())
+		if err != nil {
+			s.Metrics.Authentication("rejected_target")
+			return nil, errors.New("public key rejected")
+		}
+		if keyAction != "" {
+			permissions.Extensions[permissionKeyAction] = keyAction
 		}
 		s.Metrics.Authentication("accepted")
 		// The fingerprint rides the transport so every later channel can re-read
@@ -489,7 +509,7 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 	if err != nil {
 		return err
 	}
-	sticky := &connectionTarget{target: target}
+	sticky := &connectionTarget{target: target, keyAction: conn.Permissions.Extensions[permissionKeyAction]}
 	acquired, limitScope := s.Limits.Acquire(subject)
 	if !acquired {
 		s.Metrics.LimitRejected(limitScope)
@@ -760,6 +780,8 @@ const (
 	causeDenied          = "denied"
 	causeTargetNotFound  = "not_found"
 	causeResolveFailed   = "resolve_failed"
+	causeKeyGrantDenied  = "key_grant_denied"
+	causeKeyGrantCheck   = "key_grant_check_failed"
 )
 
 // maxLoggedErrorLength bounds the dependency error an unanswered
@@ -820,7 +842,36 @@ func (s *Server) reassert(ctx context.Context, subject, fingerprint, connUser st
 	if err != nil {
 		return apps.SSHInstanceTarget{}, resolveFailure(err)
 	}
+	if sticky.keyAction != "" {
+		if err := s.KeyGrants.RequireTicket(lookupCtx, subject, sticky.keyAction); err != nil {
+			if errors.Is(err, core.ErrForbidden) {
+				return apps.SSHInstanceTarget{}, &reauthFailure{cause: causeKeyGrantDenied, definite: true, err: err}
+			}
+			return apps.SSHInstanceTarget{}, &reauthFailure{cause: causeKeyGrantCheck, err: err}
+		}
+	}
 	return target, nil
+}
+
+// keyOwnerAction asks, at authentication, whether the key's owner is a bex
+// API key whose grant covers a shell on the target (w9/125): Services Read &
+// write's one-off jobs on a service, as its shell ticket needs, and Sandbox
+// execution on an agent session's sandbox, as every other command run in it
+// needs. It returns the action a key owner's connection is held to, "" for a
+// person or when no gate is wired.
+func (s *Server) keyOwnerAction(ctx context.Context, subject, connUser string) (string, error) {
+	if s.KeyGrants == nil {
+		return "", nil
+	}
+	action := string(apps.ShellKeyAction)
+	if sshgateway.AgentSessionUsername(connUser) {
+		action = string(core.KeySandboxesExec)
+	}
+	key, err := s.KeyGrants.RequireSubject(ctx, subject, action)
+	if err != nil || !key {
+		return "", err
+	}
+	return action, nil
 }
 
 // resolveFailure classifies a ResolveSSHSession error the way the web shell's
@@ -881,6 +932,10 @@ func (s *Server) revalidator(subject, fingerprint, connUser string, sticky *conn
 type connectionTarget struct {
 	mu     sync.RWMutex
 	target apps.SSHInstanceTarget
+	// keyAction is fixed at authentication: the action a connection whose
+	// key's owner is a bex API key is held to on every reauthorization
+	// (w9/125), "" for a person's.
+	keyAction string
 }
 
 func (t *connectionTarget) Get() apps.SSHInstanceTarget {

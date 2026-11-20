@@ -1407,6 +1407,15 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 			twoFactorVerb.Policy = twoFactor
 		}
 		internalRoot.Handle(agentsession.InternalTwoFactorPath, twoFactorVerb)
+		// w9/125: the same door for an API key's grant. The gateway's role
+		// cannot read a key's machine row, so a stream a key opened is re-asked
+		// here at redemption and on every revalidation tick, and the answer is
+		// the grant read uncached, as the dispatch gate reads it.
+		internalRoot.Handle(agentsession.InternalKeyGrantPath, &agentsession.KeyGrantHandler{
+			Secret: []byte(cfg.SandboxExecSecret),
+			Grants: st,
+			Nonce:  st,
+		})
 		// w10/m19: the gateway egress proxy asks here whether a Pod-bound
 		// session's workspace runs the `full` network tier. Same gateway-only
 		// HMAC + internal-only listener; it releases no credential.

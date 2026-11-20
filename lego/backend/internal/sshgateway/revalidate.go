@@ -52,9 +52,12 @@ type Revalidator interface {
 // path enforces). Platform-internal tickets (the Completer's system sentinel)
 // are exempt: their authority is the HMAC itself, minted by trusted system
 // loops with no caller identity to re-check. Like agentsessions.AttachRevalidator
-// it holds only the kernel — no ticket minting, no store mutation.
+// it holds only the kernel — no ticket minting, no store mutation. KeyGrants
+// holds a ticket a bex API key minted (its KeyAction) to the key's current
+// grant (w9/125); a nil gate refuses every such ticket.
 type ExecRevalidator struct {
 	*core.Base
+	KeyGrants *KeyGrantGate
 }
 
 // RevalidateExec re-authorizes a verified exec ticket as its signed subject,
@@ -80,7 +83,9 @@ func (r *ExecRevalidator) RevalidateExec(ctx context.Context, claims sandboxexec
 		return err
 	}
 	if claims.AgentSessionID != "" {
-		return r.AuthorizeFreshOn(ctx, core.RelCanViewSensitive, agentsession.SessionObject(claims.AgentSessionID))
+		if err := r.AuthorizeFreshOn(ctx, core.RelCanViewSensitive, agentsession.SessionObject(claims.AgentSessionID)); err != nil {
+			return err
+		}
 	}
-	return nil
+	return r.KeyGrants.RequireTicket(ctx, claims.Subject, claims.KeyAction)
 }

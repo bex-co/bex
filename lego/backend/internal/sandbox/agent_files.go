@@ -75,7 +75,7 @@ func (l *AgentSessionLifecycle) UploadAgentSessionFiles(ctx context.Context, wor
 }
 
 func (s *Service) putAgentSessionArchive(ctx context.Context, workspaceID string, raw osSandbox, path string, open func() io.ReadCloser) (int, error) {
-	ticket, gateway, err := s.gatewayFileTicket(sandboxexec.SystemSubject, workspaceID, raw,
+	ticket, gateway, err := s.gatewayFileTicket(sandboxexec.SystemSubject, "", workspaceID, raw,
 		sandboxfiles.OperationUpload, path)
 	if err != nil {
 		return 0, err

@@ -340,6 +340,35 @@ func TestKeyGrantFailsClosed(t *testing.T) {
 	}
 }
 
+// TestKeyStreamActionMarksOnlyAnAPIKeysTicket (w9/125): the gateway holds a
+// stream to a grant only when its ticket names an action, so only a bex API
+// key's ticket may name one. A person, a person's OAuth token, background
+// work running as a key's creator and a sandbox connect token's redemption
+// name none.
+func TestKeyStreamActionMarksOnlyAnAPIKeysTicket(t *testing.T) {
+	cases := []struct {
+		name string
+		id   *Identity
+		want string
+	}{
+		{"api key", &Identity{Subject: "key-1", ClientID: "key-1", Method: MethodOAuth2}, string(KeySandboxesExec)},
+		{"person", &Identity{Subject: "person", Method: MethodSession}, ""},
+		{"person's oauth token", &Identity{Subject: "person", ClientID: "cli", Method: MethodOAuth2, Human: true}, ""},
+		{"background work", &Identity{Subject: "key-1", Method: MethodSession}, ""},
+		{"connect token redemption", &Identity{Subject: "key-1", Method: MethodSandboxConnect, AuditMethod: MethodOAuth2}, ""},
+		{"no identity", nil, ""},
+	}
+	for _, tc := range cases {
+		ctx := context.Background()
+		if tc.id != nil {
+			ctx = WithIdentity(ctx, *tc.id)
+		}
+		if got := KeyStreamAction(ctx, KeySandboxesExec); got != tc.want {
+			t.Errorf("%s: KeyStreamAction = %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
 // relationsOf is a Checker giving each subject a fixed set of relations on
 // workspace:tea-a.
 type relationsOf map[string][]string

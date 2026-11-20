@@ -53,6 +53,9 @@ func TestAPIKeyGrantLivesOnTheKeysRow(t *testing.T) {
 	if g, err := st.APIKeyGrant(ctx, key); err != nil || g.All || !slices.Equal(g.Entries(), scoped.Entries()) {
 		t.Fatalf("read back %+v, %v; want %v", g, err, scoped.Entries())
 	}
+	if g, bound, err := st.BoundAPIKeyGrant(ctx, key); err != nil || !bound || g.Allows(core.KeyServicesJobs) || !g.Allows(core.KeyServicesView) {
+		t.Errorf("BoundAPIKeyGrant(key) = %+v, %v, %v; want its Services Read grant, bound", g, bound, err)
+	}
 	if all, err := st.APIKeyGrantsOfTenant(ctx, ws.ID); err != nil || len(all) != 1 || !slices.Equal(all[key].Entries(), scoped.Entries()) {
 		t.Fatalf("the workspace's grants = %+v, %v; want only %s's", all, err, key)
 	}
@@ -72,6 +75,10 @@ func TestAPIKeyGrantLivesOnTheKeysRow(t *testing.T) {
 	for _, subject := range []string{admin, "unbound-" + run} {
 		if err := st.SetAPIKeyGrant(ctx, subject, scoped); !errors.Is(err, ErrNotFound) {
 			t.Errorf("SetAPIKeyGrant(%s) = %v, want ErrNotFound", subject, err)
+		}
+		// The SSH gateway's grant verb tells them from a key (w9/125).
+		if g, bound, err := st.BoundAPIKeyGrant(ctx, subject); err != nil || bound || !g.All {
+			t.Errorf("BoundAPIKeyGrant(%s) = %+v, %v, %v; want All, not bound", subject, g, bound, err)
 		}
 	}
 	// The column refuses a grant on a person's row even written directly.

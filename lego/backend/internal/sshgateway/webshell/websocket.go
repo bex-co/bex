@@ -106,6 +106,11 @@ type Server struct {
 	// Audit receives each shell session's StartShellEvent and EndShellEvent
 	// rows (w9/m451, sshgateway.RecordShellEvent). nil records none.
 	Audit core.AuditSink
+
+	// KeyGrants holds a shell a bex API key opened (its ticket's KeyAction)
+	// to the key's current grant at connect and on every revalidation tick
+	// (w9/125). nil refuses every key's ticket; a person's never asks.
+	KeyGrants *sshgateway.KeyGrantGate
 }
 
 func (s *Server) defaults() {
@@ -208,6 +213,16 @@ func watchdogEndReason(err error) string {
 	}
 }
 
+// keyGrantRefusal is what the terminal shows when a key's grant refuses its
+// shell at connect: the refusal itself when the grant no longer covers it,
+// else that it could not be checked.
+func keyGrantRefusal(err error) string {
+	if errors.Is(err, core.ErrForbidden) {
+		return "this API key is no longer granted shell access to this service"
+	}
+	return "this API key's permissions couldn't be checked; reconnect to try again"
+}
+
 // Enabled reports whether the Browser Web Shell transport is configured.
 func (s *Server) Enabled() bool { return len(s.TicketSecret) > 0 }
 
@@ -271,11 +286,19 @@ func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims she
 	resolveCtx := core.WithIdentity(ctx, core.Identity{Subject: claims.Subject, Method: core.MethodShell})
 	resolveCtx, cancelResolve := context.WithTimeout(resolveCtx, s.HandshakeTimeout)
 	target, err := s.Apps.ResolveSSHSession(resolveCtx, claims.Username())
-	cancelResolve()
 	if err != nil {
+		cancelResolve()
 		log.Printf("web shell target resolution failed: %v", err)
 		s.Metrics.Authentication("rejected_target")
 		ws.fail("this service has no instance available for a shell right now")
+		return
+	}
+	// A key's shell also needs the key's grant, as its mint did (w9/125).
+	err = s.KeyGrants.RequireTicket(resolveCtx, claims.Subject, claims.KeyAction)
+	cancelResolve()
+	if err != nil {
+		s.Metrics.Authentication("rejected_target")
+		ws.fail(keyGrantRefusal(err))
 		return
 	}
 
@@ -335,8 +358,10 @@ func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims she
 	defer cancelTimeout()
 	execCtx, cancelExec := sshgateway.WithRevalidation(timedCtx, s.RevalidateInterval, func(c context.Context) error {
 		resolveCtx := core.WithIdentity(c, core.Identity{Subject: claims.Subject, Method: core.MethodShell})
-		_, err := s.Apps.ResolveSSHSession(resolveCtx, claims.Username())
-		return err
+		if _, err := s.Apps.ResolveSSHSession(resolveCtx, claims.Username()); err != nil {
+			return err
+		}
+		return s.KeyGrants.RequireTicket(c, claims.Subject, claims.KeyAction)
 	})
 	defer cancelExec()
 	bridgeCtx, cancelBridge := context.WithCancel(execCtx)

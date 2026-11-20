@@ -1553,7 +1553,7 @@ func (l *AgentSessionLifecycle) ReadSessionTranscript(ctx context.Context, works
 	// The public buffered-exec cap is 2 MiB, but the driver's own log is
 	// bounded at 16 MiB: read the 16 MiB tail under a budget 1 MiB over it, and
 	// fail explicitly if even that truncates it.
-	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID, sessionID, []string{"/bin/sh", "-c",
+	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID, sessionID, "", []string{"/bin/sh", "-c",
 		fmt.Sprintf("tail -c %d %s 2>/dev/null || true", maxTranscriptLogBytes, agentSessionLogPath)})
 	if err != nil {
 		return 0, err
@@ -1642,7 +1642,7 @@ func (s *Service) sessionExec(ctx context.Context, workspaceID, sessionID, sandb
 // systemExec runs one trusted argv of bex-api's own in a sandbox and buffers
 // its output up to limit: no caller-facing wrapper, record or activity.
 func (s *Service) systemExec(ctx context.Context, ws, sandboxID, agentSessionID string, argv []string) (ExecResult, error) {
-	resp, err := s.mintAndDial(ctx, ws, sandboxID, agentSessionID, argv)
+	resp, err := s.mintAndDial(ctx, ws, sandboxID, agentSessionID, "", argv)
 	if err != nil {
 		return ExecResult{}, err
 	}

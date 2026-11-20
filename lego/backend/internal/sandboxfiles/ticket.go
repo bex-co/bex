@@ -47,9 +47,13 @@ type Claims struct {
 	AgentSessionID string `json:"ags,omitempty"`
 	Operation      string `json:"op"`
 	Path           string `json:"path"`
-	IssuedAt       int64  `json:"iat"`
-	ExpiresAt      int64  `json:"exp"`
-	Nonce          string `json:"jti"`
+	// KeyAction is sandboxexec.Claims.KeyAction for a file transfer: the
+	// action a bex API key's file token was minted under, "" otherwise
+	// (w9/125).
+	KeyAction string `json:"ka,omitempty"`
+	IssuedAt  int64  `json:"iat"`
+	ExpiresAt int64  `json:"exp"`
+	Nonce     string `json:"jti"`
 }
 
 var codec = hmacticket.New("sandbox file ticket")

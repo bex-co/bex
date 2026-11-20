@@ -37,12 +37,17 @@ type CompositeResolver struct {
 }
 
 func (c CompositeResolver) ResolveSSHSession(ctx context.Context, username string) (apps.SSHInstanceTarget, error) {
-	if c.AgentSessions != nil {
-		if kind, ok := ids.KindOf(idPrefix(username)); ok && kind == ids.AgentSession {
-			return c.AgentSessions.ResolveSSHSession(ctx, username)
-		}
+	if c.AgentSessions != nil && AgentSessionUsername(username) {
+		return c.AgentSessions.ResolveSSHSession(ctx, username)
 	}
 	return c.Apps.ResolveSSHSession(ctx, username)
+}
+
+// AgentSessionUsername reports whether an SSH username is a well-formed
+// agent-session id, the one kind CompositeResolver routes away from Apps.
+func AgentSessionUsername(username string) bool {
+	kind, ok := ids.KindOf(idPrefix(username))
+	return ok && kind == ids.AgentSession
 }
 
 // idPrefix returns the `<prefix>-<xid>` head of an SSH username, discarding any

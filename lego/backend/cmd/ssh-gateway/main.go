@@ -80,6 +80,21 @@ func newTwoFactorGate(secret, apiURL string, sessions sshgateway.TwoFactorSessio
 	return gate
 }
 
+// newKeyGrantGate builds the gateway's hold on a bex API key's grant (w9/125)
+// over bex-api's internal verb, authenticated with the same
+// BEX_SANDBOX_EXEC_SECRET HMAC as the two-factor verb. Without the secret the
+// gate cannot ask, so every stream a key opened is refused, and so is every
+// native SSH key, whose owner it cannot tell from a key.
+func newKeyGrantGate(secret, apiURL string) *sshgateway.KeyGrantGate {
+	gate := &sshgateway.KeyGrantGate{}
+	if secret == "" {
+		log.Printf("ssh gateway: BEX_SANDBOX_EXEC_SECRET is unset, so API key grants cannot be checked; every stream an API key opens is refused")
+		return gate
+	}
+	gate.Asker = &agentsession.KeyGrantClient{URL: apiURL, Secret: []byte(secret), HTTP: &http.Client{Timeout: 5 * time.Second}}
+	return gate
+}
+
 func main() {
 	// Two lifetimes (w6/m482, docs/ADR035-ssh.md § Sessions across a gateway
 	// release). ctx is the listeners': SIGTERM ends it, so a release's old pod
@@ -179,6 +194,10 @@ func main() {
 	// through its own gated Base.
 	base.TwoFactor = newTwoFactorGate(os.Getenv("BEX_SANDBOX_EXEC_SECRET"),
 		env.Or("BEX_WORKSPACE_TWO_FACTOR_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalTwoFactorPath), st, metrics)
+	// One hold on API key grants for every transport: a stream a key opened
+	// is re-asked at redemption and on every revalidation tick (w9/125).
+	keyGrants := newKeyGrantGate(os.Getenv("BEX_SANDBOX_EXEC_SECRET"),
+		env.Or("BEX_API_KEY_GRANT_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalKeyGrantPath))
 	limits := sshgateway.NewSessionLimiter(
 		intEnv("BEX_SSH_MAX_SESSIONS", 100),
 		intEnv("BEX_SSH_MAX_SESSIONS_PER_IDENTITY", 5),
@@ -246,7 +265,8 @@ func main() {
 		TrustedProxies: trustedProxies,
 		// Each service shell session's StartShellEvent/EndShellEvent rows
 		// (w9/m451), through the role's INSERT-only audit_events grant.
-		Audit: st,
+		Audit:     st,
+		KeyGrants: keyGrants,
 	}
 	shell := &webshell.Server{
 		TicketSecret:     []byte(os.Getenv("BEX_SHELL_TICKET_SECRET")),
@@ -264,6 +284,7 @@ func main() {
 		// native SSH. Trust forwarding headers only from those configured peers.
 		TrustedProxies: core.TrustedProxies(trustedProxies),
 		Audit:          st,
+		KeyGrants:      keyGrants,
 	}
 	sandbox := &sandboxsse.Server{
 		Secret:   []byte(os.Getenv("BEX_SANDBOX_EXEC_SECRET")),
@@ -275,7 +296,7 @@ func main() {
 		// exec tickets (round-13 #3): fresh can_operate on the ticket's workspace
 		// and, for agent-session sandboxes, can_view_sensitive on the session
 		// object (round-13 #1, defense in depth behind bex-api's mint gate).
-		Revalidator:        &sshgateway.ExecRevalidator{Base: base},
+		Revalidator:        &sshgateway.ExecRevalidator{Base: base, KeyGrants: keyGrants},
 		SessionTimeout:     sessionTimeout,
 		RevalidateInterval: revalidateInterval,
 	}
@@ -420,6 +441,7 @@ func main() {
 		// (fresh) + turn-phase gate here so revocation/cancellation inside the
 		// ticket's TTL window is effective at the gateway too.
 		Revalidator:    &agentsessions.AttachRevalidator{Base: base, Store: st},
+		KeyGrants:      keyGrants,
 		DriverPort:     intEnv("BEX_AGENT_SESSION_DRIVER_PORT", 8787),
 		AllowedOrigins: splitCSV(os.Getenv("BEX_API_CORS_ORIGIN")),
 		// Same trusted peers the web shell uses: this endpoint is HTTP behind
@@ -487,7 +509,7 @@ func main() {
 			Metrics:            metrics,
 			Limits:             limits,
 			Nonces:             nonces,
-			Revalidator:        &sandboxfilegateway.ExecRevalidator{Base: base},
+			Revalidator:        &sandboxfilegateway.ExecRevalidator{Base: base, KeyGrants: keyGrants},
 			RevalidateInterval: revalidateInterval,
 		}
 		fileHandler := files.Handler()

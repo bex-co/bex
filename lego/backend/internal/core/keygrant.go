@@ -625,6 +625,19 @@ func (b *Base) KeyGrantAllows(ctx context.Context, actions ...KeyAction) (bool, 
 	return g.Allows(actions...), nil
 }
 
+// KeyStreamAction is what a gateway ticket minted now carries for the stream
+// it opens (w9/125): action when the caller is a bex API key, else "". The
+// SSH gateway cannot read a grant, so for a ticket that names an action it
+// asks bex-api at redemption and on every revalidation tick whether the key's
+// grant still covers it, and ends the stream when it no longer does. A
+// person's ticket names none and is held to their relations alone.
+func KeyStreamAction(ctx context.Context, action KeyAction) string {
+	if id, ok := IdentityFrom(ctx); ok && id.IsAPIKey() {
+		return string(action)
+	}
+	return ""
+}
+
 // SubjectHoldsFresh reports, uncached and audit-silent, whether subject (a
 // person) holds relation on object: the role cap a key's grant is validated
 // against at mint and on every edit, at the freshness of a write. nil Authz

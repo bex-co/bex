@@ -1089,6 +1089,37 @@ func caller(subject string) context.Context {
 	return core.WithIdentity(context.Background(), core.Identity{Subject: subject, Method: "session"})
 }
 
+// w9/125: a bex API key's attach ticket names the action every attach-ticket
+// mint needs, so the gateway holds the attach to the key's grant; a person's
+// names none.
+func TestAttachTicketMarksOnlyAnAPIKeysTicket(t *testing.T) {
+	svc, st, fga, _ := fixture()
+	fga.members["key-1"] = "tea-a"
+	created, err := svc.Create(caller("alice"), createInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, tc := range map[string]struct {
+		ctx      context.Context
+		subject  string
+		wantMark string
+	}{
+		"api key": {core.WithIdentity(context.Background(), core.Identity{Subject: "key-1", ClientID: "key-1", Method: core.MethodOAuth2}), "key-1", string(AttachKeyAction)},
+		"person":  {caller("alice"), "alice", ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			view, err := svc.AttachTicket(tc.ctx, created.ID, agentsessionticket.ActionRead)
+			if err != nil {
+				t.Fatal(err)
+			}
+			claims, err := agentsessionticket.Verify(svc.TicketSecret, view.Ticket, st.now)
+			if err != nil || claims.Subject != tc.subject || claims.KeyAction != tc.wantMark {
+				t.Fatalf("claims = %+v, %v; want KeyAction %q for %s", claims, err, tc.wantMark, tc.subject)
+			}
+		})
+	}
+}
+
 // seedLiveSession injects a workspace session already in a live phase holding a
 // sandbox id — the state the ADR059 D6 per-workspace cap counts. Used to bring a
 // workspace to its cap without driving full dispatch.

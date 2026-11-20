@@ -19,6 +19,7 @@ package sandbox
 import (
 	"bufio"
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -72,6 +73,15 @@ type ExecConfig struct {
 // ExecRequest is the caller's exec input: OwnerID binds the workspace (Render's
 // query/body ownerId), SandboxID is the target, Command is the single command
 // string the Render CLI sends (run by bash, execArgv).
+// ExecKeyAction and FileKeyAction are what a bex API key's exec and file
+// transfer tickets name (w9/125): the actions their mints need (the api
+// package's keyPermissionOps), which the gateway then holds the stream to for
+// as long as it runs.
+const (
+	ExecKeyAction = core.KeySandboxesExec
+	FileKeyAction = core.KeySandboxesFiles
+)
+
 type ExecRequest struct {
 	OwnerID   string
 	SandboxID string
@@ -81,6 +91,11 @@ type ExecRequest struct {
 	// the token's resolved workspace (the record's key), not a caller's raw
 	// ownerId.
 	ExecutionID string
+	// KeyAction is the API-key action a run connect token was minted under
+	// (connectClaims.KeyAction): the redemption's identity is the token's, so
+	// it cannot say the caller is a key. Empty for every other exec, which
+	// takes the mark from its caller's identity (w9/125).
+	KeyAction string
 }
 
 // execTarget is the sandbox an exec resolved to, its workspace and public id,
@@ -188,7 +203,9 @@ func (s *Service) dialGateway(ctx context.Context, req ExecRequest) (*http.Respo
 		}
 		argv = execArgv(req.Command, registry)
 	}
-	resp, err := s.mintAndDial(ctx, ws, raw.ID, raw.Metadata[metadataAgentSession], argv)
+	// A key's exec is held to its grant for as long as it runs (w9/125).
+	keyAction := cmp.Or(req.KeyAction, core.KeyStreamAction(ctx, ExecKeyAction))
+	resp, err := s.mintAndDial(ctx, ws, raw.ID, raw.Metadata[metadataAgentSession], keyAction, argv)
 	if err != nil {
 		release()
 		return nil, nil, execTarget{}, err
@@ -279,8 +296,11 @@ func (s *Service) authorizeExecTarget(ctx context.Context, ownerID, sandboxID, c
 // mintAndDial signs an exec ticket binding the exact pod/namespace/command and
 // opens the gateway SSE stream. It performs NO authorization or ownership check
 // — every caller (dialGateway for the public verb, ReadSessionStatus for the
-// trusted Completer) must gate the exact sandbox before calling it.
-func (s *Service) mintAndDial(ctx context.Context, ws, sandboxID, agentSessionID string, command []string) (*http.Response, error) {
+// trusted Completer) must gate the exact sandbox before calling it. keyAction
+// is the ticket's KeyAction: what a bex API key's exec is held to, "" for a
+// person's and for bex-api's own commands, which a key's later narrowing
+// must not stop (ADR118 § Accepted, by design).
+func (s *Service) mintAndDial(ctx context.Context, ws, sandboxID, agentSessionID, keyAction string, command []string) (*http.Response, error) {
 	// A caller-facing exec (dialGateway) always carries an identity; the trusted
 	// Completer's status read runs in a system loop with none. The gateway rejects
 	// an empty-subject ticket as malformed (sandboxexec.Verify), so fall back to a
@@ -309,6 +329,7 @@ func (s *Service) mintAndDial(ctx context.Context, ws, sandboxID, agentSessionID
 		// live-stream revalidation can re-require the session's stronger relation
 		// even though the gateway holds no OpenSandbox client (round-13 #1/#3).
 		AgentSessionID: agentSessionID,
+		KeyAction:      keyAction,
 		IssuedAt:       now.Unix(),
 		ExpiresAt:      now.Add(ttl).Unix(),
 	})

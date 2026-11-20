@@ -2383,6 +2383,11 @@ func (s *Service) AttachTicket(ctx context.Context, sessionID, action string) (V
 	return s.withTicket(ctx, record, action)
 }
 
+// AttachKeyAction is what a bex API key's attach ticket names (w9/125): the
+// action every attach-ticket mint needs (the api package's keyPermissionOps),
+// which the gateway then holds the attach to for as long as it streams.
+const AttachKeyAction = core.KeyAgentsManage
+
 func (s *Service) withTicket(ctx context.Context, record store.AgentSession, action string) (View, error) {
 	identity, ok := core.IdentityFrom(ctx)
 	if !ok || identity.Subject == "" {
@@ -2394,7 +2399,8 @@ func (s *Service) withTicket(ctx context.Context, record store.AgentSession, act
 		Subject: identity.Subject, SessionID: record.ID, SandboxID: record.SandboxID,
 		Pod: record.SandboxID + "-0", Workspace: record.WorkspaceID,
 		Namespace: record.WorkspaceID + "-sandbox", Action: action, Turn: record.Turns,
-		IssuedAt: now.Unix(), ExpiresAt: expires.Unix(),
+		KeyAction: core.KeyStreamAction(ctx, AttachKeyAction),
+		IssuedAt:  now.Unix(), ExpiresAt: expires.Unix(),
 	}
 	if record.SandboxID == "" || (action == agentsessionticket.ActionRead && finishedPhase(record.Phase)) {
 		// Replay-only ticket: no pod to bind, so the gateway serves the durable

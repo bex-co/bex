@@ -52,12 +52,16 @@ type Revalidator interface {
 }
 
 // ExecRevalidator preserves the existing sandbox exec authorization boundary:
-// create-like access and the stronger agent-session sensitive relation.
-type ExecRevalidator struct{ *core.Base }
+// create-like access, the stronger agent-session sensitive relation, and a
+// bex API key's grant for the action its file token was minted under (w9/125).
+type ExecRevalidator struct {
+	*core.Base
+	KeyGrants *sshgateway.KeyGrantGate
+}
 
 func (r *ExecRevalidator) RevalidateFiles(ctx context.Context, c files.Claims) error {
-	return (&sshgateway.ExecRevalidator{Base: r.Base}).RevalidateExec(ctx, sandboxexec.Claims{
-		Subject: c.Subject, Workspace: c.Workspace, AgentSessionID: c.AgentSessionID,
+	return (&sshgateway.ExecRevalidator{Base: r.Base, KeyGrants: r.KeyGrants}).RevalidateExec(ctx, sandboxexec.Claims{
+		Subject: c.Subject, Workspace: c.Workspace, AgentSessionID: c.AgentSessionID, KeyAction: c.KeyAction,
 	})
 }
 

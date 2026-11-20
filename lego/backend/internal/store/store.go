@@ -1126,18 +1126,26 @@ func (s *PGStore) SetAPIKeyGrant(ctx context.Context, clientID string, g core.Ke
 // and a NULL grant are both All; the dispatch gate decides everything else
 // from the key's own tuples and its creator.
 func (s *PGStore) APIKeyGrant(ctx context.Context, clientID string) (core.KeyGrant, error) {
+	g, _, err := s.BoundAPIKeyGrant(ctx, clientID)
+	return g, err
+}
+
+// BoundAPIKeyGrant is APIKeyGrant with whether clientID has a machine row at
+// all, which the SSH gateway's grant verb answers too (w9/125): a subject
+// without one is not a bound key, so its streams have no grant to narrow.
+func (s *PGStore) BoundAPIKeyGrant(ctx context.Context, clientID string) (core.KeyGrant, bool, error) {
 	var all bool
 	var entries []string
 	err := s.Pool.QueryRow(ctx, `
 		SELECT key_permissions IS NULL, coalesce(key_permissions, '{}'::text[])
 		FROM tenant_members WHERE subject = $1 AND kind = 'machine'`, clientID).Scan(&all, &entries)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return core.AllKeyGrant(), nil
+		return core.AllKeyGrant(), false, nil
 	}
 	if err != nil {
-		return core.KeyGrant{}, err
+		return core.KeyGrant{}, false, err
 	}
-	return keyGrantOf(all, entries), nil
+	return keyGrantOf(all, entries), true, nil
 }
 
 // APIKeyGrantsOfTenant is APIKeyGrant for every key bound to tenantID, in one

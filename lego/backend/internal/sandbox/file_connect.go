@@ -61,9 +61,11 @@ type fileConnectClaims struct {
 	Path        string `json:"path"`
 	// MinterMethod is connectClaims.MinterMethod for a file transfer.
 	MinterMethod string `json:"mth,omitempty"`
-	IssuedAt     int64  `json:"iat"`
-	ExpiresAt    int64  `json:"exp"`
-	Nonce        string `json:"nonce"`
+	// KeyAction is connectClaims.KeyAction for a file transfer (w9/125).
+	KeyAction string `json:"ka,omitempty"`
+	IssuedAt  int64  `json:"iat"`
+	ExpiresAt int64  `json:"exp"`
+	Nonce     string `json:"nonce"`
 }
 
 func (s *Service) fileAvailabilityError() error {
@@ -172,6 +174,7 @@ func (s *Service) ConnectFile(ctx context.Context, req FileConnectRequest, baseU
 		Subject: identity.Subject, Workspace: ws, SandboxID: canonicalID(raw),
 		ExecutionID: id.New(id.SandboxExecution), Operation: req.Operation, Path: req.Path,
 		MinterMethod: identity.CallerMethod(),
+		KeyAction:    core.KeyStreamAction(ctx, FileKeyAction),
 		IssuedAt:     now.Unix(), ExpiresAt: now.Add(s.Exec.connectTTL()).Unix(),
 	}
 	if err := hmacticket.EnsureNonce(&claims.Nonce); err != nil {
@@ -261,7 +264,7 @@ func (s *Service) ConnectFileHandler() http.Handler {
 			return
 		}
 		defer s.holdActive(ctx, ws, raw)()
-		ticket, gateway, err := s.gatewayFileTicket(claims.Subject, ws, raw, claims.Operation, claims.Path)
+		ticket, gateway, err := s.gatewayFileTicket(claims.Subject, claims.KeyAction, ws, raw, claims.Operation, claims.Path)
 		if err != nil {
 			core.WriteErr(w, err)
 			return
@@ -314,8 +317,9 @@ func fileGatewayFailure(err error) string {
 }
 
 // gatewayFileTicket signs the gateway half of one file transfer and resolves
-// the gateway endpoint it is redeemed at.
-func (s *Service) gatewayFileTicket(subject, ws string, raw osSandbox, operation, path string) (string, *url.URL, error) {
+// the gateway endpoint it is redeemed at. keyAction is what a bex API key's
+// transfer is held to (w9/125), "" for a person's and for bex-api's own.
+func (s *Service) gatewayFileTicket(subject, keyAction, ws string, raw osSandbox, operation, path string) (string, *url.URL, error) {
 	gateway, err := url.Parse(s.Exec.FileGatewayURL)
 	if err != nil || (gateway.Scheme != "http" && gateway.Scheme != "https") || gateway.Host == "" {
 		return "", nil, core.ErrSandboxesUnavailable
@@ -324,7 +328,8 @@ func (s *Service) gatewayFileTicket(subject, ws string, raw osSandbox, operation
 	claims := sandboxfiles.Claims{
 		Subject: subject, Workspace: ws, SandboxID: raw.ID, Namespace: store.SandboxNamespace(ws),
 		AgentSessionID: raw.Metadata[metadataAgentSession], Operation: operation, Path: path,
-		IssuedAt: now.Unix(), ExpiresAt: now.Add(s.Exec.connectTTL()).Unix(),
+		KeyAction: keyAction,
+		IssuedAt:  now.Unix(), ExpiresAt: now.Add(s.Exec.connectTTL()).Unix(),
 	}
 	// The gateway enforces this too; refusing here keeps bex-api from ever
 	// signing a broader platform ticket.

@@ -179,6 +179,12 @@ spec:
             # every ticket redemption and native SSH key is refused (fail closed).
             - name: BEX_WORKSPACE_TWO_FACTOR_API_URL
               value: http://__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/workspace-two-factor
+            # w9/125: a stream an API key opens is held to the key's grant, and
+            # a native SSH key's owner is told from a key, through bex-api's
+            # internal verb on the same listener. Without it every key's stream
+            # and every native SSH login is refused (fail closed).
+            - name: BEX_API_KEY_GRANT_API_URL
+              value: http://__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/api-key-grant
             # Agent-session conversation transport (ADR047 D9). dev-env.sh
             # port-forwards this listener to the host so the dashboard's
             # useChat can reach it; the CORS origin is the dev-N dashboard.
