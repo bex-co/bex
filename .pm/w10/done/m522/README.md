@@ -1,6 +1,6 @@
 # w10 · m522 — An agent session's `gh` comments, reviews, labels and re-runs CI on its repository, as Devin's can, while pull requests stay with the `bex` tools
 
-**Worker:** worker10 **Goal:** in a repo session, `gh` writes what Devin's `gh` token lets Devin write on the repository it works on: comments and review replies on pull requests, reviews, labels and requested reviewers, issues, and re-running or cancelling Actions runs. Each write goes through the gateway `github-api` route with a token minted for that call and narrowed to the repository, with no token in the sandbox. Opening or changing a pull request itself, approving one, and anything that changes code, refs or settings stay refused, naming the `bex` tools, so the session's one pull-request path and its branch confinement hold. **Status:** blocked (t001–t004, t006–t008 done; t005 waits for a production pin carrying `6522a3916`)
+**Worker:** worker10 **Goal:** in a repo session, `gh` writes what Devin's `gh` token lets Devin write on the repository it works on: comments and review replies on pull requests, reviews, labels and requested reviewers, issues, and re-running or cancelling Actions runs. Each write goes through the gateway `github-api` route with a token minted for that call and narrowed to the repository, with no token in the sandbox. Opening or changing a pull request itself, approving one, and anything that changes code, refs or settings stay refused, naming the `bex` tools, so the session's one pull-request path and its branch confinement hold. **Status:** done (t001–t009; live on pin `3e53abbe3bc3`, 2026-11-20)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | Backend: a per-call write token for the session's repository, minted through its own internal verb and audited — **DONE** | 1h15m | t001 |
 | [t003](done/t003.md) | Gateway: the `github-api` route admits the decided writes with the write token and still refuses every other write naming the `bex` tools — **DONE** | 2h | t001, t002 |
 | [t004](done/t004.md) | Driver: the overlay says what `gh` can write and what stays with the `bex` tools — **DONE** | 30m | t001 |
-| [t005](t005.md) | Live check on production: the admitted writes land on the session's repository, the rest are refused | 45m | t003, t004 |
+| [t005](done/t005.md) | Live check on production: the admitted writes land on the session's repository, the rest are refused — **DONE** | 45m | t003, t004 |
 | [t006](done/t006.md) | Render parity (Devin) — **DONE** | 30m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 45m | t006, t007 |
-| [t009](t009.md) | Closeout | 10m | t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t008 |
 
 Total: **9 tasks, about 7h15m**.
 
@@ -29,7 +29,7 @@ Total: **9 tasks, about 7h15m**.
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w10/025](../../done/025.md), filed by w10/m513's worker from its Devin comparison (t007) on 2026-11-19, promoted by `/loopx w10` on 2026-11-19.
+- **Source:** inbox note [w10/025](../025.md), filed by w10/m513's worker from its Devin comparison (t007) on 2026-11-19, promoted by `/loopx w10` on 2026-11-19.
 - **Triage evidence (2026-11-19, `aef913d70`):**
   - **Every write is refused.** The route answers every REST method but `GET`/`HEAD` (`lego/backend/internal/sshgateway/agentcred/githubapi.go:283`) and every GraphQL mutation (`:328`) with `readOnlyRefusal` (`:293`), and its token is read-only (`lego/backend/internal/github/client.go:270`).
   - **The `bex` tools cover only part of it.** `reply_on_pull_request` posts one conversation comment on the session's own recorded pull request (`agentsession/pullrequest_comment.go:102`, body only). Nothing re-runs or cancels CI, replies in a review thread, reviews, labels or opens an issue.
@@ -37,7 +37,7 @@ Total: **9 tasks, about 7h15m**.
   - **No self-steer loop.** PR feedback ignores every author whose type is not `User` (`pr_feedback.go:380`), and a write with the installation token posts as the App's bot.
 - **Reference product (Devin):** "Devin's machine can carry a GitHub CLI (`gh`) token that lets Devin use GitHub features directly through the GitHub API" ([Security profiles](https://docs.devin.ai/product-guides/security-profiles), read 2026-11-19). Devin's GitHub App holds pull requests write ("create new PRs"), Actions write ("…and to rerun workflows"), issues write ("open new issues"), commit statuses write and contents write ([GitHub integration](https://docs.devin.ai/integrations/gh), read 2026-11-19). DoD 1 matches those writes on the session's repository. bex keeps two hardenings Devin does not document, and t001 records each in ADR090 with its reason. Pull requests are opened and changed only by `open_or_update_draft_pr`, because ADR090 D3 records the PR and its footer there. Code and refs move only through the Git proxy, which accepts only the session branch. t006 files any write Devin allows that this milestone refuses (approvals, workflow dispatch, commit statuses, PR state changes) as its own item if it matters.
 - **Open question in the note, settled under the Devin rule:** the note asked the user which writes `gh` may make. Under [ADR047](../../../../docs/ADR047-cloud-coding-agent-sessions.md)'s reference-product rule (Devin, user preference 2026-10-30), the parity-sufficient answer is Devin's writes minus the two hardenings above. That needs no decision, so it is not a gate. A user who wants the stricter variant (no `gh` writes at all) has w10/026, the workspace switch that removes `gh`.
-- **Goal linkage:** ADR008 pillar 5, cloud coding agents ([ADR047](../../../../docs/ADR047-cloud-coding-agent-sessions.md), [ADR090](../../../../docs/ADR090-agent-owned-delivery.md)). It continues [w10/m513](../../done/m513/README.md), which gave `gh` its reads.
+- **Goal linkage:** ADR008 pillar 5, cloud coding agents ([ADR047](../../../../docs/ADR047-cloud-coding-agent-sessions.md), [ADR090](../../../../docs/ADR090-agent-owned-delivery.md)). It continues [w10/m513](../m513/README.md), which gave `gh` its reads.
 - **Expected outcome:** an agent that finds a flaky failure re-runs it and reads the result. An agent answers a reviewer in the review thread where the question was asked. A routine labels its pull request or opens an issue for what it found but did not fix. None of this needs a person or a new `bex` tool.
 - **Why now:** w10/m513 made `gh` the agent's natural GitHub client, and the refusals now meet agents mid-task: the beancount-io routines (`beancount-rt-flaky-test-fixer` and the others) could confirm a flake only by re-running CI. Production's App already holds every permission needed.
 - **Render parity included (reference product: Devin):** the sandbox's `gh` is a cloud coding-agent surface. t006 walks every admitted and refused write against Devin's `gh` token and App permissions. No REST, GraphQL, MCP or dashboard field changes.
@@ -125,3 +125,26 @@ Everything implementable shipped in `6522a3916`. t005's live check needs product
 - **Then (t005), one short session:** the sandbox node is near capacity (w9/m349), so run one session on a QA repository that has a failed workflow run (never a customer's or `bex-co/bex`), in a workspace with a GitHub connection. Have it open its draft pull request with `open_or_update_draft_pr`, then run `gh pr comment <n> --body …`, `gh pr edit <n> --add-label <label>`, `gh run rerun <failed run> --failed`, `gh pr create …` and `gh pr merge <n>`.
 - **Check:** on GitHub, the comment and label are by the App's bot and the run has a new attempt; no pull request was created or merged; both refusals name `open_or_update_draft_pr` and `reply_on_pull_request`; the session got no steer from its own comment; `audit_events` has `agentsessions.MintGitHubWriteCredential` rows for the writes. Record the session id and run id in this README, remove the label, archive the session, then t009 closes the milestone.
 - **No user action** is needed. Use `/unblock w10` only if t005 finds this milestone's own defect.
+
+## Unblocked (2026-11-20)
+
+- **Affected:** t005, then t009. **Source:** verified evidence. The newest `chore(deploy): pin platform images to <sha>` on `origin/main` is `a47204c7e` (pin `3e53abbe3bc3`), and `git merge-base --is-ancestor 6522a3916 3e53abbe3bc3` holds, so production's bex-api, gateway and agent image carry the write verb, the route and the overlay.
+- **Remaining gates:** none. **Next:** t005 runs the live check as the Gate section above says (one short session on a QA repository, then delete it and any fixture pull request or branch), and t009 closes the milestone if DoD 6 holds. w10/m524's workspace `gh` setting is not on this pin; the QA workspace keeps its default.
+
+## Live check (t005, production, 2026-11-20)
+
+Workspace `tian-personal` (`tea-da2isimlm39c739m4ofg`), 08:26–08:34Z, pin `3e53abbe3bc3`: `bex-api` and `bex-ssh-gateway` ran `bex-operator@sha256:3cfea3ac…` and the sandbox `bex-agent-sandbox@sha256:9767a2b8…`, the digests that pin set. The workspace is the QA account's (the same account as `scripts/qa-login.sh`) whose GitHub connection is the `puncsky` installation `154851602`, which covers every repository of that account. `bex-canary` has no GitHub connection (w10/m490). The `gh` setting of w10/m524 is not on this pin, so the workspace ran with `gh` on, its default.
+
+- **Fixture.** A new private repository, `puncsky/qa-20261120-m522-gh-writes`, with a label `qa-m522` and a workflow `qa-fail` that runs on pushes to `main` only, with two jobs, `passes` and `fails` (`exit 1`). Its first run, 44702684447, ended `failure` on attempt 1.
+- **Session.** `bex agent run --repo puncsky/qa-20261120-m522-gh-writes --max-spend 1` (the CLI built from `main`, `claude` with the pinned `deepseek/deepseek-v4.1-flash-1017`, template `agent`) started `ags-dc0098l29hjs73bcfur0`. Its one turn ran 08:28:18–08:29:28Z and succeeded. The agent pushed its branch and ran `gh pr create --draft --head <its branch> --base main …` **before** opening its pull request, so that gh reached the `createPullRequest` mutation. With a pull request already open, gh stops at its own "already exists" check and sends no write. It then opened draft #1 with `open_or_update_draft_pr` and ran the rest against #1.
+- **Admitted writes, each by the App's bot.** Checked on GitHub with the account's own token:
+  - `gh pr comment 1 --body …` exited 0. Comment 7034407606 is by `bex-co[bot]`, type `Bot`, via the `bex-co` App.
+  - `gh pr edit 1 --add-label qa-m522` exited 0. The `labeled` event's actor is `bex-co[bot]`.
+  - `gh run rerun 44702684447 --failed` exited 0. The run moved to attempt 2 with `triggering_actor` `bex-co[bot]`. Attempt 2 ran only `fails` again (started 08:29:03Z, `failure` as written), and `passes` kept attempt 1's result.
+- **Refused, naming the `bex` tools.** `gh pr create` exited 1 with "pull request create failed: HTTP 403: bex: gh in this session reads puncsky/qa-20261120-m522-gh-writes and writes to it only to comment and reply, review without approving, label, assign, request reviewers, open, edit and close issues, and re-run or cancel Actions runs. Open or update the pull request with the open_or_update_draft_pr tool of the bex MCP server, reply on it with reply_on_pull_request, and change code only by pushing your session branch. (https://api.github.com/graphql)". `gh pr merge 1 --squash` exited 1 with a 403 carrying the same message. The gateway logged `agent github api: refused … status=403` for each (08:28:43Z and 08:29:02Z). The repository then had only #1, an open draft, not merged.
+- **Audited.** `audit_events` (read-only, the `bex-db` replica) has three `agentsessions.MintGitHubWriteCredential` rows, `allowed`, target `agent-session:ags-dc0098l29hjs73bcfur0`, target name `puncsky/qa-20261120-m522-gh-writes`, at 08:28:50.8, 08:28:54.9 and 08:28:58.9Z: one for each admitted write. The reads beside them minted `agentsessions.MintGitHubReadCredential`. The two refused writes minted nothing, so nothing reached GitHub for them.
+- **No steer.** The Bot comment landed at 08:28:51Z, while the turn was running. At 08:31:54Z the session still had one turn and no `agent_session_feedback` row, and bex-api logged no `agent-session feedback` line for it.
+- **Cleanup.** The label was removed, the session deleted (`404 AGENT_SESSION_NOT_FOUND`; its sandbox Pod is gone), #1 closed with its branch deleted, and the repository deleted (`404`).
+- **Seen in passing, not this milestone's.** The gateway logged two `agent git proxy: mint failure (service=info/refs …): agent credential broker unavailable` at 08:28:22Z, a transport error on its call to bex-api (`agentsession/http.go:239`). The clone retried and succeeded.
+
+The Definition of done holds. Items 1–4 hold on the live writes and refusals above and in t003's and t008's tests: `TestGitHubAPIRouteReplaysTheRecordedGhCommands` replays every recorded `gh` command. Item 5 holds in the overlay, ADR090 D4, ADR047 D2 and ADR026 § 2. Item 6 holds here. t009 closed the milestone on 2026-11-20.
