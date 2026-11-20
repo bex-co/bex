@@ -5736,7 +5736,7 @@ dashboards:
              "targets": [
                 {
                  "refId": "A",
-                 "expr": "(sum(rate(bex_api_http_request_duration_seconds_count{route=\"GET /v1/logs\"}[30m])) - sum(rate(bex_api_http_request_duration_seconds_bucket{route=\"GET /v1/logs\", le=\"5\"}[30m]))) / sum(rate(bex_api_http_request_duration_seconds_count{route=\"GET /v1/logs\"}[30m]))",
+                 "expr": "(sum(rate(bex_api_http_request_duration_seconds_count{route=\"GET /v1/logs\"}[30m])) - sum(rate(bex_api_http_request_duration_seconds_bucket{route=\"GET /v1/logs\", le=~\"5|5\\\\.0\"}[30m]))) / sum(rate(bex_api_http_request_duration_seconds_count{route=\"GET /v1/logs\"}[30m]))",
                  "legendFormat": "reads over 5s"
                 },
                 {

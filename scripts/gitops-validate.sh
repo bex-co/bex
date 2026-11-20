@@ -1525,6 +1525,20 @@ if [ "$platform_cnpg_scrape" != "$expected_platform_cnpg_scrape" ]; then
   fail=1
 fi
 
+# w5/m503 t007: Prometheus 3 stores a scraped classic-histogram bucket le="5"
+# as le="5.0", so a rule or panel matching le="5" reads nothing, and
+# BexApiLogsReadSlow sat silent on production while promtool's unit test
+# (whose input keeps le="5") passed. Match a bucket as le=~"5|5\\.0".
+echo "==> no rule or panel matches a histogram bucket by an integer le"
+integer_le="$(grep -rnE 'le[[:space:]]*!?=[[:space:]]*\\?"[0-9]+\\?"' deploy/gitops \
+  --include='*.yml' --include='*.yaml' --include='*.json' |
+  grep -vE '^[^:]+_test\.yml:|^[^:]+:[0-9]+:[[:space:]]*#' || true)"
+if [ -n "$integer_le" ]; then
+  printf '%s\n' "$integer_le" >&2
+  echo "FAIL: Prometheus 3 stores le=\"N\" as le=\"N.0\"; match the bucket as le=~\"N|N\\\\.0\"" >&2
+  fail=1
+fi
+
 if command -v promtool >/dev/null 2>&1; then
   # CI exercises the pinned filesystem exporter while reusing the same render;
   # ordinary local validation remains Docker-free unless explicitly requested.

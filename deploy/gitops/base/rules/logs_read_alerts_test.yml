@@ -1,6 +1,7 @@
 # w5/m503: BexApiLogsReadSlow warns when more than 5% of GET /v1/logs reads
 # take over 5s (the route's p95 above 5s) for a quarter hour, with at least 20
-# reads in the half hour it measures.
+# reads in the half hour it measures. The input buckets carry le="5.0", the
+# form Prometheus 3 stores a scraped le="5" in.
 # Run: promtool test rules logs_read_alerts_test.yml (alerting_rules.yml alongside).
 rule_files:
   - alerting_rules.yml
@@ -14,11 +15,11 @@ tests:
   - name: one read in ten over 5s warns
     interval: 1m
     input_series:
-      - series: 'bex_api_http_request_duration_seconds_bucket{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/logs",method="GET",status="200",le="5"}'
+      - series: 'bex_api_http_request_duration_seconds_bucket{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/logs",method="GET",status="200",le="5.0"}'
         values: "0+10x30 300+9x60"
       - series: 'bex_api_http_request_duration_seconds_count{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/logs",method="GET",status="200"}'
         values: "0+10x90"
-      - series: 'bex_api_http_request_duration_seconds_bucket{job="bex-api",pod="bex-api-b",surface="rest",route="GET /v1/logs",method="GET",status="200",le="5"}'
+      - series: 'bex_api_http_request_duration_seconds_bucket{job="bex-api",pod="bex-api-b",surface="rest",route="GET /v1/logs",method="GET",status="200",le="5.0"}'
         values: "0+10x30 300+9x60"
       - series: 'bex_api_http_request_duration_seconds_count{job="bex-api",pod="bex-api-b",surface="rest",route="GET /v1/logs",method="GET",status="200"}'
         values: "0+10x90"
@@ -42,7 +43,7 @@ tests:
   - name: one read in twenty-five over 5s stays quiet
     interval: 1m
     input_series:
-      - series: 'bex_api_http_request_duration_seconds_bucket{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/logs",method="GET",status="200",le="5"}'
+      - series: 'bex_api_http_request_duration_seconds_bucket{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/logs",method="GET",status="200",le="5.0"}'
         values: "0+24x90"
       - series: 'bex_api_http_request_duration_seconds_count{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/logs",method="GET",status="200"}'
         values: "0+25x90"
@@ -56,7 +57,7 @@ tests:
   - name: slow reads below the traffic floor stay quiet
     interval: 1m
     input_series:
-      - series: 'bex_api_http_request_duration_seconds_bucket{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/logs",method="GET",status="200",le="5"}'
+      - series: 'bex_api_http_request_duration_seconds_bucket{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/logs",method="GET",status="200",le="5.0"}'
         values: "0x90"
       - series: 'bex_api_http_request_duration_seconds_count{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/logs",method="GET",status="200"}'
         values: "0+0.4x90"
@@ -69,11 +70,11 @@ tests:
   - name: another route's slow reads stay quiet
     interval: 1m
     input_series:
-      - series: 'bex_api_http_request_duration_seconds_bucket{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/metrics/cpu",method="GET",status="200",le="5"}'
+      - series: 'bex_api_http_request_duration_seconds_bucket{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/metrics/cpu",method="GET",status="200",le="5.0"}'
         values: "0x90"
       - series: 'bex_api_http_request_duration_seconds_count{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/metrics/cpu",method="GET",status="200"}'
         values: "0+10x90"
-      - series: 'bex_api_http_request_duration_seconds_bucket{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/logs",method="GET",status="200",le="5"}'
+      - series: 'bex_api_http_request_duration_seconds_bucket{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/logs",method="GET",status="200",le="5.0"}'
         values: "0+10x90"
       - series: 'bex_api_http_request_duration_seconds_count{job="bex-api",pod="bex-api-a",surface="rest",route="GET /v1/logs",method="GET",status="200"}'
         values: "0+10x90"

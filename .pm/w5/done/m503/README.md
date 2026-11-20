@@ -1,6 +1,6 @@
 # w5 · m503 — GET /v1/logs answers in a few seconds, not 10–30 s for one read in four
 
-**Worker:** worker5 **Goal:** reading a service's logs over the API takes a few seconds for the query shapes callers actually send, instead of 10–30 s for a quarter of reads and a timeout for the slowest. **Status:** blocked (t001 to t006 done and shipped in `31108e539`; t007 reads 24 h of `GET /v1/logs` on production once the pin carries it, see § Findings)
+**Worker:** worker5 **Goal:** reading a service's logs over the API takes a few seconds for the query shapes callers actually send, instead of 10–30 s for a quarter of reads and a timeout for the slowest. **Status:** done (t001 to t006 shipped in `31108e539`; t007's 24 h production reading 2026-11-20, see § Findings)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](done/t004.md) | Render parity — **DONE** | 15m | t002, t003 |
 | [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 30m | t004, t005 |
-| [t007](t007.md) | Closeout (24 h production reading) | 15m | t006 |
+| [t007](done/t007.md) | Closeout (24 h production reading) — **DONE** | 15m | t006 |
 
 Total: **7 tasks, about 5h45m**.
 
@@ -76,3 +76,44 @@ Shapes whose page is short or reads one stream (most `app`, `build` and `level` 
 - **t004, Render parity.** REST, GraphQL and MCP share `queryLogPage` and `NewLokiSource`, so they still answer the same lines (`TestMCPListLogsIsRESTsBody` and the logs suites pass), and `hasMore`, `nextStartTime` and `nextEndTime` keep their meaning: the reader returns the same exact page in fewer reads. One drift from Render's contract, filed as w5/197: with no `startTime` Render reads the last hour and bex the last seven days.
 - **t005, `/simplify`:** the outward reader counts buckets as an integer rather than a `time.Duration`, its cost comment matches the measured bound, and the request histograms read `core.RequestDurationBuckets` directly. Nothing else found.
 - **t006, tests.** On the fake frontend, now inexact only across a cut as Loki is: pages over two streams in a two-hour and a four-day window, a sparse instance over days read in a few parts with no listing, no re-read past the suspect page's far line, a full page inside one bucket as one request, the inclusive `endTime` on a cut, the query's own selector on every re-read, a failed re-read failing the read, a caller leaving, a busy text search reading each raw line about once, and 150 random shapes against the truth within a few times log2 of their buckets in reads. On the pinned Loki (`BEX_TEST_LOKI_URL`): w21/063's chains and a busy text search with a dense and a sparse instance across a cut. Trusting a full page fails the two-stream pages, the sparse and far-line tests, the raw-page search, the random shapes, w21/063's real-Loki chains and the real-Loki search (20 of 36 matches); trusting a full part fails the two-stream pages and the random shapes. The page histogram's labels and results, and the alert's threshold, floor and route, have their own tests.
+
+### 2026-11-20 — unblock: the gate cleared by itself (loopx w5)
+
+- **Affected:** w5/m503 t007. **Source:** verified evidence; no user decision was needed.
+- **Finding:** production's newest pin `11b1e8f85f06` (`0779189fc`) carries `31108e539` (`git merge-base --is-ancestor`), and the date gate 2026-11-20T18:00Z has passed. The first pin carrying it was `c81d2d447bd8` (`aefb144dc`, committed 18:04Z on 2026-11-19). bex-api's two pods on that pin's image were ready at 18:09:30Z and 18:09:43Z, about 3 h after the fix's commit, and the last pod on the older image was gone by 18:10Z (kube-state-metrics `kube_pod_container_info` and `kube_pod_status_ready_time`).
+- **Next:** t007 reads the 24 h from 2026-11-19T18:09:43Z to 2026-11-20T18:10Z.
+
+### 2026-11-20 — t007: 24 h of production after the fix (loopx w5, read-only)
+
+**How it was read.** Each bex-api pod's own counters were taken at their highest over the window and summed. No container restarted. These counts were checked against the edge's access log in Loki: 2,580 lines against 2,579 counted. The one extra line is a 401 that the auth layer answered before the route. Two sets of pins served the day:
+
+- **A, 18:10Z to 04:26Z (10.3 h):** pins `c81d2d447bd8`, `c624a4f217ff`, `1c63b6fe0a34`, `def3eb4883de` and `98e053468f52`. They carry `31108e539` only, so a read with no `startTime` still covers seven days and a text search is still matched in bex-api.
+- **B, 04:26Z to 18:10Z (13.7 h):** pins `3e53abbe3bc3`, `12716d1d7097` and `11b1e8f85f06`. They also carry `e0dc599d3` (w5/197: the default window is an hour) and `c3d4c075e` (w5/m520: Loki prefilters a text search). bex-api's first pod on `3e53abbe3bc3` was ready at 04:26:01Z.
+
+| REST `GET /v1/logs` | A | B | 24 h |
+| --- | --- | --- | --- |
+| reads | 1,793 | 786 | 2,579 |
+| over 5 s | 2 (0.11%) | 0 | 2 (0.08%) |
+| over 10, 15, 20 or 25 s | 0 | 0 | 0 |
+| p95 / p99 at the edge | 0.19 s / 1.52 s | 0.16 s / 0.32 s | 0.18 s / 1.21 s |
+| slowest read | 5.41 s | 2.32 s | 5.41 s |
+| answers | 1,791 × 200, one 400, one 404 | 783 × 200, two 400, one 404 | no 5xx |
+
+**DoD 2 holds.** The share of reads over 5 s is 0.08%, against the 5% that would put the p95 at 5 s. The p95 is 0.21 s interpolated from the buckets. No read reached the 10 s bucket, none reached the 28 s REST deadline, and none answered 5xx. The week before had 2,262 reads of 9,096 between 10 and 30 s.
+
+**By shape** (`bex_api_logs_page_duration_seconds`: every logs page on REST, GraphQL, MCP and project views, 1,848 pages in A and 1,137 in B; no page `partial`, 4 `error`):
+
+- **The only shape over 5 s** was `1h, build, text, backward` in A: 25 pages, 2 of them over 5 s (5.27 s and 5.41 s at the edge, at 20:28Z on 2026-11-19, inside a burst of about 880 CLI reads), p95 about 6.9 s interpolated. This is cause 3 of the Findings: a text search read every raw line into bex-api. Its follow-up is w5/m520, whose prefilter `c3d4c075e` ran in B. In B the 43 text pages over 1 h and 1 d windows had p95 0.23 s or less for every shape. m520 takes its own 24 h reading.
+- **Default window.** In A, `7d, default, none` had 9 pages at p95 3.9 s and `7d, default, text` 13 pages at p95 3.4 s. Both were under 5 s, and they were the slowest shapes after the one above. In B the default is an hour (w5/197): `1h, default, none, backward` had 94 pages at p95 0.10 s.
+- **`path` or `host` (`line`) filter:** `7d, request, line` had 3 pages at p95 0.09 s, and `1h, request, line` 26 pages at p95 0.23 s.
+- **The busiest shapes:** `1h, build, none, forward` had 1,264 pages at p95 0.13 s, and `1h, app, none, forward` 1,042 pages at p95 0.16 s.
+
+**Who read.** 2,548 of the 2,580 reads came from Render CLI 2.36.0 on Ubuntu, in bursts of 340 to 890 an hour (20Z and 22Z on 2026-11-19, 04Z and 09Z on 2026-11-20). Browsers sent 3 and curl 16. The week's main caller before the fix sent none: that was one Render CLI 2.27.0 client on macOS, with 9,130 of 11,827 reads. So the reading rests on these 2,580 reads, not on that client's loop.
+
+**`BexApiLogsReadSlow` could never fire.** The rule was loaded (`/etc/rules/alerting_rules.yml`, health `ok`), it stayed inactive all day, and it left no `ALERTS` series. But Prometheus 3.13.5 stores a scraped bucket `le="5"` as `le="5.0"`. The rule's `le="5"` matcher read nothing, so the rule had no value to compare. Panel 41's "reads over 5s" series read nothing for the same reason. promtool's unit test passed because its input series kept `le="5"`. Fixed here:
+
+- The rule and the panel now match `le=~"5|5\\.0"`, as `BexOperatorAppReconcileSlowPasses` already does.
+- `logs_read_alerts_test.yml` now feeds `le="5.0"`, and the old rule fails its warning case.
+- `scripts/gitops-validate.sh` now refuses an integer `le` matcher in any rule or panel under `deploy/gitops`.
+
+The corrected expression was run over the day against production Prometheus. It peaked at 0.98% at 20:58Z on 2026-11-19, during the first burst, under the 5% threshold. So the alert would rightly have stayed quiet. DoD 3 still holds: `TestMCPListLogsIsRESTsBody` passes on this tree.
