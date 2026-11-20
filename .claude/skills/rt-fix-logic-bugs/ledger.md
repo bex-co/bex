@@ -8,6 +8,7 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 
 ## Skipped
 
+- 2026-11-20 agreement/service paid-tier plan gates — the plan skipped the workspace-plan layer (autoscaling Pro gate, inbound Scale gate) that validateBlueprintService and applyStackService run on every service write, so the plan promised creates/updates the apply refused; fixed this run to refuse exactly what the apply refuses (checkBlueprintServicePlanGates); pinned by TestBlueprintServicePlanMirrorsPaidTierGates and TestBlueprintServicePlanGateUpdateSide
 - 2026-11-20 agreement/env_var_group changed-field names — audited, holds: the plan names declared fields plus the environment move unless provably stays-put, and the apply sets the environment for every declared grouping (groupings write first or the sync fails); pinned by TestBlueprintPlanListsAnEnvGroupMove
 - 2026-11-20 agreement/env_var_group byte-quota half — unreachable via manifest: the 512 KiB manifest cap equals the 512 KiB aggregate cap, so YAML overhead keeps every declared group under it; the key-count cell is the live one, pinned by TestBlueprintPlanRefusesOverQuotaEnvGroupCreate
 - 2026-11-20 agreement/env_var_group workspace count cap — skipped: the group count is runtime state the plan cannot know; external-state, not logic (same rule as the 11-18 no-grouping-store entry)
