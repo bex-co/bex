@@ -1,6 +1,6 @@
 # w6 · m518 — An SNI-proxy roll relays its external clients for up to the proxies' idle timeout, and nothing waits on that drain
 
-**Worker:** worker6 **Goal:** when a deploy changes `/kv-sni-proxy` or `/pg-sni-proxy`, each node's old pod relays its open external Key Value and Postgres streams for up to the proxies' 1 h idle timeout, not w6/m515's 30 s. Neither the deploy's wait nor the platform's health signal waits on that drain: each passes once every node runs a Ready pod of the new revision. **Status:** blocked (t001–t005, t007 and t008 done; t006 shipped `081c847e1` and armed its probes, and waits for the first pin that carries it)
+**Worker:** worker6 **Goal:** when a deploy changes `/kv-sni-proxy` or `/pg-sni-proxy`, each node's old pod relays its open external Key Value and Postgres streams for up to the proxies' 1 h idle timeout, not w6/m515's 30 s. Neither the deploy's wait nor the platform's health signal waits on that drain: each passes once every node runs a Ready pod of the new revision. **Status:** done
 
 ## Tasks (in order)
 
@@ -11,10 +11,10 @@
 | t003 | [Both SNI proxies drain for the longer bound](done/t003.md) | 45m | t002, w6/m515 t006 | — **DONE**
 | t004 | [Prove it on the local cluster](done/t004.md) | 1h30m | t003 | — **DONE**
 | t005 | [Record it in ADR021 § 10, ADR009 and the operator guide](done/t005.md) | 30m | t003 | — **DONE**
-| t006 | [Ship and verify on production](t006.md) | 1h30m | t004, t005 |
+| t006 | [Ship and verify on production](done/t006.md) | 1h30m | t004, t005 | — **DONE**
 | t007 | [Simplify](done/t007.md) | 15m | t006 | — **DONE**
 | t008 | [Test coverage](done/t008.md) | 30m | t006 | — **DONE**
-| t009 | [Closeout](t009.md) | 10m | t007, t008 |
+| t009 | [Closeout](done/t009.md) | 10m | t007, t008 | — **DONE**
 
 ## Definition of done
 
@@ -88,6 +88,23 @@
 
 ## Park — 2026-11-20 (t001–t005, t007 and t008 done; t006 waits for the next pin)
 
-- **Shipped** as `081c847e1`. Its template rolled both DaemonSets at push (06:15Z), one surge per node, and those old pods drained for their own 30 s. The new pods run the 3,600 s bound with a 3,610 s grace period ([t006 § Step 1](t006.md#step-1-shipped-as-081c847e1-and-the-template-rolled-at-push-2026-11-20)).
-- **Armed.** Eight probes in `bex-canary` hold busy, self-ending and idle Key Value and Postgres clients through the edge, with new-connection loops on each proxy ([t006 § Step 2](t006.md#step-2-armed-2026-11-20-05510617z)).
-- **Gate.** The first pin that carries `081c847e1` rolls both DaemonSets by image with the new bound on the old pods. It moves both SNI pins anyway, for `17e8848c0`. Next: [t006 § Next](t006.md#next-the-worker-after-the-first-pin-that-carries-081c847e1), then t009.
+- **Shipped** as `081c847e1`. Its template rolled both DaemonSets at push (06:15Z), one surge per node, and those old pods drained for their own 30 s. The new pods run the 3,600 s bound with a 3,610 s grace period ([t006 § Step 1](done/t006.md#step-1-shipped-as-081c847e1-and-the-template-rolled-at-push-2026-11-20)).
+- **Armed.** Eight probes in `bex-canary` hold busy, self-ending and idle Key Value and Postgres clients through the edge, with new-connection loops on each proxy ([t006 § Step 2](done/t006.md#step-2-armed-2026-11-20-05510617z)).
+- **Gate.** The first pin that carries `081c847e1` rolls both DaemonSets by image with the new bound on the old pods. It moves both SNI pins anyway, for `17e8848c0`. Next: [t006 § Next](done/t006.md#next-the-worker-after-the-first-pin-that-carries-081c847e1), then t009.
+
+## Unblock record — 2026-11-20 (verified evidence, `/loopx w6`)
+
+- **Affected:** t006 and t009.
+- **Source: verified evidence.** Production pin `4e37ec03f` (producer `12716d1d7097`, 08:47Z) carries `081c847e1`. Its write-back logged `moved` for both `/kv-sni-proxy` and `/pg-sni-proxy`, so the gate holds. The pin also carries w6/148's `9e792160a` but not w6/149's `9ea476b3b`, so the old pods ran with the 3,600 s drain.
+- **Next:** t006 § Next on that pin's roll, then t009.
+
+## Closed — 2026-11-20 (pin `4e37ec03f`)
+
+- **Production ([t006 § Step 2](done/t006.md#step-2-the-sni-moving-deploy-2026-11-20-pin-4e37ec03f)).**
+  - Both DaemonSets rolled by surge at 08:50:26–08:51:06Z.
+  - A busy client on each proxy read 720 replies on its old connection after its old pod's `SIGTERM`, and was closed at `SIGTERM` + 3,600–3,601 s.
+  - The idle clients, kept under the edge load balancer's 1 h idle close by a 10-min keepalive, closed at the same bound.
+  - A 20-min session on each proxy ended on its own mid-drain with the same id, and its old pod exited with it.
+  - The deploy's wait passed in 3 s while five old pods drained. `bex-operator` read Healthy for the rest of the hour, and `PlatformGitOpsUnhealthy` never fired.
+  - The probes and `dpg-dbvtucpbgjqs73fpskhg` are deleted.
+- **Found.** The bytes of a draining pod's last stream, and of every stream the bound closes, never reached the scrape. That gap predates this milestone and is filed as [w6/151](../../151.md). Rolling the proxies less often is [w6/150](../../150.md) (t009).
