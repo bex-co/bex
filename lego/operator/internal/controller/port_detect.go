@@ -297,10 +297,12 @@ type portsScanner interface {
 // answer; a reader's complete answer is narrowed the same way, so detection
 // chooses as it did when it swept. Only a node without a reader is swept.
 func (r *AppReconciler) boundPortListeners(ctx context.Context, pod *corev1.Pod, also ...int) ([]int, error) {
-	open, complete, err := r.podListeners(ctx, pod, func(ctx context.Context, ip string) ([]int, error) {
+	swept := false
+	open, err := r.podListeners(ctx, pod, func(ctx context.Context, ip string) ([]int, error) {
+		swept = true
 		return scanBoundPort(ctx, r.PortScanner, ip, also...)
 	})
-	if err != nil || !complete {
+	if err != nil || swept {
 		return open, err
 	}
 	likely := likelyPorts(also)

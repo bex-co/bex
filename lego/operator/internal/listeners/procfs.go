@@ -252,7 +252,7 @@ func listening(root *os.Root) ([]int, error) {
 			return nil, fmt.Errorf("%w: %w", ErrUnreadable, err)
 		}
 		for _, socket := range procnet.Listening(f) {
-			if !socket.Addr.Unmap().IsLoopback() {
+			if !socket.Addr.IsLoopback() { // netip unmaps a 4-in-6 address itself
 				ports = append(ports, socket.Port)
 			}
 		}

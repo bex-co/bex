@@ -145,7 +145,7 @@ func (r *AppReconciler) selectWebImageHTTP(ctx context.Context, app *appv1alpha1
 	if found.Port == 0 && r.readsListeners() {
 		// Every listener of the pod, from its node's reader (w6/m530), or
 		// swept where the node has none.
-		open, _, scanErr := r.podListeners(ctx, pod, r.fullSweep)
+		open, scanErr := r.podListeners(ctx, pod, r.fullSweep)
 		if errors.Is(scanErr, portscan.ErrPartial) {
 			logf.FromContext(ctx).Info("HTTP port scan ran out of time; probing the ports found so far", "app", app.Name, "open", open)
 		}

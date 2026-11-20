@@ -37,8 +37,9 @@ const (
 	// maxConcurrentReads bounds the reads in flight; one walks the node's
 	// /proc, so a burst queues instead of competing for the CPU limit.
 	maxConcurrentReads = 4
-	// readTimeout bounds one read, queueing included.
-	readTimeout = 5 * time.Second
+	// ReadTimeout bounds one read, queueing included; the operator waits as
+	// long for an answer.
+	ReadTimeout = 5 * time.Second
 )
 
 // Answer is the reader's reply to a read: the pod's listening ports.
@@ -66,7 +67,7 @@ func Handler(procRoot string) http.Handler {
 			http.Error(w, ErrBadRequest.Error(), http.StatusBadRequest)
 			return
 		}
-		ctx, cancel := context.WithTimeout(r.Context(), readTimeout)
+		ctx, cancel := context.WithTimeout(r.Context(), ReadTimeout)
 		defer cancel()
 		select {
 		case slots <- struct{}{}:

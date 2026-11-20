@@ -60,9 +60,9 @@ var (
 const (
 	// listenerReaderComponent is the reader pods' LabelComponent value.
 	listenerReaderComponent = "listener-reader"
-	// listenerReadTimeout bounds one read from a node's reader; a sweep keeps
-	// portDetectTimeout.
-	listenerReadTimeout = 5 * time.Second
+	// listenerReadTimeout bounds one read from a node's reader, the reader's
+	// own bound on it; a sweep keeps portDetectTimeout.
+	listenerReadTimeout = listeners.ReadTimeout
 	// listenerSweepLogEvery spaces the log line a node without a reader
 	// writes, so a node that lost its reader is visible but not noisy.
 	listenerSweepLogEvery = privatePortScanInterval
@@ -87,7 +87,7 @@ func (r *AppReconciler) readsListeners() bool {
 // podListeners is the TCP ports pod listens on: the answer of the reader on
 // its node, complete, or, only when that node runs no reader pod, sweep's
 // answer for the pod's address, which may be partial (portscan.ErrPartial).
-func (r *AppReconciler) podListeners(ctx context.Context, pod *corev1.Pod, sweep func(context.Context, string) ([]int, error)) (open []int, complete bool, err error) {
+func (r *AppReconciler) podListeners(ctx context.Context, pod *corev1.Pod, sweep func(context.Context, string) ([]int, error)) ([]int, error) {
 	if r.Listeners != nil {
 		readCtx, cancel := context.WithTimeout(ctx, listenerReadTimeout)
 		read, readErr := r.Listeners.PodListeners(readCtx, pod)
@@ -95,24 +95,25 @@ func (r *AppReconciler) podListeners(ctx context.Context, pod *corev1.Pod, sweep
 		if !errors.Is(readErr, errNoListenerReader) {
 			listenerReads.WithLabelValues("reader", readerResult(readErr)).Inc()
 			if readErr != nil {
-				return nil, false, fmt.Errorf("reading listeners on node %s: %w", pod.Spec.NodeName, readErr)
+				return nil, fmt.Errorf("reading listeners on node %s: %w", pod.Spec.NodeName, readErr)
 			}
-			return read, true, nil
+			return read, nil
 		}
 		r.noteListenerSweep(ctx, pod.Spec.NodeName)
 	}
 	if r.PortScanner == nil {
-		return nil, false, errNoListenerSource
+		return nil, errNoListenerSource
 	}
 	scanCtx, cancel := context.WithTimeout(ctx, portDetectTimeout)
 	defer cancel()
-	open, err = sweep(scanCtx, pod.Status.PodIP)
+	open, err := sweep(scanCtx, pod.Status.PodIP)
 	listenerReads.WithLabelValues("sweep", sweepResult(err)).Inc()
-	return open, false, err
+	return open, err
 }
 
-// fullSweep connects to every port of ip: today's scan, for a node without a
-// reader.
+// fullSweep connects to every port of ip, for a node without a reader. It is a
+// method rather than the method value r.PortScanner.Scan, which would panic on
+// a nil PortScanner before podListeners checks it.
 func (r *AppReconciler) fullSweep(ctx context.Context, ip string) ([]int, error) {
 	return r.PortScanner.Scan(ctx, ip)
 }

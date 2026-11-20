@@ -1,6 +1,6 @@
 # w6 · m530 — The operator reads a pod's listeners on its node instead of connecting to every port, so its sweeps stop filling the Cilium conntrack tables
 
-**Worker:** worker6 **Goal:** private-port discovery and bound-port detection learn which ports a tenant pod listens on from the pod's own socket table, read on its node, instead of a TCP connect to all 65,535 ports. No sweep then puts tens of thousands of entries into the Cilium conntrack table of the operator's node or of the swept pod's node, so the idle connections of every pod on those nodes keep their entries. **Status:** todo (t001–t005 done, shipped in `84e2bfe08`; production carries it since the 2026-11-20T22:08Z pin, so the reader joins `config/default` and t006 runs on production)
+**Worker:** worker6 **Goal:** private-port discovery and bound-port detection learn which ports a tenant pod listens on from the pod's own socket table, read on its node, instead of a TCP connect to all 65,535 ports. No sweep then puts tens of thousands of entries into the Cilium conntrack table of the operator's node or of the swept pod's node, so the idle connections of every pod on those nodes keep their entries. **Status:** todo (t001–t005 and t008 done; the reader joined `config/default` in `9f9ed4564` and runs on production since 2026-11-20T22:45Z; t006 on production next)
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | [Record it in ADR089, ADR018 and the operator guide](done/t005.md) — **DONE** | 45m | t003 |
 | t006 | [Ship and verify on production](t006.md) | 1h30m | t004, t005 |
 | t007 | [Read a day of conntrack GC on the operator's node and every tenant node](t007.md) | 30m | t006 |
-| t008 | [Simplify](t008.md) | 15m | t006 |
+| t008 | [Simplify](done/t008.md) — **DONE** | 15m | t006 |
 | t009 | [Test coverage](t009.md) | 30m | t006 |
 | t010 | [Closeout](t010.md) | 10m | t007, t008, t009 |
 

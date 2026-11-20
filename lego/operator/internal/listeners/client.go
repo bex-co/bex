@@ -44,7 +44,7 @@ func NewClient() Client {
 		DialContext:           (&net.Dialer{Timeout: 3 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
 		MaxIdleConnsPerHost:   1,
 		IdleConnTimeout:       5 * time.Minute,
-		ResponseHeaderTimeout: readTimeout + time.Second,
+		ResponseHeaderTimeout: ReadTimeout + time.Second,
 	}}}
 }
 

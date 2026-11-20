@@ -244,7 +244,7 @@ func (r *AppReconciler) scanPrivatePorts(ctx context.Context, app *appv1alpha1.A
 func (r *AppReconciler) sweepPrivatePorts(ctx context.Context, app *appv1alpha1.App, revision string, pod *corev1.Pod) *appv1alpha1.RuntimePortsStatus {
 	prev := app.Status.RuntimePorts
 	sameRevision := prev != nil && prev.Revision == revision
-	open, _, err := r.podListeners(ctx, pod, r.fullSweep)
+	open, err := r.podListeners(ctx, pod, r.fullSweep)
 	partial := errors.Is(err, portscan.ErrPartial)
 	if err != nil && !partial {
 		logf.FromContext(ctx).Info("private network port scan failed; keeping the last listeners", "app", app.Name, "error", err.Error())
