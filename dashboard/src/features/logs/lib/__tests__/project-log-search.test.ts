@@ -22,6 +22,7 @@ describe("project log view search", () => {
       r: "1h",
       rangeStart: undefined,
       rangeEnd: undefined,
+      contextLine: undefined,
     });
     // Render tokens without a bex preset map onto the nearest one.
     expect(parseProjectLogSearch({ r: "6h" }).r).toBe("4h");
@@ -53,11 +54,13 @@ describe("project log view search", () => {
       });
       expect(projectLogRange(search, DEFAULT_LOG_RANGE)).toEqual(range);
     }
-    // A preset clears a custom window's stale bounds.
+    // A preset clears a custom window's stale bounds, and a View in context
+    // mark with them (w3/m528).
     expect(projectLogRangeSearch(parseRangePreset("1h")!)).toStrictEqual({
       r: "1h",
       rangeStart: undefined,
       rangeEnd: undefined,
+      contextLine: undefined,
     });
   });
 

@@ -16,9 +16,14 @@ export interface ServiceInstance {
  * Shell instance picker (w2/m55). Presentation only; the same ListInstances
  * verb REST exposes at GET /v1/services/{id}/instances.
  */
-export function useServiceInstances(id: string) {
+export function useServiceInstances(
+  id: string,
+  { skip = false }: { skip?: boolean } = {},
+) {
   const { data, loading, refetch } = useQuery(ServiceInstancesDocument, {
     variables: { id },
+    // A Logs tab reads them only for a service whose Shell can open (w3/m528).
+    skip,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
     pollInterval: RESOURCE_POLL_INTERVAL_MS,

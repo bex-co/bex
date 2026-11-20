@@ -141,24 +141,106 @@ const zhLogs: Record<string, TranslationEntry> = {
     message: "实时",
     description: "Label for the live-tail on/off toggle",
   },
-  "logs.jumpToLatest": {
-    message: "跳到最新",
-    description: "Button to re-pin autoscroll to the newest log line",
-  },
   "logs.linesLabel": {
     message: "日志行",
     description:
       "Accessible name of the scrollable log list, which takes keyboard focus so arrow keys and Page Up/Down scroll it",
   },
   "logs.linesKeysHint": {
-    message: "使用上下方向键在行间移动，按 Enter 仅显示该行的实例。",
+    message:
+      "使用上下方向键在行间移动，按 Enter 仅显示该行的实例，按 Shift+F10 打开该行的菜单。",
     description:
-      "Logs list: screen-reader hint on the focusable log region, naming its row keys",
+      "Logs tab: screen-reader description of the focused log list's keys - arrows move the row cursor, Enter shows only that line's instance, Shift+F10 opens the line's menu (w3/m528)",
   },
   "logs.linesKeysShort": {
-    message: "↑↓ 在行间移动 · Enter：仅显示此实例",
+    message: "↑↓ 在行间移动 · Enter：仅显示此实例 · Shift+F10：菜单",
     description:
-      "Logs tab: the keys of the focused log list, shown in its corner while it has keyboard focus — arrows move between lines, Enter shows only that line's instance",
+      "Logs tab: the keys of the focused log list, shown in its corner while it has keyboard focus - arrows move between lines, Enter shows only that line's instance, Shift+F10 opens the line's menu",
+  },
+  "logs.returnToBottom": {
+    message: "返回底部",
+    description:
+      "Log list (w3/m528): accessible name and tooltip of Render's icon-only Return to Bottom button, shown while the reader is scrolled away from the newest line (ascending order)",
+  },
+  "logs.returnToTop": {
+    message: "返回顶部",
+    description:
+      "Log list (w3/m528): accessible name and tooltip of Render's icon-only Return to Top button, shown while the reader is scrolled away from the newest line (descending order)",
+  },
+  "logs.newLogs": {
+    message: "新日志",
+    description:
+      "Log list (w3/m528): Render's held-lines button while a live tail holds fewer than 10 new lines back from a reader scrolled away",
+  },
+  "logs.newLogsCount_other": {
+    message: "{count}+ 条新日志",
+    description:
+      "Log list (w3/m528): Render's held-lines button for 10 or more held lines; count is the held count rounded up to a multiple of 5, at most 100, followed by a plus sign",
+  },
+  "logs.newLogsInLiveTail": {
+    message: "实时日志中有新日志",
+    description:
+      "Log list (w3/m528): Render's button on a paused explorer when a new line arrived; clicking it turns Live on",
+  },
+  "logs.switchToLiveTail": {
+    message: "切换到实时",
+    description:
+      "Log list (w3/m528): tooltip of the New logs in Live Tail button",
+  },
+  "logs.dismiss": {
+    message: "关闭",
+    description:
+      "Log list (w3/m528): accessible name of the x that hides the New logs in Live Tail button",
+  },
+  "logs.lineMenu": {
+    message: "日志行选项",
+    description:
+      "Log list (w3/m528): accessible name and tooltip of the row menu button (...) on a hovered log line",
+  },
+  "logs.copyLogLine": {
+    message: "复制日志行",
+    description:
+      "Log row menu (w3/m528): copies the line without its time, as Render's Copy log line",
+  },
+  "logs.lineCopied": {
+    message: "已复制！",
+    description:
+      "Log row menu (w3/m528): toast after Copy log line, Render's 'Copied!'",
+  },
+  "logs.lineCopyFailed": {
+    message: "无法复制日志行",
+    description:
+      "Log row menu (w3/m528): toast when the clipboard refused the copied line",
+  },
+  "logs.viewInContext": {
+    message: "查看上下文",
+    description:
+      "Log row menu (w3/m528): opens a new tab on the same explorer, unfiltered, 10 minutes either side of the line",
+  },
+  "logs.sshIntoInstance": {
+    message: "SSH 连接到实例",
+    description:
+      "Log row menu (w3/m528): opens the service's Shell on the line's instance in a new tab",
+  },
+  "logs.sshInstanceNotRunning": {
+    message: "只能 SSH 连接到正在运行的实例。这个实例不可用。",
+    description:
+      "Log row menu (w3/m528): Render's tooltip on a disabled SSH into instance item, for an instance that is no longer running",
+  },
+  "logs.linesKeysHintMenu": {
+    message: "使用上下方向键在行间移动，按 Shift+F10 打开该行的菜单。",
+    description:
+      "Log list without an instance filter (w3/m528): screen-reader description of its keys - arrows move the row cursor, Shift+F10 opens the line's menu",
+  },
+  "logs.linesKeysShortMenu": {
+    message: "↑↓ 在行间移动 · Shift+F10：菜单",
+    description:
+      "Log list without an instance filter (w3/m528): its keys, shown in its corner while it has keyboard focus",
+  },
+  "logs.themeSettings": {
+    message: "主题设置",
+    description:
+      "Log explorer Options menu (w3/m528): Render's last item, a link to the Appearance section of account Settings",
   },
   "logs.endOfLog": {
     message: "日志结束",

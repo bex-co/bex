@@ -7,6 +7,7 @@ import { SecurityComplianceSection } from "@/features/auth/pages/settings-page/s
 import { AccountDeletionCard } from "@/features/auth/pages/settings-page/account-deletion-card";
 import { AccountSettingsFlow } from "@/features/auth/pages/settings-page/account-settings-flow";
 import { AccountSettingsFlowSkeleton } from "@/features/auth/pages/settings-page/account-settings-flow-skeleton";
+import { AppearanceCard } from "@/features/auth/pages/settings-page/appearance-card";
 import { PageFrame, PageHeader } from "@/common/components/page-frame";
 import { SettingsNavigation } from "@/features/auth/pages/settings-page/settings-navigation";
 import { SettingsSection } from "@/features/auth/pages/settings-page/settings-section";
@@ -48,6 +49,16 @@ export default function SettingsPage() {
             ) : (
               <AccountSettingsFlowSkeleton />
             )}
+          </SettingsSection>
+
+          {/* Render's Appearance, after the profile as Render orders it
+              (w3/m528); a log explorer's Options ▸ Theme Settings opens it. */}
+          <SettingsSection
+            id="appearance"
+            title={t("auth.appearanceSection")}
+            description={t("auth.appearanceSectionSubtitle")}
+          >
+            <AppearanceCard />
           </SettingsSection>
 
           <SettingsSection

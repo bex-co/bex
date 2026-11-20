@@ -3,13 +3,14 @@ import { describe, expect, it } from "vitest";
 import { SettingsNavigation } from "../settings-navigation";
 
 describe("SettingsNavigation", () => {
-  it("links all five account settings sections, ending with Danger zone", () => {
+  it("links all six account settings sections, Appearance after Account, ending with Danger zone", () => {
     render(<SettingsNavigation className="sticky" />);
     const navigation = screen.getByRole("navigation", {
       name: "Settings sections",
     });
     const expected: [string, string][] = [
       ["Account", "#account"],
+      ["Appearance", "#appearance"],
       ["Integrations", "#integrations"],
       ["Access credentials", "#access"],
       ["Security", "#security"],

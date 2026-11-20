@@ -4,6 +4,7 @@ import {
   CLAMP_CHARS,
   CLAMP_LINES,
   clampMessage,
+  logLineText,
   logListRows,
   logRowsText,
   shortInstance,
@@ -186,5 +187,55 @@ describe("logRowsText (w3/m509)", () => {
       "asc",
     );
     expect(logRowsText(rows, { ...format, time: null })).toBe(long);
+  });
+});
+
+// Render's row menu copies one line with `En` (w3/m528): `[label] METHOD
+// STATUS host+path`, then the text with ANSI stripped; no time, no instance.
+describe("logLineText (w3/m528)", () => {
+  it("copies an app line's text, its styling stripped, without its time or instance", () => {
+    expect(
+      logLineText(
+        line("a", "2026-11-18T10:00:00Z", {
+          instance: "srv-abc-0123456789abcdefghij",
+          message: "\u001b[32mready\u001b[0m",
+          spans: parseAnsi("\u001b[32mready\u001b[0m"),
+        }),
+      ),
+    ).toBe("ready");
+  });
+
+  it("leads a request line with its method, status, host and path", () => {
+    expect(
+      logLineText(
+        line("b", "2026-11-19T00:00:01Z", {
+          type: "request",
+          method: "GET",
+          statusCode: "404",
+          host: "example.com",
+          path: "/missing",
+          message: 'clientIP="198.51.100.3"',
+        }),
+      ),
+    ).toBe('GET 404 example.com/missing clientIP="198.51.100.3"');
+  });
+
+  it("names a project view line's resource first, and copies a clamped message whole", () => {
+    const long = "y".repeat(CLAMP_CHARS * 2);
+    expect(
+      logLineText(
+        line("c", "2026-11-18T10:00:00Z", {
+          resource: "srv-abc",
+          message: long,
+        }),
+        "storefront",
+      ),
+    ).toBe(`[storefront] ${long}`);
+  });
+
+  it("is blank for a blank line, which the menu cannot copy", () => {
+    expect(
+      logLineText(line("d", "2026-11-18T10:00:00Z", { message: "" })).trim(),
+    ).toBe("");
   });
 });

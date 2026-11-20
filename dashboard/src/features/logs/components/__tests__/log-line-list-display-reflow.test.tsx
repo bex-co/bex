@@ -126,7 +126,7 @@ async function scrollTo(scrollTop: number) {
 }
 
 const settle = () => act(() => new Promise((r) => setTimeout(r, 300)));
-const jump = () => screen.queryByRole("button", { name: /latest/i });
+const jump = () => screen.queryByRole("button", { name: "Return to Bottom" });
 
 describe("LogLineList display reflow (w4/m228)", () => {
   it("keeps the reader's row when wrapping is turned on", async () => {

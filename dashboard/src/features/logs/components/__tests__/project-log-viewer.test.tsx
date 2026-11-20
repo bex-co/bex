@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import { ProjectLogViewer } from "../project-log-viewer";
@@ -40,10 +41,17 @@ vi.mock("../../hooks/use-log-history", () => ({
   },
 }));
 const useLiveLogsSpy = vi.fn();
+// The paused view's new-line watch (w3/m528).
+const watchState = { available: false, dismiss: vi.fn() };
+const useNewLogsWatchSpy = vi.fn();
 vi.mock("../../hooks/use-live-logs", () => ({
   useLiveLogs: (...args: unknown[]) => {
     useLiveLogsSpy(...args);
     return { lines: [], status: "open" };
+  },
+  useNewLogsWatch: (...args: unknown[]) => {
+    useNewLogsWatchSpy(...args);
+    return watchState;
   },
 }));
 const retentionSpy = vi.fn();
@@ -442,5 +450,81 @@ describe("ProjectLogViewer", () => {
     expect(
       liveRowHeights(render(<ProjectLogViewPageSkeleton />).container),
     ).toEqual(ready);
+  });
+});
+
+// Render's explorer pieces in a project view (w3/m528): a View in context link
+// opens paused on its marked line, the link is offered only while a search
+// narrows the view, and a project view offers no SSH (Render passes
+// `servicePath: null`).
+describe("ProjectLogViewer row menu and paused watch (w3/m528)", () => {
+  beforeEach(() => {
+    watchState.available = false;
+    useNewLogsWatchSpy.mockReset();
+  });
+  const watchArgs = () =>
+    useNewLogsWatchSpy.mock.calls.at(-1)?.[0] as {
+      enabled: boolean;
+      subscription: Record<string, unknown>;
+    };
+
+  it("opens a View in context link paused on its marked line, watching the view for a new one", () => {
+    historyState.lines = [line({ key: "id:a", message: "first" })];
+    const { container } = render(
+      <ProjectLogViewer
+        scope={SCOPE}
+        logType={LOG_TYPE_APP}
+        range={DEFAULT_LOG_RANGE}
+        onRangeChange={() => undefined}
+        contextLine="id:a"
+      />,
+    );
+    expect(screen.getByRole("switch", { name: /live/i })).not.toBeChecked();
+    expect(container.querySelector("[data-marked]")).toHaveTextContent("first");
+    expect(watchArgs().enabled).toBe(true);
+    expect(watchArgs().subscription).toMatchObject({
+      project: SCOPE,
+      type: LOG_TYPE_APP,
+    });
+  });
+
+  it("offers View in context once a search narrows the view, and never SSH", async () => {
+    const user = userEvent.setup();
+    historyState.lines = [
+      line({ key: "id:a", message: "first", instance: "srv-web-abcde" }),
+    ];
+    const contextHref = vi.fn(() => "/ctx");
+    const { container } = render(
+      <ProjectLogViewer
+        scope={SCOPE}
+        logType={LOG_TYPE_APP}
+        range={DEFAULT_LOG_RANGE}
+        onRangeChange={() => undefined}
+        contextHref={contextHref}
+      />,
+    );
+    const openMenu = async () => {
+      fireEvent.pointerEnter(container.querySelector('[data-index="0"]')!);
+      await user.click(
+        screen.getByRole("button", { name: "Log line options" }),
+      );
+    };
+    await openMenu();
+    expect(
+      screen.queryByRole("menuitem", { name: "View in context" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("menuitem", { name: "SSH into instance" }),
+    ).toBeNull();
+    await user.keyboard("{Escape}");
+    await user.type(
+      screen.getByRole("textbox", { name: "Search logs" }),
+      "first",
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 350)));
+    await openMenu();
+    expect(
+      screen.getByRole("menuitem", { name: "View in context" }),
+    ).toHaveAttribute("href", "/ctx");
   });
 });

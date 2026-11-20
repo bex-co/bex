@@ -27,7 +27,14 @@ import { WebShellPanel } from "@/features/services/components/web-shell-panel";
  * gains pods/exec. `sshAddress` presence is the eligibility signal both paths
  * share (paid, non-suspended web/private/worker with the gateway configured).
  */
-export function ServiceShellPage({ serviceId }: { serviceId: string }) {
+export function ServiceShellPage({
+  serviceId,
+  instance,
+}: {
+  serviceId: string;
+  /** The instance to open on, from a log line's SSH into instance. */
+  instance?: string;
+}) {
   const { service, loading } = useServer(serviceId, { poll: false });
   const { t } = useTranslations();
   const command = service?.sshAddress ? `ssh ${service.sshAddress}` : "";
@@ -57,7 +64,7 @@ export function ServiceShellPage({ serviceId }: { serviceId: string }) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <WebShellPanel serviceId={serviceId} />
+            <WebShellPanel serviceId={serviceId} initialInstance={instance} />
             <p className="text-muted-foreground text-sm">
               {t("services.shellSshFallback")}
             </p>

@@ -199,14 +199,14 @@ describe("LogLineList virtualization (w9/m83)", () => {
 describe("LogLineList follow / pin (w9/m83)", () => {
   setupVirtualGeometry();
 
-  it("starts pinned (no jump-to-latest affordance)", () => {
+  it("starts pinned (no Return to Bottom)", () => {
     render(<LogLineList lines={buffer(1000)} />);
     expect(
-      screen.queryByRole("button", { name: /jump to latest/i }),
+      screen.queryByRole("button", { name: "Return to Bottom" }),
     ).not.toBeInTheDocument();
   });
 
-  it("scrolling up releases the pin and surfaces jump-to-latest", async () => {
+  it("scrolling up releases the pin and surfaces Render's icon-only Return to Bottom (w3/m528)", async () => {
     const { container } = render(<LogLineList lines={buffer(1000)} />);
     const viewport = viewportOf(container);
 
@@ -216,14 +216,19 @@ describe("LogLineList follow / pin (w9/m83)", () => {
       clientHeight: VIRTUAL_VIEWPORT_HEIGHT,
     });
 
-    expect(
-      screen.getByRole("button", { name: /jump to latest/i }),
-    ).toBeInTheDocument();
+    const back = screen.getByRole("button", { name: "Return to Bottom" });
+    // Icon-only, at the panel's bottom right, as Render's
+    // LogViewerReturnButton; "Jump to latest" is gone.
+    expect(back).toHaveTextContent("");
+    expect(back).toHaveAttribute("title", "Return to Bottom");
+    expect(back.className).toContain("right-6");
+    expect(back.className).toContain("bottom-4");
+    expect(screen.queryByText(/jump to latest/i)).toBeNull();
 
     await settleVirtualScroll();
   });
 
-  it("returning to the bottom re-pins and hides jump-to-latest", async () => {
+  it("returning to the bottom re-pins and hides Return to Bottom", async () => {
     const { container } = render(<LogLineList lines={buffer(1000)} />);
     const viewport = viewportOf(container);
 
@@ -233,7 +238,7 @@ describe("LogLineList follow / pin (w9/m83)", () => {
       clientHeight: VIRTUAL_VIEWPORT_HEIGHT,
     });
     expect(
-      screen.getByRole("button", { name: /jump to latest/i }),
+      screen.getByRole("button", { name: "Return to Bottom" }),
     ).toBeInTheDocument();
 
     // Scroll to the bottom: distance from bottom is within PIN_THRESHOLD.
@@ -243,13 +248,13 @@ describe("LogLineList follow / pin (w9/m83)", () => {
       clientHeight: VIRTUAL_VIEWPORT_HEIGHT,
     });
     expect(
-      screen.queryByRole("button", { name: /jump to latest/i }),
+      screen.queryByRole("button", { name: "Return to Bottom" }),
     ).not.toBeInTheDocument();
 
     await settleVirtualScroll();
   });
 
-  it("clicking jump-to-latest re-pins", async () => {
+  it("clicking Return to Bottom re-pins", async () => {
     const { container } = render(<LogLineList lines={buffer(1000)} />);
     const viewport = viewportOf(container);
 
@@ -258,11 +263,11 @@ describe("LogLineList follow / pin (w9/m83)", () => {
       scrollHeight: 5000,
       clientHeight: VIRTUAL_VIEWPORT_HEIGHT,
     });
-    const jump = screen.getByRole("button", { name: /jump to latest/i });
+    const jump = screen.getByRole("button", { name: "Return to Bottom" });
     fireEvent.click(jump);
 
     expect(
-      screen.queryByRole("button", { name: /jump to latest/i }),
+      screen.queryByRole("button", { name: "Return to Bottom" }),
     ).not.toBeInTheDocument();
 
     await settleVirtualScroll();
@@ -355,7 +360,7 @@ describe("LogLineList reader anchor during refresh", () => {
     rerender(<LogLineList lines={appended.slice(20)} />);
     expect(viewport.scrollTop).toBe(before - 20 * 24);
     expect(
-      screen.getByRole("button", { name: /jump to latest/i }),
+      screen.getByRole("button", { name: "Return to Bottom" }),
     ).toBeInTheDocument();
     await settleVirtualScroll();
   });
@@ -418,7 +423,7 @@ describe("LogLineList keyboard row cursor", () => {
     const viewport = viewportOf(container);
     // The region names its keys for a screen reader.
     expect(viewport).toHaveAccessibleDescription(
-      "Use the up and down arrow keys to move between lines, and Enter to show only that line's instance.",
+      "Use the up and down arrow keys to move between lines, Enter to show only that line's instance, and Shift+F10 to open its menu.",
     );
 
     act(() => viewport.focus());

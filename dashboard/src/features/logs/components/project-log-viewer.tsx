@@ -19,9 +19,17 @@ import { cn } from "@/common/lib/utils/utils.ts";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { RangeSelect } from "@/features/metrics/components/range-select";
 import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
-import { type RangeSelection } from "@/features/metrics/lib/range";
+import {
+  isCustomRange,
+  type RangeSelection,
+} from "@/features/metrics/lib/range";
 import { useCustomWindow } from "../hooks/use-custom-window";
-import { useLiveLogs, type EventSourceFactory } from "../hooks/use-live-logs";
+import {
+  useLiveLogs,
+  useNewLogsWatch,
+  type LogSubscription,
+  type EventSourceFactory,
+} from "../hooks/use-live-logs";
 import { useLogHistory } from "../hooks/use-log-history";
 import { useLogRetentionBound } from "../hooks/use-log-retention";
 import { parseSearchOperators } from "../lib/log-search-operators";
@@ -39,9 +47,11 @@ import {
   liveTailUnsupported,
   withoutRequestFilters,
   type LogFilters,
+  type LogLine,
   type ProjectLogScope,
   type StructuredFilterKey,
 } from "../types";
+import type { LogRowMenuItems } from "./log-row-menu";
 import { LogClearedState, LogExplorerActions } from "./log-explorer";
 import { useClearedLines, useLogExplorer } from "../hooks/use-log-explorer";
 import { LiveToggle } from "./log-filter-bar";
@@ -71,6 +81,12 @@ export interface ProjectLogViewerProps {
   logType: typeof LOG_TYPE_APP | typeof LOG_TYPE_REQUEST;
   range: RangeSelection;
   onRangeChange: (range: RangeSelection) => void;
+  /** The line a View in context link marks (w3/m528): the view opens on it
+   *  with Live off. */
+  contextLine?: string;
+  /** View in context's link for a line, offered while a search or filter
+   *  narrows the view (w3/m528). */
+  contextHref?: (line: LogLine) => string | undefined;
   /** Injectable SSE factory — threaded through for tests. */
   createEventSource?: EventSourceFactory;
 }
@@ -95,6 +111,8 @@ export function ProjectLogViewer({
   logType,
   range,
   onRangeChange,
+  contextLine,
+  contextHref,
   createEventSource,
 }: ProjectLogViewerProps) {
   const { t } = useTranslations();
@@ -105,7 +123,9 @@ export function ProjectLogViewer({
     text: "",
     picks: {},
   });
-  const [live, setLive] = useState(true);
+  // A View in context link opens on its line with the tail paused, as its
+  // custom range would on Render.
+  const [live, setLive] = useState(!contextLine);
 
   // Typed text commits after a pause; Render's field operators become chips
   // and only the remaining words search text (w4/538), as on a service's tab.
@@ -154,21 +174,19 @@ export function ProjectLogViewer({
   );
   const planRefused = planFeatureRequired(history.error, "requestLogs");
   const tailing = live && liveSupported && !planRefused;
-  const stream = useLiveLogs({
+  // What the tail follows, and the paused view's watch with it (w3/m528).
+  const subscription: LogSubscription = {
     resource: "",
     project: scope,
-    enabled: tailing,
     type: logType,
     text: committed.text,
     textMode: LOG_TEXT_MODE_DISPLAY,
     instance: queryFilters.instance,
-    requestFilters: {
-      level: queryFilters.level,
-      method: queryFilters.method,
-      statusCode: queryFilters.statusCode,
-      path: queryFilters.path,
-      host: queryFilters.host,
-    },
+    requestFilters: queryFilters,
+  };
+  const stream = useLiveLogs({
+    ...subscription,
+    enabled: tailing,
     readerKey: lineFilterKey(queryFilters),
     startTime: historyWindow.startTime,
     createEventSource,
@@ -193,13 +211,34 @@ export function ProjectLogViewer({
   const emptyScope = history.resources?.length === 0;
   // Render's explorer controls (w3/m509): Options, Maximize and the
   // shortcuts, `Shift+L` clearing the lines while the tail is live.
-  const cleared = useClearedLines(
-    lines,
-    tailing,
-    JSON.stringify([scope.project, scope.filterDocument, queryFilters, range]),
-  );
+  // The view's identity: what a clear and the paused view's watch reset on.
+  const viewKey = JSON.stringify([
+    scope.project,
+    scope.filterDocument,
+    queryFilters,
+    range,
+  ]);
+  const cleared = useClearedLines(lines, tailing, viewKey);
   const { explorer, attachList, attachSearch } = useLogExplorer({
     clear: cleared.clear,
+  });
+  // Render's row menu (w3/m528): View in context while a search or filter
+  // narrows the view. A project view offers no SSH, as Render's
+  // (`servicePath: null`).
+  const narrowed = picks.length > 0 || committed.text !== "";
+  const contextLink = narrowed ? contextHref : undefined;
+  const rowMenu = useMemo<LogRowMenuItems>(
+    () => ({ contextHref: contextLink }),
+    [contextLink],
+  );
+  // Paused on a preset range, a new line brings up Render's "New logs in
+  // Live Tail" (w3/m528).
+  const watch = useNewLogsWatch({
+    enabled: !live && liveSupported && !planRefused && !isCustomRange(range),
+    subscription,
+    since: historyWindow.endTime,
+    resetKey: viewKey,
+    createEventSource,
   });
 
   const historyReason = relayableReason(history.error);
@@ -321,6 +360,14 @@ export function ProjectLogViewer({
             order={explorer.order}
             expandAll={explorer.expandAll}
             handleRef={attachList}
+            holdWhileAway={tailing}
+            rowMenu={rowMenu}
+            markedKey={contextLine}
+            newLogsInLiveTail={
+              watch.available
+                ? { onSwitch: () => setLive(true), onDismiss: watch.dismiss }
+                : undefined
+            }
           />
         </div>
         {liveSupported ? (

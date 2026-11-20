@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { config } from "@/config/config";
 import { fromRenderLog, LogIdentity, type RenderLog } from "../lib/map";
 import {
@@ -385,4 +385,96 @@ export function useLiveLogs({
   ]);
 
   return { lines: buffer.lines, status };
+}
+
+/** What a tail follows: the resource or project scope, type, text and
+ *  structured filters, shared by an explorer's tail and its paused watch. */
+export type LogSubscription = Omit<
+  Parameters<typeof subscribeUrl>[0],
+  "startTime"
+>;
+
+export interface UseNewLogsWatchOptions {
+  /** Watch only while the explorer is paused on a preset range whose tail
+   *  could run (not refused, not a filter the tail cannot follow). */
+  enabled: boolean;
+  /** What the live tail would follow: the same resource or project scope,
+   *  type, text and structured filters. */
+  subscription: LogSubscription;
+  /** The frozen window's end (ISO): only a line newer than it is new. */
+  since: string;
+  /** The explorer's range and filters: a change starts over, so a Dismiss
+   *  holds until Live, the range or a filter changes. */
+  resetKey: string;
+  createEventSource?: EventSourceFactory;
+}
+
+/**
+ * Render's "New logs in Live Tail" for bex's Live switch (w3/m528). Render
+ * keeps a `logAdded` subscription open on a relative range and flags its
+ * first line; a paused bex explorer opens one tail subscription from its
+ * frozen window's end and closes it at the first line newer than that end.
+ * The lines on screen are never touched, and the API carries at most one line
+ * per pause. `available` holds until Live, the range or a filter changes, or
+ * `dismiss` hides it.
+ */
+export function useNewLogsWatch({
+  enabled,
+  subscription,
+  since,
+  resetKey,
+  createEventSource = defaultCreateEventSource,
+}: UseNewLogsWatchOptions): { available: boolean; dismiss: () => void } {
+  const url = subscribeUrl({ ...subscription, startTime: since });
+  const key = JSON.stringify([enabled, resetKey, url]);
+  const [watch, setWatch] = useState({ key, found: false, dismissed: false });
+  let current = watch;
+  if (watch.key !== key) {
+    current = { key, found: false, dismissed: false };
+    setWatch(current);
+  }
+  const { found, dismissed } = current;
+  const sinceMs = Date.parse(since);
+
+  useEffect(() => {
+    if (!enabled || found || dismissed) return;
+    let es: EventSourceLike;
+    try {
+      es = createEventSource(url);
+    } catch {
+      // No EventSource (a test DOM, an old browser): no watch, and the paused
+      // view is unaffected.
+      return;
+    }
+    es.onmessage = (ev) => {
+      let line: LogLine;
+      try {
+        line = fromRenderLog(JSON.parse(ev.data) as RenderLog);
+      } catch {
+        return;
+      }
+      // The tail may replay the snapshot's last second: only a line newer
+      // than the frozen end is new.
+      if (Date.parse(line.timestamp) <= sinceMs) return;
+      es.close();
+      setWatch((previous) =>
+        previous.key === key ? { ...previous, found: true } : previous,
+      );
+    };
+    // A terminal reason (an `event: error` frame with data) ends the watch;
+    // a bare transport drop reconnects on its own.
+    es.onerror = (ev) => {
+      if (ev && typeof ev.data !== "undefined") es.close();
+    };
+    return () => es.close();
+  }, [enabled, found, dismissed, url, key, sinceMs, createEventSource]);
+
+  const dismiss = useCallback(
+    () =>
+      setWatch((previous) =>
+        previous.key === key ? { ...previous, dismissed: true } : previous,
+      ),
+    [key],
+  );
+  return { available: enabled && found && !dismissed, dismiss };
 }

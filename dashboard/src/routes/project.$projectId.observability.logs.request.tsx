@@ -71,7 +71,8 @@ function RouteComponent() {
       next.savedSearchId === search.savedSearchId &&
       next.r === search.r &&
       next.rangeStart === search.rangeStart &&
-      next.rangeEnd === search.rangeEnd
+      next.rangeEnd === search.rangeEnd &&
+      next.contextLine === search.contextLine
     ) {
       return;
     }

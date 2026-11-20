@@ -8,6 +8,13 @@ import type { LogLine } from "@/features/logs/types";
 import { needsAnsiParse, parseAnsi } from "@/features/logs/lib/ansi";
 import { setupVirtualGeometry } from "@/test/virtual-geometry";
 
+// Options ends with Theme Settings, a router Link (w3/m528): render it as
+// its anchor, with no router around the component.
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  Link: (await import("@/test/mocks/router-link")).PlainLink,
+}));
+
 const ownType = (line: LogLine, bucket: string) =>
   bucket === "build" ? line.type === "build" : line.type !== "build";
 const logState: UseDeployLogsResult = {
@@ -107,6 +114,12 @@ describe("DeployLogPanel", () => {
     // Escape inside the open options menu closes the menu only.
     await user.click(screen.getByRole("button", { name: "Log options" }));
     expect(await screen.findByRole("menu")).toBeInTheDocument();
+    // A deploy's own options come first; Theme Settings ends the menu as on
+    // every explorer (w3/m528).
+    expect(screen.getAllByRole("menuitem").at(-1)).toHaveAttribute(
+      "href",
+      "/settings#appearance",
+    );
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
     expect(

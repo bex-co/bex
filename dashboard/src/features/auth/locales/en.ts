@@ -74,6 +74,31 @@ const enAuth: Record<string, TranslationEntry> = {
     message: "Update your profile, password, and two-factor authentication.",
     description: "Settings page account section description",
   },
+  "auth.appearanceSection": {
+    message: "Appearance",
+    description:
+      "Account settings (w3/m528): Render's Appearance section heading and its rail link; a log explorer's Options > Theme Settings opens it",
+  },
+  "auth.appearanceSectionSubtitle": {
+    message: "Choose how the dashboard looks.",
+    description: "Account settings (w3/m528): Appearance section description",
+  },
+  "auth.dashboardTheme": {
+    message: "Dashboard Theme",
+    description:
+      "Account settings > Appearance (w3/m528): Render's Dashboard Theme setting, its card title and the select's accessible name",
+  },
+  "auth.dashboardThemeDescription": {
+    message:
+      "The dashboard's theme in this browser. The account menu's Theme changes the same setting.",
+    description:
+      "Account settings > Appearance (w3/m528): the Dashboard Theme card's description; the setting is the account menu's Theme, kept in this browser",
+  },
+  "auth.dashboardThemeSystem": {
+    message: "System (Default)",
+    description:
+      "Account settings > Appearance (w3/m528): the System theme option, marked as the default as Render marks it",
+  },
   "auth.integrationsSection": {
     message: "Integrations",
     description:

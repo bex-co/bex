@@ -402,11 +402,17 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
       ].map((element) => element.dataset.testid);
 
     expect(
-      ["account", "integrations", "access", "security", "danger-zone"].map(
-        (name) => section(name).querySelector("h2")?.textContent,
-      ),
+      [
+        "account",
+        "appearance",
+        "integrations",
+        "access",
+        "security",
+        "danger-zone",
+      ].map((name) => section(name).querySelector("h2")?.textContent),
     ).toEqual([
       "Account",
+      "Appearance",
       "Integrations",
       "Access credentials",
       "Security",
@@ -428,6 +434,9 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     ]);
     expect(cards[0]).toHaveTextContent("Profile Settings");
     expect(cards[5]).toHaveTextContent("Authenticator App");
+    // Render's Appearance (w3/m528): the Dashboard Theme card's frame.
+    expect(frames("appearance")).toEqual(["appearance-card-skeleton"]);
+    expect(section("appearance")).toHaveTextContent("Dashboard Theme");
     expect(frames("integrations")).toEqual(["connect-github-card-skeleton"]);
     expect(
       section("integrations").querySelector(
@@ -464,7 +473,7 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
       "workspace-settings",
       12,
     ],
-    [<AccountSettingsPageSkeleton key="account" />, "account-settings", 5],
+    [<AccountSettingsPageSkeleton key="account" />, "account-settings", 6],
     [<BillingPageSkeleton key="billing" />, "billing", 7],
     [<NotificationsPageSkeleton key="notifications" />, "notifications", 3],
   ])(

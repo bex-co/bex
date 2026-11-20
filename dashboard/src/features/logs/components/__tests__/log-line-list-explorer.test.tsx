@@ -213,9 +213,7 @@ describe("LogLineList order (w3/m509)", () => {
       <LogLineList lines={buffer(1000)} order="desc" />,
     );
     const viewport = viewportOf(container);
-    expect(
-      screen.queryByRole("button", { name: /jump to latest/i }),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Return to Top" })).toBeNull();
     act(() =>
       scrollViewport(viewport, {
         scrollTop: 2000,
@@ -223,13 +221,17 @@ describe("LogLineList order (w3/m509)", () => {
         clientHeight: VIRTUAL_VIEWPORT_HEIGHT,
       }),
     );
-    const jump = screen.getByRole("button", { name: /jump to latest/i });
-    expect(jump.className).toContain("top-3");
+    // Render's Return to Top, at the top right descending (w3/m528).
+    expect(
+      screen.queryByRole("button", { name: "Return to Bottom" }),
+    ).toBeNull();
+    const jump = screen.getByRole("button", { name: "Return to Top" });
+    expect(jump.className).toContain("top-4");
+    expect(jump.className).toContain("right-6");
+    expect(jump).toHaveTextContent("");
     fireEvent.click(jump);
     expect(viewport.scrollTop).toBe(0);
-    expect(
-      screen.queryByRole("button", { name: /jump to latest/i }),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Return to Top" })).toBeNull();
     await act(() => new Promise((resolve) => setTimeout(resolve, 175)));
   });
 
@@ -343,11 +345,11 @@ describe("LogLineList handle (w3/m509)", () => {
       }),
     );
     expect(
-      screen.getByRole("button", { name: /jump to latest/i }),
+      screen.getByRole("button", { name: "Return to Bottom" }),
     ).toBeInTheDocument();
     act(() => handle.current!.jump("bottom"));
     expect(
-      screen.queryByRole("button", { name: /jump to latest/i }),
+      screen.queryByRole("button", { name: "Return to Bottom" }),
     ).toBeNull();
     await act(() => new Promise((resolve) => setTimeout(resolve, 175)));
   });

@@ -6,12 +6,14 @@ import {
   type RangePresetID,
   type RangeSelection,
 } from "@/features/metrics/lib/range";
+import { defaultStringifySearch } from "@tanstack/react-router";
 import {
   EMPTY_LOG_FILTERS,
   LOG_TYPE_APP,
   LOG_TYPE_REQUEST,
   STRUCTURED_FILTER_KEYS,
   type LogFilters,
+  type LogLine,
 } from "../types";
 
 // The Logs tab's URL search state (w7/m42): every filter round-trips through
@@ -33,6 +35,8 @@ export interface LogSearch {
   text?: string;
   /** Present only when the live tail is toggled off (`?live=0`); absent = on. */
   live?: 0;
+  /** The line a View in context link marks (w3/m528): its key. */
+  contextLine?: string;
   /**
    * Consumed-alias tombstones: the router carries raw query params it doesn't
    * know about into every outbound write (`{...location.search, ...validated}`),
@@ -53,6 +57,7 @@ const SEARCH_KEYS = [
   "type",
   ...TEXT_KEYS,
   "live",
+  "contextLine",
 ] as const;
 
 /**
@@ -125,7 +130,78 @@ export function parseLogSearch(search: Record<string, unknown>): LogSearch {
   ) {
     out.live = 0;
   }
+  out.contextLine = str(search.contextLine);
   return out;
+}
+
+// How far either side of a line View in context opens (Render's ±10 minutes).
+const CONTEXT_SPAN_MS = 10 * 60 * 1000;
+// A line's key carries its message when the backend gave it no id; a link
+// carries it only when it is short enough to be one.
+const MAX_CONTEXT_KEY_LENGTH = 512;
+
+/**
+ * The search Render's View in context opens (w3/m528): the explorer with no
+ * search or filter, a custom range from 10 minutes before the line to 10
+ * minutes after it, the tail paused, and the line marked. Null for a line
+ * without a time, which has no surroundings to open.
+ */
+export function logContextSearch(line: LogLine): {
+  range: "custom";
+  rangeStart: string;
+  rangeEnd: string;
+  contextLine?: string;
+} | null {
+  const at = Date.parse(line.timestamp);
+  if (Number.isNaN(at)) return null;
+  return {
+    range: "custom",
+    rangeStart: new Date(at - CONTEXT_SPAN_MS).toISOString(),
+    rangeEnd: new Date(at + CONTEXT_SPAN_MS).toISOString(),
+    contextLine:
+      line.key.length <= MAX_CONTEXT_KEY_LENGTH ? line.key : undefined,
+  };
+}
+
+/** A link to `path` with `search`, written as the router writes it. */
+export function searchHref(
+  path: string,
+  search: Record<string, unknown>,
+): string {
+  return `${path}${defaultStringifySearch(search)}`;
+}
+
+/**
+ * The service Logs tab's SSH into instance for a line (w3/m528, Render's
+ * `${servicePath}/shell/${instance}`): the Shell page on the line's instance
+ * while it is one of `running`, `href: null` (disabled) once it is not, and
+ * nothing for a line without an instance.
+ */
+export function serviceLineShell(
+  serviceId: string,
+  running: ReadonlySet<string>,
+): (line: LogLine) => { href: string | null } | null {
+  return (line) =>
+    line.instance
+      ? {
+          href: running.has(line.instance)
+            ? searchHref(`/services/${serviceId}/shell`, {
+                instance: line.instance,
+              })
+            : null,
+        }
+      : null;
+}
+
+/** The service Logs tab's View in context link for a line (w3/m528). */
+export function serviceLogContextHref(
+  serviceId: string,
+  line: LogLine,
+): string | undefined {
+  const context = logContextSearch(line);
+  return context
+    ? searchHref(`/services/${serviceId}/logs`, { ...context, live: 0 })
+    : undefined;
 }
 
 // The Logs tab keeps its documented one-hour default query span (bex-api's

@@ -25,6 +25,8 @@ import { Button } from "@/common/components/ui/button";
 import { useLogHistory } from "../hooks/use-log-history";
 import {
   useLiveLogs,
+  useNewLogsWatch,
+  type LogSubscription,
   type EventSourceFactory,
   type LiveStatus,
 } from "../hooks/use-live-logs";
@@ -39,12 +41,14 @@ import {
   lineFilterKey,
   liveTailUnsupported,
   type LogFilters,
+  type LogLine,
   withoutRequestFilters,
 } from "../types";
 import { LogClearedState, LogExplorerActions } from "./log-explorer";
 import { useClearedLines, useLogExplorer } from "../hooks/use-log-explorer";
 import { LogFilterBar } from "./log-filter-bar";
 import { LogLineList } from "./log-line-list";
+import type { LogLineShellTarget, LogRowMenuItems } from "./log-row-menu";
 import {
   LOG_FILTER_ACTIONS_CLASS,
   LOG_MAXIMIZED_BODY_CLASS,
@@ -86,6 +90,14 @@ interface LogViewerProps {
    * (LogFilterBar.servesRequests, w4/613).
    */
   servesRequests?: boolean;
+  /** The line a View in context link marks (w3/m528). */
+  contextLine?: string;
+  /** View in context's link for a line, offered while a search or filter
+   *  narrows the view (w3/m528). */
+  contextHref?: (line: LogLine) => string | undefined;
+  /** SSH into instance's target for a line, on a service whose Shell can
+   *  open (w3/m528). */
+  shell?: (line: LogLine) => LogLineShellTarget | null;
 }
 
 /**
@@ -103,6 +115,9 @@ export function LogViewer({
   urlLive = true,
   onFiltersChange,
   servesRequests = true,
+  contextLine,
+  contextHref,
+  shell,
 }: LogViewerProps) {
   const frameRef = useRef<HTMLDivElement>(null);
   useOpenDocked(frameRef);
@@ -259,9 +274,9 @@ export function LogViewer({
   // view: a plan notice, not a load failure, and no tail to retry against it.
   const planRefused = planFeatureRequired(history.error, "requestLogs");
   const tailing = live && liveSupported && !planRefused;
-  const stream = useLiveLogs({
+  // What the tail follows, and the paused view's watch with it (w3/m528).
+  const subscription: LogSubscription = {
     resource,
-    enabled: tailing,
     type: queryFilters.type,
     text: committedText,
     textMode: LOG_TEXT_MODE_DISPLAY,
@@ -269,13 +284,11 @@ export function LogViewer({
     // The structured filters ride the subscription so streamed lines match
     // the history beside them: the store poll honors the request filters,
     // the pod tail the level (w8/m147).
-    requestFilters: {
-      level: queryFilters.level,
-      method: queryFilters.method,
-      statusCode: queryFilters.statusCode,
-      path: queryFilters.path,
-      host: queryFilters.host,
-    },
+    requestFilters: queryFilters,
+  };
+  const stream = useLiveLogs({
+    ...subscription,
+    enabled: tailing,
     // The line-selecting filters join the tail's reader identity: toggling one
     // clears lines streamed for the old query, while a plain Live pause keeps
     // them on screen (w4/m192).
@@ -303,16 +316,32 @@ export function LogViewer({
 
   // Render's explorer controls (w3/m509): Options, Maximize and the
   // shortcuts, `Shift+L` clearing the lines while the tail is live.
-  const cleared = useClearedLines(
-    lines,
-    tailing,
-    JSON.stringify([resource, queryFilters, range]),
-  );
+  // The view's identity: what a clear and the paused view's watch reset on.
+  const viewKey = JSON.stringify([resource, queryFilters, range]);
+  const cleared = useClearedLines(lines, tailing, viewKey);
   const { explorer, attachList, attachSearch } = useLogExplorer({
     clear: cleared.clear,
   });
 
   const filtered = hasActiveLogFilters(queryFilters);
+
+  // Render's row menu (w3/m528): View in context while a search or filter
+  // narrows the view, SSH into instance where the Shell can open.
+  const rowMenu = useMemo<LogRowMenuItems>(
+    () => ({ contextHref: filtered ? contextHref : undefined, shell }),
+    [filtered, contextHref, shell],
+  );
+  // Paused on a preset range, a new line brings up Render's "New logs in
+  // Live Tail" (w3/m528, t001's mapping of Render's relative range).
+  const turnOnLive = () =>
+    setState((previous) => ({ ...previous, live: true }));
+  const watch = useNewLogsWatch({
+    enabled: !live && liveSupported && !planRefused && !isCustomRange(range),
+    subscription,
+    since: historyWindow.endTime,
+    resetKey: viewKey,
+    createEventSource,
+  });
 
   // One body per state (store-unavailable / error / loading-first / empty /
   // list) — resolved to a single node so the render stays flat.
@@ -388,13 +417,7 @@ export function LogViewer({
           ) : (
             <>
               {!live && liveSupported ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setState((previous) => ({ ...previous, live: true }))
-                  }
-                >
+                <Button variant="outline" size="sm" onClick={turnOnLive}>
                   {t("logs.turnOnLive")}
                 </Button>
               ) : null}
@@ -457,6 +480,14 @@ export function LogViewer({
             order={explorer.order}
             expandAll={explorer.expandAll}
             handleRef={attachList}
+            holdWhileAway={tailing}
+            rowMenu={rowMenu}
+            markedKey={contextLine}
+            newLogsInLiveTail={
+              watch.available
+                ? { onSwitch: turnOnLive, onDismiss: watch.dismiss }
+                : undefined
+            }
           />
         </div>
         {streamLine}

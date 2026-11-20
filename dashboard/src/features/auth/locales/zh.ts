@@ -74,6 +74,30 @@ const zhAuth: Record<string, TranslationEntry> = {
     message: "更新你的资料、密码和双重身份验证设置。",
     description: "Settings page account section description",
   },
+  "auth.appearanceSection": {
+    message: "外观",
+    description:
+      "Account settings (w3/m528): Render's Appearance section heading and its rail link; a log explorer's Options > Theme Settings opens it",
+  },
+  "auth.appearanceSectionSubtitle": {
+    message: "选择控制台的外观。",
+    description: "Account settings (w3/m528): Appearance section description",
+  },
+  "auth.dashboardTheme": {
+    message: "控制台主题",
+    description:
+      "Account settings > Appearance (w3/m528): Render's Dashboard Theme setting, its card title and the select's accessible name",
+  },
+  "auth.dashboardThemeDescription": {
+    message: "此浏览器中控制台的主题。账户菜单中的“主题”修改的是同一设置。",
+    description:
+      "Account settings > Appearance (w3/m528): the Dashboard Theme card's description; the setting is the account menu's Theme, kept in this browser",
+  },
+  "auth.dashboardThemeSystem": {
+    message: "跟随系统（默认）",
+    description:
+      "Account settings > Appearance (w3/m528): the System theme option, marked as the default as Render marks it",
+  },
   "auth.integrationsSection": {
     message: "集成",
     description:

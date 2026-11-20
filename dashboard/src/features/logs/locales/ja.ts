@@ -143,10 +143,6 @@ const jaLogs: Record<string, TranslationEntry> = {
     message: "ライブ",
     description: "Label for the live-tail on/off toggle",
   },
-  "logs.jumpToLatest": {
-    message: "最新に移動",
-    description: "Button to re-pin autoscroll to the newest log line",
-  },
   "logs.linesLabel": {
     message: "ログの行",
     description:
@@ -154,14 +150,102 @@ const jaLogs: Record<string, TranslationEntry> = {
   },
   "logs.linesKeysHint": {
     message:
-      "上下の矢印キーで行を移動し、Enter でその行のインスタンスだけを表示します。",
+      "上下の矢印キーで行を移動し、Enter でその行のインスタンスだけを表示し、Shift+F10 でその行のメニューを開きます。",
     description:
-      "Logs list: screen-reader hint on the focusable log region, naming its row keys",
+      "Logs tab: screen-reader description of the focused log list's keys - arrows move the row cursor, Enter shows only that line's instance, Shift+F10 opens the line's menu (w3/m528)",
   },
   "logs.linesKeysShort": {
-    message: "↑↓ 行を移動 · Enter: このインスタンスのみ表示",
+    message:
+      "↑↓ 行を移動 · Enter: このインスタンスのみ表示 · Shift+F10: メニュー",
     description:
-      "Logs tab: the keys of the focused log list, shown in its corner while it has keyboard focus — arrows move between lines, Enter shows only that line's instance",
+      "Logs tab: the keys of the focused log list, shown in its corner while it has keyboard focus - arrows move between lines, Enter shows only that line's instance, Shift+F10 opens the line's menu",
+  },
+  "logs.returnToBottom": {
+    message: "一番下に戻る",
+    description:
+      "Log list (w3/m528): accessible name and tooltip of Render's icon-only Return to Bottom button, shown while the reader is scrolled away from the newest line (ascending order)",
+  },
+  "logs.returnToTop": {
+    message: "一番上に戻る",
+    description:
+      "Log list (w3/m528): accessible name and tooltip of Render's icon-only Return to Top button, shown while the reader is scrolled away from the newest line (descending order)",
+  },
+  "logs.newLogs": {
+    message: "新しいログ",
+    description:
+      "Log list (w3/m528): Render's held-lines button while a live tail holds fewer than 10 new lines back from a reader scrolled away",
+  },
+  "logs.newLogsCount_other": {
+    message: "新しいログ {count}+ 件",
+    description:
+      "Log list (w3/m528): Render's held-lines button for 10 or more held lines; count is the held count rounded up to a multiple of 5, at most 100, followed by a plus sign",
+  },
+  "logs.newLogsInLiveTail": {
+    message: "ライブテールに新しいログがあります",
+    description:
+      "Log list (w3/m528): Render's button on a paused explorer when a new line arrived; clicking it turns Live on",
+  },
+  "logs.switchToLiveTail": {
+    message: "ライブテールに切り替える",
+    description:
+      "Log list (w3/m528): tooltip of the New logs in Live Tail button",
+  },
+  "logs.dismiss": {
+    message: "閉じる",
+    description:
+      "Log list (w3/m528): accessible name of the x that hides the New logs in Live Tail button",
+  },
+  "logs.lineMenu": {
+    message: "ログ行のオプション",
+    description:
+      "Log list (w3/m528): accessible name and tooltip of the row menu button (...) on a hovered log line",
+  },
+  "logs.copyLogLine": {
+    message: "ログ行をコピー",
+    description:
+      "Log row menu (w3/m528): copies the line without its time, as Render's Copy log line",
+  },
+  "logs.lineCopied": {
+    message: "コピーしました！",
+    description:
+      "Log row menu (w3/m528): toast after Copy log line, Render's 'Copied!'",
+  },
+  "logs.lineCopyFailed": {
+    message: "ログ行をコピーできませんでした",
+    description:
+      "Log row menu (w3/m528): toast when the clipboard refused the copied line",
+  },
+  "logs.viewInContext": {
+    message: "前後のログを表示",
+    description:
+      "Log row menu (w3/m528): opens a new tab on the same explorer, unfiltered, 10 minutes either side of the line",
+  },
+  "logs.sshIntoInstance": {
+    message: "インスタンスに SSH 接続",
+    description:
+      "Log row menu (w3/m528): opens the service's Shell on the line's instance in a new tab",
+  },
+  "logs.sshInstanceNotRunning": {
+    message:
+      "SSH 接続できるのは実行中のインスタンスだけです。このインスタンスは利用できません。",
+    description:
+      "Log row menu (w3/m528): Render's tooltip on a disabled SSH into instance item, for an instance that is no longer running",
+  },
+  "logs.linesKeysHintMenu": {
+    message:
+      "上下の矢印キーで行を移動し、Shift+F10 でその行のメニューを開きます。",
+    description:
+      "Log list without an instance filter (w3/m528): screen-reader description of its keys - arrows move the row cursor, Shift+F10 opens the line's menu",
+  },
+  "logs.linesKeysShortMenu": {
+    message: "↑↓ 行を移動 · Shift+F10: メニュー",
+    description:
+      "Log list without an instance filter (w3/m528): its keys, shown in its corner while it has keyboard focus",
+  },
+  "logs.themeSettings": {
+    message: "テーマ設定",
+    description:
+      "Log explorer Options menu (w3/m528): Render's last item, a link to the Appearance section of account Settings",
   },
   "logs.endOfLog": {
     message: "ログの終わり",

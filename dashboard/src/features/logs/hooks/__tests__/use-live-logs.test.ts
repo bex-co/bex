@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useLiveLogs, type UseLiveLogsOptions } from "../use-live-logs";
+import {
+  useLiveLogs,
+  useNewLogsWatch,
+  type UseLiveLogsOptions,
+  type UseNewLogsWatchOptions,
+} from "../use-live-logs";
 import { FakeEventSource } from "@/test/mocks/event-source";
 
 // The last stream the factory handed out — the effect creates it internally.
@@ -433,5 +438,106 @@ describe("useLiveLogs", () => {
     rerender(baseOpts({ startTime: "2026-08-27T02:00:00.000Z", text: "boom" }));
     expect(params(last!.url).get("startTime")).toBe("2026-08-27T02:00:00.000Z");
     expect(params(last!.url).get("text")).toBe("boom");
+  });
+});
+
+// Render's "New logs in Live Tail" for bex's Live switch (w3/m528): a paused
+// explorer watches for one line newer than its frozen window.
+describe("useNewLogsWatch", () => {
+  let streams: FakeEventSource[] = [];
+  const watchFactory = (url: string) => {
+    const stream = new FakeEventSource(url);
+    streams.push(stream);
+    return stream;
+  };
+  const since = "2026-07-05T10:36:30.000Z";
+  const opts = (
+    over: Partial<UseNewLogsWatchOptions> = {},
+  ): UseNewLogsWatchOptions => ({
+    enabled: true,
+    subscription: {
+      resource: "srv-web",
+      type: "app",
+      text: "boom",
+      textMode: undefined,
+      instance: "",
+      requestFilters: {
+        level: "error",
+        method: "",
+        statusCode: "",
+        path: "",
+        host: "",
+      },
+    },
+    since,
+    resetKey: "1h",
+    createEventSource: watchFactory,
+    ...over,
+  });
+  beforeEach(() => {
+    streams = [];
+  });
+
+  it("follows the tail's filters from the frozen window's end, and offers nothing before a line", () => {
+    const { result } = renderHook(() => useNewLogsWatch(opts()));
+    expect(streams).toHaveLength(1);
+    const url = new URL(streams[0].url, "http://x");
+    expect(url.searchParams.get("resource")).toBe("srv-web");
+    expect(url.searchParams.get("type")).toBe("app");
+    expect(url.searchParams.get("text")).toBe("boom");
+    expect(url.searchParams.get("level")).toBe("error");
+    expect(url.searchParams.get("startTime")).toBe(since);
+    expect(result.current.available).toBe(false);
+  });
+
+  it("offers Live Tail at the first line newer than the snapshot, and closes the watch", () => {
+    const { result } = renderHook(() => useNewLogsWatch(opts()));
+    // The tail replays the snapshot's last second: not new.
+    act(() => streams[0].frame(renderLog("30")));
+    expect(result.current.available).toBe(false);
+    expect(streams[0].closed).toBe(false);
+    act(() => streams[0].frame(renderLog("31")));
+    expect(result.current.available).toBe(true);
+    expect(streams[0].closed).toBe(true);
+    expect(streams).toHaveLength(1);
+  });
+
+  it("hides on Dismiss until the range or a filter changes, and never watches while Live is on", () => {
+    const { result, rerender } = renderHook(
+      (props: Partial<UseNewLogsWatchOptions>) => useNewLogsWatch(opts(props)),
+      { initialProps: {} },
+    );
+    act(() => streams[0].frame(renderLog("45")));
+    act(() => result.current.dismiss());
+    expect(result.current.available).toBe(false);
+    rerender({});
+    expect(result.current.available).toBe(false);
+    expect(streams).toHaveLength(1);
+    // A new range starts over: a fresh watch, nothing shown yet.
+    rerender({ resetKey: "4h" });
+    expect(streams).toHaveLength(2);
+    expect(result.current.available).toBe(false);
+    act(() => streams[1].frame(renderLog("50")));
+    expect(result.current.available).toBe(true);
+    // Live on: no watch, and nothing offered.
+    rerender({ resetKey: "4h", enabled: false });
+    expect(result.current.available).toBe(false);
+    expect(streams).toHaveLength(2);
+  });
+
+  it("ends on a terminal error frame and survives a missing EventSource", () => {
+    renderHook(() => useNewLogsWatch(opts()));
+    act(() => streams[0].terminate("logs unavailable"));
+    expect(streams[0].closed).toBe(true);
+    const { result } = renderHook(() =>
+      useNewLogsWatch(
+        opts({
+          createEventSource: () => {
+            throw new ReferenceError("EventSource is not defined");
+          },
+        }),
+      ),
+    );
+    expect(result.current.available).toBe(false);
   });
 });

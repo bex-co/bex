@@ -169,6 +169,15 @@ vi.mock("@/features/logs/hooks/use-log-history", () => ({
 }));
 vi.mock("@/features/logs/hooks/use-live-logs", () => ({
   useLiveLogs: () => ({ lines: [], status: "idle" }),
+  useNewLogsWatch: () => ({ available: false, dismiss: () => undefined }),
+}));
+// The Logs tab reads the running instances for SSH into instance (w3/m528).
+vi.mock("@/features/services/hooks/use-service-instances", () => ({
+  useServiceInstances: () => ({
+    instances: [],
+    loading: false,
+    refetch: () => undefined,
+  }),
 }));
 // The plan's log window (w9/m389) is its own query; this route test has no
 // ApolloProvider, so the range picker stays unbounded.

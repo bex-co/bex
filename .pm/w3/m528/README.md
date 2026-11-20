@@ -8,24 +8,24 @@
 - a paused view that offers "New logs in Live Tail" when new lines arrive;
 - an Options menu that ends with a Theme Settings link to an Appearance section in account Settings.
 
-**Status:** todo
+**Status:** todo (t001–t008 and t010–t012 done; t009's walk on the tree done, its production walk waits for a pin carrying the milestone)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Record Render's row menu, floating buttons and Theme Settings link in the capture, and decide how they map onto bex's Live switch | 30m | — |
-| [t002](t002.md) | Return to Bottom / Return to Top: Render's icon-only button at the panel's right edge replaces "Jump to latest" | 30m | t001 |
-| [t003](t003.md) | A scrolled-away live tail holds new lines behind Render's "New logs" / "N+ new logs" button | 1h | t002 |
-| [t004](t004.md) | A paused explorer shows "New logs in Live Tail" when new lines arrive, and its button turns Live on | 1h15m | t001 |
-| [t005](t005.md) | Row menu (…) on hover with Copy log line, in every explorer | 45m | t001 |
-| [t006](t006.md) | Row menu: View in context, while a search or filter narrows the explorer | 1h | t005 |
-| [t007](t007.md) | Row menu: SSH into instance, opening the service's Shell on that instance | 45m | t005 |
-| [t008](t008.md) | Account Settings gains Render's Appearance section, and Options ends with a Theme Settings link to it | 45m | t001 |
+| [t001](done/t001.md) | Record Render's row menu, floating buttons and Theme Settings link in the capture, and decide how they map onto bex's Live switch — **DONE** | 30m | — |
+| [t002](done/t002.md) | Return to Bottom / Return to Top: Render's icon-only button at the panel's right edge replaces "Jump to latest" — **DONE** | 30m | t001 |
+| [t003](done/t003.md) | A scrolled-away live tail holds new lines behind Render's "New logs" / "N+ new logs" button — **DONE** | 1h | t002 |
+| [t004](done/t004.md) | A paused explorer shows "New logs in Live Tail" when new lines arrive, and its button turns Live on — **DONE** | 1h15m | t001 |
+| [t005](done/t005.md) | Row menu (…) on hover with Copy log line, in every explorer — **DONE** | 45m | t001 |
+| [t006](done/t006.md) | Row menu: View in context, while a search or filter narrows the explorer — **DONE** | 1h | t005 |
+| [t007](done/t007.md) | Row menu: SSH into instance, opening the service's Shell on that instance — **DONE** | 45m | t005 |
+| [t008](done/t008.md) | Account Settings gains Render's Appearance section, and Options ends with a Theme Settings link to it — **DONE** | 45m | t001 |
 | [t009](t009.md) | Verify in a real browser at 1440 and 390, on the tree and on production | 45m | t003, t004, t006, t007, t008 |
-| [t010](t010.md) | Render parity | 30m | t009 |
-| [t011](t011.md) | Simplify | 20m | t010 |
-| [t012](t012.md) | Test coverage | 45m | t010 |
+| [t010](done/t010.md) | Render parity — **DONE** | 30m | t009 |
+| [t011](done/t011.md) | Simplify — **DONE** | 20m | t010 |
+| [t012](done/t012.md) | Test coverage — **DONE** | 45m | t010 |
 | [t013](t013.md) | Closeout | 10m | t011, t012 |
 
 Total: **13 tasks, about 9h**.
@@ -58,6 +58,29 @@ The note asked for the row menu's items to be read in a Render workspace. Like w
 - **Held lines** (`BufferedLogsButton`). In Live tail (`liveMode`), for runtime logs (`isRuntimeServiceLogs`: every log type is `app` or `request`), while the reader is scrolled away, the list freezes the lines it shows and holds new ones. A centred button with an arrow reads `New logs` below 10 held lines, else `${Math.ceil(Math.min(n, 100) / 5) * 5}+ new logs`. Clicking applies them and scrolls to the newest line, and reaching the newest edge releases them.
 - **New logs in Live Tail** (`NewLogsAvailableButton`). On a relative range (`1h`, `4h`, `24h`, `2d`, `7d`, `14d`, `30d`), the page keeps a `logAdded` subscription open, and the first line it receives sets `hasNewLogsAvailable`. A centred split button shows a `Refresh` icon, `New logs in Live Tail`, the tooltip `Switch to Live Tail`, and a secondary `Close` icon named `Dismiss`. Clicking it sets the range to `live`. The flag resets whenever the range changes.
 - **Theme Settings.** Options' last item is `{title: "Theme Settings", IconLeft: Settings, href: "/u/settings#appearance"}`. Render's account settings list Profile, **Appearance**, Account Security and so on. Appearance holds Dashboard Theme (the theme options, the default marked "(Default)"), Log Explorer Theme (`Match Dashboard (Default)`, `Light`, `Dark`) and High Contrast Mode.
+
+## Mapping onto bex's Live switch (t001, 2026-11-20)
+
+The bundle was re-read on 2026-11-20 (`Logs-DOHYAXbe.js`, `UserSettings-3jrn6Tc2.js`, unchanged since the triage) and the findings are in the [capture](../../../docs/render-artifacts/project-observability.md#the-view-page). Render makes Live tail one of its time ranges; bex keeps a Live switch beside the range, so:
+
+- **Render's Live tail range is bex's Live on, and a Render relative range (`1h` … `30d`) is bex's Live off on a preset range.** A custom range is a custom range in both. Render offers New logs in Live Tail only on a relative range, so bex offers it only with Live off on a preset range, never on a custom one (a View in context link opens a custom range and must not invite a jump away from the marked line).
+- **Held lines** apply to every explorer whose Live tail streams runtime lines while Live is on: the service Logs tab, a Postgres or Key Value Logs tab and a project's Application Logs and Request Logs views (Render's `isRuntimeServiceLogs`). A deploy's log follows a build and keeps adding lines, as Render's build log does. A paused explorer has nothing arriving, so it holds nothing.
+- **New logs in Live Tail** applies to the same four explorers while Live is off, on a preset range, where the tail could run (not on a filter the tail cannot follow, a closed custom window or a Hobby request view, `planRefused`).
+- **How a paused explorer learns of a new line:** while paused, it opens one tail subscription (`GET /v1/logs/subscribe`) with the same resource or project scope, type, text and structured filters as the live tail, starting at the frozen window's end. The first line newer than that end shows the button and closes the subscription, so the frozen window and the lines on screen are never touched. Dismiss hides the button, and no new watch opens, until Live, the range or a filter changes. Cost: one SSE connection per paused explorer, which carries at most one line and then closes. That is less than Render, which keeps its `logAdded` subscription open for as long as a relative range is shown, and less than the same explorer with Live on (a datastore Logs tab, Live off by default, opens the one watch on arrival where Live on would keep a full tail open). The pod tail starts from `startTime`, so nothing older than the snapshot is replayed into it.
+
+## Verification record
+
+**On the tree (t009, 2026-11-20).** `yarn local-bex` (port 50039) and `vite dev` (port 50030), Chromium through Playwright, at 1440 and 390:
+
+- **Service Logs tab** (`eden-cms-v2`): hovering a row shows the 24 px "…" at its top right without changing the row's 23.5 px height; its menu holds Copy log line, which copied `level=info msg="GET /assets/app.css 304" duration=0.4ms` (no time, no instance) and toasted "Copied!". With the search `slow query` the menu adds View in context, a `target="_blank"` link to `/services/eden-cms-v2/logs?range=custom&rangeStart=…&rangeEnd=…&contextLine=…&live=0` (±10 minutes). The opened tab keeps `contextLine` in its URL, Live off, and marks the line (the stub mints new timestamps on every read, so the mark was checked by moving the URL to a line it had just read). Scrolled to the top during the live tail, the rows stayed put, Return to Bottom sat icon-only at the panel's right (1360, 796 at 1440; 306, 728 at 390, 44 px on touch) and the centred held-lines button counted "10+ new logs" … "85+ new logs" (130–259 px across at 390, clear of Return); its click released the lines and both buttons left. Turned off, Live brought up "New logs in Live Tail" (tooltip "Switch to Live Tail") within 9 s, and its click turned Live back on. Options ends with Theme Settings (`/settings#appearance`).
+- **Postgres Logs tab** (`dpg-c185th5c2rvvnhbfiltg`, `level=info`): Copy log line and View in context (`/databases/…?tab=logs&range=custom…&contextLine=…`), no SSH item; Options ends with Theme Settings; Live off by default.
+- **Deploy log** (`dep-live-001`): the row menu holds Copy log line only; Options ends with Theme Settings after the deploy's own options.
+- **Account Settings**: Appearance sits after Account in the page and the rail, its select reads "System (Default)". With the settings chunk held, the pending Appearance region measured exactly the ready one at 1440 (y 2193, 744 × 202) and the same 358 × 242 at 390, where the stub's account flow (above it) is shorter when ready than its skeleton, as before this change.
+- **Not checkable on the stub, left to production:** SSH into instance (the stub's services have no `sshAddress`) and a project's Application Logs view (the stub has no saved searches). Both are covered by tests (`service-logs-shell.test.tsx`, `project-log-viewer.test.tsx`).
+
+**Tests (t012).** Each piece was reverted in turn and a test failed: the hold, Return to Top's name, the watch's newer-than-the-snapshot rule, Dismiss, View in context only while narrowed, no watch on a custom range, the marked line's centring, the keyboard's `Shift+F10`, the disabled SSH item, the Shell preselect, Theme Settings' target, Copy log line's resource, Appearance's theme change, the datastore's watch and a project view opening paused.
+
+**On production:** waits for a pin carrying the milestone's commit (t009 steps 3–4).
 
 ## Also read from the bundle, outside this milestone's scope
 

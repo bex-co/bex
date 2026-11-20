@@ -1,5 +1,13 @@
 import type { ReactNode } from "react";
-import { Copy, Ellipsis, Eraser, Maximize2, Minimize2 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import {
+  Copy,
+  Ellipsis,
+  Eraser,
+  Maximize2,
+  Minimize2,
+  Settings,
+} from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import {
   DropdownMenu,
@@ -109,8 +117,9 @@ export function MaximizeButton({
 }
 
 /**
- * Render's Options (…) menu: Copy logs (`⌘/Ctrl ⇧ C`), Order by, and
- * Display ▸ Expand everything. `children` are an explorer's own options,
+ * Render's Options (…) menu: Copy logs (`⌘/Ctrl ⇧ C`), Order by,
+ * Display ▸ Expand everything, and Theme Settings, a link to account
+ * Settings ▸ Appearance (w3/m528). `children` are an explorer's own options,
  * listed first (the deploy page's range and wrap/timestamp toggles), and
  * `phoneMaximizeItem` adds Maximize as an item on a phone, for a toolbar
  * with no room there for its own button.
@@ -187,6 +196,13 @@ export function LogOptionsMenu({
             </DropdownMenuItem>
           </>
         ) : null}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link to="/settings" hash="appearance">
+            <Settings />
+            {t("logs.themeSettings")}
+          </Link>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

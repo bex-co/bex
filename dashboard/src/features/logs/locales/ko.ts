@@ -144,10 +144,6 @@ const koLogs: Record<string, TranslationEntry> = {
     message: "실시간",
     description: "Label for the live-tail on/off toggle",
   },
-  "logs.jumpToLatest": {
-    message: "최신으로 이동",
-    description: "Button to re-pin autoscroll to the newest log line",
-  },
   "logs.linesLabel": {
     message: "로그 줄",
     description:
@@ -155,14 +151,101 @@ const koLogs: Record<string, TranslationEntry> = {
   },
   "logs.linesKeysHint": {
     message:
-      "위아래 화살표 키로 줄 사이를 이동하고, Enter로 해당 줄의 인스턴스만 표시합니다.",
+      "위아래 화살표 키로 줄 사이를 이동하고, Enter로 해당 줄의 인스턴스만 표시하며, Shift+F10으로 해당 줄의 메뉴를 엽니다.",
     description:
-      "Logs list: screen-reader hint on the focusable log region, naming its row keys",
+      "Logs tab: screen-reader description of the focused log list's keys - arrows move the row cursor, Enter shows only that line's instance, Shift+F10 opens the line's menu (w3/m528)",
   },
   "logs.linesKeysShort": {
-    message: "↑↓ 줄 이동 · Enter: 이 인스턴스만 보기",
+    message: "↑↓ 줄 이동 · Enter: 이 인스턴스만 보기 · Shift+F10: 메뉴",
     description:
-      "Logs tab: the keys of the focused log list, shown in its corner while it has keyboard focus — arrows move between lines, Enter shows only that line's instance",
+      "Logs tab: the keys of the focused log list, shown in its corner while it has keyboard focus - arrows move between lines, Enter shows only that line's instance, Shift+F10 opens the line's menu",
+  },
+  "logs.returnToBottom": {
+    message: "맨 아래로 돌아가기",
+    description:
+      "Log list (w3/m528): accessible name and tooltip of Render's icon-only Return to Bottom button, shown while the reader is scrolled away from the newest line (ascending order)",
+  },
+  "logs.returnToTop": {
+    message: "맨 위로 돌아가기",
+    description:
+      "Log list (w3/m528): accessible name and tooltip of Render's icon-only Return to Top button, shown while the reader is scrolled away from the newest line (descending order)",
+  },
+  "logs.newLogs": {
+    message: "새 로그",
+    description:
+      "Log list (w3/m528): Render's held-lines button while a live tail holds fewer than 10 new lines back from a reader scrolled away",
+  },
+  "logs.newLogsCount_other": {
+    message: "새 로그 {count}+개",
+    description:
+      "Log list (w3/m528): Render's held-lines button for 10 or more held lines; count is the held count rounded up to a multiple of 5, at most 100, followed by a plus sign",
+  },
+  "logs.newLogsInLiveTail": {
+    message: "실시간 보기에 새 로그",
+    description:
+      "Log list (w3/m528): Render's button on a paused explorer when a new line arrived; clicking it turns Live on",
+  },
+  "logs.switchToLiveTail": {
+    message: "실시간 보기로 전환",
+    description:
+      "Log list (w3/m528): tooltip of the New logs in Live Tail button",
+  },
+  "logs.dismiss": {
+    message: "닫기",
+    description:
+      "Log list (w3/m528): accessible name of the x that hides the New logs in Live Tail button",
+  },
+  "logs.lineMenu": {
+    message: "로그 줄 옵션",
+    description:
+      "Log list (w3/m528): accessible name and tooltip of the row menu button (...) on a hovered log line",
+  },
+  "logs.copyLogLine": {
+    message: "로그 줄 복사",
+    description:
+      "Log row menu (w3/m528): copies the line without its time, as Render's Copy log line",
+  },
+  "logs.lineCopied": {
+    message: "복사했습니다!",
+    description:
+      "Log row menu (w3/m528): toast after Copy log line, Render's 'Copied!'",
+  },
+  "logs.lineCopyFailed": {
+    message: "로그 줄을 복사하지 못했습니다",
+    description:
+      "Log row menu (w3/m528): toast when the clipboard refused the copied line",
+  },
+  "logs.viewInContext": {
+    message: "앞뒤 로그 보기",
+    description:
+      "Log row menu (w3/m528): opens a new tab on the same explorer, unfiltered, 10 minutes either side of the line",
+  },
+  "logs.sshIntoInstance": {
+    message: "인스턴스에 SSH로 접속",
+    description:
+      "Log row menu (w3/m528): opens the service's Shell on the line's instance in a new tab",
+  },
+  "logs.sshInstanceNotRunning": {
+    message:
+      "실행 중인 인스턴스에만 SSH로 접속할 수 있습니다. 이 인스턴스는 사용할 수 없습니다.",
+    description:
+      "Log row menu (w3/m528): Render's tooltip on a disabled SSH into instance item, for an instance that is no longer running",
+  },
+  "logs.linesKeysHintMenu": {
+    message:
+      "위아래 화살표 키로 줄 사이를 이동하고, Shift+F10으로 해당 줄의 메뉴를 엽니다.",
+    description:
+      "Log list without an instance filter (w3/m528): screen-reader description of its keys - arrows move the row cursor, Shift+F10 opens the line's menu",
+  },
+  "logs.linesKeysShortMenu": {
+    message: "↑↓ 줄 이동 · Shift+F10: 메뉴",
+    description:
+      "Log list without an instance filter (w3/m528): its keys, shown in its corner while it has keyboard focus",
+  },
+  "logs.themeSettings": {
+    message: "테마 설정",
+    description:
+      "Log explorer Options menu (w3/m528): Render's last item, a link to the Appearance section of account Settings",
   },
   "logs.endOfLog": {
     message: "로그 끝",

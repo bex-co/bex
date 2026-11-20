@@ -18,6 +18,7 @@ describe("database detail tab search contract", () => {
       text: undefined,
       instance: undefined,
       level: undefined,
+      contextLine: undefined,
     });
     expect(validate({})).toStrictEqual({
       tab: undefined,
@@ -25,6 +26,7 @@ describe("database detail tab search contract", () => {
       text: undefined,
       instance: undefined,
       level: undefined,
+      contextLine: undefined,
     });
   });
 
@@ -55,6 +57,7 @@ describe("database detail tab search contract", () => {
       text: undefined,
       instance: undefined,
       level: undefined,
+      contextLine: undefined,
     };
     expect(validate({ tab: "logs", range: "6h" })).toStrictEqual(logsTab);
     expect(validate({ tab: "logs", range: "custom" })).toStrictEqual(logsTab);

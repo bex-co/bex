@@ -1,6 +1,11 @@
+import { useCallback } from "react";
 import { ProjectLogViewPageSkeleton } from "@/common/components/route-skeletons";
 import { DEFAULT_LOG_RANGE } from "../lib/log-search";
-import type { ProjectLogSearch } from "../lib/project-log-search";
+import {
+  projectLogContextHref,
+  type ProjectLogSearch,
+} from "../lib/project-log-search";
+import type { LogLine } from "../types";
 import type { ProjectLogViewType } from "../lib/project-log-views";
 import { viewLogType } from "../lib/view-filters";
 import { type EventSourceFactory } from "../hooks/use-live-logs";
@@ -26,6 +31,14 @@ export function ProjectLogViewPage({
   onSearchChange: (search: ProjectLogSearch) => void;
   createEventSource?: EventSourceFactory;
 }) {
+  // View in context opens this view around a line (w3/m528). Stable, so the
+  // list's memoized rows keep their menu items across renders.
+  const { savedSearchId } = search;
+  const contextHref = useCallback(
+    (line: LogLine) =>
+      projectLogContextHref(projectId, viewType, savedSearchId, line),
+    [projectId, viewType, savedSearchId],
+  );
   return (
     <ProjectViewPage
       projectId={projectId}
@@ -43,6 +56,8 @@ export function ProjectLogViewPage({
           logType={viewLogType(viewType)}
           range={range}
           onRangeChange={onRangeChange}
+          contextLine={search.contextLine}
+          contextHref={contextHref}
           createEventSource={createEventSource}
         />
       )}

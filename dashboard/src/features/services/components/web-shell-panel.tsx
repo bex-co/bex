@@ -20,12 +20,27 @@ const ANY_INSTANCE = "any";
  * terminal (w2/m55). Choosing an instance targets that specific replica;
  * "Any ready instance" lets the gateway pick one, matching native SSH. Changing
  * the selection re-opens the terminal against the new target.
+ *
+ * `initialInstance` is the instance a log line's SSH into instance named
+ * (w3/m528): the panel starts on it when it is one of the running instances,
+ * and on Any ready instance otherwise. The terminal waits for the first
+ * instance list, so it does not open on another pod first.
  */
-export function WebShellPanel({ serviceId }: { serviceId: string }) {
+export function WebShellPanel({
+  serviceId,
+  initialInstance,
+}: {
+  serviceId: string;
+  initialInstance?: string;
+}) {
   const { t } = useTranslations();
-  const { instances } = useServiceInstances(serviceId);
-  const [selected, setSelected] = useState<string>(ANY_INSTANCE);
+  const { instances, loading } = useServiceInstances(serviceId);
+  const [selected, setSelected] = useState<string>(
+    initialInstance ?? ANY_INSTANCE,
+  );
   const labelId = useId();
+  const awaitingInstances =
+    initialInstance !== undefined && loading && instances.length === 0;
 
   // A selection that no longer exists (an instance was replaced by a deploy)
   // falls back to "any" so the terminal never targets a vanished pod.
@@ -66,11 +81,22 @@ export function WebShellPanel({ serviceId }: { serviceId: string }) {
       </div>
       {/* Re-key on the effective target so switching instances tears down the old
           terminal and opens a fresh one against the new pod. */}
-      <WebShellTerminal
-        key={effective}
-        serviceId={serviceId}
-        instanceId={instanceId}
-      />
+      {awaitingInstances ? (
+        // The terminal's own frame, empty, until the instance list says
+        // which pod to open on.
+        <div className="space-y-2" data-testid="web-shell-awaiting-instances">
+          <div className="h-5" />
+          <div className="overflow-hidden rounded-md border bg-[#0a0a0a] p-2">
+            <div className="h-96 w-full" />
+          </div>
+        </div>
+      ) : (
+        <WebShellTerminal
+          key={effective}
+          serviceId={serviceId}
+          instanceId={instanceId}
+        />
+      )}
     </div>
   );
 }

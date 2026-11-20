@@ -77,6 +77,31 @@ const esAuth: Record<string, TranslationEntry> = {
       "Actualiza tu perfil, tu contraseña y la autenticación en dos pasos.",
     description: "Settings page account section description",
   },
+  "auth.appearanceSection": {
+    message: "Apariencia",
+    description:
+      "Account settings (w3/m528): Render's Appearance section heading and its rail link; a log explorer's Options > Theme Settings opens it",
+  },
+  "auth.appearanceSectionSubtitle": {
+    message: "Elige cómo se ve el panel.",
+    description: "Account settings (w3/m528): Appearance section description",
+  },
+  "auth.dashboardTheme": {
+    message: "Tema del panel",
+    description:
+      "Account settings > Appearance (w3/m528): Render's Dashboard Theme setting, its card title and the select's accessible name",
+  },
+  "auth.dashboardThemeDescription": {
+    message:
+      "El tema del panel en este navegador. El Tema del menú de la cuenta cambia el mismo ajuste.",
+    description:
+      "Account settings > Appearance (w3/m528): the Dashboard Theme card's description; the setting is the account menu's Theme, kept in this browser",
+  },
+  "auth.dashboardThemeSystem": {
+    message: "Sistema (predeterminado)",
+    description:
+      "Account settings > Appearance (w3/m528): the System theme option, marked as the default as Render marks it",
+  },
   "auth.integrationsSection": {
     message: "Integraciones",
     description:

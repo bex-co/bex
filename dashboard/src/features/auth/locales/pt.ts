@@ -75,6 +75,31 @@ const ptAuth: Record<string, TranslationEntry> = {
     message: "Atualize seu perfil, sua senha e a autenticação em duas etapas.",
     description: "Settings page account section description",
   },
+  "auth.appearanceSection": {
+    message: "Aparência",
+    description:
+      "Account settings (w3/m528): Render's Appearance section heading and its rail link; a log explorer's Options > Theme Settings opens it",
+  },
+  "auth.appearanceSectionSubtitle": {
+    message: "Escolha a aparência do painel.",
+    description: "Account settings (w3/m528): Appearance section description",
+  },
+  "auth.dashboardTheme": {
+    message: "Tema do painel",
+    description:
+      "Account settings > Appearance (w3/m528): Render's Dashboard Theme setting, its card title and the select's accessible name",
+  },
+  "auth.dashboardThemeDescription": {
+    message:
+      "O tema do painel neste navegador. O Tema do menu da conta muda a mesma configuração.",
+    description:
+      "Account settings > Appearance (w3/m528): the Dashboard Theme card's description; the setting is the account menu's Theme, kept in this browser",
+  },
+  "auth.dashboardThemeSystem": {
+    message: "Sistema (padrão)",
+    description:
+      "Account settings > Appearance (w3/m528): the System theme option, marked as the default as Render marks it",
+  },
   "auth.integrationsSection": {
     message: "Integrações",
     description:

@@ -1,3 +1,4 @@
+import { useCallback, useMemo } from "react";
 import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { createFileRoute } from "@tanstack/react-router";
 import { LogViewer } from "@/features/logs/components/log-viewer";
@@ -13,10 +14,13 @@ import {
   logRangeFromSearch,
   logSearchEquals,
   parseLogSearch,
+  serviceLineShell,
+  serviceLogContextHref,
   type LogSearch,
 } from "@/features/logs/lib/log-search";
-import type { LogFilters } from "@/features/logs/types";
+import type { LogFilters, LogLine } from "@/features/logs/types";
 import { useServer } from "@/features/services/hooks/use-server";
+import { useServiceInstances } from "@/features/services/hooks/use-service-instances";
 import { publiclyRoutable } from "@/features/services/lib/service-type";
 import {
   ServiceLogsBodySkeleton,
@@ -77,20 +81,28 @@ function RouteComponent() {
             range: range.id,
             rangeStart: isCustomRange(range) ? range.startTime : undefined,
             rangeEnd: isCustomRange(range) ? range.endTime : undefined,
+            // A View in context mark belongs to the range it opened with.
+            contextLine: undefined,
           })
         }
+        contextLine={search.contextLine}
         urlFilters={logFiltersFromSearch(search)}
         urlLive={search.live !== 0}
-        onFiltersChange={(filters, live) =>
-          write({
+        onFiltersChange={(filters, live) => {
+          const next: LogSearch = {
             // A filter change preserves whatever range is active — preset id or
             // the custom window's start/end (w5/m56).
             range: search.range,
             rangeStart: search.rangeStart,
             rangeEnd: search.rangeEnd,
             ...logFiltersToSearch(filters, live),
-          })
-        }
+          };
+          // A View in context mark (w3/m528) leaves with the first change to
+          // what the view shows; a report of the state the URL already names
+          // keeps it.
+          const marked = { ...next, contextLine: search.contextLine };
+          write(logSearchEquals(search, marked) ? marked : next);
+        }}
       />
     </NonStaticRoute>
   );
@@ -111,6 +123,7 @@ export function ServiceLogsPage({
   urlFilters,
   urlLive,
   onFiltersChange,
+  contextLine,
 }: {
   serviceId: string;
   range?: RangeSelection;
@@ -118,12 +131,34 @@ export function ServiceLogsPage({
   urlFilters?: LogFilters;
   urlLive?: boolean;
   onFiltersChange?: (filters: LogFilters, live: boolean) => void;
+  contextLine?: string;
 }) {
   // A worker, cron job or private service receives no public HTTP requests,
   // so it is offered no request logs, as on Render (w4/613); a stale
   // `?type=request` link reads its application logs. The layout mounts this
   // tab once the service is loaded.
   const { service } = useServer(serviceId, { poll: false });
+  // Render's SSH into instance (w3/m528): on a service whose Shell can open
+  // (`sshAddress`, as the Shell page decides), a line's instance opens there
+  // while it is one of the running instances.
+  const shellEligible = Boolean(service?.sshAddress);
+  const { instances } = useServiceInstances(serviceId, {
+    skip: !shellEligible,
+  });
+  // One value per set of instances, so a poll that finds the same ones
+  // keeps the rows' menu items (and the memoized rows) as they are.
+  const runningIds = instances.map((instance) => instance.id).join(" ");
+  const shell = useMemo(
+    () =>
+      shellEligible
+        ? serviceLineShell(serviceId, new Set(runningIds.split(" ")))
+        : undefined,
+    [shellEligible, runningIds, serviceId],
+  );
+  const contextHref = useCallback(
+    (line: LogLine) => serviceLogContextHref(serviceId, line),
+    [serviceId],
+  );
   return (
     <LogViewer
       resource={serviceId}
@@ -133,6 +168,9 @@ export function ServiceLogsPage({
       urlLive={urlLive}
       onFiltersChange={onFiltersChange}
       servesRequests={service == null || publiclyRoutable(service.type)}
+      contextLine={contextLine}
+      contextHref={contextHref}
+      shell={shell}
     />
   );
 }

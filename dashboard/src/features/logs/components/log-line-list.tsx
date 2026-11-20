@@ -11,8 +11,6 @@ import {
   type Ref,
 } from "react";
 import {
-  ArrowDown,
-  ArrowUp,
   Bug,
   CircleX,
   Info,
@@ -22,7 +20,7 @@ import {
 import { Link } from "@tanstack/react-router";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { InstantTooltip } from "@/common/components/instant-tooltip";
-import { Button } from "@/common/components/ui/button.tsx";
+import { useCopyToClipboard } from "@/common/hooks/use-copy-to-clipboard";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   formatClockTime,
@@ -38,6 +36,7 @@ import { type AnsiSpan } from "../lib/ansi";
 import { lineLevel, lineLevelText, type LineLevel } from "../lib/log-levels";
 import {
   clampMessage,
+  logLineText,
   logListRows,
   logRowsText,
   shortInstance,
@@ -45,6 +44,16 @@ import {
 } from "../lib/log-rows";
 import { type LogResourceLabel } from "../lib/resource-labels";
 import { LOG_TYPE_REQUEST, type LogLine } from "../types";
+import {
+  HeldLinesButton,
+  NewLogsInLiveTailButton,
+  ReturnButton,
+} from "./log-list-buttons";
+import {
+  LOG_ROW_MENU_ATTRIBUTE,
+  LogRowMenu,
+  type LogRowMenuItems,
+} from "./log-row-menu";
 
 type Translate = ReturnType<typeof useTranslations>["t"];
 
@@ -191,6 +200,59 @@ interface LogLineListProps {
   expandAll?: boolean;
   /** The explorer's handle on the list: its shortcuts and Copy logs. */
   handleRef?: Ref<LogLineListHandle>;
+  /**
+   * A live tail of runtime lines (w3/m528): while the reader is away from
+   * the newest line, lines newer than the ones shown are held behind
+   * Render's "New logs" button instead of joining the list under them. A
+   * deploy's log and a paused explorer leave it off.
+   */
+  holdWhileAway?: boolean;
+  /** The row menu's View in context and SSH into instance (w3/m528); every
+   *  row has Copy log line. Keep it stable: the rows are memoized on it. */
+  rowMenu?: LogRowMenuItems;
+  /**
+   * The line a View in context link names (w3/m528): marked, and scrolled to
+   * the middle of the panel once it is loaded (older pages are read until it
+   * is, or none is left). The list then stays where the reader puts it.
+   */
+  markedKey?: string;
+  /** Render's "New logs in Live Tail": a paused explorer's tail has a new
+   *  line. Absent while there is none, or once dismissed. */
+  newLogsInLiveTail?: { onSwitch: () => void; onDismiss: () => void };
+}
+
+/**
+ * What a held list shows (w3/m528): the lines it showed when the reader left
+ * the newest line, and any older page loaded since. Every other line is held.
+ */
+interface HeldView {
+  /** The keys shown when the reader left. */
+  keys: ReadonlySet<string>;
+  /** The oldest of them, in epoch milliseconds: anything older is a page. */
+  oldest: number;
+}
+
+function holdView(lines: readonly LogLine[]): HeldView {
+  let oldest = Infinity;
+  for (const line of lines) {
+    const time = Date.parse(line.timestamp);
+    if (time < oldest) oldest = time;
+  }
+  return { keys: new Set(lines.map((line) => line.key)), oldest };
+}
+
+/** The lines a held list shows, or every line when none of the ones it
+ *  showed is left (a cleared or expired buffer has nothing to hold under). */
+function shownWhileHeld(lines: LogLine[], view: HeldView): LogLine[] {
+  let kept = 0;
+  const shown = lines.filter((line) => {
+    if (view.keys.has(line.key)) {
+      kept += 1;
+      return true;
+    }
+    return Date.parse(line.timestamp) < view.oldest;
+  });
+  return kept === 0 ? lines : shown;
 }
 
 /**
@@ -198,9 +260,15 @@ interface LogLineListProps {
  * [instance] · message, newest at the bottom unless Options ▸ Order by says
  * descending). Autoscrolls to the newest line while the user is pinned to it;
  * scrolling away releases the pin (so reading history isn't yanked away) and
- * surfaces a "jump to latest" affordance. The wrap/timestamp toggles (w9/003)
- * and the order and Expand everything options (w3/m509) are display-only
- * knobs an explorer's options menu drives; each defaults to today's behavior.
+ * shows Render's Return to Bottom (Return to Top descending). The
+ * wrap/timestamp toggles (w9/003) and the order and Expand everything options
+ * (w3/m509) are display-only knobs an explorer's options menu drives; each
+ * defaults to today's behavior.
+ *
+ * Render's explorer pieces (w3/m528): a row menu (…) on the hovered row or
+ * the keyboard's (Shift+F10), a live tail that holds new lines behind a "New
+ * logs" button while the reader is away, a paused explorer's "New logs in
+ * Live Tail", and View in context's marked line.
  *
  * Each row leads with its level's mark (Render's gutter: warning and error
  * rows tinted, the info mark shown on hover), its time opens the full local,
@@ -235,21 +303,75 @@ export function LogLineList({
   order = "asc",
   expandAll = false,
   handleRef,
+  holdWhileAway = false,
+  rowMenu,
+  markedKey,
+  newLogsInLiveTail,
 }: LogLineListProps) {
   const { t, i18n } = useTranslations();
   const language = i18n.language;
   const keysHintId = useId();
   const viewportRef = useRef<HTMLDivElement>(null);
   const descending = order === "desc";
-  const rows = useMemo(() => logListRows(lines, order), [lines, order]);
   // Pinned: the reader is at the newest line, the bottom ascending and the
-  // top descending.
-  const [pinned, setPinned] = useState(true);
+  // top descending. A View in context link opens on its marked line instead.
+  const [pinned, setPinned] = useState(() => !markedKey);
+  // Held lines (w3/m528): the hold lives here, not in each explorer, because
+  // only the list knows when the reader is away; the explorers say whether
+  // their lines are a live tail's. Captured from the lines shown in the
+  // render the reader left in, so nothing newer slips in under them.
+  const holding = holdWhileAway && !pinned;
+  const [held, setHeld] = useState<HeldView | null>(null);
+  let heldView = held;
+  if (holding && held === null) {
+    heldView = holdView(lines);
+    setHeld(heldView);
+  } else if (!holding && held !== null) {
+    heldView = null;
+    setHeld(null);
+  }
+  const shownLines = useMemo(
+    () => (heldView ? shownWhileHeld(lines, heldView) : lines),
+    [lines, heldView],
+  );
+  const heldCount = lines.length - shownLines.length;
+  const rows = useMemo(
+    () => logListRows(shownLines, order),
+    [shownLines, order],
+  );
   // The keyboard's row cursor in the focused list, by row key so it stays on
   // its line as lines arrive or the order flips: ↑/↓ move it, Enter shows
   // only its line's instance (the tags themselves are out of the Tab order),
   // Escape lets it go.
   const [cursor, setCursor] = useState<string | null>(null);
+  // The row under the pointer and the row whose menu is open (w3/m528): the
+  // row menu mounts on those and the cursor's row only, so an appended or
+  // scrolled-in row never pays for one. One hovered row at a time, so a tap
+  // on a phone (whose pointer never leaves) shows one row's button.
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const [menuKey, setMenuKey] = useState<string | null>(null);
+  // The menu opened from the keyboard returns focus to the list, not to its
+  // button, so ↑/↓ keep moving the cursor.
+  const keyboardMenu = useRef(false);
+  const onMenuOpenChange = useCallback(
+    (key: string, open: boolean) =>
+      setMenuKey((current) => (open ? key : current === key ? null : current)),
+    [],
+  );
+  const onMenuCloseAutoFocus = useCallback((event: Event) => {
+    if (!keyboardMenu.current) return;
+    keyboardMenu.current = false;
+    event.preventDefault();
+    viewportRef.current?.focus();
+  }, []);
+  const { copy: copyText } = useCopyToClipboard({
+    successText: t("logs.lineCopied"),
+    errorText: t("logs.lineCopyFailed"),
+  });
+  const copyLine = useCallback(
+    (text: string) => void copyText(text),
+    [copyText],
+  );
   // Rows whose clamped message the reader opened (w3/m509).
   const [expandedRows, setExpandedRows] = useState<ReadonlySet<string>>(
     () => new Set(),
@@ -366,7 +488,12 @@ export function LogLineList({
 
   const onScroll = () => {
     const el = viewportRef.current;
-    if (el) setScrolledDown(el.scrollTop > 0);
+    if (el) {
+      setScrolledDown(el.scrollTop > 0);
+      // A one-line list scrolls sideways; the row menu's button keeps to the
+      // panel's right edge through this, with no render (see LogRow).
+      el.style.setProperty("--log-scroll-left", `${el.scrollLeft}px`);
+    }
     if (!el || settling.current) return;
     recordAnchor(el);
     recordPin(el);
@@ -454,6 +581,24 @@ export function LogLineList({
     if (pinned) scrollToNewest();
   }, [rows, pinned, scrollToNewest]);
 
+  // View in context (w3/m528): the marked line goes to the middle of the
+  // panel once, as soon as it is loaded; until then older pages are read.
+  // After that the reader's scrolling is left alone.
+  const placedMark = useRef<string | undefined>(undefined);
+  useLayoutEffect(() => {
+    if (!markedKey || placedMark.current === markedKey) return;
+    const index = rows.findIndex((row) => row.key === markedKey);
+    if (index >= 0) {
+      placedMark.current = markedKey;
+      virtualizer.scrollToIndex(index, { align: "center" });
+      // A short list does not scroll, and so sends no scroll event: the pin
+      // is read from where the list now is.
+      if (viewportRef.current) recordPin(viewportRef.current);
+    } else if (hasMore && !loadingOlder) {
+      loadOlderRef.current?.();
+    }
+  }, [markedKey, rows, hasMore, loadingOlder, virtualizer, recordPin]);
+
   const dayLabel = useCallback(
     (day: number) =>
       new Date(day).getFullYear() === new Date().getFullYear()
@@ -530,6 +675,14 @@ export function LogLineList({
     }
     return from;
   };
+  // Return to Bottom/Top and the held-lines button: back to the newest line,
+  // which releases any held lines. Outside the viewport, so their pointer
+  // does not end a reflow's settling; returning must (w4/m228).
+  const returnToNewest = () => {
+    endSettling();
+    setPinned(true);
+    scrollToNewest();
+  };
   const loadingOlderNote = loadingOlder ? (
     <p className="px-3 py-2 text-center text-muted-foreground">
       {t("logs.loadingOlder")}
@@ -555,6 +708,9 @@ export function LogLineList({
         onTouchStart={endSettling}
         onPointerDown={endSettling}
         onKeyDown={(event) => {
+          // A row menu's keys reach here through its portal; they are the
+          // menu's own (w3/m528).
+          if (!event.currentTarget.contains(event.target as Node)) return;
           endSettling();
           if (event.key === "ArrowDown" || event.key === "ArrowUp") {
             event.preventDefault();
@@ -586,12 +742,36 @@ export function LogLineList({
               event.preventDefault();
               onInstanceFilter(instance);
             }
+          } else if (
+            (event.key === "F10" && event.shiftKey) ||
+            event.key === "ContextMenu"
+          ) {
+            // The row menu of the line under the cursor (w3/m528).
+            if (cursor === null) return;
+            event.preventDefault();
+            keyboardMenu.current = true;
+            setMenuKey(cursor);
           } else if (event.key === "Escape") {
             setCursor(null);
           }
         }}
-        onBlur={() => setCursor(null)}
-        aria-describedby={onInstanceFilter ? keysHintId : undefined}
+        onBlur={(event) => {
+          // Focus going into the cursor row's menu keeps the cursor.
+          const next = event.relatedTarget;
+          if (
+            next instanceof Element &&
+            next.closest(`[${LOG_ROW_MENU_ATTRIBUTE}]`)
+          ) {
+            return;
+          }
+          setCursor(null);
+        }}
+        onPointerLeave={(event) => {
+          // A touch's pointer leaves when the finger lifts: the tapped row
+          // keeps its button until another row is tapped.
+          if (event.pointerType !== "touch") setHoveredKey(null);
+        }}
+        aria-describedby={keysHintId}
         style={fill ? undefined : { height: panelHeight }}
         className={cn(
           // The list anchors the reader itself; the browser's own overflow
@@ -631,6 +811,14 @@ export function LogLineList({
                 key={virtualRow.key}
                 index={virtualRow.index}
                 active={cursor === row.key}
+                hovered={hoveredKey === row.key}
+                menuOpen={menuKey === row.key}
+                marked={markedKey === row.key}
+                onHover={setHoveredKey}
+                onMenuOpenChange={onMenuOpenChange}
+                onMenuCloseAutoFocus={onMenuCloseAutoFocus}
+                onCopyLine={copyLine}
+                rowMenu={rowMenu}
                 measureRef={virtualizer.measureElement}
                 line={row.line}
                 wrap={wrap}
@@ -658,46 +846,42 @@ export function LogLineList({
         ) : null}
       </div>
 
-      {onInstanceFilter ? (
-        <>
-          <p id={keysHintId} className="sr-only">
-            {t("logs.linesKeysHint")}
-          </p>
-          {/* The keys, shown to a sighted keyboard user while the region has
-              focus: in its top corner, over the oldest line as it fades out,
-              never over the newest, where a live tail's lines land. */}
-          <p
-            aria-hidden
-            className="pointer-events-none absolute top-2 right-2 z-20 hidden max-w-[calc(100%-1rem)] truncate rounded border bg-background px-2 py-0.5 text-xs text-muted-foreground shadow-xs peer-focus-visible:block"
-          >
-            {t("logs.linesKeysShort")}
-          </p>
-        </>
-      ) : null}
+      <p id={keysHintId} className="sr-only">
+        {onInstanceFilter
+          ? t("logs.linesKeysHint")
+          : t("logs.linesKeysHintMenu")}
+      </p>
+      {/* The keys, shown to a sighted keyboard user while the region has
+          focus: in a corner over the oldest line as it fades out (the top
+          ascending, the bottom descending), never over the newest, where a
+          live tail's lines and the floating buttons land. */}
+      <p
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute right-2 z-20 hidden max-w-[calc(100%-1rem)] truncate rounded border bg-background px-2 py-0.5 text-xs text-muted-foreground shadow-xs peer-focus-visible:block",
+          descending ? "bottom-2" : "top-2",
+        )}
+      >
+        {onInstanceFilter
+          ? t("logs.linesKeysShort")
+          : t("logs.linesKeysShortMenu")}
+      </p>
       {!pinned ? (
-        <Button
-          size="sm"
-          variant="secondary"
-          className={cn(
-            "absolute left-1/2 -translate-x-1/2 shadow-md",
-            // At the newest edge: the bottom, or the top descending.
-            descending ? "top-3" : "bottom-3",
-          )}
-          onClick={() => {
-            // Outside the viewport, so its pointer does not end a reflow's
-            // settling; jumping to the newest line must (w4/m228).
-            endSettling();
-            setPinned(true);
-            scrollToNewest();
-          }}
-        >
-          {descending ? (
-            <ArrowUp className="h-4 w-4" />
-          ) : (
-            <ArrowDown className="h-4 w-4" />
-          )}
-          {t("logs.jumpToLatest")}
-        </Button>
+        <ReturnButton descending={descending} onClick={returnToNewest} />
+      ) : null}
+      {heldCount > 0 ? (
+        <HeldLinesButton
+          count={heldCount}
+          descending={descending}
+          onClick={returnToNewest}
+        />
+      ) : null}
+      {newLogsInLiveTail ? (
+        <NewLogsInLiveTailButton
+          descending={descending}
+          onSwitch={newLogsInLiveTail.onSwitch}
+          onDismiss={newLogsInLiveTail.onDismiss}
+        />
       ) : null}
     </div>
   );
@@ -738,6 +922,14 @@ function DayRow({
 const LogRow = memo(function LogRow({
   index,
   active,
+  hovered,
+  menuOpen,
+  marked,
+  onHover,
+  onMenuOpenChange,
+  onMenuCloseAutoFocus,
+  onCopyLine,
+  rowMenu,
   measureRef,
   line,
   wrap,
@@ -753,6 +945,17 @@ const LogRow = memo(function LogRow({
   index: number;
   /** The keyboard's row cursor is on this row. */
   active: boolean;
+  /** The pointer is on this row (the list's one hovered row). */
+  hovered: boolean;
+  /** This row's menu is open. */
+  menuOpen: boolean;
+  /** The line a View in context link names (w3/m528). */
+  marked: boolean;
+  onHover: (key: string) => void;
+  onMenuOpenChange: (key: string, open: boolean) => void;
+  onMenuCloseAutoFocus: (event: Event) => void;
+  onCopyLine: (text: string) => void;
+  rowMenu: LogRowMenuItems | undefined;
   measureRef: (node: Element | null) => void;
   line: LogLine;
   wrap: boolean;
@@ -780,16 +983,23 @@ const LogRow = memo(function LogRow({
     <div
       data-index={index}
       data-active={active ? "" : undefined}
+      data-marked={marked ? "" : undefined}
       ref={measureRef}
+      onPointerEnter={() => onHover(line.key)}
       className={cn(
         // Every cell reads from the first line: a tag centred against a
         // wrapped message sat a line below its time.
-        "group/row flex items-baseline gap-3 px-4 py-0.5 hover:bg-muted/60",
+        "group/row relative flex items-baseline gap-3 px-4 py-0.5 hover:bg-muted/60",
         // The keyboard's row cursor (↑/↓ in the focused list).
         active && "outline-2 -outline-offset-2 outline-ring",
         // Errors and warnings stand out as Render's log does: a tinted row
         // with a rule at its edge; the text keeps its colour.
         level ? LEVEL_ROW_CLASS[level] : undefined,
+        // Render highlights the row whose menu is open, and the line a View
+        // in context link names.
+        menuOpen && "bg-muted/60",
+        marked &&
+          "bg-primary/10 shadow-[inset_2px_0_0_var(--color-primary)] hover:bg-primary/15",
         // In a narrow panel a wrapped row puts its time and instance on one
         // line and gives the message the panel's full width under them:
         // beside a fixed time-and-instance gutter, the message had under
@@ -899,9 +1109,39 @@ const LogRow = memo(function LogRow({
           </>
         ) : null}
       </span>
+      {hovered || active || menuOpen ? (
+        <LogRowMenu
+          line={line}
+          text={logLineText(
+            line,
+            // A project view's resource, by name, or by id when the list
+            // does not name it.
+            resourceLabel === undefined
+              ? undefined
+              : (resourceLabel?.name ?? line.resource),
+          )}
+          items={rowMenu}
+          open={menuOpen}
+          onOpenChange={(open) => onMenuOpenChange(line.key, open)}
+          onCopy={onCopyLine}
+          onCloseAutoFocus={onMenuCloseAutoFocus}
+          t={t}
+          // At the row's top right; a one-line row scrolls sideways, so its
+          // button keeps to the panel's visible right edge instead.
+          className={wrap ? "right-1" : undefined}
+          style={wrap ? undefined : ONE_LINE_MENU_STYLE}
+        />
+      ) : null}
     </div>
   );
 });
+
+// The row menu's place in a one-line list, whose rows run past the panel:
+// the panel's width from the row's start, plus how far it has scrolled
+// sideways (`--log-scroll-left`, set on scroll), less the button.
+const ONE_LINE_MENU_STYLE = {
+  left: "calc(var(--log-scroll-left, 0px) + 100cqw - 1.75rem)",
+};
 
 // Render's level gutter (w3/m509): the line's level as an icon, its word on
 // hover and as its accessible name; an empty cell of the same width for a

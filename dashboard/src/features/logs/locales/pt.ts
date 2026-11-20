@@ -163,10 +163,6 @@ const ptLogs: Record<string, TranslationEntry> = {
     message: "Ao vivo",
     description: "Label for the live-tail on/off toggle",
   },
-  "logs.jumpToLatest": {
-    message: "Ir para o mais recente",
-    description: "Button to re-pin autoscroll to the newest log line",
-  },
   "logs.linesLabel": {
     message: "Linhas de log",
     description:
@@ -174,14 +170,112 @@ const ptLogs: Record<string, TranslationEntry> = {
   },
   "logs.linesKeysHint": {
     message:
-      "Use as setas para cima e para baixo para mover entre linhas e Enter para mostrar só a instância dessa linha.",
+      "Use as setas para cima e para baixo para mover entre linhas, Enter para mostrar só a instância dessa linha e Shift+F10 para abrir o menu dela.",
     description:
-      "Logs list: screen-reader hint on the focusable log region, naming its row keys",
+      "Logs tab: screen-reader description of the focused log list's keys - arrows move the row cursor, Enter shows only that line's instance, Shift+F10 opens the line's menu (w3/m528)",
   },
   "logs.linesKeysShort": {
-    message: "↑↓ mover entre linhas · Enter: só esta instância",
+    message:
+      "↑↓ mover entre linhas · Enter: só esta instância · Shift+F10: menu",
     description:
-      "Logs tab: the keys of the focused log list, shown in its corner while it has keyboard focus — arrows move between lines, Enter shows only that line's instance",
+      "Logs tab: the keys of the focused log list, shown in its corner while it has keyboard focus - arrows move between lines, Enter shows only that line's instance, Shift+F10 opens the line's menu",
+  },
+  "logs.returnToBottom": {
+    message: "Voltar ao fim",
+    description:
+      "Log list (w3/m528): accessible name and tooltip of Render's icon-only Return to Bottom button, shown while the reader is scrolled away from the newest line (ascending order)",
+  },
+  "logs.returnToTop": {
+    message: "Voltar ao topo",
+    description:
+      "Log list (w3/m528): accessible name and tooltip of Render's icon-only Return to Top button, shown while the reader is scrolled away from the newest line (descending order)",
+  },
+  "logs.newLogs": {
+    message: "Logs novos",
+    description:
+      "Log list (w3/m528): Render's held-lines button while a live tail holds fewer than 10 new lines back from a reader scrolled away",
+  },
+  "logs.newLogsCount_one": {
+    message: "{count}+ log novo",
+    description:
+      "Log list (w3/m528): Render's held-lines button for 10 or more held lines; count is the held count rounded up to a multiple of 5, at most 100, followed by a plus sign",
+  },
+  "logs.newLogsCount_many": {
+    message: "{count}+ de logs novos",
+    description:
+      "Log list (w3/m528): Render's held-lines button for 10 or more held lines; count is the held count rounded up to a multiple of 5, at most 100, followed by a plus sign",
+  },
+  "logs.newLogsCount_other": {
+    message: "{count}+ logs novos",
+    description:
+      "Log list (w3/m528): Render's held-lines button for 10 or more held lines; count is the held count rounded up to a multiple of 5, at most 100, followed by a plus sign",
+  },
+  "logs.newLogsInLiveTail": {
+    message: "Há logs novos ao vivo",
+    description:
+      "Log list (w3/m528): Render's button on a paused explorer when a new line arrived; clicking it turns Live on",
+  },
+  "logs.switchToLiveTail": {
+    message: "Mudar para Ao vivo",
+    description:
+      "Log list (w3/m528): tooltip of the New logs in Live Tail button",
+  },
+  "logs.dismiss": {
+    message: "Dispensar",
+    description:
+      "Log list (w3/m528): accessible name of the x that hides the New logs in Live Tail button",
+  },
+  "logs.lineMenu": {
+    message: "Opções da linha",
+    description:
+      "Log list (w3/m528): accessible name and tooltip of the row menu button (...) on a hovered log line",
+  },
+  "logs.copyLogLine": {
+    message: "Copiar linha de log",
+    description:
+      "Log row menu (w3/m528): copies the line without its time, as Render's Copy log line",
+  },
+  "logs.lineCopied": {
+    message: "Copiado!",
+    description:
+      "Log row menu (w3/m528): toast after Copy log line, Render's 'Copied!'",
+  },
+  "logs.lineCopyFailed": {
+    message: "Não foi possível copiar a linha de log",
+    description:
+      "Log row menu (w3/m528): toast when the clipboard refused the copied line",
+  },
+  "logs.viewInContext": {
+    message: "Ver no contexto",
+    description:
+      "Log row menu (w3/m528): opens a new tab on the same explorer, unfiltered, 10 minutes either side of the line",
+  },
+  "logs.sshIntoInstance": {
+    message: "Acessar a instância por SSH",
+    description:
+      "Log row menu (w3/m528): opens the service's Shell on the line's instance in a new tab",
+  },
+  "logs.sshInstanceNotRunning": {
+    message:
+      "Você só pode acessar por SSH instâncias em execução. Esta não está disponível.",
+    description:
+      "Log row menu (w3/m528): Render's tooltip on a disabled SSH into instance item, for an instance that is no longer running",
+  },
+  "logs.linesKeysHintMenu": {
+    message:
+      "Use as setas para cima e para baixo para mover entre linhas e Shift+F10 para abrir o menu de uma linha.",
+    description:
+      "Log list without an instance filter (w3/m528): screen-reader description of its keys - arrows move the row cursor, Shift+F10 opens the line's menu",
+  },
+  "logs.linesKeysShortMenu": {
+    message: "↑↓ mover entre linhas · Shift+F10: menu",
+    description:
+      "Log list without an instance filter (w3/m528): its keys, shown in its corner while it has keyboard focus",
+  },
+  "logs.themeSettings": {
+    message: "Configurações de tema",
+    description:
+      "Log explorer Options menu (w3/m528): Render's last item, a link to the Appearance section of account Settings",
   },
   "logs.endOfLog": {
     message: "Fim do log",

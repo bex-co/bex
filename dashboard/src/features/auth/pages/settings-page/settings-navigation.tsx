@@ -1,4 +1,11 @@
-import { Blocks, KeyRound, ShieldCheck, Trash2, UserRound } from "lucide-react";
+import {
+  Blocks,
+  KeyRound,
+  Palette,
+  ShieldCheck,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 import { SectionNavigation } from "@/common/components/section-navigation";
 import { useTranslations } from "@/common/hooks/use-translations";
 
@@ -9,6 +16,11 @@ export function SettingsNavigation({ className }: { className?: string }) {
       href: "#account",
       label: t("auth.accountSection"),
       icon: UserRound,
+    },
+    {
+      href: "#appearance",
+      label: t("auth.appearanceSection"),
+      icon: Palette,
     },
     {
       href: "#integrations",

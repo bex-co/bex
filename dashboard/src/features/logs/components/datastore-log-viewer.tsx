@@ -35,7 +35,12 @@ import { StreamDisconnected, StreamStatus } from "./log-viewer";
 import { LiveToggle } from "./log-filter-bar";
 import { useCustomWindow } from "../hooks/use-custom-window";
 import { useLogRetentionBound } from "../hooks/use-log-retention";
-import { useLiveLogs, type EventSourceFactory } from "../hooks/use-live-logs";
+import {
+  useLiveLogs,
+  useNewLogsWatch,
+  type LogSubscription,
+  type EventSourceFactory,
+} from "../hooks/use-live-logs";
 import { mergeLogLines } from "../lib/map";
 import { useLogLabelValues } from "../hooks/use-log-label-values";
 import { RangeSelect } from "@/features/metrics/components/range-select";
@@ -43,14 +48,22 @@ import {
   DEFAULT_DATASTORE_LOG_RANGE,
   rangeWindow,
 } from "../lib/datastore-log-range";
-import { type RangeSelection } from "@/features/metrics/lib/range";
-import { type DatastoreLogFilters } from "../lib/datastore-log-search";
+import {
+  isCustomRange,
+  type RangeSelection,
+} from "@/features/metrics/lib/range";
+import {
+  datastoreLogContextHref,
+  type DatastoreLogFilters,
+} from "../lib/datastore-log-search";
+import type { LogRowMenuItems } from "./log-row-menu";
 import { useLogHistory } from "../hooks/use-log-history";
 import {
   EMPTY_LOG_FILTERS,
   LOG_LEVELS,
   LOG_PAGE_SIZE,
   LOG_TYPE_ALL,
+  type LogLine,
 } from "../types";
 
 // The "no pick" option of the instance and level selects.
@@ -131,6 +144,7 @@ export function DatastoreLogViewer({
   onRangeChange,
   filters: urlFilters,
   onFiltersChange,
+  contextLine,
   createEventSource,
 }: {
   kind: DatastoreLogKind;
@@ -139,6 +153,8 @@ export function DatastoreLogViewer({
   onRangeChange?: (range: RangeSelection) => void;
   filters?: DatastoreLogFilters;
   onFiltersChange?: (patch: Partial<DatastoreLogFilters>) => void;
+  /** The line a View in context link marks (w3/m528). */
+  contextLine?: string;
   /** The live tail's stream factory; tests inject a fake (as LogViewer). */
   createEventSource?: EventSourceFactory;
 }) {
@@ -157,6 +173,13 @@ export function DatastoreLogViewer({
   const { instance, level } = urlFilters ?? localPicks;
   // Off until asked for: the tab opens as the one-shot reader it always was.
   const [live, setLive] = useState(false);
+  // When Live was last turned off: lines streamed until then are on screen,
+  // so only a later one is new to a paused tab (w3/m528).
+  const [pausedAt, setPausedAt] = useState<string | null>(null);
+  const changeLive = (next: boolean) => {
+    setLive(next);
+    setPausedAt(next ? null : new Date().toISOString());
+  };
   // `text` is the input; `committedText` is what the query and the URL carry —
   // it trails typing by one 300ms debounce, and is committed together with
   // its URL write, so the URL echoing back always equals it.
@@ -236,13 +259,18 @@ export function DatastoreLogViewer({
   const rangeBound = useLogRetentionBound(resource);
   const liveOffReasonId = useId();
   const tailing = live && !windowClosed;
-  const stream = useLiveLogs({
+  // What the tail follows, and the paused tab's watch with it (w3/m528).
+  const subscription: LogSubscription = {
     resource,
-    enabled: tailing,
     type: LOG_TYPE_ALL,
     text: queryText,
+    textMode: undefined,
     instance,
     requestFilters: queryFilters,
+  };
+  const stream = useLiveLogs({
+    ...subscription,
+    enabled: tailing,
     startTime: win.startTime,
     createEventSource,
   });
@@ -265,6 +293,26 @@ export function DatastoreLogViewer({
   const cleared = useClearedLines(lines, tailing, reader);
   const { explorer, attachList, attachSearch } = useLogExplorer({
     clear: cleared.clear,
+  });
+  // Render's row menu (w3/m528): View in context while a search or a pick
+  // narrows the tab. A datastore has no Shell.
+  const narrowed = Boolean(queryText || instance || level);
+  const rowMenu = useMemo<LogRowMenuItems>(
+    () => ({
+      contextHref: narrowed
+        ? (line: LogLine) => datastoreLogContextHref(kind, resource, line)
+        : undefined,
+    }),
+    [narrowed, kind, resource],
+  );
+  // Paused on a preset range, a new line brings up Render's "New logs in
+  // Live Tail" (w3/m528).
+  const watch = useNewLogsWatch({
+    enabled: !live && !windowClosed && !isCustomRange(range),
+    subscription,
+    since: pausedAt && pausedAt > win.endTime ? pausedAt : win.endTime,
+    resetKey: reader,
+    createEventSource,
   });
   const refusal = classifyRefusal(history.error, "LOGS_UNAVAILABLE");
   const discovered = useLogLabelValues(resource, "instance");
@@ -352,6 +400,14 @@ export function DatastoreLogViewer({
             order={explorer.order}
             expandAll={explorer.expandAll}
             handleRef={attachList}
+            holdWhileAway={tailing}
+            rowMenu={rowMenu}
+            markedKey={contextLine}
+            newLogsInLiveTail={
+              watch.available
+                ? { onSwitch: () => changeLive(true), onDismiss: watch.dismiss }
+                : undefined
+            }
           />
         </div>
         {live ? <StreamStatus live status={stream.status} /> : null}
@@ -408,7 +464,7 @@ export function DatastoreLogViewer({
           checked={live && !windowClosed}
           disabled={!hydrated || windowClosed}
           describedBy={windowClosed ? liveOffReasonId : undefined}
-          onCheckedChange={setLive}
+          onCheckedChange={changeLive}
         />
         {/* On a phone, on the range's row: the toolbar wraps a control a
             row there, and they would otherwise take one of their own. */}

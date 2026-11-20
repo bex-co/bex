@@ -4,10 +4,16 @@ import {
   logFiltersFromSearch,
   logFiltersToSearch,
   logRangeFromSearch,
+  logContextSearch,
   logSearchEquals,
   parseLogSearch,
+  serviceLineShell,
+  serviceLogContextHref,
 } from "../log-search";
-import { EMPTY_LOG_FILTERS, type LogFilters } from "../../types";
+import { datastoreLogContextHref } from "../datastore-log-search";
+import { projectLogContextHref } from "../project-log-search";
+import { SavedSearchType } from "@/graphql/definitions";
+import { EMPTY_LOG_FILTERS, type LogFilters, type LogLine } from "../../types";
 
 describe("log range URL state", () => {
   it("round-trips a supported selection through route validation", () => {
@@ -207,5 +213,133 @@ describe("logSearchEquals (the route's skip-when-unchanged guard)", () => {
     expect(logSearchEquals({ level: "error" }, { level: "warn" })).toBe(false);
     expect(logSearchEquals({}, { live: 0 })).toBe(false);
     expect(logSearchEquals({ range: "1h" }, { range: "4h" })).toBe(false);
+  });
+});
+
+// View in context (w3/m528): Render's link is the same explorer with its
+// default filters, `contextLogId` the line and the range ±10 minutes.
+describe("View in context links (w3/m528)", () => {
+  const at = "2026-11-20T10:30:15.250Z";
+  const line = (over: Partial<LogLine> = {}): LogLine => ({
+    key: "id:abc",
+    timestamp: at,
+    instance: "srv-a-0123456789abcdefghij",
+    message: "boom",
+    spans: null,
+    resource: "srv-a",
+    type: "app",
+    level: "error",
+    method: "",
+    statusCode: "",
+    host: "",
+    path: "",
+    ...over,
+  });
+  const query = (href: string) => {
+    const url = new URL(href, "https://dashboard.bex.co");
+    return { path: url.pathname, search: Object.fromEntries(url.searchParams) };
+  };
+
+  it("opens the service Logs tab unfiltered, paused, ten minutes either side of the line, the line marked", () => {
+    const href = serviceLogContextHref("srv-a", line())!;
+    const { path, search } = query(href);
+    expect(path).toBe("/services/srv-a/logs");
+    expect(search).toEqual({
+      range: "custom",
+      rangeStart: "2026-11-20T10:20:15.250Z",
+      rangeEnd: "2026-11-20T10:40:15.250Z",
+      live: "0",
+      contextLine: "id:abc",
+    });
+    // The route reads back exactly that state, with no filter.
+    const parsed = parseLogSearch(
+      Object.fromEntries(
+        Object.entries(search).map(([k, v]) => [k, k === "live" ? 0 : v]),
+      ),
+    );
+    expect(logFiltersFromSearch(parsed)).toEqual(EMPTY_LOG_FILTERS);
+    expect(parsed.contextLine).toBe("id:abc");
+    expect(logRangeFromSearch(parsed).id).toBe("custom");
+  });
+
+  it("opens a Postgres or Key Value Logs tab the same way", () => {
+    expect(
+      query(datastoreLogContextHref("databases", "dpg-a", line())!),
+    ).toEqual({
+      path: "/databases/dpg-a",
+      search: {
+        tab: "logs",
+        range: "custom",
+        rangeStart: "2026-11-20T10:20:15.250Z",
+        rangeEnd: "2026-11-20T10:40:15.250Z",
+        contextLine: "id:abc",
+      },
+    });
+    expect(
+      query(datastoreLogContextHref("keyvalue", "red-a", line())!).path,
+    ).toBe("/keyvalue/red-a");
+  });
+
+  it("keeps a project view's own view, in Render's r key", () => {
+    expect(
+      query(
+        projectLogContextHref(
+          "prj-a",
+          SavedSearchType.RequestLogs,
+          "svs-1",
+          line(),
+        )!,
+      ),
+    ).toEqual({
+      path: "/project/prj-a/observability/logs/request",
+      search: {
+        savedSearchId: "svs-1",
+        r: "custom",
+        rangeStart: "2026-11-20T10:20:15.250Z",
+        rangeEnd: "2026-11-20T10:40:15.250Z",
+        contextLine: "id:abc",
+      },
+    });
+  });
+
+  it("offers none for a line without a time, and leaves out a key too long for a link", () => {
+    expect(logContextSearch(line({ timestamp: "" }))).toBeNull();
+    expect(serviceLogContextHref("srv-a", line({ timestamp: "" }))).toBe(
+      undefined,
+    );
+    const long = line({ key: `1|i|${"x".repeat(600)}` });
+    expect(logContextSearch(long)?.contextLine).toBeUndefined();
+  });
+});
+
+// SSH into instance (w3/m528): Render links `${servicePath}/shell/${instance}`
+// for a running instance and disables the item for one that is not.
+describe("serviceLineShell (w3/m528)", () => {
+  const line = (instance: string) =>
+    ({
+      key: "id:x",
+      timestamp: "2026-11-20T10:00:00Z",
+      instance,
+      message: "m",
+      spans: null,
+      resource: "",
+      type: "app",
+      level: "",
+      method: "",
+      statusCode: "",
+      host: "",
+      path: "",
+    }) satisfies LogLine;
+  const shell = serviceLineShell("srv-a", new Set(["srv-a-up"]));
+
+  it("opens the Shell on a running instance", () => {
+    expect(shell(line("srv-a-up"))).toEqual({
+      href: "/services/srv-a/shell?instance=srv-a-up",
+    });
+  });
+
+  it("is disabled for an instance that is not running, and absent without one", () => {
+    expect(shell(line("srv-a-gone"))).toEqual({ href: null });
+    expect(shell(line(""))).toBeNull();
   });
 });

@@ -22,6 +22,13 @@ import {
   VIRTUAL_VIEWPORT_HEIGHT,
 } from "@/test/virtual-geometry";
 
+// Options ends with Theme Settings, a router Link (w3/m528): render it as
+// its anchor, with no router around the component.
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  Link: (await import("@/test/mocks/router-link")).PlainLink,
+}));
+
 const state: UseLogHistoryResult = {
   lines: [],
   loading: false,
@@ -352,7 +359,7 @@ describe("DatastoreLogViewer level and live tail (w5/m139)", () => {
     expect(streams).toHaveLength(1);
   });
 
-  it("opens no stream until Live is switched on, then tails with the same filters", async () => {
+  it("opens no tail until Live is switched on, then tails with the same filters", async () => {
     // History inside the selected window, as the server returns it: the merge
     // drops lines stamped before the window's start.
     state.lines = [
@@ -367,9 +374,18 @@ describe("DatastoreLogViewer level and live tail (w5/m139)", () => {
         createEventSource={createEventSource}
       />,
     );
-    expect(streams).toHaveLength(0);
-    await userEvent.click(screen.getByRole("switch", { name: "Live" }));
+    // Paused, the tab only watches for a new line (w3/m528): one stream from
+    // the window's end, closed when Live opens the tail.
     expect(streams).toHaveLength(1);
+    const watch = new URL(streams[0].url, "http://x");
+    expect(watch.searchParams.get("level")).toBe("warning");
+    expect(
+      Date.parse(watch.searchParams.get("startTime") ?? ""),
+    ).toBeGreaterThan(Date.now() - 60_000);
+    await userEvent.click(screen.getByRole("switch", { name: "Live" }));
+    expect(streams).toHaveLength(2);
+    expect(streams[0].closed).toBe(true);
+    streams.shift();
     const url = new URL(streams[0].url, "http://x");
     expect(url.pathname).toMatch(/\/v1\/logs\/subscribe$/);
     expect(url.searchParams.get("resource")).toBe("red-example");
@@ -464,5 +480,72 @@ describe("the range picker follows the plan's log window", () => {
     expect(
       screen.getByText("Logs are kept for 7 days on the Hobby plan."),
     ).toBeInTheDocument();
+  });
+});
+
+// Render's row menu in a datastore Logs tab (w3/m528): View in context while a
+// search or pick narrows the tab, no SSH, and the link's marked line.
+describe("DatastoreLogViewer row menu (w3/m528)", () => {
+  const openMenu = async (
+    user: ReturnType<typeof userEvent.setup>,
+    container: HTMLElement,
+  ) => {
+    fireEvent.pointerEnter(container.querySelector('[data-index="0"]')!);
+    await user.click(screen.getByRole("button", { name: "Log line options" }));
+  };
+
+  it("offers View in context on a narrowed tab, to the tab's own URL, and never SSH", async () => {
+    const user = userEvent.setup();
+    state.lines = [line(0)];
+    const { container, rerender } = render(
+      <DatastoreLogViewer kind="databases" resource="dpg-example" />,
+    );
+    await openMenu(user, container);
+    expect(
+      screen.getByRole("menuitem", { name: "Copy log line" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "View in context" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("menuitem", { name: "SSH into instance" }),
+    ).toBeNull();
+    await user.keyboard("{Escape}");
+
+    rerender(
+      <DatastoreLogViewer
+        kind="databases"
+        resource="dpg-example"
+        filters={{ text: "", instance: "", level: "warning" }}
+        onFiltersChange={() => undefined}
+      />,
+    );
+    await openMenu(user, container);
+    const href = screen
+      .getByRole("menuitem", { name: "View in context" })
+      .getAttribute("href")!;
+    const url = new URL(href, "https://dashboard.bex.co");
+    expect(url.pathname).toBe("/databases/dpg-example");
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      tab: "logs",
+      range: "custom",
+      rangeStart: "2026-07-15T11:50:00.000Z",
+      rangeEnd: "2026-07-15T12:10:00.000Z",
+      contextLine: "line-0",
+    });
+  });
+
+  it("marks the line a View in context link names", () => {
+    state.lines = [line(0), line(1)];
+    const { container } = render(
+      <DatastoreLogViewer
+        kind="keyvalue"
+        resource="red-example"
+        contextLine="line-1"
+      />,
+    );
+    expect(container.querySelector("[data-marked]")).toHaveTextContent(
+      "line 1",
+    );
   });
 });

@@ -14,7 +14,7 @@ import {
   fireEvent,
   waitFor,
 } from "@testing-library/react";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import userEvent from "@testing-library/user-event";
 import { LogViewer } from "../log-viewer";
@@ -46,28 +46,25 @@ vi.mock("../../hooks/use-log-history", () => ({
 }));
 const useLiveLogsSpy = vi.fn();
 const liveState: { lines: LogLine[] } = { lines: [] };
+// The paused view's new-line watch (w3/m528): what it reports, and what it
+// was asked to watch.
+const watchState = { available: false, dismiss: vi.fn() };
+const useNewLogsWatchSpy = vi.fn();
 vi.mock("../../hooks/use-live-logs", () => ({
   useLiveLogs: (...args: unknown[]) => {
     useLiveLogsSpy(...args);
     return { lines: liveState.lines, status: "idle" };
   },
+  useNewLogsWatch: (...args: unknown[]) => {
+    useNewLogsWatchSpy(...args);
+    return watchState;
+  },
 }));
-// The plan notice links to Billing; render the router Link as its anchor.
+// The plan notice links to Billing, and Options' Theme Settings to account
+// Settings (w3/m528); render the router Link as its anchor.
 vi.mock("@tanstack/react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@tanstack/react-router")>()),
-  Link: ({
-    to,
-    children,
-    className,
-  }: {
-    to: string;
-    children: ReactNode;
-    className?: string;
-  }) => (
-    <a href={to} className={className}>
-      {children}
-    </a>
-  ),
+  Link: (await import("@/test/mocks/router-link")).PlainLink,
 }));
 // The plan's log window (w9/m389) is its own query; the reader tests keep the
 // picker unbounded, and the bound test sets one.
@@ -1145,5 +1142,197 @@ describe("the Logs tab's pending frame holds its explorer buttons (w3/m509)", ()
       "max-lg:size-11 pointer-coarse:size-11 size-8",
     ]);
     expect(boxes(render(<ServiceLogsBodySkeleton />).container)).toEqual(ready);
+  });
+});
+
+// Render's explorer pieces w3/m509 left out (w3/m528), as the service Logs tab
+// wires them: held lines while tailing, the paused view's New logs in Live
+// Tail, the row menu's View in context and SSH, and the marked line.
+describe("LogViewer row menu and new-log buttons (w3/m528)", () => {
+  // A minute apart, the newest a minute ago: inside the default hour.
+  const lines = (from: number, to: number): LogLine[] =>
+    Array.from({ length: to - from }, (_, i) => {
+      const n = from + i;
+      return {
+        key: `id:${n}`,
+        timestamp: new Date(Date.now() - (200 - n) * 1000).toISOString(),
+        instance: "srv-web-0123456789abcdefghij",
+        message: `m${n}`,
+        type: "app",
+        level: "",
+        method: "",
+        statusCode: "",
+        host: "",
+        path: "",
+        spans: null,
+        resource: "",
+      };
+    });
+  const watchArgs = () =>
+    useNewLogsWatchSpy.mock.calls.at(-1)?.[0] as {
+      enabled: boolean;
+      since: string;
+      subscription: Record<string, unknown>;
+    };
+  const viewport = (container: HTMLElement) =>
+    container.querySelector<HTMLElement>("[data-log-viewport]")!;
+  beforeEach(() => {
+    watchState.available = false;
+    watchState.dismiss = vi.fn();
+    useNewLogsWatchSpy.mockReset();
+  });
+
+  it("watches for a new line only while paused on a preset range, from the frozen window's end", () => {
+    historyState.lines = lines(0, 3);
+    const { rerender } = render(<LogViewer resource="web" urlLive={false} />);
+    expect(watchArgs().enabled).toBe(true);
+    const history = useHistorySpy.mock.calls.at(-1)?.[2] as {
+      endTime: string;
+    };
+    expect(watchArgs().since).toBe(history.endTime);
+    expect(watchArgs().subscription).toMatchObject({
+      resource: "web",
+      type: "all",
+      textMode: "display",
+    });
+    // Live on: the tail itself streams.
+    rerender(<LogViewer key="live" resource="web" />);
+    expect(watchArgs().enabled).toBe(false);
+    // A custom range, as View in context opens, is never invited back to Live.
+    rerender(
+      <LogViewer
+        key="custom"
+        resource="web"
+        urlLive={false}
+        range={{
+          id: "custom",
+          startTime: new Date(Date.now() - 600_000).toISOString(),
+          endTime: new Date(Date.now() + 600_000).toISOString(),
+          resolutionSeconds: 60,
+        }}
+      />,
+    );
+    expect(watchArgs().enabled).toBe(false);
+    // A filter the tail cannot follow.
+    rerender(
+      <LogViewer
+        key="unsupported"
+        resource="web"
+        urlLive={false}
+        urlFilters={{ ...EMPTY_LOG_FILTERS, type: "app", method: "GET" }}
+      />,
+    );
+    expect(watchArgs().enabled).toBe(false);
+  });
+
+  it("watches nothing on a plan that refuses the request view", () => {
+    historyState.error = new CombinedGraphQLErrors({
+      errors: [
+        {
+          message: "HTTP request logs require the Pro plan or higher",
+          extensions: { code: "PLAN_FEATURE_REQUIRED", feature: "requestLogs" },
+        },
+      ],
+    });
+    render(
+      <LogViewer
+        resource="web"
+        urlLive={false}
+        urlFilters={{ ...EMPTY_LOG_FILTERS, type: "request" }}
+      />,
+    );
+    expect(watchArgs().enabled).toBe(false);
+  });
+
+  it("turns Live on from New logs in Live Tail, and leaves Dismiss to the watch", () => {
+    historyState.lines = lines(0, 3);
+    watchState.available = true;
+    render(<LogViewer resource="web" urlLive={false} />);
+    expect(screen.getByRole("switch", { name: /live/i })).not.toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(watchState.dismiss).toHaveBeenCalledTimes(1);
+    fireEvent.click(
+      screen.getByRole("button", { name: "New logs in Live Tail" }),
+    );
+    expect(screen.getByRole("switch", { name: /live/i })).toBeChecked();
+    expect(watchArgs().enabled).toBe(false);
+  });
+
+  it("holds tailed lines while the reader is away, and never while paused", () => {
+    historyState.lines = lines(0, 60);
+    const { container, rerender } = render(<LogViewer resource="web" />);
+    const scrollAway = () =>
+      act(() => {
+        const el = viewport(container);
+        Object.defineProperty(el, "scrollHeight", {
+          configurable: true,
+          value: 5000,
+        });
+        Object.defineProperty(el, "clientHeight", {
+          configurable: true,
+          value: 520,
+        });
+        el.scrollTop = 0;
+        el.dispatchEvent(new Event("scroll"));
+      });
+    scrollAway();
+    liveState.lines = lines(60, 75);
+    rerender(<LogViewer resource="web" />);
+    expect(
+      screen.getByRole("button", { name: "15+ new logs" }),
+    ).toBeInTheDocument();
+
+    // Paused, nothing is held: a resumed reader's lines show at once.
+    rerender(<LogViewer key="paused" resource="web" urlLive={false} />);
+    scrollAway();
+    liveState.lines = lines(60, 80);
+    rerender(<LogViewer key="paused" resource="web" urlLive={false} />);
+    expect(screen.queryByRole("button", { name: /new logs$/ })).toBeNull();
+  });
+
+  it("offers View in context only while a search or filter narrows the view, and SSH where the route gives it", async () => {
+    const user = userEvent.setup();
+    historyState.lines = lines(0, 3);
+    const contextHref = vi.fn((line: LogLine) => `/ctx/${line.key}`);
+    const shell = vi.fn(() => ({ href: "/services/web/shell?instance=x" }));
+    const { container, rerender } = render(
+      <LogViewer resource="web" contextHref={contextHref} shell={shell} />,
+    );
+    const openMenu = async () => {
+      fireEvent.pointerEnter(container.querySelector('[data-index="0"]')!);
+      await user.click(
+        screen.getByRole("button", { name: "Log line options" }),
+      );
+    };
+    await openMenu();
+    expect(
+      screen.queryByRole("menuitem", { name: "View in context" }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("menuitem", { name: "SSH into instance" }),
+    ).toHaveAttribute("href", "/services/web/shell?instance=x");
+    await user.keyboard("{Escape}");
+
+    rerender(
+      <LogViewer
+        key="filtered"
+        resource="web"
+        urlFilters={{ ...EMPTY_LOG_FILTERS, text: "m" }}
+        contextHref={contextHref}
+        shell={shell}
+      />,
+    );
+    await openMenu();
+    const link = screen.getByRole("menuitem", { name: "View in context" });
+    expect(link).toHaveAttribute("href", "/ctx/id:0");
+    expect(link).toHaveAttribute("target", "_blank");
+  });
+
+  it("marks the line a View in context link names", () => {
+    historyState.lines = lines(0, 3);
+    const { container } = render(
+      <LogViewer resource="web" urlLive={false} contextLine="id:1" />,
+    );
+    expect(container.querySelector("[data-marked]")).toHaveTextContent("m1");
   });
 });

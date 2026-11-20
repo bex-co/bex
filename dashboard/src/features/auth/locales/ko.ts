@@ -74,6 +74,31 @@ const koAuth: Record<string, TranslationEntry> = {
     message: "프로필, 비밀번호, 2단계 인증을 업데이트하세요.",
     description: "Settings page account section description",
   },
+  "auth.appearanceSection": {
+    message: "모양",
+    description:
+      "Account settings (w3/m528): Render's Appearance section heading and its rail link; a log explorer's Options > Theme Settings opens it",
+  },
+  "auth.appearanceSectionSubtitle": {
+    message: "대시보드의 모양을 선택하세요.",
+    description: "Account settings (w3/m528): Appearance section description",
+  },
+  "auth.dashboardTheme": {
+    message: "대시보드 테마",
+    description:
+      "Account settings > Appearance (w3/m528): Render's Dashboard Theme setting, its card title and the select's accessible name",
+  },
+  "auth.dashboardThemeDescription": {
+    message:
+      "이 브라우저에서 사용하는 대시보드 테마입니다. 계정 메뉴의 테마와 같은 설정입니다.",
+    description:
+      "Account settings > Appearance (w3/m528): the Dashboard Theme card's description; the setting is the account menu's Theme, kept in this browser",
+  },
+  "auth.dashboardThemeSystem": {
+    message: "시스템(기본값)",
+    description:
+      "Account settings > Appearance (w3/m528): the System theme option, marked as the default as Render marks it",
+  },
   "auth.integrationsSection": {
     message: "연동",
     description:

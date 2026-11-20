@@ -16,6 +16,13 @@ import { LogLineList } from "../log-line-list";
 import type { LogLine } from "../../types";
 import { setupVirtualGeometry } from "@/test/virtual-geometry";
 
+// Options ends with Theme Settings, a router Link (w3/m528): render it as
+// its anchor, with no router around the component.
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  Link: (await import("@/test/mocks/router-link")).PlainLink,
+}));
+
 // Render's log explorer controls (w3/m509, render.com/docs/logging): the
 // keyboard shortcuts, Maximize, and the Options menu.
 
@@ -235,6 +242,18 @@ describe("log explorer Options (w3/m509)", () => {
       "aria-disabled",
       "true",
     );
+  });
+
+  // Render's Options ends with Theme Settings (w3/m528): `href:
+  // "/u/settings#appearance"`, bex's account Settings ▸ Appearance.
+  it("ends with Theme Settings, a link to account Settings' Appearance", async () => {
+    const user = userEvent.setup();
+    render(<Explorer />);
+    await user.click(screen.getByRole("button", { name: "Log options" }));
+    const items = screen.getAllByRole("menuitem");
+    const last = items.at(-1)!;
+    expect(last).toHaveAccessibleName("Theme Settings");
+    expect(last).toHaveAttribute("href", "/settings#appearance");
   });
 });
 

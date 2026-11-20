@@ -174,13 +174,40 @@ export function logRowsText(
         parts.push(`[${format.resource(line.resource) ?? line.resource}]`);
       }
       if (line.instance) parts.push(`[${shortInstance(line.instance)}]`);
-      if (line.type === LOG_TYPE_REQUEST) {
-        if (line.method) parts.push(line.method);
-        if (line.statusCode) parts.push(line.statusCode);
-        if (line.host || line.path) parts.push(`${line.host}${line.path}`);
-      }
-      parts.push(shownMessage(line));
+      parts.push(...lineBody(line));
       return parts.join(" ");
     })
     .join("\n");
+}
+
+/** A line's request method, status, host and path, then its whole message
+ *  without its terminal styling: what both copies write after the tags. */
+function lineBody(line: LogLine): string[] {
+  const parts: string[] = [];
+  if (line.type === LOG_TYPE_REQUEST) {
+    if (line.method) parts.push(line.method);
+    if (line.statusCode) parts.push(line.statusCode);
+    if (line.host || line.path) parts.push(`${line.host}${line.path}`);
+  }
+  parts.push(shownMessage(line));
+  return parts;
+}
+
+/**
+ * One line as the row menu's Copy log line writes it (Render's `En`, w3/m528):
+ * `[resource] METHOD STATUS host+path`, then the message without its terminal
+ * styling, with the parts the line has. No time and no instance: Render's
+ * label is a project view's resource name, absent on one resource's log.
+ */
+export function logLineText(line: LogLine, resource?: string): string {
+  return [resource ? `[${resource}]` : "", ...lineBody(line)]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/** The held-lines button's count for `count` held lines (Render's
+ *  `BufferedLogsButton`, w3/m528): null below 10, which reads `New logs`,
+ *  else the count rounded up to a multiple of 5, at most 100. */
+export function heldLinesCount(count: number): number | null {
+  return count < 10 ? null : Math.ceil(Math.min(count, 100) / 5) * 5;
 }
