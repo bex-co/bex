@@ -8,7 +8,7 @@
 - a paused view that offers "New logs in Live Tail" when new lines arrive;
 - an Options menu that ends with a Theme Settings link to an Appearance section in account Settings.
 
-**Status:** blocked — t001–t008 and t010–t012 done, shipped in `c4c67370b`; t009's walk passed on the tree and, on production pin `11b1e8f85f06`, for every piece but View in context opened fresh on a window longer than one page, fixed in `93051820b`; that one check waits for a pin carrying `93051820b`, then t013 closes
+**Status:** blocked — t001–t008 and t010–t012 done, shipped in `c4c67370b`; t009's walk passed on the tree and, on production pin `11b1e8f85f06`, for every piece but View in context opened fresh on a window longer than one page, fixed in `93051820b`. On pin `820edf28d22d` that fix held in the re-walk's named checks, and a closed window whose mark is the oldest line of the page that brings it in left the mark on the panel's edge or off it, fixed in `71d3dc5e5`; that check waits for a pin carrying `71d3dc5e5`, then t013 closes
 
 ## Tasks (in order)
 
@@ -100,6 +100,21 @@ The bundle was re-read on 2026-11-20 (`Logs-DOHYAXbe.js`, `UserSettings-3jrn6Tc2
 
 **Cleanup.** The web service, the Postgres and the project were deleted (`DELETE` 204 each). By-id `GET` answered 404 for all three and the environment. The QA session was logged out (`qa-login.sh --logout`, after which the cookie answered 401), and its jars and the screenshots were deleted.
 
+**Re-walk on production (t009, 2026-11-20, pin `820edf28d22d`).** Pin commit `7474e1c6a` carries `93051820b`; the dashboard Deployment ran its digest (`bex-dashboard@sha256:1504900e…`, 1/1 updated and ready). As the QA user in `bex-canary`, in Playwright (Chromium, America/Los_Angeles), the fixture project `qa-20261120-m528b` (`prj-dc0clsbcd0vs73c888vg`, environment `evm-dc0clsbcd0vs73c88900`) held a starter web service created over REST, `qa-20261120-m528b-web` (`srv-dc0cluvob2ts7390k5rg`, `busybox:1.36`). It printed `level=info msg="tick" n=N` every second, a `warn` "slow query took 1200ms" on every 5th and an `error` "upstream timeout" on every 11th. Its deploy `dep-dc0cluvob2ts7390k5s0` went live at 22:35:02Z. Each link came from the row menu under the search `slow query` and was opened in a new tab; "centred" compares the marked row's middle with the panel's, and each position held 5 s later.
+
+| check | production | result |
+| --- | --- | --- |
+| A line in the first page of a still-open window | service tab, 1440: n=120 (window 22:26:47–22:46:47Z, opened 22:37:30Z) opened on the mark, 599 against 610, rows n 98–142 (not the newest), Live off, no search, Return to Bottom offered. 390: n=175, 567 against 567. Application Logs, 1440: n=215, 562 against 567. 390: n=230, 652 against 654 | holds |
+| A line several minutes older than its window's first page, window still open | service tab, 1440: n=40 (22:35:27Z, opened 22:41:25Z) read three older pages (ending 22:39:48, 22:38:08, 22:36:28Z) and centred the mark, 541 against 552. 390: n=45, three older pages, 568 against 567. Application Logs, 1440: n=30, three older pages (ending 22:38:54, 22:37:14, 22:35:34Z), 504 against 538. 390: n=35, 585 against 588 | holds |
+| A line older than its window's first page, window already closed | service tab, 1440: n=200 (window 22:28:07–22:48:07Z, opened 22:48:12Z) read six older pages, the last ending at 22:38:07Z, the mark's own second; the mark sat on the panel's top edge (row 414–437 in a 407–844 panel, under the top fade). n=5: six older pages, the mark again on the top edge. 390: n=210 read six older pages and the panel came to rest on n 166–198, the mark below it, out of view | **fails**, fixed in `71d3dc5e5` (below); re-walk waits for a pin carrying it |
+| No horizontal scroll at 390 | scroll width 390 on every 390 run above | holds |
+
+**The second View in context fix (`71d3dc5e5`).** At a line a second, a closed ±10 minute window holds 600 lines after its mark, six pages of 100, so the mark arrives as the oldest line of the sixth page. `LogLineList` centred it at once. With nothing above it, the scroll clamped to the top, that edge asked for the next older page (`onScroll`'s load-older threshold), and the page arrived under the keep-the-reader's-place anchor, which held the mark at the top edge. At 390, the wrapped rows' measured heights then moved it below the panel. The open-window marks fell mid-page and centred. The list now reads older pages until the mark has half a panel of lines on its older side (above it ascending, below it descending), or nothing older is left, then centres it. On the tree, `local-bex` was patched (in a copy outside the repo) to serve a line every 1001 ms for the last half hour, as the fixture logged. The same closed-window link put the mark at 414–437 before the fix, the production numbers, and after it centred the mark (616 against 626 at 1440, 584 against 591 at 390). A first-page mark in an open window still centred (599 against 610). In `log-line-list-render-explorer.test.tsx`, a mark that is the oldest loaded line reads the older page and is then centred, ascending and descending. Each fails with the fix reverted (`scrollTop` 960 against 724, 0 against 1180), and a mark near the oldest line with nothing older centres as far as the list allows. `yarn lint` passes, and `yarn test` passes 815 files and 9939 tests. Its one unhandled rejection is `sso-buttons.test.tsx` reaching the mock cluster's Kratos at `localhost:4433`, which this checkout's `dashboard/.env` names; with those variables unset it is clean.
+
+**Found on the way.** At 390, a project's Application Logs view keeps 32 px controls (Return to Bottom, Load older, the range picker, Edit view), where a service's Logs tab gives 44 px, because no `data-touch-region` wraps the project's views. Filed as w3/099.
+
+**Cleanup.** The web service and the project were deleted (`DELETE` 204 each), and by-id `GET` answered 404 for both and the environment. The QA session was logged out (`qa-login.sh --logout`, after which the cookie answered 401), and its jar, the screenshots and the patched stub were deleted.
+
 ## Unblock record (2026-11-20)
 
 - **Affected:** w3/m528 t009 (production walk), t013 (closeout).
@@ -115,6 +130,19 @@ The bundle was re-read on 2026-11-20 (`Logs-DOHYAXbe.js`, `UserSettings-3jrn6Tc2
   - on a line several minutes older than the newest 100 lines of its window: older pages load, and the line is marked and centred;
   - on a line inside the first page while its window is still open: the list opens on the mark, not at the newest line.
   - Do the same in a project's Application Logs view. Delete the fixture, log out, record it here, and close with t013.
+
+## Unblocked again (2026-11-20)
+
+- **Affected:** w3/m528 t009 (View in context's production check), t013 (closeout).
+- **Source:** verified evidence. The newest `chore(deploy): pin platform images to <sha>` on `origin/main` is `7474e1c6a` (22:08Z), pinning `820edf28d22d`, and `git merge-base --is-ancestor 93051820b 820edf28d22d` succeeds, so production runs the fix. The gate `pin must carry 93051820b` holds.
+- **Next:** the re-walk § Parked again names, on production as the QA user in `bex-canary` at 1440 and 390; the rest of t009's walk passed on pin `11b1e8f85f06` and is not repeated. Then t013 closes the milestone. No gate remains.
+
+## Parked a second time (2026-11-20)
+
+- **Affected:** w3/m528 t009 (View in context's production check), t013 (closeout).
+- **Source:** verified evidence (§ Verification record, Re-walk on production). On pin `820edf28d22d`, both checks § Parked again names held, in the service tab and Application Logs at 1440 and 390. A closed window whose mark was the oldest line of its page left the mark on the panel's edge at 1440 and off it at 390. That was this milestone's defect, fixed and shipped in `71d3dc5e5`.
+- **Remaining gate:** a production pin carrying `71d3dc5e5` (clears by itself).
+- **Next:** as the QA user in `bex-canary`, with a short-lived web service logging about a line a second, wait until a `slow query` line's ±10 minute window has closed. Then open its View in context link fresh, at 1440 and 390, in a service Logs tab and a project's Application Logs view. Six older pages load, and the line is marked and centred, not on the panel's edge. Also open one line in the first page of a still-open window, to see it still opens on the mark. Delete the fixture, log out, record it here, and close with t013.
 
 ## Also read from the bundle, outside this milestone's scope
 
