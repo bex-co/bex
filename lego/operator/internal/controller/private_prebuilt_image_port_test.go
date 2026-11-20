@@ -171,3 +171,30 @@ func TestPrivatePrebuiltImageNeverSendsAnotherHostsCredential(t *testing.T) {
 		}
 	}
 }
+
+// A Restart reads its image as the serving release went live, not with the
+// credential the service binds now (w8/m529): here that credential's Secret
+// is gone, so a read with it fails, while the release pulled anonymously. On
+// production the Restart after a failed credential switch read the served
+// nginx digest with the bad credential and failed on Docker Hub's 401.
+func TestReleaseReadsItsImageWithItsOwnRegistryBinding(t *testing.T) {
+	var sent []string
+	inner := imageConfigRegistry(t, clickhouseExposed)
+	httpClient := &http.Client{Transport: imageNetworkTransport(func(request *http.Request) (*http.Response, error) {
+		sent = append(sent, request.Header.Get("Authorization"))
+		return inner.Transport.RoundTrip(request)
+	})}
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	r := &AppReconciler{Client: fake.NewClientBuilder().WithScheme(scheme).Build(), Registry: "registry.test", HTTPClient: httpClient}
+	app := prebuiltPrivateApp("acme/clickhouse:23.8", "reg-ext-switched")
+	restartSelecting(app, "")
+	if _, _, err := r.resolveImageNetwork(t.Context(), app, app.Spec.Image); err != nil {
+		t.Fatalf("the Restart read its image with the saved credential: %v", err)
+	}
+	for _, header := range sent {
+		if header != "" {
+			t.Fatalf("sent Authorization %q, want the anonymous read the release went live with", header)
+		}
+	}
+}

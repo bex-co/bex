@@ -88,7 +88,7 @@ func TestMaterializePullSecretUpsertsDockerConfigJSON(t *testing.T) {
 	credID := created.ID
 
 	name, ok, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private-app:1.0", &credID)
-	if err != nil || !ok || name != "web-registry-pull" {
+	if err != nil || !ok || name != appv1alpha1.ExternalRegistryPullSecretName("web", credID) {
 		t.Fatalf("materializePullSecret = name=%q ok=%v err=%v", name, ok, err)
 	}
 
@@ -135,6 +135,82 @@ func TestMaterializePullSecretUpsertsDockerConfigJSON(t *testing.T) {
 	if _, _, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private-app:1.0", &credID); err != nil {
 		t.Fatalf("second materialize: %v", err)
 	}
+}
+
+// Each credential materializes into its own Secret (w8/m529): a switch to B,
+// failed or merely deployed, never rewrites the A that a serving release, its
+// Restart and a rollback to it pull with. Before, both shared
+// "<app>-registry-pull", so a failed switch to a bad credential made every
+// re-pull of the serving release fail with the registry's 401. A rotated token
+// on A still reaches A's Secret at its next materialization.
+func TestMaterializePullSecretKeepsEachCredentialsOwnSecret(t *testing.T) {
+	ctx := context.Background()
+	cl := fakeK8sClient()
+	s := &Service{Base: &core.Base{Client: cl, Namespace: "default"}, Store: newFakeStore(), Secret: newFakeSecretKV()}
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default"}}
+	a, err := s.Create(ctx, CreateRequest{Name: "A", Host: "docker.io", Username: "alice", Secret: "token-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := s.Create(ctx, CreateRequest{Name: "B", Host: "docker.io", Username: "bob", Secret: "token-b"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	read := func(name string) corev1.Secret {
+		t.Helper()
+		var sec corev1.Secret
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: name}, &sec); err != nil {
+			t.Fatal(err)
+		}
+		return sec
+	}
+	nameA, _, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "docker.io/acme/app:1", &a.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := read(nameA)
+	// The operator accepts only names it recognizes as the App's own: a
+	// minted credential id must keep fitting its pattern.
+	if !appv1alpha1.IsExternalRegistryPullSecretName("web", nameA) {
+		t.Fatalf("the operator would refuse %q, minted for credential %s, as another App's Secret", nameA, a.ID)
+	}
+	if before.Labels[appv1alpha1.LabelRegistryPullApp] != "web" || before.Labels[appv1alpha1.LabelRegistryPullCredential] != a.ID {
+		t.Fatalf("A's Secret labels = %v, want its App and credential for reaping", before.Labels)
+	}
+
+	nameB, _, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "docker.io/acme/private:2", &b.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nameB == nameA {
+		t.Fatalf("credentials A and B share the Secret %q", nameA)
+	}
+	if after := read(nameA); after.ResourceVersion != before.ResourceVersion || string(after.Data[corev1.DockerConfigJsonKey]) != string(before.Data[corev1.DockerConfigJsonKey]) {
+		t.Fatalf("materializing B rewrote A's Secret: %s", after.Data[corev1.DockerConfigJsonKey])
+	}
+
+	rotated := "token-a2"
+	if _, err := s.Update(ctx, a.ID, UpdateRequest{Secret: &rotated}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "", &a.ID); err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Auths map[string]struct{ Password string } `json:"auths"`
+	}
+	if err := json.Unmarshal(read(nameA).Data[corev1.DockerConfigJsonKey], &doc); err != nil || doc.Auths["docker.io"].Password != rotated {
+		t.Fatalf("A's Secret after rotation = %+v (%v), want the rotated token", doc, err)
+	}
+
+	// No App binds B any more: its delete reaps B's copy and leaves A's.
+	if err := s.Delete(ctx, b.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: nameB}, &corev1.Secret{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("deleted credential's pull Secret survives: %v", err)
+	}
+	read(nameA)
 }
 
 func TestMaterializePullSecretMissingOpenBaoValueErrors(t *testing.T) {

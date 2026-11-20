@@ -40,9 +40,10 @@ type RollbackOptions struct {
 }
 
 // targetReleaseConfig selects immutable runtime inputs without writing any saved
-// configuration: the target's record, and the port, shutdown delay and
-// pre-deploy command it recorded. A legacy target with no record explicitly selects only its image;
-// this is a compatibility fallback, not full Render configuration parity.
+// configuration: the target's record, the port, shutdown delay and pre-deploy
+// command it recorded, and the registry credential it pulled with. A legacy
+// target with no record explicitly selects only its image; this is a
+// compatibility fallback, not full Render configuration parity.
 func (s *Service) targetReleaseConfig(ctx context.Context, a *appv1alpha1.App, target store.Deploy, restart bool) (*appv1alpha1.ReleaseConfigReference, error) {
 	image := target.ResolvedImage
 	if !restart {
@@ -52,10 +53,11 @@ func (s *Service) targetReleaseConfig(ctx context.Context, a *appv1alpha1.App, t
 	if target.Generation <= 0 {
 		return selected, nil
 	}
+	log := logf.FromContext(ctx).WithValues("app", a.Name, "deploy", target.ID, "generation", target.Generation)
 	rec := &corev1.Secret{}
 	err := s.Client.Get(ctx, client.ObjectKey{Namespace: a.Namespace, Name: appv1alpha1.ReleaseRecordName(a.Name, target.Generation)}, rec)
 	if apierrors.IsNotFound(err) {
-		logf.FromContext(ctx).Info("release selects image only: target configuration record is unavailable", "app", a.Name, "deploy", target.ID, "generation", target.Generation)
+		log.Info("release selects image only: target configuration record is unavailable")
 		return selected, nil
 	}
 	if err != nil {
@@ -73,10 +75,68 @@ func (s *Service) targetReleaseConfig(ctx context.Context, a *appv1alpha1.App, t
 	// before them leaves those to the saved spec.
 	selected.Runtime = spec.Runtime
 	if spec.Runtime == nil {
-		logf.FromContext(ctx).Info("release runs the saved port, shutdown delay and pre-deploy command: target record predates them",
-			"app", a.Name, "deploy", target.ID, "generation", target.Generation)
+		log.Info("release runs the saved port, shutdown delay and pre-deploy command: target record predates them")
+	}
+	selected.Registry = recordedRegistryBinding(a, spec, rec)
+	if selected.Registry == nil {
+		log.Info("release pulls with the saved registry credential: target record predates its binding")
 	}
 	return selected, nil
+}
+
+// recordedRegistryBinding is the registry credential a release pulled its image
+// with (w8/m529), named by that credential's own pull Secret: its record's
+// binding, else the one in the spec it was adopted with, which records hold
+// since w8/m121 (an unreadable one shows none). nil when it shows neither, or
+// names a Secret no credential stands behind (a host-matched credential from
+// before w4/m301): the release then pulls with the saved binding. A release
+// that went live before per-credential Secrets moves off the shared one,
+// which a later switch may have rewritten.
+func recordedRegistryBinding(a *appv1alpha1.App, spec appv1alpha1.ReleaseRecordSpec, rec *corev1.Secret) *appv1alpha1.ReleaseRegistryBinding {
+	binding := spec.Registry
+	if raw := rec.Data[appv1alpha1.ReleaseRecordAdoptedSpecKey]; binding == nil && len(raw) > 0 {
+		var adopted appv1alpha1.AppSpec
+		if json.Unmarshal(raw, &adopted) == nil {
+			binding = adopted.RegistryBinding()
+		}
+	}
+	switch {
+	case binding == nil || binding.PullSecret == "":
+		return binding
+	case binding.CredentialID == "":
+		return nil
+	}
+	return &appv1alpha1.ReleaseRegistryBinding{CredentialID: binding.CredentialID,
+		PullSecret: appv1alpha1.ExternalRegistryPullSecretName(a.Name, binding.CredentialID)}
+}
+
+// refreshedCredentials remembers, for one Restart or rollback, the pull Secret
+// each credential was refreshed into ("" when it is gone).
+type refreshedCredentials map[string]string
+
+// refreshRegistryBinding refreshes the credential selected pulls with from its
+// stored token before its release opens, so a rotated token is used, as a new
+// pull on Render would. A credential deleted since leaves nothing to pull
+// with, and the release pulls anonymously. It reads OpenBao and writes a
+// Secret, so callers run it outside the trigger lock; done lets a selection
+// made again under the lock reuse that refresh.
+func (s *Service) refreshRegistryBinding(ctx context.Context, a *appv1alpha1.App, selected *appv1alpha1.ReleaseConfigReference, done refreshedCredentials) error {
+	binding := selected.Registry
+	if binding == nil || binding.CredentialID == "" || s.PullSecrets == nil {
+		return nil
+	}
+	name, ok := done[binding.CredentialID]
+	if !ok {
+		var err error
+		if name, err = s.PullSecrets.EnsureCredentialPullSecret(ctx, a, binding.CredentialID); err != nil {
+			return fmt.Errorf("refresh registry credential %q for the selected release: %w", binding.CredentialID, err)
+		}
+		done[binding.CredentialID] = name
+	}
+	if name == "" {
+		selected.Registry = &appv1alpha1.ReleaseRegistryBinding{}
+	}
+	return nil
 }
 
 // rollbackImage is the image reference a rollback to target runs. Render
@@ -192,10 +252,21 @@ func (s *Service) restartSelectedRelease(ctx context.Context, service string, a 
 	if selectable, err := s.restartSelectable(ctx, service, a); !selectable || err != nil {
 		return nil, err
 	}
+	// The serving release's credential is refreshed here, before the trigger
+	// lock; the locked selection refreshes again only if it moved on.
+	refreshed := refreshedCredentials{}
+	if _, selected, err := s.restartSelection(ctx, service, a); err == nil && selected != nil {
+		if err := s.refreshRegistryBinding(ctx, a, selected, refreshed); err != nil {
+			return nil, err
+		}
+	}
 	d, err := s.openSelectedRelease(ctx, a, func(a *appv1alpha1.App) (store.Deploy, *appv1alpha1.ReleaseConfigReference, error) {
 		target, selected, err := s.restartSelection(ctx, service, a)
 		if err == nil && selected == nil {
 			err = fmt.Errorf("%w: service %q changed its running release during the restart; retry", core.ErrConflict, service)
+		}
+		if err == nil {
+			err = s.refreshRegistryBinding(ctx, a, selected, refreshed)
 		}
 		return target, selected, err
 	}, false, false)

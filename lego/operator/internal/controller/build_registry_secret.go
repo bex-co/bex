@@ -48,7 +48,7 @@ func (r *AppReconciler) prepareBuildRegistrySecret(ctx context.Context, app *app
 	}
 	cl := r.buildPlaneClient()
 	var external corev1.Secret
-	if err := cl.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.Spec.ExternalRegistryPullSecret}, &external); err != nil {
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.ReleasePullSecret()}, &external); err != nil {
 		return "", fmt.Errorf("get Docker-build registry credential: %w", err)
 	}
 	externalConfig, err := dockerConfigData(&external)
@@ -79,7 +79,7 @@ func (r *AppReconciler) prepareBuildRegistrySecret(ctx context.Context, app *app
 }
 
 func usesBuildRegistryConfig(app *appv1alpha1.App, builder string) bool {
-	return builder == build.BuilderDockerfile && app.Spec.ExternalRegistryPullSecret != ""
+	return builder == build.BuilderDockerfile && app.ReleasePullSecret() != ""
 }
 
 // buildkitRegistryConfig makes the already-insecure platform output registry

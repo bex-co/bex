@@ -131,7 +131,8 @@ func TestCopyCloneSecretRelocatesOwnProtectedBuildSecrets(t *testing.T) {
 
 	for _, name := range []string{
 		appv1alpha1.CloneSecretName(app.Name),
-		appv1alpha1.ExternalRegistryPullSecretName(app.Name),
+		appv1alpha1.LegacyExternalRegistryPullSecretName(app.Name),
+		appv1alpha1.ExternalRegistryPullSecretName(app.Name, "rgc-cv0a1b2c3d4e5f6g7h8i"),
 	} {
 		t.Run("relocates "+name, func(t *testing.T) {
 			buildClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(protected(name)).Build()

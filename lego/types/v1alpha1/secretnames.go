@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"crypto/sha256"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -43,9 +44,42 @@ import (
 func CloneSecretName(appName string) string { return appName + "-clone" }
 
 // ExternalRegistryPullSecretName is CloneSecretName's counterpart for the
-// dockerconfigjson Secret materialized from a workspace's stored registry
-// credential (w2/m14).
-func ExternalRegistryPullSecretName(appName string) string { return appName + "-registry-pull" }
+// dockerconfigjson Secret materialized from the workspace's stored registry
+// credential credentialID (w2/m14). Each (App, credential) pair has its own
+// Secret, so materializing another credential never rewrites the one a serving
+// release pulls with: a switch that fails leaves Restart, rollback and every
+// re-pull on the old credential (w8/m529).
+func ExternalRegistryPullSecretName(appName, credentialID string) string {
+	return LegacyExternalRegistryPullSecretName(appName) + "-" + credentialID
+}
+
+// LegacyExternalRegistryPullSecretName is the one per-App Secret every
+// credential materialized into before w8/m529. Releases that went live then
+// still name it, so it stays an App's own Secret until the App is deleted.
+func LegacyExternalRegistryPullSecretName(appName string) string { return appName + "-registry-pull" }
+
+// IsExternalRegistryPullSecretName reports whether name is one of appName's own
+// external registry pull Secrets: the legacy one, or one per credential. The
+// credential part must be a minted registry credential id, which has no
+// hyphen, so another App's Secret ("<app>-registry-pull-rgc-x-clone" of an App
+// named "<app>-registry-pull-rgc-x") never passes for this App's.
+func IsExternalRegistryPullSecretName(appName, name string) bool {
+	legacy := LegacyExternalRegistryPullSecretName(appName)
+	credentialID, ok := strings.CutPrefix(name, legacy+"-")
+	return name == legacy || ok && registryCredentialIDPattern.MatchString(credentialID)
+}
+
+// registryCredentialIDPattern is a minted registry credential id: "rgc-" and
+// an xid (lego/backend/internal/id).
+var registryCredentialIDPattern = regexp.MustCompile(`^rgc-[0-9a-v]{20}$`)
+
+// Labels on every per-credential pull Secret, so App delete and credential
+// delete find the copies they reap without knowing every credential an App
+// ever used, or every App a credential reached (w8/m529).
+const (
+	LabelRegistryPullApp        = "app.bex.co/registry-pull-app"
+	LabelRegistryPullCredential = "app.bex.co/registry-pull-credential"
+)
 
 // TLSSecretName is the Secret the operator issues a host's certificate into,
 // and the one bex-api looks for to report the host verified (w5/m121). Each

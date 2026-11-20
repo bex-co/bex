@@ -616,7 +616,7 @@ func TestReconcileProjectsARecreatedServiceUnderItsOwnObjectName(t *testing.T) {
 	if app.Name != objectName || app.Labels[LabelTenant] != ten.ID || app.Labels[LabelAppID] != row.ID {
 		t.Fatalf("projected %s labels %v, want %s for %s", app.Name, app.Labels, objectName, row.ID)
 	}
-	if want := objectName + "-registry-pull"; app.Spec.ExternalRegistryPullSecret != want {
+	if want := objectName + "-registry-pull-" + credentialID; app.Spec.ExternalRegistryPullSecret != want {
 		t.Errorf("pull secret = %q, want %q", app.Spec.ExternalRegistryPullSecret, want)
 	}
 	if got := (App{TenantID: ten.ID, Name: "web"}).AppObjectName(); got != core.CRName(ten.ID, "web") {
@@ -641,7 +641,7 @@ func TestReconcileProjectsExplicitRegistryCredential(t *testing.T) {
 	if app.Spec.RegistryCredentialID == nil || *app.Spec.RegistryCredentialID != credentialID {
 		t.Fatalf("registry credential id = %v, want %q", app.Spec.RegistryCredentialID, credentialID)
 	}
-	wantPullSecret := core.CRName(ten.ID, "web") + "-registry-pull"
+	wantPullSecret := appv1alpha1.ExternalRegistryPullSecretName(core.CRName(ten.ID, "web"), credentialID)
 	if app.Spec.ExternalRegistryPullSecret != wantPullSecret {
 		t.Errorf("pull secret = %q, want %q", app.Spec.ExternalRegistryPullSecret, wantPullSecret)
 	}
@@ -651,6 +651,32 @@ func TestReconcileProjectsExplicitRegistryCredential(t *testing.T) {
 	app = getApp(t, cl)
 	if app.Spec.ExternalRegistryPullSecret != wantPullSecret {
 		t.Errorf("second reconcile cleared pull secret = %q", app.Spec.ExternalRegistryPullSecret)
+	}
+
+	// A service that went live before per-credential Secrets keeps naming the
+	// legacy one while its credential stands (w8/m529): renaming it would
+	// re-release every credentialed service onto a Secret only its next
+	// deploy materializes.
+	legacy := appv1alpha1.LegacyExternalRegistryPullSecretName(app.Name)
+	app.Spec.ExternalRegistryPullSecret = legacy
+	if err := cl.Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("legacy reconcile: %v", err)
+	}
+	if app = getApp(t, cl); app.Spec.ExternalRegistryPullSecret != legacy {
+		t.Errorf("legacy pull secret for an unchanged credential = %q, want %q kept", app.Spec.ExternalRegistryPullSecret, legacy)
+	}
+	other := "rgc-other"
+	if _, err := store.SetAppSource(ctx, row.ID, "", "ghcr.io/acme/private:1", "main", &other); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("switch reconcile: %v", err)
+	}
+	if app = getApp(t, cl); app.Spec.ExternalRegistryPullSecret != appv1alpha1.ExternalRegistryPullSecretName(app.Name, other) {
+		t.Errorf("pull secret after a switch = %q, want the new credential's own", app.Spec.ExternalRegistryPullSecret)
 	}
 
 	empty := ""

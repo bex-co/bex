@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -129,16 +130,38 @@ func (b deployPullSecretBridge) EnsurePullSecret(ctx context.Context, a *appv1al
 	return b.svc.ensureExternalRegistryPullSecret(ctx, a)
 }
 
+// EnsureCredentialPullSecret refreshes credentialID's pull Secret for a from
+// its stored token, for a Restart or rollback whose release recorded it
+// (w8/m529): a rotated token is used, as a new pull on Render would. "" means
+// the credential is gone (deleted, or no longer this workspace's), and the
+// release pulls anonymously.
+func (b deployPullSecretBridge) EnsureCredentialPullSecret(ctx context.Context, a *appv1alpha1.App, credentialID string) (string, error) {
+	if b.svc.RegistryCreds == nil {
+		return "", core.ErrRegistryCredentialsUnavailable
+	}
+	// No image: the release's own reference may be a digest in bex's registry,
+	// and the credential's stored host is the one it pulled from.
+	name, _, err := b.svc.RegistryCreds.MaterializePullSecret(ctx, b.svc.AppWorkspace(ctx, a), a, "", &credentialID)
+	if errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden) {
+		return "", nil
+	}
+	return name, err
+}
+
 func (s *Service) DeployPullSecretPreparer() deployPullSecretBridge {
 	return deployPullSecretBridge{s}
 }
 
-// deleteExternalRegistryPullSecret removes an App's registry-pull Secret on
-// service delete. Best-effort: an absent Secret (no credential ever matched
-// this App's image, or registry credentials are off) is not an error. Needed
-// because the Secret carries no ownerRef (see registrycreds.materializePullSecret's
-// doc comment) — the App CR's delete cascade wouldn't reach it otherwise.
-func (s *Service) deleteExternalRegistryPullSecret(ctx context.Context, namespace, app string) error {
-	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.ExternalRegistryPullSecretName(app), Namespace: namespace}}
-	return client.IgnoreNotFound(s.Client.Delete(ctx, sec))
+// deleteExternalRegistryPullSecrets removes every registry-pull Secret of an
+// App on service delete: one per credential it used (w8/m529), and the legacy
+// per-App one. An absent Secret (no credential ever bound, or registry
+// credentials are off) is not an error. Needed because the Secrets carry no
+// ownerRef (see registrycreds.materializePullSecret's doc comment) — the App
+// CR's delete cascade wouldn't reach them otherwise.
+func (s *Service) deleteExternalRegistryPullSecrets(ctx context.Context, namespace, app string) error {
+	if err := s.DeleteListed(ctx, &corev1.SecretList{}, client.InNamespace(namespace), client.MatchingLabels{appv1alpha1.LabelRegistryPullApp: app}); err != nil {
+		return err
+	}
+	legacy := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.LegacyExternalRegistryPullSecretName(app), Namespace: namespace}}
+	return client.IgnoreNotFound(s.Client.Delete(ctx, legacy))
 }

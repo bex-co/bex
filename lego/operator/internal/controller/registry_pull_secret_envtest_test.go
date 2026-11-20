@@ -197,6 +197,24 @@ var _ = Describe("Tenant registry imagePullSecrets (w6/m29)", func() {
 		Expect(dep.ResourceVersion).To(Equal(depVersion))
 		Expect(cron.ResourceVersion).To(Equal(cronVersion))
 
+		By("a release keeps the external pull Secret it went live with, not a newer saved one (w8/m529)")
+		pullA := appv1alpha1.ExternalRegistryPullSecretName(name, "rgc-a0000000000000000000")
+		dep.Spec.Template.Spec.ImagePullSecrets = append(dep.Spec.Template.Spec.ImagePullSecrets, corev1.LocalObjectReference{Name: pullA})
+		Expect(k8sClient.Update(ctx, dep)).To(Succeed())
+		app.Spec.ExternalRegistryPullSecret = appv1alpha1.ExternalRegistryPullSecretName(name, "rgc-b0000000000000000000")
+		Expect(r.backfillWorkloadPullSecrets(ctx, app)).To(Succeed())
+		Expect(k8sClient.Get(ctx, nn, dep)).To(Succeed())
+		Expect(secretNames(dep.Spec.Template.Spec.ImagePullSecrets)).To(Equal([]string{pullSecret, pullA}))
+
+		By("one named by hand converges once and stays")
+		app.Spec.ExternalRegistryPullSecret = "ext-pull"
+		dep.Spec.Template.Spec.ImagePullSecrets = []corev1.LocalObjectReference{{Name: pullSecret}, {Name: "ext-pull"}}
+		Expect(k8sClient.Update(ctx, dep)).To(Succeed())
+		depVersion = dep.ResourceVersion
+		Expect(r.backfillWorkloadPullSecrets(ctx, app)).To(Succeed())
+		Expect(k8sClient.Get(ctx, nn, dep)).To(Succeed())
+		Expect(dep.ResourceVersion).To(Equal(depVersion), "backfill must not strip the Secret the render puts back")
+
 		cleanupApp(r, name)
 	})
 })

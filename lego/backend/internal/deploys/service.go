@@ -97,6 +97,10 @@ type CommitResolver interface {
 // only when a deploy actually starts. apps.Service's bridge satisfies it.
 type PullSecretPreparer interface {
 	EnsurePullSecret(ctx context.Context, app *appv1alpha1.App) (string, error)
+	// EnsureCredentialPullSecret refreshes credentialID's pull Secret for app
+	// from its stored token, for a Restart or rollback whose release recorded
+	// it (w8/m529). "": the credential is gone.
+	EnsureCredentialPullSecret(ctx context.Context, app *appv1alpha1.App, credentialID string) (string, error)
 }
 
 // DeployStartedNotifier is the request-time notification seam. The
@@ -1373,6 +1377,11 @@ func (s *Service) rollbackFetched(ctx context.Context, service string, a *appv1a
 	if d, deferred, err := s.deferDeploy(ctx, a, store.Deploy{Trigger: store.TriggerRollback, Image: selected.Image, RollbackOf: target.ID, TriggeredBy: core.SubjectFrom(ctx)},
 		store.DeferredRequest{DisableAutoDeploy: o.DisableAutoDeploy}, alwaysWaits); deferred || err != nil {
 		return d, err
+	}
+	// Its credential is refreshed only for a rollback that runs now; one that
+	// waits selects again when it runs.
+	if err := s.refreshRegistryBinding(ctx, a, selected, refreshedCredentials{}); err != nil {
+		return DeployView{}, err
 	}
 	disablesAutoDeploy := o.DisableAutoDeploy && a.Spec.AutoDeploy
 	fromTrigger := core.RenderAutoDeployTrigger(a.Spec.AutoDeploy, a.Spec.AutoDeployTrigger)

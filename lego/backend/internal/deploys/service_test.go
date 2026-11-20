@@ -765,11 +765,19 @@ func TestTriggerDeployOnlyAcceptsImageBacked(t *testing.T) {
 type fakePullSecretPreparer struct {
 	calls int
 	name  string
+	// credentials maps each credential that still exists to its pull Secret.
+	credentials map[string]string
+	refreshed   []string
 }
 
 func (f *fakePullSecretPreparer) EnsurePullSecret(_ context.Context, _ *appv1alpha1.App) (string, error) {
 	f.calls++
 	return f.name, nil
+}
+
+func (f *fakePullSecretPreparer) EnsureCredentialPullSecret(_ context.Context, _ *appv1alpha1.App, credentialID string) (string, error) {
+	f.refreshed = append(f.refreshed, credentialID)
+	return f.credentials[credentialID], nil
 }
 
 func TestTriggerMaterializesPendingSourcePullSecret(t *testing.T) {

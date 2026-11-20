@@ -55,7 +55,17 @@ func (b *Base) ListByTenant(ctx context.Context, list client.ObjectList, tenantI
 // object another teardown path (the row cascade, the projector prune) already
 // removed is ignored (NotFound), so a retried workspace delete completes.
 func (b *Base) PurgeByTenant(ctx context.Context, list client.ObjectList, tenantID string) error {
-	if err := b.ListByTenant(ctx, list, tenantID); err != nil {
+	if err := b.DeleteListed(ctx, list, client.MatchingLabels{LabelTenant: tenantID}); err != nil {
+		return fmt.Errorf("purge tenant %s: %w", tenantID, err)
+	}
+	return nil
+}
+
+// DeleteListed deletes every object of list's kind that opts select, as
+// PurgeByTenant does: a List + per-object Delete (no `deletecollection` verb),
+// ignoring an object already gone. list is scratch space for the fetch.
+func (b *Base) DeleteListed(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+	if err := b.Client.List(ctx, list, opts...); err != nil {
 		return err
 	}
 	items, err := meta.ExtractList(list)
@@ -65,9 +75,9 @@ func (b *Base) PurgeByTenant(ctx context.Context, list client.ObjectList, tenant
 	for _, item := range items {
 		obj, ok := item.(client.Object)
 		if !ok {
-			return fmt.Errorf("purge tenant %s: %T is not a client.Object", tenantID, item)
+			return fmt.Errorf("%T is not a client.Object", item)
 		}
-		if err := b.Client.Delete(ctx, obj); err != nil && client.IgnoreNotFound(err) != nil {
+		if err := b.Client.Delete(ctx, obj); client.IgnoreNotFound(err) != nil {
 			return err
 		}
 	}

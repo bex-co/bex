@@ -234,18 +234,35 @@ func TestDeleteRemovesExternalRegistryPullSecret(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default"},
 		Spec:       appv1alpha1.AppSpec{Image: "ghcr.io/acme/private:1.0", ExternalRegistryPullSecret: "web-registry-pull"},
 	}
-	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "web-registry-pull", Namespace: "default"}}
+	// One per credential it pulled with since w8/m529, and the legacy one a
+	// release from before still names; another App's copy stays.
+	pullCopy := func(app, credential string) *corev1.Secret {
+		return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.ExternalRegistryPullSecretName(app, credential), Namespace: "default",
+			Labels: map[string]string{appv1alpha1.LabelRegistryPullApp: app, appv1alpha1.LabelRegistryPullCredential: credential}}}
+	}
+	owned := []*corev1.Secret{
+		{ObjectMeta: metav1.ObjectMeta{Name: "web-registry-pull", Namespace: "default"}},
+		pullCopy("web", "rgc-a"), pullCopy("web", "rgc-b"),
+	}
+	foreign := pullCopy("api", "rgc-a")
 	svc, cl := rcService(&fakePullSecrets{}, app)
-	if err := cl.Create(context.Background(), sec); err != nil {
-		t.Fatal(err)
+	for _, sec := range append(owned, foreign) {
+		if err := cl.Create(context.Background(), sec); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	if err := svc.Delete(context.Background(), "web"); err != nil {
 		t.Fatal(err)
 	}
-	var got corev1.Secret
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web-registry-pull"}, &got); err == nil {
-		t.Error("delete must remove the registry-pull secret")
+	for _, sec := range owned {
+		var got corev1.Secret
+		if err := cl.Get(context.Background(), client.ObjectKeyFromObject(sec), &got); err == nil {
+			t.Errorf("delete left the registry-pull secret %s behind", sec.Name)
+		}
+	}
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(foreign), &corev1.Secret{}); err != nil {
+		t.Errorf("delete removed another App's registry-pull secret: %v", err)
 	}
 }
 

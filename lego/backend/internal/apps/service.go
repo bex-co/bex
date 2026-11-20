@@ -3224,15 +3224,18 @@ func (s *Service) writeInitialApp(ctx context.Context, req CreateRequest, a *app
 	captureOperational := func(cause error) error {
 		captureCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 		defer cancel()
-		for _, pair := range [][2]string{
-			{a.Spec.CloneSecret, appv1alpha1.CloneSecretName(a.Name)},
-			{a.Spec.ExternalRegistryPullSecret, appv1alpha1.ExternalRegistryPullSecretName(a.Name)},
+		for _, own := range []struct {
+			name string
+			ok   bool
+		}{
+			{a.Spec.CloneSecret, a.Spec.CloneSecret == appv1alpha1.CloneSecretName(a.Name)},
+			{a.Spec.ExternalRegistryPullSecret, appv1alpha1.IsExternalRegistryPullSecretName(a.Name, a.Spec.ExternalRegistryPullSecret)},
 		} {
-			if pair[0] != pair[1] {
+			if !own.ok {
 				continue
 			}
 			secret := &corev1.Secret{}
-			if err := s.Client.Get(captureCtx, client.ObjectKey{Namespace: a.Namespace, Name: pair[0]}, secret); err != nil {
+			if err := s.Client.Get(captureCtx, client.ObjectKey{Namespace: a.Namespace, Name: own.name}, secret); err != nil {
 				if !apierrors.IsNotFound(err) {
 					cause = errors.Join(cause, err)
 				}
@@ -3445,7 +3448,7 @@ func (s *Service) Delete(ctx context.Context, name string) error {
 	}
 	// Same for the external-registry pull Secret (w2/m14) — no ownerRef (see
 	// pullsecret.go), so it needs the same explicit delete.
-	if err := s.deleteExternalRegistryPullSecret(ctx, a.Namespace, a.Name); err != nil {
+	if err := s.deleteExternalRegistryPullSecrets(ctx, a.Namespace, a.Name); err != nil {
 		return fmt.Errorf("delete registry pull secret: %w", err)
 	}
 	// Purge OpenBao env-var and secret-file paths — not owned by the App CR, so

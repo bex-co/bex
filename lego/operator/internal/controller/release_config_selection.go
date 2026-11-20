@@ -46,7 +46,7 @@ type runtimeConfigRecord struct {
 	spec     appv1alpha1.ReleaseRecordSpec
 	template corev1.PodTemplateSpec
 	// adopted, when set, is written as the release's adopted spec
-	// (releaseRecordAdoptedSpecKey). Reads leave it nil; writes without it keep
+	// (ReleaseRecordAdoptedSpecKey). Reads leave it nil; writes without it keep
 	// the stored one, or store adoptedIfAbsent when there is none.
 	adopted         *appv1alpha1.AppSpec
 	adoptedIfAbsent *appv1alpha1.AppSpec
@@ -171,6 +171,9 @@ func (r *AppReconciler) ensureSelectedReleaseConfig(ctx context.Context, app *ap
 		// The selection's recorded settings, as bex-api read them: the port
 		// and pre-deploy step this pass already serves from (App.RuntimeSpec).
 		rec.spec.Runtime = ref.Runtime
+		// And the registry binding it pulls with (w8/m529), so a Restart of
+		// this release reads it back from this release's own record.
+		rec.spec.Registry = ref.Registry
 		// The selection's own spec, for its pin to render once a newer deploy
 		// clears it from the saved spec (heldReleaseView, w4/661).
 		if desiredAppReleaseIdentity(app.Spec).release == app.Status.ReleaseFingerprint {
@@ -389,6 +392,7 @@ func (rec *runtimeConfigRecord) projectRuntimeApp(app *appv1alpha1.App, generati
 	}
 	effectiveApp.Spec.Env = rec.spec.Env
 	rec.spec.Runtime.ApplyTo(&effectiveApp.Spec)
+	rec.spec.Registry.ApplyTo(&effectiveApp.Spec)
 	rec.applySources(effectiveApp)
 	return effectiveApp
 }
@@ -558,7 +562,7 @@ func releaseRecordSpec(app *appv1alpha1.App) appv1alpha1.ReleaseRecordSpec {
 	return appv1alpha1.ReleaseRecordSpec{Version: 1, StartCommand: app.Spec.StartCommand, Command: new(app.Spec.Command),
 		HealthCheckPath: new(app.Spec.HealthCheckPath), Replicas: new(app.Spec.Replicas), Env: app.Spec.Env,
 		EnvFromSecret: runtimeEnvSecret(app), EnvFromSecrets: app.Spec.EnvFromSecrets, FilesFromSecrets: files,
-		Runtime: app.Spec.RuntimeSettings()}
+		Runtime: app.Spec.RuntimeSettings(), Registry: app.Spec.RegistryBinding()}
 }
 
 // releaseRuntimeSpec is the spec this pass serves its port from: the
@@ -607,7 +611,7 @@ func (r *AppReconciler) persistRuntimeConfigRecord(ctx context.Context, app *app
 		rec.Labels[snapshotGenerationLabel] = strconv.FormatInt(generation, 10)
 		data := map[string][]byte{appv1alpha1.ReleaseRecordPodTemplateKey: raw, appv1alpha1.ReleaseRecordSpecKey: spec}
 		if adopted == nil {
-			adopted = rec.Data[releaseRecordAdoptedSpecKey]
+			adopted = rec.Data[appv1alpha1.ReleaseRecordAdoptedSpecKey]
 		}
 		if adopted == nil && record.adoptedIfAbsent != nil {
 			var err error
@@ -616,7 +620,7 @@ func (r *AppReconciler) persistRuntimeConfigRecord(ctx context.Context, app *app
 			}
 		}
 		if adopted != nil {
-			data[releaseRecordAdoptedSpecKey] = adopted
+			data[appv1alpha1.ReleaseRecordAdoptedSpecKey] = adopted
 		}
 		rec.Data = data
 		return controllerutil.SetControllerReference(app, rec, r.Scheme)

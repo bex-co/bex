@@ -162,7 +162,8 @@ func TestInitialGroupFailureCompensatesGeneratedOperationalSecrets(t *testing.T)
 			if err != nil {
 				t.Fatal(err)
 			}
-			pullName := appv1alpha1.ExternalRegistryPullSecretName(a.Name)
+			a.Spec.RegistryCredentialID = new("rgc-d98210cbbpdc73dcrkvg")
+			pullName := appv1alpha1.ExternalRegistryPullSecretName(a.Name, *a.Spec.RegistryCredentialID)
 			svc.RegistryCreds = &fakePullSecrets{name: pullName, ok: true}
 			a.Spec.ExternalRegistryPullSecret, err = svc.ensureExternalRegistryPullSecret(ctx, a)
 			if err != nil {

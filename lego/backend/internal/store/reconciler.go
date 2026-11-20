@@ -865,6 +865,14 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 			// continuing to project all other owned intent.
 			want.Image = cur.Spec.Image
 		}
+		if id := want.RegistryCredentialID; id != nil && *id != "" && equalStringPtrs(cur.Spec.RegistryCredentialID, id) &&
+			cur.Spec.ExternalRegistryPullSecret == appv1alpha1.LegacyExternalRegistryPullSecretName(cur.Name) {
+			// A service that went live before per-credential Secrets keeps the
+			// legacy one while its credential stands: renaming it would roll
+			// every credentialed service onto a Secret only its next deploy
+			// materializes (w8/m529).
+			want.ExternalRegistryPullSecret = cur.Spec.ExternalRegistryPullSecret
+		}
 		specChanged := applyOwnedSpec(&cur.Spec, want)
 		labelsChanged := stampLabels(cur, d, r.identity(), r.ManagedOIDC)
 		if specChanged || labelsChanged {
@@ -2984,10 +2992,11 @@ func projectSpec(d DesiredApp) appv1alpha1.AppSpec {
 	// the environments fan-out, which also handles the deny-all projection).
 	s.EnvironmentIPAllowList = slices.Clone(d.EnvironmentIPAllowList)
 	if d.RegistryCredentialID != nil && *d.RegistryCredentialID != "" {
-		// Explicit credentials materialize to a deterministic Secret name. Keep
-		// this in the desired spec (not only projectApp) so every later resync
-		// preserves the reference instead of treating it as stale owned state.
-		s.ExternalRegistryPullSecret = appv1alpha1.ExternalRegistryPullSecretName(d.AppObjectName())
+		// Explicit credentials materialize to a deterministic Secret name, one
+		// per credential (w8/m529). Keep this in the desired spec (not only
+		// projectApp) so every later resync preserves the reference instead of
+		// treating it as stale owned state.
+		s.ExternalRegistryPullSecret = appv1alpha1.ExternalRegistryPullSecretName(d.AppObjectName(), *d.RegistryCredentialID)
 	}
 	return s
 }

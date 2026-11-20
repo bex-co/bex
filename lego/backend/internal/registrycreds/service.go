@@ -408,6 +408,9 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 			fmt.Sprintf("registry credential %q is still used by service %q (%s); remove it from the service first", id, name, serviceID),
 			map[string]any{"serviceId": serviceID, "serviceName": name})
 	}
+	if err := s.reapCredentialPullSecrets(ctx, workspaceID, id); err != nil {
+		return fmt.Errorf("delete registry credential %q pull Secrets: %w", id, err)
+	}
 	if err := s.Secret.Delete(ctx, secretPath(workspaceID, id)); err != nil {
 		return fmt.Errorf("delete registry credential secret: %w", err)
 	}

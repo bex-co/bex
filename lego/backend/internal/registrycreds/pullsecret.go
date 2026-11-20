@@ -35,12 +35,12 @@ import (
 )
 
 // pullsecret.go materializes a workspace's stored registry credential into a
-// per-App `kubernetes.io/dockerconfigjson` Secret (w2/m14/t002) — the same
-// "bex-api creates the opaque Secret, the operator only references it"
-// pattern the git clone-secret path already established (apps'
+// per-App, per-credential `kubernetes.io/dockerconfigjson` Secret (w2/m14/t002,
+// w8/m529) — the same "bex-api creates the opaque Secret, the operator only
+// references it" pattern the git clone-secret path already established (apps'
 // copyCloneSecret). The operator stays registry-unaware: it never resolves
-// which credential (if any) matches an image, it only wires
-// app.Spec.ExternalRegistryPullSecret into imagePullSecrets when set.
+// which credential (if any) matches an image, it only wires the release's
+// pull Secret (App.ReleasePullSecret) into imagePullSecrets when set.
 
 // registryHost resolves the registry hostname a plain image reference pulls
 // against, following Docker's own reference-parsing rule: the first "/"-
@@ -134,16 +134,18 @@ func (s *Service) materializePullSecret(ctx context.Context, workspaceID string,
 	if err != nil || !ok {
 		return "", ok, err
 	}
-	name := appv1alpha1.ExternalRegistryPullSecretName(app.Name)
+	// One Secret per credential: materializing B never rewrites the A that a
+	// serving release, its Restart or a rollback to it pulls with (w8/m529).
+	name := appv1alpha1.ExternalRegistryPullSecretName(app.Name, cred.ID)
 	auths := dockerConfigJSON(host, cred.Username, password)
 	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
 	// No owner reference, deliberately: this can run as part of a brand-new
 	// App's own Create call, before the App has a UID an owner reference could
 	// point at (an owner reference with an empty UID is rejected by the API
 	// server). Mirrors apps' clone-secret Secret, which has the identical
-	// constraint and the identical fix — apps.Service.Delete explicitly deletes
-	// this Secret by its deterministic name instead of relying on the App CR's
-	// delete cascade to reach it.
+	// constraint and the identical fix: apps.Service.Delete deletes an App's
+	// pull Secrets by LabelRegistryPullApp, and this package's Delete reaps a
+	// credential's by LabelRegistryPullCredential.
 	if _, err := controllerutil.CreateOrUpdate(ctx, s.Client, sec, func() error {
 		// Round-11 #1: the workspace's external-registry credential is
 		// operational — an App naming this Secret in envFrom would dump the
@@ -154,6 +156,8 @@ func (s *Service) materializePullSecret(ctx context.Context, workspaceID string,
 			sec.Labels = map[string]string{}
 		}
 		sec.Labels[appv1alpha1.LabelProtectedFromTenantMount] = appv1alpha1.ProtectedFromTenantMount
+		sec.Labels[appv1alpha1.LabelRegistryPullApp] = app.Name
+		sec.Labels[appv1alpha1.LabelRegistryPullCredential] = cred.ID
 		sec.Type = corev1.SecretTypeDockerConfigJson
 		sec.Data = map[string][]byte{corev1.DockerConfigJsonKey: auths}
 		return nil
@@ -188,8 +192,8 @@ func dockerConfigJSON(host, username, password string) []byte {
 // cross-package satisfaction, but the wrapper type is not a Service verb.
 type pullSecretSource struct{ s *Service }
 
-// ValidatePullSecret satisfies apps.PullSecretSource without mutating the
-// deterministic per-App Secret used by the active release.
+// ValidatePullSecret satisfies apps.PullSecretSource without writing any pull
+// Secret.
 func (p pullSecretSource) ValidatePullSecret(ctx context.Context, workspaceID, image string, credentialID *string) error {
 	_, _, _, _, err := p.s.resolvePullCredential(ctx, workspaceID, image, credentialID)
 	return err
@@ -266,13 +270,10 @@ func (s *Service) DeployPullSecretSource() pullSecretSource { return pullSecretS
 
 // appBoundToCredential reports whether any App in workspaceID's namespace
 // selects cred explicitly (spec.registryCredentialId), the only way an App
-// uses a credential (w4/m301). Deleting a credential still bound to an App
-// would leave that App's derived <app>-registry-pull Secret live with a
-// now-unrecoverable password forever: the Secret carries no ownerRef (see
-// materializePullSecret's doc comment) and is only reaped on the App's own
-// delete, not the credential's (w4/029.md #12). An App whose deletion has
-// begun no longer counts: the service is gone on every read, and its Secret
-// is reaped with it (w4/599).
+// uses a credential (w4/m301). A credential still bound is refused delete: the
+// service would lose the credential its next deploy pulls with (w4/029.md
+// #12). An App whose deletion has begun no longer counts: the service is gone
+// on every read, and its Secrets are reaped with it (w4/599).
 func (s *Service) appBoundToCredential(ctx context.Context, workspaceID string, cred store.RegistryCredential) (*appv1alpha1.App, error) {
 	var list appv1alpha1.AppList
 	opts := []client.ListOption{client.InNamespace(s.AppNamespace(workspaceID))}
@@ -292,4 +293,14 @@ func (s *Service) appBoundToCredential(ctx context.Context, workspaceID string, 
 		}
 	}
 	return nil, nil
+}
+
+// reapCredentialPullSecrets deletes every per-App copy of credential id in
+// workspaceID's namespace once no App binds it (w8/m529): each still holds the
+// password, and carries no owner reference to reap it. A release that went
+// live with the credential pulls anonymously from then on, as a deleted
+// credential leaves nothing to pull with.
+func (s *Service) reapCredentialPullSecrets(ctx context.Context, workspaceID, id string) error {
+	return s.DeleteListed(ctx, &corev1.SecretList{}, client.InNamespace(s.AppNamespace(workspaceID)),
+		client.MatchingLabels{appv1alpha1.LabelRegistryPullCredential: id})
 }

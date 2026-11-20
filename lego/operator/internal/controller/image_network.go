@@ -117,12 +117,12 @@ func parseExternalImageReference(image string) (host, repo, repoPath, reference 
 }
 
 // externalImageAuthHeader is the Basic header of the workspace registry
-// credential bound to this App (spec.externalRegistryPullSecret, the same
+// credential the App's release pulls with (App.ReleasePullSecret, the same
 // Secret kubelet pulls with) for the image's host, or "" for an anonymous read
 // when it holds none for that host, as kubelet would pull. Docker Hub's entry
 // may be keyed by any of its aliases rather than the API host.
 func (r *AppReconciler) externalImageAuthHeader(ctx context.Context, app *appv1alpha1.App, host string) (string, error) {
-	name := app.Spec.ExternalRegistryPullSecret
+	name := app.ReleasePullSecret()
 	if name == "" {
 		return "", nil
 	}
@@ -197,10 +197,13 @@ func (r *AppReconciler) withLinkedSourcePullSecret(ctx context.Context, app *app
 		logf.FromContext(ctx).Error(err, "read the build source's pull secret", "app", app.Name)
 		return base
 	}
-	if !external || holder == app || holder.Spec.ExternalRegistryPullSecret == "" {
+	if !external || holder == app {
 		return base
 	}
-	name := holder.Spec.ExternalRegistryPullSecret
+	name := holder.ReleasePullSecret()
+	if name == "" {
+		return base
+	}
 	for _, ref := range base {
 		if ref.Name == name {
 			return base

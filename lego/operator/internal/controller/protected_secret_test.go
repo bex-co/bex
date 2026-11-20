@@ -207,11 +207,14 @@ func TestAllowsOwnBuildPlaneSecretRefs(t *testing.T) {
 			Labels: map[string]string{execution.LabelProtectedFromTenantMount: execution.ProtectedFromTenantMount},
 		}}
 	}
-	webClone := appv1alpha1.CloneSecretName("web")               // "web-clone"
-	webPull := appv1alpha1.ExternalRegistryPullSecretName("web") // "web-registry-pull"
+	webClone := appv1alpha1.CloneSecretName("web")                     // "web-clone"
+	webPull := appv1alpha1.LegacyExternalRegistryPullSecretName("web") // "web-registry-pull"
+	// One per credential since w8/m529: "web-registry-pull-rgc-…".
+	webCredentialPull := appv1alpha1.ExternalRegistryPullSecretName("web", "rgc-cv0a1b2c3d4e5f6g7h8i")
 	buildClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
 		protectedSecret(webClone),
 		protectedSecret(webPull),
+		protectedSecret(webCredentialPull),
 		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "web-env", Namespace: "tea-a"}},
 	).Build()
 	r := &AppReconciler{Client: buildClient, BuildClient: buildClient}
@@ -225,6 +228,15 @@ func TestAllowsOwnBuildPlaneSecretRefs(t *testing.T) {
 		"own clone secret": func(a *appv1alpha1.App) { a.Spec.CloneSecret = webClone },
 		"own registry-pull secret": func(a *appv1alpha1.App) {
 			a.Spec.ExternalRegistryPullSecret = webPull
+		},
+		"own per-credential registry-pull secret": func(a *appv1alpha1.App) {
+			a.Spec.ExternalRegistryPullSecret = webCredentialPull
+		},
+		// A Restart selects the serving release's binding while the saved
+		// spec names another credential's (w8/m529).
+		"own per-credential secret a Restart selected": func(a *appv1alpha1.App) {
+			a.Spec.ExternalRegistryPullSecret = webPull
+			restartSelecting(a, webCredentialPull)
 		},
 		"both own build-plane secrets": func(a *appv1alpha1.App) {
 			a.Spec.CloneSecret = webClone
@@ -255,6 +267,12 @@ func TestAllowsOwnBuildPlaneSecretRefs(t *testing.T) {
 		"another App's pull secret via externalRegistryPullSecret": func(a *appv1alpha1.App) {
 			a.Spec.ExternalRegistryPullSecret = webPull
 		},
+		"another App's per-credential pull secret via externalRegistryPullSecret": func(a *appv1alpha1.App) {
+			a.Spec.ExternalRegistryPullSecret = webCredentialPull
+		},
+		"another App's per-credential pull secret via a Restart's selection": func(a *appv1alpha1.App) {
+			restartSelecting(a, webCredentialPull)
+		},
 	} {
 		t.Run("refuses "+name, func(t *testing.T) {
 			if err := r.rejectProtectedSecretRefs(context.Background(), app("other", mutate)); err == nil {
@@ -274,6 +292,9 @@ func TestAllowsOwnBuildPlaneSecretRefs(t *testing.T) {
 		},
 		"pull secret named through cloneSecret": func(a *appv1alpha1.App) {
 			a.Spec.CloneSecret = webPull
+		},
+		"clone secret named through a Restart's selection": func(a *appv1alpha1.App) {
+			restartSelecting(a, webClone)
 		},
 		"clone secret named through BOTH fields": func(a *appv1alpha1.App) {
 			a.Spec.CloneSecret = webClone
@@ -296,7 +317,7 @@ func TestAllowsOwnBuildPlaneSecretRefs(t *testing.T) {
 	// build time, but envFrom/files/secretKeyRef/pending would hand the same
 	// GitHub installation token and registry password to tenant code at
 	// runtime. Every field the validator covers, both self-names.
-	for _, self := range []string{webClone, webPull} {
+	for _, self := range []string{webClone, webPull, webCredentialPull} {
 		for field, mutate := range map[string]func(*appv1alpha1.App, string){
 			"envFromSecret":  func(a *appv1alpha1.App, n string) { a.Spec.EnvFromSecret = n },
 			"envFromSecrets": func(a *appv1alpha1.App, n string) { a.Spec.EnvFromSecrets = []string{n} },
@@ -445,4 +466,12 @@ func TestRejectedRedeployPinsReleaseGenerationBeforeFailure(t *testing.T) {
 	if stored.Status.Phase != appv1alpha1.PhaseFailed || ready == nil || ready.Reason != "ProtectedSecretReference" || ready.ObservedGeneration != 2 {
 		t.Fatalf("rejected redeploy status = %+v, want Failed/ProtectedSecretReference at generation 2", stored.Status)
 	}
+}
+
+// restartSelecting makes a the current release of a Restart that selected
+// generation 1 with pullSecret as its recorded registry binding.
+func restartSelecting(a *appv1alpha1.App, pullSecret string) {
+	a.Generation, a.Status.ReleaseGeneration, a.Status.SelectedReleaseGeneration = 2, 2, 2
+	a.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: 2, SourceGeneration: 1, Image: "nginx@sha256:aa",
+		Registry: &appv1alpha1.ReleaseRegistryBinding{PullSecret: pullSecret}}
 }

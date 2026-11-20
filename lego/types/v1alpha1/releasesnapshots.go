@@ -92,6 +92,10 @@ const (
 	// ReleaseRecordAppContainer names the pod template's container that runs the
 	// release's image.
 	ReleaseRecordAppContainer = "app"
+	// ReleaseRecordAdoptedSpecKey holds the JSON-encoded AppSpec the release was
+	// adopted with (w8/m121). bex-api reads only its registry binding, for a
+	// record written before ReleaseRecordSpec.Registry (w8/m529).
+	ReleaseRecordAdoptedSpecKey = "adoptedSpec"
 )
 
 // ReleaseRecordSpec is the part of a release's spec that Render restores on a
@@ -129,6 +133,54 @@ type ReleaseRecordSpec struct {
 	// ran with (w4/m433). nil in records written before them: a Restart or
 	// rollback to such a record runs the saved values.
 	Runtime *ReleaseRuntimeSettings `json:"runtime,omitempty"`
+	// Registry is the registry credential the release pulled its image with
+	// (w8/m529). nil in records written before it.
+	Registry *ReleaseRegistryBinding `json:"registry,omitempty"`
+}
+
+// ReleaseRegistryBinding is the external registry credential a release pulls
+// its image with: the workspace credential and the per-App pull Secret bex-api
+// materialized from it (ExternalRegistryPullSecretName). Both empty: the
+// release pulls anonymously. A Restart pulls the serving release with its own
+// binding and a rollback its target's, as each went live, whatever credential
+// the service binds now (w8/m529).
+type ReleaseRegistryBinding struct {
+	// +optional
+	// +kubebuilder:validation:MaxLength=63
+	CredentialID string `json:"credentialId,omitempty"`
+	// +optional
+	// +kubebuilder:validation:MaxLength=253
+	PullSecret string `json:"pullSecret,omitempty"`
+}
+
+// RegistryBinding is the binding a release dispatched from s pulls with.
+func (s AppSpec) RegistryBinding() *ReleaseRegistryBinding {
+	binding := &ReleaseRegistryBinding{PullSecret: s.ExternalRegistryPullSecret}
+	if s.RegistryCredentialID != nil {
+		binding.CredentialID = *s.RegistryCredentialID
+	}
+	return binding
+}
+
+// ApplyTo runs spec with the recorded binding; nil leaves the saved one.
+func (b *ReleaseRegistryBinding) ApplyTo(spec *AppSpec) {
+	if b == nil {
+		return
+	}
+	spec.ExternalRegistryPullSecret, spec.RegistryCredentialID = b.PullSecret, nil
+	if b.CredentialID != "" {
+		spec.RegistryCredentialID = new(b.CredentialID)
+	}
+}
+
+// ReleasePullSecret is the external registry pull Secret the current release
+// pulls with: the active selection's recorded binding (Restart, rollback) over
+// the saved spec's. A selection without one (legacy) pulls with the saved.
+func (a *App) ReleasePullSecret() string {
+	if ref := a.ActiveReleaseConfig(); ref != nil && ref.SourceGeneration > 0 && ref.Registry != nil {
+		return ref.Registry.PullSecret
+	}
+	return a.Spec.ExternalRegistryPullSecret
 }
 
 // ReleaseRuntimeSettings are the saved settings outside the pod's command and
@@ -253,6 +305,12 @@ type ReleaseConfigReference struct {
 	// predates them: the release then runs the saved values.
 	// +optional
 	Runtime *ReleaseRuntimeSettings `json:"runtime,omitempty"`
+	// Registry is the selected release's recorded registry binding
+	// (ReleaseRecordSpec.Registry), refreshed from its credential's stored
+	// token. nil when its record predates it: the release then pulls with the
+	// saved binding.
+	// +optional
+	Registry *ReleaseRegistryBinding `json:"registry,omitempty"`
 }
 
 // ActiveReleaseConfig returns the selection belonging to the current or newly

@@ -1,18 +1,18 @@
 # w8 · m529 — A restart or rollback pulls its release's image with that release's own registry credential
 
-**Worker:** worker8 **Goal:** the registry credential travels with the release, as the image does. A Restart reruns the serving release with the credential it went live with, a rollback runs its target with the target's, and a later image switch to another credential, failed or merely saved, never changes what the serving release pulls with. **Status:** todo
+**Worker:** worker8 **Goal:** the registry credential travels with the release, as the image does. A Restart reruns the serving release with the credential it went live with, a rollback runs its target with the target's, and a later image switch to another credential, failed or merely saved, never changes what the serving release pulls with. **Status:** todo (t001–t007 done; t008 waits for a production roll)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Each registry credential materializes under its own per-App Secret, so a switch never rewrites the serving release's | 1h15m | — |
-| [t002](t002.md) | A release records its registry binding, and Restart and rollback select it | 45m | t001 |
-| [t003](t003.md) | A selected release's pods and image reads use its recorded binding | 1h | t002 |
-| [t004](t004.md) | ADR004 and ADR018 — the registry credential is part of the release | 20m | t003 |
-| [t005](t005.md) | Render parity | 20m | t004 |
-| [t006](t006.md) | Simplify | 15m | t005 |
-| [t007](t007.md) | Test coverage | 30m | t005, t006 |
+| [t001](done/t001.md) | Each registry credential materializes under its own per-App Secret, so a switch never rewrites the serving release's — **DONE** | 1h15m | — |
+| [t002](done/t002.md) | A release records its registry binding, and Restart and rollback select it — **DONE** | 45m | t001 |
+| [t003](done/t003.md) | A selected release's pods and image reads use its recorded binding — **DONE** | 1h | t002 |
+| [t004](done/t004.md) | ADR004 and ADR018 — the registry credential is part of the release — **DONE** | 20m | t003 |
+| [t005](done/t005.md) | Render parity — **DONE** | 20m | t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005, t006 |
 | [t008](t008.md) | Closeout | 45m | t007 |
 
 Total: **8 tasks, about 5h10m**.
@@ -42,3 +42,13 @@ Total: **8 tasks, about 5h10m**.
 - **Why now:** this is a major bug on production. The serving instance is one reschedule away from an outage after any failed credential switch, and Restart, the documented recovery, fails until the user clears the binding by hand.
 - **Render parity task included:** Restart and rollback are tenant-facing verbs on REST, GraphQL, MCP, the CLI and the dashboard. No field changes, but each surface's outcome changes.
 - **Related, not in scope:** [w8/354](../354.md) (the error text for an unknown credential) and [w8/355](../355.md) (a credential create without `ownerId`).
+
+## Results (t001–t007, 2026-11-20)
+
+- **Design choice (t002).** A new field, `ReleaseRecordSpec.Registry` (credential id + pull Secret, both empty = anonymous), carried as `spec.releaseConfig.registry`, with the record's adopted spec (w8/m121, `ReleaseRecordAdoptedSpecKey`, now in `lego/types`) as the fallback for records written before it. So every release recorded since 2026-10-19 restarts and rolls back with its own binding, not only new ones. A record with neither (before w8/m121), or one naming a Secret without a credential id (host-matched before w4/m301), selects nothing and pulls with the saved binding. The adopted spec alone could not carry a Restart of a Restart (a selection's adopted spec is the saved spec), so the field is the primary source and the operator copies the selection's binding into the restarted release's own record (`ensureSelectedReleaseConfig`).
+- **Per-credential Secrets (t001).** `ExternalRegistryPullSecretName(app, credential)` = `<app>-registry-pull-<rgc-id>`, labelled `app.bex.co/registry-pull-app` and `app.bex.co/registry-pull-credential`. App delete lists by label and also deletes the legacy `<app>-registry-pull`; credential delete reaps the credential's copies once no App binds it. The projector keeps a spec's legacy name while its credential is unchanged, so the backend roll re-releases no credentialed service; the next deploy moves it to its own Secret. The operator recognizes an App's own pull Secrets with `IsExternalRegistryPullSecretName` (legacy, or `rgc-` + a 20-character xid, which no other App's Secret can spell).
+- **Operator (t003).** `App.ReleasePullSecret()` is the one accessor: the active selection's recorded binding, else the saved spec's. The Deployment, the pre-deploy step Job, cron pods (through `projectRuntimeApp`, which applies the record's binding), the image metadata read (`externalImageAuthHeader`), the refusal wording, the Dockerfile build's credential and the protected-Secret check all read it. `backfillWorkloadPullSecrets` keeps the external pull Secret a template was rendered with instead of repointing it at the saved binding.
+- **Cron (t003 step 3).** No separate fix: a failed image switch stops at the image read before dispatch and never re-templates the CronJob, which keeps naming the serving release's Secret, and that Secret is no longer rewritten by the next trigger. A switch that dispatches makes its own image the cron's release. Render refuses Restart for cron jobs, and a cron rollback selects its target's binding like any rollback.
+- **Render (t002, t005).** [render.com/docs/rollbacks](https://render.com/docs/rollbacks) § Registry-hosted Docker images (read 2026-11-20) says Render "pulls the image again" but not with which credential; bex keeps the target's own, refreshed from its stored token. Restart keeps "the exact same Git commit and configuration as the running instance". No drift to file.
+- **Surfaces (t005).** Restart: REST `POST /v1/services/{id}/restart` and MCP `restart_service` (`apps` → `restartDeploy`, `internal/api/server.go:1177`), GraphQL `restartServer` (`deploys/graphql.go:274`), the CLI's `bex restart` (REST) and the dashboard's Restart (GraphQL); a restart waiting behind a deploy runs `restartNow` (`deploys/restart_wait.go:213`). Rollback: REST `POST /v1/services/{id}/rollback` (`deploys/rest.go:313`), MCP `rollback_deploy` (`deploys/mcp.go:175`), GraphQL rollback (`deploys/graphql.go:298`) and the dashboard's Rollback; a waiting one runs `rollbackFetched` (`restart_wait.go:215`). Every one reaches `targetReleaseConfig`, so none pulls a selected release with the saved binding.
+- **Tests (t007).** Backend `TestReleaseSelectionCarriesTheRecordedRegistryBinding` (Restart with none / with A while B is saved / deleted credential / adopted-spec record with none or A / record with neither; rollback to none and to A) and `TestRestartOfARestartKeepsTheOriginalBinding`; `TestMaterializePullSecretKeepsEachCredentialsOwnSecret` (B leaves A byte-for-byte, a rotated token refreshes A, credential delete reaps B's copy); `TestDeleteRemovesExternalRegistryPullSecret` (legacy + per-credential, another App's kept); `TestReconcileProjectsExplicitRegistryCredential` (real DB: per-credential name, legacy kept for an unchanged credential, a switch moves it). Operator envtest "Restart and rollback pull with their release's registry credential (w8/m529)" (Restart with none while B is saved, Restart and rollback with A, rollback to none, legacy selection, the step Job matching the pods), `TestReleaseReadsItsImageWithItsOwnRegistryBinding`, and the protected-Secret carve-out cases. Reverting the selection, the per-credential name, the projector's legacy rule and the operator accessor each fails its test. The Dockerfile `FROM` credential (`registry_auth_test.go`) and the linked build-source carrier (`build_source_test.go`) keep their existing tests through the accessor.

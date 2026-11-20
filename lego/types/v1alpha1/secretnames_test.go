@@ -35,11 +35,38 @@ func TestBuildPlaneSecretNames(t *testing.T) {
 	for _, tc := range []struct{ name, got, want string }{
 		{"clone/short", CloneSecretName("web"), "web-clone"},
 		{"clone/tenant CR name", CloneSecretName("tea-d98210cbbpdc73dcrkvg-qa-web"), "tea-d98210cbbpdc73dcrkvg-qa-web-clone"},
-		{"pull/short", ExternalRegistryPullSecretName("web"), "web-registry-pull"},
-		{"pull/tenant CR name", ExternalRegistryPullSecretName("tea-d98210cbbpdc73dcrkvg-qa-web"), "tea-d98210cbbpdc73dcrkvg-qa-web-registry-pull"},
+		{"pull/legacy", LegacyExternalRegistryPullSecretName("web"), "web-registry-pull"},
+		{"pull/legacy tenant CR name", LegacyExternalRegistryPullSecretName("tea-d98210cbbpdc73dcrkvg-qa-web"), "tea-d98210cbbpdc73dcrkvg-qa-web-registry-pull"},
+		{"pull/per credential", ExternalRegistryPullSecretName("web", "rgc-d98210cbbpdc73dcrkvg"), "web-registry-pull-rgc-d98210cbbpdc73dcrkvg"},
 	} {
 		if tc.got != tc.want {
 			t.Errorf("%s: got %q, want %q", tc.name, tc.got, tc.want)
+		}
+	}
+}
+
+// An App's own pull Secrets are the legacy one and one per minted credential
+// (w8/m529); the operator exempts exactly those from its protected-Secret
+// refusal, so nothing else of the App or of another App may pass.
+func TestIsExternalRegistryPullSecretName(t *testing.T) {
+	const credential = "rgc-d98210cbbpdc73dcrkvg"
+	for _, tc := range []struct {
+		app, name string
+		want      bool
+	}{
+		{"web", "web-registry-pull", true},
+		{"web", ExternalRegistryPullSecretName("web", credential), true},
+		{"web", "web-clone", false},
+		{"web", "web-registry-pull-", false},
+		{"web", "web-registry-pull-rgc-x", false},
+		{"web", ExternalRegistryPullSecretName("web", credential) + "-clone", false},
+		{"web", "web-registry-pull-rgc-x-clone", false},
+		{"web", ExternalRegistryPullSecretName("other", credential), false},
+		{"other", ExternalRegistryPullSecretName("web", credential), false},
+		{"web-registry-pull-rgc", "web-registry-pull-rgc-clone", false},
+	} {
+		if got := IsExternalRegistryPullSecretName(tc.app, tc.name); got != tc.want {
+			t.Errorf("IsExternalRegistryPullSecretName(%q, %q) = %v, want %v", tc.app, tc.name, got, tc.want)
 		}
 	}
 }

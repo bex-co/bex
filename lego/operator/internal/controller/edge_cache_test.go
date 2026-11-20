@@ -976,7 +976,7 @@ func TestAReleaseFingerprintedWithItsCacheProfileIsAdopted(t *testing.T) {
 	}
 	record := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.ReleaseRecordName("web", 3), Namespace: "tea-a"},
-		Data:       map[string][]byte{releaseRecordAdoptedSpecKey: recorded},
+		Data:       map[string][]byte{appv1alpha1.ReleaseRecordAdoptedSpecKey: recorded},
 	}
 	for name, tc := range map[string]struct {
 		mutate  func(*appv1alpha1.AppSpec)

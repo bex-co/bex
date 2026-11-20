@@ -28,11 +28,6 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// releaseRecordAdoptedSpecKey holds, in a release record, the JSON-encoded
-// AppSpec the release was adopted with (w8/m121). Operator-internal: bex-api
-// reads only the pod template and ReleaseRecordSpec keys.
-const releaseRecordAdoptedSpecKey = "adoptedSpec"
-
 // releaseView is saved with every release and artifact input taken from
 // adopted: what a release held through its rollout builds and runs once the
 // saved spec has moved on to a newer release. Operational fields (replicas,
@@ -108,7 +103,7 @@ func (r *AppReconciler) adoptedReleaseSpec(ctx context.Context, app *appv1alpha1
 	if err != nil {
 		return nil, err
 	}
-	raw, ok := rec.Data[releaseRecordAdoptedSpecKey]
+	raw, ok := rec.Data[appv1alpha1.ReleaseRecordAdoptedSpecKey]
 	if !ok {
 		return nil, nil
 	}

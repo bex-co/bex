@@ -826,6 +826,20 @@ spec:
                       from the target's surviving group associations; Restart retains its exact
                       running configuration, including already-snapshotted group values.
                     type: boolean
+                  registry:
+                    description: |-
+                      Registry is the selected release's recorded registry binding
+                      (ReleaseRecordSpec.Registry), refreshed from its credential's stored
+                      token. nil when its record predates it: the release then pulls with the
+                      saved binding.
+                    properties:
+                      credentialId:
+                        maxLength: 63
+                        type: string
+                      pullSecret:
+                        maxLength: 253
+                        type: string
+                    type: object
                   runtime:
                     description: |-
                       Runtime is the selected release's recorded port, shutdown delay and

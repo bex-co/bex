@@ -832,7 +832,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			return r.holdRegistryWait(ctx, &app, wait), nil
 		}
 		if err != nil {
-			return r.failBeforeDispatch(ctx, &app, imageMetadataFailureReason(err), imageRefusalError(requested, err, app.Spec.ExternalRegistryPullSecret != ""))
+			return r.failBeforeDispatch(ctx, &app, imageMetadataFailureReason(err), imageRefusalError(requested, err, app.ReleasePullSecret() != ""))
 		}
 	}
 	return r.dispatchRuntime(ctx, &app, image, port)
@@ -2424,9 +2424,12 @@ func (r *AppReconciler) buildNamespace(appNS string) string {
 //     when the image is hosted in our registry, so the credential is never sent
 //     to a foreign registry (docs/ADR022-tenant-isolation.md § Registry access
 //     control);
-//   - app.Spec.ExternalRegistryPullSecret, when bex-api has materialized one for
-//     this App's image host (w2/m14) — the operator just references it by name,
-//     unaware of which registry or credential it corresponds to.
+//   - the external registry pull Secret the release pulls with
+//     (App.ReleasePullSecret), when bex-api has materialized one for this App's
+//     image host (w2/m14) — the operator just references it by name, unaware of
+//     which registry or credential it corresponds to. A Restart or rollback
+//     names the one its release went live with, never a newer saved binding
+//     (w8/m529).
 //
 // registryHosted reports whether image lives in the platform registry.
 func (r *AppReconciler) registryHosted(image string) bool {
@@ -2434,20 +2437,27 @@ func (r *AppReconciler) registryHosted(image string) bool {
 }
 
 func (r *AppReconciler) imagePullSecrets(app *appv1alpha1.App, image string) []corev1.LocalObjectReference {
-	var out []corev1.LocalObjectReference
-	if r.registryHosted(image) {
-		if r.PerAppRegistry != nil {
-			// Per-App pull secret (w7/m36): "reg-pull-<name>" in the app namespace.
-			out = append(out, corev1.LocalObjectReference{Name: appIdentity(app).PullSecretName()})
-		} else if r.RegistryPullSecret != "" {
-			// Shared pull secret (w7/m8, byte-identical when PerAppRegistry is nil).
-			out = append(out, corev1.LocalObjectReference{Name: r.RegistryPullSecret})
-		}
-	}
-	if app.Spec.ExternalRegistryPullSecret != "" {
-		out = append(out, corev1.LocalObjectReference{Name: app.Spec.ExternalRegistryPullSecret})
+	out := r.platformPullSecrets(app, image)
+	if name := app.ReleasePullSecret(); name != "" {
+		out = append(out, corev1.LocalObjectReference{Name: name})
 	}
 	return out
+}
+
+// platformPullSecrets is imagePullSecrets' internal-registry source alone.
+func (r *AppReconciler) platformPullSecrets(app *appv1alpha1.App, image string) []corev1.LocalObjectReference {
+	if !r.registryHosted(image) {
+		return nil
+	}
+	if r.PerAppRegistry != nil {
+		// Per-App pull secret (w7/m36): "reg-pull-<name>" in the app namespace.
+		return []corev1.LocalObjectReference{{Name: appIdentity(app).PullSecretName()}}
+	}
+	if r.RegistryPullSecret != "" {
+		// Shared pull secret (w7/m8, byte-identical when PerAppRegistry is nil).
+		return []corev1.LocalObjectReference{{Name: r.RegistryPullSecret}}
+	}
+	return nil
 }
 
 // rejectProtectedSecretRefs fails the reconcile when a tenant App names an
@@ -2477,7 +2487,10 @@ func (r *AppReconciler) imagePullSecrets(app *appv1alpha1.App, image string) []c
 // own name (appv1alpha1.CloneSecretName / ExternalRegistryPullSecretName) and
 // writes them straight into these two fields itself, so refusing them failed
 // every GitHub-connected deploy before any build ran. An exact match on the
-// name derived for the field that mints it is therefore accepted. Everything
+// name derived for the field that mints it is therefore accepted: for the pull
+// Secret, the legacy per-App name or a per-credential one
+// (IsExternalRegistryPullSecretName), named by the saved binding or by the
+// binding a Restart or rollback selected (w8/m529). Everything
 // else stays refused: another App's <other>-clone, an unrelated protected
 // Secret, an operator-configured operational Secret (the by-name check below
 // runs over the full set, carve-out included), the wrong one of the two
@@ -2517,22 +2530,26 @@ func (r *AppReconciler) rejectProtectedSecretRefs(ctx context.Context, app *appv
 	add(app.Annotations[appv1alpha1.PendingEnvSecretAnnotation])
 	add(app.Annotations[appv1alpha1.PendingFilesSecretAnnotation])
 	// The two build-plane fields join the same set, exempt from the protected
-	// -label lookup only when the reference is exact-equal to the name derived
-	// from THIS App's own name for THIS field (see the godoc's w6/m97
+	// -label lookup only when the reference is a name derived from THIS App's
+	// own name for THIS field (see the godoc's w6/m97
 	// paragraph). Anything else — another App's Secret, the wrong one of the
 	// two self-names, the same Secret also named through a mount field — stays
 	// guarded.
-	addBuildRef := func(ref, self string) {
+	addBuildRef := func(ref string, self bool) {
 		if ref == "" {
 			return
 		}
 		names[ref] = true
-		if ref != self {
+		if !self {
 			guarded[ref] = true
 		}
 	}
-	addBuildRef(app.Spec.CloneSecret, appv1alpha1.CloneSecretName(app.Name))
-	addBuildRef(app.Spec.ExternalRegistryPullSecret, appv1alpha1.ExternalRegistryPullSecretName(app.Name))
+	addBuildRef(app.Spec.CloneSecret, app.Spec.CloneSecret == appv1alpha1.CloneSecretName(app.Name))
+	// The saved binding and the one a Restart or rollback selected (w8/m529):
+	// either may name one of this App's own per-credential pull Secrets.
+	for _, ref := range []string{app.Spec.ExternalRegistryPullSecret, app.ReleasePullSecret()} {
+		addBuildRef(ref, appv1alpha1.IsExternalRegistryPullSecretName(app.Name, ref))
+	}
 	if len(names) == 0 {
 		return nil
 	}
@@ -2611,7 +2628,15 @@ func (r *AppReconciler) backfillWorkloadPullSecrets(ctx context.Context, app *ap
 		if !r.registryHosted(image) {
 			return nil
 		}
-		desired := r.imagePullSecrets(app, image)
+		// The release keeps the external pull Secret it was rendered with: the
+		// saved binding may be a newer switch that never went live (w8/m529).
+		// One the release pulls with by any name stays, as the render puts it.
+		desired := r.platformPullSecrets(app, image)
+		for _, ref := range podSpec.ImagePullSecrets {
+			if appv1alpha1.IsExternalRegistryPullSecretName(app.Name, ref.Name) || ref.Name == app.ReleasePullSecret() {
+				desired = append(desired, ref)
+			}
+		}
 		if localObjectReferencesEqual(podSpec.ImagePullSecrets, desired) {
 			return nil
 		}
@@ -2736,7 +2761,7 @@ func localObjectReferencesEqual(a, b []corev1.LocalObjectReference) bool {
 // so either name qualifies).
 func ownBuildPlaneSecret(app *appv1alpha1.App, name string) bool {
 	return name == appv1alpha1.CloneSecretName(app.Name) ||
-		name == appv1alpha1.ExternalRegistryPullSecretName(app.Name)
+		appv1alpha1.IsExternalRegistryPullSecretName(app.Name, name)
 }
 
 func (r *AppReconciler) copyCloneSecret(ctx context.Context, app *appv1alpha1.App, srcNS, dstNS, name string) error {
