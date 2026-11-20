@@ -8,7 +8,7 @@
 - a paused view that offers "New logs in Live Tail" when new lines arrive;
 - an Options menu that ends with a Theme Settings link to an Appearance section in account Settings.
 
-**Status:** blocked — t001–t008 and t010–t012 done, shipped in `c4c67370b`; t009's walk on the tree passed (§ Verification record); its production walk waits for a pin carrying `c4c67370b`, then t013 closes
+**Status:** blocked — t001–t008 and t010–t012 done, shipped in `c4c67370b`; t009's walk passed on the tree and, on production pin `11b1e8f85f06`, for every piece but View in context opened fresh on a window longer than one page, fixed in `93051820b`; that one check waits for a pin carrying `93051820b`, then t013 closes
 
 ## Tasks (in order)
 
@@ -80,7 +80,41 @@ The bundle was re-read on 2026-11-20 (`Logs-DOHYAXbe.js`, `UserSettings-3jrn6Tc2
 
 **Tests (t012).** Each piece was reverted in turn and a test failed: the hold, Return to Top's name, the watch's newer-than-the-snapshot rule, Dismiss, View in context only while narrowed, no watch on a custom range, the marked line's centring, the keyboard's `Shift+F10`, the disabled SSH item, the Shell preselect, Theme Settings' target, Copy log line's resource, Appearance's theme change, the datastore's watch and a project view opening paused.
 
-**On production:** waits for a pin carrying the milestone's commit (t009 steps 3–4).
+**On production (t009, 2026-11-20, pin `11b1e8f85f06`).** Pin commit `0779189fc` carries `c4c67370b`. As the QA user in `bex-canary` (`tea-daif693dqjvc73e7as3g`), in Playwright (Chromium, America/Los_Angeles), the fixture project `qa-20261120-m528` (`prj-dc06nau5elpc739vu6b0`, environment production `evm-dc06nau5elpc739vu6bg`) held a starter web service created over REST, `qa-20261120-m528-web` (`srv-dc06ncli534c73chv80g`, `busybox:1.36`, `sshAddress` set). It printed a logfmt `info` line every second, a `warn` "slow query took 1200ms" every 5th and an `error` "upstream timeout" every 11th. There was also a free Postgres 17, `qa-20261120-m528-pg` (`dpg-dc06ndm5elpc739vu6dg`). Its first deploy `dep-dc06ncli534c73chv810` went live at 15:48:41Z (instance `…mcc2vp8ovpvvj6nrm0ji`), and a second, `dep-dc06r25i534c73chv870`, replaced that instance with `…eqqu3vi5sa9a2scj2af4` at 15:56Z. Failed `psql` logins gave the Postgres its `FATAL` lines.
+
+| check | production | result |
+| --- | --- | --- |
+| Row menu, service Logs tab, 1440 and 390 | hovering shows a 24 px "Log line options" at the row's top right (1387, 761 at 1440; 345, 568 at 390), the row staying 23.5 px. Unfiltered: Copy log line and SSH into instance. Under the search `slow query`: Copy log line, View in context and SSH into instance | holds |
+| Copy log line | service: `level=warn msg="slow query took 1200ms" n=200` (no time, no instance), "Copied!". Application Logs: `[qa-20261120-m528-web] level=warn msg="slow query took 1200ms" n=290`. Postgres: the line text alone | holds |
+| SSH into instance | a running instance's line links `target="_blank"` to `/services/srv-dc06ncli534c73chv80g/shell?instance=…`; opened, the Shell page showed that instance selected and Connected. A line from the replaced instance `mcc2v`: the item is disabled (`aria-disabled`, no link) and its tooltip reads "You can only SSH into running instances. This one is not available." No SSH item on Postgres, a deploy's log or Application Logs | holds |
+| View in context, link and filters | service: `/services/…/logs?range=custom&rangeStart=…&rangeEnd=…&contextLine=id:…&live=0`, ±10 minutes, `target="_blank"`. The tab opens unfiltered (no search), Live off, on a custom range (Nov 20, 7:39:21 AM – 7:59:21 AM), with no New logs in Live Tail. Postgres (level `error`): the same, All levels, the `FATAL` line marked. Application Logs: `…&r=custom&…&contextLine=…` | holds |
+| View in context opened fresh, window longer than one page | **fails.** Service tab at 1440: the tab read the newest 100 lines (`Logs … limit: 100`) and never an older page, so the 07:49:21 line never showed until the reader scrolled up. Then it loaded and sat centred (row top 880 in a 419–1390 panel). Service tab at 390: the 08:02:54 line *was* in the first page, yet the list opened at the newest line (rows 79–99) unmarked. Application Logs at 1440: the same as the service tab | fixed in `93051820b` (below); re-walk waits for a pin carrying it |
+| Return to Bottom / Return to Top | service, 1440: an icon-only `MoveDown` "Return to Bottom" at (1360, 796), 32 px. Descending: "Return to Top", `MoveUp`, at (1360, 391). Each returns to the newest line and releases held lines. 390: (306, 728), 44 px. Application Logs, Postgres and the deploy log show it at the panel's right too | holds |
+| Held lines | service, Live, scrolled to the top: rows stayed put (tick 1 at y 330 throughout) behind a centred "New logs" → "10+ new logs" → "20+" → "35+". Clicking released them to the newest line and both buttons left. Application Logs "15+ new logs", and the Postgres tab (14 `FATAL` lines) "15+ new logs", each released by a click. At 390 "30+" (131–259 px), clear of Return | holds |
+| New logs in Live Tail | service, Live off: within about 1 s, a centred "New logs in Live Tail" (`refresh-cw` icon, title "Switch to Live Tail") with Dismiss (×). The paused list did not change. Dismiss hid it for 8 s. Turning Live on and off brought it back, and its click turned Live on. Postgres, Live off, level `error`: a new `FATAL` line brought it within 5 s while the list stayed at 1 row, and its click turned Live on. Application Logs and 390 (86–261 px with Dismiss beside it): the same | holds |
+| Options ▸ Theme Settings | the last item, with a settings icon, links `/settings#appearance` on the service tab, the Postgres tab, a deploy's log (after its own range, Wrap lines and Show timestamps) and Application Logs, at 1440 and 390 | holds |
+| Appearance | `/settings#appearance` opens on the section (1440: 744 × 202 at y 72; 390: 358 × 242). The rail lists it after Account. Dashboard Theme offers System (Default), Light and Dark; Dark set `<html class="dark">`; set back to System | holds |
+| No horizontal scroll at 390 | scroll width 390 on the service tab, Application Logs, Postgres, a deploy's log and Settings | holds |
+
+**The View in context fix (`93051820b`).** Both causes were in the shared `LogLineList`. (1) The first render with lines has no rows laid out, because the virtualizer has not measured the panel yet. The mark's `scrollToIndex` therefore resolved to the top, the pin read 0 px from the newest line, and the pinned effect scrolled there; a scroll-write trace on the tree showed exactly that sequence. Placing the mark now waits for laid-out rows. (2) The pager refs were synced in a passive effect, after the layout effect that asks for the next older page. Each explorer rebuilds `loadOlder` with its pager state, so the call reached the previous closure (`hasMore` false, or `loadingOlder` true) and returned early. The refs now sync in a layout effect, and the older-page read is its own effect. On the tree, against a stub serving 100-line pages: a mark three pages back read three pages and sat centred (row middle 616 in a panel centred at 626 at 1440, 584 against 591 at 390), and a mark in the first page no longer opened at the newest line. With the ref half reverted, it read two pages and never showed the mark. Two tests in `log-line-list-render-explorer.test.tsx` each fail with their half reverted. `yarn lint` and `yarn test` pass (811 files, 9840 tests, in `ship-gates.sh`'s clean worktree).
+
+**Cleanup.** The web service, the Postgres and the project were deleted (`DELETE` 204 each). By-id `GET` answered 404 for all three and the environment. The QA session was logged out (`qa-login.sh --logout`, after which the cookie answered 401), and its jars and the screenshots were deleted.
+
+## Unblock record (2026-11-20)
+
+- **Affected:** w3/m528 t009 (production walk), t013 (closeout).
+- **Source:** verified evidence. The newest `chore(deploy): pin platform images to <sha>` on `origin/main` is `0779189fc` (15:24Z), pinning `11b1e8f85f06`, and `git merge-base --is-ancestor c4c67370b 11b1e8f85f06` succeeds, so production runs the milestone's commit. The gate `pin must carry c4c67370b` holds.
+- **Next:** t009 step 3 on production as the QA user in `bex-canary` at 1440 and 390, with short-lived fixtures deleted afterwards and the QA session logged out; then t013 closes the milestone. No gate remains.
+
+## Parked again (2026-11-20)
+
+- **Affected:** w3/m528 t009 (View in context's production check), t013 (closeout).
+- **Source:** verified evidence (§ Verification record, On production). Every piece held on pin `11b1e8f85f06` except View in context opened fresh on a window holding more than one page of lines. That was this milestone's defect, fixed and shipped in `93051820b`.
+- **Remaining gate:** a production pin carrying `93051820b` (clears by itself).
+- **Next:** as the QA user in `bex-canary`, at 1440 and 390, with a short-lived web service logging about a line a second, open View in context fresh in a new tab:
+  - on a line several minutes older than the newest 100 lines of its window: older pages load, and the line is marked and centred;
+  - on a line inside the first page while its window is still open: the list opens on the mark, not at the newest line.
+  - Do the same in a project's Application Logs view. Delete the fixture, log out, record it here, and close with t013.
 
 ## Also read from the bundle, outside this milestone's scope
 
