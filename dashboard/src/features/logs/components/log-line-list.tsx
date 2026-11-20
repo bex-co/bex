@@ -401,7 +401,10 @@ export function LogLineList({
   const loadOlderRef = useRef(onLoadOlder);
   const loadingOlderRef = useRef(loadingOlder);
   const hasMoreRef = useRef(hasMore);
-  useEffect(() => {
+  // A layout effect, declared before the ones that read these refs, so that
+  // they see this render's pager: an explorer's loadOlder is rebuilt with its
+  // state, and the previous one returns early while its page loads (w3/m528).
+  useLayoutEffect(() => {
     loadOlderRef.current = onLoadOlder;
     loadingOlderRef.current = loadingOlder;
     hasMoreRef.current = hasMore;
@@ -587,17 +590,24 @@ export function LogLineList({
   const placedMark = useRef<string | undefined>(undefined);
   useLayoutEffect(() => {
     if (!markedKey || placedMark.current === markedKey) return;
+    if (rows.some((row) => row.key === markedKey)) return;
+    if (hasMore && !loadingOlder) loadOlderRef.current?.();
+  }, [markedKey, rows, hasMore, loadingOlder]);
+  // The virtualizer lays out no rows until it has measured the panel. Before
+  // then the list has no height to scroll in: the mark's scroll would land at
+  // the top and the pin would read the reader as at the newest line.
+  const virtualRows = virtualizer.getVirtualItems();
+  const laidOut = virtualRows.length > 0;
+  useLayoutEffect(() => {
+    if (!markedKey || placedMark.current === markedKey || !laidOut) return;
     const index = rows.findIndex((row) => row.key === markedKey);
-    if (index >= 0) {
-      placedMark.current = markedKey;
-      virtualizer.scrollToIndex(index, { align: "center" });
-      // A short list does not scroll, and so sends no scroll event: the pin
-      // is read from where the list now is.
-      if (viewportRef.current) recordPin(viewportRef.current);
-    } else if (hasMore && !loadingOlder) {
-      loadOlderRef.current?.();
-    }
-  }, [markedKey, rows, hasMore, loadingOlder, virtualizer, recordPin]);
+    if (index < 0) return;
+    placedMark.current = markedKey;
+    virtualizer.scrollToIndex(index, { align: "center" });
+    // A short list does not scroll, and so sends no scroll event: the pin is
+    // read from where the list now is.
+    if (viewportRef.current) recordPin(viewportRef.current);
+  }, [markedKey, rows, laidOut, virtualizer, recordPin]);
 
   const dayLabel = useCallback(
     (day: number) =>
@@ -646,7 +656,6 @@ export function LogLineList({
   const showEnd = ended && !(descending && hasMore);
   const { ref: panelRef, height: fillHeight } =
     useLogPanelHeight<HTMLDivElement>(fill ? false : fillViewport);
-  const virtualRows = virtualizer.getVirtualItems();
   const totalSize = virtualizer.getTotalSize();
   // The rows, their inset and any end note, plus the viewport's 1px top and
   // bottom border.

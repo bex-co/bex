@@ -424,6 +424,10 @@ describe("View in context's marked line (w3/m528 t006)", () => {
   // jsdom neither scrolls nor lays out: the viewport scrolls where the
   // virtualizer asks, over a list of 100 rows.
   const CONTENT = 100 * 24 + 24;
+  // What the viewport's content measures before the virtualizer lays out any
+  // row. A browser reports the panel's own height there; most tests skip that
+  // phase and report the laid-out height throughout.
+  let unlaidContent = CONTENT;
   const saved = {
     scrollTo: Object.getOwnPropertyDescriptor(Element.prototype, "scrollTo"),
     scrollHeight: Object.getOwnPropertyDescriptor(
@@ -436,6 +440,7 @@ describe("View in context's marked line (w3/m528 t006)", () => {
     ),
   };
   beforeEach(() => {
+    unlaidContent = CONTENT;
     Object.defineProperty(Element.prototype, "scrollTo", {
       configurable: true,
       value(this: Element, options: ScrollToOptions) {
@@ -446,7 +451,8 @@ describe("View in context's marked line (w3/m528 t006)", () => {
     Object.defineProperty(Element.prototype, "scrollHeight", {
       configurable: true,
       get(this: Element) {
-        return viewport(this) ? CONTENT : 0;
+        if (!viewport(this)) return 0;
+        return this.querySelector("[data-index]") ? CONTENT : unlaidContent;
       },
     });
     Object.defineProperty(Element.prototype, "clientHeight", {
@@ -521,6 +527,77 @@ describe("View in context's marked line (w3/m528 t006)", () => {
       />,
     );
     expect(onLoadOlder).toHaveBeenCalledTimes(1);
+  });
+
+  it("centres the mark once the rows are laid out, not at the newest line", async () => {
+    // Found in production (pin 11b1e8f85f06): the first render with lines
+    // has no rows laid out, so the panel had nothing to scroll in. The mark's
+    // scroll landed at the top, the pin read the reader as at the newest
+    // line, and the list jumped there.
+    unlaidContent = VIRTUAL_VIEWPORT_HEIGHT;
+    const { container } = render(
+      <LogLineList lines={range(0, 100)} markedKey="k40" />,
+    );
+    const viewport = viewportOf(container);
+    expect(viewport.scrollTop).toBe(
+      12 + 40 * 24 + 12 - VIRTUAL_VIEWPORT_HEIGHT / 2,
+    );
+    act(() => viewport.dispatchEvent(new Event("scroll")));
+    expect(viewport.scrollTop).toBe(
+      12 + 40 * 24 + 12 - VIRTUAL_VIEWPORT_HEIGHT / 2,
+    );
+    expect(container.querySelector("[data-marked]")).toHaveTextContent(
+      "line 40",
+    );
+    expect(
+      screen.getByRole("button", { name: "Return to Bottom" }),
+    ).toBeInTheDocument();
+    await settle();
+  });
+
+  it("reads each older page through the explorer's current loader", () => {
+    // An explorer rebuilds loadOlder with its pager's state, and the one
+    // before returns early: the list must call the one this render handed it,
+    // or View in context stops after the first older page (production, pin
+    // 11b1e8f85f06).
+    const before = vi.fn();
+    const first = vi.fn();
+    const second = vi.fn();
+    const { rerender } = render(
+      <LogLineList
+        lines={range(50, 100)}
+        markedKey="k10"
+        onLoadOlder={before}
+      />,
+    );
+    rerender(
+      <LogLineList
+        lines={range(50, 100)}
+        markedKey="k10"
+        hasMore
+        onLoadOlder={first}
+      />,
+    );
+    expect(first).toHaveBeenCalledTimes(1);
+    rerender(
+      <LogLineList
+        lines={range(50, 100)}
+        markedKey="k10"
+        hasMore
+        loadingOlder
+        onLoadOlder={vi.fn()}
+      />,
+    );
+    rerender(
+      <LogLineList
+        lines={range(30, 100)}
+        markedKey="k10"
+        hasMore
+        onLoadOlder={second}
+      />,
+    );
+    expect(second).toHaveBeenCalledTimes(1);
+    expect(before).not.toHaveBeenCalled();
   });
 });
 
