@@ -1,6 +1,6 @@
 # w10 · m524 — A workspace admin can turn off its sessions' `gh` API access, as a Devin security profile can remove the `gh` token
 
-**Worker:** worker10 **Goal:** the workspace agent environment gains a GitHub CLI setting, on by default. When an admin turns it off, the workspace's sessions get no `gh` configuration, and the gateway's `github-api` route refuses their calls with a message that names the setting. Git pushes to the session branch and the `bex` MCP tools keep working. REST, GraphQL, MCP, the CLI and Settings → Agents all read and write the setting. **Status:** blocked (t001–t006 and t008–t010 done 2026-11-19, shipped in `40529dd25`; t007's live check waits for a production pin carrying `40529dd25`, then t011 closes it)
+**Worker:** worker10 **Goal:** the workspace agent environment gains a GitHub CLI setting, on by default. When an admin turns it off, the workspace's sessions get no `gh` configuration, and the gateway's `github-api` route refuses their calls with a message that names the setting. Git pushes to the session branch and the `bex` MCP tools keep working. REST, GraphQL, MCP, the CLI and Settings → Agents all read and write the setting. **Status:** done (t001–t011; shipped in `40529dd25`, live on pin `12716d1d7097`, 2026-11-20)
 
 ## Tasks (in order)
 
@@ -12,11 +12,11 @@
 | [t004](done/t004.md) | Driver: a session dispatched with the setting off gets no `gh` socket or `GH_*` environment, and the overlay says why — **DONE** | 45m | t001 |
 | [t005](done/t005.md) | CLI: `bex agent env set --github-cli on\|off`, shown by `bex agent env` — **DONE** | 45m | t002 |
 | [t006](done/t006.md) | Dashboard: a GitHub CLI switch in Settings → Agents, with its skeleton matching — **DONE** | 1h30m | t002 |
-| [t007](t007.md) | Live check on production: with the setting off a session's `gh` is refused naming it, and turned back on it works | 45m | t003, t004, t005, t006 |
+| [t007](done/t007.md) | Live check on production: with the setting off a session's `gh` is refused naming it, and turned back on it works — **DONE** | 45m | t003, t004, t005, t006 |
 | [t008](done/t008.md) | Render parity (Devin) — **DONE** | 30m | t007 |
 | [t009](done/t009.md) | Simplify — **DONE** | 20m | t008 |
 | [t010](done/t010.md) | Test coverage — **DONE** | 45m | t008, t009 |
-| [t011](t011.md) | Closeout | 10m | t010 |
+| [t011](done/t011.md) | Closeout — **DONE** | 10m | t010 |
 
 Total: **11 tasks, about 9h15m**.
 
@@ -55,6 +55,26 @@ Total: **11 tasks, about 9h15m**.
   - **Where it binds:** Devin binds at enterprise, organization, automations default, automation and session. bex has the workspace (organization) level only.
 - **Filed:** [w10/035](../../035.md), turning `gh` off for an automation or a session (Devin's narrower bindings, with a mandatory workspace setting). No other gap users would miss: bex has no enterprise level above the workspace, and Devin's other profile controls (network policy, MCP allowlist, Git access level) are out of this milestone's scope.
 
+## Live check (t007, production, 2026-11-20)
+
+Workspace `tian-personal` (`tea-da2isimlm39c739m4ofg`, the QA account's, whose GitHub connection is the `puncsky` installation), 09:03–09:11Z, pin `12716d1d7097`: `bex-api` and the ready `bex-ssh-gateway` Pods ran `bex-operator@sha256:0910030a…` and sessions the sandbox `bex-agent-sandbox@sha256:96a0d223…`, the digests that pin set (read-only `kubectl`). The CLI was built from `main` (`dc61cec8f`); the dashboard was signed in through `scripts/qa-login.sh` (the same account).
+
+- **Fixture.** A new private repository, `puncsky/qa-20261120-m524-gh-off`, with a workflow `qa-pass` on pushes to `main`. Its run 44707198239 ended `success`.
+- **Session.** `bex agent run --repo puncsky/qa-20261120-m524-gh-off --max-spend 1` (`claude`, `deepseek/deepseek-v4.1-flash-1017`, template `agent`) started `ags-dc00pscd1ruc73b8ceog`, three turns, $0.03 in all.
+- **Turn 1, the route refuses naming the setting.** The turn ran `gh run list --limit 1; sleep 100; gh run list --limit 1`. The first call answered (`completed success fixture qa-pass main push 44707198239`, exit 0; read mints `allowed` at 09:06:22.5 and 09:06:23.1Z). At 09:06:23Z `bex agent env set --github-cli off` saved it (`updatedAt` 09:06:23.415Z), and REST `GET /v1/agent-environment`, GraphQL `agentEnvironment` and MCP `get_agent_environment` all read `githubCliEnabled: false`. The second call exited 1 with "failed to get runs: HTTP 403: bex: gh is turned off for this workspace's agent sessions (the agent environment's GitHub CLI setting, githubCliEnabled). A workspace admin turns it back on in Settings → Agents or with `bex agent env set --github-cli on`. Pushes to your session branch and the bex MCP tools open_or_update_draft_pr and reply_on_pull_request still work." The gateway logged `agent github api: refused (… status=403 result=github_cli_off)` at 09:08:03Z.
+- **Audited.** `audit_events` (read-only, the `bex-db` replica) has `agentsessions.MintGitHubReadCredential`, `denied`, target `agent-session:ags-dc00pscd1ruc73b8ceog`, target name `puncsky/qa-20261120-m524-gh-off`, at 09:08:03.759Z, and the two changes as `agentsessions.UpdateEnvironment` `allowed` (09:06:23Z through OAuth, 09:10:29Z through the dashboard session). The workspace's audit-log API answers `PLAN_FEATURE_REQUIRED` on Hobby, as Render's does, hence the replica read.
+- **Turn 2, dispatched while off: no `gh`.** `env | grep '^GH_'` printed nothing (exit 1), `gh auth status` said "You are not logged into any GitHub hosts" (exit 1), and `gh run list` asked for `gh auth login` (exit 4). The agent quoted its overlay: "There is no GitHub token in the sandbox, and this workspace's admins turned `gh` off for its agent sessions, so `gh` and direct GitHub API calls do not work here; do not try to authenticate it. Your pull request goes through the `open_or_update_draft_pr` and `reply_on_pull_request` tools of the `bex` MCP server, and code reaches GitHub only through your pushes to your branch." The turn minted no GitHub API credential at all, while its Git mints (`MintCredential`, `ProxyCredential`) stayed `allowed`.
+- **Turn 3, back on.** Settings → Agents in `tian-personal` showed the GitHub CLI switch off; switching it on saved through GraphQL `updateAgentEnvironment` (200, `githubCliEnabled: true`, `updatedAt` 09:10:29Z), and REST, GraphQL and MCP read `true`. The next turn's `gh run list --limit 1` answered the same run (exit 0; read mints `allowed` at 09:10:52Z).
+- **Cleanup.** The setting is left on (`bex agent env`: `GitHub CLI on`). The session is deleted (`404 AGENT_SESSION_NOT_FOUND`; its sandbox Pod is gone); it pushed no branch and opened no pull request. The repository is deleted (`Could not resolve to a Repository`). The dashboard's workspace selection is back on `bex`, and the QA browser session is logged out.
+
+The Definition of done holds. Items 1–4 hold in t002–t006 and t010's tests and t008's surface check (`TestEnvironmentGitHubCLISettingOnEverySurface`), and item 3's refusal, its message and its audit row, item 2's empty environment and overlay, and item 1's REST, GraphQL, MCP, CLI and Settings → Agents reads and writes held live above. Item 5 holds here. t011 closed the milestone on 2026-11-20.
+
+## Unblock record (2026-11-20)
+
+- **Affected:** w10/m524 t007 and t011.
+- **Source:** verified evidence. The newest `chore(deploy): pin platform images to <sha>` on `origin/main` is `4e37ec03f` (pin `12716d1d7097`, 08:47Z), and `git merge-base --is-ancestor 40529dd25 12716d1d7097` holds, so production runs the milestone. The pin gate was the only one.
+- **Next:** t007's live check as written, in the QA account's `tian-personal` (the workspace with a GitHub connection; `bex-canary` has none), on a fixture repository it deletes afterwards, with one short session; the `gh` setting is left on (its default). Then t011 closes the milestone if DoD 5 holds.
+
 ## Source + Goal linkage
 
 - **Source:** inbox note [w10/026](../../done/026.md), filed by w10/m513's worker from its Devin comparison (t007) on 2026-11-19, promoted by `/loopx w10` on 2026-11-19.
@@ -67,4 +87,4 @@ Total: **11 tasks, about 9h15m**.
 - **Expected outcome:** an admin whose policy is that agents reach GitHub only through Git and the `bex` tools turns `gh` off once in Settings → Agents, and no session in the workspace can call the GitHub API from then on.
 - **Why now:** since w10/m522, `gh` writes on the session's repository: it comments, labels, opens issues and re-runs CI. A workspace that does not want that has no way to opt out, while Devin's admins do.
 - **Render parity included (reference product: Devin):** the setting is a tenant-facing surface on REST, GraphQL, MCP, the CLI and the dashboard. t008 checks those surfaces against each other and the setting against Devin's security profiles.
-- **Related:** [w10/027](../027.md) gives the session's web shell and SSH terminal the same `gh`. Whichever of the two ships second makes the terminal's `gh` obey this setting too.
+- **Related:** [w10/027](../../blocked/027.md) gives the session's web shell and SSH terminal the same `gh`. Whichever of the two ships second makes the terminal's `gh` obey this setting too.
