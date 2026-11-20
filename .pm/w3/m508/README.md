@@ -1,6 +1,6 @@
 # w3 · m508 — A project's Service Metrics view charts every service together, as Render documents
 
-**Worker:** worker3 **Goal:** the project's Service Metrics view (the `METRICS` saved search w3/m505 creates) charts CPU, memory, instances, HTTP requests, response time and bandwidth for every service of the project or environment, one series per service, grouped as Render's bundle allows. **Status:** blocked — t001–t005 and t007–t010 done and shipped in `2e5170b87`; t006 is verified on dev-3, and its production walk waits for a production pin carrying `2e5170b87` (§ Gate)
+**Worker:** worker3 **Goal:** the project's Service Metrics view (the `METRICS` saved search w3/m505 creates) charts CPU, memory, instances, HTTP requests, response time and bandwidth for every service of the project or environment, one series per service, grouped as Render's bundle allows. **Status:** todo — t001–t005 and t007–t010 done and shipped in `2e5170b87`; t006 is verified on dev-3, and its production walk is next (§ Unblock 2026-11-20)
 
 ## Tasks (in order)
 
@@ -55,6 +55,10 @@ Waits for a production pin carrying `2e5170b87` (§ Gate).
 **Clears by itself; no decision needed.** t006's production half needs a production deploy carrying `2e5170b87`. Check: the newest `chore(deploy): pin platform images to <sha>` on `main` passes `git merge-base --is-ancestor 2e5170b87 <sha>`, and production's `bex-api` runs that digest.
 
 **Next (t006 step 1, then t011):** sign in as the QA user (`bash scripts/qa-login.sh`) and, in `bex-canary`, use or create a project of the QA user's own with at least three services that take traffic (and, if there is one, a worker or cron job and a static site). Open its Service Metrics view from the sidebar at 1440 and 390: one line per service on CPU, Memory, Total Instances, Total Requests and Outbound Bandwidth (Response Times too when the workspace is Pro, else the plan notice), Total Requests grouped by status code and by none, the legend hiding a service on every chart, and an `ENVIRONMENT` filter (Edit view) narrowing the lines. Compare pending and ready at both widths. Record the evidence here, delete any fixture with by-id 404 evidence, log out, and close the milestone.
+
+## Unblock (2026-11-20)
+
+**Source:** verified evidence (`/pm unblock`, `/loopx w3` worker). **Affected:** w3/m508 t006, t011. **Finding:** the gate cleared. The newest pin commit on `main` is `a47204c7e chore(deploy): pin platform images to 3e53abbe3bc3`, and `git merge-base --is-ancestor 2e5170b87 3e53abbe3bc3` succeeds. It pins `ghcr.io/bex-co/bex-operator@sha256:3cfea3acbc67…` and `ghcr.io/bex-co/bex-dashboard@sha256:b72fe48b24c8…`. Read with `kubectl` on the control plane at 06:24 UTC: both `bex-api` pods (since 04:28 UTC) and `bex-controller-manager` (since 04:25 UTC) run the operator digest, and the `dashboard` pod (since 04:29 UTC) runs the dashboard digest. **Remaining gates:** none. **Next:** t006's production walk as § Gate says, then t011.
 
 ## Render parity (t008)
 
