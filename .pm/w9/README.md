@@ -162,6 +162,7 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [ ] **133** — [A Ruby service whose Gemfile pins an exact Ruby patch fails `bundle install`: bex builds on the line's patch and Bundler refuses it](133.md) ← from w9/m494 t004 (production check) 2026-11-19
 - [ ] **134** — [A private Key Value has no external connection string, where Render answers one for every store](134.md) ← from w9/m521 t007 (Render parity) 2026-11-19
 - [ ] **135** — [Every Key Value proxy roll refuses new internal connections for about a second](135.md) ← from w9/m521 t001 (dev-9 check) 2026-11-19
+- [ ] **136** — [A canceled native build's Managed OIDC tokens stay until the next build ends](136.md) ← from w9/124 (loopx result) 2026-11-19
 
 ## Approved queue (priority order, 2026-09-08)
 
