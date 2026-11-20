@@ -252,6 +252,54 @@ func TestApplyBlueprintDatabaseSpecPresenceAndConstraints(t *testing.T) {
 	})
 }
 
+// A refused database sync names the manifest field that caused it. The
+// admission underneath reports its own field vocabulary (enableDiskAutoscaling
+// for the manifest's storageAutoscalingEnabled), and a refusal can be caused
+// by a field the file never declared: a plan change that strands kept
+// autoscaling, pooling, or replicas. The conflict remaps the admission's
+// field onto the manifest's, and falls back to a declared plan when the
+// cause is undeclared — so the path always names something the file did,
+// and the remedy beside it fits what the request did.
+func TestBlueprintDatabaseConflictNamesTheDeclaringField(t *testing.T) {
+	t.Parallel()
+	paid := appv1alpha1.DatabaseSpec{
+		Name: "orders", DatabaseName: "orders_db", DatabaseUser: "orders_user",
+		Plan: "basic-256mb", Version: "16", StorageGB: 10,
+		DiskAutoscaling: true, Pooler: true,
+	}
+	free := appv1alpha1.DatabaseSpec{
+		Name: "orders", Plan: "free", Version: "16", StorageGB: 1,
+	}
+	withReplica := appv1alpha1.DatabaseSpec{
+		Name: "orders", DatabaseName: "orders_db", DatabaseUser: "orders_user",
+		Plan: "basic-1gb", Version: "16", StorageGB: 10,
+		ReadReplicas: []appv1alpha1.DatabaseReadReplica{{Name: "ro"}},
+	}
+	for _, tc := range []struct {
+		name   string
+		live   appv1alpha1.DatabaseSpec
+		want   appv1alpha1.DatabaseSpec
+		fields map[string]BlueprintField
+		path   string
+	}{
+		{"a plan change stranding kept autoscaling", paid, appv1alpha1.DatabaseSpec{Plan: "free"}, map[string]BlueprintField{"plan": {}}, "plan"},
+		{"a plan change stranding a replica", withReplica, appv1alpha1.DatabaseSpec{Plan: "basic-256mb"}, map[string]BlueprintField{"plan": {}}, "plan"},
+		{"a step-violating growth", paid, appv1alpha1.DatabaseSpec{StorageGB: 12}, map[string]BlueprintField{"diskSizeGB": {}}, "diskSizeGB"},
+		{"declared autoscaling on the free plan", free, appv1alpha1.DatabaseSpec{DiskAutoscaling: true}, map[string]BlueprintField{"storageAutoscalingEnabled": {}}, "storageAutoscalingEnabled"},
+		{"declared pooling on the free plan", free, appv1alpha1.DatabaseSpec{Pooler: true}, map[string]BlueprintField{"connectionPool": {}}, "connectionPool"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := *tc.live.DeepCopy()
+			_, err := applyBlueprintDatabaseSpecForTest(&got, tc.want, tc.fields)
+			conflict, ok := err.(*BlueprintFieldConflictError)
+			if !ok || conflict.Path != tc.path {
+				t.Fatalf("conflict = %v, want a conflict on %q", err, tc.path)
+			}
+		})
+	}
+}
+
 func TestParseBlueprintDatabaseMapsAutoscalingAndPooler(t *testing.T) {
 	t.Parallel()
 	enabled := true
