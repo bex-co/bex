@@ -1287,6 +1287,31 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     message: "无法更新可用的智能体，请重试。",
     description: "Error after a failed availability change",
   },
+  "agentEnvironment.githubCliLabel": {
+    message: "GitHub CLI（gh）",
+    description:
+      "Label of the switch that gives the workspace's agent sessions gh, the GitHub CLI (w10/m524)",
+  },
+  "agentEnvironment.githubCliHelp": {
+    message:
+      "关闭后，此工作区的所有智能体会话（包括正在运行的会话）都将无法使用 gh；推送到会话分支的 Git 操作和 bex 的拉取请求工具仍可正常使用。",
+    description:
+      "Help under the GitHub CLI switch: what turning it off does (w10/m524)",
+  },
+  "agentEnvironment.githubCliTurnedOn": {
+    message: "已为智能体会话开启 GitHub CLI",
+    description:
+      "Toast after an admin turns the sessions' GitHub CLI on (w10/m524)",
+  },
+  "agentEnvironment.githubCliTurnedOff": {
+    message: "已为智能体会话关闭 GitHub CLI",
+    description:
+      "Toast after an admin turns the sessions' GitHub CLI off (w10/m524)",
+  },
+  "agentEnvironment.githubCliSaveFailed": {
+    message: "无法更改 GitHub CLI 设置，请重试。",
+    description: "Error after a failed GitHub CLI switch (w10/m524)",
+  },
 };
 
 export default zhAgentEnvironment;

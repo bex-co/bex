@@ -72,6 +72,7 @@ export async function tempConfig(
     repoUrl: "",
     baseBranch: "",
     repository: "",
+    githubCli: true,
     contextJson: "",
     originalTask: "",
     deliver: false,

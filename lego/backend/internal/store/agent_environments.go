@@ -25,8 +25,9 @@ import (
 
 // AgentEnvironment is a workspace's agent-session environment row
 // (w10/m17): the sandbox network tier, the custom hostnames the `custom` tier
-// opens, the default model and the default sandbox template (w10/m519; empty
-// means the platform's). A workspace with no row has the defaults.
+// opens, the default model, the default sandbox template (w10/m519; empty
+// means the platform's) and whether its sessions get a `gh` (w10/m524). A
+// workspace with no row has the defaults.
 type AgentEnvironment struct {
 	WorkspaceID     string
 	NetworkTier     string
@@ -45,7 +46,11 @@ type AgentEnvironment struct {
 	// id (w7/m392).
 	DisabledAgents []string
 	DataUseAcks    map[string]AgentDataUseAck
-	UpdatedAt      time.Time
+	// GitHubCLIDisabled is an admin's opt-out of the sessions' `gh` (w10/m524):
+	// no `gh` configuration at dispatch and no github-api mint. Stored as the
+	// opt-out so the zero value, a workspace with no row, keeps `gh` on.
+	GitHubCLIDisabled bool
+	UpdatedAt         time.Time
 }
 
 // AgentDataUseAck is one admin's acknowledgement that a profile's provider
@@ -79,6 +84,9 @@ type AgentEnvironmentPatch struct {
 	// profile id that has none yet; an existing one is kept.
 	AcknowledgeDataUse []string
 	AcknowledgedBy     string
+	// GitHubCLIDisabled turns the sessions' `gh` off (true) or on (false);
+	// nil keeps it.
+	GitHubCLIDisabled *bool
 }
 
 // GetAgentEnvironment returns the workspace's explicit row — ErrNotFound when
@@ -134,10 +142,10 @@ func (s *PGStore) UpsertAgentEnvironmentLocked(ctx context.Context, workspaceID 
 }
 
 // agentEnvironmentColumns are the columns AgentEnvironment.dest scans.
-const agentEnvironmentColumns = `network_tier, custom_hosts, default_model, default_template, agent_model_spend_cap_override_microusd, model_key_set_at, disabled_agents, agent_data_use_acks, updated_at`
+const agentEnvironmentColumns = `network_tier, custom_hosts, default_model, default_template, agent_model_spend_cap_override_microusd, model_key_set_at, disabled_agents, agent_data_use_acks, github_cli_disabled, updated_at`
 
 func (e *AgentEnvironment) dest() []any {
-	return []any{&e.NetworkTier, &e.CustomHosts, &e.DefaultModel, &e.DefaultTemplate, &e.SpendCapOverrideMicroUSD, &e.ModelKeySetAt, &e.DisabledAgents, &e.DataUseAcks, &e.UpdatedAt}
+	return []any{&e.NetworkTier, &e.CustomHosts, &e.DefaultModel, &e.DefaultTemplate, &e.SpendCapOverrideMicroUSD, &e.ModelKeySetAt, &e.DisabledAgents, &e.DataUseAcks, &e.GitHubCLIDisabled, &e.UpdatedAt}
 }
 
 func upsertAgentEnvironment(ctx context.Context, q interface {
@@ -158,11 +166,11 @@ func upsertAgentEnvironment(ctx context.Context, q interface {
 	}
 	e := AgentEnvironment{WorkspaceID: workspaceID}
 	err := q.QueryRow(ctx, `
-		INSERT INTO agent_environments (workspace_id, network_tier, custom_hosts, default_model, agent_model_spend_cap_override_microusd, model_key_set_at, disabled_agents, agent_data_use_acks, default_template)
+		INSERT INTO agent_environments (workspace_id, network_tier, custom_hosts, default_model, agent_model_spend_cap_override_microusd, model_key_set_at, disabled_agents, agent_data_use_acks, default_template, github_cli_disabled)
 		VALUES ($1, COALESCE($2, 'registries'), COALESCE($3::text[], '{}'), COALESCE($4, ''),
 		        CASE WHEN $6::boolean THEN NULL ELSE $5::bigint END,
 		        CASE WHEN $7::boolean THEN now() END,
-		        COALESCE($8::text[], '{}'), $9::jsonb, COALESCE($10, ''))
+		        COALESCE($8::text[], '{}'), $9::jsonb, COALESCE($10, ''), COALESCE($11::boolean, false))
 		ON CONFLICT (workspace_id) DO UPDATE
 			SET network_tier  = COALESCE($2, agent_environments.network_tier),
 			    custom_hosts  = COALESCE($3::text[], agent_environments.custom_hosts),
@@ -177,10 +185,11 @@ func upsertAgentEnvironment(ctx context.Context, q interface {
 			    disabled_agents = COALESCE($8::text[], agent_environments.disabled_agents),
 			    -- The stored acknowledgement wins: the first admin's is kept.
 			    agent_data_use_acks = $9::jsonb || agent_environments.agent_data_use_acks,
+			    github_cli_disabled = COALESCE($11::boolean, agent_environments.github_cli_disabled),
 			    updated_at    = now()
 		RETURNING `+agentEnvironmentColumns,
 		workspaceID, patch.NetworkTier, hosts, patch.DefaultModel, patch.SpendCapOverrideMicroUSD, patch.ClearSpendCapOverride, patch.ModelKeySet,
-		disabled, acks, patch.DefaultTemplate,
+		disabled, acks, patch.DefaultTemplate, patch.GitHubCLIDisabled,
 	).Scan(e.dest()...)
 	if err != nil {
 		return AgentEnvironment{}, classify("agent environment", err)

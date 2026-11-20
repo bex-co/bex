@@ -72,6 +72,13 @@ const (
 	githubAPIUserAgent    = "bex-agent-github-api-proxy/1"
 )
 
+// githubCLIOffRefusal answers every call of a session whose workspace has
+// its GitHub CLI setting off (w10/m524, ADR090 D4): bex-api refused the mint,
+// so no token exists for the call.
+const githubCLIOffRefusal = "bex: gh is turned off for this workspace's agent sessions (the agent environment's GitHub CLI setting, githubCliEnabled). " +
+	"A workspace admin turns it back on in Settings → Agents or with `bex agent env set --github-cli on`. " +
+	"Pushes to your session branch and the bex MCP tools open_or_update_draft_pr and reply_on_pull_request still work."
+
 // githubAPIRequestHeaders are the sandbox's request headers forwarded
 // upstream. Authorization is never among them: it carries gh's placeholder.
 var githubAPIRequestHeaders = []string{
@@ -110,7 +117,7 @@ func (b *Broker) serveGitHubAPI(w http.ResponseWriter, r *http.Request, namespac
 	}
 	access, status, refusal := githubAPIRequestRefusal(r.Method, apiPath, r.URL.RawQuery, repository)
 	if refusal != "" {
-		b.refuseGitHubAPI(w, claimed, status, refusal)
+		b.refuseGitHubAPI(w, claimed, "rejected_target", status, refusal)
 		return
 	}
 	admitted, ok := b.admit(r, namespace, authorizeBranch(claimed), routeBudget{b.githubAPIBudgets(), "github_api"}, func(refusal admissionRefusal) {
@@ -149,7 +156,7 @@ func (b *Broker) serveGitHubAPI(w http.ResponseWriter, r *http.Request, namespac
 			status, refusal = restWriteBodyRefusal(*access.write, body, repository)
 		}
 		if refusal != "" {
-			b.refuseGitHubAPI(w, claimed, status, refusal)
+			b.refuseGitHubAPI(w, claimed, "rejected_target", status, refusal)
 			return
 		}
 	}
@@ -162,7 +169,12 @@ func (b *Broker) serveGitHubAPI(w http.ResponseWriter, r *http.Request, namespac
 	}
 	credential, err := mint.Mint(r.Context(), verified)
 	if err != nil {
-		if errors.Is(err, agentsession.ErrForbidden) {
+		switch {
+		// ErrGitHubCLIOff wraps ErrForbidden, so it is tested first.
+		case errors.Is(err, agentsession.ErrGitHubCLIOff):
+			b.refuseGitHubAPI(w, verified, "github_cli_off", http.StatusForbidden, githubCLIOffRefusal)
+			return
+		case errors.Is(err, agentsession.ErrForbidden):
 			b.Metrics.Authentication("rejected_target")
 			writeGitHubAPIError(w, http.StatusForbidden, "bex: forbidden")
 			return
@@ -682,11 +694,11 @@ func graphQLString(value ast.Value, variables map[string]any, defaults map[strin
 	return "", false
 }
 
-// refuseGitHubAPI answers a refused method, path or query in GitHub's error
-// shape, which gh prints as "HTTP <status>: <message>".
-func (b *Broker) refuseGitHubAPI(w http.ResponseWriter, claimed agentsession.MintRequest, status int, message string) {
-	b.Metrics.Authentication("rejected_target")
-	log.Printf("agent github api: refused (session=%s repo=%s status=%d)", claimed.SessionID, claimed.Repository, status)
+// refuseGitHubAPI answers a refused call in GitHub's error shape, which gh
+// prints as "HTTP <status>: <message>", counted under result.
+func (b *Broker) refuseGitHubAPI(w http.ResponseWriter, claimed agentsession.MintRequest, result string, status int, message string) {
+	b.Metrics.Authentication(result)
+	log.Printf("agent github api: refused (session=%s repo=%s status=%d result=%s)", claimed.SessionID, claimed.Repository, status, result)
 	writeGitHubAPIError(w, status, message)
 }
 

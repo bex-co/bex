@@ -17,6 +17,7 @@ limitations under the License.
 package agentcred
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -31,6 +32,8 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // githubAPIUpstream records what reached the fake api.github.com.
@@ -50,9 +53,25 @@ type githubAPIUpstream struct {
 // 10.0.0.1.
 func githubAPIHarness(t *testing.T, handler http.HandlerFunc) (*Broker, string, *credentialGitHub, *githubAPIUpstream) {
 	t.Helper()
+	return githubAPIHarnessWithSetting(t, &githubCLISetting{}, handler)
+}
+
+// githubCLISetting is the harness workspace's GitHub CLI setting (w10/m524),
+// which a test turns off as an admin would while the session runs.
+type githubCLISetting struct{ off bool }
+
+func (s *githubCLISetting) GetAgentEnvironment(_ context.Context, workspaceID string) (store.AgentEnvironment, error) {
+	if !s.off {
+		return store.AgentEnvironment{}, store.ErrNotFound
+	}
+	return store.AgentEnvironment{WorkspaceID: workspaceID, GitHubCLIDisabled: true}, nil
+}
+
+func githubAPIHarnessWithSetting(t *testing.T, setting *githubCLISetting, handler http.HandlerFunc) (*Broker, string, *credentialGitHub, *githubAPIUpstream) {
+	t.Helper()
 	secret := []byte("github-api-secret")
 	gh := &credentialGitHub{}
-	minter := &agentsession.Minter{GitHub: gh, Connections: credentialConnections{}, Sessions: credentialSessions{}}
+	minter := &agentsession.Minter{GitHub: gh, Connections: credentialConnections{}, Sessions: credentialSessions{}, Environments: setting}
 	gitMint := httptest.NewServer(&agentsession.Handler{Secret: secret, Minter: minter})
 	t.Cleanup(gitMint.Close)
 	readMint := httptest.NewServer(&agentsession.GitHubReadHandler{Secret: secret, Minter: minter})
@@ -664,5 +683,57 @@ func TestGitHubAPIRouteBudgetIsSeparateFromGit(t *testing.T) {
 	}
 	if got := gitBudgetRequest(broker, repoURL); got != http.StatusOK {
 		t.Fatalf("a Git exchange after the API budget = %d, want 200", got)
+	}
+}
+
+// w10/m524: once an admin turns gh off, a running session's next call on the
+// route, a REST or GraphQL read or an admitted write, answers 403 in GitHub's
+// error shape naming the setting and how to turn it back on, with no token
+// minted and nothing sent to GitHub; its Git exchanges keep working, and
+// turning gh back on serves the next call again.
+func TestGitHubAPIRouteRefusesEveryCallWhileGitHubCLIIsOff(t *testing.T) {
+	setting := &githubCLISetting{}
+	broker, repoURL, gh, seen := githubAPIHarnessWithSetting(t, setting, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "{}")
+	})
+	registry := prometheus.NewRegistry()
+	broker.Metrics = sshgateway.NewMetrics(registry)
+	if rec := githubAPIRequest(broker, http.MethodGet, repoURL+"/github-api/repos/octo/repo/actions/runs", ""); rec.Code != http.StatusOK || gh.apiCalls != 1 {
+		t.Fatalf("a read with gh on = %d (read mints %d)", rec.Code, gh.apiCalls)
+	}
+
+	setting.off = true
+	calls := []struct{ method, path, body string }{
+		{http.MethodGet, "/repos/octo/repo/actions/runs", ""},
+		{http.MethodPost, "/graphql", graphQLBody(t, `{ repository(owner: "octo", name: "repo") { pullRequests(first: 1) { totalCount } } }`, nil)},
+		{http.MethodPost, "/repos/octo/repo/actions/runs/44652252248/rerun-failed-jobs", ""},
+		{http.MethodPost, "/graphql", graphQLBody(t, "mutation CommentCreate($input:AddCommentInput!){addComment(input: $input){commentEdge{node{url}}}}", map[string]any{"input": map[string]any{"subjectId": "PR_1", "body": "x"}})},
+	}
+	for _, call := range calls {
+		rec := githubAPIRequest(broker, call.method, repoURL+"/github-api"+call.path, call.body)
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("%s %s with gh off = %d %q, want 403", call.method, call.path, rec.Code, rec.Body.String())
+		}
+		message := githubAPIMessage(t, rec)
+		for _, want := range []string{"gh is turned off for this workspace's agent sessions", "githubCliEnabled", "Settings → Agents", "bex agent env set --github-cli on", "session branch", "open_or_update_draft_pr"} {
+			if !strings.Contains(message, want) {
+				t.Fatalf("%s %s refusal %q does not say %q", call.method, call.path, message, want)
+			}
+		}
+		assertNoToken(t, rec)
+	}
+	if gh.apiCalls != 1 || gh.apiWriteCalls != 0 || seen.calls != 1 {
+		t.Fatalf("with gh off: read mints %d, write mints %d, GitHub calls %d; want nothing past the first read", gh.apiCalls, gh.apiWriteCalls, seen.calls)
+	}
+	if got := gitBudgetRequest(broker, repoURL); got != http.StatusOK || gh.calls != 1 {
+		t.Fatalf("a Git exchange with gh off = %d (Git mints %d), want it served", got, gh.calls)
+	}
+	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_authentications_total", map[string]string{"result": "github_cli_off"}); got != float64(len(calls)) {
+		t.Fatalf("github_cli_off refusals counted = %v, want %d", got, len(calls))
+	}
+
+	setting.off = false
+	if rec := githubAPIRequest(broker, http.MethodGet, repoURL+"/github-api/repos/octo/repo/actions/runs", ""); rec.Code != http.StatusOK || gh.apiCalls != 2 {
+		t.Fatalf("a read after gh is back on = %d (read mints %d)", rec.Code, gh.apiCalls)
 	}
 }

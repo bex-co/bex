@@ -15,14 +15,17 @@
  */
 
 import assert from "node:assert/strict";
-import { readFile, stat } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
 import test from "node:test";
+import { loadConfig } from "../src/config.js";
 import {
+  githubCliEnabled,
   githubCliPaths,
   githubCliTokenPlaceholder,
+  removeGitHubCliConfig,
   startGitHubCliProxy,
 } from "../src/github-cli.js";
 import { platformOverlay } from "../src/overlay.js";
@@ -237,4 +240,69 @@ test("the repo overlay says what gh reads and writes, and that pull requests sta
   const unnamed = platformOverlay({ ...context, repository: "" });
   assert.match(unnamed, /the `gh` CLI is not authenticated/);
   assert.doesNotMatch(platformOverlay({ ...context, deliver: false }), /`gh`/);
+});
+
+// w10/m524: bex-api sets BEX_AGENT_GITHUB_CLI=0 when the workspace turned gh
+// off. Only that value turns it off: an older bex-api, which sets nothing,
+// keeps gh.
+test("BEX_AGENT_GITHUB_CLI=0 turns gh off, and anything else keeps it", () => {
+  const hosted = {
+    BEX_AGENT_MODEL_PROXY_URL: "http://gateway/model/ns/ags-1",
+    BEX_AGENT_SESSION_ID: "ags-1",
+    BEX_AGENT_MODEL_API_KEY: "bex-model-proxy-placeholder-ags-1",
+  };
+  assert.equal(loadConfig(hosted).githubCli, true);
+  assert.equal(
+    loadConfig({ ...hosted, BEX_AGENT_GITHUB_CLI: "1" }).githubCli,
+    true,
+  );
+  assert.equal(
+    loadConfig({ ...hosted, BEX_AGENT_GITHUB_CLI: "0" }).githubCli,
+    false,
+  );
+});
+
+test("a repo session whose workspace turned gh off gets no gh settings, socket or config", async () => {
+  const config = await tempConfig({
+    deliver: true,
+    repoUrl: "http://gw:8082/git/bnM/c2lk/cmVwbw/YnJhbmNo",
+    branch: "bex-agent/ags-abc",
+    repository: "acme/widgets",
+    githubCli: false,
+  });
+  assert.equal(githubCliEnabled(config), false);
+  assert.deepEqual(
+    Object.keys(childEnv(config)).filter((name) => name.startsWith("GH_")),
+    [],
+  );
+  // An earlier turn's config on a kept disk is removed, so gh finds none.
+  const { configDir } = githubCliPaths(config);
+  await mkdir(configDir, { recursive: true });
+  await writeFile(path.join(configDir, "config.yml"), "http_unix_socket: x\n");
+  await removeGitHubCliConfig(config);
+  await assert.rejects(stat(configDir), { code: "ENOENT" });
+  await removeGitHubCliConfig(config);
+});
+
+test("the overlay of a repo session with gh off says gh is turned off and pull requests stay with the bex tools", () => {
+  const text = platformOverlay({
+    cwd: "/workspace",
+    deliver: true,
+    repoUrl: "http://gw:8082/git/bnM/c2lk/cmVwbw/YnJhbmNo",
+    branch: "bex-agent/ags-abc",
+    baseBranch: "",
+    repository: "acme/widgets",
+    githubCli: false,
+    deliveryBaseline: { baseBranch: "main" },
+  });
+  assert.match(
+    text,
+    /this workspace's admins turned `gh` off for its agent sessions, so `gh` and direct GitHub API calls do not work here/,
+  );
+  assert.match(
+    text,
+    /Your pull request goes through the `open_or_update_draft_pr` and `reply_on_pull_request` tools of the `bex` MCP server, and code reaches GitHub only through your pushes to your branch/,
+  );
+  assert.doesNotMatch(text, /`gh` works on/);
+  assert.doesNotMatch(text, /`gh run/);
 });

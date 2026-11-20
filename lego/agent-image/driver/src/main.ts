@@ -24,6 +24,7 @@ import { ensureRepo } from "./git-setup.js";
 import { describeError } from "./errors.js";
 import {
   githubCliEnabled,
+  removeGitHubCliConfig,
   startGitHubCliProxy,
   type GitHubCliProxy,
 } from "./github-cli.js";
@@ -54,6 +55,10 @@ async function main(): Promise<void> {
       githubCli = await startGitHubCliProxy(config).catch((error) => {
         console.error(`gh setup failed: ${describeError(error)}`);
         return undefined;
+      });
+    else
+      await removeGitHubCliConfig(config).catch((error) => {
+        console.error(`gh cleanup failed: ${describeError(error)}`);
       });
     if (config.deliver)
       config.setupBaked = (await ensureRepo(config)).setupBaked;

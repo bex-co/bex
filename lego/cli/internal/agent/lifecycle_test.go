@@ -381,9 +381,13 @@ func TestEnvSet(t *testing.T) {
 	stdout, _, code := run(t, d, "-o", "text", "env")
 	if code != 0 || !strings.Contains(stdout, "$50.00 a month, $3.25 used this month") || !strings.Contains(stdout, "claude, codex") ||
 		!strings.Contains(stdout, "needs an admin's --acknowledge-data-use to turn on") ||
-		!regexp.MustCompile(`(?m)^Default sandbox\s+agent-8c-16g \(8 CPU, 16 GB\)$`).MatchString(stdout) {
+		!regexp.MustCompile(`(?m)^Default sandbox\s+agent-8c-16g \(8 CPU, 16 GB\)$`).MatchString(stdout) ||
+		// A bex-api that predates githubCliEnabled cannot turn gh off (w10/m524).
+		!regexp.MustCompile(`(?m)^GitHub CLI\s+on$`).MatchString(stdout) {
 		t.Fatalf("env:\n%s", stdout)
 	}
+	// Each body is compared whole, so githubCliEnabled is sent only when
+	// --github-cli is given.
 	cases := []struct {
 		args []string
 		body string
@@ -396,6 +400,8 @@ func TestEnvSet(t *testing.T) {
 		{[]string{"--agents", ""}, `{"enabledAgents":[]}`},
 		{[]string{"--default-template", "agent-4c-8g"}, `{"defaultTemplate":"agent-4c-8g"}`},
 		{[]string{"--default-template", ""}, `{"defaultTemplate":""}`},
+		{[]string{"--github-cli", "off"}, `{"githubCliEnabled":false}`},
+		{[]string{"--github-cli", "on", "--network-tier", "full"}, `{"githubCliEnabled":true,"networkTier":"full"}`},
 	}
 	for _, tc := range cases {
 		f.calls = nil
@@ -415,6 +421,37 @@ func TestEnvSet(t *testing.T) {
 	for _, bad := range [][]string{{}, {"--spend-cap", "lots"}, {"--model-key-stdin", "--clear-model-key"}} {
 		if _, stderr, code := run(t, d, append([]string{"env", "set"}, bad...)...); code != exitUsage {
 			t.Errorf("%v: exit %d (%s), want 2", bad, code, stderr)
+		}
+	}
+	for _, bad := range []string{"yes", "ON", "false", ""} {
+		f.calls = nil
+		_, stderr, code := run(t, d, "env", "set", "--github-cli", bad, "--network-tier", "full")
+		if code != exitUsage || !strings.Contains(stderr, "--github-cli takes on or off") || len(f.calls) != 0 {
+			t.Errorf("--github-cli %q: exit %d, %d requests, stderr %q; want a usage error naming on and off and nothing sent", bad, code, len(f.calls), stderr)
+		}
+	}
+}
+
+// TestEnvShowsGitHubCLI: `bex agent env` words the setting, and -o json
+// prints the API's githubCliEnabled as it came (w10/m524).
+func TestEnvShowsGitHubCLI(t *testing.T) {
+	for _, tc := range []struct {
+		enabled bool
+		line    string
+	}{
+		{true, `(?m)^GitHub CLI\s+on$`},
+		{false, `(?m)^GitHub CLI\s+off \(sessions get no gh; Git pushes and the bex tools still work\)$`},
+	} {
+		f := newRouteFake(t, map[string]http.HandlerFunc{"GET /v1/agent-environment": answer(http.StatusOK,
+			map[string]any{"networkTier": "registries", "modelSource": "platform", "githubCliEnabled": tc.enabled})})
+		stdout, stderr, code := run(t, f.deps(), "-o", "text", "env")
+		if code != 0 || !regexp.MustCompile(tc.line).MatchString(stdout) {
+			t.Errorf("githubCliEnabled %v: exit %d (%s):\n%s", tc.enabled, code, stderr, stdout)
+		}
+		stdout, stderr, code = run(t, f.deps(), "-o", "json", "env")
+		var got map[string]any
+		if err := json.Unmarshal([]byte(stdout), &got); code != 0 || err != nil || got["githubCliEnabled"] != tc.enabled {
+			t.Errorf("githubCliEnabled %v: -o json exit %d (%s), %v:\n%s", tc.enabled, code, stderr, err, stdout)
 		}
 	}
 }
@@ -492,7 +529,7 @@ func TestConfigContractFixtureDecodes(t *testing.T) {
 		t.Fatalf("skill versions lost: %+v", v)
 	}
 	if e := golden.Environment; e.NetworkTier == "" || e.AgentModelMonthlySpendCapUSD == nil || e.TrustTier == nil || len(e.CustomHosts) != 1 || len(e.Models) != 3 ||
-		e.DefaultTemplate != "agent-4c-8g" || len(e.Templates) != 2 || e.Templates[1].MemoryGB != 8 {
+		e.DefaultTemplate != "agent-4c-8g" || len(e.Templates) != 2 || e.Templates[1].MemoryGB != 8 || e.GitHubCLIEnabled == nil || *e.GitHubCLIEnabled {
 		t.Fatalf("environment lost: %+v", e)
 	}
 	if l := golden.SecretList; len(l.Secrets) != 1 || l.Secrets[0].Name == "" {

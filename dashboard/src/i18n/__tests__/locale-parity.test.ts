@@ -408,6 +408,9 @@ const SAME_AS_EN = new Set<string>([
   "services.settingsHealthChecksTitle",
   "projects.filterKeyValues",
   "webhooks.idLabel",
+  // GitHub's product name and its command, as GitHub writes them in these
+  // languages (zh and ja differ only in full-width brackets).
+  "agentEnvironment.githubCliLabel",
   // US region names German writes exactly as English does (w4/693).
   "common.regionOhio",
   "common.regionOregon",

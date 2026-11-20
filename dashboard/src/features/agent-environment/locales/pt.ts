@@ -1341,6 +1341,32 @@ const ptAgentEnvironment: Record<string, TranslationEntry> = {
       "Não foi possível atualizar os agentes disponíveis. Tente novamente.",
     description: "Error after a failed availability change",
   },
+  "agentEnvironment.githubCliLabel": {
+    message: "GitHub CLI (gh)",
+    description:
+      "Label of the switch that gives the workspace's agent sessions gh, the GitHub CLI (w10/m524)",
+  },
+  "agentEnvironment.githubCliHelp": {
+    message:
+      "Desativado, o gh deixa de estar disponível em todas as sessões de agente deste workspace, inclusive nas que estão em execução; os pushes do Git para o branch da sessão e as ferramentas de pull request do bex continuam funcionando.",
+    description:
+      "Help under the GitHub CLI switch: what turning it off does (w10/m524)",
+  },
+  "agentEnvironment.githubCliTurnedOn": {
+    message: "GitHub CLI ativado para as sessões de agente",
+    description:
+      "Toast after an admin turns the sessions' GitHub CLI on (w10/m524)",
+  },
+  "agentEnvironment.githubCliTurnedOff": {
+    message: "GitHub CLI desativado para as sessões de agente",
+    description:
+      "Toast after an admin turns the sessions' GitHub CLI off (w10/m524)",
+  },
+  "agentEnvironment.githubCliSaveFailed": {
+    message:
+      "Não foi possível alterar a configuração do GitHub CLI. Tente novamente.",
+    description: "Error after a failed GitHub CLI switch (w10/m524)",
+  },
 };
 
 export default ptAgentEnvironment;

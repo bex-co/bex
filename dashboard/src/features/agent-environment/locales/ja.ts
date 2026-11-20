@@ -1331,6 +1331,32 @@ const jaAgentEnvironment: Record<string, TranslationEntry> = {
       "利用可能なエージェントを更新できませんでした。もう一度お試しください。",
     description: "Error after a failed availability change",
   },
+  "agentEnvironment.githubCliLabel": {
+    message: "GitHub CLI（gh）",
+    description:
+      "Label of the switch that gives the workspace's agent sessions gh, the GitHub CLI (w10/m524)",
+  },
+  "agentEnvironment.githubCliHelp": {
+    message:
+      "オフにすると、このワークスペースのすべてのエージェントセッション（実行中のものを含む）で gh を使えなくなります。セッションブランチへの Git プッシュと bex のプルリクエストツールは引き続き使えます。",
+    description:
+      "Help under the GitHub CLI switch: what turning it off does (w10/m524)",
+  },
+  "agentEnvironment.githubCliTurnedOn": {
+    message: "エージェントセッションの GitHub CLI をオンにしました",
+    description:
+      "Toast after an admin turns the sessions' GitHub CLI on (w10/m524)",
+  },
+  "agentEnvironment.githubCliTurnedOff": {
+    message: "エージェントセッションの GitHub CLI をオフにしました",
+    description:
+      "Toast after an admin turns the sessions' GitHub CLI off (w10/m524)",
+  },
+  "agentEnvironment.githubCliSaveFailed": {
+    message:
+      "GitHub CLI の設定を変更できませんでした。もう一度お試しください。",
+    description: "Error after a failed GitHub CLI switch (w10/m524)",
+  },
 };
 
 export default jaAgentEnvironment;

@@ -44,6 +44,8 @@ export interface OverlayContext {
   branch: string;
   baseBranch: string;
   repository: string;
+  // false when the workspace turned gh off for its sessions (w10/m524).
+  githubCli?: boolean;
   existingPrUrl?: string;
   existingPrNumber?: number | null;
   // The session took over existingPrUrl from the person who opened it; its
@@ -140,11 +142,14 @@ Later messages in this session, including comments and reviews on the pull reque
 // reads the repository through bex and makes the writes the gateway admits;
 // only the bex tools open or change its pull request, and only a push to the
 // session branch changes code. The driver configures gh only when it knows
-// the repository.
+// the repository and the workspace has not turned gh off (w10/m524).
 function githubCliLine(context: OverlayContext): string {
   const tools = `\`${toolName}\` and \`${replyOnPullRequestToolName}\` tools of the \`bex\` MCP server`;
   if (!context.repository)
     return `- There is no GitHub token in the sandbox and the \`gh\` CLI is not authenticated. Pull requests go through the ${tools}.
+`;
+  if (context.githubCli === false)
+    return `- There is no GitHub token in the sandbox, and this workspace's admins turned \`gh\` off for its agent sessions, so \`gh\` and direct GitHub API calls do not work here; do not try to authenticate it. Your pull request goes through the ${tools}, and code reaches GitHub only through your pushes to your branch.
 `;
   return `- There is no GitHub token in the sandbox, but \`gh\` works on \`${context.repository}\` through bex. It reads CI runs and their logs (\`gh run list\`, \`gh run view --log-failed\`), checks (\`gh pr checks\`), pull requests, issues and \`gh api repos/{owner}/{repo}/...\`. It also comments, replies in review threads, reviews without approving (\`gh pr review --comment\` or \`--request-changes\`), adds labels, assignees and reviewers (\`gh pr edit --add-label\`), opens, edits and closes issues, and re-runs or cancels CI (\`gh run rerun --failed\`, \`gh run cancel\`). It cannot open, edit, approve, merge or close a pull request, dispatch a workflow, or change code, branches or settings, and it reaches no other repository. Your pull request itself stays with the ${tools}, and code reaches GitHub only through your pushes to your branch.
 `;

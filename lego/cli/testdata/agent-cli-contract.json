@@ -233,7 +233,8 @@
         "cpu": 4,
         "memoryGb": 8
       }
-    ]
+    ],
+    "githubCliEnabled": false
   },
   "capabilities": {
     "ready": true,

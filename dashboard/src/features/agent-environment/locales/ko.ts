@@ -1314,6 +1314,31 @@ const koAgentEnvironment: Record<string, TranslationEntry> = {
     message: "사용 가능한 에이전트를 업데이트하지 못했습니다. 다시 시도하세요.",
     description: "Error after a failed availability change",
   },
+  "agentEnvironment.githubCliLabel": {
+    message: "GitHub CLI (gh)",
+    description:
+      "Label of the switch that gives the workspace's agent sessions gh, the GitHub CLI (w10/m524)",
+  },
+  "agentEnvironment.githubCliHelp": {
+    message:
+      "끄면 이 워크스페이스의 모든 에이전트 세션(실행 중인 세션 포함)에서 gh를 사용할 수 없습니다. 세션 브랜치로의 Git 푸시와 bex의 풀 리퀘스트 도구는 계속 작동합니다.",
+    description:
+      "Help under the GitHub CLI switch: what turning it off does (w10/m524)",
+  },
+  "agentEnvironment.githubCliTurnedOn": {
+    message: "에이전트 세션의 GitHub CLI를 켰습니다",
+    description:
+      "Toast after an admin turns the sessions' GitHub CLI on (w10/m524)",
+  },
+  "agentEnvironment.githubCliTurnedOff": {
+    message: "에이전트 세션의 GitHub CLI를 껐습니다",
+    description:
+      "Toast after an admin turns the sessions' GitHub CLI off (w10/m524)",
+  },
+  "agentEnvironment.githubCliSaveFailed": {
+    message: "GitHub CLI 설정을 변경하지 못했습니다. 다시 시도하세요.",
+    description: "Error after a failed GitHub CLI switch (w10/m524)",
+  },
 };
 
 export default koAgentEnvironment;

@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { AgentModelSource, AgentNetworkTier } from "@/graphql/definitions";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { mockCapabilities } from "@/test/mocks/capabilities";
 import { agentEnvironment } from "@/test/mocks/agent-environment";
-import { codedGraphQLError } from "@/test/mocks/apollo";
+import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 import { AgentEnvironmentCard } from "@/features/agent-environment/components/agent-environment-card";
 import type { UseAgentEnvironmentResult } from "@/features/agent-environment/hooks/use-agent-environment";
 import type { AgentEnvironmentView } from "@/features/agent-environment/lib/environment";
@@ -35,8 +35,13 @@ function setup(env: AgentEnvironmentView | null = ENV, loading = false) {
     update,
     saving: false,
   };
-  render(<AgentEnvironmentCard ownerId="tea-1" />);
-  return { update, user: userEvent.setup() };
+  const view = render(<AgentEnvironmentCard ownerId="tea-1" />);
+  // A newer server copy, as a refetch or another admin's change brings it.
+  const rerender = (next: AgentEnvironmentView) => {
+    hook.current = { ...hook.current, environment: next };
+    view.rerender(<AgentEnvironmentCard ownerId="tea-1" />);
+  };
+  return { update, user: userEvent.setup(), rerender };
 }
 
 const radio = (name: RegExp) => screen.getByRole("radio", { name });
@@ -737,6 +742,145 @@ describe("AgentEnvironmentCard", () => {
       const skeleton = within(screen.getByTestId("spend-cap-section-skeleton"));
       expect(skeleton.getByText("Terms")).toBeInTheDocument();
       expect(skeleton.queryByRole("link")).toBeNull();
+    });
+  });
+
+  // w10/m524: the sessions' gh, a Devin security profile's gh API access.
+  // It saves on toggle, as the available-agents switches do.
+  describe("GitHub CLI", () => {
+    const gh = () => screen.getByRole("switch", { name: "GitHub CLI (gh)" });
+    // The answer reaches the card through the Apollo cache, as in the app.
+    const setupWithCache = (env: AgentEnvironmentView = ENV) => {
+      const harness = setup(env);
+      harness.update.mockImplementation(async (input) => {
+        const next = { ...hook.current.environment!, ...input };
+        harness.rerender(next);
+        return next;
+      });
+      return harness;
+    };
+
+    it.each([true, false])("shows the stored value (%s)", (enabled) => {
+      setup({ ...ENV, githubCliEnabled: enabled });
+      expect(gh()).toHaveAttribute("aria-checked", String(enabled));
+      expect(gh()).toBeEnabled();
+      expect(gh()).toHaveAccessibleDescription(
+        "Turning it off removes gh from every agent session in this workspace, running ones included; Git pushes to the session branch and bex's pull request tools keep working.",
+      );
+    });
+
+    it("lets an admin turn gh off and back on", async () => {
+      const { user, update } = setupWithCache();
+      await user.click(gh());
+      expect(update).toHaveBeenLastCalledWith({ githubCliEnabled: false });
+      expect(gh()).not.toBeChecked();
+      expect(toast.success).toHaveBeenLastCalledWith(
+        "GitHub CLI turned off for agent sessions",
+      );
+      // It is not part of the draft the Save button sends.
+      expect(save()).toBeDisabled();
+      await user.click(gh());
+      expect(update).toHaveBeenLastCalledWith({ githubCliEnabled: true });
+      expect(gh()).toBeChecked();
+      expect(toast.success).toHaveBeenLastCalledWith(
+        "GitHub CLI turned on for agent sessions",
+      );
+      expect(update).toHaveBeenCalledTimes(2);
+    });
+
+    it("holds the switch until the server answers, then follows newer copies", async () => {
+      const { user, update, rerender } = setupWithCache();
+      let answer!: () => void;
+      update.mockImplementationOnce(
+        (input) =>
+          new Promise<AgentEnvironmentView>((resolve) => {
+            answer = () => {
+              const next = { ...ENV, ...input };
+              rerender(next);
+              resolve(next);
+            };
+          }),
+      );
+      await user.click(gh());
+      expect(gh()).not.toBeChecked();
+      expect(gh()).toBeDisabled();
+      await act(async () => answer());
+      expect(gh()).not.toBeChecked();
+      expect(gh()).toBeEnabled();
+      // Another admin turned it back on: the next read wins.
+      rerender({ ...ENV, githubCliEnabled: true });
+      expect(gh()).toBeChecked();
+    });
+
+    it("shows the stored value again and says why when a save fails", async () => {
+      const { user, update } = setupWithCache();
+      update.mockRejectedValueOnce(uncodedGraphQLError("boom"));
+      await user.click(gh());
+      expect(update).toHaveBeenCalledWith({ githubCliEnabled: false });
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Couldn't change the GitHub CLI setting. Try again.",
+      );
+      expect(gh()).toBeChecked();
+      expect(gh()).toBeEnabled();
+      expect(toast.success).not.toHaveBeenCalled();
+      // A refusal for a caller no longer an admin reads as the card's other
+      // fields do.
+      update.mockRejectedValueOnce(codedGraphQLError("FORBIDDEN"));
+      await user.click(gh());
+      expect(screen.getAllByRole("alert")).toHaveLength(1);
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Only workspace admins can change agent settings.",
+      );
+      expect(gh()).toBeChecked();
+    });
+
+    it.each([true, false])(
+      "is disabled for a member without can_manage (stored %s)",
+      async (enabled) => {
+        vi.mocked(useCapabilities).mockReturnValue(
+          mockCapabilities({ role: "DEVELOPER", canManage: false }),
+        );
+        const { user, update } = setup({ ...ENV, githubCliEnabled: enabled });
+        expect(gh()).toBeDisabled();
+        expect(gh()).toHaveAttribute("aria-checked", String(enabled));
+        await user.click(gh());
+        expect(update).not.toHaveBeenCalled();
+      },
+    );
+
+    it("keeps the skeleton's GitHub CLI row in step with the ready card", () => {
+      const shape = (section: HTMLElement) => {
+        const row = section.firstElementChild!;
+        return {
+          // Right after the network tier, in the same card slot.
+          slot: Array.from(section.parentElement!.children).indexOf(section),
+          section: section.className,
+          children: section.children.length,
+          row: row.className,
+          text: row.firstElementChild!.className,
+          textRows: row.firstElementChild!.children.length,
+        };
+      };
+      setup();
+      const ready = shape(screen.getByTestId("github-cli-section"));
+      // The switch is h-5 w-9; the skeleton holds that box.
+      expect(gh()).toHaveClass("h-5", "w-9", "shrink-0");
+      cleanup();
+
+      setup(null, true);
+      const skeleton = screen.getByTestId("github-cli-section-skeleton");
+      expect(shape(skeleton)).toEqual(ready);
+      expect(skeleton.firstElementChild!.lastElementChild).toHaveClass(
+        "h-5",
+        "w-9",
+        "shrink-0",
+        "rounded-full",
+      );
+      expect(skeleton).toHaveTextContent("GitHub CLI (gh)");
+      expect(skeleton).toHaveTextContent(
+        /removes gh from every agent session in this workspace/,
+      );
+      expect(within(skeleton).queryByRole("switch")).toBeNull();
     });
   });
 

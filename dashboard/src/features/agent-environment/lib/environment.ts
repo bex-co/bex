@@ -286,3 +286,13 @@ export function modelKeyErrorKey(err: unknown): string {
     ? "agentEnvironment.forbidden"
     : "agentEnvironment.modelKeySaveFailed";
 }
+
+/**
+ * The locale key for a failed GitHub CLI switch (w10/m524): a non-admin gets
+ * the same refusal as for the other fields, anything else a retry.
+ */
+export function githubCliErrorKey(err: unknown): string {
+  return isForbiddenError(err)
+    ? "agentEnvironment.forbidden"
+    : "agentEnvironment.githubCliSaveFailed";
+}

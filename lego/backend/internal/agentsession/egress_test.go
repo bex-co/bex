@@ -73,7 +73,7 @@ func TestEgressGrantRequiresALiveSandboxInAFullTierWorkspace(t *testing.T) {
 	full := store.AgentEnvironment{WorkspaceID: "tea-a", NetworkTier: "full"}
 	cases := map[string]struct {
 		sessions SessionStore
-		envs     EgressTierStore
+		envs     EnvironmentStore
 		req      ModelMintRequest
 		want     error
 	}{

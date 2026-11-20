@@ -79,6 +79,16 @@ func serveSignedMint[Req, Resp any](w http.ResponseWriter, r *http.Request, secr
 	if err != nil {
 		status := http.StatusBadGateway
 		switch {
+		// The named 403s are tested before the ErrForbidden they wrap, so the
+		// caller can tell "this workspace has no model key" (the tenant's to
+		// fix, worth terminalizing the session for) or "this workspace turned
+		// gh off" from an authorization refusal.
+		case errors.Is(err, ErrModelKeyMissing):
+			status = http.StatusForbidden
+			w.Header().Set(RefusalHeader, RefusalModelKeyMissing)
+		case errors.Is(err, ErrGitHubCLIOff):
+			status = http.StatusForbidden
+			w.Header().Set(RefusalHeader, RefusalGitHubCLIOff)
 		case errors.Is(err, ErrForbidden):
 			status = http.StatusForbidden
 		case errors.Is(err, ErrInvalidRequest):
@@ -93,12 +103,6 @@ func serveSignedMint[Req, Resp any](w http.ResponseWriter, r *http.Request, secr
 		case errors.Is(err, ErrBillingBalanceDue):
 			status = http.StatusTooManyRequests
 			w.Header().Set(RefusalHeader, RefusalBillingBalanceDue)
-		}
-		// Name the refusal so the caller can tell "this workspace has no model key"
-		// (the tenant's to fix, and worth terminalizing the session for) from an
-		// authorization refusal, which the status code alone flattens together.
-		if errors.Is(err, ErrModelKeyMissing) {
-			w.Header().Set(RefusalHeader, RefusalModelKeyMissing)
 		}
 		http.Error(w, http.StatusText(status), status)
 		return
@@ -187,10 +191,13 @@ func postSignedMint[Req, Resp any](ctx context.Context, url string, secret []byt
 			// Recover the specific refusal when bex-api named it. Absent or unknown
 			// header ⇒ the plain ErrForbidden every caller already handles, so an
 			// older broker (or the git-credential path, which never sets it) is
-			// unchanged. ErrModelKeyMissing wraps ErrForbidden, so callers that only
-			// test for the latter are unaffected either way.
-			if resp.Header.Get(RefusalHeader) == RefusalModelKeyMissing {
+			// unchanged. Both named refusals wrap ErrForbidden, so callers that only
+			// test for it are unaffected either way.
+			switch resp.Header.Get(RefusalHeader) {
+			case RefusalModelKeyMissing:
 				return zero, ErrModelKeyMissing
+			case RefusalGitHubCLIOff:
+				return zero, ErrGitHubCLIOff
 			}
 			return zero, ErrForbidden
 		}

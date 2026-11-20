@@ -234,6 +234,7 @@ type AgentEnvironment {
   defaultModel: String
   defaultTemplate: String!
   enabledAgents: [String!]!
+  githubCliEnabled: Boolean!
   modelKeySet: Boolean!
   modelPinned: Boolean!
   modelSource: AgentModelSource!
@@ -257,6 +258,7 @@ input AgentEnvironmentInput {
   defaultModel: String
   defaultTemplate: String
   enabledAgents: [String!]
+  githubCliEnabled: Boolean
   modelApiKey: String
   networkTier: AgentNetworkTier
   resetAgentModelMonthlySpendCap: Boolean

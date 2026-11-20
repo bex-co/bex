@@ -381,7 +381,11 @@ type agentEnvironment struct {
 	AgentModelSpendMonthToDateUSD *float64          `json:"agentModelSpendMonthToDateUsd"`
 	TrustTier                     *string           `json:"trustTier"`
 	EnabledAgents                 []string          `json:"enabledAgents"`
-	AgentDataUse                  []struct {
+	// GitHubCLIEnabled is whether the workspace's sessions get a `gh`
+	// (w10/m524); nil from a bex-api that predates the setting, which
+	// cannot turn it off, so it reads as on.
+	GitHubCLIEnabled *bool `json:"githubCliEnabled"`
+	AgentDataUse     []struct {
 		Agent          string     `json:"agent"`
 		AcknowledgedAt *time.Time `json:"acknowledgedAt"`
 		AcknowledgedBy *string    `json:"acknowledgedBy"`
@@ -391,7 +395,7 @@ type agentEnvironment struct {
 func envCommand(d deps) *cobra.Command {
 	root := &cobra.Command{
 		Use:   "env",
-		Short: "Show the workspace's agent environment: network, default model and sandbox, spend cap, agents",
+		Short: "Show the workspace's agent environment: network, GitHub CLI, default model and sandbox, spend cap, agents",
 		Args:  cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			return workspaceShow(d, c, http.MethodGet, nil, nil, "read the agent environment", writeEnvironment, "agent-environment")
@@ -399,7 +403,7 @@ func envCommand(d deps) *cobra.Command {
 	}
 	var (
 		tier, model, spendCap string
-		template              string
+		template, githubCLI   string
 		hosts, agents, acks   []string
 		noHosts, keyStdin     bool
 		clearKey              bool
@@ -414,7 +418,12 @@ func envCommand(d deps) *cobra.Command {
 			"train on session data also needs --acknowledge-data-use naming it.\n" +
 			"--default-template sets the sandbox template sessions and automation runs\n" +
 			"that name none run on (`bex agent models` lists them; \"\" returns to the\n" +
-			"platform's); it applies to sessions created afterwards.",
+			"platform's); it applies to sessions created afterwards.\n" +
+			"--github-cli off turns gh off for the workspace's agent sessions: turns\n" +
+			"dispatched afterwards get no gh configuration, and a running session's next\n" +
+			"gh call is refused with a message naming this setting. Git pushes to the\n" +
+			"session branch and the bex MCP tools keep working. --github-cli on turns it\n" +
+			"back on.",
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			f := c.Flags()
@@ -435,6 +444,14 @@ func envCommand(d deps) *cobra.Command {
 			}
 			if f.Changed("default-template") {
 				patch["defaultTemplate"] = template
+			}
+			if f.Changed("github-cli") {
+				switch githubCLI {
+				case "on", "off":
+					patch["githubCliEnabled"] = githubCLI == "on"
+				default:
+					return usageError("--github-cli takes on or off, not %q", githubCLI)
+				}
 			}
 			if f.Changed("spend-cap") {
 				if spendCap == spendCapPlanDefault {
@@ -475,6 +492,7 @@ func envCommand(d deps) *cobra.Command {
 	f.BoolVar(&noHosts, "no-custom-hosts", false, "remove every custom host")
 	f.StringVar(&model, "default-model", "", "the workspace's default model id (\"\" returns to the provider default)")
 	f.StringVar(&template, "default-template", "", "the workspace's default sandbox template (\"\" returns to the platform's; `bex agent models` lists them)")
+	f.StringVar(&githubCLI, "github-cli", "", "on or off: whether the workspace's agent sessions get gh (on unless an admin turned it off)")
 	f.StringVar(&spendCap, "spend-cap", "", "monthly agent-model spend cap in USD, or "+spendCapPlanDefault)
 	f.BoolVar(&keyStdin, "model-key-stdin", false, "set the workspace's own model API key, read from stdin")
 	f.BoolVar(&clearKey, "clear-model-key", false, "remove the workspace's own model API key")
@@ -488,6 +506,11 @@ func writeEnvironment(w io.Writer, e agentEnvironment) error {
 	tw := newTable(w)
 	tw.row("Network tier", e.NetworkTier)
 	tw.row("Custom hosts", strings.Join(e.CustomHosts, ", "))
+	if e.GitHubCLIEnabled == nil || *e.GitHubCLIEnabled {
+		tw.row("GitHub CLI", "on")
+	} else {
+		tw.row("GitHub CLI", "off (sessions get no gh; Git pushes and the bex tools still work)")
+	}
 	switch {
 	case e.DefaultModel != nil:
 		tw.row("Default model", *e.DefaultModel)

@@ -23,7 +23,8 @@
 // repository and the writes ADR090 D4 lists (comments, reviews that do not
 // approve, labels, issues, CI re-runs), and injects a token minted for that
 // call on its upstream hop, so the sandbox holds a placeholder and never a
-// GitHub token.
+// GitHub token. A workspace that turned gh off (w10/m524) gets none of it:
+// no socket, no config and no GH_* variables.
 
 import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import http from "node:http";
@@ -38,7 +39,7 @@ export const githubCliTokenPlaceholder =
 
 export type GitHubCliConfig = Pick<
   AgentDriverConfig,
-  "deliver" | "repoUrl" | "repository" | "statusPath"
+  "deliver" | "repoUrl" | "repository" | "githubCli" | "statusPath"
 >;
 
 export interface GitHubCliProxy {
@@ -65,7 +66,17 @@ const hopByHopHeaders = new Set([
 ]);
 
 export function githubCliEnabled(config: GitHubCliConfig): boolean {
-  return Boolean(config.deliver && config.repoUrl && config.repository);
+  return Boolean(
+    config.githubCli && config.deliver && config.repoUrl && config.repository,
+  );
+}
+
+// removeGitHubCliConfig deletes a gh config an earlier turn left on a kept
+// disk (ADR047 D12), so a turn without gh has none.
+export async function removeGitHubCliConfig(
+  config: Pick<GitHubCliConfig, "statusPath">,
+): Promise<void> {
+  await rm(githubCliPaths(config).configDir, { recursive: true, force: true });
 }
 
 // githubCliPaths keeps gh's config and its socket beside the driver's status
@@ -81,7 +92,8 @@ export function githubCliPaths(config: Pick<GitHubCliConfig, "statusPath">): {
 // githubCliEnvironment is what the agent and its tools need for gh: the
 // config directory naming the socket, the placeholder token, the session's
 // repository (origin is the Git proxy, which gh cannot map to a repository),
-// and no prompts or update checks. A session without a repository gets none.
+// and no prompts or update checks. A session without a repository, or whose
+// workspace turned gh off, gets none.
 export function githubCliEnvironment(
   config: GitHubCliConfig,
 ): Record<string, string> {

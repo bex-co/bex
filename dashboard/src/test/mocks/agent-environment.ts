@@ -22,6 +22,9 @@ export function agentEnvironment(
     modelKeySet: false,
     modelSource: AgentModelSource.Platform,
     registryHosts: [],
+    // The sessions' gh (w10/m524): on, as a workspace that never saved an
+    // environment reads.
+    githubCliEnabled: true,
     enabledAgents: ["claude", "codex", "gemini"],
     agentDataUse: [
       {

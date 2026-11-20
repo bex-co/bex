@@ -24,6 +24,9 @@ fragment AgentEnvironmentFields on AgentEnvironment {
   modelKeySet
   modelSource
   registryHosts
+  # Whether the workspace's repo sessions get a gh that reaches their
+  # repository through bex (w10/m524); true unless an admin turned it off.
+  githubCliEnabled
   # The agent profiles members can start sessions with, and each profile
   # whose model provider may train on session data with its admin
   # acknowledgement (w7/m392).
@@ -66,7 +69,7 @@ query AgentEnvironment($ownerId: String!) {
 
 # Partial update: omitted fields keep their value; customHosts [] clears the
 # list, defaultModel "" returns to the provider default and defaultTemplate ""
-# to the platform's.
+# to the platform's; githubCliEnabled false turns the sessions' gh off.
 mutation UpdateAgentEnvironment(
   $ownerId: String!
   $input: AgentEnvironmentInput!

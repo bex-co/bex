@@ -307,6 +307,8 @@ export type AgentEnvironment = {
   defaultTemplate: Scalars['String']['output'];
   /** The agent profiles members can start sessions with, as the workspace's admins chose. */
   enabledAgents: Array<Scalars['String']['output']>;
+  /** Whether the workspace's repo sessions get a gh that reaches their repository through bex; true unless an admin turned it off. Off, turns dispatched afterwards get no gh configuration and a running session's next gh call is refused; Git pushes to the session branch and the bex MCP tools keep working. */
+  githubCliEnabled: Scalars['Boolean']['output'];
   modelKeySet: Scalars['Boolean']['output'];
   /** True on the platform model route, whose gateway pins each claude session to the catalog model it chose. */
   modelPinned: Scalars['Boolean']['output'];
@@ -344,6 +346,8 @@ export type AgentEnvironmentInput = {
   defaultTemplate?: InputMaybe<Scalars['String']['input']>;
   /** Replaces the agent profiles members can start sessions with; the others are turned off. A profile in agentDataUse needs its acknowledgement first. */
   enabledAgents?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** false turns gh off for the workspace's agent sessions: turns dispatched afterwards get no gh configuration and a running session's next gh call is refused. true turns it back on. */
+  githubCliEnabled?: InputMaybe<Scalars['Boolean']['input']>;
   /** Write-only: sets or rotates the workspace's own model provider key. Never returned; read modelKeySet. */
   modelApiKey?: InputMaybe<Scalars['String']['input']>;
   networkTier?: InputMaybe<AgentNetworkTier>;

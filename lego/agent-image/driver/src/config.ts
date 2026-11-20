@@ -68,6 +68,9 @@ export interface AgentDriverConfig {
   baseBranch: string;
   // owner/name of the bound repository (display only, for the overlay).
   repository: string;
+  // Whether the workspace lets its sessions use gh (w10/m524):
+  // BEX_AGENT_GITHUB_CLI=0 turns it off, and absent means on.
+  githubCli: boolean;
   // Captured from the control-plane Git proxy during setup, before any tenant
   // agent process runs. The delivery check compares the remote head to baseOid.
   deliveryBaseline?: {
@@ -466,6 +469,7 @@ export function loadConfig(
     repoUrl: env.BEX_AGENT_REPO_URL || "",
     baseBranch: env.BEX_AGENT_BASE_BRANCH || "",
     repository: env.BEX_AGENT_REPOSITORY || "",
+    githubCli: env.BEX_AGENT_GITHUB_CLI !== "0",
     deliver: env.BEX_AGENT_DELIVER === "1",
     gitName: env.BEX_AGENT_GIT_NAME || "bex agent",
     gitEmail: env.BEX_AGENT_GIT_EMAIL || "agent@bex.co",

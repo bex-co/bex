@@ -40,7 +40,8 @@ import (
 // is configured once per workspace instead of per session, the way Codex
 // cloud, Claude Code on the web, Devin and Copilot configure theirs: the
 // sandbox network tier, the custom hostnames the `custom` tier opens, the
-// default model and the default sandbox template (w10/m519).
+// default model, the default sandbox template (w10/m519) and whether its
+// sessions get a `gh` (w10/m524).
 const (
 	// NetworkTierRegistries (the default, including for every workspace with
 	// no row): GitHub, the gateway hops and the built-in package registries,
@@ -93,7 +94,11 @@ type Environment struct {
 	// the admin acknowledgement that turning it on requires.
 	EnabledAgents []string       `json:"enabledAgents"`
 	AgentDataUse  []AgentDataUse `json:"agentDataUse"`
-	UpdatedAt     *time.Time     `json:"updatedAt"`
+	// GitHubCLIEnabled is whether the workspace's repo sessions get a `gh`
+	// that reaches their repository through bex (w10/m524); true unless an
+	// admin turned it off.
+	GitHubCLIEnabled bool       `json:"githubCliEnabled"`
+	UpdatedAt        *time.Time `json:"updatedAt"`
 	// The agent-model spend controls (ADR091 D5, D10.1); all nil when the
 	// store is off. AgentModelMonthlySpendCapUSD is the effective cap:
 	// min(the admin override or the plan default, the trust tier's ceiling).
@@ -155,6 +160,7 @@ type EnvironmentInput struct {
 	// agentDataUse needs before it can be enabled.
 	EnabledAgents           *[]string `json:"enabledAgents,omitempty" jsonschema:"replaces the agent profiles members can start sessions with (admins only); the others are turned off, and running sessions keep running. A profile listed in agentDataUse can be enabled only once acknowledged"`
 	AcknowledgeAgentDataUse []string  `json:"acknowledgeAgentDataUse,omitempty" jsonschema:"agent profiles from agentDataUse whose data use this admin acknowledges: their model provider may train on the prompts, code, files, context and responses their sessions send"`
+	GitHubCLIEnabled        *bool     `json:"githubCliEnabled,omitempty" jsonschema:"false turns gh off for the workspace's agent sessions (admins only): turns dispatched afterwards get no gh configuration, and a running session's next gh call is refused; Git pushes to the session branch and the bex MCP tools keep working. true turns it back on"`
 	// AgentModelMonthlySpendCapSet is true when the field was present, so a
 	// nil value with it set clears the override.
 	AgentModelMonthlySpendCapSet bool `json:"-"`
@@ -493,6 +499,10 @@ func validateEnvironmentInput(workspaceID string, input EnvironmentInput, byoKey
 		}
 		patch.DefaultTemplate = &name
 	}
+	if input.GitHubCLIEnabled != nil {
+		disabled := !*input.GitHubCLIEnabled
+		patch.GitHubCLIDisabled = &disabled
+	}
 	if input.NetworkTier != nil {
 		switch *input.NetworkTier {
 		case NetworkTierRegistries, NetworkTierCustom, NetworkTierFull:
@@ -599,6 +609,7 @@ func (s *Service) environmentView(row store.AgentEnvironment) Environment {
 		view.ModelSource = ModelSourceNone
 	}
 	view.ModelKeySet = view.ModelSource == ModelSourceBYO
+	view.GitHubCLIEnabled = !row.GitHubCLIDisabled
 	view.EnabledAgents, view.AgentDataUse = []string{}, []AgentDataUse{}
 	for _, id := range agentsession.AgentProfileIDs() {
 		if agentEnabled(row, id) {

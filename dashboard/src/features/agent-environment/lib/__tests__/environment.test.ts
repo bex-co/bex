@@ -4,6 +4,7 @@ import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 import {
   buildPatch,
   draftFrom,
+  githubCliErrorKey,
   modelKeyErrorKey,
   normalizeModelKey,
   parseHostLines,
@@ -92,7 +93,10 @@ describe("buildPatch", () => {
     const routed = {
       ...SAVED,
       defaultModel: null,
-      models: ["deepseek/deepseek-v4.1-flash-1017", "anthropic/claude-opus-5.5"],
+      models: [
+        "deepseek/deepseek-v4.1-flash-1017",
+        "anthropic/claude-opus-5.5",
+      ],
     };
     expect(buildPatch(routed, draftFrom(routed))).toEqual({});
     expect(
@@ -210,6 +214,20 @@ describe("modelKeyErrorKey", () => {
     );
     expect(modelKeyErrorKey(uncodedGraphQLError("boom"))).toBe(
       "agentEnvironment.modelKeySaveFailed",
+    );
+  });
+});
+
+describe("githubCliErrorKey", () => {
+  it("names the admin-only refusal and offers a retry for anything else", () => {
+    expect(githubCliErrorKey(codedGraphQLError("FORBIDDEN"))).toBe(
+      "agentEnvironment.forbidden",
+    );
+    expect(githubCliErrorKey(uncodedGraphQLError("boom"))).toBe(
+      "agentEnvironment.githubCliSaveFailed",
+    );
+    expect(githubCliErrorKey(new Error("offline"))).toBe(
+      "agentEnvironment.githubCliSaveFailed",
     );
   });
 });

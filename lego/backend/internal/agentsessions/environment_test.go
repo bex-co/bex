@@ -94,6 +94,9 @@ func (f *fakeEnvironments) UpsertAgentEnvironment(_ context.Context, ws string, 
 	if patch.DisabledAgents != nil {
 		row.DisabledAgents = slices.Clone(*patch.DisabledAgents)
 	}
+	if patch.GitHubCLIDisabled != nil {
+		row.GitHubCLIDisabled = *patch.GitHubCLIDisabled
+	}
 	for _, agent := range patch.AcknowledgeDataUse {
 		if _, kept := row.DataUseAcks[agent]; kept {
 			continue
@@ -183,7 +186,8 @@ func exerciseEnvironmentRoundTrip(t *testing.T, svc *Service, ws string) {
 	}
 	want := Environment{OwnerID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}, Models: []string{}, ModelSource: ModelSourceNone, RegistryHosts: sessionegress.DefaultRegistryDomains(),
 		TemplateOffer: offerOf("agent"),
-		EnabledAgents: []string{"claude", "codex", "deepseek", "gemini"}, AgentDataUse: []AgentDataUse{{Agent: "muse"}}}
+		EnabledAgents: []string{"claude", "codex", "deepseek", "gemini"}, AgentDataUse: []AgentDataUse{{Agent: "muse"}},
+		GitHubCLIEnabled: true}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("defaults = %+v, want %+v", got, want)
 	}
@@ -230,6 +234,22 @@ func exerciseEnvironmentRoundTrip(t *testing.T, svc *Service, ws string) {
 	if err != nil || !reflect.DeepEqual(got.TemplateOffer, offerOf("agent")) {
 		t.Fatalf("clear template = %+v err=%v, want agent", got, err)
 	}
+
+	// The GitHub CLI setting (w10/m524): off reads back to every member, a
+	// later update of another field keeps it, and on restores it.
+	got, err = svc.UpdateEnvironment(caller("admin"), ws, EnvironmentInput{GitHubCLIEnabled: ptr(false)})
+	if err != nil || got.GitHubCLIEnabled || got.NetworkTier != NetworkTierCustom {
+		t.Fatalf("turning gh off = %+v err=%v", got, err)
+	}
+	if got, err = svc.UpdateEnvironment(caller("admin"), ws, EnvironmentInput{DefaultModel: ptr("claude-sonnet-4-5")}); err != nil || got.GitHubCLIEnabled {
+		t.Fatalf("a model update turned gh back on: %+v err=%v", got, err)
+	}
+	if read, err := svc.Environment(caller("viewer"), ws); err != nil || read.GitHubCLIEnabled {
+		t.Fatalf("read back gh = %+v err=%v, want off", read, err)
+	}
+	if got, err = svc.UpdateEnvironment(caller("admin"), ws, EnvironmentInput{GitHubCLIEnabled: ptr(true)}); err != nil || !got.GitHubCLIEnabled {
+		t.Fatalf("turning gh back on = %+v err=%v", got, err)
+	}
 }
 
 // TestEnvironmentAuthorization: any member reads; only a workspace admin
@@ -249,8 +269,11 @@ func exerciseEnvironmentAuthorization(t *testing.T, svc *Service, ws, other stri
 		if _, err := svc.UpdateEnvironment(caller(subject), ws, EnvironmentInput{NetworkTier: ptr(NetworkTierCustom)}); !errors.Is(err, core.ErrForbidden) {
 			t.Errorf("%s write = %v, want forbidden", subject, err)
 		}
+		if _, err := svc.UpdateEnvironment(caller(subject), ws, EnvironmentInput{GitHubCLIEnabled: ptr(false)}); !errors.Is(err, core.ErrForbidden) {
+			t.Errorf("%s turning gh off = %v, want forbidden", subject, err)
+		}
 	}
-	if got, err := svc.Environment(caller("admin"), ws); err != nil || got.NetworkTier != NetworkTierRegistries {
+	if got, err := svc.Environment(caller("admin"), ws); err != nil || got.NetworkTier != NetworkTierRegistries || !got.GitHubCLIEnabled {
 		t.Fatalf("a refused write changed the environment: %+v err=%v", got, err)
 	}
 	if _, err := svc.Environment(caller("admin"), other); !errors.Is(err, core.ErrForbidden) {
@@ -434,6 +457,86 @@ func TestEnvironmentSurfacesShareOneShape(t *testing.T) {
 	res, err := client.CallTool(caller("viewer"), &mcp.CallToolParams{Name: "get_agent_environment", Arguments: map[string]any{"ownerId": "tea-a"}})
 	if err != nil || res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, `"networkTier":"custom"`) {
 		t.Fatalf("MCP read = %+v err=%v", res, err)
+	}
+}
+
+// w10/m524: the GitHub CLI setting is the same field on REST, GraphQL and
+// MCP. Each surface reads it as true for a workspace that never saved an
+// environment, an admin's write of false on one reads back false on the
+// others, and a member's write is refused on each.
+func TestEnvironmentGitHubCLISettingOnEverySurface(t *testing.T) {
+	svc := environmentService("tea-a", newFakeEnvironments())
+	schema := environmentSchema(t, svc)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	restRead := func() any {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/agent-environment?ownerId=tea-a", nil).WithContext(caller("viewer")))
+		var body map[string]any
+		if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &body) != nil {
+			t.Fatalf("REST read = %d %s", rec.Code, rec.Body.String())
+		}
+		return body["githubCliEnabled"]
+	}
+	gqlRead := func() any {
+		t.Helper()
+		result := graphql.Do(graphql.Params{Schema: schema, Context: caller("viewer"), RequestString: `{ agentEnvironment(ownerId: "tea-a") { githubCliEnabled } }`})
+		if len(result.Errors) != 0 {
+			t.Fatalf("GraphQL read: %v", result.Errors)
+		}
+		return result.Data.(map[string]any)["agentEnvironment"].(map[string]any)["githubCliEnabled"]
+	}
+	mcpRead := func() string {
+		t.Helper()
+		res, err := newMCPClient(t, caller("viewer"), svc).CallTool(caller("viewer"), &mcp.CallToolParams{Name: "get_agent_environment", Arguments: map[string]any{"ownerId": "tea-a"}})
+		if err != nil || res.IsError {
+			t.Fatalf("MCP read = %+v err=%v", res, err)
+		}
+		return res.Content[0].(*mcp.TextContent).Text
+	}
+	if restRead() != true || gqlRead() != true || !strings.Contains(mcpRead(), `"githubCliEnabled":true`) {
+		t.Fatalf("defaults: REST %v GraphQL %v MCP %s, want gh on", restRead(), gqlRead(), mcpRead())
+	}
+
+	// A member cannot change it on any surface.
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/agent-environment?ownerId=tea-a", strings.NewReader(`{"githubCliEnabled":false}`)).WithContext(caller("dev")))
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("REST member write = %d, want 403", rec.Code)
+	}
+	if result := graphql.Do(graphql.Params{Schema: schema, Context: caller("dev"), RequestString: `mutation { updateAgentEnvironment(ownerId: "tea-a", input: {githubCliEnabled: false}) { githubCliEnabled } }`}); len(result.Errors) == 0 {
+		t.Fatal("GraphQL member write succeeded")
+	}
+	if res, err := newMCPClient(t, caller("dev"), svc).CallTool(caller("dev"), &mcp.CallToolParams{Name: "update_agent_environment", Arguments: map[string]any{"ownerId": "tea-a", "githubCliEnabled": false}}); err != nil || !res.IsError {
+		t.Fatalf("MCP member write = %+v err=%v, want a refusal", res, err)
+	}
+	if restRead() != true {
+		t.Fatal("a refused write turned gh off")
+	}
+
+	// An admin's write on each surface reads back on the others.
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/agent-environment?ownerId=tea-a", strings.NewReader(`{"githubCliEnabled":false}`)).WithContext(caller("admin")))
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"githubCliEnabled":false`) {
+		t.Fatalf("REST admin write = %d %s", rec.Code, rec.Body.String())
+	}
+	if gqlRead() != false || !strings.Contains(mcpRead(), `"githubCliEnabled":false`) {
+		t.Fatalf("after the REST write: GraphQL %v MCP %s, want off", gqlRead(), mcpRead())
+	}
+	result := graphql.Do(graphql.Params{Schema: schema, Context: caller("admin"), RequestString: `mutation { updateAgentEnvironment(ownerId: "tea-a", input: {githubCliEnabled: true}) { githubCliEnabled networkTier } }`})
+	if len(result.Errors) != 0 || result.Data.(map[string]any)["updateAgentEnvironment"].(map[string]any)["githubCliEnabled"] != true {
+		t.Fatalf("GraphQL admin write = %#v %v", result.Data, result.Errors)
+	}
+	if restRead() != true {
+		t.Fatal("the GraphQL write did not reach REST")
+	}
+	res, err := newMCPClient(t, caller("admin"), svc).CallTool(caller("admin"), &mcp.CallToolParams{Name: "update_agent_environment", Arguments: map[string]any{"ownerId": "tea-a", "githubCliEnabled": false}})
+	if err != nil || res.IsError {
+		t.Fatalf("MCP admin write = %+v err=%v", res, err)
+	}
+	if restRead() != false || gqlRead() != false {
+		t.Fatal("the MCP write did not reach REST and GraphQL")
 	}
 }
 
@@ -734,6 +837,35 @@ func TestSteerFollowsAFullTierSwitch(t *testing.T) {
 		if lifecycle.fullInternet != full || hasProxy != full || lifecycle.driverEnv["BEX_AGENT_NETWORK_TIER"] != tier {
 			t.Fatalf("steer under %s: full=%v HTTPS_PROXY=%v tier env=%q", tier, lifecycle.fullInternet, hasProxy, lifecycle.driverEnv["BEX_AGENT_NETWORK_TIER"])
 		}
+	}
+}
+
+// w10/m524: a repo session dispatched while its workspace has gh off tells
+// the driver so (BEX_AGENT_GITHUB_CLI=0); the next turn after an admin turns
+// it back on does not, and a repo-less session, which has no gh, never does.
+func TestDispatchTellsTheDriverWhenGitHubCLIIsOff(t *testing.T) {
+	svc, st, lifecycle := sessionWithEnvironment(t, &store.AgentEnvironment{NetworkTier: NetworkTierRegistries, GitHubCLIDisabled: true})
+	created, err := svc.Create(caller("alice"), createInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lifecycle.driverEnv[envGitHubCLI] != "0" {
+		t.Fatalf("create with gh off: %s = %q, want 0", envGitHubCLI, lifecycle.driverEnv[envGitHubCLI])
+	}
+	row := st.rows[created.ID]
+	row.Phase = PhaseCompleted
+	st.rows[created.ID] = row
+	svc.Environments.(*fakeEnvironments).rows["tea-a"] = store.AgentEnvironment{WorkspaceID: "tea-a", NetworkTier: NetworkTierRegistries}
+	if _, err := svc.Steer(caller("alice"), SteerRequest{SessionID: created.ID, Prompt: "again"}); err != nil {
+		t.Fatal(err)
+	}
+	if value, ok := lifecycle.driverEnv[envGitHubCLI]; ok {
+		t.Fatalf("steer with gh back on: %s = %q, want it absent", envGitHubCLI, value)
+	}
+
+	chat := (&Service{}).driverEnv(AgentConfig{Agent: "claude"}, store.AgentSession{ID: "ags-y", WorkspaceID: "tea-a", Turns: 1}, store.AgentEnvironment{GitHubCLIDisabled: true})
+	if value, ok := chat[envGitHubCLI]; ok {
+		t.Fatalf("a repo-less session with gh off: %s = %q, want it absent", envGitHubCLI, value)
 	}
 }
 

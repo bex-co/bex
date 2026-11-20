@@ -1,21 +1,21 @@
 # w10 · m524 — A workspace admin can turn off its sessions' `gh` API access, as a Devin security profile can remove the `gh` token
 
-**Worker:** worker10 **Goal:** the workspace agent environment gains a GitHub CLI setting, on by default. When an admin turns it off, the workspace's sessions get no `gh` configuration, and the gateway's `github-api` route refuses their calls with a message that names the setting. Git pushes to the session branch and the `bex` MCP tools keep working. REST, GraphQL, MCP, the CLI and Settings → Agents all read and write the setting. **Status:** todo
+**Worker:** worker10 **Goal:** the workspace agent environment gains a GitHub CLI setting, on by default. When an admin turns it off, the workspace's sessions get no `gh` configuration, and the gateway's `github-api` route refuses their calls with a message that names the setting. Git pushes to the session branch and the `bex` MCP tools keep working. REST, GraphQL, MCP, the CLI and Settings → Agents all read and write the setting. **Status:** todo (t001–t006 and t008–t010 done 2026-11-19; t007's live check waits for a production pin carrying the milestone)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Design: the setting's name, default and scope, where it is enforced and when a change applies; ADR047 and ADR090 amended | 45m | — |
-| [t002](t002.md) | Backend: the agent environment stores the setting and serves it on REST, GraphQL and MCP | 1h30m | t001 |
-| [t003](t003.md) | Backend and gateway: a session's `gh` mints are refused while the setting is off, and the route's message names it | 1h30m | t002 |
-| [t004](t004.md) | Driver: a session dispatched with the setting off gets no `gh` socket or `GH_*` environment, and the overlay says why | 45m | t001 |
-| [t005](t005.md) | CLI: `bex agent env set --github-cli on\|off`, shown by `bex agent env` | 45m | t002 |
-| [t006](t006.md) | Dashboard: a GitHub CLI switch in Settings → Agents, with its skeleton matching | 1h30m | t002 |
+| [t001](done/t001.md) | Design: the setting's name, default and scope, where it is enforced and when a change applies; ADR047 and ADR090 amended — **DONE** | 45m | — |
+| [t002](done/t002.md) | Backend: the agent environment stores the setting and serves it on REST, GraphQL and MCP — **DONE** | 1h30m | t001 |
+| [t003](done/t003.md) | Backend and gateway: a session's `gh` mints are refused while the setting is off, and the route's message names it — **DONE** | 1h30m | t002 |
+| [t004](done/t004.md) | Driver: a session dispatched with the setting off gets no `gh` socket or `GH_*` environment, and the overlay says why — **DONE** | 45m | t001 |
+| [t005](done/t005.md) | CLI: `bex agent env set --github-cli on\|off`, shown by `bex agent env` — **DONE** | 45m | t002 |
+| [t006](done/t006.md) | Dashboard: a GitHub CLI switch in Settings → Agents, with its skeleton matching — **DONE** | 1h30m | t002 |
 | [t007](t007.md) | Live check on production: with the setting off a session's `gh` is refused naming it, and turned back on it works | 45m | t003, t004, t005, t006 |
-| [t008](t008.md) | Render parity (Devin) | 30m | t007 |
-| [t009](t009.md) | Simplify | 20m | t008 |
-| [t010](t010.md) | Test coverage | 45m | t008, t009 |
+| [t008](done/t008.md) | Render parity (Devin) — **DONE** | 30m | t007 |
+| [t009](done/t009.md) | Simplify — **DONE** | 20m | t008 |
+| [t010](done/t010.md) | Test coverage — **DONE** | 45m | t008, t009 |
 | [t011](t011.md) | Closeout | 10m | t010 |
 
 Total: **11 tasks, about 9h15m**.
@@ -26,7 +26,34 @@ Total: **11 tasks, about 9h15m**.
 2. **Off means no `gh` in the sandbox.** A repo session whose turn is dispatched while the setting is off gets no `gh` socket, no `gh` config and no `GH_*` variables (`lego/agent-image/driver/src/github-cli.ts`). Its overlay says that `gh` is turned off for the workspace and that pull requests still go through the `bex` tools.
 3. **Off means the route refuses.** While the setting is off, every call on the session's `github-api` route, read or write, answers `403` in GitHub's error shape before any token is minted. The message names the setting and how an admin turns it back on. The refusal holds for a session already running when the setting was turned off, from its next `gh` call. The denied mint is audited. The Git proxy, pushes to the session branch, `open_or_update_draft_pr` and `reply_on_pull_request` are unaffected.
 4. **Said everywhere.** ADR047 and ADR090 D4 describe the setting, its default, where it is enforced and when a change applies. The MCP tool descriptions, the GraphQL field descriptions and the CLI help name it.
-5. **Live.** On production, once a deploy carries the milestone: in the QA user's workspace, with the setting off, one short repo session's `gh run list` is refused with the message naming the setting and its overlay says `gh` is off. With the setting back on, the next session's `gh run list` answers. The setting is left on.
+5. **Live.** On production, once a deploy carries the milestone, in the QA user's workspace, one short repo session on a QA repository: its first turn's `gh run list` answers; an admin turns the setting off while that turn waits, and the turn's next `gh run list` is refused with the message naming the setting. Its next turn, dispatched while the setting is off, has no `GH_*` variables, its `gh` is not configured, and its overlay says `gh` is off. With the setting back on, the turn after that runs `gh run list` and it answers. The denied mint is in the audit log, and the setting is left on. (Refined 2026-11-19 by t001: DoD 2 means a turn dispatched while the setting is off never reaches the route, so the route's message is what a running turn sees.)
+
+## Design record (t001, 2026-11-19)
+
+- **Names.** The field is `githubCliEnabled` on REST, GraphQL (`AgentEnvironment` and `AgentEnvironmentInput`) and MCP. The driver env is `BEX_AGENT_GITHUB_CLI=0`, where absent means on, so an older bex-api never turns `gh` off. The CLI is `bex agent env set --github-cli on|off`, and the dashboard label is "GitHub CLI (`gh`)".
+- **One deviation from the proposal: the column.** It is stored as the opt-out, `agent_environments.github_cli_disabled boolean NOT NULL DEFAULT false` (migration 0314), with Go `store.AgentEnvironment.GitHubCLIDisabled`. bex-api represents a workspace with no row, and the store-off path, as a zero-value `store.AgentEnvironment` (`workspaceEnvironment`, the egress grant, the mint), as `disabled_agents` already relies on. A positive `github_cli_enabled` would have read `false` there and turned `gh` off for every workspace that never saved an environment.
+- **Default and scope.** On by default, for the whole workspace, which is Devin's organization default. Devin's narrower bindings are filed by t008.
+- **Enforcement points.**
+  - bex-api's `MintGitHubRead` and `MintGitHubWrite` read the row on every call, after the Pod, lifecycle and branch checks and before any token. They refuse with `agentsession.ErrGitHubCLIOff`, which wraps `ErrForbidden` and crosses the internal hop as `RefusalHeader: github-cli-off`, so an older gateway still answers a plain 403. The denial is audited under the verb's existing audit verb.
+  - The gateway route answers the refusal `403` in GitHub's error shape with the message below, counted as `authentications_total{result="github_cli_off"}`.
+  - The driver configures no `gh` at dispatch.
+  - The Git mint, the PR verb and the PR-comment verb never read the setting.
+  - A call the route refuses on its own (a write it never admits, another repository) keeps its own message, since it is refused whatever the setting.
+- **When a change applies.** Off: a running session's next `gh` call is refused, because the mint has no cache, and turns dispatched afterwards have no `gh`. On: the route serves the next call of a turn that has `gh` configured, and a session whose turn was dispatched while it was off gets `gh` from its next turn. Devin applies a change "for existing sessions the next time they resume". bex refuses sooner, which is the safe direction for turning access off.
+- **Refusal text:** "bex: gh is turned off for this workspace's agent sessions (the agent environment's GitHub CLI setting, githubCliEnabled). A workspace admin turns it back on in Settings → Agents or with `bex agent env set --github-cli on`. Pushes to your session branch and the bex MCP tools open_or_update_draft_pr and reply_on_pull_request still work."
+- **DoD 5 refined.** Under DoD 2, a turn dispatched while the setting is off has no socket, so its `gh run list` never reaches the route. gh answers with its own "gh auth login" text, as on a Devin machine whose profile removed the token. The message naming the setting is what a turn that started with `gh` on sees. DoD 5 and t007 now check both, in one session of three short turns.
+- **Recorded in** [ADR047 D2](../../../docs/ADR047-cloud-coding-agent-sessions.md#a-workspace-can-turn-gh-off-amendment-w10m524-2026-11-19) and [ADR090 D4](../../../docs/ADR090-agent-owned-delivery.md#d4--agent-facing-tool-the-bex-stdio-mcp-server).
+
+## Render parity (Devin) record (t008, 2026-11-19)
+
+- **The five surfaces agree.** REST `GET`/`PATCH /v1/agent-environment`, GraphQL `agentEnvironment`/`updateAgentEnvironment` and MCP `get_agent_environment`/`update_agent_environment` carry the same `githubCliEnabled` boolean. It reads `true` for a workspace with no row. An admin's write on any surface reads back on the others. A member's write is refused on each as for the other fields: REST 403, a GraphQL error, an MCP tool error. All of this is pinned by `TestEnvironmentGitHubCLISettingOnEverySurface`. `bex agent env` reads REST and prints `GitHub CLI on`/`off`, showing a field missing from an older bex-api as on. `bex agent env set --github-cli on|off` sends only that field, and any other value is a usage error. Settings → Agents reads and writes it through GraphQL as a switch that saves on toggle and is disabled for members.
+- **Devin** ([Security profiles](https://docs.devin.ai/product-guides/security-profiles), re-read 2026-11-19):
+  - **Default:** the token is on the machine unless a profile removes it. Same here.
+  - **Who may change it:** "Manage security profiles", held by org admins by default. bex uses the workspace's admins (`can_manage`).
+  - **What a session keeps:** Git integration, but no direct GitHub API calls. Same here: Git, pushes and the `bex` tools keep working.
+  - **When it applies:** Devin applies a change "for new sessions immediately, and for existing sessions the next time they resume". bex is the same for turning `gh` back on, and refuses a running session's next call when turning it off, which is stricter and is the safe direction.
+  - **Where it binds:** Devin binds at enterprise, organization, automations default, automation and session. bex has the workspace (organization) level only.
+- **Filed:** [w10/035](../035.md), turning `gh` off for an automation or a session (Devin's narrower bindings, with a mandatory workspace setting). No other gap users would miss: bex has no enterprise level above the workspace, and Devin's other profile controls (network policy, MCP allowlist, Git access level) are out of this milestone's scope.
 
 ## Source + Goal linkage
 

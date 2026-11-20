@@ -40,15 +40,17 @@ describe("useAgentEnvironment update", () => {
         refetchQueries: ["AgentSessionCapabilities"],
       });
     }
-    await act(() =>
-      result.current.update({ networkTier: AgentNetworkTier.Full }),
-    );
-    expect(mutate).toHaveBeenLastCalledWith({
-      variables: {
-        ownerId: "tea-1",
-        input: { networkTier: AgentNetworkTier.Full },
-      },
-      refetchQueries: undefined,
-    });
+    // The capabilities carry no network tier and no gh switch (w10/m524).
+    for (const input of [
+      { networkTier: AgentNetworkTier.Full },
+      { githubCliEnabled: false },
+      { githubCliEnabled: true },
+    ]) {
+      await act(() => result.current.update(input));
+      expect(mutate).toHaveBeenLastCalledWith({
+        variables: { ownerId: "tea-1", input },
+        refetchQueries: undefined,
+      });
+    }
   });
 });

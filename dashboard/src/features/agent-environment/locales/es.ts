@@ -1346,6 +1346,32 @@ const esAgentEnvironment: Record<string, TranslationEntry> = {
       "No se pudieron actualizar los agentes disponibles. Inténtalo de nuevo.",
     description: "Error after a failed availability change",
   },
+  "agentEnvironment.githubCliLabel": {
+    message: "GitHub CLI (gh)",
+    description:
+      "Label of the switch that gives the workspace's agent sessions gh, the GitHub CLI (w10/m524)",
+  },
+  "agentEnvironment.githubCliHelp": {
+    message:
+      "Si lo desactivas, gh deja de estar disponible en todas las sesiones de agente de este espacio de trabajo, incluidas las que están en curso; los push de Git a la rama de la sesión y las herramientas de pull request de bex siguen funcionando.",
+    description:
+      "Help under the GitHub CLI switch: what turning it off does (w10/m524)",
+  },
+  "agentEnvironment.githubCliTurnedOn": {
+    message: "GitHub CLI activado para las sesiones de agente",
+    description:
+      "Toast after an admin turns the sessions' GitHub CLI on (w10/m524)",
+  },
+  "agentEnvironment.githubCliTurnedOff": {
+    message: "GitHub CLI desactivado para las sesiones de agente",
+    description:
+      "Toast after an admin turns the sessions' GitHub CLI off (w10/m524)",
+  },
+  "agentEnvironment.githubCliSaveFailed": {
+    message:
+      "No se pudo cambiar la configuración de GitHub CLI. Inténtalo de nuevo.",
+    description: "Error after a failed GitHub CLI switch (w10/m524)",
+  },
 };
 
 export default esAgentEnvironment;

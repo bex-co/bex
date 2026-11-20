@@ -193,6 +193,8 @@ var agentEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"registryHosts": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(v Environment) any { return v.RegistryHosts }),
 		"enabledAgents": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Description: "The agent profiles members can start sessions with, as the workspace's admins chose.", Resolve: gqlutil.Field(func(v Environment) any { return v.EnabledAgents })},
 		"agentDataUse":  &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(agentDataUseGQLType))), Description: "Each agent profile whose model provider may train on what its sessions send, and the admin acknowledgement turning it on requires.", Resolve: gqlutil.Field(func(v Environment) any { return v.AgentDataUse })},
+		"githubCliEnabled": &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Description: "Whether the workspace's repo sessions get a gh that reaches their repository through bex; true unless an admin turned it off. Off, turns dispatched afterwards get no gh configuration and a running session's next gh call is refused; Git pushes to the session branch and the bex MCP tools keep working.",
+			Resolve: gqlutil.Field(func(v Environment) any { return v.GitHubCLIEnabled })},
 		"updatedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any {
 			if v.UpdatedAt == nil {
 				return nil
@@ -247,6 +249,7 @@ var agentEnvironmentGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 		"clearModelApiKey":               &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "true removes the workspace's own model provider key."},
 		"enabledAgents":                  &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Replaces the agent profiles members can start sessions with; the others are turned off. A profile in agentDataUse needs its acknowledgement first."},
 		"acknowledgeAgentDataUse":        &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Agent profiles from agentDataUse whose data use this admin acknowledges."},
+		"githubCliEnabled":               &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "false turns gh off for the workspace's agent sessions: turns dispatched afterwards get no gh configuration and a running session's next gh call is refused. true turns it back on."},
 	},
 })
 
@@ -284,6 +287,7 @@ func environmentInputArg(args map[string]any) EnvironmentInput {
 	if acks, ok := raw["acknowledgeAgentDataUse"].([]any); ok {
 		input.AcknowledgeAgentDataUse = gqlutil.StringList(acks)
 	}
+	input.GitHubCLIEnabled = gqlutil.BoolPtr(raw, "githubCliEnabled")
 	if reset, ok := raw["resetAgentModelMonthlySpendCap"].(bool); ok {
 		input.ResetAgentModelMonthlySpendCap = reset
 	}

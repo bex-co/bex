@@ -156,6 +156,21 @@ export function AgentEnvironmentCardSkeleton({
             </SkeletonText>
           </p>
         </div>
+        {/* The sessions' GitHub CLI switch (w10/m524). */}
+        <div
+          className="space-y-3 border-t pt-6"
+          data-testid="github-cli-section-skeleton"
+        >
+          <div className="flex max-w-xl items-start justify-between gap-4">
+            <div className="min-w-0 space-y-1">
+              <StaticLabel>{t("agentEnvironment.githubCliLabel")}</StaticLabel>
+              <p className="text-muted-foreground text-sm">
+                {t("agentEnvironment.githubCliHelp")}
+              </p>
+            </div>
+            <Skeleton className="h-5 w-9 shrink-0 rounded-full" />
+          </div>
+        </div>
         <div className="space-y-2 border-t pt-6">
           <StaticLabel>{t("agentEnvironment.modelLabel")}</StaticLabel>
           <Skeleton className="h-9 w-full max-w-sm" />

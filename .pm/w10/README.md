@@ -73,6 +73,7 @@ Develop against `.pm/w10/dev-10/`, this worker's own isolated stack on the share
 - [ ] **032** — [Maven and Gradle reach nothing on a `full`-tier session, because the JVM ignores `HTTPS_PROXY`](032.md) ← w10/024 (its stated gap), 2026-11-19
 - [ ] **033** — [`gh workflow run` is refused, so a session cannot dispatch a workflow on its own branch, as Devin's Actions write can](033.md) ← w10/m522 t006 (Devin comparison), 2026-11-19
 - [ ] **034** — [A session cannot mark its pull request ready for review or merge it when its task asks, as Devin can](034.md) ← w10/m522 t006 (Devin comparison), 2026-11-19
+- [ ] **035** — [`gh` can be turned off only for the whole workspace, while a Devin security profile also binds to the automations default, one automation or one session](035.md) ← w10/m524 t008 (Devin comparison), 2026-11-19
 
 - [ ] **012** — moved to **w21/m336** (2026-11-11): Billing lifecycle worker fails every tick with "no rows in result set" (11 workspaces stuck `enforcing`) → [`../w21/done/m336/`](../w21/done/m336/README.md)
 

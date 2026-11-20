@@ -63,6 +63,9 @@ func activeSession() store.AgentSession {
 	return store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "running"}
 }
 
+// noEnvironment is a workspace that never saved its agent environment.
+var noEnvironment = fakeEnvironments{err: store.ErrNotFound}
+
 type fakeSessionGitHub struct {
 	calls         int
 	readCalls     int
@@ -158,7 +161,7 @@ func TestMintGitHubAPICredentialsAreScopedAndAudited(t *testing.T) {
 		audit := &auditRecorder{}
 		m := &Minter{
 			GitHub: gh, Connections: fakeConnections{row: store.GitConnection{WorkspaceID: "tea-a", InstallationID: 42, AccountLogin: "octo"}},
-			Sessions: fakeSessions{session: activeSession()}, Audit: audit,
+			Sessions: fakeSessions{session: activeSession()}, Environments: noEnvironment, Audit: audit,
 		}
 		got, err := kind.mint(m, context.Background(), validMintRequest())
 		if err != nil {
@@ -194,7 +197,7 @@ func TestMintGitHubAPICredentialsAreScopedAndAudited(t *testing.T) {
 			"account": func(r *MintRequest) { r.Repository = "other/repo" },
 		} {
 			gh := &fakeSessionGitHub{}
-			m := &Minter{GitHub: gh, Connections: fakeConnections{row: store.GitConnection{InstallationID: 42, AccountLogin: "octo"}}, Sessions: fakeSessions{session: activeSession()}, Audit: &auditRecorder{}}
+			m := &Minter{GitHub: gh, Connections: fakeConnections{row: store.GitConnection{InstallationID: 42, AccountLogin: "octo"}}, Sessions: fakeSessions{session: activeSession()}, Environments: noEnvironment, Audit: &auditRecorder{}}
 			req := validMintRequest()
 			mutate(&req)
 			if _, err := kind.mint(m, context.Background(), req); err == nil || gh.apiCalls+gh.apiWriteCalls != 0 {
@@ -220,7 +223,7 @@ func TestMintGitHubAPICredentialsAreScopedAndAudited(t *testing.T) {
 func TestGitHubAPIHandlersMintTheirOwnTokens(t *testing.T) {
 	secret := []byte("secret")
 	gh := &fakeSessionGitHub{}
-	minter := &Minter{GitHub: gh, Connections: fakeConnections{row: store.GitConnection{InstallationID: 42, AccountLogin: "octo"}}, Sessions: fakeSessions{session: activeSession()}}
+	minter := &Minter{GitHub: gh, Connections: fakeConnections{row: store.GitConnection{InstallationID: 42, AccountLogin: "octo"}}, Sessions: fakeSessions{session: activeSession()}, Environments: noEnvironment}
 	for _, verb := range []struct {
 		handler http.Handler
 		token   string
@@ -241,6 +244,79 @@ func TestGitHubAPIHandlersMintTheirOwnTokens(t *testing.T) {
 	}
 	if gh.calls != 1 || gh.apiCalls != 1 || gh.apiWriteCalls != 1 {
 		t.Fatalf("mints = %+v, want one of each", gh)
+	}
+}
+
+// w10/m524: while the workspace has its GitHub CLI setting off, both gh route
+// mints are refused with ErrGitHubCLIOff (still an ErrForbidden) before any
+// GitHub token is minted, and audited as denied; the Git mint of the same
+// session still mints, so pushes keep working. A saved row with gh on mints,
+// and an unreadable or unwired setting refuses instead of guessing.
+func TestMintGitHubAPICredentialsAreRefusedWhileGitHubCLIIsOff(t *testing.T) {
+	off := fakeEnvironments{row: store.AgentEnvironment{WorkspaceID: "tea-a", GitHubCLIDisabled: true}}
+	connections := fakeConnections{row: store.GitConnection{WorkspaceID: "tea-a", InstallationID: 42, AccountLogin: "octo"}}
+	for _, kind := range githubAPIMints {
+		gh, audit := &fakeSessionGitHub{}, &auditRecorder{}
+		m := &Minter{GitHub: gh, Connections: connections, Sessions: fakeSessions{session: activeSession()}, Environments: off, Audit: audit}
+		_, err := kind.mint(m, context.Background(), validMintRequest())
+		if !errors.Is(err, ErrGitHubCLIOff) || !errors.Is(err, ErrForbidden) || kind.minted(gh) != 0 {
+			t.Fatalf("%s with gh off: err=%v fake=%+v, want ErrGitHubCLIOff and no token", kind.name, err, gh)
+		}
+		if len(audit.events) != 1 || audit.events[0].Verb != kind.verb || audit.events[0].Outcome != core.AuditDenied || audit.events[0].TargetName != "octo/repo" || audit.events[0].Target != "agent-session:ags-one" {
+			t.Fatalf("%s with gh off audit = %+v", kind.name, audit.events)
+		}
+		if got, err := m.Mint(context.Background(), validMintRequest()); err != nil || got.Token != "ghs_scoped" || gh.calls != 1 {
+			t.Fatalf("%s: the Git mint with gh off = %+v %v, want the push token", kind.name, got, err)
+		}
+
+		for name, environments := range map[string]EnvironmentStore{
+			"no saved row":           noEnvironment,
+			"a saved row with gh on": fakeEnvironments{row: store.AgentEnvironment{WorkspaceID: "tea-a", NetworkTier: "full"}},
+		} {
+			gh := &fakeSessionGitHub{}
+			m := &Minter{GitHub: gh, Connections: connections, Sessions: fakeSessions{session: activeSession()}, Environments: environments}
+			if got, err := kind.mint(m, context.Background(), validMintRequest()); err != nil || got.Token != kind.token {
+				t.Fatalf("%s, %s: %+v %v, want the token", kind.name, name, got, err)
+			}
+		}
+		for name, environments := range map[string]EnvironmentStore{
+			"an unreadable setting": fakeEnvironments{err: errors.New("connection reset")},
+			"no setting store":      nil,
+		} {
+			gh := &fakeSessionGitHub{}
+			m := &Minter{GitHub: gh, Connections: connections, Sessions: fakeSessions{session: activeSession()}, Environments: environments}
+			if _, err := kind.mint(m, context.Background(), validMintRequest()); err == nil || errors.Is(err, ErrForbidden) || kind.minted(gh) != 0 {
+				t.Fatalf("%s, %s: err=%v fake=%+v, want an unavailable error and no token", kind.name, name, err, gh)
+			}
+		}
+	}
+}
+
+// The refusal crosses the internal hop by name: the gateway's client gets
+// ErrGitHubCLIOff back from either gh verb, so it can answer with the
+// setting, and a caller that only tests ErrForbidden is unchanged.
+func TestGitHubCLIOffRefusalSurvivesTheInternalHop(t *testing.T) {
+	secret := []byte("secret")
+	gh := &fakeSessionGitHub{}
+	minter := &Minter{
+		GitHub: gh, Connections: fakeConnections{row: store.GitConnection{InstallationID: 42, AccountLogin: "octo"}}, Sessions: fakeSessions{session: activeSession()},
+		Environments: fakeEnvironments{row: store.AgentEnvironment{WorkspaceID: "tea-a", GitHubCLIDisabled: true}},
+	}
+	for _, handler := range []http.Handler{&GitHubReadHandler{Secret: secret, Minter: minter}, &GitHubWriteHandler{Secret: secret, Minter: minter}} {
+		server := httptest.NewServer(handler)
+		_, err := (&Client{URL: server.URL, Secret: secret, HTTP: server.Client()}).Mint(context.Background(), validMintRequest())
+		server.Close()
+		if !errors.Is(err, ErrGitHubCLIOff) || !errors.Is(err, ErrForbidden) {
+			t.Fatalf("%T with gh off: err=%v, want ErrGitHubCLIOff", handler, err)
+		}
+	}
+	server := httptest.NewServer(&Handler{Secret: secret, Minter: minter})
+	defer server.Close()
+	if got, err := (&Client{URL: server.URL, Secret: secret, HTTP: server.Client()}).Mint(context.Background(), validMintRequest()); err != nil || got.Token != "ghs_scoped" {
+		t.Fatalf("the Git verb with gh off = %+v %v, want the push token", got, err)
+	}
+	if gh.apiCalls+gh.apiWriteCalls != 0 || gh.calls != 1 {
+		t.Fatalf("mints = %+v, want only the push token", gh)
 	}
 }
 

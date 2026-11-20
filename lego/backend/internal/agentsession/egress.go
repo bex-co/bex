@@ -102,9 +102,10 @@ type EgressGrantResponse struct {
 	SessionID string `json:"sessionId"`
 }
 
-// EgressTierStore reads the workspace's agent environment row.
-// *store.PGStore satisfies it.
-type EgressTierStore interface {
+// EnvironmentStore reads a workspace's agent environment row, ErrNotFound
+// when it never saved one (the defaults): the egress grant's tier and the
+// `gh` mints' GitHub CLI setting. *store.PGStore satisfies it.
+type EnvironmentStore interface {
 	GetAgentEnvironment(ctx context.Context, workspaceID string) (store.AgentEnvironment, error)
 }
 
@@ -115,7 +116,7 @@ type EgressTierStore interface {
 // its live sandboxes' proxy use within the gateway's cache TTL.
 type EgressGranter struct {
 	Sessions     SessionStore
-	Environments EgressTierStore
+	Environments EnvironmentStore
 	// Builds grants a running repository environment build's builder the
 	// proxy, as its setup steps run with the session's egress tier (ADR111
 	// D11); nil refuses every build principal.

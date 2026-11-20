@@ -1341,6 +1341,31 @@ const ruAgentEnvironment: Record<string, TranslationEntry> = {
     message: "Не удалось обновить доступных агентов. Повторите попытку.",
     description: "Error after a failed availability change",
   },
+  "agentEnvironment.githubCliLabel": {
+    message: "GitHub CLI (gh)",
+    description:
+      "Label of the switch that gives the workspace's agent sessions gh, the GitHub CLI (w10/m524)",
+  },
+  "agentEnvironment.githubCliHelp": {
+    message:
+      "Если выключить, gh станет недоступен во всех сессиях агентов этого рабочего пространства, включая выполняющиеся; git push в ветку сессии и инструменты bex для pull request продолжат работать.",
+    description:
+      "Help under the GitHub CLI switch: what turning it off does (w10/m524)",
+  },
+  "agentEnvironment.githubCliTurnedOn": {
+    message: "GitHub CLI включён для сессий агентов",
+    description:
+      "Toast after an admin turns the sessions' GitHub CLI on (w10/m524)",
+  },
+  "agentEnvironment.githubCliTurnedOff": {
+    message: "GitHub CLI выключен для сессий агентов",
+    description:
+      "Toast after an admin turns the sessions' GitHub CLI off (w10/m524)",
+  },
+  "agentEnvironment.githubCliSaveFailed": {
+    message: "Не удалось изменить настройку GitHub CLI. Повторите попытку.",
+    description: "Error after a failed GitHub CLI switch (w10/m524)",
+  },
 };
 
 export default ruAgentEnvironment;

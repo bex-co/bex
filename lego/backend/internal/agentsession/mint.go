@@ -122,8 +122,11 @@ type Minter struct {
 	// Builds authorizes a repository environment build's clone (ADR111); nil
 	// refuses every build principal.
 	Builds BuildStore
-	Audit  core.AuditSink
-	Now    func() time.Time
+	// Environments reads the workspace's GitHub CLI setting for the `gh`
+	// route's mints (w10/m524); nil refuses them.
+	Environments EnvironmentStore
+	Audit        core.AuditSink
+	Now          func() time.Time
 }
 
 func (m *Minter) Mint(ctx context.Context, req MintRequest) (MintResponse, error) {
@@ -133,7 +136,8 @@ func (m *Minter) Mint(ctx context.Context, req MintRequest) (MintResponse, error
 // MintGitHubRead is the credential of a repo session's read-only GitHub API
 // route (w10/m513): the same Pod, lifecycle and branch checks as Mint, then a
 // token that can only read the session's one repository. A repository
-// environment build has no `gh` route and gets none.
+// environment build has no `gh` route and gets none, and a workspace that
+// turned `gh` off gets ErrGitHubCLIOff (w10/m524).
 func (m *Minter) MintGitHubRead(ctx context.Context, req MintRequest) (MintResponse, error) {
 	return m.mint(ctx, req, mintGitHubRead)
 }
@@ -239,7 +243,33 @@ func (m *Minter) mint(ctx context.Context, req MintRequest, kind mintKind) (resp
 	if err := ValidateBranch(req.Branch); err != nil {
 		return MintResponse{}, err
 	}
+	if kind != mintGit {
+		if err := m.githubCLIAllowed(ctx, req.Workspace); err != nil {
+			return MintResponse{}, err
+		}
+	}
 	return m.installationToken(ctx, req.Workspace, repository, kind.token(m.GitHub))
+}
+
+// githubCLIAllowed refuses the `gh` route's credentials with ErrGitHubCLIOff
+// while the workspace has its GitHub CLI setting off (w10/m524). The row is
+// read on every call, so a running session's next `gh` call is refused once
+// an admin saves the setting. A workspace with no row has the default, on.
+// The Git mint never asks: pushes to the session branch keep working.
+func (m *Minter) githubCLIAllowed(ctx context.Context, workspace string) error {
+	if m.Environments == nil {
+		return fmt.Errorf("agent credentials unavailable")
+	}
+	env, err := m.Environments.GetAgentEnvironment(ctx, workspace)
+	switch {
+	case errors.Is(err, store.ErrNotFound):
+		return nil
+	case err != nil:
+		return err
+	case env.GitHubCLIDisabled:
+		return ErrGitHubCLIOff
+	}
+	return nil
 }
 
 // mintBuild is a repository environment build's clone credential (ADR111): a

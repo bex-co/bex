@@ -157,3 +157,42 @@ func TestAgentEnvironmentAgentAvailabilityRoundTrip(t *testing.T) {
 		t.Fatalf("read = %+v, %v", read.DataUseAcks, err)
 	}
 }
+
+// w10/m524: a first write that does not name the GitHub CLI setting leaves
+// `gh` on, an explicit off reads back and survives a partial write of another
+// field, and an explicit on restores it.
+func TestAgentEnvironmentGitHubCLISettingRoundTrip(t *testing.T) {
+	s, pool, tenant := agentSessionPGStore(t, "agent-github-cli")
+	ctx := context.Background()
+	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM agent_environments WHERE workspace_id = $1`, tenant.ID) })
+
+	model := "claude-sonnet-4-5"
+	got, err := s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{DefaultModel: &model})
+	if err != nil || got.GitHubCLIDisabled {
+		t.Fatalf("first write without the setting = %+v err=%v, want gh on", got, err)
+	}
+	off, on := true, false
+	if got, err = s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{GitHubCLIDisabled: &off}); err != nil || !got.GitHubCLIDisabled || got.DefaultModel != model {
+		t.Fatalf("turning gh off = %+v err=%v", got, err)
+	}
+	tier := "full"
+	if got, err = s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{NetworkTier: &tier}); err != nil || !got.GitHubCLIDisabled {
+		t.Fatalf("a tier write lost the setting: %+v err=%v", got, err)
+	}
+	if read, err := s.GetAgentEnvironment(ctx, tenant.ID); err != nil || !read.GitHubCLIDisabled {
+		t.Fatalf("read back = %+v err=%v, want gh off", read, err)
+	}
+	if got, err = s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{GitHubCLIDisabled: &on}); err != nil || got.GitHubCLIDisabled || got.NetworkTier != tier {
+		t.Fatalf("turning gh back on = %+v err=%v", got, err)
+	}
+
+	// A workspace whose first write turns gh off gets the other defaults.
+	other, err := s.CreateTenant(ctx, "agent-github-cli-first", PlanHobby)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, other.ID) })
+	if got, err = s.UpsertAgentEnvironment(ctx, other.ID, AgentEnvironmentPatch{GitHubCLIDisabled: &off}); err != nil || !got.GitHubCLIDisabled || got.NetworkTier != "registries" {
+		t.Fatalf("first write turning gh off = %+v err=%v", got, err)
+	}
+}

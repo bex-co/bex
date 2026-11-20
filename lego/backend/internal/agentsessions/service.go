@@ -831,7 +831,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		modelEndpoint: req.AgentConfig.ModelEndpoint,
 		modelAPIKey:   modelAPIKey,
 		egress:        sessionEgress(env, egressAllowlist),
-		env:           s.withOutputEnv(s.withNetworkEnv(s.driverEnv(req.AgentConfig, record, env.ModelKeySet()), env.NetworkTier, record.WorkspaceID, record.ID), record, output),
+		env:           s.withOutputEnv(s.withNetworkEnv(s.driverEnv(req.AgentConfig, record, env), env.NetworkTier, record.WorkspaceID, record.ID), record, output),
 		turn:          record.Turns,
 	}
 	s.detach(ctx, func(ctx context.Context) { s.runDispatch(ctx, record, spec) })
@@ -1826,6 +1826,10 @@ const (
 	envRepository = "BEX_AGENT_REPOSITORY"
 )
 
+// envGitHubCLI is "0" in a session's driver env when its workspace turned
+// gh off (w10/m524).
+const envGitHubCLI = "BEX_AGENT_GITHUB_CLI"
+
 func (s *Service) gitProxyURL() string {
 	if strings.TrimSpace(s.GitProxyURL) != "" {
 		return s.GitProxyURL
@@ -1843,7 +1847,8 @@ func driverTurn(record store.AgentSession) int { return max(1, record.Turns) }
 // mandatory gateway base URL. The Git remote is a non-secret, Pod-bound proxy URL;
 // the raw GitHub token is minted and consumed only by the gateway. The
 // driver-grant value is likewise only an Ed25519 public verification key.
-func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, byoKey bool) map[string]string {
+// workspaceEnv is the workspace's agent environment row at dispatch.
+func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, workspaceEnv store.AgentEnvironment) map[string]string {
 	namespace := store.SandboxNamespace(record.WorkspaceID)
 	// Repo-less (chat-only) sessions carry no clone URL and never deliver: the
 	// driver runs the agent against the prompt in an empty /workspace and the
@@ -1881,6 +1886,12 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, byoKe
 	if deliver == "1" && record.IsTakeover() {
 		env[envPRTakeover] = "1"
 		env[envBaseBranch] = record.TakeoverHeadRef
+	}
+	// w10/m524: a workspace that turned gh off gets no gh configuration in
+	// the sandbox; absent means on, so a driver never loses gh to an older
+	// bex-api. The github-api mints refuse it either way.
+	if deliver == "1" && workspaceEnv.GitHubCLIDisabled {
+		env[envGitHubCLI] = "0"
 	}
 	// ADR095 D6: every session may hand the user files through its Pod-bound
 	// share URL once the attachments store exists; repo-less sessions too.
@@ -1923,7 +1934,7 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, byoKe
 	// Model route (ADR090, dev or platform): the model id
 	// Claude Code must ask the OpenRouter endpoint for, the one the mint pins
 	// for this session. It overrides the line above.
-	for name, value := range agentsession.ModelRouteEnv(config.Agent, config.Model, byoKey) {
+	for name, value := range agentsession.ModelRouteEnv(config.Agent, config.Model, workspaceEnv.ModelKeySet()) {
 		env[name] = value
 	}
 	return env
@@ -2236,7 +2247,7 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 		return View{}, mapStoreError(record.ID, mapAttachmentError(err))
 	}
 	record = begun
-	env := s.withOutputEnv(s.withNetworkEnv(s.driverEnv(config, record, workspaceEnv.ModelKeySet()), workspaceEnv.NetworkTier, record.WorkspaceID, record.ID), record, output)
+	env := s.withOutputEnv(s.withNetworkEnv(s.driverEnv(config, record, workspaceEnv), workspaceEnv.NetworkTier, record.WorkspaceID, record.ID), record, output)
 	env["BEX_AGENT_PROMPT"] = prompt // the steering prompt overrides the original task
 	spec := dispatchSpec{
 		template:          strings.TrimSpace(config.Template),
