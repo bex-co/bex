@@ -134,8 +134,10 @@ func TestStallReasonClearsOnProgressAndReadyDiagnosisWins(t *testing.T) {
 	app.Status.Conditions[0] = metav1.Condition{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
 		Reason: "ImagePullBackOff", Message: pullFailing, ObservedGeneration: 2}
 	open := Deploy{ID: "dep-1", Generation: 2, Status: DeployUpdateInProgress, StallReason: "an older stall"}
-	if got, code := deployCloseFailureReason(app, open, DeployUpdateFailed, true); got != pullFailing || code != EventReasonImagePullBackoff {
-		t.Fatalf("reason = (%q, %q), want the current Ready diagnosis with its code", got, code)
+	// Restated as the failure it now is (w8/352), as the row's own stall is.
+	want := `image pull failed: Back-off pulling image "docker.io/x/y:does-not-exist-999"`
+	if got, code := deployCloseFailureReason(app, open, DeployUpdateFailed, true); got != want || code != EventReasonImagePullBackoff {
+		t.Fatalf("reason = (%q, %q), want the current Ready diagnosis %q with its code", got, code, want)
 	}
 	if got, _ := deployCloseFailureReason(app, Deploy{Generation: 2}, DeployUpdateFailed, false); got != "" {
 		t.Fatalf("reason = %q for another release's row with no stall, want none", got)
