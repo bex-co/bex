@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
@@ -377,6 +378,63 @@ func TestCopyBidirectionalMaxLifetimeEndsABusyStream(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("a busy stream outlived its max lifetime")
+	}
+}
+
+// Both proxies read their copy bounds through StreamBounds, and unset there is
+// neither (w6/149): a stream silent both ways stays open, as a direct Valkey or
+// PostgreSQL connection does, and still relays when it speaks again. It ends as
+// soon as either side closes, so a client the edge load balancer drops does not
+// keep holding its datastore's connection. The env vars stay incident levers.
+func TestByDefaultASilentStreamStaysOpenUntilEitherSideCloses(t *testing.T) {
+	const idleEnv, lifetimeEnv = "BEX_TEST_PROXY_IDLE_TIMEOUT", "BEX_TEST_PROXY_MAX_LIFETIME"
+	t.Setenv(idleEnv, "")
+	t.Setenv(lifetimeEnv, "")
+	idle, lifetime := StreamBounds(logr.Discard(), idleEnv, lifetimeEnv)
+	if idle != 0 || lifetime != 0 {
+		t.Fatalf("unset bounds = idle %v, lifetime %v; want neither", idle, lifetime)
+	}
+	for _, closer := range []string{"client", "backend"} {
+		t.Run("then the "+closer+" closes", func(t *testing.T) {
+			client, backend, done := relayedStream(t, idle, lifetime)
+			// Silent both ways for longer than every bound the other tests use.
+			select {
+			case <-done:
+				t.Fatal("a silent stream closed with no bound set")
+			case <-time.After(time.Second):
+			}
+			got := make([]byte, len("after the silence"))
+			for _, pair := range [][2]net.Conn{{client, backend}, {backend, client}} {
+				if _, err := io.WriteString(pair[0], "after the silence"); err != nil {
+					t.Fatal(err)
+				}
+				_ = pair[1].SetReadDeadline(time.Now().Add(5 * time.Second))
+				if _, err := io.ReadFull(pair[1], got); err != nil {
+					t.Fatalf("the stream did not relay after its silence: %v", err)
+				}
+			}
+			closing, peer := client, backend
+			if closer == "backend" {
+				closing, peer = backend, client
+			}
+			_ = closing.Close()
+			select {
+			case <-done:
+			case <-time.After(5 * time.Second):
+				t.Fatalf("the stream stayed open after the %s closed", closer)
+			}
+			_ = peer.SetReadDeadline(time.Now().Add(5 * time.Second))
+			if _, err := peer.Read(got); err != io.EOF {
+				t.Fatalf("the other side read %v, want EOF once the %s closed", err, closer)
+			}
+		})
+	}
+
+	t.Setenv(idleEnv, "1h")
+	t.Setenv(lifetimeEnv, "24h")
+	idle, lifetime = StreamBounds(logr.Discard(), idleEnv, lifetimeEnv)
+	if idle != time.Hour || lifetime != 24*time.Hour {
+		t.Fatalf("set bounds = idle %v, lifetime %v; want 1h and 24h", idle, lifetime)
 	}
 }
 

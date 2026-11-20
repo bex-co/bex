@@ -93,10 +93,9 @@ func (m *ByteMeter) Add(resourceID, resourceKind string, bytes int64) {
 // before the connection is torn down: bytes either way keep both directions
 // open, so a subscriber that only receives stays connected while its messages
 // arrive (w6/148). maxLifetime caps the total duration of the routed copy,
-// however busy. Both guard against a routed connection idling or living
-// indefinitely after DB/Valkey auth (finding 6). A non-positive value disables
-// that bound. When both are disabled the copy is a plain io.Copy,
-// byte-identical to before. Either direction ending closes both conns so the
+// however busy. A non-positive value disables that bound, and both proxies
+// disable both by default (StreamBounds, w6/149). When both are disabled the
+// copy is a plain io.Copy. Either direction ending closes both conns so the
 // peer copy unblocks — no leaked goroutine.
 func CopyBidirectional(
 	client, backend net.Conn,

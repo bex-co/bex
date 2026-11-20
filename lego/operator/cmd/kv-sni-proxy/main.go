@@ -55,25 +55,26 @@ const (
 	dialTimeout        = 10 * time.Second
 	handshakeTimeout   = 10 * time.Second
 
-	// Admission + copy-loop bounds (finding 6); 0 disables a dimension. The
-	// pg-sni-proxy mirror: each store's route admits twice its plan's limit,
-	// and these protect the process only (w6/m457, docs/ADR021 § 9).
+	// Admission bounds (finding 6); 0 disables a dimension. The pg-sni-proxy
+	// mirror: each store's route admits twice its plan's limit, and these
+	// protect the process only (w6/m457, docs/ADR021 § 9).
 	defaultMaxConns          = 4096 // BEX_KV_PROXY_MAX_CONNS
 	defaultMaxConnsPerSource = 0    // BEX_KV_PROXY_MAX_CONNS_PER_SOURCE
 	// Connections still in their handshake (PROXY header to SNI) are bounded
 	// per network, apart from established ones, so a botnet inside a few
 	// networks cannot hold the global cap for the whole handshake deadline. One
 	// network is an IPv4 /24 or an IPv6 /64, and 32 of them fill the process.
-	defaultMaxHandshakesPerNetwork = 128       // BEX_KV_PROXY_MAX_HANDSHAKES_PER_NETWORK
-	defaultIdleTimeout             = time.Hour // BEX_KV_PROXY_IDLE_TIMEOUT
-	defaultMaxLifetime             = 24 * time.Hour
+	defaultMaxHandshakesPerNetwork = 128 // BEX_KV_PROXY_MAX_HANDSHAKES_PER_NETWORK
 
 	// drainSecondsEnv bounds the drain a release's SIGTERM starts, in whole
 	// seconds; unset or 0 closes every stream at once (w6/m515).
 	drainSecondsEnv = "BEX_KV_PROXY_DRAIN_SECONDS"
-	// idleTimeoutEnv is how long a relayed stream may stall before it closes
-	// (a Go duration); the drain bound never exceeds it (w6/m518).
+	// idleTimeoutEnv and maxLifetimeEnv are the copy loop's idle and lifetime
+	// bounds (Go durations), both unset: a routed stream stays open however
+	// long it is silent and however old, as on Valkey (w6/149). Each is an
+	// incident lever, and the drain bound never exceeds a set idle timeout.
 	idleTimeoutEnv = "BEX_KV_PROXY_IDLE_TIMEOUT"
+	maxLifetimeEnv = "BEX_KV_PROXY_MAX_LIFETIME"
 )
 
 var scheme = runtime.NewScheme()
@@ -211,8 +212,7 @@ func main() {
 	limiter.SetHandshakeLimit(
 		sniproxy.EnvInt(logger, "BEX_KV_PROXY_MAX_HANDSHAKES_PER_NETWORK", defaultMaxHandshakesPerNetwork),
 	)
-	idleTimeout := sniproxy.EnvDuration(logger, idleTimeoutEnv, defaultIdleTimeout)
-	maxLifetime := sniproxy.EnvDuration(logger, "BEX_KV_PROXY_MAX_LIFETIME", defaultMaxLifetime)
+	idleTimeout, maxLifetime := sniproxy.StreamBounds(logger, idleTimeoutEnv, maxLifetimeEnv)
 	drainTimeout, err := sniproxy.DrainSeconds(drainSecondsEnv)
 	if err != nil {
 		logger.Error(err, "invalid drain bound")
@@ -364,7 +364,7 @@ func handleConn(
 		logger.Error(err, "forward TLS ClientHello", "resource", route.ResourceID)
 		return
 	}
-	// The idle + max-lifetime bounds stop a routed connection from idling or
-	// living forever after Valkey auth (finding 6).
+	// No idle or lifetime bound by default (w6/149): the stream ends when the
+	// client, the edge load balancer or Valkey ends it.
 	sniproxy.CopyBidirectional(conn, backend, meter, route.ResourceID, "key_value", idle, maxLifetime)
 }

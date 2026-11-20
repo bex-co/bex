@@ -155,11 +155,13 @@ func waitRefused(t *testing.T, addr string) {
 // The shipped DaemonSet sets the drain bound this binary reads, pauses before
 // SIGTERM so the old pod's endpoint leaves the nodes' service rules while it
 // still accepts, and gives the pod a grace period that outlasts both, so the
-// kubelet never kills a draining stream. The bound stays within the idle
-// timeout, which closes an idle stream anyway (w6/m518): a longer one would
-// only keep old pods on their nodes for streams that are closed once either
-// way.
+// kubelet never kills a draining stream. The bound is at most an hour
+// (w6/m518): the edge load balancer closes an external stream that carries no
+// data for an hour anyway (w6/149), and a stream that never ends is closed once
+// whatever the bound, so a longer one would only keep old pods on their nodes.
+// An idle timeout set as an incident lever caps it too.
 func TestTheDaemonSetGivesTheDrainItsBound(t *testing.T) {
+	const maxDrain = time.Hour
 	raw, err := os.ReadFile("../../config/kv-sni-proxy/daemonset.yaml")
 	if err != nil {
 		t.Fatal(err)
@@ -168,8 +170,7 @@ func TestTheDaemonSetGivesTheDrainItsBound(t *testing.T) {
 	if err := yaml.Unmarshal(raw, &ds); err != nil {
 		t.Fatal(err)
 	}
-	var bound time.Duration
-	idle := defaultIdleTimeout
+	var bound, idle time.Duration
 	for _, env := range ds.Spec.Template.Spec.Containers[0].Env {
 		switch env.Name {
 		case drainSecondsEnv:
@@ -186,7 +187,10 @@ func TestTheDaemonSetGivesTheDrainItsBound(t *testing.T) {
 	if bound <= 0 {
 		t.Fatalf("the DaemonSet does not set %s to a positive bound", drainSecondsEnv)
 	}
-	if bound > idle {
+	if bound > maxDrain {
+		t.Fatalf("%s = %v, want at most %v", drainSecondsEnv, bound, maxDrain)
+	}
+	if idle > 0 && bound > idle {
 		t.Fatalf("%s = %v, want at most the %v idle timeout", drainSecondsEnv, bound, idle)
 	}
 	var pause time.Duration

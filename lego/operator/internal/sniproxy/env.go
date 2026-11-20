@@ -56,6 +56,16 @@ func EnvDuration(log logr.Logger, name string, def time.Duration) time.Duration 
 	return d
 }
 
+// StreamBounds reads a proxy's copy-loop bounds for CopyBidirectional from its
+// idle and lifetime env vars (Go durations). Neither is set by default (w6/149):
+// a routed stream stays open however long it is silent and however old, as a
+// direct Valkey or PostgreSQL connection does, until its client, the edge load
+// balancer or the backend ends it. Both are incident levers, and the admission
+// caps, not these bounds, are what keep idle streams from filling a process.
+func StreamBounds(log logr.Logger, idleEnv, lifetimeEnv string) (idle, lifetime time.Duration) {
+	return EnvDuration(log, idleEnv, 0), EnvDuration(log, lifetimeEnv, 0)
+}
+
 // DrainSeconds reads a proxy's drain bound from the env var name (w6/m515): a
 // whole number of seconds, zero included. Unset is zero, which closes every
 // stream at once on SIGTERM, as before. Unlike the tuning knobs above, a

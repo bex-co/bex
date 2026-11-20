@@ -69,7 +69,7 @@ const (
 	// sibling kv-sni-proxy sets the same control). Cleared once SNI is resolved.
 	handshakeTimeout = 10 * time.Second
 
-	// Admission + copy-loop bounds (finding 6); 0 disables a dimension. Each
+	// Admission bounds (finding 6); 0 disables a dimension. Each
 	// route admits twice its server's own limit (sniproxy.RouteCapacity), so
 	// these protect the process only, sized so no tenant within its plan
 	// reaches them (w6/m457, docs/ADR009-postgresql-management.md § External
@@ -83,16 +83,17 @@ const (
 	// per network, apart from established ones, so a botnet inside a few
 	// networks cannot hold the global cap for the whole handshake deadline. One
 	// network is an IPv4 /24 or an IPv6 /64, and 32 of them fill the process.
-	defaultMaxHandshakesPerNetwork = 128       // BEX_PROXY_MAX_HANDSHAKES_PER_NETWORK
-	defaultIdleTimeout             = time.Hour // BEX_PROXY_IDLE_TIMEOUT
-	defaultMaxLifetime             = 24 * time.Hour
+	defaultMaxHandshakesPerNetwork = 128 // BEX_PROXY_MAX_HANDSHAKES_PER_NETWORK
 
 	// drainSecondsEnv bounds the drain a release's SIGTERM starts, in whole
 	// seconds; unset or 0 closes every stream at once (w6/m515).
 	drainSecondsEnv = "BEX_PROXY_DRAIN_SECONDS"
-	// idleTimeoutEnv is how long a relayed stream may stall before it closes
-	// (a Go duration); the drain bound never exceeds it (w6/m518).
+	// idleTimeoutEnv and maxLifetimeEnv are the copy loop's idle and lifetime
+	// bounds (Go durations), both unset: a routed stream stays open however
+	// long it is silent and however old, as on PostgreSQL (w6/149). Each is an
+	// incident lever, and the drain bound never exceeds a set idle timeout.
 	idleTimeoutEnv = "BEX_PROXY_IDLE_TIMEOUT"
+	maxLifetimeEnv = "BEX_PROXY_MAX_LIFETIME"
 )
 
 // backendSSLReplyTimeout bounds the wait for the backend's one-byte answer to
@@ -345,8 +346,7 @@ func main() {
 	limiter.SetHandshakeLimit(
 		sniproxy.EnvInt(log, "BEX_PROXY_MAX_HANDSHAKES_PER_NETWORK", defaultMaxHandshakesPerNetwork),
 	)
-	idleTimeout := sniproxy.EnvDuration(log, idleTimeoutEnv, defaultIdleTimeout)
-	maxLifetime := sniproxy.EnvDuration(log, "BEX_PROXY_MAX_LIFETIME", defaultMaxLifetime)
+	idleTimeout, maxLifetime := sniproxy.StreamBounds(log, idleTimeoutEnv, maxLifetimeEnv)
 	drainTimeout, err := sniproxy.DrainSeconds(drainSecondsEnv)
 	if err != nil {
 		log.Error(err, "invalid drain bound")
@@ -580,8 +580,8 @@ func handleConn(
 	}
 
 	// Splice the two sides bidirectionally. The TLS session is end-to-end between
-	// the client and CNPG — the proxy never sees the plaintext. The idle +
-	// max-lifetime bounds stop a routed connection from idling or living forever
-	// after DB auth (finding 6).
+	// the client and CNPG — the proxy never sees the plaintext. No idle or
+	// lifetime bound by default (w6/149): the stream ends when the client, the
+	// edge load balancer or PostgreSQL ends it.
 	sniproxy.CopyBidirectional(conn, back, meter, route.Database, "postgres", idle, maxLifetime)
 }

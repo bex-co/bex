@@ -85,10 +85,11 @@ spec:
             # for up to this many seconds (w6/m515), so a command in flight
             # gets its reply and a session that ends within the hour is never
             # cut by a roll. Whatever is still open then closes. The bound is
-            # the 1 h idle timeout and never above it: an idle stream closes
-            # within it anyway, and one that never ends is closed once either
-            # way (w6/m518). Neither the deploy's wait (operator-pins.sh) nor
-            # bex-operator's Argo health waits for a draining pod.
+            # an hour and never above it: the edge LB closes a stream that
+            # carries no data for an hour anyway (w6/149), and one that never
+            # ends is closed once whatever the bound (w6/m518). Neither the
+            # deploy's wait (operator-pins.sh) nor bex-operator's Argo health
+            # waits for a draining pod.
             - name: BEX_PROXY_DRAIN_SECONDS
               value: "3600"
           readinessProbe:
