@@ -20,6 +20,7 @@ import (
 	"cmp"
 	"context"
 	"slices"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -28,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/types/deploybudgets"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 
@@ -108,30 +110,29 @@ const (
 	healthCheckReadinessFailureThreshold int32 = 3
 
 	// rolloutBudgetSeconds is how long a new pod may take to first report
-	// healthy, matching Render: "If this condition is not met within 15
-	// minutes, Render cancels the deploy and continues routing traffic to your
-	// service's existing instances."
+	// healthy: deploybudgets.RolloutBudget in seconds. Render cancels the
+	// deploy past that window and keeps routing to the existing instances.
 	//
 	// THREE timers bound a rollout, in two roles:
 	//
 	//   mechanism — the startupProbe budget below (periodSeconds ×
 	//               failureThreshold) and Deployment.spec.progressDeadlineSeconds,
 	//               both derived from this constant so they are one number.
-	//   observer  — bex-api's DeployGateTimeout
-	//               (lego/backend/internal/store/reconciler.go), which watches
-	//               the rollout from the control plane and is deliberately
-	//               LONGER (18m), so the mechanism's own specific verdict lands
-	//               before the generic health-gate message. That follows the
-	//               rule its sibling gates already use (build Jobs 30m → gate
-	//               35m, pre-deploy 10m → 12m).
+	//   observer  — bex-api's DeployGateTimeout (deploybudgets, 18m), which
+	//               watches the rollout from the control plane and is
+	//               deliberately LONGER, so the mechanism's own specific
+	//               verdict lands before the generic health-gate message. That
+	//               follows the rule its sibling gates already use (build Jobs
+	//               120m → gate 125m, pre-deploy 30m → 35m).
 	//
-	// The observer lives in another module and cannot share this constant; its
-	// comment names this one and a test on each side pins the relationship.
+	// The observer's canonical value lives in deploybudgets beside this one's,
+	// with the test that pins their relationship; before, each side held the
+	// other's number as a copied literal and either could move alone.
 	//
 	// Before m80 the three read ∞ / 600s (the Kubernetes default, never set) /
 	// 180s, so the real budget was 3 minutes — the accidental minimum of three
 	// unrelated choices, none of them Render's.
-	rolloutBudgetSeconds int32 = 900
+	rolloutBudgetSeconds = int32(deploybudgets.RolloutBudget / time.Second)
 
 	// healthCheckStartupFailureThreshold spends rolloutBudgetSeconds at
 	// healthCheckPeriodSeconds. Derived, never written as a literal, so the
