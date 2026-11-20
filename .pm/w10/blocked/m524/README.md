@@ -67,4 +67,4 @@ Total: **11 tasks, about 9h15m**.
 - **Expected outcome:** an admin whose policy is that agents reach GitHub only through Git and the `bex` tools turns `gh` off once in Settings → Agents, and no session in the workspace can call the GitHub API from then on.
 - **Why now:** since w10/m522, `gh` writes on the session's repository: it comments, labels, opens issues and re-runs CI. A workspace that does not want that has no way to opt out, while Devin's admins do.
 - **Render parity included (reference product: Devin):** the setting is a tenant-facing surface on REST, GraphQL, MCP, the CLI and the dashboard. t008 checks those surfaces against each other and the setting against Devin's security profiles.
-- **Related:** [w10/027](../../027.md) gives the session's web shell and SSH terminal the same `gh`. Whichever of the two ships second makes the terminal's `gh` obey this setting too.
+- **Related:** [w10/027](../027.md) gives the session's web shell and SSH terminal the same `gh`. Whichever of the two ships second makes the terminal's `gh` obey this setting too.
