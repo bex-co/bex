@@ -80,7 +80,7 @@ const allowedGraphqlOperations: Record<string, string> = {
   MobileAgentSession:
     "query|id|agentSession,branch,canceledAt,createdAt,deliveryMode,deliveryNote,failureReason,headSha,id,phase,prNumber,prUrl,repo,status,turns,updatedAt",
   MobileAgentSessionCapabilities:
-    "query|ownerId|accountLogin,agentSessionCapabilities,agents,connected,enabled,github,id,installUrl,label,model,modelKeyReady,models,ready",
+    "query|ownerId|accountLogin,agentSessionCapabilities,agents,connected,cpu,defaultTemplate,enabled,github,id,installUrl,label,memoryGb,model,modelKeyReady,models,name,ready,templates",
   MobileAgentSessions:
     "query|ownerId|agentSessions,branch,createdAt,failureReason,id,phase,prNumber,prUrl,repo,status,updatedAt",
   MobileCancelAgentSession:

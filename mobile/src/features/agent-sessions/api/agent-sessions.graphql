@@ -16,6 +16,8 @@ query MobileAgentSessions($ownerId: String!) {
 # Each agent's `model` is what a session that names none runs and `models`
 # what it may name (w10/m516): the platform catalog the workspace's admins left
 # on (w10/m527), a fixed model's one entry, or empty on the workspace's own key.
+# `templates` are the sandbox templates a session may name, smallest first, and
+# `defaultTemplate` the one a session that names none runs on (w10/m519).
 query MobileAgentSessionCapabilities($ownerId: String!) {
   agentSessionCapabilities(ownerId: $ownerId) {
     enabled
@@ -31,6 +33,12 @@ query MobileAgentSessionCapabilities($ownerId: String!) {
       label
       model
       models
+    }
+    defaultTemplate
+    templates {
+      name
+      cpu
+      memoryGb
     }
   }
 }

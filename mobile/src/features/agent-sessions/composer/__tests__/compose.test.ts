@@ -3,8 +3,10 @@ import {
   canSubmit,
   deriveBranch,
   modelControl,
-  sentModel,
+  sentChoice,
   shortModel,
+  templateControl,
+  templateLabel,
 } from "../compose";
 
 const full = {
@@ -12,7 +14,19 @@ const full = {
   prompt: "fix it",
   agent: "claude",
   model: "",
+  template: "",
 };
+
+// The capabilities read's sandbox offer (w10/m519): its templates smallest
+// first, the workspace default among them.
+const sandbox = {
+  defaultTemplate: "agent",
+  templates: [
+    { name: "agent", cpu: 2, memoryGb: 4 },
+    { name: "agent-4c-8g", cpu: 4, memoryGb: 8 },
+  ],
+};
+const names = ["agent", "agent-4c-8g"];
 
 // The capabilities read's offer for the claude agent on the platform route:
 // the catalog, its default first (w10/m516).
@@ -54,6 +68,7 @@ describe("agent-session composer", () => {
       prompt: " fix it ",
       agent: "claude",
       model: "",
+      template: "",
     });
     expect(vars).toEqual({
       ownerId: "tea-1",
@@ -61,8 +76,9 @@ describe("agent-session composer", () => {
       branch: "bex-agent/fix-it",
       agentConfig: { agent: "claude", task: "fix it" },
     });
-    // The payload must not carry any endpoint/template/egress surface, and
-    // names no model when none was chosen (the agent's default runs).
+    // The payload must not carry any endpoint or egress surface, and names no
+    // model or template when none was chosen (the agent's default model runs
+    // on the workspace's default template).
     const keys = Object.keys(vars.agentConfig);
     expect(keys.sort()).toEqual(["agent", "task"]);
   });
@@ -76,6 +92,20 @@ describe("agent-session composer", () => {
       agent: "claude",
       task: "fix it",
       model: "anthropic/claude-sonnet-5.5",
+    });
+  });
+
+  it("starts the session on a chosen sandbox template (agentConfig.template)", () => {
+    const vars = buildCreateVariables("tea-1", {
+      ...full,
+      model: "anthropic/claude-sonnet-5.5",
+      template: "agent-4c-8g",
+    });
+    expect(vars.agentConfig).toEqual({
+      agent: "claude",
+      task: "fix it",
+      model: "anthropic/claude-sonnet-5.5",
+      template: "agent-4c-8g",
     });
   });
 
@@ -111,22 +141,22 @@ describe("agent-session composer", () => {
     };
     expect(modelControl(offer, "")).toEqual({
       kind: "fixed",
-      model: "deepseek/deepseek-v4.1-flash-1017",
+      value: "deepseek/deepseek-v4.1-flash-1017",
     });
   });
 
   it("shows the default until another catalog model is chosen", () => {
     expect(modelControl(catalog, "")).toEqual({
       kind: "pick",
-      model: catalog.model,
+      value: catalog.model,
       default: catalog.model,
-      models: catalog.models,
+      options: catalog.models,
     });
     expect(modelControl(catalog, "anthropic/claude-haiku-5.5")).toEqual({
       kind: "pick",
-      model: "anthropic/claude-haiku-5.5",
+      value: "anthropic/claude-haiku-5.5",
       default: catalog.model,
-      models: catalog.models,
+      options: catalog.models,
     });
   });
 
@@ -136,24 +166,24 @@ describe("agent-session composer", () => {
     const control = modelControl(catalog, "anthropic/claude-opus-5.5");
     expect(control).toEqual({
       kind: "pick",
-      model: catalog.model,
+      value: catalog.model,
       default: catalog.model,
-      models: catalog.models,
+      options: catalog.models,
     });
-    expect(sentModel(control)).toBe("");
+    expect(sentChoice(control)).toBe("");
   });
 
   it("names a model in the create only when another one was picked", () => {
-    expect(sentModel(modelControl(catalog, ""))).toBe("");
+    expect(sentChoice(modelControl(catalog, ""))).toBe("");
     // Picking the default back sends nothing, as the dashboard composer does.
-    expect(sentModel(modelControl(catalog, catalog.model))).toBe("");
+    expect(sentChoice(modelControl(catalog, catalog.model))).toBe("");
     expect(
-      sentModel(modelControl(catalog, "anthropic/claude-sonnet-5.5")),
+      sentChoice(modelControl(catalog, "anthropic/claude-sonnet-5.5")),
     ).toBe("anthropic/claude-sonnet-5.5");
     // A fixed or absent control never names one.
     const fixed = { model: "x/y", models: ["x/y"] };
-    expect(sentModel(modelControl(fixed, "x/y"))).toBe("");
-    expect(sentModel(modelControl(undefined, "x/y"))).toBe("");
+    expect(sentChoice(modelControl(fixed, "x/y"))).toBe("");
+    expect(sentChoice(modelControl(undefined, "x/y"))).toBe("");
   });
 
   it("shortens a model id to its name for the pill", () => {
@@ -163,5 +193,86 @@ describe("agent-session composer", () => {
     );
     expect(shortModel("gpt-5")).toBe("gpt-5");
     expect(shortModel("openrouter/~anthropic-latest")).toBe("anthropic-latest");
+  });
+  it("offers no sandbox control when the read lists no template", () => {
+    expect(templateControl(undefined, "")).toEqual({ kind: "none" });
+    expect(
+      templateControl({ defaultTemplate: "agent", templates: [] }, ""),
+    ).toEqual({ kind: "none" });
+  });
+
+  it("shows a workspace's only template without a choice", () => {
+    const offer = {
+      defaultTemplate: "agent",
+      templates: [{ name: "agent", cpu: 2, memoryGb: 4 }],
+    };
+    const control = templateControl(offer, "");
+    expect(control).toEqual({ kind: "fixed", value: "agent" });
+    expect(sentChoice(control)).toBe("");
+  });
+
+  it("shows the workspace default until another template is chosen", () => {
+    expect(templateControl(sandbox, "")).toEqual({
+      kind: "pick",
+      value: "agent",
+      default: "agent",
+      options: names,
+    });
+    expect(templateControl(sandbox, "agent-4c-8g")).toEqual({
+      kind: "pick",
+      value: "agent-4c-8g",
+      default: "agent",
+      options: names,
+    });
+    // A workspace whose admin made the larger one the default (w10/m519)
+    // starts there, and the smaller one is the pick.
+    const larger = { ...sandbox, defaultTemplate: "agent-4c-8g" };
+    expect(templateControl(larger, "")).toEqual({
+      kind: "pick",
+      value: "agent-4c-8g",
+      default: "agent-4c-8g",
+      options: names,
+    });
+    expect(sentChoice(templateControl(larger, "agent"))).toBe("agent");
+  });
+
+  it("falls back to the default when the chosen template is no longer listed", () => {
+    const control = templateControl(sandbox, "agent-8c-16g");
+    expect(control).toEqual({
+      kind: "pick",
+      value: "agent",
+      default: "agent",
+      options: names,
+    });
+    expect(sentChoice(control)).toBe("");
+  });
+
+  it("names a template in the create only when another one was picked", () => {
+    expect(sentChoice(templateControl(sandbox, ""))).toBe("");
+    // Picking the default back sends nothing, as the dashboard composer does.
+    expect(sentChoice(templateControl(sandbox, "agent"))).toBe("");
+    expect(sentChoice(templateControl(sandbox, "agent-4c-8g"))).toBe(
+      "agent-4c-8g",
+    );
+    expect(sentChoice(templateControl(undefined, "agent-4c-8g"))).toBe("");
+  });
+
+  it("labels a template with its size from the read, in the app's language", () => {
+    const label = (parts: { name: string; cpu: string; memory: string }) =>
+      `${parts.name} · ${parts.cpu} CPU, ${parts.memory} GB`;
+    expect(templateLabel("agent-4c-8g", sandbox.templates, "en", label)).toBe(
+      "agent-4c-8g · 4 CPU, 8 GB",
+    );
+    const half = [{ name: "agent-tiny", cpu: 0.5, memoryGb: 1.5 }];
+    expect(templateLabel("agent-tiny", half, "en", label)).toBe(
+      "agent-tiny · 0.5 CPU, 1.5 GB",
+    );
+    expect(templateLabel("agent-tiny", half, "de", label)).toBe(
+      "agent-tiny · 0,5 CPU, 1,5 GB",
+    );
+    // A name the read does not list is shown as it is, never sized.
+    expect(templateLabel("agent-8c-16g", sandbox.templates, "en", label)).toBe(
+      "agent-8c-16g",
+    );
   });
 });

@@ -47,8 +47,10 @@ import {
   buildCreateVariables,
   canSubmit,
   modelControl,
-  sentModel,
+  sentChoice,
   shortModel,
+  templateControl,
+  templateLabel,
   type ComposerFields,
 } from "./compose";
 import {
@@ -77,10 +79,10 @@ function shortRepo(full: string): string {
   return parts[parts.length - 1] || full;
 }
 
-type OpenPicker = "repo" | "agent" | "model" | null;
+type OpenPicker = "repo" | "agent" | "model" | "sandbox" | null;
 
 export function SessionComposer({ onClose }: { onClose: () => void }) {
-  const { t } = useTranslations();
+  const { t, language } = useTranslations();
   const theme = useTheme().colorTheme;
   const { selected } = useWorkspace();
   const ownerId = selected?.id ?? "";
@@ -109,6 +111,7 @@ export function SessionComposer({ onClose }: { onClose: () => void }) {
     prompt: "",
     agent: "",
     model: "",
+    template: "",
   });
   const [agentTouched, setAgentTouched] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
@@ -173,13 +176,21 @@ export function SessionComposer({ onClose }: { onClose: () => void }) {
     agents.find((a) => a.id === fields.agent),
     fields.model,
   );
+  // The sandbox the session runs on (w10/m519): the workspace default until
+  // another listed template is picked. Every name and size is the read's.
+  const sandboxChoice = templateControl(caps, fields.template);
+  const sandboxLabel = (name: string) =>
+    templateLabel(name, caps?.templates ?? [], language, (parts) =>
+      t("agentSessions.composer.sandboxOption", parts),
+    );
 
   const submit = useSafeAction<{ id: string }>({
     operation: async () => {
       const result = await createSession({
         variables: buildCreateVariables(ownerId, {
           ...fields,
-          model: sentModel(modelChoice),
+          model: sentChoice(modelChoice),
+          template: sentChoice(sandboxChoice),
         }),
       });
       const id = result.data?.createAgentSession?.id ?? null;
@@ -362,12 +373,32 @@ export function SessionComposer({ onClose }: { onClose: () => void }) {
                         color={theme.mutedForeground}
                       />
                     }
-                    label={shortModel(modelChoice.model)}
+                    label={shortModel(modelChoice.value)}
                     accessibilityLabel={t("agentSessions.composer.model")}
-                    accessibilityValue={modelChoice.model}
+                    accessibilityValue={modelChoice.value}
                     onPress={
                       modelChoice.kind === "pick"
                         ? () => setOpenPicker("model")
+                        : undefined
+                    }
+                    shrink
+                  />
+                ) : null}
+                {sandboxChoice.kind !== "none" ? (
+                  <Pill
+                    theme={theme}
+                    icon={
+                      <Ionicons
+                        name="server-outline"
+                        size={14}
+                        color={theme.mutedForeground}
+                      />
+                    }
+                    label={sandboxLabel(sandboxChoice.value)}
+                    accessibilityLabel={t("agentSessions.composer.sandbox")}
+                    onPress={
+                      sandboxChoice.kind === "pick"
+                        ? () => setOpenPicker("sandbox")
                         : undefined
                     }
                     shrink
@@ -462,18 +493,41 @@ export function SessionComposer({ onClose }: { onClose: () => void }) {
         <Picker
           visible={openPicker === "model"}
           title={t("agentSessions.composer.model")}
-          items={modelChoice.models.map((id) => ({
+          items={modelChoice.options.map((id) => ({
             label:
               id === modelChoice.default
                 ? t("agentSessions.composer.modelDefault", { model: id })
                 : id,
             value: id,
           }))}
-          selectedValue={modelChoice.model}
+          selectedValue={modelChoice.value}
           confirmButtonText={t("agentSessions.composer.pickerDone")}
           cancelButtonText={t("agentSessions.composer.pickerCancel")}
           onSelect={(item) => {
             set({ model: item.value });
+            setOpenPicker(null);
+          }}
+          onCancel={() => setOpenPicker(null)}
+        />
+      ) : null}
+      {sandboxChoice.kind === "pick" ? (
+        <Picker
+          visible={openPicker === "sandbox"}
+          title={t("agentSessions.composer.sandbox")}
+          items={sandboxChoice.options.map((name) => ({
+            label:
+              name === sandboxChoice.default
+                ? t("agentSessions.composer.sandboxDefault", {
+                    template: sandboxLabel(name),
+                  })
+                : sandboxLabel(name),
+            value: name,
+          }))}
+          selectedValue={sandboxChoice.value}
+          confirmButtonText={t("agentSessions.composer.pickerDone")}
+          cancelButtonText={t("agentSessions.composer.pickerCancel")}
+          onSelect={(item) => {
+            set({ template: item.value });
             setOpenPicker(null);
           }}
           onCancel={() => setOpenPicker(null)}
@@ -505,8 +559,9 @@ export function SessionComposer({ onClose }: { onClose: () => void }) {
 }
 
 // A composer control: a pill that opens its picker, or, with no onPress, a
-// read-only one showing a value that has no choice (a fixed model). Screen
-// readers hear the control's name and then its value.
+// read-only one showing a value that has no choice (a fixed model, a
+// workspace's only sandbox template). Screen readers hear the control's name
+// and then its value.
 function Pill({
   theme,
   icon,
