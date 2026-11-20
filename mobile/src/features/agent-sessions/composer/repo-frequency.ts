@@ -77,7 +77,7 @@ export async function loadRepoFrequency(
 export async function recordRepoUse(
   ownerId: string,
   repo: string,
-  now: number,
+  now: number = Date.now(),
 ): Promise<RepoFrequency> {
   const next = bumpRepo(await loadRepoFrequency(ownerId), repo, now);
   if (ownerId) {

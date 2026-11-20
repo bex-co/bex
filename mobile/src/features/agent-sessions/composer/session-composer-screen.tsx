@@ -46,6 +46,9 @@ import {
 import {
   buildCreateVariables,
   canSubmit,
+  modelControl,
+  sentModel,
+  shortModel,
   type ComposerFields,
 } from "./compose";
 import {
@@ -74,7 +77,7 @@ function shortRepo(full: string): string {
   return parts[parts.length - 1] || full;
 }
 
-type OpenPicker = "repo" | "agent" | null;
+type OpenPicker = "repo" | "agent" | "model" | null;
 
 export function SessionComposer({ onClose }: { onClose: () => void }) {
   const { t } = useTranslations();
@@ -105,6 +108,7 @@ export function SessionComposer({ onClose }: { onClose: () => void }) {
     repo: "",
     prompt: "",
     agent: "",
+    model: "",
   });
   const [agentTouched, setAgentTouched] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
@@ -165,15 +169,23 @@ export function SessionComposer({ onClose }: { onClose: () => void }) {
     });
   }, [ready, repoList, agents]);
 
+  const modelChoice = modelControl(
+    agents.find((a) => a.id === fields.agent),
+    fields.model,
+  );
+
   const submit = useSafeAction<{ id: string }>({
     operation: async () => {
       const result = await createSession({
-        variables: buildCreateVariables(ownerId, fields),
+        variables: buildCreateVariables(ownerId, {
+          ...fields,
+          model: sentModel(modelChoice),
+        }),
       });
       const id = result.data?.createAgentSession?.id ?? null;
       if (!id) throw new Error("no session id");
       setCreatedId(id);
-      void recordRepoUse(ownerId, fields.repo, Date.now()).then(setRepoFreq);
+      void recordRepoUse(ownerId, fields.repo).then(setRepoFreq);
       return { data: { id }, feedback: "accepted-unverified" };
     },
   });
@@ -340,6 +352,27 @@ export function SessionComposer({ onClose }: { onClose: () => void }) {
                   accessibilityLabel={t("agentSessions.composer.agent")}
                   onPress={() => setOpenPicker("agent")}
                 />
+                {modelChoice.kind !== "none" ? (
+                  <Pill
+                    theme={theme}
+                    icon={
+                      <Ionicons
+                        name="hardware-chip-outline"
+                        size={14}
+                        color={theme.mutedForeground}
+                      />
+                    }
+                    label={shortModel(modelChoice.model)}
+                    accessibilityLabel={t("agentSessions.composer.model")}
+                    accessibilityValue={modelChoice.model}
+                    onPress={
+                      modelChoice.kind === "pick"
+                        ? () => setOpenPicker("model")
+                        : undefined
+                    }
+                    shrink
+                  />
+                ) : null}
               </View>
             </KeyboardAvoidingView>
           ) : (
@@ -415,13 +448,37 @@ export function SessionComposer({ onClose }: { onClose: () => void }) {
         title={t("agentSessions.composer.agent")}
         items={agents.map((a) => ({ label: a.label, value: a.id }))}
         selectedValue={fields.agent}
+        confirmButtonText={t("agentSessions.composer.pickerDone")}
+        cancelButtonText={t("agentSessions.composer.pickerCancel")}
         onSelect={(item) => {
-          set({ agent: item.value });
+          // Another agent offers its own models: start on its default.
+          set({ agent: item.value, model: "" });
           setAgentTouched(true);
           setOpenPicker(null);
         }}
         onCancel={() => setOpenPicker(null)}
       />
+      {modelChoice.kind === "pick" ? (
+        <Picker
+          visible={openPicker === "model"}
+          title={t("agentSessions.composer.model")}
+          items={modelChoice.models.map((id) => ({
+            label:
+              id === modelChoice.default
+                ? t("agentSessions.composer.modelDefault", { model: id })
+                : id,
+            value: id,
+          }))}
+          selectedValue={modelChoice.model}
+          confirmButtonText={t("agentSessions.composer.pickerDone")}
+          cancelButtonText={t("agentSessions.composer.pickerCancel")}
+          onSelect={(item) => {
+            set({ model: item.value });
+            setOpenPicker(null);
+          }}
+          onCancel={() => setOpenPicker(null)}
+        />
+      ) : null}
 
       <SafeActionConfirmationDialog
         intent={submit.intent}
@@ -447,11 +504,15 @@ export function SessionComposer({ onClose }: { onClose: () => void }) {
   );
 }
 
+// A composer control: a pill that opens its picker, or, with no onPress, a
+// read-only one showing a value that has no choice (a fixed model). Screen
+// readers hear the control's name and then its value.
 function Pill({
   theme,
   icon,
   label,
   accessibilityLabel,
+  accessibilityValue = label,
   onPress,
   shrink,
 }: {
@@ -459,20 +520,24 @@ function Pill({
   icon?: ReactNode;
   label: string;
   accessibilityLabel: string;
-  onPress: () => void;
+  accessibilityValue?: string;
+  onPress?: () => void;
   shrink?: boolean;
 }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      onPress={onPress}
-      style={[
-        styles.pill,
-        shrink && styles.pillShrink,
-        { borderColor: theme.border },
-      ]}
-    >
+  const a11y = {
+    accessibilityLabel,
+    accessibilityValue:
+      accessibilityValue !== accessibilityLabel
+        ? { text: accessibilityValue }
+        : undefined,
+  };
+  const style = [
+    styles.pill,
+    shrink && styles.pillShrink,
+    { borderColor: theme.border },
+  ];
+  const content = (
+    <>
       {icon}
       <Text
         numberOfLines={1}
@@ -480,8 +545,24 @@ function Pill({
       >
         {label}
       </Text>
-      <Ionicons name="chevron-down" size={14} color={theme.mutedForeground} />
+      {onPress ? (
+        <Ionicons name="chevron-down" size={14} color={theme.mutedForeground} />
+      ) : null}
+    </>
+  );
+  return onPress ? (
+    <Pressable
+      accessibilityRole="button"
+      {...a11y}
+      onPress={onPress}
+      style={style}
+    >
+      {content}
     </Pressable>
+  ) : (
+    <View accessible {...a11y} style={style}>
+      {content}
+    </View>
   );
 }
 
@@ -521,8 +602,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
   },
   quickChipText: { fontSize: fontSizes.sm, maxWidth: 160 },
+  // Wraps rather than truncating when the controls outgrow a narrow phone.
   pillRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
     gap: space.sm,
     paddingHorizontal: gutter,

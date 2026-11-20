@@ -69,6 +69,8 @@ const getStyles = (theme: ColorTheme) =>
       alignItems: "center",
       flexDirection: "row",
       gap: 8,
+      // Keeps a long label (a full model id), shrunk to fit, off the edges.
+      paddingHorizontal: 16,
     },
     wheelItemText: {
       fontSize: 18,
@@ -215,6 +217,9 @@ export const Picker: React.FC<PickerProps> = ({
         >
           {item.icon}
           <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}
             style={[
               styles.wheelItemText,
               isSelected && styles.selectedItemText,
