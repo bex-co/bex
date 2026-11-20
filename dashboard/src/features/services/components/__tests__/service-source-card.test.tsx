@@ -296,6 +296,57 @@ describe("ServiceSourceCard", () => {
         branch: "main",
       }),
     );
+    expect(
+      screen.queryByTestId("source-native-commands"),
+    ).not.toBeInTheDocument();
+  });
+
+  // w32/052: an image service that built natively keeps its native builder
+  // for a switch back (w4/m202) but not its commands (w8/m461), and bex-api
+  // refuses the switch without both, so the dialog asks for them.
+  it("asks an image service that built natively for its commands to switch back to Git", async () => {
+    const user = userEvent.setup();
+    render(
+      <ServiceSourceCard
+        serviceId="srv-5"
+        repo=""
+        branch=""
+        imagePath="nginx:stable"
+        registryCredentialId={null}
+        buildSourceId={null}
+        startCommand=""
+        builder="native"
+        buildCommand=""
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    expect(
+      screen.queryByTestId("source-native-commands"),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "GitHub" }));
+    await user.click(screen.getByRole("button", { name: /acme\/api/i }));
+
+    const commands = screen.getByTestId("source-native-commands");
+    expect(commands).toHaveTextContent("needs its build and start commands");
+    expect(screen.getByRole("combobox", { name: "Branch" })).toHaveValue(
+      "main",
+    );
+    const update = screen.getByRole("button", { name: "Update source" });
+    expect(update).toBeDisabled();
+    await user.type(screen.getByLabelText("Build Command"), "yarn");
+    expect(update).toBeDisabled();
+    await user.type(screen.getByLabelText("Start Command"), "node app.js");
+    await user.click(update);
+
+    await waitFor(() =>
+      expect(setRepo).toHaveBeenCalledWith("srv-5", {
+        repo: "https://github.com/acme/api",
+        branch: "main",
+        buildCommand: "yarn",
+        startCommand: "node app.js",
+      }),
+    );
   });
 });
 

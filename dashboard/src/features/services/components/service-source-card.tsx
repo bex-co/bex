@@ -52,6 +52,7 @@ import { useRepoBranches } from "@/features/services/hooks/use-repo-branches";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import { useSetImage } from "@/features/services/hooks/use-set-image";
 import { useSetRepo } from "@/features/services/hooks/use-set-repo";
+import { commandText } from "@/features/services/lib/command-text";
 import { formatRepoLabel } from "@/features/services/lib/repo";
 
 export interface ServiceSourceCardProps {
@@ -64,6 +65,13 @@ export interface ServiceSourceCardProps {
   buildSourceId: string | null;
   /** The service's start command, kept when it links a native source. */
   startCommand: string | null;
+  /**
+   * The service's builder and build command. An image service keeps a native
+   * builder for a switch back to Git (w4/m202) but not the commands its build
+   * baked in (w8/m461), so that switch asks for both (w32/052).
+   */
+  builder?: string | null;
+  buildCommand?: string | null;
   /**
    * bex's GitHub app connected the repository and can no longer read it, so
    * no push reaches bex (w10/m490): the card says so and what to do.
@@ -181,6 +189,8 @@ function SourceEditDialog({
   registryCredentialId,
   buildSourceId,
   startCommand: currentStartCommand,
+  builder,
+  buildCommand: currentBuildCommand,
   disabled,
 }: ServiceSourceCardProps & { disabled: boolean }) {
   const { t } = useTranslations();
@@ -199,6 +209,7 @@ function SourceEditDialog({
   const [tab, setTab] = useState<SourceTab>(initialTab);
   const [sourceId, setSourceId] = useState(buildSourceId ?? "");
   const [startCommand, setStartCommand] = useState(currentStartCommand ?? "");
+  const [buildCommand, setBuildCommand] = useState(currentBuildCommand ?? "");
   const {
     sources,
     loading: sourcesLoading,
@@ -213,6 +224,13 @@ function SourceEditDialog({
   const [credentialId, setCredentialId] = useState(registryCredentialId ?? "");
 
   const sourceRepo = tab === "github" ? (selectedRepo?.htmlUrl ?? "") : gitUrl;
+  const gitTab = tab === "github" || tab === "git";
+  // A switch from an image back to Git builds natively again, which bex-api
+  // refuses without both commands, as create does (w32/052).
+  const needsCommands =
+    gitTab && !repo && !buildSourceId && builder === "native";
+  const commandsGiven =
+    buildCommand.trim() !== "" && startCommand.trim() !== "";
   const { branches } = useRepoBranches(
     open && tab !== "image" ? sourceRepo || null : null,
   );
@@ -220,15 +238,17 @@ function SourceEditDialog({
     () => branches.map((value) => ({ value, label: value })),
     [branches],
   );
+  const repoValid =
+    tab === "github"
+      ? selectedRepo !== null
+      : isValidGitUrl(gitUrl) && !parseGitHubPage(gitUrl)?.file;
   const valid =
     tab === "build-source"
       ? selectedSource !== undefined &&
         (!needsStart || startCommand.trim() !== "")
       : tab === "image"
         ? isValidDockerImageRef(image)
-        : tab === "github"
-          ? selectedRepo !== null
-          : isValidGitUrl(gitUrl) && !parseGitHubPage(gitUrl)?.file;
+        : repoValid && (!needsCommands || commandsGiven);
   // An image-backed service's repo arrives as "" (bex-api), not null, so
   // source kind is repo presence — as the tab and the card already decide it
   // (w4/275).
@@ -251,6 +271,7 @@ function SourceEditDialog({
     setTab(initialTab);
     setSourceId(buildSourceId ?? "");
     setStartCommand(currentStartCommand ?? "");
+    setBuildCommand(currentBuildCommand ?? "");
     setSelectedRepo(null);
     setGitUrl(repo ?? "");
     setBranch(currentBranch || "main");
@@ -295,6 +316,10 @@ function SourceEditDialog({
           : await setRepo(serviceId, {
               repo: sourceRepo.trim(),
               branch: branch.trim() || "main",
+              ...(needsCommands && {
+                buildCommand: commandText(buildCommand),
+                startCommand: commandText(startCommand),
+              }),
             });
     if (!ok) {
       if (tab === "image") setRefusedImage(image.trim());
@@ -358,7 +383,7 @@ function SourceEditDialog({
             titleKey="services.sourcePickerLabel"
             idPrefix="update-source"
           />
-          {(tab === "github" || tab === "git") && valid && (
+          {gitTab && repoValid && (
             <div className="space-y-2">
               <Label>{t("services.buildDeployBranchLabel")}</Label>
               <Combobox
@@ -374,6 +399,37 @@ function SourceEditDialog({
               <p className="text-xs text-muted-foreground">
                 {t("services.sourceBranchHint")}
               </p>
+            </div>
+          )}
+          {needsCommands && (
+            <div className="space-y-4" data-testid="source-native-commands">
+              <p className="text-xs text-muted-foreground">
+                {t("services.sourceNativeCommandsHint")}
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="update-source-git-build-command">
+                  {t("services.buildCommandLabel")}
+                </Label>
+                <Input
+                  id="update-source-git-build-command"
+                  value={buildCommand}
+                  onChange={(e) => setBuildCommand(e.target.value)}
+                  className="font-mono"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="update-source-git-start-command">
+                  {t("services.startCommandLabel")}
+                </Label>
+                <Input
+                  id="update-source-git-start-command"
+                  value={startCommand}
+                  onChange={(e) => setStartCommand(e.target.value)}
+                  className="font-mono"
+                  autoComplete="off"
+                />
+              </div>
             </div>
           )}
         </div>

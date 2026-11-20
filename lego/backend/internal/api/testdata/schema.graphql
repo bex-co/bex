@@ -2118,7 +2118,7 @@ type Mutation {
   setProjectServices(id: String!, serviceIds: [String!]!): Project
   setPublishPath(confirm: String, id: String!, publishPath: String!): Service
   setRegistryCredential(confirm: String, id: String!, registryCredentialId: String!): Service
-  setRepo(branch: String, confirm: String, id: String!, repo: String!): Service
+  setRepo(branch: String, buildCommand: String, confirm: String, id: String!, repo: String!, startCommand: String): Service
   setRootDir(confirm: String, id: String!, rootDir: String!): Service
   setRuntime(confirm: String, id: String!, runtime: String!): Service
   setSecretFile(content: String, name: String!, serviceId: String!): Boolean

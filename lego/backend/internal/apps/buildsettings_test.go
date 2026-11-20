@@ -92,7 +92,10 @@ func TestSetDockerfilePathRejectsInvalidAndInapplicableServices(t *testing.T) {
 	}
 }
 
-func TestSetCommandsClearsNativeStartCommand(t *testing.T) {
+// A native build cannot run without its start command, so clearing it is
+// refused as create refuses it, rather than saved for every deploy to fail
+// at dispatch (w32/052).
+func TestSetCommandsRefusesClearingANativeStartCommand(t *testing.T) {
 	native := repoApp("native", "https://github.com/x/native", "main")
 	native.Spec.Runtime = "node"
 	native.Spec.Builder = "native"
@@ -100,11 +103,12 @@ func TestSetCommandsClearsNativeStartCommand(t *testing.T) {
 	svc, cl := newService(nil, native)
 	empty := "  "
 
-	if _, err := svc.SetCommands(context.Background(), "native", nil, &empty); err != nil {
-		t.Fatalf("clear native start command: %v", err)
+	if _, err := svc.SetCommands(context.Background(), "native", nil, &empty); !errors.Is(err, core.ErrBadRequest) ||
+		!strings.Contains(err.Error(), "native runtime node requires buildCommand and startCommand") {
+		t.Fatalf("clear native start command = %v, want create's refusal", err)
 	}
-	if got := getApp(t, cl, "native").Spec.StartCommand; got != "" {
-		t.Fatalf("cleared startCommand = %q", got)
+	if got := getApp(t, cl, "native").Spec.StartCommand; got != "npm start" {
+		t.Fatalf("refused clear left startCommand = %q", got)
 	}
 }
 
@@ -385,13 +389,16 @@ func TestClearedStaticBuildCommandPublishesDirectly(t *testing.T) {
 		t.Errorf("re-added = strategy %q command %q, want native %q", buildStrategy(spec), spec.BuildCommand, command)
 	}
 
-	// An explicit runtime is the strategy itself, not a projection: the clear
-	// leaves it for native validation to refuse, as before.
-	if _, err := svc.SetCommands(ctx, "pinned", &empty, nil); err != nil {
-		t.Fatalf("clear pinned: %v", err)
+	// An explicit runtime is the strategy itself, not a projection: its native
+	// build needs the command, so the clear is refused as create refuses it,
+	// not saved for every build to fail at dispatch (w32/052).
+	if _, err := svc.SetCommands(ctx, "pinned", &empty, nil); !errors.Is(err, core.ErrBadRequest) ||
+		!strings.Contains(err.Error(), "native runtime node requires buildCommand") {
+		t.Fatalf("clear pinned = %v, want create's refusal", err)
 	}
-	if spec := getApp(t, cl, "pinned").Spec; spec.Runtime != "node" || spec.Builder != buildNative {
-		t.Errorf("explicit runtime after clear = runtime %q builder %q, want node/native kept", spec.Runtime, spec.Builder)
+	if spec := getApp(t, cl, "pinned").Spec; spec.Runtime != "node" || spec.Builder != buildNative || spec.BuildCommand != command {
+		t.Errorf("explicit runtime after the refused clear = runtime %q builder %q command %q, want node/native and the command kept",
+			spec.Runtime, spec.Builder, spec.BuildCommand)
 	}
 }
 

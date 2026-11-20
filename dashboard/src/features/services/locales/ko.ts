@@ -2613,6 +2613,12 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "Update Source: why a native-runtime build source needs a start command",
   },
+  "services.sourceNativeCommandsHint": {
+    message:
+      "이 서비스는 네이티브 런타임으로 빌드하므로 Git으로 되돌리려면 빌드 명령과 시작 명령이 필요합니다.",
+    description:
+      "Update Source: why switching an image service back to a native Git build needs its build and start commands",
+  },
   "services.sourceUpdateSave": {
     message: "소스 업데이트",
     description: "Save button in the Update Source dialog",

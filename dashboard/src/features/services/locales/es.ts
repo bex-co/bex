@@ -2646,6 +2646,12 @@ const esServices: Record<string, TranslationEntry> = {
     description:
       "Update Source: why a native-runtime build source needs a start command",
   },
+  "services.sourceNativeCommandsHint": {
+    message:
+      "Este servicio hace build con un runtime nativo, por lo que volver a Git necesita su comando de build y su comando de inicio.",
+    description:
+      "Update Source: why switching an image service back to a native Git build needs its build and start commands",
+  },
   "services.sourceUpdateSave": {
     message: "Actualizar origen",
     description: "Save button in the Update Source dialog",

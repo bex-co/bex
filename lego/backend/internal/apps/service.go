@@ -3888,17 +3888,10 @@ func resolveBuildStrategy(svcType string, req CreateRequest) (string, string, er
 		if !req.repoBacked() {
 			return "", "", fmt.Errorf("%w: native runtime %s requires repo", core.ErrBadRequest, runtime)
 		}
-		required, missing := "buildCommand and startCommand", strings.TrimSpace(req.BuildCommand) == "" || strings.TrimSpace(req.StartCommand) == ""
-		// A static site serves its build's files and runs no start command,
-		// which create refuses there (w5/090). A build source builds and runs
-		// nothing either: each linked service supplies the start command
-		// (Render, w2/m254). Both still need the build command the native build
-		// requires (t016), refused here rather than failed at every build.
-		if svcType == appv1alpha1.TypeStaticSite || req.buildSource != nil {
-			required, missing = "buildCommand", strings.TrimSpace(req.BuildCommand) == ""
-		}
-		if missing {
-			return "", "", fmt.Errorf("%w: native runtime %s requires %s", core.ErrBadRequest, runtime, required)
+		// Refused here rather than failed at every build (w2/m254 t016).
+		buildOnly := req.buildSource != nil
+		if build, start := nativeCommandGaps(svcType, buildOnly, req.BuildCommand, req.StartCommand); build || start {
+			return "", "", errNativeCommands(svcType, runtime, buildOnly)
 		}
 		builder = "native"
 	}
@@ -5145,14 +5138,22 @@ func (s *Service) SetCommands(ctx context.Context, name string, buildCommand, st
 	if err := s.checkCommands(ctx, a, buildCommand, startCommand); err != nil {
 		return AppView{}, err
 	}
-	return s.recordedPatch(ctx, core.AuditVerbSetCommands, a, func(a *appv1alpha1.App) {
+	set := func(spec *appv1alpha1.AppSpec) {
 		if buildCommand != nil {
-			setBuildCommand(&a.Spec, *buildCommand)
+			setBuildCommand(spec, *buildCommand)
 		}
 		if startCommand != nil {
-			setStartCommand(&a.Spec, *startCommand)
+			setStartCommand(spec, *startCommand)
 		}
-	})
+	}
+	if !patchJudged(ctx) {
+		after := a.Spec.DeepCopy()
+		set(after)
+		if err := checkNativeCommandsKept(a.Spec, *after); err != nil {
+			return AppView{}, err
+		}
+	}
+	return s.recordedPatch(ctx, core.AuditVerbSetCommands, a, func(a *appv1alpha1.App) { set(&a.Spec) })
 }
 
 // sourcePatch is SetSourceAndRegistryCredential's field set — Render's PATCH
@@ -5202,6 +5203,13 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 	}
 	if !changed {
 		return s.view(a), nil
+	}
+	if !patchJudged(ctx) {
+		after := a.DeepCopy()
+		next.applySourceChange(after)
+		if err := checkNativeCommandsKept(a.Spec, after.Spec); err != nil {
+			return AppView{}, err
+		}
 	}
 	// Stamp the pending generation before writing the projector-owned source
 	// row. If the following CR patch loses a race or the API becomes unavailable,

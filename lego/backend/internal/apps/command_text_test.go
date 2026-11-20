@@ -128,12 +128,18 @@ func TestRESTCommandWritesKeepAuthoredText(t *testing.T) {
 		t.Run("whitespace-only update/"+f.name, func(t *testing.T) {
 			before := "echo before"
 			svc, mux, name := f.restFixture(t, &before)
-			if rec := serveJSON(t, mux, http.MethodPatch, "/v1/services/"+name, map[string]any{"serviceDetails": f.details(" \t ")}); rec.Code != http.StatusOK {
-				t.Fatalf("PATCH: %d %s", rec.Code, rec.Body)
+			// A native build needs its build and start commands, so clearing
+			// either is refused as create refuses it (w32/052).
+			nativeCommand := !f.cron && f.wireKey != "preDeployCommand"
+			want, wantCode := "", http.StatusOK
+			if nativeCommand {
+				want, wantCode = before, http.StatusBadRequest
 			}
-			want := ""
 			if f.cron { // a native cron keeps the start command its build needs (w8/m69)
 				want = before
+			}
+			if rec := serveJSON(t, mux, http.MethodPatch, "/v1/services/"+name, map[string]any{"serviceDetails": f.details(" \t ")}); rec.Code != wantCode {
+				t.Fatalf("PATCH: %d %s, want %d", rec.Code, rec.Body, wantCode)
 			}
 			assertStoredCommand(t, svc, name, f, want)
 		})

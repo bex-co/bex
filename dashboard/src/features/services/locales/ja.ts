@@ -2633,6 +2633,12 @@ const jaServices: Record<string, TranslationEntry> = {
     description:
       "Update Source: why a native-runtime build source needs a start command",
   },
+  "services.sourceNativeCommandsHint": {
+    message:
+      "このサービスはネイティブランタイムでビルドするため、Git に戻すにはビルドコマンドと開始コマンドが必要です。",
+    description:
+      "Update Source: why switching an image service back to a native Git build needs its build and start commands",
+  },
   "services.sourceUpdateSave": {
     message: "ソースを更新",
     description: "Save button in the Update Source dialog",

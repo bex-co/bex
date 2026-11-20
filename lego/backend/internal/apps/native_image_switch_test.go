@@ -131,8 +131,10 @@ func TestNativeToImageSwitchReadsAsAnImageService(t *testing.T) {
 		t.Errorf("spec runtime %q start %q build %q, want node kept for a switch back and no commands", spec.Runtime, spec.StartCommand, spec.BuildCommand)
 	}
 
-	// Back on the repo, the retained runtime reads again.
-	if code, _ := m461REST(t, svc, http.MethodPatch, "/v1/services/web", `{"repo":"`+m461Repo+`","branch":"main"}`); code != http.StatusOK {
+	// Back on the repo, the retained runtime reads again. It builds natively,
+	// so the switch carries the commands the image switch dropped (w32/052).
+	if code, _ := m461REST(t, svc, http.MethodPatch, "/v1/services/web", `{"repo":"`+m461Repo+`","branch":"main",`+
+		`"serviceDetails":{"envSpecificDetails":{"buildCommand":"yarn","startCommand":"node app.js"}}}`); code != http.StatusOK {
 		t.Fatalf("switch back = %d", code)
 	}
 	_, read = m461REST(t, svc, http.MethodGet, "/v1/services/web", "")

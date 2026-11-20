@@ -232,6 +232,8 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
             startCommand={
               (cron ? service.command : service.startCommand) ?? null
             }
+            builder={service.builder ?? null}
+            buildCommand={service.buildCommand ?? null}
             repoAccessLost={service.repoAccessLost ?? false}
           />
         );

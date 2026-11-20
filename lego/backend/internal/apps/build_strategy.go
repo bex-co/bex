@@ -73,6 +73,62 @@ func buildStrategy(spec appv1alpha1.AppSpec) string {
 	return buildPublish
 }
 
+// nativeBuildNeedsStart reports whether a native build runs its own start
+// command: a static site serves its build's files (w5/090), and a build
+// source's linked services supply their own (Render, w2/m254).
+func nativeBuildNeedsStart(svcType string, buildOnly bool) bool {
+	return svcType != appv1alpha1.TypeStaticSite && !buildOnly
+}
+
+// nativeCommandGaps reports which commands a native build needs and is not
+// given: the build command always, the start command when it runs one.
+func nativeCommandGaps(svcType string, buildOnly bool, buildCommand, startCommand string) (build, start bool) {
+	build = strings.TrimSpace(buildCommand) == ""
+	start = nativeBuildNeedsStart(svcType, buildOnly) && strings.TrimSpace(startCommand) == ""
+	return build, start
+}
+
+// errNativeCommands refuses a native runtime a command it needs, in create's
+// words: the requirement whole, whichever part is missing.
+func errNativeCommands(svcType, runtime string, buildOnly bool) error {
+	required := "buildCommand"
+	if nativeBuildNeedsStart(svcType, buildOnly) {
+		required = "buildCommand and startCommand"
+	}
+	return fmt.Errorf("%w: native runtime %s requires %s", core.ErrBadRequest, runtime, required)
+}
+
+// specNativeCommandGaps is nativeCommandGaps for the native build spec
+// dispatches, with its runtime: none when spec builds no repo with a native
+// runtime (a prebuilt image, a build source link, a Dockerfile or buildpack
+// build, a static site publishing its files as they are).
+func specNativeCommandGaps(spec appv1alpha1.AppSpec) (runtime string, build, start bool) {
+	runtime, native := strings.CutPrefix(buildStrategy(spec), buildNative+":")
+	if spec.Repo == "" || !native || !blueprintNativeRuntime(runtime) {
+		return "", false, false
+	}
+	build, start = nativeCommandGaps(spec.Type, spec.Type == appv1alpha1.TypeBuildSource, spec.BuildCommand, spec.StartCommand)
+	return runtime, build, start
+}
+
+// checkNativeCommandsKept refuses a change that leaves a native build without
+// a command it needs and had. Create refuses that state up front
+// (resolveBuildStrategy) and the operator fails every build of it at dispatch,
+// so saving it only turned every later deploy into a failed build (w32/052):
+// clearing a command, or switching an image back to a repo its runtime builds
+// natively without sending the commands the image switch dropped. A gap the
+// change finds and leaves, saved before this check, refuses nothing, so such a
+// service still takes its other settings, and each command one save at a time
+// as the dashboard sends them.
+func checkNativeCommandsKept(before, after appv1alpha1.AppSpec) error {
+	_, buildBefore, startBefore := specNativeCommandGaps(before)
+	runtime, build, start := specNativeCommandGaps(after)
+	if (build && !buildBefore) || (start && !startBefore) {
+		return errNativeCommands(after.Type, runtime, after.Type == appv1alpha1.TypeBuildSource)
+	}
+	return nil
+}
+
 // commandText is the stored form of an executable command: nonblank text is
 // kept byte for byte, because trailing whitespace can belong to the last shell
 // argument (`printf '%s' tail\ ` passes "tail "), and whitespace-only is empty

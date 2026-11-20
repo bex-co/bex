@@ -3903,9 +3903,11 @@ export type MutationSetRegistryCredentialArgs = {
 
 export type MutationSetRepoArgs = {
   branch?: InputMaybe<Scalars['String']['input']>;
+  buildCommand?: InputMaybe<Scalars['String']['input']>;
   confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   repo: Scalars['String']['input'];
+  startCommand?: InputMaybe<Scalars['String']['input']>;
 };
 
 

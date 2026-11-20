@@ -14,14 +14,25 @@ mutation SetBranch($id: String!, $branch: String!, $confirm: String) {
 
 # setRepo switches the Git repository a service builds from (Render's editable
 # Source field, w5/m54). Shares the backend's source verb with setBranch, so a
-# repo+branch switch is atomic and saved for the next deploy.
+# repo+branch switch is atomic and saved for the next deploy. The build and
+# start commands save with it: an image service whose runtime builds natively
+# needs both to switch back to Git (w32/052).
 mutation SetRepo(
   $id: String!
   $repo: String!
   $branch: String
+  $buildCommand: String
+  $startCommand: String
   $confirm: String
 ) {
-  setRepo(id: $id, repo: $repo, branch: $branch, confirm: $confirm) {
+  setRepo(
+    id: $id
+    repo: $repo
+    branch: $branch
+    buildCommand: $buildCommand
+    startCommand: $startCommand
+    confirm: $confirm
+  ) {
     id
     repo
     branch

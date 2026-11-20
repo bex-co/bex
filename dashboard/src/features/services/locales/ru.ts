@@ -2627,6 +2627,12 @@ const ruServices: Record<string, TranslationEntry> = {
     description:
       "Update Source: why a native-runtime build source needs a start command",
   },
+  "services.sourceNativeCommandsHint": {
+    message:
+      "Этот сервис собирается в нативной среде выполнения, поэтому для возврата к Git нужны команда сборки и команда запуска.",
+    description:
+      "Update Source: why switching an image service back to a native Git build needs its build and start commands",
+  },
   "services.sourceUpdateSave": {
     message: "Обновить источник",
     description: "Save button in the Update Source dialog",

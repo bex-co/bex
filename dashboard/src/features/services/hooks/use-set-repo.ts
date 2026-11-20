@@ -10,6 +10,12 @@ export interface UseSetRepoResult {
 export interface RepoSourceUpdate {
   repo: string;
   branch?: string;
+  /**
+   * Saved with the switch: an image service whose runtime builds natively
+   * needs both to switch back to Git (w32/052). Omitted, each is unchanged.
+   */
+  buildCommand?: string;
+  startCommand?: string;
 }
 
 /**
@@ -20,10 +26,15 @@ export interface RepoSourceUpdate {
 export function useSetRepo(): UseSetRepoResult {
   const { run, busy } = useFieldMutation(
     SetRepoDocument,
-    (id: string, { repo, branch }: RepoSourceUpdate) => ({
+    (
+      id: string,
+      { repo, branch, buildCommand, startCommand }: RepoSourceUpdate,
+    ) => ({
       id,
       repo,
       branch: branch ?? null,
+      buildCommand: buildCommand ?? null,
+      startCommand: startCommand ?? null,
     }),
     {
       success: "services.sourceUpdateSuccess",

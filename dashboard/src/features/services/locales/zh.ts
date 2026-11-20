@@ -2556,6 +2556,12 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Update Source: why a native-runtime build source needs a start command",
   },
+  "services.sourceNativeCommandsHint": {
+    message:
+      "此服务使用原生运行时构建，因此切回 Git 需要它的构建命令和启动命令。",
+    description:
+      "Update Source: why switching an image service back to a native Git build needs its build and start commands",
+  },
   "services.sourceUpdateSave": {
     message: "更新源",
     description: "Save button in the Update Source dialog",

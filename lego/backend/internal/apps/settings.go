@@ -729,6 +729,13 @@ func (s *Service) preflightServicePatch(ctx context.Context, id string, p Servic
 			return ctx, nil, nil, err
 		}
 	}
+	// Judged on the finished probe, not per row: a source switch back to a
+	// native repo is buildable only with the commands a later row sends
+	// (w32/052). The apply pass's verbs, which each see only the rows before
+	// them, skip it (patchJudged).
+	if err := checkNativeCommandsKept(a.Spec, probe.Spec); err != nil {
+		return ctx, nil, nil, err
+	}
 	// The probe now holds the whole proposed spec, so the API server judges it
 	// — the CRD's schema and CEL rules — before any row writes: an invalid
 	// field fails the patch here instead of at its own row's CR write, after
@@ -776,6 +783,7 @@ func (s *Service) ApplyServicePatch(ctx context.Context, id string, p ServicePat
 	if read == nil {
 		return s.Get(ctx, id)
 	}
+	ctx = context.WithValue(ctx, patchJudgedKey{}, true)
 	// Every row but plan saves only (rollout.WithSaveOnly, w8/m135). A plan
 	// change deploys at once, carrying every change held so far, and Batch
 	// keeps the request to one deploy row. Deferred rather than run on success
@@ -829,6 +837,18 @@ func (s *Service) ApplyServicePatch(ctx context.Context, id string, p ServicePat
 		v.IPAllowListProxiedDomains = proxied
 	}
 	return v, nil
+}
+
+// patchJudgedKey marks ApplyServicePatch's apply pass, whose preflight already
+// judged the finished service (checkNativeCommandsKept). Each row's verb sees
+// only the rows before it, so judging there would refuse a source switch the
+// patch's own commands, a row later, make buildable.
+type patchJudgedKey struct{}
+
+// patchJudged reports whether ctx is that apply pass.
+func patchJudged(ctx context.Context) bool {
+	judged, _ := ctx.Value(patchJudgedKey{}).(bool)
+	return judged
 }
 
 // ApplyServicePatchDryRun is ApplyServicePatch stopped before its first write

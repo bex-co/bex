@@ -1749,20 +1749,31 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// setRepo switches the Git repository a service builds from (Render's
 		// editable Source field, w5/m54). Delegates to the same shared source
 		// verb as setBranch/REST PATCH `repo`, so validation and deferred-until-
-		// next-deploy semantics stay identical across surfaces.
+		// next-deploy semantics stay identical across surfaces. buildCommand and
+		// startCommand save with the switch, as REST PATCH takes them beside
+		// `repo`: an image service whose runtime builds natively needs both to
+		// switch back (w32/052).
 		"setRepo": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":      gqlutil.ReqArg(graphql.String),
-				"repo":    gqlutil.ReqArg(graphql.String),
-				"branch":  gqlutil.Arg(graphql.String),
-				"confirm": gqlutil.Arg(graphql.String),
+				"id":           gqlutil.ReqArg(graphql.String),
+				"repo":         gqlutil.ReqArg(graphql.String),
+				"branch":       gqlutil.Arg(graphql.String),
+				"buildCommand": gqlutil.Arg(graphql.String),
+				"startCommand": gqlutil.Arg(graphql.String),
+				"confirm":      gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				repo := p.Args["repo"].(string)
-				patch := sourcePatch{Repo: &repo, Branch: gqlutil.StrPtr(p.Args, "branch")}
+				id, repo := p.Args["id"].(string), p.Args["repo"].(string)
+				branch := gqlutil.StrPtr(p.Args, "branch")
 				ctx := core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm"))
-				return s.SetSourceAndRegistryCredential(ctx, p.Args["id"].(string), patch)
+				buildCommand, startCommand := gqlutil.StrPtr(p.Args, "buildCommand"), gqlutil.StrPtr(p.Args, "startCommand")
+				if buildCommand != nil || startCommand != nil {
+					return s.ApplyServicePatch(ctx, id, ServicePatch{
+						Repo: &repo, Branch: branch, BuildCommand: buildCommand, StartCommand: startCommand,
+					})
+				}
+				return s.SetSourceAndRegistryCredential(ctx, id, sourcePatch{Repo: &repo, Branch: branch})
 			},
 		},
 		// setImage switches a service to a prebuilt container image (Render's
