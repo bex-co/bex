@@ -392,7 +392,7 @@ type AppReconciler struct {
 	BuildClient client.Client
 	Scheme      *runtime.Scheme
 	// stoppedCanceledBuilds holds, per App UID, the canceled release
-	// generation whose build a canceled pass stopped (settleCanceledRelease).
+	// generation whose build a canceled pass ended (endCanceledBuild).
 	stoppedCanceledBuilds sync.Map
 	// unreadyRuns remembers when a serving instance stopped being ready while
 	// its process still ran, for the exit that follows (recordInstanceExits).
@@ -886,11 +886,31 @@ func (r *AppReconciler) stopAbandonedBuild(ctx context.Context, app *appv1alpha1
 	}
 }
 
-// canceledBuildStopped reports that a canceled pass already stopped the build
+// canceledBuildStopped reports that a canceled pass already ended the build
 // of uid's canceled release generation.
 func (r *AppReconciler) canceledBuildStopped(uid types.UID, generation int64) bool {
 	stopped, ok := r.stoppedCanceledBuilds.Load(uid)
 	return ok && stopped.(int64) == generation
+}
+
+// endCanceledBuild ends the canceled release's build: it stops its Job, which
+// frees its build slot for the releases held behind it, and revokes the build
+// reach the App's builds share (w9/124). No build of the App goes on once a
+// cancel settles: the release a cancel leaves running does not settle it
+// (survivorInFlight), and stopAbandonedBuild has stopped one it settles below.
+// Left to the next build's end, the policies would outlive the canceled build.
+// An image-backed release has no build to stop, but its saved source may have
+// replaced the repo whose build the cancel ended, so its reach goes too.
+func (r *AppReconciler) endCanceledBuild(ctx context.Context, app *appv1alpha1.App, generation int64) error {
+	buildNs := r.buildNamespace(app.Namespace)
+	if app.Spec.Repo != "" {
+		owner := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID)}
+		if err := build.StopRevision(ctx, r.buildPlaneClient(), buildNs, owner, appv1alpha1.BuildRevision(generation)); err != nil {
+			return err
+		}
+		r.wakeHeldBuilds(ctx, buildNs)
+	}
+	return r.revokeBuildReach(ctx, app, buildNs)
 }
 
 // settleCanceledRelease handles a generation the backend canceled: stop its
@@ -913,18 +933,16 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 	poll := r.observeCanceledPreDeploy(ctx, app)
 	// bex-api stops the canceled release's build once, best effort, after its
 	// stamp lands. A build a pass dispatched after that delete, or one whose
-	// delete failed, would run to the end and hold a build-cap slot. Canceled
-	// passes stop it until one succeeds; no canceled pass dispatches, so the
-	// release's build cannot start again, and later passes skip the build
-	// plane's uncached reads (w5/149). An image-backed release has no build.
-	if generation, ok := canceledReleaseGeneration(app); ok && app.Spec.Repo != "" && !r.canceledBuildStopped(app.UID, generation) {
-		owner := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID)}
-		if err := build.StopRevision(ctx, r.buildPlaneClient(), r.buildNamespace(app.Namespace), owner, appv1alpha1.BuildRevision(generation)); err != nil {
-			logf.FromContext(ctx).Error(err, "stop the canceled release's build", "app", app.Name)
+	// delete failed, would run to the end and hold a build-cap slot, and its
+	// build reach would outlive it. Canceled passes end it until one succeeds;
+	// no canceled pass dispatches, so the release's build cannot start again,
+	// and later passes skip the build plane's uncached reads (w5/149).
+	if generation, ok := canceledReleaseGeneration(app); ok && !r.canceledBuildStopped(app.UID, generation) {
+		if err := r.endCanceledBuild(ctx, app, generation); err != nil {
+			logf.FromContext(ctx).Error(err, "end the canceled release's build", "app", app.Name)
 			poll = soonerRequeue(poll, childHealthRequeue)
 		} else {
 			r.stoppedCanceledBuilds.Store(app.UID, generation)
-			r.wakeHeldBuilds(ctx, r.buildNamespace(app.Namespace))
 		}
 	}
 	// Only a release that served can be reverted to; otherwise there is simply
@@ -1893,7 +1911,8 @@ func (r *AppReconciler) prepareSourceBuildEnv(ctx context.Context, app *appv1alp
 	}
 	// The build may reach its own workspace's datastores and services and
 	// nothing else (docs/ADR022-tenant-isolation.md § Build reach); revoked at
-	// the build's terminal observation in buildFromSource.
+	// the build's terminal observation in buildFromSource, when a cancel
+	// settles (endCanceledBuild), or when the App is deleted.
 	if err := r.reconcileBuildReach(ctx, app, buildNs, true); err != nil {
 		return nil, buildInputs{}, "", err
 	}
@@ -8426,6 +8445,17 @@ func (r *AppReconciler) reclaimAppExecution(ctx context.Context, app *appv1alpha
 		errs = append(errs, fmt.Errorf("delete execution NetworkPolicy: %w", deleteErr))
 	} else {
 		pending = pending || !done
+	}
+	// ReclaimAppArtifacts removes the build reach's build-namespace half. Its
+	// workspace halves are the App's own, but garbage collection takes them
+	// only once this finalizer lets the App go, which a slow purge can hold
+	// for hours: revoke them with the build they served (w9/124).
+	for _, name := range buildIngressPolicyNames(app.Name) {
+		done, deleteErr := deleteOwnedObject(ctx, r.Client, app.Namespace, name, &networkingv1.NetworkPolicy{}, owned)
+		pending = pending || !done
+		if deleteErr != nil {
+			errs = append(errs, fmt.Errorf("delete build reach NetworkPolicy %s: %w", name, deleteErr))
+		}
 	}
 	return pending, errors.Join(errs...)
 }

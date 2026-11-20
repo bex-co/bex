@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"maps"
+	"strconv"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -233,6 +234,189 @@ var _ = Describe("Build reach to the workspace's own services (w9/m495)", func()
 		for _, key := range policyKeys {
 			Expect(apierrors.IsNotFound(k8sClient.Get(ctx, key, &networkingv1.NetworkPolicy{}))).To(BeTrue(), key.String())
 		}
+	})
+})
+
+// w9/124: a build that ends without a terminal observation of its own loses
+// its reach where it ends, on that pass, with no later build to wait for: a
+// user's cancel, the build of a release a cancel settled below (superseded by
+// the canceled deploy, then ended with it), a timeout, and the App's deletion.
+// Every half goes: the build-namespace egress, the datastore ingress and
+// w9/m495's service ingress. A second App building in the same workspace
+// keeps all three of its own throughout, and the release a cancel leaves
+// running keeps its grant until it ends.
+var _ = Describe("Build reach ends with a canceled or settled build (w9/124)", func() {
+	ctx := context.Background()
+	const (
+		name    = "srv-w9124-site"
+		peer    = "srv-w9124-peer"
+		cms     = "srv-w9124-cms"
+		ws      = "tea-w9124w9124w9124w9124"
+		buildNS = "w9124-builds"
+	)
+	nn := types.NamespacedName{Name: name, Namespace: ws}
+	peerNN := types.NamespacedName{Name: peer, Namespace: ws}
+	var r *AppReconciler
+
+	reconcileN := func(key types.NamespacedName, n int) {
+		GinkgoHelper()
+		for range n {
+			_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: key})
+			Expect(err).NotTo(HaveOccurred())
+		}
+	}
+	getApp := func() *appv1alpha1.App {
+		GinkgoHelper()
+		a := &appv1alpha1.App{}
+		Expect(k8sClient.Get(ctx, nn, a)).To(Succeed())
+		return a
+	}
+	update := func(mutate func(*appv1alpha1.App)) {
+		GinkgoHelper()
+		a := getApp()
+		if a.Annotations == nil {
+			a.Annotations = map[string]string{}
+		}
+		mutate(a)
+		Expect(k8sClient.Update(ctx, a)).To(Succeed())
+	}
+	jobKey := func(app, rev string) client.ObjectKey {
+		return client.ObjectKey{Namespace: buildNS, Name: build.JobName(app, rev)}
+	}
+	jobExists := func(app, rev string) bool {
+		return k8sClient.Get(ctx, jobKey(app, rev), &batchv1.Job{}) == nil
+	}
+	policyKeys := func(app string) []client.ObjectKey {
+		return []client.ObjectKey{
+			{Namespace: buildNS, Name: buildEgressPolicyName(app)},
+			{Namespace: ws, Name: buildIngressPolicyName(app)},
+			{Namespace: ws, Name: buildServiceIngressPolicyName(app)},
+		}
+	}
+	expectReach := func(app string, held bool) {
+		GinkgoHelper()
+		for _, key := range policyKeys(app) {
+			err := k8sClient.Get(ctx, key, &networkingv1.NetworkPolicy{})
+			if held {
+				Expect(err).NotTo(HaveOccurred(), "%s must keep %s", app, key)
+			} else {
+				Expect(apierrors.IsNotFound(err)).To(BeTrue(), "%s must lose %s at once: %v", app, key, err)
+			}
+		}
+	}
+	sourceApp := func(app string) *appv1alpha1.App {
+		return &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: app, Namespace: ws, Labels: map[string]string{labelWorkspace: ws},
+				Annotations: map[string]string{appv1alpha1.AnnotationReleaseGeneration: "1"}},
+			Spec: appv1alpha1.AppSpec{Repo: "https://github.com/acme/" + app, Branch: "main", Builder: "dockerfile", Port: 3000},
+		}
+	}
+
+	BeforeEach(func() {
+		for _, ns := range []string{ws, buildNS} {
+			_ = k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
+		}
+		r = &AppReconciler{Client: k8sClient, Scheme: k8sClient.Scheme(),
+			Mode: ModeKubernetes, Registry: "zot.test:5000", BuildNamespace: buildNS}
+		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: cms, Namespace: ws, Labels: map[string]string{labelWorkspace: ws}},
+			Spec: appv1alpha1.AppSpec{Image: "ghcr.io/acme/cms:1", Type: appv1alpha1.TypePrivateService,
+				Tier: "starter", Subdomain: "cms-w9124"},
+		})).To(Succeed())
+		for _, app := range []string{name, peer} {
+			Expect(k8sClient.Create(ctx, sourceApp(app))).To(Succeed())
+		}
+		reconcileN(nn, 3)
+		reconcileN(peerNN, 3)
+		Expect(jobExists(name, "gen-1")).To(BeTrue(), "precondition: the build runs")
+		Expect(jobExists(peer, "gen-1")).To(BeTrue(), "precondition: the other App's build runs")
+		expectReach(name, true)
+		expectReach(peer, true)
+	})
+	AfterEach(func() {
+		r.Registry = ""
+		for _, key := range []types.NamespacedName{nn, peerNN} {
+			if a := (&appv1alpha1.App{}); k8sClient.Get(ctx, key, a) == nil {
+				Expect(k8sClient.Delete(ctx, a)).To(Succeed())
+				for range 3 {
+					_, _ = r.Reconcile(ctx, reconcile.Request{NamespacedName: key})
+				}
+			}
+		}
+		_ = k8sClient.Delete(ctx, &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: cms, Namespace: ws}})
+		for _, app := range []string{name, peer} {
+			for _, rev := range []string{"gen-1", "gen-2", "gen-3"} {
+				_ = k8sClient.Delete(ctx, &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: build.JobName(app, rev), Namespace: buildNS}},
+					client.PropagationPolicy(metav1.DeletePropagationBackground))
+			}
+			// envtest runs no garbage collector.
+			for _, key := range policyKeys(app) {
+				_ = k8sClient.Delete(ctx, &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: key.Name, Namespace: key.Namespace}})
+			}
+		}
+	})
+
+	It("revokes every half when the user cancels the build", func() {
+		update(func(a *appv1alpha1.App) {
+			a.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration] = strconv.FormatInt(a.Generation, 10)
+		})
+		reconcileN(nn, 1)
+
+		Expect(getApp().Status.Phase).To(Equal(appv1alpha1.PhaseCanceled))
+		Expect(jobExists(name, "gen-1")).To(BeFalse(), "the canceled build is stopped")
+		expectReach(name, false)
+		expectReach(peer, true)
+		Expect(jobExists(name, "gen-2")).To(BeFalse(), "no later build ran to revoke it")
+	})
+
+	It("keeps the grant for the release a cancel leaves running, and revokes it when that build is ended too", func() {
+		By("a second deploy waits behind the build, and is canceled")
+		update(func(a *appv1alpha1.App) {
+			a.Spec.RestartedAt = "2026-11-19T08:00:00Z"
+			a.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(a.Generation+1, 10)
+		})
+		reconcileN(nn, 1)
+		Expect(getApp().Status.PendingReleaseGeneration).To(Equal(int64(2)), "precondition: generation 2 is the pending slot")
+		update(func(a *appv1alpha1.App) {
+			a.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration] = strconv.FormatInt(a.Generation, 10)
+			a.Annotations[appv1alpha1.AnnotationSurvivingReleaseGeneration] = "1"
+		})
+		reconcileN(nn, 2)
+		Expect(jobExists(name, "gen-1")).To(BeTrue(), "the release the cancel left running keeps building")
+		expectReach(name, true)
+
+		By("bex-api ends that release too: its build is superseded by the canceled deploy and settles with it")
+		update(func(a *appv1alpha1.App) { delete(a.Annotations, appv1alpha1.AnnotationSurvivingReleaseGeneration) })
+		reconcileN(nn, 1)
+		Expect(getApp().Status.Phase).To(Equal(appv1alpha1.PhaseCanceled))
+		Expect(jobExists(name, "gen-1")).To(BeFalse(), "the abandoned build is stopped")
+		expectReach(name, false)
+		expectReach(peer, true)
+		Expect(jobExists(name, "gen-2")).To(BeFalse(), "no later build ran to revoke it")
+	})
+
+	It("revokes every half when the build times out", func() {
+		job := &batchv1.Job{}
+		Expect(k8sClient.Get(ctx, jobKey(name, "gen-1"), job)).To(Succeed())
+		failEnvtestJob(job, batchv1.JobReasonDeadlineExceeded, "Job was active longer than specified deadline")
+		// The pass that records a build failure returns it.
+		_, _ = r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+
+		cond := meta.FindStatusCondition(getApp().Status.Conditions, appv1alpha1.ConditionBuild)
+		Expect(cond).NotTo(BeNil())
+		Expect(cond.Message).To(ContainSubstring("time limit"), "precondition: the build settled as a timeout")
+		expectReach(name, false)
+		expectReach(peer, true)
+	})
+
+	It("revokes every half when the App is deleted mid-build", func() {
+		r.Registry = ""
+		Expect(k8sClient.Delete(ctx, getApp())).To(Succeed())
+		_, _ = r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+
+		Expect(jobExists(name, "gen-1")).To(BeFalse(), "the deletion stops the build")
+		expectReach(name, false)
+		expectReach(peer, true)
 	})
 })
 

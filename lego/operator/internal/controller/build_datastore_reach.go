@@ -209,6 +209,11 @@ func buildEgressPolicyName(app string) string         { return build.JobName(app
 func buildIngressPolicyName(app string) string        { return app + "-build-ingress" }
 func buildServiceIngressPolicyName(app string) string { return app + "-build-service-ingress" }
 
+// buildIngressPolicyNames are every workspace-side half an App's builds may hold.
+func buildIngressPolicyNames(app string) []string {
+	return []string{buildIngressPolicyName(app), buildServiceIngressPolicyName(app)}
+}
+
 // buildReachEligible reports whether app may receive build reach. The
 // build must run outside the App namespace (a same-namespace build already has
 // allow-same-namespace), and the App namespace must be the workspace's own
@@ -317,9 +322,11 @@ func (r *AppReconciler) reconcileBuildReach(ctx context.Context, app *appv1alpha
 }
 
 // endBuildReach revokes the grant once the observed build is over (succeeded
-// or failed). Best-effort: the policies select only this App lifetime's build
-// pods, so a leftover grants nothing while no build runs, and the next
-// terminal pass or the finalizer retries.
+// or failed, a timeout included). Best-effort: the policies select only this
+// App lifetime's build pods, so a leftover grants nothing while no build runs,
+// and the next build's end or the finalizer retries. A build that never
+// reaches a terminal observation loses its grant where it ends instead: a
+// settled cancel (endCanceledBuild) or the App's deletion (reclaimAppExecution).
 func (r *AppReconciler) endBuildReach(ctx context.Context, app *appv1alpha1.App, buildNs string, phase build.Phase) {
 	if phase != build.PhaseSucceeded && phase != build.PhaseFailed {
 		return
@@ -353,7 +360,7 @@ func (r *AppReconciler) revokeBuildReach(ctx context.Context, app *appv1alpha1.A
 			errs = append(errs, fmt.Errorf("removing build reach egress policy: %w", err))
 		}
 	}
-	for _, name := range []string{buildIngressPolicyName(app.Name), buildServiceIngressPolicyName(app.Name)} {
+	for _, name := range buildIngressPolicyNames(app.Name) {
 		errs = append(errs, r.deleteBuildIngress(ctx, app, name))
 	}
 	return errors.Join(errs...)
