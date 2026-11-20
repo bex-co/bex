@@ -225,7 +225,9 @@ function DatabaseDetailPage() {
             />
           ) : (
             <div data-skeleton-region="resource-actions">
-              <Skeleton className="size-9" />
+              {/* The ready actions trigger is an `icon-sm` button, 32px
+                  (w3/082). */}
+              <Skeleton className="size-8" />
             </div>
           )}
         </div>
