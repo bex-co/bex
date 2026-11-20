@@ -337,11 +337,20 @@ type AppReconciler struct {
 	// created: a cancel or replacement that landed during a long reconcile
 	// must keep the run from executing (w4/m300 t010). Nil reads r.Client.
 	APIReader client.Reader
-	// PortScanner finds the port a web service's process listens on when its
-	// health check keeps failing on the default port (w8/177), and every
-	// listener a private service's instances bind (w3/m273); nil disables
-	// detection.
+	// PortScanner connects to every port of a pod to find what it listens
+	// on: the port a web service's process binds when its health check keeps
+	// failing on the default port (w8/177), and every listener a private
+	// service's instances bind (w3/m273). Since w6/m530 it runs only for a
+	// pod whose node has no listener reader (Listeners). With both nil,
+	// detection is off.
 	PortScanner portscan.Scanner
+	// Listeners reads a pod's listeners from the listener reader on its node
+	// (w6/m530); PortScanner's sweep then runs only for a node with no reader
+	// pod. Nil sweeps every pod.
+	Listeners ListenerSource
+	// listenerSweepLogged rate-limits the log line of a node without a
+	// reader: node name -> time.Time of the last line.
+	listenerSweepLogged sync.Map
 	// registryReadGate bounds the tenant-controlled registry reads an App
 	// reconcile makes, and counts each App's consecutive failed reads
 	// (registry_read_gate.go, w21/m394 t014). Built on first use.

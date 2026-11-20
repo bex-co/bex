@@ -951,6 +951,44 @@ if [ "$egress_apparmor" != "Unconfined" ] || [ "$egress_seccomp" != "RuntimeDefa
   fail=1
 fi
 
+# The listener reader (w6/m530) reads every node process's /proc entry, so its
+# privilege set is pinned whole: the node's PID namespace and nothing more. No
+# host network or IPC, no host path or any volume, no capability added, no
+# privilege, no root, no service-account token (pod or ServiceAccount), the
+# hardened baseline above, and egress-meter's node set (the nodes that run
+# tenant App pods). It is checked on its own render as well as the prod one,
+# so it holds before config/default includes it.
+echo "==> listener-reader has hostPID as its only privilege"
+reader_ds="lego/operator/config/listener-reader/daemonset.yaml"
+reader_privileges="$(yq -N -o=json -I=0 '.spec.template.spec | [.hostPID, (.hostNetwork // false), (.hostIPC // false), ((.volumes // []) | length), .automountServiceAccountToken, .securityContext.runAsNonRoot, .securityContext.runAsUser, ([(.containers + (.initContainers // []))[] | [(.securityContext.privileged // false), ((.securityContext.capabilities.add // []) | length), ((.volumeMounts // []) | length), (.securityContext.runAsUser // 65532)]] | unique)]' "$reader_ds")"
+if [ "$reader_privileges" != '[true,false,false,0,false,true,65532,[[false,0,0,65532]]]' ]; then
+  echo "FAIL: $reader_ds must run with hostPID and no other privilege (want [hostPID true, no hostNetwork/hostIPC, no volume, no token, non-root 65532, no privileged container, no capability, no mount]); got $reader_privileges" >&2
+  fail=1
+fi
+if [ "$(yq -N '.automountServiceAccountToken' lego/operator/config/listener-reader/serviceaccount.yaml)" != "false" ]; then
+  echo "FAIL: the listener-reader ServiceAccount must not mount a token" >&2
+  fail=1
+fi
+if grep -rqs "listener-reader" lego/operator/config/rbac deploy/gitops/base/*rbac*.yaml; then
+  echo "FAIL: the listener reader calls no API; no Role or binding may name it" >&2
+  fail=1
+fi
+reader_tolerations="$(yq -N -o=json -I=0 '.spec.template.spec.tolerations' "$reader_ds")"
+meter_tolerations="$(yq -N -o=json -I=0 '.spec.template.spec.tolerations' lego/operator/config/egress-meter/daemonset.yaml)"
+if [ "$reader_tolerations" != "$meter_tolerations" ]; then
+  echo "FAIL: the listener reader must run on egress-meter's nodes (every node that runs tenant App pods): tolerations $reader_tolerations, egress-meter $meter_tolerations" >&2
+  fail=1
+fi
+if [ "$(yq -N -o=json -I=0 '[.spec.template.spec.nodeSelector, .spec.template.spec.affinity]' "$reader_ds")" != '[null,null]' ]; then
+  echo "FAIL: the listener reader must not narrow its nodes below egress-meter's with a nodeSelector or affinity" >&2
+  fail=1
+fi
+unhardened_reader="$(kubectl kustomize lego/operator/config/listener-reader | yq ea "$platform_hardening_guard" - | sed '/^$/d' | tr '\n' ' ')"
+if [ -n "$unhardened_reader" ]; then
+  echo "FAIL: the listener reader is below the securityContext hardening baseline (w7/m58): $unhardened_reader" >&2
+  fail=1
+fi
+
 # Platform CNPG drain-safety guard (w1/m38): the auth/control-plane databases
 # must have a standby on another platform node. CNPG performs a planned
 # switchover before a drain evicts a primary, but only when a replica exists;
@@ -1122,6 +1160,22 @@ if [ -f "$POL" ]; then
   for ns in bex-system bex-registry secrets monitoring; do
     echo "$rows" | grep -q "^${ns}:" || { echo "FAIL: $ns has no deny-tenant-ingress NetworkPolicy" >&2; fail=1; }
   done
+  # One exclusion, in bex-system only: the listener reader (w6/m530) answers the
+  # operator alone, and policies add up, so this policy must not select it. It
+  # stays default-deny under its own Ingress policy, which admits only the
+  # controller-manager pods on the reader's port; any other selector, or that
+  # policy's absence, is still a regression.
+  reader_policy="lego/operator/config/listener-reader/networkpolicy.yaml"
+  reader_exclusion='{"matchExpressions":[{"key":"app.bex.co/component","operator":"NotIn","values":["listener-reader"]}]}'
+  bex_system_selector="$(yq -N -o=json -I=0 '. | select(.kind=="NetworkPolicy" and .metadata.name=="deny-tenant-ingress" and .metadata.namespace=="bex-system") | .spec.podSelector' "$POL")"
+  reader_isolation="$(yq -N -o=json -I=0 '[.spec.podSelector, .spec.policyTypes, .spec.ingress]' "$reader_policy")"
+  if [ "$bex_system_selector" = "$reader_exclusion" ]; then
+    if [ "$reader_isolation" != '[{"matchLabels":{"app.bex.co/component":"listener-reader"}},["Ingress"],[{"from":[{"podSelector":{"matchLabels":{"control-plane":"controller-manager"}}}],"ports":[{"protocol":"TCP","port":9097}]}]]' ]; then
+      echo "FAIL: bex-system's deny-tenant-ingress leaves the listener reader out, but $reader_policy does not isolate it to the operator on TCP 9097: $reader_isolation" >&2
+      fail=1
+    fi
+    rows="$(echo "$rows" | sed 's/^bex-system:1:/bex-system:0:/')"
+  fi
   # empty podSelector (default-deny all pods) — non-zero lengths are a regression.
   # awk (not grep) for field-2 comparison: BSD grep -E mishandles the [^:]+ form.
   bad="$(echo "$rows" | awk -F: '$2 != 0' || true)"

@@ -44,9 +44,12 @@ import (
 // nginx image on 80 — never goes live.
 //
 // While a web service with no explicit port is waiting on a health check that
-// keeps failing, the operator connects to the pod IP on every TCP port
-// (internal/portscan). A process bound only to loopback never answers on the
-// pod's address, which is Render's own "0.0.0.0" condition. Only a listener
+// keeps failing, the operator reads the pod's listening sockets from the
+// listener reader on its node (w6/m530, listener_reads.go), or, for a node
+// without a reader, connects to the pod IP on every TCP port
+// (internal/portscan). A process bound only to loopback is in neither answer:
+// it never accepts on the pod's address, which is Render's own "0.0.0.0"
+// condition. Only a listener
 // that answers HTTP counts (internal/httpport): Render routes a web service to
 // one HTTP port and keeps scanning while none answers ("No open HTTP ports
 // detected on 0.0.0.0, continuing to scan"), so a binary listener a release
@@ -162,27 +165,26 @@ func (r *AppReconciler) dueUnreadyScan(ctx context.Context, app *appv1alpha1.App
 // returns text to append to the stall message (empty when there is nothing to
 // add). Between scans it returns the last scan's text.
 func (r *AppReconciler) detectBoundPort(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) string {
-	if r.PortScanner == nil || explicitServingPort(app) || !app.Spec.InternallyAddressable() {
+	if !r.readsListeners() || explicitServingPort(app) || !app.Spec.InternallyAddressable() {
 		return ""
 	}
 	key, pod := r.dueUnreadyScan(ctx, app, dep)
 	if pod == nil {
 		return r.replayPortHint(ctx, key, dep, port)
 	}
-	return r.keepPortHint(key, pod, port, r.scanForBoundPort(ctx, app, key, pod.Status.PodIP, port))
+	return r.keepPortHint(key, pod, port, r.scanForBoundPort(ctx, app, key, pod, port))
 }
 
-// scanForBoundPort is detectBoundPort's scan of ip.
-func (r *AppReconciler) scanForBoundPort(ctx context.Context, app *appv1alpha1.App, key, ip string, port int) string {
-	scanCtx, cancel := context.WithTimeout(ctx, portDetectTimeout)
-	defer cancel()
-	open, err := scanBoundPort(scanCtx, r.PortScanner, ip, port)
+// scanForBoundPort is detectBoundPort's read of pod.
+func (r *AppReconciler) scanForBoundPort(ctx context.Context, app *appv1alpha1.App, key string, pod *corev1.Pod, port int) string {
+	open, err := r.boundPortListeners(ctx, pod, port)
 	if err != nil {
-		// A scan that found nothing and one that failed read the same from
+		// A sweep that found nothing and one that failed read the same from
 		// outside: a closed port on a tenant pod drops the connect instead of
 		// refusing it, so "no listener" always arrives here as unreachable
-		// (w8/259). The product says what the user can act on, in Render's
-		// terms; the operator's log keeps the scan's own error (w4/393).
+		// (w8/259), and a failed read of the node's reader is retried at the
+		// next interval. The product says what the user can act on, in
+		// Render's terms; the operator's log keeps the error (w4/393).
 		logf.FromContext(ctx).Info("port detection scan failed", "app", app.Name, "error", err.Error())
 		return noOpenPortMessage(app, port)
 	}
@@ -196,7 +198,7 @@ func (r *AppReconciler) scanForBoundPort(ctx context.Context, app *appv1alpha1.A
 		}
 		return r.adoptListener(ctx, app, key, port, int(preferredPort(found)))
 	}
-	others := r.httpListeners(ctx, app, ip, open)
+	others := r.httpListeners(ctx, app, pod.Status.PodIP, open)
 	switch len(others) {
 	case 0:
 		return noOpenPortMessage(app, port)
@@ -289,18 +291,42 @@ type portsScanner interface {
 	ScanPorts(ctx context.Context, ip string, ports []int) ([]int, error)
 }
 
+// boundPortListeners is the listeners bound-port detection decides on for
+// pod: of the pod's listeners, those among the common HTTP ports and also when
+// any of them listens, else all. That is what scanBoundPort's two phases
+// answer; a reader's complete answer is narrowed the same way, so detection
+// chooses as it did when it swept. Only a node without a reader is swept.
+func (r *AppReconciler) boundPortListeners(ctx context.Context, pod *corev1.Pod, also ...int) ([]int, error) {
+	open, complete, err := r.podListeners(ctx, pod, func(ctx context.Context, ip string) ([]int, error) {
+		return scanBoundPort(ctx, r.PortScanner, ip, also...)
+	})
+	if err != nil || !complete {
+		return open, err
+	}
+	likely := likelyPorts(also)
+	if common := slices.DeleteFunc(slices.Clone(open), func(p int) bool { return !slices.Contains(likely, p) }); len(common) > 0 {
+		return common, nil
+	}
+	return open, nil
+}
+
+// likelyPorts is commonHTTPPorts and also.
+func likelyPorts(also []int) []int {
+	likely := commonHTTPPorts
+	for _, p := range also {
+		if !slices.Contains(likely, p) {
+			likely = append(slices.Clone(likely), p)
+		}
+	}
+	return likely
+}
+
 // scanBoundPort runs the bounded common-port phase first, then the full
 // sweep when nothing answered there. also joins the bounded phase: a port the
 // caller must know the state of, such as the probed primary.
 func scanBoundPort(ctx context.Context, scanner portscan.Scanner, ip string, also ...int) ([]int, error) {
 	if bounded, ok := scanner.(portsScanner); ok {
-		likely := commonHTTPPorts
-		for _, p := range also {
-			if !slices.Contains(likely, p) {
-				likely = append(slices.Clone(likely), p)
-			}
-		}
-		open, err := bounded.ScanPorts(ctx, ip, likely)
+		open, err := bounded.ScanPorts(ctx, ip, likelyPorts(also))
 		if err != nil {
 			return nil, err
 		}

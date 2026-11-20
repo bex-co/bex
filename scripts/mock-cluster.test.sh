@@ -1025,6 +1025,27 @@ ensure_static_credentials >/dev/null
 check "a re-run keeps every existing key" \
   "$(sed -n 's/^AWS_SECRET_ACCESS_KEY=//p' "$sdir/bex-build-bex-static-publish-s3" "$sdir/bex-system-bex-static-read-s3"; sed -n 's/^MINIO_ROOT_PASSWORD=//p' "$sdir/bex-static-store-minio-root")" \
   "$(printf '%s\n%s\n%s' "$pk1" "$rk1" "$root1")"
+# The read Secret's namespace, bex-system, is never re-applied over make
+# deploy's: a client-side apply of a bare Namespace dropped its PodSecurity
+# labels, and baseline then refused egress-meter and the listener reader (w6/m530).
+nslog="$tmp/ns-calls"
+ns_exists=1
+wl_kubectl() {
+  case "$*" in
+  "get namespace bex-system") echo get >>"$nslog"; [ -n "$ns_exists" ] ;;
+  "create namespace bex-system") echo create >>"$nslog" ;;
+  *"create namespace"*) echo create-dry-run >>"$nslog"; echo '{}' ;;
+  *" create secret generic "*) cat >/dev/null; echo '{}' ;;
+  "apply -f -") cat >/dev/null ;;
+  *) return 0 ;;
+  esac
+}
+: >"$nslog"
+ensure_static_credentials >/dev/null
+check "an existing bex-system is read, never created or re-applied" "$(tr '\n' ' ' <"$nslog")" "get "
+: >"$nslog"; ns_exists=
+ensure_static_credentials >/dev/null
+check "a missing bex-system is created" "$(tr '\n' ' ' <"$nslog")" "get create "
 # 17. The MinIO side: keys reach the container on stdin only, never argv;
 #     every mc call is idempotent; the probe checks the read identity cannot write.
 execlog="$tmp/exec"

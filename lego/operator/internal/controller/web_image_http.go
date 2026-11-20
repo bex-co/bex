@@ -130,8 +130,8 @@ func (r *AppReconciler) selectWebImageHTTP(ctx context.Context, app *appv1alpha1
 	if !webImageHTTPSelectionPending(app) {
 		return false, ""
 	}
-	ip, started := r.webImageCandidateIP(ctx, dep)
-	if ip == "" || time.Since(started) < portDetectGrace {
+	pod, started := r.webImageCandidate(ctx, dep)
+	if pod == nil || time.Since(started) < portDetectGrace {
 		return true, appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortWaiting)
 	}
 	key := "http/" + app.Namespace + "/" + app.Name
@@ -140,11 +140,12 @@ func (r *AppReconciler) selectWebImageHTTP(ctx context.Context, app *appv1alpha1
 	}
 	r.portScanned.Store(key, time.Now())
 	network := app.Status.ImageNetwork
+	ip := pod.Status.PodIP
 	found, err := httpport.Probe(ctx, ip, healthProbeHost(app, r.BaseDomain), network.Ports)
-	if found.Port == 0 && r.PortScanner != nil {
-		scanCtx, cancel := context.WithTimeout(ctx, portDetectTimeout)
-		open, scanErr := r.PortScanner.Scan(scanCtx, ip)
-		cancel()
+	if found.Port == 0 && r.readsListeners() {
+		// Every listener of the pod, from its node's reader (w6/m530), or
+		// swept where the node has none.
+		open, _, scanErr := r.podListeners(ctx, pod, r.fullSweep)
 		if errors.Is(scanErr, portscan.ErrPartial) {
 			logf.FromContext(ctx).Info("HTTP port scan ran out of time; probing the ports found so far", "app", app.Name, "open", open)
 		}
@@ -214,13 +215,15 @@ func portParam(port int32) appv1alpha1.DeployReasonParam {
 	return appv1alpha1.DeployReasonParam{Name: "port", Value: strconv.Itoa(int(port))}
 }
 
-func (r *AppReconciler) webImageCandidateIP(ctx context.Context, dep *appsv1.Deployment) (string, time.Time) {
+// webImageCandidate is a running pod of dep's revision with an address and
+// when its app container started, or nil.
+func (r *AppReconciler) webImageCandidate(ctx context.Context, dep *appsv1.Deployment) (*corev1.Pod, time.Time) {
 	if dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 {
-		return "", time.Time{}
+		return nil, time.Time{}
 	}
 	var pods corev1.PodList
 	if err := r.List(ctx, &pods, client.InNamespace(dep.Namespace), client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
-		return "", time.Time{}
+		return nil, time.Time{}
 	}
 	revision := dep.Spec.Template.Labels[labelRevision]
 	for i := range pods.Items {
@@ -230,11 +233,11 @@ func (r *AppReconciler) webImageCandidateIP(ctx context.Context, dep *appsv1.Dep
 		}
 		for _, status := range pod.Status.ContainerStatuses {
 			if status.Name == appContainerName && status.State.Running != nil {
-				return pod.Status.PodIP, status.State.Running.StartedAt.Time
+				return pod, status.State.Running.StartedAt.Time
 			}
 		}
 	}
-	return "", time.Time{}
+	return nil, time.Time{}
 }
 
 func (r *AppReconciler) reportWebHTTPSelection(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, image, message string, port int) (ctrl.Result, error) {

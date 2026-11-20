@@ -1,0 +1,206 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package controller
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/netip"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
+
+	"github.com/bex-co/bex/lego/operator/internal/listeners"
+	"github.com/bex-co/bex/lego/operator/internal/portscan"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
+
+// Reading a pod's listeners (w6/m530). Private-port discovery and bound-port
+// detection ask the listener reader on the pod's node (cmd/listener-reader,
+// config/listener-reader) which TCP ports the pod listens on, read from the
+// pod's own socket table. The connect sweep (internal/portscan) put up to
+// 65,535 conntrack entries on the operator's node and on the swept pod's node
+// per scan, and evicted every other pod's idle connections there (w6/153,
+// w6/149). It now runs only for a node that has no reader pod at all, logged
+// once per node and interval and counted, so a sweep is never silent. A node
+// whose reader is not Ready, or whose read fails, is not swept: the scan
+// fails, the last record stands, and the next interval asks again.
+
+// ListenerSource reads the TCP ports a pod accepts connections on at its own
+// address. errNoListenerReader means the pod's node has no reader to ask.
+type ListenerSource interface {
+	PodListeners(ctx context.Context, pod *corev1.Pod) ([]int, error)
+}
+
+var (
+	errNoListenerReader       = errors.New("the pod's node runs no listener reader")
+	errListenerReaderNotReady = errors.New("the node's listener reader is not Ready")
+	errNoListenerSource       = errors.New("no listener reader and no port scanner")
+)
+
+const (
+	// listenerReaderComponent is the reader pods' LabelComponent value.
+	listenerReaderComponent = "listener-reader"
+	// listenerReadTimeout bounds one read from a node's reader; a sweep keeps
+	// portDetectTimeout.
+	listenerReadTimeout = 5 * time.Second
+	// listenerSweepLogEvery spaces the log line a node without a reader
+	// writes, so a node that lost its reader is visible but not noisy.
+	listenerSweepLogEvery = privatePortScanInterval
+)
+
+// listenerReads counts every read of a pod's listeners by where it came from.
+// source="sweep" is a connect sweep of a pod whose node has no reader pod.
+var listenerReads = prometheus.NewCounterVec(prometheus.CounterOpts{
+	Name: "bex_port_listener_reads_total",
+	Help: "Reads of a tenant pod's listening ports, by source (reader: the pod's node's listener reader; sweep: a connect to every port, only where the node has no reader pod) and result.",
+}, []string{"source", "result"})
+
+func init() {
+	ctrlmetrics.Registry.MustRegister(listenerReads)
+}
+
+// readsListeners reports whether the reconciler can read listeners at all.
+func (r *AppReconciler) readsListeners() bool {
+	return r.Listeners != nil || r.PortScanner != nil
+}
+
+// podListeners is the TCP ports pod listens on: the answer of the reader on
+// its node, complete, or, only when that node runs no reader pod, sweep's
+// answer for the pod's address, which may be partial (portscan.ErrPartial).
+func (r *AppReconciler) podListeners(ctx context.Context, pod *corev1.Pod, sweep func(context.Context, string) ([]int, error)) (open []int, complete bool, err error) {
+	if r.Listeners != nil {
+		readCtx, cancel := context.WithTimeout(ctx, listenerReadTimeout)
+		read, readErr := r.Listeners.PodListeners(readCtx, pod)
+		cancel()
+		if !errors.Is(readErr, errNoListenerReader) {
+			listenerReads.WithLabelValues("reader", readerResult(readErr)).Inc()
+			if readErr != nil {
+				return nil, false, fmt.Errorf("reading listeners on node %s: %w", pod.Spec.NodeName, readErr)
+			}
+			return read, true, nil
+		}
+		r.noteListenerSweep(ctx, pod.Spec.NodeName)
+	}
+	if r.PortScanner == nil {
+		return nil, false, errNoListenerSource
+	}
+	scanCtx, cancel := context.WithTimeout(ctx, portDetectTimeout)
+	defer cancel()
+	open, err = sweep(scanCtx, pod.Status.PodIP)
+	listenerReads.WithLabelValues("sweep", sweepResult(err)).Inc()
+	return open, false, err
+}
+
+// fullSweep connects to every port of ip: today's scan, for a node without a
+// reader.
+func (r *AppReconciler) fullSweep(ctx context.Context, ip string) ([]int, error) {
+	return r.PortScanner.Scan(ctx, ip)
+}
+
+// noteListenerSweep logs, once per node and listenerSweepLogEvery, that a
+// pod on node is being swept because the node has no reader.
+func (r *AppReconciler) noteListenerSweep(ctx context.Context, node string) {
+	now := time.Now()
+	if last, logged := r.listenerSweepLogged.LoadOrStore(node, now); logged {
+		// Two sweeps of one node at once: only the one that moves the stamp logs.
+		if now.Sub(last.(time.Time)) < listenerSweepLogEvery || !r.listenerSweepLogged.CompareAndSwap(node, last, now) {
+			return
+		}
+	}
+	logf.FromContext(ctx).Info("no listener reader on the pod's node; sweeping the pod's ports instead", "node", node)
+}
+
+func readerResult(err error) string {
+	switch {
+	case err == nil:
+		return "ok"
+	case errors.Is(err, listeners.ErrPodNotFound):
+		return "pod_not_found"
+	case errors.Is(err, listeners.ErrAddressMismatch):
+		return "address_mismatch"
+	case errors.Is(err, errListenerReaderNotReady):
+		return "reader_not_ready"
+	}
+	return "failed"
+}
+
+func sweepResult(err error) string {
+	switch {
+	case err == nil:
+		return "ok"
+	case errors.Is(err, portscan.ErrPartial):
+		return "partial"
+	case errors.Is(err, portscan.ErrUnreachable):
+		return "unreachable"
+	}
+	return "failed"
+}
+
+// NodeListenerReader asks the listener reader on a pod's node: a Ready pod of
+// the config/listener-reader DaemonSet in Namespace on the pod's node.
+type NodeListenerReader struct {
+	// Pods lists the reader pods; the manager's cache.
+	Pods client.Reader
+	// Namespace is where the DaemonSet runs (the operator's own namespace).
+	Namespace string
+	// HTTP talks to the readers.
+	HTTP listeners.Client
+	// Port overrides listeners.Port, for tests.
+	Port uint16
+}
+
+// PodListeners reads pod's listeners from its node's reader. A node with no
+// reader pod is errNoListenerReader; one whose reader pods are none Ready is
+// errListenerReaderNotReady.
+func (n *NodeListenerReader) PodListeners(ctx context.Context, pod *corev1.Pod) ([]int, error) {
+	node := pod.Spec.NodeName
+	if node == "" || pod.Status.PodIP == "" {
+		return nil, errors.New("the pod has no node or address yet")
+	}
+	var readers corev1.PodList
+	if err := n.Pods.List(ctx, &readers, client.InNamespace(n.Namespace),
+		client.MatchingLabels{appv1alpha1.LabelComponent: listenerReaderComponent}); err != nil {
+		return nil, fmt.Errorf("listing listener readers: %w", err)
+	}
+	present := false
+	for i := range readers.Items {
+		reader := &readers.Items[i]
+		if reader.Spec.NodeName != node {
+			continue
+		}
+		present = true
+		addr, err := netip.ParseAddr(reader.Status.PodIP)
+		if err != nil || reader.Status.Phase != corev1.PodRunning || !podReady(reader) {
+			continue
+		}
+		port := n.Port
+		if port == 0 {
+			port = listeners.Port
+		}
+		return n.HTTP.Read(ctx, netip.AddrPortFrom(addr, port), string(pod.UID), pod.Status.PodIP)
+	}
+	if !present {
+		return nil, errNoListenerReader
+	}
+	return nil, errListenerReaderNotReady
+}

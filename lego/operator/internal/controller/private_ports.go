@@ -42,9 +42,10 @@ import (
 // 2, w3/m273, w3/m276): a web or private service receives private traffic on
 // any port it binds, up to 75, and a web service's port 10000 always reaches
 // its primary HTTP server. bex publishes both on the stable ClusterIP Services
-// and lists the listeners in openPorts. The listeners come from the w8/177
-// scanner: a TCP connect from the operator to a Ready instance's pod IP on
-// every port, so a loopback-only listener is never found.
+// and lists the listeners in openPorts. The listeners are a Ready instance's
+// own socket table, read by the listener reader on its node (w6/m530,
+// listener_reads.go), or, for a node without a reader, the w8/177 connect
+// sweep of the pod IP. Either way a loopback-only listener is never found.
 
 // privatePortScanInterval spaces the scans of one service once its current
 // revision has been scanned, while its listeners keep changing (it doubles
@@ -57,6 +58,7 @@ const (
 	// listeners hold still at 2, 4, 8 and 16 minutes. A sweep dials thousands
 	// of ports of the pod for its whole 15 s timeout, so sweeping every
 	// service every two minutes was 93% of the manager's CPU (w21/m421 t002).
+	// A reader's read costs far less (w6/m530); the cadence is unchanged.
 	privatePortBackoffDoublings = 3
 	// privatePortRescanSlots is how many rescans of an already-swept revision
 	// run at once, so the manager's CPU for sweeps has a ceiling whatever the
@@ -174,7 +176,7 @@ type privatePortSweep struct {
 // the pass its end wakes takes the record.
 func (r *AppReconciler) scanPrivatePorts(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment) *appv1alpha1.RuntimePortsStatus {
 	revision := dep.Spec.Template.Labels[labelRevision]
-	if r.PortScanner == nil || revision == "" {
+	if !r.readsListeners() || revision == "" {
 		return nil
 	}
 	key := app.Namespace + "/" + app.Name
@@ -204,8 +206,8 @@ func (r *AppReconciler) scanPrivatePorts(ctx context.Context, app *appv1alpha1.A
 	if sameRevision && app.Status.Phase != appv1alpha1.PhaseRunning {
 		return nil
 	}
-	ip := r.readyPodIP(ctx, dep, revision)
-	if ip == "" {
+	pod := r.readyPod(ctx, dep, revision)
+	if pod == nil {
 		return nil
 	}
 	release := func() {}
@@ -222,7 +224,7 @@ func (r *AppReconciler) scanPrivatePorts(ctx context.Context, app *appv1alpha1.A
 	snapshot := app.DeepCopy()
 	go func() {
 		defer release()
-		sweep.next = r.sweepPrivatePorts(context.WithoutCancel(ctx), snapshot, revision, ip)
+		sweep.next = r.sweepPrivatePorts(context.WithoutCancel(ctx), snapshot, revision, pod)
 		close(sweep.done) // before the wake, so the woken pass finds the record
 		if r.privatePortSwept == nil {
 			return
@@ -236,14 +238,13 @@ func (r *AppReconciler) scanPrivatePorts(ctx context.Context, app *appv1alpha1.A
 	return nil
 }
 
-// sweepPrivatePorts scans ip, a Ready instance of app's revision, and returns
-// the runtime-port record the scan proves; nil when the scan failed.
-func (r *AppReconciler) sweepPrivatePorts(ctx context.Context, app *appv1alpha1.App, revision, ip string) *appv1alpha1.RuntimePortsStatus {
+// sweepPrivatePorts reads the listeners of pod, a Ready instance of app's
+// revision, and returns the runtime-port record the read proves; nil when it
+// failed. A reader's answer is complete; only a sweep can be partial.
+func (r *AppReconciler) sweepPrivatePorts(ctx context.Context, app *appv1alpha1.App, revision string, pod *corev1.Pod) *appv1alpha1.RuntimePortsStatus {
 	prev := app.Status.RuntimePorts
 	sameRevision := prev != nil && prev.Revision == revision
-	scanCtx, cancel := context.WithTimeout(ctx, portDetectTimeout)
-	defer cancel()
-	open, err := r.PortScanner.Scan(scanCtx, ip)
+	open, _, err := r.podListeners(ctx, pod, r.fullSweep)
 	partial := errors.Is(err, portscan.ErrPartial)
 	if err != nil && !partial {
 		logf.FromContext(ctx).Info("private network port scan failed; keeping the last listeners", "app", app.Name, "error", err.Error())
@@ -262,7 +263,7 @@ func (r *AppReconciler) sweepPrivatePorts(ctx context.Context, app *appv1alpha1.
 		case network != nil:
 			next.Ports = mergePorts(found, network.Ports)
 		}
-		next.Ports = capPorts(withoutPorts(next.Ports, r.declaredPortsClosed(ctx, ip, network, next.Ports, found)))
+		next.Ports = capPorts(withoutPorts(next.Ports, r.declaredPortsClosed(ctx, pod.Status.PodIP, network, next.Ports, found)))
 	}
 	if sameRevision {
 		next.Retained = prev.Retained
@@ -344,7 +345,7 @@ func (r *AppReconciler) detectPrivatePrimary(ctx context.Context, app *appv1alph
 	if pod == nil {
 		return r.replayPortHint(ctx, key, dep, port)
 	}
-	return r.keepPortHint(key, pod, port, r.scanForPrivatePrimary(ctx, app, key, pod.Status.PodIP, port))
+	return r.keepPortHint(key, pod, port, r.scanForPrivatePrimary(ctx, app, key, pod, port))
 }
 
 // privatePrimaryRescueApplies reports whether the release still needs its
@@ -353,7 +354,7 @@ func (r *AppReconciler) detectPrivatePrimary(ctx context.Context, app *appv1alph
 // rollout still in flight.
 func (r *AppReconciler) privatePrimaryRescueApplies(app *appv1alpha1.App, dep *appsv1.Deployment, port int) bool {
 	network := app.Status.ImageNetwork
-	if r.PortScanner == nil || !app.Spec.UsesImagePorts() || app.Spec.HealthCheckPath != "" {
+	if !r.readsListeners() || !app.Spec.UsesImagePorts() || app.Spec.HealthCheckPath != "" {
 		return false
 	}
 	if _, configured := app.ConfiguredImagePort(); configured {
@@ -365,12 +366,10 @@ func (r *AppReconciler) privatePrimaryRescueApplies(app *appv1alpha1.App, dep *a
 		rolloutDeadline(app, dep) == nil
 }
 
-// scanForPrivatePrimary is detectPrivatePrimary's scan of ip.
-func (r *AppReconciler) scanForPrivatePrimary(ctx context.Context, app *appv1alpha1.App, key, ip string, port int) string {
+// scanForPrivatePrimary is detectPrivatePrimary's read of pod.
+func (r *AppReconciler) scanForPrivatePrimary(ctx context.Context, app *appv1alpha1.App, key string, pod *corev1.Pod, port int) string {
 	network := app.Status.ImageNetwork
-	scanCtx, cancel := context.WithTimeout(ctx, portDetectTimeout)
-	defer cancel()
-	open, err := scanBoundPort(scanCtx, r.PortScanner, ip, port)
+	open, err := r.boundPortListeners(ctx, pod, port)
 	if err != nil {
 		logf.FromContext(ctx).Info("private primary port scan failed", "app", app.Name, "error", err.Error())
 		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintNoOpenServicePort, portParam(int32(port)))
@@ -428,23 +427,23 @@ func capPorts(ports []int32) []int32 {
 	return ports
 }
 
-// readyPodIP is the address of a Ready, running pod of the given revision.
-func (r *AppReconciler) readyPodIP(ctx context.Context, dep *appsv1.Deployment, revision string) string {
+// readyPod is a Ready, running pod of the given revision with an address, or nil.
+func (r *AppReconciler) readyPod(ctx context.Context, dep *appsv1.Deployment, revision string) *corev1.Pod {
 	if dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 {
-		return ""
+		return nil
 	}
 	var pods corev1.PodList
 	if err := r.List(ctx, &pods, client.InNamespace(dep.Namespace), client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
-		return ""
+		return nil
 	}
 	for i := range pods.Items {
 		p := &pods.Items[i]
 		if p.DeletionTimestamp == nil && p.Status.Phase == corev1.PodRunning && p.Status.PodIP != "" &&
 			p.Labels[labelRevision] == revision && podReady(p) {
-			return p.Status.PodIP
+			return p
 		}
 	}
-	return ""
+	return nil
 }
 
 // wakeReadySince is when a parked App came back: the earliest Ready time of a

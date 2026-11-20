@@ -225,13 +225,21 @@ spec:
 #   and monitoring (Prometheus scrape of bex-api metrics). The narrower policy
 #   below admits CNPG control traffic only to bex-db pods.
 # Blocked: tenant pods in the apps namespace.
+# Every bex-system pod but the listener reader (w6/m530): it answers the
+# operator alone, so its own policy (lego/operator/config/listener-reader/
+# networkpolicy.yaml) is the only one that selects it. Policies add up, so
+# selecting it here too would admit all of bex-system, traefik and monitoring.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: deny-tenant-ingress
   namespace: bex-system
 spec:
-  podSelector: {}
+  podSelector:
+    matchExpressions:
+      - key: app.bex.co/component
+        operator: NotIn
+        values: [listener-reader]
   policyTypes:
     - Ingress
   ingress:

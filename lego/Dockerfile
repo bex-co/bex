@@ -48,6 +48,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0
 RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/kv-sni-proxy ./cmd/kv-sni-proxy
 RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/kv-internal-proxy ./cmd/kv-internal-proxy
 RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/egress-meter ./cmd/egress-meter
+RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/listener-reader ./cmd/listener-reader
 RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/edge-cache ./cmd/edge-cache
 RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/backup-encrypt ./cmd/backup-encrypt
 # The no-redirect health probe a service's init container installs into its pod (w8/m133).
@@ -77,6 +78,7 @@ COPY --from=builder /workspace/pg-sni-proxy /pg-sni-proxy
 COPY --from=builder /workspace/kv-sni-proxy /kv-sni-proxy
 COPY --from=builder /workspace/kv-internal-proxy /kv-internal-proxy
 COPY --from=builder /workspace/egress-meter /egress-meter
+COPY --from=builder /workspace/listener-reader /listener-reader
 COPY --from=builder /workspace/edge-cache /edge-cache
 COPY --from=builder /workspace/backup-encrypt /backup-encrypt
 COPY --from=builder /workspace/health-probe /health-probe

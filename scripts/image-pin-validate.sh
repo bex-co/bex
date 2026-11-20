@@ -125,6 +125,7 @@ lego/operator/config/s3gw/deployment.yaml	controller:latest	same manager image, 
 lego/operator/config/pg-sni-proxy/daemonset.yaml	pg-sni-proxy:latest	kustomize `images:` placeholder for the manager image's /pg-sni-proxy entrypoint under its own pin (w6/m470) — deploy/gitops/base/bex.yaml rewrites it to an operator digest deploy.yml pushed, held while the binary is unchanged
 lego/operator/config/kv-sni-proxy/daemonset.yaml	kv-sni-proxy:latest	kustomize `images:` placeholder for the manager image's /kv-sni-proxy entrypoint under its own pin (w6/m470) — deploy/gitops/base/bex.yaml rewrites it to an operator digest deploy.yml pushed, held while the binary is unchanged
 lego/operator/config/egress-meter/daemonset.yaml	controller:latest	same manager image, /egress-meter entrypoint; rewritten by the same kustomize edit
+lego/operator/config/listener-reader/daemonset.yaml	controller:latest	same manager image, /listener-reader entrypoint; rewritten by the same kustomize edit (w6/m530)
 lego/operator/config/drain-guard/deployment.yaml	controller:latest	same manager image, /drain-guard entrypoint; rewritten by the same kustomize edit (config/prod)
 dashboard/deploy/deployment.yaml	dashboard:latest	kustomize `images:` placeholder — deploy/gitops/base/dashboard.yaml rewrites it to the dashboard digest deploy.yml pushed
 deploy/opensandbox/server-in-cluster.yaml	opensandbox-server:0.2.2	kustomize `images:` placeholder — deploy/opensandbox/kustomization.yaml carries the digest

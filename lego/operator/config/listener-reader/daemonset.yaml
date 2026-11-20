@@ -1,0 +1,81 @@
+# The listener reader (w6/m530, cmd/listener-reader): tells the operator which
+# TCP ports a pod on this node listens on, read from the pod's own socket
+# table under /proc, so private-port discovery and bound-port detection never
+# connect to every port of a pod. Each such sweep put up to 65,535 entries into
+# the Cilium conntrack table of the operator's node and of the swept pod's
+# node, and evicted the idle connections of every pod there (w6/153, w6/149).
+#
+# Privilege: the node's PID namespace and nothing else. /proc/<pid>/cgroup and
+# /proc/<pid>/net/{tcp,tcp6,fib_trie,if_inet6} are world-readable from it; the
+# kernel still refuses environ, mem and ns/* without ptrace rights, which a
+# non-root process with no capability does not have. No host network, IPC,
+# path, capability, root or service-account token. scripts/gitops-validate.sh
+# pins this set.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: listener-reader
+  namespace: system
+spec:
+  selector:
+    matchLabels:
+      app.bex.co/component: listener-reader
+  # A new reader starts before the old one stops, so every node keeps a Ready
+  # reader through a roll: the operator never sweeps a node that has a reader
+  # pod, Ready or not, and holds its last answer while none is Ready.
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app.bex.co/component: listener-reader
+    spec:
+      serviceAccountName: listener-reader
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      hostPID: true
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      # The nodes that run tenant App pods, the same set as egress-meter
+      # (config/egress-meter/daemonset.yaml): the untainted tenant pool, the
+      # serving pools and the sandbox pool. Keep both in step.
+      tolerations:
+        - key: bex.co/serving-pool
+          operator: Exists
+          effect: NoSchedule
+        - key: bex.co/sandbox
+          operator: Exists
+          effect: NoSchedule
+      priorityClassName: system-node-critical
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: listener-reader
+          image: controller:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/listener-reader"]
+          ports:
+            - name: listeners
+              containerPort: 9097
+              protocol: TCP
+          resources:
+            requests: { cpu: 5m, memory: 16Mi }
+            limits: { cpu: 100m, memory: 64Mi }
+          readinessProbe:
+            httpGet: { path: /readyz, port: listeners }
+            periodSeconds: 10
+            failureThreshold: 2
+          livenessProbe:
+            httpGet: { path: /healthz, port: listeners }
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]

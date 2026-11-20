@@ -1,16 +1,16 @@
 # w6 · m530 — The operator reads a pod's listeners on its node instead of connecting to every port, so its sweeps stop filling the Cilium conntrack tables
 
-**Worker:** worker6 **Goal:** private-port discovery and bound-port detection learn which ports a tenant pod listens on from the pod's own socket table, read on its node, instead of a TCP connect to all 65,535 ports. No sweep then puts tens of thousands of entries into the Cilium conntrack table of the operator's node or of the swept pod's node, so the idle connections of every pod on those nodes keep their entries. **Status:** todo
+**Worker:** worker6 **Goal:** private-port discovery and bound-port detection learn which ports a tenant pod listens on from the pod's own socket table, read on its node, instead of a TCP connect to all 65,535 ports. No sweep then puts tens of thousands of entries into the Cilium conntrack table of the operator's node or of the swept pod's node, so the idle connections of every pod on those nodes keep their entries. **Status:** todo (t001–t005 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Read a pod's listening ports from its node's `/proc`](t001.md) | 1h | — |
-| t002 | [A listener-reader node agent and its DaemonSet](t002.md) | 2h | t001 |
-| t003 | [The operator asks the pod's node and never sweeps a pod whose node has a reader](t003.md) | 2h | t002 |
-| t004 | [Prove it on the local cluster](t004.md) | 1h30m | t003 |
-| t005 | [Record it in ADR089, ADR018 and the operator guide](t005.md) | 45m | t003 |
+| t001 | [Read a pod's listening ports from its node's `/proc`](done/t001.md) — **DONE** | 1h | — |
+| t002 | [A listener-reader node agent and its DaemonSet](done/t002.md) — **DONE** | 2h | t001 |
+| t003 | [The operator asks the pod's node and never sweeps a pod whose node has a reader](done/t003.md) — **DONE** | 2h | t002 |
+| t004 | [Prove it on the local cluster](done/t004.md) — **DONE** | 1h30m | t003 |
+| t005 | [Record it in ADR089, ADR018 and the operator guide](done/t005.md) — **DONE** | 45m | t003 |
 | t006 | [Ship and verify on production](t006.md) | 1h30m | t004, t005 |
 | t007 | [Read a day of conntrack GC on the operator's node and every tenant node](t007.md) | 30m | t006 |
 | t008 | [Simplify](t008.md) | 15m | t006 |

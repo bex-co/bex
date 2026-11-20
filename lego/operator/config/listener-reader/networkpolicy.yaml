@@ -1,0 +1,24 @@
+# Only the operator reads listeners (w6/m530). bex-system's
+# deny-tenant-ingress (deploy/gitops/base/network-policies.yaml) leaves the
+# reader out of its selector, so this is the reader's one ingress rule:
+# the controller-manager pods on the reader's port. The kubelet's probes come
+# from the node itself, which the CNI admits regardless.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: listener-reader
+  namespace: system
+spec:
+  podSelector:
+    matchLabels:
+      app.bex.co/component: listener-reader
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              control-plane: controller-manager
+      ports:
+        - protocol: TCP
+          port: 9097

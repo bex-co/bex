@@ -17,7 +17,6 @@ limitations under the License.
 package healthprobe
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -26,8 +25,9 @@ import (
 	"os"
 	"slices"
 	"strconv"
-	"strings"
 	"time"
+
+	"github.com/bex-co/bex/lego/operator/internal/procnet"
 )
 
 // The any-open-port check (w4/m350) is Render's default health check: "By
@@ -41,9 +41,6 @@ import (
 // procNetTCP are the kernel's socket tables for the pod's network namespace,
 // which every container of the pod shares.
 var procNetTCP = []string{"/proc/net/tcp", "/proc/net/tcp6"}
-
-// tcpListen is the LISTEN state in a /proc/net/tcp table's st column.
-const tcpListen = "0A"
 
 // Listening reads the ports this pod's network namespace listens on, ascending.
 // A table that cannot be read (IPv6 disabled) contributes nothing.
@@ -66,20 +63,10 @@ func Listening() []int {
 // loopback-only listener is left to OpenPort, whose connect to the pod address
 // it refuses, as Render requires a listener on 0.0.0.0.
 func listeningPorts(table io.Reader) []int {
-	var ports []int
-	scanner := bufio.NewScanner(table)
-	for scanner.Scan() {
-		fields := strings.Fields(scanner.Text())
-		if len(fields) < 4 || fields[3] != tcpListen {
-			continue // the header, or a socket in another state
-		}
-		_, hexPort, ok := strings.Cut(fields[1], ":")
-		if !ok {
-			continue
-		}
-		if port, err := strconv.ParseUint(hexPort, 16, 16); err == nil && port > 0 {
-			ports = append(ports, int(port))
-		}
+	sockets := procnet.Listening(table)
+	ports := make([]int, 0, len(sockets))
+	for _, socket := range sockets {
+		ports = append(ports, socket.Port)
 	}
 	return ports
 }

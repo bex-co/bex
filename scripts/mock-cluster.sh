@@ -848,7 +848,12 @@ ensure_static_credentials() {
   [ -n "$publish_key" ] || publish_key=$(openssl rand -hex 24) || return 1
   read_key=$(secret_key "$STATIC_READ_NS" "$STATIC_READ_SECRET" AWS_SECRET_ACCESS_KEY)
   [ -n "$read_key" ] || read_key=$(openssl rand -hex 24) || return 1
-  wl_kubectl create namespace "$STATIC_READ_NS" --dry-run=client -o yaml | wl_kubectl apply -f - >/dev/null || return 1
+  # Create bex-system only when it is missing. make deploy has just applied it
+  # with its PodSecurity labels (enforce=privileged, for the node agents); a
+  # client-side apply of a bare Namespace over that drops every label the last
+  # apply set, and the cluster's default baseline then refuses egress-meter and
+  # the listener reader (w6/m530).
+  wl_kubectl get namespace "$STATIC_READ_NS" >/dev/null 2>&1 || wl_kubectl create namespace "$STATIC_READ_NS" >/dev/null || return 1
   printf 'AWS_ACCESS_KEY_ID=%s\nAWS_SECRET_ACCESS_KEY=%s\n' "$STATIC_PUBLISH_USER" "$publish_key" |
     apply_env_secret "$STATIC_PUBLISH_NS" "$STATIC_PUBLISH_SECRET" || return 1
   printf 'AWS_ACCESS_KEY_ID=%s\nAWS_SECRET_ACCESS_KEY=%s\n' "$STATIC_READ_USER" "$read_key" |

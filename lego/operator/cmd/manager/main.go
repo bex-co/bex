@@ -47,6 +47,7 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/build"
 	"github.com/bex-co/bex/lego/operator/internal/controller"
 	"github.com/bex-co/bex/lego/operator/internal/hostingdomain"
+	"github.com/bex-co/bex/lego/operator/internal/listeners"
 	"github.com/bex-co/bex/lego/operator/internal/portscan"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
 	"github.com/bex-co/bex/lego/operator/internal/registry"
@@ -433,7 +434,12 @@ func setupAppReconciler(
 		os.Exit(1)
 	}
 	appReconciler := &controller.AppReconciler{
-		PortScanner:           portscan.Dialer{},
+		PortScanner: portscan.Dialer{},
+		// Each pod's listeners come from the reader on its node (w6/m530,
+		// config/listener-reader); the sweep above serves a node with none.
+		Listeners: &controller.NodeListenerReader{
+			Pods: mgr.GetClient(), Namespace: env.Or("POD_NAMESPACE", "bex-system"), HTTP: listeners.NewClient(),
+		},
 		Client:                mgr.GetClient(),
 		APIReader:             mgr.GetAPIReader(),
 		BuildClient:           uncachedClient,
