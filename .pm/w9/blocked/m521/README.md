@@ -1,6 +1,6 @@
 # w9 · m521 — A new Key Value's connection strings take Render's shapes: a credential-free internal URL and the external URL from the first read, a `REDISCLI_AUTH=… valkey-cli` command, and the store id as the user
 
-**Worker:** worker9 **Goal:** a client that reads a new Key Value's connection info, straight after the create as Render's Terraform provider does, gets the three strings Render answers, in Render's shapes, and each one connects once the store is available. **Status:** todo (t001–t005, t007–t009 done)
+**Worker:** worker9 **Goal:** a client that reads a new Key Value's connection info, straight after the create as Render's Terraform provider does, gets the three strings Render answers, in Render's shapes, and each one connects once the store is available. **Status:** blocked (t001–t005, t007–t009 done; t006 waits for a production pin carrying `58c64788f`)
 
 ## Tasks (in order)
 
@@ -27,13 +27,13 @@ Total: **10 tasks, about 8h45m**.
    - `cliCommand` ` REDISCLI_AUTH=<password> valkey-cli --user <id> -h <externalHost> … -p 6379 --tls`, with Render's leading space and the `--sni <externalHost>` the shared SNI edge needs, placed where t003 records.
 2. Each string connects once the store is available, on dev-9 and on production. The internal URL connects from a service in the same workspace and from no other workspace. The external URL and the CLI command, run verbatim, connect from an allowed source once the TLS listener opens. `bex kv-cli` (the unmodified Render CLI) connects too.
 3. No running store restarted for the route or the username change. A Persistence Off fixture keeps its keys, its `run_id` and its restart count.
-4. `TestAccKeyvalueDataSource` and `TestAccRedisDataSource` pass check 12 (internal). The [checklist](../../../docs/terraform-compatibility-checklist.md) records that checks 11 and 13 fail only on `oregon-keyvalue\.`, Render's regional shared hostname, and that every other part of both regexes matches.
-5. [ADR021](../../../docs/ADR021-keyvalue-management.md) (the Internal URL row, the w8/237 bullet and the `redis-cli --sni` paragraph) and the Key Value row of [ADR018](../../../docs/ADR018-render-parity.md) describe the shipped strings. Any remaining difference is recorded there.
+4. `TestAccKeyvalueDataSource` and `TestAccRedisDataSource` pass check 12 (internal). The [checklist](../../../../docs/terraform-compatibility-checklist.md) records that checks 11 and 13 fail only on `oregon-keyvalue\.`, Render's regional shared hostname, and that every other part of both regexes matches.
+5. [ADR021](../../../../docs/ADR021-keyvalue-management.md) (the Internal URL row, the w8/237 bullet and the `redis-cli --sni` paragraph) and the Key Value row of [ADR018](../../../../docs/ADR018-render-parity.md) describe the shipped strings. Any remaining difference is recorded there.
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w9/122](../done/122.md), promoted 2026-11-19 by `/loopx w9`. It came from w9/108's Terraform recheck on dev-9 (2026-11-18, [checklist](../../../docs/terraform-compatibility-checklist.md) class 10).
-- **Goal linkage:** Render parity for managed Key Value ([ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first), [ADR018](../../../docs/ADR018-render-parity.md), [ADR021](../../../docs/ADR021-keyvalue-management.md)). Render's Terraform provider is a client bex must serve ([checklist](../../../docs/terraform-compatibility-checklist.md)), and so is every client that copies Render's strings.
+- **Source:** inbox note [w9/122](../../done/122.md), promoted 2026-11-19 by `/loopx w9`. It came from w9/108's Terraform recheck on dev-9 (2026-11-18, [checklist](../../../../docs/terraform-compatibility-checklist.md) class 10).
+- **Goal linkage:** Render parity for managed Key Value ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first), [ADR018](../../../../docs/ADR018-render-parity.md), [ADR021](../../../../docs/ADR021-keyvalue-management.md)). Render's Terraform provider is a client bex must serve ([checklist](../../../../docs/terraform-compatibility-checklist.md)), and so is every client that copies Render's strings.
 - **Expected outcome:** a `render_keyvalue` or `render_redis` data source reads the same three strings Render's does. A customer moving from Render pastes the same internal URL and the same CLI command and connects.
 - **Why now:** class 10 is the last bex-side failure in both Key Value data source tests (checks 1–10 pass since w9/108).
 - **Render parity:** included (t007). The strings are served on REST, the `/v1/redis` alias and GraphQL. They are shown in the dashboard's Connect panel and the CLI's `keyvalues` output, and run by `kv-cli`. Render's MCP server has no credential read.
