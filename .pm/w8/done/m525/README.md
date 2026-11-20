@@ -1,6 +1,6 @@
 # w8 · m525 — A live tail opened during a log flood shows the lines history keeps: the shipper and the tail cap each instance with one deterministic bucket
 
-**Worker:** worker8 **Goal:** during a flood over Render's 6,000 lines a minute, a live tail and history keep the same lines of each instance, not only the same number, because the log shipper and bex-api's tail run one bucket that counts each line at its own timestamp. **Status:** blocked (t001–t004, t006–t008 done; t005 waits for production to roll `1c3ee254f`)
+**Worker:** worker8 **Goal:** during a flood over Render's 6,000 lines a minute, a live tail and history keep the same lines of each instance, not only the same number, because the log shipper and bex-api's tail run one bucket that counts each line at its own timestamp. **Status:** done
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | bex-api: the tail and the store-less read run the same bucket, checked against one shared table — **DONE** | 45m | t001 |
 | [t003](done/t003.md) | Shipper image and pin, and the shipper harness proves Alloy and the tail keep the same lines — **DONE** | 1h | t001, t002 |
 | [t004](done/t004.md) | ADR010 and ADR018 describe the shared bucket and the edges that remain — **DONE** | 20m | t003 |
-| [t005](t005.md) | Live check on production: the w8/341 flood replay | 45m | t004 |
+| [t005](done/t005.md) | Live check on production: the w8/341 flood replay — **DONE** | 45m | t004 |
 | [t006](done/t006.md) | Render parity — **DONE** | 20m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 30m | t006, t007 |
-| [t009](t009.md) | Closeout | 10m | t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t008 |
 
 Total: **9 tasks, about 5h25m**.
 
@@ -47,3 +47,14 @@ Total: **9 tasks, about 5h25m**.
 - **Gate:** the log-shipper DaemonSet runs the new image only once production's pin carries `1c3ee254f`. Production last rolled at 04:24 UTC on pin `3e53abbe3bc3`, so the next roll is due from about 10:24 UTC. The gate clears by itself, and nothing is needed from the user.
 - **Next:** t005 replays the w8/341 flood on a fresh free native Python fixture in `bex-canary`. It passes when at most 2% of the tail's lines are missing from history (37.7% before), with per-10-second counts of about 1,000. t005 then records the share in ADR010 and ADR018, and the flood's pod and window in w8/342, and deletes the fixture. t009 closes the milestone.
 
+
+## Unblocked (2026-11-20, `/loopx w8`)
+
+- **Source:** verified evidence. Production's pin `12716d1d7097` (`4e37ec03f`, deploy run 44701654499, `bex-api` rolled at 08:52:36 UTC) carries `1c3ee254f` and `6ad7ebee0`: `git merge-base --is-ancestor` succeeds for both, and neither was in `3e53abbe3bc3`. The gate cleared by itself, and no user decision was needed.
+- **Next:** t005's replay, then t009.
+
+## Closed (2026-11-20, `/loopx w8`)
+
+- **t005 passed on production (pin `12716d1d7097`):** a 40-second tail opened 100 s into a w8/341-shaped flood showed 3,590 lines, at about 1,000 every 10 s. **0 of them (0.0%) are missing from history**, and history holds no line the tail lacks. The share was 37.7% on `3e53abbe3bc3` and 47% before `a8ef77ce0`. Each burst kept its first 10 or 11 lines in both views. The fixture was `qa-20261120-525-py` (`srv-dc00lfsd1ruc73b8cec0`, deleted, `GET` 404). Its flood ran from 08:58:23.8 to 09:02:23.1 UTC and is recorded in [w8/342](../../done/342.md). Details are in [t005](done/t005.md).
+- **Definition of done:** item 1 is the replay above. Items 2–4 shipped in `6ad7ebee0` and `1c3ee254f`, and ADR010 and ADR018 now carry the measured 0%.
+- **Not checked directly:** the log-shipper DaemonSet's image. Without `HCLOUD_TOKEN` on this host there is no `kubectl`. The replay shows the patched limiter at work instead: the wall-clock limiter kept 20-then-5 bursts.
