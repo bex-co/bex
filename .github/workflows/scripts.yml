@@ -173,6 +173,10 @@ jobs:
       # w3/m173 t006 (ADR079 F1): .env loaders refuse a group/world-readable file.
       - name: .env permission guard self-test
         run: bash scripts/env-file.test.sh
+      # A verify run seeds bex-bootstrap only with the secret the cluster
+      # already holds (exported or .env), or a random one on a local cluster.
+      - name: Verify-script bootstrap secret self-test
+        run: bash scripts/verify-bootstrap-secret.test.sh
       - name: gh-secrets environment-scope self-test
         run: bash scripts/gh-secrets.test.sh
       # w3/m174: the out-of-cluster alert-pipeline heartbeat.
@@ -333,6 +337,7 @@ jobs:
           scripts/cluster-diagnose.sh scripts/cluster-diagnose.test.sh
           scripts/disk-snapshot-drill.sh scripts/container-policy-drill.sh
           scripts/lib/canary-api.sh scripts/tenant-view-liveness.sh scripts/tenant-view-liveness.test.sh
+          scripts/lib/verify-bootstrap-secret.sh scripts/verify-bootstrap-secret.test.sh
           scripts/cli-release-staleness.sh scripts/cli-release-staleness.test.sh
           scripts/deploy-canary.sh
           scripts/funnel-counters.sh

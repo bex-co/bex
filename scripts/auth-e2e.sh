@@ -52,6 +52,9 @@ wait_http() { # url — wait until it answers at all (any HTTP status)
   fail "$1 did not become reachable"
 }
 
+# Resolved before the run changes the cluster (see the helper for the rules).
+. scripts/lib/verify-bootstrap-secret.sh && bex_verify_bootstrap_secret || exit 1
+
 echo "==> port-forwarding hydra + building bex-api"
 # Forwards first so their warm-up overlaps the compile.
 kubectl -n "$NS" port-forward service/hydra-public 24444:4444 >/dev/null 2>&1 &
@@ -64,7 +67,6 @@ wait_http "http://$HYDRA_ADMIN/health/ready"
 wait_http "http://$HYDRA_PUBLIC/.well-known/openid-configuration"
 
 echo "==> seeding bootstrap client"
-export BEX_BOOTSTRAP_CLIENT_SECRET="${BEX_BOOTSTRAP_CLIENT_SECRET:-e2e-bootstrap-$(date +%s)}"
 HYDRA_ADMIN_URL="http://$HYDRA_ADMIN" bash scripts/auth-bootstrap-client.sh | tail -1
 
 # token CLIENT_ID CLIENT_SECRET -> access token (empty on failure)

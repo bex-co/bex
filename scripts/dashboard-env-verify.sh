@@ -61,6 +61,8 @@ if [ -f .env ]; then
   . scripts/lib/env-file.sh && bex_load_env ./.env || exit 1
 fi
 [ -n "${BAO_ROOT_TOKEN:-}" ] || fail "BAO_ROOT_TOKEN missing (.env) — run scripts/bao-init.sh first"
+# Resolved before the run changes the cluster (see the helper for the rules).
+. scripts/lib/verify-bootstrap-secret.sh && bex_verify_bootstrap_secret || exit 1
 
 echo "==> ensuring the App CRD is installed"
 make -C lego/operator install >/dev/null
@@ -83,7 +85,6 @@ jwt_file="$bindir/sa-token"
 kubectl -n "$SYS_NS" create token bex-api --duration=1h > "$jwt_file"
 
 echo "==> seeding the bootstrap OAuth2 client + minting an API-key token"
-export BEX_BOOTSTRAP_CLIENT_SECRET="${BEX_BOOTSTRAP_CLIENT_SECRET:-verify-bootstrap-$(date +%s)}"
 HYDRA_ADMIN_URL="http://$HYDRA_ADMIN" bash scripts/auth-bootstrap-client.sh >/dev/null
 token="$({ curl -s -X POST "http://$HYDRA_PUBLIC/oauth2/token" \
   -d "grant_type=client_credentials&client_id=bex-bootstrap&client_secret=$BEX_BOOTSTRAP_CLIENT_SECRET" || true; } | yq '.access_token // ""' -)"

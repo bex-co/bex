@@ -11,7 +11,7 @@
 # Usage: scripts/auth-verify.sh    # respects $KUBECONFIG; exits 0 on pass
 # Talks to the cluster-internal Services via kubectl port-forward — no ingress
 # or DNS needed, so it works on the CAPD mock cluster as-is.
-# Requires: kubectl, curl, yq v4.
+# Requires: kubectl, curl, yq v4, openssl.
 set -euo pipefail
 
 NS=auth
@@ -71,7 +71,9 @@ echo "    identity: $identity_id"
 
 # --- 2. Hydra: client_credentials flow ---------------------------------------
 CLIENT_ID=bex-auth-verify
-CLIENT_SECRET="verify-secret-$(date +%s)"
+# The client stays on the cluster's Hydra after the run, so its secret is
+# random, never derived from the run.
+CLIENT_SECRET="$(openssl rand -hex 32)"
 echo "==> (re)creating OAuth2 client $CLIENT_ID"
 curl -s -o /dev/null -X DELETE "http://$HYDRA_ADMIN/admin/clients/$CLIENT_ID" || true
 curl -sf -X POST "http://$HYDRA_ADMIN/admin/clients" \

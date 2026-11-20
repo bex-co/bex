@@ -112,6 +112,8 @@ kubectl get crd apps.app.bex.co >/dev/null 2>&1 \
 DB_NS="${DB_NS:-$AUTH_NS}"
 kubectl -n "$DB_NS" get cluster.postgresql.cnpg.io bex-db >/dev/null 2>&1 \
   || fail "no bex-db CNPG cluster in $DB_NS — set DB_NS to the active control-plane namespace"
+# Resolved before the run changes the cluster (see the helper for the rules).
+. scripts/lib/verify-bootstrap-secret.sh && bex_verify_bootstrap_secret || exit 1
 
 echo "==> port-forwards (hydra, openbao, bex-db) + building bex-api and the operator"
 kubectl -n "$AUTH_NS" port-forward service/hydra-public 24444:4444 >/dev/null 2>&1 & PIDS+=($!)
@@ -136,7 +138,6 @@ fi
 jwt_file="$bindir/sa-token"
 kubectl -n "$SYS_NS" create token bex-api --duration=1h > "$jwt_file"
 
-export BEX_BOOTSTRAP_CLIENT_SECRET="${BEX_BOOTSTRAP_CLIENT_SECRET:-events-verify-$STAMP}"
 HYDRA_ADMIN_URL="http://$HYDRA_ADMIN" bash scripts/auth-bootstrap-client.sh >/dev/null
 TOKEN="$({ curl -s -X POST "http://$HYDRA_PUBLIC/oauth2/token" \
   -d "grant_type=client_credentials&client_id=bex-bootstrap&client_secret=$BEX_BOOTSTRAP_CLIENT_SECRET" || true; } \

@@ -79,6 +79,8 @@ for port in 18290 18292; do
 done
 kubectl get crd apps.app.bex.co >/dev/null 2>&1 \
   || fail "App CRD not installed — run 'make -C lego/operator install' (absolute KUBECONFIG)"
+# Resolved before the run changes the cluster (see the helper for the rules).
+. scripts/lib/verify-bootstrap-secret.sh && bex_verify_bootstrap_secret || exit 1
 
 echo "==> throwaway control-plane Postgres (docker) + port-forward (hydra) + building bex-api"
 docker run --rm -d --name "$DB_CONTAINER" -e POSTGRES_PASSWORD=pw -p "$DB_PORT:5432" postgres:17 >/dev/null \
@@ -94,7 +96,6 @@ bindir="$(mktemp -d)"
 wait_http "http://$HYDRA_ADMIN/health/ready"
 
 echo "==> bootstrap OAuth2 client"
-export BEX_BOOTSTRAP_CLIENT_SECRET="${BEX_BOOTSTRAP_CLIENT_SECRET:-environments-verify-$STAMP}"
 HYDRA_ADMIN_URL="http://$HYDRA_ADMIN" bash scripts/auth-bootstrap-client.sh >/dev/null
 TOKEN="$({ curl -s -X POST "http://$HYDRA_PUBLIC/oauth2/token" \
   -d "grant_type=client_credentials&client_id=bex-bootstrap&client_secret=$BEX_BOOTSTRAP_CLIENT_SECRET" || true; } \

@@ -43,7 +43,9 @@
 # token bex-api now unconditionally requires to start, and an operator reconciling
 # App CRs (prod: the in-cluster manager; mock: run `make run` yourself first —
 # scripts/mock-cluster.sh alone installs no Argo CD/GitOps, so Loki never syncs
-# there and this script can't prove anything on it).
+# there and this script can't prove anything on it). On any cluster but the local
+# one, BEX_BOOTSTRAP_CLIENT_SECRET (exported or in .env) must be the secret that
+# cluster was deployed with (scripts/lib/verify-bootstrap-secret.sh).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 # `go run`'s own PID is a wrapper, not its compiled child — walking up from the
@@ -90,6 +92,8 @@ info() { printf '\033[36m•\033[0m %s\n' "$1"; }
 if ! kubectl -n "$MON_NS" get svc loki >/dev/null 2>&1; then
   fail "Loki service not found in ns/$MON_NS — sync deploy/gitops/base/loki.yaml first (mock-cluster.sh + GitOps)."
 fi
+# Resolved before the run changes the cluster (see the helper for the rules).
+. scripts/lib/verify-bootstrap-secret.sh && bex_verify_bootstrap_secret || exit 1
 
 # --- port-forward Loki ---
 kubectl -n "$MON_NS" port-forward svc/loki 23100:3100 >/dev/null 2>&1 &
@@ -147,7 +151,6 @@ PIDS+=($!)
 sleep 2
 
 info "seeding the bex-bootstrap OAuth2 client + minting a bearer token"
-export BEX_BOOTSTRAP_CLIENT_SECRET="${BEX_BOOTSTRAP_CLIENT_SECRET:-logs-verify-$(date +%s)000000}"
 HYDRA_ADMIN_URL="http://$HYDRA_ADMIN" bash scripts/auth-bootstrap-client.sh >/dev/null
 BOOT_TOKEN="$(curl -sf -X POST "http://$HYDRA_PUBLIC/oauth2/token" \
   -d "grant_type=client_credentials&client_id=bex-bootstrap&client_secret=$BEX_BOOTSTRAP_CLIENT_SECRET" \
