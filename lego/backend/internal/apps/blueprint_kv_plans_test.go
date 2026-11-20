@@ -127,3 +127,68 @@ func TestValidateBlueprintRefusesPausedKeyValuePlan(t *testing.T) {
 		t.Fatalf("re-declaring the store's own paused plan = valid %v errors %+v err %v", v.Valid, v.Errors, err)
 	}
 }
+
+// agreement/keyvalue create paused-plan: the action plan refuses a Key Value
+// create on a paused tier exactly as the apply refuses it. The preview's
+// create path and the plan's update path already run keyvalue.ErrPausedPlan
+// (#154); the plan's create path showed a bare Create, so deployStack's plan
+// gate — which runs before validate and before any write — let the sync
+// through to record the grouping and env-group rows before applyKeyValue
+// refused it. The paused check is a pure catalog judgment, so the plan judges
+// the apply's exact input, blueprintKeyValueGatePlan on a create (the declared
+// plan, or the create default a plan-less entry carries). The second-free
+// store limit stays out: it is workspace runtime state the plan cannot know,
+// judged by the preview's live CheckFreeLimit and enforced by the apply, the
+// same rule as the env-group count cap.
+func TestBlueprintKeyValuePlanRefusesPausedCreate(t *testing.T) {
+	if !tiers.Valkey.Paused("pro_ultra") {
+		t.Skip("pro_ultra is no longer paused")
+	}
+	for _, tc := range []struct {
+		name string
+		plan string
+		// wantRefused is the apply's verdict: applyKeyValue refuses a create
+		// naming a paused tier with INSTANCE_TYPE_UNAVAILABLE, and a store
+		// already on it may re-declare it. The plan must match each cell.
+		wantRefused bool
+	}{
+		{"paused create refused", "pro ultra", true},
+		{"unpaused create plans", "starter", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, _ := newService(nil)
+			ctx := core.WithWorkspace(context.Background(), "tea-a")
+			st, ir, err := compileStack(DeployRequest{Manifest: kvPlanManifest(tc.plan)})
+			if err != nil {
+				t.Fatalf("compileStack: %v", err)
+			}
+			plan, available, planErr := svc.blueprintActionPlan(ctx, ir, st, "", svc.newWorkspaceSnapshot(ctx))
+			if planErr == nil && !available {
+				t.Fatal("blueprintActionPlan unavailable with a client and no env groups")
+			}
+			// The apply-side oracle on the identical judgment: a create has
+			// no store to keep, so the declared plan is the new selection.
+			applyErr := keyvalue.ErrPausedPlan(blueprintKeyValueGatePlan(st.keyValues[0], ""), "")
+			if (planErr != nil) != (applyErr != nil) {
+				t.Fatalf("plan err = %v, apply err = %v; the plan must refuse exactly what the apply refuses",
+					planErr, applyErr)
+			}
+			if !tc.wantRefused {
+				if planErr != nil {
+					t.Fatalf("plan refused a create the apply allows: %v", planErr)
+				}
+				if len(plan.Actions) != 1 || plan.Actions[0].Operation != BlueprintPlanCreate {
+					t.Fatalf("plan actions = %+v, want the one key-value create", plan.Actions)
+				}
+				return
+			}
+			if planErr == nil {
+				t.Fatalf("plan showed a create the apply refuses with %v", applyErr)
+			}
+			var coded *core.CodedError
+			if !errors.As(planErr, &coded) || coded.Code != keyvalue.InstanceTypeUnavailableCode {
+				t.Fatalf("plan refusal = %v, want the coded %s the apply answers", planErr, keyvalue.InstanceTypeUnavailableCode)
+			}
+		})
+	}
+}

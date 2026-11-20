@@ -221,6 +221,22 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 				return BlueprintPlanAction{}, blueprintResourceErrors{{kind: resource.Kind, name: resource.Name, err: err}}
 			}
 		}
+		if resource.Kind == BlueprintResourceKeyValue {
+			kv, ok := parsedBlueprintKeyValue(r.parsed, resource.Name)
+			if !ok {
+				return BlueprintPlanAction{}, fmt.Errorf("compiled key value is missing")
+			}
+			// A paused tier is refused here as the apply refuses it:
+			// applyKeyValue judges blueprintKeyValueGatePlan before its first
+			// write, and the preview judges the same value. Without this the
+			// plan shows a create the sync only refuses after writing the
+			// grouping and env-group rows. Downgrades and external access are
+			// update-only judgments on both sides, so a create judges neither
+			// here either.
+			if err := keyvalue.ErrPausedPlan(blueprintKeyValueGatePlan(kv, ""), ""); err != nil {
+				return BlueprintPlanAction{}, blueprintResourceErrors{{kind: resource.Kind, name: resource.Name, err: err}}
+			}
+		}
 		// A create the apply would refuse for a paid-tier feature is a plan
 		// refusal, not a create: validate and the apply run these gates on
 		// every service write (validateBlueprintService, applyStackService).

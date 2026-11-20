@@ -8,6 +8,8 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 
 ## Skipped
 
+- 2026-11-20 agreement/service create spec-error path — skipped: a blueprintReadSpec failure on a create degrades to a Create that validateBlueprintServices refuses before any write, so the sync still fails clean with no partial state; same bucket as the 11-18 runtime-gates entry (plan previews, validation preflight + apply enforce)
+- 2026-11-20 agreement/keyvalue create free-instance limit — skipped: the second-free-store limit is workspace runtime state the plan cannot resolve; the preview judges it live (CheckFreeLimit) and the apply enforces it, the same rule as the env-group count-cap entry
 - 2026-11-20 agreement/service paid-tier plan gates — the plan skipped the workspace-plan layer (autoscaling Pro gate, inbound Scale gate) that validateBlueprintService and applyStackService run on every service write, so the plan promised creates/updates the apply refused; fixed this run to refuse exactly what the apply refuses (checkBlueprintServicePlanGates); pinned by TestBlueprintServicePlanMirrorsPaidTierGates and TestBlueprintServicePlanGateUpdateSide
 - 2026-11-20 agreement/env_var_group changed-field names — audited, holds: the plan names declared fields plus the environment move unless provably stays-put, and the apply sets the environment for every declared grouping (groupings write first or the sync fails); pinned by TestBlueprintPlanListsAnEnvGroupMove
 - 2026-11-20 agreement/env_var_group byte-quota half — unreachable via manifest: the 512 KiB manifest cap equals the 512 KiB aggregate cap, so YAML overhead keeps every declared group under it; the key-count cell is the live one, pinned by TestBlueprintPlanRefusesOverQuotaEnvGroupCreate
