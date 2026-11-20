@@ -43,7 +43,9 @@ var (
 	ansiCSI  = regexp.MustCompile(`\x1b\[[0-?]*[ -/]*[@-~]`)
 	ansiOSC  = regexp.MustCompile("\\x1b\\][^\\x07]*(\\x07|\\x1b\\\\)")
 	redisURI = regexp.MustCompile(`(?i)(rediss?://)[^@[:space:]]+@`)
-	bearer   = regexp.MustCompile(`(?i)(bearer[[:space:]]+)[a-z0-9._~+/=-]+`)
+	// cliAuth is the password a w9/m521 cliCommand carries in its environment.
+	cliAuth = regexp.MustCompile(`(REDISCLI_AUTH=)[^[:space:]]+`)
+	bearer  = regexp.MustCompile(`(?i)(bearer[[:space:]]+)[a-z0-9._~+/=-]+`)
 )
 
 type cappedTranscript struct {
@@ -171,6 +173,7 @@ func cleanTerminalText(raw []byte) string {
 func sanitizeKVCLIDiagnostic(raw []byte, secrets []string) string {
 	clean := cleanTerminalText(raw)
 	clean = redisURI.ReplaceAllString(clean, `${1}***@`)
+	clean = cliAuth.ReplaceAllString(clean, `${1}***`)
 	clean = bearer.ReplaceAllString(clean, `${1}***`)
 	for _, secret := range secrets {
 		if secret != "" {

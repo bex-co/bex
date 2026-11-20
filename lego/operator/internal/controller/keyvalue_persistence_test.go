@@ -38,7 +38,7 @@ func TestPersistenceLegacyAuthoritySurvivesSuspendedEdits(t *testing.T) {
 			kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "fixture", Namespace: "default"}, Spec: appv1alpha1.KeyValueSpec{PersistenceMode: source, Suspended: true}}
 			plan, storage := resolveKVPlan(kv.Spec)
 			sts := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{CreationTimestamp: metav1.Now()}}
-			sts.Spec.Template.Spec.Containers = []corev1.Container{{Name: "valkey", Args: valkeyArgs(kv.Spec, plan)}}
+			sts.Spec.Template.Spec.Containers = []corev1.Container{{Name: "valkey", Args: valkeyArgs(kv.Spec, plan, "")}}
 			for _, target := range []string{"off", "snapshot", "journal-snapshot", "snapshot"} {
 				kv.Spec.PersistenceMode = target
 				intent := keyValueIntentFor(kv, plan, storage, "", false, false)

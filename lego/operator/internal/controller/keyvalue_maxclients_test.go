@@ -40,7 +40,7 @@ import (
 func TestValkeyArgsCarryEveryPlansClientLimit(t *testing.T) {
 	for _, id := range tiers.Valkey.IDs() {
 		plan, _ := tiers.Valkey.ByID(id)
-		args := valkeyArgs(appv1alpha1.KeyValueSpec{}, plan)
+		args := valkeyArgs(appv1alpha1.KeyValueSpec{}, plan, "")
 		want := strconv.Itoa(int(plan.ConnectionLimit) + kvPlatformClientReserve)
 		if got := valkeyArgValue([]corev1.Container{{Name: keyValueContainerName, Args: args}}, "--maxclients"); got != want {
 			t.Errorf("plan %q: --maxclients %q, want the plan's %d plus the platform's %d", id, got, plan.ConnectionLimit, kvPlatformClientReserve)

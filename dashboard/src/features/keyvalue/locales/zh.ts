@@ -457,15 +457,15 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connExternalPending": {
     message:
-      "正在开启外部访问：正在签发公共受信任证书（通常需要几分钟）。存储开始接受 TLS 连接后会显示外部 URL；在此之前只能从你的服务通过下方的内部 URL 和命令访问。可隐藏后重新显示以刷新。",
+      "正在开启外部访问：正在签发公共受信任证书（通常需要几分钟）。存储开始接受 TLS 连接后，外部 URL 和 CLI 命令即可连接；在此之前只能从你的服务通过内部 URL 访问。可隐藏后重新显示以刷新。",
     description:
-      "Shown instead of the external URL while a public store's TLS listener is still opening",
+      "Shown under the external URL while a public store's TLS listener is still opening (w9/m521)",
   },
   "keyvalue.connExternalFailed": {
     message:
-      "外部 URL 暂不可用：此存储的公共受信任证书签发失败，bex 会自动重试。成功之前只能从你的服务通过下方的内部 URL 和命令访问。",
+      "外部 URL 和 CLI 命令暂时无法连接：此存储的公共受信任证书签发失败，bex 会自动重试。成功之前只能从你的服务通过内部 URL 访问。",
     description:
-      "Shown instead of the external URL when a public store's certificate failed to issue (w4/m357)",
+      "Shown under the external URL when a public store's certificate failed to issue (w4/m357, w9/m521)",
   },
   "keyvalue.connExternalUnavailable": {
     message: "未公开。在「网络」中添加入站 IP 规则即可启用外部访问。",
@@ -474,7 +474,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connCli": {
     message: "Valkey CLI 命令",
-    description: "Connection-info field label (ready-to-run redis-cli command)",
+    description: "Connection-info field label (ready-to-run valkey-cli command)",
   },
   "keyvalue.connErrorTitle": {
     message: "无法加载连接信息",

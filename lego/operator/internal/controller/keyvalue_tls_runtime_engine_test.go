@@ -73,6 +73,12 @@ type tlsSwitchEngine struct {
 }
 
 func startTLSSwitchEngine(t *testing.T, major string) *tlsSwitchEngine {
+	return startValkeyEngine(t, major, false)
+}
+
+// startValkeyEngine starts the pod's own command; withoutUsername renders it
+// as a template held since before the store's id user (w9/m521).
+func startValkeyEngine(t *testing.T, major string, withoutUsername bool) *tlsSwitchEngine {
 	e := &tlsSwitchEngine{persistenceEngine: newPersistenceEngine(t, major), ctx: context.Background()}
 	certVolume := strings.TrimSpace(e.docker("volume", "create"))
 	t.Cleanup(func() { e.docker("volume", "rm", certVolume) })
@@ -82,7 +88,9 @@ func startTLSSwitchEngine(t *testing.T, major string) *tlsSwitchEngine {
 	}
 	plan, storage := resolveKVPlan(kv.Spec)
 	sts := &appsv1.StatefulSet{}
-	applyKeyValueStatefulSet(sts, kv, keyValueIntentFor(kv, plan, storage, "kv.example.test", false, true))
+	intent := keyValueIntentFor(kv, plan, storage, "kv.example.test", false, true)
+	intent.withoutUsername = withoutUsername
+	writeKeyValueStatefulSet(sts, kv, intent)
 	server := sts.Spec.Template.Spec.Containers[0]
 	args := make([]string, 0, 13+len(server.Args))
 	args = append(args, "run", "-d", "--user", "999:1000", "-p", "127.0.0.1::6379", "-p", "127.0.0.1::6380",

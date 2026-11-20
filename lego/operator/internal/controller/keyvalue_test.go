@@ -958,7 +958,11 @@ var _ = Describe("KeyValue Controller", func() {
 		Expect(k8sClient.Get(ctx, nn, sec)).To(Succeed())
 		firstPw := string(sec.Data["password"])
 		Expect(firstPw).NotTo(BeEmpty())
-		Expect(string(sec.Data["uri"])).To(ContainSubstring("redis://default:"), "internal URI form")
+		// w9/m521: a new store's template carries its id user, so the
+		// credentialed strings name the id from the first pass, as Render's do.
+		Expect(string(sec.Data["uri"])).To(Equal("redis://"+name+":"+firstPw+"@"+name+":6379"), "internal URI form")
+		Expect(string(sec.Data["username"])).To(Equal(name))
+		Expect(valkeyHasUser(sts.Spec.Template.Spec.Containers, name)).To(BeTrue(), "a new template carries the id user")
 		Expect(string(sec.Data["host"])).To(Equal(name + ".default.svc"))
 		Expect(sec.Immutable).NotTo(BeNil())
 		Expect(*sec.Immutable).To(BeTrue(), "client-facing connection Secret is immutable")
@@ -1003,6 +1007,7 @@ var _ = Describe("KeyValue Controller", func() {
 		Expect(kv.Status.SecretName).To(Equal(name))
 		Expect(kv.Status.CredentialSecretName).To(Equal(name + "-auth"))
 		Expect(kv.Status.Port).To(Equal(int32(kvPort)))
+		Expect(kv.Status.Username).To(Equal(name), "the id user holds from the first pass")
 
 		// Delete cascade: envtest runs no garbage-collector controller, so it
 		// can't collect the children here. The owner references asserted below

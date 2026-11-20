@@ -295,7 +295,7 @@ func TestKeyValueTLSWrapperStartsTheListenerFromTheMountedCertificate(t *testing
 		t.Fatalf("the server must start through the image entrypoint and the wrapper: %q %q", container.Command, container.Args[:4])
 	}
 	server := container.Args[4:]
-	if !slices.Equal(server, append(valkeyArgs(kv.Spec, plan), "--dir", "/tmp")) {
+	if !slices.Equal(server, append(valkeyArgs(kv.Spec, plan, kv.Name), "--dir", "/tmp")) {
 		t.Fatalf("server args %q", server)
 	}
 

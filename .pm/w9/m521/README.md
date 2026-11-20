@@ -1,20 +1,20 @@
 # w9 · m521 — A new Key Value's connection strings take Render's shapes: a credential-free internal URL and the external URL from the first read, a `REDISCLI_AUTH=… valkey-cli` command, and the store id as the user
 
-**Worker:** worker9 **Goal:** a client that reads a new Key Value's connection info, straight after the create as Render's Terraform provider does, gets the three strings Render answers, in Render's shapes, and each one connects once the store is available. **Status:** todo
+**Worker:** worker9 **Goal:** a client that reads a new Key Value's connection info, straight after the create as Render's Terraform provider does, gets the three strings Render answers, in Render's shapes, and each one connects once the store is available. **Status:** todo (t001–t005, t007–t009 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | A new store's internal URL is credential-free from its first reconcile | 1h30m | — |
-| [t002](t002.md) | The external URL is answered from the create, and `externalCertificate` says whether it is open yet (amends w8/237) | 1h | — |
-| [t003](t003.md) | The CLI command reads ` REDISCLI_AUTH=<password> valkey-cli --user … -h … -p … --tls`, and `bex kv-cli` still connects | 45m | t002 |
-| [t004](t004.md) | The credentialed strings name the store id as the user, with no running store restarted | 2h | t003 |
-| [t005](t005.md) | Recheck `keyvalue` and `redis` with the Terraform harness on dev-9 and grade class 10 | 1h | t001, t004 |
+| [t001](done/t001.md) | A new store's internal URL is credential-free from its first reconcile — **DONE** | 1h30m | — |
+| [t002](done/t002.md) | The external URL is answered from the create, and `externalCertificate` says whether it is open yet (amends w8/237) — **DONE** | 1h | — |
+| [t003](done/t003.md) | The CLI command reads ` REDISCLI_AUTH=<password> valkey-cli --user … -h … -p … --tls`, and `bex kv-cli` still connects — **DONE** | 45m | t002 |
+| [t004](done/t004.md) | The credentialed strings name the store id as the user, with no running store restarted — **DONE** | 2h | t003 |
+| [t005](done/t005.md) | Recheck `keyvalue` and `redis` with the Terraform harness on dev-9 and grade class 10 — **DONE** | 1h | t001, t004 |
 | [t006](t006.md) | Production check on a pin that carries the milestone | 45m | t005 |
-| [t007](t007.md) | Render parity | 30m | t006 |
-| [t008](t008.md) | Simplify | 20m | t007 |
-| [t009](t009.md) | Test coverage | 45m | t007, t008 |
+| [t007](done/t007.md) | Render parity — **DONE** | 30m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 20m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
 | [t010](t010.md) | Closeout | 15m | t009 |
 
 Total: **10 tasks, about 8h45m**.

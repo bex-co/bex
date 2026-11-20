@@ -41,9 +41,9 @@ export function ConnectionInfoPanel({
   id: string;
   name: string;
   internalAuth: boolean;
-  /** Whether external access is enabled: an absent external URL then means
-   *  its TLS listener is still opening (w8/237), not that the store is
-   *  private. */
+  /** Whether external access is enabled. The external URL is answered from
+   *  the create, as on Render (w9/m521); externalCertificate says whether its
+   *  TLS listener accepts connections yet. */
   isPublic: boolean;
 }) {
   const { t } = useTranslations();
@@ -157,6 +157,22 @@ function RevealedInfo({
   const { t } = useTranslations();
   const copiedText = t("keyvalue.copied");
   const copyErrorText = t("keyvalue.copyError");
+  // A public store's endpoint that is not open yet: its URL is shown with a
+  // note saying whether the certificate is still issuing or failed.
+  const notOpen =
+    isPublic &&
+    (info.externalCertificate === "pending" ||
+      info.externalCertificate === "failed" ||
+      !info.externalConnectionString);
+  const notOpenNote = notOpen ? (
+    <p className="text-sm text-muted-foreground">
+      {t(
+        info.externalCertificate === "failed"
+          ? "keyvalue.connExternalFailed"
+          : "keyvalue.connExternalPending",
+      )}
+    </p>
+  ) : null;
   return (
     <div className="space-y-4">
       <ConnectionField
@@ -166,22 +182,21 @@ function RevealedInfo({
         copyErrorText={copyErrorText}
       />
       {info.externalConnectionString ? (
-        <ConnectionField
-          label={t("keyvalue.connExternal")}
-          value={info.externalConnectionString}
-          copiedText={copiedText}
-          copyErrorText={copyErrorText}
-        />
+        <div className="space-y-2">
+          <ConnectionField
+            label={t("keyvalue.connExternal")}
+            value={info.externalConnectionString}
+            copiedText={copiedText}
+            copyErrorText={copyErrorText}
+          />
+          {notOpenNote}
+        </div>
       ) : (
-        <p className="text-sm text-muted-foreground">
-          {t(
-            !isPublic
-              ? "keyvalue.connExternalUnavailable"
-              : info.externalCertificate === "failed"
-                ? "keyvalue.connExternalFailed"
-                : "keyvalue.connExternalPending",
-          )}
-        </p>
+        (notOpenNote ?? (
+          <p className="text-sm text-muted-foreground">
+            {t("keyvalue.connExternalUnavailable")}
+          </p>
+        ))
       )}
       <ConnectionField
         label={t("keyvalue.connCli")}

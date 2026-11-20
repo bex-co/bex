@@ -456,15 +456,15 @@ const koKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connExternalPending": {
     message:
-      "외부 접근을 활성화하는 중입니다. 공개적으로 신뢰되는 인증서를 발급하고 있습니다(보통 몇 분 소요). 스토어가 TLS 연결을 받기 시작하면 외부 URL이 표시되며, 그때까지는 아래 내부 URL과 명령으로 서비스에서만 접근할 수 있습니다. 숨겼다가 다시 표시하면 새로 고쳐집니다.",
+      "외부 접근을 활성화하는 중입니다. 공개적으로 신뢰되는 인증서를 발급하고 있습니다(보통 몇 분 소요). 스토어가 TLS 연결을 받기 시작하면 외부 URL과 CLI 명령으로 연결할 수 있으며, 그때까지는 내부 URL로 서비스에서만 접근할 수 있습니다. 숨겼다가 다시 표시하면 새로 고쳐집니다.",
     description:
-      "Shown instead of the external URL while a public store's TLS listener is still opening",
+      "Shown under the external URL while a public store's TLS listener is still opening (w9/m521)",
   },
   "keyvalue.connExternalFailed": {
     message:
-      "외부 URL을 아직 사용할 수 없습니다. 이 스토어의 공개적으로 신뢰되는 인증서 발급에 실패했으며, bex가 자동으로 다시 시도합니다. 성공할 때까지는 아래 내부 URL과 명령으로 서비스에서만 스토어에 접근할 수 있습니다.",
+      "외부 URL과 CLI 명령으로 아직 연결할 수 없습니다. 이 스토어의 공개적으로 신뢰되는 인증서 발급에 실패했으며, bex가 자동으로 다시 시도합니다. 성공할 때까지는 내부 URL로 서비스에서만 스토어에 접근할 수 있습니다.",
     description:
-      "Shown instead of the external URL when a public store's certificate failed to issue (w4/m357)",
+      "Shown under the external URL when a public store's certificate failed to issue (w4/m357, w9/m521)",
   },
   "keyvalue.connExternalUnavailable": {
     message:
@@ -474,7 +474,7 @@ const koKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connCli": {
     message: "Valkey CLI 명령",
-    description: "Connection-info field label (ready-to-run redis-cli command)",
+    description: "Connection-info field label (ready-to-run valkey-cli command)",
   },
   "keyvalue.connErrorTitle": {
     message: "연결 정보를 불러오지 못했습니다",

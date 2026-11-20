@@ -462,15 +462,15 @@ const ruKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connExternalPending": {
     message:
-      "Внешний доступ включается: выпускается публично доверенный сертификат (обычно несколько минут). Внешний URL появится, когда хранилище начнёт принимать TLS-подключения; до этого оно доступно только вашим сервисам по внутреннему URL и команде ниже. Скройте и покажите снова, чтобы обновить.",
+      "Внешний доступ включается: выпускается публично доверенный сертификат (обычно несколько минут). Внешний URL и команда CLI подключатся, когда хранилище начнёт принимать TLS-подключения; до этого оно доступно только вашим сервисам по внутреннему URL. Скройте и покажите снова, чтобы обновить.",
     description:
-      "Shown instead of the external URL while a public store's TLS listener is still opening",
+      "Shown under the external URL while a public store's TLS listener is still opening (w9/m521)",
   },
   "keyvalue.connExternalFailed": {
     message:
-      "Внешний URL пока недоступен: не удалось выпустить публично доверенный сертификат этого хранилища, и bex повторяет попытку автоматически. Пока это не удастся, хранилище доступно только вашим сервисам по внутреннему URL и команде ниже.",
+      "Внешний URL и команда CLI пока не подключаются: не удалось выпустить публично доверенный сертификат этого хранилища, и bex повторяет попытку автоматически. Пока это не удастся, хранилище доступно только вашим сервисам по внутреннему URL.",
     description:
-      "Shown instead of the external URL when a public store's certificate failed to issue (w4/m357)",
+      "Shown under the external URL when a public store's certificate failed to issue (w4/m357, w9/m521)",
   },
   "keyvalue.connExternalUnavailable": {
     message:
@@ -480,7 +480,7 @@ const ruKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connCli": {
     message: "Команда Valkey CLI",
-    description: "Connection-info field label (ready-to-run redis-cli command)",
+    description: "Connection-info field label (ready-to-run valkey-cli command)",
   },
   "keyvalue.connErrorTitle": {
     message: "Не удалось загрузить данные подключения",

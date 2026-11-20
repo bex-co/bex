@@ -329,9 +329,15 @@ func legacyKeyValueWorkloadUnchanged(sts *appsv1.StatefulSet, kv *appv1alpha1.Ke
 // valkeyHasPlatformUser reports whether a Valkey container's args define
 // kvPlatformUser; false for every store started before it existed.
 func valkeyHasPlatformUser(containers []corev1.Container) bool {
+	return valkeyHasUser(containers, kvPlatformUser)
+}
+
+// valkeyHasUser reports whether a Valkey container's args define the ACL
+// user, so every server started from them knows it.
+func valkeyHasUser(containers []corev1.Container, user string) bool {
 	args := valkeyContainerArgs(containers)
 	for i := 0; i+1 < len(args); i++ {
-		if args[i] == "--user" && args[i+1] == kvPlatformUser {
+		if args[i] == "--user" && args[i+1] == user {
 			return true
 		}
 	}

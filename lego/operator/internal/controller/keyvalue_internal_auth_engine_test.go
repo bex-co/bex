@@ -68,6 +68,13 @@ func TestValkeyBehindAPlainPassthroughProxy(t *testing.T) {
 					_ = c.Close()
 				}
 			})
+			// w9/m521: the client's own AUTH as the store's id user reaches
+			// Valkey unchanged, as an internal-auth store's strings send it.
+			named, replies := dialAuthPingAs(t, serve(1), "tls-engine")
+			_ = named.Close()
+			if replies != "+OK +PONG" {
+				t.Fatalf("a client authenticating as the id user read %q", replies)
+			}
 			proxy := serve(int(free.ConnectionLimit))
 
 			c, reply := dialPing(t, proxy)
@@ -113,12 +120,18 @@ func TestValkeyBehindAPlainPassthroughProxy(t *testing.T) {
 // pings, and returns it with its two replies.
 func dialAuthPing(t *testing.T, addr string) (net.Conn, string) {
 	t.Helper()
+	return dialAuthPingAs(t, addr, kvDefaultUser)
+}
+
+// dialAuthPingAs is dialAuthPing as user.
+func dialAuthPingAs(t *testing.T, addr, user string) (net.Conn, string) {
+	t.Helper()
 	c, err := net.DialTimeout("tcp", addr, 5*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
 	_ = c.SetDeadline(time.Now().Add(5 * time.Second))
-	if _, err := fmt.Fprintf(c, "AUTH default %s\r\nPING\r\n", fixturePassword); err != nil {
+	if _, err := fmt.Fprintf(c, "AUTH %s %s\r\nPING\r\n", user, fixturePassword); err != nil {
 		return c, "write: " + err.Error()
 	}
 	r := bufio.NewReader(c)

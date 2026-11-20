@@ -229,11 +229,22 @@ const KeyValuePersistenceOff = "off"
 
 // KeyValueStatus is the observed state of a KeyValue.
 type KeyValueStatus struct {
-	// InternalAuthOptional records that the stable Service has switched to the
-	// ready auth-injecting internal proxy. Legacy stores retain credentialed
-	// URLs until this cutover; Valkey and external TLS always require AUTH.
+	// InternalAuthOptional records that the stable Service routes through the
+	// store's auth-injecting internal proxy, so the internal URL carries no
+	// credentials. A new store's Service selects the proxy from the pass that
+	// creates it, and this is set in that pass (w9/m521). A store whose
+	// Service selected Valkey keeps its credentialed URL until the proxy is
+	// ready and the Service has switched (w8/204). Valkey and external TLS
+	// always require AUTH.
 	// +optional
 	InternalAuthOptional bool `json:"internalAuthOptional,omitempty"`
+
+	// Username is the Valkey ACL user the store's credentialed connection
+	// strings name: the store's own id once every server it runs knows that
+	// user, with the tenant's permissions and password (w9/m521). Empty means
+	// Valkey's default user, which keeps working either way.
+	// +optional
+	Username string `json:"username,omitempty"`
 
 	// Phase is the high-level lifecycle state.
 	// +optional
@@ -283,8 +294,9 @@ type KeyValueStatus struct {
 	CredentialRevision string `json:"credentialRevision,omitempty"`
 
 	// ExternalHost is the public SNI hostname when Public is set (empty otherwise).
-	// The external URL is rediss://:<password>@<ExternalHost>:6379 (credentials
-	// from SecretName). DNS for the host must point at the edge.
+	// The external URL is rediss://<user>:<password>@<ExternalHost>:6379
+	// (credentials from CredentialSecretName). DNS for the host must point at
+	// the edge.
 	// +optional
 	ExternalHost string `json:"externalHost,omitempty"`
 
@@ -320,6 +332,25 @@ type KeyValueStatus struct {
 	// +listMapKey=type
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
+// ConnectionUsername is the ACL user kv's credentialed connection strings
+// name: its id once status.username says every server it runs knows that
+// user (w9/m521), as Render's strings name red-…; Valkey's default user
+// before then. The operator's compatibility Secret and bex-api's connection
+// info share it.
+func (kv *KeyValue) ConnectionUsername() string {
+	if kv.Status.Username == kv.Name {
+		return kv.Name
+	}
+	return "default"
+}
+
+// InternalURLCredentialFree reports whether kv's internal URL carries no
+// credentials: its stable Service routes through the auth-injecting proxy
+// (status.internalAuthOptional) and internal authentication is off.
+func (kv *KeyValue) InternalURLCredentialFree() bool {
+	return kv.Status.InternalAuthOptional && !kv.Spec.InternalAuth
 }
 
 // KeyValueCredentialRevision returns the stable, non-secret revision shared by

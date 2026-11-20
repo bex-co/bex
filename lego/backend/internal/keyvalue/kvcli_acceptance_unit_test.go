@@ -170,16 +170,75 @@ func TestSanitizeKVCLIDiagnostic(t *testing.T) {
 	const token = "secret-bearer-value"
 	raw := []byte("\x1b[2JAuthorization: Bearer abc.def\r\n" +
 		"redis-cli --sni red.example.test -u rediss://default:password@red.example.test:6379\r\n" +
+		" REDISCLI_AUTH=cli-password valkey-cli --user red -h red.example.test --sni red.example.test -p 6379 --tls\r\n" +
 		"RENDER_API_KEY=" + token + "\r\n")
 	got := sanitizeKVCLIDiagnostic(raw, []string{token})
-	for _, forbidden := range []string{"abc.def", "default:password", token, "\x1b"} {
+	for _, forbidden := range []string{"abc.def", "default:password", "cli-password", token, "\x1b"} {
 		if strings.Contains(got, forbidden) {
 			t.Fatalf("diagnostic leaked %q: %q", forbidden, got)
 		}
 	}
-	for _, want := range []string{"Bearer ***", "rediss://***@red.example.test:6379", "RENDER_API_KEY=***"} {
+	for _, want := range []string{"Bearer ***", "rediss://***@red.example.test:6379", "REDISCLI_AUTH=*** valkey-cli", "RENDER_API_KEY=***"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("diagnostic %q missing %q", got, want)
 		}
+	}
+}
+
+// renderKVCLIRun is how the pinned Render CLI's kv-cli runs a cliCommand
+// (render-oss/cli pkg/tui/views/rediscli.go, loadDataRedisCLI): split on
+// single spaces, the words before redis-cli/valkey-cli are the process's
+// whole environment, the words after it its arguments, then the user's own
+// arguments. A drift guard: w9/m521's command must survive exactly this.
+func renderKVCLIRun(cliCommand string, extra ...string) (tool string, env, args []string) {
+	past := false
+	for _, part := range strings.Split(cliCommand, " ") {
+		if part == "redis-cli" || part == "valkey-cli" {
+			past, tool = true, part
+			continue
+		}
+		if past {
+			args = append(args, part)
+		} else {
+			env = append(env, part)
+		}
+	}
+	return tool, env, append(args, extra...)
+}
+
+func TestCLICommandRunsAsTheRenderCLISplitsIt(t *testing.T) {
+	const password = "-pa_ss-word_0123456789abcdefghij" // base64url may start with "-"
+	for _, tc := range []struct {
+		name     string
+		cli      keyValueCLI
+		wantEnv  []string
+		wantArgs []string
+	}{{
+		name:     "public",
+		cli:      keyValueCLI{user: "red-a", password: password, host: "red-a.kv.bex.co", port: 6379, tls: true},
+		wantEnv:  []string{"", "REDISCLI_AUTH=" + password},
+		wantArgs: []string{"--user", "red-a", "-h", "red-a.kv.bex.co", "--sni", "red-a.kv.bex.co", "-p", "6379", "--tls", "-4", "--raw", "PING"},
+	}, {
+		name:     "private with internal authentication",
+		cli:      keyValueCLI{user: "red-a", password: password, host: "red-a", port: 6379},
+		wantEnv:  []string{"", "REDISCLI_AUTH=" + password},
+		wantArgs: []string{"--user", "red-a", "-h", "red-a", "-p", "6379", "-4", "--raw", "PING"},
+	}, {
+		name:     "private, credential-free",
+		cli:      keyValueCLI{host: "red-a", port: 6379, credentialFree: true},
+		wantEnv:  []string{""},
+		wantArgs: []string{"-h", "red-a", "-p", "6379", "-4", "--raw", "PING"},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			tool, env, args := renderKVCLIRun(tc.cli.command(), "-4", "--raw", "PING")
+			if tool != "valkey-cli" || !reflect.DeepEqual(env, tc.wantEnv) || !reflect.DeepEqual(args, tc.wantArgs) {
+				t.Fatalf("kv-cli runs %q with env %q and args %q; want valkey-cli, %q, %q", tool, env, args, tc.wantEnv, tc.wantArgs)
+			}
+			for _, arg := range args {
+				if strings.Contains(arg, password) {
+					t.Fatalf("the password reached argv, where ps shows it: %q", args)
+				}
+			}
+		})
 	}
 }

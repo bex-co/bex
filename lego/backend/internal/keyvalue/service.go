@@ -160,20 +160,19 @@ type KeyValueView struct {
 	DashboardURL string `json:"dashboardUrl,omitempty"`
 }
 
-// KeyValueConnectionInfo mirrors Render's keyValueConnectionInfo schema: the
-// internal string, an optional external (TLS) string, and a ready-to-run CLI
-// command. The internal string has no credentials once the operator has
-// cut over its authenticated front; an older store keeps its credentialed
-// string until then. The external string always embeds the default-user
-// password, never a standalone field. Explicit default-user authentication
-// also keeps valkey-cli compatible with the authenticated Valkey backend.
+// KeyValueConnectionInfo mirrors Render's keyValueConnectionInfo schema, in
+// Render's shapes from the first read (w9/m521): the internal string
+// (redis://<id>:6379, with no credentials unless internal authentication is
+// on), the external TLS string of a public store, and a ready-to-run CLI
+// command. Every credentialed string names the store's id as its user once
+// the operator records that Valkey knows it, and the default user until then.
 type KeyValueConnectionInfo struct {
 	InternalConnectionString string `json:"internalConnectionString"`
 	ExternalConnectionString string `json:"externalConnectionString"`
 	CLICommand               string `json:"cliCommand"`
 	// ExternalCertificate / ExternalCertificateReason repeat the read's state
-	// (bex extension, w4/m357): while it is pending or failed a public store
-	// has no external string, and cliCommand is the internal one.
+	// (bex extension, w4/m357): while it is pending or failed, a public
+	// store's external string and CLI command do not connect yet.
 	ExternalCertificate       string `json:"externalCertificate,omitempty"`
 	ExternalCertificateReason string `json:"externalCertificateReason,omitempty"`
 }
@@ -1441,66 +1440,69 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 	if port == 0 {
 		port = 6379
 	}
+	user, internalHost := kv.ConnectionUsername(), kv.Name
+	password := string(sec.Data["password"])
 	internal := string(sec.Data["uri"])         // legacy connection Secret
 	external := string(sec.Data["externalUri"]) // legacy connection Secret (public only)
-	if kv.Status.CredentialSecretName != "" {
-		password := sec.Data["password"]
+	if kv.Status.CredentialSecretName == "" {
+		// A legacy connection Secret's own URL names its user, password and host.
+		if legacy, err := url.Parse(internal); err == nil && legacy.User != nil {
+			user, internalHost = legacy.User.Username(), legacy.Hostname()
+			password, _ = legacy.User.Password()
+		}
+	} else {
 		// The password is chosen once and never changes (w2/m61), so it is
 		// served from the first reconcile, as Render answers a store that is
 		// still creating (w9/108). Only a revision the pods recorded that
 		// differs from it is a split, and that one is refused. A restart keeps
 		// the recorded revision (w8/305).
 		if kv.Status.CredentialRevision != "" &&
-			kv.Status.CredentialRevision != appv1alpha1.KeyValueCredentialRevision(password) {
+			kv.Status.CredentialRevision != appv1alpha1.KeyValueCredentialRevision([]byte(password)) {
 			return KeyValueConnectionInfo{}, fmt.Errorf("%w: key value credentials are still converging", core.ErrConflict)
 		}
 		if errs := validation.IsDNS1123Subdomain(kv.Status.Host); len(errs) != 0 {
 			return KeyValueConnectionInfo{}, errors.New("key value internal host is missing or invalid")
 		}
-		internal = keyValueURI("redis", string(password), kv.Status.Host, port)
-		// The operator clears externalHost a pass after access is turned off.
+		// Render's internal host is the store's id (redis://red-…:6379),
+		// which resolves for every service the store admits.
+		internal = keyValueURI("redis", user, password, kv.Name, port)
+		// The external URL is answered as soon as the operator records its
+		// host, while the store is still creating, as Render's is (w9/m521,
+		// which replaced w8/237's withholding). externalCertificate says
+		// whether its TLS listener accepts connections yet. The operator
+		// clears externalHost a pass after access is turned off.
 		if kv.Spec.Public && kv.Status.ExternalHost != "" {
-			external = keyValueURI("rediss", string(password), kv.Status.ExternalHost, port)
+			external = keyValueURI("rediss", user, password, kv.Status.ExternalHost, port)
 		}
 	}
-	// The external URL is advertised once its TLS listener accepts
-	// connections (w8/237): on a first enable the certificate is issued and
-	// the operator opens tls-port about a minute after externalHost is set,
-	// and a client handed the URL sooner only saw `SSL_connect failed:
-	// unexpected eof`.
-	if !kv.Status.TLSListener {
-		external = ""
-	}
-
-	if kv.Status.InternalAuthOptional && !kv.Spec.InternalAuth {
-		// Status is set only after the stable Service routes through a ready
-		// auth-injecting front. Publishing this sooner would hand clients an
-		// unauthenticated URL to a backend that still requires AUTH.
+	credentialFree := kv.InternalURLCredentialFree()
+	if credentialFree {
+		// Status is set only while the stable Service routes through the
+		// auth-injecting proxy: from birth for a new store (w9/m521), after
+		// the cutover for an older one (w8/204). Publishing this sooner would
+		// hand clients an unauthenticated URL to a backend that requires AUTH.
 		internal = (&url.URL{Scheme: "redis", Host: net.JoinHostPort(kv.Name, strconv.Itoa(int(port)))}).String()
+		internalHost = kv.Name
 	}
 
-	// Render's cliCommand connects over the reachable endpoint — the external
-	// (TLS) one when public, otherwise the internal one. redis-cli reads the URI
-	// (rediss:// auto-negotiates TLS), but does not derive a TLS server name from
-	// it, so the public SNI router requires the explicit operator-owned host.
-	conn := internal
-	cliCommand := fmt.Sprintf("redis-cli -u %s", conn)
+	// Render's cliCommand connects over the reachable endpoint: the external
+	// (TLS) one when public, otherwise the internal one.
+	cli := keyValueCLI{user: user, password: password, host: internalHost, port: port, credentialFree: credentialFree}
 	if external != "" {
-		conn = external
 		externalHost := kv.Status.ExternalHost
 		if errs := validation.IsDNS1123Subdomain(externalHost); len(errs) != 0 {
 			// Keep the credential-bearing URI out of this error. A public Secret
 			// without matching operator status is an internal contract failure.
 			return KeyValueConnectionInfo{}, errors.New("key value external host is missing or invalid")
 		}
-		cliCommand = fmt.Sprintf("redis-cli --sni %s -u %s", externalHost, conn)
+		cli = keyValueCLI{user: user, password: password, host: externalHost, port: port, tls: true}
 	}
 	s.RecordSecretsViewed(ctx, core.AuditVerbViewConnectionInfo, kv.Labels[core.LabelTenant], core.KeyValueTarget(kv.Name), kv.Spec.Name)
 	certificate, certificateReason := externalCertificateState(kv)
 	return KeyValueConnectionInfo{
 		InternalConnectionString:  internal,
 		ExternalConnectionString:  external,
-		CLICommand:                cliCommand,
+		CLICommand:                cli.command(),
 		ExternalCertificate:       certificate,
 		ExternalCertificateReason: certificateReason,
 	}, nil
@@ -1516,10 +1518,53 @@ func externalCertificateState(kv *appv1alpha1.KeyValue) (state, reason string) {
 	return core.PublicCertificateState(kv.Status.Conditions, kv.Status.TLSListener)
 }
 
-func keyValueURI(scheme, password, host string, port int32) string {
+func keyValueURI(scheme, user, password, host string, port int32) string {
 	return (&url.URL{
 		Scheme: scheme,
-		User:   url.UserPassword("default", password),
+		User:   url.UserPassword(user, password),
 		Host:   net.JoinHostPort(host, strconv.Itoa(int(port))),
 	}).String()
+}
+
+// keyValueCLI is the parts of Render's cliCommand, built from the user, host,
+// port and password, never by splicing a URL (w9/m521).
+type keyValueCLI struct {
+	user, password, host string
+	port                 int32
+	// tls is the external endpoint. credentialFree is an internal URL with
+	// no credentials, which needs no AUTH either.
+	tls, credentialFree bool
+}
+
+// command is Render's shape, " REDISCLI_AUTH=<password> valkey-cli --user
+// <user> -h <host> -p <port> --tls":
+//
+//   - the leading space keeps it out of shell history under
+//     HISTCONTROL=ignorespace;
+//   - the password travels in the environment, where ps does not show it;
+//   - the Render CLI's kv-cli runs it as written: the words before valkey-cli
+//     are the process's whole environment, the words after it its arguments.
+//
+// The external form adds --sni <host> before -p: valkey-cli sends a TLS server
+// name only with --sni, and bex's shared edge routes each store by it (ADR021).
+// A private store's form connects to the internal host, as its internal URL
+// does, with no AUTH while that URL is credential-free.
+func (c keyValueCLI) command() string {
+	words := []string{""}
+	if !c.credentialFree {
+		words = append(words, "REDISCLI_AUTH="+c.password)
+	}
+	words = append(words, "valkey-cli")
+	if !c.credentialFree {
+		words = append(words, "--user", c.user)
+	}
+	words = append(words, "-h", c.host)
+	if c.tls {
+		words = append(words, "--sni", c.host)
+	}
+	words = append(words, "-p", strconv.Itoa(int(c.port)))
+	if c.tls {
+		words = append(words, "--tls")
+	}
+	return strings.Join(words, " ")
 }

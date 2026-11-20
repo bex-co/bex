@@ -386,7 +386,7 @@ func (e *persistenceEngine) start(mode string) *redis.Client {
 	// The StatefulSet's own server arguments, ACL users included, so the live
 	// handoff and the fixtures run under production permissions. Kubernetes
 	// expands the $(VAR) password references from the container env; so does this.
-	server := valkeyArgs(appv1alpha1.KeyValueSpec{PersistenceMode: mode}, starterValkeyTier())
+	server := valkeyArgs(appv1alpha1.KeyValueSpec{PersistenceMode: mode}, starterValkeyTier(), "")
 	for i, arg := range server {
 		arg = strings.ReplaceAll(arg, "$("+kvPasswordEnv+")", fixturePassword)
 		server[i] = strings.ReplaceAll(arg, "$("+kvPlatformPasswordEnv+")", fixturePlatformPassword)

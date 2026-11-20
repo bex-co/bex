@@ -74,7 +74,10 @@ func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue,
 	heldPolicy := valkeyArgsMaxmemoryPolicy(sts.Spec.Template.Spec.Containers)
 	heldClients := valkeyArgValue(sts.Spec.Template.Spec.Containers, "--maxclients")
 	holdClients := valkeyMaxclientsHoldable(heldClients, valkeyMaxclients(intent.plan))
-	if (heldPolicy == kv.Spec.MaxmemoryPolicy && !holdClients) || intent.replicas == 0 {
+	// A template started before the store's id user keeps running without it
+	// (w9/m521): ACL SETUSER adds the user to its server.
+	holdUsername := !sts.CreationTimestamp.IsZero() && !valkeyHasUser(sts.Spec.Template.Spec.Containers, kv.Name)
+	if (heldPolicy == kv.Spec.MaxmemoryPolicy && !holdClients && !holdUsername) || intent.replicas == 0 {
 		writeKeyValueStatefulSet(sts, kv, intent)
 		return
 	}
@@ -85,6 +88,7 @@ func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue,
 	if holdClients {
 		held.heldMaxclients = &heldClients
 	}
+	held.withoutUsername = holdUsername
 	writeKeyValueStatefulSet(sts, holding, held)
 	if apiequality.Semantic.DeepEqual(sts.Spec.Template, before.Spec.Template) {
 		return

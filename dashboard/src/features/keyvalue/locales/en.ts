@@ -466,15 +466,15 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connExternalPending": {
     message:
-      "External access is being enabled: a publicly trusted certificate is being issued (usually a few minutes). The external URL appears once the store accepts TLS connections; until then it is reachable only from your services, with the internal URL and command below. Hide and reveal again to refresh.",
+      "External access is being enabled: a publicly trusted certificate is being issued (usually a few minutes). The external URL and the CLI command connect once the store accepts TLS connections; until then it is reachable only from your services, with the internal URL. Hide and reveal again to refresh.",
     description:
-      "Shown instead of the external URL while a public store's TLS listener is still opening",
+      "Shown under the external URL while a public store's TLS listener is still opening (w9/m521)",
   },
   "keyvalue.connExternalFailed": {
     message:
-      "The external URL is not reachable yet: issuing this store's publicly trusted certificate failed, and bex retries it automatically. Until it succeeds the store is reachable only from your services, with the internal URL and command below.",
+      "The external URL and the CLI command do not connect yet: issuing this store's publicly trusted certificate failed, and bex retries it automatically. Until it succeeds the store is reachable only from your services, with the internal URL.",
     description:
-      "Shown instead of the external URL when a public store's certificate failed to issue (w4/m357)",
+      "Shown under the external URL when a public store's certificate failed to issue (w4/m357, w9/m521)",
   },
   "keyvalue.connExternalUnavailable": {
     message:
@@ -484,7 +484,7 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connCli": {
     message: "Valkey CLI command",
-    description: "Connection-info field label (ready-to-run redis-cli command)",
+    description: "Connection-info field label (ready-to-run valkey-cli command)",
   },
   "keyvalue.connErrorTitle": {
     message: "Couldn't load connection info",

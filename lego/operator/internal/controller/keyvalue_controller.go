@@ -21,6 +21,7 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -229,17 +230,22 @@ func kvExporterEnv(platformPassword corev1.EnvVar) []corev1.EnvVar {
 	}
 }
 
-// valkeyArgs builds the valkey-server flags from the KeyValue spec: the password,
+// valkeyArgs builds the valkey-server flags from the KeyValue spec: the tenant's
+// users (default, and the store's id when user is set, w9/m521), the password,
 // the persistence mode (Render's Persistence Mode → AOF/RDB), when an eviction
 // policy is set the memory budget and policy (Render's Maxmemory Policy), and
 // the plan's client limit. An empty PersistenceMode/MaxmemoryPolicy preserves
 // the prior default (appendonly yes, no maxmemory); a template started before
 // the client limit keeps its own (applyKeyValueStatefulSet), so a KeyValue
 // created before these fields does not roll.
-func valkeyArgs(spec appv1alpha1.KeyValueSpec, plan tiers.ValkeyTier) []string {
-	args := append([]string{"--user"}, valkeyDefaultUserRule("$("+kvPasswordEnv+")")...)
+func valkeyArgs(spec appv1alpha1.KeyValueSpec, plan tiers.ValkeyTier, user string) []string {
+	args := append([]string{"--user"}, valkeyTenantUserRule(kvDefaultUser, ">$("+kvPasswordEnv+")")...)
 	args = append(args, "--user")
 	args = append(args, valkeyPlatformUserRule("$("+kvPlatformPasswordEnv+")")...)
+	if user != "" {
+		args = append(args, "--user")
+		args = append(args, valkeyTenantUserRule(user, ">$("+kvPasswordEnv+")")...)
+	}
 	switch spec.PersistenceMode {
 	case "off":
 		// No AOF and no RDB save points — a pure in-memory cache.
@@ -259,7 +265,9 @@ func valkeyArgs(spec appv1alpha1.KeyValueSpec, plan tiers.ValkeyTier) []string {
 	return append(args, "--maxclients", valkeyMaxclients(plan))
 }
 
-// valkeyDefaultUserRule is the ACL of the one user tenants connect as: every
+// valkeyTenantUserRule is the ACL of a user tenants connect as, Valkey's
+// default user and the store's id (w9/m521), with password the rule's
+// password (">plain" or "#sha256-hex"): every
 // command outside @admin, plus a few read-only @admin introspection commands.
 // @admin holds every verb whose state the control plane owns — the memory
 // budget and eviction policy the dashboard shows (CONFIG SET), the password it
@@ -269,9 +277,9 @@ func valkeyArgs(spec appv1alpha1.KeyValueSpec, plan tiers.ValkeyTier) []string {
 // adds is denied by default, not by an entry someone remembered. Render denies CONFIG
 // outright; CONFIG GET stays here because tenants have relied on it since
 // w4/191, and it exposes nothing they don't own.
-func valkeyDefaultUserRule(password string) []string {
+func valkeyTenantUserRule(user, password string) []string {
 	return []string{
-		kvDefaultUser, "on", ">" + password, "~*", "&*", "+@all", "-@admin",
+		user, "on", password, "~*", "&*", "+@all", "-@admin",
 		"+config|get", "+client|list", "+slowlog|get", "+slowlog|len",
 	}
 }
@@ -298,18 +306,24 @@ func valkeyMaxmemory(plan tiers.ValkeyTier) string {
 	return strconv.FormatInt(q.Value()*4/5, 10)
 }
 
-func keyValueConnectionSecretData(password, internalHost string, public bool, name, domain string) map[string][]byte {
+// keyValueConnectionSecretData is the compatibility Secret's data, in the
+// strings connection info serves (w9/m521). Every credentialed string names
+// its user explicitly, which valkey-cli URI authentication requires.
+func keyValueConnectionSecretData(kv *appv1alpha1.KeyValue, password, internalHost string, public bool, domain string) map[string][]byte {
+	user := kv.ConnectionUsername()
 	data := map[string][]byte{
-		"username":    []byte(kvDefaultUser),
+		"username":    []byte(user),
 		kvPasswordKey: []byte(password),
 		"host":        []byte(internalHost),
 		"port":        []byte(strconv.Itoa(kvPort)),
-		// Explicit default user is required by valkey-cli URI authentication.
-		"uri": fmt.Appendf(nil, "redis://default:%s@%s:%d", password, internalHost, kvPort),
+		"uri":         fmt.Appendf(nil, "redis://%s:%s@%s:%d", user, password, kv.Name, kvPort),
+	}
+	if kv.InternalURLCredentialFree() {
+		data["uri"] = fmt.Appendf(nil, "redis://%s:%d", kv.Name, kvPort)
 	}
 	if public {
-		external := fmt.Sprintf("%s.%s", name, domain)
-		data["externalUri"] = fmt.Appendf(nil, "rediss://default:%s@%s:%d", password, external, kvPort)
+		external := fmt.Sprintf("%s.%s", kv.Name, domain)
+		data["externalUri"] = fmt.Appendf(nil, "rediss://%s:%s@%s:%d", user, password, external, kvPort)
 	}
 	return data
 }
@@ -345,6 +359,9 @@ type KeyValueReconciler struct {
 	// setMaxclients sets a running store's client limit; nil is
 	// setValkeyMaxclientsAtPod. Tests substitute it.
 	setMaxclients func(ctx context.Context, pod *corev1.Pod, platform *corev1.Secret, maxclients string) error
+	// setValkeyUser adds the store's id user to a running server; nil is
+	// setValkeyUserAtPod. Tests substitute it.
+	setValkeyUser func(ctx context.Context, pod *corev1.Pod, platform *corev1.Secret, user, credentialRevision string) error
 	// cutValkeyClients closes a running store's clients connected from ips;
 	// nil is cutValkeyClientsAtPod. Tests substitute it.
 	cutValkeyClients func(ctx context.Context, pod *corev1.Pod, platform *corev1.Secret, ips map[string]bool) error
@@ -562,13 +579,10 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 		result, failErr := r.kvFail(ctx, kv, appv1alpha1.ReasonCredentialSecretFailed, err)
 		return nil, result, true, failErr
 	}
-	desiredData := keyValueConnectionSecretData(string(auth.Data[kvPasswordKey]), internalHost,
-		kv.Spec.Public && r.KvDomain != "", kv.Name, r.KvDomain)
 	// Enabled internal auth (w5/m268) puts the password back into the URL
 	// from the first reconcile that sees it.
-	if kv.Status.InternalAuthOptional && !kv.Spec.InternalAuth {
-		desiredData["uri"] = fmt.Appendf(nil, "redis://%s:%d", kv.Name, kvPort)
-	}
+	desiredData := keyValueConnectionSecretData(kv, string(auth.Data[kvPasswordKey]), internalHost,
+		kv.Spec.Public && r.KvDomain != "", r.KvDomain)
 	if connection.Immutable != nil && *connection.Immutable && !secretDataEqual(connection.Data, desiredData) {
 		if err := r.Delete(ctx, connection); err != nil && !apierrors.IsNotFound(err) {
 			result, failErr := r.kvFail(ctx, kv, appv1alpha1.ReasonSecretRecreateFailed, err)
@@ -736,6 +750,10 @@ type keyValueIntent struct {
 	// template keeps because CONFIG SET can bring its server to the plan's
 	// (applyKeyValueStatefulSet).
 	heldMaxclients *string
+	// withoutUsername renders the server without the store's id user, as an
+	// existing template started before it holds (applyKeyValueStatefulSet);
+	// ACL SETUSER adds the user to its server (reconcileKeyValueUsername).
+	withoutUsername bool
 }
 
 func keyValueIntentFor(kv *appv1alpha1.KeyValue, plan tiers.ValkeyTier, storageGB int32, kvDomain string, listening, tlsRuntime bool) keyValueIntent {
@@ -919,7 +937,11 @@ func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent k
 	// exporter's authenticated INFO scrape).
 	passwordEnv := kvSecretEnv(kvPasswordEnv, intent.authSecretName)
 	platformPasswordEnv := kvSecretEnv(kvPlatformPasswordEnv, intent.platformSecretName)
-	serverArgs := valkeyArgs(kv.Spec, intent.plan)
+	user := kv.Name
+	if intent.withoutUsername {
+		user = ""
+	}
+	serverArgs := valkeyArgs(kv.Spec, intent.plan, user)
 	if intent.heldMaxclients != nil {
 		serverArgs = withValkeyArg(serverArgs, "--maxclients", *intent.heldMaxclients)
 	}
@@ -1050,6 +1072,9 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return r.kvFail(ctx, &kv, reason, err)
 	}
 
+	if err := r.reconcileKeyValueBirth(ctx, &kv, sts, &intent); err != nil {
+		return r.kvFail(ctx, &kv, appv1alpha1.ReasonServiceFailed, err)
+	}
 	// --- credentials Secrets (created first so the StatefulSet's env ref resolves) ---
 	auth, result, done, err := r.reconcileKeyValueCredentials(ctx, &kv, intent.internalHost)
 	if done || err != nil {
@@ -1090,22 +1115,7 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return r.kvFail(ctx, &kv, appv1alpha1.ReasonBackupCronJobFailed, err)
 	}
 
-	// --- optional external SNI endpoint via the metered Key Value front door ---
-	// The shared kv-sni-proxy watches this KeyValue directly and owns SNI,
-	// resource/environment IP allowlisting, TLS pass-through, and
-	// backend→client accounting.
-	if intent.public {
-		kv.Status.ExternalHost = fmt.Sprintf("%s.%s", kv.Name, r.KvDomain)
-	} else {
-		kv.Status.ExternalHost = ""
-	}
-	var tlsPending, policyPending bool
-	kv.Status.TLSListener, tlsPending = r.reconcileKeyValueTLSListener(ctx, &kv, sts, platform, intent)
-	r.setKeyValuePublicCertificate(ctx, &kv, intent.public, kv.Status.TLSListener)
-	kv.Status.TLSRuntimeSwitch = intent.tlsRuntime
-	kv.Status.MaxmemoryPolicy, policyPending = r.reconcileKeyValueMaxmemory(ctx, &kv, sts, platform, intent)
-	clientsPending := r.reconcileKeyValueMaxclients(ctx, &kv, sts, platform, intent)
-	runtimePending := tlsPending || policyPending || clientsPending
+	runtimePending := r.reconcileKeyValueRuntime(ctx, &kv, sts, platform, intent)
 
 	// Surface the connection coordinates (the password stays in the Secret).
 	kv.Status.Host = intent.internalHost
@@ -1124,6 +1134,42 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	result, err = r.updateKeyValueReadiness(ctx, &kv, sts, intent.replicas, intent.credentialRevision)
 	return keyValueRuntimeRequeue(result, runtimePending, proxyCutPending), err
+}
+
+// reconcileKeyValueBirth runs before the credentials, so a new store's
+// connection Secret is written in Render's shapes from its first pass
+// (w9/m521): credential-free while its Service routes through the proxy from
+// birth, and naming the store's id, which every server started from a new
+// template knows.
+func (r *KeyValueReconciler) reconcileKeyValueBirth(ctx context.Context, kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet, intent *keyValueIntent) error {
+	if sts.CreationTimestamp.IsZero() {
+		kv.Status.Username = kv.Name
+	}
+	return r.routeKeyValueFromBirth(ctx, kv, intent)
+}
+
+// reconcileKeyValueRuntime records the external endpoint and brings the
+// running server to the store's TLS listener, maxmemory policy, client limit
+// and id user, each switched at runtime. It reports whether any switch is
+// still pending.
+//
+// The optional external SNI endpoint is the metered Key Value front door: the
+// shared kv-sni-proxy watches this KeyValue directly and owns SNI,
+// resource/environment IP allowlisting, TLS pass-through, and backend→client
+// accounting.
+func (r *KeyValueReconciler) reconcileKeyValueRuntime(ctx context.Context, kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet, platform *corev1.Secret, intent keyValueIntent) (pending bool) {
+	kv.Status.ExternalHost = ""
+	if intent.public {
+		kv.Status.ExternalHost = fmt.Sprintf("%s.%s", kv.Name, r.KvDomain)
+	}
+	var tlsPending, policyPending bool
+	kv.Status.TLSListener, tlsPending = r.reconcileKeyValueTLSListener(ctx, kv, sts, platform, intent)
+	r.setKeyValuePublicCertificate(ctx, kv, intent.public, kv.Status.TLSListener)
+	kv.Status.TLSRuntimeSwitch = intent.tlsRuntime
+	kv.Status.MaxmemoryPolicy, policyPending = r.reconcileKeyValueMaxmemory(ctx, kv, sts, platform, intent)
+	clientsPending := r.reconcileKeyValueMaxclients(ctx, kv, sts, platform, intent)
+	usernamePending := r.reconcileKeyValueUsername(ctx, kv, sts, platform, intent)
+	return tlsPending || policyPending || clientsPending || usernamePending
 }
 
 // keyValueRuntimeRequeue polls sooner while a runtime TLS, maxmemory or client
@@ -1194,7 +1240,8 @@ func (r *KeyValueReconciler) updateKeyValueReadiness(
 	rolloutReady := sts.Generation == writtenGeneration && statefulSetRolloutReady(sts, replicas)
 	podsReady := r.keyValuePodsReady(ctx, kv, sts, replicas)
 	proxyReady := r.keyValueInternalProxyReady(ctx, kv)
-	if kv.Spec.Suspended || (rolloutReady && podsReady && proxyReady) {
+	listenerWait := keyValueFirstListenerWait(kv, time.Now())
+	if kv.Spec.Suspended || (rolloutReady && podsReady && proxyReady && listenerWait == 0) {
 		kv.Status.CredentialRevision = credentialRevision
 		reason, message := appv1alpha1.ReasonProvisioned, "valkey ready"
 		if kv.Spec.Suspended {
@@ -1220,6 +1267,11 @@ func (r *KeyValueReconciler) updateKeyValueReadiness(
 	if rolloutReady && !podsReady {
 		reason, message = appv1alpha1.ReasonPodUnready, "a current Valkey pod is not Ready"
 	}
+	requeue := kvStorageRequeue
+	if rolloutReady && podsReady && proxyReady {
+		message = "waiting for the external TLS listener"
+		requeue = min(requeue, listenerWait)
+	}
 	if persistenceReason, persistenceMessage := r.keyValuePersistenceProgress(ctx, kv, sts); persistenceReason != "" {
 		reason, message = persistenceReason, persistenceMessage
 		if reason == appv1alpha1.ReasonPersistenceTransitionFailed {
@@ -1233,7 +1285,33 @@ func (r *KeyValueReconciler) updateKeyValueReadiness(
 	if err := updateStatusIfChanged(ctx, r.Client, kv); err != nil {
 		return ctrl.Result{}, err
 	}
-	return ctrl.Result{RequeueAfter: kvStorageRequeue}, nil
+	return ctrl.Result{RequeueAfter: requeue}, nil
+}
+
+// kvFirstListenerWait bounds how long a store created public reads creating
+// while its external TLS listener has not opened. The listener opens about a
+// minute after the create, once the certificate is issued; a certificate
+// still not issued after this reads available with externalCertificate
+// pending, so a stalled issuance never holds the store's internal clients.
+const kvFirstListenerWait = 5 * time.Minute
+
+// keyValueFirstListenerWait is how much longer a store created public stays
+// creating for its external TLS listener (w9/m521): connection info hands out
+// the external URL from the create, as Render's does, and Render's available
+// means every string it handed out connects. Zero once the listener runs, for
+// a store that has been available before (a later first enable reads
+// available with externalCertificate pending, and a restart reads
+// config_restart), when the certificate failed (externalCertificate failed),
+// or after kvFirstListenerWait.
+func keyValueFirstListenerWait(kv *appv1alpha1.KeyValue, now time.Time) time.Duration {
+	if kv.Status.ExternalHost == "" || kv.Status.TLSListener || kv.Status.CredentialRevision != "" {
+		return 0
+	}
+	if c := meta.FindStatusCondition(kv.Status.Conditions, appv1alpha1.ConditionPublicCertificateReady); c != nil &&
+		slices.Contains(appv1alpha1.PublicCertificateFailedReasons, c.Reason) {
+		return 0
+	}
+	return max(kvFirstListenerWait-now.Sub(kv.CreationTimestamp.Time), 0)
 }
 
 func keyValuePVCName(name string) string {

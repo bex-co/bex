@@ -472,15 +472,15 @@ const deKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connExternalPending": {
     message:
-      "Der externe Zugriff wird aktiviert: Ein öffentlich vertrauenswürdiges Zertifikat wird ausgestellt (meist wenige Minuten). Die externe URL erscheint, sobald der Store TLS-Verbindungen akzeptiert; bis dahin ist er nur von deinen Services aus erreichbar, mit der internen URL und dem Befehl unten. Blende sie aus und wieder ein, um zu aktualisieren.",
+      "Der externe Zugriff wird aktiviert: Ein öffentlich vertrauenswürdiges Zertifikat wird ausgestellt (meist wenige Minuten). Die externe URL und der CLI-Befehl verbinden, sobald der Store TLS-Verbindungen akzeptiert; bis dahin ist er nur von deinen Services aus erreichbar, mit der internen URL. Blende sie aus und wieder ein, um zu aktualisieren.",
     description:
-      "Shown instead of the external URL while a public store's TLS listener is still opening",
+      "Shown under the external URL while a public store's TLS listener is still opening (w9/m521)",
   },
   "keyvalue.connExternalFailed": {
     message:
-      "Die externe URL ist noch nicht erreichbar: Die Ausstellung des öffentlich vertrauenswürdigen Zertifikats dieses Stores ist fehlgeschlagen, und bex versucht es automatisch erneut. Bis es gelingt, ist der Store nur von deinen Services aus erreichbar, mit der internen URL und dem Befehl unten.",
+      "Die externe URL und der CLI-Befehl verbinden noch nicht: Die Ausstellung des öffentlich vertrauenswürdigen Zertifikats dieses Stores ist fehlgeschlagen, und bex versucht es automatisch erneut. Bis es gelingt, ist der Store nur von deinen Services aus erreichbar, mit der internen URL.",
     description:
-      "Shown instead of the external URL when a public store's certificate failed to issue (w4/m357)",
+      "Shown under the external URL when a public store's certificate failed to issue (w4/m357, w9/m521)",
   },
   "keyvalue.connExternalUnavailable": {
     message:
@@ -490,7 +490,7 @@ const deKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connCli": {
     message: "Valkey-CLI-Befehl",
-    description: "Connection-info field label (ready-to-run redis-cli command)",
+    description: "Connection-info field label (ready-to-run valkey-cli command)",
   },
   "keyvalue.connErrorTitle": {
     message: "Verbindungsinfos konnten nicht geladen werden",

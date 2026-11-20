@@ -39,7 +39,7 @@ func TestValkeyArgs(t *testing.T) {
 	}
 
 	t.Run("empty spec preserves the prior default (appendonly yes, no maxmemory)", func(t *testing.T) {
-		args := valkeyArgs(appv1alpha1.KeyValueSpec{}, plan)
+		args := valkeyArgs(appv1alpha1.KeyValueSpec{}, plan, "")
 		if !has(args, "--appendonly", "yes") {
 			t.Errorf("want --appendonly yes, got %v", args)
 		}
@@ -49,14 +49,14 @@ func TestValkeyArgs(t *testing.T) {
 	})
 
 	t.Run("persistence off disables AOF and RDB", func(t *testing.T) {
-		args := valkeyArgs(appv1alpha1.KeyValueSpec{PersistenceMode: "off"}, plan)
+		args := valkeyArgs(appv1alpha1.KeyValueSpec{PersistenceMode: "off"}, plan, "")
 		if !has(args, "--appendonly", "no") || !has(args, "--save", "") {
 			t.Errorf("want --appendonly no + --save \"\", got %v", args)
 		}
 	})
 
 	t.Run("snapshot keeps RDB but no AOF", func(t *testing.T) {
-		args := valkeyArgs(appv1alpha1.KeyValueSpec{PersistenceMode: "snapshot"}, plan)
+		args := valkeyArgs(appv1alpha1.KeyValueSpec{PersistenceMode: "snapshot"}, plan, "")
 		if !has(args, "--appendonly", "no") {
 			t.Errorf("want --appendonly no, got %v", args)
 		}
@@ -66,7 +66,7 @@ func TestValkeyArgs(t *testing.T) {
 	})
 
 	t.Run("maxmemory policy sets the budget to 80% of plan RAM", func(t *testing.T) {
-		args := valkeyArgs(appv1alpha1.KeyValueSpec{MaxmemoryPolicy: "allkeys-lru"}, plan)
+		args := valkeyArgs(appv1alpha1.KeyValueSpec{MaxmemoryPolicy: "allkeys-lru"}, plan, "")
 		if !has(args, "--maxmemory-policy", "allkeys-lru") {
 			t.Errorf("want --maxmemory-policy allkeys-lru, got %v", args)
 		}
@@ -81,8 +81,8 @@ func TestValkeyArgs(t *testing.T) {
 	// plane's clients log in as their own user, so the tenant restriction can't
 	// lock the persistence handoff, exporter or backups out.
 	t.Run("tenant ACL is first and drops @admin; the platform user owns its own password", func(t *testing.T) {
-		args := valkeyArgs(appv1alpha1.KeyValueSpec{}, plan)
-		rule := valkeyDefaultUserRule("$(VALKEY_PASSWORD)")
+		args := valkeyArgs(appv1alpha1.KeyValueSpec{}, plan, "")
+		rule := valkeyTenantUserRule(kvDefaultUser, ">$(VALKEY_PASSWORD)")
 		if len(args) < 1+len(rule) || args[0] != "--user" || !slices.Equal(args[1:1+len(rule)], rule) {
 			t.Fatalf("want --user %v first, got %v", rule, args)
 		}

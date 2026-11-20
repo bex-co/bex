@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -28,6 +29,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -312,18 +314,47 @@ func (r *KeyValueReconciler) keyValueInternalProxyReady(ctx context.Context, kv 
 	return reader.Get(ctx, client.ObjectKey{Name: keyValueInternalProxyName(kv), Namespace: kv.Namespace}, dep) == nil && keyValueInternalDeploymentReady(dep)
 }
 
+// routeKeyValueFromBirth decides, before the credential Secrets are written,
+// whether this pass creates the store's stable Service. A store whose Service
+// does not exist yet has no client connected straight to Valkey, so its
+// Service selects the internal proxy from birth and its internal URL is
+// credential-free from the first read, as Render's is (w9/m521). Until the
+// proxy is Ready the Service has no endpoints, as while any store is still
+// creating, and readiness waits for the proxy. A store whose Service already
+// exists keeps the w8/204 cutover, which waits for the Ready proxy before it
+// moves the Service. A missing Service is confirmed uncached: a lagging cache
+// must never take a running store's direct Service for a missing one.
+func (r *KeyValueReconciler) routeKeyValueFromBirth(ctx context.Context, kv *appv1alpha1.KeyValue, intent *keyValueIntent) error {
+	if r.InternalProxyImage == "" {
+		return nil
+	}
+	key := client.ObjectKeyFromObject(kv)
+	if err := r.Get(ctx, key, &corev1.Service{}); !apierrors.IsNotFound(err) {
+		return err
+	}
+	if err := cmp.Or(r.APIReader, client.Reader(r.Client)).Get(ctx, key, &corev1.Service{}); !apierrors.IsNotFound(err) {
+		return err
+	}
+	intent.internalProxy = true
+	if !kv.Spec.InternalAuth {
+		kv.Status.InternalAuthOptional = true
+	}
+	return nil
+}
+
 // reconcileKeyValueInternalRoute points the stable Service at the store's
-// internal proxy once it is ready (w8/204) and keeps it there, so every tenant
-// connection meets the plan's limit (w6/m456). With internal auth enabled
-// (w5/m268) the proxy forwards each client's own AUTH (w6/m463): enabling it
-// rolls the proxy, whose old pod drops the connections it authenticated, as
-// Render's restart does, and the internal URL carries the password again.
+// internal proxy once it is ready (w8/204), or from birth for a new store
+// (routeKeyValueFromBirth), and keeps it there, so every tenant connection
+// meets the plan's limit (w6/m456). With internal auth enabled (w5/m268) the
+// proxy forwards each client's own AUTH (w6/m463): enabling it rolls the
+// proxy, whose old pod drops the connections it authenticated, as Render's
+// restart does, and the internal URL carries the password again.
 func (r *KeyValueReconciler) reconcileKeyValueInternalRoute(ctx context.Context, kv *appv1alpha1.KeyValue, intent *keyValueIntent) error {
 	proxyReady, err := r.reconcileKeyValueInternalProxy(ctx, kv, *intent)
 	if err != nil {
 		return err
 	}
-	intent.internalProxy = proxyReady || kv.Status.InternalAuthOptional
+	intent.internalProxy = intent.internalProxy || proxyReady || kv.Status.InternalAuthOptional
 	if err := r.reconcileKeyValueService(ctx, kv, *intent); err != nil {
 		return err
 	}

@@ -141,11 +141,102 @@ describe("ConnectionInfoPanel", () => {
     ).toBeInTheDocument();
   });
 
-  it("says a public store's external URL is still being enabled instead of calling it private (w8/237)", () => {
+  // w9/m521: the external URL is answered from the create, as on Render, and
+  // shown at once; the note under it says the endpoint is not open yet.
+  it("shows a public store's external URL with a pending note while its TLS listener opens", () => {
     state.info = {
-      internalConnectionString: "redis://default:s3cr3t@kv.default.svc:6379",
+      internalConnectionString: "redis://kv:6379",
+      externalConnectionString: "rediss://kv:s3cr3t@kv.kv.bex.co:6379",
+      cliCommand:
+        " REDISCLI_AUTH=s3cr3t valkey-cli --user kv -h kv.kv.bex.co --sni kv.kv.bex.co -p 6379 --tls",
+      externalCertificate: "pending",
+    };
+    render(
+      <ConnectionInfoPanel
+        id="kv"
+        name="cache"
+        internalAuth={false}
+        isPublic
+      />,
+    );
+    expect(screen.getByText("External Key Value URL")).toBeInTheDocument();
+    expect(
+      screen.getByText("rediss://kv:s3cr3t@kv.kv.bex.co:6379"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/External access is being enabled/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/certificate failed/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Add an inbound IP rule under Networking/i),
+    ).not.toBeInTheDocument();
+  });
+
+  // w4/m357 (rounds 254/304): issuance failed for hours and the card kept
+  // promising "usually within a minute". It now says the URL does not connect
+  // yet, and why, under the URL itself.
+  it("shows a public store's external URL with a failed note when its certificate failed", () => {
+    state.info = {
+      internalConnectionString: "redis://kv:6379",
+      externalConnectionString: "rediss://kv:s3cr3t@kv.kv.bex.co:6379",
+      cliCommand:
+        " REDISCLI_AUTH=s3cr3t valkey-cli --user kv -h kv.kv.bex.co --sni kv.kv.bex.co -p 6379 --tls",
+      externalCertificate: "failed",
+    };
+    render(
+      <ConnectionInfoPanel
+        id="kv"
+        name="cache"
+        internalAuth={false}
+        isPublic
+      />,
+    );
+    expect(
+      screen.getByText("rediss://kv:s3cr3t@kv.kv.bex.co:6379"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/certificate failed, and bex retries it automatically/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/External access is being enabled/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("adds no note under a public store's open external URL", () => {
+    state.info = {
+      internalConnectionString: "redis://kv:6379",
+      externalConnectionString: "rediss://kv:s3cr3t@kv.kv.bex.co:6379",
+      cliCommand:
+        " REDISCLI_AUTH=s3cr3t valkey-cli --user kv -h kv.kv.bex.co --sni kv.kv.bex.co -p 6379 --tls",
+      externalCertificate: "publiclyTrusted",
+    };
+    render(
+      <ConnectionInfoPanel
+        id="kv"
+        name="cache"
+        internalAuth={false}
+        isPublic
+      />,
+    );
+    expect(
+      screen.getByText("rediss://kv:s3cr3t@kv.kv.bex.co:6379"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/External access is being enabled/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/certificate failed/i),
+    ).not.toBeInTheDocument();
+  });
+
+  // An older bex-api withheld the URL until the listener opened (w8/237).
+  it("says a public store's external URL is still being enabled when the answer has none", () => {
+    state.info = {
+      internalConnectionString: "redis://kv:6379",
       externalConnectionString: "",
-      cliCommand: "redis-cli -u redis://default:s3cr3t@kv.default.svc:6379",
+      cliCommand: " valkey-cli -h kv -p 6379",
     };
     render(
       <ConnectionInfoPanel
@@ -161,35 +252,6 @@ describe("ConnectionInfoPanel", () => {
     expect(
       screen.getByText(/External access is being enabled/i),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText(/Add an inbound IP rule under Networking/i),
-    ).not.toBeInTheDocument();
-  });
-
-  // w4/m357 (rounds 254/304): issuance failed for hours and the card kept
-  // promising "usually within a minute". It now says the store is not
-  // reachable from outside yet, and why.
-  it("says a public store's external URL is not reachable when its certificate failed", () => {
-    state.info = {
-      internalConnectionString: "redis://kv:6379",
-      externalConnectionString: "",
-      cliCommand: "redis-cli -u redis://kv:6379",
-      externalCertificate: "failed",
-    };
-    render(
-      <ConnectionInfoPanel
-        id="kv"
-        name="cache"
-        internalAuth={false}
-        isPublic
-      />,
-    );
-    expect(
-      screen.getByText(/certificate failed, and bex retries it automatically/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText(/External access is being enabled/i),
-    ).not.toBeInTheDocument();
   });
 
   it("shows the external field only when the store is public", () => {

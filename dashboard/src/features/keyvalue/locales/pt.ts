@@ -465,15 +465,15 @@ const ptKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connExternalPending": {
     message:
-      "O acesso externo está sendo ativado: um certificado publicamente confiável está sendo emitido (geralmente leva alguns minutos). A URL externa aparece quando o armazenamento aceitar conexões TLS; até lá, ele só pode ser acessado pelos seus serviços, com a URL interna e o comando abaixo. Oculte e revele novamente para atualizar.",
+      "O acesso externo está sendo ativado: um certificado publicamente confiável está sendo emitido (geralmente leva alguns minutos). A URL externa e o comando da CLI conectam quando o armazenamento aceitar conexões TLS; até lá, ele só pode ser acessado pelos seus serviços, com a URL interna. Oculte e revele novamente para atualizar.",
     description:
-      "Shown instead of the external URL while a public store's TLS listener is still opening",
+      "Shown under the external URL while a public store's TLS listener is still opening (w9/m521)",
   },
   "keyvalue.connExternalFailed": {
     message:
-      "A URL externa ainda não está acessível: a emissão do certificado publicamente confiável deste armazenamento falhou, e o bex tenta novamente de forma automática. Até que tenha êxito, o armazenamento só pode ser acessado pelos seus serviços, com a URL interna e o comando abaixo.",
+      "A URL externa e o comando da CLI ainda não conectam: a emissão do certificado publicamente confiável deste armazenamento falhou, e o bex tenta novamente de forma automática. Até que tenha êxito, o armazenamento só pode ser acessado pelos seus serviços, com a URL interna.",
     description:
-      "Shown instead of the external URL when a public store's certificate failed to issue (w4/m357)",
+      "Shown under the external URL when a public store's certificate failed to issue (w4/m357, w9/m521)",
   },
   "keyvalue.connExternalUnavailable": {
     message:
@@ -483,7 +483,7 @@ const ptKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connCli": {
     message: "Comando do Valkey CLI",
-    description: "Connection-info field label (ready-to-run redis-cli command)",
+    description: "Connection-info field label (ready-to-run valkey-cli command)",
   },
   "keyvalue.connErrorTitle": {
     message: "Não foi possível carregar as informações de conexão",

@@ -753,8 +753,9 @@ func TestRESTKeyValueConnectionInfo(t *testing.T) {
 	if ci.ExternalConnectionString != "rediss://default:s3cret@conn-kv.kv.bex.co:6379" {
 		t.Errorf("external = %q", ci.ExternalConnectionString)
 	}
-	// cliCommand connects over the external (TLS) endpoint when public.
-	if ci.CLICommand != "redis-cli --sni conn-kv.kv.bex.co -u rediss://default:s3cret@conn-kv.kv.bex.co:6379" {
+	// cliCommand connects over the external (TLS) endpoint when public, in
+	// Render's shape plus the --sni bex's edge routes by (w9/m521).
+	if ci.CLICommand != " REDISCLI_AUTH=s3cret valkey-cli --user default -h conn-kv.kv.bex.co --sni conn-kv.kv.bex.co -p 6379 --tls" {
 		t.Errorf("cliCommand = %q", ci.CLICommand)
 	}
 	// Render's keyValueConnectionInfo has no standalone password field — the
@@ -863,7 +864,7 @@ func TestRESTKeyValueConnectionInfoInternalOnly(t *testing.T) {
 	if ci.ExternalConnectionString != "" {
 		t.Errorf("private store must have no external string, got %q", ci.ExternalConnectionString)
 	}
-	if ci.CLICommand != "redis-cli -u redis://default:pw@priv.default.svc:6379" {
+	if ci.CLICommand != " REDISCLI_AUTH=pw valkey-cli --user default -h priv.default.svc -p 6379" {
 		t.Errorf("cliCommand should use internal for a private store, got %q", ci.CLICommand)
 	}
 }
@@ -1946,11 +1947,11 @@ func TestPublishedStoreGetsAnExternalConnectionString(t *testing.T) {
 	}
 }
 
-// w8/237: on a first enable the operator sets externalHost about a minute
-// before the TLS listener opens; connection-info advertised the rediss:// URL
-// at once, and a client handed it saw `SSL_connect failed: unexpected eof`.
-// The URL (and the --sni CLI command) now wait for the listener.
-func TestConnectionInfoWaitsForTheTLSListener(t *testing.T) {
+// w9/m521 (replacing w8/237's withholding): Render answers a public store's
+// external URL from the create, before its endpoint accepts connections.
+// connection-info does too, with Render's CLI command over it, and
+// externalCertificate (w4/m357) says whether the TLS listener is open yet.
+func TestConnectionInfoAnswersTheExternalURLBeforeTheTLSListener(t *testing.T) {
 	svc, cl := newService()
 	seedKeyValue(t, cl, "opening-kv")
 	var kv appv1alpha1.KeyValue
@@ -1977,11 +1978,13 @@ func TestConnectionInfoWaitsForTheTLSListener(t *testing.T) {
 		}
 		return v
 	}
+	const external = "rediss://default:s3cret@opening-kv.kv.bex.co:6379"
+	const cli = " REDISCLI_AUTH=s3cret valkey-cli --user default -h opening-kv.kv.bex.co --sni opening-kv.kv.bex.co -p 6379 --tls"
 	// w4/m357: the pending endpoint is named on the read and the connection
 	// info, so a public store without a listener never reads as reachable.
-	if ci := read(); ci.ExternalConnectionString != "" || strings.Contains(ci.CLICommand, "--sni") || ci.InternalConnectionString == "" ||
+	if ci := read(); ci.ExternalConnectionString != external || ci.CLICommand != cli || ci.InternalConnectionString == "" ||
 		ci.ExternalCertificate != core.ExternalCertificatePending {
-		t.Fatalf("listener not open yet: connection-info = %+v, want the internal URL only and a pending certificate", ci)
+		t.Fatalf("listener not open yet: connection-info = %+v, want the external URL, its CLI command and a pending certificate", ci)
 	}
 	if v := readView(); v.ExternalCertificate != core.ExternalCertificatePending {
 		t.Fatalf("listener not open yet: read externalCertificate = %q, want pending", v.ExternalCertificate)
@@ -1995,14 +1998,15 @@ func TestConnectionInfoWaitsForTheTLSListener(t *testing.T) {
 		t.Fatal(err)
 	}
 	if ci, v := read(), readView(); ci.ExternalCertificate != core.ExternalCertificateFailed || v.ExternalCertificate != core.ExternalCertificateFailed ||
-		!strings.Contains(v.ExternalCertificateReason, "rate limit") || ci.ExternalCertificateReason != v.ExternalCertificateReason {
+		!strings.Contains(v.ExternalCertificateReason, "rate limit") || ci.ExternalCertificateReason != v.ExternalCertificateReason ||
+		ci.ExternalConnectionString != external || ci.CLICommand != cli {
 		t.Fatalf("rate-limited: connection-info = %+v, read = %q / %q", ci, v.ExternalCertificate, v.ExternalCertificateReason)
 	}
 	kv.Status.TLSListener = true
 	if err := cl.Update(context.Background(), &kv); err != nil {
 		t.Fatal(err)
 	}
-	if ci := read(); ci.ExternalConnectionString != "rediss://default:s3cret@opening-kv.kv.bex.co:6379" || !strings.Contains(ci.CLICommand, "--sni opening-kv.kv.bex.co") ||
+	if ci := read(); ci.ExternalConnectionString != external || ci.CLICommand != cli ||
 		ci.ExternalCertificate != core.ExternalCertificatePubliclyTrusted || ci.ExternalCertificateReason != "" {
 		t.Fatalf("listener open: connection-info = %+v, want the external URL, --sni command and a trusted certificate", ci)
 	}

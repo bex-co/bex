@@ -463,15 +463,15 @@ const jaKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connExternalPending": {
     message:
-      "外部アクセスを有効にしています。公的に信頼される証明書を発行中です（通常は数分かかります）。ストアが TLS 接続を受け付けるようになると外部 URL が表示されます。それまでは、下の内部 URL とコマンドを使って、お使いのサービスからのみ到達できます。非表示にしてからもう一度表示すると更新されます。",
+      "外部アクセスを有効にしています。公的に信頼される証明書を発行中です（通常は数分かかります）。ストアが TLS 接続を受け付けるようになると、外部 URL と CLI コマンドで接続できます。それまでは、内部 URL を使って、お使いのサービスからのみ到達できます。非表示にしてからもう一度表示すると更新されます。",
     description:
-      "Shown instead of the external URL while a public store's TLS listener is still opening",
+      "Shown under the external URL while a public store's TLS listener is still opening (w9/m521)",
   },
   "keyvalue.connExternalFailed": {
     message:
-      "外部 URL にはまだ到達できません。このストアの公的に信頼される証明書の発行に失敗しており、bex は自動的に再試行します。成功するまでは、下の内部 URL とコマンドを使って、お使いのサービスからのみ到達できます。",
+      "外部 URL と CLI コマンドではまだ接続できません。このストアの公的に信頼される証明書の発行に失敗しており、bex は自動的に再試行します。成功するまでは、内部 URL を使って、お使いのサービスからのみ到達できます。",
     description:
-      "Shown instead of the external URL when a public store's certificate failed to issue (w4/m357)",
+      "Shown under the external URL when a public store's certificate failed to issue (w4/m357, w9/m521)",
   },
   "keyvalue.connExternalUnavailable": {
     message:
@@ -481,7 +481,7 @@ const jaKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.connCli": {
     message: "Valkey CLI コマンド",
-    description: "Connection-info field label (ready-to-run redis-cli command)",
+    description: "Connection-info field label (ready-to-run valkey-cli command)",
   },
   "keyvalue.connErrorTitle": {
     message: "接続情報を読み込めませんでした",

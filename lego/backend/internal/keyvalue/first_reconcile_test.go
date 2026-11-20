@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
@@ -35,11 +34,18 @@ import (
 )
 
 // w9/108: Render answers connection-info for a store that is still creating,
-// and its Terraform provider reads it straight after the create. A store the
-// operator has reconciled once (host, port and credential Secret recorded) but
-// whose pods have not served yet has no recorded revision, and its unchanging
-// password is served on REST (both dialects) and GraphQL. MCP has no
-// credential read, as Render's MCP server has none.
+// and its Terraform provider reads it straight after the create. w9/m521: in
+// Render's shapes. A store the operator has reconciled once (host, port and
+// credential Secret recorded, its Service routed through the proxy from
+// birth, its id user in the new template) but whose pods have not served yet
+// answers on REST (both dialects) and GraphQL:
+//
+//   - the external URL with the id as its user, though the TLS listener is
+//     not open yet, with externalCertificate pending;
+//   - the internal URL with no credentials;
+//   - Render's CLI command over the external endpoint, with bex's --sni.
+//
+// MCP has no credential read, as Render's MCP server has none.
 func TestConnectionInfoServesAStoreWithNoRecordedRevision(t *testing.T) {
 	password := []byte("first-provision-password")
 	kv := &appv1alpha1.KeyValue{
@@ -48,15 +54,21 @@ func TestConnectionInfoServesAStoreWithNoRecordedRevision(t *testing.T) {
 		Status: appv1alpha1.KeyValueStatus{
 			Phase: appv1alpha1.KVPhaseProvisioning, Host: "red-creating.default.svc", Port: 6379,
 			SecretName: "red-creating", CredentialSecretName: "red-creating-auth",
+			InternalAuthOptional: true, Username: "red-creating",
 			// The external host is set on the first pass; its TLS listener
-			// opens once the certificate is issued (w8/237).
+			// opens once the certificate is issued.
 			ExternalHost: "red-creating.kv.bex.co",
 		},
 	}
 	auth := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "red-creating-auth", Namespace: "default"},
 		Data: map[string][]byte{"username": []byte("default"), "password": password}}
 	svc, _ := newService(kv, auth)
-	wantInternal := "redis://default:" + string(password) + "@red-creating.default.svc:6379"
+	want := map[string]string{
+		"internalConnectionString": "redis://red-creating:6379",
+		"externalConnectionString": "rediss://red-creating:" + string(password) + "@red-creating.kv.bex.co:6379",
+		"cliCommand": " REDISCLI_AUTH=" + string(password) +
+			" valkey-cli --user red-creating -h red-creating.kv.bex.co --sni red-creating.kv.bex.co -p 6379 --tls",
+	}
 
 	for path, cliField := range map[string]string{
 		"/v1/key-value/red-creating/connection-info": "cliCommand",
@@ -67,14 +79,16 @@ func TestConnectionInfoServesAStoreWithNoRecordedRevision(t *testing.T) {
 			t.Fatalf("GET %s => %d %s, want 200", path, rec.Code, rec.Body.String())
 		}
 		body := decodeMap(t, rec.Body.Bytes())
-		if body["internalConnectionString"] != wantInternal {
-			t.Errorf("GET %s internalConnectionString = %v, want %s", path, body["internalConnectionString"], wantInternal)
+		for field, value := range want {
+			if field == "cliCommand" {
+				field = cliField
+			}
+			if body[field] != value {
+				t.Errorf("GET %s %s = %q, want %q", path, field, body[field], value)
+			}
 		}
-		if ext, ok := body["externalConnectionString"]; !ok || ext != "" {
-			t.Errorf("GET %s externalConnectionString = %v (present %v), want \"\" until the TLS listener opens", path, ext, ok)
-		}
-		if cli, _ := body[cliField].(string); !strings.Contains(cli, wantInternal) {
-			t.Errorf("GET %s %s = %q, want one connecting to %s", path, cliField, cli, wantInternal)
+		if path == "/v1/key-value/red-creating/connection-info" && body["externalCertificate"] != core.ExternalCertificatePending {
+			t.Errorf("GET %s externalCertificate = %v, want pending until the TLS listener opens", path, body["externalCertificate"])
 		}
 	}
 
@@ -88,8 +102,10 @@ func TestConnectionInfoServesAStoreWithNoRecordedRevision(t *testing.T) {
 		t.Fatalf("GraphQL errors: %v", res.Errors)
 	}
 	gql, _ := res.Data.(map[string]any)["keyValueConnectionInfo"].(map[string]any)
-	if gql["internalConnectionString"] != wantInternal || gql["externalConnectionString"] != "" {
-		t.Fatalf("GraphQL connection info = %v, want internal %s and an empty external string", gql, wantInternal)
+	for field, value := range want {
+		if gql[field] != value {
+			t.Errorf("GraphQL %s = %q, want %q", field, gql[field], value)
+		}
 	}
 }
 
@@ -116,6 +132,7 @@ func firstPass(cl client.Client, name string, public bool, password []byte) erro
 	kv.Status = appv1alpha1.KeyValueStatus{
 		Phase: appv1alpha1.KVPhaseProvisioning, Host: name + ".default.svc", Port: 6379,
 		SecretName: name, CredentialSecretName: name + "-auth",
+		InternalAuthOptional: true, Username: name,
 	}
 	if public {
 		kv.Status.ExternalHost = name + ".kv.bex.co"
@@ -143,9 +160,15 @@ func TestConnectionInfoWaitsForTheFirstReconcile(t *testing.T) {
 			if passErr := <-passed; passErr != nil {
 				t.Fatalf("first pass: %v", passErr)
 			}
-			want := "redis://default:" + string(password) + "@" + name + ".default.svc:6379"
-			if err != nil || info.InternalConnectionString != want {
-				t.Fatalf("connection info across the first reconcile = %+v, %v; want internal %s", info, err, want)
+			want := KeyValueConnectionInfo{InternalConnectionString: "redis://" + name + ":6379",
+				CLICommand: " valkey-cli -h " + name + " -p 6379"}
+			if public {
+				want.ExternalConnectionString = "rediss://" + name + ":" + string(password) + "@" + name + ".kv.bex.co:6379"
+				want.CLICommand = " REDISCLI_AUTH=" + string(password) + " valkey-cli --user " + name + " -h " + name + ".kv.bex.co --sni " + name + ".kv.bex.co -p 6379 --tls"
+				want.ExternalCertificate = core.ExternalCertificatePending
+			}
+			if err != nil || info != want {
+				t.Fatalf("connection info across the first reconcile = %+v, %v; want %+v", info, err, want)
 			}
 		})
 	}
