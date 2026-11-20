@@ -200,3 +200,48 @@ func TestEveryRenderMetricsPathAndParameterHasAVerdict(t *testing.T) {
 		}
 	}
 }
+
+// w8/351: Render types resolutionSeconds as a number of at least 30 on every
+// /metrics path, and its pinned client sends a float32. Through the composed
+// server, a decimal or exponent spelling clears the strict validator and the
+// handler alike (the sample resource does not exist, so it reaches the verb's
+// 404), and a refusal never carries a Go parser message.
+func TestRenderMetricsResolutionSecondsIsANumber(t *testing.T) {
+	contract, err := renderContractOnce()
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, _ := serverWith(t, &core.Base{
+		Client: fakeClient(), Namespace: "default", Workspace: fakeWorkspace{"client-1": "tea-cli"},
+	}, Deps{APIKeys: newFakeKeyStore()})
+
+	checked := 0
+	for path := range contract.document.Paths.Map() {
+		item := contract.document.Paths.Find(path)
+		if _, nonGoal := renderMetricsNonGoals[path]; nonGoal || !strings.HasPrefix(path, "/metrics/") || item.Get == nil {
+			continue
+		}
+		if item.Get.Parameters.GetByInAndName("query", "resolutionSeconds") == nil && item.Parameters.GetByInAndName("query", "resolutionSeconds") == nil {
+			continue
+		}
+		checked++
+		resource := renderMetricsParamSamples["resource"]
+		if renderMetricsDatastorePaths[path] {
+			resource = "dpg-c185th5c2rvvnhbfiltg"
+		}
+		for _, value := range []string{"60.0", "1e2", "90.5", "abc", "29"} {
+			target := "/v1" + path + "?" + url.Values{"resource": {resource}, "resolutionSeconds": {value}}.Encode()
+			rec := do(t, h, http.MethodGet, target, testToken, "")
+			body := rec.Body.String()
+			if strings.Contains(body, "strconv") {
+				t.Errorf("GET %s leaked a Go parser message: %s", target, body)
+			}
+			if refused := rec.Code == http.StatusBadRequest; refused != (value == "abc" || value == "29") {
+				t.Errorf("GET %s = %d %s", target, rec.Code, body)
+			}
+		}
+	}
+	if checked == 0 {
+		t.Fatal("no Render /metrics path declares resolutionSeconds")
+	}
+}

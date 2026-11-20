@@ -19,6 +19,7 @@ package metrics
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -344,14 +345,27 @@ func parseTimeWindow(v url.Values) (start, end time.Time, resolution time.Durati
 		return time.Time{}, time.Time{}, 0, err
 	}
 	if rs := v.Get("resolutionSeconds"); rs != "" {
-		n, err := strconv.Atoi(rs)
-		if err != nil {
-			return time.Time{}, time.Time{}, 0, fmt.Errorf("resolutionSeconds: %w", err)
+		f, err := strconv.ParseFloat(rs, 64)
+		// !(f >= min) also refuses NaN, which compares false with everything.
+		if err != nil || !(f >= minResolutionSeconds) || math.IsInf(f, 0) {
+			return time.Time{}, time.Time{}, 0, fmt.Errorf("%w: resolutionSeconds must be a number of at least %d", core.ErrBadRequest, minResolutionSeconds)
 		}
-		resolution = time.Duration(n) * time.Second
+		resolution = time.Duration(math.Round(min(f, maxResolutionSeconds))) * time.Second
 	}
 	return start, end, resolution, nil
 }
+
+// Render types resolutionSeconds as a number of at least 30 on every metrics
+// path, and its pinned client sends a float32, so 60.0, 1e2 and 90.5 are all
+// valid (w8/351). Prometheus and Loki take the step in whole seconds
+// (stepSeconds), so a fractional value is rounded to the nearest second once,
+// here. Render's spec sets no maximum; maxResolutionSeconds (about 31 years,
+// longer than any retention, so a longer step selects no other samples) only
+// keeps the conversion to time.Duration from overflowing.
+const (
+	minResolutionSeconds = 30
+	maxResolutionSeconds = 1e9
+)
 
 // parseDatastoreMetricParams maps a datastore-metric query string onto a
 // DatastoreMetricQuery. `kind` is a bex extension; without it the resource id's
@@ -435,11 +449,9 @@ func parseMetricParams(r *http.Request) ([]string, MetricQuery, error) {
 			continue
 		}
 		f, err := strconv.ParseFloat(ql, 64)
-		if err != nil {
-			return nil, MetricQuery{}, fmt.Errorf("quantile: %w", err)
-		}
-		if f < 0 || f > 1 {
-			return nil, MetricQuery{}, fmt.Errorf("%w: quantile must be between 0 and 1", core.ErrBadRequest)
+		// The negated range also refuses NaN.
+		if err != nil || !(f >= 0 && f <= 1) {
+			return nil, MetricQuery{}, fmt.Errorf("%w: quantile must be a number between 0 and 1", core.ErrBadRequest)
 		}
 		q.Quantiles = append(q.Quantiles, f)
 	}
