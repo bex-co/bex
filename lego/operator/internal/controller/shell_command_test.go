@@ -73,24 +73,41 @@ func TestShellCommand(t *testing.T) {
 	}
 }
 
-// A pre-deploy command launches like its service's Docker Command (w8/172).
-func TestPreDeployArgv(t *testing.T) {
+// A pre-deploy command launches like its service's own container: a Docker
+// Command as Render runs it (w8/172), a native image's command as arguments to
+// its native-init entrypoint (w8/350), a buildpack image's through /bin/sh -c.
+func TestPreDeployLaunch(t *testing.T) {
 	docker := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Repo: "r", Builder: build.BuilderDockerfile}}
-	native := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Repo: "r", Builder: build.BuilderNative}}
+	native := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Repo: "r", Builder: build.BuilderNative, StartCommand: "npm start"}}
+	buildpack := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Repo: "r", Builder: build.BuilderBuildpack, StartCommand: "npm start"}}
+	// A rollback across a runtime change: the selected release is a Docker
+	// image with no start command, which a native build never is.
+	commandless := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Repo: "r", Builder: build.BuilderNative}}
+	prebuilt := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Image: "img:1", Runtime: "node", StartCommand: "npm start"}}
+	shell := []string{"/bin/sh", "-c", "/whoami --help"}
 	for _, tc := range []struct {
-		name string
-		app  *appv1alpha1.App
-		cmd  string
-		want []string
+		name     string
+		app      *appv1alpha1.App
+		launch   launchMode
+		cmd      string
+		wantCmd  []string
+		wantArgs []string
 	}{
-		{"docker sh -c runs its script", docker, "/bin/sh -c echo x", []string{"/bin/sh", "-c", "echo x"}},
-		{"docker plain command is exec'd", docker, "/whoami --help", []string{"/whoami", "--help"}},
-		{"docker shell syntax keeps the shell", docker, "a && b", []string{"/bin/sh", "-c", "a && b"}},
-		{"native keeps the shell", native, "/whoami --help", []string{"/bin/sh", "-c", "/whoami --help"}},
+		{"docker sh -c runs its script", docker, launchUnknown, "/bin/sh -c echo x", []string{"/bin/sh", "-c", "echo x"}, nil},
+		{"docker plain command is exec'd", docker, launchUnknown, "/whoami --help", []string{"/whoami", "--help"}, nil},
+		{"docker shell syntax keeps the shell", docker, launchUnknown, "a && b", []string{"/bin/sh", "-c", "a && b"}, nil},
+		{"native runs under its entrypoint", native, launchUnknown, "/whoami --help", nil, shell},
+		{"native rerun of the served build", native, launchNativeArgs, "/whoami --help", nil, shell},
+		{"a linked native build source", docker, launchNativeArgs, "/whoami --help", nil, shell},
+		{"a recorded shell launch under a native runtime", native, launchShell, "/whoami --help", []string{"/whoami", "--help"}, nil},
+		{"a release with no start command is not native", commandless, launchUnknown, "/whoami --help", shell, nil},
+		{"buildpack keeps the shell in place of its launcher", buildpack, launchUnknown, "/whoami --help", shell, nil},
+		{"the saved prebuilt image keeps the Docker Command", prebuilt, launchUnknown, "/whoami --help", []string{"/whoami", "--help"}, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := preDeployArgv(tc.app, "img:1", tc.cmd); !slices.Equal(got, tc.want) {
-				t.Errorf("argv = %q, want %q", got, tc.want)
+			cmd, args := preDeployLaunch(tc.app, "img:1", tc.launch, tc.cmd)
+			if !slices.Equal(cmd, tc.wantCmd) || !slices.Equal(args, tc.wantArgs) {
+				t.Errorf("command %q args %q, want command %q args %q", cmd, args, tc.wantCmd, tc.wantArgs)
 			}
 		})
 	}

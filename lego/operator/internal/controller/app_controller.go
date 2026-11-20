@@ -6124,7 +6124,8 @@ func toCronRun(job *batchv1.Job) appv1alpha1.CronRun {
 // one-off RunAt Job: the built image run to completion (RestartPolicyNever), with
 // the App's env. A cron container declares no port — it is not an HTTP server.
 // spec.command, when set, overrides the image's default entrypoint/cmd via a
-// shell (Render's cron "Command" field); empty leaves the image's own command.
+// shell (Render's cron "Command" field), or on a native image its CMD only;
+// empty leaves the image's own command.
 func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int, labels map[string]string, launch launchMode, gitCommit string) corev1.PodTemplateSpec {
 	platform := platformEnv(app, platformEnvInputs{baseDomain: r.BaseDomain, gitCommit: gitCommit})
 	container := corev1.Container{
@@ -6142,9 +6143,11 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 	}
 	switch {
 	case command == "":
-	case launch == launchNativeArgs:
-		// A cron linked to a native build source: bash arguments to the
-		// image's native-init entrypoint, as a native service runs (w2/m262).
+	case runsNativeEntrypoint(app, image, launch):
+		// A native image, the cron's own build or a linked native build
+		// source's (w2/m262): bash arguments to its native-init entrypoint, as
+		// a native service runs, so the run finds the secret files mounted for
+		// it in the service root (w8/350).
 		container.Args = nativeStartArgs(command)
 	default:
 		container.Command = shellCommand(command)
@@ -7619,9 +7622,14 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
 		return notStarted(err)
 	}
+	// The step starts as the release's instances will.
+	selected, launch, err := r.selectedLaunch(ctx, app)
+	if err != nil {
+		return ctrl.Result{}, true, err
+	}
 	opts := r.stepJobOptions(app, gen)
 	opts.Image = image
-	opts.Command = preDeployArgv(app, image, command)
+	opts.Command, opts.Args = preDeployLaunch(selected, image, launch, command)
 	opts.Env = withManagedOIDC(withPlatformEnv(appEnv(app, port), platformEnv(app, platformEnvInputs{baseDomain: r.BaseDomain, gitCommit: r.imageCommit(ctx, app, image)})), oidc.providers)
 	opts.EnvFrom = envFromSources(release)
 	opts.ImagePullSecrets = pullSecrets
@@ -7808,15 +7816,24 @@ func hasPreDeployStep(app *appv1alpha1.App) bool {
 	return owed && !canceledOverServed(app)
 }
 
-// preDeployArgv launches a pre-deploy command the way its service launches a
-// Docker Command (w8/172): through shellCommand where the image's own program
-// is overridden, so `sh -c <script>` runs its script and a plain command runs
-// on a shell-less image. A native or buildpack build keeps /bin/sh -c.
-func preDeployArgv(app *appv1alpha1.App, image, command string) []string {
-	if shellRunsStartCommand(app, image, launchUnknown) {
-		return shellCommand(command)
+// preDeployLaunch is the Command or the Args that start a pre-deploy plane
+// command on image, as the release's own container launches (launch):
+//   - on a native image, `/bin/sh -c <command>` as arguments to its
+//     entrypoint, native-init, which first links the secret files mounted for
+//     the run into the service root, as it does for the service (w8/350);
+//   - where the service's Docker Command overrides the image's program,
+//     through shellCommand (w8/172), so `sh -c <script>` runs its script and
+//     a plain command runs on a shell-less image;
+//   - otherwise (a buildpack image) `/bin/sh -c` in place of its program.
+func preDeployLaunch(app *appv1alpha1.App, image string, launch launchMode, command string) (cmd, args []string) {
+	shell := legacyShellCommand(execution.KubernetesLiteral(command))
+	switch {
+	case runsNativeEntrypoint(app, image, launch):
+		return nil, shell
+	case shellRunsStartCommand(app, image, launch):
+		return shellCommand(command), nil
 	}
-	return legacyShellCommand(execution.KubernetesLiteral(command))
+	return shell, nil
 }
 
 // preDeployPassed reports whether the current release may reach the pod

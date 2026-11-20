@@ -488,12 +488,15 @@ func (r *AppReconciler) servedBuildRerunLaunch(ctx context.Context, app *appv1al
 
 // launch reads how the release launched its StartCommand back from its recorded
 // app container: through the shell, or by the artifact's own entrypoint.
-// launchUnknown when the record cannot tell: no template, no StartCommand, a
-// cron Command that took precedence, or a command-less container running the
-// saved prebuilt image, which operators before w4/m202 also recorded for an
-// image that kept native build settings.
+// launchUnknown when the record cannot tell: no template, no StartCommand, or
+// a command-less container running the saved prebuilt image, which operators
+// before w4/m202 also recorded for an image that kept native build settings.
+// A cron Command that took precedence is read the same way (commandLaunch).
 func (rec *runtimeConfigRecord) launch(app *appv1alpha1.App) launchMode {
-	if rec.spec.StartCommand == "" || (rec.spec.Command != nil && *rec.spec.Command != "") {
+	if rec.spec.Command != nil && *rec.spec.Command != "" {
+		return rec.commandLaunch(*rec.spec.Command)
+	}
+	if rec.spec.StartCommand == "" {
 		return launchUnknown
 	}
 	for _, c := range rec.template.Spec.Containers {
@@ -507,13 +510,36 @@ func (rec *runtimeConfigRecord) launch(app *appv1alpha1.App) launchMode {
 			return launchUnknown
 		case len(c.Command) == 0:
 			return launchImage
-		case slices.Equal(c.Command, shellCommand(rec.spec.StartCommand)),
-			slices.Equal(c.Command, rawShellCommand(rec.spec.StartCommand)),
-			slices.Equal(c.Command, legacyShellCommand(rec.spec.StartCommand)):
+		case shellLaunched(c.Command, rec.spec.StartCommand):
 			return launchShell
 		}
 	}
 	return launchUnknown
+}
+
+// commandLaunch is how the release's cron ran its own command: as arguments to
+// a native image's entrypoint (w8/350) or through the shell, so a rollback
+// across a runtime change runs that image as it ran. A record from before
+// w8/350 shows the shell for a native image too, which still runs there.
+func (rec *runtimeConfigRecord) commandLaunch(command string) launchMode {
+	for _, c := range rec.template.Spec.Containers {
+		switch {
+		case c.Name != appContainerName:
+		case len(c.Command) == 0 && slices.Equal(c.Args, nativeStartArgs(command)):
+			return launchNativeArgs
+		case shellLaunched(c.Command, command):
+			return launchShell
+		}
+	}
+	return launchUnknown
+}
+
+// shellLaunched reports whether argv runs command through the shell, as this
+// operator or one before it launched it.
+func shellLaunched(argv []string, command string) bool {
+	return slices.Equal(argv, shellCommand(command)) ||
+		slices.Equal(argv, rawShellCommand(command)) ||
+		slices.Equal(argv, legacyShellCommand(command))
 }
 
 func (rec *runtimeConfigRecord) applySources(app *appv1alpha1.App) {

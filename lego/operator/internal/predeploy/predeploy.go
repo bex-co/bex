@@ -22,7 +22,7 @@ limitations under the License.
 //
 //   - The Job's container IS the new image (the same env/secrets/pull secrets as
 //     the app pod), so a migration runs against exactly what will serve — launched
-//     the way the app's Docker Command is (the controller picks the argv).
+//     the way the app's container is (the controller picks Command or Args).
 //   - It NEVER retries (BackoffLimit 0): re-running a partially applied migration
 //     can corrupt data, so a failed pre-deploy is terminal until the user pushes a
 //     new revision.
@@ -145,7 +145,8 @@ type Options struct {
 	AppNamespace string   // namespace the App CR lives in; used for log attribution
 	VerifyImage  bool     // select the Pod for signature admission when signing is enabled
 	Image        string   // the new revision's image (same ref the Deployment will run)
-	Command      []string // argv the controller chose for App.spec.preDeployCommand (shell launch rule: w8/172)
+	Command      []string // the controller's launch of App.spec.preDeployCommand (w8/172): in place of the image's program,
+	Args         []string // or as arguments to its entrypoint, a native image's native-init (w8/350)
 	Revision     string   // deterministic per-revision tag, e.g. "gen-7" (names the Job)
 	Generation   int64    // release generation this step gates (stamped on the pod for traceability)
 	Step         Step     // which command this is; empty means StepPreDeploy
@@ -236,6 +237,7 @@ func Job(o Options) *batchv1.Job {
 		// image@sha256 on a shared node could run it (w4/426).
 		ImagePullPolicy: corev1.PullAlways,
 		Command:         o.Command,
+		Args:            o.Args,
 		Env:             o.Env,
 		EnvFrom:         o.EnvFrom,
 		Resources:       o.Resources,

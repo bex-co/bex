@@ -199,8 +199,9 @@ func (r *AppReconciler) reconcileInitialDeployHook(ctx context.Context, app *app
 // template dep serves that release with, so the command sees what the
 // service's own instance sees: the same image, env, secret references, pull
 // secrets, security context and resources, its secret files, and its
-// persistent disk at the same mount path. ok is false when the template has no
-// app container to copy.
+// persistent disk at the same mount path. It starts as the instance does
+// (containerLaunch). ok is false when the template has no app container to
+// copy.
 func (r *AppReconciler) hookJobOptions(app *appv1alpha1.App, dep *appsv1.Deployment, image, command string, gen int64) (predeploy.Options, bool) {
 	pod := dep.Spec.Template.Spec
 	var instance *corev1.Container
@@ -215,7 +216,7 @@ func (r *AppReconciler) hookJobOptions(app *appv1alpha1.App, dep *appsv1.Deploym
 	opts := r.stepJobOptions(app, gen)
 	opts.Step = predeploy.StepInitialDeployHook
 	opts.Image = instance.Image
-	opts.Command = preDeployArgv(app, image, command)
+	opts.Command, opts.Args = preDeployLaunch(app, image, containerLaunch(instance), command)
 	opts.Env = instance.Env
 	opts.EnvFrom = instance.EnvFrom
 	opts.ImagePullSecrets = pod.ImagePullSecrets

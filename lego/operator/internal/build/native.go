@@ -486,10 +486,11 @@ COPY <<'%s' %s
 //
 // A deploy that reruns this image with other files (a group linked or
 // unlinked, a file added to a linked group: w8/348) mounts names the image has
-// no link for. native-init, the service's entrypoint, links what is mounted at
-// every start and drops a link to a file no longer mounted (cmd/native-init);
-// this step still covers the workloads that start without it, a cron's own
-// command and the pre-deploy command.
+// no link for. native-init, the image's entrypoint, links what is mounted at
+// every start and drops a link to a file no longer mounted (cmd/native-init).
+// Every workload of the image starts under it, a cron's own command and the
+// pre-deploy command included (w8/350); this step still covers an image whose
+// entrypoint is not native-init (a build without the resolve phase).
 func nativeSecretFileLinks(o Options) string {
 	if len(o.NativeFiles) == 0 {
 		return ""

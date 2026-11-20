@@ -53,11 +53,17 @@ func TestKubernetesLiteralCommandsReachRuntimeAcrossExecutionModes(t *testing.T)
 	native.Spec.Repo = "https://github.com/example/app"
 	native.Spec.Image = ""
 	native.Spec.Builder = build.BuilderNative
+	nativeCron := native.DeepCopy()
+	nativeCron.Spec.Type, nativeCron.Spec.Command = appv1alpha1.TypeCronJob, script
+	dockerPreDeploy, _ := preDeployLaunch(app, app.Spec.Image, launchUnknown, script)
+	// A native image's entrypoint runs its arguments as the command.
+	_, nativePreDeploy := preDeployLaunch(native, "native:1", launchUnknown, script)
 	commands := map[string][]string{
 		"deployment":                appContainer(app, deploymentParams{image: app.Spec.Image, port: 10000}, "").Command,
 		"scheduled and manual cron": (&AppReconciler{}).cronPodSpec(app, app.Spec.Image, 10000, nil, launchUnknown, "").Spec.Containers[0].Command,
-		"Docker predeploy":          preDeployArgv(app, app.Spec.Image, script),
-		"native predeploy":          preDeployArgv(native, "native:1", script),
+		"native cron command":       (&AppReconciler{}).cronPodSpec(nativeCron, "native:1", 10000, nil, launchUnknown, "").Spec.Containers[0].Args,
+		"Docker predeploy":          dockerPreDeploy,
+		"native predeploy":          nativePreDeploy,
 	}
 	expected := regexp.MustCompile(`(?s)^PID=[0-9]+\nLITERAL=a\$\$b \$\(PORT\)\nSUB=shell\nENV=pa\$\$wo\$\(HOME\)rd\n$`)
 	for name, command := range commands {

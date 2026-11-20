@@ -281,6 +281,16 @@ func TestCancelSupersededDeletesOtherActiveRunsButKeepsCurrent(t *testing.T) {
 	}
 }
 
+// A native image's step runs as arguments to its entrypoint, native-init,
+// which links the run's secret files into the service root (w8/350).
+func TestJobPassesArgsToTheImageEntrypoint(t *testing.T) {
+	argv := []string{"/bin/sh", "-c", "npm run migrate"}
+	c := Job(Options{Name: "api", Namespace: "default", Image: "zot/api:gen-3", Args: argv, Revision: "gen-3"}).Spec.Template.Spec.Containers[0]
+	if len(c.Command) != 0 || strings.Join(c.Args, "\x00") != strings.Join(argv, "\x00") {
+		t.Errorf("command %q args %q, want no command and args %q", c.Command, c.Args, argv)
+	}
+}
+
 // TestPreDeployKeepsZeroRetriesAndNoDisruptionIgnore guards pre-deploy against
 // w7/m82 t002's build-side change being "helpfully" generalized onto it.
 //

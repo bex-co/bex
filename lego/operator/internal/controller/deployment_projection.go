@@ -301,7 +301,8 @@ const (
 	launchShell   launchMode = "shell" // the app container runs it through the shell
 	launchImage   launchMode = "image" // the image's own entrypoint, which a native/buildpack build bakes it into
 	// launchNativeArgs passes it as `/bin/bash -c` arguments to the image's own
-	// entrypoint: a native build source's image has native-init and no CMD.
+	// entrypoint: a native build source's image has native-init and no CMD. A
+	// cron's own command on a native image launches this way too (w8/350).
 	launchNativeArgs launchMode = "native-args"
 )
 
@@ -335,6 +336,39 @@ func shellRunsStartCommand(app *appv1alpha1.App, image string, recorded launchMo
 	}
 	b := effectiveBuilder(app.Spec)
 	return b != build.BuilderNative && b != build.BuilderBuildpack
+}
+
+// runsNativeEntrypoint reports whether a command run on image is passed to
+// the image's entrypoint as its arguments, as a native service's start
+// command is: the entrypoint is native-init (w8/m88), which first links the
+// secret files mounted for the run into the service root (w8/348), so a
+// cron's own command and a pre-deploy command see them too (w8/350). A
+// recorded launch decides first. Otherwise image must be app's native build:
+// not the saved prebuilt image, and not a release without a start command,
+// which a native build refuses (a rollback across a runtime change).
+func runsNativeEntrypoint(app *appv1alpha1.App, image string, recorded launchMode) bool {
+	switch recorded {
+	case launchNativeArgs:
+		return true
+	case launchShell:
+		return false
+	}
+	return app.Spec.StartCommand != "" && !shellRunsStartCommand(app, image, launchUnknown) &&
+		effectiveBuilder(app.Spec) == build.BuilderNative
+}
+
+// containerLaunch is how a projected app container launches its command: in
+// place of the image's program (launchShell), as arguments to its entrypoint
+// (launchNativeArgs), or as the image's own CMD, whose builder decides
+// (launchUnknown).
+func containerLaunch(c *corev1.Container) launchMode {
+	switch {
+	case len(c.Command) > 0:
+		return launchShell
+	case len(c.Args) > 0:
+		return launchNativeArgs
+	}
+	return launchUnknown
 }
 
 // appContainerEnv is the app container's env: the user's literals, Render's
