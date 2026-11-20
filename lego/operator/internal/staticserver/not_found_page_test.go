@@ -17,8 +17,10 @@ limitations under the License.
 package staticserver
 
 import (
+	"bytes"
 	"context"
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 
@@ -46,11 +48,11 @@ func TestMissServes404HTMLWithStatus404(t *testing.T) {
 			t.Errorf("GET %s => %d %q, want 404 custom 404", p, rec.Code, rec.Body)
 		}
 		// The page goes out with a published file's headers, as on Render
-		// (w8/322), but no validator.
+		// (w8/322), its own ETag included (w8/360).
 		hdr := rec.Header()
-		if hdr.Get("X-Site") != "yes" || hdr.Get("Etag") != "" || hdr.Get("Cache-Control") != renderCacheControl ||
+		if hdr.Get("X-Site") != "yes" || hdr.Get("Etag") != contentETag([]byte("custom 404"), "text/html") || hdr.Get("Cache-Control") != renderCacheControl ||
 			hdr.Get("Strict-Transport-Security") != defaultStrictTransportSecurity || hdr.Get("X-Content-Type-Options") != "nosniff" {
-			t.Errorf("GET %s headers = %v, want the site's rules, HSTS, the cache policy, nosniff and no validator", p, hdr)
+			t.Errorf("GET %s headers = %v, want the site's rules, HSTS, the cache policy, nosniff and the page's ETag", p, hdr)
 		}
 	}
 	head := do(h, http.MethodHead, "/no-such-page")
@@ -80,6 +82,62 @@ func TestThe404PageTakesTheSitesRulesAsAFileDoes(t *testing.T) {
 	if rec.Code != http.StatusNotFound || rec.Body.String() != "custom 404" || hdr.Get("Cache-Control") != "no-store" ||
 		hdr.Get("Strict-Transport-Security") != "max-age=60" || hdr.Get("Content-Type") != "text/plain; charset=utf-8" || hdr.Get("Content-Length") != "10" {
 		t.Fatalf("miss = %d %q %v, want the page with the rules' cache policy, HSTS and type, and its own length", rec.Code, rec.Body, hdr)
+	}
+	// Its tag follows the rule's type, as the file's does (w5/182, w8/360).
+	retyped := retypedETag(contentETag([]byte("custom 404"), "text/html"), "text/plain; charset=utf-8")
+	if file := do(h, http.MethodGet, "/404.html"); hdr.Get("Etag") != retyped || file.Header().Get("Etag") != retyped {
+		t.Fatalf("miss ETag %q, file ETag %q, want both the retyped tag %q", hdr.Get("Etag"), file.Header().Get("Etag"), retyped)
+	}
+}
+
+// Render sends a 404.html miss the page's own ETag, the tag a fetch of
+// /404.html gets in the same coding, and answers the full 404 whatever the
+// request's preconditions or Range say: never 304, 412 or 206 (captured
+// 2026-11-20 on mentorship-guide, buzz-docs, breadcrumbs-wiki and wc3v,
+// w8/360). The page goes identity to a gzip-only client (w8/359), so that
+// client gets identity's tag.
+func TestThe404PageSendsItsOwnETagAndStaysA404(t *testing.T) {
+	page := repeated("<p>custom 404</p>\n")
+	h, _ := newTestHandler(t, Site{NoSPAFallback: true}, map[string]Object{key("404.html"): {Body: page, ContentType: "text/html"}})
+	for offer, fileOffer := range map[string]string{"": "", "gzip": "", "gzip, br": "gzip, br"} {
+		file := doWith(h, http.MethodGet, "/404.html", brHeader(fileOffer))
+		tag, coding := file.Header().Get("Etag"), file.Header().Get("Content-Encoding")
+		if file.Code != http.StatusOK || tag == "" {
+			t.Fatalf("GET /404.html offered %q => %d ETag %q, want 200 with a tag", fileOffer, file.Code, tag)
+		}
+		for name, cond := range map[string]http.Header{
+			"plain":                  {},
+			"matching If-None-Match": {"If-None-Match": {tag}},
+			"If-None-Match *":        {"If-None-Match": {"*"}},
+			"foreign If-Match":       {"If-Match": {`"qa-nope"`}},
+			"Range":                  {"Range": {"bytes=0-9"}},
+		} {
+			for _, method := range []string{http.MethodGet, http.MethodHead} {
+				req := cond.Clone()
+				req.Set("Accept-Encoding", offer)
+				rec := doWith(h, method, "/qa-nope-z", req)
+				got := rec.Header()
+				if rec.Code != http.StatusNotFound || got.Get("Etag") != tag || got.Get("Content-Encoding") != coding ||
+					got.Get("Content-Range") != "" || got.Get("Accept-Ranges") != "" {
+					t.Fatalf("%s %s offered %q => %d ETag %q CE %q Content-Range %q, want the 404 with the file's tag %q and coding %q",
+						method, name, offer, rec.Code, got.Get("Etag"), got.Get("Content-Encoding"), got.Get("Content-Range"), tag, coding)
+				}
+				want := file.Body.Bytes()
+				if method == http.MethodHead {
+					want = nil
+				}
+				if !bytes.Equal(rec.Body.Bytes(), want) || got.Get("Content-Length") != strconv.Itoa(file.Body.Len()) {
+					t.Fatalf("%s %s offered %q => %d body bytes, Content-Length %q, want the file's %d", method, name, offer, rec.Body.Len(), got.Get("Content-Length"), file.Body.Len())
+				}
+			}
+		}
+	}
+	// A bare 404 sends no tag, whatever its preconditions (Render, w8/360).
+	bare, _ := newTestHandler(t, Site{NoSPAFallback: true}, nil)
+	for _, offer := range []string{"", "gzip, br"} {
+		if rec := doWith(bare, http.MethodGet, "/qa-nope-y", http.Header{"Accept-Encoding": {offer}, "If-None-Match": {"*"}}); rec.Code != http.StatusNotFound || rec.Header().Get("Etag") != "" {
+			t.Fatalf("bare miss offered %q => %d ETag %q, want 404 with no tag", offer, rec.Code, rec.Header().Get("Etag"))
+		}
 	}
 }
 

@@ -444,9 +444,11 @@ func isExternalRewrite(act routeAction, target *url.URL) bool {
 // serveNotFound answers a miss as Render does (w8/322, captured 2026-11-14 on
 // four Render sites with /* rules): 404 with the site's root /404.html, sent
 // with the headers of any published file (the default cache policy, HSTS,
-// nosniff and the matching rules), else a bare 404 with nosniff and none of
-// the site's rules. The page carries no validators or ranges: a conditional
-// request for it would read as a cache hit on a 404.
+// nosniff, the page's own ETag and the matching rules), else a bare 404 with
+// nosniff, no ETag and none of the site's rules. The page is a 404 whatever
+// the request's preconditions or Range say, never a 304, 412 or 206: Render
+// sends the page's tag and still answers a matching If-None-Match with the
+// full 404 (captured 2026-11-20 on four sites, w8/360).
 func (h *Handler) serveNotFound(w http.ResponseWriter, r *http.Request, site Site, requestPath string) {
 	if !site.NoSPAFallback {
 		serveBareNotFound(w, r)
@@ -466,7 +468,7 @@ func (h *Handler) serveNotFound(w http.ResponseWriter, r *http.Request, site Sit
 		defer h.liveBodies.Release(lease)
 	}
 	hdr := w.Header()
-	setFileHeaders(hdr, site, requestPath, contentType("/404.html", obj.ContentType), "")
+	setFileHeaders(hdr, site, requestPath, contentType("/404.html", obj.ContentType), obj.etag)
 	// Render sends the page br to a br client but identity to a gzip one
 	// (captured 2026-11-20, w8/359).
 	body, _, release := h.encodeBody(r, hdr, site, "/404.html", obj.Body, false)
@@ -511,11 +513,11 @@ func serveBareNotFound(w http.ResponseWriter, r *http.Request) {
 
 // setFileHeaders gives a published file's response its headers: its type,
 // the default cache policy, Render's static-site security defaults (w8/194)
-// and an ETag when it has one, then the site's rules matching the request
-// path, which win over each (last write for a key), so a saved ETag rule
-// replaces the generated one (w4/272). Vary: Accept-Encoding is merged in
-// last: Render sends it on every file it serves, images included (captured
-// 2026-11-20, w8/359).
+// and its generated ETag, then the site's rules matching the request path,
+// which win over each (last write for a key), so a saved ETag rule replaces
+// the generated one (w4/272). Vary: Accept-Encoding is merged in last: Render
+// sends it on every file it serves, images included (captured 2026-11-20,
+// w8/359).
 func setFileHeaders(hdr http.Header, site Site, requestPath, servedType, etag string) {
 	hdr.Set("Content-Type", servedType)
 	hdr.Set("Cache-Control", defaultCacheControl)
@@ -525,6 +527,12 @@ func setFileHeaders(hdr http.Header, site Site, requestPath, servedType, etag st
 		hdr.Set("Etag", etag)
 	}
 	applyHeaders(hdr, site.Headers, requestPath)
+	// A Content-Type rule changes the representation, so the generated tag
+	// follows it: a 304 carries no Content-Type, and a browser holding the
+	// old tag would keep the old type (w5/182).
+	if final := hdr.Get("Content-Type"); etag != "" && final != servedType && hdr.Get("Etag") == etag {
+		hdr.Set("Etag", retypedETag(etag, final))
+	}
 	varyAcceptEncoding(hdr)
 }
 
@@ -567,12 +575,6 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 	hdr := w.Header()
 	servedType := contentType(servedPath, obj.ContentType)
 	setFileHeaders(hdr, site, requestPath, servedType, obj.etag)
-	// A Content-Type rule changes the representation, so the generated tag
-	// follows it: a 304 carries no Content-Type, and a browser holding the
-	// old tag would keep the old type (w5/182).
-	if final := hdr.Get("Content-Type"); obj.etag != "" && final != servedType && hdr.Get("Etag") == obj.etag {
-		hdr.Set("Etag", retypedETag(obj.etag, final))
-	}
 
 	// Automatic Brotli and gzip (w8/m79, w8/m132, w8/359). The representation
 	// is chosen before ServeContent, so its preconditions and byte ranges
