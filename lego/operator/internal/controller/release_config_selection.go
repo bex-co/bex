@@ -35,6 +35,8 @@ import (
 
 	"github.com/bex-co/bex/lego/types/k8sname"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+
+	"github.com/bex-co/bex/lego/operator/internal/build"
 )
 
 // runtimeConfigRecord keeps the selected input description beside the template
@@ -410,29 +412,78 @@ func (r *AppReconciler) selectedRuntime(ctx context.Context, app *appv1alpha1.Ap
 	if err != nil || !sourceUpdatePending(app) || canceledOverServed(app) || heldReleaseViewed(ctx, app) {
 		return runtime, launchUnknown, err
 	}
+	launch, err := r.servedLaunch(ctx, app)
+	if err != nil {
+		return nil, launchUnknown, err
+	}
+	return runtime, launch, nil
+}
+
+// servedLaunch is the launch the served release's record shows: launchUnknown
+// when nothing has served or its record is gone.
+func (r *AppReconciler) servedLaunch(ctx context.Context, app *appv1alpha1.App) (launchMode, error) {
 	served := successfulReleaseGeneration(app)
 	if served <= 0 {
-		return runtime, launchUnknown, nil
+		return launchUnknown, nil
 	}
 	rec, err := r.readRuntimeConfigRecord(ctx, app, served)
 	if apierrors.IsNotFound(err) {
-		return runtime, launchUnknown, nil
+		return launchUnknown, nil
 	}
 	if err != nil {
-		return nil, launchUnknown, fmt.Errorf("read served release %d: %w", served, err)
+		return launchUnknown, fmt.Errorf("read served release %d: %w", served, err)
 	}
-	return runtime, rec.launch(app), nil
+	return rec.launch(app), nil
 }
 
 // selectedLaunch is selectedRuntime with the launch a Deployment or CronJob
 // projects: a release with no recorded launch that deploys its build source's
-// current native build starts as launchNativeArgs (w2/m254 t017).
+// current native build starts as launchNativeArgs (w2/m254 t017), and so does
+// one that reruns a native service's served build (servedBuildRerunLaunch).
 func (r *AppReconciler) selectedLaunch(ctx context.Context, app *appv1alpha1.App) (*appv1alpha1.App, launchMode, error) {
 	runtime, launch, err := r.selectedRuntime(ctx, app)
-	if err == nil && launch == launchUnknown && r.linkedToNativeSource(ctx, app) {
-		launch = launchNativeArgs
+	if err != nil || launch != launchUnknown {
+		return runtime, launch, err
 	}
+	if r.linkedToNativeSource(ctx, app) {
+		return runtime, launchNativeArgs, nil
+	}
+	launch, err = r.servedBuildRerunLaunch(ctx, app)
 	return runtime, launch, err
+}
+
+// servedBuildRerunLaunch is the launch of a release that reruns a native
+// service's served build with its saved settings: the image-only selection an
+// environment "Save and deploy" or an environment group's deploy writes
+// (w4/m180, w4/708). That image's CMD is the start command it was built with,
+// so the release passes its own start command to the image's entrypoint
+// (launchNativeArgs), as a build source's image does. Render's "Save and
+// deploy" redeploys the existing build, which runs the saved start command
+// (w32/048).
+//
+// Two releases keep their launch. One already rendered keeps the launch its
+// record shows, so an operator upgrade re-templates no running release. And
+// only an artifact the served release ran with a native launch qualifies: a
+// Docker image still served after a staged switch to a native runtime keeps
+// the builder's decision. launchUnknown otherwise.
+func (r *AppReconciler) servedBuildRerunLaunch(ctx context.Context, app *appv1alpha1.App) (launchMode, error) {
+	ref := app.ActiveReleaseConfig()
+	if ref == nil || ref.SourceGeneration != 0 || ref.Image == "" || ref.StaticPrefix != "" ||
+		app.Spec.Repo == "" || effectiveBuilder(app.Spec) != build.BuilderNative || canceledOverServed(app) {
+		return launchUnknown, nil
+	}
+	own, err := r.readRuntimeConfigRecord(ctx, app, ref.Generation)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return launchUnknown, err
+	}
+	if err == nil && appContainerImage(own.template) != "" {
+		return own.launch(app), nil
+	}
+	launch, err := r.servedLaunch(ctx, app)
+	if err != nil || (launch != launchImage && launch != launchNativeArgs) {
+		return launchUnknown, err
+	}
+	return launchNativeArgs, nil
 }
 
 // launch reads how the release launched its StartCommand back from its recorded
