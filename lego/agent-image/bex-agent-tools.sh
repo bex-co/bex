@@ -1,6 +1,7 @@
 # Shell setup for the agent image's baked toolchains (w10/024), installed as
 # /etc/profile.d/bex-agent-tools.sh. Login shells read it through /etc/profile,
-# interactive shells through /etc/bash.bashrc, and every other bash through
+# interactive bash through /etc/bash.bashrc, an interactive sh (the web
+# Shell's and SSH's /bin/sh, dash) through ENV, and every other bash through
 # BASH_ENV. A non-interactive shell starts no process here and runs nothing
 # that can fail, so it costs nothing and is safe under `set -eu`.
 
@@ -14,6 +15,18 @@ case ":$PATH:" in
 *) PATH="/usr/local/cargo/bin:/opt/java/openjdk/bin:/usr/local/go/bin:$PATH" ;;
 esac
 export PATH
+
+# A repo session's gh (w10/027): the driver writes the GH_* settings it gives
+# the agent to gh/env.sh beside its status file, so gh in a terminal (the web
+# Shell, SSH, Zed) reaches the session's repository as the agent's does. A
+# session without a repository, or whose workspace turned gh off, has none.
+__bex_gh_env=${BEX_AGENT_STATUS_FILE:-/var/run/bex-agent/status.json}
+__bex_gh_env=${__bex_gh_env%/*}/gh/env.sh
+if [ -r "$__bex_gh_env" ]; then
+	# shellcheck source=/dev/null
+	. "$__bex_gh_env"
+fi
+unset __bex_gh_env
 
 if [ -n "${BASH_VERSION-}" ] && [ -s "${NVM_DIR-}/nvm.sh" ]; then
 	case $- in

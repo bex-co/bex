@@ -23,8 +23,10 @@
 // repository and the writes ADR090 D4 lists (comments, reviews that do not
 // approve, labels, issues, CI re-runs), and injects a token minted for that
 // call on its upstream hop, so the sandbox holds a placeholder and never a
-// GitHub token. A workspace that turned gh off (w10/m524) gets none of it:
-// no socket, no config and no GH_* variables.
+// GitHub token. The same GH_* settings go into a shell file the image's
+// profile script reads (w10/027), so gh in a terminal (the web Shell, SSH,
+// Zed) works as the agent's does. A workspace that turned gh off (w10/m524)
+// gets none of it: no socket, no config, no shell file and no GH_* variables.
 
 import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import http from "node:http";
@@ -72,21 +74,27 @@ export function githubCliEnabled(config: GitHubCliConfig): boolean {
 }
 
 // removeGitHubCliConfig deletes a gh config an earlier turn left on a kept
-// disk (ADR047 D12), so a turn without gh has none.
+// disk (ADR047 D12), so a turn without gh, and its terminals, have none.
 export async function removeGitHubCliConfig(
   config: Pick<GitHubCliConfig, "statusPath">,
 ): Promise<void> {
   await rm(githubCliPaths(config).configDir, { recursive: true, force: true });
 }
 
-// githubCliPaths keeps gh's config and its socket beside the driver's status
-// file, outside the repository and the agent's home directory.
+// githubCliPaths keeps gh's config, its socket and the terminals' shell file
+// beside the driver's status file, outside the repository and the agent's
+// home directory. bex-agent-tools.sh finds the shell file at the same place.
 export function githubCliPaths(config: Pick<GitHubCliConfig, "statusPath">): {
   configDir: string;
   socketPath: string;
+  shellEnvPath: string;
 } {
   const configDir = path.join(path.dirname(config.statusPath), "gh");
-  return { configDir, socketPath: path.join(configDir, "api.sock") };
+  return {
+    configDir,
+    socketPath: path.join(configDir, "api.sock"),
+    shellEnvPath: path.join(configDir, "env.sh"),
+  };
 }
 
 // githubCliEnvironment is what the agent and its tools need for gh: the
@@ -108,6 +116,15 @@ export function githubCliEnvironment(
   };
 }
 
+// githubCliShellEnvironment is githubCliEnvironment as POSIX shell exports,
+// each value single-quoted.
+export function githubCliShellEnvironment(config: GitHubCliConfig): string {
+  const exports = Object.entries(githubCliEnvironment(config)).map(
+    ([name, value]) => `export ${name}='${value.replaceAll("'", `'\\''`)}'\n`,
+  );
+  return `# Written by the bex agent driver: gh in this session's terminals reaches its repository through bex, as the agent's does.\n${exports.join("")}`;
+}
+
 function refuse(
   response: http.ServerResponse,
   status: number,
@@ -121,13 +138,17 @@ function refuse(
   response.end(body);
 }
 
-// startGitHubCliProxy writes gh's config and serves its socket until close.
+// startGitHubCliProxy writes gh's config, serves its socket until close, and
+// then writes the terminals' shell file.
 export async function startGitHubCliProxy(
   config: GitHubCliConfig,
 ): Promise<GitHubCliProxy> {
-  const { configDir, socketPath } = githubCliPaths(config);
+  const { configDir, socketPath, shellEnvPath } = githubCliPaths(config);
   const route = `${config.repoUrl.replace(/\/+$/, "")}/github-api`;
   await mkdir(configDir, { recursive: true, mode: 0o700 });
+  // A kept disk's earlier file goes first: terminals get gh's settings only
+  // once this socket serves.
+  await rm(shellEnvPath, { force: true });
   await writeFile(
     path.join(configDir, "config.yml"),
     `# Written by the bex agent driver: gh reaches this session's repository through bex.\nversion: "1"\nhttp_unix_socket: ${socketPath}\nprompt: disabled\n`,
@@ -197,6 +218,9 @@ export async function startGitHubCliProxy(
     });
   });
   await chmod(socketPath, 0o600);
+  await writeFile(shellEnvPath, githubCliShellEnvironment(config), {
+    mode: 0o600,
+  });
   return {
     close: () =>
       new Promise<void>((resolve) => {

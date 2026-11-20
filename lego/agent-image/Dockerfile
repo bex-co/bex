@@ -346,13 +346,16 @@ COPY --link --from=go-deps --chown=10001:10001 /opt/bex-go /opt/bex-go
 # binaries). TMPDIR covers everything that asks the OS, including Node's
 # os.tmpdir() and so Claude Code's own temp files and background-task output
 # (w6/127). BASH_ENV gives every non-interactive bash (a setup step, an
-# agent's command) the tool setup login and interactive shells read.
+# agent's command) the tool setup login and interactive shells read, and ENV
+# gives it to an interactive sh: the web Shell and an SSH session start
+# /bin/sh, which is dash (w10/027).
 ENV HOME=/home/bex \
     GOMODCACHE=/opt/bex-go/mod \
     GOCACHE=/opt/bex-go/cache \
     GOTMPDIR=/var/tmp/go-tmp \
     TMPDIR=/var/tmp \
     BASH_ENV=/etc/profile.d/bex-agent-tools.sh \
+    ENV=/etc/profile.d/bex-agent-tools.sh \
     BEX_AGENT_CWD=/workspace \
     BEX_AGENT_LISTEN_HOST=0.0.0.0 \
     BEX_AGENT_LISTEN_PORT=8787
@@ -362,7 +365,10 @@ USER 10001:10001
 # (w10/024) reports its pin and works: Java compiles and runs a class, cargo
 # builds a crate offline, clippy and rustfmt run, the Rust and nvm homes are
 # writable, and nvm, the toolchains and the direnv hook reach every kind of
-# bash. Cargo and Java write only under /tmp, which the check removes.
+# bash. A repo session's gh settings (w10/027) reach the web Shell's and SSH's
+# interactive sh, a login sh (SSH with a command, Zed) and every bash, and a
+# session without them gets none. Cargo and Java write only under /tmp, which
+# the check removes.
 RUN set -e; \
     java -version 2>&1 | head -n 1 | grep -q "\"$JDK17_VERSION\""; \
     [ "$(javac -version 2>&1)" = "javac $JDK17_VERSION" ]; \
@@ -383,7 +389,12 @@ RUN set -e; \
     bash -ic 'declare -F _direnv_hook' >/dev/null 2>&1; \
     bash -lc 'for tool in go cargo java aws; do command -v "$tool" >/dev/null || exit 1; done'; \
     bash -lc '. "$HOME/.cargo/env" && cargo --version' >/dev/null; \
-    rm -rf /tmp/java-check /tmp/rust-check /tmp/cargo-home
+    mkdir -p /tmp/gh-check/gh; echo 'export GH_REPO=acme/widgets' > /tmp/gh-check/gh/env.sh; \
+    for shell in 'sh -ic' 'sh -lc' 'bash -c' 'bash -lc' 'bash -ic'; do \
+      [ "$(BEX_AGENT_STATUS_FILE=/tmp/gh-check/status.json $shell 'echo "${GH_REPO-}"' 2>/dev/null)" = acme/widgets ] || exit 1; \
+      [ -z "$(BEX_AGENT_STATUS_FILE=/tmp/no-gh/status.json $shell 'echo "${GH_REPO-}"' 2>/dev/null)" ] || exit 1; \
+    done; \
+    rm -rf /tmp/java-check /tmp/rust-check /tmp/cargo-home /tmp/gh-check
 WORKDIR /workspace
 EXPOSE 8787
 ENTRYPOINT ["bex-agent-driver"]

@@ -15,14 +15,17 @@
  */
 
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { loadConfig } from "../src/config.js";
 import {
   githubCliEnabled,
+  githubCliEnvironment,
   githubCliPaths,
   githubCliTokenPlaceholder,
   removeGitHubCliConfig,
@@ -205,6 +208,134 @@ test("gh's socket forwards api.github.com calls to the gateway route without the
   assert.equal(elsewhere.status, 403);
   assert.match(JSON.parse(elsewhere.body).message, /only api\.github\.com/);
   assert.equal(gateway.seen.length, 3);
+});
+
+// The image's /etc/profile.d/bex-agent-tools.sh, which an interactive sh (the
+// web Shell's and SSH's /bin/sh) reads through ENV and every bash through
+// BASH_ENV.
+const profileScript = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "bex-agent-tools.sh",
+);
+
+// terminal runs a command the way a session's terminal does, with only the
+// environment the image gives every process, and returns its output. Its
+// stdin is not a socket, as a terminal's is not: bash reads no BASH_ENV when
+// stdin is one, which is what a Node pipe is.
+function terminal(
+  statusPath: string,
+  cwd: string,
+  shell: string[],
+  command: string,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(shell[0], [...shell.slice(1), command], {
+      cwd,
+      env: {
+        PATH: process.env.PATH ?? "/usr/bin:/bin",
+        HOME: cwd,
+        ENV: profileScript,
+        BASH_ENV: profileScript,
+        BEX_AGENT_STATUS_FILE: statusPath,
+      },
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    let stdout = "";
+    child.stdout.on("data", (chunk: Buffer) => (stdout += chunk));
+    child.on("error", reject);
+    child.on("close", (code) =>
+      code === 0
+        ? resolve(stdout)
+        : reject(new Error(`${shell.join(" ")} ${command} exited ${code}`)),
+    );
+  });
+}
+
+function ghVariables(env: string): Record<string, string> {
+  return Object.fromEntries(
+    env
+      .split("\n")
+      .filter((line) => line.startsWith("GH_"))
+      .map((line) => [
+        line.slice(0, line.indexOf("=")),
+        line.slice(line.indexOf("=") + 1),
+      ]),
+  );
+}
+
+// w10/027: gh in the web Shell, an SSH session or Zed works as the agent's
+// does, and a session whose gh is not configured has none in its terminals.
+test("a repo session's terminals get the agent's gh settings, and gh in them reaches the gateway route", async (t) => {
+  const gateway = await fakeGateway(t);
+  const base = await tempConfig({
+    deliver: true,
+    repoUrl: gateway.url,
+    repository: "acme/widgets",
+  });
+  // A quote in the path proves each value is quoted for the shell.
+  const config = {
+    ...base,
+    statusPath: path.join(base.root, "it's", "status.json"),
+  };
+  const proxy = await startGitHubCliProxy(config);
+  t.after(() => proxy.close());
+  const { shellEnvPath } = githubCliPaths(config);
+  assert.equal((await stat(shellEnvPath)).mode & 0o777, 0o600);
+
+  const expected = githubCliEnvironment(config);
+  assert.equal(expected.GH_REPO, "acme/widgets");
+  for (const shell of [
+    ["sh", "-ic"],
+    ["bash", "-c"],
+  ]) {
+    assert.deepEqual(
+      ghVariables(await terminal(config.statusPath, config.cwd, shell, "env")),
+      expected,
+      `${shell.join(" ")} has the agent's gh settings`,
+    );
+  }
+
+  const hasGh = await terminal(
+    config.statusPath,
+    config.cwd,
+    ["sh", "-c"],
+    "command -v gh",
+  ).then(
+    () => true,
+    () => false,
+  );
+  if (hasGh) {
+    const answer = await terminal(
+      config.statusPath,
+      config.cwd,
+      ["sh", "-ic"],
+      "gh api repos/{owner}/{repo}",
+    );
+    assert.equal(answer.trim(), '{"total_count":3}');
+    assert.equal(
+      gateway.seen.at(-1)?.url,
+      "/git/bnM/c2lk/cmVwbw/YnJhbmNo/github-api/repos/acme/widgets",
+    );
+    assert.equal(gateway.seen.at(-1)?.authorization, undefined);
+  } else {
+    t.diagnostic(
+      "gh is not installed here; its call through the socket is not exercised",
+    );
+  }
+
+  // gh off, or a later turn without a repository: the driver removes the file.
+  await removeGitHubCliConfig(config);
+  for (const shell of [
+    ["sh", "-ic"],
+    ["bash", "-c"],
+  ]) {
+    assert.deepEqual(
+      ghVariables(await terminal(config.statusPath, config.cwd, shell, "env")),
+      {},
+    );
+  }
 });
 
 test("the repo overlay says what gh reads and writes, and that pull requests stay with the bex tools", () => {
