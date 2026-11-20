@@ -1,6 +1,6 @@
 # w3 · m506 — A running instance keeps at most 6,000 application log lines a minute, as on Render, so one flooding service cannot delay or drop every tenant's logs
 
-**Worker:** worker3 **Goal:** the log shipper drops an instance's application lines beyond Render's documented 6,000 a minute, counts what it drops, and Loki's ingestion limits are explicit, so one service printing in a loop costs only its own excess lines. **Status:** blocked — t001–t005 and t007–t010 done and shipped in `e737b2412`; t006 reads production for 24 hours once a production pin carries it (§ Gate)
+**Worker:** worker3 **Goal:** the log shipper drops an instance's application lines beyond Render's documented 6,000 a minute, counts what it drops, and Loki's ingestion limits are explicit, so one service printing in a loop costs only its own excess lines. **Status:** done — t001–t005 and t007–t010 shipped in `e737b2412`; t006's 24-hour production read (§ Production read) found no 429, no discarded sample and no customer pod cut, and t011 closed the milestone on 2026-11-20
 
 ## Tasks (in order)
 
@@ -11,12 +11,12 @@
 | [t003](done/t003.md) | The live tail applies the same cap — **DONE** | 1h | t002 |
 | [t004](done/t004.md) | Explicit Loki ingestion limits and alerts on dropped or refused lines — **DONE** | 45m | t001 |
 | [t005](done/t005.md) | dev-3 flood drill — **DONE** | 45m | t002, t003, t004 |
-| [t006](t006.md) | Ship and verify on production | 30m | t005 |
+| [t006](done/t006.md) | Ship and verify on production — **DONE** | 30m | t005 |
 | [t007](done/t007.md) | ADR010 and ADR018 — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Render parity — **DONE** | 20m | t007 |
 | [t009](done/t009.md) | Simplify — **DONE** | 15m | t008 |
 | [t010](done/t010.md) | Test coverage — **DONE** | 30m | t008 |
-| [t011](t011.md) | Closeout | 10m | t009, t010 |
+| [t011](done/t011.md) | Closeout — **DONE** | 10m | t009, t010 |
 
 ## Definition of done
 
@@ -91,3 +91,53 @@ Read from production Loki (each pod's lines per minute, `count_over_time`, in si
 **Clears by itself; no decision needed.** t006 needs a production deploy carrying `e737b2412` (the shipper's cap, the Loki limits, the alert and the tail cap), then 24 hours of it. Check: the newest `chore(deploy): pin platform images to <sha>` on `main` passes `git merge-base --is-ancestor e737b2412 <sha>`, and production's `monitoring/log-shipper` ConfigMap carries `stage.limit` in `app_logs`.
 
 **Next (t006, then t011):** once the pin is 24 hours old, fetch the production kubeconfig (`scripts/fetch-app-kubeconfig.sh`) and read, over those 24 hours: Alloy's `loki_process_dropped_lines_by_label_total{label_name="pod"}` per pod (expect only pods printing more than about 100 lines a second for over a minute, on current traffic `twenty-crm`'s error loops; § Measurement), `loki_write_request_duration_seconds_count{status_code="429"}` and `loki_discarded_samples_total` (expect none), and Loki's `/config` (8 MB/s, 16 MB burst). Record it here, then close out with t011. A pod dropped that the measurement did not predict is a finding to explain before closing.
+
+## Unblocked (2026-11-20, `/loopx w3`)
+
+- **Source:** verified evidence; no user decision was needed. The first pin carrying `e737b2412` is `c81d2d447bd8` (`aefb144dc`, 18:04:33 UTC on 2026-11-19): `git merge-base --is-ancestor e737b2412` fails on `dff52c596d13` before it and succeeds on it and on every later pin, through `11b1e8f85f06` (`0779189fc`, 15:24 UTC on 2026-11-20). The read ran at 18:05 UTC on 2026-11-20, so the 24 hours had passed. Production's `monitoring/log-shipper` ConfigMap carries `stage.limit` in `app_logs` (rate 100, burst 6,000, `by_label_name = "pod"`, drop).
+- **When each part went live.** Argo CD's `log-shipper` and `loki` applications take their values from `main`, not from the pin. So the shipper's cap and Loki's limits went live when `e737b2412` reached `main` (17:07 UTC on 2026-11-19; `loki-0` restarted at 17:17:11), before the window opened. bex-api's tail cap came with the pin. No drop-counter series existed before 20:10 UTC on 2026-11-19, so nothing was dropped between 17:17 and the window's start.
+- **w8/m525 inside the window.** `1c3ee254f` (bex-alloy `56d02b11e69b` with `limit-entry-timestamp.patch`, and `refill_by_entry_timestamp = true` on `app_logs`) reached `main` at 06:37 UTC on 2026-11-20. The DaemonSet rolled to revision 14 from 06:46:16 to 06:54:20, two hours before that change's pin `12716d1d7097` (`4e37ec03f`, 08:47:17; bex-api rolled `6ad7ebee0`'s tail side at 08:52:36). So the shipper's bucket refilled by the wall clock from 18:04 to 06:46 and by each line's own timestamp from 06:54 to 18:04 (§ Production read, "m525").
+- **Next:** t006's read below, then t011.
+
+## Production read (t006, 2026-11-19 18:04:33 → 2026-11-20 18:04:33 UTC)
+
+Read on 2026-11-20 at 18:05 UTC from production Prometheus and Loki (kubeconfig from `scripts/fetch-app-kubeconfig.sh`; queries run with `wget` inside the `prometheus-server` container, since the API server's service proxy cannot reach pod IPs). Each drop counter is summed per series: its last value if the series was born inside the window, else its rise. `increase()` reads 124,864, because it misses the first sample of a series born mid-window (each pod's counter starts at its first drop), and the m525 roll replaced every shipper.
+
+**No 429, no retry, no discarded sample.** 224,868 pushes from the shipper to Loki answered 204. Their `500` and `-1` series did not rise, and no `status_code="429"` series has ever existed. `loki_write_batch_retries_total` (27 series) and `loki_write_dropped_entries_total` (108 series, every reason including `rate_limited` and `stream_limited`) did not rise, and 2,218,035 entries were sent. `loki_discarded_samples_total` has no series in the last 14 days. Loki's `/config` reads `ingestion_rate_mb: 8`, `ingestion_burst_size_mb: 16`, `per_stream_rate_limit: 3MB`, `per_stream_rate_limit_burst: 15MB`, `max_global_streams_per_user: 5000` and `max_line_size: 256KB`. `LogDeliveryLokiRejected` and `LogDeliveryRetriesPersistent` never went pending.
+
+**Every drop was a deliberate test flood.** Eight pods dropped 152,084 lines. That is the same total as the four shipper pods' `loki_process_dropped_lines_total{reason="ratelimit_drop_stage"}` (76,481 + 32,060 + 29,273 + 14,270), and Prometheus keeps only `app_logs`' drop counters. All eight belong to bex-canary QA fixtures in `tea-daif693dqjvc73e7as3g`, named in [w8/342](../../../w8/done/342.md) and [w8/340](../../../w8/done/340.md):
+
+| Pod | Flood | Dropped | Counter rose (UTC) | Bucket refill |
+| --- | --- | --- | --- | --- |
+| `qa-20261119-617d-py-68c54d84-74lxh` | cli-qa routine's run-pod flood, 20:08:21–20:12:21, about 190 lines/s (w8/342) | 14,516 | 11-19 20:10–20:13 | wall clock |
+| `bld-…-qa-20261119-617d-py-gen-5-xlk5j` | w8/340 case A's build: 20,000 lines in about 1 s | 5,647 | 20:19 | wall clock |
+| `bld-…-qa-20261119-617d-py-gen-7-j4rjl` | w8/340 case C's build: case B, then a failing `exit 1` | 26,413 | 20:25 | wall clock |
+| `bld-…-qa-20261119-617d-py-gen-9-49ftb` | w8/340 case B's build: 52,500 lines over 35 s | 22,897 | 20:35–20:36 | wall clock |
+| `bld-…-qa-20261119-340r-py-gen-3-8slc5` | w8/340's closing check, case A | 12,088 | 22:34 | wall clock |
+| `bld-…-qa-20261119-340r-py-gen-5-bvqbx` | w8/340's closing check, case B | 41,496 | 22:37–22:38 | wall clock |
+| `qa-20261120-341-py-767658f56b-jjgxc` | w8/341's replay, 04:35:00.7–04:39:00.0, 44,580 lines (w8/342) | 14,757 | 11-20 04:37–04:39 | wall clock |
+| `qa-20261120-525-py-7f45b555b8-ggbl6` | w8/m525 t005's replay, 08:58:23.8–09:02:23.1, 44,180 lines (w8/342) | 14,270 | 09:00–09:02 | line timestamp |
+
+- **The counter agrees with history.** w8/341's replay kept 29,823 of 44,580 lines in history, and 44,580 − 29,823 = 14,757 is exactly its counter. m525's replay kept 29,911 of 44,180, so 14,269 against its counter's 14,270.
+- **No customer pod dropped a line.** The busiest stored minute of any other pod was `tianpan-v4-web`'s 5,035 (11-20 16:39 UTC), inside the burst. `beancount-cms-v2`'s build copy reached 4,252, `twenty-crm` 1,006 and `beancount-forum` 916. `twenty-crm`'s `ECONNRESET` loops, the only drop t001 predicted, did not recur in the window.
+- **`AppLogLinesRateLimited` went pending on six of the eight pods and never fired.** Each flood ended inside the rule's 15-minute `for`, so the rule flags sustained drops and not a four-minute test.
+
+**The five `bld-…` pods are build pods' `type=app` copy (§ Measurement).** Build pods carry `app.bex.co/app`, so `app_pods` tails their files into namespace `bex-build`, and the cap thinned only that copy. No tenant read selects it: `lokiSelectorFor` pins `namespace` to the App's own tenant namespace (`lego/backend/internal/logs/loki.go:476`). Build history comes from `build_logs`, and in the live ConfigMap only `app_logs` and `sandbox_logs` carry `stage.limit` (`request_logs`, `database_logs`, `keyvalue_logs`, `build_logs` and `platform_logs` carry none). w8/340's closing check read the two `340r` builds' history whole, `seq` 1–20,000 and 1–52,500 each once, in the same minutes the copy dropped 12,088 and 41,496. So these drops cost no tenant a line, but they do reach the per-pod counter and `AppLogLinesRateLimited`. A build printing more than 100 lines a second for 15 minutes would fire the info alert under a `bld-…` pod name.
+
+**m525: what changed in the window, and what it did to the read.**
+
+- The rule changed which lines a flooding pod keeps, not how many. Rate 100/s and burst 6,000 did not change. The two near-identical replays on either side of the roll kept 29,823 (wall clock) and 29,911 (line timestamps). Each is about 6,000 plus 100 a second for 240 seconds.
+- The roll restarted every shipper. So every bucket started full, and every counter restarted as a new series, which is why the read sums per series. No pod was dropping between 04:39 and 09:00, so the refilled buckets gave no flood an extra burst.
+- The roll did no harm under either refill. A wall-clock bucket that catches up a backlog after a restart can drop lines a pod wrote under the cap, while the line-timestamp refill cannot. No non-fixture pod dropped on either side of 06:46.
+- **Roll artifact, not a cap finding.** From about 06:47 each old shipper pod reported one unhealthy component until it was replaced, and the new pods never did. This is most likely the config-reloader loading the new ConfigMap, whose `refill_by_entry_timestamp` the old image does not know. So `LogDeliveryCollectorUnhealthy` fired from 06:52 to 06:54 for the last nodes replaced, and `LogDeliveryCollectorMissing` went pending for one minute at 06:48. Across the roll, `alloy_config_last_load_successful` stayed 1, no push failed, retried or dropped, and the shipper kept sending 1,041–2,775 entries a minute.
+
+**Result:** t006's acceptance holds. There were no 429 retries, and no drop went beyond t001's expectation: every drop was a deliberate test flood. Five of the eight are copies of test builds whose build history kept every line.
+
+## Closed (2026-11-20, `/loopx w3`)
+
+- **Definition of done:**
+  1. `app_logs` drops and counts each instance's excess on production (§ Production read: the counter equals each replay's missing lines), and request, Postgres and Key Value pipelines carry no limit in the live ConfigMap.
+  2. The tail drops the same excess: t005's drill, plus w8/m525 t005's production replay with 0 of 3,590 tail lines missing from history.
+  3. The dev-3 flood kept the cap and its neighbor lost nothing (§ dev-3 drill).
+  4. Loki's limits are explicit in `/config`, the 429 and drop alerts ship with rule tests (t004), and production shows no 429 and no retry after the pin.
+- **Not checked:** a firing `AppLogLinesRateLimited` page on production. No flood lasted 15 minutes, and t004's rule tests cover the firing path.
