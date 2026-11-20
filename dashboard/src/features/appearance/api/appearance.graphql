@@ -1,0 +1,27 @@
+# The account's Appearance settings in Render's own documents (w3/m531,
+# docs/render-artifacts/account-appearance.md): Dashboard Theme, with High
+# Contrast Mode as its `_HIGH_CONTRAST` twin, and Log Explorer Theme.
+query UserThemeSettings {
+  user {
+    id
+    themeSetting
+    logThemeSetting
+  }
+}
+
+mutation UpdateUserThemeSetting($id: String!, $themeSetting: ThemeSetting!) {
+  updateUserThemeSetting(id: $id, themeSetting: $themeSetting) {
+    id
+    themeSetting
+  }
+}
+
+mutation UpdateUserLogThemeSetting(
+  $id: String!
+  $logThemeSetting: LogThemeSetting!
+) {
+  updateUserLogThemeSetting(id: $id, logThemeSetting: $logThemeSetting) {
+    id
+    logThemeSetting
+  }
+}

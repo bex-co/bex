@@ -27,7 +27,6 @@ import { LogLineList } from "./log-line-list";
 import {
   DATASTORE_LOG_ACTIONS_CLASS,
   LOG_MAXIMIZED_BODY_CLASS,
-  LOG_MAXIMIZED_CLASS,
   LOG_MAXIMIZED_LIST_CLASS,
 } from "./log-toolbar-layout";
 import { LogTruncationNotice } from "./log-truncation-notice";
@@ -65,6 +64,7 @@ import {
   LOG_TYPE_ALL,
   type LogLine,
 } from "../types";
+import { LogThemeFrame } from "./log-theme-frame";
 
 // The "no pick" option of the instance and level selects.
 const ALL = "all";
@@ -416,7 +416,7 @@ export function DatastoreLogViewer({
   }
 
   return (
-    <div className={cn("space-y-4", explorer.maximized && LOG_MAXIMIZED_CLASS)}>
+    <LogThemeFrame className="space-y-4" maximized={explorer.maximized}>
       <div className="flex flex-wrap items-center gap-3">
         <RangeSelect
           range={range}
@@ -484,7 +484,7 @@ export function DatastoreLogViewer({
         </p>
       ) : null}
       {body}
-    </div>
+    </LogThemeFrame>
   );
 }
 

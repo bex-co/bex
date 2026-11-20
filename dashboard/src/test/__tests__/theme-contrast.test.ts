@@ -6,6 +6,9 @@ import { describe, expect, it } from "vitest";
 // 2.1 AA: 4.5:1 for text, 3:1 for the part of a control that identifies it (the
 // focus ring). jsdom has no colour, so the page sweep cannot judge it: this
 // reads the stylesheet's tokens and Tailwind's palette and computes the ratios.
+// High Contrast Mode's twin of each theme (w3/m531) is held to a stricter bar:
+// 7:1 for text (WCAG AAA) and 4.5:1 for the focus ring and for the borders and
+// inputs that identify a control.
 
 const ROOT = resolve(import.meta.dirname, "../../..");
 const read = (path: string) => readFileSync(resolve(ROOT, path), "utf8");
@@ -91,11 +94,20 @@ function blockAfter(css: string, selector: RegExp): string {
 }
 
 const css = read("src/style.css");
-const LIGHT: Tokens = declarations(blockAfter(css, /\n:root \{/));
+const LIGHT: Tokens = declarations(blockAfter(css, /\n:root,\n\.light \{/));
 const DARK: Tokens = {
   ...LIGHT,
   ...declarations(blockAfter(css, /\n\.dark \{/)),
 };
+// High Contrast Mode's twins: each theme with its high-contrast overrides.
+const LIGHT_HC_OVERRIDES = declarations(
+  blockAfter(css, /\n\.light\.high-contrast \{/),
+);
+const DARK_HC_OVERRIDES = declarations(
+  blockAfter(css, /\n\.dark\.high-contrast \{/),
+);
+const LIGHT_HC: Tokens = { ...LIGHT, ...LIGHT_HC_OVERRIDES };
+const DARK_HC: Tokens = { ...DARK, ...DARK_HC_OVERRIDES };
 
 const palette: Tokens = {};
 for (const match of read("node_modules/tailwindcss/theme.css").matchAll(
@@ -157,6 +169,17 @@ const TOKEN_PAIRS: Pair[] = [
   // The focus ring identifies the focused control (WCAG 1.4.11).
   tokenPair("ring", "background", 3),
   tokenPair("ring", "card", 3),
+];
+
+// The edges that identify a control: an input's or a select's border, an
+// outline button's, a card's and the sidebar's. The normal sets keep them soft
+// (decoration under AA); High Contrast Mode raises them to its control bar.
+const CONTROL_EDGES: Pair[] = [
+  tokenPair("border", "background", 3),
+  tokenPair("border", "card", 3),
+  tokenPair("input", "background", 3),
+  tokenPair("input", "card", 3),
+  tokenPair("sidebar-border", "sidebar", 3),
 ];
 
 // An off switch's track is the input fill, too faint to find on its own; its
@@ -366,6 +389,37 @@ function failures(tokensByTheme: Record<Theme, Tokens>): Failure[] {
   return found;
 }
 
+// High Contrast Mode's bar for each of the normal bars.
+const HIGH_CONTRAST_MIN: Record<Pair["min"], number> = { 4.5: 7, 3: 4.5 };
+
+/** The high-contrast twins against the stricter bar: every token pair the
+ *  normal sets are checked on, and the control edges. The status colours are
+ *  component classes, not tokens, so High Contrast Mode does not change them;
+ *  they keep the AA check above. */
+function highContrastFailures(tokensByTheme: Record<Theme, Tokens>): Failure[] {
+  const found: Failure[] = [];
+  for (const theme of ["light", "dark"] as const) {
+    for (const pair of [
+      ...TOKEN_PAIRS,
+      ...CONTROL_EDGES,
+      LOG_META,
+      SWITCH_OFF_EDGE,
+    ]) {
+      const { fg, bg } = pair.colours(tokensByTheme[theme]);
+      const ratio = contrast(fg, bg);
+      const min = HIGH_CONTRAST_MIN[pair.min];
+      if (ratio < min)
+        found.push({
+          theme,
+          pair: pair.name,
+          ratio: Math.round(ratio * 100) / 100,
+          min,
+        });
+    }
+  }
+  return found;
+}
+
 const describeFailures = (list: Failure[]) =>
   list
     .map((f) => `${f.theme}: ${f.pair} is ${f.ratio}:1, needs ${f.min}:1`)
@@ -427,6 +481,56 @@ describe("the stylesheet's colour pairs", () => {
     expect(() => failures({ light: without, dark: DARK })).toThrow(
       /--muted-foreground/,
     );
+  });
+});
+
+describe("High Contrast Mode's token sets (w3/m531)", () => {
+  const twins = { light: LIGHT_HC, dark: DARK_HC };
+
+  it("are defined for the light and the dark theme", () => {
+    expect(Object.keys(LIGHT_HC_OVERRIDES).length).toBeGreaterThan(3);
+    expect(Object.keys(DARK_HC_OVERRIDES).length).toBeGreaterThan(3);
+  });
+
+  it("meet 7:1 for text and 4.5:1 for the borders and focus ring", () => {
+    const found = highContrastFailures(twins);
+    expect(found, describeFailures(found)).toEqual([]);
+  });
+
+  it("are stricter than the normal sets, which do not meet that bar", () => {
+    expect(highContrastFailures(TOKENS).length).toBeGreaterThan(0);
+  });
+
+  // Every token a high-contrast set raises is one the bar needs: put back to
+  // the theme's normal value, it fails, in the theme it was put back in.
+  it.each([
+    ...Object.keys(LIGHT_HC_OVERRIDES).map((name) => ["light", name] as const),
+    ...Object.keys(DARK_HC_OVERRIDES).map((name) => ["dark", name] as const),
+  ])("fails when the %s twin's --%s is put back", (theme, name) => {
+    const normal = theme === "light" ? LIGHT : DARK;
+    const reverted = {
+      ...twins,
+      [theme]: { ...twins[theme], [name]: normal[name] },
+    };
+    const found = highContrastFailures(reverted);
+    expect(found.length).toBeGreaterThan(0);
+    expect(found.every((f) => f.theme === theme)).toBe(true);
+  });
+});
+
+describe("a subtree with a theme of its own (w3/m531)", () => {
+  // `@theme inline`'s colour aliases are resolved where they are declared, on
+  // :root; a nested `.light` or `.dark` scope declares them again so
+  // `var(--color-muted)` inside it reads the scope's muted, not the page's.
+  const aliases = (block: string) =>
+    [...block.matchAll(/(--color-[a-z0-9-]+):\s*(var\(--[a-z0-9-]+\))\s*;/g)]
+      .map((m) => `${m[1]}: ${m[2]}`)
+      .sort();
+
+  it("re-declares every colour alias the theme declares", () => {
+    const theme = aliases(blockAfter(css, /\n@theme inline \{/));
+    expect(theme.length).toBeGreaterThan(20);
+    expect(aliases(blockAfter(css, /\n\.light,\n\.dark \{/))).toEqual(theme);
   });
 });
 

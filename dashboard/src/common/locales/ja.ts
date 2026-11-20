@@ -348,6 +348,11 @@ const jaCommon: Record<string, TranslationEntry> = {
     message: "システム",
     description: "System theme option label",
   },
+  "common.themeNotSaved": {
+    message: "テーマを保存できませんでした。以前のテーマに戻しました。",
+    description:
+      "Toast when a theme change could not be saved to the account (w3/m531); the previous theme is put back",
+  },
   "common.userMenuLogOut": {
     message: "ログアウト",
     description: "User menu item that signs the user out",

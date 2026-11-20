@@ -220,6 +220,7 @@ var scalarRoutes = map[string]bool{
 	"GET /v1/agent-automations/{id}":                                 true, // triggers always holds the one stored trigger
 	"GET /v1/agent-attachments/{id}":                                 true,
 	"GET /v1/agent-attachments/{id}/content":                         true, // a redirect, no body
+	"GET /v1/users/theme-settings":                                   true, // the account's two theme settings (w3/m531)
 	"GET /v1/services/{id}":                                          true,
 	"GET /v1/build-sources/{buildSourceId}":                          true,
 	"GET /v1/build-sources/{buildSourceId}/builds/{buildId}":         true,

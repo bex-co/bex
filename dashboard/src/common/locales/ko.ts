@@ -348,6 +348,11 @@ const koCommon: Record<string, TranslationEntry> = {
     message: "시스템",
     description: "System theme option label",
   },
+  "common.themeNotSaved": {
+    message: "테마를 저장하지 못했습니다. 이전 테마로 되돌렸습니다.",
+    description:
+      "Toast when a theme change could not be saved to the account (w3/m531); the previous theme is put back",
+  },
   "common.userMenuLogOut": {
     message: "로그아웃",
     description: "User menu item that signs the user out",

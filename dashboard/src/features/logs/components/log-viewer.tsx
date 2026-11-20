@@ -52,7 +52,6 @@ import type { LogLineShellTarget, LogRowMenuItems } from "./log-row-menu";
 import {
   LOG_FILTER_ACTIONS_CLASS,
   LOG_MAXIMIZED_BODY_CLASS,
-  LOG_MAXIMIZED_CLASS,
   LOG_MAXIMIZED_LIST_CLASS,
 } from "./log-toolbar-layout";
 import { LogTruncationNotice } from "./log-truncation-notice";
@@ -63,6 +62,7 @@ import {
   type RangeSelection,
 } from "@/features/metrics/lib/range";
 import { DEFAULT_LOG_RANGE } from "../lib/log-search";
+import { LogThemeFrame } from "./log-theme-frame";
 
 interface LogViewerProps {
   resource: string;
@@ -496,10 +496,11 @@ export function LogViewer({
   }
 
   return (
-    <div
+    <LogThemeFrame
       ref={frameRef}
       data-log-frame=""
-      className={cn("space-y-4", explorer.maximized && LOG_MAXIMIZED_CLASS)}
+      className="space-y-4"
+      maximized={explorer.maximized}
     >
       <LogFilterBar
         resource={resource}
@@ -546,7 +547,7 @@ export function LogViewer({
           {history.loading && history.lines.length === 0 ? null : streamLine}
         </div>
       )}
-    </div>
+    </LogThemeFrame>
   );
 }
 

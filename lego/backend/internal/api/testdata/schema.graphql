@@ -1792,6 +1792,12 @@ type LogRetention {
   visibleFrom: String
 }
 
+enum LogThemeSetting {
+  ALWAYS_DARK
+  ALWAYS_LIGHT
+  MATCH_APP
+}
+
 enum LoginRequirement {
   GOOGLE_LOGIN
   TWO_FACTOR
@@ -2175,6 +2181,8 @@ type Mutation {
   updateSandboxGroup(concurrencyLimit: Int!, id: String!, ownerId: String): SandboxGroup
   updateSavedSearch(filters: JSONObject, id: String!, name: String, type: SavedSearchType): SavedSearch
   updateServicePlan(confirm: String, dryRun: Boolean, id: String!, plan: String!): Service
+  updateUserLogThemeSetting(id: String!, logThemeSetting: LogThemeSetting!): User
+  updateUserThemeSetting(id: String!, themeSetting: ThemeSetting!): User
   updateWebhookEndpoint(enabled: Boolean, eventTypes: [String], id: String!, name: String, ownerId: String, url: String): WebhookEndpoint
   verifyCustomDomain(confirm: String, id: String!, name: String!): CustomDomain
 }
@@ -2623,6 +2631,7 @@ type Query {
   sshKeys: [SSHKey]
   unreadPushNotificationCount(ownerId: String): Int!
   usage(ownerId: String, period: String): UsageSummary
+  user: User
   validateBlueprint(bexYaml: String!, blueprintId: String, ownerId: String): BlueprintValidation
   viewerCapabilities(fresh: Boolean, ownerId: String): ViewerCapabilities
   webPushAvailable(ownerId: String): Boolean!
@@ -3140,6 +3149,15 @@ type TableSizeInfo {
   sizePretty: String
 }
 
+enum ThemeSetting {
+  DARK
+  DARK_HIGH_CONTRAST
+  LIGHT
+  LIGHT_HIGH_CONTRAST
+  SYSTEM
+  SYSTEM_HIGH_CONTRAST
+}
+
 type UsageCoverage {
   degradedSources: [String!]!
   state: String!
@@ -3165,6 +3183,12 @@ type UsageSummary {
   period: String
   services: [ServiceUsage]
   workspaceId: String
+}
+
+type User {
+  id: String!
+  logThemeSetting: LogThemeSetting!
+  themeSetting: ThemeSetting!
 }
 
 type ViewerCapabilities {

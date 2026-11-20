@@ -83,24 +83,49 @@ const esAuth: Record<string, TranslationEntry> = {
       "Account settings (w3/m528): Render's Appearance section heading and its rail link; a log explorer's Options > Theme Settings opens it",
   },
   "auth.appearanceSectionSubtitle": {
-    message: "Elige cómo se ve el panel.",
+    message:
+      "Elige cómo se ve el panel. Tus preferencias se guardan en tu cuenta.",
     description: "Account settings (w3/m528): Appearance section description",
   },
   "auth.dashboardTheme": {
     message: "Tema del panel",
     description:
-      "Account settings > Appearance (w3/m528): Render's Dashboard Theme setting, its card title and the select's accessible name",
-  },
-  "auth.dashboardThemeDescription": {
-    message:
-      "El tema del panel en este navegador. El Tema del menú de la cuenta cambia el mismo ajuste.",
-    description:
-      "Account settings > Appearance (w3/m528): the Dashboard Theme card's description; the setting is the account menu's Theme, kept in this browser",
+      "Account settings > Appearance (w3/m528, w3/m531): Render's Dashboard Theme setting, saved on the account; its row label and the select's accessible name",
   },
   "auth.dashboardThemeSystem": {
     message: "Sistema (predeterminado)",
     description:
       "Account settings > Appearance (w3/m528): the System theme option, marked as the default as Render marks it",
+  },
+  "auth.logExplorerTheme": {
+    message: "Tema del explorador de registros",
+    description:
+      "Account settings > Appearance (w3/m531): Render's Log Explorer Theme setting, its row label and the select's accessible name",
+  },
+  "auth.logExplorerThemeMatch": {
+    message: "Igual que el panel (predeterminado)",
+    description:
+      "Account settings > Appearance (w3/m531): the Log Explorer Theme option that follows the dashboard's theme, marked as the default as Render marks it",
+  },
+  "auth.highContrastMode": {
+    message: "Modo de alto contraste",
+    description:
+      "Account settings > Appearance (w3/m531): Render's High Contrast Mode setting, its row label and the switch's accessible name",
+  },
+  "auth.highContrastModeDescription": {
+    message: "Aumenta la visibilidad de los elementos interactivos.",
+    description:
+      "Account settings > Appearance (w3/m531): High Contrast Mode's description, Render's words",
+  },
+  "auth.highContrastEnabled": {
+    message: "Activado",
+    description:
+      "Account settings > Appearance (w3/m531): the text beside High Contrast Mode's switch while it is on",
+  },
+  "auth.highContrastDisabled": {
+    message: "Desactivado",
+    description:
+      "Account settings > Appearance (w3/m531): the text beside High Contrast Mode's switch while it is off",
   },
   "auth.integrationsSection": {
     message: "Integraciones",

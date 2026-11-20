@@ -354,6 +354,12 @@ const deCommon: Record<string, TranslationEntry> = {
     message: "System",
     description: "System theme option label",
   },
+  "common.themeNotSaved": {
+    message:
+      "Dein Design wurde nicht gespeichert. Das vorherige Design ist wieder aktiv.",
+    description:
+      "Toast when a theme change could not be saved to the account (w3/m531); the previous theme is put back",
+  },
   "common.userMenuLogOut": {
     message: "Abmelden",
     description: "User menu item that signs the user out",

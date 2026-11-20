@@ -80,24 +80,48 @@ const koAuth: Record<string, TranslationEntry> = {
       "Account settings (w3/m528): Render's Appearance section heading and its rail link; a log explorer's Options > Theme Settings opens it",
   },
   "auth.appearanceSectionSubtitle": {
-    message: "대시보드의 모양을 선택하세요.",
+    message: "대시보드의 모양을 선택하세요. 선택한 설정은 계정에 저장됩니다.",
     description: "Account settings (w3/m528): Appearance section description",
   },
   "auth.dashboardTheme": {
     message: "대시보드 테마",
     description:
-      "Account settings > Appearance (w3/m528): Render's Dashboard Theme setting, its card title and the select's accessible name",
-  },
-  "auth.dashboardThemeDescription": {
-    message:
-      "이 브라우저에서 사용하는 대시보드 테마입니다. 계정 메뉴의 테마와 같은 설정입니다.",
-    description:
-      "Account settings > Appearance (w3/m528): the Dashboard Theme card's description; the setting is the account menu's Theme, kept in this browser",
+      "Account settings > Appearance (w3/m528, w3/m531): Render's Dashboard Theme setting, saved on the account; its row label and the select's accessible name",
   },
   "auth.dashboardThemeSystem": {
     message: "시스템(기본값)",
     description:
       "Account settings > Appearance (w3/m528): the System theme option, marked as the default as Render marks it",
+  },
+  "auth.logExplorerTheme": {
+    message: "로그 탐색기 테마",
+    description:
+      "Account settings > Appearance (w3/m531): Render's Log Explorer Theme setting, its row label and the select's accessible name",
+  },
+  "auth.logExplorerThemeMatch": {
+    message: "대시보드와 같게(기본값)",
+    description:
+      "Account settings > Appearance (w3/m531): the Log Explorer Theme option that follows the dashboard's theme, marked as the default as Render marks it",
+  },
+  "auth.highContrastMode": {
+    message: "고대비 모드",
+    description:
+      "Account settings > Appearance (w3/m531): Render's High Contrast Mode setting, its row label and the switch's accessible name",
+  },
+  "auth.highContrastModeDescription": {
+    message: "상호작용 요소를 더 잘 보이게 합니다.",
+    description:
+      "Account settings > Appearance (w3/m531): High Contrast Mode's description, Render's words",
+  },
+  "auth.highContrastEnabled": {
+    message: "사용",
+    description:
+      "Account settings > Appearance (w3/m531): the text beside High Contrast Mode's switch while it is on",
+  },
+  "auth.highContrastDisabled": {
+    message: "사용 안 함",
+    description:
+      "Account settings > Appearance (w3/m531): the text beside High Contrast Mode's switch while it is off",
   },
   "auth.integrationsSection": {
     message: "연동",

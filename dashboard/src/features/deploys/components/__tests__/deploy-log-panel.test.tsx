@@ -7,6 +7,11 @@ import type { UseDeployLogsResult } from "../../hooks/use-deploy-logs";
 import type { LogLine } from "@/features/logs/types";
 import { needsAnsiParse, parseAnsi } from "@/features/logs/lib/ansi";
 import { setupVirtualGeometry } from "@/test/virtual-geometry";
+import {
+  explorerThemeClasses,
+  LOG_THEME_CASES,
+  LogThemeContext,
+} from "@/test/log-theme";
 
 // Options ends with Theme Settings, a router Link (w3/m528): render it as
 // its anchor, with no router around the component.
@@ -542,4 +547,27 @@ it("keeps the deploy log search uneditable until hydration (w4/m219)", async () 
   expect(search().disabled).toBe(false);
   await userEvent.type(search(), "step");
   expect(search().value).toBe("step");
+});
+
+// Log Explorer Theme (w3/m531): a deploy's log keeps its own theme, in its
+// high-contrast twin under High Contrast Mode.
+describe("DeployLogPanel under Log Explorer Theme (w3/m531)", () => {
+  it.each(LOG_THEME_CASES)(
+    "%s with High Contrast Mode %s puts %j on its root",
+    (logTheme, highContrast, classes) => {
+      const { container } = render(
+        <LogThemeContext logTheme={logTheme} highContrast={highContrast}>
+          <DeployLogPanel
+            resource="web"
+            deployId="dep-1"
+            startTime="2026-07-14T00:00:00Z"
+            endTime="2026-07-14T00:05:00Z"
+            hasPreDeploy={false}
+            followBuild={false}
+          />
+        </LogThemeContext>,
+      );
+      expect(explorerThemeClasses(container)).toEqual(classes);
+    },
+  );
 });

@@ -6,22 +6,22 @@
 - **High Contrast Mode** (_"Increase the visibility of interactive elements."_), a switch that swaps the theme for its high-contrast twin, part of the same stored setting;
 - **Log Explorer Theme** (Match Dashboard (Default), Light, Dark), stored on the account, which every log explorer follows.
 
-**Status:** todo
+**Status:** in progress — t001–t006 and t008–t010 done; t007 walked on dev-3 (§ Verification record), production waits for a pin carrying the milestone
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Record Render's Appearance in a capture: the two enums, the mutations, High Contrast's twins and the log theme mapping | 30m | — |
-| [t002](t002.md) | Store the account's theme settings in Postgres, deleted with the account | 45m | t001 |
-| [t003](t003.md) | bex-api serves them: GraphQL `user` with Render's `updateUserThemeSetting` and `updateUserLogThemeSetting`, and a REST counterpart | 1h | t002 |
-| [t004](t004.md) | The dashboard keeps Dashboard Theme on the account: a new browser opens in it after sign-in | 1h | t003 |
-| [t005](t005.md) | High Contrast Mode: a high-contrast twin of each theme and Appearance's switch | 1h15m | t004 |
-| [t006](t006.md) | Log Explorer Theme: Appearance's choice, and every log explorer renders in it | 1h15m | t004 |
+| [t001](done/t001.md) | Record Render's Appearance in a capture: the two enums, the mutations, High Contrast's twins and the log theme mapping — **DONE** | 30m | — |
+| [t002](done/t002.md) | Store the account's theme settings in Postgres, deleted with the account — **DONE** | 45m | t001 |
+| [t003](done/t003.md) | bex-api serves them: GraphQL `user` with Render's `updateUserThemeSetting` and `updateUserLogThemeSetting`, and a REST counterpart — **DONE** | 1h | t002 |
+| [t004](done/t004.md) | The dashboard keeps Dashboard Theme on the account: a new browser opens in it after sign-in — **DONE** | 1h | t003 |
+| [t005](done/t005.md) | High Contrast Mode: a high-contrast twin of each theme and Appearance's switch — **DONE** | 1h15m | t004 |
+| [t006](done/t006.md) | Log Explorer Theme: Appearance's choice, and every log explorer renders in it — **DONE** | 1h15m | t004 |
 | [t007](t007.md) | Verify in a real browser at 1440 and 390, on the tree and on production | 45m | t005, t006 |
-| [t008](t008.md) | Render parity | 30m | t007 |
-| [t009](t009.md) | Simplify | 20m | t008 |
-| [t010](t010.md) | Test coverage | 45m | t008 |
+| [t008](done/t008.md) | Render parity — **DONE** | 30m | t007 |
+| [t009](done/t009.md) | Simplify — **DONE** | 20m | t008 |
+| [t010](done/t010.md) | Test coverage — **DONE** | 45m | t008 |
 | [t011](t011.md) | Closeout | 10m | t009, t010 |
 
 Total: **11 tasks, about 8h15m**.
@@ -36,6 +36,23 @@ Total: **11 tasks, about 8h15m**.
 6. **Skeletons and words.** The Appearance card's skeleton has the ready card's three rows at desktop and narrow-mobile widths. Every new string is translated into all eight languages. Each behaviour above has a test that fails when it is reverted.
 7. **Recorded.** A capture records what Render's bundle says about Appearance. [ADR018](../../../docs/ADR018-render-parity.md)'s Logs row "Log explorer display and shortcuts" no longer says the theme is kept in the browser or that Appearance lacks Log Explorer Theme and High Contrast Mode (the w3/091 sentence), and any difference left is named there with its follow-up or listed under ADR018's recorded divergences.
 8. **Live.** In a real browser at 1440 and 390, on the dev-3 tree and then on production once a pin carries the milestone: a fresh browser context signed in as the QA user opens in the theme the account stored, High Contrast Mode visibly raises the borders and muted text, and Log Explorer Theme Dark on a Light dashboard (and Light on Dark) shows in a service Logs tab, a Postgres Logs tab, a deploy's log and a project's Application Logs view.
+
+## Verification record
+
+### On the tree, dev-3 (2026-11-20, t007)
+
+bex-api built from the tree by `bash scripts/dev-env.sh 3 up` (migration 0317 applied), the dashboard on `:50030`, a fresh account `m531-theme@dev3.test` (Kratos admin, password, verified) with a web service from `docker.io/traefik/whoami:v1.10` (deploy live), a Postgres (available) and a project whose Production environment holds both. Chromium through Playwright; screenshots in `.playwright-mcp/` (not committed).
+
+- **Stored on the account.** `user { id themeSetting logThemeSetting }` read `usr-…`, `SYSTEM`, `MATCH_APP` before any choice. Picking Dark and turning High Contrast Mode on in Appearance wrote `DARK_HIGH_CONTRAST` / `MATCH_APP` to `user_theme_settings` for the account's subject. REST answered `{"themeSetting":"SYSTEM","logThemeSetting":"MATCH_APP"}`; `themeSetting: "dark"` was `400 INVALID_THEME_SETTING`, an unknown field `400`, no credential `401`, and `updateUserThemeSetting` with another id `user not found`.
+- **A new browser opens in the account's theme.** A fresh browser context had no copy (`light` at sign-in); after signing in, `<html>` went to `dark high-contrast` as the account bound, and every class `<html>` took on the reload was `dark high-contrast` from the pre-paint script on: no light frame (1440).
+- **Another tab and a refused write.** With a second tab open, picking Light in Appearance moved the other tab to `light high-contrast`. With the mutation blocked at the network, picking Dark showed Dark at once, then put Light back with the toast _"Your theme wasn't saved. The previous theme is back."_
+- **High Contrast Mode** raised `--border` and `--input` from `oklch(0.88 0.008 260)` to `oklch(0.5 0.01 260)` and `--muted-foreground` from `oklch(0.48 …)` to `oklch(0.33 …)` on a Light dashboard (the service page at 1440: card, input and table borders visibly darker).
+- **Log Explorer Theme.** Dark on a Light dashboard, and Light on a Dark one, at 1440 and 390, in the service Logs tab, the Postgres Logs tab, the deploy's log and the project's Application Logs view: each explorer root carried the forced theme (`dark` on a `light` page, `light` on a `dark` page) and its colours, the page around it unchanged, and Options opened in the explorer's theme. With High Contrast Mode on, each root and its Options menu carried `light high-contrast` and the list's border was the high-contrast `oklch(0.5 0.01 260)`. The walk found the list's top fade still in the page's colour inside a forced explorer (fixed, t006).
+- **Skeleton.** With the settings page's chunk held, the Appearance skeleton and the ready card measured the same: 744×210 at x 336 with rows 69/69/70 at 1440, and 358×310 at x 16 with rows 95/95/118 at 390.
+
+### On production
+
+Waits for a pin carrying the milestone (t007 step 5).
 
 ## Render's Appearance, read from its dashboard bundle (2026-11-20)
 

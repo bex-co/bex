@@ -359,6 +359,11 @@ const esCommon: Record<string, TranslationEntry> = {
     message: "Sistema",
     description: "System theme option label",
   },
+  "common.themeNotSaved": {
+    message: "No se guardó tu tema. Se ha restaurado el tema anterior.",
+    description:
+      "Toast when a theme change could not be saved to the account (w3/m531); the previous theme is put back",
+  },
   "common.userMenuLogOut": {
     message: "Cerrar sesión",
     description: "User menu item that signs the user out",

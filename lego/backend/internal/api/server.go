@@ -48,6 +48,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/accounts"
 	"github.com/bex-co/bex/lego/backend/internal/agentsessions"
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
+	"github.com/bex-co/bex/lego/backend/internal/appearance"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/bandwidth"
@@ -108,6 +109,7 @@ type Server struct {
 	Metrics       *metrics.Service
 	APIKeys       *apikeys.Service
 	Accounts      *accounts.Service
+	Appearance    *appearance.Service
 	Router        *router.Service
 	SSHKeys       *sshkeys.Service
 	Sandbox       *sandbox.Service
@@ -399,10 +401,13 @@ type Deps struct {
 	// SSHKeysStore persists identity-scoped public keys and resolves their
 	// fingerprints for the separately deployed SSH gateway. nil => management
 	// verbs report ErrSSHKeysUnavailable.
-	SSHKeysStore  sshkeys.Store
-	RouterURL     string
-	RouterSecret  string
-	RouterMembers router.MemberStore
+	SSHKeysStore sshkeys.Store
+	// AppearanceStore keeps an account's Dashboard and Log Explorer themes
+	// (w3/m531). nil => the verbs report THEME_SETTINGS_UNAVAILABLE.
+	AppearanceStore appearance.Store
+	RouterURL       string
+	RouterSecret    string
+	RouterMembers   router.MemberStore
 	// SandboxClient is the OpenSandbox lifecycle client (pillar 5, ADR042/w3/m32);
 	// nil (BEX_OPENSANDBOX_URL unset) => the sandbox verbs report
 	// ErrSandboxesUnavailable and the feature is not registered. SandboxTemplates
@@ -1296,6 +1301,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Accounts:              accountSvc,
 		Router:                &router.Service{Base: base, URL: d.RouterURL, Secret: d.RouterSecret, Members: d.RouterMembers},
 		SSHKeys:               &sshkeys.Service{Base: base, Store: d.SSHKeysStore},
+		Appearance:            &appearance.Service{Base: base, Store: d.AppearanceStore},
 		Sandbox:               sandboxSvc,
 		AgentSessions:         agentSessionsSvc,
 		BlueprintRecovery:     &apps.BlueprintRecoverer{Store: d.BlueprintsStore},
@@ -1502,6 +1508,7 @@ func (s *Server) features() []any {
 	out = appendFeature(out, s.Metrics)
 	out = appendFeature(out, s.APIKeys)
 	out = appendFeature(out, s.Accounts)
+	out = appendFeature(out, s.Appearance)
 	out = appendFeature(out, s.SSHKeys)
 	out = appendFeature(out, s.Router)
 	out = appendFeature(out, s.Sandbox)

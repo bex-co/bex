@@ -1,42 +1,48 @@
 (function () {
   try {
-    var theme = window.__THEME__;
-
-    // 1. URL query parameter: ?theme=dark or ?theme=light
-    if (!theme) {
-      var params = new URLSearchParams(window.location.search);
-      var queryTheme = params.get("theme");
-      if (queryTheme === "light" || queryTheme === "dark") {
-        theme = queryTheme;
+    // The browser's copy of the account's theme (w3/m531): Render's
+    // ThemeSetting, whose `_HIGH_CONTRAST` twins are High Contrast Mode. The
+    // ThemeProvider keeps it in step with the account (theme-provider/
+    // settings.ts, SETTINGS_STORAGE_KEY), so a reload paints the account's
+    // theme before React runs.
+    var setting = "";
+    try {
+      var stored = JSON.parse(localStorage.getItem("bex-user-settings") || "null");
+      if (stored && typeof stored.themeSetting === "string") {
+        setting = stored.themeSetting;
       }
+    } catch (e) {}
+    var highContrast = /_HIGH_CONTRAST$/.test(setting);
+    var theme = setting.replace(/_HIGH_CONTRAST$/, "").toLowerCase();
+
+    // The theme this browser kept before the account did.
+    if (theme !== "light" && theme !== "dark" && theme !== "system") {
+      theme = localStorage.getItem("vite-ui-theme");
     }
 
-    // 2. localStorage preference
-    if (!theme) {
-      var stored = localStorage.getItem("vite-ui-theme");
-      if (stored === "light" || stored === "dark") {
-        theme = stored;
-      }
+    // A URL query parameter wins: ?theme=dark, ?theme=light, ?theme=system
+    var queryTheme = new URLSearchParams(window.location.search).get("theme");
+    if (queryTheme === "light" || queryTheme === "dark" || queryTheme === "system") {
+      theme = queryTheme;
     }
 
-    // 3. System preference
-    if (!theme) {
+    // System, or nothing stored: the system preference
+    if (theme !== "light" && theme !== "dark") {
       theme = window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
         : "light";
     }
 
-    // Apply theme class to <html>
+    // Apply the theme's classes to <html>
     var root = document.documentElement;
     if (!root.classList.contains(theme)) {
       root.classList.remove("light", "dark");
       root.classList.add(theme);
     }
+    root.classList.toggle("high-contrast", highContrast);
 
-    // Persist via cookie (for SSR) if not already set server-side
-    if (!window.__THEME__) {
-      document.cookie =
-        "vite-ui-theme=" + theme + "; path=/; max-age=31536000; SameSite=Lax";
-    }
+    // Persist via cookie (for SSR)
+    document.cookie =
+      "vite-ui-theme=" + theme + "; path=/; max-age=31536000; SameSite=Lax";
   } catch (e) {}
 })();

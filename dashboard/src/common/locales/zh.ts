@@ -347,6 +347,11 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "跟随系统",
     description: "System theme option label",
   },
+  "common.themeNotSaved": {
+    message: "主题未能保存，已恢复为之前的主题。",
+    description:
+      "Toast when a theme change could not be saved to the account (w3/m531); the previous theme is put back",
+  },
   "common.userMenuLogOut": {
     message: "退出登录",
     description: "User menu item that signs the user out",

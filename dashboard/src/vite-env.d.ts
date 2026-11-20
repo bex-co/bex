@@ -23,7 +23,6 @@ declare global {
   }
 
   interface Window {
-    __THEME__?: "light" | "dark"; // SSR-injected theme (always resolved, never "system")
     /** GA4 gtag.js, present only when VITE_GA_MEASUREMENT_ID loaded it */
     gtag?: (...args: unknown[]) => void;
   }

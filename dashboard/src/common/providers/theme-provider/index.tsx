@@ -1,154 +1,254 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ThemeProviderContext } from "./context.ts";
-import type { Theme } from "./type.ts";
+import type { AccountThemeBinding, Theme } from "./type.ts";
 import {
-  getSystemTheme,
-  SYSTEM_DARK_QUERY,
-  THEME_STORAGE_KEY,
-} from "./utils.ts";
+  baseTheme,
+  DEFAULT_THEME_SETTINGS,
+  HIGH_CONTRAST_CLASS,
+  isHighContrast,
+  isTheme,
+  parseStoredSettings,
+  readBrowserSettings,
+  SETTINGS_STORAGE_KEY,
+  toThemeSetting,
+  writeBrowserSettings,
+  type LogThemeSetting,
+  type ThemeSettings,
+} from "./settings.ts";
+import { getSystemTheme, SYSTEM_DARK_QUERY } from "./utils.ts";
 
-type ThemeProviderProps = {
-  children: React.ReactNode;
-  defaultTheme?: Theme;
-  storageKey?: string;
-};
-
-const isValidTheme = (value: string | null): value is Theme => {
-  return value !== null && ["dark", "light", "system"].includes(value);
-};
-
+/** `?theme=light|dark|system` wins over the stored theme, for this page. */
 const getThemeFromQuery = (): Theme | null => {
-  if (typeof window === "undefined") return null; // SSR guard
-  const params = new URLSearchParams(window.location.search);
-  const themeParam = params.get("theme");
-  if (isValidTheme(themeParam)) {
-    return themeParam;
-  }
-  return null;
+  const value = new URLSearchParams(window.location.search).get("theme");
+  return isTheme(value) ? value : null;
 };
 
-const getThemeFromStorage = (storageKey: string): Theme | null => {
-  if (typeof window === "undefined") return null; // SSR guard
-  const storedTheme = localStorage.getItem(storageKey);
-  if (isValidTheme(storedTheme)) {
-    return storedTheme;
-  }
-  return null;
-};
+const same = (a: ThemeSettings, b: ThemeSettings) =>
+  a.themeSetting === b.themeSetting && a.logThemeSetting === b.logThemeSetting;
 
-export function ThemeProvider({
-  children,
-  defaultTheme = "system",
-  storageKey = THEME_STORAGE_KEY,
-  ...props
-}: ThemeProviderProps) {
-  // Track hydration state to prevent hydration mismatch
-  const [isHydrated, setIsHydrated] = useState(false);
+/** `source`'s value for each of `keys`. */
+const pick = (source: ThemeSettings, keys: string[]): Partial<ThemeSettings> =>
+  Object.fromEntries(
+    keys.map((key) => [key, source[key as keyof ThemeSettings]]),
+  );
 
-  // Get initial theme - prefer SSR-injected theme over defaultTheme
-  const getInitialTheme = (): Theme => {
-    // In SSR, always use defaultTheme
-    if (typeof window === "undefined") {
-      return defaultTheme;
-    }
+/**
+ * The dashboard's theme (w3/m531). The settings are the account's, in
+ * Render's enums: Dashboard Theme with High Contrast Mode as its
+ * `_HIGH_CONTRAST` twin, and Log Explorer Theme. The browser keeps a copy
+ * (`SETTINGS_STORAGE_KEY`), which the pre-paint script applies before the
+ * first paint and other tabs follow; the signed-in shell binds the account
+ * (`bindAccount`), whose stored settings then win, and every change is
+ * written to it. A change shows at once; a write the server refuses puts the
+ * previous setting back. Writes go one at a time, later changes folded into
+ * the next, so two answers can never land out of order.
+ */
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  // Read after hydration, so the server's render and the first client render
+  // agree. Until then <html> keeps the class the pre-paint script gave it.
+  const [settings, setSettings] = useState<ThemeSettings>(
+    DEFAULT_THEME_SETTINGS,
+  );
+  const [ready, setReady] = useState(false);
+  const [override, setOverride] = useState<Theme | null>(null);
+  // The latest settings, for a write that settles after newer changes.
+  const latest = useRef(settings);
+  // The bound account, with its settings as the server last answered them:
+  // what a refused write puts back.
+  const account = useRef<{
+    binding: AccountThemeBinding;
+    confirmed: ThemeSettings;
+  } | null>(null);
+  // Changes not yet sent (all of them, before the account is bound), and the
+  // one write in flight.
+  const queued = useRef<Partial<ThemeSettings>>({});
+  const sending = useRef<Partial<ThemeSettings> | null>(null);
 
-    // In browser, check if SSR injected theme
-    if (window.__THEME__) {
-      return window.__THEME__; // SSR theme is "light" or "dark", safe to use as Theme
-    }
-
-    // Fallback to defaultTheme
-    return defaultTheme;
-  };
-
-  // Always start with defaultTheme to match server-side rendering
-  // This prevents hydration mismatch
-  const [theme, setTheme] = useState<Theme>(getInitialTheme);
-
-  // After first render (hydration complete), mark as hydrated
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional for hydration tracking
-    setIsHydrated(true);
+  /** Shows `next`; false when it is what is shown already. */
+  const show = useCallback((next: ThemeSettings) => {
+    if (same(next, latest.current)) return false;
+    latest.current = next;
+    setSettings(next);
+    return true;
   }, []);
+  const keep = useCallback(
+    (next: ThemeSettings) => {
+      if (show(next)) writeBrowserSettings(next);
+    },
+    [show],
+  );
 
-  // After hydration, load theme from URL query param or localStorage
-  // Priority: URL query param > localStorage > defaultTheme
   useEffect(() => {
-    if (!isHydrated) return; // Wait for hydration to complete
+    // The stored theme is read after hydration.
+    show(readBrowserSettings());
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- read after hydration, as the stored theme is
+    setOverride(getThemeFromQuery());
+    setReady(true);
+  }, [show]);
 
-    const queryTheme = getThemeFromQuery();
-    if (queryTheme) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional theme loading after hydration
-      setTheme(queryTheme);
-      return;
-    }
-    const storedTheme = getThemeFromStorage(storageKey);
-    if (storedTheme) {
-      setTheme(storedTheme);
-    }
-    // If neither exists, keep defaultTheme (already set)
-  }, [storageKey, isHydrated]);
-
-  // Apply theme to DOM by adding/removing class on <html> element
-  // ONLY apply after hydration to prevent mismatch
+  // Another tab's change (Render's provider listens the same way).
   useEffect(() => {
-    if (!isHydrated) return; // Wait for hydration to complete
+    const follow = (event: StorageEvent) => {
+      if (event.key !== SETTINGS_STORAGE_KEY) return;
+      const next = parseStoredSettings(event.newValue);
+      if (next) show(next);
+    };
+    window.addEventListener("storage", follow);
+    return () => window.removeEventListener("storage", follow);
+  }, [show]);
 
+  const base = override ?? baseTheme(settings.themeSetting);
+  const highContrast = isHighContrast(settings.themeSetting);
+
+  useEffect(() => {
+    if (!ready) return;
     const apply = () => {
       const root = window.document.documentElement;
-
-      // Detect currently applied theme from DOM class
-      const currentClass = root.classList.contains("dark")
-        ? "dark"
-        : root.classList.contains("light")
-          ? "light"
-          : null;
-
-      // Resolve "system" theme to actual "light" or "dark" based on user's OS preference
-      const targetTheme = theme === "system" ? getSystemTheme() : theme;
-
-      // Only update DOM if theme actually changed (prevents unnecessary reflows)
-      if (currentClass !== targetTheme) {
+      const target = base === "system" ? getSystemTheme() : base;
+      if (!root.classList.contains(target)) {
         root.classList.remove("light", "dark");
-        root.classList.add(targetTheme);
+        root.classList.add(target);
       }
+      root.classList.toggle(HIGH_CONTRAST_CLASS, highContrast);
     };
     apply();
-
     // "System" follows the preference while the page is open, not only the
-    // value it had when System was chosen (w4/315). The stored choice stays
-    // "system"; only the applied class changes.
-    if (theme !== "system") return;
+    // value it had when System was chosen (w4/315).
+    if (base !== "system") return;
     const query = window.matchMedia(SYSTEM_DARK_QUERY);
     query.addEventListener("change", apply);
     return () => query.removeEventListener("change", apply);
-  }, [theme, isHydrated]);
+  }, [base, highContrast, ready]);
 
-  const updateTheme = useCallback(
-    (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-
-      // Sync theme to cookie for SSR theme detection
-      // This ensures server can detect theme on next request
-      // Cookie expires in 1 year (same as typical localStorage behavior)
+  /** Sends the queued changes, one write at a time; a call while one is in
+   *  flight leaves the rest to that loop. A refused write puts back each field
+   *  it carried that no newer change is waiting to replace. */
+  const flush = useCallback(async () => {
+    if (sending.current) return;
+    for (;;) {
+      const bound = account.current;
+      const patch = queued.current;
+      if (!bound || Object.keys(patch).length === 0) return;
+      queued.current = {};
+      sending.current = patch;
       try {
-        document.cookie = `vite-ui-theme=${theme}; path=/; max-age=31536000; SameSite=Lax`;
+        const saved = await bound.binding.write(patch);
+        // The account may have been bound again meanwhile (its cache read
+        // after a save); what it confirms is the one now bound.
+        if (account.current) {
+          account.current.confirmed = {
+            ...account.current.confirmed,
+            ...saved,
+          };
+        }
       } catch {
-        // Ignore cookie errors (incognito mode, etc.)
+        const now = account.current;
+        if (now) {
+          const replacedSince = (key: string) => key in queued.current;
+          keep({
+            ...latest.current,
+            ...pick(
+              now.confirmed,
+              Object.keys(patch).filter((key) => !replacedSince(key)),
+            ),
+          });
+        }
+      } finally {
+        sending.current = null;
       }
+    }
+  }, [keep]);
 
-      setTheme(theme);
+  const change = useCallback(
+    (patch: Partial<ThemeSettings>) => {
+      // A choice of what is shown already changes nothing and writes nothing.
+      const changed = Object.fromEntries(
+        Object.entries(patch).filter(
+          ([key, value]) =>
+            latest.current[key as keyof ThemeSettings] !== value,
+        ),
+      );
+      if (Object.keys(changed).length === 0) return;
+      keep({ ...latest.current, ...changed });
+      queued.current = { ...queued.current, ...changed };
+      void flush();
     },
-    [storageKey],
+    [keep, flush],
+  );
+
+  const bindAccount = useCallback(
+    (binding: AccountThemeBinding | null) => {
+      account.current = binding && { binding, confirmed: binding.settings };
+      if (!binding) {
+        queued.current = {};
+        return;
+      }
+      // The account's settings win, and the browser's copy takes them, but a
+      // change not yet saved keeps its value until its write settles.
+      keep({
+        ...binding.settings,
+        ...pick(
+          latest.current,
+          Object.keys({ ...sending.current, ...queued.current }),
+        ),
+      });
+      void flush();
+    },
+    [keep, flush],
+  );
+
+  const setTheme = useCallback(
+    (theme: Theme) => {
+      setOverride(null);
+      change({
+        themeSetting: toThemeSetting(
+          theme,
+          isHighContrast(latest.current.themeSetting),
+        ),
+      });
+    },
+    [change],
+  );
+  const setHighContrast = useCallback(
+    (on: boolean) =>
+      change({
+        themeSetting: toThemeSetting(
+          baseTheme(latest.current.themeSetting),
+          on,
+        ),
+      }),
+    [change],
+  );
+  const setLogTheme = useCallback(
+    (logThemeSetting: LogThemeSetting) => change({ logThemeSetting }),
+    [change],
   );
 
   const value = useMemo(
-    () => ({ theme, setTheme: updateTheme }),
-    [theme, updateTheme],
+    () => ({
+      theme: base,
+      setTheme,
+      highContrast,
+      setHighContrast,
+      logTheme: settings.logThemeSetting,
+      setLogTheme,
+      ready,
+      bindAccount,
+    }),
+    [
+      base,
+      setTheme,
+      highContrast,
+      setHighContrast,
+      settings.logThemeSetting,
+      setLogTheme,
+      ready,
+      bindAccount,
+    ],
   );
 
   return (
-    <ThemeProviderContext.Provider {...props} value={value}>
+    <ThemeProviderContext.Provider value={value}>
       {children}
     </ThemeProviderContext.Provider>
   );

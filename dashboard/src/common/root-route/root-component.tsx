@@ -4,6 +4,7 @@ import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { PaymentSetupGate } from "@/features/onboarding/components/payment-setup-gate";
 import { EmailVerificationGate } from "@/features/onboarding/components/email-verification-gate";
 import { WorkspaceLoginGate } from "@/features/workspaces/components/workspace-login-gate";
+import { AccountThemeSync } from "@/features/appearance/components/account-theme-sync";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { Outlet, useRouter, useMatches } from "@tanstack/react-router";
 import { useLanguageHydrationSync } from "@/i18n/use-language-hydration-sync";
@@ -33,7 +34,9 @@ export const RootComponent = () => {
   // inside the shell: a workspace whose login requirement the member does
   // not meet (two-factor authentication, or a Google sign-in) is replaced by
   // one explanatory page there, while the sidebar's workspace switcher stays
-  // usable.
+  // usable. `AccountThemeSync` binds the signed-in account's theme to the
+  // theme provider (w3/m531), so the account's stored theme wins over the
+  // browser's copy and every change is written to the account.
   const chrome = useMatches({
     select: (matches) => matches.some((m) => m.staticData?.chrome),
   });
@@ -58,6 +61,7 @@ export const RootComponent = () => {
     >
       {chrome ? (
         <EmailVerificationGate>
+          <AccountThemeSync />
           <DashboardLayout>
             <WorkspaceLoginGate>
               <PaymentSetupGate>

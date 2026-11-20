@@ -1,7 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+/* `dark:` follows the nearest theme class (w3/m531): a subtree that keeps a
+   theme of its own (a log explorer under Log Explorer Theme, and the menus it
+   opens) can be light inside a dark page as well as dark inside a light one.
+   The `:where()` keeps the variant's specificity what `&:is(.dark *)` gave.
+   One level of nesting under the page's theme is what this resolves. */
+@custom-variant dark (&:is(.dark, .dark *):not(:where(.dark .light, .dark .light *)));
 
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
@@ -15,7 +20,12 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   --radius: 0.65rem;
+}
 
+/* The light theme's tokens, on the page and on any subtree that keeps the
+   light theme inside a dark page (w3/m531). */
+:root,
+.light {
   /* Brand palette — mirrors eden-cms-v2 (the bex marketing/docs site):
      brand green primary on hue-260 neutrals. Keep the two in sync. */
   --background: oklch(0.98 0.002 260);
@@ -303,6 +313,70 @@
   --sidebar-accent-foreground: oklch(0.9 0.005 260);
   --sidebar-border: oklch(0.24 0.012 260);
   --sidebar-ring: oklch(0.7344 0.2016 138.3);
+}
+
+/* High Contrast Mode (w3/m531): Render's "Increase the visibility of
+   interactive elements", a twin of each theme. Text and links reach 7:1
+   (WCAG AAA) and the borders, inputs and focus ring that identify a control
+   4.5:1, against every surface the normal sets are checked on
+   (src/test/__tests__/theme-contrast.test.ts). */
+.light.high-contrast {
+  --primary: oklch(0.4 0.14 138.3);
+  --muted-foreground: oklch(0.33 0.02 260);
+  --destructive: oklch(0.44 0.2 27);
+  --border: oklch(0.5 0.01 260);
+  --input: oklch(0.5 0.01 260);
+  --sidebar-primary: oklch(0.4 0.14 138.3);
+  --sidebar-border: oklch(0.5 0.01 260);
+}
+
+.dark.high-contrast {
+  --muted-foreground: oklch(0.8 0.02 260);
+  --destructive: oklch(0.78 0.16 25);
+  --border: oklch(0.62 0.012 260);
+  --input: oklch(0.62 0.012 260);
+  --sidebar-border: oklch(0.62 0.012 260);
+}
+
+/* A subtree with a theme of its own (w3/m531) re-resolves `@theme inline`'s
+   colour aliases. Tailwind declares them once, on :root, where `var()` is
+   resolved, and a descendant inherits the resolved colour: without this, an
+   arbitrary value such as `var(--color-muted)` inside a dark log explorer on a
+   light page would still read the light page's muted. Keep this list equal to
+   the colour aliases above (theme-contrast.test.ts checks it). */
+.light,
+.dark {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 }
 
 @layer base {

@@ -359,6 +359,11 @@ const ptCommon: Record<string, TranslationEntry> = {
     message: "Sistema",
     description: "System theme option label",
   },
+  "common.themeNotSaved": {
+    message: "Seu tema não foi salvo. O tema anterior foi restaurado.",
+    description:
+      "Toast when a theme change could not be saved to the account (w3/m531); the previous theme is put back",
+  },
   "common.userMenuLogOut": {
     message: "Sair",
     description: "User menu item that signs the user out",

@@ -86,6 +86,14 @@ vi.mock("@/features/organizations/hooks/use-organizations", () => ({
   useOrganizations: vi.fn(() => ({ organizations: [] })),
 }));
 
+// The signed-in shell binds the account's theme (w3/m531) through Apollo's
+// useQuery, so every test that renders the root shell would otherwise need an
+// ApolloProvider. Default to "no account bound"; the hook's own test unmocks
+// it.
+vi.mock("@/features/appearance/hooks/use-account-theme-sync", () => ({
+  useAccountThemeSync: vi.fn(),
+}));
+
 import i18n from "@/i18n/init";
 import zhResources from "@/i18n/resources-zh";
 

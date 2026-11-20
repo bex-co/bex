@@ -390,6 +390,8 @@ func (s *PGStore) CleanupAccountSubject(ctx context.Context, subject, marker str
 	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		deletes := []string{
 			`DELETE FROM notification_settings WHERE subject = $1`,
+			// The account's Dashboard and Log Explorer themes (w3/m531).
+			`DELETE FROM user_theme_settings WHERE subject = $1`,
 			`DELETE FROM ssh_keys WHERE subject = $1`,
 			// S3 access keys the subject made (ADR112 D3). The credential cleanup
 			// that runs first deletes them with their OpenBao secrets; a row it

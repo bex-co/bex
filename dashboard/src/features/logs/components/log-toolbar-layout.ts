@@ -41,10 +41,21 @@ export const LIVE_TOGGLE_CLASS =
  * A log explorer maximized (Render's Maximize, `M`, w3/m509): a full-screen
  * overlay, its last child (the log) filling everything under the controls.
  * `m-0`: the page's stack spacing would otherwise give the overlay a bottom
- * margin, stopping it short of the screen's bottom edge.
+ * margin, stopping it short of the screen's bottom edge. `rounded-none
+ * shadow-none` undo a themed frame's corners and bleed (below).
  */
 export const LOG_MAXIMIZED_CLASS =
-  "fixed inset-0 z-50 m-0 flex flex-col bg-background p-4 sm:p-6 [&>*:last-child]:min-h-0 [&>*:last-child]:flex-1";
+  "fixed inset-0 z-50 m-0 flex flex-col rounded-none bg-background p-4 shadow-none sm:p-6 [&>*:last-child]:min-h-0 [&>*:last-child]:flex-1";
+
+/**
+ * An explorer under a Log Explorer Theme of its own (w3/m531): its frame
+ * paints the theme's page colour 12px past its edges with a spread shadow,
+ * so the controls and the log sit on a panel of that theme while the frame
+ * keeps the geometry an unthemed one has (no padding, so the log still ends
+ * at the fold and nothing around it moves).
+ */
+export const LOG_THEMED_FRAME_CLASS =
+  "rounded-md shadow-[0_0_0_0.75rem_var(--background)]";
 
 /** A maximized explorer's body, around its lines: a column whose list slot
  *  (`LOG_MAXIMIZED_LIST_CLASS`) takes the height the notices leave. The slot

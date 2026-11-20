@@ -22,6 +22,11 @@ import type { UseLogHistoryResult } from "../../hooks/use-log-history";
 import { RANGE_PRESETS, type RangeBound } from "@/features/metrics/lib/range";
 import { EMPTY_LOG_FILTERS, type LogLine } from "../../types";
 import { setupVirtualGeometry } from "@/test/virtual-geometry";
+import {
+  explorerThemeClasses,
+  LOG_THEME_CASES,
+  LogThemeContext,
+} from "@/test/log-theme";
 
 // Drive the viewer's states by stubbing its data layer, mirroring the
 // services.$serviceId routing test's approach.
@@ -1335,4 +1340,20 @@ describe("LogViewer row menu and new-log buttons (w3/m528)", () => {
     );
     expect(container.querySelector("[data-marked]")).toHaveTextContent("m1");
   });
+});
+
+// Log Explorer Theme (w3/m531): a service's Logs tab keeps its own theme,
+// in its high-contrast twin under High Contrast Mode, or follows the page.
+describe("LogViewer under Log Explorer Theme (w3/m531)", () => {
+  it.each(LOG_THEME_CASES)(
+    "%s with High Contrast Mode %s puts %j on its root",
+    (logTheme, highContrast, classes) => {
+      const { container } = render(
+        <LogThemeContext logTheme={logTheme} highContrast={highContrast}>
+          <LogViewer resource="web" />
+        </LogThemeContext>,
+      );
+      expect(explorerThemeClasses(container)).toEqual(classes);
+    },
+  );
 });

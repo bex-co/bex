@@ -365,6 +365,11 @@ const ruCommon: Record<string, TranslationEntry> = {
     message: "Системная",
     description: "System theme option label",
   },
+  "common.themeNotSaved": {
+    message: "Тема не сохранена. Восстановлена предыдущая тема.",
+    description:
+      "Toast when a theme change could not be saved to the account (w3/m531); the previous theme is put back",
+  },
   "common.userMenuLogOut": {
     message: "Выйти",
     description: "User menu item that signs the user out",

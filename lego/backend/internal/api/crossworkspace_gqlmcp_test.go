@@ -140,6 +140,11 @@ var callerScopedGQLFields = map[string]bool{
 
 	"Query.accountDeletionPreview": true, // caller's own identity and memberships only
 	"Mutation.deleteAccount":       true, // self-delete derives the subject exclusively from auth context
+	// The caller's own theme settings (w3/m531): the subject comes from auth
+	// context; a mutation naming another user's id is refused as not found.
+	"Query.user":                         true,
+	"Mutation.updateUserThemeSetting":    true,
+	"Mutation.updateUserLogThemeSetting": true,
 	// Global compute/plan catalogs — identical for every workspace, no resource.
 	"Query.instanceTypes":         true,
 	"Query.databaseInstanceTypes": true,

@@ -2119,6 +2119,12 @@ export type LogRetention = {
   visibleFrom: Maybe<Scalars['String']['output']>;
 };
 
+export enum LogThemeSetting {
+  AlwaysDark = 'ALWAYS_DARK',
+  AlwaysLight = 'ALWAYS_LIGHT',
+  MatchApp = 'MATCH_APP'
+}
+
 /** A login requirement a workspace or an organization can turn on: two-factor authentication, or signing in with Google. */
 export enum LoginRequirement {
   GoogleLogin = 'GOOGLE_LOGIN',
@@ -2553,6 +2559,8 @@ export type Mutation = {
   updateSandboxGroup: Maybe<SandboxGroup>;
   updateSavedSearch: Maybe<SavedSearch>;
   updateServicePlan: Maybe<Service>;
+  updateUserLogThemeSetting: Maybe<User>;
+  updateUserThemeSetting: Maybe<User>;
   updateWebhookEndpoint: Maybe<WebhookEndpoint>;
   verifyCustomDomain: Maybe<CustomDomain>;
 };
@@ -4295,6 +4303,18 @@ export type MutationUpdateServicePlanArgs = {
 };
 
 
+export type MutationUpdateUserLogThemeSettingArgs = {
+  id: Scalars['String']['input'];
+  logThemeSetting: LogThemeSetting;
+};
+
+
+export type MutationUpdateUserThemeSettingArgs = {
+  id: Scalars['String']['input'];
+  themeSetting: ThemeSetting;
+};
+
+
 export type MutationUpdateWebhookEndpointArgs = {
   enabled?: InputMaybe<Scalars['Boolean']['input']>;
   eventTypes?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
@@ -4805,6 +4825,7 @@ export type Query = {
   sshKeys: Maybe<Array<Maybe<SshKey>>>;
   unreadPushNotificationCount: Scalars['Int']['output'];
   usage: Maybe<UsageSummary>;
+  user: Maybe<User>;
   validateBlueprint: Maybe<BlueprintValidation>;
   viewerCapabilities: Maybe<ViewerCapabilities>;
   webPushAvailable: Scalars['Boolean']['output'];
@@ -6369,6 +6390,15 @@ export type TableSizeInfo = {
   sizePretty: Maybe<Scalars['String']['output']>;
 };
 
+export enum ThemeSetting {
+  Dark = 'DARK',
+  DarkHighContrast = 'DARK_HIGH_CONTRAST',
+  Light = 'LIGHT',
+  LightHighContrast = 'LIGHT_HIGH_CONTRAST',
+  System = 'SYSTEM',
+  SystemHighContrast = 'SYSTEM_HIGH_CONTRAST'
+}
+
 export type UsageCoverage = {
   __typename: 'UsageCoverage';
   degradedSources: Array<Scalars['String']['output']>;
@@ -6397,6 +6427,13 @@ export type UsageSummary = {
   period: Maybe<Scalars['String']['output']>;
   services: Maybe<Array<Maybe<ServiceUsage>>>;
   workspaceId: Maybe<Scalars['String']['output']>;
+};
+
+export type User = {
+  __typename: 'User';
+  id: Scalars['String']['output'];
+  logThemeSetting: LogThemeSetting;
+  themeSetting: ThemeSetting;
 };
 
 export type ViewerCapabilities = {

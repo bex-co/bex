@@ -80,23 +80,48 @@ const zhAuth: Record<string, TranslationEntry> = {
       "Account settings (w3/m528): Render's Appearance section heading and its rail link; a log explorer's Options > Theme Settings opens it",
   },
   "auth.appearanceSectionSubtitle": {
-    message: "选择控制台的外观。",
+    message: "选择控制台的外观。你的选择会保存在你的账户中。",
     description: "Account settings (w3/m528): Appearance section description",
   },
   "auth.dashboardTheme": {
     message: "控制台主题",
     description:
-      "Account settings > Appearance (w3/m528): Render's Dashboard Theme setting, its card title and the select's accessible name",
-  },
-  "auth.dashboardThemeDescription": {
-    message: "此浏览器中控制台的主题。账户菜单中的“主题”修改的是同一设置。",
-    description:
-      "Account settings > Appearance (w3/m528): the Dashboard Theme card's description; the setting is the account menu's Theme, kept in this browser",
+      "Account settings > Appearance (w3/m528, w3/m531): Render's Dashboard Theme setting, saved on the account; its row label and the select's accessible name",
   },
   "auth.dashboardThemeSystem": {
     message: "跟随系统（默认）",
     description:
       "Account settings > Appearance (w3/m528): the System theme option, marked as the default as Render marks it",
+  },
+  "auth.logExplorerTheme": {
+    message: "日志浏览器主题",
+    description:
+      "Account settings > Appearance (w3/m531): Render's Log Explorer Theme setting, its row label and the select's accessible name",
+  },
+  "auth.logExplorerThemeMatch": {
+    message: "与控制台一致（默认）",
+    description:
+      "Account settings > Appearance (w3/m531): the Log Explorer Theme option that follows the dashboard's theme, marked as the default as Render marks it",
+  },
+  "auth.highContrastMode": {
+    message: "高对比度模式",
+    description:
+      "Account settings > Appearance (w3/m531): Render's High Contrast Mode setting, its row label and the switch's accessible name",
+  },
+  "auth.highContrastModeDescription": {
+    message: "让可交互的元素更醒目。",
+    description:
+      "Account settings > Appearance (w3/m531): High Contrast Mode's description, Render's words",
+  },
+  "auth.highContrastEnabled": {
+    message: "已开启",
+    description:
+      "Account settings > Appearance (w3/m531): the text beside High Contrast Mode's switch while it is on",
+  },
+  "auth.highContrastDisabled": {
+    message: "已关闭",
+    description:
+      "Account settings > Appearance (w3/m531): the text beside High Contrast Mode's switch while it is off",
   },
   "auth.integrationsSection": {
     message: "集成",

@@ -21,6 +21,11 @@ import {
   setupVirtualGeometry,
   VIRTUAL_VIEWPORT_HEIGHT,
 } from "@/test/virtual-geometry";
+import {
+  explorerThemeClasses,
+  LOG_THEME_CASES,
+  LogThemeContext,
+} from "@/test/log-theme";
 
 // Options ends with Theme Settings, a router Link (w3/m528): render it as
 // its anchor, with no router around the component.
@@ -548,4 +553,30 @@ describe("DatastoreLogViewer row menu (w3/m528)", () => {
       "line 1",
     );
   });
+});
+
+// Log Explorer Theme (w3/m531): a Postgres or Key Value Logs tab keeps its
+// own theme, in its high-contrast twin under High Contrast Mode.
+describe("DatastoreLogViewer under Log Explorer Theme (w3/m531)", () => {
+  it.each(
+    LOG_THEME_CASES.flatMap(([logTheme, highContrast, classes]) =>
+      (["databases", "keyvalue"] as const).map(
+        (kind) => [kind, logTheme, highContrast, classes] as const,
+      ),
+    ),
+  )(
+    "a %s log under %s with High Contrast Mode %s puts %j on its root",
+    (kind, logTheme, highContrast, classes) => {
+      state.lines = [line(0)];
+      const { container } = render(
+        <LogThemeContext logTheme={logTheme} highContrast={highContrast}>
+          <DatastoreLogViewer
+            kind={kind}
+            resource={kind === "databases" ? "dpg-example" : "red-example"}
+          />
+        </LogThemeContext>,
+      );
+      expect(explorerThemeClasses(container)).toEqual([...classes]);
+    },
+  );
 });

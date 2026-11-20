@@ -62,7 +62,6 @@ import { LogPanelState } from "./log-panel-state";
 import {
   LOG_ACTIONS_CLASS,
   LOG_MAXIMIZED_BODY_CLASS,
-  LOG_MAXIMIZED_CLASS,
   LOG_MAXIMIZED_LIST_CLASS,
 } from "./log-toolbar-layout";
 import { LogTruncationNotice } from "./log-truncation-notice";
@@ -71,6 +70,7 @@ import {
   StreamDisconnected,
   StreamStatus,
 } from "./log-viewer";
+import { LogThemeFrame } from "./log-theme-frame";
 
 type Picks = Partial<Pick<LogFilters, StructuredFilterKey>>;
 
@@ -378,7 +378,7 @@ export function ProjectLogViewer({
   }
 
   return (
-    <div className={cn("space-y-4", explorer.maximized && LOG_MAXIMIZED_CLASS)}>
+    <LogThemeFrame className="space-y-4" maximized={explorer.maximized}>
       {/* A phone gets [search] then [range | Live | Maximize | Options];
           the skeleton (ProjectLogViewPageSkeleton) holds the same two
           rows. */}
@@ -454,6 +454,6 @@ export function ProjectLogViewer({
         )}
       </p>
       {body}
-    </div>
+    </LogThemeFrame>
   );
 }

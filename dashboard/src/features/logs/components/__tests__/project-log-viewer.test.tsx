@@ -16,6 +16,11 @@ import { setupVirtualGeometry } from "@/test/virtual-geometry";
 import { mockCapabilities } from "@/test/mocks/capabilities";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { ProjectLogViewPageSkeleton } from "@/common/components/route-skeletons";
+import {
+  explorerThemeClasses,
+  LOG_THEME_CASES,
+  LogThemeContext,
+} from "@/test/log-theme";
 
 // A project observability view's explorer (w3/m505): the history and the tail
 // read the view's scope, each line names its resource, and every state reads
@@ -527,4 +532,32 @@ describe("ProjectLogViewer row menu and paused watch (w3/m528)", () => {
       screen.getByRole("menuitem", { name: "View in context" }),
     ).toHaveAttribute("href", "/ctx");
   });
+});
+
+// Log Explorer Theme (w3/m531): a project's Application Logs and Request
+// Logs views keep their own theme, in its high-contrast twin under High
+// Contrast Mode.
+describe("ProjectLogViewer under Log Explorer Theme (w3/m531)", () => {
+  it.each(
+    LOG_THEME_CASES.flatMap(([logTheme, highContrast, classes]) =>
+      ([LOG_TYPE_APP, LOG_TYPE_REQUEST] as const).map(
+        (logType) => [logType, logTheme, highContrast, classes] as const,
+      ),
+    ),
+  )(
+    "the %s view under %s with High Contrast Mode %s puts %j on its root",
+    (logType, logTheme, highContrast, classes) => {
+      const { container } = render(
+        <LogThemeContext logTheme={logTheme} highContrast={highContrast}>
+          <ProjectLogViewer
+            scope={SCOPE}
+            logType={logType}
+            range={DEFAULT_LOG_RANGE}
+            onRangeChange={() => undefined}
+          />
+        </LogThemeContext>,
+      );
+      expect(explorerThemeClasses(container)).toEqual([...classes]);
+    },
+  );
 });

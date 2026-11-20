@@ -434,9 +434,11 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     ]);
     expect(cards[0]).toHaveTextContent("Profile Settings");
     expect(cards[5]).toHaveTextContent("Authenticator App");
-    // Render's Appearance (w3/m528): the Dashboard Theme card's frame.
+    // Render's Appearance (w3/m528, w3/m531): the card's three rows.
     expect(frames("appearance")).toEqual(["appearance-card-skeleton"]);
     expect(section("appearance")).toHaveTextContent("Dashboard Theme");
+    expect(section("appearance")).toHaveTextContent("Log Explorer Theme");
+    expect(section("appearance")).toHaveTextContent("High Contrast Mode");
     expect(frames("integrations")).toEqual(["connect-github-card-skeleton"]);
     expect(
       section("integrations").querySelector(

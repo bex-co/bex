@@ -196,6 +196,8 @@ var callerScopedRoutes = map[string]bool{
 	"GET /v1/usage":                  true,
 	"GET /v1/users":                  true,
 	"GET /v1/users/deletion-preview": true, // caller's own identity and memberships only
+	"GET /v1/users/theme-settings":   true, // the caller's own account settings, keyed by their subject (w3/m531)
+	"PATCH /v1/users/theme-settings": true, // the caller's own account settings, keyed by their subject (w3/m531)
 	"GET /v1/repos":                  true,
 	"GET /v1/notification-settings":  true,
 	// The workspace-wide notification-override list (w2/m100 t002): a

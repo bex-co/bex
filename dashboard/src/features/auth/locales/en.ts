@@ -80,24 +80,49 @@ const enAuth: Record<string, TranslationEntry> = {
       "Account settings (w3/m528): Render's Appearance section heading and its rail link; a log explorer's Options > Theme Settings opens it",
   },
   "auth.appearanceSectionSubtitle": {
-    message: "Choose how the dashboard looks.",
+    message:
+      "Choose how the dashboard looks. Your choices are saved on your account.",
     description: "Account settings (w3/m528): Appearance section description",
   },
   "auth.dashboardTheme": {
     message: "Dashboard Theme",
     description:
-      "Account settings > Appearance (w3/m528): Render's Dashboard Theme setting, its card title and the select's accessible name",
-  },
-  "auth.dashboardThemeDescription": {
-    message:
-      "The dashboard's theme in this browser. The account menu's Theme changes the same setting.",
-    description:
-      "Account settings > Appearance (w3/m528): the Dashboard Theme card's description; the setting is the account menu's Theme, kept in this browser",
+      "Account settings > Appearance (w3/m528, w3/m531): Render's Dashboard Theme setting, saved on the account; its row label and the select's accessible name",
   },
   "auth.dashboardThemeSystem": {
     message: "System (Default)",
     description:
       "Account settings > Appearance (w3/m528): the System theme option, marked as the default as Render marks it",
+  },
+  "auth.logExplorerTheme": {
+    message: "Log Explorer Theme",
+    description:
+      "Account settings > Appearance (w3/m531): Render's Log Explorer Theme setting, its row label and the select's accessible name",
+  },
+  "auth.logExplorerThemeMatch": {
+    message: "Match Dashboard (Default)",
+    description:
+      "Account settings > Appearance (w3/m531): the Log Explorer Theme option that follows the dashboard's theme, marked as the default as Render marks it",
+  },
+  "auth.highContrastMode": {
+    message: "High Contrast Mode",
+    description:
+      "Account settings > Appearance (w3/m531): Render's High Contrast Mode setting, its row label and the switch's accessible name",
+  },
+  "auth.highContrastModeDescription": {
+    message: "Increase the visibility of interactive elements.",
+    description:
+      "Account settings > Appearance (w3/m531): High Contrast Mode's description, Render's words",
+  },
+  "auth.highContrastEnabled": {
+    message: "Enabled",
+    description:
+      "Account settings > Appearance (w3/m531): the text beside High Contrast Mode's switch while it is on",
+  },
+  "auth.highContrastDisabled": {
+    message: "Disabled",
+    description:
+      "Account settings > Appearance (w3/m531): the text beside High Contrast Mode's switch while it is off",
   },
   "auth.integrationsSection": {
     message: "Integrations",

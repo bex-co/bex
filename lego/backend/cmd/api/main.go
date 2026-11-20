@@ -1000,8 +1000,9 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	deps.SignIns = &signins.Recorder{Workspaces: st, Audit: st}
 	deps.AccountStore = st
 	deps.RouterMembers = st
-	deps.SSHKeysStore = st // identity-scoped SSH public-key registry
-	deps.DeployStore = st  // deploy history (w2/m5): list/get/trigger read+write the same rows
+	deps.SSHKeysStore = st    // identity-scoped SSH public-key registry
+	deps.AppearanceStore = st // an account's Dashboard and Log Explorer themes (w3/m531)
+	deps.DeployStore = st     // deploy history (w2/m5): list/get/trigger read+write the same rows
 	// Cancel (w2/m10) needs to compute a repo-backed App's in-flight build
 	// Job's identity — must match the operator's own BEX_BUILD_NAMESPACE.
 	deps.DeployBuildNamespace = cfg.BuildNamespace

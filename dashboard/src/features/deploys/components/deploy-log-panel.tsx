@@ -17,13 +17,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
-import { cn } from "@/common/lib/utils/utils.ts";
 import { LogEmptyState } from "@/features/logs/components/log-empty-state";
 import {
   LogOptionsMenu,
   MaximizeButton,
 } from "@/features/logs/components/log-explorer";
-import { LOG_MAXIMIZED_CLASS } from "@/features/logs/components/log-toolbar-layout";
 import { useLogExplorer } from "@/features/logs/hooks/use-log-explorer";
 import { LogLineList } from "@/features/logs/components/log-line-list";
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
@@ -37,6 +35,7 @@ import {
   DEPLOY_LOG_TOOLBAR_END_CLASS,
 } from "./deploy-page-layout";
 import { LOG_RANGES, RANGE_LABEL_KEYS, type LogRange } from "../lib/log-range";
+import { LogThemeFrame } from "@/features/logs/components/log-theme-frame";
 
 // The radio group needs a value for "no ?r= param" (the deploy window).
 const DEPLOY_WINDOW = "deploy";
@@ -230,14 +229,9 @@ export function DeployLogPanel({
   }
 
   return (
-    <div
-      className={cn(
-        "space-y-3",
-        // Maximized (w9/003): a full-screen overlay, the log list filling
-        // everything under the control row.
-        maximized && LOG_MAXIMIZED_CLASS,
-      )}
-    >
+    // Maximized (w9/003): a full-screen overlay, the log list filling
+    // everything under the control row.
+    <LogThemeFrame className="space-y-3" maximized={maximized}>
       {/* Full screen covers the page's own title, so it names the log. */}
       {maximized && title ? (
         <p className="truncate text-sm font-medium">{title}</p>
@@ -384,6 +378,6 @@ export function DeployLogPanel({
         />
       ) : null}
       {body}
-    </div>
+    </LogThemeFrame>
   );
 }
