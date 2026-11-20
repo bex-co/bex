@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"slices"
 	"strings"
@@ -619,7 +620,7 @@ func TestCreateEgressFollowsTheWorkspaceTier(t *testing.T) {
 				t.Fatalf("BEX_AGENT_NETWORK_TIER = %q, want %q", env["BEX_AGENT_NETWORK_TIER"], tc.tier)
 			}
 			if !tc.full {
-				for _, name := range []string{"HTTPS_PROXY", "HTTP_PROXY", "https_proxy", "http_proxy", "NO_PROXY"} {
+				for _, name := range []string{"HTTPS_PROXY", "HTTP_PROXY", "https_proxy", "http_proxy", "NO_PROXY", "BEX_AGENT_JAVA_PROXY_OPTIONS"} {
 					if _, ok := env[name]; ok {
 						t.Fatalf("%s tier sandbox carries %s", tc.tier, name)
 					}
@@ -641,7 +642,42 @@ func TestCreateEgressFollowsTheWorkspaceTier(t *testing.T) {
 			if env["no_proxy"] != env["NO_PROXY"] {
 				t.Fatalf("no_proxy = %q, want NO_PROXY", env["no_proxy"])
 			}
+			// w10/032: the JVM reads none of the above, so Java tools get the
+			// same proxy, claim and direct hosts as system properties.
+			u, _ := url.Parse(want)
+			user := u.User.Username()
+			password, _ := u.User.Password()
+			gateway := "bex-ssh-gateway.bex-system.svc.cluster.local"
+			wantJava := "-Dhttp.proxyHost=" + gateway + " -Dhttp.proxyPort=8085 -Dhttp.proxyUser=" + user + " -Dhttp.proxyPassword=" + password +
+				" -Dhttps.proxyHost=" + gateway + " -Dhttps.proxyPort=8085 -Dhttps.proxyUser=" + user + " -Dhttps.proxyPassword=" + password +
+				" -Dhttp.nonProxyHosts=localhost|127.*|[::1]|0.0.0.0|[::0]|" + gateway + " -Djdk.http.auth.tunneling.disabledSchemes="
+			if got := env["BEX_AGENT_JAVA_PROXY_OPTIONS"]; got != wantJava {
+				t.Fatalf("BEX_AGENT_JAVA_PROXY_OPTIONS =\n%q\nwant\n%q", got, wantJava)
+			}
 		})
+	}
+}
+
+// The JVM properties follow a configured proxy origin and every NO_PROXY
+// host, and a portless origin gets HTTP's port, as curl reads it.
+func TestJavaProxyOptionsFollowTheProxyURLAndNoProxy(t *testing.T) {
+	proxy, err := agentsession.EgressProxyURL("http://egress.dev-10.svc:18085", "tea-a-sandbox", "ags-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := javaProxyOptions(proxy, []string{"localhost", "127.0.0.1", "::1", "git.dev-10.svc", "egress.dev-10.svc"})
+	for _, want := range []string{
+		"-Dhttps.proxyHost=egress.dev-10.svc", "-Dhttps.proxyPort=18085",
+		"-Dhttps.proxyUser=dGVhLWEtc2FuZGJveA", "-Dhttps.proxyPassword=YWdzLTE",
+		"-Dhttp.nonProxyHosts=localhost|127.*|[::1]|0.0.0.0|[::0]|git.dev-10.svc|egress.dev-10.svc",
+	} {
+		if !slices.Contains(strings.Fields(got), want) {
+			t.Fatalf("options %q miss %q", got, want)
+		}
+	}
+	portless, _ := agentsession.EgressProxyURL("http://egress.example", "ns", "s")
+	if got := javaProxyOptions(portless, nil); !strings.Contains(got, "-Dhttps.proxyPort=80 ") {
+		t.Fatalf("portless proxy options %q, want port 80", got)
 	}
 }
 

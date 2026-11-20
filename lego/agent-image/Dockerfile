@@ -271,6 +271,7 @@ COPY --link --chown=10001:10001 --from=rust /usr/local/rustup /usr/local/rustup
 COPY --link --chown=10001:10001 --from=rust /usr/local/cargo /usr/local/cargo
 COPY --link --chown=10001:10001 --from=cli-tools /nvm /usr/local/nvm
 COPY --link agent-image/bex-agent-tools.sh /etc/profile.d/bex-agent-tools.sh
+COPY --link agent-image/mavenrc /etc/mavenrc
 ENV JAVA_HOME=/opt/java/openjdk \
     RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
@@ -367,8 +368,11 @@ USER 10001:10001
 # writable, and nvm, the toolchains and the direnv hook reach every kind of
 # bash. A repo session's gh settings (w10/027) reach the web Shell's and SSH's
 # interactive sh, a login sh (SSH with a command, Zed) and every bash, and a
-# session without them gets none. Cargo and Java write only under /tmp, which
-# the check removes.
+# session without them gets none. So do a full-tier session's JVM proxy
+# properties (w10/032): they go in front of JAVA_TOOL_OPTIONS once, the JVM
+# takes them, and /etc/mavenrc hands mvn global settings naming the proxy
+# unless it was given its own -gs. Cargo, Java and mavenrc write only under
+# /tmp and /var/tmp/bex-maven-10001, which the check removes.
 RUN set -e; \
     java -version 2>&1 | head -n 1 | grep -q "\"$JDK17_VERSION\""; \
     [ "$(javac -version 2>&1)" = "javac $JDK17_VERSION" ]; \
@@ -394,7 +398,20 @@ RUN set -e; \
       [ "$(BEX_AGENT_STATUS_FILE=/tmp/gh-check/status.json $shell 'echo "${GH_REPO-}"' 2>/dev/null)" = acme/widgets ] || exit 1; \
       [ -z "$(BEX_AGENT_STATUS_FILE=/tmp/no-gh/status.json $shell 'echo "${GH_REPO-}"' 2>/dev/null)" ] || exit 1; \
     done; \
-    rm -rf /tmp/java-check /tmp/rust-check /tmp/cargo-home /tmp/gh-check
+    proxy='-Dhttps.proxyHost=gw.example -Dhttps.proxyPort=8085 -Dhttps.proxyUser=bnM -Dhttps.proxyPassword=c2Vzc2lvbg -Dhttp.nonProxyHosts=localhost|127.*|gw.example -Djdk.http.auth.tunneling.disabledSchemes='; \
+    for shell in 'sh -ic' 'sh -lc' 'bash -c' 'bash -lc' 'bash -ic'; do \
+      [ "$(BEX_AGENT_JAVA_PROXY_OPTIONS="$proxy" $shell 'echo "$JAVA_TOOL_OPTIONS"' 2>/dev/null)" = "$proxy" ] || exit 1; \
+      [ "$(BEX_AGENT_JAVA_PROXY_OPTIONS="$proxy" JAVA_TOOL_OPTIONS=-Down=1 $shell 'echo "$JAVA_TOOL_OPTIONS"' 2>/dev/null)" = "$proxy -Down=1" ] || exit 1; \
+      [ -z "$($shell 'echo "${JAVA_TOOL_OPTIONS-}"' 2>/dev/null)" ] || exit 1; \
+    done; \
+    mkdir /tmp/jvm-check; echo 'echo "$JAVA_TOOL_OPTIONS"' > /tmp/jvm-check/options.sh; \
+    [ "$(BEX_AGENT_JAVA_PROXY_OPTIONS="$proxy" bash -c 'sh -ic "bash /tmp/jvm-check/options.sh"' 2>/dev/null)" = "$proxy" ]; \
+    BEX_AGENT_JAVA_PROXY_OPTIONS="$proxy" bash -c 'java -XshowSettings:properties -version' 2>&1 | grep -q 'https.proxyHost = gw.example'; \
+    [ "$(sh -c '. /etc/mavenrc; echo "$*"' mvn -B)" = -B ]; \
+    [ "$(BEX_AGENT_JAVA_PROXY_OPTIONS="$proxy" sh -c '. /etc/mavenrc; echo "$*"' mvn -B)" = "-gs $TMPDIR/bex-maven-10001/settings.xml -B" ]; \
+    [ "$(BEX_AGENT_JAVA_PROXY_OPTIONS="$proxy" sh -c '. /etc/mavenrc; echo "$*"' mvn -gs own.xml -B)" = "-gs own.xml -B" ]; \
+    python3 -c 'import sys, xml.dom.minidom as m; p = m.parse(sys.argv[1]).getElementsByTagName("proxy")[0]; v = lambda t: p.getElementsByTagName(t)[0].firstChild.data; assert (v("host"), v("port"), v("username"), v("password"), v("nonProxyHosts")) == ("gw.example", "8085", "bnM", "c2Vzc2lvbg", "localhost|127.*|gw.example")' "$TMPDIR/bex-maven-10001/settings.xml"; \
+    rm -rf /tmp/java-check /tmp/rust-check /tmp/cargo-home /tmp/gh-check /tmp/jvm-check "$TMPDIR/bex-maven-10001"
 WORKDIR /workspace
 EXPOSE 8787
 ENTRYPOINT ["bex-agent-driver"]

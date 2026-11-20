@@ -41,6 +41,7 @@ Agent choice is configuration, not image logic:
 | `BEX_AGENT_TURN_IDLE_TIMEOUT_MS` | the turn fails once no ACP update or prompt has happened this long (default 30 minutes, at most the ceiling); the clock is paused while a tool call runs, and held while the commands the agent started use the CPU (sampled from `/proc` every minute, at least 5% of one CPU), so a test suite an agent waits on in the background is not a silent turn |
 | `BEX_AGENT_TOOL_CALL_TIMEOUT_MS` | how long one running tool call, or the agent's commands using the CPU with no update from the agent, may hold that clock before the turn fails (default two hours, at most the ceiling) |
 | `BEX_AGENT_EXIT_AFTER_TURN` | `1` exits after the one headless turn; otherwise listeners stay |
+| `BEX_AGENT_JAVA_PROXY_OPTIONS` | a full-tier session's egress proxy as JVM system properties (w10/032); the driver and every shell put them in front of `JAVA_TOOL_OPTIONS`, and `/etc/mavenrc` writes Maven settings from them |
 
 ## Agent-owned delivery (ADR090)
 
@@ -75,6 +76,16 @@ Devin's base image has JDK 17, Rust and Cargo through rustup, the AWS CLI, nvm a
 uid 10001 owns the Rust and nvm homes, so a session installs the toolchain a `rust-toolchain.toml` names, a `rustup component` or the Node an `.nvmrc` names (`nvm install`), and cargo keeps its registry cache there. What they fetch is in the registry catalog of every session (ADR047 D5): `index.crates.io`, `static.rust-lang.org` and `nodejs.org`, plus the Gradle wrapper's and plugin portal's hosts for the JDK.
 
 `/etc/profile.d/bex-agent-tools.sh` (`bex-agent-tools.sh`) sets up the shells. Interactive bash (a terminal's `bash`, Zed's terminal) reads it through `/etc/bash.bashrc`, and an interactive `sh` (the web Shell's and SSH's `/bin/sh`, dash) through `ENV` (a `PATH` fix and a repo session's `gh` settings, above). In an interactive bash, nvm loads as its installer sets it up, so `nvm alias default` applies, and the direnv hook loads an allowed `.envrc` at each prompt, as in Devin's shell. Login shells (`bash -l`, which Claude Code takes its shell snapshot in) read it through `/etc/profile`, and it puts the image's toolchains back on the `PATH` Debian's `/etc/profile` resets. Every other bash (a setup step, `bash -c`) reads it through `BASH_ENV`, so `nvm install 20` and `nvm use` work there directly, as in a Devin blueprint step: `nvm` loads on its first call, so a shell that never calls it pays nothing. The final-stage check runs as uid 10001 and fails the build unless every tool reports its pin, Java compiles and runs a class, cargo builds a crate offline, the homes are writable, nvm answers in all three kinds of shell, and a `gh/env.sh` beside `BEX_AGENT_STATUS_FILE` reaches `sh -ic`, `sh -lc`, `bash -c`, `bash -lc` and `bash -ic` while its absence leaves them without `GH_REPO`.
+
+## Java tools on the full tier (w10/032)
+
+A full-tier session reaches the internet only through the gateway's egress proxy, which bex-api names in `HTTPS_PROXY`. The JVM reads no such variable, and Maven's HTTP transport takes a proxy only from its settings, so bex-api also gives the proxy as JVM system properties in `BEX_AGENT_JAVA_PROXY_OPTIONS`: host, port, the session claim as user and password, `http.nonProxyHosts` (loopback and the gateway, as `NO_PROXY`), and an empty `jdk.http.auth.tunneling.disabledSchemes`, without which the JDK refuses Basic on a CONNECT.
+
+- `bex-agent-tools.sh` puts them in front of `JAVA_TOOL_OPTIONS` in every shell, once, and the driver does the same for the agent's own process (`credentials.ts`). A value already there, such as a repository's own secret, stays after them, so its own properties win. Gradle, its wrapper and an older Maven wrapper (whose own download is Java's) authenticate to the proxy from them. Each JVM prints `Picked up JAVA_TOOL_OPTIONS`, as the JDK always does.
+- `mavenrc` is `/etc/mavenrc`, which `bin/mvn` of every Maven 3 and 4, and an older wrapper's `mvnw`, sources before Java starts. It writes Maven global settings naming the proxy to `$TMPDIR/bex-maven-<uid>/settings.xml` on each run and passes them as `-gs` (`-is` on Maven 4, which renamed it), unless the command names its own. A repository's own user settings (`~/.m2/settings.xml`, or `-s` in `.mvn/maven.config`) merge over them, so its proxies, mirrors and servers win. They keep the HTTP blocker of Maven's stock global settings, which they stand in for.
+- On `registries` and `custom` the variable is unset, so both do nothing: those tiers reach the Maven and Gradle hosts of the registry catalog directly.
+
+The final-stage check proves the composition in every kind of shell, that the JVM takes the properties, and the settings `mavenrc` writes.
 
 ## Credential and sandbox-lifetime contracts
 

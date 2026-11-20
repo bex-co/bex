@@ -171,6 +171,12 @@ func proxyAuth() string {
 // connect sends a raw CONNECT and returns the status and the open connection.
 func (h *harness) connect(t *testing.T, target, auth string) (int, net.Conn, *bufio.Reader) {
 	t.Helper()
+	return h.connectWith(t, target, "Proxy-Authorization", auth)
+}
+
+// connectWith is connect with the claim in the named header.
+func (h *harness) connectWith(t *testing.T, target, header, auth string) (int, net.Conn, *bufio.Reader) {
+	t.Helper()
 	conn, err := net.Dial("tcp", h.proxy.Listener.Addr().String())
 	if err != nil {
 		t.Fatal(err)
@@ -178,7 +184,7 @@ func (h *harness) connect(t *testing.T, target, auth string) (int, net.Conn, *bu
 	t.Cleanup(func() { _ = conn.Close() })
 	request := "CONNECT " + target + " HTTP/1.1\r\nHost: " + target + "\r\n"
 	if auth != "" {
-		request += "Proxy-Authorization: " + auth + "\r\n"
+		request += header + ": " + auth + "\r\n"
 	}
 	if _, err := io.WriteString(conn, request+"\r\n"); err != nil {
 		t.Fatal(err)
@@ -398,6 +404,45 @@ func TestTheSourcePodMustBeTheClaimedSessionSandbox(t *testing.T) {
 	h := newHarness(t, "127.0.0.1:1", nil)
 	if status, _, _ := h.connect(t, "example.com:443", ""); status != http.StatusProxyAuthRequired {
 		t.Fatalf("CONNECT without the session claim = %d, want 407", status)
+	}
+}
+
+// w10/032: Maven 3.9's HTTP client sends a proxy scheme it re-uses from its
+// auth cache as Authorization on a CONNECT. The claim is read there too, bound
+// to the source Pod as ever, but never from a plain-HTTP request, whose
+// Authorization is the origin's.
+func TestAConnectMayCarryTheClaimAsAuthorization(t *testing.T) {
+	upstream := tlsUpstream(t)
+	h := newHarness(t, upstream.Listener.Addr().String(), nil)
+	if status, _, _ := h.connectWith(t, "example.com:443", "Authorization", proxyAuth()); status != http.StatusOK {
+		t.Fatalf("CONNECT with the claim as Authorization = %d, want 200", status)
+	}
+	encode := func(v string) string { return base64.RawURLEncoding.EncodeToString([]byte(v)) }
+	sibling := "Basic " + base64.StdEncoding.EncodeToString([]byte(encode(namespace)+":"+encode("ags-other")))
+	if status, _, _ := h.connectWith(t, "example.com:443", "Authorization", sibling); status != http.StatusForbidden {
+		t.Fatalf("CONNECT claiming another session as Authorization = %d, want 403", status)
+	}
+
+	var reached bool
+	plain := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { reached = true }))
+	t.Cleanup(plain.Close)
+	h = newHarness(t, plain.Listener.Addr().String(), nil)
+	conn, err := net.Dial("tcp", h.proxy.Listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	request := "GET http://plain.example.com/ HTTP/1.1\r\nHost: plain.example.com\r\nAuthorization: " + proxyAuth() + "\r\n\r\n"
+	if _, err := io.WriteString(conn, request); err != nil {
+		t.Fatal(err)
+	}
+	response, err := http.ReadResponse(bufio.NewReader(conn), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = response.Body.Close()
+	if response.StatusCode != http.StatusProxyAuthRequired || reached {
+		t.Fatalf("plain HTTP with the claim only as Authorization = %d (upstream reached=%v), want 407", response.StatusCode, reached)
 	}
 }
 

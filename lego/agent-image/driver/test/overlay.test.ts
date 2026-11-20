@@ -160,10 +160,14 @@ test("only the full network tier explains the egress proxy, in both overlays", (
       platformOverlay({ ...context, networkTier: "full" }),
       proxyLine,
     );
+    assert.match(
+      platformOverlay({ ...context, networkTier: "full" }),
+      /Java tools use it too: `JAVA_TOOL_OPTIONS` .*every `mvn` gets Maven settings naming it/,
+    );
     for (const networkTier of [undefined, "", "registries", "custom"]) {
       assert.doesNotMatch(
         platformOverlay({ ...context, networkTier }),
-        /egress proxy/,
+        /egress proxy|JAVA_TOOL_OPTIONS/,
       );
     }
   }

@@ -85,11 +85,12 @@ function oauthLine(): string {
   return "- If an MCP server reports that it needs OAuth, give the user its `authUrl` in your reply so they can authorize it, rather than silently going without that server.";
 }
 
-// networkLine tells a full-tier agent how its internet access works; the other
-// tiers' allowlists need no explanation beyond what fails.
+// networkLine tells a full-tier agent how its internet access works, Java
+// tools' included (w10/032); the other tiers' allowlists need no explanation
+// beyond what fails.
 function networkLine(context: OverlayContext): string {
   if (context.networkTier !== "full") return "";
-  return "- Outbound HTTP and HTTPS go through a bex egress proxy (`HTTPS_PROXY`/`HTTP_PROXY` are set), so any public website is reachable. Model-provider APIs stay blocked there, and raw TCP, SSH and other non-HTTP protocols are not available.\n";
+  return "- Outbound HTTP and HTTPS go through a bex egress proxy (`HTTPS_PROXY`/`HTTP_PROXY` are set), so any public website is reachable. Java tools use it too: `JAVA_TOOL_OPTIONS` carries it as JVM properties, which Gradle and its wrapper read (so each JVM prints a `Picked up JAVA_TOOL_OPTIONS` line), and every `mvn` gets Maven settings naming it. Model-provider APIs stay blocked there, and raw TCP, SSH and other non-HTTP protocols are not available.\n";
 }
 
 // prReference names the session's recorded pull request: "<noun> #N (url)".

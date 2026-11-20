@@ -16,6 +16,21 @@ case ":$PATH:" in
 esac
 export PATH
 
+# A full-tier session's Java tools (w10/032): the JVM reads no HTTPS_PROXY,
+# so bex-api also gives the egress proxy as JVM system properties, and they
+# go in front of JAVA_TOOL_OPTIONS. A value already there (a repository's
+# own) stays after them, so its own properties win. /etc/mavenrc gives Maven
+# settings naming the same proxy.
+if [ -n "${BEX_AGENT_JAVA_PROXY_OPTIONS-}" ]; then
+	case " ${JAVA_TOOL_OPTIONS-} " in
+	*" $BEX_AGENT_JAVA_PROXY_OPTIONS "*) ;;
+	*)
+		JAVA_TOOL_OPTIONS="$BEX_AGENT_JAVA_PROXY_OPTIONS${JAVA_TOOL_OPTIONS:+ $JAVA_TOOL_OPTIONS}"
+		export JAVA_TOOL_OPTIONS
+		;;
+	esac
+fi
+
 # A repo session's gh (w10/027): the driver writes the GH_* settings it gives
 # the agent to gh/env.sh beside its status file, so gh in a terminal (the web
 # Shell, SSH, Zed) reaches the session's repository as the agent's does. A

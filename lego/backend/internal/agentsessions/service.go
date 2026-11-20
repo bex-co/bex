@@ -1999,8 +1999,9 @@ func (s *Service) egressProxyURL() string {
 // full-tier session also gets the proxy variables in both spellings, which
 // curl, npm, pip, Go, git (libcurl) and Claude Code honour, and NO_PROXY for
 // the gateway and loopback, so Git and model traffic keep their dedicated
-// Pod-bound proxies and local servers stay local. The proxy claim names the
-// sandbox's principal: its session, or a repository environment build.
+// Pod-bound proxies and local servers stay local, plus the same proxy as JVM
+// properties for Java tools. The proxy claim names the sandbox's principal:
+// its session, or a repository environment build.
 func (s *Service) withNetworkEnv(env map[string]string, tier, workspaceID, principal string) map[string]string {
 	if tier == "" {
 		tier = NetworkTierRegistries
@@ -2027,7 +2028,51 @@ func (s *Service) withNetworkEnv(env map[string]string, tier, workspaceID, princ
 	}
 	env["NO_PROXY"] = strings.Join(noProxy, ",")
 	env["no_proxy"] = env["NO_PROXY"]
+	env[envJavaProxyOptions] = javaProxyOptions(proxy, noProxy)
 	return env
+}
+
+// envJavaProxyOptions carries a full-tier sandbox's egress proxy as JVM
+// system properties (w10/032). The JVM reads no HTTPS_PROXY, and Maven's
+// transport reads only settings proxies, so the image puts these in front of
+// JAVA_TOOL_OPTIONS in every shell and /etc/mavenrc gives each `mvn` global
+// settings naming the same proxy (lego/agent-image/mavenrc).
+const envJavaProxyOptions = "BEX_AGENT_JAVA_PROXY_OPTIONS"
+
+// javaProxyOptions renders the proxy URL withNetworkEnv built as JVM system
+// properties. The session claim is the proxy user and password, which Gradle,
+// its wrapper and Maven answer the gateway's Basic challenge with; the JDK
+// sends Basic on a CONNECT tunnel only once
+// jdk.http.auth.tunneling.disabledSchemes is cleared. http.nonProxyHosts keeps
+// the JDK's own loopback default and adds NO_PROXY's gateway hosts, so Git,
+// model and local traffic stay direct as they do for curl.
+func javaProxyOptions(proxy string, noProxy []string) string {
+	u, err := url.Parse(proxy)
+	if err != nil {
+		return ""
+	}
+	port := u.Port()
+	if port == "" {
+		port = "80"
+	}
+	user := u.User.Username()
+	password, _ := u.User.Password()
+	nonProxy := []string{"localhost", "127.*", "[::1]", "0.0.0.0", "[::0]"}
+	for _, host := range noProxy {
+		if host != "127.0.0.1" && host != "::1" && !slices.Contains(nonProxy, host) {
+			nonProxy = append(nonProxy, host)
+		}
+	}
+	var options []string
+	for _, scheme := range []string{"http", "https"} {
+		options = append(options,
+			"-D"+scheme+".proxyHost="+u.Hostname(),
+			"-D"+scheme+".proxyPort="+port,
+			"-D"+scheme+".proxyUser="+user,
+			"-D"+scheme+".proxyPassword="+password)
+	}
+	options = append(options, "-Dhttp.nonProxyHosts="+strings.Join(nonProxy, "|"), "-Djdk.http.auth.tunneling.disabledSchemes=")
+	return strings.Join(options, " ")
 }
 
 // modelProxyBaseURL is the internal gateway model-proxy origin (BEX_AGENT_MODEL_

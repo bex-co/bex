@@ -76,6 +76,34 @@ test("driver resolves profile facts and rejects runtime overrides", () => {
     assert.throws(() => loadConfig({ ...hosted, ...env }));
 });
 
+// w10/032: a full-tier session's JVM proxy properties go in front of
+// JAVA_TOOL_OPTIONS for the agent's own process, keep a value already there
+// after them, are never added twice, and other tiers get no JAVA_TOOL_OPTIONS.
+test("the agent's JVMs get a full-tier session's proxy before their own options", () => {
+  const config = loadConfig({ ...hosted, BEX_AGENT_PROFILE: "claude" });
+  const proxy =
+    "-Dhttps.proxyHost=gw -Dhttps.proxyPort=8085 -Djdk.http.auth.tunneling.disabledSchemes=";
+  const childOptions = (env: NodeJS.ProcessEnv) =>
+    agentEnvironment(config, env).JAVA_TOOL_OPTIONS;
+  assert.equal(childOptions({ BEX_AGENT_JAVA_PROXY_OPTIONS: proxy }), proxy);
+  assert.equal(
+    childOptions({
+      BEX_AGENT_JAVA_PROXY_OPTIONS: proxy,
+      JAVA_TOOL_OPTIONS: "-Xmx2g",
+    }),
+    `${proxy} -Xmx2g`,
+  );
+  assert.equal(
+    childOptions({
+      BEX_AGENT_JAVA_PROXY_OPTIONS: proxy,
+      JAVA_TOOL_OPTIONS: `${proxy} -Xmx2g`,
+    }),
+    undefined,
+  );
+  assert.equal(childOptions({}), undefined);
+  assert.equal(childOptions({ JAVA_TOOL_OPTIONS: "-Xmx2g" }), undefined);
+});
+
 // claude-agent-acp 0.94.0 pins claude-agent-sdk 0.3.303 (Claude Code 2.1.303).
 // Its native transcript writer batches unless this flag makes the result await
 // flush; the driver terminates the process immediately after that result boundary.

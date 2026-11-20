@@ -185,7 +185,7 @@ func (b *Broker) serve(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bex egress proxy unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	namespace, sessionID, err := agentsession.ParseEgressProxyAuthorization(r.Header.Get("Proxy-Authorization"))
+	namespace, sessionID, err := agentsession.ParseEgressProxyAuthorization(proxyAuthorization(r))
 	if err != nil {
 		b.Metrics.EgressProxyConnection("unauthenticated")
 		w.Header().Set("Proxy-Authenticate", `Basic realm="bex-egress"`)
@@ -215,6 +215,20 @@ func (b *Broker) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b.serveHTTP(w, r, usage)
+}
+
+// proxyAuthorization is the header carrying a request's session claim. A
+// CONNECT may carry it as Authorization instead (w10/032): Apache HttpClient
+// 4.5, the transport of Maven 3.9, sends a proxy Basic scheme it re-uses from
+// its auth cache under the origin's header name once concurrent downloads
+// outnumber its cached schemes. A CONNECT's Authorization can belong to no
+// origin, whose own headers travel inside the tunnel; a plain-HTTP request's
+// is the origin's, so it is never read as the claim.
+func proxyAuthorization(r *http.Request) string {
+	if header := r.Header.Get("Proxy-Authorization"); header != "" || r.Method != http.MethodConnect {
+		return header
+	}
+	return r.Header.Get("Authorization")
 }
 
 // admit binds the request to its session sandbox and its `full` grant, then

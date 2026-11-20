@@ -1,0 +1,105 @@
+# Maven settings for a full-tier session's egress proxy (w10/032), installed
+# as /etc/mavenrc. Maven's launcher sources it before it starts Java: bin/mvn
+# of every Maven 3 and 4, and the mvnw of an older Maven wrapper, whose own
+# download is Java's. Elsewhere (BEX_AGENT_JAVA_PROXY_OPTIONS unset) it does
+# nothing.
+#
+# Maven's HTTP transport takes a proxy only from settings, never from
+# HTTPS_PROXY or the JVM's proxy properties, so this writes global settings
+# naming the proxy and the session claim, from the same properties the Maven
+# JVM gets in JAVA_TOOL_OPTIONS, and passes them as -gs (Maven 4: -is). A
+# repository's own settings (~/.m2/settings.xml, or -s in .mvn/maven.config)
+# are user settings, which Maven merges over global ones, so its own proxies,
+# mirrors and servers win. A -gs or -is it passes replaces these. They keep
+# the HTTP blocker of Maven's stock global settings, which they stand in for.
+
+if [ -n "${BEX_AGENT_JAVA_PROXY_OPTIONS-}" ]; then
+	# shellcheck source=/dev/null
+	. /etc/profile.d/bex-agent-tools.sh
+	__bex_mvn_gs=
+	for __bex_mvn_arg in "$@"; do
+		case $__bex_mvn_arg in
+		-gs | --global-settings | --global-settings=* | -is | --install-settings | --install-settings=*) __bex_mvn_gs=own ;;
+		esac
+	done
+	case " ${MAVEN_ARGS-} " in *" -gs "* | *" --global-settings"* | *" -is "* | *" --install-settings"*) __bex_mvn_gs=own ;; esac
+	if [ -z "$__bex_mvn_gs" ]; then
+		__bex_mvn_opts=" $BEX_AGENT_JAVA_PROXY_OPTIONS "
+		__bex_mvn_host=${__bex_mvn_opts#*" -Dhttps.proxyHost="}
+		__bex_mvn_host=${__bex_mvn_host%%" "*}
+		__bex_mvn_port=${__bex_mvn_opts#*" -Dhttps.proxyPort="}
+		__bex_mvn_port=${__bex_mvn_port%%" "*}
+		__bex_mvn_user=${__bex_mvn_opts#*" -Dhttps.proxyUser="}
+		__bex_mvn_user=${__bex_mvn_user%%" "*}
+		__bex_mvn_password=${__bex_mvn_opts#*" -Dhttps.proxyPassword="}
+		__bex_mvn_password=${__bex_mvn_password%%" "*}
+		__bex_mvn_direct=${__bex_mvn_opts#*" -Dhttp.nonProxyHosts="}
+		__bex_mvn_direct=${__bex_mvn_direct%%" "*}
+		case $__bex_mvn_port in "" | *[!0-9]*) __bex_mvn_gs=invalid ;; esac
+		case $__bex_mvn_host$__bex_mvn_user$__bex_mvn_password$__bex_mvn_direct in *[\<\>\&\"\']*) __bex_mvn_gs=invalid ;; esac
+		[ -n "$__bex_mvn_host" ] || __bex_mvn_gs=invalid
+	fi
+	if [ -z "$__bex_mvn_gs" ]; then
+		__bex_mvn_dir=${TMPDIR:-/tmp}/bex-maven-$(id -u)
+		__bex_mvn_settings=$__bex_mvn_dir/settings.xml
+		# Only this user's own directory: dash and bash both have test -O.
+		# shellcheck disable=SC3067
+		if { [ -d "$__bex_mvn_dir" ] || mkdir -m 700 "$__bex_mvn_dir" 2>/dev/null; } && [ ! -L "$__bex_mvn_dir" ] && [ -O "$__bex_mvn_dir" ]; then
+			cat >"$__bex_mvn_settings.$$" 2>/dev/null <<EOF || __bex_mvn_gs=unwritable
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Written by /etc/mavenrc on each mvn of a bex full-tier session: the egress proxy, and the HTTP blocker of Maven's stock global settings. -->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 https://maven.apache.org/xsd/settings-1.2.0.xsd">
+  <proxies>
+    <proxy>
+      <id>bex-egress-https</id>
+      <active>true</active>
+      <protocol>https</protocol>
+      <host>$__bex_mvn_host</host>
+      <port>$__bex_mvn_port</port>
+      <username>$__bex_mvn_user</username>
+      <password>$__bex_mvn_password</password>
+      <nonProxyHosts>$__bex_mvn_direct</nonProxyHosts>
+    </proxy>
+    <proxy>
+      <id>bex-egress-http</id>
+      <active>true</active>
+      <protocol>http</protocol>
+      <host>$__bex_mvn_host</host>
+      <port>$__bex_mvn_port</port>
+      <username>$__bex_mvn_user</username>
+      <password>$__bex_mvn_password</password>
+      <nonProxyHosts>$__bex_mvn_direct</nonProxyHosts>
+    </proxy>
+  </proxies>
+  <mirrors>
+    <mirror>
+      <id>maven-default-http-blocker</id>
+      <mirrorOf>external:http:*</mirrorOf>
+      <name>Pseudo repository to mirror external repositories initially using HTTP.</name>
+      <url>http://0.0.0.0/</url>
+      <blocked>true</blocked>
+    </mirror>
+  </mirrors>
+</settings>
+EOF
+		else
+			__bex_mvn_gs=unwritable
+		fi
+		if [ -z "$__bex_mvn_gs" ] && mv -f "$__bex_mvn_settings.$$" "$__bex_mvn_settings" 2>/dev/null; then
+			# Maven 4 calls them installation settings (-is) and warns on -gs.
+			__bex_mvn_flag=-gs
+			__bex_mvn_home=$(readlink -f -- "$0" 2>/dev/null) || __bex_mvn_home=$0
+			for __bex_mvn_core in "${__bex_mvn_home%/bin/*}"/lib/maven-core-4.*.jar; do
+				[ -e "$__bex_mvn_core" ] && __bex_mvn_flag=-is
+			done
+			set -- "$__bex_mvn_flag" "$__bex_mvn_settings" "$@"
+		else
+			rm -f "$__bex_mvn_settings.$$" 2>/dev/null
+			echo "bex: could not write Maven's egress proxy settings in $__bex_mvn_dir, so Maven will not reach the internet" >&2
+		fi
+	elif [ "$__bex_mvn_gs" = invalid ]; then
+		echo "bex: BEX_AGENT_JAVA_PROXY_OPTIONS names no proxy, so Maven will not reach the internet" >&2
+	fi
+	unset __bex_mvn_gs __bex_mvn_arg __bex_mvn_flag __bex_mvn_home __bex_mvn_core __bex_mvn_opts __bex_mvn_host \
+		__bex_mvn_port __bex_mvn_user __bex_mvn_password __bex_mvn_direct __bex_mvn_dir __bex_mvn_settings
+fi

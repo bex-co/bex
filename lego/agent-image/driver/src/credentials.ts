@@ -23,6 +23,7 @@ import { githubCliEnvironment, type GitHubCliConfig } from "./github-cli.js";
 // are removed from the driver's own inherited env, so only the child sees the
 // placeholder, under the one name its adapter reads. A repo session's gh
 // settings (w10/m513) carry a placeholder too: the gateway injects the token.
+// A full-tier session's JVM proxy properties join JAVA_TOOL_OPTIONS (w10/032).
 export function agentEnvironment(
   config: Pick<
     AgentDriverConfig,
@@ -40,7 +41,23 @@ export function agentEnvironment(
   return {
     ...config.agentEnv,
     ...githubCliEnvironment(config),
+    ...javaProxyEnvironment(env),
     [config.modelBaseUrlEnvName]: config.modelBaseUrl,
     [config.credentialEnvName]: config.modelCredential,
   };
+}
+
+// javaProxyEnvironment puts a full-tier session's egress proxy, as the JVM
+// system properties bex-api gives in BEX_AGENT_JAVA_PROXY_OPTIONS, in front of
+// JAVA_TOOL_OPTIONS, as bex-agent-tools.sh does in every shell, so a JVM the
+// agent starts without a shell reaches the proxy too. A value already there
+// stays after them, so its own properties win. Other tiers get nothing.
+export function javaProxyEnvironment(
+  env: NodeJS.ProcessEnv,
+): Record<string, string> {
+  const proxy = env.BEX_AGENT_JAVA_PROXY_OPTIONS?.trim();
+  if (!proxy) return {};
+  const own = env.JAVA_TOOL_OPTIONS?.trim() ?? "";
+  if (` ${own} `.includes(` ${proxy} `)) return {};
+  return { JAVA_TOOL_OPTIONS: own ? `${proxy} ${own}` : proxy };
 }
