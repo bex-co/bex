@@ -1,0 +1,255 @@
+Upstream: github.com/grafana/alloy v1.11.3 (091a20eb3eb50a968f129d6094455962e9dd328e).
+w8/m525: stage.limit can refill each bucket by the entry's own timestamp (opt-in refill_by_entry_timestamp).
+Its test reads testdata/linecap-shared.json, which deploy/log-shipper/Dockerfile copies in.
+
+diff --git a/internal/component/loki/process/stages/limit.go b/internal/component/loki/process/stages/limit.go
+index 93642af..b0acd8a 100644
+--- a/internal/component/loki/process/stages/limit.go
++++ b/internal/component/loki/process/stages/limit.go
+@@ -4,6 +4,7 @@ import (
+ 	"context"
+ 	"errors"
+ 	"fmt"
++	"time"
+ 
+ 	"github.com/go-kit/log"
+ 	"github.com/grafana/alloy/internal/runtime/logging/level"
+@@ -14,9 +15,10 @@ import (
+ 
+ // Configuration errors.
+ var (
+-	ErrLimitStageInvalidRateOrBurst = errors.New("limit stage failed to parse rate or burst")
+-	ErrLimitStageByLabelMustDrop    = errors.New("when ratelimiting by label, drop must be true")
+-	ratelimitDropReason             = "ratelimit_drop_stage"
++	ErrLimitStageInvalidRateOrBurst  = errors.New("limit stage failed to parse rate or burst")
++	ErrLimitStageByLabelMustDrop     = errors.New("when ratelimiting by label, drop must be true")
++	ErrLimitStageByEntryTimeMustDrop = errors.New("when refilling by entry timestamp, drop must be true")
++	ratelimitDropReason              = "ratelimit_drop_stage"
+ )
+ 
+ // MinReasonableMaxDistinctLabels provides a sensible default.
+@@ -29,6 +31,9 @@ type LimitConfig struct {
+ 	Drop              bool    `alloy:"drop,attr,optional"`
+ 	ByLabelName       string  `alloy:"by_label_name,attr,optional"`
+ 	MaxDistinctLabels int     `alloy:"max_distinct_labels,attr,optional"`
++	// RefillByEntryTimestamp refills by each entry's own timestamp instead
++	// of the clock at the moment the stage sees it (entryBucket).
++	RefillByEntryTimestamp bool `alloy:"refill_by_entry_timestamp,attr,optional"`
+ }
+ 
+ func newLimitStage(logger log.Logger, cfg LimitConfig, registerer prometheus.Registerer) (Stage, error) {
+@@ -52,12 +57,20 @@ func newLimitStage(logger log.Logger, cfg LimitConfig, registerer prometheus.Reg
+ 		dropCount: getDropCountMetric(registerer),
+ 	}
+ 
+-	if cfg.ByLabelName != "" {
++	switch {
++	case cfg.ByLabelName != "" && cfg.RefillByEntryTimestamp:
++		r.dropCountByLabel = getDropCountByLabelMetric(registerer)
++		newBucket := func() *entryBucket { return newEntryBucket(cfg.Rate, cfg.Burst) }
++		gcCb := func() { r.dropCountByLabel.Reset() }
++		r.bucketByLabel = NewGenMap[model.LabelValue, *entryBucket](cfg.MaxDistinctLabels, newBucket, gcCb)
++	case cfg.ByLabelName != "":
+ 		r.dropCountByLabel = getDropCountByLabelMetric(registerer)
+ 		newRateLimiter := func() *rate.Limiter { return rate.NewLimiter(rate.Limit(cfg.Rate), cfg.Burst) }
+ 		gcCb := func() { r.dropCountByLabel.Reset() }
+ 		r.rateLimiterByLabel = NewGenMap[model.LabelValue, *rate.Limiter](cfg.MaxDistinctLabels, newRateLimiter, gcCb)
+-	} else {
++	case cfg.RefillByEntryTimestamp:
++		r.bucket = newEntryBucket(cfg.Rate, cfg.Burst)
++	default:
+ 		r.rateLimiter = rate.NewLimiter(rate.Limit(cfg.Rate), cfg.Burst)
+ 	}
+ 
+@@ -72,6 +85,9 @@ func validateLimitConfig(cfg LimitConfig) error {
+ 	if cfg.ByLabelName != "" && !cfg.Drop {
+ 		return ErrLimitStageByLabelMustDrop
+ 	}
++	if cfg.RefillByEntryTimestamp && !cfg.Drop {
++		return ErrLimitStageByEntryTimeMustDrop
++	}
+ 	return nil
+ }
+ 
+@@ -81,6 +97,8 @@ type limitStage struct {
+ 	cfg                LimitConfig
+ 	rateLimiter        *rate.Limiter
+ 	rateLimiterByLabel GenerationalMap[model.LabelValue, *rate.Limiter]
++	bucket             *entryBucket
++	bucketByLabel      GenerationalMap[model.LabelValue, *entryBucket]
+ 	dropCount          *prometheus.CounterVec
+ 	dropCountByLabel   *prometheus.CounterVec
+ }
+@@ -90,7 +108,7 @@ func (m *limitStage) Run(in chan Entry) chan Entry {
+ 	go func() {
+ 		defer close(out)
+ 		for e := range in {
+-			if !m.shouldThrottle(e.Labels) {
++			if !m.shouldThrottle(e.Labels, e.Timestamp) {
+ 				out <- e
+ 				continue
+ 			}
+@@ -99,14 +117,17 @@ func (m *limitStage) Run(in chan Entry) chan Entry {
+ 	return out
+ }
+ 
+-func (m *limitStage) shouldThrottle(labels model.LabelSet) bool {
++func (m *limitStage) shouldThrottle(labels model.LabelSet, at time.Time) bool {
+ 	if m.cfg.ByLabelName != "" {
+ 		labelValue, ok := labels[model.LabelName(m.cfg.ByLabelName)]
+ 		if !ok {
+ 			return false // if no label found, dont ratelimit
+ 		}
+-		rl := m.rateLimiterByLabel.GetOrCreate(labelValue)
+-		if rl.Allow() {
++		if m.cfg.RefillByEntryTimestamp {
++			if m.bucketByLabel.GetOrCreate(labelValue).allow(at) {
++				return false
++			}
++		} else if m.rateLimiterByLabel.GetOrCreate(labelValue).Allow() {
+ 			return false
+ 		}
+ 		m.dropCount.WithLabelValues(ratelimitDropReason).Inc()
+@@ -115,7 +136,11 @@ func (m *limitStage) shouldThrottle(labels model.LabelSet) bool {
+ 	}
+ 
+ 	if m.cfg.Drop {
+-		if m.rateLimiter.Allow() {
++		if m.cfg.RefillByEntryTimestamp {
++			if m.bucket.allow(at) {
++				return false
++			}
++		} else if m.rateLimiter.Allow() {
+ 			return false
+ 		}
+ 		m.dropCount.WithLabelValues(ratelimitDropReason).Inc()
+@@ -125,6 +150,45 @@ func (m *limitStage) shouldThrottle(labels model.LabelSet) bool {
+ 	return false
+ }
+ 
++// entryBucket is a token bucket refilled by each entry's own timestamp, not
++// by the clock when the stage sees the entry: rate.Limiter refills by the
++// wall clock at the moment a file tailer hands the pipeline a batch, so which
++// lines of a flood it keeps depends on read timing. Tokens are whole, one per
++// 1/rate step of the timestamp on a grid fixed to the Unix epoch, capped at
++// burst. A bucket starts full at its first entry's step, and an entry stamped
++// at or before the last step it counted (stderr behind stdout, equal stamps)
++// refills nothing. Two such buckets fed the same entries keep the same ones
++// once a flood has drained both or a quiet spell has filled both, however
++// late each reads them: their difference is a whole number of tokens that
++// never grows and shrinks each time only one of them admits.
++type entryBucket struct {
++	step          int64 // nanoseconds per token
++	burst, tokens int64
++	last          int64 // the step of the latest entry counted
++	started       bool
++}
++
++func newEntryBucket(rate float64, burst int) *entryBucket {
++	return &entryBucket{step: max(int64(float64(time.Second)/rate), 1), burst: int64(burst)}
++}
++
++// allow spends a token on an entry stamped at, after the refill its step
++// brings, and reports whether there was one.
++func (b *entryBucket) allow(at time.Time) bool {
++	step := at.UnixNano() / b.step
++	switch {
++	case !b.started:
++		b.tokens, b.last, b.started = b.burst, step, true
++	case step > b.last:
++		b.tokens, b.last = min(b.burst, b.tokens+step-b.last), step
++	}
++	if b.tokens < 1 {
++		return false
++	}
++	b.tokens--
++	return true
++}
++
+ // Name implements Stage
+ func (m *limitStage) Name() string {
+ 	return StageTypeLimit
+diff --git a/internal/component/loki/process/stages/limit_test.go b/internal/component/loki/process/stages/limit_test.go
+index d1800c6..1756120 100644
+--- a/internal/component/loki/process/stages/limit_test.go
++++ b/internal/component/loki/process/stages/limit_test.go
+@@ -1,6 +1,9 @@
+ package stages
+ 
+ import (
++	"encoding/json"
++	"fmt"
++	"os"
+ 	"testing"
+ 	"time"
+ 
+@@ -145,3 +148,69 @@ func TestLimitByLabelPipeline(t *testing.T) {
+ 	assert.True(t, hasTotal)
+ 	assert.True(t, hasByLabel)
+ }
++
++// The table bex's live tail is checked against too
++// (lego/backend/internal/logs/testdata/linecap-shared.json in bex-co/bex,
++// copied in by deploy/log-shipper/Dockerfile): stamped lines in file order and
++// whether each pod's bucket keeps them.
++type limitEntryTimeTable struct {
++	Rate  float64 `json:"rate"`
++	Burst int     `json:"burst"`
++	Lines []struct {
++		Pod   string    `json:"pod"`
++		TS    time.Time `json:"ts"`
++		Admit bool      `json:"admit"`
++	} `json:"lines"`
++}
++
++func TestLimitRefillByEntryTimestamp(t *testing.T) {
++	raw, err := os.ReadFile("testdata/linecap-shared.json")
++	require.NoError(t, err)
++	var table limitEntryTimeTable
++	require.NoError(t, json.Unmarshal(raw, &table))
++	require.NotEmpty(t, table.Lines)
++
++	// limit runs every table line of the pods kept through one stage.limit,
++	// handed over at once as a file tailer hands over a backlog, and returns
++	// the lines it keeps.
++	limit := func(args string, keep func(pod string) bool) []string {
++		cfg := fmt.Sprintf("stage.limit {\n\trate = %v\n\tburst = %d\n\tdrop = true\n%s\n}", table.Rate, table.Burst, args)
++		pl, err := NewPipeline(util_log.Logger, loadConfig(cfg), &plName, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
++		require.NoError(t, err)
++		var entries []Entry
++		for i, l := range table.Lines {
++			if keep(l.Pod) {
++				entries = append(entries, newEntry(nil, model.LabelSet{"pod": model.LabelValue(l.Pod)}, fmt.Sprintf("%s %d", l.Pod, i), l.TS))
++			}
++		}
++		var kept []string
++		for _, e := range processEntries(pl, entries...) {
++			kept = append(kept, e.Line)
++		}
++		return kept
++	}
++	want := func(keep func(pod string) bool) []string {
++		var out []string
++		for i, l := range table.Lines {
++			if keep(l.Pod) && l.Admit {
++				out = append(out, fmt.Sprintf("%s %d", l.Pod, i))
++			}
++		}
++		return out
++	}
++	every := func(string) bool { return true }
++	first := func(pod string) bool { return pod == table.Lines[0].Pod }
++
++	byLabel := "\tby_label_name = \"pod\"\n\trefill_by_entry_timestamp = true"
++	assert.Equal(t, want(every), limit(byLabel, every), "each pod's bucket must keep the table's lines")
++	assert.Equal(t, want(first), limit("\trefill_by_entry_timestamp = true", first), "one bucket must keep the table's lines of one pod")
++	// The wall clock keeps a different set of the same batch: the table
++	// tells the two rules apart.
++	assert.NotEqual(t, want(every), limit("\tby_label_name = \"pod\"", every))
++}
++
++func TestLimitRefillByEntryTimestampMustDrop(t *testing.T) {
++	err := validateLimitConfig(LimitConfig{Rate: 1, Burst: 1, RefillByEntryTimestamp: true})
++	assert.ErrorIs(t, err, ErrLimitStageByEntryTimeMustDrop)
++	assert.NoError(t, validateLimitConfig(LimitConfig{Rate: 1, Burst: 1, Drop: true, RefillByEntryTimestamp: true}))
++}

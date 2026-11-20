@@ -10,6 +10,9 @@ on:
     branches: [main]
     paths:
       - "deploy/log-shipper/**"
+      # The limit patch's test reads the table bex-api's line cap is tested
+      # against (w8/m525).
+      - "lego/backend/internal/logs/testdata/linecap-shared.json"
       - ".github/workflows/log-shipper-image.yml"
   workflow_dispatch: {}
 
@@ -70,6 +73,8 @@ jobs:
         with:
           context: deploy/log-shipper
           file: deploy/log-shipper/Dockerfile
+          build-contexts: |
+            linecap=lego/backend/internal/logs/testdata
           platforms: linux/amd64,linux/arm64
           push: true
           labels: |

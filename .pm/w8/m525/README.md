@@ -1,13 +1,13 @@
 # w8 · m525 — A live tail opened during a log flood shows the lines history keeps: the shipper and the tail cap each instance with one deterministic bucket
 
-**Worker:** worker8 **Goal:** during a flood over Render's 6,000 lines a minute, a live tail and history keep the same lines of each instance, not only the same number, because the log shipper and bex-api's tail run one bucket that counts each line at its own timestamp. **Status:** todo
+**Worker:** worker8 **Goal:** during a flood over Render's 6,000 lines a minute, a live tail and history keep the same lines of each instance, not only the same number, because the log shipper and bex-api's tail run one bucket that counts each line at its own timestamp. **Status:** in progress (t001, t002 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Alloy patch: `stage.limit` can count each line at its own timestamp, with whole tokens on a fixed clock grid | 1h15m | — |
-| [t002](t002.md) | bex-api: the tail and the store-less read run the same bucket, checked against one shared table | 45m | t001 |
+| [t001](done/t001.md) | Alloy patch: `stage.limit` can count each line at its own timestamp, with whole tokens on a fixed clock grid — **DONE** | 1h15m | — |
+| [t002](done/t002.md) | bex-api: the tail and the store-less read run the same bucket, checked against one shared table — **DONE** | 45m | t001 |
 | [t003](t003.md) | Shipper image and pin, and the shipper harness proves Alloy and the tail keep the same lines | 1h | t001, t002 |
 | [t004](t004.md) | ADR010 and ADR018 describe the shared bucket and the edges that remain | 20m | t003 |
 | [t005](t005.md) | Live check on production: the w8/341 flood replay | 45m | t004 |

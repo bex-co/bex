@@ -45,15 +45,36 @@ const (
 	capWarmUpLines   = appLineBurst + capWarmUpSeconds*appLineRate
 )
 
-// lineCap is one read's buckets, by instance. A bucket starts full and is
-// advanced by each line's own timestamp, not by the clock: the shipper counts
-// a line moments after it is written, while a tail may replay its start
-// bound's backlog or drain late behind a slow viewer.
-type lineCap map[string]*lineBucket
+// lineCap is one read's buckets, by instance, each the shipper's bucket for
+// the same pod (its app_logs stage.limit sets refill_by_entry_timestamp,
+// deploy/log-shipper/patches/limit-entry-timestamp.patch). A bucket counts a
+// line at the line's own timestamp, not the clock: the shipper counts a line
+// moments after it is written, while a tail may replay its start bound's
+// backlog or drain late behind a slow viewer. Tokens are whole, one per
+// 1/rate step of the timestamp on a grid fixed to the Unix epoch, capped at
+// the burst, so two buckets fed the same lines keep the same ones once a
+// flood has drained both or a quiet spell has filled both (w8/m525): their
+// difference is a whole number of tokens that never grows and shrinks each
+// time only one of them admits. Fractional tokens refilled by elapsed time
+// kept the tail's and the shipper's counts equal but their lines apart.
+// testdata/linecap-shared.json holds the shipper's test and this one to the
+// same lines.
+type lineCap struct {
+	step    int64 // nanoseconds of a line's timestamp per token
+	burst   int64
+	buckets map[string]*lineBucket
+}
 
 type lineBucket struct {
-	tokens float64
-	last   time.Time
+	tokens  int64
+	last    int64 // the step of the latest stamp counted
+	stamped bool
+}
+
+func newLineCap() lineCap { return lineCapOf(appLineRate, appLineBurst) }
+
+func lineCapOf(rate, burst int64) lineCap {
+	return lineCap{step: int64(time.Second) / rate, burst: burst, buckets: map[string]*lineBucket{}}
 }
 
 // admit reports whether e survives its instance's bucket, spending a token if
@@ -64,18 +85,22 @@ func (c lineCap) admit(e LogEntry) bool {
 	if e.Labels[LabelType] != LogTypeApp || e.Labels["container"] == progressContainer {
 		return true
 	}
-	b := c[e.Labels[LabelInstance]]
+	b := c.buckets[e.Labels[LabelInstance]]
 	if b == nil {
-		b = &lineBucket{tokens: appLineBurst}
-		c[e.Labels[LabelInstance]] = b
+		b = &lineBucket{tokens: c.burst}
+		c.buckets[e.Labels[LabelInstance]] = b
 	}
+	// A bucket starts full at its first stamp's step, and a line stamped at
+	// or before the last step counted (stderr behind stdout) refills nothing.
 	// An unstamped line (the rest of a split line) is counted at the last
-	// line's time.
-	if at, err := time.Parse(time.RFC3339Nano, e.Timestamp); err == nil && at.After(b.last) {
-		if !b.last.IsZero() {
-			b.tokens = min(appLineBurst, b.tokens+at.Sub(b.last).Seconds()*appLineRate)
+	// line's step.
+	if at, err := time.Parse(time.RFC3339Nano, e.Timestamp); err == nil {
+		switch step := at.UnixNano() / c.step; {
+		case !b.stamped:
+			b.last, b.stamped = step, true
+		case step > b.last:
+			b.tokens, b.last = min(c.burst, b.tokens+step-b.last), step
 		}
-		b.last = at
 	}
 	if b.tokens < 1 {
 		return false

@@ -18,8 +18,10 @@ package logs
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -73,7 +75,7 @@ func TestLineCapKeepsOneBurstThenRendersRateAndNothingOfANeighbor(t *testing.T) 
 	lines := slices.SortedStableFunc(slices.Values(slices.Concat(flood, quiet)), func(a, b LogEntry) int {
 		return strings.Compare(a.Timestamp, b.Timestamp)
 	})
-	c := lineCap{}
+	c := newLineCap()
 	var kept, keptQuiet []LogEntry
 	for _, e := range lines {
 		switch {
@@ -101,7 +103,7 @@ func TestLineCapKeepsOneBurstThenRendersRateAndNothingOfANeighbor(t *testing.T) 
 }
 
 func TestLineCapCountsByTheLinesOwnTime(t *testing.T) {
-	c := lineCap{}
+	c := newLineCap()
 	// 20,000 lines written in the same instant keep exactly the burst,
 	// however long the tail takes to read them.
 	burst := floodLines("web-1", 20000, 0)
@@ -137,7 +139,7 @@ func TestLineCapCountsByTheLinesOwnTime(t *testing.T) {
 }
 
 func TestLineCapLeavesPlatformGeneratedLinesUncapped(t *testing.T) {
-	c := lineCap{}
+	c := newLineCap()
 	for _, e := range floodLines("web-1", appLineBurst, 0) {
 		c.admit(e)
 	}
@@ -292,27 +294,44 @@ func (r *endReader) Read(p []byte) (int, error) {
 }
 
 // keptFrom is what the shipper keeps of one instance's whole log, from its
-// first line, stamped at or after from.
-func keptFrom(lines []LogEntry, from time.Time) int {
-	c, kept := lineCap{}, 0
+// first line, stamped at or after from: the lines' messages, in order.
+func keptFrom(lines []LogEntry, from time.Time) []string {
+	c := newLineCap()
+	var kept []string
 	for _, e := range lines {
 		if at, _ := time.Parse(time.RFC3339Nano, e.Timestamp); c.admit(e) && !at.Before(from) {
-			kept++
+			kept = append(kept, e.Message)
 		}
 	}
 	return kept
 }
 
+// burstLines is instance's flood in the w8/341 replay's shape: bursts of size
+// lines from a shell loop that sleeps 0.1 s between them, so one every
+// 105.3 ms (about 190 lines a second at 20 a burst), the lines of a burst
+// 23.7 µs apart, off the 10 ms grid.
+func burstLines(instance string, bursts, size int) []LogEntry {
+	out := make([]LogEntry, 0, bursts*size)
+	for k := range bursts {
+		for j := range size {
+			at := capEpoch.Add(3700*time.Microsecond + time.Duration(k)*105300*time.Microsecond + time.Duration(j)*23700*time.Nanosecond)
+			out = append(out, appLine(instance, at, fmt.Sprintf("%s seq=%d", instance, k*size+j)))
+		}
+	}
+	return out
+}
+
 // w8/341: a tail opened while an instance floods starts with the bucket the
-// shipper has for it, not a full one. A pod that has printed 200 lines a
-// second for five minutes passes the 100 a second history keeps from the
-// moment the tail opens; it used to pass a fresh 6,000-line burst on top. A
-// quiet pod still passes its whole burst, and nothing written before the
+// shipper has for it, not a full one. A pod that has printed 20-line bursts
+// every 105 ms for five minutes passes the lines history keeps from the
+// moment the tail opens, the same lines and not only as many (w8/m525); it
+// used to pass a fresh 6,000-line burst on top, and then 37.7% other lines.
+// A quiet pod still passes its whole burst, and nothing written before the
 // tail's bound is shown.
 func TestATailOpenedMidFloodShowsWhatHistoryKeeps(t *testing.T) {
 	opened := capEpoch.Add(5 * time.Minute)
-	flood := floodLines("web-1", 72000, 6*time.Minute) // 200 a second
-	quiet := floodLines("web-2", 300, 5*time.Minute)   // one a second
+	flood := burstLines("web-1", 3420, 20)           // 190 a second for 6 minutes
+	quiet := floodLines("web-2", 300, 5*time.Minute) // one a second
 	for i := range 20000 {
 		quiet = append(quiet, appLine("web-2", opened, fmt.Sprintf("web-2 burst %d", i)))
 	}
@@ -329,10 +348,11 @@ func TestATailOpenedMidFloodShowsWhatHistoryKeeps(t *testing.T) {
 			}
 		}
 	}
-	// History keeps about 6,000 of the flood's last 12,000 lines; the line
-	// cap's phase can differ by one.
-	if want, n := keptFrom(flood, opened), len(got["web-1"]); n < want-2 || n > want+2 {
-		t.Errorf("the flooding instance's tail passed %d lines, want the %d history keeps", n, want)
+	// History keeps about 100 of each second's 190 lines: the first 10 or 11
+	// of each burst.
+	if want, kept := keptFrom(flood, opened), messages(got["web-1"]); !slices.Equal(kept, want) {
+		t.Errorf("the flooding instance's tail passed %d lines, %d of them missing from the %d history keeps",
+			len(kept), notIn(kept, want), len(want))
 	}
 	if n := len(got["web-2"]); n != appLineBurst {
 		t.Errorf("the quiet instance's tail passed %d of its 20,000-line burst, want the %d-line burst", n, appLineBurst)
@@ -396,12 +416,130 @@ func TestStorelessHistoryCountsTheFloodBeforeItsLines(t *testing.T) {
 	}
 	last100 := flood[len(flood)-100:]
 	first, _ := time.Parse(time.RFC3339Nano, last100[0].Timestamp)
-	if want := keptFrom(flood, first); len(entries) < want-1 || len(entries) > want+1 {
-		t.Fatalf("store-less history kept %d of the last 100 lines, want the %d the store holds", len(entries), want)
+	if want := keptFrom(flood, first); !slices.Equal(messages(entries), want) {
+		t.Fatalf("store-less history kept %d of the last 100 lines, want the %d the store holds: %q", len(entries), len(want), messages(entries))
 	}
 	for _, e := range entries {
 		if at, _ := time.Parse(time.RFC3339Nano, e.Timestamp); at.Before(first) {
 			t.Fatalf("store-less history showed %q from the warm-up", e.Message)
+		}
+	}
+}
+
+// notIn counts the lines of a that b lacks.
+func notIn(a, b []string) int {
+	have := make(map[string]bool, len(b))
+	for _, m := range b {
+		have[m] = true
+	}
+	n := 0
+	for _, m := range a {
+		if !have[m] {
+			n++
+		}
+	}
+	return n
+}
+
+// lineCapTable is testdata/linecap-shared.json: stamped lines in file order
+// and whether their pod's bucket keeps each one. The log shipper's patched
+// stage.limit is tested against the same table in its image build
+// (deploy/log-shipper/Dockerfile), and scripts/test_log_shipper.py replays
+// it, so the tail and history keep the same lines (w8/m525).
+type lineCapTable struct {
+	Rate  int64 `json:"rate"`
+	Burst int64 `json:"burst"`
+	Lines []struct {
+		Pod   string `json:"pod"`
+		TS    string `json:"ts"`
+		Admit bool   `json:"admit"`
+	} `json:"lines"`
+}
+
+func TestLineCapKeepsTheShippersLines(t *testing.T) {
+	raw, err := os.ReadFile("testdata/linecap-shared.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var table lineCapTable
+	if err := json.Unmarshal(raw, &table); err != nil {
+		t.Fatal(err)
+	}
+	c := lineCapOf(table.Rate, table.Burst)
+	kept := 0
+	for i, l := range table.Lines {
+		if got := c.admit(appLine(l.Pod, mustTime(t, l.TS), fmt.Sprintf("%s %d", l.Pod, i))); got != l.Admit {
+			t.Errorf("line %d (%s at %s): admit = %v, want %v", i, l.Pod, l.TS, got, l.Admit)
+		}
+		if l.Admit {
+			kept++
+		}
+	}
+	// The table must tell a full bucket from an empty one.
+	if kept == 0 || kept == len(table.Lines) {
+		t.Fatalf("the table keeps %d of %d lines; it must keep some and drop some", kept, len(table.Lines))
+	}
+}
+
+func mustTime(t *testing.T, stamp string) time.Time {
+	t.Helper()
+	at, err := time.Parse(time.RFC3339Nano, stamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return at
+}
+
+// The tail's bucket for an instance starts full wherever its read starts,
+// while the shipper's has been counting since the pod's first line. Once a
+// flood has drained the tail's, both make the same decision on every line:
+// whole tokens on one grid leave nothing between them, where fractional
+// tokens refilled by elapsed time stayed out of step for good.
+func TestLineCapBucketsConvergeOnceAFloodDrainsThem(t *testing.T) {
+	flood := burstLines("web-1", 1710, 20) // 190 a second for 3 minutes
+	shipper, tail := newLineCap(), newLineCap()
+	tailFrom := len(flood) / 3 // the tail's bucket starts full a minute in
+	drained, differed := -1, false
+	for i, e := range flood {
+		kept := shipper.admit(e)
+		if i < tailFrom {
+			continue
+		}
+		tailKept := tail.admit(e)
+		switch {
+		case drained >= 0 && tailKept != kept:
+			t.Fatalf("line %d (%s): the tail kept %v and the shipper %v after both drained at line %d", i, e.Message, tailKept, kept, drained)
+		case drained < 0 && !tailKept:
+			drained = i
+		case tailKept != kept:
+			differed = true
+		}
+	}
+	if drained < 0 || !differed {
+		t.Fatalf("the tail's bucket never drained (%d) or never differed from the shipper's (%v): the flood proves nothing", drained, differed)
+	}
+}
+
+// The kubelet stamps a split line once, with its first chunk's time, as the
+// shipper does (cri-first-chunk-timestamp.patch). A follow that skipped the
+// first chunk as older gets the rest unstamped: it is counted at its
+// bucket's last step and refills nothing.
+func TestLineCapCountsAnUnstampedRestAtTheLastStep(t *testing.T) {
+	c := lineCapOf(appLineRate, 2)
+	rest := newLogEntry("web", "web-1", core.AppContainer, LogTypeApp, "", "rest of a split line")
+	for i, tc := range []struct {
+		e    LogEntry
+		want bool
+	}{
+		{appLine("web-1", capEpoch, "first chunk"), true},
+		{rest, true},
+		{rest, false},
+		// One step later, one token.
+		{appLine("web-1", capEpoch.Add(10*time.Millisecond), "next line"), true},
+		{rest, false},
+	} {
+		if got := c.admit(tc.e); got != tc.want {
+			t.Errorf("line %d (%q): admit = %v, want %v", i, tc.e.Message, got, tc.want)
 		}
 	}
 }

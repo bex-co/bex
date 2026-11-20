@@ -1870,7 +1870,7 @@ func (s *Service) followPods(ctx context.Context, q LogQuery, selectors []string
 	// (linecap.go). Before the filters: the cap drops lines whatever the
 	// viewer asked for, so a filtered tail shows what a filtered history read
 	// does.
-	capped := lineCap{}
+	capped := newLineCap()
 
 	for {
 		select {
@@ -2560,7 +2560,7 @@ func (s *Service) readPodLogs(ctx context.Context, namespace, service, pod strin
 	if tail > 0 && len(entries) >= int(read) {
 		warm = len(entries) - int(tail)
 	}
-	capped := lineCap{}
+	capped := newLineCap()
 	for _, e := range entries[:warm] {
 		capped.admit(e)
 	}
