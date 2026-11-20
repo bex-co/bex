@@ -230,8 +230,9 @@ func (c Config) normalized() (Config, error) {
 }
 
 // DefaultRegistryDomains is the built-in package-registry catalog (npm, PyPI,
-// Go proxy, Maven, crates, RubyGems, Docker Hub) a session reaches when
-// BEX_AGENT_SETUP_REGISTRIES is unset.
+// Go proxy, Maven, Gradle, crates, RubyGems, Docker Hub, and the Rust and
+// Node.js releases) a session reaches when BEX_AGENT_SETUP_REGISTRIES is
+// unset.
 func DefaultRegistryDomains() []string { return slices.Clone(registryDomains) }
 
 // RegistryDomains is the validated registry catalog this Manager renders into
@@ -601,12 +602,24 @@ var githubDomains = []string{
 	"uploads.github.com",
 }
 
+// registryDomains is the built-in package-registry catalog. Besides the
+// registries it holds what the image's toolchains fetch to build a
+// repository, as on Devin's base image, where they work with no setup
+// (w10/024): index.crates.io is cargo's default (sparse) crates.io index,
+// static.rust-lang.org serves the toolchain a rust-toolchain.toml names,
+// nodejs.org the Node an .nvmrc names (`nvm install`), and the Gradle hosts
+// the wrapper's distribution (which redirects to GitHub release assets) and
+// the plugin portal.
 var registryDomains = []string{
 	"auth.docker.io",
 	"crates.io",
 	"download.docker.com",
 	"files.pythonhosted.org",
+	"index.crates.io",
 	"index.rubygems.org",
+	"nodejs.org",
+	"plugins-artifacts.gradle.org",
+	"plugins.gradle.org",
 	"production.cloudflare.docker.com",
 	"proxy.golang.org",
 	"pypi.org",
@@ -615,6 +628,8 @@ var registryDomains = []string{
 	"registry.yarnpkg.com",
 	"repo.maven.apache.org",
 	"rubygems.org",
+	"services.gradle.org",
 	"static.crates.io",
+	"static.rust-lang.org",
 	"sum.golang.org",
 }

@@ -233,6 +233,44 @@ func TestReleaseAssetHostIsInEveryAllowlistBaseline(t *testing.T) {
 	}
 }
 
+// w10/024: the image's toolchains build a repository with no setup, as on
+// Devin's base image, only if what they fetch is reachable: cargo's sparse
+// crates.io index, the Rust toolchain a rust-toolchain.toml names, the Node an
+// .nvmrc names, and the Gradle wrapper's distribution and plugin portal. Each
+// is in the default catalog, so every allowlist posture and phase, a
+// builder's included, admits it.
+func TestToolchainHostsAreInTheDefaultRegistryCatalog(t *testing.T) {
+	hosts := []string{
+		"index.crates.io", "static.rust-lang.org", "nodejs.org",
+		"services.gradle.org", "plugins.gradle.org", "plugins-artifacts.gradle.org",
+	}
+	m := &Manager{}
+	for _, tc := range []struct {
+		phase  Phase
+		model  string
+		egress Egress
+	}{
+		{PhaseSetup, "https://models.example.com/v1", Egress{}},
+		{PhaseAgent, "https://models.example.com/v1", Egress{Hosts: []string{"docs.example.com"}}},
+		{PhaseBuild, "", Egress{}},
+	} {
+		policy, err := m.policy("tea-test-sandbox", "ags-test", tc.phase, tc.model, tc.egress)
+		if err != nil {
+			t.Fatalf("%s policy: %v", tc.phase, err)
+		}
+		for _, host := range hosts {
+			if !slices.Contains(fqdnNames(t, policy), host) || !slices.Contains(dnsNames(t, policy), host) {
+				t.Errorf("%s policy (hosts %v) does not admit %s", tc.phase, tc.egress.Hosts, host)
+			}
+		}
+	}
+	for _, host := range hosts {
+		if !slices.Contains(DefaultRegistryDomains(), host) {
+			t.Errorf("DefaultRegistryDomains() lacks %s", host)
+		}
+	}
+}
+
 func TestConfigurableRegistryCatalogAndPerSessionModelEndpoint(t *testing.T) {
 	m, err := NewManager(fakePolicyClient(t), Config{SetupRegistryDomains: RegistryConfig("packages.example.com")})
 	if err != nil {
