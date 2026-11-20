@@ -714,9 +714,12 @@ type closeWatch struct {
 	closed chan struct{}
 }
 
+// Close signals only once the listener is closed: signalled first, a dial
+// racing the close could still be accepted (red main, 7fd0b5a50).
 func (w *closeWatch) Close() error {
+	err := w.Listener.Close()
 	w.once.Do(func() { close(w.closed) })
-	return w.Listener.Close()
+	return err
 }
 
 // refusesDial fails the test if addr still accepts a connection.
