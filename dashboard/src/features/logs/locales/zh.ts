@@ -299,6 +299,17 @@ const zhLogs: Record<string, TranslationEntry> = {
     description:
       "Project Request Logs view with no web service in it (w3/m505)",
   },
+  "logs.projectRoleLimitTitle": {
+    message: "你无法查看日志",
+    description:
+      "Project log view state: the caller's workspace role reads no logs, so the view reads nothing (w3/078)",
+  },
+  "logs.projectRoleLimitBody": {
+    message:
+      "查看此工作区的日志需要贡献者或更高的角色。请联系工作区管理员更改你的角色。",
+    description:
+      "Project log view state body: logs need the Contributor role or higher, as on Render (w3/078)",
+  },
   "logs.projectEmptyTitle": {
     message: "此时间范围内没有日志",
     description:

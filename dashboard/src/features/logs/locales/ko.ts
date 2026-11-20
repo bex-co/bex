@@ -308,6 +308,17 @@ const koLogs: Record<string, TranslationEntry> = {
     description:
       "Project Request Logs view with no web service in it (w3/m505)",
   },
+  "logs.projectRoleLimitTitle": {
+    message: "로그를 볼 수 없습니다",
+    description:
+      "Project log view state: the caller's workspace role reads no logs, so the view reads nothing (w3/078)",
+  },
+  "logs.projectRoleLimitBody": {
+    message:
+      "이 워크스페이스의 로그를 보려면 기여자 이상의 역할이 필요합니다. 워크스페이스 관리자에게 역할 변경을 요청하세요.",
+    description:
+      "Project log view state body: logs need the Contributor role or higher, as on Render (w3/078)",
+  },
   "logs.projectEmptyTitle": {
     message: "이 기간에는 로그가 없습니다",
     description:
