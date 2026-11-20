@@ -323,6 +323,79 @@ func TestMintRepositoryAPIReadTokenIsReadOnlyWithFallback(t *testing.T) {
 	}
 }
 
+// w10/m522: an admitted gh write gets the read token's reads plus pull
+// requests, issues and Actions write, for the one repository, and never a
+// write that moves code, refs, statuses, checks or settings. An installation
+// that has not granted the whole set refuses it with 422; the mint then reads
+// the installation's permissions and asks for their intersection, so the
+// writes it did grant keep working.
+func TestMintRepositoryAPIWriteTokenNarrowsToGrantedPermissions(t *testing.T) {
+	keyPEM, _ := testKeyPEM(t)
+	var requested []string
+	installationReads := 0
+	granted := map[string]string{"actions": "write", "checks": "write", "contents": "write", "issues": "write", "metadata": "read", "pull_requests": "write", "statuses": "write", "workflows": "write"}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/app/installations/42" {
+			installationReads++
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": 42, "account": map[string]string{"login": "octo"}, "permissions": granted})
+			return
+		}
+		var body struct {
+			Repositories []string          `json:"repositories"`
+			Permissions  map[string]string `json:"permissions"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if len(body.Repositories) != 1 || body.Repositories[0] != "repo" {
+			t.Fatalf("repositories = %v", body.Repositories)
+		}
+		for _, never := range []string{"contents", "workflows", "statuses", "checks", "administration", "deployments", "environments", "secrets"} {
+			if level := body.Permissions[never]; level != "" && level != "read" {
+				t.Fatalf("the write token asked for %s=%s", never, level)
+			}
+		}
+		perms, _ := json.Marshal(body.Permissions)
+		requested = append(requested, string(perms))
+		for name, level := range body.Permissions {
+			if have := granted[name]; have == "" || (level == "write" && have != "write") {
+				http.Error(w, `{"message":"The permissions requested are not granted to this installation."}`, http.StatusUnprocessableEntity)
+				return
+			}
+		}
+		w.WriteHeader(http.StatusCreated)
+		fmt.Fprint(w, `{"token":"ghs_api_write","expires_at":"2026-08-01T13:00:00Z"}`)
+	}))
+	defer server.Close()
+	client, _ := NewClient(Config{AppID: "1", PrivateKey: keyPEM, Slug: "bex"})
+	client.baseURL = server.URL
+
+	full := `{"actions":"write","checks":"read","contents":"read","issues":"write","metadata":"read","pull_requests":"write","statuses":"read"}`
+	if token, err := client.MintRepositoryAPIWriteToken(context.Background(), 42, "repo"); err != nil || token.Token != "ghs_api_write" || !slices.Equal(requested, []string{full}) || installationReads != 0 {
+		t.Fatalf("full mint = %+v %v, requested %v, installation reads %d", token, err, requested, installationReads)
+	}
+
+	// The older self-hosted manifest: Actions and statuses read, no Issues.
+	requested = nil
+	granted = map[string]string{"actions": "read", "checks": "read", "contents": "write", "metadata": "read", "pull_requests": "write", "statuses": "read", "workflows": "write"}
+	narrow := `{"actions":"read","checks":"read","contents":"read","metadata":"read","pull_requests":"write","statuses":"read"}`
+	if token, err := client.MintRepositoryAPIWriteToken(context.Background(), 42, "repo"); err != nil || token.Token != "ghs_api_write" || !slices.Equal(requested, []string{full, narrow}) || installationReads != 1 {
+		t.Fatalf("narrowed mint = %+v %v, requested %v, installation reads %d", token, err, requested, installationReads)
+	}
+
+	// An installation that grants the whole set and still answers 422 keeps
+	// GitHub's error rather than asking again for the same set.
+	requested = nil
+	granted = map[string]string{"actions": "write", "checks": "read", "contents": "read", "issues": "write", "pull_requests": "write", "statuses": "read"}
+	var apiErr *APIError
+	if _, err := client.MintRepositoryAPIWriteToken(context.Background(), 42, "repo"); !errors.As(err, &apiErr) || apiErr.Status != http.StatusUnprocessableEntity || len(requested) != 1 {
+		t.Fatalf("a 422 the permissions do not explain = %v after %v, want the 422 once", err, requested)
+	}
+	if _, err := client.MintRepositoryAPIWriteToken(context.Background(), 42, "owner/repo"); err == nil {
+		t.Fatal("an owner/name reached GitHub's name-only narrowing field")
+	}
+}
+
 func TestListRepoTreeFetchesNestedDirectoryAtRef(t *testing.T) {
 	keyPEM, _ := testKeyPEM(t)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

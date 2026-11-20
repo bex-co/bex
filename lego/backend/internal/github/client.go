@@ -29,6 +29,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	neturl "net/url"
 	"strconv"
@@ -276,6 +277,55 @@ func (c *Client) MintRepositoryAPIReadToken(ctx context.Context, installationID 
 	return token, err
 }
 
+// apiWritePermissions is the permission set of an admitted `gh` write (ADR090
+// D4 amendment w10/m522): the read token's reads, plus write on pull requests
+// (comments, reviews, labels, reviewers), issues and Actions (re-run and
+// cancel). It never holds contents, workflows, statuses, checks or
+// administration write: code and refs move only through the Git proxy.
+func apiWritePermissions() map[string]string {
+	return map[string]string{
+		"actions": "write", "checks": "read", "contents": "read", "issues": "write", "pull_requests": "write", "statuses": "read",
+	}
+}
+
+// MintRepositoryAPIWriteToken mints the credential of one admitted write of a
+// session's `gh` route (w10/m522), narrowed to the one repository. An
+// installation that has not granted all of apiWritePermissions refuses the
+// set with 422; the mint then reads what the installation holds and asks for
+// the intersection, so a write the installation lacks gets GitHub's own 403
+// while the others still work.
+func (c *Client) MintRepositoryAPIWriteToken(ctx context.Context, installationID int64, repository string) (InstallationToken, error) {
+	token, err := c.mintRepositoryToken(ctx, installationID, repository, apiWritePermissions())
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) || apiErr.Status != http.StatusUnprocessableEntity {
+		return token, err
+	}
+	installation, getErr := c.GetInstallation(ctx, installationID)
+	if getErr != nil {
+		return InstallationToken{}, err
+	}
+	granted := grantedPermissions(apiWritePermissions(), installation.Permissions)
+	if maps.Equal(granted, apiWritePermissions()) {
+		return InstallationToken{}, err
+	}
+	return c.mintRepositoryToken(ctx, installationID, repository, granted)
+}
+
+// grantedPermissions narrows want to what an installation granted: a write
+// it granted only as read becomes read, one it did not grant is dropped.
+func grantedPermissions(want, granted map[string]string) map[string]string {
+	out := map[string]string{}
+	for name, level := range want {
+		switch granted[name] {
+		case "write", "admin":
+			out[name] = level
+		case "read":
+			out[name] = "read"
+		}
+	}
+	return out
+}
+
 // mintRepositoryWriteToken mints contents:write plus workflows:write for one
 // repository, as Devin's App holds both (w10/014). GitHub refuses any ref
 // update that changes a file under .github/workflows/ without workflows:write,
@@ -360,6 +410,9 @@ type Installation struct {
 	// Events are the webhook events this installation receives — the App's
 	// subscriptions the installation has accepted (w1/m181 reads check_suite).
 	Events []string `json:"events,omitempty"`
+	// Permissions are the App permissions the installation has granted
+	// (name → "read"/"write"); the `gh` write mint narrows to them (w10/m522).
+	Permissions map[string]string `json:"-"`
 }
 
 // GetInstallation fetches one installation by id (GET /app/installations/{id}),
@@ -387,17 +440,18 @@ func (c *Client) GetInstallation(ctx context.Context, installationID int64) (Ins
 		return Installation{}, newAPIError(resp, body)
 	}
 	var out struct {
-		ID         int64    `json:"id"`
-		TargetType string   `json:"target_type"`
-		Events     []string `json:"events"`
-		Account    struct {
+		ID          int64             `json:"id"`
+		TargetType  string            `json:"target_type"`
+		Events      []string          `json:"events"`
+		Permissions map[string]string `json:"permissions"`
+		Account     struct {
 			Login string `json:"login"`
 		} `json:"account"`
 	}
 	if err := json.Unmarshal(body, &out); err != nil {
 		return Installation{}, fmt.Errorf("github: decode installation response: %w", err)
 	}
-	return Installation{ID: out.ID, AccountLogin: out.Account.Login, AccountType: out.TargetType, Events: out.Events}, nil
+	return Installation{ID: out.ID, AccountLogin: out.Account.Login, AccountType: out.TargetType, Events: out.Events, Permissions: out.Permissions}, nil
 }
 
 // VerifyInstallationAdmin reports whether the GitHub user identified by the

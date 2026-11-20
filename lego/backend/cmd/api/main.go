@@ -1358,6 +1358,13 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 			Minter: minter,
 			Nonce:  st,
 		})
+		// w10/m522: the credential of one write that route admitted (comments,
+		// reviews, labels, issues, CI re-runs), on its own path.
+		internalRoot.Handle(agentsession.InternalGitHubWriteMintPath, &agentsession.GitHubWriteHandler{
+			Secret: []byte(cfg.SandboxExecSecret),
+			Minter: minter,
+			Nonce:  st,
+		})
 		// ADR090: the agent's own draft-PR verb. Same gateway-only HMAC and
 		// internal-only listener; owner/repo/base/head come from the durable
 		// session, never the request. Unwired without the GitHub App.

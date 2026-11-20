@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/graphql-go/graphql/language/ast"
@@ -35,26 +36,34 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 )
 
-// The session's read-only GitHub API route (w10/m513, ADR090 D4 amendment).
-// The in-sandbox `gh` sends every call to a socket the driver serves, and the
-// driver forwards it here, under the session's Pod-bound Git proxy URL:
-// <repo URL>/github-api/<REST path> or /github-api/graphql. The route
+// The session's GitHub API route (w10/m513 reads, w10/m522 writes; ADR090 D4
+// amendments). The in-sandbox `gh` sends every call to a socket the driver
+// serves, and the driver forwards it here, under the session's Pod-bound Git
+// proxy URL: <repo URL>/github-api/<REST path> or /github-api/graphql. The
+// route
 //
-//   - admits REST GET and HEAD on /repos/<the session's repository>[/…] only,
-//     and POST /graphql only for queries whose top-level fields read that
-//     repository, a node by id, the rate limit or the schema;
-//   - refuses every write in GitHub's error shape, with a message naming the
-//     bex MCP tools, which stay the session's one pull-request path;
-//   - mints a read-only installation token narrowed to the repository for
-//     each call and injects it on the upstream hop only. A node lookup by id
-//     is scoped by that narrowing, which GitHub enforces;
+//   - admits REST GET and HEAD on /repos/<the session's repository>[/…], and
+//     POST /graphql for queries whose top-level fields read that repository,
+//     a node by id, the rate limit or the schema;
+//   - admits the writes in githubAPIWrites (REST) and githubAPIMutations
+//     (GraphQL) on that repository: comments and replies, reviews that do not
+//     approve, labels, assignees, requested reviewers, issues, and re-running
+//     or cancelling Actions runs;
+//   - refuses every other write in GitHub's error shape, with a message naming
+//     the bex MCP tools, which stay the session's one pull-request path, and
+//     the session branch, which stays its one code path;
+//   - mints an installation token narrowed to the repository for each call,
+//     read-only for a read and with pull requests, issues and Actions write
+//     (never contents) for an admitted write, and injects it on the upstream
+//     hop only. A node id is scoped by that narrowing, which GitHub enforces;
 //   - follows GitHub's redirects to its log and archive storage itself,
 //     without the token, so `gh run view --log` works with no other egress.
 const (
 	defaultGitHubAPIOrigin = "https://api.github.com"
-	// maxGitHubGraphQLBytes bounds one GraphQL request body: gh's largest
-	// query is a few KiB.
-	maxGitHubGraphQLBytes = 256 << 10
+	// maxGitHubAPIRequestBytes bounds one request body, a GraphQL document
+	// or a write: gh's largest query is a few KiB, and GitHub caps a comment
+	// at 65536 characters, which JSON escaping can grow to several bytes each.
+	maxGitHubAPIRequestBytes = 1 << 20
 	// maxGitHubAPIResponseBytes bounds one streamed response, a run's log
 	// archive included.
 	maxGitHubAPIResponseBytes = 1 << 30
@@ -82,7 +91,8 @@ var githubAPIResponseHeaders = []string{
 // does not serve; it is rewritten to the owner/name form gh asked with.
 var paginationRepository = regexp.MustCompile(`(https?://[^/>]+)/repositories/[0-9]+([/?>])`)
 
-// serveGitHubAPI forwards one read of the session's repository (see above).
+// serveGitHubAPI forwards one admitted read or write of the session's
+// repository (see above).
 func (b *Broker) serveGitHubAPI(w http.ResponseWriter, r *http.Request, namespace string, claimed agentsession.MintRequest) {
 	if b.GitHubRead == nil {
 		writeGitHubAPIError(w, http.StatusServiceUnavailable, "bex: gh is not available in this session")
@@ -98,7 +108,8 @@ func (b *Broker) serveGitHubAPI(w http.ResponseWriter, r *http.Request, namespac
 		writeGitHubAPIError(w, http.StatusBadRequest, "bex: invalid request")
 		return
 	}
-	if status, refusal := githubAPIRequestRefusal(r.Method, apiPath, repository); refusal != "" {
+	access, status, refusal := githubAPIRequestRefusal(r.Method, apiPath, r.URL.RawQuery, repository)
+	if refusal != "" {
 		b.refuseGitHubAPI(w, claimed, status, refusal)
 		return
 	}
@@ -119,24 +130,37 @@ func (b *Broker) serveGitHubAPI(w http.ResponseWriter, r *http.Request, namespac
 	}
 	defer admitted.release()
 	r, verified := admitted.r, admitted.verified
-	// The body is read only once admitted, under the admission's slot and
-	// timeout, as the PR verbs read theirs.
-	var graphql []byte
-	if apiPath == "/graphql" {
-		graphql, err = io.ReadAll(http.MaxBytesReader(w, r.Body, maxGitHubGraphQLBytes))
+	// A body is read only once admitted, under the admission's slot and
+	// timeout, as the PR verbs read theirs, and checked as GitHub will read it.
+	write := access.write != nil
+	var body []byte
+	if access.graphql || write {
+		body, err = io.ReadAll(http.MaxBytesReader(w, r.Body, maxGitHubAPIRequestBytes))
 		if tooLarge := new(http.MaxBytesError); errors.As(err, &tooLarge) {
-			writeGitHubAPIError(w, http.StatusRequestEntityTooLarge, fmt.Sprintf("bex: a GraphQL request is limited to %d KiB", maxGitHubGraphQLBytes>>10))
+			writeGitHubAPIError(w, http.StatusRequestEntityTooLarge, fmt.Sprintf("bex: a GitHub API request body is limited to %d KiB", maxGitHubAPIRequestBytes>>10))
 			return
 		} else if err != nil {
-			writeGitHubAPIError(w, http.StatusBadRequest, "bex: the GraphQL request could not be read")
+			writeGitHubAPIError(w, http.StatusBadRequest, "bex: the request body could not be read")
 			return
 		}
-		if status, refusal := graphQLRefusal(graphql, repository); refusal != "" {
+		if access.graphql {
+			write, status, refusal = graphQLRefusal(body, repository)
+		} else {
+			status, refusal = restWriteBodyRefusal(*access.write, body, repository)
+		}
+		if refusal != "" {
 			b.refuseGitHubAPI(w, claimed, status, refusal)
 			return
 		}
 	}
-	credential, err := b.GitHubRead.Mint(r.Context(), verified)
+	mint := b.GitHubRead
+	if write {
+		if mint = b.GitHubWrite; mint == nil {
+			writeGitHubAPIError(w, http.StatusServiceUnavailable, "bex: gh cannot write from this session right now")
+			return
+		}
+	}
+	credential, err := mint.Mint(r.Context(), verified)
 	if err != nil {
 		if errors.Is(err, agentsession.ErrForbidden) {
 			b.Metrics.Authentication("rejected_target")
@@ -155,11 +179,11 @@ func (b *Broker) serveGitHubAPI(w http.ResponseWriter, r *http.Request, namespac
 	if r.URL.RawQuery != "" {
 		target += "?" + r.URL.RawQuery
 	}
-	var body io.Reader
-	if graphql != nil {
-		body = bytes.NewReader(graphql)
+	var upstreamBody io.Reader
+	if body != nil {
+		upstreamBody = bytes.NewReader(body)
 	}
-	request, err := http.NewRequestWithContext(r.Context(), r.Method, target, body)
+	request, err := http.NewRequestWithContext(r.Context(), r.Method, target, upstreamBody)
 	if err != nil {
 		writeGitHubAPIError(w, http.StatusBadRequest, "bex: invalid request")
 		return
@@ -207,7 +231,7 @@ func (b *Broker) followStorageRedirects(request *http.Request) (*http.Response, 
 		case hops == maxGitHubAPIRedirects:
 			return nil, errors.New("GitHub redirected this request too many times")
 		case request.Method != http.MethodGet && request.Method != http.MethodHead:
-			return nil, errors.New("GitHub redirected a GraphQL request")
+			return nil, errors.New("GitHub redirected a request that is not a read")
 		case !b.storageRedirect(location):
 			return nil, fmt.Errorf("GitHub redirected this request to %s, which this route does not follow", location.Hostname())
 		}
@@ -257,42 +281,201 @@ func githubAPIPath(escaped string) (string, bool) {
 	return apiPath, ok && strings.HasPrefix(apiPath, "/")
 }
 
+// githubAPIAccess is what an admitted request is: a GraphQL document, whose
+// operations decide whether it reads or writes; an admitted REST write; or a
+// REST read.
+type githubAPIAccess struct {
+	graphql bool
+	write   *githubAPIWrite
+}
+
 // githubAPIRequestRefusal is the method and path policy: REST reads of the
-// session's repository and GraphQL POSTs. It answers the status and message
-// of a refusal, or "" for an admitted request.
-func githubAPIRequestRefusal(method, apiPath, repository string) (int, string) {
+// session's repository, the REST writes of githubAPIWrites on it, and GraphQL
+// POSTs. It answers what an admitted request is, or the status and message of
+// a refusal.
+func githubAPIRequestRefusal(method, apiPath, rawQuery, repository string) (githubAPIAccess, int, string) {
 	lower := strings.ToLower(apiPath)
 	for _, bad := range []string{"%2f", "%5c", "%2e", "%00", "\\", "//"} {
 		if strings.Contains(lower, bad) {
-			return http.StatusBadRequest, "bex: invalid request path"
+			return githubAPIAccess{}, http.StatusBadRequest, "bex: invalid request path"
 		}
 	}
 	segments := strings.Split(strings.TrimPrefix(apiPath, "/"), "/")
 	for _, segment := range segments {
 		if segment == "." || segment == ".." {
-			return http.StatusBadRequest, "bex: invalid request path"
+			return githubAPIAccess{}, http.StatusBadRequest, "bex: invalid request path"
 		}
 	}
 	if apiPath == "/graphql" {
 		if method != http.MethodPost {
-			return http.StatusMethodNotAllowed, readOnlyRefusal(repository)
+			return githubAPIAccess{}, http.StatusMethodNotAllowed, writeRefusal(repository)
 		}
+		return githubAPIAccess{graphql: true}, 0, ""
+	}
+	ownRepository := len(segments) >= 3 && segments[0] == "repos" && strings.EqualFold(segments[1]+"/"+segments[2], repository)
+	if method == http.MethodGet || method == http.MethodHead {
+		if !ownRepository {
+			return githubAPIAccess{}, http.StatusForbidden, otherRepositoryRefusal(repository)
+		}
+		return githubAPIAccess{}, 0, ""
+	}
+	var write *githubAPIWrite
+	if ownRepository {
+		write = matchGitHubAPIWrite(method, segments[3:])
+	}
+	if write == nil {
+		return githubAPIAccess{}, http.StatusForbidden, writeRefusal(repository)
+	}
+	// GitHub may read a parameter from the query string as well as the body,
+	// and the route checks the body.
+	if rawQuery != "" {
+		return githubAPIAccess{}, http.StatusBadRequest, "bex: a write carries its parameters in its JSON body, not the query string"
+	}
+	return githubAPIAccess{write: write}, 0, ""
+}
+
+// githubAPIWrite is one REST write gh may make (w10/m522): its method and
+// path below /repos/<the session's repository>/, where # is a number and * any
+// one segment.
+type githubAPIWrite struct {
+	route string
+	// review marks a review submission, whose event may not approve.
+	review bool
+}
+
+// githubAPIWrites are the REST writes admitted on the session's repository:
+// issue and pull-request comments, review comments and their replies,
+// reviews, reactions, labels, assignees and requested reviewers, new issues,
+// and re-running or cancelling a run. `PATCH issues/#` is not among them:
+// GitHub treats a pull request as an issue there, so it could retitle,
+// rewrite or close one. gh's own `issue edit` and `issue close` send GraphQL,
+// where GitHub resolves the id as an issue.
+var githubAPIWrites = []githubAPIWrite{
+	{route: "POST issues"},
+	{route: "POST issues/#/comments"},
+	{route: "PATCH issues/comments/#"}, {route: "DELETE issues/comments/#"},
+	{route: "POST issues/#/labels"}, {route: "PUT issues/#/labels"}, {route: "DELETE issues/#/labels"}, {route: "DELETE issues/#/labels/*"},
+	{route: "POST issues/#/assignees"}, {route: "DELETE issues/#/assignees"},
+	{route: "POST issues/#/reactions"}, {route: "DELETE issues/#/reactions/#"},
+	{route: "POST issues/comments/#/reactions"}, {route: "DELETE issues/comments/#/reactions/#"},
+	{route: "POST pulls/#/comments"}, {route: "POST pulls/#/comments/#/replies"},
+	{route: "PATCH pulls/comments/#"}, {route: "DELETE pulls/comments/#"},
+	{route: "POST pulls/comments/#/reactions"}, {route: "DELETE pulls/comments/#/reactions/#"},
+	{route: "POST pulls/#/reviews", review: true}, {route: "POST pulls/#/reviews/#/events", review: true},
+	{route: "PUT pulls/#/reviews/#"}, {route: "DELETE pulls/#/reviews/#"},
+	{route: "POST pulls/#/requested_reviewers"}, {route: "DELETE pulls/#/requested_reviewers"},
+	{route: "POST actions/runs/#/rerun"}, {route: "POST actions/runs/#/rerun-failed-jobs"},
+	{route: "POST actions/runs/#/cancel"}, {route: "POST actions/runs/#/force-cancel"},
+	{route: "POST actions/jobs/#/rerun"},
+}
+
+// matchGitHubAPIWrite is the admitted write a method and the path segments
+// below the repository name, or nil.
+func matchGitHubAPIWrite(method string, rest []string) *githubAPIWrite {
+	for i := range githubAPIWrites {
+		ruleMethod, pattern, _ := strings.Cut(githubAPIWrites[i].route, " ")
+		if ruleMethod == method && slices.EqualFunc(strings.Split(pattern, "/"), rest, segmentMatches) {
+			return &githubAPIWrites[i]
+		}
+	}
+	return nil
+}
+
+func segmentMatches(pattern, segment string) bool {
+	switch pattern {
+	case "#":
+		return segment != "" && strings.Trim(segment, "0123456789") == ""
+	case "*":
+		return segment != ""
+	}
+	return pattern == segment
+}
+
+// restWriteBodyRefusal checks an admitted REST write's body: empty or one JSON
+// value whose objects repeat no key, and for a review, an event that does not
+// approve.
+func restWriteBodyRefusal(write githubAPIWrite, body []byte, repository string) (int, string) {
+	if len(bytes.TrimSpace(body)) == 0 {
 		return 0, ""
 	}
-	if method != http.MethodGet && method != http.MethodHead {
-		return http.StatusForbidden, readOnlyRefusal(repository)
+	if !uniqueKeyJSON(body) {
+		return http.StatusBadRequest, "bex: a write's body must be one JSON value that repeats no key"
 	}
-	if len(segments) < 3 || segments[0] != "repos" || !strings.EqualFold(segments[1]+"/"+segments[2], repository) {
-		return http.StatusForbidden, otherRepositoryRefusal(repository)
+	if write.review {
+		var review map[string]any
+		if json.Unmarshal(body, &review) != nil || !notApproval(review) {
+			return http.StatusForbidden, writeRefusal(repository)
+		}
 	}
 	return 0, ""
 }
 
-// readOnlyRefusal is the answer to every write: the bex tools stay the
-// session's one way to open, update or answer its pull request.
-func readOnlyRefusal(repository string) string {
-	return "bex: gh in this session only reads " + repository + " (CI runs and logs, checks, pull requests and contents). " +
-		"Open or update the pull request with the open_or_update_draft_pr tool of the bex MCP server, and reply on it with reply_on_pull_request."
+// notApproval admits a review input whose event is absent, null or anything
+// but APPROVE. An approval is refused: GitHub counts one by an App that has
+// write access toward a branch's required reviews.
+func notApproval(input map[string]any) bool {
+	event, present := input["event"]
+	if !present || event == nil {
+		return true
+	}
+	text, ok := event.(string)
+	return ok && !strings.EqualFold(strings.TrimSpace(text), "APPROVE")
+}
+
+// uniqueKeyJSON reports whether raw is exactly one JSON value whose objects
+// never name a key twice. Two parsers can resolve a repeated key differently,
+// and the route must read a body as GitHub will.
+func uniqueKeyJSON(raw []byte) bool {
+	type object struct {
+		keys    map[string]bool
+		wantKey bool
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	var open []*object // nil for an array
+	values := 0
+	valueDone := func() {
+		if len(open) == 0 {
+			values++
+		} else if top := open[len(open)-1]; top != nil {
+			top.wantKey = true
+		}
+	}
+	for {
+		token, err := decoder.Token()
+		if errors.Is(err, io.EOF) {
+			return values == 1 && len(open) == 0
+		} else if err != nil {
+			return false
+		}
+		if n := len(open); n > 0 && open[n-1] != nil && open[n-1].wantKey && token != json.Delim('}') {
+			key, _ := token.(string)
+			if open[n-1].keys[key] {
+				return false
+			}
+			open[n-1].keys[key], open[n-1].wantKey = true, false
+			continue
+		}
+		switch token {
+		case json.Delim('{'):
+			open = append(open, &object{keys: map[string]bool{}, wantKey: true})
+		case json.Delim('['):
+			open = append(open, nil)
+		case json.Delim('}'), json.Delim(']'):
+			open = open[:len(open)-1]
+			valueDone()
+		default:
+			valueDone()
+		}
+	}
+}
+
+// writeRefusal answers every write the route does not admit: what gh can
+// write here, and the bex tools and the session branch for the rest.
+func writeRefusal(repository string) string {
+	return "bex: gh in this session reads " + repository + " and writes to it only to comment and reply, review without approving, " +
+		"label, assign, request reviewers, open, edit and close issues, and re-run or cancel Actions runs. " +
+		"Open or update the pull request with the open_or_update_draft_pr tool of the bex MCP server, reply on it with reply_on_pull_request, " +
+		"and change code only by pushing your session branch."
 }
 
 func otherRepositoryRefusal(repository string) string {
@@ -302,10 +485,13 @@ func otherRepositoryRefusal(repository string) string {
 // graphQLRefusal admits a GraphQL request only when every operation is a
 // query whose top-level fields read the session's repository (its owner and
 // name arguments, literal or variable, equal to it), a node by id, the rate
-// limit or the schema. A mutation is a write; anything else names another
-// part of GitHub. Fragments are admitted where a field uses them; a fragment
-// spread at the top level could hide any field, so it is refused.
-func graphQLRefusal(raw []byte, repository string) (int, string) {
+// limit or the schema, or a mutation whose every top-level field is an
+// admitted write (githubAPIMutations). Any other mutation, a subscription, or
+// a query field naming another part of GitHub refuses the whole document.
+// Fragments are admitted where a field uses them; a fragment spread at the
+// top level could hide any field, so it is refused. It answers whether the
+// request writes, or the status and message of its refusal.
+func graphQLRefusal(raw []byte, repository string) (bool, int, string) {
 	var request struct {
 		Query         string         `json:"query"`
 		Variables     map[string]any `json:"variables"`
@@ -313,38 +499,148 @@ func graphQLRefusal(raw []byte, repository string) (int, string) {
 	}
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&request); err != nil || decoder.More() || request.Query == "" {
-		return http.StatusBadRequest, "bex: the GraphQL request must be one JSON object with a query"
+	if err := decoder.Decode(&request); err != nil || decoder.More() || request.Query == "" || !uniqueKeyJSON(raw) {
+		return false, http.StatusBadRequest, "bex: the GraphQL request must be one JSON object with a query, repeating no key"
 	}
 	document, err := parser.Parse(parser.ParseParams{Source: request.Query})
 	if err != nil {
-		return http.StatusBadRequest, "bex: the GraphQL query could not be parsed"
+		return false, http.StatusBadRequest, "bex: the GraphQL query could not be parsed"
 	}
 	owner, name, _ := strings.Cut(repository, "/")
+	write := false
 	for _, definition := range document.Definitions {
 		switch definition := definition.(type) {
 		case *ast.FragmentDefinition:
 		case *ast.OperationDefinition:
-			if definition.Operation != ast.OperationTypeQuery {
-				return http.StatusForbidden, readOnlyRefusal(repository)
-			}
 			defaults := map[string]ast.Value{}
 			for _, variable := range definition.VariableDefinitions {
 				if variable.DefaultValue != nil {
 					defaults[variable.Variable.Name.Value] = variable.DefaultValue
 				}
 			}
-			for _, selection := range definition.SelectionSet.Selections {
-				field, ok := selection.(*ast.Field)
-				if !ok || !graphQLFieldAllowed(field, owner, name, request.Variables, defaults) {
-					return http.StatusForbidden, otherRepositoryRefusal(repository)
+			switch definition.Operation {
+			case ast.OperationTypeQuery:
+				for _, selection := range definition.SelectionSet.Selections {
+					field, ok := selection.(*ast.Field)
+					if !ok || !graphQLFieldAllowed(field, owner, name, request.Variables, defaults) {
+						return false, http.StatusForbidden, otherRepositoryRefusal(repository)
+					}
 				}
+			case ast.OperationTypeMutation:
+				write = true
+				for _, selection := range definition.SelectionSet.Selections {
+					field, ok := selection.(*ast.Field)
+					if !ok || !graphQLMutationAllowed(field, request.Variables, defaults) {
+						return false, http.StatusForbidden, writeRefusal(repository)
+					}
+				}
+			default:
+				return false, http.StatusForbidden, writeRefusal(repository)
 			}
 		default:
-			return http.StatusBadRequest, "bex: the GraphQL request may hold only queries and fragments"
+			return false, http.StatusBadRequest, "bex: the GraphQL request may hold only operations and fragments"
 		}
 	}
-	return 0, ""
+	return write, 0, ""
+}
+
+// githubAPIMutations are the GraphQL writes admitted (w10/m522), each with
+// the check its input must pass, if any: what gh's pr comment, pr review, pr
+// edit (labels, assignees, reviewers), issue create, comment, edit, close and
+// reopen send, and the review-thread and reaction writes beside them. A node
+// id is scoped by the write token's one-repository narrowing, which GitHub
+// enforces, and GitHub resolves each id as its own type, so an issue mutation
+// cannot reach a pull request.
+var githubAPIMutations = map[string]func(map[string]any) bool{
+	"__typename": nil,
+	"addComment": nil, "updateIssueComment": nil, "deleteIssueComment": nil,
+	"addPullRequestReview": notApproval, "submitPullRequestReview": notApproval,
+	"updatePullRequestReview": nil, "deletePullRequestReview": nil,
+	"addPullRequestReviewComment": nil, "addPullRequestReviewThread": nil, "addPullRequestReviewThreadReply": nil,
+	"updatePullRequestReviewComment": nil, "deletePullRequestReviewComment": nil,
+	"addReaction": nil, "removeReaction": nil,
+	"addLabelsToLabelable": nil, "removeLabelsFromLabelable": nil,
+	"requestReviews": nil, "requestReviewsByLogin": nil,
+	"addAssigneesToAssignable": nil, "removeAssigneesFromAssignable": nil, "replaceActorsForAssignable": nil,
+	"createIssue": nil, "updateIssue": nil, "closeIssue": nil, "reopenIssue": nil,
+	"updatePullRequest": keepsThePullRequestRecord,
+}
+
+// keepsThePullRequestRecord admits an updatePullRequest that leaves the title,
+// body, base and state alone, which the D3 verb owns: gh's `pr edit
+// --add-reviewer` sends one naming only the pull request before it requests
+// the reviews.
+func keepsThePullRequestRecord(input map[string]any) bool {
+	for name := range input {
+		switch name {
+		case "pullRequestId", "clientMutationId", "labelIds", "assigneeIds", "milestoneId":
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+// graphQLMutationAllowed admits one top-level mutation field of
+// githubAPIMutations whose input, literal or from variables, passes its check.
+func graphQLMutationAllowed(field *ast.Field, variables map[string]any, defaults map[string]ast.Value) bool {
+	check, admitted := githubAPIMutations[field.Name.Value]
+	if !admitted || check == nil {
+		return admitted
+	}
+	if len(field.Arguments) != 1 || field.Arguments[0].Name.Value != "input" {
+		return false
+	}
+	value, _ := graphQLValue(field.Arguments[0].Value, variables, defaults)
+	input, ok := value.(map[string]any)
+	return ok && check(input)
+}
+
+// graphQLValue resolves an argument value as GitHub reads it: literals, input
+// objects (refusing a repeated field), lists, and variables from the request
+// or their definition's default; an unsupplied variable is null.
+func graphQLValue(value ast.Value, variables map[string]any, defaults map[string]ast.Value) (any, bool) {
+	switch value := value.(type) {
+	case *ast.Variable:
+		if supplied, ok := variables[value.Name.Value]; ok {
+			return supplied, true
+		}
+		if fallback, ok := defaults[value.Name.Value]; ok {
+			return graphQLValue(fallback, nil, nil)
+		}
+		return nil, true
+	case *ast.ObjectValue:
+		out := map[string]any{}
+		for _, field := range value.Fields {
+			resolved, ok := graphQLValue(field.Value, variables, defaults)
+			if _, repeated := out[field.Name.Value]; repeated || !ok {
+				return nil, false
+			}
+			out[field.Name.Value] = resolved
+		}
+		return out, true
+	case *ast.ListValue:
+		out := make([]any, 0, len(value.Values))
+		for _, item := range value.Values {
+			resolved, ok := graphQLValue(item, variables, defaults)
+			if !ok {
+				return nil, false
+			}
+			out = append(out, resolved)
+		}
+		return out, true
+	case *ast.StringValue:
+		return value.Value, true
+	case *ast.EnumValue:
+		return value.Value, true
+	case *ast.BooleanValue:
+		return value.Value, true
+	case *ast.IntValue:
+		return value.Value, true
+	case *ast.FloatValue:
+		return value.Value, true
+	}
+	return nil, false
 }
 
 func graphQLFieldAllowed(field *ast.Field, owner, name string, variables map[string]any, defaults map[string]ast.Value) bool {
@@ -374,20 +670,14 @@ func graphQLFieldAllowed(field *ast.Field, owner, name string, variables map[str
 	return ownerMatched && nameMatched
 }
 
-// graphQLString resolves a string argument: a literal, or a variable from the
-// request's variables or its definition's default.
+// graphQLString resolves a string argument: a string literal, or a variable
+// whose value from the request or its definition's default is a string.
 func graphQLString(value ast.Value, variables map[string]any, defaults map[string]ast.Value) (string, bool) {
-	switch value := value.(type) {
-	case *ast.StringValue:
-		return value.Value, true
-	case *ast.Variable:
-		if supplied, ok := variables[value.Name.Value]; ok {
-			text, isString := supplied.(string)
-			return text, isString
-		}
-		if fallback, ok := defaults[value.Name.Value].(*ast.StringValue); ok {
-			return fallback.Value, true
-		}
+	switch value.(type) {
+	case *ast.StringValue, *ast.Variable:
+		resolved, _ := graphQLValue(value, variables, defaults)
+		text, ok := resolved.(string)
+		return text, ok
 	}
 	return "", false
 }

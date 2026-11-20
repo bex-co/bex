@@ -1,0 +1,1133 @@
+[
+ {
+  "command": "gh pr comment 15108 --body x",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {id,url,number}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 15108, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation CommentCreate($input:AddCommentInput!){addComment(input: $input){commentEdge{node{url}}}}\", \"variables\": {\"input\": {\"subjectId\": \"PR_kwDODKw3uc8AAAABQd5P6A\", \"body\": \"x\"}}}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh pr comment 197 --edit-last --body x",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {id,url,comments(first: 100) {nodes {id,author{login,...on User{id,name}},authorAssociation,body,createdAt,includesCreatedEdit,isMinimized,minimizedReason,reactionGroups{content,users{totalCount}},url,viewerDidAuthor},pageInfo{hasNextPage,endCursor},totalCount},number}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 197, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation CommentUpdate($input:UpdateIssueCommentInput!){updateIssueComment(input: $input){issueComment{url}}}\", \"variables\": {\"input\": {\"id\": \"IC_kwDOL1E4iM8AAAABoYVWWA\", \"body\": \"x\"}}}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh pr comment 197 --delete-last --yes",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {id,url,comments(first: 100) {nodes {id,author{login,...on User{id,name}},authorAssociation,body,createdAt,includesCreatedEdit,isMinimized,minimizedReason,reactionGroups{content,users{totalCount}},url,viewerDidAuthor},pageInfo{hasNextPage,endCursor},totalCount},number}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 197, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation CommentDelete($input:DeleteIssueCommentInput!){deleteIssueComment(input: $input){clientMutationId}}\", \"variables\": {\"input\": {\"id\": \"IC_kwDOL1E4iM8AAAABoYVWWA\"}}}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh api -X POST repos/{owner}/{repo}/pulls/15108/comments/123/replies -f body=x",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/repos/octo/repo/pulls/15108/comments/123/replies",
+    "body": "{\"body\":\"x\"}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh pr review 15108 --comment --body x",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {id,number}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 15108, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation PullRequestReviewAdd($input:AddPullRequestReviewInput!){addPullRequestReview(input:$input){clientMutationId}}\", \"variables\": {\"input\": {\"pullRequestId\": \"PR_kwDODKw3uc8AAAABQd5P6A\", \"body\": \"x\", \"event\": \"COMMENT\"}}}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh pr review 15108 --request-changes --body x",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {id,number}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 15108, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation PullRequestReviewAdd($input:AddPullRequestReviewInput!){addPullRequestReview(input:$input){clientMutationId}}\", \"variables\": {\"input\": {\"pullRequestId\": \"PR_kwDODKw3uc8AAAABQd5P6A\", \"body\": \"x\", \"event\": \"REQUEST_CHANGES\"}}}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh pr review 15108 --approve",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {id,number}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 15108, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation PullRequestReviewAdd($input:AddPullRequestReviewInput!){addPullRequestReview(input:$input){clientMutationId}}\", \"variables\": {\"input\": {\"pullRequestId\": \"PR_kwDODKw3uc8AAAABQd5P6A\", \"body\": \"\", \"event\": \"APPROVE\"}}}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh pr edit 15108 --add-label bug",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {id,author{login,...on User{id,name}},url,title,body,baseRefName,reviewRequests(first: 100) {nodes {requestedReviewer {__typename,...on User{login,name},...on Bot{login},...on Team{organization{login}name,slug}}}},labels(first:100){nodes{id,name,description,color},totalCount},milestone{number,title,description,dueOn},assignedActors(first: 10) {nodes {...on User {id,login,name,__typename}...on Bot {id,login,__typename}},totalCount},number}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 15108, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"query PullRequestProjectItems($endCursor:String$name:String!$number:Int!$owner:String!){repository(owner: $owner, name: $name){pullRequest(number: $number){projectItems(first: 100, after: $endCursor){totalCount,nodes{id,project{id,title},status:fieldValueByName(name: \\\"Status\\\"){... on ProjectV2ItemFieldSingleSelectValue{optionId,name}}},pageInfo{hasNextPage,endCursor}}}}}\", \"variables\": {\"endCursor\": null, \"name\": \"repo\", \"number\": 15108, \"owner\": \"octo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"query RepositoryLabelList($endCursor:String$name:String!$owner:String!){repository(owner: $owner, name: $name){labels(first: 100, orderBy: {field: NAME, direction: ASC}, after: $endCursor){nodes{id,name},pageInfo{hasNextPage,endCursor}}}}\", \"variables\": {\"endCursor\": null, \"name\": \"repo\", \"owner\": \"octo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation LabelAdd($input:AddLabelsToLabelableInput!){addLabelsToLabelable(input: $input){__typename}}\", \"variables\": {\"input\": {\"labelableId\": \"PR_kwDODKw3uc8AAAABQd5P6A\", \"labelIds\": [\"MDU6TGFiZWwxNTkzNDg0NjIw\"]}}}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh pr edit 15108 --remove-label bug",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {id,author{login,...on User{id,name}},url,title,body,baseRefName,reviewRequests(first: 100) {nodes {requestedReviewer {__typename,...on User{login,name},...on Bot{login},...on Team{organization{login}name,slug}}}},labels(first:100){nodes{id,name,description,color},totalCount},milestone{number,title,description,dueOn},assignedActors(first: 10) {nodes {...on User {id,login,name,__typename}...on Bot {id,login,__typename}},totalCount},number}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 15108, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"query PullRequestProjectItems($endCursor:String$name:String!$number:Int!$owner:String!){repository(owner: $owner, name: $name){pullRequest(number: $number){projectItems(first: 100, after: $endCursor){totalCount,nodes{id,project{id,title},status:fieldValueByName(name: \\\"Status\\\"){... on ProjectV2ItemFieldSingleSelectValue{optionId,name}}},pageInfo{hasNextPage,endCursor}}}}}\", \"variables\": {\"endCursor\": null, \"name\": \"repo\", \"number\": 15108, \"owner\": \"octo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"query RepositoryLabelList($endCursor:String$name:String!$owner:String!){repository(owner: $owner, name: $name){labels(first: 100, orderBy: {field: NAME, direction: ASC}, after: $endCursor){nodes{id,name},pageInfo{hasNextPage,endCursor}}}}\", \"variables\": {\"endCursor\": null, \"name\": \"repo\", \"owner\": \"octo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation LabelRemove($input:RemoveLabelsFromLabelableInput!){removeLabelsFromLabelable(input: $input){__typename}}\", \"variables\": {\"input\": {\"labelableId\": \"PR_kwDODKw3uc8AAAABQd5P6A\", \"labelIds\": [\"MDU6TGFiZWwxNTkzNDg0NjIw\"]}}}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh pr edit 15108 --add-reviewer williammartin",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {id,author{login,...on User{id,name}},url,title,body,baseRefName,reviewRequests(first: 100) {nodes {requestedReviewer {__typename,...on User{login,name},...on Bot{login},...on Team{organization{login}name,slug}}}},labels(first:100){nodes{id,name,description,color},totalCount},milestone{number,title,description,dueOn},assignedActors(first: 10) {nodes {...on User {id,login,name,__typename}...on Bot {id,login,__typename}},totalCount},number}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 15108, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"query PullRequestProjectItems($endCursor:String$name:String!$number:Int!$owner:String!){repository(owner: $owner, name: $name){pullRequest(number: $number){projectItems(first: 100, after: $endCursor){totalCount,nodes{id,project{id,title},status:fieldValueByName(name: \\\"Status\\\"){... on ProjectV2ItemFieldSingleSelectValue{optionId,name}}},pageInfo{hasNextPage,endCursor}}}}}\", \"variables\": {\"endCursor\": null, \"name\": \"repo\", \"number\": 15108, \"owner\": \"octo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation PullRequestUpdate($input:UpdatePullRequestInput!){updatePullRequest(input: $input){__typename}}\", \"variables\": {\"input\": {\"pullRequestId\": \"PR_kwDODKw3uc8AAAABQd5P6A\"}}}",
+    "want": "write"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation RequestReviewsByLogin($input:RequestReviewsByLoginInput!){requestReviewsByLogin(input: $input){clientMutationId}}\", \"variables\": {\"input\": {\"pullRequestId\": \"PR_kwDODKw3uc8AAAABQd5P6A\", \"userLogins\": [\"williammartin\", \"tidy-dev\"], \"botLogins\": [], \"teamSlugs\": [], \"union\": false}}}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh pr edit 15108 --remove-reviewer williammartin",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {id,author{login,...on User{id,name}},url,title,body,baseRefName,reviewRequests(first: 100) {nodes {requestedReviewer {__typename,...on User{login,name},...on Bot{login},...on Team{organization{login}name,slug}}}},labels(first:100){nodes{id,name,description,color},totalCount},milestone{number,title,description,dueOn},assignedActors(first: 10) {nodes {...on User {id,login,name,__typename}...on Bot {id,login,__typename}},totalCount},number}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 15108, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"query PullRequestProjectItems($endCursor:String$name:String!$number:Int!$owner:String!){repository(owner: $owner, name: $name){pullRequest(number: $number){projectItems(first: 100, after: $endCursor){totalCount,nodes{id,project{id,title},status:fieldValueByName(name: \\\"Status\\\"){... on ProjectV2ItemFieldSingleSelectValue{optionId,name}}},pageInfo{hasNextPage,endCursor}}}}}\", \"variables\": {\"endCursor\": null, \"name\": \"repo\", \"number\": 15108, \"owner\": \"octo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation RequestReviewsByLogin($input:RequestReviewsByLoginInput!){requestReviewsByLogin(input: $input){clientMutationId}}\", \"variables\": {\"input\": {\"pullRequestId\": \"PR_kwDODKw3uc8AAAABQd5P6A\", \"userLogins\": [\"tidy-dev\"], \"botLogins\": [], \"teamSlugs\": [], \"union\": false}}}",
+    "want": "write"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation PullRequestUpdate($input:UpdatePullRequestInput!){updatePullRequest(input: $input){__typename}}\", \"variables\": {\"input\": {\"pullRequestId\": \"PR_kwDODKw3uc8AAAABQd5P6A\"}}}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh pr edit 15108 --add-assignee williammartin",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {id,author{login,...on User{id,name}},url,title,body,baseRefName,reviewRequests(first: 100) {nodes {requestedReviewer {__typename,...on User{login,name},...on Bot{login},...on Team{organization{login}name,slug}}}},labels(first:100){nodes{id,name,description,color},totalCount},milestone{number,title,description,dueOn},assignedActors(first: 10) {nodes {...on User {id,login,name,__typename}...on Bot {id,login,__typename}},totalCount},number}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 15108, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"query PullRequestProjectItems($endCursor:String$name:String!$number:Int!$owner:String!){repository(owner: $owner, name: $name){pullRequest(number: $number){projectItems(first: 100, after: $endCursor){totalCount,nodes{id,project{id,title},status:fieldValueByName(name: \\\"Status\\\"){... on ProjectV2ItemFieldSingleSelectValue{optionId,name}}},pageInfo{hasNextPage,endCursor}}}}}\", \"variables\": {\"endCursor\": null, \"name\": \"repo\", \"number\": 15108, \"owner\": \"octo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation ReplaceActorsForAssignable($input:ReplaceActorsForAssignableInput!){replaceActorsForAssignable(input: $input){__typename}}\", \"variables\": {\"input\": {\"assignableId\": \"PR_kwDODKw3uc8AAAABQd5P6A\", \"actorLogins\": [\"williammartin\"]}}}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh issue create --title x --body y",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery IssueRepositoryInfo($owner: String!, $name: String!) {\\n\\t\\trepository(owner: $owner, name: $name) {\\n\\t\\t\\tid\\n\\t\\t\\tdatabaseId\\n\\t\\t\\tname\\n\\t\\t\\towner { login }\\n\\t\\t\\thasIssuesEnabled\\n\\t\\t\\tviewerPermission\\n\\t\\t}\\n\\t}\", \"variables\": {\"name\": \"repo\", \"owner\": \"octo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tmutation IssueCreate($input: CreateIssueInput!) {\\n\\t\\tcreateIssue(input: $input) {\\n\\t\\t\\tissue {\\n\\t\\t\\t\\tid\\n\\t\\t\\t\\turl\\n\\t\\t\\t}\\n\\t\\t}\\n\\t}\", \"variables\": {\"input\": {\"body\": \"y\", \"repositoryId\": \"MDEwOlJlcG9zaXRvcnkyMTI2MTMwNDk=\", \"title\": \"x\"}}}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh issue create --title x --body y --label bug",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery IssueRepositoryInfo($owner: String!, $name: String!) {\\n\\t\\trepository(owner: $owner, name: $name) {\\n\\t\\t\\tid\\n\\t\\t\\tdatabaseId\\n\\t\\t\\tname\\n\\t\\t\\towner { login }\\n\\t\\t\\thasIssuesEnabled\\n\\t\\t\\tviewerPermission\\n\\t\\t}\\n\\t}\", \"variables\": {\"name\": \"repo\", \"owner\": \"octo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"query RepositoryLabelList($endCursor:String$name:String!$owner:String!){repository(owner: $owner, name: $name){labels(first: 100, orderBy: {field: NAME, direction: ASC}, after: $endCursor){nodes{id,name},pageInfo{hasNextPage,endCursor}}}}\", \"variables\": {\"endCursor\": null, \"name\": \"repo\", \"owner\": \"octo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tmutation IssueCreate($input: CreateIssueInput!) {\\n\\t\\tcreateIssue(input: $input) {\\n\\t\\t\\tissue {\\n\\t\\t\\t\\tid\\n\\t\\t\\t\\turl\\n\\t\\t\\t}\\n\\t\\t}\\n\\t}\", \"variables\": {\"input\": {\"body\": \"y\", \"labelIds\": [\"MDU6TGFiZWwxNTkzNDg0NjIw\"], \"projectIds\": null, \"repositoryId\": \"MDEwOlJlcG9zaXRvcnkyMTI2MTMwNDk=\", \"title\": \"x\"}}}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh issue comment 15000 --body x (15000 is a pull request)",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery IssueByNumber($owner: String!, $repo: String!, $number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\thasIssuesEnabled\\n\\t\\t\\tissue: issueOrPullRequest(number: $number) {\\n\\t\\t\\t\\t__typename\\n\\t\\t\\t\\t...on Issue{id,url}\\n\\t\\t\\t\\t...on PullRequest{id,url}\\n\\t\\t\\t}\\n\\t\\t}\\n\\t}\", \"variables\": {\"number\": 15000, \"owner\": \"octo\", \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation CommentCreate($input:AddCommentInput!){addComment(input: $input){commentEdge{node{url}}}}\", \"variables\": {\"input\": {\"subjectId\": \"PR_kwDODKw3uc8AAAABN8C_jw\", \"body\": \"x\"}}}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh run rerun 44577807157",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "GET",
+    "path": "/repos/octo/repo/actions/runs/44577807157",
+    "query": "exclude_pull_requests=true",
+    "want": "read"
+   },
+   {
+    "method": "GET",
+    "path": "/repos/octo/repo/actions/workflows/925645",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/repos/octo/repo/actions/runs/44577807157/rerun",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh run rerun 44577807157 --failed",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "GET",
+    "path": "/repos/octo/repo/actions/runs/44577807157",
+    "query": "exclude_pull_requests=true",
+    "want": "read"
+   },
+   {
+    "method": "GET",
+    "path": "/repos/octo/repo/actions/workflows/925645",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/repos/octo/repo/actions/runs/44577807157/rerun-failed-jobs",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh run cancel 44577807157",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "GET",
+    "path": "/repos/octo/repo/actions/runs/44577807157",
+    "query": "exclude_pull_requests=true",
+    "want": "read"
+   },
+   {
+    "method": "GET",
+    "path": "/repos/octo/repo/actions/workflows/925645",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/repos/octo/repo/actions/runs/44577807157/cancel",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh run rerun --job 136009738176",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "GET",
+    "path": "/repos/octo/repo/actions/jobs/136009738176",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/repos/octo/repo/actions/jobs/136009738176/rerun",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh run rerun 44652252248 --debug",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "GET",
+    "path": "/repos/octo/repo/actions/runs/44652252248",
+    "query": "exclude_pull_requests=true",
+    "want": "read"
+   },
+   {
+    "method": "GET",
+    "path": "/repos/octo/repo/actions/workflows/389529352",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/repos/octo/repo/actions/runs/44652252248/rerun",
+    "body": "{\"enable_debug_logging\":true}\n",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh pr create --title x --body y --head cli:trunk --base trunk",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tfragment repo on Repository {\\n\\t\\tid\\n\\t\\tdatabaseId\\n\\t\\tname\\n\\t\\towner { login }\\n\\t\\tsshUrl\\n\\t\\thasIssuesEnabled\\n\\t\\tdescription\\n\\t\\thasWikiEnabled\\n\\t\\tviewerPermission\\n\\t\\tdefaultBranchRef {\\n\\t\\t\\tname\\n\\t\\t}\\n\\t}\\n\\n\\tquery RepositoryInfo($owner: String!, $name: String!) {\\n\\t\\trepository(owner: $owner, name: $name) {\\n\\t\\t\\t...repo\\n\\t\\t\\tparent {\\n\\t\\t\\t\\t...repo\\n\\t\\t\\t}\\n\\t\\t\\tmergeCommitAllowed\\n\\t\\t\\trebaseMergeAllowed\\n\\t\\t\\tsquashMergeAllowed\\n\\t\\t}\\n\\t}\", \"variables\": {\"name\": \"repo\", \"owner\": \"octo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestForBranch($owner: String!, $repo: String!, $headRefName: String!, $states: [PullRequestState!]) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequests(headRefName: $headRefName, states: $states, first: 30, orderBy: { field: CREATED_AT, direction: DESC }) {\\n\\t\\t\\t\\tnodes {url,id,number,state,baseRefName,headRefName,isCrossRepository,headRepositoryOwner{id,login,...on User{name}}}\\n\\t\\t\\t}\\n\\t\\t\\tdefaultBranchRef { name }\\n\\t\\t}\\n\\t}\", \"variables\": {\"headRefName\": \"trunk\", \"owner\": \"octo\", \"repo\": \"repo\", \"states\": [\"OPEN\"]}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\t\\tmutation PullRequestCreate($input: CreatePullRequestInput!) {\\n\\t\\t\\tcreatePullRequest(input: $input) {\\n\\t\\t\\t\\tpullRequest {\\n\\t\\t\\t\\t\\tid\\n\\t\\t\\t\\t\\turl\\n\\t\\t\\t\\t}\\n\\t\\t\\t}\\n\\t}\", \"variables\": {\"input\": {\"baseRefName\": \"trunk\", \"body\": \"y\", \"draft\": false, \"headRefName\": \"cli:trunk\", \"maintainerCanModify\": true, \"repositoryId\": \"MDEwOlJlcG9zaXRvcnkyMTI2MTMwNDk=\", \"title\": \"x\"}}}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh pr edit 15108 --title x",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {id,author{login,...on User{id,name}},url,title,body,baseRefName,reviewRequests(first: 100) {nodes {requestedReviewer {__typename,...on User{login,name},...on Bot{login},...on Team{organization{login}name,slug}}}},labels(first:100){nodes{id,name,description,color},totalCount},milestone{number,title,description,dueOn},assignedActors(first: 10) {nodes {...on User {id,login,name,__typename}...on Bot {id,login,__typename}},totalCount},number}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 15108, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"query PullRequestProjectItems($endCursor:String$name:String!$number:Int!$owner:String!){repository(owner: $owner, name: $name){pullRequest(number: $number){projectItems(first: 100, after: $endCursor){totalCount,nodes{id,project{id,title},status:fieldValueByName(name: \\\"Status\\\"){... on ProjectV2ItemFieldSingleSelectValue{optionId,name}}},pageInfo{hasNextPage,endCursor}}}}}\", \"variables\": {\"endCursor\": null, \"name\": \"repo\", \"number\": 15108, \"owner\": \"octo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation PullRequestUpdate($input:UpdatePullRequestInput!){updatePullRequest(input: $input){__typename}}\", \"variables\": {\"input\": {\"pullRequestId\": \"PR_kwDODKw3uc8AAAABQd5P6A\", \"title\": \"x\"}}}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh pr edit 15108 --body x",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {id,author{login,...on User{id,name}},url,title,body,baseRefName,reviewRequests(first: 100) {nodes {requestedReviewer {__typename,...on User{login,name},...on Bot{login},...on Team{organization{login}name,slug}}}},labels(first:100){nodes{id,name,description,color},totalCount},milestone{number,title,description,dueOn},assignedActors(first: 10) {nodes {...on User {id,login,name,__typename}...on Bot {id,login,__typename}},totalCount},number}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 15108, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"query PullRequestProjectItems($endCursor:String$name:String!$number:Int!$owner:String!){repository(owner: $owner, name: $name){pullRequest(number: $number){projectItems(first: 100, after: $endCursor){totalCount,nodes{id,project{id,title},status:fieldValueByName(name: \\\"Status\\\"){... on ProjectV2ItemFieldSingleSelectValue{optionId,name}}},pageInfo{hasNextPage,endCursor}}}}}\", \"variables\": {\"endCursor\": null, \"name\": \"repo\", \"number\": 15108, \"owner\": \"octo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation PullRequestUpdate($input:UpdatePullRequestInput!){updatePullRequest(input: $input){__typename}}\", \"variables\": {\"input\": {\"pullRequestId\": \"PR_kwDODKw3uc8AAAABQd5P6A\", \"body\": \"x\"}}}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh pr edit 15108 --base trunk",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {id,author{login,...on User{id,name}},url,title,body,baseRefName,reviewRequests(first: 100) {nodes {requestedReviewer {__typename,...on User{login,name},...on Bot{login},...on Team{organization{login}name,slug}}}},labels(first:100){nodes{id,name,description,color},totalCount},milestone{number,title,description,dueOn},assignedActors(first: 10) {nodes {...on User {id,login,name,__typename}...on Bot {id,login,__typename}},totalCount},number}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 15108, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"query PullRequestProjectItems($endCursor:String$name:String!$number:Int!$owner:String!){repository(owner: $owner, name: $name){pullRequest(number: $number){projectItems(first: 100, after: $endCursor){totalCount,nodes{id,project{id,title},status:fieldValueByName(name: \\\"Status\\\"){... on ProjectV2ItemFieldSingleSelectValue{optionId,name}}},pageInfo{hasNextPage,endCursor}}}}}\", \"variables\": {\"endCursor\": null, \"name\": \"repo\", \"number\": 15108, \"owner\": \"octo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation PullRequestUpdate($input:UpdatePullRequestInput!){updatePullRequest(input: $input){__typename}}\", \"variables\": {\"input\": {\"pullRequestId\": \"PR_kwDODKw3uc8AAAABQd5P6A\", \"baseRefName\": \"trunk\"}}}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh pr ready 15108 --undo",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {id,number,state,isDraft}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 15108, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation ConvertPullRequestToDraft($input:ConvertPullRequestToDraftInput!){convertPullRequestToDraft(input: $input){pullRequest{id}}}\", \"variables\": {\"input\": {\"pullRequestId\": \"PR_kwDODKw3uc8AAAABQd5P6A\"}}}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh pr merge 15108 --squash --auto",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {id,number,state,title,commits(last:1){nodes{commit{oid}}},mergeStateStatus,headRefName,baseRefName,headRefOid,isCrossRepository,isInMergeQueue,isMergeQueueEnabled}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 15108, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation PullRequestAutoMerge($input:EnablePullRequestAutoMergeInput!){enablePullRequestAutoMerge(input: $input){clientMutationId}}\", \"variables\": {\"input\": {\"pullRequestId\": \"PR_kwDODKw3uc8AAAABQd5P6A\", \"mergeMethod\": \"SQUASH\"}}}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh pr close 15108",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {state,number,title,isCrossRepository,headRefName,id}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 15108, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation PullRequestClose($input:ClosePullRequestInput!){closePullRequest(input: $input){pullRequest{id}}}\", \"variables\": {\"input\": {\"pullRequestId\": \"PR_kwDODKw3uc8AAAABQd5P6A\"}}}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh workflow run lint.yml --ref trunk",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "GET",
+    "path": "/repos/octo/repo/actions/workflows/lint.yml",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/repos/octo/repo/actions/workflows/925645/dispatches",
+    "body": "{\"inputs\":{},\"ref\":\"trunk\",\"return_run_details\":true}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh issue close 15000 (a pull request)",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery IssueByNumber($owner: String!, $repo: String!, $number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\thasIssuesEnabled\\n\\t\\t\\tissue: issueOrPullRequest(number: $number) {\\n\\t\\t\\t\\t__typename\\n\\t\\t\\t\\t...on Issue{id,number,title,state}\\n\\t\\t\\t\\t...on PullRequest{id,number,title,state}\\n\\t\\t\\t}\\n\\t\\t}\\n\\t}\", \"variables\": {\"number\": 15000, \"owner\": \"octo\", \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation PullRequestClose($input:ClosePullRequestInput!){closePullRequest(input: $input){pullRequest{id}}}\", \"variables\": {\"input\": {\"pullRequestId\": \"PR_kwDODKw3uc8AAAABN8C_jw\"}}}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh issue reopen 15000 (a pull request)",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery IssueByNumber($owner: String!, $repo: String!, $number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\thasIssuesEnabled\\n\\t\\t\\tissue: issueOrPullRequest(number: $number) {\\n\\t\\t\\t\\t__typename\\n\\t\\t\\t\\t...on Issue{id,number,title,state}\\n\\t\\t\\t\\t...on PullRequest{id,number,title,state}\\n\\t\\t\\t}\\n\\t\\t}\\n\\t}\", \"variables\": {\"number\": 15000, \"owner\": \"octo\", \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation PullRequestReopen($input:ReopenPullRequestInput!){reopenPullRequest(input: $input){pullRequest{id}}}\", \"variables\": {\"input\": {\"pullRequestId\": \"PR_kwDODKw3uc8AAAABN8C_jw\"}}}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh issue edit 15000 --title x (a pull request)",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery IssueByNumber($owner: String!, $repo: String!, $number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\thasIssuesEnabled\\n\\t\\t\\tissue: issueOrPullRequest(number: $number) {\\n\\t\\t\\t\\t__typename\\n\\t\\t\\t\\t...on Issue{id,number,title,body,url}\\n\\t\\t\\t\\t...on PullRequest{id,number,title,body,url}\\n\\t\\t\\t}\\n\\t\\t}\\n\\t}\", \"variables\": {\"number\": 15000, \"owner\": \"octo\", \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation PullRequestUpdate($input:UpdatePullRequestInput!){updatePullRequest(input: $input){__typename}}\", \"variables\": {\"input\": {\"pullRequestId\": \"PR_kwDODKw3uc8AAAABN8C_jw\", \"title\": \"x\"}}}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh issue edit 15000 --add-label bug (a pull request)",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery IssueByNumber($owner: String!, $repo: String!, $number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\thasIssuesEnabled\\n\\t\\t\\tissue: issueOrPullRequest(number: $number) {\\n\\t\\t\\t\\t__typename\\n\\t\\t\\t\\t...on Issue{id,number,title,body,url,labels(first:100){nodes{id,name,description,color},totalCount}}\\n\\t\\t\\t\\t...on PullRequest{id,number,title,body,url,labels(first:100){nodes{id,name,description,color},totalCount}}\\n\\t\\t\\t}\\n\\t\\t}\\n\\t}\", \"variables\": {\"number\": 15000, \"owner\": \"octo\", \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"query RepositoryLabelList($endCursor:String$name:String!$owner:String!){repository(owner: $owner, name: $name){labels(first: 100, orderBy: {field: NAME, direction: ASC}, after: $endCursor){nodes{id,name},pageInfo{hasNextPage,endCursor}}}}\", \"variables\": {\"endCursor\": null, \"name\": \"repo\", \"owner\": \"octo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation LabelAdd($input:AddLabelsToLabelableInput!){addLabelsToLabelable(input: $input){__typename}}\", \"variables\": {\"input\": {\"labelableId\": \"PR_kwDODKw3uc8AAAABN8C_jw\", \"labelIds\": [\"MDU6TGFiZWwxNTkzNDg0NjIw\"]}}}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh label create bexprobe",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/repos/octo/repo/labels",
+    "body": "{\"color\":\"0052CC\",\"description\":\"\",\"name\":\"bexprobe\"}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh release create v0.0.0-bex --notes x",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/repos/octo/repo/releases",
+    "body": "{\"body\":\"x\",\"draft\":false,\"prerelease\":false,\"tag_name\":\"v0.0.0-bex\"}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh run delete 44652252248",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "GET",
+    "path": "/repos/octo/repo/actions/runs/44652252248",
+    "query": "exclude_pull_requests=true",
+    "want": "read"
+   },
+   {
+    "method": "GET",
+    "path": "/repos/octo/repo/actions/workflows/389529352",
+    "want": "read"
+   },
+   {
+    "method": "DELETE",
+    "path": "/repos/octo/repo/actions/runs/44652252248",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh pr ready 14927",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {id,number,state,isDraft}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 14927, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation PullRequestReadyForReview($input:MarkPullRequestReadyForReviewInput!){markPullRequestReadyForReview(input: $input){pullRequest{id}}}\", \"variables\": {\"input\": {\"pullRequestId\": \"PR_kwDODKw3uc8AAAABMqWfxQ\"}}}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh pr merge 15095 --squash --admin",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {id,number,state,title,commits(last:1){nodes{commit{oid}}},mergeStateStatus,headRefName,baseRefName,headRefOid,isCrossRepository,isInMergeQueue,isMergeQueueEnabled}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 15095, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation PullRequestMerge($input:MergePullRequestInput!){mergePullRequest(input: $input){clientMutationId}}\", \"variables\": {\"input\": {\"pullRequestId\": \"PR_kwDODKw3uc8AAAABQIWWlA\", \"mergeMethod\": \"SQUASH\"}}}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh pr update-branch 15095",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {id,number,headRefName,headRefOid,headRepositoryOwner{id,login,...on User{name}},mergeable}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 15095, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"query ComparePullRequestBaseBranchWith($owner: String!, $repo: String!, $pullRequestNumber: Int!, $headRef: String!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pullRequestNumber) {\\n\\t\\t\\t\\tbaseRef {\\n\\t\\t\\t\\t\\tcompare (headRef: $headRef) {\\n\\t\\t\\t\\t\\t\\taheadBy, behindBy, status\\n\\t\\t\\t\\t\\t}\\n\\t\\t\\t\\t}\\n\\t\\t\\t}\\n\\t\\t}\\n\\t}\", \"variables\": {\"headRef\": \"dependabot/go_modules/charm.land/lipgloss/v2-2.1.1\", \"owner\": \"octo\", \"pullRequestNumber\": 15095, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation PullRequestUpdateBranch($input:UpdatePullRequestBranchInput!){updatePullRequestBranch(input: $input){pullRequest{id}}}\", \"variables\": {\"input\": {\"pullRequestId\": \"PR_kwDODKw3uc8AAAABQIWWlA\", \"expectedHeadOid\": \"38bf936dc1042605ced44bbe6cc794deb1d218fa\", \"updateMethod\": \"MERGE\"}}}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh pr close 15095 --delete-branch",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery PullRequestByNumber($owner: String!, $repo: String!, $pr_number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\tpullRequest(number: $pr_number) {state,number,title,isCrossRepository,headRefName,id}\\n\\t\\t}\\n\\t}\", \"variables\": {\"owner\": \"octo\", \"pr_number\": 15095, \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation PullRequestClose($input:ClosePullRequestInput!){closePullRequest(input: $input){pullRequest{id}}}\", \"variables\": {\"input\": {\"pullRequestId\": \"PR_kwDODKw3uc8AAAABQIWWlA\"}}}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh issue close 15104",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery IssueByNumber($owner: String!, $repo: String!, $number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\thasIssuesEnabled\\n\\t\\t\\tissue: issueOrPullRequest(number: $number) {\\n\\t\\t\\t\\t__typename\\n\\t\\t\\t\\t...on Issue{id,number,title,state}\\n\\t\\t\\t\\t...on PullRequest{id,number,title,state}\\n\\t\\t\\t}\\n\\t\\t}\\n\\t}\", \"variables\": {\"number\": 15104, \"owner\": \"octo\", \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation IssueClose($input:CloseIssueInput!){closeIssue(input: $input){issue{id}}}\", \"variables\": {\"input\": {\"issueId\": \"I_kwDODKw3uc8AAAABgpQTVA\"}}}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh issue reopen 15110",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery IssueByNumber($owner: String!, $repo: String!, $number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\thasIssuesEnabled\\n\\t\\t\\tissue: issueOrPullRequest(number: $number) {\\n\\t\\t\\t\\t__typename\\n\\t\\t\\t\\t...on Issue{id,number,title,state}\\n\\t\\t\\t\\t...on PullRequest{id,number,title,state}\\n\\t\\t\\t}\\n\\t\\t}\\n\\t}\", \"variables\": {\"number\": 15110, \"owner\": \"octo\", \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation IssueReopen($input:ReopenIssueInput!){reopenIssue(input: $input){issue{id}}}\", \"variables\": {\"input\": {\"issueId\": \"I_kwDODKw3uc8AAAABg2oa6Q\"}}}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh issue edit 15104 --title x",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery IssueByNumber($owner: String!, $repo: String!, $number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\thasIssuesEnabled\\n\\t\\t\\tissue: issueOrPullRequest(number: $number) {\\n\\t\\t\\t\\t__typename\\n\\t\\t\\t\\t...on Issue{id,number,title,body,url}\\n\\t\\t\\t\\t...on PullRequest{id,number,title,body,url}\\n\\t\\t\\t}\\n\\t\\t}\\n\\t}\", \"variables\": {\"number\": 15104, \"owner\": \"octo\", \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation IssueUpdate($input:UpdateIssueInput!){updateIssue(input: $input){__typename}}\", \"variables\": {\"input\": {\"id\": \"I_kwDODKw3uc8AAAABgpQTVA\", \"title\": \"x\"}}}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh issue edit 15104 --body x",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery IssueByNumber($owner: String!, $repo: String!, $number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\thasIssuesEnabled\\n\\t\\t\\tissue: issueOrPullRequest(number: $number) {\\n\\t\\t\\t\\t__typename\\n\\t\\t\\t\\t...on Issue{id,number,title,body,url}\\n\\t\\t\\t\\t...on PullRequest{id,number,title,body,url}\\n\\t\\t\\t}\\n\\t\\t}\\n\\t}\", \"variables\": {\"number\": 15104, \"owner\": \"octo\", \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation IssueUpdate($input:UpdateIssueInput!){updateIssue(input: $input){__typename}}\", \"variables\": {\"input\": {\"id\": \"I_kwDODKw3uc8AAAABgpQTVA\", \"body\": \"x\"}}}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh issue edit 15104 --add-label bug",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery IssueByNumber($owner: String!, $repo: String!, $number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\thasIssuesEnabled\\n\\t\\t\\tissue: issueOrPullRequest(number: $number) {\\n\\t\\t\\t\\t__typename\\n\\t\\t\\t\\t...on Issue{id,number,title,body,url,labels(first:100){nodes{id,name,description,color},totalCount}}\\n\\t\\t\\t\\t...on PullRequest{id,number,title,body,url,labels(first:100){nodes{id,name,description,color},totalCount}}\\n\\t\\t\\t}\\n\\t\\t}\\n\\t}\", \"variables\": {\"number\": 15104, \"owner\": \"octo\", \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"query RepositoryLabelList($endCursor:String$name:String!$owner:String!){repository(owner: $owner, name: $name){labels(first: 100, orderBy: {field: NAME, direction: ASC}, after: $endCursor){nodes{id,name},pageInfo{hasNextPage,endCursor}}}}\", \"variables\": {\"endCursor\": null, \"name\": \"repo\", \"owner\": \"octo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation LabelAdd($input:AddLabelsToLabelableInput!){addLabelsToLabelable(input: $input){__typename}}\", \"variables\": {\"input\": {\"labelableId\": \"I_kwDODKw3uc8AAAABgpQTVA\", \"labelIds\": [\"MDU6TGFiZWwxNTkzNDg0NjIw\"]}}}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh issue comment 15104 --body x",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery IssueByNumber($owner: String!, $repo: String!, $number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\thasIssuesEnabled\\n\\t\\t\\tissue: issueOrPullRequest(number: $number) {\\n\\t\\t\\t\\t__typename\\n\\t\\t\\t\\t...on Issue{id,url}\\n\\t\\t\\t\\t...on PullRequest{id,url}\\n\\t\\t\\t}\\n\\t\\t}\\n\\t}\", \"variables\": {\"number\": 15104, \"owner\": \"octo\", \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation CommentCreate($input:AddCommentInput!){addComment(input: $input){commentEdge{node{url}}}}\", \"variables\": {\"input\": {\"subjectId\": \"I_kwDODKw3uc8AAAABgpQTVA\", \"body\": \"x\"}}}",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh issue develop 15104 --name bex-probe",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery IssueByNumber($owner: String!, $repo: String!, $number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\thasIssuesEnabled\\n\\t\\t\\tissue: issueOrPullRequest(number: $number) {\\n\\t\\t\\t\\t__typename\\n\\t\\t\\t\\t...on Issue{id,number}\\n\\t\\t\\t\\t...on PullRequest{id,number}\\n\\t\\t\\t}\\n\\t\\t}\\n\\t}\", \"variables\": {\"number\": 15104, \"owner\": \"octo\", \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"query LinkedBranchFeature{LinkedBranch: __type(name: \\\"LinkedBranch\\\"){fields{name}}}\", \"variables\": null}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"query ListLinkedBranches($name:String!$number:Int!$owner:String!){repository(owner: $owner, name: $name){issue(number: $number){linkedBranches(first: 30){nodes{ref{name,repository{url}}}}}}}\", \"variables\": {\"name\": \"repo\", \"number\": 15104, \"owner\": \"octo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"query FindRepoBranchID($name:String!$owner:String!$ref:String!){repository(owner: $owner, name: $name){id,defaultBranchRef{target{oid}},ref(qualifiedName: $ref){target{oid}}}}\", \"variables\": {\"name\": \"repo\", \"owner\": \"octo\", \"ref\": \"\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation CreateLinkedBranch($input:CreateLinkedBranchInput!){createLinkedBranch(input: $input){linkedBranch{id,ref{name}}}}\", \"variables\": {\"input\": {\"issueId\": \"I_kwDODKw3uc8AAAABgpQTVA\", \"oid\": \"f24a94ffcb8c344ed5db0e4fb9a4d1fffd42c256\", \"name\": \"bex-probe\", \"repositoryId\": \"MDEwOlJlcG9zaXRvcnkyMTI2MTMwNDk=\"}}}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh issue transfer 15104 cli/go-gh",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery IssueByNumber($owner: String!, $repo: String!, $number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\thasIssuesEnabled\\n\\t\\t\\tissue: issueOrPullRequest(number: $number) {\\n\\t\\t\\t\\t__typename\\n\\t\\t\\t\\t...on Issue{id,number}\\n\\t\\t\\t\\t...on PullRequest{id,number}\\n\\t\\t\\t}\\n\\t\\t}\\n\\t}\", \"variables\": {\"number\": 15104, \"owner\": \"octo\", \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery IssueRepositoryInfo($owner: String!, $name: String!) {\\n\\t\\trepository(owner: $owner, name: $name) {\\n\\t\\t\\tid\\n\\t\\t\\tdatabaseId\\n\\t\\t\\tname\\n\\t\\t\\towner { login }\\n\\t\\t\\thasIssuesEnabled\\n\\t\\t\\tviewerPermission\\n\\t\\t}\\n\\t}\", \"variables\": {\"name\": \"go-gh\", \"owner\": \"octo\"}}",
+    "want": "refused"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation IssueTransfer($input:TransferIssueInput!){transferIssue(input: $input){issue{url}}}\", \"variables\": {\"input\": {\"issueId\": \"I_kwDODKw3uc8AAAABgpQTVA\", \"repositoryId\": \"MDEwOlJlcG9zaXRvcnk0MDE4MDk0NzM=\"}}}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh issue delete 15104 --yes",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery IssueByNumber($owner: String!, $repo: String!, $number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\thasIssuesEnabled\\n\\t\\t\\tissue: issueOrPullRequest(number: $number) {\\n\\t\\t\\t\\t__typename\\n\\t\\t\\t\\t...on Issue{id,number,title}\\n\\t\\t\\t\\t...on PullRequest{id,number,title}\\n\\t\\t\\t}\\n\\t\\t}\\n\\t}\", \"variables\": {\"number\": 15104, \"owner\": \"octo\", \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation IssueDelete($input:DeleteIssueInput!){deleteIssue(input: $input){repository{id}}}\", \"variables\": {\"input\": {\"issueId\": \"I_kwDODKw3uc8AAAABgpQTVA\"}}}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh issue lock 15104",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery IssueByNumber($owner: String!, $repo: String!, $number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\thasIssuesEnabled\\n\\t\\t\\tissue: issueOrPullRequest(number: $number) {\\n\\t\\t\\t\\t__typename\\n\\t\\t\\t\\t...on Issue{activeLockReason,id,locked,number,title,url}\\n\\t\\t\\t\\t...on PullRequest{activeLockReason,id,locked,number,title,url}\\n\\t\\t\\t}\\n\\t\\t}\\n\\t}\", \"variables\": {\"number\": 15104, \"owner\": \"octo\", \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation LockLockable($input:LockLockableInput!){lockLockable(input: $input){lockedRecord{locked}}}\", \"variables\": {\"input\": {\"lockableId\": \"I_kwDODKw3uc8AAAABgpQTVA\"}}}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh pr lock 15095",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"\\n\\tquery IssueByNumber($owner: String!, $repo: String!, $number: Int!) {\\n\\t\\trepository(owner: $owner, name: $repo) {\\n\\t\\t\\thasIssuesEnabled\\n\\t\\t\\tissue: issueOrPullRequest(number: $number) {\\n\\t\\t\\t\\t__typename\\n\\t\\t\\t\\t...on Issue{activeLockReason,id,locked,number,title,url}\\n\\t\\t\\t\\t...on PullRequest{activeLockReason,id,locked,number,title,url}\\n\\t\\t\\t}\\n\\t\\t}\\n\\t}\", \"variables\": {\"number\": 15095, \"owner\": \"octo\", \"repo\": \"repo\"}}",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/graphql",
+    "body": "{\"query\": \"mutation LockLockable($input:LockLockableInput!){lockLockable(input: $input){lockedRecord{locked}}}\", \"variables\": {\"input\": {\"lockableId\": \"PR_kwDODKw3uc8AAAABQIWWlA\"}}}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh label edit bug --description x",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "PATCH",
+    "path": "/repos/octo/repo/labels/bug",
+    "body": "{\"description\":\"x\"}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh label delete bexprobe --yes",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "DELETE",
+    "path": "/repos/octo/repo/labels/bexprobe",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh run cancel 44652252248 --force",
+  "admitted": true,
+  "requests": [
+   {
+    "method": "GET",
+    "path": "/repos/octo/repo/actions/runs/44652252248",
+    "query": "exclude_pull_requests=true",
+    "want": "read"
+   },
+   {
+    "method": "GET",
+    "path": "/repos/octo/repo/actions/workflows/389529352",
+    "want": "read"
+   },
+   {
+    "method": "POST",
+    "path": "/repos/octo/repo/actions/runs/44652252248/force-cancel",
+    "want": "write"
+   }
+  ]
+ },
+ {
+  "command": "gh variable set X --body y",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/repos/octo/repo/actions/variables",
+    "body": "{\"name\":\"X\",\"value\":\"y\"}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh api -X PUT repos/{owner}/{repo}/contents/x.txt -f message=x -f content=eA==",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "PUT",
+    "path": "/repos/octo/repo/contents/x.txt",
+    "body": "{\"content\":\"eA==\",\"message\":\"x\"}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh api -X PATCH repos/{owner}/{repo}/git/refs/heads/trunk -f sha=0000",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "PATCH",
+    "path": "/repos/octo/repo/git/refs/heads/trunk",
+    "body": "{\"sha\":\"0000\"}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh api -X POST repos/{owner}/{repo}/statuses/0000000000000000000000000000000000000000 -f state=success",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/repos/octo/repo/statuses/0000000000000000000000000000000000000000",
+    "body": "{\"state\":\"success\"}",
+    "want": "refused"
+   }
+  ]
+ },
+ {
+  "command": "gh api -X POST repos/cli/go-gh/issues/1/comments -f body=x",
+  "admitted": false,
+  "requests": [
+   {
+    "method": "POST",
+    "path": "/repos/cli/go-gh/issues/1/comments",
+    "body": "{\"body\":\"x\"}",
+    "want": "refused"
+   }
+  ]
+ }
+]

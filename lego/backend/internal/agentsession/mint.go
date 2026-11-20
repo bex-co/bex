@@ -35,6 +35,9 @@ const (
 	// AuditVerbMintGitHubReadCredential records each read-only GitHub API
 	// credential the gateway's `gh` route asks for (w10/m513).
 	AuditVerbMintGitHubReadCredential = "agentsessions.MintGitHubReadCredential"
+	// AuditVerbMintGitHubWriteCredential records each credential of an
+	// admitted `gh` write (w10/m522), allowed or denied, with its repository.
+	AuditVerbMintGitHubWriteCredential = "agentsessions.MintGitHubWriteCredential"
 )
 
 const (
@@ -47,6 +50,10 @@ const (
 	// :8091 listener, beside InternalMintPath, under the same gateway-only HMAC
 	// and domain-separated from it by path, as the model mint is.
 	InternalGitHubReadMintPath = "/v1/agent-session-github-read-credentials"
+	// InternalGitHubWriteMintPath is the credential verb of one admitted `gh`
+	// write (w10/m522), beside the read verb under the same HMAC and
+	// domain-separated from it by path.
+	InternalGitHubWriteMintPath = "/v1/agent-session-github-write-credentials"
 )
 
 type GitHubClient interface {
@@ -58,6 +65,10 @@ type GitHubClient interface {
 	// (w10/m513): read-only Actions, checks, statuses, pull requests and
 	// contents of the one repository.
 	MintRepositoryAPIReadToken(context.Context, int64, string) (github.InstallationToken, error)
+	// MintRepositoryAPIWriteToken is the credential of one admitted `gh`
+	// write (w10/m522): those reads plus pull requests, issues and Actions
+	// write of the one repository, never contents or workflows.
+	MintRepositoryAPIWriteToken(context.Context, int64, string) (github.InstallationToken, error)
 }
 
 type ConnectionStore interface {
@@ -116,7 +127,7 @@ type Minter struct {
 }
 
 func (m *Minter) Mint(ctx context.Context, req MintRequest) (MintResponse, error) {
-	return m.mint(ctx, req, false)
+	return m.mint(ctx, req, mintGit)
 }
 
 // MintGitHubRead is the credential of a repo session's read-only GitHub API
@@ -124,14 +135,49 @@ func (m *Minter) Mint(ctx context.Context, req MintRequest) (MintResponse, error
 // token that can only read the session's one repository. A repository
 // environment build has no `gh` route and gets none.
 func (m *Minter) MintGitHubRead(ctx context.Context, req MintRequest) (MintResponse, error) {
-	return m.mint(ctx, req, true)
+	return m.mint(ctx, req, mintGitHubRead)
 }
 
-func (m *Minter) mint(ctx context.Context, req MintRequest, apiRead bool) (response MintResponse, err error) {
-	verb := AuditVerbMintCredential
-	if apiRead {
-		verb = AuditVerbMintGitHubReadCredential
+// MintGitHubWrite is the credential of one write the gateway's `gh` route
+// admitted (w10/m522): MintGitHubRead's checks, then a token that can also
+// comment, review, label, open issues and re-run CI on the one repository,
+// and never change its code or refs.
+func (m *Minter) MintGitHubWrite(ctx context.Context, req MintRequest) (MintResponse, error) {
+	return m.mint(ctx, req, mintGitHubWrite)
+}
+
+// mintKind is which credential a mint verb issues.
+type mintKind int
+
+const (
+	mintGit mintKind = iota
+	mintGitHubRead
+	mintGitHubWrite
+)
+
+func (k mintKind) auditVerb() string {
+	switch k {
+	case mintGitHubRead:
+		return AuditVerbMintGitHubReadCredential
+	case mintGitHubWrite:
+		return AuditVerbMintGitHubWriteCredential
 	}
+	return AuditVerbMintCredential
+}
+
+// token is the kind's GitHub mint.
+func (k mintKind) token(gh GitHubClient) func(context.Context, int64, string) (github.InstallationToken, error) {
+	switch k {
+	case mintGitHubRead:
+		return gh.MintRepositoryAPIReadToken
+	case mintGitHubWrite:
+		return gh.MintRepositoryAPIWriteToken
+	}
+	return gh.MintSessionInstallationToken
+}
+
+func (m *Minter) mint(ctx context.Context, req MintRequest, kind mintKind) (response MintResponse, err error) {
+	verb := kind.auditVerb()
 	// Record both successful issuance and a refused mint. The event schema has no
 	// arbitrary payload: target is the session id and targetName is the verified
 	// non-secret repository identity; malformed input records an empty targetName
@@ -166,7 +212,7 @@ func (m *Minter) mint(ctx context.Context, req MintRequest, apiRead bool) (respo
 		return MintResponse{}, fmt.Errorf("%w: incomplete verified identity", ErrInvalidRequest)
 	}
 	if IsBuildPrincipal(req.SessionID) {
-		if apiRead {
+		if kind != mintGit {
 			return MintResponse{}, ErrForbidden
 		}
 		return m.mintBuild(ctx, req)
@@ -193,10 +239,7 @@ func (m *Minter) mint(ctx context.Context, req MintRequest, apiRead bool) (respo
 	if err := ValidateBranch(req.Branch); err != nil {
 		return MintResponse{}, err
 	}
-	if apiRead {
-		return m.installationToken(ctx, req.Workspace, repository, m.GitHub.MintRepositoryAPIReadToken)
-	}
-	return m.installationToken(ctx, req.Workspace, repository, m.GitHub.MintSessionInstallationToken)
+	return m.installationToken(ctx, req.Workspace, repository, kind.token(m.GitHub))
 }
 
 // mintBuild is a repository environment build's clone credential (ADR111): a

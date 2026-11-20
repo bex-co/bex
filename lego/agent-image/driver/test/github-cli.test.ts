@@ -176,6 +176,23 @@ test("gh's socket forwards api.github.com calls to the gateway route without the
   );
   assert.equal(gateway.seen[1].body, query);
 
+  // w10/m522: a REST write reaches the route with its method and body; the
+  // gateway decides whether it is admitted.
+  const comment = '{"body":"edited"}';
+  const write = await overSocket(socketPath, {
+    method: "PATCH",
+    path: "/repos/acme/widgets/issues/comments/9",
+    body: comment,
+  });
+  assert.equal(write.status, 200);
+  assert.equal(gateway.seen[2].method, "PATCH");
+  assert.equal(
+    gateway.seen[2].url,
+    "/git/bnM/c2lk/cmVwbw/YnJhbmNo/github-api/repos/acme/widgets/issues/comments/9",
+  );
+  assert.equal(gateway.seen[2].body, comment);
+  assert.equal(gateway.seen[2].authorization, undefined);
+
   // gh follows a redirect over the same socket; anything not addressed to
   // api.github.com is refused here and never reaches the gateway.
   const elsewhere = await overSocket(socketPath, {
@@ -184,10 +201,10 @@ test("gh's socket forwards api.github.com calls to the gateway route without the
   });
   assert.equal(elsewhere.status, 403);
   assert.match(JSON.parse(elsewhere.body).message, /only api\.github\.com/);
-  assert.equal(gateway.seen.length, 2);
+  assert.equal(gateway.seen.length, 3);
 });
 
-test("the repo overlay says gh reads the repository and pull requests stay with the bex tools", () => {
+test("the repo overlay says what gh reads and writes, and that pull requests stay with the bex tools", () => {
   const context = {
     cwd: "/workspace",
     deliver: true,
@@ -200,13 +217,22 @@ test("the repo overlay says gh reads the repository and pull requests stay with 
   const text = platformOverlay(context);
   assert.match(
     text,
-    /There is no GitHub token in the sandbox, but `gh` reads `acme\/widgets` through bex/,
+    /There is no GitHub token in the sandbox, but `gh` works on `acme\/widgets` through bex/,
   );
   assert.match(text, /`gh run view --log-failed`/);
   assert.match(
     text,
-    /It cannot write and reaches no other repository, so pull requests are still opened, updated and answered with the `open_or_update_draft_pr` and `reply_on_pull_request` tools/,
+    /reviews without approving \(`gh pr review --comment` or `--request-changes`\), adds labels, assignees and reviewers/,
   );
+  assert.match(
+    text,
+    /opens, edits and closes issues, and re-runs or cancels CI \(`gh run rerun --failed`, `gh run cancel`\)/,
+  );
+  assert.match(
+    text,
+    /It cannot open, edit, approve, merge or close a pull request, dispatch a workflow, or change code, branches or settings, and it reaches no other repository\. Your pull request itself stays with the `open_or_update_draft_pr` and `reply_on_pull_request` tools/,
+  );
+  assert.doesNotMatch(text, /cannot write/);
   assert.doesNotMatch(text, /not authenticated/);
   const unnamed = platformOverlay({ ...context, repository: "" });
   assert.match(unnamed, /the `gh` CLI is not authenticated/);

@@ -14,13 +14,16 @@
  * limitations under the License.
  */
 
-// A repo session's `gh` (w10/m513, ADR090 D4 amendment). gh sends every API
-// call over the Unix socket its config names (`http_unix_socket`), as plain
-// HTTP with the GitHub host in the Host header. The driver serves that socket
-// and forwards each api.github.com request to the gateway's github-api route
-// under the session's Pod-bound Git proxy URL. The gateway admits only reads
-// of the session's repository and injects a read-only token on its upstream
-// hop, so the sandbox holds a placeholder and never a GitHub token.
+// A repo session's `gh` (w10/m513 reads, w10/m522 writes; ADR090 D4
+// amendments). gh sends every API call over the Unix socket its config names
+// (`http_unix_socket`), as plain HTTP with the GitHub host in the Host header.
+// The driver serves that socket and forwards each api.github.com request, any
+// method and body, to the gateway's github-api route under the session's
+// Pod-bound Git proxy URL. The gateway admits reads of the session's
+// repository and the writes ADR090 D4 lists (comments, reviews that do not
+// approve, labels, issues, CI re-runs), and injects a token minted for that
+// call on its upstream hop, so the sandbox holds a placeholder and never a
+// GitHub token.
 
 import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import http from "node:http";
@@ -31,7 +34,7 @@ import type { AgentDriverConfig } from "./config.js";
 // githubCliTokenPlaceholder satisfies gh, which refuses to call the API
 // without a token. The gateway ignores it.
 export const githubCliTokenPlaceholder =
-  "bex-gateway-injects-a-read-only-token";
+  "bex-gateway-injects-a-scoped-token";
 
 export type GitHubCliConfig = Pick<
   AgentDriverConfig,

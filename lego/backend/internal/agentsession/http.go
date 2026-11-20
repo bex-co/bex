@@ -246,11 +246,16 @@ type Handler struct {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var mint func(context.Context, MintRequest) (MintResponse, error)
+	h.serve(w, r, (*Minter).Mint)
+}
+
+// serve answers one signed mint request with the Minter verb mint.
+func (h *Handler) serve(w http.ResponseWriter, r *http.Request, mint func(*Minter, context.Context, MintRequest) (MintResponse, error)) {
+	var verb func(context.Context, MintRequest) (MintResponse, error)
 	if h.Minter != nil {
-		mint = h.Minter.Mint
+		verb = func(ctx context.Context, req MintRequest) (MintResponse, error) { return mint(h.Minter, ctx, req) }
 	}
-	serveSignedMint(w, r, h.Secret, h.now(), h.Nonce, func(req MintRequest) string { return req.Nonce }, mint)
+	serveSignedMint(w, r, h.Secret, h.now(), h.Nonce, func(req MintRequest) string { return req.Nonce }, verb)
 }
 
 // GitHubReadHandler is bex-api's internal mint verb for the gateway's
@@ -259,11 +264,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type GitHubReadHandler Handler
 
 func (h *GitHubReadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var mint func(context.Context, MintRequest) (MintResponse, error)
-	if h.Minter != nil {
-		mint = h.Minter.MintGitHubRead
-	}
-	serveSignedMint(w, r, h.Secret, (*Handler)(h).now(), h.Nonce, func(req MintRequest) string { return req.Nonce }, mint)
+	(*Handler)(h).serve(w, r, (*Minter).MintGitHubRead)
+}
+
+// GitHubWriteHandler is the same envelope on the write verb's path
+// (w10/m522), minting MintGitHubWrite's token for one admitted `gh` write.
+type GitHubWriteHandler Handler
+
+func (h *GitHubWriteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	(*Handler)(h).serve(w, r, (*Minter).MintGitHubWrite)
 }
 
 func (h *Handler) now() time.Time {

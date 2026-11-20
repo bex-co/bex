@@ -136,15 +136,17 @@ A collaborator with write access asked for this work with a \`/bex\` comment on 
 Later messages in this session, including comments and reviews on the pull request, continue on the same branch. Push new commits to \`${branch}\`, call \`${toolName}\` again, and reply on the pull request.`;
 }
 
-// githubCliLine says what the session's gh can do (w10/m513): it reads the
-// repository through bex, and only the bex tools change its pull request.
-// The driver configures gh only when it knows the repository.
+// githubCliLine says what the session's gh can do (w10/m513, w10/m522): it
+// reads the repository through bex and makes the writes the gateway admits;
+// only the bex tools open or change its pull request, and only a push to the
+// session branch changes code. The driver configures gh only when it knows
+// the repository.
 function githubCliLine(context: OverlayContext): string {
   const tools = `\`${toolName}\` and \`${replyOnPullRequestToolName}\` tools of the \`bex\` MCP server`;
   if (!context.repository)
     return `- There is no GitHub token in the sandbox and the \`gh\` CLI is not authenticated. Pull requests go through the ${tools}.
 `;
-  return `- There is no GitHub token in the sandbox, but \`gh\` reads \`${context.repository}\` through bex: CI runs and their logs (\`gh run list\`, \`gh run view --log-failed\`), checks (\`gh pr checks\`), pull requests and their comments, and GET calls with \`gh api repos/{owner}/{repo}/...\`. It cannot write and reaches no other repository, so pull requests are still opened, updated and answered with the ${tools}.
+  return `- There is no GitHub token in the sandbox, but \`gh\` works on \`${context.repository}\` through bex. It reads CI runs and their logs (\`gh run list\`, \`gh run view --log-failed\`), checks (\`gh pr checks\`), pull requests, issues and \`gh api repos/{owner}/{repo}/...\`. It also comments, replies in review threads, reviews without approving (\`gh pr review --comment\` or \`--request-changes\`), adds labels, assignees and reviewers (\`gh pr edit --add-label\`), opens, edits and closes issues, and re-runs or cancels CI (\`gh run rerun --failed\`, \`gh run cancel\`). It cannot open, edit, approve, merge or close a pull request, dispatch a workflow, or change code, branches or settings, and it reaches no other repository. Your pull request itself stays with the ${tools}, and code reaches GitHub only through your pushes to your branch.
 `;
 }
 

@@ -19,6 +19,7 @@ package agentsession
 import (
 	"context"
 	"errors"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -63,11 +64,18 @@ func activeSession() store.AgentSession {
 }
 
 type fakeSessionGitHub struct {
-	calls        int
-	readCalls    int
-	apiCalls     int
-	installation int64
-	repository   string
+	calls         int
+	readCalls     int
+	apiCalls      int
+	apiWriteCalls int
+	installation  int64
+	repository    string
+}
+
+func (f *fakeSessionGitHub) MintRepositoryAPIWriteToken(_ context.Context, installation int64, repository string) (github.InstallationToken, error) {
+	f.apiWriteCalls++
+	f.installation, f.repository = installation, repository
+	return github.InstallationToken{Token: "ghs_api_write", ExpiresAt: time.Date(2026, 8, 1, 13, 0, 0, 0, time.UTC)}, nil
 }
 
 func (f *fakeSessionGitHub) MintRepositoryAPIReadToken(_ context.Context, installation int64, repository string) (github.InstallationToken, error) {
@@ -126,69 +134,113 @@ func TestMinterScopesRepoWritesAndAudits(t *testing.T) {
 	}
 }
 
-// w10/m513: the gh route's credential goes through the same Pod, lifecycle
-// and owner checks, mints only the read-only API token of the one repository,
-// is audited under its own verb, and is never minted for a build.
-func TestMintGitHubReadIsReadOnlyAndAudited(t *testing.T) {
-	gh := &fakeSessionGitHub{}
-	audit := &auditRecorder{}
-	m := &Minter{
-		GitHub: gh, Connections: fakeConnections{row: store.GitConnection{WorkspaceID: "tea-a", InstallationID: 42, AccountLogin: "octo"}},
-		Sessions: fakeSessions{session: activeSession()}, Audit: audit,
-	}
-	got, err := m.MintGitHubRead(context.Background(), validMintRequest())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.Token != "ghs_api_read" || gh.apiCalls != 1 || gh.calls != 0 || gh.readCalls != 0 || gh.installation != 42 || gh.repository != "repo" {
-		t.Fatalf("response=%+v api=%d write=%d read=%d installation=%d repo=%q", got, gh.apiCalls, gh.calls, gh.readCalls, gh.installation, gh.repository)
-	}
-	if len(audit.events) != 1 || audit.events[0].Verb != AuditVerbMintGitHubReadCredential || audit.events[0].Outcome != core.AuditAllowed || audit.events[0].TargetName != "octo/repo" {
-		t.Fatalf("audit = %+v", audit.events)
-	}
+// githubAPIMints are the gh route's two verbs (w10/m513 reads, w10/m522
+// writes): the Minter method, the token the fake mints, its audit verb and
+// which fake counter that mint advances.
+var githubAPIMints = []struct {
+	name   string
+	mint   func(*Minter, context.Context, MintRequest) (MintResponse, error)
+	token  string
+	verb   string
+	minted func(*fakeSessionGitHub) int
+}{
+	{"read", (*Minter).MintGitHubRead, "ghs_api_read", AuditVerbMintGitHubReadCredential, func(f *fakeSessionGitHub) int { return f.apiCalls }},
+	{"write", (*Minter).MintGitHubWrite, "ghs_api_write", AuditVerbMintGitHubWriteCredential, func(f *fakeSessionGitHub) int { return f.apiWriteCalls }},
+}
 
-	for name, sessions := range map[string]fakeSessions{
-		"completed": {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "completed"}},
-		"stale":     {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-2", Phase: "running"}},
-	} {
-		gh, audit := &fakeSessionGitHub{}, &auditRecorder{}
-		m := &Minter{GitHub: gh, Connections: fakeConnections{row: store.GitConnection{InstallationID: 42, AccountLogin: "octo"}}, Sessions: sessions, Audit: audit}
-		if _, err := m.MintGitHubRead(context.Background(), validMintRequest()); !errors.Is(err, ErrForbidden) || gh.apiCalls != 0 {
-			t.Fatalf("%s session: err=%v api calls=%d", name, err, gh.apiCalls)
+// w10/m513, w10/m522: each gh route credential goes through the same Pod,
+// lifecycle and owner checks as the Git mint, mints only its own token of the
+// one repository, is audited under its own verb allowed or denied, and is
+// never minted for a build.
+func TestMintGitHubAPICredentialsAreScopedAndAudited(t *testing.T) {
+	for _, kind := range githubAPIMints {
+		gh := &fakeSessionGitHub{}
+		audit := &auditRecorder{}
+		m := &Minter{
+			GitHub: gh, Connections: fakeConnections{row: store.GitConnection{WorkspaceID: "tea-a", InstallationID: 42, AccountLogin: "octo"}},
+			Sessions: fakeSessions{session: activeSession()}, Audit: audit,
 		}
-		if len(audit.events) != 1 || audit.events[0].Verb != AuditVerbMintGitHubReadCredential || audit.events[0].Outcome != core.AuditDenied {
-			t.Fatalf("%s session audit = %+v", name, audit.events)
+		got, err := kind.mint(m, context.Background(), validMintRequest())
+		if err != nil {
+			t.Fatal(err)
 		}
-	}
+		if got.Token != kind.token || kind.minted(gh) != 1 || gh.apiCalls+gh.apiWriteCalls != 1 || gh.calls != 0 || gh.readCalls != 0 || gh.installation != 42 || gh.repository != "repo" {
+			t.Fatalf("%s: response=%+v fake=%+v", kind.name, got, gh)
+		}
+		if len(audit.events) != 1 || audit.events[0].Verb != kind.verb || audit.events[0].Outcome != core.AuditAllowed || audit.events[0].TargetName != "octo/repo" || audit.events[0].Target != "agent-session:ags-one" {
+			t.Fatalf("%s audit = %+v", kind.name, audit.events)
+		}
 
-	// A running build's own builder, which Mint would give its clone token.
-	gh = &fakeSessionGitHub{}
-	m = &Minter{GitHub: gh, Connections: fakeConnections{row: store.GitConnection{InstallationID: 42, AccountLogin: "octo"}}, Builds: fakeBuilds{build: runningBuild()}}
-	if _, err := m.MintGitHubRead(context.Background(), buildMintRequest()); !errors.Is(err, ErrForbidden) || gh.apiCalls+gh.readCalls != 0 {
-		t.Fatalf("build principal: err=%v calls=%d", err, gh.apiCalls+gh.readCalls)
+		for name, sessions := range map[string]fakeSessions{
+			"completed": {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "completed"}},
+			"stale":     {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-2", Phase: "running"}},
+			"missing":   {err: store.ErrNotFound},
+		} {
+			gh, audit := &fakeSessionGitHub{}, &auditRecorder{}
+			m := &Minter{GitHub: gh, Connections: fakeConnections{row: store.GitConnection{InstallationID: 42, AccountLogin: "octo"}}, Sessions: sessions, Audit: audit}
+			if _, err := kind.mint(m, context.Background(), validMintRequest()); !errors.Is(err, ErrForbidden) || gh.apiCalls+gh.apiWriteCalls != 0 {
+				t.Fatalf("%s, %s session: err=%v fake=%+v", kind.name, name, err, gh)
+			}
+			if len(audit.events) != 1 || audit.events[0].Verb != kind.verb || audit.events[0].Outcome != core.AuditDenied || audit.events[0].TargetName != "octo/repo" {
+				t.Fatalf("%s, %s session audit = %+v", kind.name, name, audit.events)
+			}
+		}
+
+		// Another Pod than the session's sandbox, another branch, another
+		// account's repository.
+		for name, mutate := range map[string]func(*MintRequest){
+			"pod":     func(r *MintRequest) { r.PodName = "sbx-9-0" },
+			"branch":  func(r *MintRequest) { r.Branch = "main" },
+			"account": func(r *MintRequest) { r.Repository = "other/repo" },
+		} {
+			gh := &fakeSessionGitHub{}
+			m := &Minter{GitHub: gh, Connections: fakeConnections{row: store.GitConnection{InstallationID: 42, AccountLogin: "octo"}}, Sessions: fakeSessions{session: activeSession()}, Audit: &auditRecorder{}}
+			req := validMintRequest()
+			mutate(&req)
+			if _, err := kind.mint(m, context.Background(), req); err == nil || gh.apiCalls+gh.apiWriteCalls != 0 {
+				t.Fatalf("%s, another %s: err=%v fake=%+v", kind.name, name, err, gh)
+			}
+		}
+
+		// A running build's own builder, which Mint would give its clone token.
+		gh = &fakeSessionGitHub{}
+		audit = &auditRecorder{}
+		m = &Minter{GitHub: gh, Connections: fakeConnections{row: store.GitConnection{InstallationID: 42, AccountLogin: "octo"}}, Builds: fakeBuilds{build: runningBuild()}, Audit: audit}
+		if _, err := kind.mint(m, context.Background(), buildMintRequest()); !errors.Is(err, ErrForbidden) || gh.apiCalls+gh.apiWriteCalls+gh.readCalls != 0 {
+			t.Fatalf("%s, build principal: err=%v fake=%+v", kind.name, err, gh)
+		}
+		if len(audit.events) != 1 || audit.events[0].Verb != kind.verb || audit.events[0].Outcome != core.AuditDenied {
+			t.Fatalf("%s, build principal audit = %+v", kind.name, audit.events)
+		}
 	}
 }
 
-// The gh route's internal verb answers on its own path with the read token,
-// and the Git mint verb never hands one out.
-func TestGitHubReadHandlerMintsTheReadToken(t *testing.T) {
+// Each gh route verb answers on its own path with its own token, and the Git
+// mint verb never hands one of them out.
+func TestGitHubAPIHandlersMintTheirOwnTokens(t *testing.T) {
 	secret := []byte("secret")
 	gh := &fakeSessionGitHub{}
 	minter := &Minter{GitHub: gh, Connections: fakeConnections{row: store.GitConnection{InstallationID: 42, AccountLogin: "octo"}}, Sessions: fakeSessions{session: activeSession()}}
-	read := httptest.NewServer(&GitHubReadHandler{Secret: secret, Minter: minter})
-	defer read.Close()
-	git := httptest.NewServer(&Handler{Secret: secret, Minter: minter})
-	defer git.Close()
-	got, err := (&Client{URL: read.URL, Secret: secret, HTTP: read.Client()}).Mint(context.Background(), validMintRequest())
-	if err != nil || got.Token != "ghs_api_read" {
-		t.Fatalf("read verb = %+v %v", got, err)
+	for _, verb := range []struct {
+		handler http.Handler
+		token   string
+	}{
+		{&GitHubReadHandler{Secret: secret, Minter: minter}, "ghs_api_read"},
+		{&GitHubWriteHandler{Secret: secret, Minter: minter}, "ghs_api_write"},
+		{&Handler{Secret: secret, Minter: minter}, "ghs_scoped"},
+	} {
+		server := httptest.NewServer(verb.handler)
+		got, err := (&Client{URL: server.URL, Secret: secret, HTTP: server.Client()}).Mint(context.Background(), validMintRequest())
+		if err != nil || got.Token != verb.token {
+			t.Fatalf("%T = %+v %v, want %s", verb.handler, got, err, verb.token)
+		}
+		if _, err := (&Client{URL: server.URL, Secret: []byte("other"), HTTP: server.Client()}).Mint(context.Background(), validMintRequest()); err == nil {
+			t.Fatalf("%T accepted a request signed with another secret", verb.handler)
+		}
+		server.Close()
 	}
-	got, err = (&Client{URL: git.URL, Secret: secret, HTTP: git.Client()}).Mint(context.Background(), validMintRequest())
-	if err != nil || got.Token != "ghs_scoped" {
-		t.Fatalf("git verb = %+v %v", got, err)
-	}
-	if _, err := (&Client{URL: read.URL, Secret: []byte("other"), HTTP: read.Client()}).Mint(context.Background(), validMintRequest()); err == nil {
-		t.Fatal("read verb accepted a request signed with another secret")
+	if gh.calls != 1 || gh.apiCalls != 1 || gh.apiWriteCalls != 1 {
+		t.Fatalf("mints = %+v, want one of each", gh)
 	}
 }
 

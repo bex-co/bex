@@ -124,6 +124,10 @@ type Broker struct {
 	// (w10/m513) through bex-api's InternalGitHubReadMintPath. nil answers that
 	// route 503.
 	GitHubRead *agentsession.Client
+	// GitHubWrite mints the credential of one write the github-api route
+	// admitted (w10/m522) through bex-api's InternalGitHubWriteMintPath. nil
+	// answers every write 503; reads are unaffected.
+	GitHubWrite *agentsession.Client
 	// GitHubAPIOrigin is a test seam; production leaves it empty, which fixes
 	// every github-api request to https://api.github.com.
 	GitHubAPIOrigin string

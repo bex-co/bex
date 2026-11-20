@@ -327,6 +327,12 @@ func main() {
 			URL:    env.Or("BEX_AGENT_GITHUB_READ_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalGitHubReadMintPath),
 			Secret: []byte(secret),
 		}
+		// w10/m522: the route's admitted writes get their own per-call token,
+		// which adds pull requests, issues and Actions write to the reads.
+		credentials.GitHubWrite = &agentsession.Client{
+			URL:    env.Or("BEX_AGENT_GITHUB_WRITE_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalGitHubWriteMintPath),
+			Secret: []byte(secret),
+		}
 		credentials.MaxGitHubAPIRequestsPerSession = intEnv("BEX_AGENT_GITHUB_API_MAX_REQUESTS_PER_SESSION", 1000)
 		credentials.MaxGitHubAPIRequestsPerWorkspace = intEnv("BEX_AGENT_GITHUB_API_MAX_REQUESTS_PER_WORKSPACE", 10000)
 		// ADR090: the agent opens/updates its own draft PR through the fifth
