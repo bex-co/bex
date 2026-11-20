@@ -258,7 +258,13 @@ func graphQLOperationKind(op *ast.OperationDefinition) string {
 	return "Query"
 }
 
-func collectGraphQLTopLevel(sel *ast.SelectionSet, fragments map[string]*ast.FragmentDefinition, kind string, visiting map[string]bool, out *[]string) {
+// collectGraphQLTopLevel appends the operation's top-level fields in document
+// order. It reads each fragment once, at its first spread: a later spread of
+// the same fragment would only repeat fields already collected, and reading
+// it again at every spread would grow with the number of spread paths, not
+// with the document's size. It runs before the cost gate, so it must not
+// depend on it for its own bound.
+func collectGraphQLTopLevel(sel *ast.SelectionSet, fragments map[string]*ast.FragmentDefinition, kind string, read map[string]bool, out *[]string) {
 	if sel == nil {
 		return
 	}
@@ -270,22 +276,21 @@ func collectGraphQLTopLevel(sel *ast.SelectionSet, fragments map[string]*ast.Fra
 			}
 			*out = append(*out, "GQL "+kind+"."+n.Name.Value)
 		case *ast.InlineFragment:
-			collectGraphQLTopLevel(n.SelectionSet, fragments, kind, visiting, out)
+			collectGraphQLTopLevel(n.SelectionSet, fragments, kind, read, out)
 		case *ast.FragmentSpread:
 			if n.Name == nil {
 				continue
 			}
 			name := n.Name.Value
-			if visiting[name] {
+			if read[name] {
 				continue
 			}
 			frag, ok := fragments[name]
 			if !ok {
 				continue
 			}
-			visiting[name] = true
-			collectGraphQLTopLevel(frag.SelectionSet, fragments, kind, visiting, out)
-			delete(visiting, name)
+			read[name] = true
+			collectGraphQLTopLevel(frag.SelectionSet, fragments, kind, read, out)
 		}
 	}
 }
@@ -398,8 +403,9 @@ func (s *Server) requireGraphQLScopeFrom(ctx context.Context, fragments map[stri
 // graphqlTopLevelOpsFrom so a nested secret cannot hide in an unnamed
 // sibling operation.
 func graphQLSelectsSensitiveNested(fragments map[string]*ast.FragmentDefinition, ops []*ast.OperationDefinition, operationName string) bool {
+	read := map[string]bool{}
 	for _, op := range selectedGraphQLOperations(ops, operationName) {
-		if walkGraphQLSensitiveNested(op.SelectionSet, fragments, map[string]bool{}, 0) {
+		if walkGraphQLSensitiveNested(op.SelectionSet, fragments, read, 0) {
 			return true
 		}
 	}
@@ -409,12 +415,18 @@ func graphQLSelectsSensitiveNested(fragments map[string]*ast.FragmentDefinition,
 // maxGraphQLSensitiveWalkDepth bounds the walk's nesting. depth counts fields
 // and inline fragments only, as graphql_cost.go's walk does: a fragment spread
 // adds none in either, so the cost limiter (gqlMaxDepth, 15) bounds this depth
-// for every document it admits, and the visiting set stops a spread cycle.
-// A selection the walk stops reading at the cap counts as sensitive: a part it
-// has not read cannot be called clean.
+// for every document it admits. A selection the walk stops reading at the cap
+// counts as sensitive: a part it has not read cannot be called clean.
 const maxGraphQLSensitiveWalkDepth = 64
 
-func walkGraphQLSensitiveNested(sel *ast.SelectionSet, fragments map[string]*ast.FragmentDefinition, visiting map[string]bool, depth int) bool {
+// walkGraphQLSensitiveNested reads each fragment once, at its first spread,
+// and records it in read, which also stops a spread cycle. A later spread of
+// a fragment already read is skipped: its fields were all read and found
+// clean, or the walk would have returned true; one still being read is read
+// in full by the spread that started it. Reading the fragment again at every
+// spread would grow with the number of spread paths, not with the document's
+// size.
+func walkGraphQLSensitiveNested(sel *ast.SelectionSet, fragments map[string]*ast.FragmentDefinition, read map[string]bool, depth int) bool {
 	if sel == nil {
 		return false
 	}
@@ -430,11 +442,11 @@ func walkGraphQLSensitiveNested(sel *ast.SelectionSet, fragments map[string]*ast
 			if _, ok := graphQLSensitiveNestedFields[n.Name.Value]; ok {
 				return true
 			}
-			if walkGraphQLSensitiveNested(n.SelectionSet, fragments, visiting, depth+1) {
+			if walkGraphQLSensitiveNested(n.SelectionSet, fragments, read, depth+1) {
 				return true
 			}
 		case *ast.InlineFragment:
-			if walkGraphQLSensitiveNested(n.SelectionSet, fragments, visiting, depth+1) {
+			if walkGraphQLSensitiveNested(n.SelectionSet, fragments, read, depth+1) {
 				return true
 			}
 		case *ast.FragmentSpread:
@@ -442,17 +454,15 @@ func walkGraphQLSensitiveNested(sel *ast.SelectionSet, fragments map[string]*ast
 				continue
 			}
 			name := n.Name.Value
-			if visiting[name] {
+			if read[name] {
 				continue
 			}
 			frag, ok := fragments[name]
 			if !ok {
 				continue
 			}
-			visiting[name] = true
-			hit := walkGraphQLSensitiveNested(frag.SelectionSet, fragments, visiting, depth)
-			delete(visiting, name)
-			if hit {
+			read[name] = true
+			if walkGraphQLSensitiveNested(frag.SelectionSet, fragments, read, depth) {
 				return true
 			}
 		}

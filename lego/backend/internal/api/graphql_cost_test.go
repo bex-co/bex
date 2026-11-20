@@ -20,6 +20,9 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/graphql-go/graphql/language/ast"
 )
 
 // TestValidateGraphQLComplexity pins w1/m65 F9: over-budget documents are
@@ -154,4 +157,132 @@ func TestFragmentSpreadDepthParity(t *testing.T) {
 	if err := validateGraphQLComplexity(fragmentNest(gqlMaxDepth - 2)); err != nil {
 		t.Errorf("a fragment-nested query within gqlMaxDepth must pass, got %v", err)
 	}
+}
+
+// fragmentFanOut is a document whose operation selects root, with "%s" in
+// root standing for a spread of F0. Each fragment spreads the next one twice
+// and the last selects leaf, so 2^n spread paths reach leaf while the
+// document grows by one short fragment per step.
+func fragmentFanOut(root, typ string, n int, leaf string) string {
+	var b strings.Builder
+	b.WriteString("query { " + fmt.Sprintf(root, "...F0") + " }")
+	for i := 0; i < n; i++ {
+		fmt.Fprintf(&b, " fragment F%d on %s { ...F%d ...F%d }", i, typ, i+1, i+1)
+	}
+	fmt.Fprintf(&b, " fragment F%d on %s { %s }", n, typ, leaf)
+	return b.String()
+}
+
+// finishesWithin fails t when f has not returned within ten seconds. The
+// walks it bounds take microseconds; one that followed every spread path of
+// a fan-out document would never return.
+func finishesWithin(t *testing.T, what string, f func()) {
+	t.Helper()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		f()
+	}()
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatalf("%s did not finish within 10s", what)
+	}
+}
+
+func parsedGraphQL(t *testing.T, doc string) (map[string]*ast.FragmentDefinition, []*ast.OperationDefinition) {
+	t.Helper()
+	fragments, ops, ok := parseGraphQLDocument(doc)
+	if !ok {
+		t.Fatalf("parse %q", doc)
+	}
+	return fragments, ops
+}
+
+// TestGraphQLFragmentFanOutIsLinear: a named fragment is the same at every
+// spread of it, so each walk over a document's fragments reads each fragment
+// once. The cost gate still charges a fragment's fields at every spread, so
+// fan-out cannot hide cost, and the top-level and sensitive-selection walks
+// still see every field. Each document here has 2^64 spread paths: a walk
+// that re-read a fragment at every spread would never return.
+func TestGraphQLFragmentFanOutIsLinear(t *testing.T) {
+	const n = 64
+
+	t.Run("cost gate", func(t *testing.T) {
+		for leaf, want := range map[string]string{
+			// No field: nothing to charge. graphql.Do reports the unknown fragment.
+			"...Missing":         "",
+			"__typename":         fmt.Sprintf("selects more than %d fields", gqlMaxFields),
+			"a: services { id }": fmt.Sprintf("aliases field %q more than %d times", "services", gqlMaxAliasesPerField),
+			strings.Repeat("node { ", gqlMaxDepth) + "id" + strings.Repeat(" }", gqlMaxDepth): fmt.Sprintf("selection nesting exceeds %d", gqlMaxDepth),
+		} {
+			fragments, ops := parsedGraphQL(t, fragmentFanOut("%s", "Query", n, leaf))
+			var err error
+			finishesWithin(t, "cost gate, leaf "+leaf, func() { err = validateGraphQLComplexityParsed(fragments, ops) })
+			if want == "" && err != nil {
+				t.Errorf("leaf %s: refused: %v", leaf, err)
+			}
+			if want != "" && (err == nil || !strings.Contains(err.Error(), want)) {
+				t.Errorf("leaf %s: err = %v, want %q", leaf, err, want)
+			}
+		}
+		fragments, ops := parsedGraphQL(t, `query { ...A } fragment A on Query { ...B } fragment B on Query { id ...A }`)
+		if err := validateGraphQLComplexityParsed(fragments, ops); err == nil || !strings.Contains(err.Error(), "fragment cycle") {
+			t.Errorf("fragment cycle: err = %v", err)
+		}
+	})
+
+	t.Run("top-level fields", func(t *testing.T) {
+		// These run before the cost gate, so they get no bound from it.
+		fragments, ops := parsedGraphQL(t, fragmentFanOut("%s", "Query", n, "services { id }"))
+		var top []string
+		var label string
+		finishesWithin(t, "top-level walk", func() {
+			top = graphqlTopLevelOpsFrom(fragments, ops, "")
+			label, _ = graphqlOperationDimsFrom(fragments, ops, "")
+		})
+		if strings.Join(top, ",") != "GQL Query.services" || label != "services" {
+			t.Errorf("top-level fields = %v, label = %q; want [GQL Query.services], services", top, label)
+		}
+	})
+
+	t.Run("sensitive selection", func(t *testing.T) {
+		for leaf, want := range map[string]bool{
+			`envVar(key:"FOO") { value }`:          true,
+			`secretFile(name:"a.txt") { content }`: true,
+			`envVarKeys { key }`:                   false,
+			`...Missing`:                           false,
+		} {
+			fragments, ops := parsedGraphQL(t, fragmentFanOut(`service(id:"web") { %s }`, "Service", n, leaf))
+			var got bool
+			finishesWithin(t, "sensitive walk, leaf "+leaf, func() { got = graphQLSelectsSensitiveNested(fragments, ops, "") })
+			if got != want {
+				t.Errorf("leaf %s: sensitive = %v, want %v", leaf, got, want)
+			}
+		}
+		// A spread cycle ends the walk, and a field beside it is still read.
+		fragments, ops := parsedGraphQL(t, `query { service(id:"web") { ...A } } fragment A on Service { ...B } fragment B on Service { ...A envVar(key:"K") { value } }`)
+		if !graphQLSelectsSensitiveNested(fragments, ops, "") {
+			t.Error("a secret beside a spread cycle counted as not sensitive")
+		}
+	})
+
+	t.Run("handler", func(t *testing.T) {
+		// A Services Read key runs every walk: the top-level fields, the cost
+		// gate, the grant check with its sensitive-selection walk, then
+		// graphql.Do, which refuses the missing fragment.
+		srv, grants := scopedKeyServer(t)
+		key := keyOf("key-services-read")
+		grants.set(key.Subject, grantOf("services:read"))
+		doc := fragmentFanOut(`service(id:"web") { %s }`, "Service", n, "...Missing")
+		var out map[string]any
+		finishesWithin(t, "POST /graphql", func() { out = graphqlDo(t, srv, key, doc) })
+		errs, _ := out["errors"].([]any)
+		if len(errs) == 0 {
+			t.Fatalf("answer = %v, want the unknown fragment refused", out)
+		}
+		if msg, _ := errs[0].(map[string]any)["message"].(string); !strings.Contains(msg, `Unknown fragment "Missing"`) {
+			t.Errorf("answer = %v, want the unknown fragment refused", out)
+		}
+	})
 }
