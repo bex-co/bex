@@ -91,9 +91,9 @@ var agentProfileGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"id":            gqlutil.ReqStrField(func(v AgentProfile) any { return v.ID }),
 		"label":         gqlutil.ReqStrField(func(v AgentProfile) any { return v.Label }),
 		"modelKeyReady": gqlutil.ReqBoolField(func(v AgentProfile) any { return v.ModelKeyReady }),
-		"model": &graphql.Field{Type: graphql.String, Description: "The model a session of this agent runs when it names none: the workspace default, else the platform catalog's first model or the agent's fixed one. Null when the provider's own default runs.",
+		"model": &graphql.Field{Type: graphql.String, Description: "The model a session of this agent runs when it names none: the workspace default while it is offered, else the platform catalog's first model or the agent's fixed one. Null when the provider's own default runs.",
 			Resolve: gqlutil.Field(func(v AgentProfile) any { return optionalString(v.Model) })},
-		"models": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Description: "The models a session of this agent may name; empty where any model the workspace's own provider serves is accepted.",
+		"models": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Description: "The models a session of this agent may name: on the platform model route the catalog models the workspace's admins left on (enabledModels on the agent environment). Empty where any model the workspace's own provider serves is accepted.",
 			Resolve: gqlutil.Field(func(v AgentProfile) any { return v.Models })},
 	},
 })
@@ -182,8 +182,10 @@ var agentEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"networkTier":  gqlutil.Typed(graphql.NewNonNull(agentNetworkTierGQLEnum), func(v Environment) any { return v.NetworkTier }),
 		"customHosts":  gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(v Environment) any { return v.CustomHosts }),
 		"defaultModel": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any { return optionalString(v.DefaultModel) })},
-		"models": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Description: "The platform model catalog, its default first: the models a claude session, an automation and defaultModel may name. Empty on the workspace's own key, where any model id is accepted.",
+		"models": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Description: "The whole platform model catalog, its default first; enabledModels is the part members may choose. Empty on the workspace's own key, where any model id is accepted.",
 			Resolve: gqlutil.Field(func(v Environment) any { return v.Models })},
+		"enabledModels": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Description: "The catalog models the workspace's admins left on: the models a claude session, a message, an automation and defaultModel may name, the catalog's default always first. Every catalog model unless an admin turned some off; a model added to the catalog later starts on. A defaultModel not listed here does not take effect: the catalog's default runs. Empty on the workspace's own key.",
+			Resolve: gqlutil.Field(func(v Environment) any { return v.EnabledModels })},
 		"modelPinned": &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Description: "True on the platform model route, whose gateway pins each claude session to the catalog model it chose.",
 			Resolve: gqlutil.Field(func(v Environment) any { return v.ModelPinned })},
 		"pinnedModel": &graphql.Field{Type: graphql.String, Description: "The platform catalog's default model; models lists every choice.",
@@ -250,6 +252,7 @@ var agentEnvironmentGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 		"enabledAgents":                  &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Replaces the agent profiles members can start sessions with; the others are turned off. A profile in agentDataUse needs its acknowledgement first."},
 		"acknowledgeAgentDataUse":        &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Agent profiles from agentDataUse whose data use this admin acknowledges."},
 		"githubCliEnabled":               &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "false turns gh off for the workspace's agent sessions: turns dispatched afterwards get no gh configuration and a running session's next gh call is refused. true turns it back on."},
+		"enabledModels":                  &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Replaces the catalog models members may choose; the catalog's others are turned off. It must keep the catalog's default and name only catalog models (AGENT_ENVIRONMENT_MODELS_INVALID). New sessions, messages and automation saves see it at once; a session already on a turned-off model keeps it for the turn in flight and runs the workspace default from its next turn."},
 	},
 })
 
@@ -288,6 +291,10 @@ func environmentInputArg(args map[string]any) EnvironmentInput {
 		input.AcknowledgeAgentDataUse = gqlutil.StringList(acks)
 	}
 	input.GitHubCLIEnabled = gqlutil.BoolPtr(raw, "githubCliEnabled")
+	if models, ok := raw["enabledModels"].([]any); ok {
+		list := gqlutil.StringList(models)
+		input.EnabledModels = &list
+	}
 	if reset, ok := raw["resetAgentModelMonthlySpendCap"].(bool); ok {
 		input.ResetAgentModelMonthlySpendCap = reset
 	}

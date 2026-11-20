@@ -604,6 +604,12 @@ const ruAgentAutomations: Record<string, TranslationEntry> = {
       "Модель для каждого запуска. Оставьте значение по умолчанию, чтобы следовать настройке рабочего пространства.",
     description: "Automation form — model field help",
   },
+  "agentAutomations.help.modelUnoffered": {
+    message:
+      "Модель {model} больше не доступна в этом рабочем пространстве: администратор её отключил или она исчезла из каталога платформы. Вместо неё запуски используют модель рабочего пространства по умолчанию {fallback}. Чтобы сохранить изменения, выберите доступную модель.",
+    description:
+      "Automation form — model field note when the saved model is no longer offered (turned off by an admin or gone from the catalog); {fallback} is the workspace default its runs use (w10/m527)",
+  },
   "agentAutomations.help.template": {
     message:
       "Машина, которую получает песочница каждого запуска. Значение по умолчанию для рабочего пространства берётся из «Настройки → Агенты» при каждом запуске.",

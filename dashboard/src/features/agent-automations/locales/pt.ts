@@ -604,6 +604,12 @@ const ptAgentAutomations: Record<string, TranslationEntry> = {
       "O modelo que cada execução usa. Deixe no padrão para seguir o do workspace.",
     description: "Automation form — model field help",
   },
+  "agentAutomations.help.modelUnoffered": {
+    message:
+      "{model} não é mais oferecido neste workspace: um administrador o desativou ou ele saiu do catálogo da plataforma. As execuções usam o padrão do workspace, {fallback}, no lugar dele. Escolha um modelo oferecido para salvar as alterações.",
+    description:
+      "Automation form — model field note when the saved model is no longer offered (turned off by an admin or gone from the catalog); {fallback} is the workspace default its runs use (w10/m527)",
+  },
   "agentAutomations.help.template": {
     message:
       "A máquina que o sandbox de cada execução recebe. O padrão do workspace segue Configurações → Agentes a cada execução.",

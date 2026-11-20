@@ -3,7 +3,9 @@ import { AgentNetworkTier } from "@/graphql/definitions";
 import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 import {
   buildPatch,
+  defaultModelUnoffered,
   draftFrom,
+  enabledModelsErrorKey,
   githubCliErrorKey,
   modelKeyErrorKey,
   normalizeModelKey,
@@ -11,6 +13,7 @@ import {
   saveErrorFrom,
   validModel,
   validateCustomHosts,
+  withModelToggled,
   type AgentEnvironmentView,
 } from "@/features/agent-environment/lib/environment";
 import { agentEnvironment } from "@/test/mocks/agent-environment";
@@ -228,6 +231,74 @@ describe("githubCliErrorKey", () => {
     );
     expect(githubCliErrorKey(new Error("offline"))).toBe(
       "agentEnvironment.githubCliSaveFailed",
+    );
+  });
+});
+
+// w10/m527: the catalog models members may choose.
+describe("the model list", () => {
+  const CATALOG = [
+    "deepseek/deepseek-v4.1-flash-1017",
+    "anthropic/claude-haiku-5.5",
+    "anthropic/claude-sonnet-5.5",
+    "anthropic/claude-opus-5.5",
+  ];
+  const routed = (
+    enabledModels: string[],
+    defaultModel: string | null = null,
+  ) => agentEnvironment({ models: CATALOG, enabledModels, defaultModel });
+
+  it("sends the whole list in catalog order with the catalog default kept on", () => {
+    const all = routed(CATALOG);
+    expect(withModelToggled(all, "anthropic/claude-opus-5.5", false)).toEqual(
+      CATALOG.slice(0, 3),
+    );
+    const some = routed([CATALOG[0], CATALOG[3]]);
+    // Turning one back on puts it in its catalog slot, not at the end.
+    expect(withModelToggled(some, CATALOG[1], true)).toEqual([
+      CATALOG[0],
+      CATALOG[1],
+      CATALOG[3],
+    ]);
+    // The catalog default can never leave the list.
+    expect(withModelToggled(all, CATALOG[0], false)).toEqual(CATALOG);
+    expect(withModelToggled(routed([]), CATALOG[2], true)).toEqual([
+      CATALOG[0],
+      CATALOG[2],
+    ]);
+  });
+
+  it("says why a saved default does not take effect", () => {
+    const env = routed([CATALOG[0], CATALOG[1]]);
+    expect(defaultModelUnoffered(env, "")).toBeNull();
+    expect(defaultModelUnoffered(env, CATALOG[1])).toBeNull();
+    expect(defaultModelUnoffered(env, CATALOG[3])).toBe("off");
+    expect(defaultModelUnoffered(env, "anthropic/claude-opus-4.1")).toBe(
+      "retired",
+    );
+    // On the workspace's own key any model id stands.
+    expect(
+      defaultModelUnoffered(agentEnvironment(), "claude-sonnet-4-5"),
+    ).toBeNull();
+  });
+
+  it("names the list refusal and the admin-only refusal, and offers a retry for anything else", () => {
+    expect(
+      enabledModelsErrorKey(
+        codedGraphQLError("AGENT_ENVIRONMENT_MODELS_INVALID", {
+          field: "enabledModels",
+          model: CATALOG[0],
+        }),
+      ),
+    ).toBe("agentEnvironment.modelsInvalid");
+    expect(enabledModelsErrorKey(codedGraphQLError("FORBIDDEN"))).toBe(
+      "agentEnvironment.forbidden",
+    );
+    expect(enabledModelsErrorKey(uncodedGraphQLError("boom"))).toBe(
+      "agentEnvironment.modelsSaveFailed",
+    );
+    expect(enabledModelsErrorKey(new Error("offline"))).toBe(
+      "agentEnvironment.modelsSaveFailed",
     );
   });
 });

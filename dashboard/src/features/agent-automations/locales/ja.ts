@@ -603,6 +603,12 @@ const jaAgentAutomations: Record<string, TranslationEntry> = {
       "各実行で使うモデル。デフォルトのままにするとワークスペースの設定に従います。",
     description: "Automation form — model field help",
   },
+  "agentAutomations.help.modelUnoffered": {
+    message:
+      "{model} はこのワークスペースでは提供されなくなりました（管理者がオフにしたか、プラットフォームカタログから外れました）。実行には代わりにワークスペースのデフォルト {fallback} が使われます。変更を保存するには、提供されているモデルを選んでください。",
+    description:
+      "Automation form — model field note when the saved model is no longer offered (turned off by an admin or gone from the catalog); {fallback} is the workspace default its runs use (w10/m527)",
+  },
   "agentAutomations.help.template": {
     message:
       "各実行のサンドボックスに割り当てるマシン。ワークスペースのデフォルトは、実行のたびに「設定 → エージェント」の設定に従います。",

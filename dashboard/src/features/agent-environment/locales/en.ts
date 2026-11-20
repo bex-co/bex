@@ -1340,6 +1340,60 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
     message: "Couldn't change the GitHub CLI setting. Try again.",
     description: "Error after a failed GitHub CLI switch (w10/m524)",
   },
+  "agentEnvironment.modelsTitle": {
+    message: "Models members can choose",
+    description:
+      "Settings → Agents: heading of the list of platform models members can choose (w10/m527)",
+  },
+  "agentEnvironment.modelsDescription": {
+    message:
+      "Choose which platform models members can pick for sessions, messages and automations. A session or automation already on a model you turn off runs the default model from its next turn.",
+    description:
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527)",
+  },
+  "agentEnvironment.modelsDefaultLocked": {
+    message:
+      "The platform's default model always stays on, as sessions fall back to it.",
+    description:
+      "Note under the platform catalog's default model, whose switch is locked on (w10/m527)",
+  },
+  "agentEnvironment.modelsTurnedOn": {
+    message: "{model} turned on for members",
+    description:
+      "Toast after an admin turns a model on for members; {model} is its id (w10/m527)",
+  },
+  "agentEnvironment.modelsTurnedOff": {
+    message: "{model} turned off for members",
+    description:
+      "Toast after an admin turns a model off for members; {model} is its id (w10/m527)",
+  },
+  "agentEnvironment.modelsInvalid": {
+    message:
+      "Couldn't update the models: the platform's default model has to stay on, and the list can name only platform catalog models. Reload to see the current catalog.",
+    description:
+      "Server refusal AGENT_ENVIRONMENT_MODELS_INVALID of a model list change (w10/m527)",
+  },
+  "agentEnvironment.modelsSaveFailed": {
+    message: "Couldn't update the models members can choose. Try again.",
+    description: "Error after a failed model switch (w10/m527)",
+  },
+  "agentEnvironment.modelOffOption": {
+    message: "{model} (turned off)",
+    description:
+      "Default model picker: the saved default, which an admin turned off (w10/m527)",
+  },
+  "agentEnvironment.modelDefaultOffNote": {
+    message:
+      "{model} is turned off, so sessions and automations that name no model run the platform default, {fallback}, until an admin picks a model that is on or turns {model} back on.",
+    description:
+      "Note under the default model picker when the saved default is turned off; {fallback} is the platform default that runs instead (w10/m527)",
+  },
+  "agentEnvironment.modelDefaultRetiredNote": {
+    message:
+      "{model} is no longer in the platform catalog, so sessions and automations that name no model run the platform default, {fallback}, until an admin picks another model.",
+    description:
+      "Note under the default model picker when the saved default left the platform catalog; {fallback} is the platform default that runs instead (w10/m527)",
+  },
 };
 
 export default enAgentEnvironment;

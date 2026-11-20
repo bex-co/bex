@@ -402,6 +402,7 @@ func TestEnvSet(t *testing.T) {
 		{[]string{"--default-template", ""}, `{"defaultTemplate":""}`},
 		{[]string{"--github-cli", "off"}, `{"githubCliEnabled":false}`},
 		{[]string{"--github-cli", "on", "--network-tier", "full"}, `{"githubCliEnabled":true,"networkTier":"full"}`},
+		{[]string{"--models", "deepseek/deepseek-v4.1-flash-1017,anthropic/claude-haiku-5.5"}, `{"enabledModels":["deepseek/deepseek-v4.1-flash-1017","anthropic/claude-haiku-5.5"]}`},
 	}
 	for _, tc := range cases {
 		f.calls = nil
@@ -417,6 +418,10 @@ func TestEnvSet(t *testing.T) {
 	stdout, stderr, code := run(t, d, "env", "set", "--model-key-stdin")
 	if code != 0 || f.only(t).body["modelApiKey"] != "sk-ant-key" || strings.Contains(stdout+stderr, "sk-ant-key") {
 		t.Fatalf("--model-key-stdin: exit %d, body %v, output %q", code, f.only(t).body, stdout+stderr)
+	}
+	f.calls = nil
+	if _, stderr, code := run(t, d, "env", "set", "--models", "", "--network-tier", "full"); code != exitUsage || !strings.Contains(stderr, "the catalog's default always stays on") || len(f.calls) != 0 {
+		t.Errorf("--models \"\": exit %d, %d requests, stderr %q; want a usage error and nothing sent", code, len(f.calls), stderr)
 	}
 	for _, bad := range [][]string{{}, {"--spend-cap", "lots"}, {"--model-key-stdin", "--clear-model-key"}} {
 		if _, stderr, code := run(t, d, append([]string{"env", "set"}, bad...)...); code != exitUsage {
@@ -453,6 +458,70 @@ func TestEnvShowsGitHubCLI(t *testing.T) {
 		if err := json.Unmarshal([]byte(stdout), &got); code != 0 || err != nil || got["githubCliEnabled"] != tc.enabled {
 			t.Errorf("githubCliEnabled %v: -o json exit %d (%s), %v:\n%s", tc.enabled, code, stderr, err, stdout)
 		}
+	}
+}
+
+// TestEnvShowsTheEnabledModels: `bex agent env` lists the models members may
+// choose with the catalog's default marked, the ones an admin turned off, and
+// a saved default that is off with the model that runs instead (w10/m527). A
+// bex-api that predates the list offers every catalog model.
+func TestEnvShowsTheEnabledModels(t *testing.T) {
+	catalog := []any{"deepseek/deepseek-v4.1-flash-1017", "anthropic/claude-haiku-5.5", "anthropic/claude-opus-5.5"}
+	for _, tc := range []struct {
+		name  string
+		env   map[string]any
+		lines []string
+		not   string
+	}{
+		{"an older bex-api", map[string]any{"models": catalog}, []string{
+			`(?m)^Default model\s+deepseek/deepseek-v4.1-flash-1017 \(the platform default\)$`,
+			`(?m)^Models\s+deepseek/deepseek-v4.1-flash-1017 \(the platform default, always on\), anthropic/claude-haiku-5.5, anthropic/claude-opus-5.5$`,
+		}, "Models off"},
+		{"one model off", map[string]any{"models": catalog, "enabledModels": catalog[:2], "defaultModel": "anthropic/claude-haiku-5.5"}, []string{
+			`(?m)^Default model\s+anthropic/claude-haiku-5.5$`,
+			`(?m)^Models\s+deepseek/deepseek-v4.1-flash-1017 \(the platform default, always on\), anthropic/claude-haiku-5.5$`,
+			`(?m)^Models off\s+anthropic/claude-opus-5.5 \(turned off by an admin\)$`,
+		}, ""},
+		{"the default off", map[string]any{"models": catalog, "enabledModels": catalog[:1], "defaultModel": "anthropic/claude-opus-5.5"}, []string{
+			`(?m)^Default model\s+anthropic/claude-opus-5.5 \(turned off: sessions run deepseek/deepseek-v4.1-flash-1017, the platform default\)$`,
+			`(?m)^Models off\s+anthropic/claude-haiku-5.5, anthropic/claude-opus-5.5 \(turned off by an admin\)$`,
+		}, ""},
+		{"a default the catalog dropped", map[string]any{"models": catalog, "enabledModels": catalog, "defaultModel": "anthropic/claude-sonnet-4.5"}, []string{
+			`(?m)^Default model\s+anthropic/claude-sonnet-4.5 \(no longer offered: sessions run deepseek/deepseek-v4.1-flash-1017, the platform default\)$`,
+		}, "Models off"},
+		{"the workspace's own key", map[string]any{"models": []any{}, "enabledModels": []any{}, "defaultModel": "claude-opus-4-1", "modelKeySet": true}, []string{
+			`(?m)^Default model\s+claude-opus-4-1$`,
+		}, "Models"},
+	} {
+		tc.env["networkTier"], tc.env["modelSource"] = "registries", "platform"
+		f := newRouteFake(t, map[string]http.HandlerFunc{"GET /v1/agent-environment": answer(http.StatusOK, tc.env)})
+		stdout, stderr, code := run(t, f.deps(), "-o", "text", "env")
+		if code != 0 {
+			t.Fatalf("%s: exit %d: %s", tc.name, code, stderr)
+		}
+		for _, line := range tc.lines {
+			if !regexp.MustCompile(line).MatchString(stdout) {
+				t.Errorf("%s: no line %s:\n%s", tc.name, line, stdout)
+			}
+		}
+		if tc.not != "" && regexp.MustCompile(`(?m)^`+tc.not+`\s`).MatchString(stdout) {
+			t.Errorf("%s: printed %q:\n%s", tc.name, tc.not, stdout)
+		}
+	}
+}
+
+// TestModelsListsOnlyTheOfferedModels: `bex agent models` prints the models
+// the server offers, so a model an admin turned off is not listed (w10/m527).
+func TestModelsListsOnlyTheOfferedModels(t *testing.T) {
+	f := newRouteFake(t, map[string]http.HandlerFunc{"GET /v1/agent-sessions/capabilities": answer(http.StatusOK, map[string]any{
+		"ready": true, "github": map[string]any{"connected": true, "accountLogin": "acme"},
+		"agents": []any{map[string]any{"id": "claude", "label": "Claude Code", "modelKeyReady": true,
+			"model": "deepseek/deepseek-v4.1-flash-1017", "models": []string{"deepseek/deepseek-v4.1-flash-1017", "anthropic/claude-haiku-5.5"}}},
+	})})
+	stdout, stderr, code := run(t, f.deps(), "-o", "text", "models")
+	if code != 0 || !strings.Contains(stdout, "Models claude can run (--model ID):\n  deepseek/deepseek-v4.1-flash-1017 (default)\n  anthropic/claude-haiku-5.5\n") ||
+		strings.Contains(stdout, "opus") {
+		t.Fatalf("models: exit %d (%s):\n%s", code, stderr, stdout)
 	}
 }
 
@@ -529,7 +598,8 @@ func TestConfigContractFixtureDecodes(t *testing.T) {
 		t.Fatalf("skill versions lost: %+v", v)
 	}
 	if e := golden.Environment; e.NetworkTier == "" || e.AgentModelMonthlySpendCapUSD == nil || e.TrustTier == nil || len(e.CustomHosts) != 1 || len(e.Models) != 3 ||
-		e.DefaultTemplate != "agent-4c-8g" || len(e.Templates) != 2 || e.Templates[1].MemoryGB != 8 || e.GitHubCLIEnabled == nil || *e.GitHubCLIEnabled {
+		e.DefaultTemplate != "agent-4c-8g" || len(e.Templates) != 2 || e.Templates[1].MemoryGB != 8 || e.GitHubCLIEnabled == nil || *e.GitHubCLIEnabled ||
+		len(e.EnabledModels) != 2 {
 		t.Fatalf("environment lost: %+v", e)
 	}
 	if l := golden.SecretList; len(l.Secrets) != 1 || l.Secrets[0].Name == "" {

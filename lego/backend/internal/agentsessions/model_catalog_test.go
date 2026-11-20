@@ -211,6 +211,16 @@ func TestCapabilitiesShowEachAgentsModelOnEverySurface(t *testing.T) {
 	envs.rows["tea-a"] = row
 	check("platform route, no default", map[string]offer{"claude": {model: agentsession.DefaultDevModel, models: testCatalog}})
 
+	// w10/m527: a model an admin turned off leaves every surface's models,
+	// and a workspace default that is off gives way to the catalog default.
+	row.DisabledModels, row.DefaultModel = []string{testCatalog[2]}, testCatalog[1]
+	envs.rows["tea-a"] = row
+	check("one model off", map[string]offer{"claude": {model: testCatalog[1], models: testCatalog[:2]}, "deepseek": deepseek})
+	row.DisabledModels = []string{testCatalog[1], testCatalog[2]}
+	envs.rows["tea-a"] = row
+	check("the default off", map[string]offer{"claude": {model: agentsession.DefaultDevModel, models: testCatalog[:1]}})
+	row.DisabledModels = nil
+
 	at := time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC)
 	row.ModelKeySetAt, row.DefaultModel = &at, "claude-opus-4-1"
 	envs.rows["tea-a"] = row

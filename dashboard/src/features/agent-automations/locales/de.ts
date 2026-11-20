@@ -606,6 +606,12 @@ const deAgentAutomations: Record<string, TranslationEntry> = {
       "Das Modell, das jeder Lauf nutzt. Beim Standard folgt es dem Workspace.",
     description: "Automation form — model field help",
   },
+  "agentAutomations.help.modelUnoffered": {
+    message:
+      "{model} wird in diesem Workspace nicht mehr angeboten: Ein Admin hat es ausgeschaltet, oder es ist nicht mehr im Plattformkatalog. Läufe nutzen stattdessen den Workspace-Standard {fallback}. Wähle ein angebotenes Modell, um Änderungen zu speichern.",
+    description:
+      "Automation form — model field note when the saved model is no longer offered (turned off by an admin or gone from the catalog); {fallback} is the workspace default its runs use (w10/m527)",
+  },
   "agentAutomations.help.template": {
     message:
       "Die Maschine, die die Sandbox jedes Laufs bekommt. Der Workspace-Standard folgt bei jedem Lauf Einstellungen → Agents.",

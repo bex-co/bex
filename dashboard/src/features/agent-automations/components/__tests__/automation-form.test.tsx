@@ -352,6 +352,98 @@ describe("AutomationForm model", () => {
     );
   });
 
+  // w10/m527: a model an admin turned off leaves the capabilities' list; an
+  // automation saved on it shows it, with a note that its runs use the
+  // workspace default, until someone picks an offered one.
+  it("shows a saved model the workspace no longer offers, with a note", async () => {
+    const offered = [catalog[0], "anthropic/claude-haiku-5.5"];
+    capabilitiesState.capabilities = {
+      agents: ["claude"],
+      models: { claude: { model: offered[1], models: offered } },
+    };
+    const base = automation();
+    const saved = automation({
+      template: {
+        ...base.template,
+        agentConfig: { ...base.template.agentConfig, model: catalog[1] },
+      },
+    });
+    const user = userEvent.setup();
+    const onSave = vi.fn(async () => undefined);
+    render(
+      <AutomationForm
+        mode="edit"
+        initial={valuesFromAutomation(saved)}
+        version={saved.version}
+        onSave={onSave}
+        cancelTo={{ to: "/automations/$automationId", id: saved.id }}
+      />,
+    );
+    const model = screen.getByRole("combobox", { name: "Model" });
+    expect(model).toHaveTextContent(catalog[1]);
+    expect(model).toHaveAccessibleDescription(
+      "anthropic/claude-opus-5.5 is no longer offered in this workspace: an admin turned it off, or it left the platform catalog. Runs use the workspace default, anthropic/claude-haiku-5.5, instead. Pick an offered model to save changes.",
+    );
+    await user.click(model);
+    // Only the offered models are choices.
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual([catalog[0], "anthropic/claude-haiku-5.5 (default)"]);
+    await user.click(screen.getByRole("option", { name: catalog[0] }));
+    expect(model).toHaveAccessibleDescription(
+      "The model each run uses. Leave it at the default to follow the workspace's.",
+    );
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(
+      (onSave.mock.calls[0] as unknown as [AgentAutomationInput])[0].template
+        ?.agentConfig,
+    ).toEqual({ agent: "claude", model: catalog[0] });
+  });
+
+  // With one model left on, a saved model that is off still offers it.
+  it("lets a saved model that is off be replaced when one model is offered", async () => {
+    capabilitiesState.capabilities = {
+      agents: ["claude"],
+      models: { claude: { model: catalog[0], models: [catalog[0]] } },
+    };
+    const base = automation();
+    const saved = automation({
+      template: {
+        ...base.template,
+        agentConfig: { ...base.template.agentConfig, model: catalog[1] },
+      },
+    });
+    const user = userEvent.setup();
+    const onSave = vi.fn(async () => undefined);
+    render(
+      <AutomationForm
+        mode="edit"
+        initial={valuesFromAutomation(saved)}
+        version={saved.version}
+        onSave={onSave}
+        cancelTo={{ to: "/automations/$automationId", id: saved.id }}
+      />,
+    );
+    expect(screen.queryByTestId("model-picker-fixed")).toBeNull();
+    const model = screen.getByRole("combobox", { name: "Model" });
+    expect(model).toHaveTextContent(catalog[1]);
+    expect(model).toHaveAccessibleDescription(
+      /Runs use the workspace default, deepseek\/deepseek-v4\.1-flash-1017, instead/,
+    );
+    await user.click(model);
+    await user.click(
+      screen.getByRole("option", { name: `${catalog[0]} (default)` }),
+    );
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    // The workspace default: no model named.
+    expect(
+      (onSave.mock.calls[0] as unknown as [AgentAutomationInput])[0].template
+        ?.agentConfig,
+    ).toEqual({ agent: "claude" });
+  });
+
   it("shows the server's model refusal under the model field", async () => {
     const onSave = vi.fn(async () => {
       throw codedGraphQLError(

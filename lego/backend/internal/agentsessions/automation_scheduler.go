@@ -240,10 +240,11 @@ func (s *Service) decideAutomationRun(ctx context.Context, verb string, c store.
 }
 
 // retiredTemplateModel lets a run whose template names a model the platform
-// catalog no longer offers (w10/m516) run the workspace's model instead of
-// failing every fire until someone edits it: it clears req's model and
-// returns the note the run records, or "" when the model still stands. A
-// manual create, or saving the template again, still refuses that model.
+// catalog no longer offers (w10/m516), or one the workspace's admins turned
+// off (w10/m527), run the workspace's model instead of failing every fire
+// until someone edits it: it clears req's model and returns the note the run
+// records, or "" when the model still stands. A manual create, or saving the
+// template again, still refuses that model.
 func (s *Service) retiredTemplateModel(ctx context.Context, req *CreateRequest) string {
 	model := req.AgentConfig.Model
 	if model == "" || !agentsession.PinnedAgent(req.AgentConfig.Agent) {
@@ -253,12 +254,15 @@ func (s *Service) retiredTemplateModel(ctx context.Context, req *CreateRequest) 
 	if err != nil {
 		return "" // the create reads it again and fails the same way
 	}
-	models, routed := agentsession.PlatformModels(env.ModelKeySet())
+	models, routed := offeredModels(env)
 	if !routed || slices.Contains(models, model) {
 		return ""
 	}
 	req.AgentConfig.Model = ""
 	runs, _ := sessionModel(req.AgentConfig, env, false)
+	if inPlatformCatalog(model) {
+		return fmt.Sprintf("the template's model %s is turned off in this workspace; this run used %s", model, runs)
+	}
 	return fmt.Sprintf("the template's model %s is no longer offered; this run used %s", model, runs)
 }
 

@@ -1339,6 +1339,61 @@ const koAgentEnvironment: Record<string, TranslationEntry> = {
     message: "GitHub CLI 설정을 변경하지 못했습니다. 다시 시도하세요.",
     description: "Error after a failed GitHub CLI switch (w10/m524)",
   },
+  "agentEnvironment.modelsTitle": {
+    message: "멤버가 선택할 수 있는 모델",
+    description:
+      "Settings → Agents: heading of the list of platform models members can choose (w10/m527)",
+  },
+  "agentEnvironment.modelsDescription": {
+    message:
+      "멤버가 세션, 메시지, 자동화에서 선택할 수 있는 플랫폼 모델을 고릅니다. 끈 모델을 이미 사용 중인 세션이나 자동화는 다음 턴부터 기본 모델로 실행됩니다.",
+    description:
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527)",
+  },
+  "agentEnvironment.modelsDefaultLocked": {
+    message:
+      "세션이 대신 사용하는 모델이므로 플랫폼 기본 모델은 항상 켜져 있습니다.",
+    description:
+      "Note under the platform catalog's default model, whose switch is locked on (w10/m527)",
+  },
+  "agentEnvironment.modelsTurnedOn": {
+    message: "멤버용 {model} 모델을 켰습니다",
+    description:
+      "Toast after an admin turns a model on for members; {model} is its id (w10/m527)",
+  },
+  "agentEnvironment.modelsTurnedOff": {
+    message: "멤버용 {model} 모델을 껐습니다",
+    description:
+      "Toast after an admin turns a model off for members; {model} is its id (w10/m527)",
+  },
+  "agentEnvironment.modelsInvalid": {
+    message:
+      "모델을 업데이트하지 못했습니다. 플랫폼 기본 모델은 켜져 있어야 하며, 목록에는 플랫폼 카탈로그의 모델만 넣을 수 있습니다. 페이지를 새로고침해 현재 카탈로그를 확인하세요.",
+    description:
+      "Server refusal AGENT_ENVIRONMENT_MODELS_INVALID of a model list change (w10/m527)",
+  },
+  "agentEnvironment.modelsSaveFailed": {
+    message:
+      "멤버가 선택할 수 있는 모델을 업데이트하지 못했습니다. 다시 시도하세요.",
+    description: "Error after a failed model switch (w10/m527)",
+  },
+  "agentEnvironment.modelOffOption": {
+    message: "{model} (꺼짐)",
+    description:
+      "Default model picker: the saved default, which an admin turned off (w10/m527)",
+  },
+  "agentEnvironment.modelDefaultOffNote": {
+    message:
+      "{model} 모델이 꺼져 있으므로, 모델을 지정하지 않은 세션과 자동화는 관리자가 켜진 모델을 선택하거나 {model} 모델을 다시 켤 때까지 플랫폼 기본 모델인 {fallback} 모델을 사용합니다.",
+    description:
+      "Note under the default model picker when the saved default is turned off; {fallback} is the platform default that runs instead (w10/m527)",
+  },
+  "agentEnvironment.modelDefaultRetiredNote": {
+    message:
+      "{model} 모델이 더 이상 플랫폼 카탈로그에 없으므로, 모델을 지정하지 않은 세션과 자동화는 관리자가 다른 모델을 선택할 때까지 플랫폼 기본 모델인 {fallback} 모델을 사용합니다.",
+    description:
+      "Note under the default model picker when the saved default left the platform catalog; {fallback} is the platform default that runs instead (w10/m527)",
+  },
 };
 
 export default koAgentEnvironment;

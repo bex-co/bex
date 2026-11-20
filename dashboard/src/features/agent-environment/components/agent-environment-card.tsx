@@ -34,6 +34,7 @@ import { ModelKeySection } from "@/features/agent-environment/components/model-k
 import { SpendCapSection } from "@/features/agent-environment/components/spend-cap-section";
 import { AvailableAgentsSection } from "@/features/agent-environment/components/available-agents-section";
 import { GithubCliSection } from "@/features/agent-environment/components/github-cli-section";
+import { EnabledModelsSection } from "@/features/agent-environment/components/enabled-models-section";
 import { templateLabel } from "@/features/agent-sessions/lib/templates";
 import {
   AgentEnvironmentCardSkeleton,
@@ -45,6 +46,7 @@ import {
   MAX_CUSTOM_HOSTS,
   TIERS,
   buildPatch,
+  defaultModelUnoffered,
   draftFrom,
   draftProblems,
   hostsProblemMessage,
@@ -64,10 +66,11 @@ const PLATFORM_DEFAULT = "__platform_default__";
 /**
  * Settings → Agents (w10/m17/t005): the workspace agent environment — the
  * sandbox network tier, the Custom tier's extra hostnames, the sessions' gh
- * (w10/m524), the default model, the default sandbox template (w10/m519,
- * Devin's default platform), the model source with the write-only provider
- * key (ADR091 D7), and the agent-model spend against its monthly cap (ADR091
- * D5, D6). Any member sees it; only admins (can_manage) can change it.
+ * (w10/m524), the default model and the catalog models members can choose
+ * (w10/m527), the default sandbox template (w10/m519, Devin's default
+ * platform), the model source with the write-only provider key (ADR091 D7),
+ * and the agent-model spend against its monthly cap (ADR091 D5, D6). Any
+ * member sees it; only admins (can_manage) can change it.
  */
 export function AgentEnvironmentCard({ ownerId }: { ownerId: string }) {
   const { t } = useTranslations();
@@ -193,6 +196,13 @@ function AgentEnvironmentForm({
       ? t(serverError.key, serverError.params)
       : null;
   const hostCount = parseHostLines(draft.hostsText).length;
+  // A default an admin turned off, or one the catalog dropped, does not take
+  // effect (w10/m527): it stays the picker's value, with a note naming the
+  // catalog default that runs instead.
+  const unofferedDefault = defaultModelUnoffered(saved, draft.defaultModel);
+  const modelHelpIds = unofferedDefault
+    ? `${modelId}-help ${modelId}-unoffered`
+    : `${modelId}-help`;
 
   return (
     <Card>
@@ -305,8 +315,9 @@ function AgentEnvironmentForm({
           {saved.models.length > 0 ? (
             <>
               {/* The platform model catalog (w10/m516): the default every
-                  session and automation that names no model runs; a member
-                  may still pick another catalog model for one session. */}
+                  session and automation that names no model runs, one of
+                  the models left on below (w10/m527); a member may still
+                  pick another of those for one session. */}
               <Select
                 value={draft.defaultModel || PLATFORM_DEFAULT}
                 onValueChange={(value) =>
@@ -322,7 +333,7 @@ function AgentEnvironmentForm({
                 <SelectTrigger
                   id={modelId}
                   aria-invalid={modelError != null}
-                  aria-describedby={`${modelId}-help`}
+                  aria-describedby={modelHelpIds}
                   className="w-full max-w-sm font-mono"
                 >
                   <SelectValue />
@@ -333,20 +344,24 @@ function AgentEnvironmentForm({
                       model: saved.models[0],
                     })}
                   </SelectItem>
-                  {saved.models.map((model) => (
+                  {saved.enabledModels.map((model) => (
                     <SelectItem key={model} value={model} className="font-mono">
                       {model}
                     </SelectItem>
                   ))}
-                  {/* A default saved before its model left the catalog is
-                      still shown, so the picker never misreads it. */}
-                  {draft.defaultModel &&
-                  !saved.models.includes(draft.defaultModel) ? (
+                  {/* A default saved before an admin turned its model off,
+                      or before it left the catalog, is still shown, so the
+                      picker never misreads it. */}
+                  {unofferedDefault ? (
                     <SelectItem
                       value={draft.defaultModel}
                       className="font-mono"
                     >
-                      {draft.defaultModel}
+                      {unofferedDefault === "off"
+                        ? t("agentEnvironment.modelOffOption", {
+                            model: draft.defaultModel,
+                          })
+                        : draft.defaultModel}
                     </SelectItem>
                   ) : null}
                 </SelectContent>
@@ -357,6 +372,20 @@ function AgentEnvironmentForm({
               >
                 {t("agentEnvironment.modelCatalogHelp")}
               </p>
+              {unofferedDefault ? (
+                <p
+                  id={`${modelId}-unoffered`}
+                  role="note"
+                  className="text-xs text-amber-700 dark:text-amber-400"
+                >
+                  {t(
+                    unofferedDefault === "off"
+                      ? "agentEnvironment.modelDefaultOffNote"
+                      : "agentEnvironment.modelDefaultRetiredNote",
+                    { model: draft.defaultModel, fallback: saved.models[0] },
+                  )}
+                </p>
+              ) : null}
             </>
           ) : (
             <>
@@ -389,6 +418,14 @@ function AgentEnvironmentForm({
             </p>
           ) : null}
         </div>
+
+        {saved.models.length > 0 ? (
+          <EnabledModelsSection
+            saved={saved}
+            update={update}
+            canManage={canManage}
+          />
+        ) : null}
 
         {saved.templates.length > 0 ? (
           <div

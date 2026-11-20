@@ -275,24 +275,74 @@ export function normalizeModelKey(text: string): string | null {
 }
 
 /**
+ * The locale key for a failed write a section saves on its own: the key a
+ * server refusal's stable code names in `codes`, else the same refusal as
+ * the card's other fields for a non-admin, else `retry`.
+ */
+function sectionErrorKey(
+  err: unknown,
+  retry: string,
+  codes: Record<string, string> = {},
+): string {
+  for (const [code, key] of Object.entries(codes)) {
+    if (hasGraphQLErrorCode(err, code)) return key;
+  }
+  return isForbiddenError(err) ? "agentEnvironment.forbidden" : retry;
+}
+
+/**
  * The locale key for a failed model-key write, by the server's stable code.
  * The key itself is never part of any message.
  */
 export function modelKeyErrorKey(err: unknown): string {
-  if (hasGraphQLErrorCode(err, "AGENT_ENVIRONMENT_MODEL_KEY_INVALID")) {
-    return "agentEnvironment.modelKeyInvalid";
-  }
-  return isForbiddenError(err)
-    ? "agentEnvironment.forbidden"
-    : "agentEnvironment.modelKeySaveFailed";
+  return sectionErrorKey(err, "agentEnvironment.modelKeySaveFailed", {
+    AGENT_ENVIRONMENT_MODEL_KEY_INVALID: "agentEnvironment.modelKeyInvalid",
+  });
+}
+
+/** The locale key for a failed GitHub CLI switch (w10/m524). */
+export function githubCliErrorKey(err: unknown): string {
+  return sectionErrorKey(err, "agentEnvironment.githubCliSaveFailed");
 }
 
 /**
- * The locale key for a failed GitHub CLI switch (w10/m524): a non-admin gets
- * the same refusal as for the other fields, anything else a retry.
+ * The whole enabledModels list one switch implies (w10/m527): the catalog's
+ * models in catalog order, `model` on or off and every other as saved. The
+ * catalog's default (models[0]) always stays on, as the server requires.
  */
-export function githubCliErrorKey(err: unknown): string {
-  return isForbiddenError(err)
-    ? "agentEnvironment.forbidden"
-    : "agentEnvironment.githubCliSaveFailed";
+export function withModelToggled(
+  env: AgentEnvironmentView,
+  model: string,
+  on: boolean,
+): string[] {
+  return env.models.filter(
+    (m, i) => i === 0 || (m === model ? on : env.enabledModels.includes(m)),
+  );
+}
+
+/**
+ * Why a default model does not take effect on the platform catalog
+ * (w10/m527): "off" when an admin turned it off, "retired" when the catalog
+ * no longer has it. Sessions and automations that name no model then run the
+ * catalog's default (models[0]). Null when it takes effect, when there is
+ * none, and on the workspace's own key, where any model id stands.
+ */
+export function defaultModelUnoffered(
+  env: AgentEnvironmentView,
+  model: string,
+): "off" | "retired" | null {
+  if (model === "" || env.models.length === 0) return null;
+  if (env.enabledModels.includes(model)) return null;
+  return env.models.includes(model) ? "off" : "retired";
+}
+
+/**
+ * The locale key for a failed model switch (w10/m527): a list the server
+ * refuses means the catalog or the model source changed since the card
+ * loaded.
+ */
+export function enabledModelsErrorKey(err: unknown): string {
+  return sectionErrorKey(err, "agentEnvironment.modelsSaveFailed", {
+    AGENT_ENVIRONMENT_MODELS_INVALID: "agentEnvironment.modelsInvalid",
+  });
 }

@@ -40,8 +40,9 @@ import (
 // is configured once per workspace instead of per session, the way Codex
 // cloud, Claude Code on the web, Devin and Copilot configure theirs: the
 // sandbox network tier, the custom hostnames the `custom` tier opens, the
-// default model, the default sandbox template (w10/m519) and whether its
-// sessions get a `gh` (w10/m524).
+// default model, the default sandbox template (w10/m519), whether its
+// sessions get a `gh` (w10/m524) and which platform catalog models its members
+// may choose (w10/m527).
 const (
 	// NetworkTierRegistries (the default, including for every workspace with
 	// no row): GitHub, the gateway hops and the built-in package registries,
@@ -67,20 +68,24 @@ type EnvironmentStore interface {
 
 // Environment is the one cross-surface projection of a workspace's agent
 // environment. DefaultModel nil means the provider default, or on the
-// platform model route the catalog's first model. Models is that catalog
-// (w10/m516), the models a claude session, an automation and DefaultModel
-// may name; empty off the route, where any model is free-form. ModelPinned
-// is true on the route, whose gateway pins each session to its chosen
-// model; PinnedModel is the catalog's default, kept for clients older than
-// Models. UpdatedAt is nil until the environment is first written.
+// platform model route the catalog's first model. Models is that whole
+// catalog (w10/m516), empty off the route, where any model is free-form;
+// EnabledModels is the part of it the workspace's admins left on (w10/m527),
+// the models a claude session, an automation and DefaultModel may name, the
+// catalog's default always among them. A DefaultModel outside EnabledModels
+// is stored but does not take effect: the catalog's default runs. ModelPinned
+// is true on the route, whose gateway pins each session to its chosen model;
+// PinnedModel is the catalog's default, kept for clients older than Models.
+// UpdatedAt is nil until the environment is first written.
 type Environment struct {
-	OwnerID      string   `json:"ownerId"`
-	NetworkTier  string   `json:"networkTier"`
-	CustomHosts  []string `json:"customHosts"`
-	DefaultModel *string  `json:"defaultModel"`
-	Models       []string `json:"models"`
-	ModelPinned  bool     `json:"modelPinned"`
-	PinnedModel  *string  `json:"pinnedModel"`
+	OwnerID       string   `json:"ownerId"`
+	NetworkTier   string   `json:"networkTier"`
+	CustomHosts   []string `json:"customHosts"`
+	DefaultModel  *string  `json:"defaultModel"`
+	Models        []string `json:"models"`
+	EnabledModels []string `json:"enabledModels"`
+	ModelPinned   bool     `json:"modelPinned"`
+	PinnedModel   *string  `json:"pinnedModel"`
 	TemplateOffer
 	// ModelSource is the credential the workspace's claude sessions use;
 	// ModelKeySet is ModelSource == ModelSourceBYO (environmentView derives
@@ -161,6 +166,9 @@ type EnvironmentInput struct {
 	EnabledAgents           *[]string `json:"enabledAgents,omitempty" jsonschema:"replaces the agent profiles members can start sessions with (admins only); the others are turned off, and running sessions keep running. A profile listed in agentDataUse can be enabled only once acknowledged"`
 	AcknowledgeAgentDataUse []string  `json:"acknowledgeAgentDataUse,omitempty" jsonschema:"agent profiles from agentDataUse whose data use this admin acknowledges: their model provider may train on the prompts, code, files, context and responses their sessions send"`
 	GitHubCLIEnabled        *bool     `json:"githubCliEnabled,omitempty" jsonschema:"false turns gh off for the workspace's agent sessions (admins only): turns dispatched afterwards get no gh configuration, and a running session's next gh call is refused; Git pushes to the session branch and the bex MCP tools keep working. true turns it back on"`
+	// EnabledModels replaces the platform catalog models members may choose;
+	// the catalog's others are turned off (w10/m527).
+	EnabledModels *[]string `json:"enabledModels,omitempty" jsonschema:"replaces the platform catalog models members may choose (admins only); the catalog's others are turned off. It must keep the catalog's default (models[0]) and name only catalog models. A session, message or automation naming a turned-off model is refused, and one already on it runs the workspace default from its next turn (the catalog default when the workspace default is off too). Applies to the platform model route only"`
 	// AgentModelMonthlySpendCapSet is true when the field was present, so a
 	// nil value with it set clears the override.
 	AgentModelMonthlySpendCapSet bool `json:"-"`
@@ -185,6 +193,10 @@ const (
 	// DataUseUnacknowledgedCode refuses enabling a profile in agentDataUse
 	// without its acknowledgement.
 	DataUseUnacknowledgedCode = "AGENT_ENVIRONMENT_DATA_USE_UNACKNOWLEDGED"
+	// ModelListInvalidCode refuses an enabledModels that turns the catalog's
+	// default off (an empty list does), names a model outside the catalog, or
+	// is sent where there is no catalog to narrow (w10/m527).
+	ModelListInvalidCode = "AGENT_ENVIRONMENT_MODELS_INVALID"
 )
 
 // agentEnabled reports whether members of the workspace env belongs to can
@@ -378,21 +390,30 @@ func (s *Service) UpdateEnvironment(ctx context.Context, ownerID string, input E
 	if s.Environments == nil || (keyChanged && s.ModelKeys == nil) {
 		return Environment{}, core.ErrAgentSessionsUnavailable
 	}
-	byoKey, err := s.byoKeyAfter(ctx, workspaceID, input, keyChanged, key)
+	patch, err := validateEnvironmentInput(input, s.agentTemplates())
 	if err != nil {
 		return Environment{}, err
 	}
-	patch, err := validateEnvironmentInput(workspaceID, input, byoKey, s.agentTemplates())
-	if err != nil {
-		return Environment{}, err
-	}
-	if input.EnabledAgents != nil || len(input.AcknowledgeAgentDataUse) > 0 {
+	keySet := key != "" // whether a key change leaves the workspace its own key
+	// The model and agent lists are checked against the stored row, read only
+	// when the update names one of them.
+	agentsChanged := input.EnabledAgents != nil || len(input.AcknowledgeAgentDataUse) > 0
+	if input.DefaultModel != nil || input.EnabledModels != nil || agentsChanged {
 		current, err := s.workspaceEnvironment(ctx, workspaceID)
 		if err != nil {
 			return Environment{}, err
 		}
-		if err := agentAvailabilityPatch(current, input, core.SubjectFrom(ctx), &patch); err != nil {
+		byoKey := current.ModelKeySet()
+		if keyChanged {
+			byoKey = keySet
+		}
+		if err := modelOfferPatch(current, input, byoKey, &patch); err != nil {
 			return Environment{}, err
+		}
+		if agentsChanged {
+			if err := agentAvailabilityPatch(current, input, core.SubjectFrom(ctx), &patch); err != nil {
+				return Environment{}, err
+			}
 		}
 	}
 	// One spend read serves both the cap bound and the returned view; the
@@ -410,7 +431,7 @@ func (s *Service) UpdateEnvironment(ctx context.Context, ownerID string, input E
 	}
 	var row store.AgentEnvironment
 	if keyChanged {
-		patch.ModelKeySet = &byoKey
+		patch.ModelKeySet = &keySet
 		row, err = s.writeModelKey(ctx, workspaceID, key, patch)
 	} else {
 		row, err = s.Environments.UpsertAgentEnvironment(ctx, workspaceID, patch)
@@ -431,20 +452,6 @@ func (s *Service) UpdateEnvironment(ctx context.Context, ownerID string, input E
 		return view, nil
 	}
 	return withSpend(view, status.WithOverride(row.SpendCapOverrideMicroUSD)), nil
-}
-
-// byoKeyAfter is whether the workspace has its own model key after this
-// update. Only a default model change on a workspace the platform route
-// covers depends on it (the catalog), so only that case reads the stored flag.
-func (s *Service) byoKeyAfter(ctx context.Context, workspaceID string, input EnvironmentInput, keyChanged bool, key string) (bool, error) {
-	if keyChanged {
-		return key != "", nil
-	}
-	if _, covered := agentsession.PlatformModels(false); !covered || input.DefaultModel == nil {
-		return false, nil
-	}
-	current, err := s.workspaceEnvironment(ctx, workspaceID)
-	return current.ModelKeySet(), err
 }
 
 // errModelKeyWrite is an OpenBao failure while writing the model key. The
@@ -490,7 +497,7 @@ func (s *Service) writeModelKey(ctx context.Context, workspaceID, key string, pa
 	return row, nil
 }
 
-func validateEnvironmentInput(workspaceID string, input EnvironmentInput, byoKey bool, templates []sandbox.AgentTemplate) (store.AgentEnvironmentPatch, error) {
+func validateEnvironmentInput(input EnvironmentInput, templates []sandbox.AgentTemplate) (store.AgentEnvironmentPatch, error) {
 	var patch store.AgentEnvironmentPatch
 	if input.DefaultTemplate != nil {
 		name := strings.TrimSpace(*input.DefaultTemplate)
@@ -525,12 +532,60 @@ func validateEnvironmentInput(workspaceID string, input EnvironmentInput, byoKey
 			return patch, core.NewBadRequestError("AGENT_ENVIRONMENT_MODEL_INVALID",
 				"defaultModel must be a model id without spaces (at most 255 characters)", map[string]any{"field": "defaultModel"})
 		}
-		if models, ok := agentsession.PlatformModels(byoKey); ok && model != "" && !slices.Contains(models, model) {
-			return patch, modelNotOfferedError(CodeEnvironmentModelNotOffered, "defaultModel", model, models)
-		}
 		patch.DefaultModel = &model
 	}
 	return patch, nil
+}
+
+// modelOfferPatch checks an update's model fields against the platform
+// catalog the workspace is on after it (byoKey: its own key then) and fills
+// patch (w10/m527). enabledModels replaces the turned-off list with every
+// catalog model it leaves out, so a model added to the catalog later starts
+// on; it must keep the catalog's default and name only catalog models, and
+// is refused off the route, where there is no catalog to narrow. defaultModel
+// must be one of the models offered after the update. Turning off the model
+// the stored default names is allowed, as Devin's allowlist overrides a
+// pinned default: that default stops taking effect and the catalog's runs.
+func modelOfferPatch(current store.AgentEnvironment, input EnvironmentInput, byoKey bool, patch *store.AgentEnvironmentPatch) error {
+	catalog, routed := agentsession.PlatformModels(byoKey)
+	disabled := current.DisabledModels
+	if input.EnabledModels != nil {
+		invalid := func(msg, model string) error {
+			return core.NewBadRequestError(ModelListInvalidCode, msg,
+				map[string]any{"field": "enabledModels", "model": model, "models": catalog})
+		}
+		if !routed {
+			msg := "enabledModels narrows the platform model catalog, and this workspace runs agents on its own model key, where any model id is accepted"
+			if !byoKey {
+				msg = "enabledModels narrows the platform model catalog, which this bex-api does not offer"
+			}
+			return core.NewBadRequestError(ModelListInvalidCode, msg, map[string]any{"field": "enabledModels"})
+		}
+		enabled := map[string]bool{}
+		for _, model := range *input.EnabledModels {
+			model = strings.TrimSpace(model)
+			if !slices.Contains(catalog, model) {
+				return invalid(fmt.Sprintf("enabledModels: %q is not a platform catalog model; the catalog offers %s", model, strings.Join(catalog, ", ")), model)
+			}
+			enabled[model] = true
+		}
+		if !enabled[catalog[0]] {
+			return invalid(fmt.Sprintf("enabledModels must keep %s, the platform catalog's default, on", catalog[0]), catalog[0])
+		}
+		disabled = []string{}
+		for _, model := range catalog {
+			if !enabled[model] {
+				disabled = append(disabled, model)
+			}
+		}
+		patch.DisabledModels = &disabled
+	}
+	if input.DefaultModel != nil && *input.DefaultModel != "" && routed {
+		if offered := leftOn(catalog, disabled); !slices.Contains(offered, *input.DefaultModel) {
+			return modelNotOfferedError(CodeEnvironmentModelNotOffered, "defaultModel", *input.DefaultModel, offered)
+		}
+	}
+	return nil
 }
 
 // workspaceHosts validates a custom hostname list with the per-session
@@ -596,13 +651,14 @@ func (s *Service) environmentView(row store.AgentEnvironment) Environment {
 		view.DefaultModel = &model
 	}
 	view.TemplateOffer = s.templateOffer(row)
-	view.Models = []string{}
+	view.Models, view.EnabledModels = []string{}, []string{}
 	switch models, ok := agentsession.PlatformModels(row.ModelKeySet()); {
 	case row.ModelKeySet():
 		view.ModelSource = ModelSourceBYO
 	case ok:
 		view.ModelSource = ModelSourcePlatform
 		view.Models = models
+		view.EnabledModels = leftOn(models, row.DisabledModels)
 		view.ModelPinned = true
 		view.PinnedModel = &models[0]
 	default:
@@ -734,10 +790,47 @@ const (
 	CodeEnvironmentModelNotOffered = "AGENT_ENVIRONMENT_MODEL_NOT_OFFERED"
 )
 
+// offeredModels is what a workspace's claude sessions may choose from on the
+// platform model route (w10/m527): the catalog in its order, its default
+// first, less the models the workspace's admins turned off, and whether the
+// workspace is on the route at all (never with its own key, where any model is
+// free-form). Every place that offers or checks a stored workspace's model
+// takes it from here; an update checks the list it is about to store
+// (modelOfferPatch).
+func offeredModels(env store.AgentEnvironment) ([]string, bool) {
+	catalog, routed := agentsession.PlatformModels(env.ModelKeySet())
+	return leftOn(catalog, env.DisabledModels), routed
+}
+
+// inPlatformCatalog reports whether model is one of the platform route's
+// catalog models, whatever any workspace turned off: a model a workspace does
+// not offer is either turned off there (true) or no catalog model at all.
+func inPlatformCatalog(model string) bool {
+	catalog, _ := agentsession.PlatformModels(false)
+	return slices.Contains(catalog, model)
+}
+
+// leftOn is catalog less disabled, as a new slice. The catalog's default is
+// never turned off, even by a list stored before the catalog's default
+// changed.
+func leftOn(catalog, disabled []string) []string {
+	out := make([]string, 0, len(catalog))
+	for i, model := range catalog {
+		if i == 0 || !slices.Contains(disabled, model) {
+			out = append(out, model)
+		}
+	}
+	return out
+}
+
+// modelNotOfferedError refuses model in field, listing the models offered.
+// One the catalog has but the workspace's admins turned off says so.
 func modelNotOfferedError(code, field, model string, models []string) error {
-	return core.NewBadRequestError(code,
-		fmt.Sprintf("this workspace runs agents on the platform model route, which offers %s; %q is not one of them", strings.Join(models, ", "), model),
-		map[string]any{"field": field, "model": model, "models": models})
+	msg := fmt.Sprintf("this workspace runs agents on the platform model route, which offers %s; %q is not one of them", strings.Join(models, ", "), model)
+	if inPlatformCatalog(model) {
+		msg = fmt.Sprintf("%s is turned off in this workspace, whose members may choose %s; a workspace admin can turn it on in Settings → Agents", model, strings.Join(models, ", "))
+	}
+	return core.NewBadRequestError(code, msg, map[string]any{"field": field, "model": model, "models": models})
 }
 
 // modelPinnedError refuses an explicit model other than the one a profile
@@ -750,13 +843,14 @@ func modelPinnedError(message, pinned string) error {
 // sessionModel resolves the model a session runs: the request's explicit
 // model, else the workspace default. The claude session of a workspace on
 // the platform route (one without its own model key) runs a model of the
-// route's catalog (w10/m516): an explicit model the catalog does not offer
-// is refused (AGENT_SESSION_MODEL_NOT_OFFERED) instead of reaching the
-// gateway's per-session pin as a 403 mid-turn, and no model takes the
-// workspace default, else the catalog's first. Where the caller chose no
+// route's catalog (w10/m516) that the workspace's admins left on
+// (offeredModels, w10/m527): an explicit model not offered is refused
+// (AGENT_SESSION_MODEL_NOT_OFFERED) instead of reaching the gateway's
+// per-session pin as a 403 mid-turn, and no model takes the workspace default
+// while it is offered, else the catalog's first. Where the caller chose no
 // model (a steer, a queued message delivered later), the stored model is kept
-// while the catalog still offers it and otherwise falls back the same way, so
-// a model removed from the catalog never strands a session. A session created
+// while it is still offered and otherwise falls back the same way, so a model
+// removed from the catalog or turned off never strands a session. A session created
 // on the route before the workspace set its own key drops its catalog model
 // for the workspace default (empty: the agent profile's), which its own
 // provider serves.
@@ -770,7 +864,7 @@ func sessionModel(config AgentConfig, env store.AgentEnvironment, explicit bool)
 		return profile.Model, nil
 	}
 	pinnedAgent := agentsession.PinnedAgent(config.Agent)
-	if models, ok := agentsession.PlatformModels(env.ModelKeySet()); ok && pinnedAgent {
+	if models, ok := offeredModels(env); pinnedAgent && ok {
 		switch {
 		case config.Model != "" && slices.Contains(models, config.Model):
 			return config.Model, nil
@@ -781,7 +875,7 @@ func sessionModel(config AgentConfig, env store.AgentEnvironment, explicit bool)
 		}
 		return models[0], nil
 	}
-	if catalog, covered := agentsession.PlatformModels(false); pinnedAgent && !explicit && covered && slices.Contains(catalog, config.Model) {
+	if pinnedAgent && !explicit && inPlatformCatalog(config.Model) {
 		return env.DefaultModel, nil
 	}
 	if config.Model != "" {
@@ -832,7 +926,8 @@ func (s *Service) steerModel(ctx context.Context, record store.AgentSession, mod
 // agentModels is what the capabilities read offers for agent in a workspace
 // (w10/m516): the model a session that names none runs, and the models one
 // may name. A profile with a fixed model offers only it; the claude profile on
-// the platform route offers the catalog; elsewhere any model the workspace's
+// the platform route offers the catalog models the workspace's admins left on
+// (offeredModels, w10/m527); elsewhere any model the workspace's
 // own provider serves is accepted (no list), and only the claude profile reads
 // the workspace default.
 func agentModels(agent string, env store.AgentEnvironment) (*string, []string) {
@@ -842,7 +937,7 @@ func agentModels(agent string, env store.AgentEnvironment) (*string, []string) {
 	if !agentsession.PinnedAgent(agent) {
 		return nil, []string{}
 	}
-	models, routed := agentsession.PlatformModels(env.ModelKeySet())
+	models, routed := offeredModels(env)
 	model, _ := sessionModel(AgentConfig{Agent: agent}, env, false)
 	if !routed {
 		models = []string{}

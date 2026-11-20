@@ -196,3 +196,43 @@ func TestAgentEnvironmentGitHubCLISettingRoundTrip(t *testing.T) {
 		t.Fatalf("first write turning gh off = %+v err=%v", got, err)
 	}
 }
+
+// w10/m527: a first write that does not name the turned-off models offers the
+// whole catalog, a list reads back and survives a partial write of another
+// field, and an explicit empty list turns every model back on.
+func TestAgentEnvironmentDisabledModelsRoundTrip(t *testing.T) {
+	s, pool, tenant := agentSessionPGStore(t, "agent-models")
+	ctx := context.Background()
+	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM agent_environments WHERE workspace_id = $1`, tenant.ID) })
+
+	tier := "full"
+	got, err := s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{NetworkTier: &tier})
+	if err != nil || got.DisabledModels == nil || len(got.DisabledModels) != 0 {
+		t.Fatalf("first write without the list = %#v err=%v, want none turned off", got.DisabledModels, err)
+	}
+	off := []string{"anthropic/claude-opus-5.5", "anthropic/claude-sonnet-5.5"}
+	if got, err = s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{DisabledModels: &off}); err != nil || !slices.Equal(got.DisabledModels, off) || got.NetworkTier != tier {
+		t.Fatalf("turning models off = %+v err=%v", got, err)
+	}
+	model := "anthropic/claude-haiku-5.5"
+	if got, err = s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{DefaultModel: &model}); err != nil || !slices.Equal(got.DisabledModels, off) {
+		t.Fatalf("a default-model write lost the list: %+v err=%v", got, err)
+	}
+	if read, err := s.GetAgentEnvironment(ctx, tenant.ID); err != nil || !slices.Equal(read.DisabledModels, off) {
+		t.Fatalf("read back = %+v err=%v", read, err)
+	}
+	none := []string{}
+	if got, err = s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{DisabledModels: &none}); err != nil || len(got.DisabledModels) != 0 || got.DefaultModel != model {
+		t.Fatalf("turning every model back on = %+v err=%v", got, err)
+	}
+
+	// A workspace whose first write turns a model off gets the other defaults.
+	other, err := s.CreateTenant(ctx, "agent-models-first", PlanHobby)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, other.ID) })
+	if got, err = s.UpsertAgentEnvironment(ctx, other.ID, AgentEnvironmentPatch{DisabledModels: &off}); err != nil || !slices.Equal(got.DisabledModels, off) || got.NetworkTier != "registries" || got.GitHubCLIDisabled {
+		t.Fatalf("first write turning models off = %+v err=%v", got, err)
+	}
+}

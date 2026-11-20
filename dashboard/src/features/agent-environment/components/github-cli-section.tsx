@@ -1,5 +1,4 @@
-import { useId, useState } from "react";
-import { toast } from "sonner";
+import { useId } from "react";
 import { Label } from "@/common/components/ui/label";
 import { Switch } from "@/common/components/ui/switch";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -8,6 +7,8 @@ import {
   githubCliErrorKey,
   type AgentEnvironmentView,
 } from "@/features/agent-environment/lib/environment";
+import { useToggleSave } from "@/features/agent-environment/hooks/use-toggle-save";
+import { ToggleSaveAlert } from "@/features/agent-environment/components/toggle-save-alert";
 
 interface GithubCliSectionProps {
   saved: AgentEnvironmentView;
@@ -31,29 +32,21 @@ export function GithubCliSection({
   const { t } = useTranslations();
   const id = `${useId()}-github-cli`;
   const helpId = `${id}-help`;
-  const [errorKey, setErrorKey] = useState<string | null>(null);
-  // The admin's choice while it saves. The saved answer reaches `saved`
-  // through the Apollo cache, and a refused save leaves the stored value.
-  const [pending, setPending] = useState<boolean | null>(null);
+  // The admin's choice while it saves; a refused save leaves the stored value.
+  const { pending, errorKey, save } = useToggleSave<boolean>(
+    update,
+    githubCliErrorKey,
+  );
   const checked = pending ?? saved.githubCliEnabled;
 
-  async function toggle(on: boolean) {
-    setPending(on);
-    setErrorKey(null);
-    try {
-      const next = await update({ githubCliEnabled: on });
-      toast.success(
-        t(
-          next.githubCliEnabled
-            ? "agentEnvironment.githubCliTurnedOn"
-            : "agentEnvironment.githubCliTurnedOff",
-        ),
-      );
-    } catch (err) {
-      setErrorKey(githubCliErrorKey(err));
-    } finally {
-      setPending(null);
-    }
+  function toggle(on: boolean) {
+    void save(on, { githubCliEnabled: on }, (next) =>
+      t(
+        next.githubCliEnabled
+          ? "agentEnvironment.githubCliTurnedOn"
+          : "agentEnvironment.githubCliTurnedOff",
+      ),
+    );
   }
 
   return (
@@ -70,14 +63,10 @@ export function GithubCliSection({
           checked={checked}
           disabled={!canManage || pending !== null}
           aria-describedby={helpId}
-          onCheckedChange={(on) => void toggle(on)}
+          onCheckedChange={toggle}
         />
       </div>
-      {errorKey ? (
-        <p className="text-destructive text-sm" role="alert">
-          {t(errorKey)}
-        </p>
-      ) : null}
+      <ToggleSaveAlert errorKey={errorKey} />
     </div>
   );
 }

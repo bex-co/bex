@@ -1312,6 +1312,59 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     message: "无法更改 GitHub CLI 设置，请重试。",
     description: "Error after a failed GitHub CLI switch (w10/m524)",
   },
+  "agentEnvironment.modelsTitle": {
+    message: "成员可选的模型",
+    description:
+      "Settings → Agents: heading of the list of platform models members can choose (w10/m527)",
+  },
+  "agentEnvironment.modelsDescription": {
+    message:
+      "选择成员在会话、消息和自动化中可以选用的平台模型。已在使用被你关闭的模型的会话或自动化，会从下一轮起改用默认模型。",
+    description:
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527)",
+  },
+  "agentEnvironment.modelsDefaultLocked": {
+    message: "平台的默认模型始终保持开启，因为会话会回退到它。",
+    description:
+      "Note under the platform catalog's default model, whose switch is locked on (w10/m527)",
+  },
+  "agentEnvironment.modelsTurnedOn": {
+    message: "已为成员开启 {model}",
+    description:
+      "Toast after an admin turns a model on for members; {model} is its id (w10/m527)",
+  },
+  "agentEnvironment.modelsTurnedOff": {
+    message: "已为成员关闭 {model}",
+    description:
+      "Toast after an admin turns a model off for members; {model} is its id (w10/m527)",
+  },
+  "agentEnvironment.modelsInvalid": {
+    message:
+      "无法更新模型：平台的默认模型必须保持开启，且列表只能包含平台目录中的模型。请刷新页面查看当前目录。",
+    description:
+      "Server refusal AGENT_ENVIRONMENT_MODELS_INVALID of a model list change (w10/m527)",
+  },
+  "agentEnvironment.modelsSaveFailed": {
+    message: "无法更新成员可选的模型，请重试。",
+    description: "Error after a failed model switch (w10/m527)",
+  },
+  "agentEnvironment.modelOffOption": {
+    message: "{model}（已关闭）",
+    description:
+      "Default model picker: the saved default, which an admin turned off (w10/m527)",
+  },
+  "agentEnvironment.modelDefaultOffNote": {
+    message:
+      "{model} 已关闭，因此未指定模型的会话和自动化将使用平台默认模型 {fallback}，直到管理员选择一个已开启的模型，或重新开启 {model}。",
+    description:
+      "Note under the default model picker when the saved default is turned off; {fallback} is the platform default that runs instead (w10/m527)",
+  },
+  "agentEnvironment.modelDefaultRetiredNote": {
+    message:
+      "{model} 已不在平台目录中，因此未指定模型的会话和自动化将使用平台默认模型 {fallback}，直到管理员选择其他模型。",
+    description:
+      "Note under the default model picker when the saved default left the platform catalog; {fallback} is the platform default that runs instead (w10/m527)",
+  },
 };
 
 export default zhAgentEnvironment;

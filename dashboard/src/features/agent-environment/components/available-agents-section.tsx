@@ -10,7 +10,12 @@ import {
   type AgentOption,
 } from "@/features/agent-sessions/lib/composer";
 import type { AgentEnvironmentView } from "@/features/agent-environment/lib/environment";
-import { AgentSectionHeading } from "@/features/agent-environment/components/agent-environment-card-skeleton";
+import {
+  AgentSectionHeading,
+  SwitchList,
+  SwitchListRow,
+} from "@/features/agent-environment/components/agent-environment-card-skeleton";
+import { ToggleSaveAlert } from "@/features/agent-environment/components/toggle-save-alert";
 import { PricingWithTerms } from "@/features/legal/components/agent-model-terms-link";
 
 interface AvailableAgentsSectionProps {
@@ -74,34 +79,35 @@ export function AvailableAgentsSection({
         title={t("agentEnvironment.agentsTitle")}
         description={t("agentEnvironment.agentsDescription")}
       />
-      <ul className="max-w-xl space-y-3">
+      <SwitchList>
         {AGENT_OPTIONS.map((agent) => {
           const id = `available-agent-${agent}`;
           return (
-            <li key={agent} className="flex items-start justify-between gap-4">
-              <div className="min-w-0 space-y-0.5">
+            <SwitchListRow
+              key={agent}
+              label={
                 <Label htmlFor={id}>{t(`agentSessions.agent.${agent}`)}</Label>
-                {dataUse.has(agent) ? (
-                  <p className="text-muted-foreground text-xs">
-                    {t("agentEnvironment.agentsDataUseNote")}
-                  </p>
-                ) : null}
-              </div>
-              <Switch
-                id={id}
-                checked={saved.enabledAgents.includes(agent)}
-                disabled={!canManage || busy}
-                onCheckedChange={(on) => toggle(agent, on)}
-              />
-            </li>
+              }
+              note={
+                dataUse.has(agent)
+                  ? t("agentEnvironment.agentsDataUseNote")
+                  : null
+              }
+              control={
+                <Switch
+                  id={id}
+                  checked={saved.enabledAgents.includes(agent)}
+                  disabled={!canManage || busy}
+                  onCheckedChange={(on) => toggle(agent, on)}
+                />
+              }
+            />
           );
         })}
-      </ul>
-      {failed ? (
-        <p className="text-destructive text-sm" role="alert">
-          {t("agentEnvironment.agentsSaveFailed")}
-        </p>
-      ) : null}
+      </SwitchList>
+      <ToggleSaveAlert
+        errorKey={failed ? "agentEnvironment.agentsSaveFailed" : null}
+      />
       <ConfirmDialog
         open={confirm != null}
         onOpenChange={(open) => {

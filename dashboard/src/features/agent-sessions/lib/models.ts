@@ -23,3 +23,15 @@ export function shownModel(
 ): string {
   return value || current || offer.model || offer.models[0] || "";
 }
+
+/**
+ * Whether a saved model is one the agent's catalog no longer offers
+ * (w10/m527): an admin turned it off in Settings → Agents, or it left the
+ * platform catalog. False with nothing saved, and where the offer lists no
+ * models (the workspace's own key takes any model id).
+ */
+export function modelUnoffered(offer: AgentModelOffer, model: string): boolean {
+  return (
+    model !== "" && offer.models.length > 0 && !offer.models.includes(model)
+  );
+}

@@ -33,6 +33,10 @@ import {
 } from "@/features/agent-sessions/components/composer-skills";
 import { selectableAgents } from "@/features/agent-sessions/lib/composer";
 import { ModelPicker } from "@/features/agent-sessions/components/model-picker";
+import {
+  modelUnoffered,
+  shownModel,
+} from "@/features/agent-sessions/lib/models";
 import { SandboxPicker } from "@/features/agent-sessions/components/sandbox-picker";
 import { useAgentSessionCapabilities } from "@/features/agent-sessions/hooks/use-agent-session-capabilities";
 import {
@@ -193,6 +197,12 @@ export function AutomationForm({
   // The agent's model offer (w10/m516): the platform catalog to pick from, a
   // fixed model, or none (the workspace's own key: any model id).
   const modelOffer = capabilities?.models[values.agent];
+  // A saved model an admin turned off or the catalog dropped (w10/m527)
+  // stays the value, with a note that runs use the workspace default.
+  const unofferedModel =
+    modelOffer && modelUnoffered(modelOffer, values.model.trim())
+      ? { model: values.model.trim(), fallback: shownModel(modelOffer, "") }
+      : null;
   const modelDescribedBy = describedBy(id("model"), {
     hasError: modelError != null,
     hasHelp: true,
@@ -335,7 +345,15 @@ export function AutomationForm({
           <FormField
             id={id("model")}
             label={t("agentAutomations.field.model")}
-            help={t("agentAutomations.help.model")}
+            help={
+              unofferedModel ? (
+                <span className="text-amber-700 dark:text-amber-400">
+                  {t("agentAutomations.help.modelUnoffered", unofferedModel)}
+                </span>
+              ) : (
+                t("agentAutomations.help.model")
+              )
+            }
             error={modelError}
           >
             {modelOffer && modelOffer.models.length > 0 ? (

@@ -307,13 +307,15 @@ export type AgentEnvironment = {
   defaultTemplate: Scalars['String']['output'];
   /** The agent profiles members can start sessions with, as the workspace's admins chose. */
   enabledAgents: Array<Scalars['String']['output']>;
+  /** The catalog models the workspace's admins left on: the models a claude session, a message, an automation and defaultModel may name, the catalog's default always first. Every catalog model unless an admin turned some off; a model added to the catalog later starts on. A defaultModel not listed here does not take effect: the catalog's default runs. Empty on the workspace's own key. */
+  enabledModels: Array<Scalars['String']['output']>;
   /** Whether the workspace's repo sessions get a gh that reaches their repository through bex; true unless an admin turned it off. Off, turns dispatched afterwards get no gh configuration and a running session's next gh call is refused; Git pushes to the session branch and the bex MCP tools keep working. */
   githubCliEnabled: Scalars['Boolean']['output'];
   modelKeySet: Scalars['Boolean']['output'];
   /** True on the platform model route, whose gateway pins each claude session to the catalog model it chose. */
   modelPinned: Scalars['Boolean']['output'];
   modelSource: AgentModelSource;
-  /** The platform model catalog, its default first: the models a claude session, an automation and defaultModel may name. Empty on the workspace's own key, where any model id is accepted. */
+  /** The whole platform model catalog, its default first; enabledModels is the part members may choose. Empty on the workspace's own key, where any model id is accepted. */
   models: Array<Scalars['String']['output']>;
   networkTier: AgentNetworkTier;
   /** The agent-model spend beyond billing credits (which pay first) at which the card is charged mid-cycle; null at the top tier (month-end only). */
@@ -346,6 +348,8 @@ export type AgentEnvironmentInput = {
   defaultTemplate?: InputMaybe<Scalars['String']['input']>;
   /** Replaces the agent profiles members can start sessions with; the others are turned off. A profile in agentDataUse needs its acknowledgement first. */
   enabledAgents?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Replaces the catalog models members may choose; the catalog's others are turned off. It must keep the catalog's default and name only catalog models (AGENT_ENVIRONMENT_MODELS_INVALID). New sessions, messages and automation saves see it at once; a session already on a turned-off model keeps it for the turn in flight and runs the workspace default from its next turn. */
+  enabledModels?: InputMaybe<Array<Scalars['String']['input']>>;
   /** false turns gh off for the workspace's agent sessions: turns dispatched afterwards get no gh configuration and a running session's next gh call is refused. true turns it back on. */
   githubCliEnabled?: InputMaybe<Scalars['Boolean']['input']>;
   /** Write-only: sets or rotates the workspace's own model provider key. Never returned; read modelKeySet. */
@@ -635,10 +639,10 @@ export type AgentSessionProfile = {
   __typename: 'AgentSessionProfile';
   id: Scalars['String']['output'];
   label: Scalars['String']['output'];
-  /** The model a session of this agent runs when it names none: the workspace default, else the platform catalog's first model or the agent's fixed one. Null when the provider's own default runs. */
+  /** The model a session of this agent runs when it names none: the workspace default while it is offered, else the platform catalog's first model or the agent's fixed one. Null when the provider's own default runs. */
   model: Maybe<Scalars['String']['output']>;
   modelKeyReady: Scalars['Boolean']['output'];
-  /** The models a session of this agent may name; empty where any model the workspace's own provider serves is accepted. */
+  /** The models a session of this agent may name: on the platform model route the catalog models the workspace's admins left on (enabledModels on the agent environment). Empty where any model the workspace's own provider serves is accepted. */
   models: Array<Scalars['String']['output']>;
 };
 

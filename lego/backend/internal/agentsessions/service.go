@@ -2167,10 +2167,11 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 		return View{}, err
 	}
 	// Every dispatch re-resolves the workspace environment, so a tier or host
-	// change, and the model source (sessionModel, createEgress), applies from
-	// the session's next turn. The default model does not: create stored the
-	// resolved model in the session's config, so only new sessions pick up a
-	// changed default.
+	// change, the model source (sessionModel, createEgress) and the models its
+	// admins turned off (w10/m527) apply from the session's next turn. The
+	// default model does not: create stored the resolved model in the
+	// session's config, so only new sessions pick up a changed default, unless
+	// the stored model is turned off and the session falls back to it.
 	workspaceEnv, err := s.workspaceEnvironment(ctx, record.WorkspaceID)
 	if err != nil {
 		return View{}, err
@@ -2186,8 +2187,8 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	}
 	// The message's model, when it names one, is the session's from this turn
 	// on (Devin's agent selector). A queued message whose model left the
-	// catalog while it waited runs the fallback instead of failing. The turn
-	// records the model only when it changes.
+	// catalog or was turned off while it waited runs the fallback instead of
+	// failing. The turn records the model only when it changes.
 	storedModel := config.Model
 	explicit := req.Model != "" && req.queuedMessageID == ""
 	if req.Model != "" {

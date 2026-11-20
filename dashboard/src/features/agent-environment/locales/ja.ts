@@ -1357,6 +1357,61 @@ const jaAgentEnvironment: Record<string, TranslationEntry> = {
       "GitHub CLI の設定を変更できませんでした。もう一度お試しください。",
     description: "Error after a failed GitHub CLI switch (w10/m524)",
   },
+  "agentEnvironment.modelsTitle": {
+    message: "メンバーが選べるモデル",
+    description:
+      "Settings → Agents: heading of the list of platform models members can choose (w10/m527)",
+  },
+  "agentEnvironment.modelsDescription": {
+    message:
+      "メンバーがセッション、メッセージ、自動化で選べるプラットフォームのモデルを選択します。オフにしたモデルをすでに使っているセッションや自動化は、次のターンからデフォルトのモデルで実行されます。",
+    description:
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527)",
+  },
+  "agentEnvironment.modelsDefaultLocked": {
+    message:
+      "セッションのフォールバック先となるため、プラットフォームのデフォルトモデルは常にオンのままです。",
+    description:
+      "Note under the platform catalog's default model, whose switch is locked on (w10/m527)",
+  },
+  "agentEnvironment.modelsTurnedOn": {
+    message: "メンバー向けに {model} をオンにしました",
+    description:
+      "Toast after an admin turns a model on for members; {model} is its id (w10/m527)",
+  },
+  "agentEnvironment.modelsTurnedOff": {
+    message: "メンバー向けに {model} をオフにしました",
+    description:
+      "Toast after an admin turns a model off for members; {model} is its id (w10/m527)",
+  },
+  "agentEnvironment.modelsInvalid": {
+    message:
+      "モデルを更新できませんでした。プラットフォームのデフォルトモデルはオンのままにする必要があり、リストに含められるのはプラットフォームカタログのモデルだけです。ページを再読み込みして現在のカタログを確認してください。",
+    description:
+      "Server refusal AGENT_ENVIRONMENT_MODELS_INVALID of a model list change (w10/m527)",
+  },
+  "agentEnvironment.modelsSaveFailed": {
+    message:
+      "メンバーが選べるモデルを更新できませんでした。もう一度お試しください。",
+    description: "Error after a failed model switch (w10/m527)",
+  },
+  "agentEnvironment.modelOffOption": {
+    message: "{model}（オフ）",
+    description:
+      "Default model picker: the saved default, which an admin turned off (w10/m527)",
+  },
+  "agentEnvironment.modelDefaultOffNote": {
+    message:
+      "{model} はオフになっているため、モデルを指定しないセッションと自動化は、管理者がオンのモデルを選ぶか {model} を再びオンにするまで、プラットフォームのデフォルト {fallback} を使用します。",
+    description:
+      "Note under the default model picker when the saved default is turned off; {fallback} is the platform default that runs instead (w10/m527)",
+  },
+  "agentEnvironment.modelDefaultRetiredNote": {
+    message:
+      "{model} はプラットフォームカタログから外れたため、モデルを指定しないセッションと自動化は、管理者が別のモデルを選ぶまで、プラットフォームのデフォルト {fallback} を使用します。",
+    description:
+      "Note under the default model picker when the saved default left the platform catalog; {fallback} is the platform default that runs instead (w10/m527)",
+  },
 };
 
 export default jaAgentEnvironment;

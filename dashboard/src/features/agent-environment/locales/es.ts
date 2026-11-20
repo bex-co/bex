@@ -1372,6 +1372,61 @@ const esAgentEnvironment: Record<string, TranslationEntry> = {
       "No se pudo cambiar la configuración de GitHub CLI. Inténtalo de nuevo.",
     description: "Error after a failed GitHub CLI switch (w10/m524)",
   },
+  "agentEnvironment.modelsTitle": {
+    message: "Modelos que pueden elegir los miembros",
+    description:
+      "Settings → Agents: heading of the list of platform models members can choose (w10/m527)",
+  },
+  "agentEnvironment.modelsDescription": {
+    message:
+      "Elige qué modelos de la plataforma pueden usar los miembros en sesiones, mensajes y automatizaciones. Una sesión o automatización que ya usa un modelo que desactivas pasa al modelo predeterminado desde su siguiente turno.",
+    description:
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527)",
+  },
+  "agentEnvironment.modelsDefaultLocked": {
+    message:
+      "El modelo predeterminado de la plataforma siempre sigue activado, porque las sesiones recurren a él.",
+    description:
+      "Note under the platform catalog's default model, whose switch is locked on (w10/m527)",
+  },
+  "agentEnvironment.modelsTurnedOn": {
+    message: "{model} activado para los miembros",
+    description:
+      "Toast after an admin turns a model on for members; {model} is its id (w10/m527)",
+  },
+  "agentEnvironment.modelsTurnedOff": {
+    message: "{model} desactivado para los miembros",
+    description:
+      "Toast after an admin turns a model off for members; {model} is its id (w10/m527)",
+  },
+  "agentEnvironment.modelsInvalid": {
+    message:
+      "No se pudieron actualizar los modelos: el modelo predeterminado de la plataforma debe seguir activado y la lista solo puede incluir modelos del catálogo de la plataforma. Recarga la página para ver el catálogo actual.",
+    description:
+      "Server refusal AGENT_ENVIRONMENT_MODELS_INVALID of a model list change (w10/m527)",
+  },
+  "agentEnvironment.modelsSaveFailed": {
+    message:
+      "No se pudieron actualizar los modelos que pueden elegir los miembros. Inténtalo de nuevo.",
+    description: "Error after a failed model switch (w10/m527)",
+  },
+  "agentEnvironment.modelOffOption": {
+    message: "{model} (desactivado)",
+    description:
+      "Default model picker: the saved default, which an admin turned off (w10/m527)",
+  },
+  "agentEnvironment.modelDefaultOffNote": {
+    message:
+      "{model} está desactivado, así que las sesiones y automatizaciones que no indican un modelo usan el predeterminado de la plataforma, {fallback}, hasta que un administrador elija un modelo activado o vuelva a activar {model}.",
+    description:
+      "Note under the default model picker when the saved default is turned off; {fallback} is the platform default that runs instead (w10/m527)",
+  },
+  "agentEnvironment.modelDefaultRetiredNote": {
+    message:
+      "{model} ya no está en el catálogo de la plataforma, así que las sesiones y automatizaciones que no indican un modelo usan el predeterminado de la plataforma, {fallback}, hasta que un administrador elija otro modelo.",
+    description:
+      "Note under the default model picker when the saved default left the platform catalog; {fallback} is the platform default that runs instead (w10/m527)",
+  },
 };
 
 export default esAgentEnvironment;

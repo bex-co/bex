@@ -381,6 +381,9 @@ type agentEnvironment struct {
 	AgentModelSpendMonthToDateUSD *float64          `json:"agentModelSpendMonthToDateUsd"`
 	TrustTier                     *string           `json:"trustTier"`
 	EnabledAgents                 []string          `json:"enabledAgents"`
+	// EnabledModels are the catalog models members may choose (w10/m527);
+	// nil from a bex-api that predates the list, which offers every one.
+	EnabledModels []string `json:"enabledModels"`
 	// GitHubCLIEnabled is whether the workspace's sessions get a `gh`
 	// (w10/m524); nil from a bex-api that predates the setting, which
 	// cannot turn it off, so it reads as on.
@@ -395,7 +398,7 @@ type agentEnvironment struct {
 func envCommand(d deps) *cobra.Command {
 	root := &cobra.Command{
 		Use:   "env",
-		Short: "Show the workspace's agent environment: network, GitHub CLI, default model and sandbox, spend cap, agents",
+		Short: "Show the workspace's agent environment: network, GitHub CLI, models and sandbox, spend cap, agents",
 		Args:  cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			return workspaceShow(d, c, http.MethodGet, nil, nil, "read the agent environment", writeEnvironment, "agent-environment")
@@ -405,6 +408,7 @@ func envCommand(d deps) *cobra.Command {
 		tier, model, spendCap string
 		template, githubCLI   string
 		hosts, agents, acks   []string
+		models                []string
 		noHosts, keyStdin     bool
 		clearKey              bool
 	)
@@ -423,7 +427,12 @@ func envCommand(d deps) *cobra.Command {
 			"dispatched afterwards get no gh configuration, and a running session's next\n" +
 			"gh call is refused with a message naming this setting. Git pushes to the\n" +
 			"session branch and the bex MCP tools keep working. --github-cli on turns it\n" +
-			"back on.",
+			"back on.\n" +
+			"--models replaces the platform catalog models members may choose; the\n" +
+			"catalog's others are turned off. It must keep the catalog's default (the\n" +
+			"first of `bex agent env`'s Models). A session, message or automation naming\n" +
+			"a turned-off model is refused, and one already on it runs the workspace\n" +
+			"default from its next turn.",
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			f := c.Flags()
@@ -477,6 +486,12 @@ func envCommand(d deps) *cobra.Command {
 			if f.Changed("agents") {
 				patch["enabledAgents"] = agents
 			}
+			if f.Changed("models") {
+				if len(models) == 0 {
+					return usageError("--models takes the models members may choose, comma-separated; the catalog's default always stays on")
+				}
+				patch["enabledModels"] = models
+			}
 			if len(acks) > 0 {
 				patch["acknowledgeAgentDataUse"] = acks
 			}
@@ -497,6 +512,7 @@ func envCommand(d deps) *cobra.Command {
 	f.BoolVar(&keyStdin, "model-key-stdin", false, "set the workspace's own model API key, read from stdin")
 	f.BoolVar(&clearKey, "clear-model-key", false, "remove the workspace's own model API key")
 	f.StringSliceVar(&agents, "agents", nil, "the agents members can start sessions with, comma-separated; replaces the list (\"\" turns every agent off)")
+	f.StringSliceVar(&models, "models", nil, "the platform catalog models members may choose, comma-separated; replaces the list and must keep the catalog's default")
 	f.StringArrayVar(&acks, "acknowledge-data-use", nil, "acknowledge, as an admin, that this agent's model provider may train on what its sessions send; repeatable")
 	root.AddCommand(set)
 	return root
@@ -511,14 +527,41 @@ func writeEnvironment(w io.Writer, e agentEnvironment) error {
 	} else {
 		tw.row("GitHub CLI", "off (sessions get no gh; Git pushes and the bex tools still work)")
 	}
+	// A bex-api that predates the list offers the whole catalog.
+	enabled := e.EnabledModels
+	if enabled == nil {
+		enabled = e.Models
+	}
 	switch {
+	case e.DefaultModel != nil && len(e.Models) > 0 && !slices.Contains(enabled, *e.DefaultModel):
+		why := "turned off"
+		if !slices.Contains(e.Models, *e.DefaultModel) {
+			why = "no longer offered"
+		}
+		tw.row("Default model", *e.DefaultModel+" ("+why+": sessions run "+e.Models[0]+", the platform default)")
 	case e.DefaultModel != nil:
 		tw.row("Default model", *e.DefaultModel)
 	case len(e.Models) > 0:
 		tw.row("Default model", e.Models[0]+" (the platform default)")
 	}
 	if len(e.Models) > 0 {
-		tw.row("Models", strings.Join(e.Models, ", "))
+		on := make([]string, 0, len(enabled))
+		for _, m := range enabled {
+			if m == e.Models[0] {
+				m += " (the platform default, always on)"
+			}
+			on = append(on, m)
+		}
+		tw.row("Models", strings.Join(on, ", "))
+		var off []string
+		for _, m := range e.Models {
+			if !slices.Contains(enabled, m) {
+				off = append(off, m)
+			}
+		}
+		if len(off) > 0 {
+			tw.row("Models off", strings.Join(off, ", ")+" (turned off by an admin)")
+		}
 	}
 	if e.DefaultTemplate != "" {
 		tw.row("Default sandbox", templateSize(e.DefaultTemplate, e.Templates))
@@ -585,9 +628,11 @@ func modelsCommand(d deps) *cobra.Command {
 		Long: "Lists each agent the workspace can start, whether it is ready, and the model\n" +
 			"a session runs when it names none. Where an agent offers a choice of models\n" +
 			"(the platform model catalog), they are listed below the table with the\n" +
-			"default marked. Pick one per session with `bex agent run --model ID`, switch\n" +
-			"a session from its next message with `bex agent send --model ID`, and change\n" +
-			"the workspace default with `bex agent env set --default-model ID`.\n\n" +
+			"default marked: the platform catalog models the workspace's admins left on\n" +
+			"(`bex agent env set --models`). Pick one per session with\n" +
+			"`bex agent run --model ID`, switch a session from its next message with\n" +
+			"`bex agent send --model ID`, and change the workspace default with\n" +
+			"`bex agent env set --default-model ID`.\n\n" +
 			"Then the sandbox templates a session can run on, with their CPU and memory\n" +
 			"and the workspace default marked: pick one per session with\n" +
 			"`bex agent run --template NAME`, and change the default with\n" +

@@ -44,6 +44,17 @@ function setup(env: AgentEnvironmentView | null = ENV, loading = false) {
   return { update, user: userEvent.setup(), rerender };
 }
 
+// A save's answer reaches the card through the Apollo cache, as in the app.
+function setupWithCache(env: AgentEnvironmentView = ENV) {
+  const harness = setup(env);
+  harness.update.mockImplementation(async (input) => {
+    const next = { ...hook.current.environment!, ...input };
+    harness.rerender(next);
+    return next;
+  });
+  return harness;
+}
+
 const radio = (name: RegExp) => screen.getByRole("radio", { name });
 const save = () => screen.getByRole("button", { name: "Save" });
 
@@ -241,10 +252,8 @@ describe("AgentEnvironmentCard", () => {
   });
 
   it("offers the platform catalog as the default model and saves a choice", async () => {
-    const { user, update } = setup({
-      ...ENV,
-      models: ["deepseek/deepseek-v4", "anthropic/claude-opus-5.5"],
-    });
+    const models = ["deepseek/deepseek-v4", "anthropic/claude-opus-5.5"];
+    const { user, update } = setup({ ...ENV, models, enabledModels: models });
     const model = screen.getByRole("combobox", { name: "Default model" });
     expect(model).toHaveTextContent("Platform default (deepseek/deepseek-v4)");
     expect(
@@ -268,10 +277,8 @@ describe("AgentEnvironmentCard", () => {
   });
 
   it("names a catalog refusal on the model field", async () => {
-    const { user, update } = setup({
-      ...ENV,
-      models: ["deepseek/deepseek-v4", "anthropic/claude-opus-5.5"],
-    });
+    const models = ["deepseek/deepseek-v4", "anthropic/claude-opus-5.5"];
+    const { user, update } = setup({ ...ENV, models, enabledModels: models });
     update.mockRejectedValueOnce(
       codedGraphQLError("AGENT_ENVIRONMENT_MODEL_NOT_OFFERED", {
         field: "defaultModel",
@@ -749,16 +756,6 @@ describe("AgentEnvironmentCard", () => {
   // It saves on toggle, as the available-agents switches do.
   describe("GitHub CLI", () => {
     const gh = () => screen.getByRole("switch", { name: "GitHub CLI (gh)" });
-    // The answer reaches the card through the Apollo cache, as in the app.
-    const setupWithCache = (env: AgentEnvironmentView = ENV) => {
-      const harness = setup(env);
-      harness.update.mockImplementation(async (input) => {
-        const next = { ...hook.current.environment!, ...input };
-        harness.rerender(next);
-        return next;
-      });
-      return harness;
-    };
 
     it.each([true, false])("shows the stored value (%s)", (enabled) => {
       setup({ ...ENV, githubCliEnabled: enabled });
@@ -880,6 +877,313 @@ describe("AgentEnvironmentCard", () => {
       expect(skeleton).toHaveTextContent(
         /removes gh from every agent session in this workspace/,
       );
+      expect(within(skeleton).queryByRole("switch")).toBeNull();
+    });
+  });
+
+  // w10/m527: the catalog models members can choose, Devin's allowlisted
+  // models. Each switch saves the whole list, as the available agents do.
+  describe("models members can choose", () => {
+    const CATALOG = [
+      "deepseek/deepseek-v4.1-flash-1017",
+      "anthropic/claude-haiku-5.5",
+      "anthropic/claude-sonnet-5.5",
+      "anthropic/claude-opus-5.5",
+    ];
+    const ROUTED = { ...ENV, models: CATALOG, enabledModels: CATALOG };
+    const modelSwitch = (name: string) => screen.getByRole("switch", { name });
+    const switches = () =>
+      within(screen.getByTestId("enabled-models-section")).getAllByRole(
+        "switch",
+      );
+    const picker = () =>
+      screen.getByRole("combobox", { name: "Default model" });
+
+    it("lists the catalog with a switch per model, on while members may choose it", () => {
+      setup({ ...ROUTED, enabledModels: [CATALOG[0], CATALOG[2]] });
+      const section = screen.getByTestId("enabled-models-section");
+      expect(section).toHaveTextContent("Models members can choose");
+      expect(section).toHaveTextContent(
+        /runs the default model from its next turn/,
+      );
+      expect(switches().map((s) => s.getAttribute("aria-checked"))).toEqual([
+        "true",
+        "false",
+        "true",
+        "false",
+      ]);
+      expect(
+        within(section)
+          .getAllByRole("listitem")
+          .map((row) => row.querySelector("label")!.textContent),
+      ).toEqual(CATALOG);
+      for (const model of CATALOG.slice(1)) {
+        expect(modelSwitch(model)).toBeEnabled();
+      }
+    });
+
+    it("keeps the catalog default on and locked, saying why", async () => {
+      const { user, update } = setup({ ...ROUTED, enabledModels: [] });
+      const locked = modelSwitch(CATALOG[0]);
+      expect(locked).toBeChecked();
+      expect(locked).toBeDisabled();
+      expect(locked).toHaveAccessibleDescription(
+        "The platform's default model always stays on, as sessions fall back to it.",
+      );
+      await user.click(locked);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it("lets an admin turn a model off and back on, saving the whole list", async () => {
+      const { user, update } = setupWithCache(ROUTED);
+      await user.click(modelSwitch(CATALOG[3]));
+      expect(update).toHaveBeenLastCalledWith({
+        enabledModels: CATALOG.slice(0, 3),
+      });
+      expect(modelSwitch(CATALOG[3])).not.toBeChecked();
+      expect(toast.success).toHaveBeenLastCalledWith(
+        "anthropic/claude-opus-5.5 turned off for members",
+      );
+      // It is not part of the draft the Save button sends.
+      expect(save()).toBeDisabled();
+      await user.click(modelSwitch(CATALOG[1]));
+      expect(update).toHaveBeenLastCalledWith({
+        enabledModels: [CATALOG[0], CATALOG[2]],
+      });
+      await user.click(modelSwitch(CATALOG[3]));
+      // Back on, in its catalog slot.
+      expect(update).toHaveBeenLastCalledWith({
+        enabledModels: [CATALOG[0], CATALOG[2], CATALOG[3]],
+      });
+      expect(modelSwitch(CATALOG[3])).toBeChecked();
+      expect(toast.success).toHaveBeenLastCalledWith(
+        "anthropic/claude-opus-5.5 turned on for members",
+      );
+      expect(update).toHaveBeenCalledTimes(3);
+    });
+
+    it("holds the switches until the server answers, then shows its answer and newer copies", async () => {
+      const { user, update, rerender } = setupWithCache(ROUTED);
+      let answer!: () => void;
+      update.mockImplementationOnce(
+        () =>
+          new Promise<AgentEnvironmentView>((resolve) => {
+            answer = () => {
+              // Another admin turned sonnet off meanwhile: the answer says so.
+              const next = { ...ROUTED, enabledModels: [CATALOG[0]] };
+              rerender(next);
+              resolve(next);
+            };
+          }),
+      );
+      await user.click(modelSwitch(CATALOG[1]));
+      expect(modelSwitch(CATALOG[1])).not.toBeChecked();
+      expect(modelSwitch(CATALOG[2])).toBeChecked();
+      for (const s of switches()) expect(s).toBeDisabled();
+      await act(async () => answer());
+      expect(switches().map((s) => s.getAttribute("aria-checked"))).toEqual([
+        "true",
+        "false",
+        "false",
+        "false",
+      ]);
+      expect(modelSwitch(CATALOG[1])).toBeEnabled();
+      // The next read wins.
+      rerender(ROUTED);
+      expect(modelSwitch(CATALOG[2])).toBeChecked();
+    });
+
+    it("returns the switches to the saved list and says why when a save fails", async () => {
+      const { user, update } = setupWithCache(ROUTED);
+      update.mockRejectedValueOnce(uncodedGraphQLError("boom"));
+      await user.click(modelSwitch(CATALOG[2]));
+      expect(update).toHaveBeenCalledWith({
+        enabledModels: [CATALOG[0], CATALOG[1], CATALOG[3]],
+      });
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Couldn't update the models members can choose. Try again.",
+      );
+      expect(modelSwitch(CATALOG[2])).toBeChecked();
+      expect(modelSwitch(CATALOG[2])).toBeEnabled();
+      expect(toast.success).not.toHaveBeenCalled();
+      // The server's list refusal (the catalog changed since the card loaded).
+      update.mockRejectedValueOnce(
+        codedGraphQLError("AGENT_ENVIRONMENT_MODELS_INVALID", {
+          field: "enabledModels",
+          model: CATALOG[2],
+        }),
+      );
+      await user.click(modelSwitch(CATALOG[2]));
+      expect(screen.getAllByRole("alert")).toHaveLength(1);
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /the platform's default model has to stay on/,
+      );
+      expect(modelSwitch(CATALOG[2])).toBeChecked();
+      // A caller no longer an admin reads as the card's other fields do.
+      update.mockRejectedValueOnce(codedGraphQLError("FORBIDDEN"));
+      await user.click(modelSwitch(CATALOG[2]));
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Only workspace admins can change agent settings.",
+      );
+      expect(modelSwitch(CATALOG[2])).toBeChecked();
+    });
+
+    it("shows a member the list read-only", async () => {
+      vi.mocked(useCapabilities).mockReturnValue(
+        mockCapabilities({ role: "DEVELOPER", canManage: false }),
+      );
+      const { user, update } = setup({
+        ...ROUTED,
+        enabledModels: [CATALOG[0], CATALOG[3]],
+      });
+      expect(switches().map((s) => s.getAttribute("aria-checked"))).toEqual([
+        "true",
+        "false",
+        "false",
+        "true",
+      ]);
+      for (const s of switches()) expect(s).toBeDisabled();
+      await user.click(modelSwitch(CATALOG[1]));
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it("draws no list on the workspace's own key", () => {
+      setup({
+        ...ENV,
+        modelKeySet: true,
+        modelSource: AgentModelSource.Byo,
+        models: [],
+        enabledModels: [],
+      });
+      expect(screen.queryByTestId("enabled-models-section")).toBeNull();
+      expect(screen.getByLabelText("Default model")).toHaveAttribute(
+        "placeholder",
+        "Provider default",
+      );
+    });
+
+    it("offers only the models that are on as the default model", async () => {
+      const { user } = setup({
+        ...ROUTED,
+        enabledModels: [CATALOG[0], CATALOG[2]],
+      });
+      await user.click(picker());
+      expect(
+        screen.getAllByRole("option").map((option) => option.textContent),
+      ).toEqual([
+        "Platform default (deepseek/deepseek-v4.1-flash-1017)",
+        CATALOG[0],
+        CATALOG[2],
+      ]);
+      expect(screen.queryByRole("note")).toBeNull();
+    });
+
+    it("keeps a saved default that is off, saying the catalog default runs instead", async () => {
+      const { user, update } = setup({
+        ...ROUTED,
+        enabledModels: [CATALOG[0], CATALOG[1]],
+        defaultModel: CATALOG[3],
+      });
+      expect(picker()).toHaveTextContent(
+        "anthropic/claude-opus-5.5 (turned off)",
+      );
+      const note =
+        "anthropic/claude-opus-5.5 is turned off, so sessions and automations that name no model run the platform default, deepseek/deepseek-v4.1-flash-1017, until an admin picks a model that is on or turns anthropic/claude-opus-5.5 back on.";
+      expect(screen.getByRole("note")).toHaveTextContent(note);
+      // The picker names the note beside its help.
+      expect(picker().getAttribute("aria-describedby")?.split(" ")).toContain(
+        screen.getByRole("note").id,
+      );
+      await user.click(picker());
+      expect(
+        screen.getAllByRole("option").map((option) => option.textContent),
+      ).toEqual([
+        "Platform default (deepseek/deepseek-v4.1-flash-1017)",
+        CATALOG[0],
+        CATALOG[1],
+        "anthropic/claude-opus-5.5 (turned off)",
+      ]);
+      // Picking a model that is on clears the note; saving sends it.
+      await user.click(screen.getByRole("option", { name: CATALOG[1] }));
+      expect(screen.queryByRole("note")).toBeNull();
+      await user.click(save());
+      expect(update).toHaveBeenCalledWith({ defaultModel: CATALOG[1] });
+    });
+
+    it("says so when an admin turns off the model the default names", async () => {
+      const { user } = setupWithCache({ ...ROUTED, defaultModel: CATALOG[2] });
+      expect(picker()).toHaveTextContent(CATALOG[2]);
+      expect(screen.queryByRole("note")).toBeNull();
+      await user.click(modelSwitch(CATALOG[2]));
+      expect(picker()).toHaveTextContent(
+        "anthropic/claude-sonnet-5.5 (turned off)",
+      );
+      expect(screen.getByRole("note")).toHaveTextContent(
+        /run the platform default, deepseek\/deepseek-v4\.1-flash-1017, until an admin/,
+      );
+      // Nothing to save: the stored default stands, it just does not apply.
+      expect(save()).toBeDisabled();
+    });
+
+    it("says a saved default the catalog dropped is not running either", () => {
+      setup({ ...ROUTED, defaultModel: "anthropic/claude-opus-4.1" });
+      expect(picker()).toHaveTextContent("anthropic/claude-opus-4.1");
+      expect(screen.getByRole("note")).toHaveTextContent(
+        "anthropic/claude-opus-4.1 is no longer in the platform catalog, so sessions and automations that name no model run the platform default, deepseek/deepseek-v4.1-flash-1017, until an admin picks another model.",
+      );
+    });
+
+    it("keeps the skeleton's model list in step with the ready card", () => {
+      const shape = (section: HTMLElement) => {
+        const list = section.querySelector("ul")!;
+        const rows = Array.from(list.children);
+        const text = (row: Element) => row.firstElementChild!;
+        return {
+          // Right after the default model, in the same card slot.
+          slot: Array.from(section.parentElement!.children).indexOf(section),
+          section: section.className,
+          children: section.children.length,
+          heading: section.firstElementChild!.className,
+          list: list.className,
+          row: rows.map((row) => row.className),
+          text: rows.map((row) => text(row).className),
+          // The label, and under the catalog default its locked note.
+          textRows: rows.map((row) => text(row).children.length),
+          label: rows.map((row) => text(row).firstElementChild!.className),
+          note: text(rows[0]).lastElementChild!.textContent,
+        };
+      };
+      setup(ROUTED);
+      const readySection = screen.getByTestId("enabled-models-section");
+      const ready = shape(readySection);
+      // The switch is h-5 w-9; the skeleton holds that box.
+      for (const s of switches())
+        expect(s).toHaveClass("h-5", "w-9", "shrink-0");
+      cleanup();
+
+      setup(null, true);
+      const skeleton = screen.getByTestId("enabled-models-section-skeleton");
+      // A representative four rows, the platform catalog's size.
+      expect(shape(skeleton)).toEqual(ready);
+      expect(skeleton).toHaveTextContent("Models members can choose");
+      expect(skeleton).toHaveTextContent(
+        /Choose which platform models members can pick/,
+      );
+      for (const row of Array.from(skeleton.querySelectorAll("li"))) {
+        expect(row.lastElementChild).toHaveClass(
+          "h-5",
+          "w-9",
+          "shrink-0",
+          "rounded-full",
+        );
+        // A hidden id at least as long as the catalog's longest, so a
+        // monospace label wraps to as many lines.
+        const id = row.querySelector("[data-slot=skeleton-text]")!;
+        expect(id).toHaveAttribute("aria-hidden", "true");
+        expect(id.textContent!.length).toBeGreaterThanOrEqual(
+          Math.max(...CATALOG.map((m) => m.length)),
+        );
+      }
       expect(within(skeleton).queryByRole("switch")).toBeNull();
     });
   });

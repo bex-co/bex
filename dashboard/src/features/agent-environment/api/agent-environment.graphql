@@ -10,9 +10,13 @@ fragment AgentEnvironmentFields on AgentEnvironment {
   networkTier
   customHosts
   defaultModel
-  # The platform model catalog, its default first (w10/m516): the choices for
-  # defaultModel. Empty on the workspace's own key, where it is free-form.
+  # The platform model catalog, its default first (w10/m516). Empty on the
+  # workspace's own key, where defaultModel is free-form.
   models
+  # The catalog models the workspace's admins left on (w10/m527), in catalog
+  # order with the catalog's default always among them: the choices for
+  # defaultModel and every member's model pickers. Empty on the own key.
+  enabledModels
   # The sandbox template a session or automation run that names none runs on
   # (w10/m519), and every agent template a session may name, smallest first.
   defaultTemplate
@@ -69,7 +73,8 @@ query AgentEnvironment($ownerId: String!) {
 
 # Partial update: omitted fields keep their value; customHosts [] clears the
 # list, defaultModel "" returns to the provider default and defaultTemplate ""
-# to the platform's; githubCliEnabled false turns the sessions' gh off.
+# to the platform's; githubCliEnabled false turns the sessions' gh off;
+# enabledModels replaces the catalog models members may choose (w10/m527).
 mutation UpdateAgentEnvironment(
   $ownerId: String!
   $input: AgentEnvironmentInput!

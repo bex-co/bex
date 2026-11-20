@@ -128,12 +128,13 @@ type AgentProfile struct {
 	// is refused at create with AGENT_SESSION_MODEL_KEY_REQUIRED.
 	ModelKeyReady bool `json:"modelKeyReady"`
 	// Model is the model a session of this profile runs when it names none
-	// (w10/m516): the workspace default, else the platform catalog's first
+	// (w10/m516): the workspace default while it is offered, else the platform catalog's first
 	// model or the profile's fixed one. Nil when the provider's own default
 	// runs (the workspace's own key and no workspace default).
 	Model *string `json:"model"`
 	// Models are the models a session of this profile may name: the platform
-	// route's catalog for the claude profile, the one fixed model of a profile
+	// route's catalog models the workspace's admins left on for the claude
+	// profile (w10/m527), the one fixed model of a profile
 	// that runs only it (muse, deepseek). Empty where any model id the
 	// workspace's own provider serves is accepted.
 	Models []string `json:"models"`

@@ -97,6 +97,9 @@ func (f *fakeEnvironments) UpsertAgentEnvironment(_ context.Context, ws string, 
 	if patch.GitHubCLIDisabled != nil {
 		row.GitHubCLIDisabled = *patch.GitHubCLIDisabled
 	}
+	if patch.DisabledModels != nil {
+		row.DisabledModels = slices.Clone(*patch.DisabledModels)
+	}
 	for _, agent := range patch.AcknowledgeDataUse {
 		if _, kept := row.DataUseAcks[agent]; kept {
 			continue
@@ -184,7 +187,7 @@ func exerciseEnvironmentRoundTrip(t *testing.T, svc *Service, ws string) {
 	if err != nil {
 		t.Fatalf("Environment: %v", err)
 	}
-	want := Environment{OwnerID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}, Models: []string{}, ModelSource: ModelSourceNone, RegistryHosts: sessionegress.DefaultRegistryDomains(),
+	want := Environment{OwnerID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}, Models: []string{}, EnabledModels: []string{}, ModelSource: ModelSourceNone, RegistryHosts: sessionegress.DefaultRegistryDomains(),
 		TemplateOffer: offerOf("agent"),
 		EnabledAgents: []string{"claude", "codex", "deepseek", "gemini"}, AgentDataUse: []AgentDataUse{{Agent: "muse"}},
 		GitHubCLIEnabled: true}

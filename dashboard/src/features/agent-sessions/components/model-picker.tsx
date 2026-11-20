@@ -37,6 +37,8 @@ export interface ModelPickerProps {
  * lets the person pick another. An agent with one fixed model shows it without
  * a choice. On the workspace's own key the offer lists nothing and the
  * control is not drawn: the workspace default (Settings → Agents) applies.
+ * The list is the capabilities read's, so a model an admin turned off
+ * (w10/m527) is never offered; a saved one still shows as the value.
  */
 export function ModelPicker({
   offer,
@@ -57,7 +59,10 @@ export function ModelPicker({
   const toolbar = variant === "toolbar";
   const label = t("agentSessions.modelLabel");
 
-  if (offer.models.length === 1) {
+  // One offered model is shown without a choice, unless what is shown is a
+  // model the agent no longer offers (turned off by an admin, w10/m527):
+  // then the one it offers must stay pickable.
+  if (offer.models.length === 1 && offer.models[0] === shown) {
     return (
       <span
         id={id}

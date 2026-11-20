@@ -1366,6 +1366,61 @@ const ruAgentEnvironment: Record<string, TranslationEntry> = {
     message: "Не удалось изменить настройку GitHub CLI. Повторите попытку.",
     description: "Error after a failed GitHub CLI switch (w10/m524)",
   },
+  "agentEnvironment.modelsTitle": {
+    message: "Модели, доступные участникам",
+    description:
+      "Settings → Agents: heading of the list of platform models members can choose (w10/m527)",
+  },
+  "agentEnvironment.modelsDescription": {
+    message:
+      "Выберите, какие модели платформы участники могут выбирать для сессий, сообщений и автоматизаций. Сессия или автоматизация, которая уже использует отключённую вами модель, со следующего хода перейдёт на модель по умолчанию.",
+    description:
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527)",
+  },
+  "agentEnvironment.modelsDefaultLocked": {
+    message:
+      "Модель платформы по умолчанию всегда остаётся включённой: на неё переключаются сессии.",
+    description:
+      "Note under the platform catalog's default model, whose switch is locked on (w10/m527)",
+  },
+  "agentEnvironment.modelsTurnedOn": {
+    message: "Модель {model} включена для участников",
+    description:
+      "Toast after an admin turns a model on for members; {model} is its id (w10/m527)",
+  },
+  "agentEnvironment.modelsTurnedOff": {
+    message: "Модель {model} отключена для участников",
+    description:
+      "Toast after an admin turns a model off for members; {model} is its id (w10/m527)",
+  },
+  "agentEnvironment.modelsInvalid": {
+    message:
+      "Не удалось обновить модели: модель платформы по умолчанию должна оставаться включённой, а в списке могут быть только модели из каталога платформы. Перезагрузите страницу, чтобы увидеть текущий каталог.",
+    description:
+      "Server refusal AGENT_ENVIRONMENT_MODELS_INVALID of a model list change (w10/m527)",
+  },
+  "agentEnvironment.modelsSaveFailed": {
+    message:
+      "Не удалось обновить модели, доступные участникам. Повторите попытку.",
+    description: "Error after a failed model switch (w10/m527)",
+  },
+  "agentEnvironment.modelOffOption": {
+    message: "{model} (отключена)",
+    description:
+      "Default model picker: the saved default, which an admin turned off (w10/m527)",
+  },
+  "agentEnvironment.modelDefaultOffNote": {
+    message:
+      "Модель {model} отключена, поэтому сессии и автоматизации без указанной модели используют модель платформы по умолчанию {fallback}, пока администратор не выберет включённую модель или снова не включит {model}.",
+    description:
+      "Note under the default model picker when the saved default is turned off; {fallback} is the platform default that runs instead (w10/m527)",
+  },
+  "agentEnvironment.modelDefaultRetiredNote": {
+    message:
+      "Модели {model} больше нет в каталоге платформы, поэтому сессии и автоматизации без указанной модели используют модель платформы по умолчанию {fallback}, пока администратор не выберет другую модель.",
+    description:
+      "Note under the default model picker when the saved default left the platform catalog; {fallback} is the platform default that runs instead (w10/m527)",
+  },
 };
 
 export default ruAgentEnvironment;

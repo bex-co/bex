@@ -605,6 +605,12 @@ const esAgentAutomations: Record<string, TranslationEntry> = {
       "El modelo que usa cada ejecución. Déjalo en el predeterminado para seguir el del espacio de trabajo.",
     description: "Automation form — model field help",
   },
+  "agentAutomations.help.modelUnoffered": {
+    message:
+      "{model} ya no se ofrece en este espacio de trabajo: un administrador lo desactivó o salió del catálogo de la plataforma. Las ejecuciones usan en su lugar el predeterminado del espacio de trabajo, {fallback}. Elige un modelo ofrecido para guardar los cambios.",
+    description:
+      "Automation form — model field note when the saved model is no longer offered (turned off by an admin or gone from the catalog); {fallback} is the workspace default its runs use (w10/m527)",
+  },
   "agentAutomations.help.template": {
     message:
       "La máquina que recibe el sandbox de cada ejecución. El predeterminado del espacio de trabajo sigue Configuración → Agentes en cada ejecución.",

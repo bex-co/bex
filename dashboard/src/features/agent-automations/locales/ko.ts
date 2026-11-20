@@ -600,6 +600,12 @@ const koAgentAutomations: Record<string, TranslationEntry> = {
       "각 실행에서 사용할 모델입니다. 기본값으로 두면 워크스페이스 설정을 따릅니다.",
     description: "Automation form — model field help",
   },
+  "agentAutomations.help.modelUnoffered": {
+    message:
+      "{model} 모델은 이 워크스페이스에서 더 이상 제공되지 않습니다. 관리자가 껐거나 플랫폼 카탈로그에서 빠졌습니다. 실행에는 대신 워크스페이스 기본 모델인 {fallback} 모델이 사용됩니다. 변경 사항을 저장하려면 제공되는 모델을 선택하세요.",
+    description:
+      "Automation form — model field note when the saved model is no longer offered (turned off by an admin or gone from the catalog); {fallback} is the workspace default its runs use (w10/m527)",
+  },
   "agentAutomations.help.template": {
     message:
       "각 실행의 샌드박스가 받는 머신입니다. 워크스페이스 기본값은 실행할 때마다 설정 → 에이전트를 따릅니다.",

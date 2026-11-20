@@ -1370,6 +1370,61 @@ const deAgentEnvironment: Record<string, TranslationEntry> = {
       "Die GitHub-CLI-Einstellung konnte nicht geändert werden. Versuche es erneut.",
     description: "Error after a failed GitHub CLI switch (w10/m524)",
   },
+  "agentEnvironment.modelsTitle": {
+    message: "Modelle, die Mitglieder wählen können",
+    description:
+      "Settings → Agents: heading of the list of platform models members can choose (w10/m527)",
+  },
+  "agentEnvironment.modelsDescription": {
+    message:
+      "Wähle, welche Plattformmodelle Mitglieder für Sitzungen, Nachrichten und Automationen nutzen können. Eine Sitzung oder Automation, die schon ein Modell nutzt, das du ausschaltest, läuft ab ihrem nächsten Durchgang mit dem Standardmodell.",
+    description:
+      "Settings → Agents: description of the model list — what turning a model off does (w10/m527)",
+  },
+  "agentEnvironment.modelsDefaultLocked": {
+    message:
+      "Das Standardmodell der Plattform bleibt immer eingeschaltet, weil Sitzungen darauf zurückfallen.",
+    description:
+      "Note under the platform catalog's default model, whose switch is locked on (w10/m527)",
+  },
+  "agentEnvironment.modelsTurnedOn": {
+    message: "{model} für Mitglieder eingeschaltet",
+    description:
+      "Toast after an admin turns a model on for members; {model} is its id (w10/m527)",
+  },
+  "agentEnvironment.modelsTurnedOff": {
+    message: "{model} für Mitglieder ausgeschaltet",
+    description:
+      "Toast after an admin turns a model off for members; {model} is its id (w10/m527)",
+  },
+  "agentEnvironment.modelsInvalid": {
+    message:
+      "Die Modelle konnten nicht aktualisiert werden: Das Standardmodell der Plattform muss eingeschaltet bleiben, und die Liste darf nur Modelle des Plattformkatalogs enthalten. Lade die Seite neu, um den aktuellen Katalog zu sehen.",
+    description:
+      "Server refusal AGENT_ENVIRONMENT_MODELS_INVALID of a model list change (w10/m527)",
+  },
+  "agentEnvironment.modelsSaveFailed": {
+    message:
+      "Die Modelle, die Mitglieder wählen können, konnten nicht aktualisiert werden. Versuche es erneut.",
+    description: "Error after a failed model switch (w10/m527)",
+  },
+  "agentEnvironment.modelOffOption": {
+    message: "{model} (ausgeschaltet)",
+    description:
+      "Default model picker: the saved default, which an admin turned off (w10/m527)",
+  },
+  "agentEnvironment.modelDefaultOffNote": {
+    message:
+      "{model} ist ausgeschaltet, daher nutzen Sitzungen und Automationen ohne eigenes Modell den Plattform-Standard {fallback}, bis ein Admin ein eingeschaltetes Modell wählt oder {model} wieder einschaltet.",
+    description:
+      "Note under the default model picker when the saved default is turned off; {fallback} is the platform default that runs instead (w10/m527)",
+  },
+  "agentEnvironment.modelDefaultRetiredNote": {
+    message:
+      "{model} ist nicht mehr im Plattformkatalog, daher nutzen Sitzungen und Automationen ohne eigenes Modell den Plattform-Standard {fallback}, bis ein Admin ein anderes Modell wählt.",
+    description:
+      "Note under the default model picker when the saved default left the platform catalog; {fallback} is the platform default that runs instead (w10/m527)",
+  },
 };
 
 export default deAgentEnvironment;

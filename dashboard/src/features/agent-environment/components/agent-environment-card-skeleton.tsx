@@ -23,6 +23,18 @@ import {
 export const TIER_OPTION_CLASS =
   "flex min-h-20 w-full flex-col gap-1 rounded-lg border p-4";
 
+/**
+ * A model id's label in the model list (w10/m527), shared by the ready card
+ * and this skeleton: monospace, breaking anywhere on a narrow screen, one
+ * line as tall as the switch beside it.
+ */
+export const MODEL_LABEL_CLASS = "font-mono leading-5 break-all";
+
+// The skeleton's model list: a representative row count (the platform
+// catalog's size at w10/m527) and a hidden id as long as its longest model.
+const MODEL_ROWS = 4;
+const MODEL_ID_PLACEHOLDER = "provider/model-name-version-00000";
+
 /** A section's heading and description (network, model provider, spend). */
 export function AgentSectionHeading({
   title,
@@ -70,6 +82,70 @@ export function ModelSourceLine({ children, ...props }: ComponentProps<"p">) {
   );
 }
 
+/** A list of switch rows (available agents, models). */
+export function SwitchList({ children }: { children: ReactNode }) {
+  return <ul className="max-w-xl space-y-3">{children}</ul>;
+}
+
+/**
+ * One switch row's frame, shared by the ready sections and this skeleton:
+ * the label with an optional note under it, and the control (the switch, or
+ * its placeholder) beside them.
+ */
+export function SwitchListRow({
+  label,
+  note,
+  noteId,
+  control,
+}: {
+  label: ReactNode;
+  note?: ReactNode;
+  noteId?: string;
+  control: ReactNode;
+}) {
+  return (
+    <li className="flex items-start justify-between gap-4">
+      <div className="min-w-0 space-y-0.5">
+        {label}
+        {note ? (
+          <p id={noteId} className="text-muted-foreground text-xs">
+            {note}
+          </p>
+        ) : null}
+      </div>
+      {control}
+    </li>
+  );
+}
+
+/** A switch's box (h-5 w-9) while its value loads. */
+function SwitchPlaceholder() {
+  return <Skeleton className="h-5 w-9 shrink-0 rounded-full" />;
+}
+
+/**
+ * The skeleton's switch rows: each label and note as given, a switch
+ * placeholder beside them.
+ */
+function SkeletonSwitchList({
+  rows,
+}: {
+  rows: { key: string; label: ReactNode; note?: ReactNode }[];
+}) {
+  return (
+    <SwitchList>
+      {rows.map(({ key, label, note }) => (
+        <SwitchListRow
+          key={key}
+          label={label}
+          note={note}
+          control={<SwitchPlaceholder />}
+        />
+      ))}
+    </SwitchList>
+  );
+}
+
 /**
  * An inline placeholder for a data-dependent line: the text is transparent
  * and hidden from assistive tech, so it holds exactly the lines the value can
@@ -88,9 +164,15 @@ function SkeletonText({ children }: { children: ReactNode }) {
 }
 
 /** A static label in a label's typography, with no control to point at. */
-function StaticLabel({ children }: { children: ReactNode }) {
+function StaticLabel({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <Label asChild>
+    <Label asChild className={className}>
       <span>{children}</span>
     </Label>
   );
@@ -110,9 +192,10 @@ const longest = (...texts: string[]) =>
  * button labels — renders as real text through the same pieces the ready card
  * uses, so it wraps identically. Only data-dependent values are skeletons, and
  * a value that can wrap holds its longest variant's line count. The Custom
- * hostname list and Remove key are data-dependent and omitted; every action is
- * disabled until the data arrives. `readOnly` is a caller known not to manage
- * the workspace, whose card opens with the Admin-only note (w7/094).
+ * hostname list and Remove key are data-dependent and omitted, and the model
+ * list holds a representative count of rows; every action is disabled until
+ * the data arrives. `readOnly` is a caller known not to manage the workspace,
+ * whose card opens with the Admin-only note (w7/094).
  */
 export function AgentEnvironmentCardSkeleton({
   readOnly = false,
@@ -168,7 +251,7 @@ export function AgentEnvironmentCardSkeleton({
                 {t("agentEnvironment.githubCliHelp")}
               </p>
             </div>
-            <Skeleton className="h-5 w-9 shrink-0 rounded-full" />
+            <SwitchPlaceholder />
           </div>
         </div>
         <div className="space-y-2 border-t pt-6">
@@ -184,6 +267,32 @@ export function AgentEnvironmentCardSkeleton({
               )}
             </SkeletonText>
           </p>
+        </div>
+        {/* The models members can choose (w10/m527). The ready card draws
+            them on the platform catalog only, the case the default-model
+            help above holds: representative rows, the first the catalog's
+            locked default with its static note. */}
+        <div
+          className="space-y-3 border-t pt-6"
+          data-testid="enabled-models-section-skeleton"
+        >
+          <AgentSectionHeading
+            title={t("agentEnvironment.modelsTitle")}
+            description={t("agentEnvironment.modelsDescription")}
+          />
+          <SkeletonSwitchList
+            rows={Array.from({ length: MODEL_ROWS }, (_, i) => ({
+              key: String(i),
+              label: (
+                <StaticLabel className={MODEL_LABEL_CLASS}>
+                  <span>
+                    <SkeletonText>{MODEL_ID_PLACEHOLDER}</SkeletonText>
+                  </span>
+                </StaticLabel>
+              ),
+              note: i === 0 ? t("agentEnvironment.modelsDefaultLocked") : null,
+            }))}
+          />
         </div>
         {/* The default sandbox template (w10/m519). */}
         <div
@@ -330,26 +439,19 @@ export function AgentEnvironmentCardSkeleton({
             title={t("agentEnvironment.agentsTitle")}
             description={t("agentEnvironment.agentsDescription")}
           />
-          <ul className="max-w-xl space-y-3">
-            {AGENT_OPTIONS.map((agent) => (
-              <li
-                key={agent}
-                className="flex items-start justify-between gap-4"
-              >
-                <div className="min-w-0 space-y-0.5">
-                  <StaticLabel>{t(`agentSessions.agent.${agent}`)}</StaticLabel>
-                  {DATA_USE_AGENTS.has(agent) ? (
-                    <p className="text-muted-foreground text-xs">
-                      <SkeletonText>
-                        {t("agentEnvironment.agentsDataUseNote")}
-                      </SkeletonText>
-                    </p>
-                  ) : null}
-                </div>
-                <Skeleton className="h-5 w-9 shrink-0 rounded-full" />
-              </li>
-            ))}
-          </ul>
+          <SkeletonSwitchList
+            rows={AGENT_OPTIONS.map((agent) => ({
+              key: agent,
+              label: (
+                <StaticLabel>{t(`agentSessions.agent.${agent}`)}</StaticLabel>
+              ),
+              note: DATA_USE_AGENTS.has(agent) ? (
+                <SkeletonText>
+                  {t("agentEnvironment.agentsDataUseNote")}
+                </SkeletonText>
+              ) : null,
+            }))}
+          />
         </div>
       </CardContent>
       <CardFooter className="justify-end border-t">

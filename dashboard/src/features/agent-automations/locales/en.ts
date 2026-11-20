@@ -603,6 +603,12 @@ const enAgentAutomations: Record<string, TranslationEntry> = {
       "The model each run uses. Leave it at the default to follow the workspace's.",
     description: "Automation form — model field help",
   },
+  "agentAutomations.help.modelUnoffered": {
+    message:
+      "{model} is no longer offered in this workspace: an admin turned it off, or it left the platform catalog. Runs use the workspace default, {fallback}, instead. Pick an offered model to save changes.",
+    description:
+      "Automation form — model field note when the saved model is no longer offered (turned off by an admin or gone from the catalog); {fallback} is the workspace default its runs use (w10/m527)",
+  },
   "agentAutomations.help.template": {
     message:
       "The machine each run's sandbox gets. The workspace default follows Settings → Agents at each run.",

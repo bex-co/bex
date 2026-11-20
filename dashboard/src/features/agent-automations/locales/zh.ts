@@ -590,6 +590,12 @@ const zhAgentAutomations: Record<string, TranslationEntry> = {
     message: "每次运行使用的模型。保持默认即跟随工作区设置。",
     description: "Automation form — model field help",
   },
+  "agentAutomations.help.modelUnoffered": {
+    message:
+      "{model} 在此工作区已不再提供：管理员已将其关闭，或它已移出平台目录。运行将改用工作区默认模型 {fallback}。请选择一个可用的模型后再保存更改。",
+    description:
+      "Automation form — model field note when the saved model is no longer offered (turned off by an admin or gone from the catalog); {fallback} is the workspace default its runs use (w10/m527)",
+  },
   "agentAutomations.help.template": {
     message:
       "每次运行的沙箱所用的机器。工作区默认值在每次运行时跟随“设置 → 智能体”。",
