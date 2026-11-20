@@ -96,18 +96,19 @@ func TestLokiQueryFor(t *testing.T) {
 		},
 		{
 			// w8/031: the pinned CLI only sends Render's names; the shipper
-			// stores warning (warn before w8/031), info for notice, and error
-			// for critical/alert/emergency. An exact match found nothing.
+			// stores warning (warn before w8/031). An exact match found nothing.
 			name: "Render level names match the stored buckets",
 			ns:   "default",
 			q:    LogQuery{App: "web", Types: []string{LogTypeApp}, Level: []string{"warning"}},
 			want: `{namespace="default", app="web", container="app", level=~"^(warning|warn)$"}`,
 		},
 		{
-			name: "notice and critical",
+			// w3/086: an App line stores Render's eight levels, so each
+			// selects its own lines; `fatal` is stored as `error`.
+			name: "notice and critical select their own App lines",
 			ns:   "default",
-			q:    LogQuery{App: "web", Types: []string{LogTypeApp}, Level: []string{"notice", "critical", "emergency"}},
-			want: `{namespace="default", app="web", container="app", level=~"^(info|notice|error|critical|emergency)$"}`,
+			q:    LogQuery{App: "web", Types: []string{LogTypeApp}, Level: []string{"notice", "CRITICAL", "emergency", "fatal"}},
+			want: `{namespace="default", app="web", container="app", level=~"^(notice|critical|emergency|error|fatal)$"}`,
 		},
 		{
 			// path/host are NEVER labels (unbounded — the cardinality budget): they

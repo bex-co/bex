@@ -96,8 +96,10 @@ const LEVEL_ROW_CLASS: Partial<Record<LineLevel, string>> = {
   warning: "bg-amber-500/10 shadow-[inset_2px_0_0_var(--color-amber-500)]",
 };
 
-// The level gutter's mark (w3/m509): Render's icon per level, its info mark
-// shown only while the row is hovered or under the keyboard's cursor.
+// The level gutter's mark (w3/m509): Render's icon per level. As on Render's
+// log (its LogLevel marks, w3/086), the debug, info and notice marks show only
+// while the row is hovered or under the keyboard's cursor, and `notice` is the
+// info mark in debug's grey.
 const LEVEL_ICONS: Record<LineLevel, LucideIcon> = {
   debug: Bug,
   info: Info,
@@ -105,10 +107,12 @@ const LEVEL_ICONS: Record<LineLevel, LucideIcon> = {
   warning: TriangleAlert,
   error: CircleX,
 };
+const HOVER_ONLY_MARK =
+  "text-muted-foreground opacity-0 group-hover/row:opacity-100 group-data-active/row:opacity-100";
 const LEVEL_ICON_CLASS: Record<LineLevel, string> = {
-  debug: "text-muted-foreground",
-  info: "text-muted-foreground opacity-0 group-hover/row:opacity-100 group-data-active/row:opacity-100",
-  notice: "text-blue-700 dark:text-blue-400",
+  debug: HOVER_ONLY_MARK,
+  info: HOVER_ONLY_MARK,
+  notice: HOVER_ONLY_MARK,
   warning: "text-amber-800 dark:text-amber-400",
   error: "text-red-700 dark:text-red-400",
 };

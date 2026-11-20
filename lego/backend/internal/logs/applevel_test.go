@@ -34,7 +34,13 @@ var appLevelCorpus = []struct{ line, want string }{
 	{`{"level":"error","msg":"boom"}`, "error"},
 	{`{"level":"ERROR"}`, "error"},
 	{`  {"level":"warn"}`, "warning"},
-	{`{"level":"notice"}`, "info"},
+	{`{"level":"notice"}`, "notice"},
+	{`{"level":"NOTICE"}`, "notice"},
+	{`{"level":"critical"}`, "critical"},
+	{`{"severity":"ALERT"}`, "alert"},
+	{`{"level":"emergency"}`, "emergency"},
+	{`{"level":"fatal"}`, "error"},
+	{`level=emerg msg=down`, "emergency"},
 	{`{"level":"trace"}`, "debug"},
 	{`{"level":30,"msg":"pino info"}`, "info"},
 	{`{"level":50}`, "error"},
@@ -57,7 +63,7 @@ var appLevelCorpus = []struct{ line, want string }{
 	{`{not json level=error`, "unknown"},
 	{`time=2026-07-05T00:00:01Z level=WARN msg="disk low"`, "warning"},
 	{`level=error msg=boom`, "error"},
-	{`severity=crit`, "error"},
+	{`severity=crit`, "critical"},
 	{`level="info" msg=quoted`, "info"},
 	{`level="error"`, "error"},
 	{`level= msg=empty`, ""},
@@ -203,6 +209,40 @@ func TestAppLineLevelMatchesShipper(t *testing.T) {
 		if got, want := appLineLevel(tc.line), alloyLevel(tmpl, fields, tc.line); got != want {
 			t.Errorf("line %q (fields %v): appLineLevel = %q, the shipper's template gives %q", tc.line, fields, got, want)
 		}
+	}
+
+	// The whole vocabulary, in any case: every severity the Go copy knows
+	// stores the same level through the shipper's template, and the template
+	// knows no other (a word missing from the map would read `unknown` here).
+	for word, level := range shipperLevelBuckets {
+		for _, spelling := range []string{word, strings.ToUpper(word)} {
+			if got := alloyLevel(tmpl, map[string]string{"level": spelling}, ""); got != level {
+				t.Errorf("level %q: the shipper's template stores %q, shipperLevelBuckets %q", spelling, got, level)
+			}
+		}
+	}
+	for _, word := range []string{"verbose", "information", "70", "fatal1"} {
+		if got := alloyLevel(tmpl, map[string]string{"level": word}, ""); got != unknownLevel {
+			t.Errorf("level %q: the shipper's template stores %q, want %q", word, got, unknownLevel)
+		}
+	}
+}
+
+// TestShipperStoresEachRenderLevel pins the stored vocabulary to Render's
+// (render.com/docs/logging; its `level` label values, w3/086): each of the
+// eight levels stores under its own name, never folded into another, so a
+// `notice` line reads `notice` and a `critical` line `critical`. With
+// `unknown`, the level label's cardinality budget is nine values.
+func TestShipperStoresEachRenderLevel(t *testing.T) {
+	render := []string{"debug", "info", "notice", "warning", "error", "critical", "alert", "emergency"}
+	for _, level := range render {
+		if got := shipperLevelBuckets[level]; got != level {
+			t.Errorf("a %q line stores %q, want %q", level, got, level)
+		}
+	}
+	stored := slices.Sorted(maps.Values(shipperLevelBuckets))
+	if got := slices.Compact(stored); !slices.Equal(got, slices.Sorted(slices.Values(render))) {
+		t.Errorf("stored levels = %v, want exactly Render's eight %v", got, render)
 	}
 }
 

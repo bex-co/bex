@@ -29,7 +29,7 @@
 # CARDINALITY BUDGET (docs/ADR010-observability.md § Log labels) — a label is a
 # Loki stream, so only BOUNDED fields become labels:
 #   labels:    namespace, app or database or service (platform), type, pod,
-#              container, level (≤5), method (≤8), status (≤~15)
+#              container, level (≤9), method (≤8), status (≤~15)
 #   line-only: path, host  — unbounded per request; filtered at query time with
 #              LogQL's `| json` over the access line, never promoted to a label.
 #              Platform request retention keys off RequestHost in a stage, then
@@ -388,17 +388,20 @@ spec:
                   }
                 }
 
-                // Normalize the vocabulary to Render's five buckets, including
-                // pino's and bunyan's identical numeric scale (10 trace, 20 debug,
-                // 30 info, 40 warn, 50 error, 60 fatal; w8/195). Anything not
+                // Normalize the vocabulary to Render's eight levels, the syslog
+                // severities (debug, info, notice, warning, error, critical,
+                // alert, emergency; w3/086), and their short spellings (`crit`,
+                // `emerg`, `err`, `warn`), including pino's and bunyan's identical
+                // numeric scale (10 trace, 20 debug, 30 info, 40 warn, 50 error,
+                // 60 fatal; w8/195). `fatal` and `panic` stay `error`. Anything not
                 // recognized collapses to `unknown` rather than minting an unbounded
                 // label value per typo — the cardinality budget above holds because
-                // this template can only ever emit those 5 values.
+                // this template can only ever emit those 9 values.
                 stage.template {
                   source   = "level"
                   // Escaped for Helm's tpl pass — see the HELM TPL ESCAPING
                   // note at the top of this file for why.
-                  template = "{{ "{{" }} $l := ToLower (or .Value .severity) {{ "}}" }}{{ "{{" }} if or (eq $l \"error\") (eq $l \"err\") (eq $l \"fatal\") (eq $l \"panic\") (eq $l \"critical\") (eq $l \"crit\") (eq $l \"alert\") (eq $l \"emergency\") (eq $l \"50\") (eq $l \"60\") {{ "}}" }}error{{ "{{" }} else if or (eq $l \"warn\") (eq $l \"warning\") (eq $l \"40\") {{ "}}" }}warning{{ "{{" }} else if or (eq $l \"info\") (eq $l \"notice\") (eq $l \"30\") {{ "}}" }}info{{ "{{" }} else if or (eq $l \"debug\") (eq $l \"trace\") (eq $l \"10\") (eq $l \"20\") {{ "}}" }}debug{{ "{{" }} else {{ "}}" }}unknown{{ "{{" }} end {{ "}}" }}"
+                  template = "{{ "{{" }} $l := ToLower (or .Value .severity) {{ "}}" }}{{ "{{" }} if or (eq $l \"emergency\") (eq $l \"emerg\") {{ "}}" }}emergency{{ "{{" }} else if eq $l \"alert\" {{ "}}" }}alert{{ "{{" }} else if or (eq $l \"critical\") (eq $l \"crit\") {{ "}}" }}critical{{ "{{" }} else if or (eq $l \"error\") (eq $l \"err\") (eq $l \"fatal\") (eq $l \"panic\") (eq $l \"50\") (eq $l \"60\") {{ "}}" }}error{{ "{{" }} else if or (eq $l \"warn\") (eq $l \"warning\") (eq $l \"40\") {{ "}}" }}warning{{ "{{" }} else if eq $l \"notice\" {{ "}}" }}notice{{ "{{" }} else if or (eq $l \"info\") (eq $l \"30\") {{ "}}" }}info{{ "{{" }} else if or (eq $l \"debug\") (eq $l \"trace\") (eq $l \"10\") (eq $l \"20\") {{ "}}" }}debug{{ "{{" }} else {{ "}}" }}unknown{{ "{{" }} end {{ "}}" }}"
                 }
 
                 // The `unknown` bucket, and Render's type vocabulary (app | request

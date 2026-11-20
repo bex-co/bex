@@ -41,13 +41,16 @@ var (
 )
 
 // shipperLevelBuckets is the shipper's stage.template vocabulary: a lowercased
-// severity (pino's and bunyan's numbers included) and the bucket it stores.
-// Anything else is `unknown`.
+// severity (pino's and bunyan's numbers included) and the level it stores, one
+// of Render's eight (w3/086). Anything else is `unknown`.
 var shipperLevelBuckets = map[string]string{
-	"error": "error", "err": "error", "fatal": "error", "panic": "error", "critical": "error",
-	"crit": "error", "alert": "error", "emergency": "error", "50": "error", "60": "error",
+	"emergency": "emergency", "emerg": "emergency",
+	"alert":    "alert",
+	"critical": "critical", "crit": "critical",
+	"error": "error", "err": "error", "fatal": "error", "panic": "error", "50": "error", "60": "error",
 	"warn": "warning", "warning": "warning", "40": "warning",
-	"info": "info", "notice": "info", "30": "info",
+	"notice": "notice",
+	"info":   "info", "30": "info",
 	"debug": "debug", "trace": "debug", "10": "debug", "20": "debug",
 }
 

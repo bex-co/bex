@@ -44,7 +44,7 @@ import (
 // filters are arrays). Embedded so the two tools can never drift apart.
 type logFilters struct {
 	Resource   []string `json:"resource" jsonschema:"service, managed Postgres (dpg-), or Key Value (red-) ids to read logs for; all must belong to the same owner"`
-	Level      []string `json:"level,omitempty" jsonschema:"filter logs by severity level (debug|info|warn|error|unknown); * wildcards and /regex/ supported"`
+	Level      []string `json:"level,omitempty" jsonschema:"filter logs by severity level (debug|info|notice|warning|error|critical|alert|emergency, or unknown for a line with no structured severity); * wildcards and /regex/ supported"`
 	Type       []string `json:"type,omitempty" jsonschema:"filter logs by type: app (the service's own output) | request (edge access logs) | build (build output)"`
 	Instance   []string `json:"instance,omitempty" jsonschema:"filter logs by the instance (replica) they were emitted from; applies to app logs"`
 	Host       []string `json:"host,omitempty" jsonschema:"filter request logs by their host; * wildcards and /regex/ supported"`

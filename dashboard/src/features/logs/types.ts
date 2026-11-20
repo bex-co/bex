@@ -211,8 +211,22 @@ export function hasActiveLogFilters(f: LogFilters): boolean {
   );
 }
 
-/** The shipper's level buckets: the values a log line's `level` label takes
- *  (app severities, a Postgres record's, a Valkey line's marker). */
+/** Render's eight levels (render.com/docs/logging), in its order: the values
+ *  an App or request line's `level` label takes (w3/086), and the service
+ *  Logs tab's Level choices. */
+export const APP_LOG_LEVELS = [
+  "debug",
+  "info",
+  "notice",
+  "warning",
+  "error",
+  "critical",
+  "alert",
+  "emergency",
+] as const;
+
+/** The datastore pipelines' level buckets: the values a Postgres record's or
+ *  a Valkey line's `level` label takes. */
 export const LOG_LEVELS = ["debug", "info", "warning", "error"] as const;
 
 /** The request methods a method filter offers before discovery answers (the

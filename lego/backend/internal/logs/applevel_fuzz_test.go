@@ -59,14 +59,14 @@ func appLevelFuzzSeeds(f *testing.F) {
 // container writes reaches this parser on the subscribe path, and the scanner
 // is hand-rolled over raw bytes (JSON prefix detection, logfmt tokenizing,
 // quoted-value unquoting), so it must never panic or loop. Its result must stay
-// inside the shipper's fixed bucket vocabulary: the six levels plus the empty
-// "no level label" answer. A value outside that set would be stored as a label
-// no history query or dashboard filter can ever select.
+// inside the shipper's fixed vocabulary: Render's eight levels, `unknown`, and
+// the empty "no level label" answer. A value outside that set would be stored
+// as a label no history query or dashboard filter can ever select.
 func FuzzAppLineLevel(f *testing.F) {
 	appLevelFuzzSeeds(f)
 	f.Fuzz(func(t *testing.T, line string) {
 		switch level := appLineLevel(line); level {
-		case "", unknownLevel, "error", "warning", "info", "debug":
+		case "", unknownLevel, "debug", "info", "notice", "warning", "error", "critical", "alert", "emergency":
 		default:
 			t.Fatalf("appLineLevel(%q) = %q, outside the shipper's bucket vocabulary", line, level)
 		}

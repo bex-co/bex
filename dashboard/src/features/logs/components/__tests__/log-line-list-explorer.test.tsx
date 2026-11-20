@@ -92,6 +92,26 @@ describe("LogLineList level gutter (w3/m509)", () => {
     expect(rowOf("started").className).not.toContain("bg-destructive/10");
   });
 
+  // Render's LogLevel marks (w3/086): debug and notice hide until hover as
+  // info does, and notice is the info mark in debug's grey.
+  it("shows debug and notice marks only on hover, in the muted colour", () => {
+    render(
+      <LogLineList
+        lines={[
+          line({ key: "d", level: "debug", message: "probe" }),
+          line({ key: "n", level: "notice", message: "heads up" }),
+        ]}
+      />,
+    );
+    for (const level of ["debug", "notice"]) {
+      const mark = screen.getByRole("img", { name: `Level: ${level}` });
+      expect(mark.className).toContain("opacity-0");
+      expect(mark.className).toContain("group-hover/row:opacity-100");
+      expect(mark.className).toContain("text-muted-foreground");
+    }
+    expect(rowOf("heads up").className).not.toContain("bg-destructive/10");
+  });
+
   it("keeps the gutter's column for a line with no level", () => {
     const { container } = render(
       <LogLineList lines={[line({ key: "n", message: "plain" })]} />,

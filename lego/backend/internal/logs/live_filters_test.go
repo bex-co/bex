@@ -93,6 +93,8 @@ var liveFilterLines = map[string][]string{webInst: {
 	`2026-07-05T00:00:04Z {"level":50,"msg":"pino boom"}`,
 	`2026-07-05T00:00:05Z plain words: error here`,
 	`2026-07-05T00:00:06Z level=warn msg=careful`,
+	`2026-07-05T00:00:07Z level=crit msg="disk failing"`,
+	`2026-07-05T00:00:08Z {"level":"notice","msg":"heads up"}`,
 }}
 
 // requestStore is a log store holding request lines, each labelled with its
@@ -121,7 +123,7 @@ func (s *requestStore) history(_ context.Context, _ string, q LogQuery) ([]LogEn
 		}
 		fields := strings.Fields(e.Message)
 		level := statusLevel(fields[len(fields)-1])
-		if len(q.Level) > 0 && !slices.Contains(storedLevels(q.Level), level) {
+		if len(q.Level) > 0 && !slices.Contains(q.storedLevels(), level) {
 			continue
 		}
 		out = append(out, LogEntry{Timestamp: e.Timestamp, Message: e.Message, Labels: map[string]string{LabelType: LogTypeRequest, LabelLevel: level}})
@@ -196,7 +198,10 @@ func TestAppTailFiltersAppLinesByTheShipperLevel(t *testing.T) {
 		{"error", LogQuery{App: "web", Level: []string{"error"}}, append([]string{"GET /other 500", "POST /mk-1 500"}, appErrors...), true},
 		{"type=app warning", LogQuery{App: "web", Types: []string{LogTypeApp}, Level: []string{"warning"}}, []string{`level=warn msg=careful`}, false},
 		{"type=request warning", LogQuery{App: "web", Types: []string{LogTypeRequest}, Level: []string{"warning"}}, []string{"GET /mk-1 404"}, true},
-		{"critical is the error bucket", LogQuery{App: "web", Level: []string{"critical"}}, append([]string{"GET /other 500", "POST /mk-1 500"}, appErrors...), true},
+		// Render's eight levels select their own lines (w3/086): a 5xx
+		// request line and an app error line are `error`, not `critical`.
+		{"critical", LogQuery{App: "web", Level: []string{"critical"}}, []string{`level=crit msg="disk failing"`}, true},
+		{"notice", LogQuery{App: "web", Level: []string{"NOTICE"}}, []string{`{"level":"notice","msg":"heads up"}`}, true},
 		{"unknown is the unstructured line", LogQuery{App: "web", Level: []string{"unknown"}}, []string{`plain words: error here`}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

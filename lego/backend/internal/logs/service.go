@@ -1278,13 +1278,13 @@ func (q LogQuery) datastoreFilters(resource string) error {
 // its pod reads apply — a datastore's reads and an App's tail (the store
 // applies it as a label matcher instead). App, Postgres and Key Value lines
 // carry the shipper's level vocabulary (an App tail line through
-// appLineLevel), so storedLevels maps Render's names the same way for all.
+// appLineLevel), so storedLevels maps Render's names as the store's matcher does.
 // keep inverts it for a negated level, so a line with no level passes one.
 func (q *LogQuery) compileLevelFilter() error {
 	if len(q.Level) == 0 {
 		return nil
 	}
-	filter, err := regexp.Compile(labelValuePattern(storedLevels(q.Level)))
+	filter, err := regexp.Compile(labelValuePattern(q.storedLevels()))
 	if err != nil {
 		return fmt.Errorf("%w: invalid level filter: %v", core.ErrBadRequest, err)
 	}

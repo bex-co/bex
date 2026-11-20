@@ -296,8 +296,8 @@ class AppLogLevelsTest(unittest.TestCase):
             '{"level":"error","msg":"truncated json"': "unknown",
             '  {"msg":"indented json without a severity"}': "unknown",
             'ts=2026-09-28T06:09:24Z level=warn msg="spaced \\"escaped\\" quotes"': "warning",
-            '{"level":"alert","message":"json alert"}': "error",
-            '{"severity":"EMERGENCY","message":"json severity emergency"}': "error",
+            '{"level":"alert","message":"json alert"}': "alert",
+            '{"severity":"EMERGENCY","message":"json severity emergency"}': "emergency",
             # pino (Fastify, nestjs-pino) and bunyan: numeric JSON levels (w8/195).
             '{"level":10,"msg":"pino trace"}': "debug",
             '{"level":20,"msg":"pino debug"}': "debug",
@@ -310,15 +310,17 @@ class AppLogLevelsTest(unittest.TestCase):
             '{"level":0,"msg":"zero is no level"}': "unknown",
             '{"level":70,"msg":"above the scale"}': "unknown",
         }
-        # Render's level names (w8/031): warnings ship as `warning`, the value
-        # the pinned CLI's --level sends.
+        # Render's eight level names, each stored as itself (w3/086), the
+        # values the pinned CLI's --level sends: warnings ship as `warning`
+        # (w8/031); `fatal` and `panic` stay `error`.
         for value, expected in {
             "err": "error", "fatal": "error", "panic": "error",
-            "critical": "error", "crit": "error", "warn": "warning",
-            "WARNING": "warning", "info": "info", "notice": "info",
+            "critical": "critical", "crit": "critical", "warn": "warning",
+            "WARNING": "warning", "info": "info", "notice": "notice", "NOTICE": "notice",
             "DEBUG": "debug", "trace": "debug",
             # The pinned CLI's --level alert/emergency (w8/097).
-            "alert": "error", "emergency": "error", "ALERT": "error", "EMERGENCY": "error",
+            "alert": "alert", "emergency": "emergency", "ALERT": "alert", "EMERGENCY": "emergency",
+            "emerg": "emergency",
             # pino and bunyan write the level as a number (w8/195).
             "10": "debug", "20": "debug", "30": "info", "40": "warning",
             "50": "error", "60": "error",
@@ -334,7 +336,8 @@ class AppLogLevelsTest(unittest.TestCase):
             with self.subTest(line=line):
                 self.assertEqual(actual[line].get("level"), expected)
         self.assertEqual({labels.get("level") for labels in actual.values()},
-                         {"error", "warning", "info", "debug", "unknown"})
+                         {"debug", "info", "notice", "warning", "error", "critical",
+                          "alert", "emergency", "unknown"})
         # Every supported format parses without a stage diagnostic: expected
         # mismatches must not bury genuine ingestion errors.
         diagnostics = [line for line in output.splitlines()

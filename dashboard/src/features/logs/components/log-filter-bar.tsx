@@ -47,11 +47,11 @@ import {
 } from "../hooks/use-log-label-values";
 import { useLogRetentionBound } from "../hooks/use-log-retention";
 import {
+  APP_LOG_LEVELS,
   LOG_LABEL_INSTANCE,
   LOG_LABEL_LEVEL,
   LOG_LABEL_METHOD,
   LOG_LABEL_STATUS_CODE,
-  LOG_LEVELS,
   LOG_TYPE_ALL,
   LOG_TYPE_APP,
   LOG_TYPE_FILTERS,
@@ -173,7 +173,7 @@ export function LogFilterBar({
   // Discover real observed values for each dropdown; degrades to [] without the
   // store, where the static fallbacks carry the UI.
   const levels = mergeOptions(
-    LOG_LEVELS,
+    APP_LOG_LEVELS,
     useLogLabelDiscovery(resource, LOG_LABEL_LEVEL),
   );
   const methods = mergeOptions(

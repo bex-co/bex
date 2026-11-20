@@ -172,6 +172,35 @@ describe("LogFilterBar (w5/008, simplified w7/m42)", () => {
     expect(onChange).toHaveBeenCalledWith({ level: "error" });
   });
 
+  // w3/086: an App line stores Render's eight levels, so the Level choices
+  // are Render's eight, in its order, with a discovered `unknown` after them.
+  it("offers Render's eight levels, then the discovered ones", async () => {
+    const user = userEvent.setup();
+    discoveryResolved = true;
+    discovered.mockImplementation((label: string) =>
+      label === "level" ? ["info", "unknown", "notice"] : [],
+    );
+    const { onChange } = renderBar();
+    await user.click(screen.getByRole("button", { name: "Filters" }));
+    await user.click(screen.getByLabelText("Level"));
+    const options = screen
+      .getAllByRole("option")
+      .map((option) => option.textContent);
+    expect(options.slice(options.indexOf("debug"))).toEqual([
+      "debug",
+      "info",
+      "notice",
+      "warning",
+      "error",
+      "critical",
+      "alert",
+      "emergency",
+      "unknown",
+    ]);
+    await user.click(screen.getByRole("option", { name: "notice" }));
+    expect(onChange).toHaveBeenCalledWith({ level: "notice" });
+  });
+
   it("shows an active-filter count badge on the Filters trigger", () => {
     renderBar({ filters: { level: "error", path: "/api" } });
     const trigger = screen.getByRole("button", { name: /Filters/ });

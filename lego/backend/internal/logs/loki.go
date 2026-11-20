@@ -503,7 +503,7 @@ func lokiSelectorFor(namespace string, q LogQuery) string {
 			matchers = append(matchers, m)
 		}
 	}
-	add(LabelLevel, storedLevels(q.Level))
+	add(LabelLevel, q.storedLevels())
 	add(LabelInstance, q.Instance)
 	if m := excludeJobsMatcher(q.excludeJobs); m != "" {
 		matchers = append(matchers, m)
@@ -716,16 +716,20 @@ func labelValuePattern(values []string) string {
 	return "^(" + strings.Join(alts, "|") + ")$"
 }
 
-// storedLevels maps Render's level names — the only ones the pinned CLI
-// accepts: debug, info, notice, warning, error, critical, alert, emergency —
-// onto the buckets the log shipper stores (w8/031). The shipper normalizes
-// severities to debug|info|warning|error (warning was stored as `warn` before
-// w8/031; both spellings match so older streams stay findable), so an exact
-// match on `warning`, `notice` or `critical` used to find nothing.
-func storedLevels(values []string) []string {
-	if len(values) == 0 {
-		return values
+// storedLevels maps the query's level filter onto the values its lines store.
+// An App line stores Render's own eight names — debug, info, notice, warning,
+// error, critical, alert, emergency, the only ones the pinned CLI accepts — so
+// each selects its own lines, as on Render (w3/086). A managed Postgres or Key
+// Value line still stores its pipeline's four buckets (debug|info|warning|
+// error), so there `notice` also selects `info`, and `critical`, `alert` and
+// `emergency` select `error` (w8/031). `warning` also matches `warn`, the
+// spelling streams stored before w8/031 carry, and `fatal`, which Render does
+// not name, selects the `error` lines a fatal line is stored as.
+func (q LogQuery) storedLevels() []string {
+	if len(q.Level) == 0 {
+		return q.Level
 	}
+	bucketed := q.Database != "" || q.KeyValue != ""
 	seen := map[string]bool{}
 	var out []string
 	add := func(vs ...string) {
@@ -736,14 +740,22 @@ func storedLevels(values []string) []string {
 			}
 		}
 	}
-	for _, v := range values {
-		switch strings.ToLower(v) {
+	for _, v := range q.Level {
+		switch lower := strings.ToLower(v); lower {
 		case "warning", "warn":
 			add("warning", "warn")
+		case "fatal":
+			add("error", "fatal")
 		case "notice":
-			add("info", "notice")
-		case "critical", "alert", "emergency", "fatal":
-			add("error", strings.ToLower(v))
+			if bucketed {
+				add("info")
+			}
+			add(lower)
+		case "critical", "alert", "emergency":
+			if bucketed {
+				add("error")
+			}
+			add(lower)
 		default:
 			add(v)
 		}
