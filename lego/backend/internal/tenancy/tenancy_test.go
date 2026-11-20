@@ -51,12 +51,22 @@ type fakeTenantStore struct {
 	tombstoneErr error
 	ownerFail    func() error
 	createFail   func() error
+	// tenantDeletes is tenants.delete_started_at (w9/121); tenantDeleteErr
+	// fails every read of it.
+	tenantDeletes   map[string]bool
+	tenantDeleteErr error
 }
 
 func (f *fakeTenantStore) AccountDeletionTombstoned(context.Context, string) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.deleting, f.tombstoneErr
+}
+
+func (f *fakeTenantStore) TenantDeleteStarted(_ context.Context, tenantID string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.tenantDeletes[tenantID], f.tenantDeleteErr
 }
 
 func newFakeTenantStore() *fakeTenantStore {
@@ -364,6 +374,41 @@ func TestEnsureTenantGrantsAdminOnFreshMintOnly(t *testing.T) {
 	}
 	if len(granter.granted) != 1 {
 		t.Errorf("granted after second call = %v, want unchanged (no re-grant on a returning caller)", granter.granted)
+	}
+}
+
+// w9/121: a personal workspace whose delete has started is granted nothing
+// again. The delete revoked its owner's tuple so nobody creates a resource or
+// mints a key while the teardown runs, and the owner's next request would
+// otherwise hand it straight back. They still resolve to it, to retry the
+// delete as its recorded admin.
+func TestEnsureTenantGrantsNothingOnAWorkspaceBeingDeleted(t *testing.T) {
+	st := newFakeTenantStore()
+	granter := newFakeGranter()
+	ctx := context.Background()
+	tid, err := NewTenantService(st, granter).EnsureTenant(ctx, "owner", "", false)
+	if err != nil {
+		t.Fatalf("mint: %v", err)
+	}
+	admin := "admin:" + tid + ":user:owner"
+	delete(granter.tuples, admin) // the delete's revoke
+	st.tenantDeletes = map[string]bool{tid: true}
+
+	// A new service is a cache miss, as the request after the revoke is.
+	got, err := NewTenantService(st, granter).EnsureTenant(ctx, "owner", "", false)
+	if err != nil || got != tid {
+		t.Fatalf("EnsureTenant = (%q, %v), want the workspace being deleted, %q", got, err, tid)
+	}
+	if granter.tuples[admin] {
+		t.Fatal("the owner was granted admin on a workspace whose delete has started")
+	}
+
+	st.tenantDeleteErr = errors.New("postgres: connection refused")
+	if _, err := NewTenantService(st, granter).EnsureTenant(ctx, "owner", "", false); err == nil {
+		t.Fatal("an unreadable delete mark served the owner, want the request failed closed")
+	}
+	if granter.tuples[admin] {
+		t.Fatal("an unreadable delete mark granted admin")
 	}
 }
 

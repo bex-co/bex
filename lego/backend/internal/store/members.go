@@ -185,6 +185,12 @@ func (s *PGStore) UpdateMemberRole(ctx context.Context, tenantID, subject, role 
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, tenantID); err != nil {
 			return err
 		}
+		// A workspace whose delete has started re-roles no one (w9/121): the
+		// new role would be granted again on a workspace whose members' tuples
+		// the delete revoked. It answers as a missing member does.
+		if deleting, err := tenantDeleteStarted(ctx, tx, tenantID); err != nil || deleting {
+			return err
+		}
 		var currentRole string
 		err := tx.QueryRow(ctx,
 			`SELECT role FROM tenant_members WHERE tenant_id = $1 AND subject = $2 FOR UPDATE`,
@@ -472,6 +478,15 @@ func (s *PGStore) AcceptInvitesForEmail(ctx context.Context, email, subject stri
 			return err
 		}
 		for _, inv := range pending {
+			// A workspace whose delete has started seats no one (w9/121): the
+			// invite stays pending until the cascade drops it.
+			deleting, err := tenantDeleteStarted(ctx, tx, inv.TenantID)
+			if err != nil {
+				return err
+			}
+			if deleting {
+				continue
+			}
 			ok, err := s.planAllowsJoin(ctx, tx, inv, subject)
 			if err != nil {
 				return err
@@ -700,6 +715,10 @@ func (s *PGStore) AcceptInviteByToken(ctx context.Context, token, subject string
 			return ErrInviteAlreadyAccepted
 		case time.Now().After(inv.ExpiresAt):
 			return ErrInviteExpired
+		}
+		// A link into a workspace being deleted answers as an unknown one does.
+		if err := refuseDeletingTenant(ctx, tx, inv.TenantID); err != nil {
+			return err
 		}
 		ok, err := s.planAllowsJoin(ctx, tx, inv, subject)
 		if err != nil {

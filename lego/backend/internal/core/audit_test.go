@@ -443,7 +443,7 @@ func TestReadVerbsGatedByAWriteRelationRecordDenialsOnly(t *testing.T) {
 	} {
 		allowed := &fakeAuditSink{}
 		b := &Base{Authz: &fakeAllowChecker{}, Audit: allowed}
-		if err := b.authorizeAndRecord(ctx, relation, DefaultWorkspace, "", verb, nil, true); err != nil {
+		if err := b.authorizeAndRecord(ctx, relation, DefaultWorkspace, "", verb, nil, true, nil); err != nil {
 			t.Fatalf("%s allowed: %v", verb, err)
 		}
 		if allowed.len() != 0 {
@@ -451,7 +451,7 @@ func TestReadVerbsGatedByAWriteRelationRecordDenialsOnly(t *testing.T) {
 		}
 		denied := &fakeAuditSink{}
 		b = &Base{Authz: fakeDenyChecker{}, Audit: denied}
-		if err := b.authorizeAndRecord(ctx, relation, DefaultWorkspace, "", verb, nil, true); err == nil {
+		if err := b.authorizeAndRecord(ctx, relation, DefaultWorkspace, "", verb, nil, true, nil); err == nil {
 			t.Fatalf("%s: a denying checker allowed", verb)
 		}
 		if denied.len() != 1 || denied.events[0].Outcome != AuditDenied || denied.events[0].Verb != verb {
@@ -461,7 +461,7 @@ func TestReadVerbsGatedByAWriteRelationRecordDenialsOnly(t *testing.T) {
 	for verb, relation := range map[string]string{"members.Invite": RelCanManage, "apps.Create": RelCanCreate, "apps.PlanBlueprint": RelCanCreate} {
 		sink := &fakeAuditSink{}
 		b := &Base{Authz: &fakeAllowChecker{}, Audit: sink}
-		if err := b.authorizeAndRecord(ctx, relation, DefaultWorkspace, "", verb, nil, true); err != nil {
+		if err := b.authorizeAndRecord(ctx, relation, DefaultWorkspace, "", verb, nil, true, nil); err != nil {
 			t.Fatal(err)
 		}
 		if sink.len() != 1 || sink.events[0].Outcome != AuditAllowed {

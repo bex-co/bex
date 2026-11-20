@@ -81,6 +81,12 @@ type accountDeletionReader interface {
 	AccountDeletionTombstoned(context.Context, string) (bool, error)
 }
 
+// tenantDeleteReader answers whether a delete of a workspace has started
+// (w9/121); *store.PGStore implements it. A store without it has no such mark.
+type tenantDeleteReader interface {
+	TenantDeleteStarted(ctx context.Context, tenantID string) (bool, error)
+}
+
 // AccountDeletionTombstoned implements apikeys.AccountDeletionReader over the
 // same durable tombstone used by onboarding. Stores predating account deletion
 // preserve their legacy behavior.
@@ -517,6 +523,20 @@ func (t *Service) ensureGranted(ctx context.Context, tenantID, identityID string
 		}
 		if err != nil {
 			log.Printf("tenancy: admin check of %s on workspace %s failed, so the grant is written again: %v", identityID, tenantID, err)
+		}
+	}
+	// A personal workspace whose delete has started is granted nothing again
+	// (w9/121). The delete revoked its owner's tuple so that nobody creates a
+	// resource or mints a key while its teardown runs, and the owner's next
+	// request would otherwise hand it straight back. They still resolve to the
+	// workspace, and retry the delete as its recorded admin.
+	if deletes, ok := t.store.(tenantDeleteReader); ok {
+		started, err := deletes.TenantDeleteStarted(ctx, tenantID)
+		if err != nil {
+			return false, err
+		}
+		if started {
+			return false, nil
 		}
 	}
 	if err := t.granter.GrantWorkspaceAdmin(ctx, tenantID, subject); err != nil {

@@ -42,8 +42,12 @@ func (s *PGStore) ClaimRoleReconciliations(ctx context.Context, limit int) ([]Ro
 	rows, err := s.Pool.Query(ctx, `
 		WITH due AS (
 			SELECT tenant_id, subject
-			FROM membership_role_reconciliations
+			FROM membership_role_reconciliations r
 			WHERE next_attempt_at <= now()
+			  -- A workspace whose delete has started is granted nothing again
+			  -- (w9/121); the cascade drops its intents with it.
+			  AND NOT EXISTS (SELECT 1 FROM tenants t
+			                  WHERE t.id = r.tenant_id AND t.delete_started_at IS NOT NULL)
 			ORDER BY next_attempt_at, updated_at
 			FOR UPDATE SKIP LOCKED
 			LIMIT $1

@@ -34,7 +34,7 @@ import (
 // take the verb and are never a problem.
 var derivedVerbEntries = map[string]bool{
 	"Authorize": true, "AuthorizeTarget": true, "AuthorizeOn": true, "AuthorizeOnOwner": true,
-	"AuthorizeOnTarget": true, "AuthorizeWorkspace": true, "AuthorizeWorkspaceTarget": true,
+	"AuthorizeOnTarget": true, "AuthorizeWorkspace": true, "AuthorizeWorkspaceOrRecorded": true, "AuthorizeWorkspaceTarget": true,
 	"AuthorizeApp": true, "AuthorizeLiveApp": true, "AuthorizeDatabase": true, "AuthorizeKeyValue": true,
 }
 

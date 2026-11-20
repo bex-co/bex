@@ -231,6 +231,12 @@ type WorkspaceStore interface {
 	SetTenantRequireGoogleLogin(ctx context.Context, id string, enabled bool) (t store.Tenant, changed bool, err error)
 	UpdateTenantPlan(ctx context.Context, id, plan string) (store.Tenant, error)
 	DeleteTenant(ctx context.Context, id string) error
+	// StartTenantDelete marks the workspace's delete started, before the delete
+	// revokes its members (w9/121); DeletingTenantAdmin is then the store's
+	// answer to whether subject is a recorded admin of it, which Delete accepts
+	// once that revoke has left OpenFGA nothing to say.
+	StartTenantDelete(ctx context.Context, id string) error
+	DeletingTenantAdmin(ctx context.Context, tenantID, subject string) (bool, error)
 	ListTenantsForSubject(ctx context.Context, subject string) ([]store.Tenant, error)
 	ListTenantMembers(ctx context.Context, tenantID string) ([]store.TenantMember, error)
 	// TenantContactSubjects answers each workspace's contact subject: its
@@ -1652,11 +1658,11 @@ func (s *Service) guardPerUserWorkspaceCap(ctx context.Context, subject, plan st
 func DeleteConfirmation(name string) string { return "sudo delete workspace " + name }
 
 // Delete tears a workspace down, in an order chosen so a transient failure is
-// recoverable: it revokes each member's OpenFGA tuple, runs the pre-cascade
-// purgers (the API keys bound there, OpenBao secrets, env groups, managed
-// Databases/KeyValues, OpenSandbox sandboxes, the Stripe subscription) while
-// the tenant row still exists, deletes
-// the tenant row (the FK cascade drops its apps, domains, memberships, sandbox
+// recoverable: it marks the delete started, revokes each member's OpenFGA
+// tuple, runs the pre-cascade purgers (the API keys bound there, OpenBao
+// secrets, env groups, managed Databases/KeyValues, OpenSandbox sandboxes, the
+// Stripe subscription) while the tenant row still exists, deletes the tenant
+// row (the FK cascade drops its apps, domains, memberships, sandbox
 // key, and billing rows in the same statement), nudges the projector to prune
 // the orphaned App CRs, then runs the post-cascade purger (the App CRs). Running
 // the bulk of the teardown BEFORE the row is dropped is what makes it retryable:
@@ -1666,17 +1672,22 @@ func DeleteConfirmation(name string) string { return "sudo delete workspace " + 
 // Render's "sudo delete workspace <name>" phrase (a typo is a no-op, not a
 // destroyed workspace). Every purger and the revoke tolerate already-gone
 // tuples/resources so the retry converges.
+//
+// The retry is the admin's (w9/121). The first attempt revoked every member's
+// tuple, so OpenFGA refuses everyone; the store then admits a person whose
+// tenant_members row still makes them an admin of this workspace, and only
+// once a delete has started on it (DeletingTenantAdmin). Nobody else gets in
+// that way: not a member at another role, not someone removed before, not an
+// API key (its purger revoked it anyway), and not an admin of a workspace no
+// delete has reached.
 func (s *Service) Delete(ctx context.Context, id, confirmName string) error {
-	id, err := s.AuthorizeWorkspace(ctx, core.RelCanManage, id)
-	if err != nil {
-		return err
-	}
 	// codex-security round-6 #16: destroying a workspace is the most
-	// destructive verb the API has, so re-assert can_manage against the source
-	// of truth (uncached) after the audited check — a just-revoked admin must
-	// not ride a ≤PositiveTTL cached positive into it. Same pattern as the
-	// membership issuance verbs (round-5 finding 4).
-	if err := s.AuthorizeFreshOn(ctx, core.RelCanManage, core.WorkspaceObject(id)); err != nil {
+	// destructive verb the API has, so can_manage is decided against the source
+	// of truth, uncached — a just-revoked admin must not ride a ≤PositiveTTL
+	// cached positive into it. can_manage is a write relation, which the funnel
+	// asks OpenFGA fresh, and the store's answer is uncached too.
+	id, err := s.AuthorizeWorkspaceOrRecorded(ctx, core.RelCanManage, id, s.deletingAdmin)
+	if err != nil {
 		return err
 	}
 	if s.Store == nil {
@@ -1698,6 +1709,16 @@ func (s *Service) Delete(ctx context.Context, id, confirmName string) error {
 	}
 	s.recordOrganizationDelete(ctx, org, t)
 	return nil
+}
+
+// deletingAdmin is Delete's decision once OpenFGA has refused the caller: is
+// the store still recording them as an admin of a workspace whose delete has
+// started?
+func (s *Service) deletingAdmin(ctx context.Context, workspaceID, subject string) (bool, error) {
+	if s.Store == nil {
+		return false, nil
+	}
+	return s.Store.DeletingTenantAdmin(ctx, workspaceID, subject)
 }
 
 // AccountTeardown is the trusted account-lifecycle adapter over the same
@@ -1737,6 +1758,13 @@ func (s *Service) deleteWorkspace(ctx context.Context, id string) error {
 		if err := s.Settler.SettleWorkspace(ctx, id); err != nil {
 			return err
 		}
+	}
+	// Mark the delete started before any member loses access (w9/121). Once
+	// the revoke below has left the members no tuple, the mark is what lets
+	// the workspace's recorded admins retry a delete whose teardown failed, and
+	// what keeps every path that would seat someone in it again from doing so.
+	if err := s.Store.StartTenantDelete(ctx, id); err != nil {
+		return mapStoreErr(err)
 	}
 	// Revoke authz tuples before dropping the rows: the tenant_members rows name
 	// exactly the subjects to revoke, and reading them after the cascade would be

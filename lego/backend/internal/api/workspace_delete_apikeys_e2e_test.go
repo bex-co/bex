@@ -205,11 +205,12 @@ func TestDeletingAWorkspaceRevokesItsAPIKeysE2E(t *testing.T) {
 		t.Fatalf("the dev key is no longer bound to the workspace (%q, %v), so no retry finds it", owner, ok)
 	}
 
-	// The retry (the account worker's path, which re-runs the same teardown)
-	// converges: the workspace is gone, Hydra knows neither key, no tuple names
+	// The admin's identical retry converges (w9/121: the first attempt revoked
+	// their tuple too, and the store's record of them as admin lets them
+	// finish): the workspace is gone, Hydra knows neither key, no tuple names
 	// either, and no binding row is left.
 	hydra.failing = ""
-	if err := (workspaces.AccountTeardown{Service: srv.Workspaces}).Delete(ctx, doomed.ID); err != nil {
+	if err := srv.Workspaces.Delete(actor, doomed.ID, confirm); err != nil {
 		t.Fatalf("retry: %v", err)
 	}
 	if _, err := st.GetTenant(ctx, doomed.ID); !errors.Is(err, store.ErrNotFound) {

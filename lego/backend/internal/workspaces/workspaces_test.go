@@ -46,6 +46,8 @@ type fakeStore struct {
 	// unbound (CreateWorkspace) shape, which is what most fixtures are.
 	ownerSubjects map[string]string
 	contactReads  int // TenantContactSubjects calls
+	// deleting mirrors tenants.delete_started_at (w9/121).
+	deleting map[string]bool
 }
 
 func newFakeStore() *fakeStore {
@@ -154,6 +156,35 @@ func (f *fakeStore) DeleteTenant(_ context.Context, id string) error {
 	delete(f.tenants, id)
 	delete(f.members, id)
 	return nil
+}
+
+func (f *fakeStore) StartTenantDelete(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.tenants[id]; !ok {
+		return fmt.Errorf("workspace %s: %w", id, store.ErrNotFound)
+	}
+	if f.deleting == nil {
+		f.deleting = map[string]bool{}
+	}
+	f.deleting[id] = true
+	return nil
+}
+
+// DeletingTenantAdmin mirrors PGStore's: a person recorded as an admin of a
+// workspace whose delete has started.
+func (f *fakeStore) DeletingTenantAdmin(_ context.Context, id, subject string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if !f.deleting[id] {
+		return false, nil
+	}
+	for _, m := range f.members[id] {
+		if m.Subject == subject && m.Role == "admin" && (m.Kind == "" || m.Kind == store.MemberKindUser) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (f *fakeStore) ListTenantsForSubject(_ context.Context, subject string) ([]store.Tenant, error) {
@@ -942,6 +973,123 @@ func TestDelete_ToleratesResolverWithoutInvalidation(t *testing.T) {
 	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
 	if err := svc.Delete(ctxAs("user-a"), w.ID, "sudo delete workspace acme"); err != nil {
 		t.Fatalf("delete with a non-invalidating resolver: %v", err)
+	}
+}
+
+// tupleChecker is a small OpenFGA: can_manage is the admin tuple, and
+// RevokeWorkspaceMember takes a tuple away, so a test can watch Delete's own
+// revoke leave its retry nothing in OpenFGA to pass (w9/121).
+type tupleChecker struct{ tuples map[string]bool }
+
+func (c *tupleChecker) grant(subject, role, workspaceID string) {
+	c.tuples["user:"+subject+"|"+role+"|"+core.WorkspaceObject(workspaceID)] = true
+}
+
+func (c *tupleChecker) Check(_ context.Context, user, relation, object string) (bool, error) {
+	return relation == core.RelCanManage && c.tuples[user+"|admin|"+object], nil
+}
+
+func (c *tupleChecker) RevokeWorkspaceMember(_ context.Context, tenantID, subject, relation string) error {
+	delete(c.tuples, subject+"|"+relation+"|"+core.WorkspaceObject(tenantID))
+	return nil
+}
+
+func (c *tupleChecker) on(workspaceID string) []string {
+	var out []string
+	for tuple := range c.tuples {
+		if strings.HasSuffix(tuple, "|"+core.WorkspaceObject(workspaceID)) {
+			out = append(out, tuple)
+		}
+	}
+	return out
+}
+
+// TestDelete_AdminRetriesAfterTheRevokeTookEveryTuple is w9/121: the first
+// attempt revokes every member and then fails in a purger, which leaves no one
+// holding can_manage. The admin's identical retry completes, decided by the
+// store; nobody else gets in that way.
+func TestDelete_AdminRetriesAfterTheRevokeTookEveryTuple(t *testing.T) {
+	ctx := context.Background()
+	st := newFakeStore()
+	fga := &tupleChecker{tuples: map[string]bool{}}
+	flaky := &flakyPurger{failN: 1}
+	svc := &Service{Base: &core.Base{Authz: fga}, Store: st, Revoker: fga, PreCascadePurgers: []WorkspacePurger{flaky}}
+	doomed, _ := st.CreateWorkspace(ctx, "acme", "pro", "alice")
+	st.members[doomed.ID] = append(st.members[doomed.ID], store.TenantMember{TenantID: doomed.ID, Subject: "dev", Role: "developer"})
+	other, _ := st.CreateWorkspace(ctx, "other", "pro", "mallory")
+	fga.grant("alice", "admin", doomed.ID)
+	fga.grant("dev", "developer", doomed.ID)
+	fga.grant("mallory", "admin", other.ID)
+	// carol is recorded as admin of a workspace no delete has reached, and
+	// holds no tuple there (a grant that never landed).
+	untouched, _ := st.CreateWorkspace(ctx, "untouched", "pro", "carol")
+
+	confirm := DeleteConfirmation("acme")
+	if err := svc.Delete(ctxAs("alice"), doomed.ID, confirm); err == nil {
+		t.Fatal("first attempt: want the purger's error")
+	}
+	if left := fga.on(doomed.ID); len(left) != 0 {
+		t.Fatalf("the failed delete left tuples %v", left)
+	}
+
+	for _, who := range []struct {
+		name string
+		ctx  context.Context
+	}{
+		{"a developer of the workspace", ctxAs("dev")},
+		{"an admin of another workspace", ctxAs("mallory")},
+		{"a stranger", ctxAs("stranger")},
+		{"an API key whose id is the admin's", ctxAsMachine("alice")},
+	} {
+		if err := svc.Delete(who.ctx, doomed.ID, confirm); !errors.Is(err, core.ErrForbidden) {
+			t.Fatalf("%s retries: %v, want forbidden", who.name, err)
+		}
+	}
+	if err := svc.Delete(ctxAs("carol"), untouched.ID, DeleteConfirmation("untouched")); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("an admin with no tuple where no delete started: %v, want forbidden", err)
+	}
+	if _, err := st.GetTenant(ctx, untouched.ID); err != nil {
+		t.Fatalf("the untouched workspace: %v", err)
+	}
+	if err := svc.Delete(ctxAs("alice"), doomed.ID, DeleteConfirmation("other")); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("the admin's retry with another phrase: %v, want bad request", err)
+	}
+	if flaky.calls != 1 {
+		t.Fatalf("a refused retry ran the teardown: %d purger calls", flaky.calls)
+	}
+
+	if err := svc.Delete(ctxAs("alice"), doomed.ID, confirm); err != nil {
+		t.Fatalf("the admin's retry: %v", err)
+	}
+	if _, err := st.GetTenant(ctx, doomed.ID); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("the retry left the workspace: %v", err)
+	}
+	if _, err := st.GetTenant(ctx, other.ID); err != nil {
+		t.Fatalf("the other workspace: %v", err)
+	}
+}
+
+// settleRefusal declines every settle, as a declined card does.
+type settleRefusal struct{}
+
+func (settleRefusal) SettleWorkspace(context.Context, string) error {
+	return core.NewConflictError(core.CodeBillingBalanceDue, "balance due", nil)
+}
+
+// A delete refused at its settle has not started (w9/121): the workspace and
+// its members are exactly as they were, so nobody is admitted on the store's
+// word.
+func TestDelete_RefusedSettleStartsNothing(t *testing.T) {
+	st := newFakeStore()
+	rev := &fakeRevoker{}
+	svc := allowSvc(st, &fakeGranter{}, rev, nil)
+	svc.Settler = settleRefusal{}
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
+	if err := svc.Delete(ctxAs("user-a"), w.ID, DeleteConfirmation("acme")); err == nil {
+		t.Fatal("want the settle's refusal")
+	}
+	if st.deleting[w.ID] || len(rev.revoked) != 0 {
+		t.Fatalf("a refused settle marked the delete (%v) or revoked %v", st.deleting[w.ID], rev.revoked)
 	}
 }
 

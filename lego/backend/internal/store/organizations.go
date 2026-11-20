@@ -860,6 +860,9 @@ func (s *PGStore) JoinOrganizationWorkspace(ctx context.Context, workspaceID, su
 		if err := refuseDeletingSubject(ctx, tx, subject); err != nil {
 			return err
 		}
+		if err := refuseDeletingTenant(ctx, tx, workspaceID); err != nil {
+			return err
+		}
 		tag, err := tx.Exec(ctx, `INSERT INTO tenant_members (tenant_id, subject, role) VALUES ($1, $2, $3)
 			ON CONFLICT (tenant_id, subject) DO NOTHING`, workspaceID, subject, role)
 		if err != nil {

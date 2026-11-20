@@ -398,6 +398,69 @@ func (s *PGStore) DeleteTenant(ctx context.Context, id string) error {
 	return err
 }
 
+// StartTenantDelete records that a delete of the workspace got past its settle
+// (w9/121). The delete calls it before it revokes the members' OpenFGA tuples,
+// so from then on DeletingTenantAdmin lets the workspace's recorded admins
+// retry the delete, and no path seats anyone in it again (tenantDeleteStarted).
+// A retry keeps the first start's time. ErrNotFound when the id doesn't exist.
+func (s *PGStore) StartTenantDelete(ctx context.Context, id string) error {
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE tenants SET delete_started_at = COALESCE(delete_started_at, now()) WHERE id = $1`, id)
+	if err != nil {
+		return classify("workspace", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("workspace %s: %w", id, ErrNotFound)
+	}
+	return nil
+}
+
+// TenantDeleteStarted reports whether a delete of the workspace has started. A
+// workspace that does not exist has none.
+func (s *PGStore) TenantDeleteStarted(ctx context.Context, id string) (bool, error) {
+	return tenantDeleteStarted(ctx, s.Pool, id)
+}
+
+// DeletingTenantAdmin reports whether subject is a person tenant_members
+// records as an admin of a workspace whose delete has started. It is the one
+// decision besides OpenFGA that workspaces.Service.Delete accepts: the first
+// attempt revoked every member's tuple, so the admin's retry has nothing left
+// in OpenFGA to pass. A member at any other role, an API key, someone removed
+// before the delete started, and every admin of a workspace no delete has
+// reached answer false.
+func (s *PGStore) DeletingTenantAdmin(ctx context.Context, tenantID, subject string) (bool, error) {
+	var admin bool
+	err := s.Pool.QueryRow(ctx, `SELECT EXISTS (
+		SELECT 1 FROM tenants t JOIN tenant_members m ON m.tenant_id = t.id
+		WHERE t.id = $1 AND t.delete_started_at IS NOT NULL
+		  AND m.subject = $2 AND m.kind = 'user' AND m.role = 'admin')`,
+		tenantID, subject).Scan(&admin)
+	return admin, err
+}
+
+// tenantDeleteStarted is TenantDeleteStarted inside a membership write's own
+// transaction: a workspace whose delete has started seats no one (w9/121).
+func tenantDeleteStarted(ctx context.Context, q queryRower, tenantID string) (bool, error) {
+	var started bool
+	err := q.QueryRow(ctx,
+		`SELECT EXISTS (SELECT 1 FROM tenants WHERE id = $1 AND delete_started_at IS NOT NULL)`,
+		tenantID).Scan(&started)
+	return started, err
+}
+
+// refuseDeletingTenant is refuseDeletingSubject's twin for the workspace: one
+// whose delete has started seats no one, and answers as a missing one.
+func refuseDeletingTenant(ctx context.Context, tx pgx.Tx, tenantID string) error {
+	deleting, err := tenantDeleteStarted(ctx, tx, tenantID)
+	if err != nil {
+		return err
+	}
+	if deleting {
+		return fmt.Errorf("workspace %s is being deleted: %w", tenantID, pgx.ErrNoRows)
+	}
+	return nil
+}
+
 // ListTenantsForSubject returns the workspaces the subject belongs to, oldest
 // first — the caller's workspace list (the dashboard switcher / owners list).
 func (s *PGStore) ListTenantsForSubject(ctx context.Context, subject string) ([]Tenant, error) {

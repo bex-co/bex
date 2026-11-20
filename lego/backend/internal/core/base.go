@@ -952,7 +952,7 @@ func (b *Base) AuthorizeOnTarget(ctx context.Context, relation, object, target s
 // still audited, so a cross-workspace attempt leaves the same denial trail
 // an OpenFGA "no" does.
 func (b *Base) authorizeAndAudit(ctx context.Context, relation, object, target, verb string, resolveErr error) error {
-	return b.authorizeAndRecord(ctx, relation, object, target, verb, resolveErr, true)
+	return b.authorizeAndRecord(ctx, relation, object, target, verb, resolveErr, true, nil)
 }
 
 // authorizeAndRecord is authorizeAndAudit with the DENIAL recording
@@ -964,7 +964,10 @@ func (b *Base) authorizeAndAudit(ctx context.Context, relation, object, target, 
 // (readVerbs) or under the caller's own WithDeferredAllowedWriteAudit (a verb
 // that records its one row once the mutation lands, RecordAllowedWrite or a
 // typed recorder — denials stay visible either way).
-func (b *Base) authorizeAndRecord(ctx context.Context, relation, object, target, verb string, resolveErr error, recordDenial bool) error {
+//
+// recorded, when set, is AuthorizeWorkspaceOrRecorded's second decision, asked
+// only after OpenFGA refused (admitRecorded).
+func (b *Base) authorizeAndRecord(ctx context.Context, relation, object, target, verb string, resolveErr error, recordDenial bool, recorded RecordedWorkspaceDecision) error {
 	// OAuth capability first, even when membership already refused: a narrowed
 	// token must not reach OpenFGA, and the insufficient-scope code must not
 	// depend on whether the named workspace exists.
@@ -985,6 +988,9 @@ func (b *Base) authorizeAndRecord(ctx context.Context, relation, object, target,
 			err = b.checkAuthzFresh(ctx, relation, object)
 		} else {
 			err = b.checkAuthz(ctx, relation, object)
+		}
+		if recorded != nil && errors.Is(err, ErrForbidden) {
+			err = admitRecorded(ctx, object, recorded, err)
 		}
 		if err == nil {
 			// A positive decision is not yet access when the workspace requires
@@ -1278,6 +1284,53 @@ func (b *Base) AuthorizeWorkspace(ctx context.Context, relation, workspaceID str
 	return workspaceID, err
 }
 
+// RecordedWorkspaceDecision answers from the source of truth whether subject, a
+// person OpenFGA has just refused on workspaceID, may act there all the same.
+// An error means it could not answer.
+type RecordedWorkspaceDecision func(ctx context.Context, workspaceID, subject string) (bool, error)
+
+// AuthorizeWorkspaceOrRecorded is AuthorizeWorkspace for the one verb that has
+// to outlive the OpenFGA tuples it takes away itself (w9/121). A workspace
+// delete revokes every member's tuple before its teardown runs, so when a step
+// of the teardown fails, its admin's identical retry has nothing left in
+// OpenFGA to pass. When OpenFGA's decision is a plain refusal of a person
+// signed in directly, recorded decides instead: true admits them as a positive
+// OpenFGA decision would, so the workspace's login requirements and the audit
+// row apply to them exactly as to one, and the OAuth capability was already
+// checked first. Every other refusal stands, and an error from recorded fails
+// closed with ErrAuthzUnavailable.
+func (b *Base) AuthorizeWorkspaceOrRecorded(ctx context.Context, relation, workspaceID string, recorded RecordedWorkspaceDecision) (string, error) {
+	workspaceID, resolveErr := b.workspaceArgument(ctx, workspaceID)
+	err := b.authorizeAndRecord(ctx, relation, WorkspaceObject(workspaceID), "", callerVerb(ctx, verbFrameSkip), resolveErr, true, recorded)
+	return workspaceID, err
+}
+
+// admitRecorded is AuthorizeWorkspaceOrRecorded's second decision. refusal
+// stands unless the object is a workspace and the caller is a person signed in
+// directly — a Kratos session or a human OAuth token, never an API key or a
+// credential acting for someone (an SSH key, a ticket, an S3 key) — whom
+// recorded admits.
+func admitRecorded(ctx context.Context, object string, recorded RecordedWorkspaceDecision, refusal error) error {
+	id, ok := IdentityFrom(ctx)
+	if !ok || id.AuditSubject != "" || id.AuditMethod != "" ||
+		(id.Method != MethodSession && (id.Method != MethodOAuth2 || !id.Human)) {
+		return refusal
+	}
+	workspaceID, isWorkspace := strings.CutPrefix(object, WorkspaceObjectPrefix)
+	if !isWorkspace || !validFGAObject(object) {
+		return refusal
+	}
+	admitted, err := recorded(ctx, workspaceID, id.Subject)
+	if err != nil {
+		log.Printf("core: recorded workspace decision unavailable: %v", err)
+		return ErrAuthzUnavailable
+	}
+	if !admitted {
+		return refusal
+	}
+	return nil
+}
+
 // AuthorizeWorkspaceTarget is AuthorizeWorkspace with a named sub-resource
 // target, preserving member/invite identity in both allowed and denied audits.
 func (b *Base) AuthorizeWorkspaceTarget(ctx context.Context, relation, workspaceID, target string) (string, error) {
@@ -1517,7 +1570,7 @@ func (b *Base) authorizeApp(ctx context.Context, verb, relation, name string) (*
 		for i := range list.Items {
 			object, resolveErr := b.resourceWorkspaceFor(ctx, acting, actingErr, list.Items[i].Labels)
 			record := denied < maxFallbackCandidateAudits
-			if err := b.authorizeAndRecord(ctx, relation, object, canonicalAppTarget(&list.Items[i]), verb, resolveErr, record); err == nil {
+			if err := b.authorizeAndRecord(ctx, relation, object, canonicalAppTarget(&list.Items[i]), verb, resolveErr, record, nil); err == nil {
 				if err := b.refuseAmbiguousName(ctx, name, &list.Items[i]); err != nil {
 					return nil, err
 				}
