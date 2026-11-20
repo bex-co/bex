@@ -16,7 +16,10 @@ limitations under the License.
 
 package build
 
-import "strings"
+import (
+	"path"
+	"strings"
+)
 
 // A native runtime's dependency directories across builds (w9/m494,
 // docs/ADR060 D3).
@@ -26,17 +29,19 @@ import "strings"
 // known paths for all native language environments"), so a source-only
 // commit installs nothing again: Bundler finds its gems, Go its modules,
 // Cargo its registry and compiled dependencies, Mix its deps and their
-// build. "Clear build cache & deploy" empties them with the rest of the cache.
+// build, pip, Poetry and uv the packages of the service's virtualenv. "Clear
+// build cache & deploy" empties them with the rest of the cache.
 //
 // Unlike $XDG_CACHE_HOME, these directories are part of the service: Bundler
 // loads its gems from BUNDLE_PATH at runtime, `cargo run` and `mix phx.server`
-// read target/ and _build/. So they cannot be a cache mount, which would keep
-// them out of the image, and a mountpoint the build command cannot remove
-// (`cargo clean`, `rm -rf _build`) would fail builds Render runs. They stay
-// ordinary directories of the image. The build command's RUN also mounts a
-// cache mount at nativeDepsCacheDir: before the command, the env loader moves
-// the previous build's copy from it into each directory the source did not
-// bring; after the command, a step of its own copies the directories back.
+// read target/ and _build/, and a Python service runs from its virtualenv. So
+// they cannot be a cache mount, which would keep them out of the image, and a
+// mountpoint the build command cannot remove (`cargo clean`, `rm -rf _build`)
+// would fail builds Render runs. They stay ordinary directories of the image.
+// The build command's RUN also mounts a cache mount at nativeDepsCacheDir:
+// before the command, the env loader moves the previous build's copy from it
+// into each directory the source did not bring; after the command, a step of
+// its own copies the directories back.
 // The buildkit phase's seed and export solves (xdgcache.go) carry the mount
 // in the same archive as $XDG_CACHE_HOME, Render's one build cache, and keep
 // it only for the toolchain that built it.
@@ -52,6 +57,12 @@ const (
 	nativeDepsCacheMount = " --mount=type=cache,id=" + nativeDepsCacheID + ",target=" + nativeDepsCacheDir + ",sharing=locked"
 	// nativeDepsSaveEOF closes the save step's heredoc.
 	nativeDepsSaveEOF = "BEX_DEPS_SAVE"
+	// nativeDepsMadeDir holds the recipe's record of each dependency
+	// directory it makes before the source copy (nativeDepsRecord), at the
+	// directory's own absolute path.
+	nativeDepsMadeDir = "/opt/bex/deps-made"
+	// nativeVenvConfig names the interpreter a virtualenv was made with.
+	nativeVenvConfig = "pyvenv.cfg"
 )
 
 // nativeDependencyDirs is each native runtime's dependency directories, at
@@ -71,6 +82,12 @@ const (
 //   - Elixir: Mix's deps and _build at the service root, kept together:
 //     _build links into deps, and a compiled dependency's NIFs are written
 //     into deps.
+//   - Python: the virtualenv at the service root, /opt/render/project/src/
+//     .venv (a path Render caches by its own account), which pip, Poetry and
+//     uv install into. Unlike the others, the recipe makes it before the
+//     source copy (nativeBuildDefaults), so it is never missing when the seed
+//     runs: the seed replaces it only while it is still the one the recipe
+//     made (nativeDepsSeed).
 //
 // What a build regenerates and a cold build starts without stays out:
 // .gems/bin and go/bin are first on PATH, so a binstub or tool kept there
@@ -79,13 +96,13 @@ const (
 // .gems, w9/128), and .gems/config holds `bundle config` settings a later
 // build command may no longer make.
 //
-// Node's node_modules is w8/m161's. Python's virtualenv is not here yet:
-// unlike these, the recipe makes it before the build (w9/127).
+// Node's node_modules is w8/m161's.
 var nativeDependencyDirs = map[string][]string{
 	nativeRubyRuntime:   {nativeRubyGems + "/ruby"},
 	"go":                {nativeGoPath + "/pkg"},
 	nativeRustRuntime:   {nativeCargoHome + "/registry", nativeCargoHome + "/git", nativeWorkdir + "/target"},
 	nativeElixirRuntime: {nativeWorkdir + "/deps", nativeWorkdir + "/_build"},
+	nativePythonRuntime: {nativePythonVenv},
 }
 
 // depsCache is the dependency directories this build carries to the next
@@ -119,32 +136,69 @@ func nativeDepsWords(dirs []string) string {
 	return strings.Join(words, " ")
 }
 
+// nativeDepsListing is the pipeline that prints one digest of everything
+// under dir, a shell word: each entry's type and path, and a file's or link's
+// size and a link's target. These survive a layer's trip through the layer
+// cache, where times and a directory's own size need not.
+func nativeDepsListing(dir string) string {
+	return "find " + dir + ` -type d -printf 'd %P\n' -o -printf '%y %s %P %l\n' | LC_ALL=C sort | sha256sum`
+}
+
+// nativeDepsRecord is the recipe's record of a dependency directory it has
+// just made, before the source copy: its listing, at nativeDepsMadeDir + dir,
+// in the same layer as the directory. The seed tells the recipe's own
+// directory from one the source brought by it.
+func nativeDepsRecord(dir string) string {
+	record := nativeDepsMadeDir + dir
+	return "mkdir -p " + shellSingleQuote(path.Dir(record)) + " && " +
+		nativeDepsListing(shellSingleQuote(dir)) + " > " + shellSingleQuote(record)
+}
+
 // nativeDepsSeed is the env loader's first part when the build carries
 // dependency directories: it moves each one the seed solve restored into
 // place, before the service's variables are exported, so a variable of
 // theirs (PATH) cannot change what it runs.
 //
 // A directory the source brought, or the toolchain image made, is the
-// build's: only one that is missing or empty is replaced. Each arrives whole
-// or not at all: it is moved beside its place, then renamed into it. What is
+// build's: only one that is missing or empty is replaced, or one the recipe
+// made that is still as the recipe made it (its listing matches the record,
+// so the source copy put nothing into it). That is Python's virtualenv, and
+// the kept one replaces it only when it names the same interpreter in its
+// pyvenv.cfg: the archive's key already holds it to the same image and
+// machine, and this also refuses one the build command made again with
+// another interpreter. A repository's own .venv therefore wins, as the source
+// copy lets it win over the recipe's.
+//
+// Each arrives whole or not at all: it is moved beside its place, the
+// directory it replaces is moved aside, and it is renamed in; the one moved
+// aside is put back if that fails, and deleted once it succeeds. What is
 // left in the mount is deleted, so the build has its disk. The move is quiet,
 // and never fails the build: the command then installs from nothing, as a
 // first build does.
 func nativeDepsSeed(dirs []string) string {
 	return `bex_deps_seed() {
   for bex_dep in "$@"; do
-    [ -d "` + nativeDepsCacheDir + `$bex_dep" ] || continue
+    bex_kept=` + nativeDepsCacheDir + `$bex_dep
+    [ -d "$bex_kept" ] || continue
     if [ -e "$bex_dep" ] || [ -L "$bex_dep" ]; then
-      [ -d "$bex_dep" ] && [ ! -L "$bex_dep" ] && rmdir "$bex_dep" || continue
+      [ -d "$bex_dep" ] && [ ! -L "$bex_dep" ] || continue
+      rmdir "$bex_dep" || {
+        [ -f "` + nativeDepsMadeDir + `$bex_dep" ] &&
+          [ "$(` + nativeDepsListing(`"$bex_dep"`) + `)" = "$(cat "` + nativeDepsMadeDir + `$bex_dep")" ] &&
+          [ "$(cat "$bex_dep/` + nativeVenvConfig + `")" = "$(cat "$bex_kept/` + nativeVenvConfig + `")" ]
+      } || continue
     fi
-    rm -rf "$bex_dep.bex-seed"
-    mkdir -p "${bex_dep%/*}" && mv "` + nativeDepsCacheDir + `$bex_dep" "$bex_dep.bex-seed" && mv "$bex_dep.bex-seed" "$bex_dep" || rm -rf "$bex_dep.bex-seed"
+    rm -rf "$bex_dep.bex-seed" "$bex_dep.bex-made"
+    mkdir -p "${bex_dep%/*}" && mv "$bex_kept" "$bex_dep.bex-seed" || { rm -rf "$bex_dep.bex-seed"; continue; }
+    [ ! -d "$bex_dep" ] || mv "$bex_dep" "$bex_dep.bex-made" || { rm -rf "$bex_dep.bex-seed"; continue; }
+    mv "$bex_dep.bex-seed" "$bex_dep" || { rm -rf "$bex_dep.bex-seed"; mv "$bex_dep.bex-made" "$bex_dep"; }
+    rm -rf "$bex_dep.bex-made"
   done
   find ` + nativeDepsCacheDir + ` -mindepth 1 -delete
 } >/dev/null 2>&1
 bex_deps_seed ` + nativeDepsWords(dirs) + `
 unset -f bex_deps_seed
-unset bex_dep
+unset bex_dep bex_kept
 `
 }
 

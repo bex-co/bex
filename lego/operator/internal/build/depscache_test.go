@@ -22,6 +22,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -70,6 +71,7 @@ func TestNativeRecipeCarriesEachRuntimesDependencyDirectories(t *testing.T) {
 		"go":     {"/opt/render/project/go/pkg"},
 		"rust":   {"/opt/render/project/.cargo/registry", "/opt/render/project/.cargo/git", "/opt/render/project/src/target"},
 		"elixir": {"/opt/render/project/src/deps", "/opt/render/project/src/_build"},
+		"python": {"/opt/render/project/src/.venv"},
 	}
 	staticRuby := depsOpts("ruby")
 	staticRuby.StaticSite, staticRuby.StartCommand, staticRuby.StaticPublishPath = true, "", "_site"
@@ -137,6 +139,29 @@ func TestNativeRecipeCarriesEachRuntimesDependencyDirectories(t *testing.T) {
 	}
 }
 
+// Python's virtualenv is made before the source copy, so the recipe records
+// it as made in the same RUN, where the next build's seed can tell it from a
+// repository's own. A build that keeps no dependencies records nothing, and
+// its recipe is as it was.
+func TestPythonRecipeRecordsTheVirtualenvItMakes(t *testing.T) {
+	const venvRun = "RUN python3 -m venv /opt/render/project/src/.venv"
+	o := depsOpts("python")
+	df := nativeDockerfile(o)
+	line := venvRun + " && " + nativeDepsRecord(nativePythonVenv) + "\n"
+	if at := strings.Index(df, "\n"+line); strings.Count(df, line) != 1 || at < 0 || at > strings.Index(df, "\nCOPY . .\n") {
+		t.Errorf("the virtualenv is not recorded once, as it is made, before the source copy:\n%s", df)
+	}
+	if want := "mkdir -p '/opt/bex/deps-made/opt/render/project/src' && find '/opt/render/project/src/.venv' "; !strings.HasPrefix(nativeDepsRecord(nativePythonVenv), want) ||
+		!strings.HasSuffix(nativeDepsRecord(nativePythonVenv), " > '/opt/bex/deps-made/opt/render/project/src/.venv'") {
+		t.Errorf("record = %s", nativeDepsRecord(nativePythonVenv))
+	}
+	off := depsOpts("python")
+	off.CacheStore = CacheStore{}
+	if df := nativeDockerfile(off); !strings.Contains(df, "\n"+venvRun+"\n") || strings.Contains(df, nativeDepsMadeDir) {
+		t.Errorf("a build that keeps no dependencies records its virtualenv:\n%s", df)
+	}
+}
+
 // The dependency directories' archive is keyed by what comes before the
 // source copy, so the build command's own RUN text, the service's variables
 // and its source never move the key.
@@ -154,17 +179,20 @@ func TestDependencyKeyIsWrittenAheadOfTheSource(t *testing.T) {
 
 // --- the loader's seed and the save step, run as the build runs them ---
 
-// depsRig retargets the cache mount at dir/mount; the directories a test
-// passes are under dir, so each sits in the mount at its own absolute path.
+// depsRig retargets the cache mount at dir/mount and the recipe's records at
+// dir/made; the directories a test passes are under dir, so each sits in the
+// mount and among the records at its own absolute path.
 type depsRig struct {
-	t          *testing.T
-	dir, mount string
+	t                *testing.T
+	dir, mount, made string
+	// env is added to the environment the seed runs in.
+	env []string
 }
 
 func newDepsRig(t *testing.T) *depsRig {
 	t.Helper()
 	dir := t.TempDir()
-	r := &depsRig{t: t, dir: dir, mount: filepath.Join(dir, "mount")}
+	r := &depsRig{t: t, dir: dir, mount: filepath.Join(dir, "mount"), made: filepath.Join(dir, "made")}
 	if err := os.MkdirAll(r.mount, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -175,6 +203,11 @@ func (r *depsRig) path(rel string) string { return filepath.Join(r.dir, rel) }
 
 func (r *depsRig) cached(rel string) string { return r.mount + r.path(rel) }
 
+// retarget points a script's mount and records at the rig's.
+func (r *depsRig) retarget(script string) string {
+	return strings.NewReplacer(nativeDepsCacheDir, r.mount, nativeDepsMadeDir, r.made).Replace(script)
+}
+
 // seed sources the loader's seed in bash, as the build RUN does, and returns
 // what it printed.
 func (r *depsRig) seed(rels ...string) string {
@@ -183,12 +216,86 @@ func (r *depsRig) seed(rels ...string) string {
 	for i, rel := range rels {
 		dirs[i] = r.path(rel)
 	}
-	script := strings.ReplaceAll(nativeDepsSeed(dirs), nativeDepsCacheDir, r.mount) + "echo \"after $?\"\n"
-	out, err := exec.Command("bash", "-c", script).CombinedOutput()
+	cmd := exec.Command("bash", "-c", r.retarget(nativeDepsSeed(dirs))+"echo \"after $?\"\n")
+	cmd.Env = append(os.Environ(), r.env...)
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		r.t.Fatalf("seed: %v\n%s", err, out)
 	}
 	return string(out)
+}
+
+// recordVenv runs the recipe's record of the virtualenv at src/.venv under
+// sh, as its RUN does.
+func (r *depsRig) recordVenv() {
+	r.t.Helper()
+	if out, err := exec.Command("sh", "-c", r.retarget(nativeDepsRecord(r.path("src/.venv")))).CombinedOutput(); err != nil {
+		r.t.Fatalf("record: %v\n%s", err, out)
+	}
+}
+
+// pythonCfg is a virtualenv's pyvenv.cfg as `python3 -m venv` writes it on
+// the Python of version.
+func pythonCfg(version string) string {
+	return "home = /usr/local/bin\ninclude-system-site-packages = false\nversion = " + version +
+		"\nexecutable = /usr/local/bin/python3.13\ncommand = /usr/local/bin/python3 -m venv /opt/render/project/src/.venv\n"
+}
+
+// makeVenv lays out a virtualenv at dir as `python3 -m venv` leaves one:
+// pyvenv.cfg, the interpreter's links, pip in site-packages and lib64.
+func makeVenv(t *testing.T, dir, version string) {
+	t.Helper()
+	writeFile(t, filepath.Join(dir, nativeVenvConfig), pythonCfg(version))
+	writeFile(t, filepath.Join(dir, "bin", "pip"), "#!"+dir+"/bin/python\n")
+	writeFile(t, filepath.Join(dir, "lib", "python3.13", "site-packages", "pip", "__init__.py"), "__version__ = '25.2'\n")
+	for link, target := range map[string]string{"bin/python3": "/usr/local/bin/python3", "bin/python": "python3", "lib64": "lib"} {
+		if err := os.Symlink(target, filepath.Join(dir, link)); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// tree is every entry under dir, dir itself included, by its path: a
+// directory, a file's bytes or a link's target. A link is not followed.
+func tree(t *testing.T, dir string) map[string]string {
+	t.Helper()
+	entries := map[string]string{}
+	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(dir, path)
+		switch {
+		case d.Type()&os.ModeSymlink != 0:
+			target, err := os.Readlink(path)
+			entries[rel] = "-> " + target
+			return err
+		case d.IsDir():
+			entries[rel] = "dir"
+		default:
+			body, err := os.ReadFile(path)
+			entries[rel] = string(body)
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return entries
+}
+
+// installed is the packages a virtualenv at dir holds, beside pip.
+func installed(t *testing.T, dir string) []string {
+	t.Helper()
+	entries, _ := os.ReadDir(filepath.Join(dir, "lib", "python3.13", "site-packages"))
+	var names []string
+	for _, e := range entries {
+		if e.Name() != "pip" {
+			names = append(names, e.Name())
+		}
+	}
+	return names
 }
 
 // save runs the save step's heredoc under sh with bound in place of the
@@ -254,6 +361,144 @@ func TestDependencySeedFillsOnlyWhatTheBuildDidNotBring(t *testing.T) {
 	for _, rel := range []string{"gems", "src/target"} {
 		if _, err := os.Stat(r.path(rel) + ".bex-seed"); err == nil {
 			t.Errorf("%s's staging copy was left behind", rel)
+		}
+	}
+}
+
+// relayer stands for the toolchain layer's trip through the layer cache to
+// the next build: the directory is unpacked anew, with every time changed.
+func relayer(t *testing.T, dir string) {
+	t.Helper()
+	trip := dir + ".trip"
+	must(t, os.Mkdir(trip, 0o755))
+	if out, err := exec.Command("sh", "-c", `tar -C "$1" -cf - . | tar -C "$2" -xf - --touch`, "sh", dir, trip).CombinedOutput(); err != nil {
+		t.Fatalf("relayer: %v\n%s", err, out)
+	}
+	must(t, os.RemoveAll(dir))
+	must(t, os.Rename(trip, dir))
+}
+
+// A source-only commit's build finds the recipe's fresh virtualenv where the
+// kept one belongs: the seed swaps the whole directory for the kept one.
+func TestDependencySeedReplacesTheRecipesVirtualenvWithTheKeptOne(t *testing.T) {
+	gnuUserland(t)
+	r := newDepsRig(t)
+	venv := r.path("src/.venv")
+	makeVenv(t, venv, "3.13.18")
+	writeFile(t, filepath.Join(venv, "fresh-only"), "the recipe's")
+	r.recordVenv()
+	relayer(t, venv)
+	kept := r.cached("src/.venv")
+	makeVenv(t, kept, "3.13.18")
+	writeFile(t, filepath.Join(kept, "lib", "python3.13", "site-packages", "flask", "__init__.py"), "flask")
+	writeFile(t, filepath.Join(kept, "bin", "flask"), "#!"+venv+"/bin/python\n")
+
+	if out := r.seed("src/.venv"); out != "after 0\n" {
+		t.Errorf("the seed printed into the build log or left a status: %q", out)
+	}
+	if got := installed(t, venv); !slices.Equal(got, []string{"flask"}) {
+		t.Errorf("the build's virtualenv holds %v, want the kept flask", got)
+	}
+	if _, err := os.Lstat(filepath.Join(venv, "fresh-only")); err == nil {
+		t.Error("the kept virtualenv was merged into the recipe's instead of replacing it")
+	}
+	if target, err := os.Readlink(filepath.Join(venv, "bin", "python3")); err != nil || target != "/usr/local/bin/python3" {
+		t.Errorf("the interpreter's link = %q %v", target, err)
+	}
+	for _, staging := range []string{venv + ".bex-seed", venv + ".bex-made"} {
+		if _, err := os.Lstat(staging); err == nil {
+			t.Errorf("%s was left behind", staging)
+		}
+	}
+	if entries, _ := os.ReadDir(r.mount); len(entries) != 0 {
+		t.Errorf("the mount still holds %v", entries)
+	}
+}
+
+// The recipe's virtualenv gives way only while it is as the recipe made it
+// and the kept one names the same interpreter: a repository's own .venv, which
+// the source copy laid over the recipe's, wins, and so does the recipe's when
+// the kept one was made by another Python.
+func TestDependencySeedKeepsAVirtualenvTheBuildBrought(t *testing.T) {
+	gnuUserland(t)
+	for name, change := range map[string]func(t *testing.T, r *depsRig, venv, kept string){
+		"the repository commits packages": func(t *testing.T, _ *depsRig, venv, _ string) {
+			writeFile(t, filepath.Join(venv, "lib", "python3.13", "site-packages", "vendored", "__init__.py"), "from the repository")
+		},
+		"the repository commits a pip of its own": func(t *testing.T, _ *depsRig, venv, _ string) {
+			writeFile(t, filepath.Join(venv, "bin", "pip"), "#!/usr/bin/env python3\n")
+		},
+		"the repository commits its own pyvenv.cfg": func(t *testing.T, _ *depsRig, venv, _ string) {
+			writeFile(t, filepath.Join(venv, nativeVenvConfig), strings.Replace(pythonCfg("3.13.18"), "/usr/local/bin\n", "/usr/locai/bin\n", 1))
+		},
+		"the repository commits another interpreter link": func(t *testing.T, _ *depsRig, venv, _ string) {
+			must(t, os.Remove(filepath.Join(venv, "bin", "python3")))
+			must(t, os.Symlink("/usr/bin/python3", filepath.Join(venv, "bin", "python3")))
+		},
+		"the repository commits a .venv link": func(t *testing.T, _ *depsRig, venv, _ string) {
+			must(t, os.Rename(venv, venv+".real"))
+			must(t, os.Symlink(".venv.real", venv))
+		},
+		"the kept one was made by another Python": func(t *testing.T, _ *depsRig, _, kept string) {
+			writeFile(t, filepath.Join(kept, nativeVenvConfig), pythonCfg("3.12.11"))
+		},
+		"the recipe recorded nothing": func(t *testing.T, r *depsRig, _, _ string) {
+			must(t, os.RemoveAll(r.made))
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := newDepsRig(t)
+			venv, kept := r.path("src/.venv"), r.cached("src/.venv")
+			makeVenv(t, venv, "3.13.18")
+			r.recordVenv()
+			makeVenv(t, kept, "3.13.18")
+			writeFile(t, filepath.Join(kept, "lib", "python3.13", "site-packages", "flask", "__init__.py"), "flask")
+			change(t, r, venv, kept)
+			before := tree(t, venv)
+			r.seed("src/.venv")
+			if after := tree(t, venv); !maps.Equal(after, before) {
+				t.Errorf("the build's virtualenv changed:\n%v\nwant\n%v", after, before)
+			}
+			if entries, _ := os.ReadDir(r.mount); len(entries) != 0 {
+				t.Errorf("the mount still holds %v", entries)
+			}
+		})
+	}
+}
+
+// A swap that cannot finish leaves the recipe's virtualenv where it was: the
+// build then installs into it from nothing, as a first build does.
+func TestDependencySeedPutsTheRecipesVirtualenvBackWhenTheSwapFails(t *testing.T) {
+	gnuUserland(t)
+	realMv, err := exec.LookPath("mv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := newDepsRig(t)
+	bin := r.path("bin")
+	// mv refuses only the last rename, the staged copy into place.
+	writeFile(t, filepath.Join(bin, "mv"), "#!/bin/sh\ncase $1 in *.bex-seed) case $2 in *.bex-seed) ;; *) exit 1 ;; esac ;; esac\nexec "+realMv+" \"$@\"\n")
+	must(t, os.Chmod(filepath.Join(bin, "mv"), 0o755))
+	r.env = []string{"PATH=" + bin + string(os.PathListSeparator) + os.Getenv("PATH")}
+	venv := r.path("src/.venv")
+	makeVenv(t, venv, "3.13.18")
+	writeFile(t, filepath.Join(venv, "fresh-only"), "the recipe's")
+	r.recordVenv()
+	makeVenv(t, r.cached("src/.venv"), "3.13.18")
+	writeFile(t, filepath.Join(r.cached("src/.venv"), "lib", "python3.13", "site-packages", "flask", "__init__.py"), "flask")
+
+	if out := r.seed("src/.venv"); out != "after 0\n" {
+		t.Errorf("a failed swap failed the build: %q", out)
+	}
+	if got := readOrEmpty(filepath.Join(venv, "fresh-only")); got != "the recipe's" {
+		t.Errorf("the recipe's virtualenv was not put back: %q", got)
+	}
+	if got := installed(t, venv); len(got) != 0 {
+		t.Errorf("half a swap: %v", got)
+	}
+	for _, staging := range []string{venv + ".bex-seed", venv + ".bex-made"} {
+		if _, err := os.Lstat(staging); err == nil {
+			t.Errorf("%s was left behind", staging)
 		}
 	}
 }
@@ -449,6 +694,60 @@ func TestDependencyCacheCrossesBuildsOnlyOnTheSameToolchain(t *testing.T) {
 	p.seedSolve(ruby33)
 	if entries, _ := os.ReadDir(p.mount); len(entries) != 0 {
 		t.Errorf("an unkeyed archive seeded dependencies: %v", entries)
+	}
+}
+
+// The round trip for Python: a cold build installs into the recipe's
+// virtualenv and keeps it, a source-only commit's build gets it back in the
+// recipe's place, and a build on another Python starts from the recipe's.
+func TestDependencyCacheCarriesThePythonVirtualenvAcrossBuilds(t *testing.T) {
+	gnuUserland(t)
+	const python313, python312 = "cccc-aarch64", "dddd-aarch64"
+	p := newDepsPipeline(t)
+	venv := p.path("src/.venv")
+	// recipe is the toolchain layer's fresh virtualenv, as the next build
+	// imports it.
+	recipe := func(version string) {
+		makeVenv(t, venv, version)
+		p.recordVenv()
+		relayer(t, venv)
+	}
+	pipInstall := func(packages ...string) {
+		for _, pkg := range packages {
+			writeFile(t, filepath.Join(venv, "lib", "python3.13", "site-packages", pkg, "__init__.py"), pkg)
+		}
+	}
+
+	// Build 1, cold: pip installs into the recipe's virtualenv.
+	recipe("3.13.18")
+	p.seed("src/.venv")
+	pipInstall("flask", "gunicorn")
+	p.save(xdgCacheMaxBytes, "src/.venv")
+	p.export(python313)
+
+	// Build 2, a source-only commit: every package is there already.
+	p.pod("src/.venv", "made")
+	recipe("3.13.18")
+	if out := p.seedSolve(python313); !strings.Contains(out, "restored in") {
+		t.Fatalf("seed: %s", out)
+	}
+	p.seed("src/.venv")
+	if got := installed(t, venv); !slices.Equal(got, []string{"flask", "gunicorn"}) {
+		t.Errorf("build 2 found %v, want flask and gunicorn installed", got)
+	}
+	p.save(xdgCacheMaxBytes, "src/.venv")
+	p.export(python313)
+
+	// Build 3, Python 3.12: another image, so another key.
+	p.pod("src/.venv", "made")
+	recipe("3.12.11")
+	p.seedSolve(python312)
+	p.seed("src/.venv")
+	if got := installed(t, venv); len(got) != 0 {
+		t.Errorf("build 3 on another Python started with %v", got)
+	}
+	if got := readOrEmpty(filepath.Join(venv, nativeVenvConfig)); got != pythonCfg("3.12.11") {
+		t.Errorf("build 3's virtualenv is not its recipe's: %q", got)
 	}
 }
 

@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -607,9 +608,11 @@ const nativeWorkdir = "/opt/render/project/src"
 // (VIRTUAL_ENV, its bin first on PATH) for the build, the pre-deploy step and
 // the started service, and named by VENV_ROOT. pip, Pipenv, Poetry and uv
 // install into an active virtualenv, so a build command's packages land there
-// and its commands resolve from there. One is left out, with its own
-// follow-up: NODE_MODULES_CACHE (would have to turn the dependency cache off
-// when false).
+// and its commands resolve from there. A build that keeps its dependency
+// directories also records the virtualenv as made (nativeDepsRecord), so the
+// next build's seed can put the kept one in its place (w9/127). One is left
+// out, with its own follow-up: NODE_MODULES_CACHE (would have to turn the
+// dependency cache off when false).
 func nativeBuildDefaults(o Options) string {
 	switch nativeRuntime(o) {
 	case "elixir":
@@ -621,7 +624,11 @@ func nativeBuildDefaults(o Options) string {
 		return `RUN mkdir -p /opt/render/project && ln -s "$CARGO_HOME" ` + nativeCargoHome + ` && ln -s "$RUSTUP_HOME" ` + nativeRustupHome + "\n" +
 			"ENV CARGO_HOME=" + nativeCargoHome + " RUSTUP_HOME=" + nativeRustupHome + " ROCKET_ENV=prod\n"
 	case nativePythonRuntime:
-		return "RUN python3 -m venv " + nativePythonVenv + "\n" +
+		venv := "RUN python3 -m venv " + nativePythonVenv
+		if slices.Contains(o.depsCache(), nativePythonVenv) {
+			venv += " && " + nativeDepsRecord(nativePythonVenv)
+		}
+		return venv + "\n" +
 			"ENV VIRTUAL_ENV=" + nativePythonVenv + " VENV_ROOT=" + nativePythonVenv + "\n" +
 			"ENV PATH=" + nativePythonVenv + "/bin:$PATH\n" +
 			nativeServingPortDefault(nativePythonRuntime) +
