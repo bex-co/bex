@@ -160,6 +160,8 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [ ] **131** — [A Developer and an Admin see every member's API keys, where Render shows each person their own](131.md) ← from w9/m514 t007 (Render parity) 2026-11-19
 - [ ] **132** — [The API keys table is wider than its card on Account Settings, so a key's revoke button starts off-screen, and the loading frame is narrower than the table it stands for](132.md) ← from w9/m514 t006 (dev-9 browser pass) 2026-11-19
 - [ ] **133** — [A Ruby service whose Gemfile pins an exact Ruby patch fails `bundle install`: bex builds on the line's patch and Bundler refuses it](133.md) ← from w9/m494 t004 (production check) 2026-11-19
+- [ ] **134** — [A private Key Value has no external connection string, where Render answers one for every store](134.md) ← from w9/m521 t007 (Render parity) 2026-11-19
+- [ ] **135** — [Every Key Value proxy roll refuses new internal connections for about a second](135.md) ← from w9/m521 t001 (dev-9 check) 2026-11-19
 
 ## Approved queue (priority order, 2026-09-08)
 
