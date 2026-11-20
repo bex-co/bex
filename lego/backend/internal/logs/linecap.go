@@ -55,10 +55,9 @@ const (
 // the burst, so two buckets fed the same lines keep the same ones once a
 // flood has drained both or a quiet spell has filled both (w8/m525): their
 // difference is a whole number of tokens that never grows and shrinks each
-// time only one of them admits. Fractional tokens refilled by elapsed time
-// kept the tail's and the shipper's counts equal but their lines apart.
-// testdata/linecap-shared.json holds the shipper's test and this one to the
-// same lines.
+// time only one of them admits; fractional tokens would keep them apart for
+// good. testdata/linecap-shared.json holds the shipper's test and this one to
+// the same lines.
 type lineCap struct {
 	step    int64 // nanoseconds of a line's timestamp per token
 	burst   int64

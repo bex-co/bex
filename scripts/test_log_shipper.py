@@ -606,24 +606,100 @@ def metric_samples(response, name):
             for labels, value in re.findall(r'^%s\{([^}]*)\} (\S+)$' % re.escape(name), response, re.M)}
 
 
+# w8/m525: one instance's line cap, shared with the patched stage.limit's own
+# test in the image build and with bex-api's tail (lego/backend/internal/logs,
+# linecap_test.go): stamped lines in file order and whether each is kept.
+LINECAP_TABLE = json.loads((ROOT / "lego/backend/internal/logs/testdata/linecap-shared.json").read_text())
+
+
+def stamp_ns(stamp):
+    """Nanoseconds since the epoch of an RFC 3339 UTC stamp, exactly."""
+    whole, _, fraction = stamp.rstrip("Z").partition(".")
+    seconds = int(datetime.strptime(whole, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc).timestamp())
+    return seconds * 10**9 + int(fraction.ljust(9, "0")[:9])
+
+
+def line_cap(lines, rate, burst):
+    """The lines one bucket per pod keeps, by the rule linecap.go and the
+    carried limit-entry-timestamp.patch run: whole tokens, one per 1/rate step
+    of a line's own stamp on a grid fixed to the Unix epoch, capped at burst,
+    full at a pod's first step, and no refill at or before the last step.
+    lines are (pod, stamp, text) in file order."""
+    step, buckets, kept = 10**9 // rate, {}, []
+    for pod, stamp, text in lines:
+        at = stamp_ns(stamp) // step
+        bucket = buckets.get(pod)
+        if bucket is None:
+            bucket = buckets[pod] = [burst, at]
+        elif at > bucket[1]:
+            bucket[:] = [min(burst, bucket[0] + at - bucket[1]), at]
+        if bucket[0] >= 1:
+            bucket[0] -= 1
+            kept.append(text)
+    return kept
+
+
+def cri_stamp(ns):
+    seconds, fraction = divmod(ns, 10**9)
+    return datetime.fromtimestamp(seconds, timezone.utc).strftime("%Y-%m-%dT%H:%M:%S") + f".{fraction:09d}Z"
+
+
 class AppLogLineCapTest(unittest.TestCase):
     """w3/m506: Render keeps at most 6,000 application lines a minute for each
     running instance and drops the rest (render.com/docs/logging). app_logs
-    keeps a token bucket per pod, 100 lines/s with a 6,000-line burst: a pod
-    that writes 20,000 lines at once keeps one burst plus the refill, its
-    excess is counted under its own pod, and a neighbor on the node loses
-    nothing."""
+    keeps a token bucket per pod, 100 lines/s with a 6,000-line burst, and
+    counts each line at its own CRI timestamp (w8/m525), so it keeps the lines
+    bex-api's live tail keeps however late Alloy reads them: its excess is
+    counted under its own pod, and a neighbor on the node loses nothing."""
 
-    FLOOD, QUIET, RATE, BURST = 20000, 60, 100, 6000
+    RATE, BURST, QUIET = 100, 6000, 60
 
-    def test_a_flooding_pod_keeps_one_burst_and_its_neighbor_keeps_every_line(self):
+    def test_the_rule_keeps_the_shared_tables_lines(self):
+        lines = [(row["pod"], row["ts"], f'{row["pod"]} {i}') for i, row in enumerate(LINECAP_TABLE["lines"])]
+        want = [text for (_, _, text), row in zip(lines, LINECAP_TABLE["lines"]) if row["admit"]]
+        self.assertEqual(line_cap(lines, LINECAP_TABLE["rate"], LINECAP_TABLE["burst"]), want)
+
+    def flood(self):
+        """Two minutes of the w8/341 replay's flood, framed as the kubelet's
+        CRI file: 20-line bursts every 105.3 ms, off the 10 ms grid, with a
+        stderr line written after every 50th burst but stamped 3 ms before it,
+        and a line split into two chunks a step apart, stamped with its first.
+        Returns the file's lines and the (pod, stamp, text) records Alloy
+        reassembles from them."""
+        start = stamp_ns("2026-11-20T04:35:00.703700000Z")
+        framed, records = [], []
+        for k in range(1140):
+            base = start + k * 105_300_000
+            for j in range(20):
+                at = cri_stamp(base + j * 23_700)
+                text = f"flood seq={k * 20 + j}"
+                if k == 600 and j == 5:
+                    rest = cri_stamp(base + j * 23_700 + 10_000_000)
+                    framed += [f"{at} stdout P {text} split-", f"{rest} stdout F rest"]
+                    text += " split-rest"
+                else:
+                    framed.append(f"{at} stdout F {text}")
+                records.append(("web-flood", at, text))
+            if k % 50 == 49:
+                at = cri_stamp(base - 3_000_000)
+                framed.append(f"{at} stderr F flood stderr {k}")
+                records.append(("web-flood", at, f"flood stderr {k}"))
+        return framed, records
+
+    def test_a_flooding_pod_keeps_the_lines_the_tail_keeps_and_its_neighbor_every_line(self):
+        framed, records = self.flood()
+        want = line_cap(records, self.RATE, self.BURST)
+        # The file is written before Alloy starts, so it hands the whole flood
+        # over in a few batches: a bucket refilled by the wall clock keeps one
+        # burst of it and little more, one refilled by the lines' own stamps
+        # keeps the burst plus two minutes of refill.
+        self.assertGreater(len(want), self.BURST + 100 * self.RATE)
         with tempfile.TemporaryDirectory(prefix="bex-log-cap-") as directory:
             tmp = Path(directory)
             config, image = render_alloy(tmp)
             pipeline = re.search(r'^loki\.process "app_logs" \{\n.*?^\}', config, re.M | re.S).group()
             pipeline = pipeline.replace("loki.write.default.receiver", "loki.echo.test.receiver")
-            fixtures = {"web-flood": [f"flood line {i}" for i in range(self.FLOOD)],
-                        "api-quiet": [f"quiet line {i}" for i in range(self.QUIET)]}
+            quiet = [f"quiet line {i}" for i in range(self.QUIET)]
             (tmp / "config.alloy").write_text('''logging { format = "json" }
 loki.echo "test" {}
 loki.source.file "test" {
@@ -634,20 +710,20 @@ loki.source.file "test" {
   forward_to = [loki.process.app_logs.receiver]
 }
 ''' + pipeline)
-            for pod, lines in fixtures.items():
-                (tmp / f"{pod}.log").write_text("\n".join(cri_frame(lines)) + "\n")
+            (tmp / "web-flood.log").write_text("\n".join(framed) + "\n")
+            (tmp / "api-quiet.log").write_text("\n".join(cri_frame(quiet)) + "\n")
             name = "bex-log-cap-" + uuid.uuid4().hex[:12]
             run("docker", "create", "--name", name, "--network", "none", image,
                 "run", "--storage.path=/tmp/alloy", "/tmp/config.alloy")
             try:
-                for filename in ["config.alloy", *(f"{pod}.log" for pod in fixtures)]:
+                for filename in ["config.alloy", "web-flood.log", "api-quiet.log"]:
                     run("docker", "cp", str(tmp / filename), f"{name}:/tmp/{filename}")
                 run("docker", "start", name)
                 started = time.monotonic()
                 kept, dropped, by_pod, output = {}, 0, {}, ""
                 while time.monotonic() < started + 120:
                     output = run("docker", "logs", name, stderr=subprocess.STDOUT)
-                    kept = {pod: set() for pod in fixtures}
+                    kept = {"web-flood": [], "api-quiet": []}
                     for line in output.splitlines():
                         try:
                             entry = json.loads(line)
@@ -656,7 +732,7 @@ loki.source.file "test" {
                         if (entry.get("receiver") or entry.get("component_id")) == "loki.echo.test":
                             labels = dict(re.findall(r'(\w+)="([^"\\]*)"', entry["labels"]))
                             self.assertEqual(labels.get("type"), "app")
-                            kept[labels["pod"]].add(entry["entry"])
+                            kept[labels["pod"]].append(entry["entry"])
                     try:
                         metrics = scrape_metrics(self, name)
                     except subprocess.CalledProcessError:
@@ -669,21 +745,19 @@ loki.source.file "test" {
                     by_pod = {dict(labels)["label_value"]: value for labels, value in
                               metric_samples(metrics, "loki_process_dropped_lines_by_label_total").items()
                               if ("label_name", "pod") in labels}
-                    if len(kept["web-flood"]) + dropped >= self.FLOOD and len(kept["api-quiet"]) >= self.QUIET:
+                    if len(kept["web-flood"]) + dropped >= len(records) and len(kept["api-quiet"]) >= self.QUIET:
                         break
                     self.assertEqual(run("docker", "inspect", "-f", "{{.State.Running}}", name), "true", output)
                     time.sleep(1)
-                elapsed = time.monotonic() - started
             finally:
                 run("docker", "rm", "-f", name)
-        flood = len(kept["web-flood"])
-        self.assertEqual(flood + dropped, self.FLOOD, f"the flood was not fully read:\n{output[-4000:]}")
-        # One burst, plus at most the refill while Alloy read the file.
-        self.assertGreaterEqual(flood, self.BURST)
-        self.assertLessEqual(flood, self.BURST + self.RATE * (elapsed + 1))
-        self.assertTrue(kept["web-flood"] <= set(fixtures["web-flood"]))
+        self.assertEqual(len(kept["web-flood"]) + dropped, len(records), f"the flood was not fully read:\n{output[-4000:]}")
+        missing, extra = set(want) - set(kept["web-flood"]), set(kept["web-flood"]) - set(want)
+        self.assertEqual(kept["web-flood"], want,
+                         f"app_logs kept {len(kept['web-flood'])} flood lines, {len(extra)} of them not the "
+                         f"{len(want)} the tail keeps ({len(missing)} of those missing)")
         self.assertEqual(by_pod, {"web-flood": dropped}, "drops must be counted under the flooding pod alone")
-        self.assertEqual(kept["api-quiet"], set(fixtures["api-quiet"]), "the neighbor lost lines")
+        self.assertEqual(kept["api-quiet"], quiet, "the neighbor lost lines")
 
     def test_the_cap_precedes_the_severity_parse(self):
         with tempfile.TemporaryDirectory(prefix="bex-log-cap-") as tmp:
@@ -693,12 +767,17 @@ loki.source.file "test" {
         self.assertIsNotNone(limit, "app_logs lost Render's per-instance cap")
         self.assertEqual(dict(re.findall(r'(\w+)\s*=\s*(\S+)', limit.group(1))),
                          {"rate": str(self.RATE), "burst": str(self.BURST), "by_label_name": '"pod"',
-                          "max_distinct_labels": "10000", "drop": "true"})
+                          "max_distinct_labels": "10000", "drop": "true", "refill_by_entry_timestamp": "true"})
         self.assertLess(pipeline.index("stage.limit {"), pipeline.index("stage.json {"))
         # Request lines and datastore logs are platform-generated: uncapped.
         for uncapped in ("request_logs", "database_logs", "keyvalue_logs", "build_logs"):
             block = re.search(r'^loki\.process "%s" \{\n.*?^\}' % uncapped, config, re.M | re.S).group()
             self.assertNotIn("stage.limit", block, uncapped)
+        # Agent sandboxes keep upstream's wall-clock limiter: the argument is
+        # opt-in for the bucket the tail shares.
+        sandbox = re.search(r'^loki\.process "sandbox_logs" \{\n.*?^\}', config, re.M | re.S).group()
+        self.assertIn("stage.limit {", sandbox)
+        self.assertNotIn("refill_by_entry_timestamp", sandbox)
 
 
 class ZotGCMetricsTest(unittest.TestCase):

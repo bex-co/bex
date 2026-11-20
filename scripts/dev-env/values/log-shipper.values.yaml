@@ -15,6 +15,12 @@
 # note 028 names. No double-brace River template stages here, so no Helm-tpl
 # escaping is needed (the fragile part of the prod config).
 fullnameOverride: log-shipper
+# The prod shipper's image (deploy/gitops/base/log-shipper.yaml): app_logs'
+# stage.limit below needs its carried refill_by_entry_timestamp (w8/m525).
+image:
+  registry: ghcr.io
+  repository: bex-co/bex-alloy
+  digest: sha256:56d02b11e69b375e373badce2fbaf91d9a4a93a0ae656350bfabf2658d99c044
 controller:
   type: daemonset
   tolerations:
@@ -68,13 +74,15 @@ alloy:
       loki.process "app_logs" {
         // Render's per-instance cap, as the prod shipper keeps it (w3/m506):
         // 6,000 application lines a minute per pod, the excess dropped and
-        // counted. bex-api's live tail applies the same bucket.
+        // counted. bex-api's live tail applies the same bucket, and both
+        // count each line at its own timestamp (w8/m525).
         stage.limit {
-          rate                = 100
-          burst               = 6000
-          by_label_name       = "pod"
-          max_distinct_labels = 10000
-          drop                = true
+          rate                      = 100
+          burst                     = 6000
+          by_label_name             = "pod"
+          max_distinct_labels       = 10000
+          drop                      = true
+          refill_by_entry_timestamp = true
         }
         // dev-__N__ minimal: no JSON `level` parse (prod does) — default to unknown,
         // the honest value, and stamp Render's `type` vocabulary.

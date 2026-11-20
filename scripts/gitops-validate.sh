@@ -1786,18 +1786,23 @@ if [ -f "$LOGSHIP" ]; then
     # Agent sandboxes run untrusted code: a per-pod rate limit and the
     # credential-line drop too.
     [ "$logs" = sandbox_logs ] && required_stages+=('stage.limit {' 'by_label_name = "pod"' 'drop_counter_reason = "credential_like"')
+    # Only app_logs refills by the line's own timestamp (w8/m525): the
+    # sandbox cap keeps upstream's wall-clock limiter.
+    [ "$logs" = sandbox_logs ] && grep -qF 'refill_by_entry_timestamp' <<<"$block" \
+      && { echo "FAIL: log-shipper.yaml sandbox_logs must keep upstream's stage.limit (no refill_by_entry_timestamp); only app_logs shares the tail's bucket" >&2; fail=1; }
     for required in "${required_stages[@]}"; do
       grep -qF "$required" <<<"$block" \
         || { echo "FAIL: log-shipper.yaml $logs lost required stage: $required" >&2; fail=1; }
     done
     # Render's per-instance cap (w3/m506): 6,000 application lines a minute
     # per pod, dropped and counted before the severity parse. bex-api's live
-    # tail keeps the same bucket (appLineRate/appLineBurst, checked below).
+    # tail keeps the same bucket (appLineRate/appLineBurst, checked below),
+    # and both count each line at its own timestamp (w8/m525).
     [ "$logs" = app_logs ] || continue
     limit="$(awk '/stage\.limit \{/{on=1} on{gsub(/^[ \t]+|[ \t]+$/, ""); gsub(/[ \t]+/, " "); print} on&&/^\}$/{exit}' <<<"$block" | tr '\n' ';')"
-    if [ "$limit" != 'stage.limit {;rate = 100;burst = 6000;by_label_name = "pod";max_distinct_labels = 10000;drop = true;};' ] \
+    if [ "$limit" != 'stage.limit {;rate = 100;burst = 6000;by_label_name = "pod";max_distinct_labels = 10000;drop = true;refill_by_entry_timestamp = true;};' ] \
       || ! awk '/stage\.limit \{/ {limit=NR} /stage\.json \{/ && !json {json=NR} END {exit !(limit && json && limit < json)}' <<<"$block"; then
-      echo "FAIL: log-shipper.yaml app_logs must cap each pod at Render's 6,000 lines a minute (stage.limit rate 100, burst 6000, by pod, drop) before the severity parse (w3/m506); got '$limit'" >&2
+      echo "FAIL: log-shipper.yaml app_logs must cap each pod at Render's 6,000 lines a minute (stage.limit rate 100, burst 6000, by pod, drop, refilled by the line's own timestamp) before the severity parse (w3/m506, w8/m525); got '$limit'" >&2
       fail=1
     fi
   done

@@ -450,9 +450,9 @@ type lineCapTable struct {
 	Rate  int64 `json:"rate"`
 	Burst int64 `json:"burst"`
 	Lines []struct {
-		Pod   string `json:"pod"`
-		TS    string `json:"ts"`
-		Admit bool   `json:"admit"`
+		Pod   string    `json:"pod"`
+		TS    time.Time `json:"ts"`
+		Admit bool      `json:"admit"`
 	} `json:"lines"`
 }
 
@@ -468,7 +468,7 @@ func TestLineCapKeepsTheShippersLines(t *testing.T) {
 	c := lineCapOf(table.Rate, table.Burst)
 	kept := 0
 	for i, l := range table.Lines {
-		if got := c.admit(appLine(l.Pod, mustTime(t, l.TS), fmt.Sprintf("%s %d", l.Pod, i))); got != l.Admit {
+		if got := c.admit(appLine(l.Pod, l.TS, fmt.Sprintf("%s %d", l.Pod, i))); got != l.Admit {
 			t.Errorf("line %d (%s at %s): admit = %v, want %v", i, l.Pod, l.TS, got, l.Admit)
 		}
 		if l.Admit {
@@ -479,15 +479,6 @@ func TestLineCapKeepsTheShippersLines(t *testing.T) {
 	if kept == 0 || kept == len(table.Lines) {
 		t.Fatalf("the table keeps %d of %d lines; it must keep some and drop some", kept, len(table.Lines))
 	}
-}
-
-func mustTime(t *testing.T, stamp string) time.Time {
-	t.Helper()
-	at, err := time.Parse(time.RFC3339Nano, stamp)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return at
 }
 
 // The tail's bucket for an instance starts full wherever its read starts,
