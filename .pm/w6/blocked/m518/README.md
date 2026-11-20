@@ -1,6 +1,6 @@
 # w6 · m518 — An SNI-proxy roll relays its external clients for up to the proxies' idle timeout, and nothing waits on that drain
 
-**Worker:** worker6 **Goal:** when a deploy changes `/kv-sni-proxy` or `/pg-sni-proxy`, each node's old pod relays its open external Key Value and Postgres streams for up to the proxies' 1 h idle timeout, not w6/m515's 30 s. Neither the deploy's wait nor the platform's health signal waits on that drain: each passes once every node runs a Ready pod of the new revision. **Status:** todo (t001–t005, t007 and t008 done; t006 next: ship, then the production check across the next pin that moves an SNI pin)
+**Worker:** worker6 **Goal:** when a deploy changes `/kv-sni-proxy` or `/pg-sni-proxy`, each node's old pod relays its open external Key Value and Postgres streams for up to the proxies' 1 h idle timeout, not w6/m515's 30 s. Neither the deploy's wait nor the platform's health signal waits on that drain: each passes once every node runs a Ready pod of the new revision. **Status:** blocked (t001–t005, t007 and t008 done; t006 shipped `081c847e1` and armed its probes, and waits for the first pin that carries it)
 
 ## Tasks (in order)
 
@@ -27,7 +27,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** promoted from inbox note [w6/146](../done/146.md) on 2026-11-19 by `/loopx w6`. w6/m515 t005 filed it as the longer-bound variant that milestone's Design weighed.
+- **Source:** promoted from inbox note [w6/146](../../done/146.md) on 2026-11-19 by `/loopx w6`. w6/m515 t005 filed it as the longer-bound variant that milestone's Design weighed.
 - **Goal linkage:** ADR008 § Render parity first.
   - Render breaks a datastore's connections for its own infrastructure only in service-affecting maintenance, which "usually occur[s] no more than once every three months", announced by email ([platform maintenance](https://render.com/docs/platform-maintenance), read 2026-11-19).
   - bex closes every external Key Value and Postgres stream without notice on each deploy that changes an SNI binary. After w6/m515 that close comes 30 s after the old pod's `SIGTERM`. No ADR018 row signs it off.
@@ -66,7 +66,7 @@
 
 - **t003 and every later task wait for w6/m515.** The drain itself is w6/m515's code, in stash `loopx/w6/m515` until w6/m470 t006 records its held-client deploy. Ship t003 only after w6/m515 t006 has recorded its production check, or w6/m515 is in `done/`. That check reads held idle clients closing at the 30 s bound, and a longer bound shipped first would change what it reads.
 - **t001 and t002 may ship before**, but only if they change neither SNI binary (the packages w6/m470 § "Do not change the SNI binaries" lists) nor either DaemonSet template, because either change rolls both DaemonSets and spends the kept-pin deploy w6/m470 waits for. Anything that does change one waits with t003.
-- **ADR021 § 10 changes in the stash.** w6/m515's stash rewrites § 10 and links this work as `../.pm/w6/146.md`. That note is now [w6/146](../done/146.md), so the link moves to this milestone when the stash is applied (`bash scripts/docs-links-validate.sh` reports it). t005 edits the section w6/m515 lands, not today's.
+- **ADR021 § 10 changes in the stash.** w6/m515's stash rewrites § 10 and links this work as `../.pm/w6/146.md`. That note is now [w6/146](../../done/146.md), so the link moves to this milestone when the stash is applied (`bash scripts/docs-links-validate.sh` reports it). t005 edits the section w6/m515 lands, not today's.
 
 ## Progress — 2026-11-19 (t001 and t002 shipped; parked on w6/m515)
 
@@ -81,7 +81,13 @@
 ## Unblock record — 2026-11-20 (verified evidence, `/loopx w6`)
 
 - **Affected:** t003–t009.
-- **Source: verified evidence.** w6/m515 is in `done/` (`17e8848c0`), and its [t006](../done/m515/done/t006.md#step-2-the-sni-moving-deploy-2026-11-20-pin-a47204c7e) recorded the production check this milestone waited for: across pin `a47204c7e` (producer `3e53abbe3bc3`), held external clients on both proxies got their replies after `SIGTERM` and closed at the 30 s bound. Both gates in § Sequencing constraint hold.
+- **Source: verified evidence.** w6/m515 is in `done/` (`17e8848c0`), and its [t006](../../done/m515/done/t006.md#step-2-the-sni-moving-deploy-2026-11-20-pin-a47204c7e) recorded the production check this milestone waited for: across pin `a47204c7e` (producer `3e53abbe3bc3`), held external clients on both proxies got their replies after `SIGTERM` and closed at the 30 s bound. Both gates in § Sequencing constraint hold.
 - **The stash is gone.** w6/m515 shipped its drain as `495d04b86`, so t003 edits `main`'s DaemonSets directly, and ADR021 § 10's link to this milestone already points here. Its t008 (`17e8848c0`, `sniproxy.HardStopOnManagerExit`) changes both SNI binaries, so the first pin that carries it moves both SNI pins whatever t003 does.
 - **Rollout consequence.** `bex-operator` tracks `main`, so t003's template change rolls both DaemonSets at push, on the running image, and those old pods still drain for 30 s (w6/m515 t006 § Step 1, Deviation). The first pin that carries t003 and `17e8848c0` then rolls them by image, and its old pods drain for the new bound: that is t006's held-client deploy.
 - **Next:** t003 at 3,600 s, t004 on the local cluster, t005, ship, then t006 across that pin.
+
+## Park — 2026-11-20 (t001–t005, t007 and t008 done; t006 waits for the next pin)
+
+- **Shipped** as `081c847e1`. Its template rolled both DaemonSets at push (06:15Z), one surge per node, and those old pods drained for their own 30 s. The new pods run the 3,600 s bound with a 3,610 s grace period ([t006 § Step 1](t006.md#step-1-shipped-as-081c847e1-and-the-template-rolled-at-push-2026-11-20)).
+- **Armed.** Eight probes in `bex-canary` hold busy, self-ending and idle Key Value and Postgres clients through the edge, with new-connection loops on each proxy ([t006 § Step 2](t006.md#step-2-armed-2026-11-20-05510617z)).
+- **Gate.** The first pin that carries `081c847e1` rolls both DaemonSets by image with the new bound on the old pods. It moves both SNI pins anyway, for `17e8848c0`. Next: [t006 § Next](t006.md#next-the-worker-after-the-first-pin-that-carries-081c847e1), then t009.
