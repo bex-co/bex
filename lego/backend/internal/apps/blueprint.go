@@ -432,7 +432,9 @@ func blueprintFetchFailure(err error, repo, requestedPath, branch string) error 
 // and sync history carry.
 func blueprintCreateFetchError(err error, repo, requestedPath, branch string) error {
 	reason, message := classifyBlueprintFetchError(err, repo, requestedPath, branch)
-	if reason == BlueprintFetchRateLimited || reason == BlueprintFetchUnavailable {
+	// The 503 set is RetryableBlueprintFetch's, by name: a new retryable
+	// reason must stay a 503 here without a second edit.
+	if RetryableBlueprintFetch(reason) {
 		return core.NewUnavailableError(string(reason), message, nil)
 	}
 	return core.NewBadRequestError(string(reason), message, nil)
