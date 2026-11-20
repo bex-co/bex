@@ -115,14 +115,16 @@ func (s *PGStore) MarkObjectStoragePurgeAttempt(ctx context.Context, workspaceID
 	return err
 }
 
-// FinishObjectStoragePurge drops a deleted workspace's retired bucket rows and
-// its usage rows, once its Wasabi prefix is empty in every region. A live row
-// (a bucket created in the race with the delete) stays, with the usage rows
-// beside it, until the sweep retires it and purges again.
-func (s *PGStore) FinishObjectStoragePurge(ctx context.Context, workspaceID string) error {
+// FinishObjectStoragePurge drops a deleted workspace's bucket rows retired before
+// retiredBefore, and its usage rows once no bucket row is left, after its Wasabi
+// prefix was found empty in every region. A row retired since stays, with the
+// usage rows beside it, so the sweep purges the prefix again
+// (objectstorage.PurgeHold); so does a live row (a bucket created in the race
+// with the delete), until the sweep retires it and purges again.
+func (s *PGStore) FinishObjectStoragePurge(ctx context.Context, workspaceID string, retiredBefore time.Time) error {
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx,
-			`DELETE FROM object_buckets WHERE workspace_id = $1 AND deleted_at IS NOT NULL`, workspaceID); err != nil {
+			`DELETE FROM object_buckets WHERE workspace_id = $1 AND deleted_at < $2`, workspaceID, retiredBefore.UTC()); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `

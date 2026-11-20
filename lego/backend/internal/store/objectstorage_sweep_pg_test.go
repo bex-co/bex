@@ -389,15 +389,27 @@ func TestDeleteTenantRetiresObjectBucketsAndFinishPurgeDropsThem(t *testing.T) {
 		t.Fatalf("another workspace's bucket was retired: %v", err)
 	}
 
-	if err := s.FinishObjectStoragePurge(ctx, ws); err != nil {
+	counts := func() (buckets, usage int) {
+		t.Helper()
+		if err := s.Pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM object_buckets WHERE workspace_id = $1),
+			(SELECT count(*) FROM object_storage_usage WHERE workspace_id = $1)`, ws).Scan(&buckets, &usage); err != nil {
+			t.Fatal(err)
+		}
+		return buckets, usage
+	}
+	// A finish whose cutoff is before the retirement keeps every row: the rows
+	// are how the sweep finds the prefix to purge again.
+	if err := s.FinishObjectStoragePurge(ctx, ws, time.Now().Add(-time.Hour)); err != nil {
 		t.Fatal(err)
 	}
-	var buckets, usage int
-	if err := s.Pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM object_buckets WHERE workspace_id = $1),
-		(SELECT count(*) FROM object_storage_usage WHERE workspace_id = $1)`, ws).Scan(&buckets, &usage); err != nil {
+	if buckets, usage := counts(); buckets != 2 || usage != 2 {
+		t.Fatalf("a finish with the rows retired after its cutoff left %d bucket rows and %d usage rows, want 2 and 2", buckets, usage)
+	}
+
+	if err := s.FinishObjectStoragePurge(ctx, ws, time.Now().Add(time.Minute)); err != nil {
 		t.Fatal(err)
 	}
-	if buckets != 0 || usage != 0 {
+	if buckets, usage := counts(); buckets != 0 || usage != 0 {
 		t.Fatalf("after the purge finished: %d bucket rows and %d usage rows remain", buckets, usage)
 	}
 	if bytes, _, _ := s.ObjectStorageUsageTotals(ctx, other, "oregon"); bytes != 7 {
@@ -433,7 +445,7 @@ func TestFinishObjectStoragePurgeKeepsALiveRowAndItsUsage(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := s.FinishObjectStoragePurge(ctx, ws); err != nil {
+	if err := s.FinishObjectStoragePurge(ctx, ws, time.Now().Add(time.Minute)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.GetObjectBucketByID(ctx, racer.ID); err != nil {

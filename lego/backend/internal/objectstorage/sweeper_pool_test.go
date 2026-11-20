@@ -108,7 +108,7 @@ func (r *poolRepo) RetireObjectBuckets(context.Context, string) (int64, error) {
 func (r *poolRepo) MarkObjectStoragePurgeAttempt(context.Context, string, time.Time) error {
 	return nil
 }
-func (r *poolRepo) FinishObjectStoragePurge(context.Context, string) error { return nil }
+func (r *poolRepo) FinishObjectStoragePurge(context.Context, string, time.Time) error { return nil }
 
 // listGate stands in for one region's Wasabi. A listing answers one object of
 // the workspace once hold lets it; hold nil answers at once. The embedded Store

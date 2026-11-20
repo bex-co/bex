@@ -111,7 +111,7 @@ func IsOrphanBucketID(bucketID string) bool { return strings.HasPrefix(bucketID,
 type PurgeRepository interface {
 	RetireObjectBuckets(ctx context.Context, workspaceID string) (int64, error)
 	MarkObjectStoragePurgeAttempt(ctx context.Context, workspaceID string, at time.Time) error
-	FinishObjectStoragePurge(ctx context.Context, workspaceID string) error
+	FinishObjectStoragePurge(ctx context.Context, workspaceID string, retiredBefore time.Time) error
 }
 
 // SweepRepository is the part of the store the sweep reads and writes.

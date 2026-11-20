@@ -35,14 +35,27 @@ import (
 // empty are the retired rows and the usage rows dropped, so a purge that fails
 // is never forgotten: the rows are the record that it is still owed.
 //
-// What this does not cover: a presigned PUT URL minted just before the deletion
-// stays valid for PresignTTL, so an upload that lands after the purge leaves an
-// object no row names. Rows dropped now cannot find it; ADR112 does not record
-// the case.
+// The rows are also the only way the sweep finds the prefix again, and a
+// presigned PUT (MintPut) goes straight to Wasabi, which knows nothing of the
+// deletion. So the rows outlive the deletion by PurgeHold, the longest an upload
+// authorized before it can take to arrive, and every sweep in that time purges
+// the prefix again. Only a purge that starts after the hold drops them.
 
 // ImmediatePurgeTimeout bounds the purge a deletion attempts itself, so a large
 // workspace does not hold the delete request open; the sweep finishes it.
 const ImmediatePurgeTimeout = 10 * time.Second
+
+// PurgeHold is how long a deleted workspace's retired rows are kept, so the sweep
+// keeps purging its prefix until no upload authorized before the deletion can
+// still arrive: a URL minted just before it is valid for PresignTTL, and Wasabi
+// checks that when the request starts, so the largest object a URL allows
+// (MaxObjectBytesPresigned) may then take as long as it takes over the slowest
+// link bex sizes an upload for. That is about 8 hours 12 minutes.
+const PurgeHold = PresignTTL + time.Duration(MaxObjectBytesPresigned/slowestUploadBytesPerSecond)*time.Second
+
+// slowestUploadBytesPerSecond is 1.5 Mbit/s, the slowest link StreamDeadline is
+// sized for.
+const slowestUploadBytesPerSecond = 1_500_000 / 8
 
 // WorkspacePurger deletes a deleted workspace's objects as the last step of the
 // workspace teardown, after its tenant row (and with it the live bucket rows) is
@@ -74,11 +87,13 @@ func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, workspaceID string
 }
 
 // purgeWorkspace removes every object under <tea-id>/ in every region, then
-// drops the workspace's rows, and reports how many objects it removed. It
-// retires any live row first (a no-op after DeleteTenant), so no pub- host
-// answers while the objects go, and stamps the attempt so a purge that keeps
-// failing waits behind the others. It tries every region and returns every
-// failure, leaving the rows in place unless all of them succeeded.
+// drops the workspace's rows retired more than PurgeHold before now, and reports
+// how many objects it removed. It retires any live row first (a no-op after
+// DeleteTenant), so no pub- host answers while the objects go, and stamps the
+// attempt so a purge that keeps failing waits behind the others. It tries every
+// region and returns every failure, leaving the rows in place unless all of them
+// succeeded. now must be read before the prefix is listed, so a purge that drops
+// the rows has listed everything that arrived within the hold.
 func purgeWorkspace(ctx context.Context, svc *Service, repo PurgeRepository, workspaceID string, now time.Time) (removed int, err error) {
 	if !svc.Enabled() {
 		return 0, ErrNotConfigured
@@ -109,7 +124,7 @@ func purgeWorkspace(ctx context.Context, svc *Service, repo PurgeRepository, wor
 	if err := errors.Join(errs...); err != nil {
 		return removed, err
 	}
-	if err := repo.FinishObjectStoragePurge(ctx, workspaceID); err != nil {
+	if err := repo.FinishObjectStoragePurge(ctx, workspaceID, now.Add(-PurgeHold)); err != nil {
 		return removed, fmt.Errorf("drop rows: %w", err)
 	}
 	return removed, nil

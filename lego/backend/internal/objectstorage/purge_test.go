@@ -79,7 +79,28 @@ func (f *purgeFixture) purger() *objectstorage.WorkspacePurger {
 	return &objectstorage.WorkspacePurger{Service: f.Svc, Repo: f.PG}
 }
 
-func TestWorkspaceDeletePurgesBothRegionsAndDropsTheRows(t *testing.T) {
+// retiredAt is when the workspace's last bucket row was retired, by the
+// database's clock, which stamped it.
+func (f *purgeFixture) retiredAt() time.Time {
+	f.t.Helper()
+	var at time.Time
+	if err := f.Pool.QueryRow(context.Background(),
+		`SELECT max(deleted_at) FROM object_buckets WHERE workspace_id = $1`, f.WS).Scan(&at); err != nil {
+		f.t.Fatal(err)
+	}
+	return at
+}
+
+// sweepAt runs a sweep pass whose clock reads at.
+func (f *purgeFixture) sweepAt(at time.Time) {
+	f.t.Helper()
+	f.Now = at
+	if err := f.Sweeper.Pass(context.Background()); err != nil {
+		f.t.Fatalf("sweep at %s: %v", at, err)
+	}
+}
+
+func TestWorkspaceDeletePurgesBothRegionsAndDropsTheRowsAfterTheHold(t *testing.T) {
 	f := newPurgeFixture(t, "purge-delete")
 	if own, _ := f.objectsLeft(); own != 5 {
 		t.Fatalf("setup: %d objects under the workspace, want 5", own)
@@ -113,8 +134,98 @@ func TestWorkspaceDeletePurgesBothRegionsAndDropsTheRows(t *testing.T) {
 	if others != 1 {
 		t.Fatalf("another workspace has %d objects left, want its 1 untouched", others)
 	}
+	// The rows stay for PurgeHold: they are how the sweep finds the prefix to
+	// purge again while an upload authorized before the deletion can still land.
+	if b, retired, u := f.rows(); b != 2 || retired != 2 || u != 4 {
+		t.Fatalf("right after the purge %d bucket rows (%d retired) and %d usage rows remain, want 2 (2) and 4 held", b, retired, u)
+	}
+	deleted := f.retiredAt()
+	f.sweepAt(deleted.Add(objectstorage.PurgeHold - time.Minute))
+	if b, _, u := f.rows(); b != 2 || u != 4 {
+		t.Fatalf("a sweep inside the hold left %d bucket rows and %d usage rows, want them all held", b, u)
+	}
+	f.sweepAt(deleted.Add(objectstorage.PurgeHold + time.Minute))
 	if b, _, u := f.rows(); b != 0 || u != 0 {
-		t.Fatalf("%d bucket rows and %d usage rows remain, want none", b, u)
+		t.Fatalf("after the hold %d bucket rows and %d usage rows remain, want none", b, u)
+	}
+	if _, others := f.objectsLeft(); others != 1 {
+		t.Fatalf("another workspace has %d objects left after the sweeps, want its 1 untouched", others)
+	}
+}
+
+// A presigned PUT goes straight to Wasabi, which knows nothing of the deletion,
+// so a URL minted before it can still store an object after the purge. Every
+// sweep inside the hold removes such an object, and the sweep that drops the
+// rows purges first.
+func TestAPresignedPutThatLandsAfterThePurgeIsRemovedByALaterSweep(t *testing.T) {
+	f := newPurgeFixture(t, "purge-late-put")
+	ctx := context.Background()
+	body := []byte("late bytes")
+	var urls []string
+	for _, key := range []string{"late/1", "late/2", "late/3"} {
+		put, err := f.Svc.MintPut(ctx, f.WS, objectstorage.Oregon, key, int64(len(body)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		urls = append(urls, put.URL)
+	}
+	if err := f.PG.DeleteTenant(ctx, f.WS); err != nil {
+		t.Fatal(err)
+	}
+	deleted := f.retiredAt()
+	if err := f.purger().PurgeWorkspace(ctx, f.WS); err != nil {
+		t.Fatal(err)
+	}
+	if own, _ := f.objectsLeft(); own != 0 {
+		t.Fatalf("%d objects remain right after the purge, want none", own)
+	}
+	land := func(url string) {
+		t.Helper()
+		upload(t, url, body)
+		if own, _ := f.objectsLeft(); own != 1 {
+			t.Fatalf("setup: the late upload left %d objects under the deleted workspace, want 1", own)
+		}
+	}
+
+	// An upload lands after the purge: the next sweep removes it and keeps the rows.
+	land(urls[0])
+	f.sweepAt(deleted.Add(30 * time.Minute))
+	if own, _ := f.objectsLeft(); own != 0 {
+		t.Fatalf("a sweep inside the hold left %d late objects", own)
+	}
+	if b, _, _ := f.rows(); b == 0 {
+		t.Fatal("a sweep inside the hold dropped the rows: nothing would find a later upload")
+	}
+
+	// One that lands late in the hold is removed too, and the rows still stay.
+	land(urls[1])
+	f.sweepAt(deleted.Add(objectstorage.PurgeHold - time.Minute))
+	if own, _ := f.objectsLeft(); own != 0 {
+		t.Fatalf("a sweep at the end of the hold left %d late objects", own)
+	}
+	if b, _, _ := f.rows(); b == 0 {
+		t.Fatal("the rows were dropped before the hold ended")
+	}
+
+	// The sweep after the hold purges what landed before it, then drops the rows.
+	land(urls[2])
+	f.sweepAt(deleted.Add(objectstorage.PurgeHold + time.Minute))
+	own, others := f.objectsLeft()
+	if own != 0 || others != 1 {
+		t.Fatalf("after the hold %d objects remain under the deleted workspace and %d under the other, want 0 and 1", own, others)
+	}
+	if b, _, u := f.rows(); b != 0 || u != 0 {
+		t.Fatalf("after the hold %d bucket rows and %d usage rows remain, want none", b, u)
+	}
+}
+
+func TestThePurgeHoldOutlastsThePresignedURLsAndTheirSlowestUpload(t *testing.T) {
+	// A URL is valid for PresignTTL, and the largest object it allows takes about
+	// eight hours at 1.5 Mbit/s once Wasabi has accepted the request.
+	slowest := time.Duration(objectstorage.MaxObjectBytesPresigned*8/1_500_000) * time.Second
+	if objectstorage.PurgeHold < objectstorage.PresignTTL+slowest {
+		t.Fatalf("PurgeHold = %s, shorter than a URL's life (%s) plus a 5 GiB upload at 1.5 Mbit/s (%s)",
+			objectstorage.PurgeHold, objectstorage.PresignTTL, slowest)
 	}
 }
 
@@ -154,8 +265,9 @@ func TestPurgeThatFailedOnceIsRetriedBySweepUntilItFinishes(t *testing.T) {
 		t.Fatal("oregon's objects vanished while it was down")
 	}
 
-	// ...until it succeeds.
+	// ...until it succeeds, and drops the rows once the hold is over.
 	f.Fakes[objectstorage.Oregon].SetDown(false)
+	f.Now = f.retiredAt().Add(objectstorage.PurgeHold + time.Minute)
 	if err := f.Sweeper.Pass(ctx); err != nil {
 		t.Fatalf("the retry after Wasabi came back failed: %v", err)
 	}
@@ -180,14 +292,20 @@ func TestSweepPurgesAWorkspaceWhoseTenantRowIsGoneWithoutRetiredRows(t *testing.
 	if _, err := f.PG.GetObjectBucketByID(ctx, f.photos.ID); err != nil {
 		t.Fatalf("setup: %v", err)
 	}
+	f.Now = time.Now()
 	if err := f.Sweeper.Pass(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if own, _ := f.objectsLeft(); own != 0 {
 		t.Fatalf("%d objects of a deleted workspace remain", own)
 	}
+	// The sweep retired the rows itself, so the hold starts there.
+	if b, retired, _ := f.rows(); b != 2 || retired != 2 {
+		t.Fatalf("the sweep left %d rows, %d retired, want both retired and held", b, retired)
+	}
+	f.sweepAt(f.retiredAt().Add(objectstorage.PurgeHold + time.Minute))
 	if b, _, u := f.rows(); b != 0 || u != 0 {
-		t.Fatalf("%d bucket rows and %d usage rows of a deleted workspace remain", b, u)
+		t.Fatalf("%d bucket rows and %d usage rows of a deleted workspace remain after the hold", b, u)
 	}
 }
 
@@ -206,6 +324,7 @@ func TestPurgeBoundsItselfAndLeavesTheRestToTheSweep(t *testing.T) {
 	if b, _, _ := f.rows(); b != 2 {
 		t.Fatalf("%d rows after a purge with no time, want both kept", b)
 	}
+	f.Now = f.retiredAt().Add(objectstorage.PurgeHold + time.Minute)
 	if err := f.Sweeper.Pass(ctx); err != nil {
 		t.Fatal(err)
 	}
