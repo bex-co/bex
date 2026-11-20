@@ -843,6 +843,9 @@ type PGStore struct {
 	// billed. An hour boundary; the composition root sets it from the price
 	// sheet. Zero means the switch never happens.
 	SandboxUsageBilledFrom time.Time
+	// SandboxCredentialLockTimeout overrides the per-group write lock timeout
+	// for sandbox group credential mutations (default 2s).
+	SandboxCredentialLockTimeout time.Duration
 	// gitWebhookReplayInstance identifies this API process's signing-epoch
 	// leases. It is process-local and never exposed as a public resource id.
 	gitWebhookReplayInstance string

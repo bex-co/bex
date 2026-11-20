@@ -523,4 +523,8 @@ func TestRenderConformance(t *testing.T) {
 			t.Fatalf("after replace-all, list = %s, want exactly a.txt and b.txt (seeded files gone)", w.Body.String())
 		}
 	})
+
+	t.Run("sandbox-group-credentials", func(t *testing.T) {
+		checkSandboxGroupCredentialsConformance(t, spec)
+	})
 }

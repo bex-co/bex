@@ -423,6 +423,7 @@ func (s *PGStore) CleanupAccountSubject(ctx context.Context, subject, marker str
 			`UPDATE ssh_sessions SET subject = $2 WHERE subject = $1`,
 			`UPDATE sandbox_executions SET subject = $2 WHERE subject = $1`,
 			`UPDATE sandbox_snapshots SET requested_by = $2 WHERE requested_by = $1`,
+			`UPDATE sandbox_group_credential_versions SET updated_by = $2 WHERE updated_by = $1`,
 			`UPDATE oauth_revocations SET subject = $2 WHERE subject = $1`,
 			`UPDATE tenant_invites SET invited_by = $2 WHERE invited_by = $1`,
 			`UPDATE organization_invites SET invited_by = $2 WHERE invited_by = $1`,

@@ -508,46 +508,6 @@ func TestListStatusFilterAgreesAcrossGraphQLAndMCP(t *testing.T) {
 	}
 }
 
-func TestNotOfferedRoutesNameTheFeature(t *testing.T) {
-	// Resolve each request to its table pattern the way the REST mux does
-	// (internal/api mounts NotOfferedRoutes and covers the written 404).
-	mux := http.NewServeMux()
-	for pattern := range NotOfferedRoutes {
-		mux.HandleFunc(pattern, func(http.ResponseWriter, *http.Request) {})
-	}
-	// The four group routes are served since w22/m311, the three image routes
-	// since w2/m358, delete and default set since w2/m359, and the four
-	// snapshot routes since w32/m285, so none is here.
-	for _, served := range []string{
-		"GET /v1/sandbox-groups", "POST /v1/sandbox-groups",
-		"GET /v1/sandbox-groups/{sandboxGroupId}", "PATCH /v1/sandbox-groups/{sandboxGroupId}",
-		"GET /v1/sandbox-groups/{sandboxGroupId}/builds", "POST /v1/sandbox-groups/{sandboxGroupId}/builds",
-		"GET /v1/sandbox-groups/{sandboxGroupId}/builds/{buildId}",
-		"DELETE /v1/sandbox-groups/{sandboxGroupId}", "POST /v1/sandbox-groups/{sandboxGroupId}/set-default",
-		"POST /v1/sandboxes/{id}/snapshots", "GET /v1/sandbox-groups/{sandboxGroupId}/snapshots",
-		"GET /v1/sandbox-groups/{sandboxGroupId}/snapshots/{snapshotId}", "DELETE /v1/sandbox-groups/{sandboxGroupId}/snapshots/{snapshotId}",
-	} {
-		if _, refused := NotOfferedRoutes[served]; refused {
-			t.Errorf("%s is served by the Service, so it must not also be a not-offered refusal", served)
-		}
-	}
-	for _, tc := range []struct{ method, path, code, mentions string }{
-		// CLI v2.36's sandbox-groups credentials (w3/m303).
-		{http.MethodGet, "/v1/sandbox-groups/sbg-1/credentials", CodeSandboxCredentialsUnsupported, "brokered sandbox credentials"},
-		{http.MethodPost, "/v1/sandbox-groups/sbg-1/credentials", CodeSandboxCredentialsUnsupported, "brokered sandbox credentials"},
-		{http.MethodPatch, "/v1/sandbox-groups/sbg-1/credentials/sbc-1", CodeSandboxCredentialsUnsupported, "brokered sandbox credentials"},
-		{http.MethodDelete, "/v1/sandbox-groups/sbg-1/credentials/sbc-1", CodeSandboxCredentialsUnsupported, "brokered sandbox credentials"},
-		{http.MethodGet, "/v1/sandbox-groups/sbg-1/credentials/sbc-1/versions", CodeSandboxCredentialsUnsupported, "brokered sandbox credentials"},
-		{http.MethodPost, "/v1/sandbox-groups/sbg-1/credentials/sbc-1/restore", CodeSandboxCredentialsUnsupported, "brokered sandbox credentials"},
-	} {
-		_, pattern := mux.Handler(httptest.NewRequest(tc.method, tc.path, nil))
-		refusal, ok := NotOfferedRoutes[pattern]
-		if !ok || refusal.Code != tc.code || !strings.Contains(refusal.Message, tc.mentions) {
-			t.Errorf("%s %s = %q %+v, want %s mentioning %q", tc.method, tc.path, pattern, refusal, tc.code, tc.mentions)
-		}
-	}
-}
-
 // The pinned OpenAPI (list-sandboxes) gives `limit` a default of 20, a minimum of
 // 1 and a maximum of 100. bex pages by the repo's policy (core.PageParams): the
 // default is 20, with or without a cursor, as on Render (w10/m377), and a value

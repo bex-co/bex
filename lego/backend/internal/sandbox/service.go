@@ -201,6 +201,11 @@ type Service struct {
 	// snapshotId or snapshotName (w32/m285); nil answers the snapshot routes
 	// 503. It needs Images, whose registry holds the snapshots too.
 	Snapshots *Snapshots
+	// Credentials holds sandbox group credential metadata & version history
+	// (w2/m532, ADR122); CredentialVault holds their write-only secret values
+	// in OpenBao. Either nil answers the credential routes 503.
+	Credentials     CredentialStore
+	CredentialVault *CredentialVault
 	// MaxGroupConcurrency is the ceiling and default of a group's concurrencyLimit
 	// (Render: 1,000; 0 = no ceiling). A higher requested value is capped to it.
 	MaxGroupConcurrency int

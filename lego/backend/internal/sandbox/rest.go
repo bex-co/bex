@@ -233,6 +233,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	s.registerGroupREST(mux)
 	s.registerImageREST(mux)
 	s.registerSnapshotREST(mux)
+	s.registerCredentialREST(mux)
 }
 
 func (s *Service) lifecycleREST(w http.ResponseWriter, r *http.Request, op func(ctx context.Context, id string) error) {

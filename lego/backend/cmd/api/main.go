@@ -1762,6 +1762,8 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 			deps.SandboxExecutions = st
 			// Sandbox groups and their concurrency limits (w22/m311).
 			deps.SandboxGroups = st
+			// Sandbox group credentials (w2/m532, ADR122).
+			deps.SandboxCredentials = st
 			// Workspace-delete sandbox teardown (w1/m61): stop the workspace's
 			// running OpenSandbox sandboxes before the tenant row (and its sandbox
 			// key, migration 0056) cascade away. It joins the PRE-cascade purgers so
@@ -1771,7 +1773,7 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 			// purge deletes the images of the workspace's suspended sandboxes with the
 			// meter's reaper (w22/017), listed from rows the cascade is about to drop.
 			deps.WorkspacePreCascadePurgers = append(deps.WorkspacePreCascadePurgers,
-				&sandbox.WorkspacePurger{Client: deps.SandboxClient, Keys: st, Images: deps.SandboxImages, AgentBuilds: st, AgentRetained: st, Reaper: deps.SandboxMeter.Reaper, Storage: st, Snapshots: deps.SandboxSnapshots})
+				&sandbox.WorkspacePurger{Client: deps.SandboxClient, Keys: st, Images: deps.SandboxImages, AgentBuilds: st, AgentRetained: st, Reaper: deps.SandboxMeter.Reaper, Storage: st, Snapshots: deps.SandboxSnapshots, Credentials: st, CredentialVault: sandbox.NewCredentialVault(deps.Secrets)})
 		}
 	}
 }

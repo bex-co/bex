@@ -491,10 +491,30 @@ func (s *Service) finishGroupDelete(ctx context.Context, g store.SandboxGroup) e
 	if err := s.endGroupSnapshots(ctx, g); err != nil {
 		errs = append(errs, err)
 	}
+	// Purge the group's credential secrets from OpenBao before the group row
+	// (and its credential rows by cascade) is removed (ADR122 D3).
+	if err := s.purgeGroupCredentials(ctx, g); err != nil {
+		errs = append(errs, err)
+	}
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
 	return s.Groups.DeleteSandboxGroup(ctx, g.WorkspaceID, g.ID)
+}
+
+func (s *Service) purgeGroupCredentials(ctx context.Context, g store.SandboxGroup) error {
+	if s.CredentialVault == nil || !s.CredentialVault.enabled() {
+		return nil
+	}
+	var known []store.SandboxCredentialSecretRefEntry
+	if s.Credentials != nil {
+		refs, err := s.Credentials.ListSandboxGroupCredentialSecretRefs(ctx, g.WorkspaceID, g.ID)
+		if err != nil {
+			return fmt.Errorf("list sandbox group credential secret refs: %w", err)
+		}
+		known = refs
+	}
+	return s.CredentialVault.DeleteGroupPrefix(ctx, g.WorkspaceID, g.ID, known)
 }
 
 // terminateGroupSandboxes terminates every live sandbox bound to the group.

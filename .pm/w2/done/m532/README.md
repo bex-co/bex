@@ -1,21 +1,21 @@
 # w2 · m532 — Sandbox group credential store, OpenBao custody, versioning & all 7 REST routes
 
-**Worker:** worker2 **Goal:** Serve all 7 pinned Render OpenAPI operations for sandbox group credentials (`/v1/sandbox-groups/{sandboxGroupId}/credentials*`) with write-only OpenBao secret custody, monotonic versioning (current + 3 prior distinct configurations with group-salted SHA-256 fingerprints), split Admin/Developer RBAC, scoped-API-key enforcement, and full OpenAPI conformance. **Status:** todo
+**Worker:** worker2 **Goal:** Serve all 7 pinned Render OpenAPI operations for sandbox group credentials (`/v1/sandbox-groups/{sandboxGroupId}/credentials*`) with write-only OpenBao secret custody, monotonic versioning (current + 3 prior distinct configurations with group-salted SHA-256 fingerprints), split Admin/Developer RBAC, scoped-API-key enforcement, and full OpenAPI conformance. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Write the sandbox credential brokering ADR (amending ADR104 § Out of scope and ADR018 § Render operation omissions) | 45m | — |
-| t002 | Add Postgres schema & store for `sandbox_group_credentials` and retained version history | 1h | t001 |
-| t003 | Wire OpenBao write-only secret custody and disposal across credential, group, and workspace lifecycles | 1h | t002 |
-| t004 | Implement Render validation & core `sandbox.Service` credential verbs with split RBAC and audit events | 1h15m | t003 |
-| t005 | Mount all 7 `/v1/sandbox-groups/{sandboxGroupId}/credentials*` REST routes and retire `NotOfferedRoutes` + `renderOperationOmissions` entries | 1h | t004 |
-| t006 | Add real-DB + OpenBao + OpenFGA integration tests and `TestRenderConformance` coverage across all 7 operations | 45m | t005 |
-| t007 | Render parity | 20m | t006 |
-| t008 | Simplify | 15m | t007 |
-| t009 | Test coverage | 30m | t007 |
-| t010 | Closeout | 10m | t008, t009 |
+| t001 | Write the sandbox credential brokering ADR (amending ADR104 § Out of scope and ADR018 § Render operation omissions) — **DONE** | 45m | — |
+| t002 | Add Postgres schema & store for `sandbox_group_credentials` and retained version history — **DONE** | 1h | t001 |
+| t003 | Wire OpenBao write-only secret custody and disposal across credential, group, and workspace lifecycles — **DONE** | 1h | t002 |
+| t004 | Implement Render validation & core `sandbox.Service` credential verbs with split RBAC and audit events — **DONE** | 1h15m | t003 |
+| t005 | Mount all 7 `/v1/sandbox-groups/{sandboxGroupId}/credentials*` REST routes and retire `NotOfferedRoutes` + `renderOperationOmissions` entries — **DONE** | 1h | t004 |
+| t006 | Add real-DB + OpenBao + OpenFGA integration tests and `TestRenderConformance` coverage across all 7 operations — **DONE** | 45m | t005 |
+| t007 | Render parity — **DONE** | 20m | t006 |
+| t008 | Simplify — **DONE** | 15m | t007 |
+| t009 | Test coverage — **DONE** | 30m | t007 |
+| t010 | Closeout — **DONE** | 10m | t008, t009 |
 
 ## Definition of done
 
@@ -26,8 +26,8 @@
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm one aspect of render parity for w2` (2026-11-18), materialized via `/pmx them all to w2`. Reopens [ADR104 § Out of scope](../../../docs/ADR104-sandbox-render-parity.md#out-of-scope) under Render parity first; closes the 7 sandbox-group-credential omissions in [ADR018 § Render operation omissions](../../../docs/ADR018-render-parity.md#render-operation-omissions) and `lego/backend/internal/api/render_operation_coverage_test.go`.
-- **Goal linkage:** Render parity first ([ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first)) — closes the last non-excluded omitted operation family in Render's 264-operation Public API.
+- **Source:** `/pm-brainstorm one aspect of render parity for w2` (2026-11-18), materialized via `/pmx them all to w2`. Reopens [ADR104 § Out of scope](../../../../docs/ADR104-sandbox-render-parity.md#out-of-scope) under Render parity first; closes the 7 sandbox-group-credential omissions in [ADR018 § Render operation omissions](../../../../docs/ADR018-render-parity.md#render-operation-omissions) and `lego/backend/internal/api/render_operation_coverage_test.go`.
+- **Goal linkage:** Render parity first ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first)) — closes the last non-excluded omitted operation family in Render's 264-operation Public API.
 - **Expected outcome:** REST clients, `bex sandbox-groups credentials`, and Render's Python SDK can create, list, retrieve, update, version, restore, and delete sandbox group credentials with full OpenAPI conformance and zero secret disclosure.
 - **Why now:** Sandboxes already shipped groups (`w22/m311`, `w2/m359`), images (`w2/m358`), snapshots (`w32/m285`), network policies (`w32/m283`), and scoped API key permission wiring (`w9/m496`); this milestone is the prerequisite control plane for cross-surface parity (`w2/m533`) and runtime injection (`w2/m534`–`m536`).
 - **Render parity:** Included — mounts 7 public Render REST endpoints; GraphQL, MCP, and Dashboard follow in `w2/m533`.

@@ -21,6 +21,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // PurgeKeyLookup resolves a workspace's existing OpenSandbox tenant key WITHOUT
@@ -67,6 +69,10 @@ type WorkspacePurger struct {
 	// Snapshots, when it has a reaper, deletes the images of the workspace's
 	// sandbox snapshots (w32/m285) while their rows still name them.
 	Snapshots *Snapshots
+	// Credentials and CredentialVault purge the workspace's sandbox group
+	// credential secrets from OpenBao pre-cascade (w2/m532, ADR122 D3).
+	Credentials     CredentialSecretRefStore
+	CredentialVault *CredentialVault
 	// Now is the clock; nil is time.Now.
 	Now func() time.Time
 }
@@ -112,7 +118,25 @@ func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) e
 	if err := p.purgeSandboxImages(ctx, tenantID); err != nil {
 		return err
 	}
-	return p.purgeSnapshots(ctx, tenantID)
+	if err := p.purgeSnapshots(ctx, tenantID); err != nil {
+		return err
+	}
+	return p.purgeCredentialSecrets(ctx, tenantID)
+}
+
+func (p *WorkspacePurger) purgeCredentialSecrets(ctx context.Context, tenantID string) error {
+	if p.CredentialVault == nil || !p.CredentialVault.enabled() {
+		return nil
+	}
+	var known []store.SandboxCredentialSecretRefEntry
+	if p.Credentials != nil {
+		refs, err := p.Credentials.ListSandboxGroupCredentialSecretRefs(ctx, tenantID, "")
+		if err != nil {
+			return fmt.Errorf("list workspace sandbox credential secret refs: %w", err)
+		}
+		known = refs
+	}
+	return p.CredentialVault.DeleteWorkspacePrefix(ctx, tenantID, known)
 }
 
 // purgeSnapshots deletes the images of the workspace's sandbox snapshots.

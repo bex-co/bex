@@ -440,6 +440,9 @@ type Deps struct {
 	// SandboxSnapshots keeps Render's sandbox snapshots (w32/m285); nil answers
 	// the snapshot routes 503. It needs SandboxImages.
 	SandboxSnapshots *sandbox.Snapshots
+	// SandboxCredentials holds Render's sandbox group credentials metadata and
+	// version history (w2/m532, ADR122); nil answers the credential routes 503.
+	SandboxCredentials sandbox.CredentialStore
 	// SandboxMaxGroups caps a workspace's groups (BEX_SANDBOX_MAX_GROUPS_PER_WORKSPACE,
 	// Render's 10; 0 = uncapped), SandboxMaxGroupConcurrency is the ceiling and
 	// default of a group's concurrencyLimit (BEX_SANDBOX_MAX_GROUP_CONCURRENCY,
@@ -1473,6 +1476,8 @@ func sandboxService(base *core.Base, d Deps, resolver core.EnvironmentResolver) 
 		Environments:        resolver,
 		Images:              d.SandboxImages,
 		Snapshots:           d.SandboxSnapshots,
+		Credentials:         d.SandboxCredentials,
+		CredentialVault:     sandbox.NewCredentialVault(d.Secrets),
 		MaxGroups:           d.SandboxMaxGroups,
 		MaxGroupConcurrency: d.SandboxMaxGroupConcurrency,
 		MaxActive:           d.SandboxMaxActive,
@@ -1889,10 +1894,9 @@ func mountNotOffered(mux *http.ServeMux, routes map[string]core.NotOffered) {
 	}
 }
 
-// notOfferedRefusals maps every not-offered Render route pattern to its named
-// 404: Render's sandbox groups, imported images and snapshots are not served
-// (ADR018 § Render operation omissions, w2/m263).
-var notOfferedRefusals = maps.Clone(sandbox.NotOfferedRoutes)
+// notOfferedRefusals maps any not-offered Render route pattern to its named
+// 404. Empty since w2/m532 retired sandbox.NotOfferedRoutes (ADR122).
+var notOfferedRefusals = map[string]core.NotOffered{}
 
 // notOfferedRoutes are answered before the Render request gate runs: a body
 // the gate would refuse must still get the named 404.
