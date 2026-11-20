@@ -1,6 +1,6 @@
 # w1 · m526 — Connect and disconnect several GitHub accounts from every starting point
 
-**Worker:** worker1 **Goal:** a user who administers several GitHub accounts and orgs can connect each one to a workspace, disconnect it, and connect it again from every place the product offers GitHub, through one "Connect GitHub account" action that works whether or not the bex GitHub App is already installed on that account; walked live on production. **Status:** todo (t001–t009 and t012 done; t010 walk 1 on pin `12716d1d7097` passed every cell except the agent composer row, which t012 fixes, and the BlockEdenHQ first install, which needs the user's GitHub sudo-mode 2FA)
+**Worker:** worker1 **Goal:** a user who administers several GitHub accounts and orgs can connect each one to a workspace, disconnect it, and connect it again from every place the product offers GitHub, through one "Connect GitHub account" action that works whether or not the bex GitHub App is already installed on that account; walked live on production. **Status:** blocked (t001–t009 and t012 done; t010 waits for the production pin to carry `210793c9b` to re-walk the agent composer row, and for the user to clear GitHub's sudo-mode 2FA for the BlockEdenHQ first install)
 
 ## Tasks (in order)
 
@@ -46,7 +46,7 @@
 Reproduced in a headed Playwright browser, signed in to `dashboard.bex.co` as `puncsky@gmail.com` and to GitHub as `puncsky`.
 
 1. **An already-installed account dead-ends through "Connect another account".**
-   - GitHub's install page (`/apps/bex-co/installations/select_target`) shows **Configure** for `puncsky` (`/settings/installations/154851602`) and `bex-co`, and drops the signed `state`. This is the known GitHub behaviour recorded in [ADR078 §3a](../../../docs/ADR078-github-workspace-connections.md).
+   - GitHub's install page (`/apps/bex-co/installations/select_target`) shows **Configure** for `puncsky` (`/settings/installations/154851602`) and `bex-co`, and drops the signed `state`. This is the known GitHub behaviour recorded in [ADR078 §3a](../../../../docs/ADR078-github-workspace-connections.md).
    - Only "Claim installed account" completes for these accounts, and the source-picker Credentials menu (`dashboard/src/features/git/components/git-credentials-menu.tsx`) says nothing about it.
    - The `git.claimHint` hint went only into the Settings card, in `43fa31f34` (w2/m162). The menu had existed since w8/m31.
    - The same dead end follows several common steps:
@@ -83,9 +83,9 @@ Production state at filing: the `bex` workspace is connected to `bex-co`, `puncs
   - The user reported (in Chinese) that "Credentials → + Connect another account" would not connect their own `puncsky` GitHub account; only `bex-co` could be connected.
   - A multi-account walk and a root-cause pass followed; see Findings.
   - The user then asked `/pm` (in Chinese) to put the fix in w1 and to finish with a product check: deploy to production, walk connect and disconnect again at every starting point, and make sure users can connect and disconnect several GitHub accounts correctly.
-- **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first), the Git connections row of [ADR018](../../../docs/ADR018-render-parity.md)).
+- **Goal linkage:** Render parity ([ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first), the Git connections row of [ADR018](../../../../docs/ADR018-render-parity.md)).
   - On Render, one credentials control reaches every account the user has installed the App on, without reinstalling.
-  - bex binds installations to workspaces ([ADR078 §1](../../../docs/ADR078-github-workspace-connections.md), a recorded divergence of mechanism), but it must reach the same observable outcome.
+  - bex binds installations to workspaces ([ADR078 §1](../../../../docs/ADR078-github-workspace-connections.md), a recorded divergence of mechanism), but it must reach the same observable outcome.
 - **Expected outcome:**
   - A user with several GitHub accounts connects, disconnects and reconnects any of them from wherever they meet GitHub in the product.
   - The user never has to know that GitHub drops `state` for an installed account.
@@ -107,3 +107,21 @@ Production state at filing: the `bex` workspace is connected to `bex-co`, `puncs
   - `git merge-base --is-ancestor 67e156851 12716d1d7097` holds, so production carries t001–t009.
 - **Gate:** the `pin must carry` gate is cleared. The remaining work needs only the headed Playwright browser's bex and GitHub sessions. A GitHub sign-in or 2FA prompt, if one appears, needs the user.
 - **Next:** t010's production walk, then t011's closeout if every matrix cell passes. First confirm that the live dashboard serves the new code: the Credentials menu shows a single connect action and no "Claim installed account" button.
+
+## Park (2026-11-20)
+
+- **Walk 1** ran on pin `12716d1d7097`; t010 holds the matrix.
+  - Passed: Settings, all five `/services/new` types, `/blueprints/new` and Update Source, for connect, disconnect, reconnect and input kept. The Credentials menu focus check passed too.
+  - Failed: the agent composer row. t012 fixes it in `210793c9b`.
+- **Gate 1, which clears by itself:** ``pin must carry `210793c9b` ``. Then re-walk t010's agent composer row in a workspace with no GitHub connection (`bex-canary` has none):
+  1. Add repository or session → Repositories.
+  2. The callout appears.
+  3. Connect GitHub account opens the chooser in a new tab.
+  4. The repos appear in the composer.
+  5. The "GitHub settings" link lands on `/settings#integrations`.
+- **Gate 2, which needs the user:** the BlockEdenHQ first install, the matrix's "install on a new account" column. GitHub's sudo mode ("Confirm access": GitHub Mobile, passkey, authenticator or emailed code) guards uninstalling the App from BlockEdenHQ, so the user does one of these:
+  - uninstalls the bex.co App from BlockEdenHQ first, in org settings → GitHub Apps → bex.co → Uninstall;
+  - or is at the walk browser to approve that 2FA.
+
+  The worker then installs the App on BlockEdenHQ again through bex's "Install on another GitHub account", checks that the binding lands in the walking workspace, and reconnects BlockEdenHQ to `bex`.
+- Once both gates are walked and pass, t011 closes the milestone.
