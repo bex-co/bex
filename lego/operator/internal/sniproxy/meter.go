@@ -20,7 +20,9 @@ import (
 	"errors"
 	"io"
 	"net"
+	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -87,23 +89,22 @@ func (m *ByteMeter) Add(resourceID, resourceKind string, bytes int64) {
 // backend→client result increments the meter; request bytes can never be
 // reversed into egress by a shared call-site mistake.
 //
-// idle bounds how long either direction may stall with no bytes before the
-// connection is torn down; maxLifetime caps the total duration of the routed
-// copy. Both guard against a routed connection idling or living indefinitely
-// after DB/Valkey auth (finding 6). A non-positive value disables that bound.
-// When both are disabled the copy is a plain io.Copy, byte-identical to before.
-// Either direction ending closes both conns so the peer copy unblocks — no
-// leaked goroutine.
+// idle bounds how long the stream may go with no bytes in either direction
+// before the connection is torn down: bytes either way keep both directions
+// open, so a subscriber that only receives stays connected while its messages
+// arrive (w6/148). maxLifetime caps the total duration of the routed copy,
+// however busy. Both guard against a routed connection idling or living
+// indefinitely after DB/Valkey auth (finding 6). A non-positive value disables
+// that bound. When both are disabled the copy is a plain io.Copy,
+// byte-identical to before. Either direction ending closes both conns so the
+// peer copy unblocks — no leaked goroutine.
 func CopyBidirectional(
 	client, backend net.Conn,
 	meter *ByteMeter,
 	resourceID, resourceKind string,
 	idle, maxLifetime time.Duration,
 ) {
-	var lifetime time.Time
-	if maxLifetime > 0 {
-		lifetime = time.Now().Add(maxLifetime)
-	}
+	bounds := newStreamBounds(idle, maxLifetime)
 	var once sync.Once
 	closeBoth := func() {
 		once.Do(func() {
@@ -114,12 +115,12 @@ func CopyBidirectional(
 
 	done := make(chan struct{}, 2)
 	go func() {
-		_, _ = copyStream(backend, client, idle, lifetime)
+		_, _ = copyStream(backend, client, bounds)
 		closeBoth()
 		done <- struct{}{}
 	}()
 	go func() {
-		bytes, _ := copyStream(client, backend, idle, lifetime)
+		bytes, _ := copyStream(client, backend, bounds)
 		meter.Add(resourceID, resourceKind, bytes)
 		closeBoth()
 		done <- struct{}{}
@@ -128,20 +129,56 @@ func CopyBidirectional(
 	<-done
 }
 
-// copyStream copies src→dst, refreshing src's read deadline to bound idle stalls
-// and never reading past the absolute lifetime deadline. With no bounds it falls
-// back to io.Copy. It returns the number of bytes written to dst (io.Copy
-// semantics), so the metered direction still counts only delivered bytes.
-func copyStream(dst io.Writer, src net.Conn, idle time.Duration, lifetime time.Time) (int64, error) {
-	if idle <= 0 && lifetime.IsZero() {
+// streamBounds is one relayed stream's idle and lifetime bounds. Both
+// directions share it, so the stream is idle only when neither has read a byte
+// for idle (w6/148). The last read is kept as an offset from start so the
+// deadlines stay on the monotonic clock.
+type streamBounds struct {
+	idle     time.Duration // non-positive: no idle bound
+	lifetime time.Time     // zero: no lifetime bound
+	start    time.Time
+	since    atomic.Int64 // nanoseconds from start to the latest read of a byte
+}
+
+func newStreamBounds(idle, maxLifetime time.Duration) *streamBounds {
+	b := &streamBounds{idle: idle, start: time.Now()}
+	if maxLifetime > 0 {
+		b.lifetime = b.start.Add(maxLifetime)
+	}
+	return b
+}
+
+func (b *streamBounds) touch() { b.since.Store(int64(time.Since(b.start))) }
+
+// deadline is the earlier of the last read plus idle and the lifetime; a zero
+// time (both bounds disabled) clears the deadline.
+func (b *streamBounds) deadline() time.Time {
+	var d time.Time
+	if b.idle > 0 {
+		d = b.start.Add(time.Duration(b.since.Load()) + b.idle)
+	}
+	if !b.lifetime.IsZero() && (d.IsZero() || b.lifetime.Before(d)) {
+		d = b.lifetime
+	}
+	return d
+}
+
+// copyStream copies src→dst until src ends, the stream has been idle both ways
+// for the idle bound, or the lifetime passes. With no bounds it falls back to
+// io.Copy. It returns the number of bytes written to dst (io.Copy semantics),
+// so the metered direction still counts only delivered bytes.
+func copyStream(dst io.Writer, src net.Conn, bounds *streamBounds) (int64, error) {
+	if bounds.idle <= 0 && bounds.lifetime.IsZero() {
 		return io.Copy(dst, src)
 	}
 	buf := make([]byte, 32*1024)
 	var total int64
 	for {
-		_ = src.SetReadDeadline(readDeadline(idle, lifetime))
+		deadline := bounds.deadline()
+		_ = src.SetReadDeadline(deadline)
 		n, rerr := src.Read(buf)
 		if n > 0 {
+			bounds.touch()
 			w, werr := dst.Write(buf[:n])
 			total += int64(w)
 			if werr != nil {
@@ -152,20 +189,12 @@ func copyStream(dst io.Writer, src net.Conn, idle time.Duration, lifetime time.T
 			if errors.Is(rerr, io.EOF) {
 				return total, nil
 			}
+			// The other direction read bytes after this deadline was set, so
+			// the stream is not idle: read on to the later deadline.
+			if errors.Is(rerr, os.ErrDeadlineExceeded) && bounds.deadline().After(deadline) {
+				continue
+			}
 			return total, rerr
 		}
 	}
-}
-
-// readDeadline is the earlier of now+idle and the absolute lifetime deadline; a
-// zero time (both bounds disabled for this read) clears the deadline.
-func readDeadline(idle time.Duration, lifetime time.Time) time.Time {
-	var d time.Time
-	if idle > 0 {
-		d = time.Now().Add(idle)
-	}
-	if !lifetime.IsZero() && (d.IsZero() || lifetime.Before(d)) {
-		d = lifetime
-	}
-	return d
 }

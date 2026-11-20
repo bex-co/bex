@@ -19,6 +19,7 @@ package sniproxy
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/netip"
 	"sync/atomic"
@@ -251,7 +252,7 @@ func TestServeShedsBeyondGlobalCapWithoutDispatch(t *testing.T) {
 
 // TestCopyBidirectionalIdleTimeoutTearsDown proves the routed copy no longer
 // blocks forever on an idle connection (finding 6): with an idle bound and no
-// bytes flowing, CopyBidirectional returns promptly and closes both conns.
+// bytes flowing, CopyBidirectional returns at the bound and closes both conns.
 func TestCopyBidirectionalIdleTimeoutTearsDown(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	meter := NewByteMeter(registry, "idle_test", "postgres")
@@ -259,13 +260,18 @@ func TestCopyBidirectionalIdleTimeoutTearsDown(t *testing.T) {
 	proxyBackend, otherBackend := net.Pipe()
 	defer func() { _ = otherClient.Close(); _ = otherBackend.Close() }()
 
+	const idle = 50 * time.Millisecond
+	start := time.Now()
 	done := make(chan struct{})
 	go func() {
-		CopyBidirectional(proxyClient, proxyBackend, meter, "dpg-one", "postgres", 50*time.Millisecond, 0)
+		CopyBidirectional(proxyClient, proxyBackend, meter, "dpg-one", "postgres", idle, 0)
 		close(done)
 	}()
 	select {
 	case <-done:
+		if elapsed := time.Since(start); elapsed < idle {
+			t.Fatalf("idle connection torn down after %v, before the %v bound", elapsed, idle)
+		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("idle connection was not torn down by the idle timeout")
 	}
@@ -298,6 +304,121 @@ func TestCopyBidirectionalMaxLifetimeTearsDown(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("connection outlived its max-lifetime budget")
 	}
+}
+
+// A Key Value subscriber sends nothing after SUBSCRIBE while its messages
+// arrive, and a Postgres client may send while the server answers nothing.
+// Either way bytes move, so the stream is not idle: it stays open past the
+// bound and closes only once it has been silent both ways for the bound
+// (w6/148). Until then each direction counted alone, so the silent one closed
+// the stream at the bound however busy the other was.
+func TestCopyBidirectionalOneWayTrafficKeepsTheStreamOpen(t *testing.T) {
+	const idle = 300 * time.Millisecond
+	const every = idle / 6
+	for _, tc := range []struct {
+		name         string
+		backendSends bool
+	}{
+		{"the backend writes to a client that sends nothing", true},
+		{"the client writes to a backend that answers nothing", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			client, backend, done := relayedStream(t, idle, 0)
+			from, to := client, backend
+			if tc.backendSends {
+				from, to = backend, client
+			}
+			start := time.Now()
+			var lastSent time.Time
+			got := make([]byte, len("message"))
+			for time.Since(start) < 3*idle {
+				time.Sleep(every)
+				lastSent = time.Now()
+				if _, err := io.WriteString(from, "message"); err != nil {
+					t.Fatalf("write %v into the stream: %v", time.Since(start), err)
+				}
+				_ = to.SetReadDeadline(time.Now().Add(5 * time.Second))
+				if _, err := io.ReadFull(to, got); err != nil {
+					t.Fatalf("the stream closed %v after it opened, with bytes moving every %v under a %v bound: %v",
+						time.Since(start), every, idle, err)
+				}
+			}
+			select {
+			case <-done:
+				if since := time.Since(lastSent); since < idle {
+					t.Fatalf("the stream closed %v after its last bytes, before the %v bound", since, idle)
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("the stream stayed open after going silent both ways")
+			}
+		})
+	}
+}
+
+// The max lifetime still ends a stream however busy it is: activity extends
+// only the idle deadline (w6/148).
+func TestCopyBidirectionalMaxLifetimeEndsABusyStream(t *testing.T) {
+	const lifetime = 300 * time.Millisecond
+	start := time.Now()
+	client, backend, done := relayedStream(t, time.Minute, lifetime)
+	go func() { _, _ = io.Copy(io.Discard, client) }()
+	go func() {
+		for {
+			if _, err := io.WriteString(backend, "message"); err != nil {
+				return
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}()
+	select {
+	case <-done:
+		if elapsed := time.Since(start); elapsed < lifetime {
+			t.Fatalf("a busy stream closed after %v, before its %v lifetime", elapsed, lifetime)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("a busy stream outlived its max lifetime")
+	}
+}
+
+// relayedStream runs CopyBidirectional over loopback TCP, the sockets the
+// proxies relay, between a client and a backend the test holds. done closes
+// when the copy returns.
+func relayedStream(t *testing.T, idle, maxLifetime time.Duration) (client, backend net.Conn, done <-chan struct{}) {
+	t.Helper()
+	client, proxyClient := tcpPair(t)
+	proxyBackend, backend := tcpPair(t)
+	meter := NewByteMeter(prometheus.NewRegistry(), "activity_test", "key_value")
+	finished := make(chan struct{})
+	go func() {
+		CopyBidirectional(proxyClient, proxyBackend, meter, "red-one", "key_value", idle, maxLifetime)
+		close(finished)
+	}()
+	return client, backend, finished
+}
+
+// tcpPair returns the two ends of one loopback TCP connection.
+func tcpPair(t *testing.T) (net.Conn, net.Conn) {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = ln.Close() }()
+	accepted := make(chan net.Conn, 1)
+	go func() {
+		conn, _ := ln.Accept()
+		accepted <- conn
+	}()
+	dialed, err := net.Dial("tcp", ln.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn := <-accepted
+	if conn == nil {
+		t.Fatal("loopback accept failed")
+	}
+	t.Cleanup(func() { _ = dialed.Close(); _ = conn.Close() })
+	return dialed, conn
 }
 
 // A connection that has not finished its handshake holds a slot of its
