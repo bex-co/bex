@@ -25,7 +25,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
+	"net"
 	"net/http"
+	"net/http/httptrace"
+	neturl "net/url"
+	"strings"
+	"sync/atomic"
+	"syscall"
 	"time"
 )
 
@@ -218,27 +225,171 @@ func signHeaders(header http.Header, secret, signed []byte, now time.Time) {
 	header.Set(SignatureHeader, signature)
 }
 
+// errBrokerUnavailable is every signed call that got no answer from bex-api.
+// The transport cause goes to the gateway's log (logBrokerFailure), never into
+// this message, which callers relay (w6/153).
+var errBrokerUnavailable = errors.New("agent credential broker unavailable")
+
 // signedPost marshals req, signs it with the shared gateway HMAC, and POSTs it.
 // The caller owns the response body.
+//
+// A pooled connection can be dead before the request is written: a node whose
+// conntrack table is full drops the idle connection's service entry, and the
+// next segment is balanced to the other bex-api pod, which resets it (w6/153).
+// So an attempt bex-api cannot have answered — the dial failed, or a reused
+// connection died before any of the answer arrived — goes once more, on a new
+// connection, with the same signed bytes. The body's nonce keeps that replay
+// single-use: bex-api runs at most one of the two, and a replay it refuses as
+// seen (401) is reported unavailable, as the first attempt was.
 func signedPost(ctx context.Context, url string, secret []byte, now time.Time, httpClient *http.Client, req any) (*http.Response, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
 	}
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	signHeaders(httpReq.Header, secret, body, now)
+	header := http.Header{"Content-Type": {"application/json"}}
+	signHeaders(header, secret, body, now)
 	if httpClient == nil {
 		httpClient = &http.Client{Timeout: 30 * time.Second}
 	}
-	resp, err := httpClient.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("agent credential broker unavailable")
+	resp, attempt, err := postOnce(ctx, httpClient, url, header, body)
+	if err == nil {
+		return resp, nil
 	}
+	retry := attempt.replayable(ctx, err)
+	logBrokerFailure(url, 1, attempt, err, retry)
+	if !retry {
+		return nil, errBrokerUnavailable
+	}
+	resp, attempt, err = postOnce(ctx, newConnectionClient(httpClient), url, header, body)
+	if err != nil {
+		logBrokerFailure(url, 2, attempt, err, false)
+		return nil, errBrokerUnavailable
+	}
+	if resp.StatusCode == http.StatusUnauthorized {
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+		_ = resp.Body.Close()
+		log.Printf("agent credential broker: POST %s retry refused (401): bex-api refuses a nonce it has already claimed, so the first attempt may have reached it and lost its answer", requestPath(url))
+		return nil, errBrokerUnavailable
+	}
+	log.Printf("agent credential broker: POST %s answered on retry (status %d)", requestPath(url), resp.StatusCode)
 	return resp, nil
+}
+
+// brokerAttempt is what one POST's trace saw of its connection.
+type brokerAttempt struct {
+	reused   atomic.Bool
+	idle     atomic.Int64 // how long the reused connection sat in the pool, in ns
+	answered atomic.Bool  // a byte of the response arrived
+}
+
+// replayable reports an attempt bex-api cannot have answered: the dial failed,
+// so nothing was sent, or a pooled connection died before any of the answer
+// arrived. A timeout spent the caller's budget and may still be running in
+// bex-api, and a cancelled context wants no answer, so neither goes again.
+func (a *brokerAttempt) replayable(ctx context.Context, err error) bool {
+	if ctx.Err() != nil || isTimeout(err) {
+		return false
+	}
+	return isDialFailure(err) || (a.reused.Load() && !a.answered.Load())
+}
+
+// postOnce sends one signed POST and traces its connection.
+func postOnce(ctx context.Context, client *http.Client, url string, header http.Header, body []byte) (*http.Response, *brokerAttempt, error) {
+	attempt := &brokerAttempt{}
+	trace := &httptrace.ClientTrace{
+		GotConn: func(info httptrace.GotConnInfo) {
+			attempt.reused.Store(info.Reused)
+			attempt.idle.Store(int64(info.IdleTime))
+		},
+		GotFirstResponseByte: func() { attempt.answered.Store(true) },
+	}
+	httpReq, err := http.NewRequestWithContext(httptrace.WithClientTrace(ctx, trace), http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, attempt, err
+	}
+	httpReq.Header = header.Clone()
+	resp, err := client.Do(httpReq)
+	return resp, attempt, err
+}
+
+// newConnectionClient is client with a transport that dials a new connection
+// for its one request and closes it after, so a replay never lands on another
+// pooled connection that died the same way. A RoundTripper that is not an
+// *http.Transport is used as it is.
+func newConnectionClient(client *http.Client) *http.Client {
+	base, ok := client.Transport.(*http.Transport)
+	if client.Transport == nil {
+		base, ok = http.DefaultTransport.(*http.Transport)
+	}
+	if !ok {
+		return client
+	}
+	transport := base.Clone()
+	transport.DisableKeepAlives = true
+	fresh := *client
+	fresh.Transport = transport
+	return &fresh
+}
+
+// maxLoggedTransportError bounds the transport error a failure line carries.
+const maxLoggedTransportError = 200
+
+// logBrokerFailure names one failed attempt's transport cause on the gateway's
+// log. The line carries the verb's path, the cause class and the connection's
+// reuse, never the request body, so no subject, key or token reaches it.
+func logBrokerFailure(url string, n int, attempt *brokerAttempt, err error, retry bool) {
+	conn := "new connection"
+	if attempt.reused.Load() {
+		conn = fmt.Sprintf("reused connection idle %s", time.Duration(attempt.idle.Load()).Round(time.Millisecond))
+	}
+	next := "giving up"
+	if retry {
+		next = "retrying on a new connection"
+	}
+	msg := err.Error()
+	if len(msg) > maxLoggedTransportError {
+		msg = msg[:maxLoggedTransportError] + "…"
+	}
+	log.Printf("agent credential broker: POST %s attempt %d failed: cause=%s (%s); %s: %s", requestPath(url), n, transportCause(err), conn, next, msg)
+}
+
+// transportCause classifies a transport error for the log: dial (nothing was
+// sent), reset, eof (the peer closed the connection), timeout, canceled or
+// other.
+func transportCause(err error) string {
+	switch {
+	case errors.Is(err, context.Canceled):
+		return "canceled"
+	case isTimeout(err):
+		return "timeout"
+	case isDialFailure(err):
+		return "dial"
+	case errors.Is(err, syscall.ECONNRESET):
+		return "reset"
+	// net/http's errServerClosedIdle is unexported, so only its text names it.
+	case errors.Is(err, io.EOF), errors.Is(err, io.ErrUnexpectedEOF), strings.Contains(err.Error(), "server closed idle connection"):
+		return "eof"
+	default:
+		return "other"
+	}
+}
+
+func isTimeout(err error) bool {
+	var netErr net.Error
+	return errors.Is(err, context.DeadlineExceeded) || (errors.As(err, &netErr) && netErr.Timeout())
+}
+
+func isDialFailure(err error) bool {
+	var opErr *net.OpError
+	return errors.As(err, &opErr) && opErr.Op == "dial"
+}
+
+// requestPath is url's path, the verb a log line names.
+func requestPath(raw string) string {
+	if u, err := neturl.Parse(raw); err == nil && u.Path != "" {
+		return u.Path
+	}
+	return "(unparsed URL)"
 }
 
 // Handler authenticates the gateway→bex-api internal mint request. It is

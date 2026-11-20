@@ -23,16 +23,22 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 )
 
+// fakeNonceClaimer is bex-api's single-use nonce table. Handlers behind an
+// httptest server claim from the server's connection goroutines, hence mu.
 type fakeNonceClaimer struct {
+	mu   sync.Mutex
 	seen map[string]bool
 	err  error
 }
 
 func (f *fakeNonceClaimer) ClaimShellNonce(_ context.Context, nonce string, _ time.Time) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.err != nil {
 		return false, f.err
 	}
