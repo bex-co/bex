@@ -1367,8 +1367,9 @@ func (s *Service) DeployCommitSource() commitSource { return commitSource{s} }
 // never distinguishes a private repo from a missing one.
 //
 // store.ErrCommitNotFound is GitHub's answer that the repository has no such
-// commit (noSuchCommit), on either GitHub path; a deploy of a commit the
-// caller named is refused for it (w8/280). Any other non-nil error is an
+// commit (noSuchCommit), on either GitHub path, or GitLab's or Bitbucket's
+// (w8/345); a deploy of a commit the caller named is refused for it (w8/280).
+// Any other non-nil error is an
 // installation-path GitHub failure, which callers treat like ok=false:
 // provenance is never worth failing a deploy over.
 func (s *Service) resolveCommit(ctx context.Context, workspaceID, repoURL, ref string) (store.CommitInfo, bool, error) {

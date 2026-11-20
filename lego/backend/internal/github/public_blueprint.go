@@ -58,6 +58,7 @@ type publicBlueprintSource struct {
 	host          string
 	advertisement string // its upload-pack advertisement URL
 	rawPrefix     string // https://<host>/<repo path><infix>
+	path          string // the repository path, unescaped: group/sub/repo
 }
 
 // onGitHub is the one test of whether a repository is GitHub's, shared by
@@ -98,7 +99,7 @@ func parsePublicBlueprintSource(repoURL string) (publicBlueprintSource, error) {
 	if len(segments) < 2 || (host == "bitbucket.org" && len(segments) != 2) || slices.Contains(segments, "-") {
 		return publicBlueprintSource{}, fmt.Errorf("%w: repo URL %q is not an owner/repo URL", core.ErrBadRequest, repoURL)
 	}
-	return publicBlueprintSource{host: host, advertisement: advertisement, rawPrefix: "https://" + host + escaped + infix}, nil
+	return publicBlueprintSource{host: host, advertisement: advertisement, rawPrefix: "https://" + host + escaped + infix, path: strings.Join(segments, "/")}, nil
 }
 
 // resolvePublicBlueprintCommit pins branch from the repository's own

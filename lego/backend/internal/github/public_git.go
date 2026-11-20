@@ -72,16 +72,25 @@ var anonymousPublicGitClient = &http.Client{
 // (EXPECTED_COMMIT). So it is recorded as requested, as Render does (w8/209:
 // explicit-SHA GitLab deploys recorded no commit and logged "@main"). Echoing
 // the caller's own SHA reveals nothing about the repository.
+//
+// On gitlab.com and bitbucket.org, a hex ref the advertisement does not
+// resolve (a short SHA, or a commit no ref tip names) is asked of the host's
+// commit API (w8/345): it answers the full SHA with its message and time, or
+// that the repository has no such commit (store.ErrCommitNotFound). When it
+// cannot say, a full SHA is still recorded as requested.
 func (s *Service) resolvePublicGitCommit(ctx context.Context, repoURL, ref string) (store.CommitInfo, bool, error) {
 	endpoint, ok := publicGitAdvertisementURL(repoURL)
 	if !ok || !validPublicGitRef(ref) {
 		return store.CommitInfo{}, false, nil
 	}
 	entry := s.lookupPublicGitCommit(ctx, endpoint, ref)
-	if !entry.ok && core.ValidCommitSHA(ref) {
+	if !entry.ok && commitNameRef(ref) {
+		entry = s.lookupPublicHostCommit(ctx, repoURL, ref)
+	}
+	if !entry.ok && !entry.notFound && core.ValidCommitSHA(ref) {
 		return store.CommitInfo{Hash: strings.ToLower(ref)}, true, nil
 	}
-	return entry.info, entry.ok, nil
+	return publicCommitAnswer(entry)
 }
 
 // lookupPublicGitCommit is the cached, singleflighted advertisement read.

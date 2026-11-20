@@ -120,8 +120,9 @@ func TestPublicGitResolveWithGitHubDisabled(t *testing.T) {
 // recorded commit null and narrated "@main". An explicit full SHA is the
 // commit the clone pins and verifies, so it is recorded as requested whether
 // the advertisement lists it (historical commits never are) or the lookup
-// missed outright; an abbreviated SHA and a non-GitHub branch miss stay misses,
-// and github.com keeps its own API path.
+// missed outright; an abbreviated SHA the host's commit API cannot expand
+// (w8/345) and a non-GitHub branch miss stay misses, and github.com keeps its
+// own API path.
 func TestPublicGitExplicitFullSHAIsRecordedAsRequested(t *testing.T) {
 	const historical = "180e352cc63d9c887ce4b1bffe84c6d5def07cd5"
 	advertised := &http.Client{Transport: publicGitRoundTripFunc(func(*http.Request) (*http.Response, error) {
