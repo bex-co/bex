@@ -2671,9 +2671,9 @@ func errMsgPtr(err error) *string {
 
 // blueprintBranch is the branch a Blueprint preview or create reads: the one
 // asked for, or else the repository's default branch, resolved as a service
-// create resolves it (ValidateRepo, anonymous for a public repo) (w4/532).
-// With no opinion — GitHub unconfigured, or not a github.com repository — a
-// branch stays required.
+// create resolves it (ValidateRepo, anonymous for a public repo) (w4/532,
+// w8/343). With no opinion — GitHub unconfigured, or a Git host that did not
+// answer — a branch stays required.
 func (s *Service) blueprintBranch(ctx context.Context, tenantID, repo, branch string) (string, error) {
 	if repo == "" {
 		return "", errBlueprintBranchRequired

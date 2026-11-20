@@ -142,12 +142,13 @@ func TestValidateRepoSourceAccess(t *testing.T) {
 		{name: "connected but ungranted private", repo: "https://github.com/octo/app", workspace: "default", client: fakeClient{token: "installation"}, wantBadRequest: true, wantTokens: []string{"installation", ""}},
 		{name: "grant failure is not anonymous fallback", repo: "https://github.com/octo/app", workspace: "default", client: fakeClient{token: "installation", repoErr: &APIError{Status: 503}}, wantError: true, wantTokens: []string{"installation"}},
 		{name: "public lookup failure", repo: "https://github.com/stranger/app", workspace: "default", client: fakeClient{repoErr: &APIError{Status: 503}}, wantError: true, wantTokens: []string{""}},
-		{name: "other git provider", repo: "https://gitlab.com/octo/app", workspace: "default"},
+		// Read as public Git (w8/343), never through GitHub: missing there.
+		{name: "other git provider", repo: "https://gitlab.com/octo/app", workspace: "default", wantBadRequest: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			st := newFakeStore()
 			st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
-			svc := &Service{Base: &core.Base{Namespace: "default"}, Store: st, GitHub: &tc.client}
+			svc := &Service{Base: &core.Base{Namespace: "default"}, Store: st, GitHub: &tc.client, publicGitHTTPClient: missingPublicGitClient()}
 			_, _, err := svc.DeployTokenSource().ValidateRepo(context.Background(), tc.workspace, tc.repo)
 			if errors.Is(err, core.ErrBadRequest) != tc.wantBadRequest || (err != nil) != (tc.wantBadRequest || tc.wantError) {
 				t.Fatalf("validation error = %v", err)
@@ -182,12 +183,16 @@ func TestValidateRepoReportsTheRepositoryDefaultBranch(t *testing.T) {
 		{name: "absent default is reported as absent", repo: "https://github.com/stranger/app", client: fakeClient{publicRepoOK: true, noDefaultBranch: true}, wantTokens: []string{""}},
 		{name: "unusual default is reported verbatim", repo: "https://github.com/stranger/app", client: fakeClient{publicRepoOK: true, defaultBranch: "-x;y"}, want: "-x;y", wantTokens: []string{""}},
 		{name: "public lookup failure", repo: "https://github.com/stranger/app", client: fakeClient{repoErr: &APIError{Status: 503}}, wantErr: true, wantTokens: []string{""}},
-		{name: "other git provider has no opinion", repo: "https://gitlab.com/octo/app", client: fakeClient{publicRepoOK: true, defaultBranch: "master"}},
+		// Its own host's HEAD, never GitHub's answer for the same path (w8/343).
+		{name: "other git provider reports its own HEAD", repo: "https://gitlab.com/octo/app", client: fakeClient{publicRepoOK: true, defaultBranch: "master"}, want: "trunk"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			st := newFakeStore()
 			st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
-			svc := &Service{Base: &core.Base{Namespace: "default"}, Store: st, GitHub: &tc.client}
+			trunk := &http.Client{Transport: publicGitRoundTripFunc(func(*http.Request) (*http.Response, error) {
+				return gitResponse(http.StatusOK, gitAdvertisement(testCommitA+" HEAD\x00symref=HEAD:refs/heads/trunk\n")), nil
+			})}
+			svc := &Service{Base: &core.Base{Namespace: "default"}, Store: st, GitHub: &tc.client, publicGitHTTPClient: trunk}
 			got, _, err := svc.DeployTokenSource().ValidateRepo(context.Background(), "default", tc.repo)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("ValidateRepo error = %v, wantErr %v", err, tc.wantErr)

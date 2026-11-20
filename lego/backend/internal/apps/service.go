@@ -2411,15 +2411,18 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	// Placed after the duplicate check so a name conflict still wins (it is
 	// the cheaper, more specific answer) and before the first write, so a
 	// refused create leaves nothing behind. ValidateRepo is a no-op when
-	// GitHub is unconfigured or the host is not github.com, so this cannot
-	// refuse a repo it has no opinion about — and the deliberate tradeoff it
-	// already carries on the edit path applies here too: a GitHub outage fails
-	// the create loudly instead of failing the build later.
+	// GitHub is unconfigured for a github.com repo, so this cannot refuse a
+	// repo it has no opinion about — and the deliberate tradeoff it already
+	// carries on the edit path applies here too: a GitHub outage fails the
+	// create loudly instead of failing the build later. Another Git host is
+	// read as public Git (w8/343): its answer that no repository is there
+	// refuses the create, and its outage has no opinion.
 	//
-	// An omitted branch resolves to the default that lookup reported (w8/m76)
-	// here, once, before the row, the first deploy's commit and the build ref
-	// all read desired.Branch. With no opinion (GitHub off, a non-github.com
-	// host) the legacy DefaultBranch from specFromCreate stays.
+	// An omitted branch resolves to the default that lookup reported (w8/m76,
+	// w8/343) here, once, before the row, the first deploy's commit and the
+	// build ref all read desired.Branch. With no opinion (GitHub off, a Git
+	// host that did not answer) the legacy DefaultBranch from specFromCreate
+	// stays.
 	if desired.Repo != "" && s.GitHub != nil {
 		defaultBranch, repoID, err := s.GitHub.ValidateRepo(ctx, tenantID, desired.Repo)
 		if err != nil {
@@ -3784,7 +3787,8 @@ func validateTypeSpecificCreate(svcType string, req CreateRequest) error {
 // useRepositoryDefaultBranch gives spec, whose branch the caller omitted, the
 // default branch its repository reported, per Render's Create service and
 // Blueprint branch contracts (w8/m76, w8/m80). With no opinion ("": GitHub
-// off, a non-github.com host) the request-shape DefaultBranch stays. The build
+// off, a Git host that did not answer or names no HEAD branch) the
+// request-shape DefaultBranch stays. The build
 // passes the ref to git, so only a safe ref is built; an unusable default is
 // the caller's to override, never a guess.
 func useRepositoryDefaultBranch(spec *appv1alpha1.AppSpec, reported string) error {
@@ -3812,7 +3816,7 @@ func createAutoDeployTrigger(autoDeploy bool, checksPass *bool) string {
 // replicas (1), branch ("main" for a repo-backed service), and autoDeploy.
 // The branch default is the request-shape fallback only: a direct create and
 // a Blueprint create or source switch replace it with the repository's real
-// default branch when GitHub reports one (w8/m76, w8/m80).
+// default branch when its Git host reports one (w8/m76, w8/m80, w8/343).
 func normalizeCreateDefaults(req CreateRequest) (port, replicas int32, branch string, autoDeploy bool, err error) {
 	// 0 is "unset" here (the default applies below); anything else must be a
 	// port the container can actually bind — the same rule SetPort enforces, so

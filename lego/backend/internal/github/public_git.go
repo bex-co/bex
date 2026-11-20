@@ -20,7 +20,9 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
+	"log"
 	"mime"
 	"net"
 	"net/http"
@@ -84,27 +86,81 @@ func (s *Service) resolvePublicGitCommit(ctx context.Context, repoURL, ref strin
 
 // lookupPublicGitCommit is the cached, singleflighted advertisement read.
 func (s *Service) lookupPublicGitCommit(ctx context.Context, endpoint, ref string) cachedPublicCommit {
-	key := "git-http:" + endpoint + "\x00" + ref
-	if cached, hit := s.publicCommitMemo().Get(key); hit {
-		return cached
-	}
-	value, _, _ := s.publicCommitFlight.Do(key, func() (any, error) {
-		if cached, hit := s.publicCommitMemo().Get(key); hit {
-			return cached, nil
-		}
-		ctx, cancel := context.WithTimeout(ctx, publicCommitResolveTimeout)
-		defer cancel()
-		entry := cachedPublicCommit{}
-		ttl := publicCommitMissTTL
+	return s.memoPublicCommit(ctx, "git-http:"+endpoint+"\x00"+ref, func(ctx context.Context) (cachedPublicCommit, time.Duration) {
 		if hash := s.readPublicGitCommit(ctx, endpoint, ref); hash != "" {
-			entry = cachedPublicCommit{info: store.CommitInfo{Hash: hash}, ok: true}
-			ttl = publicCommitCacheTTL
+			return cachedPublicCommit{info: store.CommitInfo{Hash: hash}, ok: true}, publicCommitCacheTTL
 		}
-		s.publicCommitMemo().Put(key, entry, time.Now().Add(ttl))
-		return entry, nil
+		return cachedPublicCommit{}, publicCommitMissTTL
 	})
-	entry, _ := value.(cachedPublicCommit)
-	return entry
+}
+
+// errNotPublicGit refuses a source whose host answered that no public Git
+// repository is there, in ValidateRepo's GitHub refusal's terms.
+var errNotPublicGit = fmt.Errorf("%w: repository is not accessible as public Git; check its URL, or use a public repository", core.ErrBadRequest)
+
+// publicGitDefaultBranch is ValidateRepo for a repository on another HTTPS Git
+// host (w8/343): one anonymous advertisement read, the request a clone's
+// discovery makes, cached and collapsed like the commit lookups.
+//
+//   - An advertisement answers the branch its HEAD names, or "" when it names
+//     none (an empty repository, or a server that sends no symref).
+//   - An answer no clone gets past refuses the source before anything is
+//     written, as GitHub's does: 401, 403, 404 or 410, a host name that does
+//     not exist, or a 200 that is not Git. Private and missing answer alike.
+//   - A host that did not answer (a timeout, a reset, a 5xx or 429, anything
+//     else) has no opinion: an outage at someone else's Git host never refuses
+//     a create, which keeps its request-shape branch as before.
+func (s *Service) publicGitDefaultBranch(ctx context.Context, repoURL string) (string, error) {
+	endpoint, ok := publicGitAdvertisementURL(repoURL)
+	if !ok {
+		return "", nil
+	}
+	entry := s.memoPublicCommit(ctx, "git-head:"+endpoint, func(ctx context.Context) (cachedPublicCommit, time.Duration) {
+		return s.readPublicGitHead(ctx, endpoint), publicCommitCacheTTL
+	})
+	if entry.notFound {
+		return "", errNotPublicGit
+	}
+	return entry.branch, nil
+}
+
+// readPublicGitHead classifies one advertisement read for
+// publicGitDefaultBranch: notFound, or the HEAD branch when there is one.
+func (s *Service) readPublicGitHead(ctx context.Context, endpoint string) cachedPublicCommit {
+	answer, err := s.getPublicGitAdvertisement(ctx, endpoint)
+	var dns *net.DNSError
+	switch {
+	case errors.As(err, &dns) && dns.IsNotFound:
+		return cachedPublicCommit{notFound: true}
+	case err != nil:
+		log.Printf("github: public Git repository check of %s had no answer: %v", endpoint, err)
+		return cachedPublicCommit{}
+	case answer.advertisement():
+		_, target, ok := publicGitHead(answer.body)
+		if !ok {
+			return cachedPublicCommit{} // calls itself Git: never refused
+		}
+		branch, isBranch := strings.CutPrefix(target, "refs/heads/")
+		if !isBranch {
+			branch = "" // HEAD names no branch to build
+		}
+		return cachedPublicCommit{branch: branch}
+	case answer.status == http.StatusOK && dumbPublicGitRefs(answer.body):
+		return cachedPublicCommit{} // cloneable, with no HEAD symref to read
+	case answer.status == http.StatusOK, answer.status == http.StatusUnauthorized, answer.status == http.StatusForbidden,
+		answer.status == http.StatusNotFound, answer.status == http.StatusGone:
+		return cachedPublicCommit{notFound: true}
+	}
+	return cachedPublicCommit{}
+}
+
+// dumbPublicGitRefs reports whether body is a dumb-HTTP info/refs listing,
+// "<commit>\t<ref>" lines, which a host without smart HTTP serves at the same
+// URL and Git still clones from.
+func dumbPublicGitRefs(body []byte) bool {
+	line, _, _ := bytes.Cut(body, []byte{'\n'})
+	hash, name, ok := strings.Cut(string(line), "\t")
+	return ok && core.ValidCommitSHA(hash) && strings.HasPrefix(name, "refs/")
 }
 
 func publicGitDestination(u *url.URL) bool {
@@ -169,7 +225,23 @@ func publicGitRedirect(req *http.Request, via []*http.Request) error {
 	return nil
 }
 
-func (s *Service) readPublicGitCommit(ctx context.Context, endpoint, ref string) string {
+// publicGitAnswer is one anonymous advertisement GET: the host's status and
+// media type, and for a 200 at most maxPublicGitAdvertisement+1 body bytes.
+type publicGitAnswer struct {
+	status int
+	media  string
+	body   []byte
+}
+
+// advertisement reports whether the host answered with an upload-pack
+// advertisement, the only answer whose body is parsed as one.
+func (a publicGitAnswer) advertisement() bool {
+	return a.status == http.StatusOK && a.media == publicGitAdvertisementType
+}
+
+// getPublicGitAdvertisement makes the request a clone's discovery makes,
+// anonymously. A non-nil error is a host that gave no complete answer.
+func (s *Service) getPublicGitAdvertisement(ctx context.Context, endpoint string) (publicGitAnswer, error) {
 	client := anonymousPublicGitClient
 	if s.publicGitHTTPClient != nil {
 		copy := *s.publicGitHTTPClient
@@ -180,24 +252,30 @@ func (s *Service) readPublicGitCommit(ctx context.Context, endpoint, ref string)
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
-		return ""
+		return publicGitAnswer{}, err
 	}
 	req.Header.Set("Accept", publicGitAdvertisementType)
 	// No Git-Protocol header requests protocolv0: its advertisement includes
 	// refs directly. Protocolv2 would require a second ls-refs operation.
 	response, err := client.Do(req)
 	if err != nil {
-		return ""
+		return publicGitAnswer{}, err
 	}
 	defer func() { _ = response.Body.Close() }()
-	media, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
-	if response.StatusCode != http.StatusOK || err != nil || media != publicGitAdvertisementType {
+	media, _, _ := mime.ParseMediaType(response.Header.Get("Content-Type"))
+	answer := publicGitAnswer{status: response.StatusCode, media: media}
+	if response.StatusCode == http.StatusOK {
+		answer.body, err = io.ReadAll(io.LimitReader(response.Body, maxPublicGitAdvertisement+1))
+	}
+	return answer, err
+}
+
+func (s *Service) readPublicGitCommit(ctx context.Context, endpoint, ref string) string {
+	answer, err := s.getPublicGitAdvertisement(ctx, endpoint)
+	if err != nil || !answer.advertisement() {
 		return ""
 	}
-	data, err := io.ReadAll(io.LimitReader(response.Body, maxPublicGitAdvertisement+1))
-	if err != nil {
-		return ""
-	}
+	data := answer.body
 	if len(data) > maxPublicGitAdvertisement {
 		return oversizedPublicGitHead(data, ref)
 	}
@@ -303,32 +381,44 @@ func parsePublicGitAdvertisement(data []byte) (map[string]string, string, bool) 
 // gitlab-org/gitlab advertises 82 MB with refs/heads/master 13 MB in, behind
 // refs/environments, so a full parse would miss even its default branch.
 func oversizedPublicGitHead(data []byte, ref string) string {
-	header, data, flush, ok := publicGitPacket(data)
-	if !ok || flush || string(bytes.TrimSuffix(header, []byte{'\n'})) != "# service=git-upload-pack" {
+	hash, target, _ := publicGitHead(data)
+	if hash == "" || target == "" || (ref != "HEAD" && ref != target && "refs/heads/"+ref != target) {
 		return ""
 	}
+	return hash
+}
+
+// publicGitHead reads an advertisement's first record, which Git sends as
+// HEAD with the capabilities that carry its symref: HEAD's commit and the ref
+// it names, "" for either one it does not give. The rest of the refs is never
+// needed, so a body of any size answers. ok=false: not an upload-pack
+// advertisement at all.
+func publicGitHead(data []byte) (hash, target string, ok bool) {
+	header, data, flush, ok := publicGitPacket(data)
+	if !ok || flush || string(bytes.TrimSuffix(header, []byte{'\n'})) != "# service=git-upload-pack" {
+		return "", "", false
+	}
 	if _, data, flush, ok = publicGitPacket(data); !ok || !flush {
-		return ""
+		return "", "", false
 	}
 	payload, data, flush, ok := publicGitPacket(data)
 	if ok && !flush && string(payload) == "version 1\n" {
 		payload, _, flush, ok = publicGitPacket(data)
 	}
 	if !ok || flush {
-		return ""
+		return "", "", true
 	}
 	record, capabilities, _ := strings.Cut(strings.TrimSuffix(string(payload), "\n"), "\x00")
 	hash, name, _ := strings.Cut(record, " ")
 	if name != "HEAD" || !core.ValidCommitSHA(hash) || strings.Trim(hash, "0") == "" {
-		return ""
+		return "", "", true
 	}
 	for capability := range strings.FieldsSeq(capabilities) {
-		target, found := strings.CutPrefix(capability, "symref=HEAD:")
-		if found && (ref == "HEAD" || ref == target || "refs/heads/"+ref == target) {
-			return strings.ToLower(hash)
+		if symref, found := strings.CutPrefix(capability, "symref=HEAD:"); found {
+			target = symref
 		}
 	}
-	return ""
+	return strings.ToLower(hash), target, true
 }
 
 func validPublicGitRef(ref string) bool {

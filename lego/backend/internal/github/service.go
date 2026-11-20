@@ -152,8 +152,13 @@ type cachedPublicCommit struct {
 	info store.CommitInfo
 	ok   bool
 	// notFound is GitHub's "no such commit" for a public repository
-	// (noSuchCommit), cached only briefly (publicCommitNotFoundTTL).
+	// (noSuchCommit), cached only briefly (publicCommitNotFoundTTL). On a
+	// "git-head:" entry it is a host's answer that no public Git repository
+	// is there (publicGitDefaultBranch).
 	notFound bool
+	// branch is a "git-head:" entry's default branch: the one a public Git
+	// advertisement's HEAD names, "" when it names none.
+	branch string
 }
 
 const (
@@ -1145,13 +1150,18 @@ func (t tokenSource) RepoGranted(ctx context.Context, workspaceID, repoURL strin
 // returns the default branch GitHub reported in that same read (w8/m76), as
 // reported — the caller decides whether it needs a usable one. An unconnected
 // GitHub repo is usable only when GitHub serves it anonymously. "" with a nil
-// error means no opinion (GitHub unconfigured, or not a github.com
-// repository): other Git hosts retain the create flow's public-Git behavior.
+// error means no opinion (GitHub unconfigured, or a host that did not answer).
+// A repository on another Git host is read as public Git, as its clone will
+// be (publicGitDefaultBranch, w8/343).
 //
 // repoID is GitHub's numeric id for the repository when the workspace's GitHub
 // App installation grants it (w10/m490): the id its pushes are matched by.
 // 0 for a repository read anonymously, whose pushes never reach bex signed.
 func (t tokenSource) ValidateRepo(ctx context.Context, workspaceID, repoURL string) (defaultBranch string, repoID int64, err error) {
+	if !strings.HasPrefix(core.CanonicalRepo(repoURL), "github.com/") {
+		defaultBranch, err = t.s.publicGitDefaultBranch(ctx, repoURL)
+		return defaultBranch, 0, err
+	}
 	owner, repo, ok := githubOwnerRepo(repoURL)
 	if !ok || !t.s.configured() {
 		return "", 0, nil
@@ -1418,6 +1428,26 @@ func (s *Service) publicCommitMemo() *core.TTLCache[cachedPublicCommit] {
 	return s.publicCommitCache
 }
 
+// memoPublicCommit is the public lookups' cache: one read per key in flight,
+// bounded by publicCommitResolveTimeout, its answer kept for the TTL it names.
+func (s *Service) memoPublicCommit(ctx context.Context, key string, read func(context.Context) (cachedPublicCommit, time.Duration)) cachedPublicCommit {
+	if cached, hit := s.publicCommitMemo().Get(key); hit {
+		return cached
+	}
+	value, _, _ := s.publicCommitFlight.Do(key, func() (any, error) {
+		if cached, hit := s.publicCommitMemo().Get(key); hit {
+			return cached, nil
+		}
+		ctx, cancel := context.WithTimeout(ctx, publicCommitResolveTimeout)
+		defer cancel()
+		entry, ttl := read(ctx)
+		s.publicCommitMemo().Put(key, entry, time.Now().Add(ttl))
+		return entry, nil
+	})
+	entry, _ := value.(cachedPublicCommit)
+	return entry
+}
+
 // resolvePublicCommit is the no-installation path for Public Git URL services:
 // unauthenticated GitHub commit lookup, cached per (owner/repo, ref), bounded
 // by a short timeout. Every failure is ok=false, never a fabricated partial
@@ -1428,18 +1458,8 @@ func (s *Service) resolvePublicCommit(ctx context.Context, repoURL, ref string) 
 		return store.CommitInfo{}, false, nil
 	}
 	key := strings.ToLower(owner) + "/" + strings.ToLower(repo) + "@" + ref
-	if cached, hit := s.publicCommitMemo().Get(key); hit {
-		return publicCommitAnswer(cached)
-	}
-	v, _, _ := s.publicCommitFlight.Do(key, func() (any, error) {
-		if cached, hit := s.publicCommitMemo().Get(key); hit {
-			return cached, nil
-		}
-		rctx, cancel := context.WithTimeout(ctx, publicCommitResolveTimeout)
-		defer cancel()
-		c, err := s.GitHub.GetCommit(rctx, "", owner, repo, ref)
-		entry := cachedPublicCommit{}
-		ttl := publicCommitMissTTL
+	return publicCommitAnswer(s.memoPublicCommit(ctx, key, func(ctx context.Context) (cachedPublicCommit, time.Duration) {
+		c, err := s.GitHub.GetCommit(ctx, "", owner, repo, ref)
 		// Collapse every failure — including 404 vs 403 — into a miss so this
 		// path cannot distinguish private from missing (no existence oracle).
 		// GitHub says "no such commit" only for a repository it shows
@@ -1447,20 +1467,15 @@ func (s *Service) resolvePublicCommit(ctx context.Context, repoURL, ref string) 
 		// it is kept apart (w8/280).
 		switch {
 		case err == nil && c.SHA != "":
-			entry = cachedPublicCommit{
+			return cachedPublicCommit{
 				info: store.CommitInfo{Hash: c.SHA, Message: c.Message, AuthorAt: c.AuthorAt},
 				ok:   true,
-			}
-			ttl = publicCommitCacheTTL
+			}, publicCommitCacheTTL
 		case noSuchCommit(err):
-			entry = cachedPublicCommit{notFound: true}
-			ttl = publicCommitNotFoundTTL
+			return cachedPublicCommit{notFound: true}, publicCommitNotFoundTTL
 		}
-		s.publicCommitMemo().Put(key, entry, time.Now().Add(ttl))
-		return entry, nil
-	})
-	entry, _ := v.(cachedPublicCommit)
-	return publicCommitAnswer(entry)
+		return cachedPublicCommit{}, publicCommitMissTTL
+	}))
 }
 
 func publicCommitAnswer(entry cachedPublicCommit) (store.CommitInfo, bool, error) {
