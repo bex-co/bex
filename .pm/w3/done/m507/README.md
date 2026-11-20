@@ -1,6 +1,6 @@
 # w3 · m507 — Project views can be created, edited, duplicated and deleted, and are shared by the whole project, as on Render
 
-**Worker:** worker3 **Goal:** a project's members manage its observability views as Render's do: New View by type, Edit view (name and filter rows), Duplicate and Delete, every change visible to everyone on the project, recorded in the audit log under Render's event names. **Status:** blocked — t001–t005 and t007–t010 done and shipped in `bb151b367`; t006 is verified on dev-3, and its production walk waits for a production pin carrying `bb151b367` (§ Gate)
+**Worker:** worker3 **Goal:** a project's members manage its observability views as Render's do: New View by type, Edit view (name and filter rows), Duplicate and Delete, every change visible to everyone on the project, recorded in the audit log under Render's event names. **Status:** done — shipped in `bb151b367`; verified on dev-3 and on production pin `98e053468f52` (§ Production walk, § Closeout)
 
 ## Tasks (in order)
 
@@ -11,12 +11,12 @@
 | [t003](done/t003.md) | The Edit view modal: name and filter rows — **DONE** | 1h30m | t002 |
 | [t004](done/t004.md) | Duplicate and Delete, defaults included — **DONE** | 45m | t003 |
 | [t005](done/t005.md) | Role-aware controls — **DONE** | 30m | t004 |
-| [t006](t006.md) | Verify on dev-3 and on production | 30m | t005 |
+| [t006](done/t006.md) | Verify on dev-3 and on production — **DONE** | 30m | t005 |
 | [t007](done/t007.md) | ADR032 and ADR018 — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Render parity — **DONE** | 20m | t007 |
 | [t009](done/t009.md) | Simplify — **DONE** | 15m | t008 |
 | [t010](done/t010.md) | Test coverage — **DONE** | 30m | t008 |
-| [t011](t011.md) | Closeout | 10m | t009, t010 |
+| [t011](done/t011.md) | Closeout — **DONE** | 10m | t009, t010 |
 
 ## Definition of done
 
@@ -97,3 +97,40 @@ Mutation checks, each reverted: mapping `projects.CreateSavedSearch` to another 
 **Clears by itself; no decision needed.** t006's production half needs a production deploy carrying `bb151b367`. `deploy.yml` deploys a push only when the production pin is at least 6 hours old, and the newest pin (`d38508f70 chore(deploy): pin platform images to 1c63b6fe0a34`) landed at 19:49Z, so the next deploy runs after about 01:49Z on 2026-11-20. Check: the newest `chore(deploy): pin platform images to <sha>` on `main` passes `git merge-base --is-ancestor bb151b367 <sha>`, and production's `bex-api` runs that digest.
 
 **Next (t006 step 2, then t011):** sign in as the QA user (`bash scripts/qa-login.sh`) and, in `bex-canary`, use or create a project of the QA user's own. Create a view with New View, edit its name and filters, duplicate it and delete the copy and one default view, at 1440 and 390, and read each change through GraphQL `savedSearches(projectId)` in a second session. Read `CreateSavedSearchEvent` and `DeleteSavedSearchEvent` in the workspace audit log. If a Viewer session is available, confirm its controls are disabled with the reason and its writes answer `FORBIDDEN`; otherwise record that the Viewer case rests on dev-3. Record the evidence here, delete the fixture with by-id 404 evidence, log out, and close the milestone.
+
+## Unblock (2026-11-20)
+
+- **Affected:** t006's production walk, then t011.
+- **Source:** verified evidence. The newest production pin on `origin/main`, `c8c774658` (`chore(deploy): pin platform images to 98e053468f52`, 2026-11-19 21:57Z), carries `bb151b367`: `git merge-base --is-ancestor bb151b367 98e053468f52` succeeds. Production's `bex-api` pods run `bex-operator@sha256:1ec4a7c2…` and the `dashboard` Deployment `bex-dashboard@sha256:ab9dafdb…`, the digests that pin names.
+- **Remaining gates:** none. t006's remaining step is § Gate (2026-11-19) above, then t011.
+
+## Production walk (t006, 2026-11-20)
+
+Pin `98e053468f52`, as the QA user in `bex-canary`, with two Kratos sessions of that user: the browser (the dashboard) and a second one reading every change through GraphQL (`savedSearches(projectId)` and `savedSearch(id)`) and REST. The fixture project `qa-20261120-m507` (`prj-dbvp34150n7c739ba0cg`) had environments production (`evm-dbvp34150n7c739ba0d0`) and staging (`evm-dbvp34150n7c739ba0dg`) and a `traefik/whoami` web service `qa-20261120-m507-web` (production, `srv-dbvp39s3j89c738ag3f0`), created over REST; five `curl` requests gave Request Logs its lines. A fresh project read Render's three defaults (Application Logs, Request Logs, Service Metrics, each `{"filters": [], "version": 1}`); the sidebar listed the two log views and **+ New View**.
+
+| step | width | dashboard | second session | result |
+| --- | --- | --- | --- | --- |
+| New View | 1440 | the menu read TYPE, Application Logs, Request Logs. Application Logs opened "New view" named "Application Logs 2". Renamed "qa-m507 storefront errors"; Environment `is` production (its picker listed production and staging) and Resource `is one of` the web service (the picker listed only it); Done opened `/observability/logs/application?savedSearchId=svs-dbvp4th50n7c739ba0ng`, listed in the sidebar, drawing the service's `Starting up on port 10000` line | the view, with `ENVIRONMENT IS [evm-…d0]` and `RESOURCE IS [srv-…f0]` | holds |
+| Dismiss New View | 1440 | a filled New view modal dismissed with Escape | still the three defaults | holds |
+| Edit view | 1440 | showed both rows; renamed "qa-m507 production web" and added Resource Type `is not one of` Postgres, Key Value (its values: Services, Cron jobs, Postgres, Key Value); Done changed the heading at once | `savedSearch(id)` read the new name and `RESOURCE_TYPE IS_NOT [POSTGRES, KEY_VALUE]` | holds |
+| Edit, then Close | 1440 | a typed new name, then Close: the heading unchanged | — | holds |
+| Taken name | 1440 | renaming to "Request Logs" kept the modal open with the alert `A view named "Request Logs" already exists in this project` | `createSavedSearch` with a taken name answered `extensions.code: duplicate_saved_search_name`; `updateSavedSearch(type: REQUEST_LOGS)` answered "a view's type cannot change" | holds |
+| Duplicate | 1440 | opened "qa-m507 production web (copy)" (`svs-dbvp5f150n7c739ba0q0`) | the copy with the same three rows | holds |
+| Delete the copy | 1440 | the trash button asked for `sudo delete view qa-m507 production web (copy)` (Delete disabled until typed), deleted it, and landed on Application Logs | `savedSearch` of the copy answered `NOT_FOUND` | holds |
+| New View | 390 | through Toggle Sidebar: Request Logs opened "New view" named "Request Logs 2" (its fields add Method, Status code, Request host and Request path); renamed "qa-m507 web requests" with Environment and Resource rows; the modal is 358 px wide at x 16 and the page 390 px, no horizontal scroll; Done opened `/observability/logs/request?savedSearchId=svs-dbvp63950n7c739ba11g` with Edit view, Duplicate and Delete on their own row (y 128) | the view, type `REQUEST_LOGS` | holds |
+| Edit view | 390 | renamed "qa-m507 web 200s" and added Status code `200` (typed, shown as a removable chip); no horizontal scroll; the page drew the service's `GET` `200` request lines with host and path | `STATUS_CODE IS ["200"]` and the new name | holds |
+| Duplicate, then delete the copy | 390 | "qa-m507 web 200s (copy)" opened, then deleted behind its typed confirmation, landing on Application Logs | `NOT_FOUND` | holds |
+| Delete a default view | 390 | the default Request Logs view, opened from the mobile sidebar, deleted behind `sudo delete view Request Logs`; landed on Application Logs; the sidebar no longer listed it | `savedSearches` no longer listed it, `savedSearch` answered `NOT_FOUND` | holds |
+| Delete a default view | 1440 | the default Application Logs view deleted the same way; landed on the first remaining log view, "qa-m507 production web" | `savedSearches` read Service Metrics, qa-m507 production web and qa-m507 web 200s | holds |
+
+- **Audit log.** The workspace's REST `GET /v1/owners/{id}/audit-logs` held `CreateSavedSearchEvent` success ×4 (the two New Views and both duplicates) and `DeleteSavedSearchEvent` success ×4 (both copies and both defaults), each by the QA user with `metadata.savedSearch` and `targetName` naming the view. The two edits recorded none, as on Render. GraphQL `auditLogs` counted the same eight rows under the same names.
+- **Viewer.** No Viewer session exists on production: the QA user is the only production credential. The Viewer case (controls disabled with the reason, writes answering `FORBIDDEN`) rests on dev-3 (§ Verification record) and `TestViewWritesNeedTheProjectsEditPermission`.
+
+**Cleanup.** The service was deleted (`DELETE` 204), then the project (`deleteProject`). By-id `GET` answered 404 for the service, the project and both environments, and `savedSearch` answered `NOT_FOUND` for the three views left at deletion; the app cluster kept no App or Deployment of it. Both QA sessions were logged out (`qa-login.sh --logout`; each cookie then answered 401), and the session jars, the screenshots and the fetched kubeconfig were deleted.
+
+## Closeout (t011, 2026-11-20)
+
+- **An editor creates by type, edits name and filters, duplicates and deletes, defaults included, and every member reads the change:** dev-3 with a Developer and a Viewer (§ Verification record), and production with two sessions at 1440 and 390 (above).
+- **A viewer sees the controls disabled with a reason, and the API refuses them:** dev-3 under enforced authorization (§ Verification record), and the tests in § Test coverage. No Viewer credential exists on production.
+- **`duplicate_saved_search_name`; `CreateSavedSearchEvent` and `DeleteSavedSearchEvent`:** both on dev-3 and on production (above).
+- **Verified with two members on dev-3 and on production:** dev-3 with two members and a Viewer; production with two sessions of the QA user, its only credential.
