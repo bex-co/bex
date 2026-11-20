@@ -16,7 +16,11 @@ limitations under the License.
 
 package apps
 
-import "testing"
+import (
+	"strings"
+	"testing"
+	"time"
+)
 
 // w4/632: a YAML syntax error's line and column are Render's 1-indexed
 // position of the construct the message names, not yaml.v3's 0-based parser
@@ -52,6 +56,10 @@ func TestBlueprintYAMLSyntaxErrorPosition(t *testing.T) {
 		{"tab before a sequence", "services:\n\t- type: web\n", 2, 1},
 		// No construct to recover: the offending line's first token.
 		{"under-indented mapping key", "a:\n  b: 1\n c: 2\n", 3, 2},
+		// Columns count characters, not bytes.
+		{"multi-byte key before a flow sequence", "é: [1, 2\nb: 1\n", 1, 4},
+		{"multi-byte scalar before an inner flow sequence", "a: ['é', [3\nb: 1\n", 1, 10},
+		{"multi-byte key before a quote", "ü: 'x\n", 1, 4},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, _, problems := CompileBlueprintIR(tc.manifest)
@@ -75,5 +83,37 @@ func TestBlueprintUnknownPropertyPointsAtItsKey(t *testing.T) {
 	}
 	if got := problems[0]; got.Line != 7 || got.Column != 5 {
 		t.Errorf("position = %d:%d, want the key at 7:5", got.Line, got.Column)
+	}
+}
+
+// Placing a syntax error costs time linear in the manifest: a one-line
+// manifest at the size cap, packed with flow collections or quoted scalars
+// that open before the error, is located well inside a second and at the same
+// position as a short one.
+func TestBlueprintYAMLSyntaxErrorLocationIsLinear(t *testing.T) {
+	for _, tc := range []struct{ name, item string }{
+		{"flow sequences", "[]"},
+		{"quoted scalars", "''"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tail := tc.item + " x y z"
+			n := (blueprintMaxManifestBytes - len("a: [") - len(tail)) / len(tc.item+",")
+			manifest := "a: [" + strings.Repeat(tc.item+",", n) + tail
+			if len(manifest) > blueprintMaxManifestBytes || len(manifest) < blueprintMaxManifestBytes-len(tc.item+",") {
+				t.Fatalf("manifest is %d bytes, want just under the %d cap", len(manifest), blueprintMaxManifestBytes)
+			}
+			start := time.Now()
+			_, problems := CompileBlueprintSource(manifest)
+			elapsed := time.Since(start)
+			if len(problems) != 1 || problems[0].Code != "BLUEPRINT_YAML_SYNTAX" {
+				t.Fatalf("problems = %+v, want one syntax refusal", problems)
+			}
+			if got := problems[0]; got.Line != 1 || got.Column != 4 {
+				t.Errorf("%s: position = %d:%d, want the unclosed [ at 1:4", got.Message, got.Line, got.Column)
+			}
+			if elapsed > time.Second {
+				t.Errorf("locating the error took %s, want under 1s", elapsed)
+			}
+		})
 	}
 }

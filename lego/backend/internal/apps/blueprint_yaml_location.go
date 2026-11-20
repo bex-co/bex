@@ -108,7 +108,7 @@ func yamlSyntaxLocation(err error, manifest string) (line, column int) {
 		constructs := scanYAMLConstructs(lines)
 		// A construct on line 1 left yaml.v3 reporting the problem's line.
 		for _, at := range []int{line, 1} {
-			if column := yamlConstructColumn(constructs, at, opens); column > 0 {
+			if column := yamlConstructColumn(lines, constructs, at, opens); column > 0 {
 				return at, column
 			}
 		}
@@ -126,11 +126,15 @@ func yamlSyntaxLocation(err error, manifest string) (line, column int) {
 }
 
 // yamlConstruct is a flow collection's opening bracket or a quoted scalar's
-// opening quote, found by scanYAMLConstructs.
+// opening quote, found by scanYAMLConstructs. It keeps the byte offset, not
+// the character column: counting characters from the line's start for every
+// construct would cost time quadratic in the line's length, so only the one
+// construct yamlConstructColumn picks is converted to a column.
 type yamlConstruct struct {
-	open         byte
-	line, column int // 1-based; the column counts characters
-	closedLine   int // 0 when the source ends with it still open
+	open       byte
+	line       int // 1-based
+	offset     int // the opening byte's offset within its line
+	closedLine int // 0 when the source ends with it still open
 }
 
 // scanYAMLConstructs walks the source the way YAML tokenizes it, closely
@@ -193,13 +197,13 @@ func scanYAMLConstructs(lines []string) []yamlConstruct {
 			switch {
 			case (c == '[' || c == '{') && (nodeStart || len(flow) > 0):
 				flow = append(flow, len(found))
-				found = append(found, yamlConstruct{open: c, line: line, column: utf8.RuneCountInString(text[:i]) + 1})
+				found = append(found, yamlConstruct{open: c, line: line, offset: i})
 			case (c == ']' || c == '}') && len(flow) > 0:
 				found[flow[len(flow)-1]].closedLine = line
 				flow = flow[:len(flow)-1]
 			case (c == '"' || c == '\'') && nodeStart:
 				quote = len(found)
-				found = append(found, yamlConstruct{open: c, line: line, column: utf8.RuneCountInString(text[:i]) + 1})
+				found = append(found, yamlConstruct{open: c, line: line, offset: i})
 			}
 			prev, spaced = c, false
 		}
@@ -207,24 +211,28 @@ func scanYAMLConstructs(lines []string) []yamlConstruct {
 	return found
 }
 
-// yamlConstructColumn is the column of the construct on line, opened by one
-// of opens, that an error there names: the last one still open at the end of
-// the line, else the last one. 0 when the line opens none.
-func yamlConstructColumn(constructs []yamlConstruct, line int, opens string) int {
-	last, lastOpen := 0, 0
-	for _, c := range constructs {
+// yamlConstructColumn is the 1-based character column of the construct on
+// line, opened by one of opens, that an error there names: the last one still
+// open at the end of the line, else the last one. 0 when the line opens none.
+func yamlConstructColumn(lines []string, constructs []yamlConstruct, line int, opens string) int {
+	last, lastOpen := -1, -1
+	for i, c := range constructs {
 		if c.line != line || strings.IndexByte(opens, c.open) < 0 {
 			continue
 		}
-		last = c.column
+		last = i
 		if c.closedLine != line {
-			lastOpen = c.column
+			lastOpen = i
 		}
 	}
-	if lastOpen > 0 {
-		return lastOpen
+	if lastOpen >= 0 {
+		last = lastOpen
 	}
-	return last
+	if last < 0 {
+		return 0
+	}
+	c := constructs[last]
+	return utf8.RuneCountInString(lines[c.line-1][:c.offset]) + 1
 }
 
 // yamlFirstTokenColumn is the column of line's first non-space character (a
