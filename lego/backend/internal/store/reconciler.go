@@ -41,6 +41,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/types/deploybudgets"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -83,19 +84,20 @@ const (
 	LabelWorkspace      = core.LabelWorkspace
 	defaultResyncPeriod = 30 * time.Second
 	// Phase-specific gate timeouts bound how long a deploy may sit open before
-	// recordDeploy gives up on it and calls it failed. BuildKit Jobs have a
-	// 120-minute active deadline (Render's build timeout) and pre-deploy Jobs have a 30-minute deadline
-	// (Render's pre-deploy limit; predeployTimeout in
-	// lego/operator/internal/predeploy/predeploy.go), so their control-plane budgets must be longer than the mechanism they
-	// observe. Each budget starts from the deploy row's last phase transition.
+	// recordDeploy gives up on it and calls it failed. Build Jobs carry
+	// deploybudgets.BuildBudget (Render's 120-minute build timeout) and
+	// pre-deploy Jobs deploybudgets.PreDeployBudget (Render's 30-minute
+	// pre-deploy limit), so their control-plane budgets must be longer than
+	// the mechanism they observe. Each budget starts from the deploy row's
+	// last phase transition.
 	// The shorter rollout budget is needed because a bad image
 	// (ImagePullBackOff) historically left the App CR polling PhaseDeploying
 	// forever (operator reportRolloutProgress before w4/m103). w4/m103 settles
 	// PhaseFailed once the Deployment reports ProgressDeadlineExceeded with no
 	// prior ActiveRevision, so the row can close from the phase; the gate remains
 	// the backstop when the CR has not yet observed that verdict.
-	defaultBuildGateTimeout     = 125 * time.Minute
-	defaultPreDeployGateTimeout = 35 * time.Minute
+	defaultBuildGateTimeout     = deploybudgets.BuildGateTimeout
+	defaultPreDeployGateTimeout = deploybudgets.PreDeployGateTimeout
 	// defaultDeployGateTimeout observes the rollout the same way the two gates
 	// above observe their Jobs, so it follows the same rule: a control-plane
 	// budget must be strictly LONGER than the mechanism it watches, or the
@@ -103,9 +105,8 @@ const (
 	// mechanism's own specific verdict and can win — re-creating the vague
 	// message w7/m79 worked to eliminate.
 	//
-	// The mechanism here is the rollout budget in
-	// lego/operator/internal/controller/deployment_projection.go
-	// (rolloutBudgetSeconds = 900s), which is Render's window: "If this
+	// The mechanism here is deploybudgets.RolloutBudget (the rollout budget in
+	// deployment_projection.go), which is Render's window: "If this
 	// condition is not met within 15 minutes, Render cancels the deploy and
 	// continues routing traffic to your service's existing instances." Both
 	// the startupProbe budget and Deployment.spec.progressDeadlineSeconds are
@@ -113,14 +114,15 @@ const (
 	// 15m and this gate closes the row at 18m. The margin matches the existing
 	// pattern (build 120m→125m, pre-deploy 30m→35m).
 	//
-	// The constant cannot be shared — separate Go module, and backend must
-	// never import operator — so the invariant is held by a test on each side.
+	// The canonical values live together in deploybudgets with the test that
+	// pins gate > mechanism; before, each side held the other's number as a
+	// copied literal and either could move alone.
 	//
 	// Before m80 this was 3 minutes against the operator's inherited 600s
 	// default, so the real budget was 3 minutes for reasons nobody chose: an
 	// image pull alone has been measured at 52s on a 498 MB image, before the
 	// container even starts.
-	defaultDeployGateTimeout = 18 * time.Minute
+	defaultDeployGateTimeout = deploybudgets.DeployGateTimeout
 )
 
 // ownedBy reports whether an object carrying these labels belongs to the

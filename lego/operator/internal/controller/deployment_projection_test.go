@@ -19,11 +19,13 @@ package controller
 import (
 	"slices"
 	"testing"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/bex-co/bex/lego/types/deploybudgets"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
@@ -289,8 +291,10 @@ func TestWebServiceReadinessProbe(t *testing.T) {
 		if container.StartupProbe == nil {
 			t.Fatal("liveness without a startup probe would kill a slow boot")
 		}
-		if boot := container.StartupProbe.PeriodSeconds * container.StartupProbe.FailureThreshold; boot != 900 {
-			t.Errorf("startup budget = %ds; liveness must stay suspended for the full 15m rollout budget", boot)
+		want := int32(deploybudgets.RolloutBudget / time.Second)
+		boot := container.StartupProbe.PeriodSeconds * container.StartupProbe.FailureThreshold
+		if boot != want {
+			t.Errorf("startup budget = %ds; liveness must stay suspended for the full rollout budget", boot)
 		}
 	})
 
@@ -324,8 +328,8 @@ func TestRolloutTimersAgree(t *testing.T) {
 		t.Errorf("startup budget = %ds but progressDeadlineSeconds = %ds; the tightest silently "+
 			"decides, so they must be one number", budget, *dep.Spec.ProgressDeadlineSeconds)
 	}
-	if budget != 900 {
-		t.Errorf("rollout budget = %ds; want Render's 15 minutes", budget)
+	if budget != int32(deploybudgets.RolloutBudget/time.Second) {
+		t.Errorf("rollout budget = %ds; want deploybudgets.RolloutBudget", budget)
 	}
 }
 

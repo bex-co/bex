@@ -37,6 +37,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/types/deploybudgets"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -2111,9 +2112,10 @@ func TestRecordDeployClosesFailedOnCRFailed(t *testing.T) {
 // TestDeployGateOutlastsTheRolloutBudgetItObserves pins the control-plane end
 // of the three timers that bound a rollout. The other two — the startupProbe
 // budget and Deployment.spec.progressDeadlineSeconds — live in the operator
-// module, which backend must never import, so no constant can be shared; the
-// operator suite asserts those two equal each other and equal 900s, and this
-// asserts the relationship that must hold across the boundary.
+// module, which backend must never import; the operator suite asserts those
+// two equal each other and equal the shared RolloutBudget, deploybudgets'
+// own test pins every gate strictly above its mechanism, and this asserts
+// the configured default still carries the intended 18m.
 //
 // The rule is the same one the build and pre-deploy gates already follow: a
 // control-plane budget must be strictly longer than the mechanism it watches
@@ -2123,13 +2125,11 @@ func TestRecordDeployClosesFailedOnCRFailed(t *testing.T) {
 // the vague message w7/m79 worked to eliminate.
 func TestDeployGateOutlastsTheRolloutBudgetItObserves(t *testing.T) {
 	rec, _, _ := newTestReconciler(t)
-	// Mirrors rolloutBudgetSeconds in the operator's deployment_projection.go.
-	const rolloutBudget = 15 * time.Minute
 
-	if rec.DeployGateTimeout <= rolloutBudget {
+	if rec.DeployGateTimeout <= deploybudgets.RolloutBudget {
 		t.Fatalf("DeployGateTimeout = %v must be strictly longer than the %v rollout budget it "+
 			"observes, or the generic health-gate message races the Deployment's own verdict",
-			rec.DeployGateTimeout, rolloutBudget)
+			rec.DeployGateTimeout, deploybudgets.RolloutBudget)
 	}
 	if rec.DeployGateTimeout != 18*time.Minute {
 		t.Errorf("DeployGateTimeout = %v, want 18m (15m rollout budget + the same margin the "+
@@ -2137,17 +2137,16 @@ func TestDeployGateOutlastsTheRolloutBudgetItObserves(t *testing.T) {
 	}
 }
 
-// The pre-deploy gate observes the operator's pre-deploy Job, whose deadline is
-// Render's 30-minute pre-deploy limit (predeployTimeout in the operator's
-// predeploy package, which backend cannot import). A gate at or below it would
+// The pre-deploy gate observes the operator's pre-deploy Job, whose deadline
+// is Render's 30-minute pre-deploy limit (deploybudgets.PreDeployBudget,
+// which backend cannot import from the operator). A gate at or below it would
 // close a long migration as timed out while its Job is still within its window.
 func TestPreDeployGateOutlastsRendersThirtyMinuteLimit(t *testing.T) {
 	rec, _, _ := newTestReconciler(t)
-	const preDeployLimit = 30 * time.Minute // mirrors predeployTimeout in the operator
 
-	if rec.PreDeployGateTimeout <= preDeployLimit {
+	if rec.PreDeployGateTimeout <= deploybudgets.PreDeployBudget {
 		t.Fatalf("PreDeployGateTimeout = %v must be strictly longer than the %v pre-deploy Job deadline it observes",
-			rec.PreDeployGateTimeout, preDeployLimit)
+			rec.PreDeployGateTimeout, deploybudgets.PreDeployBudget)
 	}
 	if rec.PreDeployGateTimeout != 35*time.Minute {
 		t.Errorf("PreDeployGateTimeout = %v, want 35m (30m Job deadline + the 5m margin the build gate carries)", rec.PreDeployGateTimeout)

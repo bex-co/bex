@@ -35,6 +35,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
+	"github.com/bex-co/bex/lego/types/deploybudgets"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -285,7 +286,7 @@ var _ = Describe("App Controller", func() {
 			budget := c.StartupProbe.PeriodSeconds * c.StartupProbe.FailureThreshold
 			Expect(budget).To(Equal(*dep.Spec.ProgressDeadlineSeconds),
 				"startupProbe budget and progressDeadlineSeconds must be the same number")
-			Expect(budget).To(Equal(int32(900)), "Render cancels a deploy after 15 minutes")
+			Expect(budget).To(Equal(int32(deploybudgets.RolloutBudget/time.Second)), "Render cancels a deploy after 15 minutes")
 
 			Expect(k8sClient.Delete(ctx, app)).To(Succeed())
 			reconcileN(nn)

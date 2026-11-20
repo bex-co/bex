@@ -23,6 +23,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/bex-co/bex/lego/types/deploybudgets"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -119,7 +120,7 @@ func TestStallReasonClearsOnProgressAndReadyDiagnosisWins(t *testing.T) {
 	ctx := context.Background()
 	m := newMemStore()
 	m.deploys["dep-1"] = Deploy{ID: "dep-1", Generation: 2, Status: DeployUpdateInProgress, CreatedAt: time.Now(), StallReason: "old"}
-	r := &Reconciler{Store: m, DeployGateTimeout: 18 * time.Minute}
+	r := &Reconciler{Store: m, DeployGateTimeout: deploybudgets.DeployGateTimeout}
 	app := &appv1alpha1.App{}
 	app.Generation = 2
 	app.Status.ReleaseGeneration = 2
