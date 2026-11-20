@@ -258,3 +258,40 @@ func TestBlueprintOnGitHubKeepsTheGitHubPath(t *testing.T) {
 		t.Fatalf("GitHub resolved %d times, want 2", fc.resolveCalls)
 	}
 }
+
+// A Blueprint's host refusal is answerable before any read (w8/346), so a
+// preview or create with no branch refuses a host by name instead of probing
+// it for a default branch, and a failed read names the host it went to.
+func TestRefuseBlueprintHostNeedsNoRead(t *testing.T) {
+	for repo, host := range map[string]string{
+		"https://codeberg.org/forgejo/forgejo":   "codeberg.org",
+		"https://example.com/a/b":                "example.com",
+		"git@gitlab.com:render-examples/app.git": "gitlab.com",
+		"https://gitlab.com:8443/a/b":            "gitlab.com",
+	} {
+		err := RefuseBlueprintHost(repo)
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != CodeBlueprintHostUnsupported || !strings.Contains(err.Error(), host) {
+			t.Errorf("RefuseBlueprintHost(%s) = %v, want a %s refusal naming %s", repo, err, CodeBlueprintHostUnsupported, host)
+		}
+		if got := BlueprintHost(repo); got != host {
+			t.Errorf("BlueprintHost(%s) = %q, want %q", repo, got, host)
+		}
+	}
+	for repo, host := range map[string]string{
+		"https://github.com/render-examples/elasticsearch": "",
+		"git@github.com:render-examples/elasticsearch.git": "",
+		"https://gitlab.com/render-examples/elasticsearch": "gitlab.com",
+		"https://gitlab.com/group/sub/repo.git":            "gitlab.com",
+		"https://bitbucket.org/tutorials/markdowndemo":     "bitbucket.org",
+		// Not a repository URL: the read refuses it as such, not by host.
+		"https://bitbucket.org/a": "bitbucket.org",
+	} {
+		if err := RefuseBlueprintHost(repo); err != nil {
+			t.Errorf("RefuseBlueprintHost(%s) = %v, want nil", repo, err)
+		}
+		if got := BlueprintHost(repo); got != host {
+			t.Errorf("BlueprintHost(%s) = %q, want %q", repo, got, host)
+		}
+	}
+}

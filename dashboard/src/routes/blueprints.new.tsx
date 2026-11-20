@@ -27,6 +27,7 @@ import { Combobox } from "@/common/components/ui/combobox";
 import { repoNameSlug, gitUrlSlug } from "@/common/lib/utils/slug";
 import { isValidGitUrl } from "@/common/lib/utils/git-url";
 import { parseDeployRepo } from "@/features/blueprints/lib/deploy-link";
+import { blueprintRepoHost } from "@/features/blueprints/lib/repo-host";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import { useRepoBranches } from "@/features/services/hooks/use-repo-branches";
 import {
@@ -277,6 +278,11 @@ export function NewBlueprintPage() {
       : null;
   const failureCopy = (() => {
     const displayPath = path.trim() || "render.yaml";
+    // GitHub's copy names bex's GitHub app. A gitlab.com or bitbucket.org
+    // repository is read anonymously from its own host, and bex-api refuses
+    // any other host by name, so their copy names the host (w8/346).
+    const repoHost = blueprintRepoHost(sourceRepo);
+    const host = repoHost.kind === "github" ? "GitHub" : repoHost.host;
     switch (preview?.reason) {
       case "branch_not_found":
         return {
@@ -284,19 +290,31 @@ export function NewBlueprintPage() {
           body: t("blueprints.previewBranchNotFoundBody", { branch }),
         };
       case "repo_not_found_or_no_access":
+        if (repoHost.kind === "unsupported") {
+          return {
+            title: t("blueprints.previewHostUnsupportedTitle"),
+            body: t("blueprints.previewHostUnsupportedBody", { host }),
+          };
+        }
         return {
           title: t("blueprints.previewRepoNotFoundTitle"),
-          body: t("blueprints.previewRepoNotFoundBody"),
+          body:
+            repoHost.kind === "github"
+              ? t("blueprints.previewRepoNotFoundBody")
+              : t("blueprints.previewPublicRepoNotFoundBody", { host }),
         };
       case "access_denied":
         return {
           title: t("blueprints.previewAccessDeniedTitle"),
-          body: t("blueprints.previewAccessDeniedBody"),
+          body:
+            repoHost.kind === "github"
+              ? t("blueprints.previewAccessDeniedBody")
+              : t("blueprints.previewPublicAccessDeniedBody", { host }),
         };
       case "rate_limited":
         return {
-          title: t("blueprints.previewRateLimitedTitle"),
-          body: t("blueprints.previewRateLimitedBody"),
+          title: t("blueprints.previewRateLimitedTitle", { host }),
+          body: t("blueprints.previewRateLimitedBody", { host }),
         };
       case "ambiguous_filename":
         return {
@@ -305,8 +323,8 @@ export function NewBlueprintPage() {
         };
       case "unavailable":
         return {
-          title: t("blueprints.previewUnavailableTitle"),
-          body: t("blueprints.previewUnavailableBody"),
+          title: t("blueprints.previewUnavailableTitle", { host }),
+          body: t("blueprints.previewUnavailableBody", { host }),
         };
       case "file_not_found":
         return {
@@ -491,7 +509,10 @@ export function NewBlueprintPage() {
                 <p className="text-base font-semibold">
                   {t("blueprints.previewTitle")}
                 </p>
-                {!sourceValid || !branch.trim() ? (
+                {/* A review with no branch reads the default branch; one that
+                    failed says why, a host bex reads no Blueprint from among
+                    them, rather than asking for a branch (w8/346). */}
+                {!sourceValid || (!branch.trim() && !failed) ? (
                   <p className="text-sm text-muted-foreground">
                     {t("blueprints.previewSelectSource")}
                   </p>

@@ -165,13 +165,38 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "bex 的 GitHub 应用无权读取该仓库。请重新检查安装及其授权的仓库。",
     description: "Preview failure body for access_denied",
   },
+  "blueprints.previewPublicRepoNotFoundBody": {
+    message:
+      "该仓库在 {host} 上不存在，或不是公开仓库。bex 在该平台上只从公开仓库读取 Blueprint。",
+    description:
+      "Preview failure body for repo_not_found_or_no_access on gitlab.com or bitbucket.org, read anonymously; {host} is that host",
+  },
+  "blueprints.previewPublicAccessDeniedBody": {
+    message:
+      "{host} 拒绝了 bex 读取该仓库。bex 在该平台上只从公开仓库读取 Blueprint。",
+    description:
+      "Preview failure body for access_denied on gitlab.com or bitbucket.org, read anonymously; {host} is that host",
+  },
+  "blueprints.previewHostUnsupportedTitle": {
+    message: "不支持的 Git 托管平台",
+    description:
+      "Preview failure title for a repository on a Git host bex reads no Blueprint from",
+  },
+  "blueprints.previewHostUnsupportedBody": {
+    message:
+      "与 Render 一样，bex 从 github.com、gitlab.com 或 bitbucket.org 上的公开仓库读取 Blueprint。{host} 不在其中。",
+    description:
+      "Preview failure body for a repository on a Git host bex reads no Blueprint from; {host} is that host",
+  },
   "blueprints.previewRateLimitedTitle": {
-    message: "GitHub 正在限流 bex",
-    description: "Preview failure title for rate_limited",
+    message: "{host} 正在限流 bex",
+    description:
+      "Preview failure title for rate_limited; {host} is GitHub or the repository's host",
   },
   "blueprints.previewRateLimitedBody": {
-    message: "当前对 GitHub 的请求过多，请几分钟后重试。",
-    description: "Preview failure body for rate_limited",
+    message: "当前对 {host} 的请求过多，请几分钟后重试。",
+    description:
+      "Preview failure body for rate_limited; {host} is GitHub or the repository's host",
   },
   "blueprints.previewAmbiguousTitle": {
     message: "存在两个 Blueprint 文件",
@@ -183,12 +208,14 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description: "Preview failure body for ambiguous_filename",
   },
   "blueprints.previewUnavailableTitle": {
-    message: "无法连接 GitHub",
-    description: "Preview failure title for unavailable",
+    message: "无法连接 {host}",
+    description:
+      "Preview failure title for unavailable; {host} is GitHub or the repository's host",
   },
   "blueprints.previewUnavailableBody": {
-    message: "bex 无法从 GitHub 读取 Blueprint 文件，请几分钟后重试。",
-    description: "Preview failure body for unavailable",
+    message: "bex 无法从 {host} 读取 Blueprint 文件，请几分钟后重试。",
+    description:
+      "Preview failure body for unavailable; {host} is GitHub or the repository's host",
   },
   "blueprints.previewInvalidPathExtension": {
     message: "Blueprint 路径必须是 .yaml 或 .yml 文件。",

@@ -215,7 +215,7 @@ func (s *Service) CreatePlannedBlueprint(ctx context.Context, req RenderCreateBl
 	}
 	contents, commitSHA, discoveredPath, err := discoverBlueprintFile(ctx, s.GitFetcher, tenantID, req.Source.Repo, branch, path)
 	if err != nil {
-		return BlueprintPlanResult{}, blueprintCreateFetchError(err, path, branch)
+		return BlueprintPlanResult{}, blueprintCreateFetchError(err, req.Source.Repo, path, branch)
 	}
 	autoSync := true
 	if req.AutoSync != nil {
@@ -279,7 +279,7 @@ func (s *Service) PlanBlueprint(ctx context.Context, bpID, ownerID string) (Blue
 	}
 	contents, commitSHA, _, fetchErr := discoverBlueprintFile(ctx, s.GitFetcher, tenantID, b.Repo, b.Branch, b.Path)
 	if fetchErr != nil {
-		_, message := classifyBlueprintFetchError(fetchErr, b.Path, b.Branch)
+		_, message := classifyBlueprintFetchError(fetchErr, b.Repo, b.Path, b.Branch)
 		return s.recordFailedPlan(ctx, plans, b, commitSHA, []BlueprintNotice{{Severity: "error", Message: message}})
 	}
 	return s.planBlueprintSync(ctx, plans, &b, contents, commitSHA)

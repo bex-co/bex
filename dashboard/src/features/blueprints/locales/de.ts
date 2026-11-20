@@ -167,14 +167,39 @@ const deBlueprints: Record<string, TranslationEntry> = {
       "Die GitHub App von bex ist nicht berechtigt, dieses Repository zu lesen. Prüfe die Installation und die Repositories, auf die sie Zugriff hat.",
     description: "Preview failure body for access_denied",
   },
+  "blueprints.previewPublicRepoNotFoundBody": {
+    message:
+      "Dieses Repository existiert auf {host} nicht oder ist nicht öffentlich. bex liest einen Blueprint dort aus einem öffentlichen Repository.",
+    description:
+      "Preview failure body for repo_not_found_or_no_access on gitlab.com or bitbucket.org, read anonymously; {host} is that host",
+  },
+  "blueprints.previewPublicAccessDeniedBody": {
+    message:
+      "{host} hat bex das Lesen dieses Repositorys verweigert. bex liest einen Blueprint dort aus einem öffentlichen Repository.",
+    description:
+      "Preview failure body for access_denied on gitlab.com or bitbucket.org, read anonymously; {host} is that host",
+  },
+  "blueprints.previewHostUnsupportedTitle": {
+    message: "Git-Host nicht unterstützt",
+    description:
+      "Preview failure title for a repository on a Git host bex reads no Blueprint from",
+  },
+  "blueprints.previewHostUnsupportedBody": {
+    message:
+      "bex liest einen Blueprint wie Render aus einem öffentlichen Repository auf github.com, gitlab.com oder bitbucket.org. {host} gehört nicht dazu.",
+    description:
+      "Preview failure body for a repository on a Git host bex reads no Blueprint from; {host} is that host",
+  },
   "blueprints.previewRateLimitedTitle": {
-    message: "GitHub begrenzt die Anfragen von bex",
-    description: "Preview failure title for rate_limited",
+    message: "{host} begrenzt die Anfragen von bex",
+    description:
+      "Preview failure title for rate_limited; {host} is GitHub or the repository's host",
   },
   "blueprints.previewRateLimitedBody": {
     message:
-      "Gerade zu viele Anfragen an GitHub. Versuche es in ein paar Minuten erneut.",
-    description: "Preview failure body for rate_limited",
+      "Gerade zu viele Anfragen an {host}. Versuche es in ein paar Minuten erneut.",
+    description:
+      "Preview failure body for rate_limited; {host} is GitHub or the repository's host",
   },
   "blueprints.previewAmbiguousTitle": {
     message: "Zwei Blueprint-Dateien",
@@ -186,13 +211,15 @@ const deBlueprints: Record<string, TranslationEntry> = {
     description: "Preview failure body for ambiguous_filename",
   },
   "blueprints.previewUnavailableTitle": {
-    message: "GitHub nicht erreichbar",
-    description: "Preview failure title for unavailable",
+    message: "{host} nicht erreichbar",
+    description:
+      "Preview failure title for unavailable; {host} is GitHub or the repository's host",
   },
   "blueprints.previewUnavailableBody": {
     message:
-      "bex konnte die Blueprint-Datei nicht von GitHub lesen. Versuche es in ein paar Minuten erneut.",
-    description: "Preview failure body for unavailable",
+      "bex konnte die Blueprint-Datei nicht von {host} lesen. Versuche es in ein paar Minuten erneut.",
+    description:
+      "Preview failure body for unavailable; {host} is GitHub or the repository's host",
   },
   "blueprints.previewInvalidPathExtension": {
     message: "Der Blueprint-Pfad muss auf eine .yaml- oder .yml-Datei zeigen.",

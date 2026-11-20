@@ -166,14 +166,39 @@ const ruBlueprints: Record<string, TranslationEntry> = {
       "GitHub App bex не имеет права читать этот репозиторий. Проверьте установку и репозитории, к которым предоставлен доступ.",
     description: "Preview failure body for access_denied",
   },
+  "blueprints.previewPublicRepoNotFoundBody": {
+    message:
+      "Этот репозиторий не существует на {host} или не является публичным. bex читает Blueprint оттуда только из публичного репозитория.",
+    description:
+      "Preview failure body for repo_not_found_or_no_access on gitlab.com or bitbucket.org, read anonymously; {host} is that host",
+  },
+  "blueprints.previewPublicAccessDeniedBody": {
+    message:
+      "{host} не разрешил bex прочитать этот репозиторий. bex читает Blueprint оттуда только из публичного репозитория.",
+    description:
+      "Preview failure body for access_denied on gitlab.com or bitbucket.org, read anonymously; {host} is that host",
+  },
+  "blueprints.previewHostUnsupportedTitle": {
+    message: "Git-хостинг не поддерживается",
+    description:
+      "Preview failure title for a repository on a Git host bex reads no Blueprint from",
+  },
+  "blueprints.previewHostUnsupportedBody": {
+    message:
+      "Как и Render, bex читает Blueprint из публичного репозитория на github.com, gitlab.com или bitbucket.org. {host} к ним не относится.",
+    description:
+      "Preview failure body for a repository on a Git host bex reads no Blueprint from; {host} is that host",
+  },
   "blueprints.previewRateLimitedTitle": {
-    message: "GitHub ограничивает запросы от bex",
-    description: "Preview failure title for rate_limited",
+    message: "{host} ограничивает запросы от bex",
+    description:
+      "Preview failure title for rate_limited; {host} is GitHub or the repository's host",
   },
   "blueprints.previewRateLimitedBody": {
     message:
-      "Сейчас слишком много запросов к GitHub. Повторите попытку через несколько минут.",
-    description: "Preview failure body for rate_limited",
+      "Сейчас слишком много запросов к {host}. Повторите попытку через несколько минут.",
+    description:
+      "Preview failure body for rate_limited; {host} is GitHub or the repository's host",
   },
   "blueprints.previewAmbiguousTitle": {
     message: "Два файла Blueprint",
@@ -185,13 +210,15 @@ const ruBlueprints: Record<string, TranslationEntry> = {
     description: "Preview failure body for ambiguous_filename",
   },
   "blueprints.previewUnavailableTitle": {
-    message: "Не удалось связаться с GitHub",
-    description: "Preview failure title for unavailable",
+    message: "Не удалось связаться с {host}",
+    description:
+      "Preview failure title for unavailable; {host} is GitHub or the repository's host",
   },
   "blueprints.previewUnavailableBody": {
     message:
-      "bex не удалось прочитать файл Blueprint из GitHub. Повторите попытку через несколько минут.",
-    description: "Preview failure body for unavailable",
+      "bex не удалось прочитать файл Blueprint из {host}. Повторите попытку через несколько минут.",
+    description:
+      "Preview failure body for unavailable; {host} is GitHub or the repository's host",
   },
   "blueprints.previewInvalidPathExtension": {
     message: "Путь к Blueprint должен указывать на файл .yaml или .yml.",

@@ -166,14 +166,39 @@ const jaBlueprints: Record<string, TranslationEntry> = {
       "bex の GitHub App には、このリポジトリを読み取る権限がありません。インストールと、付与されているリポジトリを再確認してください。",
     description: "Preview failure body for access_denied",
   },
+  "blueprints.previewPublicRepoNotFoundBody": {
+    message:
+      "このリポジトリは {host} 上に存在しないか、公開されていません。bex はそこでは公開リポジトリから Blueprint を読み取ります。",
+    description:
+      "Preview failure body for repo_not_found_or_no_access on gitlab.com or bitbucket.org, read anonymously; {host} is that host",
+  },
+  "blueprints.previewPublicAccessDeniedBody": {
+    message:
+      "{host} は bex にこのリポジトリの読み取りを許可しませんでした。bex はそこでは公開リポジトリから Blueprint を読み取ります。",
+    description:
+      "Preview failure body for access_denied on gitlab.com or bitbucket.org, read anonymously; {host} is that host",
+  },
+  "blueprints.previewHostUnsupportedTitle": {
+    message: "サポートされていない Git ホスト",
+    description:
+      "Preview failure title for a repository on a Git host bex reads no Blueprint from",
+  },
+  "blueprints.previewHostUnsupportedBody": {
+    message:
+      "bex は Render と同様に、github.com、gitlab.com、bitbucket.org 上の公開リポジトリから Blueprint を読み取ります。{host} はそのいずれでもありません。",
+    description:
+      "Preview failure body for a repository on a Git host bex reads no Blueprint from; {host} is that host",
+  },
   "blueprints.previewRateLimitedTitle": {
-    message: "GitHub が bex を制限しています",
-    description: "Preview failure title for rate_limited",
+    message: "{host} が bex を制限しています",
+    description:
+      "Preview failure title for rate_limited; {host} is GitHub or the repository's host",
   },
   "blueprints.previewRateLimitedBody": {
     message:
-      "現在、GitHub へのリクエストが多すぎます。数分後にもう一度お試しください。",
-    description: "Preview failure body for rate_limited",
+      "現在、{host} へのリクエストが多すぎます。数分後にもう一度お試しください。",
+    description:
+      "Preview failure body for rate_limited; {host} is GitHub or the repository's host",
   },
   "blueprints.previewAmbiguousTitle": {
     message: "Blueprint ファイルが 2 つあります",
@@ -185,13 +210,15 @@ const jaBlueprints: Record<string, TranslationEntry> = {
     description: "Preview failure body for ambiguous_filename",
   },
   "blueprints.previewUnavailableTitle": {
-    message: "GitHub に接続できませんでした",
-    description: "Preview failure title for unavailable",
+    message: "{host} に接続できませんでした",
+    description:
+      "Preview failure title for unavailable; {host} is GitHub or the repository's host",
   },
   "blueprints.previewUnavailableBody": {
     message:
-      "bex は GitHub から Blueprint ファイルを読み取れませんでした。数分後にもう一度お試しください。",
-    description: "Preview failure body for unavailable",
+      "bex は {host} から Blueprint ファイルを読み取れませんでした。数分後にもう一度お試しください。",
+    description:
+      "Preview failure body for unavailable; {host} is GitHub or the repository's host",
   },
   "blueprints.previewInvalidPathExtension": {
     message: "Blueprint のパスは、.yaml または .yml ファイルにしてください。",

@@ -167,13 +167,38 @@ const koBlueprints: Record<string, TranslationEntry> = {
       "bex의 GitHub 앱에 이 저장소를 읽을 권한이 없습니다. 설치 상태와 앱에 부여된 저장소를 다시 확인하세요.",
     description: "Preview failure body for access_denied",
   },
+  "blueprints.previewPublicRepoNotFoundBody": {
+    message:
+      "이 저장소가 {host}에 존재하지 않거나 공개되어 있지 않습니다. bex는 그곳에서 공개 저장소의 Blueprint만 읽습니다.",
+    description:
+      "Preview failure body for repo_not_found_or_no_access on gitlab.com or bitbucket.org, read anonymously; {host} is that host",
+  },
+  "blueprints.previewPublicAccessDeniedBody": {
+    message:
+      "{host}에서 bex의 이 저장소 읽기를 허용하지 않았습니다. bex는 그곳에서 공개 저장소의 Blueprint만 읽습니다.",
+    description:
+      "Preview failure body for access_denied on gitlab.com or bitbucket.org, read anonymously; {host} is that host",
+  },
+  "blueprints.previewHostUnsupportedTitle": {
+    message: "지원되지 않는 Git 호스트",
+    description:
+      "Preview failure title for a repository on a Git host bex reads no Blueprint from",
+  },
+  "blueprints.previewHostUnsupportedBody": {
+    message:
+      "bex는 Render와 마찬가지로 github.com, gitlab.com 또는 bitbucket.org의 공개 저장소에서 Blueprint를 읽습니다. {host}은(는) 여기에 해당하지 않습니다.",
+    description:
+      "Preview failure body for a repository on a Git host bex reads no Blueprint from; {host} is that host",
+  },
   "blueprints.previewRateLimitedTitle": {
-    message: "GitHub가 bex의 요청을 제한하고 있습니다",
-    description: "Preview failure title for rate_limited",
+    message: "{host}에서 bex의 요청을 제한하고 있습니다",
+    description:
+      "Preview failure title for rate_limited; {host} is GitHub or the repository's host",
   },
   "blueprints.previewRateLimitedBody": {
-    message: "현재 GitHub에 요청이 너무 많습니다. 몇 분 후에 다시 시도하세요.",
-    description: "Preview failure body for rate_limited",
+    message: "현재 {host}에 요청이 너무 많습니다. 몇 분 후에 다시 시도하세요.",
+    description:
+      "Preview failure body for rate_limited; {host} is GitHub or the repository's host",
   },
   "blueprints.previewAmbiguousTitle": {
     message: "Blueprint 파일이 두 개 있습니다",
@@ -185,13 +210,15 @@ const koBlueprints: Record<string, TranslationEntry> = {
     description: "Preview failure body for ambiguous_filename",
   },
   "blueprints.previewUnavailableTitle": {
-    message: "GitHub에 연결할 수 없습니다",
-    description: "Preview failure title for unavailable",
+    message: "{host}에 연결할 수 없습니다",
+    description:
+      "Preview failure title for unavailable; {host} is GitHub or the repository's host",
   },
   "blueprints.previewUnavailableBody": {
     message:
-      "bex가 GitHub에서 Blueprint 파일을 읽지 못했습니다. 몇 분 후에 다시 시도하세요.",
-    description: "Preview failure body for unavailable",
+      "bex가 {host}에서 Blueprint 파일을 읽지 못했습니다. 몇 분 후에 다시 시도하세요.",
+    description:
+      "Preview failure body for unavailable; {host} is GitHub or the repository's host",
   },
   "blueprints.previewInvalidPathExtension": {
     message: "Blueprint 경로는 .yaml 또는 .yml 파일이어야 합니다.",

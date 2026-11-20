@@ -335,7 +335,7 @@ func discoverBlueprintFile(ctx context.Context, fetcher BlueprintFetcher, worksp
 // a missing file quoted the pinned commit SHA at the user. Nothing this
 // function returns contains upstream vocabulary or a SHA — the message is built
 // here from the caller's own inputs, never from err.Error().
-func classifyBlueprintFetchError(err error, requestedPath, branch string) (BlueprintPreviewReason, string) {
+func classifyBlueprintFetchError(err error, repo, requestedPath, branch string) (BlueprintPreviewReason, string) {
 	displayPath := requestedPath
 	if displayPath == "" {
 		displayPath = CanonicalBlueprintFilename
@@ -348,8 +348,7 @@ func classifyBlueprintFetchError(err error, requestedPath, branch string) (Bluep
 	case errors.Is(err, github.ErrBranchNotFound):
 		return BlueprintFetchBranchNotFound, fmt.Sprintf("Branch %q does not exist in this repository.", branch)
 	case errors.Is(err, github.ErrRepoNotFoundOrNoAccess):
-		return BlueprintFetchRepoNotFound,
-			"Repository not found, or bex's GitHub app cannot access it."
+		return BlueprintFetchRepoNotFound, blueprintWordingFor(repo).repoNotFound
 	}
 	// A repository on a host bex reads no Blueprint from (w8/344): its
 	// message names the host from the caller's own URL.
@@ -375,15 +374,38 @@ func classifyBlueprintFetchError(err error, requestedPath, branch string) (Bluep
 			return BlueprintFetchFileNotFound, fmt.Sprintf(
 				"Blueprint file %q not found on branch %q.", displayPath, branch)
 		case http.StatusUnauthorized, http.StatusForbidden:
-			return BlueprintFetchAccessDenied,
-				"bex's GitHub app is not authorized to read this repository. Re-check the installation and its repository access."
+			return BlueprintFetchAccessDenied, blueprintWordingFor(repo).accessDenied
 		case http.StatusTooManyRequests:
-			return BlueprintFetchRateLimited,
-				"GitHub is rate-limiting bex right now. Try again in a few minutes."
+			return BlueprintFetchRateLimited, blueprintWordingFor(repo).rateLimited
 		}
 	}
-	return BlueprintFetchUnavailable,
-		"Could not reach GitHub to read the Blueprint file. Try again in a few minutes."
+	return BlueprintFetchUnavailable, blueprintWordingFor(repo).unreachable
+}
+
+// blueprintWording is how a failed Blueprint read names where the repository
+// lives, per reason. GitHub's names bex's GitHub app, which reads it. A
+// gitlab.com or bitbucket.org repository is read anonymously from its own
+// host (w8/344), so its sentences name that host and no app (w8/346).
+type blueprintWording struct {
+	repoNotFound, accessDenied, rateLimited, unreachable string
+}
+
+func blueprintWordingFor(repo string) blueprintWording {
+	host := github.BlueprintHost(repo)
+	if host == "" {
+		return blueprintWording{
+			repoNotFound: "Repository not found, or bex's GitHub app cannot access it.",
+			accessDenied: "bex's GitHub app is not authorized to read this repository. Re-check the installation and its repository access.",
+			rateLimited:  "GitHub is rate-limiting bex right now. Try again in a few minutes.",
+			unreachable:  "Could not reach GitHub to read the Blueprint file. Try again in a few minutes.",
+		}
+	}
+	return blueprintWording{
+		repoNotFound: fmt.Sprintf("Repository not found on %s, or it is not public. bex reads a Blueprint there from a public repository.", host),
+		accessDenied: fmt.Sprintf("%s did not let bex read this repository. bex reads a Blueprint there from a public repository.", host),
+		rateLimited:  fmt.Sprintf("%s is rate-limiting bex right now. Try again in a few minutes.", host),
+		unreachable:  fmt.Sprintf("Could not reach %s to read the Blueprint file. Try again in a few minutes.", host),
+	}
 }
 
 // blueprintFetchFailure is classifyBlueprintFetchError for the sync paths
@@ -396,8 +418,8 @@ func classifyBlueprintFetchError(err error, requestedPath, branch string) (Bluep
 // machine-keyable code so a client does not parse prose, and it needs no new
 // column or migration: the existing error_message carries it. Split on the
 // first ": " to read the code.
-func blueprintFetchFailure(err error, requestedPath, branch string) error {
-	reason, message := classifyBlueprintFetchError(err, requestedPath, branch)
+func blueprintFetchFailure(err error, repo, requestedPath, branch string) error {
+	reason, message := classifyBlueprintFetchError(err, repo, requestedPath, branch)
 	return fmt.Errorf("%s: %s", reason, message)
 }
 
@@ -408,8 +430,8 @@ func blueprintFetchFailure(err error, requestedPath, branch string) error {
 // branch, path or GitHub access is a 400; GitHub being rate-limited or
 // unreachable a 503. The reason is the error code, the same token the preview
 // and sync history carry.
-func blueprintCreateFetchError(err error, requestedPath, branch string) error {
-	reason, message := classifyBlueprintFetchError(err, requestedPath, branch)
+func blueprintCreateFetchError(err error, repo, requestedPath, branch string) error {
+	reason, message := classifyBlueprintFetchError(err, repo, requestedPath, branch)
 	if reason == BlueprintFetchRateLimited || reason == BlueprintFetchUnavailable {
 		return core.NewUnavailableError(string(reason), message, nil)
 	}
@@ -1206,14 +1228,14 @@ func (s *Service) previewBlueprintWith(ctx context.Context, ownerID, repo, branc
 	tenantID := s.resolveTenantID(ctx)
 	branch, err = s.blueprintBranch(ctx, tenantID, repo, branch)
 	if err != nil {
-		if reason, message, ok := blueprintBranchRefusal(err); ok {
+		if reason, message, ok := blueprintBranchRefusal(err, repo); ok {
 			return BlueprintPreview{Reason: reason, Error: message}, nil
 		}
 		return BlueprintPreview{}, err
 	}
 	contents, commitSHA, discoveredPath, err := discoverBlueprintFile(ctx, s.GitFetcher, tenantID, repo, branch, filePath)
 	if err != nil {
-		reason, message := classifyBlueprintFetchError(err, filePath, branch)
+		reason, message := classifyBlueprintFetchError(err, repo, filePath, branch)
 		return BlueprintPreview{Branch: branch, Reason: reason, Error: message}, nil
 	}
 	preview := BlueprintPreview{Found: true, Branch: branch, Manifest: contents, CommitID: commitSHA}
@@ -1367,7 +1389,7 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	}
 	contents, commitSHA, discoveredPath, err := discoverBlueprintFile(ctx, s.GitFetcher, tenantID, req.Repo, req.Branch, req.Path)
 	if err != nil {
-		return BlueprintView{}, blueprintCreateFetchError(err, req.Path, req.Branch)
+		return BlueprintView{}, blueprintCreateFetchError(err, req.Repo, req.Path, req.Branch)
 	}
 	req.Path = discoveredPath
 
@@ -1754,8 +1776,8 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 	// Only pre-apply, retryable provider failures retain the automatic intent.
 	// The public failure stays sanitized through the shared source classifier.
 	failSource := func(commit string, sourceErr error) (SyncBlueprintResult, error) {
-		reason, _ := classifyBlueprintFetchError(sourceErr, b.Path, b.Branch)
-		result, err := s.failSync(ctx, b, commit, now, blueprintFetchFailure(sourceErr, b.Path, b.Branch))
+		reason, _ := classifyBlueprintFetchError(sourceErr, b.Repo, b.Path, b.Branch)
+		result, err := s.failSync(ctx, b, commit, now, blueprintFetchFailure(sourceErr, b.Repo, b.Path, b.Branch))
 		if auto != nil && RetryableBlueprintFetch(reason) {
 			return result, &blueprintAutoSyncRetry{err: err}
 		}
@@ -1765,7 +1787,7 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 			// rate-limiting or unreachable, 400 for the repository, path or
 			// access it can fix. The plain history error answered every one of
 			// them 500 (w21/m421; production, 2026-11-08).
-			return result, blueprintCreateFetchError(sourceErr, b.Path, b.Branch)
+			return result, blueprintCreateFetchError(sourceErr, b.Repo, b.Path, b.Branch)
 		}
 		return result, err
 	}
@@ -1893,8 +1915,8 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		// or any workload mutation. A retry resolves the new head afresh.
 		head, err := s.GitFetcher.ResolveBlueprintCommit(ctx, tenantID, b.Repo, b.Branch)
 		if err != nil {
-			reason, _ := classifyBlueprintFetchError(err, b.Path, b.Branch)
-			failure := blueprintFetchFailure(err, b.Path, b.Branch)
+			reason, _ := classifyBlueprintFetchError(err, b.Repo, b.Path, b.Branch)
+			failure := blueprintFetchFailure(err, b.Repo, b.Path, b.Branch)
 			if RetryableBlueprintFetch(reason) {
 				return settleStage(&blueprintAutoSyncRetry{err: failure})
 			}
@@ -2066,7 +2088,7 @@ func (s *Service) UpdateBlueprint(ctx context.Context, bpID, ownerID string, req
 			path = *req.Path
 		}
 		if _, _, _, err := discoverBlueprintFile(ctx, s.GitFetcher, tenantID, b.Repo, *req.Branch, path); err != nil {
-			return BlueprintView{}, blueprintCreateFetchError(err, path, *req.Branch)
+			return BlueprintView{}, blueprintCreateFetchError(err, b.Repo, path, *req.Branch)
 		}
 	}
 	if req.AutoSync != nil && *req.AutoSync && !b.AutoSync && s.repoPushesUnreachable(ctx, tenantID, b.Repo) {
@@ -2679,13 +2701,17 @@ func errMsgPtr(err error) *string {
 // asked for, or else the repository's default branch, resolved as a service
 // create resolves it (ValidateRepo, anonymous for a public repo) (w4/532,
 // w8/343). With no opinion — GitHub unconfigured, or a Git host that did not
-// answer — a branch stays required.
+// answer — a branch stays required. A host bex reads no Blueprint from is
+// refused as the read with a branch refuses it, before any lookup (w8/346).
 func (s *Service) blueprintBranch(ctx context.Context, tenantID, repo, branch string) (string, error) {
 	if repo == "" {
 		return "", errBlueprintBranchRequired
 	}
 	if branch != "" {
 		return branch, nil
+	}
+	if err := github.RefuseBlueprintHost(repo); err != nil {
+		return "", blueprintCreateFetchError(err, repo, "", "")
 	}
 	if s.GitHub != nil {
 		defaultBranch, _, err := s.GitHub.ValidateRepo(ctx, tenantID, repo)
@@ -2702,19 +2728,23 @@ func (s *Service) blueprintBranch(ctx context.Context, tenantID, repo, branch st
 var errBlueprintBranchRequired = fmt.Errorf("%w: repo and branch are required", core.ErrBadRequest)
 
 // blueprintBranchRefusal turns a failed default-branch lookup into the
-// preview's own reason, so the Review step keeps saying why in one place.
-// A missing branch with no default to offer stays a 400.
-func blueprintBranchRefusal(err error) (BlueprintPreviewReason, string, bool) {
+// preview's own reason, so the Review step keeps saying why in one place, in
+// the wording of the repository's host (w8/346). A missing branch with no
+// default to offer stays a 400.
+func blueprintBranchRefusal(err error, repo string) (BlueprintPreviewReason, string, bool) {
 	var coded *core.CodedError
 	switch {
+	case errors.As(err, &coded) && coded.Code == string(BlueprintFetchRepoNotFound):
+		// blueprintBranch's host refusal, already classified.
+		return BlueprintFetchRepoNotFound, coded.Error(), true
 	case errors.As(err, &coded) && coded.Code == github.CodeGitHubRateLimited:
 		return BlueprintFetchRateLimited, coded.Error(), true
 	case errors.As(err, &coded) && coded.Code == github.CodeGitHubAccessDenied:
 		return BlueprintFetchAccessDenied, coded.Error(), true
 	case errors.Is(err, core.ErrUnavailable):
-		return BlueprintFetchUnavailable, "Could not reach GitHub to read the Blueprint file. Try again in a few minutes.", true
+		return BlueprintFetchUnavailable, blueprintWordingFor(repo).unreachable, true
 	case errors.Is(err, core.ErrBadRequest) && !errors.Is(err, errBlueprintBranchRequired):
-		return BlueprintFetchRepoNotFound, "Repository not found, or bex's GitHub app cannot access it.", true
+		return BlueprintFetchRepoNotFound, blueprintWordingFor(repo).repoNotFound, true
 	}
 	return "", "", false
 }

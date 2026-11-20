@@ -18,6 +18,7 @@ package github
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -67,15 +68,48 @@ func onGitHub(repoURL string) bool {
 	return strings.HasPrefix(core.CanonicalRepo(repoURL), "github.com/")
 }
 
+// BlueprintHost names the host a failed Blueprint read's wording names
+// (w8/346): "" for a repository the GitHub API reads, whose wording names
+// bex's GitHub app, else the host its URL names, read or refused.
+func BlueprintHost(repoURL string) string {
+	if onGitHub(repoURL) {
+		return ""
+	}
+	return blueprintURLHost(repoURL)
+}
+
+// RefuseBlueprintHost is the refusal a Blueprint read of repoURL gives
+// before any request (CodeBlueprintHostUnsupported), or nil for a repository
+// bex reads. A default-branch lookup asks it first, so a host bex reads no
+// Blueprint from is refused by name with no branch too, never probed (w8/346).
+func RefuseBlueprintHost(repoURL string) error {
+	if onGitHub(repoURL) {
+		return nil
+	}
+	_, err := parsePublicBlueprintSource(repoURL)
+	var coded *core.CodedError
+	if errors.As(err, &coded) && coded.Code == CodeBlueprintHostUnsupported {
+		return err
+	}
+	return nil
+}
+
+// blueprintURLHost is the host a repository URL names, lowercased: its
+// parsed hostname, or else the first segment of its canonical form.
+func blueprintURLHost(repoURL string) string {
+	host, _, _ := strings.Cut(core.CanonicalRepo(repoURL), "/")
+	if u, err := url.Parse(strings.TrimSpace(repoURL)); err == nil && u.Hostname() != "" {
+		host = strings.ToLower(u.Hostname())
+	}
+	return host
+}
+
 // parsePublicBlueprintSource accepts a plain https URL of a gitlab.com or
 // bitbucket.org repository and refuses anything else with the host named.
 func parsePublicBlueprintSource(repoURL string) (publicBlueprintSource, error) {
 	repoURL = strings.TrimSpace(repoURL)
-	host, _, _ := strings.Cut(core.CanonicalRepo(repoURL), "/")
+	host := blueprintURLHost(repoURL)
 	u, parseErr := url.Parse(repoURL)
-	if parseErr == nil && u.Hostname() != "" {
-		host = strings.ToLower(u.Hostname())
-	}
 	infix, supported := publicBlueprintRawInfix[host]
 	if !supported {
 		return publicBlueprintSource{}, core.NewBadRequestError(CodeBlueprintHostUnsupported, fmt.Sprintf(

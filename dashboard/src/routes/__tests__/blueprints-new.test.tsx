@@ -385,6 +385,96 @@ describe("NewBlueprintPage", () => {
     },
   );
 
+  // w8/346: bex-api reads a Blueprint from gitlab.com and bitbucket.org
+  // anonymously and refuses any other host by name (w8/344), but the page
+  // answered every one in GitHub's words: a codeberg preview, refused for its
+  // host, read "bex's GitHub app cannot access it". The copy now names the
+  // repository's host, and the host refusal has its own panel.
+  it.each([
+    {
+      repoUrl: "https://codeberg.org/forgejo/forgejo",
+      reason: "repo_not_found_or_no_access" as const,
+      retryable: false,
+      error:
+        "bex reads a Blueprint from a public repository on github.com, gitlab.com or bitbucket.org, as Render does; codeberg.org is not one of them",
+      title: "Git host not supported",
+      body: "bex reads a Blueprint from a public repository on github.com, gitlab.com or bitbucket.org, as Render does. codeberg.org is not one of them.",
+    },
+    {
+      repoUrl: "https://gitlab.com/acme/missing",
+      branch: "main",
+      reason: "repo_not_found_or_no_access" as const,
+      retryable: false,
+      error:
+        "Repository not found on gitlab.com, or it is not public. bex reads a Blueprint there from a public repository.",
+      title: "Repository not found",
+      body: "This repository does not exist on gitlab.com, or it is not public. bex reads a Blueprint there from a public repository.",
+    },
+    {
+      repoUrl: "https://bitbucket.org/acme/app",
+      reason: "access_denied" as const,
+      retryable: false,
+      error: "bitbucket.org did not let bex read this repository.",
+      title: "Access denied",
+      body: "bitbucket.org did not let bex read this repository. bex reads a Blueprint there from a public repository.",
+    },
+    {
+      repoUrl: "https://gitlab.com/acme/app",
+      branch: "main",
+      reason: "unavailable" as const,
+      retryable: true,
+      error: "Could not reach gitlab.com to read the Blueprint file.",
+      title: "Could not reach gitlab.com",
+      body: "bex could not read the Blueprint file from gitlab.com. Try again in a few minutes.",
+    },
+    {
+      repoUrl: "https://bitbucket.org/acme/app",
+      reason: "rate_limited" as const,
+      retryable: true,
+      error: "bitbucket.org is rate-limiting bex right now.",
+      title: "bitbucket.org is rate-limiting bex",
+      body: "Too many requests to bitbucket.org right now. Try again in a few minutes.",
+    },
+  ])(
+    "names $repoUrl's host for $reason and no GitHub app",
+    async ({ repoUrl, branch, reason, retryable, error, title, body }) => {
+      previewState.preview = {
+        found: false,
+        commitId: null,
+        branch: null,
+        reason,
+        retryable,
+        error,
+        ...notReviewed,
+        validation: null,
+      };
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole("tab", { name: /public git/i }));
+      await user.type(screen.getByLabelText("Repository URL"), repoUrl);
+      // With no branch typed, the review of the default branch says why it
+      // failed instead of asking for a branch.
+      if (branch) {
+        await user.type(
+          screen.getByRole("combobox", { name: /branch/i }),
+          branch,
+        );
+      }
+
+      const panel = (await screen.findByText(title)).closest(
+        '[role="alert"]',
+      ) as HTMLElement;
+      expect(within(panel).getByText(body)).toBeInTheDocument();
+      expect(panel).not.toHaveTextContent(/GitHub/);
+      expect(
+        within(panel).queryByRole("button", { name: /retry/i }) !== null,
+      ).toBe(retryable);
+      expect(
+        screen.getByRole("button", { name: /deploy blueprint/i }),
+      ).toBeDisabled();
+    },
+  );
+
   // An invalid path is the path field's problem, not a "not found" panel.
   it("reports invalid_path beside the path field and shows no failure panel", async () => {
     reposState.repos = [repo()];
