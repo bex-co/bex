@@ -33,9 +33,13 @@ command -v kubectl >/dev/null || { echo "error: kubectl not found" >&2; exit 1; 
 if [ -z "$BEX_HOSTING_SUFFIX" ]; then
   echo "PASS  shared tenant hosting disabled (no BEX_HOSTING_SUFFIX candidate)"
 else
+  # awk must read to EOF: exiting at the match closes the pipe while curl still
+  # writes the rest, and pipefail turns curl's write error (exit 23) into an
+  # abort for any listed suffix more than a pipe buffer from the end.
   psl_entry="$(curl -fsSL "$PSL_URL" | awk -v suffix="$BEX_HOSTING_SUFFIX" '
     $0 == "// ===BEGIN PRIVATE DOMAINS===" { private = 1; next }
-    private && $0 == suffix { print; exit }
+    private && $0 == suffix { found = 1 }
+    END { if (found) print suffix }
   ')"
   case "$PSL_EXPECTED" in
     report)
