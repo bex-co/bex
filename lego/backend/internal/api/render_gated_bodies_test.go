@@ -116,9 +116,29 @@ func TestKeyValueEnumsAcceptBothSeparatorsOverREST(t *testing.T) {
 	if patched.Options.PersistenceMode != "journal_snapshot" || patched.Options.MaxmemoryPolicy != "volatile_ttl" {
 		t.Fatalf("patched = %+v, want journal_snapshot and volatile_ttl", patched)
 	}
-	for _, body := range []string{`{"name":"kvb","plan":"free","maxmemoryPolicy":"bogus-w8-139"}`, `{"name":"kvb","plan":"free","persistenceMode":"journal-bogus"}`} {
-		if w := do(t, h, http.MethodPost, "/v1/key-value", testToken, body); w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "invalid request body at") {
-			t.Errorf("POST %s = %d %s, want the validator's 400", body, w.Code, w.Body.String())
+	// A value neither spelling names is refused with the Service's own 400,
+	// which lists Render's spellings (w32/051): the gate named only the field.
+	const policies = "noeviction | allkeys_lru | allkeys_lfu | volatile_lru | volatile_lfu | allkeys_random | volatile_random | volatile_ttl"
+	for _, tc := range []struct{ method, path, body, want string }{
+		{http.MethodPost, "/v1/key-value", `{"name":"kvb","plan":"free","maxmemoryPolicy":"bogus-w8-139"}`,
+			`bad request: unknown maxmemoryPolicy "bogus-w8-139" (valid: ` + policies + `)`},
+		{http.MethodPost, "/v1/key-value", `{"name":"kvb","plan":"free","persistenceMode":"journal-bogus"}`,
+			`bad request: unknown persistenceMode "journal-bogus" (valid: journal_snapshot | snapshot | off)`},
+		{http.MethodPatch, "/v1/key-value/" + created.ID, `{"persistenceMode":"aof"}`,
+			`bad request: unknown persistenceMode "aof" (valid: journal_snapshot | snapshot | off)`},
+		{http.MethodPatch, "/v1/key-value/" + created.ID, `{"maxmemoryPolicy":"lru"}`,
+			`bad request: unknown maxmemoryPolicy "lru" (valid: ` + policies + `)`},
+		// Render's legacy /v1/redis routes validate as the key-value operations.
+		{http.MethodPatch, "/v1/redis/" + created.ID, `{"persistenceMode":""}`,
+			`bad request: unknown persistenceMode "" (valid: journal_snapshot | snapshot | off)`},
+		// A value that is not a string keeps the gate's pointer.
+		{http.MethodPost, "/v1/key-value", `{"name":"kvb","plan":"free","persistenceMode":5}`,
+			`bad request: invalid request body at /persistenceMode`},
+	} {
+		w := do(t, h, tc.method, tc.path, testToken, tc.body)
+		var refusal struct{ Message string }
+		if err := json.Unmarshal(w.Body.Bytes(), &refusal); w.Code != http.StatusBadRequest || err != nil || refusal.Message != tc.want {
+			t.Errorf("%s %s %s = %d %s, want 400 %q", tc.method, tc.path, tc.body, w.Code, w.Body.String(), tc.want)
 		}
 	}
 }

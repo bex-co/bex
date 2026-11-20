@@ -35,6 +35,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/api/openapi"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/webhooks"
 	"github.com/bex-co/bex/lego/types/tiers"
@@ -876,9 +877,9 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	r.ContentLength = validationRequest.ContentLength
 	if err != nil {
 		message := safeRenderValidationMessage(err)
-		field, constraint := renderValidationField(err)
+		field, constraint, value := renderValidationField(err)
 		if override, ok := renderOperationRefusals[operationID][field]; ok && (override.constraint == "" || override.constraint == constraint) {
-			core.WriteErr(w, override.refuse(message))
+			core.WriteErr(w, override.refuse(message, value))
 			return
 		}
 		if code := renderValidationErrorCodes[field]; code != "" {
@@ -1038,54 +1039,76 @@ var renderValidationErrorCodes = map[string]string{
 }
 
 // renderOperationRefusal overrides the gate's answer for one operation's field,
-// optionally only for one schema constraint.
+// optionally only for one schema constraint. refuse gets the gate's message and
+// the refused value.
 type renderOperationRefusal struct {
 	constraint string // a schema keyword such as "maxLength"; "" for any
-	refuse     func(message string) error
+	refuse     func(message string, value any) error
 }
 
 // renderOperationRefusals are per-operation overrides for field names whose
 // meaning differs by operation: the Service's own refusal, so REST answers
 // what GraphQL and MCP do (w8/312). The gate refuses create-sandbox's
 // over-long name, the list routes' unknown status and a snapshot capture's
-// malformed fields before the Service.
+// malformed fields before the Service, and a Key Value's maxmemoryPolicy or
+// persistenceMode outside the enum.
 var renderOperationRefusals = map[string]map[string]renderOperationRefusal{
 	"create-sandbox": {
-		"name":         {constraint: "maxLength", refuse: func(string) error { return sandbox.InvalidSandboxNameError() }},
-		"snapshotName": {refuse: func(string) error { return sandbox.InvalidSnapshotNameError("snapshotName") }},
+		"name":         {constraint: "maxLength", refuse: func(string, any) error { return sandbox.InvalidSandboxNameError() }},
+		"snapshotName": {refuse: func(string, any) error { return sandbox.InvalidSnapshotNameError("snapshotName") }},
 	},
 	"list-sandbox-groups": {"limit": {refuse: refuseInvalidLimit}},
 	"list-sandbox-builds": {
 		"limit": {refuse: refuseInvalidLimit},
-		"status": {refuse: func(message string) error {
+		"status": {refuse: func(message string, _ any) error {
 			return core.NewBadRequestError(sandbox.CodeInvalidBuildStatus, message, map[string]any{"field": "status", "supported": sandbox.BuildStatuses()})
 		}},
 	},
 	"list-sandbox-snapshots": {
 		"limit": {refuse: refuseInvalidLimit},
-		"status": {refuse: func(message string) error {
+		"status": {refuse: func(message string, _ any) error {
 			return core.NewBadRequestError(sandbox.CodeInvalidSnapshotStatus, message, map[string]any{"field": "status", "supported": sandbox.SnapshotStatuses()})
 		}},
 	},
 	"create-sandbox-snapshot": {
-		"name":       {refuse: func(string) error { return sandbox.InvalidSnapshotNameError("name") }},
+		"name":       {refuse: func(string, any) error { return sandbox.InvalidSnapshotNameError("name") }},
 		"kind":       {refuse: refuseInvalidSnapshotField("kind")},
 		"ttlSeconds": {refuse: refuseInvalidSnapshotField("ttlSeconds")},
 		"expiresAt":  {refuse: refuseInvalidSnapshotField("expiresAt")},
 	},
+	"create-key-value": keyValueSettingRefusals,
+	"update-key-value": keyValueSettingRefusals,
+}
+
+// keyValueSettingRefusals answer a maxmemoryPolicy or persistenceMode outside
+// the enum with the Service's refusal, which lists Render's spellings, where the
+// gate names only the field (w32/051). A value that is not a string keeps the
+// gate's message.
+var keyValueSettingRefusals = map[string]renderOperationRefusal{
+	"maxmemoryPolicy": refuseKeyValueSetting(keyvalue.UnknownMaxmemoryPolicyError),
+	"persistenceMode": refuseKeyValueSetting(keyvalue.UnknownPersistenceModeError),
+}
+
+func refuseKeyValueSetting(unknown func(value string) error) renderOperationRefusal {
+	return renderOperationRefusal{constraint: "enum", refuse: func(message string, value any) error {
+		if s, ok := value.(string); ok {
+			return unknown(s)
+		}
+		return fmt.Errorf("%w: %s", core.ErrBadRequest, message)
+	}}
 }
 
 // refuseInvalidSnapshotField is the Service's SANDBOX_SNAPSHOT_INVALID for a
 // capture field the schema gate refuses first (w32/m285).
-func refuseInvalidSnapshotField(field string) func(string) error {
-	return func(message string) error {
+func refuseInvalidSnapshotField(field string) func(string, any) error {
+	return func(message string, _ any) error {
 		return core.NewBadRequestError(sandbox.CodeSandboxSnapshotInvalid, message, map[string]any{"field": field})
 	}
 }
 
 // refuseInvalidLimit is Render's `invalid_limit` for a page size outside the
 // pinned 1 to 100 (w22/004, w22/016).
-func refuseInvalidLimit(message string) error {
+func refuseInvalidLimit(message string, _ any) error {
 	return core.NewBadRequestError(sandbox.CodeInvalidLimit, message, map[string]any{"field": "limit"})
 }
 
@@ -1098,22 +1121,23 @@ var sandboxListQueryChecks = map[string]func(url.Values) error{
 }
 
 // renderValidationField is the parameter or top-level body field a request
-// error refuses, and the schema keyword it failed for a body field.
-func renderValidationField(err error) (field, constraint string) {
+// error refuses, and for a body field the schema keyword it failed and the
+// value refused.
+func renderValidationField(err error) (field, constraint string, value any) {
 	var requestError *openapi3filter.RequestError
 	if !errors.As(err, &requestError) {
-		return "", ""
+		return "", "", nil
 	}
 	if requestError.Parameter != nil {
-		return requestError.Parameter.Name, ""
+		return requestError.Parameter.Name, "", nil
 	}
 	var schemaError *openapi3.SchemaError
 	if requestError.RequestBody != nil && errors.As(err, &schemaError) {
 		if pointer := schemaError.JSONPointer(); len(pointer) > 0 {
-			return pointer[0], schemaError.SchemaField
+			return pointer[0], schemaError.SchemaField, schemaError.Value
 		}
 	}
-	return "", ""
+	return "", "", nil
 }
 
 func safeRenderValidationMessage(err error) string {

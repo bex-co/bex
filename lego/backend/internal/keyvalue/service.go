@@ -209,16 +209,18 @@ type CreateKeyValueRequest struct {
 	DryRun bool `json:"dryRun,omitempty"`
 }
 
-// validMaxmemoryPolicies / validPersistenceModes mirror the KeyValue CRD's enum
-// markers (types/v1alpha1/keyvalue_types.go). The CRD would reject a bad value
-// at admission, but validating here first turns it into a clean 400 that names
-// the offending value — the same courtesy CreateKeyValue extends to `plan`.
+// validMaxmemoryPolicies / validPersistenceModes are the KeyValue CRD's enum
+// markers (types/v1alpha1/keyvalue_types.go) in Render's spelling, the one a
+// caller sends and a read answers. The CRD would reject a bad value at
+// admission, but validating here first turns it into a clean 400 that names the
+// offending value and lists these, never the CRD's hyphenated form, which
+// Render's API does not accept (w32/051).
 var validMaxmemoryPolicies = []string{
-	"noeviction", "allkeys-lru", "allkeys-lfu", "volatile-lru",
-	"volatile-lfu", "allkeys-random", "volatile-random", "volatile-ttl",
+	"noeviction", "allkeys_lru", "allkeys_lfu", "volatile_lru",
+	"volatile_lfu", "allkeys_random", "volatile_random", "volatile_ttl",
 }
 
-var validPersistenceModes = []string{"journal-snapshot", "snapshot", "off"}
+var validPersistenceModes = []string{"journal_snapshot", "snapshot", "off"}
 
 // Render's wire format for these two enums is underscore-separated
 // (maxmemoryPolicy: "allkeys_lru"; persistenceMode: "journal_snapshot" —
@@ -232,20 +234,35 @@ var validPersistenceModes = []string{"journal-snapshot", "snapshot", "off"}
 func renderToCRD(s string) string { return strings.ReplaceAll(s, "_", "-") }
 func crdToRender(s string) string { return strings.ReplaceAll(s, "-", "_") }
 
-// maxmemoryPolicyKnown converts a Render-shaped (underscore) maxmemoryPolicy to
-// the CRD's hyphenated form and reports whether it is a valid policy — the one
-// check shared by CreateKeyValue and KeyValuePatch.validate so create and update
-// can never accept different values.
-func maxmemoryPolicyKnown(render string) bool {
-	return slices.Contains(validMaxmemoryPolicies, renderToCRD(render))
+// maxmemoryPolicyKnown reports whether a maxmemoryPolicy, in either spelling,
+// is a valid policy — the one check shared by CreateKeyValue and
+// KeyValuePatch.validate so create and update can never accept different values.
+func maxmemoryPolicyKnown(value string) bool {
+	return slices.Contains(validMaxmemoryPolicies, crdToRender(value))
 }
 
 // persistenceModeKnown is maxmemoryPolicyKnown's sibling for persistenceMode
 // (w6/m127, which made persistence updatable post-create): the one check shared
 // by CreateKeyValue and KeyValuePatch.validate, so persistence — like eviction
 // policy — can never accept different values at create and update.
-func persistenceModeKnown(render string) bool {
-	return slices.Contains(validPersistenceModes, renderToCRD(render))
+func persistenceModeKnown(value string) bool {
+	return slices.Contains(validPersistenceModes, crdToRender(value))
+}
+
+// UnknownMaxmemoryPolicyError / UnknownPersistenceModeError are the 400 for a
+// value neither spelling names, listing Render's spellings (w32/051). Create and
+// update answer them on every surface, and REST's schema gate, which refuses
+// the value before the handler, answers the same.
+func UnknownMaxmemoryPolicyError(value string) error {
+	return unknownSettingError("maxmemoryPolicy", value, validMaxmemoryPolicies)
+}
+
+func UnknownPersistenceModeError(value string) error {
+	return unknownSettingError("persistenceMode", value, validPersistenceModes)
+}
+
+func unknownSettingError(field, value string, valid []string) error {
+	return fmt.Errorf("%w: unknown %s %q (valid: %s)", core.ErrBadRequest, field, value, strings.Join(valid, " | "))
 }
 
 // kvStatus maps bex's KeyValue phase onto a Render-shaped keyValueStatus
@@ -667,11 +684,11 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	}
 	maxmemoryPolicy := renderToCRD(req.MaxmemoryPolicy)
 	if req.MaxmemoryPolicy != "" && !maxmemoryPolicyKnown(req.MaxmemoryPolicy) {
-		return KeyValueView{}, fmt.Errorf("%w: unknown maxmemoryPolicy %q (valid: %v)", core.ErrBadRequest, req.MaxmemoryPolicy, validMaxmemoryPolicies)
+		return KeyValueView{}, UnknownMaxmemoryPolicyError(req.MaxmemoryPolicy)
 	}
 	persistenceMode := renderToCRD(req.PersistenceMode)
 	if req.PersistenceMode != "" && !persistenceModeKnown(req.PersistenceMode) {
-		return KeyValueView{}, fmt.Errorf("%w: unknown persistenceMode %q (valid: %v)", core.ErrBadRequest, req.PersistenceMode, validPersistenceModes)
+		return KeyValueView{}, UnknownPersistenceModeError(req.PersistenceMode)
 	}
 	tenantID, tenantOK := s.Tenant(ctx)
 	if err := s.ensureKeyValueNameAvailable(ctx, tenantID, req.Name, ""); err != nil {
@@ -1167,7 +1184,7 @@ type KeyValuePatch struct {
 	// MaxmemoryPolicy is Render's eviction policy (w7/m45): nil = unchanged.
 	// Render-shaped (underscore) or hyphenated values both accepted, like create.
 	MaxmemoryPolicy *string
-	// PersistenceMode is Render's durability setting — journal-snapshot | snapshot
+	// PersistenceMode is Render's durability setting — journal_snapshot | snapshot
 	// | off (w6/m127): nil = unchanged. Render's KeyValuePATCHInput carries it, so
 	// this closes the create-only gap rather than opening a divergence, and it is
 	// what lets a store the dashboard once forced onto `off` reach durable
@@ -1200,10 +1217,10 @@ func (patch KeyValuePatch) validate() error {
 		}
 	}
 	if patch.MaxmemoryPolicy != nil && !maxmemoryPolicyKnown(*patch.MaxmemoryPolicy) {
-		return fmt.Errorf("%w: unknown maxmemoryPolicy %q (valid: %v)", core.ErrBadRequest, *patch.MaxmemoryPolicy, validMaxmemoryPolicies)
+		return UnknownMaxmemoryPolicyError(*patch.MaxmemoryPolicy)
 	}
 	if patch.PersistenceMode != nil && !persistenceModeKnown(*patch.PersistenceMode) {
-		return fmt.Errorf("%w: unknown persistenceMode %q (valid: %v)", core.ErrBadRequest, *patch.PersistenceMode, validPersistenceModes)
+		return UnknownPersistenceModeError(*patch.PersistenceMode)
 	}
 	if patch.IPAllowList != nil {
 		if err := core.ValidateAllowList(*patch.IPAllowList); err != nil {
