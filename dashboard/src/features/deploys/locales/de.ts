@@ -440,11 +440,6 @@ const deDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploys tab: toast when reading an older page of deploy history fails",
   },
-  "deploys.logOptions": {
-    message: "Log-Optionen",
-    description:
-      "Deploy log viewer: aria-label/tooltip of the options menu button",
-  },
   "deploys.logRangeLabel": {
     message: "Zeitraum",
     description:
@@ -484,21 +479,6 @@ const deDeploys: Record<string, TranslationEntry> = {
     message: "Zeitstempel anzeigen",
     description:
       "Deploy log viewer options menu: toggle the per-line timestamp column",
-  },
-  "deploys.logMaximize": {
-    message: "Maximieren",
-    description:
-      "Deploy log viewer: button expanding the viewer to fill the screen",
-  },
-  "deploys.logMinimize": {
-    message: "Vollbild beenden",
-    description:
-      "Deploy log viewer: button restoring the maximized viewer to its inline size",
-  },
-  "deploys.logMinimizeHint": {
-    message: "Vollbild beenden (Esc)",
-    description:
-      "Deploy log viewer: tooltip of the button leaving full screen, naming the Escape key that also leaves it",
   },
   "deploys.reason.http_port_waiting": {
     message:

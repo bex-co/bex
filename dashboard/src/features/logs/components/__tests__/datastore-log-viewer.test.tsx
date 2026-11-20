@@ -402,6 +402,41 @@ describe("DatastoreLogViewer level and live tail (w5/m139)", () => {
 
 // w9/m389: the viewer bounds its range picker by the workspace plan's log
 // window the retention hook reads from bex-api.
+describe("DatastoreLogViewer explorer controls (w3/m509)", () => {
+  it("clears its lines on Shift+L only once Live is on", async () => {
+    const user = userEvent.setup();
+    state.lines = [line(0)];
+    render(
+      <DatastoreLogViewer
+        kind="databases"
+        resource="dpg-example"
+        createEventSource={(url) => new FakeEventSource(url)}
+      />,
+    );
+    fireEvent.keyDown(window, { key: "L", shiftKey: true });
+    expect(screen.getByText("checkpoint complete")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("switch", { name: "Live" }));
+    fireEvent.keyDown(window, { key: "L", shiftKey: true });
+    expect(screen.getByText("Logs cleared")).toBeInTheDocument();
+    expect(screen.queryByText("checkpoint complete")).toBeNull();
+  });
+
+  it("maximizes on M and offers the Options menu", async () => {
+    const user = userEvent.setup();
+    state.lines = [line(0)];
+    const { container } = render(
+      <DatastoreLogViewer kind="keyvalue" resource="red-example" />,
+    );
+    await user.keyboard("m");
+    expect(container.firstElementChild?.className).toContain("fixed inset-0");
+    await user.click(screen.getByRole("button", { name: "Log options" }));
+    expect(
+      screen.getByRole("menuitem", { name: /Copy logs/ }),
+    ).not.toHaveAttribute("aria-disabled");
+  });
+});
+
 describe("the range picker follows the plan's log window", () => {
   beforeAll(() => {
     Element.prototype.hasPointerCapture ??= () => false;

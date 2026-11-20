@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 
 import {
   Tooltip,
@@ -15,6 +15,20 @@ interface InstantTooltipProps {
   /** The visible rendering — usually elapsed time, "Deployed 2 hours ago". */
   children: ReactNode;
   className?: string;
+  /**
+   * Hold the tooltip open (a log list's keyboard row cursor on this row,
+   * w3/m509); hovering or focusing still opens it while this is false.
+   */
+  open?: boolean;
+  /** Mount already open, as hovered (a log row's time mounts its tooltip
+   *  under the pointer); the pointer leaving closes it as usual. */
+  initiallyOpen?: boolean;
+  /**
+   * The trigger's Tab stop. A log row's time is left out of the Tab order
+   * (-1), as one stop per line made the log hundreds of stops long; the
+   * list's row cursor opens it instead.
+   */
+  tabIndex?: number;
 }
 
 /**
@@ -34,14 +48,22 @@ export function InstantTooltip({
   value,
   children,
   className,
+  open,
+  initiallyOpen = false,
+  tabIndex = 0,
 }: InstantTooltipProps) {
+  const [triggerOpen, setTriggerOpen] = useState(initiallyOpen);
   return (
-    <Tooltip>
+    <Tooltip
+      {...(open === undefined
+        ? {}
+        : { open: open || triggerOpen, onOpenChange: setTriggerOpen })}
+    >
       <TooltipTrigger asChild>
         <time
           dateTime={value}
-          // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- the tooltip's trigger is focusable so keyboard users can reach its text
-          tabIndex={0}
+          // Focusable by default, so keyboard users can reach its text.
+          tabIndex={tabIndex}
           className={cn(
             "cursor-default rounded-sm underline decoration-dotted underline-offset-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
             className,

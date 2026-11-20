@@ -348,6 +348,34 @@ describe("ProjectLogViewer", () => {
   // touch target below lg, where it shares a phone's second row with the
   // range. Production's walk at 390 (w3/m505) found the pending frame's Live
   // row 20px tall, so the ready view landed 12px lower.
+  it("clears the live tail on Shift+L and maximizes from its toolbar (w3/m509)", () => {
+    historyState.lines = [line({ key: "a", message: "from the web" })];
+    historyState.resources = resources;
+    const { container } = viewer(LOG_TYPE_APP);
+    fireEvent.keyDown(window, { key: "L", shiftKey: true });
+    expect(screen.getByText("Logs cleared")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Maximize" }));
+    expect(container.firstElementChild?.className).toContain("fixed inset-0");
+  });
+
+  it("reserves the ready Maximize and Options buttons in the pending frame (w3/m509)", () => {
+    const sizes = (root: HTMLElement) =>
+      [...root.querySelectorAll<HTMLElement>("button, [data-slot=skeleton]")]
+        .filter((el) => el.className.includes("max-lg:size-11"))
+        .map((el) =>
+          el.className
+            .split(/\s+/)
+            .filter((name) => /^(\w+:)*size-/.test(name))
+            .sort()
+            .join(" "),
+        );
+    const ready = sizes(viewer(LOG_TYPE_APP).container);
+    expect(ready).toHaveLength(2);
+    expect(sizes(render(<ProjectLogViewPageSkeleton />).container)).toEqual(
+      ready,
+    );
+  });
+
   it("reserves the ready Live control's height in the pending frame at every width", () => {
     const liveRowHeights = (root: HTMLElement) =>
       within(root)

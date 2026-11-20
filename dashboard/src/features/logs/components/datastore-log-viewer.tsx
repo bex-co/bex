@@ -19,8 +19,17 @@ import {
 } from "@/common/components/ui/select.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
+import { cn } from "@/common/lib/utils/utils.ts";
+import { LogClearedState, LogExplorerActions } from "./log-explorer";
+import { useClearedLines, useLogExplorer } from "../hooks/use-log-explorer";
 import { LogEmptyState } from "./log-empty-state";
 import { LogLineList } from "./log-line-list";
+import {
+  DATASTORE_LOG_ACTIONS_CLASS,
+  LOG_MAXIMIZED_BODY_CLASS,
+  LOG_MAXIMIZED_CLASS,
+  LOG_MAXIMIZED_LIST_CLASS,
+} from "./log-toolbar-layout";
 import { LogTruncationNotice } from "./log-truncation-notice";
 import { StreamDisconnected, StreamStatus } from "./log-viewer";
 import { LiveToggle } from "./log-filter-bar";
@@ -226,9 +235,10 @@ export function DatastoreLogViewer({
   const { customEndMs, windowClosed } = useCustomWindow(range);
   const rangeBound = useLogRetentionBound(resource);
   const liveOffReasonId = useId();
+  const tailing = live && !windowClosed;
   const stream = useLiveLogs({
     resource,
-    enabled: live && !windowClosed,
+    enabled: tailing,
     type: LOG_TYPE_ALL,
     text: queryText,
     instance,
@@ -250,6 +260,12 @@ export function DatastoreLogViewer({
           ),
     [history.lines, stream.lines, win.startTime, customEndMs],
   );
+  // Render's explorer controls (w3/m509): Options, Maximize and the
+  // shortcuts, `Shift+L` clearing the lines while the tail is live.
+  const cleared = useClearedLines(lines, tailing, reader);
+  const { explorer, attachList, attachSearch } = useLogExplorer({
+    clear: cleared.clear,
+  });
   const refusal = classifyRefusal(history.error, "LOGS_UNAVAILABLE");
   const discovered = useLogLabelValues(resource, "instance");
   // A linked instance stays selectable before (or without) discovery naming
@@ -263,6 +279,7 @@ export function DatastoreLogViewer({
   );
 
   let body: ReactNode;
+  let listShown = false;
   if (refusal === "unavailable") {
     body = (
       <EmptyState
@@ -296,6 +313,8 @@ export function DatastoreLogViewer({
         {copy.loading}
       </div>
     );
+  } else if (cleared.cleared && cleared.lines.length === 0) {
+    body = <LogClearedState fillViewport={false} onRestore={cleared.restore} />;
   } else if (lines.length === 0) {
     body = (
       <LogEmptyState
@@ -307,8 +326,14 @@ export function DatastoreLogViewer({
       />
     );
   } else {
+    listShown = true;
     body = (
-      <div className="space-y-2">
+      <div
+        className={cn(
+          "space-y-2",
+          explorer.maximized && LOG_MAXIMIZED_BODY_CLASS,
+        )}
+      >
         {history.hasMore ? (
           <LogTruncationNotice
             partial={history.lines.length < LOG_PAGE_SIZE}
@@ -317,25 +342,32 @@ export function DatastoreLogViewer({
           />
         ) : null}
         {live && stream.status === "error" ? <StreamDisconnected /> : null}
-        <LogLineList
-          lines={lines}
-          hasMore={history.hasMore}
-          loadingOlder={history.loadingOlder}
-          onLoadOlder={history.loadOlder}
-        />
+        <div className={cn(explorer.maximized && LOG_MAXIMIZED_LIST_CLASS)}>
+          <LogLineList
+            fill={explorer.maximized}
+            lines={cleared.lines}
+            hasMore={history.hasMore}
+            loadingOlder={history.loadingOlder}
+            onLoadOlder={history.loadOlder}
+            order={explorer.order}
+            expandAll={explorer.expandAll}
+            handleRef={attachList}
+          />
+        </div>
         {live ? <StreamStatus live status={stream.status} /> : null}
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className={cn("space-y-4", explorer.maximized && LOG_MAXIMIZED_CLASS)}>
       <div className="flex flex-wrap items-center gap-3">
         <RangeSelect
           range={range}
           onRangeChange={setRange}
           ariaLabel={copy.rangeLabel}
           bound={rangeBound}
+          triggerClassName="max-sm:order-first"
         />
 
         <PickSelect
@@ -359,6 +391,7 @@ export function DatastoreLogViewer({
         <div className="relative min-w-56 flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            ref={attachSearch}
             value={text}
             // Uneditable until handlers attach: text typed into the server
             // HTML is wiped by hydration (w4/m219).
@@ -376,6 +409,13 @@ export function DatastoreLogViewer({
           disabled={!hydrated || windowClosed}
           describedBy={windowClosed ? liveOffReasonId : undefined}
           onCheckedChange={setLive}
+        />
+        {/* On a phone, on the range's row: the toolbar wraps a control a
+            row there, and they would otherwise take one of their own. */}
+        <LogExplorerActions
+          explorer={explorer}
+          canCopy={listShown}
+          className={DATASTORE_LOG_ACTIONS_CLASS}
         />
       </div>
       {windowClosed ? (

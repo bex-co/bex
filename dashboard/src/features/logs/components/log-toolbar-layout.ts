@@ -6,15 +6,28 @@
  */
 
 /** The filter bar's rows, and on a phone its dock under the top bar: the
- *  page's own background behind it, out to the column's edges. */
+ *  page's own background behind it, out to the column's edges. A phone's
+ *  grid is [type | search | Options] over [range | Filters and Live]. */
 export const LOG_FILTER_BAR_CLASS =
-  "flex flex-wrap items-center gap-3 max-sm:sticky max-sm:top-0 max-sm:z-20 max-sm:-mx-4 max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_minmax(10.75rem,1fr)] max-sm:gap-2 max-sm:bg-background max-sm:px-4 max-sm:py-2";
+  "flex flex-wrap items-center gap-3 max-sm:sticky max-sm:top-0 max-sm:z-20 max-sm:-mx-4 max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] max-sm:gap-2 max-sm:bg-background max-sm:px-4 max-sm:py-2";
 
-/** Filters and Live: in the bar's flow on a wide screen, one cell of a
- *  phone's two-column grid, so its rows share their column edges. That
- *  column keeps the room both need, so the word Live never wraps. */
+/** Filters and Live: in the bar's flow on a wide screen, the last two
+ *  columns of a phone's second row, so its rows share their column edges
+ *  and the word Live never wraps. */
 export const LOG_FILTER_TAIL_CLASS =
-  "contents max-sm:flex max-sm:min-w-0 max-sm:items-center max-sm:gap-2";
+  "contents max-sm:col-span-2 max-sm:flex max-sm:min-w-0 max-sm:items-center max-sm:gap-2";
+
+/** An explorer's Maximize and Options buttons (w3/m509), side by side. */
+export const LOG_ACTIONS_CLASS = "flex shrink-0 items-center gap-2";
+
+/** The service Logs tab's Maximize and Options: at the bar's end on a wide
+ *  screen; a phone keeps Options at its first row's end, Maximize inside
+ *  it. */
+export const LOG_FILTER_ACTIONS_CLASS = `${LOG_ACTIONS_CLASS} max-sm:col-start-3 max-sm:row-start-1`;
+
+/** A toolbar icon button's box: 32px, or the 44px touch target. */
+export const LOG_ICON_BUTTON_CLASS =
+  "size-8 max-lg:size-11 pointer-coarse:size-11";
 
 /** The type and range selects: narrower until 1280, so search gets room. */
 export const LOG_SELECT_WIDTH_CLASS =
@@ -23,3 +36,22 @@ export const LOG_SELECT_WIDTH_CLASS =
 /** The Live control's row: 32px, or a 44px touch target. */
 export const LIVE_TOGGLE_CLASS =
   "inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-2 text-sm whitespace-nowrap max-lg:min-h-11 pointer-coarse:min-h-11";
+
+/**
+ * A log explorer maximized (Render's Maximize, `M`, w3/m509): a full-screen
+ * overlay, its last child (the log) filling everything under the controls.
+ * `m-0`: the page's stack spacing would otherwise give the overlay a bottom
+ * margin, stopping it short of the screen's bottom edge.
+ */
+export const LOG_MAXIMIZED_CLASS =
+  "fixed inset-0 z-50 m-0 flex flex-col bg-background p-4 sm:p-6 [&>*:last-child]:min-h-0 [&>*:last-child]:flex-1";
+
+/** A maximized explorer's body, around its lines: a column whose list slot
+ *  (`LOG_MAXIMIZED_LIST_CLASS`) takes the height the notices leave. The slot
+ *  is always rendered, so maximizing never remounts the list. */
+export const LOG_MAXIMIZED_BODY_CLASS = "flex flex-col";
+export const LOG_MAXIMIZED_LIST_CLASS = "min-h-0 flex-1";
+
+/** A datastore log's Maximize and Options: at its toolbar's end, and on a
+ *  phone at the end of the range's row (w3/m509). */
+export const DATASTORE_LOG_ACTIONS_CLASS = `${LOG_ACTIONS_CLASS} max-sm:order-first max-sm:ml-auto`;

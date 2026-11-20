@@ -457,11 +457,6 @@ const ruDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploys tab: toast when reading an older page of deploy history fails",
   },
-  "deploys.logOptions": {
-    message: "Параметры логов",
-    description:
-      "Deploy log viewer: aria-label/tooltip of the options menu button",
-  },
   "deploys.logRangeLabel": {
     message: "Период времени",
     description:
@@ -501,21 +496,6 @@ const ruDeploys: Record<string, TranslationEntry> = {
     message: "Показывать временные метки",
     description:
       "Deploy log viewer options menu: toggle the per-line timestamp column",
-  },
-  "deploys.logMaximize": {
-    message: "Развернуть",
-    description:
-      "Deploy log viewer: button expanding the viewer to fill the screen",
-  },
-  "deploys.logMinimize": {
-    message: "Выйти из полноэкранного режима",
-    description:
-      "Deploy log viewer: button restoring the maximized viewer to its inline size",
-  },
-  "deploys.logMinimizeHint": {
-    message: "Выйти из полноэкранного режима (Esc)",
-    description:
-      "Deploy log viewer: tooltip of the button leaving full screen, naming the Escape key that also leaves it",
   },
   "deploys.reason.http_port_waiting": {
     message: "ожидание запуска контейнера перед определением его HTTP-порта",

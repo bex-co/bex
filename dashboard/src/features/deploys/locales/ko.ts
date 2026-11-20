@@ -429,11 +429,6 @@ const koDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploys tab: toast when reading an older page of deploy history fails",
   },
-  "deploys.logOptions": {
-    message: "로그 옵션",
-    description:
-      "Deploy log viewer: aria-label/tooltip of the options menu button",
-  },
   "deploys.logRangeLabel": {
     message: "시간 범위",
     description:
@@ -473,21 +468,6 @@ const koDeploys: Record<string, TranslationEntry> = {
     message: "타임스탬프 표시",
     description:
       "Deploy log viewer options menu: toggle the per-line timestamp column",
-  },
-  "deploys.logMaximize": {
-    message: "최대화",
-    description:
-      "Deploy log viewer: button expanding the viewer to fill the screen",
-  },
-  "deploys.logMinimize": {
-    message: "전체 화면 종료",
-    description:
-      "Deploy log viewer: button restoring the maximized viewer to its inline size",
-  },
-  "deploys.logMinimizeHint": {
-    message: "전체 화면 종료 (Esc)",
-    description:
-      "Deploy log viewer: tooltip of the button leaving full screen, naming the Escape key that also leaves it",
   },
   "deploys.reason.http_port_waiting": {
     message: "컨테이너가 시작되기를 기다린 후 HTTP 포트를 감지합니다",

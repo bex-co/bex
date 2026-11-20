@@ -15,6 +15,7 @@ import {
   planFeatureRequired,
   relayableReason,
 } from "@/common/lib/graphql-error";
+import { cn } from "@/common/lib/utils/utils.ts";
 import { RangeSelect } from "@/features/metrics/components/range-select";
 import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
 import { type RangeSelection } from "@/features/metrics/lib/range";
@@ -40,11 +41,19 @@ import {
   type ProjectLogScope,
   type StructuredFilterKey,
 } from "../types";
+import { LogClearedState, LogExplorerActions } from "./log-explorer";
+import { useClearedLines, useLogExplorer } from "../hooks/use-log-explorer";
 import { LiveToggle } from "./log-filter-bar";
 import { LogEmptyState } from "./log-empty-state";
 import { LogLineList } from "./log-line-list";
 import { LogPanelSkeleton } from "./log-panel-skeleton";
 import { LogPanelState } from "./log-panel-state";
+import {
+  LOG_ACTIONS_CLASS,
+  LOG_MAXIMIZED_BODY_CLASS,
+  LOG_MAXIMIZED_CLASS,
+  LOG_MAXIMIZED_LIST_CLASS,
+} from "./log-toolbar-layout";
 import { LogTruncationNotice } from "./log-truncation-notice";
 import {
   COMMIT_DELAY_MS,
@@ -141,10 +150,11 @@ export function ProjectLogViewer({
     scope,
   );
   const planRefused = planFeatureRequired(history.error, "requestLogs");
+  const tailing = live && liveSupported && !planRefused;
   const stream = useLiveLogs({
     resource: "",
     project: scope,
-    enabled: live && liveSupported && !planRefused,
+    enabled: tailing,
     type: logType,
     text: committed.text,
     textMode: LOG_TEXT_MODE_DISPLAY,
@@ -178,12 +188,23 @@ export function ProjectLogViewer({
   // them bounds the range as the server floors the read.
   const rangeBound = useLogRetentionBound(history.resources?.[0]?.id ?? "");
   const emptyScope = history.resources?.length === 0;
+  // Render's explorer controls (w3/m509): Options, Maximize and the
+  // shortcuts, `Shift+L` clearing the lines while the tail is live.
+  const cleared = useClearedLines(
+    lines,
+    tailing,
+    JSON.stringify([scope.project, scope.filterDocument, queryFilters, range]),
+  );
+  const { explorer, attachList, attachSearch } = useLogExplorer({
+    clear: cleared.clear,
+  });
 
   const historyReason = relayableReason(history.error);
   // Every state without lines is drawn in the log panel's own screen-filling
   // box, as the loading panel and the lines are, so the view keeps one shape
   // whatever its read answers (as the service Logs tab does).
   let body: ReactNode;
+  let listShown = false;
   if (planRefused) {
     body = (
       <LogPanelState
@@ -219,6 +240,8 @@ export function ProjectLogViewer({
     );
   } else if (history.loading && history.lines.length === 0) {
     body = <LogPanelSkeleton fillViewport />;
+  } else if (cleared.cleared && cleared.lines.length === 0) {
+    body = <LogClearedState fillViewport onRestore={cleared.restore} />;
   } else if (emptyScope && lines.length === 0) {
     body = (
       <LogPanelState
@@ -244,8 +267,14 @@ export function ProjectLogViewer({
       />
     );
   } else {
+    listShown = true;
     body = (
-      <div className="space-y-2">
+      <div
+        className={cn(
+          "space-y-2",
+          explorer.maximized && LOG_MAXIMIZED_BODY_CLASS,
+        )}
+      >
         {history.error ? (
           <div
             role="alert"
@@ -266,14 +295,20 @@ export function ProjectLogViewer({
         {live && liveSupported && stream.status === "error" ? (
           <StreamDisconnected />
         ) : null}
-        <LogLineList
-          fillViewport
-          lines={lines}
-          resourceLabels={labels}
-          hasMore={history.hasMore}
-          loadingOlder={history.loadingOlder}
-          onLoadOlder={history.loadOlder}
-        />
+        <div className={cn(explorer.maximized && LOG_MAXIMIZED_LIST_CLASS)}>
+          <LogLineList
+            fillViewport
+            fill={explorer.maximized}
+            lines={cleared.lines}
+            resourceLabels={labels}
+            hasMore={history.hasMore}
+            loadingOlder={history.loadingOlder}
+            onLoadOlder={history.loadOlder}
+            order={explorer.order}
+            expandAll={explorer.expandAll}
+            handleRef={attachList}
+          />
+        </div>
         {liveSupported ? (
           <StreamStatus live={live} status={stream.status} />
         ) : null}
@@ -282,13 +317,15 @@ export function ProjectLogViewer({
   }
 
   return (
-    <div className="space-y-4">
-      {/* A phone gets [search] then [range | Live]; the skeleton
-          (ProjectLogViewPageSkeleton) holds the same two rows. */}
+    <div className={cn("space-y-4", explorer.maximized && LOG_MAXIMIZED_CLASS)}>
+      {/* A phone gets [search] then [range | Live | Maximize | Options];
+          the skeleton (ProjectLogViewPageSkeleton) holds the same two
+          rows. */}
       <div className="flex flex-wrap items-center gap-3 max-sm:gap-2">
         <div className="relative min-w-48 flex-1 max-sm:min-w-0 max-sm:basis-full">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            ref={attachSearch}
             value={draft}
             // Uneditable until handlers attach: text typed into the server
             // HTML is wiped by hydration (w4/m219).
@@ -312,6 +349,11 @@ export function ProjectLogViewer({
           disabled={!hydrated || !liveSupported}
           onCheckedChange={setLive}
           describedBy={liveSupported ? undefined : liveOffReasonId}
+        />
+        <LogExplorerActions
+          explorer={explorer}
+          canCopy={listShown}
+          className={LOG_ACTIONS_CLASS}
         />
         {picks.length > 0 ? (
           <div className="flex w-full flex-wrap items-center gap-1.5">

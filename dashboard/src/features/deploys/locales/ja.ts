@@ -431,11 +431,6 @@ const jaDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploys tab: toast when reading an older page of deploy history fails",
   },
-  "deploys.logOptions": {
-    message: "ログのオプション",
-    description:
-      "Deploy log viewer: aria-label/tooltip of the options menu button",
-  },
   "deploys.logRangeLabel": {
     message: "期間",
     description:
@@ -475,21 +470,6 @@ const jaDeploys: Record<string, TranslationEntry> = {
     message: "タイムスタンプを表示",
     description:
       "Deploy log viewer options menu: toggle the per-line timestamp column",
-  },
-  "deploys.logMaximize": {
-    message: "最大化",
-    description:
-      "Deploy log viewer: button expanding the viewer to fill the screen",
-  },
-  "deploys.logMinimize": {
-    message: "全画面表示を終了",
-    description:
-      "Deploy log viewer: button restoring the maximized viewer to its inline size",
-  },
-  "deploys.logMinimizeHint": {
-    message: "全画面表示を終了 (Esc)",
-    description:
-      "Deploy log viewer: tooltip of the button leaving full screen, naming the Escape key that also leaves it",
   },
   "deploys.reason.http_port_waiting": {
     message: "コンテナーの起動を待ってから HTTP ポートを検出します",

@@ -1,11 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  ChevronDown,
-  Maximize2,
-  Minimize2,
-  Settings2,
-  WifiOff,
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { ChevronDown, WifiOff } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { useDebounce } from "@/common/hooks/use-debounce";
@@ -25,6 +19,12 @@ import {
 } from "@/common/components/ui/dropdown-menu";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { LogEmptyState } from "@/features/logs/components/log-empty-state";
+import {
+  LogOptionsMenu,
+  MaximizeButton,
+} from "@/features/logs/components/log-explorer";
+import { LOG_MAXIMIZED_CLASS } from "@/features/logs/components/log-toolbar-layout";
+import { useLogExplorer } from "@/features/logs/hooks/use-log-explorer";
 import { LogLineList } from "@/features/logs/components/log-line-list";
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
 import { LogTruncationNotice } from "@/features/logs/components/log-truncation-notice";
@@ -96,7 +96,10 @@ export interface DeployLogPanelProps {
  *
  * w9/003 adds Render's viewer affordances: an options menu (the `?r=` time
  * range the URL owns, plus wrap/timestamp display toggles) and a maximize
- * button that expands the viewer into a full-screen overlay.
+ * button that expands the viewer into a full-screen overlay. w3/m509 gives
+ * it every explorer's Options (Copy logs, Order by, Expand everything) and
+ * Render's shortcuts (`/`, `M`, `Esc`, `Home`/`End`, `⌘/Ctrl ⇧ C`); it has
+ * no live tail of its own, so no `Shift+L`.
  */
 export function DeployLogPanel({
   resource,
@@ -119,23 +122,8 @@ export function DeployLogPanel({
   const [instanceFilter, setInstanceFilter] = useState("");
   const [wrap, setWrap] = useState(true);
   const [showTimestamps, setShowTimestamps] = useState(true);
-  const [maximized, setMaximized] = useState(false);
-  // Full screen covers the page, so Escape leaves it as it would a dialog —
-  // unless the Escape is closing one of the panel's own menus first.
-  useEffect(() => {
-    if (!maximized) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.defaultPrevented) return;
-      if (
-        event.target instanceof Element &&
-        event.target.closest('[role="menu"]')
-      )
-        return;
-      setMaximized(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [maximized]);
+  const { explorer, attachList, attachSearch } = useLogExplorer();
+  const { maximized } = explorer;
 
   const {
     lines,
@@ -222,6 +210,9 @@ export function DeployLogPanel({
         onInstanceFilter={setInstanceFilter}
         wrap={wrap}
         showTimestamps={showTimestamps}
+        order={explorer.order}
+        expandAll={explorer.expandAll}
+        handleRef={attachList}
         fill={maximized}
         // The deploy's log runs to the bottom of the screen, as the Logs
         // tab's does, and anything under it starts at the fold rather than
@@ -244,10 +235,7 @@ export function DeployLogPanel({
         "space-y-3",
         // Maximized (w9/003): a full-screen overlay, the log list filling
         // everything under the control row.
-        // m-0: the page's stack spacing would otherwise give the overlay a
-        // bottom margin, stopping it short of the screen's bottom edge.
-        maximized &&
-          "fixed inset-0 z-50 m-0 flex flex-col bg-background p-4 sm:p-6 [&>*:last-child]:min-h-0 [&>*:last-child]:flex-1",
+        maximized && LOG_MAXIMIZED_CLASS,
       )}
     >
       {/* Full screen covers the page's own title, so it names the log. */}
@@ -280,6 +268,7 @@ export function DeployLogPanel({
           </DropdownMenuContent>
         </DropdownMenu>
         <Input
+          ref={attachSearch}
           value={search}
           // Uneditable until handlers attach: text typed into the server HTML
           // is wiped by hydration (w4/m219).
@@ -296,76 +285,50 @@ export function DeployLogPanel({
           </span>
         )}
         <div className={DEPLOY_LOG_TOOLBAR_END_CLASS}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label={t("deploys.logOptions")}
-                title={t("deploys.logOptions")}
-              >
-                <Settings2 className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              {onRangeChange && (
-                <>
-                  <DropdownMenuLabel>
-                    {t("deploys.logRangeLabel")}
-                  </DropdownMenuLabel>
-                  <DropdownMenuRadioGroup
-                    value={range ?? DEPLOY_WINDOW}
-                    onValueChange={(v) =>
-                      onRangeChange(
-                        v === DEPLOY_WINDOW ? undefined : (v as LogRange),
-                      )
-                    }
-                  >
-                    <DropdownMenuRadioItem value={DEPLOY_WINDOW}>
-                      {t("deploys.logRangeDeploy")}
-                    </DropdownMenuRadioItem>
-                    {LOG_RANGES.map((r) => (
-                      <DropdownMenuRadioItem key={r} value={r}>
-                        {t(RANGE_LABEL_KEYS[r] as Parameters<typeof t>[0])}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                  <DropdownMenuSeparator />
-                </>
-              )}
-              <DropdownMenuCheckboxItem
-                checked={wrap}
-                onCheckedChange={(v) => setWrap(!!v)}
-              >
-                {t("deploys.logWrap")}
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={showTimestamps}
-                onCheckedChange={(v) => setShowTimestamps(!!v)}
-              >
-                {t("deploys.logTimestamps")}
-              </DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label={
-              maximized ? t("deploys.logMinimize") : t("deploys.logMaximize")
-            }
-            title={
-              maximized
-                ? t("deploys.logMinimizeHint")
-                : t("deploys.logMaximize")
-            }
-            onClick={() => setMaximized((m) => !m)}
+          <LogOptionsMenu
+            explorer={explorer}
+            canCopy={filtered.length > 0}
+            triggerClassName="size-9"
           >
-            {maximized ? (
-              <Minimize2 className="h-4 w-4" />
-            ) : (
-              <Maximize2 className="h-4 w-4" />
+            {onRangeChange && (
+              <>
+                <DropdownMenuLabel>
+                  {t("deploys.logRangeLabel")}
+                </DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                  value={range ?? DEPLOY_WINDOW}
+                  onValueChange={(v) =>
+                    onRangeChange(
+                      v === DEPLOY_WINDOW ? undefined : (v as LogRange),
+                    )
+                  }
+                >
+                  <DropdownMenuRadioItem value={DEPLOY_WINDOW}>
+                    {t("deploys.logRangeDeploy")}
+                  </DropdownMenuRadioItem>
+                  {LOG_RANGES.map((r) => (
+                    <DropdownMenuRadioItem key={r} value={r}>
+                      {t(RANGE_LABEL_KEYS[r] as Parameters<typeof t>[0])}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+                <DropdownMenuSeparator />
+              </>
             )}
-          </Button>
+            <DropdownMenuCheckboxItem
+              checked={wrap}
+              onCheckedChange={(v) => setWrap(!!v)}
+            >
+              {t("deploys.logWrap")}
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={showTimestamps}
+              onCheckedChange={(v) => setShowTimestamps(!!v)}
+            >
+              {t("deploys.logTimestamps")}
+            </DropdownMenuCheckboxItem>
+          </LogOptionsMenu>
+          <MaximizeButton explorer={explorer} className="size-9" />
         </div>
       </div>
       {instanceFilter ? (

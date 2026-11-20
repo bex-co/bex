@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
+import { useIsMac } from "@/common/hooks/use-is-mac";
 import { useTranslations } from "@/common/hooks/use-translations";
 
 const loadGlobalSearchDialog = () =>
@@ -21,17 +22,10 @@ export function GlobalSearch() {
   const { t } = useTranslations();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  // Reading navigator.platform during render makes the first client render
-  // disagree with the server ("⌘ K" vs "Ctrl K"), a hydration text mismatch
-  // (React #418) on every page since this lives in the persistent header. Start
-  // false so the server and the first client render agree on "Ctrl K", then
-  // switch to the Mac glyph after mount.
-  const [isMac, setIsMac] = useState(false);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- post-hydration platform detection, intentionally after first paint
-    setIsMac(/Mac|iPhone|iPad/.test(navigator.platform));
-  }, []);
+  // "Ctrl K" through the server render and hydration, which cannot know the
+  // platform (a mismatch there was React #418 on every page, as this lives in
+  // the persistent header); the Mac glyph from the next render.
+  const isMac = useIsMac();
 
   // Where focus was when the search opened, so dismissing it can put focus
   // back (w4/291): the button for a click, whatever held focus for Cmd/Ctrl+K.

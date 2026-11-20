@@ -538,6 +538,101 @@ const koLogs: Record<string, TranslationEntry> = {
     message: "Key Value",
     description: "Resource Type value Key Value (the product name)",
   },
+  "logs.lineLevel": {
+    message: "수준: {level}",
+    description:
+      "Log line level gutter (w3/m509): accessible name and hover text of the level icon leading a log row; {level} is the line's level word (info, warning, error, \u2026)",
+  },
+  "logs.showMore": {
+    message: "더 보기",
+    description:
+      "Log row (w3/m509): button after a long message cut short, showing the whole message",
+  },
+  "logs.showLess": {
+    message: "간략히 보기",
+    description:
+      "Log row (w3/m509): button after a long message opened in full, cutting it short again",
+  },
+  "logs.copied": {
+    message: "로그를 복사했습니다",
+    description:
+      "Log explorer (w3/m509): toast after Options > Copy logs wrote the lines shown to the clipboard",
+  },
+  "logs.copyFailed": {
+    message: "로그를 복사할 수 없습니다",
+    description:
+      "Log explorer (w3/m509): toast when the clipboard refused the copied logs",
+  },
+  "logs.copyLogs": {
+    message: "로그 복사",
+    description:
+      "Log explorer Options menu (w3/m509): item copying every line shown to the clipboard (Render's Copy logs)",
+  },
+  "logs.options": {
+    message: "로그 옵션",
+    description:
+      "Log explorer (w3/m509): accessible name and tooltip of the Options (\u2026) menu button",
+  },
+  "logs.orderBy": {
+    message: "정렬 기준",
+    description:
+      "Log explorer Options menu (w3/m509): heading of the line order choice (Render's Order by)",
+  },
+  "logs.orderAscending": {
+    message: "오름차순",
+    description:
+      "Log explorer Options menu (w3/m509): order choice, oldest line first and the newest at the bottom",
+  },
+  "logs.orderDescending": {
+    message: "내림차순",
+    description:
+      "Log explorer Options menu (w3/m509): order choice, newest line first at the top",
+  },
+  "logs.display": {
+    message: "표시",
+    description:
+      "Log explorer Options menu (w3/m509): heading of the display options (Render's Display)",
+  },
+  "logs.expandEverything": {
+    message: "모두 펼치기",
+    description:
+      "Log explorer Options menu (w3/m509): checkbox showing every long message in full (Render's Expand everything)",
+  },
+  "logs.maximize": {
+    message: "최대화",
+    description:
+      "Log explorer (w3/m509): button and menu item expanding the log to fill the screen (Render's Maximize)",
+  },
+  "logs.minimize": {
+    message: "전체 화면 종료",
+    description:
+      "Log explorer (w3/m509): button and menu item restoring the maximized log to its place in the page",
+  },
+  "logs.maximizeHint": {
+    message: "최대화 (M)",
+    description:
+      "Log explorer (w3/m509): tooltip of the Maximize button, naming its M shortcut",
+  },
+  "logs.minimizeHint": {
+    message: "전체 화면 종료 (M 또는 Esc)",
+    description:
+      "Log explorer (w3/m509): tooltip of the button leaving full screen, naming the M and Escape keys that also leave it",
+  },
+  "logs.clearedTitle": {
+    message: "로그를 지웠습니다",
+    description:
+      "Log explorer (w3/m509): title over a live tail whose lines the reader cleared with Shift+L",
+  },
+  "logs.clearedBody": {
+    message: "새 줄이 도착하면 여기에 표시됩니다.",
+    description:
+      "Log explorer (w3/m509): body under the cleared live tail's title",
+  },
+  "logs.clearedRestore": {
+    message: "이전 줄 보기",
+    description:
+      "Log explorer (w3/m509): button under a cleared live tail bringing back the lines Shift+L cleared",
+  },
 };
 
 export default koLogs;

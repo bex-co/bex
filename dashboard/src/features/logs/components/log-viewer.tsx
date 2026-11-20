@@ -17,6 +17,7 @@ import {
   relayableReason,
 } from "@/common/lib/graphql-error";
 import { useUrlEcho } from "@/common/hooks/use-url-echo";
+import { cn } from "@/common/lib/utils/utils.ts";
 import { EmptyState } from "@/common/components/empty-state";
 import { LogEmptyState } from "./log-empty-state";
 import { useOpenDocked } from "../hooks/use-open-docked";
@@ -40,8 +41,16 @@ import {
   type LogFilters,
   withoutRequestFilters,
 } from "../types";
+import { LogClearedState, LogExplorerActions } from "./log-explorer";
+import { useClearedLines, useLogExplorer } from "../hooks/use-log-explorer";
 import { LogFilterBar } from "./log-filter-bar";
 import { LogLineList } from "./log-line-list";
+import {
+  LOG_FILTER_ACTIONS_CLASS,
+  LOG_MAXIMIZED_BODY_CLASS,
+  LOG_MAXIMIZED_CLASS,
+  LOG_MAXIMIZED_LIST_CLASS,
+} from "./log-toolbar-layout";
 import { LogTruncationNotice } from "./log-truncation-notice";
 import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
 import {
@@ -249,9 +258,10 @@ export function LogViewer({
   // A plan without HTTP request logs (Hobby, w8/m138) refuses the request
   // view: a plan notice, not a load failure, and no tail to retry against it.
   const planRefused = planFeatureRequired(history.error, "requestLogs");
+  const tailing = live && liveSupported && !planRefused;
   const stream = useLiveLogs({
     resource,
-    enabled: live && liveSupported && !planRefused,
+    enabled: tailing,
     type: queryFilters.type,
     text: committedText,
     textMode: LOG_TEXT_MODE_DISPLAY,
@@ -290,6 +300,17 @@ export function LogViewer({
       ),
     [history.lines, stream.lines, historyWindow.startTime, customEndMs],
   );
+
+  // Render's explorer controls (w3/m509): Options, Maximize and the
+  // shortcuts, `Shift+L` clearing the lines while the tail is live.
+  const cleared = useClearedLines(
+    lines,
+    tailing,
+    JSON.stringify([resource, queryFilters, range]),
+  );
+  const { explorer, attachList, attachSearch } = useLogExplorer({
+    clear: cleared.clear,
+  });
 
   const filtered = hasActiveLogFilters(queryFilters);
 
@@ -342,6 +363,8 @@ export function LogViewer({
     );
   } else if (history.loading && history.lines.length === 0) {
     body = <LogPanelSkeleton fillViewport />;
+  } else if (cleared.cleared && cleared.lines.length === 0) {
+    body = <LogClearedState fillViewport onRestore={cleared.restore} />;
   } else if (lines.length === 0) {
     body = (
       <LogEmptyState
@@ -396,7 +419,12 @@ export function LogViewer({
   } else {
     isListBody = true;
     body = (
-      <div className="space-y-2">
+      <div
+        className={cn(
+          "space-y-2",
+          explorer.maximized && LOG_MAXIMIZED_BODY_CLASS,
+        )}
+      >
         {history.error ? (
           <div
             role="alert"
@@ -417,21 +445,31 @@ export function LogViewer({
         {live && liveSupported && stream.status === "error" ? (
           <StreamDisconnected />
         ) : null}
-        <LogLineList
-          fillViewport
-          lines={lines}
-          onInstanceFilter={onInstanceFilter}
-          hasMore={history.hasMore}
-          loadingOlder={history.loadingOlder}
-          onLoadOlder={history.loadOlder}
-        />
+        <div className={cn(explorer.maximized && LOG_MAXIMIZED_LIST_CLASS)}>
+          <LogLineList
+            fillViewport
+            fill={explorer.maximized}
+            lines={cleared.lines}
+            onInstanceFilter={onInstanceFilter}
+            hasMore={history.hasMore}
+            loadingOlder={history.loadingOlder}
+            onLoadOlder={history.loadOlder}
+            order={explorer.order}
+            expandAll={explorer.expandAll}
+            handleRef={attachList}
+          />
+        </div>
         {streamLine}
       </div>
     );
   }
 
   return (
-    <div ref={frameRef} data-log-frame="" className="space-y-4">
+    <div
+      ref={frameRef}
+      data-log-frame=""
+      className={cn("space-y-4", explorer.maximized && LOG_MAXIMIZED_CLASS)}
+    >
       <LogFilterBar
         resource={resource}
         filters={filters}
@@ -445,6 +483,15 @@ export function LogViewer({
         range={range}
         onRangeChange={onRangeChange}
         servesRequests={servesRequests}
+        searchRef={attachSearch}
+        actions={
+          <LogExplorerActions
+            explorer={explorer}
+            canCopy={isListBody}
+            phoneMaximize
+            className={LOG_FILTER_ACTIONS_CLASS}
+          />
+        }
       />
       {/* With the tail off, the note says why, in every state — the switch it
           describes is disabled, so this is its only reachable reason (w4/556).

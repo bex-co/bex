@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, type Ref, useState } from "react";
 import { Search, SlidersHorizontal } from "lucide-react";
 import {
   Select,
@@ -146,6 +146,11 @@ interface LogFilterBarProps {
    * filters, as Render generates request logs for web services only (w4/613).
    */
   servesRequests?: boolean;
+  /** The search box, which the explorer's `/` shortcut focuses (w3/m509). */
+  searchRef?: Ref<HTMLInputElement>;
+  /** The explorer's Maximize and Options buttons (w3/m509), at the bar's
+   *  end, in `LOG_FILTER_ACTIONS_CLASS`'s wrapper. */
+  actions?: ReactNode;
 }
 
 export function LogFilterBar({
@@ -159,6 +164,8 @@ export function LogFilterBar({
   range = DEFAULT_LOG_RANGE,
   onRangeChange = () => undefined,
   servesRequests = true,
+  searchRef,
+  actions,
 }: LogFilterBarProps) {
   const { t } = useTranslations();
   const hydrated = useIsHydrated();
@@ -289,9 +296,9 @@ export function LogFilterBar({
     </>
   );
 
-  // A phone gets two even rows in reading order, [type | search] then
-  // [range | Filters | Live], instead of four ragged ones that pushed the
-  // first log line past the middle of the screen. It docks under the top bar
+  // A phone gets two even rows in reading order, [type | search | Options]
+  // then [range | Filters | Live], instead of four ragged ones that pushed
+  // the first log line past the middle of the screen. It docks under the top bar
   // as the service header scrolls away, and the log fills the screen below
   // it (see useLogPanelHeight).
   return (
@@ -321,6 +328,7 @@ export function LogFilterBar({
       <div className="relative min-w-48 flex-1 max-sm:min-w-0">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
+          ref={searchRef}
           value={filters.text}
           // Uneditable until handlers attach: text typed into the server HTML
           // is wiped by hydration (w4/m219).
@@ -409,8 +417,10 @@ export function LogFilterBar({
         />
       </div>
 
+      {actions}
+
       {active.length > 0 ? (
-        <div className="flex w-full flex-wrap items-center gap-1.5 max-sm:col-span-2">
+        <div className="flex w-full flex-wrap items-center gap-1.5 max-sm:col-span-full">
           {active.map((key) => {
             const label = t(STRUCTURED_LABEL_KEYS[key]);
             return (

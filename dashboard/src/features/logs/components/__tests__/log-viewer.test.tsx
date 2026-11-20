@@ -1060,3 +1060,90 @@ describe("the range picker follows the plan's log window", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("LogViewer explorer controls (w3/m509)", () => {
+  const appLine = (key: string, second: number): LogLine => ({
+    key,
+    timestamp: new Date(Date.now() - (60 - second) * 1000).toISOString(),
+    instance: "",
+    message: key,
+    spans: null,
+    resource: "",
+    type: "app",
+    level: "",
+    method: "",
+    statusCode: "",
+    host: "",
+    path: "",
+  });
+
+  it("clears a live tail's lines on Shift+L and brings them back on request", async () => {
+    historyState.lines = [appLine("older line", 1), appLine("newer line", 2)];
+    render(<LogViewer resource="web" />);
+    expect(screen.getByText("newer line")).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "L", shiftKey: true });
+    expect(screen.getByText("Logs cleared")).toBeInTheDocument();
+    expect(screen.queryByText("newer line")).toBeNull();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Show earlier lines" }),
+    );
+    expect(screen.getByText("newer line")).toBeInTheDocument();
+  });
+
+  it("does not clear a paused log", () => {
+    historyState.lines = [appLine("kept line", 1)];
+    render(<LogViewer resource="web" urlLive={false} />);
+    fireEvent.keyDown(window, { key: "L", shiftKey: true });
+    expect(screen.getByText("kept line")).toBeInTheDocument();
+    expect(screen.queryByText("Logs cleared")).toBeNull();
+  });
+
+  it("maximizes the explorer and focuses its search on /", async () => {
+    const user = userEvent.setup();
+    historyState.lines = [appLine("a line", 1)];
+    const { container } = render(<LogViewer resource="web" />);
+    const frame = container.querySelector<HTMLElement>("[data-log-frame]")!;
+    await user.click(screen.getByRole("button", { name: "Maximize" }));
+    expect(frame.className).toContain("fixed inset-0");
+    await user.keyboard("{Escape}");
+    expect(frame.className).not.toContain("fixed inset-0");
+    await user.keyboard("/");
+    expect(screen.getByRole("textbox", { name: "Search logs" })).toHaveFocus();
+  });
+
+  it("offers Copy logs only while lines are shown", async () => {
+    const user = userEvent.setup();
+    render(<LogViewer resource="web" />);
+    await user.click(screen.getByRole("button", { name: "Log options" }));
+    expect(screen.getByRole("menuitem", { name: /Copy logs/ })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+  });
+});
+
+describe("the Logs tab's pending frame holds its explorer buttons (w3/m509)", () => {
+  it("reserves Maximize (hidden on a phone) and Options, at the ready buttons' sizes", async () => {
+    const { ServiceLogsBodySkeleton } =
+      await import("@/common/components/route-skeletons");
+    const boxes = (root: HTMLElement) =>
+      [...root.querySelectorAll<HTMLElement>("button, [data-slot=skeleton]")]
+        .filter((el) => el.className.includes("max-lg:size-11"))
+        .map((el) =>
+          el.className
+            .split(/\s+/)
+            .filter((name) => /^(\w[\w-]*:)*(size-|hidden$)/.test(name))
+            .sort()
+            .join(" "),
+        );
+    historyState.lines = [];
+    const ready = boxes(render(<LogViewer resource="web" />).container);
+    expect(ready).toEqual([
+      "max-lg:size-11 max-sm:hidden pointer-coarse:size-11 size-8",
+      "max-lg:size-11 pointer-coarse:size-11 size-8",
+    ]);
+    expect(boxes(render(<ServiceLogsBodySkeleton />).container)).toEqual(ready);
+  });
+});

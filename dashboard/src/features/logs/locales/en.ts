@@ -546,6 +546,101 @@ const enLogs: Record<string, TranslationEntry> = {
     message: "Key Value",
     description: "Resource Type value Key Value (the product name)",
   },
+  "logs.lineLevel": {
+    message: "Level: {level}",
+    description:
+      "Log line level gutter (w3/m509): accessible name and hover text of the level icon leading a log row; {level} is the line's level word (info, warning, error, \u2026)",
+  },
+  "logs.showMore": {
+    message: "Show more",
+    description:
+      "Log row (w3/m509): button after a long message cut short, showing the whole message",
+  },
+  "logs.showLess": {
+    message: "Show less",
+    description:
+      "Log row (w3/m509): button after a long message opened in full, cutting it short again",
+  },
+  "logs.copied": {
+    message: "Logs copied",
+    description:
+      "Log explorer (w3/m509): toast after Options > Copy logs wrote the lines shown to the clipboard",
+  },
+  "logs.copyFailed": {
+    message: "Couldn't copy the logs",
+    description:
+      "Log explorer (w3/m509): toast when the clipboard refused the copied logs",
+  },
+  "logs.copyLogs": {
+    message: "Copy logs",
+    description:
+      "Log explorer Options menu (w3/m509): item copying every line shown to the clipboard (Render's Copy logs)",
+  },
+  "logs.options": {
+    message: "Log options",
+    description:
+      "Log explorer (w3/m509): accessible name and tooltip of the Options (\u2026) menu button",
+  },
+  "logs.orderBy": {
+    message: "Order by",
+    description:
+      "Log explorer Options menu (w3/m509): heading of the line order choice (Render's Order by)",
+  },
+  "logs.orderAscending": {
+    message: "Ascending",
+    description:
+      "Log explorer Options menu (w3/m509): order choice, oldest line first and the newest at the bottom",
+  },
+  "logs.orderDescending": {
+    message: "Descending",
+    description:
+      "Log explorer Options menu (w3/m509): order choice, newest line first at the top",
+  },
+  "logs.display": {
+    message: "Display",
+    description:
+      "Log explorer Options menu (w3/m509): heading of the display options (Render's Display)",
+  },
+  "logs.expandEverything": {
+    message: "Expand everything",
+    description:
+      "Log explorer Options menu (w3/m509): checkbox showing every long message in full (Render's Expand everything)",
+  },
+  "logs.maximize": {
+    message: "Maximize",
+    description:
+      "Log explorer (w3/m509): button and menu item expanding the log to fill the screen (Render's Maximize)",
+  },
+  "logs.minimize": {
+    message: "Exit full screen",
+    description:
+      "Log explorer (w3/m509): button and menu item restoring the maximized log to its place in the page",
+  },
+  "logs.maximizeHint": {
+    message: "Maximize (M)",
+    description:
+      "Log explorer (w3/m509): tooltip of the Maximize button, naming its M shortcut",
+  },
+  "logs.minimizeHint": {
+    message: "Exit full screen (M or Esc)",
+    description:
+      "Log explorer (w3/m509): tooltip of the button leaving full screen, naming the M and Escape keys that also leave it",
+  },
+  "logs.clearedTitle": {
+    message: "Logs cleared",
+    description:
+      "Log explorer (w3/m509): title over a live tail whose lines the reader cleared with Shift+L",
+  },
+  "logs.clearedBody": {
+    message: "New lines appear here as they arrive.",
+    description:
+      "Log explorer (w3/m509): body under the cleared live tail's title",
+  },
+  "logs.clearedRestore": {
+    message: "Show earlier lines",
+    description:
+      "Log explorer (w3/m509): button under a cleared live tail bringing back the lines Shift+L cleared",
+  },
 };
 
 export default enLogs;

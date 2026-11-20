@@ -2,23 +2,47 @@ import {
   memo,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useId,
+  type Ref,
 } from "react";
-import { ArrowDown } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Bug,
+  CircleX,
+  Info,
+  TriangleAlert,
+  type LucideIcon,
+} from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { InstantTooltip } from "@/common/components/instant-tooltip";
 import { Button } from "@/common/components/ui/button.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatClockTime } from "@/common/lib/format";
+import {
+  formatClockTime,
+  formatMediumDate,
+  formatMonthDay,
+} from "@/common/lib/format";
 import { cn } from "@/common/lib/utils/utils.ts";
 import {
   useLogPanelHeight,
   type LogPanelFill,
 } from "@/features/logs/hooks/use-log-panel-height";
 import { type AnsiSpan } from "../lib/ansi";
+import { lineLevel, lineLevelText, type LineLevel } from "../lib/log-levels";
+import {
+  clampMessage,
+  logListRows,
+  logRowsText,
+  shortInstance,
+  type LogOrder,
+} from "../lib/log-rows";
 import { type LogResourceLabel } from "../lib/resource-labels";
 import { LOG_TYPE_REQUEST, type LogLine } from "../types";
 
@@ -58,16 +82,30 @@ const ROW_ESTIMATE = 24;
 
 // A row's tint and edge rule by its level: error and warning lines stand
 // out from the stream, as on Render's log.
-const ERROR_ROW =
-  "bg-destructive/10 shadow-[inset_2px_0_0_var(--color-destructive)]";
-const WARN_ROW =
-  "bg-amber-500/10 shadow-[inset_2px_0_0_var(--color-amber-500)]";
-const LEVEL_ROW_CLASS: Partial<Record<string, string>> = {
-  error: ERROR_ROW,
-  fatal: ERROR_ROW,
-  warn: WARN_ROW,
-  warning: WARN_ROW,
+const LEVEL_ROW_CLASS: Partial<Record<LineLevel, string>> = {
+  error: "bg-destructive/10 shadow-[inset_2px_0_0_var(--color-destructive)]",
+  warning: "bg-amber-500/10 shadow-[inset_2px_0_0_var(--color-amber-500)]",
 };
+
+// The level gutter's mark (w3/m509): Render's icon per level, its info mark
+// shown only while the row is hovered or under the keyboard's cursor.
+const LEVEL_ICONS: Record<LineLevel, LucideIcon> = {
+  debug: Bug,
+  info: Info,
+  notice: Info,
+  warning: TriangleAlert,
+  error: CircleX,
+};
+const LEVEL_ICON_CLASS: Record<LineLevel, string> = {
+  debug: "text-muted-foreground",
+  info: "text-muted-foreground opacity-0 group-hover/row:opacity-100 group-data-active/row:opacity-100",
+  notice: "text-blue-700 dark:text-blue-400",
+  warning: "text-amber-800 dark:text-amber-400",
+  error: "text-red-700 dark:text-red-400",
+};
+// One line of the row's text tall, so the mark centres on its first line
+// whatever the message wraps to.
+const GUTTER_CLASS = "flex h-[1.625em] w-3.5 shrink-0 items-center self-start";
 
 // The end note's line (`h-6`), counted into the content a panel grows to.
 const END_NOTE_HEIGHT = 24;
@@ -76,6 +114,18 @@ const GROW_TO_FIT_LIMIT = 1.25;
 
 // Rows rendered above/below the viewport so a fast scroll doesn't flash blank.
 const OVERSCAN = 12;
+
+/** How far the reader is from the list's bottom edge. */
+const fromBottom = (el: HTMLElement) =>
+  el.scrollHeight - el.scrollTop - el.clientHeight;
+
+/** What a log explorer's toolbar and shortcuts drive in its list (w3/m509). */
+export interface LogLineListHandle {
+  /** Home and End: the list's first or last row. */
+  jump: (edge: "top" | "bottom") => void;
+  /** The rows shown, as Options ▸ Copy logs writes them. */
+  text: () => string;
+}
 
 /**
  * A display reflow (wrap or timestamps toggled) keeps re-placing the reader's
@@ -87,7 +137,7 @@ const SETTLE_MS = 250;
 const SETTLE_MAX_MS = 1000;
 
 /** What a display reflow keeps in view: a row and offset, or the newest line. */
-type SettleTarget = { key: string; offset: number } | "end";
+type SettleTarget = { key: string; offset: number } | "newest";
 
 // Vertical inset (previously the row container's `p-3` top/bottom padding),
 // applied through the virtualizer so it survives windowing at the very top and
@@ -134,15 +184,28 @@ interface LogLineListProps {
    * Absent on a single resource's log, whose rows are unchanged.
    */
   resourceLabels?: ReadonlyMap<string, LogResourceLabel>;
+  /** Options ▸ Order by: ascending (the newest line at the bottom, the
+   *  default) or descending (the newest at the top, older pages below). */
+  order?: LogOrder;
+  /** Options ▸ Expand everything: no message is clamped. */
+  expandAll?: boolean;
+  /** The explorer's handle on the list: its shortcuts and Copy logs. */
+  handleRef?: Ref<LogLineListHandle>;
 }
 
 /**
- * The monospace log line list (Render's layout: timestamp · [instance] ·
- * message, newest at the bottom). Autoscrolls to the newest line while the user
- * is pinned to the bottom; scrolling up releases the pin (so reading history
- * isn't yanked away) and surfaces a "jump to latest" affordance. The wrap/
- * timestamp toggles (w9/003) are display-only knobs the deploy page's options
- * menu drives; both default to today's behavior.
+ * The monospace log line list (Render's layout: level · timestamp ·
+ * [instance] · message, newest at the bottom unless Options ▸ Order by says
+ * descending). Autoscrolls to the newest line while the user is pinned to it;
+ * scrolling away releases the pin (so reading history isn't yanked away) and
+ * surfaces a "jump to latest" affordance. The wrap/timestamp toggles (w9/003)
+ * and the order and Expand everything options (w3/m509) are display-only
+ * knobs an explorer's options menu drives; each defaults to today's behavior.
+ *
+ * Each row leads with its level's mark (Render's gutter: warning and error
+ * rows tinted, the info mark shown on hover), its time opens the full local,
+ * UTC and Unix timestamp on hover (or under the keyboard's row cursor), and a
+ * list spanning several days marks each with a date row (w3/m509).
  *
  * The rows are **virtualized** (`@tanstack/react-virtual`, w9/m83): only the
  * visible window (plus overscan) is in the DOM, so a busy live tail no longer
@@ -153,10 +216,9 @@ interface LogLineListProps {
  *
  * Text-selection tradeoff (the known cost of virtualization): selecting and
  * copying works within the on-screen window, but a drag-select can no longer
- * span rows that have scrolled out of the DOM. Whole-buffer copy is not
- * supported; the retained buffer is available to the reader by scrolling. This
- * is the deliberate, documented tradeoff for bounding the DOM on the platform's
- * most-watched screen.
+ * span rows that have scrolled out of the DOM. The whole buffer is copied
+ * through the handle's `text()` instead (Options ▸ Copy logs, `⌘/Ctrl ⇧ C`,
+ * w3/m509), which writes every row shown, not only the mounted window.
  */
 export function LogLineList({
   lines,
@@ -170,24 +232,46 @@ export function LogLineList({
   loadingOlder = false,
   onLoadOlder,
   resourceLabels,
+  order = "asc",
+  expandAll = false,
+  handleRef,
 }: LogLineListProps) {
   const { t, i18n } = useTranslations();
+  const language = i18n.language;
   const keysHintId = useId();
   const viewportRef = useRef<HTMLDivElement>(null);
+  const descending = order === "desc";
+  const rows = useMemo(() => logListRows(lines, order), [lines, order]);
+  // Pinned: the reader is at the newest line, the bottom ascending and the
+  // top descending.
   const [pinned, setPinned] = useState(true);
-  // The keyboard's row cursor in the focused list: ↑/↓ move it, Enter shows
+  // The keyboard's row cursor in the focused list, by row key so it stays on
+  // its line as lines arrive or the order flips: ↑/↓ move it, Enter shows
   // only its line's instance (the tags themselves are out of the Tab order),
   // Escape lets it go.
-  const [cursor, setCursor] = useState<number | null>(null);
+  const [cursor, setCursor] = useState<string | null>(null);
+  // Rows whose clamped message the reader opened (w3/m509).
+  const [expandedRows, setExpandedRows] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const toggleExpanded = useCallback(
+    (key: string) =>
+      setExpandedRows((previous) => {
+        const next = new Set(previous);
+        if (!next.delete(key)) next.add(key);
+        return next;
+      }),
+    [],
+  );
   // Whether rows are scrolled off the top, which fade out (below).
   const [scrolledDown, setScrolledDown] = useState(false);
   const anchorRef = useRef<{ key: string; offset: number } | null>(null);
-  const previousLines = useRef(lines);
-  // A wrap or timestamp toggle changes every row's height while the records
-  // stay the same. Until the rows have remeasured, the reader's row is kept
-  // in place by key, and transient geometry may neither replace that target
-  // nor unpin the reader (w4/m228).
-  const display = `${wrap}:${showTimestamps}`;
+  const previousRows = useRef(rows);
+  // A wrap, timestamp, order or expand toggle changes every row's height or
+  // place while the records stay the same. Until the rows have remeasured,
+  // the reader's row is kept in place by key, and transient geometry may
+  // neither replace that target nor unpin the reader (w4/m228).
+  const display = `${wrap}:${showTimestamps}:${order}:${expandAll}`;
   const previousDisplay = useRef(display);
   const settling = useRef<SettleTarget | null>(null);
   const settleDeadline = useRef(0);
@@ -203,10 +287,10 @@ export function LogLineList({
 
   // Keyed by the line's dedupe key so a row's measured height survives appends
   // and reorders (a wrapped line keeps its true height when new lines arrive).
-  const getItemKey = useCallback((index: number) => lines[index].key, [lines]);
+  const getItemKey = useCallback((index: number) => rows[index].key, [rows]);
 
   const virtualizer = useVirtualizer({
-    count: lines.length,
+    count: rows.length,
     getScrollElement: () => viewportRef.current,
     estimateSize: () => ROW_ESTIMATE,
     getItemKey,
@@ -218,18 +302,26 @@ export function LogLineList({
     scrollPaddingEnd: LIST_INSET,
   });
 
-  // Scroll the newest line to the viewport bottom through the virtualizer (which
-  // knows the total measured height even though most rows aren't in the DOM),
-  // rather than poking `scrollTop = scrollHeight` on the short windowed content.
-  const scrollToBottom = useCallback(() => {
-    if (lines.length > 0) {
-      virtualizer.scrollToIndex(lines.length - 1, { align: "end" });
-    }
-  }, [lines.length, virtualizer]);
+  // Scroll to the list's first row or its last through the virtualizer
+  // (which knows the total measured height even though most rows aren't in
+  // the DOM), rather than poking `scrollTop = scrollHeight` on the short
+  // windowed content.
+  const scrollToEdge = useCallback(
+    (edge: "top" | "bottom") => {
+      if (rows.length === 0) return;
+      if (edge === "top") {
+        if (viewportRef.current) viewportRef.current.scrollTop = 0;
+      } else {
+        virtualizer.scrollToIndex(rows.length - 1, { align: "end" });
+      }
+    },
+    [rows.length, virtualizer],
+  );
+  const scrollToNewest = useCallback(
+    () => scrollToEdge(descending ? "top" : "bottom"),
+    [scrollToEdge, descending],
+  );
 
-  // Recompute the pin from the scroll position; releasing it while the user
-  // reads up, restoring it the moment they return to the bottom. Near the top,
-  // request the next older page (w4/m107).
   // The row at the top of the viewport and how far into it the reader is.
   const recordAnchor = useCallback(
     (el: HTMLElement) => {
@@ -245,10 +337,13 @@ export function LogLineList({
     },
     [virtualizer],
   );
-  const recordPin = (el: HTMLElement) =>
-    setPinned(
-      el.scrollHeight - el.scrollTop - el.clientHeight <= PIN_THRESHOLD,
-    );
+  // Recompute the pin from the scroll position; releasing it while the user
+  // reads away from the newest line, restoring it the moment they return.
+  const recordPin = useCallback(
+    (el: HTMLElement) =>
+      setPinned((descending ? el.scrollTop : fromBottom(el)) <= PIN_THRESHOLD),
+    [descending],
+  );
 
   // Put a row back at the top, its offset clamped to the row's current height
   // (a row that became shorter cannot keep an offset past its end). False when
@@ -257,7 +352,7 @@ export function LogLineList({
     el: HTMLElement,
     anchor: { key: string; offset: number },
   ): boolean => {
-    const index = lines.findIndex((line) => line.key === anchor.key);
+    const index = rows.findIndex((row) => row.key === anchor.key);
     if (index < 0) return false;
     const position = virtualizer.getOffsetForIndex(index, "start");
     if (!position) return false;
@@ -275,8 +370,10 @@ export function LogLineList({
     if (!el || settling.current) return;
     recordAnchor(el);
     recordPin(el);
+    // Near the oldest edge — the top ascending, the bottom descending —
+    // request the next older page (w4/m107).
     if (
-      el.scrollTop <= LOAD_OLDER_THRESHOLD &&
+      (descending ? fromBottom(el) : el.scrollTop) <= LOAD_OLDER_THRESHOLD &&
       hasMoreRef.current &&
       !loadingOlderRef.current
     ) {
@@ -294,11 +391,9 @@ export function LogLineList({
     const el = viewportRef.current;
     if (el) {
       recordAnchor(el);
-      setPinned(
-        el.scrollHeight - el.scrollTop - el.clientHeight <= PIN_THRESHOLD,
-      );
+      recordPin(el);
     }
-  }, [recordAnchor, virtualizer]);
+  }, [recordAnchor, recordPin, virtualizer]);
   useEffect(
     () => () => {
       if (settleTimer.current) clearTimeout(settleTimer.current);
@@ -306,7 +401,7 @@ export function LogLineList({
     [],
   );
 
-  // Keep the visible row anchored when pages prepend or old rows expire.
+  // Keep the visible row anchored when pages arrive or old rows expire.
   // Total-height deltas also include new head/SSE rows, so they shift an
   // unpinned reader even when nothing changed above the viewport.
   useLayoutEffect(() => {
@@ -314,7 +409,7 @@ export function LogLineList({
     if (!el) return;
     if (previousDisplay.current !== display) {
       previousDisplay.current = display;
-      const target = pinned ? "end" : anchorRef.current;
+      const target = pinned ? "newest" : anchorRef.current;
       if (target) {
         settling.current = target;
         settleDeadline.current = Date.now() + SETTLE_MAX_MS;
@@ -332,7 +427,7 @@ export function LogLineList({
     }
     const target = settling.current;
     if (target) {
-      if (target === "end") scrollToBottom();
+      if (target === "newest") scrollToNewest();
       else placeRow(el, target);
       if (settleTimer.current) clearTimeout(settleTimer.current);
       const remaining = settleDeadline.current - Date.now();
@@ -340,32 +435,77 @@ export function LogLineList({
         endSettling,
         Math.max(0, Math.min(SETTLE_MS, remaining)),
       );
-      previousLines.current = lines;
+      previousRows.current = rows;
       return;
     }
     const anchor = anchorRef.current;
-    if (!pinned && anchor && previousLines.current !== lines) {
+    if (!pinned && anchor && previousRows.current !== rows) {
       if (!placeRow(el, anchor)) el.scrollTop = 0;
     } else {
       // The virtualizer may publish its new visible range after onScroll.
       recordAnchor(el);
     }
-    previousLines.current = lines;
+    previousRows.current = rows;
   });
 
   // useLayoutEffect so the scroll lands before paint — no visible jump as new
-  // lines append.
+  // lines arrive.
   useLayoutEffect(() => {
-    if (pinned) scrollToBottom();
-  }, [lines, pinned, scrollToBottom]);
+    if (pinned) scrollToNewest();
+  }, [rows, pinned, scrollToNewest]);
 
+  const dayLabel = useCallback(
+    (day: number) =>
+      new Date(day).getFullYear() === new Date().getFullYear()
+        ? formatMonthDay(day, language)
+        : formatMediumDate(day, language),
+    [language],
+  );
+
+  useImperativeHandle(
+    handleRef,
+    () => ({
+      jump: (edge) => {
+        if (rows.length === 0) return;
+        endSettling();
+        scrollToEdge(edge);
+        // The newest edge pins at once; leaving it unpins on the scroll it
+        // causes (a log that fits its panel never scrolls, and stays pinned).
+        if ((edge === "top") === descending) setPinned(true);
+      },
+      text: () =>
+        logRowsText(rows, {
+          time: showTimestamps
+            ? (timestamp) => formatClockTime(timestamp, language)
+            : null,
+          day: dayLabel,
+          resource: resourceLabels
+            ? (id) => resourceLabels.get(id)?.name
+            : undefined,
+        }),
+    }),
+    [
+      rows,
+      descending,
+      endSettling,
+      scrollToEdge,
+      showTimestamps,
+      language,
+      dayLabel,
+      resourceLabels,
+    ],
+  );
+
+  // A descending list ends at its oldest loaded line, so it says the log ends
+  // there only once no older page is left.
+  const showEnd = ended && !(descending && hasMore);
   const { ref: panelRef, height: fillHeight } =
     useLogPanelHeight<HTMLDivElement>(fill ? false : fillViewport);
   const virtualRows = virtualizer.getVirtualItems();
   const totalSize = virtualizer.getTotalSize();
   // The rows, their inset and any end note, plus the viewport's 1px top and
   // bottom border.
-  const contentHeight = totalSize + (ended ? END_NOTE_HEIGHT : 0) + 2;
+  const contentHeight = totalSize + (showEnd ? END_NOTE_HEIGHT : 0) + 2;
   const panelHeight =
     ended &&
     contentHeight > fillHeight &&
@@ -381,6 +521,20 @@ export function LogLineList({
     virtualRows.length > 0
       ? totalSize - virtualRows[virtualRows.length - 1].end
       : 0;
+
+  // The keyboard cursor's next line row from `from` in `step`'s direction,
+  // passing over date rows; `from` itself when there is none.
+  const nextLine = (from: number, step: 1 | -1) => {
+    for (let i = from + step; i >= 0 && i < rows.length; i += step) {
+      if (rows[i].kind === "line") return i;
+    }
+    return from;
+  };
+  const loadingOlderNote = loadingOlder ? (
+    <p className="px-3 py-2 text-center text-muted-foreground">
+      {t("logs.loadingOlder")}
+    </p>
+  ) : null;
 
   return (
     <div ref={panelRef} className={cn("relative", fill && "h-full")}>
@@ -404,22 +558,30 @@ export function LogLineList({
           endSettling();
           if (event.key === "ArrowDown" || event.key === "ArrowUp") {
             event.preventDefault();
-            const last = lines.length - 1;
-            if (last < 0) return;
-            const visible = virtualizer.getVirtualItems();
-            const next =
+            const step = event.key === "ArrowDown" ? 1 : -1;
+            const current =
               cursor === null
-                ? event.key === "ArrowDown"
+                ? -1
+                : rows.findIndex((row) => row.key === cursor);
+            let next: number;
+            if (current < 0) {
+              // The first move lands on the first or last line in view.
+              const visible = virtualizer.getVirtualItems();
+              const edge =
+                step === 1
                   ? (visible[0]?.index ?? 0)
-                  : (visible.at(-1)?.index ?? last)
-                : Math.min(
-                    last,
-                    Math.max(0, cursor + (event.key === "ArrowDown" ? 1 : -1)),
-                  );
-            setCursor(next);
+                  : (visible.at(-1)?.index ?? rows.length - 1);
+              next = rows[edge]?.kind === "line" ? edge : nextLine(edge, step);
+            } else {
+              next = nextLine(current, step);
+            }
+            const row = rows[next];
+            if (row?.kind !== "line") return;
+            setCursor(row.key);
             virtualizer.scrollToIndex(next, { align: "auto" });
           } else if (event.key === "Enter" && cursor !== null) {
-            const instance = lines[cursor]?.instance;
+            const row = rows.find((candidate) => candidate.key === cursor);
+            const instance = row?.kind === "line" ? row.line.instance : "";
             if (instance && onInstanceFilter) {
               event.preventDefault();
               onInstanceFilter(instance);
@@ -450,34 +612,46 @@ export function LogLineList({
             className="pointer-events-none sticky top-0 left-0 z-10 -mb-6 h-6 bg-linear-to-b from-[color-mix(in_oklab,var(--color-muted)_30%,var(--color-background))] from-40% to-transparent"
           />
         ) : null}
-        {loadingOlder ? (
-          <p className="px-3 py-2 text-center text-muted-foreground">
-            {t("logs.loadingOlder")}
-          </p>
-        ) : null}
+        {/* Older pages load at the oldest edge: the top ascending, the
+            bottom descending. */}
+        {descending ? null : loadingOlderNote}
         <div className={wrap ? "min-w-full" : "w-max min-w-full"}>
           <div aria-hidden style={{ height: paddingTop }} />
-          {virtualRows.map((virtualRow) => (
-            <LogRow
-              key={virtualRow.key}
-              index={virtualRow.index}
-              active={cursor === virtualRow.index}
-              measureRef={virtualizer.measureElement}
-              line={lines[virtualRow.index]}
-              wrap={wrap}
-              showTimestamps={showTimestamps}
-              onInstanceFilter={onInstanceFilter}
-              resourceLabel={
-                resourceLabels &&
-                (resourceLabels.get(lines[virtualRow.index].resource) ?? null)
-              }
-              t={t}
-              language={i18n.language}
-            />
-          ))}
+          {virtualRows.map((virtualRow) => {
+            const row = rows[virtualRow.index];
+            return row.kind === "day" ? (
+              <DayRow
+                key={virtualRow.key}
+                index={virtualRow.index}
+                measureRef={virtualizer.measureElement}
+                label={dayLabel(row.day)}
+              />
+            ) : (
+              <LogRow
+                key={virtualRow.key}
+                index={virtualRow.index}
+                active={cursor === row.key}
+                measureRef={virtualizer.measureElement}
+                line={row.line}
+                wrap={wrap}
+                showTimestamps={showTimestamps}
+                onInstanceFilter={onInstanceFilter}
+                resourceLabel={
+                  resourceLabels &&
+                  (resourceLabels.get(row.line.resource) ?? null)
+                }
+                expandAll={expandAll}
+                expanded={expandedRows.has(row.key)}
+                onToggleExpanded={toggleExpanded}
+                t={t}
+                language={language}
+              />
+            );
+          })}
           <div aria-hidden style={{ height: paddingBottom }} />
         </div>
-        {ended ? (
+        {descending ? loadingOlderNote : null}
+        {showEnd ? (
           <p className="sticky left-0 flex h-6 w-full items-center gap-3 px-4 font-sans text-[11px] text-muted-foreground before:h-px before:flex-1 before:bg-border before:content-[''] after:h-px after:flex-1 after:bg-border after:content-['']">
             {t("logs.endOfLog")}
           </p>
@@ -504,19 +678,52 @@ export function LogLineList({
         <Button
           size="sm"
           variant="secondary"
-          className="absolute bottom-3 left-1/2 -translate-x-1/2 shadow-md"
+          className={cn(
+            "absolute left-1/2 -translate-x-1/2 shadow-md",
+            // At the newest edge: the bottom, or the top descending.
+            descending ? "top-3" : "bottom-3",
+          )}
           onClick={() => {
             // Outside the viewport, so its pointer does not end a reflow's
-            // settling; jumping to the end must (w4/m228).
+            // settling; jumping to the newest line must (w4/m228).
             endSettling();
             setPinned(true);
-            scrollToBottom();
+            scrollToNewest();
           }}
         >
-          <ArrowDown className="h-4 w-4" />
+          {descending ? (
+            <ArrowUp className="h-4 w-4" />
+          ) : (
+            <ArrowDown className="h-4 w-4" />
+          )}
           {t("logs.jumpToLatest")}
         </Button>
       ) : null}
+    </div>
+  );
+}
+
+// The date row over a new day's first line (Render's `Nov 19`), in a list
+// spanning more than one day. Measured like a line row, so the virtualizer
+// places the rows under it at their true offsets.
+function DayRow({
+  index,
+  measureRef,
+  label,
+}: {
+  index: number;
+  measureRef: (node: Element | null) => void;
+  label: string;
+}) {
+  return (
+    <div
+      data-index={index}
+      data-log-day=""
+      ref={measureRef}
+      className="flex items-center px-4 pt-2 pb-1 font-sans text-[11px] font-medium text-muted-foreground"
+    >
+      {/* Held at the panel's left edge while a nowrap list scrolls across. */}
+      <span className="sticky left-4">{label}</span>
     </div>
   );
 }
@@ -537,6 +744,9 @@ const LogRow = memo(function LogRow({
   showTimestamps,
   onInstanceFilter,
   resourceLabel,
+  expandAll,
+  expanded,
+  onToggleExpanded,
   t,
   language,
 }: {
@@ -552,24 +762,34 @@ const LogRow = memo(function LogRow({
    *  null for one the list does not name, which shows its id; undefined when
    *  the list names no resources at all. */
   resourceLabel: LogResourceLabel | null | undefined;
+  /** Options ▸ Expand everything is on. */
+  expandAll: boolean;
+  /** The reader opened this row's clamped message. */
+  expanded: boolean;
+  onToggleExpanded: (key: string) => void;
   t: Translate;
   /** The dashboard language the line clock reads in. */
   language: string;
 }) {
   const isRequest = line.type === LOG_TYPE_REQUEST;
+  const level = lineLevel(line);
+  // A long message shows its first lines until the reader opens it.
+  const clip = expandAll ? null : clampMessage(line);
+  const shown = clip && !expanded ? clip : line;
   return (
     <div
       data-index={index}
+      data-active={active ? "" : undefined}
       ref={measureRef}
       className={cn(
         // Every cell reads from the first line: a tag centred against a
         // wrapped message sat a line below its time.
-        "flex items-baseline gap-3 px-4 py-0.5 hover:bg-muted/60",
+        "group/row flex items-baseline gap-3 px-4 py-0.5 hover:bg-muted/60",
         // The keyboard's row cursor (↑/↓ in the focused list).
         active && "outline-2 -outline-offset-2 outline-ring",
         // Errors and warnings stand out as Render's log does: a tinted row
         // with a rule at its edge; the text keeps its colour.
-        LEVEL_ROW_CLASS[line.level?.toLowerCase() ?? ""],
+        level ? LEVEL_ROW_CLASS[level] : undefined,
         // In a narrow panel a wrapped row puts its time and instance on one
         // line and gives the message the panel's full width under them:
         // beside a fixed time-and-instance gutter, the message had under
@@ -582,13 +802,17 @@ const LogRow = memo(function LogRow({
           : "whitespace-pre",
       )}
     >
+      <LevelMark
+        level={level}
+        text={level ? lineLevelText(line, level) : ""}
+        t={t}
+      />
       {showTimestamps ? (
-        <span
-          className="shrink-0 tabular-nums text-muted-foreground"
-          title={line.timestamp}
-        >
-          {formatClockTime(line.timestamp, language)}
-        </span>
+        <LineTime
+          timestamp={line.timestamp}
+          active={active}
+          language={language}
+        />
       ) : null}
       {resourceLabel !== undefined && line.resource ? (
         <ResourceTag id={line.resource} label={resourceLabel} />
@@ -661,11 +885,113 @@ const LogRow = memo(function LogRow({
         {isRequest && (line.host || line.path)
           ? `${line.host}${line.path} `
           : null}
-        <LogMessage spans={line.spans} text={line.message} />
+        <LogMessage
+          spans={shown.spans}
+          text={"text" in shown ? shown.text : shown.message}
+        />
+        {clip ? (
+          <>
+            {expanded ? " " : "… "}
+            <ExpandToggle
+              label={expanded ? t("logs.showLess") : t("logs.showMore")}
+              onClick={() => onToggleExpanded(line.key)}
+            />
+          </>
+        ) : null}
       </span>
     </div>
   );
 });
+
+// Render's level gutter (w3/m509): the line's level as an icon, its word on
+// hover and as its accessible name; an empty cell of the same width for a
+// line with no level, so every row's time starts in one column.
+function LevelMark({
+  level,
+  text,
+  t,
+}: {
+  level: LineLevel | null;
+  /** The level's word: the hover title and accessible name. */
+  text: string;
+  t: Translate;
+}) {
+  if (!level) return <span aria-hidden className={GUTTER_CLASS} />;
+  const Icon = LEVEL_ICONS[level];
+  return (
+    <span
+      role="img"
+      aria-label={t("logs.lineLevel", { level: text })}
+      title={text}
+      className={cn(GUTTER_CLASS, LEVEL_ICON_CLASS[level])}
+    >
+      <Icon aria-hidden className="size-3.5" />
+    </span>
+  );
+}
+
+// A row's time. The full local, UTC and Unix timestamp opens on hover, as on
+// Render's log, or under the keyboard's row cursor (the time is out of the
+// Tab order, like the instance tag). The tooltip mounts only then: a Radix
+// tooltip in every row cost each appended or scrolled-in row its mount.
+function LineTime({
+  timestamp,
+  active,
+  language,
+}: {
+  timestamp: string;
+  active: boolean;
+  language: string;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const className = "shrink-0 tabular-nums text-muted-foreground";
+  // An empty cell for a line without a time keeps the row's gaps the same.
+  if (!timestamp) return <span className={className} />;
+  const time = formatClockTime(timestamp, language);
+  if (!hovered && !active) {
+    return (
+      <time
+        dateTime={timestamp}
+        className={className}
+        onPointerEnter={() => setHovered(true)}
+      >
+        {time}
+      </time>
+    );
+  }
+  return (
+    <InstantTooltip
+      value={timestamp}
+      open={active}
+      initiallyOpen={hovered}
+      tabIndex={-1}
+      className={cn(className, "no-underline")}
+    >
+      {time}
+    </InstantTooltip>
+  );
+}
+
+// Opens or closes one row's clamped message: part of the line's text, so
+// exempt from the touch region's control height like the instance tag.
+function ExpandToggle({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      data-touch-exempt=""
+      onClick={onClick}
+      className="cursor-pointer rounded-sm font-sans text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+    >
+      {label}
+    </button>
+  );
+}
 
 // A project view line's resource (w3/m505): Render's colored dot and
 // `[name]`, linking to the resource's own page. A resource the page's list
@@ -722,15 +1048,4 @@ function LogMessage({
       {span.text}
     </span>
   ));
-}
-
-// Public instance ids are `<service-id>-<opaque>` (20-char base32-hex suffix).
-// Prefer a compact suffix when present; otherwise show the full id. Filtering
-// always uses the full backend-provided value from the line / chip.
-function shortInstance(instance: string): string {
-  const suffix = instance.split("-").at(-1) ?? instance;
-  if (/^[0-9a-v]{20}$/.test(suffix)) {
-    return suffix.slice(0, 5);
-  }
-  return suffix.length === 5 ? suffix : instance;
 }

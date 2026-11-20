@@ -225,6 +225,43 @@ const STATUS: Status[] = [
     dark: { fg: "red-400", tint: ["red-500", 0.15] },
     on: "logViewport",
   },
+  // The level gutter's marks (w3/m509), each on its own row's tint.
+  {
+    name: "log warning level mark",
+    file: {
+      path: "src/features/logs/components/log-line-list.tsx",
+      contains: [
+        "text-amber-800 dark:text-amber-400",
+        "bg-amber-500/10 shadow-[inset_2px_0_0_var(--color-amber-500)]",
+      ],
+    },
+    light: { fg: "amber-800", tint: ["amber-500", 0.1] },
+    dark: { fg: "amber-400", tint: ["amber-500", 0.1] },
+    on: "logViewport",
+  },
+  {
+    name: "log error level mark",
+    file: {
+      path: "src/features/logs/components/log-line-list.tsx",
+      contains: [
+        "text-red-700 dark:text-red-400",
+        "bg-destructive/10 shadow-[inset_2px_0_0_var(--color-destructive)]",
+      ],
+    },
+    light: { fg: "red-700", tint: ["--destructive", 0.1] },
+    dark: { fg: "red-400", tint: ["--destructive", 0.1] },
+    on: "logViewport",
+  },
+  {
+    name: "log notice level mark",
+    file: {
+      path: "src/features/logs/components/log-line-list.tsx",
+      contains: ["text-blue-700 dark:text-blue-400"],
+    },
+    light: { fg: "blue-700" },
+    dark: { fg: "blue-400" },
+    on: "logViewport",
+  },
   {
     name: "project card health line",
     file: {
