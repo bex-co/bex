@@ -86,4 +86,4 @@ Workspace `bex` (network tier `custom`, which is `registries` plus two hosts), o
 
 **Cleanup.** The environment was deleted at 18:34Z (`GET /v1/agent-repo-environments` → `[]`, the build's `imageAvailable: false`), and the check sessions were archived. They created no branch push and no pull request.
 
-**Observation (not this milestone's defect).** All nine bex-co/beancount-io automations in the `bex` workspace still tell the agent "`gh` is not installed … use another available route". That is their own task text, so a routine that reads CI history keeps avoiding `gh` until the workspace edits those overrides. Filed as [w10/030](../../030.md).
+**Observation (not this milestone's defect).** All nine bex-co/beancount-io automations in the `bex` workspace still tell the agent "`gh` is not installed … use another available route". That is their own task text, so a routine that reads CI history keeps avoiding `gh` until the workspace edits those overrides. Filed as [w10/030](../../blocked/030.md).
