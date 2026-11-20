@@ -39,6 +39,7 @@ import (
 
 	"github.com/bex-co/bex/lego/operator/internal/sniproxy"
 	"github.com/bex-co/bex/lego/types/tiers"
+	"github.com/bex-co/bex/lego/types/tiers/connlimit"
 )
 
 // buildClientHello constructs a minimal TLS 1.3-shaped ClientHello record
@@ -617,10 +618,12 @@ func TestTrustedProxySourceRoutesDatabaseAllowlist(t *testing.T) {
 // max_connections (every plan, so a tier added later is admitted by its own
 // figure); every pooler, the primary's and each replica's own (w6/m467), takes
 // PgBouncer's client limit. A plan change reaches the route on the next watch
-// event.
+// event. The proxy reads the figure from tiers/connlimit and the operator from
+// tiers (w6/154), so every plan either names is checked against the operator's.
 func TestRouterCarriesEachRoutesCapacityFromThePlan(t *testing.T) {
 	source := netip.MustParseAddr("203.0.113.9")
-	for _, plan := range append(tiers.Postgres.IDs(), "", "unknown-plan") {
+	plans := append(tiers.Postgres.IDs(), connlimit.Postgres.Plans()...)
+	for _, plan := range append(plans, "", "unknown-plan") {
 		router := newRouter("db.bex.co")
 		db := &sniproxy.Database{
 			ObjectMeta: metav1.ObjectMeta{Name: "mydb", Namespace: "tenant-ns"},

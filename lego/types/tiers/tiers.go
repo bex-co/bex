@@ -19,7 +19,9 @@ limitations under the License.
 // — Compute (App/web-service instance types), Postgres (Database instance
 // types), and Valkey (KeyValue instance types) — replacing what used to be
 // independent hardcoded copies in the operator, the backend store, and the
-// docs that could only drift apart.
+// docs that could only drift apart. The Postgres and Valkey plans' connection
+// limits come from the connlimit subpackage instead, which the SNI proxies
+// link without the rest of the catalog (w6/154).
 //
 // It mirrors Render's published ladders (render.com/docs/compute-plans and
 // their Postgres instance types) and carries no pricing. Backend-only
@@ -35,6 +37,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/yaml"
+
+	"github.com/bex-co/bex/lego/types/tiers/connlimit"
 )
 
 //go:embed tiers.yaml
@@ -104,8 +108,9 @@ type PostgresTier struct {
 	// MaxConnections is Render's connection limit for the plan, PostgreSQL's
 	// max_connections: the client connections a database accepts before the
 	// server refuses the next (w6/m457). The operator sets it on the server,
-	// where no declared parameter can change it (w6/134).
-	MaxConnections int32 `json:"maxConnections"`
+	// where no declared parameter can change it (w6/134). It comes from
+	// connlimit.Postgres, never from tiers.yaml (w6/154).
+	MaxConnections int32 `json:"-"`
 }
 
 // ValkeyTier is one rung of the managed key-value ladder (the KeyValue CRD's
@@ -122,8 +127,9 @@ type ValkeyTier struct {
 	// Instances is the Valkey StatefulSet size (1 for MVP).
 	Instances int32 `json:"instances"`
 	// ConnectionLimit is Render's connection limit for the plan: the client
-	// connections a store accepts before the next is refused (w6/m456).
-	ConnectionLimit int32 `json:"connectionLimit"`
+	// connections a store accepts before the next is refused (w6/m456). It
+	// comes from connlimit.Valkey, never from tiers.yaml (w6/154).
+	ConnectionLimit int32 `json:"-"`
 	// ServingPool and Paused mean what they mean on ComputeTier: a store
 	// larger than a standard bex-tenant-0 node runs on the dedicated pool the
 	// compute ladder already names, and a paused tier is refused for new
@@ -315,12 +321,6 @@ func (t PostgresTier) SupportsDiskAutoscaling() bool { return t.paid() }
 
 // SupportsConnectionPooling follows Render's paid-compute requirement.
 func (t PostgresTier) SupportsConnectionPooling() bool { return t.paid() }
-
-// PostgresPoolerMaxClientConn is the client connections a database's managed
-// PgBouncer accepts on its pooled URL, Render's max_client_conn
-// (render.com/docs/postgresql-connection-pooling, read 2026-11-17). It is the
-// pooled route's connection limit at the external front door (w6/m457).
-const PostgresPoolerMaxClientConn = 30000
 
 // PostgresPoolerReservedConnections are the server connections a managed
 // PgBouncer leaves to everything else: "Render Postgres reserves 10
@@ -525,19 +525,22 @@ func parsePostgres(entries []PostgresTier, defaultID string) (PostgresCatalog, e
 		return PostgresCatalog{}, fmt.Errorf("no tiers defined")
 	}
 	byID := make(map[string]PostgresTier, len(entries))
-	for _, t := range entries {
+	for i := range entries {
+		t := &entries[i]
 		if err := validateEntry(t.ID, t.CPU, t.Memory, byID); err != nil {
 			return PostgresCatalog{}, err
 		}
 		if err := validateDatastore(t.ID, t.StorageGB, t.Instances); err != nil {
 			return PostgresCatalog{}, err
 		}
-		if t.MaxConnections <= 0 {
-			return PostgresCatalog{}, fmt.Errorf("tier %q: maxConnections must be > 0", t.ID)
+		limit, err := datastoreLimit(connlimit.Postgres, t.ID)
+		if err != nil {
+			return PostgresCatalog{}, err
 		}
-		byID[t.ID] = t
+		t.MaxConnections = limit
+		byID[t.ID] = *t
 	}
-	if err := validateDefault(defaultID, byID); err != nil {
+	if err := validateDatastoreDefault(connlimit.Postgres, defaultID, byID); err != nil {
 		return PostgresCatalog{}, err
 	}
 	return PostgresCatalog{tiers: entries, byID: byID, defaultID: defaultID}, nil
@@ -550,22 +553,25 @@ func parseValkey(entries []ValkeyTier, defaultID string, pools []string) (Valkey
 		return ValkeyCatalog{}, fmt.Errorf("no tiers defined")
 	}
 	byID := make(map[string]ValkeyTier, len(entries))
-	for _, t := range entries {
+	for i := range entries {
+		t := &entries[i]
 		if err := validateEntry(t.ID, t.CPU, t.Memory, byID); err != nil {
 			return ValkeyCatalog{}, err
 		}
 		if err := validateDatastore(t.ID, t.StorageGB, t.Instances); err != nil {
 			return ValkeyCatalog{}, err
 		}
-		if t.ConnectionLimit <= 0 {
-			return ValkeyCatalog{}, fmt.Errorf("tier %q: connectionLimit must be > 0", t.ID)
+		limit, err := datastoreLimit(connlimit.Valkey, t.ID)
+		if err != nil {
+			return ValkeyCatalog{}, err
 		}
+		t.ConnectionLimit = limit
 		if t.ServingPool != "" && !slices.Contains(pools, t.ServingPool) {
 			return ValkeyCatalog{}, fmt.Errorf("tier %q: servingPool %q is not a compute serving pool %v", t.ID, t.ServingPool, pools)
 		}
-		byID[t.ID] = t
+		byID[t.ID] = *t
 	}
-	if err := validateDefault(defaultID, byID); err != nil {
+	if err := validateDatastoreDefault(connlimit.Valkey, defaultID, byID); err != nil {
 		return ValkeyCatalog{}, err
 	}
 	if byID[defaultID].Paused {
@@ -600,6 +606,32 @@ func validateEntry[T any](id, cpu, memory string, seen map[string]T) error {
 	}
 	if _, err := resource.ParseQuantity(memory); err != nil {
 		return fmt.Errorf("tier %q: bad memory quantity %q: %w", id, memory, err)
+	}
+	return nil
+}
+
+// datastoreLimit is plan id's connection limit from its family's connlimit
+// ladder. A datastore tier needs one: the operator sizes the server from it,
+// and the SNI proxies, which link connlimit and none of this package, size the
+// tier's routes from the same figure (w6/154).
+func datastoreLimit(ladder connlimit.Ladder, id string) (int32, error) {
+	limit, ok := ladder.Limit(id)
+	if !ok || limit <= 0 {
+		return 0, fmt.Errorf("tier %q has no connection limit in package connlimit", id)
+	}
+	return limit, nil
+}
+
+// validateDatastoreDefault is validateDefault for a datastore family, whose
+// default must also be connlimit's: the SNI proxies size an empty or unknown
+// plan's route from connlimit's default, and the operator sizes its server
+// from this one.
+func validateDatastoreDefault[T any](ladder connlimit.Ladder, defaultID string, byID map[string]T) error {
+	if err := validateDefault(defaultID, byID); err != nil {
+		return err
+	}
+	if defaultID != ladder.DefaultPlan() {
+		return fmt.Errorf("default %q is not connlimit's default %q", defaultID, ladder.DefaultPlan())
 	}
 	return nil
 }

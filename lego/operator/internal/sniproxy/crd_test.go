@@ -289,35 +289,19 @@ var proxyBexPackages = []string{
 	"github.com/bex-co/bex/lego/types/env",
 	"github.com/bex-co/bex/lego/types/netutil",
 	"github.com/bex-co/bex/lego/types/proxyproto",
-	"github.com/bex-co/bex/lego/types/tiers",
+	"github.com/bex-co/bex/lego/types/tiers/connlimit",
 }
 
 // TestACRDFieldEditLeavesBothProxiesByteIdentical (w6/150): neither SNI proxy
 // links lego/types/v1alpha1, so a field added to the KeyValue and Database
 // specs leaves both binaries byte-identical, and the deploy keeps both pins
-// (scripts/operator-pins.sh logs "kept").
+// (scripts/operator-pins.sh logs "kept"). Since w6/154 neither links
+// lego/types/tiers either.
 func TestACRDFieldEditLeavesBothProxiesByteIdentical(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", ".."))
-	if err != nil {
-		t.Fatal(err)
-	}
-	goTool := func(args ...string) string {
-		t.Helper()
-		cmd := exec.Command("go", args...)
-		cmd.Dir = root
-		out, err := cmd.Output()
-		if err != nil {
-			stderr := ""
-			if exit, ok := err.(*exec.ExitError); ok {
-				stderr = string(exit.Stderr)
-			}
-			t.Fatalf("go %s: %v\n%s", strings.Join(args, " "), err, stderr)
-		}
-		return string(out)
-	}
-
+	t.Parallel()
+	b := newProxyBuilder(t)
 	for _, command := range proxyCommands {
-		for dep := range strings.FieldsSeq(goTool("list", "-deps", "-f", "{{if not .Standard}}{{.ImportPath}}{{end}}", command)) {
+		for dep := range strings.FieldsSeq(b.goTool("list", "-deps", "-f", "{{if not .Standard}}{{.ImportPath}}{{end}}", command)) {
 			if strings.HasPrefix(dep, "github.com/bex-co/") && !strings.HasPrefix(dep, "github.com/bex-co/bex/lego/operator/cmd/") &&
 				!slices.Contains(proxyBexPackages, dep) {
 				t.Errorf("%s links %s: each edit there would roll it (ADR021 § 10)", command, dep)
@@ -327,61 +311,148 @@ func TestACRDFieldEditLeavesBothProxiesByteIdentical(t *testing.T) {
 
 	// The synthetic edit: one field more in each spec, through a build overlay
 	// so the tree stays as it is.
-	types := strings.TrimSpace(goTool("list", "-f", "{{.Dir}}", "github.com/bex-co/bex/lego/types/v1alpha1"))
-	overlay := map[string]string{}
-	work := t.TempDir()
-	for file, spec := range map[string]string{
-		"keyvalue_types.go": "type KeyValueSpec struct {\n",
-		"database_types.go": "type DatabaseSpec struct {\n",
-	} {
-		source, err := os.ReadFile(filepath.Join(types, file))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !bytes.Contains(source, []byte(spec)) {
-			t.Fatalf("%s no longer declares %q; edit another field here", file, strings.TrimSpace(spec))
-		}
-		edited := bytes.Replace(source, []byte(spec),
-			[]byte(spec+"\tSyntheticW6150 string `json:\"syntheticW6150,omitempty\"`\n"), 1)
-		replacement := filepath.Join(work, file)
-		if err := os.WriteFile(replacement, edited, 0o600); err != nil {
-			t.Fatal(err)
-		}
-		overlay[filepath.Join(types, file)] = replacement
-	}
-	overlayJSON, err := json.Marshal(map[string]any{"Replace": overlay})
-	if err != nil {
-		t.Fatal(err)
-	}
-	overlayFile := filepath.Join(work, "overlay.json")
-	if err := os.WriteFile(overlayFile, overlayJSON, 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	build := func(dir string, extra ...string) {
-		t.Helper()
-		if err := os.Mkdir(dir, 0o700); err != nil {
-			t.Fatal(err)
-		}
-		goTool(append(append([]string{"build", "-o", dir + string(filepath.Separator)}, extra...), proxyCommands...)...)
-	}
-	before, after := filepath.Join(work, "before"), filepath.Join(work, "after")
-	build(before)
-	build(after, "-overlay", overlayFile)
-	for _, command := range proxyCommands {
-		name := filepath.Base(command)
-		was, is := fileSHA256(t, filepath.Join(before, name)), fileSHA256(t, filepath.Join(after, name))
-		if was != is {
+	types := b.packageDir("github.com/bex-co/bex/lego/types/v1alpha1")
+	field := "\tSyntheticW6150 string `json:\"syntheticW6150,omitempty\"`\n"
+	overlay := b.overlay("crd", map[string][][2]string{
+		filepath.Join(types, "keyvalue_types.go"): {{"type KeyValueSpec struct {\n", "type KeyValueSpec struct {\n" + field}},
+		filepath.Join(types, "database_types.go"): {{"type DatabaseSpec struct {\n", "type DatabaseSpec struct {\n" + field}},
+	})
+	before, after := b.build("before", ""), b.build("after", overlay)
+	for name, was := range before {
+		if is := after[name]; is != was {
 			t.Errorf("/%s changed with a field no proxy reads (%x → %x): the deploy would move its pin", name, was, is)
 		}
 	}
 }
 
-func fileSHA256(t *testing.T, path string) [sha256.Size]byte {
-	t.Helper()
-	data, err := os.ReadFile(path)
+// TestACatalogEditLeavesBothProxiesByteIdentical (w6/154): both SNI proxies
+// size their routes from tiers/connlimit and link nothing else of the tiers
+// catalog, so a compute tier or serving pool edit in tiers.yaml, or any edit to
+// package tiers, leaves both binaries byte-identical and the deploy keeps both
+// pins. An edit to a connection limit still changes both, so it reaches the
+// routes with the proxies' next roll.
+func TestACatalogEditLeavesBothProxiesByteIdentical(t *testing.T) {
+	t.Parallel()
+	b := newProxyBuilder(t)
+	catalog := b.packageDir("github.com/bex-co/bex/lego/types/tiers")
+	limits := b.packageDir("github.com/bex-co/bex/lego/types/tiers/connlimit")
+	catalogEdit := b.overlay("catalog", map[string][][2]string{
+		// The free compute tier's CPU, and pro-plus's serving pool.
+		filepath.Join(catalog, "tiers.yaml"): {
+			{"      renderPlan: free\n      cpu: 100m\n", "      renderPlan: free\n      cpu: 200m\n"},
+			{"      servingPool: xl\n", "      servingPool: xxl\n"},
+		},
+		filepath.Join(catalog, "tiers.go"): {{"\nfunc mustLoad(", "\nfunc syntheticW6154() {}\n\nfunc mustLoad("}},
+	})
+	limitEdit := b.overlay("limit", map[string][][2]string{
+		filepath.Join(limits, "connlimit.go"): {{"\t\"starter\":   250,\n", "\t\"starter\":   300,\n"}},
+	})
+	before, afterCatalog, afterLimit := b.build("before", ""), b.build("catalog", catalogEdit), b.build("limit", limitEdit)
+	for name, was := range before {
+		if is := afterCatalog[name]; is != was {
+			t.Errorf("/%s changed with a catalog edit no route reads (%x → %x): the deploy would move its pin", name, was, is)
+		}
+		if afterLimit[name] == was {
+			t.Errorf("/%s did not change with a connection limit: its routes would keep the old figure", name)
+		}
+	}
+}
+
+// proxyBuilder builds both SNI proxies from the operator module, as the image
+// does, before or after a synthetic source edit.
+type proxyBuilder struct {
+	t    *testing.T
+	root string
+	work string
+}
+
+func newProxyBuilder(t *testing.T) *proxyBuilder {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
-	return sha256.Sum256(data)
+	return &proxyBuilder{t: t, root: root, work: t.TempDir()}
+}
+
+func (b *proxyBuilder) goTool(args ...string) string {
+	b.t.Helper()
+	cmd := exec.Command("go", args...)
+	cmd.Dir = b.root
+	out, err := cmd.Output()
+	if err != nil {
+		stderr := ""
+		if exit, ok := err.(*exec.ExitError); ok {
+			stderr = string(exit.Stderr)
+		}
+		b.t.Fatalf("go %s: %v\n%s", strings.Join(args, " "), err, stderr)
+	}
+	return string(out)
+}
+
+// packageDir is the source directory of the package at importPath.
+func (b *proxyBuilder) packageDir(importPath string) string {
+	b.t.Helper()
+	return strings.TrimSpace(b.goTool("list", "-f", "{{.Dir}}", importPath))
+}
+
+// overlay writes a build overlay that replaces each file with a copy in which
+// each of its old/new pairs was replaced once, so the tree stays as it is, and
+// returns the overlay's path.
+func (b *proxyBuilder) overlay(name string, edits map[string][][2]string) string {
+	b.t.Helper()
+	dir := filepath.Join(b.work, name)
+	if err := os.Mkdir(dir, 0o700); err != nil {
+		b.t.Fatal(err)
+	}
+	replace := map[string]string{}
+	for file, pairs := range edits {
+		source, err := os.ReadFile(file)
+		if err != nil {
+			b.t.Fatal(err)
+		}
+		for _, pair := range pairs {
+			if !bytes.Contains(source, []byte(pair[0])) {
+				b.t.Fatalf("%s no longer holds %q; edit something else here", file, pair[0])
+			}
+			source = bytes.Replace(source, []byte(pair[0]), []byte(pair[1]), 1)
+		}
+		edited := filepath.Join(dir, filepath.Base(file))
+		if err := os.WriteFile(edited, source, 0o600); err != nil {
+			b.t.Fatal(err)
+		}
+		replace[file] = edited
+	}
+	overlay, err := json.Marshal(map[string]any{"Replace": replace})
+	if err != nil {
+		b.t.Fatal(err)
+	}
+	path := filepath.Join(dir, "overlay.json")
+	if err := os.WriteFile(path, overlay, 0o600); err != nil {
+		b.t.Fatal(err)
+	}
+	return path
+}
+
+// build builds both proxies, through overlay when it is set, and returns each
+// binary's sha256 by name.
+func (b *proxyBuilder) build(name, overlay string) map[string][sha256.Size]byte {
+	b.t.Helper()
+	dir := filepath.Join(b.work, name+"-bin")
+	if err := os.Mkdir(dir, 0o700); err != nil {
+		b.t.Fatal(err)
+	}
+	args := []string{"build", "-o", dir + string(filepath.Separator)}
+	if overlay != "" {
+		args = append(args, "-overlay", overlay)
+	}
+	b.goTool(append(args, proxyCommands...)...)
+	sums := map[string][sha256.Size]byte{}
+	for _, command := range proxyCommands {
+		data, err := os.ReadFile(filepath.Join(dir, filepath.Base(command)))
+		if err != nil {
+			b.t.Fatal(err)
+		}
+		sums[filepath.Base(command)] = sha256.Sum256(data)
+	}
+	return sums
 }

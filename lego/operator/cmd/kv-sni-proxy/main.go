@@ -44,7 +44,7 @@ import (
 
 	"github.com/bex-co/bex/lego/operator/internal/sniproxy"
 	"github.com/bex-co/bex/lego/types/env"
-	"github.com/bex-co/bex/lego/types/tiers"
+	"github.com/bex-co/bex/lego/types/tiers/connlimit"
 )
 
 const (
@@ -78,7 +78,9 @@ const (
 var scheme = runtime.NewScheme()
 
 // The scheme holds sniproxy's routing views, never lego/types/v1alpha1, so a
-// CRD edit leaves this binary byte-identical and rolls no pod (w6/150).
+// CRD edit leaves this binary byte-identical and rolls no pod (w6/150). Routes
+// are sized from tiers/connlimit, never tiers, so a catalog edit does neither
+// (w6/154).
 func init() { utilruntime.Must(sniproxy.AddToScheme(scheme)) }
 
 type kvRoute struct {
@@ -115,7 +117,7 @@ func (r *kvRouter) set(kv *sniproxy.KeyValue) error {
 		ResourceID: kv.Name,
 		Backend:    fmt.Sprintf("%s.%s.svc.cluster.local:6380", kv.Name, kv.Namespace),
 		Route:      kv.Namespace + "/" + kv.Name,
-		Capacity:   sniproxy.RouteCapacity(tiers.Valkey.Resolve(kv.Spec.Plan).ConnectionLimit),
+		Capacity:   sniproxy.RouteCapacity(connlimit.Valkey.Resolve(kv.Spec.Plan)),
 	}
 	allow, err := sniproxy.ParseAllowList(
 		kv.Spec.IPAllowList, kv.Spec.EnvironmentIPAllowList, kv.Spec.WorkspaceIPAllowList)

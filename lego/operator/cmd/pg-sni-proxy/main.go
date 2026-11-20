@@ -51,7 +51,7 @@ import (
 
 	"github.com/bex-co/bex/lego/operator/internal/sniproxy"
 	"github.com/bex-co/bex/lego/types/env"
-	"github.com/bex-co/bex/lego/types/tiers"
+	"github.com/bex-co/bex/lego/types/tiers/connlimit"
 )
 
 const (
@@ -101,7 +101,9 @@ var backendSSLReplyTimeout = dialTimeout
 var scheme = runtime.NewScheme()
 
 // The scheme holds sniproxy's routing views, never lego/types/v1alpha1, so a
-// CRD edit leaves this binary byte-identical and rolls no pod (w6/150).
+// CRD edit leaves this binary byte-identical and rolls no pod (w6/150). Routes
+// are sized from tiers/connlimit, never tiers, so a catalog edit does neither
+// (w6/154).
 func init() {
 	utilruntime.Must(sniproxy.AddToScheme(scheme))
 }
@@ -170,7 +172,7 @@ func (r *dbRouter) set(db *sniproxy.Database) error {
 	}
 	entry := dbRoutingEntry{
 		namespace: db.Namespace, pooler: db.Spec.Pooler, replicas: map[string]bool{},
-		maxConnections: tiers.Postgres.Resolve(db.Spec.Plan).MaxConnections,
+		maxConnections: connlimit.Postgres.Resolve(db.Spec.Plan),
 	}
 	for _, replica := range db.Spec.ReadReplicas {
 		entry.replicas[replica.Name] = true
@@ -214,14 +216,14 @@ func (r *dbRouter) indexLocked(name string, entry dbRoutingEntry) {
 	}
 	add(name, name+"-rw", entry.maxConnections)
 	if entry.pooler {
-		add(name+"-pool", name+"-pooler", tiers.PostgresPoolerMaxClientConn)
+		add(name+"-pool", name+"-pooler", connlimit.PostgresPoolerMaxClientConn)
 	}
 	for replica := range entry.replicas {
 		service := sniproxy.ReadReplicaServiceName(name, replica)
 		add(service, service, entry.maxConnections)
 		if entry.pooler {
 			pooler := sniproxy.ReadReplicaPoolerName(name, replica)
-			add(pooler, pooler, tiers.PostgresPoolerMaxClientConn)
+			add(pooler, pooler, connlimit.PostgresPoolerMaxClientConn)
 		}
 	}
 }

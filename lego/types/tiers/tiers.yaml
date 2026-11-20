@@ -31,18 +31,20 @@
 #             instance-type redesign: basic-256mb, basic-1gb, ...). storageGB
 #             is the plan's volume floor — spec.storageGB can grow past it,
 #             never below; instances is the CNPG cluster size.
-#             maxConnections is Render's connection limit for the plan
-#             (render.com/docs/compute-plans, read 2026-11-17: 100 up to
-#             4 GB, 200 at 8 GB, 400 at 16 GB, 500 from 32 GB), PostgreSQL's
-#             max_connections, which the operator sets on the server
-#             (w6/134); the external front door admits each route up to it
-#             (w6/m457, ADR009).
 #
 #   valkey:   managed key-value (Valkey) instance types (the KeyValue CRD's
 #             spec.plan), the Redis-compatible sibling of the postgres family —
 #             single-instance tiers differing by compute (requests==limits) and
 #             storage, using Render's Key Value vocabulary (free / starter /
 #             standard / …, shared with the web-service ladder).
+#
+# The datastore plans' connection limits are not here: Render's limit for
+# each postgres and valkey plan lives in tiers/connlimit (connlimit.go), and
+# this package fills each tier's from it. The SNI proxies size their routes
+# from that package and link none of this one, so an edit here rolls neither
+# (w6/154, ADR021 § 10). A datastore plan added here needs its limit there:
+# the catalog refuses to load without one, or with a postgres or valkey
+# default other than connlimit's.
 #
 # No pricing here — backend-only internal/pricing/pricing.yaml drives advisory
 # estimates and the Stripe Billing catalog (ADR030/ADR040). This file is a
@@ -119,21 +121,18 @@ postgres:
       memory: 256Mi
       storageGB: 1
       instances: 1
-      maxConnections: 100
       backup: false # Render's Free Postgres is ephemeral — no backups, expires
     - id: basic-256mb
       cpu: 100m
       memory: 256Mi
       storageGB: 1
       instances: 1
-      maxConnections: 100
       backup: true # daily base backup + WAL archiving => PITR
     - id: basic-1gb
       cpu: 500m
       memory: 1Gi
       storageGB: 5
       instances: 1
-      maxConnections: 100
       backup: true
     # The ≥1-CPU rungs (w2/m171): the first plans that can run high
     # availability (Render: "at least 1 CPU"). ids follow the catalog's
@@ -148,21 +147,18 @@ postgres:
       memory: 2Gi
       storageGB: 10
       instances: 1
-      maxConnections: 100
       backup: true
     - id: pro-4gb
       cpu: "1"
       memory: 4Gi
       storageGB: 10
       instances: 1
-      maxConnections: 100
       backup: true
     - id: basic-4gb
       cpu: "2"
       memory: 4Gi
       storageGB: 10
       instances: 1
-      maxConnections: 100
       backup: true
 
 valkey:
@@ -173,12 +169,8 @@ valkey:
   # free tier is 25MB / no persistence; bex's is more generous at 128Mi.) When a
   # spelling-divergent tier is added (pro_plus ↔ pro-plus), introduce a
   # renderPlan field here like the compute family has. The Key Value ids keep
-  # Render's own underscore spellings, so none is needed.
-  #
-  # connectionLimit is Render's connection limit for the plan
-  # (render.com/docs/compute-plans#render-key-value-plans, read 2026-11-17):
-  # the client connections a store accepts before the next is refused with
-  # Valkey's "ERR max number of clients reached" (w6/m456, ADR021).
+  # Render's own underscore spellings, so none is needed. Each plan's
+  # connection limit lives in tiers/connlimit (see the header).
   default: free
   tiers:
     - id: free
@@ -186,19 +178,16 @@ valkey:
       memory: 128Mi
       storageGB: 1
       instances: 1
-      connectionLimit: 50
     - id: starter
       cpu: 100m
       memory: 256Mi
       storageGB: 1
       instances: 1
-      connectionLimit: 250
     - id: standard
       cpu: 500m
       memory: 1Gi
       storageGB: 5
       instances: 1
-      connectionLimit: 1000
     # w5/m266: Render's larger Key Value plans (render.com/docs/compute-plans,
     # read 2026-11-05) — memory is the plan's RAM like the rungs above, storage
     # twice it for snapshot + AOF rewrite headroom. pro_plus and pro_max need
@@ -210,33 +199,28 @@ valkey:
       memory: 3Gi
       storageGB: 6
       instances: 1
-      connectionLimit: 3000
     - id: pro
       cpu: "1"
       memory: 5Gi
       storageGB: 10
       instances: 1
-      connectionLimit: 5000
     - id: pro_plus
       cpu: "2"
       memory: 10Gi
       storageGB: 20
       instances: 1
-      connectionLimit: 10000
       servingPool: xl
     - id: pro_max
       cpu: "4"
       memory: 20Gi
       storageGB: 40
       instances: 1
-      connectionLimit: 20000
       servingPool: xl
     - id: pro_ultra
       cpu: "4"
       memory: 40Gi
       storageGB: 80
       instances: 1
-      connectionLimit: 40000
       servingPool: xxl
       paused: true
     - id: 50g
@@ -244,6 +228,5 @@ valkey:
       memory: 50Gi
       storageGB: 100
       instances: 1
-      connectionLimit: 50000
       servingPool: xxl
       paused: true

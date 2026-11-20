@@ -47,6 +47,7 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
 	"github.com/bex-co/bex/lego/types/tiers"
+	"github.com/bex-co/bex/lego/types/tiers/connlimit"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -734,7 +735,7 @@ func poolerSpec(clusterName string, plan tiers.PostgresTier) map[string]any {
 func pgbouncerParameters(plan tiers.PostgresTier) map[string]any {
 	pool := strconv.Itoa(int(plan.PoolerPoolSize()))
 	return map[string]any{
-		"max_client_conn":     strconv.Itoa(tiers.PostgresPoolerMaxClientConn),
+		"max_client_conn":     strconv.Itoa(connlimit.PostgresPoolerMaxClientConn),
 		"default_pool_size":   pool,
 		"max_db_connections":  pool,
 		"client_idle_timeout": "86400",

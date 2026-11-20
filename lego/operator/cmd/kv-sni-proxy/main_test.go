@@ -35,6 +35,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/bex-co/bex/lego/operator/internal/sniproxy"
+	"github.com/bex-co/bex/lego/types/tiers"
+	"github.com/bex-co/bex/lego/types/tiers/connlimit"
 )
 
 func TestRouterRoutesPublicKeyValueAndPreservesAllowlist(t *testing.T) {
@@ -133,6 +135,33 @@ func TestRouterRoutesPublicKeyValueAndPreservesAllowlist(t *testing.T) {
 
 // TestRouterWorkspaceLayerRefusesWhatServiceAndEnvironmentAllow pins w9/m388:
 // the workspace layer is a third AND on the Key Value front door.
+// TestRouterCarriesEachStoresCapacityFromThePlan (w6/154): a store's route
+// admits twice the limit the operator gives its server, on every plan the
+// catalog or tiers/connlimit names, an empty one and an unknown one. The proxy
+// reads the figure from connlimit and the operator from tiers, so a limit, a
+// plan or a default that differs between the two fails here.
+func TestRouterCarriesEachStoresCapacityFromThePlan(t *testing.T) {
+	source := netip.MustParseAddr("203.0.113.9")
+	plans := append(tiers.Valkey.IDs(), connlimit.Valkey.Plans()...)
+	for _, plan := range append(plans, "", "unknown-plan") {
+		router := newRouter("kv.bex.co")
+		kv := &sniproxy.KeyValue{}
+		kv.Name, kv.Namespace = "kv-one", "default"
+		kv.Spec.Public, kv.Spec.Plan = true, plan
+		kv.Status.ExternalHost = "kv-one.kv.bex.co"
+		if err := router.set(kv); err != nil {
+			t.Fatal(err)
+		}
+		route, ok := router.resolve("kv-one.kv.bex.co", source)
+		if !ok {
+			t.Fatalf("plan %q: the store did not resolve", plan)
+		}
+		if server := tiers.Valkey.Resolve(plan).ConnectionLimit; route.Capacity != sniproxy.RouteCapacity(server) {
+			t.Errorf("plan %q: the route admits %d, want twice the server's %d", plan, route.Capacity, server)
+		}
+	}
+}
+
 func TestRouterWorkspaceLayerRefusesWhatServiceAndEnvironmentAllow(t *testing.T) {
 	router := newRouter("kv.bex.co")
 	kv := &sniproxy.KeyValue{}
