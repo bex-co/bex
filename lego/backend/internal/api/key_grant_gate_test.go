@@ -147,10 +147,17 @@ func TestScopedKeyIsRefusedOutsideItsGrantOnEverySurface(t *testing.T) {
 			`{ services { id } deploys(serviceId: "web") { id } }`,
 			// A secret through a nested field of a permitted root.
 			`{ service(id: "web") { envVar(key: "K") { value } } }`,
+			// The same, at the end of a fragment-spread chain longer than the
+			// sensitive walk's depth cap.
+			fragmentSpreadChain(maxGraphQLSensitiveWalkDepth+1, `envVar(key: "K") { value }`),
+			fragmentSpreadChain(maxGraphQLSensitiveWalkDepth+1, `secretFile(name: "a.txt") { content }`),
 		} {
 			if out := graphqlDo(t, srv, key, doc); graphqlCode(out) != core.KeyPermissionDeniedCode {
 				t.Errorf("Services Read only key ran %s: %v", doc, out)
 			}
+		}
+		if doc := fragmentSpreadChain(maxGraphQLSensitiveWalkDepth+1, `envVarKeys { key }`); graphqlCode(graphqlDo(t, srv, key, doc)) == core.KeyPermissionDeniedCode {
+			t.Errorf("Services Read only key refused a long fragment chain that reveals no value")
 		}
 	})
 

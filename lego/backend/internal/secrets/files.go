@@ -705,8 +705,12 @@ func (s *Service) SecretFileNames(ctx context.Context, service string) ([]core.S
 	return out, nil
 }
 
-// SecretFileContent reads one file's content (the dashboard's "Show contents").
+// SecretFileContent reads one file's content (the dashboard's "Show contents"),
+// under the same key grant as EnvVarValue.
 func (s *Service) SecretFileContent(ctx context.Context, service, name string) (core.SecretFile, error) {
+	if err := s.RequireKeyGrant(ctx, core.KeyServicesEnv); err != nil {
+		return core.SecretFile{}, err
+	}
 	f, err := s.GetSecretFile(ctx, service, name)
 	if err != nil {
 		return core.SecretFile{}, err

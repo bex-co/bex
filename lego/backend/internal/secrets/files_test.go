@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 )
 
 func TestSecretFiles_RoundTripAndProjection(t *testing.T) {
@@ -169,6 +170,38 @@ func TestSecretFiles_ReaderSeamAndValidation(t *testing.T) {
 	got, err := svc.SecretFileContent(ctx, "web", "token")
 	if err != nil || got.Content != "abc" {
 		t.Fatalf("SecretFileContent: %+v err=%v", got, err)
+	}
+}
+
+// The GraphQL reveal seams (Service.envVar, Service.secretFile) answer a
+// scoped API key only when its grant covers "View environment variables and
+// secret files", whatever the gate in front of them decided.
+func TestValueRevealSeamsNeedTheKeyGrant(t *testing.T) {
+	store := newFakeSecretStore()
+	store.m[envPath("web")] = map[string]string{"FOO": "env-s3cret"}
+	store.m[filesPath("web")] = map[string]string{"a.txt": "file-s3cret"}
+	svc := newService(store, sampleApp("web"))
+	grants := coretest.KeyGrants{"key-1": core.KeyGrantFromEntries([]string{"services:read"})}
+	svc.KeyGrants = grants
+	key := core.WithIdentity(context.Background(), core.Identity{Subject: "key-1", ClientID: "key-1", Method: core.MethodOAuth2})
+
+	refused := func(err error) bool {
+		var coded *core.CodedError
+		return errors.As(err, &coded) && coded.Code == core.KeyPermissionDeniedCode
+	}
+	if v, err := svc.EnvVarValue(key, "web", "FOO"); !refused(err) || v.Value != "" {
+		t.Errorf("Services Read only key EnvVarValue = %+v, %v; want the grant refusal", v, err)
+	}
+	if f, err := svc.SecretFileContent(key, "web", "a.txt"); !refused(err) || f.Content != "" {
+		t.Errorf("Services Read only key SecretFileContent = %+v, %v; want the grant refusal", f, err)
+	}
+
+	grants["key-1"] = core.KeyGrantFromEntries([]string{"services:read", "services_env:read"})
+	if v, err := svc.EnvVarValue(key, "web", "FOO"); err != nil || v.Value != "env-s3cret" {
+		t.Errorf("granted key EnvVarValue = %+v, %v", v, err)
+	}
+	if f, err := svc.SecretFileContent(key, "web", "a.txt"); err != nil || f.Content != "file-s3cret" {
+		t.Errorf("granted key SecretFileContent = %+v, %v", f, err)
 	}
 }
 

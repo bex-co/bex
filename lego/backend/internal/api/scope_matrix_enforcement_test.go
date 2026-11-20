@@ -19,6 +19,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -378,12 +379,56 @@ func TestGraphQLSensitiveNestedSelection(t *testing.T) {
 			t.Errorf("query=%q op=%q got %v want %v", tc.query, tc.opName, got, tc.want)
 		}
 	}
+	// A fragment spread adds no nesting, in the cost gate or here: a chain of
+	// any length passes the cost gate, so the walk must read to its end.
+	for _, n := range []int{1, maxGraphQLSensitiveWalkDepth, maxGraphQLSensitiveWalkDepth + 1, 4 * maxGraphQLSensitiveWalkDepth} {
+		for leaf, want := range map[string]bool{
+			`envVar(key:"FOO") { value }`:          true,
+			`secretFile(name:"a.txt") { content }`: true,
+			`envVarKeys { key }`:                   false,
+		} {
+			doc := fragmentSpreadChain(n, leaf)
+			fragments, ops, ok := parseGraphQLDocument(doc)
+			if !ok {
+				t.Fatalf("parse %d-spread chain", n)
+			}
+			if err := validateGraphQLComplexityParsed(fragments, ops); err != nil {
+				t.Fatalf("cost gate refused a %d-spread chain: %v", n, err)
+			}
+			if got := graphQLSelectsSensitiveNested(fragments, ops, ""); got != want {
+				t.Errorf("%d-spread chain ending in %s: got %v want %v", n, leaf, got, want)
+			}
+		}
+	}
+	// Past its depth cap the walk has not read the whole selection, so it
+	// counts the selection as sensitive rather than as clean.
+	deep := `{ service(id:"web") { ` + strings.Repeat(`... on Service { `, maxGraphQLSensitiveWalkDepth+1) + `id` +
+		strings.Repeat(` }`, maxGraphQLSensitiveWalkDepth+1) + ` } }`
+	fragments, ops, ok := parseGraphQLDocument(deep)
+	if !ok {
+		t.Fatal("parse deep inline-fragment document")
+	}
+	if !graphQLSelectsSensitiveNested(fragments, ops, "") {
+		t.Error("a selection deeper than the walk's cap counted as not sensitive")
+	}
 	// Telemetry label stays the root field — nested escalation must not
 	// invent a new series key.
 	op, _ := graphqlOperationDims(`{ service(id:"web") { envVar(key:"FOO") { value } } }`, "")
 	if op != "service" {
 		t.Errorf("telemetry label = %q, want service", op)
 	}
+}
+
+// fragmentSpreadChain is a document whose service selection reaches leaf
+// through n named fragments, each spreading the next.
+func fragmentSpreadChain(n int, leaf string) string {
+	var b strings.Builder
+	b.WriteString(`query { service(id:"web") { ...F1 } }`)
+	for i := 1; i < n; i++ {
+		fmt.Fprintf(&b, " fragment F%d on Service { ...F%d }", i, i+1)
+	}
+	fmt.Fprintf(&b, " fragment F%d on Service { %s }", n, leaf)
+	return b.String()
 }
 
 func fmtMCP(res *mcp.CallToolResult) string {

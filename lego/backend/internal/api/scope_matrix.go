@@ -406,16 +406,20 @@ func graphQLSelectsSensitiveNested(fragments map[string]*ast.FragmentDefinition,
 	return false
 }
 
-// maxGraphQLSensitiveWalkDepth is defense-in-depth headroom under
-// graphql_cost.go's gqlMaxDepth (15). Returning false past this depth is
-// fail-open in isolation, but any document deep enough to hide a nested
-// sensitive field is rejected by the cost limiter first. Do not raise
-// gqlMaxDepth above this constant without revisiting the coupling (w4/081).
+// maxGraphQLSensitiveWalkDepth bounds the walk's nesting. depth counts fields
+// and inline fragments only, as graphql_cost.go's walk does: a fragment spread
+// adds none in either, so the cost limiter (gqlMaxDepth, 15) bounds this depth
+// for every document it admits, and the visiting set stops a spread cycle.
+// A selection the walk stops reading at the cap counts as sensitive: a part it
+// has not read cannot be called clean.
 const maxGraphQLSensitiveWalkDepth = 64
 
 func walkGraphQLSensitiveNested(sel *ast.SelectionSet, fragments map[string]*ast.FragmentDefinition, visiting map[string]bool, depth int) bool {
-	if sel == nil || depth > maxGraphQLSensitiveWalkDepth {
+	if sel == nil {
 		return false
+	}
+	if depth > maxGraphQLSensitiveWalkDepth {
+		return true
 	}
 	for _, s := range sel.Selections {
 		switch n := s.(type) {
@@ -446,7 +450,7 @@ func walkGraphQLSensitiveNested(sel *ast.SelectionSet, fragments map[string]*ast
 				continue
 			}
 			visiting[name] = true
-			hit := walkGraphQLSensitiveNested(frag.SelectionSet, fragments, visiting, depth+1)
+			hit := walkGraphQLSensitiveNested(frag.SelectionSet, fragments, visiting, depth)
 			delete(visiting, name)
 			if hit {
 				return true
