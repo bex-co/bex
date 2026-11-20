@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseAnsi } from "../ansi";
 import {
-  CLAMP_CHARS,
-  CLAMP_LINES,
-  clampMessage,
   logLineText,
   logListRows,
   logRowsText,
@@ -96,38 +93,6 @@ describe("logListRows (w3/m509)", () => {
   });
 });
 
-describe("clampMessage (w3/m509)", () => {
-  it("leaves a message within both limits whole", () => {
-    expect(clampMessage({ message: "short", spans: null })).toBeNull();
-    const lines = Array.from({ length: CLAMP_LINES }, (_, i) => `l${i}`);
-    expect(clampMessage({ message: lines.join("\n"), spans: null })).toBeNull();
-  });
-
-  it("cuts a message after its first lines", () => {
-    const lines = Array.from({ length: CLAMP_LINES + 5 }, (_, i) => `l${i}`);
-    const clamped = clampMessage({ message: lines.join("\n"), spans: null });
-    expect(clamped?.text).toBe(lines.slice(0, CLAMP_LINES).join("\n"));
-  });
-
-  it("cuts a long single line at the character limit", () => {
-    const clamped = clampMessage({
-      message: "x".repeat(CLAMP_CHARS + 1),
-      spans: null,
-    });
-    expect(clamped?.text).toHaveLength(CLAMP_CHARS);
-  });
-
-  it("cuts a styled message's spans at the same point, keeping their styles", () => {
-    const message = `\u001b[31m${"r".repeat(CLAMP_CHARS - 2)}\u001b[0mtail-that-goes-on`;
-    const clamped = clampMessage({ message, spans: parseAnsi(message) });
-    expect(clamped?.spans?.map((span) => span.text).join("")).toBe(
-      clamped?.text,
-    );
-    expect(clamped?.text).toHaveLength(CLAMP_CHARS);
-    expect(clamped?.spans?.[0].className).toContain("red");
-  });
-});
-
 describe("shortInstance", () => {
   it("shows a public instance id's first five suffix characters", () => {
     expect(shortInstance("srv-abc-0123456789abcdefghij")).toBe("01234");
@@ -180,8 +145,8 @@ describe("logRowsText (w3/m509)", () => {
     expect(logRowsText(rows, { ...format, time: null })).toBe("a");
   });
 
-  it("copies a clamped message whole", () => {
-    const long = "y".repeat(CLAMP_CHARS * 2);
+  it("copies a long message whole", () => {
+    const long = "y".repeat(2000);
     const rows = logListRows(
       [line("a", "2026-11-18T10:00:00Z", { message: long })],
       "asc",
@@ -220,8 +185,8 @@ describe("logLineText (w3/m528)", () => {
     ).toBe('GET 404 example.com/missing clientIP="198.51.100.3"');
   });
 
-  it("names a project view line's resource first, and copies a clamped message whole", () => {
-    const long = "y".repeat(CLAMP_CHARS * 2);
+  it("names a project view line's resource first, and copies a long message whole", () => {
+    const long = "y".repeat(2000);
     expect(
       logLineText(
         line("c", "2026-11-18T10:00:00Z", {

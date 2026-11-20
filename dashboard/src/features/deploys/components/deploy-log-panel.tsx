@@ -97,7 +97,7 @@ export interface DeployLogPanelProps {
  * w9/003 adds Render's viewer affordances: an options menu (the `?r=` time
  * range the URL owns, plus wrap/timestamp display toggles) and a maximize
  * button that expands the viewer into a full-screen overlay. w3/m509 gives
- * it every explorer's Options (Copy logs, Order by, Expand everything) and
+ * it every explorer's Options (Copy logs, Order by, Display, w3/088) and
  * Render's shortcuts (`/`, `M`, `Esc`, `Home`/`End`, `⌘/Ctrl ⇧ C`); it has
  * no live tail of its own, so no `Shift+L`.
  */
@@ -211,7 +211,7 @@ export function DeployLogPanel({
         wrap={wrap}
         showTimestamps={showTimestamps}
         order={explorer.order}
-        expandAll={explorer.expandAll}
+        display={explorer.display}
         handleRef={attachList}
         fill={maximized}
         // The deploy's log runs to the bottom of the screen, as the Logs

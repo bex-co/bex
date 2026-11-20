@@ -1,5 +1,4 @@
 import { startOfDay } from "date-fns";
-import type { AnsiSpan } from "./ansi";
 import { LOG_TYPE_REQUEST, type LogLine } from "../types";
 
 /** The order a log explorer shows its lines in: Render's Options ▸ Order by
@@ -72,62 +71,11 @@ export function logListRows(
   return rows;
 }
 
-/** A long message is clamped past this many lines or characters, until the
- *  row or Options ▸ Expand everything shows it whole (w3/m509). */
-export const CLAMP_LINES = 10;
-export const CLAMP_CHARS = 1000;
-
 /** What a row shows of its message: the text, as its spans when styled. */
 function shownMessage(line: Pick<LogLine, "message" | "spans">) {
   return line.spans
     ? line.spans.map((span) => span.text).join("")
     : line.message;
-}
-
-/**
- * A message's first `CLAMP_LINES` lines or `CLAMP_CHARS` characters, as text
- * and as its styled spans, or null when the whole message is within both.
- */
-export function clampMessage(
-  line: Pick<LogLine, "message" | "spans">,
-): { text: string; spans: AnsiSpan[] | null } | null {
-  // The raw message is never shorter, nor has fewer lines, than what the row
-  // shows of it: one within both limits needs no clamp, and no join of its
-  // spans to say so.
-  if (!exceedsClamp(line.message)) return null;
-  const shown = shownMessage(line);
-  let cut = Math.min(shown.length, CLAMP_CHARS);
-  let breaks = 0;
-  for (let i = 0; i < cut; i += 1) {
-    if (shown.charCodeAt(i) === 10 && ++breaks === CLAMP_LINES) {
-      cut = i;
-      break;
-    }
-  }
-  if (cut >= shown.length) return null;
-  const text = shown.slice(0, cut);
-  if (!line.spans) return { text, spans: null };
-  const spans: AnsiSpan[] = [];
-  let left = cut;
-  for (const span of line.spans) {
-    if (left <= 0) break;
-    spans.push(
-      span.text.length <= left
-        ? span
-        : { ...span, text: span.text.slice(0, left) },
-    );
-    left -= span.text.length;
-  }
-  return { text, spans };
-}
-
-function exceedsClamp(text: string): boolean {
-  if (text.length > CLAMP_CHARS) return true;
-  let breaks = 0;
-  for (let i = 0; i < text.length; i += 1) {
-    if (text.charCodeAt(i) === 10 && ++breaks === CLAMP_LINES) return true;
-  }
-  return false;
 }
 
 /**
@@ -157,7 +105,7 @@ export interface LogRowsTextFormat {
  * displayed logs", `⌘/Ctrl ⇧ C`): one text line per row, in the order shown,
  * as the row reads — date separator, time, `[resource]`, `[instance]`, a
  * request's method, status, host and path, then the whole message without
- * its terminal styling, however much of it the row has clamped.
+ * its terminal styling, even on a row Options ▸ Display shows on one line.
  */
 export function logRowsText(
   rows: readonly LogListRow[],

@@ -7,24 +7,30 @@ import {
   Maximize2,
   Minimize2,
   Settings,
+  WrapText,
 } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
 import { useIsMac } from "@/common/hooks/use-is-mac";
+import { useIsMobile } from "@/common/hooks/use-mobile";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils.ts";
 import type { LogExplorer } from "../hooks/use-log-explorer";
+import { LOG_DISPLAYS, type LogDisplay } from "../lib/log-display";
 import type { LogOrder } from "../lib/log-rows";
 import type { LogPanelFill } from "../hooks/use-log-panel-height";
 import { LogPanelState } from "./log-panel-state";
@@ -116,13 +122,23 @@ export function MaximizeButton({
   );
 }
 
+const DISPLAY_LABEL_KEYS = {
+  "expand-all": "logs.expandEverything",
+  "expand-errors": "logs.expandErrors",
+  "collapse-all": "logs.collapseEverything",
+} as const satisfies Record<LogDisplay, string>;
+
 /**
  * Render's Options (…) menu: Copy logs (`⌘/Ctrl ⇧ C`), Order by,
- * Display ▸ Expand everything, and Theme Settings, a link to account
- * Settings ▸ Appearance (w3/m528). `children` are an explorer's own options,
- * listed first (the deploy page's range and wrap/timestamp toggles), and
- * `phoneMaximizeItem` adds Maximize as an item on a phone, for a toolbar
- * with no room there for its own button.
+ * Display (w3/088), and Theme Settings, a link to account Settings ▸
+ * Appearance (w3/m528). Display is Render's submenu, `Display: <choice>`
+ * over Display settings' Expand everything, Expand errors and Collapse
+ * everything; on a phone, where a side flyout has no room, its choices sit
+ * in the menu itself, as the account menu's theme does (w4/302).
+ * `children` are an explorer's own options, listed first (the deploy page's
+ * range and wrap/timestamp toggles), and `phoneMaximizeItem` adds Maximize
+ * as an item on a phone, for a toolbar with no room there for its own
+ * button.
  */
 export function LogOptionsMenu({
   explorer,
@@ -140,8 +156,21 @@ export function LogOptionsMenu({
 }) {
   const { t } = useTranslations();
   const shortcut = useIsMac() ? "⌘⇧C" : "Ctrl+Shift+C";
-  const { order, setOrder, expandAll, setExpandAll, maximized, setMaximized } =
+  const isMobile = useIsMobile();
+  const { order, setOrder, display, setDisplay, maximized, setMaximized } =
     explorer;
+  const displayChoices = (
+    <DropdownMenuRadioGroup
+      value={display}
+      onValueChange={(value) => setDisplay(value as LogDisplay)}
+    >
+      {LOG_DISPLAYS.map((choice) => (
+        <DropdownMenuRadioItem key={choice} value={choice}>
+          {t(DISPLAY_LABEL_KEYS[choice])}
+        </DropdownMenuRadioItem>
+      ))}
+    </DropdownMenuRadioGroup>
+  );
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -155,7 +184,7 @@ export function LogOptionsMenu({
           <Ellipsis className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-70">
         {children}
         {children ? <DropdownMenuSeparator /> : null}
         <DropdownMenuItem disabled={!canCopy} onSelect={explorer.copy}>
@@ -177,13 +206,28 @@ export function LogOptionsMenu({
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuLabel>{t("logs.display")}</DropdownMenuLabel>
-        <DropdownMenuCheckboxItem
-          checked={expandAll}
-          onCheckedChange={(value) => setExpandAll(value === true)}
-        >
-          {t("logs.expandEverything")}
-        </DropdownMenuCheckboxItem>
+        {isMobile ? (
+          <DropdownMenuGroup aria-label={t("logs.displaySettings")}>
+            <DropdownMenuLabel>{t("logs.displaySettings")}</DropdownMenuLabel>
+            {displayChoices}
+          </DropdownMenuGroup>
+        ) : (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <WrapText />
+              <span className="min-w-0 truncate">
+                {t("logs.display")}{" "}
+                <span className="font-semibold">
+                  {t(DISPLAY_LABEL_KEYS[display])}
+                </span>
+              </span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuLabel>{t("logs.displaySettings")}</DropdownMenuLabel>
+              {displayChoices}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        )}
         {phoneMaximizeItem ? (
           <>
             <DropdownMenuSeparator className="sm:hidden" />

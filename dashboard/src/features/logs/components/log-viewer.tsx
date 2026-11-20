@@ -478,7 +478,7 @@ export function LogViewer({
             loadingOlder={history.loadingOlder}
             onLoadOlder={history.loadOlder}
             order={explorer.order}
-            expandAll={explorer.expandAll}
+            display={explorer.display}
             handleRef={attachList}
             holdWhileAway={tailing}
             rowMenu={rowMenu}

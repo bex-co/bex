@@ -33,9 +33,9 @@ import {
   type LogPanelFill,
 } from "@/features/logs/hooks/use-log-panel-height";
 import { type AnsiSpan } from "../lib/ansi";
+import { collapsesLine, type LogDisplay } from "../lib/log-display";
 import { lineLevel, lineLevelText, type LineLevel } from "../lib/log-levels";
 import {
-  clampMessage,
   logLineText,
   logListRows,
   logRowsText,
@@ -200,8 +200,9 @@ interface LogLineListProps {
   /** Options ▸ Order by: ascending (the newest line at the bottom, the
    *  default) or descending (the newest at the top, older pages below). */
   order?: LogOrder;
-  /** Options ▸ Expand everything: no message is clamped. */
-  expandAll?: boolean;
+  /** Options ▸ Display (w3/088): every line whole (the default), only the
+   *  error levels whole, or every line on one line. */
+  display?: LogDisplay;
   /** The explorer's handle on the list: its shortcuts and Copy logs. */
   handleRef?: Ref<LogLineListHandle>;
   /**
@@ -265,9 +266,9 @@ function shownWhileHeld(lines: LogLine[], view: HeldView): LogLine[] {
  * descending). Autoscrolls to the newest line while the user is pinned to it;
  * scrolling away releases the pin (so reading history isn't yanked away) and
  * shows Render's Return to Bottom (Return to Top descending). The
- * wrap/timestamp toggles (w9/003) and the order and Expand everything options
- * (w3/m509) are display-only knobs an explorer's options menu drives; each
- * defaults to today's behavior.
+ * wrap/timestamp toggles (w9/003), the order (w3/m509) and Display (w3/088)
+ * are display-only knobs an explorer's options menu drives; each defaults to
+ * today's behavior.
  *
  * Render's explorer pieces (w3/m528): a row menu (…) on the hovered row or
  * the keyboard's (Shift+F10), a live tail that holds new lines behind a "New
@@ -305,7 +306,7 @@ export function LogLineList({
   onLoadOlder,
   resourceLabels,
   order = "asc",
-  expandAll = false,
+  display = "expand-all",
   handleRef,
   holdWhileAway = false,
   rowMenu,
@@ -376,29 +377,16 @@ export function LogLineList({
     (text: string) => void copyText(text),
     [copyText],
   );
-  // Rows whose clamped message the reader opened (w3/m509).
-  const [expandedRows, setExpandedRows] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
-  const toggleExpanded = useCallback(
-    (key: string) =>
-      setExpandedRows((previous) => {
-        const next = new Set(previous);
-        if (!next.delete(key)) next.add(key);
-        return next;
-      }),
-    [],
-  );
   // Whether rows are scrolled off the top, which fade out (below).
   const [scrolledDown, setScrolledDown] = useState(false);
   const anchorRef = useRef<{ key: string; offset: number } | null>(null);
   const previousRows = useRef(rows);
-  // A wrap, timestamp, order or expand toggle changes every row's height or
-  // place while the records stay the same. Until the rows have remeasured,
+  // A wrap, timestamp, order or Display change moves every row or changes its
+  // height while the records stay the same. Until the rows have remeasured,
   // the reader's row is kept in place by key, and transient geometry may
   // neither replace that target nor unpin the reader (w4/m228).
-  const display = `${wrap}:${showTimestamps}:${order}:${expandAll}`;
-  const previousDisplay = useRef(display);
+  const layout = `${wrap}:${showTimestamps}:${order}:${display}`;
+  const previousLayout = useRef(layout);
   const settling = useRef<SettleTarget | null>(null);
   const settleDeadline = useRef(0);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -541,8 +529,8 @@ export function LogLineList({
   useLayoutEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
-    if (previousDisplay.current !== display) {
-      previousDisplay.current = display;
+    if (previousLayout.current !== layout) {
+      previousLayout.current = layout;
       const target = pinned ? "newest" : anchorRef.current;
       if (target) {
         settling.current = target;
@@ -841,9 +829,7 @@ export function LogLineList({
                   resourceLabels &&
                   (resourceLabels.get(row.line.resource) ?? null)
                 }
-                expandAll={expandAll}
-                expanded={expandedRows.has(row.key)}
-                onToggleExpanded={toggleExpanded}
+                display={display}
                 t={t}
                 language={language}
               />
@@ -949,9 +935,7 @@ const LogRow = memo(function LogRow({
   showTimestamps,
   onInstanceFilter,
   resourceLabel,
-  expandAll,
-  expanded,
-  onToggleExpanded,
+  display,
   t,
   language,
 }: {
@@ -978,20 +962,15 @@ const LogRow = memo(function LogRow({
    *  null for one the list does not name, which shows its id; undefined when
    *  the list names no resources at all. */
   resourceLabel: LogResourceLabel | null | undefined;
-  /** Options ▸ Expand everything is on. */
-  expandAll: boolean;
-  /** The reader opened this row's clamped message. */
-  expanded: boolean;
-  onToggleExpanded: (key: string) => void;
+  /** Options ▸ Display. */
+  display: LogDisplay;
   t: Translate;
   /** The dashboard language the line clock reads in. */
   language: string;
 }) {
   const isRequest = line.type === LOG_TYPE_REQUEST;
   const level = lineLevel(line);
-  // A long message shows its first lines until the reader opens it.
-  const clip = expandAll ? null : clampMessage(line);
-  const shown = clip && !expanded ? clip : line;
+  const collapsed = collapsesLine(display, level);
   return (
     <div
       data-index={index}
@@ -1094,9 +1073,14 @@ const LogRow = memo(function LogRow({
       <span
         className={cn(
           "min-w-0 flex-1 text-foreground",
-          // Wrapped lines hang 2ch in, so a continuation reads as part of its
-          // entry, not a new one.
-          wrap && "pl-[2ch] -indent-[2ch]",
+          // One line, as Render's: its line breaks read as spaces, and what
+          // the panel has no room for ends in an ellipsis. In a list that
+          // scrolls sideways (Wrap lines off) the line runs on with it.
+          collapsed
+            ? "overflow-hidden text-ellipsis whitespace-nowrap"
+            : // Wrapped lines hang 2ch in, so a continuation reads as part
+              // of its entry, not a new one.
+              wrap && "pl-[2ch] -indent-[2ch]",
           wrap &&
             (line.instance
               ? "@max-lg/logs:basis-full"
@@ -1108,19 +1092,7 @@ const LogRow = memo(function LogRow({
         {isRequest && (line.host || line.path)
           ? `${line.host}${line.path} `
           : null}
-        <LogMessage
-          spans={shown.spans}
-          text={"text" in shown ? shown.text : shown.message}
-        />
-        {clip ? (
-          <>
-            {expanded ? " " : "… "}
-            <ExpandToggle
-              label={expanded ? t("logs.showLess") : t("logs.showMore")}
-              onClick={() => onToggleExpanded(line.key)}
-            />
-          </>
-        ) : null}
+        <LogMessage spans={line.spans} text={line.message} />
       </span>
       {hovered || active || menuOpen ? (
         <LogRowMenu
@@ -1222,27 +1194,6 @@ function LineTime({
     >
       {time}
     </InstantTooltip>
-  );
-}
-
-// Opens or closes one row's clamped message: part of the line's text, so
-// exempt from the touch region's control height like the instance tag.
-function ExpandToggle({
-  label,
-  onClick,
-}: {
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      data-touch-exempt=""
-      onClick={onClick}
-      className="cursor-pointer rounded-sm font-sans text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-    >
-      {label}
-    </button>
   );
 }
 

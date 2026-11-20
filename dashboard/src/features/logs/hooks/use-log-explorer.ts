@@ -11,14 +11,17 @@ import {
 import { useCopyToClipboard } from "@/common/hooks/use-copy-to-clipboard";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { LogLineListHandle } from "../components/log-line-list";
+import { logDisplaySetting, type LogDisplay } from "../lib/log-display";
 import type { LogOrder } from "../lib/log-rows";
 
 /** What one log explorer's toolbar, options and shortcuts drive (w3/m509). */
 export interface LogExplorer {
   order: LogOrder;
   setOrder: (order: LogOrder) => void;
-  expandAll: boolean;
-  setExpandAll: (expandAll: boolean) => void;
+  /** Options ▸ Display (w3/088): one choice for every explorer, kept
+   *  across visits. */
+  display: LogDisplay;
+  setDisplay: (display: LogDisplay) => void;
   maximized: boolean;
   setMaximized: Dispatch<SetStateAction<boolean>>;
   /** Options ▸ Copy logs: every line shown, to the clipboard. */
@@ -58,7 +61,7 @@ export function useLogExplorer({ clear }: { clear?: () => void } = {}): {
 } {
   const { t } = useTranslations();
   const [order, setOrder] = useState<LogOrder>("asc");
-  const [expandAll, setExpandAll] = useState(false);
+  const display = logDisplaySetting.useValue();
   const [maximized, setMaximized] = useState(false);
   // Callback refs, not ref objects, go to the caller, and beside the
   // explorer rather than in it: an object carrying a ref reads as one to the
@@ -130,13 +133,13 @@ export function useLogExplorer({ clear }: { clear?: () => void } = {}): {
     () => ({
       order,
       setOrder,
-      expandAll,
-      setExpandAll,
+      display,
+      setDisplay: logDisplaySetting.write,
       maximized,
       setMaximized,
       copy,
     }),
-    [order, expandAll, maximized, copy],
+    [order, display, maximized, copy],
   );
   return { explorer, attachList, attachSearch };
 }

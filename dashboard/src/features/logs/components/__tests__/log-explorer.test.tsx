@@ -6,21 +6,35 @@ import {
   render,
   renderHook,
   screen,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Toaster } from "sonner";
 import { LogOptionsMenu, MaximizeButton } from "../log-explorer";
 import { LOG_MAXIMIZED_CLASS } from "../log-toolbar-layout";
 import { useClearedLines, useLogExplorer } from "../../hooks/use-log-explorer";
+import { logDisplaySetting } from "../../lib/log-display";
 import { LogLineList } from "../log-line-list";
 import type { LogLine } from "../../types";
 import { setupVirtualGeometry } from "@/test/virtual-geometry";
+import { memoryStorage } from "@/test/mocks/storage";
+import {
+  BROWSER_ENVIRONMENT,
+  hydrateAcrossEnvironments,
+} from "@/test/hydration";
 
 // Options ends with Theme Settings, a router Link (w3/m528): render it as
 // its anchor, with no router around the component.
 vi.mock("@tanstack/react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@tanstack/react-router")>()),
   Link: (await import("@/test/mocks/router-link")).PlainLink,
+}));
+
+// A phone's Options menu lists Display's choices itself (w3/088).
+const viewport = vi.hoisted(() => ({ isMobile: false }));
+vi.mock("@/common/hooks/use-mobile", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/common/hooks/use-mobile")>()),
+  useIsMobile: () => viewport.isMobile,
 }));
 
 // Render's log explorer controls (w3/m509, render.com/docs/logging): the
@@ -48,9 +62,13 @@ beforeEach(() => {
     configurable: true,
     value: { writeText },
   });
+  // Options ▸ Display is kept in localStorage (w3/088): each test starts
+  // with nothing stored.
+  vi.stubGlobal("localStorage", memoryStorage());
 });
 afterEach(() => {
   delete (navigator as { clipboard?: unknown }).clipboard;
+  vi.unstubAllGlobals();
 });
 
 /** One explorer: a search box, its controls and its list. */
@@ -76,13 +94,11 @@ function Explorer({
       />
       <MaximizeButton explorer={explorer} />
       <LogOptionsMenu explorer={explorer} canCopy phoneMaximizeItem />
-      <p data-testid="state">
-        {explorer.order}/{String(explorer.expandAll)}
-      </p>
+      <p data-testid="state">{`${explorer.order}/${explorer.display}`}</p>
       <LogLineList
         lines={lines}
         order={explorer.order}
-        expandAll={explorer.expandAll}
+        display={explorer.display}
         handleRef={attachList}
         showTimestamps={false}
       />
@@ -98,6 +114,29 @@ function Explorer({
 
 const maximized = () =>
   screen.getByTestId("frame").className.includes("fixed inset-0");
+
+/**
+ * Opens Options ▸ Display and returns its submenu, by keyboard: jsdom's
+ * zero-size rects defeat Radix's pointer-intent grace area, so a pointer
+ * click on a submenu item never selects (as move-to-project-menu's test
+ * says). ArrowRight opens it, as a reader's keyboard does.
+ */
+async function openDisplay(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: "Log options" }));
+  screen.getByRole("menuitem", { name: /^Display:/ }).focus();
+  await user.keyboard("{ArrowRight}");
+  return screen.findByRole("menu", { name: /^Display:/ });
+}
+
+/** Chooses `name` in Options ▸ Display. */
+async function chooseDisplay(
+  user: ReturnType<typeof userEvent.setup>,
+  name: string,
+) {
+  const submenu = await openDisplay(user);
+  within(submenu).getByRole("menuitemradio", { name }).focus();
+  await user.keyboard("{Enter}");
+}
 
 describe("log explorer shortcuts (w3/m509)", () => {
   setupVirtualGeometry();
@@ -198,7 +237,7 @@ describe("log explorer shortcuts (w3/m509)", () => {
 describe("log explorer Options (w3/m509)", () => {
   setupVirtualGeometry();
 
-  it("copies, orders and expands from the menu, and offers Maximize on a phone", async () => {
+  it("copies, orders and sets Display from the menu, and offers Maximize on a phone", async () => {
     const user = userEvent.setup();
     render(<Explorer />);
     const open = () =>
@@ -214,13 +253,10 @@ describe("log explorer Options (w3/m509)", () => {
 
     await open();
     await user.click(screen.getByRole("menuitemradio", { name: "Descending" }));
-    expect(screen.getByTestId("state")).toHaveTextContent("desc/false");
+    expect(screen.getByTestId("state")).toHaveTextContent("desc/expand-all");
 
-    await open();
-    await user.click(
-      screen.getByRole("menuitemcheckbox", { name: "Expand everything" }),
-    );
-    expect(screen.getByTestId("state")).toHaveTextContent("desc/true");
+    await chooseDisplay(user, "Collapse everything");
+    expect(screen.getByTestId("state")).toHaveTextContent("desc/collapse-all");
 
     await open();
     const item = screen.getByRole("menuitem", { name: "Maximize" });
@@ -254,6 +290,118 @@ describe("log explorer Options (w3/m509)", () => {
     const last = items.at(-1)!;
     expect(last).toHaveAccessibleName("Theme Settings");
     expect(last).toHaveAttribute("href", "/settings#appearance");
+  });
+});
+
+// Render's Options ▸ Display (w3/088, `Logs-*.js`): a submenu reading
+// `Display: <choice>` over Display settings' Expand everything (the default),
+// Expand errors and Collapse everything, kept in localStorage
+// (`render-log-truncation-mode`) for every explorer.
+describe("log explorer Display (w3/088)", () => {
+  setupVirtualGeometry();
+  const DISPLAY_KEY = "bex.logs.display";
+
+  afterEach(() => {
+    viewport.isMobile = false;
+  });
+
+  it("is Render's submenu, its choice named on the item, Expand everything by default", async () => {
+    const user = userEvent.setup();
+    render(<Explorer />);
+    await user.click(screen.getByRole("button", { name: "Log options" }));
+    expect(
+      screen.getByRole("menuitem", { name: "Display: Expand everything" }),
+    ).toHaveAttribute("aria-haspopup", "menu");
+    await user.keyboard("{Escape}");
+
+    const submenu = await openDisplay(user);
+    expect(within(submenu).getByText("Display settings")).toBeInTheDocument();
+    const choices = within(submenu).getAllByRole("menuitemradio");
+    expect(choices.map((choice) => choice.textContent)).toEqual([
+      "Expand everything",
+      "Expand errors",
+      "Collapse everything",
+    ]);
+    expect(choices[0]).toHaveAttribute("aria-checked", "true");
+    choices[1].focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByTestId("state")).toHaveTextContent("asc/expand-errors");
+    await user.click(screen.getByRole("button", { name: "Log options" }));
+    expect(
+      screen.getByRole("menuitem", { name: "Display: Expand errors" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the choice across visits, one for every explorer", async () => {
+    const user = userEvent.setup();
+    const first = render(<Explorer />);
+    await chooseDisplay(user, "Collapse everything");
+    expect(localStorage.getItem(DISPLAY_KEY)).toBe("collapse-all");
+    first.unmount();
+
+    // Another explorer, opened afterwards, opens in it.
+    render(<Explorer />);
+    expect(screen.getByTestId("state")).toHaveTextContent("asc/collapse-all");
+  });
+
+  it("follows a choice made in another tab", () => {
+    render(<Explorer />);
+    act(() => {
+      localStorage.setItem(DISPLAY_KEY, "expand-errors");
+      window.dispatchEvent(new StorageEvent("storage", { key: DISPLAY_KEY }));
+    });
+    expect(screen.getByTestId("state")).toHaveTextContent("asc/expand-errors");
+  });
+
+  it("reads a stored value it does not know as Expand everything", () => {
+    localStorage.setItem(DISPLAY_KEY, "wrap-everything");
+    render(<Explorer />);
+    expect(screen.getByTestId("state")).toHaveTextContent("asc/expand-all");
+  });
+
+  it("keeps a choice storage refuses for the page", async () => {
+    const refusing = memoryStorage();
+    refusing.setItem = () => {
+      throw new DOMException("refused", "QuotaExceededError");
+    };
+    vi.stubGlobal("localStorage", refusing);
+    const user = userEvent.setup();
+    render(<Explorer />);
+    await chooseDisplay(user, "Collapse everything");
+    expect(screen.getByTestId("state")).toHaveTextContent("asc/collapse-all");
+    // A write storage takes ends the page's own copy, for the tests after.
+    vi.stubGlobal("localStorage", memoryStorage());
+    act(() => logDisplaySetting.write("expand-all"));
+    expect(screen.getByTestId("state")).toHaveTextContent("asc/expand-all");
+  });
+
+  it("renders Expand everything on the server and while hydrating, then the stored choice", async () => {
+    let hydrated = "";
+    const probe = await hydrateAcrossEnvironments(() => <Explorer />, {
+      client: {
+        ...BROWSER_ENVIRONMENT,
+        storage: { [DISPLAY_KEY]: "collapse-all" },
+      },
+      inspect: (container) => {
+        hydrated = within(container).getByTestId("state").textContent ?? "";
+      },
+    });
+    expect(probe.html).toContain("asc/expand-all");
+    expect(probe.recovered).toEqual([]);
+    expect(hydrated).toBe("asc/collapse-all");
+  });
+
+  it("lists the choices in the menu itself on a phone", async () => {
+    viewport.isMobile = true;
+    const user = userEvent.setup();
+    render(<Explorer />);
+    await user.click(screen.getByRole("button", { name: "Log options" }));
+    expect(screen.queryByRole("menuitem", { name: /^Display:/ })).toBeNull();
+    const group = screen.getByRole("group", { name: "Display settings" });
+    await user.click(
+      within(group).getByRole("menuitemradio", { name: "Expand errors" }),
+    );
+    expect(screen.getByTestId("state")).toHaveTextContent("asc/expand-errors");
   });
 });
 

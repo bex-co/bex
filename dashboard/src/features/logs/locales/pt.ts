@@ -700,16 +700,6 @@ const ptLogs: Record<string, TranslationEntry> = {
     description:
       "Log line level gutter (w3/m509): accessible name and hover text of the level icon leading a log row; {level} is the line's level word (info, warning, error, \u2026)",
   },
-  "logs.showMore": {
-    message: "Mostrar mais",
-    description:
-      "Log row (w3/m509): button after a long message cut short, showing the whole message",
-  },
-  "logs.showLess": {
-    message: "Mostrar menos",
-    description:
-      "Log row (w3/m509): button after a long message opened in full, cutting it short again",
-  },
   "logs.copied": {
     message: "Logs copiados",
     description:
@@ -746,14 +736,29 @@ const ptLogs: Record<string, TranslationEntry> = {
       "Log explorer Options menu (w3/m509): order choice, newest line first at the top",
   },
   "logs.display": {
-    message: "Exibição",
+    message: "Exibição:",
     description:
-      "Log explorer Options menu (w3/m509): heading of the display options (Render's Display)",
+      "Log explorer Options menu (w3/088): the Display submenu's label, before the chosen display in bold (Render's `Display: Expand everything`)",
+  },
+  "logs.displaySettings": {
+    message: "Configurações de exibição",
+    description:
+      "Log explorer Options menu (w3/088): heading of the Display choices (Render's Display settings)",
   },
   "logs.expandEverything": {
     message: "Expandir tudo",
     description:
-      "Log explorer Options menu (w3/m509): checkbox showing every long message in full (Render's Expand everything)",
+      "Log explorer Options ▸ Display (w3/088): every log line shown whole, the default (Render's Expand everything)",
+  },
+  "logs.expandErrors": {
+    message: "Expandir erros",
+    description:
+      "Log explorer Options ▸ Display (w3/088): error, critical, alert and emergency lines shown whole, every other line on one line (Render's Expand errors)",
+  },
+  "logs.collapseEverything": {
+    message: "Recolher tudo",
+    description:
+      "Log explorer Options ▸ Display (w3/088): every log line on one line, cut off with an ellipsis (Render's Collapse everything)",
   },
   "logs.maximize": {
     message: "Maximizar",

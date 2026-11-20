@@ -9,13 +9,17 @@ import { scrollViewport, setupVirtualGeometry } from "@/test/virtual-geometry";
  * changing the records, and the reader lost its row (ROW=128 → 134 on
  * mobile). The browser remeasures through ResizeObserver, reporting only rows
  * whose height changed; this file installs one it can trigger. Wrapped rows
- * are twice as tall, and neither height equals the list's 24px estimate.
+ * are twice as tall, and neither height equals the list's 24px estimate. A
+ * row Options ▸ Display puts on one line (w3/088) is one line tall.
  */
 const WRAPPED = 40;
 const ONE_LINE = 20;
 setupVirtualGeometry({
   rowHeight: (row) =>
-    row.className.includes("whitespace-pre-wrap") ? WRAPPED : ONE_LINE,
+    row.className.includes("whitespace-pre-wrap") &&
+    !row.querySelector(".whitespace-nowrap")
+      ? WRAPPED
+      : ONE_LINE,
 });
 
 const observers: Array<{
@@ -141,6 +145,24 @@ describe("LogLineList display reflow (w4/m228)", () => {
     await settle();
     expect(rowAtTop()).toEqual(before);
     // The reflow neither re-pinned nor jumped the reader to the end.
+    expect(jump()).toBeInTheDocument();
+  });
+
+  it("keeps the reader's row when Display puts every line on one", async () => {
+    const view = render(<LogLineList lines={lines} wrap />);
+    await remeasure();
+    await scrollTo(4000);
+    const before = rowAtTop();
+
+    view.rerender(<LogLineList lines={lines} wrap display="collapse-all" />);
+    await remeasure();
+    await remeasure();
+    await settle();
+    // The same row, its offset kept within its new one-line height.
+    expect(rowAtTop()).toEqual({
+      row: before.row,
+      offset: Math.min(before.offset, ONE_LINE - 1),
+    });
     expect(jump()).toBeInTheDocument();
   });
 

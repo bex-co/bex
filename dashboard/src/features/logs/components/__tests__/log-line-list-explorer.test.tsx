@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { LogLineList, type LogLineListHandle } from "../log-line-list";
-import { CLAMP_CHARS } from "../../lib/log-rows";
 import type { LogLine } from "../../types";
 import {
   scrollViewport,
@@ -13,7 +12,7 @@ import {
 
 // What a log explorer shows of each line and drives in its list (w3/m509):
 // the level gutter, the timestamp hover, date separators, the order and
-// Expand everything options, and the handle Home/End and Copy logs use.
+// Display options, and the handle Home/End and Copy logs use.
 
 function line(over: Partial<LogLine> = {}): LogLine {
   return {
@@ -285,36 +284,83 @@ describe("LogLineList order (w3/m509)", () => {
   });
 });
 
-describe("LogLineList long messages (w3/m509)", () => {
+// Render's Options ▸ Display (w3/088, its `Logs-*.js` truncation mode): a
+// line shown whole wraps; a line on one line is cut off at the panel's edge
+// (`overflow-hidden text-ellipsis whitespace-nowrap`). Render has no per-row
+// Show more, and no clamp under Expand everything.
+describe("LogLineList Display (w3/088)", () => {
   setupVirtualGeometry();
 
-  const long = `${"a".repeat(CLAMP_CHARS)}HIDDEN-TAIL`;
+  const ONE_LINE = ["overflow-hidden", "text-ellipsis", "whitespace-nowrap"];
+  // The message cell, by its text exactly as written (line breaks kept).
+  const cellOf = (text: string) =>
+    screen.getByText(text, { normalizer: (value) => value });
+  const isOneLine = (text: string) =>
+    ONE_LINE.every((name) => cellOf(text).classList.contains(name));
 
-  it("cuts a long message short until the row is opened, and closes again", async () => {
-    const user = userEvent.setup();
+  const long = `${"a".repeat(5000)}\nSECOND-LINE ${"b".repeat(3000)}TAIL`;
+  const levels = [
+    line({ key: "error", level: "error", message: "an error" }),
+    line({ key: "critical", level: "critical", message: "a critical" }),
+    line({ key: "alert", level: "alert", message: "an alert" }),
+    line({ key: "emergency", level: "emergency", message: "an emergency" }),
+    // A request line with no level label takes its status class's (w4/584).
+    line({
+      key: "503",
+      type: "request",
+      statusCode: "503",
+      message: "a 503",
+    }),
+    line({ key: "warning", level: "warning", message: "a warning" }),
+    line({ key: "info", level: "info", message: "an info" }),
+    line({ key: "plain", message: "no level" }),
+  ];
+  const errors = [
+    "an error",
+    "a critical",
+    "an alert",
+    "an emergency",
+    "a 503",
+  ];
+  const others = ["a warning", "an info", "no level"];
+
+  it("shows every line whole by default, however long, with no Show more", () => {
     const { container } = render(
       <LogLineList lines={[line({ key: "l", message: long })]} />,
     );
-    expect(container.textContent).not.toContain("HIDDEN-TAIL");
-    await user.click(screen.getByRole("button", { name: "Show more" }));
-    expect(container.textContent).toContain("HIDDEN-TAIL");
-    await user.click(screen.getByRole("button", { name: "Show less" }));
-    expect(container.textContent).not.toContain("HIDDEN-TAIL");
+    expect(container.textContent).toContain("SECOND-LINE");
+    expect(container.textContent).toContain("TAIL");
+    expect(isOneLine(long)).toBe(false);
+    expect(cellOf(long).className).toContain("-indent-[2ch]");
+    expect(screen.queryByRole("button", { name: /show/i })).toBeNull();
   });
 
-  it("shows every message whole under Expand everything", () => {
+  it("puts every line on one line under Collapse everything, errors included", () => {
+    render(<LogLineList lines={levels} display="collapse-all" />);
+    for (const text of [...errors, ...others]) {
+      expect(isOneLine(text), text).toBe(true);
+    }
+  });
+
+  it("shows only Render's error levels whole under Expand errors", () => {
+    render(<LogLineList lines={levels} display="expand-errors" />);
+    for (const text of errors) expect(isOneLine(text), text).toBe(false);
+    for (const text of others) expect(isOneLine(text), text).toBe(true);
+  });
+
+  it("keeps a one-line row's whole message in the DOM, for selection and copy", () => {
+    const handle = createRef<LogLineListHandle>();
     const { container } = render(
-      <LogLineList lines={[line({ key: "l", message: long })]} expandAll />,
+      <LogLineList
+        lines={[line({ key: "l", message: long })]}
+        display="collapse-all"
+        showTimestamps={false}
+        handleRef={handle}
+      />,
     );
-    expect(container.textContent).toContain("HIDDEN-TAIL");
-    expect(
-      screen.queryByRole("button", { name: /show (more|less)/i }),
-    ).toBeNull();
-  });
-
-  it("leaves a short message alone", () => {
-    render(<LogLineList lines={[line({ key: "s", message: "short" })]} />);
-    expect(screen.queryByRole("button", { name: "Show more" })).toBeNull();
+    expect(isOneLine(long)).toBe(true);
+    expect(container.textContent).toContain("TAIL");
+    expect(handle.current!.text()).toBe(long);
   });
 });
 
