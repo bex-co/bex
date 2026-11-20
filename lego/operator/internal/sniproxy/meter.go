@@ -20,18 +20,23 @@ import (
 	"errors"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type ByteMeter struct {
 	responseBytes *prometheus.CounterVec
 	rejected      *prometheus.CounterVec
 	healthy       prometheus.Gauge
+	// marks numbers AwaitFinalScrape's calls, and scraped is the latest mark a
+	// Prometheus scrape began after (w6/151).
+	marks, scraped atomic.Uint64
 }
 
 func NewByteMeter(registry prometheus.Registerer, subsystem, resourceKind string) *ByteMeter {
@@ -73,30 +78,82 @@ func (m *ByteMeter) SetHealthy(healthy bool) {
 	m.healthy.Set(0)
 }
 
-// Add counts a closed connection's backend→client bytes. A resource's series
-// first appears with its first connection's bytes and then stays in every
-// scrape for the life of the process, which is what lets billing count a
-// series that first appears inside an hour from zero (ADR023 § New series
-// count from zero, w6/133). Never delete or reset a series while the process
-// runs: one that came back carrying its old value would be billed twice.
+// Add counts backend→client bytes as they reach the client. A resource's
+// series first appears with its first bytes and then stays in every scrape for
+// the life of the process, which is what lets billing count a series that
+// first appears inside an hour from zero (ADR023 § New series count from zero,
+// w6/133). Never delete or reset a series while the process runs: one that
+// came back carrying its old value would be billed twice.
 func (m *ByteMeter) Add(resourceID, resourceKind string, bytes int64) {
 	if bytes > 0 {
 		m.responseBytes.WithLabelValues(resourceID, resourceKind).Add(float64(bytes))
 	}
 }
 
+// scrapeTimeoutHeader is on every Prometheus scrape request and on no kubelet
+// probe, so it tells a scrape from the readiness probe on the same path.
+const scrapeTimeoutHeader = "X-Prometheus-Scrape-Timeout-Seconds"
+
+// FinalScrapeWait bounds how long a drained proxy waits for a Prometheus
+// scrape: two of the bex-kv-proxy and bex-pg-proxy jobs' 15 s scrapes
+// (deploy/gitops/base/prometheus.yaml), so one failed scrape leaves another,
+// and 5 s for the second to finish. The DaemonSets' grace period covers it
+// after the drain (TestTheDaemonSetGivesTheDrainItsBound).
+const FinalScrapeWait = 35 * time.Second
+
+// Handler serves gatherer's metrics as promhttp does, and records each
+// Prometheus scrape for AwaitFinalScrape. gatherer is the registry the meter
+// was registered with.
+func (m *ByteMeter) Handler(gatherer prometheus.Gatherer) http.Handler {
+	metrics := promhttp.HandlerFor(gatherer, promhttp.HandlerOpts{})
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mark := m.marks.Load()
+		metrics.ServeHTTP(w, r)
+		if r.Header.Get(scrapeTimeoutHeader) == "" {
+			return
+		}
+		for {
+			read := m.scraped.Load()
+			if mark <= read || m.scraped.CompareAndSwap(read, mark) {
+				return
+			}
+		}
+	})
+}
+
+// AwaitFinalScrape returns true once a Prometheus scrape that began after the
+// call has been served, or false after wait. A drained proxy calls it after
+// Serve returns, so it exits just after a scrape that read every byte it
+// counted, those of its last streams and of the streams its bound closed
+// included (w6/151). Prometheus then has a whole interval to drop the target
+// before its next scrape, which would read up 0 from the exited pod and fail
+// the hour's egress health for every store.
+func (m *ByteMeter) AwaitFinalScrape(wait time.Duration) bool {
+	mark := m.marks.Add(1)
+	deadline := time.Now().Add(wait)
+	for m.scraped.Load() < mark {
+		if !time.Now().Before(deadline) {
+			return false
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	return true
+}
+
 // CopyBidirectional splices a public client and private backend. Only the
-// backend→client result increments the meter; request bytes can never be
-// reversed into egress by a shared call-site mistake.
+// backend→client bytes increment the meter, and each write counts as it lands
+// (w6/151): a scrape taken while a stream runs reads what it has delivered, so
+// a long stream is billed in the hours it ran, and a process that exits or
+// crashes loses at most what it copied since its last scrape. Request bytes
+// can never be reversed into egress by a shared call-site mistake.
 //
 // idle bounds how long the stream may go with no bytes in either direction
 // before the connection is torn down: bytes either way keep both directions
 // open, so a subscriber that only receives stays connected while its messages
 // arrive (w6/148). maxLifetime caps the total duration of the routed copy,
 // however busy. A non-positive value disables that bound, and both proxies
-// disable both by default (StreamBounds, w6/149). When both are disabled the
-// copy is a plain io.Copy. Either direction ending closes both conns so the
-// peer copy unblocks — no leaked goroutine.
+// disable both by default (StreamBounds, w6/149). Either direction ending
+// closes both conns so the peer copy unblocks — no leaked goroutine.
 func CopyBidirectional(
 	client, backend net.Conn,
 	meter *ByteMeter,
@@ -114,13 +171,14 @@ func CopyBidirectional(
 
 	done := make(chan struct{}, 2)
 	go func() {
-		_, _ = copyStream(backend, client, bounds)
+		copyStream(backend, client, bounds, nil)
 		closeBoth()
 		done <- struct{}{}
 	}()
 	go func() {
-		bytes, _ := copyStream(client, backend, bounds)
-		meter.Add(resourceID, resourceKind, bytes)
+		copyStream(client, backend, bounds, func(bytes int64) {
+			meter.Add(resourceID, resourceKind, bytes)
+		})
 		closeBoth()
 		done <- struct{}{}
 	}()
@@ -162,38 +220,39 @@ func (b *streamBounds) deadline() time.Time {
 	return d
 }
 
-// copyStream copies src→dst until src ends, the stream has been idle both ways
-// for the idle bound, or the lifetime passes. With no bounds it falls back to
-// io.Copy. It returns the number of bytes written to dst (io.Copy semantics),
-// so the metered direction still counts only delivered bytes.
-func copyStream(dst io.Writer, src net.Conn, bounds *streamBounds) (int64, error) {
-	if bounds.idle <= 0 && bounds.lifetime.IsZero() {
-		return io.Copy(dst, src)
-	}
+// copyStream copies src→dst until src ends, a write fails, the stream has been
+// idle both ways for the idle bound, or the lifetime passes. delivered, if
+// non-nil, is handed each write's bytes once they are written to dst, so the
+// metered direction counts only delivered bytes, as the stream runs. It never
+// hands the copy to io.Copy, whose splice on Linux reports nothing until the
+// stream ends (w6/151).
+func copyStream(dst io.Writer, src net.Conn, bounds *streamBounds, delivered func(int64)) {
+	bounded := bounds.idle > 0 || !bounds.lifetime.IsZero()
 	buf := make([]byte, 32*1024)
-	var total int64
 	for {
-		deadline := bounds.deadline()
-		_ = src.SetReadDeadline(deadline)
+		var deadline time.Time
+		if bounded {
+			deadline = bounds.deadline()
+			_ = src.SetReadDeadline(deadline)
+		}
 		n, rerr := src.Read(buf)
 		if n > 0 {
 			bounds.touch()
 			w, werr := dst.Write(buf[:n])
-			total += int64(w)
-			if werr != nil {
-				return total, werr
+			if w > 0 && delivered != nil {
+				delivered(int64(w))
+			}
+			if werr != nil || w < n {
+				return
 			}
 		}
 		if rerr != nil {
-			if errors.Is(rerr, io.EOF) {
-				return total, nil
-			}
 			// The other direction read bytes after this deadline was set, so
 			// the stream is not idle: read on to the later deadline.
 			if errors.Is(rerr, os.ErrDeadlineExceeded) && bounds.deadline().After(deadline) {
 				continue
 			}
-			return total, rerr
+			return
 		}
 	}
 }

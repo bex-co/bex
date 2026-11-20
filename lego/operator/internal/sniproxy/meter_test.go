@@ -19,6 +19,8 @@ package sniproxy
 import (
 	"io"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
@@ -117,5 +119,103 @@ bex_series_proxy_egress_bytes_total{resource_id="dpg-one",resource_kind="postgre
 `), name); err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+// w6/151: the proxies counted a stream's bytes only when it closed, and a
+// draining pod exits with its last stream, so the bytes of that stream and of
+// every stream its bound closed never reached a scrape. Each write now counts
+// as it lands, so a scrape taken while the stream runs reads what it has
+// delivered. Loopback TCP is the socket pair the proxies relay, where io.Copy
+// splices and reports nothing until the stream ends.
+func TestAnOpenStreamsBytesAreCountedAsTheyReachTheClient(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	meter := NewByteMeter(registry, "open_proxy", "key_value")
+	client, proxyClient := tcpPair(t)
+	proxyBackend, backend := tcpPair(t)
+	done := make(chan struct{})
+	go func() {
+		CopyBidirectional(proxyClient, proxyBackend, meter, "red-one", "key_value", 0, 0)
+		close(done)
+	}()
+	counted := func() float64 {
+		return testutil.ToFloat64(meter.responseBytes.WithLabelValues("red-one", "key_value"))
+	}
+	delivered := 0
+	for _, size := range []int{100 << 10, 7} {
+		go func() { _, _ = backend.Write(make([]byte, size)) }()
+		if _, err := io.ReadFull(client, make([]byte, size)); err != nil {
+			t.Fatal(err)
+		}
+		delivered += size
+		deadline := time.Now().Add(time.Second)
+		for counted() != float64(delivered) && time.Now().Before(deadline) {
+			time.Sleep(time.Millisecond)
+		}
+		if got := counted(); got != float64(delivered) {
+			t.Fatalf("an open stream that delivered %d bytes counts %v: its bytes wait for the close", delivered, got)
+		}
+	}
+	_ = client.Close()
+	<-done
+	if got := counted(); got != float64(delivered) {
+		t.Fatalf("the stream counts %v after it closed, want the %d bytes it delivered, once", got, delivered)
+	}
+}
+
+// w6/151: a drained proxy exits just after a Prometheus scrape that began once
+// its last stream had ended, so that scrape read every byte it counted. A
+// scrape from before the drain ended, or the kubelet's readiness probe on the
+// same path without Prometheus's header, never stands in for it.
+func TestAwaitFinalScrapeReturnsJustAfterAScrapeReadTheLastBytes(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	meter := NewByteMeter(registry, "final_proxy", "postgres")
+	server := httptest.NewServer(meter.Handler(registry))
+	t.Cleanup(server.Close)
+	read := func(scrape bool) string {
+		req, err := http.NewRequest(http.MethodGet, server.URL+"/metrics", nil)
+		if err != nil {
+			t.Error(err)
+			return ""
+		}
+		if scrape {
+			req.Header.Set("X-Prometheus-Scrape-Timeout-Seconds", "10")
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Error(err)
+			return ""
+		}
+		defer func() { _ = resp.Body.Close() }()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Error(err)
+		}
+		return string(body)
+	}
+
+	meter.Add("dpg-one", "postgres", 4096)
+	read(true)
+	if meter.AwaitFinalScrape(50 * time.Millisecond) {
+		t.Fatal("a scrape from before the call released the wait")
+	}
+	meter.Add("dpg-one", "postgres", 1904)
+	scraped := make(chan string, 1)
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		read(false)
+		time.Sleep(100 * time.Millisecond)
+		scraped <- read(true)
+	}()
+	start := time.Now()
+	if !meter.AwaitFinalScrape(5 * time.Second) {
+		t.Fatal("no scrape released the wait")
+	}
+	if waited := time.Since(start); waited < 200*time.Millisecond {
+		t.Fatalf("returned after %v, before the scrape: the readiness probe stood in for it", waited)
+	}
+	const series = `bex_final_proxy_egress_bytes_total{resource_id="dpg-one",resource_kind="postgres"} 6000`
+	if body := <-scraped; !strings.Contains(body, series) {
+		t.Fatalf("the scrape that released the wait did not read the last bytes:\n%s", body)
 	}
 }

@@ -40,7 +40,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -397,7 +396,7 @@ func main() {
 	meter.SetHealthy(true)
 	metricsAddr := env.Or("BEX_PROXY_METRICS_ADDR", defaultMetricsAddr)
 	metricsServer := &http.Server{
-		Addr: metricsAddr, Handler: promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
+		Addr: metricsAddr, Handler: meter.Handler(registry),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	go func() {
@@ -427,6 +426,12 @@ func main() {
 	}, func(err error) {
 		log.Error(err, "accept error")
 	})
+	// A drained process exits just after a Prometheus scrape, which reads the
+	// bytes its last streams and the bound's closes counted (w6/151). A hard
+	// stop exits at once.
+	if ctx.Err() == nil {
+		log.Info("drained", "scraped", meter.AwaitFinalScrape(sniproxy.FinalScrapeWait))
+	}
 }
 
 // handleConn handles one incoming client connection:

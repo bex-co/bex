@@ -1384,7 +1384,9 @@ done
 # nodes' service rules, and then drains within its grace period. A hostPort
 # would keep the new pod off the node until the old one had gone, and a grace
 # period at or below the pause plus the drain would SIGKILL the streams it is
-# meant to finish.
+# meant to finish. After the drain the process waits up to 35 s for a scrape of
+# its last streams' bytes (sniproxy.FinalScrapeWait, w6/151), so the grace
+# period covers that too.
 echo "==> SNI proxy DaemonSets surge and drain within their grace period (w6/m515)"
 for proxy_drain in pg-sni-proxy:BEX_PROXY_DRAIN_SECONDS kv-sni-proxy:BEX_KV_PROXY_DRAIN_SECONDS; do
   proxy="${proxy_drain%%:*}" drain_var="${proxy_drain#*:}"
@@ -1399,8 +1401,8 @@ for proxy_drain in pg-sni-proxy:BEX_PROXY_DRAIN_SECONDS kv-sni-proxy:BEX_KV_PROX
     fail=1
   fi
   if ! [[ "$drain" =~ ^[1-9][0-9]*$ && "$pause" =~ ^[1-9][0-9]*$ && "$grace" =~ ^[0-9]+$ ]] ||
-    [ "$grace" -le $((pause + drain)) ]; then
-    echo "FAIL: bex-$proxy must pause in preStop and set $drain_var, both positive and together below terminationGracePeriodSeconds (got pause=$pause $drain_var=$drain grace=$grace)" >&2
+    [ "$grace" -le $((pause + drain + 35)) ]; then
+    echo "FAIL: bex-$proxy must pause in preStop and set $drain_var, both positive and with the 35 s final-scrape wait together below terminationGracePeriodSeconds (got pause=$pause $drain_var=$drain grace=$grace)" >&2
     fail=1
   fi
 done

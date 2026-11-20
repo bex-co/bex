@@ -32,10 +32,11 @@ spec:
           type: RuntimeDefault
       nodeSelector:
         bex.co/pool: platform
-      # Covers the preStop pause, the drain below and a SIGKILL margin
-      # (5 + 3600 + 5). Kubernetes evicts no DaemonSet pod in a node drain, so
-      # no node drain waits for it.
-      terminationGracePeriodSeconds: 3610
+      # Covers the preStop pause, the drain below, the wait for a scrape of the
+      # last streams' bytes (sniproxy.FinalScrapeWait, w6/151) and a SIGKILL
+      # margin (5 + 3600 + 35 + 5). Kubernetes evicts no DaemonSet pod in a node
+      # drain, so no node drain waits for it.
+      terminationGracePeriodSeconds: 3645
       tolerations:
         - key: bex.co/platform
           operator: Equal

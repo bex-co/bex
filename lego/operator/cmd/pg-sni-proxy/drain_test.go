@@ -159,8 +159,9 @@ func TestADrainingProxyRelaysTheResultOfARunningQuery(t *testing.T) {
 
 // The shipped DaemonSet sets the drain bound this binary reads, pauses before
 // SIGTERM so the old pod's endpoint leaves the nodes' service rules while it
-// still accepts, and gives the pod a grace period that outlasts both, so the
-// kubelet never kills a draining stream. The bound is at most an hour
+// still accepts, and gives the pod a grace period that outlasts both and the
+// wait for a scrape of the last streams' bytes (w6/151), so the kubelet never
+// kills a draining stream or the bytes it counted. The bound is at most an hour
 // (w6/m518): the edge load balancer closes an external stream that carries no
 // data for an hour anyway (w6/149), and a stream that never ends is closed once
 // whatever the bound, so a longer one would only keep old pods on their nodes.
@@ -210,7 +211,8 @@ func TestTheDaemonSetGivesTheDrainItsBound(t *testing.T) {
 	if seconds := ds.Spec.Template.Spec.TerminationGracePeriodSeconds; seconds != nil {
 		grace = time.Duration(*seconds) * time.Second
 	}
-	if grace <= pause+bound {
-		t.Fatalf("terminationGracePeriodSeconds = %v, want more than the %v pause plus the %v drain", grace, pause, bound)
+	if grace <= pause+bound+sniproxy.FinalScrapeWait {
+		t.Fatalf("terminationGracePeriodSeconds = %v, want more than the %v pause, %v drain and %v final-scrape wait",
+			grace, pause, bound, sniproxy.FinalScrapeWait)
 	}
 }
