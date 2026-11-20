@@ -184,6 +184,22 @@ func (r *blueprintActionResolver) ResolveBlueprintResource(_ context.Context, ki
 	}
 }
 
+// checkBlueprintServicePlanGates runs the deterministic paid-tier admission
+// the service write path runs on every create and update: the Scale-workspace
+// inbound-rules gate, then the Pro-workspace autoscaling gate
+// (validateBlueprintService and applyStackService run the same two calls on
+// the same spec). Both degrade open where no workspace plan applies, exactly
+// as the write path does, so the verdicts agree there too. current is the
+// existing App, nil on create: a re-sent rule or an unchanged policy stays
+// allowed on any plan.
+func (s *Service) checkBlueprintServicePlanGates(ctx context.Context, want appv1alpha1.AppSpec, current *appv1alpha1.App) error {
+	tenantID := s.resolveTenantID(ctx)
+	if err := s.requireServiceInboundRules(ctx, tenantID, want, current); err != nil {
+		return err
+	}
+	return s.requireAutoscalingPlan(ctx, tenantID, want.Autoscaling, current, "scaling")
+}
+
 func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, resource BlueprintResourceIR, current BlueprintCurrentResource, exists bool) (BlueprintPlanAction, error) {
 	action := BlueprintPlanAction{Kind: resource.Kind, Name: resource.Name, SourcePath: resource.SourcePath, ResourceID: current.ID}
 	if !exists {
@@ -203,6 +219,20 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 			}
 			if err := checkNewEnvGroupQuota(group); err != nil {
 				return BlueprintPlanAction{}, blueprintResourceErrors{{kind: resource.Kind, name: resource.Name, err: err}}
+			}
+		}
+		// A create the apply would refuse for a paid-tier feature is a plan
+		// refusal, not a create: validate and the apply run these gates on
+		// every service write (validateBlueprintService, applyStackService).
+		// A spec that does not build is left to those stages, which report
+		// the spec error; the gates below need the built spec to judge.
+		if resource.Kind == BlueprintResourceService && r.service != nil {
+			if svc, ok := parsedBlueprintService(r.parsed, resource.Name); ok {
+				if want, err := blueprintReadSpec(ctx, svc.req); err == nil {
+					if err := r.service.checkBlueprintServicePlanGates(ctx, want, nil); err != nil {
+						return BlueprintPlanAction{}, blueprintServiceResourceError(resource, err)
+					}
+				}
 			}
 		}
 		action.Operation = BlueprintPlanCreate
@@ -229,6 +259,15 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 			return BlueprintPlanAction{}, err
 		}
 		want.BuildSource = desiredBuildSourceLink(svc, r.links)
+		// The sync refuses a paid-tier feature the workspace plan does not
+		// include, as validate and the apply do (validateBlueprintService,
+		// applyStackService run the same gates on the same spec): a plan
+		// that promised the change would approve what the apply refuses.
+		if r.service != nil {
+			if err := r.service.checkBlueprintServicePlanGates(ctx, want, r.services[resource.Name]); err != nil {
+				return BlueprintPlanAction{}, blueprintServiceResourceError(resource, err)
+			}
+		}
 		// The sync checks an existing service's link to a workspace build
 		// source as PATCH buildSourceId does (blueprintServiceLink), so the
 		// plan refuses what the sync would. A source this file declares was
