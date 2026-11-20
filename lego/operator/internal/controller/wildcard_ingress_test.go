@@ -81,6 +81,37 @@ func TestWildcardDomainGetsItsOwnIngress(t *testing.T) {
 	}
 }
 
+// A wildcard and the concrete host its "wildcard" label spells are served by
+// two Ingresses with two issuers, so they name two Secrets. Naming one, the
+// Ingress cert-manager reached second never got its certificate.
+func TestWildcardAndItsWildcardLabelNameTwoSecrets(t *testing.T) {
+	ctx := context.Background()
+	scheme := newHostRedirectScheme()
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "app", Namespace: "default"}}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).Build()
+	r := &AppReconciler{Client: cl, Scheme: scheme, ClusterIssuer: "letsencrypt-prod", WildcardClusterIssuer: "letsencrypt-dns01-delegated"}
+	if err := r.reconcileIngress(ctx, app, []string{"app.onbex.co", "wildcard.example.com", "*.example.com"}, "app", 3000, nil); err != nil {
+		t.Fatalf("reconcileIngress: %v", err)
+	}
+	var main, wild networkingv1.Ingress
+	if err := cl.Get(ctx, types.NamespacedName{Name: "app", Namespace: "default"}, &main); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(ctx, types.NamespacedName{Name: wildcardIngressName("app"), Namespace: "default"}, &wild); err != nil {
+		t.Fatal(err)
+	}
+	concrete := ingressTLSSecretNames(&main)
+	if !concrete[appv1alpha1.TLSSecretName("app", false, "wildcard.example.com")] {
+		t.Fatalf("serving Ingress TLS = %+v, want wildcard.example.com's Secret", main.Spec.TLS)
+	}
+	if len(wild.Spec.TLS) != 1 || wild.Spec.TLS[0].SecretName == "" {
+		t.Fatalf("wildcard TLS = %+v, want a Secret", wild.Spec.TLS)
+	}
+	if name := wild.Spec.TLS[0].SecretName; concrete[name] {
+		t.Errorf("the wildcard Ingress and the serving Ingress both name the Secret %q", name)
+	}
+}
+
 // Without a DNS-01 issuer a wildcard routes without a certificate request:
 // HTTP-01 could never issue one.
 func TestWildcardIngressWithoutDNS01IssuerRequestsNoCertificate(t *testing.T) {

@@ -17,8 +17,12 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"math/rand/v2"
+	"slices"
 	"strings"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 // TestBuildPlaneSecretNames pins the two on-the-wire conventions. They are not
@@ -52,12 +56,71 @@ func TestTLSSecretName(t *testing.T) {
 	}{
 		{"beancount-cms", true, "beancount-cms-v2.onbex.co", "beancount-cms-tls"},
 		{"a", false, "www.example.com", "a-tls-www.example.com"},
-		{"a", false, "*.example.com", "a-tls-wildcard.example.com"},
+		{"a", false, "wildcard.example.com", "a-tls-wildcard.example.com"},
+		{"a", false, "*.example.com", "a-tls--wildcard.example.com"},
+		{"a", true, "*.example.com", "a-tls"},
 		{"a", false, long, "a-tls-99a9d9674c365e9e"},
 	} {
 		got := TLSSecretName(tc.app, tc.first, tc.host)
 		if got != tc.want || len(got) > 253 {
 			t.Errorf("TLSSecretName(%q, %v, %q) = %q, want %q", tc.app, tc.first, tc.host, got, tc.want)
+		}
+	}
+}
+
+// A wildcard and the concrete host whose first label is "wildcard" are two
+// hosts with two certificates. Sharing one Secret, cert-manager issued only
+// whichever Ingress it reached first, and bex-api reported both issued. The
+// long bases put the wildcard's name, then both names, past the length limit.
+func TestTLSSecretNameKeepsAWildcardFromItsWildcardLabel(t *testing.T) {
+	label := strings.Repeat("a", 63)
+	long := label + "." + label + "." + label + "."
+	for _, base := range []string{"example.com", long + strings.Repeat("b", 42) + ".com", long + strings.Repeat("b", 46) + ".com"} {
+		if errs := validation.IsDNS1123Subdomain("wildcard." + base); len(errs) != 0 {
+			t.Fatalf("wildcard.%s is no host: %v", base, errs)
+		}
+		wildcard, concrete := TLSSecretName("a", false, "*."+base), TLSSecretName("a", false, "wildcard."+base)
+		if wildcard == concrete {
+			t.Errorf("*.%s and wildcard.%s share the Secret %q", base, base, wildcard)
+		}
+	}
+}
+
+// No two hosts of one App share a Secret, whatever mix of concrete hosts,
+// wildcards and hosts long enough to be hashed it serves, and every name is
+// one Kubernetes accepts.
+func TestTLSSecretNamesOfOneAppAreDistinct(t *testing.T) {
+	labels := []string{"wildcard", "wildcard--example", "www", "tls", "srv-d1abc-tls", "99a9d9674c365e9e", strings.Repeat("x", 63), strings.Repeat("y", 50)}
+	rng := rand.New(rand.NewPCG(1, 2))
+	for range 2000 {
+		var hosts []string
+		for range 8 {
+			parts := []string{"com"}
+			for range 1 + rng.IntN(4) {
+				parts = slices.Insert(parts, 0, labels[rng.IntN(len(labels))])
+			}
+			base := strings.Join(parts, ".")
+			if len(validation.IsDNS1123Subdomain(base)) != 0 {
+				continue // not a host bex-api or an Ingress accepts
+			}
+			// A host, the wildcard over it, or that wildcard beside the
+			// concrete host its "wildcard" label spells.
+			for _, h := range [][]string{{base}, {WildcardHostPrefix + base}, {WildcardHostPrefix + base, "wildcard." + base}}[rng.IntN(3)] {
+				if len(validation.IsDNS1123Subdomain(strings.TrimPrefix(h, WildcardHostPrefix))) == 0 && !slices.Contains(hosts, h) {
+					hosts = append(hosts, h)
+				}
+			}
+		}
+		owner := map[string]string{}
+		for i, host := range hosts {
+			name := TLSSecretName("srv-d1abc", i == 0, host)
+			if errs := validation.IsDNS1123Subdomain(name); len(errs) != 0 {
+				t.Fatalf("TLSSecretName(%q) = %q: %v", host, name, errs)
+			}
+			if other, dup := owner[name]; dup {
+				t.Fatalf("%q and %q share the Secret %q", other, host, name)
+			}
+			owner[name] = host
 		}
 	}
 }

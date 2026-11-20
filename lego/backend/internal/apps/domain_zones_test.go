@@ -80,6 +80,26 @@ func TestALongHostIsVerifiedOnceItsSecretExists(t *testing.T) {
 	}
 }
 
+// A wildcard is not reported issued on the certificate of the concrete host
+// its "wildcard" label spells. Both hosts read one Secret, so a
+// "*.example.com" whose certificate was never ordered read verified.
+func TestAWildcardIsNotVerifiedOnItsWildcardLabelsCertificate(t *testing.T) {
+	a := appWithHosts("web", "wildcard.example.com", "*.example.com")
+	a.Spec.Host = "web.onbex.co"
+	secret := tlsSecret("default", a.Spec.TLSSecretNameFor(a.Name, "", "wildcard.example.com"))
+	svc := &Service{Base: &core.Base{Client: fakeClient(a, secret), Namespace: "default"}}
+
+	for host, want := range map[string]string{"wildcard.example.com": "verified", "*.example.com": "pending"} {
+		d, err := svc.GetDomain(context.Background(), "web", host)
+		if err != nil {
+			t.Fatalf("GetDomain(%s): %v", host, err)
+		}
+		if d.CertificateStatus != want {
+			t.Errorf("%s certificateStatus = %q, want %q: only %s exists", host, d.CertificateStatus, want, secret.Name)
+		}
+	}
+}
+
 // BEX_RESERVED_DOMAINS replaces the zones reserved around the platform hosts.
 // A self-hoster with the dashboard at bex.acme.com reserves that subtree and
 // can claim the rest of acme.com; the platform hosts stay reserved. Unset, the

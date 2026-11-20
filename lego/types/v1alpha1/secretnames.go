@@ -52,14 +52,26 @@ func ExternalRegistryPullSecretName(appName string) string { return appName + "-
 // host has its own, so one domain's failed issuance or renewal (a customer's
 // deleted CNAME) cannot block the others. The App's first effective host keeps
 // the legacy "<app>-tls": renaming it would point the Ingress at an empty
-// Secret until cert-manager re-issued. Any other is "<app>-tls-<host>" with
-// "*" spelled "wildcard", or a hash of the host past the 253-character Secret
-// name limit, so a long host still gets a name of its own.
+// Secret until cert-manager re-issued. Any other is "<app>-tls-<host>", a
+// wildcard "*.<base>" is "<app>-tls--wildcard.<base>", and past the
+// 253-character Secret name limit either is a hash of the host, so a long
+// host still gets a name of its own.
+//
+// No two hosts of one App share a name, which is what keeps their
+// certificates apart. A host starts with a letter or digit, so the hyphen
+// that leads a wildcard's part keeps "*.example.com" from the concrete
+// "wildcard.example.com". Spelled plain "wildcard", both named one Secret,
+// so cert-manager issued only one of their two certificates and bex-api
+// reported both hosts issued. A hash has no dot, which every host has.
 func TLSSecretName(app string, first bool, host string) string {
 	if first {
 		return app + "-tls"
 	}
-	name := app + "-tls-" + strings.ReplaceAll(host, "*", "wildcard")
+	part := host
+	if base, ok := strings.CutPrefix(host, WildcardHostPrefix); ok {
+		part = "-wildcard." + base
+	}
+	name := app + "-tls-" + part
 	if len(name) > validation.DNS1123SubdomainMaxLength {
 		sum := sha256.Sum256([]byte(host))
 		name = fmt.Sprintf("%s-tls-%x", app, sum[:8])
