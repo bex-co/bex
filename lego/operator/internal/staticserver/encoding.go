@@ -31,10 +31,12 @@ import (
 // (w8/m132, what Render's live static sites also serve to a client that
 // accepts gzip but not br): an eligible text-like object is served br-encoded
 // to a visitor that accepts br, else gzip-encoded to one that accepts gzip.
-// The encoded variant is computed once per immutable object key and cached
-// beside the identity object under the same shared byte budget, so the CPU cost
-// is paid per published object, not per request. Everything here degrades to
-// the identity representation — never to an error — when a bound is reached.
+// As on Render (w8/359), br has no size floor and neither coding a savings
+// test. The encoded variant is computed once per immutable object key and
+// cached beside the identity object under the same shared byte budget, so the
+// CPU cost is paid per published object, not per request. Everything here
+// degrades to the identity representation — never to an error — when a bound
+// is reached.
 const (
 	// brotliQuality trades ratio for encode speed. 5 is the usual on-the-fly
 	// sweet spot (most of quality 11's ratio at a fraction of the CPU).
@@ -42,8 +44,12 @@ const (
 	// brotliWindowBits is the encoder's LZ window (1 MiB). The library default
 	// (4 MiB) roughly triples encoder memory for little gain on web assets.
 	brotliWindowBits = 20
-	// minBrotliBytes skips bodies too small for encoding to pay for itself.
-	minBrotliBytes = 1024
+	// minGzipBytes is the smallest body served gzip. Render's static sites
+	// gzip a 67-byte robots.txt (into 78 bytes) but send a 27-byte JSON file
+	// identity (captured 2026-11-20, w8/359), matching the 48-byte gzip floor
+	// of the Cloudflare edge in front of them. br has no floor: Render sends a
+	// 10-byte body as 14 br bytes.
+	minGzipBytes = 48
 	// maxBrotliBytes bounds the input of one encode so a single request cannot
 	// pin a core (or its share of the live-body budget) for long. Larger
 	// eligible objects are served identity.
@@ -61,11 +67,17 @@ const (
 	brotliEncoderStateBytes = 24 << 20 // 24 MiB
 )
 
+// encodedBound caps one encode's output for n input bytes. It sits well above
+// either encoder's worst-case expansion (Brotli adds a few bytes per 16 KiB,
+// gzip 5 per stored block plus an 18-byte frame), so it only stops an encode
+// that has gone wrong.
+func encodedBound(n int) int { return n + n/64 + 64 }
+
 // encodeLease is the live-body budget one encode of n input bytes holds: the
-// output buffer and its exact-size copy (each at most n) plus encoder state.
-// Leasing it from the live-body budget means encoding adds no memory ceiling
-// of its own.
-func encodeLease(n int) int64 { return 2*int64(n) + brotliEncoderStateBytes }
+// output buffer and its exact-size copy (each at most encodedBound(n)) plus
+// encoder state. Leasing it from the live-body budget means encoding adds no
+// memory ceiling of its own.
+func encodeLease(n int) int64 { return 2*int64(encodedBound(n)) + brotliEncoderStateBytes }
 
 // Content codings a static object can be served in, in server preference order.
 const (
@@ -86,12 +98,11 @@ func brotliVariantKey(key string) string { return variantKey(codingBrotli, key) 
 func variantKey(coding, key string) string { return "\x00" + coding + "\x00" + key }
 
 // encodingCandidate reports whether the response being prepared in hdr could be
-// served br-encoded: an eligible media type and size, no authored
+// served encoded: an eligible media type, at most maxBrotliBytes, no authored
 // Content-Encoding (a precompressed asset is served exactly as published, w4/204)
-// and no Cache-Control: no-transform. It depends only on the object and its
-// header rules — not on the request — so it also decides Vary.
+// and no Cache-Control: no-transform.
 func encodingCandidate(hdr http.Header, size int) bool {
-	if size < minBrotliBytes || size > maxBrotliBytes {
+	if size > maxBrotliBytes {
 		return false
 	}
 	if _, authored := hdr["Content-Encoding"]; authored {
@@ -196,11 +207,45 @@ func weakenETag(hdr http.Header) {
 	}
 }
 
-// encodedVariant returns the useful coding encoding of the identity body
-// stored under key, computing it at most once per key and coding: concurrent
-// requests collapse onto one encode (singleflight) and the result — including
-// "not useful", so an incompressible asset is not re-tried every request — is
-// cached against the site's budget. ok=false means serve identity.
+// encodeBody picks the bytes a file response sends for body, whose headers so
+// far are in hdr: br for a client that prefers it, at any size; gzip, when
+// gzipOK, from minGzipBytes up; else identity. An encoded body sets
+// Content-Encoding and weakens the ETag. Anything short of a ready variant
+// within budget is identity. release returns the encoded body's live-body
+// lease once the response is written.
+func (h *Handler) encodeBody(r *http.Request, hdr http.Header, site Site, servedPath string, body []byte, gzipOK bool) (out []byte, encoded bool, release func()) {
+	release = func() {}
+	if !encodingCandidate(hdr, len(body)) {
+		return body, false, release
+	}
+	coding := negotiateCoding(r.Header)
+	if coding == "" || coding == codingGzip && (!gzipOK || len(body) < minGzipBytes) {
+		return body, false, release
+	}
+	enc, ok := h.encodedVariant(coding, site.AppID, site.cacheKey(servedPath), body)
+	if !ok {
+		return body, false, release
+	}
+	// The encoded body leases its own bytes on top of the identity lease (the
+	// identity body stays referenced); HEAD writes none. Without room, serve
+	// identity rather than shed.
+	lease := int64(len(enc))
+	if r.Method == http.MethodHead {
+		lease = 0
+	}
+	if !h.liveBodies.TryAcquire(lease) {
+		return body, false, release
+	}
+	hdr.Set("Content-Encoding", coding)
+	weakenETag(hdr)
+	return enc, true, func() { h.liveBodies.Release(lease) }
+}
+
+// encodedVariant returns the coding encoding of the identity body stored
+// under key, computing it at most once per key and coding: concurrent requests
+// collapse onto one encode (singleflight) and the result — including a failed
+// encode, so it is not re-tried every request — is cached against the site's
+// budget. ok=false means serve identity.
 func (h *Handler) encodedVariant(coding, appID, key string, body []byte) (encoded []byte, ok bool) {
 	vkey := variantKey(coding, key)
 	if v, hit := h.cache.get(vkey); hit {
@@ -223,8 +268,8 @@ func (h *Handler) encodedVariant(coding, appID, key string, body []byte) (encode
 		if coding == codingGzip {
 			encode = encodeGzip
 		}
-		enc, useful := encode(body)
-		variant := Object{Body: enc, negative: !useful}
+		enc, encoded := encode(body)
+		variant := Object{Body: enc, negative: !encoded}
 		h.cache.put(appID, vkey, variant)
 		return variant, nil
 	})
@@ -235,12 +280,12 @@ func (h *Handler) encodedVariant(coding, appID, key string, body []byte) (encode
 	return variant.Body, !variant.negative
 }
 
-// encodeBrotli compresses src, reporting useful=false (and no bytes) unless the
-// result saves at least 1/16 of the size. The encoder writes into a buffer
-// capped at that threshold, so an incompressible input stops early instead of
-// growing an output as large as itself.
-func encodeBrotli(src []byte) (encoded []byte, useful bool) {
-	out := &cappedBuffer{buf: make([]byte, 0, len(src)-len(src)/16)}
+// encodeBrotli compresses src whatever the result's size: Render serves br
+// even where it is larger than identity (a 27-byte JSON file as 29 br bytes,
+// w8/359). ok=false (and no bytes) means the encode failed or outgrew
+// encodedBound.
+func encodeBrotli(src []byte) (encoded []byte, ok bool) {
+	out := &cappedBuffer{buf: make([]byte, 0, encodedBound(len(src)))}
 	w := brotli.NewWriterOptions(out, brotli.WriterOptions{Quality: brotliQuality, LGWin: brotliWindowBits})
 	if _, err := w.Write(src); err != nil {
 		return nil, false
@@ -253,10 +298,10 @@ func encodeBrotli(src []byte) (encoded []byte, useful bool) {
 	return append([]byte(nil), out.buf...), true
 }
 
-// encodeGzip is encodeBrotli for gzip: the same usefulness threshold and
-// capped output, so an incompressible input stops early.
-func encodeGzip(src []byte) (encoded []byte, useful bool) {
-	out := &cappedBuffer{buf: make([]byte, 0, len(src)-len(src)/16)}
+// encodeGzip is encodeBrotli for gzip, with the same bound: Render gzips a
+// 67-byte robots.txt into 78 bytes (w8/359).
+func encodeGzip(src []byte) (encoded []byte, ok bool) {
+	out := &cappedBuffer{buf: make([]byte, 0, encodedBound(len(src)))}
 	w, err := gzip.NewWriterLevel(out, gzipLevel)
 	if err != nil {
 		return nil, false
@@ -270,8 +315,8 @@ func encodeGzip(src []byte) (encoded []byte, useful bool) {
 	return append([]byte(nil), out.buf...), true
 }
 
-// errBufferFull aborts an encode whose output would not be useful.
-var errBufferFull = errors.New("staticserver: encoded output not smaller")
+// errBufferFull aborts an encode whose output outgrew encodedBound.
+var errBufferFull = errors.New("staticserver: encoded output past its bound")
 
 // cappedBuffer is an io.Writer that refuses to grow past its initial capacity.
 type cappedBuffer struct{ buf []byte }

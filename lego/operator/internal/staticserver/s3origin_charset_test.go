@@ -170,7 +170,7 @@ func TestStaticUTF8TextIsServedAsUTF8(t *testing.T) {
 // A declared UTF-8 type changes neither a byte range nor automatic Brotli:
 // both still serve the stored bytes, under the declared type.
 func TestStaticUTF8TextKeepsRangesAndCompression(t *testing.T) {
-	long := strings.Repeat(utf8Text, 20) // past minBrotliBytes
+	long := strings.Repeat(utf8Text, 20)
 	origin, _ := fakeS3Origin(t, map[string]s3Object{key("files/long.txt"): {contentType: "text/plain", body: long}})
 	h := New(staticResolver{host: testHost, site: Site{AppID: appID, Revision: rev}}, origin, 1<<20)
 

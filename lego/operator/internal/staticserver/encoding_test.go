@@ -64,26 +64,55 @@ func hasVaryAcceptEncoding(h http.Header) bool {
 	return httpguts.HeaderValuesContainsToken(h.Values("Vary"), "Accept-Encoding")
 }
 
-// assertBrotli checks a br response decodes to want and is honestly framed.
-func assertBrotli(t *testing.T, label string, rec *httptest.ResponseRecorder, want []byte) {
+// decodeBody independently decodes a body in coding.
+func decodeBody(t *testing.T, coding string, encoded []byte) []byte {
+	t.Helper()
+	if coding == codingBrotli {
+		return decodeBrotli(t, encoded)
+	}
+	zr, err := gzip.NewReader(bytes.NewReader(encoded))
+	if err != nil {
+		t.Fatalf("gzip header: %v", err)
+	}
+	decoded, err := io.ReadAll(zr)
+	if err != nil {
+		t.Fatalf("decode gzip body: %v", err)
+	}
+	return decoded
+}
+
+// assertEncoded checks a coding response decodes to want, varies by
+// Accept-Encoding, carries a weak validator and is honestly framed, whatever
+// its size against identity's (w8/359).
+func assertEncoded(t *testing.T, label string, rec *httptest.ResponseRecorder, coding string, want []byte) {
 	t.Helper()
 	if rec.Code != http.StatusOK {
 		t.Fatalf("%s => %d, want 200", label, rec.Code)
 	}
-	if got := rec.Header().Get("Content-Encoding"); got != "br" {
-		t.Fatalf("%s Content-Encoding = %q, want br (%d bytes sent)", label, got, rec.Body.Len())
+	if got := rec.Header().Get("Content-Encoding"); got != coding {
+		t.Fatalf("%s Content-Encoding = %q, want %s (%d bytes sent)", label, got, coding, rec.Body.Len())
 	}
 	if !hasVaryAcceptEncoding(rec.Header()) {
 		t.Fatalf("%s Vary = %q, want Accept-Encoding", label, rec.Header().Values("Vary"))
 	}
-	if rec.Body.Len() >= len(want) {
-		t.Fatalf("%s sent %d br bytes for %d identity bytes, want smaller", label, rec.Body.Len(), len(want))
-	}
 	if got := rec.Header().Get("Content-Length"); got != strconv.Itoa(rec.Body.Len()) {
 		t.Fatalf("%s Content-Length = %q, want the encoded length %d", label, got, rec.Body.Len())
 	}
-	if !bytes.Equal(decodeBrotli(t, rec.Body.Bytes()), want) {
-		t.Fatalf("%s br body does not decode to the published bytes", label)
+	if !bytes.Equal(decodeBody(t, coding, rec.Body.Bytes()), want) {
+		t.Fatalf("%s %s body does not decode to the published bytes", label, coding)
+	}
+	if tag := rec.Header().Get("Etag"); !strings.HasPrefix(tag, "W/") {
+		t.Fatalf("%s Etag = %q, want a weak validator on the encoded bytes", label, tag)
+	}
+}
+
+// assertBrotli is assertEncoded for br on a compressible body, which must
+// shrink.
+func assertBrotli(t *testing.T, label string, rec *httptest.ResponseRecorder, want []byte) {
+	t.Helper()
+	assertEncoded(t, label, rec, codingBrotli, want)
+	if rec.Body.Len() >= len(want) {
+		t.Fatalf("%s sent %d br bytes for %d identity bytes, want smaller", label, rec.Body.Len(), len(want))
 	}
 }
 
@@ -132,34 +161,13 @@ func TestAutomaticBrotliForEligibleAssets(t *testing.T) {
 	}
 }
 
-// assertGzip checks a gzip response decodes to want and is honestly framed.
+// assertGzip is assertEncoded for gzip on a compressible body, which must
+// shrink.
 func assertGzip(t *testing.T, label string, rec *httptest.ResponseRecorder, want []byte) {
 	t.Helper()
-	if rec.Code != http.StatusOK {
-		t.Fatalf("%s => %d, want 200", label, rec.Code)
-	}
-	if got := rec.Header().Get("Content-Encoding"); got != "gzip" {
-		t.Fatalf("%s Content-Encoding = %q, want gzip (%d bytes sent)", label, got, rec.Body.Len())
-	}
-	if !hasVaryAcceptEncoding(rec.Header()) {
-		t.Fatalf("%s Vary = %q, want Accept-Encoding", label, rec.Header().Values("Vary"))
-	}
+	assertEncoded(t, label, rec, codingGzip, want)
 	if rec.Body.Len() >= len(want) {
 		t.Fatalf("%s sent %d gzip bytes for %d identity bytes, want smaller", label, rec.Body.Len(), len(want))
-	}
-	if got := rec.Header().Get("Content-Length"); got != strconv.Itoa(rec.Body.Len()) {
-		t.Fatalf("%s Content-Length = %q, want the encoded length %d", label, got, rec.Body.Len())
-	}
-	zr, err := gzip.NewReader(bytes.NewReader(rec.Body.Bytes()))
-	if err != nil {
-		t.Fatalf("%s gzip header: %v", label, err)
-	}
-	decoded, err := io.ReadAll(zr)
-	if err != nil || !bytes.Equal(decoded, want) {
-		t.Fatalf("%s gzip body does not decode to the published bytes (err %v)", label, err)
-	}
-	if tag := rec.Header().Get("Etag"); !strings.HasPrefix(tag, "W/") {
-		t.Fatalf("%s Etag = %q, want a weak validator on the encoded bytes", label, tag)
 	}
 }
 
@@ -200,6 +208,119 @@ func TestGzipForGzipOnlyClients(t *testing.T) {
 	}
 }
 
+// w8/359, captured on Render 2026-11-20 with Accept-Encoding "gzip, br": a
+// 67-byte robots.txt went out as 62 br bytes, a 27-byte version.json as 29
+// and the bare 404 as 14, each with Vary: Accept-Encoding. A gzip-only client
+// got robots.txt gzipped (78 bytes), version.json identity, and every 404
+// identity. bex skipped bodies under 1 KiB and any encode that saved under
+// 1/16, and sent the bare 404 identity, all without Vary.
+const (
+	renderRobots  = "# https://www.robotstxt.org/robotstxt.html\nUser-agent: *\nDisallow:\n"
+	renderVersion = `{"version":"1763672406123"}`
+)
+
+func TestSmallBodiesAreEncodedAsOnRender(t *testing.T) {
+	if len(renderRobots) < minGzipBytes || len(renderVersion) >= minGzipBytes {
+		t.Fatalf("fixtures are %d and %d bytes, want either side of minGzipBytes %d", len(renderRobots), len(renderVersion), minGzipBytes)
+	}
+	tiny := []byte("ok\n")
+	floor := []byte(strings.Repeat("a", minGzipBytes))
+	h, _ := newTestHandler(t, Site{}, map[string]Object{
+		key("robots.txt"):        {Body: []byte(renderRobots), ContentType: "text/plain"},
+		key("_app/version.json"): {Body: []byte(renderVersion), ContentType: "application/json"},
+		key("tiny.txt"):          {Body: tiny, ContentType: "text/plain"},
+		key("floor.txt"):         {Body: floor, ContentType: "text/plain"},
+		key("under.txt"):         {Body: floor[1:], ContentType: "text/plain"},
+	})
+	for path, body := range map[string][]byte{
+		"/robots.txt": []byte(renderRobots), "/_app/version.json": []byte(renderVersion),
+		"/tiny.txt": tiny, "/floor.txt": floor, "/under.txt": floor[1:],
+	} {
+		assertEncoded(t, path+" offered gzip, br", doWith(h, http.MethodGet, path, brHeader("gzip, br")), codingBrotli, body)
+		rec := doWith(h, http.MethodGet, path, nil)
+		assertIdentity(t, path+" identity", rec, body)
+		if !hasVaryAcceptEncoding(rec.Header()) {
+			t.Fatalf("%s identity lacks Vary: Accept-Encoding", path)
+		}
+		gz := doWith(h, http.MethodGet, path, brHeader("gzip"))
+		if len(body) >= minGzipBytes {
+			assertEncoded(t, path+" offered gzip", gz, codingGzip, body)
+			continue
+		}
+		assertIdentity(t, path+" offered gzip", gz, body)
+		if !hasVaryAcceptEncoding(gz.Header()) {
+			t.Fatalf("%s gzip-client identity lacks Vary: Accept-Encoding", path)
+		}
+	}
+	// No savings test: the encoded body may be the larger one, as Render's are.
+	if rec := doWith(h, http.MethodGet, "/tiny.txt", brHeader("br")); rec.Body.Len() <= len(tiny) {
+		t.Fatalf("a %d-byte body went out as %d br bytes, want the larger br body Render sends", len(tiny), rec.Body.Len())
+	}
+}
+
+// TestSmallBodyValidatorsHold: the w4/341 rules hold below the old 1 KiB
+// floor too. The br variant is weak and identity strong, and either tag
+// revalidates the other representation with a bodyless 304 that keeps Vary.
+func TestSmallBodyValidatorsHold(t *testing.T) {
+	h, _ := newTestHandler(t, Site{}, map[string]Object{
+		key("robots.txt"): {Body: []byte(renderRobots), ContentType: "text/plain"},
+	})
+	br := doWith(h, http.MethodGet, "/robots.txt", brHeader("br"))
+	identity := doWith(h, http.MethodGet, "/robots.txt", nil)
+	weak, strong := br.Header().Get("Etag"), identity.Header().Get("Etag")
+	if !strings.HasPrefix(strong, `"`) || weak != "W/"+strong {
+		t.Fatalf("br ETag %q, identity ETag %q, want the weak form of a strong tag", weak, strong)
+	}
+	for _, tc := range []struct{ offer, tag string }{{"br", strong}, {"br", weak}, {"", weak}, {"gzip", strong}} {
+		rec := doWith(h, http.MethodGet, "/robots.txt", http.Header{"Accept-Encoding": {tc.offer}, "If-None-Match": {tc.tag}})
+		if rec.Code != http.StatusNotModified || rec.Body.Len() != 0 || rec.Header().Get("Content-Encoding") != "" || !hasVaryAcceptEncoding(rec.Header()) {
+			t.Fatalf("offer %q If-None-Match %s => %d %d bytes CE %q Vary %v, want a bodyless 304 with Vary",
+				tc.offer, tc.tag, rec.Code, rec.Body.Len(), rec.Header().Get("Content-Encoding"), rec.Header().Values("Vary"))
+		}
+	}
+}
+
+// TestNotFoundIsBrotliEncodedForBrClients: Render sends the bare 404 and a
+// site's 404.html br to a br client and identity to a gzip-only one, both
+// with Vary: Accept-Encoding (w8/359).
+func TestNotFoundIsBrotliEncodedForBrClients(t *testing.T) {
+	page := repeated("<p>custom 404</p>\n")
+	bare, _ := newTestHandler(t, Site{NoSPAFallback: true}, nil)
+	withPage, _ := newTestHandler(t, Site{NoSPAFallback: true}, map[string]Object{key("404.html"): {Body: page, ContentType: "text/html"}})
+	for _, tc := range []struct {
+		name string
+		h    *Handler
+		want []byte
+	}{{"bare 404", bare, []byte("Not Found\n")}, {"404.html", withPage, page}} {
+		for _, method := range []string{http.MethodGet, http.MethodHead} {
+			rec := doWith(tc.h, method, "/qa-nope-x", brHeader("gzip, br"))
+			hdr := rec.Header()
+			if rec.Code != http.StatusNotFound || hdr.Get("Content-Encoding") != "br" || !hasVaryAcceptEncoding(hdr) {
+				t.Fatalf("%s %s offered br => %d CE %q Vary %v, want a br 404 with Vary", method, tc.name, rec.Code, hdr.Get("Content-Encoding"), hdr.Values("Vary"))
+			}
+			if method == http.MethodHead {
+				if rec.Body.Len() != 0 || hdr.Get("Content-Length") == "" {
+					t.Fatalf("HEAD %s => %d body bytes, Content-Length %q", tc.name, rec.Body.Len(), hdr.Get("Content-Length"))
+				}
+				continue
+			}
+			if hdr.Get("Content-Length") != strconv.Itoa(rec.Body.Len()) || !bytes.Equal(decodeBrotli(t, rec.Body.Bytes()), tc.want) {
+				t.Fatalf("%s br body (%d bytes, Content-Length %q) does not decode to the page", tc.name, rec.Body.Len(), hdr.Get("Content-Length"))
+			}
+			for _, offer := range []string{"gzip", ""} {
+				rec := doWith(tc.h, method, "/qa-nope-x", brHeader(offer))
+				if rec.Code != http.StatusNotFound || rec.Header().Get("Content-Encoding") != "" || !bytes.Equal(rec.Body.Bytes(), tc.want) || !hasVaryAcceptEncoding(rec.Header()) {
+					t.Fatalf("%s offered %q => %d CE %q, want the identity 404 with Vary", tc.name, offer, rec.Code, rec.Header().Get("Content-Encoding"))
+				}
+			}
+		}
+	}
+	if rec := doWith(bare, http.MethodGet, "/qa-nope-x", brHeader("br")); rec.Header().Get("X-Content-Type-Options") != "nosniff" ||
+		rec.Header().Get("Content-Type") != "text/plain; charset=utf-8" {
+		t.Fatalf("bare br 404 headers = %v, want text/plain with nosniff", rec.Header())
+	}
+}
+
 // TestBrotliOnEveryServingCaller covers the three serveObject callers: a direct
 // object (and a directory index), a rewritten target, and the SPA fallback.
 // The content type comes from the served object while header rules still
@@ -225,18 +346,19 @@ func TestBrotliOnEveryServingCaller(t *testing.T) {
 		t.Fatalf("spa fallback headers = %v", spa.Header())
 	}
 
-	// Errors and misses are unchanged and never claim an encoding.
+	// A miss is the bare 404, which Render also sends br (w8/359).
 	for _, p := range []string{"/missing.css", "/client/../../missing.js"} {
 		rec := doWith(h, http.MethodGet, p, brHeader("br"))
-		if rec.Code != http.StatusNotFound || rec.Header().Get("Content-Encoding") != "" {
-			t.Fatalf("GET %s => %d %q, want plain 404", p, rec.Code, rec.Header().Get("Content-Encoding"))
+		if rec.Code != http.StatusNotFound || rec.Header().Get("Content-Encoding") != "br" ||
+			string(decodeBrotli(t, rec.Body.Bytes())) != "Not Found\n" {
+			t.Fatalf("GET %s => %d %q, want the bare 404 in br", p, rec.Code, rec.Header().Get("Content-Encoding"))
 		}
 	}
 }
 
 // TestBrotliIneligibleResponsesStayExact: authored precompressed bodies,
-// no-transform, non-text media and tiny bodies are served exactly as
-// published and do not claim to vary by Accept-Encoding.
+// no-transform and non-text media are served exactly as published, and
+// still vary by Accept-Encoding as every Render file does (w8/359).
 func TestBrotliIneligibleResponsesStayExact(t *testing.T) {
 	var gz bytes.Buffer
 	zw := gzip.NewWriter(&gz)
@@ -254,7 +376,6 @@ func TestBrotliIneligibleResponsesStayExact(t *testing.T) {
 		key("pre/app.js"):   {Body: gz.Bytes(), ContentType: "text/javascript"},
 		key("raw/app.css"):  {Body: repeated("a{}\n"), ContentType: "text/css"},
 		key("img/logo.png"): {Body: png, ContentType: "image/png"},
-		key("tiny.txt"):     {Body: []byte(strings.Repeat("a", minBrotliBytes-1)), ContentType: "text/plain"},
 	})
 	cases := []struct {
 		path, encoding string
@@ -263,20 +384,19 @@ func TestBrotliIneligibleResponsesStayExact(t *testing.T) {
 		{"/pre/app.js", "gzip", gz.Bytes()},
 		{"/raw/app.css", "", repeated("a{}\n")},
 		{"/img/logo.png", "", png},
-		{"/tiny.txt", "", []byte(strings.Repeat("a", minBrotliBytes-1))},
 	}
 	for _, tc := range cases {
 		for _, method := range []string{http.MethodGet, http.MethodHead} {
 			// "gzip" alone must not re-encode either (w8/m132).
-			if rec := doWith(h, method, tc.path, brHeader("gzip")); rec.Header().Get("Content-Encoding") != tc.encoding || hasVaryAcceptEncoding(rec.Header()) {
+			if rec := doWith(h, method, tc.path, brHeader("gzip")); rec.Header().Get("Content-Encoding") != tc.encoding || !hasVaryAcceptEncoding(rec.Header()) {
 				t.Fatalf("%s %s offered gzip => Content-Encoding %q Vary %v, want the fixed representation", method, tc.path, rec.Header().Get("Content-Encoding"), rec.Header().Values("Vary"))
 			}
 			rec := doWith(h, method, tc.path, brHeader("br, gzip"))
 			if rec.Code != http.StatusOK || rec.Header().Get("Content-Encoding") != tc.encoding {
 				t.Fatalf("%s %s => %d Content-Encoding %q, want 200 %q", method, tc.path, rec.Code, rec.Header().Get("Content-Encoding"), tc.encoding)
 			}
-			if hasVaryAcceptEncoding(rec.Header()) {
-				t.Fatalf("%s %s added Vary: Accept-Encoding to a fixed representation", method, tc.path)
+			if !hasVaryAcceptEncoding(rec.Header()) {
+				t.Fatalf("%s %s lacks Vary: Accept-Encoding on a fixed representation", method, tc.path)
 			}
 			want := tc.want
 			if method == http.MethodHead {
@@ -313,21 +433,27 @@ func TestBrotliKeepsAuthoredVary(t *testing.T) {
 	}
 }
 
-// TestBrotliIncompressibleIsRememberedNotRetried: an eligible type whose bytes
-// do not shrink is served identity, and the outcome is cached so later
-// requests neither re-encode nor need an encode slot.
-func TestBrotliIncompressibleIsRememberedNotRetried(t *testing.T) {
+// TestIncompressibleBodiesAreStillEncoded: Render applies no savings test
+// (w8/359), so an eligible type whose bytes do not shrink is served br and
+// gzip all the same, from a variant cached so later requests need no encode
+// slot.
+func TestIncompressibleBodiesAreStillEncoded(t *testing.T) {
 	noise := make([]byte, 64<<10)
 	if _, err := rand.Read(noise); err != nil {
 		t.Fatal(err)
 	}
 	h, _ := newTestHandler(t, Site{}, map[string]Object{key("noise.txt"): {Body: noise, ContentType: "text/plain"}})
-	assertIdentity(t, "incompressible", doWith(h, http.MethodGet, "/noise.txt", brHeader("br")), noise)
-	if v, ok := h.cache.get(brotliVariantKey(cachedKey("noise.txt"))); !ok || !v.negative || v.Body != nil {
-		t.Fatalf("incompressible variant cache = %+v %v, want a remembered negative", v, ok)
+	first := doWith(h, http.MethodGet, "/noise.txt", brHeader("br"))
+	assertEncoded(t, "incompressible br", first, codingBrotli, noise)
+	if first.Body.Len() < len(noise) {
+		t.Fatalf("random bytes shrank to %d br bytes from %d", first.Body.Len(), len(noise))
+	}
+	assertEncoded(t, "incompressible gzip", doWith(h, http.MethodGet, "/noise.txt", brHeader("gzip")), codingGzip, noise)
+	if v, ok := h.cache.get(brotliVariantKey(cachedKey("noise.txt"))); !ok || v.negative {
+		t.Fatalf("incompressible br variant cache = %v %v, want the cached variant", ok, v.negative)
 	}
 	defer holdSiteEncode(t, h)() // a further encode attempt would have no slot
-	assertIdentity(t, "incompressible again", doWith(h, http.MethodGet, "/noise.txt", brHeader("br")), noise)
+	assertEncoded(t, "incompressible again", doWith(h, http.MethodGet, "/noise.txt", brHeader("br")), codingBrotli, noise)
 }
 
 // TestBrotliVariantCachedOncePerKey: the first br request encodes and caches
@@ -416,8 +542,8 @@ func TestBrotliSkipsObjectsPastTheEncodeBound(t *testing.T) {
 	h, _ := newTestHandler(t, Site{}, map[string]Object{key("big.txt"): {Body: big, ContentType: "text/plain"}})
 	rec := doWith(h, http.MethodGet, "/big.txt", brHeader("br"))
 	assertIdentity(t, "oversize", rec, big)
-	if hasVaryAcceptEncoding(rec.Header()) {
-		t.Fatal("oversize identity claims to vary")
+	if !hasVaryAcceptEncoding(rec.Header()) {
+		t.Fatal("oversize identity lacks Vary: Accept-Encoding")
 	}
 }
 
@@ -674,7 +800,7 @@ func TestBrotliEncoderStateBound(t *testing.T) {
 	var before, after runtime.MemStats
 	runtime.GC()
 	runtime.ReadMemStats(&before)
-	if _, useful := encodeBrotli(src); !useful {
+	if _, ok := encodeBrotli(src); !ok {
 		t.Fatal("half-zero input did not compress")
 	}
 	runtime.ReadMemStats(&after)

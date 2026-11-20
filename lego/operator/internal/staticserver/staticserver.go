@@ -43,6 +43,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/sync/semaphore"
@@ -448,12 +449,12 @@ func isExternalRewrite(act routeAction, target *url.URL) bool {
 // request for it would read as a cache hit on a 404.
 func (h *Handler) serveNotFound(w http.ResponseWriter, r *http.Request, site Site, requestPath string) {
 	if !site.NoSPAFallback {
-		serveBareNotFound(w)
+		serveBareNotFound(w, r)
 		return
 	}
 	obj, err := h.get(r.Context(), site, "/404.html")
 	if err != nil {
-		serveBareNotFound(w)
+		serveBareNotFound(w, r)
 		return
 	}
 	if r.Method != http.MethodHead {
@@ -466,24 +467,55 @@ func (h *Handler) serveNotFound(w http.ResponseWriter, r *http.Request, site Sit
 	}
 	hdr := w.Header()
 	setFileHeaders(hdr, site, requestPath, contentType("/404.html", obj.ContentType), "")
-	hdr.Set("Content-Length", strconv.Itoa(len(obj.Body)))
+	// Render sends the page br to a br client but identity to a gzip one
+	// (captured 2026-11-20, w8/359).
+	body, _, release := h.encodeBody(r, hdr, site, "/404.html", obj.Body, false)
+	defer release()
+	hdr.Set("Content-Length", strconv.Itoa(len(body)))
 	w.WriteHeader(http.StatusNotFound)
 	if r.Method != http.MethodHead {
-		_, _ = w.Write(obj.Body)
+		_, _ = w.Write(body)
 	}
 }
 
+// bareNotFoundBody is Render's bare 404 body, and bareNotFoundBrotli its br
+// form, which Render sends a br client and no other (captured 2026-11-20,
+// w8/359).
+var (
+	bareNotFoundBody   = []byte("Not Found\n")
+	bareNotFoundBrotli = sync.OnceValue(func() []byte {
+		enc, _ := encodeBrotli(bareNotFoundBody)
+		return enc
+	})
+)
+
 // serveBareNotFound is Render's answer to a miss on a site with no 404.html
-// (w8/322): text/plain "Not Found" with nosniff and none of the site's rules.
-func serveBareNotFound(w http.ResponseWriter) {
-	http.Error(w, "Not Found", http.StatusNotFound)
+// (w8/322): text/plain "Not Found" with nosniff and none of the site's rules,
+// varying by Accept-Encoding like every file it serves (w8/359).
+func serveBareNotFound(w http.ResponseWriter, r *http.Request) {
+	hdr := w.Header()
+	hdr.Set("Content-Type", "text/plain; charset=utf-8")
+	hdr.Set("X-Content-Type-Options", "nosniff")
+	hdr.Set("Vary", "Accept-Encoding")
+	body := bareNotFoundBody
+	if enc := bareNotFoundBrotli(); enc != nil && negotiateCoding(r.Header) == codingBrotli {
+		body = enc
+		hdr.Set("Content-Encoding", codingBrotli)
+	}
+	hdr.Set("Content-Length", strconv.Itoa(len(body)))
+	w.WriteHeader(http.StatusNotFound)
+	if r.Method != http.MethodHead {
+		_, _ = w.Write(body)
+	}
 }
 
 // setFileHeaders gives a published file's response its headers: its type,
 // the default cache policy, Render's static-site security defaults (w8/194)
 // and an ETag when it has one, then the site's rules matching the request
 // path, which win over each (last write for a key), so a saved ETag rule
-// replaces the generated one (w4/272).
+// replaces the generated one (w4/272). Vary: Accept-Encoding is merged in
+// last: Render sends it on every file it serves, images included (captured
+// 2026-11-20, w8/359).
 func setFileHeaders(hdr http.Header, site Site, requestPath, servedType, etag string) {
 	hdr.Set("Content-Type", servedType)
 	hdr.Set("Cache-Control", defaultCacheControl)
@@ -493,6 +525,7 @@ func setFileHeaders(hdr http.Header, site Site, requestPath, servedType, etag st
 		hdr.Set("Etag", etag)
 	}
 	applyHeaders(hdr, site.Headers, requestPath)
+	varyAcceptEncoding(hdr)
 }
 
 // serveOriginError maps a non-miss fetch failure onto its response class:
@@ -541,32 +574,13 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 		hdr.Set("Etag", retypedETag(obj.etag, final))
 	}
 
-	// Automatic Brotli and gzip (w8/m79, w8/m132). The representation is chosen before
-	// ServeContent, so its preconditions and byte ranges apply to the bytes
-	// actually sent. An eligible object varies by Accept-Encoding whichever
-	// coding this request gets; anything short of a ready, useful variant
-	// within budget falls back to identity.
-	body := obj.Body
-	if encodingCandidate(hdr, len(obj.Body)) {
-		varyAcceptEncoding(hdr)
-		if coding := negotiateCoding(r.Header); coding != "" {
-			if encoded, ok := h.encodedVariant(coding, site.AppID, site.cacheKey(servedPath), obj.Body); ok {
-				// The encoded body leases its own bytes on top of the identity
-				// lease (the identity body stays referenced); HEAD writes none.
-				// Without room, serve identity rather than shed.
-				lease := int64(len(encoded))
-				if r.Method == http.MethodHead {
-					lease = 0
-				}
-				if h.liveBodies.TryAcquire(lease) {
-					defer h.liveBodies.Release(lease)
-					body = encoded
-					hdr.Set("Content-Encoding", coding)
-					weakenETag(hdr)
-					w = &encodedResponseWriter{ResponseWriter: w, size: len(encoded)}
-				}
-			}
-		}
+	// Automatic Brotli and gzip (w8/m79, w8/m132, w8/359). The representation
+	// is chosen before ServeContent, so its preconditions and byte ranges
+	// apply to the bytes actually sent.
+	body, encoded, release := h.encodeBody(r, hdr, site, servedPath, obj.Body, true)
+	defer release()
+	if encoded {
+		w = &encodedResponseWriter{ResponseWriter: w, size: len(body)}
 	}
 
 	// ServeContent evaluates the request against the ETag (304 for a matching

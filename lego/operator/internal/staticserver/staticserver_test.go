@@ -683,8 +683,9 @@ func assertMarker(t *testing.T, rec *httptest.ResponseRecorder) {
 func assertBareNotFound(t *testing.T, rec *httptest.ResponseRecorder) {
 	t.Helper()
 	if rec.Code != http.StatusNotFound || rec.Body.String() != "Not Found\n" ||
-		rec.Header().Get("X-Content-Type-Options") != "nosniff" || rec.Header().Get("Content-Type") != "text/plain; charset=utf-8" {
-		t.Fatalf("miss = %d %q %v, want a bare 404 Not Found with nosniff", rec.Code, rec.Body, rec.Header())
+		rec.Header().Get("X-Content-Type-Options") != "nosniff" || rec.Header().Get("Content-Type") != "text/plain; charset=utf-8" ||
+		rec.Header().Get("Vary") != "Accept-Encoding" {
+		t.Fatalf("miss = %d %q %v, want a bare 404 Not Found with nosniff and Vary: Accept-Encoding", rec.Code, rec.Body, rec.Header())
 	}
 	for _, name := range []string{"X-Qa-Marker", "Strict-Transport-Security", "Cache-Control"} {
 		if got := rec.Header().Get(name); got != "" {
