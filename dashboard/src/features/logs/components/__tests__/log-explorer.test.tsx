@@ -405,6 +405,64 @@ describe("log explorer Display (w3/088)", () => {
   });
 });
 
+// Render's Options ▸ Order by (w3/089, `Logs-*.js`): one direction for every
+// explorer, kept in localStorage (`render-log-direction-setting`).
+describe("log explorer Order by (w3/089)", () => {
+  setupVirtualGeometry();
+  const ORDER_KEY = "bex.logs.order";
+  const shownOrder = () =>
+    screen
+      .getAllByText(/^(first|second)$/)
+      .map((element) => element.textContent);
+
+  it("opens a new explorer in the order the last one chose", async () => {
+    const user = userEvent.setup();
+    const first = render(<Explorer />);
+    expect(shownOrder()).toEqual(["first", "second"]);
+    await user.click(screen.getByRole("button", { name: "Log options" }));
+    await user.click(screen.getByRole("menuitemradio", { name: "Descending" }));
+    expect(localStorage.getItem(ORDER_KEY)).toBe("desc");
+    first.unmount();
+
+    // Another explorer, opened afterwards, opens newest first.
+    render(<Explorer />);
+    expect(screen.getByTestId("state")).toHaveTextContent("desc/expand-all");
+    expect(shownOrder()).toEqual(["second", "first"]);
+    await user.click(screen.getByRole("button", { name: "Log options" }));
+    expect(
+      screen.getByRole("menuitemradio", { name: "Descending" }),
+    ).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("follows an order chosen in another tab", () => {
+    render(<Explorer />);
+    act(() => {
+      localStorage.setItem(ORDER_KEY, "desc");
+      window.dispatchEvent(new StorageEvent("storage", { key: ORDER_KEY }));
+    });
+    expect(screen.getByTestId("state")).toHaveTextContent("desc/expand-all");
+  });
+
+  it("reads a stored value it does not know as Ascending", () => {
+    localStorage.setItem(ORDER_KEY, "backward");
+    render(<Explorer />);
+    expect(screen.getByTestId("state")).toHaveTextContent("asc/expand-all");
+  });
+
+  it("renders Ascending on the server and while hydrating, then the stored order", async () => {
+    let hydrated = "";
+    const probe = await hydrateAcrossEnvironments(() => <Explorer />, {
+      client: { ...BROWSER_ENVIRONMENT, storage: { [ORDER_KEY]: "desc" } },
+      inspect: (container) => {
+        hydrated = within(container).getByTestId("state").textContent ?? "";
+      },
+    });
+    expect(probe.html).toContain("asc/expand-all");
+    expect(probe.recovered).toEqual([]);
+    expect(hydrated).toBe("desc/expand-all");
+  });
+});
+
 describe("useClearedLines (w3/m509)", () => {
   const at = (key: string, second: number) => ({
     key,
