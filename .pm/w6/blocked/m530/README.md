@@ -1,6 +1,6 @@
 # w6 · m530 — The operator reads a pod's listeners on its node instead of connecting to every port, so its sweeps stop filling the Cilium conntrack tables
 
-**Worker:** worker6 **Goal:** private-port discovery and bound-port detection learn which ports a tenant pod listens on from the pod's own socket table, read on its node, instead of a TCP connect to all 65,535 ports. No sweep then puts tens of thousands of entries into the Cilium conntrack table of the operator's node or of the swept pod's node, so the idle connections of every pod on those nodes keep their entries. **Status:** todo (t001–t005 and t008 done; the reader joined `config/default` in `9f9ed4564` and runs on production since 2026-11-20T22:45Z; t006 on production next)
+**Worker:** worker6 **Goal:** private-port discovery and bound-port detection learn which ports a tenant pod listens on from the pod's own socket table, read on its node, instead of a TCP connect to all 65,535 ports. No sweep then puts tens of thousands of entries into the Cilium conntrack table of the operator's node or of the swept pod's node, so the idle connections of every pod on those nodes keep their entries. **Status:** blocked (t001–t006, t008 and t009 done; date gate: 2026-11-21T22:46Z, then t007 reads the day and t010 closes)
 
 ## Tasks (in order)
 
@@ -11,10 +11,10 @@
 | t003 | [The operator asks the pod's node and never sweeps a pod whose node has a reader](done/t003.md) — **DONE** | 2h | t002 |
 | t004 | [Prove it on the local cluster](done/t004.md) — **DONE** | 1h30m | t003 |
 | t005 | [Record it in ADR089, ADR018 and the operator guide](done/t005.md) — **DONE** | 45m | t003 |
-| t006 | [Ship and verify on production](t006.md) | 1h30m | t004, t005 |
+| t006 | [Ship and verify on production](done/t006.md) — **DONE** | 1h30m | t004, t005 |
 | t007 | [Read a day of conntrack GC on the operator's node and every tenant node](t007.md) | 30m | t006 |
 | t008 | [Simplify](done/t008.md) — **DONE** | 15m | t006 |
-| t009 | [Test coverage](t009.md) | 30m | t006 |
+| t009 | [Test coverage](done/t009.md) — **DONE** | 30m | t006 |
 | t010 | [Closeout](t010.md) | 10m | t007, t008, t009 |
 
 ## Definition of done
@@ -26,7 +26,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** inbox note [w6/156](../done/156.md), filed by w6/153 2026-11-20, promoted by `/loopx w6` the same day. w6/149's probes ([blocked/149.md](../blocked/149.md), "Finding: the operator's port sweeps evict a tenant pod's idle conntrack entries") showed the same fill on the swept pod's node, so the definition of done covers tenant nodes as well as the operator's.
+- **Source:** inbox note [w6/156](../../done/156.md), filed by w6/153 2026-11-20, promoted by `/loopx w6` the same day. w6/149's probes ([blocked/149.md](../149.md), "Finding: the operator's port sweeps evict a tenant pod's idle conntrack entries") showed the same fill on the swept pod's node, so the definition of done covers tenant nodes as well as the operator's.
 - **Goal linkage:** Render parity and platform reliability. Render "scans the running container for an HTTP listener on 0.0.0.0" (w8/177); reading the container's own socket table is that scan. Every pod on an affected node pays for the sweeps today: on the operator's node bex-api, bex-db, Kratos, Hydra, OpenFGA, the SSH gateway and Argo CD; on a tenant node every tenant pod. An idle pooled connection to a Service with several backends is reset at its next use (w6/153), and a tenant client that only receives, a `SUBSCRIBE`, a `LISTEN` or server-sent events without keepalive, hears nothing more and gets no error (w6/149).
 - **Expected outcome:** sweeps add a few conntrack entries per scan (one HTTP request to the node's reader, plus the HTTP check of the ports found) instead of up to 65,535. Detection gets a complete answer at once, where a sweep of a pod that drops probes to closed ports never finishes in its 15 s budget.
 - **Why now:** measured on production at 18:29Z 2026-11-20, over the previous 6 h of each Cilium agent's log: the operator's node `dpjxh` ran 408 GC passes, 105 of them deleting at least half of its 131,072-entry TCP table; tenant nodes `hbkdk` 212 and 49, `59ksr` 181 and 31; `jfc55`, a platform node with no operator, none. One `hbkdk` pass at 18:28:08Z deleted 0.997 of the table after a 6m45s interval. Only 22 web and 4 private services (plus 3 of the default type) are swept. The gateway's retry (w6/153, `dfcd4e23c`) covers one client; every other client on those nodes is still exposed.
@@ -59,3 +59,9 @@ The note offered three directions. This milestone takes direction 1.
 - **Before the line, read-only at 22:26Z:** the four private services list the 18:31Z ports unchanged (`crypto-price-clickhouse` `[8123,9000,9004,9005,9009]`, `metrics-loki` `[3100,9096]`, `metrics-prometheus` `[9090]`, `verify-iso-b` `[80]`); two newer private services in `tea-da2isimlm39c739m4ofg`, `beancount-gitea` and `beancount-ledger`, are still `Building` with no ports. `bex-system` keeps `pod-security.kubernetes.io/enforce=privileged`. `ct4_global` pressure read 0.758 on the operator's node `dpjxh` and 0.003 on `hbkdk` (22:28Z, `cilium-dbg metrics list -p bpf_map_pressure`). The SNI proxies are mid-roll from the 22:08Z pin itself (old `b123308a` pods still draining beside new `ca059b40` ones); the listener-reader line changes neither proxy's binary, so the next write-back holds both pins (w6/m470).
 - **Observability facts for t007:** Prometheus's `bex-operator` keep-list (`deploy/gitops/base/prometheus.yaml`) does not keep `bex_port_listener_reads_total`, and the Cilium agents serve no Prometheus endpoint (`cilium-config` has `enable-metrics=true` but no `prometheus-serve-addr`; adding one restarts every agent, ruled out before 2026-11-23). So the day's sweeps are read from the operator's log line, which names the node, and from direct scrapes of each operator pod; `ct4_global` pressure is read in each agent (`cilium-dbg metrics list`), and the agent's GC lines are the day's record.
 - **Next:** add `- ../listener-reader` to `lego/operator/config/default/kustomization.yaml`, run `bash scripts/gitops-validate.sh`, ship it alone, then t006 steps 2–5 once Argo has applied it.
+
+## Parked again 2026-11-20: date gate 2026-11-21T22:46Z
+
+- **t006 done on production** ([record](done/t006.md#record-production-2026-11-20)). The reader has run on all eight nodes egress-meter runs on since 22:45Z. Every private service and three web services read through it the same ports their `openPorts` list. A `bex-canary` web fixture went live on its bound 8000 with `PORT` 10000 and listed its undeclared 12345, never its loopback 7000. Over the hour from 22:46Z the operator read only through readers, with no sweep and no failed read. The operator's node `ct4_global` pressure went from 0.758 at 22:28Z to 0.018.
+- **t008 and t009 done:** `0e7d0dec6` (the `/simplify` pass), and the loopback rule's mutation run ([t009](done/t009.md)).
+- **Gate:** t007 is a day's read from 2026-11-21T22:46Z back to 22:46Z the day before, so `date gate: 2026-11-21T22:46Z`. Then t007 reads every agent's GC lines, spot pressure, and the operator's fallbacks in Loki, as its context says. The next pin, at about 04:08Z or later, rolls the operator and the readers inside that day and carries `0e7d0dec6`. Then t010 closes the milestone if the definition of done holds.
