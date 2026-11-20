@@ -59,12 +59,12 @@ func TestRenderDeclaredRequestFieldsAreHandledOrRefusedByName(t *testing.T) {
 	image := map[string]any{"imagePath": "docker.io/library/nginx:alpine", "ownerId": ""}
 	repo := "https://github.com/render-examples/express-hello-world"
 	probes := []renderFieldProbe{
-		{"create-service", http.MethodPost, "/v1/services", map[string]any{"type": "web_service", "name": "web2", "image": image}, "", ""},
-		{"create-service", http.MethodPost, "/v1/services", map[string]any{"type": "web_service", "name": "web3", "image": image, "serviceDetails": map[string]any{"runtime": "image"}}, "serviceDetails", "webServiceDetailsPOST"},
-		{"create-service", http.MethodPost, "/v1/services", map[string]any{"type": "private_service", "name": "pserv", "image": image, "serviceDetails": map[string]any{"runtime": "image", "plan": "starter"}}, "serviceDetails", "privateServiceDetailsPOST"},
-		{"create-service", http.MethodPost, "/v1/services", map[string]any{"type": "background_worker", "name": "worker", "image": image, "serviceDetails": map[string]any{"runtime": "image"}}, "serviceDetails", "backgroundWorkerDetailsPOST"},
-		{"create-service", http.MethodPost, "/v1/services", map[string]any{"type": "static_site", "name": "site", "repo": repo, "serviceDetails": map[string]any{"publishPath": "public"}}, "serviceDetails", "staticSiteDetailsPOST"},
-		{"create-service", http.MethodPost, "/v1/services", map[string]any{"type": "cron_job", "name": "cron", "image": image, "serviceDetails": map[string]any{"runtime": "image", "schedule": "0 * * * *"}}, "serviceDetails", "cronJobDetailsPOST"},
+		{"create-service", http.MethodPost, "/v1/services", map[string]any{"type": "web_service", "name": "web2", "ownerId": "tea-a", "image": image}, "", ""},
+		{"create-service", http.MethodPost, "/v1/services", map[string]any{"type": "web_service", "name": "web3", "ownerId": "tea-a", "image": image, "serviceDetails": map[string]any{"runtime": "image"}}, "serviceDetails", "webServiceDetailsPOST"},
+		{"create-service", http.MethodPost, "/v1/services", map[string]any{"type": "private_service", "name": "pserv", "ownerId": "tea-a", "image": image, "serviceDetails": map[string]any{"runtime": "image", "plan": "starter"}}, "serviceDetails", "privateServiceDetailsPOST"},
+		{"create-service", http.MethodPost, "/v1/services", map[string]any{"type": "background_worker", "name": "worker", "ownerId": "tea-a", "image": image, "serviceDetails": map[string]any{"runtime": "image"}}, "serviceDetails", "backgroundWorkerDetailsPOST"},
+		{"create-service", http.MethodPost, "/v1/services", map[string]any{"type": "static_site", "name": "site", "ownerId": "tea-a", "repo": repo, "serviceDetails": map[string]any{"publishPath": "public"}}, "serviceDetails", "staticSiteDetailsPOST"},
+		{"create-service", http.MethodPost, "/v1/services", map[string]any{"type": "cron_job", "name": "cron", "ownerId": "tea-a", "image": image, "serviceDetails": map[string]any{"runtime": "image", "schedule": "0 * * * *"}}, "serviceDetails", "cronJobDetailsPOST"},
 		{"update-service", http.MethodPatch, "/v1/services/" + srv, map[string]any{"name": "web4"}, "", ""},
 		{"update-service", http.MethodPatch, "/v1/services/" + srv, map[string]any{"serviceDetails": map[string]any{}}, "serviceDetails", "webServiceDetailsPATCH"},
 		{"create-postgres", http.MethodPost, "/v1/postgres", map[string]any{"name": "pg", "plan": "free", "version": "16", "ownerId": "tea-a"}, "", ""},
@@ -102,7 +102,8 @@ func TestRenderDeclaredRequestFieldsAreHandledOrRefusedByName(t *testing.T) {
 				w := do(t, h, p.method, p.path, testToken, string(raw))
 				got := w.Body.String()
 				switch {
-				case strings.Contains(got, "does not match the Render API schema") || strings.Contains(got, "invalid request body at"):
+				case strings.Contains(got, "does not match the Render API schema") || strings.Contains(got, "invalid request body at") ||
+					strings.Contains(got, "OWNER_REQUIRED"):
 					// The generated example did not satisfy the validator, so the
 					// handler was never reached; counted, not silently passed.
 					unprobed++

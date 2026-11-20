@@ -245,6 +245,7 @@ func findRenderOperation(t *testing.T, doc *openapi3.T, operationID string) (*op
 
 type openAPIHandlerBody struct {
 	Name             string   `json:"name"`
+	OwnerID          string   `json:"ownerId"`
 	Repo             string   `json:"repo"`
 	Type             string   `json:"type"`
 	Builder          string   `json:"builder"`
@@ -332,16 +333,16 @@ func TestRenderRequestValidatorRejectsBeforeSideEffects(t *testing.T) {
 		secret      string
 	}{
 		{name: "required", method: http.MethodPost, target: "/v1/services", body: `{}`},
-		{name: "body type", method: http.MethodPost, target: "/v1/services", body: `{"name":{"private":"secret-type-marker"}}`, secret: "secret-type-marker"},
-		{name: "enum", method: http.MethodPost, target: "/v1/services", body: `{"name":"web","type":"secret-enum-marker"}`, secret: "secret-enum-marker"},
+		{name: "body type", method: http.MethodPost, target: "/v1/services", body: `{"ownerId":"tea-a","name":{"private":"secret-type-marker"}}`, secret: "secret-type-marker"},
+		{name: "enum", method: http.MethodPost, target: "/v1/services", body: `{"name":"web","ownerId":"tea-a","type":"secret-enum-marker"}`, secret: "secret-enum-marker"},
 		{name: "format", method: http.MethodGet, target: "/v1/services?createdAfter=secret-format-marker", secret: "secret-format-marker"},
 		{name: "range", method: http.MethodGet, target: "/v1/services?limit=9999", secret: "9999"},
 		{name: "path pattern", method: http.MethodDelete, target: "/v1/webhooks/secret-pattern-marker", secret: "secret-pattern-marker"},
 		{name: "event path pattern", method: http.MethodGet, target: "/v1/events/secret-event-marker", secret: "secret-event-marker"},
 		{name: "media type", method: http.MethodPost, target: "/v1/services", contentType: "text/plain", body: `{"name":"secret-media-marker"}`, secret: "secret-media-marker"},
 		{name: "unknown query", method: http.MethodGet, target: "/v1/services?secret_query=secret-query-marker", secret: "secret-query-marker"},
-		{name: "unknown body", method: http.MethodPost, target: "/v1/services", body: `{"name":"web","mystery":"secret-body-marker"}`, secret: "secret-body-marker"},
-		{name: "unknown nested body", method: http.MethodPost, target: "/v1/services", body: `{"name":"web","serviceDetails":{"plan":"starter","mystery":"secret-nested-marker"}}`, secret: "secret-nested-marker"},
+		{name: "unknown body", method: http.MethodPost, target: "/v1/services", body: `{"name":"web","ownerId":"tea-a","mystery":"secret-body-marker"}`, secret: "secret-body-marker"},
+		{name: "unknown nested body", method: http.MethodPost, target: "/v1/services", body: `{"name":"web","ownerId":"tea-a","serviceDetails":{"plan":"starter","mystery":"secret-nested-marker"}}`, secret: "secret-nested-marker"},
 		{name: "trailing JSON", method: http.MethodPost, target: "/v1/services", body: `{"name":"web"} {"secret":"secret-trailing-marker"}`, secret: "secret-trailing-marker"},
 		{name: "stray body", method: http.MethodGet, target: "/v1/services", body: `{"secret":"secret-stray-marker"}`, secret: "secret-stray-marker"},
 		{name: "malformed no panic", method: http.MethodPost, target: "/v1/services", body: `{"name":"secret-malformed-marker"`, secret: "secret-malformed-marker"},
@@ -378,7 +379,7 @@ func TestRenderRequestValidatorRejectsBeforeSideEffects(t *testing.T) {
 func TestRenderRequestValidatorAcceptsExtensionsAndPreservesInput(t *testing.T) {
 	mutations := 0
 	h := newOpenAPITestHandler(t, &mutations)
-	body := `{"name":"web","repo":"https://github.com/acme/web","builder":"buildkit","port":8080,"plan":"starter","domains":["api.example.com"],"publishPath":"dist","preDeployCommand":"go migrate","routes":[{"type":"rewrite","source":"/a","destination":"/b"}],"headers":[{"path":"/*","name":"X-Test","value":"yes"}],"dryRun":true}`
+	body := `{"name":"web","ownerId":"tea-a","repo":"https://github.com/acme/web","builder":"buildkit","port":8080,"plan":"starter","domains":["api.example.com"],"publishPath":"dist","preDeployCommand":"go migrate","routes":[{"type":"rewrite","source":"/a","destination":"/b"}],"headers":[{"path":"/*","name":"X-Test","value":"yes"}],"dryRun":true}`
 	w := requestOpenAPITest(t, h, http.MethodPost, "/v1/services?dryRun=true", "", body)
 	if w.Code != http.StatusNoContent || mutations != 1 {
 		t.Fatalf("extensions: status=%d mutations=%d body=%s", w.Code, mutations, w.Body.String())
@@ -436,7 +437,7 @@ func TestRenderRequestValidatorBodyIsBytePreservedAndDefaultsAreNotInjected(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	body := " {\n  \"name\" : \"web\", \"repo\" : \"https://github.com/acme/web\"\n } "
+	body := " {\n  \"name\" : \"web\", \"ownerId\" : \"tea-a\", \"repo\" : \"https://github.com/acme/web\"\n } "
 	if w := requestOpenAPITest(t, h, http.MethodPost, "/v1/services", "", body); w.Code != http.StatusNoContent {
 		t.Fatalf("body preservation status=%d: %s", w.Code, w.Body.String())
 	}
@@ -712,12 +713,12 @@ func TestRenderRequestValidatorAdmitsRefreshedPlanSpellings(t *testing.T) {
 		t.Fatal(err)
 	}
 	admitted := []struct{ target, body string }{
-		{"/v1/postgres", `{"name":"db","plan":"0.1c-256mb"}`},
-		{"/v1/postgres", `{"name":"db","plan":"0.5c-1g"}`},
-		{"/v1/postgres", `{"name":"db","plan":"basic-256mb"}`},
-		{"/v1/key-value", `{"name":"kv","plan":"256mb"}`},
-		{"/v1/key-value", `{"name":"kv","plan":"1g"}`},
-		{"/v1/services", `{"name":"web","type":"web_service","serviceDetails":{"plan":"0.5c-512mb"}}`},
+		{"/v1/postgres", `{"name":"db","ownerId":"tea-a","plan":"0.1c-256mb"}`},
+		{"/v1/postgres", `{"name":"db","ownerId":"tea-a","plan":"0.5c-1g"}`},
+		{"/v1/postgres", `{"name":"db","ownerId":"tea-a","plan":"basic-256mb"}`},
+		{"/v1/key-value", `{"name":"kv","ownerId":"tea-a","plan":"256mb"}`},
+		{"/v1/key-value", `{"name":"kv","ownerId":"tea-a","plan":"1g"}`},
+		{"/v1/services", `{"name":"web","ownerId":"tea-a","type":"web_service","serviceDetails":{"plan":"0.5c-512mb"}}`},
 	}
 	for i, tt := range admitted {
 		w := requestOpenAPITest(t, h, http.MethodPost, tt.target, "", tt.body)
@@ -726,8 +727,8 @@ func TestRenderRequestValidatorAdmitsRefreshedPlanSpellings(t *testing.T) {
 		}
 	}
 	for _, tt := range []struct{ target, body string }{
-		{"/v1/postgres", `{"name":"db","plan":"secret-plan-marker"}`},
-		{"/v1/key-value", `{"name":"kv","plan":"secret-plan-marker"}`},
+		{"/v1/postgres", `{"name":"db","ownerId":"tea-a","plan":"secret-plan-marker"}`},
+		{"/v1/key-value", `{"name":"kv","ownerId":"tea-a","plan":"secret-plan-marker"}`},
 	} {
 		w := requestOpenAPITest(t, h, http.MethodPost, tt.target, "", tt.body)
 		if w.Code != http.StatusBadRequest || reached != len(admitted) || strings.Contains(w.Body.String(), "secret-plan-marker") {
@@ -978,7 +979,7 @@ func TestRegistryCredentialRESTWritesPassTheRenderValidator(t *testing.T) {
 		t.Fatal(err)
 	}
 	created := requestOpenAPITest(t, handler, http.MethodPost, "/v1/registrycredentials", "application/json",
-		`{"name":"ghcr","host":"ghcr.io","username":"alice","authToken":"hunter2","expiresAt":"2099-01-01T00:00:00Z"}`)
+		`{"name":"ghcr","ownerId":"tea-a","host":"ghcr.io","username":"alice","authToken":"hunter2","expiresAt":"2099-01-01T00:00:00Z"}`)
 	var credential struct{ ID, Name, Host string }
 	if err := json.Unmarshal(created.Body.Bytes(), &credential); created.Code != http.StatusOK || err != nil || credential.Host != "ghcr.io" {
 		t.Fatalf("create = %d %s, want 200", created.Code, created.Body.String())
@@ -1003,6 +1004,104 @@ func TestRegistryCredentialRESTWritesPassTheRenderValidator(t *testing.T) {
 		if _, ok := rendered[field]; !ok {
 			t.Errorf("create response lacks Render's required %s: %s", field, render.Body.String())
 		}
+	}
+}
+
+// A registry-credential create that names no workspace, or a blank one, is
+// refused before any write, as Render requires ownerId; it used to land in the
+// caller's default workspace (w8/355).
+func TestRegistryCredentialCreateWithoutOwnerWritesNothing(t *testing.T) {
+	rcStore := newFakeRCStore()
+	rc := &registrycreds.Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}, Store: rcStore, Secret: newFakeRCSecretKV()}
+	mux := http.NewServeMux()
+	rc.RegisterREST(mux)
+	handler, err := newRenderRequestValidator(mux)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, owner := range []string{``, `,"ownerId":""`} {
+		w := requestOpenAPITest(t, handler, http.MethodPost, "/v1/registrycredentials", "application/json",
+			`{"name":"x","registry":"DOCKER","username":"u","authToken":"t"`+owner+`}`)
+		assertOwnerRequired(t, w)
+	}
+	if len(rcStore.rows) != 0 {
+		t.Fatalf("a refused create stored %v", rcStore.rows)
+	}
+}
+
+// Every create Render's pinned schema requires ownerId on is refused without
+// one, or with a blank one, before its handler runs; webhooks refuse in their
+// own handler (WEBHOOK_OWNER_REQUIRED). Render answers no create in a workspace
+// the client did not name (w8/355).
+func TestRenderCreatesRequireANamedOwner(t *testing.T) {
+	creates := map[string]string{
+		"/v1/services":            `{"name":"web","type":"web_service"%s}`,
+		"/v1/postgres":            `{"name":"db"%s}`,
+		"/v1/key-value":           `{"name":"kv"%s}`,
+		"/v1/redis":               `{"name":"kv","plan":"starter"%s}`,
+		"/v1/env-groups":          `{"name":"shared"%s}`,
+		"/v1/build-sources":       `{"name":"src"%s}`,
+		"/v1/registrycredentials": `{"name":"x","registry":"DOCKER","username":"u","authToken":"t"%s}`,
+		"/v1/projects":            `{"name":"proj"%s}`,
+		"/v1/sandboxes":           `{"plan":"starter"%s}`,
+		"/v1/sandbox-groups":      `{"name":"group"%s}`,
+	}
+	reached := 0
+	mux := http.NewServeMux()
+	for path := range creates {
+		mux.HandleFunc("POST "+path, func(w http.ResponseWriter, _ *http.Request) {
+			reached++
+			w.WriteHeader(http.StatusNoContent)
+		})
+	}
+	h, err := newRenderRequestValidator(mux)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for path, body := range creates {
+		for _, owner := range []string{``, `,"ownerId":""`} {
+			w := requestOpenAPITest(t, h, http.MethodPost, path, "application/json", fmt.Sprintf(body, owner))
+			if reached != 0 {
+				t.Fatalf("POST %s %s reached its handler", path, fmt.Sprintf(body, owner))
+			}
+			assertOwnerRequired(t, w)
+		}
+		if w := requestOpenAPITest(t, h, http.MethodPost, path, "application/json", fmt.Sprintf(body, `,"ownerId":"tea-a"`)); w.Code != http.StatusNoContent {
+			t.Fatalf("POST %s naming its owner = %d %s, want it to reach the handler", path, w.Code, w.Body.String())
+		}
+		reached = 0
+	}
+
+	contract, err := renderContractOnce()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range contract.document.Paths.Map() {
+		for _, operation := range item.Operations() {
+			if operation.RequestBody == nil || operation.RequestBody.Value == nil {
+				continue
+			}
+			media := operation.RequestBody.Value.Content.Get("application/json")
+			if media == nil || media.Schema == nil || media.Schema.Value == nil {
+				continue
+			}
+			body := media.Schema.Value
+			if owner := body.Properties["ownerId"]; slices.Contains(body.Required, "ownerId") && (owner == nil || owner.Value == nil || owner.Value.MinLength == 0) {
+				t.Errorf("%s requires ownerId but admits a blank one", operation.OperationID)
+			}
+		}
+	}
+}
+
+func assertOwnerRequired(t *testing.T, w *httptest.ResponseRecorder) {
+	t.Helper()
+	var refusal struct {
+		Code, Message string
+		Params        map[string]any
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &refusal); w.Code != http.StatusBadRequest || err != nil ||
+		refusal.Code != "OWNER_REQUIRED" || refusal.Message != "ownerId is required" || refusal.Params["field"] != "ownerId" {
+		t.Fatalf("= %d %s, want 400 OWNER_REQUIRED naming ownerId", w.Code, w.Body.String())
 	}
 }
 

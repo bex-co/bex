@@ -33,7 +33,8 @@ set -euo pipefail
 #   BEX_API_TOKEN                            bearer, never echoed
 #   BEX_RENDER_CLI_BIN                       default: render
 #   BEX_LOGS_VERIFY_BLOCKED_ONLY             1: only Free IPAllowList replay
-#   BEX_LOGS_VERIFY_WORKSPACE_ID             optional fixture owner/selected workspace
+#   BEX_LOGS_VERIFY_WORKSPACE_ID             fixture owner/selected workspace
+#                                            (default: the token's first owner)
 #   BEX_LOGS_VERIFY_READY_TIMEOUT_SECONDS    default: 300
 #   BEX_LOGS_VERIFY_SHIP_TIMEOUT_SECONDS     default: 240 (edge line -> Loki -> CLI)
 
@@ -154,14 +155,18 @@ service_name="$nonce"
 start_command="echo '{\"level\":\"error\",\"msg\":\"planted error $nonce\"}'; echo '{\"level\":\"info\",\"msg\":\"fixture up $nonce\"}'; echo 'plaintext fixture line $nonce'; mkdir -p /tmp/site && printf ok >/tmp/site/index.html && exec httpd -f -p 8080 -h /tmp/site"
 fixture_plan="starter"
 [[ "$blocked_only" == "0" ]] || fixture_plan="free"
+# Render's create requires ownerId (w8/355).
+owner_id="${BEX_LOGS_VERIFY_WORKSPACE_ID:-}"
+[[ -n "$owner_id" ]] || owner_id="$(api_json GET /v1/owners | jq -er '.[0].owner.id')" ||
+  fail "no workspace: set BEX_LOGS_VERIFY_WORKSPACE_ID"
 create_payload="$(jq -n --arg name "$service_name" --arg start "$start_command" --arg plan "$fixture_plan" \
-  --arg owner "${BEX_LOGS_VERIFY_WORKSPACE_ID:-}" '{
-  type:"web_service", name:$name, image:{imagePath:"busybox:1.36.1",ownerId:""}, port:8080,
+  --arg owner "$owner_id" '{
+  type:"web_service", name:$name, ownerId:$owner, image:{imagePath:"busybox:1.36.1",ownerId:""}, port:8080,
   serviceDetails:{
     plan:$plan, numInstances:1, healthCheckPath:"/", runtime:"image",
     envSpecificDetails:{startCommand:$start}
   }
-} + (if $owner == "" then {} else {ownerId:$owner} end)
+}
 ')"
 created="$(api_json POST /v1/services "$create_payload")"
 service_id="$(jq -er '.service.id' <<<"$created")"

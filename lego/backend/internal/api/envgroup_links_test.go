@@ -38,7 +38,7 @@ func TestEnvGroups_DeletingAServiceUnlinksIt(t *testing.T) {
 		Clock: func() time.Time { return time.Unix(1_000_000, 0).UTC() }}
 	h, _ := serverWith(t, base, Deps{Secrets: newMemSecretStore(), EnvGroupsStore: envgroupstest.New()})
 
-	created := do(t, h, "POST", "/v1/env-groups", testToken, `{"name":"shared"}`)
+	created := do(t, h, "POST", "/v1/env-groups", testToken, `{"name":"shared","ownerId":"tea-cli"}`)
 	if created.Code != http.StatusCreated {
 		t.Fatalf("create group = %d %s", created.Code, created.Body)
 	}

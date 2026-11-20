@@ -51,22 +51,22 @@ func TestRenderGatedBexBodiesReachTheirHandlers(t *testing.T) {
 		{"update-disk", http.MethodPatch, "/v1/disks/" + dsk, `{"sizeGB":20}`},
 		{"restore-snapshot", http.MethodPost, "/v1/disks/" + dsk + "/snapshots/restore", `{"snapshotKey":"snap-1"}`},
 		{"patch-service-notification-overrides", http.MethodPatch, "/v1/notification-settings/overrides/services/" + srv, `{"notificationsToSend":"default"}`},
-		{"create-registry-credential", http.MethodPost, "/v1/registrycredentials", `{"name":"ghcr","host":"ghcr.io","username":"alice","authToken":"hunter2"}`},
+		{"create-registry-credential", http.MethodPost, "/v1/registrycredentials", `{"name":"ghcr","ownerId":"tea-a","host":"ghcr.io","username":"alice","authToken":"hunter2"}`},
 		{"update-registry-credential", http.MethodPatch, "/v1/registrycredentials/rgc-ghcr.io", `{"name":"renamed"}`},
 		// image.ownerId is Render-required; the official CLI always sends it, empty.
-		{"create-service", http.MethodPost, "/v1/services", `{"type":"web_service","name":"web2","image":{"imagePath":"docker.io/library/nginx:alpine","ownerId":""}}`},
+		{"create-service", http.MethodPost, "/v1/services", `{"type":"web_service","name":"web2","ownerId":"tea-a","image":{"imagePath":"docker.io/library/nginx:alpine","ownerId":""}}`},
 		{"update-service", http.MethodPatch, "/v1/services/" + srv, `{"name":"web3"}`},
 		{"create-deploy", http.MethodPost, "/v1/services/" + srv + "/deploys", `{}`},
 		{"rollback-deploy", http.MethodPost, "/v1/services/" + srv + "/rollback", `{"deployId":"dep-1"}`},
-		{"create-key-value", http.MethodPost, "/v1/key-value", `{"name":"kv","plan":"free"}`},
+		{"create-key-value", http.MethodPost, "/v1/key-value", `{"name":"kv","ownerId":"tea-a","plan":"free"}`},
 		{"update-key-value", http.MethodPatch, "/v1/key-value/red-00000000000000000000", `{"name":"kv2"}`},
-		{"create-postgres", http.MethodPost, "/v1/postgres", `{"name":"pg","plan":"free","version":"16"}`},
+		{"create-postgres", http.MethodPost, "/v1/postgres", `{"name":"pg","ownerId":"tea-a","plan":"free","version":"16"}`},
 		{"update-postgres", http.MethodPatch, "/v1/postgres/dpg-00000000000000000000", `{"name":"pg2"}`},
 		{"create-project", http.MethodPost, "/v1/projects", `{"name":"proj","ownerId":"tea-a"}`},
 		{"update-project", http.MethodPatch, "/v1/projects/prj-00000000000000000000", `{"name":"proj2"}`},
 		{"create-environment", http.MethodPost, "/v1/environments", `{"name":"staging","projectId":"prj-00000000000000000000"}`},
 		{"update-environment", http.MethodPatch, "/v1/environments/evm-00000000000000000000", `{"name":"prod"}`},
-		{"create-env-group", http.MethodPost, "/v1/env-groups", `{"name":"shared"}`},
+		{"create-env-group", http.MethodPost, "/v1/env-groups", `{"name":"shared","ownerId":"tea-a"}`},
 		{"update-env-group", http.MethodPatch, "/v1/env-groups/evg-00000000000000000000", `{"name":"shared2"}`},
 		{"update-env-group-env-var", http.MethodPut, "/v1/env-groups/evg-00000000000000000000/env-vars/KEY", `{"value":"v"}`},
 		{"update-env-group-secret-file", http.MethodPut, "/v1/env-groups/evg-00000000000000000000/secret-files/ca.pem", `{"content":"c"}`},
@@ -79,7 +79,7 @@ func TestRenderGatedBexBodiesReachTheirHandlers(t *testing.T) {
 		t.Run(tc.op, func(t *testing.T) {
 			w := do(t, h, tc.method, tc.path, testToken, tc.body)
 			body := w.Body.String()
-			for _, refusal := range []string{"invalid request body at", "does not match the Render API schema", "request body is not allowed", "unknown field"} {
+			for _, refusal := range []string{"invalid request body at", "does not match the Render API schema", "request body is not allowed", "unknown field", "OWNER_REQUIRED"} {
 				if strings.Contains(body, refusal) {
 					t.Fatalf("%s %s with a bex body = %d %s: the composed stack refused it (%q)", tc.method, tc.path, w.Code, body, refusal)
 				}
@@ -107,11 +107,11 @@ func TestKeyValueEnumsAcceptBothSeparatorsOverREST(t *testing.T) {
 		}
 		return got
 	}
-	created := read(do(t, h, http.MethodPost, "/v1/key-value", testToken, `{"name":"kvh","plan":"starter","maxmemoryPolicy":"allkeys-lru"}`), http.StatusCreated)
+	created := read(do(t, h, http.MethodPost, "/v1/key-value", testToken, `{"name":"kvh","ownerId":"default","plan":"starter","maxmemoryPolicy":"allkeys-lru"}`), http.StatusCreated)
 	if created.Options.MaxmemoryPolicy != "allkeys_lru" {
 		t.Fatalf("created maxmemoryPolicy = %q, want Render's allkeys_lru", created.Options.MaxmemoryPolicy)
 	}
-	read(do(t, h, http.MethodPost, "/v1/key-value", testToken, `{"name":"kvu","plan":"starter","maxmemoryPolicy":"allkeys_lru"}`), http.StatusCreated)
+	read(do(t, h, http.MethodPost, "/v1/key-value", testToken, `{"name":"kvu","ownerId":"default","plan":"starter","maxmemoryPolicy":"allkeys_lru"}`), http.StatusCreated)
 	patched := read(do(t, h, http.MethodPatch, "/v1/key-value/"+created.ID, testToken, `{"persistenceMode":"journal-snapshot","maxmemoryPolicy":"volatile-ttl"}`), http.StatusOK)
 	if patched.Options.PersistenceMode != "journal_snapshot" || patched.Options.MaxmemoryPolicy != "volatile_ttl" {
 		t.Fatalf("patched = %+v, want journal_snapshot and volatile_ttl", patched)
@@ -120,9 +120,9 @@ func TestKeyValueEnumsAcceptBothSeparatorsOverREST(t *testing.T) {
 	// which lists Render's spellings (w32/051): the gate named only the field.
 	const policies = "noeviction | allkeys_lru | allkeys_lfu | volatile_lru | volatile_lfu | allkeys_random | volatile_random | volatile_ttl"
 	for _, tc := range []struct{ method, path, body, want string }{
-		{http.MethodPost, "/v1/key-value", `{"name":"kvb","plan":"free","maxmemoryPolicy":"bogus-w8-139"}`,
+		{http.MethodPost, "/v1/key-value", `{"name":"kvb","ownerId":"default","plan":"free","maxmemoryPolicy":"bogus-w8-139"}`,
 			`bad request: unknown maxmemoryPolicy "bogus-w8-139" (valid: ` + policies + `)`},
-		{http.MethodPost, "/v1/key-value", `{"name":"kvb","plan":"free","persistenceMode":"journal-bogus"}`,
+		{http.MethodPost, "/v1/key-value", `{"name":"kvb","ownerId":"default","plan":"free","persistenceMode":"journal-bogus"}`,
 			`bad request: unknown persistenceMode "journal-bogus" (valid: journal_snapshot | snapshot | off)`},
 		{http.MethodPatch, "/v1/key-value/" + created.ID, `{"persistenceMode":"aof"}`,
 			`bad request: unknown persistenceMode "aof" (valid: journal_snapshot | snapshot | off)`},
@@ -132,7 +132,7 @@ func TestKeyValueEnumsAcceptBothSeparatorsOverREST(t *testing.T) {
 		{http.MethodPatch, "/v1/redis/" + created.ID, `{"persistenceMode":""}`,
 			`bad request: unknown persistenceMode "" (valid: journal_snapshot | snapshot | off)`},
 		// A value that is not a string keeps the gate's pointer.
-		{http.MethodPost, "/v1/key-value", `{"name":"kvb","plan":"free","persistenceMode":5}`,
+		{http.MethodPost, "/v1/key-value", `{"name":"kvb","ownerId":"default","plan":"free","persistenceMode":5}`,
 			`bad request: invalid request body at /persistenceMode`},
 	} {
 		w := do(t, h, tc.method, tc.path, testToken, tc.body)
@@ -151,7 +151,7 @@ func TestKeyValueEnumsAcceptBothSeparatorsOverREST(t *testing.T) {
 // named 400.
 func TestPostgresReadReplicasPatchThroughComposedStack(t *testing.T) {
 	h, _ := serverWith(t, &core.Base{Client: fakeClient(), Namespace: "default"}, Deps{})
-	w := do(t, h, http.MethodPost, "/v1/postgres", testToken, `{"name":"pgr","plan":"basic_1gb","diskSizeGB":10}`)
+	w := do(t, h, http.MethodPost, "/v1/postgres", testToken, `{"name":"pgr","ownerId":"default","plan":"basic_1gb","diskSizeGB":10}`)
 	var created struct{ ID string }
 	if err := json.Unmarshal(w.Body.Bytes(), &created); w.Code != http.StatusCreated || err != nil || created.ID == "" {
 		t.Fatalf("create = %d %s", w.Code, w.Body.String())

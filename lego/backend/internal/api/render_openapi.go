@@ -73,17 +73,22 @@ var renderContractOnce = sync.OnceValues(loadRenderOpenAPIContract)
 // fields remain type-checked whenever supplied. Keeping this operation-keyed
 // makes each compatibility concession visible and testable instead of
 // weakening shared component schemas indiscriminately.
+//
+// `ownerId` is never relaxed on a create: Render requires it, and a create
+// without it landed in the caller's default workspace, one the client never
+// named (w8/355). The webhook create's own handler refuses it as
+// WEBHOOK_OWNER_REQUIRED, so only that relaxation stays.
 var renderRequiredCompatibility = map[string][]string{
-	"create-env-group": {"ownerId", "envVars"},
-	"create-key-value": {"ownerId", "plan"},
-	"create-postgres":  {"ownerId", "plan", "version"},
+	"create-env-group": {"envVars"},
+	"create-key-value": {"plan"},
+	"create-postgres":  {"plan", "version"},
 	"create-project":   {"environments"},
-	"create-service":   {"ownerId", "type"},
+	"create-service":   {"type"},
 	"create-webhook":   {"ownerId", "enabled", "eventFilter"},
 	// bex names a registry by `host`, not Render's `registry` enum
 	// (registrycreds/rest.go), and its PATCH is per-field partial. Requiring
 	// Render's fields left no body the strict handler accepts (w8/135).
-	"create-registry-credential": {"registry", "ownerId"},
+	"create-registry-credential": {"registry"},
 	"update-registry-credential": {"name", "registry", "username", "authToken"},
 }
 
@@ -498,9 +503,25 @@ func applyRenderCompatibility(doc *openapi3.T) {
 					return slices.Contains(remove, name)
 				})
 			}
+			requireNamedOwner(media.Schema.Value)
 			applyRenderSchemaCompatibility(operationID, media.Schema.Value)
 		}
 	}
+}
+
+// requireNamedOwner refuses a blank `ownerId` wherever the body requires one.
+// A generated Render client always serializes the field, so a caller that never
+// set it sends "", which presence alone lets through to the caller's default
+// workspace (w8/355). The property is re-declared on a copy: the pinned one may
+// be a shared component.
+func requireNamedOwner(body *openapi3.Schema) {
+	owner := body.Properties["ownerId"]
+	if !slices.Contains(body.Required, "ownerId") || owner == nil || owner.Value == nil {
+		return
+	}
+	named := *owner.Value
+	named.MinLength = 1
+	body.Properties["ownerId"] = &openapi3.SchemaRef{Value: &named}
 }
 
 // commaListParameter re-declares a single-value query parameter as a
@@ -880,6 +901,11 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		field, constraint, value := renderValidationField(err)
 		if override, ok := renderOperationRefusals[operationID][field]; ok && (override.constraint == "" || override.constraint == constraint) {
 			core.WriteErr(w, override.refuse(message, value))
+			return
+		}
+		if field == "ownerId" && (constraint == "required" || constraint == "minLength") {
+			// An absent or blank body ownerId on a create (w8/355).
+			core.WriteErr(w, core.NewBadRequestError("OWNER_REQUIRED", "ownerId is required", map[string]any{"field": "ownerId"}))
 			return
 		}
 		if code := renderValidationErrorCodes[field]; code != "" {

@@ -160,7 +160,7 @@ func TestTheDashboardsRefusalsAreCodedOnEverySurface(t *testing.T) {
 		query: `{ services { id } }`,
 		tool:  "list_services", args: map[string]any{},
 	}, {
-		name: "Postgres name taken", method: http.MethodPost, path: "/v1/postgres", body: `{"name":"orders","plan":"free"}`,
+		name: "Postgres name taken", method: http.MethodPost, path: "/v1/postgres", body: `{"name":"orders","ownerId":"default","plan":"free"}`,
 		want: codedRefusal{
 			status: http.StatusConflict, code: "CONFLICT",
 			msg: `a Postgres database named "orders" already exists in this workspace`,
@@ -168,7 +168,7 @@ func TestTheDashboardsRefusalsAreCodedOnEverySurface(t *testing.T) {
 		query: `mutation { createDatabase(name: "orders", plan: "free") { id } }`,
 		tool:  "create_postgres", args: map[string]any{"name": "orders", "plan": "free"},
 	}, {
-		name: "Key Value name taken", method: http.MethodPost, path: "/v1/key-value", body: `{"name":"cache","plan":"free"}`,
+		name: "Key Value name taken", method: http.MethodPost, path: "/v1/key-value", body: `{"name":"cache","ownerId":"default","plan":"free"}`,
 		want: codedRefusal{
 			status: http.StatusConflict, code: "CONFLICT",
 			msg: `a key-value store named "cache" already exists in this workspace`,

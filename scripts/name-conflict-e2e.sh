@@ -235,11 +235,11 @@ gql() { # TOKEN QUERY -> LAST_BODY
 # validates the request against that schema — omitting it is a 400 at
 # /image/ownerId, not a name-conflict signal. Same shape as the pinned-CLI
 # fixtures in lego/backend/internal/apps/cli_compat_test.go.
-svc_body() { printf '{"name":"%s","image":{"imagePath":"traefik/whoami","ownerId":""},"port":80}' "$1"; }
+svc_body() { printf '{"name":"%s","ownerId":"%s","image":{"imagePath":"traefik/whoami","ownerId":""},"port":80}' "$1" "$2"; }
 
 # --- 1. Workspace A creates beancount-cms -> 201, bare slug ------------------
 echo "==> [1] workspace A creates $SVC_NAME"
-request "$TOKEN_A" POST /v1/services "$(svc_body "$SVC_NAME")"
+request "$TOKEN_A" POST /v1/services "$(svc_body "$SVC_NAME" "$TENANT_A")"
 [ "$LAST_CODE" = "201" ] || fail "[1] create $SVC_NAME: got $LAST_CODE want 201 (body: $LAST_BODY)"
 CR_A="$TENANT_A-$SVC_NAME"; CREATED_CRS+=("$TENANT_A/$CR_A")
 SUBDOMAIN_A="$(kubectl -n "$TENANT_A" get app.app.bex.co "$CR_A" -o jsonpath='{.spec.subdomain}')"
@@ -248,7 +248,7 @@ pass "[1] workspace A: 201, CR $CR_A spec.subdomain=$SUBDOMAIN_A (bare, no suffi
 
 # --- 2. Workspace A duplicate -> 409 on REST, GraphQL, MCP -------------------
 echo "==> [2a] workspace A duplicate over REST -> 409"
-request "$TOKEN_A" POST /v1/services "$(svc_body "$SVC_NAME")"
+request "$TOKEN_A" POST /v1/services "$(svc_body "$SVC_NAME" "$TENANT_A")"
 [ "$LAST_CODE" = "409" ] || fail "[2a] REST duplicate: got $LAST_CODE want 409 (body: $LAST_BODY)"
 echo "$LAST_BODY" | grep -qi 'already in use' || fail "[2a] REST 409 body not 'already in use'-shaped: $LAST_BODY"
 pass "[2a] REST duplicate -> 409: $(echo "$LAST_BODY" | jq -rc '.error // .')"
@@ -354,7 +354,7 @@ SUGG="$(echo "$AV_A" | jq -r '.suggestion')"
 pass "[3] workspace A availability: $AV_A"
 
 echo "==> [3b] creating the suggested name $SUGG -> 201"
-request "$TOKEN_A" POST /v1/services "$(svc_body "$SUGG")"
+request "$TOKEN_A" POST /v1/services "$(svc_body "$SUGG" "$TENANT_A")"
 [ "$LAST_CODE" = "201" ] || fail "[3b] create suggested $SUGG: got $LAST_CODE want 201 (body: $LAST_BODY)"
 CREATED_CRS+=("$TENANT_A/$TENANT_A-$SUGG")
 pass "[3b] the suggested name $SUGG creates successfully (201)"
@@ -368,7 +368,7 @@ AV_B="$(echo "$LAST_BODY" | jq -rc '.data.serviceNameAvailable')"
 pass "[4] workspace B availability: $AV_B (no leak of A's name)"
 
 echo "==> [4b] workspace B creates $SVC_NAME -> 201, globally-unique suffixed slug"
-request "$TOKEN_B" POST /v1/services "$(svc_body "$SVC_NAME")"
+request "$TOKEN_B" POST /v1/services "$(svc_body "$SVC_NAME" "$TENANT_B")"
 [ "$LAST_CODE" = "201" ] || fail "[4b] workspace B create $SVC_NAME: got $LAST_CODE want 201 (body: $LAST_BODY)"
 CR_B="$TENANT_B-$SVC_NAME"; CREATED_CRS+=("$TENANT_B/$CR_B")
 SUBDOMAIN_B="$(kubectl -n "$TENANT_B" get app.app.bex.co "$CR_B" -o jsonpath='{.spec.subdomain}')"

@@ -43,11 +43,11 @@ func TestAFreeFormNameIsAcceptedOnEverySurface(t *testing.T) {
 		mutation: `mutation { createService(name: "My Gql API", image: "nginx") { id displayName } }`,
 		tool:     "create_web_service", args: map[string]any{"name": "My Mcp API", "image": "nginx", "runtime": "image"},
 	}, {
-		kind: "Postgres", path: "/v1/postgres", body: `{"name":"Prod DB","plan":"basic-256mb"}`,
+		kind: "Postgres", path: "/v1/postgres", body: `{"name":"Prod DB","ownerId":"tea-a","plan":"basic-256mb"}`,
 		mutation: `mutation { createDatabase(name: "Gql DB", plan: "basic-256mb") { id } }`,
 		tool:     "create_postgres", args: map[string]any{"name": "Mcp DB", "plan": "basic-256mb"},
 	}, {
-		kind: "Key Value", path: "/v1/key-value", body: `{"name":"Prod Cache","plan":"starter"}`,
+		kind: "Key Value", path: "/v1/key-value", body: `{"name":"Prod Cache","ownerId":"tea-a","plan":"starter"}`,
 		mutation: `mutation { createKeyValue(name: "Gql Cache", plan: "starter") { id } }`,
 		tool:     "create_key_value", args: map[string]any{"name": "Mcp Cache", "plan": "starter"},
 	}} {

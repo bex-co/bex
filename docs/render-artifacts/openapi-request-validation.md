@@ -65,13 +65,17 @@ All fields remain type- and constraint-checked when supplied. Only these officia
 
 | operation ID | optional in bex | reason |
 | --- | --- | --- |
-| `create-service` | `ownerId`, `type` | selected/default workspace and `web_service` defaults |
-| `create-postgres` | `ownerId`, `plan`, `version` | selected/default workspace and platform defaults |
-| `create-key-value` | `ownerId`, `plan` | selected/default workspace and platform default plan |
-| `create-env-group` | `ownerId`, `envVars` | selected/default workspace and empty-group creation |
+| `create-service` | `type` | `web_service` default |
+| `create-postgres` | `plan`, `version` | platform defaults |
+| `create-key-value` | `plan` | platform default plan |
+| `create-env-group` | `envVars` | empty-group creation |
 | `create-project` | `environments` | empty project creation |
-| `create-webhook` | `ownerId`, `enabled`, `eventFilter` | selected/default workspace and existing webhook defaults |
+| `create-webhook` | `ownerId`, `enabled`, `eventFilter` | the handler refuses each by name (`WEBHOOK_OWNER_REQUIRED`, …) |
+| `create-registry-credential` | `registry` | bex names a registry by `host` (w8/135) |
+| `update-registry-credential` | `name`, `registry`, `username`, `authToken` | per-field partial PATCH (w8/135) |
 | `list-logs`, `list-logs-values`, `subscribe-logs` | query `ownerId` | selected/default workspace |
+
+No other create relaxes `ownerId` (w8/355). Every body that requires it also refuses a blank one (`minLength: 1`), because a generated Render client serializes the field even when the caller never set it. Either way the gate answers 400 `OWNER_REQUIRED` (`ownerId is required`, `params.field: ownerId`) before the handler runs. Until 2026-11-20 these creates landed in the caller's default workspace.
 
 Render's overlapping `serviceDetails` request `oneOf` branches are evaluated as `anyOf` for service create/update; every branch constraint remains active. Bex's hyphenated Postgres plan IDs are added to only the create/update plan enums. A missing `Content-Type` on a request with a body is treated as JSON for compatibility with existing clients; an explicitly wrong media type is rejected.
 

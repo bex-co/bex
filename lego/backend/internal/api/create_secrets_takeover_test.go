@@ -35,7 +35,7 @@ import (
 // 201 and mounts only its own files. A Secret another create prepared and has
 // not adopted yet answers an uncoded 409, not 500.
 func TestCreatingAServiceBesideANamesakesSecret(t *testing.T) {
-	const body = `{"name":"web","type":"web_service","image":{"imagePath":"nginx:alpine","ownerId":""},"secretFiles":[{"name":"token","content":"new"}]}`
+	const body = `{"name":"web","ownerId":"default","type":"web_service","image":{"imagePath":"nginx:alpine","ownerId":""},"secretFiles":[{"name":"token","content":"new"}]}`
 	held := func(owner types.UID) *corev1.Secret {
 		sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "web-files", Namespace: "default"}, Data: map[string][]byte{"stale": []byte("old")}}
 		if owner != "" {

@@ -185,17 +185,19 @@ func TestLegacyRedisRequestGateInheritsKeyValueConcessions(t *testing.T) {
 		name, method, path, body string
 		want                     int
 	}{
-		// dryRun query, public body field, hyphenated eviction policy, and
-		// no ownerId (relaxed requiredness): previewed, not created.
+		// dryRun query, public body field and hyphenated eviction policy:
+		// previewed, not created.
 		{"create dry run", http.MethodPost, "/v1/redis?dryRun=true",
-			`{"name":"cache","plan":"starter","public":true,"maxmemoryPolicy":"allkeys-lru"}`, http.StatusOK},
+			`{"name":"cache","ownerId":"default","plan":"starter","public":true,"maxmemoryPolicy":"allkeys-lru"}`, http.StatusOK},
 		{"suspended filter", http.MethodGet, "/v1/redis?suspended=not_suspended", "", http.StatusOK},
 		{"repeated region filter", http.MethodGet, "/v1/redis?region=oregon&region=frankfurt", "", http.StatusOK},
 		{"update confirm", http.MethodPatch, "/v1/redis/kv1?dryRun=true&confirm=x", `{"persistenceMode":"journal-snapshot"}`, http.StatusOK},
 		// The gate still refuses what Render's contract does not allow.
 		{"unknown query", http.MethodGet, "/v1/redis?bogus=1", "", http.StatusBadRequest},
 		{"unknown region", http.MethodGet, "/v1/redis?region=oregon&region=mars", "", http.StatusBadRequest},
-		{"unknown body field", http.MethodPost, "/v1/redis", `{"name":"cache","plan":"starter","bogus":1}`, http.StatusBadRequest},
+		{"unknown body field", http.MethodPost, "/v1/redis", `{"name":"cache","ownerId":"default","plan":"starter","bogus":1}`, http.StatusBadRequest},
+		// Render requires ownerId on a create, on both spellings (w8/355).
+		{"no ownerId", http.MethodPost, "/v1/redis", `{"name":"cache","plan":"starter"}`, http.StatusBadRequest},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			w := do(t, h, tc.method, tc.path, testToken, tc.body)

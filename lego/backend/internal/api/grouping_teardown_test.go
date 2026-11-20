@@ -69,7 +69,7 @@ func TestLinkedEnvGroupDoesNotBlockGroupingDeletion(t *testing.T) {
 				}
 
 				var group envgroups.EnvGroupView
-				body := request(http.MethodPost, "/v1/env-groups", fmt.Sprintf(`{"name":"linked","environmentId":%q,"serviceIds":[%q],"envVars":[{"key":"QA_PLACEMENT","value":"saved"}]}`, envID, webID), http.StatusCreated)
+				body := request(http.MethodPost, "/v1/env-groups", fmt.Sprintf(`{"name":"linked","ownerId":%q,"environmentId":%q,"serviceIds":[%q],"envVars":[{"key":"QA_PLACEMENT","value":"saved"}]}`, owner.ID, envID, webID), http.StatusCreated)
 				if err := json.Unmarshal(body, &group); err != nil {
 					t.Fatal(err)
 				}
