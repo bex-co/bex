@@ -294,10 +294,11 @@ type renderAutoscalingConfig struct {
 }
 
 // renderAutoscalingRead is the autoscaling bex reads back (GET/PUT
-// …/autoscaling and serviceDetails.autoscaling): Render's body plus the bex
-// extension metricsUnavailable, present only while autoscaling is paused
-// because the service's utilization cannot be read (w4/m364). It is a
-// response type only, so a request carrying the field is still refused.
+// …/autoscaling, and serviceDetails.autoscaling while it is on): Render's
+// body plus the bex extension metricsUnavailable, present only while
+// autoscaling is paused because the service's utilization cannot be read
+// (w4/m364). It is a response type only, so a request carrying the field is
+// still refused.
 type renderAutoscalingRead struct {
 	renderAutoscalingConfig
 	MetricsUnavailable bool `json:"metricsUnavailable,omitempty"`
@@ -577,8 +578,12 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 	}
 	// Render's web, private and worker serviceDetails carry the policy in the
 	// PUT …/autoscaling shape (w4/596), mapped as GET …/autoscaling maps it so
-	// the two reads agree. Omitted when none is configured.
-	if a.Autoscaling != nil && autoscalingEligible(svcType) {
+	// the two reads agree. Omitted unless autoscaling is on: after DELETE
+	// …/autoscaling, Render's reads carry no key, and its Terraform provider
+	// reads any key as a configured policy (w9/123). The settings a disable
+	// keeps (w4/597) still read on GET …/autoscaling, GraphQL and MCP
+	// get_autoscaling.
+	if a.Autoscaling != nil && a.Autoscaling.Enabled && autoscalingEligible(svcType) {
 		details["autoscaling"] = renderAutoscalingConfigFromView(*a.Autoscaling)
 	}
 	if svcType == renderWebService {

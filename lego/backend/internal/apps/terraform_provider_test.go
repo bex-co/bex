@@ -379,6 +379,124 @@ func TestDisabledAutoscalingPercentageRules(t *testing.T) {
 	}
 }
 
+// terraformScalingUpdate is the update the provider sent right after its
+// DELETE …/autoscaling in TestBackgroundWorkerScalingResource's "turn off
+// autoscaling" step (scaling_cassette.yaml at 06af456). Render answered 200
+// with no serviceDetails.autoscaling, as every later read did. The image
+// owner is the test service's (unlabeled) workspace.
+const terraformScalingUpdate = `{"image":{"imagePath":"nginx","ownerId":""},"name":"autoscaling-test","rootDir":"","serviceDetails":{"envSpecificDetails":{"dockerCommand":""},"plan":"starter","preDeployCommand":"","previews":{},"pullRequestPreviewsEnabled":"no"}}`
+
+// hasDetailsAutoscaling reports whether a Render service read carries
+// serviceDetails.autoscaling at all.
+func hasDetailsAutoscaling(t *testing.T, raw []byte) bool {
+	t.Helper()
+	var svc struct {
+		ServiceDetails map[string]json.RawMessage `json:"serviceDetails"`
+	}
+	if err := json.Unmarshal(raw, &svc); err != nil || svc.ServiceDetails == nil {
+		t.Fatalf("no serviceDetails in %s (%v)", raw, err)
+	}
+	_, present := svc.ServiceDetails["autoscaling"]
+	return present
+}
+
+// TestTurnedOffAutoscalingLeavesTheServiceRead pins w9/123: once autoscaling
+// is turned off, no Render-shaped service read carries
+// serviceDetails.autoscaling, as none of Render's does, so the provider reads
+// the removed block as null. The settings the disable keeps (w4/597) still
+// read on GET …/autoscaling, GraphQL and MCP get_autoscaling, and turning it
+// back on brings the key back.
+func TestTurnedOffAutoscalingLeavesTheServiceRead(t *testing.T) {
+	const policy = `{"enabled":true,"min":1,"max":3,"criteria":{"cpu":{"enabled":true,"percentage":60},"memory":{"enabled":false,"percentage":70}}}`
+	rest := func(t *testing.T, svc *Service, method, path, body string) []byte {
+		t.Helper()
+		rec := strictRequest(t, svc, method, path, body)
+		if rec.Code != http.StatusOK && rec.Code != http.StatusNoContent {
+			t.Fatalf("%s %s = %d: %s", method, path, rec.Code, rec.Body.String())
+		}
+		return rec.Body.Bytes()
+	}
+	for _, off := range []struct {
+		name    string
+		disable func(t *testing.T, svc *Service, id string)
+	}{
+		{"DELETE", func(t *testing.T, svc *Service, id string) {
+			rest(t, svc, http.MethodDelete, "/v1/services/"+id+"/autoscaling", "")
+		}},
+		{"PUT enabled false", func(t *testing.T, svc *Service, id string) {
+			rest(t, svc, http.MethodPut, "/v1/services/"+id+"/autoscaling", strings.Replace(policy, `"enabled":true,"min"`, `"enabled":false,"min"`, 1))
+		}},
+		{"GraphQL disableAutoscaling", func(t *testing.T, svc *Service, id string) {
+			gqlDo(t, gqlSchema(t, svc), `mutation { disableAutoscaling(id: "`+id+`") }`)
+		}},
+		{"MCP disable_autoscaling", func(t *testing.T, svc *Service, id string) {
+			if res := callMCPTool(t, svc, "disable_autoscaling", map[string]any{"serviceId": id}); res.IsError {
+				t.Fatalf("MCP disable_autoscaling: %s", mcpResultText(res))
+			}
+		}},
+	} {
+		t.Run(off.name, func(t *testing.T) {
+			svc, _ := newService(nil)
+			rec := strictCreate(t, svc, terraformAutoscaledWorker)
+			var created serviceAndDeploy
+			if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil || rec.Code != http.StatusCreated {
+				t.Fatalf("POST = %d %v: %s", rec.Code, err, rec.Body.String())
+			}
+			if _, present := created.Service.ServiceDetails["autoscaling"]; !present {
+				t.Fatalf("create answer has no serviceDetails.autoscaling: %s", rec.Body.String())
+			}
+			id := created.Service.ID
+			off.disable(t, svc, id)
+
+			if hasDetailsAutoscaling(t, rest(t, svc, http.MethodPatch, "/v1/services/"+id, terraformScalingUpdate)) {
+				t.Error("PATCH answer carries serviceDetails.autoscaling after autoscaling was turned off")
+			}
+			if hasDetailsAutoscaling(t, rest(t, svc, http.MethodGet, "/v1/services/"+id, "")) {
+				t.Error("REST GET carries serviceDetails.autoscaling after autoscaling was turned off")
+			}
+			var list []serviceWithCursor
+			if err := json.Unmarshal(rest(t, svc, http.MethodGet, "/v1/services", ""), &list); err != nil || len(list) != 1 {
+				t.Fatalf("REST list = %v (%v), want the one service", list, err)
+			}
+			if _, present := list[0].Service.ServiceDetails["autoscaling"]; present {
+				t.Error("REST list carries serviceDetails.autoscaling after autoscaling was turned off")
+			}
+			res := callMCPTool(t, svc, "get_service", map[string]any{"serviceId": id})
+			if res.IsError || hasDetailsAutoscaling(t, []byte(mcpResultText(res))) {
+				t.Errorf("MCP get_service = %s, want no serviceDetails.autoscaling", mcpResultText(res))
+			}
+
+			// The kept settings, turned off.
+			kept := renderAutoscalingConfig{Enabled: false, Min: 1, Max: 3, Criteria: renderAutoscalingCriteria{
+				CPU:    renderAutoscalingCriterion{Enabled: true, Percentage: 60},
+				Memory: renderAutoscalingCriterion{Enabled: false, Percentage: 70},
+			}}
+			var got renderAutoscalingConfig
+			if err := json.Unmarshal(rest(t, svc, http.MethodGet, "/v1/services/"+id+"/autoscaling", ""), &got); err != nil || got != kept {
+				t.Errorf("GET …/autoscaling = %+v (%v), want the kept %+v", got, err, kept)
+			}
+			data := gqlDo(t, gqlSchema(t, svc), `{ service(id: "`+id+`") { autoscaling { enabled minInstances maxInstances targetCPUPercent } } }`)
+			gql := data["service"].(map[string]any)["autoscaling"].(map[string]any)
+			if gql["enabled"] != false || gql["minInstances"] != 1 || gql["maxInstances"] != 3 || gql["targetCPUPercent"] != 60 {
+				t.Errorf("GraphQL autoscaling = %v, want 1–3 at 60%% CPU, turned off", gql)
+			}
+			res = callMCPTool(t, svc, "get_autoscaling", map[string]any{"serviceId": id})
+			var mcpView AutoscalingView
+			if err := json.Unmarshal([]byte(mcpResultText(res)), &mcpView); err != nil || res.IsError ||
+				mcpView.Enabled || mcpView.MinInstances != 1 || mcpView.MaxInstances != 3 {
+				t.Errorf("MCP get_autoscaling = %s, want 1–3, turned off", mcpResultText(res))
+			}
+
+			// Turned back on, the policy is in the service read again.
+			rest(t, svc, http.MethodPut, "/v1/services/"+id+"/autoscaling", policy)
+			kept.Enabled = true
+			if got := detailsAutoscaling(t, rest(t, svc, http.MethodGet, "/v1/services/"+id, "")); got != kept {
+				t.Errorf("REST GET serviceDetails.autoscaling after re-enabling = %+v, want %+v", got, kept)
+			}
+		})
+	}
+}
+
 // terraformImageUpdate is the update the provider sent in
 // TestWebServiceResource_Image's second step, which Render answered 200
 // (internal/provider/webservice/resource/testdata/web_service_image_cassette.yaml
