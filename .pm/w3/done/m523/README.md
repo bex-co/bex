@@ -1,6 +1,6 @@
 # w3 · m523 — A project log view reads `is not one of` on Level, Instance, Method, Status Code, Host and Path, as Render's Edit view offers
 
-**Worker:** worker3 **Goal:** a project's Application Logs and Request Logs views take Render's `IS_NOT` on every line field Render's Edit view offers it on (Level, Instance, Method, Status Code, Host, Path). The log query reads the complement on the store, the pod-log and datastore paths and the live tail, the validator accepts the operator, and the Edit view modal offers `is not one of` there. A view such as "everything but info" reads instead of being refused. **Status:** blocked — t001–t005 and t007–t009 done and shipped in `9f497080c`; t006 is verified on dev-3, and its production walk waits for a production pin carrying `9f497080c` (§ Gate)
+**Worker:** worker3 **Goal:** a project's Application Logs and Request Logs views take Render's `IS_NOT` on every line field Render's Edit view offers it on (Level, Instance, Method, Status Code, Host, Path). The log query reads the complement on the store, the pod-log and datastore paths and the live tail, the validator accepts the operator, and the Edit view modal offers `is not one of` there. A view such as "everything but info" reads instead of being refused. **Status:** done — shipped in `9f497080c`; verified on dev-3 (2026-11-19) and on production pin `12716d1d7097` at 1440 and 390 (2026-11-20)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | Backend: the pod-log, datastore and live-tail paths honor the negated sets — **DONE** | 1h15m | t002 |
 | [t004](done/t004.md) | Backend: the validator accepts `IS_NOT` on the six fields, the project view routes it, ADR010 and ADR018 drop the refusal — **DONE** | 30m | t001, t003 |
 | [t005](done/t005.md) | Dashboard: the Edit view modal offers `is not one of` on the six fields — **DONE** | 45m | t004 |
-| [t006](t006.md) | Verify on dev-3, and on production at 1440 and 390 | 45m | t005 |
+| [t006](done/t006.md) | Verify on dev-3, and on production at 1440 and 390 — **DONE** | 45m | t005 |
 | [t007](done/t007.md) | Render parity — **DONE** | 30m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 20m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007 |
-| [t010](t010.md) | Closeout | 10m | t008, t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t008, t009 |
 
 Total: **10 tasks, about 6h30m**.
 
@@ -42,9 +42,37 @@ Total: **10 tasks, about 6h30m**.
 - **Not walked on dev-3:** Request Logs. dev-3's shipper ships no request lines and the workspace is Hobby; the request fields rest on `TestProjectRequestViewNegatesEveryRequestField`, the pinned-Loki test and the production walk.
 - **Cleanup:** both services, the Postgres and the project answer 404 by id, the identity was deleted through Kratos' admin API, and the browser session was logged out.
 
-### Production
+### Production (2026-11-20, pin `12716d1d7097`)
 
-Waits for a production pin carrying `9f497080c` (§ Gate).
+Pin `4e37ec03f` (`12716d1d7097`) carries `9f497080c`, and production's `bex-api` and `dashboard` ran its digests (§ Unblocked). As the QA user in `bex-canary`, the fixture project `qa-20261120-m523` (`prj-dc00n1cd1ruc73b8cedg`, environment production `evm-dc00n1kd1ruc73b8cee0`) held three resources created over REST:
+
+- a busybox web service `qa-20261120-m523-web` (`srv-dc00n5kd1ruc73b8ceg0`, starter). Every 6 s it wrote a JSON `info`, `warn` and `error` line, a JSON line with no level and an unstructured line. `httpd` on `$PORT` served `/` (200), and `/healthz` and `/missing-m523` answered 404;
+- a cron job `qa-20261120-m523-cron` (`srv-dc00n5sd1ruc73b8cei0`, every minute, a JSON `info` and `error` line);
+- a Postgres 17 `qa-20261120-m523-pg` (`dpg-dc00n5p8bccs73evqjng`, `basic_256mb`).
+
+`curl` requests to `/`, `/healthz`, `/missing-m523` and `/other-m523` gave Request Logs its lines. The project's Application Logs (`svs-89ccua5uhtsplebo2f6i`) and Request Logs (`svs-5c8bnonbsh87tnq7p5mj`) views were `{"filters": [], "version": 1}` before the walk.
+
+| check | production | result |
+| --- | --- | --- |
+| GraphQL `logs(project, type: "app", filterDocument)`, last 30 min | the empty document read 69 lines. `LEVEL IS info` read 15 (web 13, cron 2). `LEVEL IS_NOT info` read the other 54: web warning 13, error 13 and `unknown` 26 (the level-less JSON and the unstructured lines), and cron error 2. No info line | holds |
+| GraphQL `logs(project, type: "request", filterDocument)` | the empty document read 9 (`GET 200 /`, `404 /healthz`, `404 /missing-m523`, 3 each). `STATUS_CODE IS 2xx` read the 3 `200 /`, `IS_NOT 2xx` the 6 404s, and with `PATH IS_NOT /healthz` added the 3 `/missing-m523`. `PATH IS_NOT /healthz` alone read `/` and `/missing-m523` | holds |
+| Tail `/v1/logs/subscribe?project=…&type=app&filterDocument=…`, SSE, 25 s each | `LEVEL IS_NOT info`: web warning 22, error 22 and `unknown` 44, cron error 3, and the Postgres's two `FATAL` lines; no info line. `LEVEL IS info`: web 26, cron 3 and the Postgres's 7 `LOG` lines only | holds; the Postgres's lines follow the negation (dev-3 shipped none) |
+| Tail `type=request`, 60 s, six requests sent during it | the empty document streamed all 6, `STATUS_CODE IS_NOT 2xx` the 4 404s, and with `PATH IS_NOT /healthz` the 2 to `/missing-m523` | holds |
+| Application Logs at 1440, edited in Edit view | the + button added an Environment row with its operator fixed at `is`. Field → Level read `is one of`, the operator offered `is one of` and `is not one of`, and Done stored `LEVEL IS_NOT [info]`. Before the edit the page read web and cron info lines and 10 Postgres `LOG` lines. After it, the page read web warning, error, level-less and unstructured lines, cron errors and the Postgres's two `FATAL` lines, with no info line. Live, 75 s: 50 new lines, none info. Edit view reopened as `Level` `is not one of` `info` | holds |
+| Request Logs at 1440, edited | Status code `is not one of` `2xx` and Request path `is not one of` `/healthz`, both typed, stored `STATUS_CODE IS_NOT [2xx]` and `PATH IS_NOT [/healthz]`. History went from 15 lines (5 each) to the 5 to `/missing-m523`. Live, with 8 requests sent, showed only the 4 to `/missing-m523` and `/other-m523`. Reopened, both rows read `is not one of`, in a 672 px modal with no overflow | holds |
+| Both views at 390, set back to empty over GraphQL and edited again in the modal | the same rows saved the same documents, in a 358 px modal whose content is 356 px, on a 390 px page. Application Logs: history 467 lines and Live (75 s) 57 new lines, with no info line in either. Request Logs: history the 9 lines to `/missing-m523` and `/other-m523`. Live, with 8 requests sent, showed the 4 to those two paths. Both reopened as `is not one of` | holds |
+| Pending and ready, both views at 1440 and 390 | method: the `SavedSearches` read was delayed 7 s and the view opened client-side from Overview (at 390 through Toggle Sidebar). 1440: header 72–124, actions 92–124, toolbar 148–184, note line 200–216 and panel 232–868 in both states. 390: header 64–160, actions 128–160, toolbar 184–272 (search 184–220, range 234–266, Live and the buttons 228–272), note line 288–320 and panel 336–812 in both states. The ready Application Logs panel draws its "Only part of this time range is loaded" notice inside its top, because the read was a partial page; the panel's bounds do not move | holds |
+
+**Cleanup.** Both views were set back to `{"filters": [], "version": 1}` before the deletes. The web service, the cron job and the Postgres were deleted (`DELETE` 204 each), then the project (`DELETE /v1/projects/…` 204). By-id `GET` answered 404 for all three, the project and the environment, and `savedSearch` answered `NOT_FOUND` for the project's three views. The canary namespace kept no App, Deployment, pod, CNPG cluster or PVC of them; the web pod ran out its 90 s grace, since busybox's `sh` ignores SIGTERM. The QA session was logged out (`qa-login.sh --logout`; the page's cookie then answered 401), and the session jar, the screenshots and the fetched kubeconfig were deleted.
+
+## Closeout (t010, 2026-11-20)
+
+1. **The note's check:** `TestProjectViewReadsEveryLineButInfo` (GraphQL and the tail, Key Value included). On production, `LEVEL IS_NOT info` read the web service's, the cron job's and the Postgres's non-info lines, level-less lines included, in history and on the tail (§ Production).
+2. **Every negatable field:** the t009 tests. On production, `STATUS_CODE IS_NOT 2xx` (a class) and `PATH IS_NOT /healthz` read the complement of `IS` on GraphQL and the tail; `INSTANCE IS_NOT` on dev-3.
+3. **The rest stays as Render has it:** the refusal tests; `TEXT IS_NOT` refused by name on dev-3; the production editor fixes Environment's operator at `is`.
+4. **The editor:** `view-filters.test.ts` and `edit-view-dialog.test.tsx`; on dev-3 and on production at 1440 and 390 the six-field rows offer `is not one of`, save `IS_NOT` and reopen as `is not one of`.
+5. **Recorded:** ADR010 § Project views lists the operators per field and no line-field refusal; ADR018's Projects row and the capture name Render's operators per field.
+6. **Live:** dev-3 (2026-11-19) and production pin `12716d1d7097` at 1440 and 390 (§ Production).
 
 ## Render parity (t007, 2026-11-19)
 
@@ -89,6 +117,14 @@ So the line fields Render negates are six, not the note's seven: Text Search is 
 **Clears by itself; no decision needed.** t006's production half needs a production deploy carrying `9f497080c` (`feat(logs): a project log view reads … (w3/m523 t001-t005, t007-t009)`): bex-api for the reads and the tail, the dashboard for the editor. Check: the newest `chore(deploy): pin platform images to <sha>` on `main` passes `git merge-base --is-ancestor 9f497080c <sha>`, and production's `bex-api` and `dashboard` Deployments run the digests that pin names.
 
 **Next (t006, then t010):** sign in as the QA user (`bash scripts/qa-login.sh`). In `bex-canary`, use or create a project with a web service that logs at more than one level (info, warn, an unstructured line) and serves a 404, a cron job and a Postgres. At 1440 and 390: edit its Application Logs view to `Level is not one of info` and check that history and Live tail show no info line (warnings, errors and level-less lines stay); edit its Request Logs view to `Status Code is not one of 2xx` and `Path is not one of /healthz` and check that only the other requests show, in history and live; reopen Edit view and check both rows read `is not one of`. Compare pending and ready at both widths. Set the views back to their filters before the walk, record the evidence here, delete any fixture with by-id `GET` 404 evidence, log out, and close the milestone (t010).
+
+## Unblocked (2026-11-20)
+
+- **Affected:** w3/m523 t006 (production walk), then t010.
+- **Source:** verified evidence; the gate needed no decision. `/loopx w3` dispatched the item from `blocked.ready`.
+- **Finding:** the newest pin on `main`, `4e37ec03f` (`chore(deploy): pin platform images to 12716d1d7097`, 08:47Z), carries `9f497080c`: `git merge-base --is-ancestor 9f497080c 12716d1d7097` succeeds. Production's `bex-system/bex-api` runs `bex-operator@sha256:0910030a…5709677` and `dashboard/dashboard` runs `bex-dashboard@sha256:852fe33f…faa8a50`, the digests that pin names, both rolled out.
+- **Remaining gates:** none.
+- **Next:** t006's production walk as § Gate writes it, then t010.
 
 ## Source + Goal linkage
 
