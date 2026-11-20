@@ -52,6 +52,8 @@ resources:
 - ../kv-sni-proxy
 # Node-local App→public egress accounting. Runs only on untainted tenant nodes.
 - ../egress-meter
+# Tells the operator which ports a pod on its node listens on, so discovery never sweeps it (w6/m530).
+- ../listener-reader
 # Admission-time tenant-image signature verification webhook (w7/m11).
 # Requires cert-manager to be installed (it signs the TLS cert and injects
 # the caBundle into the ValidatingWebhookConfiguration).
