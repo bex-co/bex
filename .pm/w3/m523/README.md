@@ -1,20 +1,20 @@
 # w3 · m523 — A project log view reads `is not one of` on Level, Instance, Method, Status Code, Host and Path, as Render's Edit view offers
 
-**Worker:** worker3 **Goal:** a project's Application Logs and Request Logs views take Render's `IS_NOT` on every line field Render's Edit view offers it on (Level, Instance, Method, Status Code, Host, Path). The log query reads the complement on the store, the pod-log and datastore paths and the live tail, the validator accepts the operator, and the Edit view modal offers `is not one of` there. A view such as "everything but info" reads instead of being refused. **Status:** todo
+**Worker:** worker3 **Goal:** a project's Application Logs and Request Logs views take Render's `IS_NOT` on every line field Render's Edit view offers it on (Level, Instance, Method, Status Code, Host, Path). The log query reads the complement on the store, the pod-log and datastore paths and the live tail, the validator accepts the operator, and the Edit view modal offers `is not one of` there. A view such as "everything but info" reads instead of being refused. **Status:** todo — t001–t005 and t007–t009 done; t006 verified on dev-3, its production walk next (§ Verification record)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Record Render's per-field operators and document shape in the capture and ADR010, and file the document-shape divergence | 30m | — |
-| [t002](t002.md) | Backend: negated value sets on `LogQuery`, honored by the Loki selector and pipeline | 1h | — |
-| [t003](t003.md) | Backend: the pod-log, datastore and live-tail paths honor the negated sets | 1h15m | t002 |
-| [t004](t004.md) | Backend: the validator accepts `IS_NOT` on the six fields, the project view routes it, ADR010 and ADR018 drop the refusal | 30m | t001, t003 |
-| [t005](t005.md) | Dashboard: the Edit view modal offers `is not one of` on the six fields | 45m | t004 |
+| [t001](done/t001.md) | Record Render's per-field operators and document shape in the capture and ADR010, and file the document-shape divergence — **DONE** | 30m | — |
+| [t002](done/t002.md) | Backend: negated value sets on `LogQuery`, honored by the Loki selector and pipeline — **DONE** | 1h | — |
+| [t003](done/t003.md) | Backend: the pod-log, datastore and live-tail paths honor the negated sets — **DONE** | 1h15m | t002 |
+| [t004](done/t004.md) | Backend: the validator accepts `IS_NOT` on the six fields, the project view routes it, ADR010 and ADR018 drop the refusal — **DONE** | 30m | t001, t003 |
+| [t005](done/t005.md) | Dashboard: the Edit view modal offers `is not one of` on the six fields — **DONE** | 45m | t004 |
 | [t006](t006.md) | Verify on dev-3, and on production at 1440 and 390 | 45m | t005 |
-| [t007](t007.md) | Render parity | 30m | t006 |
-| [t008](t008.md) | Simplify | 20m | t007 |
-| [t009](t009.md) | Test coverage | 45m | t007 |
+| [t007](done/t007.md) | Render parity — **DONE** | 30m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 20m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007 |
 | [t010](t010.md) | Closeout | 10m | t008, t009 |
 
 Total: **10 tasks, about 6h30m**.
@@ -27,6 +27,52 @@ Total: **10 tasks, about 6h30m**.
 4. **The editor.** The Edit view modal offers `is one of` / `is not one of` on Level, Instance, Method, Status Code, Host and Path, as it already does on Resource and Resource Type. A stored `IS_NOT` row reopens as `is not one of`.
 5. **Recorded.** ADR010 § Project views no longer lists the refusal, and the ADR018 Projects row and the [capture](../../../docs/render-artifacts/project-observability.md) name Render's operators per field.
 6. **Live.** On dev-3, and on production once a pin carries the milestone, as the QA user in `bex-canary`, at 1440 and 390: a view edited to `Level is not one of info` reads no info line, in history and live.
+
+## Verification record (t006)
+
+### dev-3 (2026-11-19, from this tree)
+
+`bash scripts/dev-env.sh 3 up` rebuilt bex-api from the tree. A throwaway identity's workspace `tea-dbvrc0hjg4r79qlurcg0` (Hobby) with project `prj-dbvrc1pjg4r79qlurcgg` ("observed", environment production): a busybox web service `storefront` writing a JSON `info` line, a JSON `warn` line, an unstructured line and a JSON line with an empty `level` every 6 s, a cron job `nightly-report` (`cron info` and `cron error` every minute), and a Postgres `orders-db`.
+
+- **The validator.** `updateSavedSearch` stored the Application Logs view (`svs-kkgr343vfhavejtse4b9`) as `LEVEL IS_NOT [info]`; `TEXT IS_NOT` answered `filter field "TEXT" does not support operator IS_NOT`.
+- **The tail** (`/v1/logs/subscribe?project=…&type=app`, SSE, 15 s each). `LEVEL IS_NOT info`: storefront's warning (20), unstructured (`unknown`, 20) and no-level (20) lines, no info line, and none of the Postgres's `LOG` (info) lines. `LEVEL IS info`: storefront's 22 info lines and 7 Postgres `LOG` lines only. `INSTANCE IS_NOT <storefront's instance>`: only the Postgres's lines; `INSTANCE IS` it: only storefront's.
+- **History** (GraphQL `logs(project, type: "app", filterDocument)`, last 10 min). dev-3's log shipper stores every App line with `level="unknown"` (`scripts/dev-env/values/log-shipper.values.yaml` does not parse levels), and ships no datastore lines, so the store has no info line: `LEVEL IS info` read none and `LEVEL IS_NOT info` read all 96 storefront lines, its complement; `LEVEL IS_NOT unknown` read none against `LEVEL IS unknown`'s 96. `INSTANCE IS_NOT <storefront's instance>` read only `nightly-report`'s 6 lines, `INSTANCE IS` it only storefront's 100. The real-level history read rests on `TestNegatedFiltersReadTheComplementOnThePinnedLoki` and the production walk.
+- **The dashboard** (a local dashboard against dev-3, signed in as that identity). At 1440, Edit view reopened the stored row as `Level` `is not one of` `info`, the operator enabled. Rebuilt from the + button: a new Level row read `is one of`, its operator offered `is one of` and `is not one of`, and Done saved `IS_NOT`. Edited to `Instance is not one of <storefront's instance>` (typed), the page read no storefront line, `nightly-report` from history and `orders-db` live. At 390 the same view read no storefront line, and Edit view showed `is not one of`.
+- **Found and fixed at 390:** a long typed value (the instance id) widened the modal's rows 51 px past its right edge, clipping the Name field, the + button and the notice. The modal's grid column is now `minmax(0, 1fr)` (`edit-view-dialog.tsx`), so the chip truncates: re-measured, the modal's content is 356 px in a 356 px box at 390 and 672 px wide at 1440, as before.
+- **Not walked on dev-3:** Request Logs. dev-3's shipper ships no request lines and the workspace is Hobby; the request fields rest on `TestProjectRequestViewNegatesEveryRequestField`, the pinned-Loki test and the production walk.
+- **Cleanup:** both services, the Postgres and the project answer 404 by id, the identity was deleted through Kratos' admin API, and the browser session was logged out.
+
+### Production
+
+Waits for a production pin carrying the milestone's commit (§ Gate, added when it parks).
+
+## Render parity (t007, 2026-11-19)
+
+Compared against Render's dashboard bundle (§ Render's Edit view below, and the [capture](../../../docs/render-artifacts/project-observability.md#operators-per-field-read-from-the-bundle-2026-11-19-w3m523)). Render's public API has no saved-search or project-log operation and no operator on its log filters.
+
+| Surface | Render | bex | Verdict |
+| --- | --- | --- | --- |
+| GraphQL `logs(project, filterDocument)` | its `logs(query: {project, filterDocument})` reads the view's document | `IS_NOT` on Level, Instance, Method, Status Code, Host and Path reads the complement of `IS`, a line without the label included; `IS_NOT` on Environment, Text Search or Time Range is refused by name | matches |
+| `/v1/logs/subscribe?project=` (a Bex extension) | the view's live tail follows the same document | the same negation, per producer (pods, datastore pods, the request poll) | matches |
+| `createSavedSearch` / `updateSavedSearch` | the modal saves `IS_NOT` on the eight negatable fields | stored after the shared validator; refused on the other three | matches |
+| Edit view modal: operators | `is one of` / `is not one of` on Resource, Resource Type and the six line fields; `is` on Environment and Time Range; `contains` on Text Search | the same, but Text Search's operator reads `is` | drift: Text Search's `contains` label and `TEXT_SEARCH`/`CONTAINS` spelling, filed by t001 as [w3/083](../083.md) |
+| Edit view modal: values | Level, Instance, Method, Status Code, Host and Path list the project's values (`logValues(label, logQuery: {project})`) | Instance, Status Code, Host and Path typed; Level and Method fixed lists | drift: Instance is [w3/079](../079.md); the other five filed as [w3/084](../084.md) |
+| Saved document shape | `timeRange.relative` and `display` beside `filters` | a `TIME_RANGE` row, no `display` | drift: [w3/083](../083.md) |
+| REST `GET /v1/logs`, MCP `list_logs` | no operator on log filters | unchanged | matches |
+
+## Simplify (t008, 2026-11-19)
+
+`/simplify` over the milestone's diff. Applied: the tests' per-field switch became one `withFilter` helper, and a corpus index lookup became a resource-to-pod table. `translateInstanceFilter` lost a negated-set branch that a mutation run showed changes nothing (an unresolved negated set keeps `noSuchInstance`, which excludes nothing). Kept: `negated` as one unexported label set on `LogQuery` rather than six parallel slices, so routing, validation and counting stay the selecting form's and only matching inverts.
+
+## Test coverage (t009, 2026-11-19)
+
+`lego/backend/internal/logs/negated_filters_test.go`, with the fake Loki (`loki_streams_test.go`) now evaluating every LogQL matcher (`=`, `!=`, `=~`, `!~`, a missing label read as "") and the `json` stage's path and host filters:
+
+- DoD 1: `TestProjectViewReadsEveryLineButInfo` (GraphQL and the project tail, over a web service on two instances, a cron job, a Postgres and a Key Value, with info, warning, `unknown` and level-less lines).
+- DoD 2: `TestProjectViewNegatesAnInstanceInItsOwnResourceOnly` (history and tail; an instance that resolves nowhere excludes nothing), `TestProjectRequestViewNegatesEveryRequestField` (Method, Status Code with a class, Host wildcard, Path literal and regex, a value that matches nothing, Level, on GraphQL and the tail), `TestNegatedFiltersReadTheComplementOnThePinnedLoki` (the pinned Loki 3.6.7: each field's `IS` and `IS_NOT` partition the whole read, a stream without the label and an access record without the field kept), `TestPodLogPathsInvertNegatedFilters` and `TestPreDeployReadInvertsANegatedInstance` (pod-log, datastore and pre-deploy reads), `TestNegatedRequestFiltersRouteAsTheirSelectingForm`, `TestNegatedFiltersRenderTheComplementMatcher`.
+- DoD 3: the refusals in `TestParseRefusesByName`, `TestProjectReadRefusals` and `TestViewWritesRefuseByName`.
+- DoD 4: `view-filters.test.ts` and `edit-view-dialog.test.tsx` (a stored `IS_NOT` row reopens as `is not one of`, the operator offers both, Done saves `IS_NOT`).
+- Mutation runs, each restored after: the selector rendering `=`/`=~` for a negated set failed five tests (the pinned-Loki one included); `keep` ignoring a negated level failed three; `keepPod` ignoring a negated instance failed two; the pre-deploy read emptying on an unresolved negated instance failed its test; `viewFieldOperators` offering `IS_NOT` on Resource and Resource Type alone failed both dashboard tests.
 
 ## Render's Edit view, read from its dashboard bundle (2026-11-19)
 

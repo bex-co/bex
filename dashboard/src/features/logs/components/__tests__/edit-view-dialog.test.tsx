@@ -177,6 +177,47 @@ describe("EditViewDialog", () => {
     );
   });
 
+  it("reopens a stored is-not-one-of row on a line field and saves it as IS_NOT", async () => {
+    const user = userEvent.setup();
+    mutations.update.mockResolvedValue(view());
+    const { dialog } = open({
+      kind: "edit",
+      view: view({
+        filters: [
+          { field: "LEVEL", operator: "IS_NOT", values: ["info"] },
+          { field: "INSTANCE", operator: "IS", values: ["srv-web-abcde"] },
+        ],
+        version: 1,
+      }),
+    });
+    const [levelOperator, instanceOperator] = within(dialog).getAllByRole(
+      "combobox",
+      { name: "Operator" },
+    );
+    // Render's editor offers `is not one of` on the line fields (w3/m523).
+    expect(levelOperator).toHaveTextContent("is not one of");
+    expect(levelOperator).toBeEnabled();
+    expect(instanceOperator).toHaveTextContent("is one of");
+    await user.click(instanceOperator);
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual(["is one of", "is not one of"]);
+    await user.click(screen.getByRole("option", { name: "is not one of" }));
+
+    await user.click(within(dialog).getByRole("button", { name: "Done" }));
+    expect(mutations.update).toHaveBeenCalledWith(
+      "svs-app",
+      "Application Logs",
+      {
+        filters: [
+          { field: "LEVEL", operator: "IS_NOT", values: ["info"] },
+          { field: "INSTANCE", operator: "IS_NOT", values: ["srv-web-abcde"] },
+        ],
+        version: 1,
+      },
+    );
+  });
+
   it("writes nothing on Close", async () => {
     const user = userEvent.setup();
     const { onOpenChange, dialog } = open({ kind: "edit", view: view() });

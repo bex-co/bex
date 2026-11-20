@@ -93,7 +93,7 @@ func TestLabelMatcherRegexAndWildcards(t *testing.T) {
 		{[]string{"/4../"}, "", []string{"404", "x500-404-y"}, []string{"200"}},
 		{[]string{"/(GET|POST)/", "DELETE"}, "", []string{"POST", "DELETE"}, []string{"PUT"}},
 	} {
-		m := labelMatcher("x", tc.values)
+		m := labelMatcher("x", tc.values, false)
 		if tc.want != "" && m != tc.want {
 			t.Errorf("%v: matcher = %s, want %s", tc.values, m, tc.want)
 		}

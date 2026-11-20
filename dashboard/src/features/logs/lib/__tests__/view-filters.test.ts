@@ -22,11 +22,12 @@ describe("the view filter document", () => {
       filters: [
         { field: "ENVIRONMENT", operator: "IS", values: ["evm-1"] },
         { field: "RESOURCE_TYPE", operator: "IS_NOT", values: ["POSTGRES"] },
-        { field: "LEVEL", operator: "IS", values: ["error", "warning"] },
+        { field: "LEVEL", operator: "IS_NOT", values: ["info", "debug"] },
       ],
       version: 1,
     };
     const rows = rowsFromDocument(doc, SavedSearchType.ApplicationLogs);
+    expect(rows[2]).toMatchObject({ field: "LEVEL", operator: "IS_NOT" });
     expect(rows.map((row) => row.field)).toEqual([
       "ENVIRONMENT",
       "RESOURCE_TYPE",
@@ -90,11 +91,23 @@ describe("the view filter document", () => {
     ]);
   });
 
-  it("negates only the scope fields bex-api negates", () => {
-    expect(viewFieldOperators("RESOURCE")).toEqual(["IS", "IS_NOT"]);
-    expect(viewFieldOperators("RESOURCE_TYPE")).toEqual(["IS", "IS_NOT"]);
-    // Render's editor: Environment takes `is`; the line fields wait on w3/076.
-    for (const field of ["ENVIRONMENT", "LEVEL", "TEXT", "PATH"] as const) {
+  it("negates every field Render's editor negates", () => {
+    // Render's Edit view: `is one of` / `is not one of` on the scope fields
+    // and the line fields, `is` on Environment and Time Range, and Text
+    // Search's term (w3/m523).
+    for (const field of [
+      "RESOURCE",
+      "RESOURCE_TYPE",
+      "LEVEL",
+      "INSTANCE",
+      "METHOD",
+      "STATUS_CODE",
+      "HOST",
+      "PATH",
+    ] as const) {
+      expect(viewFieldOperators(field)).toEqual(["IS", "IS_NOT"]);
+    }
+    for (const field of ["ENVIRONMENT", "TEXT", "TIME_RANGE"] as const) {
       expect(viewFieldOperators(field)).toEqual(["IS"]);
     }
     expect(viewFieldIsSingle("ENVIRONMENT")).toBe(true);

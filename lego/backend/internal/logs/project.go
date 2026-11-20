@@ -71,8 +71,9 @@ type projectView struct {
 // newProjectView reads a project-scoped query: its log type picks the view
 // (app → Application Logs, the default; request → Request Logs), the filter
 // document (nil = Render's empty default) is validated for that view, and its
-// line filters join q. A filter the caller sets beside the same field in the
-// document is refused by name rather than silently widened or narrowed.
+// line filters join q, an IS_NOT one as a negated filter (w3/m523). A filter
+// the caller sets beside the same field in the document is refused by name
+// rather than silently widened or narrowed, whichever operator the view uses.
 func newProjectView(project string, rawDoc any, q *LogQuery) (projectView, error) {
 	v := projectView{project: project, viewType: savedsearch.TypeApplicationLogs}
 	switch {
@@ -96,18 +97,19 @@ func newProjectView(project string, rawDoc any, q *LogQuery) (projectView, error
 	}
 	lineFilters := []struct {
 		field string
+		label string // the filter's name in q.negated
 		into  *[]string
 	}{
-		{savedsearch.FieldLevel, &q.Level},
-		{savedsearch.FieldInstance, &q.Instance},
-		{savedsearch.FieldText, &q.Search},
-		{savedsearch.FieldMethod, &q.Method},
-		{savedsearch.FieldStatusCode, &q.StatusCode},
-		{savedsearch.FieldHost, &q.Host},
-		{savedsearch.FieldPath, &q.Path},
+		{savedsearch.FieldLevel, LabelLevel, &q.Level},
+		{savedsearch.FieldInstance, LabelInstance, &q.Instance},
+		{savedsearch.FieldText, "", &q.Search}, // Validate refuses IS_NOT on TEXT
+		{savedsearch.FieldMethod, LabelMethod, &q.Method},
+		{savedsearch.FieldStatusCode, LabelStatusCode, &q.StatusCode},
+		{savedsearch.FieldHost, LabelHost, &q.Host},
+		{savedsearch.FieldPath, LabelPath, &q.Path},
 	}
 	for _, f := range lineFilters {
-		values, _ := v.doc.Values(f.field) // Validate refused IS_NOT on a line field
+		values, negated := v.doc.Values(f.field)
 		if len(values) == 0 {
 			continue
 		}
@@ -115,6 +117,9 @@ func newProjectView(project string, rawDoc any, q *LogQuery) (projectView, error
 			return projectView{}, fmt.Errorf("%w: the view already filters on %s; edit the view instead of adding the filter", core.ErrBadRequest, f.field)
 		}
 		*f.into = slices.Clone(values)
+		if negated {
+			q.negated = append(q.negated, f.label)
+		}
 	}
 	q.projectScope = true
 	return v, nil

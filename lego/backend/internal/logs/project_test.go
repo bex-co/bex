@@ -253,8 +253,12 @@ func TestProjectReadRefusals(t *testing.T) {
 		{`project:"prj-observed", type:"build"`, "a project log view reads type=app or type=request"},
 		{`project:"prj-observed", filterDocument:{filters: [], version: 2}`, "version 2 is not supported"},
 		{`project:"prj-observed", filterDocument:{filters: [{field: "METHOD", operator: "IS", values: ["GET"]}], version: 1}`, `filter field "METHOD" is not a field of a APPLICATION_LOGS view`},
-		{`project:"prj-observed", filterDocument:{filters: [{field: "LEVEL", operator: "IS_NOT", values: ["error"]}], version: 1}`, `"LEVEL" does not support operator IS_NOT`},
+		{`project:"prj-observed", filterDocument:{filters: [{field: "TEXT", operator: "IS_NOT", values: ["error"]}], version: 1}`, `"TEXT" does not support operator IS_NOT`},
+		{`project:"prj-observed", filterDocument:{filters: [{field: "ENVIRONMENT", operator: "IS_NOT", values: ["evm-c185th5c2rvvnhbfiltg"]}], version: 1}`, `"ENVIRONMENT" does not support operator IS_NOT`},
+		{`project:"prj-observed", filterDocument:{filters: [{field: "TIME_RANGE", operator: "IS_NOT", values: ["4h"]}], version: 1}`, `"TIME_RANGE" does not support operator IS_NOT`},
 		{`project:"prj-observed", level:["error"], filterDocument:{filters: [{field: "LEVEL", operator: "IS", values: ["warning"]}], version: 1}`, "the view already filters on LEVEL"},
+		{`project:"prj-observed", level:["error"], filterDocument:{filters: [{field: "LEVEL", operator: "IS_NOT", values: ["info"]}], version: 1}`, "the view already filters on LEVEL"},
+		{`project:"prj-observed", type:"request", path:["/x"], filterDocument:{filters: [{field: "PATH", operator: "IS_NOT", values: ["/healthz"]}], version: 1}`, "the view already filters on PATH"},
 		{`project:"prj-missing"`, "not found"},
 	} {
 		_, errs := runProjectQuery(t, svc, context.Background(), tc.args)

@@ -492,23 +492,23 @@ func lokiSelectorFor(namespace string, q LogQuery) string {
 	// they are line-only (see the cardinality budget in log-shipper.yaml) and are
 	// applied as line filters by lokiQueryFor instead.
 	add := func(label string, values []string) {
-		if m := labelMatcher(label, values); m != "" {
+		if m := labelMatcher(lokiLabelFor(label), values, q.negates(label)); m != "" {
 			matchers = append(matchers, m)
 		}
 	}
-	add(lokiLabelFor(LabelLevel), storedLevels(q.Level))
-	add(lokiLabelFor(LabelInstance), q.Instance)
+	add(LabelLevel, storedLevels(q.Level))
+	add(LabelInstance, q.Instance)
 	if m := excludeJobsMatcher(q.excludeJobs); m != "" {
 		matchers = append(matchers, m)
 	}
 	if m := includeJobsMatcher(q); m != "" {
 		matchers = append(matchers, m)
 	}
-	add(lokiLabelFor(LabelMethod), q.Method)
+	add(LabelMethod, q.Method)
 	// statusCode is the one filter with a class shorthand (`4xx`), expanded here —
 	// at the filter that owns the vocabulary, not inside labelMatcher, which would
 	// silently rewrite a `path` or `host` value that happened to look like one.
-	add(lokiLabelFor(LabelStatusCode), statusClasses(q.StatusCode))
+	add(LabelStatusCode, statusClasses(q.StatusCode))
 	return "{" + strings.Join(matchers, ", ") + "}"
 }
 
@@ -592,10 +592,10 @@ func lokiPipelineFor(q LogQuery) string {
 	// One `json` stage extracting only the two fields we filter on (not the whole
 	// line — the access log has ~20 fields), then a label filter per field.
 	pipeline += ` | json request_path="RequestPath", request_host="RequestHost"`
-	if m := labelMatcher("request_path", q.Path); m != "" {
+	if m := labelMatcher("request_path", q.Path, q.negates(LabelPath)); m != "" {
 		pipeline += " | " + m
 	}
-	if m := labelMatcher("request_host", q.Host); m != "" {
+	if m := labelMatcher("request_host", q.Host, q.negates(LabelHost)); m != "" {
 		pipeline += " | " + m
 	}
 	return pipeline
@@ -613,14 +613,23 @@ func lokiPipelineFor(q LogQuery) string {
 // Render's are (w8/176; docs/ADR010-observability.md § Log filters); validate()
 // has already refused one that does not compile. An empty set matches nothing
 // and renders as "" (no matcher at all).
-func labelMatcher(name string, values []string) string {
+//
+// negate renders the complement (w3/m523): `!=` and `!~` with the same value
+// pattern. LogQL reads a label a stream or line lacks as "", which neither
+// form's pattern matches unless a value is empty, so a negated matcher keeps
+// the lines without the label.
+func labelMatcher(name string, values []string, negate bool) string {
 	if len(values) == 0 {
 		return ""
 	}
-	if _, regex := regexFilterBody(values[0]); len(values) == 1 && !regex && !strings.Contains(values[0], "*") {
-		return fmt.Sprintf("%s=%q", name, values[0])
+	equal, match := "=", "=~"
+	if negate {
+		equal, match = "!=", "!~"
 	}
-	return fmt.Sprintf("%s=~%q", name, labelValuePattern(values))
+	if _, regex := regexFilterBody(values[0]); len(values) == 1 && !regex && !strings.Contains(values[0], "*") {
+		return fmt.Sprintf("%s%s%q", name, equal, values[0])
+	}
+	return fmt.Sprintf("%s%s%q", name, match, labelValuePattern(values))
 }
 
 // labelValuePattern gives Loki and pod-log filters the same literal, OR, and

@@ -132,16 +132,22 @@ export function viewFieldIsSingle(field: ViewField): boolean {
   return field === "ENVIRONMENT" || field === "TIME_RANGE";
 }
 
+/** The fields Render's editor offers no `is not` on (w3/m523). */
+const UNNEGATABLE_FIELDS: readonly ViewField[] = [
+  "ENVIRONMENT",
+  "TEXT",
+  "TIME_RANGE",
+];
+
 /**
- * The operators a field takes. `ENVIRONMENT` takes `is`, as Render's editor
- * does; Resource and Resource Type take `is one of` / `is not one of`. The
- * line fields take `is` only: the log query has no negation yet (w3/076), so
- * bex-api refuses `IS_NOT` on them by name.
+ * The operators a field takes, as Render's Edit view offers them (w3/m523):
+ * Environment and Time Range take `is` and one value, Text Search takes its
+ * term, and every other field, Level, Instance, Method, Status Code, Host
+ * and Path as well as Resource and Resource Type, takes `is one of` /
+ * `is not one of`.
  */
 export function viewFieldOperators(field: ViewField): ViewOperator[] {
-  return field === "RESOURCE" || field === "RESOURCE_TYPE"
-    ? ["IS", "IS_NOT"]
-    : ["IS"];
+  return UNNEGATABLE_FIELDS.includes(field) ? ["IS"] : ["IS", "IS_NOT"];
 }
 
 /** One condition row in the editor. `key` keys the row in the list only. */

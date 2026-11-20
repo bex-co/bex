@@ -48,7 +48,9 @@ import (
 //
 // With filterLines it also applies a text search's prefilter, as the pinned
 // Loki evaluates it (lokiFilterKeeps), before it pages (w5/m520); without it
-// every line of a matching stream is a candidate.
+// every line of a matching stream is a candidate. A request read's path and
+// host filters, label filters after the `json` stage, always apply
+// (jsonFiltersKeep).
 type frontendLoki struct {
 	streams     []fakeStream
 	srv         *httptest.Server
@@ -69,7 +71,9 @@ type fakeStream struct {
 	text   func(ns int64) string // the line at ns, when set
 }
 
-var equalityMatcher = regexp.MustCompile(`([A-Za-z_][A-Za-z0-9_]*)=("(?:[^"\\]|\\.)*")`)
+// lokiLabelMatcher is one LogQL label matcher: a name, its operator and the
+// quoted value.
+var lokiLabelMatcher = regexp.MustCompile(`([A-Za-z_][A-Za-z0-9_]*)(=~|!~|!=|=)("(?:[^"\\]|\\.)*")`)
 
 func newFrontendLoki(t *testing.T, streams ...fakeStream) *frontendLoki {
 	t.Helper()
@@ -195,19 +199,87 @@ func (f *frontendLoki) handle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// filtered is s holding only the lines the query's line filter keeps, when the
-// frontend applies it.
+// filtered is s holding only the lines the query's pipeline keeps: its path
+// and host filters, and its text prefilter when the frontend applies it.
 func (f *frontendLoki) filtered(s fakeStream, query string) fakeStream {
-	_, pipeline, _ := strings.Cut(query, "}")
+	_, pipeline := splitLogQL(query)
 	alts := lokiFilterValues(pipeline)
-	if !f.filterLines || alts == nil {
-		return s
+	if !f.filterLines {
+		alts = nil
 	}
 	kept := s
 	kept.stamps = slices.DeleteFunc(slices.Clone(s.stamps), func(ns int64) bool {
-		return !slices.ContainsFunc(alts, func(alt string) bool { return lokiFilterKeeps(alt, s.message(ns)) })
+		line := s.message(ns)
+		if alts != nil && !slices.ContainsFunc(alts, func(alt string) bool { return lokiFilterKeeps(alt, line) }) {
+			return true
+		}
+		return !jsonFiltersKeep(pipeline, line)
 	})
 	return kept
+}
+
+// splitLogQL cuts a LogQL query at the `}` that closes its stream selector,
+// past any `}` inside a quoted value (a regexp's `{16}`).
+func splitLogQL(query string) (selector, pipeline string) {
+	quoted := false
+	for i := 0; i < len(query); i++ {
+		switch c := query[i]; {
+		case quoted && c == '\\':
+			i++
+		case c == '"':
+			quoted = !quoted
+		case !quoted && c == '}':
+			return query[:i], query[i+1:]
+		}
+	}
+	return query, ""
+}
+
+// jsonFiltersKeep applies the label filters after a pipeline's `json` stage,
+// lokiPipelineFor's request_path and request_host, to line as Loki does: a
+// field the line lacks, or a line that is not JSON, reads "".
+func jsonFiltersKeep(pipeline, line string) bool {
+	stages := strings.Split(pipeline, " | ")
+	for i, stage := range stages {
+		if !strings.HasPrefix(stage, "json ") {
+			continue
+		}
+		var record map[string]any
+		_ = json.Unmarshal([]byte(line), &record)
+		for _, filter := range stages[i+1:] {
+			m := lokiLabelMatcher.FindStringSubmatch(filter)
+			if m == nil {
+				continue
+			}
+			value, err := strconv.Unquote(m[3])
+			if err != nil {
+				return false
+			}
+			have, _ := record[map[string]string{"request_path": "RequestPath", "request_host": "RequestHost"}[m[1]]].(string)
+			if !lokiMatcherKeeps(m[2], value, have) {
+				return false
+			}
+		}
+		break
+	}
+	return true
+}
+
+// lokiMatcherKeeps evaluates one LogQL label matcher on the value a stream or
+// line has for its label, "" when it has none, as Loki does: a regexp
+// matcher is anchored at both ends.
+func lokiMatcherKeeps(op, value, have string) bool {
+	switch op {
+	case "=":
+		return have == value
+	case "!=":
+		return have != value
+	}
+	re, err := regexp.Compile("^(?:" + value + ")$")
+	if err != nil {
+		return false
+	}
+	return re.MatchString(have) == (op == "=~")
 }
 
 // message is the line stored at ns.
@@ -233,12 +305,13 @@ func (s fakeStream) within(start, end int64) []int64 {
 	return out
 }
 
-// matches applies a query's equality matchers; a regexp matcher is not modelled.
+// matches applies a query's stream selector: every matcher, as Loki
+// evaluates it (lokiMatcherKeeps).
 func (s fakeStream) matches(query string) bool {
-	selector, _, _ := strings.Cut(query, "}")
-	for _, m := range equalityMatcher.FindAllStringSubmatch(selector, -1) {
-		want, err := strconv.Unquote(m[2])
-		if err != nil || s.labels[m[1]] != want {
+	selector, _ := splitLogQL(query)
+	for _, m := range lokiLabelMatcher.FindAllStringSubmatch(selector, -1) {
+		want, err := strconv.Unquote(m[3])
+		if err != nil || !lokiMatcherKeeps(m[2], want, s.labels[m[1]]) {
 			return false
 		}
 	}

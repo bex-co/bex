@@ -439,8 +439,8 @@ func TestViewWritesRefuseByName(t *testing.T) {
 		"a request field on application logs": second(svc.UpdateSavedSearch(ctx, logs, SavedSearchEdit{Filters: map[string]any{
 			"version": 1, "filters": []any{map[string]any{"field": "METHOD", "operator": "IS", "values": []any{"GET"}}},
 		}})),
-		"IS_NOT on a line field": second(svc.UpdateSavedSearch(ctx, logs, SavedSearchEdit{Filters: map[string]any{
-			"version": 1, "filters": []any{map[string]any{"field": "LEVEL", "operator": "IS_NOT", "values": []any{"info"}}},
+		"IS_NOT on Text Search": second(svc.UpdateSavedSearch(ctx, logs, SavedSearchEdit{Filters: map[string]any{
+			"version": 1, "filters": []any{map[string]any{"field": "TEXT", "operator": "IS_NOT", "values": []any{"timeout"}}},
 		}})),
 	} {
 		if !errors.Is(err, core.ErrBadRequest) {
@@ -449,6 +449,11 @@ func TestViewWritesRefuseByName(t *testing.T) {
 	}
 	if got, _ := svc.SavedSearch(ctx, logs); got.Name != "Application Logs" || string(got.Filters) != `{"filters": [], "version": 1}` {
 		t.Fatalf("a refused edit changed the view: %+v (%s)", got, got.Filters)
+	}
+	// Render's editor negates a line field (w3/m523), and so a view stores it.
+	notInfo := map[string]any{"version": 1, "filters": []any{map[string]any{"field": "LEVEL", "operator": "IS_NOT", "values": []any{"info"}}}}
+	if got, err := svc.UpdateSavedSearch(ctx, logs, SavedSearchEdit{Filters: notInfo}); err != nil || !strings.Contains(string(got.Filters), `"IS_NOT"`) {
+		t.Fatalf("LEVEL IS_NOT info: %+v, %v; want it stored", got, err)
 	}
 
 	// A project's views are bounded, and the bound is refused by its own code.

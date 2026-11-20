@@ -316,6 +316,15 @@ type LogQuery struct {
 	StatusCode []string
 	Method     []string
 	Path       []string
+	// negated names the structured filters above, by their label (LabelLevel,
+	// LabelInstance, LabelMethod, LabelStatusCode, LabelHost, LabelPath), that
+	// exclude their values instead of selecting them: a project view's IS_NOT
+	// (w3/m523). Such a filter keeps every line its values do not match, a
+	// line without the label included. Its values are validated, routed and
+	// counted as the selecting form's are (requestFilters), so only matching
+	// inverts. Set by newProjectView, never by a caller: Render's public log
+	// filters have no operator.
+	negated []string
 	// Deploy scopes a build or pre-deploy read to one deploy (w21/m324): the
 	// deploy page's log is the service's build stream cut by the deploy's time
 	// window, so two deploys that overlap in time would share lines. A GraphQL
@@ -454,6 +463,11 @@ func normalizeLogText(values []string) []string {
 	}
 	slices.Sort(terms)
 	return slices.Compact(terms)
+}
+
+// negates reports whether q's filter on label excludes its values (negated).
+func (q LogQuery) negates(label string) bool {
+	return slices.Contains(q.negated, label)
 }
 
 // hasFilters reports whether any line-level filter (search/time/level, or the
@@ -731,6 +745,9 @@ func (s *Service) ownPods(ctx context.Context, namespace string, q LogQuery) ([]
 	return core.DropOtherIncarnations(pods, q.appID, q.notBefore), err
 }
 
+// keepPod reports whether q reads pod: not a dropped Job's, in the builds q
+// names, and among the pods q's instance filter selects, or outside the ones
+// a negated one names.
 func (q LogQuery) keepPod(pod string) bool {
 	if q.excludesPod(pod) || !q.inBuilds(pod) {
 		return false
@@ -738,7 +755,7 @@ func (q LogQuery) keepPod(pod string) bool {
 	if len(q.Instance) == 0 {
 		return true
 	}
-	return slices.Contains(q.Instance, pod)
+	return slices.Contains(q.Instance, pod) != q.negates(LabelInstance)
 }
 
 // excludesPod reports whether pod belongs to a Job a Deploy-scoped read drops
@@ -872,7 +889,7 @@ func (q LogQuery) matchesText(message string) bool {
 // keep reports whether an entry satisfies the search/time/level filters. Assumes
 // normalized() has run.
 func (q LogQuery) keep(e LogEntry) bool {
-	if q.levelFilter != nil && !q.levelFilter.MatchString(e.Labels[LabelLevel]) {
+	if q.levelFilter != nil && q.levelFilter.MatchString(e.Labels[LabelLevel]) == q.negates(LabelLevel) {
 		return false
 	}
 	if !q.matchesText(e.Message) {
@@ -1255,6 +1272,7 @@ func (q LogQuery) datastoreFilters(resource string) error {
 // applies it as a label matcher instead). App, Postgres and Key Value lines
 // carry the shipper's level vocabulary (an App tail line through
 // appLineLevel), so storedLevels maps Render's names the same way for all.
+// keep inverts it for a negated level, so a line with no level passes one.
 func (q *LogQuery) compileLevelFilter() error {
 	if len(q.Level) == 0 {
 		return nil
@@ -2458,6 +2476,9 @@ func (s *Service) translateInstanceFilter(ctx context.Context, resourceID, names
 	}
 	resolved := ids.ResolveInstanceSelectors(q.Instance, resourceID, cands)
 	if len(resolved) == 0 {
+		// A negated set that resolves to none excludes noSuchInstance, which
+		// is nothing: a project view's instance of one resource leaves
+		// another resource's lines (w3/m523).
 		q.Instance = []string{noSuchInstance}
 		return
 	}
@@ -2634,7 +2655,7 @@ func (s *Service) collectPreDeployLogs(ctx context.Context, appNS, resource stri
 		// This source reads only extant migration pods, so historical App
 		// instance discovery cannot supply its candidates.
 		q.Instance = ids.ResolveInstanceSelectors(q.Instance, resource, candidatesFromPods(pods))
-		if len(q.Instance) == 0 {
+		if len(q.Instance) == 0 && !q.negates(LabelInstance) {
 			return nil, nil
 		}
 	}

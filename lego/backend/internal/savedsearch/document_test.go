@@ -47,6 +47,18 @@ func TestParseAcceptsRenderShapedDocuments(t *testing.T) {
 			{"field": "STATUS_CODE", "operator": "IS", "values": ["5*"]},
 			{"field": "HOST", "operator": "IS", "values": ["example.com"]},
 			{"field": "PATH", "operator": "IS", "values": ["/api/*"]}], "version": 1}`},
+		// Render's Edit view offers `is not one of` on every line field but
+		// Text Search (w3/m523).
+		{TypeApplicationLogs, `{"filters": [
+			{"field": "LEVEL", "operator": "IS_NOT", "values": ["info"]},
+			{"field": "INSTANCE", "operator": "IS_NOT", "values": ["srv-c185th5c2rvvnhbfiltg-abcde"]}], "version": 1}`},
+		{TypeRequestLogs, `{"filters": [
+			{"field": "LEVEL", "operator": "IS_NOT", "values": ["info", "debug"]},
+			{"field": "INSTANCE", "operator": "IS_NOT", "values": ["srv-c185th5c2rvvnhbfiltg-abcde"]},
+			{"field": "METHOD", "operator": "IS_NOT", "values": ["GET", "HEAD"]},
+			{"field": "STATUS_CODE", "operator": "IS_NOT", "values": ["2xx", "304"]},
+			{"field": "HOST", "operator": "IS_NOT", "values": ["*.onrender.com"]},
+			{"field": "PATH", "operator": "IS_NOT", "values": ["/healthz", "/^/static//"]}], "version": 1}`},
 		// A legacy env- spelling of an environment is the same environment.
 		{TypeApplicationLogs, `{"filters": [{"field": "ENVIRONMENT", "operator": "IS", "values": ["env-c185th5c2rvvnhbfiltg"]}], "version": 1}`},
 	} {
@@ -76,8 +88,11 @@ func TestParseRefusesByName(t *testing.T) {
 		{TypeMetrics, `{"filters": [{"field": "LEVEL", "operator": "IS", "values": ["error"]}], "version": 1}`, `filter field "LEVEL" is not a field of a METRICS view`},
 		{TypeApplicationLogs, `{"filters": [{"field": "LEVEL", "operator": "IS", "values": ["error"]}, {"field": "LEVEL", "operator": "IS", "values": ["info"]}], "version": 1}`, `"LEVEL" appears more than once`},
 		{TypeApplicationLogs, `{"filters": [{"field": "LEVEL", "operator": "CONTAINS", "values": ["error"]}], "version": 1}`, `unknown operator "CONTAINS"`},
-		{TypeApplicationLogs, `{"filters": [{"field": "LEVEL", "operator": "IS_NOT", "values": ["error"]}], "version": 1}`, `"LEVEL" does not support operator IS_NOT`},
 		{TypeApplicationLogs, `{"filters": [{"field": "ENVIRONMENT", "operator": "IS_NOT", "values": ["` + env + `"]}], "version": 1}`, `"ENVIRONMENT" does not support operator IS_NOT`},
+		{TypeRequestLogs, `{"filters": [{"field": "ENVIRONMENT", "operator": "IS_NOT", "values": ["` + env + `"]}], "version": 1}`, `"ENVIRONMENT" does not support operator IS_NOT`},
+		{TypeApplicationLogs, `{"filters": [{"field": "TEXT", "operator": "IS_NOT", "values": ["timeout"]}], "version": 1}`, `"TEXT" does not support operator IS_NOT`},
+		{TypeApplicationLogs, `{"filters": [{"field": "TIME_RANGE", "operator": "IS_NOT", "values": ["4h"]}], "version": 1}`, `"TIME_RANGE" does not support operator IS_NOT`},
+		{TypeMetrics, `{"filters": [{"field": "TIME_RANGE", "operator": "IS_NOT", "values": ["4h"]}], "version": 1}`, `"TIME_RANGE" does not support operator IS_NOT`},
 		{TypeApplicationLogs, `{"filters": [{"field": "LEVEL", "operator": "IS", "values": []}], "version": 1}`, `"LEVEL" needs at least one value`},
 		{TypeApplicationLogs, `{"filters": [{"field": "ENVIRONMENT", "operator": "IS", "values": ["` + env + `", "` + env + `"]}], "version": 1}`, `"ENVIRONMENT" takes exactly one value`},
 		{TypeApplicationLogs, `{"filters": [{"field": "ENVIRONMENT", "operator": "IS", "values": ["prj-c185th5c2rvvnhbfiltg"]}], "version": 1}`, `"ENVIRONMENT" has an invalid value`},

@@ -53,8 +53,10 @@ const (
 	OpIsNot = "IS_NOT"
 )
 
-// The filter fields, the labels of Render's Edit view modal in upper snake
-// case: Render's own enum spellings were not captured (ADR010).
+// The filter fields. Render's saved-search field enum spells all but two the
+// same (its dashboard bundle, 2026-11-19, ADR010): Render writes Text Search
+// as TEXT_SEARCH with CONTAINS, and the time range as the document's
+// top-level timeRange.relative rather than a filter row (w3/083).
 const (
 	FieldEnvironment  = "ENVIRONMENT"
 	FieldResource     = "RESOURCE"
@@ -92,8 +94,11 @@ var fieldsByType = map[string][]string{
 	TypeMetrics:         {FieldEnvironment, FieldResource, FieldResourceType, FieldTimeRange},
 }
 
-// scopeFields select resources; the rest select lines.
-var scopeFields = []string{FieldEnvironment, FieldResource, FieldResourceType}
+// unnegatable are the fields Render's Edit view offers no `is not` on
+// (w3/m523): Environment and Time Range take one value with `is`, and Text
+// Search takes `contains`. Every other field takes `is one of` and `is not
+// one of`.
+var unnegatable = []string{FieldEnvironment, FieldText, FieldTimeRange}
 
 // Bounds on one document, so a stored view cannot grow without limit.
 const (
@@ -178,9 +183,7 @@ func (f Filter) validate() error {
 	switch f.Operator {
 	case OpIs:
 	case OpIsNot:
-		// The log query has no negation, so a line field's IS_NOT would read
-		// as IS. Refuse it by name rather than answer the opposite (ADR010).
-		if !slices.Contains(scopeFields, f.Field) || f.Field == FieldEnvironment {
+		if slices.Contains(unnegatable, f.Field) {
 			return fmt.Errorf("%w: filter field %q does not support operator %s", core.ErrBadRequest, f.Field, OpIsNot)
 		}
 	default:

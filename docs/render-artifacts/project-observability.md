@@ -58,7 +58,7 @@ The project's answer held three, created for it by Render:
 | Request Logs     | `REQUEST_LOGS`     | `{"filters": [], "version": 1}` |
 | Service Metrics  | `METRICS`          | `{"filters": [], "version": 1}` |
 
-- `SavedSearchType` is `APPLICATION_LOGS | METRICS | REQUEST_LOGS | WORKFLOW_RUNS`; the filter operators are `IS | IS_NOT`; a metrics group-by is `NONE | RESOURCE | STATUS_CODE` (all from the bundle).
+- `SavedSearchType` is `APPLICATION_LOGS | METRICS | REQUEST_LOGS | WORKFLOW_RUNS`; the filter operators are `CONTAINS | IS | IS_NOT`; a metrics group-by is `NONE | RESOURCE | STATUS_CODE` (all from the bundle; the operators re-read in [§ Edit view](#edit-view)).
 - Render's public OpenAPI (the pinned `render-public-api-1.json`) has no saved-search operation, but its audit log records `CreateSavedSearchEvent` and `DeleteSavedSearchEvent`, and its error codes include `duplicate_saved_search_name`.
 - **Service Metrics is not shown in this workspace.** The `METRICS` saved search exists, but the sidebar does not list it, New View does not offer it, and `/project/{prj}/observability/metrics?savedSearchId=…` redirects to `/`. [render.com/docs/projects](https://render.com/docs/projects) and [render.com/docs/service-metrics](https://render.com/docs/service-metrics) describe it ("Projects and environments display metrics for _all_ of their services on the _Service Metrics_ page"), so it looks gated rather than removed.
 
@@ -83,8 +83,31 @@ A modal titled **Edit view**: a **Name** field, a **Filters** list with an add (
 | Application Logs | Environment, Resource, Resource Type, Level, Instance, Text Search, Time Range |
 | Request Logs | Environment, Resource, Resource Type, Level, Instance, Method, Status Code, Host, Path, Time Range |
 
-- `Environment` takes the operator `is` and one environment.
-- `Resource Type` takes `is one of` / `is not one of` over **Services, Cron jobs, Postgres, Key Value**. Key Value and Postgres logs belong to the project's Application Logs.
+Key Value and Postgres logs belong to the project's Application Logs.
+
+### Operators per field (read from the bundle, 2026-11-19, w3/m523)
+
+Read without sign-in from Render's public dashboard bundle: `https://dashboard.render.com/` loads `assets/index-*.js`, and following its `./*.js` imports to a fixpoint fetches about 450 chunks. `ProjectLogs-*.js` builds the fields (`ProjectLogs-DdJvXDu8.js` that day), `SavedViewFiltersModal-*.js` draws the rows and builds the saved document (`SavedViewFiltersModal-C9MBDKkv.js`), and `git-*.js` holds the generated GraphQL enums (`git-DtnyV415.js`). The hashes change with every Render deploy, so find the chunks by name.
+
+| field | operators | values | view types |
+| --- | --- | --- | --- |
+| Environment | `IS` | one of the project's environments | both |
+| Resource | `IS`, `IS_NOT` | the project's resources | both |
+| Resource Type | `IS`, `IS_NOT` | Services, Cron jobs, Postgres, Key Value | both |
+| Level | `IS`, `IS_NOT` | the label's values in the project's logs | both |
+| Instance | `IS`, `IS_NOT` | the label's values | both |
+| Text Search | `CONTAINS` | free text | Application Logs |
+| Method | `IS`, `IS_NOT` | the label's values | Request Logs |
+| Status Code | `IS`, `IS_NOT` | the label's values | Request Logs |
+| Host | `IS`, `IS_NOT` | the label's values | Request Logs |
+| Path | `IS`, `IS_NOT` | the label's values | Request Logs |
+| Time Range | `IS` | one preset, Last hour … Last 30 days | both |
+
+- **Labels.** A field that takes many values labels its operators `is one of` (`IS`) and `is not one of` (`IS_NOT`). A field that takes one labels them `is`, `is not` and `contains`. Environment and Time Range declare no `operators`, so the modal draws them as `is` with one value.
+- **Values.** Level, Instance, Method, Status Code, Host and Path list the values Render's `logValues(input: {label, logQuery: {project, ownerId, region, …}})` answers for the project, many at a time.
+- **The saved document** is `{"version": 1, "filters": [{"field", "operator", "values"}], "timeRange": {"relative": "<preset>"}, "display": {…}}`. The time range is not a filter row: it is the top-level `timeRange.relative`. `display` holds a metrics view's `aggregationMethod`, `requestGroupBy`, `groupBy` and `rootTasksOnly`.
+- **The enums.** The saved-search filter field is `ENVIRONMENT | HOST | INSTANCE | LEVEL | METHOD | PATH | RESOURCE | RESOURCE_TYPE | RUN_ID | STATUS | STATUS_CODE | TASK | TASK_TYPE | TEXT_SEARCH | VERSION` (`RUN_ID`, `STATUS`, `TASK`, `TASK_TYPE` and `VERSION` serve Render Workflows, a non-goal: the Workflow Runs view, `ProjectWorkflowRuns-*.js`, filters on `RUN_ID`, `STATUS` and `VERSION`). Its operator is `CONTAINS | IS | IS_NOT`. The log query's own filter operator is `INCLUDES | EXCLUDES`.
+- **Where bex's document differs.** bex spells every field Render's way but two, and writes no `display`: Text Search is `TEXT` with `IS`, not `TEXT_SEARCH` with `CONTAINS`, and the time range is a `TIME_RANGE` filter row, not `timeRange.relative`. [w3/083](../../.pm/w3/083.md) moves bex to Render's shape.
 
 ## Service Metrics (re-checked 2026-11-19, w3/m508)
 

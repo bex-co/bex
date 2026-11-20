@@ -91,7 +91,10 @@ export function EditViewDialog({
     <Dialog open={target !== null} onOpenChange={onOpenChange}>
       {target ? (
         <DialogContent
-          className="sm:max-w-2xl"
+          // One column no wider than the modal: a long typed value (an
+          // instance id) truncates in its chip instead of widening the rows
+          // past the modal's edge on a phone.
+          className="grid-cols-[minmax(0,1fr)] sm:max-w-2xl"
           // Render's footer Close is the modal's close; Escape still works.
           showCloseButton={false}
         >
