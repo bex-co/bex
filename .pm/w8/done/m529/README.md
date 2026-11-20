@@ -1,6 +1,6 @@
 # w8 · m529 — A restart or rollback pulls its release's image with that release's own registry credential
 
-**Worker:** worker8 **Goal:** the registry credential travels with the release, as the image does. A Restart reruns the serving release with the credential it went live with, a rollback runs its target with the target's, and a later image switch to another credential, failed or merely saved, never changes what the serving release pulls with. **Status:** blocked (t001–t007 done; t008 waits for a production pin carrying `8d58c09bc`)
+**Worker:** worker8 **Goal:** the registry credential travels with the release, as the image does. A Restart reruns the serving release with the credential it went live with, a rollback runs its target with the target's, and a later image switch to another credential, failed or merely saved, never changes what the serving release pulls with. **Status:** done
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | [t005](done/t005.md) | Render parity — **DONE** | 20m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005, t006 |
-| [t008](t008.md) | Closeout | 45m | t007 |
+| [t008](done/t008.md) | Closeout — **DONE** | 45m | t007 |
 
 Total: **8 tasks, about 5h10m**.
 
@@ -52,3 +52,9 @@ Total: **8 tasks, about 5h10m**.
 - **Render (t002, t005).** [render.com/docs/rollbacks](https://render.com/docs/rollbacks) § Registry-hosted Docker images (read 2026-11-20) says Render "pulls the image again" but not with which credential; bex keeps the target's own, refreshed from its stored token. Restart keeps "the exact same Git commit and configuration as the running instance". No drift to file.
 - **Surfaces (t005).** Restart: REST `POST /v1/services/{id}/restart` and MCP `restart_service` (`apps` → `restartDeploy`, `internal/api/server.go:1177`), GraphQL `restartServer` (`deploys/graphql.go:274`), the CLI's `bex restart` (REST) and the dashboard's Restart (GraphQL); a restart waiting behind a deploy runs `restartNow` (`deploys/restart_wait.go:213`). Rollback: REST `POST /v1/services/{id}/rollback` (`deploys/rest.go:313`), MCP `rollback_deploy` (`deploys/mcp.go:175`), GraphQL rollback (`deploys/graphql.go:298`) and the dashboard's Rollback; a waiting one runs `rollbackFetched` (`restart_wait.go:215`). Every one reaches `targetReleaseConfig`, so none pulls a selected release with the saved binding.
 - **Tests (t007).** Backend `TestReleaseSelectionCarriesTheRecordedRegistryBinding` (Restart with none / with A while B is saved / deleted credential / adopted-spec record with none or A / record with neither; rollback to none and to A) and `TestRestartOfARestartKeepsTheOriginalBinding`; `TestMaterializePullSecretKeepsEachCredentialsOwnSecret` (B leaves A byte-for-byte, a rotated token refreshes A, credential delete reaps B's copy); `TestDeleteRemovesExternalRegistryPullSecret` (legacy + per-credential, another App's kept); `TestReconcileProjectsExplicitRegistryCredential` (real DB: per-credential name, legacy kept for an unchanged credential, a switch moves it). Operator envtest "Restart and rollback pull with their release's registry credential (w8/m529)" (Restart with none while B is saved, Restart and rollback with A, rollback to none, legacy selection, the step Job matching the pods), `TestReleaseReadsItsImageWithItsOwnRegistryBinding`, and the protected-Secret carve-out cases. Reverting the selection, the per-credential name, the projector's legacy rule and the operator accessor each fails its test. The Dockerfile `FROM` credential (`registry_auth_test.go`) and the linked build-source carrier (`build_source_test.go`) keep their existing tests through the accessor.
+
+## Closeout (t008, 2026-11-20)
+
+- **Gate cleared.** Production pin `820edf28d22d` (`7474e1c6a`) carries `8d58c09bc`. Deploy run 44823407917 rolled the operator to `bex-operator@sha256:ca059b40…` and restarted `bex-api` at 22:13:33 UTC.
+- **Definition of done step 4, passed on that pin in `bex-canary`, 22:16–22:21 UTC.** A free `nginx:1.27-alpine` service went live on `sha256:65645c7b…2a10`. An image switch to a made-up `docker.io` org with a made-up Docker Hub credential saved, and its deploy failed in 1.4 s with Docker Hub's 401. `bex restart` then went live in 22 s on `nginx@sha256:65645c7b…2a10`, and a REST rollback to the first deploy went live in 24 s on the same digest. Through both steps the saved binding still named the fake credential, and the URL answered 200 on every poll. Before this milestone the restart failed with the same 401 (w8/353).
+- **Fixtures.** `srv-dc0cdlfob2ts7390k5d0` and `rgc-dc0ce43cd0vs73c888b0` were deleted by ID, and each GET answers 404. The commands and IDs are in [t008](done/t008.md).
