@@ -69,10 +69,18 @@ func (s *Service) validateExternalRegistryCredential(ctx context.Context, a *app
 	if resolve, err := s.registryCredentialApplies(a); !resolve || err != nil {
 		return err
 	}
-	if err := s.RegistryCreds.ValidatePullSecret(ctx, s.AppWorkspace(ctx, a), a.Spec.Image, a.Spec.RegistryCredentialID); err != nil {
-		return fmt.Errorf("validating registry pull secret for %s: %w", a.Spec.Image, err)
+	return pullSecretErr("validating", a.Spec.Image, s.RegistryCreds.ValidatePullSecret(ctx, s.AppWorkspace(ctx, a), a.Spec.Image, a.Spec.RegistryCredentialID))
+}
+
+// pullSecretErr answers a public refusal with its own message, which names the
+// registry credential at fault: wrapped in "…registry pull secret for <image>",
+// an unknown credential id read as a missing image (w8/354). Only an internal
+// failure, whose text never reaches the caller, keeps the image for the log.
+func pullSecretErr(verb, image string, err error) error {
+	if err == nil || core.IsPublicError(err) {
+		return err
 	}
-	return nil
+	return fmt.Errorf("%s registry pull secret for %s: %w", verb, image, err)
 }
 
 // registryCredentialApplies is the applicability check validation and
@@ -114,7 +122,7 @@ func (s *Service) ensureExternalRegistryPullSecret(ctx context.Context, a *appv1
 	}
 	name, ok, err := s.RegistryCreds.MaterializePullSecret(ctx, s.AppWorkspace(ctx, a), a, a.Spec.Image, a.Spec.RegistryCredentialID)
 	if err != nil {
-		return "", fmt.Errorf("materializing registry pull secret for %s: %w", a.Spec.Image, err)
+		return "", pullSecretErr("materializing", a.Spec.Image, err)
 	}
 	if !ok {
 		return "", nil

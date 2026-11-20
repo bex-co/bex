@@ -21,6 +21,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -297,5 +299,21 @@ func TestMaterializePullSecretExplicitIDClassifiesAndValidates(t *testing.T) {
 	empty := ""
 	if name, ok, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private:1", &empty); err != nil || ok || name != "" {
 		t.Fatalf("explicit clear = name %q ok %v err %v", name, ok, err)
+	}
+}
+
+// An unknown explicit id, a stale id or a credential's name typed as one,
+// answers a 404 that names it: a bare "not found" read as a missing image
+// once the apps layer named the image (w8/354).
+func TestResolvePullCredentialUnknownIDNamesTheCredential(t *testing.T) {
+	ctx := context.Background()
+	s := &Service{Base: &core.Base{Client: fakeK8sClient(), Namespace: "default"}, Store: newFakeStore(), Secret: newFakeSecretKV()}
+	for _, id := range []string{"rgc-aaaaaaaaaaaaaaaaaaaa", " qa-private-ghcr "} {
+		err := s.DeployPullSecretSource().ValidatePullSecret(ctx, core.DefaultTenant, "docker.io/library/nginx:1.27-alpine", &id)
+		want := fmt.Sprintf("registry credential %q not found", strings.TrimSpace(id))
+		var coded *core.CodedError
+		if !errors.Is(err, core.ErrNotFound) || !errors.As(err, &coded) || coded.Code != core.NotFoundCode || err.Error() != want {
+			t.Fatalf("ValidatePullSecret(%q) = %v, want NOT_FOUND %q", id, err, want)
+		}
 	}
 }

@@ -457,3 +457,77 @@ func TestMCPDockerBuildRegistryCredentialCreateUpdateAndEcho(t *testing.T) {
 		t.Fatalf("MCP Docker-build spec = %+v", got.Spec)
 	}
 }
+
+// An unknown registryCredentialId answers the resolver's own refusal, which
+// names the credential, on every surface that binds one. Wrapped in
+// "validating registry pull secret for <image>", it read as a missing image
+// (w8/354).
+func TestRegistryCredentialRefusalNamesTheCredentialOnEverySurface(t *testing.T) {
+	const want = `registry credential "rgc-gone" not found`
+	rc := &fakePullSecrets{name: "web-registry-pull", ok: true}
+	svc, cl := rcService(rc)
+	ctx := context.Background()
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	serve := func(method, target, body string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(method, target, strings.NewReader(body)))
+		return rec
+	}
+	rest := func(method, target, body string) {
+		t.Helper()
+		rec := serve(method, target, body)
+		var got struct{ Code, Message string }
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil || rec.Code != http.StatusNotFound || got.Code != core.NotFoundCode || got.Message != want {
+			t.Fatalf("%s %s = %d: %s, want 404 NOT_FOUND %q", method, target, rec.Code, rec.Body.String(), want)
+		}
+	}
+	if rec := serve(http.MethodPost, "/v1/services", `{"name":"web","type":"web_service","image":{"imagePath":"ghcr.io/acme/private:1","registryCredentialId":"rgc-one"}}`); rec.Code != http.StatusCreated {
+		t.Fatalf("POST = %d: %s", rec.Code, rec.Body.String())
+	}
+	rc.err = core.NotFound(`registry credential "rgc-gone"`) // registrycreds' refusal
+
+	newImage := `{"name":"api","type":"web_service","image":{"imagePath":"docker.io/library/nginx:1.27-alpine","registryCredentialId":"rgc-gone"}}`
+	rest(http.MethodPost, "/v1/services?dryRun=true", newImage)
+	rest(http.MethodPost, "/v1/services", newImage)
+	rest(http.MethodPatch, "/v1/services/web", `{"image":{"imagePath":"docker.io/library/nginx:1.27-alpine","registryCredentialId":"rgc-gone"}}`)
+	rest(http.MethodPatch, "/v1/services/web?dryRun=true", `{"image":{"imagePath":"docker.io/library/nginx:1.27-alpine","registryCredentialId":"rgc-gone"}}`)
+
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, mutation := range []string{
+		`mutation { setImage(id:"web", image:"docker.io/library/nginx:1.27-alpine", registryCredentialId:"rgc-gone") { id } }`,
+		`mutation { setRegistryCredential(id:"web", registryCredentialId:"rgc-gone") { id } }`,
+	} {
+		res := graphql.Do(graphql.Params{Schema: schema, Context: ctx, RequestString: mutation})
+		if len(res.Errors) != 1 || res.Errors[0].Message != want {
+			t.Fatalf("GraphQL %s = %v, want %q", mutation, res.Errors, want)
+		}
+	}
+
+	server := mcp.NewServer(&mcp.Implementation{Name: "bex", Version: "0"}, nil)
+	svc.RegisterMCP(server)
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	if _, err := server.Connect(ctx, serverTransport, nil); err != nil {
+		t.Fatal(err)
+	}
+	session, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+	res, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "update_service", Arguments: map[string]any{"serviceId": "web", "registryCredentialId": "rgc-gone"}})
+	if err != nil || !res.IsError || len(res.Content) != 1 || res.Content[0].(*mcp.TextContent).Text != core.NotFoundCode+": "+want {
+		t.Fatalf("MCP update_service = err %v result %+v, want %q", err, res, want)
+	}
+
+	// A deploy materializes the saved binding and refuses the same way.
+	if _, err := svc.DeployPullSecretPreparer().EnsurePullSecret(ctx, getApp(t, cl, "web")); err == nil || err.Error() != want {
+		t.Fatalf("deploy pull secret = %v, want %q", err, want)
+	}
+}

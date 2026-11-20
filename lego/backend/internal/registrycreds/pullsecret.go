@@ -72,47 +72,36 @@ func registryHost(image string) string {
 // trip TestAuthzGuardsEveryVerb — the same reason github.Service's cloneToken
 // is unexported behind tokenSource.
 func (s *Service) resolvePullCredential(ctx context.Context, workspaceID, image string, credentialID *string) (host string, cred store.RegistryCredential, password string, ok bool, err error) {
-	if credentialID != nil && strings.TrimSpace(*credentialID) == "" {
-		return "", store.RegistryCredential{}, "", false, nil // explicit clear: do not fall back to host matching
+	// No credential selected: the image is read anonymously, as on Render,
+	// where a credential applies only to the services that choose it. A
+	// workspace credential for the same host is never picked up by host
+	// (w4/m301): it used to capture every public image from that host, so one
+	// bad token broke unrelated deploys and could not be deleted. A blank id is
+	// an explicit clear, which reads the same.
+	if credentialID == nil || strings.TrimSpace(*credentialID) == "" {
+		return "", store.RegistryCredential{}, "", false, nil
 	}
 	if !s.configured() {
-		if credentialID != nil {
-			return "", store.RegistryCredential{}, "", false, core.ErrRegistryCredentialsUnavailable
-		}
-		return "", store.RegistryCredential{}, "", false, nil // legacy auto-match remains optional when unwired
+		return "", store.RegistryCredential{}, "", false, core.ErrRegistryCredentialsUnavailable
 	}
 	if strings.TrimSpace(image) != "" {
 		host = registryHost(image)
 	}
-	var lookupErr error
-	if credentialID != nil {
-		id := strings.TrimSpace(*credentialID)
-		cred, lookupErr = s.Store.GetRegistryCredentialByID(ctx, id)
-		if lookupErr == nil && cred.WorkspaceID != workspaceID {
-			return "", store.RegistryCredential{}, "", false, fmt.Errorf("%w: registry credential %q does not belong to the target workspace", core.ErrForbidden, id)
-		}
-		if lookupErr == nil && host != "" && !sameRegistryHost(cred.Host, host) {
-			return "", store.RegistryCredential{}, "", false, fmt.Errorf("%w: registry credential %q is for %s, not %s", core.ErrBadRequest, id, cred.Host, host)
-		}
-		if lookupErr == nil && host == "" {
-			host = cred.Host // explicit Docker-build binding: FROM host is not known at create time
-		}
-	} else {
-		// No credential selected: the image is read anonymously, as on Render,
-		// where a credential applies only to the services that choose it. A
-		// workspace credential for the same host is never picked up by host
-		// (w4/m301): it used to capture every public image from that host, so
-		// one bad token broke unrelated deploys and could not be deleted.
-		return "", store.RegistryCredential{}, "", false, nil
-	}
-	if lookupErr != nil {
-		if errors.Is(lookupErr, store.ErrNotFound) {
-			if credentialID != nil {
-				return "", store.RegistryCredential{}, "", false, core.ErrNotFound
-			}
-			return "", store.RegistryCredential{}, "", false, nil
-		}
-		return "", store.RegistryCredential{}, "", false, lookupErr
+	id := strings.TrimSpace(*credentialID)
+	cred, err = s.Store.GetRegistryCredentialByID(ctx, id)
+	switch {
+	case errors.Is(err, store.ErrNotFound):
+		// Names the id the caller sent, which may be a credential's name or a
+		// stale id: the image is not what is missing (w8/354).
+		return "", store.RegistryCredential{}, "", false, core.NotFound(fmt.Sprintf("registry credential %q", id))
+	case err != nil:
+		return "", store.RegistryCredential{}, "", false, err
+	case cred.WorkspaceID != workspaceID:
+		return "", store.RegistryCredential{}, "", false, fmt.Errorf("%w: registry credential %q does not belong to the target workspace", core.ErrForbidden, id)
+	case host != "" && !sameRegistryHost(cred.Host, host):
+		return "", store.RegistryCredential{}, "", false, fmt.Errorf("%w: registry credential %q is for %s, not %s", core.ErrBadRequest, id, cred.Host, host)
+	case host == "":
+		host = cred.Host // explicit Docker-build binding: FROM host is not known at create time
 	}
 	secretMap, err := s.Secret.Get(ctx, secretPath(workspaceID, cred.ID))
 	if err != nil {
