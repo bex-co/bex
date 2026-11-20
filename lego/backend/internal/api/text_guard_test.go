@@ -73,7 +73,9 @@ func TestBoundaryRefusesUnbindableText(t *testing.T) {
 		}
 	}
 
-	for _, query := range []string{"name=%00", "name=ok&name=a%00", "name=%FF", "%00=x"} {
+	// A malformed pair beside the bad one ('%zz', a ';', a trailing '%') must
+	// not switch the check off: handlers still read every well-formed pair.
+	for _, query := range []string{"name=%00", "name=ok&name=a%00", "name=%FF", "%00=x", "name=%00&%zz", "name=%00&a;b", "name=%FF&x=%"} {
 		rec := do(t, h, http.MethodGet, "/v1/services?"+query, testToken, "")
 		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "invalid query parameter") {
 			t.Errorf("GET /v1/services?%s = %d %s, want 400 invalid query parameter", query, rec.Code, rec.Body.String())

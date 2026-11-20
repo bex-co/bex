@@ -38,7 +38,9 @@ import (
 
 // withValidQueryText answers a REST request whose query string carries such a
 // parameter name or value with 400 INVALID_TEXT naming the parameter. A query
-// that does not parse is left to the route, as before.
+// with a malformed pair ('%zz', a ';') is still checked: url.ParseQuery returns
+// every well-formed pair beside its error, and those are exactly the pairs
+// r.URL.Query() hands the route.
 func withValidQueryText(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if name, bad := invalidQueryText(r.URL.RawQuery); bad {
@@ -53,10 +55,7 @@ func invalidQueryText(rawQuery string) (string, bool) {
 	if rawQuery == "" {
 		return "", false
 	}
-	values, err := url.ParseQuery(rawQuery)
-	if err != nil {
-		return "", false
-	}
+	values, _ := url.ParseQuery(rawQuery)
 	names := make([]string, 0, len(values))
 	for name := range values {
 		names = append(names, name)

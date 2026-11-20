@@ -80,7 +80,10 @@ func DecodeKeysetCursor(cursor string) (KeysetCursor, error) {
 		return KeysetCursor{}, fmt.Errorf("%w: malformed cursor", ErrBadRequest)
 	}
 	t, err := time.Parse(time.RFC3339Nano, at)
-	if err != nil {
+	// A key with a NUL or invalid UTF-8 was never one of ours, and binding it
+	// as Postgres text is a 22021 fault: base64 carries it past the API's
+	// query-text check.
+	if err != nil || !ValidText(key) {
 		return KeysetCursor{}, fmt.Errorf("%w: malformed cursor", ErrBadRequest)
 	}
 	return KeysetCursor{At: t, Key: key}, nil

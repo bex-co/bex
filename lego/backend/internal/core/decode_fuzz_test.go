@@ -40,10 +40,17 @@ func FuzzDecodeKeysetCursor(f *testing.F) {
 	f.Add(EncodeKeysetCursor(seedCursorTime, "evt-000000000000000000000"))
 	f.Add(EncodeKeysetCursor(seedCursorTime, "key|with|separators"))
 	f.Add("MjAyNi0wMS0wMlQxNTowNDowNVo") // base64 of a timestamp with no separator
+	f.Add(EncodeKeysetCursor(seedCursorTime, "\x00"))
+	f.Add(EncodeKeysetCursor(seedCursorTime, "evt-\xff"))
 	f.Fuzz(func(t *testing.T, cursor string) {
 		decoded, err := DecodeKeysetCursor(cursor)
 		if err != nil {
 			return
+		}
+		// The key is bound as Postgres text, which holds no NUL or invalid
+		// UTF-8: an accepted key must be bindable, or the list answers 500.
+		if !ValidText(decoded.Key) {
+			t.Fatalf("accepted cursor %q carries an unbindable key %q", cursor, decoded.Key)
 		}
 		// A cursor we accepted must round-trip: re-encoding its keyset and
 		// decoding again yields the same resume position.

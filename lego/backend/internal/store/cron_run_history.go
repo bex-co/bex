@@ -105,6 +105,9 @@ func (s *PGStore) ListCronRunRecords(ctx context.Context, appID, after string, e
 	if limit < 1 {
 		return nil, nil
 	}
+	if !textBindable(after) {
+		return nil, nil // no run has such an id: an unknown cursor's empty tail (w4/519)
+	}
 	if exclude == nil {
 		exclude = []string{} // = ANY(NULL) is NULL, which would exclude every run
 	}

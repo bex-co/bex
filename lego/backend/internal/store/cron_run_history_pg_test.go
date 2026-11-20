@@ -85,6 +85,13 @@ func TestPGCronRunHistoryPagesEveryFinishedRun(t *testing.T) {
 	if recs, err := s.ListCronRunRecords(ctx, appID, "crr-0000000000000000000x", nil, 5); err != nil || len(recs) != 0 {
 		t.Fatalf("unknown cursor = (%v, %v), want an empty tail", recs, err)
 	}
+	// No run has an id Postgres cannot bind: such a cursor is unknown too, not
+	// a 22021 bind fault the API would answer as a 500.
+	for _, cursor := range []string{"\x00", "crr-\xff"} {
+		if recs, err := s.ListCronRunRecords(ctx, appID, cursor, nil, 5); err != nil || len(recs) != 0 {
+			t.Fatalf("unbindable cursor %q = (%v, %v), want an empty tail", cursor, recs, err)
+		}
+	}
 	if recs, err := s.ListCronRunRecords(ctx, "srv-someoneelse", "", nil, 5); err != nil || len(recs) != 0 {
 		t.Fatalf("another app's history = (%v, %v), want none", recs, err)
 	}

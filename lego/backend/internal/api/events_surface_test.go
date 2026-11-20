@@ -522,8 +522,12 @@ func TestEventsAuthMatrix(t *testing.T) {
 	t.Run("malformed cursor => 400", func(t *testing.T) {
 		base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true}}
 		h, _ := serverWith(t, base, Deps{EventStore: eventFixture(at)})
-		if code := do(t, h, "GET", "/v1/services/web/events?cursor=not-a-cursor", testToken, "").Code; code != 400 {
-			t.Errorf("malformed cursor => 400, got %d", code)
+		// A well-formed cursor whose key carries a NUL or invalid UTF-8 was
+		// never one of ours, and Postgres cannot bind its key: 400 too.
+		for _, cursor := range []string{"not-a-cursor", core.EncodeKeysetCursor(at, "\x00"), core.EncodeKeysetCursor(at, "evt-\xff")} {
+			if code := do(t, h, "GET", "/v1/services/web/events?cursor="+cursor, testToken, "").Code; code != 400 {
+				t.Errorf("malformed cursor %q => 400, got %d", cursor, code)
+			}
 		}
 	})
 
