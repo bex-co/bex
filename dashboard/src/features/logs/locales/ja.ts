@@ -764,6 +764,11 @@ const jaLogs: Record<string, TranslationEntry> = {
     description:
       "Log explorer (w3/m509): button under a cleared live tail bringing back the lines Shift+L cleared",
   },
+  "logs.clearLogs": {
+    message: "ログをクリア",
+    description:
+      "Log explorer Options menu (w3/092): item clearing a live tail's lines, as Shift+L does (Render's Clear logs); offered only while the tail is live",
+  },
 };
 
 export default jaLogs;

@@ -98,7 +98,7 @@ export interface DeployLogPanelProps {
  * button that expands the viewer into a full-screen overlay. w3/m509 gives
  * it every explorer's Options (Copy logs, Order by, Display, w3/088) and
  * Render's shortcuts (`/`, `M`, `Esc`, `Home`/`End`, `⌘/Ctrl ⇧ C`); it has
- * no live tail of its own, so no `Shift+L`.
+ * no live tail of its own, so no Clear logs or `Shift+L` (w3/092).
  */
 export function DeployLogPanel({
   resource,

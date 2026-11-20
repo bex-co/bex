@@ -443,6 +443,33 @@ describe("DatastoreLogViewer explorer controls (w3/m509)", () => {
     expect(screen.queryByText("checkpoint complete")).toBeNull();
   });
 
+  it.each(["databases", "keyvalue"] as const)(
+    "lists Options ▸ Clear logs in a %s tab only once Live is on, and clears as Shift+L does (w3/092)",
+    async (kind) => {
+      const user = userEvent.setup();
+      state.lines = [line(0)];
+      render(
+        <DatastoreLogViewer
+          kind={kind}
+          resource="dpg-example"
+          createEventSource={(url) => new FakeEventSource(url)}
+        />,
+      );
+      const options = () =>
+        user.click(screen.getByRole("button", { name: "Log options" }));
+      await options();
+      expect(screen.getByRole("menuitem", { name: /Copy logs/ })).toBeVisible();
+      expect(screen.queryByRole("menuitem", { name: /Clear logs/ })).toBeNull();
+      await user.keyboard("{Escape}");
+
+      await user.click(screen.getByRole("switch", { name: "Live" }));
+      await options();
+      await user.click(screen.getByRole("menuitem", { name: /Clear logs/ }));
+      expect(screen.getByText("Logs cleared")).toBeInTheDocument();
+      expect(screen.queryByText("checkpoint complete")).toBeNull();
+    },
+  );
+
   it("maximizes on M and offers the Options menu", async () => {
     const user = userEvent.setup();
     state.lines = [line(0)];

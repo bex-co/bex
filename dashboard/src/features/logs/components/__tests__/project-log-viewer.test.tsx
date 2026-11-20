@@ -422,6 +422,24 @@ describe("ProjectLogViewer", () => {
     expect(container.firstElementChild?.className).toContain("fixed inset-0");
   });
 
+  it("clears the live tail from Options ▸ Clear logs, and lists none once paused (w3/092)", async () => {
+    const user = userEvent.setup();
+    historyState.lines = [line({ key: "a", message: "from the web" })];
+    historyState.resources = resources;
+    viewer(LOG_TYPE_APP);
+    const options = () =>
+      user.click(screen.getByRole("button", { name: "Log options" }));
+    await options();
+    await user.click(screen.getByRole("menuitem", { name: /Clear logs/ }));
+    expect(screen.getByText("Logs cleared")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("switch", { name: /live/i }));
+    expect(screen.getByText("from the web")).toBeInTheDocument();
+    await options();
+    expect(screen.getByRole("menuitem", { name: /Copy logs/ })).toBeVisible();
+    expect(screen.queryByRole("menuitem", { name: /Clear logs/ })).toBeNull();
+  });
+
   it("reserves the ready Maximize and Options buttons in the pending frame (w3/m509)", () => {
     const sizes = (root: HTMLElement) =>
       [...root.querySelectorAll<HTMLElement>("button, [data-slot=skeleton]")]

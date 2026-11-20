@@ -137,6 +137,27 @@ describe("DeployLogPanel", () => {
     ).toBeInTheDocument();
   });
 
+  // Render offers Clear logs only on a live tail (`onClearLogs`, w3/092); a
+  // deploy's log, even following its build, has none.
+  it("lists no Clear logs in Options, even while it follows a live build", async () => {
+    const user = userEvent.setup();
+    logState.lines = [line("building", "build")];
+    logState.buildLiveStatus = "open";
+    render(
+      <DeployLogPanel
+        resource="web"
+        deployId="dep-1"
+        startTime="2026-07-14T00:00:00Z"
+        endTime={undefined}
+        hasPreDeploy={false}
+        followBuild
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Log options" }));
+    expect(screen.getByRole("menuitem", { name: /Copy logs/ })).toBeVisible();
+    expect(screen.queryByRole("menuitem", { name: /Clear logs/ })).toBeNull();
+  });
+
   it("states a capped build and loads older lines on request (w4/m136)", async () => {
     logState.lines = [line("==> step 9", "build")];
     logState.hasMore = true;

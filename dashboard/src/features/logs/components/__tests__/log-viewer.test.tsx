@@ -1094,12 +1094,26 @@ describe("LogViewer explorer controls (w3/m509)", () => {
     expect(screen.getByText("newer line")).toBeInTheDocument();
   });
 
-  it("does not clear a paused log", () => {
+  it("clears a live tail's lines from Options ▸ Clear logs, as Shift+L does (w3/092)", async () => {
+    const user = userEvent.setup();
+    historyState.lines = [appLine("older line", 1), appLine("newer line", 2)];
+    render(<LogViewer resource="web" />);
+    await user.click(screen.getByRole("button", { name: "Log options" }));
+    await user.click(screen.getByRole("menuitem", { name: /Clear logs/ }));
+    expect(screen.getByText("Logs cleared")).toBeInTheDocument();
+    expect(screen.queryByText("newer line")).toBeNull();
+  });
+
+  it("does not clear a paused log, and its Options list no Clear logs", async () => {
+    const user = userEvent.setup();
     historyState.lines = [appLine("kept line", 1)];
     render(<LogViewer resource="web" urlLive={false} />);
     fireEvent.keyDown(window, { key: "L", shiftKey: true });
     expect(screen.getByText("kept line")).toBeInTheDocument();
     expect(screen.queryByText("Logs cleared")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Log options" }));
+    expect(screen.getByRole("menuitem", { name: /Copy logs/ })).toBeVisible();
+    expect(screen.queryByRole("menuitem", { name: /Clear logs/ })).toBeNull();
   });
 
   it("maximizes the explorer and focuses its search on /", async () => {

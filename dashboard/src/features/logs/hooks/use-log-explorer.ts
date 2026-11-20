@@ -27,6 +27,9 @@ export interface LogExplorer {
   setMaximized: Dispatch<SetStateAction<boolean>>;
   /** Options ▸ Copy logs: every line shown, to the clipboard. */
   copy: () => void;
+  /** Options ▸ Clear logs and `Shift+L` (w3/092): set only while the tail
+   *  is live, so the item and the key are offered exactly then. */
+  clear?: () => void;
 }
 
 // Where a key belongs to something else: a menu, list box, dialog, tab list,
@@ -139,8 +142,9 @@ export function useLogExplorer({ clear }: { clear?: () => void } = {}): {
       maximized,
       setMaximized,
       copy,
+      clear,
     }),
-    [order, display, maximized, copy],
+    [order, display, maximized, copy, clear],
   );
   return { explorer, attachList, attachSearch };
 }
@@ -178,7 +182,8 @@ export function useClearedLines<T extends { timestamp: string }>(
     if (newest > -Infinity) setCut({ at: newest, reader: readerKey });
   }, [lines, readerKey]);
   const restore = useCallback(() => setCut(null), []);
-  // Only a live tail clears: the explorer offers `Shift+L` while this is set.
+  // Only a live tail clears: the explorer offers Options ▸ Clear logs and
+  // `Shift+L` while this is set.
   return {
     lines: shown,
     cleared: active,

@@ -6,6 +6,7 @@ import {
   Eraser,
   Maximize2,
   Minimize2,
+  RotateCcw,
   Settings,
   WrapText,
 } from "lucide-react";
@@ -69,7 +70,8 @@ export function LogExplorerActions({
   );
 }
 
-/** Where a live tail's lines were before `Shift+L` cleared them. */
+/** Where a live tail's lines were before Clear logs (`Shift+L`) cleared
+ *  them. */
 export function LogClearedState({
   fillViewport,
   onRestore,
@@ -129,7 +131,8 @@ const DISPLAY_LABEL_KEYS = {
 } as const satisfies Record<LogDisplay, string>;
 
 /**
- * Render's Options (…) menu: Copy logs (`⌘/Ctrl ⇧ C`), Order by,
+ * Render's Options (…) menu: Copy logs (`⌘/Ctrl ⇧ C`), Order by, Clear
+ * logs (`Shift+L`) while the tail is live (w3/092, the explorer's `clear`),
  * Display (w3/088), and Theme Settings, a link to account Settings ▸
  * Appearance (w3/m528). Display is Render's submenu, `Display: <choice>`
  * over Display settings' Expand everything, Expand errors and Collapse
@@ -155,10 +158,17 @@ export function LogOptionsMenu({
   children?: ReactNode;
 }) {
   const { t } = useTranslations();
-  const shortcut = useIsMac() ? "⌘⇧C" : "Ctrl+Shift+C";
+  const isMac = useIsMac();
   const isMobile = useIsMobile();
-  const { order, setOrder, display, setDisplay, maximized, setMaximized } =
-    explorer;
+  const {
+    order,
+    setOrder,
+    display,
+    setDisplay,
+    maximized,
+    setMaximized,
+    clear,
+  } = explorer;
   const displayChoices = (
     <DropdownMenuRadioGroup
       value={display}
@@ -190,7 +200,9 @@ export function LogOptionsMenu({
         <DropdownMenuItem disabled={!canCopy} onSelect={explorer.copy}>
           <Copy />
           {t("logs.copyLogs")}
-          <DropdownMenuShortcut>{shortcut}</DropdownMenuShortcut>
+          <DropdownMenuShortcut>
+            {isMac ? "⌘⇧C" : "Ctrl+Shift+C"}
+          </DropdownMenuShortcut>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuLabel>{t("logs.orderBy")}</DropdownMenuLabel>
@@ -206,6 +218,15 @@ export function LogOptionsMenu({
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
+        {clear ? (
+          <DropdownMenuItem aria-keyshortcuts="Shift+L" onSelect={clear}>
+            <RotateCcw />
+            {t("logs.clearLogs")}
+            <DropdownMenuShortcut>
+              {isMac ? "⇧L" : "Shift+L"}
+            </DropdownMenuShortcut>
+          </DropdownMenuItem>
+        ) : null}
         {isMobile ? (
           <DropdownMenuGroup aria-label={t("logs.displaySettings")}>
             <DropdownMenuLabel>{t("logs.displaySettings")}</DropdownMenuLabel>

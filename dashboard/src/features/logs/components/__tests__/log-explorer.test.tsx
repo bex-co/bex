@@ -298,6 +298,44 @@ describe("log explorer Options (w3/m509)", () => {
   });
 });
 
+// Render's Options lists Clear logs (a Reset icon, the `Shift L` hint) after
+// Order by and above Display while a clear is offered (`onClearLogs`,
+// `Logs-DOHYAXbe.js`; w3/092): the explorer's `clear`, set while it tails.
+describe("log explorer Clear logs (w3/092)", () => {
+  setupVirtualGeometry();
+
+  it("lists Clear logs with its Shift+L hint between Order by and Display, and clears as the key does", async () => {
+    const user = userEvent.setup();
+    const clear = vi.fn();
+    render(<Explorer clear={clear} />);
+    await user.click(screen.getByRole("button", { name: "Log options" }));
+    const item = screen.getByRole("menuitem", { name: /Clear logs/ });
+    expect(item).toHaveTextContent("Shift+L");
+    expect(item).toHaveAttribute("aria-keyshortcuts", "Shift+L");
+    const follows = (a: Element, b: Element) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(
+      follows(screen.getByRole("menuitemradio", { name: "Descending" }), item),
+    ).toBe(true);
+    expect(
+      follows(item, screen.getByRole("menuitem", { name: /^Display:/ })),
+    ).toBe(true);
+
+    await user.click(item);
+    expect(clear).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("lists no Clear logs while no clear is offered (a paused tail, a deploy's log)", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<Explorer clear={vi.fn()} />);
+    rerender(<Explorer />);
+    await user.click(screen.getByRole("button", { name: "Log options" }));
+    expect(screen.getByRole("menuitem", { name: /Copy logs/ })).toBeVisible();
+    expect(screen.queryByRole("menuitem", { name: /Clear logs/ })).toBeNull();
+  });
+});
+
 // Render's Options ▸ Display (w3/088, `Logs-*.js`): a submenu reading
 // `Display: <choice>` over Display settings' Expand everything (the default),
 // Expand errors and Collapse everything, kept in localStorage
