@@ -40,7 +40,10 @@ import (
 // no-op cannot be proved without revealing its values.
 func (s *Service) blueprintActionPlan(ctx context.Context, ir BlueprintIR, st parsedStack, blueprintID string, snap *workspaceSnapshot) (BlueprintPlan, bool, error) {
 	if s.Client == nil || (len(st.envGroups) > 0 && s.EnvGroups == nil) {
-		return BlueprintPlan{}, false, checkBlueprintDatabaseCreates(st)
+		if err := checkBlueprintDatabaseCreates(st); err != nil {
+			return BlueprintPlan{}, false, err
+		}
+		return BlueprintPlan{}, false, checkBlueprintEnvGroupCreates(st)
 	}
 	resolver, err := newBlueprintActionResolver(ctx, s, st, snap)
 	if err != nil {
@@ -191,6 +194,15 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 			}
 			if err := postgres.CheckNewDatabase(db.spec); err != nil {
 				return BlueprintPlanAction{}, blueprintDatabaseResourceError(resource.Name, blueprintDatabaseAdmissionConflict(err, db.fields))
+			}
+		}
+		if resource.Kind == BlueprintResourceEnvVarGroup {
+			group, ok := parsedBlueprintEnvGroup(r.parsed, resource.Name)
+			if !ok {
+				return BlueprintPlanAction{}, fmt.Errorf("compiled env group is missing")
+			}
+			if err := checkNewEnvGroupQuota(group); err != nil {
+				return BlueprintPlanAction{}, blueprintResourceErrors{{kind: resource.Kind, name: resource.Name, err: err}}
 			}
 		}
 		action.Operation = BlueprintPlanCreate

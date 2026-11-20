@@ -21,10 +21,12 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
+	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -680,6 +682,41 @@ func checkBlueprintDatabaseCreates(st parsedStack) error {
 	for _, db := range st.databases {
 		if err := postgres.CheckNewDatabase(db.spec); err != nil {
 			return blueprintDatabaseResourceError(db.name, blueprintDatabaseAdmissionConflict(err, db.fields))
+		}
+	}
+	return nil
+}
+
+// generatedEnvValueSize is the quota size of a generateValue entry: the
+// apply mints it with core.GenerateValue, a base64-encoded 256-bit value
+// that is always 44 chars (see its doc comment).
+const generatedEnvValueSize = 44
+
+// checkNewEnvGroupQuota is the create-time admission the plan mirrors from
+// the apply (ApplyEnvGroup → persistCreate → secrets.ValidateEnvMapQuota): a
+// group whose declared entries already breach the aggregate env quota can
+// never be created, so the plan refuses it instead of previewing a create
+// the apply rejects. Generated values mint at apply time, so the check sizes
+// them at their fixed minted length — a literal sharing a generated key
+// loses to the mint, as prepareCreateEnv applies the generates last.
+func checkNewEnvGroupQuota(group parsedEnvGroup) error {
+	env := make(map[string]string, len(group.literals)+len(group.generates))
+	for k, v := range group.literals {
+		env[k] = v
+	}
+	for _, k := range group.generates {
+		env[k] = strings.Repeat("x", generatedEnvValueSize)
+	}
+	return secrets.ValidateEnvMapQuota(env)
+}
+
+// checkBlueprintEnvGroupCreates refuses the env-group creates the apply
+// would refuse, for the plan fallback that runs without current state (as
+// checkBlueprintDatabaseCreates does for databases).
+func checkBlueprintEnvGroupCreates(st parsedStack) error {
+	for _, group := range st.envGroups {
+		if err := checkNewEnvGroupQuota(group); err != nil {
+			return blueprintResourceErrors{{kind: BlueprintResourceEnvVarGroup, name: group.name, err: err}}
 		}
 	}
 	return nil

@@ -8,6 +8,10 @@ Earlier runs' **Deferred** and **Skipped** findings, read at the start of every 
 
 ## Skipped
 
+- 2026-11-20 agreement/env_var_group changed-field names — audited, holds: the plan names declared fields plus the environment move unless provably stays-put, and the apply sets the environment for every declared grouping (groupings write first or the sync fails); pinned by TestBlueprintPlanListsAnEnvGroupMove
+- 2026-11-20 agreement/env_var_group byte-quota half — unreachable via manifest: the 512 KiB manifest cap equals the 512 KiB aggregate cap, so YAML overhead keeps every declared group under it; the key-count cell is the live one, pinned by TestBlueprintPlanRefusesOverQuotaEnvGroupCreate
+- 2026-11-20 agreement/env_var_group workspace count cap — skipped: the group count is runtime state the plan cannot know; external-state, not logic (same rule as the 11-18 no-grouping-store entry)
+- 2026-11-20 agreement/env_var_group update-side quota — skipped: group values are write-only, so the plan cannot compute the merged map the patch quota judges; fail-open by design
 - 2026-11-20 blueprint-plan/database admission-conflict attribution — audited, holds: the conflict names the manifest field that caused it (enableDiskAutoscaling remapped, undeclared cause falls back to a declared plan); pinned by TestBlueprintDatabaseConflictNamesTheDeclaringField
 - 2026-11-20 blueprint-plan/service probe-set completeness — audited, holds: every applier name is an ownership-policy row, the inline names are declared-gated, buildSource is explicitly probed; pinned dynamically by TestBlueprintPlanAndApplyAgree and the generated-live-spec matrix
 - 2026-11-19 authz/router-key verbs vs dispatch-mint — audited, holds: Service.call requires a verified-email Kratos session before any upstream call, stricter than the class gate the dispatch comment claims; pinned by TestDeniedRequestsNeverReachUpstream including the machine case
