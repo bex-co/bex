@@ -211,6 +211,70 @@ describe("ServiceSourcePicker across a git connections poll (w1/m153 t002)", () 
   });
 });
 
+// w1/m526 (DoD 3): an account connected in another tab — the connect flow's
+// new tab — must reach the picker's repo list without a reload. Repos used to
+// refetch only on window focus, which a new-tab return does not always raise;
+// now they follow the polled connection set.
+describe("ServiceSourcePicker repos follow the connection set (w1/m526)", () => {
+  it("refetches the repos when a poll finds a new installation, with no focus event", async () => {
+    let connections = gitConnections;
+    const requests: string[] = [];
+    const link = new ApolloLink(
+      (operation) =>
+        new Observable<ApolloLink.Result>((observer) => {
+          const name = operation.operationName ?? "";
+          requests.push(name);
+          observer.next({
+            data:
+              name === "GitConnections"
+                ? { gitConnections: connections }
+                : { repos },
+          });
+          observer.complete();
+        }),
+    );
+    const client = new ApolloClient({
+      cache: new InMemoryCache(),
+      link,
+      defaultOptions: apolloDefaultOptions,
+    });
+    render(
+      <ApolloProvider client={client}>
+        <Picker />
+      </ApolloProvider>,
+    );
+    await screen.findByRole("button", { name: /acme\/api/ });
+    const reposRequests = () =>
+      requests.filter((name) => name === "Repos").length;
+    const poll = async () => {
+      await act(async () => {
+        await client.refetchQueries({ include: [GitConnectionsDocument] });
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      });
+    };
+
+    // A poll that finds the same set leaves the repos alone.
+    const before = reposRequests();
+    await poll();
+    expect(reposRequests()).toBe(before);
+
+    // The other tab connected puncsky: the next poll brings its installation.
+    connections = [
+      ...gitConnections,
+      {
+        __typename: "GitConnection",
+        connected: true,
+        accountLogin: "puncsky",
+        installationId: 43,
+        createdAt: "2026-11-19T00:00:00Z",
+        installUrl: "https://github.com/settings/installations/43",
+      },
+    ];
+    await poll();
+    expect(reposRequests()).toBe(before + 1);
+  });
+});
+
 // w4/434: while the connections read is first in flight, the GitHub tab
 // previews the connect prompt a workspace without GitHub then sees, rather
 // than a block ~95 px shorter that made the whole form jump.

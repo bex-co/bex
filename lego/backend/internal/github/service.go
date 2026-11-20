@@ -379,6 +379,21 @@ func (s *Service) verifierPreflight() error {
 	return nil
 }
 
+// ClaimOptions are StartClaim's optional start-time choices. Both ride the
+// server-side transaction row, never the signed state (w1/m67 F3).
+type ClaimOptions struct {
+	// InstallationID (0 = unspecified) is the start-time selector (ADR078 §3a):
+	// it NARROWS the candidate set the callback proves. It is not trusted as an
+	// input — an installation the authorizing GitHub user does not administer
+	// never becomes a candidate no matter what is named here.
+	InstallationID int64
+	// Chooser is the single connect entry (ADR078 §3b, w1/m526): the callback
+	// always hands the proved set to the account chooser — zero, one or several
+	// candidates — and never binds on its own. Off, a sole candidate binds as
+	// §3a describes, so existing claimGit clients are unchanged.
+	Chooser bool
+}
+
 // StartClaim begins the ADR078 §3a claim flow: bind an installation that ALREADY
 // exists on GitHub (the direct-install case) to ownerID's workspace ("" => the
 // caller's default). GitHub strips the signed state from the install URL for
@@ -386,12 +401,7 @@ func (s *Service) verifierPreflight() error {
 // flow instead — the one flow that always preserves state — and the callback
 // resolves the installation server-side from the authorizing user's admin set.
 // Admin-only, same transaction record as StartConnect (w1/m67 F3).
-//
-// installationID (0 = unspecified) is the optional start-time selector: it
-// NARROWS the candidate set the callback proves. It is not trusted as an input —
-// an installation the authorizing GitHub user does not administer never becomes a
-// candidate no matter what is named here.
-func (s *Service) StartClaim(ctx context.Context, ownerID string, installationID int64) (Claim, error) {
+func (s *Service) StartClaim(ctx context.Context, ownerID string, opts ClaimOptions) (Claim, error) {
 	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
 		return Claim{}, err
@@ -410,7 +420,7 @@ func (s *Service) StartClaim(ctx context.Context, ownerID string, installationID
 	if subject == "" {
 		return Claim{}, core.ErrForbidden
 	}
-	token, err := s.mintConnectState(ctx, workspaceID, subject, installationID)
+	token, err := s.mintConnectState(ctx, workspaceID, subject, opts)
 	if err != nil {
 		return Claim{}, err
 	}
@@ -435,6 +445,8 @@ func (s *Service) StartClaim(ctx context.Context, ownerID string, installationID
 // A start-time installation id NARROWS the proved set and can never add to it.
 // Ambiguity is no longer a dead end: the proved set is handed to the human as a
 // single-use selection (errClaimSelectionRequired) rather than discarded.
+//
+// In chooser mode every proved set goes to the chooser (see ClaimOptions).
 func (s *Service) claimFromCallback(ctx context.Context, nonce, caller, code string) (Connection, error) {
 	txn, err := s.consumeCallbackProofs(ctx, nonce, caller, code)
 	if err != nil {
@@ -452,6 +464,9 @@ func (s *Service) claimFromCallback(ctx context.Context, nonce, caller, code str
 			continue
 		}
 		candidates = append(candidates, inst)
+	}
+	if txn.Chooser {
+		return Connection{}, s.offerClaimSelection(ctx, txn, candidates)
 	}
 	switch len(candidates) {
 	case 0:
@@ -490,7 +505,12 @@ func (s *Service) offerClaimSelection(ctx context.Context, txn store.GitHubConne
 		ExpiresAt:   s.Now().Add(claimSelectionTTL),
 	}); err != nil {
 		log.Printf("github claim: could not record selection for workspace %s: %v", txn.TenantID, err)
-		return errAmbiguousClaim
+		if len(candidates) > 1 {
+			return errAmbiguousClaim
+		}
+		// A chooser-mode set of zero or one: nothing was ambiguous, the choice
+		// just could not be recorded, so say neither "several" nor "none".
+		return fmt.Errorf("github claim: record selection: %w", err)
 	}
 	return &claimSelectionRequiredError{SelectionID: selectionID}
 }
@@ -499,6 +519,11 @@ func (s *Service) offerClaimSelection(ctx context.Context, txn store.GitHubConne
 type ClaimCandidate struct {
 	InstallationID int64  `json:"installationId"`
 	AccountLogin   string `json:"accountLogin"`
+	// Connected reports that this installation is already bound to the
+	// selection's workspace (ADR078 §3b): the chooser marks it rather than
+	// offering it as a new bind. Computed on read from the workspace's own
+	// bindings; it grants nothing, and selecting it stays idempotent.
+	Connected bool `json:"connected"`
 }
 
 // ClaimSelection is the picker's view of an outstanding ambiguous claim.
@@ -534,8 +559,20 @@ func (s *Service) GetClaimSelection(ctx context.Context, ownerID, selectionID st
 		// nil slice leaves it nil ⇒ `null` on the wire (w4/m116/t006).
 		Candidates: make([]ClaimCandidate, 0, len(sel.Candidates)),
 	}
+	bound, err := s.Store.ListGitConnections(ctx, sel.WorkspaceID)
+	if err != nil {
+		return ClaimSelection{}, err
+	}
+	connected := make(map[int64]bool, len(bound))
+	for _, row := range bound {
+		connected[row.InstallationID] = true
+	}
 	for _, c := range sel.Candidates {
-		out.Candidates = append(out.Candidates, ClaimCandidate{InstallationID: c.InstallationID, AccountLogin: c.AccountLogin})
+		out.Candidates = append(out.Candidates, ClaimCandidate{
+			InstallationID: c.InstallationID,
+			AccountLogin:   c.AccountLogin,
+			Connected:      connected[c.InstallationID],
+		})
 	}
 	return out, nil
 }

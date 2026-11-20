@@ -16,32 +16,24 @@ const ptGit: Record<string, TranslationEntry> = {
   },
   "git.disconnectedBody": {
     message:
-      "Instale o GitHub App do bex na sua conta e escolha quais repositórios autorizar. Você será redirecionado ao GitHub.",
-    description: "Body text in the disconnected state",
+      "Conecte as contas e organizações do GitHub de onde este workspace faz deploy. Você será redirecionado ao GitHub.",
+    description:
+      "Body text in the disconnected state: what the single connect action does (ADR078 §3b)",
   },
   "git.connectButton": {
-    message: "Conectar o GitHub",
-    description: "Button that starts the GitHub install flow",
+    message: "Conectar conta do GitHub",
+    description:
+      "The single connect action (ADR078 §3b, w1/m526) when the workspace has no GitHub connection: starts GitHub OAuth and lands on the account chooser",
   },
   "git.connectAnotherButton": {
     message: "Conectar outra conta",
     description:
-      "Button that connects an additional GitHub account/org to the workspace",
+      "The single connect action (ADR078 §3b) once the workspace holds a GitHub connection: starts GitHub OAuth and lands on the account chooser",
   },
-  "git.claimButton": {
-    message: "Reivindicar conta instalada",
+  "git.installAnotherButton": {
+    message: "Instalar em outra conta do GitHub",
     description:
-      "Button starting the ADR075 §3a claim flow: bind a GitHub account where the app is ALREADY installed (GitHub strips the install URL's state for those)",
-  },
-  "git.claimHint": {
-    message:
-      "Já instalou o GitHub App do bex nessa conta? Use Reivindicar. O GitHub mostra Configurar em vez de Instalar para uma conta que já o tem, e esse caminho nunca volta ao bex.",
-    description:
-      "Hint under the connect/claim buttons explaining when to use claim",
-  },
-  "git.claimError": {
-    message: "Não foi possível iniciar a reivindicação do GitHub.",
-    description: "Toast when starting the claim flow fails",
+      "Account chooser action that installs the bex GitHub App on an account that does not have it yet (connectGit's stateful install URL, ADR078 §3b)",
   },
   "git.connectedAs": {
     message: "Conectado como",
@@ -95,19 +87,19 @@ const ptGit: Record<string, TranslationEntry> = {
   },
   "git.callbackErrorExpired": {
     message:
-      "Esta solicitação de conexão expirou. Selecione Conectar o GitHub para tentar novamente.",
+      "Esta solicitação de conexão expirou. Selecione Conectar conta do GitHub para tentar novamente.",
     description: "Callback error shown when the signed state has expired",
   },
   "git.callbackErrorInvalid": {
     message:
-      "Não foi possível verificar esta solicitação de conexão. Selecione Conectar o GitHub para tentar novamente.",
+      "Não foi possível verificar esta solicitação de conexão. Selecione Conectar conta do GitHub para tentar novamente.",
     description: "Callback error shown when signed state is invalid",
   },
   "git.callbackErrorMissing": {
     message:
-      "Esta instalação do GitHub ainda não está conectada a um workspace. O GitHub não consegue concluir o fluxo de instalação para uma conta que já tem o app — use Reivindicar conta instalada abaixo.",
+      "Esta instalação do GitHub ainda não está conectada a um workspace. O GitHub não consegue concluir o fluxo de instalação para uma conta que já tem o app. Selecione Conectar conta do GitHub e escolha essa conta.",
     description:
-      "Callback error shown when state is missing (e.g. a direct github.com install) — points at the claim flow, which is the path that works for already-installed accounts (ADR075 §3a)",
+      "Callback error shown when state is missing (e.g. a direct github.com install): GitHub drops the state for an account that already has the App, so the recovery is the single connect action, whose account chooser lists it (ADR078 §3a/§3b)",
   },
   "git.callbackErrorNoClaimable": {
     message:
@@ -117,36 +109,55 @@ const ptGit: Record<string, TranslationEntry> = {
   },
   "git.callbackErrorAmbiguous": {
     message:
-      "Foram encontradas várias contas do GitHub que você administra e a escolha não pôde ser registrada. Selecione Reivindicar conta instalada para começar de novo.",
+      "Foram encontradas várias contas do GitHub que você administra e a escolha não pôde ser registrada. Selecione Conectar conta do GitHub para começar de novo.",
     description:
-      "Claim-callback failure: ambiguity the picker could not be offered for (the selection failed to persist). The ordinary ambiguous case now renders the account picker instead",
+      "Claim-callback failure: ambiguity the chooser could not be offered for (the selection failed to persist). The ordinary case renders the account chooser instead",
   },
   "git.claimSelectionTitle": {
     message: "Escolha uma conta do GitHub para conectar",
-    description: "Heading of the deferred claim account picker (ADR078 §3a)",
+    description:
+      "Heading of the account chooser every connect lands on (ADR078 §3b)",
   },
   "git.claimSelectionBody": {
     message:
-      "Você administra mais de uma conta do GitHub. Escolha a que será conectada a este workspace.",
-    description: "Body of the deferred claim account picker",
+      "Estas contas do GitHub têm o GitHub App do bex e você as administra. Escolha uma para conectar a este workspace ou instale o App em outra conta.",
+    description:
+      "Body of the account chooser when it lists at least one installed account",
+  },
+  "git.claimSelectionEmpty": {
+    message:
+      "Nenhuma das contas do GitHub que você administra tem o GitHub App do bex ainda. Instale-o em uma para conectá-la.",
+    description:
+      "Body of the account chooser when no account the user administers has the App yet; only the install action follows",
   },
   "git.claimSelectionGoneTitle": {
     message: "Esta escolha expirou",
     description: "Claim selection unknown, expired, or already used",
   },
   "git.claimSelectionGoneBody": {
-    message:
-      "Selecione Reivindicar conta instalada abaixo para começar de novo.",
-    description: "Recovery for an expired or spent claim selection",
+    message: "Selecione Conectar conta do GitHub para começar de novo.",
+    description:
+      "Recovery for an expired or spent account choice; the alert carries the Connect GitHub account button",
   },
   "git.selectClaimError": {
     message: "Não foi possível conectar essa conta do GitHub.",
     description: "Toast when completing a claim selection fails",
   },
+  "git.claimConnectedToast": {
+    message: "{account} está conectada a este workspace.",
+    description:
+      "Toast after a choice in the account chooser binds; {account} is the GitHub account or org login",
+  },
   "git.callbackErrorGeneric": {
     message:
-      "O GitHub não conseguiu concluir a conexão. Selecione Conectar o GitHub para tentar novamente.",
+      "O GitHub não conseguiu concluir a conexão. Selecione Conectar conta do GitHub para tentar novamente.",
     description: "Generic GitHub callback failure message",
+  },
+  "git.callbackErrorInstallRequested": {
+    message:
+      "Sua solicitação para instalar o GitHub App do bex foi enviada aos proprietários da organização. Quando um deles aprovar, conecte novamente.",
+    description:
+      "Callback outcome for an org member's install request (setup_action=request): the org's owners must approve it first (w1/m526)",
   },
   "git.disconnectSuccess": {
     message: "GitHub desconectado.",

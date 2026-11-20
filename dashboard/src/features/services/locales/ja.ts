@@ -3827,11 +3827,6 @@ const jaServices: Record<string, TranslationEntry> = {
     description:
       "Create-wizard GitHub tab connect-prompt body (no GitHub connection yet)",
   },
-  "services.createGitConnectButton": {
-    message: "GitHub に接続",
-    description:
-      "Create-wizard GitHub tab button that opens the GitHub App install flow",
-  },
   "services.createPublicUrlLabel": {
     message: "リポジトリ URL",
     description: "Create-wizard Public Git URL tab input label",

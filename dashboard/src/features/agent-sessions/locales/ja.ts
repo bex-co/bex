@@ -156,13 +156,10 @@ const jaAgentSessions: Record<string, TranslationEntry> = {
       "クラウドエージェントには、接続済みの GitHub リポジトリが必要です。このワークスペースに GitHub App を接続してから、ここに戻ってセッションを開始してください。",
     description: "Composer callout body when there are no installation repos",
   },
-  "agentSessions.connectGitHub": {
-    message: "GitHub を接続",
-    description: "Composer CTA that starts the GitHub App install",
-  },
   "agentSessions.connectGitHubSettings": {
-    message: "ワークスペース設定",
-    description: "Secondary link to /workspace/settings from the GitHub CTA",
+    message: "GitHub の設定",
+    description:
+      "Secondary link from the composer's GitHub callout to Account Settings → Integrations (/settings#integrations), where the GitHub card lives",
   },
   "agentSessions.exampleFixTests": {
     message: "失敗しているテストを修正して、ドラフトの PR を作成する",

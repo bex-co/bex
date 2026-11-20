@@ -136,12 +136,11 @@ vi.mock("@/features/git/hooks/use-git-connection", () => ({
   },
 }));
 
+// The single connect entry (chooser mode, ADR078 §3b) every starting point
+// offers; the install-first useConnectGit is the chooser's alone.
 const connectGit = vi.fn();
 vi.mock("@/features/git/hooks/use-connect-git", () => ({
-  useConnectGit: () => ({ connect: connectGit, busy: false }),
-}));
-vi.mock("@/features/git/hooks/use-claim-git", () => ({
-  useClaimGit: () => ({ claim: vi.fn(), busy: false }),
+  useConnectGitAccount: () => ({ connect: connectGit, busy: false }),
 }));
 vi.mock("@/features/git/hooks/use-disconnect-git", () => ({
   useDisconnectGit: () => ({ disconnect: vi.fn(), busy: false }),

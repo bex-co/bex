@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
   ExternalLink,
@@ -22,8 +22,7 @@ import {
   useGitConnections,
   type GitConnectionRow,
 } from "@/features/git/hooks/use-git-connection";
-import { useConnectGit } from "@/features/git/hooks/use-connect-git";
-import { useClaimGit } from "@/features/git/hooks/use-claim-git";
+import { useConnectGitAccount } from "@/features/git/hooks/use-connect-git";
 import { useDisconnectGit } from "@/features/git/hooks/use-disconnect-git";
 import { useRepos } from "@/features/services/hooks/use-repos";
 import { isGitHubUnavailable } from "@/features/git/lib/errors";
@@ -33,24 +32,26 @@ import { isGitHubUnavailable } from "@/features/git/lib/errors";
  * mirroring Render's `/web/new` "Credentials (N)" dropdown: a trigger showing the
  * connected-account count and a popover listing every connected GitHub
  * account/org — each with its repo count, an "Open in GitHub" link, a "Configure
- * in GitHub" (grants) link, and a Disconnect — plus "Connect another account"
- * and the ADR075 §3a claim fallback.
+ * in GitHub" (grants) link, and a Disconnect — plus ONE connect action (ADR078
+ * §3b, w1/m526) that starts with GitHub OAuth and lands on the account chooser,
+ * so an account that already has the App connects without reinstalling.
  *
- * Unlike the Settings card, connecting opens the install in a NEW TAB
- * (`useConnectGit({ newTab: true })`) so a half-filled create form survives; the
- * menu refetches connections AND repos on window focus, so a newly-granted
- * account's repos appear in place when the user returns.
+ * Unlike the Settings card, connecting runs in a NEW TAB
+ * (`useConnectGitAccount({ newTab: true })`) so a half-filled create form
+ * survives; the menu refetches connections AND repos on window focus, and the
+ * source picker refetches repos whenever the connection set changes, so a
+ * newly-connected account's repos appear in place when the user returns.
  */
 export function GitCredentialsMenu() {
   const { t } = useTranslations();
   const { connections, connected, loading, error, refetch } =
     useGitConnections();
   const { repos, refetch: refetchRepos } = useRepos();
-  const { connect, busy: connecting } = useConnectGit({ newTab: true });
-  const { claim, busy: claiming } = useClaimGit();
+  const { connect, busy: connecting } = useConnectGitAccount({ newTab: true });
   const { disconnect, busy: disconnecting } = useDisconnectGit();
   const [pendingDisconnect, setPendingDisconnect] =
     useState<GitConnectionRow | null>(null);
+  const connectRef = useRef<HTMLButtonElement>(null);
 
   // The connect flow opens a new tab; focus is the signal the user came back.
   // Refresh both the connection set and the repo list so the picker updates.
@@ -99,6 +100,15 @@ export function GitCredentialsMenu() {
           align="end"
           className="w-80 p-0"
           aria-label={t("git.credentialsMenuLabel")}
+          // Radix focuses the first tabbable element but skips links, and each
+          // row's account name and Configure entry are links, so it used to land
+          // on a Disconnect button. Focus the connect action instead, or the
+          // panel itself while it has none (loading, unavailable).
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            const panel = event.currentTarget as HTMLElement | null;
+            (connectRef.current ?? panel)?.focus();
+          }}
         >
           {unavailable ? (
             <MenuMessage
@@ -142,8 +152,9 @@ export function GitCredentialsMenu() {
                   {t("git.disconnectedBody")}
                 </p>
               )}
-              <div className="flex flex-col gap-1 border-t p-2">
+              <div className="flex flex-col border-t p-2">
                 <Button
+                  ref={connectRef}
                   variant="ghost"
                   size="sm"
                   className="justify-start"
@@ -154,16 +165,6 @@ export function GitCredentialsMenu() {
                   {connected
                     ? t("git.connectAnotherButton")
                     : t("git.connectButton")}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="justify-start"
-                  onClick={claim}
-                  disabled={claiming}
-                >
-                  <GithubIcon className="size-4" />
-                  {t("git.claimButton")}
                 </Button>
               </div>
             </div>

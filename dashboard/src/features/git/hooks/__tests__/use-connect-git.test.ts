@@ -15,7 +15,10 @@ vi.mock("@/features/workspaces/context/hooks", () => ({
   useWorkspace: () => ({ currentWorkspaceId: "tea-1" }),
 }));
 
-import { useConnectGit } from "@/features/git/hooks/use-connect-git";
+import {
+  useConnectGit,
+  useConnectGitAccount,
+} from "@/features/git/hooks/use-connect-git";
 
 const INSTALL_URL = "https://github.com/apps/bex/installations/new?state=abc";
 
@@ -86,5 +89,73 @@ describe("useConnectGit", () => {
 
     expect(fakeTab.close).toHaveBeenCalled();
     expect(toastError).toHaveBeenCalled();
+  });
+});
+
+// w1/m526 (ADR078 §3b): the single "Connect GitHub account" entry starts the
+// OAuth claim in chooser mode for the SELECTED workspace — the one flow GitHub
+// carries the signed state through for an account that already has the App.
+describe("useConnectGitAccount", () => {
+  const CLAIM_URL =
+    "https://github.com/login/oauth/authorize?client_id=bex&state=abc";
+
+  it("starts the chooser-mode claim for the selected workspace", async () => {
+    const mutate = vi
+      .fn()
+      .mockResolvedValue({ data: { claimGit: { claimUrl: CLAIM_URL } } });
+    mockUseMutation.mockReturnValue([mutate]);
+    const location = { href: "" };
+    vi.stubGlobal("location", location);
+    vi.stubGlobal("open", vi.fn());
+
+    const { result } = renderHook(() => useConnectGitAccount());
+    await act(async () => {
+      await result.current.connect();
+    });
+
+    expect(mutate).toHaveBeenCalledWith({
+      variables: { ownerId: "tea-1", chooser: true },
+    });
+    // Same tab by default: the Settings card, where the callback lands.
+    expect(location.href).toBe(CLAIM_URL);
+  });
+
+  it("newTab mode runs the round trip in a pre-opened tab", async () => {
+    const mutate = vi
+      .fn()
+      .mockResolvedValue({ data: { claimGit: { claimUrl: CLAIM_URL } } });
+    mockUseMutation.mockReturnValue([mutate]);
+    const fakeTab = { location: { href: "" }, close: vi.fn() };
+    const openMock = vi.fn().mockReturnValue(fakeTab);
+    vi.stubGlobal("open", openMock);
+    const location = { href: "" };
+    vi.stubGlobal("location", location);
+
+    const { result } = renderHook(() => useConnectGitAccount({ newTab: true }));
+    await act(async () => {
+      await result.current.connect();
+    });
+
+    expect(openMock).toHaveBeenCalledWith("", "_blank");
+    expect(fakeTab.location.href).toBe(CLAIM_URL);
+    // The page holding the unsaved input is never navigated away.
+    expect(location.href).toBe("");
+  });
+
+  it("closes the pre-opened tab and toasts when no URL comes back", async () => {
+    const mutate = vi.fn().mockResolvedValue({ data: { claimGit: null } });
+    mockUseMutation.mockReturnValue([mutate]);
+    const fakeTab = { location: { href: "" }, close: vi.fn() };
+    vi.stubGlobal("open", vi.fn().mockReturnValue(fakeTab));
+    vi.stubGlobal("location", { href: "" });
+
+    const { result } = renderHook(() => useConnectGitAccount({ newTab: true }));
+    await act(async () => {
+      await result.current.connect();
+    });
+
+    expect(fakeTab.close).toHaveBeenCalled();
+    expect(toastError).toHaveBeenCalled();
+    expect(result.current.busy).toBe(false);
   });
 });

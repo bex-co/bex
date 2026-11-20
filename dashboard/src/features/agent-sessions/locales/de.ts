@@ -157,13 +157,10 @@ const deAgentSessions: Record<string, TranslationEntry> = {
       "Cloud-Agents brauchen ein verbundenes GitHub-Repository. Verbinde die GitHub App für diesen Workspace und komm dann zurück, um eine Sitzung zu starten.",
     description: "Composer callout body when there are no installation repos",
   },
-  "agentSessions.connectGitHub": {
-    message: "GitHub verbinden",
-    description: "Composer CTA that starts the GitHub App install",
-  },
   "agentSessions.connectGitHubSettings": {
-    message: "Workspace-Einstellungen",
-    description: "Secondary link to /workspace/settings from the GitHub CTA",
+    message: "GitHub-Einstellungen",
+    description:
+      "Secondary link from the composer's GitHub callout to Account Settings → Integrations (/settings#integrations), where the GitHub card lives",
   },
   "agentSessions.exampleFixTests": {
     message: "Behebe die fehlschlagenden Tests und öffne einen Draft-PR",

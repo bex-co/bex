@@ -156,13 +156,10 @@ const ruAgentSessions: Record<string, TranslationEntry> = {
       "Облачным агентам нужен подключённый репозиторий GitHub. Подключите GitHub App для этого рабочего пространства, затем вернитесь, чтобы запустить сессию.",
     description: "Composer callout body when there are no installation repos",
   },
-  "agentSessions.connectGitHub": {
-    message: "Подключить GitHub",
-    description: "Composer CTA that starts the GitHub App install",
-  },
   "agentSessions.connectGitHubSettings": {
-    message: "Настройки рабочего пространства",
-    description: "Secondary link to /workspace/settings from the GitHub CTA",
+    message: "Настройки GitHub",
+    description:
+      "Secondary link from the composer's GitHub callout to Account Settings → Integrations (/settings#integrations), where the GitHub card lives",
   },
   "agentSessions.exampleFixTests": {
     message: "Исправь падающие тесты и открой черновой PR",

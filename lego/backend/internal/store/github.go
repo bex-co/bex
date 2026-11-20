@@ -289,7 +289,10 @@ type GitHubConnectTransaction struct {
 	// user does not administer is not a candidate regardless of what was named
 	// here. Unused by the install flow, which gets its id from GitHub.
 	InstallationID int64
-	ExpiresAt      time.Time
+	// Chooser is the claim flow's chooser mode (github.ClaimOptions.Chooser,
+	// ADR078 §3b). Unused by the install flow.
+	Chooser   bool
+	ExpiresAt time.Time
 }
 
 // CreateGitHubConnectTransaction records a connect attempt. Expired rows are
@@ -305,9 +308,9 @@ func (s *PGStore) CreateGitHubConnectTransaction(ctx context.Context, t GitHubCo
 		installation = &t.InstallationID
 	}
 	_, err := s.Pool.Exec(ctx,
-		`INSERT INTO github_connect_transactions (nonce, tenant_id, subject, installation_id, expires_at)
-		 VALUES ($1, $2, $3, $4, $5)`,
-		t.Nonce, t.TenantID, t.Subject, installation, t.ExpiresAt)
+		`INSERT INTO github_connect_transactions (nonce, tenant_id, subject, installation_id, chooser, expires_at)
+		 VALUES ($1, $2, $3, $4, $5, $6)`,
+		t.Nonce, t.TenantID, t.Subject, installation, t.Chooser, t.ExpiresAt)
 	if err != nil {
 		return classify("github connect transaction", err)
 	}
@@ -325,8 +328,8 @@ func (s *PGStore) ConsumeGitHubConnectTransaction(ctx context.Context, nonce str
 	err := s.Pool.QueryRow(ctx,
 		`DELETE FROM github_connect_transactions
 		  WHERE nonce = $1 AND expires_at > now()
-		  RETURNING nonce, tenant_id, subject, installation_id, expires_at`, nonce,
-	).Scan(&t.Nonce, &t.TenantID, &t.Subject, &installation, &t.ExpiresAt)
+		  RETURNING nonce, tenant_id, subject, installation_id, chooser, expires_at`, nonce,
+	).Scan(&t.Nonce, &t.TenantID, &t.Subject, &installation, &t.Chooser, &t.ExpiresAt)
 	if err != nil {
 		return GitHubConnectTransaction{}, classify("github connect transaction", err)
 	}

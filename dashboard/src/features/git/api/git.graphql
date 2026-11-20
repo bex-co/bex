@@ -74,16 +74,23 @@ mutation ConnectGit($ownerId: String) {
 # The ADR078 §3a claim flow: bind an installation that ALREADY exists on GitHub
 # (where the install URL strips the signed state) via the OAuth authorize round
 # trip that always preserves it. $installationId (optional) narrows the candidate
-# set the callback proves; it can never widen it.
-mutation ClaimGit($ownerId: String, $installationId: Float) {
-  claimGit(ownerId: $ownerId, installationId: $installationId) {
+# set the callback proves; it can never widen it. $chooser (ADR078 §3b) is the
+# single "Connect GitHub account" entry: the callback always lands on the account
+# chooser, for zero, one or several candidates, and never binds on its own.
+mutation ClaimGit($ownerId: String, $installationId: Float, $chooser: Boolean) {
+  claimGit(
+    ownerId: $ownerId
+    installationId: $installationId
+    chooser: $chooser
+  ) {
     claimUrl
   }
 }
 
-# An ambiguous claim's already-proved options (ADR078 §3a). The callback could not
-# pick for the user — it administers several GitHub accounts — so it recorded what
-# it proved and sent the browser back with this id to render a picker.
+# A claim's already-proved options (ADR078 §3a/§3b): every installed account the
+# authorizing GitHub user administers, each marked `connected` when this
+# workspace already holds it. The callback recorded what it proved and sent the
+# browser back with this id to render the account chooser.
 query GitClaimSelection($ownerId: String, $id: String!) {
   gitClaimSelection(ownerId: $ownerId, id: $id) {
     id
@@ -91,6 +98,7 @@ query GitClaimSelection($ownerId: String, $id: String!) {
     candidates {
       installationId
       accountLogin
+      connected
     }
   }
 }

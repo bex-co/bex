@@ -183,6 +183,9 @@ var gitClaimCandidateGQLType = graphql.NewObject(graphql.ObjectConfig{
 			Resolve: func(p graphql.ResolveParams) (any, error) { return p.Source.(ClaimCandidate).InstallationID, nil },
 		},
 		"accountLogin": gqlutil.StrField(func(c ClaimCandidate) any { return c.AccountLogin }),
+		// connected: already bound to the selection's workspace (ADR078 §3b) —
+		// the chooser marks it instead of offering it as a new bind.
+		"connected": gqlutil.BoolField(func(c ClaimCandidate) any { return c.Connected }),
 	},
 })
 
@@ -226,13 +229,15 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// proves (ADR078 §3a). It cannot widen it: an installation the
 				// authorizing GitHub user does not administer is never a candidate.
 				"installationId": gqlutil.Arg(graphql.Float),
+				// chooser (optional): see ClaimOptions.Chooser (ADR078 §3b).
+				"chooser": gqlutil.Arg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				var installationID int64
 				if v, ok := p.Args["installationId"].(float64); ok {
 					installationID = int64(v)
 				}
-				claim, err := s.StartClaim(p.Context, gqlutil.Str(p.Args, "ownerId"), installationID)
+				claim, err := s.StartClaim(p.Context, gqlutil.Str(p.Args, "ownerId"), ClaimOptions{InstallationID: installationID, Chooser: gqlutil.Bool(p.Args, "chooser")})
 				if err != nil {
 					return nil, err
 				}

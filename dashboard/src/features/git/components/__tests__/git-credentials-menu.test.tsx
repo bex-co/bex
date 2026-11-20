@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GitCredentialsMenu } from "@/features/git/components/git-credentials-menu";
 
@@ -27,8 +27,11 @@ const state: {
 
 const refetch = vi.fn();
 const refetchRepos = vi.fn();
+// connect is the single connect entry (chooser mode, ADR078 §3b); install is
+// the install-first flow the menu must never start on its own.
 const connect = vi.fn();
-const claim = vi.fn();
+const install = vi.fn();
+const connectOptions = vi.fn();
 const disconnect = vi.fn().mockResolvedValue(true);
 
 vi.mock("@/features/git/hooks/use-git-connection", () => ({
@@ -49,10 +52,11 @@ vi.mock("@/features/services/hooks/use-repos", () => ({
   }),
 }));
 vi.mock("@/features/git/hooks/use-connect-git", () => ({
-  useConnectGit: () => ({ connect, busy: false }),
-}));
-vi.mock("@/features/git/hooks/use-claim-git", () => ({
-  useClaimGit: () => ({ claim, busy: false }),
+  useConnectGitAccount: (options: unknown) => {
+    connectOptions(options);
+    return { connect, busy: false };
+  },
+  useConnectGit: () => ({ connect: install, busy: false }),
 }));
 vi.mock("@/features/git/hooks/use-disconnect-git", () => ({
   useDisconnectGit: () => ({ disconnect, busy: false }),
@@ -93,7 +97,8 @@ beforeEach(() => {
   refetch.mockReset();
   refetchRepos.mockReset();
   connect.mockReset();
-  claim.mockReset();
+  install.mockReset();
+  connectOptions.mockReset();
   disconnect.mockClear();
 });
 
@@ -145,7 +150,9 @@ describe("GitCredentialsMenu", () => {
     expect(disconnect).toHaveBeenCalledWith(111);
   });
 
-  it("connects another account and claims from the connected state", async () => {
+  // w1/m526 (ADR078 §3b): one connect action, in a new tab so the form behind
+  // the menu survives, and never the install-first flow or a second "claim".
+  it("offers one connect action from the connected state, in a new tab", async () => {
     connectedState();
     const user = userEvent.setup();
     render(<GitCredentialsMenu />);
@@ -155,22 +162,54 @@ describe("GitCredentialsMenu", () => {
       screen.getByRole("button", { name: "Connect another account" }),
     );
     expect(connect).toHaveBeenCalledTimes(1);
-
-    await user.click(
-      screen.getByRole("button", { name: "Claim installed account" }),
-    );
-    expect(claim).toHaveBeenCalledTimes(1);
+    expect(install).not.toHaveBeenCalled();
+    expect(connectOptions).toHaveBeenCalledWith({ newTab: true });
+    expect(screen.queryByText(/claim/i)).toBeNull();
   });
 
-  it("offers Connect in the disconnected state", async () => {
+  it("offers Connect GitHub account in the disconnected state", async () => {
     const user = userEvent.setup();
     render(<GitCredentialsMenu />);
     expect(
       screen.getByRole("button", { name: /Credentials \(0\)/ }),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Credentials/ }));
-    await user.click(screen.getByRole("button", { name: "Connect GitHub" }));
+    await user.click(
+      screen.getByRole("button", { name: "Connect GitHub account" }),
+    );
     expect(connect).toHaveBeenCalledTimes(1);
+    expect(install).not.toHaveBeenCalled();
+  });
+
+  // w1/m526 Finding 4 (DoD 6): Radix skips links when it auto-focuses, and each
+  // row's account name and Configure entry are links, so focus used to land on
+  // "Disconnect bex-co".
+  it("opens with focus on the connect action, never on a Disconnect button", async () => {
+    connectedState();
+    const user = userEvent.setup();
+    render(<GitCredentialsMenu />);
+    await user.click(screen.getByRole("button", { name: /Credentials/ }));
+
+    const panel = screen.getByRole("dialog", { name: "Credentials" });
+    await waitFor(() =>
+      expect(panel).toContainElement(document.activeElement as HTMLElement),
+    );
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Connect another account" }),
+    );
+    for (const name of ["Disconnect puncsky", "Disconnect bex-co"]) {
+      expect(screen.getByRole("button", { name })).not.toHaveFocus();
+    }
+  });
+
+  it("focuses the panel itself while it offers no action", async () => {
+    state.loading = true;
+    const user = userEvent.setup();
+    render(<GitCredentialsMenu />);
+    await user.click(screen.getByRole("button", { name: /Credentials/ }));
+
+    const panel = screen.getByRole("dialog", { name: "Credentials" });
+    await waitFor(() => expect(panel).toHaveFocus());
   });
 
   it("shows the unavailable state when the GitHub App is not configured", async () => {

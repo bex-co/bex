@@ -58,7 +58,7 @@ func doAs(t *testing.T, m *http.ServeMux, method, path, subject string) *httptes
 
 func callbackPath(t *testing.T, s *Service, installationID, workspaceID string) string {
 	t.Helper()
-	state, err := s.mintConnectState(testCallerCtx(), workspaceID, testCallerSubject, 0)
+	state, err := s.mintConnectState(testCallerCtx(), workspaceID, testCallerSubject, ClaimOptions{})
 	if err != nil {
 		t.Fatalf("mint callback state: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestRESTHappyPath(t *testing.T) {
 	if rec.Code != http.StatusFound {
 		t.Fatalf("callback => %d, want 302", rec.Code)
 	}
-	if loc := rec.Header().Get("Location"); loc != "https://dash.bex.co/settings" {
+	if loc := rec.Header().Get("Location"); loc != "https://dash.bex.co/settings#integrations" {
 		t.Errorf("callback redirect = %q", loc)
 	}
 	if got := rec.Header().Get("Referrer-Policy"); got != "no-referrer" {
@@ -155,7 +155,7 @@ func TestRESTHappyPath(t *testing.T) {
 func TestRESTCallbackBadInstallationID(t *testing.T) {
 	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{login: "octo"}, Store: newFakeStore(), StateSecret: []byte("test-only-high-entropy-state-secret")}
 	m := mux(svc)
-	state, err := svc.mintConnectState(testCallerCtx(), core.DefaultTenant, testCallerSubject, 0)
+	state, err := svc.mintConnectState(testCallerCtx(), core.DefaultTenant, testCallerSubject, ClaimOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,7 +217,7 @@ func TestRESTCallbackStateFailuresRedirectToDashboard(t *testing.T) {
 		StateSecret:  []byte("test-only-high-entropy-state-secret"),
 		DashboardURL: "https://dash.bex.co",
 	}
-	expired, err := svc.mintConnectState(testCallerCtx(), core.DefaultTenant, testCallerSubject, 0)
+	expired, err := svc.mintConnectState(testCallerCtx(), core.DefaultTenant, testCallerSubject, ClaimOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,7 +236,7 @@ func TestRESTCallbackStateFailuresRedirectToDashboard(t *testing.T) {
 			if rec.Code != http.StatusFound {
 				t.Fatalf("status = %d, want 302; body=%s", rec.Code, rec.Body.String())
 			}
-			want := "https://dash.bex.co/settings?git_error=" + tc.code
+			want := "https://dash.bex.co/settings?git_error=" + tc.code + "#integrations"
 			if got := rec.Header().Get("Location"); got != want {
 				t.Fatalf("Location = %q, want %q", got, want)
 			}
@@ -258,7 +258,7 @@ func TestRESTCallbackStateFailuresReturnClearJSONWithoutDashboard(t *testing.T) 
 		Store:       newFakeStore(),
 		StateSecret: []byte("test-only-high-entropy-state-secret"),
 	}
-	expired, err := svc.mintConnectState(testCallerCtx(), core.DefaultTenant, testCallerSubject, 0)
+	expired, err := svc.mintConnectState(testCallerCtx(), core.DefaultTenant, testCallerSubject, ClaimOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -326,7 +326,7 @@ func TestRESTCallbackRejectsAuthenticatedRequestWithoutState(t *testing.T) {
 	if len(st.conns) != 0 {
 		t.Fatalf("authenticated no-state callback recorded a connection: %+v", st.conns)
 	}
-	if got := rec.Header().Get("Location"); got != "https://dash.bex.co/settings?git_error=missing_state" {
+	if got := rec.Header().Get("Location"); got != "https://dash.bex.co/settings?git_error=missing_state#integrations" {
 		t.Fatalf("authenticated callback redirect = %q", got)
 	}
 }

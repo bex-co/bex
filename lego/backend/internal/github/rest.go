@@ -19,12 +19,14 @@ package github
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // RegisterREST mounts the GitHub-connect surface. `GET /v1/repos` and the
@@ -46,15 +48,20 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 
 	// POST /v1/git/claim — start the ADR078 §3a claim flow: bind an installation
 	// that already exists on GitHub (where the install URL strips the state) via
-	// the OAuth user-authorization round trip. Returns {claimUrl}. The optional
-	// ?installationId= narrows the candidate set the callback proves.
+	// the OAuth user-authorization round trip. Returns {claimUrl}. Optional
+	// ?installationId= and ?chooser= are ClaimOptions.
 	mux.HandleFunc("POST /v1/git/claim", func(w http.ResponseWriter, r *http.Request) {
 		installationID, err := optionalInstallationID(r.URL.Query().Get("installationId"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
-		claim, err := s.StartClaim(r.Context(), r.URL.Query().Get("ownerId"), installationID)
+		chooser, err := optionalBool(r.URL.Query().Get("chooser"), "chooser")
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		claim, err := s.StartClaim(r.Context(), r.URL.Query().Get("ownerId"), ClaimOptions{InstallationID: installationID, Chooser: chooser})
 		if err != nil {
 			core.WriteErr(w, err)
 			return
@@ -102,6 +109,15 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if r.URL.Query().Get("error") != "" {
 			err := errors.New("github did not complete the app installation")
 			s.writeCallbackFailure(w, r, "github_error", err)
+			return
+		}
+		// A setup_action with no installation_id is GitHub's setup-URL redirect,
+		// never an OAuth claim return (ADR078 §3a step 2, w1/m526): routed as a
+		// claim, a requester who administers one OTHER installation would have
+		// had that unrelated account bound. Checked before the state, so an org
+		// member's install request reads as a request even if GitHub dropped it.
+		if setupAction := r.URL.Query().Get("setup_action"); setupAction != "" && r.URL.Query().Get("installation_id") == "" {
+			s.finishSetupRedirect(w, r, setupAction, stateToken)
 			return
 		}
 
@@ -230,6 +246,30 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 }
 
+// errInstallRequested is GitHub's setup redirect for an org member's install
+// request (setup_action=request): the owners must approve it, so nothing can be
+// bound yet.
+var errInstallRequested = fmt.Errorf("%w: your request to install the bex GitHub App was sent to the organization's owners; once one approves it, connect again", core.ErrBadRequest)
+
+// finishSetupRedirect answers a setup-URL redirect that names no installation.
+// It binds nothing. A verifiable state's nonce is spent, as on every other
+// branch, so the attempt cannot be completed afterwards. setup_action is logged
+// (never the state or code): GitHub does not document whether a request
+// redirects at all, so the first live occurrence must be visible.
+func (s *Service) finishSetupRedirect(w http.ResponseWriter, r *http.Request, setupAction, stateToken string) {
+	if nonce, err := s.verifyConnectState(stateToken); err == nil {
+		if _, err := s.Store.ConsumeGitHubConnectTransaction(r.Context(), nonce); err != nil && !errors.Is(err, store.ErrNotFound) {
+			log.Printf("github callback: spend nonce for setup_action redirect: %v", err)
+		}
+	}
+	log.Printf("github callback: setup_action=%q without installation_id; nothing bound", setupAction)
+	if setupAction == "request" {
+		s.writeCallbackFailure(w, r, "install_requested", errInstallRequested)
+		return
+	}
+	s.writeCallbackFailure(w, r, "invalid_installation", fmt.Errorf("%w: GitHub's setup redirect named no installation", core.ErrBadRequest))
+}
+
 func callbackStateErrorCode(err error) string {
 	switch {
 	case errors.Is(err, errConnectStateMissing):
@@ -289,7 +329,9 @@ func (s *Service) callbackRedirect(errorCode string) string {
 // query parameter. Two are used: `git_error` for a fixed failure code, and
 // `git_claim_selection` for a pending account choice (ADR078 §3a) — which is a
 // SUCCESS continuation, not a failure, and deliberately does not reuse the error
-// channel the dashboard renders as an alert.
+// channel the dashboard renders as an alert. Every return lands on the
+// Integrations section (w1/m526), where the GitHub card, its alerts and the
+// account chooser live, rather than at the top of a long settings page.
 func (s *Service) callbackRedirectWith(key, value string) string {
 	if s.DashboardURL == "" {
 		return ""
@@ -298,12 +340,27 @@ func (s *Service) callbackRedirectWith(key, value string) string {
 	if err != nil {
 		return ""
 	}
+	u.Fragment = "integrations"
 	if value != "" {
 		q := u.Query()
 		q.Set(key, value)
 		u.RawQuery = q.Encode()
 	}
 	return u.String()
+}
+
+// optionalBool parses an optional boolean query value: empty is false, and
+// anything strconv.ParseBool refuses is a bad request rather than a silent false.
+func optionalBool(raw, name string) (bool, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return false, nil
+	}
+	v, err := strconv.ParseBool(raw)
+	if err != nil {
+		return false, fmt.Errorf("%w: %s must be true or false", core.ErrBadRequest, name)
+	}
+	return v, nil
 }
 
 // optionalInstallationID parses a GitHub installation id from a query value.

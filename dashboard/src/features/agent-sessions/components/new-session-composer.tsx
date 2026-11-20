@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState } from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 import { useForm, useWatch } from "react-hook-form";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -28,7 +28,9 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useRepos } from "@/features/services/hooks/use-repos";
-import { useConnectGit } from "@/features/git/hooks/use-connect-git";
+import { useConnectGitAccount } from "@/features/git/hooks/use-connect-git";
+import { useOnGitConnectionsChange } from "@/features/git/hooks/use-on-git-connections-change";
+import { useRefetchOnFocus } from "@/common/hooks/use-refetch-on-focus";
 import { useAgentSessions } from "@/features/agent-sessions/hooks/use-agent-sessions";
 import { useAgentSessionCapabilities } from "@/features/agent-sessions/hooks/use-agent-session-capabilities";
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
@@ -100,13 +102,20 @@ export function NewSessionComposer() {
   const navigate = useNavigate();
   const { currentWorkspaceId } = useWorkspace();
   const { create } = useAgentSessionMutations();
-  const { repos, loading: reposLoading } = useRepos();
+  const { repos, loading: reposLoading, refetch: refetchRepos } = useRepos();
   const { sessions } = useAgentSessions({ poll: false });
   const {
     capabilities,
     loading: capabilitiesLoading,
     error: capabilitiesError,
+    refetch: refetchCapabilities,
   } = useAgentSessionCapabilities();
+  // GitHub connected elsewhere (the callout's new tab): re-read readiness and
+  // repos so the callout goes away and the repo becomes usable.
+  const refreshGitHub = useCallback(() => {
+    void refetchCapabilities();
+    void refetchRepos();
+  }, [refetchCapabilities, refetchRepos]);
 
   const attachmentLimits = capabilities?.attachments ?? null;
   const uploads = useAttachmentUploads(attachmentLimits);
@@ -332,7 +341,9 @@ export function NewSessionComposer() {
         </Alert>
       ) : null}
 
-      {showGitHubCallout ? <GitHubEmptyCallout /> : null}
+      {showGitHubCallout ? (
+        <GitHubEmptyCallout onConnected={refreshGitHub} />
+      ) : null}
 
       <Form {...form}>
         <form onSubmit={onSubmit}>
@@ -540,9 +551,17 @@ export function NewSessionComposer() {
   );
 }
 
-function GitHubEmptyCallout() {
+/**
+ * Connect GitHub from the composer (w1/m526): the single connect entry
+ * (ADR078 §3b) in a NEW TAB, so the task the person typed survives. Once the
+ * account is connected there — the connections query polls, and focus counts
+ * too — `onConnected` re-reads the composer's readiness and repos.
+ */
+function GitHubEmptyCallout({ onConnected }: { onConnected: () => void }) {
   const { t } = useTranslations();
-  const { connect, busy } = useConnectGit();
+  const { connect, busy } = useConnectGitAccount({ newTab: true });
+  useOnGitConnectionsChange(onConnected);
+  useRefetchOnFocus(onConnected);
   return (
     <div
       className="flex flex-col items-center gap-3 px-6 py-8 text-center"
@@ -560,10 +579,10 @@ function GitHubEmptyCallout() {
       <div className="flex flex-wrap items-center justify-center gap-2">
         <Button type="button" disabled={busy} onClick={() => void connect()}>
           {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-          {t("agentSessions.connectGitHub")}
+          {t("git.connectButton")}
         </Button>
         <Button type="button" variant="ghost" asChild>
-          <Link to="/workspace/settings">
+          <Link to="/settings" hash="integrations">
             {t("agentSessions.connectGitHubSettings")}
           </Link>
         </Button>

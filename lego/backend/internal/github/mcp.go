@@ -54,7 +54,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "List the GitHub repositories the workspace's connected GitHub App installations can deploy (private repos included; " +
 			"each repo carries the accountLogin of the GitHub account it belongs to). " +
 			"Use this to answer \"which of my repos can you deploy?\" before creating a service from a repo. " +
-			"If it returns an empty list or a 503, GitHub is not connected — call list_git_connections for the install URL to give the human.",
+			"An empty list means no connected account grants a repo; a 503 means the GitHub App is not configured on this bex deployment. " +
+			"Call list_git_connections to tell which.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listReposResult, error) {
 		repos, err := s.ListRepos(ctx, core.NamedWorkspace(ctx))
 		return nil, listReposResult{Repos: repos}, err
@@ -63,7 +64,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name: "list_git_connections",
 		Description: "List the GitHub accounts/organizations this workspace has connected (account login + installation id per connection). " +
-			"An empty list means GitHub is not connected — the human connects a new account from the bex dashboard Settings page; " +
+			"An empty list means GitHub is not connected. Connecting is a browser step only the human can take: ask them to use " +
+			"\"Connect GitHub account\" in the bex dashboard (Account Settings → Integrations), which also reaches accounts that already have the App; " +
 			"a 503 means the GitHub App is not configured on this bex deployment.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listConnectionsResult, error) {
 		conns, err := s.ListConnections(ctx, core.NamedWorkspace(ctx))

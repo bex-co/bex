@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NewSessionComposer } from "@/features/agent-sessions/components/new-session-composer";
@@ -35,9 +36,30 @@ vi.mock("@tanstack/react-router", () => ({
   }) => <a href={hash ? `${to}#${hash}` : to}>{children}</a>,
 }));
 
+// The single connect entry (ADR078 §3b), in a new tab so the typed task
+// survives (w1/m526).
 const connectGit = vi.fn();
+const connectGitOptions = vi.fn();
 vi.mock("@/features/git/hooks/use-connect-git", () => ({
-  useConnectGit: () => ({ connect: connectGit, busy: false }),
+  useConnectGitAccount: (options: unknown) => {
+    connectGitOptions(options);
+    return { connect: connectGit, busy: false };
+  },
+}));
+
+// The connection set the callout watches (w1/m526): a new installation means
+// the account was connected in the other tab.
+const gitConnectionsState = vi.hoisted(() => ({
+  connections: [] as { installationId: number }[],
+}));
+vi.mock("@/features/git/hooks/use-git-connection", () => ({
+  useGitConnections: () => ({
+    connections: gitConnectionsState.connections,
+    connected: gitConnectionsState.connections.length > 0,
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(),
+  }),
 }));
 
 vi.mock("@/features/workspaces/context/hooks", () => ({
@@ -76,8 +98,9 @@ const reposState: {
   loading: false,
   error: undefined,
 };
+const refetchRepos = vi.fn();
 vi.mock("@/features/services/hooks/use-repos", () => ({
-  useRepos: () => reposState,
+  useRepos: () => ({ ...reposState, refetch: refetchRepos }),
 }));
 
 // Uploads resolve only when a test settles them, so the in-flight state is
@@ -118,10 +141,14 @@ const capabilitiesState = {
   loading: false,
   error: undefined as Error | undefined,
 };
+const refetchCapabilities = vi.fn();
 vi.mock(
   "@/features/agent-sessions/hooks/use-agent-session-capabilities",
   () => ({
-    useAgentSessionCapabilities: () => capabilitiesState,
+    useAgentSessionCapabilities: () => ({
+      ...capabilitiesState,
+      refetch: refetchCapabilities,
+    }),
   }),
 );
 
@@ -231,6 +258,10 @@ beforeEach(() => {
   capabilitiesState.error = undefined;
   mockNavigate.mockReset();
   connectGit.mockReset();
+  connectGitOptions.mockReset();
+  refetchRepos.mockReset();
+  refetchCapabilities.mockReset();
+  gitConnectionsState.connections = [];
   create.mockReset();
   create.mockResolvedValue({
     session: { id: "as-new" },
@@ -932,6 +963,45 @@ describe("NewSessionComposer", () => {
       screen.getByRole("button", { name: "Start session" }),
     ).toBeDisabled();
     expect(create).not.toHaveBeenCalled();
+  });
+
+  // w1/m526 (ADR078 §3b): the callout offers the single connect entry in a
+  // new tab, so the typed task survives, and its settings link opens the page
+  // that holds the GitHub card.
+  it("connects GitHub from the callout in a new tab and links the GitHub card", async () => {
+    capabilitiesState.capabilities.github.connected = false;
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    await pickRepo(user);
+
+    const callout = screen.getByTestId("agent-composer-github-empty");
+    await user.click(
+      within(callout).getByRole("button", { name: "Connect GitHub account" }),
+    );
+    expect(connectGit).toHaveBeenCalledTimes(1);
+    expect(connectGitOptions).toHaveBeenCalledWith({ newTab: true });
+    expect(
+      within(callout).getByRole("link", { name: "GitHub settings" }),
+    ).toHaveAttribute("href", "/settings#integrations");
+  });
+
+  // w1/m526 (DoD 3): an account connected in the other tab reaches the
+  // composer without a reload or a focus event.
+  it("refreshes readiness and repos once an account is connected elsewhere", async () => {
+    capabilitiesState.capabilities.github.connected = false;
+    const user = userEvent.setup();
+    const { rerender } = render(<NewSessionComposer />);
+    await typeTask(user);
+    await pickRepo(user);
+    expect(refetchCapabilities).not.toHaveBeenCalled();
+    expect(refetchRepos).not.toHaveBeenCalled();
+
+    gitConnectionsState.connections = [{ installationId: 154851602 }];
+    rerender(<NewSessionComposer />);
+
+    expect(refetchCapabilities).toHaveBeenCalledTimes(1);
+    expect(refetchRepos).toHaveBeenCalledTimes(1);
   });
 
   it("surfaces an egress-allowlist code as a form-level error", async () => {

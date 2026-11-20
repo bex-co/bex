@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 // seedGitTenant inserts the workspace row required by git_connections' tenant
@@ -317,5 +318,47 @@ func TestDeleteTenantCascadesGitConnections(t *testing.T) {
 	}
 	if n, err := st.CountGitConnections(ctx, workspaceID); err != nil || n != 0 {
 		t.Fatalf("CountGitConnections after tenant delete = %d, %v; want 0, nil", n, err)
+	}
+}
+
+// TestPGGitHubConnectTransactionCarriesChooser pins the single connect
+// entry's mode through real Postgres (ADR078 §3b, w1/m526, migration 0313):
+// the claim callback reads it from the consumed row, so a column the INSERT or
+// the RETURNING dropped would silently turn every chooser-mode connect back
+// into the bind-a-sole-candidate claim.
+func TestPGGitHubConnectTransactionCarriesChooser(t *testing.T) {
+	st := newReplayTestStore(t)
+	ctx := context.Background()
+	seedGitTenant(t, st, "tea-chooser")
+	t.Cleanup(func() {
+		_, _ = st.Pool.Exec(context.Background(), `DELETE FROM github_connect_transactions WHERE tenant_id = 'tea-chooser'`)
+		_, _ = st.Pool.Exec(context.Background(), `DELETE FROM tenants WHERE id = 'tea-chooser'`)
+	})
+	expires := time.Now().Add(15 * time.Minute)
+
+	for _, tc := range []struct {
+		nonce          string
+		chooser        bool
+		installationID int64
+	}{
+		{nonce: "m526-chooser", chooser: true},
+		{nonce: "m526-plain", chooser: false, installationID: 42},
+	} {
+		if err := st.CreateGitHubConnectTransaction(ctx, GitHubConnectTransaction{
+			Nonce: tc.nonce, TenantID: "tea-chooser", Subject: "identity-1",
+			InstallationID: tc.installationID, Chooser: tc.chooser, ExpiresAt: expires,
+		}); err != nil {
+			t.Fatalf("create %s: %v", tc.nonce, err)
+		}
+		got, err := st.ConsumeGitHubConnectTransaction(ctx, tc.nonce)
+		if err != nil {
+			t.Fatalf("consume %s: %v", tc.nonce, err)
+		}
+		if got.Chooser != tc.chooser || got.InstallationID != tc.installationID {
+			t.Fatalf("%s round trip = %+v, want chooser=%v installation=%d", tc.nonce, got, tc.chooser, tc.installationID)
+		}
+		if _, err := st.ConsumeGitHubConnectTransaction(ctx, tc.nonce); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("second consume of %s = %v, want ErrNotFound", tc.nonce, err)
+		}
 	}
 }

@@ -522,7 +522,7 @@ func TestGitHubBrowserCallbackThroughFullAuthStack(t *testing.T) {
 	if callbackRec.Code != http.StatusFound {
 		t.Fatalf("callback status = %d, want 302; body=%s", callbackRec.Code, callbackRec.Body.String())
 	}
-	if got := callbackRec.Header().Get("Location"); got != "https://dash.bex.co/settings" {
+	if got := callbackRec.Header().Get("Location"); got != "https://dash.bex.co/settings#integrations" {
 		t.Fatalf("callback Location = %q", got)
 	}
 	got := st.connections[core.DefaultTenant]
@@ -540,7 +540,7 @@ func TestGitHubBrowserCallbackThroughFullAuthStack(t *testing.T) {
 	if apiCallbackRec.Code != http.StatusFound {
 		t.Fatalf("authenticated callback status = %d, want 302; body=%s", apiCallbackRec.Code, apiCallbackRec.Body.String())
 	}
-	if got := apiCallbackRec.Header().Get("Location"); got != "https://dash.bex.co/settings?git_error=missing_state" {
+	if got := apiCallbackRec.Header().Get("Location"); got != "https://dash.bex.co/settings?git_error=missing_state#integrations" {
 		t.Fatalf("authenticated callback redirect = %q", got)
 	}
 	if len(st.connections) != 0 {

@@ -160,13 +160,10 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
       "云端智能体需要已连接的 GitHub 仓库。先为本工作区连接 GitHub App，再回来开始会话。",
     description: "Composer callout body when there are no installation repos",
   },
-  "agentSessions.connectGitHub": {
-    message: "连接 GitHub",
-    description: "Composer CTA that starts the GitHub App install",
-  },
   "agentSessions.connectGitHubSettings": {
-    message: "工作区设置",
-    description: "Secondary link to /workspace/settings from the GitHub CTA",
+    message: "GitHub 设置",
+    description:
+      "Secondary link from the composer's GitHub callout to Account Settings → Integrations (/settings#integrations), where the GitHub card lives",
   },
   "agentSessions.exampleFixTests": {
     message: "修复失败的测试并提交草稿 PR",

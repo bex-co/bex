@@ -3800,11 +3800,6 @@ const koServices: Record<string, TranslationEntry> = {
     description:
       "Create-wizard GitHub tab connect-prompt body (no GitHub connection yet)",
   },
-  "services.createGitConnectButton": {
-    message: "GitHub 연결",
-    description:
-      "Create-wizard GitHub tab button that opens the GitHub App install flow",
-  },
   "services.createPublicUrlLabel": {
     message: "저장소 URL",
     description: "Create-wizard Public Git URL tab input label",

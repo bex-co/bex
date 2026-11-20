@@ -16,32 +16,24 @@ const koGit: Record<string, TranslationEntry> = {
   },
   "git.disconnectedBody": {
     message:
-      "내 계정에 bex GitHub 앱을 설치하고 권한을 부여할 저장소를 선택하세요. GitHub로 이동합니다.",
-    description: "Body text in the disconnected state",
+      "이 워크스페이스가 배포에 사용하는 GitHub 계정과 조직을 연결하세요. GitHub로 이동합니다.",
+    description:
+      "Body text in the disconnected state: what the single connect action does (ADR078 §3b)",
   },
   "git.connectButton": {
-    message: "GitHub 연결",
-    description: "Button that starts the GitHub install flow",
+    message: "GitHub 계정 연결",
+    description:
+      "The single connect action (ADR078 §3b, w1/m526) when the workspace has no GitHub connection: starts GitHub OAuth and lands on the account chooser",
   },
   "git.connectAnotherButton": {
     message: "다른 계정 연결",
     description:
-      "Button that connects an additional GitHub account/org to the workspace",
+      "The single connect action (ADR078 §3b) once the workspace holds a GitHub connection: starts GitHub OAuth and lands on the account chooser",
   },
-  "git.claimButton": {
-    message: "설치된 계정 가져오기",
+  "git.installAnotherButton": {
+    message: "다른 GitHub 계정에 설치",
     description:
-      "Button starting the ADR075 §3a claim flow: bind a GitHub account where the app is ALREADY installed (GitHub strips the install URL's state for those)",
-  },
-  "git.claimHint": {
-    message:
-      "해당 계정에 bex GitHub 앱을 이미 설치했나요? 대신 가져오기를 사용하세요. 앱이 이미 설치된 계정은 GitHub에서 설치 대신 구성이 표시되며, 그 경로는 bex로 돌아오지 않습니다.",
-    description:
-      "Hint under the connect/claim buttons explaining when to use claim",
-  },
-  "git.claimError": {
-    message: "GitHub 계정 가져오기를 시작하지 못했습니다.",
-    description: "Toast when starting the claim flow fails",
+      "Account chooser action that installs the bex GitHub App on an account that does not have it yet (connectGit's stateful install URL, ADR078 §3b)",
   },
   "git.connectedAs": {
     message: "연결된 계정",
@@ -95,19 +87,19 @@ const koGit: Record<string, TranslationEntry> = {
   },
   "git.callbackErrorExpired": {
     message:
-      "이 연결 요청이 만료되었습니다. GitHub 연결을 선택하여 다시 시도하세요.",
+      "이 연결 요청이 만료되었습니다. GitHub 계정 연결을 선택하여 다시 시도하세요.",
     description: "Callback error shown when the signed state has expired",
   },
   "git.callbackErrorInvalid": {
     message:
-      "이 연결 요청을 확인할 수 없습니다. GitHub 연결을 선택하여 다시 시도하세요.",
+      "이 연결 요청을 확인할 수 없습니다. GitHub 계정 연결을 선택하여 다시 시도하세요.",
     description: "Callback error shown when signed state is invalid",
   },
   "git.callbackErrorMissing": {
     message:
-      "이 GitHub 설치는 아직 워크스페이스에 연결되지 않았습니다. 앱이 이미 설치된 계정은 GitHub에서 설치 흐름을 완료할 수 없으므로 아래의 설치된 계정 가져오기를 사용하세요.",
+      "이 GitHub 설치는 아직 워크스페이스에 연결되지 않았습니다. 이미 앱이 설치된 계정에서는 GitHub가 설치 과정을 완료할 수 없습니다. GitHub 계정 연결을 선택한 다음 해당 계정을 고르세요.",
     description:
-      "Callback error shown when state is missing (e.g. a direct github.com install) — points at the claim flow, which is the path that works for already-installed accounts (ADR075 §3a)",
+      "Callback error shown when state is missing (e.g. a direct github.com install): GitHub drops the state for an account that already has the App, so the recovery is the single connect action, whose account chooser lists it (ADR078 §3a/§3b)",
   },
   "git.callbackErrorNoClaimable": {
     message:
@@ -117,35 +109,55 @@ const koGit: Record<string, TranslationEntry> = {
   },
   "git.callbackErrorAmbiguous": {
     message:
-      "관리 중인 GitHub 계정이 여러 개 발견되었으며 선택 내용을 기록하지 못했습니다. 설치된 계정 가져오기를 선택하여 처음부터 다시 시작하세요.",
+      "관리 중인 GitHub 계정이 여러 개 발견되었으며 선택 내용을 기록하지 못했습니다. GitHub 계정 연결을 선택하여 처음부터 다시 시작하세요.",
     description:
-      "Claim-callback failure: ambiguity the picker could not be offered for (the selection failed to persist). The ordinary ambiguous case now renders the account picker instead",
+      "Claim-callback failure: ambiguity the chooser could not be offered for (the selection failed to persist). The ordinary case renders the account chooser instead",
   },
   "git.claimSelectionTitle": {
     message: "연결할 GitHub 계정 선택",
-    description: "Heading of the deferred claim account picker (ADR078 §3a)",
+    description:
+      "Heading of the account chooser every connect lands on (ADR078 §3b)",
   },
   "git.claimSelectionBody": {
     message:
-      "관리 중인 GitHub 계정이 둘 이상입니다. 이 워크스페이스에 연결할 계정을 선택하세요.",
-    description: "Body of the deferred claim account picker",
+      "다음 GitHub 계정에는 bex GitHub 앱이 설치되어 있으며 내가 관리하는 계정입니다. 이 워크스페이스에 연결할 계정을 선택하거나 다른 계정에 앱을 설치하세요.",
+    description:
+      "Body of the account chooser when it lists at least one installed account",
+  },
+  "git.claimSelectionEmpty": {
+    message:
+      "내가 관리하는 GitHub 계정 중 아직 bex GitHub 앱이 설치된 계정이 없습니다. 연결하려면 계정에 앱을 설치하세요.",
+    description:
+      "Body of the account chooser when no account the user administers has the App yet; only the install action follows",
   },
   "git.claimSelectionGoneTitle": {
     message: "이 선택이 만료되었습니다",
     description: "Claim selection unknown, expired, or already used",
   },
   "git.claimSelectionGoneBody": {
-    message: "아래의 설치된 계정 가져오기를 선택하여 다시 시작하세요.",
-    description: "Recovery for an expired or spent claim selection",
+    message: "GitHub 계정 연결을 선택하여 처음부터 다시 시작하세요.",
+    description:
+      "Recovery for an expired or spent account choice; the alert carries the Connect GitHub account button",
   },
   "git.selectClaimError": {
     message: "해당 GitHub 계정을 연결하지 못했습니다.",
     description: "Toast when completing a claim selection fails",
   },
+  "git.claimConnectedToast": {
+    message: "{account}이(가) 이 워크스페이스에 연결되었습니다.",
+    description:
+      "Toast after a choice in the account chooser binds; {account} is the GitHub account or org login",
+  },
   "git.callbackErrorGeneric": {
     message:
-      "GitHub에서 연결을 완료하지 못했습니다. GitHub 연결을 선택하여 다시 시도하세요.",
+      "GitHub에서 연결을 완료하지 못했습니다. GitHub 계정 연결을 선택하여 다시 시도하세요.",
     description: "Generic GitHub callback failure message",
+  },
+  "git.callbackErrorInstallRequested": {
+    message:
+      "bex GitHub 앱 설치 요청을 조직 소유자에게 보냈습니다. 소유자 중 한 명이 승인하면 다시 연결하세요.",
+    description:
+      "Callback outcome for an org member's install request (setup_action=request): the org's owners must approve it first (w1/m526)",
   },
   "git.disconnectSuccess": {
     message: "GitHub 연결을 해제했습니다.",

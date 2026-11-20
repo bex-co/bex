@@ -22,7 +22,8 @@ import { dockerImageProblem } from "@/common/lib/utils/docker-image";
 import { cn } from "@/common/lib/utils/utils";
 import { useRepos, type RepoView } from "@/features/services/hooks/use-repos";
 import { useGitConnection } from "@/features/git/hooks/use-git-connection";
-import { useConnectGit } from "@/features/git/hooks/use-connect-git";
+import { useOnGitConnectionsChange } from "@/features/git/hooks/use-on-git-connections-change";
+import { useConnectGitAccount } from "@/features/git/hooks/use-connect-git";
 import { GitCredentialsMenu } from "@/features/git/components/git-credentials-menu";
 import { RegistryCredentialSelect } from "@/features/services/components/registry-credential-select";
 
@@ -105,9 +106,13 @@ export function ServiceSourcePicker({
     loading: connectionLoading,
     refetch: refetchConnection,
   } = useGitConnection();
-  // In-place connect opens GitHub in a new tab so the create form survives (w8/m31).
-  const { connect, busy: connecting } = useConnectGit({ newTab: true });
+  // In-place connect runs in a new tab so the create form survives (w8/m31),
+  // through the single connect entry and its account chooser (ADR078 §3b).
+  const { connect, busy: connecting } = useConnectGitAccount({ newTab: true });
   const [repoSearch, setRepoSearch] = useState("");
+  // An account connected in the other tab, or disconnected from the menu.
+  // useGitConnection above already polls the set.
+  useOnGitConnectionsChange(refetchRepos, { poll: false });
 
   const gitHubDisconnected =
     !connectionLoading && connection?.connected !== true;
@@ -236,7 +241,7 @@ export function ServiceSourcePicker({
               </div>
               <Button onClick={connect} disabled={connecting}>
                 <GithubIcon className="size-4" />
-                {t("services.createGitConnectButton")}
+                {t("git.connectButton")}
               </Button>
             </div>
           ) : (

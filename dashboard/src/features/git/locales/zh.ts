@@ -16,32 +16,24 @@ const zhGit: Record<string, TranslationEntry> = {
   },
   "git.disconnectedBody": {
     message:
-      "在你的账户上安装 bex GitHub App 并选择要授权的仓库。你将被重定向到 GitHub。",
-    description: "Body text in the disconnected state",
+      "连接本工作区用于部署的 GitHub 账户和组织。你将被重定向到 GitHub。",
+    description:
+      "Body text in the disconnected state: what the single connect action does (ADR078 §3b)",
   },
   "git.connectButton": {
-    message: "连接 GitHub",
-    description: "Button that starts the GitHub install flow",
+    message: "连接 GitHub 账户",
+    description:
+      "The single connect action (ADR078 §3b, w1/m526) when the workspace has no GitHub connection: starts GitHub OAuth and lands on the account chooser",
   },
   "git.connectAnotherButton": {
     message: "连接另一个账户",
     description:
-      "Button that connects an additional GitHub account/org to the workspace",
+      "The single connect action (ADR078 §3b) once the workspace holds a GitHub connection: starts GitHub OAuth and lands on the account chooser",
   },
-  "git.claimButton": {
-    message: "认领已安装账户",
+  "git.installAnotherButton": {
+    message: "安装到其他 GitHub 账户",
     description:
-      "Button starting the ADR075 §3a claim flow: bind a GitHub account where the app is ALREADY installed (GitHub strips the install URL's state for those)",
-  },
-  "git.claimHint": {
-    message:
-      "该账户已经安装了 bex GitHub App？请改用“认领”。对已安装的账户，GitHub 显示的是“Configure”而不是“Install”，那条路不会回到 bex。",
-    description:
-      "Hint under the connect/claim buttons explaining when to use claim",
-  },
-  "git.claimError": {
-    message: "无法开始 GitHub 认领流程。",
-    description: "Toast when starting the claim flow fails",
+      "Account chooser action that installs the bex GitHub App on an account that does not have it yet (connectGit's stateful install URL, ADR078 §3b)",
   },
   "git.connectedAs": {
     message: "已连接账户",
@@ -94,18 +86,18 @@ const zhGit: Record<string, TranslationEntry> = {
     description: "Title shown after the GitHub install callback fails",
   },
   "git.callbackErrorExpired": {
-    message: "此连接请求已过期。请选择“连接 GitHub”重试。",
+    message: "此连接请求已过期。请选择“连接 GitHub 账户”重试。",
     description: "Callback error shown when the signed state has expired",
   },
   "git.callbackErrorInvalid": {
-    message: "无法验证此连接请求。请选择“连接 GitHub”重试。",
+    message: "无法验证此连接请求。请选择“连接 GitHub 账户”重试。",
     description: "Callback error shown when signed state is invalid",
   },
   "git.callbackErrorMissing": {
     message:
-      "此 GitHub 安装尚未连接到任何工作区。对已安装应用的账户，GitHub 无法完成安装流程——请使用下方的“认领已安装账户”。",
+      "此 GitHub 安装尚未连接到任何工作区。对于已安装该应用的账户，GitHub 无法完成安装流程。请选择“连接 GitHub 账户”，然后选择该账户。",
     description:
-      "Callback error shown when state is missing (e.g. a direct github.com install) — points at the claim flow, which is the path that works for already-installed accounts (ADR075 §3a)",
+      "Callback error shown when state is missing (e.g. a direct github.com install): GitHub drops the state for an account that already has the App, so the recovery is the single connect action, whose account chooser lists it (ADR078 §3a/§3b)",
   },
   "git.callbackErrorNoClaimable": {
     message:
@@ -115,33 +107,54 @@ const zhGit: Record<string, TranslationEntry> = {
   },
   "git.callbackErrorAmbiguous": {
     message:
-      "找到了多个你管理的 GitHub 账户，但未能记录你的选择。请点击“认领已安装账户”重新开始。",
+      "找到了多个你管理的 GitHub 账户，但未能记录你的选择。请选择“连接 GitHub 账户”重新开始。",
     description:
-      "Claim-callback failure: ambiguity the picker could not be offered for (the selection failed to persist). The ordinary ambiguous case now renders the account picker instead",
+      "Claim-callback failure: ambiguity the chooser could not be offered for (the selection failed to persist). The ordinary case renders the account chooser instead",
   },
   "git.claimSelectionTitle": {
     message: "选择要连接的 GitHub 账户",
-    description: "Heading of the deferred claim account picker (ADR078 §3a)",
+    description:
+      "Heading of the account chooser every connect lands on (ADR078 §3b)",
   },
   "git.claimSelectionBody": {
-    message: "你管理多个 GitHub 账户，请选择要连接到当前工作区的那一个。",
-    description: "Body of the deferred claim account picker",
+    message:
+      "以下 GitHub 账户已安装 bex GitHub App，且由你管理。请选择一个连接到当前工作区，或在其他账户上安装该应用。",
+    description:
+      "Body of the account chooser when it lists at least one installed account",
+  },
+  "git.claimSelectionEmpty": {
+    message:
+      "你管理的 GitHub 账户都尚未安装 bex GitHub App。请先在某个账户上安装，再进行连接。",
+    description:
+      "Body of the account chooser when no account the user administers has the App yet; only the install action follows",
   },
   "git.claimSelectionGoneTitle": {
     message: "此选择已过期",
     description: "Claim selection unknown, expired, or already used",
   },
   "git.claimSelectionGoneBody": {
-    message: "请点击下方的“认领已安装账户”重新开始。",
-    description: "Recovery for an expired or spent claim selection",
+    message: "请选择“连接 GitHub 账户”重新开始。",
+    description:
+      "Recovery for an expired or spent account choice; the alert carries the Connect GitHub account button",
   },
   "git.selectClaimError": {
     message: "无法连接该 GitHub 账户。",
     description: "Toast when completing a claim selection fails",
   },
+  "git.claimConnectedToast": {
+    message: "{account} 已连接到当前工作区。",
+    description:
+      "Toast after a choice in the account chooser binds; {account} is the GitHub account or org login",
+  },
   "git.callbackErrorGeneric": {
-    message: "GitHub 无法完成连接。请选择“连接 GitHub”重试。",
+    message: "GitHub 无法完成连接。请选择“连接 GitHub 账户”重试。",
     description: "Generic GitHub callback failure message",
+  },
+  "git.callbackErrorInstallRequested": {
+    message:
+      "你安装 bex GitHub App 的请求已发送给该组织的所有者。待其中一位批准后，请重新连接。",
+    description:
+      "Callback outcome for an org member's install request (setup_action=request): the org's owners must approve it first (w1/m526)",
   },
   "git.disconnectSuccess": {
     message: "已断开 GitHub 连接。",

@@ -45,7 +45,7 @@ func claimSvc(claimable []Installation) (*Service, *fakeVerifier) {
 // state whose nonce names a server-side transaction for the target workspace.
 func TestStartClaimMintsTransactionAndAuthorizeURL(t *testing.T) {
 	svc, _ := claimSvc(nil)
-	claim, err := svc.StartClaim(testCallerCtx(), "", 0)
+	claim, err := svc.StartClaim(testCallerCtx(), "", ClaimOptions{})
 	if err != nil {
 		t.Fatalf("StartClaim: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestStartVerbsRefuseWithoutVerifier(t *testing.T) {
 	if _, err := svc.StartConnect(testCallerCtx(), ""); !errors.Is(err, core.ErrGitHubUnavailable) {
 		t.Errorf("StartConnect without verifier = %v, want ErrGitHubUnavailable", err)
 	}
-	if _, err := svc.StartClaim(testCallerCtx(), "", 0); !errors.Is(err, core.ErrGitHubUnavailable) {
+	if _, err := svc.StartClaim(testCallerCtx(), "", ClaimOptions{}); !errors.Is(err, core.ErrGitHubUnavailable) {
 		t.Errorf("StartClaim without verifier = %v, want ErrGitHubUnavailable", err)
 	}
 	if n := len(svc.Store.(*fakeStore).txns); n != 0 {

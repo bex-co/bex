@@ -1,20 +1,20 @@
 # w1 · m526 — Connect and disconnect several GitHub accounts from every starting point
 
-**Worker:** worker1 **Goal:** a user who administers several GitHub accounts and orgs can connect each one to a workspace, disconnect it, and connect it again from every place the product offers GitHub, through one "Connect GitHub account" action that works whether or not the bex GitHub App is already installed on that account; walked live on production. **Status:** todo
+**Worker:** worker1 **Goal:** a user who administers several GitHub accounts and orgs can connect each one to a workspace, disconnect it, and connect it again from every place the product offers GitHub, through one "Connect GitHub account" action that works whether or not the bex GitHub App is already installed on that account; walked live on production. **Status:** todo (t001–t009 done; t010 waits for the production pin)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Record the single connect entry in ADR078 and ADR018 | 40m | — |
-| t002 | Backend: the connect entry starts with GitHub OAuth and always returns to the account chooser | 90m | t001 |
-| t003 | Backend: a GitHub redirect that carries `setup_action` is never handled as a claim | 45m | t001 |
-| t004 | Dashboard: the account chooser marks connected accounts, offers a new install, and closes after a choice | 60m | t002 |
-| t005 | Dashboard: one "Connect GitHub account" action at every starting point | 75m | t004 |
-| t006 | Dashboard: Credentials menu focus, the agent composer's settings link, and repos that follow the connection set | 45m | — |
-| t007 | Render parity | 30m | t003, t005, t006 |
-| t008 | Simplify | 30m | t007 |
-| t009 | Test coverage | 60m | t007 |
+| t001 | Record the single connect entry in ADR078 and ADR018 — **DONE** | 40m | — |
+| t002 | Backend: the connect entry starts with GitHub OAuth and always returns to the account chooser — **DONE** | 90m | t001 |
+| t003 | Backend: a GitHub redirect that carries `setup_action` is never handled as a claim — **DONE** | 45m | t001 |
+| t004 | Dashboard: the account chooser marks connected accounts, offers a new install, and closes after a choice — **DONE** | 60m | t002 |
+| t005 | Dashboard: one "Connect GitHub account" action at every starting point — **DONE** | 75m | t004 |
+| t006 | Dashboard: Credentials menu focus, the agent composer's settings link, and repos that follow the connection set — **DONE** | 45m | — |
+| t007 | Render parity — **DONE** | 30m | t003, t005, t006 |
+| t008 | Simplify — **DONE** | 30m | t007 |
+| t009 | Test coverage — **DONE** | 60m | t007 |
 | t010 | Production walk: connect, disconnect and reconnect several GitHub accounts at every starting point | 2h | t008, t009 |
 | t011 | Closeout | 15m | t010 |
 

@@ -48,10 +48,7 @@ vi.mock("@/features/git/hooks/use-git-connection", () => ({
 }));
 
 vi.mock("@/features/git/hooks/use-connect-git", () => ({
-  useConnectGit: () => ({ connect: vi.fn(), busy: false }),
-}));
-vi.mock("@/features/git/hooks/use-claim-git", () => ({
-  useClaimGit: () => ({ claim: vi.fn(), busy: false }),
+  useConnectGitAccount: () => ({ connect: vi.fn(), busy: false }),
 }));
 vi.mock("@/features/git/hooks/use-disconnect-git", () => ({
   useDisconnectGit: () => ({ disconnect: vi.fn(), busy: false }),

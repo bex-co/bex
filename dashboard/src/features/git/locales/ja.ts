@@ -16,32 +16,24 @@ const jaGit: Record<string, TranslationEntry> = {
   },
   "git.disconnectedBody": {
     message:
-      "お使いのアカウントに bex GitHub App をインストールし、アクセスを許可するリポジトリを選択してください。GitHub にリダイレクトされます。",
-    description: "Body text in the disconnected state",
+      "このワークスペースがデプロイ元とする GitHub アカウントと Organization を接続します。GitHub にリダイレクトされます。",
+    description:
+      "Body text in the disconnected state: what the single connect action does (ADR078 §3b)",
   },
   "git.connectButton": {
-    message: "GitHub を接続",
-    description: "Button that starts the GitHub install flow",
+    message: "GitHub アカウントを接続",
+    description:
+      "The single connect action (ADR078 §3b, w1/m526) when the workspace has no GitHub connection: starts GitHub OAuth and lands on the account chooser",
   },
   "git.connectAnotherButton": {
     message: "別のアカウントを接続",
     description:
-      "Button that connects an additional GitHub account/org to the workspace",
+      "The single connect action (ADR078 §3b) once the workspace holds a GitHub connection: starts GitHub OAuth and lands on the account chooser",
   },
-  "git.claimButton": {
-    message: "インストール済みのアカウントを引き継ぐ",
+  "git.installAnotherButton": {
+    message: "別の GitHub アカウントにインストール",
     description:
-      "Button starting the ADR075 §3a claim flow: bind a GitHub account where the app is ALREADY installed (GitHub strips the install URL's state for those)",
-  },
-  "git.claimHint": {
-    message:
-      "そのアカウントにすでに bex GitHub App をインストールしていますか？その場合は、代わりに引き継ぎを使用してください。インストール済みのアカウントでは、GitHub に「Install」ではなく「Configure」と表示され、その経路では bex に戻りません。",
-    description:
-      "Hint under the connect/claim buttons explaining when to use claim",
-  },
-  "git.claimError": {
-    message: "GitHub アカウントの引き継ぎを開始できませんでした。",
-    description: "Toast when starting the claim flow fails",
+      "Account chooser action that installs the bex GitHub App on an account that does not have it yet (connectGit's stateful install URL, ADR078 §3b)",
   },
   "git.connectedAs": {
     message: "接続中のアカウント",
@@ -95,19 +87,19 @@ const jaGit: Record<string, TranslationEntry> = {
   },
   "git.callbackErrorExpired": {
     message:
-      "この接続リクエストは期限切れです。「GitHub を接続」を選択して、もう一度お試しください。",
+      "この接続リクエストは期限切れです。「GitHub アカウントを接続」を選択して、もう一度お試しください。",
     description: "Callback error shown when the signed state has expired",
   },
   "git.callbackErrorInvalid": {
     message:
-      "この接続リクエストを検証できませんでした。「GitHub を接続」を選択して、もう一度お試しください。",
+      "この接続リクエストを確認できませんでした。「GitHub アカウントを接続」を選択して、もう一度お試しください。",
     description: "Callback error shown when signed state is invalid",
   },
   "git.callbackErrorMissing": {
     message:
-      "この GitHub のインストールは、まだワークスペースに接続されていません。すでにアプリがあるアカウントでは、GitHub はインストールフローを完了できません。下の「インストール済みのアカウントを引き継ぐ」を使用してください。",
+      "この GitHub のインストールは、まだワークスペースに接続されていません。すでにアプリがあるアカウントでは、GitHub はインストールフローを完了できません。「GitHub アカウントを接続」を選択し、そのアカウントを選んでください。",
     description:
-      "Callback error shown when state is missing (e.g. a direct github.com install) — points at the claim flow, which is the path that works for already-installed accounts (ADR075 §3a)",
+      "Callback error shown when state is missing (e.g. a direct github.com install): GitHub drops the state for an account that already has the App, so the recovery is the single connect action, whose account chooser lists it (ADR078 §3a/§3b)",
   },
   "git.callbackErrorNoClaimable": {
     message:
@@ -117,18 +109,26 @@ const jaGit: Record<string, TranslationEntry> = {
   },
   "git.callbackErrorAmbiguous": {
     message:
-      "管理している GitHub アカウントが複数見つかり、選択を記録できませんでした。「インストール済みのアカウントを引き継ぐ」を選択して、最初からやり直してください。",
+      "管理している GitHub アカウントが複数見つかりましたが、選択を記録できませんでした。「GitHub アカウントを接続」を選択して、最初からやり直してください。",
     description:
-      "Claim-callback failure: ambiguity the picker could not be offered for (the selection failed to persist). The ordinary ambiguous case now renders the account picker instead",
+      "Claim-callback failure: ambiguity the chooser could not be offered for (the selection failed to persist). The ordinary case renders the account chooser instead",
   },
   "git.claimSelectionTitle": {
     message: "接続する GitHub アカウントを選択",
-    description: "Heading of the deferred claim account picker (ADR078 §3a)",
+    description:
+      "Heading of the account chooser every connect lands on (ADR078 §3b)",
   },
   "git.claimSelectionBody": {
     message:
-      "管理している GitHub アカウントが複数あります。このワークスペースに接続するアカウントを選んでください。",
-    description: "Body of the deferred claim account picker",
+      "これらの GitHub アカウントには bex GitHub App がインストールされており、あなたが管理しています。このワークスペースに接続するアカウントを選ぶか、別のアカウントに App をインストールしてください。",
+    description:
+      "Body of the account chooser when it lists at least one installed account",
+  },
+  "git.claimSelectionEmpty": {
+    message:
+      "管理している GitHub アカウントには、まだ bex GitHub App がインストールされていません。接続するには、いずれかのアカウントにインストールしてください。",
+    description:
+      "Body of the account chooser when no account the user administers has the App yet; only the install action follows",
   },
   "git.claimSelectionGoneTitle": {
     message: "この選択は期限切れです",
@@ -136,17 +136,29 @@ const jaGit: Record<string, TranslationEntry> = {
   },
   "git.claimSelectionGoneBody": {
     message:
-      "下の「インストール済みのアカウントを引き継ぐ」を選択して、最初からやり直してください。",
-    description: "Recovery for an expired or spent claim selection",
+      "「GitHub アカウントを接続」を選択して、最初からやり直してください。",
+    description:
+      "Recovery for an expired or spent account choice; the alert carries the Connect GitHub account button",
   },
   "git.selectClaimError": {
     message: "その GitHub アカウントを接続できませんでした。",
     description: "Toast when completing a claim selection fails",
   },
+  "git.claimConnectedToast": {
+    message: "{account} をこのワークスペースに接続しました。",
+    description:
+      "Toast after a choice in the account chooser binds; {account} is the GitHub account or org login",
+  },
   "git.callbackErrorGeneric": {
     message:
-      "GitHub が接続を完了できませんでした。「GitHub を接続」を選択して、もう一度お試しください。",
+      "GitHub は接続を完了できませんでした。「GitHub アカウントを接続」を選択して、もう一度お試しください。",
     description: "Generic GitHub callback failure message",
+  },
+  "git.callbackErrorInstallRequested": {
+    message:
+      "bex GitHub App のインストールリクエストを Organization のオーナーに送信しました。オーナーのいずれかが承認したら、もう一度接続してください。",
+    description:
+      "Callback outcome for an org member's install request (setup_action=request): the org's owners must approve it first (w1/m526)",
   },
   "git.disconnectSuccess": {
     message: "GitHub の接続を解除しました。",

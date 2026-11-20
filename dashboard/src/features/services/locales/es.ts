@@ -3841,11 +3841,6 @@ const esServices: Record<string, TranslationEntry> = {
     description:
       "Create-wizard GitHub tab connect-prompt body (no GitHub connection yet)",
   },
-  "services.createGitConnectButton": {
-    message: "Conectar GitHub",
-    description:
-      "Create-wizard GitHub tab button that opens the GitHub App install flow",
-  },
   "services.createPublicUrlLabel": {
     message: "URL del repositorio",
     description: "Create-wizard Public Git URL tab input label",

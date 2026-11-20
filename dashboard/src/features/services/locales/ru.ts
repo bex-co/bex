@@ -3814,11 +3814,6 @@ const ruServices: Record<string, TranslationEntry> = {
     description:
       "Create-wizard GitHub tab connect-prompt body (no GitHub connection yet)",
   },
-  "services.createGitConnectButton": {
-    message: "Подключить GitHub",
-    description:
-      "Create-wizard GitHub tab button that opens the GitHub App install flow",
-  },
   "services.createPublicUrlLabel": {
     message: "URL репозитория",
     description: "Create-wizard Public Git URL tab input label",

@@ -13,10 +13,10 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 
 /**
- * The connections read's loading frame (w4/686): DisconnectedState's hint,
- * action row and footnote at their ready geometry, the copy reserved but not
- * drawn. A connected workspace settles to its account list over the same
- * action row and footnote, so only its list rows are a residual.
+ * The connections read's loading frame (w4/686): DisconnectedState's body and
+ * its one connect action (ADR078 §3b) at their ready geometry, the copy
+ * reserved but not drawn. A connected workspace settles to its account list
+ * over the same single action, so only its list rows are a residual.
  */
 export function GitConnectionsSkeleton() {
   const { t } = useTranslations();
@@ -29,18 +29,10 @@ export function GitConnectionsSkeleton() {
       <p className="relative text-sm">
         <ReservedText>{t("git.disconnectedBody")}</ReservedText>
       </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <ReservedButton variant="default">
-          <GithubIcon className="size-4" />
-          {t("git.connectButton")}
-        </ReservedButton>
-        <ReservedButton variant="outline">
-          {t("git.claimButton")}
-        </ReservedButton>
-      </div>
-      <p className="relative text-xs">
-        <ReservedText>{t("git.claimHint")}</ReservedText>
-      </p>
+      <ReservedButton variant="default">
+        <GithubIcon className="size-4" />
+        {t("git.connectButton")}
+      </ReservedButton>
     </div>
   );
 }

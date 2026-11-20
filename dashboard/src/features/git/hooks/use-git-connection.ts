@@ -48,14 +48,14 @@ export interface UseGitConnectionResult {
  * live-verified wrong-tenant hazard. Variable changes on a workspace switch
  * refetch automatically.
  */
-function useGitConnectionsQuery() {
+function useGitConnectionsQuery(poll = true) {
   const { currentWorkspaceId } = useWorkspace();
   return useQuery(GitConnectionsDocument, {
     variables: { ownerId: currentWorkspaceId },
     skip: currentWorkspaceId == null,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
-    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    pollInterval: poll ? RESOURCE_POLL_INTERVAL_MS : undefined,
     skipPollAttempt: skipPollWhenHidden,
   });
 }
@@ -97,9 +97,15 @@ export interface UseGitConnectionsResult {
  * Reads the full connection set for the Settings card (ADR075): every GitHub
  * account/org the workspace has connected, so the card can list them with a
  * per-account disconnect and a "Connect another account" action.
+ *
+ * `poll: false` makes a secondary reader on a page where another reader of the
+ * same query already polls: it follows that reader's results through the cache
+ * without a timer of its own.
  */
-export function useGitConnections(): UseGitConnectionsResult {
-  const { data, loading, error, refetch } = useGitConnectionsQuery();
+export function useGitConnections({
+  poll = true,
+}: { poll?: boolean } = {}): UseGitConnectionsResult {
+  const { data, loading, error, refetch } = useGitConnectionsQuery(poll);
 
   const connections = useMemo<GitConnectionRow[]>(
     () =>

@@ -156,13 +156,10 @@ const koAgentSessions: Record<string, TranslationEntry> = {
       "클라우드 에이전트를 사용하려면 연결된 GitHub 저장소가 필요합니다. 이 워크스페이스에 GitHub App을 연결한 후 돌아와서 세션을 시작하세요.",
     description: "Composer callout body when there are no installation repos",
   },
-  "agentSessions.connectGitHub": {
-    message: "GitHub 연결",
-    description: "Composer CTA that starts the GitHub App install",
-  },
   "agentSessions.connectGitHubSettings": {
-    message: "워크스페이스 설정",
-    description: "Secondary link to /workspace/settings from the GitHub CTA",
+    message: "GitHub 설정",
+    description:
+      "Secondary link from the composer's GitHub callout to Account Settings → Integrations (/settings#integrations), where the GitHub card lives",
   },
   "agentSessions.exampleFixTests": {
     message: "실패하는 테스트를 수정하고 초안 PR 열기",

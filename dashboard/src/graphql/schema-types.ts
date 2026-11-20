@@ -1921,6 +1921,7 @@ export type GitClaim = {
 export type GitClaimCandidate = {
   __typename: 'GitClaimCandidate';
   accountLogin: Maybe<Scalars['String']['output']>;
+  connected: Maybe<Scalars['Boolean']['output']>;
   installationId: Maybe<Scalars['Float']['output']>;
 };
 
@@ -2648,6 +2649,7 @@ export type MutationChangeWorkspacePlanArgs = {
 
 
 export type MutationClaimGitArgs = {
+  chooser?: InputMaybe<Scalars['Boolean']['input']>;
   installationId?: InputMaybe<Scalars['Float']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };

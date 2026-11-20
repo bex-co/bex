@@ -1615,6 +1615,7 @@ type GitClaim {
 
 type GitClaimCandidate {
   accountLogin: String
+  connected: Boolean
   installationId: Float
 }
 
@@ -1942,7 +1943,7 @@ type Mutation {
   changeOrganizationMemberRole(organizationId: String!, role: String!, subject: String!): OrganizationMember
   changeWorkspaceMemberRole(role: String!, subject: String!, workspaceId: String!): WorkspaceMember
   changeWorkspacePlan(id: String!, plan: String!): Workspace
-  claimGit(installationId: Float, ownerId: String): GitClaim
+  claimGit(chooser: Boolean, installationId: Float, ownerId: String): GitClaim
   cloneEnvGroup(environmentId: String, id: String!, name: String!, ownerId: String): EnvGroup
   connectGit(ownerId: String): GitConnection
   createAgentAutomation(input: AgentAutomationInput!, ownerId: String): AgentAutomation!

@@ -16,32 +16,24 @@ const ruGit: Record<string, TranslationEntry> = {
   },
   "git.disconnectedBody": {
     message:
-      "Установите GitHub App bex на свой аккаунт и выберите, каким репозиториям предоставить доступ. Вы будете перенаправлены на GitHub.",
-    description: "Body text in the disconnected state",
+      "Подключите аккаунты и организации GitHub, из которых деплоит это рабочее пространство. Вы будете перенаправлены на GitHub.",
+    description:
+      "Body text in the disconnected state: what the single connect action does (ADR078 §3b)",
   },
   "git.connectButton": {
-    message: "Подключить GitHub",
-    description: "Button that starts the GitHub install flow",
+    message: "Подключить аккаунт GitHub",
+    description:
+      "The single connect action (ADR078 §3b, w1/m526) when the workspace has no GitHub connection: starts GitHub OAuth and lands on the account chooser",
   },
   "git.connectAnotherButton": {
     message: "Подключить другой аккаунт",
     description:
-      "Button that connects an additional GitHub account/org to the workspace",
+      "The single connect action (ADR078 §3b) once the workspace holds a GitHub connection: starts GitHub OAuth and lands on the account chooser",
   },
-  "git.claimButton": {
-    message: "Привязать установленный аккаунт",
+  "git.installAnotherButton": {
+    message: "Установить в другой аккаунт GitHub",
     description:
-      "Button starting the ADR075 §3a claim flow: bind a GitHub account where the app is ALREADY installed (GitHub strips the install URL's state for those)",
-  },
-  "git.claimHint": {
-    message:
-      "Уже установили GitHub App bex на этот аккаунт? Используйте «Привязать». Для аккаунта, где приложение установлено, GitHub показывает «Configure» вместо «Install», и этот путь никогда не возвращает в bex.",
-    description:
-      "Hint under the connect/claim buttons explaining when to use claim",
-  },
-  "git.claimError": {
-    message: "Не удалось начать привязку GitHub.",
-    description: "Toast when starting the claim flow fails",
+      "Account chooser action that installs the bex GitHub App on an account that does not have it yet (connectGit's stateful install URL, ADR078 §3b)",
   },
   "git.connectedAs": {
     message: "Подключено как",
@@ -95,19 +87,19 @@ const ruGit: Record<string, TranslationEntry> = {
   },
   "git.callbackErrorExpired": {
     message:
-      "Срок действия этого запроса на подключение истёк. Нажмите «Подключить GitHub», чтобы повторить попытку.",
+      "Срок действия этого запроса на подключение истёк. Нажмите «Подключить аккаунт GitHub», чтобы повторить попытку.",
     description: "Callback error shown when the signed state has expired",
   },
   "git.callbackErrorInvalid": {
     message:
-      "Не удалось проверить этот запрос на подключение. Нажмите «Подключить GitHub», чтобы повторить попытку.",
+      "Не удалось проверить этот запрос на подключение. Нажмите «Подключить аккаунт GitHub», чтобы повторить попытку.",
     description: "Callback error shown when signed state is invalid",
   },
   "git.callbackErrorMissing": {
     message:
-      "Эта установка GitHub ещё не подключена к рабочему пространству. GitHub не может завершить процесс установки для аккаунта, где приложение уже есть — используйте «Привязать установленный аккаунт» ниже.",
+      "Эта установка GitHub ещё не подключена к рабочему пространству. GitHub не может завершить установку для аккаунта, в котором приложение уже есть. Нажмите «Подключить аккаунт GitHub» и выберите этот аккаунт.",
     description:
-      "Callback error shown when state is missing (e.g. a direct github.com install) — points at the claim flow, which is the path that works for already-installed accounts (ADR075 §3a)",
+      "Callback error shown when state is missing (e.g. a direct github.com install): GitHub drops the state for an account that already has the App, so the recovery is the single connect action, whose account chooser lists it (ADR078 §3a/§3b)",
   },
   "git.callbackErrorNoClaimable": {
     message:
@@ -117,36 +109,55 @@ const ruGit: Record<string, TranslationEntry> = {
   },
   "git.callbackErrorAmbiguous": {
     message:
-      "Найдено несколько аккаунтов GitHub, которыми вы управляете, и выбор не удалось записать. Нажмите «Привязать установленный аккаунт», чтобы начать заново.",
+      "Найдено несколько аккаунтов GitHub, которыми вы управляете, и выбор не удалось записать. Нажмите «Подключить аккаунт GitHub», чтобы начать заново.",
     description:
-      "Claim-callback failure: ambiguity the picker could not be offered for (the selection failed to persist). The ordinary ambiguous case now renders the account picker instead",
+      "Claim-callback failure: ambiguity the chooser could not be offered for (the selection failed to persist). The ordinary case renders the account chooser instead",
   },
   "git.claimSelectionTitle": {
     message: "Выберите аккаунт GitHub для подключения",
-    description: "Heading of the deferred claim account picker (ADR078 §3a)",
+    description:
+      "Heading of the account chooser every connect lands on (ADR078 §3b)",
   },
   "git.claimSelectionBody": {
     message:
-      "Вы управляете несколькими аккаунтами GitHub. Выберите тот, который нужно подключить к этому рабочему пространству.",
-    description: "Body of the deferred claim account picker",
+      "В этих аккаунтах GitHub установлено GitHub App bex, и вы ими управляете. Выберите аккаунт для подключения к этому рабочему пространству или установите App в другой аккаунт.",
+    description:
+      "Body of the account chooser when it lists at least one installed account",
+  },
+  "git.claimSelectionEmpty": {
+    message:
+      "Ни в одном из аккаунтов GitHub, которыми вы управляете, ещё нет GitHub App bex. Установите его в аккаунт, чтобы подключить его.",
+    description:
+      "Body of the account chooser when no account the user administers has the App yet; only the install action follows",
   },
   "git.claimSelectionGoneTitle": {
     message: "Срок действия этого выбора истёк",
     description: "Claim selection unknown, expired, or already used",
   },
   "git.claimSelectionGoneBody": {
-    message:
-      "Нажмите «Привязать установленный аккаунт» ниже, чтобы начать заново.",
-    description: "Recovery for an expired or spent claim selection",
+    message: "Нажмите «Подключить аккаунт GitHub», чтобы начать заново.",
+    description:
+      "Recovery for an expired or spent account choice; the alert carries the Connect GitHub account button",
   },
   "git.selectClaimError": {
     message: "Не удалось подключить этот аккаунт GitHub.",
     description: "Toast when completing a claim selection fails",
   },
+  "git.claimConnectedToast": {
+    message: "{account} подключён к этому рабочему пространству.",
+    description:
+      "Toast after a choice in the account chooser binds; {account} is the GitHub account or org login",
+  },
   "git.callbackErrorGeneric": {
     message:
-      "GitHub не смог завершить подключение. Нажмите «Подключить GitHub», чтобы повторить попытку.",
+      "GitHub не удалось завершить подключение. Нажмите «Подключить аккаунт GitHub», чтобы повторить попытку.",
     description: "Generic GitHub callback failure message",
+  },
+  "git.callbackErrorInstallRequested": {
+    message:
+      "Ваш запрос на установку GitHub App bex отправлен владельцам организации. Когда один из них одобрит его, подключитесь снова.",
+    description:
+      "Callback outcome for an org member's install request (setup_action=request): the org's owners must approve it first (w1/m526)",
   },
   "git.disconnectSuccess": {
     message: "GitHub отключён.",

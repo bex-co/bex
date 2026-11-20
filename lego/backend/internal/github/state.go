@@ -67,7 +67,7 @@ type connectState struct {
 func (s *Service) statefulInstallURL(ctx context.Context, workspaceID, subject string) (string, error) {
 	// The install flow gets its installation id from GitHub's redirect, so it
 	// never carries a start-time selector (that is the claim flow's, ADR078 §3a).
-	token, err := s.mintConnectState(ctx, workspaceID, subject, 0)
+	token, err := s.mintConnectState(ctx, workspaceID, subject, ClaimOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -81,12 +81,12 @@ func (s *Service) statefulInstallURL(ctx context.Context, workspaceID, subject s
 	return u.String(), nil
 }
 
-// installationID (0 = none) is the claim flow's optional start-time selector. It
-// lives on the server-side transaction row, NOT in the signed state: the state
-// stays a nonce that authorizes nothing (w1/m67 F3), and a selector the browser
-// could edit would be worthless anyway — it only narrows a set the callback
-// proves independently.
-func (s *Service) mintConnectState(ctx context.Context, workspaceID, subject string, installationID int64) (string, error) {
+// opts are the claim flow's optional start-time choices (the zero value for the
+// install flow). They live on the server-side transaction row, NOT in the signed
+// state: the state stays a nonce that authorizes nothing (w1/m67 F3), and a
+// selector the browser could edit would be worthless anyway — it only narrows a
+// set the callback proves independently.
+func (s *Service) mintConnectState(ctx context.Context, workspaceID, subject string, opts ClaimOptions) (string, error) {
 	if len(s.StateSecret) == 0 {
 		return "", core.ErrGitHubUnavailable
 	}
@@ -102,7 +102,7 @@ func (s *Service) mintConnectState(ctx context.Context, workspaceID, subject str
 	// merely carries its name.
 	if err := s.Store.CreateGitHubConnectTransaction(ctx, store.GitHubConnectTransaction{
 		Nonce: nonce, TenantID: workspaceID, Subject: subject,
-		InstallationID: installationID, ExpiresAt: expiresAt,
+		InstallationID: opts.InstallationID, Chooser: opts.Chooser, ExpiresAt: expiresAt,
 	}); err != nil {
 		return "", err
 	}

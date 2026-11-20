@@ -156,13 +156,10 @@ const ptAgentSessions: Record<string, TranslationEntry> = {
       "Os agentes na nuvem precisam de um repositório do GitHub conectado. Conecte o GitHub App deste workspace e depois volte para iniciar uma sessão.",
     description: "Composer callout body when there are no installation repos",
   },
-  "agentSessions.connectGitHub": {
-    message: "Conectar GitHub",
-    description: "Composer CTA that starts the GitHub App install",
-  },
   "agentSessions.connectGitHubSettings": {
-    message: "Configurações do workspace",
-    description: "Secondary link to /workspace/settings from the GitHub CTA",
+    message: "Configurações do GitHub",
+    description:
+      "Secondary link from the composer's GitHub callout to Account Settings → Integrations (/settings#integrations), where the GitHub card lives",
   },
   "agentSessions.exampleFixTests": {
     message: "Corrija os testes que estão falhando e abra um PR de rascunho",
