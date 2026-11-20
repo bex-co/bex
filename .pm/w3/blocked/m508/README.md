@@ -1,6 +1,6 @@
 # w3 · m508 — A project's Service Metrics view charts every service together, as Render documents
 
-**Worker:** worker3 **Goal:** the project's Service Metrics view (the `METRICS` saved search w3/m505 creates) charts CPU, memory, instances, HTTP requests, response time and bandwidth for every service of the project or environment, one series per service, grouped as Render's bundle allows. **Status:** in progress — t001–t005 and t007–t010 done; t006 verified on dev-3, its production walk waits for a deploy carrying the code
+**Worker:** worker3 **Goal:** the project's Service Metrics view (the `METRICS` saved search w3/m505 creates) charts CPU, memory, instances, HTTP requests, response time and bandwidth for every service of the project or environment, one series per service, grouped as Render's bundle allows. **Status:** blocked — t001–t005 and t007–t010 done and shipped in `2e5170b87`; t006 is verified on dev-3, and its production walk waits for a production pin carrying `2e5170b87` (§ Gate)
 
 ## Tasks (in order)
 
@@ -48,11 +48,17 @@ A fresh dev-3 identity's Hobby workspace `tea-dbvmh9pjg4r6oemv01eg` with project
 
 ### Production
 
-Waits for a production pin carrying this milestone's code: then a worker walks a `bex-canary` project as the QA user at 1440 and 390, with and without an environment filter, records it here and closes t006 and t011.
+Waits for a production pin carrying `2e5170b87` (§ Gate).
+
+## Gate (2026-11-19)
+
+**Clears by itself; no decision needed.** t006's production half needs a production deploy carrying `2e5170b87`. Check: the newest `chore(deploy): pin platform images to <sha>` on `main` passes `git merge-base --is-ancestor 2e5170b87 <sha>`, and production's `bex-api` runs that digest.
+
+**Next (t006 step 1, then t011):** sign in as the QA user (`bash scripts/qa-login.sh`) and, in `bex-canary`, use or create a project of the QA user's own with at least three services that take traffic (and, if there is one, a worker or cron job and a static site). Open its Service Metrics view from the sidebar at 1440 and 390: one line per service on CPU, Memory, Total Instances, Total Requests and Outbound Bandwidth (Response Times too when the workspace is Pro, else the plan notice), Total Requests grouped by status code and by none, the legend hiding a service on every chart, and an `ENVIRONMENT` filter (Edit view) narrowing the lines. Compare pending and ready at both widths. Record the evidence here, delete any fixture with by-id 404 evidence, log out, and close the milestone.
 
 ## Render parity (t008)
 
-Compared 2026-11-19 against [render.com/docs/projects](https://render.com/docs/projects) § Observability, [render.com/docs/service-metrics](https://render.com/docs/service-metrics) and the capture ([project-observability.md § Service Metrics](../../../docs/render-artifacts/project-observability.md#service-metrics-re-checked-2026-11-19-w3m508)). Render's page was hidden in its reference workspace, so nothing below is matched against a live page.
+Compared 2026-11-19 against [render.com/docs/projects](https://render.com/docs/projects) § Observability, [render.com/docs/service-metrics](https://render.com/docs/service-metrics) and the capture ([project-observability.md § Service Metrics](../../../../docs/render-artifacts/project-observability.md#service-metrics-re-checked-2026-11-19-w3m508)). Render's page was hidden in its reference workspace, so nothing below is matched against a live page.
 
 | Surface | Render | bex | Verdict |
 | --- | --- | --- | --- |
@@ -66,7 +72,7 @@ Compared 2026-11-19 against [render.com/docs/projects](https://render.com/docs/p
 | GraphQL read | private, not captured | `projectMetrics`, a Bex extension | recorded in ADR018 |
 | REST, MCP | no project metrics operation | unchanged, explicit resources | matched |
 
-Across bex's surfaces: `projectMetrics` reads each resource through the verb GraphQL `metrics`, REST and MCP read, so units, retention, creation floors and the latency gate agree. One drift found: a status-code series is `statusCode` on REST, MCP and `projectMetrics` but `code` on GraphQL `metrics`; filed as [w3/080](../080.md).
+Across bex's surfaces: `projectMetrics` reads each resource through the verb GraphQL `metrics`, REST and MCP read, so units, retention, creation floors and the latency gate agree. One drift found: a status-code series is `statusCode` on REST, MCP and `projectMetrics` but `code` on GraphQL `metrics`; filed as [w3/080](../../080.md).
 
 ## Test coverage (t010)
 
