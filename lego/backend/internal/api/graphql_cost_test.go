@@ -64,8 +64,8 @@ func TestValidateGraphQLComplexity(t *testing.T) {
 		t.Error("document with too many operations should be rejected")
 	}
 
-	// A syntactically invalid document is NOT rejected here — graphql.Do produces
-	// the canonical parse error.
+	// A syntactically invalid document is NOT rejected here — the execution
+	// step produces the canonical parse error.
 	if err := validateGraphQLComplexity("{ this is (((not valid"); err != nil {
 		t.Errorf("parse error should pass through, got %v", err)
 	}
@@ -210,19 +210,18 @@ func TestGraphQLFragmentFanOutIsLinear(t *testing.T) {
 
 	t.Run("cost gate", func(t *testing.T) {
 		for leaf, want := range map[string]string{
-			// No field: nothing to charge. graphql.Do reports the unknown fragment.
-			"...Missing":         "",
-			"__typename":         fmt.Sprintf("selects more than %d fields", gqlMaxFields),
+			// Every spread is charged, a missing fragment's too.
+			"...Missing": fmt.Sprintf("spreads fragments more than %d times", gqlMaxSpreads),
+			// Every spread path selects __typename in the operation's
+			// selection set.
+			"__typename":         fmt.Sprintf("selects %q more than %d times in one selection set", "__typename", gqlMaxSameResponseName),
 			"a: services { id }": fmt.Sprintf("aliases field %q more than %d times", "services", gqlMaxAliasesPerField),
 			strings.Repeat("node { ", gqlMaxDepth) + "id" + strings.Repeat(" }", gqlMaxDepth): fmt.Sprintf("selection nesting exceeds %d", gqlMaxDepth),
 		} {
 			fragments, ops := parsedGraphQL(t, fragmentFanOut("%s", "Query", n, leaf))
 			var err error
 			finishesWithin(t, "cost gate, leaf "+leaf, func() { err = validateGraphQLComplexityParsed(fragments, ops) })
-			if want == "" && err != nil {
-				t.Errorf("leaf %s: refused: %v", leaf, err)
-			}
-			if want != "" && (err == nil || !strings.Contains(err.Error(), want)) {
+			if err == nil || !strings.Contains(err.Error(), want) {
 				t.Errorf("leaf %s: err = %v, want %q", leaf, err, want)
 			}
 		}
@@ -268,9 +267,9 @@ func TestGraphQLFragmentFanOutIsLinear(t *testing.T) {
 	})
 
 	t.Run("handler", func(t *testing.T) {
-		// A Services Read key runs every walk: the top-level fields, the cost
-		// gate, the grant check with its sensitive-selection walk, then
-		// graphql.Do, which refuses the missing fragment.
+		// A Services Read key runs the top-level walk, then the cost gate,
+		// which refuses the spreads before the grant check or graphql-go
+		// reads the document.
 		srv, grants := scopedKeyServer(t)
 		key := keyOf("key-services-read")
 		grants.set(key.Subject, grantOf("services:read"))
@@ -279,10 +278,10 @@ func TestGraphQLFragmentFanOutIsLinear(t *testing.T) {
 		finishesWithin(t, "POST /graphql", func() { out = graphqlDo(t, srv, key, doc) })
 		errs, _ := out["errors"].([]any)
 		if len(errs) == 0 {
-			t.Fatalf("answer = %v, want the unknown fragment refused", out)
+			t.Fatalf("answer = %v, want the spreads refused", out)
 		}
-		if msg, _ := errs[0].(map[string]any)["message"].(string); !strings.Contains(msg, `Unknown fragment "Missing"`) {
-			t.Errorf("answer = %v, want the unknown fragment refused", out)
+		if msg, _ := errs[0].(map[string]any)["message"].(string); !strings.Contains(msg, "spreads fragments more than") {
+			t.Errorf("answer = %v, want the spreads refused", out)
 		}
 	})
 }

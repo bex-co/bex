@@ -14,6 +14,8 @@ on:
       # Files outside those trees that the tests read. push and pull_request
       # keep one list; scripts/ci_test_inputs.py fails on a read it misses.
       - "dashboard/src/features/deploys/locales/en.ts"
+      - "dashboard/src/**/*.graphql"
+      - "mobile/src/**/*.graphql"
       - "deploy/gitops/authz/**"
       - "deploy/gitops/base/log-shipper.yaml"
       - "deploy/gitops/charts/barman-cloud-objectstores/tenant-postgres.yaml"
@@ -48,6 +50,8 @@ on:
       - "lego/agent-image/**"
       - "lego/types/**"
       - "dashboard/src/features/deploys/locales/en.ts"
+      - "dashboard/src/**/*.graphql"
+      - "mobile/src/**/*.graphql"
       - "deploy/gitops/authz/**"
       - "deploy/gitops/base/log-shipper.yaml"
       - "deploy/gitops/charts/barman-cloud-objectstores/tenant-postgres.yaml"

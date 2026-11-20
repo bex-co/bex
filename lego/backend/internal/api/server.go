@@ -2012,9 +2012,17 @@ func (s *Server) executeGraphQL(parent context.Context, body graphqlRequestBody)
 	if strings.TrimSpace(body.Query) == "" {
 		return operation, opType, gqlOutcomeInvalid, graphqlErrorResult(errors.New("query is required"))
 	}
-	// One parse feeds telemetry dims, the cost gate, and the scope check;
-	// graphql.Do still re-parses for execution (its own AST).
-	if fragments, ops, ok := parseGraphQLDocument(body.Query); ok {
+	if err := checkGraphQLText(body.Query); err != nil {
+		return operation, opType, gqlOutcomeInvalid, graphqlErrorResult(err)
+	}
+	// One parse feeds telemetry dims, the cost gate, the scope check and
+	// execution.
+	doc, parseErr := parseGraphQL(body.Query)
+	if parseErr == nil {
+		fragments, ops, err := graphqlDefinitions(doc)
+		if err != nil {
+			return operation, opType, gqlOutcomeInvalid, graphqlErrorResult(err)
+		}
 		operation, opType = graphqlOperationDimsFrom(fragments, ops, body.OperationName)
 		// Cost gate (w1/m65 F9): reject an over-budget document before execution.
 		if err := validateGraphQLComplexityParsed(fragments, ops); err != nil {
@@ -2051,13 +2059,7 @@ func (s *Server) executeGraphQL(parent context.Context, body graphqlRequestBody)
 	// resolver goroutine indefinitely (F9).
 	ctx, cancel := context.WithTimeout(ctx, s.execBudget())
 	defer cancel()
-	result = graphql.Do(graphql.Params{
-		Schema:         s.schema,
-		RequestString:  body.Query,
-		OperationName:  body.OperationName,
-		VariableValues: body.Variables,
-		Context:        ctx,
-	})
+	result = s.runGraphQL(ctx, body, doc, parseErr)
 	result.Errors = sanitizeGraphQLErrors(result.Errors, opType == gqlTypeMutation)
 	return operation, opType, graphqlResultOutcome(result.Errors), result
 }

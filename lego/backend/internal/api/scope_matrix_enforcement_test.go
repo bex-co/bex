@@ -379,8 +379,9 @@ func TestGraphQLSensitiveNestedSelection(t *testing.T) {
 			t.Errorf("query=%q op=%q got %v want %v", tc.query, tc.opName, got, tc.want)
 		}
 	}
-	// A fragment spread adds no nesting, in the cost gate or here: a chain of
-	// any length passes the cost gate, so the walk must read to its end.
+	// A fragment spread adds no nesting, in the cost gate or here: a chain
+	// as long as the spread budget passes the cost gate, so the walk must
+	// read to its end. A longer one is refused, and the walk still reads it.
 	for _, n := range []int{1, maxGraphQLSensitiveWalkDepth, maxGraphQLSensitiveWalkDepth + 1, 4 * maxGraphQLSensitiveWalkDepth} {
 		for leaf, want := range map[string]bool{
 			`envVar(key:"FOO") { value }`:          true,
@@ -392,8 +393,8 @@ func TestGraphQLSensitiveNestedSelection(t *testing.T) {
 			if !ok {
 				t.Fatalf("parse %d-spread chain", n)
 			}
-			if err := validateGraphQLComplexityParsed(fragments, ops); err != nil {
-				t.Fatalf("cost gate refused a %d-spread chain: %v", n, err)
+			if err := validateGraphQLComplexityParsed(fragments, ops); (err == nil) != (n <= gqlMaxSpreads) {
+				t.Fatalf("cost gate on a %d-spread chain: %v", n, err)
 			}
 			if got := graphQLSelectsSensitiveNested(fragments, ops, ""); got != want {
 				t.Errorf("%d-spread chain ending in %s: got %v want %v", n, leaf, got, want)
