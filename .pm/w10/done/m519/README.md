@@ -1,6 +1,6 @@
 # w10 · m519 — A session's sandbox size is chosen in the dashboard composer and defaults to the workspace's, as on Devin
 
-**Worker:** worker10 **Goal:** a person picks the sandbox template (name and size) a session runs on from the dashboard composer, the automation form or the CLI, and a workspace admin sets the default that every session and automation naming none runs on. bex-api serves the template list, so no client hard-codes `agent` and `agent-4c-8g` or their sizes, and every session read reports the template it ran on. **Status:** blocked (t001–t005, t007–t009 done; t006 waits for a production pin carrying `556e004a4`)
+**Worker:** worker10 **Goal:** a person picks the sandbox template (name and size) a session runs on from the dashboard composer, the automation form or the CLI, and a workspace admin sets the default that every session and automation naming none runs on. bex-api serves the template list, so no client hard-codes `agent` and `agent-4c-8g` or their sizes, and every session read reports the template it ran on. **Status:** done (t001–t010; live on pin `3e53abbe3bc3`, 2026-11-20)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | Backend: the capabilities and environment reads serve the agent templates (name, CPU, memory, the default) on REST, GraphQL and MCP — **DONE** | 1h | t001 |
 | [t004](done/t004.md) | CLI: `bex agent env set --default-template`, the templates in `bex agent env` and `bex agent models`, no hard-coded sizes — **DONE** | 1h | t002, t003 |
 | [t005](done/t005.md) | Dashboard: a Sandbox picker in the new-session composer and the automation form, the default in Settings → Agents, the sandbox in the session header — **DONE** | 2h30m | t002, t003 |
-| [t006](t006.md) | Live check on production: the default and a composer choice run on the chosen template, and every surface shows it | 45m | t004, t005 |
+| [t006](done/t006.md) | Live check on production: the default and a composer choice run on the chosen template, and every surface shows it — **DONE** | 45m | t004, t005 |
 | [t007](done/t007.md) | Render parity (Devin) — **DONE** | 30m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 20m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
-| [t010](t010.md) | Closeout | 10m | t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t009 |
 
 Total: **10 tasks, about 9h45m**.
 
@@ -60,3 +60,21 @@ Recorded in [ADR047](../../../../docs/ADR047-cloud-coding-agent-sessions.md) D1 
 ## Gate (2026-11-19)
 
 t006's live check needs production to run the milestone: the newest `chore(deploy): pin platform images to <sha>` must contain `556e004a4` (migration `0311` and the new reads and controls). Nothing else gates it. Then, in the `bex` workspace (the owner's CLI built from `main`, since the newest `bex-cli` release predates `556e004a4`, and the QA user for the dashboard): `bex agent models` and the capabilities read list `agent` (2 CPU, 4 GB) and `agent-4c-8g` (4 CPU, 8 GB) with the default; `bex agent env set --default-template agent-4c-8g`, then a small `bex agent run` naming no template reports `agentConfig.template: agent-4c-8g` (and its pod's limits read 4 CPU / 8Gi, read-only); a dashboard composer pick of `agent` starts a session on `agent` and its header shows it; `bex agent env set --default-template agent-8c-16g` is refused with `AGENT_ENVIRONMENT_TEMPLATE_INVALID`; set the default back (`--default-template ""`) and delete the sessions. Keep sessions few and short (the sandbox node is near capacity, w9/m349). Record the session ids here, then t010 closes the milestone.
+
+## Unblock (2026-11-20)
+
+- **Source:** verified evidence (`/loopx w10`); no user decision was needed.
+- **The pin gate holds.** origin/main's newest pin, `a47204c7e` (`chore(deploy): pin platform images to 3e53abbe3bc3`), carries `556e004a4`: `git merge-base --is-ancestor 556e004a4 3e53abbe3bc3` exits 0. Production runs it: both `bex-system/bex-api` pods and `dashboard/dashboard` run `bex-operator@sha256:3cfea3acbc67…` and `bex-dashboard@sha256:b72fe48b24c8…`, the digests that pin writes.
+- **Next:** t006's live check as the Gate section says, then t010. No gate remains.
+
+## Live check (t006, production, 2026-11-20)
+
+Workspace `bex` (`tea-d98210cbbpdc73dcrkvg`), 08:15–08:20Z, the owner's CLI built from `main` (`12716d1d7`) and the dashboard signed in through `scripts/qa-login.sh` (the same account), pin `3e53abbe3bc3`. Every automation in `bex` names `agent-4c-8g` itself, so the temporary default changed no automation run.
+
+1. **The list is served on every surface.** `bex agent models` lists "agent 2 CPU, 4 GB (default)" and "agent-4c-8g 4 CPU, 8 GB". The capabilities and environment reads return `defaultTemplate: agent` and `templates: [{agent, 2, 4}, {agent-4c-8g, 4, 8}]` on REST (`bex agent models -o json`, `bex agent env -o json`), GraphQL (`agentSessionCapabilities`, `agentEnvironment`) and MCP (`get_agent_session_capabilities`, `get_agent_environment`).
+2. **The workspace default.** `bex agent env set --default-template agent-4c-8g` saved it (`updatedAt` 08:16:03Z), and `bex agent models` then marks `agent-4c-8g` as the default. `bex agent run` naming no template started `ags-dc003ht29hjs73bcft90`: its read reports `agentConfig.template: agent-4c-8g`, `bex agent get` shows "Sandbox agent-4c-8g", and its sandbox Pod carried `bex.co/template=agent-4c-8g` with limits 4 CPU / 8Gi (read-only `kubectl`). The dashboard header shows "agent-4c-8g · 4 CPU, 8 GB", and Settings → Agents shows the same default.
+3. **A composer pick.** The `/agents` composer's Sandbox control offered "agent · 2 CPU, 4 GB" and "agent-4c-8g · 4 CPU, 8 GB (default)", with the default preselected. Picking `agent` started `ags-dc004fpbgjqs73fpsp00`: its read reports `agentConfig.template: agent`, its Pod carried `bex.co/template=agent` with limits 2 CPU / 4Gi, and the header shows "agent · 2 CPU, 4 GB". The automation form (`/automations/new`) offers "Workspace default (agent · 2 CPU, 4 GB)", `agent` and `agent-4c-8g`.
+4. **An unregistered default is refused.** `bex agent env set --default-template agent-8c-16g` exited 1: `400 AGENT_ENVIRONMENT_TEMPLATE_INVALID: defaultTemplate "agent-8c-16g" is not an agent template; use one of agent (2 CPU, 4 GB), agent-4c-8g (4 CPU, 8 GB)`. Nothing was written: the default stayed `agent-4c-8g` and `updatedAt` did not move.
+5. **Set back and cleaned up.** `bex agent env set --default-template ""` returned the default to `agent` (08:19:05Z). Settings → Agents and the composer then preselect `agent`. Both sessions were deleted (`bex agent get` → `404 AGENT_SESSION_NOT_FOUND`), their Pods are gone, and the QA session was logged out.
+
+The Definition of done holds: items 1–4 on the live surfaces above and in t009's tests, and item 5 here. t010 closed the milestone on 2026-11-20.
