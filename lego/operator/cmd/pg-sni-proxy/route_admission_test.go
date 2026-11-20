@@ -31,7 +31,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/operator/internal/sniproxy"
-	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // w6/m457: before, every database's external clients stopped at 64 per
@@ -140,14 +139,14 @@ func requireShed(t *testing.T, conn net.Conn) {
 func TestARouteAdmitsTwiceItsPlansLimitAndShedsOnlyBeyond(t *testing.T) {
 	backend, dials := sslBackend(t)
 	router := newRouter("db.bex.co")
-	for _, db := range []*appv1alpha1.Database{
+	for _, db := range []*sniproxy.Database{
 		{
 			ObjectMeta: metav1.ObjectMeta{Name: "mydb", Namespace: "tea-one"},
-			Spec:       appv1alpha1.DatabaseSpec{Public: true, Plan: "basic-256mb", Pooler: true},
+			Spec:       sniproxy.DatabaseSpec{Public: true, Plan: "basic-256mb", Pooler: true},
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{Name: "other", Namespace: "tea-two"},
-			Spec:       appv1alpha1.DatabaseSpec{Public: true, Plan: "basic-256mb"},
+			Spec:       sniproxy.DatabaseSpec{Public: true, Plan: "basic-256mb"},
 		},
 	} {
 		if err := router.set(db); err != nil {

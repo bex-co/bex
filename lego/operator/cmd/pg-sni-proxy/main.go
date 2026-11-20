@@ -53,7 +53,6 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/sniproxy"
 	"github.com/bex-co/bex/lego/types/env"
 	"github.com/bex-co/bex/lego/types/tiers"
-	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 const (
@@ -102,8 +101,10 @@ var backendSSLReplyTimeout = dialTimeout
 
 var scheme = runtime.NewScheme()
 
+// The scheme holds sniproxy's routing views, never lego/types/v1alpha1, so a
+// CRD edit leaves this binary byte-identical and rolls no pod (w6/150).
 func init() {
-	utilruntime.Must(appv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(sniproxy.AddToScheme(scheme))
 }
 
 // dbRouter maps `<dbname>` → `<namespace>` for all Database CRs in the cluster.
@@ -163,7 +164,7 @@ func newRouter(domain string) *dbRouter {
 	}
 }
 
-func (r *dbRouter) set(db *appv1alpha1.Database) error {
+func (r *dbRouter) set(db *sniproxy.Database) error {
 	if !db.Spec.Public || r.domain == "" {
 		r.delete(db.Name)
 		return nil
@@ -197,7 +198,7 @@ func (r *dbRouter) set(db *appv1alpha1.Database) error {
 // caller holds the write lock. Each read replica is its own instance with its
 // own PgBouncer (w6/m467), and each public label is named after, and routes
 // to, the Service behind it: <db>-ro-<replica> to the replica's instance,
-// <db>-rp-<replica> to its pooler (appv1alpha1.ReadReplicaServiceName,
+// <db>-rp-<replica> to its pooler (sniproxy.ReadReplicaServiceName,
 // ReadReplicaPoolerName). Each label is its own admission bucket, sized from
 // the server behind it: the plan's max_connections for the primary and each
 // replica (Render limits each replica like its primary), PgBouncer's client
@@ -217,10 +218,10 @@ func (r *dbRouter) indexLocked(name string, entry dbRoutingEntry) {
 		add(name+"-pool", name+"-pooler", tiers.PostgresPoolerMaxClientConn)
 	}
 	for replica := range entry.replicas {
-		service := appv1alpha1.ReadReplicaServiceName(name, replica)
+		service := sniproxy.ReadReplicaServiceName(name, replica)
 		add(service, service, entry.maxConnections)
 		if entry.pooler {
-			pooler := appv1alpha1.ReadReplicaPoolerName(name, replica)
+			pooler := sniproxy.ReadReplicaPoolerName(name, replica)
 			add(pooler, pooler, tiers.PostgresPoolerMaxClientConn)
 		}
 	}
@@ -307,7 +308,7 @@ type dbWatcher struct {
 }
 
 func (w *dbWatcher) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-	var db appv1alpha1.Database
+	var db sniproxy.Database
 	if err := w.Get(ctx, req.NamespacedName, &db); err != nil {
 		if apierrors.IsNotFound(err) {
 			w.router.delete(req.Name)
@@ -369,7 +370,7 @@ func main() {
 	}
 
 	if err := ctrl.NewControllerManagedBy(mgr).
-		For(&appv1alpha1.Database{}).
+		For(&sniproxy.Database{}).
 		Complete(&dbWatcher{Client: mgr.GetClient(), router: router, meter: meter}); err != nil {
 		log.Error(err, "unable to set up Database watcher")
 		os.Exit(1)

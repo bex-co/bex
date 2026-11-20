@@ -27,7 +27,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/bex-co/bex/lego/operator/internal/sniproxy"
-	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // TestReconcileRestoresHealthWhenLastInvalidKeyValueIsDeleted is w1/m76
@@ -38,10 +37,10 @@ import (
 // reconcile fired.
 func TestReconcileRestoresHealthWhenLastInvalidKeyValueIsDeleted(t *testing.T) {
 	testScheme := runtime.NewScheme()
-	if err := appv1alpha1.AddToScheme(testScheme); err != nil {
+	if err := sniproxy.AddToScheme(testScheme); err != nil {
 		t.Fatal(err)
 	}
-	kv := &appv1alpha1.KeyValue{}
+	kv := &sniproxy.KeyValue{}
 	kv.Name = "broken"
 	kv.Namespace = "default"
 	// The finalizer keeps the object visible with a deletion timestamp after
@@ -49,7 +48,7 @@ func TestReconcileRestoresHealthWhenLastInvalidKeyValueIsDeleted(t *testing.T) {
 	kv.Finalizers = []string{"test.bex.co/hold"}
 	kv.Spec.Public = true
 	kv.Status.ExternalHost = "broken.kv.bex.co"
-	kv.Spec.IPAllowList = []appv1alpha1.IPAllowEntry{{CIDR: "not-a-cidr"}}
+	kv.Spec.IPAllowList = []sniproxy.IPAllowEntry{{CIDR: "not-a-cidr"}}
 	cl := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(kv).Build()
 
 	registry := prometheus.NewRegistry()

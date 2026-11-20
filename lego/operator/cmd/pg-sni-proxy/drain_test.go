@@ -31,7 +31,6 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/bex-co/bex/lego/operator/internal/sniproxy"
-	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // w6/m515: a release's SIGTERM used to close every external Postgres stream at
@@ -81,9 +80,9 @@ func TestADrainingProxyRelaysTheResultOfARunningQuery(t *testing.T) {
 	}()
 
 	router := newRouter("db.bex.co")
-	if err := router.set(&appv1alpha1.Database{
+	if err := router.set(&sniproxy.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "mydb", Namespace: "tea-one"},
-		Spec:       appv1alpha1.DatabaseSpec{Public: true, Plan: "free"},
+		Spec:       sniproxy.DatabaseSpec{Public: true, Plan: "free"},
 	}); err != nil {
 		t.Fatal(err)
 	}

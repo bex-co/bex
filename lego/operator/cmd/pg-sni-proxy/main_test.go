@@ -39,7 +39,6 @@ import (
 
 	"github.com/bex-co/bex/lego/operator/internal/sniproxy"
 	"github.com/bex-co/bex/lego/types/tiers"
-	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // buildClientHello constructs a minimal TLS 1.3-shaped ClientHello record
@@ -129,14 +128,14 @@ func TestExtractSNI_InvalidInputs(t *testing.T) {
 // everyone; clearing the layer restores the route.
 func TestRouterResolveWorkspaceLayer(t *testing.T) {
 	r := newRouter("db.bex.co")
-	db := &appv1alpha1.Database{
+	db := &sniproxy.Database{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "mydb", Namespace: "tenant-ns",
 		},
-		Spec: appv1alpha1.DatabaseSpec{
+		Spec: sniproxy.DatabaseSpec{
 			Public: true, Pooler: true,
-			ReadReplicas:           []appv1alpha1.DatabaseReadReplica{{Name: "east"}},
-			IPAllowList:            []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24"}},
+			ReadReplicas:           []sniproxy.DatabaseReadReplica{{Name: "east"}},
+			IPAllowList:            []sniproxy.IPAllowEntry{{CIDR: "203.0.113.0/24"}},
 			EnvironmentIPAllowList: []string{"203.0.113.0/28"},
 			WorkspaceIPAllowList:   []string{"198.51.100.0/24"},
 		},
@@ -180,14 +179,14 @@ func TestRouterResolveWorkspaceLayer(t *testing.T) {
 
 func TestRouterResolve(t *testing.T) {
 	r := newRouter("db.bex.co")
-	db := &appv1alpha1.Database{
+	db := &sniproxy.Database{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "mydb", Namespace: "tenant-ns",
 		},
-		Spec: appv1alpha1.DatabaseSpec{
+		Spec: sniproxy.DatabaseSpec{
 			Public: true, Pooler: true,
-			ReadReplicas:           []appv1alpha1.DatabaseReadReplica{{Name: "east"}, {Name: "reader-a"}},
-			IPAllowList:            []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24"}},
+			ReadReplicas:           []sniproxy.DatabaseReadReplica{{Name: "east"}, {Name: "reader-a"}},
+			IPAllowList:            []sniproxy.IPAllowEntry{{CIDR: "203.0.113.0/24"}},
 			EnvironmentIPAllowList: []string{"203.0.113.0/28"},
 		},
 	}
@@ -244,7 +243,7 @@ func TestRouterResolve(t *testing.T) {
 	if _, ok := r.resolve("mydb.db.bex.co", netip.MustParseAddr("203.0.113.20")); ok {
 		t.Error("source outside the environment allowlist resolved")
 	}
-	db.Spec.IPAllowList = append(db.Spec.IPAllowList, appv1alpha1.IPAllowEntry{CIDR: "2001:db8::/32"})
+	db.Spec.IPAllowList = append(db.Spec.IPAllowList, sniproxy.IPAllowEntry{CIDR: "2001:db8::/32"})
 	db.Spec.EnvironmentIPAllowList = append(db.Spec.EnvironmentIPAllowList, "2001:db8:1::/48")
 	if err := r.set(db); err != nil {
 		t.Fatal(err)
@@ -293,13 +292,13 @@ func TestRouterResolve(t *testing.T) {
 		t.Error("an invalid workspace allowlist must fail source health")
 	}
 	db.Spec.WorkspaceIPAllowList = nil
-	db.Spec.IPAllowList = []appv1alpha1.IPAllowEntry{{CIDR: "broken"}}
+	db.Spec.IPAllowList = []sniproxy.IPAllowEntry{{CIDR: "broken"}}
 	if err := r.set(db); err == nil {
 		t.Error("invalid allowlist must fail source health")
 	}
-	valid := &appv1alpha1.Database{
+	valid := &sniproxy.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "valid", Namespace: "ns"},
-		Spec:       appv1alpha1.DatabaseSpec{Public: true},
+		Spec:       sniproxy.DatabaseSpec{Public: true},
 	}
 	if err := r.set(valid); err != nil {
 		t.Fatal(err)
@@ -356,12 +355,12 @@ func TestPublicAccessWithdrawalClosesDatabaseTLSRoutes(t *testing.T) {
 	}
 	defer func() { _ = proxy.Close() }()
 	router := newRouter("db.bex.co")
-	db := &appv1alpha1.Database{
+	db := &sniproxy.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "mydb", Namespace: "default"},
-		Spec: appv1alpha1.DatabaseSpec{
+		Spec: sniproxy.DatabaseSpec{
 			Public: true, Pooler: true,
-			ReadReplicas: []appv1alpha1.DatabaseReadReplica{{Name: "east"}},
-			IPAllowList:  []appv1alpha1.IPAllowEntry{{CIDR: "127.0.0.1/32"}},
+			ReadReplicas: []sniproxy.DatabaseReadReplica{{Name: "east"}},
+			IPAllowList:  []sniproxy.IPAllowEntry{{CIDR: "127.0.0.1/32"}},
 		},
 	}
 	apply := func() {
@@ -444,7 +443,7 @@ func TestPublicAccessWithdrawalClosesDatabaseTLSRoutes(t *testing.T) {
 		probe(host, false, true)
 	}
 	db.Spec.Public = true
-	db.Spec.IPAllowList = []appv1alpha1.IPAllowEntry{{CIDR: "127.0.0.1/32"}}
+	db.Spec.IPAllowList = []sniproxy.IPAllowEntry{{CIDR: "127.0.0.1/32"}}
 	apply()
 	for _, host := range hosts {
 		probe(host, true, true)
@@ -488,12 +487,12 @@ func databaseTestCertificate(t *testing.T, hosts []string) (tls.Certificate, *x5
 // one map miss instead of an O(databases) scan under the read lock.
 func TestRouterHostnameIndexIsExact(t *testing.T) {
 	r := newRouter("db.bex.co")
-	route := func(name string, pooler bool, replicas ...string) *appv1alpha1.Database {
-		spec := appv1alpha1.DatabaseSpec{Public: true, Pooler: pooler}
+	route := func(name string, pooler bool, replicas ...string) *sniproxy.Database {
+		spec := sniproxy.DatabaseSpec{Public: true, Pooler: pooler}
 		for _, rep := range replicas {
-			spec.ReadReplicas = append(spec.ReadReplicas, appv1alpha1.DatabaseReadReplica{Name: rep})
+			spec.ReadReplicas = append(spec.ReadReplicas, sniproxy.DatabaseReadReplica{Name: rep})
 		}
-		return &appv1alpha1.Database{
+		return &sniproxy.Database{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "ns-" + name},
 			Spec:       spec,
 		}
@@ -581,13 +580,13 @@ func TestRouterHostnameIndexIsExact(t *testing.T) {
 
 func TestTrustedProxySourceRoutesDatabaseAllowlist(t *testing.T) {
 	router := newRouter("db.bex.co")
-	db := &appv1alpha1.Database{
+	db := &sniproxy.Database{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "mydb", Namespace: "tenant-ns",
 		},
-		Spec: appv1alpha1.DatabaseSpec{
+		Spec: sniproxy.DatabaseSpec{
 			Public:                 true,
-			IPAllowList:            []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.9/32"}},
+			IPAllowList:            []sniproxy.IPAllowEntry{{CIDR: "203.0.113.9/32"}},
 			EnvironmentIPAllowList: []string{"203.0.113.0/24"},
 		},
 	}
@@ -623,11 +622,11 @@ func TestRouterCarriesEachRoutesCapacityFromThePlan(t *testing.T) {
 	source := netip.MustParseAddr("203.0.113.9")
 	for _, plan := range append(tiers.Postgres.IDs(), "", "unknown-plan") {
 		router := newRouter("db.bex.co")
-		db := &appv1alpha1.Database{
+		db := &sniproxy.Database{
 			ObjectMeta: metav1.ObjectMeta{Name: "mydb", Namespace: "tenant-ns"},
-			Spec: appv1alpha1.DatabaseSpec{
+			Spec: sniproxy.DatabaseSpec{
 				Public: true, Plan: plan, Pooler: true,
-				ReadReplicas: []appv1alpha1.DatabaseReadReplica{{Name: "r1"}, {Name: "r2"}},
+				ReadReplicas: []sniproxy.DatabaseReadReplica{{Name: "r1"}, {Name: "r2"}},
 			},
 		}
 		if err := router.set(db); err != nil {
@@ -695,9 +694,9 @@ func TestReadTLSRecord_FreshStart(t *testing.T) {
 
 func TestRouterResolve_EmptyDomain(t *testing.T) {
 	r := newRouter("")
-	db := &appv1alpha1.Database{
+	db := &sniproxy.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "mydb", Namespace: "ns"},
-		Spec:       appv1alpha1.DatabaseSpec{Public: true},
+		Spec:       sniproxy.DatabaseSpec{Public: true},
 	}
 	if err := r.set(db); err != nil {
 		t.Fatal(err)
@@ -745,9 +744,9 @@ func TestStalledBackendSSLReplyReleasesTheSlots(t *testing.T) {
 	})
 
 	router := newRouter("db.bex.co")
-	db := &appv1alpha1.Database{
+	db := &sniproxy.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "mydb", Namespace: "default"},
-		Spec:       appv1alpha1.DatabaseSpec{Public: true, IPAllowList: []appv1alpha1.IPAllowEntry{{CIDR: "127.0.0.1/32"}}},
+		Spec:       sniproxy.DatabaseSpec{Public: true, IPAllowList: []sniproxy.IPAllowEntry{{CIDR: "127.0.0.1/32"}}},
 	}
 	if err := router.set(db); err != nil {
 		t.Fatal(err)

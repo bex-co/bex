@@ -35,17 +35,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/bex-co/bex/lego/operator/internal/sniproxy"
-	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 func TestRouterRoutesPublicKeyValueAndPreservesAllowlist(t *testing.T) {
 	router := newRouter("kv.bex.co")
-	kv := &appv1alpha1.KeyValue{}
+	kv := &sniproxy.KeyValue{}
 	kv.Name = "kv-one"
 	kv.Namespace = "default"
 	kv.Spec.Public = true
 	kv.Status.ExternalHost = "kv-one.kv.bex.co"
-	kv.Spec.IPAllowList = []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24"}, {CIDR: "2001:db8::/32"}}
+	kv.Spec.IPAllowList = []sniproxy.IPAllowEntry{{CIDR: "203.0.113.0/24"}, {CIDR: "2001:db8::/32"}}
 	kv.Spec.EnvironmentIPAllowList = []string{"203.0.113.0/28", "2001:db8:1::/48"}
 	if err := router.set(kv); err != nil {
 		t.Fatal(err)
@@ -136,12 +135,12 @@ func TestRouterRoutesPublicKeyValueAndPreservesAllowlist(t *testing.T) {
 // the workspace layer is a third AND on the Key Value front door.
 func TestRouterWorkspaceLayerRefusesWhatServiceAndEnvironmentAllow(t *testing.T) {
 	router := newRouter("kv.bex.co")
-	kv := &appv1alpha1.KeyValue{}
+	kv := &sniproxy.KeyValue{}
 	kv.Name = "kv-ws"
 	kv.Namespace = "tea-one"
 	kv.Spec.Public = true
 	kv.Status.ExternalHost = "kv-ws.kv.bex.co"
-	kv.Spec.IPAllowList = []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24"}}
+	kv.Spec.IPAllowList = []sniproxy.IPAllowEntry{{CIDR: "203.0.113.0/24"}}
 	kv.Spec.EnvironmentIPAllowList = []string{"203.0.113.0/28"}
 	source := netip.MustParseAddr("203.0.113.9")
 	for _, tc := range []struct {
@@ -175,7 +174,7 @@ func TestRouterWorkspaceLayerRefusesWhatServiceAndEnvironmentAllow(t *testing.T)
 
 func TestRouterPrivateAndInvalidCIDRFailClosed(t *testing.T) {
 	router := newRouter("kv.bex.co")
-	pending := &appv1alpha1.KeyValue{}
+	pending := &sniproxy.KeyValue{}
 	pending.Name = "pending"
 	pending.Spec.Public = true
 	if err := router.set(pending); err != nil {
@@ -184,7 +183,7 @@ func TestRouterPrivateAndInvalidCIDRFailClosed(t *testing.T) {
 	if _, ok := router.resolve("pending.kv.bex.co", netip.MustParseAddr("1.1.1.1")); ok {
 		t.Fatal("public spec without an operator-published external host gained a route")
 	}
-	private := &appv1alpha1.KeyValue{}
+	private := &sniproxy.KeyValue{}
 	private.Name = "private"
 	if err := router.set(private); err != nil {
 		t.Fatal(err)
@@ -194,11 +193,11 @@ func TestRouterPrivateAndInvalidCIDRFailClosed(t *testing.T) {
 	}
 	private.Spec.Public = true
 	private.Status.ExternalHost = "private.kv.bex.co"
-	private.Spec.IPAllowList = []appv1alpha1.IPAllowEntry{{CIDR: "broken"}}
+	private.Spec.IPAllowList = []sniproxy.IPAllowEntry{{CIDR: "broken"}}
 	if err := router.set(private); err == nil {
 		t.Fatal("invalid allowlist must make the source unhealthy")
 	}
-	valid := &appv1alpha1.KeyValue{}
+	valid := &sniproxy.KeyValue{}
 	valid.Name = "valid"
 	valid.Namespace = "default"
 	valid.Spec.Public = true
@@ -323,7 +322,7 @@ func TestPublicProxyPreservesEndToEndTLSAndMetersOnlyBackendWrites(t *testing.T)
 	// Use the same verified certificate and source after an explicit clear.
 	// A stale status hostname cannot keep a new TLS handshake admitted.
 	t.Run("cleared external access", func(t *testing.T) {
-		kv := &appv1alpha1.KeyValue{}
+		kv := &sniproxy.KeyValue{}
 		kv.Name = "kv-one"
 		kv.Status.ExternalHost = host
 		if err := router.set(kv); err != nil {

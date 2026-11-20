@@ -35,7 +35,6 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/kvinternalauth"
 	"github.com/bex-co/bex/lego/operator/internal/sniproxy"
 	"github.com/bex-co/bex/lego/types/tiers"
-	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // w6/m457: kv-sni-proxy held every store's external clients to 64 and closed
@@ -126,7 +125,7 @@ func TestAStoreAtItsLimitAnswersTheNextExternalClientWithValkeysRefusal(t *testi
 	}()
 
 	router := newRouter("kv.bex.co")
-	kv := &appv1alpha1.KeyValue{}
+	kv := &sniproxy.KeyValue{}
 	kv.Name, kv.Namespace = "red-one", "tea-one"
 	kv.Spec.Public, kv.Spec.Plan = true, "starter"
 	kv.Status.ExternalHost = host

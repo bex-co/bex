@@ -19,8 +19,6 @@ package sniproxy
 import (
 	"fmt"
 	"net/netip"
-
-	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // AllowLayers are the parsed inbound-IP layers of one public managed
@@ -56,7 +54,7 @@ func (l AllowLayers) Admits(source netip.Addr) bool {
 // refuse every one of them (w8/140). A rule that masks to 0.0.0.0/0 therefore
 // also admits ::/0 here, at enforcement only: the saved rule and every
 // readback stay as authored. Narrower IPv4 rules are not widened.
-func ParseAllowList(entries []appv1alpha1.IPAllowEntry, environment, workspace []string) (AllowLayers, error) {
+func ParseAllowList(entries []IPAllowEntry, environment, workspace []string) (AllowLayers, error) {
 	own := make([]string, len(entries))
 	for i, entry := range entries {
 		own[i] = entry.CIDR

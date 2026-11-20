@@ -20,14 +20,12 @@ import (
 	"net/netip"
 	"strings"
 	"testing"
-
-	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 func TestParseAllowListMasksAndSeparatesLayers(t *testing.T) {
 	// A host-bit-carrying CIDR must come back masked, or Contains would miss.
 	layers, err := ParseAllowList(
-		[]appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.5/24"}},
+		[]IPAllowEntry{{CIDR: "203.0.113.5/24"}},
 		[]string{"10.1.2.3/8"},
 		[]string{"192.168.7.9/16"},
 	)
@@ -48,12 +46,12 @@ func TestParseAllowListMasksAndSeparatesLayers(t *testing.T) {
 func TestParseAllowListRejectsMalformedCIDR(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
-		entries []appv1alpha1.IPAllowEntry
+		entries []IPAllowEntry
 		env     []string
 		ws      []string
 		want    string
 	}{
-		{"resource layer", []appv1alpha1.IPAllowEntry{{CIDR: "not-a-cidr"}}, nil, nil, "invalid allowlist CIDR"},
+		{"resource layer", []IPAllowEntry{{CIDR: "not-a-cidr"}}, nil, nil, "invalid allowlist CIDR"},
 		{"environment layer", nil, []string{"10.0.0.0/99"}, nil, "invalid environment allowlist CIDR"},
 		{"workspace layer", nil, nil, []string{"10.0.0.0/99"}, "invalid workspace allowlist CIDR"},
 	} {
@@ -81,7 +79,7 @@ func TestParseAllowListRejectsMalformedCIDR(t *testing.T) {
 // absent workspace layer changes nothing; the deny-all placeholder an empty
 // workspace rule list projects refuses everyone.
 func TestWorkspaceLayerIsAThirdAND(t *testing.T) {
-	own := []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24"}}
+	own := []IPAllowEntry{{CIDR: "203.0.113.0/24"}}
 	env := []string{"203.0.113.0/25"}
 	inside := netip.MustParseAddr("203.0.113.9")
 	for _, tc := range []struct {
@@ -148,18 +146,18 @@ func TestAllowedBy(t *testing.T) {
 func TestRenderAnyIPRuleAdmitsIPv6(t *testing.T) {
 	v6 := netip.MustParseAddr("2a01:4f8:c01e:3d1f::1")
 	v4 := netip.MustParseAddr("49.12.20.236")
-	any4 := []appv1alpha1.IPAllowEntry{{CIDR: "0.0.0.0/0", Description: "everywhere"}}
-	narrow := []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24"}}
+	any4 := []IPAllowEntry{{CIDR: "0.0.0.0/0"}}
+	narrow := []IPAllowEntry{{CIDR: "203.0.113.0/24"}}
 	for _, tc := range []struct {
 		name    string
-		entries []appv1alpha1.IPAllowEntry
+		entries []IPAllowEntry
 		env     []string
 		source  netip.Addr
 		want    bool
 	}{
 		{"resource layer 0.0.0.0/0 admits IPv6", any4, nil, v6, true},
 		{"resource layer 0.0.0.0/0 still admits IPv4", any4, nil, v4, true},
-		{"a host-bit spelling of 0.0.0.0/0 admits IPv6", []appv1alpha1.IPAllowEntry{{CIDR: "10.0.0.1/0"}}, nil, v6, true},
+		{"a host-bit spelling of 0.0.0.0/0 admits IPv6", []IPAllowEntry{{CIDR: "10.0.0.1/0"}}, nil, v6, true},
 		{"environment layer 0.0.0.0/0 admits IPv6", nil, []string{"0.0.0.0/0"}, v6, true},
 		{"both layers 0.0.0.0/0 admit IPv6", any4, []string{"0.0.0.0/0"}, v6, true},
 		{"a narrow IPv4 rule still refuses IPv6", narrow, nil, v6, false},

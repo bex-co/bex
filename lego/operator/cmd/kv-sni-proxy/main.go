@@ -46,7 +46,6 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/sniproxy"
 	"github.com/bex-co/bex/lego/types/env"
 	"github.com/bex-co/bex/lego/types/tiers"
-	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 const (
@@ -79,7 +78,9 @@ const (
 
 var scheme = runtime.NewScheme()
 
-func init() { utilruntime.Must(appv1alpha1.AddToScheme(scheme)) }
+// The scheme holds sniproxy's routing views, never lego/types/v1alpha1, so a
+// CRD edit leaves this binary byte-identical and rolls no pod (w6/150).
+func init() { utilruntime.Must(sniproxy.AddToScheme(scheme)) }
 
 type kvRoute struct {
 	ResourceID string
@@ -102,7 +103,7 @@ func newRouter(domain string) *kvRouter {
 	return &kvRouter{domain: domain, table: map[string]kvRoute{}, invalid: map[string]bool{}}
 }
 
-func (r *kvRouter) set(kv *appv1alpha1.KeyValue) error {
+func (r *kvRouter) set(kv *sniproxy.KeyValue) error {
 	expectedHost := kv.Name + "." + r.domain
 	if !kv.Spec.Public || r.domain == "" || !strings.EqualFold(kv.Status.ExternalHost, expectedHost) {
 		r.delete(kv.Name)
@@ -171,7 +172,7 @@ type kvWatcher struct {
 }
 
 func (w *kvWatcher) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-	var kv appv1alpha1.KeyValue
+	var kv sniproxy.KeyValue
 	if err := w.Get(ctx, req.NamespacedName, &kv); err != nil {
 		if apierrors.IsNotFound(err) {
 			w.router.delete(req.Name)
@@ -228,7 +229,7 @@ func main() {
 		logger.Error(err, "create manager")
 		os.Exit(1)
 	}
-	if err := ctrl.NewControllerManagedBy(mgr).For(&appv1alpha1.KeyValue{}).
+	if err := ctrl.NewControllerManagedBy(mgr).For(&sniproxy.KeyValue{}).
 		Complete(&kvWatcher{Client: mgr.GetClient(), router: router, meter: meter}); err != nil {
 		logger.Error(err, "set up KeyValue watcher")
 		os.Exit(1)
