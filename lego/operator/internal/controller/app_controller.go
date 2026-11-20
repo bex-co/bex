@@ -4307,6 +4307,16 @@ func (r *AppReconciler) settleFailedRolloutMessage(ctx context.Context, app *app
 			res, _ := owedReleaseRequeue(app)
 			return res, nil
 		}
+		// The verdict is stored before the served template goes back. A restore
+		// whose verdict write is lost leaves the Deployment on the served release
+		// with nothing to hold it there: the next pass rolls the failed release
+		// again on a fresh progress deadline, its new instance runs beside the
+		// served one, and the deploy closes only at bex-api's 18-minute gate
+		// (w8/352). Unwritten, the Deployment keeps its deadline verdict and the
+		// next pass settles again.
+		if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
+			return ctrl.Result{}, err
+		}
 		restored, err := r.restoreServedTemplate(ctx, app, dep)
 		if err != nil {
 			return ctrl.Result{}, err

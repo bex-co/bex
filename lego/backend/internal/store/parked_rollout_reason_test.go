@@ -147,6 +147,64 @@ func TestUpdateFailedCloseReasonOrder(t *testing.T) {
 	}
 }
 
+// w8/352: a redeploy whose health path never answers was closed by this gate,
+// not by the operator's verdict, while Ready still read the in-flight probe
+// stall. The row and its deploy_ended said "so the rollout is waiting" on a
+// deploy that had failed.
+func TestGateCloseOfAnUnsettledProbeStallReadsAsFailed(t *testing.T) {
+	ctx := context.Background()
+	st := newMemStore()
+	tenant, err := st.CreateTenant(ctx, "gate", PlanHobby)
+	if err != nil {
+		t.Fatal(err)
+	}
+	row, err := st.CreateApp(ctx, App{TenantID: tenant.ID, Name: "web", Image: "docker.io/library/python:3.12-alpine", Tier: "free"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	open, err := st.CreateDeploy(ctx, row.ID, "api", row.Image, 7, CommitInfo{}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	probe := func(phrase string) string {
+		return "the container is running but its startup health check " + phrase +
+			": GET /hang on port 10000. Check that the path returns a 2xx or 3xx status on the service's own port."
+	}
+	stall := probe(appv1alpha1.ProbeStallWaiting)
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Generation: 7},
+		Status: appv1alpha1.AppStatus{
+			Phase: appv1alpha1.PhaseDeploying, Image: row.Image, ObservedGeneration: 7,
+			ReleaseGeneration: 7, ActiveRevision: "rev-6",
+			Conditions: []metav1.Condition{{
+				Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
+				Reason: appv1alpha1.ReasonHealthCheckFailing, Message: stall, ObservedGeneration: 7,
+			}},
+		},
+	}
+	rec := NewReconciler(nil, st)
+	reread := func() Deploy {
+		t.Helper()
+		d, err := st.GetDeploy(ctx, row.ID, open.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return d
+	}
+	rec.recordDeploy(ctx, DesiredApp{App: row}, reread(), app)
+	if got := reread(); got.Status != DeployUpdateInProgress || got.StallReason != stall {
+		t.Fatalf("rolling row = %s with stall %q, want update_in_progress naming the probe", got.Status, got.StallReason)
+	}
+
+	// Nothing settles it: the gate closes the row on the same Ready condition.
+	rec.DeployGateTimeout = -1
+	rec.recordDeploy(ctx, DesiredApp{App: row}, reread(), app)
+	got := reread()
+	if want := probe(appv1alpha1.ProbeStallFailed); got.Status != DeployUpdateFailed || got.FailureReason != want {
+		t.Fatalf("closed %s with %q, want update_failed with %q", got.Status, got.FailureReason, want)
+	}
+}
+
 // w4/m171: a USER suspend (spec.suspended) ends the rollout it interrupts. The
 // row closes canceled on the next pass, naming the suspend — not "in progress"
 // for 18 minutes and then update_failed with a health-gate line blaming code

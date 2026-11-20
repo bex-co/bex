@@ -1220,14 +1220,16 @@ func deployCloseFailureReason(cur *appv1alpha1.App, open Deploy, status string, 
 			}
 			return msg, ""
 		}
+		// The gate closes a rollout the operator never settled, so Ready still
+		// carries the in-flight stall text; it is restated as the failure it now
+		// is, as the operator's own verdict would read (w8/352).
 		if matchesObservedRelease {
 			if msg, code, ok := currentFailureReason(cur); ok {
-				return msg, code
+				return appv1alpha1.TerminalStallText(msg), code
 			}
 		}
 		// A park reads Ready=AutoHibernated, which names nothing; the row's last
-		// stall diagnosis still does (w6/m147), restated as the outcome it now is
-		// (w8/219): the in-flight wording says the rollout is still waiting.
+		// stall diagnosis still does (w6/m147), restated the same way (w8/219).
 		if open.StallReason != "" {
 			return appv1alpha1.TerminalStallText(open.StallReason), ""
 		}
