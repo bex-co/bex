@@ -148,8 +148,10 @@ check "busy: the CPU meter read every running interval" "$settled" "intervals: $
 metered="$(jq -r '.sandbox_cpu_seconds // 0' <<<"$busy_usage")"
 load="$(awk -v a="$c0" -v b="$c1" 'BEGIN { print b - a }')"
 # The meter reads the whole interval (the load plus a little idle and the exec
-# overhead): never less than the pod counter moved during the load, less the
-# scrape edges, and never more than the counter's total.
+# overhead) from the counter's scraped samples (w22/024): never less than the
+# pod counter moved during the load, less the scrape edges, and never more than
+# the counter's total. The upper bound's slack covers the idle seconds between
+# reading the total here and the pause.
 check "busy: metered CPU matches the pod-level counter" \
   "$(within "$metered" "$(awk -v l="$load" 'BEGIN { print l * 0.95 - 1 }')" "$(awk -v t="$c1" 'BEGIN { print t * 1.02 + 2 }')")" \
   "metered $metered, pod counter moved $load during the load and totals $c1"

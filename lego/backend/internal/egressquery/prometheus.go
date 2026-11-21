@@ -46,6 +46,20 @@ func Instant(ctx context.Context, hc *http.Client, base, query string, at time.T
 // to the raw vector samples, rejecting every shape that is not a populated
 // vector result.
 func fetchInstantVector(ctx context.Context, hc *http.Client, base, query string, at time.Time) ([]instantSample, error) {
+	raw, err := fetchResult(ctx, hc, base, query, at, "vector")
+	if err != nil {
+		return nil, err
+	}
+	var samples []instantSample
+	if err := json.Unmarshal(raw, &samples); err != nil {
+		return nil, fmt.Errorf("decode prometheus vector result: %w", err)
+	}
+	return samples, nil
+}
+
+// fetchResult evaluates one query at one instant and returns the result of
+// the wanted type, still encoded.
+func fetchResult(ctx context.Context, hc *http.Client, base, query string, at time.Time, resultType string) (json.RawMessage, error) {
 	if hc == nil {
 		hc = core.UpstreamClient
 	}
@@ -75,17 +89,79 @@ func fetchInstantVector(ctx context.Context, hc *http.Client, base, query string
 	if result.Data == nil {
 		return nil, fmt.Errorf("prometheus response has no data")
 	}
-	if result.Data.ResultType != "vector" {
-		return nil, fmt.Errorf("prometheus result type %q, want vector", result.Data.ResultType)
+	if result.Data.ResultType != resultType {
+		return nil, fmt.Errorf("prometheus result type %q, want %s", result.Data.ResultType, resultType)
 	}
 	if len(result.Data.Result) == 0 || bytes.Equal(bytes.TrimSpace(result.Data.Result), []byte("null")) {
-		return nil, fmt.Errorf("prometheus vector result is missing")
+		return nil, fmt.Errorf("prometheus %s result is missing", resultType)
 	}
-	var samples []instantSample
-	if err := json.Unmarshal(result.Data.Result, &samples); err != nil {
-		return nil, fmt.Errorf("decode prometheus vector result: %w", err)
+	return result.Data.Result, nil
+}
+
+// Sample is one scraped value of a series, at its scrape time in Unix seconds.
+type Sample struct {
+	Time, Value float64
+}
+
+// RawSamples evaluates a range selector (`metric{...}[300s]`) at one instant
+// and returns every matching series' scraped samples, oldest first: the values
+// as Prometheus stored them, with nothing interpolated or extrapolated. A
+// selector that matches nothing is an empty result, not an error. A sample
+// that is malformed, not finite or negative fails the read, as in Instant.
+func RawSamples(ctx context.Context, hc *http.Client, base, selector string, at time.Time) ([][]Sample, error) {
+	raw, err := fetchResult(ctx, hc, base, selector, at, "matrix")
+	if err != nil {
+		return nil, err
 	}
-	return samples, nil
+	var matrix []struct {
+		Values [][]any `json:"values"`
+	}
+	if err := json.Unmarshal(raw, &matrix); err != nil {
+		return nil, fmt.Errorf("decode prometheus matrix result: %w", err)
+	}
+	out := make([][]Sample, 0, len(matrix))
+	for _, series := range matrix {
+		samples := make([]Sample, 0, len(series.Values))
+		for _, pair := range series.Values {
+			sample, err := parseSample(pair)
+			if err != nil {
+				return nil, err
+			}
+			if n := len(samples); n > 0 && sample.Time <= samples[n-1].Time {
+				return nil, fmt.Errorf("prometheus matrix samples are not in time order")
+			}
+			samples = append(samples, sample)
+		}
+		out = append(out, samples)
+	}
+	return out, nil
+}
+
+// parseSample reads one [timestamp, "value"] pair, refusing any that is
+// malformed, not finite, or negative.
+func parseSample(pair []any) (Sample, error) {
+	if len(pair) != 2 {
+		return Sample{}, fmt.Errorf("prometheus sample has %d value fields, want 2", len(pair))
+	}
+	timestamp, ok := pair[0].(float64)
+	if !ok || math.IsNaN(timestamp) || math.IsInf(timestamp, 0) {
+		return Sample{}, fmt.Errorf("prometheus sample timestamp is %T, want finite number", pair[0])
+	}
+	value, ok := pair[1].(string)
+	if !ok {
+		return Sample{}, fmt.Errorf("prometheus sample value is %T, want string", pair[1])
+	}
+	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return Sample{}, fmt.Errorf("parse prometheus sample %q: %w", value, err)
+	}
+	if math.IsNaN(parsed) || math.IsInf(parsed, 0) {
+		return Sample{}, fmt.Errorf("prometheus sample %q is not finite", value)
+	}
+	if parsed < 0 {
+		return Sample{}, fmt.Errorf("prometheus sample %q is negative", value)
+	}
+	return Sample{Time: timestamp, Value: parsed}, nil
 }
 
 // sumSamples totals the vector, refusing any sample that is malformed, not
@@ -94,28 +170,11 @@ func fetchInstantVector(ctx context.Context, hc *http.Client, base, query string
 func sumSamples(samples []instantSample) (float64, error) {
 	var total float64
 	for _, item := range samples {
-		if len(item.Value) != 2 {
-			return 0, fmt.Errorf("prometheus vector sample has %d value fields, want 2", len(item.Value))
-		}
-		timestamp, ok := item.Value[0].(float64)
-		if !ok || math.IsNaN(timestamp) || math.IsInf(timestamp, 0) {
-			return 0, fmt.Errorf("prometheus vector sample timestamp is %T, want finite number", item.Value[0])
-		}
-		value, ok := item.Value[1].(string)
-		if !ok {
-			return 0, fmt.Errorf("prometheus vector sample value is %T, want string", item.Value[1])
-		}
-		parsed, err := strconv.ParseFloat(value, 64)
+		sample, err := parseSample(item.Value)
 		if err != nil {
-			return 0, fmt.Errorf("parse prometheus vector sample %q: %w", value, err)
+			return 0, err
 		}
-		if math.IsNaN(parsed) || math.IsInf(parsed, 0) {
-			return 0, fmt.Errorf("prometheus vector sample %q is not finite", value)
-		}
-		if parsed < 0 {
-			return 0, fmt.Errorf("prometheus vector sample %q is negative", value)
-		}
-		total += parsed
+		total += sample.Value
 		if math.IsInf(total, 0) {
 			return 0, fmt.Errorf("prometheus vector sum overflowed")
 		}

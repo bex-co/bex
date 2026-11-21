@@ -73,11 +73,12 @@ const (
 	cpuMaxCores = 256
 )
 
-// CPUReader reads the CPU a pod used over a window that has ended. sampled is
-// false when the source holds no sample of the pod in the window: there is no
-// reading, which is not the same as zero CPU.
+// CPUReader reads the CPU a pod used over a window that has ended. started is
+// when the window's running interval began: a window that starts soon after it
+// is reading a new pod, whose counter may be read from zero. sampled is false when the source holds no sample of the
+// pod in the window: there is no reading, which is not the same as zero CPU.
 type CPUReader interface {
-	PodCPUSeconds(ctx context.Context, namespace, pod string, from, to time.Time) (seconds float64, sampled bool, err error)
+	PodCPUSeconds(ctx context.Context, namespace, pod string, started, from, to time.Time) (seconds float64, sampled bool, err error)
 }
 
 // PrometheusCPU reads SandboxPodCPUMetric through the Prometheus HTTP API.
@@ -90,32 +91,61 @@ type PrometheusCPU struct {
 // PromQL string matcher.
 var kubeNameRE = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
 
-// PodCPUSeconds is the counter's increase over (from, to], both taken to the
-// whole second so that consecutive windows meet exactly. increase() handles a
-// counter that restarts (a recreated pod is a new series, counted from its
-// first sample). One sample in the window is a reading of no measurable
-// increase; none is no reading.
-func (p PrometheusCPU) PodCPUSeconds(ctx context.Context, namespace, pod string, from, to time.Time) (float64, bool, error) {
+// cpuBaselineLookback is how far before a window the read looks for the
+// counter's value at the window's start: twenty 15 s scrapes.
+const cpuBaselineLookback = 5 * time.Minute
+
+// PodCPUSeconds is how far the pod's counter moved between its scraped samples
+// over (from, to], both taken to the whole second so that consecutive windows
+// meet exactly: its last sample in the window minus its last sample at or
+// before the window's start. Nothing is extrapolated to the window's edges
+// (w22/024): increase() fills the time after the last scrape at the window's
+// average rate, which billed a sandbox that went idle before it stopped for
+// more CPU than its pod's counter ever showed. Consecutive windows therefore
+// add up to the pod's last scraped value at most, and what the pod used after
+// its last scrape is not read.
+//
+// A series with no sample in the cpuBaselineLookback before the window is
+// counted from zero only when the window starts within that lookback of the
+// interval's start: the pod is new, and its cgroup counter started at zero
+// with it. In a later window it is counted from its first sample in the
+// window: a scrape gap, a relabelled series or a Prometheus that lost its
+// history must never bill a counter's whole past again. A counter that restarts counts from zero from the restart.
+// A recreated pod is a second series, read the same way. One sample of a
+// series with nothing before it is a reading of no measurable increase; no
+// sample in the window is no reading.
+func (p PrometheusCPU) PodCPUSeconds(ctx context.Context, namespace, pod string, started, from, to time.Time) (float64, bool, error) {
 	if !kubeNameRE.MatchString(namespace) || !kubeNameRE.MatchString(pod) {
 		return 0, false, fmt.Errorf("invalid sandbox pod identity")
 	}
-	seconds := to.Unix() - from.Unix()
-	if seconds <= 0 {
+	start, end := float64(from.Unix()), float64(to.Unix())
+	if end <= start {
 		return 0, true, nil
 	}
-	series := fmt.Sprintf(`%s{namespace=%q,pod=%q}[%ds]`, SandboxPodCPUMetric, namespace, pod, seconds)
-	samples, err := egressquery.Instant(ctx, p.HTTP, p.Base, "sum(count_over_time("+series+"))", to)
+	selector := fmt.Sprintf(`%s{namespace=%q,pod=%q}[%ds]`, SandboxPodCPUMetric, namespace, pod,
+		int64(end-start)+int64(cpuBaselineLookback/time.Second))
+	series, err := egressquery.RawSamples(ctx, p.HTTP, p.Base, selector, to)
 	if err != nil {
 		return 0, false, err
 	}
-	if samples < 2 {
-		return 0, samples >= 1, nil
+	newPod := from.Sub(started) <= cpuBaselineLookback
+	var used float64
+	sampled := false
+	for _, samples := range series {
+		last, known := 0.0, newPod
+		for _, s := range samples {
+			if s.Time > start {
+				sampled = true
+				if known && s.Value >= last {
+					used += s.Value - last
+				} else if known {
+					used += s.Value // the counter restarted
+				}
+			}
+			last, known = s.Value, true
+		}
 	}
-	used, err := egressquery.Instant(ctx, p.HTTP, p.Base, "sum(increase("+series+"))", to)
-	if err != nil {
-		return 0, false, err
-	}
-	return used, true, nil
+	return used, sampled, nil
 }
 
 // settleCPU reads the windows that are due and reports the meter's health. It
@@ -167,7 +197,7 @@ func (m *Meter) readCPUWindows(ctx context.Context) {
 // readCPUWindow reads one window and either adds its CPU-seconds or defers it.
 // It returns an error only for a failed read or write, which the caller counts.
 func (m *Meter) readCPUWindow(ctx context.Context, w store.SandboxCPUWindow, now time.Time) error {
-	seconds, sampled, err := m.CPU.PodCPUSeconds(ctx, store.SandboxNamespace(w.WorkspaceID), w.PodName, w.From, w.To)
+	seconds, sampled, err := m.CPU.PodCPUSeconds(ctx, store.SandboxNamespace(w.WorkspaceID), w.PodName, w.StartedAt, w.From, w.To)
 	length := w.To.Sub(w.From)
 	if err == nil && sampled && seconds > length.Seconds()*cpuMaxCores {
 		err = fmt.Errorf("implausible reading of %.0f CPU-seconds over %s", seconds, length)
