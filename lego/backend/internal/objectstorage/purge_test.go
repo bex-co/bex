@@ -18,6 +18,9 @@ package objectstorage_test
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -216,6 +219,148 @@ func TestAPresignedPutThatLandsAfterThePurgeIsRemovedByALaterSweep(t *testing.T)
 	}
 	if b, _, u := f.rows(); b != 0 || u != 0 {
 		t.Fatalf("after the hold %d bucket rows and %d usage rows remain, want none", b, u)
+	}
+}
+
+// An upload slower than the hold lands after the rows that named the prefix are
+// gone. The purge left its own record of the workspace, so a later sweep still
+// looks under the prefix and removes it.
+func TestAnUploadThatLandsAfterTheHoldIsRemovedByALaterSweep(t *testing.T) {
+	f := newPurgeFixture(t, "purge-after-hold")
+	ctx := context.Background()
+	body := []byte("very late bytes")
+	put, err := f.Svc.MintPut(ctx, f.WS, objectstorage.Frankfurt, "late/slow", int64(len(body)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.PG.DeleteTenant(ctx, f.WS); err != nil {
+		t.Fatal(err)
+	}
+	deleted := f.retiredAt()
+	if err := f.purger().PurgeWorkspace(ctx, f.WS); err != nil {
+		t.Fatal(err)
+	}
+	f.sweepAt(deleted.Add(objectstorage.PurgeHold + time.Minute))
+	if b, _, u := f.rows(); b != 0 || u != 0 {
+		t.Fatalf("setup: after the hold %d bucket rows and %d usage rows remain, want none", b, u)
+	}
+
+	upload(t, put.URL, body)
+	if own, _ := f.objectsLeft(); own != 1 {
+		t.Fatalf("setup: the upload left %d objects under the purged workspace, want 1", own)
+	}
+	f.sweepAt(deleted.Add(objectstorage.PurgeHold + time.Hour))
+	own, others := f.objectsLeft()
+	if own != 0 {
+		t.Fatalf("a sweep after the hold left %d objects that arrived once the rows were gone", own)
+	}
+	if others != 1 {
+		t.Fatalf("another workspace has %d objects left, want its 1 untouched", others)
+	}
+	if !f.logged("removed 1 objects that arrived after its purge") {
+		t.Fatal("the sweep removed the late object without logging it")
+	}
+}
+
+// The look under a purged prefix trusts only the purge's own record. A live
+// workspace whose rows are missing (every bucket deleted, never observed) and a
+// prefix no row names at all (a workspace being created, or one another
+// database knows) both keep their objects, even when the record is there by
+// mistake for the live one.
+func TestTheLookUnderPurgedPrefixesLeavesLiveAndUnrecordedOnesAlone(t *testing.T) {
+	e := newSweepEnv(t, "purge-not-recorded")
+	ctx := context.Background()
+	liveKey := e.putAt(e.WS, ids.New(ids.ObjectBucket), objectstorage.Oregon, "kept", 3, time.Minute)
+	if _, err := e.Pool.Exec(ctx, `INSERT INTO object_storage_purged_workspaces (workspace_id, purged_at) VALUES ($1, now())`, e.WS); err != nil {
+		t.Fatal(err)
+	}
+	unknown := ids.New(ids.Workspace)
+	unknownKey := e.putAt(unknown, ids.New(ids.ObjectBucket), objectstorage.Frankfurt, "kept", 3, time.Minute)
+	e.scoped[unknown] = true // the store, not the test's scope, is what leaves it alone
+	t.Cleanup(func() {
+		_, _ = e.Pool.Exec(context.Background(), `DELETE FROM object_storage_purged_workspaces WHERE workspace_id = $1`, unknown)
+	})
+
+	for range 2 {
+		if err := e.Sweeper.Pass(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, ok := e.Fakes[objectstorage.Oregon].Get(objectstorage.Oregon.Bucket(), liveKey); !ok {
+		t.Fatal("the sweep deleted an object of a live workspace that has no rows")
+	}
+	if _, ok := e.Fakes[objectstorage.Frankfurt].Get(objectstorage.Frankfurt.Bucket(), unknownKey); !ok {
+		t.Fatal("the sweep deleted an object under a prefix no row names")
+	}
+	// Neither prefix was even listed: no row of the sweep's names either one.
+	for _, region := range objectstorage.Regions {
+		for _, r := range e.Fakes[region].Requests() {
+			if p := r.Query.Get("prefix"); r.Method == http.MethodGet && (strings.HasPrefix(p, e.WS+"/") || strings.HasPrefix(p, unknown+"/")) {
+				t.Fatalf("the sweep listed %s in %s", p, region)
+			}
+		}
+	}
+}
+
+// One pass looks under at most PurgedChecks purged prefixes in each region, and
+// the next pass starts with the ones it did not reach.
+func TestTheLookUnderPurgedPrefixesIsBoundedPerPassAndResumes(t *testing.T) {
+	e := newSweepEnv(t, "purge-bounded")
+	e.Sweeper.PurgedChecks = 2
+	ctx := context.Background()
+	purged := map[string]bool{}
+	for range 3 {
+		ws := ids.New(ids.Workspace)
+		purged[ws] = true
+		e.scoped[ws] = true
+		if _, err := e.Pool.Exec(ctx, `INSERT INTO object_storage_purged_workspaces (workspace_id, purged_at) VALUES ($1, now())`, ws); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			_, _ = e.Pool.Exec(context.Background(), `DELETE FROM object_storage_purged_workspaces WHERE workspace_id = $1`, ws)
+		})
+		for i := range 3 {
+			e.putAt(ws, ids.New(ids.ObjectBucket), objectstorage.Oregon, fmt.Sprintf("late/%d", i), 4, time.Minute)
+		}
+	}
+	left := func() (prefixes int) {
+		for ws := range purged {
+			if len(e.Fakes[objectstorage.Oregon].Keys(objectstorage.Oregon.Bucket(), ws+"/")) > 0 {
+				prefixes++
+			}
+		}
+		return prefixes
+	}
+	// looked counts the purged prefixes each region was listed under.
+	looked := func() map[objectstorage.Region]int {
+		out := map[objectstorage.Region]int{}
+		for _, region := range objectstorage.Regions {
+			seen := map[string]bool{}
+			for _, r := range e.Fakes[region].Requests() {
+				if ws, _, ok := strings.Cut(r.Query.Get("prefix"), "/"); ok && purged[ws] && !seen[ws] {
+					seen[ws] = true
+					out[region]++
+				}
+			}
+		}
+		return out
+	}
+
+	if err := e.Sweeper.Pass(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if got := left(); got != 1 {
+		t.Fatalf("after one pass with PurgedChecks 2, %d of the 3 purged prefixes still hold objects, want 1", got)
+	}
+	if got := looked(); got[objectstorage.Oregon] != 2 || got[objectstorage.Frankfurt] != 2 {
+		t.Fatalf("one pass listed %v purged prefixes, want 2 in each region", got)
+	}
+	e.Now = e.Now.Add(time.Hour)
+	if err := e.Sweeper.Pass(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if got := left(); got != 0 {
+		t.Fatalf("the next pass left %d purged prefixes holding objects, want the one the first did not reach emptied", got)
 	}
 }
 

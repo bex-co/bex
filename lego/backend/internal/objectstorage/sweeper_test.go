@@ -60,6 +60,19 @@ func (r scopedRepo) ListObjectStorageWorkspaces(ctx context.Context) ([]store.Ob
 	return out, err
 }
 
+// ListPurgedObjectStorageWorkspaces keeps the store's order and limit over the
+// test's own workspaces.
+func (r scopedRepo) ListPurgedObjectStorageWorkspaces(ctx context.Context, limit int) ([]string, error) {
+	all, err := r.SweepRepository.ListPurgedObjectStorageWorkspaces(ctx, 1_000_000)
+	var out []string
+	for _, ws := range all {
+		if r.only[ws] && len(out) < limit {
+			out = append(out, ws)
+		}
+	}
+	return out, err
+}
+
 // sweepEnv is a real store and a fake Wasabi per region, a workspace, and a
 // sweeper whose clock the test sets.
 type sweepEnv struct {
@@ -106,6 +119,7 @@ func newSweepEnv(t *testing.T, name string, wrap ...func(objectstorage.Region, o
 		_, _ = pool.Exec(bg, `DELETE FROM object_storage_usage WHERE workspace_id=$1`, tenant.ID)
 		_, _ = pool.Exec(bg, `DELETE FROM object_multipart_uploads WHERE workspace_id=$1`, tenant.ID)
 		_, _ = pool.Exec(bg, `DELETE FROM object_buckets WHERE workspace_id=$1`, tenant.ID)
+		_, _ = pool.Exec(bg, `DELETE FROM object_storage_purged_workspaces WHERE workspace_id=$1`, tenant.ID)
 		_, _ = pool.Exec(bg, `DELETE FROM tenants WHERE id=$1`, tenant.ID)
 	})
 	stores := map[objectstorage.Region]objectstorage.Store{}

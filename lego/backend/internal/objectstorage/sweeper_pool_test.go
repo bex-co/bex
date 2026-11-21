@@ -109,6 +109,12 @@ func (r *poolRepo) MarkObjectStoragePurgeAttempt(context.Context, string, time.T
 	return nil
 }
 func (r *poolRepo) FinishObjectStoragePurge(context.Context, string, time.Time) error { return nil }
+func (r *poolRepo) ListPurgedObjectStorageWorkspaces(context.Context, int) ([]string, error) {
+	return nil, nil
+}
+func (r *poolRepo) MarkPurgedObjectStorageWorkspaceChecked(context.Context, string, time.Time) error {
+	return nil
+}
 
 // listGate stands in for one region's Wasabi. A listing answers one object of
 // the workspace once hold lets it; hold nil answers at once. The embedded Store

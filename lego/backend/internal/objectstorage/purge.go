@@ -104,14 +104,29 @@ func purgeWorkspace(ctx context.Context, svc *Service, repo PurgeRepository, wor
 	if err := repo.MarkObjectStoragePurgeAttempt(ctx, workspaceID, now); err != nil {
 		return 0, fmt.Errorf("stamp purge attempt: %w", err)
 	}
-	var errs []error
 	// The parts of an unfinished upload are in no listing of the prefix: abort them first,
 	// so none can complete into it after it is emptied.
-	if err := svc.abortWorkspaceUploads(ctx, workspaceID); err != nil {
-		errs = append(errs, fmt.Errorf("abort multipart uploads: %w", err))
+	abortErr := svc.abortWorkspaceUploads(ctx, workspaceID)
+	if abortErr != nil {
+		abortErr = fmt.Errorf("abort multipart uploads: %w", abortErr)
 	}
+	removed, err = svc.deleteWorkspacePrefix(ctx, workspaceID)
+	if err := errors.Join(abortErr, err); err != nil {
+		return removed, err
+	}
+	if err := repo.FinishObjectStoragePurge(ctx, workspaceID, now.Add(-PurgeHold)); err != nil {
+		return removed, fmt.Errorf("drop rows: %w", err)
+	}
+	return removed, nil
+}
+
+// deleteWorkspacePrefix removes every object under <tea-id>/ in every region and
+// reports how many it removed. It tries every region and returns every failure.
+// An empty prefix costs one listing per region.
+func (s *Service) deleteWorkspacePrefix(ctx context.Context, workspaceID string) (removed int, err error) {
+	var errs []error
 	for _, region := range Regions {
-		st, ok := svc.stores[region]
+		st, ok := s.stores[region]
 		if !ok {
 			continue
 		}
@@ -121,11 +136,5 @@ func purgeWorkspace(ctx context.Context, svc *Service, repo PurgeRepository, wor
 			errs = append(errs, fmt.Errorf("purge %s: %w", region, err))
 		}
 	}
-	if err := errors.Join(errs...); err != nil {
-		return removed, err
-	}
-	if err := repo.FinishObjectStoragePurge(ctx, workspaceID, now.Add(-PurgeHold)); err != nil {
-		return removed, fmt.Errorf("drop rows: %w", err)
-	}
-	return removed, nil
+	return removed, errors.Join(errs...)
 }

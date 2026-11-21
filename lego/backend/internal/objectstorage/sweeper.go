@@ -30,6 +30,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -45,8 +46,10 @@ import (
 //   - deletes the objects a bucket's lifecycle rules expire (D5);
 //
 // and, for a deleted workspace, purges the prefix in both regions and drops its
-// rows (D9, purge.go). The Wasabi bucket is shared by every workspace, so it is
-// only ever listed by one workspace's prefix.
+// rows (D9, purge.go). Once the rows are gone, the pass looks under a few such
+// prefixes again for an upload that arrived after the purge (sweepPurged). The
+// Wasabi bucket is shared by every workspace, so it is only ever listed by one
+// workspace's prefix.
 
 const (
 	// SweepInterval is how often every replica schedules the sweep.
@@ -86,6 +89,14 @@ const (
 
 	// sweepLockName is the advisory lock that keeps the pass on one replica.
 	sweepLockName = "object-storage-sweep"
+
+	// MaxPurgedPrefixChecks is how many purged workspaces one pass looks under
+	// again (sweepPurged). Each look is one listing in each region, nearly always
+	// an empty one, so the pass spends about twice this many small list requests
+	// on it; every replica
+	// runs a pass an hour, so a workspace is looked at again about every
+	// N/(2 × 50) hours when N workspaces have been purged.
+	MaxPurgedPrefixChecks = 50
 )
 
 // OrphanBucketID is the usage key under which the sweep records the objects of a
@@ -122,6 +133,8 @@ type SweepRepository interface {
 	ListObjectBuckets(ctx context.Context, workspaceID string) ([]store.ObjectBucket, error)
 	ListObjectStorageUsage(ctx context.Context, workspaceID string) ([]store.ObjectStorageUsage, error)
 	RecordObjectStorageObservation(ctx context.Context, workspaceID, region string, observed []store.ObjectStorageUsage, at time.Time) error
+	ListPurgedObjectStorageWorkspaces(ctx context.Context, limit int) ([]string, error)
+	MarkPurgedObjectStorageWorkspaceChecked(ctx context.Context, workspaceID string, at time.Time) error
 }
 
 // Exclusive runs a function on one replica at a time. *store.PGStore does,
@@ -158,6 +171,9 @@ type Sweeper struct {
 	RegionTimeout, PassTimeout time.Duration
 	// Workers is how many workspaces a pass sweeps at once; below one it is one.
 	Workers int
+	// PurgedChecks is how many purged workspaces a pass looks under again
+	// (sweepPurged); zero looks under none.
+	PurgedChecks int
 	// Metrics records each pass and workspace; nil records nothing.
 	Metrics *SweepMetrics
 	// MaxListed stops a listing after about this many objects.
@@ -178,7 +194,7 @@ func NewSweeper(svc *Service, repo SweepRepository) *Sweeper {
 		LifecycleCap: MaxLifecycleDeletesPerRule, MinGap: sweepMinGap,
 		HourlyObjects: SweepHourlyObjects, MaxGap: SweepMaxInterval - (SweepInterval - sweepMinGap),
 		RegionTimeout: sweepRegionTimeout, PassTimeout: sweepPassTimeout, Workers: sweepWorkers, MaxListed: int(MaxSweepListedObjects),
-		Now: time.Now, Logf: log.Printf,
+		PurgedChecks: MaxPurgedPrefixChecks, Now: time.Now, Logf: log.Printf,
 	}
 }
 
@@ -208,11 +224,12 @@ func (sw *Sweeper) Run(ctx context.Context, interval time.Duration) {
 }
 
 // Pass sweeps every workspace that has object storage rows: a live workspace's
-// usage and lifecycle, a deleted workspace's purge. Up to Workers workspaces are
-// swept at once, so a workspace with millions of objects does not hold the ones
-// behind it; each workspace's own listing stays sequential. One workspace
-// failing, or one of its regions, does not stop the others; it is logged, and the
-// pass reports how many failed.
+// usage and lifecycle, a deleted workspace's purge. Then it looks again under the
+// prefixes of up to PurgedChecks workspaces whose rows the purge dropped
+// (sweepPurged). Up to Workers workspaces are swept at once, so a workspace with
+// millions of objects does not hold the ones behind it; each workspace's own
+// listing stays sequential. One workspace failing, or one of its regions, does
+// not stop the others; it is logged, and the pass reports how many failed.
 //
 // A pass that reaches PassTimeout (or its caller's deadline) stops starting
 // workspaces, abandons the ones in flight (their listings are never recorded
@@ -252,6 +269,9 @@ func (sw *Sweeper) Pass(ctx context.Context) error {
 		})
 	}
 	_ = group.Wait() // the workers return no error: sweepOne logs and counts
+	if ctx.Err() == nil {
+		sw.sweepPurged(ctx)
+	}
 
 	var tally passTally
 	for _, o := range outcomes {
@@ -289,6 +309,51 @@ func (sw *Sweeper) sweepUnfinished(ctx context.Context) {
 	} else if n > 0 {
 		sw.Logf("object storage sweep: deleted %d access keys that ended more than %s ago", n, RetiredKeyRetention)
 	}
+}
+
+// sweepPurged looks again under the prefixes of up to PurgedChecks deleted
+// workspaces whose purge finished and dropped every row, the least recently
+// checked first, and deletes whatever is there: an upload authorized before the
+// deletion that took longer than PurgeHold to arrive (ADR112 D9). The store
+// names only workspaces it recorded as purged itself, never a prefix that no row
+// names, so a live workspace, one being created, or another database's
+// workspace is never touched. A failure is logged and the pass goes on; the
+// workspace comes round again with the rest.
+func (sw *Sweeper) sweepPurged(ctx context.Context) {
+	if sw.PurgedChecks <= 0 {
+		return
+	}
+	purged, err := sw.repo.ListPurgedObjectStorageWorkspaces(ctx, sw.PurgedChecks)
+	if err != nil {
+		sw.Logf("object storage sweep: listing purged workspaces: %v", err)
+		return
+	}
+	for _, workspaceID := range purged {
+		removed, err := sw.purgeLateArrivals(ctx, workspaceID)
+		if removed > 0 {
+			sw.Logf("object storage sweep: deleted workspace %s: removed %d objects that arrived after its purge", workspaceID, removed)
+		}
+		if ctx.Err() != nil {
+			return // not marked, so the next pass takes it first
+		}
+		if err != nil {
+			sw.Logf("object storage sweep: deleted workspace %s: %v", workspaceID, err)
+		}
+		if err := sw.repo.MarkPurgedObjectStorageWorkspaceChecked(ctx, workspaceID, sw.Now()); err != nil {
+			sw.Logf("object storage sweep: deleted workspace %s: recording the check: %v", workspaceID, err)
+		}
+	}
+}
+
+// purgeLateArrivals deletes everything under a purged workspace's prefix in
+// every region and reports how many objects it removed.
+func (sw *Sweeper) purgeLateArrivals(ctx context.Context, workspaceID string) (removed int, err error) {
+	if k, ok := ids.KindOf(workspaceID); !ok || k != ids.Workspace {
+		return 0, fmt.Errorf("%q is not a workspace id, so no prefix is looked under", workspaceID)
+	}
+	ctx, cancel := context.WithTimeout(ctx, sw.RegionTimeout)
+	defer cancel()
+	return sw.svc.deleteWorkspacePrefix(ctx, workspaceID)
 }
 
 // sweepOrder puts deleted workspaces first, in the order the store lists them

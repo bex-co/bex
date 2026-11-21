@@ -27,8 +27,8 @@ import (
 
 // The object storage sweep's side of the store (ADR112 D5, D8, D9): which
 // workspaces it has work for, what it records about each one's Wasabi prefix,
-// the shadow meters it feeds, and the retire-then-purge state of a deleted
-// workspace's bucket rows.
+// the shadow meters it feeds, the retire-then-purge state of a deleted
+// workspace's bucket rows, and the record that such a purge finished.
 
 // ObjectStorageWorkspace is one workspace the object storage sweep has work
 // for. Retired means the workspace is gone: a bucket row was retired by its
@@ -121,10 +121,25 @@ func (s *PGStore) MarkObjectStoragePurgeAttempt(ctx context.Context, workspaceID
 // usage rows beside it, so the sweep purges the prefix again
 // (objectstorage.PurgeHold); so does a live row (a bucket created in the race
 // with the delete), until the sweep retires it and purges again.
+//
+// When no bucket row is left and the tenant row is gone, it records the
+// workspace in object_storage_purged_workspaces in the same transaction, so the
+// sweep can still find the prefix once the rows that named it are gone
+// (ListPurgedObjectStorageWorkspaces).
 func (s *PGStore) FinishObjectStoragePurge(ctx context.Context, workspaceID string, retiredBefore time.Time) error {
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx,
 			`DELETE FROM object_buckets WHERE workspace_id = $1 AND deleted_at < $2`, workspaceID, retiredBefore.UTC()); err != nil {
+			return err
+		}
+		// A purge finished again (a bucket created in the race, retired and
+		// purged since) is checked again soon.
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO object_storage_purged_workspaces (workspace_id, purged_at)
+			SELECT $1, now()
+			WHERE NOT EXISTS (SELECT 1 FROM object_buckets b WHERE b.workspace_id = $1)
+			  AND NOT EXISTS (SELECT 1 FROM tenants t WHERE t.id = $1)
+			ON CONFLICT (workspace_id) DO UPDATE SET purged_at = EXCLUDED.purged_at, checked_at = NULL`, workspaceID); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `
@@ -142,6 +157,36 @@ func (s *PGStore) FinishObjectStoragePurge(ctx context.Context, workspaceID stri
 			AND NOT EXISTS (SELECT 1 FROM object_buckets b WHERE b.workspace_id = u.workspace_id)`, workspaceID)
 		return err
 	})
+}
+
+// ListPurgedObjectStorageWorkspaces returns up to limit deleted workspaces whose
+// purge finished and dropped every row, the least recently checked first (never
+// checked before any). The sweep looks under each one's prefix again for an
+// upload that arrived after the purge (ADR112 D9). A workspace with a tenant
+// row, a bucket row or a usage row is left out: the record is only ever written
+// once the tenant row is gone, and a row means the sweep's purge of retired
+// workspaces has the prefix.
+func (s *PGStore) ListPurgedObjectStorageWorkspaces(ctx context.Context, limit int) ([]string, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT p.workspace_id FROM object_storage_purged_workspaces p
+		WHERE NOT EXISTS (SELECT 1 FROM tenants t WHERE t.id = p.workspace_id)
+		  AND NOT EXISTS (SELECT 1 FROM object_buckets b WHERE b.workspace_id = p.workspace_id)
+		  AND NOT EXISTS (SELECT 1 FROM object_storage_usage u WHERE u.workspace_id = p.workspace_id)
+		ORDER BY p.checked_at NULLS FIRST, p.workspace_id
+		LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[string])
+}
+
+// MarkPurgedObjectStorageWorkspaceChecked records that the sweep looked under a
+// purged workspace's prefix at the given time, which sends it to the back of
+// ListPurgedObjectStorageWorkspaces.
+func (s *PGStore) MarkPurgedObjectStorageWorkspaceChecked(ctx context.Context, workspaceID string, at time.Time) error {
+	_, err := s.Pool.Exec(ctx,
+		`UPDATE object_storage_purged_workspaces SET checked_at = $2 WHERE workspace_id = $1`, workspaceID, at.UTC())
+	return err
 }
 
 // priorObjectStorageUsage is one usage row as the previous sweep left it.

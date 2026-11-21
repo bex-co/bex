@@ -20,6 +20,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
 // The arithmetic of ADR112 D8's listing budget (w21/095). Wasabi counts what a
@@ -138,6 +140,15 @@ func TestPlannedScaleStaysInsideTheListingBudget(t *testing.T) {
 		t.Logf("%d region(s) of %d objects: %.2f GB a month", p.regions, p.objects, cost/1e9)
 		total += cost
 	}
+	// The look under purged workspaces' prefixes (D9) ignores the gaps: up to
+	// MaxPurgedPrefixChecks workspaces a pass, one listing in each region, on
+	// each of the two replicas. A listing nearly always finds nothing; one key
+	// each is the planning figure.
+	ws := ids.New(ids.Workspace)
+	look := listResponseBytes(WorkspacePrefix(ws), []ObjectInfo{{Key: ws + "/" + ids.New(ids.ObjectBucket) + "/k00000"}})
+	looks := 2 * float64(month/SweepInterval) * float64(MaxPurgedPrefixChecks*len(Regions)) * float64(look)
+	t.Logf("looks under purged prefixes: at most %.3f GB a month", looks/1e9)
+	total += looks
 	t.Logf("planned scale: %.2f GB a month against a budget of %.0f GB", total/1e9, float64(SweepMonthlyBudgetBytes)/1e9)
 	if total > float64(SweepMonthlyBudgetBytes) {
 		t.Errorf("the planned scale lists %.2f GB a month, over the budget of %d GB", total/1e9, SweepMonthlyBudgetBytes/gb)

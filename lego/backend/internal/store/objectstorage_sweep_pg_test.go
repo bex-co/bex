@@ -20,12 +20,14 @@ import (
 	"context"
 	"errors"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
@@ -454,6 +456,113 @@ func TestFinishObjectStoragePurgeKeepsALiveRowAndItsUsage(t *testing.T) {
 	rows, _ := s.ListObjectStorageUsage(ctx, ws)
 	if len(rows) != 2 {
 		t.Fatalf("usage rows beside a live bucket = %d, want both kept until it is retired and purged", len(rows))
+	}
+}
+
+// The record of a finished purge is what lets the sweep look under a prefix no
+// other row names any more, so it is written only once the tenant row and every
+// bucket row are gone, and listed only while that is still true.
+func TestFinishedObjectStoragePurgeIsRecordedAndListedForALaterLook(t *testing.T) {
+	s, ws := objectBucketStore(t, "objpurged-record")
+	_, live := objectBucketStore(t, "objpurged-live")
+	ctx := context.Background()
+	usageBack, bucketBack := ids.New(ids.Workspace), ids.New(ids.Workspace)
+	t.Cleanup(func() {
+		bg := context.Background()
+		for _, id := range []string{ws, live, usageBack, bucketBack} {
+			_, _ = s.Pool.Exec(bg, `DELETE FROM object_storage_purged_workspaces WHERE workspace_id = $1`, id)
+			_, _ = s.Pool.Exec(bg, `DELETE FROM object_storage_usage WHERE workspace_id = $1`, id)
+			_, _ = s.Pool.Exec(bg, `DELETE FROM object_buckets WHERE workspace_id = $1`, id)
+		}
+	})
+	recorded := func(id string) bool {
+		t.Helper()
+		var ok bool
+		if err := s.Pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM object_storage_purged_workspaces WHERE workspace_id = $1)`, id).Scan(&ok); err != nil {
+			t.Fatal(err)
+		}
+		return ok
+	}
+	// listed is the store's order over this test's workspaces only: other tests
+	// share the table.
+	listed := func() []string {
+		t.Helper()
+		all, err := s.ListPurgedObjectStorageWorkspaces(ctx, 1_000_000)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []string
+		for _, id := range all {
+			if slices.Contains([]string{ws, live, usageBack, bucketBack}, id) {
+				out = append(out, id)
+			}
+		}
+		return out
+	}
+
+	// A finish while the tenant row stands records nothing, even with every
+	// bucket row dropped.
+	newObjectBucket(t, s, live, "photos", 10)
+	if _, err := s.RetireObjectBuckets(ctx, live); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.FinishObjectStoragePurge(ctx, live, time.Now().Add(time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	if recorded(live) {
+		t.Fatal("a finished purge of a workspace whose tenant row stands was recorded as purged")
+	}
+
+	// A finish inside the hold keeps the rows and records nothing yet.
+	newObjectBucket(t, s, ws, "photos", 10)
+	if err := s.DeleteTenant(ctx, ws); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.FinishObjectStoragePurge(ctx, ws, time.Now().Add(-time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if recorded(ws) {
+		t.Fatal("a finish that kept the retired rows recorded the workspace as purged")
+	}
+	if err := s.FinishObjectStoragePurge(ctx, ws, time.Now().Add(time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	if got := listed(); !slices.Equal(got, []string{ws}) {
+		t.Fatalf("after the purge dropped the rows the store lists %v, want [%s]", got, ws)
+	}
+
+	// Never checked comes before checked, and a check sends a workspace back.
+	for _, id := range []string{usageBack, bucketBack} {
+		if _, err := s.Pool.Exec(ctx, `INSERT INTO object_storage_purged_workspaces (workspace_id, purged_at) VALUES ($1, now())`, id); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.MarkPurgedObjectStorageWorkspaceChecked(ctx, ws, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if got := listed(); len(got) != 3 || got[2] != ws {
+		t.Fatalf("the store lists %v, want the two never checked before %s, which was", got, ws)
+	}
+	if err := s.MarkPurgedObjectStorageWorkspaceChecked(ctx, usageBack, time.Now().Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if got := listed(); !slices.Equal(got, []string{bucketBack, ws, usageBack}) {
+		t.Fatalf("the store lists %v, want the least recently checked first: [%s %s %s]", got, bucketBack, ws, usageBack)
+	}
+
+	// A workspace that has a row again belongs to the purge of retired
+	// workspaces, not to a look under its prefix.
+	if err := s.UpsertObjectStorageUsage(ctx, ObjectStorageUsage{BucketID: "orphan:" + usageBack + ":oregon", WorkspaceID: usageBack, Region: "oregon", Bytes: 1, Objects: 1, ObservedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CreateObjectBucket(ctx, ObjectBucket{WorkspaceID: bucketBack, Name: "photos", Region: "oregon"}, 10); err != nil {
+		t.Fatal(err)
+	}
+	if got := listed(); !slices.Equal(got, []string{ws}) {
+		t.Fatalf("with a usage row and a bucket row back the store lists %v, want only [%s]", got, ws)
+	}
+	if got, err := s.ListPurgedObjectStorageWorkspaces(ctx, 1); err != nil || len(got) != 1 {
+		t.Fatalf("a limit of 1 listed %v, %v; want one workspace", got, err)
 	}
 }
 
