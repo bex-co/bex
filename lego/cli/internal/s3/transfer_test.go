@@ -199,6 +199,62 @@ func TestStandardInputAndOutput(t *testing.T) {
 	}
 }
 
+// TestStandardInputMayBeAPipeOrAFile: in production standard input is an
+// *os.File, a Seeker even when it is a pipe, whose Seek and ReadAt fail. A
+// pipe carrying more than one part and an empty pipe go up whole, and so does a
+// redirected regular file (w32/062: `seek /dev/stdin: illegal seek`).
+func TestStandardInputMayBeAPipeOrAFile(t *testing.T) {
+	g := newRig(t)
+	g.must("mb", "s3://photos")
+	piped := func(payload []byte) *os.File {
+		pr, pw, err := os.Pipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = pr.Close() })
+		go func() {
+			_, _ = pw.Write(payload)
+			_ = pw.Close()
+		}()
+		return pr
+	}
+	redirected := func(payload []byte) *os.File {
+		dir := t.TempDir()
+		writeBytes(t, dir, "in", payload)
+		f, err := os.Open(filepath.Join(dir, "in"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = f.Close() })
+		return f
+	}
+	big := []byte(strings.Repeat("pipe ", 2<<20)) // 10 MiB, over one part
+	for _, tc := range []struct {
+		name    string
+		stdin   func([]byte) *os.File
+		payload []byte
+		parts   int
+	}{
+		{"pipe-big", piped, big, 2},
+		{"pipe-empty", piped, nil, 0},
+		{"file-big", redirected, big, 2},
+	} {
+		g.s3.reset()
+		g.d.stdin = tc.stdin(tc.payload)
+		out := g.must("cp", "-", "s3://photos/"+tc.name)
+		if want := "upload: - to s3://photos/" + tc.name; strings.TrimSpace(out) != want {
+			t.Errorf("%s: cp - printed %q, want %q", tc.name, out, want)
+		}
+		o, ok := g.s3.object("photos", tc.name)
+		if !ok || sum(o.data) != sum(tc.payload) {
+			t.Fatalf("%s: the stored object differs from the %d bytes of standard input", tc.name, len(tc.payload))
+		}
+		if got := g.s3.count("partNumber="); got != tc.parts {
+			t.Errorf("%s: %d part uploads, want %d", tc.name, got, tc.parts)
+		}
+	}
+}
+
 func TestDryrunMakesNoRequestThatChangesAnything(t *testing.T) {
 	g := newRig(t)
 	g.must("mb", "s3://photos")

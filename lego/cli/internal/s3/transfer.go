@@ -108,7 +108,15 @@ func (f countingFile) ReadAt(p []byte, off int64) (int, error) {
 // upload sends body as bucket/key, in 8 MiB parts and at most --concurrency
 // requests at a time when it is larger than one. size is the length when it is
 // known and -1 for a stream.
+//
+// A stream's body hides every method but Read. The SDK's uploader seeks a body
+// that can, to learn its length, and reads parts with ReadAt; standard input is
+// an *os.File, which has both even when it is a pipe, where both fail
+// (`seek /dev/stdin: illegal seek`).
 func (r *run) upload(ctx context.Context, body io.Reader, size int64, bucket, key string, o putOptions) error {
+	if size < 0 {
+		body = struct{ io.Reader }{body}
+	}
 	in := &sdk.PutObjectInput{Bucket: aws.String(bucket), Key: aws.String(key), Body: body}
 	if o.contentType != "" {
 		in.ContentType = aws.String(o.contentType)
