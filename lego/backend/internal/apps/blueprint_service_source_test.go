@@ -92,7 +92,7 @@ func TestBlueprintSyncPreparationKeepsDeclaredServiceSource(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			staged, parsed, err := svc.prepareSyncManifest(ctx, admitted, run, tc.manifest, nil, svc.newWorkspaceSnapshot(ctx))
+			staged, parsed, err := svc.prepareSyncManifest(ctx, admitted, admitted.Branch, run, tc.manifest, nil, svc.newWorkspaceSnapshot(ctx))
 			if err != nil {
 				t.Fatal(err)
 			}

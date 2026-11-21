@@ -360,7 +360,7 @@ func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStor
 	now := s.Now().UTC()
 	planned, err := plans.InsertPlannedBlueprintSync(ctx, store.PlannedBlueprintSync{
 		BlueprintSync: store.BlueprintSync{BlueprintID: b.ID, CommitID: commitSHA, State: store.BlueprintSyncStateCreated, StartedAt: now},
-		Path:          b.Path, RequiredManualEnvVars: rawRequired, PlanActions: rawActions,
+		Path:          b.Path, Branch: b.Branch, RequiredManualEnvVars: rawRequired, PlanActions: rawActions,
 	})
 	if err != nil {
 		return BlueprintPlanResult{}, err
@@ -393,7 +393,7 @@ func (s *Service) recordFailedPlan(ctx context.Context, plans blueprintPlanStore
 	failed, err := plans.InsertPlannedBlueprintSync(ctx, store.PlannedBlueprintSync{
 		BlueprintSync: store.BlueprintSync{BlueprintID: b.ID, CommitID: commitSHA, State: store.BlueprintSyncStateError,
 			StartedAt: now, CompletedAt: &now, ErrorMessage: &summary},
-		Path: b.Path,
+		Path: b.Path, Branch: b.Branch,
 	})
 	if err != nil {
 		return BlueprintPlanResult{}, err
@@ -510,7 +510,9 @@ func (s *Service) PlannedSync(ctx context.Context, bpID, ownerID string) (*SyncW
 // was already applied, cannot be approved, and neither can a Blueprint whose
 // newest plan found no changes with no plan waiting. A plan that finds no
 // changes saves no sync, so a plan waiting from before it is still the newest
-// and is what approval applies, as Render's does (w32/073).
+// and is what approval applies, as Render's does (w32/073). So is a plan made
+// before an update changed the Blueprint's path or branch: it applies from the
+// source it was planned at (w32/074).
 //
 // planned, when set, is the sync id of the plan the caller reviewed: approval
 // is refused unless it is still the newest planned sync, so a re-plan another
@@ -582,7 +584,7 @@ func (s *Service) ApproveBlueprint(ctx context.Context, bpID, ownerID, planned s
 		return ApprovedSync{}, err
 	}
 	if _, err := s.runSync(ctx, b, "", "", &ReviewedBlueprintSource{
-		Repo: b.Repo, Path: latest.Path, CommitID: latest.CommitID, PlannedRunID: latest.ID, EnvVarValues: values,
+		Repo: b.Repo, Path: latest.Path, Branch: latest.Branch, CommitID: latest.CommitID, PlannedRunID: latest.ID, EnvVarValues: values,
 	}, nil); err != nil {
 		return ApprovedSync{}, err
 	}

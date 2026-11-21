@@ -159,10 +159,14 @@ type ReviewedBlueprintSource struct {
 	Repo     string // optional; CanonicalRepo-must-match the Blueprint row
 	Path     string // required with CommitID; must match the configured path
 	CommitID string // immutable SHA from preview.commitId
-	// PlannedRunID and EnvVarValues are set only by approving a planned sync
-	// (w2/m256): admission turns the planned row into the run, and the manual
-	// env var values approval supplied are seeded once by the apply.
+	// PlannedRunID, Branch and EnvVarValues are set only by approving a
+	// planned sync (w2/m256): admission turns the planned row into the run,
+	// the plan's own path and branch are its source whatever an update saved
+	// since (w32/074; an empty Branch is a plan recorded before migration 0321,
+	// applied with the Blueprint's), and the manual env var values approval
+	// supplied are seeded once by the apply.
 	PlannedRunID string
+	Branch       string
 	EnvVarValues map[string]string
 }
 
@@ -1713,9 +1717,11 @@ const BlueprintAwaitingApprovalCode = "BLUEPRINT_AWAITING_APPROVAL"
 // compile → payment-gate → action-plan preflight before anything is persisted,
 // so a manifest that cannot be applied never becomes the stored one. Only the
 // manifest (the sync-owned field) is written: current name/path/autoSync
-// settings survive the sync (w8/m37 t005).
-func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, run store.BlueprintSync, manifest string, envVarValues map[string]string, snap *workspaceSnapshot) (store.Blueprint, *parsedStack, error) {
-	parsed, ir, err := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, ContainingSource: true, Manifest: manifest, EnvVarValues: envVarValues, resourceSuffix: b.ResourceSuffix})
+// settings survive the sync (w8/m37 t005). branch is the one the manifest was
+// read from, which the services on the Blueprint's repo inherit: the
+// Blueprint's, or an approved plan's own (w32/074).
+func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, branch string, run store.BlueprintSync, manifest string, envVarValues map[string]string, snap *workspaceSnapshot) (store.Blueprint, *parsedStack, error) {
+	parsed, ir, err := compileStack(DeployRequest{Repo: b.Repo, Branch: branch, ContainingSource: true, Manifest: manifest, EnvVarValues: envVarValues, resourceSuffix: b.ResourceSuffix})
 	if err != nil {
 		return store.Blueprint{}, nil, err
 	}
@@ -1781,11 +1787,25 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		}
 	}
 	now := s.Now().UTC()
+	// Empty reviewed struct is treated as omitted (compat with zero values).
+	if reviewed != nil && reviewed.CommitID == "" && reviewed.Repo == "" && reviewed.Path == "" {
+		reviewed = nil
+	}
+	// src is the source this run reads and compiles: the Blueprint's settings,
+	// except for an approved plan, which applies the path and branch it was
+	// planned from. Render's approve does ("Updating does not change a sync
+	// that is waiting for approval, so approve could still apply a sync planned
+	// from the previous branch or path", the pinned CLI's NewUpdateOut). The
+	// Blueprint keeps the settings the update saved (w32/074).
+	src := b
+	if reviewed != nil && reviewed.PlannedRunID != "" {
+		src.Path, src.Branch = reviewed.Path, cmp.Or(reviewed.Branch, b.Branch)
+	}
 	// Only pre-apply, retryable provider failures retain the automatic intent.
 	// The public failure stays sanitized through the shared source classifier.
 	failSource := func(commit string, sourceErr error) (SyncBlueprintResult, error) {
-		reason, _ := classifyBlueprintFetchError(sourceErr, b.Repo, b.Path, b.Branch)
-		result, err := s.failSync(ctx, b, commit, now, blueprintFetchFailure(sourceErr, b.Repo, b.Path, b.Branch))
+		reason, _ := classifyBlueprintFetchError(sourceErr, src.Repo, src.Path, src.Branch)
+		result, err := s.failSync(ctx, b, commit, now, blueprintFetchFailure(sourceErr, src.Repo, src.Path, src.Branch))
 		if auto != nil && RetryableBlueprintFetch(reason) {
 			return result, &blueprintAutoSyncRetry{err: err}
 		}
@@ -1795,7 +1815,7 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 			// rate-limiting or unreachable, 400 for the repository, path or
 			// access it can fix. The plain history error answered every one of
 			// them 500 (w21/m421; production, 2026-11-08).
-			return result, blueprintCreateFetchError(sourceErr, b.Repo, b.Path, b.Branch)
+			return result, blueprintCreateFetchError(sourceErr, src.Repo, src.Path, src.Branch)
 		}
 		return result, err
 	}
@@ -1807,11 +1827,6 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 	// that cannot be fetched is a failure, never an implicit reapply (w8/m36
 	// t003) — the stored manifest is preserved untouched for the next attempt.
 	useStored := false
-
-	// Empty reviewed struct is treated as omitted (compat with zero values).
-	if reviewed != nil && reviewed.CommitID == "" && reviewed.Repo == "" && reviewed.Path == "" {
-		reviewed = nil
-	}
 
 	if bexYAML != "" {
 		// Explicit supplied-manifest sync (the documented bex extension): no
@@ -1831,18 +1846,19 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		// Re-validate the stored path before the token-backed fetch (round-6
 		// #14): a legacy row written before UpdateBlueprint enforced the
 		// allowlist must not become an arbitrary private-file read at sync time.
-		if _, pathErr := approvedBlueprintPath(b.Path); pathErr != nil {
+		if _, pathErr := approvedBlueprintPath(src.Path); pathErr != nil {
 			return s.failSync(ctx, b, "", now, pathErr)
 		}
 		if reviewed != nil {
 			// Manual sync with reviewed-source pin (w8/m41): never Resolve the
 			// branch tip — fetch exactly the previewed commit. Settings that
-			// drifted since review fail before any Git read or admission.
-			if matchErr := matchReviewedBlueprintSource(b, reviewed); matchErr != nil {
+			// drifted since review fail before any Git read or admission; an
+			// approved plan's source is its own, so it never drifts.
+			if matchErr := matchReviewedBlueprintSource(src, reviewed); matchErr != nil {
 				// Precondition refusal — no Git read yet; do not invent a history row.
 				return SyncBlueprintResult{}, matchErr
 			}
-			contents, fetchErr := s.GitFetcher.FetchBlueprintFileAtCommit(ctx, tenantID, b.Repo, reviewed.CommitID, b.Path)
+			contents, fetchErr := s.GitFetcher.FetchBlueprintFileAtCommit(ctx, tenantID, src.Repo, reviewed.CommitID, src.Path)
 			if fetchErr != nil {
 				return failSource(reviewed.CommitID, fetchErr)
 			}
@@ -1946,7 +1962,7 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		}
 		b = staged
 	} else {
-		staged, parsed, err := s.prepareSyncManifest(ctx, b, run, manifest, envVarValues, snap)
+		staged, parsed, err := s.prepareSyncManifest(ctx, b, src.Branch, run, manifest, envVarValues, snap)
 		if err != nil {
 			return settleStage(err)
 		}
@@ -1958,7 +1974,7 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		BlueprintGeneration: b.ExecutionGeneration,
 		BlueprintRunID:      run.ID,
 		Repo:                b.Repo,
-		Branch:              b.Branch,
+		Branch:              src.Branch,
 		ContainingSource:    true,
 		Manifest:            b.Manifest,
 		Confirm:             confirm,

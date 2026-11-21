@@ -33,11 +33,14 @@ const (
 )
 
 // PlannedBlueprintSync is a planning attempt: a sync planned but not applied
-// (or a failed plan), the path it was planned at, and the manual env vars
-// approval must supply (JSON the apps layer owns).
+// (or a failed plan), the path and branch it was planned at, and the manual
+// env vars approval must supply (JSON the apps layer owns).
 type PlannedBlueprintSync struct {
 	BlueprintSync
-	Path                  string
+	Path string
+	// Branch is empty for a planning attempt recorded before migration 0321
+	// (w32/074).
+	Branch                string
 	RequiredManualEnvVars json.RawMessage
 	// PlanActions is the plan's actions (JSON the apps layer owns), null for a
 	// failed plan.
@@ -136,11 +139,11 @@ func (s *PGStore) InsertPlannedBlueprintSync(ctx context.Context, p PlannedBluep
 	}
 	err := s.Pool.QueryRow(ctx, `
 		INSERT INTO blueprint_syncs (id, blueprint_id, commit_id, state, started_at, completed_at, error_message,
-			plan_path, required_manual_env_vars, plan_actions, note)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			plan_path, plan_branch, required_manual_env_vars, plan_actions, note)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING created_at`,
 		p.ID, p.BlueprintID, p.CommitID, p.State, p.StartedAt, p.CompletedAt, p.ErrorMessage,
-		p.Path, required, nullJSON(p.PlanActions), p.Note,
+		p.Path, nullIfEmpty(p.Branch), required, nullJSON(p.PlanActions), p.Note,
 	).Scan(&p.CreatedAt)
 	if err != nil {
 		return PlannedBlueprintSync{}, classify("blueprint_sync", err)
@@ -209,18 +212,21 @@ func nullJSON(raw json.RawMessage) any {
 
 func (s *PGStore) scanPlannedSync(ctx context.Context, where string, args ...any) (PlannedBlueprintSync, error) {
 	var p PlannedBlueprintSync
-	var path *string
+	var path, branch *string
 	err := s.Pool.QueryRow(ctx, `
 		SELECT id, blueprint_id, commit_id, state, started_at, completed_at, created_at, error_message,
-		       plan_path, required_manual_env_vars, plan_actions
+		       plan_path, plan_branch, required_manual_env_vars, plan_actions
 		FROM blueprint_syncs `+where, args...,
 	).Scan(&p.ID, &p.BlueprintID, &p.CommitID, &p.State, &p.StartedAt, &p.CompletedAt, &p.CreatedAt, &p.ErrorMessage,
-		&path, &p.RequiredManualEnvVars, &p.PlanActions)
+		&path, &branch, &p.RequiredManualEnvVars, &p.PlanActions)
 	if err != nil {
 		return PlannedBlueprintSync{}, classify("blueprint_sync", err)
 	}
 	if path != nil {
 		p.Path = *path
+	}
+	if branch != nil {
+		p.Branch = *branch
 	}
 	return p, nil
 }
