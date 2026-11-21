@@ -264,3 +264,84 @@ func TestChangeResourcesFailureReturnsAServiceToItsEnvironmentPG(t *testing.T) {
 		t.Fatalf("return of a service not in production = %+v, %v; want no change", moves, err)
 	}
 }
+
+// A failed add returns a service it placed from no environment to the project
+// it was in, against the real store: one from another project goes back to it,
+// one in no project leaves the target's, and neither keeps the target's
+// isolation label or inbound-IP layer. The store's return from and to no
+// environment moves only a service still where the caller saw it.
+func TestChangeResourcesFailureReturnsAServicePlacedFromNoEnvironmentToItsProjectPG(t *testing.T) {
+	pg, workspaceID, stamp := resourcesWorkspace(t)
+	ctx := context.Background()
+	left, err := pg.CreateProject(ctx, workspaceID, "left-"+stamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	right, err := pg.CreateProject(ctx, workspaceID, "right-"+stamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	staging, err := pg.CreateEnvironment(ctx, left.ID, workspaceID, "staging")
+	if err != nil {
+		t.Fatal(err)
+	}
+	production, err := pg.CreateEnvironment(ctx, right.ID, workspaceID, "production")
+	if err != nil {
+		t.Fatal(err)
+	}
+	office := []core.IPAllowListEntry{{CIDRBlock: "10.0.0.0/8", Description: "office"}}
+	if err := pg.SetEnvironmentACL(ctx, production.ID, ProtectedStatusUnprotected, true, office); err != nil {
+		t.Fatal(err)
+	}
+	newApp := func(name string) store.App {
+		app, err := pg.CreateApp(ctx, store.App{TenantID: workspaceID, Name: name + "-" + stamp, Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "starter"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return app
+	}
+	loose, bare := newApp("loose"), newApp("bare")
+	if _, err := pg.SetProjectServices(ctx, left.ID, workspaceID, []string{loose.ID}, nil); err != nil {
+		t.Fatal(err)
+	}
+	group := ids.New(ids.EnvGroup)
+	groups := &failingEnvGroupIndex{refuse: group}
+	groups.groups = []envgroups.EnvGroupView{{ID: group, OwnerID: workspaceID}}
+	svc, cl := newServiceWithClient(pg, sampleApp(loose.ID), sampleApp(bare.ID))
+	svc.EnvGroups = groups
+
+	// Both services join production and its project, then the group's join fails.
+	_, err = svc.ChangeResources(ctxAs("user-a"), ids.EnvironmentPublicID(production.ID), []string{loose.ID, bare.ID, group}, true)
+	var coded *core.CodedError
+	if err == nil || errors.As(err, &coded) {
+		t.Fatalf("failed add = %v, want the group's own failure", err)
+	}
+	for _, c := range []struct{ id, project string }{{loose.ID, left.ID}, {bare.ID, ""}} {
+		row, err := pg.GetApp(ctx, c.id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if row.EnvironmentID != "" || row.ProjectID != c.project {
+			t.Errorf("%s after the reversal: environment %q, project %q; want no environment and project %q", c.id, row.EnvironmentID, row.ProjectID, c.project)
+		}
+		if cr := getApp(t, cl, c.id); cr.Labels[core.LabelEnvironment] != "" || cr.Labels[core.LabelNetworkIsolation] != "" || len(cr.Spec.EnvironmentIPAllowList) != 0 {
+			t.Errorf("%s kept production's labels %v and IP layer %v", c.id, cr.Labels, cr.Spec.EnvironmentIPAllowList)
+		}
+	}
+
+	// From production to none: loose is no longer in production.
+	if moves, err := pg.ReturnEnvironmentServices(ctx, production.ID, "", right.ID, workspaceID, []string{loose.ID}, nil); err != nil || len(moves) != 0 {
+		t.Fatalf("release of a service not in production = %+v, %v; want no change", moves, err)
+	}
+	// From none to staging: loose rejoins; a service in an environment does not.
+	moves, err := pg.ReturnEnvironmentServices(ctx, "", staging.ID, left.ID, workspaceID, []string{loose.ID}, nil)
+	if err != nil || len(moves) != 1 || moves[0].ServiceID != loose.ID {
+		t.Fatalf("return of %s from no environment = %+v, %v; want it moved", loose.ID, moves, err)
+	}
+	if moves, err := pg.ReturnEnvironmentServices(ctx, "", production.ID, right.ID, workspaceID, []string{loose.ID}, nil); err != nil || len(moves) != 0 {
+		t.Fatalf("return from no environment of a service in staging = %+v, %v; want no change", moves, err)
+	}
+	if got, err := pg.ListEnvironmentServices(ctx, staging.ID, left.ID); err != nil || !slices.Equal(got, []string{loose.ID}) {
+		t.Fatalf("staging = %v, %v; want %s", got, err, loose.ID)
+	}
+}

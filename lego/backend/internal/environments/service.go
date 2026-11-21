@@ -64,7 +64,8 @@ type EnvironmentStore interface {
 	// other member keeps its placement.
 	ChangeEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceIDs []string, add bool, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error)
 	// ReturnEnvironmentServices moves the named services still in
-	// fromEnvironmentID to toEnvironmentID; every other row keeps its placement.
+	// fromEnvironmentID to toEnvironmentID and toProjectID ("" for none on
+	// either side); every other row keeps its placement.
 	ReturnEnvironmentServices(ctx context.Context, fromEnvironmentID, toEnvironmentID, toProjectID, tenantID string, serviceIDs []string, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error)
 	ListEnvironmentServices(ctx context.Context, environmentID, projectID string) ([]string, error)
 	ListWorkspaceEnvironmentServices(ctx context.Context, tenantID string) (map[string][]string, error)
@@ -113,7 +114,10 @@ type KeyValueIndex interface {
 // *envgroups.Service satisfies it structurally.
 type EnvGroupIndex interface {
 	ListEnvironmentMemberships(ctx context.Context, ownerID string) ([]envgroups.EnvironmentMembership, error)
-	SetEnvironmentID(ctx context.Context, id, environmentID string) error
+	// SetEnvironmentID moves a group still in expectedEnvironmentID ("" for
+	// none) to environmentID; one another request has moved since is refused,
+	// as the datastore indexes' SetEnvironmentID refuses it.
+	SetEnvironmentID(ctx context.Context, id, expectedEnvironmentID, environmentID string) error
 	// DetachEnvironment unscopes a group still in expectedEnvironmentID during
 	// that environment's teardown (w4/m187).
 	DetachEnvironment(ctx context.Context, id, expectedEnvironmentID string) error
@@ -311,6 +315,9 @@ func (p EnvironmentPatch) hasACL() bool {
 type environmentResource struct {
 	id            string
 	environmentID string
+	// projectID is a datastore's project ("" for none, and for env groups,
+	// which join no project).
+	projectID string
 }
 
 // resourceIndex is the shared shape of DatabaseIndex, KeyValueIndex, and
@@ -328,6 +335,10 @@ type resourceIndex interface {
 	// leave removes membership; datastores compare the observed environment
 	// before clearing its inherited rules.
 	leave(ctx context.Context, id, expectedEnvironmentID string) error
+	// release takes id out of e, where the caller placed it, into no
+	// environment and project projectID ("" for none) with none of e's rules:
+	// the placement it had before. One moved on since stays where it is.
+	release(ctx context.Context, e store.Environment, id, projectID string) error
 }
 
 // layeredIndex is a resourceIndex whose members also carry the environment's
@@ -351,7 +362,7 @@ func (d databaseResources) list(ctx context.Context, workspaceID string) ([]envi
 	}
 	out := make([]environmentResource, len(dbs))
 	for i, db := range dbs {
-		out[i] = environmentResource{id: db.ID, environmentID: ids.EnvironmentStorageID(db.EnvironmentID)}
+		out[i] = environmentResource{id: db.ID, environmentID: ids.EnvironmentStorageID(db.EnvironmentID), projectID: db.ProjectID}
 	}
 	return out, nil
 }
@@ -381,6 +392,15 @@ func (d databaseResources) leave(ctx context.Context, id, expectedEnvironmentID 
 	return d.ClearEnvironmentID(ctx, id, expectedEnvironmentID)
 }
 
+// release leaves e, and when the Database came from another project goes
+// back to it in the same write, which drops e's label and rules.
+func (d databaseResources) release(ctx context.Context, e store.Environment, id, projectID string) error {
+	if projectID == e.ProjectID {
+		return d.ClearEnvironmentID(ctx, id, e.ID)
+	}
+	return d.SetProjectID(ctx, id, e.ID, projectID)
+}
+
 func (d databaseResources) setIPLayer(ctx context.Context, id, expectedEnvironmentID string, cidrs []string) error {
 	return d.SetEnvironmentIPAllowList(ctx, id, expectedEnvironmentID, cidrs)
 }
@@ -399,7 +419,7 @@ func (k keyValueResources) list(ctx context.Context, workspaceID string) ([]envi
 	}
 	out := make([]environmentResource, len(kvs))
 	for i, kv := range kvs {
-		out[i] = environmentResource{id: kv.ID, environmentID: ids.EnvironmentStorageID(kv.EnvironmentID)}
+		out[i] = environmentResource{id: kv.ID, environmentID: ids.EnvironmentStorageID(kv.EnvironmentID), projectID: kv.ProjectID}
 	}
 	return out, nil
 }
@@ -419,6 +439,13 @@ func (k keyValueResources) join(ctx context.Context, e store.Environment, id, ob
 
 func (k keyValueResources) leave(ctx context.Context, id, expectedEnvironmentID string) error {
 	return k.ClearEnvironmentID(ctx, id, expectedEnvironmentID)
+}
+
+func (k keyValueResources) release(ctx context.Context, e store.Environment, id, projectID string) error {
+	if projectID == e.ProjectID {
+		return k.ClearEnvironmentID(ctx, id, e.ID)
+	}
+	return k.SetProjectID(ctx, id, e.ID, projectID)
 }
 
 func (k keyValueResources) setIPLayer(ctx context.Context, id, expectedEnvironmentID string, cidrs []string) error {
@@ -446,14 +473,20 @@ func (g envGroupResources) list(ctx context.Context, workspaceID string) ([]envi
 	return out, nil
 }
 
-// join moves the group through MoveEnvGroup, which authorizes the
-// environment it leaves against the group's current row itself.
-func (g envGroupResources) join(ctx context.Context, e store.Environment, id, _ string) error {
-	return g.SetEnvironmentID(ctx, id, e.ID)
+// join moves the group out of the environment the caller observed it in,
+// which the group's own move authorizes against its current row; a group
+// moved since is refused, as a datastore's join refuses one.
+func (g envGroupResources) join(ctx context.Context, e store.Environment, id, observedEnvironmentID string) error {
+	return g.SetEnvironmentID(ctx, id, observedEnvironmentID, e.ID)
 }
 
-func (g envGroupResources) leave(ctx context.Context, id, _ string) error {
-	return g.SetEnvironmentID(ctx, id, "")
+func (g envGroupResources) leave(ctx context.Context, id, expectedEnvironmentID string) error {
+	return g.SetEnvironmentID(ctx, id, expectedEnvironmentID, "")
+}
+
+// release is leave: a group joins no project.
+func (g envGroupResources) release(ctx context.Context, e store.Environment, id, _ string) error {
+	return g.leave(ctx, id, e.ID)
 }
 
 // envGroupTeardown leaves through the teardown seam instead of the public move:
@@ -1257,18 +1290,19 @@ func (s *Service) changeServices(ctx context.Context, id string, serviceIDs []st
 		// take it out.
 		arriving = append(arriving, mv.ServiceID)
 		if from := ptr.Deref(mv.EnvironmentFrom, ""); from != e.ID {
-			changed = append(changed, memberChange{id: mv.ServiceID, from: from})
+			changed = append(changed, memberChange{id: mv.ServiceID, from: placedAt(from, ptr.Deref(mv.ProjectFrom, ""))})
 		}
 	}
 	for _, sid := range leaving {
-		changed = append(changed, memberChange{id: sid, from: e.ID})
+		changed = append(changed, memberChange{id: sid, from: placement{environment: e.ID}})
 	}
 	return changed, s.syncServiceLayers(ctx, e, leaving, arriving)
 }
 
 // returnServices moves the named services that are still in environment fromID
-// to environment toID, the one a failed add took them from, and gives them
-// toID's environment rules. A service moved on since stays where it is.
+// ("" for none, where a removal put them) to environment toID, the one they
+// were in before, and gives them toID's environment rules. A service moved on
+// since stays where it is.
 func (s *Service) returnServices(ctx context.Context, fromID, toID string, serviceIDs []string) error {
 	ctx, to, moves, err := s.moveServices(ctx, toID, func(ctx context.Context, to store.Environment, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
 		return s.Store.ReturnEnvironmentServices(ctx, fromID, to.ID, to.ProjectID, to.TenantID, serviceIDs, exit)
@@ -1283,6 +1317,20 @@ func (s *Service) returnServices(ctx context.Context, fromID, toID string, servi
 		}
 	}
 	return s.syncServiceLayers(ctx, to, nil, arriving)
+}
+
+// releaseServices takes the named services that are still in environment id
+// out of it, into project projectID ("" for none): where they were before an
+// add placed them from no environment. A service moved on since stays where it
+// is.
+func (s *Service) releaseServices(ctx context.Context, id, projectID string, serviceIDs []string) error {
+	ctx, e, moves, err := s.moveServices(ctx, id, func(ctx context.Context, e store.Environment, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
+		return s.Store.ReturnEnvironmentServices(ctx, e.ID, "", projectID, e.TenantID, serviceIDs, exit)
+	})
+	if err != nil {
+		return err
+	}
+	return s.syncServiceLayers(ctx, e, servicesLeaving(moves, e.ID), nil)
 }
 
 // moveServices runs one service-placement write on environment id behind the
@@ -1513,15 +1561,15 @@ func (s *Service) changeMembers(ctx context.Context, idx resourceIndex, id strin
 		if err != nil {
 			return ctx, e, changed, r.id, err
 		}
-		changed = append(changed, memberChange{id: r.id, from: r.environmentID})
+		changed = append(changed, memberChange{id: r.id, from: placedAt(r.environmentID, r.projectID)})
 	}
 	return ctx, e, changed, "", nil
 }
 
-// returnMembers moves idx members memberIDs from environment fromID to
-// environment toID, the one a failed add took them from. A Postgres or Key
-// Value join observes fromID, so one moved on since is refused rather than
-// taken from where it is now.
+// returnMembers moves idx members memberIDs from environment fromID ("" for
+// none, where a removal put them) to environment toID, the one they were in
+// before. Every join observes fromID, so a member moved on since is refused
+// rather than taken from where it is now.
 func (s *Service) returnMembers(ctx context.Context, idx resourceIndex, fromID, toID string, memberIDs []string) error {
 	ctx, to, err := s.membershipTarget(ctx, idx, toID)
 	if err != nil {
@@ -1536,6 +1584,22 @@ func (s *Service) returnMembers(ctx context.Context, idx resourceIndex, fromID, 
 	}
 	for _, mid := range memberIDs {
 		if err := idx.join(ctx, to, mid, fromID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// releaseMembers takes idx members memberIDs that are still in environment id
+// out of it, into project projectID ("" for none): where they were before an
+// add placed them from no environment.
+func (s *Service) releaseMembers(ctx context.Context, idx resourceIndex, id, projectID string, memberIDs []string) error {
+	ctx, e, err := s.membershipTarget(ctx, idx, id)
+	if err != nil {
+		return err
+	}
+	for _, mid := range memberIDs {
+		if err := idx.release(ctx, e, mid, projectID); err != nil {
 			return err
 		}
 	}

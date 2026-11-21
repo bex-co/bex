@@ -687,19 +687,30 @@ func (s *Service) persistCreate(
 	return pending, inserted, nil
 }
 
-// SetEnvironmentID assigns or unassigns one group from an Environment. A
-// non-empty Environment must exist in the group's own workspace; moving a group
-// between Environments is a single metadata update. Manage scope.
-func (s *Service) SetEnvironmentID(ctx context.Context, gid, environmentID string) error {
-	_, err := s.MoveEnvGroup(ctx, gid, environmentID)
+// SetEnvironmentID assigns or unassigns one group from an Environment, moving
+// it only while it is still in expectedEnvironmentID ("" for none), where the
+// caller observed it and authorized it leaving: a group another request has
+// moved since stays where that request put it, and the move is refused
+// (RESOURCE_PLACEMENT_CHANGED), as a datastore's SetEnvironmentID refuses it.
+// A non-empty Environment must exist in the group's own workspace; moving a
+// group between Environments is a single metadata update. Manage scope.
+func (s *Service) SetEnvironmentID(ctx context.Context, gid, expectedEnvironmentID, environmentID string) error {
+	expected := id.EnvironmentStorageID(expectedEnvironmentID)
+	_, err := s.moveGroup(ctx, gid, environmentID, &expected)
 	return err
 }
 
-// MoveEnvGroup is SetEnvironmentID's view-returning public contract for the
-// REST/GraphQL/MCP move workflow. The group id stays pinned throughout and the
-// metadata write happens only after every linked service has been validated
-// against the *current* link set on each attempt (w4/m97).
+// MoveEnvGroup is the REST/GraphQL/MCP move workflow, from wherever the group
+// is. The group id stays pinned throughout and the metadata write happens only
+// after every linked service has been validated against the *current* link set
+// on each attempt (w4/m97).
 func (s *Service) MoveEnvGroup(ctx context.Context, gid, environmentID string) (EnvGroupView, error) {
+	return s.moveGroup(ctx, gid, environmentID, nil)
+}
+
+// moveGroup moves group gid to environmentID; expected, when set, is the
+// environment the group must still be in, compared in the metadata CAS.
+func (s *Service) moveGroup(ctx context.Context, gid, environmentID string, expected *string) (EnvGroupView, error) {
 	environmentID = id.EnvironmentStorageID(environmentID)
 	g, err := s.authorizeGroup(ctx, core.RelCanCreate, gid)
 	if err != nil {
@@ -711,6 +722,15 @@ func (s *Service) MoveEnvGroup(ctx context.Context, gid, environmentID string) (
 	if g.EnvironmentID == environmentID {
 		return viewOf(g), nil
 	}
+	moved := func(current string) error {
+		if expected == nil {
+			return nil
+		}
+		return core.PlacementChanged(current, *expected)
+	}
+	if err := moved(g.EnvironmentID); err != nil {
+		return EnvGroupView{}, err
+	}
 	if err := s.validateEnvironment(ctx, environmentID, g.TenantID); err != nil {
 		return EnvGroupView{}, err
 	}
@@ -721,6 +741,9 @@ func (s *Service) MoveEnvGroup(ctx context.Context, gid, environmentID string) (
 	g, err = s.mutateGroup(ctx, gid, func(cur *store.EnvGroup) error {
 		if cur.EnvironmentID == environmentID {
 			return errMetaUnchanged
+		}
+		if err := moved(cur.EnvironmentID); err != nil {
+			return err
 		}
 		// Checked against the row this write replaces, so a concurrent move
 		// cannot hand it an unchecked source (w4/m232).
@@ -780,7 +803,8 @@ func (s *Service) SetGroupEnvironment(ctx context.Context, name, environmentID s
 	if !found {
 		return fmt.Errorf("%w: env group %q not found", core.ErrNotFound, name)
 	}
-	return s.SetEnvironmentID(ctx, g.ID, environmentID)
+	_, err = s.MoveEnvGroup(ctx, g.ID, environmentID)
+	return err
 }
 
 // RenameEnvGroup updates a group's display name without changing its id,

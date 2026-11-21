@@ -51,6 +51,8 @@ func TestPlacementProjectDepartureClearsEnvironment(t *testing.T) {
 	for _, project := range []string{"prj-b", "", "prj-a"} {
 		t.Run("project="+project, func(t *testing.T) {
 			original := placementResource()
+			// An isolated environment's member carries its isolation label too.
+			original.Labels[core.LabelNetworkIsolation] = "env-a"
 			svc, cl := newService(original)
 			before := readPlacement(t, cl)
 			if err := svc.SetProjectID(ctxAs("user-a"), original.Name, original.Labels[core.LabelEnvironment], project); err != nil {
@@ -64,8 +66,9 @@ func TestPlacementProjectDepartureClearsEnvironment(t *testing.T) {
 				if !reflect.DeepEqual(got, before) {
 					t.Errorf("unchanged project rewrote resource: before=%+v after=%+v", before.ObjectMeta, got.ObjectMeta)
 				}
-			} else if got.Labels[core.LabelEnvironment] != "" || len(got.Spec.EnvironmentIPAllowList) != 0 {
-				t.Errorf("project departure retained environment=%q inherited rules=%v", got.Labels[core.LabelEnvironment], got.Spec.EnvironmentIPAllowList)
+			} else if got.Labels[core.LabelEnvironment] != "" || len(got.Spec.EnvironmentIPAllowList) != 0 || core.HasNetworkIsolation(got.Labels) {
+				t.Errorf("project departure retained environment=%q inherited rules=%v isolation=%q",
+					got.Labels[core.LabelEnvironment], got.Spec.EnvironmentIPAllowList, got.Labels[core.LabelNetworkIsolation])
 			}
 			if !slices.Equal(got.Spec.IPAllowList, original.Spec.IPAllowList) {
 				t.Errorf("owned rules changed: %v", got.Spec.IPAllowList)

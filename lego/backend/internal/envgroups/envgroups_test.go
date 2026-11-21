@@ -1026,7 +1026,7 @@ func TestEnvGroup_EnvironmentMembershipValidatesWorkspaceAndPersists(t *testing.
 		t.Fatalf("membership projection after create: %+v err=%v", memberships, err)
 	}
 
-	if err := svc.SetEnvironmentID(ctx, g.ID, "env-alpha-2"); err != nil {
+	if err := svc.SetEnvironmentID(ctx, g.ID, "env-alpha", "env-alpha-2"); err != nil {
 		t.Fatalf("move within workspace: %v", err)
 	}
 	got, _ = svc.GetEnvGroup(ctx, g.ID)
@@ -1034,7 +1034,7 @@ func TestEnvGroup_EnvironmentMembershipValidatesWorkspaceAndPersists(t *testing.
 		t.Fatalf("environmentId after move = %q, want env-alpha-2", got.EnvironmentID)
 	}
 
-	if err := svc.SetEnvironmentID(ctx, g.ID, "env-bravo"); !errors.Is(err, core.ErrForbidden) {
+	if err := svc.SetEnvironmentID(ctx, g.ID, "env-alpha-2", "env-bravo"); !errors.Is(err, core.ErrForbidden) {
 		t.Fatalf("cross-workspace move: want ErrForbidden, got %v", err)
 	}
 	got, _ = svc.GetEnvGroup(ctx, g.ID)
@@ -1042,7 +1042,7 @@ func TestEnvGroup_EnvironmentMembershipValidatesWorkspaceAndPersists(t *testing.
 		t.Fatalf("refused move changed membership to %q", got.EnvironmentID)
 	}
 
-	if err := svc.SetEnvironmentID(ctx, g.ID, ""); err != nil {
+	if err := svc.SetEnvironmentID(ctx, g.ID, "env-alpha-2", ""); err != nil {
 		t.Fatalf("unassign: %v", err)
 	}
 	got, _ = svc.GetEnvGroup(ctx, g.ID)

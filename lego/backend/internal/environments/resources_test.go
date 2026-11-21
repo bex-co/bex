@@ -25,6 +25,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -101,6 +102,10 @@ func (s noReversalStore) ChangeEnvironmentServices(ctx context.Context, environm
 		return nil, errors.New("store unavailable")
 	}
 	return s.fakeStore.ChangeEnvironmentServices(ctx, environmentID, projectID, tenantID, serviceIDs, add, exit)
+}
+
+func (noReversalStore) ReturnEnvironmentServices(context.Context, string, string, string, string, []string, core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
+	return nil, errors.New("store unavailable")
 }
 
 // A request that fails partway reverses only the members it changed, never one
@@ -190,6 +195,150 @@ func TestChangeResourcesFailureReturnsMovedMembersToTheirEnvironment(t *testing.
 	}
 	if app := getApp(t, cl, worker); app.Labels[core.LabelEnvironment] != "" || len(app.Spec.EnvironmentIPAllowList) != 0 {
 		t.Errorf("%s, placed from no environment, kept production's labels %v and IP layer %v", worker, app.Labels, app.Spec.EnvironmentIPAllowList)
+	}
+}
+
+// A failed add returns a datastore it placed from no environment to the
+// project it was in, with none of the target's rules: one from another
+// project goes back to it, one in no project leaves the target's, and one
+// already in the target's project stays there. The old reversal only left the
+// environment, so each kept the target's project.
+func TestChangeResourcesFailureReturnsAMemberPlacedFromNoEnvironmentToItsProject(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "stack"})
+	st.addProject(store.Project{ID: "prj-0", TenantID: "tea-a", Name: "other"})
+	db, kv, kvHere, group := ids.New(ids.Postgres), ids.New(ids.KeyValue), ids.New(ids.KeyValue), ids.New(ids.EnvGroup)
+	dbs := newDatabaseIndex()
+	dbs.add(postgres.PostgresView{ID: db, OwnerID: "tea-a", ProjectID: "prj-0"})
+	kvs := newKeyValueIndex()
+	kvs.add(keyvalue.KeyValueView{ID: kv, OwnerID: "tea-a"})
+	kvs.add(keyvalue.KeyValueView{ID: kvHere, OwnerID: "tea-a", ProjectID: "prj-1"})
+	groups := &failingEnvGroupIndex{refuse: group}
+	groups.groups = []envgroups.EnvGroupView{{ID: group, OwnerID: "tea-a"}}
+	svc := newService(st)
+	svc.Databases, svc.KeyValues, svc.EnvGroups = dbs, kvs, groups
+	production, _ := svc.Create(ctxAs("user-a"), "prj-1", "production")
+	office := []core.IPAllowListEntry{{CIDRBlock: "10.0.0.0/8", Description: "office"}}
+	if err := st.SetEnvironmentACL(context.Background(), ids.EnvironmentStorageID(production.ID), ProtectedStatusUnprotected, true, office); err != nil {
+		t.Fatal(err)
+	}
+
+	// The group's join fails after the three datastores joined production.
+	_, err := svc.ChangeResources(ctxAs("user-a"), production.ID, []string{db, kv, kvHere, group}, true)
+	var coded *core.CodedError
+	if err == nil || errors.As(err, &coded) {
+		t.Fatalf("failed add = %v, want the group's own failure", err)
+	}
+	if got := dbs.dbs[db]; got.EnvironmentID != "" || got.ProjectID != "prj-0" || len(dbs.envLayers[db]) != 0 || dbs.isolation[db] {
+		t.Errorf("%s after the reversal: environment %q, project %q, IP layer %v, isolated %v; want no environment, prj-0 and no rules",
+			db, got.EnvironmentID, got.ProjectID, dbs.envLayers[db], dbs.isolation[db])
+	}
+	for name, want := range map[string]string{kv: "", kvHere: "prj-1"} {
+		got := kvs.kvs[name]
+		if got.EnvironmentID != "" || got.ProjectID != want || len(kvs.envLayers[name]) != 0 || kvs.isolation[name] {
+			t.Errorf("%s after the reversal: environment %q, project %q, IP layer %v, isolated %v; want no environment, project %q and no rules",
+				name, got.EnvironmentID, got.ProjectID, kvs.envLayers[name], kvs.isolation[name], want)
+		}
+	}
+	if got, _ := svc.Get(ctxAs("user-a"), production.ID); EnvironmentOccupied(got) {
+		t.Fatalf("production after the reversal = %+v, want it empty", got)
+	}
+}
+
+// racingEnvGroupIndex refuses to move one named group, and first lets a
+// concurrent request run.
+type racingEnvGroupIndex struct {
+	fakeEnvGroupIndex
+	refuse string
+	race   func()
+}
+
+func (f *racingEnvGroupIndex) SetEnvironmentID(ctx context.Context, id, expectedEnvironmentID, environmentID string) error {
+	if id == f.refuse {
+		if race := f.race; race != nil {
+			f.race = nil
+			race()
+		}
+		return errors.New("secret store: connection reset by 10.0.0.5")
+	}
+	return f.fakeEnvGroupIndex.SetEnvironmentID(ctx, id, expectedEnvironmentID, environmentID)
+}
+
+// A failed membership change returns each member only while it is still where
+// this request put it. Without a concurrent request, env groups go back too:
+// one taken from staging returns there, one placed from no environment leaves.
+// When another request moves the members first, every one stays where that
+// request put it: the groups an add moved (env-group reversal went through the
+// public group move, which takes a group from wherever it is), and the service,
+// database and group a removal took out (the rejoin listed them again and
+// joined them from where it found them).
+func TestChangeResourcesFailureLeavesWhatAConcurrentRequestMoved(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "stack"})
+	web, db := ids.New(ids.Service), ids.New(ids.Postgres)
+	moved, placed, failing := ids.New(ids.EnvGroup), ids.New(ids.EnvGroup), ids.New(ids.EnvGroup)
+	dbs := newDatabaseIndex()
+	dbs.add(postgres.PostgresView{ID: db, OwnerID: "tea-a"})
+	groups := &racingEnvGroupIndex{refuse: failing}
+	groups.groups = []envgroups.EnvGroupView{{ID: moved, OwnerID: "tea-a"}, {ID: placed, OwnerID: "tea-a"}, {ID: failing, OwnerID: "tea-a"}}
+	svc, _ := newServiceWithClient(st, sampleApp(web))
+	svc.Databases, svc.EnvGroups = dbs, groups
+	staging, _ := svc.Create(ctxAs("user-a"), "prj-1", "staging")
+	production, _ := svc.Create(ctxAs("user-a"), "prj-1", "production")
+	qa, _ := svc.Create(ctxAs("user-a"), "prj-1", "qa")
+	in := func(environmentID string) string { return ids.EnvironmentStorageID(environmentID) }
+	groupIn := func(gid string) string {
+		for _, g := range groups.groups {
+			if g.ID == gid {
+				return g.EnvironmentID
+			}
+		}
+		return "missing"
+	}
+	if _, err := svc.ChangeResources(ctxAs("user-a"), staging.ID, []string{moved}, true); err != nil {
+		t.Fatal(err)
+	}
+
+	// No concurrent request: both groups go back.
+	if _, err := svc.ChangeResources(ctxAs("user-a"), production.ID, []string{moved, placed, failing}, true); err == nil {
+		t.Fatal("the add with a failing group succeeded")
+	}
+	if groupIn(moved) != in(staging.ID) || groupIn(placed) != "" {
+		t.Fatalf("after the reversal: %s in %q, %s in %q; want staging and none", moved, groupIn(moved), placed, groupIn(placed))
+	}
+
+	// Another request moves both groups on to qa before the add fails.
+	groups.race = func() {
+		if _, err := svc.ChangeResources(ctxAs("user-a"), qa.ID, []string{moved, placed}, true); err != nil {
+			t.Errorf("the concurrent move: %v", err)
+		}
+	}
+	if _, err := svc.ChangeResources(ctxAs("user-a"), production.ID, []string{moved, placed, failing}, true); err == nil {
+		t.Fatal("the add with a failing group succeeded")
+	}
+	if groupIn(moved) != in(qa.ID) || groupIn(placed) != in(qa.ID) {
+		t.Fatalf("after the reversal: %s in %q, %s in %q; want both in qa, where the concurrent request put them", moved, groupIn(moved), placed, groupIn(placed))
+	}
+
+	// A removal: another request places what it took out in qa before it fails.
+	if _, err := svc.ChangeResources(ctxAs("user-a"), production.ID, []string{web, db, moved}, true); err != nil {
+		t.Fatal(err)
+	}
+	groups.groups[2].EnvironmentID = in(production.ID)
+	groups.race = func() {
+		if _, err := svc.ChangeResources(ctxAs("user-a"), qa.ID, []string{web, db, moved}, true); err != nil {
+			t.Errorf("the concurrent move: %v", err)
+		}
+	}
+	if _, err := svc.ChangeResources(ctxAs("user-a"), production.ID, []string{web, db, moved, failing}, false); err == nil {
+		t.Fatal("the removal with a failing group succeeded")
+	}
+	gotQA, _ := svc.Get(ctxAs("user-a"), qa.ID)
+	if !slices.Equal(gotQA.ServiceIDs, []string{web}) || !slices.Equal(gotQA.DatabaseIDs, []string{db}) || groupIn(moved) != in(qa.ID) {
+		t.Fatalf("qa after the reversal: services %v, databases %v, %s in %q; want all three in qa", gotQA.ServiceIDs, gotQA.DatabaseIDs, moved, groupIn(moved))
+	}
+	if got, _ := svc.Get(ctxAs("user-a"), production.ID); len(got.ServiceIDs)+len(got.DatabaseIDs) != 0 || !slices.Equal(got.EnvGroupIDs, []string{failing}) {
+		t.Fatalf("production after the reversal = %+v, want only %s", got, failing)
 	}
 }
 

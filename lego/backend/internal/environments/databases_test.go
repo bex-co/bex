@@ -100,6 +100,7 @@ func (f *fakeDatabaseIndex) ClearEnvironmentID(_ context.Context, name, expected
 	d.EnvironmentID = ""
 	f.dbs[name] = d
 	delete(f.envLayers, name)
+	delete(f.isolation, name)
 	return nil
 }
 
@@ -111,7 +112,10 @@ func (f *fakeDatabaseIndex) SetProjectID(_ context.Context, name, expectedEnviro
 		return err
 	}
 	if d.ProjectID != projectID {
-		d.EnvironmentID = "" // a project change drops the environment
+		// A project change drops the environment and its rules.
+		d.EnvironmentID = ""
+		delete(f.envLayers, name)
+		delete(f.isolation, name)
 	}
 	d.ProjectID = projectID
 	f.dbs[name] = d
@@ -209,6 +213,7 @@ func (f *fakeKeyValueIndex) ClearEnvironmentID(_ context.Context, name, expected
 	kv.EnvironmentID = ""
 	f.kvs[name] = kv
 	delete(f.envLayers, name)
+	delete(f.isolation, name)
 	return nil
 }
 
@@ -220,7 +225,10 @@ func (f *fakeKeyValueIndex) SetProjectID(_ context.Context, name, expectedEnviro
 		return err
 	}
 	if kv.ProjectID != projectID {
-		kv.EnvironmentID = "" // a project change drops the environment
+		// A project change drops the environment and its rules.
+		kv.EnvironmentID = ""
+		delete(f.envLayers, name)
+		delete(f.isolation, name)
 	}
 	kv.ProjectID = projectID
 	f.kvs[name] = kv

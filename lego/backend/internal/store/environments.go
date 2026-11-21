@@ -250,12 +250,15 @@ func (s *PGStore) ChangeEnvironmentServices(ctx context.Context, environmentID, 
 }
 
 // ReturnEnvironmentServices moves the identified services that are still in
-// fromEnvironmentID to toEnvironmentID and its project toProjectID, within
+// fromEnvironmentID to toEnvironmentID and project toProjectID, within
 // tenantID, and writes no other row: a service another writer moved since it
-// reached fromEnvironmentID stays where that writer put it. It is how a failed
-// add returns the services it took from another environment. Returns the
-// per-service placement diff, which exit vets before commit as
-// ChangeEnvironmentServices' does.
+// reached fromEnvironmentID stays where that writer put it. An empty id is no
+// environment or no project, on either side. It is how a failed membership
+// change puts each service back where it was: in the environment an add took
+// it from, in the project it had when an add placed it from no environment,
+// or in the environment a removal took it out of. Returns the per-service
+// placement diff, which exit vets before commit as ChangeEnvironmentServices'
+// does.
 func (s *PGStore) ReturnEnvironmentServices(ctx context.Context, fromEnvironmentID, toEnvironmentID, toProjectID, tenantID string, serviceIDs []string, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
 	if len(serviceIDs) == 0 {
 		return nil, nil
@@ -265,8 +268,9 @@ func (s *PGStore) ReturnEnvironmentServices(ctx context.Context, fromEnvironment
 		var err error
 		changes, err = placementDiffAround(ctx, tx, "environment_id", fromEnvironmentID, tenantID, serviceIDs, func(locked []string) error {
 			_, err := tx.Exec(ctx,
-				`UPDATE apps SET environment_id = $1, project_id = $2, updated_at = now()
-				 WHERE environment_id = $3 AND id = ANY($4) AND tenant_id = $5 AND id = ANY($6)`,
+				`UPDATE apps SET environment_id = NULLIF($1::text, ''), project_id = NULLIF($2::text, ''), updated_at = now()
+				 WHERE environment_id IS NOT DISTINCT FROM NULLIF($3::text, '')
+				   AND id = ANY($4) AND tenant_id = $5 AND id = ANY($6)`,
 				toEnvironmentID, toProjectID, fromEnvironmentID, serviceIDs, tenantID, locked)
 			return err
 		}, exit)

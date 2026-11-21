@@ -910,13 +910,14 @@ func (s *Service) ClearProjectID(ctx context.Context, name, expectedProjectID st
 }
 
 func (s *Service) setProjectID(ctx context.Context, kv *appv1alpha1.KeyValue, projectID string) error {
-	if kv.Labels[core.LabelProject] == projectID && (projectID != "" || (kv.Labels[core.LabelEnvironment] == "" && len(kv.Spec.EnvironmentIPAllowList) == 0)) {
+	if kv.Labels[core.LabelProject] == projectID && (projectID != "" || (kv.Labels[core.LabelEnvironment] == "" && len(kv.Spec.EnvironmentIPAllowList) == 0 && !core.HasNetworkIsolation(kv.Labels))) {
 		return nil
 	}
 	// A concurrent assignment must conflict, never lose its environment or rules.
 	before := kv.DeepCopy()
 	patch := client.MergeFromWithOptions(before, client.MergeFromWithOptimisticLock{})
 	delete(kv.Labels, core.LabelEnvironment)
+	delete(kv.Labels, core.LabelNetworkIsolation)
 	kv.Spec.EnvironmentIPAllowList = nil
 	markRestartFree(before, kv)
 	if projectID == "" {

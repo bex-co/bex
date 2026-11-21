@@ -99,11 +99,11 @@ type failingEnvGroupIndex struct {
 	refuse string
 }
 
-func (f *failingEnvGroupIndex) SetEnvironmentID(ctx context.Context, id, environmentID string) error {
+func (f *failingEnvGroupIndex) SetEnvironmentID(ctx context.Context, id, expectedEnvironmentID, environmentID string) error {
 	if id == f.refuse {
 		return errors.New("secret store: connection reset by 10.0.0.5")
 	}
-	return f.fakeEnvGroupIndex.SetEnvironmentID(ctx, id, environmentID)
+	return f.fakeEnvGroupIndex.SetEnvironmentID(ctx, id, expectedEnvironmentID, environmentID)
 }
 
 // w4/m206: a two-group move that failed on its second group left the first one

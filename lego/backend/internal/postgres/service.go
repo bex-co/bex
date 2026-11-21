@@ -2103,12 +2103,13 @@ func (s *Service) ClearProjectID(ctx context.Context, name, expectedProjectID st
 }
 
 func (s *Service) setProjectID(ctx context.Context, d *appv1alpha1.Database, projectID string) error {
-	if d.Labels[core.LabelProject] == projectID && (projectID != "" || (d.Labels[core.LabelEnvironment] == "" && len(d.Spec.EnvironmentIPAllowList) == 0)) {
+	if d.Labels[core.LabelProject] == projectID && (projectID != "" || (d.Labels[core.LabelEnvironment] == "" && len(d.Spec.EnvironmentIPAllowList) == 0 && !core.HasNetworkIsolation(d.Labels))) {
 		return nil
 	}
 	// A concurrent assignment must conflict, never lose its environment or rules.
 	patch := client.MergeFromWithOptions(d.DeepCopy(), client.MergeFromWithOptimisticLock{})
 	delete(d.Labels, core.LabelEnvironment)
+	delete(d.Labels, core.LabelNetworkIsolation)
 	d.Spec.EnvironmentIPAllowList = nil
 	if projectID == "" {
 		delete(d.Labels, core.LabelProject)

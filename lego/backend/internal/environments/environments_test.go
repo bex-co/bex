@@ -165,15 +165,22 @@ func (f *fakeStore) ChangeEnvironmentServices(_ context.Context, environmentID, 
 }
 
 // ReturnEnvironmentServices moves the named services still in
-// fromEnvironmentID to toEnvironmentID, as the PG store does.
+// fromEnvironmentID ("" for none) to toEnvironmentID ("" for none), as the PG
+// store does. The fake keeps no project, so toProjectID is only reported.
 func (f *fakeStore) ReturnEnvironmentServices(_ context.Context, fromEnvironmentID, toEnvironmentID, toProjectID, _ string, serviceIDs []string, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	orNil := func(v string) *string {
+		if v == "" {
+			return nil
+		}
+		return &v
+	}
 	var changes []core.ServicePlacementChange
 	for _, sid := range serviceIDs {
-		if f.assign[fromEnvironmentID][sid] {
+		if f.environmentOfLocked(sid) == fromEnvironmentID {
 			changes = append(changes, core.ServicePlacementChange{ServiceID: sid, ServiceName: sid, ServiceMove: core.ServiceMove{
-				EnvironmentFrom: &fromEnvironmentID, EnvironmentTo: &toEnvironmentID, ProjectTo: &toProjectID,
+				EnvironmentFrom: orNil(fromEnvironmentID), EnvironmentTo: orNil(toEnvironmentID), ProjectTo: orNil(toProjectID),
 			}})
 		}
 	}
@@ -184,12 +191,25 @@ func (f *fakeStore) ReturnEnvironmentServices(_ context.Context, fromEnvironment
 	}
 	for _, mv := range changes {
 		delete(f.assign[fromEnvironmentID], mv.ServiceID)
+		if toEnvironmentID == "" {
+			continue
+		}
 		if f.assign[toEnvironmentID] == nil {
 			f.assign[toEnvironmentID] = map[string]bool{}
 		}
 		f.assign[toEnvironmentID][mv.ServiceID] = true
 	}
 	return changes, nil
+}
+
+// environmentOfLocked is the environment sid is in ("" for none).
+func (f *fakeStore) environmentOfLocked(sid string) string {
+	for environmentID, members := range f.assign {
+		if members[sid] {
+			return environmentID
+		}
+	}
+	return ""
 }
 
 func (f *fakeStore) setServicesLocked(environmentID, projectID string, serviceNames []string, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {

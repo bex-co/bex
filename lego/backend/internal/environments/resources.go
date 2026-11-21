@@ -81,9 +81,9 @@ func classifyResources(resourceIDs []string) (resourceKinds, error) {
 // id refuses the whole request before anything changes; the kinds then apply
 // in turn, and a failure returns every member this request changed in the
 // kinds already applied, newest first, to the environment it was in before
-// (or to none), so the request is all-or-nothing. When a reversal fails too,
-// the answer is ENVIRONMENT_MEMBERSHIP_PARTIAL naming the members that may
-// still be changed.
+// (or to none, in the project it had), so the request is all-or-nothing. When
+// a reversal fails too, the answer is ENVIRONMENT_MEMBERSHIP_PARTIAL naming
+// the members that may still be changed.
 func (s *Service) ChangeResources(ctx context.Context, id string, resourceIDs []string, add bool) (EnvironmentView, error) {
 	// Authorization and existence first: a caller who may not touch the
 	// environment learns nothing about its id format rules.
@@ -136,9 +136,24 @@ type memberKind struct {
 	idx      resourceIndex
 }
 
-// memberChange is one member a membership write changed, with the environment
-// it was in before ("" for none).
-type memberChange struct{ id, from string }
+// memberChange is one member a membership write changed, with where it was
+// before.
+type memberChange struct {
+	id   string
+	from placement
+}
+
+// placement is where a member was: its environment ("" for none) and, only
+// when that is none, its project ("" for none), which an add replaces with the
+// target's. A member in an environment is in that environment's project.
+type placement struct{ environment, project string }
+
+func placedAt(environmentID, projectID string) placement {
+	if environmentID != "" {
+		return placement{environment: environmentID}
+	}
+	return placement{project: projectID}
+}
 
 // changedIDs is the ids of changes.
 func changedIDs(changes []memberChange) []string {
@@ -166,34 +181,45 @@ func (s *Service) changeKind(ctx context.Context, k memberKind, id string, membe
 	return changed, failed, err
 }
 
-// reverseKind returns each member k changed in environment envID to the
-// environment it was in before: a member an add took from another environment
-// goes back to it, one it placed from no environment leaves again, and one a
-// removal took out rejoins. It returns the members it could not return.
+// reverseKind returns each member k changed in environment envID to where it
+// was before, and only while it is still where this request put it, so a member
+// another request has moved since stays where that request put it: a member an
+// add took from another environment goes back to it, one it placed from no
+// environment leaves again for the project it was in, and one a removal took
+// out rejoins. It returns the members it could not return.
 func (s *Service) reverseKind(ctx context.Context, k memberKind, envID string) []string {
-	var sources []string
-	bySource := map[string][]string{}
+	var origins []placement
+	byOrigin := map[placement][]string{}
 	for _, c := range k.changed {
-		if _, seen := bySource[c.from]; !seen {
-			sources = append(sources, c.from)
+		if _, seen := byOrigin[c.from]; !seen {
+			origins = append(origins, c.from)
 		}
-		bySource[c.from] = append(bySource[c.from], c.id)
+		byOrigin[c.from] = append(byOrigin[c.from], c.id)
 	}
 	var kept []string
-	for _, from := range sources {
-		memberIDs := bySource[from]
+	for _, from := range origins {
+		memberIDs := byOrigin[from]
 		var err error
 		switch {
-		case from == "" || from == envID:
-			// Placed from no environment: leave again. Removed: rejoin.
-			_, _, err = s.changeKind(ctx, k, envID, memberIDs, from == envID)
-		case k.services:
-			err = s.returnServices(ctx, envID, from, memberIDs)
+		case from.environment == "" && k.services:
+			err = s.releaseServices(ctx, envID, from.project, memberIDs)
+		case from.environment == "":
+			err = s.releaseMembers(ctx, k.idx, envID, from.project, memberIDs)
 		default:
-			err = s.returnMembers(ctx, k.idx, envID, from, memberIDs)
+			// Taken from another environment: still in envID. Removed from
+			// envID: in no environment.
+			at := envID
+			if from.environment == envID {
+				at = ""
+			}
+			if k.services {
+				err = s.returnServices(ctx, at, from.environment, memberIDs)
+			} else {
+				err = s.returnMembers(ctx, k.idx, at, from.environment, memberIDs)
+			}
 		}
 		if err != nil {
-			log.Printf("environments: returning %v from %s to %q: %v", memberIDs, envID, from, err)
+			log.Printf("environments: returning %v from %s to %+v: %v", memberIDs, envID, from, err)
 			kept = append(kept, memberIDs...)
 		}
 	}

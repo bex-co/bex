@@ -59,7 +59,7 @@ func TestGroupMoveFollowsTheStoredServiceEnvironment(t *testing.T) {
 				}
 				return tc.stored, nil
 			}
-			err = svc.SetEnvironmentID(ctx, g.ID, "env-beta")
+			err = svc.SetEnvironmentID(ctx, g.ID, "env-alpha", "env-beta")
 			if tc.wantError {
 				var coded *core.CodedError
 				if !errors.As(err, &coded) || coded.Code != "ENV_GROUP_MOVE_INCOMPATIBLE_SERVICES" {

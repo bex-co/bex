@@ -49,9 +49,17 @@ func (f *fakeEnvGroupIndex) ListEnvironmentMemberships(_ context.Context, ownerI
 	return out, nil
 }
 
-func (f *fakeEnvGroupIndex) SetEnvironmentID(_ context.Context, id, environmentID string) error {
+// SetEnvironmentID mirrors envgroups' compare: a group no longer where the
+// caller observed it is refused.
+func (f *fakeEnvGroupIndex) SetEnvironmentID(_ context.Context, id, expectedEnvironmentID, environmentID string) error {
 	for i := range f.groups {
 		if f.groups[i].ID == id {
+			if f.groups[i].EnvironmentID == environmentID {
+				return nil
+			}
+			if err := core.PlacementChanged(f.groups[i].EnvironmentID, expectedEnvironmentID); err != nil {
+				return err
+			}
 			f.groups[i].EnvironmentID = environmentID
 			return nil
 		}
