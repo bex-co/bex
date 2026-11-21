@@ -34,6 +34,10 @@
     "plan": "starter",
     "port": 10000,
     "preDeployCommand": "echo QA_PREDEPLOY_MARKER",
+    "previews": {
+      "generation": "off"
+    },
+    "pullRequestPreviewsEnabled": "no",
     "runtime": "image",
     "url": "qa-image-predeploy:10000"
   },

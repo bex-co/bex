@@ -48,6 +48,10 @@
     "plan": "starter",
     "port": 10000,
     "preDeployCommand": "echo QA_PREDEPLOY_MARKER",
+    "previews": {
+      "generation": "off"
+    },
+    "pullRequestPreviewsEnabled": "no",
     "renderSubdomainPolicy": "enabled",
     "runtime": "image",
     "url": "https://qa-image-predeploy.onbex.co"

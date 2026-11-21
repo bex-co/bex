@@ -26,6 +26,10 @@
     "numInstances": 1,
     "plan": "starter",
     "preDeployCommand": "echo QA_PREDEPLOY_MARKER",
+    "previews": {
+      "generation": "off"
+    },
+    "pullRequestPreviewsEnabled": "no",
     "runtime": "image"
   },
   "slug": "qa-image-predeploy",

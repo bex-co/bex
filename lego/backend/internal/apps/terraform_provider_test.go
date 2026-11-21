@@ -591,3 +591,130 @@ func TestPatchKeepsTheServicesOwnRootDir(t *testing.T) {
 		}
 	})
 }
+
+// terraformPreviewsCases are creates and updates Render's Terraform provider
+// sent in its own recordings at 06af456, one per service type, each answered
+// 2xx with serviceDetails.previews {"generation":"off"} and
+// pullRequestPreviewsEnabled "no" on the four types that have previews, and
+// neither on a cron job. {{previews}} is the previews object under test: {}
+// with no previews block, {"generation":"off"} for `previews = { generation =
+// "off" }`. Sources: webservice/datasource webservice_datasource_cassette.yaml
+// and webservice/resource env_var_cassette.yaml; privateservice and
+// backgroundworker disks_cassette.yaml; staticsite create_minimal_cassette.yaml
+// and static_site_cassette.yaml; cronjob docker_cassette.yaml.
+var terraformPreviewsCases = []struct {
+	svcType, create, update string
+	previews                bool
+}{
+	{"web_service",
+		`{"envVars":null,"image":{"imagePath":"nginx","ownerId":""},"name":"web-service-tf","ownerId":"some-owner-id","rootDir":"","secretFiles":null,"serviceDetails":{"envSpecificDetails":{},"healthCheckPath":"","maintenanceMode":{"enabled":false,"uri":""},"numInstances":1,"plan":"starter","previews":{{previews}},"pullRequestPreviewsEnabled":"no","region":"oregon","runtime":"image"},"type":"web_service"}`,
+		`{"image":{"imagePath":"nginx","ownerId":""},"name":"web-service-tf","rootDir":"","serviceDetails":{"envSpecificDetails":{"dockerCommand":""},"healthCheckPath":"","maintenanceMode":{"enabled":false,"uri":""},"plan":"starter","preDeployCommand":"","previews":{{previews}},"pullRequestPreviewsEnabled":"no","runtime":"image"}}`,
+		true},
+	{"private_service",
+		`{"envVars":null,"image":{"imagePath":"nginx","ownerId":""},"name":"some-name","ownerId":"some-owner-id","rootDir":"","secretFiles":null,"serviceDetails":{"envSpecificDetails":{},"numInstances":1,"plan":"starter","previews":{{previews}},"pullRequestPreviewsEnabled":"no","region":"oregon","runtime":"image"},"type":"private_service"}`,
+		`{"image":{"imagePath":"nginx","ownerId":""},"name":"some-name","rootDir":"","serviceDetails":{"envSpecificDetails":{"dockerCommand":""},"plan":"starter","preDeployCommand":"","previews":{{previews}},"pullRequestPreviewsEnabled":"no"}}`,
+		true},
+	{"background_worker",
+		`{"envVars":null,"image":{"imagePath":"nginx","ownerId":""},"name":"some-name","ownerId":"some-owner-id","rootDir":"","secretFiles":null,"serviceDetails":{"envSpecificDetails":{},"numInstances":1,"plan":"starter","previews":{{previews}},"pullRequestPreviewsEnabled":"no","region":"oregon","runtime":"image"},"type":"background_worker"}`,
+		`{"image":{"imagePath":"nginx","ownerId":""},"name":"some-name","rootDir":"","serviceDetails":{"envSpecificDetails":{"dockerCommand":""},"plan":"starter","preDeployCommand":"","previews":{{previews}},"pullRequestPreviewsEnabled":"no"}}`,
+		true},
+	{"static_site",
+		`{"autoDeploy":"no","branch":"main","buildFilter":{"ignoredPaths":null,"paths":null},"envVars":null,"name":"updated-static-site","ownerId":"some-owner-id","repo":"https://github.com/render-examples/sveltekit-static","rootDir":"","serviceDetails":{"buildCommand":"npm install && npm run build","headers":[],"previews":{{previews}},"publishPath":"public","pullRequestPreviewsEnabled":"no","routes":null},"type":"static_site"}`,
+		`{"autoDeploy":"no","branch":"main","buildFilter":{"ignoredPaths":["node_modules/**"],"paths":["path/**"]},"name":"updated-static-site","repo":"https://github.com/render-examples/sveltekit-static","rootDir":"","serviceDetails":{"buildCommand":"npm install && npm run build","previews":{{previews}},"publishPath":"build","pullRequestPreviewsEnabled":"no"}}`,
+		true},
+	{"cron_job", terraformDockerCron,
+		`{"autoDeployTrigger":"commit","branch":"main","buildFilter":{"ignoredPaths":null,"paths":null},"name":"some-name","repo":"https://github.com/render-examples/bun-docker","rootDir":"","serviceDetails":{"envSpecificDetails":{"dockerCommand":"","dockerContext":".","dockerfilePath":"./Dockerfile"},"plan":"starter","schedule":"0 0 * * *"}}`,
+		false},
+}
+
+// detailsPreviews is serviceDetails' two preview keys of a Render service
+// read, nil when absent.
+func detailsPreviews(t *testing.T, raw []byte) (previews, legacy json.RawMessage) {
+	t.Helper()
+	var svc struct {
+		Service        *json.RawMessage           `json:"service"`
+		ServiceDetails map[string]json.RawMessage `json:"serviceDetails"`
+	}
+	if err := json.Unmarshal(raw, &svc); err != nil {
+		t.Fatalf("decode %s: %v", raw, err)
+	}
+	if svc.Service != nil { // the create's {service, deployId} envelope
+		return detailsPreviews(t, *svc.Service)
+	}
+	if svc.ServiceDetails == nil {
+		t.Fatalf("no serviceDetails in %s", raw)
+	}
+	return svc.ServiceDetails["previews"], svc.ServiceDetails["pullRequestPreviewsEnabled"]
+}
+
+// TestServiceReadsStateRendersPreviewsOff pins w9/129: every Render-shaped
+// read of a web service, private service, background worker or static site
+// carries serviceDetails.previews {"generation":"off"} and
+// pullRequestPreviewsEnabled "no", as each of Render's does, whether the
+// provider sent {} or "off"; a cron job's carries neither. The provider stores
+// previews.generation from the read, so a null after a configured "off"
+// aborted the apply.
+func TestServiceReadsStateRendersPreviewsOff(t *testing.T) {
+	check := func(t *testing.T, surface string, raw []byte, want bool) {
+		t.Helper()
+		previews, legacy := detailsPreviews(t, raw)
+		if !want {
+			if previews != nil || legacy != nil {
+				t.Errorf("%s: a cron job read carries previews %s, pullRequestPreviewsEnabled %s; Render's carries neither", surface, previews, legacy)
+			}
+			return
+		}
+		if string(previews) != `{"generation":"off"}` || string(legacy) != `"no"` {
+			t.Errorf(`%s: previews %s, pullRequestPreviewsEnabled %s; want {"generation":"off"} and "no"`, surface, previews, legacy)
+		}
+	}
+	for _, tc := range terraformPreviewsCases {
+		sends := []string{`{}`, `{"generation":"off"}`}
+		if !tc.previews {
+			sends = sends[:1] // Render's cron create takes no previews
+		}
+		for _, sent := range sends {
+			t.Run(tc.svcType+" "+sent, func(t *testing.T) {
+				fill := strings.NewReplacer("{{previews}}", sent).Replace
+				svc, _ := newService(nil)
+				rec := strictCreate(t, svc, fill(tc.create))
+				if rec.Code != http.StatusCreated {
+					t.Fatalf("POST = %d: %s", rec.Code, rec.Body.String())
+				}
+				check(t, "create", rec.Body.Bytes(), tc.previews)
+				var created serviceAndDeploy
+				if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+					t.Fatal(err)
+				}
+				path := "/v1/services/" + created.Service.ID
+
+				for _, step := range []struct{ surface, method, path, body string }{
+					{"PATCH", http.MethodPatch, path, fill(tc.update)},
+					{"GET", http.MethodGet, path, ""},
+				} {
+					rec := strictRequest(t, svc, step.method, step.path, step.body)
+					if rec.Code != http.StatusOK {
+						t.Fatalf("%s %s = %d: %s", step.method, step.path, rec.Code, rec.Body.String())
+					}
+					check(t, step.surface, rec.Body.Bytes(), tc.previews)
+				}
+				rec = strictRequest(t, svc, http.MethodGet, "/v1/services", "")
+				var list []json.RawMessage
+				if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil || rec.Code != http.StatusOK || len(list) != 1 {
+					t.Fatalf("GET /v1/services = %d (%v): %s", rec.Code, err, rec.Body.String())
+				}
+				check(t, "list", list[0], tc.previews)
+				res := callMCPTool(t, svc, "get_service", map[string]any{"serviceId": created.Service.ID})
+				if res.IsError {
+					t.Fatalf("MCP get_service: %s", mcpResultText(res))
+				}
+				check(t, "MCP get_service", []byte(mcpResultText(res)), tc.previews)
+				res = callMCPTool(t, svc, "list_services", map[string]any{})
+				if err := json.Unmarshal([]byte(mcpResultText(res)), &list); err != nil || res.IsError || len(list) != 1 {
+					t.Fatalf("MCP list_services (%v): %s", err, mcpResultText(res))
+				}
+				check(t, "MCP list_services", list[0], tc.previews)
+			})
+		}
+	}
+}

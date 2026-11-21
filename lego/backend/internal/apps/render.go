@@ -586,6 +586,17 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 	if a.Autoscaling != nil && a.Autoscaling.Enabled && autoscalingEligible(svcType) {
 		details["autoscaling"] = renderAutoscalingConfigFromView(*a.Autoscaling)
 	}
+	// Render's web, private, worker and static serviceDetails always carry
+	// the preview settings; its cron details have none. bex builds no
+	// previews and refuses every value but off on create and PATCH
+	// (unsupportedPreviewsField), so each read states Render's off. Render's
+	// Terraform provider stores previews.generation from the read, and a null
+	// after a configured "off" aborts the apply (w9/129).
+	switch svcType {
+	case renderWebService, renderPrivateService, appv1alpha1.TypeBackgroundWorker, appv1alpha1.TypeStaticSite:
+		details["previews"] = map[string]any{"generation": "off"}
+		details["pullRequestPreviewsEnabled"] = "no" // deprecated, still read
+	}
 	if svcType == renderWebService {
 		// Render's maintenanceMode is required on webServiceDetails (never
 		// omitted), unlike the mostly-optional fields above — docs/render-

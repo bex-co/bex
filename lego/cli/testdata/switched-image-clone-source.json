@@ -45,6 +45,10 @@
     ],
     "plan": "free",
     "port": 10000,
+    "previews": {
+      "generation": "off"
+    },
+    "pullRequestPreviewsEnabled": "no",
     "renderSubdomainPolicy": "enabled",
     "runtime": "image"
   },
