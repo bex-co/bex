@@ -549,7 +549,8 @@ type TriggerParams struct {
 	// step — valid for image-backed services (nothing to build anyway), but
 	// returns ErrBadRequest for repo-backed ones (the public trigger does not
 	// expose cached-artifact deployment; use build_and_deploy). Empty
-	// or "build_and_deploy" is the normal full-rebuild path.
+	// or "build_and_deploy" is the normal full-rebuild path. As on Render,
+	// "deploy_only" refuses CommitID, ImageURL and ClearCache "clear" (w8/377).
 	DeployMode string
 	// ImageURL overrides the image for this deploy (Render's imageUrl). Only
 	// accepted for image-backed services; rejected with ErrBadRequest for
@@ -603,6 +604,8 @@ type TriggerParams struct {
 //   - repo-backed service: rejected with ErrBadRequest (this public trigger does
 //     not expose cached-artifact deployment; use build_and_deploy).
 //   - image-backed service: accepted (nothing to build regardless of mode).
+//   - with commitId, imageUrl or clearCache "clear": rejected with
+//     ErrBadRequest on any service, as Render's contract says (w8/377).
 //
 // Suspended services refuse the trigger: there is nothing to roll.
 // TriggerManual is Trigger as the dashboard's Manual Deploy action fires
@@ -754,6 +757,14 @@ func (s *Service) validateTrigger(service string, a *appv1alpha1.App, p TriggerP
 		if p.CommitID != "" || p.ImageURL != "" || p.DeployMode != "" {
 			return fmt.Errorf("%w: buildId cannot be combined with commitId, imageUrl or deployMode", core.ErrBadRequest)
 		}
+	}
+	// Render's create-deploy contract: "deploy_only cannot be combined with
+	// commitId, imageUrl, or clearCache, as those are build related fields"
+	// (w8/377). clearCache defaults to do_not_clear there, so only an explicit
+	// clear is a mix; the pinned CLI sends do_not_clear on every create.
+	if p.DeployMode == "deploy_only" && (p.CommitID != "" || p.ImageURL != "" || p.ClearCache == "clear") {
+		return fmt.Errorf("%w: deployMode \"deploy_only\" cannot be combined with commitId, imageUrl, or clearCache, "+
+			"as those are build related fields", core.ErrBadRequest)
 	}
 	// deploy_only for a repo-backed service is rejected: this public trigger does
 	// not expose cached-artifact deployment. Operational spec changes reuse the
