@@ -92,6 +92,8 @@ func TestAuditSurfaceParity(t *testing.T) {
 		{ID: "aud-1", WorkspaceID: "tea-a", Caller: "user-x", CallerMethod: "session", Verb: "apps.SetMaintenanceMode", Resource: "workspace:tea-a", Outcome: string(core.AuditAllowed), At: at, MaintenanceModeTo: &maintenanceDisabled,
 			SourceIP: "198.51.100.23", UserAgent: "Mozilla/5.0 (X11; Linux x86_64) Firefox/133.0"},
 		{ID: "aud-2", WorkspaceID: "tea-a", Caller: "user-y", CallerMethod: "oauth2", Verb: "workspaces.Delete", Resource: "workspace:tea-other", Outcome: string(core.AuditDenied), At: at.Add(-time.Minute)},
+		// The person of aud-1 through their own OAuth token (bex login, w9/130).
+		{ID: "aud-3", WorkspaceID: "tea-a", Caller: "user-x", CallerMethod: "oauth2", Verb: core.AuditVerbLogout, Resource: "workspace:tea-a", Outcome: string(core.AuditAllowed), At: at.Add(-2 * time.Minute)},
 	}}
 	base := &core.Base{Client: fakeClient(), Namespace: "default", Authz: &fakeChecker{allow: true}}
 	auditSvc := &audit.Service{Base: base, Store: fakeStore,
@@ -128,14 +130,14 @@ func TestAuditSurfaceParity(t *testing.T) {
 	if err := json.Unmarshal(restBody.Body.Bytes(), &restList); err != nil {
 		t.Fatalf("decode REST: %v", err)
 	}
-	if len(restList) != 2 {
-		t.Fatalf("REST list = %d events, want 2", len(restList))
+	if len(restList) != 3 {
+		t.Fatalf("REST list = %d events, want 3", len(restList))
 	}
 
 	gqlData := gql(t, h, `{ auditLogs(ownerId: "tea-a") { id timestamp actor actorMethod actorId actorEmail actorDeleted sourceIp userAgent action status resource metadata { to } } }`)
 	gqlList, ok := gqlData["auditLogs"].([]any)
-	if !ok || len(gqlList) != 2 {
-		t.Fatalf("GraphQL auditLogs = %v, want 2 events", gqlData["auditLogs"])
+	if !ok || len(gqlList) != 3 {
+		t.Fatalf("GraphQL auditLogs = %v, want 3 events", gqlData["auditLogs"])
 	}
 
 	wantActorType := map[string]string{"session": "user", "oauth2": "rest_api"}
@@ -183,6 +185,10 @@ func TestAuditSurfaceParity(t *testing.T) {
 	if a := restList[1].AuditLog; a.Actor.ID != "user-y" || a.Actor.Email != "" || a.Metadata["source_ip"] != "" || a.Metadata["user_agent"] != "" {
 		t.Errorf("API-key row = %+v, want its subject and nothing else", a)
 	}
+	// A person's own OAuth token names them as their session does (w9/130).
+	if a := restList[2].AuditLog.Actor; a.Type != "rest_api" || a.ID != "usr-00000000000000000007" || a.Email != "ada@example.com" {
+		t.Errorf("person's token row = %+v, want rest_api with the usr- id and email", a)
+	}
 	if g := gqlList[0].(map[string]any); g["actor"] != "user-x" {
 		t.Errorf("GraphQL actor = %v, want the stored subject the dashboard resolves", g["actor"])
 	}
@@ -193,7 +199,7 @@ func TestAuditSurfaceParity(t *testing.T) {
 		t.Fatalf("REST metadata is required by Render's schema — must be {} not null: %+v", restList[1].AuditLog)
 	}
 	// Newest first on both surfaces.
-	if restList[0].AuditLog.ID != "aud-1" || restList[1].AuditLog.ID != "aud-2" {
+	if restList[0].AuditLog.ID != "aud-1" || restList[1].AuditLog.ID != "aud-2" || restList[2].AuditLog.ID != "aud-3" {
 		t.Errorf("REST not newest-first: %+v", restList)
 	}
 	// A denial is Render's "error" on REST, with the denial preserved in

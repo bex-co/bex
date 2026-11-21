@@ -607,13 +607,13 @@ func TestRenderAuditLogUserActorsCarryTheirUsrIDAndEmail(t *testing.T) {
 		{ID: "aud-2", Caller: "client-1", CallerMethod: "oauth2"},
 		{ID: "aud-3", Caller: "", CallerMethod: ""},
 		{ID: "aud-4", Caller: "deleted:own-00000000000000000009", CallerMethod: "session"},
-		// The same human subject through an OAuth token is a rest_api actor:
-		// no email, even though the person has one.
+		// The same person through their OAuth token (bex login) is a rest_api
+		// actor named as the person (w9/130).
 		{ID: "aud-5", Caller: "kratos-a", CallerMethod: "oauth2"},
 	}
 	emails := &fakeEmails{emails: map[string]string{"kratos-a": "a@example.com", "client-1": "never@example.com"}}
 	svc := &Service{
-		UserIDs: fakeUserIDs{"kratos-a": "own-00000000000000000007", "client-1": "own-00000000000000000008", "deleted:own-00000000000000000009": "own-00000000000000000009"},
+		UserIDs: fakeUserIDs{"kratos-a": "own-00000000000000000007", "deleted:own-00000000000000000009": "own-00000000000000000009"},
 		Emails:  emails,
 	}
 	if err := svc.resolveActors(context.Background(), events); err != nil {
@@ -639,8 +639,8 @@ func TestRenderAuditLogUserActorsCarryTheirUsrIDAndEmail(t *testing.T) {
 			t.Errorf("row %d actorDeleted = %v, want %v", i, item.AuditLog.ActorDeleted, want)
 		}
 	}
-	if got := list[4].AuditLog.Actor; got != (renderAuditActor{Type: "rest_api", ID: "kratos-a"}) {
-		t.Errorf("human OAuth actor = %+v, want rest_api with no email", got)
+	if got := list[4].AuditLog.Actor; got != (renderAuditActor{Type: "rest_api", ID: "usr-00000000000000000007", Email: "a@example.com"}) {
+		t.Errorf("person's OAuth actor = %+v, want rest_api with the usr- id and email", got)
 	}
 	// One batched read of the page's people, each once; never an API client.
 	if want := []string{"kratos-a", "deleted:own-00000000000000000009"}; !slices.Equal(emails.asked, want) {
@@ -671,6 +671,71 @@ func TestResolveActorsKeepsTheLogWhenEmailsFail(t *testing.T) {
 	// A person whose email could not be read is not a deleted one (w9/099).
 	if toRenderAuditLog(events[1]).ActorDeleted {
 		t.Error("an email lookup failure read as a deleted user")
+	}
+}
+
+// w9/130: a person's own OAuth token (bex login) names them as their session
+// does, so the export's actor column is the email the table shows; an API
+// key's row keeps its client id and never gains a person's email, even a key
+// the members list minted a user id for before keys stopped being members
+// (w5/m103). Both stay Render's rest_api.
+func TestRenderAuditLogOAuthTokenActors(t *testing.T) {
+	const (
+		person  = "11111111-1111-4111-8111-111111111111"
+		key     = "22222222-2222-4222-8222-222222222222"
+		legacy  = "33333333-3333-4333-8333-333333333333"
+		deleted = "deleted:own-00000000000000000009"
+	)
+	events := []Event{
+		{ID: "aud-1", Caller: person, CallerMethod: "oauth2", OAuthClientID: "cli-client"},
+		{ID: "aud-2", Caller: key, CallerMethod: "oauth2"},
+		{ID: "aud-3", Caller: legacy, CallerMethod: "oauth2"},
+		{ID: "aud-4", Caller: deleted, CallerMethod: "oauth2"},
+		// A LogoutEvent carries no OAuth provenance; the subject alone decides.
+		{ID: "aud-5", Caller: person, CallerMethod: "oauth2", Verb: core.AuditVerbLogout},
+	}
+	emails := &fakeEmails{emails: map[string]string{person: "a@example.com", key: "never@example.com"}}
+	svc := &Service{
+		UserIDs: fakeUserIDs{person: "own-00000000000000000007", legacy: "own-00000000000000000008", deleted: "own-00000000000000000009"},
+		Emails:  emails,
+	}
+	if err := svc.resolveActors(context.Background(), events); err != nil {
+		t.Fatal(err)
+	}
+	list := toAuditLogList(events)
+	want := []renderAuditActor{
+		{Type: "rest_api", ID: "usr-00000000000000000007", Email: "a@example.com"},
+		{Type: "rest_api", ID: key},
+		{Type: "rest_api", ID: legacy},
+		{Type: "rest_api", ID: "usr-00000000000000000009"},
+		{Type: "rest_api", ID: "usr-00000000000000000007", Email: "a@example.com"},
+	}
+	for i, item := range list {
+		if item.AuditLog.Actor != want[i] {
+			t.Errorf("row %s actor = %+v, want %+v", item.AuditLog.ID, item.AuditLog.Actor, want[i])
+		}
+		if wantDeleted := i == 3; item.AuditLog.ActorDeleted != wantDeleted {
+			t.Errorf("row %s actorDeleted = %v, want %v", item.AuditLog.ID, item.AuditLog.ActorDeleted, wantDeleted)
+		}
+	}
+	// GraphQL's actorId and actorEmail read the same resolved event.
+	if events[0].actorID() != "usr-00000000000000000007" || events[0].ActorEmail != "a@example.com" || events[1].actorID() != key || events[1].ActorEmail != "" {
+		t.Errorf("GraphQL actors = %+v / %+v", events[0], events[1])
+	}
+	// A key with no user id is never read as an identity.
+	if slices.Contains(emails.asked, key) {
+		t.Errorf("emails asked for the API key's client id: %q", emails.asked)
+	}
+
+	// An identity outage leaves a person's token row its subject: without the
+	// identity, a user id is no proof the subject is a person.
+	outage := []Event{{ID: "aud-6", Caller: person, CallerMethod: "oauth2"}}
+	svc.Emails = &fakeEmails{err: errors.New("kratos down")}
+	if err := svc.resolveActors(context.Background(), outage); err != nil {
+		t.Fatalf("an email failure failed the log: %v", err)
+	}
+	if got := toRenderAuditLog(outage[0]); got.Actor != (renderAuditActor{Type: "rest_api", ID: person}) || got.ActorDeleted {
+		t.Errorf("token row in an outage = %+v, want its subject alone", got)
 	}
 }
 

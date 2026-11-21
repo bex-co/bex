@@ -21,6 +21,7 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -58,11 +59,13 @@ type renderAuditLog struct {
 }
 
 // renderAuditActor is Render's actor object. type is the closed
-// user|rest_api|system enum (actorType); id is a user's usr- id (w5/m277) and
-// otherwise bex's caller subject; email is a user's current email (w9/m450).
-// The row stores only the subject (redaction-by-structure): the email is
-// resolved when the log is read (resolveActors), so a deleted user's rows
-// answer the id alone, and an API key or the system has none.
+// user|rest_api|system enum (actorType); id is a person's usr- id (w5/m277) and
+// otherwise bex's caller subject; email is a person's current email (w9/m450).
+// A person is a user actor or a person's own OAuth token (bex login, w9/130),
+// which stays rest_api. The row stores only the subject
+// (redaction-by-structure): the email is resolved when the log is read
+// (resolveActors), so a deleted user's rows answer the id alone, and an API
+// key or the system has none.
 type renderAuditActor struct {
 	Type  string `json:"type"`
 	ID    string `json:"id,omitempty"`
@@ -238,13 +241,21 @@ type auditLogWithCursor struct {
 	Cursor   string         `json:"cursor"`
 }
 
-// person reports whether e's actor is a person (Render's "user" actor), the
-// only actor resolveActors gives a usr- id and an email.
+// person reports whether e's actor is a person by its method alone (Render's
+// "user" actor).
 func (e Event) person() bool { return e.Caller != "" && actorType(e.CallerMethod) == "user" }
 
+// token reports whether e's actor is an OAuth bearer: a person's own token
+// (bex login), whose subject is the person, or an API key, whose subject is
+// its client id. resolveActors tells them apart (w9/130).
+func (e Event) token() bool { return e.Caller != "" && e.CallerMethod == core.MethodOAuth2 }
+
 // actorDeleted reports whether e's person has deleted their account since:
-// account deletion rewrote the row's subject to its marker.
-func (e Event) actorDeleted() bool { return e.person() && store.DeletedSubject(e.Caller) }
+// account deletion rewrote the row's subject to its marker. It rewrites only
+// a person's subject, so a token row's marker is its person's.
+func (e Event) actorDeleted() bool {
+	return (e.person() || e.token()) && store.DeletedSubject(e.Caller)
+}
 
 // actorID is Render's actor.id: the usr- id resolveActors found for a person,
 // else the stored subject.
@@ -260,20 +271,30 @@ func toAuditLogList(events []Event) []auditLogWithCursor {
 }
 
 // resolveActors fills a page's ActorID and ActorEmail (Render's actor.id and
-// actor.email) for both adapters, in one read of each: a person (a session
-// actor) answers the usr- id the members list and GET /v1/users show for them
-// (w5/m277) and the email of their identity today (w9/m450). Every other actor
-// keeps its subject and has no email. A failed or partial email read leaves
-// the missing emails empty and never fails the log: the id still says who
-// acted.
+// actor.email) for both adapters, in one read of each: a person answers the
+// usr- id the members list and GET /v1/users show for them (w5/m277) and the
+// email of their identity today (w9/m450). Every other actor keeps its subject
+// and has no email. A failed or partial email read leaves the missing emails
+// empty and never fails the log: the id still says who acted.
+//
+// A user actor is a person by its method. A token's subject is a person's only
+// when it has a user id and is an identity (the email read found it) or a
+// deleted person's marker (w9/130): a user id alone is not proof, as the
+// members list minted them for API keys until keys stopped being members
+// (w5/m103), and a token's row whose identity could not be read keeps its
+// subject. An API key's client id, with no user id, is never read as an
+// identity.
 func (s *Service) resolveActors(ctx context.Context, events []Event) error {
-	seen := map[string]bool{}
+	people := map[string]bool{} // each subject once: true when a user actor names it
 	var subjects []string
 	for _, e := range events {
-		if e.person() && !seen[e.Caller] {
-			seen[e.Caller] = true
+		if !e.person() && !e.token() {
+			continue
+		}
+		if _, seen := people[e.Caller]; !seen {
 			subjects = append(subjects, e.Caller)
 		}
+		people[e.Caller] = people[e.Caller] || e.person()
 	}
 	if len(subjects) == 0 {
 		return nil
@@ -282,16 +303,23 @@ func (s *Service) resolveActors(ctx context.Context, events []Event) error {
 	if err != nil {
 		return err
 	}
+	identities := slices.DeleteFunc(subjects, func(subject string) bool {
+		_, hasID := userIDs[subject]
+		return !people[subject] && !hasID
+	})
 	var emails map[string]string
-	if s.Emails != nil {
-		emails, _ = s.Emails.LookupEmails(ctx, subjects)
+	if s.Emails != nil && len(identities) > 0 {
+		emails, _ = s.Emails.LookupEmails(ctx, identities)
 	}
 	for i := range events {
 		e := &events[i]
-		if !e.person() {
+		id, hasID := userIDs[e.Caller]
+		_, identity := emails[e.Caller]
+		personToken := e.token() && hasID && (identity || store.DeletedSubject(e.Caller))
+		if !e.person() && !personToken {
 			continue
 		}
-		if id, ok := userIDs[e.Caller]; ok {
+		if hasID {
 			e.ActorID = id
 		}
 		e.ActorEmail = emails[e.Caller]
