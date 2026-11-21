@@ -100,10 +100,13 @@ var _ = Describe("Key Value proxy template across operator deploys", func() {
 		Expect(k8sClient.Update(ctx, dep)).To(Succeed())
 		return get()
 	}
-	// olderRendering drops what w6/m512 added, as a template written before it.
+	// olderRendering drops what w6/m512 and w9/135 added (the drain, the
+	// preStop pause and the grace period covering them), as a template
+	// written before both.
 	olderRendering := func(dep *appsv1.Deployment) {
 		c := &dep.Spec.Template.Spec.Containers[0]
 		c.Env = slices.DeleteFunc(c.Env, func(e corev1.EnvVar) bool { return e.Name == "BEX_KV_DRAIN_SECONDS" })
+		c.Lifecycle = nil
 		dep.Spec.Template.Spec.TerminationGracePeriodSeconds = new(int64(corev1.DefaultTerminationGracePeriodSeconds))
 	}
 	// beforeM517 drops the records, as a Deployment written before w6/m517.
@@ -129,6 +132,9 @@ var _ = Describe("Key Value proxy template across operator deploys", func() {
 		GinkgoHelper()
 		Expect(image(dep)).To(Equal(r.InternalProxyImage))
 		Expect(env(dep)).To(HaveKeyWithValue("BEX_KV_DRAIN_SECONDS", fmt.Sprint(kvInternalProxyDrainSeconds)))
+		Expect(dep.Spec.Template.Spec.Containers[0].Lifecycle).To(Equal(&corev1.Lifecycle{PreStop: &corev1.LifecycleHandler{
+			Sleep: &corev1.SleepAction{Seconds: kvInternalProxyPauseSeconds},
+		}}))
 		Expect(dep.Spec.Template.Spec.TerminationGracePeriodSeconds).To(HaveValue(BeEquivalentTo(kvInternalProxyGraceSeconds)))
 	}
 

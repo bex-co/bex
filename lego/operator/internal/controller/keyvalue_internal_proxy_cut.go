@@ -47,7 +47,8 @@ import (
 // listen, and the kv-sni-proxy route decides who reaches it (ADR021 § 3).
 
 // kvProxyCutRequeue polls a terminating pod whose clients must be cut: it
-// accepts until its SIGTERM, a moment after the pass that saw it terminating.
+// accepts until its SIGTERM, which follows the preStop pause
+// (kvInternalProxyPauseSeconds), and each pass cuts what it accepted since.
 const kvProxyCutRequeue = time.Second
 
 // cutStaleKeyValueProxyClients closes, in Valkey, the connections of each

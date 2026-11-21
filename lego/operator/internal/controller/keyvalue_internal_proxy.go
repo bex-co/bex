@@ -144,6 +144,9 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxy(ctx context.Context,
 				ProbeHandler:   corev1.ProbeHandler{Exec: &corev1.ExecAction{Command: []string{"/kv-internal-proxy", "--check"}}},
 				TimeoutSeconds: 6, PeriodSeconds: 5,
 			},
+			Lifecycle: &corev1.Lifecycle{PreStop: &corev1.LifecycleHandler{
+				Sleep: &corev1.SleepAction{Seconds: kvInternalProxyPauseSeconds},
+			}},
 		}}
 		dep.Spec.Template.Spec.TerminationGracePeriodSeconds = new(int64(kvInternalProxyGraceSeconds))
 		dep.Spec.Template.Spec.AutomountServiceAccountToken = new(false)
@@ -172,9 +175,15 @@ const (
 	// drain closes as soon as the last stream ends, so the bound only decides
 	// when a held client (a pool, pub/sub, a long blocking command) is closed.
 	kvInternalProxyDrainSeconds = 30
-	// kvInternalProxyGraceSeconds lets the process close what the drain leaves
-	// itself, before the kubelet's SIGKILL.
-	kvInternalProxyGraceSeconds = kvInternalProxyDrainSeconds + 5
+	// kvInternalProxyPauseSeconds is how long a deleted proxy pod keeps
+	// accepting before its SIGTERM starts the drain (the preStop sleep,
+	// w9/135). Its endpoint takes a moment to leave every node's service
+	// rules, and a client routed to it meanwhile is served instead of
+	// refused. The SNI proxies' pause is the same 5 s (w6/m515).
+	kvInternalProxyPauseSeconds = 5
+	// kvInternalProxyGraceSeconds covers the pause and the drain, and lets the
+	// process close what the drain leaves itself, before the kubelet's SIGKILL.
+	kvInternalProxyGraceSeconds = kvInternalProxyPauseSeconds + kvInternalProxyDrainSeconds + 5
 	// kvInternalProxyInputsAnnotation records, on a proxy Deployment's own
 	// metadata, the digest of the store's roll inputs its pod template was
 	// written for (keyValueInternalProxyInputs, w6/m517). Never on the pod

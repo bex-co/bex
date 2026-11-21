@@ -468,6 +468,9 @@ func TestKeyValueInternalProxyCarriesThePlansLimit(t *testing.T) {
 
 // w6/m512: every proxy drains on SIGTERM, and its pod's grace period outlasts
 // the drain, so the process closes what is left itself before SIGKILL.
+// w9/135: a deleted pod first keeps accepting through a preStop pause, while
+// its endpoint leaves every node's service rules, and the grace period covers
+// the pause too, since the kubelet counts the preStop hook against it.
 func TestKeyValueInternalProxyDrainsWithinItsGracePeriod(t *testing.T) {
 	ctx := context.Background()
 	scheme := keyValueBackupTestScheme(t)
@@ -484,9 +487,14 @@ func TestKeyValueInternalProxyDrainsWithinItsGracePeriod(t *testing.T) {
 		if err != nil || drain <= 0 {
 			t.Fatalf("internalAuth=%v: BEX_KV_DRAIN_SECONDS %q, want a drain", internalAuth, env["BEX_KV_DRAIN_SECONDS"])
 		}
+		lifecycle := dep.Spec.Template.Spec.Containers[0].Lifecycle
+		if lifecycle == nil || lifecycle.PreStop == nil || lifecycle.PreStop.Sleep == nil || lifecycle.PreStop.Sleep.Seconds <= 0 {
+			t.Fatalf("internalAuth=%v: preStop %+v, want a sleep, so the pod accepts until its endpoint is gone", internalAuth, lifecycle)
+		}
+		pause := lifecycle.PreStop.Sleep.Seconds
 		grace := dep.Spec.Template.Spec.TerminationGracePeriodSeconds
-		if grace == nil || *grace <= int64(drain) {
-			t.Fatalf("internalAuth=%v: terminationGracePeriodSeconds %v does not outlast the %ds drain", internalAuth, grace, drain)
+		if grace == nil || *grace <= pause+int64(drain) {
+			t.Fatalf("internalAuth=%v: terminationGracePeriodSeconds %v does not outlast the %ds pause and the %ds drain", internalAuth, grace, pause, drain)
 		}
 	}
 }
@@ -627,10 +635,10 @@ func TestKeyValueCutsOnlyATerminatingProxyOfTheOldMode(t *testing.T) {
 func TestKeyValueInternalProxyRenderingIsPinned(t *testing.T) {
 	type pin struct{ template, inputs string }
 	pinned := map[string]pin{
-		"plain":                    {"789e2112310f655a28e1ed052af24b6d02acd1ced1f5b2693c301af597f21a25", "0fca5894756134f2066a3f319f0944c6ba5d79ecadf1403d15022605ed3234cf"},
-		"plain with internal auth": {"fbe431a3092e00fdb3f33c60ed2bab2b98c63897a3f2b8e0721efc975f077bad", "a5ed0a396b6923205712277b8ac65e333d31ff6e4fc6759c444f28b53018f65d"},
-		"tls":                      {"84784e05fd395382739e6be9314d1195ddc5d052bb84f9dccf87fa4995cbba7d", "2a6015ddfc05d2562a2d9f1b05f340859fc5d7b7113e73e8a84e09af63043ff4"},
-		"tls with internal auth":   {"2038b61d533defa1f22227b5638205efbdbdf05eb33482bfb96b7a7e2e929d38", "1cbe9908277765efd6ea6497ef7aac33d969590ea3a8f61d1ec1994fbf1c8417"},
+		"plain":                    {"a0afff3997a08b04b307f04719f2f69dd70168d1645c08bdd0854f954a299a7c", "0fca5894756134f2066a3f319f0944c6ba5d79ecadf1403d15022605ed3234cf"},
+		"plain with internal auth": {"79aa97a1d1e0f83021e0c88e8d33e2ebe26de610d9f1425e1941c2dbd2437564", "a5ed0a396b6923205712277b8ac65e333d31ff6e4fc6759c444f28b53018f65d"},
+		"tls":                      {"5107c52a42507547dfa0ff90f41776651acd45254bbd978f01ce2b56559104e5", "2a6015ddfc05d2562a2d9f1b05f340859fc5d7b7113e73e8a84e09af63043ff4"},
+		"tls with internal auth":   {"4607f081a65f516825c7d67f4cb3db8d1c5ad17e5be5f64d403fa9f65bd9d84e", "1cbe9908277765efd6ea6497ef7aac33d969590ea3a8f61d1ec1994fbf1c8417"},
 	}
 	scheme := keyValueBackupTestScheme(t)
 	for name, want := range pinned {
