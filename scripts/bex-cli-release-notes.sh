@@ -35,6 +35,13 @@ fi
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
+# A shallow clone has no previous tag and no range to list, so it would
+# render "no user-facing changes" for any release; refuse it instead.
+if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
+  echo "error: shallow clone; the notes need every bex-cli/v* tag and the history between them (checkout fetch-depth: 0)" >&2
+  exit 1
+fi
+
 new_ref="${1:-bex-cli/v${VERSION}}"
 new="$(git rev-parse --verify --quiet "${new_ref}^{commit}")" ||
   { echo "error: no such ref '${new_ref}'" >&2; exit 1; }

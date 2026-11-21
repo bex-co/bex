@@ -116,5 +116,19 @@ set +e
 set -e
 echo "ok: bad inputs fail"
 
+# A shallow clone (the default depth-1 checkout) cannot see the previous
+# release, so it fails instead of rendering an empty changelog.
+git clone -q --depth 1 "file://$tmp/repo" "$tmp/shallow"
+set +e
+shallow_out="$(cd "$tmp/shallow" && VERSION=0.2.1 bash scripts/bex-cli-release-notes.sh HEAD 2>&1)"
+shallow_rc=$?
+set -e
+if [ "$shallow_rc" -eq 0 ] || ! printf '%s' "$shallow_out" | grep -qF "shallow clone"; then
+  echo "FAIL: a shallow clone fails — exit $shallow_rc: $shallow_out" >&2
+  fails=$((fails + 1))
+else
+  echo "ok: a shallow clone fails"
+fi
+
 [ "$fails" -eq 0 ] || exit 1
 echo "PASS: bex-cli-release-notes"
