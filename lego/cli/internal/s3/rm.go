@@ -31,7 +31,7 @@ import (
 const deleteBatch = 1000
 
 func rmCommand(d deps, g *globals) *cobra.Command {
-	var recursive, dryrun bool
+	var recursive, dryrun, yes bool
 	var concurrency int
 	var rules filters
 	c := &cobra.Command{
@@ -41,7 +41,9 @@ func rmCommand(d deps, g *globals) *cobra.Command {
 			"if it were a folder (`s3://photos/2023` means `s3://photos/2023/`), in batches of\n" +
 			"1,000. --include and --exclude pick among them by a glob over the path below the\n" +
 			"prefix, the last matching one deciding; --dryrun prints what would be deleted and\n" +
-			"deletes nothing. A key that does not exist is not an error, as on S3.",
+			"deletes nothing. A key that does not exist is not an error, as on S3.\n\n" +
+			"--recursive asks \"Are you sure?\" in a terminal, as `bex ea objects delete` does;\n" +
+			"--yes or --confirm skips the question, and a pipe, a script or CI is never asked.",
 		Example: "  bex s3 rm s3://photos/cat.jpg\n  bex s3 rm s3://photos/tmp --recursive\n  bex s3 rm s3://photos/ --recursive --exclude '*' --include '*.tmp' --dryrun",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
@@ -57,6 +59,16 @@ func rmCommand(d deps, g *globals) *cobra.Command {
 			}
 			if err := checkConcurrency(concurrency); err != nil {
 				return err
+			}
+			if recursive && !dryrun {
+				prefix := location{Remote: true, Bucket: loc.Bucket, Key: asDir(loc.Key)}
+				what := "every object under '" + prefix.String() + "'"
+				if len(rules) > 0 {
+					what = "the objects under '" + prefix.String() + "' that --include and --exclude pick"
+				}
+				if !d.confirmBulkDelete(c, yes, what) {
+					return nil
+				}
 			}
 			r, err := d.open(c, g, concurrency, true)
 			if err != nil {
@@ -76,6 +88,7 @@ func rmCommand(d deps, g *globals) *cobra.Command {
 	c.Flags().BoolVar(&dryrun, "dryrun", false, "show what would be deleted and delete nothing")
 	c.Flags().Var(filterFlag{include: false, rules: &rules}, "exclude", "skip objects whose path below the prefix matches this glob (repeatable)")
 	c.Flags().Var(filterFlag{include: true, rules: &rules}, "include", "delete objects whose path below the prefix matches this glob, after --exclude (repeatable)")
+	yesFlag(c, &yes)
 	concurrencyFlag(c, &concurrency)
 	return c
 }

@@ -216,7 +216,7 @@ func merge(src, dst entrySource, sizeOnly, deleteExtra bool, step func(syncStep)
 }
 
 func syncCommand(d deps, g *globals) *cobra.Command {
-	var deleteExtra, sizeOnly bool
+	var deleteExtra, sizeOnly, yes bool
 	o := &transferOptions{recursive: true}
 	c := &cobra.Command{
 		Use:   "sync <from> <to>",
@@ -230,7 +230,9 @@ func syncCommand(d deps, g *globals) *cobra.Command {
 			"and ignores times; --include and --exclude pick paths below each root by a glob,\n" +
 			"the last matching one deciding, and apply to both sides, so a path they leave out\n" +
 			"is never deleted. --dryrun prints the plan and changes nothing. Only regular\n" +
-			"files are copied: a symbolic link, a device or a socket is skipped with a warning.",
+			"files are copied: a symbolic link, a device or a socket is skipped with a warning.\n\n" +
+			"--delete asks \"Are you sure?\" in a terminal, as `bex ea objects delete` does;\n" +
+			"--yes or --confirm skips the question, and a pipe, a script or CI is never asked.",
 		Example: "  bex s3 sync ./site s3://photos/site\n  bex s3 sync s3://photos/site ./site --dryrun\n  bex s3 sync ./site s3://photos/site --delete --exclude '*.map'",
 		Args:    cobra.ExactArgs(2),
 		RunE: func(c *cobra.Command, args []string) error {
@@ -255,6 +257,9 @@ func syncCommand(d deps, g *globals) *cobra.Command {
 			if src.Remote && dst.Remote && src.Bucket == dst.Bucket && (strings.HasPrefix(src.Key, dst.Key) || strings.HasPrefix(dst.Key, src.Key)) {
 				return usageError("%s and %s overlap: a sync cannot read what it is writing", src, dst)
 			}
+			if deleteExtra && !o.dryrun && !d.confirmBulkDelete(c, yes, "what is in '"+dst.String()+"' and not in '"+src.String()+"'") {
+				return nil
+			}
 			r, err := d.open(c, g, o.concurrency, o.noProgress)
 			if err != nil {
 				return err
@@ -272,6 +277,7 @@ func syncCommand(d deps, g *globals) *cobra.Command {
 	c.Flags().Var(filterFlag{include: false, rules: &o.rules}, "exclude", "leave out paths that match this glob (repeatable)")
 	c.Flags().Var(filterFlag{include: true, rules: &o.rules}, "include", "include paths that match this glob, after --exclude (repeatable)")
 	c.Flags().BoolVar(&o.noProgress, "no-progress", false, "do not draw the progress line")
+	yesFlag(c, &yes)
 	concurrencyFlag(c, &o.concurrency)
 	return c
 }

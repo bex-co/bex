@@ -373,10 +373,10 @@ bex s3 public photos enable                  # publish the bucket read-only (wor
 | `bex s3 ls [s3://bucket[/prefix]]` | No argument: the workspace's buckets, the `render-` system buckets included. With a prefix: one level, a `PRE name/` line per folder and then date, size and name per object. `--recursive` lists every key with its full key; `--human-readable` and `--summarize`. A prefix matches by its characters, as on S3. |
 | `bex s3 cp <from> <to>` | A file to a bucket, an object to a file, or an object to an object inside one workspace and region (copied on the server). `-` is standard input or output. `--recursive` copies a directory or a prefix; `--include` and `--exclude` pick paths by glob, the last matching one deciding; `--content-type`, `--metadata key=value` (repeatable), `--dryrun`, `--no-progress`, `--concurrency`. |
 | `bex s3 mv <from> <to>` | `cp`, then deletes each source, only after its own copy succeeded. Same flags. |
-| `bex s3 rm s3://bucket/key` | Deletes an object (a missing key is not an error, as on S3). `--recursive` deletes everything under the prefix in batches of 1,000; `--include`, `--exclude`, `--dryrun`, `--concurrency`. |
-| `bex s3 sync <from> <to>` | Makes the destination hold what the source holds: copies files or objects that are missing, differ in size or are newer in the source (times in whole seconds), between a directory and a prefix in either direction or between two prefixes. Run again it copies nothing. `--delete`, `--size-only`, `--include`, `--exclude`, `--dryrun`. |
+| `bex s3 rm s3://bucket/key` | Deletes an object (a missing key is not an error, as on S3). `--recursive` deletes everything under the prefix in batches of 1,000 and asks first in a terminal (below); `--include`, `--exclude`, `--dryrun`, `--yes`, `--concurrency`. |
+| `bex s3 sync <from> <to>` | Makes the destination hold what the source holds: copies files or objects that are missing, differ in size or are newer in the source (times in whole seconds), between a directory and a prefix in either direction or between two prefixes. Run again it copies nothing. `--delete` also deletes what only the destination has, and asks first in a terminal (below); `--size-only`, `--include`, `--exclude`, `--dryrun`, `--yes`. |
 | `bex s3 mb s3://bucket [--region oregon\|frankfurt]` | Makes a bucket. |
-| `bex s3 rb s3://bucket [--force]` | Removes a bucket; `--force` deletes its objects first. A bucket with unfinished multipart uploads is refused (bex aborts them seven days after they start); a `render-` system bucket cannot be removed. |
+| `bex s3 rb s3://bucket [--force]` | Removes a bucket; `--force` deletes its objects first and asks first in a terminal (below). A bucket with unfinished multipart uploads is refused (bex aborts them seven days after they start); a `render-` system bucket cannot be removed. |
 | `bex s3 presign s3://bucket/key [--expires-in 3600]` | Prints a URL that reads the object with no key, for at most 604800 seconds. It stops working when the key that signed it expires, twelve hours for the key bex makes; the command says so when `--expires-in` is longer. |
 | `bex s3 cors get\|set\|delete <bucket>` | A bucket's CORS rules. `set --file rules.json` reads the S3 API's JSON document (`{"CORSRules": [...]}`) and replaces the rules; `get -o json` prints a document `set` accepts; a bucket with no rules prints `no CORS rules`. |
 | `bex s3 lifecycle get\|set\|delete <bucket>` | A bucket's expiry rules, the same way (`{"Rules": [...]}`). |
@@ -387,6 +387,15 @@ bex s3 public photos enable                  # publish the bucket read-only (wor
 | `bex s3 public <bucket> enable\|disable\|status` | Publishes a bucket (below). |
 
 A name `bex s3` does not define is an `unknown command`; to run another S3 tool against bex, `bex s3 env` prints what it needs. Output is one line per object, as in `upload: ./cat.jpg to s3://photos/cat.jpg`, `download:`, `copy:`, `move:`, `delete: s3://photos/cat.jpg`, `make_bucket: photos`; `--dryrun` prefixes `(dryrun) ` and changes nothing; `-o json` and `-o yaml` print the same results as data under `results`. Progress goes to stderr, and only to a terminal.
+
+**Asking before a bulk delete.** `rm --recursive`, `rb --force` and `sync --delete` ask in a terminal, before any request is made, in the words of `bex ea objects delete`:
+
+```text
+$ bex s3 rm s3://photos/tmp --recursive
+Are you sure you want to delete every object under 's3://photos/tmp/'? This cannot be undone. [y/N]: y
+```
+
+Only `y` or `yes` goes on; any other answer, or an end of input, prints `Delete canceled.` and exits `0` having deleted nothing. `--yes` (`-y`) and the global `--confirm` ("Skip all confirmation prompts") skip the question. A run that is not a terminal never asks: the root command reads it the way it does for `ea objects delete`, so a pipe on stdin, stdout or stderr, `CI`, `TERM=dumb`, `RENDER_OUTPUT`, or `-o json|yaml|text` means no question, which is how a script runs these commands unchanged. `--dryrun` deletes nothing and is never asked, and `rb` without `--force` removes an empty bucket and does not ask. A single-object `rm` and the source delete of `mv` do not ask. `bex ea objects delete` itself reads `--yes` only and still asks under `--confirm`.
 
 **How it transfers.**
 
@@ -405,7 +414,7 @@ A name `bex s3` does not define is an `unknown command`; to run another S3 tool 
 - Creating or revoking a key is a person's act: an API key (`BEX_API_KEY`) cannot do either, so in CI make a persistent key once from a signed-in session.
 - This needs `bex` v0.9.0 or newer (`bex upgrade`); an older release lacks most of these commands, and `bex s3api`, which v0.8.0 had, is gone.
 
-**Flags, output and exit codes.** They follow the other bex-native commands (`bex agent`): `-o json|yaml|text` (`bex s3 env` and the object listing print their own structure), exit `2` for a usage error (a malformed bucket name or key id, an unknown action, `--concurrency` over 10, `--expires-in` outside its range) and `1` for any other failure. The key and bucket commands use the active workspace (`bex workspace set` or `BEX_WORKSPACE`; there is no per-command `--workspace`). Render has no S3 command and `bex ea objects` is unchanged, so there is no Render convention to match beyond these.
+**Flags, output and exit codes.** They follow the other bex-native commands (`bex agent`): `-o json|yaml|text` (`bex s3 env` and the object listing print their own structure), exit `2` for a usage error (a malformed bucket name or key id, an unknown action, `--concurrency` over 10, `--expires-in` outside its range) and `1` for any other failure. The key and bucket commands use the active workspace (`bex workspace set` or `BEX_WORKSPACE`; there is no per-command `--workspace`). Render has no S3 command and `bex ea objects` is unchanged, so there is no Render convention to match beyond these and the question before a bulk delete (above).
 
 **Keys.** A key acts as the person who made it, in one workspace, with `read` (list and get) or `readwrite` (everything else) as a ceiling, and reaches every bucket of that workspace (per-bucket keys are not offered). It never holds the admin role, so a leaked key cannot publish a bucket. A key is revoked with its person: removing a member or deleting an account deletes the keys they made, and re-adding the person revives nothing. A workspace holds at most 100 live persistent keys and a person at most 20 live ephemeral ones; revoked and expired keys disappear after 7 days.
 

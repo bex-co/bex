@@ -71,7 +71,7 @@ func mbCommand(d deps, g *globals) *cobra.Command {
 }
 
 func rbCommand(d deps, g *globals) *cobra.Command {
-	var force bool
+	var force, yes bool
 	var concurrency int
 	c := &cobra.Command{
 		Use:   "rb s3://bucket",
@@ -79,7 +79,9 @@ func rbCommand(d deps, g *globals) *cobra.Command {
 		Long: "Removes a bucket. It must be empty: --force deletes every object in it first.\n" +
 			"A bucket that still has unfinished multipart uploads cannot be removed either;\n" +
 			"bex aborts them seven days after they start. A system bucket (`render-<region>`,\n" +
-			"Render's `ea objects` namespace) cannot be removed.",
+			"Render's `ea objects` namespace) cannot be removed.\n\n" +
+			"--force asks \"Are you sure?\" in a terminal, as `bex ea objects delete` does;\n" +
+			"--yes or --confirm skips the question, and a pipe, a script or CI is never asked.",
 		Example: "  bex s3 rb s3://photos\n  bex s3 rb s3://photos --force",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
@@ -95,6 +97,9 @@ func rbCommand(d deps, g *globals) *cobra.Command {
 			}
 			if err := checkConcurrency(concurrency); err != nil {
 				return err
+			}
+			if force && !d.confirmBulkDelete(c, yes, "the bucket '"+loc.String()+"' and every object in it") {
+				return nil
 			}
 			r, err := d.open(c, g, concurrency, true)
 			if err != nil {
@@ -118,6 +123,7 @@ func rbCommand(d deps, g *globals) *cobra.Command {
 		},
 	}
 	c.Flags().BoolVar(&force, "force", false, "delete every object in the bucket first")
+	yesFlag(c, &yes)
 	concurrencyFlag(c, &concurrency)
 	return c
 }
