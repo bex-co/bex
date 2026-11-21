@@ -459,17 +459,9 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 			// The restore must fit: the archive holds as much data as the
 			// source's disk grew to, and a setting its data needs to load
 			// travels with it (w4/360).
-			StorageGB:  DatabaseStorageHighWater(src),
-			Parameters: tenantParameters(src.Spec.Parameters),
-			// A login retired after the restore target comes back from the
-			// backup with its old password; carrying the source's retirements
-			// puts them in the restored Cluster's managed roles, which CNPG
-			// applies once the restored primary starts (w5/m384, round 24).
-			// Not the owner: it is the restored instance's default credential,
-			// since the source's added users are not carried.
-			DeletedUsers: slices.DeleteFunc(slices.Clone(src.Spec.DeletedUsers), func(u string) bool {
-				return u == src.Spec.EffectiveDatabaseUser(src.Name)
-			}),
+			StorageGB:    DatabaseStorageHighWater(src),
+			Parameters:   tenantParameters(src.Spec.Parameters),
+			DeletedUsers: recoveredRetirements(src),
 			Recovery: &appv1alpha1.DatabaseRecovery{
 				SourceDatabase:         src.Name,
 				SourceBackupServerName: sourceBackupServerName,
@@ -513,15 +505,42 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	return pgView(newDB), nil
 }
 
+// recoveredRetirements are the logins a recovered copy retires. A login
+// retired after the restore target comes back from the backup with its old
+// password; carrying the source's retirements puts them in the restored
+// Cluster's managed roles, which CNPG applies once the restored primary
+// starts (w5/m384, round 24). So do the source's logical-replication
+// credentials (w34/m543): the copy is a new database, not enabled, but the
+// backup restores the publisher role's REPLICATION and the subscriber role's
+// pg_create_subscription, which only its managed roles take away. Not the
+// owner: it is the restored instance's default credential, since the
+// source's added users are not carried, and CNPG already strips both from it
+// because the copy's spec enables nothing. spec.logicalReplication itself is
+// never carried.
+func recoveredRetirements(src *appv1alpha1.Database) []string {
+	retired := slices.Clone(src.Spec.DeletedUsers)
+	if lr := src.Spec.LogicalReplication; lr != nil {
+		retired = append(retired, lr.PublisherRole, lr.SubscriberRole)
+	}
+	owner := src.Spec.EffectiveDatabaseUser(src.Name)
+	var out []string
+	for _, u := range retired {
+		if u != "" && u != owner && !slices.Contains(out, u) {
+			out = append(out, u)
+		}
+	}
+	return out
+}
+
 // tenantParameters is the source's parameter overrides a recovery carries:
 // every one but the platform-managed names, which the platform sets for the
 // restore itself (recovery_target*, WAL archival, …) and admission refuses, so
-// a legacy source holding one cannot wedge the restore (w4/360).
+// a legacy source holding one cannot wedge the restore (w4/360). A name is
+// dropped in the spelling the source declared it in, so `Archive_Mode` goes
+// too.
 func tenantParameters(params map[string]string) map[string]string {
 	out := maps.Clone(params)
-	for _, name := range operatorManagedParameterNames(params) {
-		delete(out, name)
-	}
+	maps.DeleteFunc(out, func(name, _ string) bool { return operatorManagedParameter(name) })
 	return out
 }
 

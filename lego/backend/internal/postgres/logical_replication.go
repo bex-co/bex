@@ -149,6 +149,9 @@ type LogicalReplicationResult struct {
 	RoleCreatesSubscriptions bool `json:"roleCreatesSubscriptions"`
 	// LiveSubscriptions are the subscriptions PostgreSQL has in the database.
 	LiveSubscriptions []string `json:"liveSubscriptions,omitempty"`
+	// Warnings are what the operator tells the user beside the change: how a
+	// failover treats the slots of a publisher with a standby (w34/m543).
+	Warnings []string `json:"warnings,omitempty"`
 	// DroppedSlots are the logical replication slots a disable dropped;
 	// RemainingSlots are any it could not, which still hold back WAL.
 	DroppedSlots   []string `json:"droppedSlots,omitempty"`
@@ -168,6 +171,10 @@ type logicalReplicationChange struct {
 	// password goes to a Secret, never the spec.
 	subscription int
 	password     string
+	// recovered: the database was restored from another's backup, so its
+	// catalog may hold that database's subscriptions (holdsRecoveredSubscriptions
+	// in the operator).
+	recovered bool
 }
 
 // SetLogicalReplication enables or disables d for logical replication. It is
@@ -388,7 +395,7 @@ func (s *Service) checkLogicalReplicationRequest(ctx context.Context, d *appv1al
 		return nil, core.NewBadRequestError(LogicalReplicationStorageTooSmallCode,
 			fmt.Sprintf("logical replication requires at least %d GB of storage; this database has %d GB", tiers.PostgresLogicalReplicationMinStorageGB, storage), params)
 	}
-	change := &logicalReplicationChange{previous: d.Spec.LogicalReplication, next: &appv1alpha1.DatabaseLogicalReplication{}, subscription: -1}
+	change := &logicalReplicationChange{previous: d.Spec.LogicalReplication, next: &appv1alpha1.DatabaseLogicalReplication{}, subscription: -1, recovered: d.Spec.Recovery != nil}
 	if change.previous != nil {
 		change.next = change.previous.DeepCopy()
 	}
@@ -539,6 +546,7 @@ func (s *Service) readLogicalReplication(ctx context.Context, d *appv1alpha1.Dat
 	}
 	res.RoleReplication, res.PublicationLive = state.replicates, state.allTables
 	res.RoleCreatesSubscriptions, res.LiveSubscriptions = state.createsSubscriptions, state.subscriptions
+	res.Warnings = failoverWarnings(d, lr, state.major)
 	publishes, subscribes := lr.Publishes(), lr != nil && lr.SubscriberRole != ""
 	res.Converged = state.replicates == publishes && state.allTables == (publishes && lr.AllTables) &&
 		state.createsSubscriptions == subscribes
@@ -548,6 +556,22 @@ func (s *Service) readLogicalReplication(ctx context.Context, d *appv1alpha1.Dat
 		res.Converged = res.Converged && slices.Equal(wanted, state.subscriptions)
 	}
 	return res
+}
+
+// failoverWarnings says what a failover or switchover does to the slots of
+// a publisher with a standby (w34/m543; ADR009 § Logical replication ›
+// Failover). On 17 or later the operator keeps each slot created with
+// failover = true on the standby; before 17 that takes the pg_failover_slots
+// extension, which bex's PostgreSQL image does not have yet (w8/m92), so a
+// failover loses every slot. Nothing to say for a database with no standby.
+func failoverWarnings(d *appv1alpha1.Database, lr *appv1alpha1.DatabaseLogicalReplication, major int) []string {
+	if !d.Spec.HighAvailability || !lr.Publishes() {
+		return nil
+	}
+	if major >= appv1alpha1.LogicalSlotsCarriedMajor {
+		return []string{"the database has a standby: a subscription keeps its place through a failover or switchover only when it was created WITH (failover = true), which needs a PostgreSQL 17 or later subscriber; re-create any other subscription after one"}
+	}
+	return []string{fmt.Sprintf("the database has a standby and runs PostgreSQL %d, whose failover or switchover does not carry logical replication slots to the standby (bex's image lacks pg_failover_slots, w8/m92): after one, every subscriber must be re-created and copy its tables again; PostgreSQL 17 and later keep them", major)}
 }
 
 // logicalReplicationCondition is the operator's report on the database,

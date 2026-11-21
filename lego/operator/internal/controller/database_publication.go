@@ -61,6 +61,45 @@ func slotWALKeepSize(storageGB int32) string {
 	return fmt.Sprintf("%dMB", int64(storageGB)*1024*slotWALKeepPercent/100)
 }
 
+// The two settings CNPG's logical slot synchronization needs on PostgreSQL 17
+// and later, and that its admission webhook requires beside it: the standby
+// reports its oldest snapshot to the primary, and copies the primary's
+// failover slots (docs/src/replication.md § Logical Decoding Slot
+// Synchronization, CNPG v1.30.1). Both reload without a restart.
+const (
+	paramHotStandbyFeedback   = "hot_standby_feedback"
+	paramSyncReplicationSlots = "sync_replication_slots"
+)
+
+// syncsLogicalSlots reports whether the cluster keeps its logical slots
+// through a failover or switchover (w34/m543): a publisher with a standby,
+// running a major whose standbys synchronize slots. The running major counts
+// first, as for pg_create_subscription: a 16 server refuses to start with
+// sync_replication_slots in its configuration, and CNPG's webhook refuses the
+// flag below 17 without pg_failover_slots, which bex's image lacks (w8/m92).
+func syncsLogicalSlots(p clusterParams) bool {
+	return p.highAvailability && p.logicalReplication.Publishes() &&
+		runningMajor(p) >= appv1alpha1.LogicalSlotsCarriedMajor
+}
+
+// slotSyncParameter reports whether name is a setting syncsLogicalSlots
+// owns: while it holds, a legacy declared value of any spelling is dropped.
+func slotSyncParameter(name string) bool {
+	return name == paramHotStandbyFeedback || name == paramSyncReplicationSlots
+}
+
+// logicalSlotSync turns on CNPG's logical slot synchronization in spec. CNPG
+// then names the standbys' HA slots in synchronized_standby_slots, so a
+// subscription created with failover = true is sent a change only once the
+// standby has it, and finds its slot on the standby after a promotion.
+func logicalSlotSync(spec, pgParams map[string]any) {
+	pgParams[paramHotStandbyFeedback] = "on"
+	pgParams[paramSyncReplicationSlots] = "on"
+	spec["replicationSlots"] = map[string]any{
+		"highAvailability": map[string]any{"synchronizeLogicalDecoding": true},
+	}
+}
+
 // markPublisherRole gives the publisher role CNPG's `replication: true` in the
 // projected managed roles. Every other role keeps PostgreSQL's
 // NOREPLICATION, so removing the field or naming another role takes the

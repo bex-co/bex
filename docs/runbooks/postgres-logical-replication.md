@@ -1,6 +1,6 @@
 # Runbook: enable a Postgres for logical replication (publisher or subscriber)
 
-**What it is:** Render enables logical replication only through its support team, on request, for publishers and subscribers ([render.com/docs/postgresql-logical-replication](https://render.com/docs/postgresql-logical-replication)). bex's operators do the same with one command inside the bex-api pod. It reaches bex-api's cluster-internal verb (`POST /internal/postgres-logical-replication` on `:8091`, behind `BEX_CP_TOKEN`); no tenant surface has it. Design: [ADR009 § Logical replication](../ADR009-postgresql-management.md#logical-replication-w34m541) and [§ Subscribers](../ADR009-postgresql-management.md#subscribers-w34m542). Board: `w34/m541`, `w34/m542`.
+**What it is:** Render enables logical replication only through its support team, on request, for publishers and subscribers ([render.com/docs/postgresql-logical-replication](https://render.com/docs/postgresql-logical-replication)). bex's operators do the same with one command inside the bex-api pod. It reaches bex-api's cluster-internal verb (`POST /internal/postgres-logical-replication` on `:8091`, behind `BEX_CP_TOKEN`); no tenant surface has it. Design: [ADR009 § Logical replication](../ADR009-postgresql-management.md#logical-replication-w34m541), [§ Subscribers](../ADR009-postgresql-management.md#subscribers-w34m542) and [§ Lifecycle](../ADR009-postgresql-management.md#lifecycle-w34m543). Board: `w34/m541`, `w34/m542`, `w34/m543`.
 
 One database may be a publisher, a subscriber or both. Each `enable` sets the parts it names and keeps the others.
 
@@ -46,6 +46,10 @@ Tell the user:
 - They create `FOR TABLE` publications themselves as the database's default user, and subscribe to those or to `bex_all_tables`.
 - The subscriber's tables must exist before `CREATE SUBSCRIPTION`: logical replication does not copy DDL.
 - A slot that falls more than a fifth of the disk behind is invalidated (`wal_status = 'lost'` in `pg_replication_slots`) and its subscription has to be re-created.
+- **A database with a standby** (high availability): the answer's `warnings` says which of these applies, by the database's PostgreSQL major.
+  - **17 and later:** a subscription keeps its place through a failover or switchover only when it is created `WITH (failover = true)` on a PostgreSQL 17 or later subscriber (`ALTER SUBSCRIPTION … SET (failover = true)` for an existing one). A CDC tool or an older subscriber creates its slot as the role with `SELECT pg_create_logical_replication_slot('<name>', 'pgoutput', false, false, true)` and subscribes with `create_slot = false`. While the standby is down, such a subscription receives nothing new: changes reach it once the standby has them.
+  - **13–16:** a failover or switchover loses every logical slot, because bex's image does not have `pg_failover_slots` yet (w8/m92). Each subscriber must then be re-created, which copies its tables again. Upgrading to 17 or later keeps the slots.
+- **A major-version upgrade** is refused (`POSTGRES_UPGRADE_LOGICAL_SLOTS_BEHIND`, naming the slots) while a slot is invalidated or has not consumed all WAL, because `pg_upgrade` would fail on it: the subscriber connects and catches up, or the slot is dropped (`SELECT pg_drop_replication_slot('<name>')` as the role). From 13–16 the upgrade is accepted but drops every slot, and the answer's `upgradeNotice` names them: re-create their subscriptions afterwards.
 
 ## Enable a subscriber
 
@@ -77,6 +81,18 @@ printf '%s' 'postgresql://<user>:<password>@<host>:5432/<db>?sslmode=require' |
 The user creates the tables first: CloudNativePG's `CREATE SUBSCRIPTION` fails while a published table is missing, and the answer's `message` then carries the operator's `LogicalReplication` condition with PostgreSQL's error. Exit 0 means `liveSubscriptions` lists it. `sslmode` may be `disable`, `allow`, `prefer` or `require` (the default); `verify-ca` and `verify-full` are refused because the instance has no root certificate for an arbitrary publisher. A database takes at most four. Running the same command with a new password replaces the stored one. The user cannot alter or drop this subscription themselves (`must be owner of subscription`): remove it with `disable --subscription <name>`.
 
 **Network.** Every database's instance can already reach another workspace's external URL, a host outside bex, and a same-workspace database's internal host on port 5432; nothing is opened per subscriber. A publisher with inbound IP rules must admit bex's tenant node addresses, from which subscribers connect (there is no fixed egress IP).
+
+## A recovered copy
+
+A database recovered to a point in time is a new database: it is not enabled, whatever its source was. Its source's publisher and subscriber credentials are retired on it (the owner stays its login), and it runs with `max_logical_replication_workers = 0` until it is enabled as a subscriber, so the subscriptions its backup restored do not start and compete with the source for its slots. Before the copy's first subscriber enable, the verb refuses with `LOGICAL_REPLICATION_SUBSCRIPTIONS_EXIST` while any of those is left, naming each `<database>.<subscription>`. Ask the user to detach and drop each one they own:
+
+```sql
+ALTER SUBSCRIPTION <name> DISABLE;
+ALTER SUBSCRIPTION <name> SET (slot_name = NONE);
+DROP SUBSCRIPTION <name>;
+```
+
+Detaching first keeps the drop from dropping the source's slot on the publisher. A subscription owned by the superuser (one bex created on 13–15) is dropped the same way by an operator on the primary, as in **A subscription bex created that will not drop** under Disable, without dropping the slot on the publisher. Then run the enable again; CloudNativePG restarts the instance once, to lift the worker limit.
 
 ## Check
 

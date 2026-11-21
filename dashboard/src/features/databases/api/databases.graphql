@@ -375,11 +375,14 @@ mutation UpdateDatabasePlan($id: String!, $plan: String!) {
   }
 }
 
+# upgradeNotice: what the upgrade drops (a logical-replication publisher's
+# slots before PostgreSQL 17, w34/m543); null otherwise.
 mutation UpdateDatabaseVersion($id: String!, $version: String!) {
   updateDatabaseVersion(id: $id, version: $version) {
     id
     version
     status
+    upgradeNotice
   }
 }
 

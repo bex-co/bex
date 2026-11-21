@@ -91,4 +91,5 @@ Adopting D1 restarts every managed Postgres pod once. The user approved that one
 
 - Render's documented `CREATE EXTENSION` flows (Django/GeoDjango, Rails PostGIS adapters, pg_partman schedules, TimescaleDB hypertables) run unchanged. Each extension's milestone then closes its own ADR018 row.
 - bex now owns per-major operand images and their refresh cadence: each CNPG or PGDG update is publish, then pin.
+- These images are also where `pg_failover_slots` would come from. On PostgreSQL 13–16, CloudNativePG keeps a logical-replication publisher's slots through a failover or switchover only with that extension loaded (CNPG v1.30.1 `docs/src/replication.md` § Logical Decoding Slot Synchronization), so an HA publisher on those majors loses every slot at a failover until an image here carries it. It is a requirement of [ADR009 § Lifecycle](ADR009-postgresql-management.md#lifecycle-w34m543) (w34/m543), owned with this image by w8/m92; 17 and later need no extension.
 - The allowlist is a new privileged surface inside every tenant database. Its closed list and tests (D3) are what security reviews check. Adding an extension later means amending D1's table here.

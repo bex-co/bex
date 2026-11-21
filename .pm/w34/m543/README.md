@@ -1,21 +1,28 @@
 # w34 · m543 — Logical replication survives failover, switchover, restarts, suspend and major-version upgrades
 
-**Worker:** worker34 **Goal:** every lifecycle operation bex offers on a Postgres keeps an enabled database's logical replication correct: a subscriber loses and duplicates no row across a failover or switchover, restarts and suspension keep slots and publications, a major-version upgrade never fails or silently drops slots because of them, and a recovered copy starts not enabled. **Status:** todo
+**Worker:** worker34 **Goal:** every lifecycle operation bex offers on a Postgres keeps an enabled database's logical replication correct: a subscriber loses and duplicates no row across a failover or switchover, restarts and suspension keep slots and publications, a major-version upgrade never fails or silently drops slots because of them, and a recovered copy starts not enabled. **Status:** todo (t001–t005, t007–t009 done; t006 and t010 run on production once the pin carries this milestone)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | HA on PostgreSQL 17+: logical slots follow a failover (`synchronizeLogicalDecoding`) | 1h | m541/t003 |
-| [t002](t002.md) | HA on PostgreSQL 13–16: record the `pg_failover_slots` gap against w8/m92; the verb says subscribers resync after a failover | 30m | t001 |
-| [t003](t003.md) | Major-version upgrade: refuse by name while a slot lags; say a pre-17 source drops slots | 1h15m | m541/t006 |
-| [t004](t004.md) | Restarts, suspend and resume, plan change and storage resize keep slots and publications | 45m | m541/t008 |
-| [t005](t005.md) | A point-in-time recovery starts with logical replication off | 45m | m541/t002 |
+| [t001](done/t001.md) | HA on PostgreSQL 17+: logical slots follow a failover (`synchronizeLogicalDecoding`) — **DONE** | 1h | m541/t003 |
+| [t002](done/t002.md) | HA on PostgreSQL 13–16: record the `pg_failover_slots` gap against w8/m92; the verb says subscribers resync after a failover — **DONE** | 30m | t001 |
+| [t003](done/t003.md) | Major-version upgrade: refuse by name while a slot lags; say a pre-17 source drops slots — **DONE** | 1h15m | m541/t006 |
+| [t004](done/t004.md) | Restarts, suspend and resume, plan change and storage resize keep slots and publications — **DONE** | 45m | m541/t008 |
+| [t005](done/t005.md) | A point-in-time recovery starts with logical replication off — **DONE** | 45m | m541/t002 |
 | [t006](t006.md) | Drill on dev-N (PostgreSQL 18, HA): fail the primary mid-stream, switch over, upgrade 17→18 | 1h15m | t001, t003, t004, t005 |
-| [t007](t007.md) | Render parity | 30m | t006 |
-| [t008](t008.md) | Simplify | 15m | t007 |
-| [t009](t009.md) | Test coverage | 45m | t007 |
+| [t007](done/t007.md) | Render parity — **DONE** | 30m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007 |
 | [t010](t010.md) | Closeout (live replay on production) | 45m | t008, t009 |
+
+## Progress (2026-11-21, loopx w34)
+
+- **Shipped:** an HA publisher on PostgreSQL 17+ gets CloudNativePG's logical slot synchronization (t001); the verb warns how a failover treats an HA publisher's slots, and the HA 13–16 loss is recorded against w8/m92 (t002); a publisher's major-version upgrade is refused by name while a slot lags (`POSTGRES_UPGRADE_LOGICAL_SLOTS_BEHIND`) and from 13–16 accepted with an `upgradeNotice` naming the slots it drops, identically on REST, GraphQL and MCP, with the dashboard's dialog and a warning toast (t003); restarts, suspend, plan changes and resizes need no change (t004); a recovered copy starts not enabled, its source's logical-replication credentials retired and its restored subscriptions held still until it is enabled as a subscriber (t005). Design and evidence: [ADR009 § Lifecycle](../../../docs/ADR009-postgresql-management.md#lifecycle-w34m543); the ADR018 row "Logical replication (lifecycle)" is ◐ with its owners.
+- **Verified off-cluster:** `pg_upgrade` locally on PostgreSQL 16.15, 17.11 and 18.7 binaries with a real subscriber: a 17 source with a lagging slot fails, a caught-up one keeps its slot and the subscriber resumed with every row exactly once, and a 16 source drops the slot silently. Every rule on real PostgreSQL 17 (CI's) in `logical_slots_pg_test.go`, and the operator's projection in `database_logical_lifecycle_test.go`.
+- **Found on the way:** a recovered copy's restored subscriptions would compete with the source for its publisher's slot (fixed by t005's worker guard); `tenantParameters` dropped only the canonical spelling of a managed setting (fixed); a subscriber with an asynchronous standby can skip its last transactions at a failover (filed as [w34/003](../003.md)).
+- **Left:** t006 (the drill) and t010 need a real cluster, which w34 does not have, so both run on production in `bex-canary` once the pin carries this milestone's commit and m541's and m542's.
 
 ## Definition of done
 

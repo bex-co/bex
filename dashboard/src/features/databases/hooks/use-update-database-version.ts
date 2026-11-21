@@ -16,8 +16,17 @@ export function useUpdateDatabaseVersion() {
       setBusy(true);
       setError(null);
       try {
-        await mutate({ variables: { id, version } });
-        toast.success(t("databases.versionUpgradeAccepted", { version }));
+        const res = await mutate({ variables: { id, version } });
+        // The server says what the accepted upgrade drops (a publisher's
+        // logical replication slots before PostgreSQL 17, w34/m543): then the
+        // toast warns, with its words, and stays until it is dismissed.
+        const accepted = t("databases.versionUpgradeAccepted", { version });
+        const notice = res.data?.updateDatabaseVersion?.upgradeNotice;
+        if (notice) {
+          toast.warning(accepted, { description: notice, duration: Infinity });
+        } else {
+          toast.success(accepted);
+        }
         return true;
       } catch (err) {
         setError(mutationErrorMessage(err, t("databases.versionUpgradeError")));

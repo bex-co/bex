@@ -19,6 +19,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"maps"
 	"reflect"
 	"slices"
 	"strconv"
@@ -629,11 +630,11 @@ func TestParameterSpecIsTheDeclaredSet(t *testing.T) {
 	}
 }
 
-// TestOperatorManagedParameterNames pins the platform-owned name table w6/m133
+// TestOperatorManagedParameters pins the platform-owned name table w6/m133
 // introduced. It once refused tenant overrides; since parameterOverrides was
 // retired (w2/066) it keeps a recovery from carrying a legacy source's
 // platform-managed settings into the restore (tenantParameters, w4/360).
-func TestOperatorManagedParameterNames(t *testing.T) {
+func TestOperatorManagedParameters(t *testing.T) {
 	managed := []string{
 		"restore_command", "ssl_key_file", "archive_command", "archive_mode", "wal_level",
 		// Prefix-matched families the exact map never names.
@@ -647,22 +648,27 @@ func TestOperatorManagedParameterNames(t *testing.T) {
 		"timescaledb.license", "duckdb.enable_external_access",
 		// The plan's connection limit (w6/134).
 		"max_connections",
+		// Logical replication's settings (w34/m541, w34/m543).
+		"max_slot_wal_keep_size", "hot_standby_feedback", "sync_replication_slots", "max_logical_replication_workers",
 	}
 	for _, name := range managed {
-		if got := operatorManagedParameterNames(map[string]string{name: "x", "work_mem": "8MB"}); len(got) != 1 || got[0] != name {
-			t.Errorf("operatorManagedParameterNames(%q) = %v, want [%s]", name, got, name)
+		if !operatorManagedParameter(name) {
+			t.Errorf("operatorManagedParameter(%q) = false, want true", name)
 		}
 	}
-	// Case and whitespace fold to the canonical name.
-	if got := operatorManagedParameterNames(map[string]string{"  ARCHIVE_COMMAND  ": "x"}); len(got) != 1 || got[0] != "archive_command" {
-		t.Errorf("padded upper-case archive_command => %v", got)
+	// Case and whitespace fold to the canonical name, and a recovery drops
+	// the setting in the spelling the source declared it in (before
+	// w34/m543 only the canonical key was deleted, so this survived).
+	carried := tenantParameters(map[string]string{"  ARCHIVE_COMMAND  ": "x", "Hot_Standby_Feedback": "off", "work_mem": "8MB"})
+	if !maps.Equal(carried, map[string]string{"work_mem": "8MB"}) {
+		t.Errorf("tenantParameters carries %v, want only work_mem", carried)
 	}
 	// Ordinary tuning is the tenant's and must not be stripped.
 	for _, name := range []string{"work_mem", "maintenance_work_mem", "shared_buffers", "effective_cache_size",
 		"random_page_cost", "statement_timeout", "idle_in_transaction_session_timeout",
 		"default_statistics_target", "autovacuum_vacuum_scale_factor", "max_parallel_workers", "timezone"} {
-		if got := operatorManagedParameterNames(map[string]string{name: "x"}); len(got) != 0 {
-			t.Errorf("%q wrongly treated as platform-managed: %v", name, got)
+		if operatorManagedParameter(name) {
+			t.Errorf("%q wrongly treated as platform-managed", name)
 		}
 	}
 }

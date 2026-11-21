@@ -356,6 +356,13 @@ const LogicalSubscriptionsMax = 4
 // Subscriptions serve the majors before it.
 const PgCreateSubscriptionMajor = 16
 
+// LogicalSlotsCarriedMajor is the first PostgreSQL major that carries a
+// logical replication slot through a failover (a standby synchronizes the
+// slots created with failover = true, sync_replication_slots) and through a
+// major-version upgrade (pg_upgrade migrates logical slots only from 17 or
+// later). On the majors before it, both lose every logical slot.
+const LogicalSlotsCarriedMajor = 17
+
 // LogicalSubscriptionSSLModes are the sslmode values a Subscription may
 // name, as the CRD's enum does; LogicalSubscriptionDefaultSSLMode is the one
 // it gets when it names none. verify-ca and verify-full need a root
@@ -417,6 +424,12 @@ type DatabaseLogicalReplication struct {
 // Publishes reports whether lr makes the database a publisher.
 func (lr *DatabaseLogicalReplication) Publishes() bool {
 	return lr != nil && lr.PublisherRole != ""
+}
+
+// Subscribes reports whether lr makes the database a subscriber: a
+// subscriber role, or subscriptions bex creates.
+func (lr *DatabaseLogicalReplication) Subscribes() bool {
+	return lr != nil && (lr.SubscriberRole != "" || len(lr.Subscriptions) > 0)
 }
 
 // DatabaseLogicalSubscription is one subscription the operator creates: the

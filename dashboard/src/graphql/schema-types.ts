@@ -1477,6 +1477,7 @@ export type Database = {
   suspended: Maybe<Scalars['String']['output']>;
   suspenders: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   updatedAt: Maybe<Scalars['String']['output']>;
+  upgradeNotice: Maybe<Scalars['String']['output']>;
   version: Maybe<Scalars['String']['output']>;
 };
 

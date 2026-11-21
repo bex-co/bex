@@ -423,12 +423,17 @@ func (s *Service) registerAccessMCP(srv *mcp.Server) {
 		// The protected-environment phrase reaches the dry-run too: it is the
 		// real call stopped before its first write (w5/m116).
 		ctx = core.WithConfirm(ctx, in.Confirm)
+		update := s.UpdatePostgres
 		if in.DryRun {
-			v, err := s.UpdatePostgresDryRun(ctx, in.PostgresID, patch)
-			return nil, v, err
+			update = s.UpdatePostgresDryRun
 		}
-		v, err := s.UpdatePostgres(ctx, in.PostgresID, patch)
-		return nil, v, err
+		v, err := update(ctx, in.PostgresID, patch)
+		if err != nil {
+			return nil, PostgresView{}, err
+		}
+		// An upgrade that drops a publisher's logical slots says so beside
+		// the result, as on REST and GraphQL (w34/m543).
+		return mcputil.WithWarning(v, v.UpgradeNotice), v, nil
 	})
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_users",

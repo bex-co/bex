@@ -1212,6 +1212,7 @@ type Database {
   suspended: String
   suspenders: [String]
   updatedAt: String
+  upgradeNotice: String
   version: String
 }
 

@@ -57,8 +57,59 @@ var cnpgSubscriptionGVK = schema.GroupVersionKind{Group: cnpgGroup, Version: "v1
 // still upgrading from 15 does not have the role yet, and CNPG would fail
 // every role while one names it.
 func hasPgCreateSubscription(p clusterParams) bool {
-	major, err := strconv.Atoi(cmp.Or(p.runningVersion, effectivePostgresVersion(p.version, "", p.creating)))
-	return err == nil && major >= appv1alpha1.PgCreateSubscriptionMajor
+	return runningMajor(p) >= appv1alpha1.PgCreateSubscriptionMajor
+}
+
+// paramMaxLogicalReplicationWorkers caps the apply and table-sync workers
+// that run subscriptions. It takes effect at a restart.
+const paramMaxLogicalReplicationWorkers = "max_logical_replication_workers"
+
+// holdsRecoveredSubscriptions reports whether the recovered copy db runs
+// with no logical replication worker (w34/m543; ADR009 § Logical
+// replication › Recovery). A copy is restored from its source's backup, so
+// its catalog carries the source's subscriptions, enabled, with their
+// connection strings and slot names. Started, each would connect to the
+// source's publisher and compete with the source for its slot: whichever
+// connects consumes the changes, and the source's subscriber silently misses
+// them. So a copy runs none until it is enabled as a subscriber itself, when
+// the guard goes (CNPG restarts the instance for it) and bex-api has already
+// refused while one of those subscriptions is left.
+//
+// The guard is set when the Cluster is created, and kept while the live
+// Cluster carries it: a copy recovered before this rule is never restarted
+// for it.
+func holdsRecoveredSubscriptions(db *appv1alpha1.Database, live *unstructured.Unstructured, creating bool) bool {
+	if db.Spec.Recovery == nil || db.Spec.LogicalReplication.Subscribes() {
+		return false
+	}
+	if creating {
+		return true
+	}
+	value, _, _ := unstructured.NestedString(live.Object, "spec", "postgresql", "parameters", paramMaxLogicalReplicationWorkers)
+	return value == "0"
+}
+
+// logicalReplicationParameter reports whether the logical-replication
+// projection owns the setting name for p: the publisher's WAL bound, the
+// slot synchronization settings, a recovered copy's worker guard. A legacy
+// declared value of any spelling gives way to it.
+func logicalReplicationParameter(p clusterParams, name string) bool {
+	switch {
+	case name == paramMaxSlotWALKeepSize:
+		return p.logicalReplication.Publishes()
+	case slotSyncParameter(name):
+		return syncsLogicalSlots(p)
+	case name == paramMaxLogicalReplicationWorkers:
+		return p.holdLogicalWorkers
+	}
+	return false
+}
+
+// runningMajor is the PostgreSQL major the cluster runs, else the one it is
+// created with; 0 when neither is known.
+func runningMajor(p clusterParams) int {
+	major, _ := strconv.Atoi(cmp.Or(p.runningVersion, effectivePostgresVersion(p.version, "", p.creating)))
+	return major
 }
 
 // markSubscriberRole adds pg_create_subscription to the subscriber role's

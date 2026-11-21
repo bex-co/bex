@@ -168,8 +168,13 @@ type PostgresView struct {
 	DashboardURL string `json:"dashboardUrl,omitempty"`
 
 	// bex-native extras (Render clients ignore unknown keys).
-	ExternalHost string `json:"externalHost,omitempty"`
-	Public       bool   `json:"public"`
+	// UpgradeNotice answers only the update that started a major-version
+	// upgrade, when the upgrade will drop something the caller relies on: a
+	// logical-replication publisher's slots on a source before PostgreSQL 17
+	// (w34/m543). Omitted otherwise, and on every read.
+	UpgradeNotice string `json:"upgradeNotice,omitempty"`
+	ExternalHost  string `json:"externalHost,omitempty"`
+	Public        bool   `json:"public"`
 	// ExternalCertificate is the certificate the external endpoint presents:
 	// publiclyTrusted, pending or failed (core.ExternalCertificate*, w4/m357).
 	// Omitted without an external endpoint or a managed public certificate.
@@ -1707,6 +1712,15 @@ var operatorManagedParameters = map[string]bool{
 	// operator sets it from the disk while the database publishes, and a
 	// carried value would lift it.
 	"max_slot_wal_keep_size": true,
+	// An HA publisher's logical slot synchronization on 17+ (w34/m543): the
+	// operator turns both on beside CNPG's synchronizeLogicalDecoding, whose
+	// admission refuses the Cluster without them.
+	"hot_standby_feedback":   true,
+	"sync_replication_slots": true,
+	// A recovered copy runs no logical replication worker until it is
+	// enabled as a subscriber (w34/m543), so its source's restored
+	// subscriptions do not start; a carried value would lift that.
+	"max_logical_replication_workers": true,
 }
 
 // operatorManagedParameterPrefixes match whole families, so a knob the exact
@@ -1726,25 +1740,13 @@ var operatorManagedParameterPrefixes = []string{
 	"duckdb.",
 }
 
-// operatorManagedParameterNames returns the sorted operator-owned names present
-// in params, or nil when there are none.
-func operatorManagedParameterNames(params map[string]string) []string {
-	var found []string
-	for name := range params {
-		canonical := strings.ToLower(strings.TrimSpace(name))
-		if operatorManagedParameters[canonical] {
-			found = append(found, canonical)
-			continue
-		}
-		for _, prefix := range operatorManagedParameterPrefixes {
-			if strings.HasPrefix(canonical, prefix) {
-				found = append(found, canonical)
-				break
-			}
-		}
-	}
-	slices.Sort(found)
-	return slices.Compact(found)
+// operatorManagedParameter reports whether the postgresql.conf setting name,
+// in any spelling, is the platform's.
+func operatorManagedParameter(name string) bool {
+	canonical := strings.ToLower(strings.TrimSpace(name))
+	return operatorManagedParameters[canonical] || slices.ContainsFunc(operatorManagedParameterPrefixes, func(prefix string) bool {
+		return strings.HasPrefix(canonical, prefix)
+	})
 }
 
 // UpdatePostgres applies a partial update (Render's PATCH /postgres/{id}
@@ -1769,7 +1771,8 @@ func (s *Service) updatePostgres(ctx context.Context, name string, patch Postgre
 	if err != nil {
 		return PostgresView{}, err
 	}
-	if err := s.checkUpdate(ctx, d, patch); err != nil {
+	notice, err := s.checkUpdate(ctx, d, patch)
+	if err != nil {
 		return PostgresView{}, err
 	}
 	before := d.Spec
@@ -1792,6 +1795,7 @@ func (s *Service) updatePostgres(ctx context.Context, name string, patch Postgre
 		view.HighAvailabilityEnabled = *patch.EnableHighAvailability
 		view.HighAvailabilityRequested = *patch.EnableHighAvailability
 	}
+	view.UpgradeNotice = notice
 	return view, nil
 }
 
@@ -1822,7 +1826,19 @@ func readReplicaViews(d *appv1alpha1.Database) []ReadReplicaView {
 // checkUpdate is every read-only check a Postgres update runs before its
 // write: the patch itself, protection, billing, admission rules this service
 // enforces ahead of the API server, name uniqueness and the version upgrade.
-func (s *Service) checkUpdate(ctx context.Context, d *appv1alpha1.Database, patch PostgresPatch) error {
+// It returns the version upgrade's notice, for the view the update answers
+// with (PostgresView.UpgradeNotice).
+func (s *Service) checkUpdate(ctx context.Context, d *appv1alpha1.Database, patch PostgresPatch) (string, error) {
+	if err := s.checkUpdateFields(ctx, d, patch); err != nil {
+		return "", err
+	}
+	if patch.Version != nil {
+		return s.validateVersionUpgrade(ctx, d, *patch.Version, patch.Plan)
+	}
+	return "", nil
+}
+
+func (s *Service) checkUpdateFields(ctx context.Context, d *appv1alpha1.Database, patch PostgresPatch) error {
 	if err := patch.validate(); err != nil {
 		return err
 	}
@@ -1863,9 +1879,6 @@ func (s *Service) checkUpdate(ctx context.Context, d *appv1alpha1.Database, patc
 		if err := s.ensureDatabaseNameAvailable(ctx, d.Labels[core.LabelTenant], *patch.Name, d.Name); err != nil {
 			return err
 		}
-	}
-	if patch.Version != nil {
-		return s.validateVersionUpgrade(ctx, d, *patch.Version, patch.Plan)
 	}
 	return nil
 }
@@ -1972,7 +1985,19 @@ func (s *Service) hasCompletedBackup(ctx context.Context, d *appv1alpha1.Databas
 // whose durability contract includes backups must have a completed physical
 // backup before the offline pg_upgrade begins; checking BackupsEnabled alone is
 // insufficient because the first ScheduledBackup may still be pending.
-func (s *Service) validateVersionUpgrade(ctx context.Context, d *appv1alpha1.Database, target string, patchedPlan *string) error {
+//
+// A logical-replication publisher's slots are checked last, since that reads
+// the database: an upgrade pg_upgrade would refuse for them is refused here,
+// by name, and one that drops them returns the notice saying so (w34/m543).
+func (s *Service) validateVersionUpgrade(ctx context.Context, d *appv1alpha1.Database, target string, patchedPlan *string) (string, error) {
+	if err := s.checkVersionUpgrade(ctx, d, target, patchedPlan); err != nil {
+		return "", err
+	}
+	currentMajor, _ := strconv.Atoi(d.Status.CurrentVersion)
+	return s.upgradeLogicalSlotsNotice(ctx, d, currentMajor, target)
+}
+
+func (s *Service) checkVersionUpgrade(ctx context.Context, d *appv1alpha1.Database, target string, patchedPlan *string) error {
 	if !postgresVersionKnown(target) {
 		return unknownPostgresVersionError(target)
 	}
@@ -2036,7 +2061,8 @@ func (s *Service) SetVersion(ctx context.Context, name, target string) (Postgres
 		return PostgresView{}, err
 	}
 	patch := PostgresPatch{Version: &target}
-	if err := s.checkUpdate(ctx, d, patch); err != nil {
+	notice, err := s.checkUpdate(ctx, d, patch)
+	if err != nil {
 		return PostgresView{}, err
 	}
 	view, err := s.patchDatabaseObj(ctx, d, patch.apply, false)
@@ -2044,6 +2070,7 @@ func (s *Service) SetVersion(ctx context.Context, name, target string) (Postgres
 		return PostgresView{}, err
 	}
 	s.RecordDatabaseEffect(ctx, d, core.DatabaseVersionChanged)
+	view.UpgradeNotice = notice
 	return view, nil
 }
 

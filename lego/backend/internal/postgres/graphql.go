@@ -69,6 +69,10 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"dashboardUrl": gqlutil.StrField(func(v PostgresView) any { return v.DashboardURL }),
 		"externalHost": gqlutil.StrField(func(v PostgresView) any { return v.ExternalHost }),
 		"public":       gqlutil.BoolField(func(v PostgresView) any { return v.Public }),
+		// upgradeNotice: what the major-version upgrade this mutation started
+		// drops (a publisher's logical slots before PostgreSQL 17, w34/m543);
+		// null on every other answer (bex extension).
+		"upgradeNotice": gqlutil.OptionalStrField(func(v PostgresView) any { return v.UpgradeNotice }),
 		// externalCertificate: publiclyTrusted, pending or failed, null without
 		// an external endpoint (w4/m357, bex extension).
 		"externalCertificate":       gqlutil.OptionalStrField(func(v PostgresView) any { return v.ExternalCertificate }),

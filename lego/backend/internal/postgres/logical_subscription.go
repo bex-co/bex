@@ -134,7 +134,32 @@ func checkLogicalReplicationSQL(ctx context.Context, uri string, change *logical
 	if previous := change.previous; previous != nil && previous.SubscriberRole != "" && previous.SubscriberRole != change.next.SubscriberRole {
 		return refuseOwnedSubscriptionsOn(ctx, conn, previous.SubscriberRole)
 	}
+	if change.recovered && !change.previous.Subscribes() {
+		return refuseRecoveredSubscriptions(ctx, conn)
+	}
 	return nil
+}
+
+// refuseRecoveredSubscriptions refuses the first subscriber enable of a
+// recovered copy while its catalog holds subscriptions, which can only be its
+// source's, restored from the backup (w34/m543). The operator runs the copy
+// with no logical replication worker until it subscribes; the enable lifts
+// that, and each of these would then connect to its source's publisher and
+// compete with the source for the slot. Detached first, dropping one leaves
+// the publisher's slot to the source.
+func refuseRecoveredSubscriptions(ctx context.Context, conn *pgx.Conn) error {
+	var carried []string
+	if err := conn.QueryRow(ctx,
+		`SELECT coalesce(array_agg(d.datname || '.' || s.subname ORDER BY d.datname, s.subname), '{}')
+		   FROM pg_catalog.pg_subscription s JOIN pg_catalog.pg_database d ON d.oid = s.subdbid`).Scan(&carried); err != nil {
+		return mapPGError(err)
+	}
+	if len(carried) == 0 {
+		return nil
+	}
+	return core.NewConflictError(LogicalReplicationSubscriptionsExistCode, fmt.Sprintf(
+		"the database was recovered from another's backup and still holds its subscriptions %s, which would compete with that database for its publisher's slots; detach and drop each first (ALTER SUBSCRIPTION … DISABLE, ALTER SUBSCRIPTION … SET (slot_name = NONE), DROP SUBSCRIPTION …)",
+		strings.Join(carried, ", ")), map[string]any{"subscriptions": carried})
 }
 
 func serverMajor(ctx context.Context, conn *pgx.Conn) (int, error) {

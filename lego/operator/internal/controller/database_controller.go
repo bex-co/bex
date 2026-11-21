@@ -234,6 +234,10 @@ type clusterParams struct {
 	// pg_create_subscription, and its 13-15 subscriptions' publishers are
 	// externalClusters (database_subscription.go). nil projects none of it.
 	logicalReplication *appv1alpha1.DatabaseLogicalReplication
+	// holdLogicalWorkers runs a recovered copy with no logical replication
+	// worker, so the subscriptions its source's backup carried do not start
+	// (holdsRecoveredSubscriptions).
+	holdLogicalWorkers bool
 }
 
 func versionedBackupServerName(name, version string) string {
@@ -629,8 +633,7 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	}
 	for k, v := range p.parameters {
 		name := strings.ToLower(strings.TrimSpace(k))
-		publisherBound := p.logicalReplication.Publishes() && name == paramMaxSlotWALKeepSize
-		if name != "shared_preload_libraries" && name != "max_connections" && !managedExtensionParameter(name) && !publisherBound {
+		if name != "shared_preload_libraries" && name != "max_connections" && !managedExtensionParameter(name) && !logicalReplicationParameter(p, name) {
 			pgParams[k] = v
 		}
 	}
@@ -648,6 +651,12 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	// publisher bex withdraws its value.
 	if p.logicalReplication.Publishes() {
 		pgParams[paramMaxSlotWALKeepSize] = slotWALKeepSize(p.storageGB)
+	}
+	if syncsLogicalSlots(p) {
+		logicalSlotSync(spec, pgParams)
+	}
+	if p.holdLogicalWorkers {
+		pgParams[paramMaxLogicalReplicationWorkers] = "0"
 	}
 	preload := []any{"pg_stat_statements"}
 	// A bex operand's extension allowlist (ADR092 D3) is only projected with
@@ -1172,6 +1181,7 @@ func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alph
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, cluster, func() error {
 		params.creating = cluster.GetResourceVersion() == ""
 		params.currentImage, _, _ = unstructured.NestedString(cluster.Object, "spec", "imageName")
+		params.holdLogicalWorkers = holdsRecoveredSubscriptions(db, cluster, params.creating)
 		spec := cnpgClusterSpec(params)
 		if !params.creating && params.version == "" && params.runningVersion == "" {
 			if configuration, err := unobservedOperandPostgresql(cluster); err != nil {
