@@ -451,6 +451,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **387** — [Two back-to-back deploy triggers cancel the first deploy ("Superseded by …") before it starts, where Render's default Wait policy lets the first finish](387.md) (~1h30m, minor–major, parity) ← follow-up from the w8/378 live check 2026-11-21
 - [ ] **386** — [A failed deploy's startup-crash reason says the instance "is restarting repeatedly" after it has stopped, and tells an exit-0 crash to check its port bind](386.md) (~45m, minor) ← follow-up from routine `cli-qa` run r29 2026-11-21
 - [ ] **385** — [A web service with no reachable port prints nothing in its deploy log for the whole 15-minute port scan, where Render's log repeats `==> No open ports detected, continuing to scan...`](385.md) (~1h, minor) ← follow-up from routine `cli-qa` run r29 2026-11-21
 - [ ] **384** — [A first image deploy with nothing listening tells the user to "check that the path returns a 2xx or 3xx status", though the service has no Health Check Path](384.md) (~50m, minor) ← routine `cli-qa` run r29 2026-11-21: w4/m350's `open-port` exec probe falls through `probeStallText` to the "other check" templates (`app_controller.go:6986`, `deploy_reasons.go:185-189`), undoing w8/259's TCP wording for 127.0.0.1-only and no-listener image services.
