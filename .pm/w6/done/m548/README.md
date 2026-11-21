@@ -1,6 +1,6 @@
 # w6 · m548 — A service with a disk keeps the default shutdown delay, as on Render
 
-**Worker:** worker6 **Goal:** as Render documents ("You can't change the shutdown delay for a service with a persistent disk"), every surface refuses a custom `maxShutdownDelaySeconds` on a service with a disk, attaching a disk returns a custom delay to the 30 s default, and the dashboard says why the setting is unavailable. **Status:** blocked (pin must carry `667d4f7dc`; t001–t003, t005, t006, t008, t009 done; t004 step 3, t007 and t010 wait for production)
+**Worker:** worker6 **Goal:** as Render documents ("You can't change the shutdown delay for a service with a persistent disk"), every surface refuses a custom `maxShutdownDelaySeconds` on a service with a disk, attaching a disk returns a custom delay to the 30 s default, and the dashboard says why the setting is unavailable. **Status:** done (2026-11-21; checked on production pin `7e481dece7ac`)
 
 ## Tasks (in order)
 
@@ -9,13 +9,13 @@
 | t001 | [Record Render's rule and decide what attaching a disk does to a custom delay](done/t001.md) — **DONE** | 30m | — |
 | t002 | [REST, GraphQL and MCP refuse a shutdown delay on a service with a disk](done/t002.md) — **DONE** | 45m | t001 |
 | t003 | [Blueprint validate, plan and apply refuse a disk with a shutdown delay](done/t003.md) — **DONE** | 30m | t002 |
-| t004 | [Attaching a disk returns a custom delay to 30 s, and the operator applies 30 s to a disk-bearing App](t004.md) | 45m | t002 |
+| t004 | [Attaching a disk returns a custom delay to 30 s, and the operator applies 30 s to a disk-bearing App](done/t004.md) — **DONE** | 45m | t002 |
 | t005 | [The dashboard disables Maximum shutdown delay on a service with a disk, with Render's reason](done/t005.md) — **DONE** | 30m | t002 |
 | t006 | [Record the rule in ADR082 and ADR018](done/t006.md) — **DONE** | 15m | t003, t004, t005 |
-| t007 | [Render parity](t007.md) | 20m | t006 |
+| t007 | [Render parity](done/t007.md) — **DONE** | 20m | t006 |
 | t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
 | t009 | [Test coverage](done/t009.md) — **DONE** | 30m | t007 |
-| t010 | [Closeout](t010.md) | 10m | t008, t009 |
+| t010 | [Closeout](done/t010.md) — **DONE** | 10m | t008, t009 |
 
 ## Definition of done
 
@@ -35,3 +35,10 @@
 - **Why now:** pairs with m547 (that bounds the start side, this the stop side); independent of it, so both can run in either order.
 - **Open decision (recommendation, not a user decision):** Render does not document what attaching a disk does to an existing custom delay. The tasks implement the proposal's recommendation, resting on ADR008 (parity work is never parked on an optional decision): refuse while a disk is attached, return a custom value to 30 s on attach as a recorded setting change, report 30 s. Unverified against Render; t001 records it as such and t007 re-checks.
 - **Render parity task included:** REST, GraphQL, MCP, Blueprint and dashboard all change.
+
+## Unblock record (2026-11-21)
+
+- **Affected:** w6/m548 t004 (step 3), t007, t010.
+- **Source:** verified evidence. Production's newest pin, `chore(deploy): pin platform images to 7e481dece7ac` (`a4db56cd9` on `origin/main`), carries `667d4f7dc` (`git merge-base --is-ancestor 667d4f7dc 7e481dece7ac` exits 0), the commit this milestone's gate named.
+- **Remaining gates:** none. The production checks need only the QA user (`bash scripts/qa-login.sh`) and the app cluster's kubeconfig (`scripts/fetch-app-kubeconfig.sh`).
+- **Next:** t004 step 3 (PATCH twenty-crm `srv-dbnun74vg1gs7387qojg` to 30 as the QA user; it stores none, reads 30, pod grace 30), t007 (the definition of done on a paid disk fixture in `bex-canary`, then delete the fixtures by id), t010 closes.
