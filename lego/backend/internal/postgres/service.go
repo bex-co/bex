@@ -1960,6 +1960,20 @@ func planRequiresUpgradeBackup(plan string) bool {
 	return ok && tier.Backup
 }
 
+// hasCompletedBackup reports whether the database's current archive generation
+// holds a completed base backup. A Backup that names its serverName counts
+// when it names this generation's; older CNPG objects omit it when it
+// defaulted to the cluster name, so only that legacy generation may use the
+// empty value.
+//
+// The Barman Cloud plugin, which backs up every database in a workspace
+// namespace, never sets a Backup's serverName (plugin v0.13.0 on production,
+// 2026-11-21), and those databases archive under a namespace-scoped name, so
+// none of their Backups can match. The plugin records each server's completed
+// backups in the ObjectStore's recovery window instead, keyed by that same
+// name: a window read for this generation is the completed backup. A new
+// generation after an upgrade has no window until its own first backup
+// completes.
 func (s *Service) hasCompletedBackup(ctx context.Context, d *appv1alpha1.Database) bool {
 	list := &unstructured.UnstructuredList{}
 	list.SetGroupVersionKind(cnpgBackupGVK)
@@ -1971,13 +1985,12 @@ func (s *Service) hasCompletedBackup(ctx context.Context, d *appv1alpha1.Databas
 		backup := &list.Items[i]
 		phase, _, _ := unstructured.NestedString(backup.Object, "status", "phase")
 		backupServerName, _, _ := unstructured.NestedString(backup.Object, "status", "serverName")
-		// Older CNPG objects may omit serverName when it defaulted to the
-		// cluster name. Only that legacy generation may use the empty value.
 		if phase == "completed" && (backupServerName == serverName || (backupServerName == "" && serverName == d.Name)) {
 			return true
 		}
 	}
-	return false
+	window, err := s.recoveryWindow(ctx, d)
+	return err == nil && window.established()
 }
 
 // validateVersionUpgrade is the shared safety gate for the dedicated GraphQL/

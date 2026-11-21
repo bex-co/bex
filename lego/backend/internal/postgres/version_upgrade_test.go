@@ -127,6 +127,47 @@ func TestSetVersionValidationAndBackupGuard(t *testing.T) {
 	}
 }
 
+// TestBackupGuardReadsThePluginsRecoveryWindow is the production shape: the
+// Barman Cloud plugin leaves a completed Backup's serverName empty, and a
+// workspace-namespace database archives under a namespace-scoped name, so the
+// Backup objects alone never authorized an upgrade on a paid plan (found by
+// w34/m543's production replay, 2026-11-21). The ObjectStore's recovery window
+// for the generation's name is the plugin's record of a completed backup.
+func TestBackupGuardReadsThePluginsRecoveryWindow(t *testing.T) {
+	const generation = "tea-x-upgrade-db"
+	tests := []struct {
+		name       string
+		serverName string // the database's current generation
+		window     string // the ObjectStore server whose window is established ("" = none)
+		wantCode   string
+	}{
+		{name: "plugin backup in this generation", serverName: generation, window: generation},
+		{name: "plugin backup pending", serverName: generation, wantCode: "POSTGRES_UPGRADE_BACKUP_REQUIRED"},
+		{name: "only the generation before the last upgrade", serverName: generation + "-pg17", window: generation, wantCode: "POSTGRES_UPGRADE_BACKUP_REQUIRED"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db := versionDatabase("upgrade-db", "basic-1gb", "17", true)
+			db.Status.BackupServerName = tt.serverName
+			svc, cl := newServicePostgresResources(db, completedVersionBackup("upgrade-db", ""))
+			if tt.window != "" {
+				seedBarmanRecoveryWindow(t, cl, tt.window, "2026-11-21T16:13:23Z", "2026-11-21T16:13:57Z")
+			}
+			_, err := svc.SetVersion(context.Background(), "upgrade-db", "18")
+			if got := codedErrorCode(err); got != tt.wantCode {
+				t.Fatalf("error code = %q (err %v), want %q", got, err, tt.wantCode)
+			}
+			var got appv1alpha1.Database
+			if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "upgrade-db"}, &got); err != nil {
+				t.Fatal(err)
+			}
+			if want := map[bool]string{true: "17", false: "18"}[tt.wantCode != ""]; got.Spec.Version != want {
+				t.Errorf("spec.version = %q, want %q", got.Spec.Version, want)
+			}
+		})
+	}
+}
+
 func TestRESTVersionUpgradeNamedErrorsAndPatch(t *testing.T) {
 	svc, cl := newService(versionDatabase("rest-upgrade", "free", "16", false))
 
