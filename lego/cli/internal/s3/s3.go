@@ -14,21 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package s3 is `bex s3`: the AWS CLI pointed at bex's S3-compatible API with
-// a key minted for the signed-in person (ADR112 D3), and the bex-owned
-// commands around it: `env`, `keys`, `public` and `info`. It is a thin client
-// of bex-api's object-storage routes; quota, metering and authorization stay
-// with the server. It imports nothing from the other modules, so the REST
-// shapes below are written from the routes' contract, not shared with them.
+// Package s3 is `bex s3`, a native client of bex's S3-compatible object
+// storage API (ADR112 D3): `ls`, `cp`, `mv`, `rm`, `sync`, `mb`, `rb` and
+// `presign`, bex's own `cors`, `lifecycle` and `info`, and the commands around
+// them, `env`, `keys` and `public`. It signs and sends its own requests with
+// the AWS SDK for Go v2, with a key minted for the signed-in person, and runs
+// no other program. It is a client of the API alone: quota, metering and
+// authorization stay with the server. It imports nothing from the other
+// modules, so the REST shapes of the bucket and key routes are written from
+// the routes' contract, not shared with them.
 package s3
 
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
-	"os/exec"
+	"os/signal"
+	"syscall"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	sdk "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/render-oss/cli/pkg/cfg"
 	"github.com/render-oss/cli/pkg/command"
 	"github.com/render-oss/cli/pkg/config"
@@ -45,14 +52,14 @@ type deps struct {
 	workspace func() (string, error)
 	host      func() string
 	lookupEnv func(string) (string, bool)
-	environ   func() []string
 	state     func() (string, error)
 	now       func() time.Time
 	hostname  func() string
-	lookPath  func(string) (string, error)
-	// exec replaces the process with path, after beforeExec (the launch
-	// telemetry).
-	exec func(path string, argv, env []string, beforeExec func()) error
+	// httpClient is what S3 requests are sent with; nil is the SDK's default.
+	httpClient func() aws.HTTPClient
+	stdin      io.Reader
+	// isTerminal says whether the progress line may be drawn on a stream.
+	isTerminal func(io.Writer) bool
 }
 
 func osDeps() deps {
@@ -61,68 +68,76 @@ func osDeps() deps {
 		workspace: config.WorkspaceID,
 		host:      cfg.GetHost,
 		lookupEnv: os.LookupEnv,
-		environ:   os.Environ,
 		state:     config.StateDir,
 		now:       time.Now,
 		hostname: func() string {
 			name, _ := os.Hostname()
 			return name
 		},
-		lookPath: exec.LookPath,
-		exec:     execAWS,
+		stdin:      os.Stdin,
+		isTerminal: isTerminal,
 	}
 }
 
-// Commands are `bex s3` and `bex s3api`.
+// globals are the flags every `bex s3` command takes.
+type globals struct {
+	// region is the signing region, and the location `mb` creates a bucket in.
+	region string
+}
+
+// Commands is `bex s3`.
 func Commands() []*cobra.Command {
 	return newCommands(osDeps())
 }
 
 func newCommands(d deps) []*cobra.Command {
+	g := &globals{}
 	s3 := &cobra.Command{
-		Use:   "s3 <aws s3 command> [arguments…] | env | keys | public | info",
-		Short: "Use bex object storage with the AWS CLI: buckets, cp, ls, mv, rm, sync, presign",
-		Long: "Runs your AWS CLI (`aws s3 …`) against bex object storage, with the endpoint\n" +
-			"and a key already set: sign in with `bex login` and use any `aws s3` command.\n" +
-			"A key is made for you, lasts twelve hours and is replaced when under one hour\n" +
-			"is left; your own AWS profile and credentials are never used or sent, and bex's\n" +
-			"key never lands in ~/.aws.\n\n" +
-			"Everything except the four names below is handed to `aws s3` as typed:\n" +
-			"  bex s3 mb s3://photos --region frankfurt\n" +
-			"  bex s3 sync ./site s3://photos/site\n" +
-			"  bex s3 presign s3://photos/cat.jpg\n\n" +
-			"bex's own commands:\n" +
-			"  env                                  the endpoint and key as variables for rclone, boto3, s5cmd or Terraform\n" +
-			"  keys create|list|revoke              persistent keys for CI and long transfers\n" +
-			"  public <bucket> enable|disable|status  publish a bucket read-only (workspace admin)\n" +
-			"  info <bucket>                        a bucket's region, public host, objects and bytes\n\n" +
-			"`bex s3api <call>` runs `aws s3api` the same way, for the calls `aws s3` has\n" +
-			"no command for (bucket CORS and lifecycle among them). An upload larger than\n" +
-			"5 GiB is refused. A key that expires during a transfer fails the transfer with\n" +
-			"a 403: use a persistent key (`bex s3 keys create`) for a transfer over hours.",
-		Example:            "  bex s3 ls\n  bex s3 cp cat.jpg s3://photos/cat.jpg\n  bex s3 keys create --name ci\n  bex s3 public photos enable",
-		DisableFlagParsing: true,
-		SilenceUsage:       true,
-		RunE: func(c *cobra.Command, args []string) error {
-			return d.launch(c, "s3", args)
+		Use:   "s3",
+		Short: "Use bex object storage: buckets, objects, sync, presigned URLs, CORS and lifecycle rules",
+		Long: "Object storage on bex's S3-compatible API, from your terminal, with nothing else\n" +
+			"to install. Sign in with `bex login`: a key is made for you, lasts twelve hours\n" +
+			"and is replaced when under one hour is left.\n\n" +
+			"Objects:\n" +
+			"  ls [s3://bucket[/prefix]]    list buckets, or the objects under a prefix\n" +
+			"  cp <from> <to>               copy a file, a directory (--recursive) or an object\n" +
+			"  mv <from> <to>               copy, then delete the source\n" +
+			"  rm s3://bucket/key           delete an object, or a prefix with --recursive\n" +
+			"  sync <from> <to>             copy what is missing or changed between a directory and a prefix\n" +
+			"  presign s3://bucket/key      a URL that reads an object without a key\n\n" +
+			"Buckets:\n" +
+			"  mb s3://bucket               make a bucket (--region oregon|frankfurt)\n" +
+			"  rb s3://bucket               remove an empty bucket (--force removes its objects first)\n" +
+			"  cors get|set|delete          a bucket's CORS rules\n" +
+			"  lifecycle get|set|delete     a bucket's expiry rules\n" +
+			"  public <bucket> enable|disable|status   publish a bucket read-only (workspace admin)\n" +
+			"  info <bucket>|s3://bucket/key   a bucket's region and size, or an object's metadata\n\n" +
+			"Keys and other tools:\n" +
+			"  env                          the endpoint and a key, as variables for another S3 client\n" +
+			"  keys create|list|revoke      persistent keys for CI and long transfers\n\n" +
+			"A command given an access key in BEX_S3_ACCESS_KEY_ID and BEX_S3_SECRET_ACCESS_KEY\n" +
+			"uses it instead of making one, which is how CI, with no sign-in, uses `bex s3`.\n" +
+			"An object is at most 5 GiB. A key that expires during a transfer fails the transfer:\n" +
+			"use a persistent key (`bex s3 keys create`) for a transfer over hours.",
+		Example: "  bex s3 mb s3://photos --region frankfurt\n  bex s3 cp cat.jpg s3://photos/cat.jpg\n  bex s3 sync ./site s3://photos/site\n  bex s3 ls s3://photos/",
+		Args: func(c *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return nil
+			}
+			return usageError("unknown command %q for %q: `bex s3 --help` lists the commands, and `bex s3 env` prints the endpoint and a key for another S3 client", args[0], c.CommandPath())
+		},
+		SilenceUsage: true,
+		RunE: func(c *cobra.Command, _ []string) error {
+			return c.Help()
 		},
 	}
-	s3.AddCommand(envCommand(d), keysCommand(d), publicCommand(d), infoCommand(d))
-
-	s3api := &cobra.Command{
-		Use:   "s3api <aws s3api call> [arguments…]",
-		Short: "Call bex's S3 API directly with the AWS CLI (put-bucket-cors, list-objects-v2, …)",
-		Long: "Runs your AWS CLI (`aws s3api …`) against bex object storage with the endpoint\n" +
-			"and a key already set, exactly as `bex s3` does. Every argument goes to\n" +
-			"`aws s3api` as typed.",
-		Example:            "  bex s3api list-objects-v2 --bucket photos --prefix site/\n  bex s3api put-bucket-cors --bucket photos --cors-configuration file://cors.json",
-		DisableFlagParsing: true,
-		SilenceUsage:       true,
-		RunE: func(c *cobra.Command, args []string) error {
-			return d.launch(c, "s3api", args)
-		},
-	}
-	return []*cobra.Command{s3, s3api}
+	s3.PersistentFlags().StringVar(&g.region, "region", "", "the region requests are signed for, and where mb makes a bucket (default "+defaultRegion+")")
+	s3.AddCommand(
+		lsCommand(d, g), cpCommand(d, g), mvCommand(d, g), rmCommand(d, g), syncCommand(d, g), presignCommand(d, g),
+		mbCommand(d, g), rbCommand(d, g), corsCommand(d, g), lifecycleCommand(d, g),
+		envCommand(d, g), keysCommand(d), publicCommand(d), infoCommand(d, g),
+	)
+	return []*cobra.Command{s3}
 }
 
 // usageError is a command line that is wrong: exit code 2.
@@ -138,8 +153,77 @@ func commandContext(c *cobra.Command) context.Context {
 	return context.Background()
 }
 
-// helpRequested is `bex s3` with nothing to run, or only -h/--help: bex's own
-// help. Anything longer, `bex s3 ls --help` included, is the AWS CLI's.
-func helpRequested(args []string) bool {
-	return len(args) == 0 || (len(args) == 1 && (args[0] == "-h" || args[0] == "--help"))
+// run is one command's connection to object storage: a key, an S3 client that
+// holds at most `--concurrency` requests in flight, and where results go.
+type run struct {
+	d      deps
+	ctx    context.Context
+	cancel context.CancelFunc
+	sess   session
+	client *sdk.Client
+	format format
+	out    io.Writer
+	errOut io.Writer
+	rep    *reporter
+	prog   *progress
+	// concurrency is the most requests in flight, and the most files and parts
+	// a transfer works on at once.
+	concurrency int
+}
+
+// open resolves the output format and a key and builds the client. Callers
+// check their arguments first, so a malformed command line never costs a key.
+// An interrupt cancels the command's context, which unwinds its workers and
+// removes the temporary files of a download.
+func (d deps) open(c *cobra.Command, g *globals, concurrency int, noProgress bool) (*run, error) {
+	f, err := resolveFormat(c)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := signal.NotifyContext(commandContext(c), os.Interrupt, syscall.SIGTERM)
+	sess, err := d.session(ctx, g.region)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	out, errOut := c.OutOrStdout(), c.ErrOrStderr()
+	prog := newProgress(errOut, f == formatText && !noProgress && d.isTerminal != nil && d.isTerminal(errOut))
+	r := &run{
+		d: d, ctx: ctx, cancel: cancel, sess: sess, client: d.newClient(sess, concurrency), concurrency: concurrency,
+		format: f, out: out, errOut: errOut, prog: prog,
+		rep: &reporter{out: out, format: f, prog: prog},
+	}
+	prog.start()
+	return r, nil
+}
+
+// close ends the command's progress line and its context.
+func (r *run) close() {
+	r.prog.stop()
+	r.cancel()
+}
+
+// fail is err in bex's words. A key the server no longer knows is forgotten,
+// so the next command makes a new one instead of meeting the same refusal.
+func (r *run) fail(err error) error {
+	if err == nil {
+		return nil
+	}
+	if f, ok := faultOf(err); ok && keyGone(f) && r.sess.CachePath != "" {
+		_ = os.Remove(r.sess.CachePath)
+	}
+	return explain(err)
+}
+
+// concurrencyFlag adds --concurrency to a command.
+func concurrencyFlag(c *cobra.Command, n *int) {
+	c.Flags().IntVar(n, "concurrency", defaultConcurrency, fmt.Sprintf("requests in flight at once, at most %d; the gateway admits 16 streams per workspace", maxConcurrency))
+}
+
+// checkConcurrency refuses a --concurrency outside 1 to the maximum.
+func checkConcurrency(n int) error {
+	if n < 1 || n > maxConcurrency {
+		return usageError("--concurrency must be between 1 and %d, not %d", maxConcurrency, n)
+	}
+	return nil
 }

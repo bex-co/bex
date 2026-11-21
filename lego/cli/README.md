@@ -47,7 +47,7 @@ bex logout
 
 `bex edit .` (or just `bex .`) opens the current folder in bex desktop; see [`bex edit`](../../docs/bex-cli.md#open-code-in-bex-desktop-bex-edit-and-bex-path).
 
-`bex s3 cp cat.jpg s3://photos/cat.jpg` runs your AWS CLI against bex object storage with the endpoint and a twelve-hour key already set (`bex s3 sync`, `ls`, `presign`, `bex s3api …`, and `bex s3 env|keys|public|info` for other tools, persistent keys and publishing a bucket); see [`bex s3`](../../docs/bex-cli.md#buckets-objects-sync-and-presigned-urls-bex-s3).
+`bex s3 cp cat.jpg s3://photos/cat.jpg` copies a file to bex object storage with no other tool to install, and `bex s3 ls`, `mv`, `rm`, `sync`, `mb`, `rb`, `presign`, `cors`, `lifecycle` and `info` do the rest; a twelve-hour key is made for you after `bex login`, and `bex s3 env|keys|public` serve other S3 clients, persistent keys and publishing a bucket; see [`bex s3`](../../docs/bex-cli.md#buckets-objects-sync-and-presigned-urls-bex-s3).
 
 `bex agent run --repo acme/api --wait "…"` runs a Cloud Agent and exits by the outcome; see [`bex agent`](../../docs/bex-cli.md#cloud-agents-bex-agent).
 

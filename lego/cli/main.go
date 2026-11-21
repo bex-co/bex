@@ -60,7 +60,8 @@ func main() {
 	cmd.RootCmd.AddCommand(upgrade.Command(bexVersion))
 	cmd.RootCmd.AddCommand(desktop.Command())
 	cmd.RootCmd.AddCommand(agent.Command())
-	// `bex s3` runs the AWS CLI against bex object storage (ADR112 D3).
+	// `bex s3` is a native client of bex object storage (ADR112 D3): its commands
+	// return through Cobra, so upstream's post-run hook reports each of them.
 	cmd.RootCmd.AddCommand(s3.Commands()...)
 	// Upstream's `skills` installs Render's skills (w8/m143); bex's own tree
 	// takes its place with the same subcommands and flags.

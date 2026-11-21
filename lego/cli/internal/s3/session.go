@@ -39,7 +39,7 @@ const (
 	keyLife = 12 * time.Hour
 	// renewWindow is when a cached key is replaced: under an hour left is
 	// too little for a transfer, and a command that outlives its key fails
-	// with a 403 the AWS CLI does not retry.
+	// with a 403 that is not retried.
 	renewWindow = time.Hour
 	// defaultRegion is the signing region of a request. bex compares it with
 	// nothing (ADR112 D1); `--region` overrides it, and `mb` takes the
@@ -52,29 +52,32 @@ const (
 	// endpointEnv names a control plane's S3 endpoint when it is not the
 	// production one.
 	endpointEnv = "BEX_S3_ENDPOINT"
+	// accessKeyEnv and secretKeyEnv hand bex a persistent key (`bex s3 keys
+	// create`) in place of the twelve-hour key it makes for a signed-in person:
+	// the way CI, which has an API key and no login, uses `bex s3` (ADR112 D3).
+	accessKeyEnv = "BEX_S3_ACCESS_KEY_ID"
+	secretKeyEnv = "BEX_S3_SECRET_ACCESS_KEY"
 )
 
 // session is everything a command needs to reach the S3 endpoint as the
 // signed-in person.
 type session struct {
+	// Workspace is empty when the key came from the environment: such a key
+	// needs no sign-in and no workspace.
 	Workspace   string
 	Endpoint    string
 	Region      string
 	AccessKeyID string
 	Secret      string
-	ExpiresAt   time.Time
-	// ConfigPath and CredentialsPath are the AWS files bex owns; the child
-	// reads these and never the person's own.
-	ConfigPath      string
-	CredentialsPath string
+	// ExpiresAt is zero for a persistent key.
+	ExpiresAt time.Time
+	// CachePath is the file the ephemeral key is kept in, empty for a key from
+	// the environment.
+	CachePath string
 }
 
-// awsConfig is the bex-owned AWS CLI config: path-style addressing, the only
-// style bex serves (ADR112 D10), and nothing else.
-const awsConfig = "[default]\ns3 =\n    addressing_style = path\n"
-
 // cachedKey is the ephemeral key kept between invocations. It lives in the
-// state directory with mode 0600, never in ~/.aws.
+// state directory with mode 0600.
 type cachedKey struct {
 	Host        string    `json:"host"`
 	Workspace   string    `json:"workspace"`
@@ -135,7 +138,7 @@ func isLoopback(host string) bool {
 	return host == "localhost" || host == "127.0.0.1" || host == "::1"
 }
 
-// stateDir is where bex keeps the S3 key and the AWS files it owns.
+// stateDir is where bex keeps the S3 key.
 func (d deps) stateDir() (string, error) {
 	state, err := d.state()
 	if err != nil {
@@ -215,24 +218,38 @@ func lockFile(path string) (release func(), err error) {
 	return func() { _ = f.Close() }, nil // closing the file releases the lock
 }
 
-// writeIfChanged keeps a bex-owned file at content without rewriting it on
-// every launch.
-func writeIfChanged(path, content string) error {
-	if current, err := os.ReadFile(path); err == nil && string(current) == content {
-		return nil
+// envKey is the persistent key of the environment, if there is one. Setting
+// one of the two names without the other is a mistake worth saying so.
+func (d deps) envKey() (id, secret string, ok bool, err error) {
+	id, _ = d.lookupEnv(accessKeyEnv)
+	secret, _ = d.lookupEnv(secretKeyEnv)
+	switch {
+	case id == "" && secret == "":
+		return "", "", false, nil
+	case id == "" || secret == "":
+		return "", "", false, fmt.Errorf("set both %s and %s, or neither", accessKeyEnv, secretKeyEnv)
 	}
-	return writeFileAtomic(path, []byte(content))
+	return id, secret, true, nil
 }
 
-// session resolves the endpoint and a key for the active workspace: the
-// cached ephemeral key while it has more than an hour left, else a fresh one
-// minted for the signed-in person.
-func (d deps) session(ctx context.Context) (session, error) {
-	workspace, err := d.owner()
+// session resolves the endpoint and a key: the persistent key of the
+// environment when it names one, else the cached ephemeral key of the active
+// workspace while it has more than an hour left, else a fresh one minted for
+// the signed-in person. region is the signing region, "" for the default.
+func (d deps) session(ctx context.Context, region string) (session, error) {
+	if region == "" {
+		region = defaultRegion
+	}
+	endpoint, err := d.endpoint()
 	if err != nil {
 		return session{}, err
 	}
-	endpoint, err := d.endpoint()
+	if id, secret, ok, err := d.envKey(); err != nil {
+		return session{}, err
+	} else if ok {
+		return session{Endpoint: endpoint, Region: region, AccessKeyID: id, Secret: secret}, nil
+	}
+	workspace, err := d.owner()
 	if err != nil {
 		return session{}, err
 	}
@@ -258,20 +275,10 @@ func (d deps) session(ctx context.Context) (session, error) {
 			return session{}, fmt.Errorf("keep the S3 access key in %s: %w", dir, err)
 		}
 	}
-	s := session{
-		Workspace: workspace, Endpoint: endpoint, Region: defaultRegion,
-		AccessKeyID: key.AccessKeyID, Secret: key.Secret, ExpiresAt: key.ExpiresAt,
-		ConfigPath: filepath.Join(dir, "aws-config"), CredentialsPath: filepath.Join(dir, "aws-credentials"),
-	}
-	// The credentials file stays empty on purpose: it exists so the AWS CLI
-	// has a file of bex's to read instead of the person's ~/.aws/credentials.
-	if err := writeIfChanged(s.ConfigPath, awsConfig); err != nil {
-		return session{}, fmt.Errorf("write %s: %w", s.ConfigPath, err)
-	}
-	if err := writeIfChanged(s.CredentialsPath, ""); err != nil {
-		return session{}, fmt.Errorf("write %s: %w", s.CredentialsPath, err)
-	}
-	return s, nil
+	return session{
+		Workspace: workspace, Endpoint: endpoint, Region: region,
+		AccessKeyID: key.AccessKeyID, Secret: key.Secret, ExpiresAt: key.ExpiresAt, CachePath: path,
+	}, nil
 }
 
 // mintKey asks bex-api for an ephemeral read-write key for the signed-in
@@ -326,7 +333,7 @@ func mintError(workspace string, err error) error {
 		return fmt.Errorf("create an S3 access key in %s: %w\n"+
 			"A key is made for a person, with write access to the workspace: sign in with `bex login` "+
 			"(an API key, BEX_API_KEY, cannot make one; make a persistent key with `bex s3 keys create` "+
-			"from a signed-in session and use it with `aws` directly)", workspace, err)
+			"from a signed-in session and set %s and %s to it)", workspace, err, accessKeyEnv, secretKeyEnv)
 	case 404:
 		return fmt.Errorf("create an S3 access key in %s: %w\nobject storage is not available on this control plane", workspace, err)
 	}

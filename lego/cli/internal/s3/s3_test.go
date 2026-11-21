@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -137,48 +136,30 @@ func (f *fakeAPI) mintCount() int {
 	return f.mints
 }
 
-// execCall is what the launcher would have replaced the process with.
-type execCall struct {
-	path       string
-	argv, env  []string
-	hasBefore  bool
-	callsMade  int
-	pathLookup string
-}
-
-// testDeps wires deps to the fake API, a temporary state directory and a
-// fake `aws`, and records the exec.
-func testDeps(t *testing.T, f *fakeAPI) (deps, *execCall, string) {
+// testDeps wires deps to the fake bex-api, a temporary state directory and, when
+// there is one, a fake S3 endpoint.
+func testDeps(t *testing.T, f *fakeAPI) (deps, string) {
 	t.Helper()
 	state := t.TempDir()
-	call := &execCall{}
 	d := deps{
 		api: func() (*api, error) {
 			return &api{server: f.srv.URL + "/v1/", http: f.srv.Client()}, nil
 		},
-		workspace: func() (string, error) { return testWorkspace, nil },
-		host:      func() string { return "https://api.bex.co/v1/" },
-		lookupEnv: func(string) (string, bool) { return "", false },
-		environ:   func() []string { return nil },
-		state:     func() (string, error) { return state, nil },
-		now:       func() time.Time { return testNow },
-		hostname:  func() string { return "laptop" },
-		lookPath: func(name string) (string, error) {
-			call.pathLookup = name
-			return "/usr/local/bin/aws", nil
-		},
-		exec: func(path string, argv, env []string, beforeExec func()) error {
-			call.path, call.argv, call.env, call.hasBefore = path, argv, env, beforeExec != nil
-			call.callsMade++
-			return nil
-		},
+		workspace:  func() (string, error) { return testWorkspace, nil },
+		host:       func() string { return "https://api.bex.co/v1/" },
+		lookupEnv:  func(string) (string, bool) { return "", false },
+		state:      func() (string, error) { return state, nil },
+		now:        func() time.Time { return testNow },
+		hostname:   func() string { return "laptop" },
+		stdin:      strings.NewReader(""),
+		isTerminal: func(io.Writer) bool { return false },
 	}
-	return d, call, state
+	return d, state
 }
 
-// run executes args under a root that has bex's output flag, returning what
+// bex executes args under a root that has bex's output flag, returning what
 // the command printed.
-func run(t *testing.T, d deps, args ...string) (stdout, stderr string, err error) {
+func bex(t *testing.T, d deps, args ...string) (stdout, stderr string, err error) {
 	t.Helper()
 	root := &cobra.Command{Use: "bex", SilenceUsage: true, SilenceErrors: true}
 	root.PersistentFlags().StringP("output", "o", "text", "")
@@ -191,146 +172,13 @@ func run(t *testing.T, d deps, args ...string) (stdout, stderr string, err error
 	return out.String(), errOut.String(), err
 }
 
-// effective is the value a child sees for name: the last assignment wins.
-func effective(env []string, name string) (string, bool) {
-	value, found := "", false
-	for _, item := range env {
-		if k, v, ok := strings.Cut(item, "="); ok && k == name {
-			value, found = v, true
-		}
-	}
-	return value, found
-}
-
-func TestLaunchRunsAWSWithTheEndpointAndAnEphemeralKey(t *testing.T) {
-	f := newFakeAPI(t)
-	d, call, state := testDeps(t, f)
-	d.environ = func() []string { return []string{"PATH=/bin", "HOME=/home/alice"} }
-
-	if _, _, err := run(t, d, "s3", "cp", "cat.jpg", "s3://photos/cat.jpg"); err != nil {
-		t.Fatal(err)
-	}
-
-	if call.path != "/usr/local/bin/aws" || call.pathLookup != "aws" {
-		t.Errorf("exec %q after looking up %q, want the aws on PATH", call.path, call.pathLookup)
-	}
-	wantArgv := []string{"aws", "s3", "cp", "cat.jpg", "s3://photos/cat.jpg", "--endpoint-url", "https://objects.onbex.co"}
-	if !slices.Equal(call.argv, wantArgv) {
-		t.Errorf("argv = %v, want %v", call.argv, wantArgv)
-	}
-	if !call.hasBefore {
-		t.Error("no launch telemetry hook was handed to the exec")
-	}
-	for name, want := range map[string]string{
-		"AWS_ACCESS_KEY_ID":           testKeyID,
-		"AWS_SECRET_ACCESS_KEY":       testSecret,
-		"AWS_REGION":                  "oregon",
-		"AWS_DEFAULT_REGION":          "oregon",
-		"AWS_CONFIG_FILE":             filepath.Join(state, "s3", "aws-config"),
-		"AWS_SHARED_CREDENTIALS_FILE": filepath.Join(state, "s3", "aws-credentials"),
-		"PATH":                        "/bin",
-		"HOME":                        "/home/alice",
-	} {
-		if got, _ := effective(call.env, name); got != want {
-			t.Errorf("%s = %q, want %q", name, got, want)
-		}
-	}
-
-	// The mint asked for what ADR112 D3 says: twelve hours, read-write.
-	reqs := f.requests()
-	if len(reqs) != 1 || reqs[0].method != http.MethodPost {
-		t.Fatalf("requests = %v, want one key mint", reqs)
-	}
-	if reqs[0].body["permission"] != "readwrite" || reqs[0].body["expiresInSeconds"] != float64(43200) || reqs[0].body["name"] != "bex s3 on laptop" {
-		t.Errorf("mint body = %v", reqs[0].body)
-	}
-
-	// The AWS files bex owns: path-style addressing, and no credentials.
-	config, _ := os.ReadFile(filepath.Join(state, "s3", "aws-config"))
-	if !strings.Contains(string(config), "addressing_style = path") {
-		t.Errorf("bex's AWS config = %q, want path-style addressing", config)
-	}
-	if creds, err := os.ReadFile(filepath.Join(state, "s3", "aws-credentials")); err != nil || len(creds) != 0 {
-		t.Errorf("bex's AWS credentials file = %q, %v; want it empty (the key travels in the environment only)", creds, err)
-	}
-}
-
-func TestChildNeverSeesThePersonsAWSCredentialsOrConfiguration(t *testing.T) {
-	f := newFakeAPI(t)
-	d, call, _ := testDeps(t, f)
-	d.environ = func() []string {
-		return []string{
-			"PATH=/bin",
-			"AWS_PROFILE=work", "AWS_DEFAULT_PROFILE=work", "AWS_SESSION_TOKEN=their-token", "AWS_SECURITY_TOKEN=old-token",
-			"AWS_ACCESS_KEY_ID=AKIATHEIRS", "AWS_SECRET_ACCESS_KEY=their-secret",
-			"AWS_CONFIG_FILE=/home/alice/.aws/config", "AWS_SHARED_CREDENTIALS_FILE=/home/alice/.aws/credentials",
-			"AWS_ENDPOINT_URL=https://elsewhere.example", "AWS_ENDPOINT_URL_S3=https://elsewhere.example",
-			"AWS_REGION=eu-west-1", "AWS_DEFAULT_REGION=eu-west-1",
-			"AWS_ROLE_ARN=arn:aws:iam::1:role/x", "AWS_WEB_IDENTITY_TOKEN_FILE=/var/run/token",
-			"AWS_CONTAINER_CREDENTIALS_FULL_URI=http://169.254.170.23/v1/credentials", "AWS_CONTAINER_AUTHORIZATION_TOKEN=abc",
-			"AWS_PAGER=", "AWS_CA_BUNDLE=/etc/corp-ca.pem", "AWS_MAX_ATTEMPTS=9",
-		}
-	}
-	if _, _, err := run(t, d, "s3api", "list-buckets"); err != nil {
-		t.Fatal(err)
-	}
-	for _, name := range []string{"AWS_PROFILE", "AWS_DEFAULT_PROFILE", "AWS_SESSION_TOKEN", "AWS_SECURITY_TOKEN", "AWS_ENDPOINT_URL",
-		"AWS_ENDPOINT_URL_S3", "AWS_ROLE_ARN", "AWS_WEB_IDENTITY_TOKEN_FILE", "AWS_CONTAINER_CREDENTIALS_FULL_URI", "AWS_CONTAINER_AUTHORIZATION_TOKEN"} {
-		if value, found := effective(call.env, name); found {
-			t.Errorf("the child sees %s=%q; a person's AWS credential source must not reach it", name, value)
-		}
-	}
-	// Each name the child may see is set exactly once, to bex's value.
-	for name, want := range map[string]string{"AWS_ACCESS_KEY_ID": testKeyID, "AWS_SECRET_ACCESS_KEY": testSecret, "AWS_REGION": "oregon", "AWS_DEFAULT_REGION": "oregon"} {
-		if got, _ := effective(call.env, name); got != want {
-			t.Errorf("%s = %q, want bex's %q", name, got, want)
-		}
-		if n := countName(call.env, name); n != 1 {
-			t.Errorf("%s is set %d times, want once", name, n)
-		}
-	}
-	// The behavior settings stay.
-	for name, want := range map[string]string{"AWS_PAGER": "", "AWS_CA_BUNDLE": "/etc/corp-ca.pem", "AWS_MAX_ATTEMPTS": "9"} {
-		if got, found := effective(call.env, name); !found || got != want {
-			t.Errorf("%s = %q (found %v), want the person's %q", name, got, found, want)
-		}
-	}
-	if strings.Contains(strings.Join(call.env, "\n"), "their-secret") || strings.Contains(strings.Join(call.env, "\n"), "AKIATHEIRS") {
-		t.Error("a credential of the person's reached the child's environment")
-	}
-}
-
-func countName(env []string, name string) int {
-	n := 0
-	for _, item := range env {
-		if k, _, _ := strings.Cut(item, "="); k == name {
-			n++
-		}
-	}
-	return n
-}
-
-// TestEndpointFlagIsLastSoNoKeyGoesElsewhere: the AWS CLI takes the last
-// --endpoint-url, so a person's own flag can never aim bex's key at another host.
-func TestEndpointFlagIsLastSoNoKeyGoesElsewhere(t *testing.T) {
-	f := newFakeAPI(t)
-	d, call, _ := testDeps(t, f)
-	if _, _, err := run(t, d, "s3", "ls", "--endpoint-url", "https://evil.example"); err != nil {
-		t.Fatal(err)
-	}
-	n := len(call.argv)
-	if call.argv[n-2] != "--endpoint-url" || call.argv[n-1] != "https://objects.onbex.co" {
-		t.Errorf("argv = %v, want bex's endpoint last", call.argv)
-	}
-}
-
 func TestKeyIsCachedPrivatelyAndReusedUntilAnHourIsLeft(t *testing.T) {
 	f := newFakeAPI(t)
-	d, call, state := testDeps(t, f)
+	d, state := testDeps(t, f)
 
 	launch := func() {
 		t.Helper()
-		if _, _, err := run(t, d, "s3", "ls"); err != nil {
+		if _, _, err := bex(t, d, "s3", "env"); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -357,9 +205,6 @@ func TestKeyIsCachedPrivatelyAndReusedUntilAnHourIsLeft(t *testing.T) {
 	if f.mintCount() != 1 {
 		t.Errorf("mints = %d with 1h01m left, want the cached key reused", f.mintCount())
 	}
-	if got, _ := effective(call.env, "AWS_ACCESS_KEY_ID"); got != testKeyID {
-		t.Errorf("reused key = %q", got)
-	}
 
 	// Under an hour left: a new key.
 	d.now = func() time.Time { return testNow.Add(11*time.Hour + time.Minute) }
@@ -384,7 +229,7 @@ func TestKeyIsCachedPrivatelyAndReusedUntilAnHourIsLeft(t *testing.T) {
 		}
 		return "", false
 	}
-	if _, _, err := run(t, other, "s3", "ls"); err != nil {
+	if _, _, err := bex(t, other, "s3", "env"); err != nil {
 		t.Fatal(err)
 	}
 	if f.mintCount() != 4 {
@@ -397,14 +242,14 @@ func TestKeyIsCachedPrivatelyAndReusedUntilAnHourIsLeft(t *testing.T) {
 func TestConcurrentFirstLaunchesMintOneKey(t *testing.T) {
 	f := newFakeAPI(t)
 	f.delay = 50 * time.Millisecond
-	d, _, _ := testDeps(t, f)
+	d, _ := testDeps(t, f)
 	var wg sync.WaitGroup
 	errs := make(chan error, 16)
 	for range 16 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			s, err := d.session(t.Context())
+			s, err := d.session(t.Context(), "")
 			if err == nil && s.AccessKeyID != testKeyID {
 				err = fmt.Errorf("key %q", s.AccessKeyID)
 			}
@@ -425,7 +270,7 @@ func TestConcurrentFirstLaunchesMintOneKey(t *testing.T) {
 
 func TestDamagedKeyCacheIsReplacedNotTrusted(t *testing.T) {
 	f := newFakeAPI(t)
-	d, _, state := testDeps(t, f)
+	d, state := testDeps(t, f)
 	dir := filepath.Join(state, "s3")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
@@ -433,7 +278,7 @@ func TestDamagedKeyCacheIsReplacedNotTrusted(t *testing.T) {
 	if err := os.WriteFile(keyFile(dir, d.host(), testWorkspace), []byte(`{"accessKeyId":"s3k-x","secret":`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := run(t, d, "s3", "ls"); err != nil {
+	if _, _, err := bex(t, d, "s3", "env"); err != nil {
 		t.Fatal(err)
 	}
 	if f.mintCount() != 1 {
@@ -450,7 +295,7 @@ func TestCachedKeyOfAnotherWorkspaceOrControlPlaneIsNotReused(t *testing.T) {
 		{Host: "https://api.other.example/v1/", Workspace: testWorkspace},
 	} {
 		f := newFakeAPI(t)
-		d, _, state := testDeps(t, f)
+		d, state := testDeps(t, f)
 		dir := filepath.Join(state, "s3")
 		if err := os.MkdirAll(dir, 0o700); err != nil {
 			t.Fatal(err)
@@ -459,7 +304,7 @@ func TestCachedKeyOfAnotherWorkspaceOrControlPlaneIsNotReused(t *testing.T) {
 		if err := saveKey(keyFile(dir, d.host(), testWorkspace), stale); err != nil {
 			t.Fatal(err)
 		}
-		if _, _, err := run(t, d, "s3", "ls"); err != nil {
+		if _, _, err := bex(t, d, "s3", "env"); err != nil {
 			t.Fatal(err)
 		}
 		if f.mintCount() != 1 {
@@ -468,57 +313,11 @@ func TestCachedKeyOfAnotherWorkspaceOrControlPlaneIsNotReused(t *testing.T) {
 	}
 }
 
-func TestMissingAWSSaysHowToInstallItAndMintsNoKey(t *testing.T) {
-	f := newFakeAPI(t)
-	d, call, _ := testDeps(t, f)
-	d.lookPath = func(string) (string, error) { return "", exec.ErrNotFound }
-	_, _, err := run(t, d, "s3", "ls")
-	if err == nil {
-		t.Fatal("bex s3 ls succeeded with no aws on PATH")
-	}
-	for _, want := range []string{"AWS CLI", "docs.aws.amazon.com", "bex s3 env"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("error %q does not say %q", err, want)
-		}
-	}
-	if len(f.requests()) != 0 || call.callsMade != 0 {
-		t.Errorf("a missing aws made %d requests and %d execs, want none", len(f.requests()), call.callsMade)
-	}
-}
-
-func TestNothingToRunShowsBexsHelp(t *testing.T) {
-	for _, args := range [][]string{{"s3"}, {"s3", "--help"}, {"s3", "-h"}, {"s3api"}} {
-		f := newFakeAPI(t)
-		d, call, _ := testDeps(t, f)
-		stdout, _, err := run(t, d, args...)
-		if err != nil {
-			t.Fatalf("%v: %v", args, err)
-		}
-		if call.callsMade != 0 || len(f.requests()) != 0 {
-			t.Errorf("%v ran aws or minted a key", args)
-		}
-		if !strings.Contains(stdout, "AWS CLI") {
-			t.Errorf("%v printed %q, want bex's help", args, stdout)
-		}
-	}
-	// A longer command line, --help among it, is the AWS CLI's, whichever word comes first.
-	for _, args := range [][]string{{"s3", "ls", "--help"}, {"s3", "--help", "ls"}, {"s3", "-h", "cp"}} {
-		f := newFakeAPI(t)
-		d, call, _ := testDeps(t, f)
-		if _, _, err := run(t, d, args...); err != nil {
-			t.Fatal(err)
-		}
-		if call.callsMade != 1 || call.argv[2] != args[1] {
-			t.Errorf("`bex %s` did not reach aws: %v", strings.Join(args, " "), call.argv)
-		}
-	}
-}
-
 func TestEndpointOfAControlPlaneIsKnownOrSaid(t *testing.T) {
 	f := newFakeAPI(t)
-	d, _, _ := testDeps(t, f)
+	d, _ := testDeps(t, f)
 	d.host = func() string { return "http://localhost:8090/v1/" }
-	_, _, err := run(t, d, "s3", "ls")
+	_, _, err := bex(t, d, "s3", "env")
 	if err == nil || !strings.Contains(err.Error(), endpointEnv) {
 		t.Fatalf("err = %v, want it to name %s for a control plane with no known endpoint", err, endpointEnv)
 	}
@@ -556,26 +355,20 @@ func TestRefusedMintSaysWhatItNeeds(t *testing.T) {
 			code int
 			body string
 		}{tc.code, tc.body}
-		d, call, _ := testDeps(t, f)
-		_, _, err := run(t, d, "s3", "ls")
+		d, _ := testDeps(t, f)
+		_, _, err := bex(t, d, "s3", "env")
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Errorf("status %d: err = %v, want it to say %q", tc.code, err, tc.want)
-		}
-		if call.callsMade != 0 {
-			t.Errorf("status %d: aws ran without a key", tc.code)
 		}
 	}
 }
 
 func TestEnvPrintsTheSettingsForOtherTools(t *testing.T) {
 	f := newFakeAPI(t)
-	d, call, _ := testDeps(t, f)
-	stdout, _, err := run(t, d, "s3", "env")
+	d, _ := testDeps(t, f)
+	stdout, _, err := bex(t, d, "s3", "env")
 	if err != nil {
 		t.Fatal(err)
-	}
-	if call.callsMade != 0 {
-		t.Error("`bex s3 env` ran aws")
 	}
 	for _, want := range []string{
 		"export AWS_ACCESS_KEY_ID='" + testKeyID + "'",
@@ -593,7 +386,7 @@ func TestEnvPrintsTheSettingsForOtherTools(t *testing.T) {
 		}
 	}
 
-	stdout, _, err = run(t, d, "s3", "env", "-o", "json")
+	stdout, _, err = bex(t, d, "s3", "env", "-o", "json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -620,9 +413,9 @@ func TestShellQuoteKeepsAValueOneWord(t *testing.T) {
 
 func TestKeysCreatePrintsTheSecretOnceAndNeverListsIt(t *testing.T) {
 	f := newFakeAPI(t)
-	d, _, _ := testDeps(t, f)
+	d, _ := testDeps(t, f)
 
-	stdout, _, err := run(t, d, "s3", "keys", "create", "--name", "ci")
+	stdout, _, err := bex(t, d, "s3", "keys", "create", "--name", "ci")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -638,7 +431,7 @@ func TestKeysCreatePrintsTheSecretOnceAndNeverListsIt(t *testing.T) {
 	}
 
 	// -o json is the API's own answer, secret included, and only here.
-	stdout, _, err = run(t, d, "s3", "keys", "create", "-o", "json", "--permission", "read")
+	stdout, _, err = bex(t, d, "s3", "keys", "create", "-o", "json", "--permission", "read")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -647,14 +440,14 @@ func TestKeysCreatePrintsTheSecretOnceAndNeverListsIt(t *testing.T) {
 	}
 
 	// Listing shows no secret.
-	stdout, _, err = run(t, d, "s3", "keys", "list")
+	stdout, _, err = bex(t, d, "s3", "keys", "list")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(stdout, testSecret) || !strings.Contains(stdout, testKeyID) || !strings.Contains(stdout, "never") || !strings.Contains(stdout, "expired") {
 		t.Errorf("list printed:\n%s", stdout)
 	}
-	stdout, _, _ = run(t, d, "s3", "keys", "list", "-o", "json")
+	stdout, _, _ = bex(t, d, "s3", "keys", "list", "-o", "json")
 	if !strings.Contains(stdout, testKeyID) || strings.Contains(stdout, "secret") {
 		t.Errorf("list -o json = %s", stdout)
 	}
@@ -662,13 +455,13 @@ func TestKeysCreatePrintsTheSecretOnceAndNeverListsIt(t *testing.T) {
 
 func TestKeysCreateRefusesWhatTheServerWould(t *testing.T) {
 	f := newFakeAPI(t)
-	d, _, _ := testDeps(t, f)
+	d, _ := testDeps(t, f)
 	for _, args := range [][]string{
 		{"s3", "keys", "create", "--permission", "admin"},
 		{"s3", "keys", "create", "--expires-in", "13h"},
 		{"s3", "keys", "create", "--expires-in", "-1h"},
 	} {
-		if _, _, err := run(t, d, args...); err == nil {
+		if _, _, err := bex(t, d, args...); err == nil {
 			t.Errorf("%v succeeded", args)
 		}
 	}
@@ -676,7 +469,7 @@ func TestKeysCreateRefusesWhatTheServerWould(t *testing.T) {
 		t.Errorf("a refused command line still called the API: %v", f.requests())
 	}
 	// An expiring key is asked for in seconds.
-	if _, _, err := run(t, d, "s3", "keys", "create", "--expires-in", "2h"); err != nil {
+	if _, _, err := bex(t, d, "s3", "keys", "create", "--expires-in", "2h"); err != nil {
 		t.Fatal(err)
 	}
 	if got := f.requests()[0].body["expiresInSeconds"]; got != float64(7200) {
@@ -687,8 +480,8 @@ func TestKeysCreateRefusesWhatTheServerWould(t *testing.T) {
 func TestKeysCreateExplainsAMintClassRefusal(t *testing.T) {
 	f := newFakeAPI(t)
 	f.status["POST /v1/object-storage/"+testWorkspace+"/access-keys"] = answer{http.StatusForbidden, `{"code":"FORBIDDEN","message":"forbidden"}`}
-	d, _, _ := testDeps(t, f)
-	_, _, err := run(t, d, "s3", "keys", "create")
+	d, _ := testDeps(t, f)
+	_, _, err := bex(t, d, "s3", "keys", "create")
 	if err == nil || !strings.Contains(err.Error(), "bex login") {
 		t.Errorf("err = %v, want it to say a person's login is needed", err)
 	}
@@ -696,14 +489,14 @@ func TestKeysCreateExplainsAMintClassRefusal(t *testing.T) {
 
 func TestKeysRevokeEndsTheKeyAndForgetsACachedCopy(t *testing.T) {
 	f := newFakeAPI(t)
-	d, _, state := testDeps(t, f)
-	if _, _, err := run(t, d, "s3", "ls"); err != nil { // caches the key
+	d, state := testDeps(t, f)
+	if _, _, err := bex(t, d, "s3", "env"); err != nil { // caches the key
 		t.Fatal(err)
 	}
 	if files, _ := filepath.Glob(filepath.Join(state, "s3", "key-*.json")); len(files) != 1 {
 		t.Fatalf("cache files = %v", files)
 	}
-	stdout, _, err := run(t, d, "s3", "keys", "revoke", testKeyID, "s3k-zzzzzzzzzzzzzzzzzzzz")
+	stdout, _, err := bex(t, d, "s3", "keys", "revoke", testKeyID, "s3k-zzzzzzzzzzzzzzzzzzzz")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -727,7 +520,7 @@ func TestKeysRevokeEndsTheKeyAndForgetsACachedCopy(t *testing.T) {
 	// An id that is not a key id never reaches a URL.
 	before := len(f.requests())
 	for _, bad := range []string{"../buckets/photos", "s3k-short", "obk-d0abc123def456ghij78"} {
-		if _, _, err := run(t, d, "s3", "keys", "revoke", bad); err == nil {
+		if _, _, err := bex(t, d, "s3", "keys", "revoke", bad); err == nil {
 			t.Errorf("revoke %q succeeded", bad)
 		}
 	}
@@ -738,9 +531,9 @@ func TestKeysRevokeEndsTheKeyAndForgetsACachedCopy(t *testing.T) {
 
 func TestPublicEnableDisableAndStatus(t *testing.T) {
 	f := newFakeAPI(t)
-	d, _, _ := testDeps(t, f)
+	d, _ := testDeps(t, f)
 
-	stdout, _, err := run(t, d, "s3", "public", "photos", "enable")
+	stdout, _, err := bex(t, d, "s3", "public", "photos", "enable")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -751,7 +544,7 @@ func TestPublicEnableDisableAndStatus(t *testing.T) {
 		t.Errorf("enable sent %+v", req)
 	}
 
-	stdout, _, err = run(t, d, "s3", "public", "s3://photos/", "disable")
+	stdout, _, err = bex(t, d, "s3", "public", "s3://photos/", "disable")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -762,7 +555,7 @@ func TestPublicEnableDisableAndStatus(t *testing.T) {
 		t.Errorf("disable sent %+v", req)
 	}
 
-	stdout, _, err = run(t, d, "s3", "public", "photos", "status", "-o", "json")
+	stdout, _, err = bex(t, d, "s3", "public", "photos", "status", "-o", "json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -777,14 +570,14 @@ func TestPublicEnableDisableAndStatus(t *testing.T) {
 func TestPublicRefusalForANonAdminSaysWhoMayPublish(t *testing.T) {
 	f := newFakeAPI(t)
 	f.status["PUT /v1/object-storage/"+testWorkspace+"/buckets/photos/public"] = answer{http.StatusForbidden, `{"code":"FORBIDDEN","message":"forbidden"}`}
-	d, _, _ := testDeps(t, f)
-	_, _, err := run(t, d, "s3", "public", "photos", "enable")
+	d, _ := testDeps(t, f)
+	_, _, err := bex(t, d, "s3", "public", "photos", "enable")
 	if err == nil || !strings.Contains(err.Error(), "admin role") || !strings.Contains(err.Error(), "403") {
 		t.Errorf("err = %v, want the admin-role refusal with the server's status", err)
 	}
 	// Reading the status is not publishing: a 403 there is not about the admin role.
 	f.status["GET /v1/object-storage/"+testWorkspace+"/buckets/photos/public"] = f.status["PUT /v1/object-storage/"+testWorkspace+"/buckets/photos/public"]
-	_, _, err = run(t, d, "s3", "public", "photos", "status")
+	_, _, err = bex(t, d, "s3", "public", "photos", "status")
 	if err == nil || strings.Contains(err.Error(), "admin role") {
 		t.Errorf("status err = %v, want a plain refusal", err)
 	}
@@ -792,7 +585,7 @@ func TestPublicRefusalForANonAdminSaysWhoMayPublish(t *testing.T) {
 
 func TestPublicAndInfoNameOnlyABucket(t *testing.T) {
 	f := newFakeAPI(t)
-	d, _, _ := testDeps(t, f)
+	d, _ := testDeps(t, f)
 	for _, args := range [][]string{
 		{"s3", "public", "../services", "enable"},
 		{"s3", "public", "Photos", "enable"},
@@ -803,14 +596,14 @@ func TestPublicAndInfoNameOnlyABucket(t *testing.T) {
 		{"s3", "info", "photos", "extra"},
 		{"s3", "info", "a%2Fb"},
 	} {
-		if _, _, err := run(t, d, args...); err == nil {
+		if _, _, err := bex(t, d, args...); err == nil {
 			t.Errorf("%v succeeded", args)
 		}
 	}
 	if len(f.requests()) != 0 {
 		t.Errorf("a malformed command line reached bex-api: %v", f.requests())
 	}
-	_, _, err := run(t, d, "s3", "info", "missing-bucket")
+	_, _, err := bex(t, d, "s3", "info", "missing-bucket")
 	if err == nil || !strings.Contains(err.Error(), "no bucket missing-bucket") {
 		t.Errorf("err = %v, want a missing bucket named", err)
 	}
@@ -818,8 +611,8 @@ func TestPublicAndInfoNameOnlyABucket(t *testing.T) {
 
 func TestInfoShowsWhatS3CannotAnswer(t *testing.T) {
 	f := newFakeAPI(t)
-	d, _, _ := testDeps(t, f)
-	stdout, _, err := run(t, d, "s3", "info", "photos")
+	d, _ := testDeps(t, f)
+	stdout, _, err := bex(t, d, "s3", "info", "photos")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -828,7 +621,7 @@ func TestInfoShowsWhatS3CannotAnswer(t *testing.T) {
 			t.Errorf("info lacks %q:\n%s", want, stdout)
 		}
 	}
-	stdout, _, err = run(t, d, "s3", "info", "photos", "-o", "yaml")
+	stdout, _, err = bex(t, d, "s3", "info", "photos", "-o", "yaml")
 	if err != nil || !strings.Contains(stdout, "region: frankfurt") {
 		t.Errorf("info -o yaml = %q, %v", stdout, err)
 	}

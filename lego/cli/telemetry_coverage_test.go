@@ -47,8 +47,6 @@ var processReplacers = map[string][]string{
 	"internal/desktop/desktop.go osSystem": {"TestBexEditLaunchEmitsExactlyOneEvent", "TestBexAgentOpenLaunchEmitsExactlyOneEvent"},
 	// bex agent ssh.
 	"internal/agent/ssh.go execSystemSSH": {"TestBexAgentSSHLaunchEmitsExactlyOneEvent"},
-	// bex s3 and bex s3api, which run the AWS CLI against bex object storage.
-	"internal/s3/launch.go execAWS": {"TestBexS3LaunchEmitsExactlyOneEvent"},
 }
 
 // replacingPackages are the import paths whose Exec replaces the process.

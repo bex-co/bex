@@ -1,17 +1,17 @@
 # w21 · m540 — `bex s3` speaks S3 itself: a native client with no other tool to install, then `bex-cli` v0.9.0
 
-**Worker:** worker21 **Goal:** `bex s3 ls`, `cp`, `mv`, `rm`, `sync`, `mb`, `rb`, `presign`, `cors`, `lifecycle` and `info` work on a machine with nothing else installed, no code path runs another program and no document says it does, and the release `bex-cli` v0.9.0 carries it. **Status:** todo
+**Worker:** worker21 **Goal:** `bex s3 ls`, `cp`, `mv`, `rm`, `sync`, `mb`, `rb`, `presign`, `cors`, `lifecycle` and `info` work on a machine with nothing else installed, no code path runs another program and no document says it does, and the release `bex-cli` v0.9.0 carries it. **Status:** todo (t001 to t006 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | The client core: AWS SDK for Go v2 in `lego/cli`, a client built from the cached key, error mapping | 1h30m | — |
-| [t002](t002.md) | `ls`, `mb`, `rb`, `rm` and `presign` | 1h15m | t001 |
-| [t003](t003.md) | `cp` and `mv`: upload, download and bucket-to-bucket copy | 2h | t001 |
-| [t004](t004.md) | `sync` between a directory and a prefix and between two prefixes | 2h | t003 |
-| [t005](t005.md) | `cors`, `lifecycle` and `info` for an object | 1h | t001 |
-| [t006](t006.md) | Remove the launcher: `s3api`, the process replacement and every path that runs another program | 45m | t002, t003, t004, t005 |
+| [t001](done/t001.md) | The client core: AWS SDK for Go v2 in `lego/cli`, a client built from the cached key, error mapping | 1h30m | — **DONE** |
+| [t002](done/t002.md) | `ls`, `mb`, `rb`, `rm` and `presign` | 1h15m | t001 — **DONE** |
+| [t003](done/t003.md) | `cp` and `mv`: upload, download and bucket-to-bucket copy | 2h | t001 — **DONE** |
+| [t004](done/t004.md) | `sync` between a directory and a prefix and between two prefixes | 2h | t003 — **DONE** |
+| [t005](done/t005.md) | `cors`, `lifecycle` and `info` for an object | 1h | t001 — **DONE** |
+| [t006](done/t006.md) | Remove the launcher: `s3api`, the process replacement and every path that runs another program | 45m | t002, t003, t004, t005 — **DONE** |
 | [t007](t007.md) | Tests: a fake-S3 suite for each verb, and `bex s3` as one more client of `scripts/s3-contract.sh` | 1h30m | t006 |
 | [t008](t008.md) | Docs: no installation requirement, ADR018, the README, the runbooks, and every reference to another tool deleted | 1h15m | t007 |
 | [t009](t009.md) | Production walk with a tree-built `bex` on a machine with no other S3 tool | 1h30m | t008 |

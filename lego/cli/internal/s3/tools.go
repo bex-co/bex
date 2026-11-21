@@ -20,13 +20,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	sdk "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/spf13/cobra"
 )
 
@@ -57,9 +61,9 @@ func shellQuote(value string) string {
 // envVar is one variable of `bex s3 env`.
 type envVar struct{ Name, Value string }
 
-// envVars are the settings for the tools that read the environment. aws-cli
-// and the AWS SDKs read the AWS_ names; rclone reads RCLONE_S3_ and defaults
-// to path-style addressing; s5cmd reads S3_ENDPOINT_URL.
+// envVars are the settings for the S3 clients that read the environment: the
+// AWS_ names are the ones the AWS SDKs and the AWS CLI read, RCLONE_S3_ is
+// rclone's, and S3_ENDPOINT_URL is s5cmd's.
 func envVars(s session) []envVar {
 	return []envVar{
 		{"AWS_ACCESS_KEY_ID", s.AccessKeyID},
@@ -77,31 +81,29 @@ func envVars(s session) []envVar {
 
 // envNotes are the settings no environment variable carries.
 var envNotes = []string{
-	"bex serves path-style addressing only (https://objects.<domain>/<bucket>/<key>).",
-	"boto3: boto3.client(\"s3\", config=botocore.config.Config(s3={\"addressing_style\": \"path\"})), or addressing_style = path under s3 in the AWS config.",
+	"bex serves path-style addressing only (https://objects.<domain>/<bucket>/<key>): a client that picks virtual-hosted style for a custom endpoint must be set to path style.",
+	"boto3: boto3.client(\"s3\", config=botocore.config.Config(s3={\"addressing_style\": \"path\"})), or addressing_style = path under s3 in its config.",
 	"Terraform's AWS provider: s3_use_path_style = true (not tested against bex; some bucket attributes it reads answer 501).",
-	"aws-cli: `bex s3 ...` sets all of this for you.",
 }
 
 type envOutput struct {
-	Workspace     string            `json:"workspace"`
-	Endpoint      string            `json:"endpoint"`
-	Region        string            `json:"region"`
-	AccessKeyID   string            `json:"accessKeyId"`
-	Secret        string            `json:"secretAccessKey"`
-	ExpiresAt     string            `json:"expiresAt"`
-	Variables     map[string]string `json:"variables"`
-	AWSConfigFile string            `json:"awsConfigFile"`
-	Notes         []string          `json:"notes"`
+	Workspace   string            `json:"workspace,omitempty"`
+	Endpoint    string            `json:"endpoint"`
+	Region      string            `json:"region"`
+	AccessKeyID string            `json:"accessKeyId"`
+	Secret      string            `json:"secretAccessKey"`
+	ExpiresAt   string            `json:"expiresAt,omitempty"`
+	Variables   map[string]string `json:"variables"`
+	Notes       []string          `json:"notes"`
 }
 
-func envCommand(d deps) *cobra.Command {
+func envCommand(d deps, g *globals) *cobra.Command {
 	return &cobra.Command{
 		Use:   "env",
-		Short: "Print the endpoint and a key as variables for rclone, boto3, s5cmd and Terraform",
+		Short: "Print the endpoint and a key as variables for another S3 client",
 		Long: "Prints the S3 endpoint and the twelve-hour key `bex s3` uses as environment\n" +
-			"variables, for the tools that are not the AWS CLI: aws-sdk programs and boto3,\n" +
-			"rclone and s5cmd. Load them into a shell with:\n\n" +
+			"variables, for an S3 client that is not bex: a program built on an AWS SDK, boto3,\n" +
+			"rclone or s5cmd. Load them into a shell with:\n\n" +
 			"  eval \"$(bex s3 env)\"\n\n" +
 			"The key expires (the output says when); run it again for a new one. A key that\n" +
 			"does not expire, for CI, comes from `bex s3 keys create`.\n\n" +
@@ -113,11 +115,15 @@ func envCommand(d deps) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			s, err := d.session(commandContext(c))
+			s, err := d.session(commandContext(c), g.region)
 			if err != nil {
 				return err
 			}
 			vars := envVars(s)
+			expires := ""
+			if !s.ExpiresAt.IsZero() {
+				expires = s.ExpiresAt.UTC().Format(time.RFC3339)
+			}
 			if f != formatText {
 				values := make(map[string]string, len(vars))
 				for _, v := range vars {
@@ -125,12 +131,16 @@ func envCommand(d deps) *cobra.Command {
 				}
 				return writeValue(c.OutOrStdout(), f, envOutput{
 					Workspace: s.Workspace, Endpoint: s.Endpoint, Region: s.Region, AccessKeyID: s.AccessKeyID, Secret: s.Secret,
-					ExpiresAt: s.ExpiresAt.UTC().Format(time.RFC3339), Variables: values, AWSConfigFile: s.ConfigPath, Notes: envNotes,
+					ExpiresAt: expires, Variables: values, Notes: envNotes,
 				})
 			}
 			out := c.OutOrStdout()
-			_, _ = fmt.Fprintf(out, "# bex S3 for workspace %s; this key expires %s (`bex s3 keys create` makes one that does not).\n",
-				s.Workspace, s.ExpiresAt.UTC().Format(time.RFC3339))
+			switch expires {
+			case "":
+				_, _ = fmt.Fprintln(out, "# bex S3: the access key of BEX_S3_ACCESS_KEY_ID, which does not expire.")
+			default:
+				_, _ = fmt.Fprintf(out, "# bex S3 for workspace %s; this key expires %s (`bex s3 keys create` makes one that does not).\n", s.Workspace, expires)
+			}
 			for _, v := range vars {
 				_, _ = fmt.Fprintf(out, "export %s=%s\n", v.Name, shellQuote(v.Value))
 			}
@@ -208,7 +218,7 @@ func keysCreateCommand(d deps) *cobra.Command {
 			t.row("Access key ID", key.ID)
 			t.row("Secret access key", key.Secret)
 			_ = t.Flush()
-			_, _ = fmt.Fprintln(out, "\nThe secret is shown once; bex cannot show it again. `bex s3 env` prints the settings for other tools.")
+			_, _ = fmt.Fprintf(out, "\nThe secret is shown once; bex cannot show it again. `bex s3` uses it when %s and %s are set to these; `bex s3 env` prints the settings for other tools.\n", accessKeyEnv, secretKeyEnv)
 			return nil
 		},
 	}
@@ -405,21 +415,31 @@ func publicCommand(d deps) *cobra.Command {
 	}
 }
 
-func infoCommand(d deps) *cobra.Command {
+func infoCommand(d deps, g *globals) *cobra.Command {
 	return &cobra.Command{
-		Use:   "info <bucket>",
-		Short: "Show a bucket's region, public host, objects and bytes",
-		Long: "Shows what S3 cannot answer: the bucket's region, whether and where it is public,\n" +
-			"and its objects and bytes as of the last hourly count (a count can be older than\n" +
-			"the last upload).",
-		Example: "  bex s3 info photos",
+		Use:   "info <bucket>|s3://bucket/key",
+		Short: "Show a bucket's region, public host, objects and bytes, or an object's metadata",
+		Long: "For a bucket, shows what S3 cannot answer: its region, whether and where it is\n" +
+			"public, and its objects and bytes as of the last hourly count (a count can be older\n" +
+			"than the last upload). For an object, s3://bucket/key, shows its size, ETag,\n" +
+			"modification time, content type and user metadata.",
+		Example: "  bex s3 info photos\n  bex s3 info s3://photos/cat.jpg",
 		Args: func(_ *cobra.Command, args []string) error {
 			if len(args) != 1 {
-				return usageError("expected one bucket")
+				return usageError("expected one bucket or one s3://bucket/key")
 			}
 			return nil
 		},
 		RunE: func(c *cobra.Command, args []string) error {
+			if strings.HasPrefix(args[0], urlScheme) {
+				loc, err := parseRemote(args[0])
+				if err != nil {
+					return err
+				}
+				if loc.Key != "" {
+					return d.infoObject(c, g, loc)
+				}
+			}
 			bucket, err := bucketArg(args[0])
 			if err != nil {
 				return err
@@ -469,6 +489,53 @@ func infoCommand(d deps) *cobra.Command {
 			return t.Flush()
 		},
 	}
+}
+
+// objectInfo is an object as `info` shows it as data.
+type objectInfo struct {
+	Bucket       string            `json:"bucket"`
+	Key          string            `json:"key"`
+	Size         int64             `json:"size"`
+	ETag         string            `json:"etag,omitempty"`
+	LastModified string            `json:"lastModified,omitempty"`
+	ContentType  string            `json:"contentType,omitempty"`
+	Metadata     map[string]string `json:"metadata"`
+}
+
+// infoObject answers `info s3://bucket/key` with a HeadObject.
+func (d deps) infoObject(c *cobra.Command, g *globals, loc location) error {
+	r, err := d.open(c, g, defaultConcurrency, true)
+	if err != nil {
+		return err
+	}
+	defer r.close()
+	out, err := r.client.HeadObject(r.ctx, &sdk.HeadObjectInput{Bucket: aws.String(loc.Bucket), Key: aws.String(loc.Key)})
+	if err != nil {
+		if isMissingObject(err) {
+			return fmt.Errorf("there is no object %s", loc)
+		}
+		return r.fail(err)
+	}
+	info := objectInfo{
+		Bucket: loc.Bucket, Key: loc.Key, Size: aws.ToInt64(out.ContentLength), ETag: strings.Trim(aws.ToString(out.ETag), `"`),
+		LastModified: rfc3339(out.LastModified), ContentType: aws.ToString(out.ContentType), Metadata: map[string]string{},
+	}
+	for k, v := range out.Metadata {
+		info.Metadata[strings.ToLower(k)] = v
+	}
+	if r.format != formatText {
+		return writeValue(r.out, r.format, info)
+	}
+	t := newTable(r.out)
+	t.row("Object", loc.String())
+	t.row("Size", fmt.Sprintf("%s (%d bytes)", humanBytes(info.Size), info.Size))
+	t.row("ETag", info.ETag)
+	t.row("Modified", clock(out.LastModified)+" UTC")
+	t.row("Content type", info.ContentType)
+	for _, k := range slices.Sorted(maps.Keys(info.Metadata)) {
+		t.row("Metadata "+k, info.Metadata[k])
+	}
+	return t.Flush()
 }
 
 // bucketError says what a refused bucket route needs.
