@@ -2,7 +2,7 @@
 
 **Worker:** worker3 **Goal:** every bex log explorer with a live tail (a service's Logs tab, a Postgres or Key Value Logs tab, a project's Application Logs and Request Logs views) has one control for when, as Render's explorer does: its time range picker, whose first entry is **Live tail**. Picking Live tail starts the tail, and picking any other range pauses it. The Live switch beside the range is gone, so a range and a Live state can no longer disagree (a custom range with Live on).
 
-**Status:** blocked (t001–t005, t007–t009 done in `781b1d7c9`; t006's tree walk done; its production walk waits for a pin carrying `781b1d7c9`)
+**Status:** done — t001–t005 and t007–t009 shipped in `781b1d7c9`; t006 walked on the tree (2026-11-20) and on production on pin `f797f525f5df` (2026-11-21, § Live walk); t010 closed the milestone
 
 ## Tasks (in order)
 
@@ -13,11 +13,11 @@
 | [t003](done/t003.md) | The service Logs tab: Live tail is picked in the range, the switch is gone, and New logs in Live Tail and the empty state select it — **DONE** | 1h | t002 |
 | [t004](done/t004.md) | The Postgres and Key Value Logs tabs: Live tail in the range picker, the switch gone, the tab still opening on its one-shot range — **DONE** | 45m | t002 |
 | [t005](done/t005.md) | A project's Application Logs and Request Logs views: Live tail in the range picker, the switch gone — **DONE** | 45m | t002 |
-| [t006](t006.md) | Verify in a real browser at 1440 and 390, on the tree and on production | 45m | t003, t004, t005 |
+| [t006](done/t006.md) | Verify in a real browser at 1440 and 390, on the tree and on production — **DONE** | 45m | t003, t004, t005 |
 | [t007](done/t007.md) | Render parity — **DONE** | 30m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 20m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007 |
-| [t010](t010.md) | Closeout | 10m | t008, t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t008, t009 |
 
 Total: **10 tasks, about 6h30m**.
 
@@ -58,7 +58,34 @@ Render's bundle and docs were read on 2026-11-20 and the findings are in the [ca
 | Service pending against ready | 1440: [type 280, search 452, range 1075/1076, Filters 1247/1248, actions 1344] at y 269, all 32 px tall, within 1 px. 390: [type 16, search 173, Options 330] at y 56 over [range 16, Filters 173 at 201 px] at y 108, all 44 px tall. The first pass found the pending Filters slot 84 px wide at 390 against the button's 201; `LOG_FILTERS_BUTTON_CLASS` gained `max-sm:w-auto`, and a test pins it | holds after the fix |
 | Postgres Logs | `?tab=logs` opened on Last hour, no switch; the list started Live tail, Last 30 minutes, Last hour; Live tail wrote `range=live` and streamed; Last 4 hours wrote `range=4h`, stopped it and raised New logs in Live Tail, whose click wrote `range=live` again. Pending and ready toolbars equal at 1440 (range 336, instance 508, level 744, search 916, actions 1288) and 390 | holds |
 
-**Next:** on production as the QA user in `bex-canary` once a pin carries this milestone's commit, at 1440 and 390, with a short-lived web service logging about a line a second and a free Postgres: the service Logs tab, the Postgres Logs tab and a project's Application Logs view (Live tail first, it tails, a preset pauses it, New logs in Live Tail picks it, a `live=0` link opens paused, View in context opens on its line paused and centred), then each view's pending toolbar against its ready one. Delete the fixtures, log out, record it here, and close with t010.
+**On production (t006 step 5, 2026-11-21, pin `f797f525f5df`).** Pin commit `4c41a69d7` carries `781b1d7c9`. The walk ran as the QA user in `bex-canary` (`tea-daif693dqjvc73e7as3g`, `bash scripts/qa-login.sh --serve`) in Playwright (Chromium, America/Los_Angeles), at 1440×900 and 390×844.
+
+- **Fixtures.** The project `qa-20261121-m537` (`prj-dc0h5o52b0us73dob920`, environment production `evm-dc0h5o52b0us73dob92g`) held a starter web service created over REST, `qa-20261121-m537-web` (`srv-dc0h5rt2b0us73dob940`, `busybox:1.36`). From 03:41:44Z it printed `level=info msg="tick" n=N` a second, a `warn` "slow query took 1200ms" on every 5th line and an `error` "upstream timeout" on every 11th. Its deploy was `dep-dc0h5rt2b0us73dob94g`.
+- **The Postgres.** The workspace's one free Postgres slot is taken, so the Postgres Logs tab was the existing `w6-149-probe-pg` (`dpg-dc07buu5elpc739vub7g`), only viewed. It logs a checkpoint or a connection reset every one to six minutes.
+- **Method.** "Tails" means the newest line on screen moved on while the range was Live tail; "held" means it stood still for at least 4 s. "Centred" compares the marked row's middle with the panel's, and every position held 5 s later. The pending toolbar was held by stalling the browser's GraphQL replies during a client-side move from the home page (a server render paints the ready page). Boxes are each control's [x, y, w, h].
+
+| Point | Service Logs tab | Postgres Logs tab | Project Application Logs | Verdict |
+| --- | --- | --- | --- | --- |
+| Opens on Last hour, no switch | Last hour, no `role=switch`, no stream line, at 1440 and 390 | Last hour, no switch, at both | `?savedSearchId=svs-bg9ggcrrudp6go0v3irb` read Last hour, no switch, at both | holds |
+| Live tail first; it tails | the list read Live tail, Last 30 minutes … Last 30 days, Custom…; Live tail wrote `?range=live`, "Live — streaming new lines", n 78→84 in 6 s at 1440 and 344→349 in 5 s at 390 | the same list; `range=live`; the 03:50:00.492Z line arrived by the tail within 2 s at 1440, the 04:00:00.685Z line at 390 | the same list; `r=live`; n 1262→1267 at 1440. At 390 the tail ran, but on 2 of 4 picks the list was left mid-history (below) | holds; the 390 landing filed as w3/102 |
+| A preset pauses it; New logs in Live Tail picks it | Last 4 hours wrote `range=4h`, the stream line went, the newest line held (n 93), New logs in Live Tail rose (744, 796 at 1440; 86, 728, 44 px tall, at 390); its click wrote `range=live` and the tail resumed (n 97→102) | `range=4h` held 03:50:00.492Z; the 03:51:12Z line raised the button at 03:51:12.6Z (1440), the 04:01:12Z line at 04:01:12.7Z (390); its click wrote `range=live` and showed that line | `r=4h` held n 1268; the button rose; its click wrote `r=live` and the tail resumed (n 1274→1278; 1455→1459 at 390) | holds |
+| Options while tailing | Copy logs, **Clear logs ⇧L**, Display, Theme Settings on Live tail; no Clear logs on Last 4 hours | — | — | holds |
+| A `live=0` link opens paused | `?range=4h&live=0` opened on Last 4 hours, held (n 154), and the URL read `?range=4h` on load; `?live=0` alone opened on Last hour, paused | `?tab=logs&range=4h&live=0` opened on Last 4 hours, paused, at both widths | `…&r=4h&live=0` opened on Last 4 hours, held (n 1279), at both widths | holds (see the note below) |
+| View in context | under `slow query`, the row menu held Copy log line, View in context and SSH into instance. The link was `range=custom` ±10 minutes with `contextLine` and no `live`, `target=_blank`. The new tab opened unsearched, on the custom window, with no tail and no New logs in Live Tail. Older pages loaded, and the mark sat centred: n=20 at 543 against 552 in a 317–786 panel (1440), n=30 at 450 against 449 (390) | under `checkpoint starting`: the 01:33:26Z line, ±10 minutes. The window holds 17 lines, so at 1440 the mark sits as near the middle as the list scrolls (23 px of scroll, at its end); at 390, 668 against 668 | under `slow query`: `r=custom` ±10 minutes with `contextLine`, `target=_blank`; n=900 at 546 against 551 in a 258–844 panel (1440), n=1720 at 589 against 591 (390) | holds |
+| Pending against ready | 1440: pending [280 / 452 w612 / 1076 / 1248 w84 / 1344 / 1384] against ready [280 / 452 w611 / 1075 / 1247 w85 / 1344 / 1384], all at y 269 and 32 px tall. 390: equal, [16,56 / 173,56 / 16,108 / 173,108 w201 / 330,56], 44 px | equal at both: 1440 [336 / 508 / 744 / 916 w360 / 1288 / 1328] at y 178; 390 [16,174 / 16,224 / 16,268 / 16,312 w358 / 278,168 / 330,168] | equal at both: 1440 [280 w880 / 1172 / 1344 / 1384] at y 148–150; 390 [16,184 w358 / 16,234 w254 / 278,228 / 330,228] | holds |
+| No sideways scroll at 390 | scroll width 390 | 390 | 390 | holds |
+
+**`live` on a datastore tab or a project view.** Those two URLs never carried `live` before this milestone: the datastore tab's keys were Metrics' range keys, and a project view kept Live on and off in the component. So a `live=0` there is a key the explorer does not own. The link opens paused on its range, as every range but Live tail now is, and the router keeps the key like any unknown one: `?tab=logs&range=24h&live=0` and `…&r=24h&live=0` after a range change. The tombstone point (`live` leaves the URL on the first write) is the service tab's, where `live` was written, and holds there. No bex link has ever put `live` on those two URLs.
+
+**Found on the way: w3/102.** At 390 the project's Application Logs view on Live tail was sometimes left mid-history behind "100+ new logs": 4 of 9 fresh `r=live` loads (scrollTop 7789 of 42797, n 210–215, for one) and 2 of 4 picks. The tail itself ran. The same view at 1440 (0 of 8) and the service tab at 390 (0 of 6) always sat at the newest line. Live tail replays its 4-hour window from the window's start over SSE, about 1,700 wrapped lines here. A likely cause is the list's pin being read during that growth (`LogLineList`'s `recordPin` against `ROW_ESTIMATE` 24 px, where the rows measured 67–86 px). The opening replay predates this milestone, so it is filed as w3/102 rather than reopening a point here.
+
+**Cleanup.** The web service and the project were deleted (`DELETE` 204 each), and by-id `GET` answered 404 for both and for the environment; the project's default saved views go with it. `w6-149-probe-pg` answered 200, untouched. The QA session was logged out (`qa-login.sh --logout`, after which the cookie answered 401), the browser's cookies were cleared, and this run's jar was deleted. Screenshots are in `.playwright-mcp/m537-prod-*.png` (not committed).
+
+## Unblock record (2026-11-21)
+
+- **Affected:** w3/m537 t006 (step 5, the production walk), t010 (closeout).
+- **Source:** verified evidence. The newest `chore(deploy): pin platform images to <sha>` on `origin/main` is `4c41a69d7` (02:20Z), pinning `f797f525f5df`, and `git merge-base --is-ancestor 781b1d7c9 f797f525f5df` succeeds, so production runs the milestone's commit. The gate `pin must carry 781b1d7c9` holds.
+- **Next:** t006 step 5 on production as the QA user in `bex-canary` at 1440 and 390, in a service Logs tab, a Postgres Logs tab and a project's Application Logs view: Live tail is the picker's first entry and tails, a preset pauses it, New logs in Live Tail picks it, a `live=0` link opens paused, View in context opens on its line paused and centred (the mark the tree walk left to production), and each pending toolbar matches its ready one. The workspace's one free Postgres slot is taken, so the Postgres Logs tab is the existing `bex-canary` database's, only viewed, as the m509 and m531 walks did. Short-lived fixtures are deleted afterwards and the QA session is logged out; then t010 closes the milestone. No gate remains.
 
 ## Source + Goal linkage
 
