@@ -372,18 +372,60 @@ func rustToolchainChannel(raw []byte) string {
 }
 
 // ResolveNativeBun picks the Bun companion a native build adds, with Render's
-// precedence: BUN_VERSION → .bun-version → a bun.lock or bun.lockb lockfile
-// (the default line). found is false when the service does not opt in, which
-// leaves the build exactly as before (w8/m71). A version maps onto its
-// major.minor line, as the primary toolchains' do, and a fully qualified one
-// is installed exactly, as Render does (w8/315).
-func ResolveNativeBun(env map[string]string, readFile func(string) ([]byte, bool)) (choice NativeChoice, found bool, err error) {
+// precedence: BUN_VERSION → .bun-version → a bun.lock or bun.lockb lockfile.
+// found is false when the service does not opt in, which leaves the build
+// exactly as before (w8/m71). A version maps onto its major.minor line, as the
+// primary toolchains' do, and a fully qualified one is installed exactly, as
+// Render does (w8/315). A lockfile alone names no version, so a service created
+// at created gets Render's default for that date (w8/371).
+func ResolveNativeBun(created time.Time, env map[string]string, readFile func(string) ([]byte, bool)) (choice NativeChoice, found bool, err error) {
 	r := resolver{t: nativeBun, env: env, readFile: readFile}
 	choice, found, err = r.firstFound(r.fromEnv("BUN_VERSION", r.bunRequest), r.fromFile(".bun-version", r.bunRequest), r.fromLockfile(nativeBunLockfiles...))
-	if found && choice.Exact == "" {
+	if !found {
+		return choice, found, err
+	}
+	if slices.Contains(nativeBunLockfiles, choice.Source) {
+		choice = r.datedBunDefault(created, choice)
+	} else if choice.Exact == "" {
 		choice.Exact = exactRequest(nativeBun, choice, readFile)
 	}
-	return choice, found, err
+	if line, ok := nativeBun.find(choice.Line); ok {
+		choice.lineVersion = line.version
+	}
+	return choice, found, nil
+}
+
+// bunDefaults are Render's default Bun releases by service creation date,
+// oldest first (render.com/docs/bun-version, read 2026-11-21): what a service
+// that opts in by its lockfile alone builds on (w8/371). The first step is
+// Render's "Before 2025-08-18"; no reviewed line carries 1.1 (w8/372), so it
+// keeps the default line until one does.
+var bunDefaults = []exactDefault{
+	{time.Unix(0, 0).UTC(), "1.1.0"},
+	{time.Date(2025, time.August, 18, 0, 0, 0, 0, time.UTC), "1.2.20"},
+	{time.Date(2025, time.December, 8, 0, 0, 0, 0, time.UTC), "1.3.4"},
+	{time.Date(2026, time.July, 16, 0, 0, 0, 0, time.UTC), "1.3.14"},
+	{time.Date(2026, time.September, 9, 0, 0, 0, 0, time.UTC), "1.4.2"},
+	{time.Date(2026, time.October, 12, 0, 0, 0, 0, time.UTC), "1.4.3"},
+	{time.Date(2026, time.October, 22, 0, 0, 0, 0, time.UTC), "1.4.4"},
+	{time.Date(2026, time.November, 20, 0, 0, 0, 0, time.UTC), "1.4.5"},
+}
+
+// datedBunDefault moves a lockfile-only Bun choice onto Render's default for a
+// service created at created: that release's line, installed exactly when it
+// is not the line's reviewed patch. A service of unknown age, or a default on
+// no reviewed line, keeps the default line's reviewed patch.
+func (r resolver) datedBunDefault(created time.Time, choice NativeChoice) NativeChoice {
+	version := datedDefault(bunDefaults, created)
+	line, ok := r.minorLine(version)
+	if !ok {
+		return choice
+	}
+	dated, _ := r.choice(line, choice.Source) // minorLine found the line
+	if reviewed, _ := r.t.find(line); reviewed.version != version {
+		dated.Exact = version
+	}
+	return dated
 }
 
 // nativeBunCanary is Render's BUN_VERSION / .bun-version value for Bun's

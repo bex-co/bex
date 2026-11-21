@@ -77,7 +77,7 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 	if err != nil {
 		return nil, err
 	}
-	bun, withBun, err := resolveNativeBunExact(ctx, exact, env, readFile)
+	bun, withBun, err := resolveNativeBunExact(ctx, exact, created, env, readFile)
 	if err != nil {
 		return nil, err
 	}
@@ -450,8 +450,8 @@ func nativeVersionResolver(o Options) corev1.Container {
 // floating tag (canary) pinned to the digest it has for this build, the
 // floating one narrated in the build log; an unreachable registry keeps the
 // reviewed line (pinExactVersion).
-func resolveNativeBunExact(ctx context.Context, exact ExactImageResolver, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, bool, error) {
-	bun, withBun, err := ResolveNativeBun(env, readFile)
+func resolveNativeBunExact(ctx context.Context, exact ExactImageResolver, created time.Time, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, bool, error) {
+	bun, withBun, err := ResolveNativeBun(created, env, readFile)
 	if err != nil || !withBun || bun.Exact == "" {
 		return bun, withBun, err
 	}
