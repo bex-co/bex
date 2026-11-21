@@ -6,7 +6,7 @@
 - **High Contrast Mode** (_"Increase the visibility of interactive elements."_), a switch that swaps the theme for its high-contrast twin, part of the same stored setting;
 - **Log Explorer Theme** (Match Dashboard (Default), Light, Dark), stored on the account, which every log explorer follows.
 
-**Status:** blocked — t001–t006 and t008–t010 done, shipped in `da81de164`; t007 walked on dev-3 (§ Verification record); its production walk waits for a pin carrying `da81de164`, then t011 closes the milestone
+**Status:** done — t001–t006 and t008–t010 shipped in `da81de164`; t007 walked on dev-3 (2026-11-20) and on production on pin `f797f525f5df` (2026-11-21, § Verification record); t011 closed the milestone
 
 ## Tasks (in order)
 
@@ -18,11 +18,11 @@
 | [t004](done/t004.md) | The dashboard keeps Dashboard Theme on the account: a new browser opens in it after sign-in — **DONE** | 1h | t003 |
 | [t005](done/t005.md) | High Contrast Mode: a high-contrast twin of each theme and Appearance's switch — **DONE** | 1h15m | t004 |
 | [t006](done/t006.md) | Log Explorer Theme: Appearance's choice, and every log explorer renders in it — **DONE** | 1h15m | t004 |
-| [t007](t007.md) | Verify in a real browser at 1440 and 390, on the tree and on production | 45m | t005, t006 |
+| [t007](done/t007.md) | Verify in a real browser at 1440 and 390, on the tree and on production — **DONE** | 45m | t005, t006 |
 | [t008](done/t008.md) | Render parity — **DONE** | 30m | t007 |
 | [t009](done/t009.md) | Simplify — **DONE** | 20m | t008 |
 | [t010](done/t010.md) | Test coverage — **DONE** | 45m | t008 |
-| [t011](t011.md) | Closeout | 10m | t009, t010 |
+| [t011](done/t011.md) | Closeout — **DONE** | 10m | t009, t010 |
 
 Total: **11 tasks, about 8h15m**.
 
@@ -50,9 +50,28 @@ bex-api built from the tree by `bash scripts/dev-env.sh 3 up` (migration 0317 ap
 - **Log Explorer Theme.** Dark on a Light dashboard, and Light on a Dark one, at 1440 and 390, in the service Logs tab, the Postgres Logs tab, the deploy's log and the project's Application Logs view: each explorer root carried the forced theme (`dark` on a `light` page, `light` on a `dark` page) and its colours, the page around it unchanged, and Options opened in the explorer's theme. With High Contrast Mode on, each root and its Options menu carried `light high-contrast` and the list's border was the high-contrast `oklch(0.5 0.01 260)`. The walk found the list's top fade still in the page's colour inside a forced explorer (fixed, t006).
 - **Skeleton.** With the settings page's chunk held, the Appearance skeleton and the ready card measured the same: 744×210 at x 336 with rows 69/69/70 at 1440, and 358×310 at x 16 with rows 95/95/118 at 390.
 
-### On production
+### On production (2026-11-21, t007 step 5, pin `f797f525f5df`)
 
-Waits for a pin carrying `da81de164` (t007 step 5): then, as the QA user (`bash scripts/qa-login.sh`) at 1440 and 390, a fresh browser context opens in the theme the account stored, High Contrast Mode raises borders and muted text, and Log Explorer Theme Dark on a Light dashboard and Light on Dark show in a service Logs tab, a Postgres Logs tab, a deploy's log and a project's Application Logs view.
+Pin commit `4c41a69d7` carries `da81de164`. As the QA user (`usr-d9a5qasbt3bc73fiphn0`, `bash scripts/qa-login.sh --serve`), in Playwright (Chromium). Before the walk the account read `SYSTEM` / `MATCH_APP` on REST and GraphQL. Fixtures in `bex-canary`: the project `qa-20261121-m531` (`prj-dc0guc526tvc739p14qg`, environment production `evm-dc0guc526tvc739p14r0`) held a free `busybox:1.36` web service created over REST, `qa-20261121-m531-web` (`srv-dc0gued2b0us73dob8u0`). It logged a logfmt `info` line a second, with a `warn` every 5th and an `error` every 11th, and its deploy `dep-dc0gued2b0us73dob8ug` went live at 03:26:28Z. A second free Postgres was refused (`400 FREE_INSTANCE_LIMIT`: the workspace already has `w6-149-probe-pg`), so the Postgres Logs tab was that database's (`dpg-dc07buu5elpc739vub7g`), only viewed. Every setting below was chosen in Settings ▸ Appearance unless it says REST.
+
+- **Stored on the account.** Picking Dark and turning High Contrast Mode on wrote `DARK_HIGH_CONTRAST` / `MATCH_APP`, read back over REST, and left `<html>` at `dark high-contrast`. The Appearance card showed Render's three rows and the Log Explorer Theme options _Match Dashboard (Default)_, _Light_, _Dark_.
+- **A new browser opens in the account's theme.** Two new browser contexts (1440×900 and 390×844, light colour scheme), each given only the session cookie, opened `https://dashboard.bex.co/` with no browser copy. `<html>` went `light` (the pre-paint script's System) to `dark high-contrast` once the account bound, and the copy `bex-user-settings` was written. On reload every class `<html>` took was `dark high-contrast` from the pre-paint script on, so no light frame came first. The page background was `oklch(0.12 0.008 260)` at both widths.
+- **High Contrast Mode.** On Light it raised `--border` and `--input` from `oklch(88% .008 260)` to `oklch(50% .01 260)` and `--muted-foreground` from 48% to 33% lightness. On Dark it raised `--border` from 24% and `--input` from 22% to 62%, and `--muted-foreground` from 68% to 80%. The service page at 1440 and 390 (themes set over REST, then the page reloaded) drew its first card border in `oklch(0.88 0.008 260)` against `oklch(0.5 0.01 260)` and its muted text in `oklch(0.48 …)` against `oklch(0.33 …)`. The search field, select and button edges were visibly darker. Scroll width was 1440 and 390.
+- **Log Explorer Theme.** These views were checked at 1440 and 390: the service Logs tab, the Postgres Logs tab, the deploy's log and the project's Application Logs view. In each, the explorer root (`[data-log-explorer]`), its Options menu and its row menu (Copy log line) were read with the menus open and settled (opacity 1).
+  - _Dark on a Light dashboard:_ `<html>` `light`; root, Options and row menu `dark`; root `oklch(0.12 0.008 260)` on a page of `oklch(0.98 0.002 260)`; menus `oklch(0.16 0.008 260)`.
+  - _Light on a Dark dashboard:_ `<html>` `dark`; root, Options and row menu `light`; root `oklch(0.98 0.002 260)` on a page of `oklch(0.12 0.008 260)`; menus `oklch(1 0 0)`.
+  - _Light with High Contrast Mode on:_ `<html>` `dark high-contrast`; root, Options and row menu `light high-contrast`; the list's border `oklch(0.5 0.01 260)`.
+  - _Match Dashboard:_ the root carried no theme class and the page's colours showed through it.
+  - No view scrolled sideways at 390.
+- **Skeleton.** The Appearance skeleton was measured on the way from the account menu's Account Settings to `/settings`, and the ready card after it, at both widths. At 1440 both were 744×210 at x 336 with rows 69/69/70. At 390 both were 358×310 at x 16 with rows 95/95/118.
+
+**Restored and cleaned up.** Appearance was set back to System (Default), Match Dashboard (Default) and High Contrast Mode Disabled. REST and GraphQL then read `SYSTEM` / `MATCH_APP`, as before the walk. The web service and the project were deleted (`DELETE` 204 each), and by-id `GET` answered 404 for both and for the environment. The QA session was logged out (`qa-login.sh --logout`, after which the cookie answered 401), the browser's cookies were cleared, and the jar and the scratch script were deleted. Screenshots are in `.playwright-mcp/m531-prod-*.png` (not committed).
+
+## Unblock record (2026-11-21)
+
+- **Affected:** w3/m531 t007 (step 5, the production walk), t011 (closeout).
+- **Source:** verified evidence. The newest `chore(deploy): pin platform images to <sha>` on `origin/main` is `4c41a69d7` (02:20Z), pinning `f797f525f5df`, and `git merge-base --is-ancestor da81de164 f797f525f5df` succeeds, so production runs the milestone's commit. The gate `pin must carry da81de164` holds.
+- **Next:** t007 step 5 on production as the QA user at 1440 and 390: a fresh browser context opens in the theme the account stored, High Contrast Mode raises borders and muted text, and Log Explorer Theme Dark on a Light dashboard and Light on Dark show in a service Logs tab, a Postgres Logs tab, a deploy's log and a project's Application Logs view. Short-lived fixtures are deleted afterwards, the QA user's appearance settings are put back as they were, and the QA session is logged out; then t011 closes the milestone. No gate remains.
 
 ## Render's Appearance, read from its dashboard bundle (2026-11-20)
 
