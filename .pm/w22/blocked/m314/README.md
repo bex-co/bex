@@ -1,6 +1,6 @@
 # w22 · m314 — Sandbox CPU billed on use, as on Render: a gVisor accuracy spike, then the cutover
 
-**Worker:** worker22 **Goal:** a running sandbox is billed for the CPU it uses plus the memory allocated, and the billing switches in one step, or the fallback is recorded for the user's sign-off **Status:** blocked (clears by itself: the production check needs the deploy carrying the w22/m314 commit and, for t005, the switch at 2026-11-18T00:00:00Z; t001, t002, t004, t006, t007 and t008 done; t003 implemented and shipped, its production acceptance open; see "实施记录 2026-11-17")
+**Worker:** worker22 **Goal:** a running sandbox is billed for the CPU it uses plus the memory allocated, and the billing switches in one step, or the fallback is recorded for the user's sign-off **Status:** blocked (waits for w22/024: the post-switch usage leg, run 44867679299 on 2026-11-21, failed one check, the used-CPU meter read 307 CPU-seconds from a pod whose counter totals 298.42; every other check passed; t001, t002, t004, t006, t007 and t008 done; t003 and t005 have their production readings and stay open until the leg prints PASS; see "解阻记录 2026-11-21")
 
 ## Tasks (in order)
 
@@ -94,6 +94,27 @@
   3. t009 收尾。
 - **证明闸门已清的检查：** `gh run list --workflow deploy.yml --limit 5` 里有包含本次提交的成功运行；Prometheus 里 `sandbox_pod_cpu_usage_seconds_total` 有序列；上面两次 `usage` 运行都是 PASS。
 - **如果生效前的那次运行失败：** 把 `sandboxUsage.billedFrom` 往后推并发布是安全的退路（之前的用量保持加权计费），然后修计量。
+
+## 解阻记录 2026-11-21（/loopx w22，UTC）
+
+- **来源：** 复核证据，不是用户决定。涉及 t003、t005、t009。
+- **原闸门已清：** 生产的镜像 pin 是 `f797f525f5df`（`4c41a69d7`），`git merge-base --is-ancestor dcf1f1991 f797f525f5df` 成立（`83f8805de`，即 w22/020 的修复，也在里面）。生效时间点 2026-11-18T00:00:00Z 已过。
+- **缺口，如实记录：** "实施记录 2026-11-17" 要求在切换之前先跑一次 `usage`（t003 的生产验收，也是切换前发现计量问题的安全网）。**这次运行从未进行**：`gh run list --workflow sandbox-measure.yml` 里 2026-11-16 之后、本次之前没有任何运行。所以：
+  - 用量计费从 2026-11-18T00:00:00Z 起已在生产上生效约三天，期间计量没有在生产上验证过；"有问题就把 `billedFrom` 往后推"的退路已经用不上。
+  - "切换前 CPU 和内存显示为不计费、加权行是收费行"在生产上再也无法观察，只有测试覆盖（`TestSandboxUsageSwitchPG`、`TestSandboxBilledOnUseAcrossAdapters`）。
+- **什么可以代替切换前的那次：** t003 的三条生产验收（pod 级 CPU 序列存在、忙碌一分钟约 60 CPU 秒并记下比值、空闲接近零）不依赖切换前后：切换后的同一条腿用同一个计量器读同一条 Prometheus 序列，并和节点 cAdvisor 及负载自己的 `times` 对比。所以切换后的一次 PASS 同时满足 t003 的生产验收和 t005 的第 1、2 步。
+- **切换后的运行：[sandbox-measure run 44867679299](https://github.com/bex-co/bex/actions/runs/44867679299)（`leg=usage`，`usage_idle_seconds=600`，2026-11-21 04:46Z）：FAIL，16 项检查里 1 项失败。** 空闲用 600 秒而不是 t005 原文的一小时：验收是"CPU 费约为零、内存照收"，按比例判断，t001 的空闲基线也是 600 秒。
+  - **失败的一项，"busy: metered CPU matches the pod-level counter"：** 计量器给忙碌 sandbox 的 333 秒运行区间记了 **307 CPU 秒**，而节点 cAdvisor 上这个 pod 的计数器在暂停前**总共只有 298.42**（负载期间走了 297.48）。多记 8.6 CPU 秒（2.9%），检查的上限是总数的 1.02 倍加 2 秒（306.39）。
+  - **原因（由代码和数字推出，没有读生产 Prometheus 的原始样本来确认）：** 计量器读的是 `sum(increase(...[333s]))`（`lego/backend/internal/sandbox/cpu_meter.go`），而 Prometheus 的 `increase()` 会把首尾样本之间的增量按**整个窗口的平均速率**外推到窗口两端。这个区间末尾 20 多秒是空闲的，外推却按约 0.9 核补了最后一次抓取到暂停之间的那段：298.42 × (1 + 约 9 秒 ÷ 约 310 秒) ≈ 307。误差上限约为一个抓取间隔（15 秒，外推最多 16.5 秒）乘以区间的平均核数，每个区间结束时一次；整点边界上的外推前后相抵。按钱算每核每个区间最多约 $0.0004，但它超过了客户自己能读到的 cgroup 数字，和 ADR104 D8"按客户可以复现的数字计费"不符。另开为 **w22/024**。
+  - **通过的 15 项和读数：**
+    - 忙碌（5 轮 60 秒单核，请求 300 秒）：负载自己用了 288.5 秒，计量 307，是负载自己的 **1.064 倍**、请求的 1.023 倍（t001 的比值是 1.098 和 1.053，t005 的验收在这两个比值之内）；内存 665 GiB 秒（2 GiB × 333 秒）。
+    - 空闲 602 秒：2 CPU 秒，**0.33% 单核**（线为 2%）；内存 1203 GiB 秒。
+    - 暂停后：CPU、内存都不再增长（307 和 665 不变），没有加权行。
+    - `GET /v1/usage`：`sandboxUsageBilledFrom` 是 2026-11-18T00:00:00Z；忙碌 sandbox 的 CPU 行 0.0853 CPU 小时 × $0.084 = $0.01，内存行 0.185 GiB 小时 × $0.0133；空闲 sandbox 的 CPU 行 0.000556 CPU 小时、$0.00，内存行 0.334 GiB 小时；两个 sandbox 都没有 `sandbox_compute_seconds` 行，没有 `unbilled`。
+    - 配额（w22/020 的检查）：`1c-2g` 的 pod 配额 1 核，`starter` 0.5 核；`starter` 上四个 syscall 重循环 60 秒用了 30.12 CPU 秒（0.502 核）；两个 pod 的安装步骤都在同一秒内完成，创建到容器启动 4 秒。
+  - **清理：** 运行结束时删除一个一次性 workspace 失败（日志里的 WARNING）；它不计费，下一次运行的过期清扫会重试。
+- **结论：停靠。** t003 和 t005 的验收条目按读数都成立，但这条腿是它们的检查手段，它没有打印 PASS，失败的那项正是 t003 的计量器；DoD 的"在生产上用已知负载验证"不能靠一次失败的运行成立。t003、t005 保持未完成，读数已记在任务里。
+- **剩余闸门（不需要用户）：** w22/024 落地并到生产之后，再跑一次 `gh workflow run sandbox-measure.yml -f leg=usage -f usage_idle_seconds=600`，打印 PASS 后把数字记进 t003、t005 和 ADR104 D8，然后 t009 收尾。
 
 ## Render parity, 2026-11-17 (t006)
 
