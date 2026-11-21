@@ -217,6 +217,9 @@ func TestBexS3DeletesAskOnATerminalLikeEaObjectsDelete(t *testing.T) {
 		command := bexAgainst(t, api.srv.URL, "ea", "objects", "delete", "a/b", "--region", "oregon")
 		home := homeOf(command.Env)
 		seedNoticeMarker(t, home)
+		// GitHub Actions sets CI=true, which the root reads as "not a terminal" and
+		// then never asks; the bex s3 runs get the same scrub from telemetryEnv.
+		command.Env = slices.DeleteFunc(command.Env, func(item string) bool { return strings.HasPrefix(item, "CI=") })
 		command.Env = append(command.Env, "TERM=xterm", "BEX_CLI_DISABLE_ANALYTICS=1")
 		transcript, err := runAtPrompt(t, command, "n\n")
 		if err != nil {
