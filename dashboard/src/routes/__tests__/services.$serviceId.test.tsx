@@ -12,6 +12,7 @@ import { ServiceDetailLayout } from "@/features/services/components/service-deta
 import { ServiceLogsPage } from "../services.$serviceId.logs";
 import type { ServiceView } from "@/features/services/types";
 import type { UseServerResult } from "@/features/services/hooks/use-server";
+import type { CachedServiceSource } from "@/features/services/hooks/use-cached-service-type";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 
 // The layout reads useServer for the header and drives lifecycle.
@@ -24,8 +25,11 @@ const serverState: UseServerResult = {
 vi.mock("@/features/services/hooks/use-server", () => ({
   useServer: () => serverState,
 }));
+// What the cache says of the service's source while its read is in flight.
+const cachedSource: { value: CachedServiceSource | null } = { value: null };
 vi.mock("@/features/services/hooks/use-cached-service-type", () => ({
   useCachedServiceType: () => null,
+  useCachedServiceSource: () => cachedSource.value,
 }));
 
 vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
@@ -246,6 +250,7 @@ beforeEach(() => {
   serverState.loading = false;
   serverState.error = undefined;
   serverState.refetch = vi.fn(async () => []);
+  cachedSource.value = null;
   run.mockReset();
 });
 
@@ -447,6 +452,54 @@ describe("service-detail layout routing", () => {
       } else {
         expect(shown).toBeNull();
       }
+
+      await act(async () => {
+        resolveLoader({});
+      });
+    },
+  );
+
+  // w3/094: the header's second row wraps, and an image-backed service has
+  // no repository item, so at 1024 its row is a line shorter than a Git
+  // service's. The pending frame draws the items the cache says the ready
+  // header will, and a Git service's when nothing cached has said.
+  it.each([
+    ["nothing cached", null, ["repository"]],
+    [
+      "an image-backed service",
+      { repository: false, registryCredential: false },
+      [],
+    ],
+    [
+      "an image pulled with a registry credential",
+      { repository: false, registryCredential: true },
+      ["registry-credential"],
+    ],
+    [
+      "a Git service",
+      { repository: true, registryCredential: false },
+      ["repository"],
+    ],
+  ])(
+    "the pending header draws the source items of %s",
+    async (_, source, items) => {
+      cachedSource.value = source;
+      const { resolveLoader } = renderPendingAt("/services/app/metrics");
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+      const header = document.querySelector(
+        '[data-skeleton-region="service-header"]',
+      );
+      expect(header).not.toBeNull();
+      const drawn = Array.from(
+        header!.querySelectorAll(
+          '[data-skeleton-item="repository"], [data-skeleton-item="registry-credential"]',
+        ),
+        (item) => item.getAttribute("data-skeleton-item"),
+      );
+      expect(drawn).toEqual(items);
 
       await act(async () => {
         resolveLoader({});

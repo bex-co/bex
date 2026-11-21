@@ -35,6 +35,8 @@ function node(overrides: Partial<ServiceNode> = {}): ServiceNode {
     revision: "abc123",
     plan: null,
     idleTTLSeconds: 0,
+    repo: null,
+    registryCredentialId: null,
     ...overrides,
   };
 }

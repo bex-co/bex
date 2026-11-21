@@ -14,7 +14,10 @@ import { useSignInAgain } from "@/common/lib/auth/sign-in-again";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useServer } from "@/features/services/hooks/use-server";
 import { serviceTabLabelKey } from "@/features/services/components/service-nav";
-import { useCachedServiceType } from "@/features/services/hooks/use-cached-service-type";
+import {
+  useCachedServiceSource,
+  useCachedServiceType,
+} from "@/features/services/hooks/use-cached-service-type";
 import { useLatestDeploy } from "@/features/deploys/hooks/use-latest-deploy";
 import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
 import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
@@ -175,7 +178,7 @@ export function ServiceDetailLayout({
               onRun={run}
             />
           ) : (
-            <ServiceDetailHeaderSkeleton />
+            <PendingServiceHeader serviceId={serviceId} />
           )}
           {/* The page container the section layout's queries measure. The
               scroller has no top padding (the service header scrolls away
@@ -218,6 +221,17 @@ export function ServiceDetailLayout({
         {content}
       </ServiceDeletingProvider>
     </ServiceBaseProvider>
+  );
+}
+
+/**
+ * The header's frame, with the repository and registry-credential items the
+ * cache says the ready header will draw, so its wrapping row ends on the same
+ * line (w3/094).
+ */
+function PendingServiceHeader({ serviceId }: { serviceId: string }) {
+  return (
+    <ServiceDetailHeaderSkeleton source={useCachedServiceSource(serviceId)} />
   );
 }
 

@@ -72,6 +72,7 @@ import {
   deployStatusVariant,
 } from "@/features/deploys/lib/deploy-status";
 import type { LatestDeploySummary } from "@/features/deploys/hooks/use-latest-deploy";
+import type { CachedServiceSource } from "@/features/services/hooks/use-cached-service-type";
 
 export interface ServiceDetailHeaderProps {
   service: ServiceView;
@@ -857,14 +858,30 @@ function HeaderFacts({
   );
 }
 
+/** Nothing cached says otherwise: a service built from a repository. */
+const GIT_SOURCE: CachedServiceSource = {
+  repository: true,
+  registryCredential: false,
+};
+
 /**
  * Placeholder header shown while `server(id)` is still loading. Each slot is
  * the ready element's height: the name is `text-xl` (28px), a badge 22px, and
  * a control (an action button, a copy button) 32px, growing to 44px where the
  * page's touch rule grows the ready one (`data-touch-spacer`, style.css), so
  * the band ends on the same line in both states (w3/085).
+ *
+ * The second row wraps, so it draws the source items the ready one will: an
+ * image-backed service has no repository item, and at 1024 its Service ID and
+ * URL fit on one line where a Git service's take two (w3/094). `source` comes
+ * from the cache; without it the frame is a Git service's.
  */
-export function ServiceDetailHeaderSkeleton() {
+export function ServiceDetailHeaderSkeleton({
+  source,
+}: {
+  source?: CachedServiceSource | null;
+}) {
+  const { repository, registryCredential } = source ?? GIT_SOURCE;
   return (
     <div
       aria-hidden="true"
@@ -887,7 +904,10 @@ export function ServiceDetailHeaderSkeleton() {
             <Skeleton data-touch-spacer="" className="h-8 w-28" />
           </div>
         </div>
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 max-sm:pt-1.5 sm:flex sm:flex-wrap sm:gap-x-6 sm:gap-y-0.5">
+        {/* Placed as the ready row is: on a phone every item stacks in the
+            first column and "Details" takes the second beside the first of
+            them, at its touch height. */}
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 max-sm:pt-1.5 max-sm:[&>*]:col-start-1 sm:flex sm:flex-wrap sm:gap-x-6 sm:gap-y-0.5">
           <div
             data-skeleton-item="service-id"
             className="flex items-center gap-1.5 max-lg:hidden"
@@ -895,10 +915,23 @@ export function ServiceDetailHeaderSkeleton() {
             <Skeleton className="h-4 w-64" />
             <Skeleton data-touch-spacer="" className="size-8" />
           </div>
-          <div className="flex h-[22px] items-center gap-1.5 max-sm:hidden">
-            <Skeleton className="h-4 w-48" />
-            <Skeleton className="h-[22px] w-20 rounded-full" />
-          </div>
+          {repository ? (
+            <div
+              data-skeleton-item="repository"
+              className="flex h-[22px] items-center gap-1.5 max-sm:hidden"
+            >
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-[22px] w-20 rounded-full" />
+            </div>
+          ) : null}
+          {registryCredential ? (
+            <div
+              data-skeleton-item="registry-credential"
+              className="flex h-5 items-center"
+            >
+              <Skeleton className="h-4 w-60" />
+            </div>
+          ) : null}
           <div
             data-skeleton-item="service-url"
             className="flex items-center gap-1.5"
@@ -906,7 +939,13 @@ export function ServiceDetailHeaderSkeleton() {
             <Skeleton className="h-4 w-56" />
             <Skeleton data-touch-spacer="" className="size-8" />
           </div>
-          <Skeleton className="h-4 w-14 sm:ml-auto lg:hidden" />
+          <div
+            data-skeleton-item="details-toggle"
+            data-touch-spacer=""
+            className="row-start-1 flex items-center max-sm:col-start-2! sm:ml-auto lg:hidden"
+          >
+            <Skeleton className="h-4 w-14" />
+          </div>
         </div>
         <div className="hidden h-4 flex-wrap gap-x-4 gap-y-1 lg:flex">
           <Skeleton className="h-4 w-20" />

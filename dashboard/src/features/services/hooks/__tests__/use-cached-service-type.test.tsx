@@ -6,11 +6,17 @@ import { ApolloProvider } from "@apollo/client/react";
 import { ServerDocument, ServicesDocument } from "@/graphql/definitions";
 import { WorkspaceContext } from "@/features/workspaces/context/context";
 import type { WorkspaceContextValue } from "@/features/workspaces/context/context";
-import { useCachedServiceType } from "@/features/services/hooks/use-cached-service-type";
+import {
+  useCachedServiceSource,
+  useCachedServiceType,
+} from "@/features/services/hooks/use-cached-service-type";
 
 const WORKSPACE = "tea-1";
 
-function setup(seed: (cache: InMemoryCache) => void) {
+function setup<T>(
+  seed: (cache: InMemoryCache) => void,
+  hook: (id: string) => T,
+) {
   const cache = new InMemoryCache();
   seed(cache);
   const client = new ApolloClient({ cache, link: ApolloLink.empty() });
@@ -24,8 +30,7 @@ function setup(seed: (cache: InMemoryCache) => void) {
       </WorkspaceContext.Provider>
     </ApolloProvider>
   );
-  return (id: string) =>
-    renderHook(() => useCachedServiceType(id), { wrapper }).result.current;
+  return (id: string) => renderHook(() => hook(id), { wrapper }).result.current;
 }
 
 // Partial writes, as a backend omitting an unrelated field would leave them:
@@ -38,29 +43,129 @@ function writeServer(cache: InMemoryCache, id: string, type: string) {
   });
 }
 
+function writeServices(
+  cache: InMemoryCache,
+  services: Array<Record<string, unknown>>,
+) {
+  cache.writeQuery({
+    query: ServicesDocument,
+    variables: { ownerId: WORKSPACE },
+    data: {
+      services: services.map((service) => ({
+        __typename: "Service",
+        ...service,
+      })),
+    } as never,
+  });
+}
+
 describe("useCachedServiceType (w4/m196)", () => {
   it("reads the type from the service's own cached server read", () => {
-    const read = setup((cache) => writeServer(cache, "srv-a", "cron_job"));
+    const read = setup(
+      (cache) => writeServer(cache, "srv-a", "cron_job"),
+      useCachedServiceType,
+    );
     expect(read("srv-a")).toBe("cron_job");
   });
 
   it("falls back to the cached workspace services list", () => {
-    const read = setup((cache) =>
-      cache.writeQuery({
-        query: ServicesDocument,
-        variables: { ownerId: WORKSPACE },
-        data: {
-          services: [
-            { __typename: "Service", id: "srv-w", type: "background_worker" },
-          ],
-        } as never,
-      }),
+    const read = setup(
+      (cache) =>
+        writeServices(cache, [{ id: "srv-w", type: "background_worker" }]),
+      useCachedServiceType,
     );
     expect(read("srv-w")).toBe("background_worker");
   });
 
   it("stays undecided (null) when nothing cached knows the service", () => {
-    const read = setup((cache) => writeServer(cache, "srv-a", "web_service"));
+    const read = setup(
+      (cache) => writeServer(cache, "srv-a", "web_service"),
+      useCachedServiceType,
+    );
+    expect(read("srv-other")).toBeNull();
+  });
+});
+
+// w3/094: the header's loading frame draws a repository item only where the
+// ready header will. bex-api answers `repo` as "" for an image-backed service.
+describe("useCachedServiceSource (w3/094)", () => {
+  it("reads an image-backed service's missing repository from the list", () => {
+    const read = setup(
+      (cache) =>
+        writeServices(cache, [
+          {
+            id: "srv-img",
+            type: "web_service",
+            repo: "",
+            registryCredentialId: null,
+          },
+          {
+            id: "srv-git",
+            type: "web_service",
+            repo: "https://github.com/acme/app",
+            registryCredentialId: null,
+          },
+        ]),
+      useCachedServiceSource,
+    );
+    expect(read("srv-img")).toEqual({
+      repository: false,
+      registryCredential: false,
+    });
+    expect(read("srv-git")).toEqual({
+      repository: true,
+      registryCredential: false,
+    });
+  });
+
+  it("says an image pulled with a registry credential names it", () => {
+    const read = setup(
+      (cache) =>
+        writeServices(cache, [
+          {
+            id: "srv-img",
+            type: "web_service",
+            repo: null,
+            registryCredentialId: "rgc-private",
+          },
+        ]),
+      useCachedServiceSource,
+    );
+    expect(read("srv-img")).toEqual({
+      repository: false,
+      registryCredential: true,
+    });
+  });
+
+  it("prefers the service's own cached read", () => {
+    const read = setup((cache) => {
+      cache.writeQuery({
+        query: ServerDocument,
+        variables: { id: "srv-a" },
+        data: {
+          server: {
+            __typename: "Service",
+            id: "srv-a",
+            repo: "https://github.com/acme/app",
+            registryCredentialId: "rgc-docker",
+          },
+        } as never,
+      });
+    }, useCachedServiceSource);
+    expect(read("srv-a")).toEqual({
+      repository: true,
+      registryCredential: true,
+    });
+  });
+
+  it("stays undecided until a cached read has answered repo", () => {
+    const read = setup((cache) => {
+      // The type alone, as a list from before w3/094 wrote it.
+      writeServer(cache, "srv-a", "web_service");
+      writeServices(cache, [{ id: "srv-b", type: "web_service" }]);
+    }, useCachedServiceSource);
+    expect(read("srv-a")).toBeNull();
+    expect(read("srv-b")).toBeNull();
     expect(read("srv-other")).toBeNull();
   });
 });

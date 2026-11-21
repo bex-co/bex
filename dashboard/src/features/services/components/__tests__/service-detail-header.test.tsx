@@ -1116,3 +1116,97 @@ describe("ServiceDetailHeaderSkeleton second row", () => {
     },
   );
 });
+
+// w3/094: the second row wraps, so a slot the ready header lacks moves the
+// band's bottom edge: at 1024 an image-backed service's Service ID and URL
+// fit on one line, where the skeleton's repository slot pushed the URL to a
+// second. Each source the cache can report draws the items its ready header
+// renders, and nothing it does not.
+describe("ServiceDetailHeaderSkeleton source items", () => {
+  const drawn = (container: Element) =>
+    Array.from(
+      container.querySelectorAll(
+        '[data-skeleton-item="repository"], [data-skeleton-item="registry-credential"]',
+      ),
+      (item) => item.getAttribute("data-skeleton-item"),
+    );
+
+  it.each([
+    [
+      "a Git service",
+      svc(),
+      { repository: true, registryCredential: false },
+      ["repository"],
+    ],
+    [
+      "an image-backed service",
+      svc({ repo: "", branch: null }),
+      { repository: false, registryCredential: false },
+      [],
+    ],
+    [
+      "an image pulled with a registry credential",
+      svc({ repo: null, branch: null, registryCredentialId: "rgc-private" }),
+      { repository: false, registryCredential: true },
+      ["registry-credential"],
+    ],
+    [
+      "a Git service whose Dockerfile pulls with a registry credential",
+      svc({ registryCredentialId: "rgc-private" }),
+      { repository: true, registryCredential: true },
+      ["repository", "registry-credential"],
+    ],
+  ])("draws %s's source items", async (_, service, source, items) => {
+    renderHeader(service);
+    await screen.findByRole("heading", { name: "app" });
+    const ready = [
+      screen.queryByRole("link", { name: "github.com · bex-co / hello-go" })
+        ? "repository"
+        : null,
+      screen.queryByText("Registry credential:") ? "registry-credential" : null,
+    ].filter(Boolean);
+    expect(ready).toEqual(items);
+
+    const { container } = render(
+      <ServiceDetailHeaderSkeleton source={source} />,
+    );
+    expect(drawn(container)).toEqual(items);
+  });
+
+  // On a phone the ready row is a grid: every item in the first column and
+  // "Details" beside the first of them, 44px tall under the touch rule. An
+  // auto-placed skeleton put the URL beside the registry credential instead,
+  // and its band ended 28px short of the ready one at 390.
+  it("places Details beside the first item on a phone, as the ready row does", async () => {
+    const placement = (el: Element) =>
+      el
+        .getAttribute("class")
+        ?.split(/\s+/)
+        .filter((c) => /(?:^|:)(?:\[&>\*\]:)?(?:row|col)-start-/.test(c))
+        .sort() ?? [];
+    renderHeader(
+      svc({ repo: null, branch: null, registryCredentialId: "rgc-private" }),
+    );
+    const ready = await screen.findByRole("button", { name: "Details" });
+
+    const { container } = render(
+      <ServiceDetailHeaderSkeleton
+        source={{ repository: false, registryCredential: true }}
+      />,
+    );
+    const slot = container.querySelector(
+      '[data-skeleton-item="details-toggle"]',
+    )!;
+    expect(placement(ready)).toEqual(["max-sm:col-start-2!", "row-start-1"]);
+    expect(placement(slot)).toEqual(placement(ready));
+    expect(placement(slot.parentElement!)).toEqual(
+      placement(ready.parentElement!),
+    );
+    expect(slot).toHaveAttribute("data-touch-spacer");
+  });
+
+  it("draws a Git service's items while nothing cached has said", () => {
+    const { container } = render(<ServiceDetailHeaderSkeleton source={null} />);
+    expect(drawn(container)).toEqual(["repository"]);
+  });
+});

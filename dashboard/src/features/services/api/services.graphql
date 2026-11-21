@@ -32,6 +32,10 @@ query Services($ownerId: String) {
     revision
     plan
     idleTTLSeconds
+    # The header's source facts, so a service page's loading frame draws the
+    # repository and registry-credential items its header will (w3/094).
+    repo
+    registryCredentialId
   }
 }
 

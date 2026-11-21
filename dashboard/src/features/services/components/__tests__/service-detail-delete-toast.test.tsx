@@ -37,6 +37,7 @@ vi.mock("sonner", () => ({
 // the hook boundary as the dead-id test does.
 vi.mock("@/features/services/hooks/use-cached-service-type", () => ({
   useCachedServiceType: () => null,
+  useCachedServiceSource: () => null,
 }));
 vi.mock("@/features/services/hooks/use-services", () => ({
   useServices: () => ({
