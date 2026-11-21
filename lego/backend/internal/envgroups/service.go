@@ -848,6 +848,17 @@ func (s *Service) RenameEnvGroup(ctx context.Context, gid, name string) (EnvGrou
 	return viewOf(g), nil
 }
 
+// GroupRename is s's RenameEnvGroup as the Blueprint sync is wired with
+// (w8/382): a sync gives a group it applied, renamed outside the file, its
+// declared name back. A function, not a Service method, so the verb sweeps do
+// not take it for a verb; the rename records as RenameEnvGroup.
+func GroupRename(s *Service) func(ctx context.Context, groupID, name string) error {
+	return func(ctx context.Context, groupID, name string) error {
+		_, err := s.RenameEnvGroup(ctx, groupID, name)
+		return err
+	}
+}
+
 // DeleteEnvGroup removes the group's row, then unlinks it from every service it
 // listed, deletes its projection Secrets, and removes its OpenBao maps. Manage
 // scope.

@@ -267,6 +267,11 @@ type Service struct {
 	// envgroups.GroupWritesOwed; nil plans every existing group's variables
 	// as changed, failing closed.
 	EnvGroupWritesOwed func(ctx context.Context, name string, literals map[string]string, generates []string) (bool, error)
+	// EnvGroupRename renames the env group groupID, for a Blueprint sync that
+	// gives a group it applied its declared name back after a rename outside
+	// the file (w8/382). The composition root wires envgroups.GroupRename;
+	// nil refuses such a sync rather than mint a second group.
+	EnvGroupRename func(ctx context.Context, groupID, name string) error
 	// EnvSeeder, when set (OpenBao is wired), seeds a render.yaml's sync:false and
 	// generateValue vars into the mutable env-vars store SEED-ONCE (w1/m35), so a
 	// later dashboard edit wins and a re-sync never overwrites/re-mints. nil => a

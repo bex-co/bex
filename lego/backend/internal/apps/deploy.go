@@ -1002,6 +1002,13 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err := s.preflightBlueprintEnv(ctx, st); err != nil {
 		return StackResult{}, err
 	}
+	// A group this Blueprint applied and someone renamed since is the one the
+	// apply renames back and updates, never a second copy (w8/382). A taken
+	// declared name is refused here, before any write.
+	envGroupRenames, err := s.renamedBlueprintEnvGroups(ctx, req.BlueprintID, st.envGroups, nil)
+	if err != nil {
+		return StackResult{}, err
+	}
 	// Creating in, or moving into or out of, a protected environment needs an
 	// Admin (w3/m281) — refused here, before the groupings' first write.
 	ctx, err = s.requireBlueprintPlacement(ctx, st, snap)
@@ -1031,7 +1038,7 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	// changed by both gets one deploy (w4/633). It runs even when a later
 	// step fails: the group's values are already written.
 	ctx, deployed := withBlueprintDeploys(ctx)
-	rolls, err := s.applyStackEnvGroups(ctx, st.envGroups, assignments, &res)
+	rolls, err := s.applyStackEnvGroups(ctx, st.envGroups, envGroupRenames, assignments, &res)
 	defer func() {
 		for _, roll := range rolls {
 			if rollErr := roll(context.WithoutCancel(ctx), deployed); rollErr != nil && err == nil {
@@ -1121,13 +1128,18 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 // group's id+name view onto res (the applyStackDatastores contract, w6/064).
 // Env groups first: a service's fromGroup links one, which needs the group (and
 // its projection Secret) to exist before the service is patched.
-func (s *Service) applyStackEnvGroups(ctx context.Context, envGroups []parsedEnvGroup, assignments map[string]core.EnvironmentAssignment, res *StackResult) (rolls []func(context.Context, map[string]bool) error, err error) {
+func (s *Service) applyStackEnvGroups(ctx context.Context, envGroups []parsedEnvGroup, renames map[string]blueprintEnvGroupRename, assignments map[string]core.EnvironmentAssignment, res *StackResult) (rolls []func(context.Context, map[string]bool) error, err error) {
 	if len(envGroups) == 0 {
 		return nil, nil // nothing declared — and the EnvGroups seam may not be wired
 	}
 	for _, g := range envGroups {
 		if err := requireDeployAuthority(ctx, s); err != nil {
 			return rolls, err
+		}
+		if renamed, ok := renames[g.name]; ok {
+			if err := s.renameBlueprintEnvGroupBack(ctx, g.name, renamed); err != nil {
+				return rolls, err
+			}
 		}
 		roll, err := s.EnvGroups.ApplyEnvGroup(ctx, g.name, g.literals, g.generates)
 		if err != nil {

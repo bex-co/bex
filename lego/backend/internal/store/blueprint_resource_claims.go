@@ -95,12 +95,77 @@ func (s *PGStore) ClaimBlueprintResource(ctx context.Context, tenantID string, k
 }
 
 // ReleaseBlueprintResourceClaims drops every claim held by blueprintID in the
-// workspace (disconnect). Resources and CR labels are cleared separately.
+// workspace (disconnect), its env group claims included. Resources and CR
+// labels are cleared separately.
 func (s *PGStore) ReleaseBlueprintResourceClaims(ctx context.Context, tenantID, blueprintID string) error {
-	_, err := s.Pool.Exec(ctx,
-		`DELETE FROM blueprint_resource_claims WHERE tenant_id = $1 AND blueprint_id = $2`,
-		tenantID, blueprintID)
-	return err
+	return s.withTx(ctx, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx,
+			`DELETE FROM blueprint_resource_claims WHERE tenant_id = $1 AND blueprint_id = $2`,
+			tenantID, blueprintID); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx,
+			`DELETE FROM blueprint_env_group_claims WHERE tenant_id = $1 AND blueprint_id = $2`,
+			tenantID, blueprintID)
+		return err
+	})
+}
+
+// BlueprintEnvGroupClaims maps each env group blueprintID's syncs applied, by
+// the name its file declares it as, to the group's id (w8/382). A group
+// renamed outside the file keeps its row; a deleted one has none.
+func (s *PGStore) BlueprintEnvGroupClaims(ctx context.Context, tenantID, blueprintID string) (map[string]string, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT name, env_group_id FROM blueprint_env_group_claims
+		WHERE tenant_id = $1 AND blueprint_id = $2`, tenantID, blueprintID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var name, groupID string
+		if err := rows.Scan(&name, &groupID); err != nil {
+			return nil, err
+		}
+		out[name] = groupID
+	}
+	return out, rows.Err()
+}
+
+// RecordBlueprintEnvGroupClaims makes groups (declared name → env group id)
+// the whole of blueprintID's env group claims: a name its file stopped
+// declaring is dropped, as ReleaseBlueprintResourceClaim drops a claim. Only
+// groups of the same workspace that still exist are recorded. The claims are
+// not exclusive: another Blueprint may record the same group.
+func (s *PGStore) RecordBlueprintEnvGroupClaims(ctx context.Context, tenantID, blueprintID string, groups map[string]string) error {
+	if tenantID == "" || blueprintID == "" {
+		return fmt.Errorf("record blueprint env group claims: missing identity")
+	}
+	names := make([]string, 0, len(groups))
+	groupIDs := make([]string, 0, len(groups))
+	for name, groupID := range groups {
+		names = append(names, name)
+		groupIDs = append(groupIDs, groupID)
+	}
+	return s.withTx(ctx, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `
+			DELETE FROM blueprint_env_group_claims
+			WHERE tenant_id = $1 AND blueprint_id = $2 AND NOT (name = ANY($3::text[]))`,
+			tenantID, blueprintID, names); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `
+			INSERT INTO blueprint_env_group_claims (tenant_id, blueprint_id, name, env_group_id)
+			SELECT $1, $2, t.name, t.env_group_id
+			FROM unnest($3::text[], $4::text[]) AS t (name, env_group_id)
+			JOIN env_groups g ON g.id = t.env_group_id AND g.tenant_id = $1
+			ON CONFLICT (blueprint_id, name) DO UPDATE
+			SET env_group_id = EXCLUDED.env_group_id, claimed_at = now()
+			WHERE blueprint_env_group_claims.env_group_id <> EXCLUDED.env_group_id`,
+			tenantID, blueprintID, names, groupIDs)
+		return err
+	})
 }
 
 // ListBlueprintResourceClaims returns claims owned by blueprintID.

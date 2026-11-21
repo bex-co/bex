@@ -432,6 +432,28 @@ For an existing service, `services[].name` matches its `immutableName`, not its 
 
 The public-host `slug` is a separate field. It can acquire a suffix to resolve a cross-workspace hostname collision, so do not infer a Blueprint name from the URL or slug. For example, a service displayed as `Customer API` could have `immutableName: api` and `slug: api-abcd`; its manifest must use `name: api`. This exposes the existing identity contract without changing matching behavior.
 
+### Env groups renamed outside the file (w8/382, 2026-11-21)
+
+An env group has one name, so a dashboard rename changed the only key a sync matched it by. The next plan read `create` for the declared name, and approving it minted a second group of that name and linked the services to both. The newer copy's values won, so the renamed original looked live while edits to it changed nothing. This was reproduced on production on 2026-11-21 with `examples/blueprint-refs` in `bex-canary`, pin `7e481dece7ac`.
+
+Render documents no case for a resource renamed outside its file. What it does document points one way:
+
+- "If any such changes conflict with Blueprint-defined configuration, the next Blueprint sync overwrites them" ([Blueprints](https://render.com/docs/infrastructure-as-code)).
+- A Blueprint lists its resources by id, `environment_group` included (`GET /blueprints/{blueprintId}` `resources[]`, in the pinned OpenAPI).
+- Render's forum support describes name matching only for a Blueprint's first sync: "Matching the names/types of the services will be detected when the Blueprint first syncs" (community.render.com thread 5131, 2022).
+
+No Render staff answer, Render-run test or Render-side observation settles a rename, and the GitHub pull requests that assert name matching only assume it. So bex picks the behavior that never leaves a service linked to two copies silently, which also follows the overwrite rule:
+
+- Each sync records every env group it applied, by id, under the name its file declares (`blueprint_env_group_claims`). The record is not exclusive: two Blueprints may declare one group, as before. It is the whole set each time, so a group the file stops declaring is no longer followed. A disconnect drops it.
+- A plan matches a declared group to its claimed group by id when the group has another name now, and shows an `update` of `name` on that group's id. Its variables and environment are compared against the claimed group.
+- The sync renames the group back to its declared name before it applies it, so the services keep their one link and the group keeps its id, values and links.
+- When another group has taken the declared name meanwhile, the plan and the sync refuse, naming both groups. Renaming the claimed group back cannot take the name, and adopting the other group would link the services to both again.
+- A claimed group that was deleted is recreated under its declared name, as Render recreates a deleted Blueprint resource.
+- While a group is renamed, the Blueprint's `resources[]` still lists it by its id under the declared name.
+- Claims start with the first sync after this change. A group renamed before its Blueprint's first sync since then is still matched by name.
+
+Services do not have the gap. A dashboard rename changes a service's label, not the `immutableName` its file's `name` matches ([Service display labels and Blueprint names](#service-display-labels-and-blueprint-names-w4121)), so the next plan is unchanged and no copy is created. The label is kept, since it is not Blueprint-defined configuration. The production walk on 2026-11-21 confirmed `no_changes` after a service rename.
+
 ## Automatic source ordering and recovery (w1/m182, 2026-10-20)
 
 Render documents that pushes modifying a linked Blueprint trigger automatic configuration updates and that Auto Sync can be disabled ([Blueprints](https://render.com/docs/infrastructure-as-code)). It does not document delivery ordering, lease fencing, crash recovery, coalescing or force-push guarantees. The rules below are **bex correctness choices, not measured Render guarantees**.

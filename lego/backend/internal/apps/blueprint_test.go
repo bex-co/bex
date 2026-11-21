@@ -61,6 +61,9 @@ type fakeBlueprintStore struct {
 	// claims maps a workspace's claimed resource to its owning blueprint id
 	// (w8/m40).
 	claims map[fakeClaimKey]string
+	// envGroupClaims maps tenant|blueprint id to its env group claims,
+	// declared name → group id (w8/382).
+	envGroupClaims map[string]map[string]string
 	// ownersReads and ownerLookups count the workspace-wide and the
 	// per-resource claim reads (w5/114).
 	ownersReads, ownerLookups int
@@ -850,6 +853,23 @@ func (f *fakeBlueprintStore) ReleaseBlueprintResourceClaims(_ context.Context, t
 			delete(f.claims, k)
 		}
 	}
+	delete(f.envGroupClaims, tenantID+"|"+blueprintID)
+	return nil
+}
+
+func (f *fakeBlueprintStore) BlueprintEnvGroupClaims(_ context.Context, tenantID, blueprintID string) (map[string]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return maps.Clone(f.envGroupClaims[tenantID+"|"+blueprintID]), nil
+}
+
+func (f *fakeBlueprintStore) RecordBlueprintEnvGroupClaims(_ context.Context, tenantID, blueprintID string, groups map[string]string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.envGroupClaims == nil {
+		f.envGroupClaims = map[string]map[string]string{}
+	}
+	f.envGroupClaims[tenantID+"|"+blueprintID] = maps.Clone(groups)
 	return nil
 }
 

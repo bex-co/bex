@@ -273,10 +273,7 @@ func (s *Service) claimBlueprintResourceName(ctx context.Context, kind store.Blu
 	if !ok || req.BlueprintID == "" || s.Blueprints == nil {
 		return nil
 	}
-	tenantID, ok := s.Tenant(ctx)
-	if !ok {
-		tenantID = s.resolveTenantID(ctx)
-	}
+	tenantID := s.blueprintTenantID(ctx)
 	if tenantID == "" {
 		return nil
 	}
@@ -450,6 +447,9 @@ func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID strin
 				}
 			}
 		}
+	}
+	if err := s.recordBlueprintEnvGroupClaims(ctx, tenantID, blueprintID, st); err != nil {
+		return err
 	}
 	return s.releaseUndeclaredClaims(ctx, tenantID, blueprintID, st)
 }

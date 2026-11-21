@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"maps"
 	"net/http"
 	"path"
 	"regexp"
@@ -124,8 +125,15 @@ type BlueprintStore interface {
 	// already ours; non-empty transfers only while that owner still holds it.
 	ClaimBlueprintResource(ctx context.Context, tenantID string, kind store.BlueprintClaimKind, name, blueprintID, expectedOwner string) error
 	// ReleaseBlueprintResourceClaims drops every durable claim for a
-	// disconnected Blueprint (w8/m40).
+	// disconnected Blueprint (w8/m40), its env group claims included.
 	ReleaseBlueprintResourceClaims(ctx context.Context, tenantID, blueprintID string) error
+	// BlueprintEnvGroupClaims maps each env group blueprintID's syncs applied,
+	// by the name its file declares it as, to the group's id (w8/382).
+	BlueprintEnvGroupClaims(ctx context.Context, tenantID, blueprintID string) (map[string]string, error)
+	// RecordBlueprintEnvGroupClaims makes groups (declared name → id) the
+	// whole of blueprintID's env group claims (w8/382). Not exclusive: two
+	// Blueprints may claim one group.
+	RecordBlueprintEnvGroupClaims(ctx context.Context, tenantID, blueprintID string, groups map[string]string) error
 	// ListBlueprintResourceClaims lists durable claims owned by blueprintID —
 	// also what a sync diffs against the manifest's declarations (w4/m125).
 	ListBlueprintResourceClaims(ctx context.Context, tenantID, blueprintID string) ([]store.BlueprintResourceClaim, error)
@@ -2481,7 +2489,14 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 	envGroupByName := map[string]string{}
 	if declared[BlueprintResourceEnvVarGroup] && s.EnvGroups != nil {
 		if groups, err := s.EnvGroups.GroupIDsByName(ctx); err == nil {
-			envGroupByName = groups
+			maps.Copy(envGroupByName, groups)
+		}
+		// A group b applied stays b's under a name given outside the file,
+		// until the next sync names it back (w8/382).
+		if s.Blueprints != nil {
+			if claims, err := s.Blueprints.BlueprintEnvGroupClaims(ctx, tenantID, b.ID); err == nil {
+				maps.Copy(envGroupByName, claims)
+			}
 		}
 	}
 

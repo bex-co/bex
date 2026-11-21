@@ -1,0 +1,226 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package apps
+
+import (
+	"context"
+	"slices"
+	"strings"
+	"testing"
+
+	"github.com/bex-co/bex/lego/backend/internal/envgroups"
+	"github.com/bex-co/bex/lego/backend/internal/envgroups/envgroupstest"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
+
+// w8/382, production 2026-11-21 on examples/blueprint-refs: after the env
+// group a Blueprint created was renamed in the dashboard, the next plan read
+// `create` for the declared name, and approving it minted a second group and
+// linked the service to both. A Blueprint now follows the group it applied by
+// id and its sync renames it back, as the next sync overwrites a change made
+// outside the file on Render (render.com/docs/infrastructure-as-code).
+
+const renamedGroupManifest = `envVarGroups:
+  - name: shared
+    envVars:
+      - {key: LOG_LEVEL, value: info}
+services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: nginx:1}
+    envVars:
+      - fromGroup: shared
+`
+
+// renamedGroupBlueprint is an approved Blueprint of renamedGroupManifest over
+// the real env-groups service, wired as the composition root wires it.
+func renamedGroupBlueprint(t *testing.T) (*Service, *envgroups.Service, context.Context, string) {
+	t.Helper()
+	svc, _, ctx := newOnboardingService(t, renamedGroupManifest)
+	groups := &envgroups.Service{Base: svc.Base, Store: newMemKV(), Groups: envgroupstest.New()}
+	svc.EnvGroups = groups
+	svc.EnvGroupWritesOwed = envgroups.GroupWritesOwed(groups)
+	svc.EnvGroupRename = envgroups.GroupRename(groups)
+	res, err := svc.CreatePlannedBlueprint(ctx, RenderCreateBlueprintRequest{Name: "stack", OwnerID: "tea-a", Source: RenderBlueprintSource{Repo: "https://github.com/a/app"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.ApproveBlueprint(ctx, res.Blueprint.ID, "tea-a", "", nil); err != nil {
+		t.Fatal(err)
+	}
+	return svc, groups, ctx, res.Blueprint.ID
+}
+
+// onlyGroup is the workspace's one env group.
+func onlyGroup(t *testing.T, groups *envgroups.Service, ctx context.Context) envgroups.EnvGroupView {
+	t.Helper()
+	list, err := groups.ListEnvGroups(ctx, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 {
+		names := make([]string, 0, len(list))
+		for _, g := range list {
+			names = append(names, g.ID+"="+g.Name)
+		}
+		t.Fatalf("env groups = %v, want exactly one", names)
+	}
+	return list[0]
+}
+
+// webGroupSecrets is the env group Secrets web links.
+func webGroupSecrets(t *testing.T, svc *Service, ctx context.Context) []string {
+	t.Helper()
+	web := &appv1alpha1.App{}
+	if err := svc.Client.Get(ctx, appKey(t, svc, "web"), web); err != nil {
+		t.Fatal(err)
+	}
+	return slices.DeleteFunc(slices.Clone(web.Spec.EnvFromSecrets), func(s string) bool { return !strings.HasPrefix(s, "evg-") })
+}
+
+// syncActions is a plan's sync's actions.
+func syncActions(t *testing.T, plan BlueprintPlanResult) []BlueprintPlanAction {
+	t.Helper()
+	if plan.Sync == nil {
+		t.Fatalf("plan = %+v, want a planned sync", plan)
+	}
+	return plan.Sync.Actions
+}
+
+func TestASyncRenamesItsEnvGroupBackInsteadOfMintingACopy(t *testing.T) {
+	svc, groups, ctx, bpID := renamedGroupBlueprint(t)
+	original := onlyGroup(t, groups, ctx)
+	if got := webGroupSecrets(t, svc, ctx); len(got) != 1 || got[0] != original.ID+"-env" {
+		t.Fatalf("web links %v, want only %s", got, original.ID)
+	}
+	if _, err := groups.RenameEnvGroup(ctx, original.ID, "renamed-outside"); err != nil {
+		t.Fatal(err)
+	}
+
+	plan, err := svc.PlanBlueprint(ctx, bpID, "tea-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	action := planAction(t, syncActions(t, plan), "shared")
+	if action.Operation != BlueprintPlanUpdate || action.ResourceID != original.ID ||
+		len(action.ChangedFields) != 1 || action.ChangedFields[0].Path != "name" {
+		t.Fatalf("renamed group planned %+v, want an update of name alone on %s", action, original.ID)
+	}
+	// While renamed, the Blueprint still lists the group as its own.
+	view, err := svc.GetBlueprintByID(ctx, bpID, "tea-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.ContainsFunc(view.Resources, func(r BlueprintResource) bool { return r.ID == original.ID }) {
+		t.Errorf("resources %+v do not list the renamed group %s", view.Resources, original.ID)
+	}
+
+	if _, err := svc.ApproveBlueprint(ctx, bpID, "tea-a", "", nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := onlyGroup(t, groups, ctx); got.ID != original.ID || got.Name != "shared" {
+		t.Fatalf("after the sync the group is %s=%q, want %s=shared", got.ID, got.Name, original.ID)
+	}
+	if got := webGroupSecrets(t, svc, ctx); len(got) != 1 || got[0] != original.ID+"-env" {
+		t.Fatalf("after the sync web links %v, want only %s", got, original.ID)
+	}
+	if again, err := svc.PlanBlueprint(ctx, bpID, "tea-a"); err != nil || again.PlanningOutcome != PlanningNoChanges {
+		t.Fatalf("re-plan = %+v err=%v, want no_changes", again, err)
+	}
+}
+
+// A declared name another group took after the rename cannot be given back,
+// and adopting that group would link web to both: the plan and the sync
+// refuse, naming both groups, and nothing is written.
+func TestASyncRefusesWhenItsEnvGroupsNameWasTakenMeanwhile(t *testing.T) {
+	svc, groups, ctx, bpID := renamedGroupBlueprint(t)
+	original := onlyGroup(t, groups, ctx)
+	if _, err := groups.RenameEnvGroup(ctx, original.ID, "renamed-outside"); err != nil {
+		t.Fatal(err)
+	}
+	other, err := groups.CreateEnvGroup(ctx, envgroups.CreateEnvGroupRequest{Name: "shared", OwnerID: "tea-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	plan, err := svc.PlanBlueprint(ctx, bpID, "tea-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.PlanningOutcome != PlanningFailed || len(plan.Notices) == 0 ||
+		!strings.Contains(plan.Notices[0].Message, original.ID) || !strings.Contains(plan.Notices[0].Message, other.ID) {
+		t.Fatalf("plan = %+v, want a failed plan naming %s and %s", plan, original.ID, other.ID)
+	}
+	if _, err := svc.SyncBlueprint(ctx, bpID, "tea-a", "", "", nil); err == nil || !strings.Contains(err.Error(), other.ID) {
+		t.Fatalf("sync err = %v, want the refusal naming %s", err, other.ID)
+	}
+	list, err := groups.ListEnvGroups(ctx, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("env groups after the refusal = %+v, want the two there were", list)
+	}
+	if got := webGroupSecrets(t, svc, ctx); len(got) != 1 || got[0] != original.ID+"-env" {
+		t.Fatalf("after the refusal web links %v, want only %s", got, original.ID)
+	}
+}
+
+// A group deleted since is recreated under its declared name, as Render
+// recreates a deleted Blueprint resource, and web links only the new one.
+func TestASyncRecreatesADeletedEnvGroupOnce(t *testing.T) {
+	svc, groups, ctx, bpID := renamedGroupBlueprint(t)
+	original := onlyGroup(t, groups, ctx)
+	if err := groups.DeleteEnvGroup(ctx, original.ID); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := svc.PlanBlueprint(ctx, bpID, "tea-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if action := planAction(t, syncActions(t, plan), "shared"); action.Operation != BlueprintPlanCreate {
+		t.Fatalf("deleted group planned %+v, want a create", action)
+	}
+	if _, err := svc.ApproveBlueprint(ctx, bpID, "tea-a", "", nil); err != nil {
+		t.Fatal(err)
+	}
+	recreated := onlyGroup(t, groups, ctx)
+	if recreated.ID == original.ID || recreated.Name != "shared" {
+		t.Fatalf("recreated group %s=%q, want a new group named shared", recreated.ID, recreated.Name)
+	}
+	if got := webGroupSecrets(t, svc, ctx); len(got) != 1 || got[0] != recreated.ID+"-env" {
+		t.Fatalf("web links %v, want only %s", got, recreated.ID)
+	}
+}
+
+// Services were never matched by their label: a dashboard rename leaves the
+// Blueprint name (immutableName) the file matches, so the plan is unchanged
+// and no second service appears (ADR049 § Service display labels).
+func TestASyncAfterAServiceRenameKeepsTheService(t *testing.T) {
+	svc, _, ctx, bpID := renamedGroupBlueprint(t)
+	if _, err := svc.SetDisplayName(ctx, "web", "renamed-web"); err != nil {
+		t.Fatal(err)
+	}
+	if plan, err := svc.PlanBlueprint(ctx, bpID, "tea-a"); err != nil || plan.PlanningOutcome != PlanningNoChanges {
+		t.Fatalf("plan after a service rename = %+v err=%v, want no_changes", plan, err)
+	}
+	var apps appv1alpha1.AppList
+	if err := svc.Client.List(ctx, &apps); err != nil || len(apps.Items) != 1 {
+		t.Fatalf("%d services after the rename (err %v), want 1", len(apps.Items), err)
+	}
+}

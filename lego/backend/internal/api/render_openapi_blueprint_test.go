@@ -209,6 +209,14 @@ func (f *blueprintFixtureStore) ReleaseBlueprintResourceClaims(context.Context, 
 	return nil
 }
 
+func (f *blueprintFixtureStore) BlueprintEnvGroupClaims(context.Context, string, string) (map[string]string, error) {
+	return nil, nil
+}
+
+func (f *blueprintFixtureStore) RecordBlueprintEnvGroupClaims(context.Context, string, string, map[string]string) error {
+	return nil
+}
+
 func (f *blueprintFixtureStore) ReleaseBlueprintResourceClaim(context.Context, string, store.BlueprintClaimKind, string, string) error {
 	return nil
 }

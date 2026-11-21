@@ -50,6 +50,9 @@ func (s *Service) blueprintActionPlan(ctx context.Context, ir BlueprintIR, st pa
 	if err != nil {
 		return BlueprintPlan{}, false, err
 	}
+	if err := resolver.followRenamedEnvGroups(ctx, blueprintID); err != nil {
+		return BlueprintPlan{}, false, err
+	}
 	plan, err := PlanBlueprintIR(ctx, ir, resolver)
 	if err != nil {
 		return BlueprintPlan{}, false, err
@@ -75,6 +78,10 @@ type blueprintActionResolver struct {
 	databases map[string]*appv1alpha1.Database
 	keyValues map[string]*appv1alpha1.KeyValue
 	envGroups map[string]string
+	// envGroupRenames are the declared groups this Blueprint applied that
+	// were renamed outside the file since: each resolves to its claimed group,
+	// which the sync renames back (w8/382).
+	envGroupRenames map[string]blueprintEnvGroupRename
 	// buildSources are the workspace's build source carriers by name; links
 	// resolves each service's buildSource name (nil: one the apply creates).
 	buildSources map[string]*appv1alpha1.App
@@ -145,6 +152,28 @@ func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedSt
 		resolver.keyValues[keyValue.Spec.Name] = keyValue
 	}
 	return resolver, nil
+}
+
+// followRenamedEnvGroups resolves each declared group that blueprintID applied
+// and someone renamed since to that group, as the apply does.
+func (r *blueprintActionResolver) followRenamedEnvGroups(ctx context.Context, blueprintID string) error {
+	renames, err := r.service.renamedBlueprintEnvGroups(ctx, blueprintID, r.parsed.envGroups, r.envGroups)
+	if err != nil {
+		return err
+	}
+	for name, renamed := range renames {
+		r.envGroups[name] = renamed.id
+	}
+	r.envGroupRenames = renames
+	return nil
+}
+
+// liveEnvGroupName is the name the group declared as name has now.
+func (r *blueprintActionResolver) liveEnvGroupName(name string) string {
+	if renamed, ok := r.envGroupRenames[name]; ok {
+		return renamed.current
+	}
+	return name
 }
 
 func (r *blueprintActionResolver) ResolveBlueprintResource(_ context.Context, kind BlueprintResourceKind, name string) (BlueprintCurrentResource, bool, error) {
@@ -424,7 +453,11 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 			return action, nil
 		}
 	case BlueprintResourceEnvVarGroup:
-		// The group was matched by its name, so name is never a change.
+		// A group matched by its name keeps it. One renamed outside the file
+		// was matched by this Blueprint's claim, and the sync names it back.
+		if r.liveEnvGroupName(resource.Name) != resource.Name {
+			addChangedFields(&action, "name")
+		}
 		if err := r.planEnvGroupVars(ctx, &action, resource.Name); err != nil {
 			return BlueprintPlanAction{}, err
 		}
@@ -528,7 +561,7 @@ func (r *blueprintActionResolver) planEnvGroupVars(ctx context.Context, action *
 	owed, known := true, false
 	if writesOwed := r.service.EnvGroupWritesOwed; writesOwed != nil {
 		var err error
-		owed, err = writesOwed(ctx, group.name, group.literals, group.generates)
+		owed, err = writesOwed(ctx, r.liveEnvGroupName(group.name), group.literals, group.generates)
 		switch {
 		case errors.Is(err, core.ErrForbidden):
 			owed = true
@@ -576,7 +609,7 @@ func (r *blueprintActionResolver) planEnvGroupMove(ctx context.Context, action *
 		if err != nil {
 			return err
 		}
-		current, unknown = byName[name], false
+		current, unknown = byName[r.liveEnvGroupName(name)], false
 	}
 	if target := placements.targets[group.grouping]; !unknown && target.environmentID == current && target.environmentID != "" {
 		return nil // stays put
