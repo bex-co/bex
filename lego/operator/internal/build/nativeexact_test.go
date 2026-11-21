@@ -612,6 +612,47 @@ func TestNodeCompanionCopiesAnOlderVariantRelease(t *testing.T) {
 	}
 }
 
+// w8/370: a companion Node with no version signal takes the dated default a
+// Node service created at the same time gets, as Render's Python, Ruby and Go
+// builds name theirs. An older or unknown-age service keeps the reviewed patch.
+func TestNodeCompanionDefaultFollowsTheServiceCreationDate(t *testing.T) {
+	reviewed, _ := nativeToolchains[nativeNodeRuntime].find("24")
+	if reviewed.version == "24.22.1" {
+		t.Fatal("the 24 line's reviewed patch is Render's default 24.22.1 again; this test no longer separates the two")
+	}
+	const image = "node:24.22.1-bookworm@" + exactDigest
+	fake := &fakeExact{digests: map[string]string{"node:24.22.1-bookworm": exactDigest}}
+	companion := func(t *testing.T, runtime string, created time.Time) (NativeChoice, string) {
+		t.Helper()
+		choices, dockerfile := resolveExactAt(t, fake, created, runtime, nil, nil)
+		for _, c := range choices[1:] {
+			if c.Label == "Node" {
+				return c, dockerfile
+			}
+		}
+		t.Fatalf("no Node companion in %+v", choices)
+		return NativeChoice{}, ""
+	}
+	common := nativeCommonBase
+	t.Cleanup(func() { nativeCommonBase = common })
+	for _, base := range []string{common, ""} {
+		nativeCommonBase = base
+		for runtime := range nativeJSCompanionRuntimes {
+			t.Run(fmt.Sprintf("%s/common base %t", runtime, base != ""), func(t *testing.T) {
+				node, dockerfile := companion(t, runtime, renderNodeDefault20261021.Add(time.Hour))
+				if node.Image != image || node.Narration() != "==> Using Node 24.22.1 (default)" || !strings.Contains(dockerfile, "COPY --link --from="+image+" ") {
+					t.Errorf("new service: %+v narration %q\n%s", node, node.Narration(), dockerfile)
+				}
+				for name, created := range map[string]time.Time{"unknown age": {}, "before the step": renderNodeDefault20261021.Add(-time.Hour)} {
+					if node, _ := companion(t, runtime, created); node.Image != reviewed.image || node.Narration() != "==> Using Node "+reviewed.version+" (default)" {
+						t.Errorf("%s must keep the reviewed %s: %+v narration %q", name, reviewed.version, node, node.Narration())
+					}
+				}
+			})
+		}
+	}
+}
+
 // TestOlderNodeReleaseRunsOnTheLineImage is w8/309's real-image check: it
 // resolves NODE_VERSION=16.13.2 against Docker Hub, builds the Dockerfile and
 // runs node, npm and pnpm from the image. Opt-in: needs Docker and the network.

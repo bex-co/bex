@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 )
 
 func commonNativeRuntimeChoice(ctx context.Context, exact ExactImageResolver, runtime string, choice NativeChoice) (NativeChoice, error) {
@@ -181,8 +182,11 @@ func commonNativeRubyToolLines(choice NativeChoice) string {
 	return nativeCommonSourceGuard(image, choice.legacySource, false) + nativeRubyToolLines(image) + "RUN --network=none /sbin/ldconfig\n" + choice.runtimeCheck
 }
 
-func resolveNativeCompanion(ctx context.Context, exact ExactImageResolver, runtime string, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, string, error) {
-	choice, err := ResolveNativeVersion(runtime, env, readFile)
+// resolveNativeCompanion picks a companion toolchain as a primary of that
+// runtime created at created would be: Render's Python, Ruby, Go and Rust
+// builds name their Node's dated default, as its Node services do (w8/370).
+func resolveNativeCompanion(ctx context.Context, exact ExactImageResolver, created time.Time, runtime string, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, string, error) {
+	choice, err := ResolveNativeVersionAt(created, runtime, env, readFile)
 	if err != nil {
 		return NativeChoice{}, "", err
 	}

@@ -120,7 +120,7 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 		}
 	}
 	if nativeJSCompanionRuntimes[runtime] {
-		node, lines, err := resolveNativeCompanion(ctx, exact, nativeNodeRuntime, env, readFile)
+		node, lines, err := resolveNativeCompanion(ctx, exact, created, nativeNodeRuntime, env, readFile)
 		if err != nil {
 			return nil, err
 		}
@@ -141,9 +141,11 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 	// asks for, chosen as a Ruby service's would be (w8/m105). The Gemfile
 	// need not be the site's — a mobile app's CocoaPods Gemfile pins its own
 	// Ruby — so a Ruby no line serves is left out with a line saying so, and
-	// the site builds as it did before Ruby was supplied.
+	// the site builds as it did before Ruby was supplied. Whether Render's
+	// dated Ruby defaults reach a static site is unmeasured, so its default
+	// stays the line's reviewed patch (w8/370).
 	if strings.Contains(rewritten, nativeStaticInstallCopy) && hasGemfile(sourceDir) {
-		ruby, lines, err := resolveNativeCompanion(ctx, exact, nativeRubyRuntime, env, readFile)
+		ruby, lines, err := resolveNativeCompanion(ctx, exact, time.Time{}, nativeRubyRuntime, env, readFile)
 		var unsupported *UnsupportedVersionError
 		switch {
 		case errors.As(err, &unsupported):
