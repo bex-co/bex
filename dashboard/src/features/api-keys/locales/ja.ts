@@ -44,7 +44,8 @@ const jaApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.colCreatedBy": {
     message: "作成者",
-    description: "API Keys table column header — who minted the key",
+    description:
+      "API Keys table: read to screen readers before the creator of each key in an Admin's every-member view — who minted the key",
   },
   "apiKeys.colLastUsed": {
     message: "最終使用",

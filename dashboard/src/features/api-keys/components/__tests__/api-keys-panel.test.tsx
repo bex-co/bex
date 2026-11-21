@@ -388,3 +388,119 @@ describe("ApiKeysPanel", () => {
     }
   });
 });
+
+describe("ApiKeysPanel — Render's columns at fixed widths (w9/132)", () => {
+  /** The width class of each column, as the table's colgroup sets it. */
+  function colWidths(root: ParentNode): string[] {
+    return [...root.querySelectorAll("table colgroup col")].map(
+      (col) => col.className,
+    );
+  }
+
+  /** The table's class, and each column's width class. */
+  function layout(root: ParentNode) {
+    return {
+      table: root.querySelector("table")?.className,
+      cols: colWidths(root),
+    };
+  }
+
+  /** Whether a row's first cell holds at the left and its last at the right. */
+  function holdsEnds(row: Element | null): boolean {
+    const cells = row ? [...row.children] : [];
+    return (
+      cells.length > 0 &&
+      cells[0].classList.contains("sticky") &&
+      cells[0].classList.contains("left-0") &&
+      cells[cells.length - 1].classList.contains("sticky") &&
+      cells[cells.length - 1].classList.contains("right-0")
+    );
+  }
+
+  it("pins the column set: Name, Permissions, Client ID, Created, Last used and revoke, with no Created by", () => {
+    apiKeysState.keys = [key("key-1", "deploy-agent", "admin-1")];
+    const { container } = render(<ApiKeysPanel />);
+
+    expect(tableHeaders(container)).toEqual([
+      "Name",
+      "Permissions",
+      "Client ID",
+      "Created",
+      "Last used",
+      "Actions",
+    ]);
+    expect(container.querySelector("table")).toHaveClass("table-fixed");
+    // Name takes what the fixed columns leave.
+    expect(colWidths(container)).toEqual([
+      "",
+      "w-36",
+      "w-34",
+      "w-18",
+      "w-22",
+      "w-13",
+    ]);
+    expect(container.querySelectorAll("tbody tr td")).toHaveLength(6);
+    expect(screen.queryByText("admin-1")).not.toBeInTheDocument();
+  });
+
+  it("lays out the loading frame and the route's skeleton with the ready table's columns", () => {
+    apiKeysState.keys = [key("key-1", "deploy-agent", "admin-1")];
+    const ready = render(<ApiKeysPanel />);
+    const readyLayout = layout(ready.container);
+    expect(readyLayout.cols).toHaveLength(6);
+    ready.unmount();
+
+    apiKeysState.keys = [];
+    apiKeysState.loading = true;
+    const loading = render(<ApiKeysPanel />);
+    expect(layout(loading.container)).toEqual(readyLayout);
+    loading.unmount();
+
+    const { container } = render(<ApiKeysPanelSkeleton />);
+    expect(layout(container)).toEqual(readyLayout);
+  });
+
+  it("holds the name and the revoke at the table's ends, in the table and its frame alike", () => {
+    apiKeysState.keys = [key("key-1", "deploy-agent", "admin-1")];
+    const ready = render(<ApiKeysPanel />);
+    expect(holdsEnds(ready.container.querySelector("thead tr"))).toBe(true);
+    expect(holdsEnds(ready.container.querySelector("tbody tr"))).toBe(true);
+    ready.unmount();
+
+    apiKeysState.keys = [];
+    apiKeysState.loading = true;
+    const { container } = render(<ApiKeysPanel />);
+    expect(holdsEnds(container.querySelector("thead tr"))).toBe(true);
+    expect(holdsEnds(container.querySelector("tbody tr"))).toBe(true);
+  });
+
+  it("names each key's creator under its name in an Admin's every-member view, and its loading frame reserves that line", async () => {
+    admin = true;
+    apiKeysState.keys = [key("key-own", "mine", "admin-1")];
+    allMembersKeys.keys = [
+      key("key-own", "mine", "admin-1"),
+      key("key-dev", "dev-ci", "dev-1"),
+    ];
+    const user = userEvent.setup();
+    const ready = render(<ApiKeysPanel />);
+    expect(screen.queryByText("admin-1")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "All members' keys" }));
+    const names = [...ready.container.querySelectorAll("tbody tr")].map(
+      (row) => row.querySelector("td")?.textContent,
+    );
+    expect(names).toEqual(["mineCreated by admin-1", "dev-ciCreated by dev-1"]);
+    ready.unmount();
+
+    apiKeysState.keys = [];
+    allMembersKeys.keys = [];
+    apiKeysState.loading = true;
+    const { container } = render(<ApiKeysPanel />);
+    const creatorLine = "[data-testid='api-key-creator-placeholder']";
+    expect(container.querySelector(creatorLine)).toBeNull();
+    await user.click(screen.getByRole("tab", { name: "All members' keys" }));
+    expect(
+      container.querySelector(`tbody tr td:first-child ${creatorLine}`),
+    ).not.toBeNull();
+  });
+});

@@ -51,4 +51,4 @@ The note's open question had three options: narrow every role's list to their ow
 - **Expected outcome:** a member opening Account Settings sees the keys they made, as on Render. A Developer can no longer revoke an Admin's or a teammate's CI key. An Admin still has one deliberate place to revoke a demoted member's or a creator-less key.
 - **Why now:** w9/m514 just gave every role its own keys and left Developer and Admin on the old view. ADR018's API keys row carries this as its one open divergence. Every new member and key adds to the set a Developer can revoke by mistake.
 - **Render parity:** included (t007). The change is customer-facing on REST, GraphQL, MCP and the dashboard.
-- **Adjacent, out of scope:** [w9/132](../../132.md) (the API keys table is wider than its card) touches the same panel. Coordinate, but do not fold it in.
+- **Adjacent, out of scope:** [w9/132](../../done/132.md) (the API keys table is wider than its card) touches the same panel. Coordinate, but do not fold it in.

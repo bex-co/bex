@@ -27,9 +27,9 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-07-08T00:00:00Z"));
 });
 
-describe("ApiKeyRow — metadata columns (w4/m13/t003, w4/m105)", () => {
-  it("shows client_id with a copy affordance alongside created-by and last-used", () => {
-    render(
+describe("ApiKeyRow — metadata columns (w4/m13/t003, w4/m105, w9/132)", () => {
+  it("shows client_id with a copy affordance beside the ages, and no creator in the caller's own list", () => {
+    const { container } = render(
       <table>
         <tbody>
           <ApiKeyRow entry={entry} onRevoke={vi.fn()} revoking={false} />
@@ -40,16 +40,38 @@ describe("ApiKeyRow — metadata columns (w4/m13/t003, w4/m105)", () => {
     expect(
       screen.getByRole("button", { name: "Copy client ID for deploy-agent" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("user:minter")).toBeInTheDocument();
     expect(screen.getByText("3d")).toBeInTheDocument(); // 2026-07-05 → 2026-07-08
+    // Render's columns: name, permissions, key, created, last used, revoke.
+    expect(container.querySelectorAll("td")).toHaveLength(6);
+    expect(screen.queryByText("user:minter")).not.toBeInTheDocument();
   });
 
-  it("renders a 'Never' last-used and an em dash created-by when the metadata is absent", () => {
+  it("names the creator under the key's name in an Admin's every-member view", () => {
+    const { container } = render(
+      <table>
+        <tbody>
+          <ApiKeyRow
+            entry={entry}
+            namesCreator
+            onRevoke={vi.fn()}
+            revoking={false}
+          />
+        </tbody>
+      </table>,
+    );
+    const nameCell = container.querySelectorAll("td")[0];
+    expect(nameCell).toHaveTextContent("deploy-agentCreated by user:minter");
+    expect(within(nameCell).getByText("user:minter")).toBeInTheDocument();
+    expect(container.querySelectorAll("td")).toHaveLength(6);
+  });
+
+  it("renders a 'Never' last-used and an em dash for a key with no recorded creator", () => {
     render(
       <table>
         <tbody>
           <ApiKeyRow
             entry={{ ...entry, createdBy: null, lastUsedAt: null }}
+            namesCreator
             onRevoke={vi.fn()}
             revoking={false}
           />

@@ -8,11 +8,7 @@ import {
   CardAction,
   CardContent,
 } from "@/common/components/ui/card";
-import { Table, TableBody } from "@/common/components/ui/table";
-import {
-  PanelCenteredState,
-  PanelTableHeader,
-} from "@/common/components/panel-states";
+import { PanelCenteredState } from "@/common/components/panel-states";
 import { isForbiddenError } from "@/common/lib/graphql-error";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useSelfSubjects } from "@/common/hooks/use-self-subjects";
@@ -22,11 +18,11 @@ import { useWorkspaceAdmin } from "@/features/api-keys/hooks/use-workspace-admin
 import { ApiKeyRow } from "@/features/api-keys/components/api-key-row";
 import { CreateApiKeyDialog } from "@/features/api-keys/components/create-api-key-dialog";
 import { ApiKeysTableFrame } from "@/features/api-keys/components/api-keys-panel-skeleton";
+import { ApiKeysTable } from "@/features/api-keys/components/api-keys-table";
 import {
   ApiKeysScopeTabs,
   type ApiKeysScope,
 } from "@/features/api-keys/components/api-keys-scope-tabs";
-import { apiKeysColumns } from "@/features/api-keys/lib/api-keys-columns";
 
 /**
  * Settings → API Keys (w4/m8): lists the caller's bex-minted machine
@@ -48,7 +44,6 @@ export function ApiKeysPanel() {
   const { revoke, revoking } = useRevokeApiKey();
   const { subjects } = useSelfSubjects();
 
-  const columns = apiKeysColumns(t);
   const forbidden = isForbiddenError(error);
   const initialLoading = loading && keys.length === 0;
 
@@ -94,7 +89,7 @@ export function ApiKeysPanel() {
             body={t(forbidden ? "apiKeys.forbiddenBody" : "apiKeys.errorBody")}
           />
         ) : initialLoading ? (
-          <ApiKeysTableFrame columns={columns} />
+          <ApiKeysTableFrame namesCreator={allMembers} />
         ) : keys.length === 0 ? (
           <PanelCenteredState
             icon={<KeyRound />}
@@ -102,23 +97,21 @@ export function ApiKeysPanel() {
             body={t("apiKeys.emptyBody")}
           />
         ) : (
-          <Table>
-            <PanelTableHeader columns={columns} />
-            <TableBody>
-              {keys.map((entry) => (
-                <ApiKeyRow
-                  key={entry.id}
-                  entry={entry}
-                  own={
-                    !allMembers ||
-                    (!!entry.createdBy && subjects.has(entry.createdBy))
-                  }
-                  onRevoke={handleRevoke}
-                  revoking={revoking === entry.id}
-                />
-              ))}
-            </TableBody>
-          </Table>
+          <ApiKeysTable>
+            {keys.map((entry) => (
+              <ApiKeyRow
+                key={entry.id}
+                entry={entry}
+                own={
+                  !allMembers ||
+                  (!!entry.createdBy && subjects.has(entry.createdBy))
+                }
+                namesCreator={allMembers}
+                onRevoke={handleRevoke}
+                revoking={revoking === entry.id}
+              />
+            ))}
+          </ApiKeysTable>
         )}
       </CardContent>
     </Card>

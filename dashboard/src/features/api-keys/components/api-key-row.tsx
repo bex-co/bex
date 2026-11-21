@@ -5,6 +5,10 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspaceSubjectLabel } from "@/common/hooks/use-workspace-subject-label";
 import { RelativeAge } from "@/common/components/relative-time";
 import { EditApiKeyPermissionsDialog } from "@/features/api-keys/components/edit-api-key-permissions-dialog";
+import {
+  API_KEYS_ACTIONS_CELL,
+  API_KEYS_NAME_CELL,
+} from "@/features/api-keys/components/api-keys-table";
 import { summarizePermissions } from "@/features/api-keys/lib/permissions";
 import type {
   ApiKeyPermissionsView,
@@ -20,19 +24,27 @@ export interface ApiKeyRowProps {
    * its creator.
    */
   own?: boolean;
+  /**
+   * Name the key's creator under its name: an Admin's every-member view
+   * (w9/m539). The caller's own list leaves it out, every key there being
+   * theirs, as on Render (w9/132).
+   */
+  namesCreator?: boolean;
   onRevoke: (id: string, name: string) => Promise<boolean>;
   /** True while this row's revoke is in flight — disables its own control. */
   revoking: boolean;
 }
 
 /**
- * One API Keys row: name, permissions with the gear that changes them
+ * One API Keys row, Render's columns (w9/132): name (over its creator in an
+ * Admin's every-member view), permissions with the gear that changes them
  * (w9/m496, Render's "Read-Only ⚙") on the caller's own key, client id,
- * provenance, usage ages, and revoke.
+ * usage ages, and revoke.
  */
 export function ApiKeyRow({
   entry,
   own = true,
+  namesCreator = false,
   onRevoke,
   revoking,
 }: ApiKeyRowProps) {
@@ -41,15 +53,27 @@ export function ApiKeyRow({
 
   return (
     <TableRow>
-      <TableCell className="font-mono text-sm">{entry.name}</TableCell>
-      <TableCell className="text-sm whitespace-nowrap">
+      <TableCell className={API_KEYS_NAME_CELL}>
+        {/* Render sets the name in the body face and the key in mono. */}
+        <div className="text-sm">{entry.name}</div>
+        {namesCreator ? (
+          <div
+            className="text-muted-foreground truncate text-xs"
+            title={entry.createdBy ? createdBy : undefined}
+          >
+            <span className="sr-only">{t("apiKeys.colCreatedBy")} </span>
+            <span>{entry.createdBy ? createdBy : "—"}</span>
+          </div>
+        ) : null}
+      </TableCell>
+      <TableCell className="text-sm">
         <div className="flex items-center gap-1">
           <PermissionsSummary permissions={entry.permissions} />
           {own ? <EditApiKeyPermissionsDialog entry={entry} /> : null}
         </div>
       </TableCell>
       <TableCell className="font-mono text-sm">
-        <div className="flex max-w-[14rem] items-center gap-1">
+        <div className="flex items-center gap-1">
           <code className="min-w-0 flex-1 truncate" title={entry.id}>
             {entry.id}
           </code>
@@ -64,16 +88,13 @@ export function ApiKeyRow({
       <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
         <RelativeAge value={entry.createdAt} />
       </TableCell>
-      <TableCell className="text-muted-foreground max-w-[12rem] truncate text-sm">
-        {entry.createdBy ? createdBy : "—"}
-      </TableCell>
       <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
         <RelativeAge
           value={entry.lastUsedAt}
           fallback={t("apiKeys.neverUsed")}
         />
       </TableCell>
-      <TableCell className="text-right whitespace-nowrap">
+      <TableCell className={API_KEYS_ACTIONS_CELL}>
         <RevokeIconButton
           label={t("apiKeys.revokeNamed", { name: entry.name })}
           confirmTitle={t("apiKeys.revokeConfirmTitle", { name: entry.name })}
@@ -95,7 +116,10 @@ export function ApiKeyRow({
   );
 }
 
-/** A key's grant in a word: All, Read only, No permissions, or Custom and how many. */
+/**
+ * A key's grant in a word: All, No permissions, or Read only or Custom over
+ * how many (stacked, so the column keeps Render's width, w9/132).
+ */
 function PermissionsSummary({
   permissions,
 }: {
@@ -115,7 +139,7 @@ function PermissionsSummary({
     case "readOnly":
     case "custom":
       return (
-        <span className="flex items-baseline gap-1.5">
+        <span className="flex min-w-0 flex-col">
           <span>{t(COUNTED_SUMMARY_LABEL[summary.kind])}</span>
           <span className="text-muted-foreground text-xs">
             {t("apiKeys.permSummaryCount", { count: summary.count })}
