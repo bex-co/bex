@@ -1,6 +1,6 @@
 # w6 · m547 — A disk-bearing service is unavailable for a few seconds on a deploy, as on Render
 
-**Worker:** worker6 **Goal:** a deploy, restart or plan change of a service with a disk (`Recreate`) leaves it unavailable for a few seconds plus the app's own stop and start time, as Render documents, instead of the tens of seconds to minutes bex's probe cadence, node choice and image pull can add today. **Status:** blocked (t001–t004, t007, t008 and t010 done; t005 waits for the production pin)
+**Worker:** worker6 **Goal:** a deploy, restart or plan change of a service with a disk (`Recreate`) leaves it unavailable for a few seconds plus the app's own stop and start time, as Render documents, instead of the tens of seconds to minutes bex's probe cadence, node choice and image pull can add today. **Status:** todo (t001–t004, t007, t008 and t010 done; t005 re-measures on production)
 
 ## Tasks (in order)
 
@@ -45,5 +45,9 @@
 - **Measured before (t001, production, 2026-11-21):** 15.8–23.3 s on the same node and 39.8–46.8 s across nodes. The time went to node moves (27–32 s each), the 10 s startup period (7–9 s) and the kubelet's 10 s sync (1.7–8.6 s on the same node). LUKS `cryptsetup open` (2.1–2.3 s) is a floor the operator cannot move.
 - **Expected after:** about 6–9 s on the volume's node: stop 0.5 s, a sync of at most 2 s, LUKS 2.2 s, mount 0.8 s, pull 0.6–2.2 s, start 0.3 s, a 1 s probe and Ready 0.4 s. That is above the definition of done's "about 5 s". t005 names the excess phase if the measurement agrees, and t006 records the measured bound.
 - **Gate (clears by itself): pin must carry `e0b731eba`.** Then t005 runs its steps: a tenant node at 2 s (roll `bex-tenant-0` with `rolloutAfter` if none), the fixture, and the runs.
-- **Filed on the way:** [w6/159](../../159.md) (a plan change after an `imageUrl` deploy redeploys the create-time image) and [w6/160](../../160.md) (pre-pull for large images).
+- **Filed on the way:** [w6/159](../159.md) (a plan change after an `imageUrl` deploy redeploys the create-time image) and [w6/160](../160.md) (pre-pull for large images).
 
+## UNBLOCKED — 2026-11-21: production pin `cce6c749f6ff` carries `e0b731eba`
+
+- **Source:** verified evidence. The newest `chore(deploy): pin platform images to <sha>` on `origin/main` is `b32b3ff43` (`cce6c749f6ff`), and `git merge-base --is-ancestor e0b731eba cce6c749f6ff` succeeds.
+- **Next:** t005 finds a tenant node whose kubelet `/configz` reads `nodeStatusUpdateFrequency: 2s` (rolling `bex-tenant-0` with `rolloutAfter` if none does), then re-measures as t001 did. t006 records the bound, and t009 closes.
