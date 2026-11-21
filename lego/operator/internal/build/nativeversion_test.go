@@ -569,7 +569,16 @@ func TestResolveNativeBun(t *testing.T) {
 		{"canary (Render 2026-10-16) starts on the default line", map[string]string{"BUN_VERSION": "canary"}, nil, "1.4", "BUN_VERSION=canary", "canary", ""},
 		{".bun-version canary", nil, map[string]string{".bun-version": "Canary\n"}, "1.4", ".bun-version", "canary", ""},
 		{"no opt-in", map[string]string{"NODE_VERSION": "22"}, map[string]string{"package.json": "{}"}, "", "", "", ""},
-		{"unsupported", map[string]string{"BUN_VERSION": "0.8.1"}, nil, "", "", "", "BUN_VERSION=0.8.1 is not a supported Bun version; supported Bun lines are 1.2, 1.3, 1.4 or canary"},
+		// Render installs any exact Bun release (w8/372): one on no reviewed
+		// line starts on the default line's image, which the resolve phase
+		// swaps for its own or refuses by name.
+		{"sweep r23 BUN_VERSION=1.1.38", map[string]string{"BUN_VERSION": "1.1.38"}, nil, "1.4", "BUN_VERSION=1.1.38", "1.1.38", ""},
+		{".bun-version 1.0.36", nil, map[string]string{".bun-version": "1.0.36\n"}, "1.4", ".bun-version", "1.0.36", ""},
+		{"bun-v prefix on no reviewed line", map[string]string{"BUN_VERSION": "bun-v1.1.0"}, nil, "1.4", "BUN_VERSION=bun-v1.1.0", "1.1.0", ""},
+		{"a 0.x release", map[string]string{"BUN_VERSION": "0.8.1"}, nil, "1.4", "BUN_VERSION=0.8.1", "0.8.1", ""},
+		{"no such release waits for the registry", map[string]string{"BUN_VERSION": "9.9.9"}, nil, "1.4", "BUN_VERSION=9.9.9", "9.9.9", ""},
+		{"a line no review carries", map[string]string{"BUN_VERSION": "1.1"}, nil, "", "", "", "BUN_VERSION=1.1 is not a supported Bun version; supported Bun lines are 1.2, 1.3, 1.4 or canary, and any other Bun release installs when named exactly (such as 1.1.38)"},
+		{"a range no review carries", nil, map[string]string{".bun-version": "~1.1.0"}, "", "", "", `.bun-version "~1.1.0" is not a supported Bun version; supported Bun lines are 1.2, 1.3, 1.4 or canary, and any other Bun release installs when named exactly (such as 1.1.38)`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			readFile := func(name string) ([]byte, bool) {
@@ -586,6 +595,10 @@ func TestResolveNativeBun(t *testing.T) {
 			}
 			if err != nil || found != (tc.line != "") || choice.Line != tc.line || choice.Source != tc.source || choice.Exact != tc.exact {
 				t.Fatalf("= %+v, %v, %v; want line %q from %q, exact %q", choice, found, err, tc.line, tc.source, tc.exact)
+			}
+			// Only a release on no reviewed line must install or fail by name.
+			if want := tc.exact != "" && tc.exact != nativeBunCanary && !strings.HasPrefix(tc.exact, tc.line+"."); choice.unreviewed != want {
+				t.Errorf("unreviewed = %v for %+v, want %v", choice.unreviewed, choice, want)
 			}
 		})
 	}
@@ -715,6 +728,73 @@ func TestResolveNativeBuildPinsAnExactBun(t *testing.T) {
 	}
 }
 
+// w8/372: Render installs any exact Bun release (render.com/docs/bun-version),
+// so one no reviewed line carries installs from its own official image, pinned
+// by digest, from BUN_VERSION or .bun-version alike. A release with no image
+// does not exist and fails the build by name; an unreadable registry fails it
+// too, since no reviewed line stands in for another Bun.
+func TestResolveNativeBuildInstallsAnyBunRelease(t *testing.T) {
+	o := nativeOptions()
+	o.Runtime = "node"
+	for _, tc := range []struct {
+		name    string
+		env     map[string]string
+		files   map[string]string
+		release string
+		log     string
+	}{
+		{"BUN_VERSION", map[string]string{"BUN_VERSION": "1.1.38"}, nil, "1.1.38", "==> Using Bun 1.1.38 (from BUN_VERSION=1.1.38)"},
+		{".bun-version", nil, map[string]string{".bun-version": "1.0.36\n", "bun.lock": "{}"}, "1.0.36", "==> Using Bun 1.0.36 (from .bun-version)"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			exact := &fakeExact{digests: map[string]string{bunRepo + ":" + tc.release: exactDigest}}
+			bundle, dockerfile, src := writeResolveFixture(t, o, tc.env, tc.files)
+			choices, err := ResolveNativeBuildExact(t.Context(), exact, time.Time{}, "node", bundle, dockerfile, src)
+			image := "oven/bun:" + tc.release + "@" + exactDigest
+			if err != nil || len(choices) != 2 || choices[1].Line != tc.release || choices[1].Image != image {
+				t.Fatalf("choices = %+v, %v; want Bun %s pinned to its digest", choices, err, tc.release)
+			}
+			if got := choices[1].Narration(); got != tc.log {
+				t.Errorf("narration = %q, want %q", got, tc.log)
+			}
+			if df, _ := os.ReadFile(dockerfile); !strings.Contains(string(df), "COPY --link --from="+image+" /usr/local/bin/bun /usr/local/bin/bun\n") {
+				t.Fatalf("Dockerfile does not copy Bun %s:\n%s", tc.release, df)
+			}
+		})
+	}
+
+	for _, tc := range []struct {
+		name, request, file, wantErr string
+	}{
+		{"BUN_VERSION", "9.9.9", "", "BUN_VERSION=9.9.9 is not a Bun release: no official image oven/bun:9.9.9 exists; set a published Bun release, latest, or a supported Bun line (1.2, 1.3, 1.4 or canary)"},
+		{".bun-version", "", "v1.1.99\n", `.bun-version "v1.1.99" is not a Bun release: no official image oven/bun:1.1.99 exists; set a published Bun release, latest, or a supported Bun line (1.2, 1.3, 1.4 or canary)`},
+		{"a version no tag can name", "1.1." + strings.Repeat("9", 200), "", "BUN_VERSION=1.1." + strings.Repeat("9", 104) + "… is not a Bun release: no official image oven/bun:1.1." + strings.Repeat("9", 116) + "… exists; set a published Bun release, latest, or a supported Bun line (1.2, 1.3, 1.4 or canary)"},
+	} {
+		t.Run("no such release from "+tc.name, func(t *testing.T) {
+			env, files := map[string]string{"BUN_VERSION": tc.request}, map[string]string{}
+			if tc.file != "" {
+				env, files = nil, map[string]string{".bun-version": tc.file}
+			}
+			bundle, dockerfile, src := writeResolveFixture(t, o, env, files)
+			before, _ := os.ReadFile(dockerfile)
+			_, err := ResolveNativeBuildExact(t.Context(), &fakeExact{}, time.Time{}, "node", bundle, dockerfile, src)
+			var unsupported *UnsupportedVersionError
+			if !errors.As(err, &unsupported) || err.Error() != tc.wantErr {
+				t.Fatalf("err = %v, want the tenant error %q", err, tc.wantErr)
+			}
+			if after, _ := os.ReadFile(dockerfile); string(after) != string(before) {
+				t.Error("a release that does not exist rewrote the Dockerfile")
+			}
+		})
+	}
+
+	bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"BUN_VERSION": "1.1.38"}, nil)
+	_, err := ResolveNativeBuildExact(t.Context(), &fakeExact{err: errors.New("registry down")}, time.Time{}, "node", bundle, dockerfile, src)
+	if _, tenant := errors.AsType[*UnsupportedVersionError](err); err == nil || tenant || !strings.Contains(err.Error(), "look up Bun 1.1.38 (oven/bun:1.1.38): registry down") {
+		t.Fatalf("offline err = %v, want a platform error naming the lookup", err)
+	}
+}
+
 // A service opted into Bun by its lockfile alone builds on Render's default
 // Bun for its creation date (render.com/docs/bun-version, w8/371): that
 // release's line, installed exactly when it is not the reviewed patch. Any
@@ -745,7 +825,7 @@ func TestResolveNativeBunDatedDefault(t *testing.T) {
 		{"2026-07-16 to 2026-09-09: the 1.3 line's patch", at("2026-08-01T00:00:00Z"), nil, lock, "1.3", "", "==> Using Bun 1.3.14 (from bun.lock)"},
 		{"2025-12-08 to 2026-07-16", at("2026-01-01T00:00:00Z"), nil, lock, "1.3", "1.3.4", ""},
 		{"2025-08-18 to 2025-12-08", at("2025-08-18T00:00:00Z"), nil, lock, "1.2", "1.2.20", ""},
-		{"before 2025-08-18: no reviewed 1.1 line", at("2025-01-01T00:00:00Z"), nil, lock, "1.4", "", "==> Using Bun 1.4.4 (from bun.lock)"},
+		{"before 2025-08-18: 1.1.0 on no reviewed line (w8/372)", at("2025-01-01T00:00:00Z"), nil, lock, "1.4", "1.1.0", ""},
 		{"unknown age", time.Time{}, nil, lock, "1.4", "", "==> Using Bun 1.4.4 (from bun.lock)"},
 		{"an explicit BUN_VERSION=1.4.4 wins", at("2026-11-21T00:00:00Z"), map[string]string{"BUN_VERSION": "1.4.4"}, lock, "1.4", "", "==> Using Bun 1.4.4 (from BUN_VERSION=1.4.4)"},
 		{"a .bun-version line wins", at("2026-11-21T00:00:00Z"), nil, map[string]string{".bun-version": "1.3\n", "bun.lock": "{}"}, "1.3", "", ""},
@@ -797,6 +877,21 @@ func TestResolveNativeBuildPinsTheDatedDefaultBun(t *testing.T) {
 	if err != nil || len(choices) != 2 || choices[1].Image != reviewed.image ||
 		choices[1].Narration() != "==> Using Bun 1.4.4 (from bun.lock)\n==> No official image oven/bun:1.4.5; using the reviewed Bun 1.4 image" {
 		t.Fatalf("missing tag choices = %+v, %v; want the reviewed 1.4.4, said", choices, err)
+	}
+
+	// Render's 1.1.0 for a service created before 2025-08-18 is on no reviewed
+	// line (w8/372): installed exactly, and as a default it falls back.
+	old := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+	bundle, dockerfile, src = writeResolveFixture(t, o, nil, map[string]string{".nvmrc": "22\n", "bun.lock": "{}"})
+	choices, err = ResolveNativeBuildExact(t.Context(), &fakeExact{digests: map[string]string{bunRepo + ":1.1.0": exactDigest}}, old, "node", bundle, dockerfile, src)
+	if err != nil || len(choices) != 2 || choices[1].Image != "oven/bun:1.1.0@"+exactDigest || choices[1].Narration() != "==> Using Bun 1.1.0 (from bun.lock)" {
+		t.Fatalf("pre-2025-08-18 choices = %+v, %v; want Bun 1.1.0 pinned to its digest", choices, err)
+	}
+	bundle, dockerfile, src = writeResolveFixture(t, o, nil, map[string]string{".nvmrc": "22\n", "bun.lock": "{}"})
+	choices, err = ResolveNativeBuildExact(t.Context(), &fakeExact{}, old, "node", bundle, dockerfile, src)
+	if err != nil || len(choices) != 2 || choices[1].Image != reviewed.image ||
+		choices[1].Narration() != "==> Using Bun 1.4.4 (from bun.lock)\n==> No official image oven/bun:1.1.0; using the reviewed Bun 1.4 image" {
+		t.Fatalf("pre-2025-08-18 missing tag choices = %+v, %v; want the reviewed 1.4.4, said", choices, err)
 	}
 }
 

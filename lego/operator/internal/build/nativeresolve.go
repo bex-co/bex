@@ -449,10 +449,15 @@ func nativeVersionResolver(o Options) corev1.Container {
 // resolveNativeBunExact is ResolveNativeBun with an exact version or a
 // floating tag (canary) pinned to the digest it has for this build, the
 // floating one narrated in the build log; an unreachable registry keeps the
-// reviewed line (pinExactVersion).
+// reviewed line (pinExactVersion). A release on no reviewed line has no line
+// to keep, so it installs or fails by name (pinBunRelease).
 func resolveNativeBunExact(ctx context.Context, exact ExactImageResolver, created time.Time, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, bool, error) {
 	bun, withBun, err := ResolveNativeBun(created, env, readFile)
 	if err != nil || !withBun || bun.Exact == "" {
+		return bun, withBun, err
+	}
+	if bun.unreviewed {
+		bun, err = pinBunRelease(ctx, exact, bun, readFile)
 		return bun, withBun, err
 	}
 	bun = pinExactVersion(ctx, exact, bun)
@@ -460,6 +465,37 @@ func resolveNativeBunExact(ctx context.Context, exact ExactImageResolver, create
 		bun.note = "==> Bun " + bun.Exact + " is " + bun.Image
 	}
 	return bun, withBun, nil
+}
+
+// pinBunRelease installs a Bun release no reviewed line carries (BUN_VERSION=1.1.38),
+// as Render installs any exact Bun release (render.com/docs/bun-version,
+// w8/372): Bun's official image of that release, pinned by digest like the
+// lines' images. Every Bun release since 1.0.0 has one. A release with no
+// image does not exist, and the build fails by name rather than on another
+// Bun; so does a registry that cannot be read. A version too long to be a tag
+// names no release either.
+func pinBunRelease(ctx context.Context, exact ExactImageResolver, bun NativeChoice, readFile func(string) ([]byte, bool)) (NativeChoice, error) {
+	var digest string
+	var found bool
+	var err error
+	if tagPattern.MatchString(bun.Exact) {
+		digest, found, err = exact.ResolveTag(ctx, bunRepo, bun.Exact)
+	}
+	if err != nil {
+		return NativeChoice{}, fmt.Errorf("look up Bun %s (%s:%s): %w", bun.Exact, bunRepo, bun.Exact, err)
+	}
+	if !found {
+		what := bun.Source
+		if !strings.Contains(what, "=") {
+			what = fmt.Sprintf("%s %q", what, firstLine(readFile, what))
+		}
+		return NativeChoice{}, &UnsupportedVersionError{msg: fmt.Sprintf(
+			"%s is not a Bun release: no official image %s:%s exists; set a published Bun release, latest, or a supported Bun line (%s)",
+			boundedRequest(what), bunRepo, boundedRequest(bun.Exact), nativeBun.supportedLines())}
+	}
+	bun.Image = bunRepo + ":" + bun.Exact + "@" + digest
+	bun.Line = bun.Exact
+	return bun, nil
 }
 
 // pinExactVersion swaps the line's reviewed image for the official image of the

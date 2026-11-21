@@ -42,6 +42,10 @@ type NativeChoice struct {
 	// swaps in that version's official image, or says why it could not.
 	Exact    string
 	upstream string
+	// unreviewed: Exact is a release on no reviewed line (an anyRelease
+	// toolchain's), so the resolve phase installs it or refuses it by name;
+	// it never builds on another release (w8/372).
+	unreviewed bool
 	// erlang is the Erlang/OTP release an Elixir service pinned more exactly
 	// than its major (ERLANG_VERSION=28.3, w8/197); the resolve phase builds on
 	// an image carrying it, or fails by name.
@@ -376,8 +380,9 @@ func rustToolchainChannel(raw []byte) string {
 // found is false when the service does not opt in, which leaves the build
 // exactly as before (w8/m71). A version maps onto its major.minor line, as the
 // primary toolchains' do, and a fully qualified one is installed exactly, as
-// Render does (w8/315). A lockfile alone names no version, so a service created
-// at created gets Render's default for that date (w8/371).
+// Render does (w8/315), on a reviewed line or not (w8/372). A lockfile alone
+// names no version, so a service created at created gets Render's default for
+// that date (w8/371).
 func ResolveNativeBun(created time.Time, env map[string]string, readFile func(string) ([]byte, bool)) (choice NativeChoice, found bool, err error) {
 	r := resolver{t: nativeBun, env: env, readFile: readFile}
 	choice, found, err = r.firstFound(r.fromEnv("BUN_VERSION", r.bunRequest), r.fromFile(".bun-version", r.bunRequest), r.fromLockfile(nativeBunLockfiles...))
@@ -398,8 +403,8 @@ func ResolveNativeBun(created time.Time, env map[string]string, readFile func(st
 // bunDefaults are Render's default Bun releases by service creation date,
 // oldest first (render.com/docs/bun-version, read 2026-11-21): what a service
 // that opts in by its lockfile alone builds on (w8/371). The first step is
-// Render's "Before 2025-08-18"; no reviewed line carries 1.1 (w8/372), so it
-// keeps the default line until one does.
+// Render's "Before 2025-08-18", which no reviewed line carries: it is
+// installed exactly from its own image (w8/372).
 var bunDefaults = []exactDefault{
 	{time.Unix(0, 0).UTC(), "1.1.0"},
 	{time.Date(2025, time.August, 18, 0, 0, 0, 0, time.UTC), "1.2.20"},
@@ -413,12 +418,18 @@ var bunDefaults = []exactDefault{
 
 // datedBunDefault moves a lockfile-only Bun choice onto Render's default for a
 // service created at created: that release's line, installed exactly when it
-// is not the line's reviewed patch. A service of unknown age, or a default on
-// no reviewed line, keeps the default line's reviewed patch.
+// is not the line's reviewed patch. A default on no reviewed line (1.1.0) is
+// installed exactly on the default line's image, which it falls back to, as
+// every default does, when its own cannot be had. A service of unknown age
+// keeps the default line's reviewed patch.
 func (r resolver) datedBunDefault(created time.Time, choice NativeChoice) NativeChoice {
 	version := datedDefault(bunDefaults, created)
+	if version == "" {
+		return choice
+	}
 	line, ok := r.minorLine(version)
 	if !ok {
+		choice.Exact = version
 		return choice
 	}
 	dated, _ := r.choice(line, choice.Source) // minorLine found the line
@@ -523,7 +534,9 @@ func boundedRequest(what string) string {
 
 // bunRequest maps a Bun version request: `canary`, `latest`, a plain version onto its
 // major.minor line (a bare major onto that major's newest line), otherwise a
-// semver range.
+// semver range. A fully qualified release on no reviewed line is returned as
+// itself: Render installs any exact Bun release (w8/372), and r.choice starts
+// it on the default line's image until the resolve phase pins its own.
 func (r resolver) bunRequest(request string) (string, bool) {
 	lower := strings.TrimPrefix(strings.TrimPrefix(strings.ToLower(strings.TrimSpace(request)), "bun-"), "v")
 	switch {
@@ -534,7 +547,10 @@ func (r resolver) bunRequest(request string) (string, bool) {
 	case plainVersion.MatchString(lower) && !strings.Contains(lower, "."):
 		return r.highestSatisfying(lower + ".x")
 	case plainVersion.MatchString(lower):
-		return r.minorLine(lower)
+		if line, ok := r.minorLine(lower); ok || !fullVersion.MatchString(lower) {
+			return line, ok
+		}
+		return lower, true
 	}
 	return r.highestSatisfying(lower)
 }
@@ -590,6 +606,11 @@ func (r resolver) choice(line, source string) (NativeChoice, error) {
 		return c, err
 	}
 	l, ok := r.t.find(line)
+	if !ok && r.t.anyRelease && fullVersion.MatchString(line) {
+		c, err := r.choice(r.t.defaultLine, source)
+		c.Exact, c.unreviewed = line, true
+		return c, err
+	}
 	if !ok {
 		return NativeChoice{}, fmt.Errorf("no %s line %q", r.t.label, line)
 	}
@@ -599,17 +620,25 @@ func (r resolver) choice(line, source string) (NativeChoice, error) {
 // unsupported names the request the way the tenant wrote it: what is the env
 // assignment (`PYTHON_VERSION=2.7.18`) or the file and its quoted content.
 func (r resolver) unsupported(what string) error {
-	what = boundedRequest(what)
-	lines := make([]string, len(r.t.lines))
-	for i, l := range r.t.lines {
+	msg := fmt.Sprintf("%s is not a supported %s version; supported %s lines are %s",
+		boundedRequest(what), r.t.label, r.t.label, r.t.supportedLines())
+	if r.t.anyRelease {
+		msg += ", and any other " + r.t.label + " release installs when named exactly (such as 1.1.38)"
+	}
+	return &UnsupportedVersionError{msg: msg}
+}
+
+// supportedLines lists the reviewed lines and the floating tag for a refusal.
+func (t nativeToolchain) supportedLines() string {
+	lines := make([]string, len(t.lines))
+	for i, l := range t.lines {
 		lines[i] = l.line
 	}
 	supported := strings.Join(lines, ", ")
-	if r.t.floating != "" {
-		supported += " or " + r.t.floating
+	if t.floating != "" {
+		supported += " or " + t.floating
 	}
-	return &UnsupportedVersionError{msg: fmt.Sprintf("%s is not a supported %s version; supported %s lines are %s",
-		what, r.t.label, r.t.label, supported)}
+	return supported
 }
 
 // fromEnv reads one env var; source names it with its value, as Render's docs do.
