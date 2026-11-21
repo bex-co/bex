@@ -25,7 +25,7 @@ import (
 // registerCredentialREST mounts all 7 Render public API routes for sandbox
 // group credentials (w2/m532, docs/ADR122-sandbox-credential-brokering.md).
 func (s *Service) registerCredentialREST(mux *http.ServeMux) {
-	mux.HandleFunc("GET /v1/sandbox-groups/{sandboxGroupId}/credentials", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "GET /v1/sandbox-groups/{sandboxGroupId}/credentials", func(w http.ResponseWriter, r *http.Request) {
 		creds, err := s.ListGroupCredentials(r.Context(), r.PathValue("sandboxGroupId"))
 		if err != nil {
 			core.WriteErr(w, err)
@@ -33,7 +33,7 @@ func (s *Service) registerCredentialREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, creds)
 	})
-	mux.HandleFunc("POST /v1/sandbox-groups/{sandboxGroupId}/credentials", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "POST /v1/sandbox-groups/{sandboxGroupId}/credentials", func(w http.ResponseWriter, r *http.Request) {
 		var req CreateGroupCredentialRequest
 		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))
 		if err := core.DecodeJSON(r, &req); err != nil {
@@ -47,7 +47,7 @@ func (s *Service) registerCredentialREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusCreated, cred)
 	})
-	mux.HandleFunc("GET /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "GET /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}", func(w http.ResponseWriter, r *http.Request) {
 		cred, err := s.GetGroupCredential(r.Context(), r.PathValue("sandboxGroupId"), r.PathValue("credentialId"))
 		if err != nil {
 			core.WriteErr(w, err)
@@ -55,7 +55,7 @@ func (s *Service) registerCredentialREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, cred)
 	})
-	mux.HandleFunc("PATCH /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "PATCH /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}", func(w http.ResponseWriter, r *http.Request) {
 		var req UpdateGroupCredentialRequest
 		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))
 		if err := core.DecodeJSON(r, &req); err != nil {
@@ -69,7 +69,7 @@ func (s *Service) registerCredentialREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, cred)
 	})
-	mux.HandleFunc("DELETE /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "DELETE /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}", func(w http.ResponseWriter, r *http.Request) {
 		if err := s.DeleteGroupCredential(r.Context(), r.PathValue("sandboxGroupId"), r.PathValue("credentialId")); err != nil {
 			core.WriteErr(w, err)
 			return
@@ -77,7 +77,7 @@ func (s *Service) registerCredentialREST(mux *http.ServeMux) {
 		// Render's delete-sandbox-group-credential returns 202 Accepted with an empty body.
 		w.WriteHeader(http.StatusAccepted)
 	})
-	mux.HandleFunc("GET /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}/versions", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "GET /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}/versions", func(w http.ResponseWriter, r *http.Request) {
 		versions, err := s.ListGroupCredentialVersions(r.Context(), r.PathValue("sandboxGroupId"), r.PathValue("credentialId"))
 		if err != nil {
 			core.WriteErr(w, err)
@@ -85,7 +85,7 @@ func (s *Service) registerCredentialREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, versions)
 	})
-	mux.HandleFunc("POST /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}/restore", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "POST /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}/restore", func(w http.ResponseWriter, r *http.Request) {
 		var req RestoreGroupCredentialRequest
 		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))
 		if err := core.DecodeJSON(r, &req); err != nil {

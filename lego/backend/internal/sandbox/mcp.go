@@ -23,7 +23,6 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // spawnSandboxArgs is the MCP input for spawn_sandbox. Template selects a
@@ -109,7 +108,7 @@ type execSandboxArgs struct {
 // Render `ea sandbox create` intent; sandbox_exec runs a command via the same
 // authorized gateway path the CLI uses, returning buffered output (no SSE dance).
 func (s *Service) RegisterMCP(server *mcp.Server) {
-	mcputil.AddTool(server, &mcp.Tool{Name: "spawn_sandbox", Description: fmt.Sprintf("Create a hosted agent sandbox from a registered template and return its id and status. networkPolicy is Render's: omitted means allow-all (any public destination); {type:\"deny-all\"} blocks all outbound traffic; {type:\"allow-list\", rules:[{domain}]} allows only HTTPS to the listed hostnames (a leading *. covers one subdomain level). env sets environment variables inside the sandbox (at most %d, %d KB across names and values); values are never returned. sandboxGroupId puts it in one of the workspace's sandbox groups (list_sandbox_groups); omitted, it goes in the default group, which a workspace gets when it first needs one. A group at its concurrencyLimit refuses the create with SANDBOX_GROUP_CONCURRENCY_LIMIT. buildId (an sbb- id) or buildName starts it from an image imported into its group (import_sandbox_image); a name uses that group's newest succeeded import of it. snapshotId (an snp- id) or snapshotName starts it from a snapshot of its group (create_sandbox_snapshot) instead: it has the snapshot's files, and its plan, networkPolicy, timeoutSeconds and idleTimeoutSeconds default to the snapshot's source sandbox's; a name uses the group's newest available snapshot of it.", maxSandboxEnvVars, maxSandboxEnvBytes/1024)},
+	addTool(s, server, &mcp.Tool{Name: "spawn_sandbox", Description: fmt.Sprintf("Create a hosted agent sandbox from a registered template and return its id and status. networkPolicy is Render's: omitted means allow-all (any public destination); {type:\"deny-all\"} blocks all outbound traffic; {type:\"allow-list\", rules:[{domain}]} allows only HTTPS to the listed hostnames (a leading *. covers one subdomain level). env sets environment variables inside the sandbox (at most %d, %d KB across names and values); values are never returned. sandboxGroupId puts it in one of the workspace's sandbox groups (list_sandbox_groups); omitted, it goes in the default group, which a workspace gets when it first needs one. A group at its concurrencyLimit refuses the create with SANDBOX_GROUP_CONCURRENCY_LIMIT. buildId (an sbb- id) or buildName starts it from an image imported into its group (import_sandbox_image); a name uses that group's newest succeeded import of it. snapshotId (an snp- id) or snapshotName starts it from a snapshot of its group (create_sandbox_snapshot) instead: it has the snapshot's files, and its plan, networkPolicy, timeoutSeconds and idleTimeoutSeconds default to the snapshot's source sandbox's; a name uses the group's newest available snapshot of it.", maxSandboxEnvVars, maxSandboxEnvBytes/1024)},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in spawnSandboxArgs) (*mcp.CallToolResult, Sandbox, error) {
 			sb, err := s.Create(ctx, CreateRequest{
 				OwnerID:            in.OwnerID,
@@ -129,17 +128,17 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			})
 			return nil, sb, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "list_sandboxes", Description: "List the caller's workspace's sandboxes with their statuses. Optional status: a list of Render sandbox statuses to keep; omitted, terminated sandboxes are hidden. Optional sandboxGroupId keeps only that group's sandboxes."},
+	addTool(s, server, &mcp.Tool{Name: "list_sandboxes", Description: "List the caller's workspace's sandboxes with their statuses. Optional status: a list of Render sandbox statuses to keep; omitted, terminated sandboxes are hidden. Optional sandboxGroupId keeps only that group's sandboxes."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in listSandboxesArgs) (*mcp.CallToolResult, listSandboxesResult, error) {
 			out, err := s.listFiltered(ctx, in.Status, in.Name, in.SandboxGroupID)
 			return nil, listSandboxesResult{Sandboxes: out}, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "stop_sandbox", Description: "Terminate a sandbox by id."},
+	addTool(s, server, &mcp.Tool{Name: "stop_sandbox", Description: "Terminate a sandbox by id."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in sandboxIDArgs) (*mcp.CallToolResult, stopSandboxResult, error) {
 			err := s.Terminate(ctx, in.ID)
 			return nil, stopSandboxResult{Stopped: err == nil}, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "list_sandbox_executions", Description: "List a sandbox's recorded command runs and file transfers, newest first, with each one's command or path, caller, start and stop time, and exit code."},
+	addTool(s, server, &mcp.Tool{Name: "list_sandbox_executions", Description: "List a sandbox's recorded command runs and file transfers, newest first, with each one's command or path, caller, start and stop time, and exit code."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in listExecutionsArgs) (*mcp.CallToolResult, listExecutionsResult, error) {
 			out, err := s.ListExecutions(core.WithWorkspace(ctx, in.OwnerID), in.ID, in.Cursor, core.PageLimitOrDefault(in.Limit))
 			return nil, listExecutionsResult{Executions: out}, err
@@ -147,7 +146,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 	s.registerGroupMCP(server)
 	s.registerImageMCP(server)
 	s.registerSnapshotMCP(server)
-	mcputil.AddTool(server, &mcp.Tool{Name: "sandbox_exec", Description: "Run a shell command in a sandbox and return its stdout, stderr, and exit code."},
+	addTool(s, server, &mcp.Tool{Name: "sandbox_exec", Description: "Run a shell command in a sandbox and return its stdout, stderr, and exit code."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in execSandboxArgs) (*mcp.CallToolResult, ExecResult, error) {
 			res, err := s.ExecBuffered(ctx, ExecRequest{OwnerID: in.OwnerID, SandboxID: in.ID, Command: in.Command})
 			return nil, res, err

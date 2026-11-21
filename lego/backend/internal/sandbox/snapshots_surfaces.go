@@ -28,7 +28,6 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
-	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // The REST, GraphQL and MCP surfaces of sandbox snapshots (w32/m285). All
@@ -36,7 +35,7 @@ import (
 
 // registerSnapshotREST mounts Render's four sandbox-snapshot routes.
 func (s *Service) registerSnapshotREST(mux *http.ServeMux) {
-	mux.HandleFunc("POST /v1/sandboxes/{id}/snapshots", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "POST /v1/sandboxes/{id}/snapshots", func(w http.ResponseWriter, r *http.Request) {
 		// Render's body is optional. An empty one asks for its default kind,
 		// which the Service refuses by name.
 		var req CreateSnapshotRequest
@@ -53,7 +52,7 @@ func (s *Service) registerSnapshotREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusAccepted, snap)
 	})
-	mux.HandleFunc("GET /v1/sandbox-groups/{sandboxGroupId}/snapshots", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "GET /v1/sandbox-groups/{sandboxGroupId}/snapshots", func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query()
 		after, limit := core.PageParams(query)
 		snaps, err := s.ListSnapshots(core.WithWorkspace(r.Context(), query.Get("ownerId")), r.PathValue("sandboxGroupId"),
@@ -68,7 +67,7 @@ func (s *Service) registerSnapshotREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, envelopes)
 	})
-	mux.HandleFunc("GET /v1/sandbox-groups/{sandboxGroupId}/snapshots/{snapshotId}", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "GET /v1/sandbox-groups/{sandboxGroupId}/snapshots/{snapshotId}", func(w http.ResponseWriter, r *http.Request) {
 		snap, err := s.GetSnapshot(core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId")), r.PathValue("sandboxGroupId"), r.PathValue("snapshotId"))
 		if err != nil {
 			core.WriteErr(w, err)
@@ -76,7 +75,7 @@ func (s *Service) registerSnapshotREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, snap)
 	})
-	mux.HandleFunc("DELETE /v1/sandbox-groups/{sandboxGroupId}/snapshots/{snapshotId}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+	s.handle(mux, "DELETE /v1/sandbox-groups/{sandboxGroupId}/snapshots/{snapshotId}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.DeleteSnapshot(core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId")), r.PathValue("sandboxGroupId"), r.PathValue("snapshotId"))
 	}))
 }
@@ -215,24 +214,24 @@ type getSnapshotArgs struct {
 }
 
 func (s *Service) registerSnapshotMCP(server *mcp.Server) {
-	mcputil.AddTool(server, &mcp.Tool{Name: "create_sandbox_snapshot", Description: "Capture a snapshot of a running sandbox's filesystem (sandboxId), so new sandboxes can start from it (spawn_sandbox snapshotId or snapshotName). kind must be filesystem: Render's default, runtime, also saves memory and running processes, which bex cannot capture yet. The sandbox keeps running. Returns at once with status creating; poll get_sandbox_snapshot until it is available or failed (error says why). Optional name (at most 64 characters, never snp-…) lets a create name it; names can repeat and the newest available one wins. ttlSeconds is its lifetime after its last use (default 30 days; 0 keeps it until it is deleted), restarted each time a sandbox is created from it."},
+	addTool(s, server, &mcp.Tool{Name: "create_sandbox_snapshot", Description: "Capture a snapshot of a running sandbox's filesystem (sandboxId), so new sandboxes can start from it (spawn_sandbox snapshotId or snapshotName). kind must be filesystem: Render's default, runtime, also saves memory and running processes, which bex cannot capture yet. The sandbox keeps running. Returns at once with status creating; poll get_sandbox_snapshot until it is available or failed (error says why). Optional name (at most 64 characters, never snp-…) lets a create name it; names can repeat and the newest available one wins. ttlSeconds is its lifetime after its last use (default 30 days; 0 keeps it until it is deleted), restarted each time a sandbox is created from it."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in createSnapshotArgs) (*mcp.CallToolResult, Snapshot, error) {
 			snap, err := s.CreateSnapshot(core.WithWorkspace(ctx, in.OwnerID), in.SandboxID, in.CreateSnapshotRequest)
 			return nil, snap, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "get_sandbox_snapshot", Description: "Get one snapshot of a sandbox group, with its status, size and expiry. A deleted or expired snapshot is not found."},
+	addTool(s, server, &mcp.Tool{Name: "get_sandbox_snapshot", Description: "Get one snapshot of a sandbox group, with its status, size and expiry. A deleted or expired snapshot is not found."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in getSnapshotArgs) (*mcp.CallToolResult, Snapshot, error) {
 			snap, err := s.GetSnapshot(ctx, in.SandboxGroupID, in.ID)
 			return nil, snap, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "delete_sandbox_snapshot", Description: "Delete a snapshot of a sandbox group, as Render's delete-sandbox-snapshot. It no longer lists, reads or starts sandboxes; sandboxes already created from it are not affected, and deleting it again succeeds. Refused with snapshot_creating while its capture is still in flight."},
+	addTool(s, server, &mcp.Tool{Name: "delete_sandbox_snapshot", Description: "Delete a snapshot of a sandbox group, as Render's delete-sandbox-snapshot. It no longer lists, reads or starts sandboxes; sandboxes already created from it are not affected, and deleting it again succeeds. Refused with snapshot_creating while its capture is still in flight."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in getSnapshotArgs) (*mcp.CallToolResult, deleteResult, error) {
 			if err := s.DeleteSnapshot(ctx, in.SandboxGroupID, in.ID); err != nil {
 				return nil, deleteResult{}, err
 			}
 			return nil, deleteResult{ID: in.ID, Deleted: true}, nil
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "list_sandbox_snapshots", Description: "List the snapshots of a sandbox group, newest first, without deleted and expired ones. Optional name keeps one name's versions; optional status keeps creating, available or failed ones."},
+	addTool(s, server, &mcp.Tool{Name: "list_sandbox_snapshots", Description: "List the snapshots of a sandbox group, newest first, without deleted and expired ones. Optional name keeps one name's versions; optional status keeps creating, available or failed ones."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in listSnapshotsArgs) (*mcp.CallToolResult, listSnapshotsResult, error) {
 			out, err := s.ListSnapshots(ctx, in.SandboxGroupID, in.Name, in.Status, in.Cursor, in.Limit)
 			return nil, listSnapshotsResult{SandboxSnapshots: out}, err

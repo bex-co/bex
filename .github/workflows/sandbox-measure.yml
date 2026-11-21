@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
     inputs:
       leg:
-        description: "Which measurement: kubelet (w22/008, w22/002), storage (w22/m321 t005, w22/m313 t006) cpu (w22/m314 t001) usage (w22/m314 t005) ephemeral (w22/008 proof) or egress (w22/m414)"
+        description: "Which measurement: kubelet (w22/008, w22/002), storage (w22/m321 t005, w22/m313 t006) cpu (w22/m314 t001) usage (w22/m314 t005) ephemeral (w22/008 proof) egress (w22/m414) or rate (w22/m443)"
         type: choice
         options:
           - kubelet
@@ -27,6 +27,7 @@ on:
           - usage
           - ephemeral
           - egress
+          - rate
         required: true
       usage_idle_seconds:
         description: "usage leg only: how long the idle sandbox runs before it is paused (seconds)"
@@ -92,6 +93,8 @@ jobs:
           # The explicit authorization for the live wrapper to create its
           # disposable workspace, principals and tuples.
           BEX_LIVE_VERIFY: "1"
+          # The rate leg needs one user with two API keys (w22/m443).
+          BEX_VERIFY_SHARED_USER_KEYS: ${{ inputs.leg == 'rate' && '1' || '0' }}
         # The MEASURE lines name nodes and their addresses, and this log is
         # public (w5/m501, ADR019 §Decision 5): keyed hashes instead.
         run: |

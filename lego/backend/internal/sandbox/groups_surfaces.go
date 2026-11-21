@@ -23,7 +23,6 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
-	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // The GraphQL and MCP surfaces of sandbox groups (w22/m311). Both call the same
@@ -140,34 +139,34 @@ type updateGroupArgs struct {
 }
 
 func (s *Service) registerGroupMCP(server *mcp.Server) {
-	mcputil.AddTool(server, &mcp.Tool{Name: "list_sandbox_groups", Description: "List the caller's workspace's sandbox groups, newest first, with each group's concurrencyLimit and whether it is the default. A sandbox is created in one group (spawn_sandbox sandboxGroupId, default: the workspace's default group); a group at its concurrencyLimit refuses a create or a resume with SANDBOX_GROUP_CONCURRENCY_LIMIT."},
+	addTool(s, server, &mcp.Tool{Name: "list_sandbox_groups", Description: "List the caller's workspace's sandbox groups, newest first, with each group's concurrencyLimit and whether it is the default. A sandbox is created in one group (spawn_sandbox sandboxGroupId, default: the workspace's default group); a group at its concurrencyLimit refuses a create or a resume with SANDBOX_GROUP_CONCURRENCY_LIMIT."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in listGroupsArgs) (*mcp.CallToolResult, listGroupsResult, error) {
 			out, err := s.ListGroups(ctx, in.Cursor, in.Limit)
 			return nil, listGroupsResult{SandboxGroups: out}, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "get_sandbox_group", Description: "Get one sandbox group by id."},
+	addTool(s, server, &mcp.Tool{Name: "get_sandbox_group", Description: "Get one sandbox group by id."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in sandboxIDArgs) (*mcp.CallToolResult, Group, error) {
 			g, err := s.GetGroup(ctx, in.ID)
 			return nil, g, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "create_sandbox_group", Description: "Create a sandbox group with a unique name. The workspace's first group becomes its default. A workspace may have a limited number of groups. A group and its sandboxes run in the platform's region, which the group reports; region may be omitted, oregon (Render's value) or that region. environmentId optionally places the group in one of the workspace's project environments (list_environments), as Render's dashboard does; the group returns it as environmentId, null when it is in none. Placement is membership only: who can see or use the group does not change. A protected environment needs a workspace Admin, and another workspace's environment is not found."},
+	addTool(s, server, &mcp.Tool{Name: "create_sandbox_group", Description: "Create a sandbox group with a unique name. The workspace's first group becomes its default. A workspace may have a limited number of groups. A group and its sandboxes run in the platform's region, which the group reports; region may be omitted, oregon (Render's value) or that region. environmentId optionally places the group in one of the workspace's project environments (list_environments), as Render's dashboard does; the group returns it as environmentId, null when it is in none. Placement is membership only: who can see or use the group does not change. A protected environment needs a workspace Admin, and another workspace's environment is not found."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in CreateGroupRequest) (*mcp.CallToolResult, Group, error) {
 			g, err := s.CreateGroup(ctx, in)
 			return nil, g, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "set_default_sandbox_group", Description: "Make a sandbox group the workspace's default: a sandbox create or image import that names no group then uses it. The previous default stays as an ordinary group."},
+	addTool(s, server, &mcp.Tool{Name: "set_default_sandbox_group", Description: "Make a sandbox group the workspace's default: a sandbox create or image import that names no group then uses it. The previous default stays as an ordinary group."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in sandboxIDArgs) (*mcp.CallToolResult, Group, error) {
 			g, err := s.SetDefaultGroup(ctx, in.ID)
 			return nil, g, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "delete_sandbox_group", Description: "Delete a sandbox group. This is irreversible: it terminates the group's sandboxes and deletes the images imported into it. The workspace's default group cannot be deleted (default_sandbox_group_not_deletable); make another group the default first with set_default_sandbox_group."},
+	addTool(s, server, &mcp.Tool{Name: "delete_sandbox_group", Description: "Delete a sandbox group. This is irreversible: it terminates the group's sandboxes and deletes the images imported into it. The workspace's default group cannot be deleted (default_sandbox_group_not_deletable); make another group the default first with set_default_sandbox_group."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in sandboxIDArgs) (*mcp.CallToolResult, deleteResult, error) {
 			if err := s.DeleteGroup(ctx, in.ID); err != nil {
 				return nil, deleteResult{}, err
 			}
 			return nil, deleteResult{ID: in.ID, Deleted: true}, nil
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "update_sandbox_group", Description: "Set a sandbox group's concurrencyLimit, the most active sandboxes it allows (at least 1; a higher value is capped to the platform's maximum and the response returns the effective limit). Lowering it stops no running sandbox; the group just admits no new one until its active count is below the limit. Suspended sandboxes do not count."},
+	addTool(s, server, &mcp.Tool{Name: "update_sandbox_group", Description: "Set a sandbox group's concurrencyLimit, the most active sandboxes it allows (at least 1; a higher value is capped to the platform's maximum and the response returns the effective limit). Lowering it stops no running sandbox; the group just admits no new one until its active count is below the limit. Suspended sandboxes do not count."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in updateGroupArgs) (*mcp.CallToolResult, Group, error) {
 			g, err := s.UpdateGroup(ctx, in.ID, in.ConcurrencyLimit)
 			return nil, g, err

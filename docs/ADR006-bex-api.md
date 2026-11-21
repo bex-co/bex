@@ -733,6 +733,8 @@ Admission overload and the per-caller rate limiter both answer **HTTP 429 + `Ret
 
 All limits are env-tunable; `BEX_RATE_LIMIT=0` disables rate limiting entirely (per-plan differentiated budgets are a follow-up once real traffic data exists).
 
+**Sandbox operations have their own budgets (w22/m443).** A `/v1/sandboxes` or `/v1/sandbox-groups` call, and the same operation as a GraphQL field or an MCP tool, spends one of Render's seven per-user, per-operation classes instead of the general budget above ([ADR104 D7 § API rate limits](ADR104-sandbox-render-parity.md#api-rate-limits-w22m443)). The rates are Render's and have no environment variable; `BEX_RATE_LIMIT=0` turns them off too. The public sandbox connect redeem routes take `BEX_DEPLOY_HOOK_LOOKUP_RATE_LIMIT`'s figure per address, but only a token that does not redeem spends it.
+
 **Note:** production runs bex-api with two replicas (`lego/operator/config/prod/kustomization.yaml`), and the per-caller token bucket and the log-subscription caps are in-process. Each replica has its own map, so the effective per-caller budget is `BEX_RATE_LIMIT × replicas`, and a subscription share is likewise per replica. A distributed counter (for example a Redis token bucket) is the follow-up.
 
 ## Per-workspace resource caps (w7/m9, retired to ResourceQuota in w3/m34)

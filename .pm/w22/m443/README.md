@@ -1,20 +1,20 @@
 # w22 · m443 — Sandbox API rate limits match Render's per-operation table
 
-**Worker:** worker22 **Goal:** a user's sandbox calls are rate limited per operation class at Render's documented rates (create 100, terminate 1,000, exec 1,000, file transfer 1,000, reads 400, group writes 100, snapshot capture 10 per minute), per user and shared across that user's API keys, on REST, GraphQL and MCP, instead of sharing bex-api's general 500 per minute. **Status:** todo
+**Worker:** worker22 **Goal:** a user's sandbox calls are rate limited per operation class at Render's documented rates (create 100, terminate 1,000, exec 1,000, file transfer 1,000, reads 400, group writes 100, snapshot capture 10 per minute), per user and shared across that user's API keys, on REST, GraphQL and MCP, instead of sharing bex-api's general 500 per minute. **Status:** todo (t001–t005 and t007–t009 done; t006 waits for the deploy, then t010)
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                                   | est | depends_on       |
 | ---- | --------------------------------------------------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Design record: Render's rate table in ADR104 D7 and ADR018, which route belongs to which class, and what the bucket key is              | 40m | —                |
-| t002 | A per-user, per-class limiter on `core.KeyedRateLimiter`; sandbox routes stop spending the general 500 per minute                       | 60m | t001             |
-| t003 | REST: the sandbox and sandbox-group routes and the run and file connect-token mints take their class's bucket                           | 50m | t002             |
-| t004 | GraphQL and MCP sandbox operations use the same buckets; the 429 body and `Retry-After` match the existing limiter's                    | 40m | t002             |
-| t005 | The snapshot-capture class (10 per minute) lands as a constant with tests, ready for w32/m285's capture route                           | 20m | t002             |
+| t001 | Design record: Render's rate table in ADR104 D7 and ADR018, which route belongs to which class, and what the bucket key is — **DONE** | 40m | — |
+| t002 | A per-user, per-class limiter on `core.KeyedRateLimiter`; sandbox routes stop spending the general 500 per minute — **DONE** | 60m | t001 |
+| t003 | REST: the sandbox and sandbox-group routes and the run and file connect-token mints take their class's bucket — **DONE** | 50m | t002 |
+| t004 | GraphQL and MCP sandbox operations use the same buckets; the 429 body and `Retry-After` match the existing limiter's — **DONE** | 40m | t002 |
+| t005 | The snapshot-capture class (10 per minute) lands as a constant with tests, ready for w32/m285's capture route — **DONE** | 20m | t002 |
 | t006 | Production check: a matrix leg where the 101st create in a minute answers 429 and 600 execs in a minute are all accepted                | 45m | t003, t004       |
-| t007 | Render parity                                                                                                                           | 20m | t003, t004, t005 |
-| t008 | Simplify                                                                                                                                | 20m | t007             |
-| t009 | Test coverage                                                                                                                           | 30m | t007             |
+| t007 | Render parity — **DONE** | 20m | t003, t004, t005 |
+| t008 | Simplify — **DONE** | 20m | t007 |
+| t009 | Test coverage — **DONE** | 30m | t007 |
 | t010 | Closeout                                                                                                                                | 10m | t006, t008, t009 |
 
 ## Definition of done
@@ -41,3 +41,29 @@
   - The existing workspace aggregate bucket stays as an ADR104 D11 abuse bound for sandbox calls, sized above the sum a single user can reach under Render's table so it never trips first. It is a bex-owned control, not a Render fact.
   - "Per user" maps to the subject that owns the API key, so every key a user created shares the bucket. t001 confirms how the existing limiter resolves an API key to its creator.
 - **Render parity included:** the limits are customer-facing on REST, GraphQL and MCP, so t007 compares each surface with Render's table.
+
+## Outcome 2026-11-20 (/loopx w22): shipped in code, the production check waits for the deploy
+
+- **Verdict: work.** The premise held on `26b14bb1f`: every sandbox call spent the general `BEX_RATE_LIMIT` budget and `lego/backend/internal/sandbox/` had no per-operation limit.
+- **How it was built.** An earlier worker was interrupted on 2026-11-17 with the implementation uncommitted. This run rebased it over 869 commits, merged it with what main had changed since, checked every task against the code and finished the rest.
+  - `8a4279185` made each member of a GraphQL batch cost a general token. The limiter's two paths now reserve through one helper, and each batch member gives its own token back when it is sandbox-only.
+  - w2/m532 turned the brokered-credential routes from named 404s into seven served routes. They are classified as group resources (reads `read`, writes `group_write`), and the "not classified" exception is gone.
+  - w9/m481 added `core.Base.KeyCreators`. The limiter resolves a key's creator through it instead of a lookup and cache of its own.
+  - The live wrapper's two-key user is now a developer of the workspace, because since w9/m481 a key is allowed nothing its creator is not.
+- **Deviations from the task files.**
+  - t005: w32/m285 shipped its capture route first, so the `capture` class is charged on `POST /v1/sandboxes/{id}/snapshots`, `createSandboxSnapshot` and `create_sandbox_snapshot` instead of waiting unused, and m285's README needed no pointer. The store's count of accepted captures (m285) stays beside it.
+  - t006: the leg is `rate` of `sandbox-measure.yml` (`scripts/measure-sandbox-rate.sh`), which runs through the same live wrapper as the isolation matrix, not a leg of the matrix itself. Production runs two bex-api replicas with a bucket each, so the leg does not expect exactly one refusal at the 101st create: it sends 100 more creates than the replicas' buckets hold together and bounds what is admitted. The exact 101st is asserted by the router test.
+  - t003 step 4's router tests run against the composed server with fakes for OpenSandbox and Hydra; they need no database.
+- **Render parity (t007).** Render's table was read again on 2026-11-20 and is unchanged: seven rows, per user, shared across the user's API keys, 429. REST, GraphQL and MCP spend the same bucket and refuse with the general limiter's shape on each surface. Drift, each looser than Render or bex-owned: one bucket per bex-api replica ([w22/021](../021.md)), the 10,000-a-minute workspace bound awaiting sign-off ([w22/022](../022.md)), and a token bucket's burst (Render documents no window; recorded in ADR104 D7, no follow-up).
+- **Simplify (t008).** Applied: the sandbox package's own key-creator interface and five-minute cache were replaced by `core.KeyCreatorResolver`; `Middleware` and the batch's `admit` share `reserve` and `generalBuckets`; `core.ReserveEach` takes the token count. One limiter implementation (`core.KeyedRateLimiter`) and one charging helper for GraphQL and MCP (`RateLimits.charge`); REST charges in the general limiter by route pattern. Nothing else found.
+- **Test coverage (t009).** Mutations, each caught:
+  - `read` at 401 instead of 400: `TestEveryClassAdmitsRendersRateThenRefusesAndRefills` and three more fail.
+  - `POST …/terminate` classified `create`: `TestRequestBucketsClassifiesOnlySandboxRoutes` and `TestSandboxClassesAndTheGeneralBudgetAreSeparate` fail.
+  - A classified route also charged the general budget: `TestASpentGeneralBudgetDoesNotRefuseSandboxCalls` and four more fail.
+  - A batch member without its own scope: `TestAGraphQLBatchRefundsEachSandboxOnlyMember` fails.
+  - A mounted route removed from the class table: registration panics, and `TestEveryLiveSandboxOperationHasARateClass` fails.
+  - `make lint` is clean for all four modules.
+
+## Production check
+
+Not run yet: production must carry this milestone's commit first. Then `gh workflow run sandbox-measure.yml -f leg=rate` must print PASS (600 execs inside a minute with none rate limited; creates across two API keys of one user refused with `rate_limited` on both keys past the buckets; no sandbox left behind). Record the run id and the `MEASURE execs` and `MEASURE creates` lines' figures here, flip the ADR018 row to ✅, replace "Pending the deploy" in ADR104 D7, and close with t010.

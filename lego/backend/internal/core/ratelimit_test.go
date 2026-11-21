@@ -172,3 +172,95 @@ func TestSetRateLimitHeadersReportsTheTightestBucket(t *testing.T) {
 		t.Errorf("refused remaining = %q, want 0", refused.Get("RateLimit-Remaining"))
 	}
 }
+
+// ReserveEach takes from every bucket or from none: a refusal by a later
+// bucket gives the earlier bucket's token back, and reports that bucket's wait.
+func TestReserveEachTakesFromAllOrNone(t *testing.T) {
+	now := time.Date(2026, 11, 17, 12, 0, 0, 0, time.UTC)
+	wide := rate.NewLimiter(rate.Limit(1), 5)
+	narrow := rate.NewLimiter(rate.Limit(1.0/60), 1)
+	taken, wait := ReserveEach(now, 1, wide, narrow)
+	if wait != 0 || len(taken) != 2 {
+		t.Fatalf("first reserve = %d reservations, wait %v", len(taken), wait)
+	}
+	taken, wait = ReserveEach(now, 1, wide, narrow)
+	if len(taken) != 2 || wait != time.Minute {
+		t.Fatalf("refused reserve = %d reservations, wait %v, want 2 and the narrow bucket's minute", len(taken), wait)
+	}
+	if got := wide.TokensAt(now); got != 4 {
+		t.Fatalf("wide bucket holds %v tokens after a refusal, want 4 (the refused request's token given back)", got)
+	}
+	if got := narrow.TokensAt(now); got != 0 {
+		t.Fatalf("narrow bucket holds %v tokens, want 0 (no debt left by the refusal)", got)
+	}
+	// A refusal by the first bucket never reaches the second.
+	taken, wait = ReserveEach(now, 1, narrow, wide)
+	if len(taken) != 1 || wait != time.Minute || wide.TokensAt(now) != 4 {
+		t.Fatalf("first-bucket refusal = %d reservations, wait %v, wide %v", len(taken), wait, wide.TokensAt(now))
+	}
+}
+
+func TestSetRateLimitRefusalWritesRetryAfterAndRemainingZero(t *testing.T) {
+	now := time.Date(2026, 11, 17, 12, 0, 0, 0, time.UTC)
+	bucket := rate.NewLimiter(rate.Limit(10.0/60), 10)
+	h := http.Header{}
+	if got := SetRateLimitRefusal(h, now, 5500*time.Millisecond, bucket); got != 6 {
+		t.Fatalf("seconds = %d, want 5.5 s rounded up", got)
+	}
+	if h.Get("Retry-After") != "6" || h.Get("RateLimit-Limit") != "10" || h.Get("RateLimit-Remaining") != "0" {
+		t.Fatalf("headers = %v", h)
+	}
+	if got := SetRateLimitRefusal(nil, now, time.Millisecond, bucket); got != 1 {
+		t.Fatalf("seconds without a header = %d, want the 1 s floor", got)
+	}
+}
+
+// The scope's refund puts back exactly the token an admitted request took,
+// once, long after the reservation's own Cancel would restore nothing, and
+// never fills a bucket past its burst.
+func TestRateLimitScopeRefundsOnceAndNeverPastTheBurst(t *testing.T) {
+	now := time.Date(2026, 11, 17, 12, 0, 0, 0, time.UTC)
+	subject := rate.NewLimiter(rate.Limit(1.0/60), 3)
+	workspace := rate.NewLimiter(rate.Limit(1.0/60), 3)
+	// Two requests were admitted; the scope is the second one's.
+	ReserveEach(now, 1, subject, workspace)
+	taken, _ := ReserveEach(now, 1, subject, workspace)
+	later := now.Add(time.Second)
+	taken[0].CancelAt(later)
+	if got := subject.TokensAt(later); got >= 1.5 {
+		t.Fatalf("Reservation.CancelAt restored a spent token (%v): Refund no longer needs its own arithmetic", got)
+	}
+	h := http.Header{}
+	scope := NewRateLimitScope("workspace:tea-a", h, []*rate.Limiter{subject, workspace})
+	ctx := WithRateLimitScope(t.Context(), scope)
+	if got := RateLimitScopeFrom(ctx); got != scope || got.Workspace() != "workspace:tea-a" || got.Header() == nil {
+		t.Fatalf("scope from context = %+v", got)
+	}
+	scope.Refund(later)
+	scope.Refund(later)
+	for name, bucket := range map[string]*rate.Limiter{"subject": subject, "workspace": workspace} {
+		if n := drain(bucket, later); n != 2 {
+			t.Errorf("%s bucket admitted %d after two refunds of one request, want 2: its own token back, once", name, n)
+		}
+	}
+	// A full bucket refunded stays at its burst.
+	full := rate.NewLimiter(rate.Limit(1.0/60), 3)
+	NewRateLimitScope("", nil, []*rate.Limiter{full}).Refund(now)
+	if n := drain(full, now); n != 3 {
+		t.Fatalf("a refund filled a full bucket to %d, want its burst of 3", n)
+	}
+	// No scope: every method is a no-op.
+	var none *RateLimitScope
+	none.Refund(now)
+	if RateLimitScopeFrom(t.Context()) != nil || none.Workspace() != "" || none.Header() != nil {
+		t.Fatal("a missing scope is not empty")
+	}
+}
+
+func drain(bucket *rate.Limiter, now time.Time) int {
+	n := 0
+	for bucket.AllowN(now, 1) {
+		n++
+	}
+	return n
+}

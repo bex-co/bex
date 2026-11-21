@@ -314,6 +314,12 @@ type Server struct {
 	// per-token limiter: random well-formed credentials cannot force unbounded
 	// Kubernetes API reads or grow arbitrary token buckets. nil disables it.
 	DeployHookLookupRateLimiter *RateLimiter
+	// SandboxConnectRateLimiter is the IP-keyed budget of the public sandbox
+	// connect redeem routes, which sit outside the auth gate. Only a refused
+	// token spends it (RefusedCredentialMiddleware): a redeemed token was
+	// minted under Render's per-user exec or file-transfer rate, and counting
+	// redeems here held a caller to 60 execs a minute. nil disables it.
+	SandboxConnectRateLimiter *RateLimiter
 	// MaxBodyBytes, when positive, caps non-GET request bodies at this many bytes,
 	// returning 413 for oversized payloads. 0 disables the check.
 	MaxBodyBytes int64
@@ -1693,15 +1699,18 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 	// The pinned Render CLI redeems a sandbox run connect token (minted by the
 	// gated `POST /v1/sandboxes/{id}/runs/{operation}/token`) at the `uri` bex
 	// returned, carrying that HMAC token — not an OAuth credential — as its
-	// Bearer, so the redeem route mounts outside the gate (w7/m147). The same
-	// IP-keyed pre-lookup limiter as deploy hooks sheds a flood before the
-	// token is verified; the token itself binds workspace, sandbox, execution,
-	// and command, is single-use, and expires within 60s.
+	// Bearer, so the redeem route mounts outside the gate (w7/m147). The token
+	// itself binds workspace, sandbox, execution, and command, is single-use,
+	// and expires within 60s, and its mint is rate limited per user (Render's
+	// exec and file-transfer rates, w22/m443), so a redeem that succeeds needs
+	// no second budget: an IP-keyed budget sheds only a flood of tokens that
+	// do not redeem.
 	if s.Sandbox != nil {
-		mux.Handle(sandbox.ConnectStreamPattern, s.deployHookLookupRateLimitMiddleware()(bodyLimit(s.Sandbox.ConnectStreamHandler())))
+		refused := s.sandboxConnectRateLimitMiddleware()
+		mux.Handle(sandbox.ConnectStreamPattern, refused(bodyLimit(s.Sandbox.ConnectStreamHandler())))
 		// File bodies have their own streaming bounds; the JSON request limit
 		// would truncate otherwise valid uploads before they reach the gateway.
-		files := s.deployHookLookupRateLimitMiddleware()(s.Sandbox.ConnectFileHandler())
+		files := refused(s.Sandbox.ConnectFileHandler())
 		mux.Handle(sandbox.ConnectFileUploadPattern, files)
 		mux.Handle(sandbox.ConnectFileDownloadPattern, files)
 	}
@@ -1783,6 +1792,26 @@ func (s *Server) rateLimitMiddleware() func(http.Handler) http.Handler {
 	return s.RateLimiter.Middleware
 }
 
+// LimitSandboxOperations gives sandbox operations Render's per-user,
+// per-operation rate limits in place of the general budget (w22/m443, ADR104
+// D7), on REST, GraphQL and MCP alike. A user's API keys share that user's
+// buckets through the lookup that caps a key at its creator's role
+// (core.Base.KeyCreators); without one each key is a caller of its own. It
+// does nothing without a general limiter (BEX_RATE_LIMIT=0 turns both off) or
+// without the sandbox feature, and must run before Handler().
+func (s *Server) LimitSandboxOperations() {
+	if s.RateLimiter == nil || s.Sandbox == nil {
+		return
+	}
+	var keys core.KeyCreatorResolver
+	if s.Sandbox.Base != nil {
+		keys = s.Sandbox.KeyCreators
+	}
+	limits := sandbox.NewRateLimits(keys)
+	s.Sandbox.RateLimits = limits
+	s.RateLimiter.Operations = limits
+}
+
 // webhookRateLimitMiddleware returns the IP-keyed limiter that wraps the two
 // unauthenticated webhook intakes, or a no-op pass-through when disabled. It
 // runs OUTSIDE the auth gate, so RateLimiter.Middleware keys on IP (no Identity
@@ -1803,6 +1832,15 @@ func (s *Server) deployHookLookupRateLimitMiddleware() func(http.Handler) http.H
 		return func(h http.Handler) http.Handler { return h }
 	}
 	return s.DeployHookLookupRateLimiter.Middleware
+}
+
+// sandboxConnectRateLimitMiddleware returns the IP-keyed budget of refused
+// sandbox connect tokens, or a pass-through when it is disabled.
+func (s *Server) sandboxConnectRateLimitMiddleware() func(http.Handler) http.Handler {
+	if s.SandboxConnectRateLimiter == nil {
+		return func(h http.Handler) http.Handler { return h }
+	}
+	return s.SandboxConnectRateLimiter.RefusedCredentialMiddleware
 }
 
 func (s *Server) newAuthGate() (*oryAuth, error) {
@@ -2002,7 +2040,13 @@ func (s *Server) serveGraphQL(w http.ResponseWriter, r *http.Request) (operation
 		results := make([]*graphql.Result, len(bodies))
 		budget := &gqlBudget{}
 		for i := range bodies {
-			op, typ, out, result := s.executeGraphQL(ctx, bodies[i], budget)
+			memberCtx := ctx
+			if i > 0 {
+				// Each further member paid a general token of its own, and a
+				// sandbox-only member gives its own back (w22/m443).
+				memberCtx = core.WithRateLimitScope(ctx, core.RateLimitScopeFrom(ctx).Another())
+			}
+			op, typ, out, result := s.executeGraphQL(memberCtx, bodies[i], budget)
 			results[i] = result
 			if i == 0 {
 				operation, opType, outcome = op, typ, out

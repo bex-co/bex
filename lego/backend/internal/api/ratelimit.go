@@ -21,9 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -55,6 +53,12 @@ type RateLimiter struct {
 	// Internet client into the edge proxy's one bucket (.pm/w4/029.md report
 	// #10). nil ⇒ headers ignored, peer IP used — byte-identical to before.
 	TrustedProxies core.TrustedProxies
+	// Operations, when set, names the requests that spend their own buckets
+	// instead of the general ones (Render's per-operation sandbox limits,
+	// w22/m443). nil charges every request to the general budget.
+	Operations OperationLimits
+	// now supplies the current time; nil => time.Now.
+	now func() time.Time
 }
 
 const (
@@ -76,45 +80,106 @@ func NewRateLimiter(rpm float64, burst int) *RateLimiter {
 	}
 }
 
+// OperationLimits gives some requests buckets of their own. RequestBuckets
+// returns the buckets a request spends in place of the general per-subject and
+// workspace ones, or nil for a request it does not classify; workspace is the
+// caller's workspace bucket key, "" when there is none.
+type OperationLimits interface {
+	RequestBuckets(r *http.Request, workspace string) []*rate.Limiter
+}
+
 // Middleware returns an http.Handler wrapper that enforces the rate limit.
 // It must run inside the auth middleware so the caller Identity is in ctx.
 func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if rl.admit(w, r, 1) {
-			next.ServeHTTP(w, r)
+		workspace := rl.workspaceKey(r)
+		var buckets []*rate.Limiter
+		if rl.Operations != nil {
+			buckets = rl.Operations.RequestBuckets(r, workspace)
 		}
+		classified := buckets != nil
+		if !classified {
+			buckets = rl.generalBuckets(r, workspace)
+		}
+		if !rl.reserve(w, r, 1, buckets) {
+			return
+		}
+		if !classified && rl.Operations != nil {
+			// A GraphQL field or an MCP tool with a budget of its own is only
+			// known once the body is read: it charges that budget and gives
+			// this token back.
+			r = r.WithContext(core.WithRateLimitScope(r.Context(), core.NewRateLimitScope(workspace, w.Header(), buckets)))
+		}
+		next.ServeHTTP(w, r)
 	})
 }
 
-// admit takes n tokens from the caller's bucket and, when it has one, the
-// caller's workspace bucket. When either cannot give them now it takes
-// none, answers 429 with Retry-After, and returns false. n is capped at the
-// burst, the most a full bucket holds.
+// admit takes n more tokens from the caller's general bucket and, when it
+// has one, the caller's workspace bucket: a GraphQL batch pays one per member
+// past the first, which Middleware charged. When either cannot give them now
+// it takes none, answers 429 with Retry-After, and returns false. n is capped
+// at the burst, the most a full bucket holds.
 func (rl *RateLimiter) admit(w http.ResponseWriter, r *http.Request, n int) bool {
+	return rl.reserve(w, r, n, rl.generalBuckets(r, rl.workspaceKey(r)))
+}
+
+// generalBuckets are the caller's bucket and, when workspace names one, the
+// caller's workspace bucket.
+func (rl *RateLimiter) generalBuckets(r *http.Request, workspace string) []*rate.Limiter {
 	buckets := []*rate.Limiter{rl.Bucket(rl.callerKey(r))}
-	if workspace := rl.workspaceKey(r); workspace != "" {
+	if workspace != "" {
 		buckets = append(buckets, rl.workspace.Bucket(workspace))
 	}
-	reservations := make([]*rate.Reservation, 0, len(buckets))
-	for _, bucket := range buckets {
-		res := bucket.ReserveN(time.Now(), min(n, bucket.Burst()))
-		reservations = append(reservations, res)
-		if d := res.Delay(); d > 0 {
-			for _, reservation := range reservations {
-				reservation.Cancel()
-			}
-			retryAfter := int(math.Ceil(d.Seconds()))
-			if retryAfter < 1 {
-				retryAfter = 1
-			}
-			w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
-			core.SetRateLimitHeaders(w.Header(), time.Now(), true, buckets...)
-			writeTooManyRequests(w, r)
-			return false
-		}
+	return buckets
+}
+
+// reserve takes n tokens from every bucket or from none, writes the
+// RateLimit headers, and on a refusal answers the surface's 429.
+func (rl *RateLimiter) reserve(w http.ResponseWriter, r *http.Request, n int, buckets []*rate.Limiter) bool {
+	now := rl.clock()
+	taken, wait := core.ReserveEach(now, n, buckets...)
+	if wait > 0 {
+		core.SetRateLimitRefusal(w.Header(), now, wait, buckets[:len(taken)]...)
+		writeTooManyRequests(w, r)
+		return false
 	}
-	core.SetRateLimitHeaders(w.Header(), time.Now(), false, buckets...)
+	core.SetRateLimitHeaders(w.Header(), now, false, buckets...)
 	return true
+}
+
+func (rl *RateLimiter) clock() time.Time {
+	if rl.now != nil {
+		return rl.now()
+	}
+	return time.Now()
+}
+
+// RefusedCredentialMiddleware bounds, per caller, only the requests next
+// refuses as a bad credential (401, 403, 409 or 410): a caller whose budget
+// is spent is answered 429 before next runs, and a request next serves costs
+// nothing. It is for a route whose credential is a single-use token minted
+// under a limit of its own (a sandbox run or file connect token, minted under
+// Render's per-user exec and file-transfer rates): the mint already bounds
+// the tokens that redeem, so only the guesses, replays and expired tokens
+// need a budget here. Counting every redeem instead held a user to this
+// budget, far below what the mint allows (w22/m443).
+func (rl *RateLimiter) RefusedCredentialMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		now := rl.clock()
+		bucket := rl.Bucket(rl.callerKey(r))
+		if tokens := bucket.TokensAt(now); tokens < 1 {
+			wait := time.Duration((1 - tokens) / float64(bucket.Limit()) * float64(time.Second))
+			core.SetRateLimitRefusal(w.Header(), now, wait, bucket)
+			writeTooManyRequests(w, r)
+			return
+		}
+		sw := &statusWriter{ResponseWriter: w}
+		next.ServeHTTP(sw, r)
+		switch sw.statusCode() {
+		case http.StatusUnauthorized, http.StatusForbidden, http.StatusConflict, http.StatusGone:
+			bucket.ReserveN(rl.clock(), 1)
+		}
+	})
 }
 
 func (rl *RateLimiter) workspaceKey(r *http.Request) string {

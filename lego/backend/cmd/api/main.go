@@ -2071,6 +2071,9 @@ func configureRateLimiters(srv *api.Server, cfg *Config) {
 	if srv.RateLimiter != nil && srv.APIKeys != nil && srv.APIKeys.Base != nil {
 		srv.RateLimiter.Workspace = srv.APIKeys.Base.Workspace
 	}
+	// Sandbox operations are counted against Render's per-operation table
+	// instead (w22/m443); BEX_RATE_LIMIT=0 turns that off with the limiter.
+	srv.LimitSandboxOperations()
 
 	// Device-flow rate limiting (w4/m31/t002). BEX_DEVICE_RATE_LIMIT=0
 	// disables it. Set here, before Handler(), like every other cap: Handler()
@@ -2099,6 +2102,11 @@ func configureRateLimiters(srv *api.Server, cfg *Config) {
 	// outer cap sheds random-token enumeration before any Kubernetes API lookup.
 	deployHookLookupRPM, deployHookLookupBurst := cfg.DeployHookLookupRPM, cfg.DeployHookLookupBurst
 	srv.DeployHookLookupRateLimiter = api.NewRateLimiter(deployHookLookupRPM, deployHookLookupBurst)
+	// The sandbox connect redeem routes are public too, and take the same
+	// per-IP figure, but only a token that does not redeem spends it: a
+	// redeemed token was minted under Render's per-user exec or file-transfer
+	// rate (w22/m443), and counting redeems held a caller to 60 execs a minute.
+	srv.SandboxConnectRateLimiter = api.NewRateLimiter(deployHookLookupRPM, deployHookLookupBurst)
 
 	// Pre-auth admission (w1/m67 F1). The per-caller limiter above runs INSIDE
 	// the auth gate, keyed on the resolved identity, so it cannot bound the work
@@ -2124,7 +2132,7 @@ func configureRateLimiters(srv *api.Server, cfg *Config) {
 	// Trusted-proxy awareness applies to every IP-keyed budget alike: the
 	// per-caller, device-flow, webhook-intake, and deploy-hook limiters all
 	// derive the client IP through the same trusted CIDRs.
-	for _, rl := range []*api.RateLimiter{srv.RateLimiter, srv.WebhookRateLimiter, srv.DeployHookLookupRateLimiter} {
+	for _, rl := range []*api.RateLimiter{srv.RateLimiter, srv.WebhookRateLimiter, srv.DeployHookLookupRateLimiter, srv.SandboxConnectRateLimiter} {
 		if rl != nil {
 			rl.TrustedProxies = trustedProxies
 		}

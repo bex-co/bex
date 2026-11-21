@@ -33,7 +33,7 @@ import (
 // while the single-step `POST /exec` stays for pre-v2.24 clients and MCP.
 // ownerId is Render's workspace binding (query param).
 func (s *Service) RegisterREST(mux *http.ServeMux) {
-	mux.HandleFunc("POST /v1/sandboxes", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "POST /v1/sandboxes", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			OwnerID  string `json:"ownerId"`
 			Plan     Plan   `json:"plan"`
@@ -98,7 +98,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusCreated, sb)
 	})
-	mux.HandleFunc("GET /v1/sandboxes", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "GET /v1/sandboxes", func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query()
 		// A list never ignores a filter it was given: the group and status
 		// filters apply (an unknown status is refused by name).
@@ -121,7 +121,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, envelopes)
 	})
-	mux.HandleFunc("GET /v1/sandboxes/{id}", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "GET /v1/sandboxes/{id}", func(w http.ResponseWriter, r *http.Request) {
 		ctx := core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId"))
 		sb, err := s.Get(ctx, r.PathValue("id"))
 		if err != nil {
@@ -131,7 +131,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, sb)
 	})
 	// Render's execution history (w32/m298): newest first, `cursor`/`limit`.
-	mux.HandleFunc("GET /v1/sandboxes/{id}/execs", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "GET /v1/sandboxes/{id}/execs", func(w http.ResponseWriter, r *http.Request) {
 		ctx := core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId"))
 		after, limit := core.PageParams(r.URL.Query())
 		out, err := s.ListExecutions(ctx, r.PathValue("id"), after, limit)
@@ -141,7 +141,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, out)
 	})
-	mux.HandleFunc("GET /v1/sandboxes/{id}/execs/{execId}", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "GET /v1/sandboxes/{id}/execs/{execId}", func(w http.ResponseWriter, r *http.Request) {
 		ctx := core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId"))
 		out, err := s.GetExecution(ctx, r.PathValue("id"), r.PathValue("execId"))
 		if err != nil {
@@ -153,7 +153,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// Render CLI `exec` → run one command, stream stdout/stderr + exitCode as SSE.
 	// The CLI POSTs {"command":"…"} and reads the response as an event stream
 	// (docs/render-artifacts/ea-sandbox.md §exec). ownerId is query-or-body.
-	mux.HandleFunc("POST /v1/sandboxes/{id}/exec", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "POST /v1/sandboxes/{id}/exec", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			OwnerID string `json:"ownerId"`
 			Command string `json:"command"`
@@ -180,7 +180,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// bound to this sandbox and command. The client then sends the command to
 	// the returned `uri` with the token as its Bearer (ConnectStreamHandler).
 	// ownerId is query-or-body, as for /exec.
-	mux.HandleFunc("POST /v1/sandboxes/{id}/runs/{operation}/token", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "POST /v1/sandboxes/{id}/runs/{operation}/token", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			OwnerID string `json:"ownerId"`
 			Command string `json:"command"`
@@ -207,7 +207,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 	// The pinned file-copy client sends no JSON body: both ownerId and path
 	// are query parameters, and operation is part of the mint route.
-	mux.HandleFunc("POST /v1/sandboxes/{id}/files/{operation}/token", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "POST /v1/sandboxes/{id}/files/{operation}/token", func(w http.ResponseWriter, r *http.Request) {
 		r = r.WithContext(withoutResumeWait(r.Context()))
 		out, err := s.ConnectFile(r.Context(), FileConnectRequest{
 			OwnerID: r.URL.Query().Get("ownerId"), SandboxID: r.PathValue("id"),
@@ -220,14 +220,14 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusCreated, out)
 	})
 	// Render CLI `stop` → terminate.
-	mux.HandleFunc("POST /v1/sandboxes/{id}/terminate", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "POST /v1/sandboxes/{id}/terminate", func(w http.ResponseWriter, r *http.Request) {
 		s.lifecycleREST(w, r, s.Terminate)
 	})
 	// bex lifecycle extensions (Render's suspended/resuming statuses).
-	mux.HandleFunc("POST /v1/sandboxes/{id}/pause", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "POST /v1/sandboxes/{id}/pause", func(w http.ResponseWriter, r *http.Request) {
 		s.lifecycleREST(w, r, s.Suspend)
 	})
-	mux.HandleFunc("POST /v1/sandboxes/{id}/resume", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "POST /v1/sandboxes/{id}/resume", func(w http.ResponseWriter, r *http.Request) {
 		s.lifecycleREST(w, r, s.Resume)
 	})
 	s.registerGroupREST(mux)

@@ -633,7 +633,7 @@ func (s *Service) groupOwner(id string) core.ResourceOwner {
 // registerGroupREST mounts Render's sandbox-group routes: the four of the
 // public OpenAPI and CLI v2.36's delete and default set (w2/m359).
 func (s *Service) registerGroupREST(mux *http.ServeMux) {
-	mux.HandleFunc("POST /v1/sandbox-groups", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "POST /v1/sandbox-groups", func(w http.ResponseWriter, r *http.Request) {
 		var req CreateGroupRequest
 		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))
 		if err := core.DecodeJSON(r, &req); err != nil {
@@ -650,7 +650,7 @@ func (s *Service) registerGroupREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusCreated, g)
 	})
-	mux.HandleFunc("GET /v1/sandbox-groups", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "GET /v1/sandbox-groups", func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query()
 		after, limit := core.PageParams(query)
 		groups, err := s.ListGroups(core.WithWorkspace(r.Context(), query.Get("ownerId")), after, limit)
@@ -664,7 +664,7 @@ func (s *Service) registerGroupREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, envelopes)
 	})
-	mux.HandleFunc("GET /v1/sandbox-groups/{sandboxGroupId}", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "GET /v1/sandbox-groups/{sandboxGroupId}", func(w http.ResponseWriter, r *http.Request) {
 		g, err := s.GetGroup(r.Context(), r.PathValue("sandboxGroupId"))
 		if err != nil {
 			core.WriteErr(w, err)
@@ -672,7 +672,7 @@ func (s *Service) registerGroupREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, g)
 	})
-	mux.HandleFunc("PATCH /v1/sandbox-groups/{sandboxGroupId}", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "PATCH /v1/sandbox-groups/{sandboxGroupId}", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			// A pointer so an absent value is refused, not read as 0.
 			ConcurrencyLimit *int `json:"concurrencyLimit"`
@@ -693,14 +693,14 @@ func (s *Service) registerGroupREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, g)
 	})
-	mux.HandleFunc("DELETE /v1/sandbox-groups/{sandboxGroupId}", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "DELETE /v1/sandbox-groups/{sandboxGroupId}", func(w http.ResponseWriter, r *http.Request) {
 		if err := s.DeleteGroup(r.Context(), r.PathValue("sandboxGroupId")); err != nil {
 			core.WriteErr(w, err)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
-	mux.HandleFunc("POST /v1/sandbox-groups/{sandboxGroupId}/set-default", func(w http.ResponseWriter, r *http.Request) {
+	s.handle(mux, "POST /v1/sandbox-groups/{sandboxGroupId}/set-default", func(w http.ResponseWriter, r *http.Request) {
 		g, err := s.SetDefaultGroup(r.Context(), r.PathValue("sandboxGroupId"))
 		if err != nil {
 			core.WriteErr(w, err)

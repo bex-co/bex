@@ -17,6 +17,7 @@ limitations under the License.
 package core
 
 import (
+	"context"
 	"math"
 	"net/http"
 	"strconv"
@@ -172,4 +173,120 @@ func SetRateLimitHeaders(h http.Header, now time.Time, refused bool, buckets ...
 	h.Set("RateLimit-Limit", strconv.Itoa(limit))
 	h.Set("RateLimit-Remaining", strconv.Itoa(remaining))
 	h.Set("RateLimit-Reset", strconv.Itoa(reset))
+}
+
+// ReserveEach takes n tokens from each bucket at now, in order, or none at
+// all. n is capped at each bucket's burst, the most a full bucket holds. It
+// returns one reservation per bucket it reached. A wait above zero is a
+// refusal: the last bucket reached could not give them, everything taken was
+// given back, and wait is how long until that bucket can. Every limiter that
+// charges more than one bucket for a request reserves through it (the general
+// limiter's subject and workspace buckets, a sandbox operation's class and
+// workspace buckets), so a refusal never spends part of a request.
+func ReserveEach(now time.Time, n int, buckets ...*rate.Limiter) (taken []*rate.Reservation, wait time.Duration) {
+	taken = make([]*rate.Reservation, 0, len(buckets))
+	for _, bucket := range buckets {
+		res := bucket.ReserveN(now, min(n, bucket.Burst()))
+		taken = append(taken, res)
+		if wait = res.DelayFrom(now); wait > 0 {
+			for _, reservation := range taken {
+				reservation.CancelAt(now)
+			}
+			return taken, wait
+		}
+	}
+	return taken, 0
+}
+
+// SetRateLimitRefusal writes a refused request's Retry-After (whole seconds,
+// at least 1) and Render's RateLimit headers for the buckets it reached, and
+// returns the seconds. A nil header writes nothing.
+func SetRateLimitRefusal(h http.Header, now time.Time, wait time.Duration, buckets ...*rate.Limiter) int {
+	seconds := max(1, int(math.Ceil(wait.Seconds())))
+	if h != nil {
+		h.Set("Retry-After", strconv.Itoa(seconds))
+		SetRateLimitHeaders(h, now, true, buckets...)
+	}
+	return seconds
+}
+
+// RateLimitScope is what the general limiter leaves in the context of a
+// request it admitted, for an operation that has a budget of its own and is
+// only known after the request is read (a GraphQL field, an MCP tool). Such an
+// operation charges its own buckets and gives the general ones back, so it is
+// counted once, as the same operation is on a REST route the limiter can
+// classify by its pattern. A nil scope is a request no limiter admitted
+// (a test, the stdio transport): every method is a no-op.
+type RateLimitScope struct {
+	workspace string
+	header    http.Header
+	general   []*rate.Limiter
+	mu        sync.Mutex
+	refunded  bool
+}
+
+// NewRateLimitScope records the caller's workspace bucket key ("" for none),
+// the response header a refusal may still write to, and the general buckets
+// the request took one token from.
+func NewRateLimitScope(workspace string, header http.Header, general []*rate.Limiter) *RateLimitScope {
+	return &RateLimitScope{workspace: workspace, header: header, general: general}
+}
+
+type rateLimitScopeKey struct{}
+
+// WithRateLimitScope attaches scope to ctx.
+func WithRateLimitScope(ctx context.Context, scope *RateLimitScope) context.Context {
+	return context.WithValue(ctx, rateLimitScopeKey{}, scope)
+}
+
+// RateLimitScopeFrom returns the scope the general limiter attached, or nil.
+func RateLimitScopeFrom(ctx context.Context) *RateLimitScope {
+	scope, _ := ctx.Value(rateLimitScopeKey{}).(*RateLimitScope)
+	return scope
+}
+
+// Workspace is the caller's workspace bucket key, "" when there is none.
+func (s *RateLimitScope) Workspace() string {
+	if s == nil {
+		return ""
+	}
+	return s.workspace
+}
+
+// Header is the response header of the request, nil when there is none.
+func (s *RateLimitScope) Header() http.Header {
+	if s == nil {
+		return nil
+	}
+	return s.header
+}
+
+// Another is a scope for one more unit the same request paid the same
+// general buckets for: each further member of a GraphQL batch costs a token
+// of its own, and gives its own back when it is a sandbox operation.
+func (s *RateLimitScope) Another() *RateLimitScope {
+	if s == nil {
+		return nil
+	}
+	return NewRateLimitScope(s.workspace, s.header, s.general)
+}
+
+// Refund gives the scope's general tokens back at now, once. A reservation
+// cannot do it: Reservation.Cancel restores nothing once the reservation's
+// time to act has passed, which for an admitted request is the instant it was
+// taken. Reserving minus one token is the limiter's own arithmetic run
+// backwards, and a bucket never holds more than its burst.
+func (s *RateLimitScope) Refund(now time.Time) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.refunded {
+		return
+	}
+	s.refunded = true
+	for _, bucket := range s.general {
+		bucket.ReserveN(now, -1)
+	}
 }

@@ -231,7 +231,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 	maps.Copy(fields, s.groupQueryFields())
 	maps.Copy(fields, s.imageQueryFields())
 	maps.Copy(fields, s.snapshotQueryFields())
-	return fields
+	return s.limitedFields("Query", fields)
 }
 
 func (s *Service) GraphQLMutation() graphql.Fields {
@@ -306,5 +306,5 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 	maps.Copy(fields, s.groupMutationFields())
 	maps.Copy(fields, s.imageMutationFields())
 	maps.Copy(fields, s.snapshotMutationFields())
-	return fields
+	return s.limitedFields("Mutation", fields)
 }

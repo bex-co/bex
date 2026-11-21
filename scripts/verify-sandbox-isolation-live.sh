@@ -25,6 +25,12 @@ set -euo pipefail
 # w22/m313, w22/m314, w22/m321, w22/002, w22/008):
 #   BEX_VERIFY_PROBE=scripts/measure-sandbox-kubelet.sh
 #
+# Optional: BEX_VERIFY_SHARED_USER_KEYS=1 makes workspace A's owner one user
+# with two API keys (both stamped with the same creator, as POST /v1/api-keys
+# stamps a key with the user who made it) and passes the second key's token as
+# BEX_WS_A_OWNER_SECOND_TOKEN. The rate leg needs it: Render's sandbox rate
+# limits are per user, shared across that user's API keys (w22/m443).
+#
 # Cluster defaults can be overridden for non-production installations:
 #   BEX_AUTH_NAMESPACE=auth
 #   BEX_API_NAMESPACE=bex-system
@@ -75,6 +81,8 @@ bootstrap_created=false
 workspace_a=""
 workspace_b=""
 key_owner_a=""
+key_owner_a2=""
+shared_user=""
 key_member_b=""
 key_admin_a=""
 key_owner_b=""
@@ -151,6 +159,7 @@ token_for() {
 # an API key is never allowed what its creator is not, and a key with no creator
 # never acts above a Developer, so the elevated principal names the bootstrap
 # client, an admin of every disposable workspace, as the person behind it.
+# The rate leg's two owner keys name one shared user (w22/m443).
 create_bound_principal() {
   local workspace="$1" name="$2" relation="$3" output="$4" creator="${5:-}"
   local client_id client_secret client_body code
@@ -360,6 +369,7 @@ cleanup() {
   if [ -s "$fixture_dir/bootstrap.curl" ]; then
     for tuple in \
       "$key_owner_a:$workspace_a" \
+      "$key_owner_a2:$workspace_a" \
       "$key_member_b:$workspace_a" \
       "$key_admin_a:$workspace_a" \
       "$key_owner_b:$workspace_b"; do
@@ -375,7 +385,7 @@ cleanup() {
     delete_workspace "$workspace_b" "$workspace_name_b"
   fi
 
-  remove_subjects "$key_owner_a" "$key_member_b" "$key_admin_a" "$key_owner_b"
+  remove_subjects "$key_owner_a" "$key_owner_a2" "$shared_user" "$key_member_b" "$key_admin_a" "$key_owner_b"
   if [ "$bootstrap_created" = true ]; then
     remove_subjects "$bootstrap_client"
   fi
@@ -529,9 +539,22 @@ done
 echo "==> create four independent owner/member/admin principals"
 # Direct Hydra+DB+FGA mint (not POST /v1/api-keys): AuthorizeMintClass forbids
 # the bootstrap's client_credentials token from self-replicating.
-create_bound_principal "$workspace_a" "m35-owner-a-$run_id" developer "$fixture_dir/key-owner-a.json"
+if [ "${BEX_VERIFY_SHARED_USER_KEYS:-0}" = 1 ]; then
+  # A key is never allowed what its creator is not (w9/m481), so the user
+  # behind both keys is a developer of workspace A too.
+  shared_user="m35-user-$run_id"
+  bind_subject "$workspace_a" "$shared_user" developer "the shared user"
+fi
+create_bound_principal "$workspace_a" "m35-owner-a-$run_id" developer "$fixture_dir/key-owner-a.json" "$shared_user"
 key_owner_a="$(jq -er '.id' "$fixture_dir/key-owner-a.json")"
 secret_owner_a="$(jq -er '.secret' "$fixture_dir/key-owner-a.json")"
+token_owner_a2=""
+if [ -n "$shared_user" ]; then
+  # The same user's second API key (w22/m443).
+  create_bound_principal "$workspace_a" "m35-owner-a2-$run_id" developer "$fixture_dir/key-owner-a2.json" "$shared_user"
+  key_owner_a2="$(jq -er '.id' "$fixture_dir/key-owner-a2.json")"
+  token_owner_a2="$(token_for "$key_owner_a2" "$(jq -er '.secret' "$fixture_dir/key-owner-a2.json")" owner-a2)"
+fi
 create_bound_principal "$workspace_a" "m35-member-b-$run_id" developer "$fixture_dir/key-member-b.json"
 key_member_b="$(jq -er '.id' "$fixture_dir/key-member-b.json")"
 secret_member_b="$(jq -er '.secret' "$fixture_dir/key-member-b.json")"
@@ -576,6 +599,7 @@ BEX_WS_A_OWNER_TOKEN="$token_owner_a" \
 BEX_HYDRA_PUBLIC_URL="$hydra_public" \
 BEX_WS_A_OWNER_CLIENT_ID="$key_owner_a" \
 BEX_WS_A_OWNER_CLIENT_SECRET="$secret_owner_a" \
+BEX_WS_A_OWNER_SECOND_TOKEN="$token_owner_a2" \
 BEX_WS_A_MEMBER_TOKEN="$token_member_b" \
 BEX_WS_A_ADMIN_TOKEN="$token_admin_a" \
 BEX_WS_B_OWNER_TOKEN="$token_owner_b" \

@@ -167,6 +167,9 @@ type Service struct {
 	// w10/m497): bex-tenant-sandbox-api's pods get/list there, and the
 	// namespace's ResourceQuotas. nil names every timeout's cause unknown.
 	Pods client.Reader
+	// RateLimits holds Render's per-user, per-operation rate limits
+	// (w22/m443). nil limits nothing, as BEX_RATE_LIMIT=0 asks.
+	RateLimits *RateLimits
 	// Metrics reports /v1/sandboxes lifecycle outcomes (w5/m95). nil is a
 	// working no-op, so a Service built without a registry needs no guard.
 	Metrics *Metrics
