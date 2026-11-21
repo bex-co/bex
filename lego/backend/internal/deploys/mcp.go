@@ -23,6 +23,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // mcp.go is the MCP fragment: list_deploys/get_deploy, under Render's
@@ -58,6 +59,10 @@ type getDeployArgs struct {
 	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
 	DeployID  string `json:"deployId" jsonschema:"the deploy id (dep-…), as returned by list_deploys"`
 }
+
+// queuedTriggerText is Render's MCP trigger_deploy answer when the API took
+// the deploy as 202 Queued (render-mcp-server pkg/deploy/tools.go).
+const queuedTriggerText = "The deploy request was accepted, but the deploy has not been created yet. Use list_deploys to check on the service's deploys."
 
 // triggerDeployArgs is trigger_deploy's input (w2/m44).
 type triggerDeployArgs struct {
@@ -185,7 +190,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	// the same semantics as the REST body.
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "trigger_deploy",
-		Description: "Trigger a new deploy for a service. For image-backed services, imageUrl deploys another tag or digest of the configured image (host, repository and image name must match). For repo-backed services, commitId pins the build to a specific git ref (default: Branch HEAD). clearCache: true (Render's MCP boolean, or the REST string clear) rebuilds without importing prior layers when registry build caching is enabled (and still exports a fresh cache); with caching off it is a no-op. Returns the new deploy; poll with get_deploy until status is live.",
+		Description: "Trigger a new deploy for a service. For image-backed services, imageUrl deploys another tag or digest of the configured image (host, repository and image name must match). For repo-backed services, commitId pins the build to a specific git ref (default: Branch HEAD). clearCache: true (Render's MCP boolean, or the REST string clear) rebuilds without importing prior layers when registry build caching is enabled (and still exports a fresh cache); with caching off it is a no-op. Returns the new deploy; poll with get_deploy until status is live. A deploy that waits behind the one in progress answers a sentence instead; find it with list_deploys (status queued).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in triggerDeployArgs) (*mcp.CallToolResult, renderDeploy, error) {
 		clearCache, err := mcputil.BoolOrEnum("clearCache", in.ClearCache, "clear", "do_not_clear")
 		if err != nil {
@@ -200,6 +205,12 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		})
 		if err != nil {
 			return nil, renderDeploy{}, err
+		}
+		// A deploy waiting behind the one in progress is REST's 202 Queued
+		// (w8/378): the text is Render's sentence, and structuredContent still
+		// carries the queued row for a client that reads it.
+		if d.Status == store.DeployQueued {
+			return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: queuedTriggerText}}}, toRenderDeploy(d), nil
 		}
 		return nil, toRenderDeploy(d), nil
 	})

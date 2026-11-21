@@ -288,6 +288,14 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, err)
 			return
 		}
+		// Render's contract answers a trigger that waits behind the deploy in
+		// progress 202 Queued with no body (w8/378), as the deploy hook does
+		// (w4/635). The pinned CLI reads a 201's deploy and, on a 202, finds the
+		// queued one with ?status=queued&limit=1 (views.WaitForDeployCreate).
+		if d.Status == store.DeployQueued {
+			w.WriteHeader(http.StatusAccepted)
+			return
+		}
 		core.WriteJSON(w, http.StatusCreated, toRenderDeploy(d))
 	})
 	// Cancel (Render's POST .../deploys/{deployId}/cancel, w2/m10): past the

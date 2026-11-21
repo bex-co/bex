@@ -968,6 +968,11 @@ func TestVerbsUnavailableWithoutStore(t *testing.T) {
 func TestRESTListGetTrigger(t *testing.T) {
 	ds := newFakeStore()
 	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{}, "")
+	// Live, so the trigger below starts at once (201); one behind an open
+	// deploy waits and answers 202 (w8/378).
+	if won, err := ds.CloseDeploy(context.Background(), first.ID, store.DeployLive, "web:v1"); err != nil || !won {
+		t.Fatalf("close first live: won=%v err=%v", won, err)
+	}
 	svc, _ := newService(ds, sampleApp("web", "srv-1"))
 	do := newRESTHarness(t, svc)
 

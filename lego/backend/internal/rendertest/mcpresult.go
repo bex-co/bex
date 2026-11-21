@@ -32,9 +32,9 @@ import (
 // mcpresult.go checks a bex MCP answer against the result shape Render's own
 // MCP server gives the same tool (openapi.RenderMCPResults, w4/m378): the
 // text's form — an object, a bare array, an array plus Render's cursor suffix,
-// or Render's sentence for an empty list — and, for every object in it, that
-// Render's always-present keys are there and every other key is one Render's
-// type declares or one ADR018 records as a bex extension.
+// or Render's sentence for an empty list or a queued deploy — and, for every
+// object in it, that Render's always-present keys are there and every other
+// key is one Render's type declares or one ADR018 records as a bex extension.
 
 // MCPResults is the parsed capture.
 type MCPResults struct {

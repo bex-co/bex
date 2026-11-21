@@ -104,7 +104,8 @@
     },
     "trigger_deploy": {
       "form": "object",
-      "type": "Deploy"
+      "type": "Deploy",
+      "emptyText": "The deploy request was accepted, but the deploy has not been created yet. Use list_deploys to check on the service's deploys."
     },
     "update_blueprint": {
       "form": "object"

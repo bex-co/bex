@@ -161,9 +161,10 @@ def normalize(tools):
 # (pkg/<area>/tools.go): "object" or "array" is json.Marshal of the named Go
 # type (or of a slice of it), "arrayCursor" that array followed by
 # "\n\n cursor: <cursor>", "text" a sentence. emptyText is the sentence the
-# handler answers for an empty list. A type of "string" is a JSON string, and
-# a type of None leaves the items unchecked (query_render_postgres' row
-# objects are keyed by the caller's own columns).
+# handler answers when it has nothing to marshal: an empty list, or a deploy
+# the API queued (202) instead of creating. A type of "string" is a JSON
+# string, and a type of None leaves the items unchecked (query_render_postgres'
+# row objects are keyed by the caller's own columns).
 RESULT_FORMS = {
     "approve_blueprint": {"form": "object"},
     # json.Marshal of map[string]any{"serviceId": ..., "canceled": true}, no named type.
@@ -191,7 +192,12 @@ RESULT_FORMS = {
     "plan_blueprint": {"form": "object"},
     "query_render_postgres": {"form": "array", "type": None},
     "run_cron_job": {"form": "object", "type": "CronJobRunResult"},
-    "trigger_deploy": {"form": "object", "type": "Deploy"},
+    # A 202 Queued trigger has no deploy to marshal: the handler answers a sentence.
+    "trigger_deploy": {
+        "form": "object",
+        "type": "Deploy",
+        "emptyText": "The deploy request was accepted, but the deploy has not been created yet. Use list_deploys to check on the service's deploys.",
+    },
     "update_blueprint": {"form": "object"},
     "update_environment_variables": {"form": "text"},
 }
