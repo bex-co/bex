@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"strings"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -116,7 +118,8 @@ func specNativeCommandGaps(spec appv1alpha1.AppSpec) (runtime string, build, sta
 // (resolveBuildStrategy) and the operator fails every build of it at dispatch,
 // so saving it only turned every later deploy into a failed build (w32/052):
 // clearing a command, or switching an image back to a repo its runtime builds
-// natively without sending the commands the image switch dropped. A gap the
+// natively without sending the commands the image switch dropped, when that
+// switch kept none (keepSwitchBackCommands, w32/056). A gap the
 // change finds and leaves, saved before this check, refuses nothing, so such a
 // service still takes its other settings, and each command one save at a time
 // as the dashboard sends them.
@@ -174,26 +177,107 @@ func staleImageRuntime(spec appv1alpha1.AppSpec) bool {
 // Docker Command (w8/m461): a native or buildpack build's, or a native build
 // source's (nativeLink). A Dockerfile build's, an image's or a Docker build
 // source's command already is a Docker Command and stays. The runtime, builder
-// and root directory stay for a switch back (w4/m202); a command saved with the
-// switch is written after it.
-func settleSourceSwitch(before appv1alpha1.AppSpec, spec *appv1alpha1.AppSpec, nativeLink bool) {
+// and root directory stay for a switch back (w4/m202), and so do the commands
+// it drops from a build of the service's own: it returns them for
+// keepSwitchBackCommands. A command saved with the switch is written after it.
+func settleSourceSwitch(before appv1alpha1.AppSpec, spec *appv1alpha1.AppSpec, nativeLink bool) nativeCommands {
 	if staleImageRuntime(*spec) {
 		spec.Runtime = ""
 	}
 	if !prebuiltImageSource(*spec) || prebuiltImageSource(before) {
-		return
+		return nativeCommands{}
 	}
+	build := spec.BuildCommand
 	spec.BuildCommand = ""
 	if before.BuildSource != nil {
 		if nativeLink {
 			// A linked cron keeps its command here (LinkBuildSource).
 			spec.StartCommand, spec.Command = "", ""
 		}
+		// The link cleared the runtime and builder a switch back would
+		// build with (linkBuildSourceSpec), so nothing is kept for one.
+		return nativeCommands{}
+	}
+	if readsDockerCommand(buildStrategy(before)) {
+		return nativeCommands{}
+	}
+	dropped := nativeCommands{build: build, start: spec.StartCommand}
+	spec.StartCommand = ""
+	return dropped
+}
+
+// The native build and start commands a switch to a prebuilt image dropped
+// (settleSourceSwitch), kept on the App while that image is its source, so a
+// switch back to the repo builds with them again (w32/056). The image never
+// runs them: spec.startCommand is its Docker Command. The pinned Render CLI
+// cannot send commands with that switch, since it refuses --build-command and
+// --start-command on a service whose runtime reads image, so without them
+// `services update --repo` had no buildable answer. Only bex-api reads them.
+const (
+	switchBackBuildCommandAnnotation = "app.bex.co/switch-back-build-command"
+	switchBackStartCommandAnnotation = "app.bex.co/switch-back-start-command"
+)
+
+// nativeCommands are the build and start commands a native or buildpack build
+// bakes into the image it builds.
+type nativeCommands struct{ build, start string }
+
+// keepSwitchBackCommands carries a build's commands across a switch to a
+// prebuilt image and back (w32/056), given the spec a's source switch started
+// from and what settleSourceSwitch dropped. The switch to the image keeps what
+// it dropped. The switch back to a repo puts them back where the build reads
+// them, replacing an image's Docker Command, before any command the update
+// sends, which is written after the source and wins. A change of image keeps
+// what the first switch kept, and every other source forgets it, so a switch
+// back with nothing kept and no commands sent still gets create's 400
+// (checkNativeCommandsKept).
+func keepSwitchBackCommands(a *appv1alpha1.App, before appv1alpha1.AppSpec, dropped nativeCommands) {
+	image, wasImage := prebuiltImageSource(a.Spec), prebuiltImageSource(before)
+	switch {
+	case image && wasImage:
+		return
+	case image:
+		setSwitchBackCommands(a, dropped)
+		return
+	case wasImage && !readsDockerCommand(buildStrategy(a.Spec)):
+		kept := switchBackCommands(a)
+		if kept.build != "" {
+			a.Spec.BuildCommand = kept.build
+		}
+		if kept.start != "" {
+			a.Spec.StartCommand = kept.start
+		}
+	}
+	forgetSwitchBackCommands(a)
+}
+
+// switchBackCommands are the commands a keeps for a switch back.
+func switchBackCommands(a *appv1alpha1.App) nativeCommands {
+	return nativeCommands{
+		build: a.Annotations[switchBackBuildCommandAnnotation],
+		start: a.Annotations[switchBackStartCommandAnnotation],
+	}
+}
+
+// setSwitchBackCommands keeps kept on a, each command only when it has one.
+func setSwitchBackCommands(a *appv1alpha1.App, kept nativeCommands) {
+	setOrDeleteAnnotation(a, switchBackBuildCommandAnnotation, kept.build)
+	setOrDeleteAnnotation(a, switchBackStartCommandAnnotation, kept.start)
+}
+
+// setOrDeleteAnnotation sets key on a to value, or removes it for "".
+func setOrDeleteAnnotation(a *appv1alpha1.App, key, value string) {
+	if value == "" {
+		delete(a.Annotations, key)
 		return
 	}
-	if !readsDockerCommand(buildStrategy(before)) {
-		spec.StartCommand = ""
-	}
+	metav1.SetMetaDataAnnotation(&a.ObjectMeta, key, value)
+}
+
+// forgetSwitchBackCommands drops what a keeps for a switch back: a source other
+// than the image they were kept beside has its own commands, or none.
+func forgetSwitchBackCommands(a *appv1alpha1.App) {
+	setSwitchBackCommands(a, nativeCommands{})
 }
 
 // dockerDetails are Render's docker command and build context as a create

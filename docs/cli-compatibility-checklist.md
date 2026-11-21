@@ -271,7 +271,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--name` — rename; the shared API rejects controls/line separators, more than 100 Unicode code points after trimming, and registered resource-ID lookalikes (w8/034). The pinned CLI trims before HTTP and cannot express an empty clear; direct REST/GraphQL/MCP preserve the empty-clear contract. The 100-code-point bound is Bex policy; Render's exact limit is unverified.
     - [x] `--plan`
     - [~] `--runtime` — upstream CLI guard; exits before any request (`cannot switch runtimes via the CLI`)
-    - [x] `--repo`
+    - [x] `--repo` — **switching an image service back to Git (w32/056, 2026-11-21).** On a service switched from a native runtime to an image, the pinned client reads runtime `image` and refuses `--build-command`, `--start-command` and `--runtime` before any request (`pkg/service/update.go`), so it sends only `repo` and `branch` (`testdata/switched-image-switch-back-request.json`). bex-api keeps the native commands the switch to the image dropped and builds with them again, so `--repo … --branch …` alone switches back; a service that kept none (switched before w32/056) gets create's `400 native runtime <rt> requires buildCommand and startCommand` ([ADR004](ADR004-app-deployment.md)).
     - [x] `--branch`
     - [x] `--image` — exact generated `image.ownerId:""` PATCH passes locally and against the deployed production API (w5/m49)
     - [x] `--build-command`

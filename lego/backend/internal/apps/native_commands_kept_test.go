@@ -20,12 +20,16 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -161,43 +165,151 @@ func TestClearingANativeCommandIsRefused(t *testing.T) {
 	}
 }
 
-// The repro's step 5: a native service switched to an image keeps its runtime
-// for a switch back (w4/m202) but not the commands its build baked in
-// (w8/m461). Switching back without them is refused on every surface and
-// leaves the image service as it was; sending them in the same update saves
-// the switch, as on create.
-func TestSwitchingBackToANativeRepoNeedsItsCommands(t *testing.T) {
-	refused := map[string]w32052Surface{
-		"REST":    w32052REST(`{"repo":"` + m461Repo + `","branch":"main"}`),
-		"GraphQL": w32052GraphQL(`mutation { setRepo(id: "%s", repo: "` + m461Repo + `", branch: "main") { id } }`),
-		"MCP":     w32052MCP(map[string]any{"repo": m461Repo, "branch": "main"}),
+// w32/056. The switch back without commands, through each surface: REST with
+// exactly the body the pinned CLI sends for `services update <id> --repo …
+// --branch main` (lego/cli/switched_image_switch_back_contract_test.go records
+// it; the client refuses to send the commands to a service reading image),
+// GraphQL setRepo and MCP update_service.
+var w32056SwitchBack = map[string]w32052Surface{
+	"REST (pinned CLI)": func(t *testing.T, svc *Service, name string) string {
+		t.Helper()
+		raw, err := os.ReadFile(filepath.Join("..", "..", "..", "cli", "testdata", "switched-image-switch-back-request.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return w32052REST(string(raw))(t, svc, name)
+	},
+	"GraphQL": w32052GraphQL(`mutation { setRepo(id: "%s", repo: "` + m461Repo + `", branch: "main") { id } }`),
+	"MCP":     w32052MCP(map[string]any{"repo": m461Repo, "branch": "main"}),
+}
+
+// w32056SwitchBackWith sends the switch back with both commands, as the
+// dashboard's Update Source dialog does, on each surface.
+var w32056SwitchBackWith = map[string]w32052Surface{
+	"REST (pinned CLI)": w32052REST(`{"repo":"` + m461Repo + `","branch":"main",` +
+		`"serviceDetails":{"envSpecificDetails":{"buildCommand":"pnpm i","startCommand":"node v2.js"}}}`),
+	"GraphQL": w32052GraphQL(`mutation { setRepo(id: "%s", repo: "` + m461Repo + `", branch: "main", ` +
+		`buildCommand: "pnpm i", startCommand: "node v2.js") { id } }`),
+	"MCP": w32052MCP(map[string]any{"repo": m461Repo, "branch": "main", "buildCommand": "pnpm i", "startCommand": "node v2.js"}),
+}
+
+// assertSwitchedBack checks that name builds the repo natively again with
+// want, and keeps nothing more for another switch back.
+func assertSwitchedBack(t *testing.T, cl client.Client, name string, want m461Commands) {
+	t.Helper()
+	a := getApp(t, cl, name)
+	if a.Spec.Repo != m461Repo || a.Spec.Image != "" || a.Spec.Runtime != "node" || m461CommandsOf(a.Spec) != want {
+		t.Errorf("after the switch back: repo %q image %q runtime %q commands %+v, want the native repo with %+v",
+			a.Spec.Repo, a.Spec.Image, a.Spec.Runtime, m461CommandsOf(a.Spec), want)
 	}
-	saved := map[string]w32052Surface{
-		"REST": w32052REST(`{"repo":"` + m461Repo + `","branch":"main",` +
-			`"serviceDetails":{"envSpecificDetails":{"buildCommand":"yarn","startCommand":"node app.js"}}}`),
-		"GraphQL": w32052GraphQL(`mutation { setRepo(id: "%s", repo: "` + m461Repo + `", branch: "main", ` +
-			`buildCommand: "yarn", startCommand: "node app.js") { id } }`),
-		"MCP": w32052MCP(map[string]any{"repo": m461Repo, "branch": "main", "buildCommand": "yarn", "startCommand": "node app.js"}),
+	if kept := switchBackCommands(a); kept != (nativeCommands{}) {
+		t.Errorf("the repo service still keeps %+v for a switch back", kept)
 	}
-	for surface := range refused {
+}
+
+// The w32/056 repro: a native service switched to an image (w8/m461 drops its
+// commands from the spec, which the image runs) switches back to Git with
+// `bex services update --repo … --branch …` alone, on every type that runs a
+// start command and through every caller: the switch to the image kept the
+// commands, and the switch back builds with them. Commands sent with the
+// switch back win over the kept ones.
+func TestSwitchingBackToANativeRepoRestoresItsCommands(t *testing.T) {
+	types := []string{appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker, appv1alpha1.TypeCronJob}
+	for surface, switchBack := range w32056SwitchBack {
+		for _, svcType := range types {
+			t.Run(surface+"/"+svcType, func(t *testing.T) {
+				svc, cl := newService(nil, m461NativeApp("web", svcType))
+				m461Switch(t, svc, "web", "")
+				switched := getApp(t, cl, "web")
+				if switched.Spec.Runtime != "node" || switched.Spec.Image != m461Image || m461CommandsOf(switched.Spec) != (m461Commands{}) {
+					t.Fatalf("fixture after the image switch = runtime %q image %q commands %+v", switched.Spec.Runtime, switched.Spec.Image, m461CommandsOf(switched.Spec))
+				}
+				if kept := switchBackCommands(switched); kept != (nativeCommands{build: "yarn", start: "node app.js"}) {
+					t.Fatalf("the image switch kept %+v, want the native commands it dropped", kept)
+				}
+				if got := switchBack(t, svc, "web"); got != "" {
+					t.Fatalf("switch back with no commands = %q, want saved with the kept ones", got)
+				}
+				assertSwitchedBack(t, cl, "web", m461Commands{build: "yarn", start: "node app.js"})
+			})
+		}
+	}
+	for surface, switchBack := range w32056SwitchBackWith {
+		t.Run(surface+"/with commands", func(t *testing.T) {
+			svc, cl := newService(nil, m461NativeApp("web", appv1alpha1.TypeWebService))
+			m461Switch(t, svc, "web", "")
+			if got := switchBack(t, svc, "web"); got != "" {
+				t.Fatalf("switch back with its commands = %q, want saved", got)
+			}
+			assertSwitchedBack(t, cl, "web", m461Commands{build: "pnpm i", start: "node v2.js"})
+		})
+	}
+}
+
+// What the switch keeps follows the image service: a change of image keeps
+// it, and the native start command replaces a Docker Command saved on the image,
+// which the image ran and the native build does not. A switch back that
+// clears a kept command in the same update is refused as a clear is.
+func TestKeptCommandsFollowTheImageService(t *testing.T) {
+	t.Run("a change of image keeps them", func(t *testing.T) {
+		svc, cl := newService(nil, m461NativeApp("web", appv1alpha1.TypeWebService))
+		m461Switch(t, svc, "web", "")
+		if got := w32052REST(`{"image":{"imagePath":"docker.io/library/nginx:1.27-alpine","ownerId":""}}`)(t, svc, "web"); got != "" {
+			t.Fatalf("image change = %q", got)
+		}
+		if got := w32056SwitchBack["REST (pinned CLI)"](t, svc, "web"); got != "" {
+			t.Fatalf("switch back = %q", got)
+		}
+		assertSwitchedBack(t, cl, "web", m461Commands{build: "yarn", start: "node app.js"})
+	})
+	t.Run("a Docker Command saved on the image gives way", func(t *testing.T) {
+		svc, cl := newService(nil, m461NativeApp("web", appv1alpha1.TypeWebService))
+		m461Switch(t, svc, "web", "")
+		if got := w32052GraphQL(`mutation { setStartCommand(id: "%s", command: "/bin/echo-server --verbose") { id } }`)(t, svc, "web"); got != "" {
+			t.Fatalf("Docker Command = %q", got)
+		}
+		if got := getApp(t, cl, "web").Spec.StartCommand; got != "/bin/echo-server --verbose" {
+			t.Fatalf("the image's Docker Command = %q", got)
+		}
+		if got := w32056SwitchBack["MCP"](t, svc, "web"); got != "" {
+			t.Fatalf("switch back = %q", got)
+		}
+		assertSwitchedBack(t, cl, "web", m461Commands{build: "yarn", start: "node app.js"})
+	})
+	t.Run("clearing one in the switch back is refused", func(t *testing.T) {
+		svc, cl := newService(nil, m461NativeApp("web", appv1alpha1.TypeWebService))
+		m461Switch(t, svc, "web", "")
+		before := getApp(t, cl, "web")
+		got := w32052REST(`{"repo":"`+m461Repo+`","branch":"main","serviceDetails":{"envSpecificDetails":{"buildCommand":""}}}`)(t, svc, "web")
+		after := getApp(t, cl, "web")
+		assertRefused(t, got, before.Spec, after.Spec)
+		if switchBackCommands(after) != switchBackCommands(before) {
+			t.Errorf("the refused switch back dropped the kept commands: %+v", switchBackCommands(after))
+		}
+	})
+}
+
+// The w32/052 refusal stays for a switch back with nothing kept, such as an
+// image service switched before w32/056: switching back without commands is
+// refused on every surface and leaves the image service as it was; sending
+// them in the same update saves the switch, as on create.
+func TestSwitchingBackWithNothingKeptNeedsItsCommands(t *testing.T) {
+	for surface, refused := range w32056SwitchBack {
 		t.Run(surface, func(t *testing.T) {
 			svc, cl := newService(nil, m461NativeApp("web", appv1alpha1.TypeWebService))
 			m461Switch(t, svc, "web", "")
-			before := getApp(t, cl, "web").Spec
-			if before.Runtime != "node" || before.Image != m461Image || before.BuildCommand != "" || before.StartCommand != "" {
-				t.Fatalf("fixture after the image switch = runtime %q image %q commands %+v", before.Runtime, before.Image, m461CommandsOf(before))
+			switched := getApp(t, cl, "web")
+			forgetSwitchBackCommands(switched)
+			if err := cl.Update(context.Background(), switched); err != nil {
+				t.Fatal(err)
 			}
-			assertRefused(t, refused[surface](t, svc, "web"), before, getApp(t, cl, "web").Spec)
+			before := getApp(t, cl, "web").Spec
+			assertRefused(t, refused(t, svc, "web"), before, getApp(t, cl, "web").Spec)
 
-			if got := saved[surface](t, svc, "web"); got != "" {
+			if got := w32056SwitchBackWith[surface](t, svc, "web"); got != "" {
 				t.Fatalf("switch back with its commands = %q, want saved", got)
 			}
-			spec := getApp(t, cl, "web").Spec
-			if spec.Repo != m461Repo || spec.Image != "" || spec.Runtime != "node" ||
-				m461CommandsOf(spec) != (m461Commands{build: "yarn", start: "node app.js"}) {
-				t.Errorf("after the switch back: repo %q image %q runtime %q commands %+v, want the native repo with its commands",
-					spec.Repo, spec.Image, spec.Runtime, m461CommandsOf(spec))
-			}
+			assertSwitchedBack(t, cl, "web", m461Commands{build: "pnpm i", start: "node v2.js"})
 		})
 	}
 }
@@ -255,4 +367,71 @@ func TestNativeCommandRefusalLeavesOtherSavesAlone(t *testing.T) {
 		got := w32052GraphQL(`mutation { setStartCommand(id: "%s", command: "") { id } }`)(t, svc, "web")
 		assertRefused(t, got, before, getApp(t, cl, "web").Spec)
 	})
+}
+
+// A link to a build source forgets what the switch to the image kept: the
+// link brings its own build and clears the runtime the commands built with.
+func TestLinkingABuildSourceForgetsKeptCommands(t *testing.T) {
+	svc, _, ctx := newBuildSourceService(t)
+	image, err := svc.CreateBuildSource(ctx, CreateBuildSourceRequest{OwnerID: "tea-a", Name: "Img", Image: &BuildSourceImage{ImageURL: "nginx:1"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	web, err := svc.Create(ctx, CreateRequest{OwnerID: "tea-a", Name: "web", Type: appv1alpha1.TypeWebService,
+		Repo: "https://github.com/acme/web", Runtime: "node", BuildCommand: "npm ci", StartCommand: "node server.js"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	img := m461Image
+	if _, err := svc.SetSourceAndRegistryCredential(ctx, web.ID, sourcePatch{Image: &img}); err != nil {
+		t.Fatal(err)
+	}
+	if kept := switchBackCommands(getTenantApp(t, svc.Client, "tea-a", "web")); kept != (nativeCommands{build: "npm ci", start: "node server.js"}) {
+		t.Fatalf("the image switch kept %+v", kept)
+	}
+	if _, err := svc.LinkBuildSource(ctx, web.ID, image.ID, nil, false); err != nil {
+		t.Fatal(err)
+	}
+	if kept := switchBackCommands(getTenantApp(t, svc.Client, "tea-a", "web")); kept != (nativeCommands{}) {
+		t.Errorf("the linked service still keeps %+v for a switch back", kept)
+	}
+}
+
+// A Blueprint sync that moves an image service back to a repo declares its own
+// commands, so it forgets the ones the switch to the image kept; a sync that
+// keeps the image keeps them.
+func TestBlueprintSyncOffTheImageForgetsKeptCommands(t *testing.T) {
+	native := "services:\n- {name: own-source, type: web, runtime: node, repo: " + switchRepo + ", branch: master, plan: free, buildCommand: 'true', startCommand: 'node server.js'}\n"
+	image := "services:\n- {name: own-source, type: web, runtime: image, image: {url: '" + switchImage + "'}, plan: free, healthCheckPath: /healthz}\n"
+	for _, tc := range []struct {
+		name, manifest string
+		want           nativeCommands
+	}{
+		{"to the repo", native, nativeCommands{}},
+		{"on the image", image, nativeCommands{build: "yarn", start: "node app.js"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st, _, err := compileStack(DeployRequest{Manifest: tc.manifest})
+			if err != nil {
+				t.Fatal(err)
+			}
+			decl := st.services[0]
+			want, err := specFromCreate(decl.req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			existing := blueprintIntentApp(true)
+			existing.Spec = imageBornSpec()
+			existing.Spec.Runtime = "node"
+			setSwitchBackCommands(existing, nativeCommands{build: "yarn", start: "node app.js"})
+			cl := fakeClient(existing)
+			svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}, Store: &recordingStore{}}
+			if _, err := svc.updateStackService(context.Background(), decl.req, decl.fields, want, existing); err != nil {
+				t.Fatal(err)
+			}
+			if kept := switchBackCommands(getApp(t, cl, existing.Name)); kept != tc.want {
+				t.Errorf("kept after the sync %+v, want %+v", kept, tc.want)
+			}
+		})
+	}
 }

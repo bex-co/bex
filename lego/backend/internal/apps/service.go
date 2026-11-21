@@ -5344,7 +5344,7 @@ func (f sourceFields) applyTo(a *appv1alpha1.App) {
 	a.Spec.Branch = f.branch
 	a.Spec.RegistryCredentialID = clonePtr(f.registryCredentialID)
 	core.SetGitHubRepoID(a, f.githubRepoID)
-	settleSourceSwitch(before, &a.Spec, f.nativeLink)
+	keepSwitchBackCommands(a, before, settleSourceSwitch(before, &a.Spec, f.nativeLink))
 }
 
 // resolveSourcePatch folds a sourcePatch onto the App's current source,

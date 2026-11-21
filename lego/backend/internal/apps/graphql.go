@@ -1748,8 +1748,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// verb as setBranch/REST PATCH `repo`, so validation and deferred-until-
 		// next-deploy semantics stay identical across surfaces. buildCommand and
 		// startCommand save with the switch, as REST PATCH takes them beside
-		// `repo`: an image service whose runtime builds natively needs both to
-		// switch back (w32/052).
+		// `repo`: an image service whose runtime builds natively switches back
+		// with the commands its switch to the image kept (w32/056), and needs
+		// both when it kept none (w32/052).
 		"setRepo": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{

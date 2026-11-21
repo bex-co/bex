@@ -4238,6 +4238,11 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 		// final already holds desired applied over existing (the change probe
 		// above), so adopt it instead of running a second apply pass.
 		existing.Spec = final.Spec
+		// A sync that moves the service off a prebuilt image declares its own
+		// commands, so it forgets the ones kept for a switch back (w32/056).
+		if !prebuiltImageSource(existing.Spec) {
+			forgetSwitchBackCommands(existing)
+		}
 		if maintenanceChanged {
 			existing.Spec.MaintenanceMode = currentMaintenance
 		}

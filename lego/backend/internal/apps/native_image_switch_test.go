@@ -131,15 +131,17 @@ func TestNativeToImageSwitchReadsAsAnImageService(t *testing.T) {
 		t.Errorf("spec runtime %q start %q build %q, want node kept for a switch back and no commands", spec.Runtime, spec.StartCommand, spec.BuildCommand)
 	}
 
-	// Back on the repo, the retained runtime reads again. It builds natively,
-	// so the switch carries the commands the image switch dropped (w32/052).
-	if code, _ := m461REST(t, svc, http.MethodPatch, "/v1/services/web", `{"repo":"`+m461Repo+`","branch":"main",`+
-		`"serviceDetails":{"envSpecificDetails":{"buildCommand":"yarn","startCommand":"node app.js"}}}`); code != http.StatusOK {
+	// Back on the repo, the retained runtime reads again, with the commands
+	// the image switch dropped and kept for it (w32/056).
+	if code, _ := m461REST(t, svc, http.MethodPatch, "/v1/services/web", `{"repo":"`+m461Repo+`","branch":"main"}`); code != http.StatusOK {
 		t.Fatalf("switch back = %d", code)
 	}
 	_, read = m461REST(t, svc, http.MethodGet, "/v1/services/web", "")
-	if details, _ := serviceDetailsOf(read); details["runtime"] != "node" || details["env"] != "node" {
-		t.Errorf("after the switch back runtime %v env %v, want node", details["runtime"], details["env"])
+	details, envSpecific = serviceDetailsOf(read)
+	if details["runtime"] != "node" || details["env"] != "node" ||
+		envSpecific["buildCommand"] != "yarn" || envSpecific["startCommand"] != "node app.js" {
+		t.Errorf("after the switch back runtime %v env %v envSpecificDetails %v, want node with yarn / node app.js",
+			details["runtime"], details["env"], envSpecific)
 	}
 }
 
@@ -221,11 +223,14 @@ func TestSourceSwitchToImageAcrossCallersTypesAndSources(t *testing.T) {
 		want     func(before m461Commands) m461Commands
 		// carrierRuntime is the linked build source's runtime, when linked.
 		carrierRuntime string
+		// kept is what the switch keeps for a switch back (w32/056): the
+		// commands it dropped from a build of the service's own.
+		kept nativeCommands
 	}{
 		{"native", false, func(*appv1alpha1.AppSpec) {},
-			func(m461Commands) m461Commands { return m461Commands{} }, ""},
+			func(m461Commands) m461Commands { return m461Commands{} }, "", nativeCommands{build: "yarn", start: "node app.js"}},
 		{"buildpack", false, func(s *appv1alpha1.AppSpec) { s.Runtime, s.Builder, s.BuildCommand = "", buildBuildpack, "" },
-			func(m461Commands) m461Commands { return m461Commands{} }, ""},
+			func(m461Commands) m461Commands { return m461Commands{} }, "", nativeCommands{start: "node app.js"}},
 		{"Dockerfile", false, func(s *appv1alpha1.AppSpec) {
 			s.Runtime, s.BuildCommand = "docker", ""
 			if s.Type == appv1alpha1.TypeCronJob {
@@ -233,13 +238,13 @@ func TestSourceSwitchToImageAcrossCallersTypesAndSources(t *testing.T) {
 			} else {
 				s.StartCommand = "./server"
 			}
-		}, func(before m461Commands) m461Commands { return before }, ""},
+		}, func(before m461Commands) m461Commands { return before }, "", nativeCommands{}},
 		{"native cron override", true, func(s *appv1alpha1.AppSpec) { s.Command = "echo override" },
-			func(m461Commands) m461Commands { return m461Commands{command: "echo override"} }, ""},
+			func(m461Commands) m461Commands { return m461Commands{command: "echo override"} }, "", nativeCommands{build: "yarn", start: "node app.js"}},
 		{"native build source link", false, m461Link("node report.js"),
-			func(m461Commands) m461Commands { return m461Commands{} }, "node"},
+			func(m461Commands) m461Commands { return m461Commands{} }, "node", nativeCommands{}},
 		{"Docker build source link", false, m461Link("./server"),
-			func(before m461Commands) m461Commands { return before }, "docker"},
+			func(before m461Commands) m461Commands { return before }, "docker", nativeCommands{}},
 		{"image", false, func(s *appv1alpha1.AppSpec) {
 			s.Repo, s.Image, s.Runtime, s.BuildCommand = "", "docker.io/library/nginx:1.27-alpine", "image", ""
 			if s.Type == appv1alpha1.TypeCronJob {
@@ -247,7 +252,7 @@ func TestSourceSwitchToImageAcrossCallersTypesAndSources(t *testing.T) {
 			} else {
 				s.StartCommand = "nginx -g 'daemon off;'"
 			}
-		}, func(before m461Commands) m461Commands { return before }, ""},
+		}, func(before m461Commands) m461Commands { return before }, "", nativeCommands{}},
 	}
 	for surface, switchToImage := range m461Surfaces {
 		for _, source := range sources {
@@ -264,9 +269,13 @@ func TestSourceSwitchToImageAcrossCallersTypesAndSources(t *testing.T) {
 					svc, cl := newService(nil, app, carrier)
 					switchToImage(t, svc, "svc")
 
-					spec := getApp(t, cl, "svc").Spec
+					switched := getApp(t, cl, "svc")
+					spec := switched.Spec
 					if want := source.want(m461CommandsOf(before)); m461CommandsOf(spec) != want {
 						t.Errorf("commands %+v, want %+v", m461CommandsOf(spec), want)
+					}
+					if kept := switchBackCommands(switched); kept != source.kept {
+						t.Errorf("kept for a switch back %+v, want %+v", kept, source.kept)
 					}
 					if spec.Image != m461Image || spec.Repo != "" || spec.BuildSource != nil || spec.Runtime != before.Runtime {
 						t.Errorf("spec image %q repo %q link %v runtime %q, want the image alone with runtime %q retained",

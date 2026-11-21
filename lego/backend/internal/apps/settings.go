@@ -730,9 +730,9 @@ func (s *Service) preflightServicePatch(ctx context.Context, id string, p Servic
 		}
 	}
 	// Judged on the finished probe, not per row: a source switch back to a
-	// native repo is buildable only with the commands a later row sends
-	// (w32/052). The apply pass's verbs, which each see only the rows before
-	// them, skip it (patchJudged).
+	// native repo that kept no commands is buildable only with the ones a
+	// later row sends (w32/052). The apply pass's verbs, which each see only
+	// the rows before them, skip it (patchJudged).
 	if err := checkNativeCommandsKept(a.Spec, probe.Spec); err != nil {
 		return ctx, nil, nil, err
 	}

@@ -1114,6 +1114,7 @@ func (s *Service) LinkBuildSource(ctx context.Context, name, buildSourceID strin
 	updated, err := s.patchUntracked(ctx, a, func(app *appv1alpha1.App) {
 		spec := &app.Spec
 		linkBuildSourceSpec(spec, *link)
+		forgetSwitchBackCommands(app)
 		if cron {
 			// A cron's command lives in Command; a startCommand left from a
 			// Blueprint would read as its command again (linkStartCommand).
