@@ -454,7 +454,7 @@ while IFS= read -r record; do
   value="$(printf '%s' "$encoded" | bex_decode 2>/dev/null && printf '.')" || exit 1
   case $key in ''|[0-9]*|*[!A-Za-z0-9_]*) continue ;; esac # a dotted name reaches the container, not the shell
   export "$key=${value%.}"
-done < ` + nativeEnvSecretPath + "\n" + nativeOIDCExports(o)
+done < ` + nativeEnvSecretPath + "\n" + nativeOIDCExports(o) + nativeLockedBundlerStep(o)
 	installLines, installStep := nativeStaticInstall(o)
 	run := shellJSON(nativeEnvLoaderPrefix + installStep + nativePublishCheckStep(o) + o.BuildCommand)
 	hugo := nativeStaticTools(o)

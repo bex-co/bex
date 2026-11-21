@@ -70,7 +70,10 @@ const (
 //
 //   - Ruby: the gems Bundler installs under BUNDLE_PATH,
 //     /opt/render/project/.gems (a path Render caches by its own account), in
-//     its ruby/<ABI version> layout, compiled extensions included.
+//     its ruby/<ABI version> layout, compiled extensions included, and the
+//     gems RubyGems installs into that directory itself, GEM_PATH: the
+//     Bundler the lockfile names (nativeLockedBundler), which a rebuild then
+//     finds instead of downloading again.
 //   - Go: the module cache and checksum database under GOPATH,
 //     /opt/render/project/go/pkg. Go's build cache is under $XDG_CACHE_HOME
 //     already.
@@ -91,14 +94,15 @@ const (
 //
 // What a build regenerates and a cold build starts without stays out:
 // .gems/bin and go/bin are first on PATH, so a binstub or tool kept there
-// would run ahead of the toolchain's own before the build command has run
-// (a kept `bundle` binstub names a Bundler RubyGems cannot activate from
-// .gems, w9/128), and .gems/config holds `bundle config` settings a later
-// build command may no longer make.
+// would run ahead of the toolchain's own before the build command has run,
+// and .gems/config holds `bundle config` settings a later build command may
+// no longer make. A kept gem needs neither: RubyGems activates it from its
+// gems, specifications and extensions directories.
 //
 // Node's node_modules is w8/m161's.
 var nativeDependencyDirs = map[string][]string{
-	nativeRubyRuntime:   {nativeRubyGems + "/ruby"},
+	nativeRubyRuntime: {nativeRubyGems + "/ruby",
+		nativeRubyGems + "/gems", nativeRubyGems + "/specifications", nativeRubyGems + "/extensions"},
 	"go":                {nativeGoPath + "/pkg"},
 	nativeRustRuntime:   {nativeCargoHome + "/registry", nativeCargoHome + "/git", nativeWorkdir + "/target"},
 	nativeElixirRuntime: {nativeWorkdir + "/deps", nativeWorkdir + "/_build"},

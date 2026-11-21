@@ -67,7 +67,8 @@ func buildRunLine(t *testing.T, df string) (line, after string) {
 
 func TestNativeRecipeCarriesEachRuntimesDependencyDirectories(t *testing.T) {
 	want := map[string][]string{
-		"ruby":   {"/opt/render/project/.gems/ruby"},
+		"ruby": {"/opt/render/project/.gems/ruby", "/opt/render/project/.gems/gems",
+			"/opt/render/project/.gems/specifications", "/opt/render/project/.gems/extensions"},
 		"go":     {"/opt/render/project/go/pkg"},
 		"rust":   {"/opt/render/project/.cargo/registry", "/opt/render/project/.cargo/git", "/opt/render/project/src/target"},
 		"elixir": {"/opt/render/project/src/deps", "/opt/render/project/src/_build"},

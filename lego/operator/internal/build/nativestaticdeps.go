@@ -129,11 +129,16 @@ exit 0
 // site publishing its whole root directory gets neither: installed modules
 // would be published with it.
 func nativeStaticInstall(o Options) (copyLines, runPrefix string) {
-	if !o.StaticSite || nativeRuntime(o) != nativeNodeRuntime || publishesRoot(o.StaticPublishPath) {
+	if !nativeStaticInstalls(o) {
 		return "", ""
 	}
 	return nativeStaticInstallCopy + nativeStaticInstallScript + nativeStaticInstallEOF + "\n",
 		nativeStaticInstallStep
+}
+
+// nativeStaticInstalls reports whether o's build gets the install step.
+func nativeStaticInstalls(o Options) bool {
+	return o.StaticSite && nativeRuntime(o) == nativeNodeRuntime && !publishesRoot(o.StaticPublishPath)
 }
 
 // A native static site's build step ends by checking the publish directory,
