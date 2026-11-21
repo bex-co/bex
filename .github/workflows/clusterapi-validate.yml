@@ -27,6 +27,8 @@ on:
       # catalog and read the pool label/taint key from the execution package.
       - "lego/types/tiers/tiers.yaml"
       - "lego/operator/internal/execution/security.go"
+      # The cluster-autoscaler values: its startup taint and drain delay.
+      - "infra/clusterapi/autoscaler-values.yaml"
   push:
     branches: [main]
     paths:
@@ -46,6 +48,8 @@ on:
       # catalog and read the pool label/taint key from the execution package.
       - "lego/types/tiers/tiers.yaml"
       - "lego/operator/internal/execution/security.go"
+      # The cluster-autoscaler values: its startup taint and drain delay.
+      - "infra/clusterapi/autoscaler-values.yaml"
 
 permissions:
   contents: read

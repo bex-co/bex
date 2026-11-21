@@ -65,6 +65,16 @@ class Filters(unittest.TestCase):
         got = cti.path_filters(workflow(["dashboard/**", "x.json"]))
         self.assertEqual(got, {"pull_request": ["dashboard/**", "x.json"], "push": ["dashboard/**", "x.json"]})
 
+    def test_an_unfiltered_event_is_none_and_an_absent_one_missing(self):
+        # references.yml's push runs on every change; s3-contract.yml has no
+        # pull_request at all, only a schedule beside its push.
+        text = "on:\n  push:\n    branches: [main]\n  schedule:\n    - cron: '0 0 * * 1'\n"
+        self.assertEqual(cti.path_filters(text), {"push": None})
+
+    def test_paths_ignore_is_refused(self):
+        with self.assertRaises(ValueError):
+            cti.path_filters("on:\n  push:\n    paths-ignore:\n      - docs/**\n")
+
 
 class Literals(unittest.TestCase):
     def test_strings_joins_and_placeholders(self):
@@ -106,12 +116,25 @@ class Shell(unittest.TestCase):
             self.assertIn((word, False), got, "named, so read, but not run")
         self.assertFalse(any("commented" in word for word, _ in got))
 
+    def test_a_workflow_trigger_filter_is_no_read_and_a_folded_run_is_one_line(self):
+        text = ("on:\n  push:\n    paths:\n      - \"!docs/old/**\"\n      - \"scripts/x.sh\"\n"
+                "jobs:\n  t:\n    steps:\n      - run: >-\n          shellcheck scripts/a.sh\n"
+                "          scripts/b.sh\n      - run: bash scripts/c.sh\n")
+        got = cti.shell_words(cti._jobs(text))
+        self.assertNotIn(("scripts/x.sh", False), got, "a trigger path is not read")
+        self.assertNotIn(("scripts/x.sh", True), got)
+        for word in ["scripts/a.sh", "scripts/b.sh"]:
+            self.assertIn((word, False), got, "shellcheck reads its arguments; it runs none")
+        self.assertIn(("scripts/c.sh", True), got)
+
     def test_paths_resolve_holes_and_repository_globs(self):
         tracked = {"scripts/lib/b.sh", "scripts/x.sh", "deploy/a.yaml", "deploy/b.yaml", "README.md"}
         self.assertEqual(cti.shell_paths(cti.HOLE + "/lib/b.sh", "scripts/t.sh", tracked), ["scripts/lib/b.sh"])
         self.assertEqual(cti.shell_paths(cti.HOLE + "/x.sh", "scripts/t.sh", tracked), ["scripts/x.sh"])
         self.assertEqual(cti.shell_paths("deploy/*.yaml", "scripts/t.sh", tracked), ["deploy/a.yaml", "deploy/b.yaml"])
-        for scratch in ["*", "*/*", cti.HOLE + "/deploy/*.yaml", "../x.sh"]:
+        # `deploy/**` is a trigger filter or a checker's pattern: no script
+        # sets globstar, so none expands it.
+        for scratch in ["*", "*/*", cti.HOLE + "/deploy/*.yaml", "../x.sh", "deploy/**"]:
             self.assertEqual(cti.shell_paths(scratch, "scripts/t.sh", tracked), [], scratch)
 
 
@@ -192,6 +215,26 @@ class Repo(Throwaway):
         problems = self.run_check({"lego/backend/fixture.go": "x"})
         self.assertIn(f"{WORKFLOW}: paths miss the suite's own tree dashboard/**", problems)
         self.assertIn(f"{WORKFLOW}: paths miss the workflow file itself", problems)
+        self.write(WORKFLOW, workflow(["dashboard/**", "lego/backend/pricing.yaml", ".github/**"]))
+        self.assertEqual(self.run_check({"lego/backend/fixture.go": "x"}), [], "a glob lists the workflow too")
+
+    def test_only_a_filtered_event_can_miss_a_read(self):
+        ignored = {"lego/backend/fixture.go": "a sample path"}
+        listed = '    paths:\n      - "dashboard/**"\n      - "' + WORKFLOW + '"\n'
+        # references.yml: push runs on every change, pull_request is filtered.
+        self.write(WORKFLOW, "on:\n  pull_request:\n" + listed + "  push:\n    branches: [main]\n")
+        self.assertEqual(self.run_check(ignored), [f"{WORKFLOW}: paths miss lego/backend/pricing.yaml, "
+                                                   "read by dashboard/src/__tests__/pricing.test.ts"])
+        # s3-contract.yml: push only, filtered.
+        self.write(WORKFLOW, "on:\n  workflow_dispatch:\n  push:\n    branches: [main]\n" + listed)
+        self.assertEqual(len(self.run_check(ignored)), 1)
+        # Every event unfiltered: nothing can be missed, but a stale ignore still fails.
+        self.write(WORKFLOW, "on:\n  pull_request:\n  push:\n    branches: [main]\n")
+        self.assertEqual(self.run_check(ignored), [])
+        self.assertEqual(self.run_check({**ignored, "lego/backend/gone.go": "x"}),
+                         [f"{WORKFLOW}: ignored lists lego/backend/gone.go, which no test names any more; remove it"])
+        self.write(WORKFLOW, "on:\n  schedule:\n    - cron: '0 0 * * 1'\n")
+        self.assertEqual(self.run_check(ignored), [f"{WORKFLOW}: runs on neither push nor pull_request"])
 
 
 class RunsRepo(Throwaway):
@@ -238,6 +281,33 @@ class RunsRepo(Throwaway):
         self.assertIn(f"{self.WORKFLOW}: paths miss scripts/live-check.sh, read by scripts/validate.sh", problems)
         self.assertEqual(len(problems), 2, problems)
 
+    def test_an_ignored_script_is_never_run(self):
+        # A needle names a script: what that script reads is no input either.
+        self.steps(self.LISTED)
+        self.write("scripts/validate.sh", "bash scripts/guard.sh\nbash scripts/needle.sh --example\n"
+                   "grep -qF 'bash scripts/needle.sh' docs/runbook.md\ngrep -qF 'live scope' scripts/live-check.sh\n")
+        self.assertEqual(self.run_check({"scripts/needle.sh": "named in an example"}), [])
+        followed = self.run_check()
+        self.assertIn(f"{self.WORKFLOW}: paths miss lego/never.go, read by scripts/needle.sh", followed)
+
+    def test_an_ignore_the_paths_already_cover_fails(self):
+        self.steps(self.LISTED)
+        problems = self.run_check({"scripts/needle.sh": "a needle", "docs/runbook.md": "a message"})
+        self.assertEqual(problems, [f"{self.WORKFLOW}: ignored lists docs/runbook.md, which the paths already cover; "
+                                    "remove it"])
+
+    def test_a_board_path_is_a_read_only_where_the_board_is_checked_out(self):
+        self.steps(self.LISTED)
+        self.write(".pm/w1/README.md", "x")
+        self.write("scripts/guard.sh", 'here="$(dirname "$0")"\nyq . "$here/../infra/policy.json"\n'
+                   "grep -c open .pm/w1/README.md\n")
+        self.assertEqual(self.run_check({"scripts/needle.sh": "a needle"}), [])
+        tracked = self.tracked()
+        suite = cti.Suite(("deploy/gitops",), (), {"scripts/needle.sh": "a needle"}, runs=True, board=True)
+        with mock.patch.dict(cti.SUITES, {self.WORKFLOW: suite}, clear=True):
+            problems = cti.check(self.repo, self.WORKFLOW, tracked)
+        self.assertEqual(problems, [f"{self.WORKFLOW}: paths miss .pm/w1/README.md, read by scripts/guard.sh"])
+
     def test_affected_counts_the_scripts_a_suite_runs(self):
         self.steps(self.LISTED)
         self.tracked()
@@ -253,7 +323,7 @@ class RunsRepo(Throwaway):
 class Affected(unittest.TestCase):
     def test_only_what_could_open_a_gap(self):
         changed = ["lego/backend/internal/x/a_test.go", "lego/backend/internal/x/a.go", "dashboard/src/b.test.tsx",
-                   "dashboard/src/b.tsx", ".github/workflows/dashboard-test.yml", ".github/workflows/cli-test.yml",
+                   "dashboard/src/b.tsx", ".github/workflows/dashboard-test.yml", ".github/workflows/mobile-test.yml",
                    "scripts/ci_test_inputs.py", "docs/a.md"]
         self.assertEqual(cti.affected(changed), ["lego/backend/internal/x/a_test.go", "dashboard/src/b.test.tsx",
                                                  ".github/workflows/dashboard-test.yml", "scripts/ci_test_inputs.py"])
@@ -276,11 +346,32 @@ class RealTree(unittest.TestCase):
         self.assertIn("scripts/gitops-validate.sh", found["scripts/verify-static-site-security.sh"])
         self.assertNotIn("scripts/verify-static-site-security.sh", scripts, "only grepped, never run")
 
-    def test_no_suite_checks_the_board_out(self):
-        # The premise of BOARD: a file outside the checkout cannot be read.
-        for name in cti.SUITES:
+    def test_the_new_suites_scan_what_their_lists_missed(self):
+        # Registered after gitops.yml: each read below was missing from its
+        # workflow's paths, and scripts.yml's folded shellcheck list only reads.
+        repo, tracked = HERE.parent, cti._tracked(HERE.parent)
+
+        def scan(workflow):
+            return cti.run_references(repo, workflow, cti.SUITES[workflow], tracked)
+
+        found, _ = scan(".github/workflows/clusterapi-validate.yml")
+        self.assertIn("scripts/clusterapi-validate.sh", found["infra/clusterapi/autoscaler-values.yaml"])
+        found, _ = scan(".github/workflows/s3-contract.yml")
+        self.assertIn("scripts/s3-contract.sh", found[".github/workflows/backend-test.yml"])
+        self.assertIn(".github/workflows/s3-contract.yml", found["lego/backend/go.mod"], "setup-go's version file")
+        _, scripts = scan(".github/workflows/scripts.yml")
+        self.assertIn("scripts/secret-argv-validate.sh", scripts)
+        self.assertNotIn("scripts/adr-registry-validate.sh", scripts, "shellcheck reads it; docs.yml runs it")
+
+    def test_only_a_board_suite_checks_the_board_out(self):
+        # The premise of BOARD: a file outside the checkout cannot be read,
+        # and one inside it can (docs.yml and references.yml read it whole).
+        for name, suite in cti.SUITES.items():
             text = (HERE.parent / name).read_text()
-            self.assertIn("!/" + cti.BOARD, text, f"{name} checks out .pm/, so its tests could read the board")
+            if suite.board:
+                self.assertNotIn("!/" + cti.BOARD, text, f"{name} leaves .pm/ out, so it is no board suite")
+            else:
+                self.assertIn("!/" + cti.BOARD, text, f"{name} checks out .pm/, so its tests could read the board")
 
 
 if __name__ == "__main__":

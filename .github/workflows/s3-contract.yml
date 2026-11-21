@@ -30,6 +30,11 @@ on:
       - "deploy/gitops/charts/traefik-plugins/s3metadatacase/**"
       - "deploy/gitops/base/values/traefik.values.yaml"
       - ".github/workflows/s3-contract.yml"
+      # The Go line setup-go installs and the gateway's dependencies; the
+      # script takes its Postgres pin from backend-test.yml.
+      - "lego/backend/go.mod"
+      - "lego/backend/go.sum"
+      - ".github/workflows/backend-test.yml"
 
 permissions:
   contents: read

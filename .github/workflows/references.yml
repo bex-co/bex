@@ -10,26 +10,13 @@ name: references (docs links, .pm board)
 # scripts/stale-key-name-validate.sh, which keeps the retired production SSH key
 # name out of runbooks, skills and open notes (w21/089).
 #
-# It is its own workflow because docs.yml excludes `.pm/**` (prettier ignores
-# it), and a milestone closeout moves files in `.pm` and breaks inbound links
-# without touching a file that workflow watches. A push to main runs it whole,
-# with no path filter: a link breaks as readily when a source file, a script or a
-# fixture a document points at is deleted, and the job takes seconds. A pull
-# request runs it for the paths that can change what it reads.
+# It is its own workflow because prettier ignores `.pm/**` while a milestone
+# closeout moves files there and breaks inbound links. A push to main and a
+# pull request run it whole, with no path filter: a link breaks as readily when
+# a source file, a script or a fixture a document points at is deleted, the key
+# name check greps the whole tree, and the job takes seconds.
 on:
   pull_request:
-    paths:
-      - "**/*.md"
-      - ".pm/**"
-      - "docs/**"
-      - "scripts/docs-links-validate.sh"
-      - "scripts/docs-links-validate.test.sh"
-      - "scripts/pm-board-validate.py"
-      - "scripts/pm_gates.py"
-      - "scripts/test_pm_board_validate.py"
-      - "scripts/stale-key-name-validate.sh"
-      - "scripts/stale-key-name-validate.test.sh"
-      - ".github/workflows/references.yml"
   push:
     branches: [main]
 

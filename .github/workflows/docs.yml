@@ -1,23 +1,23 @@
 name: docs (prettier)
 
 # Keep Markdown consistently formatted. Markdown-only (`**/*.md`) so it never touches
-# the k8s/Helm YAML; .prettierignore excludes vendored/gitignored docs and .pm, and
-# the path filter mirrors it. It also owns the ADR registry check, which reads
-# every Markdown file. Fix formatting locally with:
+# the k8s/Helm YAML; .prettierignore excludes vendored/gitignored docs and .pm. It
+# also owns the ADR registry check, which greps every md, go, sh, yaml, yml, ts
+# and tsx file in the checkout, the board and the prettier-ignored trees
+# included, for a dangling ADR reference, so the path filter lists those
+# extensions whole. Fix formatting locally with:
 #   npx prettier@3.4.2 --write "**/*.md"
 on:
   pull_request:
     paths:
       - "**/*.md"
-      # .prettierignore's trees: a push touching only them checks nothing.
-      - "!.pm/**"
-      - "!external/**"
-      - "!deploy/gitops/charts/opensandbox-controller/**"
-      - "!lego/operator/internal/build/testdata/render-jekyll/**"
-      - "!lego/cli/internal/skills/pack/**"
-      - "!lego/cli/internal/skills/packgen/overrides/**"
-      - "!.claude/skills/security-audit/**"
-      - "!.agents/skills/security-audit/**"
+      # The ADR registry check's scan_filters in adr-registry-validate.sh.
+      - "**/*.go"
+      - "**/*.sh"
+      - "**/*.yaml"
+      - "**/*.yml"
+      - "**/*.ts"
+      - "**/*.tsx"
       - ".prettierrc.json"
       - ".prettierignore"
       - "scripts/adr-registry-validate.sh"
@@ -27,15 +27,13 @@ on:
     branches: [main]
     paths:
       - "**/*.md"
-      # .prettierignore's trees: a push touching only them checks nothing.
-      - "!.pm/**"
-      - "!external/**"
-      - "!deploy/gitops/charts/opensandbox-controller/**"
-      - "!lego/operator/internal/build/testdata/render-jekyll/**"
-      - "!lego/cli/internal/skills/pack/**"
-      - "!lego/cli/internal/skills/packgen/overrides/**"
-      - "!.claude/skills/security-audit/**"
-      - "!.agents/skills/security-audit/**"
+      # The ADR registry check's scan_filters in adr-registry-validate.sh.
+      - "**/*.go"
+      - "**/*.sh"
+      - "**/*.yaml"
+      - "**/*.yml"
+      - "**/*.ts"
+      - "**/*.tsx"
       - ".prettierrc.json"
       - ".prettierignore"
       - "scripts/adr-registry-validate.sh"

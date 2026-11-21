@@ -28,24 +28,31 @@ file outside the suite's tree and fails when the workflow's push or
 pull_request paths miss one, or when the two lists differ. A reference to a
 file the test never reads (a path inside a fixture) goes in the suite's
 `ignored` map with the reason; an ignored entry nothing references any more
-fails too, so the list only holds live exceptions. Directory reads and paths
-composed at run time are not resolved: list those by hand (deploy.yml's full
-run is the backstop).
+fails too, and so does one the paths already cover, so the list only holds
+live exceptions. An event without `paths` runs on every change and an absent
+one never runs the suite, so only a filtered event is checked (references.yml
+filters neither; s3-contract.yml has no pull_request). Directory reads and
+paths composed at run time are not resolved: list those by hand (deploy.yml's
+full run is the backstop).
 
 A suite whose tests are scripts (gitops.yml: gitops-validate.sh and the
 guards it runs) is scanned as shell from its workflow: every word naming a
 tracked file is a read, quoted or not, and a script a scanned file runs
 (`bash x.sh`, `. lib.sh`, `python3 -m unittest t.py`, `"$here/x.sh"`, or a
 variable assigned that path) is scanned in turn. A path inside single quotes
-is a needle, read but never run, and `bash -n` only reads. gitops.yml missed
-some forty files that gitops-validate.sh and its guards read or grep
-(verify-static-site-security.sh among them) while the checker scanned only Go
-and TypeScript tests.
+is a needle, read but never run, `bash -n` only reads, and an ignored path is
+never run either. The workflow's `on:` block is no read, a folded `run: >-`
+block is one command line, and a `**` word is a filter pattern no script
+expands. gitops.yml missed some forty files that gitops-validate.sh and its
+guards read or grep (verify-static-site-security.sh among them) while the
+checker scanned only Go and TypeScript tests; the six other script-running
+workflows were not scanned at all.
 
-A path under `.pm/` is never a read. Every suite's checkout leaves the board
-out (w6/m157), so a test that names a board file names a fixture, and board
-items move between `blocked/`, the queue and `done/`: a move that made a
-fixture's sample path a tracked file turned the operator suite red
+A path under `.pm/` is no read for a suite whose checkout leaves the board out
+(w6/m157; all but the `board` suites, docs.yml and references.yml, which read
+it whole), so a test that names a board file names a fixture, and board items
+move between `blocked/`, the queue and `done/`: a move that made a fixture's
+sample path a tracked file turned the operator suite red
 (`.pm/w8/m91/README.md`, 2026-11-16) on a push no gate checked.
 
   python3 scripts/ci_test_inputs.py [--repo DIR] [WORKFLOW ...]   # default: every suite
@@ -75,6 +82,9 @@ class Suite:
     # The tests are the scripts the workflow's steps run: the workflow file
     # and every script it, or a script it runs, executes are scanned as shell.
     runs: bool = False
+    # The workflow checks the board out, so a board path its tests name is a
+    # read like any other (docs.yml and references.yml read it whole).
+    board: bool = False
 
     def inside(self, path: str) -> bool:
         return any(path == root or path.startswith(root + "/") for root in self.roots)
@@ -104,8 +114,31 @@ SUITES = {
         "docs/ADR010-observability.md": "named in a warning when promtool is missing",
         "docs/ADR011-etcd-backup-restore.md": "named in a failure message about the etcd image",
         "docs/ADR079-security-review-round18.md": "named in env-file.sh's permission error",
-        "lego/agent-image/Dockerfile": "a needle the deploy workflow's agent-image build step must carry",
     }, runs=True),
+    ".github/workflows/scripts.yml": Suite(("scripts",), (), {
+        ".prettierignore": "read only by docs-links-validate.sh, which test_loopx_guard.py names in a fixture",
+        "README.md": "a grep --exclude pattern and fixture file names, not the root README",
+        "LICENSE": "a file name inside test_install_trivy.py's fake release archive",
+        "dashboard/package.json": "written into the self-tests' throwaway repositories",
+        "dashboard/src/routes/index.tsx": "a file deploy-superseded.test.sh commits in its throwaway repository",
+        "docs/ADR013-secrets.md": "named in bao-init.sh's failure message",
+        "docs/ADR018-render-parity.md": "named in render-schema-drift.sh's drift report",
+        "docs/ADR019-infra-credentials.md": "named in the kubeconfig and public-log helpers' messages",
+        "docs/ADR049-render-yaml-parity.md": "named in render-schema-drift.sh's drift report",
+        "docs/ADR060-build-worker-reliability-and-performance.md": "named in the toolchain freshness report",
+        "docs/ADR079-security-review-round18.md": "named in env-file.sh's permission error",
+        "docs/cli-compatibility-checklist.md": "named in render-schema-drift.sh's drift report",
+        "docs/runbooks/main-history-rewrite.md": "named in the repository security drift report",
+    }, runs=True),
+    ".github/workflows/clusterapi-validate.yml": Suite(
+        ("infra/clusterapi/overlays/hetzner-caph", "infra/packer"), (), {}, runs=True),
+    ".github/workflows/docs.yml": Suite((), (), {}, runs=True, board=True),
+    ".github/workflows/cli-test.yml": Suite(
+        ("lego/cli", "lego/backend/internal/cliauth", "lego/backend/internal/api"), ("_test.go",), {}, runs=True),
+    ".github/workflows/references.yml": Suite(("docs", ".pm"), (), {}, runs=True, board=True),
+    ".github/workflows/s3-contract.yml": Suite(
+        ("lego/backend/internal/s3gw", "lego/backend/internal/objectstorage", "lego/cli/internal/s3"), (), {},
+        runs=True),
 }
 
 _STRING = re.compile(r'"((?:[^"\\\n]|\\.)*)"|\'((?:[^\'\\\n]|\\.)*)\'|`([^`]*)`')
@@ -128,13 +161,19 @@ _SHELL_RUN = re.compile(r"(?:^|[\s;&|(!{`\"'])(?:(?:bash|sh|source|\.|python3?|e
                         r"|python3?(?:\s+-\w+)*\s+-m\s+unittest\b[^;&|]*)\s+[\"']?\Z"
                         r"|(?:^|[;&|!`]|\$\(|\bthen|\bdo)\s*[\"']?\Z")
 _SCRIPT = (".sh", ".bash", ".py")
+_FOLDED = re.compile(r":\s*>[-+]?\s*$")  # a YAML folded scalar starts
+# This file: its suite table names other suites' paths, which a real-tree run
+# checks against their own lists, so its words are never its suite's reads.
+CHECKER = "scripts/ci_test_inputs.py"
 HOLE = "\0"  # a ${…} placeholder: REPO_ROOT, process.cwd(), …
-BOARD = ".pm/"  # in no suite's checkout, so never a test input
+BOARD = ".pm/"  # left out of a suite's checkout unless Suite.board says otherwise
+TRIGGERS = ("push", "pull_request")  # the events a change runs
 
 
-def path_filters(text: str) -> dict[str, list[str]]:
-    """The `paths` list of each event under `on:` that has one."""
-    filters: dict[str, list[str]] = {}
+def path_filters(text: str) -> dict[str, list[str] | None]:
+    """Each of push and pull_request under `on:`: its `paths` list, or None
+    when it has none and so runs on every change."""
+    filters: dict[str, list[str] | None] = {}
     in_on = in_paths = False
     event = ""
     for line in text.splitlines():
@@ -146,13 +185,36 @@ def path_filters(text: str) -> dict[str, list[str]]:
             in_on = stripped == "on:"
         elif in_on and indent == 2:
             event, in_paths = stripped.split(":", 1)[0], False
-        elif in_on and indent == 4:
+            if event in TRIGGERS:
+                filters[event] = None
+        elif in_on and indent == 4 and event in TRIGGERS:
+            if stripped.startswith("paths-ignore:"):
+                raise ValueError(f"unsupported filter paths-ignore under {event}: list the paths it runs on")
             in_paths = stripped == "paths:"
             if in_paths:
                 filters[event] = []
         elif in_on and in_paths and stripped.startswith("- "):
             filters[event].append(stripped[2:].split(" #", 1)[0].strip().strip("\"'"))
     return filters
+
+
+def _jobs(text: str) -> str:
+    """A workflow without its `on:` block, whose trigger filter names paths
+    that start the suite, not files it reads; a folded `run: >-` block is one
+    command line, as the runner gets it."""
+    out, in_on, fold = [], False, None
+    for line in text.splitlines():
+        if line and not line[0].isspace() and not line.startswith("#"):
+            in_on = line.rstrip() == "on:"
+        indent = len(line) - len(line.lstrip())
+        if in_on:
+            line = ""
+        elif fold is not None and line.strip() and indent > fold:
+            out[-1] += " " + line.strip()
+            continue
+        fold = indent if _FOLDED.search(line) else None
+        out.append(line)
+    return "\n".join(out)
 
 
 def _glob(pattern: str) -> re.Pattern[str]:
@@ -299,7 +361,9 @@ def shell_paths(value: str, source: str, tracked: set[str]) -> list[str]:
         if "*" in candidate:
             # Only a glob under a literal directory of the repository: `*`,
             # `*/*` or `$tmp/*.json` is a case arm, a regex, SQL or scratch.
-            if value.startswith(HOLE) or "*" in candidate.partition("/")[0]:
+            # `**` is a trigger filter or a checker's pattern (`dashboard/**`
+            # in this file), never a glob a script expands: none sets globstar.
+            if value.startswith(HOLE) or "*" in candidate.partition("/")[0] or "**" in candidate:
                 continue
             pattern = _glob(candidate)
             matches = sorted(f for f in tracked if pattern.match(f))
@@ -359,7 +423,7 @@ def references(repo: pathlib.Path, suite: Suite, tracked: set[str]) -> dict[str,
         text = (repo / source).read_text(encoding="utf-8", errors="replace")
         for value in literals(text):
             path = resolve(value, source, root, tracked)
-            if path and not suite.inside(path) and not path.startswith(BOARD):
+            if path and not suite.inside(path) and (suite.board or not path.startswith(BOARD)):
                 found.setdefault(path, set()).add(source)
     return found
 
@@ -367,18 +431,23 @@ def references(repo: pathlib.Path, suite: Suite, tracked: set[str]) -> dict[str,
 def run_references(repo: pathlib.Path, workflow: str, suite: Suite,
                    tracked: set[str]) -> tuple[dict[str, set[str]], set[str]]:
     """Out-of-tree files the workflow and the scripts it runs name, and those
-    scripts: the workflow, and each script a scanned one runs, transitively."""
+    scripts: the workflow, and each script a scanned one runs, transitively.
+    An ignored path is named, never read, so never run either."""
     found: dict[str, set[str]] = {}
     sources, queue = {workflow}, [workflow]
     while queue:
         source = queue.pop()
+        if source == CHECKER:
+            continue
         text = (repo / source).read_text(encoding="utf-8", errors="replace")
-        for value, runs in shell_words(text):
+        for value, runs in shell_words(_jobs(text) if source == workflow else text):
             for path in shell_paths(value, source, tracked):
-                if runs and path.endswith(_SCRIPT) and path not in sources:
+                if path.startswith(BOARD) and not suite.board:
+                    continue
+                if runs and path.endswith(_SCRIPT) and path not in sources and path not in suite.ignored:
                     sources.add(path)
                     queue.append(path)
-                if not suite.inside(path) and not path.startswith(BOARD):
+                if not suite.inside(path):
                     found.setdefault(path, set()).add(source)
     return found, sources
 
@@ -386,39 +455,46 @@ def run_references(repo: pathlib.Path, workflow: str, suite: Suite,
 def check(repo: pathlib.Path, workflow: str, tracked: set[str]) -> list[str]:
     suite = SUITES[workflow]
     filters = path_filters((repo / workflow).read_text())
-    push, pull = filters.get("push"), filters.get("pull_request")
+    if not filters:
+        return [f"{workflow}: runs on neither push nor pull_request"]
+    # An event without `paths` runs on every change (references.yml's push),
+    # and an absent one never runs the suite (s3-contract.yml has no
+    # pull_request), so only a filtered event can miss a read.
+    lists = [paths for paths in filters.values() if paths is not None]
     problems = []
-    if push is None or pull is None:
-        return [f"{workflow}: needs `paths` under both push and pull_request"]
-    if push != pull:
+    if len(lists) == 2 and lists[0] != lists[1]:
         problems.append(f"{workflow}: push and pull_request paths differ; keep one list in both")
-    for root in suite.roots:
-        sample = next((f for f in sorted(tracked) if f.startswith(root + "/")), root + "/x")
-        if not covered(sample, push):
-            problems.append(f"{workflow}: paths miss the suite's own tree {root}/**")
-    if workflow not in push:
-        problems.append(f"{workflow}: paths miss the workflow file itself")
     found = references(repo, suite, tracked)
     if suite.runs:
         for path, sources in run_references(repo, workflow, suite, tracked)[0].items():
             found.setdefault(path, set()).update(sources)
-    for path in sorted(found):
-        if path in suite.ignored:
-            continue
-        if not covered(path, push):
-            sources = sorted(found[path])
-            more = f" (+{len(sources) - 1} more)" if len(sources) > 1 else ""
-            problems.append(f"{workflow}: paths miss {path}, read by {sources[0]}{more}")
+    if lists:
+        patterns = lists[0]
+        for root in suite.roots:
+            sample = next((f for f in sorted(tracked) if f.startswith(root + "/")), root + "/x")
+            if not covered(sample, patterns):
+                problems.append(f"{workflow}: paths miss the suite's own tree {root}/**")
+        if not covered(workflow, patterns):
+            problems.append(f"{workflow}: paths miss the workflow file itself")
+        for path in sorted(found):
+            if path in suite.ignored:
+                continue
+            if not covered(path, patterns):
+                sources = sorted(found[path])
+                more = f" (+{len(sources) - 1} more)" if len(sources) > 1 else ""
+                problems.append(f"{workflow}: paths miss {path}, read by {sources[0]}{more}")
     for path in suite.ignored:
         if path not in found:
             problems.append(f"{workflow}: ignored lists {path}, which no test names any more; remove it")
+        elif lists and covered(path, lists[0]):
+            problems.append(f"{workflow}: ignored lists {path}, which the paths already cover; remove it")
     return problems
 
 
 def affected(paths: list[str], scripts: set[str] | frozenset[str] = frozenset()) -> list[str]:
     """The changed paths that could open a gap: test sources, the scripts a
     suite's steps run, suite workflows, this checker."""
-    return [p for p in paths if p in SUITES or p in scripts or p == "scripts/ci_test_inputs.py"
+    return [p for p in paths if p in SUITES or p in scripts or p == CHECKER
             or any(suite.is_test(p) for suite in SUITES.values())]
 
 

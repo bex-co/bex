@@ -9,8 +9,16 @@ on:
       - "docs/bex-cli.md"
       - "docs/cli-compatibility-checklist.md"
       - ".github/workflows/cli-test.yml"
-      - "lego/backend/internal/cliauth/**"
-      - "lego/backend/internal/api/**"
+      # The Bex adapter step runs the cliauth and api packages' tests, which
+      # walk every non-test source under lego/backend/internal and the client
+      # GraphQL documents, and read these files.
+      - "lego/backend/internal/**"
+      - "dashboard/src/**/*.graphql"
+      - "mobile/src/**/*.graphql"
+      - "deploy/gitops/authz/model.fga"
+      - "deploy/gitops/base/prometheus.yaml"
+      - "deploy/gitops/base/values/grafana.values.yaml"
+      - "lego/operator/config/api/deployment.yaml"
   pull_request:
     paths:
       - "lego/cli/**"
@@ -18,8 +26,16 @@ on:
       - "docs/bex-cli.md"
       - "docs/cli-compatibility-checklist.md"
       - ".github/workflows/cli-test.yml"
-      - "lego/backend/internal/cliauth/**"
-      - "lego/backend/internal/api/**"
+      # The Bex adapter step runs the cliauth and api packages' tests, which
+      # walk every non-test source under lego/backend/internal and the client
+      # GraphQL documents, and read these files.
+      - "lego/backend/internal/**"
+      - "dashboard/src/**/*.graphql"
+      - "mobile/src/**/*.graphql"
+      - "deploy/gitops/authz/model.fga"
+      - "deploy/gitops/base/prometheus.yaml"
+      - "deploy/gitops/base/values/grafana.values.yaml"
+      - "lego/operator/config/api/deployment.yaml"
 
 permissions:
   contents: read

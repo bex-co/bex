@@ -8,8 +8,7 @@ on:
       - "lego/**"
       - "dashboard/Dockerfile"
       - "dashboard/deploy/**"
-      - "deploy/gitops/**"
-      - "deploy/hcloud-csi/**"
+      - "deploy/**"
       - "infra/**"
       - "scripts/**"
       # render-schema-drift.test.sh reads its fixture here; the ADR registry
@@ -21,16 +20,26 @@ on:
       - ".claude/skills/**"
       - ".env.example"
       - ".gitleaks.toml"
-      - ".github/workflows/**"
+      - ".github/**"
       - "skills-lock.json"
+      # Whole-tree reads scripts/ci_test_inputs.py cannot resolve: the image
+      # digest-pin guard inventories every tracked Dockerfile, Go and YAML
+      # file, the credential argv guard greps every shell script, and
+      # dev-env.test.sh reads each dev-N's ports.env, the board slice this
+      # checkout keeps.
+      - "**/*Dockerfile*"
+      - "**/*.go"
+      - "**/*.yaml"
+      - "**/*.yml"
+      - "**/*.sh"
+      - ".pm/w*/dev-*/**"
   push:
     branches: [main]
     paths:
       - "lego/**"
       - "dashboard/Dockerfile"
       - "dashboard/deploy/**"
-      - "deploy/gitops/**"
-      - "deploy/hcloud-csi/**"
+      - "deploy/**"
       - "infra/**"
       - "scripts/**"
       # render-schema-drift.test.sh reads its fixture here; the ADR registry
@@ -42,8 +51,19 @@ on:
       - ".claude/skills/**"
       - ".env.example"
       - ".gitleaks.toml"
-      - ".github/workflows/**"
+      - ".github/**"
       - "skills-lock.json"
+      # Whole-tree reads scripts/ci_test_inputs.py cannot resolve: the image
+      # digest-pin guard inventories every tracked Dockerfile, Go and YAML
+      # file, the credential argv guard greps every shell script, and
+      # dev-env.test.sh reads each dev-N's ports.env, the board slice this
+      # checkout keeps.
+      - "**/*Dockerfile*"
+      - "**/*.go"
+      - "**/*.yaml"
+      - "**/*.yml"
+      - "**/*.sh"
+      - ".pm/w*/dev-*/**"
 
 permissions:
   contents: read
