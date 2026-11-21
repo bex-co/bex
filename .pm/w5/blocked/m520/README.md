@@ -1,6 +1,6 @@
 # w5 · m520 — A text search over a day of a busy service answers in a few seconds: Loki drops the lines that cannot match before bex-api reads them
 
-**Worker:** worker5 **Goal:** a `text` search over a day of the busiest service answers in a few seconds with its whole answer, instead of reading every raw line of the window into bex-api and stopping at the 18 s scan budget with a partial page. **Status:** blocked (t001 to t007 done and shipped in `c3d4c075e`; t008 reads 24 h of production text searches once bex-api runs it)
+**Worker:** worker5 **Goal:** a `text` search over a day of the busiest service answers in a few seconds with its whole answer, instead of reading every raw line of the window into bex-api and stopping at the 18 s scan budget with a partial page. **Status:** blocked (t001 to t007 done and shipped in `c3d4c075e`, which bex-api has run since 04:26:49Z on 2026-11-20; t008 reads that day's text searches once it ends at 04:27Z on 2026-11-21, and its first 21.6 h already meet the bar)
 
 ## Tasks (in order)
 
@@ -80,3 +80,43 @@ Over one hour every candidate but the classes (0.46 s) and the render (0.25 s) i
 | idle | 24 h, all types, forward | 91 / 0.90 / 6.0 / 18 (partial, 2 h 28 m) | 5 / 0.61 / 0.0 / 1.7 (0) |
 
 A day's no-match search on the busiest service is now 5 requests and 2.0–2.4 s of Loki time with its whole answer, the floor being Loki reading the day's lines at all. A common term (`mozilla`, needle `moz`) still fills the busiest service's page in 2 requests and 1.8 MB, as before (its first raw page already held the page), at 0.1–1.3 s of Loki time; a day of it on the idle service went from 46 requests, 2.8 MB and 9 s through the port-forward to 4 requests, 0.2 MB and 1 s. Left above 5 s: a no-match search over a week of the busiest service, about 2.3 s of Loki time a day, which covers 5 of its 7 days before the budget (it covered 3.5 hours).
+
+### 2026-11-21 — unblock: the pin gate holds, the day after the roll does not yet (loopx w5)
+
+- **Affected:** w5/m520 t008. **Source:** verified evidence; no user decision was needed.
+- **Finding:** production's newest pin `820edf28d22d` (`7474e1c6a`) carries `c3d4c075e` (`git merge-base --is-ancestor`), and the date gate 2026-11-21T02:00Z has passed. The first pin carrying it was `3e53abbe3bc3` (`a47204c7e`, committed 04:24Z on 2026-11-20). bex-api's first pods on that pin's image were ready at 04:25:23Z and 04:26:06Z. kube-state-metrics last listed a bex-api pod on the older image (`98e053468f52`) at 04:25:49Z and none at 04:26:49Z, and that pod's last scrape was 04:26:24Z (`kube_pod_container_info`, `kube_pod_status_ready_time`). Every bex-api pod since has run a pin that carries the fix (`3e53abbe3bc3`, `12716d1d7097`, `11b1e8f85f06`, `820edf28d22d`), and no container restarted. So the day after the roll runs from 2026-11-20T04:26:49Z to 2026-11-21T04:27Z. That ends 2 h 27 m after the gate the park assumed, so only 21.6 h existed at dispatch.
+- **Remaining gate:** the date 2026-11-21T04:27Z, which clears by itself; the item stays parked until then.
+- **Next:** t008 reads the whole day from 2026-11-20T04:26:49Z to 2026-11-21T04:27Z with the queries below and closes the milestone if the definition of done holds. The 21.6 h read below already meets DoD 1's production half and DoD 4. The last 2.4 h can only change that if a burst of slow reads arrives in them.
+
+### 2026-11-21 — t008: the first 21.6 h of production after the fix (loopx w5, read-only)
+
+**How it was read.** The window ran from 2026-11-20T04:26:49Z to 2026-11-21T02:03:46Z (21.6 h). Each series' counter was taken at its highest over the window and the pods summed, as `sum by (…) (max_over_time(<series>[<window>s]))` at the window's end. The older image's pods have no sample after 04:26:24Z, so a range that starts at 04:26:49Z reads only pods that carry the fix. Buckets were matched as `le=~"5|5\\.0"`, since Prometheus 3 stores `le="5.0"` (w5/m503). The edge's access log in Loki (`{namespace="bex-system",service="bex-api",type="request"}`, `RequestMethod="GET"`, path `/v1/logs`) holds 833 lines against 832 counted. The extra line is a 401 that the auth layer answered before the route, as in m503.
+
+| REST `GET /v1/logs`, 21.6 h | value |
+| --- | --- |
+| reads | 832: 829 × 200, two 400, one 404, no 5xx |
+| over 5 s | 0 (0%) |
+| over 1 s | 1, the slowest read, 2.32 s at the edge |
+| p50 / p95 / p99 | 0.05 s / 0.19 s / 0.32 s, interpolated from the buckets |
+
+**`bex_api_logs_page_duration_seconds{filter="text"}` by shape.** This histogram times every logs page on REST, GraphQL, MCP and project views. It counted 114 text pages of 1,278 logs pages. Every text page answered `ok`, and none took over 0.5 s, so the 2.32 s read above was another shape. The p95 over all text pages is 0.14 s: 1 h windows had 75 pages at p95 0.17 s, and 1 d windows 39 pages at p95 0.10 s. Each p95 is interpolated from the buckets, so a shape with a few pages shows its bucket, not a measured value.
+
+| window, type, direction | pages | p95 |
+| --- | --- | --- |
+| 1h, default, backward | 49 | 0.18 s |
+| 1d, build, backward | 24 | 0.09 s |
+| 1h, app, backward | 8 | 0.22 s |
+| 1d, default, backward | 8 | 0.19 s |
+| 1h, app, forward | 8 | 0.08 s |
+| 1h, build, forward | 6 | 0.09 s |
+| 1d, app, forward | 4 | 0.05 s |
+| 1h, request, backward | 3 | 0.02 s |
+| 1d, build, forward | 2 | 0.10 s |
+| 1h, build, backward | 1 | 0.05 s |
+| 1d, app, backward | 1 | 0.10 s |
+
+No page of any shape took over 5 s. The slowest shapes were `1h, app, label, backward` (17 pages, p95 0.45 s) and `1d, default, none, backward` (5 pages, p95 0.44 s). No text search over 7 days came in, so production did not exercise the shape t004 left above 5 s: a no-match search over a week of the busiest service.
+
+**`BexApiLogsReadSlow` stayed quiet.** The rule is loaded (`/etc/rules/alerting_rules.yml`, health `ok`, state inactive). The window holds no `ALERTS` or `ALERTS_FOR_STATE` series for it, and Alertmanager holds none. Prometheus reloaded its rules at 18:20:26Z on 2026-11-20, after `ba85c6972`, so the rule has matched `le="5.0"` and could fire since then. Before that it read nothing. The corrected expression, evaluated over the whole window at 1-minute steps, never rose above 0, because no read took over 5 s. Its floor of 20 reads in 30 minutes was met (up to 348), so the rule was in a position to fire.
+
+**Who read.** 796 of the 833 edge reads came from the Render CLI (2.36.0 and 2.35.0). curl sent 30, browsers 3 and a QA client 3. Only 46 reads came after 18:10Z on 2026-11-20, so the reading rests on 832 reads, most of them in the morning CLI bursts m503 recorded.
