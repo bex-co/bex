@@ -84,6 +84,10 @@ const (
 	// recoverySource is the externalClusters entry name a restore-to-new Database
 	// references from its bootstrap.recovery.
 	recoverySource = "source"
+	// bootstrapDatabase and bootstrapOwner name a Cluster's application
+	// database and its owner, in bootstrap.initdb and bootstrap.recovery alike.
+	bootstrapDatabase = "database"
+	bootstrapOwner    = "owner"
 	// backupSchedule is the daily base-backup cron (CNPG's 6-field form:
 	// sec min hour dom mon dow) — 03:00 UTC.
 	backupSchedule = "0 0 3 * * *"
@@ -578,7 +582,13 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	// Bootstrap: restore-to-new (PITR) when recovery is requested and a store is
 	// available; otherwise a fresh, empty database.
 	if p.recovery != nil && p.store != nil {
-		rec := map[string]any{"source": recoverySource}
+		// The restore names its application database and owner, the source's
+		// pair that the archive holds, as initdb does below. Left out, CNPG
+		// defaults both to `app`: it creates an empty `app` database and role
+		// and writes the "-app" Secret, which connection info reads, for them
+		// (w34/007). Named, CNPG finds both restored and creates neither, and
+		// its instance manager sets the owner's password to the Secret's.
+		rec := map[string]any{"source": recoverySource, bootstrapDatabase: p.dbname, bootstrapOwner: p.owner}
 		if p.recovery.TargetTime != "" {
 			rec["recoveryTarget"] = map[string]any{"targetTime": p.recovery.TargetTime}
 		}
@@ -608,8 +618,8 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	} else {
 		spec["bootstrap"] = map[string]any{
 			"initdb": map[string]any{
-				"database": p.dbname,
-				"owner":    p.owner,
+				bootstrapDatabase: p.dbname,
+				bootstrapOwner:    p.owner,
 				// Create pg_stat_statements so top-queries introspection works
 				// without a manual CREATE EXTENSION after provisioning.
 				"postInitSQL": []any{"CREATE EXTENSION IF NOT EXISTS pg_stat_statements"},
@@ -1183,6 +1193,7 @@ func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alph
 		params.currentImage, _, _ = unstructured.NestedString(cluster.Object, "spec", "imageName")
 		params.holdLogicalWorkers = holdsRecoveredSubscriptions(db, cluster, params.creating)
 		spec := cnpgClusterSpec(params)
+		keepRecoveryApplication(cluster, spec)
 		if !params.creating && params.version == "" && params.runningVersion == "" {
 			if configuration, err := unobservedOperandPostgresql(cluster); err != nil {
 				return err
@@ -1219,6 +1230,25 @@ func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alph
 		return controllerutil.SetControllerReference(db, cluster, r.Scheme)
 	})
 	return err
+}
+
+// keepRecoveryApplication keeps the application database and owner a live
+// Cluster was restored with. CNPG writes the "-app" Secret for that owner once
+// and never rewrites its data, and its instance manager refuses a Secret that
+// names another user ("wrong username"), which would fail every credential
+// refresh after it. So a copy restored before w34/007, on CNPG's default
+// `app`, stays there; none was on production when the fix shipped.
+func keepRecoveryApplication(live *unstructured.Unstructured, spec map[string]any) {
+	bootstrap, _ := spec["bootstrap"].(map[string]any)
+	recovery, _ := bootstrap["recovery"].(map[string]any)
+	if recovery == nil {
+		return
+	}
+	for _, key := range []string{bootstrapDatabase, bootstrapOwner} {
+		if accepted, _, _ := unstructured.NestedString(live.Object, "spec", "bootstrap", "recovery", key); accepted != "" {
+			recovery[key] = accepted
+		}
+	}
 }
 
 // An older bex image may be absent from the refreshed pin map. Preserve its

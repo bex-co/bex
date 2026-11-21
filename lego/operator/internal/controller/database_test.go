@@ -293,6 +293,11 @@ func TestCnpgClusterSpecRecovery(t *testing.T) {
 	if recovery["source"] != recoverySource {
 		t.Errorf("recovery.source = %v", recovery["source"])
 	}
+	// The restored database and its owner, as initdb names them; CNPG's
+	// default is an empty `app` (w34/007).
+	if recovery["database"] != "d" || recovery["owner"] != "d_user" {
+		t.Errorf("recovery application database = %v/%v, want d/d_user", recovery["database"], recovery["owner"])
+	}
 	if recovery["recoveryTarget"].(map[string]any)["targetTime"] != rec.TargetTime {
 		t.Errorf("recoveryTarget = %v", recovery["recoveryTarget"])
 	}
