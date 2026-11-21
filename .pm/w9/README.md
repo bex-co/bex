@@ -165,6 +165,8 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [x] **136** — [A canceled native build's Managed OIDC tokens stay until the next build ends](done/136.md) ← from w9/124 (loopx result) 2026-11-19 — **DONE** 2026-11-21
 - [ ] **137** — [Sign off, drop or widen the Admin's view of every member's API keys](137.md) ← from w9/m539 t007 (Render parity) 2026-11-20 — needs the user's decision (`/unblock w9`)
 - [x] **138** — [A Ruby service created since 2026-11-19 with no version signal builds on 3.4.12, not Render's 3.4.13](done/138.md) ← from w9/133 (loopx result) 2026-11-20 — **DONE 2026-11-21**: a no-signal Ruby service created on or after 2026-11-19 builds on Render's 3.4.13 (`ruby:3.4.13-bookworm`, digest-pinned at build time) and its log names it; one created from 2026-11-03 keeps 3.4.12. Live check after the next deploy.
+- [ ] **139** — [A native build's version line reads `Using Ruby 3.3.14 (from Gemfile.lock)`, where Render's reads `Using Ruby version 3.3.14 via /opt/render/project/src/Gemfile.lock`](139.md) ← from w9/133 (loopx result) 2026-11-21
+- [ ] **140** — [A private Postgres may answer no external connection string, where Render answers one for every database](140.md) ← from w9/134 (loopx result) 2026-11-21
 - [x] **m539** — [Every member's API keys list shows their own keys, as on Render; an Admin opts into the workspace's to revoke a demoted member's or a creator-less key](done/m539/README.md) (10 tasks) ← promoted from w9/131 2026-11-20 — **DONE** 2026-11-21: production checked as the QA user on pin b32b3ff43
 
 ## Approved queue (priority order, 2026-09-08)
