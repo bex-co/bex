@@ -30,6 +30,8 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/bex-co/bex/lego/types/toolchains"
 )
 
 func files(m map[string]string) func(string) ([]byte, bool) {
@@ -310,9 +312,9 @@ func TestNativeToolchainLinesAreInventoried(t *testing.T) {
 	for _, img := range inv.Images {
 		committed[img.Committed] = true
 	}
-	toolchains := map[string]nativeToolchain{"bun": nativeBun}
-	maps.Copy(toolchains, nativeToolchains)
-	for runtime, toolchain := range toolchains {
+	inventoried := map[string]nativeToolchain{"bun": nativeBun}
+	maps.Copy(inventoried, nativeToolchains)
+	for runtime, toolchain := range inventoried {
 		for _, line := range toolchain.lines {
 			if !committed[line.image] {
 				t.Errorf("%s line %s image %s is not in toolchain-freshness.json", runtime, line.line, line.image)
@@ -1057,8 +1059,8 @@ func TestResolveNativeBuildAddsJSToolsToNonNodeRuntimes(t *testing.T) {
 // service created after the cutoff defaults to 3.14, an older or unknown one
 // stays on 3.13, and any explicit signal still wins.
 func TestPythonDefaultFollowsCreationDate(t *testing.T) {
-	after := pythonCreationCutoff.Add(time.Hour)
-	before := pythonCreationCutoff.Add(-time.Hour)
+	after := toolchains.PythonCreationCutoff.Add(time.Hour)
+	before := toolchains.PythonCreationCutoff.Add(-time.Hour)
 	for _, tc := range []struct {
 		name    string
 		created time.Time
@@ -1066,7 +1068,7 @@ func TestPythonDefaultFollowsCreationDate(t *testing.T) {
 		line    string
 	}{
 		{"created after the cutoff", after, nil, "3.14"},
-		{"created exactly at the cutoff", pythonCreationCutoff, nil, "3.14"},
+		{"created exactly at the cutoff", toolchains.PythonCreationCutoff, nil, "3.14"},
 		{"created before the cutoff", before, nil, "3.13"},
 		{"unknown creation keeps the legacy default", time.Time{}, nil, "3.13"},
 		{"explicit signal wins on a new service", after, map[string]string{"PYTHON_VERSION": "3.12"}, "3.12"},

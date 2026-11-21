@@ -15,6 +15,7 @@
  */
 
 import { RepoSetupError, runRepoSetup } from "./repo-setup.js";
+import { pythonStep } from "./python-select.js";
 import { readFile, rm, stat } from "node:fs/promises";
 import { createUIMessageStream } from "ai";
 import { createSessionProvider, type SessionProvider } from "./acp.js";
@@ -91,8 +92,10 @@ async function checkoutFacts(
 const maxSessionLogBytes = 16 << 20;
 
 // The repository's setup runs once per sandbox: one driver process, one
-// config, so later live turns in the same sandbox skip it.
+// config, so later live turns in the same sandbox skip it. So does the step
+// that shows the session's Python.
 const repoSetupDone = new WeakSet<AgentDriverConfig>();
+const pythonShown = new WeakSet<AgentDriverConfig>();
 
 export interface TurnResult extends StatusRecord {
   // "interrupted" is a turn a person stopped (ADR047 D12): the driver and its
@@ -374,6 +377,12 @@ export async function runHeadlessTurn(
           };
           try {
             writer.write({ type: "start" });
+            // The session's Python (w4/m544), selected after checkout, is the
+            // first step: a refused request fails setup before any step runs.
+            if (config.python && !pythonShown.has(config)) {
+              pythonStep(config.python, turn, (chunk) => writer.write(chunk));
+              pythonShown.add(config);
+            }
             // The repository's setup steps (ADR109) run once per sandbox,
             // before the agent, through this stream so their output is
             // redacted and recorded like any tool call. A sandbox booted from

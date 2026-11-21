@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { createReadStream } from "node:fs";
 import { mkdir, rename, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -31,6 +32,17 @@ export async function writeJsonAtomic(
   await writeFile(temporary, `${JSON.stringify(value)}\n`, { mode: 0o600 });
   await rename(temporary, file);
 }
+
+// sha256File is a file's SHA-256 in hex, streamed: a native binary or an
+// image layer is tens to hundreds of MB.
+export async function sha256File(file: string): Promise<string> {
+  const hash = createHash("sha256");
+  for await (const chunk of createReadStream(file)) hash.update(chunk);
+  return hash.digest("hex");
+}
+
+// imageArch is this machine's architecture as an OCI image platform names it.
+export const imageArch = process.arch === "x64" ? "amd64" : process.arch;
 
 // defaultManifestWaitMs is how long the driver waits for files bex-api copies
 // in while the sandbox starts, when a manifest names no wait.

@@ -24,6 +24,7 @@ import type { BuildConfig } from "./config.js";
 import { describeError } from "./errors.js";
 import { writeJsonAtomic } from "./fs-util.js";
 import { cloneWithRetry, git, scrubBuildCheckout } from "./git-setup.js";
+import { choosePython } from "./python-select.js";
 import { SecretRedactor } from "./redact.js";
 import {
   lastBytes,
@@ -95,13 +96,15 @@ export async function runBuild(
   let status: BuildStatus;
   try {
     await checkout(config, options);
+    const env = options.env ?? ({ ...process.env } as Record<string, string>);
+    await selectBuildPython(config, env, steps, redactor);
     let last: SetupStepResult | undefined;
     try {
       await runRepoSetup(config.repoEnvironment ?? { setup: [], checks: [] }, {
         cwd: config.cwd,
         // A build publishes no transcript, so its tool calls are unused.
         turn: 0,
-        env: options.env ?? ({ ...process.env } as Record<string, string>),
+        env,
         write: () => undefined,
         heartbeat: () => undefined,
         abortSignal: options.abortSignal,
@@ -133,6 +136,40 @@ export async function runBuild(
   await removeDriverState(config);
   await writeJsonAtomic(config.statusPath, status);
   return status;
+}
+
+// selectBuildPython selects the Python the steps run (w4/m544), as a session
+// does after its checkout, and records it as the build's first step. A
+// refused request fails the build before any step runs.
+async function selectBuildPython(
+  config: BuildConfig,
+  env: Record<string, string>,
+  steps: BuildStep[],
+  redactor: SecretRedactor,
+): Promise<void> {
+  const started = Date.now();
+  const outcome = await choosePython({
+    paths: config.pythonPaths,
+    cwd: config.cwd,
+    env,
+  });
+  if (!outcome) return;
+  const failed = "error" in outcome;
+  const output = "error" in outcome ? outcome.error.message : outcome.narration;
+  steps.push(
+    recordStep(
+      {
+        name: "Python",
+        exitCode: failed ? 1 : 0,
+        durationMs: Date.now() - started,
+        output,
+        failure: failed ? output : undefined,
+        timedOut: false,
+      },
+      redactor,
+    ),
+  );
+  if (failed) throw new BuildFailure("setup_failed", output);
 }
 
 async function checkout(

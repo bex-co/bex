@@ -1837,6 +1837,20 @@ func (s *Service) gitProxyURL() string {
 	return defaultCredentialURL
 }
 
+// envCreatedAt is when the session (or snapshot build) was created, RFC 3339:
+// it picks Render's dated default Python, as a service's creation time does
+// for a native build (w4/m544, lego/backend/cmd/agent-toolchain). The BEX_
+// prefix is reserved, so no secret can replace it (validateSecretName).
+const envCreatedAt = "BEX_AGENT_SESSION_CREATED_AT"
+
+// withCreatedAt sets envCreatedAt; an unknown time sets nothing, which keeps
+// the legacy default.
+func withCreatedAt(env map[string]string, created time.Time) {
+	if !created.IsZero() {
+		env[envCreatedAt] = created.UTC().Format(time.RFC3339)
+	}
+}
+
 // driverTurn is the turn number the driver is started with (BEX_AGENT_TURN),
 // which the interrupt sentinel must name to end that turn.
 func driverTurn(record store.AgentSession) int { return max(1, record.Turns) }
@@ -1873,6 +1887,7 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, works
 		"BEX_AGENT_GRANT_PUBLIC_KEY": s.driverGrantPublicKey(),
 		"BEX_AGENT_TURN":             fmt.Sprintf("%d", driverTurn(record)),
 	}
+	withCreatedAt(env, record.CreatedAt)
 	// A steering turn re-dispatches a fresh sandbox: name the PR earlier turns
 	// opened so the agent updates it for the whole branch and the driver's
 	// delivery check does not mistake it for missing (ADR090 D5).

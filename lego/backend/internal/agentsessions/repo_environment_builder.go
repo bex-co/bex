@@ -411,6 +411,7 @@ func (s *Service) builderEnv(ctx context.Context, claimed store.ClaimedAgentRepo
 		envRepository:      b.Repo,
 		repoEnvironmentEnv: repoEnvironmentJSON(claimed.Environment),
 	}, tier, b.WorkspaceID, b.ID)
+	withCreatedAt(env, b.CreatedAt)
 	env, _, err = s.withSecrets(ctx, b.WorkspaceID, b.Repo, nil, nil, env)
 	return env, err
 }

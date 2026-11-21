@@ -16,11 +16,9 @@
 
 // Executed only by the image build: no packages are installed at driver startup.
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import {
   accessSync,
   constants,
-  createReadStream,
   mkdtempSync,
   readFileSync,
   realpathSync,
@@ -29,6 +27,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { imageArch, sha256File } from "./fs-util.js";
 import { loadAgentProfiles } from "./profiles.js";
 
 const { profiles } = loadAgentProfiles();
@@ -91,7 +90,6 @@ for (const profile of profiles) {
 // Native binaries (ADR108 D2) arrive from the image's fetch stage: check the
 // installed file is the pinned one, root-owned and not writable by the
 // sandbox user, and that it runs and reports the pinned version.
-const imageArch = process.arch === "x64" ? "amd64" : process.arch;
 for (const profile of profiles) {
   const native = profile.nativeBinary;
   if (!native) continue;
@@ -99,11 +97,7 @@ for (const profile of profiles) {
   if (!artifact)
     throw new Error(`native binary for ${profile.id} has no ${imageArch} pin`);
   accessSync(native.path, constants.X_OK);
-  // Streamed: the binary is hundreds of MB.
-  const hash = createHash("sha256");
-  for await (const chunk of createReadStream(native.path)) hash.update(chunk);
-  const digest = hash.digest("hex");
-  if (digest !== artifact.sha256)
+  if ((await sha256File(native.path)) !== artifact.sha256)
     throw new Error(`native binary for ${profile.id} does not match its pin`);
   assertRootOwned(native.path, `native binary for ${profile.id}`);
   // A throwaway HOME keeps whatever the CLI writes on start out of the image.

@@ -25,6 +25,11 @@ import { isDeepStrictEqual } from "node:util";
 import { secretValuesFromEnv } from "./redact.js";
 import { parseRepoEnvironment, type RepoEnvironment } from "./repo-setup.js";
 import { parseSkillManifest, type SkillManifest } from "./skills.js";
+import {
+  imagePythonPaths,
+  type PythonOutcome,
+  type PythonPaths,
+} from "./python-select.js";
 
 export interface AgentDriverConfig {
   // Files the user attached to the session (ADR095): what setup waits for and
@@ -42,6 +47,12 @@ export interface AgentDriverConfig {
   // ensureRepo's verdict that the image's checkout was there, so its setup
   // steps already ran and are not rerun.
   setupBaked?: boolean;
+  // Where the session's Python is selected (w4/m544); undefined selects none
+  // (a test's driver outside the agent image).
+  pythonPaths?: PythonPaths;
+  // The session's Python, selected after checkout; the first turn in this
+  // sandbox shows it as a setup step, or fails setup with its refusal.
+  python?: PythonOutcome;
   command: string;
   args: string[];
   // Release-profile id (agent-profiles.json): selects the overlay channel for
@@ -338,7 +349,12 @@ export function driverMode(env: NodeJS.ProcessEnv = process.env): DriverMode {
 
 type DriverPaths = Pick<
   AgentDriverConfig,
-  "cwd" | "sessionLogPath" | "statusPath" | "prRecordPath" | "resultRecordPath"
+  | "cwd"
+  | "sessionLogPath"
+  | "statusPath"
+  | "prRecordPath"
+  | "resultRecordPath"
+  | "pythonPaths"
 >;
 
 function driverPaths(env: NodeJS.ProcessEnv): DriverPaths {
@@ -351,6 +367,7 @@ function driverPaths(env: NodeJS.ProcessEnv): DriverPaths {
     statusPath,
     prRecordPath: path.join(path.dirname(statusPath), "pull-request.json"),
     resultRecordPath: path.join(path.dirname(statusPath), "result.json"),
+    pythonPaths: imagePythonPaths,
   };
 }
 

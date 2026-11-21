@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/bex-co/bex/lego/types/toolchains"
 )
 
 // nativeCommonBase is the user-selected single Bookworm system/tools image
@@ -60,7 +62,7 @@ func nativeDebianSuite(history []string) (string, error) {
 	total := 0
 	for _, entry := range history {
 		total += len(entry)
-		if len(entry) > 64<<10 || total > maxVersionFileBytes {
+		if len(entry) > 64<<10 || total > toolchains.MaxVersionFileBytes {
 			return "", fmt.Errorf("native image history exceeds the provenance limit")
 		}
 	}

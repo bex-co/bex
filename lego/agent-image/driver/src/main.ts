@@ -21,6 +21,7 @@ import { driverMode, loadBuildConfig, loadConfig } from "./config.js";
 import { waitForAttachments } from "./attachments.js";
 import { installSkills } from "./skills.js";
 import { ensureRepo } from "./git-setup.js";
+import { choosePython } from "./python-select.js";
 import { describeError } from "./errors.js";
 import {
   githubCliEnabled,
@@ -62,12 +63,22 @@ async function main(): Promise<void> {
       });
     if (config.deliver)
       config.setupBaked = (await ensureRepo(config)).setupBaked;
+    // The session's Python (w4/m544), from its environment and the branch
+    // just checked out, before a setup step or terminal runs Python. A
+    // sandbox booted from a snapshot selects again: its branch can differ
+    // from the one built. It runs beside the waits below and never rejects.
+    const python = choosePython({
+      paths: config.pythonPaths,
+      cwd: config.cwd,
+      env: { ...process.env, ...agentEnv } as Record<string, string>,
+    });
     // bex-api copies the session's attachments in while the sandbox starts;
     // the turn must not begin on a partial copy (ADR095 D4).
     if (config.attachments) await waitForAttachments(config.attachments);
     // The workspace's skills arrive the same way (ADR099 D5); linking them
     // before the turn lets each engine's own loader find them.
     if (config.skills) await installSkills(config.skills);
+    config.python = await python;
   })();
   // main awaits setup below; attaching immediately also prevents a fast setup
   // rejection from becoming an unhandled promise while the listener starts.

@@ -34,6 +34,7 @@ import {
   waitChildSessionsToolName,
 } from "./spawn-session.js";
 import { submitResultToolName } from "./submit-result.js";
+import type { PythonOutcome } from "./python-select.js";
 
 export const overlayVersion = 1;
 
@@ -61,6 +62,8 @@ export interface OverlayContext {
   // The sandbox booted from a snapshot build's image, where the setup steps
   // already ran (ADR111 D4).
   setupBaked?: boolean;
+  // The session's Python and what chose it (w4/m544).
+  python?: PythonOutcome;
   // profile is the engine's release-profile id; engines with a native skill
   // loader get a shorter skills index.
   profile?: string;
@@ -91,6 +94,19 @@ function oauthLine(): string {
 function networkLine(context: OverlayContext): string {
   if (context.networkTier !== "full") return "";
   return "- Outbound HTTP and HTTPS go through a bex egress proxy (`HTTPS_PROXY`/`HTTP_PROXY` are set), so any public website is reachable. Java tools use it too: `JAVA_TOOL_OPTIONS` carries it as JVM properties, which Gradle and its wrapper read (so each JVM prints a `Picked up JAVA_TOOL_OPTIONS` line), and every `mvn` gets Maven settings naming it. Model-provider APIs stay blocked there, and raw TCP, SSH and other non-HTTP protocols are not available.\n";
+}
+
+// pythonLine names the Python the session selected and why (w4/m544), as a
+// Render deploy of the repository would choose it.
+function pythonLine(context: OverlayContext): string {
+  const python = context.python;
+  if (!python || "error" in python) return "";
+  const from =
+    python.source === "default"
+      ? "Render's default for a new service, since neither `PYTHON_VERSION` nor a `.python-version` names one"
+      : `from \`${python.source}\``;
+  return `- \`python\`, \`python3\`, \`pip\` and \`pip3\` are Python ${python.version}, chosen as a Render deploy of this code would choose it: ${from}. Each other Python line the image carries runs by its versioned name (\`python3.12\`), and \`/usr/bin/python3\` is Debian's 3.11.
+`;
 }
 
 // prReference names the session's recorded pull request: "<noun> #N (url)".
@@ -179,7 +195,7 @@ function repoOverlay(context: OverlayContext): string {
 
 - ${repository} is checked out at \`${context.cwd}\` on branch \`${branch}\`. Your work is compared against ${baseRef}.
 - \`origin\` is a bex Git proxy that holds no credentials. It accepts pushes to \`${branch}\` only. Pushes to other branches, tags and branch deletions are rejected by design, so treat that kind of rejection as final rather than looking for a way around it.
-${githubCliLine(context)}${prBranch ? "" : existingPrLine(context)}${networkLine(context)}- Model and Git credentials are injected outside the sandbox. There is no secret here for you to protect, rotate or print.
+${githubCliLine(context)}${prBranch ? "" : existingPrLine(context)}${pythonLine(context)}${networkLine(context)}- Model and Git credentials are injected outside the sandbox. There is no secret here for you to protect, rotate or print.
 ${oauthLine()}`;
   if (prBranch)
     return `${environment}
@@ -215,7 +231,7 @@ function scratchOverlay(context: OverlayContext): string {
 ## Environment
 
 - No repository is attached to this session. \`${context.cwd}\` is scratch space that is discarded when the session ends.
-${networkLine(context)}- Model credentials are injected outside the sandbox. There is no secret here for you to protect, rotate or print.
+${pythonLine(context)}${networkLine(context)}- Model credentials are injected outside the sandbox. There is no secret here for you to protect, rotate or print.
 ${oauthLine()}
 
 ## Delivering your work

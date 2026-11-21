@@ -118,17 +118,12 @@ export async function runRepoSetup(
     Date.now() + (options.totalTimeoutMs ?? SETUP_TOTAL_TIMEOUT_MS);
   for (const [index, step] of environment.setup.entries()) {
     options.abortSignal?.throwIfAborted();
-    const toolCallId = `bex-setup-${options.turn}-${index + 1}`;
-    const title = `setup: ${step.name}`;
-    // The tool name is the title, as acp-map.ts names the agent's tool calls.
-    const tool = { toolCallId, toolName: title, dynamic: true as const };
-    options.write({ type: "tool-input-start", ...tool, title });
-    options.write({
-      type: "tool-input-available",
-      ...tool,
-      title,
-      input: { step: step.name, command: step.run },
-    });
+    const end = setupStep(
+      options.write,
+      `bex-setup-${options.turn}-${index + 1}`,
+      step.name,
+      { step: step.name, command: step.run },
+    );
     const remaining = deadline - Date.now();
     const timeoutMs = Math.min(stepTimeout, remaining);
     const result: StepResult =
@@ -153,18 +148,12 @@ export async function runRepoSetup(
           });
     options.onStep?.({ name: step.name, ...result });
     if (result.failure) {
-      options.write({
-        type: "tool-output-error",
-        toolCallId,
-        dynamic: true,
+      end({
         errorText: [result.failure, result.output].filter(Boolean).join("\n"),
       });
       throw new RepoSetupError(`setup step "${step.name}" ${result.failure}`);
     }
-    options.write({
-      type: "tool-output-available",
-      toolCallId,
-      dynamic: true,
+    end({
       output: [
         `exited 0 after ${(result.durationMs / 1000).toFixed(1)}s`,
         lastBytes(result.output, SUCCESS_TAIL_BYTES),
@@ -173,6 +162,27 @@ export async function runRepoSetup(
         .join("\n"),
     });
   }
+}
+
+// setupStep writes a setup step's tool call, `setup: <name>`, into a turn's
+// stream: its start now, and its end through the function it returns. The
+// tool name is the title, as acp-map.ts names the agent's tool calls.
+export function setupStep(
+  write: (chunk: UIMessageChunk) => void,
+  toolCallId: string,
+  name: string,
+  input: Record<string, string>,
+): (end: { output: string } | { errorText: string }) => void {
+  const title = `setup: ${name}`;
+  const tool = { toolCallId, toolName: title, dynamic: true as const };
+  write({ type: "tool-input-start", ...tool, title });
+  write({ type: "tool-input-available", ...tool, title, input });
+  return (end) =>
+    write(
+      "errorText" in end
+        ? { type: "tool-output-error", toolCallId, dynamic: true, ...end }
+        : { type: "tool-output-available", toolCallId, dynamic: true, ...end },
+    );
 }
 
 // lastBytes keeps the end of text within limit bytes, starting at a

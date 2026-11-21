@@ -501,6 +501,8 @@ After D1, admission — not reconcile threads — is the only logical concurrenc
 
 A native build no longer has exactly one base per runtime. Each runtime offers a small set of **reviewed version lines**, each one a digest-pinned inventory entry like any other D7 pin. A build selects a line from the service's own version signal, using Render's mechanism for that runtime. Nothing outside the table is ever pulled.
 
+**Python's table and rules are shared with agent sessions (w4/m544, 2026-11-20).** The Python lines, Render's dated defaults and the `PYTHON_VERSION` → `.python-version` → default resolution live in `lego/types/toolchains/python.go` (`toolchains.Python`, `toolchains.ResolvePython`), which the operator's native build and the agent image's `agent-toolchain` resolver ([ADR047 § A session runs the Python its repository asks for](ADR047-cloud-coding-agent-sessions.md#a-session-runs-the-python-its-repository-asks-for-amendment-w4m544-2026-11-20)) both read, so the two cannot disagree. The operator derives its Python entry from that table, and `toolchain-freshness.json` names the file as the Python digests' pin site. The other runtimes' lines stay in `lego/operator/internal/build/native.go` until a second caller needs them.
+
 | Runtime | Lines (default **bold**) | Signals, in precedence order |
 | --- | --- | --- |
 | Python | 3.7, 3.8, 3.9 (w8/173), 3.10, 3.11, 3.12, **3.13**, 3.14, 3.15 (w8/335) | `PYTHON_VERSION` → `.python-version` |

@@ -9,10 +9,11 @@
 __bex_agent_tools=1
 
 # Debian's /etc/profile resets PATH in a login shell. Put the image's
-# toolchains back in front, in the order the image's PATH has them.
+# toolchains back in front, in the order the image's PATH has them: first
+# the session's Python, which the driver selects after checkout (w4/m544).
 case ":$PATH:" in
-*:/usr/local/cargo/bin:*) ;;
-*) PATH="/usr/local/cargo/bin:/opt/java/openjdk/bin:/usr/local/go/bin:$PATH" ;;
+*:/opt/bex-python/bin:*) ;;
+*) PATH="/opt/bex-python/bin:/usr/local/cargo/bin:/opt/java/openjdk/bin:/usr/local/go/bin:$PATH" ;;
 esac
 export PATH
 

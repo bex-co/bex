@@ -1,21 +1,21 @@
 # w4 · m544 — An agent session runs the Python its repo asks for, chosen by Render's rules, from the official builds with GNU readline
 
-**Worker:** worker4 **Goal:** a cloud agent session picks its Python the way a Render native build does (`PYTHON_VERSION` → `.python-version` → Render's dated default), from the same table the hosted-app build uses, and runs that version from the official Docker Python builds (GNU readline) in every shell and setup step. **Status:** todo
+**Worker:** worker4 **Goal:** a cloud agent session picks its Python the way a Render native build does (`PYTHON_VERSION` → `.python-version` → Render's dated default), from the same table the hosted-app build uses, and runs that version from the official Docker Python builds (GNU readline) in every shell and setup step. **Status:** todo (t001–t010 done; t011 Closeout waits for the production replay)
 
 ## Tasks (in order)
 
 | id   | title                                                                             | est | depends_on       |
 | ---- | --------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Move the Python version table and resolver into `lego/types/toolchains`           | 1h  | —                |
-| t002 | An `agent-toolchain` resolver binary in the agent image                           | 45m | t001             |
-| t003 | Pass the session's creation time to the driver                                    | 30m | —                |
-| t004 | Bake each official Python line into the agent image                               | 1h  | t001             |
-| t005 | The driver selects the session's Python after checkout, before setup              | 1h  | t002, t003, t004 |
-| t006 | An exact patch the image lacks is fetched on demand, with a named fallback        | 1h  | t005             |
-| t007 | Every shell sees the selected Python; overlay, ADR and README                     | 45m | t005, t006       |
-| t008 | Render parity: Render's selection rules, Devin's agent-side behavior              | 30m | t007             |
-| t009 | Simplify                                                                          | 20m | t008             |
-| t010 | Test coverage                                                                     | 30m | t008             |
+| t001 | Move the Python version table and resolver into `lego/types/toolchains` — **DONE** | 1h  | —                |
+| t002 | An `agent-toolchain` resolver binary in the agent image — **DONE** | 45m | t001             |
+| t003 | Pass the session's creation time to the driver — **DONE** | 30m | —                |
+| t004 | Bake each official Python line into the agent image — **DONE** | 1h  | t001             |
+| t005 | The driver selects the session's Python after checkout, before setup — **DONE** | 1h  | t002, t003, t004 |
+| t006 | An exact patch the image lacks is fetched on demand, with a named fallback — **DONE** | 1h  | t005             |
+| t007 | Every shell sees the selected Python; overlay, ADR and README — **DONE** | 45m | t005, t006       |
+| t008 | Render parity: Render's selection rules, Devin's agent-side behavior — **DONE** | 30m | t007             |
+| t009 | Simplify — **DONE** | 20m | t008             |
+| t010 | Test coverage — **DONE** | 30m | t008             |
 | t011 | Closeout                                                                          | 15m | t009, t010       |
 
 ## Definition of done

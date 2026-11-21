@@ -254,7 +254,8 @@ func TestRepoEnvironmentBuildToPrebuiltSession(t *testing.T) {
 	builder := e.builders.last()
 	wantURL, _ := agentsession.ProxyRepositoryURL(defaultCredentialURL, store.SandboxNamespace(e.ws), got.ID, "acme/api", agentsession.BuildBranch(got.ID))
 	if builder.env[buildModeEnv] != "build" || builder.env["BEX_AGENT_REPOSITORY"] != "acme/api" || builder.env["BEX_AGENT_REPO_URL"] != wantURL ||
-		builder.env[repoEnvironmentEnv] == "" || builder.env["BEX_AGENT_NETWORK_TIER"] != NetworkTierRegistries {
+		builder.env[repoEnvironmentEnv] == "" || builder.env["BEX_AGENT_NETWORK_TIER"] != NetworkTierRegistries ||
+		builder.env[envCreatedAt] != got.CreatedAt.UTC().Format(time.RFC3339) {
 		t.Fatalf("builder env = %v", builder.env)
 	}
 	if builder.env["WS_TOKEN"] != "value-of-WS_TOKEN" || builder.env["NPM_TOKEN"] != "value-of-NPM_TOKEN" || builder.env["OTHER_TOKEN"] != "" || builder.env["NAMED_TOKEN"] != "" {

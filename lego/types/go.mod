@@ -2,7 +2,10 @@ module github.com/bex-co/bex/lego/types
 
 go 1.26.0
 
-require k8s.io/apimachinery v0.37.1
+require (
+	github.com/Masterminds/semver/v3 v3.5.0
+	k8s.io/apimachinery v0.37.1
+)
 
 require (
 	github.com/fxamacker/cbor/v2 v2.9.1 // indirect

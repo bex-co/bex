@@ -66,6 +66,7 @@ jobs:
             /lego/types/deploybudgets/**
             /lego/types/k8sname/**
             /lego/types/netutil/**
+            /lego/types/toolchains/**
             /lego/types/v1alpha1/**
             /lego/operator/go.mod
             /lego/operator/go.sum
@@ -166,6 +167,7 @@ jobs:
             /lego/types/deploybudgets/**
             /lego/types/k8sname/**
             /lego/types/netutil/**
+            /lego/types/toolchains/**
             /lego/types/v1alpha1/**
             /lego/operator/go.mod
             /lego/operator/go.sum
@@ -338,6 +340,7 @@ jobs:
             /lego/types/deploybudgets/**
             /lego/types/k8sname/**
             /lego/types/netutil/**
+            /lego/types/toolchains/**
             /lego/types/v1alpha1/**
             /lego/operator/go.mod
             /lego/operator/go.sum

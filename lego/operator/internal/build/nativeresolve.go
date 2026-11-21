@@ -23,7 +23,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
+	"github.com/bex-co/bex/lego/types/toolchains"
 
 	"github.com/Masterminds/semver/v3"
 )
@@ -48,11 +48,6 @@ const (
 	nativeResolveContainer  = "resolve-native-runtime"
 	// NativeResolveBinary is the entrypoint in bex's image (lego/Dockerfile).
 	NativeResolveBinary = "/native-resolve"
-	// maxVersionFileBytes bounds what a version file may make the resolver
-	// read; real ones are a line, package.json/Gemfile a few KiB, and a
-	// Bundler lockfile (whose RUBY VERSION block sits near its end) well under
-	// it even for thousands of gems.
-	maxVersionFileBytes = 1 << 20
 )
 
 // ResolveNativeBuildExact is the resolve phase: env bundle and Dockerfile
@@ -67,7 +62,7 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 	if err != nil {
 		return nil, err
 	}
-	readFile := func(name string) ([]byte, bool) { return readVersionFile(sourceDir, name) }
+	readFile := func(name string) ([]byte, bool) { return toolchains.ReadVersionFile(sourceDir, name) }
 	choice, err := ResolveNativeVersionAt(created, runtime, env, readFile)
 	if err != nil {
 		return nil, err
@@ -368,28 +363,10 @@ func readEnvBundle(path string) (map[string]string, error) {
 }
 
 // hasGemfile reports whether the service's root directory has a regular
-// Gemfile, judged like readVersionFile, which never follows a link.
+// Gemfile, judged like toolchains.ReadVersionFile, which never follows a link.
 func hasGemfile(sourceDir string) bool {
 	info, err := os.Lstat(filepath.Join(sourceDir, "Gemfile"))
 	return err == nil && info.Mode().IsRegular()
-}
-
-// readVersionFile reads name from the service's root directory. Only a
-// regular file is read: a symlink is ignored, because the refusal message
-// quotes what it read and a link could point at the env bundle beside it.
-func readVersionFile(sourceDir, name string) ([]byte, bool) {
-	path := filepath.Join(sourceDir, name)
-	info, err := os.Lstat(path)
-	if err != nil || !info.Mode().IsRegular() {
-		return nil, false
-	}
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, false
-	}
-	defer func() { _ = f.Close() }()
-	raw, err := io.ReadAll(io.LimitReader(f, maxVersionFileBytes))
-	return raw, err == nil
 }
 
 // rewriteNativeBase swaps the generated Dockerfile's single FROM (the default
@@ -489,9 +466,9 @@ func pinBunRelease(ctx context.Context, exact ExactImageResolver, bun NativeChoi
 		if !strings.Contains(what, "=") {
 			what = fmt.Sprintf("%s %q", what, firstLine(readFile, what))
 		}
-		return NativeChoice{}, &UnsupportedVersionError{msg: fmt.Sprintf(
+		return NativeChoice{}, &UnsupportedVersionError{Msg: fmt.Sprintf(
 			"%s is not a Bun release: no official image %s:%s exists; set a published Bun release, latest, or a supported Bun line (%s)",
-			boundedRequest(what), bunRepo, boundedRequest(bun.Exact), nativeBun.supportedLines())}
+			toolchains.BoundedRequest(what), bunRepo, toolchains.BoundedRequest(bun.Exact), nativeBun.supportedLines())}
 	}
 	bun.Image = bunRepo + ":" + bun.Exact + "@" + digest
 	bun.Line = bun.Exact

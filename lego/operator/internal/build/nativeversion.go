@@ -27,6 +27,8 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+
+	"github.com/bex-co/bex/lego/types/toolchains"
 )
 
 // NativeChoice is the toolchain line a native build runs on and why (w8/m51).
@@ -118,15 +120,13 @@ func (c NativeChoice) Narration() string {
 // UnsupportedVersionError is a version request no reviewed line satisfies. It
 // is tenant input: the build fails on it by name instead of silently building
 // on the default line.
-type UnsupportedVersionError struct{ msg string }
-
-func (e *UnsupportedVersionError) Error() string { return e.msg }
+type UnsupportedVersionError = toolchains.UnsupportedVersionError
 
 // ResolveNativeVersion picks a runtime's toolchain line from the service's own
 // version signals, with Render's precedence per runtime (docs/ADR060 D7
 // addendum, w8/m51):
 //
-//	python  PYTHON_VERSION → .python-version → default
+//	python  PYTHON_VERSION → .python-version → default (toolchains.ResolvePython, which agent sessions share)
 //	node    NODE_VERSION → .node-version → .nvmrc → package.json engines.node → default
 //	ruby    Gemfile.lock / gems.locked RUBY VERSION → .ruby-version → .tool-versions → Gemfile `ruby` → default
 //	elixir  ELIXIR_VERSION (→ line, or any release from 1.12.0 on no line, w8/373), ERLANG_VERSION (any Erlang/OTP from 24.3.4 Elixir's table pairs with it; one the line's image does not carry is installed exactly, w8/197, w8/373); with neither, Render's dated default Elixir on its default OTP (w8/333)
@@ -142,42 +142,16 @@ func ResolveNativeVersion(runtime string, env map[string]string, readFile func(s
 	return ResolveNativeVersionAt(time.Time{}, runtime, env, readFile)
 }
 
-// pythonCreationCutoff is when Python's default line moved to 3.14 for new
-// services (w8/174). Render picks a service's default Python by its creation
-// date and gives every service created since 2026-02-11 a 3.14 release; bex
-// applies it to services created after this change, so a running service's
-// toolchain never moves under an operator upgrade (the WEB_CONCURRENCY cutoff
-// pattern, w5/m147).
-var pythonCreationCutoff = time.Date(2026, time.October, 23, 0, 0, 0, 0, time.UTC)
-
-// pythonDefaultLine is the line a Python service created at created builds on
-// without a version signal. A zero created (unknown) keeps the legacy default.
-func pythonDefaultLine(created time.Time) string {
-	if !created.IsZero() && !created.Before(pythonCreationCutoff) {
-		return "3.14"
-	}
-	return nativeToolchains[nativePythonRuntime].defaultLine
-}
-
 // rubyDefaultCutoff: Render's default Ruby for services created from 2025-06-12
 // to 2026-11-03 is exactly 3.4.4, not the newest 3.4 patch (w8/198). bex
 // applied it to services created after its own change, so a running service's
-// toolchain did not move under that operator upgrade (the pythonCreationCutoff
-// pattern).
+// toolchain did not move under that operator upgrade (the
+// toolchains.PythonCreationCutoff pattern).
 var rubyDefaultCutoff = time.Date(2026, time.October, 23, 0, 0, 0, 0, time.UTC)
 
-// rubyDefaultVersion and pythonDefaultVersion are the defaults from bex's own
-// cutoffs until Render's 2026-11-03 move.
-const (
-	rubyDefaultVersion   = "3.4.4"
-	pythonDefaultVersion = "3.14.8"
-)
-
-// renderDefaults20261103 is when Render moved its default Python to 3.14.10
-// and Ruby to 3.4.12 for new services (w4/620): the 3.14 and 3.4 lines'
-// reviewed patches. bex follows Render's own date, so a service created since
-// then builds on what Render gives it.
-var renderDefaults20261103 = time.Date(2026, time.November, 3, 0, 0, 0, 0, time.UTC)
+// rubyDefaultVersion is the default from bex's own cutoff until Render's
+// 2026-11-03 move (toolchains.RenderDefaults20261103).
+const rubyDefaultVersion = "3.4.4"
 
 // renderRubyDefault20261119 is when Render moved its default Ruby to 3.4.13
 // for new services (render.com/docs/ruby-version, w9/138), past the 3.4 line's
@@ -222,21 +196,21 @@ func ResolveNativeVersionAt(created time.Time, runtime string, env map[string]st
 // (render.com/docs/elixir-erlang-versions), not the OTP the official elixir
 // image was built on (w8/333). bex applies it to services created from this
 // change on, so a running service's OTP never moves under the operator upgrade
-// (the pythonCreationCutoff pattern).
+// (the toolchains.PythonCreationCutoff pattern).
 var erlangDefaultCutoff = time.Date(2026, time.November, 16, 0, 0, 0, 0, time.UTC)
 
 // erlangDefaults are Render's default Erlang/OTP releases by creation date,
 // oldest first, as exactDefaults are for the runtimes. Each is written in the
 // four-part form that names exactly one release (otpTag), so a later
 // maintenance patch (28.0.2.1) never moves a default.
-var erlangDefaults = []exactDefault{{erlangDefaultCutoff, "28.0.2.0"}}
+var erlangDefaults = []toolchains.DatedDefault{{From: erlangDefaultCutoff, Version: "28.0.2.0"}}
 
 // defaultErlang is the exact Erlang/OTP an Elixir service with neither
 // ELIXIR_VERSION nor ERLANG_VERSION builds on: the resolve phase installs it as
 // it does an ERLANG_VERSION of that release (w8/197). A release outside the
 // chosen line's OTP major is never applied.
 func defaultErlang(created time.Time, choice NativeChoice) string {
-	release := datedDefault(erlangDefaults, created)
+	release := toolchains.DatedDefaultAt(erlangDefaults, created)
 	line, _ := nativeToolchains[nativeElixirRuntime].find(choice.Line)
 	if release == "" || !strings.HasPrefix(release, line.otp+".") {
 		return ""
@@ -244,46 +218,18 @@ func defaultErlang(created time.Time, choice NativeChoice) string {
 	return release
 }
 
-// datedDefault is the version of the last step dated at or before created, or
-// "" for a service created before the first step or of unknown age.
-func datedDefault(steps []exactDefault, created time.Time) string {
-	version := ""
-	if created.IsZero() {
-		return version
-	}
-	for _, step := range steps {
-		if !created.Before(step.from) {
-			version = step.version
-		}
-	}
-	return version
-}
-
-// exactDefault is one step of a runtime's default by creation date: services
-// created from `from` on build on `version`, until the next step.
-type exactDefault struct {
-	from    time.Time
-	version string
-}
-
 // exactDefaults are Render's default patches by creation date, oldest first
 // (w8/198, w8/217, w4/620, w6/m291, w9/138). The versions stay exact even
 // where a step equals the line's reviewed patch, so a later line-pin bump never
-// moves a default (the w8/217 regression class).
-var exactDefaults = map[string][]exactDefault{
-	nativeNodeRuntime:   {{renderNodeDefault20261021, "24.22.1"}},
-	nativeElixirRuntime: {{renderElixirDefault20250612, "1.18.4"}},
+// moves a default (the w8/217 regression class). Python's are
+// toolchains.PythonDefaults, which toolchains.ResolvePython applies.
+var exactDefaults = map[string][]toolchains.DatedDefault{
+	nativeNodeRuntime:   {{From: renderNodeDefault20261021, Version: "24.22.1"}},
+	nativeElixirRuntime: {{From: renderElixirDefault20250612, Version: "1.18.4"}},
 	nativeRubyRuntime: {
-		{rubyDefaultCutoff, rubyDefaultVersion},
-		{renderDefaults20261103, "3.4.12"},
-		{renderRubyDefault20261119, "3.4.13"},
-	},
-	nativePythonRuntime: {
-		// Render's 3.14.8 (since 2026-10-12) from when bex's default line
-		// moved to 3.14 (w8/174). The official python:3.14.8 image is no
-		// longer rebuilt, so it predates the line's Brotli fix (w8/222).
-		{pythonCreationCutoff, pythonDefaultVersion},
-		{renderDefaults20261103, "3.14.10"},
+		{From: rubyDefaultCutoff, Version: rubyDefaultVersion},
+		{From: toolchains.RenderDefaults20261103, Version: "3.4.12"},
+		{From: renderRubyDefault20261119, Version: "3.4.13"},
 	},
 }
 
@@ -298,7 +244,7 @@ func defaultExact(created time.Time, runtime string, choice NativeChoice) string
 	if choice.Source != "" && !strings.HasPrefix(choice.Source, "ERLANG_VERSION=") {
 		return ""
 	}
-	version := datedDefault(exactDefaults[runtime], created)
+	version := toolchains.DatedDefaultAt(exactDefaults[runtime], created)
 	if version == "" || !strings.HasPrefix(version, choice.Line+".") {
 		return ""
 	}
@@ -313,13 +259,16 @@ func resolveNativeLine(created time.Time, runtime string, env map[string]string,
 	if !ok {
 		return NativeChoice{}, fmt.Errorf("unsupported native runtime %q", runtime)
 	}
-	if runtime == nativePythonRuntime {
-		t.defaultLine = pythonDefaultLine(created)
-	}
 	r := resolver{t: t, env: env, readFile: readFile}
 	switch runtime {
 	case nativePythonRuntime:
-		return r.first(r.fromEnv("PYTHON_VERSION", r.minorLine), r.fromFile(".python-version", r.minorLine))
+		python, err := toolchains.ResolvePython(created, env, readFile)
+		if err != nil {
+			return NativeChoice{}, err
+		}
+		choice, err := r.choice(python.Line, python.Source)
+		choice.Exact = python.Exact
+		return choice, err
 	case nativeNodeRuntime:
 		return r.first(r.fromEnv("NODE_VERSION", r.nodeRequest), r.fromFile(".node-version", r.nodeRequest),
 			r.fromFile(".nvmrc", r.nodeRequest), r.fromPackageEngines)
@@ -347,14 +296,14 @@ func (r resolver) rustToolchain() (NativeChoice, error) {
 	line, _ := r.t.find(choice.Line)
 	choice.narratedVersion = line.version
 	if request := strings.TrimSpace(r.env["RUSTUP_TOOLCHAIN"]); request != "" {
-		request = boundedRequest(request)
+		request = toolchains.BoundedRequest(request)
 		choice.Source, choice.narratedVersion = "RUSTUP_TOOLCHAIN="+request, request
 		return choice, nil
 	}
 	for _, name := range [...]string{"rust-toolchain", "rust-toolchain.toml"} {
 		if raw, ok := r.readFile(name); ok {
 			if channel := rustToolchainChannel(raw); channel != "" {
-				choice.Source, choice.narratedVersion = name, boundedRequest(channel)
+				choice.Source, choice.narratedVersion = name, toolchains.BoundedRequest(channel)
 			}
 			break // rustup reads only the first file present
 		}
@@ -369,7 +318,7 @@ var rustToolchainTOML = regexp.MustCompile(`(?m)^\s*channel\s*=\s*["']([^"']+)["
 // rustToolchainChannel is the channel a rust-toolchain file names: its first
 // line in the legacy one-line form, or the TOML form's channel setting.
 func rustToolchainChannel(raw []byte) string {
-	first := firstMeaningfulLine(raw)
+	first := toolchains.FirstMeaningfulLine(raw)
 	if !strings.HasPrefix(first, "[") {
 		return first
 	}
@@ -409,15 +358,15 @@ func ResolveNativeBun(created time.Time, env map[string]string, readFile func(st
 // that opts in by its lockfile alone builds on (w8/371). The first step is
 // Render's "Before 2025-08-18", which no reviewed line carries: it is
 // installed exactly from its own image (w8/372).
-var bunDefaults = []exactDefault{
-	{time.Unix(0, 0).UTC(), "1.1.0"},
-	{time.Date(2025, time.August, 18, 0, 0, 0, 0, time.UTC), "1.2.20"},
-	{time.Date(2025, time.December, 8, 0, 0, 0, 0, time.UTC), "1.3.4"},
-	{time.Date(2026, time.July, 16, 0, 0, 0, 0, time.UTC), "1.3.14"},
-	{time.Date(2026, time.September, 9, 0, 0, 0, 0, time.UTC), "1.4.2"},
-	{time.Date(2026, time.October, 12, 0, 0, 0, 0, time.UTC), "1.4.3"},
-	{time.Date(2026, time.October, 22, 0, 0, 0, 0, time.UTC), "1.4.4"},
-	{time.Date(2026, time.November, 20, 0, 0, 0, 0, time.UTC), "1.4.5"},
+var bunDefaults = []toolchains.DatedDefault{
+	{From: time.Unix(0, 0).UTC(), Version: "1.1.0"},
+	{From: time.Date(2025, time.August, 18, 0, 0, 0, 0, time.UTC), Version: "1.2.20"},
+	{From: time.Date(2025, time.December, 8, 0, 0, 0, 0, time.UTC), Version: "1.3.4"},
+	{From: time.Date(2026, time.July, 16, 0, 0, 0, 0, time.UTC), Version: "1.3.14"},
+	{From: time.Date(2026, time.September, 9, 0, 0, 0, 0, time.UTC), Version: "1.4.2"},
+	{From: time.Date(2026, time.October, 12, 0, 0, 0, 0, time.UTC), Version: "1.4.3"},
+	{From: time.Date(2026, time.October, 22, 0, 0, 0, 0, time.UTC), Version: "1.4.4"},
+	{From: time.Date(2026, time.November, 20, 0, 0, 0, 0, time.UTC), Version: "1.4.5"},
 }
 
 // datedBunDefault moves a lockfile-only Bun choice onto Render's default for a
@@ -427,7 +376,7 @@ var bunDefaults = []exactDefault{
 // every default does, when its own cannot be had. A service of unknown age
 // keeps the default line's reviewed patch.
 func (r resolver) datedBunDefault(created time.Time, choice NativeChoice) NativeChoice {
-	version := datedDefault(bunDefaults, created)
+	version := toolchains.DatedDefaultAt(bunDefaults, created)
 	if version == "" {
 		return choice
 	}
@@ -474,8 +423,8 @@ func ResolveNativePoetry(env map[string]string) (NativeChoice, error) {
 	}
 	version := strings.TrimPrefix(strings.ToLower(request), "v")
 	if !poetryRelease.MatchString(version) {
-		return NativeChoice{}, &UnsupportedVersionError{msg: fmt.Sprintf(
-			"%s is not a supported Poetry version; set an exact Poetry 1.x or 2.x release such as %s", boundedRequest("POETRY_VERSION="+request), defaultPoetryVersion)}
+		return NativeChoice{}, &UnsupportedVersionError{Msg: fmt.Sprintf(
+			"%s is not a supported Poetry version; set an exact Poetry 1.x or 2.x release such as %s", toolchains.BoundedRequest("POETRY_VERSION="+request), defaultPoetryVersion)}
 	}
 	return NativeChoice{Label: "Poetry", Line: version, Source: "POETRY_VERSION=" + request}, nil
 }
@@ -490,7 +439,7 @@ const (
 
 // uvDefaultCutoff: bex applies defaultUVVersion to services created after this
 // change, not from Render's 2026-11-03, so a running service's toolchain never
-// moves under an operator upgrade (the pythonCreationCutoff pattern).
+// moves under an operator upgrade (the toolchains.PythonCreationCutoff pattern).
 var uvDefaultCutoff = time.Date(2026, time.November, 14, 0, 0, 0, 0, time.UTC)
 
 // uvDefault is the uv a service created at created gets without UV_VERSION. A
@@ -522,18 +471,10 @@ func ResolveNativeUV(created time.Time, env map[string]string, readFile func(str
 	}
 	version := strings.TrimPrefix(strings.ToLower(request), "v")
 	if !uvRelease.MatchString(version) {
-		return NativeChoice{}, false, &UnsupportedVersionError{msg: fmt.Sprintf(
-			"%s is not a supported uv version; set an exact uv release such as %s", boundedRequest("UV_VERSION="+request), defaultUVVersion)}
+		return NativeChoice{}, false, &UnsupportedVersionError{Msg: fmt.Sprintf(
+			"%s is not a supported uv version; set an exact uv release such as %s", toolchains.BoundedRequest("UV_VERSION="+request), defaultUVVersion)}
 	}
 	return NativeChoice{Label: "uv", Line: version, Source: "UV_VERSION=" + request}, true, nil
-}
-
-// boundedRequest bounds a tenant's version request for an error message.
-func boundedRequest(what string) string {
-	if len(what) > 120 {
-		return strings.ToValidUTF8(what[:120], "") + "…"
-	}
-	return what
 }
 
 // bunRequest maps a Bun version request: `canary`, `latest`, a plain version onto its
@@ -624,12 +565,11 @@ func (r resolver) choice(line, source string) (NativeChoice, error) {
 // unsupported names the request the way the tenant wrote it: what is the env
 // assignment (`PYTHON_VERSION=2.7.18`) or the file and its quoted content.
 func (r resolver) unsupported(what string) error {
-	msg := fmt.Sprintf("%s is not a supported %s version; supported %s lines are %s",
-		boundedRequest(what), r.t.label, r.t.label, r.t.supportedLines())
+	supported := r.t.supportedLines()
 	if r.t.anyRelease != "" {
-		msg += ", and " + r.t.anyRelease
+		supported += ", and " + r.t.anyRelease
 	}
-	return &UnsupportedVersionError{msg: msg}
+	return toolchains.Unsupported(what, r.t.label, supported)
 }
 
 // supportedLines lists the reviewed lines and the floating tag for a refusal.
@@ -680,29 +620,17 @@ func firstLine(readFile func(string) ([]byte, bool), name string) string {
 	if !ok {
 		return ""
 	}
-	return firstMeaningfulLine(raw)
+	return toolchains.FirstMeaningfulLine(raw)
 }
 
-// firstMeaningfulLine is raw's first line that is neither blank nor a # comment.
-func firstMeaningfulLine(raw []byte) string {
-	for line := range strings.SplitSeq(string(raw), "\n") {
-		if line = strings.TrimSpace(line); line != "" && !strings.HasPrefix(line, "#") {
-			return line
-		}
-	}
-	return ""
-}
-
-// minorLine maps "3.11", "3.11.9" (or pyenv/rbenv-style "python-3.11.9") onto
+// minorLine maps "3.11", "3.11.9" (or pyenv/rbenv-style "ruby-3.3.6") onto
 // the "3.11" line.
 func (r resolver) minorLine(request string) (string, bool) {
-	request = strings.TrimPrefix(strings.TrimPrefix(strings.ToLower(request), "python-"), "ruby-")
-	v, err := semver.NewVersion(strings.TrimPrefix(request, "v"))
-	if err != nil || strings.Count(strings.TrimPrefix(request, "v"), ".") < 1 {
+	line, ok := toolchains.RequestLine(request)
+	if !ok {
 		return "", false
 	}
-	line := fmt.Sprintf("%d.%d", v.Major(), v.Minor())
-	_, ok := r.t.find(line)
+	_, ok = r.t.find(line)
 	return line, ok
 }
 
@@ -987,8 +915,8 @@ func (r resolver) elixir() (NativeChoice, error) {
 	}
 	release := strings.TrimPrefix(erlang, "OTP-")
 	if !otpRelease.MatchString(release) {
-		return NativeChoice{}, &UnsupportedVersionError{msg: fmt.Sprintf(
-			"%s is not an Erlang/OTP release; set ERLANG_VERSION to a release such as 28 or 28.3", boundedRequest("ERLANG_VERSION="+erlang))}
+		return NativeChoice{}, &UnsupportedVersionError{Msg: fmt.Sprintf(
+			"%s is not an Erlang/OTP release; set ERLANG_VERSION to a release such as 28 or 28.3", toolchains.BoundedRequest("ERLANG_VERSION="+erlang))}
 	}
 	choice.erlang = release
 	choice.Source = strings.TrimPrefix(choice.Source+", ERLANG_VERSION="+erlang, ", ")
@@ -1096,7 +1024,7 @@ func pairElixirOTP(created time.Time, choice NativeChoice, env map[string]string
 	parts := otpParts(choice.erlang)
 	n := strings.Count(choice.erlang, ".") + 1
 	if slices.Compare(parts[:n], otpParts(erlangMinimum)[:n]) < 0 {
-		return NativeChoice{}, &UnsupportedVersionError{msg: fmt.Sprintf(
+		return NativeChoice{}, &UnsupportedVersionError{Msg: fmt.Sprintf(
 			"ERLANG_VERSION=%q is earlier than Erlang/OTP %s, the oldest Render supports; set ERLANG_VERSION to %s or a later release",
 			request, erlangMinimum, erlangMinimum)}
 	}
@@ -1105,7 +1033,7 @@ func pairElixirOTP(created time.Time, choice NativeChoice, env map[string]string
 		if !strings.Contains(choice.Source, "ELIXIR_VERSION=") {
 			with += " (the default)"
 		}
-		return NativeChoice{}, &UnsupportedVersionError{msg: fmt.Sprintf(
+		return NativeChoice{}, &UnsupportedVersionError{Msg: fmt.Sprintf(
 			"ERLANG_VERSION=%q is not compatible with %s, which supports Erlang/OTP %d to %d; set ERLANG_VERSION to a compatible release or choose another ELIXIR_VERSION",
 			request, with, lo, hi)}
 	}
@@ -1174,15 +1102,11 @@ func packageEnginesNode(readFile func(string) ([]byte, bool)) string {
 // `ruby "3.2.0"`, which Bundler refuses any other patch for (w9/133). A range
 // or an alias keeps resolving to the line's reviewed patch.
 func exactRequest(t nativeToolchain, choice NativeChoice, readFile func(string) ([]byte, bool)) string {
-	version := strings.ToLower(strings.TrimSpace(requestedVersion(choice.Source, readFile)))
-	for _, prefix := range []string{"python-", "ruby-", "bun-", "v"} {
-		version = strings.TrimPrefix(version, prefix)
-	}
 	line, ok := t.find(choice.Line)
-	if !ok || !fullVersion.MatchString(version) || version == line.version || !strings.HasPrefix(version, choice.Line+".") {
+	if !ok {
 		return ""
 	}
-	return version
+	return toolchains.ExactVersion(requestedVersion(choice.Source, readFile), choice.Line, line.version)
 }
 
 // requestedVersion is the version text behind a choice's first signal, as the
@@ -1229,10 +1153,5 @@ func exactImage(choice NativeChoice) (repo, tag string, ok bool) {
 // lineImageVariant splits the line's official image (python:3.11-bookworm)
 // into its repository and the variant suffix after the line (-bookworm).
 func lineImageVariant(choice NativeChoice) (repo, suffix string, ok bool) {
-	ref, _, _ := strings.Cut(cmp.Or(choice.upstream, choice.Image), "@")
-	repo, lineTag, found := strings.Cut(ref, ":")
-	if !found || !strings.HasPrefix(lineTag, choice.Line) {
-		return "", "", false
-	}
-	return repo, strings.TrimPrefix(lineTag, choice.Line), true
+	return toolchains.ImageVariant(cmp.Or(choice.upstream, choice.Image), choice.Line)
 }

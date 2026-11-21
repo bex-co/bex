@@ -985,12 +985,12 @@ pathlib.Path(result).write_text(json.dumps({'caught':caught,'handlers_restored':
     def test_corrected_patterns_are_the_exact_closed_reset_and_recursive_set(self):
         patterns = ProfileRoutingControls.sparse_patterns()
         raw = ("\n".join(patterns) + "\n").encode()
-        self.assertEqual(qualification.hashlib.sha256(raw).hexdigest(), "7dabd8c2c55d66ded2cc087fb08b90db99417eeaddc2c43e71cc774b18faa2ba")
-        self.assertEqual(len(patterns), 23)
+        self.assertEqual(qualification.hashlib.sha256(raw).hexdigest(), "b23ecbd9e5c99f5b98d813c77a38d104bc2d5ac7fbf2dced6eed5c83ada5516b")
+        self.assertEqual(len(patterns), 24)
         # w6/m163: the qualify job installs Syft with scripts/install-syft.py.
         self.assertIn("/scripts/install-syft.py", patterns)
         self.assertEqual(patterns[0], "!/**")
-        self.assertEqual(sum(p.endswith('/**') and not p.startswith('!') for p in patterns), 14)
+        self.assertEqual(sum(p.endswith('/**') and not p.startswith('!') for p in patterns), 15)
         self.assertIn('/lego/operator/internal/build/**', patterns)
         self.assertFalse(any(p.startswith('/.pm/') for p in patterns))
 

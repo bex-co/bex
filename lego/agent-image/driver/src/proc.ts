@@ -11,8 +11,9 @@
  * limitations under the License.
  */
 
-// Child-process helpers shared by the ACP launcher and repository setup.
-import type { ChildProcess } from "node:child_process";
+// Child-process helpers shared by the ACP launcher, repository setup and the
+// session's Python selection.
+import { spawn, type ChildProcess } from "node:child_process";
 
 // killProcessTree kills a child spawned detached and everything it started:
 // the group can outlive its leader and keep inherited pipes open.
@@ -38,4 +39,49 @@ export function appendTail(tail: Buffer, chunk: Buffer, max: number): Buffer {
   return joined.length > max
     ? Buffer.from(joined.subarray(joined.length - max))
     : joined;
+}
+
+// run resolves with a command's stdout, or rejects with a CommandError
+// carrying its exit code and stderr. A spawn failure (a missing command)
+// rejects with the system error, whose code is ENOENT.
+export function run(
+  command: string,
+  args: string[],
+  options: {
+    env?: Record<string, string>;
+    cwd?: string;
+    timeoutMs?: number;
+    signal?: AbortSignal;
+  } = {},
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd: options.cwd,
+      env: options.env,
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: options.timeoutMs,
+      signal: options.signal,
+    });
+    const out: Buffer[] = [];
+    const err: Buffer[] = [];
+    child.stdout.on("data", (chunk: Buffer) => out.push(chunk));
+    child.stderr.on("data", (chunk: Buffer) => err.push(chunk));
+    child.on("error", reject);
+    child.on("close", (code, signal) => {
+      if (code === 0) return resolve(Buffer.concat(out).toString("utf8"));
+      const reason =
+        Buffer.concat(err).toString("utf8").trim() ||
+        (signal ? `killed by ${signal}` : `exited with code ${code}`);
+      reject(new CommandError(code, reason));
+    });
+  });
+}
+
+export class CommandError extends Error {
+  constructor(
+    readonly exitCode: number | null,
+    message: string,
+  ) {
+    super(message);
+  }
 }

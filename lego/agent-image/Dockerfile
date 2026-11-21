@@ -1,9 +1,14 @@
 # syntax=docker/dockerfile:1.7
 
+# The reviewed patch of each Python line a session runs (w4/m544): every
+# bookworm line of lego/types/toolchains/python.go, whose python-3.X stages
+# below take it from the same digest. The final stage's check fails the build
+# unless each interpreter reports its patch, and lego/backend/cmd/agent-toolchain's
+# tests fail when either drifts from the table.
+ARG PYTHON_VERSIONS="3.8.20 3.9.25 3.10.22 3.11.18 3.12.16 3.13.18 3.14.10 3.15.2"
 # Tools baked in beside the language toolchains (w10/m513), each pinned by
 # version here and by digest, SHA-256 or module sum where it is fetched. The
 # final stage's check fails the build unless each reports its pin.
-ARG PYTHON312_VERSION=3.12.16
 ARG UV_VERSION=0.13.9
 ARG GITLEAKS_VERSION=8.30.1
 ARG GH_VERSION=2.105.0
@@ -90,12 +95,44 @@ COPY agent-image/fetch-native-binaries.mjs ./
 COPY --from=native-pins /build/native-pins.json ./
 RUN node fetch-native-binaries.mjs native-pins.json /native "${TARGETARCH}"
 
-# Python 3.12 next to Debian's 3.11 (w10/m513): the official build for the
-# same Debian release, so the same glibc, OpenSSL and shared libraries. Only
-# its versioned names are copied (python3.12, pip3.12), so `python3` stays
-# bookworm's 3.11. The interpreter finds libpython through its $ORIGIN/../lib
-# run path, and uv finds it on PATH for `--python 3.12`.
-FROM python:${PYTHON312_VERSION}-slim-bookworm@sha256:935c3c5b12357a7e10caa9c1e6ca5692344d97cf229832ef584be2cec9fc03df AS python-312
+# The official Python builds a session runs (w4/m544), next to Debian's 3.11:
+# each from the image a native build of that line runs on, for the same
+# Debian release, so the same glibc, OpenSSL and shared libraries, and with
+# GNU readline (python-build-standalone links libedit). Only versioned names
+# are copied (python3.X, pip3.X), so /usr/bin/python3 stays bookworm's 3.11;
+# the driver points python, python3, pip and pip3 at the session's selection
+# in /opt/bex-python/bin. Each interpreter finds its libpython through its
+# $ORIGIN/../lib run path, and uv finds them on PATH for `--python 3.X`. One
+# stage and one linked layer per line, so a line's new digest pulls and
+# replaces that line alone (python-tree.sh assembles it).
+FROM python:3.8-bookworm@sha256:d411270700143fa2683cc8264d9fa5d3279fd3b6afff62ae81ea2f9d070e390c AS python-3.8
+RUN --mount=type=bind,source=agent-image/python-tree.sh,target=/python-tree.sh sh /python-tree.sh 3.8
+FROM python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285 AS python-3.9
+RUN --mount=type=bind,source=agent-image/python-tree.sh,target=/python-tree.sh sh /python-tree.sh 3.9
+FROM python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a0470b842a01b0e14314945b8 AS python-3.10
+RUN --mount=type=bind,source=agent-image/python-tree.sh,target=/python-tree.sh sh /python-tree.sh 3.10
+FROM python:3.11-bookworm@sha256:726d304906fa5eb468e5531e366548d1903286352f5adb54ef508ac01fbd80c6 AS python-3.11
+RUN --mount=type=bind,source=agent-image/python-tree.sh,target=/python-tree.sh sh /python-tree.sh 3.11
+FROM python:3.12-bookworm@sha256:4209fae09a3e20afd863e528bfddc235da5fd5977983e1996cd54cc9a72e6267 AS python-3.12
+RUN --mount=type=bind,source=agent-image/python-tree.sh,target=/python-tree.sh sh /python-tree.sh 3.12
+FROM python:3.13-bookworm@sha256:cc55e4ded9c95f6ce2133b3d096db43f214d280c2a8af65d83e246c8fa7d168c AS python-3.13
+RUN --mount=type=bind,source=agent-image/python-tree.sh,target=/python-tree.sh sh /python-tree.sh 3.13
+FROM python:3.14-bookworm@sha256:3fe825da0a80fa8e2cd79baadeb76b03c0ddf3d6cdbc8346778a0208b9d6038c AS python-3.14
+RUN --mount=type=bind,source=agent-image/python-tree.sh,target=/python-tree.sh sh /python-tree.sh 3.14
+FROM python:3.15-bookworm@sha256:6f060cab421d9509c6c6a6a7762c651baf03c3f1d0145befe16b688762b7fe81 AS python-3.15
+RUN --mount=type=bind,source=agent-image/python-tree.sh,target=/python-tree.sh sh /python-tree.sh 3.15
+
+# The resolver the driver asks which Python a session runs (w4/m544): the
+# table and Render's rules a native build applies, from lego/types/toolchains.
+FROM --platform=$BUILDPLATFORM golang:1.27.4-bookworm@sha256:4fa7c968ba93f1635670522dbb01a2c78150443e1385746924566079f36570ea AS agent-toolchain
+ARG TARGETARCH
+ENV CGO_ENABLED=0 GOFLAGS=-trimpath GOTOOLCHAIN=local GOWORK=off
+WORKDIR /src
+COPY types/go.mod types/go.sum ./types/
+COPY types/toolchains ./types/toolchains
+COPY backend/go.mod backend/go.sum ./backend/
+COPY backend/cmd/agent-toolchain ./backend/cmd/agent-toolchain
+RUN cd backend && GOOS=linux GOARCH="$TARGETARCH" go build -ldflags "-s -w" -o /out/usr/local/bin/agent-toolchain ./cmd/agent-toolchain
 
 # gitleaks (w10/m513) and direnv (w10/024), built from their modules with this
 # image's Go toolchain: the release binaries are built with older Go releases,
@@ -246,7 +283,7 @@ RUN echo "agent image rebuild ${AGENT_REBUILD}" \
 COPY --from=go-toolchain /usr/local/go /usr/local/go
 ENV PATH="/usr/local/go/bin:${PATH}"
 
-ARG PYTHON312_VERSION
+ARG PYTHON_VERSIONS
 ARG UV_VERSION
 ARG GITLEAKS_VERSION
 ARG GH_VERSION
@@ -256,10 +293,15 @@ ARG RUST_VERSION
 ARG AWSCLI_VERSION
 ARG NVM_VERSION
 ARG DIRENV_VERSION
-COPY --link --from=python-312 /usr/local/bin/python3.12 /usr/local/bin/pip3.12 /usr/local/bin/
-COPY --link --from=python-312 /usr/local/lib/libpython3.12.so.1.0 /usr/local/lib/libpython3.so /usr/local/lib/
-COPY --link --from=python-312 /usr/local/lib/python3.12 /usr/local/lib/python3.12
-COPY --link --from=python-312 /usr/local/include/python3.12 /usr/local/include/python3.12
+COPY --link --from=python-3.8 /out/ /
+COPY --link --from=python-3.9 /out/ /
+COPY --link --from=python-3.10 /out/ /
+COPY --link --from=python-3.11 /out/ /
+COPY --link --from=python-3.12 /out/ /
+COPY --link --from=python-3.13 /out/ /
+COPY --link --from=python-3.14 /out/ /
+COPY --link --from=python-3.15 /out/ /
+COPY --link --from=agent-toolchain /out/ /
 COPY --link --from=cli-tools /out/ /
 COPY --link --from=go-tools /out/ /
 COPY --link --from=jdk-17 /opt/java/openjdk /opt/java/openjdk
@@ -272,30 +314,44 @@ COPY --link --chown=10001:10001 --from=rust /usr/local/cargo /usr/local/cargo
 COPY --link --chown=10001:10001 --from=cli-tools /nvm /usr/local/nvm
 COPY --link agent-image/bex-agent-tools.sh /etc/profile.d/bex-agent-tools.sh
 COPY --link agent-image/mavenrc /etc/mavenrc
+# /opt/bex-python/bin is the session's selected Python (w4/m544), which the
+# driver fills after checkout, so it comes first; until then it is empty.
 ENV JAVA_HOME=/opt/java/openjdk \
     RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     NVM_DIR=/usr/local/nvm \
-    PATH="/usr/local/cargo/bin:/opt/java/openjdk/bin:${PATH}"
+    PATH="/opt/bex-python/bin:/usr/local/cargo/bin:/opt/java/openjdk/bin:${PATH}"
 # The build fails unless every baked tool reports its pin, python3 is still
-# Debian's 3.11, the 3.12 interpreter has its extension modules, pip and
-# venv, and uv finds it with downloads disabled (as a registries-tier session
-# without the release-asset host would). The check writes no bytecode, so this
-# per-deploy layer stays small.
+# Debian's 3.11, each Python line reports its reviewed patch and has its
+# extension modules, GNU readline (not libedit), pip and a venv (3.12's with
+# its own pip), uv finds 3.12 with downloads disabled (as a registries-tier
+# session without the release-asset host would), and agent-toolchain gives a
+# session created today Render's default without a download: a baked patch.
+# The check writes no bytecode, so this per-deploy layer stays small.
 RUN set -e; \
     export PYTHONDONTWRITEBYTECODE=1; \
-    ln -s libpython3.12.so.1.0 /usr/local/lib/libpython3.12.so; \
     ldconfig; \
     python3 --version | grep -Eqx 'Python 3\.11\.[0-9]+'; \
-    [ "$(python3.12 --version)" = "Python $PYTHON312_VERSION" ]; \
-    python3.12 -c 'import bz2, ctypes, curses, decimal, hashlib, lzma, readline, sqlite3, ssl, uuid, xml.parsers.expat, zlib'; \
-    python3.12 -m pip --version; \
+    for version in $PYTHON_VERSIONS; do \
+      py="python${version%.*}"; \
+      [ "$($py --version)" = "Python $version" ]; \
+      $py -c 'import bz2, ctypes, curses, decimal, ensurepip, hashlib, lzma, readline, sqlite3, ssl, uuid, venv, xml.parsers.expat, zlib; assert getattr(readline, "backend", "readline") == "readline" and "libedit" not in (readline.__doc__ or ""), readline.__doc__; ensurepip.version()'; \
+      $py -m pip --version >/dev/null; \
+      $py -m venv --without-pip /tmp/venv; /tmp/venv/bin/python -c 'import sys; assert sys.prefix != sys.base_prefix'; rm -rf /tmp/venv; \
+    done; \
     python3.12 -m venv /tmp/venv312; /tmp/venv312/bin/python -m pip --version; rm -rf /tmp/venv312; \
     [ "$(uv --version | cut -d' ' -f2)" = "$UV_VERSION" ]; \
     [ "$(uvx --version | cut -d' ' -f2)" = "$UV_VERSION" ]; \
     UV_PYTHON_DOWNLOADS=never UV_CACHE_DIR=/tmp/uv-cache uv venv --python 3.12 /tmp/uv-venv; \
-    [ "$(/tmp/uv-venv/bin/python --version)" = "Python $PYTHON312_VERSION" ]; \
+    /tmp/uv-venv/bin/python --version | grep -Eqx 'Python 3\.12\.[0-9]+'; \
     rm -rf /tmp/uv-venv /tmp/uv-cache; \
+    mkdir /tmp/empty-checkout; \
+    selected="$(BEX_AGENT_SESSION_CREATED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)" agent-toolchain python /tmp/empty-checkout \
+      | python3 -c 'import json, sys; s = json.load(sys.stdin); assert s["source"] == "default" and "image" not in s, s; print(s["line"], s["version"])')"; \
+    set -- $selected; \
+    [ "$("python$1" --version)" = "Python $2" ]; \
+    echo "a session created today runs Python $2 by default"; \
+    rmdir /tmp/empty-checkout; \
     [ "$(gitleaks version)" = "$GITLEAKS_VERSION" ]; \
     gh --version | head -n 1 | grep -q "^gh version $GH_VERSION "
 
@@ -315,6 +371,9 @@ RUN chmod 0755 dist/main.js \
     && ln -s /opt/bex-agent-driver/dist/main.js /usr/local/bin/bex-agent-driver \
     && node dist/install-profiles.js
 
+# /opt/bex-python is the driver's: bin/ holds the session's python, python3,
+# pip and pip3 (w4/m544), and an exact patch the image lacks is fetched into
+# /opt/bex-python/<version>.
 # /attachments is where the agent finds the session's uploaded files
 # (ADR095 D4). bex-api extracts them through the gateway as one new directory,
 # /var/lib/bex-agent/attachments, which must not exist beforehand; the link
@@ -324,13 +383,13 @@ RUN chmod 0755 dist/main.js \
 # Rust homes, so the usual `. "$HOME/.cargo/env"` works, and interactive
 # shells (the web Shell, SSH, Zed) load nvm and the direnv hook.
 RUN useradd --create-home --home-dir /home/bex --uid 10001 --shell /bin/bash bex \
-    && mkdir -p /workspace /var/lib/bex-agent /run/bex-agent /var/log/bex-agent /var/run/bex-agent /bex /var/tmp/go-tmp \
+    && mkdir -p /workspace /var/lib/bex-agent /run/bex-agent /var/log/bex-agent /var/run/bex-agent /bex /var/tmp/go-tmp /opt/bex-python/bin \
     && ln -s /var/lib/bex-agent/attachments /attachments \
     && ln -s /var/lib/bex-agent/skills /bex/skills \
     && ln -s /usr/local/cargo /home/bex/.cargo \
     && ln -s /usr/local/rustup /home/bex/.rustup \
     && printf '\n# The agent image toolchains, nvm and direnv (w10/024).\n. /etc/profile.d/bex-agent-tools.sh\n' >> /etc/bash.bashrc \
-    && chown -R bex:bex /workspace /var/lib/bex-agent /run/bex-agent /var/log/bex-agent /var/run/bex-agent /home/bex /var/tmp/go-tmp
+    && chown -R bex:bex /workspace /var/lib/bex-agent /run/bex-agent /var/log/bex-agent /var/run/bex-agent /home/bex /var/tmp/go-tmp /opt/bex-python
 
 # A linked layer does not depend on the layers above it, so the registry build
 # cache reuses it, and a node keeps it, until the dependency list changes; the
@@ -371,9 +430,22 @@ USER 10001:10001
 # session without them gets none. So do a full-tier session's JVM proxy
 # properties (w10/032): they go in front of JAVA_TOOL_OPTIONS once, the JVM
 # takes them, and /etc/mavenrc hands mvn global settings naming the proxy
-# unless it was given its own -gs. Cargo, Java and mavenrc write only under
-# /tmp and /var/tmp/bex-maven-10001, which the check removes.
+# unless it was given its own -gs. The session's Python (w4/m544), once the
+# driver points /opt/bex-python/bin at it, is python3, python, pip and pip3
+# in every kind of shell, and /usr/bin/python3 stays Debian's. Cargo, Java
+# and mavenrc write only under /tmp and /var/tmp/bex-maven-10001, and the
+# Python check only its links, which the check removes.
 RUN set -e; \
+    for name in python python3; do ln -s /usr/local/bin/python3.13 "/opt/bex-python/bin/$name"; done; \
+    printf '#!/bin/sh\nexec /usr/local/bin/python3.13 -m pip "$@"\n' > /opt/bex-python/bin/pip; chmod 0755 /opt/bex-python/bin/pip; \
+    selected="$(python3.13 --version)"; \
+    for shell in 'sh -c' 'sh -ic' 'sh -lc' 'bash -c' 'bash -lc' 'bash -ic'; do \
+      [ "$($shell 'python3 --version' 2>/dev/null)" = "$selected" ] || exit 1; \
+      [ "$($shell 'python --version' 2>/dev/null)" = "$selected" ] || exit 1; \
+    done; \
+    bash -lc 'pip --version' | grep -q '(python 3\.13)$'; \
+    /usr/bin/python3 --version | grep -Eqx 'Python 3\.11\.[0-9]+'; \
+    rm /opt/bex-python/bin/python /opt/bex-python/bin/python3 /opt/bex-python/bin/pip; \
     java -version 2>&1 | head -n 1 | grep -q "\"$JDK17_VERSION\""; \
     [ "$(javac -version 2>&1)" = "javac $JDK17_VERSION" ]; \
     mkdir /tmp/java-check; printf 'class Check { public static void main(String[] a) { System.out.println("ok"); } }\n' > /tmp/java-check/Check.java; \

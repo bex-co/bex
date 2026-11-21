@@ -24,6 +24,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/bex-co/bex/lego/types/toolchains"
 )
 
 // Exact Erlang/OTP (w8/197). Render installs the Erlang/OTP release a service
@@ -114,15 +116,15 @@ func pinErlangVersion(ctx context.Context, exact ExactImageResolver, choice Nati
 	if !strings.Contains(choice.Source, "ERLANG_VERSION=") {
 		// No ERLANG_VERSION: the OTP is the newest major an Elixir no line
 		// carries supports (w8/373).
-		return NativeChoice{}, &UnsupportedVersionError{msg: fmt.Sprintf(
+		return NativeChoice{}, &UnsupportedVersionError{Msg: fmt.Sprintf(
 			"%s is not available: no published image carries Elixir %s on Erlang/OTP %d, the newest it supports; set ELIXIR_VERSION to a published Elixir release, or ERLANG_VERSION to another compatible release",
-			boundedRequest(choice.Source), elixir, major)}
+			toolchains.BoundedRequest(choice.Source), elixir, major)}
 	}
 	hint := ""
 	if line, _ := nativeToolchains[nativeElixirRuntime].find(choice.Line); !choice.unreviewed && strconv.Itoa(major) == line.otp {
 		hint = fmt.Sprintf(" (or %d for the line's own)", major)
 	}
-	return NativeChoice{}, &UnsupportedVersionError{msg: fmt.Sprintf(
+	return NativeChoice{}, &UnsupportedVersionError{Msg: fmt.Sprintf(
 		"ERLANG_VERSION=%[1]s is not available with Elixir %[2]s: no published image carries Elixir %[2]s on Erlang/OTP %[1]s; set ERLANG_VERSION to another OTP %[3]d release%[4]s or choose another ELIXIR_VERSION",
 		request, elixir, major, hint)}
 }

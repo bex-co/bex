@@ -20,6 +20,7 @@ import path from "node:path";
 import test from "node:test";
 import { bexMcpServers, createSessionProvider } from "../src/acp.js";
 import { platformOverlay } from "../src/overlay.js";
+import { RepoSetupError } from "../src/repo-setup.js";
 import { runHeadlessTurn } from "../src/session.js";
 import { UIMessageStreamHub } from "../src/stream-hub.js";
 import {
@@ -116,7 +117,10 @@ test("a takeover pushes its own branch and fast-forwards the person's PR with th
     /Pushing `bex-agent\/ags-abc` does not change the pull request: `open_or_update_draft_pr` brings it up to date by fast-forwarding `feature\/fix-login`/,
   );
   assert.match(text, /git push origin HEAD:bex-agent\/ags-abc/);
-  assert.match(text, /Do not force-push, and do not rebase or amend pushed commits/);
+  assert.match(
+    text,
+    /Do not force-push, and do not rebase or amend pushed commits/,
+  );
   assert.match(
     text,
     /`pr_branch_diverged`.*`git fetch origin feature\/fix-login && git merge FETCH_HEAD`/,
@@ -149,7 +153,10 @@ test("a repo-less session gets the scratch overlay without Git delivery", () => 
   });
   assert.match(text, /No repository is attached/);
   assert.match(text, /The deliverable is your reply/);
-  assert.doesNotMatch(text, /open_or_update_draft_pr|reply_on_pull_request|git push/);
+  assert.doesNotMatch(
+    text,
+    /open_or_update_draft_pr|reply_on_pull_request|git push/,
+  );
 });
 
 test("only the full network tier explains the egress proxy, in both overlays", () => {
@@ -169,6 +176,32 @@ test("only the full network tier explains the egress proxy, in both overlays", (
         platformOverlay({ ...context, networkTier }),
         /egress proxy|JAVA_TOOL_OPTIONS/,
       );
+    }
+  }
+});
+
+// w4/m544: the agent is told which Python it has and why, in both overlays;
+// a session that selected none (or whose request was refused) is told none.
+test("the overlay names the session's Python and its source", () => {
+  const scratch = { ...repoContext, deliver: false, repoUrl: "", branch: "" };
+  for (const context of [repoContext, scratch]) {
+    const fromFile = platformOverlay({
+      ...context,
+      python: { version: "3.13.18", source: ".python-version", narration: "" },
+    });
+    assert.match(
+      fromFile,
+      /- `python`, `python3`, `pip` and `pip3` are Python 3\.13\.18, chosen as a Render deploy of this code would choose it: from `\.python-version`\. .*`\/usr\/bin\/python3` is Debian's 3\.11\./,
+    );
+    assert.match(
+      platformOverlay({
+        ...context,
+        python: { version: "3.14.10", source: "default", narration: "" },
+      }),
+      /are Python 3\.14\.10, chosen as a Render deploy of this code would choose it: Render's default for a new service, since neither `PYTHON_VERSION` nor a `\.python-version` names one\./,
+    );
+    for (const python of [undefined, { error: new RepoSetupError("no") }]) {
+      assert.doesNotMatch(platformOverlay({ ...context, python }), /`python3`/);
     }
   }
 });

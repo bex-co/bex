@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
+	"github.com/bex-co/bex/lego/types/toolchains"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -206,17 +207,8 @@ var nativeToolchains = map[string]nativeToolchain{
 		{line: "24", version: "24.22.3", image: "node:24-bookworm@sha256:9d266751ca3d7fdbe651c878ffd5ad0a42fed49a18c283509267c97f025b7496"},
 		{line: "26", version: "26.13.1", image: "node:26-bookworm@sha256:b7087bc4d973034b30854b378ba107f9fab622b47514cb7e2592e41b8bab8d49"},
 	}},
-	nativePythonRuntime: {label: "Python", defaultLine: "3.13", lines: []nativeLine{
-		{line: "3.7", version: "3.7.17", image: "python:3.7-bullseye@sha256:f36f6fe9ddb2622aab9803944cbe7e2bc50be75d624a081f7895e60e7c6b7f0a"},
-		{line: "3.8", version: "3.8.20", image: "python:3.8-bookworm@sha256:d411270700143fa2683cc8264d9fa5d3279fd3b6afff62ae81ea2f9d070e390c"},
-		{line: "3.9", version: "3.9.25", image: "python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285"},
-		{line: "3.10", version: "3.10.22", image: "python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a0470b842a01b0e14314945b8"},
-		{line: "3.11", version: "3.11.18", image: "python:3.11-bookworm@sha256:726d304906fa5eb468e5531e366548d1903286352f5adb54ef508ac01fbd80c6"},
-		{line: "3.12", version: "3.12.16", image: "python:3.12-bookworm@sha256:4209fae09a3e20afd863e528bfddc235da5fd5977983e1996cd54cc9a72e6267"},
-		{line: "3.13", version: "3.13.18", image: "python:3.13-bookworm@sha256:cc55e4ded9c95f6ce2133b3d096db43f214d280c2a8af65d83e246c8fa7d168c"},
-		{line: "3.14", version: "3.14.10", image: "python:3.14-bookworm@sha256:3fe825da0a80fa8e2cd79baadeb76b03c0ddf3d6cdbc8346778a0208b9d6038c"},
-		{line: "3.15", version: "3.15.2", image: "python:3.15-bookworm@sha256:6f060cab421d9509c6c6a6a7762c651baf03c3f1d0145befe16b688762b7fe81"},
-	}},
+	// Python's table is shared with agent sessions (w4/m544): lego/types/toolchains.
+	nativePythonRuntime: nativeToolchainOf(toolchains.Python),
 	nativeRubyRuntime: {label: "Ruby", defaultLine: "3.4", lines: []nativeLine{
 		{line: "3.0", version: "3.0.7", image: "ruby:3.0-bullseye@sha256:dcb8a8a6ee981f949da505cb9f4f15cde696e7bcb088955bc1f92f23a4cd7a72"},
 		{line: "3.1", version: "3.1.7", image: "ruby:3.1-bookworm@sha256:91627f55e8969006aab67d15c92fb930500ff73948803da1330b8a853fecebb5"},
@@ -245,6 +237,16 @@ var nativeBun = nativeToolchain{label: "Bun", defaultLine: "1.4", floating: nati
 	{line: "1.3", version: "1.3.14", image: "oven/bun:1.3@sha256:e10577f0db68676a7024391c6e5cb4b879ebd17188ab750cf10024a6d700e5c4"},
 	{line: "1.4", version: "1.4.4", image: "oven/bun:1.4@sha256:1d22548f177f4ff38e0c15baa3c2c46c6c2060ba2d1bc573bb4720b407548f1d"},
 }}
+
+// nativeToolchainOf is a shared table's lines (lego/types/toolchains) as the
+// native build reads them.
+func nativeToolchainOf(t toolchains.Toolchain) nativeToolchain {
+	lines := make([]nativeLine, len(t.Lines))
+	for i, l := range t.Lines {
+		lines[i] = nativeLine{line: l.Line, version: l.Version, image: l.Image}
+	}
+	return nativeToolchain{label: t.Label, defaultLine: t.DefaultLine, lines: lines}
+}
 
 // nativeToolchain is one runtime's reviewed lines, ascending.
 type nativeToolchain struct {
