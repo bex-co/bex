@@ -95,19 +95,16 @@ import {
   serviceTypeCreateCopy,
 } from "@/features/services/lib/create-context";
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
-import { Switch } from "@/common/components/ui/switch";
-import { Label } from "@/common/components/ui/label";
 import {
   ObservabilityViewHeader,
   ViewActionButtons,
 } from "@/features/logs/components/observability-view-header";
 import {
   DATASTORE_LOG_ACTIONS_CLASS,
-  LIVE_TOGGLE_CLASS,
   LOG_ACTIONS_CLASS,
   LOG_FILTER_ACTIONS_CLASS,
   LOG_FILTER_BAR_CLASS,
-  LOG_FILTER_TAIL_CLASS,
+  LOG_FILTERS_BUTTON_CLASS,
   LOG_ICON_BUTTON_CLASS,
   LOG_SELECT_WIDTH_CLASS,
 } from "@/features/logs/components/log-toolbar-layout";
@@ -1390,12 +1387,11 @@ export function ProjectRouteSkeleton() {
  * A project observability view (w3/m505) while its route or its saved search
  * loads: the ready page's frame and header with the view's name reserved and
  * its Edit view, Duplicate and Delete buttons (w3/m507) disabled, the
- * log explorer's toolbar rows (one on a desktop, [search] then [range | Live
- * | Maximize | Options] on a phone, w3/m509), its range note, and the log
- * panel at its own height.
+ * log explorer's toolbar rows (one on a desktop, [search] then [range |
+ * Maximize | Options] on a phone, w3/m509), and the log panel at its own
+ * height.
  */
 export function ProjectLogViewPageSkeleton() {
-  const { t } = useTranslations();
   return (
     <PageFrame
       pending="project-log-view"
@@ -1414,21 +1410,11 @@ export function ProjectLogViewPageSkeleton() {
         >
           <Skeleton className="h-9 min-w-48 flex-1 max-sm:min-w-0 max-sm:basis-full" />
           <Skeleton className="h-8 w-40 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1" />
-          {/* LiveToggle's own markup and row height (a 44px touch target
-              below lg, which sets the phone's second row), without pulling
-              the filter bar into the skeleton chunk. */}
-          <Label className={LIVE_TOGGLE_CLASS}>
-            <Switch checked disabled />
-            {t("logs.live")}
-          </Label>
           <div className={LOG_ACTIONS_CLASS}>
             <Skeleton className={LOG_ICON_BUTTON_CLASS} />
             <Skeleton className={LOG_ICON_BUTTON_CLASS} />
           </div>
         </Region>
-        <p className="text-xs text-muted-foreground">
-          {t("logs.rangeHistoryNote")}
-        </p>
         <Region name="log-panel">
           <LogPanelSkeleton fillViewport />
         </Region>
@@ -2594,14 +2580,9 @@ export function ServiceLogsBodySkeleton() {
           className={cn("min-w-48 flex-1 max-sm:min-w-0", LOG_CONTROL)}
         />
         <Skeleton className={cn(LOG_SELECT_WIDTH_CLASS, LOG_CONTROL)} />
-        <div className={LOG_FILTER_TAIL_CLASS}>
-          <Skeleton className={cn("w-[5.25rem] max-sm:flex-1", LOG_CONTROL)} />
-          {/* The Live switch, then its word, in the control's own row. */}
-          <div className={LIVE_TOGGLE_CLASS}>
-            <Skeleton className="h-5 w-9 rounded-full" />
-            <Skeleton className="h-3.5 w-7" />
-          </div>
-        </div>
+        <Skeleton
+          className={cn("w-[5.25rem]", LOG_FILTERS_BUTTON_CLASS, LOG_CONTROL)}
+        />
         {/* Maximize (inside Options on a phone), then Options. */}
         <div className={LOG_FILTER_ACTIONS_CLASS}>
           <Skeleton className={cn(LOG_ICON_BUTTON_CLASS, "max-sm:hidden")} />
@@ -3498,19 +3479,14 @@ export function DatastoreLogsSkeleton() {
       className="mx-auto w-full max-w-5xl space-y-4"
     >
       {/* DatastoreLogViewer's toolbar, control for control: range,
-          instance and level, search, Live, then Maximize and Options
-          (w3/m509), which a phone puts at the range's row's end. The page
-          is no touch region, so only Live and the icon buttons grow on a
-          touch layout. */}
+          instance and level, search, then Maximize and Options (w3/m509),
+          which a phone puts at the range's row's end. The page is no touch region, so only the icon buttons
+          grow on a touch layout. */}
       <Region name="log-filters" className="flex flex-wrap items-center gap-3">
         <Skeleton className="h-8 w-40 max-sm:order-first" />
         <Skeleton className="h-8 w-56" />
         <Skeleton className="h-8 w-40" />
         <Skeleton className="h-9 min-w-56 flex-1" />
-        <div className={LIVE_TOGGLE_CLASS}>
-          <Skeleton className="h-5 w-9 rounded-full" />
-          <Skeleton className="h-3.5 w-7" />
-        </div>
         <div className={DATASTORE_LOG_ACTIONS_CLASS}>
           <Skeleton className={LOG_ICON_BUTTON_CLASS} />
           <Skeleton className={LOG_ICON_BUTTON_CLASS} />

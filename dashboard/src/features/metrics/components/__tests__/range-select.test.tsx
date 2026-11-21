@@ -126,6 +126,22 @@ function StatefulRangeSelect({
 
 const iso = (local: string) => new Date(local).toISOString();
 
+// Live tail is a log explorer's range (w3/m537): Metrics' picker, which
+// passes no Live tail entry, lists none.
+describe("RangeSelect without a Live tail entry", () => {
+  it("lists the presets first and no Live tail", async () => {
+    const user = userEvent.setup();
+    render(
+      <RangeSelect range={DEFAULT_RANGE_PRESET} onRangeChange={() => {}} />,
+    );
+    await user.click(screen.getByLabelText("Time range"));
+    expect(screen.getAllByRole("option")[0]).toHaveTextContent(
+      "Last 30 minutes",
+    );
+    expect(screen.queryByRole("option", { name: "Live tail" })).toBeNull();
+  });
+});
+
 describe("RangeSelect edit active custom range (w4/245)", () => {
   it("shows no edit action for a relative preset", () => {
     render(
@@ -378,10 +394,7 @@ describe("RangeSelect names the custom window it covers", () => {
     // w4/698: a preset names itself; an empty trigger used to pass here.
     expect(screen.getByRole("combobox")).toHaveTextContent("Last 12 hours");
     rerender(
-      <RangeSelect
-        range={parseRangePreset("4h")!}
-        onRangeChange={() => {}}
-      />,
+      <RangeSelect range={parseRangePreset("4h")!} onRangeChange={() => {}} />,
     );
     expect(screen.getByRole("combobox")).toHaveTextContent("Last 4 hours");
   });

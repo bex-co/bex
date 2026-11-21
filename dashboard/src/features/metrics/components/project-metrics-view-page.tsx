@@ -1,7 +1,10 @@
 import { ProjectMetricsViewPageSkeleton } from "@/common/components/route-skeletons";
 import { SavedSearchType } from "@/graphql/definitions";
 import { ProjectViewPage } from "@/features/logs/components/project-view-page";
-import type { ProjectLogSearch } from "@/features/logs/lib/project-log-search";
+import {
+  projectMetricsRange,
+  type ProjectLogSearch,
+} from "@/features/logs/lib/project-log-search";
 import { DEFAULT_RANGE_PRESET } from "@/features/metrics/lib/range";
 import { ProjectMetricsView } from "./project-metrics-view";
 
@@ -26,15 +29,14 @@ export function ProjectMetricsViewPage({
       viewType={SavedSearchType.Metrics}
       search={search}
       onSearchChange={onSearchChange}
-      defaultRange={DEFAULT_RANGE_PRESET}
       skeleton={<ProjectMetricsViewPageSkeleton />}
       iconName="ChartNoAxesCombined"
     >
-      {({ viewId, scope, range, onRangeChange }) => (
+      {({ viewId, scope, viewRange, onRangeChange }) => (
         <ProjectMetricsView
           key={viewId}
           scope={scope}
-          range={range}
+          range={projectMetricsRange(search, viewRange ?? DEFAULT_RANGE_PRESET)}
           onRangeChange={onRangeChange}
         />
       )}

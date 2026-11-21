@@ -49,6 +49,7 @@ import {
   parseDatastoreLogSearch,
   type DatastoreLogSearch,
 } from "@/features/logs/lib/datastore-log-search";
+import { metricsRangeSearch } from "@/features/logs/lib/log-range";
 import { DatabaseDocument } from "@/graphql/definitions";
 import {
   loadRouteResource,
@@ -171,7 +172,7 @@ function DatabaseDetailPage() {
   // a picked window survives a reload and a copied link (w4/703). Each tab
   // link resets the search, so one tab's range never leaks into the other.
   const metricsRange = {
-    range: rangeFromSearch(search, DEFAULT_RANGE_PRESET),
+    range: rangeFromSearch(metricsRangeSearch(search), DEFAULT_RANGE_PRESET),
     onRangeChange: (range: RangeSelection) =>
       writeSearch(rangeToSearch(range)),
   };

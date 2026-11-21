@@ -114,6 +114,8 @@ function renderAt(href: string) {
 // than findBy's default second, which left an empty body and a failed lookup.
 const searchBox = () =>
   screen.findByLabelText("Search logs", undefined, { timeout: 5000 });
+// A link written before w3/m537, with the Live switch's `live=0`: it opens
+// paused on the range it names, as every range but Live tail is now.
 const FILTERED = "/services/srv-one/logs?type=app&live=0&text=qa-alpha";
 
 beforeEach(() => {
@@ -133,28 +135,29 @@ describe("service Logs follows navigation it did not write (w4/m204)", () => {
     await waitFor(() => expect(router.state.location.search).toEqual({}));
     await waitFor(async () => expect(await searchBox()).toHaveValue(""));
     expect(reads.at(-1)).toEqual({ type: "all", text: "", level: "" });
-    expect(tails.at(-1)).toEqual({ enabled: true, text: "" });
+    // The clean tab opens on Last hour, as Render's service Logs does.
+    expect(tails.at(-1)).toEqual({ enabled: false, text: "" });
     // Nothing writes the source's filters back once a debounce has passed.
     await act(() => new Promise((resolve) => setTimeout(resolve, 400)));
     expect(router.state.location.search).toEqual({});
     expect(reads.at(-1)).toEqual({ type: "all", text: "", level: "" });
   });
 
-  it("restores each history entry's filters and paused state on Back and Forward", async () => {
+  it("restores each history entry's filters and range on Back and Forward", async () => {
     const router = renderAt(FILTERED);
     expect(await searchBox()).toHaveValue("qa-alpha");
     await act(() =>
       router.navigate({
         to: "/services/$serviceId/logs",
         params: { serviceId: "srv-one" },
-        search: { level: "error" },
+        search: { level: "error", range: "live" },
       }),
     );
     await waitFor(() =>
       expect(reads.at(-1)).toEqual({ type: "all", text: "", level: "error" }),
     );
-    // A level tails live on the all view (w8/m147); the paused entry below
-    // gets its own paused state back.
+    // A level tails on Live tail on the all view (w8/m147); the paused entry
+    // below gets its own range back.
     expect(tails.at(-1)).toMatchObject({ enabled: true });
 
     act(() => router.history.back());
@@ -176,16 +179,32 @@ describe("service Logs follows navigation it did not write (w4/m204)", () => {
   });
 
   it("keeps its own debounced write: typing lands in the URL and stays in the box", async () => {
-    const router = renderAt("/services/srv-one/logs?range=12h");
+    const router = renderAt("/services/srv-one/logs?range=live");
     fireEvent.change(await searchBox(), { target: { value: "boom" } });
     await waitFor(() =>
       expect(router.state.location.search).toEqual({
-        range: "12h",
+        range: "live",
         text: "boom",
       }),
     );
     expect(await searchBox()).toHaveValue("boom");
     expect(reads.at(-1)).toMatchObject({ text: "boom" });
     expect(tails.at(-1)).toMatchObject({ enabled: true, text: "boom" });
+  });
+
+  // w3/m537: the Live switch's `live=0` is read as the paused range it names,
+  // and leaves the URL on the first write, as the `t`/`r` aliases do.
+  it("drops a live=0 link's live key on its first write, paused on its range", async () => {
+    const router = renderAt("/services/srv-one/logs?range=4h&live=0");
+    expect(await searchBox()).toHaveValue("");
+    expect(tails.at(-1)).toMatchObject({ enabled: false });
+    fireEvent.change(await searchBox(), { target: { value: "boom" } });
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({
+        range: "4h",
+        text: "boom",
+      }),
+    );
+    expect(tails.at(-1)).toMatchObject({ enabled: false, text: "boom" });
   });
 });

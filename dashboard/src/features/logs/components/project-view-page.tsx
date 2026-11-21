@@ -5,9 +5,9 @@ import { PageFrame } from "@/common/components/page-frame";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { SavedSearchType } from "@/graphql/definitions";
 import { useSavedSearches } from "@/features/projects/hooks/use-saved-searches";
-import type { RangeSelection } from "@/features/metrics/lib/range";
+import type { RangePreset } from "@/features/metrics/lib/range";
+import type { LogRange } from "../lib/log-range";
 import {
-  projectLogRange,
   projectLogRangeSearch,
   viewTimeRange,
   type ProjectLogSearch,
@@ -17,12 +17,13 @@ import { ObservabilityViewActions } from "./observability-view-actions";
 import { ObservabilityViewHeader } from "./observability-view-header";
 import { ProjectViewLink } from "./project-view-link";
 
-/** What a view page's body reads: the view's scope and its range. */
+/** What a view page's body reads: the view's scope, the time range the
+ *  view saves (the range when the URL names none), and the range's writer. */
 export interface ProjectViewBody {
   viewId: string;
   scope: { project: string; filterDocument: Record<string, unknown> };
-  range: RangeSelection;
-  onRangeChange: (range: RangeSelection) => void;
+  viewRange: RangePreset | null;
+  onRangeChange: (range: LogRange) => void;
 }
 
 /**
@@ -39,7 +40,6 @@ export function ProjectViewPage({
   viewType,
   search,
   onSearchChange,
-  defaultRange,
   skeleton,
   iconName,
   children,
@@ -48,8 +48,6 @@ export function ProjectViewPage({
   viewType: SavedSearchType;
   search: ProjectLogSearch;
   onSearchChange: (search: ProjectLogSearch) => void;
-  /** The range when neither the URL nor the view names one. */
-  defaultRange: RangeSelection;
   skeleton: ReactNode;
   /** The not-found state's EmptyState icon. */
   iconName: string;
@@ -132,10 +130,7 @@ export function ProjectViewPage({
       {children({
         viewId: view.id,
         scope,
-        range: projectLogRange(
-          search,
-          viewTimeRange(view.filters) ?? defaultRange,
-        ),
+        viewRange: viewTimeRange(view.filters),
         onRangeChange: (next) =>
           onSearchChange({ ...search, ...projectLogRangeSearch(next) }),
       })}

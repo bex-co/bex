@@ -10,6 +10,7 @@ import { Route as ServiceMetricsRoute } from "../services.$serviceId.metrics";
 import { Route as ServiceShellRoute } from "../services.$serviceId.shell";
 import { Route as ProjectApplicationLogsRoute } from "../project.$projectId.observability.logs.application";
 import { Route as ProjectRequestLogsRoute } from "../project.$projectId.observability.logs.request";
+import { Route as ProjectMetricsRoute } from "../project.$projectId.observability.metrics";
 import { Route as SettingsRoute } from "../settings";
 import { Route as StaticDeployRoute } from "../static.$serviceId.deploys.$deployId";
 import { Route as WorkspaceSettingsRoute } from "../workspace.settings";
@@ -139,8 +140,9 @@ describe.each([
     { type: "bogus", r: "1h", level: true, live: "yes" },
     { ...NO_LOG_FILTERS, range: "1h" },
   ],
-  // View in context's link (w3/m528): a custom window, paused, its line
-  // marked by key.
+  // View in context's link (w3/m528): a custom window, its line marked by
+  // key. A link written before w3/m537 carries the Live switch's `live=0`,
+  // which is a tombstone now: a custom range never tails.
   [
     "/services/$serviceId/logs",
     ServiceLogsRoute,
@@ -156,9 +158,35 @@ describe.each([
       range: "custom",
       rangeStart: "2026-11-20T10:00:00.000Z",
       rangeEnd: "2026-11-20T10:20:00.000Z",
-      live: 0,
       contextLine: "id:abc",
     },
+  ],
+  // Live tail is a range (w3/m537): Render's `live`, in bex's `range` key
+  // or Render's `r`.
+  [
+    "/services/$serviceId/logs",
+    ServiceLogsRoute,
+    { r: "live", live: 0 },
+    { ...NO_LOG_FILTERS, range: "live" },
+  ],
+  [
+    "/databases/$databaseId",
+    DatabaseRoute,
+    { tab: "logs", range: "live", rangeEnd: "2026-11-20T10:20:00.000Z" },
+    { tab: "logs", ...NO_DATASTORE_LOG_FILTERS, range: "live" },
+  ],
+  [
+    "/project/$projectId/observability/logs/application",
+    ProjectApplicationLogsRoute,
+    { savedSearchId: "svs-1", r: "live" },
+    { ...NO_PROJECT_LOG_SEARCH, savedSearchId: "svs-1", r: "live" },
+  ],
+  // A Service Metrics view has no Live tail.
+  [
+    "/project/$projectId/observability/metrics",
+    ProjectMetricsRoute,
+    { savedSearchId: "svs-1", r: "live" },
+    { ...NO_PROJECT_LOG_SEARCH, savedSearchId: "svs-1" },
   ],
   [
     "/databases/$databaseId",

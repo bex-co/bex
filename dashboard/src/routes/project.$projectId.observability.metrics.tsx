@@ -7,7 +7,7 @@ import {
 } from "@/common/lib/document-head";
 import { defaultSavedSearchId } from "@/features/logs/lib/project-log-views";
 import {
-  parseProjectLogSearch,
+  parseProjectMetricsSearch,
   type ProjectLogSearch,
 } from "@/features/logs/lib/project-log-search";
 import { ProjectMetricsViewPage } from "@/features/metrics/components/project-metrics-view-page";
@@ -24,7 +24,7 @@ export const Route = createFileRoute(
 )({
   component: RouteComponent,
   pendingComponent: ProjectMetricsViewPageSkeleton,
-  validateSearch: parseProjectLogSearch,
+  validateSearch: parseProjectMetricsSearch,
   beforeLoad: async ({ context, params, search, cause }) => {
     if (search.savedSearchId) return;
     const first = await defaultSavedSearchId(

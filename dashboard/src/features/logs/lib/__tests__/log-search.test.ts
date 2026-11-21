@@ -3,13 +3,14 @@ import {
   CLEARED_LOG_SEARCH,
   logFiltersFromSearch,
   logFiltersToSearch,
-  logRangeFromSearch,
+  serviceLogRange,
   logContextSearch,
   logSearchEquals,
   parseLogSearch,
   serviceLineShell,
   serviceLogContextHref,
 } from "../log-search";
+import { parseRangeSearch } from "@/features/metrics/lib/range";
 import { datastoreLogContextHref } from "../datastore-log-search";
 import { projectLogContextHref } from "../project-log-search";
 import { SavedSearchType } from "@/graphql/definitions";
@@ -19,13 +20,29 @@ describe("log range URL state", () => {
   it("round-trips a supported selection through route validation", () => {
     const restored = parseLogSearch({ range: "12h" });
     expect(restored).toEqual({ range: "12h" });
-    expect(logRangeFromSearch(restored).id).toBe("12h");
+    expect(serviceLogRange(restored).id).toBe("12h");
+  });
+
+  // Live tail is a range (w3/m537), spelled as Render spells it.
+  it("round-trips Live tail as range=live, and reads Render's r=live", () => {
+    const restored = parseLogSearch({ range: "live" });
+    expect(restored).toEqual({ range: "live" });
+    expect(serviceLogRange(restored)).toEqual({ id: "live" });
+    expect(parseLogSearch({ r: "live" })).toEqual({ range: "live" });
+    // A stray bound beside it is dropped.
+    expect(
+      parseLogSearch({ range: "live", rangeStart: "2026-07-01T00:00:00Z" }),
+    ).toEqual({ range: "live" });
+  });
+
+  it("keeps Live tail out of Metrics' range keys", () => {
+    expect(parseRangeSearch({ range: "live" }).range).toBeUndefined();
   });
 
   it("rejects malformed values and restores the one-hour default", () => {
     const restored = parseLogSearch({ range: "31d" });
     expect(restored).toStrictEqual(CLEARED_LOG_SEARCH);
-    expect(logRangeFromSearch(restored).id).toBe("1h");
+    expect(serviceLogRange(restored).id).toBe("1h");
   });
 
   it("round-trips a custom absolute range (w5/m56)", () => {
@@ -39,7 +56,7 @@ describe("log range URL state", () => {
       rangeStart: "2026-07-01T00:00:00.000Z",
       rangeEnd: "2026-07-01T06:00:00.000Z",
     });
-    const range = logRangeFromSearch(restored);
+    const range = serviceLogRange(restored);
     expect(range.id).toBe("custom");
     expect(range).toMatchObject({
       startTime: "2026-07-01T00:00:00.000Z",
@@ -50,7 +67,7 @@ describe("log range URL state", () => {
   it("ignores a custom range whose bounds are missing or reversed", () => {
     // reversed bounds don't validate → falls back to the default
     expect(
-      logRangeFromSearch(
+      serviceLogRange(
         parseLogSearch({
           range: "custom",
           rangeStart: "2026-07-02T00:00:00Z",
@@ -76,7 +93,6 @@ describe("log filter URL state (w7/m42)", () => {
       instance: "web-abc12",
       path: "/api",
       text: "boom",
-      live: 0,
     });
     expect(search).toEqual({
       range: "4h",
@@ -87,7 +103,6 @@ describe("log filter URL state (w7/m42)", () => {
       instance: "web-abc12",
       path: "/api",
       text: "boom",
-      live: 0,
     });
 
     const filters = logFiltersFromSearch(search);
@@ -103,7 +118,7 @@ describe("log filter URL state (w7/m42)", () => {
     } satisfies LogFilters);
 
     // Serializing the restored state reproduces the same search keys.
-    expect(logFiltersToSearch(filters, false)).toEqual({
+    expect(logFiltersToSearch(filters)).toEqual({
       type: "request",
       level: "error",
       method: "GET",
@@ -111,17 +126,16 @@ describe("log filter URL state (w7/m42)", () => {
       instance: "web-abc12",
       path: "/api",
       text: "boom",
-      live: 0,
     });
   });
 
   it("omits defaults so an unfiltered view keeps a clean URL", () => {
-    expect(logFiltersToSearch(EMPTY_LOG_FILTERS, true)).toEqual({});
+    expect(logFiltersToSearch(EMPTY_LOG_FILTERS)).toEqual({});
   });
 
   it("serializes only the filters that are set", () => {
     expect(
-      logFiltersToSearch({ ...EMPTY_LOG_FILTERS, level: "error" }, true),
+      logFiltersToSearch({ ...EMPTY_LOG_FILTERS, level: "error" }),
     ).toEqual({ level: "error" });
   });
 
@@ -135,12 +149,29 @@ describe("log filter URL state (w7/m42)", () => {
     expect(logFiltersFromSearch(search).type).toBe("all");
   });
 
-  it("treats live=0 / false as off and everything else as on (undefined)", () => {
-    expect(parseLogSearch({ live: 0 })).toEqual({ live: 0 });
-    expect(parseLogSearch({ live: "0" })).toEqual({ live: 0 });
-    expect(parseLogSearch({ live: false })).toEqual({ live: 0 });
-    expect(parseLogSearch({ live: 1 })).toStrictEqual(CLEARED_LOG_SEARCH);
-    expect(parseLogSearch({ live: true })).toStrictEqual(CLEARED_LOG_SEARCH);
+  // The Live switch's `?live=0` (w3/m537): every range but Live tail is
+  // paused now, so the link opens paused on the range it names, and `live`
+  // is a tombstone that leaves the URL on the first write.
+  it("opens a live=0 link paused on its range, with live as a tombstone", () => {
+    for (const live of [0, "0", false, 1, true]) {
+      expect(parseLogSearch({ live })).toStrictEqual(CLEARED_LOG_SEARCH);
+    }
+    expect(serviceLogRange(parseLogSearch({ live: 0 })).id).toBe("1h");
+    expect(serviceLogRange(parseLogSearch({ live: 0, range: "4h" })).id).toBe(
+      "4h",
+    );
+    expect(
+      serviceLogRange(
+        parseLogSearch({
+          live: 0,
+          range: "custom",
+          rangeStart: "2026-07-01T00:00:00.000Z",
+          rangeEnd: "2026-07-01T06:00:00.000Z",
+        }),
+      ).id,
+    ).toBe("custom");
+    expect("live" in CLEARED_LOG_SEARCH).toBe(true);
+    expect(CLEARED_LOG_SEARCH.live).toBeUndefined();
   });
 });
 
@@ -174,20 +205,20 @@ describe("Render deep-link aliases (w7/m42/t003)", () => {
   it("falls back to defaults for an r value bex has no preset for", () => {
     const search = parseLogSearch({ r: "45m" });
     expect(search).toStrictEqual(CLEARED_LOG_SEARCH);
-    expect(logRangeFromSearch(search).id).toBe("1h");
+    expect(serviceLogRange(search).id).toBe("1h");
   });
 
   it("degrades a retired preset id (pre-w5/m42 bookmark) to the default range", () => {
     for (const retired of ["3h", "6h", "1d"]) {
       const search = parseLogSearch({ range: retired });
       expect(search.range).toBeUndefined();
-      expect(logRangeFromSearch(search).id).toBe("1h");
+      expect(serviceLogRange(search).id).toBe("1h");
     }
   });
 
   it("never re-emits alias keys: the serializer writes canonical keys only", () => {
     const search = parseLogSearch({ t: "request", r: "6h" });
-    const out = logFiltersToSearch(logFiltersFromSearch(search), true);
+    const out = logFiltersToSearch(logFiltersFromSearch(search));
     expect(out).toEqual({ type: "request" });
     expect("t" in out).toBe(false);
     expect("r" in out).toBe(false);
@@ -197,21 +228,20 @@ describe("Render deep-link aliases (w7/m42/t003)", () => {
 describe("logSearchEquals (the route's skip-when-unchanged guard)", () => {
   it("treats a round-tripped state as equal so the mount sync never navigates", () => {
     const search = parseLogSearch({
-      range: "4h",
+      range: "live",
       type: "app",
       level: "error",
-      live: 0,
     });
     const next = {
       range: search.range,
-      ...logFiltersToSearch(logFiltersFromSearch(search), search.live !== 0),
+      ...logFiltersToSearch(logFiltersFromSearch(search)),
     };
     expect(logSearchEquals(search, next)).toBe(true);
   });
 
   it("detects a real change on any filter key", () => {
     expect(logSearchEquals({ level: "error" }, { level: "warn" })).toBe(false);
-    expect(logSearchEquals({}, { live: 0 })).toBe(false);
+    expect(logSearchEquals({}, { range: "live" })).toBe(false);
     expect(logSearchEquals({ range: "1h" }, { range: "4h" })).toBe(false);
   });
 });
@@ -240,26 +270,22 @@ describe("View in context links (w3/m528)", () => {
     return { path: url.pathname, search: Object.fromEntries(url.searchParams) };
   };
 
-  it("opens the service Logs tab unfiltered, paused, ten minutes either side of the line, the line marked", () => {
+  it("opens the service Logs tab unfiltered, on a custom range ten minutes either side of the line, the line marked", () => {
     const href = serviceLogContextHref("srv-a", line())!;
     const { path, search } = query(href);
     expect(path).toBe("/services/srv-a/logs");
+    // A custom range never tails, so the link needs no `live=0` (w3/m537).
     expect(search).toEqual({
       range: "custom",
       rangeStart: "2026-11-20T10:20:15.250Z",
       rangeEnd: "2026-11-20T10:40:15.250Z",
-      live: "0",
       contextLine: "id:abc",
     });
     // The route reads back exactly that state, with no filter.
-    const parsed = parseLogSearch(
-      Object.fromEntries(
-        Object.entries(search).map(([k, v]) => [k, k === "live" ? 0 : v]),
-      ),
-    );
+    const parsed = parseLogSearch(search);
     expect(logFiltersFromSearch(parsed)).toEqual(EMPTY_LOG_FILTERS);
     expect(parsed.contextLine).toBe("id:abc");
-    expect(logRangeFromSearch(parsed).id).toBe("custom");
+    expect(serviceLogRange(parsed).id).toBe("custom");
   });
 
   it("opens a Postgres or Key Value Logs tab the same way", () => {

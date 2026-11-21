@@ -1,12 +1,5 @@
-import {
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
-import { AlertCircle, Loader2, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Loader2, Search } from "lucide-react";
 import { EmptyState } from "@/common/components/empty-state";
 import { classifyRefusal } from "@/common/lib/graphql-error";
 import { Input } from "@/common/components/ui/input.tsx";
@@ -31,8 +24,7 @@ import {
 } from "./log-toolbar-layout";
 import { LogTruncationNotice } from "./log-truncation-notice";
 import { StreamDisconnected, StreamStatus } from "./log-viewer";
-import { LiveToggle } from "./log-filter-bar";
-import { useCustomWindow } from "../hooks/use-custom-window";
+import { LogRangeSelect } from "./log-range-select";
 import { useLogRetentionBound } from "../hooks/use-log-retention";
 import {
   useLiveLogs,
@@ -42,15 +34,18 @@ import {
 } from "../hooks/use-live-logs";
 import { mergeLogLines } from "../lib/map";
 import { useLogLabelValues } from "../hooks/use-log-label-values";
-import { RangeSelect } from "@/features/metrics/components/range-select";
 import {
   DEFAULT_DATASTORE_LOG_RANGE,
   rangeWindow,
 } from "../lib/datastore-log-range";
 import {
-  isCustomRange,
-  type RangeSelection,
-} from "@/features/metrics/lib/range";
+  LIVE_TAIL,
+  historyRange,
+  isLiveTail,
+  isPresetRange,
+  logRangeEndMs,
+  type LogRange,
+} from "../lib/log-range";
 import {
   datastoreLogContextHref,
   type DatastoreLogFilters,
@@ -75,8 +70,9 @@ const KEY_VALUE_LEVELS = LOG_LEVELS.filter((level) => level !== "error");
 // The Logs tab of a managed datastore — Postgres (`dpg-`) or Key Value (`red-`).
 // The two are one viewer: the same window/text/instance/level filters (the
 // datastore logs contract answers service-only filters with a named 400,
-// docs/render-artifacts/keyvalue-logs.md), the same paging, an opt-in live
-// tail (w5/m139), and copy that differs only by namespace.
+// docs/render-artifacts/keyvalue-logs.md), the same paging, a live tail
+// (w5/m139) picked as the range's Live tail (w3/m537), and copy that
+// differs only by namespace.
 export type DatastoreLogKind = "databases" | "keyvalue";
 
 type Translate = ReturnType<typeof useTranslations>["t"];
@@ -149,8 +145,9 @@ export function DatastoreLogViewer({
 }: {
   kind: DatastoreLogKind;
   resource: string;
-  range?: RangeSelection;
-  onRangeChange?: (range: RangeSelection) => void;
+  /** Live tail tails; the tab opens on its one-shot Last hour. */
+  range?: LogRange;
+  onRangeChange?: (range: LogRange) => void;
   filters?: DatastoreLogFilters;
   onFiltersChange?: (patch: Partial<DatastoreLogFilters>) => void;
   /** The line a View in context link marks (w3/m528). */
@@ -161,7 +158,7 @@ export function DatastoreLogViewer({
   const { t } = useTranslations();
   const hydrated = useIsHydrated();
   const copy = datastoreLogCopy(kind, t);
-  const [localRange, setLocalRange] = useState<RangeSelection>(
+  const [localRange, setLocalRange] = useState<LogRange>(
     DEFAULT_DATASTORE_LOG_RANGE,
   );
   const range = rangeProp ?? localRange;
@@ -171,15 +168,9 @@ export function DatastoreLogViewer({
   // from the URL, like the range.
   const [localPicks, setLocalPicks] = useState({ instance: "", level: "" });
   const { instance, level } = urlFilters ?? localPicks;
-  // Off until asked for: the tab opens as the one-shot reader it always was.
-  const [live, setLive] = useState(false);
-  // When Live was last turned off: lines streamed until then are on screen,
-  // so only a later one is new to a paused tab (w3/m528).
-  const [pausedAt, setPausedAt] = useState<string | null>(null);
-  const changeLive = (next: boolean) => {
-    setLive(next);
-    setPausedAt(next ? null : new Date().toISOString());
-  };
+  // The tab opens as the one-shot reader it always was, and tails on Live
+  // tail only.
+  const live = isLiveTail(range);
   // `text` is the input; `committedText` is what the query and the URL carry —
   // it trails typing by one 300ms debounce, and is committed together with
   // its URL write, so the URL echoing back always equals it.
@@ -232,16 +223,18 @@ export function DatastoreLogViewer({
   // resource, committed search or instance — in this same render, so the first
   // request for a new search ends now rather than when the page opened (w4/319).
   // The viewer stays a one-shot reader: an unchanged predicate keeps its window
-  // and pages, and an explicit Custom range passes through unchanged.
+  // and pages, and an explicit Custom range passes through unchanged. Leaving
+  // Live tail is a new range too, so a paused tab's window, and its watch for
+  // new lines, starts at that moment (w3/m528).
   // Keyed by value, so a parent re-deriving an equal range object is no change.
   const reader = JSON.stringify([range, resource, queryText, instance, level]);
   const [sampled, setSampled] = useState(() => ({
     reader,
-    win: rangeWindow(range),
+    win: rangeWindow(historyRange(range)),
   }));
   let win = sampled.win;
   if (sampled.reader !== reader) {
-    win = rangeWindow(range);
+    win = rangeWindow(historyRange(range));
     setSampled({ reader, win });
   }
   const queryFilters = useMemo(
@@ -253,12 +246,8 @@ export function DatastoreLogViewer({
   const history = useLogHistory(resource, queryFilters, win);
   // Follows the datastore's pods from the window's edge with the same text,
   // instance and level, merged into the history beside it (as the service tab).
-  // A custom window that has already ended takes no tail, as on the service
-  // Logs tab (w21/016, w4/625).
-  const { customEndMs, windowClosed } = useCustomWindow(range);
+  const customEndMs = logRangeEndMs(range);
   const rangeBound = useLogRetentionBound(resource);
-  const liveOffReasonId = useId();
-  const tailing = live && !windowClosed;
   // What the tail follows, and the paused tab's watch with it (w3/m528).
   const subscription: LogSubscription = {
     resource,
@@ -270,7 +259,7 @@ export function DatastoreLogViewer({
   };
   const stream = useLiveLogs({
     ...subscription,
-    enabled: tailing,
+    enabled: live,
     startTime: win.startTime,
     createEventSource,
   });
@@ -284,13 +273,13 @@ export function DatastoreLogViewer({
             history.lines,
             stream.lines,
             Date.parse(win.startTime),
-            customEndMs ?? Infinity,
+            customEndMs,
           ),
     [history.lines, stream.lines, win.startTime, customEndMs],
   );
   // Render's explorer controls (w3/m509): Options, Maximize and the
   // shortcuts, `Shift+L` clearing the lines while the tail is live.
-  const cleared = useClearedLines(lines, tailing, reader);
+  const cleared = useClearedLines(lines, live, reader);
   const { explorer, attachList, attachSearch } = useLogExplorer({
     clear: cleared.clear,
   });
@@ -305,12 +294,13 @@ export function DatastoreLogViewer({
     }),
     [narrowed, kind, resource],
   );
-  // Paused on a preset range, a new line brings up Render's "New logs in
-  // Live Tail" (w3/m528).
+  // On a preset range, a new line brings up Render's "New logs in Live
+  // Tail" (w3/m528), whose click picks Live tail (w3/m537).
+  const pickLiveTail = () => setRange(LIVE_TAIL);
   const watch = useNewLogsWatch({
-    enabled: !live && !windowClosed && !isCustomRange(range),
+    enabled: isPresetRange(range),
     subscription,
-    since: pausedAt && pausedAt > win.endTime ? pausedAt : win.endTime,
+    since: win.endTime,
     resetKey: reader,
     createEventSource,
   });
@@ -400,17 +390,17 @@ export function DatastoreLogViewer({
             order={explorer.order}
             display={explorer.display}
             handleRef={attachList}
-            holdWhileAway={tailing}
+            holdWhileAway={live}
             rowMenu={rowMenu}
             markedKey={contextLine}
             newLogsInLiveTail={
               watch.available
-                ? { onSwitch: () => changeLive(true), onDismiss: watch.dismiss }
+                ? { onSwitch: pickLiveTail, onDismiss: watch.dismiss }
                 : undefined
             }
           />
         </div>
-        {live ? <StreamStatus live status={stream.status} /> : null}
+        {live ? <StreamStatus status={stream.status} /> : null}
       </div>
     );
   }
@@ -418,7 +408,7 @@ export function DatastoreLogViewer({
   return (
     <LogThemeFrame className="space-y-4" maximized={explorer.maximized}>
       <div className="flex flex-wrap items-center gap-3">
-        <RangeSelect
+        <LogRangeSelect
           range={range}
           onRangeChange={setRange}
           ariaLabel={copy.rangeLabel}
@@ -459,13 +449,6 @@ export function DatastoreLogViewer({
           />
         </div>
 
-        <LiveToggle
-          id="datastore-logs-live-toggle"
-          checked={live && !windowClosed}
-          disabled={!hydrated || windowClosed}
-          describedBy={windowClosed ? liveOffReasonId : undefined}
-          onCheckedChange={changeLive}
-        />
         {/* On a phone, on the range's row: the toolbar wraps a control a
             row there, and they would otherwise take one of their own. */}
         <LogExplorerActions
@@ -474,15 +457,6 @@ export function DatastoreLogViewer({
           className={DATASTORE_LOG_ACTIONS_CLASS}
         />
       </div>
-      {windowClosed ? (
-        <p
-          id={liveOffReasonId}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground"
-        >
-          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-          {t("logs.liveWindowClosed")}
-        </p>
-      ) : null}
       {body}
     </LogThemeFrame>
   );

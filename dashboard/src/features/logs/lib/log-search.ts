@@ -1,10 +1,7 @@
 import {
-  parseCustomRange,
   parseRangePreset,
-  parseRangeSearch,
   type RangePreset,
   type RangePresetID,
-  type RangeSelection,
 } from "@/features/metrics/lib/range";
 import { defaultStringifySearch } from "@tanstack/react-router";
 import {
@@ -15,16 +12,21 @@ import {
   type LogFilters,
   type LogLine,
 } from "../types";
+import {
+  DEFAULT_LOG_RANGE,
+  LIVE_TAIL,
+  logRangeFromSearch,
+  parseLogRangeSearch,
+  type LogRange,
+  type LogRangeID,
+  type LogRangeSearch,
+} from "./log-range";
 
 // The Logs tab's URL search state (w7/m42): every filter round-trips through
 // the query string so a filtered view is shareable, bookmarkable, and
 // reload-stable. Default/empty values are omitted so an unfiltered view keeps a
 // clean URL (no `?type=all` noise).
-export interface LogSearch {
-  range?: RangePresetID | "custom";
-  /** ISO start/end, present only for `range: "custom"` (w5/m56). */
-  rangeStart?: string;
-  rangeEnd?: string;
+export interface LogSearch extends LogRangeSearch {
   type?: typeof LOG_TYPE_APP | typeof LOG_TYPE_REQUEST;
   level?: string;
   method?: string;
@@ -33,8 +35,6 @@ export interface LogSearch {
   path?: string;
   host?: string;
   text?: string;
-  /** Present only when the live tail is toggled off (`?live=0`); absent = on. */
-  live?: 0;
   /** The line a View in context link marks (w3/m528): its key. */
   contextLine?: string;
   /**
@@ -42,9 +42,12 @@ export interface LogSearch {
    * know about into every outbound write (`{...location.search, ...validated}`),
    * so a folded `t`/`r` alias would linger in the URL forever unless the
    * validated result explicitly overrides it with `undefined` (w7/m42/t003).
+   * `live` is one too: the Live switch's `?live=0` (w3/m537), read now as
+   * the paused range it names, which is every range but Live tail.
    */
   t?: undefined;
   r?: undefined;
+  live?: undefined;
 }
 
 // The string-valued filter keys = the structured fields + free-text search.
@@ -56,21 +59,22 @@ const SEARCH_KEYS = [
   "rangeEnd",
   "type",
   ...TEXT_KEYS,
-  "live",
   "contextLine",
 ] as const;
 
 /**
  * Explicit `undefined`s for every key this route owns plus the inbound-only
- * `t`/`r` aliases: the router retains raw query params across navigations
+ * `t`/`r` aliases and the retired `live`: the router retains raw query params across navigations
  * unless they are explicitly written as `undefined` (verified live, w7/m42 —
  * an omitted key lingers in the URL; stringification drops the undefineds).
  * Spread this first, then the keys to keep. Derived from SEARCH_KEYS so a new
  * filter field can't silently drift out of the clear-set.
  */
 export const CLEARED_LOG_SEARCH = Object.fromEntries(
-  ["t", "r", ...SEARCH_KEYS].map((key) => [key, undefined]),
-) as Partial<Record<"t" | "r" | (typeof SEARCH_KEYS)[number], undefined>>;
+  ["t", "r", "live", ...SEARCH_KEYS].map((key) => [key, undefined]),
+) as Partial<
+  Record<"t" | "r" | "live" | (typeof SEARCH_KEYS)[number], undefined>
+>;
 
 // Render's `r` tokens without an exact bex preset (Render's grammar is
 // 15m|1h|6h|24h|7d — the captured deploy-page contract, see
@@ -106,6 +110,12 @@ export function parseRangeAlias(value: unknown): RangePreset | null {
   );
 }
 
+/** A Render `r` value as a log range id: Render's `live` (w3/m537) or a
+ *  preset `parseRangeAlias` reads. */
+export function parseLogRangeAlias(value: unknown): LogRangeID | undefined {
+  return value === LIVE_TAIL.id ? LIVE_TAIL.id : parseRangeAlias(value)?.id;
+}
+
 export function parseLogSearch(search: Record<string, unknown>): LogSearch {
   // Every owned key comes back, undefined when rejected: the router merges this
   // over the raw search, so an omitted `?type=bogus` would reach bex-api.
@@ -116,20 +126,15 @@ export function parseLogSearch(search: Record<string, unknown>): LogSearch {
   // and the tombstones (see LogSearch) make the aliases leave the URL on the
   // first write, so it self-heals to bex's shape (the w7/m39
   // alias-normalization pattern).
-  const out: LogSearch = { ...CLEARED_LOG_SEARCH, ...parseRangeSearch(search) };
+  const out: LogSearch = {
+    ...CLEARED_LOG_SEARCH,
+    ...parseLogRangeSearch(search),
+  };
   if (!out.range && search.range !== "custom") {
-    out.range = parseRangeAlias(search.r)?.id;
+    out.range = parseLogRangeAlias(search.r);
   }
   out.type = parseType(search.type) ?? parseType(search.t);
   for (const key of TEXT_KEYS) out[key] = str(search[key]);
-  if (
-    search.live === 0 ||
-    search.live === "0" ||
-    search.live === false ||
-    search.live === "false"
-  ) {
-    out.live = 0;
-  }
   out.contextLine = str(search.contextLine);
   return out;
 }
@@ -143,7 +148,7 @@ const MAX_CONTEXT_KEY_LENGTH = 512;
 /**
  * The search Render's View in context opens (w3/m528): the explorer with no
  * search or filter, a custom range from 10 minutes before the line to 10
- * minutes after it, the tail paused, and the line marked. Null for a line
+ * minutes after it (which never tails), and the line marked. Null for a line
  * without a time, which has no surroundings to open.
  */
 export function logContextSearch(line: LogLine): {
@@ -200,23 +205,15 @@ export function serviceLogContextHref(
 ): string | undefined {
   const context = logContextSearch(line);
   return context
-    ? searchHref(`/services/${serviceId}/logs`, { ...context, live: 0 })
+    ? searchHref(`/services/${serviceId}/logs`, context)
     : undefined;
 }
 
-// The Logs tab keeps its documented one-hour default query span (bex-api's
-// own default) — the Metrics page follows Render's 12-hour default instead
-// (w5/m42), so the two tabs deliberately no longer share one default.
-export const DEFAULT_LOG_RANGE = parseRangePreset("1h")!;
-
-/** Restores the URL range (preset or custom absolute window), falling back to
- *  the documented one-hour default. */
-export function logRangeFromSearch(search: LogSearch): RangeSelection {
-  if (search.range === "custom" && search.rangeStart && search.rangeEnd) {
-    const custom = parseCustomRange(search.rangeStart, search.rangeEnd);
-    if (custom) return custom;
-  }
-  return parseRangePreset(search.range) ?? DEFAULT_LOG_RANGE;
+/** Restores the URL range (Live tail, a preset or a custom window), else
+ *  Last hour, as Render's service Logs opens with no `r` (w3/m537). The
+ *  Metrics page follows Render's 12-hour default instead (w5/m42). */
+export function serviceLogRange(search: LogSearch): LogRange {
+  return logRangeFromSearch(search, DEFAULT_LOG_RANGE);
 }
 
 /** Restores the filter state named by the URL (absent keys = defaults). */
@@ -228,13 +225,12 @@ export function logFiltersFromSearch(search: LogSearch): LogFilters {
 }
 
 /**
- * Serializes filter + live state into URL search keys, omitting defaults so an
+ * Serializes filter state into URL search keys, omitting defaults so an
  * unfiltered view keeps a clean URL. `range` is owned by the range handler and
  * merged by the route.
  */
 export function logFiltersToSearch(
   filters: LogFilters,
-  live: boolean,
 ): Omit<LogSearch, "range" | "rangeStart" | "rangeEnd"> {
   const out: Omit<LogSearch, "range" | "rangeStart" | "rangeEnd"> = {};
   if (filters.type === LOG_TYPE_APP || filters.type === LOG_TYPE_REQUEST) {
@@ -243,7 +239,6 @@ export function logFiltersToSearch(
   for (const key of TEXT_KEYS) {
     if (filters[key]) out[key] = filters[key];
   }
-  if (!live) out.live = 0;
   return out;
 }
 

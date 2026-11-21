@@ -5,11 +5,10 @@ const deLogs: Record<string, TranslationEntry> = {
     message: "Zeitraum des Log-Verlaufs",
     description: "Accessible label for the relative log-history range controls",
   },
-  "logs.rangeHistoryNote": {
-    message:
-      "Der Zeitraum begrenzt den Verlauf. Im Live-Modus werden neue Zeilen angehängt, sobald sie eintreffen.",
+  "logs.rangeLiveTail": {
+    message: "Live-Tail",
     description:
-      "Explains how the bounded history window interacts with live tail",
+      "Log explorers (w3/m537): the first entry of the time range picker, Render's Live tail; picking it streams new lines, and every other range is a snapshot",
   },
   "logs.retentionWindow_one": {
     message: "Logs werden im {plan}-Tarif {count} Tag aufbewahrt.",
@@ -114,15 +113,9 @@ const deLogs: Record<string, TranslationEntry> = {
   },
   "logs.liveUnsupported": {
     message:
-      "Live-Tail ist aus – Methode, Status, Pfad und Host filtern Request-Logs, daher können App-Logs damit nicht live verfolgt werden.",
+      "Live-Tail ist nicht verfügbar – Methode, Status, Pfad und Host filtern Request-Logs, daher können App-Logs damit nicht live verfolgt werden.",
     description:
       "Note when the chosen log type cannot carry an active filter, so live tail is off (a request filter on app logs)",
-  },
-  "logs.liveWindowClosed": {
-    message:
-      "Live-Tail ist aus – dieser benutzerdefinierte Zeitraum ist bereits beendet, daher können darin keine neuen Zeilen eintreffen.",
-    description:
-      "Note when the selected custom time range ended before it was applied, so live tail is off",
   },
   "logs.storeRequiredTitle": {
     message: "Request-Logs benötigen den Log-Speicher",
@@ -148,10 +141,6 @@ const deLogs: Record<string, TranslationEntry> = {
   "logs.searchPlaceholder": {
     message: "Logs durchsuchen",
     description: "Placeholder for the log search box (text filter)",
-  },
-  "logs.live": {
-    message: "Live",
-    description: "Label for the live-tail on/off toggle",
   },
   "logs.linesLabel": {
     message: "Logzeilen",
@@ -198,7 +187,7 @@ const deLogs: Record<string, TranslationEntry> = {
   "logs.newLogsInLiveTail": {
     message: "Neue Logs im Live-Tail",
     description:
-      "Log list (w3/m528): Render's button on a paused explorer when a new line arrived; clicking it turns Live on",
+      "Log list (w3/m528): Render's button on a preset range when a new line arrived; clicking it picks Live tail (w3/m537)",
   },
   "logs.switchToLiveTail": {
     message: "Zum Live-Tail wechseln",
@@ -307,10 +296,6 @@ const deLogs: Record<string, TranslationEntry> = {
     message: "Live – neue Zeilen werden gestreamt",
     description: "Status under the log list when the SSE tail is connected",
   },
-  "logs.paused": {
-    message: "Live-Tail pausiert",
-    description: "Status under the log list when live tail is toggled off",
-  },
   "logs.disconnected": {
     message: "Live-Tail getrennt – Verbindung wird neu aufgebaut…",
     description: "Banner when the SSE stream drops",
@@ -357,14 +342,9 @@ const deLogs: Record<string, TranslationEntry> = {
   },
   "logs.emptyBodyRange": {
     message:
-      "Wähle einen längeren Zeitraum oder schalte Live ein, um auf neue Zeilen zu warten.",
+      "Wähle einen längeren Zeitraum oder wechsle zum Live-Tail, um auf neue Zeilen zu warten.",
     description:
       "Logs tab: body when the chosen range holds no lines, under logs.emptyTitle \u2014 what to try next",
-  },
-  "logs.turnOnLive": {
-    message: "Live einschalten",
-    description:
-      "Logs tab: button in the empty state that switches the live tail on",
   },
   "logs.clearFilters": {
     message: "Filter zurücksetzen",

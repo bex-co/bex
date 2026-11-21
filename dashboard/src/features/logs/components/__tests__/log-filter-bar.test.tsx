@@ -47,25 +47,28 @@ vi.mock("../../hooks/use-log-retention", () => ({
 function renderBar(
   over: {
     filters?: Partial<LogFilters>;
-    liveSupported?: boolean;
+    liveTailDisabled?: boolean;
     servesRequests?: boolean;
   } = {},
 ) {
   const onChange = vi.fn();
-  const onLiveChange = vi.fn();
+  const onRangeChange = vi.fn();
   const filters: LogFilters = { ...EMPTY_LOG_FILTERS, ...over.filters };
   render(
-    <LogFilterBar
-      resource="web"
-      filters={filters}
-      onChange={onChange}
-      live={true}
-      onLiveChange={onLiveChange}
-      liveSupported={over.liveSupported ?? true}
-      servesRequests={over.servesRequests}
-    />,
+    <>
+      <LogFilterBar
+        resource="web"
+        filters={filters}
+        onChange={onChange}
+        onRangeChange={onRangeChange}
+        liveTailDisabled={over.liveTailDisabled}
+        liveTailReasonId={over.liveTailDisabled ? "why" : undefined}
+        servesRequests={over.servesRequests}
+      />
+      <p id="why">the reason</p>
+    </>,
   );
-  return { onChange, onLiveChange };
+  return { onChange, onRangeChange };
 }
 
 beforeEach(() => {
@@ -75,12 +78,12 @@ beforeEach(() => {
 });
 
 describe("LogFilterBar (w5/008, simplified w7/m42)", () => {
-  it("keeps the primary toolbar minimal: type + search + range + live + Filters", () => {
+  it("keeps the primary toolbar minimal: type + search + range + Filters, no Live switch", () => {
     renderBar();
     expect(screen.getByLabelText("Log type")).toBeInTheDocument();
     expect(screen.getByLabelText("Search logs")).toBeInTheDocument();
     expect(screen.getByLabelText("Log history range")).toBeInTheDocument();
-    expect(screen.getByRole("switch")).toBeInTheDocument();
+    expect(screen.queryByRole("switch")).toBeNull();
     expect(screen.getByRole("button", { name: "Filters" })).toBeInTheDocument();
     // The structured filters are behind the popover, not always visible.
     expect(screen.queryByLabelText("Level")).not.toBeInTheDocument();
@@ -238,22 +241,33 @@ describe("LogFilterBar (w5/008, simplified w7/m42)", () => {
     expect(onChange).toHaveBeenCalledWith({ text: "boom" });
   });
 
-  it("disables the live toggle when a store-only filter is active", () => {
-    renderBar({ filters: { type: LOG_TYPE_REQUEST }, liveSupported: false });
-    expect(screen.getByRole("switch")).toBeDisabled();
+  // Live tail is the range picker's first entry (w3/m537), as on Render.
+  it("lists Live tail first in the range, then the presets and Custom, and picks it", async () => {
+    const user = userEvent.setup();
+    const { onRangeChange } = renderBar();
+    await user.click(screen.getByLabelText("Log history range"));
+    const options = screen.getAllByRole("option").map((o) => o.textContent);
+    expect(options[0]).toBe("Live tail");
+    expect(options[1]).toBe("Last 30 minutes");
+    expect(options.at(-1)).toBe("Custom…");
+    await user.click(screen.getByRole("option", { name: "Live tail" }));
+    expect(onRangeChange).toHaveBeenCalledWith({ id: "live" });
   });
 
-  it("keeps the live toggle enabled with no store-only filter", () => {
-    renderBar({ liveSupported: true });
-    expect(screen.getByRole("switch")).not.toBeDisabled();
+  it("disables Live tail, described by its reason, where the tail cannot run", async () => {
+    const user = userEvent.setup();
+    renderBar({ liveTailDisabled: true });
+    await user.click(screen.getByLabelText("Log history range"));
+    const live = screen.getByRole("option", { name: "Live tail" });
+    expect(live).toHaveAttribute("aria-disabled", "true");
+    expect(live).toHaveAccessibleDescription("the reason");
   });
 });
 
 describe("LogFilterBar active custom range (w4/245)", () => {
-  it("edits the custom window in place without touching search or Live", async () => {
+  it("edits the custom window in place without touching search", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    const onLiveChange = vi.fn();
     const onRangeChange = vi.fn();
     const start = new Date("2026-10-10T17:45").toISOString();
     render(
@@ -261,9 +275,6 @@ describe("LogFilterBar active custom range (w4/245)", () => {
         resource="web"
         filters={{ ...EMPTY_LOG_FILTERS, text: "qa-a129|alpha|" }}
         onChange={onChange}
-        live={false}
-        onLiveChange={onLiveChange}
-        liveSupported
         range={{
           id: "custom",
           startTime: start,
@@ -289,7 +300,6 @@ describe("LogFilterBar active custom range (w4/245)", () => {
       }),
     );
     expect(onChange).not.toHaveBeenCalled();
-    expect(onLiveChange).not.toHaveBeenCalled();
   });
 });
 
@@ -303,9 +313,6 @@ it("keeps the log search uneditable until hydration (w4/m219)", async () => {
         resource="web"
         filters={filters}
         onChange={(patch) => setFilters((prev) => ({ ...prev, ...patch }))}
-        live={false}
-        onLiveChange={() => undefined}
-        liveSupported
       />
     );
   }

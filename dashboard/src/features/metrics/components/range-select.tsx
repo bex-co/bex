@@ -38,8 +38,25 @@ import { formatMediumDateTime, formatTimeWindow } from "@/common/lib/format";
 // The "Custom" dropdown value — a sentinel that opens the date-time picker
 // instead of applying a preset (w5/m56).
 const CUSTOM = "custom";
+// The Live tail entry's value (Render's `timeRange` spelling, w3/m537).
+const LIVE_TAIL = "live";
 
-interface RangeSelectProps {
+/**
+ * A log explorer's Live tail entry (w3/m537): Render's range list starts with
+ * it. The explorer owns what it means; Metrics never passes one.
+ */
+export interface LiveTailOption {
+  label: string;
+  /** Live tail is the explorer's range: the picker shows it as picked. */
+  selected: boolean;
+  /** Where bex's tail cannot run, the entry is disabled… */
+  disabled?: boolean;
+  /** …and described by the id of the visible text saying why. */
+  describedBy?: string;
+  onSelect: () => void;
+}
+
+export interface RangeSelectProps {
   range: RangeSelection;
   onRangeChange: (range: RangeSelection) => void;
   /** Overrides the default "Time range" accessible label (e.g. the Logs bar). */
@@ -53,6 +70,9 @@ interface RangeSelectProps {
   /** Extra trigger classes from a host row (e.g. the Metrics filters,
    *  which share their row's width on a phone). */
   triggerClassName?: string;
+  /** A log explorer's Live tail, listed first; `range` is ignored while it
+   *  is picked. */
+  liveTail?: LiveTailOption;
 }
 
 /**
@@ -70,13 +90,15 @@ export function RangeSelect({
   ariaLabel,
   bound,
   triggerClassName,
+  liveTail,
 }: RangeSelectProps) {
   const { t, i18n } = useTranslations();
   // The window reads the viewer's clock, which the SSR pass doesn't have, so
   // it replaces "Custom…" only after hydration (w6/m107's rule).
   const hydrated = useIsHydrated();
+  const custom = !liveTail?.selected && isCustomRange(range);
   const customWindow =
-    hydrated && isCustomRange(range)
+    hydrated && custom
       ? formatTimeWindow(range.startTime, range.endTime, i18n.language)
       : null;
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -108,10 +130,14 @@ export function RangeSelect({
   return (
     <>
       <Select
-        value={range.id}
+        value={liveTail?.selected ? LIVE_TAIL : range.id}
         onValueChange={(v) => {
           if (v === CUSTOM) {
             openPicker();
+            return;
+          }
+          if (v === LIVE_TAIL) {
+            liveTail?.onSelect();
             return;
           }
           const preset = parseRangePreset(v);
@@ -139,6 +165,20 @@ export function RangeSelect({
           )}
         </SelectTrigger>
         <SelectContent>
+          {liveTail ? (
+            <>
+              <SelectItem
+                value={LIVE_TAIL}
+                disabled={liveTail.disabled}
+                aria-describedby={
+                  liveTail.disabled ? liveTail.describedBy : undefined
+                }
+              >
+                {liveTail.label}
+              </SelectItem>
+              <SelectSeparator />
+            </>
+          ) : null}
           {RANGE_PRESETS.map((preset) => (
             <SelectItem
               key={preset.id}
@@ -161,7 +201,7 @@ export function RangeSelect({
         </SelectContent>
       </Select>
 
-      {isCustomRange(range) && (
+      {custom && (
         <Button size="sm" variant="outline" onClick={openPicker}>
           <Pencil aria-hidden="true" />
           {t("metrics.rangeCustomEdit")}

@@ -21,6 +21,11 @@ import { LogViewer } from "../log-viewer";
 import type { UseLogHistoryResult } from "../../hooks/use-log-history";
 import { RANGE_PRESETS, type RangeBound } from "@/features/metrics/lib/range";
 import { EMPTY_LOG_FILTERS, type LogLine } from "../../types";
+import {
+  DEFAULT_LOG_RANGE,
+  LIVE_TAIL,
+  type LogRange,
+} from "../../lib/log-range";
 import { setupVirtualGeometry } from "@/test/virtual-geometry";
 import {
   explorerThemeClasses,
@@ -86,6 +91,22 @@ vi.mock("../../hooks/use-log-label-values", () => ({
 // geometry the virtualizer needs, or the rendered rows never mount.
 setupVirtualGeometry();
 
+// The route owns the range (the URL's `range`, w3/m537); this holds it the
+// same way, so the picker, New logs in Live Tail and the empty state can
+// change it.
+function Viewer({
+  initial = DEFAULT_LOG_RANGE,
+  ...props
+}: Omit<Parameters<typeof LogViewer>[0], "range" | "onRangeChange"> & {
+  initial?: LogRange;
+}) {
+  const [range, setRange] = useState(initial);
+  return <LogViewer {...props} range={range} onRangeChange={setRange} />;
+}
+
+const rangePicker = () =>
+  screen.getByRole("combobox", { name: "Log history range" });
+
 beforeEach(() => {
   historyState.lines = [];
   historyState.loading = false;
@@ -148,6 +169,7 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
     render(
       <LogViewer
         resource="web"
+        range={LIVE_TAIL}
         urlFilters={{ ...EMPTY_LOG_FILTERS, type: "request" }}
       />,
     );
@@ -159,10 +181,12 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
       "/billing",
     );
     expect(screen.queryByText("Couldn't load logs")).not.toBeInTheDocument();
-    // No live tail retrying against the refusal.
+    // No live tail retrying against the refusal: a Live tail link reads
+    // Last hour there (w3/m537).
     expect(useLiveLogsSpy).toHaveBeenLastCalledWith(
       expect.objectContaining({ enabled: false }),
     );
+    expect(rangePicker()).toHaveTextContent("Last hour");
   });
 
   it("keeps the generic error for another feature's plan refusal", () => {
@@ -239,7 +263,7 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
     expect(screen.getByText("No logs in this time range")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Try a longer time range, or turn on Live to watch for new lines.",
+        "Try a longer time range, or pick Live tail to watch for new lines.",
       ),
     ).toBeInTheDocument();
     // Never the unassertable "this service has never logged" claim — every range
@@ -355,10 +379,10 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
     ];
     historyState.hasMore = true;
     historyState.loadOlder = vi.fn();
-    render(<LogViewer resource="web" />);
+    render(<LogViewer resource="web" range={LIVE_TAIL} />);
     expect(screen.getByText("historical")).toBeInTheDocument();
     expect(screen.getByRole("status")).toBeInTheDocument();
-    // Live tail is still offered (default live=true) alongside page-back.
+    // Live tail still tails alongside page-back.
     expect(useLiveLogsSpy).toHaveBeenCalled();
     const liveOpts = useLiveLogsSpy.mock.calls.at(-1)?.[0] as {
       enabled: boolean;
@@ -367,16 +391,21 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
   });
 
   it("follows the live tail from the selected window's start, not offset 0 (w6/m111)", () => {
-    const range = RANGE_PRESETS.find((preset) => preset.id === "4h")!;
-    render(<LogViewer resource="web" range={range} />);
+    render(<LogViewer resource="web" range={LIVE_TAIL} />);
 
     const opts = useLiveLogsSpy.mock.calls.at(-1)?.[0] as { startTime: string };
     const window = useHistorySpy.mock.calls.at(-1)?.[2] as {
       startTime: string;
+      endTime: string;
     };
     // The tail's lower bound is exactly the history window's start, so the first
-    // SSE connect can't surface lines older than the range.
+    // SSE connect can't surface lines older than the range. Live tail reads the
+    // last 4 hours before new lines arrive, as Render's does (w3/m537).
     expect(opts.startTime).toBe(window.startTime);
+    expect(opts).toMatchObject({ enabled: true });
+    expect(Date.parse(window.endTime) - Date.parse(window.startTime)).toBe(
+      4 * 60 * 60 * 1000,
+    );
     expect(Date.parse(opts.startTime)).toBeLessThanOrEqual(Date.now());
   });
 
@@ -391,13 +420,10 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
     expect(Date.parse(window.endTime) - Date.parse(window.startTime)).toBe(
       4 * 60 * 60 * 1000,
     );
-    // With the tail available, no note sits between the controls and the
-    // log: the stream line under the panel says what it would have.
-    expect(
-      screen.queryByText(
-        "The range limits history. Live mode appends new lines as they arrive.",
-      ),
-    ).not.toBeInTheDocument();
+    // A preset is a snapshot: no tail, as Render's relative range (w3/m537).
+    expect(useLiveLogsSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+      enabled: false,
+    });
   });
 });
 
@@ -406,6 +432,7 @@ describe("LogViewer display-text search (w4/m189)", () => {
     render(
       <LogViewer
         resource="web"
+        range={LIVE_TAIL}
         urlFilters={{ ...EMPTY_LOG_FILTERS, text: "QA_A31_ANSI_red_end" }}
       />,
     );
@@ -421,13 +448,12 @@ describe("LogViewer display-text search (w4/m189)", () => {
 });
 
 describe("LogViewer URL-backed filter state (w7/m42)", () => {
-  it("derives the initial filter + live state from the URL and queries with it", () => {
+  it("derives the initial filter state from the URL and queries with it", () => {
     const onFiltersChange = vi.fn();
     render(
       <LogViewer
         resource="web"
         urlFilters={{ ...EMPTY_LOG_FILTERS, level: "error" }}
-        urlLive={false}
         onFiltersChange={onFiltersChange}
       />,
     );
@@ -454,13 +480,12 @@ describe("LogViewer URL-backed filter state (w7/m42)", () => {
     // The URL write rides the same 300ms debounce as the query refetch.
     expect(onFiltersChange).not.toHaveBeenCalledWith(
       expect.objectContaining({ text: "boom" }),
-      true,
     );
     await waitFor(() =>
-      expect(onFiltersChange).toHaveBeenCalledWith(
-        { ...EMPTY_LOG_FILTERS, text: "boom" },
-        true,
-      ),
+      expect(onFiltersChange).toHaveBeenCalledWith({
+        ...EMPTY_LOG_FILTERS,
+        text: "boom",
+      }),
     );
   });
 
@@ -497,10 +522,10 @@ describe("LogViewer URL-backed filter state (w7/m42)", () => {
         instance,
       }),
     );
-    expect(onFiltersChange).toHaveBeenCalledWith(
-      { ...EMPTY_LOG_FILTERS, instance },
-      true,
-    );
+    expect(onFiltersChange).toHaveBeenCalledWith({
+      ...EMPTY_LOG_FILTERS,
+      instance,
+    });
   });
 });
 
@@ -530,7 +555,7 @@ describe("LogViewer zero-result empty state (w6/m47, w6/m111)", () => {
     expect(screen.getByText("No logs in this time range")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Try a longer time range, or turn on Live to watch for new lines.",
+        "Try a longer time range, or pick Live tail to watch for new lines.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("No matching logs")).not.toBeInTheDocument();
@@ -561,14 +586,12 @@ describe("LogViewer populated background failures", () => {
           resource: "",
         },
       ];
-      const { container, rerender } = render(
-        <LogViewer resource="web" urlLive={false} />,
-      );
+      const { container, rerender } = render(<LogViewer resource="web" />);
       const viewport = container.querySelector("[data-log-viewport]");
       historyState.error = new Error("background request failed");
       historyState.timedOut = failure === "timeout";
       historyState.storeUnavailable = failure === "no-store";
-      rerender(<LogViewer resource="web" urlLive={false} />);
+      rerender(<LogViewer resource="web" />);
       expect(container.querySelector("[data-log-viewport]")).toBe(viewport);
       expect(
         screen.getByText("retained investigation row"),
@@ -607,18 +630,18 @@ describe("LogViewer combined live reader (w4/m192)", () => {
       overlap,
       row("QA n=370", 30_000),
     ];
-    render(<LogViewer resource="web" />);
+    render(<LogViewer resource="web" range={LIVE_TAIL} />);
     const shown = screen.getAllByText(/^QA /).map((node) => node.textContent);
     expect(shown).toEqual(["QA START", "QA n=369", "QA n=370"]);
   });
 
-  it("keys the tail's reader identity on line filters, not on Live", () => {
-    const { rerender } = render(<LogViewer resource="web" />);
+  it("keys the tail's reader identity on line filters, not on the range", () => {
+    const { rerender } = render(<LogViewer resource="web" range={LIVE_TAIL} />);
     const readerKey = () =>
       (useLiveLogsSpy.mock.calls.at(-1)?.[0] as { readerKey: string })
         .readerKey;
     const unfiltered = readerKey();
-    fireEvent.click(screen.getByRole("switch", { name: /live/i }));
+    rerender(<LogViewer resource="web" range={DEFAULT_LOG_RANGE} />);
     expect(readerKey()).toBe(unfiltered);
     expect(useLiveLogsSpy.mock.calls.at(-1)?.[0]).toMatchObject({
       enabled: false,
@@ -628,6 +651,7 @@ describe("LogViewer combined live reader (w4/m192)", () => {
       <LogViewer
         key="filtered"
         resource="web"
+        range={LIVE_TAIL}
         urlFilters={{ ...EMPTY_LOG_FILTERS, level: "error" }}
       />,
     );
@@ -651,13 +675,12 @@ describe("LogViewer adopts navigation it did not write (w4/m204)", () => {
     fireEvent.change(search(), { target: { value } });
   const settle = (ms = 300) => act(() => vi.advanceTimersByTime(ms));
 
-  it("means all logs, no search and Live on once a clean link is followed", () => {
+  it("means all logs and no search once a clean Live tail link is followed", () => {
     const onFiltersChange = vi.fn();
     const { rerender } = render(
       <LogViewer
         resource="web"
         urlFilters={SOURCE}
-        urlLive={false}
         onFiltersChange={onFiltersChange}
       />,
     );
@@ -666,7 +689,13 @@ describe("LogViewer adopts navigation it did not write (w4/m204)", () => {
     useHistorySpy.mockClear();
     useLiveLogsSpy.mockClear();
 
-    rerender(<LogViewer resource="web" onFiltersChange={onFiltersChange} />);
+    rerender(
+      <LogViewer
+        resource="web"
+        range={LIVE_TAIL}
+        onFiltersChange={onFiltersChange}
+      />,
+    );
 
     // No pass after the navigation queries or tails with the source's filters.
     for (const [, filters] of useHistorySpy.mock.calls) {
@@ -678,19 +707,17 @@ describe("LogViewer adopts navigation it did not write (w4/m204)", () => {
     expect(useHistorySpy).toHaveBeenCalled();
     expect(search().value).toBe("");
     expect(
-      screen
-        .getByRole("switch", { name: /live/i })
-        .getAttribute("aria-checked"),
-    ).toBe("true");
+      screen.getByRole("combobox", { name: "Log history range" }),
+    ).toHaveTextContent("Live tail");
     // Nothing written back but the destination itself, now or after a debounce.
     settle(1000);
     for (const call of onFiltersChange.mock.calls) {
-      expect(call).toEqual([EMPTY_LOG_FILTERS, true]);
+      expect(call).toEqual([EMPTY_LOG_FILTERS]);
     }
     expect(historyFilters()).toEqual(EMPTY_LOG_FILTERS);
   });
 
-  it("adopts every filter field and the paused state of a filtered destination", () => {
+  it("adopts every filter field of a filtered destination", () => {
     const destination = {
       type: "request" as const,
       level: "error",
@@ -701,10 +728,8 @@ describe("LogViewer adopts navigation it did not write (w4/m204)", () => {
       path: "/api",
       host: "",
     };
-    const { rerender } = render(<LogViewer resource="web" />);
-    rerender(
-      <LogViewer resource="web" urlFilters={destination} urlLive={false} />,
-    );
+    const { rerender } = render(<LogViewer resource="web" range={LIVE_TAIL} />);
+    rerender(<LogViewer resource="web" urlFilters={destination} />);
     expect(historyFilters()).toEqual(destination);
     expect(tail()).toMatchObject({
       enabled: false,
@@ -732,23 +757,18 @@ describe("LogViewer adopts navigation it did not write (w4/m204)", () => {
     expect(historyFilters()).toEqual(EMPTY_LOG_FILTERS);
     expect(onFiltersChange).not.toHaveBeenCalledWith(
       expect.objectContaining({ text: "qa-alpha-and-more" }),
-      expect.anything(),
     );
   });
 
   it("keeps text typed since its own write when that write echoes back", () => {
     // A route-like host: every reported state comes back as the next URL.
     function Host() {
-      const [url, setUrl] = useState({
-        filters: EMPTY_LOG_FILTERS,
-        live: true,
-      });
+      const [filters, setFilters] = useState(EMPTY_LOG_FILTERS);
       return (
         <LogViewer
           resource="web"
-          urlFilters={url.filters}
-          urlLive={url.live}
-          onFiltersChange={(filters, live) => setUrl({ filters, live })}
+          urlFilters={filters}
+          onFiltersChange={setFilters}
         />
       );
     }
@@ -771,7 +791,7 @@ describe("LogViewer adopts navigation it did not write (w4/m204)", () => {
   // become the structured filters (chips and query params); only the
   // remaining words search text.
   it("turns Render's search operators into structured filters", () => {
-    render(<LogViewer resource="web" />);
+    render(<LogViewer resource="web" range={LIVE_TAIL} />);
     type("status_code:/2../ method:/(GET|POST)/ host:web.onbex.co qa-alpha");
     settle();
     expect(historyFilters()).toMatchObject({
@@ -815,13 +835,11 @@ describe("LogViewer adopts navigation it did not write (w4/m204)", () => {
 
   it("does not reopen the reader on rerenders that navigate nowhere", () => {
     const { rerender } = render(
-      <LogViewer resource="web" urlFilters={{ ...SOURCE }} urlLive={false} />,
+      <LogViewer resource="web" urlFilters={{ ...SOURCE }} />,
     );
     const first = historyFilters();
     type("typed");
-    rerender(
-      <LogViewer resource="web" urlFilters={{ ...SOURCE }} urlLive={false} />,
-    );
+    rerender(<LogViewer resource="web" urlFilters={{ ...SOURCE }} />);
     // Same URL, fresh object: the draft stays and the query identity holds.
     expect(search().value).toBe("typed");
     expect(historyFilters()).toBe(first);
@@ -829,44 +847,45 @@ describe("LogViewer adopts navigation it did not write (w4/m204)", () => {
 
   it("keeps a change made before an earlier write echoes, and re-reports it", () => {
     const onFiltersChange = vi.fn();
-    const view = (urlLive: boolean) => (
+    const view = (text: string) => (
       <LogViewer
         resource="web"
-        urlLive={urlLive}
+        urlFilters={{ ...EMPTY_LOG_FILTERS, text }}
         onFiltersChange={onFiltersChange}
       />
     );
-    const liveSwitch = () => screen.getByRole("switch", { name: /live/i });
-    const { rerender } = render(view(true));
-    fireEvent.click(liveSwitch()); // pause: reported, not yet echoed
-    fireEvent.click(liveSwitch()); // resume before the echo
+    const { rerender } = render(view(""));
+    type("a");
+    settle(); // reported, not yet echoed
+    type("");
+    settle(); // cleared before the echo
     expect(onFiltersChange.mock.calls).toEqual([
-      [EMPTY_LOG_FILTERS, false],
-      [EMPTY_LOG_FILTERS, true],
+      [{ ...EMPTY_LOG_FILTERS, text: "a" }],
+      [EMPTY_LOG_FILTERS],
     ]);
     onFiltersChange.mockClear();
 
-    rerender(view(false)); // the pause echoes back late
+    rerender(view("a")); // the first write echoes back late
 
-    expect(liveSwitch().getAttribute("aria-checked")).toBe("true");
-    expect(tail()).toMatchObject({ enabled: true });
+    expect(search().value).toBe("");
+    expect(historyFilters()).toMatchObject({ text: "" });
     // The URL is told the current state again, so it converges on the view.
-    expect(onFiltersChange).toHaveBeenLastCalledWith(EMPTY_LOG_FILTERS, true);
-    rerender(view(true));
-    expect(liveSwitch().getAttribute("aria-checked")).toBe("true");
+    expect(onFiltersChange).toHaveBeenLastCalledWith(EMPTY_LOG_FILTERS);
+    rerender(view(""));
+    expect(search().value).toBe("");
   });
 
   it("still adopts a state it once showed after that state has been acknowledged", () => {
-    const view = (urlLive: boolean) => (
-      <LogViewer resource="web" urlLive={urlLive} />
+    const view = (text: string) => (
+      <LogViewer resource="web" urlFilters={{ ...EMPTY_LOG_FILTERS, text }} />
     );
-    const liveSwitch = () => screen.getByRole("switch", { name: /live/i });
-    const { rerender } = render(view(true));
-    fireEvent.click(liveSwitch());
-    rerender(view(false)); // own write acknowledged
-    rerender(view(true)); // Back to the earlier entry: not an echo
-    expect(liveSwitch().getAttribute("aria-checked")).toBe("true");
-    expect(tail()).toMatchObject({ enabled: true });
+    const { rerender } = render(view(""));
+    type("a");
+    settle();
+    rerender(view("a")); // own write acknowledged
+    rerender(view("")); // Back to the earlier entry: not an echo
+    expect(search().value).toBe("");
+    expect(historyFilters()).toMatchObject({ text: "" });
   });
 });
 
@@ -893,10 +912,10 @@ describe("LogViewer search committed while paused (w4/306)", () => {
   const at = (ms: number) => new Date(T0 + ms).toISOString();
 
   it("queries a newly committed search up to its commit, before the next tick", () => {
-    render(<LogViewer resource="web" range={hour} />);
-    // A matching line arrives live at T0+10s and stays visible on pause.
+    const { rerender } = render(<LogViewer resource="web" range={LIVE_TAIL} />);
+    // A matching line arrives live at T0+10s, then Last hour is picked.
     act(() => vi.advanceTimersByTime(10_000));
-    fireEvent.click(screen.getByRole("switch", { name: /live/i }));
+    rerender(<LogViewer resource="web" range={hour} />);
     act(() => vi.advanceTimersByTime(4_700));
     useHistorySpy.mockClear();
     search("QA_A497_THIRD_LITERAL");
@@ -911,7 +930,7 @@ describe("LogViewer search committed while paused (w4/306)", () => {
       expect(q.endTime).toBe(at(15_000));
       expect(Date.parse(q.endTime) - Date.parse(q.startTime)).toBe(3600_000);
     }
-    // While paused the window stays frozen at the commit (w4/399): no
+    // On a preset the window stays frozen at the commit (w4/399): no
     // tick follows the new search, and no history query slides.
     const count = queries().length;
     act(() => vi.advanceTimersByTime(30_000));
@@ -965,52 +984,31 @@ describe("LogViewer search committed while paused (w4/306)", () => {
     });
   });
 
-  it("never opens the tail for a custom window that already ended (w21/016)", () => {
-    const custom = {
-      id: "custom" as const,
-      startTime: "2026-11-01T07:00:00.000Z",
-      endTime: new Date(Date.now() - 3_600_000).toISOString(),
-      resolutionSeconds: 30,
-    };
-    render(<LogViewer resource="web" range={custom} />);
-    expect(useLiveLogsSpy.mock.calls.at(-1)?.[0]).toMatchObject({
-      enabled: false,
-    });
-    expect(screen.getByRole("switch", { name: /live/i })).toBeDisabled();
-  });
-
-  // w4/556: a disabled switch can't be focused, so its reason is visible text
-  // and its description, in the empty state too, and the note stops
-  // promising that live mode appends lines.
-  it("says why a closed window has no live tail, beside the switch", () => {
-    const custom = {
-      id: "custom" as const,
-      startTime: "2026-11-01T07:00:00.000Z",
-      endTime: new Date(Date.now() - 3_600_000).toISOString(),
-      resolutionSeconds: 30,
-    };
-    render(<LogViewer resource="web" range={custom} />);
-    const reason =
-      "Live tail is off — this custom range has already ended, so no new lines can arrive in it.";
-    expect(screen.getByText(reason)).toBeVisible();
-    expect(
-      screen.getByRole("switch", { name: /live/i }),
-    ).toHaveAccessibleDescription(reason);
-    expect(screen.queryByText(/Live mode appends new lines/)).toBeNull();
-  });
-
-  it("keeps tailing a custom window that ends in the future (w21/016)", () => {
-    const custom = {
-      id: "custom" as const,
-      startTime: new Date(Date.now() - 3_600_000).toISOString(),
-      endTime: new Date(Date.now() + 3_600_000).toISOString(),
-      resolutionSeconds: 30,
-    };
-    render(<LogViewer resource="web" range={custom} />);
-    expect(useLiveLogsSpy.mock.calls.at(-1)?.[0]).toMatchObject({
-      enabled: true,
-    });
-  });
+  // A custom range never tails, ended or not (w3/m537): Render's
+  // `liveMode` is `timeRange === "live"`.
+  it.each([
+    ["has already ended", -7_200_000, -3_600_000],
+    ["ends in the future", -3_600_000, 3_600_000],
+  ])(
+    "never opens the tail for a custom window that %s",
+    (_, startMs, endMs) => {
+      render(
+        <LogViewer
+          resource="web"
+          range={{
+            id: "custom",
+            startTime: new Date(Date.now() + startMs).toISOString(),
+            endTime: new Date(Date.now() + endMs).toISOString(),
+            resolutionSeconds: 30,
+          }}
+        />,
+      );
+      expect(useLiveLogsSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+        enabled: false,
+      });
+      expect(screen.queryByRole("switch")).toBeNull();
+    },
+  );
 
   it("keeps a custom window fixed when the search changes", () => {
     const custom = {
@@ -1081,7 +1079,7 @@ describe("LogViewer explorer controls (w3/m509)", () => {
 
   it("clears a live tail's lines on Shift+L and brings them back on request", async () => {
     historyState.lines = [appLine("older line", 1), appLine("newer line", 2)];
-    render(<LogViewer resource="web" />);
+    render(<LogViewer resource="web" range={LIVE_TAIL} />);
     expect(screen.getByText("newer line")).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: "L", shiftKey: true });
@@ -1097,17 +1095,17 @@ describe("LogViewer explorer controls (w3/m509)", () => {
   it("clears a live tail's lines from Options ▸ Clear logs, as Shift+L does (w3/092)", async () => {
     const user = userEvent.setup();
     historyState.lines = [appLine("older line", 1), appLine("newer line", 2)];
-    render(<LogViewer resource="web" />);
+    render(<LogViewer resource="web" range={LIVE_TAIL} />);
     await user.click(screen.getByRole("button", { name: "Log options" }));
     await user.click(screen.getByRole("menuitem", { name: /Clear logs/ }));
     expect(screen.getByText("Logs cleared")).toBeInTheDocument();
     expect(screen.queryByText("newer line")).toBeNull();
   });
 
-  it("does not clear a paused log, and its Options list no Clear logs", async () => {
+  it("does not clear a log on a preset range, and its Options list no Clear logs", async () => {
     const user = userEvent.setup();
     historyState.lines = [appLine("kept line", 1)];
-    render(<LogViewer resource="web" urlLive={false} />);
+    render(<LogViewer resource="web" />);
     fireEvent.keyDown(window, { key: "L", shiftKey: true });
     expect(screen.getByText("kept line")).toBeInTheDocument();
     expect(screen.queryByText("Logs cleared")).toBeNull();
@@ -1140,6 +1138,56 @@ describe("LogViewer explorer controls (w3/m509)", () => {
   });
 });
 
+// Live tail is a range (w3/m537): what picks it, and where it cannot run.
+describe("LogViewer Live tail range (w3/m537)", () => {
+  it("picks Live tail from the empty state's Switch to Live Tail", () => {
+    render(<Viewer resource="web" />);
+    expect(useLiveLogsSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+      enabled: false,
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Switch to Live Tail" }),
+    );
+    expect(rangePicker()).toHaveTextContent("Live tail");
+    expect(useLiveLogsSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+      enabled: true,
+    });
+    // On Live tail the empty state offers no switch to it.
+    expect(
+      screen.queryByRole("button", { name: "Switch to Live Tail" }),
+    ).toBeNull();
+  });
+
+  it("reads Last hour, with Live tail disabled and its reason, where the tail cannot follow the filters", async () => {
+    const user = userEvent.setup();
+    render(
+      <LogViewer
+        resource="web"
+        range={LIVE_TAIL}
+        urlFilters={{ ...EMPTY_LOG_FILTERS, type: "app", method: "GET" }}
+      />,
+    );
+    expect(useLiveLogsSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+      enabled: false,
+    });
+    const window = useHistorySpy.mock.calls.at(-1)?.[2] as {
+      startTime: string;
+      endTime: string;
+    };
+    expect(Date.parse(window.endTime) - Date.parse(window.startTime)).toBe(
+      60 * 60 * 1000,
+    );
+    expect(rangePicker()).toHaveTextContent("Last hour");
+    const reason =
+      "Live tail is unavailable — method, status, path and host filter request logs, so app logs can't be tailed with them.";
+    expect(screen.getByText(reason)).toBeVisible();
+    await user.click(rangePicker());
+    const live = screen.getByRole("option", { name: "Live tail" });
+    expect(live).toHaveAttribute("aria-disabled", "true");
+    expect(live).toHaveAccessibleDescription(reason);
+  });
+});
+
 describe("the Logs tab's pending frame holds its explorer buttons (w3/m509)", () => {
   it("reserves Maximize (hidden on a phone) and Options, at the ready buttons' sizes", async () => {
     const { ServiceLogsBodySkeleton } =
@@ -1161,6 +1209,29 @@ describe("the Logs tab's pending frame holds its explorer buttons (w3/m509)", ()
       "max-lg:size-11 pointer-coarse:size-11 size-8",
     ]);
     expect(boxes(render(<ServiceLogsBodySkeleton />).container)).toEqual(ready);
+  });
+
+  // Live tail is a range (w3/m537): no Live switch in the bar or its pending
+  // frame, and the Filters slot spans a phone's second row as the button does.
+  it("holds no Live switch, and gives Filters the ready button's phone columns", async () => {
+    const { ServiceLogsBodySkeleton } =
+      await import("@/common/components/route-skeletons");
+    const ready = render(<LogViewer resource="web" />).container;
+    const pending = render(<ServiceLogsBodySkeleton />).container;
+    for (const root of [ready, pending]) {
+      expect(root.querySelector('[role="switch"]')).toBeNull();
+    }
+    const filters = ready.querySelector<HTMLElement>(
+      '[data-log-dock] > button[aria-haspopup="dialog"]',
+    )!;
+    expect(filters).toHaveTextContent("Filters");
+    expect(filters.className).toContain("max-sm:col-span-2");
+    const slots = pending.querySelectorAll<HTMLElement>(
+      "[data-log-dock] > [data-slot=skeleton]",
+    );
+    expect(slots[3].className).toContain("max-sm:col-span-2");
+    // Its fixed desktop width gives way to the grid's columns on a phone.
+    expect(slots[3].className).toContain("max-sm:w-auto");
   });
 });
 
@@ -1201,9 +1272,9 @@ describe("LogViewer row menu and new-log buttons (w3/m528)", () => {
     useNewLogsWatchSpy.mockReset();
   });
 
-  it("watches for a new line only while paused on a preset range, from the frozen window's end", () => {
+  it("watches for a new line only on a preset range, from the frozen window's end", () => {
     historyState.lines = lines(0, 3);
-    const { rerender } = render(<LogViewer resource="web" urlLive={false} />);
+    const { rerender } = render(<LogViewer resource="web" />);
     expect(watchArgs().enabled).toBe(true);
     const history = useHistorySpy.mock.calls.at(-1)?.[2] as {
       endTime: string;
@@ -1214,15 +1285,14 @@ describe("LogViewer row menu and new-log buttons (w3/m528)", () => {
       type: "all",
       textMode: "display",
     });
-    // Live on: the tail itself streams.
-    rerender(<LogViewer key="live" resource="web" />);
+    // Live tail: the tail itself streams.
+    rerender(<LogViewer key="live" resource="web" range={LIVE_TAIL} />);
     expect(watchArgs().enabled).toBe(false);
     // A custom range, as View in context opens, is never invited back to Live.
     rerender(
       <LogViewer
         key="custom"
         resource="web"
-        urlLive={false}
         range={{
           id: "custom",
           startTime: new Date(Date.now() - 600_000).toISOString(),
@@ -1237,7 +1307,6 @@ describe("LogViewer row menu and new-log buttons (w3/m528)", () => {
       <LogViewer
         key="unsupported"
         resource="web"
-        urlLive={false}
         urlFilters={{ ...EMPTY_LOG_FILTERS, type: "app", method: "GET" }}
       />,
     );
@@ -1256,30 +1325,34 @@ describe("LogViewer row menu and new-log buttons (w3/m528)", () => {
     render(
       <LogViewer
         resource="web"
-        urlLive={false}
         urlFilters={{ ...EMPTY_LOG_FILTERS, type: "request" }}
       />,
     );
     expect(watchArgs().enabled).toBe(false);
   });
 
-  it("turns Live on from New logs in Live Tail, and leaves Dismiss to the watch", () => {
+  it("picks Live tail from New logs in Live Tail, and leaves Dismiss to the watch", () => {
     historyState.lines = lines(0, 3);
     watchState.available = true;
-    render(<LogViewer resource="web" urlLive={false} />);
-    expect(screen.getByRole("switch", { name: /live/i })).not.toBeChecked();
+    render(<Viewer resource="web" />);
+    expect(rangePicker()).toHaveTextContent("Last hour");
     fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
     expect(watchState.dismiss).toHaveBeenCalledTimes(1);
     fireEvent.click(
       screen.getByRole("button", { name: "New logs in Live Tail" }),
     );
-    expect(screen.getByRole("switch", { name: /live/i })).toBeChecked();
+    expect(rangePicker()).toHaveTextContent("Live tail");
+    expect(useLiveLogsSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+      enabled: true,
+    });
     expect(watchArgs().enabled).toBe(false);
   });
 
-  it("holds tailed lines while the reader is away, and never while paused", () => {
+  it("holds tailed lines while the reader is away, and never on a preset", () => {
     historyState.lines = lines(0, 60);
-    const { container, rerender } = render(<LogViewer resource="web" />);
+    const { container, rerender } = render(
+      <LogViewer resource="web" range={LIVE_TAIL} />,
+    );
     const scrollAway = () =>
       act(() => {
         const el = viewport(container);
@@ -1296,16 +1369,16 @@ describe("LogViewer row menu and new-log buttons (w3/m528)", () => {
       });
     scrollAway();
     liveState.lines = lines(60, 75);
-    rerender(<LogViewer resource="web" />);
+    rerender(<LogViewer resource="web" range={LIVE_TAIL} />);
     expect(
       screen.getByRole("button", { name: "15+ new logs" }),
     ).toBeInTheDocument();
 
-    // Paused, nothing is held: a resumed reader's lines show at once.
-    rerender(<LogViewer key="paused" resource="web" urlLive={false} />);
+    // On a preset, nothing is held: a resumed reader's lines show at once.
+    rerender(<LogViewer key="paused" resource="web" />);
     scrollAway();
     liveState.lines = lines(60, 80);
-    rerender(<LogViewer key="paused" resource="web" urlLive={false} />);
+    rerender(<LogViewer key="paused" resource="web" />);
     expect(screen.queryByRole("button", { name: /new logs$/ })).toBeNull();
   });
 
@@ -1350,7 +1423,7 @@ describe("LogViewer row menu and new-log buttons (w3/m528)", () => {
   it("marks the line a View in context link names", () => {
     historyState.lines = lines(0, 3);
     const { container } = render(
-      <LogViewer resource="web" urlLive={false} contextLine="id:1" />,
+      <LogViewer resource="web" contextLine="id:1" />,
     );
     expect(container.querySelector("[data-marked]")).toHaveTextContent("m1");
   });

@@ -1,17 +1,21 @@
 import {
-  isCustomRange,
   parseCustomRange,
   parseRangePreset,
   type RangePreset,
-  type RangePresetID,
   type RangeSelection,
 } from "@/features/metrics/lib/range";
 import { SavedSearchType } from "@/graphql/definitions";
 import type { LogLine } from "../types";
 import { documentTimeRange } from "./view-filters";
 import {
+  LIVE_TAIL,
+  isCustomLogRange,
+  type LogRange,
+  type LogRangeID,
+} from "./log-range";
+import {
   logContextSearch,
-  parseRangeAlias,
+  parseLogRangeAlias,
   searchHref,
   str,
 } from "./log-search";
@@ -19,14 +23,15 @@ import {
 /**
  * A project observability view's URL (w3/m505), in Render's keys:
  * `/project/{prj}/observability/logs/application?savedSearchId=svs-…&r=1h`.
- * `savedSearchId` names the view and `r` the range; a custom range keeps the
+ * `savedSearchId` names the view and `r` the range, Render's `r=live` for
+ * Live tail (w3/m537); a custom range keeps the
  * Logs tab's `rangeStart`/`rangeEnd` beside `r=custom`. Every key comes back
  * (undefined when absent or rejected) because the router merges the validated
  * search over the raw one, and a key it omits lingers (w7/m42).
  */
 export interface ProjectLogSearch {
   savedSearchId?: string;
-  r?: RangePresetID | "custom";
+  r?: LogRangeID;
   rangeStart?: string;
   rangeEnd?: string;
   /** The line a View in context link marks (w3/m528): its key. */
@@ -55,12 +60,22 @@ export function parseProjectLogSearch(
   }
   // Render's own `r` tokens without a bex preset map onto the nearest one,
   // as the Logs tab's alias does.
-  out.r = parseRangeAlias(search.r)?.id;
+  out.r = parseLogRangeAlias(search.r);
   return out;
 }
 
-/** The range the URL names, else the view's own default. */
-export function projectLogRange(
+/** A project Service Metrics view's URL (w3/m508): a log view's keys, with
+ *  Live tail refused, as Metrics has none. */
+export function parseProjectMetricsSearch(
+  search: Record<string, unknown>,
+): ProjectLogSearch {
+  const out = parseProjectLogSearch(search);
+  return out.r === LIVE_TAIL.id ? { ...out, r: undefined } : out;
+}
+
+/** The preset or custom range the URL names, else `fallback`: what a
+ *  project Service Metrics view reads. */
+export function projectMetricsRange(
   search: ProjectLogSearch,
   fallback: RangeSelection,
 ): RangeSelection {
@@ -71,15 +86,26 @@ export function projectLogRange(
   return parseRangePreset(search.r) ?? fallback;
 }
 
+/** The range the URL names, Live tail among them, else the view's own
+ *  default (its saved time range, else Last hour). */
+export function projectLogRange(
+  search: ProjectLogSearch,
+  fallback: RangeSelection,
+): LogRange {
+  return search.r === LIVE_TAIL.id
+    ? LIVE_TAIL
+    : projectMetricsRange(search, fallback);
+}
+
 /** A range as the URL's keys, every one written so a stale bound clears,
  *  and a View in context mark with it (w3/m528). */
 export function projectLogRangeSearch(
-  range: RangeSelection,
+  range: LogRange,
 ): Pick<ProjectLogSearch, "r" | "rangeStart" | "rangeEnd" | "contextLine"> {
   return {
     r: range.id,
-    rangeStart: isCustomRange(range) ? range.startTime : undefined,
-    rangeEnd: isCustomRange(range) ? range.endTime : undefined,
+    rangeStart: isCustomLogRange(range) ? range.startTime : undefined,
+    rangeEnd: isCustomLogRange(range) ? range.endTime : undefined,
     contextLine: undefined,
   };
 }

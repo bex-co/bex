@@ -5,10 +5,10 @@ const zhLogs: Record<string, TranslationEntry> = {
     message: "日志历史范围",
     description: "Accessible label for the relative log-history range controls",
   },
-  "logs.rangeHistoryNote": {
-    message: "时间范围仅限制历史记录；实时模式会继续追加新日志。",
+  "logs.rangeLiveTail": {
+    message: "实时日志",
     description:
-      "Explains how the bounded history window interacts with live tail",
+      "Log explorers (w3/m537): the first entry of the time range picker, Render's Live tail; picking it streams new lines, and every other range is a snapshot",
   },
   "logs.retentionWindow_other": {
     message: "{plan} 套餐保留 {count} 天的日志。",
@@ -101,14 +101,9 @@ const zhLogs: Record<string, TranslationEntry> = {
     message: "按主机筛选",
     description: "Placeholder for the request-host filter input",
   },
-  "logs.liveWindowClosed": {
-    message: "实时日志已关闭——该自定义时间范围已经结束，不会再有新日志进入。",
-    description:
-      "Note when the selected custom time range ended before it was applied, so live tail is off",
-  },
   "logs.liveUnsupported": {
     message:
-      "实时日志已关闭——方法、状态码、路径和主机只筛选请求日志，应用日志无法按这些条件实时跟踪。",
+      "实时日志不可用——方法、状态码、路径和主机只筛选请求日志，应用日志无法按这些条件实时跟踪。",
     description:
       "Note when the chosen log type cannot carry an active filter, so live tail is off (a request filter on app logs)",
   },
@@ -136,10 +131,6 @@ const zhLogs: Record<string, TranslationEntry> = {
   "logs.searchPlaceholder": {
     message: "搜索日志",
     description: "Placeholder for the log search box (text filter)",
-  },
-  "logs.live": {
-    message: "实时",
-    description: "Label for the live-tail on/off toggle",
   },
   "logs.linesLabel": {
     message: "日志行",
@@ -180,7 +171,7 @@ const zhLogs: Record<string, TranslationEntry> = {
   "logs.newLogsInLiveTail": {
     message: "实时日志中有新日志",
     description:
-      "Log list (w3/m528): Render's button on a paused explorer when a new line arrived; clicking it turns Live on",
+      "Log list (w3/m528): Render's button on a preset range when a new line arrived; clicking it picks Live tail (w3/m537)",
   },
   "logs.switchToLiveTail": {
     message: "切换到实时",
@@ -284,10 +275,6 @@ const zhLogs: Record<string, TranslationEntry> = {
     message: "实时——正在接收新日志",
     description: "Status under the log list when the SSE tail is connected",
   },
-  "logs.paused": {
-    message: "已暂停实时日志",
-    description: "Status under the log list when live tail is toggled off",
-  },
   "logs.disconnected": {
     message: "实时日志已断开——正在重连……",
     description: "Banner when the SSE stream drops",
@@ -331,14 +318,9 @@ const zhLogs: Record<string, TranslationEntry> = {
     description: "Logs tab: button closing the Filters panel",
   },
   "logs.emptyBodyRange": {
-    message: "请选择更长的时间范围，或开启实时以查看新日志。",
+    message: "请选择更长的时间范围，或切换到实时日志以查看新日志。",
     description:
       "Logs tab: body when the chosen range holds no lines, under logs.emptyTitle \u2014 what to try next",
-  },
-  "logs.turnOnLive": {
-    message: "开启实时",
-    description:
-      "Logs tab: button in the empty state that switches the live tail on",
   },
   "logs.clearFilters": {
     message: "清除筛选",

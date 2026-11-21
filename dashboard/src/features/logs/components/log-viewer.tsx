@@ -30,7 +30,6 @@ import {
   type EventSourceFactory,
   type LiveStatus,
 } from "../hooks/use-live-logs";
-import { useCustomWindow } from "../hooks/use-custom-window";
 import { mergeLogLines } from "../lib/map";
 import {
   EMPTY_LOG_FILTERS,
@@ -56,34 +55,42 @@ import {
 } from "./log-toolbar-layout";
 import { LogTruncationNotice } from "./log-truncation-notice";
 import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
+import { RANGE_PRESETS } from "@/features/metrics/lib/range";
 import {
-  isCustomRange,
-  RANGE_PRESETS,
-  type RangeSelection,
-} from "@/features/metrics/lib/range";
-import { DEFAULT_LOG_RANGE } from "../lib/log-search";
+  DEFAULT_LOG_RANGE,
+  LIVE_TAIL,
+  historyRange,
+  isLiveTail,
+  isPresetRange,
+  logRangeEndMs,
+  type LogRange,
+} from "../lib/log-range";
 import { LogThemeFrame } from "./log-theme-frame";
 
 interface LogViewerProps {
   resource: string;
   /** Injectable SSE factory — threaded through for tests. */
   createEventSource?: EventSourceFactory;
-  range?: RangeSelection;
-  onRangeChange?: (range: RangeSelection) => void;
   /**
-   * The filter + live state the URL names (w7/m42). The viewer starts from it
+   * The range: Live tail tails, every other range is a snapshot (w3/m537,
+   * Render's `liveMode`). Last hour unless the URL names one, as Render's
+   * service Logs opens.
+   */
+  range?: LogRange;
+  onRangeChange?: (range: LogRange) => void;
+  /**
+   * The filter state the URL names (w7/m42). The viewer starts from it
    * and adopts it again whenever a navigation it did not write changes it — a
    * nav link, back/forward (w4/m204). Its own writes echoing back are left
    * alone, so they can't clobber text typed since.
    */
   urlFilters?: LogFilters;
-  urlLive?: boolean;
   /**
-   * URL sync (w7/m42): fired with the debounced filter + live state after each
+   * URL sync (w7/m42): fired with the debounced filter state after each
    * real change (never at mount — that state was just derived from the URL) so
    * the route can mirror the state into the query string.
    */
-  onFiltersChange?: (filters: LogFilters, live: boolean) => void;
+  onFiltersChange?: (filters: LogFilters) => void;
   /**
    * False for a service with no public requests: every view, whether from
    * the URL or typed, drops the request type and request-line filters
@@ -109,10 +116,9 @@ interface LogViewerProps {
 export function LogViewer({
   resource,
   createEventSource,
-  range = DEFAULT_LOG_RANGE,
+  range: rangeProp = DEFAULT_LOG_RANGE,
   onRangeChange = () => undefined,
   urlFilters = EMPTY_LOG_FILTERS,
-  urlLive = true,
   onFiltersChange,
   servesRequests = true,
   contextLine,
@@ -122,8 +128,8 @@ export function LogViewer({
   const frameRef = useRef<HTMLDivElement>(null);
   useOpenDocked(frameRef);
   const { t } = useTranslations();
-  const urlKey = logStateKey(urlFilters, urlLive);
-  const [state, setState] = useState(() => viewFromUrl(urlFilters, urlLive));
+  const urlKey = logStateKey(urlFilters);
+  const [state, setState] = useState(() => viewFromUrl(urlFilters));
   const urlEcho = useUrlEcho(urlKey);
 
   // Adopt a foreign URL during render, and use the adopted state for the rest
@@ -132,17 +138,16 @@ export function LogViewer({
   // would query them against the destination's range.
   let shown = state;
   if (urlEcho.foreign) {
-    shown = viewFromUrl(urlFilters, urlLive);
+    shown = viewFromUrl(urlFilters);
     setState(shown);
   }
-  const { live } = shown;
   const filters = servesRequests
     ? shown.filters
     : withoutRequestFilters(shown.filters);
   const committed = servesRequests
     ? shown.committed
     : { ...shown.committed, path: "", host: "" };
-  urlEcho.showing(logStateKey({ ...filters, ...committed }, live));
+  urlEcho.showing(logStateKey({ ...filters, ...committed }));
 
   // An adopted URL sets each draft and its committed value together, which
   // cancels a timer still pending for text typed before the navigation.
@@ -208,7 +213,7 @@ export function LogViewer({
   // skipped — the mount state was just derived from the URL, and navigating
   // during hydration triggers a full document reload loop under TanStack
   // Start (observed live). The ref keeps the route's inline callback out of
-  // the sync effect's deps so only real filter/live changes fire; it is
+  // the sync effect's deps so only real filter changes fire; it is
   // refreshed in its own every-render effect (declared first, so it has run
   // by the time the sync effect fires in the same flush). A URL change fires
   // it too: an echo that a newer change has overtaken is answered with the
@@ -223,19 +228,20 @@ export function LogViewer({
       syncedOnce.current = true;
       return;
     }
-    onFiltersChangeRef.current?.(queryFilters, live);
-  }, [queryFilters, live, urlKey]);
+    onFiltersChangeRef.current?.(queryFilters);
+  }, [queryFilters, urlKey]);
 
   // Request filters stream request lines from the store poll and a level
   // streams app lines (w8/m147); only a type that cannot carry an active
-  // filter pauses the tail.
-  const { customEndMs, windowClosed } = useCustomWindow(range);
-  const filtersLiveSupported = !liveTailUnsupported(queryFilters);
-  const liveSupported = filtersLiveSupported && !windowClosed;
+  // filter cannot tail, and Live tail then reads Last hour until it can.
+  const liveSupported = !liveTailUnsupported(queryFilters);
   const liveOffReasonId = useId();
-  const liveOffReason = filtersLiveSupported
-    ? t("logs.liveWindowClosed")
-    : t("logs.liveUnsupported");
+  // Chosen inline: the React Compiler reads a helper's result as mutable,
+  // and could then not keep the lines' memo below.
+  const range =
+    isLiveTail(rangeProp) && !liveSupported ? DEFAULT_LOG_RANGE : rangeProp;
+  const live = isLiveTail(range);
+  const customEndMs = logRangeEndMs(range);
 
   // Stable identity so LogLineList's memoized rows actually skip re-rendering
   // when a live line appends (an inline arrow would defeat the memo).
@@ -255,9 +261,9 @@ export function LogViewer({
   // A newly committed predicate samples the clock in this render, so its first
   // history query reaches lines already on screen (w4/306).
   const historyWindow = useLiveRange(
-    range,
+    historyRange(range),
     JSON.stringify([resource, queryFilters]),
-    // Live off freezes the history window (w4/399): the paused view is a
+    // Every range but Live tail freezes the history window (w4/399): it is a
     // snapshot, so nothing refetches, arrives or expires underneath it.
     { paused: !live },
   );
@@ -272,8 +278,9 @@ export function LogViewer({
   );
   // A plan without HTTP request logs (Hobby, w8/m138) refuses the request
   // view: a plan notice, not a load failure, and no tail to retry against it.
+  // The read keeps its window, so the refusal cannot move it.
   const planRefused = planFeatureRequired(history.error, "requestLogs");
-  const tailing = live && liveSupported && !planRefused;
+  const tailing = live && !planRefused;
   // What the tail follows, and the paused view's watch with it (w3/m528).
   const subscription: LogSubscription = {
     resource,
@@ -309,7 +316,7 @@ export function LogViewer({
         history.lines,
         stream.lines,
         Date.parse(historyWindow.startTime),
-        customEndMs ?? Infinity,
+        customEndMs,
       ),
     [history.lines, stream.lines, historyWindow.startTime, customEndMs],
   );
@@ -331,12 +338,11 @@ export function LogViewer({
     () => ({ contextHref: filtered ? contextHref : undefined, shell }),
     [filtered, contextHref, shell],
   );
-  // Paused on a preset range, a new line brings up Render's "New logs in
-  // Live Tail" (w3/m528, t001's mapping of Render's relative range).
-  const turnOnLive = () =>
-    setState((previous) => ({ ...previous, live: true }));
+  // On a preset range, a new line brings up Render's "New logs in Live
+  // Tail" (w3/m528), and it and the empty state pick Live tail (w3/m537).
+  const pickLiveTail = () => onRangeChange(LIVE_TAIL);
   const watch = useNewLogsWatch({
-    enabled: !live && liveSupported && !planRefused && !isCustomRange(range),
+    enabled: isPresetRange(range) && liveSupported && !planRefused,
     subscription,
     since: historyWindow.endTime,
     resetKey: viewKey,
@@ -348,9 +354,7 @@ export function LogViewer({
   const historyReason = relayableReason(history.error);
   // The stream line under a state as under lines: a failed history read or an
   // empty range says nothing about whether new lines are still arriving.
-  const streamLine = liveSupported ? (
-    <StreamStatus live={live} status={stream.status} />
-  ) : null;
+  const streamLine = tailing ? <StreamStatus status={stream.status} /> : null;
   let body: ReactNode;
   // Only the lines carry their own stream line; every other state gets it
   // under the panel below.
@@ -387,7 +391,7 @@ export function LogViewer({
         title={t("logs.errorTitle")}
         error={history.error}
         onRetry={history.retry}
-        liveTailing={live && liveSupported && stream.status === "open"}
+        liveTailing={tailing && stream.status === "open"}
       />
     );
   } else if (history.loading && history.lines.length === 0) {
@@ -417,14 +421,13 @@ export function LogViewer({
           ) : (
             <>
               {!live && liveSupported ? (
-                <Button variant="outline" size="sm" onClick={turnOnLive}>
-                  {t("logs.turnOnLive")}
+                <Button variant="outline" size="sm" onClick={pickLiveTail}>
+                  {t("logs.switchToLiveTail")}
                 </Button>
               ) : null}
               {/* The longer range the copy suggests, when there is one to
                   widen to. */}
-              {range &&
-              !isCustomRange(range) &&
+              {isPresetRange(range) &&
               range.spanSeconds < DAY_RANGE.spanSeconds ? (
                 <Button
                   variant="outline"
@@ -465,9 +468,7 @@ export function LogViewer({
             onLoadOlder={history.loadOlder}
           />
         ) : null}
-        {live && liveSupported && stream.status === "error" ? (
-          <StreamDisconnected />
-        ) : null}
+        {tailing && stream.status === "error" ? <StreamDisconnected /> : null}
         <div className={cn(explorer.maximized && LOG_MAXIMIZED_LIST_CLASS)}>
           <LogLineList
             fillViewport
@@ -485,7 +486,7 @@ export function LogViewer({
             markedKey={contextLine}
             newLogsInLiveTail={
               watch.available
-                ? { onSwitch: turnOnLive, onDismiss: watch.dismiss }
+                ? { onSwitch: pickLiveTail, onDismiss: watch.dismiss }
                 : undefined
             }
           />
@@ -506,12 +507,8 @@ export function LogViewer({
         resource={resource}
         filters={filters}
         onChange={patchFilters}
-        live={live}
-        onLiveChange={(next) =>
-          setState((previous) => ({ ...previous, live: next }))
-        }
-        liveSupported={liveSupported}
-        unsupportedReasonId={liveSupported ? undefined : liveOffReasonId}
+        liveTailDisabled={!liveSupported || planRefused}
+        liveTailReasonId={liveSupported ? undefined : liveOffReasonId}
         range={range}
         onRangeChange={onRangeChange}
         servesRequests={servesRequests}
@@ -525,18 +522,16 @@ export function LogViewer({
           />
         }
       />
-      {/* With the tail off, the note says why, in every state — the switch it
-          describes is disabled, so this is its only reachable reason (w4/556).
-          With it on, the controls and the stream line under the panel say
-          what the old "range limits history" sentence did, so the log gets
-          the line back. */}
+      {/* Where the tail cannot follow the filters, the note says why, in
+          every state: Live tail is disabled in the picker, which it
+          describes, so this is its only reachable reason (w4/556). */}
       {liveSupported ? null : (
         <p
           id={liveOffReasonId}
           className="flex items-center gap-1.5 text-xs text-muted-foreground"
         >
           <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-          {liveOffReason}
+          {t("logs.liveUnsupported")}
         </p>
       )}
       {isListBody ? (
@@ -561,25 +556,22 @@ export const COMMIT_DELAY_MS = 300;
 // `committed` is the text and path the queries and the URL carry.
 interface LogViewState {
   filters: LogFilters;
-  live: boolean;
   committed: { text: string; path: string; host: string };
 }
 
-function viewFromUrl(filters: LogFilters, live: boolean): LogViewState {
+function viewFromUrl(filters: LogFilters): LogViewState {
   return {
     filters,
-    live,
     committed: { text: filters.text, path: filters.path, host: filters.host },
   };
 }
 
-/** One comparable value for a whole filter + live state. */
-function logStateKey(filters: LogFilters, live: boolean) {
+/** One comparable value for a whole filter state. */
+function logStateKey(filters: LogFilters) {
   return JSON.stringify([
     filters.type,
     filters.text,
     ...STRUCTURED_FILTER_KEYS.map((key) => filters[key]),
-    live,
   ]);
 }
 
@@ -613,31 +605,21 @@ function commitDraft(
   return { ...state, committed: { ...state.committed, [field]: value } };
 }
 
-// The footer under the log list: a live pulse while streaming, and a paused
-// note when the tail is switched off. Why a tail can't run at all is said
-// under the filter bar instead, beside the switch it disables.
-export function StreamStatus({
-  live,
-  status,
-}: {
-  live: boolean;
-  status: LiveStatus;
-}) {
+// The footer under a Live tail's lines: a pulse while streaming. Every other
+// range is a snapshot the picker names, so it has no footer (w3/m537); why a
+// tail can't run at all is said under the filter bar instead, beside the
+// picker whose Live tail it disables.
+export function StreamStatus({ status }: { status: LiveStatus }) {
   const { t } = useTranslations();
   return (
     <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-      {live && status === "open" ? (
+      {status === "open" ? (
         <>
           <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
           </span>
           {t("logs.streaming")}
-        </>
-      ) : !live ? (
-        <>
-          <AlertCircle className="h-3.5 w-3.5" />
-          {t("logs.paused")}
         </>
       ) : null}
     </p>

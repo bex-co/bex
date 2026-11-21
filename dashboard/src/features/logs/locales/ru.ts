@@ -5,11 +5,10 @@ const ruLogs: Record<string, TranslationEntry> = {
     message: "Период истории логов",
     description: "Accessible label for the relative log-history range controls",
   },
-  "logs.rangeHistoryNote": {
-    message:
-      "Период ограничивает историю. В режиме реального времени новые строки добавляются по мере поступления.",
+  "logs.rangeLiveTail": {
+    message: "В реальном времени",
     description:
-      "Explains how the bounded history window interacts with live tail",
+      "Log explorers (w3/m537): the first entry of the time range picker, Render's Live tail; picking it streams new lines, and every other range is a snapshot",
   },
   "logs.retentionWindow_one": {
     message: "На тарифе {plan} логи хранятся {count} день.",
@@ -134,15 +133,9 @@ const ruLogs: Record<string, TranslationEntry> = {
   },
   "logs.liveUnsupported": {
     message:
-      "Просмотр в реальном времени отключён — метод, статус, путь и хост фильтруют логи запросов, поэтому логи приложения с ними отслеживать нельзя.",
+      "Просмотр в реальном времени недоступен — метод, статус, путь и хост фильтруют логи запросов, поэтому логи приложения с ними отслеживать нельзя.",
     description:
       "Note when the chosen log type cannot carry an active filter, so live tail is off (a request filter on app logs)",
-  },
-  "logs.liveWindowClosed": {
-    message:
-      "Просмотр в реальном времени отключён — этот пользовательский период уже закончился, поэтому новые строки в нём появиться не могут.",
-    description:
-      "Note when the selected custom time range ended before it was applied, so live tail is off",
   },
   "logs.storeRequiredTitle": {
     message: "Для логов запросов нужно хранилище логов",
@@ -168,10 +161,6 @@ const ruLogs: Record<string, TranslationEntry> = {
   "logs.searchPlaceholder": {
     message: "Поиск по логам",
     description: "Placeholder for the log search box (text filter)",
-  },
-  "logs.live": {
-    message: "В реальном времени",
-    description: "Label for the live-tail on/off toggle",
   },
   "logs.linesLabel": {
     message: "Строки логов",
@@ -228,7 +217,7 @@ const ruLogs: Record<string, TranslationEntry> = {
   "logs.newLogsInLiveTail": {
     message: "Новые логи в реальном времени",
     description:
-      "Log list (w3/m528): Render's button on a paused explorer when a new line arrived; clicking it turns Live on",
+      "Log list (w3/m528): Render's button on a preset range when a new line arrived; clicking it picks Live tail (w3/m537)",
   },
   "logs.switchToLiveTail": {
     message: "Перейти в режим реального времени",
@@ -337,10 +326,6 @@ const ruLogs: Record<string, TranslationEntry> = {
     message: "В реальном времени — поступают новые строки",
     description: "Status under the log list when the SSE tail is connected",
   },
-  "logs.paused": {
-    message: "Просмотр в реальном времени приостановлен",
-    description: "Status under the log list when live tail is toggled off",
-  },
   "logs.disconnected": {
     message: "Просмотр в реальном времени отключён — повторное подключение…",
     description: "Banner when the SSE stream drops",
@@ -387,14 +372,9 @@ const ruLogs: Record<string, TranslationEntry> = {
   },
   "logs.emptyBodyRange": {
     message:
-      "Выберите более длинный период или включите режим «В реальном времени», чтобы видеть новые строки.",
+      "Выберите более длинный период или перейдите в режим «В реальном времени», чтобы видеть новые строки.",
     description:
       "Logs tab: body when the chosen range holds no lines, under logs.emptyTitle \u2014 what to try next",
-  },
-  "logs.turnOnLive": {
-    message: "Включить режим реального времени",
-    description:
-      "Logs tab: button in the empty state that switches the live tail on",
   },
   "logs.clearFilters": {
     message: "Сбросить фильтры",

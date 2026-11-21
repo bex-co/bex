@@ -1,11 +1,5 @@
-import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
-import {
-  AlertCircle,
-  Database,
-  LockKeyhole,
-  ScrollText,
-  Search,
-} from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Database, LockKeyhole, ScrollText, Search } from "lucide-react";
 import { PlanBillingLink } from "@/common/components/plan-billing-link";
 import { RemovableChip } from "@/common/components/removable-chip";
 import { Input } from "@/common/components/ui/input.tsx";
@@ -17,13 +11,7 @@ import {
 } from "@/common/lib/graphql-error";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
-import { RangeSelect } from "@/features/metrics/components/range-select";
 import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
-import {
-  isCustomRange,
-  type RangeSelection,
-} from "@/features/metrics/lib/range";
-import { useCustomWindow } from "../hooks/use-custom-window";
 import {
   useLiveLogs,
   useNewLogsWatch,
@@ -32,6 +20,14 @@ import {
 } from "../hooks/use-live-logs";
 import { useLogHistory } from "../hooks/use-log-history";
 import { useLogRetentionBound } from "../hooks/use-log-retention";
+import {
+  LIVE_TAIL,
+  historyRange,
+  isLiveTail,
+  isPresetRange,
+  logRangeEndMs,
+  type LogRange,
+} from "../lib/log-range";
 import { parseSearchOperators } from "../lib/log-search-operators";
 import { mergeLogLines } from "../lib/map";
 import { resourceLabels } from "../lib/resource-labels";
@@ -44,7 +40,6 @@ import {
   STRUCTURED_FILTER_KEYS,
   STRUCTURED_LABEL_KEYS,
   lineFilterKey,
-  liveTailUnsupported,
   withoutRequestFilters,
   type LogFilters,
   type LogLine,
@@ -54,11 +49,11 @@ import {
 import type { LogRowMenuItems } from "./log-row-menu";
 import { LogClearedState, LogExplorerActions } from "./log-explorer";
 import { useClearedLines, useLogExplorer } from "../hooks/use-log-explorer";
-import { LiveToggle } from "./log-filter-bar";
 import { LogEmptyState } from "./log-empty-state";
 import { LogLineList } from "./log-line-list";
 import { LogPanelSkeleton } from "./log-panel-skeleton";
 import { LogPanelState } from "./log-panel-state";
+import { LogRangeSelect } from "./log-range-select";
 import {
   LOG_ACTIONS_CLASS,
   LOG_MAXIMIZED_BODY_CLASS,
@@ -79,10 +74,11 @@ export interface ProjectLogViewerProps {
   scope: ProjectLogScope;
   /** The view's log type: Application Logs read `app`, Request Logs `request`. */
   logType: typeof LOG_TYPE_APP | typeof LOG_TYPE_REQUEST;
-  range: RangeSelection;
-  onRangeChange: (range: RangeSelection) => void;
-  /** The line a View in context link marks (w3/m528): the view opens on it
-   *  with Live off. */
+  /** Live tail tails; every other range is a snapshot (w3/m537). */
+  range: LogRange;
+  onRangeChange: (range: LogRange) => void;
+  /** The line a View in context link marks (w3/m528): the view opens on it,
+   *  on the link's custom range. */
   contextLine?: string;
   /** View in context's link for a line, offered while a search or filter
    *  narrows the view (w3/m528). */
@@ -96,7 +92,7 @@ export interface ProjectLogViewerProps {
  * job, Postgres and Key Value the view reads, in one time-ordered stream,
  * each line naming its resource (Render's colored dot and `[name]`). The
  * toolbar is Render's essentials — the search box (with Render's
- * `level:`/`instance:`/… operators), the range and the live tail; the view's
+ * `level:`/`instance:`/… operators) and the range, Live tail first; the view's
  * own filters travel as its filter document, and bex-api resolves the
  * resources from it on every read and while tailing.
  *
@@ -123,9 +119,6 @@ export function ProjectLogViewer({
     text: "",
     picks: {},
   });
-  // A View in context link opens on its line with the tail paused, as its
-  // custom range would on Render.
-  const [live, setLive] = useState(!contextLine);
 
   // Typed text commits after a pause; Render's field operators become chips
   // and only the remaining words search text (w4/538), as on a service's tab.
@@ -154,13 +147,13 @@ export function ProjectLogViewer({
   }, [committed, logType]);
   const picks = STRUCTURED_FILTER_KEYS.filter((key) => queryFilters[key]);
 
-  const { customEndMs, windowClosed } = useCustomWindow(range);
-  const filtersLiveSupported = !liveTailUnsupported(queryFilters);
-  const liveSupported = filtersLiveSupported && !windowClosed;
-  const liveOffReasonId = useId();
-
+  // A view's filters never stop its tail: Application Logs carry no request
+  // filter and Request Logs read request lines. Live tail tails, and every
+  // other range is a frozen snapshot (w4/399).
+  const live = isLiveTail(range);
+  const customEndMs = logRangeEndMs(range);
   const historyWindow = useLiveRange(
-    range,
+    historyRange(range),
     JSON.stringify([scope.project, scope.filterDocument, queryFilters]),
     { paused: !live },
   );
@@ -172,8 +165,10 @@ export function ProjectLogViewer({
     LOG_TEXT_MODE_DISPLAY,
     scope,
   );
+  // The read keeps its window under a plan refusal, so the refusal cannot
+  // move it.
   const planRefused = planFeatureRequired(history.error, "requestLogs");
-  const tailing = live && liveSupported && !planRefused;
+  const tailing = live && !planRefused;
   // What the tail follows, and the paused view's watch with it (w3/m528).
   const subscription: LogSubscription = {
     resource: "",
@@ -197,7 +192,7 @@ export function ProjectLogViewer({
         history.lines,
         stream.lines,
         Date.parse(historyWindow.startTime),
-        customEndMs ?? Infinity,
+        customEndMs,
       ),
     [history.lines, stream.lines, historyWindow.startTime, customEndMs],
   );
@@ -231,10 +226,10 @@ export function ProjectLogViewer({
     () => ({ contextHref: contextLink }),
     [contextLink],
   );
-  // Paused on a preset range, a new line brings up Render's "New logs in
-  // Live Tail" (w3/m528).
+  // On a preset range, a new line brings up Render's "New logs in Live
+  // Tail" (w3/m528), whose click picks Live tail (w3/m537).
   const watch = useNewLogsWatch({
-    enabled: !live && liveSupported && !planRefused && !isCustomRange(range),
+    enabled: isPresetRange(range) && !planRefused,
     subscription,
     since: historyWindow.endTime,
     resetKey: viewKey,
@@ -345,9 +340,7 @@ export function ProjectLogViewer({
             onLoadOlder={history.loadOlder}
           />
         ) : null}
-        {live && liveSupported && stream.status === "error" ? (
-          <StreamDisconnected />
-        ) : null}
+        {tailing && stream.status === "error" ? <StreamDisconnected /> : null}
         <div className={cn(explorer.maximized && LOG_MAXIMIZED_LIST_CLASS)}>
           <LogLineList
             fillViewport
@@ -365,23 +358,23 @@ export function ProjectLogViewer({
             markedKey={contextLine}
             newLogsInLiveTail={
               watch.available
-                ? { onSwitch: () => setLive(true), onDismiss: watch.dismiss }
+                ? {
+                    onSwitch: () => onRangeChange(LIVE_TAIL),
+                    onDismiss: watch.dismiss,
+                  }
                 : undefined
             }
           />
         </div>
-        {liveSupported ? (
-          <StreamStatus live={live} status={stream.status} />
-        ) : null}
+        {tailing ? <StreamStatus status={stream.status} /> : null}
       </div>
     );
   }
 
   return (
     <LogThemeFrame className="space-y-4" maximized={explorer.maximized}>
-      {/* A phone gets [search] then [range | Live | Maximize | Options];
-          the skeleton (ProjectLogViewPageSkeleton) holds the same two
-          rows. */}
+      {/* A phone gets [search] then [range | Maximize | Options]; the
+          skeleton (ProjectLogViewPageSkeleton) holds the same two rows. */}
       <div className="flex flex-wrap items-center gap-3 max-sm:gap-2">
         <div className="relative min-w-48 flex-1 max-sm:min-w-0 max-sm:basis-full">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -397,19 +390,13 @@ export function ProjectLogViewer({
             className="h-9 pl-8"
           />
         </div>
-        <RangeSelect
+        <LogRangeSelect
           range={range}
           onRangeChange={onRangeChange}
           ariaLabel={t("logs.rangeLabel")}
           bound={rangeBound}
           triggerClassName="max-sm:w-auto max-sm:min-w-0 max-sm:flex-1"
-        />
-        <LiveToggle
-          id="project-logs-live-toggle"
-          checked={live && liveSupported}
-          disabled={!hydrated || !liveSupported}
-          onCheckedChange={setLive}
-          describedBy={liveSupported ? undefined : liveOffReasonId}
+          liveTailDisabled={planRefused}
         />
         <LogExplorerActions
           explorer={explorer}
@@ -438,21 +425,6 @@ export function ProjectLogViewer({
           </div>
         ) : null}
       </div>
-      <p
-        id={liveSupported ? undefined : liveOffReasonId}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground"
-      >
-        {liveSupported ? (
-          t("logs.rangeHistoryNote")
-        ) : (
-          <>
-            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-            {filtersLiveSupported
-              ? t("logs.liveWindowClosed")
-              : t("logs.liveUnsupported")}
-          </>
-        )}
-      </p>
       {body}
     </LogThemeFrame>
   );

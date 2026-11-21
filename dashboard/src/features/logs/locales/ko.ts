@@ -5,11 +5,10 @@ const koLogs: Record<string, TranslationEntry> = {
     message: "로그 기록 범위",
     description: "Accessible label for the relative log-history range controls",
   },
-  "logs.rangeHistoryNote": {
-    message:
-      "범위가 기록을 제한합니다. 실시간 모드에서는 새 줄이 도착하는 대로 추가됩니다.",
+  "logs.rangeLiveTail": {
+    message: "실시간 보기",
     description:
-      "Explains how the bounded history window interacts with live tail",
+      "Log explorers (w3/m537): the first entry of the time range picker, Render's Live tail; picking it streams new lines, and every other range is a snapshot",
   },
   "logs.retentionWindow_other": {
     message: "{plan} 요금제에서는 로그를 {count}일 동안 보관합니다.",
@@ -105,15 +104,9 @@ const koLogs: Record<string, TranslationEntry> = {
   },
   "logs.liveUnsupported": {
     message:
-      "실시간 보기가 꺼져 있습니다. 메서드, 상태, 경로, 호스트는 요청 로그를 필터링하므로 이 조건으로는 애플리케이션 로그를 실시간으로 볼 수 없습니다.",
+      "실시간 보기를 사용할 수 없습니다. 메서드, 상태, 경로, 호스트는 요청 로그를 필터링하므로 이 조건으로는 애플리케이션 로그를 실시간으로 볼 수 없습니다.",
     description:
       "Note when the chosen log type cannot carry an active filter, so live tail is off (a request filter on app logs)",
-  },
-  "logs.liveWindowClosed": {
-    message:
-      "실시간 보기가 꺼져 있습니다. 이 사용자 지정 범위는 이미 끝났으므로 새 줄이 도착할 수 없습니다.",
-    description:
-      "Note when the selected custom time range ended before it was applied, so live tail is off",
   },
   "logs.storeRequiredTitle": {
     message: "요청 로그에는 로그 저장소가 필요합니다",
@@ -139,10 +132,6 @@ const koLogs: Record<string, TranslationEntry> = {
   "logs.searchPlaceholder": {
     message: "로그 검색",
     description: "Placeholder for the log search box (text filter)",
-  },
-  "logs.live": {
-    message: "실시간",
-    description: "Label for the live-tail on/off toggle",
   },
   "logs.linesLabel": {
     message: "로그 줄",
@@ -183,7 +172,7 @@ const koLogs: Record<string, TranslationEntry> = {
   "logs.newLogsInLiveTail": {
     message: "실시간 보기에 새 로그",
     description:
-      "Log list (w3/m528): Render's button on a paused explorer when a new line arrived; clicking it turns Live on",
+      "Log list (w3/m528): Render's button on a preset range when a new line arrived; clicking it picks Live tail (w3/m537)",
   },
   "logs.switchToLiveTail": {
     message: "실시간 보기로 전환",
@@ -291,10 +280,6 @@ const koLogs: Record<string, TranslationEntry> = {
     message: "실시간 — 새 줄을 스트리밍하는 중",
     description: "Status under the log list when the SSE tail is connected",
   },
-  "logs.paused": {
-    message: "실시간 보기 일시 중지됨",
-    description: "Status under the log list when live tail is toggled off",
-  },
   "logs.disconnected": {
     message: "실시간 보기 연결이 끊어졌습니다. 다시 연결하는 중…",
     description: "Banner when the SSE stream drops",
@@ -340,14 +325,10 @@ const koLogs: Record<string, TranslationEntry> = {
     description: "Logs tab: button closing the Filters panel",
   },
   "logs.emptyBodyRange": {
-    message: "더 긴 시간 범위를 선택하거나 실시간을 켜서 새 줄을 확인하세요.",
+    message:
+      "더 긴 시간 범위를 선택하거나 실시간 보기로 전환해 새 줄을 확인하세요.",
     description:
       "Logs tab: body when the chosen range holds no lines, under logs.emptyTitle \u2014 what to try next",
-  },
-  "logs.turnOnLive": {
-    message: "실시간 켜기",
-    description:
-      "Logs tab: button in the empty state that switches the live tail on",
   },
   "logs.clearFilters": {
     message: "필터 지우기",

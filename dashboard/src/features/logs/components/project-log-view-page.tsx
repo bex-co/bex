@@ -1,8 +1,9 @@
 import { useCallback } from "react";
 import { ProjectLogViewPageSkeleton } from "@/common/components/route-skeletons";
-import { DEFAULT_LOG_RANGE } from "../lib/log-search";
+import { DEFAULT_LOG_RANGE } from "../lib/log-range";
 import {
   projectLogContextHref,
+  projectLogRange,
   type ProjectLogSearch,
 } from "../lib/project-log-search";
 import type { LogLine } from "../types";
@@ -15,8 +16,8 @@ import { ProjectViewPage } from "./project-view-page";
 /**
  * A project's Application Logs or Request Logs view (w3/m505): Render's
  * `/project/{prj}/observability/logs/{application|request}?savedSearchId=…&r=…`
- * page, the log explorer over every resource the view reads, at the Logs
- * tab's one-hour default when neither the URL nor the view names a range.
+ * page, the log explorer over every resource the view reads, on Last hour
+ * when neither the URL nor the view names a range, as Render's (w3/m537).
  */
 export function ProjectLogViewPage({
   projectId,
@@ -45,16 +46,15 @@ export function ProjectLogViewPage({
       viewType={viewType}
       search={search}
       onSearchChange={onSearchChange}
-      defaultRange={DEFAULT_LOG_RANGE}
       skeleton={<ProjectLogViewPageSkeleton />}
       iconName="ScrollText"
     >
-      {({ viewId, scope, range, onRangeChange }) => (
+      {({ viewId, scope, viewRange, onRangeChange }) => (
         <ProjectLogViewer
           key={viewId}
           scope={scope}
           logType={viewLogType(viewType)}
-          range={range}
+          range={projectLogRange(search, viewRange ?? DEFAULT_LOG_RANGE)}
           onRangeChange={onRangeChange}
           contextLine={search.contextLine}
           contextHref={contextHref}

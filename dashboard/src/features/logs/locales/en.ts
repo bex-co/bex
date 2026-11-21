@@ -5,11 +5,10 @@ const enLogs: Record<string, TranslationEntry> = {
     message: "Log history range",
     description: "Accessible label for the relative log-history range controls",
   },
-  "logs.rangeHistoryNote": {
-    message:
-      "The range limits history. Live mode appends new lines as they arrive.",
+  "logs.rangeLiveTail": {
+    message: "Live tail",
     description:
-      "Explains how the bounded history window interacts with live tail",
+      "Log explorers (w3/m537): the first entry of the time range picker, Render's Live tail; picking it streams new lines, and every other range is a snapshot",
   },
   "logs.retentionWindow_one": {
     message: "Logs are kept for {count} day on the {plan} plan.",
@@ -114,15 +113,9 @@ const enLogs: Record<string, TranslationEntry> = {
   },
   "logs.liveUnsupported": {
     message:
-      "Live tail is off — method, status, path and host filter request logs, so app logs can't be tailed with them.",
+      "Live tail is unavailable — method, status, path and host filter request logs, so app logs can't be tailed with them.",
     description:
       "Note when the chosen log type cannot carry an active filter, so live tail is off (a request filter on app logs)",
-  },
-  "logs.liveWindowClosed": {
-    message:
-      "Live tail is off — this custom range has already ended, so no new lines can arrive in it.",
-    description:
-      "Note when the selected custom time range ended before it was applied, so live tail is off",
   },
   "logs.storeRequiredTitle": {
     message: "Request logs need the log store",
@@ -148,10 +141,6 @@ const enLogs: Record<string, TranslationEntry> = {
   "logs.searchPlaceholder": {
     message: "Search logs",
     description: "Placeholder for the log search box (text filter)",
-  },
-  "logs.live": {
-    message: "Live",
-    description: "Label for the live-tail on/off toggle",
   },
   "logs.linesLabel": {
     message: "Log lines",
@@ -198,7 +187,7 @@ const enLogs: Record<string, TranslationEntry> = {
   "logs.newLogsInLiveTail": {
     message: "New logs in Live Tail",
     description:
-      "Log list (w3/m528): Render's button on a paused explorer when a new line arrived; clicking it turns Live on",
+      "Log list (w3/m528): Render's button on a preset range when a new line arrived; clicking it picks Live tail (w3/m537)",
   },
   "logs.switchToLiveTail": {
     message: "Switch to Live Tail",
@@ -305,10 +294,6 @@ const enLogs: Record<string, TranslationEntry> = {
     message: "Live — streaming new lines",
     description: "Status under the log list when the SSE tail is connected",
   },
-  "logs.paused": {
-    message: "Live tail paused",
-    description: "Status under the log list when live tail is toggled off",
-  },
   "logs.disconnected": {
     message: "Live tail disconnected — reconnecting…",
     description: "Banner when the SSE stream drops",
@@ -354,14 +339,10 @@ const enLogs: Record<string, TranslationEntry> = {
     description: "Logs tab: button closing the Filters panel",
   },
   "logs.emptyBodyRange": {
-    message: "Try a longer time range, or turn on Live to watch for new lines.",
+    message:
+      "Try a longer time range, or pick Live tail to watch for new lines.",
     description:
       "Logs tab: body when the chosen range holds no lines, under logs.emptyTitle \u2014 what to try next",
-  },
-  "logs.turnOnLive": {
-    message: "Turn on Live",
-    description:
-      "Logs tab: button in the empty state that switches the live tail on",
   },
   "logs.clearFilters": {
     message: "Clear filters",

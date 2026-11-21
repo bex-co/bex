@@ -7,15 +7,15 @@
 
 /** The filter bar's rows, and on a phone its dock under the top bar: the
  *  page's own background behind it, out to the column's edges. A phone's
- *  grid is [type | search | Options] over [range | Filters and Live]. */
+ *  grid is [type | search | Options] over [range | Filters]. */
 export const LOG_FILTER_BAR_CLASS =
   "flex flex-wrap items-center gap-3 max-sm:sticky max-sm:top-0 max-sm:z-20 max-sm:-mx-4 max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] max-sm:gap-2 max-sm:bg-background max-sm:px-4 max-sm:py-2";
 
-/** Filters and Live: in the bar's flow on a wide screen, the last two
- *  columns of a phone's second row, so its rows share their column edges
- *  and the word Live never wraps. */
-export const LOG_FILTER_TAIL_CLASS =
-  "contents max-sm:col-span-2 max-sm:flex max-sm:min-w-0 max-sm:items-center max-sm:gap-2";
+/** The Filters button: in the bar's flow on a wide screen, the last two
+ *  columns of a phone's second row, so its rows share their column edges.
+ *  `w-auto` lets the pending frame's fixed-width slot stretch there too. */
+export const LOG_FILTERS_BUTTON_CLASS =
+  "gap-1.5 max-sm:col-span-2 max-sm:w-auto max-sm:min-w-0";
 
 /** An explorer's Maximize and Options buttons (w3/m509), side by side. */
 export const LOG_ACTIONS_CLASS = "flex shrink-0 items-center gap-2";
@@ -32,10 +32,6 @@ export const LOG_ICON_BUTTON_CLASS =
 /** The type and range selects: narrower until 1280, so search gets room. */
 export const LOG_SELECT_WIDTH_CLASS =
   "w-32 xl:w-40 max-sm:w-auto max-sm:min-w-0";
-
-/** The Live control's row: 32px, or a 44px touch target. */
-export const LIVE_TOGGLE_CLASS =
-  "inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-2 text-sm whitespace-nowrap max-lg:min-h-11 pointer-coarse:min-h-11";
 
 /**
  * A log explorer maximized (Render's Maximize, `M`, w3/m509): a full-screen

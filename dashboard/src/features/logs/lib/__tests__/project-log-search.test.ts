@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   parseProjectLogSearch,
+  parseProjectMetricsSearch,
   projectLogRange,
   projectLogRangeSearch,
+  projectMetricsRange,
   viewTimeRange,
 } from "../project-log-search";
-import { DEFAULT_LOG_RANGE } from "../log-search";
+import { DEFAULT_LOG_RANGE, LIVE_TAIL } from "../log-range";
 import {
   makeCustomRange,
   parseRangePreset,
@@ -101,5 +103,39 @@ describe("project log view search", () => {
       }),
     ).toBeNull();
     expect(viewTimeRange(undefined)).toBeNull();
+  });
+});
+
+// Live tail is a range (w3/m537), Render's `r=live`.
+describe("a project view's Live tail", () => {
+  it("reads and writes r=live, and lets a preset leave it", () => {
+    const search = parseProjectLogSearch({ savedSearchId: "svs-1", r: "live" });
+    expect(search.r).toBe("live");
+    expect(projectLogRange(search, DEFAULT_LOG_RANGE)).toEqual(LIVE_TAIL);
+    expect(projectLogRangeSearch(LIVE_TAIL)).toStrictEqual({
+      r: "live",
+      rangeStart: undefined,
+      rangeEnd: undefined,
+      contextLine: undefined,
+    });
+  });
+
+  it("opens on the view's saved range, else Last hour, when the URL names none", () => {
+    const none = parseProjectLogSearch({ savedSearchId: "svs-1" });
+    expect(projectLogRange(none, DEFAULT_LOG_RANGE).id).toBe("1h");
+    expect(projectLogRange(none, parseRangePreset("7d")!).id).toBe("7d");
+  });
+
+  it("keeps Live tail out of a Service Metrics view", () => {
+    const search = parseProjectMetricsSearch({
+      savedSearchId: "svs-1",
+      r: "live",
+    });
+    expect(search.r).toBeUndefined();
+    expect(
+      projectMetricsRange({ ...search, r: "live" }, parseRangePreset("12h")!)
+        .id,
+    ).toBe("12h");
+    expect(parseProjectMetricsSearch({ r: "4h" }).r).toBe("4h");
   });
 });

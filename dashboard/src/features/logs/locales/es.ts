@@ -5,11 +5,10 @@ const esLogs: Record<string, TranslationEntry> = {
     message: "Intervalo del historial de logs",
     description: "Accessible label for the relative log-history range controls",
   },
-  "logs.rangeHistoryNote": {
-    message:
-      "El intervalo limita el historial. El modo en vivo añade las líneas nuevas a medida que llegan.",
+  "logs.rangeLiveTail": {
+    message: "En vivo",
     description:
-      "Explains how the bounded history window interacts with live tail",
+      "Log explorers (w3/m537): the first entry of the time range picker, Render's Live tail; picking it streams new lines, and every other range is a snapshot",
   },
   "logs.retentionWindow_one": {
     message: "Los logs se conservan {count} día en el plan {plan}.",
@@ -124,15 +123,9 @@ const esLogs: Record<string, TranslationEntry> = {
   },
   "logs.liveUnsupported": {
     message:
-      "El seguimiento en vivo está desactivado: el método, el estado, la ruta y el host filtran logs de solicitudes, por lo que los logs de la aplicación no se pueden seguir con ellos.",
+      "El seguimiento en vivo no está disponible: el método, el estado, la ruta y el host filtran logs de solicitudes, por lo que los logs de la aplicación no se pueden seguir con ellos.",
     description:
       "Note when the chosen log type cannot carry an active filter, so live tail is off (a request filter on app logs)",
-  },
-  "logs.liveWindowClosed": {
-    message:
-      "El seguimiento en vivo está desactivado: este intervalo personalizado ya terminó, por lo que no pueden llegar líneas nuevas.",
-    description:
-      "Note when the selected custom time range ended before it was applied, so live tail is off",
   },
   "logs.storeRequiredTitle": {
     message: "Los logs de solicitudes necesitan el almacén de logs",
@@ -158,10 +151,6 @@ const esLogs: Record<string, TranslationEntry> = {
   "logs.searchPlaceholder": {
     message: "Buscar en los logs",
     description: "Placeholder for the log search box (text filter)",
-  },
-  "logs.live": {
-    message: "En vivo",
-    description: "Label for the live-tail on/off toggle",
   },
   "logs.linesLabel": {
     message: "Líneas de log",
@@ -213,7 +202,7 @@ const esLogs: Record<string, TranslationEntry> = {
   "logs.newLogsInLiveTail": {
     message: "Hay logs nuevos en vivo",
     description:
-      "Log list (w3/m528): Render's button on a paused explorer when a new line arrived; clicking it turns Live on",
+      "Log list (w3/m528): Render's button on a preset range when a new line arrived; clicking it picks Live tail (w3/m537)",
   },
   "logs.switchToLiveTail": {
     message: "Cambiar a En vivo",
@@ -322,10 +311,6 @@ const esLogs: Record<string, TranslationEntry> = {
     message: "En vivo: recibiendo líneas nuevas",
     description: "Status under the log list when the SSE tail is connected",
   },
-  "logs.paused": {
-    message: "Seguimiento en vivo en pausa",
-    description: "Status under the log list when live tail is toggled off",
-  },
   "logs.disconnected": {
     message: "Seguimiento en vivo desconectado: reconectando…",
     description: "Banner when the SSE stream drops",
@@ -372,14 +357,9 @@ const esLogs: Record<string, TranslationEntry> = {
   },
   "logs.emptyBodyRange": {
     message:
-      "Prueba un intervalo más largo o activa En vivo para ver las líneas nuevas.",
+      "Prueba un intervalo más largo o cambia a En vivo para ver las líneas nuevas.",
     description:
       "Logs tab: body when the chosen range holds no lines, under logs.emptyTitle \u2014 what to try next",
-  },
-  "logs.turnOnLive": {
-    message: "Activar En vivo",
-    description:
-      "Logs tab: button in the empty state that switches the live tail on",
   },
   "logs.clearFilters": {
     message: "Borrar filtros",

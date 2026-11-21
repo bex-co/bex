@@ -4,20 +4,20 @@ import { createFileRoute } from "@tanstack/react-router";
 import { LogViewer } from "@/features/logs/components/log-viewer";
 import { NonStaticRoute } from "@/features/services/components/non-static-route";
 import {
-  isCustomRange,
-  type RangeSelection,
-} from "@/features/metrics/lib/range";
-import {
   CLEARED_LOG_SEARCH,
   logFiltersFromSearch,
   logFiltersToSearch,
-  logRangeFromSearch,
   logSearchEquals,
   parseLogSearch,
   serviceLineShell,
   serviceLogContextHref,
+  serviceLogRange,
   type LogSearch,
 } from "@/features/logs/lib/log-search";
+import {
+  logRangeToSearch,
+  type LogRange,
+} from "@/features/logs/lib/log-range";
 import type { LogFilters, LogLine } from "@/features/logs/types";
 import { useServer } from "@/features/services/hooks/use-server";
 import { useServiceInstances } from "@/features/services/hooks/use-service-instances";
@@ -74,28 +74,25 @@ function RouteComponent() {
     >
       <ServiceLogsPage
         serviceId={serviceId}
-        range={logRangeFromSearch(search)}
+        range={serviceLogRange(search)}
         onRangeChange={(range) =>
           write({
             ...search,
-            range: range.id,
-            rangeStart: isCustomRange(range) ? range.startTime : undefined,
-            rangeEnd: isCustomRange(range) ? range.endTime : undefined,
+            ...logRangeToSearch(range),
             // A View in context mark belongs to the range it opened with.
             contextLine: undefined,
           })
         }
         contextLine={search.contextLine}
         urlFilters={logFiltersFromSearch(search)}
-        urlLive={search.live !== 0}
-        onFiltersChange={(filters, live) => {
+        onFiltersChange={(filters) => {
           const next: LogSearch = {
-            // A filter change preserves whatever range is active — preset id or
-            // the custom window's start/end (w5/m56).
+            // A filter change preserves whatever range is active — Live tail,
+            // a preset id or the custom window's start/end (w5/m56).
             range: search.range,
             rangeStart: search.rangeStart,
             rangeEnd: search.rangeEnd,
-            ...logFiltersToSearch(filters, live),
+            ...logFiltersToSearch(filters),
           };
           // A View in context mark (w3/m528) leaves with the first change to
           // what the view shows; a report of the state the URL already names
@@ -121,16 +118,14 @@ export function ServiceLogsPage({
   range,
   onRangeChange,
   urlFilters,
-  urlLive,
   onFiltersChange,
   contextLine,
 }: {
   serviceId: string;
-  range?: RangeSelection;
-  onRangeChange?: (range: RangeSelection) => void;
+  range?: LogRange;
+  onRangeChange?: (range: LogRange) => void;
   urlFilters?: LogFilters;
-  urlLive?: boolean;
-  onFiltersChange?: (filters: LogFilters, live: boolean) => void;
+  onFiltersChange?: (filters: LogFilters) => void;
   contextLine?: string;
 }) {
   // A worker, cron job or private service receives no public HTTP requests,
@@ -165,7 +160,6 @@ export function ServiceLogsPage({
       range={range}
       onRangeChange={onRangeChange}
       urlFilters={urlFilters}
-      urlLive={urlLive}
       onFiltersChange={onFiltersChange}
       servesRequests={service == null || publiclyRoutable(service.type)}
       contextLine={contextLine}

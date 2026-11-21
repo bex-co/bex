@@ -8,7 +8,6 @@ import {
   SelectValue,
 } from "@/common/components/ui/select.tsx";
 import { Input } from "@/common/components/ui/input.tsx";
-import { Switch } from "@/common/components/ui/switch.tsx";
 import { XIcon } from "lucide-react";
 import {
   Sheet,
@@ -21,12 +20,10 @@ import {
 } from "@/common/components/ui/sheet";
 import { useIsMobile } from "@/common/hooks/use-mobile";
 import {
-  LIVE_TOGGLE_CLASS,
   LOG_FILTER_BAR_CLASS,
-  LOG_FILTER_TAIL_CLASS,
+  LOG_FILTERS_BUTTON_CLASS,
   LOG_SELECT_WIDTH_CLASS,
 } from "./log-toolbar-layout";
-import { Label } from "@/common/components/ui/label.tsx";
 import { Badge } from "@/common/components/ui/badge";
 import { RemovableChip } from "@/common/components/removable-chip";
 import {
@@ -38,9 +35,8 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import type { en } from "@/i18n";
 import { Button } from "@/common/components/ui/button";
-import { RangeSelect } from "@/features/metrics/components/range-select";
-import { type RangeSelection } from "@/features/metrics/lib/range";
-import { DEFAULT_LOG_RANGE } from "../lib/log-search";
+import { DEFAULT_LOG_RANGE, type LogRange } from "../lib/log-range";
+import { LogRangeSelect } from "./log-range-select";
 import {
   useLogLabelDiscovery,
   type LogLabelDiscovery,
@@ -66,8 +62,8 @@ import {
 // Render's Logs filter row (design source .pm/w5/m6/README.md + the request/
 // structured filters of .pm/w5/008, simplified to Render's minimal default in
 // w7/m42): the always-visible primary toolbar carries only what Render's does —
-// the type dropdown, the wide search box, the range presets, and the live
-// toggle. The five structured filters (level/method/status/instance/path) live
+// the type dropdown, the wide search box and the range picker, Live tail
+// first (w3/m537). The five structured filters (level/method/status/instance/path) live
 // behind one "Filters" popover with an active-count badge, and any active
 // structured filter surfaces as a removable chip so nothing is hidden when set.
 // Every value bex-api honors (w3/m8); the dropdowns discover real observed
@@ -124,22 +120,19 @@ interface LogFilterBarProps {
   resource: string;
   filters: LogFilters;
   onChange: (patch: Partial<LogFilters>) => void;
-  live: boolean;
-  onLiveChange: (live: boolean) => void;
   /**
-   * False when a store-only filter (request type, level/method/status/path) is
-   * active — the live tail reads pod stdout and structurally can't serve those,
-   * so the toggle is disabled with a hint (docs/ADR010-observability.md).
+   * True where bex's tail cannot run: a filter it cannot follow, or a plan
+   * without request logs. The picker's Live tail is disabled.
    */
-  liveSupported: boolean;
+  liveTailDisabled?: boolean;
   /**
-   * While the toggle is disabled, the id of the visible text saying why: the
-   * switch's description, as a hover title can't be reached by keyboard or
-   * screen reader (w4/556).
+   * While Live tail is disabled for its filters, the id of the visible text
+   * saying why: its description, as a hover title can't be reached by
+   * keyboard or screen reader (w4/556).
    */
-  unsupportedReasonId?: string;
-  range?: RangeSelection;
-  onRangeChange?: (range: RangeSelection) => void;
+  liveTailReasonId?: string;
+  range?: LogRange;
+  onRangeChange?: (range: LogRange) => void;
   /**
    * False for a service that receives no public HTTP requests (a worker,
    * cron job or private service): no request log type and no request
@@ -157,10 +150,8 @@ export function LogFilterBar({
   resource,
   filters,
   onChange,
-  live,
-  onLiveChange,
-  liveSupported,
-  unsupportedReasonId,
+  liveTailDisabled,
+  liveTailReasonId,
   range = DEFAULT_LOG_RANGE,
   onRangeChange = () => undefined,
   servesRequests = true,
@@ -218,11 +209,7 @@ export function LogFilterBar({
     </Button>
   );
   const filtersTrigger = (
-    <Button
-      size="sm"
-      variant="outline"
-      className="gap-1.5 max-sm:min-w-0 max-sm:flex-1"
-    >
+    <Button size="sm" variant="outline" className={LOG_FILTERS_BUTTON_CLASS}>
       <SlidersHorizontal className="h-4 w-4 shrink-0" />
       <span className="truncate">{t("logs.filtersButton")}</span>
       {active.length > 0 ? (
@@ -297,7 +284,7 @@ export function LogFilterBar({
   );
 
   // A phone gets two even rows in reading order, [type | search | Options]
-  // then [range | Filters | Live], instead of four ragged ones that pushed
+  // then [range | Filters], instead of four ragged ones that pushed
   // the first log line past the middle of the screen. It docks under the top bar
   // as the service header scrolls away, and the log fills the screen below
   // it (see useLogPanelHeight).
@@ -340,82 +327,74 @@ export function LogFilterBar({
         />
       </div>
 
-      <RangeSelect
+      <LogRangeSelect
         range={range}
         onRangeChange={onRangeChange}
         ariaLabel={t("logs.rangeLabel")}
         bound={rangeBound}
         triggerClassName={LOG_SELECT_WIDTH_CLASS}
+        liveTailDisabled={liveTailDisabled}
+        liveTailReasonId={liveTailReasonId}
       />
 
-      <div className={LOG_FILTER_TAIL_CLASS}>
-        {isPhone ? (
-          // A phone gets a bottom sheet: every field in view at once, rather
-          // than a popover under a low trigger that showed three of six.
-          <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-            <SheetTrigger asChild>{filtersTrigger}</SheetTrigger>
-            <SheetContent
-              side="bottom"
-              data-touch-region=""
-              aria-describedby={undefined}
-              // The sheet's built-in close sits apart from the title; ours shares
-              // the title's row.
-              className="max-h-[85dvh] gap-0 rounded-t-xl p-0 [&>button:last-child]:hidden"
-            >
-              <SheetHeader className="flex-row items-center justify-between border-b px-4 py-2">
-                <SheetTitle>{t("logs.filtersButton")}</SheetTitle>
-                <SheetClose asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={t("common.close")}
-                  >
-                    <XIcon className="size-4" />
-                  </Button>
-                </SheetClose>
-              </SheetHeader>
-              <div className="space-y-3 overflow-y-auto overscroll-contain px-4 py-4">
-                {filterFields}
-              </div>
-              <SheetFooter className="flex-row border-t px-4 py-3">
-                {clearButton}
-                {doneButton}
-              </SheetFooter>
-            </SheetContent>
-          </Sheet>
-        ) : (
-          <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
-            <PopoverTrigger asChild>{filtersTrigger}</PopoverTrigger>
-            <PopoverContent
-              align="end"
-              // A touch region of its own (it is portalled outside the
-              // page's): its selects and fields take the touch height on a
-              // touch screen.
-              data-touch-region=""
-              collisionPadding={16}
-              className="max-h-[var(--radix-popover-content-available-height)] w-72 space-y-3 overflow-y-auto overscroll-contain pb-0"
-              aria-label={t("logs.filtersButton")}
-            >
-              <p className="text-sm font-medium">{t("logs.filtersButton")}</p>
+      {isPhone ? (
+        // A phone gets a bottom sheet: every field in view at once, rather
+        // than a popover under a low trigger that showed three of six.
+        <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <SheetTrigger asChild>{filtersTrigger}</SheetTrigger>
+          <SheetContent
+            side="bottom"
+            data-touch-region=""
+            aria-describedby={undefined}
+            // The sheet's built-in close sits apart from the title; ours shares
+            // the title's row.
+            className="max-h-[85dvh] gap-0 rounded-t-xl p-0 [&>button:last-child]:hidden"
+          >
+            <SheetHeader className="flex-row items-center justify-between border-b px-4 py-2">
+              <SheetTitle>{t("logs.filtersButton")}</SheetTitle>
+              <SheetClose asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t("common.close")}
+                >
+                  <XIcon className="size-4" />
+                </Button>
+              </SheetClose>
+            </SheetHeader>
+            <div className="space-y-3 overflow-y-auto overscroll-contain px-4 py-4">
               {filterFields}
-              {/* A way out that is always in reach, however far the fields
+            </div>
+            <SheetFooter className="flex-row border-t px-4 py-3">
+              {clearButton}
+              {doneButton}
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <PopoverTrigger asChild>{filtersTrigger}</PopoverTrigger>
+          <PopoverContent
+            align="end"
+            // A touch region of its own (it is portalled outside the
+            // page's): its selects and fields take the touch height on a
+            // touch screen.
+            data-touch-region=""
+            collisionPadding={16}
+            className="max-h-[var(--radix-popover-content-available-height)] w-72 space-y-3 overflow-y-auto overscroll-contain pb-0"
+            aria-label={t("logs.filtersButton")}
+          >
+            <p className="text-sm font-medium">{t("logs.filtersButton")}</p>
+            {filterFields}
+            {/* A way out that is always in reach, however far the fields
                 run: pinned under them, over the fields scrolling past. */}
-              <div className="sticky bottom-0 -mx-4 flex gap-2 border-t bg-popover px-4 py-3">
-                {clearButton}
-                {doneButton}
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
-
-        <LiveToggle
-          id="logs-live-toggle"
-          checked={live && liveSupported}
-          disabled={!liveSupported}
-          onCheckedChange={onLiveChange}
-          describedBy={unsupportedReasonId}
-        />
-      </div>
+            <div className="sticky bottom-0 -mx-4 flex gap-2 border-t bg-popover px-4 py-3">
+              {clearButton}
+              {doneButton}
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
 
       {actions}
 
@@ -492,37 +471,5 @@ function SelectFilterRow({
         </SelectContent>
       </Select>
     </FilterRow>
-  );
-}
-
-/** The Live switch the service and datastore log viewers share. */
-export function LiveToggle({
-  id,
-  checked,
-  disabled,
-  onCheckedChange,
-  describedBy,
-}: {
-  id: string;
-  checked: boolean;
-  disabled?: boolean;
-  onCheckedChange: (checked: boolean) => void;
-  /** The id of visible text describing the switch, e.g. why it is off. */
-  describedBy?: string;
-}) {
-  const { t } = useTranslations();
-  // One target, switch and word together: the gap between them was a dead
-  // strip, and the word a separate small target.
-  return (
-    <Label className={LIVE_TOGGLE_CLASS}>
-      <Switch
-        id={id}
-        checked={checked}
-        disabled={disabled}
-        onCheckedChange={onCheckedChange}
-        aria-describedby={describedBy}
-      />
-      {t("logs.live")}
-    </Label>
   );
 }

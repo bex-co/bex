@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import { ProjectLogViewer } from "../project-log-viewer";
 import type { UseLogHistoryResult } from "../../hooks/use-log-history";
@@ -11,7 +11,13 @@ import {
   type LogLine,
   type ProjectLogScope,
 } from "../../types";
-import { DEFAULT_LOG_RANGE } from "../../lib/log-search";
+import {
+  DEFAULT_LOG_RANGE,
+  LIVE_TAIL,
+  type LogRange,
+} from "../../lib/log-range";
+import { logContextSearch } from "../../lib/log-search";
+import { parseCustomRange } from "@/features/metrics/lib/range";
 import { setupVirtualGeometry } from "@/test/virtual-geometry";
 import { mockCapabilities } from "@/test/mocks/capabilities";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
@@ -108,16 +114,34 @@ function line(over: Partial<LogLine>): LogLine {
   };
 }
 
-function viewer(logType: typeof LOG_TYPE_APP | typeof LOG_TYPE_REQUEST) {
-  return render(
+// The view's page owns the range (the URL's `r`); this holds it the same way.
+function Viewer({
+  logType,
+  initial,
+}: {
+  logType: typeof LOG_TYPE_APP | typeof LOG_TYPE_REQUEST;
+  initial: LogRange;
+}) {
+  const [range, setRange] = useState(initial);
+  return (
     <ProjectLogViewer
       scope={SCOPE}
       logType={logType}
-      range={DEFAULT_LOG_RANGE}
-      onRangeChange={() => undefined}
-    />,
+      range={range}
+      onRangeChange={setRange}
+    />
   );
 }
+
+function viewer(
+  logType: typeof LOG_TYPE_APP | typeof LOG_TYPE_REQUEST,
+  range: LogRange = DEFAULT_LOG_RANGE,
+) {
+  return render(<Viewer logType={logType} initial={range} />);
+}
+
+const rangePicker = () =>
+  screen.getByRole("combobox", { name: "Log history range" });
 
 const resources = [
   {
@@ -147,7 +171,7 @@ beforeEach(() => {
 
 describe("ProjectLogViewer", () => {
   it("reads the view's scope with its log type, history and tail alike", () => {
-    viewer(LOG_TYPE_REQUEST);
+    viewer(LOG_TYPE_REQUEST, LIVE_TAIL);
     const [resource, filters, , , , scope] = useHistorySpy.mock.calls.at(-1)!;
     expect(resource).toBe("");
     expect(filters.type).toBe("request");
@@ -265,10 +289,12 @@ describe("ProjectLogViewer", () => {
         },
       ],
     } as never);
-    viewer(LOG_TYPE_REQUEST);
+    viewer(LOG_TYPE_REQUEST, LIVE_TAIL);
     expect(
       screen.getByText("HTTP request logs require the Pro plan"),
     ).toBeInTheDocument();
+    // A Live tail link reads Last hour there, with Live tail disabled.
+    expect(rangePicker()).toHaveTextContent("Last hour");
     expect(screen.getByRole("link", { name: "Open Billing" })).toHaveAttribute(
       "href",
       "/billing",
@@ -408,32 +434,29 @@ describe("ProjectLogViewer", () => {
     },
   );
 
-  // The Live control sets the toolbar's height: 32px on a desktop, a 44px
-  // touch target below lg, where it shares a phone's second row with the
-  // range. Production's walk at 390 (w3/m505) found the pending frame's Live
-  // row 20px tall, so the ready view landed 12px lower.
   it("clears the live tail on Shift+L and maximizes from its toolbar (w3/m509)", () => {
     historyState.lines = [line({ key: "a", message: "from the web" })];
     historyState.resources = resources;
-    const { container } = viewer(LOG_TYPE_APP);
+    const { container } = viewer(LOG_TYPE_APP, LIVE_TAIL);
     fireEvent.keyDown(window, { key: "L", shiftKey: true });
     expect(screen.getByText("Logs cleared")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Maximize" }));
     expect(container.firstElementChild?.className).toContain("fixed inset-0");
   });
 
-  it("clears the live tail from Options ▸ Clear logs, and lists none once paused (w3/092)", async () => {
+  it("clears the live tail from Options ▸ Clear logs, and lists none on a preset (w3/092)", async () => {
     const user = userEvent.setup();
     historyState.lines = [line({ key: "a", message: "from the web" })];
     historyState.resources = resources;
-    viewer(LOG_TYPE_APP);
+    viewer(LOG_TYPE_APP, LIVE_TAIL);
     const options = () =>
       user.click(screen.getByRole("button", { name: "Log options" }));
     await options();
     await user.click(screen.getByRole("menuitem", { name: /Clear logs/ }));
     expect(screen.getByText("Logs cleared")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("switch", { name: /live/i }));
+    await user.click(rangePicker());
+    await user.click(screen.getByRole("option", { name: "Last hour" }));
     expect(screen.getByText("from the web")).toBeInTheDocument();
     await options();
     expect(screen.getByRole("menuitem", { name: /Copy logs/ })).toBeVisible();
@@ -458,21 +481,21 @@ describe("ProjectLogViewer", () => {
     );
   });
 
-  it("reserves the ready Live control's height in the pending frame at every width", () => {
-    const liveRowHeights = (root: HTMLElement) =>
-      within(root)
-        .getByRole("switch", { hidden: true })
-        .closest("label")
-        ?.className.split(/\s+/)
-        .filter((name) => /(^|:)min-h-/.test(name))
-        .sort();
-    const ready = liveRowHeights(viewer(LOG_TYPE_APP).container);
-    expect(ready).toEqual(
-      expect.arrayContaining(["min-h-8", "max-lg:min-h-11"]),
-    );
+  // Live tail is a range (w3/m537): neither the toolbar nor its pending
+  // frame holds a Live switch, and the pending row is the ready one's
+  // [search | range | Maximize | Options].
+  it("holds no Live switch, ready or pending, and lists Live tail first in the range", async () => {
+    const user = userEvent.setup();
+    const ready = viewer(LOG_TYPE_APP).container;
+    const pending = render(<ProjectLogViewPageSkeleton />).container;
+    for (const root of [ready, pending]) {
+      expect(within(root).queryByRole("switch", { hidden: true })).toBeNull();
+    }
     expect(
-      liveRowHeights(render(<ProjectLogViewPageSkeleton />).container),
-    ).toEqual(ready);
+      pending.querySelector('[data-skeleton-region="log-toolbar"]')!.children,
+    ).toHaveLength(3);
+    await user.click(rangePicker());
+    expect(screen.getAllByRole("option")[0]).toHaveTextContent("Live tail");
   });
 });
 
@@ -491,24 +514,47 @@ describe("ProjectLogViewer row menu and paused watch (w3/m528)", () => {
       subscription: Record<string, unknown>;
     };
 
-  it("opens a View in context link paused on its marked line, watching the view for a new one", () => {
-    historyState.lines = [line({ key: "id:a", message: "first" })];
+  it("opens a View in context link on its custom range and marked line, with no tail and no watch", () => {
+    const marked = line({ key: "id:a", message: "first" });
+    historyState.lines = [marked];
+    const context = logContextSearch(marked)!;
     const { container } = render(
       <ProjectLogViewer
         scope={SCOPE}
         logType={LOG_TYPE_APP}
-        range={DEFAULT_LOG_RANGE}
+        range={parseCustomRange(context.rangeStart, context.rangeEnd)!}
         onRangeChange={() => undefined}
         contextLine="id:a"
       />,
     );
-    expect(screen.getByRole("switch", { name: /live/i })).not.toBeChecked();
     expect(container.querySelector("[data-marked]")).toHaveTextContent("first");
+    expect(useLiveLogsSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ enabled: false }),
+    );
+    expect(watchArgs().enabled).toBe(false);
+  });
+
+  it("watches a preset range for a new line, and picks Live tail from New logs in Live Tail", async () => {
+    const user = userEvent.setup();
+    historyState.lines = [line({ key: "id:a", message: "first" })];
+    watchState.available = true;
+    viewer(LOG_TYPE_APP);
     expect(watchArgs().enabled).toBe(true);
     expect(watchArgs().subscription).toMatchObject({
       project: SCOPE,
       type: LOG_TYPE_APP,
     });
+    expect(useLiveLogsSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ enabled: false }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "New logs in Live Tail" }),
+    );
+    expect(rangePicker()).toHaveTextContent("Live tail");
+    expect(useLiveLogsSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ enabled: true }),
+    );
+    expect(watchArgs().enabled).toBe(false);
   });
 
   it("offers View in context once a search narrows the view, and never SSH", async () => {

@@ -68,6 +68,15 @@ vi.mock("../../hooks/use-log-label-values", () => ({
 // geometry the virtualizer needs, or the rendered rows never mount.
 setupVirtualGeometry();
 
+// Picks a range in the tab's picker, as a reader does (w3/m537).
+async function pickRange(
+  name: string,
+  user: ReturnType<typeof userEvent.setup> = userEvent.setup(),
+) {
+  await user.click(screen.getByRole("combobox", { name: /range/i }));
+  await user.click(screen.getByRole("option", { name }));
+}
+
 function line(i: number): LogLine {
   return {
     key: `line-${i}`,
@@ -311,60 +320,40 @@ describe("DatastoreLogViewer level and live tail (w5/m139)", () => {
     expect(onFiltersChange).toHaveBeenLastCalledWith({ level: "debug" });
   });
 
-  // w4/625: the datastore tab follows w21/016's service-Logs contract: a
-  // custom window that had ended when it was applied never opens the tail.
-  it("keeps Live off and disabled, with its reason, for a custom range that has already ended", async () => {
-    const end = new Date(Date.now() - 59 * 60_000).toISOString();
-    const start = new Date(Date.now() - 60 * 60_000).toISOString();
-    render(
-      <DatastoreLogViewer
-        kind="keyvalue"
-        resource="red-example"
-        filters={{ text: "", instance: "", level: "" }}
-        onFiltersChange={() => undefined}
-        range={{
-          id: "custom",
-          startTime: start,
-          endTime: end,
-          resolutionSeconds: 60,
-        }}
-        onRangeChange={() => undefined}
-        createEventSource={createEventSource}
-      />,
-    );
-    const toggle = screen.getByRole("switch", { name: "Live" });
-    expect(toggle).toBeDisabled();
-    expect(toggle).not.toBeChecked();
-    expect(
-      screen.getByText(/this custom range has already ended/i),
-    ).toBeInTheDocument();
-    expect(streams).toHaveLength(0);
-  });
+  // Live tail is a range (w3/m537): as on Render, a custom window never
+  // tails, ended or not, and nothing watches it for a new line either.
+  it.each([
+    ["has already ended", -60, -59],
+    ["ends in the future", -5, 60],
+  ])(
+    "never tails a custom range that %s, and still offers Live tail",
+    async (_, startMinutes, endMinutes) => {
+      render(
+        <DatastoreLogViewer
+          kind="keyvalue"
+          resource="red-example"
+          filters={{ text: "", instance: "", level: "" }}
+          onFiltersChange={() => undefined}
+          range={{
+            id: "custom",
+            startTime: new Date(
+              Date.now() + startMinutes * 60_000,
+            ).toISOString(),
+            endTime: new Date(Date.now() + endMinutes * 60_000).toISOString(),
+            resolutionSeconds: 60,
+          }}
+          onRangeChange={() => undefined}
+          createEventSource={createEventSource}
+        />,
+      );
+      expect(screen.queryByRole("switch")).toBeNull();
+      expect(streams).toHaveLength(0);
+      await userEvent.click(screen.getByRole("combobox", { name: /range/i }));
+      expect(screen.getByRole("option", { name: "Live tail" })).toBeEnabled();
+    },
+  );
 
-  it("tails a custom range that ends in the future", async () => {
-    render(
-      <DatastoreLogViewer
-        kind="keyvalue"
-        resource="red-example"
-        filters={{ text: "", instance: "", level: "" }}
-        onFiltersChange={() => undefined}
-        range={{
-          id: "custom",
-          startTime: new Date(Date.now() - 5 * 60_000).toISOString(),
-          endTime: new Date(Date.now() + 60 * 60_000).toISOString(),
-          resolutionSeconds: 60,
-        }}
-        onRangeChange={() => undefined}
-        createEventSource={createEventSource}
-      />,
-    );
-    const toggle = screen.getByRole("switch", { name: "Live" });
-    expect(toggle).toBeEnabled();
-    await userEvent.click(toggle);
-    expect(streams).toHaveLength(1);
-  });
-
-  it("opens no tail until Live is switched on, then tails with the same filters", async () => {
+  it("opens no tail until Live tail is picked, then tails with the same filters", async () => {
     // History inside the selected window, as the server returns it: the merge
     // drops lines stamped before the window's start.
     state.lines = [
@@ -379,15 +368,15 @@ describe("DatastoreLogViewer level and live tail (w5/m139)", () => {
         createEventSource={createEventSource}
       />,
     );
-    // Paused, the tab only watches for a new line (w3/m528): one stream from
-    // the window's end, closed when Live opens the tail.
+    // On Last hour, the tab only watches for a new line (w3/m528): one stream
+    // from the window's end, closed when Live tail opens the tail.
     expect(streams).toHaveLength(1);
     const watch = new URL(streams[0].url, "http://x");
     expect(watch.searchParams.get("level")).toBe("warning");
     expect(
       Date.parse(watch.searchParams.get("startTime") ?? ""),
     ).toBeGreaterThan(Date.now() - 60_000);
-    await userEvent.click(screen.getByRole("switch", { name: "Live" }));
+    await pickRange("Live tail");
     expect(streams).toHaveLength(2);
     expect(streams[0].closed).toBe(true);
     streams.shift();
@@ -424,7 +413,7 @@ describe("DatastoreLogViewer level and live tail (w5/m139)", () => {
 // w9/m389: the viewer bounds its range picker by the workspace plan's log
 // window the retention hook reads from bex-api.
 describe("DatastoreLogViewer explorer controls (w3/m509)", () => {
-  it("clears its lines on Shift+L only once Live is on", async () => {
+  it("clears its lines on Shift+L only once Live tail is the range", async () => {
     const user = userEvent.setup();
     state.lines = [line(0)];
     render(
@@ -437,14 +426,14 @@ describe("DatastoreLogViewer explorer controls (w3/m509)", () => {
     fireEvent.keyDown(window, { key: "L", shiftKey: true });
     expect(screen.getByText("checkpoint complete")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("switch", { name: "Live" }));
+    await pickRange("Live tail", user);
     fireEvent.keyDown(window, { key: "L", shiftKey: true });
     expect(screen.getByText("Logs cleared")).toBeInTheDocument();
     expect(screen.queryByText("checkpoint complete")).toBeNull();
   });
 
   it.each(["databases", "keyvalue"] as const)(
-    "lists Options ▸ Clear logs in a %s tab only once Live is on, and clears as Shift+L does (w3/092)",
+    "lists Options ▸ Clear logs in a %s tab only on Live tail, and clears as Shift+L does (w3/092)",
     async (kind) => {
       const user = userEvent.setup();
       state.lines = [line(0)];
@@ -462,7 +451,7 @@ describe("DatastoreLogViewer explorer controls (w3/m509)", () => {
       expect(screen.queryByRole("menuitem", { name: /Clear logs/ })).toBeNull();
       await user.keyboard("{Escape}");
 
-      await user.click(screen.getByRole("switch", { name: "Live" }));
+      await pickRange("Live tail", user);
       await options();
       await user.click(screen.getByRole("menuitem", { name: /Clear logs/ }));
       expect(screen.getByText("Logs cleared")).toBeInTheDocument();
@@ -584,6 +573,63 @@ describe("DatastoreLogViewer row menu (w3/m528)", () => {
 
 // Log Explorer Theme (w3/m531): a Postgres or Key Value Logs tab keeps its
 // own theme, in its high-contrast twin under High Contrast Mode.
+// Live tail is a range (w3/m537).
+describe("DatastoreLogViewer Live tail range (w3/m537)", () => {
+  it("holds no Live switch, ready or pending, with the pending row's controls", async () => {
+    const { DatastoreLogsSkeleton } =
+      await import("@/common/components/route-skeletons");
+    const ready = render(
+      <DatastoreLogViewer kind="databases" resource="dpg-example" />,
+    ).container;
+    const pending = render(<DatastoreLogsSkeleton />).container;
+    for (const root of [ready, pending]) {
+      expect(root.querySelector('[role="switch"]')).toBeNull();
+    }
+    // Range, instance, level, search, then Maximize and Options.
+    expect(
+      pending.querySelector('[data-skeleton-region="log-filters"]')!.children,
+    ).toHaveLength(5);
+  });
+
+  it("picks Live tail from New logs in Live Tail, which tails the tab", async () => {
+    const streams: FakeEventSource[] = [];
+    state.lines = [
+      { ...line(0), timestamp: new Date(Date.now() - 60_000).toISOString() },
+    ];
+    render(
+      <DatastoreLogViewer
+        kind="databases"
+        resource="dpg-example"
+        createEventSource={(url) => {
+          const s = new FakeEventSource(url);
+          streams.push(s);
+          return s;
+        }}
+      />,
+    );
+    // The watch on Last hour: one stream, whose first newer line brings the
+    // button up.
+    expect(streams).toHaveLength(1);
+    act(() => {
+      streams[0].open();
+      streams[0].frame({
+        message: "a newer line",
+        timestamp: new Date().toISOString(),
+        labels: [{ name: "type", value: "postgres" }],
+      });
+    });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "New logs in Live Tail" }),
+    );
+    expect(screen.getByRole("combobox", { name: /range/i })).toHaveTextContent(
+      "Live tail",
+    );
+    // The tail opens beside the closed watch.
+    expect(streams).toHaveLength(2);
+    expect(streams[0].closed).toBe(true);
+  });
+});
+
 describe("DatastoreLogViewer under Log Explorer Theme (w3/m531)", () => {
   it.each(
     LOG_THEME_CASES.flatMap(([logTheme, highContrast, classes]) =>

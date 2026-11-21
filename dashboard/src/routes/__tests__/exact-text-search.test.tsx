@@ -73,12 +73,11 @@ describe("free-text search links keep their digits (w4/289)", () => {
   it("leaves the service Logs keys that are meant to be numbers alone", async () => {
     const { read } = searchSeenBy(
       parseLogSearch,
-      `/page?type=app&text=${EXACT}&live=0&statusCode=404&range=12h`,
+      `/page?type=app&text=${EXACT}&statusCode=404&range=12h`,
     );
     expect(await read()).toMatchObject({
       type: "app",
       text: EXACT,
-      live: 0,
       statusCode: "404",
       range: "12h",
     });

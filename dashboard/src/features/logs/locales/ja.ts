@@ -5,11 +5,10 @@ const jaLogs: Record<string, TranslationEntry> = {
     message: "ログ履歴の期間",
     description: "Accessible label for the relative log-history range controls",
   },
-  "logs.rangeHistoryNote": {
-    message:
-      "期間は履歴を制限します。ライブモードでは、新しい行が届くたびに追加されます。",
+  "logs.rangeLiveTail": {
+    message: "ライブテール",
     description:
-      "Explains how the bounded history window interacts with live tail",
+      "Log explorers (w3/m537): the first entry of the time range picker, Render's Live tail; picking it streams new lines, and every other range is a snapshot",
   },
   "logs.retentionWindow_other": {
     message: "{plan} プランではログを {count} 日間保持します。",
@@ -104,15 +103,9 @@ const jaLogs: Record<string, TranslationEntry> = {
   },
   "logs.liveUnsupported": {
     message:
-      "ライブテールはオフです。メソッド、ステータス、パス、ホストはリクエストログを絞り込むため、これらを指定するとアプリケーションログはテールできません。",
+      "ライブテールは使用できません。メソッド、ステータス、パス、ホストはリクエストログを絞り込むため、これらを指定するとアプリケーションログはテールできません。",
     description:
       "Note when the chosen log type cannot carry an active filter, so live tail is off (a request filter on app logs)",
-  },
-  "logs.liveWindowClosed": {
-    message:
-      "ライブテールはオフです。このカスタム期間はすでに終了しているため、新しい行は届きません。",
-    description:
-      "Note when the selected custom time range ended before it was applied, so live tail is off",
   },
   "logs.storeRequiredTitle": {
     message: "リクエストログにはログストアが必要です",
@@ -138,10 +131,6 @@ const jaLogs: Record<string, TranslationEntry> = {
   "logs.searchPlaceholder": {
     message: "ログを検索",
     description: "Placeholder for the log search box (text filter)",
-  },
-  "logs.live": {
-    message: "ライブ",
-    description: "Label for the live-tail on/off toggle",
   },
   "logs.linesLabel": {
     message: "ログの行",
@@ -183,7 +172,7 @@ const jaLogs: Record<string, TranslationEntry> = {
   "logs.newLogsInLiveTail": {
     message: "ライブテールに新しいログがあります",
     description:
-      "Log list (w3/m528): Render's button on a paused explorer when a new line arrived; clicking it turns Live on",
+      "Log list (w3/m528): Render's button on a preset range when a new line arrived; clicking it picks Live tail (w3/m537)",
   },
   "logs.switchToLiveTail": {
     message: "ライブテールに切り替える",
@@ -291,10 +280,6 @@ const jaLogs: Record<string, TranslationEntry> = {
     message: "ライブ — 新しい行をストリーミング中",
     description: "Status under the log list when the SSE tail is connected",
   },
-  "logs.paused": {
-    message: "ライブテールを一時停止中",
-    description: "Status under the log list when live tail is toggled off",
-  },
   "logs.disconnected": {
     message: "ライブテールが切断されました。再接続しています…",
     description: "Banner when the SSE stream drops",
@@ -340,14 +325,9 @@ const jaLogs: Record<string, TranslationEntry> = {
     description: "Logs tab: button closing the Filters panel",
   },
   "logs.emptyBodyRange": {
-    message: "期間を長くするか、ライブをオンにして新しい行を待ちます。",
+    message: "期間を長くするか、ライブテールに切り替えて新しい行を待ちます。",
     description:
       "Logs tab: body when the chosen range holds no lines, under logs.emptyTitle \u2014 what to try next",
-  },
-  "logs.turnOnLive": {
-    message: "ライブをオンにする",
-    description:
-      "Logs tab: button in the empty state that switches the live tail on",
   },
   "logs.clearFilters": {
     message: "フィルターをクリア",
