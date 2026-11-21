@@ -116,7 +116,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
   - [x] `deploys cancel <serviceID> <deployID>` — resolves and cancels an open deploy
 - [~] **`jobs`** — create and manage one-off jobs. Creation is a deliberate non-goal (`.pm/DO_NOT_DO.md`; gated by w4/m116/t003, 2026-10-02); the history verbs still serve jobs created before the gate. The earlier `[x]` create grade rested on a dev-9 response shape only — on production every create was refused by Kubernetes RBAC and came back already `failed` (live 2026-09-17/21/26).
   - [x] `jobs list <serviceID>` — lists jobs with status/planId/startCommand (history)
-  - [-] `jobs create <serviceID>` — deliberate non-goal: named `410` before any record is written or Kubernetes Job submitted; the unmodified client prints `received response code 410 (ONE_OFF_JOBS_UNSUPPORTED): one-off jobs are not supported on bex; …` and exits non-zero. GraphQL `createJob` (`extensions.code`) and MCP `create_job` (code-prefixed error) refuse identically. Not yet re-probed live.
+  - [-] `jobs create <serviceID>` — deliberate non-goal: named `410` before any record is written or Kubernetes Job submitted; the unmodified client prints `received response code 410 (ONE_OFF_JOBS_UNSUPPORTED): one-off jobs are not supported on bex; …` and exits non-zero. GraphQL `createJob` (`extensions.code`) and MCP `create_job` (code-prefixed error) refuse identically. Probed live on production on 2026-11-13 (w8/304, `/qa-find-bugs-cli` sweep 551a, released `bex` v0.5.0 at Render CLI v2.35.0, `bex-canary`, pin `4c3c68e6b05b`): `jobs create <srv> --start-command 'echo hi' -o json --confirm` exited 1 with this 410, and `jobs list` still read `[]`. Sweep a9fc saw the reworded advice on pin `5de3d5bcce8e` the same day, and w8/347 got the same 410 on 2026-11-20.
     - [-] `--start-command <cmd>` — refused with the command (above)
     - [-] `--plan-id <id>` — refused with the command (above)
   - [x] `jobs cancel <serviceID> <jobID>` — cancels a pending/running pre-gate job; an already-terminal job is a `409`
@@ -130,7 +130,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--memory-policy <cache|queue|raw policy>` — `cache`→`allkeys_lru` alias and raw policies round-trip
     - [x] `--ip-allow-list cidr=…,description=…` — CIDR **and** description round-trip
     - [x] `--workspace <id|name>`
-    - [~] `--project <id|name>` — flag parsed; needs an existing project (none creatable via CLI)
+    - [x] `--project <id|name>` — walked live on production on 2026-11-21 (w32/078, routine `cli-qa`, released `bex` v0.9.0 at Render CLI v2.36.0, `bex-canary`), on projects made outside the CLI, which has no project create. On a one-environment project the free Key Value lands in that environment. On a two-environment project the CLI refuses before any request, names both environments and asks for `--environment`. Scoped `get`, `list`, `update`, `suspend`, `resume` and `delete` resolve in scope and refuse out of scope with exit 1, and after a REST move to another project's environment every scoped lookup follows the store. The fixtures were deleted (404).
     - [x] `--environment <id|name>` — discovered canonical ID and name+project controls passed on dev-2 (w2/m165); legacy API links remain valid
   - [x] `keyvalues list`
   - [x] `keyvalues get <id|name>` — after suspend, `status` is `suspended` (Render `databaseStatus`; w5/061) so text/JSON Status matches hibernation even though the pinned client drops the separate `suspended` field
