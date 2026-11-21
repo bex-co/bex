@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strconv"
@@ -44,8 +45,9 @@ import (
 // <app>-oidc-build Secret, stamped with the build's generation; the operator,
 // which never sees a key, copies them next to the build Job, whose preparer
 // waits for them. The served release's <app>-oidc is never touched, so a
-// build cannot change the files running instances read. When the build ends
-// the decision and both Secrets go.
+// build cannot change the files running instances read. When the build ends,
+// or a cancel settles it (endCanceledBuild, w9/136), the decision and both
+// Secrets go.
 
 // buildManagedOIDCSecretName is the build-namespace copy of a native build's
 // tokens, the only Secret the build Pod reads them from.
@@ -163,33 +165,44 @@ func ownedByApp(s *corev1.Secret, app *appv1alpha1.App) bool {
 }
 
 // endBuildManagedOIDC ends a native build's tokens once the observed build
-// is over (succeeded or failed): the decision goes from status, so bex-api
-// stops minting, and both Secrets are deleted. Best-effort like the
+// is over (succeeded or failed, a timeout included). Best-effort like the
 // datastore reach: a leftover token expires within the hour, and the next
-// build's end or the App's deletion removes it.
+// build's end or the App's deletion removes it. A build that never reaches a
+// terminal observation loses them where it ends instead: a settled cancel
+// (endCanceledBuild) or the App's deletion.
 func (r *AppReconciler) endBuildManagedOIDC(ctx context.Context, app *appv1alpha1.App, buildNs string, phase build.Phase) {
 	if (phase != build.PhaseSucceeded && phase != build.PhaseFailed) || app.Status.BuildManagedOIDC == nil {
 		return
 	}
-	app.Status.BuildManagedOIDC = nil
-	r.updateStatusRetrying(ctx, app, "buildManagedOIDC")
-	log := logf.FromContext(ctx)
+	if err := r.revokeBuildManagedOIDC(ctx, app, buildNs); err != nil {
+		logf.FromContext(ctx).Error(err, "ending the build's Managed OIDC tokens", "app", app.Name)
+	}
+}
+
+// revokeBuildManagedOIDC ends the App's build tokens: the decision goes from
+// status first, so bex-api stops minting, then both Secrets are deleted. Each
+// delete is ownership-gated: the build namespace is shared, and a Secret of
+// another App lifetime stays.
+func (r *AppReconciler) revokeBuildManagedOIDC(ctx context.Context, app *appv1alpha1.App, buildNs string) error {
+	if app.Status.BuildManagedOIDC != nil {
+		app.Status.BuildManagedOIDC = nil
+		r.updateStatusRetrying(ctx, app, "buildManagedOIDC")
+	}
+	var errs []error
 	owned := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID)}
 	if _, err := deleteOwnedObject(ctx, r.buildPlaneClient(), buildNs, buildManagedOIDCSecretName(app.Name), &corev1.Secret{}, owned); err != nil {
-		log.Error(err, "removing the build's Managed OIDC token copy", "app", app.Name)
+		errs = append(errs, fmt.Errorf("removing the build's Managed OIDC token copy: %w", err))
 	}
 	src := &corev1.Secret{}
 	key := client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ManagedOIDCBuildSecretName(app.Name)}
-	if err := r.uncachedSecretClient().Get(ctx, key, src); err != nil {
-		if !apierrors.IsNotFound(err) {
-			log.Error(err, "reading the build's Managed OIDC tokens", "app", app.Name)
+	switch err := r.uncachedSecretClient().Get(ctx, key, src); {
+	case apierrors.IsNotFound(err):
+	case err != nil:
+		errs = append(errs, fmt.Errorf("reading the build's Managed OIDC tokens: %w", err))
+	case ownedByApp(src, app):
+		if err := r.Delete(ctx, src, client.Preconditions{UID: &src.UID}); err != nil && !apierrors.IsNotFound(err) {
+			errs = append(errs, fmt.Errorf("removing the build's Managed OIDC tokens: %w", err))
 		}
-		return
 	}
-	if !ownedByApp(src, app) {
-		return
-	}
-	if err := r.Delete(ctx, src, client.Preconditions{UID: &src.UID}); err != nil && !apierrors.IsNotFound(err) {
-		log.Error(err, "removing the build's Managed OIDC tokens", "app", app.Name)
-	}
+	return errors.Join(errs...)
 }

@@ -905,13 +905,15 @@ func (r *AppReconciler) canceledBuildStopped(uid types.UID, generation int64) bo
 }
 
 // endCanceledBuild ends the canceled release's build: it stops its Job, which
-// frees its build slot for the releases held behind it, and revokes the build
-// reach the App's builds share (w9/124). No build of the App goes on once a
-// cancel settles: the release a cancel leaves running does not settle it
-// (survivorInFlight), and stopAbandonedBuild has stopped one it settles below.
-// Left to the next build's end, the policies would outlive the canceled build.
-// An image-backed release has no build to stop, but its saved source may have
-// replaced the repo whose build the cancel ended, so its reach goes too.
+// frees its build slot for the releases held behind it, and revokes what the
+// App's builds share: their build reach (w9/124) and a native build's Managed
+// OIDC tokens (w9/136). No build of the App goes on once a cancel settles:
+// the release a cancel leaves running does not settle it (survivorInFlight),
+// and stopAbandonedBuild has stopped one it settles below. Left to the next
+// build's end, the policies would outlive the canceled build, and its tokens
+// with the decision that keeps bex-api minting them. An image-backed release
+// has no build to stop, but its saved source may have replaced the repo whose
+// build the cancel ended, so its reach and tokens go too.
 func (r *AppReconciler) endCanceledBuild(ctx context.Context, app *appv1alpha1.App, generation int64) error {
 	buildNs := r.buildNamespace(app.Namespace)
 	if app.Spec.Repo != "" {
@@ -921,7 +923,7 @@ func (r *AppReconciler) endCanceledBuild(ctx context.Context, app *appv1alpha1.A
 		}
 		r.wakeHeldBuilds(ctx, buildNs)
 	}
-	return r.revokeBuildReach(ctx, app, buildNs)
+	return errors.Join(r.revokeBuildReach(ctx, app, buildNs), r.revokeBuildManagedOIDC(ctx, app, buildNs))
 }
 
 // settleCanceledRelease handles a generation the backend canceled: stop its
@@ -945,9 +947,10 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 	// bex-api stops the canceled release's build once, best effort, after its
 	// stamp lands. A build a pass dispatched after that delete, or one whose
 	// delete failed, would run to the end and hold a build-cap slot, and its
-	// build reach would outlive it. Canceled passes end it until one succeeds;
-	// no canceled pass dispatches, so the release's build cannot start again,
-	// and later passes skip the build plane's uncached reads (w5/149).
+	// build reach and Managed OIDC tokens would outlive it. Canceled passes
+	// end it until one succeeds; no canceled pass dispatches, so the release's
+	// build cannot start again, and later passes skip the build plane's
+	// uncached reads (w5/149).
 	if generation, ok := canceledReleaseGeneration(app); ok && !r.canceledBuildStopped(app.UID, generation) {
 		if err := r.endCanceledBuild(ctx, app, generation); err != nil {
 			logf.FromContext(ctx).Error(err, "end the canceled release's build", "app", app.Name)
