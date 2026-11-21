@@ -52,7 +52,7 @@ func TestStaticResponsesCarryRendersSecurityHeaders(t *testing.T) {
 		check("GET "+p, doWith(h, http.MethodGet, p, nil), hsts, "nosniff")
 	}
 	check("HEAD", doWith(h, http.MethodHead, "/app.js", nil), hsts, "nosniff")
-	check("206", doWith(h, http.MethodGet, "/app.js", http.Header{"Range": {"bytes=0-0"}}), hsts, "nosniff")
+	check("206", doWith(h, http.MethodGet, "/img/logo.png", http.Header{"Range": {"bytes=0-0"}}), hsts, "nosniff")
 	first := doWith(h, http.MethodGet, "/app.js", nil)
 	rec304 := doWith(h, http.MethodGet, "/app.js", http.Header{"If-None-Match": {first.Header().Get("Etag")}})
 	if rec304.Code != http.StatusNotModified {

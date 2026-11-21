@@ -26,7 +26,8 @@ import (
 )
 
 // w4/272: a saved ETag rule was emitted, but the handler answered every
-// revalidation with 200 and the full body, and a failed If-Match with 200.
+// revalidation with 200 and the full body. Its 412 for a failed If-Match gave
+// way to Render's 200 in w8/362.
 const (
 	savedETag    = `"qa-v1"`
 	savedCache   = "public, max-age=60"
@@ -64,9 +65,11 @@ func TestSavedETagPreconditions(t *testing.T) {
 		{"If-None-Match list member", "If-None-Match", `"other", ` + savedETag, http.StatusNotModified},
 		{"If-None-Match wildcard", "If-None-Match", "*", http.StatusNotModified},
 		{"mismatching If-None-Match", "If-None-Match", `"other"`, http.StatusOK},
-		{"If-Match with the saved tag against identity's weak form", "If-Match", savedETag, http.StatusPreconditionFailed},
-		{"mismatching If-Match", "If-Match", `"other"`, http.StatusPreconditionFailed},
-		{"weak If-Match against strong tag", "If-Match", "W/" + savedETag, http.StatusPreconditionFailed},
+		// Render's edge ignores If-Match, so even a stale tag gets the file
+		// (captured 2026-11-21, w8/362).
+		{"If-Match with the saved tag against identity's weak form", "If-Match", savedETag, http.StatusOK},
+		{"mismatching If-Match", "If-Match", `"other"`, http.StatusOK},
+		{"weak If-Match against strong tag", "If-Match", "W/" + savedETag, http.StatusOK},
 	}
 	for _, path := range []string{"/version.txt", "/v", "/client/route"} {
 		for _, method := range []string{http.MethodGet, http.MethodHead} {
@@ -87,9 +90,6 @@ func TestSavedETagPreconditions(t *testing.T) {
 				}
 				if got := rec.Body.String(); got != wantBody {
 					t.Errorf("%s body = %q, want %q", label, got, wantBody)
-				}
-				if tc.want == http.StatusPreconditionFailed {
-					continue
 				}
 				// The validator and the owner's freshness policy describe a
 				// 304 as much as a 200 (RFC 9110 §15.4.5). The text file's
@@ -148,7 +148,9 @@ func TestGeneratedETagValidatesWithoutASavedRule(t *testing.T) {
 }
 
 // Over a real connection: a 304 carries no body bytes and a 200 is framed with
-// the object's exact length; a byte range is served from the same object.
+// the object's exact length. A stale If-Match and a byte range get that 200
+// too, since Render's edge ignores If-Match and a Range on a compressible
+// file's identity body (captured 2026-11-21, w8/362).
 func TestConditionalFramingOverHTTP(t *testing.T) {
 	server := httptest.NewServer(conditionalSite(t))
 	defer server.Close()
@@ -182,13 +184,17 @@ func TestConditionalFramingOverHTTP(t *testing.T) {
 	if res.StatusCode != http.StatusNotModified || body != "" || res.Header.Get("ETag") != savedETag {
 		t.Fatalf("revalidation => %d %q etag %q, want bodyless 304 with the saved ETag", res.StatusCode, body, res.Header.Get("ETag"))
 	}
-	res, body = get(http.Header{"If-Match": {`"other"`}})
-	if res.StatusCode != http.StatusPreconditionFailed || body != "" {
-		t.Fatalf("failed If-Match => %d %q, want bodyless 412", res.StatusCode, body)
-	}
-	res, body = get(http.Header{"Range": {"bytes=0-6"}})
-	if res.StatusCode != http.StatusPartialContent || body != versionBytes[:7] || res.Header.Get("Content-Range") != "bytes 0-6/18" {
-		t.Fatalf("range => %d %q %q, want 206 of the first 7 bytes", res.StatusCode, body, res.Header.Get("Content-Range"))
+	for name, header := range map[string]http.Header{
+		"stale If-Match": {"If-Match": {`"other"`}},
+		"Range":          {"Range": {"bytes=0-6"}},
+		"If-Range":       {"Range": {"bytes=0-6"}, "If-Range": {savedETag}},
+	} {
+		res, body = get(header)
+		if res.StatusCode != http.StatusOK || body != versionBytes || res.ContentLength != int64(len(versionBytes)) ||
+			res.Header.Get("Content-Range") != "" || res.Header.Get("Accept-Ranges") != "" {
+			t.Fatalf("%s => %d len %d %q Content-Range %q Accept-Ranges %q, want 200 framed body offering no ranges",
+				name, res.StatusCode, res.ContentLength, body, res.Header.Get("Content-Range"), res.Header.Get("Accept-Ranges"))
+		}
 	}
 }
 

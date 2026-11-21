@@ -141,10 +141,11 @@ func TestRepublishChangesTheTagOnlyWhenBytesChange(t *testing.T) {
 
 // TestRangeResumeFollowsTheTagsStrength: If-Range needs a strong tag (RFC 9110
 // §13.1.5), so a resume holds where the tag is strong, on a file with one
-// representation and on br (Render sends a 206 of the br bytes, captured
-// 2026-11-21, w8/361), and a stale tag gets the whole file. A compressible
-// file's identity body sends the weak form, so If-Range with either form gets
-// the whole identity file, and br bytes are never spliced onto identity bytes.
+// representation and on a small br body (Render sends a 206 of the br bytes,
+// captured 2026-11-21, w8/361), and a stale tag gets the whole file. A
+// compressible file's identity body sends the weak form and takes no ranges
+// (w8/362), so If-Range with either form gets the whole identity file, and br
+// bytes are never spliced onto identity bytes.
 func TestRangeResumeFollowsTheTagsStrength(t *testing.T) {
 	js := repeated("console.log('resume');\n")
 	bin := repeated("\x00\x01resume")
@@ -179,10 +180,14 @@ func TestRangeResumeFollowsTheTagsStrength(t *testing.T) {
 
 // TestShedResponsesCarryNoGeneratedETag: an unsatisfiable range and a request
 // shed for live-body memory both go through serveObject and describe no stored
-// representation, so neither may leak the generated tag.
+// representation, so neither may leak the generated tag. The range goes to a
+// binary file, since a text file's identity body takes none (w8/362).
 func TestShedResponsesCarryNoGeneratedETag(t *testing.T) {
-	h, _ := newTestHandler(t, Site{}, map[string]Object{key("version.txt"): {Body: []byte(versionBytes), ContentType: "text/plain"}})
-	rec := doWith(h, http.MethodGet, "/version.txt", http.Header{"Range": {"bytes=999-"}})
+	h, _ := newTestHandler(t, Site{}, map[string]Object{
+		key("version.txt"): {Body: []byte(versionBytes), ContentType: "text/plain"},
+		key("data.bin"):    {Body: []byte(versionBytes), ContentType: "application/octet-stream"},
+	})
+	rec := doWith(h, http.MethodGet, "/data.bin", http.Header{"Range": {"bytes=999-"}})
 	if rec.Code != http.StatusRequestedRangeNotSatisfiable || rec.Header().Get("ETag") != "" {
 		t.Errorf("unsatisfiable range => %d ETag %q, want 416 with no ETag", rec.Code, rec.Header().Get("ETag"))
 	}

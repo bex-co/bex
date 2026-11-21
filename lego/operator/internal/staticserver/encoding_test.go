@@ -192,7 +192,8 @@ func assertGzip(t *testing.T, label string, rec *httptest.ResponseRecorder, want
 // TestGzipForGzipOnlyClients (w8/m132, Render serves gzip to a client that
 // does not offer br): gzip is chosen when br is not accepted, br stays
 // preferred at equal weight, the br and gzip variants are cached apart, and a
-// gzip response revalidates and ranges against its own encoded bytes.
+// gzip response revalidates against its own encoded bytes. A Range gets the
+// whole gzip body, as on Render's edge (captured 2026-11-21, w8/362).
 func TestGzipForGzipOnlyClients(t *testing.T) {
 	body := repeated("console.log('hello');\n")
 	h, _ := newTestHandler(t, Site{}, map[string]Object{key("big.js"): {Body: body, ContentType: "application/javascript"}})
@@ -217,8 +218,8 @@ func TestGzipForGzipOnlyClients(t *testing.T) {
 		t.Fatalf("If-None-Match %s => %d, want 304", etag, rec.Code)
 	}
 	rec := doWith(h, http.MethodGet, "/big.js", http.Header{"Accept-Encoding": {"gzip"}, "Range": {"bytes=0-9"}})
-	if rec.Code != http.StatusPartialContent || !bytes.Equal(rec.Body.Bytes(), first.Body.Bytes()[:10]) {
-		t.Fatalf("Range on gzip => %d %d bytes, want 206 over the encoded bytes", rec.Code, rec.Body.Len())
+	if rec.Code != http.StatusOK || !bytes.Equal(rec.Body.Bytes(), first.Body.Bytes()) || rec.Header().Get("Content-Encoding") != codingGzip {
+		t.Fatalf("Range on gzip => %d %d bytes CE %q, want 200 with the whole gzip body", rec.Code, rec.Body.Len(), rec.Header().Get("Content-Encoding"))
 	}
 	head := doWith(h, http.MethodHead, "/big.js", brHeader("gzip"))
 	if head.Header().Get("Content-Encoding") != "gzip" || head.Body.Len() != 0 {
@@ -659,9 +660,10 @@ func TestBrotliVariantKeyIsNotAddressable(t *testing.T) {
 
 // TestBrotliPreconditionsAndHead: the br representation carries the saved
 // ETag as it was authored, strong (w8/361), so revalidation yields a bodyless
-// 304, a matching If-Match holds, and a failed one gets a bodyless 412 that
-// claims no coding. HEAD reports the same representation metadata as GET.
-// Identity sends the saved tag's weak form, which no If-Match matches.
+// 304 that claims no coding. If-Match is ignored, as on Render's edge
+// (captured 2026-11-21, w8/362), so any tag gets the body in either coding.
+// HEAD reports the same representation metadata as GET. Identity sends the
+// saved tag's weak form.
 func TestBrotliPreconditionsAndHead(t *testing.T) {
 	body := repeated(versionBytes)
 	h, _ := newTestHandler(t, Site{Headers: []appv1alpha1.StaticHeader{{Path: "/*", Name: "ETag", Value: savedETag}}},
@@ -687,10 +689,8 @@ func TestBrotliPreconditionsAndHead(t *testing.T) {
 			t.Fatalf("br 304 lacks Vary: %v", rec.Header())
 		}
 	}
-	assertBrotli(t, "br If-Match", doWith(h, http.MethodGet, "/version.txt", offerHeader("br", "If-Match", savedETag)), body)
-	rec := doWith(h, http.MethodGet, "/version.txt", offerHeader("br", "If-Match", `"other"`))
-	if rec.Code != http.StatusPreconditionFailed || rec.Body.Len() != 0 || rec.Header().Get("Content-Encoding") != "" {
-		t.Fatalf("br failed If-Match => %d %d bytes CE %q, want bodyless 412 with no coding", rec.Code, rec.Body.Len(), rec.Header().Get("Content-Encoding"))
+	for _, im := range []string{savedETag, `"other"`, "W/" + savedETag} {
+		assertBrotli(t, "br If-Match "+im, doWith(h, http.MethodGet, "/version.txt", offerHeader("br", "If-Match", im)), body)
 	}
 
 	identity := doWith(h, http.MethodGet, "/version.txt", offerHeader("identity"))
@@ -698,15 +698,15 @@ func TestBrotliPreconditionsAndHead(t *testing.T) {
 	if identity.Header().Get("ETag") != "W/"+savedETag {
 		t.Fatalf("identity ETag = %q, want W/%s", identity.Header().Get("ETag"), savedETag)
 	}
-	if rec := doWith(h, http.MethodGet, "/version.txt", offerHeader("identity", "If-Match", savedETag)); rec.Code != http.StatusPreconditionFailed {
-		t.Fatalf("identity If-Match %s => %d, want 412 against the weak form", savedETag, rec.Code)
+	for _, im := range []string{savedETag, `"other"`} {
+		assertIdentity(t, "identity If-Match "+im, doWith(h, http.MethodGet, "/version.txt", offerHeader("identity", "If-Match", im)), body)
 	}
 }
 
 // TestBrotliFramingOverHTTP exercises real connections: full br responses are
-// Content-Length framed, ranges address the selected representation's bytes
-// (br for a br offer, identity otherwise), an unsatisfiable range is a plain
-// 416, and HEAD/304 carry no body bytes.
+// Content-Length framed, a range addresses the small br body's bytes and an
+// unsatisfiable one is a plain 416, an identity range gets the whole framed
+// identity body (w8/362), and HEAD/304 carry no body bytes.
 func TestBrotliFramingOverHTTP(t *testing.T) {
 	body := repeated("console.log('framed');\n")
 	h, _ := newTestHandler(t, Site{}, map[string]Object{key("app.js"): {Body: body, ContentType: "text/javascript"}})
@@ -755,10 +755,9 @@ func TestBrotliFramingOverHTTP(t *testing.T) {
 	}
 
 	res, got = roundTrip(http.MethodGet, http.Header{"Accept-Encoding": {"identity"}, "Range": {"bytes=0-9"}})
-	wantRange = fmt.Sprintf("bytes 0-9/%d", len(body))
-	if res.StatusCode != http.StatusPartialContent || res.Header.Get("Content-Encoding") != "" ||
-		res.Header.Get("Content-Range") != wantRange || !bytes.Equal(got, body[:10]) {
-		t.Fatalf("identity range => %d %q %q, want 206 %q of the identity bytes", res.StatusCode, res.Header.Get("Content-Encoding"), res.Header.Get("Content-Range"), wantRange)
+	if res.StatusCode != http.StatusOK || res.Header.Get("Content-Encoding") != "" || res.ContentLength != int64(len(body)) ||
+		res.Header.Get("Content-Range") != "" || !bytes.Equal(got, body) {
+		t.Fatalf("identity range => %d %q %q length %d, want 200 with the whole identity body", res.StatusCode, res.Header.Get("Content-Encoding"), res.Header.Get("Content-Range"), res.ContentLength)
 	}
 
 	res, _ = roundTrip(http.MethodGet, http.Header{"Accept-Encoding": {"br"}, "Range": {fmt.Sprintf("bytes=%d-", len(body)*2)}})

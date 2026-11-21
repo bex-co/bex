@@ -56,6 +56,11 @@ const (
 	// pin a core (or its share of the live-body budget) for long. Larger
 	// eligible objects are served identity.
 	maxBrotliBytes = 8 << 20 // 8 MiB
+	// maxRangedBrotliBytes is the largest br body a Range addresses. Render's
+	// edge sends a 206 of br bodies up to 2,641 bytes and the whole br body
+	// from 4,573 bytes up (captured 2026-11-21 on seven sites, w8/362); the
+	// boundary between those two is not measured.
+	maxRangedBrotliBytes = 4 << 10
 	// defaultMaxConcurrentEncodes bounds encode CPU on the shared server, and
 	// defaultMaxSiteEncodes keeps one site from holding every slot. A request
 	// that finds no slot is served identity, not queued.
@@ -215,11 +220,16 @@ func weakenETag(hdr http.Header) {
 // and gzip bodies send the weak form, as Render's edge sends them (captured
 // 2026-11-21 on three sites, w8/361). So one strong validator never describes
 // two byte sequences (RFC 9110 §8.8.1): If-None-Match, a weak comparison,
-// matches either form on any coding, and If-Match and If-Range hold only on
-// br. A non-candidate has one representation and keeps its tag.
-func (h *Handler) encodeBody(r *http.Request, hdr http.Header, site Site, servedPath string, body []byte, gzipOK bool) (out []byte, release func()) {
+// matches either form on any coding, and If-Range holds only on br. A
+// non-candidate has one representation and keeps its tag.
+//
+// ranged reports whether a Range addresses out, as on Render's edge (captured
+// 2026-11-21 on seven sites, w8/362): always on a non-candidate, and on a
+// candidate only for a br body of at most maxRangedBrotliBytes. Its identity
+// and gzip bodies and a larger br body answer a Range with the whole body.
+func (h *Handler) encodeBody(r *http.Request, hdr http.Header, site Site, servedPath string, body []byte, gzipOK bool) (out []byte, ranged bool, release func()) {
 	if !encodingCandidate(hdr, len(body)) {
-		return body, func() {}
+		return body, true, func() {}
 	}
 	out, coding, release := h.negotiatedBody(r, site, servedPath, body, gzipOK)
 	if coding != "" {
@@ -228,7 +238,7 @@ func (h *Handler) encodeBody(r *http.Request, hdr http.Header, site Site, served
 	if coding != codingBrotli {
 		weakenETag(hdr)
 	}
-	return out, release
+	return out, coding == codingBrotli && len(out) <= maxRangedBrotliBytes, release
 }
 
 // negotiatedBody is encodeBody's choice of bytes for a candidate: the cached
@@ -350,18 +360,24 @@ func (b *cappedBuffer) Write(p []byte) (int, error) {
 //     response whenever Content-Encoding is set (it assumes an on-the-fly
 //     compressing wrapper), but an encoded body here is encoded up front.
 //   - A status other than 200/206 carries no encoded body, so the coding is
-//     dropped (304 and 416 already strip it; this covers the bodyless 412).
+//     dropped (304 and 416 already strip it).
 //   - A 304 carries notModifiedETag, the tag before encodeBody weakened it,
 //     whatever the coding: Render's edge answers every revalidation with the
 //     strong tag (captured 2026-11-21, w8/361).
+//   - A body no Range addresses (ranged false) sends no Accept-Ranges, which
+//     ServeContent sets on every 200, as Render's edge sends none (w8/362).
 type fileResponseWriter struct {
 	http.ResponseWriter
 	size            int
 	notModifiedETag string
+	ranged          bool
 }
 
 func (w *fileResponseWriter) WriteHeader(code int) {
 	hdr := w.Header()
+	if !w.ranged {
+		hdr.Del("Accept-Ranges")
+	}
 	switch code {
 	case http.StatusOK:
 		hdr.Set("Content-Length", strconv.Itoa(w.size))

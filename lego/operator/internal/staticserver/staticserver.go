@@ -471,7 +471,7 @@ func (h *Handler) serveNotFound(w http.ResponseWriter, r *http.Request, site Sit
 	setFileHeaders(hdr, site, requestPath, contentType("/404.html", obj.ContentType), obj.etag)
 	// Render sends the page br to a br client but identity to a gzip one
 	// (captured 2026-11-20, w8/359).
-	body, release := h.encodeBody(r, hdr, site, "/404.html", obj.Body, false)
+	body, _, release := h.encodeBody(r, hdr, site, "/404.html", obj.Body, false)
 	defer release()
 	hdr.Set("Content-Length", strconv.Itoa(len(body)))
 	w.WriteHeader(http.StatusNotFound)
@@ -560,7 +560,7 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 	// its reservation. HEAD responses carry no body and need no lease. On
 	// exhaustion shed with 503 (before any success header is written) rather
 	// than buffering past the budget. The lease is taken before ServeContent
-	// evaluates preconditions, so a bodyless 304/412 briefly holds it too and
+	// evaluates preconditions, so a bodyless 304 briefly holds it too and
 	// is shed with the rest under exhaustion, as the 200 it replaces would
 	// be; matching entity tags here would duplicate ServeContent's parser.
 	if r.Method != http.MethodHead {
@@ -580,15 +580,34 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 	// and its tag (w8/361) are chosen before ServeContent, so its
 	// preconditions and byte ranges apply to the bytes actually sent.
 	tag := hdr.Get("Etag")
-	body, release := h.encodeBody(r, hdr, site, servedPath, obj.Body, true)
+	body, ranged, release := h.encodeBody(r, hdr, site, servedPath, obj.Body, true)
 	defer release()
-	w = &fileResponseWriter{ResponseWriter: w, size: len(body), notModifiedETag: tag}
+	w = &fileResponseWriter{ResponseWriter: w, size: len(body), notModifiedETag: tag, ranged: ranged}
 
-	// ServeContent evaluates the request against the ETag (304 for a matching
-	// If-None-Match, 412 for a failed If-Match — RFC 9110 §13) and serves byte
-	// ranges; HEAD gets headers only. The zero modtime keeps it from inventing
-	// a Last-Modified validator (w4/272).
-	http.ServeContent(w, r, servedPath, time.Time{}, bytes.NewReader(body))
+	// ServeContent answers a matching If-None-Match with a bodyless 304 (RFC
+	// 9110 §13) and serves byte ranges; HEAD gets headers only. The zero
+	// modtime keeps it from inventing a Last-Modified validator (w4/272).
+	http.ServeContent(w, edgeRequest(r, ranged), servedPath, time.Time{}, bytes.NewReader(body))
+}
+
+// edgeRequest is r without the request headers Render's static-site edge
+// ignores (captured 2026-11-21 on seven sites, w8/362): If-Match on every
+// file, so a stale tag still gets 200 and the file, and Range on a body no
+// Range addresses (ranged false), so a range gets 200 and the whole body; an
+// If-Range then has nothing to apply to. It copies r only when it drops one.
+func edgeRequest(r *http.Request, ranged bool) *http.Request {
+	_, ifMatch := r.Header["If-Match"]
+	_, rangeReq := r.Header["Range"]
+	if !ifMatch && (ranged || !rangeReq) {
+		return r
+	}
+	r = r.WithContext(r.Context())
+	r.Header = r.Header.Clone()
+	r.Header.Del("If-Match")
+	if !ranged {
+		r.Header.Del("Range")
+	}
+	return r
 }
 
 // safeRedirectTarget validates the final, expanded Location at the output sink.

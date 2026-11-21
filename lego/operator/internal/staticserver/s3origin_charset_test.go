@@ -168,23 +168,25 @@ func TestStaticUTF8TextIsServedAsUTF8(t *testing.T) {
 }
 
 // A declared UTF-8 type changes neither a byte range nor automatic Brotli:
-// both still serve the stored bytes, under the declared type.
+// both still serve the stored bytes, under the declared type. The range is
+// over the br body, the one a text file's range addresses (w8/362).
 func TestStaticUTF8TextKeepsRangesAndCompression(t *testing.T) {
 	long := strings.Repeat(utf8Text, 20)
 	origin, _ := fakeS3Origin(t, map[string]s3Object{key("files/long.txt"): {contentType: "text/plain", body: long}})
 	h := New(staticResolver{host: testHost, site: Site{AppID: appID, Revision: rev}}, origin, 1<<20)
 
-	rec := doWith(h, http.MethodGet, "/files/long.txt", http.Header{"Range": {"bytes=0-14"}})
-	if ct := rec.Header().Get("Content-Type"); rec.Code != http.StatusPartialContent || ct != "text/plain; charset=utf-8" || rec.Body.String() != long[:15] {
-		t.Errorf("range = %d %q %q, want 206 text/plain; charset=utf-8 %q", rec.Code, ct, rec.Body, long[:15])
-	}
-
-	rec = doWith(h, http.MethodGet, "/files/long.txt", http.Header{"Accept-Encoding": {"br"}})
+	rec := doWith(h, http.MethodGet, "/files/long.txt", http.Header{"Accept-Encoding": {"br"}})
 	if rec.Code != http.StatusOK || rec.Header().Get("Content-Encoding") != "br" || rec.Header().Get("Content-Type") != "text/plain; charset=utf-8" {
 		t.Fatalf("br = %d encoding %q type %q, want 200 br text/plain; charset=utf-8", rec.Code, rec.Header().Get("Content-Encoding"), rec.Header().Get("Content-Type"))
 	}
+	encoded := rec.Body.String()
 	if body, err := io.ReadAll(brotli.NewReader(rec.Body)); err != nil || string(body) != long {
 		t.Errorf("br body decodes to %d bytes (%v), want the %d stored bytes", len(body), err, len(long))
+	}
+
+	rec = doWith(h, http.MethodGet, "/files/long.txt", http.Header{"Accept-Encoding": {"br"}, "Range": {"bytes=0-9"}})
+	if ct := rec.Header().Get("Content-Type"); rec.Code != http.StatusPartialContent || ct != "text/plain; charset=utf-8" || rec.Body.String() != encoded[:10] {
+		t.Errorf("br range = %d %q %q, want 206 text/plain; charset=utf-8 of the first 10 br bytes", rec.Code, ct, rec.Body)
 	}
 }
 
