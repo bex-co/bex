@@ -1169,7 +1169,9 @@ func (s *Service) List(ctx context.Context, service string, filter Filter) ([]Ev
 	}
 	out := make([]Event, 0, len(rows))
 	for _, r := range rows {
-		ev := view(r, service)
+		// The service's own id, not the name that addressed it: an event lists
+		// the serviceId GET /v1/events/{id} answers (w8/380).
+		ev := view(r, appID)
 		withoutGitImage(&ev, a)
 		withMemoryLimit(&ev, a.Spec.Tier)
 		out = append(out, ev)

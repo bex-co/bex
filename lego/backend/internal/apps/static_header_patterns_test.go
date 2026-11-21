@@ -137,7 +137,7 @@ func TestStaticHeaderOperationsRejectOtherAppTypes(t *testing.T) {
 			if _, err := svc.SetHeaders(context.Background(), "service", []StaticHeaderView{{Path: "/**/*.css", Name: "X-Pattern", Value: "marker"}}); !errors.Is(err, core.ErrBadRequest) {
 				t.Fatalf("SetHeaders=%v, want bad request", err)
 			}
-			if _, err := svc.ListHeaders(context.Background(), "service"); !errors.Is(err, core.ErrBadRequest) {
+			if _, _, err := svc.ListHeaders(context.Background(), "service"); !errors.Is(err, core.ErrBadRequest) {
 				t.Fatalf("ListHeaders=%v, want bad request", err)
 			}
 			if after := getApp(t, cl, "service").Spec; !reflect.DeepEqual(before, after) {

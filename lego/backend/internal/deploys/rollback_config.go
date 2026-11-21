@@ -237,9 +237,9 @@ func (s *Service) openSelectedRelease(ctx context.Context, a *appv1alpha1.App, s
 // a runtime release's image and configuration record, or a static site's
 // retained publication (w32/049). A release neither selects (an old record
 // without a resolved image, a static release with no retained publication)
-// retains the established commit-pinned fallback (nil, nil). Refusals and the
-// started notification name service, the caller's selector, as Trigger's do;
-// a.Name is the internal tenant-prefixed CR name (w8/128).
+// retains the established commit-pinned fallback (nil, nil). Refusals name
+// service, the caller's selector, as Trigger's do; a.Name is the internal
+// tenant-prefixed CR name (w8/128).
 func (s *Service) restartSelectedRelease(ctx context.Context, service string, a *appv1alpha1.App) (*DeployView, error) {
 	if s.Store == nil || appStoreID(a) == "" {
 		return nil, nil
@@ -274,7 +274,7 @@ func (s *Service) restartSelectedRelease(ctx context.Context, service string, a 
 		return nil, err
 	}
 	if store.IsOpenDeployStatus(d.Status) {
-		s.notifyDeployStarted(ctx, a, service)
+		s.notifyDeployStarted(ctx, a)
 	}
 	result := view(a, d)
 	return &result, nil

@@ -4570,7 +4570,7 @@ func (s *Service) TriggerCronRun(ctx context.Context, name string, cancelActive 
 		return CronRunView{}, nil, core.NewConflictError(
 			CronErrorSuspended,
 			fmt.Sprintf("cron job %q is suspended", name),
-			map[string]any{"serviceId": name},
+			map[string]any{"serviceId": publicID(a)},
 		)
 	}
 	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
@@ -4583,7 +4583,7 @@ func (s *Service) TriggerCronRun(ctx context.Context, name string, cancelActive 
 			fmt.Sprintf("cron job %q already has a run in progress (run %s). Starting a new run cancels it. "+
 				"Wait for it to finish, or, if the user agrees to cancel it, call run_cron_job again with cancelActiveRun set to true",
 				name, active.ID),
-			map[string]any{"serviceId": name, "runId": active.ID},
+			map[string]any{"serviceId": publicID(a), "runId": active.ID},
 		)
 	}
 	runAt := now.Format(time.RFC3339Nano)
@@ -6655,16 +6655,18 @@ func requireStaticSite(a *appv1alpha1.App, name string) error {
 }
 
 // ListRoutes returns a static_site's ordered redirect/rewrite rules (Render's
-// GET /v1/services/{id}/routes).
-func (s *Service) ListRoutes(ctx context.Context, name string) ([]StaticRouteView, error) {
+// GET /v1/services/{id}/routes) and the service's public id. Each rule's id
+// derives from that id, so it is the same whatever name addressed the service
+// (w8/380).
+func (s *Service) ListRoutes(ctx context.Context, name string) (serviceID string, routes []StaticRouteView, err error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	if err := requireStaticSite(a, name); err != nil {
-		return nil, err
+		return "", nil, err
 	}
-	return staticRouteViews(a.Spec.Routes), nil
+	return publicID(a), staticRouteViews(a.Spec.Routes), nil
 }
 
 // SetRoutes replaces a static_site's redirect/rewrite rules (Render's bulk
@@ -6691,16 +6693,16 @@ func (s *Service) SetRoutes(ctx context.Context, name string, routes []StaticRou
 }
 
 // ListHeaders returns a static_site's custom response-header rules (Render's
-// GET /v1/services/{id}/headers).
-func (s *Service) ListHeaders(ctx context.Context, name string) ([]StaticHeaderView, error) {
+// GET /v1/services/{id}/headers) and the service's public id, as ListRoutes.
+func (s *Service) ListHeaders(ctx context.Context, name string) (serviceID string, headers []StaticHeaderView, err error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	if err := requireStaticSite(a, name); err != nil {
-		return nil, err
+		return "", nil, err
 	}
-	return staticHeaderViews(a.Spec.Headers), nil
+	return publicID(a), staticHeaderViews(a.Spec.Headers), nil
 }
 
 // SetHeaders replaces a static_site's custom response-header rules (Render's bulk

@@ -18,7 +18,10 @@ package events
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"slices"
 	"testing"
@@ -616,6 +619,31 @@ func TestLegacyEnvironmentMovesExposeCanonicalReferencesWithoutRewritingAudit(t 
 	}
 	if from != "env-c185th5c2rvvnhbfiltg" || to != "env-c185th5c2rvvnhbfilt0" {
 		t.Fatalf("public projection mutated audit identity: from=%q to=%q", from, to)
+	}
+}
+
+// w8/380: bex accepts a service's name where Render takes only its srv- id.
+// The feed listed that name as each event's serviceId, an id no other read
+// returns; it now lists the service's own id, as GET /v1/events/{id} does.
+func TestListByNameAnswersTheServiceID(t *testing.T) {
+	st := &fakeStore{rows: []store.ServiceEventRow{{Key: "aud-1:", Source: store.EventSourceAudit, Verb: "apps.Suspend", At: now}}}
+	svc := newService(st, sampleApp("web", "srv-w8380events0000000", "tea-a"))
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	for _, form := range []string{"srv-w8380events0000000", "web"} {
+		got, err := svc.List(t.Context(), form, Filter{})
+		if err != nil || len(got) != 1 {
+			t.Fatalf("List(%q) = %d events (err %v), want 1", form, len(got), err)
+		}
+		if got[0].ServiceID != "srv-w8380events0000000" {
+			t.Errorf("List(%q) serviceId = %q, want srv-w8380events0000000", form, got[0].ServiceID)
+		}
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/"+form+"/events", nil))
+		var listed []eventWithCursor
+		if err := json.Unmarshal(rec.Body.Bytes(), &listed); rec.Code != http.StatusOK || err != nil || len(listed) != 1 || listed[0].Event.ServiceID != "srv-w8380events0000000" {
+			t.Errorf("GET /v1/services/%s/events = %d %s, want serviceId srv-w8380events0000000", form, rec.Code, rec.Body.String())
+		}
 	}
 }
 

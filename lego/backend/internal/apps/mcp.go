@@ -1056,7 +1056,7 @@ func (s *Service) registerStaticSiteTools(srv *mcp.Server) {
 		Name:        "list_static_routes",
 		Description: "List a static site's redirect/rewrite rules (in order, first match wins).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, routesResult, error) {
-		routes, err := s.ListRoutes(ctx, in.ServiceID)
+		_, routes, err := s.ListRoutes(ctx, in.ServiceID)
 		if err != nil {
 			return nil, routesResult{}, err
 		}
@@ -1078,7 +1078,7 @@ func (s *Service) registerStaticSiteTools(srv *mcp.Server) {
 		Name:        "list_static_headers",
 		Description: "List a static site's custom response-header rules.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, headersResult, error) {
-		headers, err := s.ListHeaders(ctx, in.ServiceID)
+		_, headers, err := s.ListHeaders(ctx, in.ServiceID)
 		if err != nil {
 			return nil, headersResult{}, err
 		}

@@ -129,7 +129,7 @@ func TestStaticHeaderAuthorizationAndDeletionPreserveRules(t *testing.T) {
 			if _, err := svc.SetHeaders(ctx, "site", []StaticHeaderView{{Path: "/*.css", Name: "X-New", Value: "new"}}); !errors.Is(err, want) {
 				t.Fatalf("SetHeaders=%v want %v", err, want)
 			}
-			if _, err := svc.ListHeaders(ctx, "site"); !errors.Is(err, want) {
+			if _, _, err := svc.ListHeaders(ctx, "site"); !errors.Is(err, want) {
 				t.Fatalf("ListHeaders=%v want %v", err, want)
 			}
 			if !reflect.DeepEqual(getApp(t, cl, "site").Spec.Headers, app.Spec.Headers) {

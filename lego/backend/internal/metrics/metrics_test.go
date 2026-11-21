@@ -411,6 +411,35 @@ func TestManagedServiceIDUsesResolvedAppNameForEveryMetricsLookup(t *testing.T) 
 	}
 }
 
+// w8/380: bex accepts a service's name where Render's resource takes only its
+// srv- id. Each series' resource label and instance id echoed that name, so
+// an instance id read under one form matched nothing under the other; every
+// form now answers the service's own id.
+func TestMetricsByNameAnswerTheServiceID(t *testing.T) {
+	svc, _ := newManagedMetricsService(t)
+	ctx := context.Background()
+	wantInstance := ids.ServiceInstanceID(managedAppID, managedAppPod)
+	series, err := svc.Metrics(ctx, MetricQuery{App: managedAppName, Metric: MetricCPU, Instances: []string{wantInstance}})
+	if err != nil || len(series) != 1 {
+		t.Fatalf("Metrics by name: err=%v series=%+v", err, series)
+	}
+	if got := series[0].Labels["resource"]; got != managedAppID {
+		t.Errorf("resource = %q, want %q", got, managedAppID)
+	}
+	if got := series[0].Labels["instance"]; got != wantInstance {
+		t.Errorf("instance = %q, want %q", got, wantInstance)
+	}
+	filters, err := svc.MetricsFilters(ctx, MetricsFiltersQuery{
+		App: managedAppName, OutputFilters: []string{filterFieldResource, filterFieldInstance},
+	})
+	if err != nil || len(filters) != 2 {
+		t.Fatalf("MetricsFilters by name: err=%v filters=%+v", err, filters)
+	}
+	if !slices.Equal(filters[0].Values, []string{managedAppID}) || !slices.Equal(filters[1].Values, []string{wantInstance}) {
+		t.Errorf("filters by name = %+v, want resource %s and instance %s", filters, managedAppID, wantInstance)
+	}
+}
+
 func TestManagedServiceIDMetricsAcrossRESTGraphQLAndMCP(t *testing.T) {
 	svc, _ := newManagedMetricsService(t)
 

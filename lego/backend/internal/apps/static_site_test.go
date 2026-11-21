@@ -131,7 +131,7 @@ func TestSetRoutesAndHeaders(t *testing.T) {
 	if _, err := svc.SetHeaders(ctx, "site", []StaticHeaderView{{Path: "/*", Name: "X-A", Value: "1"}}); err != nil {
 		t.Fatalf("SetHeaders: %v", err)
 	}
-	hs, err := svc.ListHeaders(ctx, "site")
+	_, hs, err := svc.ListHeaders(ctx, "site")
 	if err != nil || len(hs) != 1 || hs[0].Name != "X-A" {
 		t.Fatalf("ListHeaders: %v %+v", err, hs)
 	}

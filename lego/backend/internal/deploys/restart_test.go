@@ -534,12 +534,14 @@ func TestRestartRefusalNamesTheCallersService(t *testing.T) {
 	}
 }
 
-// The deploy-started email a Restart sends names the caller's service too
-// (w8/128): a.Name is the internal App name.
-func TestRestartStartedNotificationNamesTheCallersService(t *testing.T) {
+// The deploy-started email a Restart sends names the service by its public
+// name, never the internal App name (w8/128), and whichever form of it the
+// caller used (w8/380), as a push and the close-time email do.
+func TestRestartStartedNotificationNamesTheService(t *testing.T) {
 	svc, cl, _ := servingFixture(t, store.TriggerRollback, nil)
 	a := getApp(t, cl, "web")
 	a.Labels[core.LabelTenant] = "tea-a"
+	a.Labels[core.LabelServiceName] = "site"
 	if err := cl.Update(context.Background(), a); err != nil {
 		t.Fatal(err)
 	}
@@ -551,8 +553,8 @@ func TestRestartStartedNotificationNamesTheCallersService(t *testing.T) {
 	}
 	select {
 	case got := <-notifier.calls:
-		if got != (startedCall{tenantID: "tea-a", appName: "srv-1"}) {
-			t.Errorf("started notification = %+v, want it to name srv-1", got)
+		if got != (startedCall{tenantID: "tea-a", appName: "site"}) {
+			t.Errorf("started notification = %+v, want it to name site", got)
 		}
 	case <-time.After(time.Second):
 		t.Fatal("Restart issued no deploy-start notification")

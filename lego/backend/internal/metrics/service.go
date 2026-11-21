@@ -497,6 +497,9 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 	if err != nil {
 		return nil, err // ErrNotFound for unknown apps, exactly like Get
 	}
+	// Every series' resource label and instance id carries the service's own
+	// id, whichever form of its name the request used (w8/380).
+	q.App = appResourceID(app, q.App)
 	// Render: response latency metrics are a Pro-and-higher feature (w8/m138).
 	if q.Metric == MetricHTTPLatency {
 		if err := s.RequirePlanFeature(ctx, app.Labels[core.LabelTenant], core.FeatureLatencyMetrics); err != nil {
@@ -1378,6 +1381,7 @@ func (s *Service) MetricsFilters(ctx context.Context, q MetricsFiltersQuery) ([]
 	if err != nil {
 		return nil, err
 	}
+	q.App = appResourceID(app, q.App) // as Metrics does (w8/380)
 
 	out := make([]MetricsFilterValues, 0, len(q.OutputFilters))
 	for _, field := range q.OutputFilters {

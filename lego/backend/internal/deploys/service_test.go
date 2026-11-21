@@ -500,7 +500,9 @@ func TestTriggerNotifiesDeployStartedOffRequestPath(t *testing.T) {
 
 	result := make(chan error, 1)
 	go func() {
-		_, err := svc.Trigger(context.Background(), "web", TriggerParams{})
+		// Addressed by its srv- id, the email still names the service, as a
+		// push and the close-time email do (w8/380).
+		_, err := svc.Trigger(context.Background(), "srv-1", TriggerParams{})
 		result <- err
 	}()
 

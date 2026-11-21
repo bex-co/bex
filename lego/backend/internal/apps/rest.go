@@ -1493,9 +1493,11 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 
 	// Static-site edge rules (Render-compatible): /routes (redirects/rewrites) and
 	// /headers (custom response headers). GET lists; PUT replaces the whole list.
+	// A rule's id derives from the service's public id, never from the path, so
+	// a service addressed by its srv- id, slug or display name gives each rule
+	// one id (w8/380).
 	listRoutes := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		serviceID := r.PathValue("id")
-		views, err := s.ListRoutes(r.Context(), serviceID)
+		serviceID, views, err := s.ListRoutes(r.Context(), r.PathValue("id"))
 		if err != nil {
 			return nil, err
 		}
@@ -1523,11 +1525,10 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		return toRenderRouteObjects(r.PathValue("id"), app.Routes), nil
+		return toRenderRouteObjects(app.ID, app.Routes), nil
 	})
 	listHeaders := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		serviceID := r.PathValue("id")
-		views, err := s.ListHeaders(r.Context(), serviceID)
+		serviceID, views, err := s.ListHeaders(r.Context(), r.PathValue("id"))
 		if err != nil {
 			return nil, err
 		}
@@ -1553,7 +1554,7 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		return toRenderHeaderObjects(r.PathValue("id"), app.Headers), nil
+		return toRenderHeaderObjects(app.ID, app.Headers), nil
 	})
 
 	// Render's single-rule edge operations (w8/137) edit the lists the bulk PUTs
@@ -1568,12 +1569,11 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		serviceID := r.PathValue("id")
-		app, at, err := s.AddRoute(r.Context(), serviceID, body.StaticRouteView, body.Priority)
+		app, at, err := s.AddRoute(r.Context(), r.PathValue("id"), body.StaticRouteView, body.Priority)
 		if err != nil {
 			return nil, err
 		}
-		return toRenderRouteObjects(serviceID, app.Routes)[at], nil
+		return toRenderRouteObjects(app.ID, app.Routes)[at], nil
 	})
 	patchRoute := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		body, err := core.DecodeBody[struct {
@@ -1585,12 +1585,11 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 		if body.Priority == nil {
 			return nil, fmt.Errorf("%w: priority is required", core.ErrBadRequest)
 		}
-		serviceID := r.PathValue("id")
-		app, err := s.MoveRoute(r.Context(), serviceID, r.PathValue("routeId"), *body.Priority)
+		app, err := s.MoveRoute(r.Context(), r.PathValue("id"), r.PathValue("routeId"), *body.Priority)
 		if err != nil {
 			return nil, err
 		}
-		return map[string]renderRoute{"headers": toRenderRouteObjects(serviceID, app.Routes)[*body.Priority]}, nil
+		return map[string]renderRoute{"headers": toRenderRouteObjects(app.ID, app.Routes)[*body.Priority]}, nil
 	})
 	deleteRoute := core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.DeleteRoute(r.Context(), r.PathValue("id"), r.PathValue("routeId"))
@@ -1600,12 +1599,11 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		serviceID := r.PathValue("id")
-		app, err := s.AddHeader(r.Context(), serviceID, body)
+		app, err := s.AddHeader(r.Context(), r.PathValue("id"), body)
 		if err != nil {
 			return nil, err
 		}
-		headers := toRenderHeaderObjects(serviceID, app.Headers)
+		headers := toRenderHeaderObjects(app.ID, app.Headers)
 		return map[string]renderHeader{"headers": headers[len(headers)-1]}, nil
 	})
 	deleteHeader := core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {

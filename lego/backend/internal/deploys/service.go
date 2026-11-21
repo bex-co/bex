@@ -1040,7 +1040,7 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		s.RecordAutoDeployDisabled(ctx, a, disabledTrigger, core.AutoDeployReasonManualDeploy)
 	}
 	if store.IsOpenDeployStatus(d.Status) {
-		s.notifyDeployStarted(ctx, a, service)
+		s.notifyDeployStarted(ctx, a)
 	}
 	return view(a, d), nil
 }
@@ -1071,7 +1071,9 @@ func stampClearCacheRelease(a *appv1alpha1.App, generation int64, clearCache str
 // close-time notifier's best-effort pattern. The App's owner label is
 // authoritative: using the caller's default workspace here would misroute a
 // notification when they operate a service in another workspace they joined.
-func (s *Service) notifyDeployStarted(ctx context.Context, a *appv1alpha1.App, service string) {
+// The email names the service as the push and deferred-restart paths and the
+// close-time email do, whichever form of its name the request used (w8/380).
+func (s *Service) notifyDeployStarted(ctx context.Context, a *appv1alpha1.App) {
 	if s.StartedNotifier == nil {
 		return
 	}
@@ -1079,7 +1081,7 @@ func (s *Service) notifyDeployStarted(ctx context.Context, a *appv1alpha1.App, s
 	if tenantID == "" {
 		return
 	}
-	go s.StartedNotifier.NotifyDeployStarted(context.WithoutCancel(ctx), tenantID, service, a.Spec.NotificationsToSend)
+	go s.StartedNotifier.NotifyDeployStarted(context.WithoutCancel(ctx), tenantID, core.AppPublicName(a), a.Spec.NotificationsToSend)
 }
 
 // lookupCommit resolves the ref a trigger will build — the explicit

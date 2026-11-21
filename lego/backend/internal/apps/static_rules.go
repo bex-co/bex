@@ -52,13 +52,14 @@ func (s *Service) editStaticRules(ctx context.Context, name, verb string, find f
 }
 
 // routeIndex is the position of the route with routeID among a's routes, or -1.
-func routeIndex(name string, a *appv1alpha1.App, routeID string) int {
-	return slices.IndexFunc(toRenderRouteObjects(name, staticRouteViews(a.Spec.Routes)), func(r renderRoute) bool { return r.ID == routeID })
+// The ids are a's own, whatever name addressed it (w8/380).
+func routeIndex(a *appv1alpha1.App, routeID string) int {
+	return slices.IndexFunc(toRenderRouteObjects(publicID(a), staticRouteViews(a.Spec.Routes)), func(r renderRoute) bool { return r.ID == routeID })
 }
 
 // headerIndex is the position of the header with headerID among a's headers, or -1.
-func headerIndex(name string, a *appv1alpha1.App, headerID string) int {
-	return slices.IndexFunc(toRenderHeaderObjects(name, staticHeaderViews(a.Spec.Headers)), func(h renderHeader) bool { return h.ID == headerID })
+func headerIndex(a *appv1alpha1.App, headerID string) int {
+	return slices.IndexFunc(toRenderHeaderObjects(publicID(a), staticHeaderViews(a.Spec.Headers)), func(h renderHeader) bool { return h.ID == headerID })
 }
 
 // AddRoute adds one redirect/rewrite rule (Render's add-route): appended, or
@@ -92,7 +93,7 @@ func (s *Service) AddRoute(ctx context.Context, name string, route StaticRouteVi
 // shifting the rules between its old and new position by one.
 func (s *Service) MoveRoute(ctx context.Context, name, routeID string, priority int) (AppView, error) {
 	return s.editStaticRules(ctx, name, core.AuditVerbSetRoutes, func(a *appv1alpha1.App) error {
-		if routeIndex(name, a, routeID) < 0 {
+		if routeIndex(a, routeID) < 0 {
 			return core.NotFound("route")
 		}
 		if priority < 0 || priority >= len(a.Spec.Routes) {
@@ -100,7 +101,7 @@ func (s *Service) MoveRoute(ctx context.Context, name, routeID string, priority 
 		}
 		return nil
 	}, func(a *appv1alpha1.App) {
-		from := routeIndex(name, a, routeID)
+		from := routeIndex(a, routeID)
 		if from < 0 || priority >= len(a.Spec.Routes) {
 			return
 		}
@@ -112,12 +113,12 @@ func (s *Service) MoveRoute(ctx context.Context, name, routeID string, priority 
 // DeleteRoute removes the rule with routeID (Render's delete-route).
 func (s *Service) DeleteRoute(ctx context.Context, name, routeID string) error {
 	_, err := s.editStaticRules(ctx, name, core.AuditVerbSetRoutes, func(a *appv1alpha1.App) error {
-		if routeIndex(name, a, routeID) < 0 {
+		if routeIndex(a, routeID) < 0 {
 			return core.NotFound("route")
 		}
 		return nil
 	}, func(a *appv1alpha1.App) {
-		if i := routeIndex(name, a, routeID); i >= 0 {
+		if i := routeIndex(a, routeID); i >= 0 {
 			a.Spec.Routes = slices.Delete(a.Spec.Routes, i, i+1)
 		}
 	})
@@ -144,12 +145,12 @@ func (s *Service) AddHeader(ctx context.Context, name string, header StaticHeade
 // DeleteHeader removes the rule with headerID (Render's delete-header).
 func (s *Service) DeleteHeader(ctx context.Context, name, headerID string) error {
 	_, err := s.editStaticRules(ctx, name, core.AuditVerbSetHeaders, func(a *appv1alpha1.App) error {
-		if headerIndex(name, a, headerID) < 0 {
+		if headerIndex(a, headerID) < 0 {
 			return core.NotFound("header")
 		}
 		return nil
 	}, func(a *appv1alpha1.App) {
-		if i := headerIndex(name, a, headerID); i >= 0 {
+		if i := headerIndex(a, headerID); i >= 0 {
 			a.Spec.Headers = slices.Delete(a.Spec.Headers, i, i+1)
 		}
 	})

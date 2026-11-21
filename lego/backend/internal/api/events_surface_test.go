@@ -77,7 +77,7 @@ func (f *fakeEventStore) GetServiceEvent(_ context.Context, workspaceID, eventID
 	}
 	for _, row := range f.rows {
 		if ids.Derive(ids.Event, row.Key) == eventID && workspaceID == core.DefaultTenant {
-			return store.ServiceEventLookup{Event: row, ServiceID: "web"}, nil
+			return store.ServiceEventLookup{Event: row, ServiceID: "srv-1"}, nil
 		}
 	}
 	return store.ServiceEventLookup{}, store.ErrNotFound
@@ -144,8 +144,10 @@ func TestEventSurfaceParity(t *testing.T) {
 		if rest[i].Event.Type != want {
 			t.Errorf("event %d type = %q, want %q", i, rest[i].Event.Type, want)
 		}
-		if rest[i].Event.ServiceID != "web" {
-			t.Errorf("event %d serviceId = %q, want web", i, rest[i].Event.ServiceID)
+		// Listed by name, an event still names the service by its id, as
+		// GET /v1/events/{id} does (w8/380).
+		if rest[i].Event.ServiceID != "srv-1" {
+			t.Errorf("event %d serviceId = %q, want srv-1", i, rest[i].Event.ServiceID)
 		}
 		// Render marks id/timestamp/serviceId/type/details required — all five present.
 		if rest[i].Event.ID == "" || rest[i].Event.Timestamp == "" || rest[i].Event.Details == nil || rest[i].Cursor == "" {
@@ -248,8 +250,8 @@ func TestGetEventSurfaceParity(t *testing.T) {
 		wantType      string
 		wantServiceID string
 	}{
-		{name: "service deploy", id: ids.Derive(ids.Event, "dep-1:"+store.EventPhaseStarted), wantType: events.TypeDeployStarted, wantServiceID: "web"},
-		{name: "typed lifecycle fact", id: ids.Derive(ids.Event, "fact:autoscaling-1"), wantType: events.TypeAutoscalingStarted, wantServiceID: "web"},
+		{name: "service deploy", id: ids.Derive(ids.Event, "dep-1:"+store.EventPhaseStarted), wantType: events.TypeDeployStarted, wantServiceID: "srv-1"},
+		{name: "typed lifecycle fact", id: ids.Derive(ids.Event, "fact:autoscaling-1"), wantType: events.TypeAutoscalingStarted, wantServiceID: "srv-1"},
 		{name: "Postgres audit event", id: postgresID, wantType: events.TypePostgresCreated, wantServiceID: "dpg-1"},
 	}
 

@@ -58,10 +58,10 @@ func TestDeletingServiceIsAbsentFromEveryByIDRead(t *testing.T) {
 	if _, err := svc.Get(context.Background(), "gone"); !errors.Is(err, core.ErrNotFound) {
 		t.Errorf("Get on a deleting service = %v, want core.ErrNotFound", err)
 	}
-	if _, err := svc.ListRoutes(context.Background(), "gone"); !errors.Is(err, core.ErrNotFound) {
+	if _, _, err := svc.ListRoutes(context.Background(), "gone"); !errors.Is(err, core.ErrNotFound) {
 		t.Errorf("ListRoutes on a deleting service = %v, want core.ErrNotFound", err)
 	}
-	if _, err := svc.ListHeaders(context.Background(), "gone"); !errors.Is(err, core.ErrNotFound) {
+	if _, _, err := svc.ListHeaders(context.Background(), "gone"); !errors.Is(err, core.ErrNotFound) {
 		t.Errorf("ListHeaders on a deleting service = %v, want core.ErrNotFound", err)
 	}
 
@@ -91,10 +91,10 @@ func TestActiveServiceReadsAreUnaffected(t *testing.T) {
 	if v.URL == "" {
 		t.Error("live service must still advertise its serving URL")
 	}
-	if routes, err := svc.ListRoutes(context.Background(), "live"); err != nil || len(routes) != 1 {
+	if _, routes, err := svc.ListRoutes(context.Background(), "live"); err != nil || len(routes) != 1 {
 		t.Errorf("ListRoutes on a live static site = %v len=%d, want the one rule", err, len(routes))
 	}
-	if headers, err := svc.ListHeaders(context.Background(), "live"); err != nil || len(headers) != 1 {
+	if _, headers, err := svc.ListHeaders(context.Background(), "live"); err != nil || len(headers) != 1 {
 		t.Errorf("ListHeaders on a live static site = %v len=%d, want the one rule", err, len(headers))
 	}
 }
