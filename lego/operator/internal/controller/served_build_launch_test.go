@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"testing"
 
@@ -225,4 +226,173 @@ func TestServedBuildRerunTemplateIsStable(t *testing.T) {
 	if !slices.Equal(dep.Spec.Template.Spec.Containers[0].Args, first.Spec.Containers[0].Args) {
 		t.Fatalf("second pass args %q, want the first pass's %q", dep.Spec.Template.Spec.Containers[0].Args, first.Spec.Containers[0].Args)
 	}
+}
+
+// TestARerunOfTheServedBuildKeepsSavedBuildSettingsUndeployed is w32/060: an
+// environment "Save and deploy" or a group deploy reruns the served build with
+// the saved settings (servedBuildRerun), as Render's "Save and deploy" deploys
+// the existing build. Its record named the saved build settings, so a build
+// command, branch or root directory saved since that build read as deployed
+// once the rerun served, though only the next deploy that builds runs it. The
+// rerun runs the saved start command and environment (w32/048), so those read
+// deployed.
+func TestARerunOfTheServedBuildKeepsSavedBuildSettingsUndeployed(t *testing.T) {
+	ctx := context.Background()
+	builds := map[string]func(*appv1alpha1.AppSpec){
+		"a native service":     func(s *appv1alpha1.AppSpec) { s.Runtime = "node" },
+		"a Dockerfile service": func(s *appv1alpha1.AppSpec) { s.Runtime, s.DockerfilePath = "docker", "Dockerfile" },
+	}
+	builtSpec := func(withBuild func(*appv1alpha1.AppSpec)) appv1alpha1.AppSpec {
+		spec := appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Repo: m202Repo, Branch: "main", BuildCommand: "npm ci",
+			StartCommand: w32048Old, Port: 10000, Replicas: 1, Tier: "starter"}
+		withBuild(&spec)
+		return spec
+	}
+	// serveRerun adopts app's rerun of the served build at gen and serves it.
+	serveRerun := func(t *testing.T, r *AppReconciler, app *appv1alpha1.App, gen int64) {
+		t.Helper()
+		app.Status.ReleaseGeneration = gen
+		if err := r.recordAdoptedRelease(ctx, app); err != nil {
+			t.Fatal(err)
+		}
+		app.Status.ConfigSnapshotGeneration = gen
+		dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
+		if err := r.applyServingDeployment(ctx, app, dep, deploymentParams{image: w32048Image, port: 10000, replicas: 1}, nil); err != nil {
+			t.Fatal(err)
+		}
+		app.Status.ActiveRevision = fmt.Sprintf("rev-%d", gen)
+	}
+	// rerun serves generation 7, a rerun of generation 5's build of built,
+	// with save applied to the saved spec since. served, when set, edits
+	// generation 5's record as an older operator or another release wrote it.
+	rerun := func(t *testing.T, built appv1alpha1.AppSpec, served func(*runtimeConfigRecord), save func(*appv1alpha1.AppSpec)) (*AppReconciler, *appv1alpha1.App) {
+		t.Helper()
+		app := servedBuildRerunApp()
+		app.Spec = built
+		save(&app.Spec)
+		app.Spec.RestartedAt = "rerun"
+		app.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: 7, Image: w32048Image}
+		r := recordsReconciler(t, app, nil)
+		builder := app.DeepCopy()
+		builder.Spec = built
+		rec := m202Record(built.StartCommand, w32048Image, nil)
+		if err := r.writeRuntimeConfigRecord(ctx, builder, 5, rec); err != nil {
+			t.Fatal(err)
+		}
+		if served != nil {
+			served(rec)
+			if err := r.persistRuntimeConfigRecord(ctx, builder, 5, rec); err != nil {
+				t.Fatal(err)
+			}
+		}
+		for _, source := range releaseConfigSources(app) {
+			if err := r.Create(ctx, secret(source, "saved")); err != nil {
+				t.Fatal(err)
+			}
+		}
+		serveRerun(t, r, app, 7)
+		return r, app
+	}
+	undeployed := func(t *testing.T, r *AppReconciler, app *appv1alpha1.App) (bool, string) {
+		t.Helper()
+		different, imageOnly, err := r.servingConfigurationDiffers(ctx, app)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return different, undeployedChangesReason(app, different, imageOnly)
+	}
+	unchanged := func(*appv1alpha1.AppSpec) {}
+	for kind, withBuild := range builds {
+		built := builtSpec(withBuild)
+		for _, tc := range []struct {
+			name string
+			save func(*appv1alpha1.AppSpec)
+			want bool
+		}{
+			{"nothing saved", unchanged, false},
+			{"a saved build command", func(s *appv1alpha1.AppSpec) { s.BuildCommand = "npm run build" }, true},
+			{"a saved branch", func(s *appv1alpha1.AppSpec) { s.Branch = "dev" }, true},
+			{"a saved root directory", func(s *appv1alpha1.AppSpec) { s.RootDir = "web" }, true},
+			{"a saved start command, which the rerun runs", func(s *appv1alpha1.AppSpec) { s.StartCommand = w32048New }, false},
+			{"the service's first variable", func(s *appv1alpha1.AppSpec) { s.EnvFromSecret = "hello-env" }, false},
+			{"a linked environment group", func(s *appv1alpha1.AppSpec) { s.EnvFromSecrets = []string{"evg-shared-env"} }, false},
+			{"a linked environment group and a saved build command", func(s *appv1alpha1.AppSpec) {
+				s.EnvFromSecrets, s.BuildCommand = []string{"evg-shared-env"}, "npm run build"
+			}, true},
+		} {
+			t.Run(kind+", "+tc.name, func(t *testing.T) {
+				r, app := rerun(t, built, nil, tc.save)
+				different, reason := undeployed(t, r, app)
+				if different != tc.want {
+					t.Fatalf("undeployedChanges = %v once the rerun serves, want %v", different, tc.want)
+				}
+				if tc.want && reason != appv1alpha1.UndeployedReasonSaved {
+					t.Fatalf("reason %q, want %q", reason, appv1alpha1.UndeployedReasonSaved)
+				}
+				rec, err := r.readRuntimeConfigRecord(ctx, app, 7)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rec.spec.BuildSettingsFingerprint != buildSettingsFingerprint(built) {
+					t.Fatal("the rerun's record must name the served build's settings, not the saved ones")
+				}
+			})
+		}
+
+		t.Run(kind+", the served build settings put back wait for nothing, through a rerun of the rerun", func(t *testing.T) {
+			r, app := rerun(t, built, nil, func(s *appv1alpha1.AppSpec) {
+				s.EnvFromSecrets, s.BuildCommand = []string{"evg-shared-env"}, "npm run build"
+			})
+			app.Spec.BuildCommand = built.BuildCommand
+			if different, _ := undeployed(t, r, app); different {
+				t.Fatal("the build command the rerun runs, put back, still reads undeployed")
+			}
+			// A second environment save deploys, rerunning the rerun's image.
+			app.Spec.BuildCommand = "npm run build"
+			app.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "9"
+			app.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: 9, Image: w32048Image}
+			if err := r.Update(ctx, app); err != nil {
+				t.Fatal(err)
+			}
+			serveRerun(t, r, app, 9)
+			if different, _ := undeployed(t, r, app); !different {
+				t.Fatal("a rerun of the rerun reads the saved build command deployed")
+			}
+			app.Spec.BuildCommand = built.BuildCommand
+			if different, _ := undeployed(t, r, app); different {
+				t.Fatal("after a rerun of the rerun, the served build's command put back reads undeployed")
+			}
+		})
+	}
+
+	// Controls: a served record that names no build settings this operator
+	// can compare, or runs another image, keeps the saved comparison.
+	for _, tc := range []struct {
+		name   string
+		served func(*runtimeConfigRecord)
+	}{
+		{"a served record without build settings", func(rec *runtimeConfigRecord) { rec.spec.BuildSettingsFingerprint = "" }},
+		{"a served record with w32/058's artifact build settings", func(rec *runtimeConfigRecord) {
+			rec.spec.BuildSettingsFingerprint = desiredAppReleaseIdentity(settingsIdentitySpec(builtSpec(builds["a native service"]))).artifact
+		}},
+		{"a served record that runs another image", func(rec *runtimeConfigRecord) {
+			rec.template.Spec.Containers[0].Image = "zot.local:5000/tea-x/qa-env:gen-4@sha256:1"
+		}},
+	} {
+		t.Run(tc.name+" keeps naming the saved settings", func(t *testing.T) {
+			r, app := rerun(t, builtSpec(builds["a native service"]), tc.served, func(s *appv1alpha1.AppSpec) { s.BuildCommand = "npm run build" })
+			if different, _ := undeployed(t, r, app); different {
+				t.Fatal("with no comparable served build settings the comparison is the saved one, as before")
+			}
+		})
+	}
+
+	t.Run("a standard deploy of the saved settings is not a rerun", func(t *testing.T) {
+		built := builtSpec(builds["a native service"])
+		r, app := rerun(t, built, nil, func(s *appv1alpha1.AppSpec) { s.BuildCommand = "npm run build" })
+		app.Spec.ReleaseConfig = nil
+		if _, ok, err := r.rerunBuildSettings(ctx, app); err != nil || ok {
+			t.Fatalf("a release with no selection carries build settings (%v, %v)", ok, err)
+		}
+	})
 }

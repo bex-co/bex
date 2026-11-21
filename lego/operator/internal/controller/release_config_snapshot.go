@@ -468,7 +468,22 @@ func (r *AppReconciler) recordAdoptedRelease(ctx context.Context, app *appv1alph
 	if err := r.snapshotReleaseConfig(ctx, app, gen); err != nil {
 		return err
 	}
-	return r.writeRuntimeConfigRecord(ctx, app, gen, &runtimeConfigRecord{spec: releaseRecordSpec(app), adopted: &app.Spec})
+	record := &runtimeConfigRecord{spec: releaseRecordSpec(app), adopted: &app.Spec}
+	if err := r.carryRerunBuildSettings(ctx, app, record); err != nil {
+		return err
+	}
+	return r.writeRuntimeConfigRecord(ctx, app, gen, record)
+}
+
+// carryRerunBuildSettings makes the record of a release that reruns the served
+// build name the build settings of the image it runs (rerunBuildSettings), as
+// a Restart's record names its target's (w32/058, w32/060).
+func (r *AppReconciler) carryRerunBuildSettings(ctx context.Context, app *appv1alpha1.App, record *runtimeConfigRecord) error {
+	built, ok, err := r.rerunBuildSettings(ctx, app)
+	if ok {
+		record.spec.BuildSettingsFingerprint, record.selected = built, true
+	}
+	return err
 }
 
 // snapshotReleaseConfig copies each of the release's configuration sources to
@@ -523,6 +538,8 @@ func (r *AppReconciler) recordReleasePodTemplate(ctx context.Context, app *appv1
 		// A Restart or rollback runs the image of the release it selects, whose
 		// build settings its record carries (w32/058).
 		record.spec.BuildSettingsFingerprint, record.selected = selected.spec.BuildSettingsFingerprint, true
+	} else if err := r.carryRerunBuildSettings(ctx, app, record); err != nil {
+		return err
 	}
 	record.spec.ImageSource = r.releaseImageSource(ctx, app, tmpl)
 	// The release's spec, for a later save to be held against

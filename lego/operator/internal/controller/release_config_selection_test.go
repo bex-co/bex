@@ -519,9 +519,12 @@ func TestAHeldReleaseRecordKeepsItsAdoptedStamps(t *testing.T) {
 	}
 }
 
-// selectedSettingsFingerprint names a spec's own build exactly as
-// releaseSettingsFingerprint does, so a Restart that runs the saved settings'
-// own build reads them deployed.
+// A record that names a spec's settings on their own build, as a Restart that
+// runs the saved settings' own build does, matches them; on another build's
+// settings it does not. The build settings leave out the start command and
+// environment a release applies when it starts the image, so a rerun that runs
+// a saved start command or group on the served build still names that build
+// (w32/058, w32/060).
 func TestSelectedSettingsFingerprintOfTheSavedBuildIsTheSavedSettings(t *testing.T) {
 	for name, spec := range map[string]appv1alpha1.AppSpec{
 		"image": {Image: "nginx:1", Port: 80, Tier: "starter"},
@@ -530,13 +533,25 @@ func TestSelectedSettingsFingerprintOfTheSavedBuildIsTheSavedSettings(t *testing
 		"docker": {Repo: "https://github.com/bex-co/hello", Branch: "dev", DockerfilePath: "Dockerfile",
 			ReleaseConfig: &appv1alpha1.ReleaseConfigReference{Generation: 2, SourceGeneration: 1, Image: "x"}},
 	} {
-		if got, want := selectedSettingsFingerprint(spec, buildSettingsFingerprint(spec)), releaseSettingsFingerprint(spec); got != want {
-			t.Errorf("%s: %s, want %s", name, got, want)
+		named := func(built appv1alpha1.AppSpec) appv1alpha1.ReleaseRecordSpec {
+			return appv1alpha1.ReleaseRecordSpec{SettingsFingerprint: selectedSettingsFingerprint(spec, buildSettingsFingerprint(built))}
+		}
+		if !recordedSettingsMatch(named(spec), spec) {
+			t.Errorf("%s: its own build's settings do not name the saved ones", name)
 		}
 		other := spec
 		other.BuildCommand = "other"
-		if selectedSettingsFingerprint(spec, buildSettingsFingerprint(other)) == releaseSettingsFingerprint(spec) {
+		if recordedSettingsMatch(named(other), spec) {
 			t.Errorf("%s: another build's settings name the saved ones", name)
+		}
+		started := spec
+		started.StartCommand, started.Env, started.EnvFromSecret = "node other.js", nil, ""
+		started.EnvFromSecrets, started.FilesFromSecrets = []string{"evg-shared-env"}, []string{"api-files"}
+		if buildSettingsFingerprint(started) != buildSettingsFingerprint(spec) {
+			t.Errorf("%s: the start command and environment change the build settings", name)
+		}
+		if recordedSettingsMatch(appv1alpha1.ReleaseRecordSpec{SettingsFingerprint: selectedSettingsFingerprint(started, buildSettingsFingerprint(spec))}, spec) {
+			t.Errorf("%s: another start command and environment name the saved ones", name)
 		}
 	}
 }

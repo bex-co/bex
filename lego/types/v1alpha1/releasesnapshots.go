@@ -122,15 +122,19 @@ type ReleaseRecordSpec struct {
 	// SettingsFingerprint identifies the saved settings the release ran with,
 	// so a cancel can tell a retained change from an identical redeploy (the
 	// operator's releaseSettingsFingerprint). A Restart or rollback runs its
-	// target's build, so its fingerprint names the target's build settings
+	// target's build, and an environment "Save and deploy" or group deploy the
+	// served one, so its fingerprint names that build's settings
 	// (BuildSettingsFingerprint) with its own release settings. Empty in older
 	// records.
 	SettingsFingerprint string `json:"settingsFingerprint,omitempty"`
 	// BuildSettingsFingerprint identifies the build settings of the image the
 	// release runs (repository, branch, root directory, build command,
-	// Dockerfile, runtime: the operator's buildSettingsFingerprint). A Restart
-	// or rollback copies its target's (w32/058). Empty in records written
-	// before it, and in the record of a Restart or rollback of one.
+	// Dockerfile, runtime, but not the start command and environment a release
+	// applies when it starts the image: the operator's
+	// buildSettingsFingerprint). A Restart or rollback copies its target's
+	// (w32/058), and an environment "Save and deploy" or group deploy the
+	// served release's (w32/060). Empty in records written before it, and in
+	// the record of a Restart or rollback of one.
 	BuildSettingsFingerprint string `json:"buildSettingsFingerprint,omitempty"`
 	// ImageSource is the reference the release's image digest was resolved
 	// from, such as an image-port service's tag. A rollback or Restart serves

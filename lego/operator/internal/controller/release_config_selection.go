@@ -51,8 +51,9 @@ type runtimeConfigRecord struct {
 	adopted         *appv1alpha1.AppSpec
 	adoptedIfAbsent *appv1alpha1.AppSpec
 	// selected marks the record of a release that runs the image of the
-	// release it selects (a Restart or rollback): its spec carries that
-	// release's build settings, which writeRuntimeConfigRecord keeps.
+	// release it selects (a Restart or rollback) or of the served release (a
+	// rerun of the served build, w32/060): its spec carries that release's
+	// build settings, which writeRuntimeConfigRecord keeps.
 	selected bool
 }
 
@@ -441,18 +442,28 @@ func (r *AppReconciler) selectedRuntime(ctx context.Context, app *appv1alpha1.Ap
 // servedLaunch is the launch the served release's record shows: launchUnknown
 // when nothing has served or its record is gone.
 func (r *AppReconciler) servedLaunch(ctx context.Context, app *appv1alpha1.App) (launchMode, error) {
+	rec, err := r.servedRecord(ctx, app)
+	if err != nil || rec == nil {
+		return launchUnknown, err
+	}
+	return rec.launch(app), nil
+}
+
+// servedRecord is the served release's record: nil when nothing has served or
+// its record is gone.
+func (r *AppReconciler) servedRecord(ctx context.Context, app *appv1alpha1.App) (*runtimeConfigRecord, error) {
 	served := successfulReleaseGeneration(app)
 	if served <= 0 {
-		return launchUnknown, nil
+		return nil, nil
 	}
 	rec, err := r.readRuntimeConfigRecord(ctx, app, served)
 	if apierrors.IsNotFound(err) {
-		return launchUnknown, nil
+		return nil, nil
 	}
 	if err != nil {
-		return launchUnknown, fmt.Errorf("read served release %d: %w", served, err)
+		return nil, fmt.Errorf("read served release %d: %w", served, err)
 	}
-	return rec.launch(app), nil
+	return rec, nil
 }
 
 // selectedLaunch is selectedRuntime with the launch a Deployment or CronJob
@@ -471,14 +482,48 @@ func (r *AppReconciler) selectedLaunch(ctx context.Context, app *appv1alpha1.App
 	return runtime, launch, err
 }
 
-// servedBuildRerunLaunch is the launch of a release that reruns a native
+// servedBuildRerun is the selection of a release that reruns a repo-backed
 // service's served build with its saved settings: the image-only selection an
 // environment "Save and deploy" or an environment group's deploy writes
-// (w4/m180, w4/708). That image's CMD is the start command it was built with,
-// so the release passes its own start command to the image's entrypoint
-// (launchNativeArgs), as a build source's image does. Render's "Save and
-// deploy" redeploys the existing build, which runs the saved start command
-// (w32/048).
+// (w4/m180, w4/708). nil for any other release.
+func servedBuildRerun(app *appv1alpha1.App) *appv1alpha1.ReleaseConfigReference {
+	ref := app.ActiveReleaseConfig()
+	if ref == nil || ref.SourceGeneration != 0 || ref.Image == "" || ref.StaticPrefix != "" ||
+		app.Spec.Repo == "" || canceledOverServed(app) {
+		return nil
+	}
+	return ref
+}
+
+// rerunBuildSettings is the build settings of the image the current release
+// runs when it reruns the served build (servedBuildRerun): the ones the served
+// release's record names, when that release runs the selected image. Render's
+// "Save and deploy" deploys the existing build, so a build command, branch or
+// root directory saved since that build applies at the next deploy that builds
+// (render.com/docs/configure-environment-variables). The rerun's own record
+// carries them once written, and so does a rerun of it once it serves. ok is
+// false for any other release, and for a served record that names no build
+// settings or only an older form of them: the release then names the saved
+// ones, as before (w32/060).
+func (r *AppReconciler) rerunBuildSettings(ctx context.Context, app *appv1alpha1.App) (built string, ok bool, err error) {
+	ref := servedBuildRerun(app)
+	if ref == nil || ref.Generation != app.Status.ReleaseGeneration {
+		return "", false, nil
+	}
+	rec, err := r.servedRecord(ctx, app)
+	if err != nil || rec == nil || appContainerImage(rec.template) != ref.Image ||
+		!strings.HasPrefix(rec.spec.BuildSettingsFingerprint, buildSettingsIdentityVersion+":") {
+		return "", false, err
+	}
+	return rec.spec.BuildSettingsFingerprint, true, nil
+}
+
+// servedBuildRerunLaunch is the launch of a release that reruns a native
+// service's served build with its saved settings (servedBuildRerun). That
+// image's CMD is the start command it was built with, so the release passes
+// its own start command to the image's entrypoint (launchNativeArgs), as a
+// build source's image does. Render's "Save and deploy" redeploys the existing
+// build, which runs the saved start command (w32/048).
 //
 // Two releases keep their launch. One already rendered keeps the launch its
 // record shows, so an operator upgrade re-templates no running release. And
@@ -486,9 +531,8 @@ func (r *AppReconciler) selectedLaunch(ctx context.Context, app *appv1alpha1.App
 // Docker image still served after a staged switch to a native runtime keeps
 // the builder's decision. launchUnknown otherwise.
 func (r *AppReconciler) servedBuildRerunLaunch(ctx context.Context, app *appv1alpha1.App) (launchMode, error) {
-	ref := app.ActiveReleaseConfig()
-	if ref == nil || ref.SourceGeneration != 0 || ref.Image == "" || ref.StaticPrefix != "" ||
-		app.Spec.Repo == "" || effectiveBuilder(app.Spec) != build.BuilderNative || canceledOverServed(app) {
+	ref := servedBuildRerun(app)
+	if ref == nil || effectiveBuilder(app.Spec) != build.BuilderNative {
 		return launchUnknown, nil
 	}
 	own, err := r.readRuntimeConfigRecord(ctx, app, ref.Generation)
@@ -596,9 +640,9 @@ func releaseRuntimeSpec(app *appv1alpha1.App) appv1alpha1.AppSpec {
 // settings (replicas, settings and build settings fingerprints) app holds as it
 // is written. A selected record keeps the build settings of the image it runs,
 // and its settings fingerprint names them with its own recorded settings and
-// the saved plan and disk (selectedSettingsFingerprint, w32/058). One whose
-// target's record predates build settings knows none, and names the saved
-// settings, as before.
+// the saved plan and disk (selectedSettingsFingerprint, w32/058, w32/060). One
+// whose target's record predates build settings knows none, and names the
+// saved settings, as before.
 func (r *AppReconciler) writeRuntimeConfigRecord(ctx context.Context, app *appv1alpha1.App, generation int64, record *runtimeConfigRecord) error {
 	record.spec.SavedReplicas = new(app.Spec.Replicas)
 	switch built := record.spec.BuildSettingsFingerprint; {

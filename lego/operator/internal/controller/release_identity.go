@@ -147,6 +147,12 @@ func appReleaseIdentityOf(spec appv1alpha1.AppSpec, version string) appReleaseId
 // release inputs, as operators from w5/m151 to w3/m486 fingerprinted the
 // edge-cache profile; "" leaves it out, as today.
 func releaseIdentityWith(spec appv1alpha1.AppSpec, version, cacheProfile string) appReleaseIdentity {
+	artifact := identityFingerprint("artifact-v1", artifactIdentityOf(spec))
+	return appReleaseIdentity{artifact: artifact, release: releaseFingerprintOf(spec, version, cacheProfile, artifact)}
+}
+
+// artifactIdentityOf is the input of spec's artifact fingerprint.
+func artifactIdentityOf(spec appv1alpha1.AppSpec) artifactIdentityInput {
 	builder := effectiveBuilder(spec)
 	branch := spec.Branch
 	if spec.Repo != "" && branch == "" {
@@ -198,9 +204,7 @@ func releaseIdentityWith(spec appv1alpha1.AppSpec, version, cacheProfile string)
 	if builder == build.BuilderNative {
 		artifactInput.FilesFromSecrets = spec.FilesFromSecrets
 	}
-
-	artifact := identityFingerprint("artifact-v1", artifactInput)
-	return appReleaseIdentity{artifact: artifact, release: releaseFingerprintOf(spec, version, cacheProfile, artifact)}
+	return artifactInput
 }
 
 // releaseFingerprintOf is the release identity of spec's release inputs run
@@ -254,35 +258,50 @@ func settingsIdentitySpec(spec appv1alpha1.AppSpec) appv1alpha1.AppSpec {
 	return spec
 }
 
-// buildSettingsFingerprint is the artifact identity of spec's saved settings
-// (releaseSettingsFingerprint's spec): what a build dispatched from spec reads,
-// the repository or image, branch, root directory, build command, Dockerfile
-// and runtime, and for a native build the start command and environment it
-// bakes in.
+// buildSettingsIdentityVersion versions buildSettingsFingerprint. The
+// operator that introduced the field (w32/058) stored the whole artifact
+// identity there, with an artifact-v1 prefix.
+const buildSettingsIdentityVersion = "build-v1"
+
+// buildSettingsFingerprint identifies the build settings of spec's saved
+// settings (releaseSettingsFingerprint's spec): what a build dispatched from
+// spec reads, the repository or image, branch, root directory, build command,
+// Dockerfile and runtime. It leaves out the start command and environment a
+// native build also bakes in, which a release applies when it starts the image
+// and its settings fingerprint names: a rerun of the serving build runs the
+// saved ones on it (w32/048), so they are not settings that build waits on
+// (w32/060).
 func buildSettingsFingerprint(spec appv1alpha1.AppSpec) string {
-	return desiredAppReleaseIdentity(settingsIdentitySpec(spec)).artifact
+	input := artifactIdentityOf(settingsIdentitySpec(spec))
+	input.StartCommand, input.BuildEnv, input.RuntimeEnvSecret = "", nil, ""
+	input.EnvFromSecrets, input.FilesFromSecrets = nil, nil
+	return identityFingerprint(buildSettingsIdentityVersion, input)
 }
 
 // selectedSettingsFingerprint is the settings fingerprint of a release that
 // runs runtime's settings on an image another release built from the settings
 // built names (its buildSettingsFingerprint): a Restart or rollback, which
 // runs its target's image and recorded settings with the saved plan and disk
-// (render.com/docs/rollbacks). Compared with releaseSettingsFingerprint, saved
-// build settings that image was not built from then read as undeployed until
-// the next deploy builds them, and the target's put back as deployed
-// (w32/058).
+// (render.com/docs/rollbacks), or an environment "Save and deploy" or group
+// deploy, which reruns the serving build with the saved settings (w4/m180,
+// w4/708). recordedSettingsMatch then reads saved build settings that image
+// was not built from as undeployed until the next deploy builds them, and the
+// image's own put back as deployed (w32/058, w32/060).
 func selectedSettingsFingerprint(runtime appv1alpha1.AppSpec, built string) string {
 	return releaseFingerprintOf(settingsIdentitySpec(runtime), releaseIdentityVersion, "", built)
 }
 
 // recordedSettingsMatch reports whether a release record's SettingsFingerprint
-// identifies spec's saved settings. A release-v1 fingerprint cannot tell an
-// empty health path from "/", so it matches only when the record's own path —
-// which the record carries separately — equals spec's. An older record without
-// a fingerprint cannot prove equality.
+// identifies spec's saved settings: as a release built from them names them
+// (releaseSettingsFingerprint), or as a release that runs them on their own
+// build does (selectedSettingsFingerprint). A release-v1 fingerprint cannot
+// tell an empty health path from "/", so it matches only when the record's own
+// path — which the record carries separately — equals spec's. An older record
+// without a fingerprint cannot prove equality.
 func recordedSettingsMatch(rec appv1alpha1.ReleaseRecordSpec, spec appv1alpha1.AppSpec) bool {
 	fp := rec.SettingsFingerprint
-	if fp == releaseSettingsFingerprint(spec) || cacheProfileFingerprint(fp, settingsIdentitySpec(spec)) {
+	if fp == releaseSettingsFingerprint(spec) || fp == selectedSettingsFingerprint(spec, buildSettingsFingerprint(spec)) ||
+		cacheProfileFingerprint(fp, settingsIdentitySpec(spec)) {
 		return true
 	}
 	return rec.HealthCheckPath != nil && *rec.HealthCheckPath == spec.HealthCheckPath &&
