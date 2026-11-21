@@ -155,7 +155,7 @@ The bound excludes:
 Two terms were open, so m547 is parked:
 
 - One same-node swap in ten detached and reattached the volume (+25.6 s): the controller checked the volume as the old pod was deleted, after the node's 2 s sync had already reported it free, and 50 ms before the new pod was bound to the same node ([w6/161](../.pm/w6/done/161.md)). The disk holder below closes it. Its production measure is pending.
-- A web image service that names no port waits 25 s after Ready on each image deploy while its HTTP port is rediscovered ([w6/162](../.pm/w6/162.md)).
+- A web image service that names no port waited 25 s after Ready on each image deploy while its HTTP port was rediscovered: a 20 s grace from the container's start before the operator looked, then 5 s before the pass that promoted it. Under `Recreate` the operator now looks as soon as the new instance is Ready, and the promoting pass follows at once ([w6/162](../.pm/w6/162.md)). Its production measure is pending.
 
 **The disk holder (w6/m559).** Between the old instance's teardown and the new instance's binding (0.3–0.6 s), no scheduled pod used the volume. The attach/detach controller detaches a volume when its desired state lacks it and the node reports it free, so a node-status sync inside that gap was enough. A holder pod on the volume's node closes the gap:
 

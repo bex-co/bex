@@ -39,6 +39,10 @@ const (
 	webHTTPDiscoveryWindow = 90 * time.Second
 	// Keep the old release through final bounded probes and the next projection.
 	webImageHTTPSelectionHoldSeconds = int32((webHTTPDiscoveryWindow + time.Minute) / time.Second)
+	// webHTTPChosenRequeue follows the pass that chose a release's HTTP port
+	// with the one that projects and promotes it, once the informer can carry
+	// the choice's status write (w6/162).
+	webHTTPChosenRequeue = 100 * time.Millisecond
 )
 
 // discoversWebImagePort reports a web service whose image chooses its own
@@ -131,7 +135,7 @@ func (r *AppReconciler) selectWebImageHTTP(ctx context.Context, app *appv1alpha1
 		return false, ""
 	}
 	pod, started := r.webImageCandidate(ctx, dep)
-	if pod == nil || time.Since(started) < portDetectGrace {
+	if pod == nil || (time.Since(started) < portDetectGrace && !detectsAtReady(dep, pod)) {
 		return true, appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortWaiting)
 	}
 	key := "http/" + app.Namespace + "/" + app.Name
@@ -192,6 +196,19 @@ func (r *AppReconciler) selectWebImageHTTP(ctx context.Context, app *appv1alpha1
 	r.portScanned.Delete(key)
 	network.HTTPSelection = appv1alpha1.HTTPSelectionFallback
 	return true, appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortFallback, portParam(network.PrimaryPort))
+}
+
+// detectsAtReady reports a candidate whose HTTP port is looked for as soon as
+// it is Ready, rather than portDetectGrace after it started: one rolled with
+// Recreate (a service with a disk, ADR082), whose earlier instance stopped
+// before it started, so every second of the grace was downtime (w6/162). Ready
+// means its probe found a listener, so a server that listens at once is probed
+// at once, and the lowest port answering HTTP then wins, as Render detects the
+// port as the instance starts and serves the first one it finds. A rolling
+// release keeps the grace: its serving pods carry the traffic meanwhile, and a
+// lower HTTP port that binds later still wins (w8/205).
+func detectsAtReady(dep *appsv1.Deployment, pod *corev1.Pod) bool {
+	return dep.Spec.Strategy.Type == appsv1.RecreateDeploymentStrategyType && podReady(pod)
 }
 
 // httpCandidates is a scan's open ports as httpport candidates: the lowest 75,
@@ -271,6 +288,9 @@ func (r *AppReconciler) reportWebHTTPSelection(ctx context.Context, app *appv1al
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason, Message: message, ObservedGeneration: app.Generation})
 	if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
 		return ctrl.Result{}, err
+	}
+	if !webImageHTTPSelectionPending(app) {
+		return ctrl.Result{RequeueAfter: webHTTPChosenRequeue}, nil
 	}
 	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 }

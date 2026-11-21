@@ -33,6 +33,7 @@ import (
 
 	"github.com/bex-co/bex/lego/operator/internal/portscan"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -408,5 +409,68 @@ func TestWebImageHTTPUsesTheListenerAPartialScanFound(t *testing.T) {
 	network := app.Status.ImageNetwork
 	if network.PrimaryPort != int32(httpPort) || network.HTTPSelection != appv1alpha1.HTTPSelectionDetected {
 		t.Fatalf("network = %+v, want the partial scan's HTTP listener %d detected", network, httpPort)
+	}
+}
+
+// A disk service rolls with Recreate, so nothing serves while its candidate
+// starts: the candidate's HTTP port is looked for once it is Ready, not 20 s
+// after it started, and the pass that finds it is followed at once by the one
+// that projects and promotes it (w6/162). A candidate not Ready yet, and a
+// rolling one inside the grace, keep waiting at the old cadence.
+func TestWebHTTPRecreateCandidateIsProbedOnceReady(t *testing.T) {
+	httpPort := int32(httpListenerPort(t))
+	const waitingText = "Waiting for the container to start before detecting its HTTP port"
+	for _, tc := range []struct {
+		name      string
+		strategy  appsv1.DeploymentStrategyType
+		ready     bool
+		selection string
+		requeue   time.Duration
+	}{
+		{"recreate, Ready", appsv1.RecreateDeploymentStrategyType, true, appv1alpha1.HTTPSelectionDetected, webHTTPChosenRequeue},
+		{"recreate, starting", appsv1.RecreateDeploymentStrategyType, false, "", 5 * time.Second},
+		{"rolling, Ready", appsv1.RollingUpdateDeploymentStrategyType, true, "", 5 * time.Second},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Generation: 3},
+				Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, PortMode: appv1alpha1.PortModeWebImageV1, Image: "traefik/whoami:v1.10.3"},
+				Status: appv1alpha1.AppStatus{
+					ActiveRevision: "rev-0",
+					ServingNetwork: &appv1alpha1.ImageNetworkStatus{Image: "traefik/whoami@sha256:2", Revision: "rev-0", PrimaryPort: httpPort, Ports: []int32{httpPort}, HTTPSelection: appv1alpha1.HTTPSelectionDetected},
+					ImageNetwork:   &appv1alpha1.ImageNetworkStatus{Image: "traefik/whoami@sha256:3", Revision: "rev-1", PrimaryPort: httpPort, Ports: []int32{httpPort}},
+				},
+			}
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "web-1", Namespace: "default", Labels: map[string]string{"app": "web", labelRevision: "rev-1"}},
+				Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: appContainerName}}},
+				Status: corev1.PodStatus{Phase: corev1.PodRunning, PodIP: "127.0.0.1", ContainerStatuses: []corev1.ContainerStatus{{
+					Name: appContainerName, State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now().Add(-time.Second))}},
+				}}},
+			}
+			if tc.ready {
+				pod.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}
+			}
+			dep := progressDeadlineDep("web")
+			dep.Status.Conditions = nil
+			dep.Spec.Strategy.Type = tc.strategy
+			cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).WithObjects(app, pod).WithStatusSubresource(app).Build()
+			r := &AppReconciler{Client: cl, PortScanner: &cannedScanner{}}
+			res, halt, err := r.reportDeploymentStarting(t.Context(), app, dep, app.Spec.Image, int(httpPort), true)
+			if err != nil || !halt {
+				t.Fatalf("halt=%v err=%v, want the pass to stop at HTTP selection", halt, err)
+			}
+			ready := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady)
+			want := waitingText
+			if tc.selection != "" {
+				want = "Detected HTTP on port " + strconv.Itoa(int(httpPort))
+			}
+			if got := app.Status.ImageNetwork.HTTPSelection; got != tc.selection || ready == nil || !strings.HasPrefix(ready.Message, want) {
+				t.Fatalf("selection=%q Ready=%+v, want selection %q and a message starting %q", got, ready, tc.selection, want)
+			}
+			if res.RequeueAfter != tc.requeue {
+				t.Fatalf("requeue after %s, want %s", res.RequeueAfter, tc.requeue)
+			}
+		})
 	}
 }
