@@ -121,14 +121,7 @@ func (f *fakeBlueprintStore) SettleNoChangesPlan(_ context.Context, blueprintID,
 	if !ok || b.TenantID != tenantID || b.Status == "disconnected" {
 		return store.Blueprint{}, fmt.Errorf("blueprint: %w", store.ErrNotFound)
 	}
-	for id, p := range f.planned {
-		if run := f.syncs[id]; run.BlueprintID == blueprintID && run.State == store.BlueprintSyncStateCreated {
-			msg := "superseded: a newer plan found no changes to apply"
-			run.State, run.ErrorMessage = store.BlueprintSyncStateError, &msg
-			f.syncs[id], p.BlueprintSync = run, run
-			f.planned[id] = p
-		}
-	}
+	// A plan still waiting is left as it is (w32/073).
 	now := time.Now()
 	b.NoChangesPlannedAt = &now
 	if b.Status == store.BlueprintStatusCreated && b.ActiveRunID == "" {

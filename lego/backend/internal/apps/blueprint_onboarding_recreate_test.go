@@ -270,33 +270,6 @@ func TestNoChangesFirstPlanLeavesCreated(t *testing.T) {
 	}
 }
 
-// A no_changes plan supersedes a plan still waiting for approval: approval
-// applies the newest plan, and the newest needs nothing, which is what the
-// refusal says (w32/071), naming no sync.
-func TestNoChangesPlanSupersedesAWaitingPlan(t *testing.T) {
-	svc, _, ctx := newOnboardingService(t, recreateManifest)
-	res, err := svc.CreatePlannedBlueprint(ctx, RenderCreateBlueprintRequest{Name: "s", OwnerID: "tea-a", Source: RenderBlueprintSource{Repo: "https://github.com/a/app"}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	// The service the plan creates appears some other way before approval.
-	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: recreateManifest}); err != nil {
-		t.Fatal(err)
-	}
-	plan, err := svc.PlanBlueprint(ctx, res.Blueprint.ID, "tea-a")
-	if err != nil || plan.PlanningOutcome != PlanningNoChanges {
-		t.Fatalf("plan = %+v err=%v, want no_changes", plan, err)
-	}
-	_, err = svc.ApproveBlueprint(ctx, res.Blueprint.ID, "tea-a", "", nil)
-	assertNoChangesToApprove(t, err)
-	if got, err := svc.PlannedSync(ctx, res.Blueprint.ID, "tea-a"); err != nil || got != nil {
-		t.Fatalf("planned sync = %+v err=%v, want none: the waiting plan was superseded", got, err)
-	}
-	if _, err := svc.SyncBlueprint(ctx, res.Blueprint.ID, "tea-a", "", "", nil); err != nil {
-		t.Fatalf("sync after the no_changes plan: %v", err)
-	}
-}
-
 // w2/m256 t014: a create whose plan cannot be made is all-or-nothing, also
 // when it follows a deleted Blueprint on the same source: the deleted row is
 // left as it was, the failed create leaves no row of its own, and the retry is

@@ -300,9 +300,10 @@ func (s *Service) PlanBlueprint(ctx context.Context, bpID, ownerID string) (Blue
 // now — never against an earlier sync, so a defined resource deleted since is
 // planned as a create, as on Render — and persists the outcome: a planned sync
 // awaiting approval, an error sync carrying the validation notices, or, when
-// no resource would change, nothing to approve: a waiting plan is superseded
-// and a `created` Blueprint is in sync (*b is updated to match), so a manual
-// sync or auto-sync can run it from then on (w2/m256 t014).
+// no resource would change, no sync at all: a `created` Blueprint is in sync
+// (*b is updated to match), so a manual sync or auto-sync can run it from then
+// on (w2/m256 t014), and a plan still waiting for approval stays the newest,
+// which approval applies, as on Render (w32/073).
 func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStore, b *store.Blueprint, manifest, commitSHA string) (BlueprintPlanResult, error) {
 	validation, err := s.blueprintValidationFor(ctx, b.Repo, b.Branch, manifest, b.ID)
 	if err != nil {
@@ -507,7 +508,9 @@ func (s *Service) PlannedSync(ctx context.Context, bpID, ownerID string) (*SyncW
 // ApproveBlueprint applies the Blueprint's newest planned sync, with the
 // sync:false values it requires. A newest sync that failed planning, or that
 // was already applied, cannot be approved, and neither can a Blueprint whose
-// newest plan found no changes.
+// newest plan found no changes with no plan waiting. A plan that finds no
+// changes saves no sync, so a plan waiting from before it is still the newest
+// and is what approval applies, as Render's does (w32/073).
 //
 // planned, when set, is the sync id of the plan the caller reviewed: approval
 // is refused unless it is still the newest planned sync, so a re-plan another
@@ -544,8 +547,9 @@ func (s *Service) ApproveBlueprint(ctx context.Context, bpID, ownerID, planned s
 	syncID := ids.BlueprintSyncPublicID(latest.ID)
 	switch {
 	case latest.State == store.BlueprintSyncStateCreated:
-		// A no-changes plan supersedes every waiting plan as it is stamped, so
-		// a waiting plan is newer than the stamp.
+		// A waiting plan is approved even when a no-changes plan came after
+		// it: that plan saved no sync, so this one is still the newest, and
+		// the pinned CLI tells the user approve applies it (w32/073).
 	case b.NoChangesPlannedAt != nil && latest.CreatedAt.Before(*b.NoChangesPlannedAt):
 		// The newest plan found no changes and wrote no sync, so the attempt
 		// before it (failed, superseded or applied) is not what approval

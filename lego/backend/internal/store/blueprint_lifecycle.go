@@ -194,9 +194,15 @@ func (s *PGStore) admitBlueprintSyncRun(ctx context.Context, blueprintID, tenant
 		// The claim (generation + active_run_id) is taken without touching
 		// status: a preflight failure must leave current status and settings
 		// exactly as they were (w8/m37 t005). Staging flips to syncing.
+		// Approving a waiting plan clears the no-changes stamp (w32/071): the
+		// plan may predate a no-changes plan (w32/073), and once approved it
+		// is the newest attempt that approval answers for.
 		if err := tx.QueryRow(ctx, `
 			UPDATE blueprints SET execution_generation = execution_generation + 1,
-				active_run_id = $3, updated_at = now()
+				active_run_id = $3, updated_at = now(),
+				no_changes_planned_at = CASE WHEN EXISTS (SELECT 1 FROM blueprint_syncs s
+					WHERE s.id = $3 AND s.blueprint_id = $1 AND s.state = 'created' AND s.plan_path IS NOT NULL)
+					THEN NULL ELSE no_changes_planned_at END
 			WHERE id = $1 AND tenant_id = $2
 			  AND status != 'disconnected' AND active_run_id IS NULL
 			RETURNING `+blueprintColumns,

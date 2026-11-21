@@ -275,9 +275,9 @@ func TestCreateNewBlueprintSuffixPG(t *testing.T) {
 // TestBlueprintPlanConnectionAndNoChangesPG pins w2/m256 t014's storage: a
 // Blueprint created after another on the same source was deleted has no plan
 // of its own yet (the deleted one's applied plan does not answer), and a
-// no_changes plan supersedes a waiting plan and takes a created Blueprint to
-// in_sync, or to paused when its auto-sync is off (w32/069) — while a
-// Blueprint in any other status keeps it.
+// no_changes plan leaves a waiting plan waiting (w32/073) and takes a created
+// Blueprint to in_sync, or to paused when its auto-sync is off (w32/069) —
+// while a Blueprint in any other status keeps it.
 func TestBlueprintPlanConnectionAndNoChangesPG(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
@@ -331,21 +331,24 @@ func TestBlueprintPlanConnectionAndNoChangesPG(t *testing.T) {
 		t.Fatalf("latest before the reconnect = %+v err=%v, want %s", latest, err, applied.ID)
 	}
 
-	// An in_sync Blueprint keeps its status through a no_changes plan, which
-	// still supersedes its waiting plan.
+	// An in_sync Blueprint keeps its status through a no_changes plan, and its
+	// waiting plan stays waiting and the newest: the no_changes plan saves no
+	// sync, as on Render (w32/073).
 	waiting := plan(b.ID)
 	settled, err := st.SettleNoChangesPlan(ctx, b.ID, ws.ID, "changed: manifest")
 	if err != nil || settled.Status != store.BlueprintStatusInSync || settled.Manifest == "changed: manifest" {
 		t.Fatalf("settle on in_sync = %+v err=%v, want in_sync with its manifest kept", settled, err)
 	}
-	if got, err := st.BlueprintPlannedSync(ctx, b.ID, waiting.ID); err != nil || got.State != store.BlueprintSyncStateError ||
-		got.ErrorMessage == nil || !strings.Contains(*got.ErrorMessage, "superseded") {
-		t.Fatalf("waiting plan after a no_changes plan = %+v err=%v, want superseded", got, err)
+	if got, err := st.BlueprintPlannedSync(ctx, b.ID, waiting.ID); err != nil || got.State != store.BlueprintSyncStateCreated || got.ErrorMessage != nil {
+		t.Fatalf("waiting plan after a no_changes plan = %+v err=%v, want it still created", got, err)
 	}
-	// The plan is stamped whatever the status, after the plan it superseded
+	if latest, err := st.LatestBlueprintPlan(ctx, b.ID); err != nil || latest.ID != waiting.ID {
+		t.Fatalf("latest plan after a no_changes plan = %+v err=%v, want the waiting plan %s", latest, err, waiting.ID)
+	}
+	// The plan is stamped whatever the status, after the plan still waiting
 	// (w32/071): it writes no sync row, so approval orders by the stamp.
 	if settled.NoChangesPlannedAt == nil || !waiting.CreatedAt.Before(*settled.NoChangesPlannedAt) {
-		t.Fatalf("no_changes_planned_at = %v, want a time after the superseded plan's %v", settled.NoChangesPlannedAt, waiting.CreatedAt)
+		t.Fatalf("no_changes_planned_at = %v, want a time after the waiting plan's %v", settled.NoChangesPlannedAt, waiting.CreatedAt)
 	}
 
 	if err := st.DisconnectBlueprint(ctx, b.ID, ws.ID); err != nil {

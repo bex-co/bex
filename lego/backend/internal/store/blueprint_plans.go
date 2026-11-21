@@ -162,29 +162,22 @@ func (s *PGStore) LatestBlueprintPlan(ctx context.Context, blueprintID string) (
 		ORDER BY created_at DESC, id DESC LIMIT 1`, blueprintID)
 }
 
-// SettleNoChangesPlan records a plan that found nothing to change: a waiting
-// plan is superseded (approval applies the newest plan, and the newest needs
-// nothing), and a Blueprint still `created` is in sync with manifest — its
-// resources already match the file, which on Render needs no approval — so it
-// leaves `created` (for `paused` when auto-sync is off, as a completed sync
-// does), takes manifest as its stored file and stamps last_sync_at. A
-// Blueprint in any other status keeps it. Whatever the status, the plan is
-// stamped as no_changes_planned_at: it writes no sync row, so approval needs
-// the stamp to know that the newest plan found nothing to approve (w32/071).
-// It returns the Blueprint as it now stands.
+// SettleNoChangesPlan records a plan that found nothing to change. It writes
+// no sync row, as Render saves none, so a plan still waiting for approval
+// stays the newest and approval applies it (w32/073). A Blueprint still
+// `created` is in sync with manifest — its resources already match the file,
+// which on Render needs no approval — so it leaves `created` (for `paused`
+// when auto-sync is off, as a completed sync does), takes manifest as its
+// stored file and stamps last_sync_at. A Blueprint in any other status keeps
+// it. Whatever the status, the plan is stamped as no_changes_planned_at, so
+// approval can tell that the newest plan found nothing to approve when no plan
+// is waiting (w32/071). It returns the Blueprint as it now stands.
 func (s *PGStore) SettleNoChangesPlan(ctx context.Context, blueprintID, tenantID, manifest string) (Blueprint, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return Blueprint{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if _, err := tx.Exec(ctx, `
-		UPDATE blueprint_syncs SET state = 'error', completed_at = now(),
-			error_message = 'superseded: a newer plan found no changes to apply'
-		WHERE blueprint_id = $1 AND state = 'created' AND plan_path IS NOT NULL
-		  AND EXISTS (SELECT 1 FROM blueprints WHERE id = $1 AND tenant_id = $2)`, blueprintID, tenantID); err != nil {
-		return Blueprint{}, err
-	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE blueprints SET no_changes_planned_at = now() WHERE id = $1 AND tenant_id = $2`, blueprintID, tenantID); err != nil {
 		return Blueprint{}, err

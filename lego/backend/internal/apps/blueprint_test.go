@@ -577,14 +577,17 @@ func (f *fakeBlueprintStore) admitBlueprintSyncRunLocked(blueprintID, tenantID s
 	}
 	b.ExecutionGeneration++
 	b.ActiveRunID = run.ID
+	// An approved plan's row becomes the run and keeps its created_at, as in
+	// the PG store, and approving it clears the no-changes stamp (w32/073).
+	if planned, ok := f.syncs[run.ID]; ok {
+		run.CreatedAt = planned.CreatedAt
+		if _, isPlan := f.planned[run.ID]; isPlan && planned.State == store.BlueprintSyncStateCreated {
+			b.NoChangesPlannedAt = nil
+		}
+	}
 	f.blueprints[blueprintID] = b
 	run.BlueprintID = b.ID
 	run.ExecutionGeneration = b.ExecutionGeneration
-	// An approved plan's row becomes the run and keeps its created_at, as in
-	// the PG store, so approval still orders it against a no-changes plan.
-	if planned, ok := f.syncs[run.ID]; ok {
-		run.CreatedAt = planned.CreatedAt
-	}
 	f.syncs[run.ID] = run
 	f.insertedSyncs = append(f.insertedSyncs, run)
 	return b, run, nil
